@@ -369,8 +369,10 @@ const setEligible = () => {
   ps.staffWeapon = { type: 'staff', tierMult: 3.0, element1: 'flame', isVolatile: true };
   ps.activeSlot = 'staff';
   /* v2.3.3108: 'godly' is no amulet tier (AMULET_TIER_POWER tops out at
-     'mythic'); the server's roll reads no amulet at all, so this is for the
-     reader. */
+     'mythic'), so the roll's flame-amulet term (combat.js
+     _computeAttackDamage, ps.amulet on an elemental weapon) fell back to the
+     plainest tier's +5.5%.  'mythic' is its strongest, +10.5%: the stack is
+     now the worst case it says it is (review). */
   ps.amulet = { gem: 'flame', tier: 'mythic' };
   /* v2.3.3108: the cooked-food buff, REALLY on.  This said
      `ps.buffs = { damage: { until } }` -- a key and a shape nothing reads
@@ -422,6 +424,27 @@ const setEligible = () => {
     furyMax > plainCap, { furyMax, plainCap });
   check('...and never past the ceiling widened by exactly the brew',
     furyMax <= Math.ceil(plainCap * 2), { furyMax, widened: plainCap * 2 });
+
+  /* The ceiling itself, pinned (review: the bound above is twice the worst
+     honest roll, so a burst with NO ceiling passed it).  A roll far past any
+     ceiling must come out at EXACTLY the ordinary ceiling x the brew. */
+  const hugeHit = () => {
+    ps.mana = ps.maxMana; ps._burstCdUntil = 0; ps.activeSlot = 'staff';
+    furyTarget.alive = true; furyTarget.hp = 1e12; furyTarget.maxHp = 1e12; furyTarget.statuses = {};
+    furyTarget.x = ps.x + 10; furyTarget.y = ps.y;
+    const b = furyTarget.hp;
+    cast();
+    return b - furyTarget.hp;
+  };
+  room._computeAttackDamage = () => ({ dmg: 1e9, isCrit: false });
+  const heldTonic = hugeHit();
+  ps._buffs = {};
+  const heldPlain = hugeHit();
+  delete room._computeAttackDamage;
+  furyTarget.x = -50000; furyTarget.y = -50000;
+  check('a roll past every ceiling is held to EXACTLY the ordinary ceiling x the brew (the tonic\'s x2)',
+    heldTonic === plainCap * 2, { heldTonic, want: plainCap * 2 });
+  check('...and with no brew, to exactly the ordinary ceiling', heldPlain === plainCap, { heldPlain, plainCap });
 
   ps.amulet = null;
   ps._buffs = {};

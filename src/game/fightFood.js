@@ -22,7 +22,12 @@
  *      _pvpHealWait).  The page holds its own bite back -- and says how long
  *      -- only against a worker with caps.pvpheal, so it never refuses what an
  *      older worker would allow; the worker refuses anything early with the
- *      usual resend either way.
+ *      usual resend either way, and says why (`eat_refused {wait}`), which
+ *      sets this page's clock to the worker's (noteEatRefused).
+ *      The page's own guess reads only the hits it has seen, NOT S._inDuel
+ *      (review): that flag can outlive its duel (a dropped accept, a declined
+ *      one, a restart, a long disconnect), and held every bite back against
+ *      monsters until a reload.  A duel's lull is the worker's to call.
  *
  * No imports, so the worker's suites can run it (fightfood.test.mjs) and
  * mirror-audit can hold PVP_HEAL to the server's. */
@@ -81,15 +86,29 @@ export function noteInstantHeal(S, now) {
 }
 
 /* How long this page must still wait before a heal eaten at once (0 when it
-   may) -- cooking.js _pvpHealWait on the page's own copies: S._inDuel, the
-   last pvp_hit (S._pvpAt) and the last bite (S._instantHealAt). */
+   may) -- cooking.js _pvpHealWait on the page's own copies: the last pvp_hit
+   it saw (S._pvpAt) and the last bite (S._instantHealAt).  A guess that errs
+   toward letting the bite go: the worker decides, and says why it did not. */
 export function pvpHealWaitMs(S, now) {
   if (!S || !(S._serverCaps && S._serverCaps.pvpheal)) return 0;
   var t = typeof now === 'number' ? now : Date.now();
-  var inFight = !!S._inDuel || (typeof S._pvpAt === 'number' && t - S._pvpAt < PVP_HEAL.WINDOW_MS);
+  var inFight = typeof S._pvpAt === 'number' && t - S._pvpAt < PVP_HEAL.WINDOW_MS;
   if (!inFight) return 0;
   var last = typeof S._instantHealAt === 'number' ? S._instantHealAt : 0;
   return Math.max(0, PVP_HEAL.GAP_MS - (t - last));
+}
+
+/* The worker held a bite back (eat_refused {wait}): its clock is the truth.
+   The last bite becomes the one the worker counted, and the page counts
+   itself in a fight for as long as the wait, so the next tap is held here,
+   with words, instead of going out to be refused again. */
+export function noteEatRefused(S, wait, now) {
+  if (!S) return 0;
+  var t = typeof now === 'number' ? now : Date.now();
+  var w = Math.max(0, Math.min(PVP_HEAL.GAP_MS, Math.floor(Number(wait) || 0)));
+  S._instantHealAt = t - (PVP_HEAL.GAP_MS - w);
+  S._pvpAt = t;
+  return w;
 }
 
 /* What the page says when it holds a bite back. */

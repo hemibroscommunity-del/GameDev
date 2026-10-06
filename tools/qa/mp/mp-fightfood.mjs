@@ -9,13 +9,15 @@
  *      their damage with `nb: 1` and the worker's pvp_hit carries that claim
  *      unchanged; after A drinks one, the claims stay brew-free and every
  *      pvp_hit carries twice the claim -- the worker's own brew, put on once.
- *   2. A SPECIAL SWING SAYS SO (`special: true`), so the worker holds it to
- *      the special's ceiling, not the plain swing's.
+ *   2. A SPECIAL SWING STAYS AN ORDINARY CLAIM (review): no `special` flag,
+ *      so the worker's ordinary lane still gives it at most two hits -- the
+ *      flag put it in the special lane, three hits at the special's ceiling.
  *   3. ONE BITE AT A TIME.  B, hurt, eats a Garden Stew from the bag: it
  *      heals.  The second, right after, is held back on B's own screen --
  *      "Eat again in Ns" -- and the worker never hears of it.  And a page that
  *      does not hold it back (its pvpheal cap knocked off by hand, as an old
- *      page would be) has its bite refused by the worker and the stew put back.
+ *      page would be) has its bite refused by the worker and the stew put back
+ *      -- and the worker says why ("Eat again in Ns", eat_refused).
  *
  * The duel steps (arming, challenge, closing in, aiming) are mp-duel's.
  */
@@ -83,10 +85,7 @@ async function claimsAndHits(A, aId, since, k) {
     for (const h of hits) {
       const near = sends.filter((s) => s.at <= h.at && h.at - s.at < 2000);
       const own = near.find((s) => Math.abs(h.dmgBase - s.dmgBase * k) < 1e-6);
-      const other = near.find((s) => Math.abs(h.dmgBase - s.dmgBase * (k === 1 ? 2 : 1)) < 1e-6
-        || Math.abs(h.dmgBase - s.dmgBase * 4) < 1e-6);
-      pairs.push({ hit: h.dmgBase, matched: !!own, nb: own ? own.nb : null, claim: own ? own.dmgBase : null,
-        otherRatio: !!other });
+      pairs.push({ hit: h.dmgBase, matched: !!own, nb: own ? own.nb : null, claim: own ? own.dmgBase : null });
     }
     return { sends: sends.length, hits: hits.length, pairs };
   }, { me: aId, t0: since, k });
@@ -188,17 +187,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...the claims the same size as before the tonic, so the brew is on ONCE (not x4)',
     avgFury > 0 && avgFury < avgPlain * 1.5, { avgPlain, avgFury });
 
-  /* ── 2. a special swing says so ── */
+  /* ── 2. a special swing stays an ordinary claim ── */
   await H.devOp(wsPort, 'vitals', aId, {}).catch(() => {});   /* a full bar of mana for the specials */
-  await A.page.evaluate(() => { const S = window._gameState.current; if (S.rpg) S.rpg.mana = S.rpg.maxMana || 100; S._lastSwipe = 0; });
-  const t2 = await H.readState(A, () => Date.now());
+  /* Locked on B, so the swing's claim is aimed at B (monsterCombat's pvpAngle). */
+  await A.page.evaluate((bid) => {
+    const S = window._gameState.current;
+    if (S.rpg) S.rpg.mana = S.rpg.maxMana || 100;
+    S._lastSwipe = 0;
+    const o = S.others && S.others[bid];
+    if (o) S.lockedTarget = { type: 'player', id: bid, ref: o };
+  }, bId);
+  const swingsAt = [];
   for (let i = 0; i < 3; i++) {
+    swingsAt.push(await H.readState(A, () => Date.now()));
     await H.callFn(A, 'specialAttack').catch(() => {});
     await A.page.waitForTimeout(1700);
   }
-  const specials = await A.page.evaluate((t) => (window.__ffSends || []).filter((s) => s.at >= t), t2);
-  rec.ok('a special SWING is claimed as a special (special: true)',
-    specials.some((s) => s.special === true), specials);
+  const sp = await A.page.evaluate(({ me, ts }) => {
+    const hits = ((window.__btFightFood && window.__btFightFood.hits) || []).filter((h) => h.attacker === me);
+    const sends = (window.__ffSends || []).filter((s) => s.at >= ts[0]);
+    /* The ordinary lane is one hit per 300 ms: at most two inside 550 ms. */
+    return { sends: sends.length, flagged: sends.filter((s) => s.special === true).length,
+      perSwing: ts.map((t) => hits.filter((h) => h.at >= t && h.at < t + 550).length) };
+  }, { me: aId, ts: swingsAt });
+  rec.ok('a special SWING is claimed as an ordinary one -- no special flag (the special lane gave it three hits)',
+    sp.sends > 0 && sp.flagged === 0, sp);
+  rec.ok(`...and lands at most two hits a swing, as before (${sp.perSwing.join(', ')})`,
+    sp.perSwing.some((n) => n > 0) && sp.perSwing.every((n) => n <= 2), sp);
 
   /* ── 3. one bite at a time ── */
   await H.devOp(wsPort, 'vitals', bId, { god: false });
@@ -257,6 +272,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const back = await H.waitFor(B, (S) => ((S.rpg && S.rpg.inventory) || {}).meal_garden_stew || 0, (n) => n === 2,
     { timeout: 6000, label: 'the stew comes back' }).then(() => true).catch(() => false);
   rec.ok('a page that eats anyway is refused by the WORKER: the stew is still on its books', forced.btn && left3 === 2, { forced, left3 });
+  rec.ok('...and the worker says why: "Eat again in Ns" over B (eat_refused)',
+    forced.popups.some((t) => /^Eat again in \d+s$/.test(t)), forced.popups);
   rec.ok('...and the refusal puts it back in that page\'s bag', back);
   await B.page.evaluate(() => { const S = window._gameState.current; if (S._serverCaps) S._serverCaps.pvpheal = true; });
 
