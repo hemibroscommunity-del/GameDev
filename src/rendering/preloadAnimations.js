@@ -62,6 +62,7 @@ import { preloadQuestArt } from './questArtPreload.js'; /* v2.3.3030: the quest 
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 import { bannerStripFor } from '../data/zoneBanner.js';   /* v2.3.3024: which of the Wheel's lands have banner art */
 import { WHEEL_LANDS } from '../data/wheelLands.js';      /* v2.3.3024 */
+import { loadSignpostIcons, freeSignpostIcons } from './wheelSignposts.js';   /* v2.3.3062: Brotown's signposts' icons */
 import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
 import { preloadWorldLife } from './worldLife.js';        /* v2.3.2811: the buildings' swinging and waving pieces */
 
@@ -137,6 +138,9 @@ export async function preloadZoneAssets(zoneId) {
      not a zone change, so their strips load HERE, behind the Wheel's own
      loading screen, and go when you leave it (freeZoneAssets, below) */
   if (zoneId === 'wheel') for (const land of wheelBannerLands()) tasks.push(Promise.resolve(preloadZoneBanner(land)).catch(() => {}));
+  /* v2.3.3062: and the lands' icons for Brotown's signposts (wheelSignposts.js),
+     drawn down to 64 px as they land; let go on leaving (below) */
+  if (zoneId === 'wheel') tasks.push(Promise.resolve(loadSignpostIcons()).catch(() => {}));
   /* ═══ v2.3.2651: the zone's DECOR PROPS ═══
      HERE rather than in preloadWorldAnimations for the same reason as the
      banner above: frost's six masses are ~2.4MB of decoded RGBA that mean
@@ -261,6 +265,8 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
     for (const land of wheelBannerLands()) {
       try { bannersFreed = bannersFreed.concat(freeZoneBanner(land, toZoneId)); } catch (e) { /* a leak, not a crash */ }
     }
+    /* v2.3.3062: and the signposts' icons (their plates taken down first) */
+    try { freeSignpostIcons(); } catch (e) { /* a leak, not a crash */ }
   }
   /* v2.3.2651: and the decor props. Same subtraction as the sheets above -- a
      sprite the destination also uses stays -- which is a no-op today (only
