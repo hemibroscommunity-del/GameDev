@@ -3,7 +3,7 @@ import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, COLLISION_TABLE, ELEMENTS, MA
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3108: one bite at a time in a fight with a player */
+import { pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3117: one bite at a time in a fight with a player */
 /* === InventoryPanel — the showInventory modal === */
 /* v2.3.883: extracted verbatim from the showInventory && rpgState JSX
    subtree in BroTown.jsx (the full inventory / equipment screen: equip
@@ -650,7 +650,7 @@ export function InventoryPanel(props) {
           if (atFull) return;
           var R = stateRef.current.rpg;
           if (!R.inventory[key] || R.inventory[key] < 1) return;
-          /* v2.3.3108: one bite at a time in a fight with a player
+          /* v2.3.3117: one bite at a time in a fight with a player
              (fightFood.js) -- held back and said, not eaten and taken back. */
           var _wait = pvpHealWaitMs(stateRef.current);
           if (_wait > 0) {

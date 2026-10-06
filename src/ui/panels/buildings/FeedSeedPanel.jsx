@@ -7,7 +7,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { rememberFarmTrip } from '@/game/wheelTownDoors.js';
 import { ITEM_NAMES, iconFor, thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3109: the order board names and draws goods as the bag does */
 
-/* ═══ v2.3.3102: THE FEED & SEED, A REAL FARM ═══
+/* ═══ v2.3.3111: THE FEED & SEED, A REAL FARM ═══
  *
  * Owner: "mechanics similar to the old FarmVille game where you have to wait
  * to harvest and each has a wait time different depending on what it is.
@@ -129,7 +129,7 @@ function Bed({ i, p, now, tool, hot }) {
         boxShadow: hot ? `inset 0 0 0 3px ${C.brass}` : ripe ? `inset 0 0 0 2px ${C.good}, 0 0 10px rgba(85,185,138,.45)` : can ? 'inset 0 0 0 2px rgba(216,170,88,.55)' : 'inset 0 0 0 1px rgba(0,0,0,.35)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', userSelect: 'none', WebkitUserSelect: 'none',
       }}>
-      {/* v2.3.3102: still, and a TEXT shadow.  The first cut bobbed a ripe crop
+      {/* v2.3.3111: still, and a TEXT shadow.  The first cut bobbed a ripe crop
           forever and drop-shadowed every glyph: Lantern Slate allows no ambient
           pulsing (only finite alerts and the Godly sheen), and a CSS filter on
           the DOM over the WebGL canvas is the iOS grain (TRAPS §42).  The green
@@ -177,7 +177,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
 
   /* Ask the worker for the beds when the window opens; redraw once a second
      so the time left counts down (the times are the worker's, not ours). */
-  /* v2.3.3102: `closed` (FarmPanel: the worker's kill switch) asks nothing --
+  /* v2.3.3111: `closed` (FarmPanel: the worker's kill switch) asks nothing --
      the switch can outlive a rollback to a worker with no farm at all, which
      would hand a farm_open to the whole room. */
   React.useEffect(() => { if (!closed) farmBus.open(S); }, []);
@@ -193,7 +193,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
   const last = farmBus.last;
 
   const unlocked = (id) => lvl >= FARM.CROPS[id].lvl;
-  /* v2.3.3106: only the crops THIS worker grows (caps.farmCrops counts them,
+  /* v2.3.3115: only the crops THIS worker grows (caps.farmCrops counts them,
      in the order they came -- FARM.CROPS' own).  A newer page offered an
      older worker's farm the potato and the pumpkin, and the buy hung on "No
      answer yet" (review).  A farm worker from before it grows the first four. */
@@ -446,7 +446,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
               coins={coins} pending={pending} onBuy={(n) => farmBus.buy(S, FARM.COMPOST, n)}>
               <Chip color={C.good}>+50% harvest</Chip>
             </ShopRow>
-            {/* v2.3.3102: every answer to a buy -- and its silence: a timeout
+            {/* v2.3.3111: every answer to a buy -- and its silence: a timeout
                 said nothing here, so the buttons just woke up again and invited a
                 second purchase of something the worker may already have sold. */}
             {status && last && ((last.did && last.did.op === 'buy') || last.op === 'buy' || last.err === 'off') ? (

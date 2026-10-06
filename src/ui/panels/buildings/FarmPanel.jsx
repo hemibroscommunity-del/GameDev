@@ -4,7 +4,7 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { rememberFarmTrip } from '@/game/wheelTownDoors.js'; /* v2.3.3032: from the Wheel, the farm's gate leads back out where you stood */
-import { FeedSeedPanel } from './FeedSeedPanel.jsx'; /* v2.3.3102: the farm the worker settles */
+import { FeedSeedPanel } from './FeedSeedPanel.jsx'; /* v2.3.3111: the farm the worker settles */
 /* === FarmPanel — buildingPanel === 'farm' sub-panel === */
 /* v2.3.877: extracted verbatim from the buildingPanel === 'farm'
    clause in BroTown.jsx (the farm plot manager: plant/harvest crops,
@@ -54,14 +54,14 @@ function lsHeader(icon, emoji, title, subtitle) {
     React.createElement("div", { style: { fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 } }, title),
     subtitle ? React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginTop: 1 } }, subtitle) : null));
 }
-/* ═══ v2.3.3102: WHICH FARM THIS WINDOW IS ═══
+/* ═══ v2.3.3111: WHICH FARM THIS WINDOW IS ═══
  * Against a worker that advertises caps.farm the Feed & Seed opens the real
  * farm (FeedSeedPanel.jsx: beds the worker owns, on its clock, seeds it
  * sells).  Against an OLD worker it keeps this file's old face below, the
  * browser-only plots whose plantings the player_state echo always undid --
  * a legacy fallback in rule 19's sense, to be deleted once every worker in
  * production advertises the cap (ARCHITECTURE-HANDOFF rule zero).
- * v2.3.3102: and a worker that says `farm: false` -- the kill switch, its
+ * v2.3.3111: and a worker that says `farm: false` -- the kill switch, its
  * liveflag spread over the caps -- gets the real window CLOSED (a card that
  * sends nothing), not the old plots: an old worker leaves the key out, the
  * switch sets it false, and the old face's "No seeds" beside invisible real
@@ -73,7 +73,7 @@ export function FarmPanel(props) {
   return React.createElement(LegacyFarmPanel, props);
 }
 
-/* v2.3.3102: the old panel, renamed and otherwise untouched. */
+/* v2.3.3111: the old panel, renamed and otherwise untouched. */
 function LegacyFarmPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,

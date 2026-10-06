@@ -368,13 +368,13 @@ const setEligible = () => {
   room._prog3Recompute(ps);
   ps.staffWeapon = { type: 'staff', tierMult: 3.0, element1: 'flame', isVolatile: true };
   ps.activeSlot = 'staff';
-  /* v2.3.3108: 'godly' is no amulet tier (AMULET_TIER_POWER tops out at
+  /* v2.3.3117: 'godly' is no amulet tier (AMULET_TIER_POWER tops out at
      'mythic'), so the roll's flame-amulet term (combat.js
      _computeAttackDamage, ps.amulet on an elemental weapon) fell back to the
      plainest tier's +5.5%.  'mythic' is its strongest, +10.5%: the stack is
      now the worst case it says it is (review). */
   ps.amulet = { gem: 'flame', tier: 'mythic' };
-  /* v2.3.3108: the cooked-food buff, REALLY on.  This said
+  /* v2.3.3117: the cooked-food buff, REALLY on.  This said
      `ps.buffs = { damage: { until } }` -- a key and a shape nothing reads
      (_buffActive reads ps._buffs[name] as an expiry), so the "every multiplier
      switched on" stack never had its damage buff at all. */
@@ -396,10 +396,10 @@ const setEligible = () => {
   check('...with real headroom left, not by a hair',
     worst < cap * 0.95, { cap, worst, ratio: (worst / cap).toFixed(3) });
 
-  /* ═══ v2.3.3108: A FURY TONIC IN A BURST IS NOT CLIPPED ═══
+  /* ═══ v2.3.3117: A FURY TONIC IN A BURST IS NOT CLIPPED ═══
      The 1.2 above is the cooked food's.  A brew of its own number -- the
      Fury Tonic's x2 -- takes the worst roll well past the ordinary ceiling,
-     and before v2.3.3108 burst.js clamped it there: the one brew that should
+     and before v2.3.3117 burst.js clamped it there: the one brew that should
      matter in a boss fight lost up to a quarter of every big burst.  Driven
      through the REAL cast, so the check fails if burst.js stops widening its
      ceiling by the brew (combat.js _brewMul). */

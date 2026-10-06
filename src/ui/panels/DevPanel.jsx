@@ -486,7 +486,7 @@ export const DevPanel = ({ onClose }) => {
                 ? 'God mode ON — ' + Math.ceil((state.godMsLeft || 0) / 60000) + ' min left (tap to stop)'
                 : 'God mode (stop taking damage)'}
             </button>
-            {/* v2.3.3102: a Cloudpetal takes eight real hours -- this makes every
+            {/* v2.3.3111: a Cloudpetal takes eight real hours -- this makes every
                 planted bed ripe now, so a harvest can be tried without waiting
                 (server devtools.js _devFarmRipe; the harvest itself is still the
                 worker's own). */}

@@ -102,11 +102,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (near.length && near.every((m) => m.sprite && m.sprite.texAlive && m.sprite.plate)) break;
   }
   await shot(P, 'frost-11-15');
+  /* v2.3.3108: the minimap's name plate says where (wheelMinimap.js _plate) */
   const bar = await P.page.evaluate(() => {
-    const t = (sel) => { const el = document.querySelector(sel); return el ? el.textContent.trim() : null; };
-    return { place: t('.bt-zone-header__place'), sub: t('.bt-zone-header__sub') };
+    const pl = window.__btMinimap && window.__btMinimap.plate;
+    return { place: pl ? pl.title : null, sub: pl ? pl.sub : null };
   });
-  rec.ok(`walked out to Frost Ridge's third stretch in ${walkS} s, and the top bar says where: "${bar.place}" / "${bar.sub}"`,
+  rec.ok(`walked out to Frost Ridge's third stretch in ${walkS} s, and the minimap's name plate says where: "${bar.place}" / "${bar.sub}"`,
     arrived && bar.place === 'Frost Ridge' && /11.15/.test(bar.sub || ''), bar);
   const drawn = near.filter((m) => m.sprite && m.sprite.visible && m.sprite.texAlive);
   rec.ok(`...the snowmen there are drawn from live art (${drawn.length} of ${near.length} in reach)`,

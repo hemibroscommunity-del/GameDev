@@ -152,12 +152,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return b ? { items: b.stock } : { noBus: true };
   });
   const broKeys = ((bro || {}).items || []).filter((i) => i && i.staple).map((i) => i.key);
-  /* v2.3.3105: the three tonics are brewed at the Cookhouse (server data.js
-     DIEGO_SHELF), not sold; v2.3.3107: and the last two staples went too --
+  /* v2.3.3114: the three tonics are brewed at the Cookhouse (server data.js
+     DIEGO_SHELF), not sold; v2.3.3116: and the last two staples went too --
      owner, "Remove all of Diego's potions. I want food and drink to come
      exclusively from farming and recipes".  So the worker's answer is a list
      (the shop is alive) with no staple on it. */
-  rec.ok('Shopkeeper Bro still answers over the wire, and sells no food or drink (v2.3.3107)',
+  rec.ok('Shopkeeper Bro still answers over the wire, and sells no food or drink (v2.3.3116)',
     Array.isArray((bro || {}).items) && broKeys.length === 0, { broKeys, bro: Array.isArray((bro || {}).items) ? undefined : bro });
 
   await S.ctx.close().catch(() => {});

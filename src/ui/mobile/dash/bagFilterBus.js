@@ -47,7 +47,7 @@ export const CATEGORIES = [
   { id: 'all',      glyph: '\u25CE', iconSrc: '/icons/bag/bag-all.webp?v=2.3.1312',      label: 'All' },
   { id: 'weapon',   glyph: '\u2694', iconSrc: '/icons/bag/bag-weapons.webp?v=2.3.1312',  label: 'Weapon' },
   { id: 'armor',    glyph: '\uD83D\uDEE1', iconSrc: '/icons/bag/bag-armor.webp?v=2.3.1312',    label: 'Armor' },
-  /* v2.3.3105: the bottle chip is CONSUMABLE now -- the potions, and the food
+  /* v2.3.3114: the bottle chip is CONSUMABLE now -- the potions, and the food
      you eat beside them (cooked fish, the Cookhouse's meals; classify in
      InventoryPanel.jsx).  Not a sixth chip: the bag's header is one chip per
      slot column, five across (owner, v2.3.1652), and a sixth would no longer

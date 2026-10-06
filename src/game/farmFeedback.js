@@ -1,4 +1,4 @@
-/* ═══ v2.3.3102: WHAT THE FARM SAYS BACK ═══
+/* ═══ v2.3.3111: WHAT THE FARM SAYS BACK ═══
  *
  * The moment after the worker answers a farm request (server/src/farm.js):
  * the words over the player, the sound, the level celebration, and on join
@@ -27,7 +27,7 @@ export const FARM_ERR_TEXT = {
   level: 'Farming level too low',
   coins: 'Not enough gold',
   off: 'The farm is closed for now',
-  newer: 'The farm is closed for now',   /* v2.3.3102: the record is a newer worker's (farm.js FARM.V) */
+  newer: 'The farm is closed for now',   /* v2.3.3111: the record is a newer worker's (farm.js FARM.V) */
   nothing: 'Nothing to do there',
   timeout: 'No answer, try again',
   'timeout-buy': 'No answer yet. Check your bag',   /* v2.3.3102: a buy is not safe to repeat blind (farmBus.js) */
@@ -42,7 +42,7 @@ export const FARM_ERR_TEXT = {
 };
 
 /* A bag key's name as the farm says it: "Carrot", "Carrot Seeds", "Compost".
-   v2.3.3102: a key the farm does not know is "Crop" (a newer worker's), never
+   v2.3.3111: a key the farm does not know is "Crop" (a newer worker's), never
    the key itself -- the words over a player are never text a message chose. */
 export function farmItemName(key) {
   if (key === FARM.COMPOST) return 'Compost';
@@ -53,7 +53,7 @@ export function farmItemName(key) {
   return 'Crop';
 }
 
-/* v2.3.3102: how many ripe beds the player has already been told of this
+/* v2.3.3111: how many ripe beds the player has already been told of this
    page session.  The worker sends the farm on EVERY join (farm.js
    _farmOnJoin), and an iPhone rejoins on nearly every return to the app, so
    "3 beds are ready" came back each time for crops that never wither.  Said
@@ -121,7 +121,7 @@ export function farmFeedback(S, payload, deps) {
       if (did.leveled && did.newLevel > did.fromLevel) {
         try { celebrateLifeSkillLevel(S, 'farming', did.newLevel, did.fromLevel); } catch (e) { /* visual */ }
       }
-      /* v2.3.3102: the quest flag the old browser-only window set on a harvest
+      /* v2.3.3111: the quest flag the old browser-only window set on a harvest
          (trader_3, "Plant and harvest a crop"), now on the worker's confirmed
          one.  Trader Tix is not in the game today, so nothing reads it yet;
          without it his chain would stall the day he returns.  The client's
