@@ -1,4 +1,4 @@
-/* ═══ THE RIGHT STICK SHOWS WHAT A TAP DOES, AND THE TAP DOES IT (v2.3.3087) ═══
+/* ═══ THE RIGHT STICK SHOWS WHAT A TAP DOES, AND THE TAP DOES IT (v2.3.3105) ═══
  *
  * The owner: "I'd like the right joystick button to have an icon that
  * represents the action like this current jump, the sword for attack, etc. so

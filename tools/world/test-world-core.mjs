@@ -2914,10 +2914,10 @@ console.log('jumping (v2.3.3017)');
     pj.dur === 900 && pj.peak === J.JUMP_PEAK && pk.dur === J.JUMP_MS && pk.peak === 120 && pg.dur === 400 && pg.peak === 30 && pg.t0 === 7);
 }
 
-/* ── v2.3.3087: a tap on the right stick jumps, last (src/game/tapJump.js) ──
+/* ── v2.3.3105: a tap on the right stick jumps, last (src/game/tapJump.js) ──
    Owner: "Try moving jump as tap on right joystick but prioritize other
    contextual uses for the tap instead of jump first if any apply." */
-console.log('the tap that jumps (v2.3.3087)');
+console.log('the tap that jumps (v2.3.3105)');
 {
   const fs = await import('node:fs');
   const TJ = await import('../../src/game/tapJump.js');

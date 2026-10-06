@@ -1518,7 +1518,7 @@ export function updateMonsterCombat(S, deps) {
              its ceiling, and every ms here is latency on a held attack.  Raise
              it if a flick still leads; lower it if the hold feels sticky. */
           var _flickWait = S._atkPressAt && (Date.now() - S._atkPressAt) < ATK_PRESS_GRACE_MS;
-          /* v2.3.3087: and with no job on the right side, the first swing waits
+          /* v2.3.3105: and with no job on the right side, the first swing waits
              to see whether the press is a tap -- a jump (game/tapJump.js) */
           if (S._atkHoldUntil && Date.now() < S._atkHoldUntil) _flickWait = true;
           /* v2.3.3003: and not while you swim -- only your head is out of

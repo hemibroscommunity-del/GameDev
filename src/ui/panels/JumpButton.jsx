@@ -3,7 +3,7 @@ import { jumpAnchor, ctlBottom } from './ShieldButton.jsx';
 import { triggerJump } from '@/game/jumpActions.js';
 import { jumpAirborne } from '@/game/jump.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
-import { jumpButtonWanted } from '@/game/tapJump.js'; /* v2.3.3087 */
+import { jumpButtonWanted } from '@/game/tapJump.js'; /* v2.3.3105 */
 import { Skin, JumpIcon, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
 
 /* ═══ v2.3.3017: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
@@ -30,7 +30,7 @@ import { Skin, JumpIcon, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3
  * (desktopControls.js), and this button hides with the other touch controls
  * (bt-desktop-hide). */
 
-/* ═══ v2.3.3087: PUT AWAY -- A TAP ON THE RIGHT STICK JUMPS NOW ═══
+/* ═══ v2.3.3105: PUT AWAY -- A TAP ON THE RIGHT STICK JUMPS NOW ═══
  * Owner: "Do you think the right virtual joystick tap can be the jump button?
  * I think this would work well instead of the smaller dedicated jump button",
  * then "Try moving jump as tap on right joystick but prioritize other
@@ -81,13 +81,13 @@ export function JumpButton(props) {
       var s2 = stateRef && stateRef.current;
       var v = jumpButtonView(s2);
       var j = s2 && s2._jump;
-      return { shown: !!v && jumpButtonWanted(), button: jumpButtonWanted(), air: !!(v && v.air), count: (s2 && s2._jumpCount) || 0, tapJumps: (s2 && s2._tapJumps) || 0 /* v2.3.3087 */, why: s2 ? s2._jumpWhy || null : null,
+      return { shown: !!v && jumpButtonWanted(), button: jumpButtonWanted(), air: !!(v && v.air), count: (s2 && s2._jumpCount) || 0, tapJumps: (s2 && s2._tapJumps) || 0 /* v2.3.3105 */, why: s2 ? s2._jumpWhy || null : null,
         jump: j ? { t0: j.t0, dur: j.dur, peak: j.peak, dx: j.dx, dy: j.dy } : null, landAt: (s2 && s2._jumpLandAt) || 0 };
     };
   }
   var S = stateRef && stateRef.current;
   var view = jumpButtonView(S);
-  if (!view || !jumpButtonWanted()) return null;   /* v2.3.3087: ?jumpbtn only */
+  if (!view || !jumpButtonWanted()) return null;   /* v2.3.3105: ?jumpbtn only */
 
   var anchor = jumpAnchor(isLandscape);
   var size = anchor.size;

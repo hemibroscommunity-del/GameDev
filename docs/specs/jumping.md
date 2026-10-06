@@ -136,7 +136,7 @@ non-privileged event, and an old client ignores it: it sees you glide a step.
   - no page errors.
   - Pictures: `jump-{layout,air,fence-stopped,fence-over,fence-over-landed}.png`.
 
-## v2.3.3087: a tap on the right stick jumps, and the button is put away
+## v2.3.3105: a tap on the right stick jumps, and the button is put away
 
 The owner: "Do you think the right virtual joystick tap can be the jump
 button? I think this would work well instead of the smaller dedicated jump

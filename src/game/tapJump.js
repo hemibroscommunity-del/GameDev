@@ -1,4 +1,4 @@
-/* ═══ v2.3.3087: A TAP ON THE RIGHT STICK JUMPS, WHEN IT HAS NOTHING ELSE TO DO ═══
+/* ═══ v2.3.3105: A TAP ON THE RIGHT STICK JUMPS, WHEN IT HAS NOTHING ELSE TO DO ═══
  *
  * Owner, 2026-10-06: "Try moving jump as tap on right joystick but prioritize
  * other contextual uses for the tap instead of jump first if any apply" --
@@ -20,7 +20,7 @@
  * No imports, so the rule can be read by node (test-world-core "jumping").
  */
 
-/* ═══ v2.3.3087: A RELAXED THUMB'S TAP ═══
+/* ═══ v2.3.3105: A RELAXED THUMB'S TAP ═══
  * The owner: "it needs priority near props instead of attack ... a tap should
  * jump."  BroTown's taps were 200 ms long at most and the first swing went at
  * 200 (ATK_PRESS_GRACE_MS), so a tap a little slower than that swung --
@@ -60,7 +60,7 @@ export function rightTapBusy(S, now) {
   return false;
 }
 
-/* ═══ v2.3.3087: WHILE YOU ATTACK, THE WEAPON -- NEVER THE JUMP ═══
+/* ═══ v2.3.3105: WHILE YOU ATTACK, THE WEAPON -- NEVER THE JUMP ═══
  * The owner, on the preview: "it just showed the new jump ... even when
  * attacking ... the jump is showing on top of everything".  The JUMP arrow
  * was decided by the CONTEXT alone (nothing to fight, harvest or hold), so a
@@ -87,7 +87,7 @@ export function attackingNow(S, held, now) {
 }
 
 /**
- * v2.3.3087: the right stick's picture (and the tap's act) for what the E
+ * v2.3.3105: the right stick's picture (and the tap's act) for what the E
  * key's chain would do here (desktopControls interactKind): a door, the bed,
  * a character -- else the jump.  A resource is the stick's own harvest, so it
  * is not one of these.

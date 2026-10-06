@@ -83,7 +83,7 @@ export const RKNOB_TRAVEL = 0.6;
    ghost fade with the face (BroTown's resolver), or "the button is
    see-through now" would stop at the sword. */
 
-/* v2.3.3087: v2.3.3018's ORBIT -- two faint arcs round the attack button,
+/* v2.3.3105: v2.3.3018's ORBIT -- two faint arcs round the attack button,
    broken where Block, Whirl and Spec sit, from the owner's mockup -- is gone.
    The owner, seeing them beside the see-through JUMP arrow: "remove the
    strange lines to the left and right of the button". */

@@ -98,7 +98,7 @@ const discVis = (P, side) => P.page.evaluate((side) => {
     opacity: Number(cs.opacity),
     shown: Number(cs.opacity) > 0.5,
     pe: inner ? getComputedStyle(inner).pointerEvents : null,
-    icon: side === 'R' && inner ? inner.getAttribute('data-ricon') : null,   /* v2.3.3087 */
+    icon: side === 'R' && inner ? inner.getAttribute('data-ricon') : null,   /* v2.3.3105 */
     w: box.getBoundingClientRect().width,
   };
 }, side);
@@ -182,7 +182,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(600);
   const vis0R = await discVis(P, 'R');
   const vis0L = await discVis(P, 'L');
-  /* v2.3.3087: with nothing to do a tap on the right stick JUMPS, and the
+  /* v2.3.3105: with nothing to do a tap on the right stick JUMPS, and the
      stick wears the owner's JUMP button to say so -- the only thing painted */
   rec.ok('with the coach retired, nothing in range and nothing in reach, the right button shows only its JUMP face',
     !!vis0R && vis0R.shown === true && vis0R.icon === 'jump', { vis0R, why: await P.page.evaluate(() => window.__btDiscVis()) });

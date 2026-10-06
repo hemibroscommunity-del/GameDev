@@ -19,7 +19,7 @@ import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';   /* v2.3.3067: E at Ace
 import { shopBus } from '@/ui/mobile/shopBus.js';   /* v2.3.3067: ...and at Diego his shop */
 
 /**
- * v2.3.3087: what runInteract would do here, for the right stick's picture
+ * v2.3.3105: what runInteract would do here, for the right stick's picture
  * (BroTown's resolver): 'door' (a building, a hall, the Workshop, a dungeon's
  * mouth, the Pet House), 'sleep' (the farm's bed), 'gather' (a resource --
  * the stick's own harvest owns that), 'talk' (a character), or null.  The same
@@ -59,7 +59,7 @@ export function setupDesktopControls(S, deps) {
     toggleKbHints = deps.toggleKbHints,   /* v2.3.1715 */
     _desktopShieldBash = deps._desktopShieldBash, /* v2.3.1733 */
     _desktopWhirlwind = deps._desktopWhirlwind;   /* v2.3.1733 */
-    /* ═══ v2.3.3087: THE INTERACT CHAIN, SHARED WITH THE RIGHT STICK ═══
+    /* ═══ v2.3.3105: THE INTERACT CHAIN, SHARED WITH THE RIGHT STICK ═══
        The owner: "I'd like the right joystick button to have an icon that
        represents the action like this current jump, the sword for attack,
        etc. so maybe chat bubble for speaking [to NPCs], door for entering
@@ -69,7 +69,7 @@ export function setupDesktopControls(S, deps) {
        picture -- one chain, so the picture can never promise one thing and
        the tap do another.  Returns true when it did something. */
     /* 4. The character beside you -- his quest, Ace's flip, Diego's shop, or
-       "has nothing for you right now" (v2.3.3087: its own function, so the
+       "has nothing for you right now" (v2.3.3105: its own function, so the
        right stick can ask for it first) */
     var runTalk = function runTalk() {
       if (!S._nearNpc) return false;
@@ -208,7 +208,7 @@ export function setupDesktopControls(S, deps) {
           _desktopShieldBash();
           return;
         }
-        /* 1-4. v2.3.3087: the interact chain lives in runInteract (below), so
+        /* 1-4. v2.3.3105: the interact chain lives in runInteract (below), so
            the right stick's tap -- which wears its picture -- runs the very
            same one */
         if (runInteract()) return;

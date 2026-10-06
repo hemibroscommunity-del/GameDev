@@ -44,7 +44,7 @@ const RIDGE = { id: 'frost-rock-ridge', x0: 329, x1: 531, y0: 528, y1: 570 };
 const UNDER = { x: 450, y: 600 };
 /* The town fountain (x 831..1083, y 1426..1521), and a spot 30px under its
    south face on open cobble.
-   v2.3.3087: a SWING meets a prop from the swinger's BOOTS now (combatHelpers
+   v2.3.3105: a SWING meets a prop from the swinger's BOOTS now (combatHelpers
    propSwingHit), and a player's position is the body's centre, playerGroundDy
    (52) above them -- at PLAZA the feet stand 82px off the face, out of the
    sword's 72 px, and only the old chest-height test let that swing land.  So
@@ -318,7 +318,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && arrowsAfter <= arrowsBefore, { ps, arrowsBefore, arrowsAfter });
 
     await P.page.waitForTimeout(300);
-    /* v2.3.3087: the peer steps up to swing, boots 38px off the face (a swing
+    /* v2.3.3105: the peer steps up to swing, boots 38px off the face (a swing
        is measured from the boots now, see SWORD_AT) */
     await walkTo(Q, QAT.x, QAT.y - BOOTS);
     for (let i = 0; i < 20; i++) {

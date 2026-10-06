@@ -289,7 +289,7 @@ var WEAPON_KEYS = Object.create(null);
 WEAPON_ART.forEach(function (f) { WEAPON_KEYS['w-' + f] = 1; });
 
 /**
- * v2.3.3087: the disc's picture for an attack with this slot's weapon
+ * v2.3.3105: the disc's picture for an attack with this slot's weapon
  * ({ type, gearBase } as the bag holds it): the weapon's own bag picture,
  * by the same rule as InventoryPanel's thumb (metalIconPath) -- or the
  * slot's plain picture when the slot is empty or its art is not one of ours.
@@ -316,20 +316,20 @@ export const RDISC_ICONS = [
   ['woodcutting', '/icons/ui/skill-woodcutting.webp?v=2.3.1224'],
   ['fishing', '/icons/ui/skill-fishing.webp?v=2.3.1224'],
   ['cooking', '/icons/ui/skill-cooking.webp?v=2.3.1224'],
-  /* v2.3.3087: while a tap would jump, the arrow and the word from the
+  /* v2.3.3105: while a tap would jump, the arrow and the word from the
      owner's JUMP button, cut off its red face and gold ring
      (public/ui/controls/jump-glyph.webp) and laid over the disc as it is --
      the owner: the whole button on the stick was "way too intense ... it
      should just be a semi transparent overlay on the existing disc" */
-  ['jump', '/ui/controls/jump-glyph.webp?v=2.3.3087'],
-  /* v2.3.3087: and what a tap does instead beside a character, at a door or
+  ['jump', '/ui/controls/jump-glyph.webp?v=2.3.3105'],
+  /* v2.3.3105: and what a tap does instead beside a character, at a door or
      at the farm's bed (desktopControls interactKind) -- the owner: "chat
      bubble for speaking [to NPCs], door for entering door"; drawn in the
      JUMP arrow's white-and-outline style */
-  ['talk', '/ui/controls/talk.svg?v=2.3.3087'],
-  ['door', '/ui/controls/door.svg?v=2.3.3087'],
-  ['sleep', '/ui/controls/sleep.svg?v=2.3.3087'],
-  /* v2.3.3087: while the tap ATTACKS, the weapon in your hand -- the owner:
+  ['talk', '/ui/controls/talk.svg?v=2.3.3105'],
+  ['door', '/ui/controls/door.svg?v=2.3.3105'],
+  ['sleep', '/ui/controls/sleep.svg?v=2.3.3105'],
+  /* v2.3.3105: while the tap ATTACKS, the weapon in your hand -- the owner:
      "when attacking it should show the weapon type depending on what weapon
      is used".  The bag's own pictures (InventoryPanel's thumb: a sword or a
      greatsword in its metal, the bow, the staff, the same files and ?v=), all

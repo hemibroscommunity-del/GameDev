@@ -1,4 +1,4 @@
-/* ═══ BESIDE A PROP, A TAP JUMPS AND A HOLD ATTACKS (v2.3.3087) ═══
+/* ═══ BESIDE A PROP, A TAP JUMPS AND A HOLD ATTACKS (v2.3.3105) ═══
  *
  * The owner, on #821: "it needs priority near props instead of attack. If
  * players want to attack props they can still hold the right joystick
@@ -145,7 +145,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(400);
 
     /* ── 1b. a relaxed thumb's tap, 260 ms: longer than the 200 ms the first
-          swing used to wait, so before v2.3.3087 it chopped the prop ── */
+          swing used to wait, so before v2.3.3105 it chopped the prop ── */
     /* one wait, not a stream of moves: this page's timers run late, and a
        press that really lasts past TAP_JUMP_MAX_MS is a hold (it swings) */
     let r0, r1, r2, held = null;
@@ -214,7 +214,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       S._rBtnPressUntil = 0;
       return icon;
     });
-    rec.ok(`with a job on the stick (a monster to fight) it shows the weapon again (data-ricon ${busyIcon})`, /^w-sword/.test(String(busyIcon)), busyIcon);   /* v2.3.3087: the sword in hand, its bag picture */
+    rec.ok(`with a job on the stick (a monster to fight) it shows the weapon again (data-ricon ${busyIcon})`, /^w-sword/.test(String(busyIcon)), busyIcon);   /* v2.3.3105: the sword in hand, its bag picture */
 
     rec.ok(`no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   } finally {

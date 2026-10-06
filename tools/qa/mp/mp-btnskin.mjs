@@ -194,7 +194,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     name: 'Skinner', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 3,
     /* a jump long enough to read in the air on a page drawing a few frames a
        second (mp-jump's habit; 560 ms in the game) */
-    query: 'jumpms=1800&jumpbtn',   /* v2.3.3087: the jump button is drawn only with ?jumpbtn */
+    query: 'jumpms=1800&jumpbtn',   /* v2.3.3105: the jump button is drawn only with ?jumpbtn */
   });
   /* Closed at the end, whatever happens: a 3x phone page left running keeps
      drawing the game in the background, and every scenario after it starves
@@ -242,12 +242,12 @@ async function body(P, rec) {
   rec.ok('the attack disc in a fight is hot (Ready / Charged)', A.disc && A.disc.rstate === 'hot', A.disc && A.disc.rstate);
   rec.ok('...its face see-through (~0.45, v2.3.2263) and the sword at full strength',
     A.disc && A.disc.faceOp > 0.2 && A.disc.faceOp < 0.7 && A.disc.knobOp === 1, A.disc && { face: A.disc.faceOp, knob: A.disc.knobOp });
-  /* v2.3.3087: the weapon in hand's own bag picture (controlSkin weaponDiscIcon) */
+  /* v2.3.3105: the weapon in hand's own bag picture (controlSkin weaponDiscIcon) */
   rec.ok('...the picture is the sword in hand, and only it', A.disc && /^w-(great-)?sword/.test(A.disc.ricon) && A.disc.iconShown.join() === A.disc.ricon, A.disc && A.disc.iconShown);
   rec.ok('...the label still SAYS "ATTACK" for anything reading the page, and is not shown',
     A.disc && A.disc.label === 'ATTACK' && A.disc.labelOp === 0, A.disc && { label: A.disc.label, op: A.disc.labelOp });
   rec.ok('...the glow is lit round it', A.disc && A.disc.glowOp === 1, A.disc && A.disc.glowOp);
-  /* v2.3.3087: the orbit is gone -- the owner: "remove the strange lines to
+  /* v2.3.3105: the orbit is gone -- the owner: "remove the strange lines to
      the left and right of the button" */
   rec.ok('...and no orbit is drawn round it', A.disc && !A.disc.orbit, A.disc);
   rec.ok('Spec, Whirl, Block, Sprint, Jump are Normal when ready', ['special', 'whirl', 'block', 'sprint', 'jump'].every((k) => A[k] && A[k].state === 'normal'),

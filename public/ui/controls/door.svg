@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- v2.3.3087: the right stick's ENTER picture, in the style of the owner's JUMP arrow -->
+  <!-- v2.3.3105: the right stick's ENTER picture, in the style of the owner's JUMP arrow -->
   <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C9D4F2"/></linearGradient></defs>
   <path d="M24 90 V40 Q24 12 50 12 Q76 12 76 40 V90 Z" fill="url(#g)" stroke="#16191E" stroke-width="6" stroke-linejoin="round"/>
   <path d="M41 22 V86 M59 22 V86" stroke="#2A3140" stroke-width="3.5" stroke-linecap="round" opacity=".55"/>

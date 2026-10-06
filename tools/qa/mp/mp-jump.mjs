@@ -135,7 +135,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const shot = (Q, name, clip) => Q.page.screenshot({ path: join(OUT, `jump-${name}.png`), clip }).catch(() => {});
-  const P = await H.newPlayer(browser, { name: 'Jumper', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel', query: `jumpms=${AIR_MS}&jumpbtn` /* v2.3.3087: the button is put away without it */ });
+  const P = await H.newPlayer(browser, { name: 'Jumper', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel', query: `jumpms=${AIR_MS}&jumpbtn` /* v2.3.3105: the button is put away without it */ });
   const Q = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort, viewport: PHONE, guest: true, world: 'wheel' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push('P ' + String((e && e.message) || e).slice(0, 200)));
