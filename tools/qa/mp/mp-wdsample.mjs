@@ -1,4 +1,4 @@
-/* ═══ THE BLACK-SCREEN WATCHDOG'S SAMPLE, SHRUNK ON THE GPU (v2.3.3064) ═══
+/* ═══ THE BLACK-SCREEN WATCHDOG'S SAMPLE, SHRUNK ON THE GPU (v2.3.3068) ═══
  *
  * Every 5 s the watchdog (BroTown.jsx _sampleLit) takes a 32 x 18 thumbnail of
  * the world canvas and counts the pixels that are neither black nor the

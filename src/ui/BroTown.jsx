@@ -7686,7 +7686,7 @@ export var BroTown = function BroTown(_ref0) {
       return r + g + b > 30 && Math.abs(r - _BG_R) + Math.abs(g - _BG_G) + Math.abs(b - _BG_B) > 24;
     }
     window.__btLitPx = _wdLitPx;   /* QA (mp-glrestore): the same rule */
-    /* ═══ v2.3.3064: THE GPU MAKES THE THUMBNAIL, AND NOTHING WAITS FOR IT ═══
+    /* ═══ v2.3.3068: THE GPU MAKES THE THUMBNAIL, AND NOTHING WAITS FOR IT ═══
        The sample is a 32 x 18 thumbnail of the world canvas.  drawImage from a
        WebGL canvas made it by copying the WHOLE drawing buffer out of the GPU
        first (1170 x 2418 on a 3x phone, 11 MB) and shrinking it after -- and,
@@ -7798,7 +7798,7 @@ export var BroTown = function BroTown(_ref0) {
       return Math.round(100 * lit / (32 * 18));
     }
     /* The % of the thumbnail lit, to `done` -- now, or a frame or two from
-       now (v2.3.3064); -1 when it cannot judge.  Called in an animation
+       now (v2.3.3068); -1 when it cannot judge.  Called in an animation
        frame after the world's. */
     function _sampleLit(done) {
       var cv = canvasRef.current;
@@ -7832,7 +7832,7 @@ export var BroTown = function BroTown(_ref0) {
       };
       requestAnimationFrame(poll);
     }
-    /* v2.3.3064 QA (mp-wdsample): both ways in one animation frame, as the
+    /* v2.3.3068 QA (mp-wdsample): both ways in one animation frame, as the
        watchdog takes it -- what each reads, and what each costs.  The frame is
        finished first (a 1 x 1 read waits for the GPU) so each is timed on its
        own work; the GPU's way is then collected as the watchdog collects it. */
@@ -8018,7 +8018,7 @@ export var BroTown = function BroTown(_ref0) {
                 || !!document.querySelector('.bt-zone-loading');
             };
             if (_wdVeiled()) return;
-            /* v2.3.3064: one sample at a time -- the GPU's comes back a frame
+            /* v2.3.3068: one sample at a time -- the GPU's comes back a frame
                or two later (a stale one, 20 s, never blocks the next) */
             if (_wdPendingAt && Date.now() - _wdPendingAt < 20000) return;
             _wdPendingAt = Date.now();
