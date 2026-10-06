@@ -8784,7 +8784,9 @@ export var BroTown = function BroTown(_ref0) {
          taken; the echo is the truth (rule 20).  Only offered at all on a
          worker with caps.meals (ItemDetailPopup). */
       var _meal = DATA.dishFor(key);
-      if (_meal) {
+      /* v2.3.3106: a dish eaten AT ONCE (the Garden Stew) is a heal, so it
+         takes the cooked fish's road below -- "HP full", the predicted heal. */
+      if (_meal && _meal.buff !== 'heal') {
         if (_meal.slot !== 'meal') return;
         R.inventory[key] -= 1;
         if (R.inventory[key] <= 0) delete R.inventory[key];
@@ -8835,7 +8837,7 @@ export var BroTown = function BroTown(_ref0) {
         try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
       }
       pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + toDisplayDamage(actual) + ' HP', '#59BF91');   /* v2.3.2520: display scale */
-      pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate cooked fish', '#D8A94D');
+      pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate ' + (_meal ? _meal.name : 'cooked fish'), '#D8A94D');   /* v2.3.3106: or the stew */
       try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -12504,6 +12506,19 @@ export var BroTown = function BroTown(_ref0) {
         desc: '-5%'   /* v2.3.3105: what the worker takes off (combat.js x0.95); it said -15% */
       });
     }
+    /* v2.3.3106: the Pumpkin Pie's +10% combat XP (the worker's _buffs.xp,
+       mirrored by wsClient) */
+    if (S._xpBuff && Date.now() < S._xpBuff) {
+      var _remXp = Math.ceil((S._xpBuff - Date.now()) / 1000);
+      var _xm = Number(S._xpBuffMul);
+      effects.push({
+        icon: '\uD83E\uDD67',
+        label: 'XP+',
+        color: '#C99A3C',
+        time: _btime(_remXp),
+        desc: '+' + Math.round(((_xm > 1 && _xm <= 2) ? _xm - 1 : 0.1) * 100) + '% XP'
+      });
+    }
     if (S._spdBuff && Date.now() < S._spdBuff) {
       var _rem5 = Math.ceil((S._spdBuff - Date.now()) / 1000);
       /* v2.3.2062: the chip said "+15%" for every speed buff, which became a
@@ -13587,7 +13602,7 @@ export var BroTown = function BroTown(_ref0) {
     var _fieldMeals = !!(S._serverCaps && S._serverCaps.meals);
     var available = COOKING_RECIPES.filter(function (r) {
       if (cookLvl < r.cookLvl) return false;
-      if (_fieldMeals ? !(DATA.dishFor(r.makes) && DATA.dishFor(r.makes).slot === 'meal') : !r.buff) return false;
+      if (_fieldMeals ? !(DATA.dishFor(r.makes) && (DATA.dishFor(r.makes).slot === 'meal' || DATA.dishFor(r.makes).slot === 'now')) : !r.buff) return false;
       return Object.entries(r.ingredients).every(function (_ref230) {
         var _ref231 = _slicedToArray(_ref230, 2),
           type = _ref231[0],

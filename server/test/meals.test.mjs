@@ -272,5 +272,68 @@ P._buffs = {};
     rec._buffs && rec._buffs.resist > now() && rec._buffs.damageMul === 1.2 && rec.inventory && rec.inventory.meal_root_stew === 1, { buffs: rec._buffs, inv: rec.inventory });
 }
 
+// ── 10. v2.3.3106: the Garden Stew -- 150 HP at once, no slot ──
+{
+  P._buffs = {};
+  P.lifeSkills.cooking = { level: 3, xp: 0 };
+  P.inventory.crop_carrot = 4; P.inventory.crop_potato = 4;
+  await send(ws, 'cook_recipe', { recipeIdx: idx('meal_garden_stew'), carry: true });
+  check('the Garden Stew is refused below Cooking 4 -- nothing used', P.inventory.crop_carrot === 4 && !P.inventory.meal_garden_stew, P.inventory);
+  P.lifeSkills.cooking = { level: 10, xp: 0 };
+  await send(ws, 'cook_recipe', { recipeIdx: idx('meal_garden_stew'), carry: true });
+  check('...cooks into the bag from 2 carrots and a potato', P.inventory.meal_garden_stew === 1 && P.inventory.crop_carrot === 2 && P.inventory.crop_potato === 3, P.inventory);
+  P.inventory.meal_root_stew = 1; P.inventory.brew_firebloom_tea = 1;
+  await send(ws, 'eat_request', { invKey: 'meal_root_stew' });
+  await send(ws, 'potion_drink', { invKey: 'brew_firebloom_tea' });
+  const b0 = JSON.stringify(P._buffs);
+  P.maxHp = 400; P.hp = 100; P._arenaMatch = 't9';
+  await send(ws, 'eat_request', { invKey: 'meal_garden_stew' });
+  check('...is refused in an arena match (every heal is), and kept', P.hp === 100 && P.inventory.meal_garden_stew === 1, { hp: P.hp, bag: P.inventory.meal_garden_stew });
+  delete P._arenaMatch;
+  const rec = room._recoveryFlat(P);
+  await send(ws, 'eat_request', { invKey: 'meal_garden_stew' });
+  check('...eaten, it heals 150 (+ Recovery ' + rec + ') at once', P.hp === 100 + 150 + rec && !P.inventory.meal_garden_stew, { hp: P.hp, rec });
+  check('...and touches neither slot: the stew\'s meal and the tea run on', JSON.stringify(P._buffs) === b0, { before: b0, after: P._buffs });
+  P.inventory.meal_garden_stew = 1;
+  await send(ws, 'potion_drink', { invKey: 'meal_garden_stew' });
+  check('...and it is eaten, never drunk', P.inventory.meal_garden_stew === 1, P.inventory.meal_garden_stew);
+}
+
+// ── 11. v2.3.3106: the Pumpkin Pie -- +10% combat XP, a meal ──
+{
+  P._buffs = {};
+  P.inventory.crop_pumpkin = 1; P.inventory.crop_potato = 2;
+  P.lifeSkills.cooking = { level: 7, xp: 0 };
+  await send(ws, 'cook_recipe', { recipeIdx: idx('meal_pumpkin_pie'), carry: true });
+  check('the Pumpkin Pie is refused below Cooking 8', !P.inventory.meal_pumpkin_pie && P.inventory.crop_pumpkin === 1, P.inventory);
+  P.lifeSkills.cooking = { level: 8, xp: 0 };
+  await send(ws, 'cook_recipe', { recipeIdx: idx('meal_pumpkin_pie'), carry: true });
+  check('...cooks into the bag from a pumpkin and 2 potatoes', P.inventory.meal_pumpkin_pie === 1 && !P.inventory.crop_pumpkin, P.inventory);
+  P.inventory.meal_herb_bread = 1; P.inventory.whetstone = 1;
+  await send(ws, 'eat_request', { invKey: 'meal_herb_bread' });
+  await send(ws, 'potion_drink', { invKey: 'whetstone' });
+  await send(ws, 'eat_request', { invKey: 'meal_pumpkin_pie' });
+  check('eating it runs +10% XP for half an hour', room._buffActive(P, 'xp') && P._buffs.xpMul === 1.1 && P._buffs.xp > now() + 29 * 60000, P._buffs);
+  check('...replacing the bread (both meals) and leaving the tonic (a brew)', !room._buffActive(P, 'regen') && room._buffActive(P, 'damage') && P._buffs.damageMul === 2, P._buffs);
+  room._pruneBuffs(P);
+  check('...and its strength survives a save (BUFF_MAGNITUDES)', P._buffs.xpMul === 1.1, P._buffs);
+  /* The XP itself: what a fight pays, x1.1; never a quest's flat XP. */
+  const sk = P.prog3 && P.prog3.sk && P.prog3.sk.sword;
+  check('a prog3 sword skill to measure (guard)', !!sk, P.prog3);
+  if (sk) {
+    const gain = (opts) => { sk.xp = 0; sk.level = Math.max(1, sk.level); const lv = sk.level; room._prog3AwardXp(PID, P, 'sword', 10, opts); return sk.level === lv ? sk.xp : NaN; };
+    const withPie = gain();
+    const savedBuffs = P._buffs; P._buffs = {};
+    const without = gain();
+    P._buffs = savedBuffs;
+    check('...a fight pays 10% more XP with the pie (' + withPie.toFixed(3) + ' against ' + without.toFixed(3) + ')',
+      without > 0 && Math.abs(withPie - without * 1.1) < 1e-9, { withPie, without });
+    check('...and a flat award (a quest\'s) is untouched', gain({ flat: true }) === 10, sk.xp);
+    P._buffs.xpMul = 9999;
+    check('...and a forged stored strength is ignored, not applied', Math.abs(gain() - without) < 1e-9, sk.xp);
+    P._buffs.xpMul = 1.1;
+  }
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall meals checks passed');
 process.exit(failures ? 1 : 0);

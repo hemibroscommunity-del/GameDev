@@ -1,13 +1,16 @@
-# Meals and brews you carry (v2.3.3105)
+# Meals and brews you carry (v2.3.3105, v2.3.3106)
 
 > Owner, 2026-10-06: *"Not sure what benefit farming will provide. Maybe
 > temporary stat boosts, required quest items and selling for gold. I might
 > remove Diego's potions."* Then, on the research (`docs/FARMING-PLAN.md`,
 > PR #816): *"Good. Go ahead and build it."*
 
-This is the plan's **Phase 2a**. Phase 1 (`docs/specs/farm.md`) grows the
-herbs; this makes them worth growing. **Phase 2b** adds the potato, the pumpkin
-and their two dishes.
+This is the plan's **Phase 2**. Phase 1 (`docs/specs/farm.md`) grows the
+herbs; this makes them worth growing.
+- **2a (v2.3.3105):** carried meals and brews, one of each at once, and Diego's
+  tonics brewed from herbs.
+- **2b (v2.3.3106):** the potato and the pumpkin (`docs/specs/farm.md`), and
+  their two dishes, the Garden Stew and the Pumpkin Pie.
 
 ## What changes for a player
 
@@ -43,9 +46,21 @@ and their two dishes.
 | Fury Tonic (`whetstone`) | brew | 3 Firebloom | 10 | **double** damage | 3 min | — |
 | Mana Draught (`manaShard`) | brew | 2 Rock Vine | 5 | specials nonstop | 3 min | — |
 | Swift Draught (`swiftDraught`) | brew | 2 Cloudpetal | 5 | run **1.5×** as fast | 3 min | — |
+| Garden Stew (`meal_garden_stew`) | at once | 2 Carrot + 1 Potato | 4 | heals **150 HP** | — | 28 |
+| Pumpkin Pie (`meal_pumpkin_pie`) | meal | 1 Pumpkin + 2 Potato | 8 | **+10%** combat XP | 30 min | 84 |
 
-- **Cooking XP** is paid at the cook, tier × 25 (25, 25, 50, 75, 75, 75), as
-  before.
+- **Cooking XP** is paid at the cook, tier × 25 (25, 25, 50, 75, 75, 75, 50,
+  75), as before.
+- **The Garden Stew is eaten at once** (`slot: 'now'`), like a cooked fish: 150
+  HP plus the HP grid's Recovery, capped at your max. It takes no slot, so it
+  ends neither your meal nor your brew. Like every heal, it is refused in an
+  arena match, and the stew stays in the bag. The phone says "HP full" rather
+  than wasting one.
+- **The Pumpkin Pie** is a meal: +10% of the XP a fight pays your weapon
+  skills (`prog3.js` `_prog3AwardXp`), while it runs. A quest's flat XP is
+  untouched. Its strength rides beside its timer (`_buffs.xpMul`, kept through
+  a save by `BUFF_MAGNITUDES`) and is read bounded, 1 to 2: a forged stored
+  number is ignored, not applied.
 - **Damage is only ever a brew.** `combat.js`'s cheat-check ceiling was sized
   at the Fury Tonic's ×2 (90.5% of it at the measured peak). A ×1.2 meal on
   top of a tonic would have crossed it (about 109%). So no meal raises damage,
@@ -140,9 +155,14 @@ and their two dishes.
   - the kill switch;
   - Diego's shelf, refusals and dish prices;
   - forged keys;
-  - a save.
+  - a save;
+  - (2b) the Garden Stew: its level, its heal with Recovery, the arena refusal,
+    no slot touched, never drunk;
+  - (2b) the Pumpkin Pie: its level, the meal slot, its strength through a
+    save, +10% on a fight's XP and none on a flat award, and a forged strength
+    ignored.
 
-  Each of six rules, broken on purpose, fails it.
+  Each of ten rules, broken on purpose, fails it.
 - Updated:
   - `potions` and `shop`: bottles are drunk from the bag; the shelf is two
     staples; a meal runs beside a brew.
@@ -157,17 +177,15 @@ and their two dishes.
     - the Consumable chip;
     - Eat and the half-hour meal in minutes on the HUD;
     - a tea drunk beside it;
-    - Diego's shelf and his "He won't buy".
+    - Diego's shelf and his "He won't buy";
+    - (2b) the stew and pie rows, locked at Cooking 4 and 8; a stew healing at
+      once from the bag with the meal still running; a pie replacing the
+      bread beside the tea, its chip in minutes.
   - `mp-potions`, `mp-shopkeeper` and `mp-marketonly` changed to the
     two-staple shelf, with the draughts arriving as brewed bottles.
 
 ## Not yet
 
-- **Phase 2b:**
-  - the potato and the pumpkin (`FARM.V` 2);
-  - Garden Stew, which heals 150 at once;
-  - Pumpkin Pie, +10% combat XP for half an hour, the first meal the worker's
-    XP code reads.
 - A meal's timer keeps running while you are logged out, as every effect
   always has. Pausing it is later polish (the plan's "Decisions").
 - Meals and brews drop on death like other bag items. They are not quest

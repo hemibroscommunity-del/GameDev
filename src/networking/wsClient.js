@@ -2016,6 +2016,11 @@ export function setupWebSocket(ctx) {
                 else S._hpBuff = 0;
                 if (typeof _sb.mana === 'number') S._manaBuff = _sb.mana;
                 else S._manaBuff = 0;
+                /* v2.3.3106: the Pumpkin Pie's combat-XP meal, its strength with
+                   it -- the same absent-means-off rule (HUD chip only; the
+                   worker pays the XP). */
+                S._xpBuff = typeof _sb.xp === 'number' ? _sb.xp : 0;
+                S._xpBuffMul = typeof _sb.xpMul === 'number' ? _sb.xpMul : 0;
               }
               /* Equipment slots -- worker is the canonical owner.  An
                  equip_request swap, marketplace buy, or future server-

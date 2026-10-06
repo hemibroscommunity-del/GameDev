@@ -175,7 +175,10 @@ function resolveTarget(target) {
       info = capeIsWorn() ? 'Worn — a contest prize' : 'A contest prize, in your bag';
     }
     else if (isCookedFish) info = '+' + toDisplayDamage(calcDisplayHeal(SR && SR.rpg, key)) + ' HP when eaten';   /* v2.3.2520: display scale */
-    /* v2.3.3105: what eating or drinking it does, and the one-of-each rule */
+    /* v2.3.3105: what eating or drinking it does, and the one-of-each rule.
+       v2.3.3106: a dish eaten at once (the Garden Stew) is a heal, said the
+       cooked fish's way. */
+    else if (dish && dish.buff === 'heal') info = '+' + toDisplayDamage(calcDisplayHeal(SR && SR.rpg, key)) + ' HP when eaten';
     else if (dish) info = dish.desc + (dish.slot === 'meal' ? ' · replaces your meal' : ' · replaces your brew');
     else if (isRawFish) info = 'Cook over a campfire';
     else if (isBurnt) info = 'Inedible';
@@ -204,7 +207,7 @@ function resolveTarget(target) {
          through an alias so the caps-audit can see the gate. */
       actions: {
         light: isLog && count > 0,
-        eat: (isCookedFish && count > 0) || (!!dish && dish.slot === 'meal' && count > 0 && mealsOn),
+        eat: (isCookedFish && count > 0) || (!!dish && (dish.slot === 'meal' || dish.slot === 'now') && count > 0 && mealsOn),
         open: isTicket && count > 0
           && !!(SR && SR._serverCaps && SR._serverCaps.eventCapes),
         /* v2.3.2109: gated on the same cap as the redeem -- against an old

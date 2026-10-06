@@ -1392,8 +1392,14 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     check('farm: ' + id + ' seed / item / level / price / time / yield / XP / value match', same, { srv: a, cli: b });
     check('farm: ' + id + ' grows as long on both sides, dry and watered',
       srvFarmGrowMs(a, false) === clientFarmGrowMs(b, false) && srvFarmGrowMs(a, true) === clientFarmGrowMs(b, true));
+    /* v2.3.3106: fertilized, the worker pays its lowest or its highest (a
+       potato's 4.5 is 4 or 5), and the window shows exactly that -- the one
+       number when they agree, "4–5" when they do not. */
+    const lo = srvFarmYield(a, true, () => 0.999), hi = srvFarmYield(a, true, () => 0);
     check('farm: ' + id + ' pays what the window says, plain and fertilized',
-      srvFarmYield(a, false) === clientFarmYieldShown(b, false) && srvFarmYield(a, true, () => 0.999) === clientFarmYieldShown(b, true));
+      srvFarmYield(a, false) === clientFarmYieldShown(b, false)
+      && String(clientFarmYieldShown(b, true)) === (lo === hi ? String(lo) : lo + '\u2013' + hi),
+      { plain: [srvFarmYield(a, false), clientFarmYieldShown(b, false)], fed: [lo, hi, clientFarmYieldShown(b, true)] });
   }
 }
 

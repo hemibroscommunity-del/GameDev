@@ -212,8 +212,13 @@ const C = FARM.CROPS;
   const h2 = await act(ws, 'harvest', [0, 1]);
   check('the unwatered carrots ripen at 8 minutes: 3 (fertilized) + 2', !!h2 && h2.did.n === 2 && h2.did.items.crop_carrot === 5 && inv().crop_carrot === 8, { h2, inv: inv() });
   check('...and the XP is per bed (2 x ' + C.carrot.xp + ')', h2.did.xp === 2 * C.carrot.xp, h2.did);
-  check('the yield rule: 2 dry, 3 fertilized, for every starter crop',
-    Object.values(C).every((c) => farmYield(c, false) === 2 && farmYield(c, true) === 3));
+  check('the yield rule: 2 dry, 3 fertilized, for every 2-crop bed',
+    Object.values(C).filter((c) => c.yield === 2).every((c) => farmYield(c, false) === 2 && farmYield(c, true) === 3));
+  /* v2.3.3106: the potato yields 3, so a fertilized bed is 4.5 -- paid as 4
+     or 5 by chance, the average exactly x1.5. */
+  check('...and the potato: 3 dry, 4 or 5 fertilized, averaging 4.5',
+    farmYield(C.potato, false) === 3 && farmYield(C.potato, true, () => 0.99) === 4 && farmYield(C.potato, true, () => 0) === 5
+    && Math.abs([...Array(2000)].reduce((sum) => sum + farmYield(C.potato, true), 0) / 2000 - 4.5) < 0.1);
 }
 
 // ── 6. Farming levels, and the Grower's Guild can finally see them ──

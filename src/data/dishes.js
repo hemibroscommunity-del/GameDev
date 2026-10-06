@@ -23,6 +23,16 @@ export const DISHES = {
   brew_firebloom_tea: {
     slot: 'brew', buff: 'damage', power: 0.20, duration: 1800,
     name: 'Firebloom Tea', look: '\uD83C\uDF75', desc: '+20% damage, 30 min'
+  },
+  /* v2.3.3106: the potato and the pumpkin's dishes.  The stew is eaten at once
+     (slot 'now': a heal, like a cooked fish); the pie is a meal. */
+  meal_garden_stew: {
+    slot: 'now', buff: 'heal', power: 150,
+    name: 'Garden Stew', look: '\uD83E\uDD58', desc: 'Heals 150 HP at once'
+  },
+  meal_pumpkin_pie: {
+    slot: 'meal', buff: 'xp', power: 0.10, duration: 1800,
+    name: 'Pumpkin Pie', look: '\uD83E\uDD67', desc: '+10% combat XP, 30 min'
   }
 };
 /* Own-property lookup: an inventory key is the client's own, but keep the

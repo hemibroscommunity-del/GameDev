@@ -18,7 +18,7 @@ import { FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS, DISHES, DIEGO_SHELF, manaSurge
 /* v2.3.3105: the timers -- and their magnitudes -- each slot owns
    (_clearBuffSlot).  A magnitude listed here goes with its timer, never
    apart from it. */
-const MEAL_BUFF_KEYS = ['regen', 'resist'];
+const MEAL_BUFF_KEYS = ['regen', 'resist', 'xp', 'xpMul'];   /* v2.3.3106: + the Pumpkin Pie's xp and its strength */
 const BREW_BUFF_KEYS = ['damage', 'damageMul', 'mana', 'manaFlat', 'spd', 'spdMul', 'hp'];
 import { PROG3 } from './prog3.js';        /* v2.3.2062: the special's mana cost */
 import { REGEN_TICKS } from './tick.js';   /* v2.3.2062: the regen cadence */
@@ -85,7 +85,7 @@ export const cookingMethods = {
        refusal uses nothing.  A brew is DRUNK (potion_drink), never eaten. */
     const meal = this._getDish(invKey);
     if (meal) {
-      if (meal.slot !== 'meal') return;
+      if (meal.slot !== 'meal' && meal.slot !== 'now') return;   /* v2.3.3106: + a dish eaten at once */
       const ps = this.playerState[session.id];
       if (!ps) return;
       if (ps.dying || ps.dead || ps.disconnected) return;
@@ -466,13 +466,30 @@ export const cookingMethods = {
      Bread restarts the half hour, it does not make an hour.  Returns false for
      a dish it cannot apply (nothing is used up then). */
   _applyDish(ps, dish) {
-    if (!ps || !dish || (dish.slot !== 'meal' && dish.slot !== 'brew')) return false;
-    if (dish.buff !== 'regen' && dish.buff !== 'resist' && dish.buff !== 'damage') return false;
+    if (!ps || !dish) return false;
+    /* v2.3.3106: a dish eaten at once (slot 'now', the Garden Stew) is a
+       heal, the cooked fish's way: plus the HP grid's Recovery, capped at max
+       HP, refused in an arena match (GDD §43) -- and it touches no slot. */
+    if (dish.slot === 'now') {
+      if (dish.buff !== 'heal' || !(Number(dish.power) > 0)) return false;
+      if (ps._arenaMatch) return false;
+      if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
+      if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
+      ps.hp = Math.min(ps.maxHp, ps.hp + Math.ceil(Number(dish.power)) + this._recoveryFlat(ps));
+      return true;
+    }
+    if (dish.slot !== 'meal' && dish.slot !== 'brew') return false;
+    if (dish.buff !== 'regen' && dish.buff !== 'resist' && dish.buff !== 'damage' && dish.buff !== 'xp') return false;
     this._clearBuffSlot(ps, dish.slot);
     const endsAt = Date.now() + Math.max(1, Math.floor(Number(dish.duration) || 60)) * 1000;
     if (dish.buff === 'regen') ps._buffs.regen = endsAt;
     else if (dish.buff === 'resist') ps._buffs.resist = endsAt;
-    else {
+    else if (dish.buff === 'xp') {
+      /* v2.3.3106: the Pumpkin Pie -- its strength rides with its timer, read
+         by prog3.js _prog3AwardXp, bounded there (BUFF_MAGNITUDES keeps it). */
+      if (Number.isFinite(dish.power) && dish.power > 0 && dish.power <= 1) ps._buffs.xpMul = 1 + dish.power;
+      ps._buffs.xp = endsAt;
+    } else {
       /* The dish's own `power` is its magnitude (v2.3.3102); combat.js bounds
          damageMul to 1..4 and falls back to x1.20 without one. */
       if (Number.isFinite(dish.power) && dish.power > 0 && dish.power <= 3) ps._buffs.damageMul = 1 + dish.power;
