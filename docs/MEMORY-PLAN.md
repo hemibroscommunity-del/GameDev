@@ -105,7 +105,9 @@ Memory spent on nothing:
 | A re-bake lets go of what it replaced (`releaseCanvasSource`, every site) | eight strokes +0.4 MB of cache (was +92) | #802, v2.3.3060 |
 | The ~5 MB-a-lap canvas growth on the land tour | flat after #802 (monster recolours released properly) | #802 |
 | A destroyed texture lets go of its picture even where Pixi still points at it (pooled batches, hidden sprites' draw data) | after a tour of four lands: 22-35 MB of freed object sheets, canvases and ground held -> 0 (`mp-zombietex`) | #810, v2.3.3065 |
-| Freed on close: the world map's canvas (~12 MB an open, until the next GC), the loading clip's warm-up copy (~2-3 MB) | small; rubble's scratch canvases are locals the GC takes | |
+| Freed on close: the world map's canvas (11.3 MB an open at 3x, held until the next GC) | five opens: 3 dead canvases, 31.4 MB -> 0 (`mp-worldmapfree`) | #812, v2.3.3066 |
+| Freed on close: the loading clip's warm-up copy | ~2-3 MB; rubble's scratch canvases are locals the GC takes | |
+| A snowball burst playing when the frost art is handed back (found on the way: app.render threw until the burst ended) | retired before the frame draws (`mp-burstfree`) | #813, v2.3.3067 |
 
 **Phase 2 -- stop paying for what nobody sees or hears.**
 
@@ -148,6 +150,25 @@ switches.
 | Item | Measured | Status |
 |---|---|---|
 | The black-screen watchdog's 32 x 18 sample shrunk on the GPU and read back without waiting (it copied the whole canvas out, 11 MB on a 3x phone, and waited for the frame, every 5 s) | ~10% of the main thread in a CPU profile (phone-sized page, CPU x4), walking or fighting -> not in the profile; 2.5 ms against 25 ms + the frame's wait (`mp-wdsample`) | #808, v2.3.3064 |
+
+## All of it together (2026-10-06)
+
+#802, #803, #806, #808 and #810 merged into one local build and measured
+with `mp-memledger` (a phone, two laps of the eight lands, back in Brotown):
+
+| | main (lap 1 -> lap 2) | all together (lap 1 -> lap 2) |
+|---|---|---|
+| 2D canvases | 122.9 -> 127.5 MB, growing ~5 MB a lap | 118.3 -> 118.3 MB, flat |
+| the page's ArrayBuffers | 44.2 -> 49.1 MB, growing ~5 MB a lap | 10.9 -> 10.9 MB, flat |
+| on arrival, ArrayBuffers | 43.4 MB | 10.1 MB |
+| JS heap | 28.1 -> 29.5 MB | 27.9 -> 29.4 MB |
+| asset cache | 172.1 -> 172.1 MB | 172.1 -> 172.1 MB |
+
+...plus what these counters cannot see: the freed pictures #810 lets go of
+(22-35 MB after a four-land tour), each black screen's recovery no longer
+leaving ~50 MB of art behind (#802), and the watchdog's 11 MB copy and frame
+wait every 5 s gone (#808).  `zombietex`, `groundcopy`, `wdsample` and
+`bakeleak` all pass on the combined build.
 
 ## How we know it worked
 
