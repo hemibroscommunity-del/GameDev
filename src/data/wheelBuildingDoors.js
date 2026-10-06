@@ -18,7 +18,7 @@
  * Bro on its steps.  The other four are the plan's "(new: ...)" buildings:
  * since v2.3.3066 three of them open halls of their own (WHEEL_HALL_DOORS),
  * and the Hotel stands shut, saying so (WHEEL_SHUT_DOORS) instead of leaving
- * a player to wonder whether the door is broken.  Since v2.3.3109 the Town
+ * a player to wonder whether the door is broken.  Since v2.3.3125 the Town
  * Hall is a fourth hall (Mayor Bro still stands on its steps), so only the
  * Hotel is shut.
  */
@@ -71,7 +71,7 @@ export const WHEEL_HALL_DOORS = {
   guildhall: 'guildhall',
   post: 'post',
   sheriff: 'sheriff',
-  townhall: 'townhall',     /* v2.3.3109, below */
+  townhall: 'townhall',     /* v2.3.3125, below */
 };
 
 /* What each hall is called and wears: its window's header and the Enter
@@ -80,7 +80,7 @@ export const WHEEL_HALLS = {
   guildhall: { title: 'Guild Hall', sub: 'Clans and guilds', icon: '/icons/ui/panel-guild.webp', emoji: '🏰' },
   post: { title: 'Post Office', sub: 'Your mail and messages', icon: '/icons/ui/evt-mail.webp', emoji: '📫' },
   sheriff: { title: "Sheriff's Office", sub: 'Duels and the arena', icon: '/icons/ui/evt-duel.webp', emoji: '⚔️' },
-  /* ═══ v2.3.3109: THE TOWN HALL IS A HALL TOO ═══
+  /* ═══ v2.3.3125: THE TOWN HALL IS A HALL TOO ═══
      The owner sent the picture of its inside (data/buildingRooms.js) and, asked
      what the Town Hall should do, chose "a Town Hall window": your picture on
      top, then two things the game already has, set where the room's own props
@@ -100,7 +100,7 @@ export const WHEEL_HALLS = {
    worker settles: the HP it restores is the worker's to give), so it stays
    shut until the worker can pay it.  Stood at, it shows its name and "Shut
    for now" (BroTown.jsx) instead of leaving a player to wonder whether the
-   door is broken.  (The Town Hall was in no list until v2.3.3109: Mayor Bro
+   door is broken.  (The Town Hall was in no list until v2.3.3125: Mayor Bro
    stands on its steps; it is a hall now.)  MIRROR: plan.js's own `today`
    words -- test-world-core checks the shut one and the three halls beside
    it are the four "(new: ...)" plots. */
@@ -141,4 +141,15 @@ export const WHEEL_TOWNSFOLK = [
   { name: 'Ace', door: 'gambling', dx: -105, dy: 34 },
   { name: 'Blacksmith Bro', door: 'blacksmith', dx: 105, dy: 34 },
   { name: 'Lil Bro', door: 'townhall', dx: -260, dy: 110 },
+  /* ═══ v2.3.3121: BEASTMASTER BRO, EAST OF THE WOODWORKER'S STEPS ═══
+     docs/PET-TRAPPING-PLAN.md, Phase 2: "A Beastmaster beside the Woodworker"
+     -- where the box traps his first quest asks for are made.  EAST, as the
+     blacksmith stands at the forge: the Woodworker's crate is 193 px west of
+     its steps and its barrel 197 px east, and the Snowling drawn at his side
+     (tools/make_beastmaster.py) stands ~24 px east of him, clear of both and
+     of the steps.  From the door's foot he is 110 px; from a player standing
+     at the door 119 px, past the 90 px his quest opens at by itself.  Only
+     against a worker that knows his quests (caps.beastmaster; BroTown.jsx
+     _spawnWheelNpcs). */
+  { name: 'Beastmaster Bro', door: 'woodworker', dx: 105, dy: 34, cap: 'beastmaster' },
 ];

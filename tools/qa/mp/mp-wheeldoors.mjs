@@ -4,7 +4,7 @@
  * player against a real worker, in the Wheel's Brotown, on a phone:
  *   1. the client knows the town's seventeen doors from the worker's answer:
  *      twelve that open a building, the Wheel's four halls (v2.3.3066:
- *      mp-wheelhalls walks them; v2.3.3109: the Town Hall is the fourth) and
+ *      mp-wheelhalls walks them; v2.3.3125: the Town Hall is the fourth) and
  *      one shut one;
  *   2. walked to each of the twelve (boots at the foot of its steps), the
  *      Enter button comes up with the NAME ON ITS SIGN ("Enter SALOON"), and a
@@ -186,7 +186,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!far && !far.btn && far.nb === null && !!inside && /Enter BANK/.test(inside.btn || '') && !!outside && !outside.btn && outside.nb === null,
     { far, inside, outside });
 
-  /* ── 4. the shut ones (the Town Hall is a hall since v2.3.3109: mp-wheelhalls) ── */
+  /* ── 4. the shut ones (the Town Hall is a hall since v2.3.3125: mp-wheelhalls) ── */
   const shutSeen = [];
   for (const d of shut) {
     await standAt(d.x, d.y + 30);

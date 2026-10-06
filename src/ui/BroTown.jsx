@@ -135,10 +135,10 @@ import { GamblePanel } from './panels/buildings/GamblePanel.jsx';
 import { PartyPanel } from './panels/buildings/PartyPanel.jsx';
 import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
 import { WheelHallPanel } from './panels/buildings/WheelHallPanel.jsx';   /* v2.3.3066: the Wheel's halls */
-import { LandOfficePanel } from './panels/buildings/LandOfficePanel.jsx';   /* v2.3.3109: the Land Office's window, in the card like the others */
-import { BuildingRoom } from './panels/buildings/BuildingRoom.jsx';   /* v2.3.3109: the inside of each building, at the top of its window */
-import { warmRoom } from '@/game/buildingRooms.js';   /* v2.3.3109 */
-import { roomIdFor } from '@/data/buildingRooms.js';   /* v2.3.3109 */
+import { LandOfficePanel } from './panels/buildings/LandOfficePanel.jsx';   /* v2.3.3125: the Land Office's window, in the card like the others */
+import { BuildingRoom } from './panels/buildings/BuildingRoom.jsx';   /* v2.3.3125: the inside of each building, at the top of its window */
+import { warmRoom } from '@/game/buildingRooms.js';   /* v2.3.3125 */
+import { roomIdFor } from '@/data/buildingRooms.js';   /* v2.3.3125 */
 import { ClanInviteCard } from './panels/ClanInviteCard.jsx';            /* v2.3.3066: a clan invite you can take up */
 import { StorePanel } from './panels/buildings/StorePanel.jsx';   /* v2.3.2476: the auction house */
 import { StoreToast } from './mobile/StoreToast.jsx';   /* v2.3.2476: "your thing sold" */
@@ -378,6 +378,10 @@ import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E
 import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
+import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
+import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
+import { activePet } from '@/game/petBook.js';   /* v2.3.3120: the pet out with you is the record's */
+import { beastmasterOn } from '@/game/trapping.js';   /* v2.3.3121: Beastmaster Bro stands only against a worker that knows his quests */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
 /* v2.3.1733: stamina abilities (Shield Bash / Whirlwind) — PR 5 of the
@@ -798,7 +802,7 @@ var NPC_PROX_OPEN = 90, NPC_PROX_CLEAR = 125;
    their buildings have doors.  (v2.3.3032: Diego came; v2.3.3067: the other
    three, WHEEL_TOWNSFOLK -- Ace's coin flip opens only on a tap on him, so
    while he stayed behind it could not be played.) */
-function _spawnWheelNpcs() {
+function _spawnWheelNpcs(S) {
   var info = wheelObjectsInfo();
   var spot = info && info.mayor;
   if (!spot) return null;
@@ -814,7 +818,11 @@ function _spawnWheelNpcs() {
      WHEEL_TOWNSFOLK): tap him or walk up and his window opens, as in the old
      town.  Only where the store stands (a door the worker found). */
   var doors = wheelTownDoors();
+  /* v2.3.3121: Beastmaster Bro only against a worker that knows his quests
+     (`cap` on his WHEEL_TOWNSFOLK row; game/trapping.js beastmasterOn) */
+  var _bmOn = beastmasterOn(S);
   WHEEL_TOWNSFOLK.forEach(function (f) {
+    if (f.cap === 'beastmaster' && !_bmOn) return;
     var door = doors.filter(function (d) { return d.id === f.door; })[0];
     if (!door) return;
     NPC_DATA.filter(function (n) { return n.name === f.name; }).forEach(function (npc) {
@@ -1636,7 +1644,7 @@ export var BroTown = function BroTown(_ref0) {
   var _useStateWH = useState(null),
     nearHall = _useStateWH[0],
     setNearHall = _useStateWH[1];
-  /* v2.3.3109: the picture of the room behind the door you stand at is decoded
+  /* v2.3.3125: the picture of the room behind the door you stand at is decoded
      while you stand there (game/buildingRooms.js), so the window opens with it
      and not a beat after; the first shop or hall door you reach (not the Town
      Hall's, where everyone starts) also starts the other rooms' bytes coming in
@@ -4140,7 +4148,7 @@ export var BroTown = function BroTown(_ref0) {
     if (!S.npcs && S.currentZone === 'town') {
       S.npcs = _spawnTownNpcs();
     } else if (!S.npcs && isWheelTrialZone(S.currentZone)) {
-      S.npcs = _spawnWheelNpcs();   /* v2.3.2975 */
+      S.npcs = _spawnWheelNpcs(S);   /* v2.3.2975 */
     }
 
     /* Loaded avatar images cache */
@@ -4615,7 +4623,7 @@ export var BroTown = function BroTown(_ref0) {
         } else if (!S.npcs && isWheelTrialZone(S.currentZone)) {
           /* v2.3.2975: Mayor Bro in the Wheel's Brotown (null until the
              worker has said where; tried again next frame) */
-          S.npcs = _spawnWheelNpcs();
+          S.npcs = _spawnWheelNpcs(S);
         }
         /* Active weapon — available to all render/combat sections */
         var activeWpn = S.rpg ? getActiveWeapon(S.rpg) : {
@@ -6457,7 +6465,16 @@ export var BroTown = function BroTown(_ref0) {
               /* the bottom sheet counts as an open panel — the nav rail's
                  destinations render over the world just like the modals do. */
               && dashboardPanelBus.state.mode === 'bar';
-            if (_pOk && _pq) {
+            /* ═══ v2.3.3121: A GIVER BY A BUSY DOOR KEEPS "HOW IT'S GOING" FOR A TAP ═══
+               Beastmaster Bro stands beside the Woodworker's steps, and his
+               quests send you to the Woodworker again and again (box traps).
+               Found by mp-beastmaster: walking past him to its door, his
+               "Three box traps. The Woodworker, the Traps tab." stopped you
+               every trip.  So a giver marked `quietProgress` opens by himself
+               only to OFFER a quest or to PAY one; his progress line waits for
+               a tap or E (both still answer).  Every other giver as before. */
+            var _pQuiet = !!(_pq && _pn.quietProgress && _pq.status === QUEST_STATUS.active && !_pqReady);
+            if (_pOk && _pq && !_pQuiet) {
               S._npcProxLatch = { npc: _pn, ready: _pqReady };
               setQuestPanel({ npc: _pn.name, quest: _pq.quest, status: _pq.status, npcRef: _pn });
             /* v2.3.2620: ACE IS TAP-ONLY, and deliberately not here.  He had a
@@ -6507,13 +6524,18 @@ export var BroTown = function BroTown(_ref0) {
         /* Collectible pickup removed */
 
         /* §18.1 PET FOLLOW + AUTO-LOOT — active pet follows player and vacuums loot */
-        if (((_S$rpg7 = S.rpg) === null || _S$rpg7 === void 0 || (_S$rpg7 = _S$rpg7.lifeSkills) === null || _S$rpg7 === void 0 ? void 0 : _S$rpg7.activePet) !== null && ((_S$rpg8 = S.rpg) === null || _S$rpg8 === void 0 || (_S$rpg8 = _S$rpg8.lifeSkills) === null || _S$rpg8 === void 0 ? void 0 : _S$rpg8.activePet) !== undefined) {
-          var pets = S.rpg.lifeSkills.pets || [];
-          var petIdx = S.rpg.lifeSkills.activePet;
-          var pet = pets[petIdx];
+        /* v2.3.3120: the pet out with you is the pets RECORD's (game/petBook.js
+           activePet: the worker's pets_state; the old lifeSkills pair only
+           against an old worker). */
+        {
+          var pet = activePet(S);
           if (pet) {
             /* Initialize pet position */
-            if (!S._petX) {
+            /* v2.3.3120: ...and put it back beside you after a teleport, a
+               zone change or a respawn: it walked back from where it was at
+               2 px a frame, which across the Wheel took minutes (the plan's
+               "things found in the code", 9). */
+            if (!S._petX || Math.abs(S._petX - P.x) + Math.abs(S._petY - P.y) > 900) {
               S._petX = P.x - 30;
               S._petY = P.y + 20;
             }
@@ -6655,7 +6677,7 @@ export var BroTown = function BroTown(_ref0) {
                   if (loot.shard && S.rpg.inventory) {
                     S.rpg.inventory[loot.shard] = (S.rpg.inventory[loot.shard] || 0) + 1;
                     var _petShard = shardByKey(loot.shard);
-                    pushDmgPopup(S, S._petX, S._petY - 28, pet.emoji + ' + ' + (_petShard ? _petShard.label : 'Shard'), (_petShard && _petShard.color) || '#cce6ff');
+                    pushDmgPopup(S, S._petX, S._petY - 28, '+ ' + (_petShard ? _petShard.label : 'Shard'), (_petShard && _petShard.color) || '#cce6ff');   /* v2.3.3120: no pet emoji: a pet is drawn now */
                   }
                   BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
                   if (!S.rpg._questFlags) S.rpg._questFlags = {};
@@ -6667,52 +6689,15 @@ export var BroTown = function BroTown(_ref0) {
               });
             }
 
-            /* ═══ PET COMBAT — pet auto-attacks nearest enemy ═══ */
-            if (S.monsters && !S._petAtkCd || Date.now() > (S._petAtkCd || 0)) {
-              /* Find nearest alive monster to pet */
-              var nearestM = null,
-                nearestD = 80; /* 80px aggro range */
-              S.monsters.forEach(function (m) {
-                if (!m.alive) return;
-                var d = Math.sqrt(Math.pow(S._petX - m.x, 2) + Math.pow(S._petY - m.y, 2));
-                if (d < nearestD) {
-                  nearestD = d;
-                  nearestM = m;
-                }
-              });
-              if (nearestM && nearestD < 40) {
-                /* attack at 40px range */
-                /* Pet deals 15% of player weapon damage, scales with pet level */
-                var petLvl = pet.level || 1;
-                var pDmgBase = S.rpg ? calcWeaponDmg((activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) || 'greatsword', S.rpg || {}, (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.tierMult) || 1, activeWpn) : 5;
-                var petDmg = Math.max(1, Math.ceil(pDmgBase * 0.15 * (1 + petLvl * 0.02)));
-                nearestM.curHp -= petDmg;
-                S._petAtkCd = Date.now() + 1500; /* pet attacks every 1.5s */
-                /* Visual feedback — small damage number from pet */
-                /* v2.3.2521: was full-size — missed by v2.3.2520, so the pet's
-                   number sat next to your own scaled ones and read five times
-                   harder-hitting than you. */
-                pushDmgPopup(S, nearestM.x, monsterPopupY(nearestM, -10), pet.emoji + ' -' + toDisplayDamage(petDmg), pet.color || '#59BF91');
-                /* Pet attack particles */
-                for (var pp = 0; pp < 3; pp++) {
-                  S.hitParticles.push({
-                    x: nearestM.x + (Math.random() - 0.5) * 8,
-                    y: nearestM.y + (Math.random() - 0.5) * 8,
-                    vx: (Math.random() - 0.5) * 2,
-                    vy: -1 - Math.random(),
-                    life: 0.3,
-                    color: pet.color || '#59BF91',
-                    size: 1.5
-                  });
-                }
-                /* Pet moves toward target when attacking */
-                var paDx = nearestM.x - S._petX,
-                  paDy = nearestM.y - S._petY;
-                var paDist = Math.sqrt(paDx * paDx + paDy * paDy) || 1;
-                S._petX += paDx / paDist * 3;
-                S._petY += paDy / paDist * 3;
-              }
-            }
+            /* ═══ v2.3.3120: NO MORE PET "COMBAT" ═══
+               Every 1.5 s the pet took a bite out of a nearby monster's health
+               ON THIS SCREEN ONLY, with damage numbers, and the worker never
+               heard of it -- so a monster's bar could read lower here than its
+               real health, and other players saw nothing.  Pets don't fight
+               (docs/PET-TRAPPING-PLAN.md, "What pets do"): a fighting pet is a
+               second monster for the worker to run and a must-have in PvP.  If
+               pets ever help in a fight, it will be as an extra on your own hit
+               that the worker works out (Phase 5, the owner's call). */
           }
         }
 
@@ -7559,7 +7544,7 @@ export var BroTown = function BroTown(_ref0) {
                   clanTag: ((_S$_clanData2 = S._clanData) === null || _S$_clanData2 === void 0 ? void 0 : _S$_clanData2.tag) || null,
                   clanName: ((_S$_clanData3 = S._clanData) === null || _S$_clanData3 === void 0 ? void 0 : _S$_clanData3.name) || null,
                   clanColor1: ((_S$_clanData4 = S._clanData) === null || _S$_clanData4 === void 0 ? void 0 : _S$_clanData4.color1) || null
-                }, profileRelayFields(_rpg))
+                }, profileRelayFields(_rpg, S))
               });
             }
           }
@@ -9518,6 +9503,12 @@ export var BroTown = function BroTown(_ref0) {
       S._npcProxLatch = { npc: npc, ready: false };
       try { shopBus.setOpen(true); } catch (_e) {}
       return _mark('shop');
+    }
+    /* v2.3.3121: Beastmaster Bro, his quests done, looks after your pets: a
+       tap opens the Pets page (only against a worker that keeps the record) */
+    if (npc.pets && S._serverCaps && S._serverCaps.petbook) {
+      try { dashboardPanelBus.open('pets'); } catch (_e) {}
+      return _mark('pets');
     }
     pushDmgPopup(S, npc.x, npc.y - 30, npc.name + ' has nothing for you right now', '#B6C1BE');
     return _mark('nothing');
@@ -11878,7 +11869,7 @@ export var BroTown = function BroTown(_ref0) {
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect-card",
     "data-building-panel": buildingPanel /* v2.3.3032: which building's panel is open (mp-wheeldoors) */,
-    "data-room": roomIdFor(buildingPanel) || undefined /* v2.3.3109: the room pictured at its top (game.css .bt-room) */,
+    "data-room": roomIdFor(buildingPanel) || undefined /* v2.3.3125: the room pictured at its top (game.css .bt-room) */,
     onClick: function onClick(e) {
       return e.stopPropagation();
     },
@@ -11911,9 +11902,9 @@ export var BroTown = function BroTown(_ref0) {
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement(BuildingRoom, { key: buildingPanel, panel: buildingPanel }) /* v2.3.3109: the inside of the building, first in its window */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
+  }, "\u2715"), /*#__PURE__*/React.createElement(BuildingRoom, { key: buildingPanel, panel: buildingPanel }) /* v2.3.3125: the inside of the building, first in its window */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
        opens the panel that does the work and closes the hall */
-  Object.prototype.hasOwnProperty.call(WHEEL_HALLS, buildingPanel) && /*#__PURE__*/React.createElement(WheelHallPanel, {   /* v2.3.3109: every hall in the table, the Town Hall's too */
+  Object.prototype.hasOwnProperty.call(WHEEL_HALLS, buildingPanel) && /*#__PURE__*/React.createElement(WheelHallPanel, {   /* v2.3.3125: every hall in the table, the Town Hall's too */
     hall: buildingPanel,
     stateRef: stateRef,
     onClan: function onClan() { setBuildingPanel(null); setShowClanPanel(true); },
@@ -11921,10 +11912,10 @@ export var BroTown = function BroTown(_ref0) {
     onMessages: function onMessages() { setBuildingPanel(null); dashboardPanelBus.open('social'); },
     onPlayers: function onPlayers() { setBuildingPanel(null); setShowPlayerList(true); },
     onArena: function onArena() { setBuildingPanel('party'); },
-    /* v2.3.3109: the Town Hall's rows -- the dashboard's Ranks page (More -> Leaderboard, as its tile opens it), and the Wheel's world map */
+    /* v2.3.3125: the Town Hall's rows -- the dashboard's Ranks page (More -> Leaderboard, as its tile opens it), and the Wheel's world map */
     onLeaderboard: function onLeaderboard() { setBuildingPanel(null); dashboardPanelBus.open('more'); dashboardPanelBus.push('leaderboard'); },
     onMap: function onMap() { setBuildingPanel(null); openWorldMap(); }
-  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'enchant' && /*#__PURE__*/React.createElement(EnchantPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'party' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'gemcut' && /*#__PURE__*/React.createElement(GemcutPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), /* v2.3.3109: the Land Office's window is a panel in the card now (it was a separate dialog under an empty card, panels/buildings/LandOfficePanel.jsx) */
+  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'enchant' && /*#__PURE__*/React.createElement(EnchantPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'party' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'gemcut' && /*#__PURE__*/React.createElement(GemcutPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), /* v2.3.3125: the Land Office's window is a panel in the card now (it was a separate dialog under an empty card, panels/buildings/LandOfficePanel.jsx) */
   buildingPanel === 'farmhome' && /*#__PURE__*/React.createElement(LandOfficePanel, {
     onCancel: function onCancel() { return setBuildingPanel(null); },
     onTravel: function onTravel() {
@@ -12478,7 +12469,10 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       color: 'rgba(255,255,255,.6)'
     }
-  }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */, function () {
+  }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */,
+  /* v2.3.3120: pet trapping -- the TRAP pop-up over a targeted monster and the
+     card for a new pet (each on its own clock; game/trapping.js) */
+  React.createElement(TrapButton, { stateRef: stateRef }), React.createElement(TrapCatchCard, { stateRef: stateRef }), function () {
     var S = stateRef.current;
     if (!S) return null;
     var effects = [];
@@ -13580,14 +13574,19 @@ export var BroTown = function BroTown(_ref0) {
       bottom: mktMode !== 'orders' && (_stateRef$current55 = stateRef.current) !== null && _stateRef$current55 !== void 0 && _stateRef$current55._nearWorkshop ? 175 : 140,
       background: 'rgba(234,88,12,.85)'
     },
+    /* v2.3.3120: the Pet House opens the Pets page (dash/PetsPanel.jsx) when
+       the worker keeps the pets record -- one page for your pets, not two
+       that disagree; against an old worker, the old Pet House as before */
     onClick: function onClick(e) {
       e.preventDefault();
-      setShowPetHouse(true);
+      if (stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.petbook) dashboardPanelBus.open('pets');
+      else setShowPetHouse(true);
       BT_AUDIO.enterBuilding();
     },
     onTouchStart: function onTouchStart(e) {
       e.preventDefault();
-      setShowPetHouse(true);
+      if (stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.petbook) dashboardPanelBus.open('pets');
+      else setShowPetHouse(true);
       BT_AUDIO.enterBuilding();
     }
   }, stateRef.current._isDesktop && /*#__PURE__*/React.createElement("kbd", {

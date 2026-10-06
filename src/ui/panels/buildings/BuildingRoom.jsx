@@ -1,7 +1,7 @@
 import React from 'react';
 import { roomIdFor, isBandRoom, roomUrl, ROOM_W, ROOM_H, keeperFor, keeperBox } from '@/data/buildingRooms.js';
 
-/* ═══ v2.3.3109: THE ROOM YOU WALKED INTO ═══
+/* ═══ v2.3.3125: THE ROOM YOU WALKED INTO ═══
  *
  * The owner's picture of the inside of a building (data/buildingRooms.js), at
  * the top of that building's window.  BroTown.jsx draws it once, first inside

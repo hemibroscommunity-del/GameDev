@@ -3265,7 +3265,7 @@ console.log("the buildings' doors (v2.3.3032)");
      Wheel's own (the Guild Hall, the Post Office, the Sheriff's Office), the
      Hotel stays shut */
   const actions = TOWN_BUILDINGS.map((b) => b.action || b.id).concat(['farmhome']);
-  /* v2.3.3109: the Town Hall (the plan's `mayor (NPC)`, Mayor Bro on its steps) is a fourth hall,
+  /* v2.3.3125: the Town Hall (the plan's `mayor (NPC)`, Mayor Bro on its steps) is a fourth hall,
      so every plot of the town opens something or says it is shut */
   ok('...all twelve of today\'s buildings have a door (none twice), and the other five plots are accounted for, none left over: four halls of the Wheel\'s own (three of the plan\'s "(new: ...)" buildings, and the Town Hall, Mayor Bro\'s) and one shut that says so',
     new Set(Object.values(WHEEL_BUILDING_DOORS)).size === 12 && tbIds.every((id) => Object.values(WHEEL_BUILDING_DOORS).includes(id))
@@ -3309,8 +3309,8 @@ console.log("the buildings' doors (v2.3.3032)");
     blocked.length === 0, blocked.map((d) => [d.id, hit(d.x, d.y + 30, 10)]));
   /* Diego keeps the General Store (v2.3.3067: and the rest of town's cast) */
   const sp = WHEEL_TOWNSFOLK.map((f) => ({ f, d: byDoor[f.door] })).map(({ f, d }) => ({ name: f.name, x: d.x + f.dx, y: d.y + f.dy, d }));
-  ok('each of the townsfolk has a door to stand by, in no footprint with room round them, on the town\'s ground: Diego, Ace, Blacksmith Bro and Lil Bro',
-    sp.map((q) => q.name).join() === 'Diego,Ace,Blacksmith Bro,Lil Bro' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
+  ok('each of the townsfolk has a door to stand by, in no footprint with room round them, on the town\'s ground: Diego, Ace, Blacksmith Bro, Lil Bro and Beastmaster Bro',
+    sp.map((q) => q.name).join() === 'Diego,Ace,Blacksmith Bro,Lil Bro,Beastmaster Bro' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
     sp.map((q) => [q.name, hit(q.x, q.y, 24)]));
   /* ...and standing at the General Store's door does not open his window by
      itself: it opens within 90 px of him from your middle, ~52 px above your boots */
@@ -3332,6 +3332,15 @@ console.log("the buildings' doors (v2.3.3032)");
     ok('Ace stands by the Gambling Den and his row opens the coin flip; Blacksmith Bro by the forge; every name is an NPC_DATA row',
       sp.every((q) => row(q.name)) && !!row('Ace').flip && ownDoor(at.Ace, 'gambling') && ownDoor(at['Blacksmith Bro'], 'blacksmith'),
       sp.map((q) => [q.name, q.d && q.d.id, !!row(q.name)]));
+    /* v2.3.3121: Beastmaster Bro (docs/PET-TRAPPING-PLAN.md, Phase 2) */
+    const bm = at['Beastmaster Bro'], bmRow = row('Beastmaster Bro');
+    const bmFolk = WHEEL_TOWNSFOLK.find((f) => f.name === 'Beastmaster Bro');
+    const bmProps = boxes.filter((q) => q[4] !== 'woodworker' && Math.hypot((q[0] + q[2]) / 2 - bm.x, (q[1] + q[3]) / 2 - bm.y) < 60);
+    ok('Beastmaster Bro stands by the Woodworker (his row: the Wheel\'s only, opens the Pets page, spawned against caps.beastmaster), his Snowling\'s side clear of every prop',
+      ownDoor(bm, 'woodworker') && bm.x > bm.d.x && !!bmRow && bmRow.wheelOnly === true && bmRow.pets === true && bmFolk.cap === 'beastmaster'
+        && fs.existsSync(new URL('../../public' + bmRow.sprite, import.meta.url)) && fs.existsSync(new URL('../../public' + bmRow.portrait, import.meta.url))
+        && hit(bm.x + 24, bm.y, 16).length === 0 && bmProps.length === 0,
+      { bm: [bm.x - bm.d.x, bm.y - bm.d.y], row: !!bmRow, props: bmProps.map((q) => q[4]) });
     const ms2 = mayorSpot(PLAN, dbp), lb = at['Lil Bro'], hallDoor = byDoor.townhall;
     const arrive = { x: hallDoor.x, y: hallDoor.y + 108 };
     const toArrive = Math.hypot(lb.x - arrive.x, lb.y - arrive.y), toMayor = Math.hypot(lb.x - ms2.x, lb.y - ms2.y);
@@ -3469,10 +3478,10 @@ console.log('the lands\' music (v2.3.3064)');
     /noteWheelMusic\(here, S, BT_AUDIO\)/.test(mini) && /fresh: _here\.x === cx && _here\.y === cy/.test(trial));
 }
 
-/* ── v2.3.3109: the inside of each building ──
+/* ── v2.3.3125: the inside of each building ──
    Owner, 2026-10-06: sent seventeen pictures of the insides and said "Ok wire
    these up". */
-console.log("the buildings' insides (v2.3.3109)");
+console.log("the buildings' insides (v2.3.3125)");
 {
   const fs = await import('node:fs');
   const R = await import('../../src/data/buildingRooms.js');
@@ -3532,7 +3541,7 @@ console.log("the buildings' insides (v2.3.3109)");
     /buildingPanel === 'farmhome' && \/\*#__PURE__\*\/React\.createElement\(LandOfficePanel, \{/.test(bt)
       && !/buildingPanel === 'farmhome' && \/\*#__PURE__\*\/React\.createElement\("div"/.test(bt)
       && /Travel to Farm/.test(fs.readFileSync(new URL('../../src/ui/panels/buildings/LandOfficePanel.jsx', import.meta.url), 'utf8')), {});
-  /* v2.3.3109: the Town Hall is a hall, its rows open things that exist */
+  /* v2.3.3125: the Town Hall is a hall, its rows open things that exist */
   {
     const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
     const th = WHEEL_HALLS.townhall;

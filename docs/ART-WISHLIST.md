@@ -8,11 +8,11 @@ What the game could use from the owner next, each with a prompt ready to paste.
 
 ## Inside the buildings
 
-**All seventeen are in the game (v2.3.3109)**, from the pictures you sent: sixteen at the top of their windows, the Hotel's held until it has a window (docs/specs/building-rooms.md). The prompts stay here for redoing one: send the new picture in chat and a session replaces it (`tools/ui/make-room-pictures.py`). Rooms are empty of people on purpose: the game draws its own characters in. The Auction House's clerk is the first; the spec says what each other room would need.
+**All seventeen are in the game (v2.3.3125)**, from the pictures you sent: sixteen at the top of their windows, the Hotel's held until it has a window (docs/specs/building-rooms.md). The prompts stay here for redoing one: send the new picture in chat and a session replaces it (`tools/ui/make-room-pictures.py`). Rooms are empty of people on purpose: the game draws its own characters in. The Auction House's clerk is the first; the spec says what each other room would need.
 
 ### Blacksmith: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (the forge).
+- **In the game:** Done (v2.3.3125): at the top of its window (the forge).
 - **Attach:** your style key + the outside of the Blacksmith (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -34,7 +34,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### General Store: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (the market).
+- **In the game:** Done (v2.3.3125): at the top of its window (the market).
 - **Attach:** your style key + the outside of the General Store (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -56,7 +56,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Bank: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (the bank).
+- **In the game:** Done (v2.3.3125): at the top of its window (the bank).
 - **Attach:** your style key + the outside of the Bank (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -78,7 +78,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Cookhouse: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (cooking).
+- **In the game:** Done (v2.3.3125): at the top of its window (cooking).
 - **Attach:** your style key + the outside of the Cookhouse (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -100,7 +100,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Saloon: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (the party panel).
+- **In the game:** Done (v2.3.3125): at the top of its window (the party panel).
 - **Attach:** your style key + the outside of the Saloon (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -122,7 +122,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Woodworker: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (the woodworker's bench).
+- **In the game:** Done (v2.3.3125): at the top of its window (the woodworker's bench).
 - **Attach:** your style key + the outside of the Woodworker (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -144,7 +144,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Gem Cutter: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (gem cutting).
+- **In the game:** Done (v2.3.3125): at the top of its window (gem cutting).
 - **Attach:** your style key + the outside of the Gem Cutter (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -166,7 +166,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Assay Office: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (the enchanter).
+- **In the game:** Done (v2.3.3125): at the top of its window (the enchanter).
 - **Attach:** your style key + the outside of the Assay Office (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -188,7 +188,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Gambling Den: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (the gambling panel).
+- **In the game:** Done (v2.3.3125): at the top of its window (the gambling panel).
 - **Attach:** your style key + the outside of the Gambling Den (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -210,7 +210,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Feed & Seed: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (the farm panel).
+- **In the game:** Done (v2.3.3125): at the top of its window (the farm panel).
 - **Attach:** your style key + the outside of the Feed & Seed (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -232,7 +232,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Land Office: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (the trip to your farm).
+- **In the game:** Done (v2.3.3125): at the top of its window (the trip to your farm).
 - **Attach:** your style key + the outside of the Land Office (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -254,7 +254,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Post Office & Telegraph: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (mail and your inbox).
+- **In the game:** Done (v2.3.3125): at the top of its window (mail and your inbox).
 - **Attach:** your style key + the outside of the Post Office & Telegraph (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -276,7 +276,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Guild Hall: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (clans and guilds).
+- **In the game:** Done (v2.3.3125): at the top of its window (clans and guilds).
 - **Attach:** your style key + the outside of the Guild Hall (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -298,7 +298,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Sheriff's Office: inside
 
-- **In the game:** Done (v2.3.3109): at the top of its window (duels, the arena and bounties).
+- **In the game:** Done (v2.3.3125): at the top of its window (duels, the arena and bounties).
 - **Attach:** your style key + the outside of the Sheriff's Office (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -320,7 +320,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Hotel: inside
 
-- **In the game:** Done (v2.3.3109) as a picture, held until the Hotel opens (a bed and a rest; today it stands shut).
+- **In the game:** Done (v2.3.3125) as a picture, held until the Hotel opens (a bed and a rest; today it stands shut).
 - **Attach:** your style key + the outside of the Hotel (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -344,7 +344,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 *Optional: it already has your painting of its counter. Make this only if you want it to match the others in pixel art.*
 
-- **In the game:** Done (v2.3.3109): replaced your first painting of it, and the clerk stays behind the counter.
+- **In the game:** Done (v2.3.3125): replaced your first painting of it, and the clerk stays behind the counter.
 - **Attach:** your style key + the outside of the Auction House (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -368,7 +368,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 *For later: nothing opens at the Town Hall yet.*
 
-- **In the game:** Done (v2.3.3109): at the top of the Town Hall's window (the leaderboard, its trophy case, and the world map, the map on its wall); Mayor Bro still stands on its steps.
+- **In the game:** Done (v2.3.3125): at the top of the Town Hall's window (the leaderboard, its trophy case, and the world map, the map on its wall); Mayor Bro still stands on its steps.
 - **Attach:** your style key + the outside of the Town Hall (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -386,6 +386,34 @@ No people or animals anywhere: the game draws its own characters into the room. 
 Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, cloth in soft folds, and glass with one or two crisp reflections. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Everything has a one-pixel outline in a darker shade of its own colour, never black. Moderate saturation. Warm, even light from the windows and lamps, with no glow, bloom, haze or light rays.
 
 Attached are the game's style key and the outside of this building. Match the style key's pixel size, colours, shading and the way it draws each material exactly, and make this room the inside of that building, in the same materials, colours and character. Do not copy either picture's layout.
+```
+
+## Pet trapping
+
+Beastmaster Bro stands beside the Woodworker and gives the trapping quests (v2.3.3121). Until your picture comes he wears Diego's coat in green with a Snowling at his side, made by `tools/make_beastmaster.py` from art the game already has.
+
+### Beastmaster Bro: his figure
+
+- **In the game:** Standing east of the Woodworker's steps in BroTown, and his head in the dialogue window (a crop of the same picture).
+- **Attach:** Diego's or Blacksmith Bro's picture (`public/sprites/npc/shopkeeper-bro-walk-south.webp`, first frame, or `blacksmith-bro.png`), so he comes out the same style and size as the other townsfolk.
+- **How:** Ask ChatGPT for a square picture on one flat magenta background (#FF00FF). A session cuts him out, stands his feet on the townsfolk's line (256 × 256, feet 223 px down) and crops his head for the dialogue.
+
+```text
+A full-body picture of one character for BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros, drawn in exactly the same style, size and proportions as the attached townsperson: Beastmaster Bro, the town's trapper and keeper of tamed monsters. A broad, cheerful frontiersman in his thirties with a short beard, a wide-brimmed leather hat with a few feathers and a small animal tooth on its band, a long moss-green oilskin coat over a fur-trimmed vest, an orange neckerchief, sturdy leather gloves and boots, and a coil of rope and a little wooden box trap hanging from his belt. A small, friendly snowman creature (about knee-high, with a tiny top hat and a red scarf) sits at his feet, looking up at him. He stands facing the viewer, relaxed and welcoming, arms at his sides.
+
+The picture is square. He stands in the middle, his whole body in the picture with his feet near the bottom and a little space above his hat. The background is ONE flat magenta colour (#FF00FF) with nothing else on it: no floor, no shadow, no border, no text.
+
+Style: crisp pixel art like the attached townsperson: hard-edged square pixels, no blur, no anti-aliasing, no soft gradients; each colour shaded with a few flat tones; a one-pixel outline in a darker shade of its own colour, never black. Leather, fur, cloth and snow each drawn as themselves.
+```
+
+### Box trap: item icon
+
+- **In the game:** The Box Trap in your bag, and the picture on the TRAP button. Today both borrow the Trapping skill's icon.
+- **Attach:** any item icon of the game's (`public/icons/items/wood-log.webp`), so it matches.
+- **How:** Ask ChatGPT for a square picture on one flat magenta background (#FF00FF). A session cuts it out and sizes it.
+
+```text
+A square item icon for a top-down 2D action RPG, in exactly the style of the attached icon: a simple wooden box trap, a small crate of rough pine planks with its door propped open on a stick tied to a bit of string, a little bait inside. Seen from slightly above and to the front, filling most of the picture. One flat magenta background (#FF00FF), no shadow, no border, no text. Crisp pixel art: hard-edged pixels, a few flat tones per colour, a one-pixel outline in a darker shade of its own colour.
 ```
 
 ## Land banners

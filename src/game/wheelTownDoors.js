@@ -56,7 +56,7 @@ export function wheelTownDoors() {
 /** The door you stand at in the Wheel (your boots within WHEEL_DOOR_REACH of
     the foot of its steps; the nearest), or null.  A door with nothing behind
     it and nothing to say is never returned (the Town Hall was one, Mayor Bro
-    standing on its steps, until v2.3.3109 made it a hall: every plot of the
+    standing on its steps, until v2.3.3125 made it a hall: every plot of the
     town now opens something or says it is shut). */
 export function wheelTownDoorAt(S) {
   if (!S || !S.player || !isWheelTrialZone(S.currentZone)) return null;

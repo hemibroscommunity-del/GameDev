@@ -173,22 +173,50 @@ export const questMethods = {
      "anywhere".  A quest with no `obj.zone` keeps the old any-zone
      behavior, so the legacy chains are untouched.  Callers that omit the
      argument (older call sites) also keep it. */
-  _creditQuestObjective(playerId, kind, arch, zone) {
+  /* v2.3.3121: `amount` -- how many this signal is worth (default 1): a
+     make_traps that makes five is five `traps_made` (trapping.js).  Clamped
+     to 1-999 so a caller's bad number can never jump a counter. */
+  _creditQuestObjective(playerId, kind, arch, zone, amount) {
     const ps = this.playerState[playerId];
     if (!ps || !ps._quests) return;
     const table = this._QUEST_REWARDS_DATA();
+    const n = Math.max(1, Math.min(999, Math.floor(Number(amount) || 1)));
     let changed = false;
     for (const [qid, status] of Object.entries(ps._quests)) {
       if (status !== 'active') continue;
+      /* own-property: _quests is client-id keyed (see _handleQuestAccept) */
+      if (!Object.prototype.hasOwnProperty.call(table, qid)) continue;
       const obj = table[qid] && table[qid].objective;
       if (!obj || obj.type !== kind) continue;
       if (kind === 'kill' && obj.arch && obj.arch !== arch) continue;
       if (obj.zone && obj.zone !== zone) continue;
       if (!ps._questKills) ps._questKills = Object.create(null); // rule 4: quest-id-keyed map
-      ps._questKills[qid] = Math.min(99999, (ps._questKills[qid] || 0) + 1);
+      ps._questKills[qid] = Math.min(99999, (ps._questKills[qid] || 0) + n);
       changed = true;
     }
     if (changed) this._queuePlayerStateFlush(playerId);
+  },
+
+  /* ═══ v2.3.3121: IS THIS QUEST'S OBJECTIVE MET? ═══
+     The turn-in's check, one place: the counted kinds (a kill, a gather, and
+     trapping's traps made, traps sprung and catches -- data.js beast_1..4)
+     read the quest's own counter; `collect` the bag; `flag` a flag; `skill` a
+     life skill's level (beast_3: Trapping 6).  An unknown type is NOT met --
+     a reward table typo must refuse the hand-in, never pay it. */
+  _questObjectiveMet(ps, questId, obj) {
+    if (!obj) return true;
+    const counted = obj.type === 'kill' || obj.type === 'gather'
+      || obj.type === 'traps_made' || obj.type === 'trap_roll' || obj.type === 'catch';
+    if (counted) return ((ps._questKills && ps._questKills[questId]) || 0) >= (obj.count || 1);
+    if (obj.type === 'collect') return this._collectHeld(ps, obj) >= (obj.count || 1);
+    if (obj.type === 'flag') return !!(ps._questFlags && ps._questFlags[obj.flag]);
+    if (obj.type === 'skill') {
+      const ls = ps.lifeSkills && typeof ps.lifeSkills === 'object' ? ps.lifeSkills : null;
+      const sk = ls && Object.prototype.hasOwnProperty.call(ls, obj.skill) ? ls[obj.skill] : null;
+      const lvl = Math.floor((sk && typeof sk === 'object' && Number(sk.level)) || 1);
+      return lvl >= (obj.level || 1);
+    }
+    return false;
   },
 
   async _handleQuestTurnIn(session, payload) {
@@ -227,15 +255,9 @@ export const questMethods = {
     // an objective stay client-trusted -- see data.js QUEST_REWARDS
     // header for the whitelist rationale.
     const _obj = reward.objective;
-    if (_obj) {
-      if (_obj.type === 'kill' || _obj.type === 'gather') {
-        if (((ps._questKills && ps._questKills[questId]) || 0) < (_obj.count || 1)) return;
-      } else if (_obj.type === 'collect') {
-        if (this._collectHeld(ps, _obj) < (_obj.count || 1)) return;
-      } else if (_obj.type === 'flag') {
-        if (!(ps._questFlags && ps._questFlags[_obj.flag])) return;
-      }
-    }
+    /* v2.3.3121: one check for every objective type (_questObjectiveMet) --
+       trapping's four came in with Beastmaster Bro */
+    if (_obj && !this._questObjectiveMet(ps, questId, _obj)) return;
     /* v2.3.1673: HAND THE ITEMS OVER.  `collect` used to only CHECK that you
        held the items, never take them — which for the tutorial arc would mean
        one stack of remnants satisfying every step at once, and the whole

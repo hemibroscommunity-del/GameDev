@@ -1,4 +1,4 @@
-/* ═══ v2.3.3109: GETTING A ROOM'S PICTURE READY BEFORE THE DOOR OPENS ═══
+/* ═══ v2.3.3125: GETTING A ROOM'S PICTURE READY BEFORE THE DOOR OPENS ═══
  *
  * The seventeen building pictures (data/buildingRooms.js) are ~300 KB each and
  * 3.5 MB decoded.  Two rules pull against each other:
@@ -33,7 +33,7 @@
 import { roomIdFor, roomUrl, BUILDING_ROOMS, ROOM_KEEPERS } from '@/data/buildingRooms.js';
 
 /* The doors everyone stands at in their first minute: the Town Hall is where a
-   character arrives and where Mayor Bro waits (v2.3.3109 made it a door), so
+   character arrives and where Mayor Bro waits (v2.3.3125 made it a door), so
    standing at it says nothing about wanting the other rooms.  It decodes its own
    picture like any door, but it does not start the others' bytes coming -- that
    waits for a shop's or another hall's door, after the first quest's walk has
