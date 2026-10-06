@@ -47,7 +47,7 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/DEPTH-ROADMAP.md` (the costed depth work, code-aware),
   `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
   only textures -- what leaked, and the order of the memory work with each
-  item's status, v2.3.3061; `mp-memledger` measures it),
+  item's status, v2.3.3075; `mp-memledger` measures it),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
   vs edge-cropped test live here, v2.3.2650),

@@ -80,9 +80,9 @@ function _scheduleFlush(kind) {
   } catch (e) { /* ignore */ }
 }
 
-/* ═══ v2.3.3061: WHAT THE PAGE HELD WHEN IT WENT DARK ═══
+/* ═══ v2.3.3075: WHAT THE PAGE HELD WHEN IT WENT DARK ═══
    docs/MEMORY-PLAN.md: the renderer's own recovery from a black screen left
-   ~90 MB behind it every time (v2.3.3060 fixed it), so the next black screen
+   ~90 MB behind it every time (v2.3.3074 fixed it), so the next black screen
    was likelier -- and nothing in the crash feed could have shown that.  Now a
    report of the screen going (a lost context, a rebuild, a render throw, the
    recovery reload) carries how long the page had been up, how many rebuilds
@@ -155,7 +155,7 @@ export function markAlive(info) {
     const now = Date.now();
     if (now - _aliveAt < ALIVE_EVERY_MS) return;
     _aliveAt = now;
-    /* v2.3.3061: + up, rb and snd (see _memNow): what a page iOS killed held.
+    /* v2.3.3075: + up, rb and snd (see _memNow): what a page iOS killed held.
        The textures come in `info` already (BroTown's watchdog reads __btTex
        for it), so they are not walked a second time here. */
     const m = _memNow(false);
@@ -182,7 +182,7 @@ function _checkLastAlive() {
     recordCrash(hidden ? 'evicted' : 'killed', `the last page stopped without closing ${ago}s before this one, `
       + `${hidden ? 'in the background' : 'ON SCREEN'}: zone ${last.zone || '?'} at ${last.x},${last.y}, hp ${last.hp}, `
       + `${last.mb != null ? last.mb + ' MB of textures' : 'textures unknown'}`
-      /* v2.3.3061: and what else it held (marks from older pages lack them) */
+      /* v2.3.3075: and what else it held (marks from older pages lack them) */
       + (last.up != null ? `, ${last.up} min up, ${last.rb || 0} rebuild(s), ${last.snd != null ? last.snd + ' MB of sound' : 'sound unknown'}` : ''));
     try {
       const raw = localStorage.getItem(ALIVE_KEY);

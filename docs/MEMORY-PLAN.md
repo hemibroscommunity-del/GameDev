@@ -1,4 +1,4 @@
-# Memory plan: what the phone holds, what leaks, and the order of the fixes (v2.3.3061)
+# Memory plan: what the phone holds, what leaks, and the order of the fixes (v2.3.3075)
 
 Owner, 2026-10-05: *"Make a plan for how you will optimize game performance
 (particularly memory usage) without affecting quality of gameplay"* -- and
@@ -18,11 +18,11 @@ leak on both.
 - `mp-gpuaudit` (v2.3.3037): the textures on the GPU, named, and their peaks.
 - `__btTex()`: the asset cache, decoded size (the figure the ~250 MB line in
   this repo's notes is about).
-- `mp-memledger` (v2.3.3061): everything the two above cannot see -- decoded
+- `mp-memledger` (v2.3.3075): everything the two above cannot see -- decoded
   sound, every 2D canvas alive (tracked from its creation), the main thread's
   and each worker's JS heap and ArrayBuffers -- and a tour of the eight lands,
   twice, to see what does not come back.
-- `mp-bakeleak` (v2.3.3060): three renderer rebuilds and eight designer strokes.
+- `mp-bakeleak` (v2.3.3074): three renderer rebuilds and eight designer strokes.
 - Heap snapshots of an UNMINIFIED build (`npx vite build --minify false
   --outDir <dir>`, served with `QA_DIST=<dir>`) say WHO holds a leaked object;
   that is how the rebuild leak's holders were found (TRAPS §139).
@@ -59,10 +59,11 @@ Memory spent on nothing:
   lands before, the song plays in today's town under the ocean clip, and the
   Wheel gets the session track.  After a death, a dungeon or the farm the
   Wheel plays the session track, and the 40 MB sits idle -- until a farm
-  visit, which plays the old town's song.  Letting it go was tried
-  (v2.3.3062, not shipped): every way to do it changes what you hear
-  somewhere -- a gap at the intro's end, or on the next farm visit, while the
-  song is decoded again -- so it is the owner's call (Phase 4).
+  visit, which plays the old town's song.  Letting it go was tried (not
+  shipped): every way to do it changes what you hear somewhere -- a gap at
+  the intro's end, or on the next farm visit, while the song is decoded
+  again -- so it went to the owner (Phase 4), who said yes to streaming the
+  music instead: #815, v2.3.3073, and no song had to change.
 - **Every return from another app** after 2 s re-decodes every sound
   (`_rebuildContext`), a 50-90 MB spike while the old copies wait to be freed.
 - **The damage-number font** is 11 pages of 512 x 512: ~11 MB of canvases and
@@ -93,16 +94,16 @@ Memory spent on nothing:
 
 | Item | Status |
 |---|---|
-| The plan, this file | v2.3.3061 |
-| `mp-memledger`: sound, canvases by maker, heaps, the eight-land tour | v2.3.3061 |
-| Crash reports carry a memory snapshot and the rebuild count | v2.3.3061 |
+| The plan, this file | v2.3.3075 |
+| `mp-memledger`: sound, canvases by maker, heaps, the eight-land tour | v2.3.3075 |
+| Crash reports carry a memory snapshot and the rebuild count | v2.3.3075 |
 
 **Phase 1 -- stop the leaks** (the biggest effect on black screens).
 
 | Item | Measured | Status |
 |---|---|---|
-| A rebuild lets go of the old renderer: listeners, bakes, ground, Pixi's render-target listeners | cache flat over three rebuilds (was 172 -> 327 MB) | #802, v2.3.3060 |
-| A re-bake lets go of what it replaced (`releaseCanvasSource`, every site) | eight strokes +0.4 MB of cache (was +92) | #802, v2.3.3060 |
+| A rebuild lets go of the old renderer: listeners, bakes, ground, Pixi's render-target listeners | cache flat over three rebuilds (was 172 -> 327 MB) | #802, v2.3.3074 |
+| A re-bake lets go of what it replaced (`releaseCanvasSource`, every site) | eight strokes +0.4 MB of cache (was +92) | #802, v2.3.3074 |
 | The ~5 MB-a-lap canvas growth on the land tour | flat after #802 (monster recolours released properly) | #802 |
 | A destroyed texture lets go of its picture even where Pixi still points at it (pooled batches, hidden sprites' draw data) | after a tour of four lands: 22-35 MB of freed object sheets, canvases and ground held -> 0 (`mp-zombietex`) | #810, v2.3.3069 |
 | Freed on close: the world map's canvas (11.3 MB an open at 3x, held until the next GC) | five opens: 3 dead canvases, 31.4 MB -> 0 (`mp-worldmapfree`) | #812, v2.3.3070 |
@@ -114,7 +115,7 @@ Memory spent on nothing:
 | Item | Saves | Status |
 |---|---|---|
 | Decoded sounds kept across the audio rebuild after an app switch | a 50-90 MB spike per return | needs an iPhone: the spec lets a buffer outlive its context (`_rebuildContext` drops them as "decoded against the dead context"), but this is the path that brings sound back after another app took it, and only a real iPhone can say a kept buffer still plays there |
-| The ground's CPU copy dropped once uploaded (re-laid after a graphics reset) | 33 MB standing, 52 after a walk, 62 after a rebuild (page ArrayBuffers 53 -> 20 MB) | #806, v2.3.3063 |
+| The ground's CPU copy dropped once uploaded (re-laid after a graphics reset) | 33 MB standing, 52 after a walk, 62 after a rebuild (page ArrayBuffers 53 -> 20 MB) | #806, v2.3.3076 |
 | The damage-number font's atlas trimmed | 5-10 MB | not a clean win: its letters draw words ("Blocked!", "+30 XP"), so a smaller set sends some to the slower canvas text; its canvases are what a rebuilt renderer uploads it from |
 | Wheel objects loaded by their own size, not the largest building's (a page loads when any object on it stands within the view + 480 game px + the LARGEST picture's size: 548 tall, 275 a side) | measured offline (the game's placing and manifest, 25 spots from the town to each land's third stretch, the QA phone's view): 12.1 -> 9.5 MB of pages loaded on average, 21.0 -> 17.6 kept; up to 12 MB less at a land's second stretch | not done: that slack is also what hides a slow page from a small object coming into view -- taking it away is a pop-in risk on a slow connection (rule 3); the owner's call if wanted |
 | Small: the chopper's spare copy, the worker's caches, sounds decoded twice, idle bake worker | measured much smaller than first thought: the ground worker 2 MB of heap + 18.6 MB of buffers (the swatches and fields it lays with, all in use), the bake worker 0.3 MB, sounds decoded twice ~1 MB, and the lumberjack's two key-intact crops (4.8 MB) are what a skin change re-bakes from | not worth a change: ~6 MB at most, and the crops' only replacement is a fetch on every skin change |
@@ -124,13 +125,18 @@ Memory spent on nothing:
 | Item | Saves | Status |
 |---|---|---|
 | Canvas art made purgeable (compressed images the iPhone can drop and re-decode) | up to ~70 MB | |
-| Character art kept on the GPU only, re-baked after a black screen's rebuild (measured 2026-10-06: of 540 canvases, 127 are copies of a texture already uploaded -- 45.6 MB, mostly the gear sheets, the damage font's pages and the skill poses, all module caches a rebuilt renderer re-uploads FROM the canvas; the effects renderer's own big strips are not on the GPU until first drawn).  Pixel-identical by construction (the same bakes run again), but it changes the black-screen recovery path, so it is planned with the owner first | ~46 MB of page memory | |
+| Character art kept on the GPU only, re-baked after a black screen's rebuild (measured 2026-10-06: of 540 canvases, 127 are copies of a texture already uploaded -- 45.6 MB, mostly the gear sheets, the damage font's pages and the skill poses, all module caches a rebuilt renderer re-uploads FROM the canvas; the effects renderer's own big strips are not on the GPU until first drawn).  Pixel-identical by construction (the same bakes run again), but it changes the black-screen recovery path, so it is planned with the owner first | ~46 MB of page memory | the owner's yes (2026-10-06, a slightly slower recovery after a black screen); next |
 | Skill figures baked for what you wear only, the other in the background | 16-19 MB | |
 | Palette textures for the ground and the Wheel's objects | ~55 MB | |
 | The unused depth buffer off: the screen asks for its stencil (the masks) alone | ~11 MB of GPU memory on a 3x iPhone (~20 if Metal pads the packed buffer to 8 bytes a pixel); none on Chrome, which allocates a packed buffer whatever is asked.  Per WebKit's `WebGLDefaultFramebuffer` (depth + stencil: `DEPTH24_STENCIL8`, on Metal 32-bit float + 8; stencil alone: `STENCIL_INDEX8`).  DEPTH_TEST is never turned on, so not a pixel changes (`mp-nodepth`) | #814, v2.3.3072 |
 
 **Phase 4 -- the owner's call** (each trades something a player might notice;
-none is done without a yes): a smaller ring of ground round the view (-10 MB),
+none is done without a yes).  Asked on 2026-10-06, the owner said *"Yes do all
+of them"* to five: the Wheel's music and music streamed (both #815,
+v2.3.3073: one `<audio>` element plays the track from its file, decoded sound
+88.7 -> 25.8 MB), the gathering poses made the first time they can be wanted
+(v2.3.3077), the character art on the GPU only (Phase 3) and render groups
+(frame time, below).  The list as it was put: a smaller ring of ground round the view (-10 MB),
 tighter object-loading margins (-15 MB), fewer rubble heaps (-15 MB), idle
 armour sheets off the GPU (-30 MB GPU, a tiny upload on the next swing), music
 streamed instead of decoded (-23 MB; the loop seam and the silent switch), the
@@ -155,7 +161,7 @@ switches.
 | Item | Measured | Status |
 |---|---|---|
 | The black-screen watchdog's 32 x 18 sample shrunk on the GPU and read back without waiting (it copied the whole canvas out, 11 MB on a 3x phone, and waited for the frame, every 5 s) | ~10% of the main thread in a CPU profile (phone-sized page, CPU x4), walking or fighting -> not in the profile; 2.5 ms against 25 ms + the frame's wait (`mp-wdsample`) | #808, v2.3.3068 |
-| Pixi's draw list rebuilt from the whole scene every frame.  Measured (a probe on every render group's `structureDidChange`, unminified main): EVERY frame rebuilds, standing in Brotown, walking and fighting -- ~25 places change the scene's structure each frame (effects added and removed, pooled sprites shown and hidden, shadows, ground pieces streaming in, the depth sort's moves between layers and its zIndex keys, the minimap's marks, the buildings' life, one Graphics in the ground that fails Pixi's check every frame) | 0.4-1.2 ms a frame on the test machine, ~600-900 containers walked (the HUD layer ~216 of them); ~5% of a fight's CPU profile at x4 | sized, not done.  Stopping the triggers one by one cannot win: any one left rebuilds everything.  Render groups would confine a rebuild to its own layer, but a group under the camera has the camera's move applied on the GPU in 32-bit floats -- the same picture, not the same bytes (an edge pixel can land on its neighbour's texel).  The safe part is the HUD layer as its own group (no camera, an identity transform: byte-identical) once the minimap stops toggling its marks every frame -- ~25-35% of each rebuild |
+| Pixi's draw list rebuilt from the whole scene every frame (the owner's yes to render groups, 2026-10-06, a 1-px rounding shift accepted).  Measured (a probe on every render group's `structureDidChange`, unminified main): EVERY frame rebuilds, standing in Brotown, walking and fighting -- ~25 places change the scene's structure each frame (effects added and removed, pooled sprites shown and hidden, shadows, ground pieces streaming in, the depth sort's moves between layers and its zIndex keys, the minimap's marks, the buildings' life, one Graphics in the ground that fails Pixi's check every frame) | 0.4-1.2 ms a frame on the test machine, ~600-900 containers walked (the HUD layer ~216 of them); ~5% of a fight's CPU profile at x4 | sized, not done.  Stopping the triggers one by one cannot win: any one left rebuilds everything.  Render groups would confine a rebuild to its own layer, but a group under the camera has the camera's move applied on the GPU in 32-bit floats -- the same picture, not the same bytes (an edge pixel can land on its neighbour's texel).  The safe part is the HUD layer as its own group (no camera, an identity transform: byte-identical) once the minimap stops toggling its marks every frame -- ~25-35% of each rebuild |
 
 ## All of it together (2026-10-06)
 

@@ -1698,7 +1698,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   _bufBytes: function _bufBytes(buf) {
     return buf ? buf.length * (buf.numberOfChannels || 1) * 4 : 0;
   },
-  /* ═══ v2.3.3061: HOW MUCH SOUND IS HELD, DECODED ═══
+  /* ═══ v2.3.3075: HOW MUCH SOUND IS HELD, DECODED ═══
      An AudioBuffer is raw float32 PCM: a 2 MB mp3 is ~40 MB of it.  Measured
      in the Wheel's Brotown (docs/MEMORY-PLAN.md): 89 MB held, 65 buffers, the
      old town's track alone 40 MB -- none of it counted by __btTex.  The three
