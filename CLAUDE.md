@@ -868,7 +868,7 @@ remnant to migrate server-side, not a mode to preserve.
     - other players: a `player_jump` relay (no worker change), `other._jump`;
     - test-world-core "jumping", `mp-jump` (`?jumpms=` for a slow machine):
       docs/specs/jumping.md.  Not yet: jumping over attacks (the worker's).
-    - since v2.3.3073 a TAP ON THE RIGHT STICK JUMPS, the button put away (the
+    - since v2.3.3087 a TAP ON THE RIGHT STICK JUMPS, the button put away (the
       owner: "prioritize other contextual uses for the tap instead of jump
       first if any apply"): only a tap the world's "empty space" line got
       (`S._tapEmptySeq`) with no job on the right side (`rightTapBusy` in

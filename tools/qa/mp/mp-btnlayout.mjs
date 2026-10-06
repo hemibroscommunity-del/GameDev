@@ -137,7 +137,7 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
   const P = await H.newPlayer(browser, {
     name: 'Lay' + phone.width, wsPort, webPort,
     viewport: { width: phone.width, height: phone.height }, touch: true,
-    query: 'jumpbtn',   /* v2.3.3073: the jump button is drawn only with ?jumpbtn */
+    query: 'jumpbtn',   /* v2.3.3087: the jump button is drawn only with ?jumpbtn */
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);

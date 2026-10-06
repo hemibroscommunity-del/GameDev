@@ -1,4 +1,4 @@
-/* ═══ A TAP ON THE RIGHT STICK JUMPS, LAST (v2.3.3073) ═══
+/* ═══ A TAP ON THE RIGHT STICK JUMPS, LAST (v2.3.3087) ═══
  *
  * The owner: "Try moving jump as tap on right joystick but prioritize other
  * contextual uses for the tap instead of jump first if any apply"

@@ -130,7 +130,7 @@ async function shotLuma(P) {
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Emberbro', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel', query: 'jumpbtn' /* v2.3.3073: its fight's jumps are the button's */ });
+  const P = await H.newPlayer(browser, { name: 'Emberbro', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel', query: 'jumpbtn' /* v2.3.3087: its fight's jumps are the button's */ });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push({ t: Date.now(), kind: 'pageerror', m: String((e && e.stack) || (e && e.message) || e).slice(0, 600) }));
   P.page.on('console', (m) => {

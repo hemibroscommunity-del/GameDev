@@ -194,7 +194,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     name: 'Skinner', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 3,
     /* a jump long enough to read in the air on a page drawing a few frames a
        second (mp-jump's habit; 560 ms in the game) */
-    query: 'jumpms=1800&jumpbtn',   /* v2.3.3073: the jump button is drawn only with ?jumpbtn */
+    query: 'jumpms=1800&jumpbtn',   /* v2.3.3087: the jump button is drawn only with ?jumpbtn */
   });
   /* Closed at the end, whatever happens: a 3x phone page left running keeps
      drawing the game in the background, and every scenario after it starves
