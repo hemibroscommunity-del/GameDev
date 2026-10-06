@@ -1710,6 +1710,22 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   _bufBytes: function _bufBytes(buf) {
     return buf ? buf.length * (buf.numberOfChannels || 1) * 4 : 0;
   },
+  /* ═══ v2.3.3075: HOW MUCH SOUND IS HELD, DECODED ═══
+     An AudioBuffer is raw float32 PCM: a 2 MB mp3 is ~40 MB of it.  Measured
+     in the Wheel's Brotown (docs/MEMORY-PLAN.md): 89 MB held, 65 buffers, the
+     old town's track alone 40 MB -- none of it counted by __btTex.  The three
+     places a decoded buffer is kept: the samples (effects, ambience, the
+     footsteps), the zone tracks' cache, the session track.  `n` is how many.
+     Read by the crash reports' memory note (crashTrap) and mp-memledger. */
+  decodedMB: function decodedMB() {
+    var b = 0, n = 0, k;
+    try {
+      for (k in (this._samples || {})) { if (this._samples[k]) { b += this._bufBytes(this._samples[k]); n++; } }
+      for (k in (this._zoneMusicBuffers || {})) { if (this._zoneMusicBuffers[k]) { b += this._bufBytes(this._zoneMusicBuffers[k]); n++; } }
+      if (this._globalMusicBuffer) { b += this._bufBytes(this._globalMusicBuffer); n++; }
+    } catch (e) { /* a half-built audio state */ }
+    return { mb: Math.round(b / 104857.6) / 10, n: n };
+  },
   _touchZoneMusic: function _touchZoneMusic(url) {
     if (!this._zoneMusicLru) this._zoneMusicLru = [];
     var at = this._zoneMusicLru.indexOf(url);
