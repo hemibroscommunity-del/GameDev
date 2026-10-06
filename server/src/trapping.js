@@ -1,4 +1,4 @@
-/* ═══ v2.3.3111: PET TRAPPING — ARM A TRAP, THEN KILL IT ═══
+/* ═══ v2.3.3120: PET TRAPPING — ARM A TRAP, THEN KILL IT ═══
  * Plan: docs/PET-TRAPPING-PLAN.md (every choice the owner's, 2026-10-06).
  * Spec: docs/specs/trapping.md.  The pets record is petbook.js.
  *
@@ -192,7 +192,7 @@ export function trapsIn(ps) {
   return Math.max(0, n);
 }
 
-/** v2.3.3111: what a FIRST connect may not bring from the browser.  The join
+/** v2.3.3120: what a FIRST connect may not bring from the browser.  The join
  *  bootstrap (join.js) takes the client's life skills on a player's very first
  *  join; a forged Trapping 99 would skip the rule that decides what can be
  *  caught, and forged pets would move into the record and, once pets trade,
@@ -287,6 +287,9 @@ export const trappingMethods = {
       const r = this._addLifeSkillXp(ps, 'woodworking', xp);
       leveled = !!(r && r.leveled); newLevel = (r && r.newLevel) || 0;
     } catch (e) { /* the traps are made; an XP fault must not undo them */ }
+    /* v2.3.3121: Beastmaster Bro's first quest counts traps made (quests.js
+       `traps_made`, data.js beast_1) -- all of them, one request or many */
+    try { this._creditQuestObjective(session.id, 'traps_made', null, null, count); } catch (e) { /* a quest must never undo the traps */ }
     this._saveRpg(session.id, ps);
     reply({ made: count, log, xp, leveled, newLevel, traps: trapsIn(ps) });
     if (ws) this._sendPlayerState(ws, session.id);
@@ -416,6 +419,12 @@ export const trappingMethods = {
         const r = this._addLifeSkillXp(ps, 'trapping', xp);
         leveled = !!(r && r.leveled); newLevel = (r && r.newLevel) || 0;
       } catch (e) { xp = 0; /* the roll stands; an XP fault must not undo a catch */ }
+      /* v2.3.3121: Beastmaster Bro's quests count a trap SPRUNG (every roll,
+         `trap_roll`, beast_2) and a pet caught (`catch`, beast_4) */
+      try {
+        this._creditQuestObjective(pid, 'trap_roll');
+        if (caught && pet) this._creditQuestObjective(pid, 'catch');
+      } catch (e) { /* a quest must never undo a roll */ }
       this._saveRpg(pid, ps);
       tell({ sprung: true, caught, shakes, pet, chance, stretch, xp, leveled, newLevel, tries, traps: trapsIn(ps) });
       if (pet) this._petbookSend(pid);

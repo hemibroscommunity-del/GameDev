@@ -1,5 +1,5 @@
 /* ═══ v2.3.1130: SERVER-VALIDATED PET CAPTURE (handoff backlog item G;
- * spec in docs/specs/pets.md) -- RETIRED v2.3.3111 ═══
+ * spec in docs/specs/pets.md) -- RETIRED v2.3.3120 ═══
  *
  * What is left here is the loot vacuum's range and the retired message's
  * answer.  Pets are caught by arming a trap and killing the monster
@@ -34,7 +34,7 @@ export const PETS = {
    * to ~130 px from the player instead (<=50 px follow orbit +
    * PET_LOOT_RADIUS 80 in src/data/gameSystems.js), so +80 keeps the
    * same slack without opening cross-screen theft.
-   * v2.3.3111: "an active pet" is the record's (petbook.js _petbookActive). */
+   * v2.3.3120: "an active pet" is the record's (petbook.js _petbookActive). */
   VACUUM_RANGE: 240,
 };
 
@@ -45,7 +45,7 @@ export const petMethods = {
     try { ws.send(JSON.stringify({ type, payload })); } catch (e) {}
   },
 
-  /* v2.3.3111: retired.  An old client's capture is answered, never acted on
+  /* v2.3.3120: retired.  An old client's capture is answered, never acted on
      -- the monster lives, the trap stays in the bag, nothing is paid. */
   _handlePetCapture(session, payload) {
     if (!session || !session.id) return;

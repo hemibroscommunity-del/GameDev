@@ -1,4 +1,4 @@
-/* ═══ PET TRAPPING ON A PHONE (v2.3.3111) ═══
+/* ═══ PET TRAPPING ON A PHONE (v2.3.3120) ═══
  *
  * The owner: "your trapping level governs what level monster you can capture.
  * Catching a pet is a rare activity with very little success rate. The best
@@ -204,12 +204,14 @@ async function steps({ P, wsPort, rec, errors, me }) {
   const xp0 = await H.readState(P, (S) => ((S.rpg.lifeSkills || {}).trapping || {}).xp || 0);
   await H.devOp(wsPort, 'trapping', me, { next: 'catch', kill: m.id });
   await P.page.waitForFunction(() => { const t = window.__btTrap && window.__btTrap(); return t && t.rolls > 0; }, null, { timeout: 5000 }).catch(() => {});
+  /* v2.3.3121: what sprang, read AT ONCE -- the spring is drawn for ~2.6 s,
+     and on a slow run the screenshots below outlast it (springs back to 0) */
+  const sprung = await P.page.evaluate(() => window.__btTrap && window.__btTrap());
   await P.page.waitForTimeout(400);
   const hidden = await P.page.evaluate(() => ({ d: window._pixiRenderer.petDrawn(), t: window.__btTrap() }));
   rec.ok('while the trap shakes, the new pet is still in it (not yet beside you)', !hidden.d || hidden.d.visible === false, hidden);
   await P.page.waitForTimeout(500);
   await shot(P, 'shaking');
-  const sprung = await P.page.evaluate(() => window.__btTrap && window.__btTrap());
   rec.ok('the trap springs where it fell: drawn, three shakes, a catch, one trap used',
     !!sprung && sprung.springs === 1 && sprung.last && sprung.last.caught === true && sprung.last.shakes === 3 && sprung.traps === 11, sprung);
   const card = await P.page.waitForSelector('[data-trap-card]', { timeout: 5000 }).then(() => true).catch(() => false);

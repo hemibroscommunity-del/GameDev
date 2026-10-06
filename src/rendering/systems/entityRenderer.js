@@ -101,10 +101,10 @@ import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.
 import { jumpActive, jumpFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
-import { activePet } from '../../game/petBook.js'; /* v2.3.3111: the pet out with you is the record's */
-import { petFrames, petSideFaces, petArtHeight } from '../petSprites.js'; /* v2.3.3111: the pet sheet */
-import { PET_ART, petTint, petLevelScale, petDisplayName, petKindOfOld, worldSafeText } from '../../data/trapping.js'; /* v2.3.3111 */
-const PET_DRAW_K = 0.85;   /* v2.3.3111: see _updatePet */
+import { activePet } from '../../game/petBook.js'; /* v2.3.3120: the pet out with you is the record's */
+import { petFrames, petSideFaces, petArtHeight } from '../petSprites.js'; /* v2.3.3120: the pet sheet */
+import { PET_ART, petTint, petLevelScale, petDisplayName, petKindOfOld, worldSafeText } from '../../data/trapping.js'; /* v2.3.3120 */
+const PET_DRAW_K = 0.85;   /* v2.3.3120: see _updatePet */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
 import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2841: the staff kick + where its crystal is */
@@ -14939,7 +14939,7 @@ export class EntityRenderer {
      involved (Text falls back to the system emoji font), so this does not
      touch the preload manifest. */
   _updatePet(S, now) {
-    /* ═══ v2.3.3111: DRAWN FROM THE PET SHEET ═══
+    /* ═══ v2.3.3120: DRAWN FROM THE PET SHEET ═══
        The pet out with you is the pets RECORD's (game/petBook.js activePet:
        the worker's pets_state; the old lifeSkills pair only against an old
        worker), drawn from the pet sheet (petSprites.js) -- the monster it was
@@ -15033,7 +15033,7 @@ export class EntityRenderer {
     const d = this.petDisplay;
     if (!d) return null;
     return { visible: !!d.visible, x: d.x, y: d.y,
-      /* v2.3.3111: drawn from the pet sheet -- which kind, which frame */
+      /* v2.3.3120: drawn from the pet sheet -- which kind, which frame */
       kind: d._kind || null, frame: d._frame, side: !!d._side, flip: d._flip,
       tint: d._sprite ? d._sprite.tint : null,
       scale: d._sprite ? Math.abs(d._sprite.scale.x) : null,

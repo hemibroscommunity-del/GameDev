@@ -1,4 +1,4 @@
-/* ═══ v2.3.3111: THE PET SHEET ═══
+/* ═══ v2.3.3120: THE PET SHEET ═══
  * Plan: docs/PET-TRAPPING-PLAN.md, "Art and memory".  Every pet is drawn from
  * one small picture, public/sprites/pets/pet-sheet.png, made from the
  * monsters' own walk art by tools/make_pet_sheet.py (its layout:
@@ -16,7 +16,7 @@
 import { Assets, Rectangle, Texture } from 'pixi.js';
 import { PET_SHEET } from '../data/petSheet.js';
 
-const URL = PET_SHEET.url + '?v=2.3.3111';
+const URL = PET_SHEET.url + '?v=2.3.3120';
 let _tex = null;
 let _loading = null;
 const _frames = Object.create(null);   /* base + ':' + dir -> Texture[] */

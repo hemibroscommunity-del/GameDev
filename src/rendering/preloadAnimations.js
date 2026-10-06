@@ -34,7 +34,7 @@
 
 import { preloadLootIcons } from './lootIcons.js'; /* v2.3.2771 */
 import { preloadNodeLabelIcons } from './nodeLabels.js'; /* v2.3.3040 */
-import { loadPetSheet } from './petSprites.js'; /* v2.3.3111: every pet's frames, one small sheet */
+import { loadPetSheet } from './petSprites.js'; /* v2.3.3120: every pet's frames, one small sheet */
 import { preloadDailyChest } from './chestPreload.js'; /* v2.3.2820: the daily chest's claim window */
 import { variantSpritesFor, unloadVariantSprites } from './monsterVariantSprites.js';
 import { loadSlimeSprites } from './slimeSprites.js';
@@ -359,7 +359,7 @@ export async function preloadWorldAnimations() {
        failure of the two.  If NPC art ever grows past a handful of figures,
        move it to preloadZoneAssets and free it on zone exit. */
     npcArt: loadNpcSprites(),
-    /* ═══ v2.3.3111: the pet sheet (petSprites.js) ═══
+    /* ═══ v2.3.3120: the pet sheet (petSprites.js) ═══
        Every pet's small walking frames on one 768 x 448 picture (1.31 MB
        decoded), made from the monsters' own walk art by
        tools/make_pet_sheet.py.  GLOBAL: a pet goes everywhere you go.  The

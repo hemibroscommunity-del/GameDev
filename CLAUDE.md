@@ -1444,7 +1444,7 @@ remnant to migrate server-side, not a mode to preserve.
       screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
     - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
       docs/specs/wheel-doors.md.
-  - Since v2.3.3111 PET TRAPPING -- the owner: "your trapping level governs
+  - Since v2.3.3120 PET TRAPPING -- the owner: "your trapping level governs
     what level monster you can capture ... The best success rate for the
     lowest tier monster should be about 1%. And each trap should cost at least
     1 wood", "leave the odds exactly the same for everyone", "let people name
@@ -1470,7 +1470,22 @@ remnant to migrate server-side, not a mode to preserve.
       Evolve, Enchant, or sample "Frost Fox"; `pet_capture` answers 'retired';
     - caps `trapping` / `trapcraft` / `petbook` (lower case, kill switches;
       `caps.pets` gone); admin lever `/dev/trapping`; `trapping` suite,
-      `mp-trapping`: docs/specs/trapping.md.)
+      `mp-trapping`: docs/specs/trapping.md;
+    - since v2.3.3121 (Phase 2) PETS LEVEL UP: the pet out with you earns a
+      tenth of each kill's combat XP (`_petbookAddXp`, combat.js's XP loop;
+      ⌈25 x 1.08^(lv-1)⌉ a level), never past your Trapping level, in memory
+      and written once a minute, on disconnect or at a level-up, told on the
+      kill's `combat_credit` (`pet`); the Pets page's XP bars and JOURNAL (all
+      18 kinds, the uncaught their shapes); BEASTMASTER BRO east of the
+      Woodworker's steps (`WHEEL_TOWNSFOLK`, NOT "Beastmaster Kai": a dormant
+      chain keys on that name; art by `tools/make_beastmaster.py` until the
+      owner's, prompt in docs/ART-WISHLIST.md) with beast_1..4 -- make 3 traps,
+      spring 5, reach Trapping 6, catch a pet -- checked by the worker's new
+      objective types (`traps_made`, `trap_roll`, `skill`, `catch`; quests.js
+      `_questObjectiveMet`), gold and box traps, no XP to place; his line waits
+      on tut_1 (`after`), walking past him never stops you for his progress
+      (`quietProgress`), and a tap once it is done opens the Pets page; caps
+      `petlevels` / `beastmaster`; `trapping` §16-17, `mp-beastmaster`.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

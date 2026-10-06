@@ -1,6 +1,6 @@
 # Server-Validated Pet Capture — v2.3.1130 (+ loot vacuum v2.3.1200)
 
-> **v2.3.3111: the capture below is RETIRED.** Pets are caught by arming a
+> **v2.3.3120: the capture below is RETIRED.** Pets are caught by arming a
 > trap and killing the monster, and kept in their own record, `pets:<pid>`:
 > see `docs/specs/trapping.md` and `docs/PET-TRAPPING-PLAN.md`. `pet_capture`
 > now answers `retired` and touches nothing; `_sanitizePets` and

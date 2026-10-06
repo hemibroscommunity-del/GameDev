@@ -1,4 +1,4 @@
-/* ═══ v2.3.3111: PET TRAPPING ON THE PHONE ═══
+/* ═══ v2.3.3120: PET TRAPPING ON THE PHONE ═══
  * Plan: docs/PET-TRAPPING-PLAN.md.  Spec: docs/specs/trapping.md.
  *
  * The worker decides everything (server/src/trapping.js, petbook.js): every
@@ -31,7 +31,7 @@
  * Traps tab, `petbook` for the Pets page.
  */
 import {
-  TRAPPING, trapChance, trapStretch, fmtTrapChance, TRAP_WORDS, petDisplayName, petKindName,
+  TRAPPING, trapChance, trapStretch, fmtTrapChance, TRAP_WORDS, petDisplayName, petKindName, worldSafeText,
 } from '@/data/trapping.js';
 import { ZONES } from '@/data/zones.js';
 import { NML_CENTRE } from '@/data/noMansLandRings.js';
@@ -55,6 +55,10 @@ export function springMs(shakes) {
 const PENDING_MS = 2500;
 
 export function trappingOn(S) { return !!(S && S._serverCaps && S._serverCaps.trapping); }
+/* v2.3.3121: Beastmaster Bro and his quests (beast_1..beast_4) -- the worker
+   advertises them when its QUEST_REWARDS has them; `beastmaster: false` hides
+   him (BroTown.jsx _spawnWheelNpcs). */
+export function beastmasterOn(S) { return !!(S && S._serverCaps && S._serverCaps.beastmaster); }
 export function trapcraftOn(S) { return !!(S && S._serverCaps && S._serverCaps.trapcraft); }
 
 export function trapState(S) {
@@ -284,6 +288,37 @@ export function onPetsState(S, p) {
   } else if (p.op === 'active') {
     const pet = S._petBook.active ? S._petBook.list.find((q) => q.id === S._petBook.active) : null;
     say(S, pet ? petDisplayName(pet) + ' is with you' : 'Pet put away', '#7EE0A8');
+  }
+  bump(S);
+}
+
+/* ═══ v2.3.3121: PET XP (Phase 2) ═══
+ * The worker pays the pet out with you a tenth of each kill's combat XP, up to
+ * your Trapping level (server/src/petbook.js _petbookAddXp), and says so on
+ * that kill's combat_credit: `pet: {id, lv, xp, gain, leveled, cap}`.  Its
+ * numbers are written over the copy here; nothing is predicted.  A level-up
+ * says so over the pet. */
+export function petlevelsOn(S) { return !!(S && S._serverCaps && S._serverCaps.petlevels); }
+export function onPetXp(S, g) {
+  if (!S || !g || typeof g.id !== 'string') return;
+  const book = S._petBook;
+  const pet = book && Array.isArray(book.list) ? book.list.find((q) => q && q.id === g.id) : null;
+  if (!pet) return;
+  pet.lv = Math.max(1, Math.floor(Number(g.lv) || pet.lv || 1));
+  pet.xp = Math.max(0, Math.floor(Number(g.xp) || 0));
+  S._petBookRev = ((S._petBookRev || 0) + 1) % 1e9;
+  S._petXpGained = (S._petXpGained || 0) + Math.max(0, Math.floor(Number(g.gain) || 0));
+  if (g.leveled > 0) {
+    S._petLevelUps = (S._petLevelUps || 0) + 1;
+    try {
+      const P = S.player;
+      const x = Number.isFinite(S._petX) ? S._petX : (P ? P.x : 0);
+      const y = Number.isFinite(S._petY) ? S._petY : (P ? P.y : 0);
+      const said = worldSafeText(petDisplayName(pet)) + ' is Lv ' + pet.lv + '!';
+      S._petLevelSaid = said;   /* for the QA scenario (mp-beastmaster) */
+      pushDmgPopup(S, x, y - 40, said, '#7EE0A8');
+      BT_AUDIO.play('level-up', { vol: 0.3 });
+    } catch (e) { /* popup and sound only */ }
   }
   bump(S);
 }

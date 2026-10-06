@@ -221,14 +221,18 @@ export const devToolsMethods = {
    * worth of gear into a live shared economy from a debug button is a
    * different feature with different consequences.  /dev/kit is the one that
    * hands out equipment, and it says so. */
-  _devFinishQuests(playerId) {
+  _devFinishQuests(playerId, body) {
     const t = this._devTarget(playerId);
     if (!t) return { ok: false, error: 'player not online' };
     const ps = t.ps;
     if (!ps._quests) ps._quests = Object.create(null);   /* rule 4 */
     const table = this._QUEST_REWARDS_DATA();
     const finished = [];
+    /* v2.3.3121: `except`, a quest-id prefix left as it is -- 'beast_' keeps
+       Beastmaster Bro's line for mp-beastmaster to play from its start */
+    const except = body && typeof body.except === 'string' && body.except ? body.except : null;
     for (const qid of Object.keys(table)) {
+      if (except && qid.startsWith(except)) continue;
       if (ps._quests[qid] === 'turnedIn') continue;
       ps._quests[qid] = 'turnedIn';
       finished.push(qid);
@@ -338,7 +342,7 @@ export const devToolsMethods = {
     return { ok: true, zone: z, cleared };
   },
 
-  /* ═══ v2.3.3111: PET TRAPPING'S TEST LEVERS (trapping.js) ═══
+  /* ═══ v2.3.3120: PET TRAPPING'S TEST LEVERS (trapping.js) ═══
      At 1% at best, looking at a catch means a hundred kills -- so, for the
      owner's test kit and the QA scenario (mp-trapping), the levers a catch
      needs, on this same admin-key surface (no new socket message):
@@ -371,10 +375,17 @@ export const devToolsMethods = {
       const m = (this.monsters[ps.z] || []).find((x) => x && x.id === b.kill);
       if (!m || !m.alive) { out.ok = false; out.error = 'no such live monster in your zone'; }
       else {
+        /* v2.3.3121: `xp`, what this one kill pays in combat XP -- a pet's
+           level-up (a tenth of it) in one kill rather than twenty-five
+           (mp-beastmaster).  Put back after, unless the death is deferred (a
+           slime's swell pays at its blast). */
+        const keepXp = m.xp;
+        if (b.xp != null) m.xp = clampInt(b.xp, 1, 1000000);
         m.dmgByPlayer = Object.create(null);
         m.dmgByPlayer[playerId] = m.maxHp || 1;
         m.hp = 0;
         this._resolveMonsterKill(ps.z, m, playerId, ps, 'dev');
+        if (b.xp != null && !(m._burstUntil > Date.now())) m.xp = keepXp;
         out.killed = m.id;
       }
     }
@@ -404,9 +415,9 @@ export const devToolsMethods = {
     if (path === '/dev/unlock') result = this._devUnlockZones(playerId);
     else if (path === '/dev/kit') result = this._devKit(playerId, body);
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
-    else if (path === '/dev/quests') result = this._devFinishQuests(playerId);   /* v2.3.2277 */
+    else if (path === '/dev/quests') result = this._devFinishQuests(playerId, body);   /* v2.3.2277; v2.3.3121: + except */
     else if (path === '/dev/clearwave') result = this._devClearWave(playerId);   /* v2.3.3016 */
-    else if (path === '/dev/trapping') result = this._devTrapping(playerId, body);   /* v2.3.3111 */
+    else if (path === '/dev/trapping') result = this._devTrapping(playerId, body);   /* v2.3.3120 */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

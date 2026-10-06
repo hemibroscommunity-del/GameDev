@@ -1560,7 +1560,7 @@ export const combatMethods = {
          into this function with the same killer once the blast lands, so
          credit, loot and XP are unchanged. `_burstDone` is what keeps that
          second call from deferring forever. */
-      /* v2.3.3111: a trap's mark is judged at the KILLING BLOW (trapping.js),
+      /* v2.3.3120: a trap's mark is judged at the KILLING BLOW (trapping.js),
          stamped before a slime's swell can defer the kill 1.6 s past it --
          and not again on the deferred call, which replays this blow. */
       if (!m._burstDone) m._trapJudgeAt = Date.now();
@@ -1689,6 +1689,13 @@ export const combatMethods = {
         const xpForRecipient = Math.round((m.xp || 0) * share * this._flagNum('xp_mult', 1, LIVEOPS.XP_MULT_MIN, LIVEOPS.XP_MULT_MAX));
         if (xpForRecipient <= 0) continue;
         const { leveled, levelsGained, newLevel } = this._addCombatXp(recipPs, xpForRecipient);
+        /* v2.3.3121: a tenth of it to the pet out with them, up to their
+           Trapping level (petbook.js _petbookAddXp: in memory, written at
+           most once a minute or on a level-up).  Told to the phone on this
+           kill's combat_credit below.  Inside a try: a pet must never break
+           a kill. */
+        let petGain = null;
+        try { petGain = this._petbookAddXp(rid, recipPs, xpForRecipient, Date.now()); } catch (e) { petGain = null; }
         // Level-up restores all three pools to max (mirrors the client's
         // existing level-up restore at BroTown.jsx:8973 / 8504 / 9851).
         // Also recompute maxes since level bumps the maxHp formula
@@ -1735,6 +1742,7 @@ export const combatMethods = {
                 leveled,
                 levelsGained,
                 newLevel,
+                ...(petGain ? { pet: petGain } : {}),   /* v2.3.3121: {id, lv, xp, gain, leveled, cap} */
               },
             }));
           } catch (e) {}
@@ -1800,7 +1808,7 @@ export const combatMethods = {
         }
       }
 
-      /* ═══ v2.3.3111: THE TRAPS SPRING (trapping.js) ═══
+      /* ═══ v2.3.3120: THE TRAPS SPRING (trapping.js) ═══
          After every payout above, which a capture never touches, and before
          the contributions are cleared: each player who armed this monster and
          did at least 5% of its damage (the gold rule's shares) rolls for

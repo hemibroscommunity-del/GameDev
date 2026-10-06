@@ -52,12 +52,14 @@ import { LIFE_SKILL_XP as CLIENT_LIFE_SKILL_XP } from '../../src/data/lifeSkills
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import { NML as CLIENT_NML, NML_CENTRE as CLIENT_NML_CENTRE, nmlLevelAt as clientNmlLevelAt } from '../../src/data/noMansLandRings.js'; /* v2.3.3058 */
 import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.js';
-/* v2.3.3111: pet trapping -- the button's odds, the Traps tab, the kinds, the name rule */
+/* v2.3.3120: pet trapping -- the button's odds, the Traps tab, the kinds, the name rule */
 import { TRAPPING as SRV_TRAPPING, trapChance as srvTrapChance, trapRollXp as srvTrapRollXp, trapCatchXp as srvTrapCatchXp } from '../src/trapping.js';
-import { PET_KINDS as SRV_PET_KINDS, PET_NAME as SRV_PET_NAME, cleanPetName as srvCleanPetName, petKindOf as srvPetKindOf, PETBOOK as SRV_PETBOOK } from '../src/petbook.js';
+import { PET_KINDS as SRV_PET_KINDS, PET_NAME as SRV_PET_NAME, cleanPetName as srvCleanPetName, petKindOf as srvPetKindOf, PETBOOK as SRV_PETBOOK,
+  petXpToNext as srvPetXpToNext, petGainXp as srvPetGainXp } from '../src/petbook.js';
 import { TRAPPING as CLIENT_TRAPPING, trapChance as clientTrapChance, trapRollXp as clientTrapRollXp, trapCatchXp as clientTrapCatchXp,
   PET_KINDS as CLIENT_PET_KINDS, PET_NAME as CLIENT_PET_NAME, cleanPetName as clientCleanPetName, petKindOfMonster as clientPetKindOf,
-  PET_BIG_AT as CLIENT_PET_BIG_AT, TRAP_WORDS as CLIENT_TRAP_WORDS } from '../../src/data/trapping.js';
+  PET_BIG_AT as CLIENT_PET_BIG_AT, TRAP_WORDS as CLIENT_TRAP_WORDS,
+  PET_XP as CLIENT_PET_XP, petXpToNext as clientPetXpToNext, petGainXp as clientPetGainXp } from '../../src/data/trapping.js';
 import { WHEEL_CENTRE as SRV_WHEEL_CENTRE } from '../src/wheelspawns.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
@@ -1603,7 +1605,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('no man\'s land: the same level at every spot out to the gates', off.length === 0, off.slice(0, 4));
 }
 
-// ── v2.3.3111: PET TRAPPING (server trapping.js / petbook.js, client
+// ── v2.3.3120: PET TRAPPING (server trapping.js / petbook.js, client
 // src/data/trapping.js).  The TRAP button shows the odds and greys itself
 // out from the client's copy, the Traps tab lists the logs, the Pets page
 // refuses a name before sending it; the worker decides all of it.  A drift
@@ -1651,6 +1653,16 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     'pets-full', 'catch-cap', 'too-fast', 'share', 'bad-log', 'no-logs', 'no-pet', 'bad-name', 'confirm'];
   check('trapping: every refusal the worker sends has words on the phone', codes.every((c) => typeof CLIENT_TRAP_WORDS[c] === 'string' && CLIENT_TRAP_WORDS[c].length > 0),
     codes.filter((c) => !CLIENT_TRAP_WORDS[c]));
+  /* v2.3.3121: pet XP -- the bar the phone draws is the worker's rule */
+  check('pets: the same XP share and curve (a tenth of the kill, 25 at Lv 1, x1.08)',
+    CLIENT_PET_XP.SHARE === SRV_PETBOOK.XP_SHARE && CLIENT_PET_XP.BASE === SRV_PETBOOK.XP_BASE && CLIENT_PET_XP.GROWTH === SRV_PETBOOK.XP_GROWTH,
+    { client: CLIENT_PET_XP, server: { SHARE: SRV_PETBOOK.XP_SHARE, BASE: SRV_PETBOOK.XP_BASE, GROWTH: SRV_PETBOOK.XP_GROWTH } });
+  const xpOff = [];
+  for (let lv = 1; lv <= 120; lv++) if (srvPetXpToNext(lv) !== clientPetXpToNext(lv)) xpOff.push(lv);
+  for (const [lv, xp, gain, cap] of [[1, 0, 24, 10], [1, 0, 25, 10], [1, 20, 500, 10], [4, 3, 9999, 6], [6, 0, 50, 6], [9, 7, 3, 5], [1, 0, 0, 1], [2, 1, 1e6, 99]]) {
+    if (JSON.stringify(srvPetGainXp(lv, xp, gain, cap)) !== JSON.stringify(clientPetGainXp(lv, xp, gain, cap))) xpOff.push([lv, xp, gain, cap]);
+  }
+  check('pets: the same XP to the next level at every level to 120, and the same levelling to the Trapping cap', xpOff.length === 0, xpOff);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

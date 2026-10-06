@@ -1,4 +1,4 @@
-/* ═══ v2.3.3111: PET TRAPPING — THE PHONE'S COPY OF THE TABLES ═══
+/* ═══ v2.3.3120: PET TRAPPING — THE PHONE'S COPY OF THE TABLES ═══
  * Plan: docs/PET-TRAPPING-PLAN.md.  Spec: docs/specs/trapping.md.
  *
  * The worker decides everything (server/src/trapping.js, petbook.js): whether
@@ -124,7 +124,7 @@ export function petKindOfMonster(m) {
   }
 }
 
-/** The kind an OLD pet (lifeSkills.pets, before v2.3.3111) most likely was --
+/** The kind an OLD pet (lifeSkills.pets, before v2.3.3120) most likely was --
  *  the worker's oldPetKind (server/src/petbook.js), for drawing an old pet
  *  against an old worker.  Its element names its land; the archetype splits
  *  the Poison Forest's two and stands in when the element was lost. */
@@ -211,6 +211,43 @@ export function petEffectiveLevel(pet, trapLvl) {
   const lv = Math.max(1, Math.floor(Number(pet && pet.lv) || 1));
   const T = Math.max(1, Math.floor(Number(trapLvl) || 1));
   return Math.min(lv, T);
+}
+
+/* ═══ v2.3.3121: PET XP — the worker's rule exactly (server/src/petbook.js) ═══
+ * The pet out with you earns a tenth of the combat XP each kill pays you, up to
+ * your Trapping level; nothing builds up at that level.  The worker decides it
+ * (a kill's combat_credit carries `pet: {id, lv, xp, gain, leveled, cap}`); the
+ * phone only draws the bar, so this copy is for the bar's length and the words.
+ * mirror-audit holds it to the worker's. */
+export const PET_XP = Object.freeze({ SHARE: 0.1, BASE: 25, GROWTH: 1.08 });
+export function petXpToNext(lv) {
+  const L = Math.max(1, Math.floor(Number(lv) || 1));
+  return Math.ceil(PET_XP.BASE * Math.pow(PET_XP.GROWTH, L - 1));
+}
+export function petGainXp(lv, xp, gain, cap) {
+  let L = Math.max(1, Math.floor(Number(lv) || 1));
+  let X = Math.max(0, Math.floor(Number(xp) || 0));
+  const C = Math.max(1, Math.floor(Number(cap) || 1));
+  if (L >= C) return { lv: L, xp: 0, leveled: 0 };
+  X += Math.max(0, Math.floor(Number(gain) || 0));
+  let leveled = 0;
+  while (L < C) {
+    const need = petXpToNext(L);
+    if (X < need) break;
+    X -= need; L++; leveled++;
+  }
+  if (L >= C) X = 0;
+  return { lv: L, xp: X, leveled };
+}
+
+/** The bar under a pet: how far to its next level, or why it is not moving. */
+export function petXpView(pet, trapLvl) {
+  const lv = Math.max(1, Math.floor(Number(pet && pet.lv) || 1));
+  const T = Math.max(1, Math.floor(Number(trapLvl) || 1));
+  if (lv >= T) return { capped: true, frac: 1, xp: 0, need: 0, words: lv > T ? 'Works at your Trapping level' : 'At your Trapping level' };
+  const need = petXpToNext(lv);
+  const xp = Math.max(0, Math.min(need, Math.floor(Number(pet && pet.xp) || 0)));
+  return { capped: false, frac: need > 0 ? xp / need : 0, xp, need, words: xp + ' / ' + need + ' XP' };
 }
 
 /* ═══ A NAME — the worker's rule exactly (server/src/petbook.js) ═══

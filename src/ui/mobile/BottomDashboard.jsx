@@ -49,7 +49,7 @@ import { JourneyPanel }      from './dash/JourneyPanel.jsx';
 import { MapPanel }          from './dash/MapPanel.jsx';
 import { SocialPanel }       from './dash/SocialPanel.jsx';
 import { MorePanel }         from './dash/MorePanel.jsx';
-import { PetsPanel }         from './dash/PetsPanel.jsx'; /* v2.3.3111 */
+import { PetsPanel }         from './dash/PetsPanel.jsx'; /* v2.3.3120 */
 import { StatsPanel }        from './dash/StatsPanel.jsx';
 import { SkillsPanel }       from './dash/SkillsPanel.jsx';
 import { EncyclopediaPanel } from './dash/EncyclopediaPanel.jsx';
@@ -438,7 +438,7 @@ const PANELS = {
      the wire-free client side; renaming ids resets nothing). */
   social:       { title: 'Friends',     Component: SocialPanel },
   more:         { title: 'More',        Component: MorePanel },
-  /* v2.3.3111: the Pets page (dash/PetsPanel.jsx): More -> Pets, and the
+  /* v2.3.3120: the Pets page (dash/PetsPanel.jsx): More -> Pets, and the
      farm's Pet House (docs/PET-TRAPPING-PLAN.md) */
   pets:         { title: 'Pets',        Component: PetsPanel },
   stats:        { title: 'Stats',       Component: StatsPanel },

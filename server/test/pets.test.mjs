@@ -1,6 +1,6 @@
 /* Pets -- what is left of v2.3.1130's capture, and the loot vacuum.
  *
- * v2.3.3111: the 20%-health capture is RETIRED (pets.js; the plan,
+ * v2.3.3120: the 20%-health capture is RETIRED (pets.js; the plan,
  * docs/PET-TRAPPING-PLAN.md).  Pets are caught by arming a trap and killing
  * the monster (trapping.js, test/trapping.test.mjs) and kept in their own
  * record, pets:<pid> (petbook.js).  This suite keeps what still lives here:
@@ -138,7 +138,7 @@ const lastReject = (w) => { const r = msgsOfType(w, 'loot_pickup_rejected'); ret
 
 check('state_sync advertises caps.petLoot', sync && sync.caps && sync.caps.petLoot === true, sync && sync.caps);
 
-// v2.3.3111: each gets an active pet in the RECORD (petbook.js).
+// v2.3.3120: each gets an active pet in the RECORD (petbook.js).
 giveActivePet('bp_pet_p');
 giveActivePet('bp_pet_new');
 ps.z = 'meadow'; ps.dead = false; ps.disconnected = false;

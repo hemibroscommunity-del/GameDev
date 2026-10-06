@@ -122,13 +122,13 @@ const legacyBlob = () => ({
     rpgCoins: 50,
   });
   const ps = room.playerState['bp_mig_b'];
-  /* v2.3.3111: a first connect brings NO pets from the browser at all now
+  /* v2.3.3120: a first connect brings NO pets from the browser at all now
      (trapping.js trapBootstrapGuard; the pets record, petbook.js, is the only
      list), which is stronger than the heal this section was written for: the
      corrupt shapes -- pets as an object, activePet as {} -- cannot reach the
      blob because nothing of the browser's pets does.  The other skills of the
      payload are healed and kept as before. */
-  check('bootstrap ingest: the corrupt payload never reaches the blob (no browser pets at all since v2.3.3111)',
+  check('bootstrap ingest: the corrupt payload never reaches the blob (no browser pets at all since v2.3.3120)',
     !(ps.lifeSkills.pets && !Array.isArray(ps.lifeSkills.pets)) && !((ps.lifeSkills.pets || []).length)
       && (ps.lifeSkills.activePet == null || typeof ps.lifeSkills.activePet !== 'object')
       && ps.lifeSkills.fishing && ps.lifeSkills.fishing.level === 2,

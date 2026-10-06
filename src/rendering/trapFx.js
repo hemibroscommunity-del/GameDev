@@ -1,4 +1,4 @@
-/* ═══ v2.3.3111: THE TRAP, DRAWN IN CODE ═══
+/* ═══ v2.3.3120: THE TRAP, DRAWN IN CODE ═══
  * Plan: docs/PET-TRAPPING-PLAN.md ("The shakes, the snap and the break are
  * drawn in code, with no new pictures").  The game's rules are
  * src/game/trapping.js; this only draws what it holds on S._trap:

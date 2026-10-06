@@ -3,7 +3,7 @@ import { TRAPPING } from '@/data/trapping.js';
 import { thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';
 
-/* ═══ v2.3.3111: THE WOODWORKER'S TRAPS TAB ═══
+/* ═══ v2.3.3120: THE WOODWORKER'S TRAPS TAB ═══
  * Plan: docs/PET-TRAPPING-PLAN.md, "Making traps": one log of ANY kind makes
  * one box trap, up to 50 a press, and pays a little Woodworking XP.  The
  * worker takes the logs and gives the traps (server/src/trapping.js

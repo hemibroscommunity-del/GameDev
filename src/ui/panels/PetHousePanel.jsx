@@ -1,10 +1,10 @@
 import React from 'react';
-import { BT_AUDIO, ELEMENTS, MAX_PET_SLOTS, PET_EVOLUTION_TIERS } from '@/data/index.js'; /* v2.3.3111: enchantPet, evolvePet retired */
+import { BT_AUDIO, ELEMENTS, MAX_PET_SLOTS, PET_EVOLUTION_TIERS } from '@/data/index.js'; /* v2.3.3120: enchantPet, evolvePet retired */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* ═══ PetHousePanel — pet slots ═══ */
-/* ═══ v2.3.3111: THE OLD PET HOUSE, KEPT ONLY FOR AN OLD WORKER ═══
+/* ═══ v2.3.3120: THE OLD PET HOUSE, KEPT ONLY FOR AN OLD WORKER ═══
    Against a worker that keeps the pets record (caps.petbook) the farm's Pet
    House opens the Pets page instead (ui/mobile/dash/PetsPanel.jsx); this
    panel is the deploy-order fallback, reading the old lifeSkills.pets.
@@ -125,7 +125,7 @@ export function PetHousePanel(props) {
       background: '#121B20',
       boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)'
     }
-  }, [['pets', 'Pets']].map(   /* v2.3.3111: Evolve and Enchant RETIRED -- see the header */
+  }, [['pets', 'Pets']].map(   /* v2.3.3120: Evolve and Enchant RETIRED -- see the header */
   function (_ref58) {
     var _ref59 = _slicedToArray(_ref58, 2),
       id = _ref59[0],

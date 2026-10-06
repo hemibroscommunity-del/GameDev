@@ -1,4 +1,4 @@
-/* ═══ v2.3.3111: THE PETS RECORD — pets:<playerId> ═══
+/* ═══ v2.3.3120: THE PETS RECORD — pets:<playerId> ═══
  * Plan: docs/PET-TRAPPING-PLAN.md, "For the builder".  Spec:
  * docs/specs/trapping.md.  Catches come from trapping.js.
  *
@@ -63,7 +63,43 @@ export const PETBOOK = Object.freeze({
   /* A pet's size: 0.85-1.25, most near 1.05 (the mean of two rolls), and a
      Big badge from 1.18, about one in sixteen. */
   SIZE_MIN: 0.85, SIZE_MAX: 1.25, BIG_AT: 1.18,
+  /* v2.3.3121: PET XP (Phase 2).  The pet out with you earns XP_SHARE of the
+     combat XP each kill pays you -- the plan's "about a tenth" -- and needs
+     petXpToNext(lv) for its next level: 25 at Lv 1, x1.08 a level (50 at
+     Lv 10, 108 at Lv 20, 503 at Lv 40).  A kill pays 10 combat XP at Lv 1
+     and ~23 at Lv 20, so a pet takes about 25 kills of its own level's
+     monsters a level at first and ~50 at Lv 20.  Mirrored on the phone
+     (src/data/trapping.js PET_XP), held to it by mirror-audit. */
+  XP_SHARE: 0.1,
+  XP_BASE: 25,
+  XP_GROWTH: 1.08,
 });
+
+/** XP a pet at `lv` needs for its next level. */
+export function petXpToNext(lv) {
+  const L = Math.max(1, Math.floor(Number(lv) || 1));
+  return Math.ceil(PETBOOK.XP_BASE * Math.pow(PETBOOK.XP_GROWTH, L - 1));
+}
+
+/** A pet's level and XP after `gain` more, never past `cap` (its owner's
+ *  Trapping level).  At the cap the XP is 0: nothing builds up there (the
+ *  plan: "No XP builds up while the pet is at the cap"), so a pet starts its
+ *  next level from nothing when Trapping rises.  Pure: the phone runs it too. */
+export function petGainXp(lv, xp, gain, cap) {
+  let L = Math.max(1, Math.floor(Number(lv) || 1));
+  let X = Math.max(0, Math.floor(Number(xp) || 0));
+  const C = Math.max(1, Math.floor(Number(cap) || 1));
+  if (L >= C) return { lv: L, xp: 0, leveled: 0 };
+  X += Math.max(0, Math.floor(Number(gain) || 0));
+  let leveled = 0;
+  while (L < C) {
+    const need = petXpToNext(L);
+    if (X < need) break;
+    X -= need; L++; leveled++;
+  }
+  if (L >= C) X = 0;
+  return { lv: L, xp: X, leveled };
+}
 
 /* The nine kinds: each land's monsters, tamed.  `look` is the monster's look
    as the game draws it (its archetype once its zone's variant is applied --
@@ -225,8 +261,15 @@ export const petbookMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'petbook') && !f.petbook);
   },
 
-  /* playerId -> { rec, locked, dirty, savedAt, acts }.  The cache lives as
-     long as the session; storage is the truth (rule 11). */
+  /* v2.3.3121: `petlevels: false` in liveflags -- no pet earns XP (levels
+     already earned stay). */
+  _petLevelsOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'petlevels') && !f.petlevels);
+  },
+
+  /* playerId -> { rec, locked, dirty, savedAt, acts, xpFrac }.  The cache
+     lives as long as the session; storage is the truth (rule 11). */
   _petbookMap() {
     if (!this._petbookCache) this._petbookCache = new Map();
     return this._petbookCache;
@@ -401,6 +444,42 @@ export const petbookMethods = {
     j.tries++;
     book.dirty = true;
     if (now - (book.savedAt || 0) >= PETBOOK.SAVE_MS) this._petbookSave(pid, book);
+  },
+
+  /* ═══ v2.3.3121: PET XP -- the pet out with you, from each kill ═══
+     Called from the kill's XP loop (combat.js _resolveMonsterKill) with the
+     combat XP this kill paid its owner, after it is paid.  A tenth of it goes
+     to the ACTIVE pet, never past its owner's Trapping level ("the way to
+     grow your pets is to trap"); a pet at or above that level earns nothing
+     (a traded pet keeps a higher level for when you catch up, Phase 3).
+     The fraction under 1 XP is kept in memory on the book (`xpFrac`): a Lv 1
+     kill pays the pet 1, and a party share of one pays it 0.25, kept for
+     the next.  WRITTEN like a try (SAVE_MS, and on disconnect), never per
+     kill -- the regen mistake (handoff rule 4) -- except a level-up, which is
+     written at once: a pet's level must not go back after a crash.
+     Returns what the phone is told on the kill's combat_credit, or null. */
+  _petbookAddXp(pid, ps, xpAmt, now) {
+    if (this._petLevelsOff()) return null;
+    const book = this._petbookOf(pid);
+    if (!book || book.locked || !book.rec || !book.rec.active) return null;
+    const pet = book.rec.list.find((p) => p.id === book.rec.active);
+    if (!pet) return null;
+    const T = trapLevelOf(ps);
+    if (pet.lv >= T) {
+      book.xpFrac = 0;
+      return null;
+    }
+    const raw = (Number(book.xpFrac) || 0) + Math.max(0, Number(xpAmt) || 0) * PETBOOK.XP_SHARE;
+    const whole = Math.floor(raw);
+    book.xpFrac = Math.min(1, raw - whole);
+    if (whole <= 0) return null;
+    const g = petGainXp(pet.lv, pet.xp, whole, T);
+    pet.lv = g.lv;
+    pet.xp = g.xp;
+    book.dirty = true;
+    const t = Number(now) || Date.now();
+    if (g.leveled > 0 || t - (book.savedAt || 0) >= PETBOOK.SAVE_MS) this._petbookSave(pid, book);
+    return { id: pet.id, lv: pet.lv, xp: pet.xp, gain: whole, leveled: g.leveled, cap: T };
   },
 
   _petbookTries(pid, m) {

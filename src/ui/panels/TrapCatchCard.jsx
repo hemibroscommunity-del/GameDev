@@ -3,7 +3,7 @@ import { petKindName, cleanPetName, PET_NAME, PET_BIG_AT } from '@/data/trapping
 import { sendPetName } from '@/game/petBook.js';
 import { PetPortrait } from '@/ui/petPortrait.jsx';
 
-/* ═══ v2.3.3111: A NEW PET'S CARD ═══
+/* ═══ v2.3.3120: A NEW PET'S CARD ═══
  * Plan: docs/PET-TRAPPING-PLAN.md -- the trap "snaps shut (a card shows your
  * new pet)".  Shown once the snap has played (game/trapping.js puts the pet on
  * S._trap.card at the end of the animation), over the world, never over a
@@ -17,13 +17,18 @@ const POLL_MS = 200;
 export function TrapCatchCard({ stateRef }) {
   const [, setTick] = React.useState(0);
   const seenRef = React.useRef(null);
-  const [name, setName] = React.useState('');
+  /* v2.3.3121: the name typed is kept WITH the card it was typed on
+     ({at, name}), so a new card starts empty by itself.  It used to be
+     cleared by the poll below on noticing a new card -- which can lag the
+     card being drawn (any re-render of the game draws it), and then wiped a
+     name typed in that gap: found by mp-trapping on a slow run. */
+  const [draft, setDraft] = React.useState({ at: null, name: '' });
   React.useEffect(() => {
     const id = setInterval(() => {
       const S = stateRef && stateRef.current;
       const c = S && S._trap && S._trap.card;
       const k = c ? c.at : null;
-      if (k !== seenRef.current) { seenRef.current = k; setName(''); setTick((x) => (x + 1) % 1000000); }
+      if (k !== seenRef.current) { seenRef.current = k; setTick((x) => (x + 1) % 1000000); }
     }, POLL_MS);
     return () => clearInterval(id);
   }, [stateRef]);
@@ -31,6 +36,8 @@ export function TrapCatchCard({ stateRef }) {
   const S = stateRef && stateRef.current;
   const card = S && S._trap && S._trap.card;
   if (!card || !card.pet) return null;
+  const name = draft.at === card.at ? draft.name : '';
+  const setName = (v) => setDraft({ at: card.at, name: v });
   const pet = card.pet;
   const kindName = petKindName(pet.kind, pet.stage);
   const big = Number(pet.size) >= PET_BIG_AT;

@@ -4225,7 +4225,7 @@ export function processGameEvent(type, payload, S, deps) {
           case 'pet_capture_result':
             {
               /* v2.3.1130: server-rolled capture outcome (private).
-                 v2.3.3111: the 20%-health capture is RETIRED (server pets.js
+                 v2.3.3120: the 20%-health capture is RETIRED (server pets.js
                  answers 'retired' and touches nothing), and nothing in this
                  client sends it any more -- this answers an old client's
                  leftover request, or a worker from before the change.

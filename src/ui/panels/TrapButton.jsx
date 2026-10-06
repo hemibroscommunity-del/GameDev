@@ -2,7 +2,7 @@ import React from 'react';
 import { trapButtonView, armTrap, trapProbe } from '@/game/trapping.js';
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* warmed on the loading screen */
 
-/* ═══ v2.3.3111: THE TRAP POP-UP ═══
+/* ═══ v2.3.3120: THE TRAP POP-UP ═══
  * Plan: docs/PET-TRAPPING-PLAN.md, "Arming, and the kill".  When you have a
  * monster of the Wheel targeted, a small TRAP button pops up with your TRUE
  * odds on it ("0.5%") and the box traps you carry.  Tap it, and the worker

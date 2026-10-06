@@ -1,4 +1,4 @@
-# Pet trapping: arm a trap, then kill it (v2.3.3111)
+# Pet trapping: arm a trap, then kill it (v2.3.3120, Phase 2 v2.3.3121)
 
 The plan, with every choice the owner made, is `docs/PET-TRAPPING-PLAN.md`.
 This spec says what is built and how it works. Code is the truth where the two
@@ -77,6 +77,74 @@ section) once real rates are measured; the phone's copy must move with it.
   active pet). Pets don't fight: the old "pet combat" (fake bites on your screen
   only) is gone.
 
+## Pet levels (Phase 2, v2.3.3121)
+
+- **The pet out with you earns a tenth of the combat XP each kill pays you**
+  (`PETBOOK.XP_SHARE` 0.1, `server/src/petbook.js` `_petbookAddXp`, called from
+  the kill's XP loop in `combat.js`). A party share pays the pet a tenth of the
+  share. The part under 1 XP is kept on the book in memory (`xpFrac`) for the
+  next kill. Only kills: no quest XP, no dungeon-clear bonus.
+- **The next level** needs `petXpToNext(lv)` = ⌈25 × 1.08^(lv − 1)⌉: 25 at Lv 1,
+  50 at Lv 10, 108 at Lv 20, 503 at Lv 40. A kill pays 10 combat XP at Lv 1 and
+  about 23 at Lv 20, so a pet takes about 25 kills of its own level's monsters a
+  level at first and about 50 at Lv 20.
+- **Never past your Trapping level.** At it the pet earns nothing and holds no
+  XP (`petGainXp` sets it to 0 there), so it starts its next level from nothing
+  when your Trapping rises. A pet above your level (a trade, Phase 3) earns
+  nothing until you catch up.
+- **Written** like a try: in memory, at most once a minute (`SAVE_MS`) and on
+  disconnect, never per kill (handoff rule 4). A level-up is written at once.
+- **Told on the kill's `combat_credit`**: `pet: {id, lv, xp, gain, leveled, cap}`
+  when the pet gained (absent otherwise, so the message is what it always was).
+  The phone writes the worker's numbers over its copy (`src/game/trapping.js`
+  `onPetXp`) and says a level-up over the pet ("Snowball is Lv 5!").
+- **On the phone**: each pet's XP bar on the Pets page ("12 / 27 XP", or "At
+  your Trapping level"), from the same rule (`src/data/trapping.js` `PET_XP`,
+  `petXpView`; mirror-audit at every level to 120). A pet is drawn a little
+  bigger as it levels (`petLevelScale`, up to a fifth, Phase 1).
+
+## The journal (Phase 2)
+
+Every kind at both stages, 18 in all, on the Pets page under the pets: its
+picture (its shape alone, dark, until you catch one), its land, how many you
+caught, your tries, how many golden and your biggest ("Biggest 112%"). "3 of 18
+caught" over it. All from the record's `journal` (`kind.stage` → `{tries, n,
+gold, big}`), which Phase 1 already kept.
+
+## Beastmaster Bro and his quests (Phase 2)
+
+He stands east of the Woodworker's steps in the Wheel's Brotown
+(`src/data/wheelBuildingDoors.js` `WHEEL_TOWNSFOLK`, `cap: 'beastmaster'`), only
+against a worker that advertises `caps.beastmaster`. Not "Beastmaster Kai": a
+dormant Kai chain keys on that name (`getNpcQuest`).
+
+| Quest | Asks | The worker checks | Pays |
+|---|---|---|---|
+| `beast_1` Box Traps | make 3 box traps at the Woodworker | `traps_made`, counted by `make_traps` (each trap of a request) | 40 gold, 2 box traps; 3 pine logs on accept |
+| `beast_2` Set and Spring | spring 5 traps | `trap_roll`, one a roll at a kill (an arm alone counts nothing) | 100 gold, 5 box traps |
+| `beast_3` A Trapper's Eye | reach Trapping 6 | `skill`: `lifeSkills.trapping.level >= 6` at the hand-in | 250 gold, 10 box traps |
+| `beast_4` Your Own Beast | catch a pet | `catch`, on a catch | 500 gold, 15 box traps |
+
+- The four objective types are the worker's (`server/src/quests.js`
+  `_questObjectiveMet`, one check for every type; an unknown type is never paid).
+  Counters live in `_questKills` like a kill quest's and count only while the
+  quest is active. `_creditQuestObjective` takes an amount now (a request that
+  makes five traps is five).
+- **No combat XP** (`xp: 0`): no Melee/Bow/Magic to choose; the hand-in is the
+  auto reward. The Trapping XP is in the doing.
+- **His line waits on the Mayor's first quest** (`after: 'tut_1'` in
+  `QUEST_CHAINS`, read by `getNpcQuest`), so a new player's first steps stay the
+  Mayor's.
+- **Walking past him** to the Woodworker's door does not stop you to say how his
+  quest is going: `quietProgress` (BroTown's proximity opener) opens him by
+  himself only to offer or to pay. A tap or E still answers.
+- **His line done**, a tap or E on him opens the Pets page (`pets` on his row).
+- **His picture** is made by `python3 tools/make_beastmaster.py` from art the
+  game has (Diego's figure mirrored, coat green, scarf the Lodge's orange, a
+  Snowling at his side) until the owner's own comes (`docs/ART-WISHLIST.md`).
+  One 256 × 256 picture, ~0.25 MB decoded, loaded with the Wheel's cast behind
+  its loading screen and never in today's town (`wheelOnly`).
+
 ## Where you can trap
 
 Only the Wheel's own monsters (`home`, zone `wheel`): never in a dungeon, never
@@ -115,6 +183,11 @@ All lower case; each read in the handler from `_liveFlags` (TRAPS §117):
 - `caps.trapcraft`: the Woodworker's Traps tab. `trapcraft: false` stops making.
 - `caps.petbook`: the Pets page and `pets_state`. `petbook: false` stops naming,
   setting active and releasing; pets stay, catches still land, the vacuum works.
+- `caps.petlevels` (v2.3.3121): pets earn XP. `petlevels: false` stops it; levels
+  earned stay.
+- `caps.beastmaster` (v2.3.3121): Beastmaster Bro stands by the Woodworker.
+  `beastmaster: false` un-advertises him (a joining phone does not spawn him);
+  quests already active still count and hand in.
 
 `caps.pets` is no longer advertised (nothing reads it since the old trap button
 went). Against an old worker the phone shows none of this, and the farm's Pet
@@ -157,13 +230,23 @@ House opens the old panel.
   and refusal words, phone against worker.
 - `tools/qa/mp/mp-trapping.mjs` (24 checks on a phone against a real worker):
   `node tools/qa/mp/run.mjs trapping`.
+- Phase 2: `trapping.test.mjs` §16 (pet XP: the share, the fraction kept, the
+  cap, combat_credit, written on a level-up, once a minute and on disconnect,
+  the switch) and §17 (Beastmaster Bro's four quests through the real
+  messages, an unknown objective type never paid, `__proto__`) -- 155 checks in
+  all; mirror-audit's pet XP rule; test-world-core's "Beastmaster Bro stands by
+  the Woodworker"; `tools/qa/mp/mp-beastmaster.mjs` (16 checks on a phone: him
+  by the Woodworker with his badge, "Box Traps" accepted, made and claimed, a
+  pet's level-up from a kill, the XP bar, the journal, a tap opening the Pets
+  page): `node tools/qa/mp/run.mjs beastmaster`.
 
 The admin test kit's lever, `POST /api/admin/dev/trapping` (`level`, `traps`,
-`logs`, `next: 'catch' | 'miss'`, `kill`), sets up a catch without a hundred
-kills. It is the admin key's, like every dev op: no socket message.
+`logs`, `next: 'catch' | 'miss'`, `kill`, and since v2.3.3121 `xp`: what that
+kill pays in combat XP), sets up a catch without a hundred kills. `POST
+/api/admin/dev/quests` takes `except` (a quest-id prefix left alone: `beast_`).
+They are the admin key's, like every dev op: no socket message.
 
 ## Not built yet (later phases of the plan)
 
-Pet XP and levelling while out with you, the Beastmaster and his quests (Phase
-2); trading pets (Phase 3); the land wards, other players seeing your pet, more
-Pet House space (Phase 4).
+Trading pets (Phase 3); the land wards, other players seeing your pet, more Pet
+House space (Phase 4).

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { PetPortrait } from '@/ui/petPortrait.jsx';
-import { petDisplayName, petKindName, petEffectiveLevel, cleanPetName, PET_NAME, PET_BIG_AT, PET_KINDS, worldSafeText, petKindOfOld } from '@/data/trapping.js';
+import { petDisplayName, petKindName, petEffectiveLevel, cleanPetName, PET_NAME, PET_BIG_AT, PET_KINDS, worldSafeText, petKindOfOld, petXpView } from '@/data/trapping.js';
 import { petbookOn, petList, activePet, sendPetActive, sendPetName, sendPetRelease } from '@/game/petBook.js';
-import { trapLevel } from '@/game/trapping.js';
+import { trapLevel, petlevelsOn } from '@/game/trapping.js';
+import { ZONES } from '@/data/zones.js';
+import { landLook } from '@/data/wheelLands.js';
 
-/* ═══ v2.3.3111: THE PETS PAGE ═══
+/* ═══ v2.3.3120: THE PETS PAGE ═══
  * Plan: docs/PET-TRAPPING-PLAN.md -- "Name, set active and release from a
  * Pets page (More -> Pets, with the paw-print icon).  All of it is done by the
  * server and kept."  The farm's Pet House opens it too.
@@ -18,8 +20,54 @@ import { trapLevel } from '@/game/trapping.js';
  * here until its answer does.  Release asks twice: it is for good.
  *
  * Against an old worker (no caps.petbook) it lists the old pets, read-only.
- * Its own clock: it re-reads the record a few times a second. */
+ * Its own clock: it re-reads the record a few times a second.
+ *
+ * v2.3.3121 (Phase 2): each pet's XP bar (caps.petlevels -- the worker pays the
+ * pet out with you a tenth of your kills' combat XP, up to your Trapping
+ * level), and THE JOURNAL: every kind at both stages, 18 in all, your tries,
+ * your catches, golden ones and your biggest -- a kind you have not caught is
+ * its shape alone.  All of it from the record's `journal`. */
 const POLL_MS = 400;
+const STAGES = [1, 2];
+const STAGE_WORDS = { 1: 'Levels 1-20', 2: 'Levels 21-40' };
+
+function XpBar({ view }) {
+  return (
+    <div data-pet-xp={view.capped ? 'cap' : view.xp + '/' + view.need} style={{ marginTop: 5 }}>
+      <div style={{ height: 5, borderRadius: 3, background: COL.well, overflow: 'hidden' }}>
+        <div style={{ width: Math.round(view.frac * 100) + '%', height: '100%', borderRadius: 3,
+          background: view.capped ? 'rgba(216,170,88,.45)' : 'linear-gradient(90deg,#5FBF86,#7EE0A8)' }} />
+      </div>
+      <div style={{ fontSize: 10, color: COL.muted, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{view.words}</div>
+    </div>
+  );
+}
+
+function JournalCell({ kind, stage, j }) {
+  const caught = !!(j && j.n > 0);
+  const tried = !!(j && j.tries > 0);
+  const home = PET_KINDS[kind].home;
+  const look = landLook(home);
+  const land = (ZONES[home] && ZONES[home].name) || '';
+  return (
+    <div data-journal-cell={kind + '.' + stage} data-journal-caught={caught ? 1 : 0}
+      style={{ background: caught ? COL.slot : COL.well, border: '1px solid ' + COL.border, borderTop: '3px solid ' + ((look && look.color) || COL.border),
+        borderRadius: 10, padding: '6px 5px 6px', textAlign: 'center', minWidth: 0, opacity: tried || caught ? 1 : 0.72 }}>
+      <div style={{ display: 'grid', placeItems: 'center', height: 40 }}>
+        <PetPortrait pet={{ kind, stage }} size={40} shadow={!caught} />
+      </div>
+      <div style={{ fontSize: 11, fontWeight: 800, lineHeight: 1.15, marginTop: 2, color: caught ? COL.text : COL.text2,
+        minHeight: 26, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{petKindName(kind, stage)}</div>
+      <div style={{ fontSize: 9.5, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{land}</div>
+      <div style={{ fontSize: 10.5, fontWeight: 800, marginTop: 3, color: caught ? '#7EE0A8' : COL.muted, fontVariantNumeric: 'tabular-nums' }}>
+        {caught ? j.n + ' caught' : tried ? 'Not caught' : 'Not tried'}
+      </div>
+      <div style={{ fontSize: 10, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{(j && j.tries) || 0} tries</div>
+      {j && j.gold > 0 ? <div style={{ fontSize: 10, fontWeight: 800, color: '#EAC675' }}>{j.gold} golden</div> : null}
+      {caught && j.big > 0 ? <div data-journal-big={j.big} style={{ fontSize: 10, color: COL.text2 }}>Biggest {Math.round(j.big * 100)}%</div> : null}
+    </div>
+  );
+}
 
 function Badge({ children, color, bg }) {
   return <span style={{ padding: '1px 7px', borderRadius: 999, background: bg || COL.well, fontSize: 11, fontWeight: 800, color: color || COL.text2 }}>{children}</span>;
@@ -60,6 +108,12 @@ export const PetsPanel = () => {
   const T = trapLevel(S);
   const cap = (book && book.cap) || 30;
   const unavailable = !!(book && book.unavailable);
+  const levels = petlevelsOn(S);
+  const journal = (book && book.journal && typeof book.journal === 'object') ? book.journal : {};
+  const jOf = (kind, stage) => (Object.prototype.hasOwnProperty.call(journal, kind + '.' + stage) ? journal[kind + '.' + stage] : null);
+  const kinds = Object.keys(PET_KINDS);
+  let kindsCaught = 0;
+  for (const k of kinds) for (const st of STAGES) { const j = jOf(k, st); if (j && j.n > 0) kindsCaught++; }
 
   return (
     <div data-pets-panel="1" style={{ ...panelStyle, padding: '8px 10px 12px', color: COL.text, fontFamily: "'Source Sans 3',sans-serif" }}>
@@ -107,6 +161,7 @@ export const PetsPanel = () => {
                   {p.gold ? <Badge color="#EAC675" bg="rgba(234,198,117,.15)">Golden</Badge> : null}
                   {big ? <Badge color="#7EE0A8" bg="rgba(126,224,168,.12)">Big</Badge> : null}
                 </div>
+                {levels && live && p.kind ? <XpBar view={petXpView(pp, T)} /> : null}
               </div>
             </div>
             {isOpen && live && (
@@ -144,21 +199,22 @@ export const PetsPanel = () => {
           The pet with you picks up loot from further away. Pets are never lost, not even in No man's land.
         </div>
       )}
-      {/* the journal's tries, a line per kind tried (Phase 2 grows it) */}
-      {live && book && book.journal && Object.keys(book.journal).length > 0 && (
-        <div data-pets-journal="1" style={{ marginTop: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted, marginBottom: 4 }}>Your tries</div>
-          {Object.keys(book.journal).sort().map((k) => {
-            const j = book.journal[k];
-            const [kd, st] = k.split('.');
-            if (!Object.prototype.hasOwnProperty.call(PET_KINDS, kd)) return null;
-            return (
-              <div key={k} data-pets-journal-row={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: COL.text2, padding: '3px 2px', borderTop: '1px solid ' + COL.divider }}>
-                <span>{petKindName(kd, Number(st))}</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{j.n || 0} caught · {j.tries || 0} tries</span>
+      {/* v2.3.3121: THE JOURNAL -- every kind at both stages */}
+      {live && book && !unavailable && (
+        <div data-pets-journal={kindsCaught} style={{ marginTop: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted }}>Journal</div>
+            <div style={{ fontSize: 11, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{kindsCaught} of {kinds.length * STAGES.length} caught</div>
+          </div>
+          {STAGES.map((st) => (
+            <div key={st} style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: COL.text2, margin: '2px 2px 4px' }}>{STAGE_WORDS[st]}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 5 }}>
+                {kinds.map((k) => <JournalCell key={k + st} kind={k} stage={st} j={jOf(k, st)} />)}
               </div>
-            );
-          })}
+            </div>
+          ))}
+          <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4 }}>Each land's monsters become its pet. Past level 20 they come in the land's second colours.</div>
         </div>
       )}
     </div>

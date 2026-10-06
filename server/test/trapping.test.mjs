@@ -1,4 +1,4 @@
-/* Pet trapping -- v2.3.3111 (server/src/trapping.js, server/src/petbook.js).
+/* Pet trapping -- v2.3.3120 (server/src/trapping.js, server/src/petbook.js).
  * Plan: docs/PET-TRAPPING-PLAN.md.  Spec: docs/specs/trapping.md.
  *
  * The owner, 2026-10-06: "your trapping level governs what level monster you
@@ -37,6 +37,15 @@
  *      deletes the record; a respawn clears the marks.
  *  14. The retired pet_capture touches nothing; forged server events are not
  *      relayed.
+ *  15. The test kit's lever.
+ *  16. v2.3.3121 PET XP: a tenth of each kill's combat XP to the pet out with
+ *      you, the fraction kept, never past the owner's Trapping level (nothing
+ *      builds up there), told on combat_credit, written on a level-up, at most
+ *      once a minute otherwise and on disconnect; no pet or the switch, none.
+ *  17. v2.3.3121 BEASTMASTER BRO'S QUESTS: traps made (only once accepted, a
+ *      request of many counting each), traps SPRUNG (an arm alone is nothing),
+ *      the Trapping level at the hand-in, a catch; gold and box traps, no XP
+ *      choice; an unknown objective type never paid; '__proto__' as a quest.
  */
 import { GameRoom } from '../src/index.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
@@ -624,6 +633,191 @@ const B = room.playerState['bp_trap_b'];
   check('dev: the forced roll is spent (one roll only)', !(room._trapForced && room._trapForced.has('bp_trap_e')));
   check('dev: a dead or foreign monster id is refused', room._devTrapping('bp_trap_e', { kill: g.id }).ok === false
     && room._devTrapping('bp_trap_e', { kill: '__proto__' }).ok === false);
+}
+
+// ── 16. PET XP (v2.3.3121, Phase 2) ─────────────────────────────────────────────
+{
+  const wsF = fakeWs('F');
+  await join(wsF, 'bp_trap_f');
+  const F = room.playerState['bp_trap_f'];
+  const book = room._petbookOf('bp_trap_f');
+  const sync = wsF.sent.find((m) => m.type === 'state_sync');
+  check('pet XP: caps.petlevels and caps.beastmaster advertised', sync && sync.caps.petlevels === true && sync.caps.beastmaster === true, sync && sync.caps);
+  /* a pet to raise: the test kit's lever catches one */
+  const g = firstStretch('frost')[0];
+  revive(g); standBy(F, g);
+  room._devTrapping('bp_trap_f', { level: 10, traps: 2, next: 'catch' });
+  await send(wsF, 'trap_arm', { monsterId: g.id });
+  room._devTrapping('bp_trap_f', { kill: g.id });
+  const pet = book.rec.list[0];
+  check('pet XP: setup -- a Lv 1 pet out with a Trapping 10 owner', !!pet && book.rec.active === pet.id && pet.lv === 1 && pet.xp === 0, pet);
+
+  let petPuts = 0;
+  const realPut = state.storage.put;
+  state.storage.put = async (k, v) => { if (k === 'pets:bp_trap_f') petPuts++; return realPut(k, v); };
+  const foe = firstStretch('frost')[3];
+  const fight = (xp, contribs) => {
+    revive(foe); standBy(F, foe); foe.xp = xp;
+    wsF.sent.length = 0;
+    kill(foe, contribs || { bp_trap_f: 100 }, 'bp_trap_f');
+    return last(wsF, 'combat_credit');
+  };
+  tick(1000);
+  const c1 = fight(100);
+  check('pet XP: a kill pays the pet out with you a tenth of its combat XP (100 -> 10)', pet.xp === 10 && pet.lv === 1, { lv: pet.lv, xp: pet.xp });
+  check('pet XP: ...told on that kill\'s combat_credit', c1 && c1.xpAmt === 100 && c1.pet && c1.pet.id === pet.id && c1.pet.xp === 10 && c1.pet.gain === 10
+    && c1.pet.leveled === 0 && c1.pet.cap === 10, c1);
+  check('pet XP: ...kept in memory, never written per kill', petPuts === 0 && book.dirty === true, { petPuts, dirty: book.dirty });
+  fight(100);
+  const c3 = fight(100);
+  check('pet XP: 25 for Lv 2 -- 30 XP is Lv 2 with 5 over', pet.lv === 2 && pet.xp === 5 && c3.pet.leveled === 1 && c3.pet.lv === 2, { lv: pet.lv, xp: pet.xp, c3: c3.pet });
+  check('pet XP: a level-up is written at once', petPuts === 1 && state._store.get('pets:bp_trap_f').list[0].lv === 2, petPuts);
+
+  /* the cap: never past the owner's Trapping level, and nothing builds up there */
+  F.lifeSkills.trapping = { level: 2, xp: 0 };
+  const c4 = fight(500);
+  check('pet XP: at its owner\'s Trapping level it earns nothing, and holds no XP', pet.lv === 2 && pet.xp === 5 && !('pet' in c4), { lv: pet.lv, xp: pet.xp, c4 });
+  F.lifeSkills.trapping = { level: 3, xp: 0 };
+  const c5 = fight(10000);
+  check('pet XP: a big kill levels it only to the cap, its XP 0 there', pet.lv === 3 && pet.xp === 0 && c5.pet.leveled === 1 && c5.pet.cap === 3, { lv: pet.lv, xp: pet.xp, c5: c5.pet });
+
+  /* a share: the part under 1 XP is kept for the next kill */
+  F.lifeSkills.trapping = { level: 30, xp: 0 };
+  book.xpFrac = 0;
+  const x0 = pet.xp;
+  fight(15);
+  const x1 = pet.xp;
+  fight(15);
+  check('pet XP: 1.5 a kill is 1, then 2 (the half kept)', x1 - x0 === 1 && pet.xp - x0 === 3, { x0, x1, x2: pet.xp });
+  const share = fight(40, { bp_trap_f: 25, bp_trap_zz: 75 });
+  check('pet XP: a party share pays the pet a tenth of the SHARE', share && share.xpAmt === 10 && share.pet && share.pet.gain === 1, share);
+
+  /* no pet out, or the switch: nothing */
+  const keepActive = book.rec.active;
+  book.rec.active = null;
+  const xa = pet.xp;
+  const c6 = fight(100);
+  check('pet XP: no pet out with you -- nothing, and combat_credit as it always was', pet.xp === xa && c6 && !('pet' in c6), c6);
+  book.rec.active = keepActive;
+  room._liveFlags = { petlevels: false };
+  const c7 = fight(100);
+  check('pet XP: `petlevels: false` -- no pet earns anything', pet.xp === xa && !('pet' in c7));
+  const sync2 = (() => { const w = fakeWs('F2'); return w; })();
+  room._liveFlags = {};
+
+  /* written at most once a minute, and on disconnect */
+  const before = petPuts;
+  tick(PETBOOK.SAVE_MS + 1000);
+  fight(20);
+  check('pet XP: a minute on, the next kill writes the record once', petPuts === before + 1 && state._store.get('pets:bp_trap_f').list[0].xp === pet.xp, { petPuts, before });
+  fight(20);
+  check('pet XP: ...and the kill after does not', petPuts === before + 1);
+  const xpLeft = pet.xp;
+  await room.webSocketClose(wsF);
+  check('pet XP: written on disconnect', state._store.get('pets:bp_trap_f').list[0].xp === xpLeft, { stored: state._store.get('pets:bp_trap_f').list[0].xp, xpLeft });
+  state.storage.put = realPut;
+  void sync2;
+}
+
+// ── 17. BEASTMASTER BRO'S QUESTS (v2.3.3121, Phase 2) ─────────────────────────
+{
+  const wsG = fakeWs('G');
+  await join(wsG, 'bp_trap_g');
+  const G = room.playerState['bp_trap_g'];
+  G.inventory = {};
+  G._quests = Object.create(null);
+  G._questKills = Object.create(null);
+  const coins0 = () => G.coins || 0;
+
+  /* traps made BEFORE the quest do not count */
+  G.inventory.wood_pine_log = 2;
+  await send(wsG, 'make_traps', { log: 'wood_pine_log', count: 2 });
+  check('beast_1: traps made before the quest count for nothing', !(G._questKills.beast_1) && G.inventory.trap_box === 2, G._questKills);
+
+  await send(wsG, 'quest_accept', { questId: 'beast_1' });
+  check('beast_1: accepted, and its three pine logs handed over', G._quests.beast_1 === 'active' && G.inventory.wood_pine_log === 3, { q: G._quests.beast_1, inv: G.inventory });
+  await send(wsG, 'quest_turn_in', { questId: 'beast_1' });
+  check('beast_1: refused before three traps are made', G._quests.beast_1 === 'active');
+  await send(wsG, 'make_traps', { log: 'wood_pine_log', count: 1 });
+  await send(wsG, 'make_traps', { log: 'wood_pine_log', count: 2 });
+  check('beast_1: one request or two, every trap counts (1 + 2 = 3)', G._questKills.beast_1 === 3, G._questKills);
+  const c0 = coins0();
+  const traps0 = G.inventory.trap_box;
+  await send(wsG, 'quest_turn_in', { questId: 'beast_1' });
+  check('beast_1: handed in -- 40 gold and 2 box traps, no Melee/Bow/Magic asked (xp 0)', G._quests.beast_1 === 'turnedIn'
+    && coins0() === c0 + 40 && G.inventory.trap_box === traps0 + 2 && G._quests.beast_2 === 'available', { coins: coins0() - c0, traps: G.inventory.trap_box - traps0, q: G._quests });
+
+  /* beast_2: SPRUNG traps, not arms */
+  await send(wsG, 'quest_accept', { questId: 'beast_2' });
+  G.lifeSkills.trapping = { level: 10, xp: 0 };
+  G.inventory.trap_box = 20;
+  const fs = firstStretch('ember');
+  const mark = fs[0];
+  revive(mark); standBy(G, mark);
+  room._trapRt('bp_trap_g').arms = [];
+  await send(wsG, 'trap_arm', { monsterId: mark.id });
+  tick(TRAPPING.MARK_MS + 1000);
+  revive(mark);
+  kill(mark, { bp_trap_g: 100 }, 'bp_trap_g');
+  check('beast_2: an arm that ran out springs nothing and counts nothing', !(G._questKills.beast_2), G._questKills);
+  room._trapRng = () => 0.999;
+  for (let i = 0; i < 5; i++) {
+    const m = fs[i % fs.length];
+    revive(m); standBy(G, m);
+    room._trapRt('bp_trap_g').arms = [];
+    await send(wsG, 'trap_arm', { monsterId: m.id });
+    tick(500);
+    kill(m, { bp_trap_g: 100 }, 'bp_trap_g');
+    tick(4000);
+  }
+  clearRandom();
+  check('beast_2: five traps sprung (all broke) are five', G._questKills.beast_2 === 5, G._questKills);
+  await send(wsG, 'quest_turn_in', { questId: 'beast_2' });
+  check('beast_2: handed in, beast_3 offered', G._quests.beast_2 === 'turnedIn' && G._quests.beast_3 === 'available');
+
+  /* beast_3: the Trapping level, read at the hand-in */
+  await send(wsG, 'quest_accept', { questId: 'beast_3' });
+  G.lifeSkills.trapping = { level: 5, xp: 0 };
+  await send(wsG, 'quest_turn_in', { questId: 'beast_3' });
+  check('beast_3: refused at Trapping 5', G._quests.beast_3 === 'active');
+  G.lifeSkills.trapping = { level: 6, xp: 0 };
+  const t3 = G.inventory.trap_box;
+  await send(wsG, 'quest_turn_in', { questId: 'beast_3' });
+  check('beast_3: paid at Trapping 6 (10 box traps)', G._quests.beast_3 === 'turnedIn' && G.inventory.trap_box === t3 + 10);
+
+  /* beast_4: a catch */
+  await send(wsG, 'quest_accept', { questId: 'beast_4' });
+  G.lifeSkills.trapping = { level: 10, xp: 0 };
+  const m4 = fs[1];
+  revive(m4); standBy(G, m4);
+  room._trapRt('bp_trap_g').arms = [];
+  room._trapRng = () => 0.999;
+  await send(wsG, 'trap_arm', { monsterId: m4.id });
+  kill(m4, { bp_trap_g: 100 }, 'bp_trap_g');
+  check('beast_4: a miss is no catch', !(G._questKills.beast_4));
+  await send(wsG, 'quest_turn_in', { questId: 'beast_4' });
+  check('beast_4: refused before a catch', G._quests.beast_4 === 'active');
+  revive(m4); standBy(G, m4);
+  room._trapRt('bp_trap_g').arms = [];
+  room._trapRng = () => 0;
+  tick(4000);
+  await send(wsG, 'trap_arm', { monsterId: m4.id });
+  kill(m4, { bp_trap_g: 100 }, 'bp_trap_g');
+  clearRandom();
+  check('beast_4: a catch counts', G._questKills.beast_4 === 1 && room._petbookOf('bp_trap_g').rec.list.length === 1, G._questKills);
+  const t4 = G.inventory.trap_box, c4 = coins0();
+  await send(wsG, 'quest_turn_in', { questId: 'beast_4' });
+  check('beast_4: paid -- 500 gold and 15 box traps, the line done', G._quests.beast_4 === 'turnedIn' && G.inventory.trap_box === t4 + 15 && coins0() === c4 + 500);
+
+  /* a counter type nothing asks for counts nothing; an unknown type is never paid */
+  room._creditQuestObjective('bp_trap_g', 'trap_roll');
+  check('quests: a signal with no active quest of its kind writes no counter', Object.keys(G._questKills).every((k) => /^beast_[1-4]$/.test(k)), G._questKills);
+  check('quests: an unknown objective type is never met (a table typo refuses, never pays)', room._questObjectiveMet(G, 'x', { type: 'visit', count: 1 }) === false
+    && room._questObjectiveMet(G, 'x', null) === true);
+  check('quests: `skill` reads an own property only', room._questObjectiveMet({ lifeSkills: Object.create({ trapping: { level: 99 } }) }, 'x', { type: 'skill', skill: 'trapping', level: 6 }) === false);
+  G._quests['__proto__'] = 'active';
+  room._creditQuestObjective('bp_trap_g', 'kill', null, null, 1e9);
+  check('quests: a forged quest id in _quests is no counter, and a huge amount is clamped', !Object.prototype.hasOwnProperty.call(G._questKills, '__proto__'));
 }
 
 Date.now = realNow;

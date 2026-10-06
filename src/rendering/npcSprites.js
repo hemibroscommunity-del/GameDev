@@ -251,7 +251,9 @@ function townScenery() {
     }
   }
   for (const n of NPC_DATA || []) {
-    if (n && n.sprite && !stripSrc.has(n.sprite)) stills.push(n.sprite);
+    /* v2.3.3121: a townsperson of the Wheel's only (Beastmaster Bro) never
+       stands in today's town, so town does not load his picture */
+    if (n && n.sprite && !n.wheelOnly && !stripSrc.has(n.sprite)) stills.push(n.sprite);
   }
   stills.push(...propSpriteSourcesIn(TOWN));
   return { strips, stills: [...new Set(stills)] };

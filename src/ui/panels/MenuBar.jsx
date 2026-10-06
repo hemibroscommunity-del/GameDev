@@ -1,5 +1,5 @@
 import React from 'react';
-import { xpRequired } from '@/data/index.js'; /* v2.3.3111: the trap button's imports went with it */
+import { xpRequired } from '@/data/index.js'; /* v2.3.3120: the trap button's imports went with it */
 import { btRpc, getBtPassphrase, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
 import { _asyncToGenerator, _objectSpread, _regenerator, _slicedToArray } from '@/lib/babelHelpers.js';
 
@@ -230,7 +230,7 @@ export function MenuBar(props) {
       fn: function fn() {
         return doSpecialAttack();
       }
-    }, /* v2.3.3111: the 🪤 capture button is RETIRED with the 20%-health capture
+    }, /* v2.3.3120: the 🪤 capture button is RETIRED with the 20%-health capture
           (server pets.js answers 'retired').  Pets are caught by arming a
           trap and killing the monster: the TRAP pop-up (TrapButton.jsx). */ {
       e: '😀',

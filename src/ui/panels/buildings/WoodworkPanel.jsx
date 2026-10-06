@@ -4,7 +4,7 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
-import { TrapsTab } from './TrapsTab.jsx'; /* v2.3.3111: box traps from logs */
+import { TrapsTab } from './TrapsTab.jsx'; /* v2.3.3120: box traps from logs */
 /* === WoodworkPanel — buildingPanel === 'woodwork' sub-panel === */
 /* v2.3.873: extracted verbatim from the buildingPanel === 'woodwork' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -75,7 +75,7 @@ export function WoodworkPanel(props) {
   React.useEffect(function () {
     measureFade();
   }, [rpgState, measureFade]);
-  /* v2.3.3111: the Traps tab (TrapsTab.jsx) -- a third choice beside Bow and
+  /* v2.3.3120: the Traps tab (TrapsTab.jsx) -- a third choice beside Bow and
      Staff, only against a worker that makes traps (caps.trapcraft, read
      straight off S._serverCaps so the caps audit sees the gate) */
   var _trapCraftOn = !!(stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.trapcraft);

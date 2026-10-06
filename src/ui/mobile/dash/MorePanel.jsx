@@ -58,7 +58,7 @@ export const TILES = [
      It costs no row: the grid is 5 across and the roster was nine, so this
      lands in the empty tenth cell and nothing above it moves. */
   { id: 'account',     src: '/icons/ui/panel-account.webp?v=2.3.2038',     label: 'Login Key', glyph: '🔑', group: 'System',    iconScale: 1 },
-  /* v2.3.3111: the Pets page (docs/PET-TRAPPING-PLAN.md: "More -> Pets, with
+  /* v2.3.3120: the Pets page (docs/PET-TRAPPING-PLAN.md: "More -> Pets, with
      the paw-print icon"), beside Life Skills, whose Trapping it belongs to */
   { id: 'pets',        src: '/icons/ui/evt-pets.webp?v=2.3.1232',            label: 'Pets',     glyph: '🐾', group: 'Progress',  iconScale: 1 },
 ];
@@ -111,7 +111,7 @@ function statusFor(id, S) {
       const best = bestGuildRank(R);
       return best ? `${best.rank.title} · ${best.guild.name}` : 'Novice in every skill guild';
     }
-    /* v2.3.3111: real state, like every line above */
+    /* v2.3.3120: real state, like every line above */
     case 'pets': {
       const n = S && S._petBook && Array.isArray(S._petBook.list) ? S._petBook.list.length : 0;
       return n > 0 ? `${n} pet${n === 1 ? '' : 's'}` : 'Trap a monster to tame it';
@@ -218,7 +218,7 @@ export const MorePanel = () => {
            every word renders whole in a ~96px cell, ten items make five
            rows in the height the sideways pane has anyway.  Portrait
            keeps its five-across one-screen grid (v2.3.1648). */
-        /* v2.3.3111: six across -- Pets made eleven, and a third row of one
+        /* v2.3.3120: six across -- Pets made eleven, and a third row of one
            would have shrunk every tile to fit it (the rows stretch, 1fr) */
         gridTemplateColumns: panelVw() < 260 ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)',
         gridAutoRows: panelVw() < 260 ? undefined : '1fr',

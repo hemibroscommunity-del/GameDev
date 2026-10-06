@@ -38,8 +38,8 @@
  * and the same null -> dash rule covers it. */
 
 import { prog3HasSkills, prog3SkillLevel } from '@/data/prog3.js';
-import { activePet } from '@/game/petBook.js';   /* v2.3.3111 */
-import { PET_KINDS, petKindName, petDisplayName, worldSafeText } from '@/data/trapping.js';   /* v2.3.3111 */
+import { activePet } from '@/game/petBook.js';   /* v2.3.3120 */
+import { PET_KINDS, petKindName, petDisplayName, worldSafeText } from '@/data/trapping.js';   /* v2.3.3120 */
 import { getEquippedSlots, peerEquippedSlots } from '../mobile/sheet/equipModel.js';
 
 /* Pet rarity, from the owner's direction: "White Normal, Blue Rare, Orange
@@ -86,7 +86,7 @@ export function farmPlotsReady(lifeSkills, nowSec) {
   return n;
 }
 
-/* v2.3.3111: the pet out with you is the pets RECORD's (game/petBook.js
+/* v2.3.3120: the pet out with you is the pets RECORD's (game/petBook.js
    activePet); the old lifeSkills pair only against an old worker. */
 function activePetOf(R, S) {
   if (S) return activePet(S);
@@ -137,7 +137,7 @@ export function profileRelayFields(R, S) {
       name: String(c.customName || '').slice(0, 24),
       species: String(c.speciesName || '').slice(0, 24),
       level: c.level || 1,
-      /* v2.3.3111: what it is, so a peer's card draws its picture */
+      /* v2.3.3120: what it is, so a peer's card draws its picture */
       ...(c.kind ? { kind: c.kind, stage: c.stage, gold: c.gold } : {}),
     };
   }
@@ -151,7 +151,7 @@ export function profileRelayFields(R, S) {
 
 function petFromRelay(info, emoji) {
   if (info && typeof info === 'object') {
-    /* v2.3.3111: a peer's word, shown only (never in the world's outlined
+    /* v2.3.3120: a peer's word, shown only (never in the world's outlined
        text, and a kind we do not know is no kind) */
     const kind = typeof info.kind === 'string' && Object.prototype.hasOwnProperty.call(PET_KINDS, info.kind) ? info.kind : null;
     return {
@@ -218,7 +218,7 @@ export function profileFromPeer(ip, live, rel) {
     /* nothing until the blob lands (a 2s gap -- the sample pet would be a
        claim about a player we have not heard from yet); then their real pet,
        or the sample */
-    /* v2.3.3111: their real pet, or none -- not the sample Frost Fox every
+    /* v2.3.3120: their real pet, or none -- not the sample Frost Fox every
        player without a pet used to show */
     pet: has ? petFromRelay(r.petInfo, o.pet || snap.pet) : null,
     homestead: { previewSrc: PROFILE_PREVIEW.homesteadSrc, plotsReady: has ? num(r.farmReady) : null },
@@ -256,7 +256,7 @@ export function profileFromSelf(S) {
       lifetimeKills: num(R.svKills) != null ? R.svKills : (num(cs.monstersKilled) || 0),
       rarestDrop: PROFILE_PREVIEW.rarestDrop,
     },
-    pet: petCardOf(pet),   /* v2.3.3111: yours, or none (was the sample Frost Fox) */
+    pet: petCardOf(pet),   /* v2.3.3120: yours, or none (was the sample Frost Fox) */
     homestead: { previewSrc: PROFILE_PREVIEW.homesteadSrc, plotsReady: farmPlotsReady(R.lifeSkills) },
   };
 }

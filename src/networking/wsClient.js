@@ -19,7 +19,7 @@ import { processGameEvent } from '@/networking/gameEvents.js';
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
-import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult } from '@/game/trapping.js'; /* v2.3.3111: pet trapping's answers */
+import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
@@ -1524,7 +1524,7 @@ export function setupWebSocket(ctx) {
               }
               break;
             }
-          /* ═══ v2.3.3111: PET TRAPPING (game/trapping.js) ═══
+          /* ═══ v2.3.3120: PET TRAPPING (game/trapping.js) ═══
              The worker's four answers: the mark set (or why not), the trap
              sprung at a kill (the shakes, a catch), the pets record, and the
              Woodworker's traps.  Each settled on the worker already; these
@@ -2492,6 +2492,9 @@ export function setupWebSocket(ctx) {
                  to the server. */
               if (!msg.payload || !S.rpg) break;
               var cc = msg.payload;
+              /* v2.3.3121: the pet out with you earned a tenth of it (the
+                 worker's numbers, game/trapping.js onPetXp) */
+              if (cc.pet) { try { onPetXp(S, cc.pet); } catch (_pe) { /* display only */ } }
               if (cc.leveled) {
                 /* v2.3.2615: 'char', not 'combat'.  This is the legacy
                    build-point path and the level it raises is the CHARACTER
@@ -4144,7 +4147,7 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
-        /* v2.3.3111: pet trapping -- the Woodworker's Traps tab, the TRAP
+        /* v2.3.3120: pet trapping -- the Woodworker's Traps tab, the TRAP
            pop-up and the Pets page (game/trapping.js, game/petBook.js) ->
            trapping.js / petbook.js.  TRAPS #18: a type with no line here is
            silently dropped, and the button would do nothing at all. */

@@ -17,7 +17,7 @@ players catch creatures. The research report behind it is
 every source, are in that folder; start with its README. Every choice is now
 made; the full list is near the end.
 
-**Built:** Phase 1, v2.3.3111 (`docs/specs/trapping.md`).
+**Built:** Phase 1, v2.3.3120; Phase 2, v2.3.3121 (`docs/specs/trapping.md`).
 
 ## What you decided (2026-10-06)
 

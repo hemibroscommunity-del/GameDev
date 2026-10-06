@@ -1,4 +1,4 @@
-/* ═══ v2.3.3111: YOUR PETS, AS THE WORKER KEEPS THEM ═══
+/* ═══ v2.3.3120: YOUR PETS, AS THE WORKER KEEPS THEM ═══
  * The pets record is the worker's (server/src/petbook.js, `pets:<pid>`); the
  * phone holds the last copy it was sent (pets_state -> S._petBook,
  * src/game/trapping.js onPetsState) and asks for every change.
@@ -25,7 +25,7 @@ export function activePet(S) {
   if (petbookOn(S)) {
     const b = S._petBook;
     if (!b || !b.active || !Array.isArray(b.list)) return null;
-    /* v2.3.3111: a pet still in the trap that caught it is not out yet
+    /* v2.3.3120: a pet still in the trap that caught it is not out yet
        (game/trapping.js onTrapResult) */
     const h = S._trap && S._trap.hidePet;
     if (h && h.id === b.active && Date.now() < h.until) return null;

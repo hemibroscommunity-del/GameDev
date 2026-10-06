@@ -507,7 +507,7 @@ import { wheelNodeView, WheelFish, wheelFishTop /* v2.3.3035: the harvest's bar 
 import { updateNodeLabel, killNodeLabel, nodeLabelWorldH, NODE_LABEL_GAP, nodeNameNode } from '../nodeLabels.js';   /* v2.3.3040: the tool, the name and the level over a resource; v2.3.3059: words for the nearest only */
 import { WheelDoors } from '../wheelDoors.js';   /* v2.3.3016: the Wheel's dungeon mouths, drawn */
 import { WheelSignposts, findGateSignposts } from '../wheelSignposts.js';   /* v2.3.3062: Brotown's signposts, named */
-import { TrapFx } from '../trapFx.js';   /* v2.3.3111: the trap's mark, shakes, snap and break */
+import { TrapFx } from '../trapFx.js';   /* v2.3.3120: the trap's mark, shakes, snap and break */
 import { wheelObjectsInfo, wheelMapInfo } from '@/game/wheelTrial.js';      /* v2.3.3062: where they stand, and the lands */
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
@@ -9988,7 +9988,7 @@ export class EffectsRenderer {
       if (!this._wheelSigns) this._wheelSigns = new WheelSignposts(this.monsterUiLayer);
       this._wheelSigns.update(_posts || [], _map ? _map.lands : null, S.player);
     }
-    /* v2.3.3111: pet trapping -- the mark over an armed monster, and the trap
+    /* v2.3.3120: pet trapping -- the mark over an armed monster, and the trap
        springing where it fell (trapFx.js; the rules are game/trapping.js) */
     if ((S._trap && (S._trap.mark || S._trap.springs.length)) || (this._trapFx && this._trapFx.root)) {
       if (!this._trapFx) this._trapFx = new TrapFx(this.monsterUiLayer);
