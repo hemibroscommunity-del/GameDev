@@ -44,7 +44,7 @@ import {
 } from '../../src/ui/mobile/sheet/statSim.js';
 import { rpgBlockSize } from '../../src/data/abilities.js';
 import { getAmuletBonus } from '../../src/data/items.js';
-import { withPoints } from '../../src/ui/mobile/sheet/statPreview.js';
+import { withPoints, previewStatPoint, pooled, poolShown } from '../../src/ui/mobile/sheet/statPreview.js';   /* v2.3.3050: + the window's pool rows */
 
 const mockState = {
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
@@ -639,6 +639,44 @@ for (const b of BUILDS) {
   check('mana: nothing in hand -- the bars alone, both lengths, and a line saying what to equip',
     sb && sb.kind === 'mana' && sb.passes[0].bar.max < sb.passes[1].bar.max && /equip/i.test(sb.note || '') && !sb.verdict2, sb && { note: sb.note, v2: sb.verdict2 });
   setBlockScaleEnabled(false);
+}
+
+/* ── 9. THE WINDOW'S MAX HP IS THE SCENE'S AND THE WORKER'S (v2.3.3050) ──
+   Owner: "Max hp in the stat confirmation preview window is showing 48hp for 6
+   points but the preview animation shows the character with 37/37 points for
+   HP if allocated those 6 points (I spent the points and it was actually
+   37)."  The window's row printed the points' raw bonus (6 x 8 = 48); the
+   scene and the worker show the TOTAL in display HP.  One number now, three
+   readers: the window's "after", the scene's bar, the worker's recompute. */
+{
+  setProg3Enabled(true); setProg3XEnabled(true); setProg3SharedEnabled(true); setProg3RelEnabled(true); setProg3ElemEnabled(true);
+  for (const lvl of [3, 6, 12]) {
+    for (const n of [1, 6]) {
+      const C = makeChar({ prog3: { sk: { sword: { level: lvl, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } }, atk: {}, alloc: {}, pool: 0, shared: 20 } });
+      const pv = previewStatPoint(C, 'hp', 'sword', n);
+      const prep = prepareStatScene(C, 'hp', 'sword', n, C.weapon, false, {});
+      const [p0, p1] = prep.play(7);
+      /* the worker: the same character with the points spent, recomputed */
+      const ps = JSON.parse(JSON.stringify(withPoints(C, 'hp', 'sword', n)));
+      ps.z = 'town';
+      room._prog3Recompute(ps);
+      const workerShown = poolShown('hp', ps);
+      check(`window Max HP (char level ${lvl + 2}, +${n}): ${pv && pv.statNow} -> ${pv && pv.statAfter}, the scene's bar ${p1 && p1.bar.max}, the worker's ${workerShown}`,
+        !!pv && pv.pool === true && pv.statAfter === p1.bar.max && pv.statAfter === workerShown && pv.statNow === p0.bar.max,
+        { pv, now: p0 && p0.bar, after: p1 && p1.bar, workerShown, raw: ps.maxHp });
+    }
+  }
+  /* the owner's own case: six points, "37" -- a character whose level puts
+     it there (100 + 6 x 6 = 136 raw, 28 shown; + 48 = 184 raw, 37 shown) */
+  const C6 = makeChar({ prog3: { sk: { sword: { level: 4, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } }, atk: {}, alloc: {}, pool: 0, shared: 20 } });
+  const pv6 = previewStatPoint(C6, 'hp', 'sword', 6);
+  check(`the owner's six points: the window reads ${pv6 && pv6.statNow} -> ${pv6 && pv6.statAfter} (was "0.0 -> 48.0")`,
+    !!pv6 && pv6.statNow === poolShown('hp', pooled(C6)) && pv6.statAfter > pv6.statNow && pv6.statAfter < 48, pv6);
+  /* stamina and mana read their pools too, and a non-pool stat is untouched */
+  const pvS = previewStatPoint(C6, 'stam', 'sword', 3), pvM = previewStatPoint(C6, 'mana', 'sword', 3), pvD = previewStatPoint(C6, 'def', 'sword', 3);
+  check('Stamina and Max Mana read their pools, Defense is still its own percentage',
+    !!pvS && pvS.pool === true && pvS.statAfter > pvS.statNow && !!pvM && pvM.pool === true && pvM.statAfter > pvM.statNow && !!pvD && !pvD.pool && pvD.statAfter < 1,
+    { pvS, pvM, pvD });
 }
 
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }
