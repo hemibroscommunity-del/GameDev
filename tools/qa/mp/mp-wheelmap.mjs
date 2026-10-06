@@ -264,9 +264,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(400);
   }
   let fb = null;
-  for (let i = 0; i < 10; i++) { fb = await bar(P); if (barHolds(fb, 'Frost Ridge', /the thaw line · Lv 6–10/)) break; await P.page.waitForTimeout(300); }
+  /* v2.3.3058: the Lv 6-10 ring is No man's land 1, and there the bar's
+     second line says so, in red, in the stage name's place: "☠ No man's land
+     1 · Lv 6–10" (ZoneHeader.jsx; src/game/noMansLand.js).  The words under
+     it (wheelHere) still name the stage. */
+  const FROST_SUB = /(the thaw line|☠ No man's land 1) · Lv 6–10/;
+  for (let i = 0; i < 10; i++) { fb = await bar(P); if (barHolds(fb, 'Frost Ridge', FROST_SUB)) break; await P.page.waitForTimeout(300); }
   rec.ok(`walking out onto Frost Ridge, the top bar says so: the land, its stage and the levels there ("${fb && fb.place && fb.place.text}" over "${fb && fb.sub && fb.sub.text}", whole)`,
-    fw.words && fw.words.title === 'Frost Ridge' && /the thaw line · Lv 6–10/.test(fw.words.sub) && barHolds(fb, 'Frost Ridge', /the thaw line · Lv 6–10/), { fb, words: fw.words });
+    fw.words && fw.words.title === 'Frost Ridge' && /the thaw line · Lv 6–10/.test(fw.words.sub) && barHolds(fb, 'Frost Ridge', FROST_SUB), { fb, words: fw.words });
   await shot(P, '04-frost');
   /* v2.3.3024, owner: "There might need to be flat colors on the minimap to
      help orient you to what elemental zone you're in" and "elemental zones

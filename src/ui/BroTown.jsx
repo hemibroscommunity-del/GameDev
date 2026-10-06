@@ -42,6 +42,7 @@ import { IncomingTradePanel } from './panels/IncomingTradePanel.jsx';
 import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
 import { EmotePanel } from './panels/EmotePanel.jsx';
 import { InspectPlayerPanel } from './panels/InspectPlayerPanel.jsx';
+import { nmlCanAttack } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land */
 import { profileRelayFields } from './panels/playerProfile.js'; /* v2.3.2926: the Inspect card's relay fields */
 import { NameModal } from './panels/NameModal.jsx';
 /* v2.3.1814: the login door that now sits in front of the creator.
@@ -11402,6 +11403,27 @@ export var BroTown = function BroTown(_ref0) {
               _isDuelOpponent = String(_oppId) === String(id);
             }
           } catch (e) { _isDuelOpponent = false; }
+          /* ═══ v2.3.3058: ...OR SOMEONE YOU MAY FIGHT IN NO MAN'S LAND ═══
+             The worker's rule from your side (src/game/noMansLand.js
+             nmlCanAttack): the tap AIMS -- your swings and shots at them
+             become player_attack, which the worker judges -- and opens no
+             card, which mid-fight would cover the screen.  A second tap lets
+             go, as for anyone. */
+          var _nmlFoe = false;
+          try { _nmlFoe = !_isDuelOpponent && nmlCanAttack(S, id); } catch (e) { _nmlFoe = false; }
+          if (_nmlFoe) {
+            /* nml: the lock is No man's land's, so noteNoMansLand lets it go
+               the moment the rule stops allowing the fight.  Tapping them
+               AGAIN keeps it: on a computer the attack IS a click, and a click
+               on the one you fight toggling the lock off made every other
+               swing a plain one (mp-nomansland).  Tap empty ground to let go,
+               as for any lock. */
+            if (!(S.lockedTarget && S.lockedTarget.id === id)) {
+              S.lockedTarget = { type: 'player', id: id, ref: o, nml: true };
+              try { pushDmgPopup(S, o.x, o.y - 70, 'TARGET', '#ff6b5e', { ts: Date.now() }); } catch (e) { /* the reticle says it */ }
+            }
+            return;
+          }
           if (S.lockedTarget && S.lockedTarget.id === id) {
             S.lockedTarget = null;
           } else if (!_isDuelOpponent) {

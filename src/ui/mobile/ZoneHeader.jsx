@@ -7,6 +7,7 @@ import { dayPhase, lightingAt, zoneHasSky } from '../../game/timeOfDay.js'; /* v
 import { wheelHere } from '../../game/wheelTrial.js'; /* v2.3.3009: where you are in the Wheel, in words */
 import { ZONES } from '../../data/zones.js'; /* v2.3.3009: the Wheel's name, before its first words come */
 import { landLook } from '../../data/wheelLands.js'; /* v2.3.3024: each land's element icon and colour */
+import { nmlHere, NML_RED } from '../../game/noMansLand.js'; /* v2.3.3058: No man's land on the bar */
 
 /* ═══ v2.3.2892: WHAT TIME IT IS, NEXT TO WHERE YOU ARE ═══
    Owner: "Add a time of day icon next to current map name."  The hour is
@@ -212,6 +213,8 @@ export const ZoneHeader = ({ onExit }) => {
   const S = getState();
   if (!S) return null;
   const where = wheelWhere(S, lastWhere);   /* v2.3.3009 */
+  let nmlLvl = 0;
+  try { nmlLvl = nmlHere(S); } catch (e) { nmlLvl = 0; }   /* v2.3.3058 */
 
   /* v2.3.2320: the same field, read the same way as every other readout in
      the game — `S.rpg.coins`, live, never cached here.  Under protocol v2
@@ -293,7 +296,13 @@ export const ZoneHeader = ({ onExit }) => {
                 {landLook(where.region) && landLook(where.region).icon
                   ? <img className="bt-zone-header__elem" src={landLook(where.region).icon} alt="" width="16" height="16" draggable="false" />
                   : null}{where.title}</span>
-              {where.sub ? <span className="bt-zone-header__sub" data-zone-sub="1">{where.sub}</span> : null}</>
+              {/* v2.3.3058: in No man's land the sub-line says so, in red, with
+                  the levels (src/game/noMansLand.js) -- the place where you can
+                  be attacked must never read like the rest of the land */}
+              {nmlLvl > 0
+                ? <span className="bt-zone-header__sub" data-zone-sub="1" data-zone-nml={nmlLvl} style={{ color: NML_RED }}>
+                    {`☠ No man's land ${nmlLvl}`}{(/Lv \d+[–-]\d+/.exec(where.sub || '') || [''])[0] ? ` · ${(/Lv \d+[–-]\d+/.exec(where.sub || '') || [''])[0]}` : ''}</span>
+                : (where.sub ? <span className="bt-zone-header__sub" data-zone-sub="1">{where.sub}</span> : null)}</>
           : (S.currentZone === 'wheel' ? ((ZONES.wheel && ZONES.wheel.name) || 'BroTown' /* v2.3.3039 */) : zoneTitle(S))}</div>
         </div>
         {/* ═══ v2.3.2320: THE PURSE LIVES HERE NOW ═══

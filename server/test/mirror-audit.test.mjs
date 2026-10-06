@@ -42,6 +42,9 @@ import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_
 import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */ } from '../../src/data/gameSystems.js'; /* v2.3.2956; the lead and settle v2.3.3036 */
 import { GESTURE_FLOOR_MS as CLIENT_GESTURE_FLOOR_MS } from '../../src/game/gesturePose.js'; /* v2.3.3036 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
+import { NML as CLIENT_NML, NML_CENTRE as CLIENT_NML_CENTRE, nmlLevelAt as clientNmlLevelAt } from '../../src/data/noMansLandRings.js'; /* v2.3.3058 */
+import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.js';
+import { WHEEL_CENTRE as SRV_WHEEL_CENTRE } from '../src/wheelspawns.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
   MONSTER_DMG_CURVE, monsterHpFlat as clientMonsterHpFlat, /* v2.3.3055 */
@@ -1489,4 +1492,21 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
-process.exit(failures === 0 ? 0 : 1);
+process.exit(failures === 0 ? 0 : 1)
+// ── v2.3.3058: No man's land's rings (server nomansland.js, client
+// game/noMansLand.js).  The banner, the top bar and the tap's aim are the
+// game's; every hit is the worker's -- one ring apart, and a player standing
+// on the line would be told they are safe while they are being hit.
+{
+  const keys = ['HUB', 'TIER', 'TIERS', 'LEVELS_PER_TIER', 'FIRST_TIER', 'SKULL_MS'];
+  const bad = keys.filter((k) => SRV_NML[k] !== CLIENT_NML[k]);
+  check('no man\'s land: the same rings and skull time on both sides', bad.length === 0, bad);
+  check('no man\'s land: the same centre (WHEEL_CENTRE)', CLIENT_NML_CENTRE[0] === SRV_WHEEL_CENTRE[0] && CLIENT_NML_CENTRE[1] === SRV_WHEEL_CENTRE[1], { cli: CLIENT_NML_CENTRE, srv: SRV_WHEEL_CENTRE });
+  const off = [];
+  for (let r = 0; r < 20000; r += 97) {
+    const x = SRV_WHEEL_CENTRE[0] + r, y = SRV_WHEEL_CENTRE[1] + r * 0.3;
+    if (srvNmlLevelAt('wheel', x, y) !== clientNmlLevelAt('wheel', x, y)) off.push({ r, srv: srvNmlLevelAt('wheel', x, y), cli: clientNmlLevelAt('wheel', x, y) });
+  }
+  check('no man\'s land: the same level at every spot out to the gates', off.length === 0, off.slice(0, 4));
+}
+;

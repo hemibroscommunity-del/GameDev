@@ -107,6 +107,9 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
   try {
     var R = S && S.rpg;
     if (!R) return;
+    /* v2.3.3058: a death in No man's land TOOK it (nml_loss): it is not
+       coming back to the bag (src/game/noMansLand.js applyNmlLoss) */
+    if (S._nmlConfiscatedAt && Date.now() - S._nmlConfiscatedAt < 10000) return;
     var worn = R[slot];
     if (!worn || typeof worn !== 'object') return;      /* nothing to displace */
     if (_armorSame(worn, incoming)) return;             /* the worker kept it */
@@ -129,6 +132,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
 }
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
+import { applyNmlSkull, applyNmlLoss, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
@@ -719,6 +723,9 @@ export function setupWebSocket(ctx) {
                        tick player is the whole wire, so an absent `spr` is
                        "not sprinting" -- from an old worker as from a new one. */
                     S.others[pid]._sp = data.spr === 1;
+                    /* v2.3.3058: No man's land's skull (tick.js `sk`): absent is
+                       none, for the same reason as `spr` above */
+                    nmlPeerSkull(S, pid, data.sk);
                     /* v2.3.599: live equip -> the renderer reads other.equip
                        (nested), so rebuild it from the broadcast eqc/eql/eqs
                        whenever present, keeping armour on/off in sync. */
@@ -1451,6 +1458,19 @@ export function setupWebSocket(ctx) {
                  despawn.  The actual coin/inventory mutation rides on
                  the player_state event that immediately follows. */
               if (msg.payload) _applyLootCredit(msg.payload, S);
+              break;
+            }
+          /* v2.3.3058: No man's land (server/src/nomansland.js; the game's half,
+             src/game/noMansLand.js) -- your own skulls' time left, and what a
+             death there took from you */
+          case 'nml_skull':
+            {
+              if (msg.payload) applyNmlSkull(S, msg.payload);
+              break;
+            }
+          case 'nml_loss':
+            {
+              if (msg.payload) applyNmlLoss(S, msg.payload, saveRpgSoon);
               break;
             }
           case 'chest_opened':
