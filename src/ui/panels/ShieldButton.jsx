@@ -328,9 +328,9 @@ export function leftCluster(isLandscape) {
  *
  * Owner: "a sprint button by the left joystick ... Maybe just to the right of
  * the left joystick" (SprintButton.jsx).  It stood level with the movement
- * disc's centre, LCTL_GAP clear of its right edge, until v2.3.3086.
+ * disc's centre, LCTL_GAP clear of its right edge, until v2.3.3106.
  *
- * ═══ v2.3.3086: ...AND NOW JUST NORTH OF THE ATTACK DISC ═══
+ * ═══ v2.3.3106: ...AND NOW JUST NORTH OF THE ATTACK DISC ═══
  * Owner: "I think it also makes sense to put the sprint button near the right
  * joystick instead of the left maybe just north of it", and of the clash with
  * Special and Whirlwind (which pop up above the disc in a fight, where Sprint
@@ -349,7 +349,7 @@ export function leftCluster(isLandscape) {
  * so a button centred over the disc lay under it.  Sideways Sprint's right
  * edge is SPRINT_MAP_CLEAR in from the screen's -- the minimap's width and
  * 8px -- still at the disc's top, up and to the left of it.  (The Special
- * button lay under the minimap there before v2.3.3086 too.) */
+ * button lay under the minimap there before v2.3.3106 too.) */
 export const SPRINT_MAP_CLEAR = 132 + 8;
 
 export function sprintAnchor(isLandscape) {
@@ -437,7 +437,7 @@ export function jumpAnchor(isLandscape) {
 export const RCTL_GAP = 10;         /* cluster <-> the attack disc */
 export const RCTL_SLOT = { special: 0, whirl: 1 };
 
-/* ═══ v2.3.3086: THE CLUSTER MAKES ROOM FOR SPRINT ═══
+/* ═══ v2.3.3106: THE CLUSTER MAKES ROOM FOR SPRINT ═══
  * Sprint took the place right above the disc (sprintAnchor), so the cluster
  * moves -- the owner's "Above, fights move up".  Half a button of clear air
  * from Sprint either way (RCTL_SPRINT_CLEAR), the standard mp-abilslot holds
@@ -553,7 +553,7 @@ export function combatBandTopPx(isLandscape) {
     l.bottomPx(LCTL_SLOT.burst) + l.size,      /* Element Burst, over the movement disc */
     c.bottomPx(CTL_SLOT.bash) + c.size,        /* Shield Bash */
     blk.bottomPx + blk.size,                   /* Block */
-    spr.bottomPx + spr.size,                   /* Sprint, over the attack disc (v2.3.3006; v2.3.3086 moved it) */
+    spr.bottomPx + spr.size,                   /* Sprint, over the attack disc (v2.3.3006; v2.3.3106 moved it) */
     jmp.bottomPx + jmp.size,                   /* Jump, under the attack disc (v2.3.3017) */
     RBTN.bottom + discR,                       /* the attack disc */
     LBTN.bottom + discL);                      /* the movement disc */

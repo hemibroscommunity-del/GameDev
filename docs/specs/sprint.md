@@ -291,7 +291,7 @@ These are the client's alone:
   - Picture: `tools/qa/mp/out/sprintpeer-watcher.png`.
 - **`mp-sprint`** still passes, 23/23.
 
-## v2.3.3086: the button moves over the attack disc
+## v2.3.3106: the button moves over the attack disc
 
 The owner: "I think it also makes sense to put the sprint button near the
 right joystick instead of the left maybe just north of it", and, asked what

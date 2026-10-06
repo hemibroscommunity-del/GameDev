@@ -6,7 +6,7 @@
  *
  * A real player against a real worker, in the Wheel as players get it, on a
  * phone-sized TOUCH page:
- *   1. the button is just north of the ATTACK disc, centred over it (v2.3.3086,
+ *   1. the button is just north of the ATTACK disc, centred over it (v2.3.3106,
  *      the owner: "near the right joystick instead of the left maybe just
  *      north of it"; it was right of the movement stick), 44 px or more, in
  *      the attack half, on no other control, its boot inside its rim --
@@ -49,7 +49,7 @@ const LAYOUT = (P) => P.page.evaluate(() => {
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width, h: b.height }; };
   const btn = document.querySelector('[data-sprint]');
   const stick = document.querySelector('.bt-joystick-zone');
-  /* v2.3.3086: the button is over the ATTACK disc now */
+  /* v2.3.3106: the button is over the ATTACK disc now */
   const disc = document.querySelector('.bt-rjoy-base');
   /* v2.3.3018: the owner's mockup draws Sprint as the boot alone -- the word
      went -- so what has to sit inside the ring is the PICTURE */
@@ -149,7 +149,7 @@ const sprintState = (P) => P.page.evaluate(() => {
   const b = window.__btSprintBtn ? window.__btSprintBtn() : null;
   return { x: S.player.x, y: S.player.y, vx: S.player.vx || 0, roll: !!S._dodgeRoll, stick: Math.hypot(S.stickX || 0, S.stickY || 0),
     st: S.rpg ? S.rpg.stamina : null, btn: b, jog: window.__btJogCyc || null,
-    aim: !!S._aiming, auto: !!S.autoAttack, jumps: S._jumpCount || 0 /* v2.3.3086: the attack half is under it now */ };
+    aim: !!S._aiming, auto: !!S.autoAttack, jumps: S._jumpCount || 0 /* v2.3.3106: the attack half is under it now */ };
 });
 
 /* hold `key`, sampling every ~100 ms for `ms` (or until `until`); `each`

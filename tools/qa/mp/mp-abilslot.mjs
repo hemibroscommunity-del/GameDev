@@ -123,7 +123,7 @@ const boxes = (P) => P.page.evaluate(() => {
        its own and look exactly like a weapon rule working. */
     lock: !!(S && S.lockedTarget && S.lockedTarget.ref),
     shield: b('[data-shield]'), special: b('[data-special]'),
-    /* v2.3.3086: Sprint, just north of the attack disc -- the cluster makes
+    /* v2.3.3106: Sprint, just north of the attack disc -- the cluster makes
        room round it */
     sprint: b('[data-sprint]'),
     ljoy: b('.bt-joystick-base'),
@@ -527,7 +527,7 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
        A threshold that fails a correct build is worse than no threshold. */
     const CEILING = 283;
     const aboveBand = (g.dashTop || h) - d.whirl.y;
-    /* v2.3.3086: the ceiling is a 390px-TALL screen's (that is where v2.3.2542
+    /* v2.3.3106: the ceiling is a 390px-TALL screen's (that is where v2.3.2542
        met the health bars), so it is held sideways.  Upright the cluster moved
        a row up for Sprint (322px at 390x844, with ~450px more screen above
        it): reported there, not held to a sideways number. */
@@ -538,7 +538,7 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
     } else {
       console.log(`    ${tag}: Whirlwind's top ${aboveBand}px above the band, ${d.whirl.y}px from the screen's top`);
     }
-    /* ═══ v2.3.3086: SPRINT OVER THE DISC, THE PAIR ROUND IT ═══
+    /* ═══ v2.3.3106: SPRINT OVER THE DISC, THE PAIR ROUND IT ═══
        The owner: "put the sprint button near the right joystick ... maybe just
        north of it", and "Above, fights move up". */
     if (d.sprint && d.attack) {

@@ -588,7 +588,7 @@ remnant to migrate server-side, not a mode to preserve.
       keep-alive key is Control;
     - `sprint` suite (47 checks, the client's rules too), mirror-audit,
       `mp-sprint`: docs/specs/sprint.md.
-    - since v2.3.3086 the button is JUST NORTH OF THE ATTACK DISC (the owner:
+    - since v2.3.3106 the button is JUST NORTH OF THE ATTACK DISC (the owner:
       "near the right joystick instead of the left maybe just north of it",
       then "Above, fights move up"): `sprintAnchor` centres it over the disc,
       or sideways steps it left of the Wheel's minimap (`SPRINT_MAP_CLEAR`);
