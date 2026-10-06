@@ -1644,7 +1644,9 @@ export class GameRoom {
        town, takes a monster's hit at all -- a swing wound up, or a ball thrown,
        before you stepped onto it included.  Here for the reason the line above
        is: one choke point.  Silent, like the harvester shield (wheelzone.js). */
-    if (zoneId === WHEEL_ZONE && targetPs && this._wheelSafeAt(targetPs.x, targetPs.y)) return;
+    /* v2.3.3056: ...unless they provoked this monster from there (wheelzone.js
+       _wheelSheltered: hurt it, and still fighting) */
+    if (zoneId === WHEEL_ZONE && targetPs && this._wheelSheltered(m, targetId, targetPs.x, targetPs.y, now)) return;
     /* ═══ v2.3.2652: A ROCK IN THE WAY STOPS IT ═══
        Owner: "I would like it if these props could block my and enemy
        attacks."
@@ -2126,7 +2128,8 @@ export class GameRoom {
           const _sticky = playersInZone.find(p => p.id === m._aggroOverrideTarget);
           /* v2.3.2978: ...nor is anyone on the Wheel's safe ground, the commons
              and the town (wheelzone.js _wheelSafeAt) */
-          const stickyP = (_sticky && (_sticky.extracting || (zoneId === WHEEL_ZONE && this._wheelSafeAt(_sticky.x, _sticky.y)))) ? null : _sticky;
+          /* v2.3.3056: ...unless it is the one who provoked it from there */
+          const stickyP = (_sticky && (_sticky.extracting || (zoneId === WHEEL_ZONE && this._wheelSheltered(m, _sticky.id, _sticky.x, _sticky.y, now)))) ? null : _sticky;
           if (stickyP) {
             const dxS = stickyP.x - m.x;
             const dyS = stickyP.y - m.y;
@@ -2145,7 +2148,7 @@ export class GameRoom {
                player in the zone is extracting, `nearest` stays null and the
                monster wanders — which is the whole point. */
             if (p.extracting) continue;
-            if (zoneId === WHEEL_ZONE && this._wheelSafeAt(p.x, p.y)) continue;   /* v2.3.2978: safe ground */
+            if (zoneId === WHEEL_ZONE && this._wheelSheltered(m, p.id, p.x, p.y, now)) continue;   /* v2.3.2978: safe ground; v2.3.3056: unless provoked from it */
             const dx = p.x - m.x;
             const dy = p.y - m.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -2233,9 +2236,13 @@ export class GameRoom {
            commons and town are meant to be safe ground (wheelzone.js).  The
            monster falls through to the wander branch below, whose leash
            walks it home. */
+        /* v2.3.3056: ...but a monster PURSUING the one who provoked it
+           (wheelzone.js _wheelProvokedBy) runs to WHEEL.PURSUE_LEASH, and
+           onto the safe ground after them. */
+        const _pursuing = !!(nearest && zoneId === WHEEL_ZONE && this._wheelProvokedBy(m, nearest.id, now));
         if (nearest && zoneId === WHEEL_ZONE
-            && (Math.hypot(m.x - m.spawnX, m.y - m.spawnY) > WHEEL.CHASE_LEASH
-              || this._wheelSafeAt(m.x, m.y))) {   /* ...or it has stepped onto the safe ground */
+            && (Math.hypot(m.x - m.spawnX, m.y - m.spawnY) > (_pursuing ? WHEEL.PURSUE_LEASH : WHEEL.CHASE_LEASH)
+              || (!_pursuing && this._wheelSafeAt(m.x, m.y)))) {   /* ...or it has stepped onto the safe ground */
           nearest = null;
           m._aggroOverrideTarget = null;
           m._aggroOverrideUntil = 0;
@@ -3245,6 +3252,7 @@ export class GameRoom {
       ps.respawnAt = 0;
       ps.z = 'town';
       ps.lastDamageAt = 0;
+      ps._lastDealtAt = 0; /* v2.3.3056: a respawned player is out of the fight (wheelzone.js _wheelProvokedBy) */
       // Defense-in-depth: wipe again on respawn in case anything
       // re-seeded inventory or dmgFromMonster between death and
       // respawn (e.g., a late monster_attack tick).  Matches the
