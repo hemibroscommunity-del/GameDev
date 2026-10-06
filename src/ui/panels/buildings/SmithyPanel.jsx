@@ -10,6 +10,8 @@ import { metalIconPath, weaponMaterial } from '@/rendering/traits/materialTints.
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
+import { SALVAGE, GRADE_LABEL, armourMetal, weaponMetal, weaponSig, parseEssenceKey, essenceKey, essenceName, essenceIcon, gradeRank } from '@/data/salvage.js'; /* v2.3.3110 */
+import { salvageBus, salvageReasonText } from '@/game/salvage.js'; /* v2.3.3110 */
 
 /* ═══ v2.3.2826: THE BLACKSMITH, REBUILT ═══
  *
@@ -22,7 +24,8 @@ import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
  *   - Pictures and numbers, not sentences.  Every cost is a chip: the thing's
  *     icon and HAVE/NEED, green when you have it, red when you don't.  A lock
  *     is a chip that names the one thing missing ("Smithing 6").
- *   - One job per tab: Smelt, Forge, Armor (v2.3.3092), Upgrade, Amulet.  The
+ *   - One job per tab: Smelt, Forge, Armor (v2.3.3092), Upgrade, Amulet,
+ *     Salvage (v2.3.3110).  The
  *     old panel stacked all of them in one scroll with a paragraph above each.
  *   - Only what the WORKER settles.  The old panel also offered Reforge, the
  *     legacy "Harden" affix, shield forging and Salvage -- all four ran only
@@ -41,7 +44,9 @@ import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
  *     (game/smithing.js).
  *
  * Test hooks: data-smithy-tab, data-smelt-*, data-forge-row / data-forge-go,
- * data-armor-row / data-armor-go (v2.3.3092), data-harden-go, data-amulet-row. */
+ * data-armor-row / data-armor-go (v2.3.3092), data-harden-go, data-amulet-row,
+ * data-salvage-row / data-salvage-go / data-essence-row / data-essence-go /
+ * data-salvage-said (v2.3.3110). */
 
 const C = {
   sheet: '#1E2E34', well: '#111E23', raised: '#293B41', card: '#24363C',
@@ -142,6 +147,8 @@ export function SmithyPanel({ rpgState, stateRef }) {
     (S._serverCaps && S._serverCaps.armorforge) && { id: 'armor', label: 'Armor', icon: '/icons/items/chest-plate-copper.webp' + ITEMS_V },
     (S._serverCaps && (S._serverCaps.harden || S._serverCaps.gemExtract)) && { id: 'upgrade', label: 'Upgrade', icon: GEM },
     (S._serverCaps && S._serverCaps.amuletForge) && { id: 'amulet', label: 'Amulet', icon: '/icons/items/amulet.webp' + ITEMS_V },
+    /* v2.3.3110: salvage for bars, and the grades' essences (server salvage.js) */
+    (S._serverCaps && S._serverCaps.salvage) && { id: 'salvage', label: 'Salvage', icon: essenceIcon('essence_rare_iron') + ITEMS_V },
   ].filter(Boolean);
   const [tab, setTabState] = React.useState(() => (S._smithyTab && tabs.some((t) => t.id === S._smithyTab)) ? S._smithyTab : tabs[0].id);
   const setTab = (id) => { S._smithyTab = id; setTabState(id); };
@@ -225,6 +232,7 @@ export function SmithyPanel({ rpgState, stateRef }) {
         {tab === 'armor' && <ArmorTab {...{ S, inv, lvl, ask, busy }} />}
         {tab === 'upgrade' && <UpgradeTab {...{ S, R, coins, lvl, caps, ask, busy }} />}
         {tab === 'amulet' && <AmuletTab {...{ S, R, coins, lvl, ask, busy }} />}
+        {tab === 'salvage' && <SalvageTab {...{ S, R, inv }} />}
       </div>
     </div>
   );
@@ -299,13 +307,15 @@ function ForgeTab({ S, R, inv, coins, lvl, ask, busy, wtype, setWtype }) {
       )}
       {shown.map((key) => {
         const bt = BLACKSMITH_TIERS[key];
-        const resKey = bt.wood ? 'wood_' + bt.wood : 'ore_' + bt.oreName + '_ore';
+        /* v2.3.3110: copper, iron and black steel are forged from four bars */
+        const resKey = bt.bar ? bt.bar : bt.wood ? 'wood_' + bt.wood : 'ore_' + bt.oreName + '_ore';
+        const resNeed = bt.bar ? bt.bars : bt.oreCost;
         const have = Math.floor(inv[resKey] || 0);
         const idx = keys.indexOf(key);
         const req = getGearStatReq(wtype, idx, R);
         const meets = req.value === 0 || (req.prog3 ? req.met : (R[req.stat] || 0) >= req.value);
         const skillOk = lvl >= bt.minLvl;
-        const ok = skillOk && meets && have >= bt.oreCost && coins >= bt.goldCost && !stashFull;
+        const ok = skillOk && meets && have >= resNeed && coins >= bt.goldCost && !stashFull;
         const ic = weaponIcon(wtype, key);
         const name = bt.label + ' ' + TYPE_LABEL[wtype];
         return (
@@ -320,7 +330,7 @@ function ForgeTab({ S, R, inv, coins, lvl, ask, busy, wtype, setWtype }) {
             })}>Forge</Btn>}>
             {!skillOk && <Lock>Smithing {bt.minLvl}</Lock>}
             {skillOk && !meets && <Lock>{req.label} {req.value}</Lock>}
-            <Cost icon={thumbFor(resKey)} have={have} need={bt.oreCost} />
+            <Cost icon={bt.bar ? BAR_THUMBS[bt.bar] : thumbFor(resKey)} have={have} need={resNeed} />
             <Cost icon={COIN} have={coins} need={bt.goldCost} />
           </Row>
         );
@@ -479,6 +489,164 @@ function AmuletTab({ S, R, coins, lvl, ask, busy }) {
             <Cost icon={GOLDBAR} have={bars} need={at.bars} />
             <Cost icon={COIN} have={coins} need={at.goldCost} />
           </Row>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Salvage: carried copper, iron and black steel back into bars, and the
+   grades' essences (server salvage.js, v2.3.3110) ──
+   The owner: "salvageable at the blacksmith for 50% of the bars it took to
+   make them ... If you salvage them you get 2 bars back", and a Rare, Elite or
+   Godly piece's "essence ... use it on whatever same tier armor or weapon you
+   want".  Every piece you CARRY of a metal with bars -- torsos and greaves
+   from the bag, swords and greatsword from the weapon bag -- with what it
+   gives back; under it, each essence you hold and the pieces of its metal it
+   would raise.  What you wear is never offered (take it off first).
+   Salvaging and using an essence are TWO taps ("Sure?"): both are for good.
+   The worker answers every press (smith_salvage_result / essence_result,
+   game/salvage.js), so a refusal says why on the line at the top.
+   The grade colours are the owner's for gear (rare blue, elite orange,
+   godly prismatic), the essences' own. */
+const GRADE_COLOR = { rare: '#5B99DE', elite: '#E8893A', godly: '#F0C45F' };
+const PRISM = 'linear-gradient(90deg,#FF7A7A,#FFD166,#7CE38B,#5BC8F5,#C08BFF)';
+function GradeChip({ grade, showNormal }) {
+  if (!grade || (grade === 'normal' && !showNormal)) return null;
+  if (grade === 'normal') {
+    return <span data-grade="normal" style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, background: C.well, fontSize: 12, fontWeight: 800, color: C.mute }}>{GRADE_LABEL.normal}</span>;
+  }
+  const godly = grade === 'godly';
+  return (
+    <span data-grade={grade} style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, background: C.well,
+      fontSize: 12, fontWeight: 800, color: godly ? 'transparent' : GRADE_COLOR[grade],
+      ...(godly ? { backgroundImage: PRISM, WebkitBackgroundClip: 'text', backgroundClip: 'text' } : null) }}>{GRADE_LABEL[grade]}</span>
+  );
+}
+const LEGS = 'legsStash';
+/* Every piece the tab can name: carried armour (by id) and the weapon bag (by
+   index and signature).  `metal` null = not a metal with bars. */
+function carriedPieces(R) {
+  const out = [];
+  for (const field of ['armorStash', LEGS]) {
+    const list = Array.isArray(R[field]) ? R[field] : [];
+    list.forEach((p, i) => {
+      if (!p || typeof p !== 'object') return;
+      const metal = armourMetal(p);
+      if (!metal) return;
+      const legs = field === LEGS;
+      out.push({ key: field + ':' + (p.gid || 'x' + i), field, gid: typeof p.gid === 'string' ? p.gid : null, metal, grade: p.quality || 'normal',
+        name: p.name || (SALVAGE.METALS[metal].name + (legs ? ' Greaves' : ' Torso')), icon: armorIconFor(legs ? 'legs' : 'chest', metal) });
+    });
+  }
+  (Array.isArray(R.weaponStash) ? R.weaponStash : []).forEach((w, i) => {
+    const metal = weaponMetal(w);
+    if (!metal) return;
+    const ic = weaponIcon(w.type, w.gearBase);
+    out.push({ key: 'weaponStash:' + i + ':' + weaponSig(w), field: 'weaponStash', idx: i, sig: weaponSig(w), metal, grade: w.quality || 'normal',
+      name: SALVAGE.METALS[metal].name + ' ' + (TYPE_LABEL[w.type] || 'Sword') + (w.hardness ? ' H' + w.hardness : ''), icon: ic.src, fallback: ic.fallback });
+  });
+  return out;
+}
+function refOf(p) { return p.field === 'weaponStash' ? { field: p.field, idx: p.idx, sig: p.sig } : { field: p.field, gid: p.gid }; }
+
+function SalvageTab({ S, R, inv }) {
+  const last = React.useSyncExternalStore(salvageBus.subscribe, salvageBus.get, salvageBus.get);
+  const openedAt = React.useRef(Date.now());
+  const [armed, setArmed] = React.useState(null);   /* the row waiting for its second tap */
+  const [wait, setWait] = React.useState(null);     /* {key, at}: a press the worker has not answered yet */
+  const armTimer = React.useRef(0);
+  React.useEffect(() => () => clearTimeout(armTimer.current), []);
+  React.useEffect(() => { if (wait && last && last.at >= wait.at) setWait(null); }, [last, wait]);
+  React.useEffect(() => {
+    if (!wait) return undefined;
+    const t = setTimeout(() => setWait(null), 4000);
+    return () => clearTimeout(t);
+  }, [wait]);
+  const press = (key, type, payload) => {
+    if (wait || !S.channel) return;
+    if (armed !== key) {
+      setArmed(key);
+      clearTimeout(armTimer.current);
+      armTimer.current = setTimeout(() => setArmed(null), 3000);
+      return;
+    }
+    setArmed(null);
+    try { S.channel.send({ type, payload }); } catch (e) { return; }
+    setWait({ key, at: Date.now() });
+    startSmithing(S, SMITH_STRIKE_MS * 2, 'salvage');
+  };
+
+  const pieces = carriedPieces(R);
+  const essences = Object.keys(inv).filter((k) => parseEssenceKey(k) && Math.floor(inv[k] || 0) > 0)
+    .sort((a, b) => { const x = parseEssenceKey(a), y = parseEssenceKey(b); return gradeRank(y.grade) - gradeRank(x.grade) || Object.keys(SALVAGE.METALS).indexOf(x.metal) - Object.keys(SALVAGE.METALS).indexOf(y.metal); });
+
+  /* the last answer, said once at the top */
+  let said = null;
+  if (last && last.at >= openedAt.current) {
+    if (!last.ok) said = { text: salvageReasonText(last.reason, last.kind), bad: true };
+    else if (last.kind === 'salvage') said = { text: 'Salvaged' + (last.name ? ' ' + last.name : '') + ': +' + last.bars + ' ' + (SALVAGE.METALS[last.metal] ? SALVAGE.METALS[last.metal].name + ' Bars' : 'bars') + (last.essence ? ', +1 ' + essenceName(last.essence) : '') };
+    else said = { text: 'Now ' + (GRADE_LABEL[last.grade] || last.grade) + '!' };
+  }
+  const btnLabel = (key, word) => (wait && wait.key === key ? '…' : armed === key ? 'Sure?' : word);
+  return (
+    <div data-salvage-section="1">
+      {said && (
+        <div data-salvage-said={said.bad ? 'bad' : 'ok'} aria-live="polite" style={{ margin: '0 2px 8px', fontSize: 13, fontWeight: 700, color: said.bad ? '#E59A94' : C.good }}>{said.text}</div>
+      )}
+      <div style={{ fontSize: 12, color: C.mute, margin: '0 2px 8px', lineHeight: 1.4 }}>
+        <b style={{ color: C.sub }}>{SALVAGE.BARS} of {SALVAGE.COST_BARS} bars back.</b> Rare, Elite and Godly also leave their <b style={{ color: C.sub }}>essence</b>.
+      </div>
+      {pieces.length === 0 && (
+        <div data-salvage-empty="1" style={{ padding: '14px 8px', textAlign: 'center', color: C.mute, fontSize: 13 }}>
+          Carry a copper, iron or black steel piece to salvage it.
+        </div>
+      )}
+      {pieces.map((p) => {
+        const legacy = p.field !== 'weaponStash' && !p.gid;
+        const ess = SALVAGE.ESSENCE_GRADES.indexOf(p.grade) >= 0 ? essenceKey(p.grade, p.metal) : null;
+        const on = !legacy && !wait;
+        return (
+          <Row key={p.key} data-salvage-row={p.key} icon={p.icon + ITEMS_V} iconFallback={p.fallback || p.icon} title={p.name}
+            action={<Btn on={on} primary={armed === p.key} data-salvage-go={p.key}
+              onClick={() => press(p.key, 'smith_salvage', refOf(p))}>{btnLabel(p.key, 'Salvage')}</Btn>}>
+            <GradeChip grade={p.grade} />
+            {legacy ? <Lock>Too old to salvage</Lock> : <Chip icon={BAR_THUMBS[SALVAGE.METALS[p.metal].bar]} color={C.good}>+{SALVAGE.BARS}</Chip>}
+            {!legacy && ess && <Chip icon={essenceIcon(ess) + ITEMS_V} color={C.good}>+1</Chip>}
+          </Row>
+        );
+      })}
+      {essences.length > 0 && (
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: C.mute, margin: '14px 2px 8px' }}>Essences</div>
+      )}
+      {essences.map((k) => {
+        const e = parseEssenceKey(k);
+        const targets = pieces.filter((p) => p.metal === e.metal && gradeRank(p.grade) < gradeRank(e.grade) && (p.field === 'weaponStash' || p.gid));
+        return (
+          <div key={k} data-essence={k} style={{ marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 2px 6px' }}>
+              <Icon src={essenceIcon(k) + ITEMS_V} size={28} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: C.text }}>{essenceName(k)}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.mute }}>×{Math.floor(inv[k] || 0)}</span>
+            </div>
+            {targets.length === 0 && (
+              <div style={{ fontSize: 12, color: C.mute, margin: '0 2px 8px 38px' }}>
+                No {SALVAGE.METALS[e.metal].name.toLowerCase()} piece below {GRADE_LABEL[e.grade]} in your bag.
+              </div>
+            )}
+            {targets.map((p) => {
+              const key = k + '>' + p.key;
+              return (
+                <Row key={key} data-essence-row={key} icon={p.icon + ITEMS_V} iconFallback={p.fallback || p.icon} title={p.name}
+                  action={<Btn on={!wait} primary={armed === key} data-essence-go={key}
+                    onClick={() => press(key, 'essence_apply', { essence: k, ...refOf(p) })}>{btnLabel(key, 'Use')}</Btn>}>
+                  <GradeChip grade={p.grade} showNormal />
+                  <span style={{ fontSize: 12, color: C.mute }}>→</span>
+                  <GradeChip grade={e.grade} />
+                </Row>
+              );
+            })}
+          </div>
         );
       })}
     </div>

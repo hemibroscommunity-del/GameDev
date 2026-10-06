@@ -37,14 +37,15 @@ export const SMELT_RECIPES = {
    "Should smelted bars make armour?".  MIRROR of server/src/armorforge.js
    ARMOR_FORGE.RECIPES (mirror-audit pins every field); the worker settles every
    forge from its own copy, this one only draws the Armour tab's rows.  `mat` is
-   the metal's material id (materialTints.js), `slot` the gear slot. */
+   the metal's material id (materialTints.js), `slot` the gear slot.
+   v2.3.3110: four bars a piece (salvage.js gives two back). */
 export const ARMOR_FORGE_RECIPES = {
-  copper_torso: { bar: 'bar_copper', bars: 5, slot: 'armor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 1000, name: 'Copper Torso' },
-  copper_greaves: { bar: 'bar_copper', bars: 3, slot: 'legsArmor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 600, name: 'Copper Greaves' },
-  iron_torso: { bar: 'bar_iron', bars: 5, slot: 'armor', mat: 'iron', tierMult: 2, minLvl: 5, xp: 1500, name: 'Iron Torso' },
-  iron_greaves: { bar: 'bar_iron', bars: 3, slot: 'legsArmor', mat: 'iron', tierMult: 2, minLvl: 5, xp: 900, name: 'Iron Greaves' },
-  blacksteel_torso: { bar: 'bar_black_steel', bars: 5, slot: 'armor', mat: 'blacksteel', tierMult: 3, minLvl: 10, xp: 2000, name: 'Black Steel Torso' },
-  blacksteel_greaves: { bar: 'bar_black_steel', bars: 3, slot: 'legsArmor', mat: 'blacksteel', tierMult: 3, minLvl: 10, xp: 1200, name: 'Black Steel Greaves' },
+  copper_torso: { bar: 'bar_copper', bars: 4, slot: 'armor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 800, name: 'Copper Torso' },
+  copper_greaves: { bar: 'bar_copper', bars: 4, slot: 'legsArmor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 800, name: 'Copper Greaves' },
+  iron_torso: { bar: 'bar_iron', bars: 4, slot: 'armor', mat: 'iron', tierMult: 2, minLvl: 5, xp: 1200, name: 'Iron Torso' },
+  iron_greaves: { bar: 'bar_iron', bars: 4, slot: 'legsArmor', mat: 'iron', tierMult: 2, minLvl: 5, xp: 1200, name: 'Iron Greaves' },
+  blacksteel_torso: { bar: 'bar_black_steel', bars: 4, slot: 'armor', mat: 'blacksteel', tierMult: 3, minLvl: 10, xp: 1600, name: 'Black Steel Torso' },
+  blacksteel_greaves: { bar: 'bar_black_steel', bars: 4, slot: 'legsArmor', mat: 'blacksteel', tierMult: 3, minLvl: 10, xp: 1600, name: 'Black Steel Greaves' },
 };
 
 export const AMULET_TIERS = {

@@ -106,12 +106,19 @@ export const BLACKSMITH_TIERS = {
     color: '#6b4226',
     desc: 'Deep earthy brown, rough but workable'
   },
+  /* v2.3.3110: copper, iron and black steel are forged from FOUR of their
+     bars (the owner: "chest, legs, and sword each take 4 bars to make"), and
+     pay the armour forge's XP for them.  Mirrors server/src/data.js
+     BLACKSMITH_TIERS (mirror-audit); the worker settles, this draws the
+     Forge tab's cost chip. */
   copper: {
     minLvl: 6,
     label: 'Copper',
     slots: 1,
     oreName: 'copper',
-    oreCost: 3,
+    bar: 'bar_copper',
+    bars: 4,
+    xp: 800,
     goldCost: 20,
     tierMult: 1.12,
     statReq: 10,
@@ -123,7 +130,9 @@ export const BLACKSMITH_TIERS = {
     label: 'Iron',
     slots: 1,
     oreName: 'iron',
-    oreCost: 4,
+    bar: 'bar_iron',
+    bars: 4,
+    xp: 1200,
     goldCost: 35,
     tierMult: 1.25,
     statReq: 20,
@@ -141,7 +150,9 @@ export const BLACKSMITH_TIERS = {
     label: 'Black Steel',
     slots: 1,
     oreName: 'black_steel',
-    oreCost: 5,
+    bar: 'bar_black_steel',
+    bars: 4,
+    xp: 1600,
     goldCost: 55,
     tierMult: 1.40,
     statReq: 30,

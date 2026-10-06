@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { CATEGORIES } from '@/ui/mobile/dash/bagFilterBus.js';
-import { thumbFor, iconFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
+import { thumbFor, iconFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* ITEM_NAMES v2.3.3110 */
 import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2531: gear listing art */
 import { storeBrowse, storeMine, storeBuy, storeBid, storeAccept, storeCancel, storeEnabled, storeMyId } from '@/ui/storeApi.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
@@ -150,6 +150,9 @@ function timeLeft(expiresAt) {
 function prettyName(l) {
   const n = (l.disp && l.disp.name) || 'Item';
   if (l.kind === 'weapon' || l.kind === 'gear') return n;
+  /* v2.3.3110: the bag's own name when it has one ("Rare Iron Essence",
+     "Copper Bar"), not the key spelled out */
+  if (ITEM_NAMES[n]) return ITEM_NAMES[n];
   return n.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 

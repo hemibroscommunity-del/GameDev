@@ -469,6 +469,19 @@ winnerName, amount, period}` (broadcast on the lazy weekly draw). The
 daily login reward reuses `inbox_delivered` — no new types. GamblePanel
 deposits are caps-gated; the legacy local stub remains for old workers.
 
+**Salvage and essences (v2.3.3110, caps.salvage):** new c→s cases
+`smith_salvage {field: 'armorStash'|'legsStash', gid}` or `{field:
+'weaponStash', idx, sig}` (a carried copper, iron or black steel piece back
+into two of its bars, and a Rare/Elite/Godly one's essence) and
+`essence_apply {essence, field, gid}` or `{essence, field: 'weaponStash',
+idx, sig}` (an essence raises a carried piece of its metal to its grade); new
+s→c types (both PRIVILEGED, private) `smith_salvage_result {ok, field,
+gid|idx, name, bar, bars, essence, grade, metal}` and `essence_result {ok,
+field, gid|idx, essence, grade, metal, piece}`, or `{ok: false, reason}`
+(worn, in_mail, legacy, not_held, wrong_slot, gone, changed, not_metal,
+no_essence, wrong_metal, not_lower, bad); a player_state follows each paid
+act. Full table: docs/specs/salvage.md.
+
 **Server-minted weapon drops (v2.3.1141, caps.weaponDrops):** no new
 message types. The loot pile broadcast (`loot_drop`/`zone_loot`/
 `state_sync.loot` via `_serializePile`) gains `hasWeapon`,

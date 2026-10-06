@@ -34,6 +34,8 @@ import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
 import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3092 */
 import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
+import * as SRV_SALVAGE from '../src/salvage.js'; /* v2.3.3110 */
+import * as CLIENT_SALVAGE from '../../src/data/salvage.js'; /* v2.3.3110 */
 import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038 */
 import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl } from '../../src/data/lifeSkills.js'; /* v2.3.3038 */
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
@@ -1365,6 +1367,33 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     Object.values(SRV_ARMOR_FORGE.RECIPES).map((r) => r.bar));
   check('armor forge: a metal\'s armor opens no earlier than its bar',
     Object.values(SRV_ARMOR_FORGE.RECIPES).every((r) => r.minLvl >= SRV_SMELT.RECIPES[r.bar].minLvl));
+}
+
+// ── SALVAGE AND ESSENCES (v2.3.3110) ──
+// The Blacksmith's Salvage tab draws the rows the worker will accept and sends
+// a weapon's signature the worker re-derives; an essence's name in the bag is
+// parsed from its key.  So the table and every helper must agree exactly.
+{
+  const S = SRV_SALVAGE.SALVAGE, C = CLIENT_SALVAGE.SALVAGE;
+  check('salvage: the same metals, bars, gearBases and names on both sides', JSON.stringify(S.METALS) === JSON.stringify(C.METALS),
+    { srv: S.METALS, cli: C.METALS });
+  check('salvage: the same costs, grades, essence grades and weapon types',
+    S.COST_BARS === C.COST_BARS && S.BARS === C.BARS && JSON.stringify(S.GRADES) === JSON.stringify(C.GRADES)
+      && JSON.stringify(S.ESSENCE_GRADES) === JSON.stringify(C.ESSENCE_GRADES) && JSON.stringify(S.WEAPON_TYPES) === JSON.stringify(C.WEAPON_TYPES));
+  const keys = ['essence_rare_iron', 'essence_godly_blacksteel', 'essence_normal_iron', 'essence_rare_wood', '__proto__', '', null, 'essence_elite_copper'];
+  const pieces = [{ mat: 'iron' }, { mat: 'blacksteel' }, { material: 'copper' }, { mat: 'leather' }, { mat: '__proto__' }, null];
+  const weapons = [{ type: 'sword', gearBase: 'copper', quality: 'rare', hardness: 2, tierMult: 1.12 }, { type: 'greatsword', gearBase: 'steel' },
+    { type: 'bow', gearBase: 'iron' }, { type: 'sword' }, { type: 'sword', gearBase: 'titanium', quality: 'godly' }, null];
+  const off = [];
+  for (const k of keys) if (JSON.stringify(SRV_SALVAGE.parseEssenceKey(k)) !== JSON.stringify(CLIENT_SALVAGE.parseEssenceKey(k))) off.push({ parse: k });
+  for (const q of ['normal', 'rare', 'elite', 'godly', 'legendary', undefined]) if (SRV_SALVAGE.gradeRank(q) !== CLIENT_SALVAGE.gradeRank(q)) off.push({ rank: q });
+  for (const p of pieces) if (SRV_SALVAGE.armourMetal(p) !== CLIENT_SALVAGE.armourMetal(p)) off.push({ armour: p });
+  for (const w of weapons) {
+    if (SRV_SALVAGE.weaponMetal(w) !== CLIENT_SALVAGE.weaponMetal(w)) off.push({ weaponMetal: w });
+    if (SRV_SALVAGE.weaponSig(w) !== CLIENT_SALVAGE.weaponSig(w)) off.push({ weaponSig: w });
+  }
+  if (SRV_SALVAGE.essenceKey('rare', 'iron') !== CLIENT_SALVAGE.essenceKey('rare', 'iron')) off.push({ essenceKey: 1 });
+  check('salvage: every helper answers the same on both sides', off.length === 0, off);
 }
 
 // ── GATHERING HITS: one hit per swing, on the blow ──

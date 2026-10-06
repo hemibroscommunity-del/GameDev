@@ -77,8 +77,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 1. Layout ── */
   const tabs = await P.page.$$eval('[data-smithy-tab]', (b) => b.map((x) => x.getAttribute('data-smithy-tab')));
-  /* v2.3.3092: + Armor, bars into armor (armorforge.js) */
-  rec.ok('five tabs: Smelt, Forge, Armor, Upgrade, Amulet', tabs.join(',') === 'smelt,forge,armor,upgrade,amulet', tabs);
+  /* v2.3.3092: + Armor, bars into armor (armorforge.js); v2.3.3110: + Salvage (salvage.js) */
+  rec.ok('six tabs: Smelt, Forge, Armor, Upgrade, Amulet, Salvage', tabs.join(',') === 'smelt,forge,armor,upgrade,amulet,salvage', tabs);
   const geo = await P.page.evaluate(() => {
     const c = document.querySelector('.bt-inspect-card').getBoundingClientRect();
     const el = document.querySelector('.bt-inspect-card');
@@ -143,8 +143,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const gated = await P.page.$eval('[data-harden-go]', (b) => b.disabled).catch(() => null);
   rec.ok('...and below Smithing 5 it shows the lock and holds the button (the worker would refuse)',
     gated === true && /Smithing 5/.test(hRow), { gated, hRow });
-  /* earn it: 20 more ore -> 4 bars -> Smithing 5 */
-  await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 20 });
+  /* earn it: 50 more ore -> 10 bars -> Smithing 5.  v2.3.3110: was 20 ore,
+     four bars, which reached Smithing 5 only until v2.3.3090 doubled every
+     life-skill level's XP (LIFE_SKILL_XP_BASE 1000): 2 + 4 bars at 400 is
+     2,400 XP, Smithing 3, and this step had been failing on main since. */
+  await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 50 });
   await P.page.waitForTimeout(900);
   await tab(P, 'smelt');
   await P.page.click('[data-smelt-all="bar_copper"]');

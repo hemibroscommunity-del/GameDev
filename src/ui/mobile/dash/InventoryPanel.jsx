@@ -29,6 +29,7 @@ import { shopBus } from '../shopBus.js';   /* v2.3.2059: the bag is half the sho
 import { tradeBagBus } from '../tradeBagBus.js';   /* v2.3.2149: ...and half the trade */
 import { lifeKindFor, lifeKindForGear } from './bagLife.js';   /* v2.3.2815: the bag's small motions */
 import { DAILY_CHEST_ICON } from '@/rendering/chestPreload.js';   /* v2.3.2820 */
+import { SALVAGE, essenceKey, essenceName, essenceIcon } from '@/data/salvage.js';   /* v2.3.3110: the essences */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -212,6 +213,9 @@ export const thumbFor = (key) => {
   if (ORE_THUMBS[k])                return ORE_THUMBS[k];
   if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;
   if (BAR_THUMBS[k])                return BAR_THUMBS[k];   /* v2.3.2822 */
+  /* v2.3.3110: an essence (salvage.js) -- its grade's glowing orb with its
+     metal's bar, tools/make_essence_icons.py */
+  if (k.startsWith('essence_') && essenceIcon(k)) return essenceIcon(k) + ITEMS_V;
   if (k.startsWith('shard_'))       return `/icons/items/${k}.webp${ITEMS_V}`;
   /* v2.3.1924: the rare gem monsters drop at 1-in-200 (server/src/data.js
      RARE_GEM_KEY).  It borrows the gem icon this panel ALREADY uses for its
@@ -264,6 +268,12 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
   bar_iron: 'Iron Bar',         /* v2.3.3092 */
   bar_black_steel: 'Black Steel Bar',   /* v2.3.3092: prettyName would say "Bar Black Steel" */
 });
+/* v2.3.3110: the nine essences salvage leaves (data/salvage.js): "Rare Iron
+   Essence", not "Essence Rare Iron" out of the key.  Written from the table,
+   so a metal added there is named here without a line of its own. */
+for (const g of SALVAGE.ESSENCE_GRADES) {
+  for (const m of Object.keys(SALVAGE.METALS)) ITEM_NAMES[essenceKey(g, m)] = essenceName(essenceKey(g, m));
+}
 
 /* v2.3.2820: the daily chest -- opened from the bag, rolled by the worker. */
 export const DAILY_CHEST_KEY = 'daily_chest';

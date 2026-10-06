@@ -4,9 +4,10 @@
  * dedicated assertion.  Every rejection case asserts the state is
  * UNTOUCHED -- a half-consumed rejection is itself an economy bug.
  * Checks:
- *   1.  Forge happy path: exact ore + gold debits, mint shape
+ *   1.  Forge happy path: exact bar + gold debits (v2.3.3110: iron is
+ *       forged from four iron bars, not ore), mint shape
  *       (tierMult / gearBase / quality fields), old weapon swapped to
- *       stash, minLvl*5 crafting XP.
+ *       stash, the tier's own crafting XP.
  *   2.  Forge rejections (each leaves state untouched): skill gate,
  *       stat gate, insufficient ore, insufficient gold, stash full
  *       with a current weapon, woodwork/weapon-type mismatch, threat
@@ -99,7 +100,7 @@ const ps = room.playerState['bp_ls_a'];
    level forge gate. */
 delete ps.prog3;
 
-// ── 1. forge happy path (iron sword: minLvl 11, 4 ore, 35g) ──
+// ── 1. forge happy path (iron sword: minLvl 11, 4 iron bars, 35g) ──
 const IRON = BLACKSMITH_TIERS.iron;
 // Governing stat comes from EQUIP_STAT_MAP (sword -> agility, NOT
 // power -- only greatswords gate on power); resolve it dynamically so
@@ -108,7 +109,7 @@ const SWORD_STAT = room._equipStatFor('sword');
 ps.lifeSkills = { blacksmithing: { level: 11, xp: 0 } };
 ps[SWORD_STAT] = IRON.statReq; // exactly meets the stat gate
 ps.coins = 1000;
-ps.inventory = { ore_iron_ore: 5 };
+ps.inventory = { bar_iron: 5 };
 ps.weapon = { type: 'sword', tierMult: 1, _old: true };
 ps.weaponStash = [];
 await send(ws, 'forge_weapon', { weaponType: 'sword', tierKey: 'iron', isWoodwork: false });
@@ -116,13 +117,13 @@ check('forge mints the tier shape (tierMult/gearBase/quality/H0)',
   ps.weapon && ps.weapon.tierMult === IRON.tierMult && ps.weapon.gearBase === 'iron'
   && typeof ps.weapon.quality === 'string' && ps.weapon.hardness === 0 && ps.weapon.hardenBonus === null,
   ps.weapon);
-check('forge debits EXACTLY the ore + gold costs',
-  ps.inventory.ore_iron_ore === 5 - IRON.oreCost && ps.coins === 1000 - IRON.goldCost,
-  { ore: ps.inventory.ore_iron_ore, coins: ps.coins });
+check('forge debits EXACTLY the bar + gold costs',
+  IRON.bar === 'bar_iron' && ps.inventory.bar_iron === 5 - IRON.bars && ps.coins === 1000 - IRON.goldCost,
+  { bars: ps.inventory.bar_iron, coins: ps.coins });
 check('forge swaps the old weapon into the stash (never destroys it)',
   ps.weaponStash.length === 1 && ps.weaponStash[0]._old === true);
-check('forge grants minLvl*5 crafting XP',
-  ps.lifeSkills.blacksmithing.xp === IRON.minLvl * 5, ps.lifeSkills.blacksmithing);
+check('forge grants the tier\'s crafting XP (four bars\' worth, v2.3.3110)',
+  ps.lifeSkills.blacksmithing.xp === IRON.xp, ps.lifeSkills.blacksmithing);
 
 // ── 2. forge rejections: state must be UNTOUCHED ──
 const rejectCase = async (name, mutate, payload) => {
@@ -131,7 +132,7 @@ const rejectCase = async (name, mutate, payload) => {
   ps.lifeSkills = { blacksmithing: { level: 11, xp: 0 } };
   ps[SWORD_STAT] = IRON.statReq;
   ps.coins = 1000;
-  ps.inventory = { ore_iron_ore: 5 };
+  ps.inventory = { bar_iron: 5 };
   ps.weapon = { type: 'sword', tierMult: 1 };
   ps.weaponStash = [];
   ps._gearLockUntil = 0;
@@ -142,7 +143,8 @@ const rejectCase = async (name, mutate, payload) => {
 };
 await rejectCase('skill gate (mythril needs Lv31)', () => {}, { weaponType: 'sword', tierKey: 'mythril', isWoodwork: false });
 await rejectCase('stat gate (governing stat below statReq)', () => { ps[SWORD_STAT] = IRON.statReq - 1; });
-await rejectCase('insufficient ore', () => { ps.inventory = { ore_iron_ore: IRON.oreCost - 1 }; });
+await rejectCase('insufficient bars', () => { ps.inventory = { bar_iron: IRON.bars - 1 }; });
+await rejectCase('iron ore is not iron bars (v2.3.3110)', () => { ps.inventory = { ore_iron_ore: 50 }; });
 await rejectCase('insufficient gold', () => { ps.coins = IRON.goldCost - 1; });
 await rejectCase('stash full with a current weapon equipped', () => {
   ps.weaponStash = Array.from({ length: room.WEAPON_STASH_CAP }, () => ({ type: 'sword', tierMult: 1 }));

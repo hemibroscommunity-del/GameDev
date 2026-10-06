@@ -164,6 +164,7 @@ const CAP_GATES = [
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,
   'armorforge' /* v2.3.3092: bars into armor -- lower case, a kill switch */,
+  'salvage' /* v2.3.3110: salvage for bars, and the grades' essences -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported

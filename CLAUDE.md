@@ -684,8 +684,8 @@ remnant to migrate server-side, not a mode to preserve.
     - since v2.3.3092 SMELTED BARS MAKE ARMOR -- asked "Should smelted bars
       make armour?", the owner: "Yes": iron and black steel bars smelt too
       (Smithing 5 and 10, `SMELT.RECIPES`, icons by `tools/make_bar_icons.py
-      iron blacksteel`), and the Blacksmith's ARMOR tab forges a torso (5
-      bars) or greaves (3) in each metal -- copper Smithing 1, iron 5, black
+      iron blacksteel`), and the Blacksmith's ARMOR tab forges a torso or
+      greaves (4 bars each since v2.3.3110) in each metal -- copper Smithing 1, iron 5, black
       steel 10 (`server/src/armorforge.js` `ARMOR_FORGE.RECIPES`, mirrored by
       items.js `ARMOR_FORGE_RECIPES`): the drop's own piece `{name, mat, slot,
       tierMult, quality}` on the armour ladder (1/2/3, no gearBase or type),
@@ -694,6 +694,37 @@ remnant to migrate server-side, not a mode to preserve.
       rows at last (gearVariants.js); `caps.armorforge`, kill switch
       `armorforge: false`; `armorforge` suite, `mp-armorforge`:
       docs/specs/armor-forge.md.
+    - since v2.3.3110 FOUR BARS A PIECE, AND SALVAGE -- the owner: "all items
+      like iron armor, bronze armor, etc should be salvageable at the
+      blacksmith for 50% of the bars it took to make them ... chest, legs, and
+      sword each take 4 bars ... If you salvage them you get 2 bars back", and
+      a Rare/Elite/Godly piece's "essence ... use it on whatever same tier
+      armor or weapon you want":
+      - copper, iron and black steel torsos, greaves AND swords/greatswords
+        take four of their metal's bars (armorforge.js; data.js
+        BLACKSMITH_TIERS `bar`/`bars`/`xp` on copper, iron and `steel`, which
+        replace their `oreCost`; the gold stays); a sword pays the armour's
+        XP for the same bars (800 / 1,200 / 1,600); wood and the metals past
+        black steel are unchanged;
+      - the Blacksmith's SALVAGE tab (`server/src/salvage.js`): a CARRIED piece
+        of those metals -- armour by its ledger id through `_gearSellable`
+        and `_gearProvTake` (the auction house's own gate and escrow step:
+        minted, held, not worn, not in the mail), a weapon from the weapon bag
+        by index AND signature (`weaponSig`) -- gives back 2 bars; two taps
+        ("Sure?"); legacy pieces (no id) cannot be salvaged, as they cannot
+        be sold;
+      - a Rare, Elite or Godly piece also leaves `essence_<grade>_<metal>`
+        (nine bag items, icons by `tools/make_essence_icons.py`, priced by the
+        shopkeeper at 1,500 / 8,000 / 250,000); an essence raises a carried
+        piece of ITS metal whose grade is lower to its grade -- for armour the
+        ledger row's `p.quality` (`_gearProvSetQuality`), so the next join
+        rebuilds it so;
+      - `smith_salvage` / `essence_apply`, answered by `smith_salvage_result` /
+        `essence_result` (PRIVILEGED; src/game/salvage.js splices or regrades
+        the browser's own armour lists); `caps.salvage`, kill switch
+        `salvage: false`; `src/data/salvage.js` mirrors the rules
+        (mirror-audit); `salvage` suite, `mp-salvage`:
+        docs/specs/salvage.md.
     - since v2.3.3038 a resource's LEVEL IS A REAL REQUIREMENT (owner: "black
       steel now requires a mining level of at least 5 ... Fishing clownfish
       required fishing level 5", "in levels of 5"): `GATHER_REQ_LVL`

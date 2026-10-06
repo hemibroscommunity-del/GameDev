@@ -64,8 +64,10 @@ check('the gatherer yields keys at all (guard)', obtainable.size >= 4, [...obtai
 check('...including the first log and the first ore (guard)',
   obtainable.has('wood_pine_log') && obtainable.has('ore_copper_ore'), [...obtainable]);
 
-/* The resolver under test, in the shape gear.js uses it. */
-const keyFor = (tier) => (tier.wood ? ('wood_' + tier.wood) : ('ore_' + tier.oreName + '_ore'));
+/* The resolver under test, in the shape gear.js uses it.  v2.3.3110: a
+   tier forged from bars names its bar first (data.js BLACKSMITH_TIERS
+   copper / iron / steel, salvage.js). */
+const keyFor = (tier) => (tier.bar ? tier.bar : tier.wood ? ('wood_' + tier.wood) : ('ore_' + tier.oreName + '_ore'));
 
 /* ── THE FIRST TIER OF EACH BENCH IS REACHABLE ────────────────────────────
    These are the two rows a brand-new character can use, so a broken key here
