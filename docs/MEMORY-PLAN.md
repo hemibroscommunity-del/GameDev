@@ -124,6 +124,7 @@ Memory spent on nothing:
 | Item | Saves |
 |---|---|
 | Canvas art made purgeable (compressed images the iPhone can drop and re-decode) | up to ~70 MB |
+| Character art kept on the GPU only, re-baked after a black screen's rebuild (measured 2026-10-06: of 540 canvases, 127 are copies of a texture already uploaded -- 45.6 MB, mostly the gear sheets, the damage font's pages and the skill poses, all module caches a rebuilt renderer re-uploads FROM the canvas; the effects renderer's own big strips are not on the GPU until first drawn).  Pixel-identical by construction (the same bakes run again), but it changes the black-screen recovery path, so it is planned with the owner first | ~46 MB of page memory |
 | Skill figures baked for what you wear only, the other in the background | 16-19 MB |
 | Palette textures for the ground and the Wheel's objects | ~55 MB |
 | The unused depth buffer off | 8-19 MB (to check on a phone) |
