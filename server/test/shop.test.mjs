@@ -18,7 +18,10 @@ function makeState() {
   return {
     storage: {
       get: async (k) => store.get(k),
-      put: async (k, v) => { store.set(k, v); },
+      /* v2.3.3103: a COPY, as Durable Object storage keeps (it structured-clones
+         on put).  By reference, a saved record went on changing with the live
+         player, and a check of what storage holds could not fail. */
+      put: async (k, v) => { store.set(k, structuredClone(v)); },
       list: async (opts) => {
         const out = new Map();
         for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, v);
@@ -396,6 +399,51 @@ const skint = { coins: 1, inventory: Object.create(null), maxMana: 100, mana: 0,
 const rNo = await room._shopBuy(skint, 'whetstone', 1);
 check('a player who cannot afford it is refused, and keeps their coin',
   !rNo.ok && skint.coins === 1 && !room._buffActive(skint, 'damage'), { rNo, skint });
+
+/* ═══ v2.3.3103: A TRADE WITH DIEGO IS SAVED ═══
+   Through the real message path, storage must hold the trade. Before this,
+   neither shop_sell nor shop_buy saved the player: a sale followed by a
+   reconnect came undone (coins gone, goods back in the bag) while Diego's
+   pile, which WAS saved, kept the goods too. */
+{
+  const tick = () => new Promise((r) => setTimeout(r, 10));
+  const send = async (ws, type, payload) => { await room.webSocketMessage(ws, JSON.stringify({ type, payload })); await tick(); };
+  const S1 = fakeWs('saver');
+  await join(S1, 'saver');
+  const p = room.playerState.saver;
+  p.inventory = { 'bat-wing': 10 };
+  p.coins = 100;
+  room._saveRpg('saver', p);
+  await tick();
+  const pileBefore = ((await room._shopStock())['bat-wing']) || 0;
+  await send(S1, 'shop_sell', { key: 'bat-wing', qty: 10 });
+  const r1 = S1.sent.filter((m) => m.type === 'shop_result').pop();
+  const st1 = state._store.get('rpg:saver');
+  check('a sale to Diego is SAVED: storage holds the coins it paid and the bag without the goods',
+    !!r1 && r1.payload.ok && p.coins > 100 && st1.coins === p.coins && !st1.inventory['bat-wing'],
+    { r1: r1 && r1.payload, mem: p.coins, stored: st1 && { coins: st1.coins, inv: st1.inventory } });
+  check('...in the same batch as his pile', ((await room._shopStock())['bat-wing'] || 0) === pileBefore + 10);
+  /* the reconnect that used to undo it */
+  room.sessions.delete(S1);
+  delete room.playerState.saver;
+  const S2 = fakeWs('saver2');
+  await join(S2, 'saver');
+  const q = room.playerState.saver;
+  check('...so a reconnect keeps the sale: the coins stay and the goods do not come back',
+    q.coins === st1.coins && !q.inventory['bat-wing'], { coins: q.coins, inv: q.inventory });
+  /* buying back from his pile */
+  const c0 = q.coins;
+  await send(S2, 'shop_buy', { key: 'bat-wing', qty: 2 });
+  const st2 = state._store.get('rpg:saver');
+  check('a purchase from his pile is SAVED: storage holds the goods and the coins they cost',
+    st2.inventory['bat-wing'] === 2 && st2.coins < c0 && st2.coins === q.coins, { c0, stored: { coins: st2.coins, inv: st2.inventory } });
+  /* a staple (no pile) */
+  const c1 = q.coins;
+  await send(S2, 'shop_buy', { key: 'staminaSalts', qty: 1 });
+  const st3 = state._store.get('rpg:saver');
+  check('a staple bought from his shelf is SAVED too', st3.inventory.staminaSalts === 1 && st3.coins === c1 - SHOP_ITEMS.staminaSalts.cost && st3.coins === q.coins,
+    { c1, stored: { coins: st3.coins, inv: st3.inventory } });
+}
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
 process.exit(failures ? 1 : 0);
