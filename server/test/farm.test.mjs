@@ -346,14 +346,14 @@ function ws2Ref() {
   P.inventory.herb_firebloom = 3;
   P.inventory.herb_rock_vine = 1;
   P.inventory.herb_cloudpetal = 1;
-  /* Herb Bread (index 0): 1 Firebloom -> regen */
+  /* Herb Bread (index 0): 1 Firebloom -> its `rest` timer (v2.3.3105) */
   wsB.sent.length = 0;
   await room.webSocketMessage(wsB, JSON.stringify({ type: 'cook_recipe', payload: { recipeIdx: 0 } }));
   await settle();
-  check('Herb Bread cooks from one farm Firebloom', P.inventory.herb_firebloom === 2 && room._buffActive(P, 'regen'), { inv: P.inventory, buffs: P._buffs });
+  check('Herb Bread cooks from one farm Firebloom', P.inventory.herb_firebloom === 2 && room._buffActive(P, 'rest'), { inv: P.inventory, buffs: P._buffs });
   /* v2.3.3105: an OLD client's cook (no `carry`) is the meal at once, and a
      meal lasts half an hour now. */
-  check('...a meal: half an hour', P._buffs.regen > Date.now() + 29 * 60000, P._buffs);
+  check('...a meal: half an hour', P._buffs.rest > Date.now() + 29 * 60000, P._buffs);
   P.z = 'wheel';               /* a combat zone, not a hub */
   P.maxHp = 200; P.hp = 100;
   P.lastDamageAt = Date.now() - 10000;   /* out of combat: the trickle runs */
@@ -406,11 +406,11 @@ function ws2Ref() {
   await settle();
   check('a carried cook makes a Herb Bread in the bag, uses the Firebloom and pays the Cooking XP -- and runs nothing yet',
     P.inventory.meal_herb_bread === 1 && !P.inventory.herb_firebloom && P.lifeSkills.cooking.xp === xp0 + 25
-    && !room._buffActive(P, 'regen') && wsB.sent.some((m) => m.type === 'player_state'), { inv: P.inventory, buffs: P._buffs, ck: P.lifeSkills.cooking });
+    && !room._buffActive(P, 'rest') && wsB.sent.some((m) => m.type === 'player_state'), { inv: P.inventory, buffs: P._buffs, ck: P.lifeSkills.cooking });
   await room.webSocketMessage(wsB, JSON.stringify({ type: 'eat_request', payload: { invKey: 'meal_herb_bread' } }));
   await settle();
-  check('...eaten later, it is the meal: half an hour of the bread', !P.inventory.meal_herb_bread && room._buffActive(P, 'regen')
-    && P._buffs.regen > Date.now() + 29 * 60000, { inv: P.inventory, buffs: P._buffs });
+  check('...eaten later, it is the meal: half an hour of the bread', !P.inventory.meal_herb_bread && room._buffActive(P, 'rest')
+    && P._buffs.rest > Date.now() + 29 * 60000, { inv: P.inventory, buffs: P._buffs });
 }
 
 // ── 12. the bed turns before anything is paid (v2.3.3102, review) ──

@@ -20,6 +20,7 @@ import { firemakingBus } from '../firemakingBus.js';
 import { chestRevealBus } from '../ChestReveal.jsx';   /* v2.3.2820: the daily chest's claim window */
 import { storeEnabled, storeGearEnabled, storeGearRefEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the auction house; v2.3.2531: gear; v2.3.2551: naming a piece by its id */
 import { eatBus } from '../eatBus.js';
+import { CATEGORIES } from './bagFilterBus.js';   /* v2.3.3105: the caption is the chip's own word */
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { GEAR_SELL, removeGearLocal } from './gearSellLocal.js'; /* v2.3.2531: which stash a gear card sells out of; v2.3.2532: and taking it out of ours */
 import { gearSellCheck, gearSellReasonText, gearSellGid } from './gearSellReason.js'; /* v2.3.2551: and WHY it cannot be sold */
@@ -161,7 +162,14 @@ function resolveTarget(target) {
        the worker's (cooking.js), and an OLD worker eats or drinks neither, so
        both buttons need caps.meals (read directly: caps-audit). */
     const dish = dishFor(key);
-    const mealsOn = !!(SR && SR._serverCaps && SR._serverCaps.meals);
+    /* ...and a worker that KNOWS dishes eats and drinks them with its kill
+       switch thrown: `meals: false` makes caps.meals false (a live flag may
+       be a number too), while a worker from before dishes sends no
+       caps.meals at all.  The switch stops cooking into the bag, never the
+       food already in it (cooking.js _mealsOff) -- gating on true hid Eat and
+       Drink from everyone who joined while it was thrown (found by the
+       review). */
+    const dishesKnown = !!(SR && SR._serverCaps && typeof SR._serverCaps.meals !== 'undefined');
     const isCape = isCapeItemKey(key);
     const isChest = isChestKey(key);              /* v2.3.2820 */
     if (isTicket) info = 'Open it to claim your cape';
@@ -199,7 +207,10 @@ function resolveTarget(target) {
       glyph: iconFor(key),
       name: prettyName(key),
       info,
-      desc: cat.charAt(0).toUpperCase() + cat.slice(1),
+      /* v2.3.3105: the chip's own word ('Consumable' for the bottle chip's
+         'potion', which now holds a meal or a cooked fish too -- the caption
+         said POTION on a Herb Bread, found by the review). */
+      desc: ((CATEGORIES.find((c) => c.id === cat) || {}).label) || (cat.charAt(0).toUpperCase() + cat.slice(1)),
       /* v2.3.2103: `open` needs the worker to be able to SETTLE it -- the
          redeem is server-only (a client-side open is the firemaking
          duplication bug wearing a hat, cooking.js:71). Gated on the same
@@ -207,7 +218,7 @@ function resolveTarget(target) {
          through an alias so the caps-audit can see the gate. */
       actions: {
         light: isLog && count > 0,
-        eat: (isCookedFish && count > 0) || (!!dish && (dish.slot === 'meal' || dish.slot === 'now') && count > 0 && mealsOn),
+        eat: (isCookedFish && count > 0) || (!!dish && (dish.slot === 'meal' || dish.slot === 'now') && count > 0 && dishesKnown),
         open: isTicket && count > 0
           && !!(SR && SR._serverCaps && SR._serverCaps.eventCapes),
         /* v2.3.2109: gated on the same cap as the redeem -- against an old
@@ -232,7 +243,7 @@ function resolveTarget(target) {
           && !!(SR && SR._serverCaps && SR._serverCaps.dailyChest),
         drink: isPotion && count > 0
           && !!(SR && SR._serverCaps && SR._serverCaps.potionBag)
-          && (!dish || mealsOn),   /* v2.3.3105: a brew needs a worker that drinks it */
+          && (!dish || dishesKnown),   /* v2.3.3105: a brew needs a worker that drinks it */
         /* v2.3.2476: Sell -- put this up in the auction house at your own
            price.  Gated on the store cap (storeApi.storeEnabled reads
            _serverCaps.store) because an older worker has no /api/store
@@ -1750,9 +1761,10 @@ export const ItemDetailPopup = () => {
           }}>{delta.text}</div>
         )}
 
-        {/* v2.3.1232: category caption — 10/600 uppercase metadata */}
+        {/* v2.3.1232: category caption — 10/600 uppercase metadata
+            (v2.3.3105: data-item-caption, read by mp-meals) */}
         {desc && (
-          <div style={{
+          <div data-item-caption={desc} style={{
             fontSize: 11, fontWeight: 600, color: COL.muted,
             textTransform: 'uppercase', letterSpacing: '0.08em',
             textAlign: 'center',

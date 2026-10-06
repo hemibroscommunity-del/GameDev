@@ -6,6 +6,8 @@
  *
  * One MEAL and one BREW may run at once: eating replaces the meal, drinking
  * replaces the brew.  Damage is only ever a brew (combat.js's cheat ceiling).
+ * The Herb Bread's timer is `rest`, not the old 60 s `regen` (server data.js
+ * DISHES says why); the HUD's Regen chip reads either (wsClient.js).
  * `name`, `look` and `desc` are the client's own words for it -- the bag, the
  * Cookhouse, the HUD.  The three tonics are brews too, described by their
  * bottles (SHOP_ITEMS); they are not in this table.
@@ -13,7 +15,7 @@
  * Dependency-free on purpose, like farmCrops.js: the bag imports it. */
 export const DISHES = {
   meal_herb_bread: {
-    slot: 'meal', buff: 'regen', power: 2, duration: 1800,
+    slot: 'meal', buff: 'rest', power: 2, duration: 1800,
     name: 'Herb Bread', look: '\uD83C\uDF5E', desc: 'Heal twice as fast out of a fight, 30 min'
   },
   meal_root_stew: {

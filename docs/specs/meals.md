@@ -38,16 +38,16 @@ herbs; this makes them worth growing.
 
 ## The dishes
 
-| Dish (bag key) | Kind | Made from | Cooking level | When eaten or drunk | Lasts | Diego's value |
-|---|---|---|---|---|---|---|
-| Herb Bread (`meal_herb_bread`) | meal | 1 Firebloom | 1 | heal **twice as fast** out of a fight | 30 min | 16 |
-| Root Stew (`meal_root_stew`) | meal | 1 Rock Vine + 1 Cloudpetal | 3 | take **5% less** damage | 30 min | 70 |
-| Firebloom Tea (`brew_firebloom_tea`) | brew | 2 Firebloom | 6 | **+20%** damage | 30 min | 32 |
-| Fury Tonic (`whetstone`) | brew | 3 Firebloom | 10 | **double** damage | 3 min | — |
-| Mana Draught (`manaShard`) | brew | 2 Rock Vine | 5 | specials nonstop | 3 min | — |
-| Swift Draught (`swiftDraught`) | brew | 2 Cloudpetal | 5 | run **1.5×** as fast | 3 min | — |
-| Garden Stew (`meal_garden_stew`) | at once | 2 Carrot + 1 Potato | 4 | heals **150 HP** | — | 28 |
-| Pumpkin Pie (`meal_pumpkin_pie`) | meal | 1 Pumpkin + 2 Potato | 8 | **+10%** combat XP | 30 min | 84 |
+| Dish (bag key) | Kind | Made from | Cooking level | When eaten or drunk | Lasts |
+|---|---|---|---|---|---|
+| Herb Bread (`meal_herb_bread`) | meal | 1 Firebloom | 1 | heal **twice as fast** out of a fight | 30 min |
+| Root Stew (`meal_root_stew`) | meal | 1 Rock Vine + 1 Cloudpetal | 3 | take **5% less** damage | 30 min |
+| Firebloom Tea (`brew_firebloom_tea`) | brew | 2 Firebloom | 6 | **+20%** damage | 30 min |
+| Fury Tonic (`whetstone`) | brew | 3 Firebloom | 10 | **double** damage | 3 min |
+| Mana Draught (`manaShard`) | brew | 2 Rock Vine | 5 | specials nonstop | 3 min |
+| Swift Draught (`swiftDraught`) | brew | 2 Cloudpetal | 5 | run **1.5×** as fast | 3 min |
+| Garden Stew (`meal_garden_stew`) | at once | 2 Carrot + 1 Potato | 4 | heals **150 HP** | — |
+| Pumpkin Pie (`meal_pumpkin_pie`) | meal | 1 Pumpkin + 2 Potato | 8 | **+10%** combat XP | 30 min |
 
 - **Cooking XP** is paid at the cook, tier × 25 (25, 25, 50, 75, 75, 75, 50,
   75), as before.
@@ -73,12 +73,21 @@ herbs; this makes them worth growing.
   after six quiet seconds) runs **twice as fast** (`index.js` `HERB_REGEN_MULT`,
   from `DISHES.meal_herb_bread.power`). It never heals mid-fight, in a duel,
   or in an arena match.
+  - Its timer is saved as **`rest`**, not `regen`. Phase 1's server
+    (v2.3.3102) reads `regen` as 2% of max HP a second, in a fight too. If
+    the game were ever rolled back to it, a half-hour `regen` would have
+    healed that fast for up to 30 minutes. Under its own name, a rollback
+    simply drops the bread's effect.
 - **The Root Stew's 5%** is what the worker always took off (`combat.js`
   ×0.95). The HUD chip said −15% and the client predicted ×0.85; both now say
   5%.
-- **Diego pays no more for a dish than for its herbs** (`shop.js`
-  `DISH_SHOP_BASE`: the sum of its ingredients' own values). Cooking pays in
-  use, Cooking XP and something you can trade, not in coins at his counter.
+- **Diego buys no dish** (`shop.js` `isCookhouseDish`). He would pay for each
+  dish from a pile of its own, which starts at the top of his price curve
+  while the herbs' piles may be low. With 400 Rock Vine and 400 Cloudpetal
+  already in his piles, ten of each sold as herbs paid 30 coins, and the same
+  herbs cooked into ten Root Stews paid 315. So, like the tonics, dishes are
+  for eating, giving and the auction house. Cooking pays in use, Cooking XP and
+  something you can trade, not in coins at his counter.
 - **The Firebloom Tea** is the long, gentle damage drink. It sits in the brew
   slot beside the Fury Tonic's short ×2, and only one of them runs at a time.
 
@@ -89,7 +98,7 @@ herbs; this makes them worth growing.
   - `COOKING_RECIPES` gains `makes`, and rows 3–5 are the tonics. The index is
     the wire key (`cook_recipe {recipeIdx}`), so rows are appended, never
     reordered.
-  - `DISHES` says what a dish does: `slot` (`meal` / `brew`), `buff`, `power`
+  - `DISHES` says what a dish does: `slot` (`meal`, `brew`, or `now` for one eaten at once), `buff`, `power`
     and `duration` in seconds.
   - `DIEGO_SHELF` is what Diego sells.
 - **Cook** (`cooking.js` `_handleCookRecipe`):
@@ -105,7 +114,8 @@ herbs; this makes them worth growing.
   - Neither takes the other kind. The effect is applied before the item is
     used, so a refusal costs nothing.
 - **The two slots** (`cooking.js` `_clearBuffSlot`):
-  - A meal owns `regen` and `resist`.
+  - A meal owns `rest`, `resist`, and the Pumpkin Pie's `xp` with its `xpMul`
+    (and Phase 1's old `regen`, so a leftover one is cleared).
   - A brew owns `damage`, `damageMul`, `mana`, `manaFlat`, `spd`, `spdMul` and
     the retired `hp`.
   - A slot is cleared whole, magnitudes with their timers, so nothing is left
@@ -121,9 +131,17 @@ herbs; this makes them worth growing.
     Eat on a meal and Drink on a brew only under `caps.meals`.
   - A new worker gives an old client's cook the dish at once.
 - **Kill switch:** `meals: false` in the live flags.
-  - It un-advertises `caps.meals` and refuses a carry cook.
-  - Dishes already in bags still eat and drink.
+  - It un-advertises `caps.meals` and refuses a carry cook, and any cook of
+    a row an old server never had (the tonics).
+  - Dishes already in bags still eat and drink. The bag keeps Eat and Drink
+    on them, because the switch makes `caps.meals` **false**, while a server
+    from before dishes sends no `caps.meals` at all.
   - To turn it back on, delete the flag.
+- **Every refusal is sent back.** A refused cook, meal or drink resends the
+  bag, the skills or HP, and the effects (`persistence.js`
+  `_resendPlayerState`). A v2 client only gets the fields that changed, and a
+  refusal changes nothing, so a plain echo would send nothing and leave the
+  phone's guess on screen.
 
 ## On the phone
 
@@ -151,9 +169,11 @@ herbs; this makes them worth growing.
   - eating and drinking, and neither the other way;
   - one meal and one brew;
   - the tonics' recipes and levels;
-  - the Herb Bread's healing (never mid-fight or in an arena);
+  - the Herb Bread's healing (never mid-fight, in a duel or in an arena), on
+    its own `rest` timer;
   - the kill switch;
-  - Diego's shelf, refusals and dish prices;
+  - Diego's shelf and refusals: no tonic and no dish bought or sold;
+  - a v2 client's refused cook, meal and drink, each resent;
   - forged keys;
   - a save;
   - (2b) the Garden Stew: its level, its heal with Recovery, the arena refusal,
@@ -162,22 +182,24 @@ herbs; this makes them worth growing.
     save, +10% on a fight's XP and none on a flat award, and a forged strength
     ignored.
 
-  Each of ten rules, broken on purpose, fails it.
+  Every rule, broken on purpose, fails it.
 - Updated:
   - `potions` and `shop`: bottles are drunk from the bag; the shelf is two
     staples; a meal runs beside a brew.
   - `farm` §11: the bread's new healing, the stew beside the tea, a carried
     cook.
-  - `mirror-audit` §4/§4b: recipes by what they make, `DISHES` both ways, no
-    damage meal, the shelf.
+  - `mirror-audit` §4/§4b: recipes by what they make, the client's old-worker
+    effects pinned to v2.3.3102's, `DISHES` both ways, no damage meal, the
+    shelf.
 - Phone (`tools/qa/mp`):
   - `mp-meals` (new) covers:
     - the Cookhouse's door and window;
     - Cook into the bag, settled by the worker;
-    - the Consumable chip;
+    - the Consumable chip, and the popup's caption;
     - Eat and the half-hour meal in minutes on the HUD;
     - a tea drunk beside it;
-    - Diego's shelf and his "He won't buy";
+    - Diego's shelf and his "He won't buy", for a tonic and a bread;
+    - a bread eaten with the kill switch thrown;
     - (2b) the stew and pie rows, locked at Cooking 4 and 8; a stew healing at
       once from the bag with the meal still running; a pie replacing the
       bread beside the tea, its chip in minutes.

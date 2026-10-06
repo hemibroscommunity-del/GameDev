@@ -595,4 +595,19 @@ export const persistenceMethods = {
       ws.send(JSON.stringify({ type: 'player_state', payload }));
     } catch (e) {}
   },
+
+  /* ═══ v2.3.3105: A REFUSAL'S ECHO HAS TO BE SENT ═══
+   * A refused action changes nothing on the worker -- and the v2 delta above
+   * sends only what changed, so the echo a refusal sends to snap a client's
+   * prediction back (the dish it drew in the bag, the herbs it took out, the
+   * XP it added) sent NOTHING to any live client: they all speak v2.  The
+   * review proved it on the cook kill switch.  Forgetting what was last sent
+   * for the named fields makes them go again, whatever the client drew. */
+  _resendPlayerState(ws, playerId, fields) {
+    const session = ws ? this.sessions.get(ws) : null;
+    if (session && session.lastPlayerStateSent && Array.isArray(fields)) {
+      for (const f of fields) delete session.lastPlayerStateSent[f];
+    }
+    this._sendPlayerState(ws, playerId);
+  },
 };

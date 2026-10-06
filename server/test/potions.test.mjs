@@ -259,7 +259,7 @@ check('a new brew replaces the old brew and nothing else -- the meal keeps going
 one.inventory.meal_herb_bread = 1;
 room._handleEatRequest({ id: 'only' }, { invKey: 'meal_herb_bread' });
 check('...and a new meal replaces the old meal and nothing else -- the brew keeps going',
-  room._buffActive(one, 'regen') && !room._buffActive(one, 'resist') && room._buffActive(one, 'spd')
+  room._buffActive(one, 'rest') && !room._buffActive(one, 'resist') && room._buffActive(one, 'spd')
     && one._buffs.spdMul === 1.5, one._buffs);
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');

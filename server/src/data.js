@@ -477,7 +477,10 @@ export const COOKING_RECIPES = [
  * sized at the Fury Tonic's x2 (90.5% of it at the measured peak), and a x1.2
  * meal on top would cross it (~109%), so no meal raises damage.
  *   meal: half an hour, modest.  The Herb Bread doubles the out-of-combat
- *         healing (`power` is that multiplier, read in index.js's regen tick);
+ *         healing (`power` is that multiplier, read in index.js's regen tick)
+ *         under its OWN timer, `rest` -- never `regen`, which v2.3.3102's
+ *         worker reads as 2% of max HP a second in or out of a fight: a
+ *         rollback to it would have read a half-hour bread that way (review);
  *         the Root Stew takes 5% off every hit (combat.js).
  *   brew: the Firebloom Tea is the long, gentle damage drink, +20% for half
  *         an hour, against the Fury Tonic's x2 for three minutes; one at once.
@@ -485,7 +488,7 @@ export const COOKING_RECIPES = [
  * their effects stay in SHOP_ITEMS, where every bottle already drinks from.
  *   DISHES     <-> src/data/gameSystems.js DISHES (mirror-audit) */
 export const DISHES = {
-      meal_herb_bread:    { slot: 'meal', buff: 'regen',  power: 2,    duration: 1800 },
+      meal_herb_bread:    { slot: 'meal', buff: 'rest',   power: 2,    duration: 1800 },
       meal_root_stew:     { slot: 'meal', buff: 'resist', power: 0.05, duration: 1800 },
       brew_firebloom_tea: { slot: 'brew', buff: 'damage', power: 0.20, duration: 1800 },
       /* v2.3.3106: the Garden Stew is eaten like a cooked fish -- 150 HP at
