@@ -38,7 +38,7 @@
  * and the same null -> dash rule covers it. */
 
 import { prog3HasSkills, prog3SkillLevel } from '@/data/prog3.js';
-import { farmBus } from '@/ui/mobile/farmBus.js';   /* v2.3.3095: the worker's farm */
+import { farmBus } from '@/ui/mobile/farmBus.js';   /* v2.3.3102: the worker's farm */
 import { getEquippedSlots, peerEquippedSlots } from '../mobile/sheet/equipModel.js';
 
 /* Pet rarity, from the owner's direction: "White Normal, Blue Rare, Orange
@@ -74,7 +74,7 @@ function titleCase(s) {
 
 /** How many farm plots are ready to harvest (FarmPanel's own ready test). */
 export function farmPlotsReady(lifeSkills, nowSec) {
-  /* v2.3.3095: the WORKER's farm once this tab has heard about it (farmBus:
+  /* v2.3.3102: the WORKER's farm once this tab has heard about it (farmBus:
      on join, or the Feed & Seed window) -- ripe by the worker's clock.  The
      browser-only plots below are only a farm against an old worker. */
   if (farmBus.view && typeof nowSec !== 'number') return farmBus.ripeCount();

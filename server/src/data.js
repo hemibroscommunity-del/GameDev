@@ -429,7 +429,7 @@ export const FISH_TIERS = [
       { lvl: 21, name: 'pike' },     /* v2.3.3094: ...and 31-40 */
     ];
 
-/* v2.3.3095: `cookLvl` is the Cooking level a recipe asks -- the window's
+/* v2.3.3102: `cookLvl` is the Cooking level a recipe asks -- the window's
    lock (gameSystems.js) and, now, the worker's gate (cooking.js
    _handleCookRecipe; mirror-audit keeps the two equal).  It only ever held on
    the client, which was moot while nothing could make these herbs; the farm
@@ -437,7 +437,7 @@ export const FISH_TIERS = [
 export const COOKING_RECIPES = [
       { ingredients: { herb_firebloom: 1 },                          buff: 'regen',  power: 0.02, duration: 60, tier: 1, cookLvl: 1 },
       { ingredients: { herb_rock_vine: 1, herb_cloudpetal: 1 },      buff: 'resist', power: 0.05, duration: 60, tier: 1, cookLvl: 3 },
-      { ingredients: { herb_firebloom: 2 },                          buff: 'damage', power: 0.20, duration: 90, tier: 2, cookLvl: 6 },   /* v2.3.3095: 0.05 -> 0.20, what the worker always applied (cooking.js) */
+      { ingredients: { herb_firebloom: 2 },                          buff: 'damage', power: 0.20, duration: 90, tier: 2, cookLvl: 6 },   /* v2.3.3102: 0.05 -> 0.20, what the worker always applied (cooking.js) */
     ];
 
 /* ═══ v2.3.2062: WHAT "CONSTANTLY" IS WORTH, IN NUMBERS ═══

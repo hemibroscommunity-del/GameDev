@@ -1,4 +1,4 @@
-/* The farm -- v2.3.3095 (docs/specs/farm.md, docs/FARMING-PLAN.md Phase 1).
+/* The farm -- v2.3.3102 (docs/specs/farm.md, docs/FARMING-PLAN.md Phase 1).
  *
  * Owner: "mechanics similar to the old FarmVille game where you have to wait
  * to harvest and each has a wait time different depending on what it is.
@@ -355,7 +355,7 @@ function ws2Ref() {
   P.hp = 100;
   room._tickPlayerRegen();
   check('...which is the bread: with no buff, mid-fight, nothing heals', P.hp === 100, P.hp);
-  /* v2.3.3095: the recipe's Cooking level is the WORKER's gate, not only the
+  /* v2.3.3102: the recipe's Cooking level is the WORKER's gate, not only the
      window's: at Cooking 1 the Tea (Cooking 6) is refused, nothing is used,
      and the bag is echoed so a predicted cook snaps back. */
   P.lifeSkills.cooking = { level: 1, xp: 0 };
@@ -381,7 +381,7 @@ function ws2Ref() {
     && !room._buffActive(P, 'damage') && !P.inventory.herb_rock_vine && !P.inventory.herb_cloudpetal, P._buffs);
 }
 
-// ── 12. the bed turns before anything is paid (v2.3.3095, review) ──
+// ── 12. the bed turns before anything is paid (v2.3.3102, review) ──
 {
   const PD = 'bp_farm_d';
   const wsD = fakeWs();
@@ -432,7 +432,7 @@ function ws2Ref() {
     { t1: t1 && t1.did, t2: t2 && t2.did, inv: pD.inventory });
 }
 
-// ── 13. a character restart takes the farm with it (v2.3.3095, review) ──
+// ── 13. a character restart takes the farm with it (v2.3.3102, review) ──
 {
   const PR = 'bp_farm_r';
   const wsR = fakeWs();
@@ -454,7 +454,7 @@ function ws2Ref() {
     && v.plots.length === FARM.FREE_BEDS && v.plots.every((p) => p.s === 'rough'), v);
 }
 
-// ── 14. a newer worker's record is left alone (v2.3.3095, review) ──
+// ── 14. a newer worker's record is left alone (v2.3.3102, review) ──
 {
   const PN = 'bp_farm_n';
   const wsN = fakeWs();
