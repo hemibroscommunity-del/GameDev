@@ -104,7 +104,8 @@ Memory spent on nothing:
 | A rebuild lets go of the old renderer: listeners, bakes, ground, Pixi's render-target listeners | cache flat over three rebuilds (was 172 -> 327 MB) | #802, v2.3.3060 |
 | A re-bake lets go of what it replaced (`releaseCanvasSource`, every site) | eight strokes +0.4 MB of cache (was +92) | #802, v2.3.3060 |
 | The ~5 MB-a-lap canvas growth on the land tour | flat after #802 (monster recolours released properly) | #802 |
-| Freed on close: the world map's canvas (~10 MB an open), rubble's scratch canvases, finished videos | | next |
+| A destroyed texture lets go of its picture even where Pixi still points at it (pooled batches, hidden sprites' draw data) | after a tour of four lands: 22-35 MB of freed object sheets, canvases and ground held -> 0 (`mp-zombietex`) | #810, v2.3.3065 |
+| Freed on close: the world map's canvas (~12 MB an open, until the next GC), the loading clip's warm-up copy (~2-3 MB) | small; rubble's scratch canvases are locals the GC takes | |
 
 **Phase 2 -- stop paying for what nobody sees or hears.**
 
