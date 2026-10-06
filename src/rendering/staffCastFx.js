@@ -66,7 +66,7 @@ const KICK_DEG = 14, RAISE_DEG = 6, KICK_IN_MS = 60, KICK_OUT_MS = 280;
    cast, heavier: a bigger kick that takes longer to settle, a longer release,
    a denser trail and a bigger crash.  Every "big" knob is in this block. */
 const BIG_KICK_DEG = 24, BIG_KICK_OUT_MS = 430;
-const BIG_HALO = 1.75;      /* the bolt's element halo, x the basic bolt's */
+const BIG_HALO = 2.625;     /* the bolt's element halo, x the basic bolt's (v2.3.3043: 1.75 -> x1.5, with the bolt) */
 const BIG_TRAIL_PX = 3.5;   /* one trail spark per this many px (basic: 6) */
 /* The glow shows while you are casting: from a cast until one cooldown plus
    this grace has passed, then it fades out.  Stop attacking and the crystal
@@ -499,7 +499,7 @@ export class StaffCastFx {
        spacing is the same at 30 fps as at 60.  v2.3.2842: the big bolt lays a
        denser, wider trail of bigger sparks. */
     const big = !!p.big;
-    const jw = big ? 10 : 5;
+    const jw = big ? 15 : 5;   /* v2.3.3043: the big bolt's spread x1.5, with the bolt (was 10) */
     if (p._fxPx != null && moved > 0 && moved < 200) {
       p._fxTrail = (p._fxTrail || 0) + moved / ((big ? BIG_TRAIL_PX : 6) * k1);
       const vx = Math.cos(rot), vy = Math.sin(rot);
@@ -527,7 +527,7 @@ export class StaffCastFx {
        the big bolt, with a hot core so it reads as more than a bigger ball) */
     if (big) {
       this._glow(true, dx, dy, 15 * BIG_HALO * k1, ramp[2], 0.3);
-      this._glow(true, dx, dy, 8 * k1, ramp[1], 0.16);
+      this._glow(true, dx, dy, 12 * k1, ramp[1], 0.16);   /* v2.3.3043: the hot core x1.5 (was 8) */
     } else {
       this._glow(true, dx, dy, 15 * k1, ramp[2], 0.3);
     }

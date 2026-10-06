@@ -38,7 +38,7 @@ const N = QUICK ? 800 : 4000;
 const { GameRoom } = await import(ROOT + '/server/src/index.js');
 const P3 = await import(ROOT + '/server/src/prog3.js');
 const { PROG3 } = P3;
-const { MONSTER_HP_CURVE, ARCHETYPES, monsterStat, monsterHpFlat, BLACKSMITH_TIERS } = await import(ROOT + '/server/src/data.js');
+const { MONSTER_HP_CURVE, MONSTER_DMG_CURVE, ARCHETYPES, monsterStat, monsterHpFlat, BLACKSMITH_TIERS } = await import(ROOT + '/server/src/data.js'); /* v2.3.3055: the dmg curve */
 const CURVE = typeof P3.prog3Curve === 'function';
 
 const mockState = { storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
@@ -58,7 +58,7 @@ const tierFor = (sk) => BLACKSMITH_TIERS[TK[Math.min(TK.length - 1, Math.floor(s
 const C = MONSTER_HP_CURVE;
 const mon = (a, l) => ({ level: l,
   hp: Math.max(1, Math.ceil(monsterStat(C.base, l, C.ramp, C.plateau, C.endgame) * ARCHETYPES[a].hpMult) + monsterHpFlat(l)),
-  dmg: Math.ceil(monsterStat(12, l, 1.045, 1.025, 1.018) * ARCHETYPES[a].dmgMult) });
+  dmg: Math.ceil(monsterStat(MONSTER_DMG_CURVE.base, l, MONSTER_DMG_CURVE.ramp, MONSTER_DMG_CURVE.plateau, MONSTER_DMG_CURVE.endgame) * ARCHETYPES[a].dmgMult) });
 /* A melee character: sword `sword`, bow/staff 1, the named points, nothing else. */
 function build(sword, lane, shared) {
   for (const c of PROG3.SKILLS) {
