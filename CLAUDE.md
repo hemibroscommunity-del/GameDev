@@ -588,6 +588,12 @@ remnant to migrate server-side, not a mode to preserve.
       keep-alive key is Control;
     - `sprint` suite (47 checks, the client's rules too), mirror-audit,
       `mp-sprint`: docs/specs/sprint.md.
+    - since v2.3.3106 the button is JUST NORTH OF THE ATTACK DISC (the owner:
+      "near the right joystick instead of the left maybe just north of it",
+      then "Above, fights move up"): `sprintAnchor` centres it over the disc,
+      or sideways steps it left of the Wheel's minimap (`SPRINT_MAP_CLEAR`);
+      `rightCluster` puts Special and Whirlwind a row above it upright and
+      beside it sideways, half a button clear; mp-sprint, mp-abilslot.
   - Since v2.3.3008 the Points window's MAX MP has its before/after scene,
     "the only one missing one": both lanes cast specials at one block of
     mana each (`statSim.js` `manaPass`) until "Out of mana", the "+n" bar
@@ -619,6 +625,19 @@ remnant to migrate server-side, not a mode to preserve.
     `words`), and the minimap wears a 7 px slate-and-brass FRAME, opaque
     (`FRAME` in wheelMinimap.js): WORLD-MAP-PIPELINE "Where you are, on the
     top bar"; `mp-wheelmap`, `mp-wheelhome`.
+    Since v2.3.3108 the words are back UNDER THE MINIMAP, on a NAME PLATE --
+    the owner: "move the zone name and level band beneath the minimap but I
+    want to reduce the size of the minimap to make room for it", choosing the
+    shorter rectangle: the box stays 132 x 132, the map's window ends at
+    `MAP_BOT` 92 and the frame's slate runs on below as the plate (Pixi, so
+    it layers with the box): the land's element icon (the signposts'
+    textures, `landIconTexture`) and name in its colour, fitted down to the
+    11 px floor, over the level band in gold or "safe" at home (No man's land
+    is its own badge, v2.3.3107); the stage's name did not fit and stays on
+    the world map;
+    the top bar says "BroTown"; a land's banner docks into the plate
+    (`window.__btWheelPlate`, zoneBannerOverlay.js titleRect); the probe's
+    `plate`: WORLD-MAP-PIPELINE "The name plate under the minimap".
   - Since v2.3.3010 GREAVES ALONE HIDE THE PLAIN LEGS -- the owner: "the
     legs underneath near the shoes poke out during east jog. You can just
     remove the plain clothes legs beneath": maskedBake.js `_legsOnlyClamp`
@@ -871,8 +890,12 @@ remnant to migrate server-side, not a mode to preserve.
     you ..." (docs/specs/no-mans-land.md):
     - each land's Lv 6-10 ring is No man's land 1, the next 2, out to 15
       (`server/src/nomansland.js`, `src/data/noMansLandRings.js`,
-      mirror-audit); the banner, a chat line, and the top bar's red "☠ No
-      man's land 1 · Lv 6–10" in the stage name's place;
+      mirror-audit); the banner, a chat line, and (since v2.3.3107, the
+      owner: "above the center of the dashboard ... instead of the top bar")
+      a red skull and the number centred just over the band, riding
+      `--sheet-h`, whose tap opens the rules in InfoPopup with your own
+      skull's minutes (`src/ui/mobile/NmlBadge.jsx`; `--nml-lift` steps the
+      interact prompts over it); the top bar names the stage again;
     - two players may fight when both stand in it, their `ps.level`s at most
       the LOWER of their two numbers apart, not one party -- `_nmlAllowed`,
       asked by `_pvpAllowed` before `OPEN_PVP`, which stays off elsewhere;
@@ -926,6 +949,32 @@ remnant to migrate server-side, not a mode to preserve.
     - other players: a `player_jump` relay (no worker change), `other._jump`;
     - test-world-core "jumping", `mp-jump` (`?jumpms=` for a slow machine):
       docs/specs/jumping.md.  Not yet: jumping over attacks (the worker's).
+    - since v2.3.3105 a TAP ON THE RIGHT STICK JUMPS, the button put away (the
+      owner: "prioritize other contextual uses for the tap instead of jump
+      first if any apply"): only a tap the world's "empty space" line got
+      (`S._tapEmptySeq`) with no job on the right side (`rightTapBusy` in
+      src/game/tapJump.js: a harvest, the disc pressable, a lock) jumps;
+      `?jumpbtn` brings the button back; `mp-tapjump`; and beside a PROP a tap
+      jumps too (the owner: "a tap should jump" there, a hold attacks): with no
+      job the tap window and the first swing's wait are `TAP_JUMP_MAX_MS` 320
+      (`S._atkHoldUntil`, `?tapms=`), a swing meets a prop at the BOOTS
+      (propSwingHit + `playerGroundDy`; it never landed north of you), and the
+      stick shows the owner's JUMP arrow, see-through over the disc as it is,
+      whenever a tap would jump (`data-ricon="jump"`,
+      `public/ui/controls/jump-glyph.webp` cut off their button -- the whole
+      button was "way too intense"; painted at rest, never pressable);
+      `mp-tapprop`; and the stick's picture is the TAP'S ACT (the owner: "chat
+      bubble for speaking [to NPCs], door for entering door"): a bubble beside
+      a character, a door at steps/halls/dungeon mouths, the moon at the
+      farm's bed, the WEAPON IN YOUR HAND when it attacks (its bag picture
+      in its metal, controlSkin `weaponDiscIcon`; and WHILE you attack --
+      a hold, a drag, a swing or shot and 1.2 s after, tapJump.js
+      `attackingNow`; on the lit disc in a fight the picture follows the
+      thumb, `rKnobFollow`, the look only), else JUMP -- the tap runs
+      the E key's own chain
+      (desktopControls `runInteract` via `S._interactNow`, `interactKind`,
+      the character first for the stick: `npcFirst`), SVGs in
+      `public/ui/controls/`; `mp-tapact`.
   - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
     preview: "I was fighting fire goblins and my screen went black", and the
     crash feed had nothing:
