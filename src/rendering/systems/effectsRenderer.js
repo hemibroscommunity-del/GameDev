@@ -579,7 +579,10 @@ const CHOP_GEAR_FW = 240;
  * walking shirt's own dressed copy is.  DRESSED_MAX strips are kept, the least
  * recently drawn let go of first, each on the graphics chip only. */
 const DRESSED_MAX = 10;
-const SHIRT_PATTERN_K = { chop: 170 / 94.5, cook: 85 / 25.5, fire: 381 / 94.5, combat: 188 / 94.5 };
+/* (the fire-lighter's shirt layer is drawn 0.85 of his body -- FIRE_GEAR_REG
+   .shirt.scale, declared further down -- so its pixels are that much smaller
+   again; found by mp-gatherlook, his stripes 79% of yours without it) */
+const SHIRT_PATTERN_K = { chop: 170 / 94.5, cook: 85 / 25.5, fire: 381 / 94.5 / 0.85, combat: 188 / 94.5 };
 /* the cook's shirt is one garment, pinned (COOK_SHIRT_FRAME): only it is baked */
 const DRESSED_ONE_FRAME = { cook: 22 };
 function _shirtLookOf(front, back, patternStr) {

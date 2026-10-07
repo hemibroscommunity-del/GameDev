@@ -482,10 +482,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return { x: r.left + (n.x - S.camera.x) * (S._worldScaleX || 1), y: r.top + (n.y - S.camera.y) * (S._worldScaleY || 1) };
       });
       await P.page.waitForTimeout(400);
-      if (at) await P.page.touchscreen.tap(at.x, at.y);
-      const cooking = await H.waitFor(P, (S) => (S._extraction ? S._extraction.skill : null), (v) => v === 'cooking',
-        { timeout: 6000, label: 'a cook' }).catch(() => null);
-      console.log(`    cooking: ${cooking}`);
+      /* v2.3.3145: the real tap, a few times.  A tap must end within 400 ms
+         of its start (BroTown's SELF_TAP_MAX_MS), and on the QA box a frame
+         takes about a second, so a frame drawn between the touch's start and
+         its end makes it no tap at all: one run lost its cook that way.
+         (tapNode sends both in one task, and retries too.) */
+      let cooking = null;
+      for (let k = 0; k < 4 && at && cooking !== 'cooking'; k++) {
+        await P.page.touchscreen.tap(at.x, at.y);
+        cooking = await H.waitFor(P, (S) => (S._extraction ? S._extraction.skill : null), (v) => v === 'cooking',
+          { timeout: 3000, label: 'a cook' }).catch(() => null);
+        console.log(`    cooking (tap ${k + 1}): ${cooking}`);
+      }
       for (let k = 0; k < 3; k++) { await P.page.waitForTimeout(450); await shot(`6-cook-${k}`); }
       const cc = await P.page.evaluate(() => (window.__btStandInClothes || {}).cook || null);
       rec.ok(`the cook wears his trousers and boots: legs ${cc && cc.legs.rgb}, boots ${cc && cc.boots.rgb} (the bake's reading)`,

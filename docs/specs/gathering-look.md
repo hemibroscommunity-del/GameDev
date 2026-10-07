@@ -213,8 +213,9 @@ shot.
   pixels, and the walking shirt is drawn from 128 px sheets in which you stand
   94.5 px tall. A strip whose figure stands 170 px (the lumberjack) gets cells
   1.8x as big, so the stripes are the same on screen
-  (`SHIRT_PATTERN_K`: the fire-lighter 4.03, the combat strips 2.0, and the
-  cook by his head, 3.33).
+  (`SHIRT_PATTERN_K`: the combat strips 2.0, the cook by his head, 3.33, and
+  the fire-lighter 4.03 / 0.85 = 4.74, as his shirt layer is drawn 0.85 of his
+  body, `FIRE_GEAR_REG`).
 - **The print needs nothing:** it is fitted to each frame's chest
   (`chestBox`), as on the walking shirt.
 - **Only for a shirt with a print or a pattern.** A plain coloured shirt keeps
