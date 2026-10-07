@@ -13,7 +13,7 @@
  * (the deploy-order safety surface -- see docs/WIRE-PROTOCOL.md).
  * The switch case now delegates: `await this._handleJoin(...)`. */
 
-import { healLifeSkills, healLifeSkillLevels /* v2.3.3041 */ } from './migrations.js';
+import { healLifeSkills, healLifeSkillLevels /* v2.3.3041 */, freshLifeSkills /* v2.3.3138 */ } from './migrations.js';
 import { trapBootstrapGuard } from './trapping.js'; /* v2.3.3120: no pets or Trapping level from a first connect */
 import { t2ReplayFlat, COOKING_RECIPES } from './data.js';   /* v2.3.3130: caps.cookRows */
 import { FARM_CROP_IDS } from './farm.js';   /* v2.3.3131: caps.farmCrops */
@@ -200,6 +200,26 @@ export function sanitizeDisplayName(v) {
  * the explicit ingest in _handleJoin (stored-wins on every reconnect).
  * Anchored + capitalised so a crafted 'rpg' or 'rpgo' can't sneak in. */
 const JOIN_RPG_PREFIX_RE = /^rpg[A-Z][A-Za-z0-9]*$/;
+/* ═══ v2.3.3138: A NEW CHARACTER'S STARTING PURSE ═══
+ * The coins the client's own new character holds (gameSystems.js
+ * createDefaultRpg; mirror-audit pins the two).  The first join no longer
+ * takes `rpgCoins` from the payload (_handleJoin), so the worker says it. */
+export const NEW_CHARACTER_COINS = 50;
+/* A join payload without its claims to progress: every key named rpg* (the
+ * character), and nothing else (where you stand, the look, the name).
+ * NO PROTOTYPE, and that is the point (TRAPS §6's '__proto__'): JSON.parse
+ * makes a frame's "__proto__" an OWN key, which is not rpg* and so is
+ * copied -- and copied onto a plain `{}` it SETS the copy's prototype, so
+ * `msg.data.rpgCoins` and every other claim read through it again.  The
+ * review proved it on a real join: 1,999 coins, 100 made-up bars sold to
+ * Diego for 392,500.  On an object with no prototype it is an ordinary key
+ * nothing reads.  (Every reader below reads by name, never a method.) */
+function _withoutRpgClaims(data) {
+  const out = Object.create(null);
+  if (!data || typeof data !== 'object') return out;
+  for (const k of Object.keys(data)) if (!/^rpg/.test(k)) out[k] = data[k];
+  return out;
+}
 /* v2.3.1629: ceiling on a single rpg* container value.
  * SIZED AGAINST THE FRAME GATE, deliberately.  v2.3.1618 caps the whole
  * inbound frame at MAX_INBOUND_BYTES = 16 KB (index.js), which is the
@@ -693,12 +713,68 @@ export const joinMethods = {
     await this._botfpOnJoin(session, msg);
     /* Load (or bootstrap) the player's server-authoritative
        coins + inventory.  Stored entry wins; if there's no
-       record yet, fall back to the values the client sent in
-       the join payload (one-time trust at first connection)
-       and persist them so subsequent connects use the stored
-       value. */
+       record yet, the character is NEW and starts from the
+       server's own defaults (v2.3.3138, below), persisted so
+       every later connect uses the stored value. */
     {
-      const stored = await this._loadRpg(msg.id);
+      /* ═══ v2.3.3138: A FAILED READ IS NOT A NEW CHARACTER ═══
+         _loadRpg answered null for a read that threw as well as for no
+         record, and this join took both as a brand-new character and SAVED
+         the bootstrap over the real record.  Harmless-ish while the
+         bootstrap copied the client's own claims; with a new character now
+         starting from nothing (below), it would wipe a real one.  So a read
+         that fails ends the join instead: the socket closes and the
+         client's reconnect asks again. */
+      let stored;
+      try {
+        stored = await this._loadRpg(msg.id, { throwOnError: true });
+      } catch (e) {
+        console.error('[join] could not read rpg:' + msg.id, e && e.message);
+        delete this.playerState[msg.id];
+        delete this.stateHistory[msg.id];
+        try { ws.close(1011, 'try again'); } catch (_e) { /* already gone */ }
+        /* ...and the player LEAVES now, the AFK sweep's way (tick.js,
+           v2.3.1621).  This join may already have replaced a live session
+           of the same player -- the eviction above skips webSocketClose on
+           purpose -- so this session is the one whose close runs the
+           leaving: duel and party grace, player_leave, the botstat flush.
+           Left to the runtime it lingered: webSocketClose fires only on a
+           finished TCP close, and until then the room counted it and a
+           joiner drew it (the review saw both).  Idempotent if the runtime
+           fires it later: the session is gone by then. */
+        try { await this.webSocketClose(ws); } catch (_e) { /* best effort */ }
+        this.sessions.delete(ws);
+        return;
+      }
+      /* ═══ v2.3.3138: A NEW CHARACTER STARTS FROM THE SERVER'S DEFAULTS ═══
+         Owner, on the farm's review: "Yes fix all of your recommended
+         fixes.  Game is still a demo."  The first-join bootstrap below used
+         to take the character from the join payload, capped: 2,000 coins,
+         level 1,000, 100 item keys of 50 each WHATEVER their names, and the
+         life skills wholesale -- uncapped.  A throwaway identity (free:
+         rule 21) could claim level 150 in every skill and collect the whole
+         guild ladder, ~50,600 coins, tradeable to a main; or claim 100 made-
+         up keys Diego prices by substring ('bar_00' is a bar) and sell them
+         for ~392,000 (both proved on main by the review).  The caps were
+         there for "migrated single-player characters", and there are none:
+         every character has begun at level 1 since v2.3.1676/v2.3.3041.
+
+         So when there is NO record, every `rpg*` field -- all of the
+         payload's claims to progress, and nothing else is named so -- is
+         dropped here, before anything below reads it: from the raw message
+         (the explicit ingest and every adoption read it), and from the
+         allowlisted copy already spread onto the session and playerState.
+         Each read below then finds nothing and lands on the default, which
+         is the client's own new character (gameSystems.js createDefaultRpg /
+         createDefaultLifeSkills; mirror-audit pins the two that are not
+         zero or empty: NEW_CHARACTER_COINS and freshLifeSkills).  Where you
+         stand, your name and your look are not rpg* and are untouched.  A
+         character on file is untouched too. */
+      if (!stored) {
+        msg.data = _withoutRpgClaims(msg.data);
+        for (const _k of Object.keys(session.data || {})) if (JOIN_RPG_PREFIX_RE.test(_k)) delete session.data[_k];
+        for (const _k of Object.keys(this.playerState[msg.id] || {})) if (JOIN_RPG_PREFIX_RE.test(_k)) delete this.playerState[msg.id][_k];
+      }
       /* ═══ v2.3.2534: WARM THE PROVENANCE LEDGER FIRST ═══
          `gear_prov:<playerId>` is one bounded storage GET (never a prefix
          list -- rule 9), and it has to land BEFORE any gear is resolved
@@ -849,10 +925,14 @@ export const joinMethods = {
           _kc++;
         }
 
+        /* v2.3.3138: no claim reaches here any more (the rpg* fields were
+           dropped above), so these land on the client's own new character:
+           NEW_CHARACTER_COINS and the default life skills, the rest zero or
+           empty.  The caps stay as the second line. */
         this.playerState[msg.id].coins = Math.max(0, Math.min(BOOTSTRAP_COINS_CAP,
-          (msg.data && typeof msg.data.rpgCoins === 'number') ? Math.floor(msg.data.rpgCoins) : 0));
+          (msg.data && typeof msg.data.rpgCoins === 'number') ? Math.floor(msg.data.rpgCoins) : NEW_CHARACTER_COINS));
         this.playerState[msg.id].inventory = _cappedInv;
-        this.playerState[msg.id].lifeSkills = (msg.data && msg.data.rpgLifeSkills && typeof msg.data.rpgLifeSkills === 'object') ? { ...msg.data.rpgLifeSkills } : {};
+        this.playerState[msg.id].lifeSkills = (msg.data && msg.data.rpgLifeSkills && typeof msg.data.rpgLifeSkills === 'object') ? { ...msg.data.rpgLifeSkills } : freshLifeSkills();
         // v2.3.1152: boundary heal.  Migration v1 fixes STORED
         // blobs once, but a pre-v2.3.769 client can hand us a
         // freshly re-corrupted lifeSkills payload right here --
@@ -864,8 +944,10 @@ export const joinMethods = {
         healLifeSkillLevels(this.playerState[msg.id]);   /* v2.3.3041 */
         /* v2.3.3120: never pets, and never a Trapping level, from the browser
            (trapping.js trapBootstrapGuard): the level decides what can be
-           caught, and pets will trade.  #830 stops this whole bootstrap
-           trusting the browser; this holds those two until it merges. */
+           caught, and pets will trade.  v2.3.3138 (#830) stopped this whole
+           bootstrap trusting the browser -- a first join's skills are
+           freshLifeSkills() -- and this stays as the second line for those
+           two. */
         trapBootstrapGuard(this.playerState[msg.id]);
         this.playerState[msg.id].level = Math.max(1, Math.min(BOOTSTRAP_LEVEL_CAP,
           (msg.data && typeof msg.data.rpgLevel === 'number') ? Math.floor(msg.data.rpgLevel) : 1));

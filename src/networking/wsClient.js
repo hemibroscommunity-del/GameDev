@@ -501,12 +501,13 @@ export function setupWebSocket(ctx) {
             pt: getPants(),
             sh: getShoes(),
             bs: S.bodySize || 'slim',
-            /* Bootstrap fields for server-authoritative coins / inventory
-               / lifeSkills.  Used only on a player's FIRST connection
-               to the GameRoom DO (when DO storage has no rpg:<playerId>
-               entry yet); the server persists this and ignores the
-               fields on subsequent connects, so localStorage tampering
-               only affects the first session. */
+            /* This device's copy of the character (the rpg* fields).
+               v2.3.3138: the worker reads NONE of them on a character's
+               first connection (no rpg:<playerId> record yet) -- a new
+               character starts from the server's own defaults -- and on
+               later connects the stored record wins, bar the few fields
+               docs/specs/fresh-start.md lists, which stats_update takes
+               anyway.  So localStorage tampering buys nothing here. */
             rpgCoins: ((_S$rpgC = S.rpg) === null || _S$rpgC === void 0 ? void 0 : _S$rpgC.coins) || 0,
             rpgInventory: ((_S$rpgI = S.rpg) === null || _S$rpgI === void 0 ? void 0 : _S$rpgI.inventory) || {},
             rpgLifeSkills: ((_S$rpgL = S.rpg) === null || _S$rpgL === void 0 ? void 0 : _S$rpgL.lifeSkills) || {},

@@ -122,16 +122,15 @@ const legacyBlob = () => ({
     rpgCoins: 50,
   });
   const ps = room.playerState['bp_mig_b'];
-  /* v2.3.3120: a first connect brings NO pets from the browser at all now
-     (trapping.js trapBootstrapGuard; the pets record, petbook.js, is the only
-     list), which is stronger than the heal this section was written for: the
-     corrupt shapes -- pets as an object, activePet as {} -- cannot reach the
-     blob because nothing of the browser's pets does.  The other skills of the
-     payload are healed and kept as before. */
-  check('bootstrap ingest: the corrupt payload never reaches the blob (no browser pets at all since v2.3.3120)',
+  /* v2.3.3138: stronger than healed -- a first join takes nothing from the
+     payload (join.js), so the corruption never reaches the fresh blob: no
+     pets (and since v2.3.3120 not even the empty list or an active pet --
+     trapping.js trapBootstrapGuard; the pets record, petbook.js, is the only
+     list), the client's own new character: fishing at its default 1, not the
+     payload's 2. */
+  check('a first join\'s corrupted payload never reaches the fresh blob',
     !(ps.lifeSkills.pets && !Array.isArray(ps.lifeSkills.pets)) && !((ps.lifeSkills.pets || []).length)
-      && (ps.lifeSkills.activePet == null || typeof ps.lifeSkills.activePet !== 'object')
-      && ps.lifeSkills.fishing && ps.lifeSkills.fishing.level === 2,
+      && ps.lifeSkills.activePet == null && ps.lifeSkills.fishing && ps.lifeSkills.fishing.level === 1,
     ps.lifeSkills);
   await room._saveRpg('bp_mig_b', ps);
   const saved = state._store.get('rpg:bp_mig_b');
@@ -225,8 +224,10 @@ const legacyBlob = () => ({
   const wsT = fakeWs('t2r');
   await join(wsT, 'bp_mig_t2', { rpgFerocity: 999, rpgInfluence: 50, rpgVitality: 5 });
   const psT = room.playerState['bp_mig_t2'];
-  check('join payload no longer re-injects retired stats (T1 still lands)',
-    psT.ferocity === undefined && psT.influence === undefined && psT.vitality === 5,
+  /* v2.3.3138: and nor does T1 any more -- a first join takes no stat from
+     the payload (join.js), so the claimed vitality 5 is 0 too. */
+  check('join payload no longer re-injects retired stats (nor, on a first join, T1)',
+    psT.ferocity === undefined && psT.influence === undefined && psT.vitality === 0,
     { f: psT.ferocity, i: psT.influence, v: psT.vitality });
   await room._saveRpg('bp_mig_t2', psT);
   const savedT = state._store.get('rpg:bp_mig_t2');
