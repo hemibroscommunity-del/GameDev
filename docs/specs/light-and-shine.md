@@ -118,7 +118,7 @@ never glint.
 
 Other players' WEAPON grades are not on the wire: the relay carries the
 metal (`wpnMat`) but not the grade. So their weapons glint at the normal rate
-until a grade key is relayed. Their ARMOUR's grades are, since v2.3.3127: the
+until a grade key is relayed. Their ARMOUR's grades are, since v2.3.3142: the
 worker sends them as `eqg` on the tick, and the worn torso and greaves show
 them as an outline (rare blue, elite orange, godly a rainbow), on you and on
 everyone else -- `armor-grade-look.md`.

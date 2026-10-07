@@ -129,7 +129,7 @@ uniform vec3 uColor;
 uniform float uSheen;
 uniform vec2 uSun;
 uniform vec3 uTint;
-/* v2.3.3127: the piece's GRADE, seen (rare blue, elite orange, godly a moving
+/* v2.3.3142: the piece's GRADE, seen (rare blue, elite orange, godly a moving
    rainbow) -- rgb its colour, a how strong (0: a normal piece, no grade
    look); uPrism 1 for godly; uTime seconds, for the rainbow's drift; uRim
    the edge's width in the input's pixels */
@@ -183,7 +183,7 @@ void main()
     col += head * (vec3(1.0) - exp(-(uColor * s) / max(head, vec3(0.001))));
     /* the sweep's band (only when pinned now -- see AUTO_SWEEP) still adds */
     col = min(col + uColor * k, vec3(1.0));
-    /* v2.3.3127: THE GRADE.  Owner: "change the outline hue or something on
+    /* v2.3.3142: THE GRADE.  Owner: "change the outline hue or something on
        the armor so it retains the color but has highlights.  So rare is
        blue, elite is orange, godly is prismatic".  Two strokes, both inside
        the piece's own silhouette (the filter sees only its own sprite, so an
@@ -256,7 +256,7 @@ function makeGlintFilter() {
         uSheen: { value: 0, type: 'f32' },                                   /* v2.3.2864 */
         uSun: { value: new Float32Array([0, 0]), type: 'vec2<f32>' },
         uTint: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
-        uGrade: { value: new Float32Array([0, 0, 0, 0]), type: 'vec4<f32>' },   /* v2.3.3127 */
+        uGrade: { value: new Float32Array([0, 0, 0, 0]), type: 'vec4<f32>' },   /* v2.3.3142 */
         uPrism: { value: 0, type: 'f32' },
         uTime: { value: 0, type: 'f32' },
         uRim: { value: 1.5, type: 'f32' },
@@ -316,7 +316,7 @@ export function prewarmGlintPipe(renderer) {
        pass that exercises the whole shader is the honest warm-up */
     const u = f.resources.glintUniforms.uniforms;
     u.uProgress = 0.5; u.uSheen = 1;
-    u.uGrade[3] = 1; u.uPrism = 1;   /* v2.3.3127: and the grade's look, so its branch is warmed too */
+    u.uGrade[3] = 1; u.uPrism = 1;   /* v2.3.3142: and the grade's look, so its branch is warmed too */
     spr.filters = [f];
     renderer.render({ container: spr });
     ok = true;
@@ -356,13 +356,13 @@ export const GRADE_SHINE = Object.assign(Object.create(null), {
   normal: { period: 6500, dur: 560, strength: 0.85, sheen: 0.83 },
   rare: { period: 4600, dur: 560, strength: 1.0, sheen: 0.93 },
   elite: { period: 3300, dur: 600, strength: 1.15, sheen: 1.05 },
-  /* v2.3.3127: the gold is a godly WEAPON's only (`_slot`) -- godly ARMOUR
+  /* v2.3.3142: the gold is a godly WEAPON's only (`_slot`) -- godly ARMOUR
      wears the prismatic grade look below (GRADE_LOOK), and a gold sheen under
      a rainbow edge muddied both, so its sheen is its metal's */
   godly: { period: 1900, dur: 680, strength: 1.4, sheen: 1.2, color: [1.0, 0.92, 0.6] },
 });
 
-/* ═══ v2.3.3127: A WORN PIECE SHOWS ITS GRADE ═══
+/* ═══ v2.3.3142: A WORN PIECE SHOWS ITS GRADE ═══
  * Owner: "I also think the armor should be visibly different if you're
  * wearing rare, elite, or godly.  Wondering if you can change the outline hue
  * or something on the armor so it retains the color but has highlights.  So
@@ -492,11 +492,11 @@ export class GlintSystem {
     this._on = new Map();        /* sprite -> filter currently attached */
     this._pool = [];
     this.force = null;           /* QA/pictures: a fixed sweep progress, 0-1; -1 = no sweep anywhere (v2.3.2864) */
-    this.stats = { targets: 0, lit: 0, sheen: 0, sweeping: 0, graded: 0 };   /* v2.3.2914: + sweeping, the pieces a band is crossing this frame; v2.3.3127: + graded, the armour pieces wearing their grade */
+    this.stats = { targets: 0, lit: 0, sheen: 0, sweeping: 0, graded: 0 };   /* v2.3.2914: + sweeping, the pieces a band is crossing this frame; v2.3.3142: + graded, the armour pieces wearing their grade */
     this._lastTargets = null;
     this.sheenScale = null;      /* QA/pictures: multiply the sheen, to show a softer or stronger cut */
     this._bodies = new Set();    /* this frame's full-set body sprites, for the probe */
-    this._fullBodies = new Set(); /* v2.3.3127: every full-set figure this frame (yours and others'), whose grade edge goes all round */
+    this._fullBodies = new Set(); /* v2.3.3142: every full-set figure this frame (yours and others'), whose grade edge goes all round */
   }
 
   _filter() { return this._pool.pop() || _warmFilters.pop() || makeGlintFilter(); }   /* v2.3.2904: the loading screen's filter first */
@@ -519,14 +519,14 @@ export class GlintSystem {
   }
 
   /* One figure-slot: which sprites show it, what metal, what grade.
-     `part` (v2.3.3127) is 'c' (a torso) or 'l' (greaves) for armour, whose
+     `part` (v2.3.3142) is 'c' (a torso) or 'l' (greaves) for armour, whose
      grade look (`look`) it carries; a weapon's is null. */
   _slot(out, key, sprites, metal, grade, part) {
     if (!metal || !sprites.length) return;
     const g = GRADE_SHINE[grade] || GRADE_SHINE.normal;
     const look = part ? (GRADE_LOOK[grade] || null) : null;
     /* a grade's own shine colour (godly's gold) is a weapon's; armour shines
-       in its metal and shows its grade in the look (v2.3.3127) */
+       in its metal and shows its grade in the look (v2.3.3142) */
     const own = part ? null : g.color;
     out.push({ key, sprites, color: own || METAL_SHINE[metal] || METAL_SHINE.steel, g, look, grade, part: part || null });
   }
@@ -556,7 +556,7 @@ export class GlintSystem {
         if (pd.visible && pd._fullsetOn && pd._spriteBody && pd._spriteBody.visible) {
           pushVisible(s, pd._spriteBody);
           this._bodies.add(pd._spriteBody);
-          /* v2.3.3127: a whole figure, its grade's edge drawn all round */
+          /* v2.3.3142: a whole figure, its grade's edge drawn all round */
           this._fullBodies.add(pd._spriteBody);
           if (pd._handArmSprite) this._fullBodies.add(pd._handArmSprite);
           if (pd._handCapSprite) this._fullBodies.add(pd._handCapSprite);
@@ -617,11 +617,11 @@ export class GlintSystem {
         if (cm) {
           const s = [];
           if (d.visible) pushVisible(s, d._gearChest);
-          if (d.visible && d._fullsetOn) { pushVisible(s, d._spriteBody); this._fullBodies.add(d._spriteBody); }   /* v2.3.2864; v2.3.3127: a whole figure */
+          if (d.visible && d._fullsetOn) { pushVisible(s, d._spriteBody); this._fullBodies.add(d._spriteBody); }   /* v2.3.2864; v2.3.3142: a whole figure */
           if (sw) pushVisible(s, sw.chest);
           if (bw) pushVisible(s, bw.chest);   /* v2.3.2887 */
           if (gg) pushVisible(s, gg.chest);
-          /* v2.3.3127: their grade, from the worker (tick.js eqg) */
+          /* v2.3.3142: their grade, from the worker (tick.js eqg) */
           this._slot(out, id + ':c', s, cm, peerGrade(o._eqg, 0), 'c');
         }
         const lm = armourMetal((oe && oe.legs) || o.eql);
@@ -641,7 +641,7 @@ export class GlintSystem {
   /* `sheen` (v2.3.2864): null when the permanent shine is off, else
      { k, sx, sy } -- how much of it the light allows (0-1) and the direction
      of the sun on screen (a unit vector, or 0,0 in a zone with no sun). */
-  /* `gradesOnly` (v2.3.3127): the light effects are off on this device --
+  /* `gradesOnly` (v2.3.3142): the light effects are off on this device --
      only a graded piece's look is drawn (see GRADE_LOOK). */
   update(S, now, er, fx, zone, sheen, gradesOnly) {
     const targets = this._targets(S, er, fx, zone);
@@ -683,7 +683,7 @@ export class GlintSystem {
         this._on.set(spr, f);
       }
       /* v2.3.2887: every frame -- the texture, and so the frame's box, changes.
-         v2.3.3127: and on every piece wearing a grade: its outline's rainbow
+         v2.3.3142: and on every piece wearing a grade: its outline's rainbow
          and edge are read off the filter's frame, and the arm re-drawn over a
          sword (a masked clone, pinned above) must find the very same frame
          as the body under it -- the body's own, measured from its bounds,
@@ -703,11 +703,11 @@ export class GlintSystem {
       if (w.sheen > 0 || w.look) {
         /* the tint this sprite is drawn with, read off the sprite itself, so
            the shader can find where the art was bright under any metal
-           (v2.3.3127: the grade's highlights need it as the sheen does) */
+           (v2.3.3142: the grade's highlights need it as the sheen does) */
         const tn = typeof spr.tint === 'number' ? spr.tint : 0xffffff;
         u.uTint[0] = ((tn >> 16) & 255) / 255; u.uTint[1] = ((tn >> 8) & 255) / 255; u.uTint[2] = (tn & 255) / 255;
       }
-      /* v2.3.3127: the grade's look, or none */
+      /* v2.3.3142: the grade's look, or none */
       if (w.look) {
         u.uGrade[0] = w.look.color[0]; u.uGrade[1] = w.look.color[1]; u.uGrade[2] = w.look.color[2]; u.uGrade[3] = w.look.k;
         u.uPrism = w.look.prism ? 1 : 0;
@@ -737,7 +737,7 @@ export class GlintSystem {
       ...this.stats,
       keys: t.filter((x) => x.sprites.some((q) => this._on.has(q))).map((x) => x.key),
       body,
-      /* v2.3.3127: each armour slot's grade as drawn this frame, by key */
+      /* v2.3.3142: each armour slot's grade as drawn this frame, by key */
       grades: Object.fromEntries(t.filter((x) => x.look && x.sprites.some((q) => this._on.has(q))).map((x) => [x.key, x.grade])),
     };
   }

@@ -53,7 +53,7 @@ export const FONT = {
 export const RARITY_BORDER = {
   normal: 'rgba(139, 150, 149, 0.55)',
   rare:   '#5B99DE',
-  elite:  '#E8893A',   /* v2.3.3127: orange, the owner's (dash/common.js QUALITY_PRISM) */
+  elite:  '#E8893A',   /* v2.3.3142: orange, the owner's (dash/common.js QUALITY_PRISM) */
   godly:  '#F0C45F',
 };
 export const RARITY_FILL = {

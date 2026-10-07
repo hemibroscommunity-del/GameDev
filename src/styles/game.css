@@ -4526,7 +4526,7 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
    sanctioned perpetual animation: a rotating prismatic conic ring.
 ═══════════════════════════════════════════ */
 .ls-slot--rare      { box-shadow: 0 0 4px 0 rgba(91,153,222,.08); }
-.ls-slot--legendary { box-shadow: 0 0 6px 0 rgba(232,137,58,.12); }   /* v2.3.3127: elite is orange */
+.ls-slot--legendary { box-shadow: 0 0 6px 0 rgba(232,137,58,.12); }   /* v2.3.3142: elite is orange */
 .ls-slot--godly     { box-shadow: 0 0 10px 0 rgba(199,125,255,.18); }
 
 /* Animatable conic angle (iOS 16.4+); browsers without @property show
@@ -4545,7 +4545,7 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
   inset: 0;
   padding: 2px;
   border-radius: inherit;
-  /* v2.3.3127: a whole rainbow -- the owner's "godly is prismatic" (it was
+  /* v2.3.3142: a whole rainbow -- the owner's "godly is prismatic" (it was
      gold, cream, violet and teal) */
   background: conic-gradient(from var(--ls-godly-angle),
     #FF6B6B 0deg, #FFD166 60deg, #6BFF95 120deg,

@@ -1,4 +1,4 @@
-/* ═══ WORN ARMOUR SHOWS ITS GRADE (v2.3.3127) ═══
+/* ═══ WORN ARMOUR SHOWS ITS GRADE (v2.3.3142) ═══
  *
  * Owner: "I also think the armor should be visibly different if you're
  * wearing rare, elite, or godly.  Wondering if you can change the outline hue
@@ -20,7 +20,7 @@
  *   3. ANOTHER player sees it: A wears an elite iron torso and greaves the
  *      worker minted (the admin kit's `quality`), equipped by their ids; B is
  *      told `eqg: 'ee'` by the tick and draws A's two pieces elite;
- *   4. the bag says the same (v2.3.3127's colours): an elite piece's edge
+ *   4. the bag says the same (v2.3.3142's colours): an elite piece's edge
  *      orange, a godly piece's ring a rainbow;
  *   5. no page errors.
  * Pictures: tools/qa/mp/out/armorgrade-*.png, and the grid of all twelve.

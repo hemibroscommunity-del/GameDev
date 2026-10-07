@@ -471,7 +471,7 @@ export const DevPanel = ({ onClose }) => {
               {/* v2.3.2875: the kit hands out the copper and iron armour sets too (devtools.js DEVKIT.ARMOR) */}
               Give weapons + armor + levels
             </button>
-            {/* v2.3.3127: the kit's armour in a grade, to wear and see its look
+            {/* v2.3.3142: the kit's armour in a grade, to wear and see its look
                 (rare blue, elite orange, godly prismatic -- glint.js GRADE_LOOK) */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7, marginBottom: 4 }}>
               {['rare', 'elite', 'godly'].map((q) => (

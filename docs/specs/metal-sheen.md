@@ -72,7 +72,7 @@ that never switches off:
 
 - **It lights the art's own highlights.** Where the steel art is bright, the
   piece gets brighter, toward the metal's shine colour: white for steel,
-  cool for iron, warm for copper, gold for a godly piece. (Since v2.3.3127
+  cool for iron, warm for copper, gold for a godly piece. (Since v2.3.3142
   the gold is a godly WEAPON's: godly ARMOUR shines in its own metal and
   shows its grade as a rainbow outline instead, `armor-grade-look.md`.)
 - **It gives copper and iron real highlights.** Every metal is one steel

@@ -142,7 +142,7 @@ export function QuestSlot(props) {
       }) : null),
     h('div', { className: 'bt-qw-item-name' }, it.label || ''),
     q ? h('div', { className: 'bt-qw-item-rarity', 'data-quality': q,
-      style: qualityInk(q) }, QUALITY_LABEL[q] || q) : null);   /* v2.3.3127: godly's name a rainbow */
+      style: qualityInk(q) }, QUALITY_LABEL[q] || q) : null);   /* v2.3.3142: godly's name a rainbow */
 }
 
 /** A skill chip (Melee / Bow / Magic): the owner's chip with its weapon,

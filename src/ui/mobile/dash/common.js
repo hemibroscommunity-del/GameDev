@@ -67,10 +67,10 @@ export const TIER_COLOR = {
 export const QUALITY_COLOR = {
   normal: null,                 /* null = "no rarity hue": the caller keeps its own accent */
   rare:   '#5B99DE',
-  elite:  '#E8893A',            /* v2.3.3127: orange, was purple -- below */
+  elite:  '#E8893A',            /* v2.3.3142: orange, was purple -- below */
   godly:  '#F0C45F',            /* the one hue where ONE is needed (a glow, a frame); its name is a rainbow, qualityInk */
 };
-/* ═══ v2.3.3127: THE OWNER'S GRADE COLOURS ═══
+/* ═══ v2.3.3142: THE OWNER'S GRADE COLOURS ═══
  * Owner, asking for worn armour to show its grade: "So rare is blue, elite is
  * orange, godly is prismatic" -- the same words as their pet rarities ("Blue
  * Rare, Orange Elite, Prismatic Godly", playerProfile.js PET_RARITY).  The

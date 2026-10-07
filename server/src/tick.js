@@ -16,7 +16,7 @@
  * last-leave) stay in index.js untouched. */
 
 import { WHEEL_ZONE } from './wheelzone.js';   /* v2.3.2978: the Wheel's monsters go out by interest */
-import { armourGradeWire } from './gearprov.js';   /* v2.3.3127: the worn armour's grade, seen by others */
+import { armourGradeWire } from './gearprov.js';   /* v2.3.3142: the worn armour's grade, seen by others */
 
 /* v2.3.2062: server ticks between regen passes. Exported because the Mana
    Draught sizes its per-tick floor against this cadence (server/src/data.js
@@ -354,7 +354,7 @@ export const tickMethods = {
            `sp` -- and not `pet`, the old client-relayed one the profile card
            reads. */
         ...(petShow && ps._petWire ? { pw: ps._petWire } : {}),
-        /* v2.3.3127: the worn torso's and greaves' grades, 'rn' etc.
+        /* v2.3.3142: the worn torso's and greaves' grades, 'rn' etc.
            (gearprov.js armourGradeWire); absent in plain armour, so everyone
            else's wire is unchanged */
         ...(eqg ? { eqg } : {}),

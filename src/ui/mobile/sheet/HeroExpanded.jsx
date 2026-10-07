@@ -1091,7 +1091,7 @@ export const HeroExpanded = () => {
                         fontSize: 11, fontWeight: 800, letterSpacing: '.03em',
                         lineHeight: 1.1,
                         textTransform: 'uppercase', color: nameCol,
-                        ...(quality === 'godly' ? qualityInk('godly') : null),   /* v2.3.3127: a godly name is a rainbow */
+                        ...(quality === 'godly' ? qualityInk('godly') : null),   /* v2.3.3142: a godly name is a rainbow */
                         overflowWrap: 'anywhere',
                       }}>{selCard ? selCard.title : selSlot.label}</span>
                     </span>

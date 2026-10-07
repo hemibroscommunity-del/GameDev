@@ -468,7 +468,7 @@ export const questMethods = {
              data.  Clamped to a short identifier because it is echoed to every
              client that can see the wearer. */
           mat: item.mat ? String(item.mat).slice(0, 16) : undefined,
-          /* v2.3.3127: a grade, only when the item names one -- no quest does;
+          /* v2.3.3142: a grade, only when the item names one -- no quest does;
              the admin test kit does (devtools.js `quality`), so the owner can
              wear and see each grade's look */
           ...(item.quality === 'rare' || item.quality === 'elite' || item.quality === 'godly' ? { quality: item.quality } : {}),

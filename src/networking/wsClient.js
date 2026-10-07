@@ -737,7 +737,7 @@ export function setupWebSocket(ctx) {
                       S.others[pid]._pwRaw = data.pw;
                       S.others[pid]._pet = data.pw ? parsePetWire(data.pw) : null;
                     }
-                    /* v2.3.3127: their worn torso's and greaves' grades (tick.js
+                    /* v2.3.3142: their worn torso's and greaves' grades (tick.js
                        `eqg`: 'rn', 'ee', ...), which glint.js draws as the
                        armour's grade look; absent is plain, as for `spr` */
                     S.others[pid]._eqg = typeof data.eqg === 'string' ? data.eqg.slice(0, 2) : '';
@@ -2709,7 +2709,7 @@ export function setupWebSocket(ctx) {
               var _qrsKey = _qrsLegs ? 'legsStash' : 'armorStash';
               if (!Array.isArray(S.rpg[_qrsKey])) S.rpg[_qrsKey] = [];
               var _qrsWorn = _qrsLegs ? S.rpg.legsArmor : S.rpg.armor;
-              /* v2.3.3127: a piece with the worker's id is the same piece only
+              /* v2.3.3142: a piece with the worker's id is the same piece only
                  if it has the same id -- a replay carries the one it had.  By
                  name alone, a second Iron Torso the worker really minted (the
                  admin kit's Godly armor after its Elite) was taken for a
@@ -2736,7 +2736,7 @@ export function setupWebSocket(ctx) {
                      the same optional shape against an old worker. */
                   gid: (typeof _qrs.gid === 'string' && _qrs.gid) ? _qrs.gid : undefined,
                   mat: _qrs.mat ? String(_qrs.mat).slice(0, 16) : undefined,
-                  /* v2.3.3127: and its grade, when it has one (only the admin
+                  /* v2.3.3142: and its grade, when it has one (only the admin
                      kit's graded armour does -- devtools.js `quality`), with
                      the worker's own mark that it minted it, so the bag and
                      the worn look show it before the next join re-reads the

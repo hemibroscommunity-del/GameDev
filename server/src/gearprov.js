@@ -183,7 +183,7 @@ export function slotForGearField(field) {
 export const PROV_MINTED = 'minted';
 export const PROV_LEGACY = 'legacy';
 
-/* ═══ v2.3.3127: THE GRADE EVERYONE ELSE SEES ON YOUR ARMOUR ═══
+/* ═══ v2.3.3142: THE GRADE EVERYONE ELSE SEES ON YOUR ARMOUR ═══
    Owner: "the armor should be visibly different if you're wearing rare,
    elite, or godly ... rare is blue, elite is orange, godly is prismatic"
    (src/rendering/lightfx/glint.js GRADE_LOOK).  The worn torso's and greaves'

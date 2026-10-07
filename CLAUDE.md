@@ -1510,7 +1510,7 @@ remnant to migrate server-side, not a mode to preserve.
       for 1,000 gold, each step 1,000 more, to 120, a stale `cap` refused;
       caps `petwards` / `petshow` / `pethouse`; dev `look: {gold, size}`;
       `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.
-  - Since v2.3.3127 WORN ARMOUR SHOWS ITS GRADE -- the owner: "change the
+  - Since v2.3.3142 WORN ARMOUR SHOWS ITS GRADE -- the owner: "change the
     outline hue or something on the armor so it retains the color but has
     highlights. So rare is blue, elite is orange, godly is prismatic":
     - the metal sheen's own filter (lightfx/glint.js `GRADE_LOOK`, the shader's

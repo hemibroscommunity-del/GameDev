@@ -1,4 +1,4 @@
-# Worn armour shows its grade (v2.3.3127)
+# Worn armour shows its grade (v2.3.3142)
 
 Owner: *"I also think the armor should be visibly different if you're
 wearing rare, elite, or godly. Wondering if you can change the outline hue or

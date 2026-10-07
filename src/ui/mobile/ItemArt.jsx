@@ -11,7 +11,7 @@ import { ELEMENT_COLOR } from './inventoryStyles.js';
 const RARITY_TINT = {
   normal: { fill: '#243137', stroke: '#8B9695' },
   rare:   { fill: '#20303F', stroke: '#5B99DE' },
-  elite:  { fill: '#3A2A1C', stroke: '#E8893A' },   /* v2.3.3127: orange, the owner's */
+  elite:  { fill: '#3A2A1C', stroke: '#E8893A' },   /* v2.3.3142: orange, the owner's */
   godly:  { fill: '#3A2F16', stroke: '#F0C45F' },
 };
 
