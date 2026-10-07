@@ -26,7 +26,7 @@
  *      drawn), and its release does not jump;
  *   5. a tap mid-sprint jumps and the sprint runs on (an attack ends a sprint);
  *   6. no page errors.
- * ?tapms=2500 stretches the tap's window (tapJump.js tapJumpMaxMs): this box
+ * ?tapms=6000 stretches the tap's window (tapJump.js tapJumpMaxMs): this box
  * draws a frame every few hundred ms, and the press must be a tap however
  * slowly the page gets round to its release.
  * Picture: tools/qa/mp/out/tapstance-press.png, the bow's tap with the thumb
@@ -37,7 +37,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
-const TAP_MS = 2500;
+const TAP_MS = 6000;
 const AIR_MS = 1400;
 const SOUTHISH = new Set(['south', 'southeast', 'southwest']);
 
@@ -182,6 +182,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const t1 = await touch('touchend');
       await down();
       console.log(`    picture mid-press (${t1.at - t0.at} ms of a ${TAP_MS} ms window): ${JSON.stringify(mid)}`);
+      rec.ok(`half a second into a bow press that is still a tap, the attack is not on and the body faces east (${mid.f}, pending ${mid.pend})`,
+        !mid.aa && mid.f === 'east' && mid.pend && t1.at - t0.at < TAP_MS, { mid, ms: t1.at - t0.at });
       await P.page.waitForTimeout(400);
     }
 

@@ -309,10 +309,12 @@ resource extraction areas."
   copper veins and six pines, and "Learn a Trade" hands you the hatchet and the
   rod but not the pickaxe, so each vein was a rock-sized patch of empty grass
   that stopped you. It is solid again the frame the tool reaches the bag.
-- Tests: `mp-tapstance` (22 checks; 7 fail on main) and `mp-unseenwall` (10; 2
-  fail on main), with mp-tapjump, mp-tapprop, mp-tapact, mp-jump, mp-tapswing,
-  mp-sprint, mp-aimpath, mp-cooktap, mp-nodelabels, mp-farmwalk and
-  mp-wheelnodes unchanged.
+- Tests: `mp-tapstance` (23 checks; its bow, staff, sword, rolled-thumb and
+  sprint checks fail on main) and `mp-unseenwall` (10; 2 fail on main), test-world-core "the tap that jumps" (+3), and mp-tapjump,
+  mp-tapprop, mp-tapact, mp-jump, mp-tapswing, mp-sprint, mp-aimpath,
+  mp-cooktap, mp-nodelabels, mp-farmwalk and mp-wheelnodes pass as before --
+  but for mp-wheelnodes' "where they swim is drawn as water" at
+  wn-commons-15, one point of nine on dry ground, which fails on main too.
 
 ## Not in this round
 
