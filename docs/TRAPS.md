@@ -5451,3 +5451,33 @@ A renderer object's `destroy()` must undo what its constructor subscribed to and
 release what it baked, not only what a zone change clears. And "it is freed"
 is a claim about what still REACHES the object, so prove it with a count after
 a forced GC (mp-bakeleak), not by reading the release.
+
+## 140. "Hide it from the renderer and it is gone" (v2.3.3145)
+
+**The plausible move.** Something the player should not see yet -- a resource
+before they hold its tool (v2.3.1680: "it only becomes visible after giving you
+the quest and equipment") -- is hidden by filtering the draw list, and the
+minimap and the quest's road learn the same filter. It is gone.
+
+**Why it is wrong.** Only its picture is gone. The node stayed in
+`S.gatherNodes`, so everything else that walks that list still found it: the
+walk test (`nodeBlockEllipse`) kept its rock solid, the tap's hit test
+(`_tapHarvestAtCss`) kept its box under the thumb, and the "nearest resource in
+reach" (`S._proxNode`) could be it -- and since that was then gated on the tool,
+a hidden vein nearer than the visible pine beside it left the harvest button
+offering nothing. In the Wheel the commons ring
+BroTown with six copper veins, and "Learn a Trade" hands you the hatchet and the
+rod but not the pickaxe -- so each vein was a rock-sized patch of empty grass
+that stopped you dead (the owner: "there are invisible areas that block movement
+near the town"), and a tap there said "You need a tool for that" over nothing.
+v2.3.2273 met the tap half and answered it with that message, which explained
+the ghost instead of removing it.
+
+**The rule.** "Not drawn" has to mean the same in every reader of the list:
+what you cannot see does not stop you, take a tap or answer a hover. When a
+filter hides something, grep for every walk of the same list (here
+`S.gatherNodes`: the renderer, the minimap, the quest road, the walk test, the
+tap, the E key's proximity) and give each the filter. The Wheel's objects keep
+the rule by construction -- their footprints come only from pages that are drawn
+(wheelObjects.js) -- and `mp-unseenwall` walks through a hidden vein and into a
+drawn one.

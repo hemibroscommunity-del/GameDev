@@ -60,6 +60,44 @@ export function rightTapBusy(S, now) {
   return false;
 }
 
+/* ═══ v2.3.3145: ...AND UNTIL IT IS ONE, THE PRESS IS NOT AN ATTACK ═══
+ * The owner: "When you tap jump with bow equipped it shows you and your line
+ * of sight facing southward for a brief instant.  Fix.  Same for staff and
+ * sword."  v2.3.3105 held back the first SWING of a press with no job
+ * (S._atkHoldUntil), but the press still switched the attack on at once
+ * (S.autoAttack), and everything else that reads it went on: the body turned
+ * to S._aimAngle -- whatever aim was left over, a monster killed a while ago
+ * or an earlier drag of the stick (entityRenderer aimAttackActive) -- the
+ * bow's sight line and the sword's swing preview were drawn
+ * (effectsRenderer), the walk halved and a sprint ended.  For the length of
+ * the tap, so for a blink before the jump.
+ *
+ * So such a press is PENDING (S._atkPending, set by BroTown's
+ * handleRBtnPress while the tap's window is open) and becomes the attack only
+ * when it turns out to be one: still held when the window closes, or dragged
+ * (BroTown rM ends the window).  A release first -- a tap, a jump -- lets go
+ * of it, and nothing of the attack was ever shown.  Raising the shield or
+ * going into the water lets go of it too, as they let go of the attack.  A
+ * hold pays nothing for this: its first swing waited for the window anyway. */
+
+/** Is this press still waiting to see whether it is a tap? */
+export function tapPending(S, now) {
+  return !!S && (S._atkHoldUntil || 0) > now;
+}
+
+/**
+ * Once a frame, before anything reads S.autoAttack: a pending press whose
+ * window has closed (or that a drag ended) is the attack now.  True on the
+ * frame it becomes one.
+ */
+export function settleTapPress(S, now) {
+  if (!S || !S._atkPending) return false;
+  if (tapPending(S, now)) return false;
+  S._atkPending = false;
+  S.autoAttack = true;
+  return true;
+}
+
 /* ═══ v2.3.3105: WHILE YOU ATTACK, THE WEAPON -- NEVER THE JUMP ═══
  * The owner, on the preview: "it just showed the new jump ... even when
  * attacking ... the jump is showing on top of everything".  The JUMP arrow

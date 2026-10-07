@@ -762,6 +762,13 @@ remnant to migrate server-side, not a mode to preserve.
       itself (lifeSkillRewards.js `_startLockedTry`, `ex.locked`) -- NOTHING
       is sent to the worker; `__btLockedTries`; docs/specs/wheel-resources.md
       "Quieter labels, a grey tool, and a try you can watch fail".
+    - since v2.3.3145 a resource you hold no tool for STOPS NOBODY -- the
+      owner: "there are invisible areas that block movement near the town":
+      it is not drawn (v2.3.1680) nor on the minimap, but its rock or trunk was
+      still solid (BroTown.jsx `nodeBlockEllipse`), and "Learn a Trade" hands
+      you the hatchet and the rod, not the pickaxe, so the commons' six copper
+      veins round BroTown were rock-sized walls of empty grass; solid again
+      the frame the tool reaches the bag (TRAPS §140); `mp-unseenwall`.
     - since v2.3.3145 NO ROD OVER THE FISH -- the owner: "Remove the fishing
       icon above fish but leave the proximity based nameplate in place": a
       fishing spot shows no tool's disc, only its name plate while it is the
@@ -1012,6 +1019,22 @@ remnant to migrate server-side, not a mode to preserve.
       (desktopControls `runInteract` via `S._interactNow`, `interactKind`,
       the character first for the stick: `npcFirst`), SVGs in
       `public/ui/controls/`; `mp-tapact`.
+    - since v2.3.3145 a TAP THAT JUMPS SHOWS NOTHING OF THE ATTACK (the owner:
+      "When you tap jump with bow equipped it shows you and your line of sight
+      facing southward for a brief instant"): with no job on the right side a
+      press is PENDING (`S._atkPending`), not `S.autoAttack`, until it turns
+      out to be a hold (its window closes, the thumb still down) or a drag --
+      tapJump.js `settleTapPress`, once a frame at the top of the game loop;
+      the shield and the water let go of it as they do of the attack. Before,
+      every tap turned the body to the leftover `S._aimAngle` (a monster killed
+      a while ago, an old drag), drew the bow's sight line and the sword's
+      preview, halved the walk and ended a sprint. And a pending tap's thumb
+      roll inside the tap's 10 px no longer aims (the aim's dead zone was 8);
+      a tap on the right stick over a resource out of reach, or one you hold
+      no tool for, is a tap on the ground -- it jumps, and "Too far away!" (and
+      "You need a tool for that") is gone, a farm bed out of reach the same
+      (`_tapHarvestAtCss`, `_tapFarmBedAtCss`); `mp-tapstance`:
+      docs/specs/jumping.md "v2.3.3145".
   - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
     preview: "I was fighting fire goblins and my screen went black", and the
     crash feed had nothing:
