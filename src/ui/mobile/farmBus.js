@@ -1,4 +1,4 @@
-/* ═══ v2.3.3111: THE FARM'S STATE, OUTSIDE REACT ═══
+/* ═══ v2.3.3127: THE FARM'S STATE, OUTSIDE REACT ═══
  *
  * What the worker last said about this player's farm (server/src/farm.js),
  * for the Feed & Seed window to draw.  Outside the component tree for the
@@ -19,7 +19,7 @@ const emit = () => { for (const fn of listeners) fn(); };
    worker drops a message it will not settle (a rate-limited script, a
    farmless old worker), so silence is an answer too. */
 export const FARM_ANSWER_MS = 4000;
-/* v2.3.3111: a BUY waits longer, and its silence is worded "check your bag".
+/* v2.3.3127: a BUY waits longer, and its silence is worded "check your bag".
    Every bed action is guarded by the bed (a resent one does nothing), but a
    buy is not: after 4 s of a busy room or a stalled phone the buttons woke up
    saying nothing, and a second tap bought again what the worker had already

@@ -1,4 +1,4 @@
-/* FOOD THAT COUNTS IN A FIGHT -- v2.3.3117 (docs/specs/fight-food.md).
+/* FOOD THAT COUNTS IN A FIGHT -- v2.3.3133 (docs/specs/fight-food.md).
  *
  * Owner: "Farming needs a purpose. I think the best purpose it can serve are
  * temporary buffs (boss fights, PvP, dueling, etc) and source of income."
@@ -66,7 +66,7 @@ async function send(ws, type, payload) {
   await settle();
 }
 const now = () => Date.now();
-/* v2.3.3117 (review): the one-bite clock is the room's, keyed by player id. */
+/* v2.3.3133 (review): the one-bite clock is the room's, keyed by player id. */
 const clk = (id) => room._pvpHealClock(id);
 
 const wsA = fakeWs(), wsB = fakeWs();
@@ -324,7 +324,7 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
     room._pvpHealWait('bp_ff_c', C) > PVP_HEAL.GAP_MS - 2000, room._pvpHealWait('bp_ff_c', C));
 }
 
-// ── 4b. v2.3.3117 (review): the rule's roads, its reply, and its clock ──
+// ── 4b. v2.3.3133 (review): the rule's roads, its reply, and its clock ──
 {
   const COOK_IDX = (await import('../src/data.js')).COOKING_RECIPES.findIndex((r) => r.makes === 'meal_garden_stew');
   check('the Garden Stew has a recipe row (guard)', COOK_IDX >= 0, COOK_IDX);
@@ -440,7 +440,7 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   check('page: in the fight, right after a bite: wait 15 s', FF.pvpHealWaitMs(S, t + 1) === PVP_HEAL.GAP_MS - 1, FF.pvpHealWaitMs(S, t + 1));
   check('page: 15 s on, no wait', FF.pvpHealWaitMs(S, t + PVP_HEAL.GAP_MS) === 0);
   check('page: the fight ends 10 s after the last hit', FF.pvpHealWaitMs(S, t + 1 + PVP_HEAL.WINDOW_MS) === 0);
-  /* v2.3.3117 (review): the duel flag alone holds nothing on the page -- it
+  /* v2.3.3133 (review): the duel flag alone holds nothing on the page -- it
      can outlive its duel and held every bite back against monsters until a
      reload.  A duel's lull is the worker's to call, and it says so. */
   const D = { myId: 'me', _serverCaps: capsOn, _inDuel: { opponent: 'x' }, _instantHealAt: t };

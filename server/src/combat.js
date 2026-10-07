@@ -402,7 +402,7 @@ export const combatMethods = {
     // Resist buff (cooking recipe with buff:'resist', power 0.05 = 5%
     // reduction).  Cooking recipe power values are stored as the
     // fractional reduction; mirror the client's intent here.
-    /* v2.3.3117: the Root Stew's resist is applied AFTER the percentage cuts
+    /* v2.3.3133: the Root Stew's resist is applied AFTER the percentage cuts
        below (Defense or Elem Resist, then armour) -- see there. */
     // v2.3.1659 (prog3): the allocated `defense` stat is the game's
     // first real mitigation dial — −0.4% damage taken per point, cap
@@ -453,7 +453,7 @@ export const combatMethods = {
     const _armorDr = this._armorDrMult(ps);
     if (_armorDr < 1) dmgTaken = Math.max(1, Math.round(dmgTaken * _armorDr));
 
-    /* ═══ v2.3.3117: THE ROOT STEW CUTS SMALL HITS TOO ═══
+    /* ═══ v2.3.3133: THE ROOT STEW CUTS SMALL HITS TOO ═══
        It was ceil(dmg x 0.95) at the top of the chain, and a ceil gives back
        the whole 5% on any hit under 20: 19 x 0.95 = 18.05, ceil 19 -- the stew
        did nothing against most monsters and every PvP hit (halved by
@@ -693,7 +693,7 @@ export const combatMethods = {
     return Math.max(critDmg, rangeTop * CRIT_ANCHOR_MULT);
   },
 
-  /* ═══ v2.3.3117: HOW HARD YOUR BREW MAKES YOU HIT ═══
+  /* ═══ v2.3.3133: HOW HARD YOUR BREW MAKES YOU HIT ═══
    * Owner: "Farming needs a purpose. I think the best purpose it can serve
    * are temporary buffs (boss fights, PvP, dueling, etc)".
    *
@@ -715,7 +715,7 @@ export const combatMethods = {
     return (m >= 1 && m <= 4) ? m : 1.20;
   },
 
-  /* v2.3.3117: the kill switch for the brew in PvP, read the meals' way:
+  /* v2.3.3133: the kill switch for the brew in PvP, read the meals' way:
      `pvpbrew: false` un-advertises caps.pvpbrew, so a new page claims its PvP
      hits with the brew folded in as before, and the worker stops multiplying
      the claims of a page that joined while it was on. */
@@ -952,7 +952,7 @@ export const combatMethods = {
        _buffs.damageMul is set by anything that buffs damage by its own amount
        (the Fury Tonic at 2.0). Guarded and bounded because it is persisted
        state -- a corrupted blob must not become a damage multiplier. */
-    base *= this._brewMul(ps);   /* v2.3.3117: the one reader, shared with PvP and the burst */
+    base *= this._brewMul(ps);   /* v2.3.3133: the one reader, shared with PvP and the burst */
     // Crit (calcCritChance + calcCritMult).
     // v2.3.1345 (counter skills): the crit CHANNEL is a deterministic
     // accumulator — "a LUCKY hit every N hits", never streaky.  Power's
@@ -1604,6 +1604,10 @@ export const combatMethods = {
          into this function with the same killer once the blast lands, so
          credit, loot and XP are unchanged. `_burstDone` is what keeps that
          second call from deferring forever. */
+      /* v2.3.3120: a trap's mark is judged at the KILLING BLOW (trapping.js),
+         stamped before a slime's swell can defer the kill 1.6 s past it --
+         and not again on the deferred call, which replays this blow. */
+      if (!m._burstDone) m._trapJudgeAt = Date.now();
       if (!m._burstDone && this._startSlimeBurst(zone, m, killerId, slot, Date.now())) return;
       m.alive = false;
       /* ═══ v2.3.2026: THE GOLDEN TICKET ROLLS HERE ═══
@@ -1729,6 +1733,13 @@ export const combatMethods = {
         const xpForRecipient = Math.round((m.xp || 0) * share * this._flagNum('xp_mult', 1, LIVEOPS.XP_MULT_MIN, LIVEOPS.XP_MULT_MAX));
         if (xpForRecipient <= 0) continue;
         const { leveled, levelsGained, newLevel } = this._addCombatXp(recipPs, xpForRecipient);
+        /* v2.3.3121: a tenth of it to the pet out with them, up to their
+           Trapping level (petbook.js _petbookAddXp: in memory, written at
+           most once a minute or on a level-up).  Told to the phone on this
+           kill's combat_credit below.  Inside a try: a pet must never break
+           a kill. */
+        let petGain = null;
+        try { petGain = this._petbookAddXp(rid, recipPs, xpForRecipient, Date.now()); } catch (e) { petGain = null; }
         // Level-up restores all three pools to max (mirrors the client's
         // existing level-up restore at BroTown.jsx:8973 / 8504 / 9851).
         // Also recompute maxes since level bumps the maxHp formula
@@ -1775,6 +1786,7 @@ export const combatMethods = {
                 leveled,
                 levelsGained,
                 newLevel,
+                ...(petGain ? { pet: petGain } : {}),   /* v2.3.3121: {id, lv, xp, gain, leveled, cap} */
               },
             }));
           } catch (e) {}
@@ -1839,6 +1851,13 @@ export const combatMethods = {
           this._sendPlayerState(killerWs, killerId);
         }
       }
+
+      /* ═══ v2.3.3120: THE TRAPS SPRING (trapping.js) ═══
+         After every payout above, which a capture never touches, and before
+         the contributions are cleared: each player who armed this monster and
+         did at least 5% of its damage (the gold rule's shares) rolls for
+         themselves.  Inside a try: a trap must never break a kill. */
+      try { this._trapRollOnKill(zone, m, shares); } catch (e) { /* see above */ }
 
       // Clear contribution tracking for the next life of this monster.
       m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
@@ -1950,7 +1969,7 @@ export const combatMethods = {
     // the previous level-only formula.  Pass payload.special if the
     // PvP attack is a swipe so the Mind-scaled cap applies.
     const dmgCap = this._maxDmgForAttacker(attackerPs, !!payload.special);
-    /* ═══ v2.3.3117: THE BREW IS THE WORKER'S, IN A DUEL TOO ═══
+    /* ═══ v2.3.3133: THE BREW IS THE WORKER'S, IN A DUEL TOO ═══
        A page that sees caps.pvpbrew claims its hit WITHOUT its damage brew
        and says so with `nb: 1`; the worker multiplies the clamped claim by the
        brew IT holds (_brewMul).  So every attack the brew can make bigger --
@@ -2087,7 +2106,7 @@ export const combatMethods = {
          _handleMonsterDamage) — otherwise a PvP aggressor in a lawless zone
          out-regenerates the fight they are winning. */
       attackerPs._lastDealtAt = Date.now();
-      /* v2.3.3117: a fight between players, for the eating rule (cooking.js
+      /* v2.3.3133: a fight between players, for the eating rule (cooking.js
          _pvpHealWait): both sides, on every exchange that sends a pvp_hit --
          the same event the page stamps its own copy from, so the two agree.
          On the room's clock, not on playerState (a rejoin rebuilds that). */

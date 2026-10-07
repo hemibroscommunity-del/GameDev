@@ -1,4 +1,4 @@
-# Meals and brews you carry (v2.3.3114, v2.3.3115)
+# Meals and brews you carry (v2.3.3130, v2.3.3131)
 
 > Owner, 2026-10-06: *"Not sure what benefit farming will provide. Maybe
 > temporary stat boosts, required quest items and selling for gold. I might
@@ -7,9 +7,9 @@
 
 This is the plan's **Phase 2**. Phase 1 (`docs/specs/farm.md`) grows the
 herbs; this makes them worth growing.
-- **2a (v2.3.3114):** carried meals and brews, one of each at once, and Diego's
+- **2a (v2.3.3130):** carried meals and brews, one of each at once, and Diego's
   tonics brewed from herbs.
-- **2b (v2.3.3115):** the potato and the pumpkin (`docs/specs/farm.md`), and
+- **2b (v2.3.3131):** the potato and the pumpkin (`docs/specs/farm.md`), and
   their two dishes, the Garden Stew and the Pumpkin Pie.
 
 ## What changes for a player
@@ -23,8 +23,8 @@ herbs; this makes them worth growing.
   replaced every other effect (v2.3.2063).
 - **Diego's three tonics are brewed, not sold.** The Fury Tonic, Mana Draught
   and Swift Draught come off his shelf and onto the Cookhouse's.
-  - He kept the **Cooked Minnow** and the **Stamina Salts** in v2.3.3114.
-    **v2.3.3116 took them too**, the owner: *"Remove all of Diego's potions. I
+  - He kept the **Cooked Minnow** and the **Stamina Salts** in v2.3.3130.
+    **v2.3.3132 took them too**, the owner: *"Remove all of Diego's potions. I
     want food and drink to come exclusively from farming and recipes."* See
     "Diego sells no food or drink" below.
   - **He still buys no potion back**, the tonics included (`shop.js`
@@ -37,7 +37,7 @@ herbs; this makes them worth growing.
   - **A bottle bought before the change still drinks.** The brewed tonics are
     the same bag keys with the same effects (`SHOP_ITEMS`).
 
-## Diego sells no food or drink (v2.3.3116)
+## Diego sells no food or drink (v2.3.3132)
 
 - **His shelf is empty** (`data.js` `DIEGO_SHELF`). The vendor building's
   `shop_purchase`, which sells only that shelf, sells nothing.
@@ -71,7 +71,7 @@ herbs; this makes them worth growing.
 | Garden Stew (`meal_garden_stew`) | at once | 2 Carrot + 1 Potato | 4 | heals **150 HP** | — |
 | Pumpkin Pie (`meal_pumpkin_pie`) | meal | 1 Pumpkin + 2 Potato | 8 | **+10%** combat XP | 30 min |
 
-- **In a fight with another player** (v2.3.3117, docs/specs/fight-food.md):
+- **In a fight with another player** (v2.3.3133, docs/specs/fight-food.md):
   - a damage brew counts on every hit, put on by the worker;
   - the Root Stew cuts small hits too;
   - a heal eaten at once (the Garden Stew, a cooked fish) is one bite every
@@ -101,7 +101,7 @@ herbs; this makes them worth growing.
   from `DISHES.meal_herb_bread.power`). It never heals mid-fight, in a duel,
   or in an arena match.
   - Its timer is saved as **`rest`**, not `regen`. Phase 1's server
-    (v2.3.3111) reads `regen` as 2% of max HP a second, in a fight too. If
+    (v2.3.3127) reads `regen` as 2% of max HP a second, in a fight too. If
     the game were ever rolled back to it, a half-hour `regen` would have
     healed that fast for up to 30 minutes. Under its own name, a rollback
     simply drops the bread's effect.
@@ -234,7 +234,7 @@ herbs; this makes them worth growing.
   - `farm` §11: the bread's new healing, the stew beside the tea, a carried
     cook.
   - `mirror-audit` §4/§4b: recipes by what they make, the client's old-worker
-    effects pinned to v2.3.3111's, `DISHES` both ways, no damage meal, the
+    effects pinned to v2.3.3127's, `DISHES` both ways, no damage meal, the
     shelf.
 - Phone (`tools/qa/mp`):
   - `mp-meals` (new) covers:

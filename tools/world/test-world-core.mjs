@@ -3306,8 +3306,8 @@ console.log("the buildings' doors (v2.3.3032)");
     blocked.length === 0, blocked.map((d) => [d.id, hit(d.x, d.y + 30, 10)]));
   /* Diego keeps the General Store (v2.3.3067: and the rest of town's cast) */
   const sp = WHEEL_TOWNSFOLK.map((f) => ({ f, d: byDoor[f.door] })).map(({ f, d }) => ({ name: f.name, x: d.x + f.dx, y: d.y + f.dy, d }));
-  ok('each of the townsfolk has a door to stand by, in no footprint with room round them, on the town\'s ground: Diego, Ace, Blacksmith Bro and Lil Bro',
-    sp.map((q) => q.name).join() === 'Diego,Ace,Blacksmith Bro,Lil Bro' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
+  ok('each of the townsfolk has a door to stand by, in no footprint with room round them, on the town\'s ground: Diego, Ace, Blacksmith Bro, Lil Bro and Beastmaster Bro',
+    sp.map((q) => q.name).join() === 'Diego,Ace,Blacksmith Bro,Lil Bro,Beastmaster Bro' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
     sp.map((q) => [q.name, hit(q.x, q.y, 24)]));
   /* ...and standing at the General Store's door does not open his window by
      itself: it opens within 90 px of him from your middle, ~52 px above your boots */
@@ -3329,6 +3329,15 @@ console.log("the buildings' doors (v2.3.3032)");
     ok('Ace stands by the Gambling Den and his row opens the coin flip; Blacksmith Bro by the forge; every name is an NPC_DATA row',
       sp.every((q) => row(q.name)) && !!row('Ace').flip && ownDoor(at.Ace, 'gambling') && ownDoor(at['Blacksmith Bro'], 'blacksmith'),
       sp.map((q) => [q.name, q.d && q.d.id, !!row(q.name)]));
+    /* v2.3.3121: Beastmaster Bro (docs/PET-TRAPPING-PLAN.md, Phase 2) */
+    const bm = at['Beastmaster Bro'], bmRow = row('Beastmaster Bro');
+    const bmFolk = WHEEL_TOWNSFOLK.find((f) => f.name === 'Beastmaster Bro');
+    const bmProps = boxes.filter((q) => q[4] !== 'woodworker' && Math.hypot((q[0] + q[2]) / 2 - bm.x, (q[1] + q[3]) / 2 - bm.y) < 60);
+    ok('Beastmaster Bro stands by the Woodworker (his row: the Wheel\'s only, opens the Pets page, spawned against caps.beastmaster), his Snowling\'s side clear of every prop',
+      ownDoor(bm, 'woodworker') && bm.x > bm.d.x && !!bmRow && bmRow.wheelOnly === true && bmRow.pets === true && bmFolk.cap === 'beastmaster'
+        && fs.existsSync(new URL('../../public' + bmRow.sprite, import.meta.url)) && fs.existsSync(new URL('../../public' + bmRow.portrait, import.meta.url))
+        && hit(bm.x + 24, bm.y, 16).length === 0 && bmProps.length === 0,
+      { bm: [bm.x - bm.d.x, bm.y - bm.d.y], row: !!bmRow, props: bmProps.map((q) => q[4]) });
     const ms2 = mayorSpot(PLAN, dbp), lb = at['Lil Bro'], hallDoor = byDoor.townhall;
     const arrive = { x: hallDoor.x, y: hallDoor.y + 108 };
     const toArrive = Math.hypot(lb.x - arrive.x, lb.y - arrive.y), toMayor = Math.hypot(lb.x - ms2.x, lb.y - ms2.y);

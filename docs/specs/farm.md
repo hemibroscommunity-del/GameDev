@@ -1,4 +1,4 @@
-# The farm: real crops at the Feed & Seed (v2.3.3111)
+# The farm: real crops at the Feed & Seed (v2.3.3127)
 
 > Owner, 2026-10-06: *"mechanics similar to the old FarmVille game where you
 > have to wait to harvest and each has a wait time different depending on what
@@ -48,8 +48,8 @@ Office's paid land, and visits from friends are Phases 3 and 4.
 | Firebloom (`herb_firebloom`) | 1 | 5 | 40 m / 30 m | 2 / 3 | 50 | 16 |
 | Rock Vine (`herb_rock_vine`) | 5 | 10 | 5 h 20 m / 4 h | 2 / 3 | 120 | 30 |
 | Cloudpetal (`herb_cloudpetal`) | 10 | 15 | 10 h 40 m / 8 h | 2 / 3 | 180 | 40 |
-| Potato (`crop_potato`), v2.3.3115 | 5 | 6 | 2 h 40 m / 2 h | 3 / 4 or 5 | 90 | 12 |
-| Pumpkin (`crop_pumpkin`), v2.3.3115 | 10 | 25 | 29 h 20 m / 22 h | 2 / 3 | 320 | 60 |
+| Potato (`crop_potato`), v2.3.3131 | 5 | 6 | 2 h 40 m / 2 h | 3 / 4 or 5 | 90 | 12 |
+| Pumpkin (`crop_pumpkin`), v2.3.3131 | 10 | 25 | 29 h 20 m / 22 h | 2 / 3 | 320 | 60 |
 
 - **Seeds** are `seed_<crop>`. **Compost** is `compost`.
 - **Where the table lives:** the worker's copy is `server/src/farm.js` `FARM`.
@@ -106,7 +106,7 @@ would have paid 10 coins for a 2-coin seed.
 `farm:<pid>` holds `{v, beds, plots}`. It is registered in
 ARCHITECTURE-HANDOFF's storage-key table.
 
-- **`v` is the record's shape** (`FARM.V`: 1, then 2 since v2.3.3115 added
+- **`v` is the record's shape** (`FARM.V`: 1, then 2 since v2.3.3131 added
   the potato and the pumpkin). A worker refuses a record
   newer than it knows whole: opening, any action and the dev op answer
   `err: 'newer'`, the join says nothing, and nothing is read into it or
@@ -122,7 +122,7 @@ ARCHITECTURE-HANDOFF's storage-key table.
     write): the highest `v` of the crops planted in it. A farm of the first
     four crops is a 1 that every farm worker reads; a potato or a pumpkin
     makes it a 2 while it grows, and its harvest a 1 again. Stamping `FARM.V`
-    on every write (v2.3.3115 at first) closed every farm touched under the
+    on every write (v2.3.3131 at first) closed every farm touched under the
     new worker after a rollback, carrot-only ones included (found by the
     review). `FARM.V` is the highest crop `v`; farm.test pins both.
 - **`caps.farmCrops`** says how many crops the worker grows, in the order they
@@ -204,7 +204,7 @@ ARCHITECTURE-HANDOFF's storage-key table.
   `_tickPlayerRegen` now pays **2% of max HP a second** while it runs, in or
   out of a fight, which is what its card always said. It does not apply in a
   hub, where the 10% top-off is faster, or in an arena match or a duel.
-  - **Changed in v2.3.3114** (`docs/specs/meals.md`): a carried meal lasts
+  - **Changed in v2.3.3130** (`docs/specs/meals.md`): a carried meal lasts
     half an hour, so the bread now doubles the out-of-combat healing instead,
     and never heals mid-fight.
 - **The recipes' Cooking levels are the worker's gate** (`cooking.js`
@@ -279,8 +279,8 @@ The crops, seeds and compost are emoji until the art exists:
   Storage), so a rollback to the worker before it leaves the newer beds alone.
 
 - **Phase 2:** done. Meals and brews you carry, and Diego's three tonics
-  brewed from herbs, in v2.3.3114; the potato, the pumpkin and their dishes in
-  v2.3.3115 (`docs/specs/meals.md`). A record holding a potato or a pumpkin
+  brewed from herbs, in v2.3.3130; the potato, the pumpkin and their dishes in
+  v2.3.3131 (`docs/specs/meals.md`). A record holding a potato or a pumpkin
   is a 2 since then: a rollback to a v1 worker refuses that farm, which it
   would otherwise have turned to grass where they grew, and reads every other
   farm as before.

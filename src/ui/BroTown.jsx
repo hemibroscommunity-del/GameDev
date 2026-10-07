@@ -309,7 +309,7 @@ import { wireSlimeAudio } from '@/game/slimeAudio.js';
 import { wireOrientationSync } from '@/game/orientationSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
-import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3117: one bite at a time in a fight with a player */
+import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player */
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822: stuck-dead watchdog */
 /* v2.3.2330: the SFX manifest loads once the loading gate has what it was
    waiting for -- see BT_AUDIO.unlock for why it no longer loads at the login
@@ -375,6 +375,10 @@ import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E
 import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
+import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
+import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
+import { activePet } from '@/game/petBook.js';   /* v2.3.3120: the pet out with you is the record's */
+import { beastmasterOn } from '@/game/trapping.js';   /* v2.3.3121: Beastmaster Bro stands only against a worker that knows his quests */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
 /* v2.3.1733: stamina abilities (Shield Bash / Whirlwind) — PR 5 of the
@@ -795,7 +799,7 @@ var NPC_PROX_OPEN = 90, NPC_PROX_CLEAR = 125;
    their buildings have doors.  (v2.3.3032: Diego came; v2.3.3067: the other
    three, WHEEL_TOWNSFOLK -- Ace's coin flip opens only on a tap on him, so
    while he stayed behind it could not be played.) */
-function _spawnWheelNpcs() {
+function _spawnWheelNpcs(S) {
   var info = wheelObjectsInfo();
   var spot = info && info.mayor;
   if (!spot) return null;
@@ -811,7 +815,11 @@ function _spawnWheelNpcs() {
      WHEEL_TOWNSFOLK): tap him or walk up and his window opens, as in the old
      town.  Only where the store stands (a door the worker found). */
   var doors = wheelTownDoors();
+  /* v2.3.3121: Beastmaster Bro only against a worker that knows his quests
+     (`cap` on his WHEEL_TOWNSFOLK row; game/trapping.js beastmasterOn) */
+  var _bmOn = beastmasterOn(S);
   WHEEL_TOWNSFOLK.forEach(function (f) {
+    if (f.cap === 'beastmaster' && !_bmOn) return;
     var door = doors.filter(function (d) { return d.id === f.door; })[0];
     if (!door) return;
     NPC_DATA.filter(function (n) { return n.name === f.name; }).forEach(function (npc) {
@@ -4127,7 +4135,7 @@ export var BroTown = function BroTown(_ref0) {
     if (!S.npcs && S.currentZone === 'town') {
       S.npcs = _spawnTownNpcs();
     } else if (!S.npcs && isWheelTrialZone(S.currentZone)) {
-      S.npcs = _spawnWheelNpcs();   /* v2.3.2975 */
+      S.npcs = _spawnWheelNpcs(S);   /* v2.3.2975 */
     }
 
     /* Loaded avatar images cache */
@@ -4602,7 +4610,7 @@ export var BroTown = function BroTown(_ref0) {
         } else if (!S.npcs && isWheelTrialZone(S.currentZone)) {
           /* v2.3.2975: Mayor Bro in the Wheel's Brotown (null until the
              worker has said where; tried again next frame) */
-          S.npcs = _spawnWheelNpcs();
+          S.npcs = _spawnWheelNpcs(S);
         }
         /* Active weapon — available to all render/combat sections */
         var activeWpn = S.rpg ? getActiveWeapon(S.rpg) : {
@@ -6444,7 +6452,16 @@ export var BroTown = function BroTown(_ref0) {
               /* the bottom sheet counts as an open panel — the nav rail's
                  destinations render over the world just like the modals do. */
               && dashboardPanelBus.state.mode === 'bar';
-            if (_pOk && _pq) {
+            /* ═══ v2.3.3121: A GIVER BY A BUSY DOOR KEEPS "HOW IT'S GOING" FOR A TAP ═══
+               Beastmaster Bro stands beside the Woodworker's steps, and his
+               quests send you to the Woodworker again and again (box traps).
+               Found by mp-beastmaster: walking past him to its door, his
+               "Three box traps. The Woodworker, the Traps tab." stopped you
+               every trip.  So a giver marked `quietProgress` opens by himself
+               only to OFFER a quest or to PAY one; his progress line waits for
+               a tap or E (both still answer).  Every other giver as before. */
+            var _pQuiet = !!(_pq && _pn.quietProgress && _pq.status === QUEST_STATUS.active && !_pqReady);
+            if (_pOk && _pq && !_pQuiet) {
               S._npcProxLatch = { npc: _pn, ready: _pqReady };
               setQuestPanel({ npc: _pn.name, quest: _pq.quest, status: _pq.status, npcRef: _pn });
             /* v2.3.2620: ACE IS TAP-ONLY, and deliberately not here.  He had a
@@ -6494,13 +6511,18 @@ export var BroTown = function BroTown(_ref0) {
         /* Collectible pickup removed */
 
         /* §18.1 PET FOLLOW + AUTO-LOOT — active pet follows player and vacuums loot */
-        if (((_S$rpg7 = S.rpg) === null || _S$rpg7 === void 0 || (_S$rpg7 = _S$rpg7.lifeSkills) === null || _S$rpg7 === void 0 ? void 0 : _S$rpg7.activePet) !== null && ((_S$rpg8 = S.rpg) === null || _S$rpg8 === void 0 || (_S$rpg8 = _S$rpg8.lifeSkills) === null || _S$rpg8 === void 0 ? void 0 : _S$rpg8.activePet) !== undefined) {
-          var pets = S.rpg.lifeSkills.pets || [];
-          var petIdx = S.rpg.lifeSkills.activePet;
-          var pet = pets[petIdx];
+        /* v2.3.3120: the pet out with you is the pets RECORD's (game/petBook.js
+           activePet: the worker's pets_state; the old lifeSkills pair only
+           against an old worker). */
+        {
+          var pet = activePet(S);
           if (pet) {
             /* Initialize pet position */
-            if (!S._petX) {
+            /* v2.3.3120: ...and put it back beside you after a teleport, a
+               zone change or a respawn: it walked back from where it was at
+               2 px a frame, which across the Wheel took minutes (the plan's
+               "things found in the code", 9). */
+            if (!S._petX || Math.abs(S._petX - P.x) + Math.abs(S._petY - P.y) > 900) {
               S._petX = P.x - 30;
               S._petY = P.y + 20;
             }
@@ -6642,7 +6664,7 @@ export var BroTown = function BroTown(_ref0) {
                   if (loot.shard && S.rpg.inventory) {
                     S.rpg.inventory[loot.shard] = (S.rpg.inventory[loot.shard] || 0) + 1;
                     var _petShard = shardByKey(loot.shard);
-                    pushDmgPopup(S, S._petX, S._petY - 28, pet.emoji + ' + ' + (_petShard ? _petShard.label : 'Shard'), (_petShard && _petShard.color) || '#cce6ff');
+                    pushDmgPopup(S, S._petX, S._petY - 28, '+ ' + (_petShard ? _petShard.label : 'Shard'), (_petShard && _petShard.color) || '#cce6ff');   /* v2.3.3120: no pet emoji: a pet is drawn now */
                   }
                   BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
                   if (!S.rpg._questFlags) S.rpg._questFlags = {};
@@ -6654,52 +6676,15 @@ export var BroTown = function BroTown(_ref0) {
               });
             }
 
-            /* ═══ PET COMBAT — pet auto-attacks nearest enemy ═══ */
-            if (S.monsters && !S._petAtkCd || Date.now() > (S._petAtkCd || 0)) {
-              /* Find nearest alive monster to pet */
-              var nearestM = null,
-                nearestD = 80; /* 80px aggro range */
-              S.monsters.forEach(function (m) {
-                if (!m.alive) return;
-                var d = Math.sqrt(Math.pow(S._petX - m.x, 2) + Math.pow(S._petY - m.y, 2));
-                if (d < nearestD) {
-                  nearestD = d;
-                  nearestM = m;
-                }
-              });
-              if (nearestM && nearestD < 40) {
-                /* attack at 40px range */
-                /* Pet deals 15% of player weapon damage, scales with pet level */
-                var petLvl = pet.level || 1;
-                var pDmgBase = S.rpg ? calcWeaponDmg((activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) || 'greatsword', S.rpg || {}, (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.tierMult) || 1, activeWpn) : 5;
-                var petDmg = Math.max(1, Math.ceil(pDmgBase * 0.15 * (1 + petLvl * 0.02)));
-                nearestM.curHp -= petDmg;
-                S._petAtkCd = Date.now() + 1500; /* pet attacks every 1.5s */
-                /* Visual feedback — small damage number from pet */
-                /* v2.3.2521: was full-size — missed by v2.3.2520, so the pet's
-                   number sat next to your own scaled ones and read five times
-                   harder-hitting than you. */
-                pushDmgPopup(S, nearestM.x, monsterPopupY(nearestM, -10), pet.emoji + ' -' + toDisplayDamage(petDmg), pet.color || '#59BF91');
-                /* Pet attack particles */
-                for (var pp = 0; pp < 3; pp++) {
-                  S.hitParticles.push({
-                    x: nearestM.x + (Math.random() - 0.5) * 8,
-                    y: nearestM.y + (Math.random() - 0.5) * 8,
-                    vx: (Math.random() - 0.5) * 2,
-                    vy: -1 - Math.random(),
-                    life: 0.3,
-                    color: pet.color || '#59BF91',
-                    size: 1.5
-                  });
-                }
-                /* Pet moves toward target when attacking */
-                var paDx = nearestM.x - S._petX,
-                  paDy = nearestM.y - S._petY;
-                var paDist = Math.sqrt(paDx * paDx + paDy * paDy) || 1;
-                S._petX += paDx / paDist * 3;
-                S._petY += paDy / paDist * 3;
-              }
-            }
+            /* ═══ v2.3.3120: NO MORE PET "COMBAT" ═══
+               Every 1.5 s the pet took a bite out of a nearby monster's health
+               ON THIS SCREEN ONLY, with damage numbers, and the worker never
+               heard of it -- so a monster's bar could read lower here than its
+               real health, and other players saw nothing.  Pets don't fight
+               (docs/PET-TRAPPING-PLAN.md, "What pets do"): a fighting pet is a
+               second monster for the worker to run and a must-have in PvP.  If
+               pets ever help in a fight, it will be as an extra on your own hit
+               that the worker works out (Phase 5, the owner's call). */
           }
         }
 
@@ -7546,7 +7531,7 @@ export var BroTown = function BroTown(_ref0) {
                   clanTag: ((_S$_clanData2 = S._clanData) === null || _S$_clanData2 === void 0 ? void 0 : _S$_clanData2.tag) || null,
                   clanName: ((_S$_clanData3 = S._clanData) === null || _S$_clanData3 === void 0 ? void 0 : _S$_clanData3.name) || null,
                   clanColor1: ((_S$_clanData4 = S._clanData) === null || _S$_clanData4 === void 0 ? void 0 : _S$_clanData4.color1) || null
-                }, profileRelayFields(_rpg))
+                }, profileRelayFields(_rpg, S))
               });
             }
           }
@@ -8819,14 +8804,14 @@ export var BroTown = function BroTown(_ref0) {
       var R = S && S.rpg;
       if (!R || !R.inventory) return;
       if ((R.inventory[key] || 0) <= 0) return;
-      /* ═══ v2.3.3114: A MEAL FROM THE COOKHOUSE ═══
+      /* ═══ v2.3.3130: A MEAL FROM THE COOKHOUSE ═══
          Not a heal: half an hour of an effect in the meal slot, which the
          worker applies and echoes (_buffs) -- so no "HP full", no heal to
          predict, and nothing drawn but the bite.  The bag predicts the one
          taken; the echo is the truth (rule 20).  Only offered at all on a
          worker with caps.meals (ItemDetailPopup). */
       var _meal = DATA.dishFor(key);
-      /* v2.3.3115: a dish eaten AT ONCE (the Garden Stew) is a heal, so it
+      /* v2.3.3131: a dish eaten AT ONCE (the Garden Stew) is a heal, so it
          takes the cooked fish's road below -- "HP full", the predicted heal. */
       if (_meal && _meal.buff !== 'heal') {
         if (_meal.slot !== 'meal') return;
@@ -8846,7 +8831,7 @@ export var BroTown = function BroTown(_ref0) {
         pushDmgPopup(S, S.player.x, S.player.y - 30, 'HP full', '#B9C1BF');
         return;
       }
-      /* v2.3.3117: one bite at a time in a fight with a player (fightFood.js;
+      /* v2.3.3133: one bite at a time in a fight with a player (fightFood.js;
          the worker's rule, cooking.js _pvpHealWait) -- held back here, and
          said, rather than eaten and taken back by the refusal. */
       var _bite = isInstantHeal(key, _meal);
@@ -8889,7 +8874,7 @@ export var BroTown = function BroTown(_ref0) {
         try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
       }
       pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + toDisplayDamage(actual) + ' HP', '#59BF91');   /* v2.3.2520: display scale */
-      pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate ' + (_meal ? _meal.name : 'cooked fish'), '#D8A94D');   /* v2.3.3115: or the stew */
+      pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate ' + (_meal ? _meal.name : 'cooked fish'), '#D8A94D');   /* v2.3.3131: or the stew */
       try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -9537,6 +9522,12 @@ export var BroTown = function BroTown(_ref0) {
       S._npcProxLatch = { npc: npc, ready: false };
       try { shopBus.setOpen(true); } catch (_e) {}
       return _mark('shop');
+    }
+    /* v2.3.3121: Beastmaster Bro, his quests done, looks after your pets: a
+       tap opens the Pets page (only against a worker that keeps the record) */
+    if (npc.pets && S._serverCaps && S._serverCaps.petbook) {
+      try { dashboardPanelBus.open('pets'); } catch (_e) {}
+      return _mark('pets');
     }
     pushDmgPopup(S, npc.x, npc.y - 30, npc.name + ' has nothing for you right now', '#B6C1BE');
     return _mark('nothing');
@@ -12550,11 +12541,14 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       color: 'rgba(255,255,255,.6)'
     }
-  }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */, function () {
+  }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */,
+  /* v2.3.3120: pet trapping -- the TRAP pop-up over a targeted monster and the
+     card for a new pet (each on its own clock; game/trapping.js) */
+  React.createElement(TrapButton, { stateRef: stateRef }), React.createElement(TrapCatchCard, { stateRef: stateRef }), function () {
     var S = stateRef.current;
     if (!S) return null;
     var effects = [];
-    /* v2.3.3114: a meal or brew lasts half an hour now, and "1800s" is not a
+    /* v2.3.3130: a meal or brew lasts half an hour now, and "1800s" is not a
        time anyone reads -- minutes from a minute up, seconds below it. */
     var _btime = function (sec) { return sec >= 60 ? Math.ceil(sec / 60) + 'm' : sec + 's'; };
     if (S._cursedUntil && Date.now() < S._cursedUntil) {
@@ -12613,7 +12607,7 @@ export var BroTown = function BroTown(_ref0) {
         label: 'Regen',
         color: '#59BF91',
         time: _btime(_rem3),
-        desc: 'x2 rest'   /* v2.3.3114: the Herb Bread doubles the out-of-combat healing (server index.js) */
+        desc: 'x2 rest'   /* v2.3.3130: the Herb Bread doubles the out-of-combat healing (server index.js) */
       });
     }
     if (S._resistBuff && Date.now() < S._resistBuff) {
@@ -12623,10 +12617,10 @@ export var BroTown = function BroTown(_ref0) {
         label: 'Resist',
         color: '#60a5fa',
         time: _btime(_rem4),
-        desc: '-5%'   /* v2.3.3114: what the worker takes off (combat.js x0.95); it said -15% */
+        desc: '-5%'   /* v2.3.3130: what the worker takes off (combat.js x0.95); it said -15% */
       });
     }
-    /* v2.3.3115: the Pumpkin Pie's +10% combat XP (the worker's _buffs.xp,
+    /* v2.3.3131: the Pumpkin Pie's +10% combat XP (the worker's _buffs.xp,
        mirrored by wsClient) -- only while its strength is one the worker pays
        (prog3.js reads xpMul in (1, 2]): a pie whose strength an older worker
        pruned, after a rollback, said "+10%" while nothing was paid (review). */
@@ -13670,14 +13664,19 @@ export var BroTown = function BroTown(_ref0) {
       bottom: mktMode !== 'orders' && (_stateRef$current55 = stateRef.current) !== null && _stateRef$current55 !== void 0 && _stateRef$current55._nearWorkshop ? 175 : 140,
       background: 'rgba(234,88,12,.85)'
     },
+    /* v2.3.3120: the Pet House opens the Pets page (dash/PetsPanel.jsx) when
+       the worker keeps the pets record -- one page for your pets, not two
+       that disagree; against an old worker, the old Pet House as before */
     onClick: function onClick(e) {
       e.preventDefault();
-      setShowPetHouse(true);
+      if (stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.petbook) dashboardPanelBus.open('pets');
+      else setShowPetHouse(true);
       BT_AUDIO.enterBuilding();
     },
     onTouchStart: function onTouchStart(e) {
       e.preventDefault();
-      setShowPetHouse(true);
+      if (stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.petbook) dashboardPanelBus.open('pets');
+      else setShowPetHouse(true);
       BT_AUDIO.enterBuilding();
     }
   }, stateRef.current._isDesktop && /*#__PURE__*/React.createElement("kbd", {
@@ -13720,7 +13719,7 @@ export var BroTown = function BroTown(_ref0) {
     /* Find best cookable recipe the player can make */
     var cookLvl = ((_R$lifeSkills6 = R.lifeSkills) === null || _R$lifeSkills6 === void 0 || (_R$lifeSkills6 = _R$lifeSkills6.cooking) === null || _R$lifeSkills6 === void 0 ? void 0 : _R$lifeSkills6.level) || 1;
     var inv = R.inventory || {};
-    /* v2.3.3114: on a worker with caps.meals a cook MAKES the dish, and the
+    /* v2.3.3130: on a worker with caps.meals a cook MAKES the dish, and the
        field's one button cooks MEALS only -- it picks for you, and picking the
        last recipe would now brew a tonic out of herbs you meant for bread.
        Brews are made at the Cookhouse.  An old worker keeps the old three. */
@@ -13786,7 +13785,7 @@ export var BroTown = function BroTown(_ref0) {
             if (R.inventory[k] <= 0) delete R.inventory[k];
           });
         });
-        /* v2.3.3114: the meal goes in the bag (the worker echoes it); the old
+        /* v2.3.3130: the meal goes in the bag (the worker echoes it); the old
            instant buff is predicted only in front of an old worker. */
         if (_fieldMeals && best.makes) {
           if (!R.inventory) R.inventory = {};
