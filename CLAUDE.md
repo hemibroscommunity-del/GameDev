@@ -1678,7 +1678,39 @@ remnant to migrate server-side, not a mode to preserve.
       shared with yours); MORE ROOM: `pet_house_buy {cap, confirm}` 10 places
       for 1,000 gold, each step 1,000 more, to 120, a stale `cap` refused;
       caps `petwards` / `petshow` / `pethouse`; dev `look: {gold, size}`;
-      `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.)
+      `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.
+  - Since v2.3.3139 HARDENING TAKES BARS OR HARDENED WOOD AND ITS GOLD
+    DOUBLES -- the owner: "hardening should cost 1 bar per level (hardening
+    lvl 1 cost 1 bar, hardening lvl 2 costs 2 bars, and a doubling gold cost
+    per level)", "I meant 1000 for lvl 2, 2000 for lvl 3, etc", and for bows
+    and staffs "Maybe 5 logs of the raw material can make one 'hardened
+    (name) wood' raw material so it mirrors the same structure. Also for the
+    number required and gold too":
+    - the attempt at H(n) takes n of the weapon's MATERIAL and 500 x 2^(n-1)
+      gold -- 500, 1,000, 2,000, 4,000, 8,000 (was 500 x 4^H, to 128,000),
+      won or lost; the odds unchanged (80/20/5/1/0.5%);
+    - a sword its metal's BARS by its material tier, the Smithing gate's own
+      index: tiers 1-2 copper, 3 iron, 4 and up black steel
+      (`HARDEN_BAR_BY_TIER`); a bow or a staff its own wood's HARDENED WOOD,
+      pine to maple, then maple (`HARDEN_WOOD_BY_TIER`, `hardenIsWood`: a
+      `ww_` gearBase or the bow's/staff's slot) -- `hardenMaterialFor` in
+      server/src/hardening.js, the game's copy src/data/hardenCosts.js,
+      mirror-audit;
+    - HARDENED WOOD at the Woodworker's new Harden tab (Bow/Staff/Traps/Harden
+      two by two): five logs of a tree make one `hardened_<wood>` (never a
+      `wood_` key, which the game takes for a log), smelting's shape --
+      Woodworking 1/5/10/15/20, 400 to 1,200 XP, `make_hardened_wood`
+      {key, count} -> `hardened_wood_result` (server/src/hardenedwood.js,
+      src/data/hardenedWood.js, HardenedWoodTab.jsx); icons made from each
+      log's picture by `tools/make_hardened_wood_icons.py`; the shop's
+      `hardened_` family at 144;
+    - checked after the gold (`no-materials`, "Need 3 Iron Bars", "Need 1
+      Hardened Pine Wood"), taken with it before the roll; `harden_result` and
+      the ledger carry `material`/`amount`;
+    - `caps.hardenmats` (kill switch `hardenmats: false`: the old ladder, no
+      material) and `caps.hardenedwood` (`hardenedwood: false`: no making, and
+      bows and staffs back on gold alone); `hardening` §8b/§8c, `hardenedwood`
+      suite, `mp-hardenbars`: docs/specs/hardening.md, hardened-wood.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
