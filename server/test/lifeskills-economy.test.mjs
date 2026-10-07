@@ -4,7 +4,7 @@
  * dedicated assertion.  Every rejection case asserts the state is
  * UNTOUCHED -- a half-consumed rejection is itself an economy bug.
  * Checks:
- *   1.  Forge happy path: exact bar + gold debits (v2.3.3126: iron is
+ *   1.  Forge happy path: exact bar + gold debits (v2.3.3141: iron is
  *       forged from four iron bars, not ore), mint shape
  *       (tierMult / gearBase / quality fields), old weapon swapped to
  *       stash, the tier's own crafting XP.
@@ -122,7 +122,7 @@ check('forge debits EXACTLY the bar + gold costs',
   { bars: ps.inventory.bar_iron, coins: ps.coins });
 check('forge swaps the old weapon into the stash (never destroys it)',
   ps.weaponStash.length === 1 && ps.weaponStash[0]._old === true);
-check('forge grants the tier\'s crafting XP (four bars\' worth, v2.3.3126)',
+check('forge grants the tier\'s crafting XP (four bars\' worth, v2.3.3141)',
   ps.lifeSkills.blacksmithing.xp === IRON.xp, ps.lifeSkills.blacksmithing);
 
 // ── 2. forge rejections: state must be UNTOUCHED ──
@@ -144,7 +144,7 @@ const rejectCase = async (name, mutate, payload) => {
 await rejectCase('skill gate (mythril needs Lv31)', () => {}, { weaponType: 'sword', tierKey: 'mythril', isWoodwork: false });
 await rejectCase('stat gate (governing stat below statReq)', () => { ps[SWORD_STAT] = IRON.statReq - 1; });
 await rejectCase('insufficient bars', () => { ps.inventory = { bar_iron: IRON.bars - 1 }; });
-await rejectCase('iron ore is not iron bars (v2.3.3126)', () => { ps.inventory = { ore_iron_ore: 50 }; });
+await rejectCase('iron ore is not iron bars (v2.3.3141)', () => { ps.inventory = { ore_iron_ore: 50 }; });
 await rejectCase('insufficient gold', () => { ps.coins = IRON.goldCost - 1; });
 await rejectCase('stash full with a current weapon equipped', () => {
   ps.weaponStash = Array.from({ length: room.WEAPON_STASH_CAP }, () => ({ type: 'sword', tierMult: 1 }));

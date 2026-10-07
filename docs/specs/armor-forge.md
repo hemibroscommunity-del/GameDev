@@ -48,7 +48,7 @@ was only worth its vendor price.
 - **Smithing 1, 5 and 10** follow the owner's "levels of 5", the same steps the
   ores' own Mining gates use (black steel ore at Mining 5). Each metal's armor
   opens with its bar.
-- **Four bars a piece, torso and greaves alike** (since v2.3.3126; it was
+- **Four bars a piece, torso and greaves alike** (since v2.3.3141; it was
   five and three). The owner: "chest, legs, and sword each take 4 bars to make
   (5 ore makes 1 bar). If you salvage them you get 2 bars back." Salvage and
   the swords' bars are in docs/specs/salvage.md.

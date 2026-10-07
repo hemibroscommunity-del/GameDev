@@ -786,7 +786,7 @@ export const BLACKSMITH_TIERS = {
          both sides prefer it, so one row change moves every consumer at once.
          oreName stays as the LABEL ("Wood 3/3"), which is what it reads as. */
       wood:         {minLvl:1, slots:1, oreName:'wood', wood:'pine_log', oreCost:3,  goldCost:8,    tierMult:1.00, statReq:0  },
-      /* ═══ v2.3.3126: THE METALS WITH BARS ARE FORGED FROM BARS ═══
+      /* ═══ v2.3.3141: THE METALS WITH BARS ARE FORGED FROM BARS ═══
          Owner: "maybe chest, legs, and sword each take 4 bars to make (5 ore
          makes 1 bar).  If you salvage them you get 2 bars back" (salvage.js).
          So copper, iron and black steel swords and greatswords take FOUR of

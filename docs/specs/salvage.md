@@ -1,4 +1,4 @@
-# Salvage, essences and four bars a piece (v2.3.3126)
+# Salvage, essences and four bars a piece (v2.3.3141)
 
 > Owner, 2026-10-06: *"I'm thinking all items like iron armor, bronze armor,
 > etc should be salvageable at the blacksmith for 50% of the bars it took to

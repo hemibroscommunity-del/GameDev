@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { CATEGORIES } from '@/ui/mobile/dash/bagFilterBus.js';
-import { thumbFor, iconFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* ITEM_NAMES v2.3.3126 */
+import { thumbFor, iconFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* ITEM_NAMES v2.3.3141 */
 import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2531: gear listing art */
 import { storeBrowse, storeMine, storeBuy, storeBid, storeAccept, storeCancel, storeEnabled, storeMyId, storePetsEnabled } from '@/ui/storeApi.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
@@ -160,7 +160,7 @@ function prettyName(l) {
   const n = (l.disp && l.disp.name) || 'Item';
   if (l.kind === 'pet') return (l.disp && l.disp.pet) ? worldSafeText(petDisplayName(l.disp.pet)) : n;   /* v2.3.3122 */
   if (l.kind === 'weapon' || l.kind === 'gear') return n;
-  /* v2.3.3126: the bag's own name when it has one ("Rare Iron Essence",
+  /* v2.3.3141: the bag's own name when it has one ("Rare Iron Essence",
      "Copper Bar"), not the key spelled out */
   if (ITEM_NAMES[n]) return ITEM_NAMES[n];
   return n.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());

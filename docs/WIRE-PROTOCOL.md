@@ -469,7 +469,7 @@ winnerName, amount, period}` (broadcast on the lazy weekly draw). The
 daily login reward reuses `inbox_delivered` — no new types. GamblePanel
 deposits are caps-gated; the legacy local stub remains for old workers.
 
-**Salvage and essences (v2.3.3126, caps.salvage):** new c→s cases
+**Salvage and essences (v2.3.3141, caps.salvage):** new c→s cases
 `smith_salvage {field: 'armorStash'|'legsStash', gid}` or `{field:
 'weaponStash', idx, sig}` (a carried copper, iron or black steel piece back
 into two of its bars, and a Rare/Elite/Godly one's essence) and

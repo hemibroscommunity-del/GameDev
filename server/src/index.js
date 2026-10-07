@@ -64,7 +64,7 @@ import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south 
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
 import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
 import { armorForgeMethods } from './armorforge.js'; /* v2.3.3092: bars into armour */
-import { salvageMethods } from './salvage.js'; /* v2.3.3126: salvage for bars, and the grades' essences */
+import { salvageMethods } from './salvage.js'; /* v2.3.3141: salvage for bars, and the grades' essences */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monster's hit carries its element */
 import { sprintMethods } from './sprint.js'; /* v2.3.3006: sprint -- stamina for 1.33x the walk */
@@ -399,7 +399,7 @@ export const PRIVILEGED_EVENTS = new Set([
      piece with its id, so a forged one would put a fake plate in another
      player's bag. */
   'forge_armor_result',
-  /* v2.3.3126: salvage's two receipts (salvage.js) -- bars and an essence
+  /* v2.3.3141: salvage's two receipts (salvage.js) -- bars and an essence
      paid, a piece's new grade.  Forgeable, either would put a fake payout or
      a fake rare piece on another player's screen. */
   'smith_salvage_result',
@@ -5078,14 +5078,14 @@ export class GameRoom {
         break;
 
       case 'smith_salvage':
-        /* v2.3.3126: salvage a carried copper, iron or black steel piece for
+        /* v2.3.3141: salvage a carried copper, iron or black steel piece for
            two of its bars, and its grade's essence (salvage.js).  The client
            names the piece; the worker proves it, takes it and pays. */
         if (session.id) this._handleSmithSalvage(session, msg.payload || msg);
         break;
 
       case 'essence_apply':
-        /* v2.3.3126: an essence raises a carried piece of its metal to its
+        /* v2.3.3141: an essence raises a carried piece of its metal to its
            grade (salvage.js).  The client names both; the worker checks and
            changes the piece's own record. */
         if (session.id) this._handleEssenceApply(session, msg.payload || msg);
@@ -5860,7 +5860,7 @@ Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
 Object.assign(GameRoom.prototype, armorForgeMethods); /* v2.3.3092 */
-Object.assign(GameRoom.prototype, salvageMethods); /* v2.3.3126 */
+Object.assign(GameRoom.prototype, salvageMethods); /* v2.3.3141 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */
 Object.assign(GameRoom.prototype, sprintMethods); /* v2.3.3006 */

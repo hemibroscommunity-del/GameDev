@@ -1,4 +1,4 @@
-/* ═══ v2.3.3126: SALVAGE AND ESSENCES, ON THE GAME'S SIDE ═══
+/* ═══ v2.3.3141: SALVAGE AND ESSENCES, ON THE GAME'S SIDE ═══
  *
  * Owner, 2026-10-06: "all items like iron armor, bronze armor, etc should be
  * salvageable at the blacksmith for 50% of the bars it took to make them ...

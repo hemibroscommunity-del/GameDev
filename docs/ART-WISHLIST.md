@@ -586,7 +586,7 @@ Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh
 
 ## Item icons
 
-### Essences (v2.3.3126)
+### Essences (v2.3.3141)
 
 - **In the game:** The nine essences salvage leaves (Rare, Elite and Godly, each in copper, iron and black steel), in the bag and on the Blacksmith's Salvage tab. Today they are glowing orbs drawn by `tools/make_essence_icons.py`, the metal's bar tucked in the corner.
 - **How:** One picture per grade is enough: the game puts the metal's bar on it. Send them on a plain background; they become `public/icons/items/essence-<grade>-<metal>.webp` (256 x 256).

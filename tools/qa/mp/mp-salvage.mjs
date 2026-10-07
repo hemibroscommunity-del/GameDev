@@ -1,4 +1,4 @@
-/* SALVAGE AND ESSENCES AT THE BLACKSMITH (v2.3.3126)
+/* SALVAGE AND ESSENCES AT THE BLACKSMITH (v2.3.3141)
  *
  * Owner: "all items like iron armor, bronze armor, etc should be salvageable
  * at the blacksmith for 50% of the bars it took to make them ... chest, legs,

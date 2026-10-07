@@ -436,7 +436,7 @@ export const gearMethods = {
        tier is a WOODEN weapon and carries a `wood` field now (see
        BLACKSMITH_TIERS.wood) -- keying off which BENCH you are at sent it
        looking for `ore_wood_ore`, which nothing produces. */
-    /* v2.3.3126: and `tier.bar` before both -- copper, iron and black steel
+    /* v2.3.3141: and `tier.bar` before both -- copper, iron and black steel
        are forged from four of their bars now (data.js BLACKSMITH_TIERS,
        salvage.js). */
     const resourceKey = tier.bar ? tier.bar : tier.wood ? ('wood_' + tier.wood) : ('ore_' + tier.oreName + '_ore');
@@ -489,7 +489,7 @@ export const gearMethods = {
     // Crafting XP -- mirrors client at the forge sites:
     //   blacksmithing: tier.minLvl * 5
     //   woodworking:   tier.minLvl * 5  (same formula)
-    // v2.3.3126: a tier forged from bars pays its own `xp`, the armour forge's
+    // v2.3.3141: a tier forged from bars pays its own `xp`, the armour forge's
     // rate for the same four bars (data.js BLACKSMITH_TIERS).
     this._addLifeSkillXp(ps, skillName, tier.xp || (tier.minLvl || 1) * 5);
 

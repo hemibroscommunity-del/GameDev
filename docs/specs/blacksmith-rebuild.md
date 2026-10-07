@@ -45,7 +45,7 @@ server handlers first.
 | Armor (v2.3.3092) | `forge_armor {recipe}` | armorforge.js |
 | Upgrade | `harden_weapon` (H0–H5); `amulet_forge_request {op:'extract'}` | hardening.js; amulet.js |
 | Amulet | `amulet_forge_request {op:'smelt' \| 'craft'}` | amulet.js |
-| Salvage (v2.3.3126) | `smith_salvage {field, gid \| idx+sig}`; `essence_apply {essence, field, gid \| idx+sig}` | salvage.js |
+| Salvage (v2.3.3141) | `smith_salvage {field, gid \| idx+sig}`; `essence_apply {essence, field, gid \| idx+sig}` | salvage.js |
 
 Upgrade mirrors the worker's access gate: Smithing ≥ 5 × the weapon's tier,
 shown as a lock rather than a button the worker refuses. Gem removal is

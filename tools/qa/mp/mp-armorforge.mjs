@@ -7,7 +7,7 @@
  *      tab -- copper's torso and greaves to make, iron's two shown locked
  *      ("Smithing 5"), each row with its bars HAVE/NEED, what it stops and the
  *      XP it pays, and the bar pictures shipped;
- *   2. Forge on the copper torso: four bars gone (v2.3.3126: four a piece), a Copper Torso in the bag
+ *   2. Forge on the copper torso: four bars gone (v2.3.3141: four a piece), a Copper Torso in the bag
  *      with the worker's id, its metal and a grade, "BAG: Copper Torso", and
  *      Smithing XP up by the row's promise;
  *   3. the greaves: four bars too, into the legs' bag;

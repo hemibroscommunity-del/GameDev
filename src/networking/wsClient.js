@@ -136,7 +136,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
 import { applyNmlSkull, applyNmlLoss, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land */
-import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3126: salvage and essences */
+import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
@@ -1536,7 +1536,7 @@ export function setupWebSocket(ctx) {
             }
           case 'smith_salvage_result':
             {
-              /* v2.3.3126: the worker's answer to Salvage (salvage.js): the
+              /* v2.3.3141: the worker's answer to Salvage (salvage.js): the
                  piece taken and the bars (and an essence) paid, or why not.
                  A salvaged torso or greaves leaves the browser's own list
                  here; the weapon bag and the totals ride the player_state
@@ -1546,7 +1546,7 @@ export function setupWebSocket(ctx) {
             }
           case 'essence_result':
             {
-              /* v2.3.3126: an essence raised a piece's grade (salvage.js) --
+              /* v2.3.3141: an essence raised a piece's grade (salvage.js) --
                  its record changed on the worker; the browser's copy of an
                  armour piece takes the grade here. */
               applyEssenceResult(S, msg.payload, saveRpgSoon);
@@ -4192,7 +4192,7 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
-        /* v2.3.3126: Salvage and Use an essence (SmithyPanel's Salvage tab) ->
+        /* v2.3.3141: Salvage and Use an essence (SmithyPanel's Salvage tab) ->
            salvage.js.  TRAPS #18: without these the requests never leave. */
         if (msg.type === 'smith_salvage' || msg.type === 'essence_apply') {
           ws.send(JSON.stringify(msg));
