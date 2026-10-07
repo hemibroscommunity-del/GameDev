@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- v2.3.3136: the right stick's FERTILIZE picture (a sack of compost), in the style of the owner's JUMP arrow -->
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C9D4F2"/></linearGradient></defs>
+  <path d="M38 32 L31 13 L45 23 L50 9 L55 23 L69 13 L62 32 Z" fill="url(#g)" stroke="#16191E" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M31 34 Q23 60 27 84 Q29 93 40 93 H60 Q71 93 73 84 Q77 60 69 34 Z" fill="url(#g)" stroke="#16191E" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M33 34 Q50 28 67 34" fill="none" stroke="#16191E" stroke-width="6" stroke-linecap="round"/>
+  <path d="M50 80 Q37 78 37 63 Q50 63 50 80 Z M50 80 Q63 76 63 61 Q50 63 50 80 Z" fill="#2A3140" opacity=".55"/>
+</svg>

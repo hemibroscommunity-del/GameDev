@@ -59,7 +59,8 @@ export const PROFILE_PREVIEW = Object.freeze({
   title: { text: 'Fishing Master', iconSrc: '/icons/ui/skill-fishing.webp', preview: true },
   rarestDrop: { name: 'Ancient Ember Crown', rarity: 'Mythic', art: 'crown', preview: true },
   pet: { customName: 'Glacier', speciesName: 'Frost Fox', rarity: 'rare', emoji: '🦊', preview: true },
-  /* cut from the farm zone's own map art by tools/ui/make-homestead-preview.mjs */
+  /* the farm zone's own art -- since v2.3.3136 the farmstead drawn as the
+     game draws it -- by tools/ui/make-homestead-preview.mjs */
   homesteadSrc: '/icons/ui/homestead-preview.webp',
 });
 

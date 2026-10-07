@@ -24,17 +24,19 @@ Office's paid land, and visits from friends are Phases 3 and 4.
 
 - **Nothing withers.** A ripe crop waits in the ground for as long as it takes.
   It also grows while you are logged out, and while the room is empty.
-- **Pick a tool, then tap a bed, or drag one finger across several.** A drag is
-  one message to the worker however many beds it crosses.
-  - Until you pick one, the tool follows the farm, in this order: Harvest if
-    anything is ripe; Plant if a bed is dug and you have seeds; Water if
-    anything is growing dry; Dig if there is grass; Fertilize if you have compost.
-  - A tool you pick holds until the worker answers and it has nothing left to
-    do. Then the tool follows the farm again.
-  - The **"… all"** button applies the tool to every bed it fits.
+- **Since v2.3.3136 you take each step ON YOUR FARM,** kneeling at the bed
+  (`docs/specs/farm-walk.md`): the owner, *"I don't want the game to just be
+  reading a bunch of boring menus."* The window's Beds tab is gone. Until then
+  you picked a tool in the window and tapped a bed, or dragged one finger
+  across several (one message however many it crossed), and the tool followed
+  the farm: Harvest if anything was ripe; Plant if a bed was dug and you had
+  seeds; Water if anything grew dry; Dig if there was grass; Fertilize if you
+  had compost. The worker still takes a list of beds in one `farm_act`; the
+  farm sends one bed at a time.
 - **The free deed:** six beds, created the first time the window opens.
-- On join, if any beds are ripe, the game says so: *"🧺 3 beds are ready at
-  the Feed & Seed"*, in the chat log and over your head.
+- On join, if any beds are ripe, the game says so: *"🧺 3 beds are ready on
+  your farm"* (*"at the Feed & Seed"* until v2.3.3136), in the chat log and
+  over your head.
   - Once a page session, and again only when more beds are ripe than it last
     said (`farmFeedback.js` `toldRipe`). An iPhone rejoins on nearly every
     return to the app, and crops never wither, so the first cut repeated it
@@ -271,7 +273,7 @@ ARCHITECTURE-HANDOFF's storage-key table.
 
 | File | What |
 |---|---|
-| `src/ui/panels/buildings/FeedSeedPanel.jsx` | The window: **Beds** (five tools, the beds, the status line, "… all") and **Seeds** (buy ×1 / ×5, the times, yields and XP as chips), plus "Visit Your Farm". |
+| `src/ui/panels/buildings/FeedSeedPanel.jsx` | The window: "Visit Your Farm" with a line saying how your beds are doing, **Seeds** (buy ×1 / ×5, the times, yields and XP as chips) and **Orders**. Its **Beds** tab (five tools, the beds, "… all") is gone since v2.3.3136: the beds are worked on your farm (`docs/specs/farm-walk.md`). |
 | `src/ui/panels/buildings/FarmPanel.jsx` | Picks the window: `FeedSeedPanel` with `caps.farm`; the same window **closed** when the caps say `farm: false` (the kill switch); `LegacyFarmPanel` (the old one, renamed) when the worker has never heard of the farm. |
 | `src/ui/mobile/farmBus.js` | The worker's farm, outside React (`window.__btFarm`), with the clock offset and the in-flight request. |
 | `src/game/farmFeedback.js` | The moment after an answer: popups, sounds (the dirt footstep, the lure's plop, the pickup chime), Farming's level celebration, the join notice. |
@@ -281,8 +283,9 @@ ARCHITECTURE-HANDOFF's storage-key table.
 | `src/ui/panels/playerProfile.js` | The Inspect card's "plots ready" counts the worker's farm once this tab has heard of it (`farmBus.view`), else the legacy plots. |
 | `src/ui/panels/DevPanel.jsx` | `farm` in CAP_GATES, and **Ripen my farm now**. |
 
-The crops, seeds and compost are emoji until the art exists:
-`docs/ART-WISHLIST.md` "The farm" has the prompt.
+The crops and the compost bin are the owner's pictures since v2.3.3136
+(`public/world/farm/`, `docs/specs/farm-walk.md` "The owner's pictures"); a
+crop a newer worker grows, with no picture here, keeps its glyph.
 
 ## Testing
 
@@ -308,17 +311,21 @@ The crops, seeds and compost are emoji until the art exists:
 - **The Cookhouse's levels:** potions, shop and lifeskills-economy cook at the
   level each recipe asks; lifeskills-economy refuses one below it.
 - **Mirror:** mirror-audit's "THE FARM".
-- **On a phone:** `tools/qa/mp/mp-farm.mjs` (`node tools/qa/mp/run.mjs farm`).
-  It runs the whole loop in the Wheel against a real worker:
-  1. one drag digs three beds in one message;
-  2. buying;
-  3. Plant all;
-  4. water and feed;
-  5. **`/api/admin/dev/farmripe`** (the dev panel's **Ripen my farm now**)
-     ripens them;
-  6. Harvest all pays 7 carrots and 75 XP, and the worker's own bag agrees;
-  7. reopened, the window shows the worker's farm.
-- `mp-wheeldoors` still walks "Visit Your Farm".
+- **On a phone:** `tools/qa/mp/mp-farm.mjs` (`node tools/qa/mp/run.mjs farm`),
+  in the Wheel against a real worker. Since v2.3.3136 the window has no beds,
+  so it runs:
+  1. the window on its Seeds tab, no beds or tools, "Visit Your Farm" at the
+     top and the line saying six beds to plant;
+  2. buying, and the crops still to open under their levels;
+  3. three beds dug and sown by `farm_act`, the line saying "3 growing";
+  4. **`/api/admin/dev/farmripe`** (the dev panel's **Ripen my farm now**)
+     ripens them, the line saying "3 ready to harvest" in green;
+  5. harvested: 6 carrots, and the worker's own bag agrees;
+  6. reopened, the line is the worker's;
+  7. the kill switch.
+- `mp-farmwalk` takes every step on the farm itself
+  (`docs/specs/farm-walk.md`), and `mp-wheeldoors` walks "Visit Your Farm"
+  and the farm's gate back out.
 
 ## Not yet (the plan's later phases)
 
@@ -331,9 +338,10 @@ The crops, seeds and compost are emoji until the art exists:
   is a 2 since then: a rollback to a v1 worker refuses that farm, which it
   would otherwise have turned to grass where they grew, and reads every other
   farm as before.
-- **Phase 3:** your own farm to walk on (`farm:<id>` zones), the Land Office's
-  free deed and paid land (500 → 7,500 coins, up to 25 beds), Mayor Bro's farm
-  errand.
+- **Phase 3:** your own farm to walk on -- **done in v2.3.3136**, as
+  `farm_home` with the worker's six beds on it (`docs/specs/farm-walk.md`).
+  Still to come: the Land Office's paid land (500 → 7,500 coins, up to 25
+  beds) and Mayor Bro's farm errand.
 - **Phase 4:** friends visiting and watering (+10% a friend, up to three).
 - **Phase 5:** better compost, elemental seeds from monsters, the order board,
   quality, tool upgrades.

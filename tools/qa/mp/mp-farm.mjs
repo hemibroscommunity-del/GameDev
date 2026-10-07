@@ -5,24 +5,26 @@
  * Need to dig, plant seeds, fertilize, water, etc."  Then: "Good.  Go ahead
  * and build it" (docs/FARMING-PLAN.md Phase 1, docs/specs/farm.md).
  *
- * One real player, on a phone, in the Wheel's Brotown, against a real worker:
- *   1. "Enter" at the Feed & Seed opens the new window (caps.farm): six beds
- *      of grass from the worker -- the free deed -- and the tool on Dig;
- *   2. ONE finger dragged across three beds digs all three, in one message;
- *   3. the Seeds tab sells carrot seeds and compost for the worker's coins;
- *   4. the tool moves to Plant by itself; "Plant all" sows the dug beds;
- *   5. Water re-times a bed (8 min -> 6 min, a drop in its corner), Fertilize
- *      puts compost on one (a worm), each one tap;
- *   6. ripened by the operator's dev op (a carrot takes real minutes), the
- *      beds read "Ready" and the tool is Harvest; "Harvest all" pays 7 carrots
- *      (3 fertilized + 2 + 2) and 75 Farming XP, settled by the worker -- its
- *      own copy of the bag says so;
- *   7. closed and opened again, the farm is the worker's: rough again where it
- *      was harvested;
- *   8. "Visit Your Farm" is still there (mp-wheeldoors walks it);
- *   9. v2.3.3127: switched off (liveflags `farm: false`), a second player who
- *      joins after gets the window CLOSED -- a card that sends nothing -- not
- *      the old browser-only plots; and no page errors.
+ * v2.3.3136: the beds are worked ON YOUR FARM, where they lie -- the owner:
+ * "I don't want the game to just be reading a bunch of boring menus" --
+ * and mp-farmwalk walks that.  The Feed & Seed is the farm's shop and its
+ * order board.  So here, one real player, on a phone, in the Wheel's
+ * Brotown, against a real worker:
+ *   1. "Enter" at the Feed & Seed opens the window (caps.farm) on its Seeds
+ *      tab: no beds and no tools in it any more, "Visit Your Farm" at the top
+ *      and a line saying how your beds are doing -- six to plant, the
+ *      worker's free deed;
+ *   2. the Seeds tab sells carrot seeds and compost for the worker's coins;
+ *      at Farming 1 four crops and compost, the other twelve under the level
+ *      they open at, each drawn as the owner drew it grown, every picture in;
+ *   3. the summary line follows the WORKER'S farm: three beds dug and sown
+ *      (farm_act, as the beds' own steps send it), "3 growing"; ripened by the
+ *      operator's dev op, "3 ready to harvest" in green; harvested, 6 carrots
+ *      in the worker's own copy of the bag and six beds to plant again;
+ *   4. closed and opened again, the line is the worker's;
+ *   5. switched off (liveflags `farm: false`), a second player who joins
+ *      after gets the window CLOSED -- a card that sends nothing, no summary,
+ *      no tabs -- not the old browser-only plots; and no page errors.
  * Pictures: tools/qa/mp/out/farm-*.png.
  */
 import * as H from './harness.mjs';
@@ -91,14 +93,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const farmView = () => A.page.evaluate(() => {
       const F = window.__btFarm;
       const v = F && F.view;
-      const tool = document.querySelector('[data-farm-tool-on="1"]');
-      const st = document.querySelector('[data-farm-status="1"]');
+      const sum = document.querySelector('[data-farm-summary]');
+      const tabOn = Array.from(document.querySelectorAll('[data-farm-tab]')).find((t) => /inset/.test(t.style.boxShadow || ''));
       return {
         open: !!document.querySelector('[data-farm]'),
         beds: v ? v.plots.map((p) => p.s + (p.crop ? ':' + p.crop : '') + (p.water ? '+w' : '') + (p.feed ? '+f' : '')) : null,
-        drawn: Array.from(document.querySelectorAll('[data-bed]')).map((b) => b.getAttribute('data-bed-state')),
-        tool: tool ? tool.getAttribute('data-farm-tool') : null,
-        status: st ? (st.textContent || '').trim() : null,
+        /* v2.3.3136: the window draws no beds and offers no tools */
+        drawnBeds: document.querySelectorAll('[data-bed]').length,
+        tools: document.querySelectorAll('[data-farm-tool]').length,
+        tabs: Array.from(document.querySelectorAll('[data-farm-tab]')).map((t) => t.getAttribute('data-farm-tab')),
+        tab: tabOn ? tabOn.getAttribute('data-farm-tab') : null,
+        summary: sum ? (sum.textContent || '').trim() : null,
+        ready: sum ? Number(sum.getAttribute('data-farm-summary')) : null,
+        summaryColor: sum ? getComputedStyle(sum).color : null,
+        visitFirst: (() => {
+          const vb = document.querySelector('[data-farm-visit]'), tb = document.querySelector('[data-farm-tab]');
+          return !!vb && (!tb || vb.getBoundingClientRect().top < tb.getBoundingClientRect().top);
+        })(),
+        status: ((document.querySelector('[data-farm-status="1"]') || {}).textContent || '').trim() || null,
         pending: !!(F && F.pending),
         plots: v ? v.plots : null,
         now: F ? F.serverNow() : 0,
@@ -111,30 +123,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
     const bag = () => H.readState(A, (S) => ({ inv: Object.assign({}, S.rpg && S.rpg.inventory), coins: S.rpg && S.rpg.coins, farming: S.rpg && S.rpg.lifeSkills && S.rpg.lifeSkills.farming }));
     const tap = (sel) => A.page.evaluate((s) => { const e = document.querySelector(s); if (e && !e.disabled) { e.click(); return true; } return false; }, sel);
+    /* v2.3.3136: every farm picture in the window has come in (complete, with
+       a size) -- a broken address would show nothing where a crop should be */
+    const artIn = async () => {
+      let v = null;
+      for (let t0 = Date.now(); Date.now() - t0 < 6000;) {
+        v = await A.page.evaluate(() => {
+          const imgs = Array.from(document.querySelectorAll('[data-farm] img[data-farm-pic]'));
+          return { n: imgs.length, bad: imgs.filter((i) => !(i.complete && i.naturalWidth > 0)).map((i) => i.getAttribute('data-farm-pic')) };
+        });
+        if (v.n && !v.bad.length) return v;
+        await A.page.waitForTimeout(200);
+      }
+      return v;
+    };
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-    /* ── 1. the window ── */
-    const v1 = await until((v) => v.open && v.beds && v.drawn.length === 6);
+    /* ── 1. the window: Seeds first, no beds, the way to your farm ── */
+    const v1 = await until((v) => v.open && v.beds && v.summary);
     await shot(A, 'open');
-    rec.ok(`"${enter}" opens the Feed & Seed's farm: six beds of grass from the worker (${v1.beds && v1.beds.join(' ')}) and the tool on Dig`,
-      !!enter && v1.open && v1.beds && v1.beds.length === 6 && v1.beds.every((b) => b === 'rough') && v1.drawn.every((s) => s === 'rough') && v1.tool === 'dig', v1);
+    rec.ok(`"${enter}" opens the Feed & Seed on its Seeds tab (${v1.tab}; tabs ${v1.tabs.join(', ')}), the worker's six beds of grass behind it (${v1.beds && v1.beds.join(' ')})`,
+      !!enter && v1.open && v1.tab === 'seeds' && v1.tabs[0] === 'seeds' && v1.tabs.indexOf('beds') < 0 && v1.beds && v1.beds.length === 6 && v1.beds.every((b) => b === 'rough'), v1);
+    rec.ok(`v2.3.3136: no beds and no tools in the window (${v1.drawnBeds} beds, ${v1.tools} tools) -- they are worked on your farm -- and "Visit Your Farm" above the tabs`,
+      v1.drawnBeds === 0 && v1.tools === 0 && v1.visitFirst, v1);
+    rec.ok(`...with a line saying how your beds are doing: "${v1.summary}"`, v1.summary === 'Your farm: 6 beds to plant' && v1.ready === 0, v1.summary);
 
-    /* ── 2. one finger across three beds ── */
-    const rects = await A.page.evaluate(() => Array.from(document.querySelectorAll('[data-bed]')).map((b) => { const r = b.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width }; }));
-    await A.page.evaluate(() => { window.__farmSent = 0; const S = window._gameState.current; const orig = S.channel.send.bind(S.channel); S.channel.send = (m) => { if (m && /^farm_/.test(m.type)) window.__farmSent++; return orig(m); }; });
-    await A.page.mouse.move(rects[0].x, rects[0].y);
-    await A.page.mouse.down();
-    for (const r of [rects[1], rects[2]]) { await A.page.mouse.move(r.x, r.y, { steps: 6 }); }
-    await A.page.mouse.up();
-    const v2 = await until((v) => v.beds && v.beds.slice(0, 3).every((b) => b === 'tilled'));
-    const sent2 = await A.page.evaluate(() => window.__farmSent);
-    await shot(A, 'dug');
-    rec.ok(`one finger dragged across three beds digs all three (${v2.beds && v2.beds.join(' ')}) in ONE message to the worker (${sent2}); beds ${Math.round(rects[0].w)} px wide`,
-      v2.beds && v2.beds.slice(0, 3).every((b) => b === 'tilled') && v2.beds.slice(3).every((b) => b === 'rough') && sent2 === 1 && rects[0].w >= 80, { v2, sent2 });
-
-    /* ── 3. the Seeds tab ── */
+    /* ── 2. the Seeds tab ── */
     const b0 = await bag();
-    await tap('[data-farm-tab="seeds"]');
-    await A.page.waitForTimeout(300);
     await shot(A, 'seeds');
     await tap('[data-farm-buy="seed_carrot"][data-farm-buy-n="5"]');
     let b1 = b0;
@@ -152,8 +167,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       cloudBuy: !!document.querySelector('[data-farm-buy="seed_cloudpetal"]'),
     }));
     const cloudLocked = shop.locked.some((l) => l.lvl === 10 && l.crops.includes('cloudpetal'));
-    rec.ok(`the Seeds tab sells 5 carrot seeds for 10 coins and a bag of compost for 4 (${b0.coins} -> ${b2.coins}), the worker's bag says so; Cloudpetal (Farming 10) cannot be bought`,
-      b1.inv.seed_carrot === 5 && b2.inv.compost === 1 && b2.coins === b0.coins - 14 && !shop.cloudBuy && cloudLocked, { b0, b2, shop });
+    const vS = await farmView();
+    rec.ok(`the Seeds tab sells 5 carrot seeds for 10 coins and a bag of compost for 4 (${b0.coins} -> ${b2.coins}), the worker's bag says so ("${vS.status}"); Cloudpetal (Farming 10) cannot be bought`,
+      b1.inv.seed_carrot === 5 && b2.inv.compost === 1 && b2.coins === b0.coins - 14 && !shop.cloudBuy && cloudLocked, { b0, b2, shop, status: vS.status });
     /* v2.3.3135: sixteen crops -- at Farming 1 it sells the four that open
        there, then compost, and lists the other twelve by the level they
        open at. */
@@ -166,76 +182,70 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ];
     rec.ok(`...at Farming 1 it sells carrot, wheat, firebloom and strawberry seeds and compost (${shop.rows.join(', ')}), and lists the other twelve crops under the level they open at`,
       JSON.stringify(shop.rows) === JSON.stringify(want1) && JSON.stringify(shop.locked) === JSON.stringify(wantLocked), shop);
+    /* v2.3.3136: each row shows its crop grown (the compost its bin), and so
+       does each crop still to open */
+    const a3 = await artIn();
+    const pics3 = await A.page.evaluate(() => ({
+      rows: Array.from(document.querySelectorAll('[data-farm-row]')).map((r) => { const i = r.querySelector('img[data-farm-pic]'); return i ? i.getAttribute('data-farm-pic') : null; }),
+      locked: Array.from(document.querySelectorAll('[data-farm-locked-crop]')).map((c) => { const i = c.querySelector('img[data-farm-pic]'); return i ? i.getAttribute('data-farm-pic') : null; }),
+    }));
+    const wantRowPics = ['carrot-ripe', 'wheat-ripe', 'firebloom-ripe', 'strawberry-ripe', 'compost-bin'];
+    const wantLockedPics = wantLocked.flatMap((l) => l.crops.map((c) => c + '-ripe'));
+    rec.ok(`v2.3.3136: the Seeds tab draws each crop as the owner drew it grown (${pics3.rows.join(', ')}), the twelve still to open too, every picture in (${a3 && a3.n})`,
+      same(pics3.rows, wantRowPics) && same(pics3.locked, wantLockedPics) && a3 && a3.n === 17 && !a3.bad.length, { pics3, a3 });
 
-    /* ── 4. the tool follows the farm: Plant, and Plant all ── */
-    await tap('[data-farm-tab="beds"]');
-    const v4a = await until((v) => v.tool === 'plant', 3000);
-    /* the pick that mp-farm's first run caught: three dug, three grass, seeds
-       in the bag -- the tool must be Plant, not Dig */
-    /* v2.3.3135: the Plant tool offers only seeds in the bag -- carrots. */
-    const chips = await A.page.evaluate(() => Array.from(document.querySelectorAll('[data-farm-seed]')).map((c) => c.getAttribute('data-farm-seed')));
-    rec.ok(`the Plant tool offers only the seeds in the bag (${chips.join(', ')}), not sixteen chips`, JSON.stringify(chips) === JSON.stringify(['carrot']), chips);
-    await tap('[data-farm-seed="carrot"]');
-    await A.page.waitForTimeout(200);
-    await tap('[data-farm-all]');
-    const v4 = await until((v) => v.beds && v.beds.slice(0, 3).every((b) => b.startsWith('planted:carrot')));
-    const b4 = await bag();
-    await shot(A, 'planted');
-    rec.ok(`with the beds dug the tool moves to Plant by itself (${v4a.tool}), and "Plant all" sows carrots in the three (${v4.beds && v4.beds.join(' ')}), two seeds left`,
-      v4a.tool === 'plant' && v4.beds && v4.beds.slice(0, 3).every((b) => b.startsWith('planted:carrot')) && b4.inv.seed_carrot === 2, { v4, inv: b4.inv });
-    const p0 = v4.plots[0];
+    /* ── 3. the summary follows the worker's farm.  The beds' own steps on
+       the farm send exactly these farm_act messages (game/farmWalk.js); here
+       they go straight from the bus, the window open, as mp-farmwalk kneels
+       for them one bed at a time. ── */
+    const act = async (op, beds, crop) => {
+      for (let i = 0; i < 40; i++) {
+        const ok = await A.page.evaluate(({ op, beds, crop }) => {
+          const S = window._gameState.current, F = window.__btFarm;
+          return !F.pending && F.act(S, op, beds, crop);
+        }, { op, beds, crop });
+        if (ok) break;
+        await A.page.waitForTimeout(150);
+      }
+      return until((v) => !v.pending, 6000);
+    };
+    await act('dig', [0, 1, 2]);
+    await act('plant', [0, 1, 2], 'carrot');
+    const v3 = await until((v) => v.beds && v.beds.slice(0, 3).every((b) => b === 'planted:carrot') && /3 growing/.test(v.summary || ''));
+    const b3 = await bag();
+    await shot(A, 'growing');
+    rec.ok(`three beds dug and sown with carrots by the worker (${v3.beds && v3.beds.join(' ')}), two seeds left (${b3.inv.seed_carrot}): "${v3.summary}"`,
+      v3.beds && v3.beds.slice(0, 3).every((b) => b === 'planted:carrot') && b3.inv.seed_carrot === 2 && v3.summary === 'Your farm: 3 growing · 3 beds to plant' && v3.ready === 0,
+      { beds: v3.beds, summary: v3.summary, inv: b3.inv });
+    const p0 = v3.plots[0];
     rec.ok(`a carrot takes 8 minutes dry, on the worker's clock (${Math.round((p0.readyAt - p0.plantedAt) / 60000)} min)`, p0.readyAt - p0.plantedAt === 8 * 60000, p0);
 
-    /* ── 5. water one, feed one: one tap each ── */
-    await tap('[data-farm-tool="water"]');
-    await A.page.waitForTimeout(200);
-    await A.page.mouse.click(rects[0].x, rects[0].y);
-    const v5 = await until((v) => v.beds && v.beds[0].includes('+w'));
-    const p5 = v5.plots[0];
-    await tap('[data-farm-tool="feed"]');
-    await A.page.waitForTimeout(200);
-    await A.page.mouse.click(rects[0].x, rects[0].y);
-    const v5b = await until((v) => v.beds && v.beds[0].includes('+f'));
-    const b5 = await bag();
-    await shot(A, 'tended');
-    rec.ok(`Water re-times the bed to 6 minutes (${Math.round((p5.readyAt - p5.plantedAt) / 60000)} min), Fertilize puts the compost on it (${v5b.beds && v5b.beds[0]}), one tap each`,
-      p5.water === 1 && p5.readyAt - p5.plantedAt === 6 * 60000 && v5b.beds[0] === 'planted:carrot+w+f' && !b5.inv.compost, { p5, v5b: v5b.beds, inv: b5.inv });
-    const unripe = v5b.plots.every((p) => p.s !== 'planted' || v5b.now < p.readyAt);
-    rec.ok('...and nothing is ripe yet', unripe, v5b.plots);
-
-    /* ── 6. ripe (the operator's dev op), Harvest all ── */
     const rip = await H.devOp(wsPort, 'farmripe', id);
-    const v6a = await until((v) => v.drawn.filter((s) => s === 'ripe').length === 3);
-    await A.page.waitForTimeout(300);
-    const v6t = await farmView();
+    const v4 = await until((v) => v.ready === 3);
     await shot(A, 'ripe');
-    rec.ok(`ripened by the dev op (${rip && rip.ripened}), the three beds read Ready and the tool is Harvest (${v6t.tool})`,
-      !!rip && rip.ripened === 3 && v6a.drawn.filter((s) => s === 'ripe').length === 3 && v6t.tool === 'harvest', { rip, v6a: v6a.drawn, tool: v6t.tool });
+    rec.ok(`ripened by the dev op (${rip && rip.ripened}), the line reads "${v4.summary}", in green (${v4.summaryColor})`,
+      !!rip && rip.ripened === 3 && v4.summary === 'Your farm: 3 ready to harvest · 3 beds to plant' && v4.ready === 3 && v4.summaryColor === 'rgb(85, 185, 138)', { rip, v4 });
+
     const f0 = (await bag()).farming || { level: 1, xp: 0 };
-    await tap('[data-farm-all]');
-    const v6 = await until((v) => v.beds && v.beds.slice(0, 3).every((b) => b === 'rough') && /Carrot/.test(v.status || ''));
-    let b6 = await bag();
-    for (let i = 0; i < 20 && b6.inv.crop_carrot !== 7; i++) { await A.page.waitForTimeout(200); b6 = await bag(); }
+    await act('harvest', [0, 1, 2]);
+    const v5 = await until((v) => v.beds && v.beds.every((b) => b === 'rough') && v.summary === 'Your farm: 6 beds to plant');
+    let b5 = await bag();
+    for (let i = 0; i < 20 && b5.inv.crop_carrot !== 6; i++) { await A.page.waitForTimeout(200); b5 = await bag(); }
     const srv = await H.adminPlayer(wsPort, id);
     const srvInv = (srv && srv.rpg && srv.rpg.inventory) || {};
-    await shot(A, 'harvested');
-    const xpGain = ((b6.farming && b6.farming.level) > (f0.level || 1)) ? 'levelled' : (b6.farming.xp - (f0.xp || 0));
-    rec.ok(`"Harvest all" pays 7 carrots (3 fertilized + 2 + 2) and 75 Farming XP (${xpGain}), the window saying "${v6.status}", the beds rough again`,
-      b6.inv.crop_carrot === 7 && (xpGain === 75 || xpGain === 'levelled') && /\+7 Carrot/.test(v6.status || '') && v6.beds.slice(0, 3).every((b) => b === 'rough'),
-      { inv: b6.inv, farming: b6.farming, v6 });
-    rec.ok(`...settled by the worker: its own copy of the bag holds the 7 carrots (${srvInv.crop_carrot})`, srvInv.crop_carrot === 7, srvInv);
+    const xpGain = ((b5.farming && b5.farming.level) > (f0.level || 1)) ? 'levelled' : (b5.farming.xp - (f0.xp || 0));
+    rec.ok(`harvested: 6 carrots (2 a bed, none fertilized) and ${xpGain} Farming XP, the worker's own copy of the bag says so (${srvInv.crop_carrot}), and the line is back to "${v5.summary}"`,
+      b5.inv.crop_carrot === 6 && srvInv.crop_carrot === 6 && (xpGain === 'levelled' || xpGain > 0) && v5.summary === 'Your farm: 6 beds to plant',
+      { inv: b5.inv, farming: b5.farming, srvInv, v5: v5.summary });
 
-    /* ── 7. closed and opened again ── */
+    /* ── 4. closed and opened again ── */
     await A.page.evaluate(() => { const b = document.querySelector('.bt-inspect-close'); if (b) b.click(); });
     await A.page.waitForTimeout(600);
     await A.page.evaluate(() => { window.__btFarm.view = null; });   /* forget it here: the window must ask the worker again */
     await A.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Enter /.test(q.textContent || '')); if (b) b.click(); });
-    const v7 = await until((v) => v.open && v.beds && v.beds.length === 6);
-    rec.ok(`closed and opened again, the farm is the worker's (${v7.beds && v7.beds.join(' ')})`, v7.beds && v7.beds.every((b) => b === 'rough'), v7.beds);
-
-    /* ── 8. the farm trip, and clean ── */
-    const visit = await A.page.evaluate(() => { const b = document.querySelector('[data-farm-visit]'); return b ? (b.textContent || '').trim() : null; });
-    rec.ok('"Visit Your Farm" is still in the window', visit === 'Visit Your Farm', visit);
+    const v7 = await until((v) => v.open && v.beds && v.beds.length === 6 && v.summary);
+    rec.ok(`closed and opened again, the farm is the worker's (${v7.beds && v7.beds.join(' ')}): "${v7.summary}"`,
+      v7.beds && v7.beds.every((b) => b === 'rough') && v7.summary === 'Your farm: 6 beds to plant', v7);
 
     /* ── 9. v2.3.3127: the kill switch.  A tab that joins while `farm: false`
        is set gets the window CLOSED -- a card that asks the worker nothing --
@@ -263,12 +273,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         words: ((document.querySelector('[data-farm-status="closed"]') || {}).textContent || '').trim(),
         tabs: document.querySelectorAll('[data-farm-tab]').length,
         visit: !!document.querySelector('[data-farm-visit]'),
+        summary: !!document.querySelector('[data-farm-summary]'),
         sends: window.__btFarmSends,
         pending: !!(window.__btFarm && window.__btFarm.pending),
         legacy: /No seeds/.test(document.body.textContent || ''),
       }));
-      rec.ok(`switched off (flag set: ${!!(flagOff && flagOff.ok)}, caps.farm ${capsB}), a tab that joins after gets the window CLOSED ("${c.words}"): no tabs, Visit Your Farm, no old plots, and nothing sent (${c.sends})`,
-        !!(flagOff && flagOff.ok) && capsB === false && c.closed && /closed for now/.test(c.words) && c.tabs === 0 && c.visit && !c.legacy && c.sends === 0 && !c.pending, c);
+      rec.ok(`switched off (flag set: ${!!(flagOff && flagOff.ok)}, caps.farm ${capsB}), a tab that joins after gets the window CLOSED ("${c.words}"): no tabs, no summary, Visit Your Farm, no old plots, and nothing sent (${c.sends})`,
+        !!(flagOff && flagOff.ok) && capsB === false && c.closed && /closed for now/.test(c.words) && c.tabs === 0 && !c.summary && c.visit && !c.legacy && c.sends === 0 && !c.pending, c);
     } finally {
       await admin('/flags?name=farm', { method: 'DELETE' }).catch(() => {});
       await B.ctx.close().catch(() => {});
