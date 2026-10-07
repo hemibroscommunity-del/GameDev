@@ -559,6 +559,65 @@ function ws2Ref() {
   check('no seed costs less than a coin per crop it yields', cheap.length === 0, cheap.map(([id]) => id));
 }
 
+// ── 17. v2.3.3135: sixteen crops, every one grown and paid ──
+{
+  /* The owner: "The main focus is just getting a good variety of crops to
+     grow."  Ten more, appended (caps.farmCrops counts them), each a 3 (an
+     older worker has never heard of them). */
+  const NEW = ['wheat', 'strawberry', 'tomato', 'frostberry', 'corn', 'cabbage', 'dewmelon', 'thunder_pepper', 'gloomcap', 'heartroot'];
+  check('sixteen crops, the ten new ones appended in order', FARM_CROP_IDS.length === 16
+    && FARM_CROP_IDS.slice(0, 6).join(',') === 'carrot,firebloom,rock_vine,cloudpetal,potato,pumpkin'
+    && FARM_CROP_IDS.slice(6).join(',') === NEW.join(','), FARM_CROP_IDS);
+  check('...each a 3, and FARM.V is 3', FARM.V === 3 && NEW.every((id) => C[id].v === 3), { V: FARM.V });
+  check('...five everyday crops (crop_*) and five magic ones (herb_*), each with its own seed',
+    ['wheat', 'strawberry', 'tomato', 'corn', 'cabbage'].every((id) => C[id].item === 'crop_' + id && C[id].seed === 'seed_' + id)
+    && ['frostberry', 'dewmelon', 'thunder_pepper', 'gloomcap', 'heartroot'].every((id) => C[id].item === 'herb_' + id && C[id].seed === 'seed_' + id));
+  check('...opening in levels of 5, up to Farming 20', Object.values(C).every((c) => c.lvl === 1 || c.lvl % 5 === 0) && Math.max(...Object.values(C).map((c) => c.lvl)) === 20);
+  check('...and no two crops share a seed or a harvest', new Set(Object.values(C).map((c) => c.seed)).size === 16 && new Set(Object.values(C).map((c) => c.item)).size === 16);
+
+  const PC = 'bp_farm_crops';
+  const wsC = fakeWs();
+  await join(wsC, PC);
+  const P = room.playerState[PC];
+  P.coins = 100000;
+  P.inventory = Object.create(null);
+  const sv = () => st._store.get('farm:' + PC);
+  resetRate();
+  await farm(wsC, 'farm_open', {});
+  /* Heartroot opens at Farming 20, not 19. */
+  P.lifeSkills.farming = { level: 19, xp: 0 };
+  let b = await buy(wsC, 'seed_heartroot', 1);
+  check('heartroot seed: not sold at Farming 19', b && b.err === 'level' && !P.inventory.seed_heartroot, b);
+  P.lifeSkills.farming = { level: 20, xp: 0 };
+  b = await buy(wsC, 'seed_heartroot', 1);
+  check('...sold at Farming 20', b && b.did && b.did.n === 1 && P.inventory.seed_heartroot === 1, b);
+  /* Every crop, bought, planted, grown and harvested on bed 0. */
+  const bad = [];
+  for (const id of FARM_CROP_IDS) {
+    resetRate();
+    const c = C[id];
+    P.lifeSkills.farming = { level: 20, xp: 0 };
+    const coins0 = P.coins;
+    const bb = await buy(wsC, c.seed, 1);
+    if (!bb || !bb.did || P.coins !== coins0 - c.price) { bad.push({ id, step: 'buy', bb }); continue; }
+    await act(wsC, 'dig', [0]);
+    const pl = await act(wsC, 'plant', [0], id);
+    if (!pl || !pl.did || pl.did.n !== 1) { bad.push({ id, step: 'plant', pl }); continue; }
+    const want = Math.floor(Number(c.v) || 1);
+    if (sv().v !== want) bad.push({ id, step: 'stamp', v: sv().v, want });
+    const p0 = sv().plots[0];
+    if (p0.readyAt - p0.plantedAt !== c.mins * 60000) bad.push({ id, step: 'time', got: p0.readyAt - p0.plantedAt, want: c.mins * 60000 });
+    await room._devFarmRipe(PC);
+    const have0 = Math.floor(P.inventory[c.item] || 0);
+    const h = await act(wsC, 'harvest', [0]);
+    const got = Math.floor(P.inventory[c.item] || 0) - have0;
+    if (!h || !h.did || got !== c.yield || h.did.xp !== c.xp) bad.push({ id, step: 'harvest', got, want: c.yield, xp: h && h.did && h.did.xp });
+    if (sv().v !== 1) bad.push({ id, step: 'unstamp', v: sv().v });
+    if (room._shopBaseValue(c.item) !== c.base || room._shopBaseValue(c.seed) !== c.price) bad.push({ id, step: 'diego', item: room._shopBaseValue(c.item), seed: room._shopBaseValue(c.seed) });
+  }
+  check('every one of the sixteen: bought at its price, planted, stamped with its version, ripe at its time, harvested for its yield and XP, and valued by Diego', bad.length === 0, bad);
+}
+
 Date.now = realNow;
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall farm checks passed');
 process.exit(failures ? 1 : 0);

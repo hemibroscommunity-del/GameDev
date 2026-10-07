@@ -92,8 +92,10 @@ export const FARM = {
      this worker wrote closed EVERY farm touched under it on a rollback, a
      carrot-only farm included (review).  So FARM.V is the highest crop `v`
      (farm.test pins it), and a phase that adds anything else to the record
-     raises both. */
-  V: 2,
+     raises both.
+     v2.3.3135: 3 -- the ten new crops (wheat to heartroot).  A worker at 2
+     has never heard of them; a farm growing one is a 3 while it grows. */
+  V: 3,
   /* The free deed: six beds, the plan's starter farm. */
   FREE_BEDS: 6,
   /* The most a farm can ever hold (the Land Office's top step, Phase 3) --
@@ -141,6 +143,31 @@ export const FARM = {
        and caps.farmCrops counts it. */
     potato:     { name: 'Potato',     seed: 'seed_potato',     item: 'crop_potato',     lvl: 5,  price: 6,  mins: 160,  yield: 3, xp: 90,  base: 12, v: 2 },
     pumpkin:    { name: 'Pumpkin',    seed: 'seed_pumpkin',    item: 'crop_pumpkin',    lvl: 10, price: 25, mins: 1760, yield: 2, xp: 320, base: 60, v: 2 },
+    /* v2.3.3135: A GOOD VARIETY TO GROW -- the owner: "The main focus is just
+       getting a good variety of crops to grow. Then the next step is deciding
+       what each one does."  Ten more, sixteen in all (docs/specs/farm.md "The
+       sixteen crops"):
+         five everyday crops (`crop_*`): wheat, strawberry, tomato, corn and
+         cabbage -- quick to middling, cheap, the makings of everyday meals;
+         five magic crops (`herb_*`, beside firebloom, rock vine and
+         cloudpetal), one for each land that had none: frostberry (frost),
+         dewmelon (water), thunder pepper (storm), gloomcap (venom) and
+         heartroot (flora) -- slower, worth more, opening up to Farming 20.
+       What each one cooks into is the owner's next decision; until then they
+       grow, pay Farming XP, sell to Diego and trade.  Numbers on the curve of
+       the first six: a bed's worth to Diego about 7 x mins^0.38 coins, its XP
+       about 9 x mins^0.48, a little more for the higher levels; every seed at
+       least a coin a crop (farm.test 16).  All `v: 3`. */
+    wheat:          { name: 'Wheat',          seed: 'seed_wheat',          item: 'crop_wheat',          lvl: 1,  price: 3,  mins: 20,   yield: 3, xp: 35,  base: 6,  v: 3 },
+    strawberry:     { name: 'Strawberry',     seed: 'seed_strawberry',     item: 'crop_strawberry',     lvl: 1,  price: 4,  mins: 60,   yield: 3, xp: 60,  base: 10, v: 3 },
+    tomato:         { name: 'Tomato',         seed: 'seed_tomato',         item: 'crop_tomato',         lvl: 5,  price: 5,  mins: 100,  yield: 3, xp: 75,  base: 11, v: 3 },
+    frostberry:     { name: 'Frostberry',     seed: 'seed_frostberry',     item: 'herb_frostberry',     lvl: 5,  price: 8,  mins: 240,  yield: 2, xp: 110, base: 26, v: 3 },
+    corn:           { name: 'Corn',           seed: 'seed_corn',           item: 'crop_corn',           lvl: 10, price: 9,  mins: 300,  yield: 2, xp: 125, base: 28, v: 3 },
+    cabbage:        { name: 'Cabbage',        seed: 'seed_cabbage',        item: 'crop_cabbage',        lvl: 10, price: 11, mins: 420,  yield: 2, xp: 150, base: 34, v: 3 },
+    dewmelon:       { name: 'Dewmelon',       seed: 'seed_dewmelon',       item: 'herb_dewmelon',       lvl: 10, price: 18, mins: 900,  yield: 2, xp: 220, base: 48, v: 3 },
+    thunder_pepper: { name: 'Thunder Pepper', seed: 'seed_thunder_pepper', item: 'herb_thunder_pepper', lvl: 15, price: 12, mins: 540,  yield: 3, xp: 200, base: 30, v: 3 },
+    gloomcap:       { name: 'Gloomcap',       seed: 'seed_gloomcap',       item: 'herb_gloomcap',       lvl: 15, price: 20, mins: 1080, yield: 2, xp: 270, base: 55, v: 3 },
+    heartroot:      { name: 'Heartroot',      seed: 'seed_heartroot',      item: 'herb_heartroot',      lvl: 20, price: 28, mins: 1440, yield: 2, xp: 340, base: 70, v: 3 },
   },
 };
 

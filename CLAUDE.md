@@ -1553,7 +1553,21 @@ remnant to migrate server-side, not a mode to preserve.
       midnight an open window asks for the new board itself; every order pays
       more than Diego's opening price for its goods; ~150 gold a day new, 450
       at most; `caps.farmorders`, kill switch `farmorders: false`;
-      `farmorders` suite, `mp-farmorders`: docs/specs/farm-orders.md.
+      `farmorders` suite, `mp-farmorders`: docs/specs/farm-orders.md;
+    - since v2.3.3135 SIXTEEN CROPS -- the owner: "The main focus is just
+      getting a good variety of crops to grow. Then the next step is deciding
+      what each one does": ten appended to `FARM.CROPS` (both copies,
+      `FARM_CROP_IDS` order, caps.farmCrops 16), each `v: 3` and `FARM.V` 3 --
+      five everyday crops (`crop_`: wheat, strawberry, tomato, corn, cabbage)
+      and five magic ones (`herb_`, one per land without one: frostberry,
+      dewmelon, thunder pepper, gloomcap, heartroot), levels 1-20 in fives;
+      NOTHING COOKS THEM YET (the owner decides what each does next: the
+      suggestion is everyday meals and one land's-status guard per magic crop);
+      glyphs until the 16-crop sheet (docs/art/FARM-ART-PROMPTS.md "Start
+      here"); the Seeds tab folds locked crops into one line a level and the
+      Plant tool offers only seeds in the bag; the trade window names farm
+      goods; farm.test §17 grows every crop: docs/specs/farm.md "The sixteen
+      crops".
   - Since v2.3.3120 PET TRAPPING -- the owner: "your trapping level governs
     what level monster you can capture ... The best success rate for the
     lowest tier monster should be about 1%. And each trap should cost at least
