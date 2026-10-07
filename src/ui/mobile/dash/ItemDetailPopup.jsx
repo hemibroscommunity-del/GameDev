@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { BT_AUDIO, COOKING_RECIPES } from '@/data/index.js'; /* v2.3.2637: ui-equip tick; v2.3.3114: the recipe rows (caps.cookRows) */
+import { BT_AUDIO, COOKING_RECIPES } from '@/data/index.js'; /* v2.3.2637: ui-equip tick; v2.3.3130: the recipe rows (caps.cookRows) */
 import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
-import { dishFor } from '@/data/dishes.js';   /* v2.3.3114: the Cookhouse's meals and brews */
+import { dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
 import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
@@ -20,7 +20,7 @@ import { firemakingBus } from '../firemakingBus.js';
 import { chestRevealBus } from '../ChestReveal.jsx';   /* v2.3.2820: the daily chest's claim window */
 import { storeEnabled, storeGearEnabled, storeGearRefEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the auction house; v2.3.2531: gear; v2.3.2551: naming a piece by its id */
 import { eatBus } from '../eatBus.js';
-import { CATEGORIES } from './bagFilterBus.js';   /* v2.3.3114: the caption is the chip's own word */
+import { CATEGORIES } from './bagFilterBus.js';   /* v2.3.3130: the caption is the chip's own word */
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { GEAR_SELL, removeGearLocal } from './gearSellLocal.js'; /* v2.3.2531: which stash a gear card sells out of; v2.3.2532: and taking it out of ours */
 import { gearSellCheck, gearSellReasonText, gearSellGid } from './gearSellReason.js'; /* v2.3.2551: and WHY it cannot be sold */
@@ -158,7 +158,7 @@ function resolveTarget(target) {
     const SR = getState();
     const isTicket = isTicketKey(key);
     const isPotion = isPotionKey(key);            /* v2.3.2127 */
-    /* v2.3.3114: a Cookhouse dish -- a meal is eaten, a brew drunk.  Both are
+    /* v2.3.3130: a Cookhouse dish -- a meal is eaten, a brew drunk.  Both are
        the worker's (cooking.js), and an OLD worker eats or drinks neither, so
        both buttons need caps.meals (read directly: caps-audit). */
     const dish = dishFor(key);
@@ -187,8 +187,8 @@ function resolveTarget(target) {
       info = capeIsWorn() ? 'Worn — a contest prize' : 'A contest prize, in your bag';
     }
     else if (isCookedFish) info = '+' + toDisplayDamage(calcDisplayHeal(SR && SR.rpg, key)) + ' HP when eaten';   /* v2.3.2520: display scale */
-    /* v2.3.3114: what eating or drinking it does, and the one-of-each rule.
-       v2.3.3115: a dish eaten at once (the Garden Stew) is a heal, said the
+    /* v2.3.3130: what eating or drinking it does, and the one-of-each rule.
+       v2.3.3131: a dish eaten at once (the Garden Stew) is a heal, said the
        cooked fish's way. */
     else if (dish && dish.buff === 'heal') info = '+' + toDisplayDamage(calcDisplayHeal(SR && SR.rpg, key)) + ' HP when eaten';
     else if (dish) info = dish.desc + (dish.slot === 'meal' ? ' · replaces your meal' : ' · replaces your brew');
@@ -211,7 +211,7 @@ function resolveTarget(target) {
       glyph: iconFor(key),
       name: prettyName(key),
       info,
-      /* v2.3.3114: the chip's own word ('Consumable' for the bottle chip's
+      /* v2.3.3130: the chip's own word ('Consumable' for the bottle chip's
          'potion', which now holds a meal or a cooked fish too -- the caption
          said POTION on a Herb Bread, found by the review). */
       desc: ((CATEGORIES.find((c) => c.id === cat) || {}).label) || (cat.charAt(0).toUpperCase() + cat.slice(1)),
@@ -247,7 +247,7 @@ function resolveTarget(target) {
           && !!(SR && SR._serverCaps && SR._serverCaps.dailyChest),
         drink: isPotion && count > 0
           && !!(SR && SR._serverCaps && SR._serverCaps.potionBag)
-          && (!dish || dishesKnown),   /* v2.3.3114: a brew needs a worker that drinks it */
+          && (!dish || dishesKnown),   /* v2.3.3130: a brew needs a worker that drinks it */
         /* v2.3.2476: Sell -- put this up in the auction house at your own
            price.  Gated on the store cap (storeApi.storeEnabled reads
            _serverCaps.store) because an older worker has no /api/store
@@ -1766,7 +1766,7 @@ export const ItemDetailPopup = () => {
         )}
 
         {/* v2.3.1232: category caption — 10/600 uppercase metadata
-            (v2.3.3114: data-item-caption, read by mp-meals) */}
+            (v2.3.3130: data-item-caption, read by mp-meals) */}
         {desc && (
           <div data-item-caption={desc} style={{
             fontSize: 11, fontWeight: 600, color: COL.muted,

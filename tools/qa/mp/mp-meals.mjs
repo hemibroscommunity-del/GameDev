@@ -16,7 +16,7 @@
  *      brew runs BESIDE the meal, and the HUD shows both.
  *   5. Diego's shelf is his two staples -- no tonic -- and he says he won't
  *      buy a tonic back, nor a Herb Bread.
- *   6. v2.3.3115: the Cookhouse lists the Garden Stew (Cooking 4) and the
+ *   6. v2.3.3131: the Cookhouse lists the Garden Stew (Cooking 4) and the
  *      Pumpkin Pie (Cooking 8); a stew from the bag heals at once, the HUD
  *      unchanged; a pie runs +10% XP beside the brew, its chip in minutes.
  *   7. With the kill switch thrown, a bread in the bag still eats.
@@ -100,7 +100,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const win = await A.page.evaluate(() => ({
       head: /meals & brews/i.test(document.body.innerText || ''),   /* the heading is drawn in capitals */
       tonics: ['whetstone', 'manaShard', 'swiftDraught'].map((k) => !!document.querySelector(`[data-cook-makes="${k}"]`)),
-      /* v2.3.3115: and the two food-crop dishes, locked at Cooking 4 and 8 */
+      /* v2.3.3131: and the two food-crop dishes, locked at Cooking 4 and 8 */
       food: ['meal_garden_stew', 'meal_pumpkin_pie'].map((k) => { const b = document.querySelector(`[data-cook-makes="${k}"]`); return b ? (b.textContent || '').trim() : null; }),
       bread: (() => { const b = document.querySelector('[data-cook-recipe="0"]'); const r = b && b.parentElement; return r ? (r.innerText || '').replace(/\s+/g, ' ').slice(0, 160) : null; })(),
     }));
@@ -206,7 +206,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot(A, 'diego');
     await A.page.evaluate(() => window.__broShopBus.setOpen(false));
 
-    /* ── 6. v2.3.3115: the Garden Stew and the Pumpkin Pie ── */
+    /* ── 6. v2.3.3131: the Garden Stew and the Pumpkin Pie ── */
     rec.ok('the Cookhouse listed the Garden Stew and the Pumpkin Pie, locked at Cooking 4 and 8',
       Array.isArray(win.food) && win.food[0] === 'Lv4' && win.food[1] === 'Lv8', win.food);
     await H.devOp(wsPort, 'vitals', id, { god: false });

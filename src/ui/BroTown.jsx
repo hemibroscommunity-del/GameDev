@@ -8810,7 +8810,7 @@ export var BroTown = function BroTown(_ref0) {
          taken; the echo is the truth (rule 20).  Only offered at all on a
          worker with caps.meals (ItemDetailPopup). */
       var _meal = DATA.dishFor(key);
-      /* v2.3.3115: a dish eaten AT ONCE (the Garden Stew) is a heal, so it
+      /* v2.3.3131: a dish eaten AT ONCE (the Garden Stew) is a heal, so it
          takes the cooked fish's road below -- "HP full", the predicted heal. */
       if (_meal && _meal.buff !== 'heal') {
         if (_meal.slot !== 'meal') return;
@@ -8863,7 +8863,7 @@ export var BroTown = function BroTown(_ref0) {
         try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
       }
       pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + toDisplayDamage(actual) + ' HP', '#59BF91');   /* v2.3.2520: display scale */
-      pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate ' + (_meal ? _meal.name : 'cooked fish'), '#D8A94D');   /* v2.3.3115: or the stew */
+      pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate ' + (_meal ? _meal.name : 'cooked fish'), '#D8A94D');   /* v2.3.3131: or the stew */
       try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -12609,7 +12609,7 @@ export var BroTown = function BroTown(_ref0) {
         desc: '-5%'   /* v2.3.3130: what the worker takes off (combat.js x0.95); it said -15% */
       });
     }
-    /* v2.3.3115: the Pumpkin Pie's +10% combat XP (the worker's _buffs.xp,
+    /* v2.3.3131: the Pumpkin Pie's +10% combat XP (the worker's _buffs.xp,
        mirrored by wsClient) -- only while its strength is one the worker pays
        (prog3.js reads xpMul in (1, 2]): a pie whose strength an older worker
        pruned, after a rollback, said "+10%" while nothing was paid (review). */

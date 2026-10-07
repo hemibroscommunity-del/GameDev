@@ -1413,7 +1413,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('farm: same crops on both sides', keys(SRV_FARM.CROPS) === keys(CLIENT_FARM.CROPS),
     { srv: keys(SRV_FARM.CROPS), cli: keys(CLIENT_FARM.CROPS) });
   check('farm: the window lists every crop once', CLIENT_FARM_ORDER.slice().sort().join(',') === keys(SRV_FARM.CROPS), CLIENT_FARM_ORDER);
-  /* v2.3.3115: and in the SAME ORDER they came -- caps.farmCrops is a count
+  /* v2.3.3131: and in the SAME ORDER they came -- caps.farmCrops is a count
      of the worker's crops in that order, and the window counts its own. */
   check('farm: the crops come in the same order on both sides (caps.farmCrops counts them)',
     Object.keys(SRV_FARM.CROPS).join(',') === Object.keys(CLIENT_FARM.CROPS).join(','),
@@ -1427,7 +1427,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     check('farm: ' + id + ' seed / item / level / price / time / yield / XP / value match', same, { srv: a, cli: b });
     check('farm: ' + id + ' grows as long on both sides, dry and watered',
       srvFarmGrowMs(a, false) === clientFarmGrowMs(b, false) && srvFarmGrowMs(a, true) === clientFarmGrowMs(b, true));
-    /* v2.3.3115: fertilized, the worker pays its lowest or its highest (a
+    /* v2.3.3131: fertilized, the worker pays its lowest or its highest (a
        potato's 4.5 is 4 or 5), and the window shows exactly that -- the one
        number when they agree, "4–5" when they do not. */
     const lo = srvFarmYield(a, true, () => 0.999), hi = srvFarmYield(a, true, () => 0);
