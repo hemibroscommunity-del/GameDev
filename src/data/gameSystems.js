@@ -1079,7 +1079,7 @@ export const COOKING_RECIPES = [{
   makes: 'meal_pumpkin_pie',
   desc: '+10% combat XP for 30 min'
 }, {
-  /* v2.3.3116: the Stamina Tonic -- the old Stamina Salts, brewed now that
+  /* v2.3.3132: the Stamina Tonic -- the old Stamina Salts, brewed now that
      Diego sells no food or drink (server data.js COOKING_RECIPES row 8) */
   name: 'Stamina Tonic',
   tier: 1,

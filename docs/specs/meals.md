@@ -23,8 +23,8 @@ herbs; this makes them worth growing.
   replaced every other effect (v2.3.2063).
 - **Diego's three tonics are brewed, not sold.** The Fury Tonic, Mana Draught
   and Swift Draught come off his shelf and onto the Cookhouse's.
-  - He kept the **Cooked Minnow** and the **Stamina Salts** in v2.3.3114.
-    **v2.3.3116 took them too**, the owner: *"Remove all of Diego's potions. I
+  - He kept the **Cooked Minnow** and the **Stamina Salts** in v2.3.3130.
+    **v2.3.3132 took them too**, the owner: *"Remove all of Diego's potions. I
     want food and drink to come exclusively from farming and recipes."* See
     "Diego sells no food or drink" below.
   - **He still buys no potion back**, the tonics included (`shop.js`
@@ -37,7 +37,7 @@ herbs; this makes them worth growing.
   - **A bottle bought before the change still drinks.** The brewed tonics are
     the same bag keys with the same effects (`SHOP_ITEMS`).
 
-## Diego sells no food or drink (v2.3.3116)
+## Diego sells no food or drink (v2.3.3132)
 
 - **His shelf is empty** (`data.js` `DIEGO_SHELF`). The vendor building's
   `shop_purchase`, which sells only that shelf, sells nothing.

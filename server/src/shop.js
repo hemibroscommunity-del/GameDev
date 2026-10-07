@@ -104,7 +104,7 @@ export function isShopPotion(key) {
 export function isCookhouseDish(key) {
   return typeof key === 'string' && Object.prototype.hasOwnProperty.call(DISHES, key);
 }
-/* v2.3.3116: ...and no COOKED FOOD at all.  Owner: "I want food and drink to
+/* v2.3.3132: ...and no COOKED FOOD at all.  Owner: "I want food and drink to
    come exclusively from farming and recipes."  A cooked fish he bought would
    go back on his shelf, food from his counter; and the six cooked trout every
    world's pile started with (SEED, below) came from nowhere.  So cooked fish
@@ -114,7 +114,7 @@ export function isCookedFood(key) {
   return typeof key === 'string' && /^cooked/i.test(key);
 }
 /* What he neither buys nor sells out of his pile: the tonics, the dishes and
-   cooked food -- since v2.3.3116, everything you eat or drink. */
+   cooked food -- since v2.3.3132, everything you eat or drink. */
 function heWontTrade(key) {
   return isShopPotion(key) || isCookhouseDish(key) || isCookedFood(key);
 }
@@ -237,7 +237,7 @@ export const SHOP = {
    * Written ONCE, on the first read of a world that has never had a pile. A
    * pile that has been emptied is a written record of {}, which is not the
    * same as no record -- so clearing him out does not quietly restock him. */
-  /* v2.3.3116: nothing.  Food comes only from farming and recipes (owner,
+  /* v2.3.3132: nothing.  Food comes only from farming and recipes (owner,
      isCookedFood above), and a world's pile that already took its six trout
      keeps them out of sight: heWontTrade lists and sells no cooked fish. */
   SEED: {},
@@ -446,7 +446,7 @@ export const shopMethods = {
     if (isShopStaple(key)) return { ok: false, error: "He only sells those" };
     /* v2.3.3130: the tonics are off his shelf and still not bought back
        (isShopPotion above). */
-    /* v2.3.3116: one answer for all of it -- since then, nothing you eat or
+    /* v2.3.3132: one answer for all of it -- since then, nothing you eat or
        drink (heWontTrade). */
     if (heWontTrade(key)) return { ok: false, error: "He doesn't buy food or drink" };
     const want = Math.floor(Number(qty) || 0);

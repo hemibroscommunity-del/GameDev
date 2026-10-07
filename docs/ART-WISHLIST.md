@@ -5,7 +5,7 @@ What the game could use from the owner next, each with a prompt ready to paste.
 - Attach what each item lists, and never the bro (docs/WORLD-BIBLE.md §6).
 - Send the result in chat, and a session fits it in: the "In the game" line says where each one goes.
 - Generated from `public/tools/style/bible.js` and the Object Studio's `promptFor` (`public/tools/objects/prompts.js`). The dungeon-entrance prompts are the studio's own.
-- **The farm's art** (seed, crop and dish icons, crops growing, beds and farm things, the Barn) has its own page: `docs/art/FARM-ART-PROMPTS.md`, with `docs/art/bag-icon-style-key.png` to attach to the icon sheets (v2.3.3116).
+- **The farm's art** (seed, crop and dish icons, crops growing, beds and farm things, the Barn) has its own page: `docs/art/FARM-ART-PROMPTS.md`, with `docs/art/bag-icon-style-key.png` to attach to the icon sheets (v2.3.3132).
 
 ## Inside the buildings
 
