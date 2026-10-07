@@ -117,7 +117,7 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 
 | Type | Purpose / payload | Client handler (BroTown.jsx) |
 |---|---|---|
-| `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields; v2.3.3015: `spr: 1` while that player sprints -- a step the worker paid for in the last 600 ms, absent when walking, and deliberately not `sp`, which in a player's data is the shirt pattern; docs/specs/sprint.md "Seen and heard"; v2.3.3123: `pw`, the pet out with that player as the worker keeps it, `'kind.stage.gold.size.lv'`, absent with none -- deliberately not `pt`, which in a player's data is the pants, nor `pet`, the old client-relayed one; docs/specs/trapping.md "Pets that matter"), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only). **Zone-scoped since v2.3.1575** — see below | ~2048 |
+| `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields; v2.3.3015: `spr: 1` while that player sprints -- a step the worker paid for in the last 600 ms, absent when walking, and deliberately not `sp`, which in a player's data is the shirt pattern; docs/specs/sprint.md "Seen and heard"; v2.3.3123: `pw`, the pet out with that player as the worker keeps it, `'kind.stage.gold.size.lv'`, absent with none -- deliberately not `pt`, which in a player's data is the pants, nor `pet`, the old client-relayed one; docs/specs/trapping.md "Pets that matter"; v2.3.3142: `eqg`, the grades of the torso and greaves that player wears as the worker counts them, two letters `n`/`r`/`e`/`g` (`'rn'`, `'ee'`; godly only on a piece the worker minted, else `e`, combat.js's rule), absent in plain armour; docs/specs/armor-grade-look.md), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only). **Zone-scoped since v2.3.1575** — see below | ~2048 |
 | `state_sync` | Full room snapshot on join: players, zone monsters, etc. | ~2223 |
 | `zone_state` | v2 zone change: `{ zone, monsters, nodes, loot }` merged. **v2.3.1983: also sent MID-SESSION**, unprompted, when population-scaled spawns change a zone's roster — the client already replaces its lists wholesale on it, and a per-entity `tick` delta cannot introduce an entity, so this resend is how a new monster becomes real on any client (`docs/specs/spawn-scaling.md`) | ~2352 |
 | `zone_monsters` / `zone_nodes` / `zone_loot` | v1 legacy zone-change trio (kept as fallback). v2.3.1983: `zone_monsters` + `zone_nodes` are the v1 half of the mid-session roster push above (no `zone_loot` — piles are unaffected) | ~2732 / ~2727 / ~2347 |
@@ -457,7 +457,8 @@ Summary of the wire-visible changes:
 | `guild_quest_result` / `guild_quest_error` | Guild-quest turn-ins (private; `guild_quest_turn_in` c→s case) | guild-quests.md |
 | `threat_penalty` / `threat_expired` / `gear_locked` | Threat machine (pvp_threat/threat_response stay relays, intercepted + annotated with server countdown/settled/levy) | threats.md |
 | `pet_capture_result` | Server-rolled pet capture (private; `pet_capture` c→s case; consumes a basic_trap) | pets.md |
-| `harden_result` | §4.6c hardening roll (private; `harden_weapon` c→s case; forge mints now carry `quality`/`hardness`/`temper`) | hardening.md |
+| `harden_result` | §4.6c hardening roll (private; `harden_weapon` c→s case; forge mints now carry `quality`/`hardness`/`temper`; v2.3.3139 adds `material`/`amount`, the bars or hardened wood the attempt took and how many, and the `no-materials` refusal) | hardening.md |
+| `hardened_wood_result` | v2.3.3139: five logs into one hardened wood at the Woodworker (private; `make_hardened_wood {key, count}` c→s case; `{key, count, xp, leveled, fromLevel, newLevel, have}` or `{error}`: `off`, `bad-key`, `skill`, `no-logs`) | hardened-wood.md |
 | `trade2_state` / `trade2_invite` | Two-sided trade window (private; `trade2_open/set/confirm/cancel` c→s cases; gift trade relay unchanged) | trading.md addendum |
 | `party_state` / `party_invited` / `party_error` | Party roster echo + invite/error notices (private; `party_invite/accept/decline/leave/kick` c→s cases; roster re-echoed ~2s for cross-zone vitals) | party.md |
 
@@ -468,6 +469,32 @@ Summary of the wire-visible changes:
 winnerName, amount, period}` (broadcast on the lazy weekly draw). The
 daily login reward reuses `inbox_delivered` — no new types. GamblePanel
 deposits are caps-gated; the legacy local stub remains for old workers.
+
+**Daily rewards (v2.3.3140, caps.dailyspin + caps.dailyquests):** the login
+pays nothing now (the daily chest and its gold fallback are gone; a chest
+still held opens as before). New c→s cases `rewards_get {}`, `daily_spin
+{act: 'spin'|'double'|'collect', opId}` (a lump sum, double or nothing on
+the pot, take the pot), `daily_reroll {i}`, `season_claim {tier} | {all:
+true}`; new s→c types (both PRIVILEGED) `rewards_state {now, resetAt, spin,
+streak, dq, season, news, kept?}` (private: after `player_state` on join,
+and after every change) and `daily_progress {i, n, g}` (private, a quest's
+count). Quest, season and spin-pot payouts ride `_creditPlayer` →
+`inbox_delivered` with sources `dailyquest` / `season` / `dailyspin`, kept
+out of chat by the client. Full table:
+docs/specs/daily-rewards.md.
+
+**Salvage and essences (v2.3.3141, caps.salvage):** new c→s cases
+`smith_salvage {field: 'armorStash'|'legsStash', gid}` or `{field:
+'weaponStash', idx, sig}` (a carried copper, iron or black steel piece back
+into two of its bars, and a Rare/Elite/Godly one's essence) and
+`essence_apply {essence, field, gid}` or `{essence, field: 'weaponStash',
+idx, sig}` (an essence raises a carried piece of its metal to its grade); new
+s→c types (both PRIVILEGED, private) `smith_salvage_result {ok, field,
+gid|idx, name, bar, bars, essence, grade, metal}` and `essence_result {ok,
+field, gid|idx, essence, grade, metal, piece}`, or `{ok: false, reason}`
+(worn, in_mail, legacy, not_held, wrong_slot, gone, changed, not_metal,
+no_essence, wrong_metal, not_lower, bad); a player_state follows each paid
+act. Full table: docs/specs/salvage.md.
 
 **Server-minted weapon drops (v2.3.1141, caps.weaponDrops):** no new
 message types. The loot pile broadcast (`loot_drop`/`zone_loot`/

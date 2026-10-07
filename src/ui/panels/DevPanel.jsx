@@ -171,6 +171,9 @@ const CAP_GATES = [
   'pvpheal' /* v2.3.3133: one bite at a time in a fight with a player -- lower case, a kill switch */,
   'farmorders' /* v2.3.3134: the Feed & Seed's order board -- lower case, a kill switch */,
   'armorforge' /* v2.3.3092: bars into armor -- lower case, a kill switch */,
+  'dailyspin' /* v2.3.3140: the Gambling Den's free daily spin -- lower case, a kill switch */,
+  'dailyquests' /* v2.3.3140: daily quests + the season -- lower case, a kill switch */,
+  'salvage' /* v2.3.3141: salvage for bars, and the grades' essences -- lower case, a kill switch */,
   'trapping' /* v2.3.3120: arm a trap, then kill it -- lower case, a kill switch */,
   'trapcraft' /* v2.3.3120: box traps at the Woodworker -- lower case, a kill switch */,
   'petbook' /* v2.3.3120: the pets record and the Pets page -- lower case, a kill switch */,
@@ -180,6 +183,8 @@ const CAP_GATES = [
   'petwards' /* v2.3.3123: the land ward of the pet out with you -- lower case, a kill switch */,
   'petshow' /* v2.3.3123: the others see your pet -- lower case, a kill switch */,
   'pethouse' /* v2.3.3123: more room in the Pet House for gold -- lower case, a kill switch */,
+  'hardenmats' /* v2.3.3139: hardening takes a material (bars, or a bow's hardened wood) and a doubling gold ladder -- lower case, a kill switch */,
+  'hardenedwood' /* v2.3.3139: five logs into one hardened wood at the Woodworker -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported
@@ -485,6 +490,16 @@ export const DevPanel = ({ onClose }) => {
               {/* v2.3.2875: the kit hands out the copper and iron armour sets too (devtools.js DEVKIT.ARMOR) */}
               Give weapons + armor + levels
             </button>
+            {/* v2.3.3142: the kit's armour in a grade, to wear and see its look
+                (rare blue, elite orange, godly prismatic -- glint.js GRADE_LOOK) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7, marginBottom: 4 }}>
+              {['rare', 'elite', 'godly'].map((q) => (
+                <button key={q} type="button" style={chip} disabled={busy} data-dev-kit-grade={q}
+                  onClick={async () => { const j = await call('/dev/kit', { playerId: myId, what: 'armor', quality: q }); if (j) { setMsg((typeof j.armor === 'number' ? j.armor : 0) + ' ' + q + ' armour pieces — check your bag.'); refresh(); } }}>
+                  {q.charAt(0).toUpperCase() + q.slice(1)} armor
+                </button>
+              ))}
+            </div>
             <button type="button" style={btn(false)} disabled={busy}
               onClick={async () => { const j = await call('/dev/vitals', { playerId: myId, heal: true }); if (j) { setMsg('Topped up.'); refresh(); } }}>
               Heal / refill

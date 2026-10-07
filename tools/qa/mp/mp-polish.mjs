@@ -14,7 +14,9 @@
  *   3. The Debug switch is gone without ?dev=1.
  *   4. PARTY CHAT: a Party lane exists only while you are in a party, sends
  *      /p, and a party line whose party has gone is refused, not shouted.
- *   5. DAILY REWARD: shown once as a toast, not in chat.
+ *   5. DAILY REWARD: shown once as a toast, not in chat.  v2.3.3140: the login
+ *      pays no chest and opens no window (the free spin at the Gambling Den is
+ *      the day's reward, mp-dailyrewards); a chest still held opens from the bag.
  *   6. ABOUT: privacy, rules and credits open from Settings.
  */
 import * as H from './harness.mjs';
@@ -51,28 +53,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ═══ 5. THE DAILY CHEST (owner: "a loot box ... instead of daily coin
      reward"; then, with the chest art: "you need to click the claim button to
      get it.  You can stack them.  It'll reveal whatever the reward is coming
-     out of it.") ═══  The day paid a chest into the bag and the claim window
-     opened by itself once the intro lifted. */
+     out of it.") ═══
+     v2.3.3140 (owner: "Personally I find the login page with the chest
+     intrusive ... You can remove the daily chest and just do the gambling
+     spin"): the day pays NO chest and no window opens by itself -- the free
+     spin at the Gambling Den is the day's reward (mp-dailyrewards).  A chest
+     already in a bag still opens from it, which is what the rest pins. */
   const inChat = await A.page.evaluate(() => {
     const S = window._gameState.current;
     return (S.chatLog || []).some((m) => /Daily (reward|chest)/.test((m && (m.text || m.msg)) || ''));
   });
   rec.ok('the daily reward is still not a chat line (v2.3.2037)', inChat === false, { inChat });
   const hasChest = await H.readState(A, (S) => (S.rpg && S.rpg.inventory && S.rpg.inventory.daily_chest) || 0);
-  rec.ok('DAILY CHEST: the day put a chest in the bag', hasChest === 1, { hasChest });
-  await A.page.waitForSelector('[data-chest-window="offer"]', { timeout: 10000 }).catch(() => {});
-  rec.ok('...and its claim window opened by itself after the intro', !!(await A.page.$('[data-chest-window="offer"]')));
+  await A.page.waitForTimeout(2500);
+  rec.ok('v2.3.3140: the day puts NO chest in the bag, and no chest window opens by itself (even with the offer allowed)',
+    hasChest === 0 && !(await A.page.$('[data-chest-window]')), { hasChest });
 
-  /* STACKING: a second chest (the same item the day pays) joins the stack. */
+  /* A chest still held (granted here, as one left from before) opens from the
+     bag -- straight into the claim, as the bag's Open does. */
   const myIdA = await H.readState(A, (S) => S.myId);
-  await H.grant(wsPort, myIdA, 'item', { invKey: 'daily_chest', count: 1 });
-  await A.page.waitForFunction(() => document.body.innerText.includes('You have 2 chests waiting'), null, { timeout: 6000 }).catch(() => {});
-  rec.ok('chests STACK: the window says two are waiting', await bodyHas(A, 'You have 2 chests waiting'));
-  await shot(A, 'chest-offer');
-
-  await A.page.click('[data-chest-claim]');
-  const sawShake = await A.page.waitForSelector('[data-chest-window="shaking"]', { timeout: 2000 }).then(() => true).catch(() => false);
-  rec.ok('Claim: the chest shakes while the worker rolls', sawShake);
+  await H.grant(wsPort, myIdA, 'item', { invKey: 'daily_chest', count: 2 });
+  await A.page.waitForFunction(() => ((window._gameState.current.rpg.inventory || {}).daily_chest || 0) === 2, null, { timeout: 6000 }).catch(() => {});
+  await A.page.evaluate(() => window.__btChestOpen && window.__btChestOpen(true));
+  const sawShake = await A.page.waitForSelector('[data-chest-window="shaking"]', { timeout: 3000 }).then(() => true).catch(() => false);
+  rec.ok('Open (from the bag): the chest shakes while the worker rolls', sawShake);
   await A.page.waitForSelector('[data-chest-window="opening"]', { timeout: 8000 }).catch(() => {});
   await shot(A, 'chest-opening');
   await A.page.waitForSelector('[data-chest-reveal]', { timeout: 8000 }).catch(() => {});
@@ -95,7 +99,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the chest's sounds play on its own frames: the lid as it lifts (frame ${lid ? lid.frame : '?'}, 4 or the first drawn past it), then the prize's ${prize ? prize.cue : '?'} as it rises (${lid && prize ? prize.at - lid.at : '?'} ms later), no early coin chime`,
     !!lid && lid.frame >= 4 && !!prize && prize.at >= lid.at && (reveal && reveal.kind === 'coins' ? prize.cue === 'coins' : prize.cue === 'win') && sfx.coin === 0, sfx);
   const left = await H.readState(A, (S) => (S.rpg && S.rpg.inventory && S.rpg.inventory.daily_chest) || 0);
-  rec.ok('...and the worker took exactly one chest', left === 1, { left });
+  rec.ok('...and the worker took exactly one chest (chests still STACK)', left === 1, { left });
 
   await A.page.click('[data-chest-claim]');
   await A.page.waitForFunction(() => {
@@ -109,14 +113,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(300);
   rec.ok('Done closes the window', !(await A.page.$('[data-chest-window]')));
 
-  /* The second player has its own chest window up -- "Later" keeps the chest
-     and gets out of the way of the quest checks below. */
-  await B.page.waitForSelector('[data-chest-window="offer"]', { timeout: 10000 }).catch(() => {});
-  await B.page.click('text=Later').catch(() => {});
-  await B.page.waitForTimeout(300);
-  const bKept = await H.readState(B, (S) => (S.rpg && S.rpg.inventory && S.rpg.inventory.daily_chest) || 0);
-  rec.ok('"Later" closes the window and keeps the chest in the bag',
-    !(await B.page.$('[data-chest-window]')) && bKept === 1, { bKept });
+  /* The second player: no window either (v2.3.3140) -- nothing in the way of
+     the quest checks below. */
+  rec.ok('the second player has no chest window at login either', !(await B.page.$('[data-chest-window]')));
 
   /* ═══ 7. THE COOKING QUEST'S STEPS (owner: "a lot of people get stuck on
      the quest for cooking 2 fish") ═══

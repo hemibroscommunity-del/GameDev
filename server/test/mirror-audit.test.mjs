@@ -31,11 +31,17 @@ import { PROG3 as SRV_PROG3 } from '../src/prog3.js';
 import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_ARCH as SRV_BURROW_ARCH, SLIME_BURST as SRV_SLIME_BURST } from '../src/telegraph.js'; /* v2.3.2221; v2.3.2224 */
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
+import { HARDEN as SRV_HARDEN, HARDEN_BAR_BY_TIER as SRV_HARDEN_BAR_BY_TIER, HARDEN_WOOD_BY_TIER as SRV_HARDEN_WOOD_BY_TIER, HARDEN_MATERIAL_NAMES as SRV_HARDEN_NAMES, hardenGoldFor as srvHardenGold, hardenAmountFor as srvHardenAmount, hardenMaterialFor as srvHardenMat, hardenIsWood as srvHardenIsWood } from '../src/hardening.js'; /* v2.3.3139 */
+import { HARDENED_WOOD as SRV_HARDENED_WOOD } from '../src/hardenedwood.js'; /* v2.3.3139 */
+import { HARDEN_COSTS as CLIENT_HARDEN, HARDEN_MATERIAL_NAMES as CLIENT_HARDEN_NAMES, hardenGoldFor as clientHardenGold, hardenAmountFor as clientHardenAmount, hardenMaterialFor as clientHardenMat, hardenIsWood as clientHardenIsWood, hardenTierOf as clientHardenTier } from '../../src/data/hardenCosts.js'; /* v2.3.3139 */
+import { HARDENED_WOOD_RECIPES as CLIENT_HARDENED_WOOD, HARDENED_WOOD_MAX_PER_REQUEST as CLIENT_HW_MAX, HARDEN_WOOD_BY_TIER as CLIENT_HARDEN_WOOD_BY_TIER } from '../../src/data/hardenedWood.js'; /* v2.3.3139 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
 import { FARM as SRV_FARM, farmGrowMs as srvFarmGrowMs, farmYield as srvFarmYield } from '../src/farm.js'; /* v2.3.3127 */
 import { FARM as CLIENT_FARM, FARM_CROP_ORDER as CLIENT_FARM_ORDER, farmGrowMs as clientFarmGrowMs, farmYieldShown as clientFarmYieldShown } from '../../src/data/farmCrops.js'; /* v2.3.3127 */
 import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3092 */
 import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
+import * as SRV_SALVAGE from '../src/salvage.js'; /* v2.3.3141 */
+import * as CLIENT_SALVAGE from '../../src/data/salvage.js'; /* v2.3.3141 */
 import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038 */
 import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl } from '../../src/data/lifeSkills.js'; /* v2.3.3038 */
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
@@ -1475,6 +1481,33 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     Object.values(SRV_ARMOR_FORGE.RECIPES).every((r) => r.minLvl >= SRV_SMELT.RECIPES[r.bar].minLvl));
 }
 
+// ── SALVAGE AND ESSENCES (v2.3.3141) ──
+// The Blacksmith's Salvage tab draws the rows the worker will accept and sends
+// a weapon's signature the worker re-derives; an essence's name in the bag is
+// parsed from its key.  So the table and every helper must agree exactly.
+{
+  const S = SRV_SALVAGE.SALVAGE, C = CLIENT_SALVAGE.SALVAGE;
+  check('salvage: the same metals, bars, gearBases and names on both sides', JSON.stringify(S.METALS) === JSON.stringify(C.METALS),
+    { srv: S.METALS, cli: C.METALS });
+  check('salvage: the same costs, grades, essence grades and weapon types',
+    S.COST_BARS === C.COST_BARS && S.BARS === C.BARS && JSON.stringify(S.GRADES) === JSON.stringify(C.GRADES)
+      && JSON.stringify(S.ESSENCE_GRADES) === JSON.stringify(C.ESSENCE_GRADES) && JSON.stringify(S.WEAPON_TYPES) === JSON.stringify(C.WEAPON_TYPES));
+  const keys = ['essence_rare_iron', 'essence_godly_blacksteel', 'essence_normal_iron', 'essence_rare_wood', '__proto__', '', null, 'essence_elite_copper'];
+  const pieces = [{ mat: 'iron' }, { mat: 'blacksteel' }, { material: 'copper' }, { mat: 'leather' }, { mat: '__proto__' }, null];
+  const weapons = [{ type: 'sword', gearBase: 'copper', quality: 'rare', hardness: 2, tierMult: 1.12 }, { type: 'greatsword', gearBase: 'steel' },
+    { type: 'bow', gearBase: 'iron' }, { type: 'sword' }, { type: 'sword', gearBase: 'titanium', quality: 'godly' }, null];
+  const off = [];
+  for (const k of keys) if (JSON.stringify(SRV_SALVAGE.parseEssenceKey(k)) !== JSON.stringify(CLIENT_SALVAGE.parseEssenceKey(k))) off.push({ parse: k });
+  for (const q of ['normal', 'rare', 'elite', 'godly', 'legendary', undefined]) if (SRV_SALVAGE.gradeRank(q) !== CLIENT_SALVAGE.gradeRank(q)) off.push({ rank: q });
+  for (const p of pieces) if (SRV_SALVAGE.armourMetal(p) !== CLIENT_SALVAGE.armourMetal(p)) off.push({ armour: p });
+  for (const w of weapons) {
+    if (SRV_SALVAGE.weaponMetal(w) !== CLIENT_SALVAGE.weaponMetal(w)) off.push({ weaponMetal: w });
+    if (SRV_SALVAGE.weaponSig(w) !== CLIENT_SALVAGE.weaponSig(w)) off.push({ weaponSig: w });
+  }
+  if (SRV_SALVAGE.essenceKey('rare', 'iron') !== CLIENT_SALVAGE.essenceKey('rare', 'iron')) off.push({ essenceKey: 1 });
+  check('salvage: every helper answers the same on both sides', off.length === 0, off);
+}
+
 // ── GATHERING HITS: one hit per swing, on the blow ──
 // v2.3.2956.  The worker validates a harvest against (hits - 1) swings of
 // GATHER_HITS.MS; the client plays the hits on GATHER_SWING's blow instants.
@@ -1822,6 +1855,60 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const houseCodes = ['house-full', 'stale', 'no-gold', 'confirm'];
   check('pets: every Pet House refusal the worker sends has words on the phone', houseCodes.every((c) => typeof CLIENT_TRAP_WORDS[c] === 'string' && CLIENT_TRAP_WORDS[c].length > 0),
     houseCodes.filter((c) => !CLIENT_TRAP_WORDS[c]));
+}
+
+/* ═══ v2.3.3139: WHAT HARDENING COSTS ═══
+   The owner: "hardening should cost 1 bar per level ... and a doubling gold
+   cost per level", and for bows and staffs "5 logs of the raw material can
+   make one 'hardened (name) wood' ... Also for the number required and gold
+   too" -- the Blacksmith's and the Woodworker's Harden rows show the game's
+   copy (src/data/hardenCosts.js); it must be the price the worker charges,
+   piece for piece, coin for coin, on both ladders, and name the same
+   material for every weapon. */
+{
+  const names = (o) => JSON.stringify(Object.keys(o).sort().map((k) => [k, o[k]]));
+  check('hardening: the game\'s ladder is the worker\'s (base, both factors, a material a level, the bars and woods by tier, their names)',
+    CLIENT_HARDEN.COST_BASE === SRV_HARDEN.COST_BASE && CLIENT_HARDEN.COST_FACTOR === SRV_HARDEN.COST_FACTOR
+      && CLIENT_HARDEN.OLD_COST_FACTOR === SRV_HARDEN.OLD_COST_FACTOR && CLIENT_HARDEN.MATS_PER_LEVEL === SRV_HARDEN.MATS_PER_LEVEL
+      && JSON.stringify(CLIENT_HARDEN.BAR_BY_TIER) === JSON.stringify(SRV_HARDEN_BAR_BY_TIER)
+      && JSON.stringify(CLIENT_HARDEN.WOOD_BY_TIER) === JSON.stringify(SRV_HARDEN_WOOD_BY_TIER)
+      && names(CLIENT_HARDEN_NAMES) === names(SRV_HARDEN_NAMES),
+    { client: CLIENT_HARDEN, server: { COST_BASE: SRV_HARDEN.COST_BASE, COST_FACTOR: SRV_HARDEN.COST_FACTOR, OLD_COST_FACTOR: SRV_HARDEN.OLD_COST_FACTOR,
+      MATS_PER_LEVEL: SRV_HARDEN.MATS_PER_LEVEL, BAR_BY_TIER: SRV_HARDEN_BAR_BY_TIER, WOOD_BY_TIER: SRV_HARDEN_WOOD_BY_TIER } });
+  const off = [];
+  for (let h = 0; h < SRV_HARDEN.MAX; h++) {
+    if (srvHardenGold(h, false) !== clientHardenGold(h, false)) off.push(['gold', h]);
+    if (srvHardenGold(h, true) !== clientHardenGold(h, true)) off.push(['old gold', h]);
+    if (srvHardenAmount(h) !== clientHardenAmount(h)) off.push(['amount', h]);
+  }
+  for (let t = 0; t <= 22; t++) for (const wood of [false, true]) if (srvHardenMat(t, wood) !== clientHardenMat(t, wood)) off.push(['material', t, wood]);
+  check('hardening: every attempt\'s gold and amount the same on both sides (500..8,000 and 1..5; the old ladder 500..128,000), and the same material for every tier, metal or wood',
+    off.length === 0 && [0, 1, 2, 3, 4].map((h) => clientHardenGold(h)).join() === '500,1000,2000,4000,8000'
+      && [0, 1, 2, 3, 4].map((h) => clientHardenGold(h, true)).join() === '500,2000,8000,32000,128000'
+      && [0, 1, 2, 3, 4].map((h) => clientHardenAmount(h)).join() === '1,2,3,4,5', off);
+  /* the tier the game reads for the material is the tier the worker reads,
+     and both call the same weapons wood */
+  const tOff = [];
+  const weapons = [{ gearBase: 'wood' }, { gearBase: 'copper' }, { gearBase: 'iron' }, { gearBase: 'steel' }, { gearBase: 'titanium' },
+    { gearBase: 'ww_pine' }, { gearBase: 'ww_hardwood' }, { gearBase: 'ww_cedar' }, { gearBase: 'ww_maple' }, { gearBase: 'ww_ironbark' },
+    { tierMult: 1.3 }, { tierMult: 1 }, {}];
+  for (const w of weapons) {
+    if (room._weaponTierIndex(w) !== clientHardenTier(w)) tOff.push(['tier', w, room._weaponTierIndex(w), clientHardenTier(w)]);
+    for (const slot of ['weapon', 'rangedWeapon', 'staffWeapon']) if (srvHardenIsWood(w, slot) !== clientHardenIsWood(w, slot)) tOff.push(['wood', w, slot]);
+  }
+  check('hardening: the game picks the same tier, and calls the same weapons wood, as the worker -- so the same material', tOff.length === 0, tOff);
+  /* the hardened wood itself: the Woodworker's Harden tab draws the game's copy */
+  const RC = SRV_HARDENED_WOOD.RECIPES;
+  const hOff = [];
+  for (const k of new Set([...Object.keys(RC), ...Object.keys(CLIENT_HARDENED_WOOD)])) {
+    const a = RC[k], b = CLIENT_HARDENED_WOOD[k];
+    if (!a || !b) { hOff.push(['missing', k]); continue; }
+    for (const f of ['log', 'logCost', 'minLvl', 'xp', 'tier', 'name']) if (a[f] !== b[f]) hOff.push([k, f, a[f], b[f]]);
+  }
+  check('hardened wood: the Woodworker\'s Harden tab is the worker\'s table (log, logs a piece, level, XP, wood, name) and its "All" cap',
+    hOff.length === 0 && CLIENT_HW_MAX === SRV_HARDENED_WOOD.MAX_PER_REQUEST && Object.keys(RC).length === 5, hOff);
+  check('hardened wood: the woods by tier read off the same table on both sides',
+    JSON.stringify(CLIENT_HARDEN_WOOD_BY_TIER) === JSON.stringify(SRV_HARDEN_WOOD_BY_TIER), { client: CLIENT_HARDEN_WOOD_BY_TIER, server: SRV_HARDEN_WOOD_BY_TIER });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

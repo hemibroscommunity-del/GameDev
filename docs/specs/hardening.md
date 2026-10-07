@@ -64,13 +64,18 @@ with the server-side weapon-drop migration (successor item below).
 
 ## Hardening (§4.6c)
 
-| From → To | Success | Cost |
-|---|---|---|
-| H0→1 | 80% | 500g |
-| H1→2 | 20% | 2,000g |
-| H2→3 | 5% | 8,000g |
-| H3→4 | 1% | 32,000g |
-| H4→5 | 0.5% | 128,000g |
+| From → To | Success | Cost (v2.3.3139) | Cost before |
+|---|---|---|---|
+| H0→1 | 80% | 500g + 1 | 500g |
+| H1→2 | 20% | 1,000g + 2 | 2,000g |
+| H2→3 | 5% | 2,000g + 3 | 8,000g |
+| H3→4 | 1% | 4,000g + 4 | 32,000g |
+| H4→5 | 0.5% | 8,000g + 5 | 128,000g |
+
+The "+ n" is the weapon's MATERIAL: its metal's bars for a sword, its own
+wood's hardened wood for a bow or a staff. Every attempt pays, won or lost.
+Which material, and the switches back to the old column: "v2.3.3139: bars or
+hardened wood, and gold that doubles" below.
 
 - +1.0417 effective base per level (GDD's +5 ÷ 4.8 code scale).
 - **Failure resets hardness by the Temper pity band** (evaluated on
@@ -84,21 +89,89 @@ with the server-side weapon-drop migration (successor item below).
   The guard gear lock (threats.md) blocks hardening — it mutates the
   equipped weapon.
 
+## v2.3.3139: bars or hardened wood, and gold that doubles
+
+The owner: "I think hardening should cost 1 bar per level (hardening lvl 1
+cost 1 bar, hardening lvl 2 costs 2 bars, and a doubling gold cost per
+level) ... up until lvl 5 (which is almost impossibly hard)", then "I meant
+1000 for lvl 2, 2000 for lvl 3, etc". And for bows and staffs: "Maybe 5 logs
+of the raw material can make one 'hardened (name) wood' raw material so it
+mirrors the same structure. Also for the number required and gold too".
+
+- **Gold** doubles a level instead of quadrupling: `500 × 2^H` for the
+  attempt from H (`HARDEN.COST_FACTOR` 2; the old 4 kept as
+  `OLD_COST_FACTOR`). The last attempt is 8,000g, not 128,000g.
+- **A material**: the attempt at H(n) takes n of it (`HARDEN.MATS_PER_LEVEL`
+  1, `hardenAmountFor`), every attempt, won or lost, like the gold. The odds
+  are untouched, so H5 stays the 1-in-2.5-million climb.
+- **Which material** (`hardenMaterialFor(tierIdx, wood)`, `hardenIsWood`):
+  - a **sword** (any melee weapon) takes **bars**, by its material tier, the
+    same index the Smithing gate reads (`_weaponTierIndex`;
+    `HARDEN_BAR_BY_TIER`): tiers 1-2 copper, tier 3 iron, tier 4 and up black
+    steel. So a copper blade takes copper bars, an iron blade iron and a black
+    steel blade black steel; the wood tier takes copper, titanium and beyond
+    black steel until their own bars exist;
+  - a **bow or a staff** takes **hardened wood of its own wood**
+    (`HARDEN_WOOD_BY_TIER`, read off `HARDENED_WOOD.RECIPES` in
+    WOODWORKING_TIERS order): a pine bow Hardened Pine Wood, a maple staff
+    Hardened Maple Wood; the woods past maple take maple's until their own
+    logs grow. Wood is a `ww_` gearBase or the bow's and the staff's slots, so
+    an old bow with no `ww_` gearBase (ranked by tierMult, as the gate does)
+    takes wood too;
+  - another material never counts: iron bars never pay for a copper blade,
+    and bars or raw logs never pay for a bow.
+  - The first cut of v2.3.3139 put bows and staffs on bars by their wood's
+    tier; the owner's answer replaced it with hardened wood.
+- **Hardened wood** is made at the Woodworker: five logs of one tree make one,
+  as five ore make a bar (`server/src/hardenedwood.js`, its own spec:
+  `docs/specs/hardened-wood.md`).
+- **Order of the checks**: the Smithing gate, then the gold (`no-gold`),
+  then the material (`no-materials`, "Need 3 Iron Bars", "Need 1 Hardened
+  Pine Wood"), then gold and material come off together and the roll happens
+  -- the single-mutation settle as before. A refusal takes nothing.
+- **The screens** read the same table (`src/data/hardenCosts.js` and
+  `src/data/hardenedWood.js`, held to the worker's by mirror-audit): the
+  Blacksmith's Upgrade tab shows the bar's picture with "have / need" beside
+  the gold, and its Harden button is off until both are there; the
+  Woodworker's Harden button says "Attempt H2 (1000G + 2 Hardened Pine Wood ·
+  20%)" or what is missing ("Need 1 Hardened Pine Wood more"). A failed
+  attempt's words over the player say the material too: "Hardening failed!
+  (-1000G, -2 Copper Bars) → H0".
+- **Kill switches**:
+  - `hardenmats: false` in liveflags puts the old ladder back for every
+    weapon (500 × 4^H gold, no material) and stops advertising
+    `caps.hardenmats`, so the screens show that ladder again. Against an older
+    worker (no cap) the screens show the old ladder too, which is what it
+    charges.
+  - `hardenedwood: false` stops hardened wood being made and puts bows and
+    staffs (only) back on the old gold-only ladder, so nothing asks for a
+    material that can no longer be made; swords keep their bars. The screens
+    follow `caps.hardenedwood`.
+- Tests: `hardening` suite §8b (the ladder, the bar by tier, refusals before
+  the roll, exactly n bars and the gold spent, the ledger, a forged
+  `stats_update` cannot pay, `hardenmats: false`) and §8c (a pine bow and a
+  maple staff take their own hardened wood, bars and raw logs never pay for
+  a bow, `hardenedwood: false`); the `hardenedwood` suite; mirror-audit
+  "hardening" and "hardened wood"; `mp-hardenbars` on a phone (both halves).
+
 ## Wire surface
 
 | Direction | Type | Payload | Notes |
 |---|---|---|---|
 | c→s | `harden_weapon` | `{slot: weapon\|rangedWeapon\|staffWeapon}` | Explicit case. |
-| s→c | `harden_result` | `{success, slot, cost, hardness, temper, odds}` or `{success:false, error, message}` | Private. Errors: `not-now`, `bad-slot`, `no-weapon`, `maxed`, `skill-gate`, `no-gold`. Weapon state rides the authoritative player_state echo. |
+| s→c | `harden_result` | `{success, slot, cost, material?, amount?, hardness, temper, odds}` or `{success:false, error, message}` | Private. Errors: `not-now`, `bad-slot`, `no-weapon`, `maxed`, `skill-gate`, `no-gold`, `no-materials` (v2.3.3139). `material`/`amount` (v2.3.3139): the bars or hardened wood the attempt took and how many, absent on the old ladder. Weapon state, gold and the bag ride the authoritative player_state echo. |
 
 `harden_result` is in `PRIVILEGED_EVENTS`. Capability:
-`state_sync.caps.harden` gates the new panel sections.
+`state_sync.caps.harden` gates the new panel sections;
+`state_sync.caps.hardenmats` (v2.3.3139) says the worker charges a material
+and the doubling ladder, and `state_sync.caps.hardenedwood` (v2.3.3139) that
+it makes hardened wood and charges it for bows and staffs.
 
 ## Storage / ledgers
 
 | Key | Value |
 |---|---|
-| `harden_ledger:<pid>` | last 50 attempts `{ts, slot, type, from, to, success, cost, temper}` (§17.5) |
+| `harden_ledger:<pid>` | last 50 attempts `{ts, slot, type, from, to, success, cost, material?, amount?, temper}` (§17.5; `material`/`amount` since v2.3.3139) |
 | `harden_h5_log` | global H5-mint timestamps, pruned to a 90-day window — **INV-27 monitoring only** (≤10 per 90 days is the health check, never enforcement) |
 
 ## Sanitizer contract

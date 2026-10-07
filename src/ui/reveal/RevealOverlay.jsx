@@ -1,6 +1,6 @@
 import React from 'react';
 import { revealBus } from './revealBus.js';
-import { QUALITY_COLOR, QUALITY_LABEL } from '../mobile/dash/common.js';
+import { QUALITY_COLOR, QUALITY_LABEL, qualityInk } from '../mobile/dash/common.js';
 import { armorIconFor } from '@/rendering/gearVariants.js';
 import { metalIconPath } from '@/rendering/traits/materialTints.js';
 
@@ -213,7 +213,7 @@ export const RevealOverlay = () => {
         {/* The item, named in its grade's colour — the owner's ask, and the
             only line that survives the animation. */}
         {done && (
-          <div style={{ fontSize: 14, fontWeight: 800, color: hue, textAlign: 'center' }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: hue, textAlign: 'center', ...(item.quality === 'godly' ? qualityInk('godly') : null) }}>
             {QUALITY_LABEL[item.quality]} {item.name}
           </div>
         )}

@@ -18,6 +18,7 @@
  * file referenced them via the class. */
 
 import { computeCanonicalPools, computeBuildTotal } from './migrations.js';
+import { wornGradeLetter } from './gearprov.js';   /* v2.3.3142: the worn grade everyone else sees */
 import {
   t2CounterRate,
   // v2.3.1451: bench-locked T2 pricing (see the data.js block).
@@ -90,7 +91,13 @@ export const gridMethods = {
     if (this._threatGearLocked(session.id, ps)) return false;
     /* _prog3EquipOk's 'armor' slot covers BOTH body pieces (gear.js). */
     if (next && !this._prog3EquipOk(ps, 'armor', next)) return false;
+    const wasGrade = wornGradeLetter(ps[slot]);
     ps[slot] = next;
+    /* v2.3.3142: a swap that changes the grade everyone else sees (tick.js
+       `eqg`) goes out with the next tick -- an elite torso for a plain one of
+       the same metal changes no look the client relays, so nothing else would
+       mark you until your next step */
+    if (wornGradeLetter(next) !== wasGrade && session && session.id) this.dirtyPlayers.add(session.id);
     return true;
   },
 

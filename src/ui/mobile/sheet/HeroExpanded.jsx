@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
    anywhere else that ever shows these rows read from one copy. */
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo, skillInfo } from '../infoGlossary.js'; /* v2.3.2592: skillInfo — the column headers explain their lane */
-import { COL, QUALITY_COLOR, panelStyle, getState } from '../dash/common.js';
+import { COL, QUALITY_COLOR, qualityInk, panelStyle, getState } from '../dash/common.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon, weaponForCat, swingCooldownMultFor, toDisplayDamage, toDisplayHp, DISPLAY_SCALE_K, calcDisplayDmgRange /* v2.3.2592: each lane's own damage range */ } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon; v2.3.2231: weaponForCat; v2.3.2441: swingCooldownMultFor; v2.3.2521: DISPLAY_SCALE_K for the "does not change damage" cut-off */
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
@@ -1091,6 +1091,7 @@ export const HeroExpanded = () => {
                         fontSize: 11, fontWeight: 800, letterSpacing: '.03em',
                         lineHeight: 1.1,
                         textTransform: 'uppercase', color: nameCol,
+                        ...(quality === 'godly' ? qualityInk('godly') : null),   /* v2.3.3142: a godly name is a rainbow */
                         overflowWrap: 'anywhere',
                       }}>{selCard ? selCard.title : selSlot.label}</span>
                     </span>
