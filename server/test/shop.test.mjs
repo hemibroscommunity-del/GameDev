@@ -147,52 +147,36 @@ check('shop_state cannot be forged by a client', PRIVILEGED_EVENTS.has('shop_sta
 check('shop_result cannot be forged by a client', PRIVILEGED_EVENTS.has('shop_result'));
 
 /* ═══ v2.3.2053: WHAT HE STARTS WITH ═══
-   Owner: the consumables go, and "his inventory can just start with a few
-   cooked fish". A SEED, not a staple: it is ordinary stock, priced by the same
-   decay, and it runs out. */
+   Owner, then: the consumables go, and "his inventory can just start with a
+   few cooked fish" -- a SEED of six cooked trout, ordinary decaying stock.
+   v2.3.3132: NOTHING.  Owner: "Remove all of Diego's potions. I want food and
+   drink to come exclusively from farming and recipes."  The trout came from
+   nowhere, and his staple shelf (DIEGO_SHELF) is empty. */
 const fresh = makeState();
 const room3 = new GameRoom(fresh, mockEnv);
 const seeded = await room3._shopList();
-const fish = seeded.items.find((i) => i.key === 'cooked_fish_trout');
-check('a brand-new world finds a few cooked fish on him', !!fish && fish.qty > 0,
-  seeded.items);
-check('...priced above the raw fish they were made from',
-  room3._shopBaseValue('cooked_fish_trout') > room3._shopBaseValue('fish_trout'),
-  { cooked: room3._shopBaseValue('cooked_fish_trout'), raw: room3._shopBaseValue('fish_trout') });
-/* ═══ v2.3.2063: THE PILE AND THE SHELF ARE DIFFERENT THINGS ═══
-   This used to read "and nothing else, so the retired consumables are really
-   gone". The consumables came back at the owner's request ("These potions
-   should be purchasable there") -- but as STAPLES, which is a different list:
-   fixed price, always there, no decay, and buying one never moves the pile.
-   So the claim worth making is not "no consumables" but "no consumable is in
-   the PILE": a potion in the pile would be a finite stock nobody can restock,
-   because no player can sell him one. */
-const pile = seeded.items.filter((i) => !i.staple);
-check('the seeded PILE is the fish and nothing else',
-  pile.length === 1 && pile[0].key === 'cooked_fish_trout', pile.map((i) => i.key));
-/* v2.3.3130: his staple shelf is the two instant items (DIEGO_SHELF).  The
-   three tonics are brewed at the Cookhouse from the farm's herbs now, and the
-   farming plan takes them off his shelf the day the brews ship. */
-check('...and his staple shelf is the cooked minnow and the stamina salts -- '
-    + 'the tonics are brewed now, not sold',
-  JSON.stringify(seeded.items.filter((i) => i.staple).map((i) => i.key)) === JSON.stringify(['cookedMinnow', 'staminaSalts']),
-  seeded.items.filter((i) => i.staple).map((i) => i.key));
-check('...priced at what the vendor charges, so the two shelves cannot drift',
-  seeded.items.find((i) => i.key === 'staminaSalts').sell === SHOP_ITEMS.staminaSalts.cost,
-  seeded.items.find((i) => i.key === 'staminaSalts'));
-
-/* The seed is written ONCE. A pile players have emptied is a stored {}, which
-   is not the same as "never seeded" -- if that distinction were missed he
-   would silently restock every time someone cleared him out, which is a money
-   printer rather than a shop. */
-const psC = { coins: 10000, inventory: {} };
-const bought = await room3._shopBuy(psC, 'cooked_fish_trout', fish.qty);
-check('the seeded fish can all be bought', bought.ok && bought.bought === fish.qty, bought);
-const room4 = new GameRoom(fresh, mockEnv);
-const after2 = await room4._shopList();
-check('...and he does NOT restock them on the next read (the seed is once, '
-    + 'not a respawn)',
-  !after2.items.some((i) => i.key === 'cooked_fish_trout'), after2.items);
+check('a brand-new world finds nothing on him: no seeded fish and no staples (v2.3.3132)',
+  seeded.items.length === 0 && Object.keys(SHOP.SEED).length === 0, seeded.items);
+/* A world whose pile took its six trout before v2.3.3132 still has them
+   stored: they must neither show nor sell. */
+const oldPile = await room3._shopStock();
+oldPile.cooked_fish_trout = 6;
+await room3._shopSaveStock(oldPile);
+const oldList = await room3._shopList();
+const psC = { coins: 10000, inventory: Object.create(null) };
+const boughtOld = await room3._shopBuy(psC, 'cooked_fish_trout', 6);
+check('...and an old pile\'s cooked trout are neither listed nor sold',
+  !oldList.items.some((i) => i.key === 'cooked_fish_trout') && !boughtOld.ok
+  && psC.coins === 10000 && !psC.inventory.cooked_fish_trout, { listed: oldList.items, boughtOld });
+/* He buys no cooked food -- it would go back on his shelf -- but still buys
+   the raw catch, as he buys the farm's crops. */
+const cook = { coins: 0, inventory: Object.assign(Object.create(null), { cooked_fish_trout: 2, fish_trout: 2 }) };
+const rCooked = await room3._shopSell(cook, 'cooked_fish_trout', 1);
+const qCooked = await room3._shopQuote('cooked_fish_trout', 1, 'sell');
+const rRaw = await room3._shopSell(cook, 'fish_trout', 1);
+check('he buys no cooked fish (refused, quoted at nothing) but still buys the raw catch',
+  !rCooked.ok && cook.inventory.cooked_fish_trout === 2 && qCooked.qty === 0
+  && rRaw.ok && cook.inventory.fish_trout === 1 && cook.coins > 0, { rCooked, qCooked, rRaw, coins: cook.coins });
 
 /* ═══ v2.3.2055: HE QUOTES FOR THINGS HE HOLDS NONE OF ═══
    Without this the Sell button on anything new read as a bare "Sell" with no
@@ -340,53 +324,47 @@ delete psM._buffs;
    is its only usable consumable)". _handleDrinkRequest is that way, so the
    bottle can be carried. The effect itself is unchanged -- it now runs on the
    drink instead of on the sale, through the same _applyShopItem. */
+/* v2.3.3132: there is no bottle to buy from him any more -- the last two,
+   the Cooked Minnow and the Stamina Salts, came off his shelf ("Remove all of
+   Diego's potions"); the salts are brewed at the Cookhouse as the Stamina
+   Tonic.  What stays true is the rest of this section: a bottle in a bag is
+   drunk from it (below), and he never takes one back. */
 const buyer2 = { coins: 200, inventory: Object.create(null), maxMana: 100, mana: 10,
   maxHp: 100, hp: 100, maxStamina: 100, stamina: 40 };
 const beforeCoins = buyer2.coins;
-const rBuy = await room._shopBuy(buyer2, 'staminaSalts', 1);
-check('a staple can be bought off his shelf', rBuy.ok && rBuy.staple === true, rBuy);
-check('...for the vendor\'s price', beforeCoins - buyer2.coins === SHOP_ITEMS.staminaSalts.cost,
-  { spent: beforeCoins - buyer2.coins });
-check('...and what you get is a BOTTLE IN THE BAG',
-  buyer2.inventory.staminaSalts === 1, buyer2.inventory);
-/* The buy must NOT run the effect any more -- a potion that fires at the
-   counter AND stacks in the bag is one purchase paying twice. */
-check('...and the effect has NOT fired yet -- it waits for the drink',
-  buyer2.stamina === 40, buyer2.stamina);
+for (const k of ['staminaSalts', 'cookedMinnow']) {
+  const rStaple = await room._shopBuy(buyer2, k, 1);
+  check('he no longer sells ' + k + ' (v2.3.3132): refused, no coins taken, nothing in the bag',
+    !rStaple.ok && buyer2.coins === beforeCoins && !buyer2.inventory[k] && buyer2.stamina === 40, { rStaple, bag: buyer2.inventory });
+  const qStaple = await room._shopQuote(k, 1, 'buy');
+  check('...and quotes nothing for it', qStaple.qty === 0 && qStaple.total === 0, qStaple);
+}
+check('...and nothing on his list is a staple any more',
+  !(await room._shopList()).items.some((i) => i.staple), (await room._shopList()).items.filter((i) => i.staple));
+/* The vendor building's shop_purchase sells his shelf, which is empty. */
+const vb = room.playerState.buyer;
+vb.coins = 500;
+vb.stamina = 10; vb.maxStamina = 100;
+room._handleShopPurchase({ id: 'buyer' }, { itemId: 'staminaSalts' });
+room._handleShopPurchase({ id: 'buyer' }, { itemId: 'cookedMinnow' });
+check('...nor does the vendor building (shop_purchase): no coins taken, no stamina given',
+  vb.coins === 500 && vb.stamina === 10, { coins: vb.coins, stamina: vb.stamina });
 
 /* ═══ v2.3.3130: THE TONICS ARE OFF HIS SHELF, AND STILL NOT BOUGHT BACK ═══ */
 const rTonic = await room._shopBuy(buyer2, 'swiftDraught', 1);
 check('a tonic can no longer be bought from him (brewed at the Cookhouse now)',
-  !rTonic.ok && !buyer2.inventory.swiftDraught && buyer2.coins === beforeCoins - SHOP_ITEMS.staminaSalts.cost, { rTonic, bag: buyer2.inventory });
-const seller = { coins: 0, inventory: Object.assign(Object.create(null), { whetstone: 2 }) };
+  !rTonic.ok && !buyer2.inventory.swiftDraught && buyer2.coins === beforeCoins, { rTonic, bag: buyer2.inventory });
+const seller = { coins: 0, inventory: Object.assign(Object.create(null), { whetstone: 2, staminaSalts: 1 }) };
 const rBack = await room._shopSell(seller, 'whetstone', 1);
-check('...and he does not buy one back either -- the bottle stays, no coins move',
-  !rBack.ok && seller.inventory.whetstone === 2 && seller.coins === 0, { rBack, seller });
+const rBack2 = await room._shopSell(seller, 'staminaSalts', 1);
+check('...and he does not buy one back either -- the bottles stay, no coins move',
+  !rBack.ok && !rBack2.ok && seller.inventory.whetstone === 2 && seller.inventory.staminaSalts === 1 && seller.coins === 0, { rBack, rBack2, seller });
 const qBack = await room._shopQuote('whetstone', 1, 'sell');
 check('...and his quote for it says so (nothing), so the drawer offers no Sell',
   qBack.ok && qBack.qty === 0 && qBack.total === 0, qBack);
 const listed = await room._shopList(['whetstone', 'ore_copper']);
 check('...and he quotes no buy price for a tonic in your bag',
   !listed.items.some((i) => i.key === 'whetstone'), listed.items.map((i) => i.key));
-
-/* The pile is untouched by a staple sale -- no decay, nothing to run out. */
-const stockBefore = JSON.stringify(await room._shopStock());
-await room._shopBuy(buyer2, 'cookedMinnow', 1);
-check('buying a staple does not move the public pile',
-  JSON.stringify(await room._shopStock()) === stockBefore, stockBefore);
-check('...and it is still on the shelf afterwards, at the same price',
-  (await room._shopList()).items.some((i) => i.key === 'cookedMinnow' && i.staple
-    && i.sell === SHOP_ITEMS.cookedMinnow.cost), null);
-
-/* v2.3.2127: five now means five. "Always one" was forced by the effect not
-   stacking; five BOTTLES stack perfectly well and are drunk one at a time. */
-const buyer3 = { coins: 1000, inventory: Object.create(null), maxMana: 100, mana: 0,
-  maxHp: 100, hp: 100, maxStamina: 100, stamina: 100 };
-const r5 = await room._shopBuy(buyer3, 'staminaSalts', 5);
-check('asking for five staples buys five bottles, at five times the price',
-  r5.ok && r5.bought === 5 && buyer3.inventory.staminaSalts === 5
-  && 1000 - buyer3.coins === SHOP_ITEMS.staminaSalts.cost * 5,
-  { r5, spent: 1000 - buyer3.coins, bag: buyer3.inventory });
 
 /* ═══ v2.3.2127: AND THE BOTTLE OPENS ═══
    The half v2.3.2063 said did not exist. Four properties, and the last two are
@@ -421,13 +399,6 @@ room.playerState[gSess.id] = fighter;
 room._handleDrinkRequest(gSess, { invKey: 'cookedMinnow' });
 check('a refused drink keeps the bottle and heals nothing',
   fighter.inventory.cookedMinnow === 1 && fighter.hp === 10, fighter);
-
-/* Broke is refused, and costs nothing. */
-const skint = { coins: 1, inventory: Object.create(null), maxMana: 100, mana: 0,
-  maxHp: 100, hp: 100, maxStamina: 100, stamina: 100 };
-const rNo = await room._shopBuy(skint, 'staminaSalts', 1);
-check('a player who cannot afford it is refused, and keeps their coin',
-  !rNo.ok && skint.coins === 1 && !skint.inventory.staminaSalts, { rNo, skint });
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
 process.exit(failures ? 1 : 0);

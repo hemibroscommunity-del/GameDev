@@ -1505,7 +1505,15 @@ remnant to migrate server-side, not a mode to preserve.
       `BUFF_MAGNITUDES` keeps it); a farm record is stamped with what its beds
       HOLD (`_farmShape`: a potato or pumpkin makes it a 2), and
       `caps.farmCrops` (how many crops the worker grows, `FARM_CROP_IDS`
-      append-only) gates the Feed & Seed's crops, as `cookRows` the recipes.
+      append-only) gates the Feed & Seed's crops, as `cookRows` the recipes;
+    - since v2.3.3132 DIEGO SELLS NO FOOD OR DRINK -- the owner: "Remove all
+      of Diego's potions. I want food and drink to come exclusively from
+      farming and recipes": `DIEGO_SHELF` is EMPTY (mirror-audit holds it),
+      the Stamina Salts' key is brewed from two carrots (recipe row 8, the
+      bag's "Stamina Tonic"), he neither buys nor sells cooked food
+      (`isCookedFood`; raw fish and crops he still buys), a new world's pile
+      starts empty, and the daily chest's 10 fish are RAW minnows; the farm's
+      art prompts are `docs/art/FARM-ART-PROMPTS.md`.
   - Since v2.3.3120 PET TRAPPING -- the owner: "your trapping level governs
     what level monster you can capture ... The best success rate for the
     lowest tier monster should be about 1%. And each trap should cost at least

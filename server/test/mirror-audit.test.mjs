@@ -220,8 +220,14 @@ const room = Object.create(GameRoom.prototype);
   /* Damage only in a brew: combat.js's cheat ceiling was sized at one x2 brew. */
   const mealDmg = Object.entries(SRV.DISHES).filter(([, d]) => d.slot === 'meal' && d.buff === 'damage');
   check('no meal raises damage (damage is only ever a brew)', mealDmg.length === 0, mealDmg);
-  const shelf = SRV.DIEGO_SHELF.filter((k) => !Object.prototype.hasOwnProperty.call(SRV.SHOP_ITEMS, k));
-  check('DIEGO_SHELF sells only SHOP_ITEMS (what he sells, the worker can settle)', shelf.length === 0 && SRV.DIEGO_SHELF.length >= 1, SRV.DIEGO_SHELF);
+  /* v2.3.3132: and he sells NOTHING -- owner: "Remove all of Diego's
+     potions. I want food and drink to come exclusively from farming and
+     recipes."  Re-adding a bottle to his shelf fails here, on purpose. */
+  check('DIEGO_SHELF is empty: food and drink come only from farming and recipes', SRV.DIEGO_SHELF.length === 0, SRV.DIEGO_SHELF);
+  /* ...and every bottle he used to sell can be made at the Cookhouse, except
+     the Cooked Minnow, which is a fisher's cooked minnow (cook_request). */
+  const unmade = Object.keys(SRV.SHOP_ITEMS).filter((k) => k !== 'cookedMinnow' && !SRV.COOKING_RECIPES.some((r) => r.makes === k));
+  check('every bottle Diego sold is brewed at the Cookhouse now', unmade.length === 0, unmade);
 }
 
 // ── 5. QUEST_REWARDS vs QUEST_CHAINS: payouts + chain links, BOTH

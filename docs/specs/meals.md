@@ -23,9 +23,10 @@ herbs; this makes them worth growing.
   replaced every other effect (v2.3.2063).
 - **Diego's three tonics are brewed, not sold.** The Fury Tonic, Mana Draught
   and Swift Draught come off his shelf and onto the Cookhouse's.
-  - He keeps the **Cooked Minnow** and the **Stamina Salts**. Both are instant,
-    so neither competes with a meal or a brew. They are also something a new
-    player can buy at a quiet hour.
+  - He kept the **Cooked Minnow** and the **Stamina Salts** in v2.3.3130.
+    **v2.3.3132 took them too**, the owner: *"Remove all of Diego's potions. I
+    want food and drink to come exclusively from farming and recipes."* See
+    "Diego sells no food or drink" below.
   - **He still buys no potion back**, the tonics included (`shop.js`
     `isShopPotion`). Otherwise a bottle sold to him would reappear on the
     shelf he just stopped selling them from. His pile pricing would also pay
@@ -35,6 +36,26 @@ herbs; this makes them worth growing.
     His own staples always had that problem; the 0 quote fixes them too.
   - **A bottle bought before the change still drinks.** The brewed tonics are
     the same bag keys with the same effects (`SHOP_ITEMS`).
+
+## Diego sells no food or drink (v2.3.3132)
+
+- **His shelf is empty** (`data.js` `DIEGO_SHELF`). The vendor building's
+  `shop_purchase`, which sells only that shelf, sells nothing.
+- **The Stamina Salts are brewed.** The Cookhouse's row 8 makes the same bag
+  key (`staminaSalts`, +60 stamina at once) from **two carrots at Cooking 1**,
+  and the bag calls it the **Stamina Tonic**. The cheapest crop and the first
+  level, as the salts were the cheapest thing on his shelf.
+- **The Cooked Minnow is a fisher's.** Cook a raw minnow over a campfire.
+- **He neither buys nor sells cooked food** (`shop.js` `isCookedFood`, with
+  the potions and the dishes in `heWontTrade`): a cooked fish he bought would
+  have gone back on his shelf. He still buys the raw catch and the farm's
+  crops. Every refusal says "He doesn't buy food or drink".
+- **No food from nowhere.** A new world's pile no longer starts with six
+  cooked trout (`SHOP.SEED`), and a pile that already holds them never shows
+  or sells them.
+- **The daily chest's fish are raw** (`dailychest.js`): 10 minnows to cook, at
+  the same odds, in place of 10 cooked ones.
+- Bottles and fish already in bags still drink and eat.
 
 ## The dishes
 
@@ -46,11 +67,12 @@ herbs; this makes them worth growing.
 | Fury Tonic (`whetstone`) | brew | 3 Firebloom | 10 | **double** damage | 3 min |
 | Mana Draught (`manaShard`) | brew | 2 Rock Vine | 5 | specials nonstop | 3 min |
 | Swift Draught (`swiftDraught`) | brew | 2 Cloudpetal | 5 | run **1.5×** as fast | 3 min |
+| Stamina Tonic (`staminaSalts`) | at once | 2 Carrot | 1 | **+60** stamina | — |
 | Garden Stew (`meal_garden_stew`) | at once | 2 Carrot + 1 Potato | 4 | heals **150 HP** | — |
 | Pumpkin Pie (`meal_pumpkin_pie`) | meal | 1 Pumpkin + 2 Potato | 8 | **+10%** combat XP | 30 min |
 
 - **Cooking XP** is paid at the cook, tier × 25 (25, 25, 50, 75, 75, 75, 50,
-  75), as before.
+  75, and the Stamina Tonic's 25), as before.
 - **The Garden Stew is eaten at once** (`slot: 'now'`), like a cooked fish: 150
   HP plus the HP grid's Recovery, capped at your max. It takes no slot, so it
   ends neither your meal nor your brew. Like every heal, it is refused in an

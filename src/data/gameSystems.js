@@ -1078,6 +1078,17 @@ export const COOKING_RECIPES = [{
   cookLvl: 8,
   makes: 'meal_pumpkin_pie',
   desc: '+10% combat XP for 30 min'
+}, {
+  /* v2.3.3132: the Stamina Tonic -- the old Stamina Salts, brewed now that
+     Diego sells no food or drink (server data.js COOKING_RECIPES row 8) */
+  name: 'Stamina Tonic',
+  tier: 1,
+  ingredients: {
+    crop_carrot: 2
+  },
+  cookLvl: 1,
+  makes: 'staminaSalts',
+  desc: 'Restores 60 stamina at once'
 }];
 
 /* v2.3.3130: what a dish does lives in its own small module (dishes.js), so

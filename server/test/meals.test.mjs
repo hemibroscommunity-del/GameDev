@@ -22,6 +22,7 @@
  *   8. Forged keys: '__proto__', unknown dishes, a brew through eat, a meal
  *      through drink, an empty bag -- nothing applies, nothing is used.
  *   9. The buffs survive a save; the dish is in the saved bag.
+ *  13. v2.3.3132: the Stamina Tonic (the salts' key) is brewed from carrots.
  */
 import { GameRoom } from '../src/index.js';
 import { COOKING_RECIPES, DISHES, SHOP_ITEMS, DIEGO_SHELF } from '../src/data.js';
@@ -226,8 +227,10 @@ P._buffs = {};
 // ── 7. Diego ──
 {
   const list = await room._shopList(['whetstone', 'meal_herb_bread']);
-  check('his shelf is the two staples -- the tonics are brewed, not sold',
-    JSON.stringify(list.items.filter((i) => i.staple).map((i) => i.key)) === JSON.stringify([...DIEGO_SHELF]), list.items.filter((i) => i.staple).map((i) => i.key));
+  /* v2.3.3132: and since the owner's "Remove all of Diego's potions", nothing
+     at all -- the stamina salts are brewed from carrots (§13). */
+  check('his shelf is empty -- the tonics and the stamina salts are brewed, not sold',
+    DIEGO_SHELF.length === 0 && !list.items.some((i) => i.staple), list.items.filter((i) => i.staple).map((i) => i.key));
   check('...he quotes no buy price for a tonic', !list.items.some((i) => i.key === 'whetstone'), list.items.map((i) => i.key));
   const buyer = { coins: 500, inventory: Object.create(null) };
   for (const k of ['whetstone', 'manaShard', 'swiftDraught']) {
@@ -464,6 +467,27 @@ P._buffs = {};
   await send(ws, 'eat_request', { invKey: 'meal_herb_bread' });
   check('a bread eaten after the pie replaces it, strength and all (one meal)', room._buffActive(P, 'rest')
     && !room._buffActive(P, 'xp') && P._buffs.xpMul === undefined, P._buffs);
+}
+
+// ── 13. v2.3.3132: the Stamina Tonic is brewed from carrots ──
+{
+  /* Owner: "Remove all of Diego's potions. I want food and drink to come
+     exclusively from farming and recipes."  The salts' key and effect, made
+     from the cheapest crop at Cooking 1. */
+  const r = COOKING_RECIPES[idx('staminaSalts')];
+  check('the Stamina Tonic is a recipe: two carrots, Cooking 1', !!r && JSON.stringify(r.ingredients) === JSON.stringify({ crop_carrot: 2 })
+    && r.cookLvl === 1 && Object.prototype.hasOwnProperty.call(SHOP_ITEMS, 'staminaSalts'), r);
+  P.lifeSkills.cooking = { level: 1, xp: 0 };
+  P.inventory = Object.assign(P.inventory, { crop_carrot: 3 });
+  delete P.inventory.staminaSalts;
+  await send(ws, 'cook_recipe', { recipeIdx: idx('staminaSalts'), carry: true });
+  check('...a carried cook puts the bottle in the bag and uses two carrots', P.inventory.staminaSalts === 1 && P.inventory.crop_carrot === 1, P.inventory);
+  P.maxStamina = 100; P.stamina = 10;
+  await send(ws, 'potion_drink', { invKey: 'staminaSalts' });
+  check('...and drinking it gives the salts\' 60 stamina at once, the bottle used', P.stamina === 70 && !P.inventory.staminaSalts, { stamina: P.stamina, inv: P.inventory });
+  await send(ws, 'cook_recipe', { recipeIdx: idx('staminaSalts'), carry: true });
+  check('...one carrot short, it is refused: nothing used', !P.inventory.staminaSalts && P.inventory.crop_carrot === 1, P.inventory);
+  P.lifeSkills.cooking = { level: 10, xp: 0 };
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall meals checks passed');
