@@ -48,6 +48,16 @@
  *   - the level still red while yours is below it.
  * No filter (a greyed copy, not a ColorMatrixFilter per sprite), and nothing
  * new is loaded: the grey copies are made from the same three pictures.
+ *
+ * ═══ v2.3.3145: NO ROD OVER THE FISH ═══
+ * Owner, 2026-10-07: "Remove the fishing icon above fish but leave the
+ * proximity based nameplate in place."  A fishing spot is its fish, seen
+ * swimming in the water (wheelNodes.js WheelFish), so a rod's disc over every
+ * school only said again what the fish say.  A fishing spot's label is now
+ * its NAME PLATE alone (NAME_PLATE_ONLY): the pill with the rod, the name and
+ * the level while it is the one resource near you that says them
+ * (nodeNameNode), and nothing otherwise.  Trees and veins keep their tool's
+ * picture.
  */
 import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { gatherNeed } from '../data/lifeSkills.js';
@@ -142,6 +152,10 @@ const GREY_EDGE = 0x8B9695;  /* v2.3.3059: a locked icon's ring -- the grey of t
 /* v2.3.3059: how near (world px, to you) the one resource that says its name
    and level must be; the rest show their tool alone */
 export const NODE_NAME_R = 260;
+/* v2.3.3145: the kinds whose label is the name plate only -- no tool's disc
+   when another resource is the one saying its name (the owner: "Remove the
+   fishing icon above fish") */
+export const NAME_PLATE_ONLY = Object.freeze(new Set(['fishSpot']));
 /* v2.3.3059: your bro's box round S.player, world px (the body, and the name
    plate over it) -- a pill with words slides sideways out of it: the one
    resource that says its name is the one you stand at, and the labels' layer
@@ -269,11 +283,12 @@ export function nodeNameNode(S, nodes) {
 /** Draw, place or hide the label of one resource.  `at` is the world point
  *  its foot sits on ({x, y}), or null to hide it this frame.  `full`: say the
  *  name and the level too (v2.3.3059: only nodeNameNode's), else the tool
- *  alone. */
+ *  alone -- or, for a NAME_PLATE_ONLY kind (v2.3.3145: a fishing spot),
+ *  nothing. */
 export function updateNodeLabel(layer, node, S, at, full = true) {
   if (!layer || !node) return;
   let root = node._pixiLabel;
-  if (!at) { if (root && !root.destroyed) root.visible = false; return; }
+  if (!at || (!full && NAME_PLATE_ONLY.has(node.nodeType))) { if (root && !root.destroyed) root.visible = false; return; }
   if (!root || root.destroyed) {
     root = _build(node);
     node._pixiLabel = root;

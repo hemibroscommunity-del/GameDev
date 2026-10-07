@@ -45,9 +45,23 @@ game's other plates. They sit just above the signpost's picture.
 
 ## When they show
 
-- **Only near:** within 640 game px of the signpost. They fade in over the last
-  160 px, so from the square nothing is up (*"I just don't want the screen to
-  be too busy with text"*).
+- **Only close** (since v2.3.3145): within 300 game px of the signpost. They
+  fade in over the last 60 px and pop up out of the post as they do, growing
+  from 82% of their size to their full size.
+  - The owner, 2026-10-07: *"Change the signage in the town to proximity based
+    so it only pops up when you get close."*
+  - Until then they showed from 640 px, fading in over the last 160. At the
+    Wheel's zoom 640 px is about a phone's whole view, so the plates were up
+    whenever their signpost was on screen and read as always there.
+  - 300 px is the street the post stands beside. The four stand 159–174 px off
+    the middle of their street, so a walk down either side of it passes them
+    at 66–252 px. Anywhere on the street at the gate the plates are at least
+    80% up; a screen away, none is.
+  - From the square nothing is up (*"I just don't want the screen to be too
+    busy with text"*), as before.
+  - The numbers are `SIGNPOST_SHOW_R` and `SIGNPOST_SHOW_FADE` in
+    `src/data/wheelSignposts.js`; the pop is `POP_FROM` in
+    `src/rendering/wheelSignposts.js`.
 - **World-sized:** they belong to the signpost and move with it.
   - A plate's name is 22 world px, about 13 CSS px at the Wheel's zoom.
   - They are drawn over the buildings and trees round the gates and under the
@@ -83,11 +97,14 @@ game's other plates. They sit just above the signpost's picture.
   - the second land on each sign is the one whose road begins on that compass
     road, read off the plan's roads;
   - how the gates are told apart.
-- `mp-signposts` (9 checks), on a phone against a real worker:
+- `mp-signposts` (13 checks), on a phone against a real worker:
   - the four found and the eight icons loaded;
   - nothing up from the square;
-  - at each gate both plates fade in, named as the map names them, each with
-    its icon, its arrow pointing the right way and "Lv 1–20";
+  - (v2.3.3145) on the street ~450 px short of each signpost -- where the old
+    640 px had its plates fully up -- none of them is up;
+  - at each gate both plates pop up to their full size, named as the map
+    names them, each with its icon, its arrow pointing the right way and
+    "Lv 1–40";
   - they go when you walk away;
   - no page errors.
 

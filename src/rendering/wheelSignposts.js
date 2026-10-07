@@ -15,6 +15,14 @@
  * SIGNPOST_SHOW_FADE: the owner wants the screen quiet ("I just don't want
  * the screen to be too busy with text").
  *
+ * v2.3.3145: and only CLOSE -- the owner: "Change the signage in the town to
+ * proximity based so it only pops up when you get close".  The plates came up
+ * from 640 px, about a phone's whole view, so whenever a signpost was on
+ * screen its plates were too; now from 300 (src/data/wheelSignposts.js has
+ * the street's numbers), and they POP UP out of the post (POP_FROM): the pair
+ * grows to its size as it fades in, from the post's top, where the container
+ * stands.
+ *
  * v2.3.3089: and each plate ends in the levels its land holds, "Lv 1–20"
  * (WHEEL_LAND_LEVELS), the owner's yes to "Show levels on the signposts?".
  *
@@ -37,6 +45,9 @@ const ARROW_W = 22, ICON_W = 28, NAME_PX = 22;
    in the plate's brass, so the land's name stays what you read first */
 const LEVEL_PX = 17, LEVEL_GAP = 12, C_LEVEL = 0xe3cf98;
 const ABOVE = 168;                    /* world px from the post's foot to the lower plate's bottom: over its picture (~150 tall) */
+/* v2.3.3145: the size the pair pops up from, a share of its own -- it grows to
+   1 as it fades in, about the post's top (the container's origin) */
+const POP_FROM = 0.82;
 const C_PLATE = 0x111e23, C_RIM = 0xd8aa58, C_KEY = 0x0b161b, C_ARROW = 0xeac675;
 
 /* ── the icons ── */
@@ -187,6 +198,7 @@ export class WheelSignposts {
       c.addChild(pl);
     });
     c.alpha = 0;
+    c.scale.set(POP_FROM);   /* v2.3.3145 */
     this.layer.addChild(c);
     return { c, plates, gate: p.gate };
   }
@@ -206,6 +218,8 @@ export class WheelSignposts {
       e.c.alpha += (want - e.c.alpha) * 0.2;
       if (Math.abs(want - e.c.alpha) < 0.01) e.c.alpha = want;
       e.c.visible = e.c.alpha > 0.01;
+      /* v2.3.3145: popping up out of the post as it fades in */
+      e.c.scale.set(POP_FROM + (1 - POP_FROM) * e.c.alpha);
       e.d = d;
     }
     for (const [i, e] of this.posts) {
@@ -220,6 +234,7 @@ export class WheelSignposts {
       window.__btSignpostIcons = signpostIconsLoaded();
       window.__btSignposts = [...this.posts.values()].map((e) => ({
         gate: e.gate, x: e.c.x, y: e.c.y + ABOVE, d: Math.round(e.d || 0), alpha: +e.c.alpha.toFixed(2), visible: e.c.visible,
+        scale: +e.c.scale.x.toFixed(3),   /* v2.3.3145: the pop */
         plates: e.plates.map((pl) => Object.assign({ y: pl.y }, pl._sp)),
       }));
     }

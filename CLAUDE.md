@@ -762,6 +762,12 @@ remnant to migrate server-side, not a mode to preserve.
       itself (lifeSkillRewards.js `_startLockedTry`, `ex.locked`) -- NOTHING
       is sent to the worker; `__btLockedTries`; docs/specs/wheel-resources.md
       "Quieter labels, a grey tool, and a try you can watch fail".
+    - since v2.3.3145 NO ROD OVER THE FISH -- the owner: "Remove the fishing
+      icon above fish but leave the proximity based nameplate in place": a
+      fishing spot shows no tool's disc, only its name plate while it is the
+      one near you (nodeLabels.js `NAME_PLATE_ONLY`); trees and veins as
+      before; `mp-nodelabels` samples every drawn spot: wheel-resources.md
+      "No rod over the fish".
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
@@ -1386,7 +1392,9 @@ remnant to migrate server-side, not a mode to preserve.
   - Since v2.3.3062 BROTOWN'S SIGNPOSTS SAY WHERE THEIR ROADS GO -- the
     owner, on the recommendations for finding your way round: "Continue
     building recommended": the four gate signposts (placing.js, boards blank
-    by the catalog's word) each show two plates when you are within 640 px --
+    by the catalog's word) each show two plates when you are within 640 px
+    (300 since v2.3.3145, popping up out of the post -- the owner: "only pops
+    up when you get close"; 640 was a phone's whole view) --
     the land straight on and the land whose trail forks off that road
     (`WHEEL_GATE_ROADS`, src/data/wheelSignposts.js, checked against the
     plan's roads), an arrow the way it lies, its element icon and its name in

@@ -50,6 +50,13 @@ export function gateOf(dx, dy) {
    stand 1,876-2,118 out, at the gates of the 1.5x town; the commons end at
    ~2,765, and no other signpost is placed anywhere: test-world-core). */
 export const SIGNPOST_TOWN_R = 2600;
-/* Their plates show from this near, game px, fading over the last SHOW_FADE. */
-export const SIGNPOST_SHOW_R = 640;
-export const SIGNPOST_SHOW_FADE = 160;
+/* Their plates show from this near, game px, fading over the last SHOW_FADE.
+   v2.3.3145: 640 -> 300 and 160 -> 60 -- the owner: "Change the signage in
+   the town to proximity based so it only pops up when you get close".  640
+   is about the whole of a phone's view at the Wheel's zoom, so the plates were
+   up as soon as their signpost came on screen.  300 is the street the post
+   stands beside: the four stand 159-174 px off their street's middle, so a
+   walk down either side of it passes them at 66-252 px, and the plates are at
+   least 80% up anywhere on the street at the gate -- and none a screen away. */
+export const SIGNPOST_SHOW_R = 300;
+export const SIGNPOST_SHOW_FADE = 60;

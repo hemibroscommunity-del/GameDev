@@ -9847,7 +9847,9 @@ export class EffectsRenderer {
       if (_wheelSpots && node.nodeType === 'fishSpot') {
         /* v2.3.3012: in the Wheel a fishing spot is its fish, swimming in the
            real water it stands in (WheelFish, after the loop) -- no pond
-           picture.  The badge and the tips below still mark it. */
+           picture.  v2.3.3145: and no rod's disc over them -- its name plate
+           (nodeLabels.js NAME_PLATE_ONLY) shows only while it is the one
+           resource near you that says its name and level. */
         _wheelSpots.push(node);
         if (node._pixiSprite && !node._pixiSprite.destroyed) {
           if (node._pixiSprite.parent) node._pixiSprite.parent.removeChild(node._pixiSprite);
