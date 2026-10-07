@@ -11,7 +11,7 @@ import { ZONES, isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: + either
 import { TOWN_EXITS, WORLDVIEW_EXITS, COMING_SOON_MARKS, TOWN_SOON_MARKS } from '@/data/effects.js';
 import { isZoneUnlocked, zoneUnlockQuest, questRoutePoint } from "@/game/questRoute.js"; /* v2.3.1822: a shut door looks shut; v2.3.2121: and the way there is lit */
 import { getTrailStyle } from '@/game/questTrailStyle.js'; /* v2.3.2141: ...in the shape the player chose, or not at all */
-import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
+import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS, mapScaleMode } from '../tiledMaps.js';
 import { ChunkGround } from '../chunkGround.js';            /* v2.3.2932: the world trial's streamed ground */
 import { WheelGround } from '../wheelGround.js';            /* v2.3.2943: ...and the Wheel's, laid on the phone */
 import { isWorldTrialZone, worldTrialMode } from '@/game/worldTrial.js';
@@ -367,13 +367,13 @@ export class TileRenderer {
   /* The image zone's map into its sprite once it has loaded (the race fix
      below: the preload still in flight when the zone is entered).  v2.3.3037:
      its own method, so a map put off for today's town can be fetched later. */
-  _loadMapInto(imageUrl, sprite, w, h, reload) {
+  _loadMapInto(imageUrl, sprite, w, h, reload, zoneId) {
     const loadP = reload
       ? Promise.resolve().then(() => Assets.unload(imageUrl)).catch(() => {}).then(() => Assets.load(imageUrl))
       : Assets.load(imageUrl);
     loadP.then((loaded) => {
       if (loaded && !sprite.destroyed) {
-        if (loaded.source) loaded.source.scaleMode = 'nearest';
+        if (loaded.source) loaded.source.scaleMode = mapScaleMode(zoneId);   /* v2.3.3136: the farm's is smooth */
         sprite.texture = loaded;
         sprite.width = w;
         sprite.height = h;
@@ -824,7 +824,7 @@ export class TileRenderer {
         reload = true;
         cachedTex = null;
       }
-      if (cachedTex && cachedTex.source) cachedTex.source.scaleMode = 'nearest';
+      if (cachedTex && cachedTex.source) cachedTex.source.scaleMode = mapScaleMode(zoneId);   /* v2.3.3136 */
       const sprite = new Sprite(cachedTex || Texture.EMPTY);
       sprite.x = 0;
       sprite.y = 0;
@@ -845,9 +845,9 @@ export class TileRenderer {
            screens).  It is put off instead, and update() fetches it if the
            trip lets go and town is shown after all. */
         if (zoneId === 'town' && townSkippedOnTheWay()) {
-          this._deferredMap = { imageUrl, sprite, w: this._mapW, h: this._mapH, reload };
+          this._deferredMap = { imageUrl, sprite, w: this._mapW, h: this._mapH, reload, zoneId };
         } else {
-          this._loadMapInto(imageUrl, sprite, this._mapW, this._mapH, reload);
+          this._loadMapInto(imageUrl, sprite, this._mapW, this._mapH, reload, zoneId);
         }
       }
       return;
@@ -1151,7 +1151,7 @@ export class TileRenderer {
     if (this._deferredMap && S && S.currentZone === 'town' && S._wheelSpawnInit === true && !wheelTripVeiled(S)) {
       const d = this._deferredMap;
       this._deferredMap = null;
-      if (!d.sprite.destroyed) this._loadMapInto(d.imageUrl, d.sprite, d.w, d.h, d.reload);
+      if (!d.sprite.destroyed) this._loadMapInto(d.imageUrl, d.sprite, d.w, d.h, d.reload, d.zoneId);
     }
     /* v2.3.2932: stream the trial's ground round the camera (null otherwise) */
     if (this._chunkGround) this._chunkGround.update(cx, cy, viewW, viewH);

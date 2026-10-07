@@ -58,6 +58,7 @@ import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
+import { brewMulNow, pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: the brew, read once and claimed right in a duel */
 
 export function updateMonsterCombat(S, deps) {
   var P = S.player;
@@ -97,10 +98,11 @@ export function updateMonsterCombat(S, deps) {
              (the Fury Tonic's x2). Bounded 1..4 to match the server's read
              in combat.js -- prediction that can outrun the authority just
              produces popups the room then contradicts. */
-          if (S._dmgBuff && Date.now() < S._dmgBuff) {
-            var _dbm = Number(S._dmgBuffMul);
-            pDmg *= (_dbm >= 1 && _dbm <= 4) ? _dbm : 1.20;
-          }
+          /* v2.3.3133: read in one place (fightFood.js brewMulNow, the same
+             rule) and KEPT, so a duel claim can take it back out for a worker
+             that puts its own brew on (pvpClaim). */
+          var _brewK = brewMulNow(S);
+          if (_brewK !== 1) pDmg *= _brewK;
           /* Hexer curse debuff — reduces damage by 30% */
           if (S._cursedUntil && Date.now() < S._cursedUntil) pDmg *= 0.7;
           /* Swarm bleed tick — removed (mosquito damage). Application
@@ -781,7 +783,7 @@ export function updateMonsterCombat(S, deps) {
                   var shielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y); /* v2.3.1705: directional */
                   var rawDmg = Math.max(1, m.dmg);
                   /* §18.1 Food buff — resist reduces incoming damage */
-                  if (S._resistBuff && Date.now() < S._resistBuff) rawDmg = Math.max(1, Math.floor(rawDmg * 0.85));
+                  if (S._resistBuff && Date.now() < S._resistBuff) rawDmg = Math.max(1, Math.floor(rawDmg * 0.95));   /* v2.3.3130: the Root Stew's real 5% (server combat.js x0.95); this said 15% */
                   /* §4 Amulet elemental resistance */
                   if (((_R6$_amuletBonus3 = _R6._amuletBonus) === null || _R6$_amuletBonus3 === void 0 ? void 0 : _R6$_amuletBonus3.stat) === 'elemResist') rawDmg = Math.max(1, Math.floor(rawDmg * (1 - _R6._amuletBonus.value / 100)));
                   /* Shield gear — flat defense reduction */
@@ -1703,6 +1705,7 @@ export function updateMonsterCombat(S, deps) {
                      calcWeaponDmg as the 0.6x-0.8x range, so no
                      per-projectile multiplier is needed here. */
                   dmg: Math.round(pDmg),
+                  brew: _brewK,   /* v2.3.3133: the brew folded into dmg, for a duel claim (fightFood.js pvpClaim) */
                   /* v2.3.1335 (owner): bow/staff range -25% — staff 90->68
                      ticks (450->340px at 5px/tick); bow 120->90 ticks (the
                      675px plant cap in projectiles.js governs the real reach).
@@ -2057,7 +2060,7 @@ export function updateMonsterCombat(S, deps) {
                    use pDmg (Power-based for melee).  Variance is rolled
                    per-hit so different monsters in a sweep can take
                    slightly different damage. */
-                var _specBase = S._specialAttack ? calcSpecialDmg(_activeWpn.type, _R6, _activeWpn.tierMult, _activeWpn) : pDmg;
+                var _specBase = S._specialAttack ? calcSpecialDmg(_activeWpn.type, _R6, _activeWpn.tierMult, _activeWpn) * (_brewK || 1) : pDmg;   /* v2.3.3133: x the brew, as pDmg and the worker's special roll carry it */
                 /* v2.3.1747: the `* _comboBurst` term (1.15 at combo 1+) is gone
                    with the chain.  The SERVER's cap is deliberately untouched:
                    its `comboBoost = 5` (combat.js _maxDmgForAttacker) is a
@@ -3018,6 +3021,7 @@ export function updateMonsterCombat(S, deps) {
                 var pvpAngle = pvpLocked ? Math.atan2((S.lockedTarget.ref.y || S.lockedTarget.ref.renderY || P.y) - P.y, (S.lockedTarget.ref.x || S.lockedTarget.ref.renderX || P.x) - P.x) : baseAngle;
                 /* Track threat — attacking a player starts the threat counter */
                 S._pvpThreat = Date.now() + PVP_THREAT_DURATION;
+                var _pvpClaim = pvpClaim(S, pDmg * specialMult2, _brewK);   /* v2.3.3133 */
                 if (S.channel) S.channel.send({
                   type: 'broadcast',
                   event: 'player_attack',
@@ -3026,7 +3030,11 @@ export function updateMonsterCombat(S, deps) {
                     x: P.x,
                     y: P.y,
                     angle: pvpAngle,
-                    dmgBase: pDmg * specialMult2,
+                    /* v2.3.3133: without the brew and `nb: 1` against a worker
+                       with caps.pvpbrew, which multiplies by its own after the
+                       clamp; as before against an older one (fightFood.js). */
+                    dmgBase: _pvpClaim.dmgBase,
+                    nb: _pvpClaim.nb,
                     critChance: critChance,
                     /* v2.3.1135: Longshot stretches PvE flight, but PvP
                        reach is hard-capped at the server's 250px clamp
@@ -3041,6 +3049,16 @@ export function updateMonsterCombat(S, deps) {
                     /* v2.3.1302: kind tags the attack for the server's
                        per-kind range clamp.  Old servers ignore it. */
                     kind: 'melee'
+                    /* v2.3.3133 (review): NO `special` here, on purpose.  This
+                       send runs on every frame of the 400 ms sweep, and the
+                       worker's lanes are what turn that into hits: an ordinary
+                       claim gets one hit per 300 ms (two a swing), a special
+                       one THREE per 1200 ms.  Marking the special swing put it
+                       in that lane -- three hits at the special's ceiling, up
+                       to 4.5x the swing before.  It stays held to the ordinary
+                       ceiling, as it always was: a PvP balance call for the
+                       owner (docs/specs/fight-food.md "Found, not changed"),
+                       not a side effect of the brew. */
                   }
                 });
               }

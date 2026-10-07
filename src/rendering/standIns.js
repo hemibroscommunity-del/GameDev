@@ -28,6 +28,11 @@ const RETRY_MS = 15000;     /* a failed make is tried again after this */
 let _gen = 0;
 let _make = null;
 const _st = Object.create(null);
+/* v2.3.3136: whether the farm's covers -- what stands where the cook's pan
+   is when the farmer kneels (src/data/farmCovers.js) -- are loaded.  The
+   farm's pictures load and go with the farm (rendering/farmWorld.js), not
+   with a renderer, so a rebuilt renderer leaves this as it was. */
+let _farmCovers = false;
 function fresh() { for (const k of KINDS) _st[k] = { state: 'idle', at: 0, ms: null, why: null }; }
 fresh();
 
@@ -89,3 +94,9 @@ if (typeof window !== 'undefined') {
     return out;
   };
 }
+
+/** v2.3.3136: the farm's covers are in (farmWorld.js preloadFarmArt), or gone. */
+export function setFarmCoversReady(v) { _farmCovers = !!v; }
+/** v2.3.3136: can the farmer kneel?  The cook's pose made with your skin and
+ *  drawings, and the covers in.  Until then the walking body stays drawn. */
+export function farmKneelReady() { return _farmCovers && standInReady('cook'); }

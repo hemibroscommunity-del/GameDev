@@ -19,6 +19,7 @@ import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.
 import { enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: E at a Wheel dungeon's mouth */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';   /* v2.3.3067: E at Ace opens his coin flip */
 import { shopBus } from '@/ui/mobile/shopBus.js';   /* v2.3.3067: ...and at Diego his shop */
+import { startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed on your farm, worked where it lies */
 
 /**
  * v2.3.3105: what runInteract would do here, for the right stick's picture
@@ -34,6 +35,9 @@ export function interactKind(S, opts) {
   if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) return 'door';
   if (S._nearHouse) return 'sleep';
   if (S._nearWorkshop || S._nearWheelDoor || S._nearPetHouse) return 'door';
+  /* v2.3.3136: a bed's next step on your farm -- 'farm-dig', 'farm-plant',
+     'farm-water', 'farm-feed' or 'farm-harvest', each its own picture */
+  if (S._nearBed && S._nearBed.step) return 'farm-' + S._nearBed.step;
   var gn = S._nearNode || S._proxNode;
   if (gn && gn.alive) return 'gather';
   if (S._nearNpc) return 'talk';
@@ -139,6 +143,9 @@ export function setupDesktopControls(S, deps) {
         BT_AUDIO.enterBuilding();
         return true;
       }
+      /* 2d. v2.3.3136: a bed on your farm -- its next step, kneeling there
+         (game/farmWalk.js) */
+      if (S._nearBed && S._nearBed.step && startFarmStep(S, S._nearBed.i)) return true;
       /* 3. Gather node.  v2.3.1448: the shell now only opens on a TAP
          (S._nearNode), but the desktop E key keeps its proximity
          behaviour — S._proxNode is the closest resource in reach. */

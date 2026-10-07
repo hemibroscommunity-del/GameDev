@@ -19,3 +19,11 @@
 # every time (public/tools/world/core/ground-worker.js).
 /world/ground/*
   Cache-Control: public, max-age=31536000, immutable
+
+# v2.3.3136: the farm's pictures (public/world/farm/), the owner's.  The game
+# asks for each at ?v=<FARM_ART_V> (src/data/farmArt.js, written by
+# tools/world/add-farm-art.mjs with every run), so a new cut is a new address.
+# Nothing in the game fetches manifest.json; whatever does must ask at a fresh
+# address, as the ground's worker does.
+/world/farm/*
+  Cache-Control: public, max-age=31536000, immutable

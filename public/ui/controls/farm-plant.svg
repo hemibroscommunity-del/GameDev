@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- v2.3.3136: the right stick's PLANT picture (a bed on your farm), in the style of the owner's JUMP arrow -->
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C9D4F2"/></linearGradient></defs>
+  <path d="M12 90 Q50 60 88 90 Z" fill="url(#g)" stroke="#16191E" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M50 76 V42" stroke="#16191E" stroke-width="6" stroke-linecap="round"/>
+  <path d="M50 48 Q25 48 18 24 Q44 18 50 48 Z" fill="url(#g)" stroke="#16191E" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M50 42 Q74 44 84 16 Q56 12 50 42 Z" fill="url(#g)" stroke="#16191E" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M28 29 L44 43 M70 23 L55 37" stroke="#2A3140" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+</svg>
