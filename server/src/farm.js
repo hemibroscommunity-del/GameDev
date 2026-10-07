@@ -342,7 +342,7 @@ export const farmMethods = {
     if (fresh) this._farmCommit(session.id, null, rec);
     const now = Date.now();
     const view = this._farmView(rec, now);
-    /* v2.3.3118: and today's order board (farmorders.js) -- null when it is
+    /* v2.3.3134: and today's order board (farmorders.js) -- null when it is
        switched off, so the window drops a board it was showing (a bed
        action's answer carries no `orders` at all and leaves it be). */
     if (this._farmOrdersForOpen) view.orders = await this._farmOrdersForOpen(session.id, ps, now);

@@ -1,4 +1,4 @@
-/* THE FEED & SEED'S ORDER BOARD -- v2.3.3118 (docs/specs/farm-orders.md).
+/* THE FEED & SEED'S ORDER BOARD -- v2.3.3134 (docs/specs/farm-orders.md).
  *
  * Owner: "Farming needs a purpose ... temporary buffs ... and source of
  * income."  The income: three orders a day, delivered from the bag for gold
@@ -18,7 +18,7 @@
  *      run (no await between), the board first.
  *   6. The kill switch (`farmorders: false`) and the farm's own.
  *   7. A restart KEEPS the board (its done flags are the day's limit).
- *   v2.3.3118 (review): the record read fail-closed and stamped `v`, a later
+ *   v2.3.3134 (review): the record read fail-closed and stamped `v`, a later
  *   day never replaced by an earlier one, no delivery in a fight with a
  *   player, a short bag resent, the shared rate budget, and every bad slot
  *   answered with nothing at all.
@@ -28,7 +28,7 @@ import { FARM_ORDERS, drawFarmOrders, farmOrderById, farmOrdersResetAt } from '.
 import { FARM, FARM_SHOP_BASE } from '../src/farm.js';
 import { COOKING_RECIPES, DISHES, SHOP_ITEMS } from '../src/data.js';
 
-/* v2.3.3118 (review): each put is tagged with the synchronous run it was
+/* v2.3.3134 (review): each put is tagged with the synchronous run it was
    issued in -- a microtask moves the run on, so two puts with no await
    between them share a tag (what Cloudflare commits as one batch). */
 function makeState() {
@@ -257,7 +257,7 @@ let today = room._cadencePeriodDaily(Date.now());
   await send(ws, 'farm_order', { slot: 2, day: today, id: 'from_a_newer_worker' });
   check('...and cannot be delivered', farmState(ws).err === 'order-gone' && P.coins === c2, farmState(ws));
 
-  /* v2.3.3118 (review): the board on the books is read FAIL-CLOSED -- its
+  /* v2.3.3134 (review): the board on the books is read FAIL-CLOSED -- its
      done flags are the only thing between a delivery and a second pay. */
   const odd = { v: 1, day: today, ids: [o0.id, o1.id, 7], done: [0, 'yes', 2] };
   st._store.set('farmorders:' + PID, odd);

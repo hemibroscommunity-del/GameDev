@@ -1,4 +1,4 @@
-/* ═══ THE FEED & SEED'S ORDER BOARD, ON A PHONE (v2.3.3118) ═══
+/* ═══ THE FEED & SEED'S ORDER BOARD, ON A PHONE (v2.3.3134) ═══
  *
  * Owner: "Farming needs a purpose. I think the best purpose it can serve are
  * temporary buffs (boss fights, PvP, dueling, etc) and source of income."
@@ -16,10 +16,10 @@
  *      "Delivered", and the words over the player say what it paid;
  *   4. the delivered order has no button any more, and the worker refuses it
  *      if asked again (sent by hand), paying nothing;
- *   5. v2.3.3118 (review): at midnight the open window asks for the new board
+ *   5. v2.3.3134 (review): at midnight the open window asks for the new board
  *      by itself -- "New orders are on their way…", every Deliver dark --
  *      and when that ask is lost, a Try again brings it;
- *   6. v2.3.3118 (review): `farmorders: false` thrown while the window is open:
+ *   6. v2.3.3134 (review): `farmorders: false` thrown while the window is open:
  *      a Deliver tap is refused and the tab says the board is closed (it used
  *      to keep the board, Deliver lit, or show "…" forever);
  *   7. no page errors.

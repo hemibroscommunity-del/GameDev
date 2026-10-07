@@ -29,7 +29,7 @@ import {
   ARCHETYPES, ZONES,
   MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
   MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY,
-  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */, DISHES /* v2.3.3114: the Herb Bread's regen mult */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */, DISHES /* v2.3.3130: the Herb Bread's regen mult */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -63,8 +63,8 @@ import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
 import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
-import { farmMethods } from './farm.js'; /* v2.3.3111: the farm, settled by the worker */
-import { farmOrderMethods } from './farmorders.js'; /* v2.3.3118: the Feed & Seed's order board */
+import { farmMethods } from './farm.js'; /* v2.3.3127: the farm, settled by the worker */
+import { farmOrderMethods } from './farmorders.js'; /* v2.3.3134: the Feed & Seed's order board */
 import { armorForgeMethods } from './armorforge.js'; /* v2.3.3092: bars into armour */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monster's hit carries its element */
@@ -138,7 +138,7 @@ import { persistenceMethods } from './persistence.js';
 // v2.3.1173 (P4 decomposition): identity gate + join bootstrap -- see join.js.
 import { joinMethods, cosmeticCap } from './join.js';   /* v2.3.1940: ONE cap rule for the drawing keys */
 // v2.3.1174 (P4 decomposition): the 45Hz tick loop -- see tick.js.
-import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3111: + the regen cadence, for Herb Bread */
+import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3127: + the regen cadence, for Herb Bread */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -180,7 +180,7 @@ import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.29
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
-/* v2.3.3114: the Herb Bread's out-of-combat healing multiplier, read once
+/* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
 const HERB_REGEN_MULT = (DISHES.meal_herb_bread && Number(DISHES.meal_herb_bread.power) > 1) ? Number(DISHES.meal_herb_bread.power) : 2;
 
@@ -399,11 +399,11 @@ export const PRIVILEGED_EVENTS = new Set([
   'ability_windup',
   /* v2.3.2822: the smelt's receipt (smelting.js) -- bars made and XP paid. */
   'smelt_result',
-  /* v2.3.3111: the farm (farm.js) -- the beds, what grows in them and when it
+  /* v2.3.3127: the farm (farm.js) -- the beds, what grows in them and when it
      is ready, and what an action paid.  A forged one would paint ripe crops
      and harvests the worker never settled on another player's screen. */
   'farm_state',
-  /* v2.3.3117: a bite held back by the one-bite rule (cooking.js
+  /* v2.3.3133: a bite held back by the one-bite rule (cooking.js
      _pvpHealHeld) -- a forged one would tell another player to wait to eat. */
   'eat_refused',
   /* v2.3.3092: the armour forge's receipt (armorforge.js) -- it names a minted
@@ -3451,13 +3451,13 @@ export class GameRoom {
           /* ROUND, not ceil: at 1% a ceil turns every maxHp above 100 into
              2 hp/tick (a level-3 prog3 character has 106), which is nearly
              double the intended pace for no reason anyone could see.
-             v2.3.3114: the HERB BREAD is this trickle, faster -- its meal
+             v2.3.3130: the HERB BREAD is this trickle, faster -- its meal
              doubles it (DISHES.meal_herb_bread.power) for half an hour.  It was
-             2% of max HP a second in or out of a fight for 60 s (v2.3.3111,
+             2% of max HP a second in or out of a fight for 60 s (v2.3.3127,
              below until now); as a meal you carry for thirty minutes that would
              be a full bar every fifty seconds mid-fight, so it is the plan's
              "out-of-combat healing twice as fast" instead -- read off its own
-             timer, `rest`: v2.3.3111 reads `regen` the old way, so a rollback
+             timer, `rest`: v2.3.3127 reads `regen` the old way, so a rollback
              to it must not find a half-hour one there (data.js DISHES). */
           const _herb = this._buffActive(ps, 'rest') ? HERB_REGEN_MULT : 1;
           const heal = Math.max(1, Math.round(ps.maxHp * this.SPOKE_REGEN_PCT * _herb));
@@ -3466,8 +3466,8 @@ export class GameRoom {
           if (ps.hp !== beforeHp) changed = true;
         }
       }
-      /* v2.3.3111 made HERB BREAD heal at all: its recipe always wrote a
-         `regen` timer that nothing on the worker read.  v2.3.3114 moved that
+      /* v2.3.3127 made HERB BREAD heal at all: its recipe always wrote a
+         `regen` timer that nothing on the worker read.  v2.3.3130 moved that
          reader into the out-of-combat trickle above (a meal now lasts half an
          hour) under the bread's own `rest` timer, so it is read in exactly one
          place and `regen` in none. */
@@ -5094,19 +5094,19 @@ export class GameRoom {
       case 'farm_act':
       case 'farm_buy':
       case 'farm_order':
-        /* v2.3.3111: the farm (farm.js) -- open the window, dig / plant /
+        /* v2.3.3127: the farm (farm.js) -- open the window, dig / plant /
            water / fertilize / harvest beds, or buy seeds and compost at the
            Feed & Seed.  The worker owns the beds, their clocks and every
            crop; the client only asks.  Its own cases, never the default
            branch, which would rebroadcast the request to the room.
-           v2.3.3118: + farm_order, deliver one of today's orders
+           v2.3.3134: + farm_order, deliver one of today's orders
            (farmorders.js). */
         if (session.id) {
           const _fp = msg.type === 'farm_open' ? this._handleFarmOpen(session, msg.payload || msg)
             : msg.type === 'farm_act' ? this._handleFarmAct(session, msg.payload || msg)
             : msg.type === 'farm_order' ? this._handleFarmOrder(session, msg.payload || msg)
             : this._handleFarmBuy(session, msg.payload || msg);
-          /* v2.3.3111: said, not swallowed -- a throw in here once hid a
+          /* v2.3.3127: said, not swallowed -- a throw in here once hid a
              harvest that paid again on every message (farm.js). */
           if (_fp && _fp.catch) _fp.catch((e) => { console.error('[farm]', msg.type, session.id, e && e.message); });
         }
@@ -5887,8 +5887,8 @@ Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
-Object.assign(GameRoom.prototype, farmMethods); /* v2.3.3111 */
-Object.assign(GameRoom.prototype, farmOrderMethods); /* v2.3.3118 */
+Object.assign(GameRoom.prototype, farmMethods); /* v2.3.3127 */
+Object.assign(GameRoom.prototype, farmOrderMethods); /* v2.3.3134 */
 Object.assign(GameRoom.prototype, armorForgeMethods); /* v2.3.3092 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */
