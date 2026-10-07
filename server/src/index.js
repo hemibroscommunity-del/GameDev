@@ -87,6 +87,7 @@ import { petMethods, PETS } from './pets.js';
 /* v2.3.3120: pet trapping -- arm a trap, then kill it (trapping.js) -- and the
    pets record, pets:<pid> (petbook.js).  docs/specs/trapping.md. */
 import { trappingMethods } from './trapping.js';
+import { hardenedWoodMethods } from './hardenedwood.js'; /* v2.3.3139: logs into hardened wood */
 import { petbookMethods } from './petbook.js';
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
 // loot layers (effective_base formula, forge quality roll, harden
@@ -400,6 +401,9 @@ export const PRIVILEGED_EVENTS = new Set([
   'ability_windup',
   /* v2.3.2822: the smelt's receipt (smelting.js) -- bars made and XP paid. */
   'smelt_result',
+  /* v2.3.3139: its twin at the Woodworker (hardenedwood.js) -- hardened wood
+     made and XP paid; a forged one would show wood that never reached a bag. */
+  'hardened_wood_result',
   /* v2.3.3127: the farm (farm.js) -- the beds, what grows in them and when it
      is ready, and what an action paid.  A forged one would paint ripe crops
      and harvests the worker never settled on another player's screen. */
@@ -5405,6 +5409,12 @@ export class GameRoom {
       case 'make_traps':
         if (session.id) this._handleMakeTraps(session, msg.payload || msg);
         break;
+      /* v2.3.3139: five logs into one hardened wood at the Woodworker
+         (hardenedwood.js) -- explicit, as above: the default branch would
+         relay it to the room and settle nothing. */
+      case 'make_hardened_wood':
+        if (session.id) this._handleMakeHardenedWood(session, msg.payload || msg);
+        break;
       case 'trap_arm':
         if (session.id) this._handleTrapArm(session, msg.payload || msg);
         break;
@@ -5928,6 +5938,7 @@ Object.assign(GameRoom.prototype, threatMethods);
 // v2.3.1130 (PR14): pet capture -- see pets.js.
 Object.assign(GameRoom.prototype, petMethods);
 Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3120 */
+Object.assign(GameRoom.prototype, hardenedWoodMethods); /* v2.3.3139 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
 Object.assign(GameRoom.prototype, hardeningMethods);

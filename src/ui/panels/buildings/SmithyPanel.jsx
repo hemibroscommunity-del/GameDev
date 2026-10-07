@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  AMULET_TIERS, BLACKSMITH_TIERS, WOODWORKING_TIERS, BT_AUDIO, LIFE_SKILL_XP, NUGGETS_PER_BAR,
+  AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, LIFE_SKILL_XP, NUGGETS_PER_BAR,
   SMELT_RECIPES, WEAPON_STASH_MAX, gemExtractCost, getGearStatReq,
   ARMOR_FORGE_RECIPES, getArmorPieceDr, armorDefReq, /* v2.3.3092: bars into armor */
 } from '@/data/index.js';
@@ -12,6 +12,7 @@ import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { startSmithing, SMITH_STRIKE_MS } from '@/game/smithing.js';
 import { SALVAGE, GRADE_LABEL, armourMetal, weaponMetal, weaponSig, parseEssenceKey, essenceKey, essenceName, essenceIcon, gradeRank } from '@/data/salvage.js'; /* v2.3.3141 */
 import { salvageBus, salvageReasonText } from '@/game/salvage.js'; /* v2.3.3141 */
+import { hardenTierOf, hardenCost } from '@/data/hardenCosts.js'; /* v2.3.3139: bars and a doubling gold ladder */
 
 /* ═══ v2.3.2826: THE BLACKSMITH, REBUILT ═══
  *
@@ -386,37 +387,37 @@ function ArmorTab({ S, inv, lvl, ask, busy }) {
 const H_ODDS = [80, 20, 5, 1, 0.5];
 /* The worker's access gate (hardening.js _weaponTierIndex): a weapon of
    material tier i (1-based in its own table) needs Smithing i x 5.  Mirrored
-   so the lock is shown instead of a button the worker will refuse. */
-function hardenTier(w) {
-  const gb = w && typeof w.gearBase === 'string' ? w.gearBase : '';
-  const ww = gb.indexOf('ww_') === 0;
-  const keys = Object.keys(ww ? WOODWORKING_TIERS : BLACKSMITH_TIERS);
-  const i = keys.indexOf(ww ? gb.slice(3) : gb);
-  if (i >= 0) return i + 1;
-  const tm = (w && w.tierMult) || 1;
-  return Math.max(1, Object.values(BLACKSMITH_TIERS).filter((t) => t.tierMult <= tm).length);
-}
+   so the lock is shown instead of a button the worker will refuse.
+   v2.3.3139: the one copy is data/hardenCosts.js hardenTierOf, which also
+   picks the bars the attempt takes. */
 function UpgradeTab({ S, R, coins, lvl, caps, ask, busy }) {
   const w = R.weapon;
   const rows = [];
   if (S._serverCaps && S._serverCaps.harden && w) {
     const h = typeof w.hardness === 'number' ? w.hardness : 0;
     const maxed = h >= 5;
-    const cost = 500 * Math.pow(4, h);
+    /* v2.3.3139: the owner's ladder -- 500 x 2^H gold and H+1 bars of the
+       weapon's tier's metal -- against a worker that charges it
+       (caps.hardenmats); else the old 500 x 4^H and no bars */
+    const hc = hardenCost(w, h, !!(S._serverCaps && S._serverCaps.hardenmats), !!(S._serverCaps && S._serverCaps.hardenedwood), 'weapon');
+    const cost = hc.gold;
+    const haveMats = hc.material ? Math.floor(((R.inventory || {})[hc.material]) || 0) : 0;
+    const matsOk = !hc.material || haveMats >= hc.amount;
     const ic = weaponIcon(w.type, w.gearBase);
-    const needLvl = hardenTier(w) * 5;
+    const needLvl = hardenTierOf(w) * 5;
     const skillOk = lvl >= needLvl;
     rows.push(
       <Row key="harden" data-harden-row="1" icon={w.type === 'bow' ? '/icons/items/bow.webp' : w.type === 'staff' ? '/icons/items/staff.webp' : ic.src}
         iconFallback={ic.fallback} badge={'H' + h} title={maxed ? w.name + ' · max' : 'H' + h + ' → H' + (h + 1)}
-        action={!maxed && <Btn on={skillOk && coins >= cost && !busy} primary data-harden-go="1" onClick={() => ask('harden', {
+        action={!maxed && <Btn on={skillOk && coins >= cost && matsOk && !busy} primary data-harden-go="1" onClick={() => ask('harden', {
           type: 'broadcast', event: 'harden_weapon', payload: { slot: 'weapon' },
         }, {
           kind: 'harden', workMs: SMITH_STRIKE_MS * 3,
           /* harden_result (gameEvents) says win or lose; this only clears the busy state */
-          sig: () => { const x = S.rpg && S.rpg.weapon; return x ? String(x.hardness || 0) + ':' + (x.temper || 0) + ':' + (S.rpg.coins || 0) : ''; },
+          sig: () => { const x = S.rpg && S.rpg.weapon; return x ? String(x.hardness || 0) + ':' + (x.temper || 0) + ':' + (S.rpg.coins || 0) + ':' + (hc.material ? ((S.rpg.inventory || {})[hc.material] || 0) : '') : ''; },
         })}>Harden</Btn>}>
         {!maxed && !skillOk && <Lock>Smithing {needLvl}</Lock>}
+        {!maxed && hc.material && <span data-harden-mat={hc.material} style={{ display: 'contents' }}><Cost icon={thumbFor(hc.material)} have={haveMats} need={hc.amount} /></span>}
         {!maxed && <Cost icon={COIN} have={coins} need={cost} />}
         {!maxed && <Chip color={H_ODDS[h] >= 20 ? C.good : '#E5B36A'}>{H_ODDS[h]}%</Chip>}
         {!maxed && h > 0 && <Chip color={C.mute}>Fail → H0</Chip>}

@@ -19,7 +19,7 @@
  *   9.  Forged harden_result is not rebroadcast (deny-list).
  */
 import { GameRoom } from '../src/index.js';
-import { HARDEN } from '../src/hardening.js';
+import { HARDEN, HARDEN_BAR_BY_TIER, HARDEN_WOOD_BY_TIER, hardenMaterialFor, hardenAmountFor, hardenGoldFor, hardenIsWood } from '../src/hardening.js'; /* v2.3.3139: + the bars and hardened wood */
 import { QUALITY_GRADES, weaponQualityMult, weaponTierFactor } from '../src/data.js'; /* v2.3.2664: + the gear helpers */
 
 function makeState() {
@@ -75,7 +75,7 @@ ps.lifeSkills = { blacksmithing: { level: 10, xp: 0 } };
    ask for was one nothing in the game produced, and seeding it here is how
    this suite kept passing while the tier was unforgeable in play (see
    forgekeys.test.mjs and Alix's demo screenshot). */
-ps.inventory = { wood_pine_log: 99 };
+ps.inventory = { wood_pine_log: 99, bar_copper: 99 };   /* v2.3.3139: every attempt takes bars too -- the wood tier's are copper */
 
 // ── 1. caps ──
 const sync = ws.sent.find((m) => m.type === 'state_sync');
@@ -165,19 +165,21 @@ await harden(ws, 'weapon');
 Math.random = realRandom;
 let hr = lastHR(ws);
 check('success: H0→1, temper reset, cost 500', ps.weapon.hardness === 1 && ps.weapon.temper === 0 && ps.coins === 99500 && hr.success === true && hr.cost === 500, { w: ps.weapon, hr });
-// cost ladder at H2 = 500*16
+check('...and ONE copper bar (v2.3.3139: the attempt at H1 takes 1 bar of the wood tier\'s metal)', ps.inventory.bar_copper === 98 && hr.material === 'bar_copper' && hr.amount === 1, { inv: ps.inventory, hr });
+// cost ladder at H2 = 500*2^2 (v2.3.3139; it was 500*16)
 ps.weapon.hardness = 2; ps.weapon.temper = 120; // no-reset band
 Math.random = () => 0.99; // fail (odds at H2 = 5%)
 ws.sent.length = 0;
 await harden(ws, 'weapon');
 Math.random = realRandom;
 hr = lastHR(ws);
-check('cost ladder 500×4^H (H2 attempt = 8000)', hr.cost === 8000 && ps.coins === 99500 - 8000, { cost: hr.cost, coins: ps.coins });
+check('cost ladder 500×2^H (H2 attempt = 2000; v2.3.3139, was 500×4^H = 8000)', hr.cost === 2000 && ps.coins === 99500 - 2000, { cost: hr.cost, coins: ps.coins });
+check('...and 3 bars for the attempt at H3, taken on a failure too', ps.inventory.bar_copper === 95 && hr.amount === 3 && hr.success === false, { inv: ps.inventory, hr });
 check('temper 100+: failure keeps hardness, temper increments', ps.weapon.hardness === 2 && ps.weapon.temper === 121);
 // temper bands
 const bandCase = async (h, temper, expectH) => {
   ps.weapon.hardness = h; ps.weapon.temper = temper;
-  ps.coins = 1000000; // H3 attempts cost 32k -- keep the smith solvent
+  ps.coins = 1000000; // keep the smith solvent (H3 attempts cost 4,000 since v2.3.3139)
   Math.random = () => 0.99;
   await harden(ws, 'weapon');
   Math.random = realRandom;
@@ -228,12 +230,195 @@ ps._gearLockUntil = 0;
 const ledger = await state.storage.get('harden_ledger:bp_hd_p');
 check('harden ledger persisted + capped shape', Array.isArray(ledger) && ledger.length > 0 && ledger.length <= HARDEN.LEDGER_CAP && typeof ledger[ledger.length - 1].success === 'boolean', ledger && ledger.length);
 ps.weapon.hardness = 4; ps.weapon.temper = 0;
-ps.coins = 1000000; // the H4 attempt costs 128,000g
+ps.coins = 1000000; // the H4 attempt costs 8,000g and 5 bars (v2.3.3139; was 128,000g)
 Math.random = () => 0.0001; // < 0.005 -> H5!
 await harden(ws, 'weapon');
 Math.random = realRandom;
 const h5log = await state.storage.get('harden_h5_log');
 check('reaching H5 appends the INV-27 global log', ps.weapon.hardness === 5 && Array.isArray(h5log) && h5log.length === 1, h5log);
+
+// ── 8b. v2.3.3139: BARS -- "hardening lvl 1 cost 1 bar, hardening lvl 2 costs
+// 2 bars, and a doubling gold cost per level ... 500 for lvl 1 ... 1000 for
+// lvl 2, 2000 for lvl 3, etc" ──
+{
+  check('bars: caps.hardenmats and caps.hardenedwood advertised at join', sync && sync.caps && sync.caps.hardenmats === true && sync.caps.hardenedwood === true,
+    sync && sync.caps && [sync.caps.hardenmats, sync.caps.hardenedwood]);
+  check('bars: the ladder -- 500, 1,000, 2,000, 4,000, 8,000 gold and 1..5 bars for the attempts at H1..H5',
+    [0, 1, 2, 3, 4].map((h) => hardenGoldFor(h)).join() === '500,1000,2000,4000,8000'
+      && [0, 1, 2, 3, 4].map((h) => hardenAmountFor(h)).join() === '1,2,3,4,5'
+      && HARDEN.ODDS.join() === '0.8,0.2,0.05,0.01,0.005', { gold: [0, 1, 2, 3, 4].map((h) => hardenGoldFor(h)), bars: [0, 1, 2, 3, 4].map((h) => hardenAmountFor(h)) });
+  /* which material: by the weapon's material tier, the Smithing gate's own
+     index -- its metal's bars, or a bow's or a staff's own hardened wood */
+  const barOf = (w, slot) => hardenMaterialFor(room._weaponTierIndex(w), hardenIsWood(w, slot || 'weapon'));
+  check('bars: each metal blade its own metal\'s bars (copper, iron, black steel)',
+    barOf({ gearBase: 'copper' }) === 'bar_copper' && barOf({ gearBase: 'iron' }) === 'bar_iron' && barOf({ gearBase: 'steel' }) === 'bar_black_steel');
+  check('bars: the rest the nearest the forge makes -- the wood tier copper, titanium and beyond black steel',
+    barOf({ gearBase: 'wood' }) === 'bar_copper' && barOf({ gearBase: 'titanium' }) === 'bar_black_steel' && barOf({ gearBase: 'obsidian' }) === 'bar_black_steel'
+      && barOf({ gearBase: 'mythril' }) === 'bar_black_steel');
+  /* v2.3.3139: the owner's "5 logs of the raw material can make one 'hardened
+     (name) wood'" -- a bow or a staff takes its OWN wood's (hardenedwood.js) */
+  check('wood: each bow and staff its own wood\'s hardened wood (pine, softwood, hardwood, cedar, maple)',
+    barOf({ gearBase: 'ww_pine' }) === 'hardened_pine' && barOf({ gearBase: 'ww_softwood' }) === 'hardened_softwood' && barOf({ gearBase: 'ww_hardwood' }) === 'hardened_hardwood'
+      && barOf({ gearBase: 'ww_cedar' }) === 'hardened_cedar' && barOf({ gearBase: 'ww_maple' }) === 'hardened_maple',
+    ['ww_pine', 'ww_softwood', 'ww_hardwood', 'ww_cedar', 'ww_maple'].map((g) => barOf({ gearBase: g })));
+  check('wood: the woods past maple take maple\'s, until their own logs grow; an old bow with no ww_ gearBase in the bow\'s slot takes wood too',
+    barOf({ gearBase: 'ww_ironbark' }) === 'hardened_maple' && barOf({ gearBase: 'ww_worldbreaker' }) === 'hardened_maple'
+      && barOf({ type: 'bow', gearBase: 'wood', tierMult: 1 }, 'rangedWeapon') === 'hardened_pine' && barOf({ type: 'staff', tierMult: 1 }, 'staffWeapon') === 'hardened_pine'
+      && hardenIsWood({ gearBase: 'ww_pine' }, 'weapon') === true && hardenIsWood({ gearBase: 'iron' }, 'weapon') === false);
+  check('materials: junk tiers clamp (0, NaN, 99) and the tables are the four bars and five woods they say', hardenMaterialFor(0, false) === 'bar_copper' && hardenMaterialFor(NaN, false) === 'bar_copper'
+    && hardenMaterialFor(99, false) === 'bar_black_steel' && HARDEN_BAR_BY_TIER.length === 4
+    && hardenMaterialFor(0, true) === 'hardened_pine' && hardenMaterialFor(99, true) === 'hardened_maple' && HARDEN_WOOD_BY_TIER.join() === 'hardened_pine,hardened_softwood,hardened_hardwood,hardened_cedar,hardened_maple',
+    HARDEN_WOOD_BY_TIER);
+
+  /* an iron sword at the real handler: iron bars, by the ladder */
+  ps.weapon = { type: 'sword', gearBase: 'iron', tierMult: 1.25, name: 'Iron Sword', quality: 'normal', hardness: 1, temper: 0 };
+  ps.lifeSkills.blacksmithing.level = 15;   // tier 3 needs Smithing 15
+  ps.coins = 5000;
+  ps.inventory = { bar_copper: 50, bar_iron: 2 };
+  ws.sent.length = 0;
+  Math.random = () => 0.99;   // a failure: it costs the same
+  await harden(ws, 'weapon');
+  Math.random = realRandom;
+  let r = lastHR(ws);
+  check('bars: an iron blade\'s attempt at H2 takes 2 iron bars (all it holds) and 1,000 gold, both spent on a failure, the copper untouched',
+    !!r && r.success === false && r.amount === 2 && r.material === 'bar_iron' && r.cost === 1000 && !('bar_iron' in ps.inventory) && ps.inventory.bar_copper === 50 && ps.coins === 4000,
+    { r, inv: ps.inventory, coins: ps.coins });
+  /* now at H0 again (temper 0: a full reset) -- set H3 and run out */
+  ps.weapon.hardness = 3; ps.weapon.temper = 120;
+  ps.inventory = { bar_copper: 50, bar_iron: 3 };   // the attempt at H4 takes 4
+  ps.coins = 100000;
+  ws.sent.length = 0;
+  Math.random = () => 0.0;   // it would succeed -- but it must never roll
+  await harden(ws, 'weapon');
+  Math.random = realRandom;
+  r = lastHR(ws);
+  check('bars: one bar short is refused before any roll -- "Need 4 Iron Bars", nothing taken, hardness and temper as they were',
+    !!r && r.error === 'no-materials' && /Need 4 Iron Bars/.test(r.message) && ps.inventory.bar_iron === 3 && ps.coins === 100000
+      && ps.weapon.hardness === 3 && ps.weapon.temper === 120, { r, inv: ps.inventory, coins: ps.coins, w: ps.weapon });
+  /* other metals' bars never count */
+  ps.inventory = { bar_copper: 50, bar_black_steel: 50 };
+  ws.sent.length = 0;
+  await harden(ws, 'weapon');
+  r = lastHR(ws);
+  check('bars: other metals\' bars never pay for an iron blade', !!r && r.error === 'no-materials' && ps.inventory.bar_copper === 50 && ps.inventory.bar_black_steel === 50, { r, inv: ps.inventory });
+  /* no gold is checked first, and still takes nothing */
+  ps.inventory = { bar_iron: 10 };
+  ps.coins = 100;
+  ws.sent.length = 0;
+  await harden(ws, 'weapon');
+  r = lastHR(ws);
+  check('bars: short of gold -- refused, the bars untouched', !!r && r.error === 'no-gold' && ps.inventory.bar_iron === 10 && ps.coins === 100, { r, inv: ps.inventory });
+  /* a success at H3 -> H4 with exactly 4 bars: they are spent and the bag key goes */
+  ps.inventory = { bar_iron: 4 };
+  ps.coins = 100000;
+  ws.sent.length = 0;
+  Math.random = () => 0.0;
+  await harden(ws, 'weapon');
+  Math.random = realRandom;
+  r = lastHR(ws);
+  check('bars: a success with exactly enough -- H4, 4 iron bars and 4,000 gold spent, the empty key gone from the bag',
+    !!r && r.success === true && ps.weapon.hardness === 4 && r.amount === 4 && r.cost === 4000 && !('bar_iron' in ps.inventory) && ps.coins === 96000,
+    { r, inv: ps.inventory, coins: ps.coins });
+  const led = await state.storage.get('harden_ledger:bp_hd_p');
+  const last = led && led[led.length - 1];
+  check('bars: the ledger records the material and how many', !!last && last.material === 'bar_iron' && last.amount === 4 && last.cost === 4000, last);
+  /* the bag's own inventory is the worker's: a forged bar count in a stats
+     message never pays (the worker reads ps.inventory only) */
+  ps.inventory = {};
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'stats_update', payload: { inventory: { bar_iron: 99 } } }));
+  ws.sent.length = 0;
+  await harden(ws, 'weapon');
+  r = lastHR(ws);
+  check('bars: a bar count the game claims never pays -- refused with an empty bag', !!r && r.error === 'no-materials' && !(ps.inventory && ps.inventory.bar_iron), { r, inv: ps.inventory });
+
+  /* THE KILL SWITCH: hardenmats false -- the old ladder, no materials, the cap off */
+  room._liveFlags = { hardenmats: false };
+  ps.weapon.hardness = 2; ps.weapon.temper = 120;
+  ps.inventory = { bar_iron: 7 };
+  ps.coins = 100000;
+  ws.sent.length = 0;
+  Math.random = () => 0.99;
+  await harden(ws, 'weapon');
+  Math.random = realRandom;
+  r = lastHR(ws);
+  check('kill switch: hardenmats false -- the old ladder (H2 attempt 8,000g) and no bars taken',
+    !!r && r.cost === 8000 && !('amount' in r) && ps.inventory.bar_iron === 7 && ps.coins === 92000, { r, inv: ps.inventory, coins: ps.coins });
+  const wsK = fakeWs('k');
+  await join(wsK, 'bp_hd_k');
+  const syncK = wsK.sent.find((m) => m.type === 'state_sync');
+  check('kill switch: ...and caps.hardenmats goes false at join (the game shows the old ladder)',
+    !!syncK && syncK.caps && syncK.caps.hardenmats === false, syncK && syncK.caps && syncK.caps.hardenmats);
+  room._liveFlags = {};
+  room.sessions.delete(wsK);
+  delete room.playerState.bp_hd_k;
+}
+
+// ── 8c. v2.3.3139: a bow or a staff takes its OWN HARDENED WOOD -- the
+// owner: "Maybe 5 logs of the raw material can make one 'hardened (name) wood'
+// raw material so it mirrors the same structure.  Also for the number
+// required and gold too" (hardenedwood.js) ──
+{
+  room._liveFlags = {};
+  ps.lifeSkills.blacksmithing.level = 25;   // a maple staff (tier 5) needs Smithing 25
+  ps.rangedWeapon = { type: 'bow', gearBase: 'ww_pine', tierMult: 1, name: 'Pine Bow', quality: 'normal', hardness: 1, temper: 0 };
+  ps.inventory = { hardened_pine: 2, bar_copper: 50, wood_pine_log: 40 };
+  ps.coins = 5000;
+  ws.sent.length = 0;
+  Math.random = () => 0.99;   // a failure: it costs the same
+  await harden(ws, 'rangedWeapon');
+  Math.random = realRandom;
+  let r = lastHR(ws);
+  check('wood: a pine bow\'s attempt at H2 takes 2 Hardened Pine Wood and 1,000 gold, spent on a failure; the copper bars and the logs untouched',
+    !!r && r.success === false && r.material === 'hardened_pine' && r.amount === 2 && r.cost === 1000 && !('hardened_pine' in ps.inventory)
+      && ps.inventory.bar_copper === 50 && ps.inventory.wood_pine_log === 40 && ps.coins === 4000, { r, inv: ps.inventory, coins: ps.coins });
+  /* back at H0 (temper 0 resets): one hardened pine needed, and only bars and logs in the bag */
+  ws.sent.length = 0;
+  await harden(ws, 'rangedWeapon');
+  r = lastHR(ws);
+  check('wood: bars and raw logs never pay for a bow -- "Need 1 Hardened Pine Wood", nothing taken',
+    !!r && r.error === 'no-materials' && /Need 1 Hardened Pine Wood/.test(r.message) && ps.inventory.bar_copper === 50 && ps.inventory.wood_pine_log === 40
+      && ps.coins === 4000 && ps.rangedWeapon.hardness === 0, { r, inv: ps.inventory });
+  /* a maple staff: hardened maple, by its wood */
+  ps.staffWeapon = { type: 'staff', gearBase: 'ww_maple', tierMult: 1.56, name: 'Maple Staff', quality: 'normal', hardness: 0, temper: 0 };
+  ps.inventory = { hardened_maple: 1, hardened_pine: 9 };
+  ws.sent.length = 0;
+  Math.random = () => 0.0;
+  await harden(ws, 'staffWeapon');
+  Math.random = realRandom;
+  r = lastHR(ws);
+  check('wood: a maple staff\'s attempt at H1 takes its one Hardened Maple Wood and 500 gold -- the pine left alone',
+    !!r && r.success === true && r.material === 'hardened_maple' && r.amount === 1 && r.cost === 500 && ps.staffWeapon.hardness === 1
+      && !('hardened_maple' in ps.inventory) && ps.inventory.hardened_pine === 9 && ps.coins === 3500, { r, inv: ps.inventory, coins: ps.coins });
+  /* `hardenedwood: false`: hardened wood can no longer be made, so bows and
+     staffs go back on gold alone (the old ladder) -- and a sword keeps its bars */
+  room._liveFlags = { hardenedwood: false };
+  ps.inventory = { hardened_pine: 9, bar_iron: 9 };
+  ps.coins = 100000;
+  ps.rangedWeapon.hardness = 1; ps.rangedWeapon.temper = 120;
+  ws.sent.length = 0;
+  Math.random = () => 0.99;
+  await harden(ws, 'rangedWeapon');
+  Math.random = realRandom;
+  r = lastHR(ws);
+  check('wood switch: hardenedwood false -- the bow on the old ladder (H1 attempt 2,000g) and no hardened wood taken',
+    !!r && r.cost === 2000 && !('amount' in r) && ps.inventory.hardened_pine === 9 && ps.coins === 98000, { r, inv: ps.inventory, coins: ps.coins });
+  ps.weapon = { type: 'sword', gearBase: 'iron', tierMult: 1.25, name: 'Iron Sword', quality: 'normal', hardness: 0, temper: 0 };
+  ws.sent.length = 0;
+  Math.random = () => 0.99;
+  await harden(ws, 'weapon');
+  Math.random = realRandom;
+  r = lastHR(ws);
+  check('wood switch: ...while an iron sword still takes its bar and the new ladder\'s 500 gold',
+    !!r && r.material === 'bar_iron' && r.amount === 1 && r.cost === 500 && ps.inventory.bar_iron === 8, { r, inv: ps.inventory });
+  const wsW = fakeWs('w');
+  await join(wsW, 'bp_hd_w');
+  const syncW = wsW.sent.find((m) => m.type === 'state_sync');
+  check('wood switch: ...and caps.hardenedwood goes false at join while caps.hardenmats stays', !!syncW && syncW.caps
+    && syncW.caps.hardenedwood === false && syncW.caps.hardenmats === true, syncW && syncW.caps && [syncW.caps.hardenedwood, syncW.caps.hardenmats]);
+  room._liveFlags = {};
+  room.sessions.delete(wsW);
+  delete room.playerState.bp_hd_w;
+}
 
 // ── 9. deny-list ──
 const ws2 = fakeWs('peer');

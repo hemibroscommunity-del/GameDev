@@ -417,6 +417,24 @@ Style: crisp pixel art like the attached townsperson: hard-edged square pixels, 
 A square item icon for a top-down 2D action RPG, in exactly the style of the attached icon: a simple wooden box trap, a small crate of rough pine planks with its door propped open on a stick tied to a bit of string, a little bait inside. Seen from slightly above and to the front, filling most of the picture. One flat magenta background (#FF00FF), no shadow, no border, no text. Crisp pixel art: hard-edged pixels, a few flat tones per colour, a one-pixel outline in a darker shade of its own colour.
 ```
 
+## Hardened wood
+
+Five logs make one hardened wood at the Woodworker (v2.3.3139, docs/specs/hardened-wood.md). Today each icon is its tree's log picture with the sprigs taken off, the wood darkened and two iron bands drawn round it by `tools/make_hardened_wood_icons.py`.
+
+### Hardened wood: five item icons
+
+- **In the game:** The bag, and the Woodworker's Harden tab: Hardened Pine Wood, Hardened Softwood, Hardened Hardwood, Hardened Cedar Wood and Hardened Maple Wood.
+- **Attach:** the five log icons (`public/icons/items/wood-log.webp`, `wood-softwood.webp`, `wood-hardwood.webp`, `wood-cedar.webp`, `wood-maple.webp`), so each wood keeps its colour.
+- **How:** Ask ChatGPT for one square picture holding all five; send it in chat and a session cuts it into the game's 256 px icons (`public/icons/items/hardened-<wood>.webp`).
+
+```text
+Create a single 1280x256 image: five separate game item icons in a row on a seamless pure white background (#FFFFFF), each centered in its own invisible square cell with even margins. No grid lines, no borders, no text.
+
+STYLE: match the attached log icons exactly -- the same bold dark outline, the same rich hand-painted shading and highlights, the same angle and size.
+
+SUBJECTS, left to right, one for each attached log in the same order and the same wood colour: a piece of HARDENED WOOD -- the same log, but worked: bark trimmed smooth and dark from fire-hardening, the end grain darkened at its rim, oiled to a soft sheen, bound with two riveted iron bands. No leaves or sprigs.
+```
+
 ## Land banners
 
 Four of the eight lands play only a plain plaque when you cross in. Attach the Frost Ridge sheet and ChatGPT copies its layout, so I can cut each sheet into the banner exactly as with the first four.

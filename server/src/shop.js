@@ -170,6 +170,12 @@ export const SHOP = {
        auction house sets the real price.  The longest family wins, so these
        three beat any shorter match. */
     essence_rare_: 1500, essence_elite_: 8000, essence_godly_: 250000,
+    /* v2.3.3139: hardened wood (hardenedwood.js), the bar's twin: five logs go
+       into one, so it is priced above the five logs it cost (5 x 24 = 120) by
+       the bar's margin -- hardening before selling is worth a little, never a
+       loss.  Its keys are `hardened_<tier>`, never `wood_`, so no log price
+       reaches it. */
+    hardened_: 144,
     /* Longer than 'fish_', so the longest-match rule below prefers it: a
        cooked fish is worth more than the raw one it came from. */
     cooked_fish: 45,

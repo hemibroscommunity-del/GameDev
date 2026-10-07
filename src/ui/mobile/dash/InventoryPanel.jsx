@@ -31,6 +31,7 @@ import { lifeKindFor, lifeKindForGear } from './bagLife.js';   /* v2.3.2815: the
 import { DAILY_CHEST_ICON } from '@/rendering/chestPreload.js';   /* v2.3.2820 */
 import { SALVAGE, essenceKey, essenceName, essenceIcon } from '@/data/salvage.js';   /* v2.3.3141: the essences */
 import { FARM_ITEM_NAMES, farmLookFor } from '@/data/farmCrops.js';   /* v2.3.3127: the farm's goods */
+import { HARDENED_WOOD_NAMES, isHardenedWoodKey, hardenedWoodIcon } from '@/data/hardenedWood.js';   /* v2.3.3139: hardened wood */
 import { DISH_NAMES, dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* v2.3.3120: the box trap's picture */
 
@@ -225,6 +226,7 @@ export const thumbFor = (key) => {
   /* v2.3.3141: an essence (salvage.js) -- its grade's glowing orb with its
      metal's bar, tools/make_essence_icons.py */
   if (k.startsWith('essence_') && essenceIcon(k)) return essenceIcon(k) + ITEMS_V;
+  if (isHardenedWoodKey(k))         return hardenedWoodIcon(k);   /* v2.3.3139: made from its tree's log picture */
   if (k.startsWith('shard_'))       return `/icons/items/${k}.webp${ITEMS_V}`;
   /* v2.3.1924: the rare gem monsters drop at 1-in-200 (server/src/data.js
      RARE_GEM_KEY).  It borrows the gem icon this panel ALREADY uses for its
@@ -286,6 +288,9 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
   bar_iron: 'Iron Bar',         /* v2.3.3092 */
   bar_black_steel: 'Black Steel Bar',   /* v2.3.3092: prettyName would say "Bar Black Steel" */
   trap_box: 'Box Trap',         /* v2.3.3120: one log at the Woodworker (server trapping.js); prettyName would say "Trap Box" */
+  /* v2.3.3139: hardened wood (server hardenedwood.js) -- prettyName would say
+     "Hardened Pine"; the owner's "hardened (name) wood" */
+  ...HARDENED_WOOD_NAMES,
 });
 /* v2.3.3141: the nine essences salvage leaves (data/salvage.js): "Rare Iron
    Essence", not "Essence Rare Iron" out of the key.  Written from the table,
@@ -400,6 +405,7 @@ export const iconFor = (key) => {
   if (/potion|elixir|tonic|salve/.test(k))    return '🧪';
   if (/wood|log|plank/.test(k))               return '🪵';
   if (/fish|salmon|cod|trout/.test(k))        return '🐟';
+  if (k.startsWith('hardened_'))              return '\uD83E\uDEB5';   /* v2.3.3139: hardened wood is wood ('hardened_pine' has no 'wood' in it) */
   if (k.startsWith('bar_'))                   return '\uD83E\uDDF1';   /* v2.3.2822: above the ore rule, which 'bar_copper' would match */
   if (/ore|iron|copper|stone|gem/.test(k))    return '⛏';
   if (/herb|leaf|flower/.test(k))             return '🌿';
