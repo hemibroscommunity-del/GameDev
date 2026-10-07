@@ -21,7 +21,7 @@
  * they touch is money.
  */
 import { GameRoom, CHAT_RELAY } from '../src/index.js';
-import { DRAWING_KEYS } from '../src/join.js';   /* v2.3.2445: assert the gate's own set, not a copy of it */
+import { DRAWING_KEYS, NEW_CHARACTER_COINS } from '../src/join.js';   /* v2.3.2445: assert the gate's own set, not a copy of it; v2.3.3138 the new purse */
 import { HARVEST_PERFECT_PER_MIN, HONEST_CYCLE_MIN_MS } from '../src/gathering.js'; /* v2.3.3036 */
 import { COOK_PER_MIN } from '../src/cooking.js';                                   /* v2.3.3036 */
 
@@ -409,12 +409,18 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     },
   }));
   const psZ = room.playerState.pz;
-  check('sanitize: bootstrap weapon tierMult clamps to 8 (max forge tier 7.84)',
-    psZ.weapon && psZ.weapon.tierMult === 8, psZ.weapon);
-  check('sanitize: bootstrap stash clamps tiers, drops non-object junk',
-    Array.isArray(psZ.weaponStash) && psZ.weaponStash.length === 2
-    && psZ.weaponStash[0].tierMult === 8 && psZ.weaponStash[1].type === 'bow'
-    && psZ.weaponStash[1].tierMult === 1, psZ.weaponStash);
+  /* v2.3.3138: a first join takes NO weapon from the payload at all -- a
+     new character starts from the server's defaults (join.js), and the
+     client's own new character holds no weapon (the Mayor hands out the
+     sword).  The sanitizer still guards every stored blob, so it is
+     asserted directly. */
+  check('sanitize: a first join takes no forged weapon or stash (a new character has none)',
+    psZ.weapon === null && Array.isArray(psZ.weaponStash) && psZ.weaponStash.length === 0, { w: psZ.weapon, s: psZ.weaponStash });
+  const _sw = room._sanitizeWeapon({ type: 'greatsword', tierMult: 9999 }, true);
+  check('sanitize: a weapon blob\'s tierMult clamps to 8 (max forge tier 7.84)', _sw && _sw.tierMult === 8, _sw);
+  const _sl = room._sanitizeWeaponList([{ type: 'sword', tierMult: 500 }, 'junk', null, { type: 'bow' }], true);
+  check('sanitize: a stash clamps tiers, drops non-object junk',
+    Array.isArray(_sl) && _sl.length === 2 && _sl[0].tierMult === 8 && _sl[1].type === 'bow' && _sl[1].tierMult === 1, _sl);
 
   // Sell overpay: a stale stored blob (persisted before the clamp
   // existed) can't cash out at forged value — _weaponSellValue clamps
@@ -508,18 +514,24 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   }));
   room.state.storage.put = origPutN;
   const psN = room.playerState.pn;
-  check('bootstrap: coins clamp to BOOTSTRAP_COINS_CAP (2000)', bootN && bootN.coins === 2000, bootN && bootN.coins);
-  // v2.3.1342: cap 500 -> 1000 (level-is-build; max level 1000).
-  check('bootstrap: level clamps to BOOTSTRAP_LEVEL_CAP (1000)', bootN && bootN.level === 1000, bootN && bootN.level);
-  check('bootstrap: xp clamps to BOOTSTRAP_XP_CAP (50000)', bootN && bootN.xp === 50000, bootN && bootN.xp);
-  check('bootstrap: unspentT2 clamps to BOOTSTRAP_UT2_CAP (75)', bootN && bootN.unspentT2 === 75, bootN && bootN.unspentT2);
-  check('bootstrap: buildPointsThisLvl clamps to 4 (build_point_earned flurry max)',
-    bootN && bootN.buildPointsThisLvl === 4, bootN && bootN.buildPointsThisLvl);
+  /* ═══ v2.3.3138: THE CAPS NO LONGER BIND -- NOTHING IS TAKEN ═══
+     These asserted the claims were CLAMPED (2,000 coins, level 1,000, ...).
+     Owner, on the farm's review: "Yes fix all of your recommended fixes.
+     Game is still a demo."  A first join now drops every rpg* claim, so the
+     same forged payload lands on the client's own new character: the
+     starting purse, level 1, nothing else.  Each check below is the old
+     one's field, asserted at the default. */
+  check('bootstrap: a forged purse is not taken -- the new character\'s ' + NEW_CHARACTER_COINS, bootN && bootN.coins === NEW_CHARACTER_COINS, bootN && bootN.coins);
+  check('bootstrap: a forged level is not taken (1)', bootN && bootN.level === 1, bootN && bootN.level);
+  check('bootstrap: forged xp is not taken (0)', bootN && bootN.xp === 0, bootN && bootN.xp);
+  check('bootstrap: forged unspentT2 is not taken (0)', bootN && bootN.unspentT2 === 0, bootN && bootN.unspentT2);
+  check('bootstrap: forged buildPointsThisLvl are not taken (0)',
+    bootN && bootN.buildPointsThisLvl === 0, bootN && bootN.buildPointsThisLvl);
   // xp / unspentT2 / buildPointsThisLvl / inventory aren't touched by
   // the join tail — assert the LIVE state too, so a regression that
   // re-injects the raw payload after the bootstrap save also fails.
-  check('bootstrap: live xp/unspentT2/buildPoints hold the clamped values',
-    psN.xp === 50000 && psN.unspentT2 === 75 && psN.buildPointsThisLvl === 4,
+  check('bootstrap: live xp/unspentT2/buildPoints hold the defaults',
+    psN.xp === 0 && psN.unspentT2 === 0 && psN.buildPointsThisLvl === 0,
     { xp: psN.xp, ut2: psN.unspentT2, bp: psN.buildPointsThisLvl });
   /* ═══ v2.3.2372: THE TWO REGEN MULTS HAD A FLOOR AND NO CEILING ═══
      grids.js's stats_update has clamped both to [0,100] since v2.3.1182; this
@@ -532,8 +544,11 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      v2.3.2361 includes the contextual lunge's damage leg.
      Live state, not the bootstrap blob: these are session-only equipment-
      derived values and _saveRpg does not carry them. */
-  check('bootstrap: amulet regen mults clamp to 100, same ceiling as stats_update',
-    psN.amuletHpRegen === 100 && psN.amuletStaminaRegen === 100,
+  /* v2.3.3138: and on a first join they are not taken at all (0): a new
+     character wears no amulet.  The 100 ceiling still binds every later
+     join of a character on file, where these are re-read each connect. */
+  check('bootstrap: a first join takes no amulet regen mults (0)',
+    psN.amuletHpRegen === 0 && psN.amuletStaminaRegen === 0,
     { hp: psN.amuletHpRegen, stam: psN.amuletStaminaRegen });
   /* ═══ v2.3.2373: THE CLAIMED LEVEL WAS ALSO A STAT CAP ═══
      The raw T1 stats are seeded at _clampStat(payload, level) and _statCap is
@@ -550,18 +565,51 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      Asserted on the LIVE state, not on bootN: the raw-stat block runs AFTER
      the bootstrap _saveRpg this section's put-intercept captures, so the first
      blob legitimately has no stats in it at all. */
-  check('bootstrap: raw T1 stats clamp to _statCap(100) = 1020, not _statCap(1000) = 10020',
-    psN.endurance === 1020 && psN.power === 1020, { end: psN.endurance, pow: psN.power });
+  /* v2.3.3138: not taken at all on a first join (0); the _statCap(100)
+     bound above still holds for a stored record missing its stats. */
+  check('bootstrap: a first join takes no raw T1 stats (0)',
+    psN.endurance === 0 && psN.power === 0, { end: psN.endurance, pow: psN.power });
   check('bootstrap: ...which bounds the regen mult the tick reads at 1 + 1020*0.002 = 3.04x',
     1 + (psN.endurance || 0) * 0.002 <= 3.04, 1 + (psN.endurance || 0) * 0.002);
   /* v2.3.2820: the day's DAILY CHEST (dailychest.js) is credited by the
      cadence hook AFTER the bootstrap this section measures, so it is not part
      of what the client claimed and is left out of the bootstrap's counts. */
   const invKeys = Object.keys(psN.inventory || {}).filter((k) => k !== 'daily_chest');
-  check('bootstrap: inventory truncated to 100 keys', invKeys.length === 100, invKeys.length);
-  check('bootstrap: every inventory quantity clamped to 50 per item',
-    invKeys.length > 0 && invKeys.every((k) => psN.inventory[k] === 50),
-    invKeys.slice(0, 3).map((k) => psN.inventory[k]));
+  /* v2.3.3138: 200 forged keys of 9,999 were truncated to 100 keys of 50 --
+     any names at all, which Diego priced by substring ('bar_00' is a bar:
+     ~392,000 coins a throwaway, proved by the review).  Now none land. */
+  check('bootstrap: a first join takes no forged inventory (empty bag)', invKeys.length === 0, invKeys.slice(0, 5));
+
+  /* ═══ v2.3.3138: ...AND THE TWO DOORS A CHARACTER ON FILE STILL MEETS ═══
+     The first join above takes nothing, so the ceilings it used to prove are
+     proved here on a REJOIN of the same character, answered from a record on
+     file (this suite's storage keeps nothing).  The amulet regen mults are
+     re-read from EVERY connect's payload; a pre-slice record with no raw
+     stats seeds them from it, clamped at the level the join holds then --
+     never above _statCap(100) = 1020 (here it binds tighter: 30, level 1,
+     whatever the record says).  The review found both bounds untested once
+     the first join stopped reaching them. */
+  {
+    const wsN2 = fakeWs('numeric-forger-rejoin');
+    room.sessions.set(wsN2, baseSession());
+    const origGetN = room.state.storage.get;
+    room.state.storage.get = async (k) => (k === 'rpg:pn' ? { coins: 50, level: 300, xp: 0, inventory: {}, lifeSkills: {} } : origGetN(k));
+    await room.webSocketMessage(wsN2, JSON.stringify({
+      type: 'join', id: 'pn', name: 'NumForger', protocolVersion: 2, data: {
+        x: 100, y: 100, z: 'town',
+        rpgAmuletHpRegen: 999999, rpgAmuletStaminaRegen: 999999,
+        rpgEndurance: 999999, rpgPower: 999999,
+      },
+    }));
+    room.state.storage.get = origGetN;
+    const psR = room.playerState.pn;
+    check('rejoin on file: amulet regen mults clamp to 100, same ceiling as stats_update',
+      psR.amuletHpRegen === 100 && psR.amuletStaminaRegen === 100,
+      { hp: psR.amuletHpRegen, stam: psR.amuletStaminaRegen });
+    check('rejoin on file: a pre-slice record\'s raw T1 stats are clamped -- at most _statCap(100) = 1020, a 3.04x regen mult',
+      psR.endurance <= 1020 && psR.power <= 1020 && 1 + psR.endurance * 0.002 <= 3.04,
+      { end: psR.endurance, pow: psR.power });
+  }
 
   // Garbage join: negative / non-number values must floor to the sane
   // defaults, never go below zero or store junk.  JSON can't carry
@@ -586,7 +634,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   }));
   room.state.storage.put = origPutG;
   const psG = room.playerState.pg;
-  check('bootstrap: negative coins floor to 0', bootG && bootG.coins === 0, bootG && bootG.coins);
+  check('bootstrap: a negative purse is not taken either -- the new character\'s ' + NEW_CHARACTER_COINS, bootG && bootG.coins === NEW_CHARACTER_COINS, bootG && bootG.coins);   /* v2.3.3138 */
   check('bootstrap: null (wire NaN) level defaults to 1', bootG && bootG.level === 1, bootG && bootG.level);
   check('bootstrap: negative xp floors to 0', psG.xp === 0, psG.xp);
   check('bootstrap: string unspentT2 defaults to 0', psG.unspentT2 === 0, psG.unspentT2);
@@ -1287,10 +1335,17 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      it were bigger the frame gate would drop the whole join and this
      would assert nothing. */
   const bigStash = new Array(200).fill({ type: 'sword', tierMult: 1, name: 'junk-padding-value' });
+  /* v2.3.3138: a character ON FILE.  A first join drops every rpg* key
+     before the allowlist's copy is used (join.js), so the copy's size guard
+     -- what this block tests -- only applies to a character that exists.
+     This suite's storage remembers nothing, so the read is answered here. */
+  const _origGetJf = room.state.storage.get;
+  room.state.storage.get = async (k) => (k === 'rpg:p_jf' ? { coins: 0, inventory: {}, lifeSkills: {} } : _origGetJf(k));
   await room.webSocketMessage(wsV, JSON.stringify({
     type: 'join', id: 'p_jf', name: 'JF', protocolVersion: 2,
     data: { x: 1, y: 2, z: 'town', avatar: AVATAR, rpgWeaponStash: bigStash, rpgCoins: 7 },
   }));
+  room.state.storage.get = _origGetJf;
   const psV = room.playerState.p_jf;
   /* avatar is a ~150-250 char proxy URL; the flat 64-char DROP removed
      it outright for every Hemi Bro holder.  Truncate, never drop. */

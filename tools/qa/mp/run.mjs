@@ -288,6 +288,7 @@ const SCENARIOS = {
   target: () => import('./mp-target.mjs'), /* v2.3.2243: the targeting perimeter, the lock that holds, the switch arrows, magic splash = arrow */
   tattoos: () => import('./mp-tattoos.mjs'), /* v2.3.1949: face + arm tattoos survive both server gates, end to end */
   roster: () => import('./mp-roster.mjs'), /* v2.3.1923: the device's character list — order, delete, the ten cap */
+  pickerrestart: () => import('./mp-pickerrestart.mjs'), /* v2.3.3138: the picker's restart of the bro this device plays clears the device's copy too -- nothing old comes back on screen or into the record */
   meals: () => import('./mp-meals.mjs'), /* v2.3.3130: the Cookhouse cooks into the bag; eat a meal, drink a brew beside it; Diego's two staples */
   fightfood: () => import('./mp-fightfood.mjs'), /* v2.3.3133: in a duel the worker puts the brew on (nb:1), a special swing says so, one bite at a time */
   farmorders: () => import('./mp-farmorders.mjs'), /* v2.3.3134: the Feed & Seed's order board -- three a day, delivered from the bag for gold and Farming XP */
