@@ -5,6 +5,7 @@ What the game could use from the owner next, each with a prompt ready to paste.
 - Attach what each item lists, and never the bro (docs/WORLD-BIBLE.md §6).
 - Send the result in chat, and a session fits it in: the "In the game" line says where each one goes.
 - Generated from `public/tools/style/bible.js` and the Object Studio's `promptFor` (`public/tools/objects/prompts.js`). The dungeon-entrance prompts are the studio's own.
+- **The farm's art** (seed, crop and dish icons, crops growing, beds and farm things, the Barn) has its own page: `docs/art/FARM-ART-PROMPTS.md`, with `docs/art/bag-icon-style-key.png` to attach to the icon sheets (v2.3.3132).
 
 ## Inside the buildings
 
@@ -594,6 +595,32 @@ Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh
 
 ```text
 A single game item icon of a magical ESSENCE: a small glowing orb of swirling light, about the size of a fist, floating, with a few tiny sparkles round it. Make three versions, one per picture: RARE in cool blue light, ELITE in warm orange light, GODLY in shifting rainbow (prismatic) light. Painted HD pixel art matching the attached style key, centred, nothing else in the picture, on a flat magenta (#FF00FF) background.
+```
+
+## The farm
+
+The Feed & Seed's farm (v2.3.3127, docs/specs/farm.md) draws its crops, seeds and compost with emoji until these exist: the window's beds, the Seeds tab and the bag all use them.
+
+### Farm goods: six bag icons
+
+- **In the game:** The bag, the Feed & Seed window's beds and its Seeds tab: a carrot, a Firebloom, a Rock Vine, a Cloudpetal, a seed pouch (every seed) and a sack of compost.
+- **Attach:** the Fury Tonic bottle icon (`public/icons/items/potion-fury.webp`), as the style to match.
+- **How:** Ask ChatGPT for one square picture holding all six; send it in chat and a session cuts it into the game's 256 px icons.
+
+```text
+Create a single 1024x1024 image: a 3x2 grid of six separate game item icons on a seamless pure white background (#FFFFFF). Each icon is centered in its own invisible cell with generous even margins. No grid lines, no cell borders, no labels.
+
+STYLE (apply identically to all six): match the attached reference icon exactly -- the same bold dark outline, the same rich, glossy, hand-painted shading with crisp highlights, the same saturation and the same size and weight of object in its cell. Each icon is ONE clearly readable object with a bold silhouette that stays readable at 32 pixels. A few small sparkles around an object are fine; no background shapes.
+
+SUBJECT GRID (left to right, top to bottom):
+1. a single fat orange carrot with a bushy green leaf top, freshly pulled, a little soil on its tip
+2. a "Firebloom": a magical red-orange flower whose petals curl up like little flames, on a short green stem with two leaves
+3. a "Rock Vine": a tough dark-green climbing vine with small grey pebbles caught in its curling tendrils
+4. a "Cloudpetal": a pale blue-white flower with soft round fluffy petals like a little cloud, on a short stem
+5. a small tied burlap seed pouch, slightly open, a few seeds spilling out
+6. a stout burlap sack of rich dark compost, open at the top, with a cheerful pink earthworm peeking out
+
+HARD CONSTRAINTS: no text, no letters, no numbers anywhere; no frames or borders around icons; no drop shadows on the background; pure flat white between icons; identical outline weight, palette and lighting on all six icons; every icon roughly the same visual size and weight; each silhouette must be identifiable when shrunk to 32x32 pixels.
 ```
 
 ## Sounds

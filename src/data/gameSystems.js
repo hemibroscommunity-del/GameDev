@@ -989,7 +989,18 @@ export function createGatheringNodes(zoneId, map) {
   return nodes;
 }
 
-/* §18.1 Cooking recipes — combine ingredients into food buffs */
+/* §18.1 Cooking recipes — combine ingredients into food buffs
+ *
+ * ═══ v2.3.3130: A RECIPE MAKES SOMETHING YOU CARRY ═══
+ * Mirror of server/src/data.js COOKING_RECIPES (mirror-audit, per index: the
+ * index is the wire key, so rows are APPENDED, never reordered).  `makes` is
+ * the bag item a cook puts in the bag on a worker with caps.meals; what that
+ * item does is DISHES below (or the tonic's SHOP_ITEMS effect).
+ * `buff` / `power` / `duration` on rows 0-2 are the OLD instant effect, and
+ * are read only in front of an OLD worker (no caps.meals), which applies
+ * them itself at the cook -- CookPanel's prediction then has to match it.
+ * Rows 3-5 have none: an old worker has no such recipe, so they are hidden
+ * there (CookPanel). */
 export const COOKING_RECIPES = [{
   name: 'Herb Bread',
   tier: 1,
@@ -1000,6 +1011,7 @@ export const COOKING_RECIPES = [{
   power: 0.02,
   duration: 60,
   cookLvl: 1,
+  makes: 'meal_herb_bread',
   desc: 'Regen 2%/s for 60s'
 }, {
   name: 'Root Stew',
@@ -1012,6 +1024,7 @@ export const COOKING_RECIPES = [{
   power: 0.05,
   duration: 60,
   cookLvl: 3,
+  makes: 'meal_root_stew',
   desc: '5% resist for 60s'
 }, {
   name: 'Firebloom Tea',
@@ -1020,11 +1033,80 @@ export const COOKING_RECIPES = [{
     herb_firebloom: 2
   },
   buff: 'damage',
-  power: 0.05,
+  power: 0.20,   /* v2.3.3127: was 0.05 under a "+5% dmg" card while the worker paid +20% (cooking.js reads this now) */
   duration: 90,
   cookLvl: 6,
-  desc: '+5% dmg for 90s'
+  makes: 'brew_firebloom_tea',
+  desc: '+20% dmg for 90s'
+}, {
+  /* v2.3.3130: the three tonics, brewed from the farm's herbs -- Diego no
+     longer sells them (server data.js DIEGO_SHELF).  Same bag keys as his
+     bottles, so one bought before the change still drinks. */
+  name: 'Fury Tonic',
+  tier: 3,
+  ingredients: {
+    herb_firebloom: 3
+  },
+  cookLvl: 10,
+  makes: 'whetstone',
+  desc: 'Double damage for 3 min'
+}, {
+  name: 'Mana Draught',
+  tier: 3,
+  ingredients: {
+    herb_rock_vine: 2
+  },
+  cookLvl: 5,
+  makes: 'manaShard',
+  desc: 'Specials nonstop for 3 min'
+}, {
+  name: 'Swift Draught',
+  tier: 3,
+  ingredients: {
+    herb_cloudpetal: 2
+  },
+  cookLvl: 5,
+  makes: 'swiftDraught',
+  desc: 'Run 1.5x as fast for 3 min'
+}, {
+  /* v2.3.3131: the potato and the pumpkin's dishes */
+  name: 'Garden Stew',
+  tier: 2,
+  ingredients: {
+    crop_carrot: 2,
+    crop_potato: 1
+  },
+  cookLvl: 4,
+  makes: 'meal_garden_stew',
+  desc: 'Heals 150 HP at once'
+}, {
+  name: 'Pumpkin Pie',
+  tier: 3,
+  ingredients: {
+    crop_pumpkin: 1,
+    crop_potato: 2
+  },
+  cookLvl: 8,
+  makes: 'meal_pumpkin_pie',
+  desc: '+10% combat XP for 30 min'
+}, {
+  /* v2.3.3132: the Stamina Tonic -- the old Stamina Salts, brewed now that
+     Diego sells no food or drink (server data.js COOKING_RECIPES row 8) */
+  name: 'Stamina Tonic',
+  tier: 1,
+  ingredients: {
+    crop_carrot: 2
+  },
+  cookLvl: 1,
+  makes: 'staminaSalts',
+  desc: 'Restores 60 stamina at once'
 }];
+
+/* v2.3.3130: what a dish does lives in its own small module (dishes.js), so
+   the bag can read it without this whole file; re-exported here, where the
+   recipes that make them are, and where mirror-audit looks. */
+export { DISHES, dishFor } from './dishes.js';
+import { dishFor as _dishFor } from './dishes.js';   /* v2.3.3131: calcDisplayHeal */
 
 /* §18 Fish Healing — fish must be COOKED via minigame to become edible */
 /* Raw fish → cooking minigame → cooked fish (heals) or burnt fish (wasted) */
@@ -5659,6 +5741,10 @@ export function calcDisplayDps(rpg, wpn) {
    both key shapes resolve the same tier).  The player_state echo
    after eat_request is the truth; this is prediction/labeling only. */
 export function calcDisplayHeal(rpg, invKey) {
+  /* v2.3.3131: a dish eaten at once (the Garden Stew) heals its own amount,
+     the worker's cooking.js _applyDish -- plus the same Recovery. */
+  var _dish = _dishFor(invKey);
+  if (_dish && _dish.buff === 'heal') return Math.ceil(_dish.power) + getRecoveryFlat(rpg);
   /* v2.3.1345: Recovery is a flat bonus on every heal. */
   return Math.ceil(getFishHealAmount(invKey)) + getRecoveryFlat(rpg);
 }

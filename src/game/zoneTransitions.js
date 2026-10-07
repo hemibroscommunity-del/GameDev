@@ -34,6 +34,8 @@ import { isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or
 import { freeZoneMap, isZoneMapResident, preloadStartZoneMap } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check; v2.3.2859: + town's own map */
 import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading } from '@/rendering/npcSprites.js'; /* v2.3.2859: town's NPCs + buildings load and free with town */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2999: the Wheel's grid is read at your boots */
+import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
+import { holdFarmUntilReady } from '@/game/farmTrip.js';
 
 /* ═══ v2.3.2272: FREE THE ZONE YOU LEFT, ONE BEAT LATE ═══
  *
@@ -397,6 +399,7 @@ export function clearZoneLocalFx(S) {
      that map's nodes. */
   if (S._peerGatherNode && S._peerGatherNode.clear) S._peerGatherNode.clear();
   S._firemaking = null;
+  S._farmWork = null;   /* v2.3.3136: a step at a bed ends with the farm (it sends nothing unfinished) */
   S._extraction = null;
   S._remoteProjectiles = [];
   /* v2.3.2841: a staff crash queued on the frame you left would flash at the
@@ -1551,6 +1554,13 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                and a few rows south so they're clearly OUTSIDE. */
             P.x = (Math.floor(_zn.w / 2) - 5) * TILE;
             P.y = TILE * 8;
+            /* v2.3.3136: back onto your farm, at the Dungeon Workshop's board,
+               under the farm's loading screen until it is all there */
+            if (S.currentZone === 'farm_home') {
+              P.x = FARM_FROM_WORKSHOP.x;
+              P.y = FARM_FROM_WORKSHOP.y;
+              holdFarmUntilReady(S);
+            }
             S._zoneWipe = Date.now();
             pushDmgPopup(S, P.x, P.y - 30, 'Exited dungeon', '#3dd497');
             BT_AUDIO.beep(500, 0.05, 0.06, 'sine');

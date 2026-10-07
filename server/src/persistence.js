@@ -42,6 +42,7 @@ const BUFF_MAGNITUDES = {
   damageMul: 'damage',   /* v2.3.2058: the Fury Tonic's x2 */
   spdMul: 'spd',         /* v2.3.2062: the Swift Draught's x1.5 */
   manaFlat: 'mana',      /* v2.3.2062: the Mana Draught's per-tick regen floor */
+  xpMul: 'xp',           /* v2.3.3131: the Pumpkin Pie's +10% combat XP (prog3.js reads it, bounded; a 2a worker keeps it too, for a rollback) */
 };
 
 export const persistenceMethods = {
@@ -398,6 +399,21 @@ export const persistenceMethods = {
        same belt-and-braces argument as the playerState delete below). */
     try { await this.state.storage.delete('gear_prov:' + pid); } catch (e) { /* best-effort, as above */ }
     this._gearProvForget(pid);
+    /* ═══ v2.3.3127: AND THE FARM GOES WITH THE CHARACTER ═══
+       `farm:<pid>` (farm.js) is keyed by player id too, so without this a
+       restarted level-1 character inherited every bed and whatever grew in
+       them.  Its first join said "6 beds are ready", and the harvest (which
+       asks no level) paid a Farming-10 life's Cloudpetals and their XP into
+       a character that is supposed to begin again (review finding).  A
+       restart resets items, gold and skills (docs/specs/character-restart.md),
+       and the beds were bought with them.  The next open hands out the free
+       deed again. */
+    try { await this.state.storage.delete('farm:' + pid); } catch (e) { /* best-effort, as above */ }
+    /* v2.3.3134: today's order board (`farmorders:<pid>`, farmorders.js) is
+       KEPT, as the guild claims are.  Its done flags are the day's limit: the
+       first cut deleted it here, and one player id could deliver the day's
+       three orders again after every restart (review).  The restarted
+       character sees the old board until midnight, then its own. */
     /* v2.3.3120: and the pets record (petbook.js), for the same reason: it is
        keyed by player id, and a restarted character has caught nothing.  The
        cache goes WITHOUT a flush (a flush would write the old record straight
@@ -590,5 +606,20 @@ export const persistenceMethods = {
       }
       ws.send(JSON.stringify({ type: 'player_state', payload }));
     } catch (e) {}
+  },
+
+  /* ═══ v2.3.3130: A REFUSAL'S ECHO HAS TO BE SENT ═══
+   * A refused action changes nothing on the worker -- and the v2 delta above
+   * sends only what changed, so the echo a refusal sends to snap a client's
+   * prediction back (the dish it drew in the bag, the herbs it took out, the
+   * XP it added) sent NOTHING to any live client: they all speak v2.  The
+   * review proved it on the cook kill switch.  Forgetting what was last sent
+   * for the named fields makes them go again, whatever the client drew. */
+  _resendPlayerState(ws, playerId, fields) {
+    const session = ws ? this.sessions.get(ws) : null;
+    if (session && session.lastPlayerStateSent && Array.isArray(fields)) {
+      for (const f of fields) delete session.lastPlayerStateSent[f];
+    }
+    this._sendPlayerState(ws, playerId);
   },
 };

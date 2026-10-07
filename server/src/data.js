@@ -10,6 +10,7 @@
  *   ZONES              <-> src/data/zones.js (level bands MUST match)
  *   FISH_TIERS         <-> src/data/lifeSkills.js FISHING_TIERS
  *   COOKING_RECIPES    <-> src/data/gameSystems.js (index order matters)
+ *   DISHES             <-> src/data/gameSystems.js DISHES (v2.3.3130)
  *   SHOP_ITEMS         <-> src/ui/panels/buildings/VendorPanel.jsx
  *                          (v2.3.1151: pointer fixed -- the vendor table
  *                          moved out of BroTown.jsx in the v2.3.882
@@ -429,11 +430,102 @@ export const FISH_TIERS = [
       { lvl: 21, name: 'pike' },     /* v2.3.3094: ...and 31-40 */
     ];
 
+/* v2.3.3127: `cookLvl` is the Cooking level a recipe asks -- the window's
+   lock (gameSystems.js) and, now, the worker's gate (cooking.js
+   _handleCookRecipe; mirror-audit keeps the two equal).  It only ever held on
+   the client, which was moot while nothing could make these herbs; the farm
+   grows them. */
+/* ═══ v2.3.3130: A RECIPE MAKES SOMETHING YOU CARRY ═══
+ * Farming plan, Phase 2 (docs/FARMING-PLAN.md, "What farming pays"): a cook
+ * used to apply its buff on the spot; now it puts `makes` in the bag, to eat
+ * or drink when you want it, trade, or list on the auction house -- so a
+ * player who never farms can still buy a farmer's food.  What a dish DOES is
+ * DISHES below (or SHOP_ITEMS for the three tonics, which keep their keys and
+ * effects so a bottle bought from Diego before the change still drinks).
+ *
+ * THE INDEX IS THE WIRE KEY (cook_recipe {recipeIdx}), so rows are APPENDED,
+ * never reordered: 0-2 are the original three, 3-5 the tonics Diego no longer
+ * sells (DIEGO_SHELF), 6-7 the potato's and pumpkin's dishes (v2.3.3131), 8 the
+ * Stamina Tonic (v2.3.3132).  Rows 0-2 have no instant effect of their own any more
+ * -- an OLD client's cook (no `carry`) gets the dish applied at once, which is
+ * what it predicted, only longer.  The client's mirror keeps its old
+ * buff/power/duration for the one case it still needs them: a new client in
+ * front of an OLD worker (no caps.meals), which applies those itself. */
 export const COOKING_RECIPES = [
-      { ingredients: { herb_firebloom: 1 },                          buff: 'regen',  power: 0.02, duration: 60, tier: 1 },
-      { ingredients: { herb_rock_vine: 1, herb_cloudpetal: 1 },      buff: 'resist', power: 0.05, duration: 60, tier: 1 },
-      { ingredients: { herb_firebloom: 2 },                          buff: 'damage', power: 0.05, duration: 90, tier: 2 },
+      { ingredients: { herb_firebloom: 1 },                          tier: 1, cookLvl: 1,  makes: 'meal_herb_bread' },
+      { ingredients: { herb_rock_vine: 1, herb_cloudpetal: 1 },      tier: 1, cookLvl: 3,  makes: 'meal_root_stew' },
+      { ingredients: { herb_firebloom: 2 },                          tier: 2, cookLvl: 6,  makes: 'brew_firebloom_tea' },
+      /* v2.3.3130: the three tonics, brewed from herbs (the plan's "Diego keeps
+         his staples and loses his tonics").  The Fury Tonic is the strongest
+         thing in the game a player can drink and its herb the cheapest to grow,
+         so it asks the most Cooking; the other two ask Cooking 5 and herbs that
+         themselves ask Farming 5 and 10. */
+      { ingredients: { herb_firebloom: 3 },                          tier: 3, cookLvl: 10, makes: 'whetstone' },
+      { ingredients: { herb_rock_vine: 2 },                          tier: 3, cookLvl: 5,  makes: 'manaShard' },
+      { ingredients: { herb_cloudpetal: 2 },                         tier: 3, cookLvl: 5,  makes: 'swiftDraught' },
+      /* v2.3.3131: the two food crops' dishes (FARM.CROPS potato, pumpkin). */
+      { ingredients: { crop_carrot: 2, crop_potato: 1 },             tier: 2, cookLvl: 4,  makes: 'meal_garden_stew' },
+      { ingredients: { crop_pumpkin: 1, crop_potato: 2 },            tier: 3, cookLvl: 8,  makes: 'meal_pumpkin_pie' },
+      /* v2.3.3132: the STAMINA TONIC (the old Stamina Salts' key and effect,
+         +60 stamina at once), brewed from two carrots -- owner: "Remove all of
+         Diego's potions. I want food and drink to come exclusively from
+         farming and recipes."  The cheapest crop and Cooking 1, as the salts
+         were the cheapest thing on his shelf: a new player can make it on day
+         one, and a fight's stamina (a block, a dodge, a dash) is still
+         something you can top up. */
+      { ingredients: { crop_carrot: 2 },                             tier: 1, cookLvl: 1,  makes: 'staminaSalts' },
     ];
+
+/* ═══ v2.3.3130: WHAT A DISH DOES ═══
+ * One MEAL and one BREW may run at once (the plan's recommendation, Stardew's
+ * food-and-drink rule): eating replaces the meal you had, drinking replaces
+ * the brew, and neither touches the other.  It was one effect of any kind
+ * (v2.3.2063, cooking.js _clearTimedBuffs) because a meal had to compete with
+ * a 35-coin bottle of double damage; with the bottle off the shelf a meal can
+ * sit beside it.  DAMAGE ONLY EVER IN A BREW: combat.js's cheat ceiling was
+ * sized at the Fury Tonic's x2 (90.5% of it at the measured peak), and a x1.2
+ * meal on top would cross it (~109%), so no meal raises damage.
+ *   meal: half an hour, modest.  The Herb Bread doubles the out-of-combat
+ *         healing (`power` is that multiplier, read in index.js's regen tick)
+ *         under its OWN timer, `rest` -- never `regen`, which v2.3.3127's
+ *         worker reads as 2% of max HP a second in or out of a fight: a
+ *         rollback to it would have read a half-hour bread that way (review);
+ *         the Root Stew takes 5% off every hit (combat.js).
+ *   brew: the Firebloom Tea is the long, gentle damage drink, +20% for half
+ *         an hour, against the Fury Tonic's x2 for three minutes; one at once.
+ * `duration` in SECONDS, like SHOP_ITEMS.  The three tonics are brews too;
+ * their effects stay in SHOP_ITEMS, where every bottle already drinks from.
+ *   DISHES     <-> src/data/gameSystems.js DISHES (mirror-audit) */
+export const DISHES = {
+      meal_herb_bread:    { slot: 'meal', buff: 'rest',   power: 2,    duration: 1800 },
+      meal_root_stew:     { slot: 'meal', buff: 'resist', power: 0.05, duration: 1800 },
+      brew_firebloom_tea: { slot: 'brew', buff: 'damage', power: 0.20, duration: 1800 },
+      /* v2.3.3131: the Garden Stew is eaten like a cooked fish -- 150 HP at
+         once (slot 'now': no slot, it replaces nothing), refused in an arena
+         match like every heal.  The Pumpkin Pie is a meal: +10% of the combat
+         XP a fight pays (prog3.js _prog3AwardXp), never a quest's flat XP. */
+      meal_garden_stew:   { slot: 'now',  buff: 'heal',   power: 150 },
+      meal_pumpkin_pie:   { slot: 'meal', buff: 'xp',     power: 0.10, duration: 1800 },
+    };
+
+/* ═══ v2.3.3133: ONE BITE AT A TIME IN A FIGHT WITH A PLAYER ═══
+ * Owner: "Farming needs a purpose. I think the best purpose it can serve are
+ * temporary buffs (boss fights, PvP, dueling, etc)".
+ *
+ * A heal you eat at once -- a Garden Stew, a cooked fish, the old minnow
+ * bottle -- had no limit at all, so a duel was a contest of who carried more
+ * food: three stews in one tap-tap-tap put a player back at full, and the
+ * duel's own rule (no regen in a duel, index.js _tickPlayerRegen) meant
+ * nothing.  So while you are in a duel, or within WINDOW_MS of a hit between
+ * you and another player (either way, cooking.js _pvpHealWait), you may eat
+ * one such heal every GAP_MS -- counted from your last one, wherever you ate
+ * it.  Fighting monsters is untouched, and the half-hour meals and brews are
+ * not heals and are never limited.  Mirrored in src/data/dishes.js
+ * (mirror-audit).  Kill switch `pvpheal: false`. */
+export const PVP_HEAL = Object.freeze({
+  WINDOW_MS: 10000,
+  GAP_MS: 15000,
+});
 
 /* ═══ v2.3.2062: WHAT "CONSTANTLY" IS WORTH, IN NUMBERS ═══
  *
@@ -525,6 +617,29 @@ export const SHOP_ITEMS = {
          written against this value. */
       swiftDraught:  { cost: 30, effect: 'spdBuff', duration: 180, mult: 1.5 },
     };
+
+/* ═══ v2.3.3132: DIEGO SELLS NO FOOD OR DRINK ═══
+ * Owner, 2026-10-06: "Remove all of Diego's potions. I want food and drink to
+ * come exclusively from farming and recipes."  So his shelf is EMPTY: the
+ * Cooked Minnow and the Stamina Salts come off it as the tonics did.  The
+ * Stamina Salts are brewed from carrots now (COOKING_RECIPES row 8, the
+ * Stamina Tonic); a cooked minnow is what a fisher cooks.  Both stay in
+ * SHOP_ITEMS -- a bottle or a fish already in a bag still drinks or eats --
+ * and he still buys none of them back (shop.js heWontTrade, which since this
+ * version takes in cooked fish too).  The note below is v2.3.3130's, when
+ * the two instant items stayed.
+ *
+ * ═══ v2.3.3130: WHAT DIEGO SELLS IS NOT EVERYTHING HE STOCKS ═══
+ * The farming plan's "Diego keeps his staples and loses his tonics": under the
+ * one-effect rule a 35-coin bottle of double damage beat anything a farm could
+ * grow, so the three tonics come off his shelf the day the farm brews them
+ * (COOKING_RECIPES 3-5).  They stay in SHOP_ITEMS -- their keys, their effects,
+ * the bag's bottles and the auction house's potion tab all keep working, and a
+ * bottle bought before the change still drinks.  The two instant items stay on
+ * sale: they never touch a timed effect, and a brand-new player at a quiet hour
+ * needs something to buy.  shop.js's shelf and the vendor building both read
+ * this; he still buys none of SHOP_ITEMS back (shop.js isShopPotion). */
+export const DIEGO_SHELF = Object.freeze([]);
 
 /* v2.3.1120: declarative quest objectives.  An entry WITH `objective`
  * is server-verified: the GameRoom increments its counter (kill credit

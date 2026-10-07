@@ -1,9 +1,12 @@
 import React from 'react';
-import { BT_AUDIO, RESOURCE_TIERS, TILE, ZONES, ZONE_RESOURCES, addLifeSkillXp, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
+import { BT_AUDIO, RESOURCE_TIERS, ZONE_RESOURCES, addLifeSkillXp, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { rememberFarmTrip } from '@/game/wheelTownDoors.js'; /* v2.3.3032: from the Wheel, the farm's gate leads back out where you stood */
+import { FARM_ARRIVE } from '@/data/farmLayout.js';   /* v2.3.3136 */
+import { holdFarmUntilReady } from '@/game/farmTrip.js';
+import { FeedSeedPanel } from './FeedSeedPanel.jsx'; /* v2.3.3127: the farm the worker settles */
 /* === FarmPanel — buildingPanel === 'farm' sub-panel === */
 /* v2.3.877: extracted verbatim from the buildingPanel === 'farm'
    clause in BroTown.jsx (the farm plot manager: plant/harvest crops,
@@ -53,7 +56,27 @@ function lsHeader(icon, emoji, title, subtitle) {
     React.createElement("div", { style: { fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 } }, title),
     subtitle ? React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginTop: 1 } }, subtitle) : null));
 }
+/* ═══ v2.3.3127: WHICH FARM THIS WINDOW IS ═══
+ * Against a worker that advertises caps.farm the Feed & Seed opens the real
+ * farm (FeedSeedPanel.jsx: beds the worker owns, on its clock, seeds it
+ * sells).  Against an OLD worker it keeps this file's old face below, the
+ * browser-only plots whose plantings the player_state echo always undid --
+ * a legacy fallback in rule 19's sense, to be deleted once every worker in
+ * production advertises the cap (ARCHITECTURE-HANDOFF rule zero).
+ * v2.3.3127: and a worker that says `farm: false` -- the kill switch, its
+ * liveflag spread over the caps -- gets the real window CLOSED (a card that
+ * sends nothing), not the old plots: an old worker leaves the key out, the
+ * switch sets it false, and the old face's "No seeds" beside invisible real
+ * beds was what this farm replaced (review finding). */
 export function FarmPanel(props) {
+  var S = props.stateRef && props.stateRef.current;
+  if (S && S._serverCaps && S._serverCaps.farm) return React.createElement(FeedSeedPanel, props);
+  if (S && S._serverCaps && S._serverCaps.farm === false) return React.createElement(FeedSeedPanel, Object.assign({}, props, { closed: true }));
+  return React.createElement(LegacyFarmPanel, props);
+}
+
+/* v2.3.3127: the old panel, renamed and otherwise untouched. */
+function LegacyFarmPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
     setRpgState = props.setRpgState,
@@ -101,11 +124,6 @@ export function FarmPanel(props) {
         onClick: function onClick() {
           var S2 = stateRef.current,
             P2 = S2.player;
-          /* v2.3.1406: farm map no longer preloads at startup (per-zone
-             loading) and this warp bypasses the hub-exit gate — kick the
-             load now so the ground paints instead of flashing black;
-             tileRenderer's cache-miss self-heal is the backstop. */
-          import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets('farm_home'); }).catch(function () {});
           rememberFarmTrip(S2);   /* v2.3.3032: from the Wheel, the gate leads back out where you stood */
           S2.currentZone = 'farm_home';
           updateZoneDimensions('farm_home');
@@ -113,9 +131,12 @@ export function FarmPanel(props) {
           S2.monsters = [];
           S2.gatherNodes = [];
           S2.npcs = null;
-          var fz = ZONES.farm_home;
-          P2.x = Math.floor(fz.w / 2) * TILE;
-          P2.y = (fz.h - 4) * TILE;
+          /* v2.3.3136: in at the farm's gate, held under its loading screen
+             until it is all there (game/farmTrip.js -- v2.3.1406's un-awaited
+             kick let the ground come in a beat after you) */
+          P2.x = FARM_ARRIVE.x;
+          P2.y = FARM_ARRIVE.y;
+          holdFarmUntilReady(S2);
           S2.groundLoot = [];
           S2.hitParticles = [];
           S2.deathExplosions = [];
