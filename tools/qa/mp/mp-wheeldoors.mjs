@@ -2,11 +2,12 @@
  *
  * Owner, 2026-10-04: "Push to main. Then after that add doors."  One real
  * player against a real worker, in the Wheel's Brotown, on a phone:
- *   1. the client knows the town's seventeen doors from the worker's answer:
- *      twelve that open a building, the Wheel's four halls (v2.3.3066:
+ *   1. the client knows the town's sixteen doors from the worker's answer
+ *      (v2.3.3143: the Assay Office is gone, the Gem Works does both gem jobs):
+ *      eleven that open a building, the Wheel's four halls (v2.3.3066:
  *      mp-wheelhalls walks them; v2.3.3142: the Town Hall is the fourth) and
  *      one shut one;
- *   2. walked to each of the twelve (boots at the foot of its steps), the
+ *   2. walked to each of the eleven (boots at the foot of its steps), the
  *      Enter button comes up with the NAME ON ITS SIGN ("Enter SALOON"), and a
  *      tap opens that building's panel -- the forge's, the bank's, the
  *      market's and so on, the old town's own;
@@ -15,7 +16,7 @@
  *   4. a shut door (the hotel; until v2.3.3066 the sheriff's, the post
  *      office and the guild hall too) shows its name and "Shut for now" and
  *      is not a button;
- *   5. twelve buildings visited are twelve visits (mayor_1's "visit 3");
+ *   5. eleven buildings visited are eleven visits (mayor_1's "visit 3");
  *   6. Diego keeps the General Store: drawn, beside its steps, his window shut
  *      while you stand at the door and open when you walk up to him;
  *   7. the Land Office sends you to your farm and the farm's gate leads back
@@ -141,26 +142,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 1. the doors ── */
   let doors = [];
-  for (let i = 0; i < 40 && doors.length < 17; i++) {
+  for (let i = 0; i < 40 && doors.length < 16; i++) {
     doors = await P.page.evaluate(() => (window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : []));
-    if (doors.length < 17) await P.page.waitForTimeout(500);
+    if (doors.length < 16) await P.page.waitForTimeout(500);
   }
   const byId = Object.fromEntries(doors.map((d) => [d.id, d]));
   const open = doors.filter((d) => d.index >= 0), shut = doors.filter((d) => d.index < 0 && d.closed), plain = doors.filter((d) => d.index < 0 && !d.closed && !d.hall);
   const halls = doors.filter((d) => d.hall);   /* v2.3.3066: the Wheel's own (mp-wheelhalls) */
   rec.ok(`the client knows the town's doors from the worker's answer: ${open.length} that open a building, ${halls.length} halls of the Wheel's own, ${shut.length} shut, and ${plain.map((d) => d.name).join(', ')}`,
-    z0 === 'wheel' && doors.length === 17 && open.length === 12 && halls.length === 4 && shut.length === 1 && plain.length === 0 && halls.some((d) => d.id === 'townhall')
+    z0 === 'wheel' && doors.length === 16 && open.length === 11 && halls.length === 4 && shut.length === 1 && plain.length === 0 && halls.some((d) => d.id === 'townhall')
       && Object.keys(WHEEL_BUILDING_DOORS).every((k) => byId[k] && byId[k].index >= 0 && actionOf[byId[k].index] === TOWN_BUILDINGS.find((b) => b.id === WHEEL_BUILDING_DOORS[k]).action)
       && WHEEL_SHUT_DOORS.every((k) => byId[k] && byId[k].closed === true && byId[k].index < 0),
     { z0, doors: doors.map((d) => [d.id, d.index]) });
 
-  /* ── 2. each of the twelve ── */
+  /* ── 2. each of the eleven ── */
   const visited = [];
   const failures = [];
   for (const d of open) {
     const okStand = await standAt(d.x, d.y + 30);
     const r = await settle((q) => q.at === d.id && q.btn);
-    if (d.id === 'store' || d.id === 'auction' || d.id === 'assay') await shot(P, 'enter-' + d.id);
+    if (d.id === 'store' || d.id === 'auction' || d.id === 'gemcutter') await shot(P, 'enter-' + d.id);
     const want = 'Enter ' + d.label;
     let opened = null;
     if (r && r.btn) {
@@ -175,7 +176,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await closePanel();
   }
   rec.ok(`standing at the foot of each building's steps the button says "Enter" and the name on the sign -- lying over no other button, inside the screen -- and a tap opens the old town's own panel: ${visited.map((v) => v.label + '→' + v.opened).join(', ')}`,
-    visited.length === 12 && failures.length === 0, failures);
+    visited.length === 11 && failures.length === 0, failures);
 
   /* ── 3. not a step before ── */
   const bank = byId.bank;
@@ -207,12 +208,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { shutSeen: shutSeen.map((s) => [s.id, s.r && s.r.shut, s.r && s.r.btn]) });
   rec.ok('...and its caption lies over no button either', shutSeen.every((s) => s.r && s.r.shut && s.r.shut.over.length === 0), shutSeen.map((s) => [s.id, s.r && s.r.shut && s.r.shut.over]));
 
-  /* ── 5. twelve visits ── */
+  /* ── 5. eleven visits ── */
   const stats = await H.readState(P, (S) => {
     const v = S.stats && S.stats.visitedBuildings;
     return { n: v ? (v.size != null ? v.size : Object.keys(v).length) : 0, count: S.stats ? S.stats.buildingsVisited : null };
   });
-  rec.ok(`twelve buildings entered are twelve visits (${stats.n}): the "visit 3 buildings" errand can be done in the Wheel`, stats.n === 12 && stats.count === 12, stats);
+  rec.ok(`eleven buildings entered are eleven visits (${stats.n}): the "visit 3 buildings" errand can be done in the Wheel`, stats.n === 11 && stats.count === 11, stats);
 
   /* ── 6. Diego ── */
   const store = byId.store, sk = WHEEL_TOWNSFOLK.find((f) => f.name === 'Diego');

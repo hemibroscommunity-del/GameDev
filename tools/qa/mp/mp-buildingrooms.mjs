@@ -5,11 +5,17 @@
  * worker, in the Wheel's Brotown, on a phone (390 x 844, touch):
  *   1. standing at a door decodes THAT room's picture (and no other), and
  *      the first door starts the rest coming (src/game/buildingRooms.js);
- *   2. each of the sixteen windows -- the twelve buildings and the four
- *      halls -- opens with its own room at the top of the card: the picture
+ *   2. each of the fifteen doors that open a window -- the eleven buildings
+ *      and the four halls -- opens with its own room at the top of the card
+ *      (v2.3.3143: sixteen windows, fifteen rooms: the Gem Works' two tabs
+ *      share one): the picture
  *      loaded at 1152 x 768, flush with the card's edges, 3:2 (the forge's a
  *      slim 4:1 band), the panel starting exactly where it ends with square
  *      top corners, the close button on top of it;
+ *   2b. (v2.3.3143) the Gem Works' door opens ONE window with two tabs, Cut
+ *      gems and Set gems, under the same room picture (not remounted when the
+ *      tab changes), each tab drawing the cutter's or the enchanter's own
+ *      panel flush with the window, every tab reachable by a finger;
  *   3. the Auction House's clerk is drawn into his room, inside it, centred on
  *      the lectern;
  *   4. the Land Office's window (it was a separate dialog under an empty card
@@ -18,7 +24,7 @@
  *   5. the Market (a screen of its own, reached from a window) has no room;
  *   6. a shorter phone holds the picture to 30vh, a sideways one drops it, and
  *      a picture that cannot be loaded leaves the window as it was;
- *   7. walking away lets the held picture go; all sixteen were asked for; no
+ *   7. walking away lets the held picture go; all fifteen were asked for; no
  *      page errors.
  * Pictures: tools/qa/mp/out/buildingrooms-*.png.
  */
@@ -137,15 +143,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── the doors ── */
   let doors = [];
-  for (let i = 0; i < 40 && doors.length < 17; i++) {
+  for (let i = 0; i < 40 && doors.length < 16; i++) {
     doors = await P.page.evaluate(() => (window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : []));
-    if (doors.length < 17) await P.page.waitForTimeout(500);
+    if (doors.length < 16) await P.page.waitForTimeout(500);
   }
   const byId = Object.fromEntries(doors.map((d) => [d.id, d]));
   const windows = doors.filter((d) => d.index >= 0 || d.hall);
   const warmBefore = await P.page.evaluate(() => ({ held: window.__btRoomWarm.held(), pre: window.__btRoomWarm.prefetched() }));
   rec.ok(`on a phone in the Wheel's Brotown: ${windows.length} doors open a window, and before the first door nothing is decoded or prefetched`,
-    z0 === 'wheel' && doors.length === 17 && windows.length === 16 && warmBefore.held === null && warmBefore.pre === false, { z0, n: doors.length, windows: windows.length, warmBefore });
+    z0 === 'wheel' && doors.length === 16 && windows.length === 15 && warmBefore.held === null && warmBefore.pre === false, { z0, n: doors.length, windows: windows.length, warmBefore });
 
   /* ── 1 + 2. each window ── */
   const bad = [], warmBad = [], seen = [];
@@ -199,9 +205,77 @@ export async function run({ browser, wsPort, webPort, rec }) {
       preAt.townhall === false && preAt[second.id] === true, preAt);
   }
   rec.ok(`standing at a door decodes its own room's picture and no other (${order.length} doors${warmBad.length ? ', WRONG: ' + JSON.stringify(warmBad) : ''}), and the first shop's or hall's door starts the rest coming`,
-    order.length === (only.length || 16) && warmBad.length === 0 && (await P.page.evaluate(() => window.__btRoomWarm.prefetched())) === true, { warmBad });
+    order.length === (only.length || 15) && warmBad.length === 0 && (await P.page.evaluate(() => window.__btRoomWarm.prefetched())) === true, { warmBad });
   rec.ok(`each window opens with its own room at the top of the card: ${seen.map((s) => s.id + ' ' + s.w + 'x' + s.h + (s.shape === 'band' ? ' band' : '')).join(', ')} -- 1152 x 768 loaded, flush with the card, 3:2 (the forge's 4:1 band), the panel starting where it ends with square top corners, the close button on top of it`,
-    bad.length === 0 && seen.length === (only.length || 16), bad);
+    bad.length === 0 && seen.length === (only.length || 15), bad);
+
+  /* ── 2b. the Gem Works: two tabs, one room (v2.3.3143) ── */
+  if (!only.length || only.includes('gemcutter')) {
+    const gw = byId.gemcutter;
+    await standAt(gw.x, gw.y + 30);
+    await settle((q) => q.at === 'gemcutter' && q.btn);
+    await tapEnter();
+    let k0 = null;
+    for (let i = 0; i < 12 && !k0; i++) { await P.page.waitForTimeout(250); k0 = await panelKey(); }
+    for (let i = 0; i < 24; i++) { const m = await measure(); if (m && m.room && m.state === 'ready') break; await P.page.waitForTimeout(250); }
+    await P.page.waitForTimeout(300);
+    const gwRead = () => P.page.evaluate(() => {
+      const card = document.querySelector('.bt-inspect-card');
+      const w = card && card.querySelector('[data-gem-works]');
+      const room = card && card.querySelector(':scope > .bt-room');
+      const tabs = w ? Array.from(w.querySelectorAll('button[data-gem-tab]')) : [];
+      const body = w && w.querySelector('.bt-gw-body');
+      const inner = body && body.firstElementChild;
+      const wr = w && w.getBoundingClientRect(), ir = inner && inner.getBoundingClientRect(), rr = room && room.getBoundingClientRect();
+      const tr = tabs.map((t) => {
+        const r = t.getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return { tab: t.getAttribute('data-gem-tab'), on: t.getAttribute('aria-selected') === 'true', text: (t.textContent || '').trim(), h: Math.round(r.height), reach: !!hit && (hit === t || t.contains(hit)), within: r.left >= wr.left - 0.5 && r.right <= wr.right + 0.5 };
+      });
+      return { key: card && card.getAttribute('data-building-panel'), roomAttr: card && card.getAttribute('data-room'), works: w ? w.getAttribute('data-gem-works') : null,
+        tabs: tr, rooms: card ? card.querySelectorAll('.bt-room').length : 0, tag: room ? (room.querySelector('img').__qaTag || null) : null, state: room && room.getAttribute('data-room-state'),
+        flush: !!(wr && ir) && Math.abs(ir.left - wr.left) < 1.5 && Math.abs(ir.right - wr.right) < 1.5, bottomFlush: !!(wr && ir) && Math.abs(ir.bottom - wr.bottom) < 1.5,
+        under: !!(w && rr) && Math.abs(wr.top - rr.bottom) < 1.5, innerRadius: inner ? getComputedStyle(inner).borderTopLeftRadius : null,
+        text: inner ? (inner.textContent || '').slice(0, 90) : null, noSideways: card ? card.scrollWidth <= card.clientWidth + 1 : null };
+    });
+    const cut = await gwRead();
+    await P.page.evaluate(() => { const img = document.querySelector('.bt-room img'); if (img) img.__qaTag = 'same'; });
+    await shot('gemworks-cut');
+    await P.page.evaluate(() => { const b = document.querySelector('[data-gem-works] button[data-gem-tab="enchant"]'); if (b) b.click(); });
+    await P.page.waitForTimeout(600);
+    const set = await gwRead(), mSet = await measure();
+    await shot('gemworks-set');
+    await P.page.evaluate(() => { const b = document.querySelector('[data-gem-works] button[data-gem-tab="gemcut"]'); if (b) b.click(); });
+    await P.page.waitForTimeout(600);
+    const cut2 = await gwRead();
+    const tabsOk = (g, want) => g.tabs.length === 2 && g.tabs.map((t) => t.tab).join() === 'gemcut,enchant' && g.tabs.every((t) => t.reach && t.within && t.h >= 44) && g.tabs.find((t) => t.on).tab === want
+      && g.tabs[0].text.startsWith('Cut gems') && g.tabs[1].text.startsWith('Set gems');
+    rec.ok(`the Gem Works' door opens ONE window with two tabs, "Cut gems" and "Set gems" (each at least 44 px tall and reachable by a finger), the cutter's panel first (${(cut.text || '').slice(0, 40).trim()}...)`,
+      k0 === 'gemcut' && cut.works === 'gemcut' && cut.key === 'gemcut' && tabsOk(cut, 'gemcut') && /Gem Cutter/.test(cut.text || '') && cut.rooms === 1, { k0, cut });
+    rec.ok(`...a tap on "Set gems" is the enchanter's panel in the same window (${(set.text || '').slice(0, 40).trim()}...), the same room picture still there and NOT remounted (the very same <img>), the close button still on top of it`,
+      set.works === 'enchant' && set.key === 'enchant' && set.roomAttr === 'gemcutter' && tabsOk(set, 'enchant') && /Enchanter/.test(set.text || '') && set.rooms === 1 && set.tag === 'same' && set.state === 'ready'
+        && !!mSet && mSet.closeOnTop === true, { set, closeOnTop: mSet && mSet.closeOnTop });
+    rec.ok('...each panel fills its body exactly (its own -20 px margin taken back by the body\'s 20 px), under the strip with square corners, the strip right under the room, nothing wider than the window; a tap on "Cut gems" brings the cutter back',
+      cut.flush && cut.bottomFlush && cut.under && cut.innerRadius === '0px' && cut.noSideways === true && set.flush && set.bottomFlush && set.under && set.innerRadius === '0px' && set.noSideways === true
+        && cut2.works === 'gemcut' && cut2.key === 'gemcut' && tabsOk(cut2, 'gemcut') && cut2.tag === 'same', { cut, set, cut2 });
+    /* a sideways phone drops the room, and the close button lies over the strip's end: the tabs keep clear of it */
+    await P.page.setViewportSize({ width: 844, height: 390 });
+    await P.page.waitForTimeout(700);
+    const sideGw = await P.page.evaluate(() => {
+      const card = document.querySelector('.bt-inspect-card');
+      const close = card && card.querySelector('.bt-inspect-close');
+      const tabs = card ? Array.from(card.querySelectorAll('[data-gem-works] button[data-gem-tab]')) : [];
+      const xr = close ? close.getBoundingClientRect() : null;
+      const hit = xr ? document.elementFromPoint(xr.left + xr.width / 2, xr.top + xr.height / 2) : null;
+      const overlap = tabs.some((t) => { const r = t.getBoundingClientRect(); return !!xr && r.right > xr.left && r.left < xr.right && r.bottom > xr.top && r.top < xr.bottom; });
+      const room = card && card.querySelector(':scope > .bt-room');
+      return { open: !!card, room: room ? getComputedStyle(room).display : 'none', tabs: tabs.length, overlap, closeOnTop: !!hit && (hit === close || close.contains(hit)) };
+    });
+    await shot('gemworks-sideways');
+    await P.page.setViewportSize(PHONE);
+    await P.page.waitForTimeout(700);
+    rec.ok('...and on a sideways phone, where the room steps aside, the tabs stay clear of the close button and it is on top', sideGw.open && sideGw.room === 'none' && sideGw.tabs === 2 && !sideGw.overlap && sideGw.closeOnTop, sideGw);
+    await closePanel();
+  }
 
   /* ── 3. the clerk ── */
   const kk = roomOfAuction && roomOfAuction.keeper;

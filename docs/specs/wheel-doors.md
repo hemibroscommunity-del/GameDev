@@ -1,6 +1,11 @@
 # The Wheel's buildings have doors (v2.3.3032)
 
 > Owner, 2026-10-04: *"Push to main. Then after that add doors."*
+>
+> **v2.3.3143:** the Assay Office is gone and the Gem Cutter's building is the Gem
+> Works, which does both gem jobs (docs/specs/gem-works.md): sixteen buildings,
+> eleven that open a building, one door fewer than the numbers below, which are
+> v2.3.3032's.
 
 With the portal to today's town gone (v2.3.3025) the forge, the bank, the
 shops and the auction house could not be reached at all. The Wheel's Brotown
@@ -18,14 +23,13 @@ the sign**. A tap — or **E** on a keyboard — opens the building.
 |---|---|---|
 | Blacksmith | the forge | BLACKSMITH |
 | Woodworker | the woodworker's bench | WOODWORKER |
-| Gem Cutter | gem cutting | GEM CUTTER |
+| Gem Cutter (the Gem Works since v2.3.3143) | gem cutting, and the enchanter on a second tab | GEM CUTTER |
 | Saloon | the party panel (and the arena's sign-up) | TAVERN |
 | Gambling Den | the gambling panel | GAMBLING DEN |
 | Cookhouse | cooking | KITCHEN |
 | Feed & Seed | the farm panel (plots, seeds, "Visit Your Farm") | FARM |
 | Land Office | "Travel to your farm" | YOUR FARM |
 | Bank | the bank | BANK |
-| Assay Office | the enchanter | ENCHANTER |
 | General Store | the market | MARKETPLACE |
 | Auction House | the auction house | AUCTION HOUSE |
 
@@ -71,7 +75,7 @@ forge all work from anywhere — the server never asked which zone you were in).
   placed with its foot — the bottom of its steps — on its plot's door, so that
   point is the door. Only buildings with a picture get one (nothing drawn,
   nothing to walk up to). The ground worker ships the list as `objects.doors`
-  (`[{ id, name, x, y }]`, 17 entries) after it knows which pictures exist.
+  (`[{ id, name, x, y }]`, 17 entries; 16 since v2.3.3143) after it knows which pictures exist.
 - **What (a table).** `src/data/wheelBuildingDoors.js` maps plot id → the
   `TOWN_BUILDINGS` id it opens (`WHEEL_BUILDING_DOORS`), lists the four shut
   plots (`WHEEL_SHUT_DOORS`), says who stands where (`WHEEL_TOWNSFOLK`) and the

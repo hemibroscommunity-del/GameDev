@@ -11,6 +11,11 @@ one. The seventeenth picture, the Hotel's, has no window yet and is shipped,
 waiting. (The Town Hall's was held too until the owner chose "a Town Hall
 window", below.)
 
+> **v2.3.3143:** the Assay Office is gone (docs/specs/gem-works.md). Its picture is
+> out of the game, and the Gem Works' second tab, "Set gems" (`enchant`), shows the
+> Gem Cutter's room, so it is sixteen windows, **fifteen** rooms, sixteen pictures
+> in all with the Hotel's. The counts below are v2.3.3142's.
+
 ## Which window shows which room
 
 | Door | Window (`buildingPanel`) | Picture |
@@ -20,9 +25,9 @@ window", below.)
 | Bank | `bank` | `bank` |
 | Saloon | `party` (the party panel, and the arena sign-up) | `saloon` |
 | Woodworker | `woodwork` | `woodworker` |
-| Gem Cutter | `gemcut` | `gemcutter` |
+| Gem Cutter (the Gem Works, tab "Cut gems") | `gemcut` | `gemcutter` |
 | Cookhouse | `cook` | `cookhouse` |
-| Assay Office | `enchant` | `assay` |
+| (was the Assay Office) the Gem Works' tab "Set gems" | `enchant` | `gemcutter` (v2.3.3143; was `assay`) |
 | Gambling Den | `gamble` | `gambling` |
 | Feed & Seed | `farm` | `feedseed` |
 | Land Office | `farmhome` (the trip to your farm) | `landoffice` |
@@ -176,11 +181,11 @@ pictures is on the gate**:
 ## Tests
 
 - `tools/world/test-world-core.mjs` "the buildings' insides": every door opens
-  its own room; sixteen windows, sixteen rooms; all seventeen files on disk at
-  1152 x 768 under 450 KB; the clerk's strip and cell; the Town Hall's rows; the
+  its own room; sixteen windows, fifteen rooms (v2.3.3143: the Gem Works' two
+  tabs share one); all sixteen files on disk at 1152 x 768 under 450 KB; the clerk's strip and cell; the Town Hall's rows; the
   wiring and the CSS.
-- `node tools/qa/mp/run.mjs buildingrooms`: a phone walks to each of the sixteen
-  doors; the door decodes its room; the window opens with it flush, the right
+- `node tools/qa/mp/run.mjs buildingrooms`: a phone walks to each of the fifteen
+  doors (v2.3.3143: and taps both of the Gem Works' tabs); the door decodes its room; the window opens with it flush, the right
   shape, the panel under it, the close button above it; the clerk; the Land
   Office; no room on the Market; a shorter and a sideways phone; a picture that
   fails; walking away lets it go. Pictures: `tools/qa/mp/out/buildingrooms-*.png`.

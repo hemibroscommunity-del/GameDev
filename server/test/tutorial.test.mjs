@@ -690,14 +690,20 @@ const sess = { id: 'bp_t' };
   const bare = [C.questReachable(m1), C.questReachable(m3)];
   C.setWheelDoorsOpen(true);
   const withWheel = C.getNpcQuest(rpgAt(), 'Mayor Bro');
-  check('the Wheel\'s doors count: with today\'s town shut, mayor_1 is offered again (twelve doors, three wanted) and mayor_3 finds its Farm',
+  check('the Wheel\'s doors count: with today\'s town shut, mayor_1 is offered again (eleven doors, three wanted) and mayor_3 finds its Farm',
     bare[0] === false && C.questReachable(m1) === true && C.questReachable(m3) === true
       && withWheel && withWheel.quest === m1 && bare[1] === false,
     { bare, now: [C.questReachable(m1), C.questReachable(m3)], offered: withWheel && withWheel.quest && withWheel.quest.id });
   const doorTable = (await import('../../src/data/wheelBuildingDoors.js')).WHEEL_BUILDING_DOORS;
   const opened = Object.values(doorTable);
-  check('...every one of the twelve buildings the old town opened has a door in the Wheel',
-    C.BUILDINGS.length === 12 && C.BUILDINGS.every((b) => opened.includes(b.id)) && opened.length === 12,
+  /* v2.3.3143: the Assay Office is gone -- the owner, "one gem building is enough
+     and can do both the gem cutting and gem setting" -- so the Enchanter has no
+     door of its own: it is the Gem Works' second tab, behind the Gem Cutter's
+     door.  Eleven doors, and `enchanting` is the one of the old town's twelve
+     buildings without one. */
+  check('...every building the old town opened has a door in the Wheel, except the Enchanter, whose window is the Gem Works\' second tab',
+    C.BUILDINGS.length === 12 && C.BUILDINGS.every((b) => b.id === 'enchanting' || opened.includes(b.id))
+      && !opened.includes('enchanting') && opened.includes('gemcutter') && opened.length === 11,
     { buildings: C.BUILDINGS.map((b) => b.id), opened });
   C.setWheelDoorsOpen(false);
   check('...and with them off again, shut town and no doors hides mayor_1 once more',

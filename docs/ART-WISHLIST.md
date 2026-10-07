@@ -9,7 +9,7 @@ What the game could use from the owner next, each with a prompt ready to paste.
 
 ## Inside the buildings
 
-**All seventeen are in the game (v2.3.3142)**, from the pictures you sent: sixteen at the top of their windows, the Hotel's held until it has a window (docs/specs/building-rooms.md). The prompts stay here for redoing one: send the new picture in chat and a session replaces it (`tools/ui/make-room-pictures.py`). Rooms are empty of people on purpose: the game draws its own characters in. The Auction House's clerk is the first; the spec says what each other room would need.
+**All seventeen are in the game (v2.3.3142)**, from the pictures you sent: sixteen at the top of their windows, the Hotel's held until it has a window (docs/specs/building-rooms.md). **Since v2.3.3143 it is sixteen** (the Assay Office is gone; the Gem Works, the Gem Cutter's building, does both gem jobs, docs/specs/gem-works.md): fifteen at the top of their sixteen windows, the Hotel's held. The prompts stay here for redoing one: send the new picture in chat and a session replaces it (`tools/ui/make-room-pictures.py`). Rooms are empty of people on purpose: the game draws its own characters in. The Auction House's clerk is the first; the spec says what each other room would need.
 
 ### Blacksmith: inside
 
@@ -145,7 +145,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Gem Cutter: inside
 
-- **In the game:** Done (v2.3.3142): at the top of its window (gem cutting).
+- **In the game:** Done (v2.3.3142): at the top of its window (gem cutting). Since v2.3.3143 this building is the **Gem Works** and this picture is the room on both of its tabs, "Cut gems" and "Set gems".
 - **Attach:** your style key + the outside of the Gem Cutter (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -165,22 +165,22 @@ Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clea
 Attached are the game's style key and the outside of this building. Match the style key's pixel size, colours, shading and the way it draws each material exactly, and make this room the inside of that building, in the same materials, colours and character. Do not copy either picture's layout.
 ```
 
-### Assay Office: inside
+### Gem Works: inside (optional: a new picture with two stations)
 
-- **In the game:** Done (v2.3.3142): at the top of its window (the enchanter).
-- **Attach:** your style key + the outside of the Assay Office (your Object Studio picture)
-- **How:** Ask ChatGPT for a wide 3:2 picture.
+- **In the game:** Not made yet, and nothing needs it: the Gem Works shows the Gem Cutter's picture above on both tabs (v2.3.3143). This would give the cutter and the setter a station each, for when the two keepers are drawn in. It replaces the Assay Office's prompt, which went with that building.
+- **Attach:** your style key + the outside of the Gem Works (the Gem Cutter's Object Studio picture, sign GEMS)
+- **How:** Ask ChatGPT for a wide 3:2 picture. Send it in chat as the Gem Works' and a session replaces `gemcutter.webp` (`tools/ui/make-room-pictures.py`).
 
 ```text
-A wide picture (3:2, landscape) of the INSIDE of one building in BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros: the Assay Office, where players set gems into their gear. It is at the money end of town, toward the mines: red brick, pale cut sandstone, brass fittings and iron bars.
+A wide picture (3:2, landscape) of the INSIDE of one building in BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros: the Gem Works, where players cut raw gems and have them set into their gear. It is at the workshop end of town, where buildings are sturdy: fieldstone, heavy timber blackened by soot, iron straps and bolts.
 
-A narrow office of red brick and cut sandstone, half shop and half laboratory. Shelves of glass bottles with coloured liquids; a brass balance scale and a magnifying lamp on the counter; a small anvil and fine tools for setting stones; a sword, a helmet and a ring laid on dark velvet with empty gem sockets; a little furnace with a crucible. The bro touches, big and easy to read: a giant brass balance scale with a gold nugget in one pan and a dumbbell in the other, and a sword with gems in its hilt stuck in a rock in the corner. On the back wall hangs one big, simple sign that reads "ASSAY" in chunky capital letters, easy to read at a glance.
+A tidy workshop of fieldstone and dark timber, lit by one big bay window of small glass panes, with one long workbench across the room and two work stations on it, side by side. The left station is for CUTTING: a spinning grinding wheel and a gem-cutting lathe, a jeweller's loupe on a brass stand, trays of cut gems sparkling in many colours on velvet cloth, and baskets of rough, cloudy crystals on the floor beside it. The right station is for SETTING: a small anvil and a row of fine setting tools, a sword, a helmet and a ring laid on dark velvet with empty round gem sockets, glass vials of coloured liquid on a shelf above, and a little furnace with a crucible. The bro touches, big and easy to read: a cut amethyst the size of a barrel on a velvet cushion inside a glass case, like a trophy, and a sword with a huge gem in its hilt stuck in a rock in a corner. On the back wall hangs one big, simple sign that reads "GEMS" in chunky capital letters, easy to read at a glance.
 
-The view: we stand just inside the front door at a grown man's eye height, looking straight across the room at its back wall, square-on like a stage set, with no tilted or fish-eye perspective. A counter (or the room's main workbench) runs across the room about a third of the way up from the bottom of the picture, waist-high on a person, with clear space behind it in the middle for the keeper to stand, and open floor in front of it where visitors stand. A person standing here would be about half as tall as the picture. The picture is wide (landscape, 3:2) and the room fills it edge to edge: no border, frame, vignette or caption.
+The view: we stand just inside the front door at a grown man's eye height, looking straight across the room at its back wall, square-on like a stage set, with no tilted or fish-eye perspective. A counter (or the room's main workbench) runs across the room about a third of the way up from the bottom of the picture, waist-high on a person, with clear space behind it in two places, a little left and a little right of the middle, one at each station, for the two keepers to stand, and open floor in front of it where visitors stand. A person standing here would be about half as tall as the picture. The picture is wide (landscape, 3:2) and the room fills it edge to edge: no border, frame, vignette or caption.
 
 Built by Bros: a solid, well-made frontier room underneath, with the personality in what was added later -- things bolted on, bragged about, or patched after an adventure went wrong. Nothing is new: proud repairs and adventure dents everywhere. One or two big jokes, big enough to read on a phone, rather than many small ones. Clutter only at the sides and in the corners, never in the middle of the floor where visitors stand.
 
-No people or animals anywhere: the game draws its own characters into the room. The only writing in the picture is the sign that reads "ASSAY": every other poster, label, map, ledger and price tag has drawings only, with no letters or numbers.
+No people or animals anywhere: the game draws its own characters into the room. The only writing in the picture is the sign that reads "GEMS": every other poster, label, map, ledger and price tag has drawings only, with no letters or numbers.
 
 Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, cloth in soft folds, and glass with one or two crisp reflections. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Everything has a one-pixel outline in a darker shade of its own colour, never black. Moderate saturation. Warm, even light from the windows and lamps, with no glow, bloom, haze or light rays.
 

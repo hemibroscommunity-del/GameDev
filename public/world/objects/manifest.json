@@ -180,19 +180,6 @@
    "palette": true
   },
   {
-   "name": "buildings-14",
-   "group": "buildings",
-   "w": 772,
-   "h": 906,
-   "image": "buildings-14.png",
-   "sheet": "buildings-14.json",
-   "objects": 1,
-   "kinds": [
-    "assay"
-   ],
-   "palette": true
-  },
-  {
    "name": "buildings-15",
    "group": "buildings",
    "w": 772,
@@ -630,7 +617,7 @@
   },
   {
    "id": "gemcutter",
-   "name": "Gem Cutter",
+   "name": "Gem Works",
    "group": "buildings",
    "kind": "building",
    "count": 1,
@@ -888,30 +875,6 @@
      "foot": [
       386,
       737
-     ]
-    }
-   ]
-  },
-  {
-   "id": "assay",
-   "name": "Assay Office",
-   "group": "buildings",
-   "kind": "building",
-   "count": 1,
-   "fit": "w",
-   "size": 386,
-   "sizeMul": 1,
-   "pieces": [
-    {
-     "frame": "assay-1",
-     "atlas": "buildings-14",
-     "w": 772,
-     "h": 906,
-     "gameW": 386,
-     "gameH": 453,
-     "foot": [
-      386,
-      906
      ]
     }
    ]

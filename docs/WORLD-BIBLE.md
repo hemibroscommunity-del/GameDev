@@ -550,6 +550,8 @@ designed place".  plan.js wins, as ever.)*
 | east | south | General Store | marketplace | 380,248 → 650,398 | 515,398 |
 | east | south | Auction House | auctionhouse | 684,248 → 954,398 | 819,398 |
 
+> **v2.3.3143:** the Assay Office row is gone from the plan (the owner: "one gem building is enough"); the Gem Cutter's building is the Gem Works and does both gem jobs. `public/tools/world/plan.js` wins where this draft and it differ.
+
 **The NPCs:**
 
 - **Mayor Bro** stands at the Town Hall.

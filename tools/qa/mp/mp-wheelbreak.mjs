@@ -320,7 +320,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   } else rec.skip('a bush rustles as a plant', 'no bush within 2,600 px of the arrival');
 
   /* ── 6. a building ── */
-  const bld = (await targets(P, ['saloon', 'hotel', 'gambling', 'post', 'store', 'bank', 'auction', 'assay', 'sheriff', 'blacksmith', 'woodworker', 'gemcutter', 'cookhouse', 'feedseed', 'landoffice', 'guildhall'], 2600))[0];
+  const bld = (await targets(P, ['saloon', 'hotel', 'gambling', 'post', 'store', 'bank', 'auction', 'sheriff', 'blacksmith', 'woodworker', 'gemcutter', 'cookhouse', 'feedseed', 'landoffice', 'guildhall'], 2600))[0];
   if (bld) {
     await standBefore(P, bld, 80);
     const t = (await targets(P, [bld.id], 600)).find((q) => q.oi === bld.oi) || bld;

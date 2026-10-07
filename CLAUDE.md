@@ -1724,7 +1724,35 @@ remnant to migrate server-side, not a mode to preserve.
       south of the door, the reach is 140 from the BOOTS, ~52 px below the
       body's middle) and Mayor Bro's dialogue is above it (z 44 against 35);
     - test-world-core "the buildings' insides", `mp-buildingrooms`,
-      `mp-wheelhalls` §7: docs/specs/building-rooms.md, wheel-halls.md.)
+      `mp-wheelhalls` §7: docs/specs/building-rooms.md, wheel-halls.md.
+  - Since v2.3.3143 ONE GEM BUILDING -- the owner, after the Assay Office's name
+    came up ("what does that even mean"): "I think one gem building is enough
+    and can do both the gem cutting and gem setting maybe with two different
+    NPCs in the same building"; asked what to do with the Assay Office's plot:
+    "Remove it"; the name they chose: "Gem Works" (docs/specs/gem-works.md):
+    - the Assay Office is GONE: its plot (plan.js, both lot lists), catalog
+      entry, manifest row and `buildings-14` sprite page, yard crate, life
+      spots, material row, door and room picture (`assay.webp`); the Bank stands
+      alone on the east street's north side and nothing else in the town moved
+      (the gates stay 1,326 / 1,447);
+    - the Gem Cutter's building is the GEM WORKS (plan, catalog, manifest; its id
+      stays `gemcutter`, its sign GEMS covers both jobs, so nothing was
+      repainted): one door ("Enter GEM WORKS"), one window with two tabs over the
+      one room picture, Cut gems (GemcutPanel) and Set gems (EnchantPanel), both
+      panels UNTOUCHED, each in a body padded 20 px to take back its own -20 px
+      margin (`GemWorksPanel.jsx`; game.css `.bt-gw-body`, `.bt-gw-tabs`); a tab
+      IS the `buildingPanel` name (`gemcut` / `enchant`) and `BuildingRoom` is
+      keyed by its ROOM, so a tab change does not flash; eleven building doors,
+      sixteen windows over fifteen rooms (src/data/buildingRooms.js), mayor_1's
+      "visit 3" counts the eleven;
+    - the re-bake changed ONLY the plan's fingerprint in
+      `server/src/wheelspawns.js` (every monster place, node and door identical):
+      one worker deploy at merge with nothing new in it;
+    - not done: the two NPCs (a cutter and a setter, each with a visitor: prompts
+      on the owner's NPC page; `ROOM_KEEPERS` is one keeper a room today) and an
+      optional two-station inside picture (docs/ART-WISHLIST.md);
+    - test-world-core "the Gem Works", `mp-buildingrooms` (the tabs),
+      `mp-wheeldoors`: docs/specs/gem-works.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

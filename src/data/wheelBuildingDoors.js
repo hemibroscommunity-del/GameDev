@@ -35,14 +35,13 @@ export const WHEEL_DOOR_REACH = 140;
 export const WHEEL_BUILDING_DOORS = {
   blacksmith: 'blacksmith',     /* the forge */
   woodworker: 'woodworker',
-  gemcutter: 'gemcutter',
+  gemcutter: 'gemcutter',       /* v2.3.3143: the Gem Works -- its window has the Enchanter on a second tab (GemWorksPanel) */
   saloon: 'party',              /* the tavern's party panel */
   gambling: 'gambler',
   cookhouse: 'cooking',
   feedseed: 'farm',             /* Feed & Seed: the farm panel */
   landoffice: 'farmhome',       /* Land Office: travel to your own farm */
   bank: 'bank',
-  assay: 'enchanting',          /* Assay Office: the enchanter */
   store: 'marketplace',         /* General Store: the market */
   auction: 'auctionhouse',
 };

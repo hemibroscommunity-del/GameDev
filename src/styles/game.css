@@ -1218,6 +1218,19 @@ input{font-family:inherit}
 .bt-inspect-card[data-room] .bt-inspect-close{z-index:2;background:rgba(17,30,35,.78);color:#fff}
 @media (max-height:460px){.bt-room{display:none}}
 @media (prefers-reduced-motion:reduce){.bt-room-img{transition:none}}
+/* ═══ v2.3.3143: THE GEM WORKS (panels/buildings/GemWorksPanel.jsx) ═══
+   The Cut and Set tabs sit on a strip under the room, and the panel they show
+   (GemcutPanel or EnchantPanel, neither touched) fills a body padded 20px to take
+   back its own -20px margin.  Each panel rounds its own corners with an inline
+   radius, which under a strip of its own would cut four small notches in the body's
+   edge; the strip and the window's own edge do the rounding here. */
+.bt-gw-body > div{border-radius:0!important}
+/* the tab strip keeps 44px clear on its right for the card's close button, which lies over
+   it when there is no picture above (a sideways phone, a picture that cannot load); under a
+   picture the button is on the picture and the tabs take the whole width */
+.bt-gw-tabs{padding:12px 44px 12px 14px}
+.bt-room + [data-gem-works] .bt-gw-tabs{padding-right:14px}
+@media (max-height:460px){.bt-room + [data-gem-works] .bt-gw-tabs{padding-right:44px}}
 /* A window open over the minimap is not a tap on the minimap.  The world map's
    invisible "open" button (WorldMapOverlay.jsx) is a fixed, z-index 45 portal in
    the page body -- above everything inside the game's wrapper, the windows

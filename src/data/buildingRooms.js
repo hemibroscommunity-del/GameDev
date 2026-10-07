@@ -30,7 +30,9 @@ export const ROOM_DIR = '/world/interiors/';
 export const ROOM_W = 1152;
 export const ROOM_H = 768;
 
-/* buildingPanel value -> plot id.  Sixteen windows (the Feed & Seed, the Land
+/* buildingPanel value -> plot id.  Sixteen windows, fifteen rooms: the Gem Works'
+   two tabs ('gemcut' and 'enchant', v2.3.3143) are one room, and the Assay Office
+   that had its own is gone.  (The Feed & Seed, the Land
    Office's trip to your farm, the Saloon and the rest open today's own
    panels; the Guild Hall, Post Office and Sheriff's Office are the Wheel's
    halls, v2.3.3066, and so is the Town Hall, v2.3.3142).  'store' (the Market,
@@ -44,7 +46,7 @@ export const BUILDING_ROOMS = {
   woodwork: 'woodworker',
   gemcut: 'gemcutter',
   cook: 'cookhouse',
-  enchant: 'assay',           /* the Assay Office's enchanter */
+  enchant: 'gemcutter',       /* v2.3.3143: the Enchanter is the Gem Works' second tab -- the same room as 'gemcut' (the Assay Office is gone) */
   gamble: 'gambling',
   farm: 'feedseed',
   farmhome: 'landoffice',     /* the trip to your own farm */
