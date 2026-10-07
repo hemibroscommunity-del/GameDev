@@ -1866,6 +1866,14 @@ Two protocol versions coexist; both must keep working:
 - Identity: stable per-browser `bp_` ids from a silent passphrase
   (`bt_passphrase`); two tabs share one identity by design — test
   multiplayer with `?guest=1` on the second tab.
+- A NEW CHARACTER STARTS FROM THE SERVER'S DEFAULTS (v2.3.3138): a join with
+  no `rpg:<pid>` record reads NO `rpg*` field of its payload
+  (`_withoutRpgClaims` in join.js, a null-prototype copy: TRAPS §6), so a
+  test that seeds a character through a first join seeds nothing -- put a
+  record on file first. A failed read of the record ends the join (1011)
+  instead of passing for a new character. The defaults that are not zero
+  are `NEW_CHARACTER_COINS` and `freshLifeSkills()`, pinned to the client's
+  by mirror-audit: docs/specs/fresh-start.md.
 
 ## Testing
 

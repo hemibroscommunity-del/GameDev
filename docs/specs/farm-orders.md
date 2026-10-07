@@ -209,7 +209,7 @@ this list.
 
 - **A brand-new character's levels and bag come from the join message**
   (join.js), so the draw's "what you can make yourself" is only as true as
-  that first join. #830 (v2.3.3129, a new character starts from the server's
+  that first join. #830 (v2.3.3138, a new character starts from the server's
   defaults) closes it.
 - **Diego buys with no place or fight check** (shop.js `shop_sell`), as the
   board did before its fight gate. Crops and fish sold to him mid-fight are

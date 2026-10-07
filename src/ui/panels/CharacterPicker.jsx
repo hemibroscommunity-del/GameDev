@@ -1,6 +1,7 @@
 import React from 'react';
 import { checkAccountLogin, resetAccountCharacter } from '@/networking/index.js';
-import { readRoster, describeChar, forgetChar, relookChar, needsLookup, markLookAsked, ROSTER_MAX } from '@/networking/charRoster.js';
+import { readRoster, describeChar, forgetChar, relookChar, needsLookup, markLookAsked, ROSTER_MAX, isActive, CHAR_CACHE_KEYS } from '@/networking/charRoster.js';
+import { cancelRpgSave } from '@/game/rpgSave.js';   /* v2.3.3138: the restart's cache wipe, below */
 import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '@/rendering/characterPortrait.js';
 import { AccountLoginForm } from '../account/AccountLoginForm.jsx';
@@ -308,6 +309,23 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
        row back in needsLookup so the effect above re-asks the worker, rather
        than writing a level the client guessed at. */
     setRoster(relookChar(e.phrase));
+    /* ═══ v2.3.3138: THE BRO THIS DEVICE PLAYS STARTS CLEAN HERE TOO ═══
+       The worker wiped the record, but this device still held the old
+       character in its caches (bt_rpg and the rest), and picking the same row
+       next joined with them.  Until v2.3.3138 the worker took that join back
+       as the character, so the restart silently did nothing; since then it
+       takes nothing, so the old shield, raw stats and spare gear stayed on
+       screen and the gear stashes folded back in on the next join (found by
+       the fresh-start review).  So the caches go and the page reloads, as the
+       in-game restart does (wsClient character_reset_done): the codex,
+       bestiary and zones are read once, at load. */
+    if (isActive(e.phrase)) {
+      cancelRpgSave();
+      CHAR_CACHE_KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (_e) {} });
+      try { sessionStorage.removeItem('bt_resume'); sessionStorage.removeItem('bt_resume_now'); } catch (_e) {}
+      try { window.location.reload(); } catch (_e) {}
+      return;
+    }
     setAskFor(null); setMenuFor(null); setTyped('');
   };
 
