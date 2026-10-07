@@ -236,6 +236,11 @@ export const tickMethods = {
           this._opPruneMaybe(nowJp).catch(() => {});
           this._metricsMaybe(nowJp).catch(() => {});
         }
+        /* v2.3.3140: the daily quests' counted progress is written here at
+           most every 30 s, and a room busy across midnight (UTC) turns its
+           players' day over (dailyrewards.js; self-gated to every 10 s, and
+           it touches only the records of players online) */
+        try { this._drTick(nowJp); } catch (e) { /* never the tick's problem */ }
       }
 
       // v2.3.1132: expire idle two-sided trade sessions + invites.

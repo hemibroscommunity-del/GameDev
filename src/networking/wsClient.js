@@ -17,8 +17,10 @@
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
+import { applyRewardsState, applyDailyProgress } from '@/game/dailyRewards.js'; /* v2.3.3140: the free spin, daily quests, the season */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
+import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3139: hardened wood's names */
 import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the worker's */
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
@@ -1497,6 +1499,20 @@ export function setupWebSocket(ctx) {
               if (msg.payload) applyNmlLoss(S, msg.payload, saveRpgSoon);
               break;
             }
+          /* v2.3.3140: the daily rewards (server dailyrewards.js) -- the free
+             spin's result, the day's quests and the season, and a quest's count
+             going up.  The worker has already paid; the player_state echo
+             carries the coins.  These only feed the panels and the toasts. */
+          case 'rewards_state':
+            {
+              try { applyRewardsState(S, msg.payload); } catch (_rw) { /* the next state carries it */ }
+              break;
+            }
+          case 'daily_progress':
+            {
+              try { applyDailyProgress(S, msg.payload); } catch (_rp) { /* the next state carries it */ }
+              break;
+            }
           case 'chest_opened':
             {
               /* v2.3.2820: the worker's answer to Open Chest (dailychest.js).
@@ -1555,6 +1571,34 @@ export function setupWebSocket(ctx) {
             { try { onPetsState(S, msg.payload); } catch (_te) { /* display only */ } break; }
           case 'make_traps_result':
             { try { onMakeTrapsResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
+          case 'hardened_wood_result':
+            {
+              /* v2.3.3139: the Woodworker's receipt for hardened wood
+                 (hardenedwood.js).  It has ALREADY taken the logs and paid the
+                 wood and the Woodworking XP; the player_state that follows
+                 carries the bag.  This is only the moment -- smelt_result's
+                 words, chime and level celebration -- and the counter that
+                 lets the Harden tab's button go (HardenedWoodTab.jsx). */
+              var _hw = msg.payload || {};
+              S._hardenedWoodSeen = (S._hardenedWoodSeen || 0) + 1;
+              if (!S.player) break;
+              try {
+                if (_hw.error) {
+                  var _hwr = HARDENED_WOOD_RECIPES[_hw.key];
+                  var _hwWhy = _hw.error === 'no-logs' && _hwr ? 'Need ' + _hwr.logCost + ' ' + _hwr.logPlural
+                    : _hw.error === 'skill' ? 'Requires Woodworking ' + (_hw.need || '')
+                    : 'Cannot harden wood right now';
+                  pushDmgPopup(S, S.player.x, S.player.y - 30, _hwWhy, '#ff5e6c');
+                } else if (_hw.count > 0) {
+                  var _hwName = (HARDENED_WOOD_RECIPES[_hw.key] || {}).name || 'Hardened Wood';
+                  pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + _hw.count + ' ' + _hwName, '#C9965A');
+                  pushDmgPopup(S, S.player.x, S.player.y - 44, '+' + _hw.xp + ' Woodworking XP', '#D8A94D');
+                  BT_AUDIO.collect();
+                  if (_hw.leveled && _hw.newLevel > _hw.fromLevel) celebrateLifeSkillLevel(S, 'woodworking', _hw.newLevel, _hw.fromLevel);
+                }
+              } catch (_he) { /* the bag still updates */ }
+              break;
+            }
           case 'forge_armor_result':
             {
               /* v2.3.3092: the armor forge's receipt (armorforge.js).  The
@@ -4224,6 +4268,14 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        /* v2.3.3140: the daily rewards' four asks (dailyRewards.js) ->
+           dailyrewards.js.  TRAPS #18: a type this allowlist does not name never
+           leaves the browser, and the Spin button would turn a wheel nothing
+           answers. */
+        if (msg.type === 'rewards_get' || msg.type === 'daily_spin' || msg.type === 'daily_reroll' || msg.type === 'season_claim') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         /* v2.3.2822: Smelt at the blacksmith (SmithyPanel) -> smelting.js. */
         if (msg.type === 'smelt_bar') {
           ws.send(JSON.stringify(msg));
@@ -4241,6 +4293,13 @@ export function setupWebSocket(ctx) {
            pop-up and the Pets page (game/trapping.js, game/petBook.js) ->
            trapping.js / petbook.js.  TRAPS #18: a type with no line here is
            silently dropped, and the button would do nothing at all. */
+        /* v2.3.3139: five logs into one hardened wood (the Woodworker's
+           Harden tab, HardenedWoodTab.jsx) -> hardenedwood.js.  TRAPS #18:
+           without this line the Make button would send nothing at all. */
+        if (msg.type === 'make_hardened_wood') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'make_traps' || msg.type === 'trap_arm' || msg.type === 'pet_active'
             || msg.type === 'pet_name' || msg.type === 'pet_release'
             || msg.type === 'pet_house_buy') {   /* v2.3.3123: more room in the Pet House */

@@ -457,7 +457,8 @@ Summary of the wire-visible changes:
 | `guild_quest_result` / `guild_quest_error` | Guild-quest turn-ins (private; `guild_quest_turn_in` c→s case) | guild-quests.md |
 | `threat_penalty` / `threat_expired` / `gear_locked` | Threat machine (pvp_threat/threat_response stay relays, intercepted + annotated with server countdown/settled/levy) | threats.md |
 | `pet_capture_result` | Server-rolled pet capture (private; `pet_capture` c→s case; consumes a basic_trap) | pets.md |
-| `harden_result` | §4.6c hardening roll (private; `harden_weapon` c→s case; forge mints now carry `quality`/`hardness`/`temper`) | hardening.md |
+| `harden_result` | §4.6c hardening roll (private; `harden_weapon` c→s case; forge mints now carry `quality`/`hardness`/`temper`; v2.3.3139 adds `material`/`amount`, the bars or hardened wood the attempt took and how many, and the `no-materials` refusal) | hardening.md |
+| `hardened_wood_result` | v2.3.3139: five logs into one hardened wood at the Woodworker (private; `make_hardened_wood {key, count}` c→s case; `{key, count, xp, leveled, fromLevel, newLevel, have}` or `{error}`: `off`, `bad-key`, `skill`, `no-logs`) | hardened-wood.md |
 | `trade2_state` / `trade2_invite` | Two-sided trade window (private; `trade2_open/set/confirm/cancel` c→s cases; gift trade relay unchanged) | trading.md addendum |
 | `party_state` / `party_invited` / `party_error` | Party roster echo + invite/error notices (private; `party_invite/accept/decline/leave/kick` c→s cases; roster re-echoed ~2s for cross-zone vitals) | party.md |
 
@@ -468,6 +469,19 @@ Summary of the wire-visible changes:
 winnerName, amount, period}` (broadcast on the lazy weekly draw). The
 daily login reward reuses `inbox_delivered` — no new types. GamblePanel
 deposits are caps-gated; the legacy local stub remains for old workers.
+
+**Daily rewards (v2.3.3140, caps.dailyspin + caps.dailyquests):** the login
+pays nothing now (the daily chest and its gold fallback are gone; a chest
+still held opens as before). New c→s cases `rewards_get {}`, `daily_spin
+{act: 'spin'|'double'|'collect', opId}` (a lump sum, double or nothing on
+the pot, take the pot), `daily_reroll {i}`, `season_claim {tier} | {all:
+true}`; new s→c types (both PRIVILEGED) `rewards_state {now, resetAt, spin,
+streak, dq, season, news, kept?}` (private: after `player_state` on join,
+and after every change) and `daily_progress {i, n, g}` (private, a quest's
+count). Quest, season and spin-pot payouts ride `_creditPlayer` →
+`inbox_delivered` with sources `dailyquest` / `season` / `dailyspin`, kept
+out of chat by the client. Full table:
+docs/specs/daily-rewards.md.
 
 **Server-minted weapon drops (v2.3.1141, caps.weaponDrops):** no new
 message types. The loot pile broadcast (`loot_drop`/`zone_loot`/

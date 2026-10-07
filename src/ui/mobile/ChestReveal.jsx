@@ -25,7 +25,11 @@ import { BT_AUDIO } from '@/data/index.js';   /* v2.3.3045: the chest's sounds, 
  *
  * It opens by itself once per session after the intro lifts when a chest is
  * waiting (the daily reward's announcement -- no chat line, v2.3.2037), and
- * from the bag's Claim button.  "Later" keeps the stack for another time. */
+ * from the bag's Claim button.  "Later" keeps the stack for another time.
+ *
+ * v2.3.3140: NOT BY ITSELF ANY MORE -- the owner found it intrusive, and the
+ * login pays no chest now (the day's reward is the Gambling Den's free spin,
+ * DailySpin.jsx).  It opens only from the bag, for a chest still held. */
 const listeners = new Set();
 let _state = { open: false, claimNow: false, prize: null, seq: 0 };
 const emit = () => { for (const fn of listeners) { try { fn(_state); } catch (e) { /* a dead listener must not eat the prize */ } } };
@@ -44,6 +48,9 @@ export const chestRevealBus = {
   show(p) { this.prize(p); },
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 };
+/* v2.3.3140: QA handle -- the very call the bag's Open makes (ItemDetailPopup
+   onOpenChest), now the window's only way open (mp-polish). */
+try { if (typeof window !== 'undefined') window.__btChestOpen = (claimNow) => chestRevealBus.open(claimNow !== false); } catch (e) { /* probe only */ }
 
 const FRAME_MS = 75;
 const SHAKE_MIN_MS = 650;
@@ -86,10 +93,6 @@ const chestCount = () => {
   const S = getState();
   return (S && S.rpg && S.rpg.inventory && S.rpg.inventory.daily_chest) || 0;
 };
-const chestLive = () => {
-  const S = getState();
-  return !!(S && S._serverCaps && S._serverCaps.dailyChest);
-};
 
 const Frame = ({ frame, shaking }) => (
   <div data-chest-frame={frame} style={{
@@ -109,7 +112,6 @@ export const ChestReveal = () => {
   const [, tick] = useState(0);
   const prizeRef = useRef(null);
   const shakeAtRef = useRef(0);
-  const offeredRef = useRef(false);
   const timers = useRef([]);
   const later = (fn, ms) => { const t = setTimeout(fn, ms); timers.current.push(t); return t; };
   const clearTimers = () => { timers.current.forEach(clearTimeout); timers.current = []; };
@@ -117,21 +119,17 @@ export const ChestReveal = () => {
   useEffect(() => { warmPrizeIcons(); return chestRevealBus.subscribe(setBus); }, []);
   useEffect(() => () => clearTimers(), []);
 
-  /* The login offer: once per session, after the intro, when a chest waits. */
+  /* ═══ v2.3.3140: NO LOGIN OFFER ANY MORE ═══
+     Owner, 2026-10-06: "Personally I find the login page with the chest
+     intrusive ... You can remove the daily chest and just do the gambling
+     spin like I said."  The window used to open by itself once per session
+     after the intro whenever a chest waited in the bag.  The login pays no
+     chest now (the day's reward is the free spin at the Gambling Den,
+     server dailyrewards.js), and a chest still held from before is opened
+     from the bag's Open button -- this window only ever opens on that tap.
+     The once-a-second re-render stays: the stacked count reads off it. */
   useEffect(() => {
-    const id = setInterval(() => {
-      tick((n) => n + 1);
-      if (offeredRef.current) return;
-      const S = getState();
-      if (!S || !S.__introLiftedAt || S._zoneLoading || S._netHold) return;
-      /* v2.3.2823: the headless harness sets this so the ~150 scenarios that
-         read the screen are not looking at a chest window every login (it hid
-         the chat bubble mp-chatfont measures).  Scenarios that test the offer
-         opt back in (harness newPlayer({ chestOffer: true })).  Never set by
-         the game. */
-      if (typeof window !== 'undefined' && window.__btNoChestOffer) return;
-      if (chestCount() > 0 && chestLive()) { offeredRef.current = true; chestRevealBus.open(false); }
-    }, 1000);
+    const id = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(id);
   }, []);
 

@@ -914,6 +914,9 @@ export const cookingMethods = {
          their own economies, they were outside v2.3.1435's scope too, and the
          owner's report is about the grind — say the word and they follow. */
       this._addLifeSkillXp(ps, 'cooking', 200);
+      /* v2.3.3140: a fish cooked (not burnt) counts for "Cook 4 fish"
+         (dailyrewards.js) */
+      this._drSignal(session.id, 'cook', fishKey, 1);
     } else {
       ps.inventory.burnt_dust = (ps.inventory.burnt_dust || 0) + 1;
     }

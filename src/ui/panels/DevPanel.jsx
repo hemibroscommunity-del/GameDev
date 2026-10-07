@@ -171,6 +171,8 @@ const CAP_GATES = [
   'pvpheal' /* v2.3.3133: one bite at a time in a fight with a player -- lower case, a kill switch */,
   'farmorders' /* v2.3.3134: the Feed & Seed's order board -- lower case, a kill switch */,
   'armorforge' /* v2.3.3092: bars into armor -- lower case, a kill switch */,
+  'dailyspin' /* v2.3.3140: the Gambling Den's free daily spin -- lower case, a kill switch */,
+  'dailyquests' /* v2.3.3140: daily quests + the season -- lower case, a kill switch */,
   'trapping' /* v2.3.3120: arm a trap, then kill it -- lower case, a kill switch */,
   'trapcraft' /* v2.3.3120: box traps at the Woodworker -- lower case, a kill switch */,
   'petbook' /* v2.3.3120: the pets record and the Pets page -- lower case, a kill switch */,
@@ -180,6 +182,8 @@ const CAP_GATES = [
   'petwards' /* v2.3.3123: the land ward of the pet out with you -- lower case, a kill switch */,
   'petshow' /* v2.3.3123: the others see your pet -- lower case, a kill switch */,
   'pethouse' /* v2.3.3123: more room in the Pet House for gold -- lower case, a kill switch */,
+  'hardenmats' /* v2.3.3139: hardening takes a material (bars, or a bow's hardened wood) and a doubling gold ladder -- lower case, a kill switch */,
+  'hardenedwood' /* v2.3.3139: five logs into one hardened wood at the Woodworker -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported
