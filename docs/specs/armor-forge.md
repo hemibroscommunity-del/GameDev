@@ -38,18 +38,20 @@ was only worth its vendor price.
 
 | Piece | Bars | Smithing | Armor step | Stops (normal grade) | XP |
 |---|---|---|---|---|---|
-| Copper Torso | 5 copper | 1 | 1 | 30% | 1,000 |
-| Copper Greaves | 3 copper | 1 | 1 | 20% | 600 |
-| Iron Torso | 5 iron | 5 | 2 | 37.5% | 1,500 |
-| Iron Greaves | 3 iron | 5 | 2 | 25% | 900 |
-| Black Steel Torso | 5 black steel | 10 | 3 | 45% | 2,000 |
-| Black Steel Greaves | 3 black steel | 10 | 3 | 30% | 1,200 |
+| Copper Torso | 4 copper | 1 | 1 | 30% | 800 |
+| Copper Greaves | 4 copper | 1 | 1 | 20% | 800 |
+| Iron Torso | 4 iron | 5 | 2 | 37.5% | 1,200 |
+| Iron Greaves | 4 iron | 5 | 2 | 25% | 1,200 |
+| Black Steel Torso | 4 black steel | 10 | 3 | 45% | 1,600 |
+| Black Steel Greaves | 4 black steel | 10 | 3 | 30% | 1,600 |
 
 - **Smithing 1, 5 and 10** follow the owner's "levels of 5", the same steps the
   ores' own Mining gates use (black steel ore at Mining 5). Each metal's armor
   opens with its bar.
-- **A torso is five bars and the greaves three**, because the chest piece stops
-  more.
+- **Four bars a piece, torso and greaves alike** (since v2.3.3141; it was
+  five and three). The owner: "chest, legs, and sword each take 4 bars to make
+  (5 ore makes 1 bar). If you salvage them you get 2 bars back." Salvage and
+  the swords' bars are in docs/specs/salvage.md.
 - **XP is 200, 300 and 400 a bar used**, half what smelting that bar paid.
 - **The armor step** is the armor's own ladder of whole steps (copper 1, iron 2,
   black steel 3; monster-drops.md "Two ladders, one metal"). Black steel asks

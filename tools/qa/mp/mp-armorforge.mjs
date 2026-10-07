@@ -7,11 +7,11 @@
  *      tab -- copper's torso and greaves to make, iron's two shown locked
  *      ("Smithing 5"), each row with its bars HAVE/NEED, what it stops and the
  *      XP it pays, and the bar pictures shipped;
- *   2. Forge on the copper torso: five bars gone, a Copper Torso in the bag
+ *   2. Forge on the copper torso: four bars gone (v2.3.3141: four a piece), a Copper Torso in the bag
  *      with the worker's id, its metal and a grade, "BAG: Copper Torso", and
  *      Smithing XP up by the row's promise;
- *   3. the greaves: three bars, into the legs' bag;
- *   4. out of bars, Forge is off and the cost reads 0/5;
+ *   3. the greaves: four bars too, into the legs' bag;
+ *   4. out of bars, Forge is off and the cost reads 0/4;
  *   5. the bars' bag names ("Iron Bar", not "Bar Iron").
  * Pictures: tools/qa/mp/out/armorforge-*.png.
  */
@@ -72,25 +72,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`copper's torso and greaves to make, iron's shown locked: ${rows.map((r) => r.key).join(', ')}`,
     !!torso && !!row('copper_greaves') && !!irn && !!row('iron_greaves') && !row('blacksteel_torso')
     && /Smithing 5/.test(irn.text) && irn.go && irn.go.d && /Locked/.test(irn.go.t), rows);
-  rec.ok(`...the torso row: its bars (8/5), what it stops and its XP ("${torso && torso.text}")`,
-    !!torso && /8\/5/.test(torso.text) && /-\d+(\.\d)?%/.test(torso.text) && /\+1000/.test(torso.text) && torso.go && !torso.go.d && torso.img, torso);
+  rec.ok(`...the torso row: its bars (8/4), what it stops and its XP ("${torso && torso.text}")`,
+    !!torso && /8\/4/.test(torso.text) && /-\d+(\.\d)?%/.test(torso.text) && /\+800/.test(torso.text) && torso.go && !torso.go.d && torso.img, torso);
   await shot(P, 'tab');
 
   /* ── 2. a copper torso ── */
   const b0 = await bag(P);
   await P.page.click('[data-armor-go="copper_torso"]');
-  await P.page.waitForFunction(() => ((window._gameState.current.rpg || {}).inventory || {}).bar_copper === 3, null, { timeout: 6000 }).catch(() => {});
+  await P.page.waitForFunction(() => ((window._gameState.current.rpg || {}).inventory || {}).bar_copper === 4, null, { timeout: 6000 }).catch(() => {});
   let b1 = null;
   for (let i = 0; i < 12; i++) { b1 = await bag(P); if (b1.torsos.length > b0.torsos.length) break; await P.page.waitForTimeout(300); }
   const t = b1.torsos[b1.torsos.length - 1] || null;
   const told = await P.page.evaluate(() => ({ forged: window.__btArmorForged || null,
     popups: ((window._gameState.current.dmgNumbers) || []).map((d) => d && d.text).filter(Boolean) }));
-  rec.ok(`Forge: five copper bars became a Copper Torso in the bag (${b0.bars} -> ${b1.bars}), the worker's piece: its id, copper, a ${t && t.quality} grade`,
-    b1.bars === 3 && !!t && typeof t.gid === 'string' && t.mat === 'copper' && t.tierMult === 1 && !!t.quality
+  rec.ok(`Forge: four copper bars became a Copper Torso in the bag (${b0.bars} -> ${b1.bars}), the worker's piece: its id, copper, a ${t && t.quality} grade`,
+    b1.bars === 4 && !!t && typeof t.gid === 'string' && t.mat === 'copper' && t.tierMult === 1 && !!t.quality
     && !!told.forged && told.forged.piece && told.forged.piece.gid === t.gid, { b1, told });
   rec.ok(`...said over the smith ("${told.popups.filter((x) => /BAG|Smithing/.test(x)).join('", "')}")`,
-    told.popups.some((x) => /BAG: Copper Torso/.test(x)) && told.popups.some((x) => /\+1000 Smithing XP/.test(x)), told.popups);
-  rec.ok(`...and Smithing XP went up by exactly 1000 (Lv ${b0.lvl} -> ${b1.lvl})`, totalXp(b1) - totalXp(b0) === 1000, { b0, b1 });
+    told.popups.some((x) => /BAG: Copper Torso/.test(x)) && told.popups.some((x) => /\+800 Smithing XP/.test(x)), told.popups);
+  rec.ok(`...and Smithing XP went up by exactly 800 (Lv ${b0.lvl} -> ${b1.lvl})`, totalXp(b1) - totalXp(b0) === 800, { b0, b1 });
   await P.page.waitForTimeout(400);
   await shot(P, 'torso');
 
@@ -100,13 +100,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let b2 = null;
   for (let i = 0; i < 20; i++) { b2 = await bag(P); if (b2.greaves.length > b1.greaves.length && b2.bars === 0) break; await P.page.waitForTimeout(300); }
   const g = b2.greaves[b2.greaves.length - 1] || null;
-  rec.ok('the greaves: the last three bars, Copper Greaves in the legs\' bag', b2.bars === 0 && !!g && g.slot === 'legsArmor' && typeof g.gid === 'string', b2);
+  rec.ok('the greaves: the last four bars, Copper Greaves in the legs\' bag', b2.bars === 0 && !!g && g.slot === 'legsArmor' && typeof g.gid === 'string', b2);
 
   /* ── 4. out of bars ── */
   await P.page.waitForTimeout(600);
   const out = await P.page.$eval('[data-armor-row="copper_torso"]', (el) => ({ text: el.innerText.replace(/\s+/g, ' '),
     d: el.querySelector('[data-armor-go]').disabled }));
-  rec.ok('out of bars: Forge is off and the cost reads 0/5', out.d && /0\/5/.test(out.text), out);
+  rec.ok('out of bars: Forge is off and the cost reads 0/4', out.d && /0\/4/.test(out.text), out);
 
   /* ── 5. the bars' names and pictures ── */
   const art = await P.page.evaluate(async () => {

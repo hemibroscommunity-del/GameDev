@@ -29,6 +29,7 @@ import { shopBus } from '../shopBus.js';   /* v2.3.2059: the bag is half the sho
 import { tradeBagBus } from '../tradeBagBus.js';   /* v2.3.2149: ...and half the trade */
 import { lifeKindFor, lifeKindForGear } from './bagLife.js';   /* v2.3.2815: the bag's small motions */
 import { DAILY_CHEST_ICON } from '@/rendering/chestPreload.js';   /* v2.3.2820 */
+import { SALVAGE, essenceKey, essenceName, essenceIcon } from '@/data/salvage.js';   /* v2.3.3141: the essences */
 import { FARM_ITEM_NAMES, farmLookFor } from '@/data/farmCrops.js';   /* v2.3.3127: the farm's goods */
 import { HARDENED_WOOD_NAMES, isHardenedWoodKey, hardenedWoodIcon } from '@/data/hardenedWood.js';   /* v2.3.3139: hardened wood */
 import { DISH_NAMES, dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
@@ -222,6 +223,9 @@ export const thumbFor = (key) => {
   if (ORE_THUMBS[k])                return ORE_THUMBS[k];
   if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;
   if (BAR_THUMBS[k])                return BAR_THUMBS[k];   /* v2.3.2822 */
+  /* v2.3.3141: an essence (salvage.js) -- its grade's glowing orb with its
+     metal's bar, tools/make_essence_icons.py */
+  if (k.startsWith('essence_') && essenceIcon(k)) return essenceIcon(k) + ITEMS_V;
   if (isHardenedWoodKey(k))         return hardenedWoodIcon(k);   /* v2.3.3139: made from its tree's log picture */
   if (k.startsWith('shard_'))       return `/icons/items/${k}.webp${ITEMS_V}`;
   /* v2.3.1924: the rare gem monsters drop at 1-in-200 (server/src/data.js
@@ -288,6 +292,12 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
      "Hardened Pine"; the owner's "hardened (name) wood" */
   ...HARDENED_WOOD_NAMES,
 });
+/* v2.3.3141: the nine essences salvage leaves (data/salvage.js): "Rare Iron
+   Essence", not "Essence Rare Iron" out of the key.  Written from the table,
+   so a metal added there is named here without a line of its own. */
+for (const g of SALVAGE.ESSENCE_GRADES) {
+  for (const m of Object.keys(SALVAGE.METALS)) ITEM_NAMES[essenceKey(g, m)] = essenceName(essenceKey(g, m));
+}
 
 /* v2.3.2820: the daily chest -- opened from the bag, rolled by the worker. */
 export const DAILY_CHEST_KEY = 'daily_chest';
