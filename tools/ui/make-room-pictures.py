@@ -12,7 +12,7 @@ the memory rule (CLAUDE.md, "Memory is budgeted") holds one room at a time.
 
 The plot id is plan.js's (public/tools/world/plan.js town.lots): blacksmith,
 store, bank, cookhouse, saloon, woodworker, gemcutter, gambling, feedseed,
-landoffice, post, sheriff, hotel, auction, guildhall, townhall.  (v2.3.3143: the
+landoffice, post, sheriff, hotel, auction, guildhall, townhall.  (v2.3.3144: the
 Assay Office is gone; the Gem Works' two tabs share gemcutter's.)  Which window
 shows which picture is src/data/buildingRooms.js; replacing a picture means
 re-running this and bumping ROOMS_V there (the files are cached for a year,

@@ -6,7 +6,7 @@ import { mailList, mailAge } from '@/game/postOffice.js';
  *
  * Three of the plan's "(new: ...)" buildings, opened onto systems the game
  * already has (data/wheelBuildingDoors.js WHEEL_HALL_DOORS says why each;
- * v2.3.3142 added a fourth, the Town Hall, below):
+ * v2.3.3143 added a fourth, the Town Hall, below):
  *
  *   guildhall  your clan (ClanPanel: make one, run it, take up an invite)
  *              and the skill guilds (GuildPanel: ranks and their quests) --
@@ -113,7 +113,7 @@ function postOffice(props) {
   ];
 }
 
-/* v2.3.3142: the Town Hall -- asked what it should do, the owner chose a window
+/* v2.3.3143: the Town Hall -- asked what it should do, the owner chose a window
    with the two things its picture shows: the trophy case is the leaderboard (a
    ranking for every combat and life skill, the dashboard's Ranks page) and the
    painted map on the wall is the Wheel's world map. */

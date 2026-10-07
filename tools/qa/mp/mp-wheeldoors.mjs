@@ -3,9 +3,9 @@
  * Owner, 2026-10-04: "Push to main. Then after that add doors."  One real
  * player against a real worker, in the Wheel's Brotown, on a phone:
  *   1. the client knows the town's sixteen doors from the worker's answer
- *      (v2.3.3143: the Assay Office is gone, the Gem Works does both gem jobs):
+ *      (v2.3.3144: the Assay Office is gone, the Gem Works does both gem jobs):
  *      eleven that open a building, the Wheel's four halls (v2.3.3066:
- *      mp-wheelhalls walks them; v2.3.3142: the Town Hall is the fourth) and
+ *      mp-wheelhalls walks them; v2.3.3143: the Town Hall is the fourth) and
  *      one shut one;
  *   2. walked to each of the eleven (boots at the foot of its steps), the
  *      Enter button comes up with the NAME ON ITS SIGN ("Enter SALOON"), and a
@@ -190,7 +190,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!far && !far.btn && far.nb === null && !!inside && /Enter BANK/.test(inside.btn || '') && !!outside && !outside.btn && outside.nb === null,
     { far, inside, outside });
 
-  /* ── 4. the shut ones (the Town Hall is a hall since v2.3.3142: mp-wheelhalls) ── */
+  /* ── 4. the shut ones (the Town Hall is a hall since v2.3.3143: mp-wheelhalls) ── */
   const shutSeen = [];
   for (const d of shut) {
     await standAt(d.x, d.y + 30);

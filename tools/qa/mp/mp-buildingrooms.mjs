@@ -1,4 +1,4 @@
-/* ═══ THE INSIDE OF EACH BUILDING, ON A PHONE (v2.3.3142) ═══
+/* ═══ THE INSIDE OF EACH BUILDING, ON A PHONE (v2.3.3143) ═══
  *
  * Owner, 2026-10-06: sent seventeen pictures of the inside of BroTown's
  * buildings and said "Ok wire these up".  One real player against a real
@@ -7,19 +7,19 @@
  *      the first door starts the rest coming (src/game/buildingRooms.js);
  *   2. each of the fifteen doors that open a window -- the eleven buildings
  *      and the four halls -- opens with its own room at the top of the card
- *      (v2.3.3143: sixteen windows, fifteen rooms: the Gem Works' two tabs
+ *      (v2.3.3144: sixteen windows, fifteen rooms: the Gem Works' two tabs
  *      share one): the picture
  *      loaded at 1152 x 768, flush with the card's edges, 3:2 (the forge's a
  *      slim 4:1 band), the panel starting exactly where it ends with square
  *      top corners, the close button on top of it;
- *   2b. (v2.3.3143) the Gem Works' door opens ONE window with two tabs, Cut
+ *   2b. (v2.3.3144) the Gem Works' door opens ONE window with two tabs, Cut
  *      gems and Set gems, under the same room picture (not remounted when the
  *      tab changes), each tab drawing the cutter's or the enchanter's own
  *      panel flush with the window, every tab reachable by a finger;
  *   3. the Auction House's clerk is drawn into his room, inside it, centred on
  *      the lectern;
  *   4. the Land Office's window (it was a separate dialog under an empty card
- *      until v2.3.3142) is a panel in the card like the others, under its
+ *      until v2.3.3143) is a panel in the card like the others, under its
  *      room, and "Travel to Farm" can be reached by a finger;
  *   5. the Market (a screen of its own, reached from a window) has no room;
  *   6. a shorter phone holds the picture to 30vh, a sideways one drops it, and
@@ -209,7 +209,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`each window opens with its own room at the top of the card: ${seen.map((s) => s.id + ' ' + s.w + 'x' + s.h + (s.shape === 'band' ? ' band' : '')).join(', ')} -- 1152 x 768 loaded, flush with the card, 3:2 (the forge's 4:1 band), the panel starting where it ends with square top corners, the close button on top of it`,
     bad.length === 0 && seen.length === (only.length || 15), bad);
 
-  /* ── 2b. the Gem Works: two tabs, one room (v2.3.3143) ── */
+  /* ── 2b. the Gem Works: two tabs, one room (v2.3.3144) ── */
   if (!only.length || only.includes('gemcutter')) {
     const gw = byId.gemcutter;
     await standAt(gw.x, gw.y + 30);
@@ -347,7 +347,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await closePanel();
 
   /* ── 7. walking away, every room asked for, no errors ── */
-  await standAt(byId.townhall.x, byId.townhall.y + 330);   /* the square, 330 px south of the Town Hall's door: clear of every door (the Town Hall is one since v2.3.3142) */
+  await standAt(byId.townhall.x, byId.townhall.y + 330);   /* the square, 330 px south of the Town Hall's door: clear of every door (the Town Hall is one since v2.3.3143) */
   await P.page.waitForTimeout(1200);
   const away = await P.page.evaluate(() => window.__btRoomWarm.held());
   const wantAsked = [...new Set(Object.values(R.BUILDING_ROOMS))];

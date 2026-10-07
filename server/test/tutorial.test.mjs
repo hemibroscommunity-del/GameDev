@@ -696,7 +696,7 @@ const sess = { id: 'bp_t' };
     { bare, now: [C.questReachable(m1), C.questReachable(m3)], offered: withWheel && withWheel.quest && withWheel.quest.id });
   const doorTable = (await import('../../src/data/wheelBuildingDoors.js')).WHEEL_BUILDING_DOORS;
   const opened = Object.values(doorTable);
-  /* v2.3.3143: the Assay Office is gone -- the owner, "one gem building is enough
+  /* v2.3.3144: the Assay Office is gone -- the owner, "one gem building is enough
      and can do both the gem cutting and gem setting" -- so the Enchanter has no
      door of its own: it is the Gem Works' second tab, behind the Gem Cutter's
      door.  Eleven doors, and `enchanting` is the one of the old town's twelve

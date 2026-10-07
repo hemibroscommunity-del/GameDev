@@ -430,7 +430,7 @@ export async function preloadWorldAnimations() {
        different query string, which is a different cache key).
        See statDemoPreload.js — it names both. */
     statDemo: preloadStatDemo(),
-    /* v2.3.3142: the auction house's room and clerk left the gate -- they load at the door
+    /* v2.3.3143: the auction house's room and clerk left the gate -- they load at the door
        (game/buildingRooms.js), like the other sixteen rooms, and are let go after */
     /* ═══ v2.3.2760: the harvest cue's mini tools ═══
        DOM images on the right button (the bag's pickaxe / axe / rod icons and

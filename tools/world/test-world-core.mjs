@@ -123,7 +123,7 @@ const sqAt = (p) => { const [x, y] = art(p); const c = cellAt(g, x, y); return c
      the bigger town reaching nearly to the Sweetwater River) */
   ok('past the gates the streets become roads', [[0, -(gNS + 150)], [gEW + 150, 0], [0, gNS + 150], [-(gEW + 150), 0]].every(([dx, dy]) => at(g.cx + dx, g.cy + dy) === C.path || at(g.cx + dx, g.cy + dy) === C.bridge));
   const townLots = bp.lots.filter((l) => l.town), places = bp.lots.filter((l) => !l.town);
-  ok('Brotown has the Town Hall plus 15 plots along its streets (v2.3.3143: the Assay Office is gone)', townLots.length === 16 && townLots.every((l) => at((l.x0 + l.x1) / 2, (l.y0 + l.y1) / 2) === C.lot), townLots.length);
+  ok('Brotown has the Town Hall plus 15 plots along its streets (v2.3.3144: the Assay Office is gone)', townLots.length === 16 && townLots.every((l) => at((l.x0 + l.x1) / 2, (l.y0 + l.y1) / 2) === C.lot), townLots.length);
   /* v2.3.2960, owner: "The one thing I want to change are the boards. They
      do not look good and I don't know what those are supposed to be." */
   let townBoards = 0;
@@ -2113,7 +2113,7 @@ console.log('the big-town preview (v2.3.2982)');
   const lots2 = bbp.lots.filter((l) => l.town), bAt = Object.create(null);
   for (let i = 0; i < BO.n; i++) { const id = BO.kinds[BO.kind[i]]; if (byId[id] && byId[id].kind === 'building') bAt[id] = [BO.x[i], BO.y[i]]; }
   ok(`${BO.buildings} of its ${BO.buildingsOf} buildings stand, Market Row keeping one plot a side, each on its plot's door, drawn twice the size (everything else as made)`,
-    BO.buildings === 13 && BO.buildingsOf === 16 && lots2.length === 13 &&   /* v2.3.3143: 13 of 16 (the Assay Office is gone; the Auction House, Feed & Seed and General Store are the three Market Row keeps out) */
+    BO.buildings === 13 && BO.buildingsOf === 16 && lots2.length === 13 &&   /* v2.3.3144: 13 of 16 (the Assay Office is gone; the Auction House, Feed & Seed and General Store are the three Market Row keeps out) */
     lots2.every((l) => { const b = bAt[l.id], [fx, fy] = gOf(l.foot.x, l.foot.y); return b && Math.abs(b[0] - fx) < 1 && Math.abs(b[1] - fy) < 1; }) &&
     BO.kinds.every((id, k) => BO.kindScale[k] === (byId[id] && byId[id].kind === 'building' ? 2 : 1)), Object.keys(bAt));
   const shut = lots2.filter((l) => { const [fx, fy] = gOf(l.foot.x, l.foot.y + T2.lot.porch + 6); const c = clsAtG(fx, fy); return c !== C.street && c !== C.plaza; });
@@ -2341,7 +2341,7 @@ console.log('the designed town (v2.3.3031)');
 
   /* the districts, and plots off their rows */
   const ids = (arm) => tp.lots.filter((l) => l.arm === arm).map((l) => l.id).sort().join();
-  ok('each arm is a district: the civic front and trades in the north, the mine side east (Bank, Gem Works, Auction; v2.3.3143: the Assay Office is gone), the strip south (Saloon, Hotel, Gambling Den, the Sheriff at its end), the farm road west',
+  ok('each arm is a district: the civic front and trades in the north, the mine side east (Bank, Gem Works, Auction; v2.3.3144: the Assay Office is gone), the strip south (Saloon, Hotel, Gambling Den, the Sheriff at its end), the farm road west',
     ids('north') === 'blacksmith,guildhall,post,woodworker' && ids('east') === 'auction,bank,gemcutter' && ids('south') === 'gambling,hotel,saloon,sheriff' && ids('west') === 'cookhouse,feedseed,landoffice,store' &&
     tp.lots.length === 16);
   /* the same lots with their offsets taken off: where each stands in its row */
@@ -2350,7 +2350,7 @@ console.log('the designed town (v2.3.3031)');
   const moved = tp.lots.filter((l) => { const p = plain.lots.find((q) => q.id === l.id); return Math.abs(l.x0 - p.x0) >= 8 || Math.abs(l.y0 - p.y0) >= 8; });
   const overlap = [];
   for (const a of tp.lots) for (const b of tp.lots) if (a.id < b.id && a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1) overlap.push([a.id, b.id]);
-  const rowDy = new Set(tp.lots.filter((l) => (l.arm === 'east' || l.arm === 'west') && l.side === 'north').map((l) => Math.round(l.y1)));   /* v2.3.3143: both arms -- the east one is the Bank alone now */
+  const rowDy = new Set(tp.lots.filter((l) => (l.arm === 'east' || l.arm === 'west') && l.side === 'north').map((l) => Math.round(l.y1)));   /* v2.3.3144: both arms -- the east one is the Bank alone now */
   ok(`no row is a ruler line: ${moved.length} of the 15 plots stand off their row, none on another, Market Row's north side at ${rowDy.size} different depths, and the gates are where the farthest plot puts them (${G.ns}, ${G.ew})`,
     moved.length >= 14 && overlap.length === 0 && rowDy.size >= 2 && G.ew <= 1455, { moved: moved.length, overlap });
   const shut = tp.lots.filter((l) => { const [fx, fy] = gOf(l.foot.x, l.foot.y + T.lot.porch + 6), c = bp.cls[cellOfG(fx, fy)]; return c !== C.street && c !== C.plaza; });
@@ -3259,15 +3259,15 @@ console.log("the buildings' doors (v2.3.3032)");
   const tbIds = TOWN_BUILDINGS.map((b) => b.id);
   const openIds = Object.keys(WHEEL_BUILDING_DOORS), closedIds = WHEEL_SHUT_DOORS.slice(), hallIds = Object.keys(WHEEL_HALL_DOORS);
   ok('what opens at each door is the plan\'s own: every plot of the table is a plot of the town, and its value is what the plan says the plot is `today`, a building of today\'s town',
-    openIds.length === 11 && openIds.every((k) => lotIds.has(k) && WHEEL_BUILDING_DOORS[k] === todayOf[k] && tbIds.includes(WHEEL_BUILDING_DOORS[k])),   /* v2.3.3143: eleven doors (the Assay Office's is gone) */
+    openIds.length === 11 && openIds.every((k) => lotIds.has(k) && WHEEL_BUILDING_DOORS[k] === todayOf[k] && tbIds.includes(WHEEL_BUILDING_DOORS[k])),   /* v2.3.3144: eleven doors (the Assay Office's is gone) */
     openIds.filter((k) => !(lotIds.has(k) && WHEEL_BUILDING_DOORS[k] === todayOf[k] && tbIds.includes(WHEEL_BUILDING_DOORS[k]))));
   /* v2.3.3066: three of the four "(new: ...)" plots open halls of the
      Wheel's own (the Guild Hall, the Post Office, the Sheriff's Office), the
      Hotel stays shut */
   const actions = TOWN_BUILDINGS.map((b) => b.action || b.id).concat(['farmhome']);
-  /* v2.3.3142: the Town Hall (the plan's `mayor (NPC)`, Mayor Bro on its steps) is a fourth hall,
+  /* v2.3.3143: the Town Hall (the plan's `mayor (NPC)`, Mayor Bro on its steps) is a fourth hall,
      so every plot of the town opens something or says it is shut */
-  /* v2.3.3143: the twelfth of today's buildings, the Enchanter, has no door of its own: it is the Gem Works' second tab */
+  /* v2.3.3144: the twelfth of today's buildings, the Enchanter, has no door of its own: it is the Gem Works' second tab */
   ok('...eleven of today\'s buildings have a door (none twice; the twelfth, the Enchanter, is the Gem Works\' second tab), and the other five plots are accounted for, none left over: four halls of the Wheel\'s own (three of the plan\'s "(new: ...)" buildings, and the Town Hall, Mayor Bro\'s) and one shut that says so',
     new Set(Object.values(WHEEL_BUILDING_DOORS)).size === 11 && tbIds.filter((id) => id !== 'enchanting').every((id) => Object.values(WHEEL_BUILDING_DOORS).includes(id))
     && tbIds.includes('enchanting') && !Object.values(WHEEL_BUILDING_DOORS).includes('enchanting') && WHEEL_BUILDING_DOORS.gemcutter === 'gemcutter'
@@ -3480,10 +3480,10 @@ console.log('the lands\' music (v2.3.3064)');
     /noteWheelMusic\(here, S, BT_AUDIO\)/.test(mini) && /fresh: _here\.x === cx && _here\.y === cy/.test(trial));
 }
 
-/* ── v2.3.3142: the inside of each building ──
+/* ── v2.3.3143: the inside of each building ──
    Owner, 2026-10-06: sent seventeen pictures of the insides and said "Ok wire
    these up". */
-console.log("the buildings' insides (v2.3.3142)");
+console.log("the buildings' insides (v2.3.3143)");
 {
   const fs = await import('node:fs');
   const R = await import('../../src/data/buildingRooms.js');
@@ -3496,10 +3496,10 @@ console.log("the buildings' insides (v2.3.3142)");
   const wrong = [];
   for (const [plot, bid] of Object.entries(WHEEL_BUILDING_DOORS)) if (R.BUILDING_ROOMS[panelOf(bid)] !== plot) wrong.push([plot, panelOf(bid), R.BUILDING_ROOMS[panelOf(bid)]]);
   for (const [plot, panel] of Object.entries(WHEEL_HALL_DOORS)) if (R.BUILDING_ROOMS[panel] !== plot) wrong.push([plot, panel, R.BUILDING_ROOMS[panel]]);
-  ok('every door that opens a window opens the window of its own room: the eleven buildings (through their `action`) and the four halls, each picture named for the plot it shows; the Enchanter\'s tab (v2.3.3143) is the Gem Works\' own room',
+  ok('every door that opens a window opens the window of its own room: the eleven buildings (through their `action`) and the four halls, each picture named for the plot it shows; the Enchanter\'s tab (v2.3.3144) is the Gem Works\' own room',
     Object.keys(WHEEL_BUILDING_DOORS).length === 11 && Object.keys(WHEEL_HALL_DOORS).length === 4 && wrong.length === 0 && R.BUILDING_ROOMS.enchant === 'gemcutter' && R.BUILDING_ROOMS.gemcut === 'gemcutter', wrong);
   const windows = Object.values(R.BUILDING_ROOMS);
-  const rooms = [...new Set(windows)];   /* v2.3.3143: the Gem Works' two tabs are one room */
+  const rooms = [...new Set(windows)];   /* v2.3.3144: the Gem Works' two tabs are one room */
   ok('...sixteen windows, fifteen rooms (the Gem Works\' Cut and Set tabs share one, nothing else is shown twice), every one a plot of the town; the Hotel (shut) is the one with a picture and no window, so all sixteen plots are accounted for',
     windows.length === 16 && rooms.length === 15 && windows.filter((r) => r === 'gemcutter').length === 2 && rooms.every((r) => lotIds.includes(r))
       && R.SPARE_ROOMS.length === 1 && R.SPARE_ROOMS.every((r) => lotIds.includes(r) && !rooms.includes(r))
@@ -3509,7 +3509,7 @@ console.log("the buildings' insides (v2.3.3142)");
   ok('a panel that is no building has no room (the Market is a screen of its own), and a client-supplied name can never reach a prototype key',
     R.roomIdFor('store') === null && R.roomIdFor('shop') === null && R.roomIdFor(null) === null && R.roomIdFor('__proto__') === null
       && R.roomIdFor('constructor') === null && R.keeperFor('__proto__') === null && R.keeperFor('toString') === null, {});
-  /* the pictures: all sixteen on disk (v2.3.3143: the Assay Office's is gone), at the size the table says, and only those */
+  /* the pictures: all sixteen on disk (v2.3.3144: the Assay Office's is gone), at the size the table says, and only those */
   const dir = new URL('../../public/world/interiors/', import.meta.url);
   const files = fs.readdirSync(dir).filter((f) => !f.startsWith('.')).sort();
   const want = rooms.concat(R.SPARE_ROOMS).map((r) => r + '.webp').sort();
@@ -3544,7 +3544,7 @@ console.log("the buildings' insides (v2.3.3142)");
     /buildingPanel === 'farmhome' && \/\*#__PURE__\*\/React\.createElement\(LandOfficePanel, \{/.test(bt)
       && !/buildingPanel === 'farmhome' && \/\*#__PURE__\*\/React\.createElement\("div"/.test(bt)
       && /Travel to Farm/.test(fs.readFileSync(new URL('../../src/ui/panels/buildings/LandOfficePanel.jsx', import.meta.url), 'utf8')), {});
-  /* v2.3.3142: the Town Hall is a hall, its rows open things that exist */
+  /* v2.3.3143: the Town Hall is a hall, its rows open things that exist */
   {
     const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
     const th = WHEEL_HALLS.townhall;
@@ -3577,13 +3577,13 @@ console.log("the buildings' insides (v2.3.3142)");
     R.roomUrl('bank') === `/world/interiors/bank.webp?v=${R.ROOMS_V}` && /\/world\/interiors\/\*\s*\n\s*Cache-Control: public, max-age=31536000, immutable/.test(hd), {});
 }
 
-/* ── v2.3.3143: the Gem Works ──
+/* ── v2.3.3144: the Gem Works ──
    Owner, 2026-10-07, after the Assay Office's name came up ("what does that even
    mean"): "I think one gem building is enough and can do both the gem cutting and
    gem setting maybe with two different NPCs in the same building".  Asked what
    should happen to the Assay Office's building, they chose "Remove it", and named
    the combined building "Gem Works". */
-console.log('the Gem Works (v2.3.3143)');
+console.log('the Gem Works (v2.3.3144)');
 {
   const fs = await import('node:fs');
   const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');

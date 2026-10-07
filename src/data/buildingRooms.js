@@ -1,4 +1,4 @@
-/* ═══ v2.3.3142: THE INSIDE OF EACH BUILDING ═══
+/* ═══ v2.3.3143: THE INSIDE OF EACH BUILDING ═══
  *
  * Owner, 2026-10-06: sent seventeen pictures of the inside of BroTown's
  * buildings (the prompts are docs/ART-WISHLIST.md "Inside the buildings"; the
@@ -22,7 +22,7 @@
 
 /* Bump when a picture is replaced (tools/ui/make-room-pictures.py): the files
    are cached for a year (public/_headers) and asked for at this address. */
-export const ROOMS_V = '2.3.3142';
+export const ROOMS_V = '2.3.3143';
 export const ROOM_DIR = '/world/interiors/';
 /* What tools/ui/make-room-pictures.py makes: 1152 x 768 (3:2).  A 360 CSS px
    window on a 3x phone is 1080 device px, so this is the size it wants, and it
@@ -31,11 +31,11 @@ export const ROOM_W = 1152;
 export const ROOM_H = 768;
 
 /* buildingPanel value -> plot id.  Sixteen windows, fifteen rooms: the Gem Works'
-   two tabs ('gemcut' and 'enchant', v2.3.3143) are one room, and the Assay Office
+   two tabs ('gemcut' and 'enchant', v2.3.3144) are one room, and the Assay Office
    that had its own is gone.  (The Feed & Seed, the Land
    Office's trip to your farm, the Saloon and the rest open today's own
    panels; the Guild Hall, Post Office and Sheriff's Office are the Wheel's
-   halls, v2.3.3066, and so is the Town Hall, v2.3.3142).  'store' (the Market,
+   halls, v2.3.3066, and so is the Town Hall, v2.3.3143).  'store' (the Market,
    reached by a button inside the Auction House's and the General Store's
    windows) has none: it is a screen of its own, not a building. */
 export const BUILDING_ROOMS = {
@@ -46,14 +46,14 @@ export const BUILDING_ROOMS = {
   woodwork: 'woodworker',
   gemcut: 'gemcutter',
   cook: 'cookhouse',
-  enchant: 'gemcutter',       /* v2.3.3143: the Enchanter is the Gem Works' second tab -- the same room as 'gemcut' (the Assay Office is gone) */
+  enchant: 'gemcutter',       /* v2.3.3144: the Enchanter is the Gem Works' second tab -- the same room as 'gemcut' (the Assay Office is gone) */
   gamble: 'gambling',
   farm: 'feedseed',
   farmhome: 'landoffice',     /* the trip to your own farm */
   post: 'post',
   sheriff: 'sheriff',
   guildhall: 'guildhall',
-  townhall: 'townhall',       /* v2.3.3142: a hall of the Wheel's own, the leaderboard and the world map */
+  townhall: 'townhall',       /* v2.3.3143: a hall of the Wheel's own, the leaderboard and the world map */
   auctionhouse: 'auction',
 };
 
@@ -61,7 +61,7 @@ export const BUILDING_ROOMS = {
    is shut (its rest is the farm bed's, on this device only --
    WHEEL_SHUT_DOORS).  It costs nothing until a window asks for it;
    test-world-core checks the file is there, so the day it opens it is one line
-   in BUILDING_ROOMS.  (The Town Hall's was held here until v2.3.3142 made it a
+   in BUILDING_ROOMS.  (The Town Hall's was held here until v2.3.3143 made it a
    hall.) */
 export const SPARE_ROOMS = ['hotel'];
 
