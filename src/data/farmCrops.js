@@ -1,4 +1,4 @@
-/* ═══ v2.3.3111: THE FARM'S CROPS, THE CLIENT'S COPY ═══
+/* ═══ v2.3.3127: THE FARM'S CROPS, THE CLIENT'S COPY ═══
  *
  * The worker settles every bed from its own table (server/src/farm.js FARM);
  * this copy only lets the Feed & Seed window say what a seed costs, how long

@@ -276,7 +276,7 @@ export const cookingMethods = {
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
     if (!ps.inventory) ps.inventory = {}; // proto-ok: recipe-index path; inventory keys server-validated
-    /* ═══ v2.3.3111: THE RECIPE'S COOKING LEVEL IS THE WORKER'S GATE ═══
+    /* ═══ v2.3.3127: THE RECIPE'S COOKING LEVEL IS THE WORKER'S GATE ═══
        Root Stew asks Cooking 3 and Firebloom Tea Cooking 6, and only the
        window ever said so (CookPanel.jsx's lock, the campfire's filter): a
        forged cook_recipe at Cooking 1 was cooked.  Moot while nothing could
@@ -338,7 +338,7 @@ export const cookingMethods = {
          potion's multiplier -- a cooked fish quietly worth double. Every
          writer of _buffs.damage must state its own magnitude. */
       delete ps._buffs.damageMul;
-      /* v2.3.3111: ...and the recipe's own `power` IS that magnitude.  Firebloom
+      /* v2.3.3127: ...and the recipe's own `power` IS that magnitude.  Firebloom
          Tea's card said "+5% dmg" over a table row of power 0.05 while this
          branch ignored the row and the combat reader fell back to the cooked-
          food x1.20 -- three numbers, two of them wrong.  It could not be cooked

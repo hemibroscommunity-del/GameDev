@@ -586,7 +586,7 @@ Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh
 
 ## The farm
 
-The Feed & Seed's farm (v2.3.3111, docs/specs/farm.md) draws its crops, seeds and compost with emoji until these exist: the window's beds, the Seeds tab and the bag all use them.
+The Feed & Seed's farm (v2.3.3127, docs/specs/farm.md) draws its crops, seeds and compost with emoji until these exist: the window's beds, the Seeds tab and the bag all use them.
 
 ### Farm goods: six bag icons
 

@@ -63,7 +63,7 @@ import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
 import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
-import { farmMethods } from './farm.js'; /* v2.3.3111: the farm, settled by the worker */
+import { farmMethods } from './farm.js'; /* v2.3.3127: the farm, settled by the worker */
 import { armorForgeMethods } from './armorforge.js'; /* v2.3.3092: bars into armour */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monster's hit carries its element */
@@ -137,7 +137,7 @@ import { persistenceMethods } from './persistence.js';
 // v2.3.1173 (P4 decomposition): identity gate + join bootstrap -- see join.js.
 import { joinMethods, cosmeticCap } from './join.js';   /* v2.3.1940: ONE cap rule for the drawing keys */
 // v2.3.1174 (P4 decomposition): the 45Hz tick loop -- see tick.js.
-import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3111: + the regen cadence, for Herb Bread */
+import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3127: + the regen cadence, for Herb Bread */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -395,7 +395,7 @@ export const PRIVILEGED_EVENTS = new Set([
   'ability_windup',
   /* v2.3.2822: the smelt's receipt (smelting.js) -- bars made and XP paid. */
   'smelt_result',
-  /* v2.3.3111: the farm (farm.js) -- the beds, what grows in them and when it
+  /* v2.3.3127: the farm (farm.js) -- the beds, what grows in them and when it
      is ready, and what an action paid.  A forged one would paint ripe crops
      and harvests the worker never settled on another player's screen. */
   'farm_state',
@@ -836,7 +836,7 @@ export class GameRoom {
        few seconds early, which is the cheapest possible thing to lose. */
     this.SPOKE_REGEN_OOC_MS = 6000;
     this.SPOKE_REGEN_PCT = 0.01;
-    /* v2.3.3111: Herb Bread's regen, a share of max HP a SECOND (its card's
+    /* v2.3.3127: Herb Bread's regen, a share of max HP a SECOND (its card's
        "Regen 2%/s"), paid per regen tick in _tickPlayerRegen. */
     this.HERB_REGEN_PER_S = 0.02;
     /* v2.3.1623: below this fraction of max HP, a damage write bypasses
@@ -3453,7 +3453,7 @@ export class GameRoom {
           if (ps.hp !== beforeHp) changed = true;
         }
       }
-      /* v2.3.3111: HERB BREAD HEALS.  Its recipe has always written a `regen`
+      /* v2.3.3127: HERB BREAD HEALS.  Its recipe has always written a `regen`
          timer (cooking.js) and its card has always said "Regen 2%/s for
          60s", but nothing on the worker ever read the timer -- the meal did
          nothing at all.  It could not be cooked either, since nothing made
@@ -5091,7 +5091,7 @@ export class GameRoom {
       case 'farm_open':
       case 'farm_act':
       case 'farm_buy':
-        /* v2.3.3111: the farm (farm.js) -- open the window, dig / plant /
+        /* v2.3.3127: the farm (farm.js) -- open the window, dig / plant /
            water / fertilize / harvest beds, or buy seeds and compost at the
            Feed & Seed.  The worker owns the beds, their clocks and every
            crop; the client only asks.  Its own cases, never the default
@@ -5100,7 +5100,7 @@ export class GameRoom {
           const _fp = msg.type === 'farm_open' ? this._handleFarmOpen(session, msg.payload || msg)
             : msg.type === 'farm_act' ? this._handleFarmAct(session, msg.payload || msg)
             : this._handleFarmBuy(session, msg.payload || msg);
-          /* v2.3.3111: said, not swallowed -- a throw in here once hid a
+          /* v2.3.3127: said, not swallowed -- a throw in here once hid a
              harvest that paid again on every message (farm.js). */
           if (_fp && _fp.catch) _fp.catch((e) => { console.error('[farm]', msg.type, session.id, e && e.message); });
         }
@@ -5881,7 +5881,7 @@ Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
-Object.assign(GameRoom.prototype, farmMethods); /* v2.3.3111 */
+Object.assign(GameRoom.prototype, farmMethods); /* v2.3.3127 */
 Object.assign(GameRoom.prototype, armorForgeMethods); /* v2.3.3092 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */

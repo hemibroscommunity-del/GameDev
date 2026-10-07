@@ -342,7 +342,7 @@ export const devToolsMethods = {
     return { ok: true, zone: z, cleared };
   },
 
-  /* v2.3.3111: RIPEN MY FARM.  A Cloudpetal takes eight real hours, so
+  /* v2.3.3127: RIPEN MY FARM.  A Cloudpetal takes eight real hours, so
      neither the owner nor a phone test could ever see a harvest without
      waiting for one.  Every planted bed of this player's farm (farm.js) is
      made ripe NOW -- its readyAt set to the worker's clock -- and the farm is
@@ -355,7 +355,7 @@ export const devToolsMethods = {
     /* ok with nothing done, not a 404: the panel reads every 404 as "is that
        character online?", which is not the question here. */
     if (!stored) return { ok: true, ripened: 0, note: 'no farm yet' };
-    /* v2.3.3111: never rewrite a newer worker's record (farm.js FARM.V) */
+    /* v2.3.3127: never rewrite a newer worker's record (farm.js FARM.V) */
     if (this._farmNewer(stored)) return { ok: true, ripened: 0, note: 'farm record from a newer worker' };
     const rec = this._farmHeal(stored);
     const now = Date.now();
@@ -475,7 +475,7 @@ export const devToolsMethods = {
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
     else if (path === '/dev/quests') result = this._devFinishQuests(playerId, body);   /* v2.3.2277; v2.3.3121: + except */
     else if (path === '/dev/clearwave') result = this._devClearWave(playerId);   /* v2.3.3016 */
-    else if (path === '/dev/farmripe') result = await this._devFarmRipe(playerId);   /* v2.3.3111 */
+    else if (path === '/dev/farmripe') result = await this._devFarmRipe(playerId);   /* v2.3.3127 */
     else if (path === '/dev/trapping') result = this._devTrapping(playerId, body);   /* v2.3.3120 */
     else return null;
 

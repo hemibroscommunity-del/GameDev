@@ -1009,7 +1009,7 @@ export const COOKING_RECIPES = [{
     herb_firebloom: 2
   },
   buff: 'damage',
-  power: 0.20,   /* v2.3.3111: was 0.05 under a "+5% dmg" card while the worker paid +20% (cooking.js reads this now) */
+  power: 0.20,   /* v2.3.3127: was 0.05 under a "+5% dmg" card while the worker paid +20% (cooking.js reads this now) */
   duration: 90,
   cookLvl: 6,
   desc: '+20% dmg for 90s'

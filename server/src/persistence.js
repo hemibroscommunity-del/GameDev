@@ -398,7 +398,7 @@ export const persistenceMethods = {
        same belt-and-braces argument as the playerState delete below). */
     try { await this.state.storage.delete('gear_prov:' + pid); } catch (e) { /* best-effort, as above */ }
     this._gearProvForget(pid);
-    /* ═══ v2.3.3111: AND THE FARM GOES WITH THE CHARACTER ═══
+    /* ═══ v2.3.3127: AND THE FARM GOES WITH THE CHARACTER ═══
        `farm:<pid>` (farm.js) is keyed by player id too, so without this a
        restarted level-1 character inherited every bed and whatever grew in
        them.  Its first join said "6 beds are ready", and the harvest (which

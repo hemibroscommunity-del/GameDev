@@ -19,8 +19,8 @@ import { processGameEvent } from '@/networking/gameEvents.js';
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
-import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3111: the farm, the worker's */
-import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3111 */
+import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the worker's */
+import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
@@ -1575,7 +1575,7 @@ export function setupWebSocket(ctx) {
             }
           case 'farm_state':
             {
-              /* v2.3.3111: the farm (server farm.js) -- the beds, what grows in
+              /* v2.3.3127: the farm (server farm.js) -- the beds, what grows in
                  them and when it is ripe on the WORKER's clock, plus what the
                  last request did (`did`) or why it did nothing (`err`), or,
                  flagged `login`, the farm as it stood when you joined.  Into
@@ -4125,7 +4125,7 @@ export function setupWebSocket(ctx) {
        paid (player_state, harvest_credit) or refused, a spend acked, a start
        answered with its hits.  The dead-pipe watch (_aliveTimer) holds one of
        these to SETTLE_SILENT_MS: silence after it means nothing is listening. */
-    /* v2.3.3111: and the farm's three (farm.js answers them), so a pipe that
+    /* v2.3.3127: and the farm's three (farm.js answers them), so a pipe that
        died after a farm tap is rejoined at 7 s, before a buy's 12 s "no
        answer yet" (farmBus.js).  One the worker ignores (a script's junk)
        raises no false alarm: any frame clears the watch, and the worker
@@ -4187,7 +4187,7 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
-        /* v2.3.3111: the farm (FarmPanel's Feed & Seed window) -> farm.js.
+        /* v2.3.3127: the farm (FarmPanel's Feed & Seed window) -> farm.js.
            Without these three lines the window would ask and never hear back
            -- TRAPS #18, the allowlist's one way to fail silently. */
         if (msg.type === 'farm_open' || msg.type === 'farm_act' || msg.type === 'farm_buy') {
