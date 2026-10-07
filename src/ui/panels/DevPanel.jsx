@@ -163,6 +163,7 @@ const CAP_GATES = [
   'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,
+  'farm' /* v2.3.3127: the farm -- lower case, a kill switch */,
   'armorforge' /* v2.3.3092: bars into armor -- lower case, a kill switch */,
   'trapping' /* v2.3.3120: arm a trap, then kill it -- lower case, a kill switch */,
   'trapcraft' /* v2.3.3120: box traps at the Woodworker -- lower case, a kill switch */,
@@ -203,6 +204,7 @@ const CAP_NOTES = {
   sprint: 'the sprint button right of the movement stick (and Shift): a third faster while your stamina lasts (v2.3.3006; without it: no button, everyone walks)',
   wheelnodes: 'resources in the Wheel: copper, pine and fish round town, iron and softwood at levels 1-10, black steel and hardwood at 11-20 (v2.3.3012; without it: nothing to gather there)',
   wheeldungeons: 'dungeons in the Wheel: the Great Cave, the Foundry Dome and the Buried City open at their landmarks (v2.3.3016; without it: no mouths, no Enter button)',
+  farm: 'the farm: the Feed & Seed window digs, plants, waters, fertilizes and harvests beds the worker owns, on its clock, and sells seeds and compost (v2.3.3127; without it: the old browser-only plots, which never kept anything)',
 };
 
 export const DevPanel = ({ onClose }) => {
@@ -480,6 +482,14 @@ export const DevPanel = ({ onClose }) => {
               {state && state.god
                 ? 'God mode ON — ' + Math.ceil((state.godMsLeft || 0) / 60000) + ' min left (tap to stop)'
                 : 'God mode (stop taking damage)'}
+            </button>
+            {/* v2.3.3127: a Cloudpetal takes eight real hours -- this makes every
+                planted bed ripe now, so a harvest can be tried without waiting
+                (server devtools.js _devFarmRipe; the harvest itself is still the
+                worker's own). */}
+            <button type="button" style={btn(false)} disabled={busy}
+              onClick={async () => { const j = await call('/dev/farmripe', { playerId: myId }); if (j) { setMsg(j.ripened ? 'Ripened ' + j.ripened + ' bed' + (j.ripened === 1 ? '' : 's') + ' — open the Feed & Seed to harvest.' : 'Nothing growing to ripen.'); } }}>
+              Ripen my farm now
             </button>
 
             <div style={label}>Key</div>

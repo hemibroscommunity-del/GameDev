@@ -1444,6 +1444,36 @@ remnant to migrate server-side, not a mode to preserve.
       screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
     - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
       docs/specs/wheel-doors.md.
+  - Since v2.3.3127 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
+    similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,
+    water", then, on the research (docs/FARMING-PLAN.md, its Phase 1): "Good.
+    Go ahead and build it":
+    - the WORKER owns it (`server/src/farm.js`, storage `farm:<pid>`): a free
+      deed of six beds; dig, plant, then optional water (ready 25% sooner) and
+      compost (harvest x1.5), then harvest; ripe when the worker's clock
+      passes `readyAt`, never ticked, so crops grow offline and nothing
+      withers; carrot, Firebloom, Rock Vine, Cloudpetal (`FARM.CROPS`, mirrored
+      in src/data/farmCrops.js, pinned by mirror-audit); Farming XP only at
+      harvest; seeds and compost sold in the window; Diego values every farm
+      key so reselling a seed is a loss (`FARM_SHOP_BASE`);
+    - the window is `FeedSeedPanel.jsx`: pick a tool (it follows the farm until
+      you do), tap a bed or drag across several -- one message -- gated on
+      `caps.farm` (kill switch `farm: false`); without it FarmPanel keeps the
+      old browser-only plots (`LegacyFarmPanel`), which never kept anything;
+    - Herb Bread finally HEALS (2% max HP a second; its `regen` timer was never
+      read) and Firebloom Tea's card says its real +20%; the recipes' Cooking
+      levels (Stew 3, Tea 6) are the WORKER's gate now (`cookLvl`, cooking.js);
+    - a harvest turns its bed to grass BEFORE it pays, and a life skill that
+      is not an object heals at the join (`healLifeSkillLevels`) -- found by
+      the review: a bare-number skill made the XP throw and one bed paid on
+      every message; a restart deletes `farm:<pid>`; `farm_state` is handled
+      in wsClient's DIRECT switch, never processGameEvent (relayed events
+      reach that, and a pre-farm worker relays a forged one); a record
+      carries its shape (`FARM.V`) and a worker refuses a NEWER one whole
+      (err 'newer') -- a phase that changes the record bumps it, or a
+      rollback rewrites beds of crops it never heard of as grass;
+    - the dev op `farmripe` ("Ripen my farm now" in the dev panel); `farm`
+      suite, `mp-farm`: docs/specs/farm.md.
   - Since v2.3.3120 PET TRAPPING -- the owner: "your trapping level governs
     what level monster you can capture ... The best success rate for the
     lowest tier monster should be about 1%. And each trap should cost at least

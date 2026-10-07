@@ -63,6 +63,7 @@ import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
 import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
+import { farmMethods } from './farm.js'; /* v2.3.3127: the farm, settled by the worker */
 import { armorForgeMethods } from './armorforge.js'; /* v2.3.3092: bars into armour */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monster's hit carries its element */
@@ -136,7 +137,7 @@ import { persistenceMethods } from './persistence.js';
 // v2.3.1173 (P4 decomposition): identity gate + join bootstrap -- see join.js.
 import { joinMethods, cosmeticCap } from './join.js';   /* v2.3.1940: ONE cap rule for the drawing keys */
 // v2.3.1174 (P4 decomposition): the 45Hz tick loop -- see tick.js.
-import { tickMethods } from './tick.js';
+import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3127: + the regen cadence, for Herb Bread */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -394,6 +395,10 @@ export const PRIVILEGED_EVENTS = new Set([
   'ability_windup',
   /* v2.3.2822: the smelt's receipt (smelting.js) -- bars made and XP paid. */
   'smelt_result',
+  /* v2.3.3127: the farm (farm.js) -- the beds, what grows in them and when it
+     is ready, and what an action paid.  A forged one would paint ripe crops
+     and harvests the worker never settled on another player's screen. */
+  'farm_state',
   /* v2.3.3092: the armour forge's receipt (armorforge.js) -- it names a minted
      piece with its id, so a forged one would put a fake plate in another
      player's bag. */
@@ -831,6 +836,9 @@ export class GameRoom {
        few seconds early, which is the cheapest possible thing to lose. */
     this.SPOKE_REGEN_OOC_MS = 6000;
     this.SPOKE_REGEN_PCT = 0.01;
+    /* v2.3.3127: Herb Bread's regen, a share of max HP a SECOND (its card's
+       "Regen 2%/s"), paid per regen tick in _tickPlayerRegen. */
+    this.HERB_REGEN_PER_S = 0.02;
     /* v2.3.1623: below this fraction of max HP, a damage write bypasses
        the coalescing and persists immediately.  25% is roughly "one or
        two more hits from death" across the damage curve -- the band
@@ -3445,6 +3453,22 @@ export class GameRoom {
           if (ps.hp !== beforeHp) changed = true;
         }
       }
+      /* v2.3.3127: HERB BREAD HEALS.  Its recipe has always written a `regen`
+         timer (cooking.js) and its card has always said "Regen 2%/s for
+         60s", but nothing on the worker ever read the timer -- the meal did
+         nothing at all.  It could not be cooked either, since nothing made
+         Firebloom; the farm (farm.js) grows it now, so the effect has to be
+         real.  2% of max HP a second, in or out of a fight, for as long as
+         the timer runs (REGEN_TICKS x TICK_RATE, ~660 ms, is one tick of it).
+         Not in a hub, where the 10% top-off already outruns it, and never in
+         an arena match or a duel, for the v2.3.1126 / v2.3.1613 reason above:
+         a heal that outruns the damage makes the fight unendable. */
+      if (!ps._arenaMatch && !inDuel && !inHub && ps.hp < ps.maxHp && this._buffActive(ps, 'regen')) {
+        const heal = Math.max(1, Math.round(ps.maxHp * this.HERB_REGEN_PER_S * (REGEN_TICKS * this.TICK_RATE) / 1000));
+        const beforeHp = ps.hp;
+        ps.hp = Math.min(ps.maxHp, ps.hp + heal);
+        if (ps.hp !== beforeHp) changed = true;
+      }
 
       // Stamina: shield drain takes priority over regen.  When blocking,
       // drain ~5/tick and auto-release at 0 (mirrors client behavior at
@@ -5064,6 +5088,24 @@ export class GameRoom {
         if (session.id) this._handleSmeltBar(session, msg.payload || msg);
         break;
 
+      case 'farm_open':
+      case 'farm_act':
+      case 'farm_buy':
+        /* v2.3.3127: the farm (farm.js) -- open the window, dig / plant /
+           water / fertilize / harvest beds, or buy seeds and compost at the
+           Feed & Seed.  The worker owns the beds, their clocks and every
+           crop; the client only asks.  Its own cases, never the default
+           branch, which would rebroadcast the request to the room. */
+        if (session.id) {
+          const _fp = msg.type === 'farm_open' ? this._handleFarmOpen(session, msg.payload || msg)
+            : msg.type === 'farm_act' ? this._handleFarmAct(session, msg.payload || msg)
+            : this._handleFarmBuy(session, msg.payload || msg);
+          /* v2.3.3127: said, not swallowed -- a throw in here once hid a
+             harvest that paid again on every message (farm.js). */
+          if (_fp && _fp.catch) _fp.catch((e) => { console.error('[farm]', msg.type, session.id, e && e.message); });
+        }
+        break;
+
       case 'forge_armor':
         /* v2.3.3092: bars into armour at the blacksmith (armorforge.js).  The
            worker takes the bars, mints the piece and pays the Smithing XP;
@@ -5839,6 +5881,7 @@ Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
+Object.assign(GameRoom.prototype, farmMethods); /* v2.3.3127 */
 Object.assign(GameRoom.prototype, armorForgeMethods); /* v2.3.3092 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */

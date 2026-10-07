@@ -32,6 +32,8 @@ import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_AR
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
+import { FARM as SRV_FARM, farmGrowMs as srvFarmGrowMs, farmYield as srvFarmYield } from '../src/farm.js'; /* v2.3.3127 */
+import { FARM as CLIENT_FARM, FARM_CROP_ORDER as CLIENT_FARM_ORDER, farmGrowMs as clientFarmGrowMs, farmYieldShown as clientFarmYieldShown } from '../../src/data/farmCrops.js'; /* v2.3.3127 */
 import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3092 */
 import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
 import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038 */
@@ -171,7 +173,7 @@ const room = Object.create(GameRoom.prototype);
   SRV.COOKING_RECIPES.forEach((r, i) => {
     const c = COOKING_RECIPES[i];
     if (!c || c.buff !== r.buff || c.power !== r.power || c.duration !== r.duration
-      || c.tier !== r.tier || JSON.stringify(c.ingredients) !== JSON.stringify(r.ingredients)) {
+      || c.tier !== r.tier || c.cookLvl !== r.cookLvl /* v2.3.3127: the worker's gate */ || JSON.stringify(c.ingredients) !== JSON.stringify(r.ingredients)) {
       bad.push({ i, server: r, client: c });
     }
   });
@@ -1353,6 +1355,31 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     const a = SRV_SMELT.RECIPES[k], b = CLIENT_SMELT[k] || {};
     check('smelting: ' + k + ' ore / cost / level / xp match',
       a.ore === b.ore && a.oreCost === b.oreCost && a.minLvl === b.minLvl && a.xp === b.xp, { srv: a, cli: b });
+  }
+}
+
+// ── THE FARM: the Feed & Seed window must promise what the worker settles ──
+// v2.3.3127.  The window draws a seed's price, its time (dry and watered),
+// its yield (plain and fertilized), its XP and its level lock from the client
+// copy; the worker plants, ripens and pays from its own.  A drift here is a
+// bed that says "6m" while the worker waits 8, or a Buy button that charges
+// one price and shows another.
+{
+  const keys = (o) => Object.keys(o).sort().join(',');
+  check('farm: same crops on both sides', keys(SRV_FARM.CROPS) === keys(CLIENT_FARM.CROPS),
+    { srv: keys(SRV_FARM.CROPS), cli: keys(CLIENT_FARM.CROPS) });
+  check('farm: the window lists every crop once', CLIENT_FARM_ORDER.slice().sort().join(',') === keys(SRV_FARM.CROPS), CLIENT_FARM_ORDER);
+  for (const k of ['FREE_BEDS', 'MAX_BEDS', 'WATER_TIME', 'FEED_YIELD', 'COMPOST', 'COMPOST_PRICE', 'BUY_MAX']) {
+    check('farm: ' + k + ' matches', SRV_FARM[k] === CLIENT_FARM[k], { srv: SRV_FARM[k], cli: CLIENT_FARM[k] });
+  }
+  for (const id of Object.keys(SRV_FARM.CROPS)) {
+    const a = SRV_FARM.CROPS[id], b = CLIENT_FARM.CROPS[id] || {};
+    const same = ['name', 'seed', 'item', 'lvl', 'price', 'mins', 'yield', 'xp', 'base'].every((f) => a[f] === b[f]);
+    check('farm: ' + id + ' seed / item / level / price / time / yield / XP / value match', same, { srv: a, cli: b });
+    check('farm: ' + id + ' grows as long on both sides, dry and watered',
+      srvFarmGrowMs(a, false) === clientFarmGrowMs(b, false) && srvFarmGrowMs(a, true) === clientFarmGrowMs(b, true));
+    check('farm: ' + id + ' pays what the window says, plain and fertilized',
+      srvFarmYield(a, false) === clientFarmYieldShown(b, false) && srvFarmYield(a, true, () => 0.999) === clientFarmYieldShown(b, true));
   }
 }
 
