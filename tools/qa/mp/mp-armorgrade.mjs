@@ -261,10 +261,35 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
         const h = window._pixiRenderer.playerDisplayRaw()._handArmSprite;
         return { shown: !!(h && h.visible), filtered: !!(h && Array.isArray(h.filters) && h.filters.some((x) => x && x.resources && x.resources.glintUniforms)) };
       });
-      return { f, img: armBox ? H.decodePng(await A.page.screenshot({ clip: armBox })) : null };
+      const buf = armBox ? await A.page.screenshot({ clip: armBox }) : null;
+      /* QA_AG_DUMP=1: keep the pictures, to see where the clone changes any */
+      if (buf && process.env.QA_AG_DUMP) { const fs = await import('node:fs'); fs.writeFileSync(`tools/qa/mp/out/ag-arm-${grade}-${alpha}.png`, buf); }
+      return { f, img: buf ? H.decodePng(buf) : null };
     };
     const s0 = await shot(0), s1 = await shot(1);
     const pr = (await probe(A)).glint;
+    /* v2.3.3142: the fix itself, read off the two sprites on the frozen
+       frame -- the clone is the body's texture under a mask, so with the same
+       place, the same filter frame (glint.js pins both to unmaskedArea) and
+       the same grade uniforms, every pixel of its outline is the body's */
+    const frame = await A.page.evaluate(() => {
+      const pd = window._pixiRenderer.playerDisplayRaw();
+      const arm = pd._handArmSprite, body = pd._spriteBody;
+      const area = (sp) => (sp && sp.filterArea ? [sp.filterArea.x, sp.filterArea.y, sp.filterArea.width, sp.filterArea.height] : null);
+      const look = (sp) => {
+        const f = sp && Array.isArray(sp.filters) && sp.filters.find((x) => x && x.resources && x.resources.glintUniforms);
+        if (!f) return null;
+        const u = f.resources.glintUniforms.uniforms;
+        return [...Array.from(u.uGrade), u.uPrism, u.uTime, u.uRim, u.uRimSkip].map((v) => Math.round(v * 1000) / 1000);
+      };
+      const place = (sp) => (sp ? [sp.x, sp.y, sp.scale.x, sp.scale.y, sp.anchor ? sp.anchor.x : 0, sp.anchor ? sp.anchor.y : 0] : null);
+      const same = (a, b) => !!a && !!b && a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 0.01);
+      return {
+        sameTex: !!(arm && body && arm.texture === body.texture),
+        samePlace: same(place(arm), place(body)), sameArea: same(area(arm), area(body)), sameLook: same(look(arm), look(body)),
+        arm: { area: area(arm), look: look(arm) }, body: { area: area(body), look: look(body) },
+      };
+    });
     await A.page.evaluate((hide) => {
       const pd = window._pixiRenderer.playerDisplayRaw();
       for (const k of hide) if (pd[k]) pd[k].renderable = true;
@@ -272,26 +297,44 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
     }, HIDE);
     await thaw(A);
     await A.page.keyboard.up('d');
-    let n = null;
+    /* n: every pixel the clone changes (its soft edges, drawn twice, change
+       some in any armour); big: the ones it changes by more than 120 summed
+       over the channels -- a bright outline drawn over a different one */
+    let n = null, big = null;
     if (s0.img && s1.img) {
-      n = 0;
+      n = 0; big = 0;
       for (let i = 0; i < s0.img.data.length; i += s0.img.channels) {
-        if (Math.abs(s0.img.data[i] - s1.img.data[i]) + Math.abs(s0.img.data[i + 1] - s1.img.data[i + 1]) + Math.abs(s0.img.data[i + 2] - s1.img.data[i + 2]) > 24) n++;
+        const d = Math.abs(s0.img.data[i] - s1.img.data[i]) + Math.abs(s0.img.data[i + 1] - s1.img.data[i + 1]) + Math.abs(s0.img.data[i + 2] - s1.img.data[i + 2]);
+        if (d > 24) n++;
+        if (d > 120) big++;
       }
     }
-    return { capOn, clone: s1.f, n, grade: (pr.grades || {})['self:c'] || 'normal' };
+    return { capOn, clone: s1.f, n, big, grade: (pr.grades || {})['self:c'] || 'normal', frame };
   };
   const armPlain = await armChange('normal');
   const armGodly = await armChange('godly');
-  console.log('    the arm re-drawn over the sword changes ' + armGodly.n + ' pixels in godly armour, ' + armPlain.n + ' in plain');
+  console.log('    the arm re-drawn over the sword changes ' + armGodly.n + ' pixels in godly armour (' + armGodly.big + ' by much), ' + armPlain.n + ' in plain (' + armPlain.big + ' by much)');
   /* guard: in plain armour the clone's soft edges, drawn twice, change some
      pixels (mp-sheen measured ~70) -- a 0 means the picture missed the arm
      and the comparison below would pass on nothing */
   rec.ok('the arm drawn again over the sword is on the picture (guard: drawn twice, its soft edges change some pixels in plain armour)',
     armPlain.capOn && armPlain.n != null && armPlain.n >= 20, armPlain);
-  rec.ok('jogging east with a sword out in a godly full set, the arm drawn again over it wears the body\'s own outline: it changes the picture no more than in plain armour',
+  /* v2.3.3142: the outline's match is read off the SPRITES (above), because
+     the picture cannot show it: with glint.js's pin taken out again (the
+     body's filter frame measured from its bounds) this check fails --
+     sameArea false -- while the pixel counts did not move: 76 pixels changed
+     (none by much) against 86-108 with the pin, plain armour's 33-49 moving
+     with the jog frame frozen.  The first cut of this test compared those
+     counts, so it passed or failed on that noise, never on the fix.  The
+     picture still answers one thing: an arm drawn WITHOUT its grade would
+     put plain metal over the bright outline, changing many pixels by much;
+     drawn with the body's own, the changes are the soft edges drawn twice
+     (QA_AG_DUMP=1 keeps the four pictures in out/ag-arm-*.png). */
+  rec.ok('jogging east with a sword out in a godly full set, the arm drawn again over it wears the body\'s own outline: the same picture, place, filter frame and grade look as the body under it',
     armPlain.capOn && armGodly.capOn && armGodly.clone.shown && armGodly.clone.filtered && armGodly.grade === 'godly'
-      && armPlain.n != null && armGodly.n != null && armGodly.n <= armPlain.n * 1.25 + 40, { plain: armPlain, godly: armGodly });
+      && armGodly.frame.sameTex && armGodly.frame.samePlace && armGodly.frame.sameArea && armGodly.frame.sameLook, { plain: armPlain, godly: armGodly });
+  rec.ok(`...and on the picture it changes next to nothing by much: ${armGodly.big} pixels in godly armour, ${armPlain.big} in plain (an arm with no grade would change its outline)`,
+    armPlain.big != null && armGodly.big != null && armGodly.big <= armPlain.big + 15, { plain: { n: armPlain.n, big: armPlain.big }, godly: { n: armGodly.n, big: armGodly.big } });
   await setGrade(A, 'normal');
   await H.hopTo(A, 1105, 1085).catch(() => {});
   await A.page.waitForTimeout(800);

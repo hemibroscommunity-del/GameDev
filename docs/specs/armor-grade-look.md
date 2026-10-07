@@ -129,16 +129,26 @@ with no id keeps the old guard.
   elite; the kit's grade minted into the ledger and the bag, worn by its ids,
   `'ee'` and `'gg'`; a grade-only swap marked for the next tick (a control
   run without the mark fails it); `eqg` never saved.
-- **Phone, `mp-armorgrade` (14):** every metal in every grade, all four
+- **Phone, `mp-armorgrade` (15):** every metal in every grade, all four
   grades drawn on one frozen frame per metal and measured against it in
   plain armour: rare's outline bluer than red, elite's red over green over
   blue, godly's across at least five of twelve hues, copper's highlights
   still copper-warm; jogging east with a sword out in a godly full set, the
-  arm drawn again over the sword (a masked clone of the body) changes the
-  picture no more than in plain armour, with a guard that the picture holds
+  arm drawn again over the sword (a masked clone of the body) has the body's
+  own picture, place, filter frame and grade uniforms, read off the two
+  sprites, and on the picture changes next to nothing by much (an arm with
+  no grade would change its outline), with a guard that the picture holds
   the arm at all; the look with the light effects off; another player told
   `'ee'` by the worker and drawing both pieces elite (on a 3x phone); the
   bag's elite edge orange and godly ring a rainbow; no page errors.
+  - *Why the arm is checked on the sprites:* with the pin taken out of
+    glint.js again (the body's frame measured from its bounds), the sprite
+    check fails (`sameArea` false) while the picture does not move: 76
+    pixels changed, none by much, against 80-108 with the pin, plain
+    armour's 33-49 moving with the jog frame frozen. The test's first cut
+    compared those counts (godly within 1.25x plain + 40), so it passed or
+    failed on that noise, never on the fix; a merge's run failed it at 108
+    against 33. `QA_AG_DUMP=1` keeps the four arm pictures.
 - `mp-sheen` and `mp-sheenall` (the metal sheen in every animation, yours
   and others') pass, except mp-sheen's "it follows the sun", which fails the
   same way, with the same numbers, on `main` before this change.
