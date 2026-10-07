@@ -75,9 +75,23 @@ export const IMAGE_ZONE_MAPS = {
   hollows: '/maps/hollows_v6.webp',   /* redesign: underground crystal cavern */
   ember:   '/maps/ember_v6.webp',   /* redesign: volcanic, scorched fringe -> molten heart */
   sky:     '/maps/sky_v5.webp',   /* redesign: warm desert, scrub fringe -> dune sea */
-  farm_home: '/maps/farm_v1.webp',   /* redesign: cozy sunlit farm grotto (newly image-backed) */
+  /* v2.3.3136: the farm you walk, laid from the owner's Ground Studio pictures
+     (tools/world/bake_farm_ground.py, src/data/farmLayout.js FARM_GROUND) --
+     the cave grotto (farm_v1) retired: the owner, "This map isn't suited for
+     a farm".  2 picture px a game px, like the Wheel's ground, so it is
+     drawn smooth (MAP_SCALE_LINEAR). */
+  farm_home: '/maps/farm_v2.webp',
   verdant: '/maps/verdant_v1.webp',   /* redesign: new Flora spoke */
 };
+
+/* ═══ v2.3.3136: A MAP DRAWN SMALLER THAN ITS OWN PX IS DRAWN SMOOTH ═══
+   Every other map is magnified on a phone, where 'nearest' keeps its paint
+   crisp.  The farm's is the Wheel's density, 2 picture px a game px, so on a
+   phone each picture px is LESS than a device px, and nearest sampling of a
+   minified picture sparkles as the view slides; it is drawn 'linear', as the
+   Wheel's ground pieces are (wheelGround.js). */
+export const MAP_SCALE_LINEAR = new Set(['farm_home']);
+export function mapScaleMode(zoneId) { return MAP_SCALE_LINEAR.has(zoneId) ? 'linear' : 'nearest'; }
 
 /** Zones that play a looping video as their map texture.  When a zone
  *  appears here AND in IMAGE_ZONE_MAPS, the renderer prefers the video
@@ -191,7 +205,8 @@ export const WALKABILITY_MAPS = {
   hollows: '/maps/hollows_v6.walk.json',   /* dark cave: formations block, dark rock floor walkable */
   ember: '/maps/ember_v6.walk.json',   /* note: translucent magenta over lava may leak a few walkable lava spots */
   thunder: '/maps/thunder_v5.walk.json',   /* dense machinery -> walkable is mostly the central path corridor */
-  farm_home: '/maps/farm_v1.walk.json',   /* note: mask was a wider aspect than the art -- walls align at edges, interior drifts a few % */
+  /* v2.3.3136: farm_home has none -- its barn, props, trees and edge stop your
+     boots through the farm's own blockers (rendering/farmWorld.js) */
   verdant: '/maps/verdant_v1.walk.json',
   // worldview: '/maps/worldview_v1.walk.json',   /* v2.3.1359: DISABLED — the v1 mask was painted for the old art's trails and misaligns on worldview_v2 (and on v4, which shares its layout); fully walkable until one is painted (same posture as the town mask above) */
 };

@@ -189,10 +189,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
          <button>). */
       await P.page.evaluate(() => { try { window.__broDashPanelBus.open('bag'); } catch (e) {} });
       await P.page.waitForTimeout(700);
-      const chip = await P.page.$('[aria-label="Potion"][role="button"]');
+      /* v2.3.3130: the bottle chip is "Consumable" now -- potions and the food
+         eaten beside them (bagFilterBus.js); its id is still 'potion'. */
+      const chip = await P.page.$('[aria-label="Consumable"][role="button"]');
       if (chip) { await chip.dispatchEvent('pointerup'); await P.page.waitForTimeout(500); }
       chipOn = await P.page.evaluate(() => {
-        const c = document.querySelector('[aria-label="Potion"][role="button"]');
+        const c = document.querySelector('[aria-label="Consumable"][role="button"]');
         return !!c && c.getAttribute('aria-pressed') === 'true';
       });
       rec.ok('the Potions chip actually selected the potion filter', chipOn, null);
