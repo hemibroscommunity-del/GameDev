@@ -682,8 +682,13 @@ export class GlintSystem {
         spr.filters = [f];
         this._on.set(spr, f);
       }
-      /* v2.3.2887: every frame -- the texture, and so the frame's box, changes */
-      if (spr.mask) { const a = unmaskedArea(spr); if (a && spr.filterArea !== a) spr.filterArea = a; }
+      /* v2.3.2887: every frame -- the texture, and so the frame's box, changes.
+         v2.3.3127: and on every piece wearing a grade: its outline's rainbow
+         and edge are read off the filter's frame, and the arm re-drawn over a
+         sword (a masked clone, pinned above) must find the very same frame
+         as the body under it -- the body's own, measured from its bounds,
+         sat a step off, and the clone's godly arm read as a patch */
+      if (spr.mask || w.look) { const a = unmaskedArea(spr); if (a && spr.filterArea !== a) spr.filterArea = a; }
       /* v2.3.2923: and dropped the frame the mask comes off.  It was only ever
          cleared on release, and a held weapon's shine is never released -- so
          the box a greatsword's E/SW/NE grip hole pinned kept clipping the south

@@ -51,6 +51,11 @@ pass**:
   diagonal ramp plus `uTime`.
 - `uTime` wraps every 100 s, where 0.16 turns a second is a whole number of
   turns, so the drift never jumps.
+- **Every graded piece's filter works over its whole picture frame**
+  (`unmaskedArea`, as the masked arm clone's always did). The rainbow and the
+  outline are read off that frame, and the arm drawn again over a sword must
+  find the very same frame as the body under it: measured from the body's
+  own bounds it sat a step off, and a godly arm read as a patch.
 - The loading screen's warm-up draws the grade branch once
   (`prewarmGlintPipe`), so the first graded piece does not compile a shader
   mid-play.
@@ -124,13 +129,16 @@ with no id keeps the old guard.
   elite; the kit's grade minted into the ledger and the bag, worn by its ids,
   `'ee'` and `'gg'`; a grade-only swap marked for the next tick (a control
   run without the mark fails it); `eqg` never saved.
-- **Phone, `mp-armorgrade` (12):** every metal in every grade, one frozen
-  frame each, measured against the same frame in plain armour: rare's
-  outline bluer than red, elite's red over green over blue, godly's across at
-  least five of twelve hues, copper's highlights still copper-warm; the look
-  with the light effects off; another player told `'ee'` by the worker and
-  drawing both pieces elite (on a 3x phone); the bag's elite edge orange and
-  godly ring a rainbow; no page errors.
+- **Phone, `mp-armorgrade` (14):** every metal in every grade, all four
+  grades drawn on one frozen frame per metal and measured against it in
+  plain armour: rare's outline bluer than red, elite's red over green over
+  blue, godly's across at least five of twelve hues, copper's highlights
+  still copper-warm; jogging east with a sword out in a godly full set, the
+  arm drawn again over the sword (a masked clone of the body) changes the
+  picture no more than in plain armour, with a guard that the picture holds
+  the arm at all; the look with the light effects off; another player told
+  `'ee'` by the worker and drawing both pieces elite (on a 3x phone); the
+  bag's elite edge orange and godly ring a rainbow; no page errors.
 - `mp-sheen` and `mp-sheenall` (the metal sheen in every animation, yours
   and others') pass, except mp-sheen's "it follows the sun", which fails the
   same way, with the same numbers, on `main` before this change.

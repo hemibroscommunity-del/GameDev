@@ -1532,7 +1532,7 @@ remnant to migrate server-side, not a mode to preserve.
     - the admin panel's Rare / Elite / Godly armor (`/dev/kit` `quality`);
       `quest_reward_stashed` dedupes by the worker's id when it has one (a
       second minted Iron Torso was dropped as a "replay");
-    - `armorgrade` suite, `mp-armorgrade`: docs/specs/armor-grade-look.md.)
+    - `armorgrade` suite, `mp-armorgrade` (14): docs/specs/armor-grade-look.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

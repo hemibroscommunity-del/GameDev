@@ -12,6 +12,9 @@
  *      the pictures (one frozen frame each) show it -- the edge blue for rare,
  *      orange for elite, many hues for godly -- while the metal keeps its own
  *      colour (copper's highlights stay copper-warm);
+ *   1b. jogging east with a sword out in a godly full set, the arm drawn
+ *      again over the sword (a masked clone of the body) wears the body's own
+ *      outline -- it changes the picture no more than in plain armour;
  *   2. a grade is drawn with the light effects switched OFF too, and only on
  *      the graded pieces;
  *   3. ANOTHER player sees it: A wears an elite iron torso and greaves the
@@ -151,18 +154,22 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   const METALS = ['copper', 'iron', 'steel'];
   const shots = {};
   const probes = {};
+  /* ONE frozen frame per metal, its four grades drawn on it in turn: between
+     two frames the idle animation moves the figure, and a diff across frames
+     counted that movement as the grade (copper's rare edge read grey once) */
   for (const metal of METALS) {
     await setGear(A, 'chest', metal === 'steel' ? 'steelplate' : metal + 'plate');
     await setGear(A, 'legs', metal === 'steel' ? 'steelgreaves' : metal + 'greaves');
+    await setGrade(A, 'normal');
+    await A.page.waitForTimeout(500);
+    await freeze(A);
     for (const g of GRADES) {
       await setGrade(A, g);
-      await A.page.waitForTimeout(350);
-      probes[metal + ':' + g] = (await probe(A)).glint;
-      await freeze(A);
       await drawFrozen(A);
+      probes[metal + ':' + g] = (await probe(A)).glint;
       shots[metal + ':' + g] = H.decodePng(await A.page.screenshot({ path: join(OUT, `armorgrade-${metal}-${g}.png`), clip: box }));
-      await thaw(A);
     }
+    await thaw(A);
   }
   const pr = (m, g) => probes[m + ':' + g] || {};
   rec.ok('a normal piece wears no grade; a rare, elite or godly one wears its own on both pieces',
@@ -212,6 +219,82 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   }, { tiles, W, Hh });
   writeFileSync(join(OUT, 'armorgrade-grid.png'), Buffer.from(grid.split(',')[1], 'base64'));
   await scratch.close().catch(() => {});
+
+  /* ── 1b. the arm drawn again over the sword, in a graded full set ──
+     On an east jog with a sword out the arm is re-drawn over the slung shield
+     (a CLONE of the body under a mask; glint.js pins its filter to the whole
+     frame, unmaskedArea).  Its outline must be the body's own -- the same
+     pixels, the same rainbow -- or the arm reads as a patch.  Counted as
+     mp-sheen counts it: the pixels the clone changes on one frozen frame,
+     godly against plain (the clone's soft edges are drawn twice either way). */
+  await H.devOp(wsPort, 'kit', aId, { what: 'weapons' });
+  await A.page.waitForTimeout(1200);
+  await H.equipWeapon(A, 'greatsword', 'weapon', 'melee').catch(() => {});
+  await A.page.waitForTimeout(1200);
+  /* every quest done, so the jog east does not walk into Mayor Bro's
+     tutorial line -- its dialogue covered the figure and the count read 0
+     (mp-figureseam's way) */
+  await H.devOp(wsPort, 'quests', aId).catch(() => {});
+  await A.page.waitForTimeout(800);
+  for (let i = 0; i < 3; i++) { await H.closeNpcDialogue(A).catch(() => {}); await A.page.waitForTimeout(200); }
+  await setGear(A, 'chest', 'copperplate');
+  await setGear(A, 'legs', 'coppergreaves');
+  const HIDE = ['_weaponContainer', '_shieldSprite', '_handCapSprite', '_handArmShirt', '_handArmCape'];
+  const armChange = async (grade) => {
+    await setGrade(A, grade);
+    await A.page.keyboard.down('d');
+    let capOn = false;
+    for (let i = 0; i < 50 && !capOn; i++) {
+      await A.page.waitForTimeout(60);
+      capOn = await A.page.evaluate(() => !!(window.__btArmCapsule && window.__btArmCapsule.on));
+    }
+    await freeze(A);
+    const armBox = await H.figureBox(A, { pad: 30 });
+    const shot = async (alpha) => {
+      await A.page.evaluate(({ a, hide }) => {
+        const pd = window._pixiRenderer.playerDisplayRaw();
+        for (const k of hide) if (pd[k]) pd[k].renderable = false;
+        if (pd._handArmSprite) pd._handArmSprite.alpha = a;
+      }, { a: alpha, hide: HIDE });
+      await drawFrozen(A);
+      const f = await A.page.evaluate(() => {
+        const h = window._pixiRenderer.playerDisplayRaw()._handArmSprite;
+        return { shown: !!(h && h.visible), filtered: !!(h && Array.isArray(h.filters) && h.filters.some((x) => x && x.resources && x.resources.glintUniforms)) };
+      });
+      return { f, img: armBox ? H.decodePng(await A.page.screenshot({ clip: armBox })) : null };
+    };
+    const s0 = await shot(0), s1 = await shot(1);
+    const pr = (await probe(A)).glint;
+    await A.page.evaluate((hide) => {
+      const pd = window._pixiRenderer.playerDisplayRaw();
+      for (const k of hide) if (pd[k]) pd[k].renderable = true;
+      if (pd._handArmSprite) pd._handArmSprite.alpha = 1;
+    }, HIDE);
+    await thaw(A);
+    await A.page.keyboard.up('d');
+    let n = null;
+    if (s0.img && s1.img) {
+      n = 0;
+      for (let i = 0; i < s0.img.data.length; i += s0.img.channels) {
+        if (Math.abs(s0.img.data[i] - s1.img.data[i]) + Math.abs(s0.img.data[i + 1] - s1.img.data[i + 1]) + Math.abs(s0.img.data[i + 2] - s1.img.data[i + 2]) > 24) n++;
+      }
+    }
+    return { capOn, clone: s1.f, n, grade: (pr.grades || {})['self:c'] || 'normal' };
+  };
+  const armPlain = await armChange('normal');
+  const armGodly = await armChange('godly');
+  console.log('    the arm re-drawn over the sword changes ' + armGodly.n + ' pixels in godly armour, ' + armPlain.n + ' in plain');
+  /* guard: in plain armour the clone's soft edges, drawn twice, change some
+     pixels (mp-sheen measured ~70) -- a 0 means the picture missed the arm
+     and the comparison below would pass on nothing */
+  rec.ok('the arm drawn again over the sword is on the picture (guard: drawn twice, its soft edges change some pixels in plain armour)',
+    armPlain.capOn && armPlain.n != null && armPlain.n >= 20, armPlain);
+  rec.ok('jogging east with a sword out in a godly full set, the arm drawn again over it wears the body\'s own outline: it changes the picture no more than in plain armour',
+    armPlain.capOn && armGodly.capOn && armGodly.clone.shown && armGodly.clone.filtered && armGodly.grade === 'godly'
+      && armPlain.n != null && armGodly.n != null && armGodly.n <= armPlain.n * 1.25 + 40, { plain: armPlain, godly: armGodly });
+  await setGrade(A, 'normal');
+  await H.hopTo(A, 1105, 1085).catch(() => {});
+  await A.page.waitForTimeout(800);
 
   /* ── 2. the light effects off ── */
   await setGear(A, 'chest', 'ironplate');
