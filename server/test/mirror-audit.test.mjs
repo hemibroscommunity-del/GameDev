@@ -32,6 +32,8 @@ import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_AR
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
+import { FARM as SRV_FARM, farmGrowMs as srvFarmGrowMs, farmYield as srvFarmYield } from '../src/farm.js'; /* v2.3.3127 */
+import { FARM as CLIENT_FARM, FARM_CROP_ORDER as CLIENT_FARM_ORDER, farmGrowMs as clientFarmGrowMs, farmYieldShown as clientFarmYieldShown } from '../../src/data/farmCrops.js'; /* v2.3.3127 */
 import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3092 */
 import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
 import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038 */
@@ -42,6 +44,7 @@ import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
 import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* v2.3.3016 */
 import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA } from '../../src/data/wheelDungeons.js'; /* v2.3.3016 */
 import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wheelSignposts.js'; /* v2.3.3089 */
+import { PVP_HEAL as CLIENT_PVP_HEAL } from '../../src/game/fightFood.js'; /* v2.3.3133 */
 import { WHEEL_SPAWNS as SRV_WHEEL_SPAWNS } from '../src/wheelspawns.js'; /* v2.3.3089 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
 import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */ } from '../../src/data/gameSystems.js'; /* v2.3.2956; the lead and settle v2.3.3036 */
@@ -67,6 +70,7 @@ import { TRAPPING as CLIENT_TRAPPING, trapChance as clientTrapChance, trapRollXp
 import { WHEEL_CENTRE as SRV_WHEEL_CENTRE } from '../src/wheelspawns.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
+  DISHES as CLIENT_DISHES, /* v2.3.3130: what a Cookhouse dish does */
   MONSTER_DMG_CURVE, monsterHpFlat as clientMonsterHpFlat, /* v2.3.3055 */
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
   QUALITY_MULTS, RARITY_TIERS,
@@ -168,14 +172,68 @@ const room = Object.create(GameRoom.prototype);
 // reordering either side changes what players cook) ──
 {
   const bad = [];
+  /* v2.3.3130: compared on what the WORKER reads -- tier, cooking level,
+     ingredients and what it makes.  The client's buff/power/duration on rows
+     0-2 are the OLD instant effect, read only in front of an old worker (no
+     caps.meals); the new worker's effect is DISHES (§4b). */
   SRV.COOKING_RECIPES.forEach((r, i) => {
     const c = COOKING_RECIPES[i];
-    if (!c || c.buff !== r.buff || c.power !== r.power || c.duration !== r.duration
-      || c.tier !== r.tier || JSON.stringify(c.ingredients) !== JSON.stringify(r.ingredients)) {
+    if (!c || c.tier !== r.tier || c.cookLvl !== r.cookLvl /* v2.3.3127: the worker's gate */
+      || c.makes !== r.makes /* v2.3.3130 */ || JSON.stringify(c.ingredients) !== JSON.stringify(r.ingredients)) {
       bad.push({ i, server: r, client: c });
     }
   });
+  if (COOKING_RECIPES.length !== SRV.COOKING_RECIPES.length) bad.push({ length: { server: SRV.COOKING_RECIPES.length, client: COOKING_RECIPES.length } });
   check('COOKING_RECIPES per-index mirror (order is the wire format)', bad.length === 0, bad);
+  /* v2.3.3130: ...and those old effect fields are pinned to the worker they
+     describe, frozen here as v2.3.3127's table said them (review: comparing
+     on what the new worker reads had left them pinned to nothing).  Only the
+     first three rows carry one: CookPanel and the campfire offer a row an old
+     worker can cook by `recipe.buff`, and that worker has no fourth row. */
+  const OLD_WORKER = [
+    { buff: 'regen', power: 0.02, duration: 60 },
+    { buff: 'resist', power: 0.05, duration: 60 },
+    { buff: 'damage', power: 0.20, duration: 90 },
+  ];
+  const legacy = [];
+  COOKING_RECIPES.forEach((c, i) => {
+    const o = OLD_WORKER[i];
+    if (o ? (c.buff !== o.buff || c.power !== o.power || c.duration !== o.duration) : c.buff !== undefined) {
+      legacy.push({ i, client: { buff: c.buff, power: c.power, duration: c.duration }, oldWorker: o || 'none (no buff)' });
+    }
+  });
+  check('the client\'s old-worker effects match v2.3.3127\'s, on its three rows only', legacy.length === 0, legacy);
+}
+
+// ── 4b. v2.3.3130: DISHES, both directions, and every recipe makes a thing
+// the worker can eat or drink (a dish, or a SHOP_ITEMS bottle) ──
+{
+  const bad = [];
+  for (const [k, d] of Object.entries(SRV.DISHES)) {
+    const c = CLIENT_DISHES[k];
+    if (!c) { bad.push({ k, missing: 'client' }); continue; }
+    for (const f of ['slot', 'buff', 'power', 'duration']) if (c[f] !== d[f]) bad.push({ k, f, server: d[f], client: c[f] });
+  }
+  for (const k of Object.keys(CLIENT_DISHES)) if (!SRV.DISHES[k]) bad.push({ k, missing: 'server (the bag shows a dish the worker cannot eat)' });
+  check('DISHES mirror: slot, buff, power and duration, both directions', bad.length === 0, bad);
+  const orphan = SRV.COOKING_RECIPES.filter((r) => !r.makes || !(Object.prototype.hasOwnProperty.call(SRV.DISHES, r.makes) || Object.prototype.hasOwnProperty.call(SRV.SHOP_ITEMS, r.makes)));
+  check('every recipe makes a dish or a bottle the worker knows', orphan.length === 0, orphan);
+  /* Damage only in a brew: combat.js's cheat ceiling was sized at one x2 brew. */
+  const mealDmg = Object.entries(SRV.DISHES).filter(([, d]) => d.slot === 'meal' && d.buff === 'damage');
+  check('no meal raises damage (damage is only ever a brew)', mealDmg.length === 0, mealDmg);
+  /* v2.3.3132: and he sells NOTHING -- owner: "Remove all of Diego's
+     potions. I want food and drink to come exclusively from farming and
+     recipes."  Re-adding a bottle to his shelf fails here, on purpose. */
+  check('DIEGO_SHELF is empty: food and drink come only from farming and recipes', SRV.DIEGO_SHELF.length === 0, SRV.DIEGO_SHELF);
+  /* ...and every bottle he used to sell can be made at the Cookhouse, except
+     the Cooked Minnow, which is a fisher's cooked minnow (cook_request). */
+  const unmade = Object.keys(SRV.SHOP_ITEMS).filter((k) => k !== 'cookedMinnow' && !SRV.COOKING_RECIPES.some((r) => r.makes === k));
+  check('every bottle Diego sold is brewed at the Cookhouse now', unmade.length === 0, unmade);
+  /* v2.3.3133: one bite at a time in a fight with a player -- the page holds
+     its own bite back by the worker's numbers (fightFood.js). */
+  check('PVP_HEAL mirror: the fight window and the gap between bites',
+    CLIENT_PVP_HEAL.WINDOW_MS === SRV.PVP_HEAL.WINDOW_MS && CLIENT_PVP_HEAL.GAP_MS === SRV.PVP_HEAL.GAP_MS,
+    { server: SRV.PVP_HEAL, client: CLIENT_PVP_HEAL });
 }
 
 // ── 5. QUEST_REWARDS vs QUEST_CHAINS: payouts + chain links, BOTH
@@ -1353,6 +1411,42 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     const a = SRV_SMELT.RECIPES[k], b = CLIENT_SMELT[k] || {};
     check('smelting: ' + k + ' ore / cost / level / xp match',
       a.ore === b.ore && a.oreCost === b.oreCost && a.minLvl === b.minLvl && a.xp === b.xp, { srv: a, cli: b });
+  }
+}
+
+// ── THE FARM: the Feed & Seed window must promise what the worker settles ──
+// v2.3.3127.  The window draws a seed's price, its time (dry and watered),
+// its yield (plain and fertilized), its XP and its level lock from the client
+// copy; the worker plants, ripens and pays from its own.  A drift here is a
+// bed that says "6m" while the worker waits 8, or a Buy button that charges
+// one price and shows another.
+{
+  const keys = (o) => Object.keys(o).sort().join(',');
+  check('farm: same crops on both sides', keys(SRV_FARM.CROPS) === keys(CLIENT_FARM.CROPS),
+    { srv: keys(SRV_FARM.CROPS), cli: keys(CLIENT_FARM.CROPS) });
+  check('farm: the window lists every crop once', CLIENT_FARM_ORDER.slice().sort().join(',') === keys(SRV_FARM.CROPS), CLIENT_FARM_ORDER);
+  /* v2.3.3131: and in the SAME ORDER they came -- caps.farmCrops is a count
+     of the worker's crops in that order, and the window counts its own. */
+  check('farm: the crops come in the same order on both sides (caps.farmCrops counts them)',
+    Object.keys(SRV_FARM.CROPS).join(',') === Object.keys(CLIENT_FARM.CROPS).join(','),
+    { srv: Object.keys(SRV_FARM.CROPS), cli: Object.keys(CLIENT_FARM.CROPS) });
+  for (const k of ['FREE_BEDS', 'MAX_BEDS', 'WATER_TIME', 'FEED_YIELD', 'COMPOST', 'COMPOST_PRICE', 'BUY_MAX']) {
+    check('farm: ' + k + ' matches', SRV_FARM[k] === CLIENT_FARM[k], { srv: SRV_FARM[k], cli: CLIENT_FARM[k] });
+  }
+  for (const id of Object.keys(SRV_FARM.CROPS)) {
+    const a = SRV_FARM.CROPS[id], b = CLIENT_FARM.CROPS[id] || {};
+    const same = ['name', 'seed', 'item', 'lvl', 'price', 'mins', 'yield', 'xp', 'base'].every((f) => a[f] === b[f]);
+    check('farm: ' + id + ' seed / item / level / price / time / yield / XP / value match', same, { srv: a, cli: b });
+    check('farm: ' + id + ' grows as long on both sides, dry and watered',
+      srvFarmGrowMs(a, false) === clientFarmGrowMs(b, false) && srvFarmGrowMs(a, true) === clientFarmGrowMs(b, true));
+    /* v2.3.3131: fertilized, the worker pays its lowest or its highest (a
+       potato's 4.5 is 4 or 5), and the window shows exactly that -- the one
+       number when they agree, "4–5" when they do not. */
+    const lo = srvFarmYield(a, true, () => 0.999), hi = srvFarmYield(a, true, () => 0);
+    check('farm: ' + id + ' pays what the window says, plain and fertilized',
+      srvFarmYield(a, false) === clientFarmYieldShown(b, false)
+      && String(clientFarmYieldShown(b, true)) === (lo === hi ? String(lo) : lo + '\u2013' + hi),
+      { plain: [srvFarmYield(a, false), clientFarmYieldShown(b, false)], fed: [lo, hi, clientFarmYieldShown(b, true)] });
   }
 }
 

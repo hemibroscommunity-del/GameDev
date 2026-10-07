@@ -1137,7 +1137,14 @@ export const prog3Methods = {
     if (!p3 || !p3.sk || !p3.sk[cat] || !(amount > 0)) return;
     const sk = p3.sk[cat];
     if (sk.level >= PROG3.LEVEL_CAP) return;
-    sk.xp += (opts && opts.flat) ? amount : amount * PROG3.XP_PER_DMG;
+    /* v2.3.3131: the Pumpkin Pie (data.js DISHES) -- +10% of the XP a fight
+       pays, while its meal runs.  Never the FLAT awards (a quest's XP): the
+       pie is "combat XP", the plan's reading of it.  Bounded like every
+       stored magnitude (a restored blob is the player's to forge): 1..2,
+       else none. */
+    const _pm = Number(ps._buffs && ps._buffs.xpMul);
+    const pie = (!(opts && opts.flat) && this._buffActive && this._buffActive(ps, 'xp') && _pm > 1 && _pm <= 2) ? _pm : 1;
+    sk.xp += (opts && opts.flat) ? amount : amount * PROG3.XP_PER_DMG * pie;
     let gained = 0;
     while (sk.level < PROG3.LEVEL_CAP && sk.xp >= prog3XpRequired(sk.level)) {
       sk.xp -= prog3XpRequired(sk.level);

@@ -6,6 +6,7 @@ import { createPixiApp } from './pixiApp.js';
 import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass per frame */
 import { TileRenderer } from './systems/tileRenderer.js';
 import { WheelObjects } from './wheelObjects.js'; /* v2.3.2975: the Wheel's buildings, trees, rocks and props */
+import { FarmWorld } from './farmWorld.js';   /* v2.3.3136: your farm -- its barn, props, beds and crops */
 import { isWheelTrialZone } from '../game/worldTrial.js';
 import { townSkippedOnTheWay } from '../game/wheelHome.js';   /* v2.3.3037: today's town is a stop on the way to the Wheel */
 import { wheelObjectsOn } from '../game/wheelTrial.js';
@@ -293,6 +294,10 @@ export async function initPixiRenderer(canvas) {
   let currentMap = null;
   /* v2.3.2975: the Wheel's objects, while you are in it (wheelObjects.js) */
   let wheelObjects = null;
+  /* v2.3.3136: your farm, while you are on it (farmWorld.js) */
+  let farmWorld = null;
+  /* QA (mp-farmwalk): what the farm draws, read-only */
+  if (typeof window !== 'undefined') window.__btFarmWorld = () => (farmWorld ? farmWorld.probe() : null);
 
   function onZoneChange(map, zoneId, S) {
     if (zoneId === currentZone && map === currentMap) return;
@@ -303,6 +308,10 @@ export async function initPixiRenderer(canvas) {
        go -- on the way out (the ZONE-ASSET rule) */
     if (wheelObjects && !isWheelTrialZone(zoneId)) { try { wheelObjects.destroy(); } catch (e) { /* ignore */ } wheelObjects = null; }
     if (!wheelObjects && isWheelTrialZone(zoneId) && wheelObjectsOn()) wheelObjects = new WheelObjects(layers.entities, app.renderer);
+    /* v2.3.3136: made on the way onto your farm, after the Wheel's has gone
+       (one zone-blocker hook at a time: worldProps.setZoneBlockerHook) */
+    if (farmWorld && zoneId !== 'farm_home') { try { farmWorld.destroy(); } catch (e) { /* ignore */ } farmWorld = null; }
+    if (!farmWorld && zoneId === 'farm_home') farmWorld = new FarmWorld(layers);
     entityRenderer.clear();
     effectsRenderer.clear();
     lightFx.clear();   /* v2.3.2710: last zone's shadows and glints go with its figures */
@@ -451,6 +460,11 @@ export async function initPixiRenderer(canvas) {
     if (wheelObjects) {
       try { wheelObjects.update(cx, cy, viewW, viewH, S); }
       catch (e) { if (!update._wobjErr) { update._wobjErr = true; console.error('[pixi-render] wheelObjects threw', e && e.message, e && e.stack); } }
+    }
+    /* v2.3.3136: your farm, before the depth pass that sorts its crops and barn */
+    if (farmWorld) {
+      try { farmWorld.update(S, now); }
+      catch (e) { if (!update._farmErr) { update._farmErr = true; console.error('[pixi-render] farmWorld threw', e && e.message, e && e.stack); } }
     }
     const _t1 = performance.now();
     update._lastStages.tileMs = _t1 - _t0;
@@ -605,6 +619,7 @@ export async function initPixiRenderer(canvas) {
 
   function destroy() {
     if (wheelObjects) { try { wheelObjects.destroy(); } catch (e) { /* ignore */ } wheelObjects = null; }
+    if (farmWorld) { try { farmWorld.destroy(); } catch (e) { /* ignore */ } farmWorld = null; }   /* v2.3.3136 */
     tileRenderer.destroy();
     entityRenderer.clear();
     /* v2.3.3074: destroy, not clear -- clear() is a zone change's; a renderer

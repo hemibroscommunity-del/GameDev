@@ -92,7 +92,14 @@ export function healLifeSkillLevels(blob) {
   let changed = false;
   for (const k of LIFE_SKILL_KEYS) {
     const sk = Object.prototype.hasOwnProperty.call(ls, k) ? ls[k] : null;
-    if (sk && typeof sk === 'object' && !(Number(sk.level) >= 1)) { sk.level = 1; changed = true; }
+    /* v2.3.3127: a skill that is not an object at all -- `farming: 1`, a
+       string, true, a list -- is a fresh one.  A first join stores the
+       client's skills as sent, and `_addLifeSkillXp` (gathering.js) THREW
+       writing XP onto a number, after the farm's harvest had paid (farm.js:
+       one bed paid on every message).  Healed here, at the join boundary, a
+       record already on file heals on its next join. */
+    if (sk !== null && sk !== undefined && (typeof sk !== 'object' || Array.isArray(sk))) { ls[k] = { level: 1, xp: 0 }; changed = true; }
+    else if (sk && !(Number(sk.level) >= 1)) { sk.level = 1; changed = true; }
   }
   return changed;
 }
