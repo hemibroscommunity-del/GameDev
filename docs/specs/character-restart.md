@@ -39,8 +39,9 @@ skills, quests, codex/bestiary caches) resets.
   `bt_passphrase_prev`, `bt_device` and the social keys) and
   `location.reload()`. Close code 4005 suppresses the auto-reconnect so
   it can't race the reload.
-- The rejoin finds no stored blob → join.js first-connect bootstrap
-  from the now-empty client payload → fresh Level-1 character. The
+- The rejoin finds no stored blob → a new character from the server's
+  own defaults (join.js; since v2.3.3138 the payload is not read at all,
+  `docs/specs/fresh-start.md`) → fresh Level-1 character. The
   `auth:<pid>` first-join lock is untouched, so the same Login Key
   keeps working.
 

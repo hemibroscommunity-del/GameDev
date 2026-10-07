@@ -46,7 +46,10 @@ const BUFF_MAGNITUDES = {
 };
 
 export const persistenceMethods = {
-  async _loadRpg(playerId) {
+  /* v2.3.3138: `opts.throwOnError` -- a join must tell a read that FAILED
+     from a character that does not exist yet (join.js).  Every other
+     caller keeps the old answer: null either way. */
+  async _loadRpg(playerId, opts) {
     try {
       const stored = await this.state.storage.get('rpg:' + playerId);
       // v2.3.1152: run-once migration registry replaces the every-load
@@ -59,6 +62,7 @@ export const persistenceMethods = {
       }
       return stored || null;
     } catch (e) {
+      if (opts && opts.throwOnError) throw e;
       return null;
     }
   },

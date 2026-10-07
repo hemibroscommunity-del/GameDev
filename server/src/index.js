@@ -2867,10 +2867,10 @@ export class GameRoom {
   // event so the client mirrors the authoritative totals -- a modified
   // client overwriting R.coins locally gets stomped on the next sync.
   //
-  // Bootstrap: on a player's first connection to this DO we don't have
-  // their state yet, so we read rpgCoins/rpgInventory from the join
-  // payload as the initial value.  Cheat surface (one-time, at first
-  // connect only); after that the server is the source.
+  // Bootstrap: a player's first connection to this DO has no state yet.
+  // Since v2.3.3138 that character starts from the server's own defaults
+  // (join.js, docs/specs/fresh-start.md), never from the join payload's
+  // rpgCoins/rpgInventory; after that the stored record is the source.
 
   _invKeyForSkull(skull, baseArch) {
     if (skull === 'fireGoblin') return 'fire-goblin-remnants';
