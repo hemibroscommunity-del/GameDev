@@ -617,7 +617,7 @@ export function EncyclopediaPanel(props) {
         marginLeft: 'auto',
         fontVariantNumeric: 'tabular-nums'
       }
-    }, /* v2.3.3114: what the dish it MAKES does (dishes.js), or the tonic's
+    }, /* v2.3.3130: what the dish it MAKES does (dishes.js), or the tonic's
           own line -- the recipe's old instant buff and its seconds are only
           what an old worker applies at the cook */
     (dishFor(r.makes) || {}).desc || r.desc || ''));

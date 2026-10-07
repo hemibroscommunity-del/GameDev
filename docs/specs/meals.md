@@ -1,4 +1,4 @@
-# Meals and brews you carry (v2.3.3114)
+# Meals and brews you carry (v2.3.3130)
 
 > Owner, 2026-10-06: *"Not sure what benefit farming will provide. Maybe
 > temporary stat boosts, required quest items and selling for gold. I might
@@ -59,7 +59,7 @@ and their two dishes.
   from `DISHES.meal_herb_bread.power`). It never heals mid-fight, in a duel,
   or in an arena match.
   - Its timer is saved as **`rest`**, not `regen`. Phase 1's server
-    (v2.3.3111) reads `regen` as 2% of max HP a second, in a fight too. If
+    (v2.3.3127) reads `regen` as 2% of max HP a second, in a fight too. If
     the game were ever rolled back to it, a half-hour `regen` would have
     healed that fast for up to 30 minutes. Under its own name, a rollback
     simply drops the bread's effect.

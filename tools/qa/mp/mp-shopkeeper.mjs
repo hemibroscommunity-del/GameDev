@@ -329,7 +329,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          count badge. A number on a thing he can never run out of is a lie,
          and it is also how you would tell a staple that had been mistakenly
          dropped into the finite pile. */
-      /* v2.3.3114: his staples are the cooked minnow and the stamina salts
+      /* v2.3.3130: his staples are the cooked minnow and the stamina salts
          (server data.js DIEGO_SHELF); the three tonics are brewed at the
          Cookhouse now and are NOT on his shelf. */
       staples: ['cookedMinnow', 'staminaSalts'].map((k) => {
@@ -350,7 +350,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      they were unbuyable and useless. They are neither now. */
   rec.ok('...alongside his two staples, which he always has',
     seed2.staples.every((x) => x.on), seed2.staples);
-  rec.ok('...and none of the three tonics -- they are brewed at the Cookhouse now (v2.3.3114)',
+  rec.ok('...and none of the three tonics -- they are brewed at the Cookhouse now (v2.3.3130)',
     seed2.tonics.length === 0, seed2.tonics);
   rec.ok('...and THOSE carry no count, because a staple cannot run out '
        + '(the fish can, and does)',

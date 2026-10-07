@@ -170,7 +170,7 @@ check('...priced above the raw fish they were made from',
 const pile = seeded.items.filter((i) => !i.staple);
 check('the seeded PILE is the fish and nothing else',
   pile.length === 1 && pile[0].key === 'cooked_fish_trout', pile.map((i) => i.key));
-/* v2.3.3114: his staple shelf is the two instant items (DIEGO_SHELF).  The
+/* v2.3.3130: his staple shelf is the two instant items (DIEGO_SHELF).  The
    three tonics are brewed at the Cookhouse from the farm's herbs now, and the
    farming plan takes them off his shelf the day the brews ship. */
 check('...and his staple shelf is the cooked minnow and the stamina salts -- '
@@ -230,7 +230,7 @@ check('...and a huge one is capped', many.items.length < 100, many.items.length)
    that would have caught that, and it is written against the DAMAGE, not
    against the timer, because a timer that no combat path reads is exactly
    the bug being fixed. */
-/* v2.3.3114: the tonic is a BOTTLE now -- brewed at the Cookhouse, or one
+/* v2.3.3130: the tonic is a BOTTLE now -- brewed at the Cookhouse, or one
    bought from him before he stopped selling them -- so it is drunk from the
    bag (potion_drink) rather than bought through the vendor building's
    shop_purchase, which now sells only his shelf. */
@@ -290,7 +290,7 @@ const foodDmg = swing(psM);
 check('a cooked meal is still exactly the x1.20 it always was',
   times(foodDmg, plainDmg, 1.20), { plainDmg, foodDmg });
 
-/* The tonic: drunk through the real drink path, not hand-set (v2.3.3114: from
+/* The tonic: drunk through the real drink path, not hand-set (v2.3.3130: from
    the bag, now that he no longer sells it). */
 delete psM._buffs;
 psM.inventory = Object.assign(Object.create(null), psM.inventory, { whetstone: 1 });
@@ -310,7 +310,7 @@ check('...and the multiplier survives a save (it is not an expiring timer)',
 /* The other half, and it goes through the REAL cook handler rather than a
    hand-written mimic of it -- recipe 2 is the game's damage drink, the
    Firebloom Tea (2x herb_firebloom). A test that re-implements the line it is
-   checking passes no matter what cooking.js does.  v2.3.3114: an OLD client's
+   checking passes no matter what cooking.js does.  v2.3.3130: an OLD client's
    cook (no `carry`) -- the tea is made and drunk at once, in the brew slot,
    so it replaces the tonic. */
 psM.inventory = Object.assign(Object.create(null), psM.inventory, { herb_firebloom: 2 });
@@ -354,7 +354,7 @@ check('...and what you get is a BOTTLE IN THE BAG',
 check('...and the effect has NOT fired yet -- it waits for the drink',
   buyer2.stamina === 40, buyer2.stamina);
 
-/* ═══ v2.3.3114: THE TONICS ARE OFF HIS SHELF, AND STILL NOT BOUGHT BACK ═══ */
+/* ═══ v2.3.3130: THE TONICS ARE OFF HIS SHELF, AND STILL NOT BOUGHT BACK ═══ */
 const rTonic = await room._shopBuy(buyer2, 'swiftDraught', 1);
 check('a tonic can no longer be bought from him (brewed at the Cookhouse now)',
   !rTonic.ok && !buyer2.inventory.swiftDraught && buyer2.coins === beforeCoins - SHOP_ITEMS.staminaSalts.cost, { rTonic, bag: buyer2.inventory });

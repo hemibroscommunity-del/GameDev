@@ -8803,7 +8803,7 @@ export var BroTown = function BroTown(_ref0) {
       var R = S && S.rpg;
       if (!R || !R.inventory) return;
       if ((R.inventory[key] || 0) <= 0) return;
-      /* ═══ v2.3.3114: A MEAL FROM THE COOKHOUSE ═══
+      /* ═══ v2.3.3130: A MEAL FROM THE COOKHOUSE ═══
          Not a heal: half an hour of an effect in the meal slot, which the
          worker applies and echoes (_buffs) -- so no "HP full", no heal to
          predict, and nothing drawn but the bite.  The bag predicts the one
@@ -12535,7 +12535,7 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
     if (!S) return null;
     var effects = [];
-    /* v2.3.3114: a meal or brew lasts half an hour now, and "1800s" is not a
+    /* v2.3.3130: a meal or brew lasts half an hour now, and "1800s" is not a
        time anyone reads -- minutes from a minute up, seconds below it. */
     var _btime = function (sec) { return sec >= 60 ? Math.ceil(sec / 60) + 'm' : sec + 's'; };
     if (S._cursedUntil && Date.now() < S._cursedUntil) {
@@ -12594,7 +12594,7 @@ export var BroTown = function BroTown(_ref0) {
         label: 'Regen',
         color: '#59BF91',
         time: _btime(_rem3),
-        desc: 'x2 rest'   /* v2.3.3114: the Herb Bread doubles the out-of-combat healing (server index.js) */
+        desc: 'x2 rest'   /* v2.3.3130: the Herb Bread doubles the out-of-combat healing (server index.js) */
       });
     }
     if (S._resistBuff && Date.now() < S._resistBuff) {
@@ -12604,7 +12604,7 @@ export var BroTown = function BroTown(_ref0) {
         label: 'Resist',
         color: '#60a5fa',
         time: _btime(_rem4),
-        desc: '-5%'   /* v2.3.3114: what the worker takes off (combat.js x0.95); it said -15% */
+        desc: '-5%'   /* v2.3.3130: what the worker takes off (combat.js x0.95); it said -15% */
       });
     }
     if (S._spdBuff && Date.now() < S._spdBuff) {
@@ -13691,7 +13691,7 @@ export var BroTown = function BroTown(_ref0) {
     /* Find best cookable recipe the player can make */
     var cookLvl = ((_R$lifeSkills6 = R.lifeSkills) === null || _R$lifeSkills6 === void 0 || (_R$lifeSkills6 = _R$lifeSkills6.cooking) === null || _R$lifeSkills6 === void 0 ? void 0 : _R$lifeSkills6.level) || 1;
     var inv = R.inventory || {};
-    /* v2.3.3114: on a worker with caps.meals a cook MAKES the dish, and the
+    /* v2.3.3130: on a worker with caps.meals a cook MAKES the dish, and the
        field's one button cooks MEALS only -- it picks for you, and picking the
        last recipe would now brew a tonic out of herbs you meant for bread.
        Brews are made at the Cookhouse.  An old worker keeps the old three. */
@@ -13757,7 +13757,7 @@ export var BroTown = function BroTown(_ref0) {
             if (R.inventory[k] <= 0) delete R.inventory[k];
           });
         });
-        /* v2.3.3114: the meal goes in the bag (the worker echoes it); the old
+        /* v2.3.3130: the meal goes in the bag (the worker echoes it); the old
            instant buff is predicted only in front of an old worker. */
         if (_fieldMeals && best.makes) {
           if (!R.inventory) R.inventory = {};

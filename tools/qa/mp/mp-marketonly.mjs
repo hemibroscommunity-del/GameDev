@@ -152,7 +152,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return b ? { items: b.stock } : { noBus: true };
   });
   const broKeys = ((bro || {}).items || []).filter((i) => i && i.staple).map((i) => i.key);
-  /* v2.3.3114: two staples -- the three tonics are brewed at the Cookhouse
+  /* v2.3.3130: two staples -- the three tonics are brewed at the Cookhouse
      now (server data.js DIEGO_SHELF), not sold. */
   const wantKeys = ['cookedMinnow', 'staminaSalts'];
   const missing = wantKeys.filter((k) => !broKeys.includes(k));

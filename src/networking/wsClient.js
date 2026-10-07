@@ -2024,7 +2024,7 @@ export function setupWebSocket(ctx) {
                    as it does on the server. Prediction must agree with the
                    authority or the popups lie. */
                 S._dmgBuffMul = typeof _sb.damageMul === 'number' ? _sb.damageMul : 0;
-                /* v2.3.3114: the Herb Bread's half hour is `rest` on a worker
+                /* v2.3.3130: the Herb Bread's half hour is `rest` on a worker
                    with caps.meals; `regen` is the bread from before it. */
                 if (typeof _sb.rest === 'number') S._regenBuff = _sb.rest;
                 else if (typeof _sb.regen === 'number') S._regenBuff = _sb.regen;
