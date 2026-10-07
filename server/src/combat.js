@@ -1725,6 +1725,10 @@ export const combatMethods = {
            the first consumer. */
         /* v2.3.2978: a Wheel monster counts for its home zone (wheelzone.js) */
         this._creditQuestObjective(rid, 'kill', m.arch, this._rewardZone(zone, m));
+        /* v2.3.3140: and the daily quests count it, for every XP recipient
+           as the story quests do -- a party's kill is everyone's
+           (dailyrewards.js; `m.home` is the land a land quest asks for) */
+        this._drSignal(rid, 'kill', m, 1);
         const share = shares[rid] || 0;
         // v2.3.1150: xp_mult live-ops flag -- the "2x weekend" lever.
         // Clamped [1,4] at read; monster_kill's payload.xp stays base

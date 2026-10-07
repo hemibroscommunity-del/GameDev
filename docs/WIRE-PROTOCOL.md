@@ -470,6 +470,19 @@ winnerName, amount, period}` (broadcast on the lazy weekly draw). The
 daily login reward reuses `inbox_delivered` — no new types. GamblePanel
 deposits are caps-gated; the legacy local stub remains for old workers.
 
+**Daily rewards (v2.3.3140, caps.dailyspin + caps.dailyquests):** the login
+pays nothing now (the daily chest and its gold fallback are gone; a chest
+still held opens as before). New c→s cases `rewards_get {}`, `daily_spin
+{act: 'spin'|'double'|'collect', opId}` (a lump sum, double or nothing on
+the pot, take the pot), `daily_reroll {i}`, `season_claim {tier} | {all:
+true}`; new s→c types (both PRIVILEGED) `rewards_state {now, resetAt, spin,
+streak, dq, season, news, kept?}` (private: after `player_state` on join,
+and after every change) and `daily_progress {i, n, g}` (private, a quest's
+count). Quest, season and spin-pot payouts ride `_creditPlayer` →
+`inbox_delivered` with sources `dailyquest` / `season` / `dailyspin`, kept
+out of chat by the client. Full table:
+docs/specs/daily-rewards.md.
+
 **Salvage and essences (v2.3.3141, caps.salvage):** new c→s cases
 `smith_salvage {field: 'armorStash'|'legsStash', gid}` or `{field:
 'weaponStash', idx, sig}` (a carried copper, iron or black steel piece back
