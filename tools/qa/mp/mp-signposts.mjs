@@ -13,7 +13,7 @@
  *      pointing the way the land lies, and (v2.3.3089) the levels its land
  *      holds, "Lv 1–20";
  *   4. walking away, they fade out and go;
- *   5. (v2.3.3145, the owner: "Change the signage in the town to proximity
+ *   5. (v2.3.3146, the owner: "Change the signage in the town to proximity
  *      based so it only pops up when you get close") they are CLOSE ones: on
  *      the street ~450 px short of each signpost -- on screen, where the old
  *      640 px had them fully up -- none of its plates is up, and at the gate
@@ -95,7 +95,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       posts.length === 4 && new Set(posts.map((p) => p.gate)).size === 4 && s0.icons === 8, s0);
     rec.ok('...from the square, none of their plates is up', s0 && s0.drawn.every((d) => !d.visible), s0 && s0.drawn);
 
-    /* v2.3.3145: the street's middle a little over a screen-half short of each
+    /* v2.3.3146: the street's middle a little over a screen-half short of each
        post, town-side -- Main Street runs north-south through the town's
        middle, Market Row east-west -- ~450 px from it */
     const town = wheelMap(PLAN, buildBlueprint(PLAN)).hub.town;
@@ -105,7 +105,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const gate of ['north', 'east', 'south', 'west']) {
       const p = posts.find((q) => q.gate === gate);
       if (!p) { rec.ok(`${gate} gate: a signpost (guard)`, false, posts); continue; }
-      /* v2.3.3145: a screen away, on the street, none of its plates is up */
+      /* v2.3.3146: a screen away, on the street, none of its plates is up */
       const st = shortOf(p);
       await travel(P, wsPort, myId, st.x, st.y);
       await P.page.waitForTimeout(900);

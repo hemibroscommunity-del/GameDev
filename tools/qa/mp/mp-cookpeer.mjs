@@ -143,7 +143,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        other.  "Both wrong by the same factor" is what a one-sided assertion
        passes, which is why the peer figure is measured from its own scale
        rather than assumed to match. */
-    const COOK_H = 73.9;   /* COOK_STANDIN_H (effectsRenderer; v2.3.3145: 65.1 -> 73.9, your head's size) */
+    const COOK_H = 73.9;   /* COOK_STANDIN_H (effectsRenderer; v2.3.3146: 65.1 -> 73.9, your head's size) */
     const peerCookH = (typeof cook.probe.scaleY === 'number')
       ? Math.abs(cook.probe.scaleY) * 220 : null;
     rec.ok(`a cooking PEER is drawn at the shared cook height (${COOK_H})`,
@@ -208,7 +208,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        Both figures are checked against the SAME constant they are drawn from,
        and against each other, because "both wrong by the same factor" is the
        failure a one-sided assertion would pass. */
-    const CHOP_H = 136.8;   /* CHOP_STANDIN_H (effectsRenderer; v2.3.3145: 104.5 -> 136.8, your walking size) */
+    const CHOP_H = 136.8;   /* CHOP_STANDIN_H (effectsRenderer; v2.3.3146: 104.5 -> 136.8, your walking size) */
     rec.ok('a chopping PEER\'s armour is drawn the same height as his body '
       + '(the layer scale comes off the layer texture, not a literal)',
       typeof chop.probe.gearDrawnH === 'number'

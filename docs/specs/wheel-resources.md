@@ -354,7 +354,7 @@ gesture."*
   breaks on your screen too, plays softer and fades out by 1,400 px. Before
   this a finished vein was silent: its only cue was a `beep()`, which has
   played nothing since v2.3.1103.
-  - **v2.3.3145: never skipped by a late frame.** The break lives 950 ms, and
+  - **v2.3.3146: never skipped by a late frame.** The break lives 950 ms, and
     a frame arriving later than that (a stall right at the payout) let it go
     before its split was played: no ore popped out, no crack. The split is
     played first now, on whatever frame reaches it, up to `ORE_POP_LATE_MS`
@@ -421,7 +421,7 @@ Tests (`mp-nodelabels`):
   sent, and the try ends by itself.
 - Picture: `nodelabels-try.png`.
 
-## No rod over the fish (v2.3.3145)
+## No rod over the fish (v2.3.3146)
 
 The owner, 2026-10-07: *"Remove the fishing icon above fish but leave the
 proximity based nameplate in place."*

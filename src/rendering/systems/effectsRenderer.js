@@ -28,7 +28,7 @@ const _fxPreload = [];
  * "about 10% too small" report is (see the backlog triage, chop size): the
  * answer is the build multiplier, NOT a fourth bump of CHOP_STANDIN_H, which
  * has already been moved three times (84 -> 112 -> 95 -> 104.5) chasing it.
- * (v2.3.3145: the fourth, 104.5 -> 136.8, was the right one after all -- by
+ * (v2.3.3146: the fourth, 104.5 -> 136.8, was the right one after all -- by
  * MEASUREMENT this time, against the walking figure's PLAYER_SIZE_MULT, which
  * no stand-in carries.  See the constant.)
  *
@@ -213,7 +213,7 @@ function _chopKeyMask(img) {
  *  of its own, so a later rebake always starts from the untouched art. */
 function _bakeChopStrip(img, keyMask, skinT, art, statKey, keepCanvas, clothes) {
   const FW = 240, FH = 220, COUNT = 12;
-  /* v2.3.3145: + `clothes` ({ pantsT, shoesT }): your trousers and boots
+  /* v2.3.3146: + `clothes` ({ pantsT, shoesT }): your trousers and boots
      (playerSkins _standInClothes) */
   const cv = recolorStandInSkin(img, skinT, FH, { minBlob: CHOP_MIN_BLOB, art, regions: CHOP_INK_REGIONS, frameW: FW, ...(clothes || {}) });
   recolorToolKeyCanvas(cv, TOOL_SPECS.axe, 1, keyMask);
@@ -247,7 +247,7 @@ function _loadStandInImg(url) {
 /** One cook strip, split: the skin bake (`cv`, the shared figure) and the
  *  drawings' layer (`ink`, a canvas, or null when there are none). */
 function _bakeCookSplit(img, skinT, art, clothes) {
-  /* v2.3.3145: + `clothes` ({ pantsT, shoesT }): your trousers and boots,
+  /* v2.3.3146: + `clothes` ({ pantsT, shoesT }): your trousers and boots,
      the pan kept out of them by where it is (playerSkins _standInClothes) */
   return recolorStandInSkinSplit(img, skinT, COOK_FH, { keepX: COOK_KEEP_X, art, regions: COOK_INK_REGIONS, frameW: COOK_FW, ...(clothes || {}) });
 }
@@ -292,12 +292,12 @@ import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalo
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
 import { CampfireFx } from '../campfireFx.js'; /* v2.3.2846: the lit-log campfire, in pixel art */
 import { getEquip } from '../gearCatalog.js';
-import { getShirt, onShirtChange } from '../traits/shirtCatalog.js';   /* v2.3.3145: + the change, for the dressed stand-in shirts */
+import { getShirt, onShirtChange } from '../traits/shirtCatalog.js';   /* v2.3.3146: + the change, for the dressed stand-in shirts */
 import { getShirtColor, shirtFill, onShirtColorChange } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, recolorStandInSkinSplit, DEFAULT_SKIN_TARGET, bodyArtSeg, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings; v2.3.2856: + the split bake (the cook's drawings on a layer) */
-import { onArtChange, artHasInk, artIsSymmetric, artHash, sanitizeShirtArt, sideForDir, getShirtArt } from '../traits/playerArt.js';   /* v2.3.3145: + the shirt's sides, for the dressed stand-in shirts */   /* v2.3.2429; v2.3.2431 the symmetry gate; v2.3.2855 a peer's drawings on the lumberjack */
-import { onPatternChange, parsePattern, getPattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.3145: + the shirt's pattern, yours and a peer's */
-import { composeShirt } from '../playerDecal.js';   /* v2.3.3145: the walking shirt's own dressing, on the stand-ins' strips */   /* v2.3.2429; v2.3.2431 the symmetry gate */
+import { onArtChange, artHasInk, artIsSymmetric, artHash, sanitizeShirtArt, sideForDir, getShirtArt } from '../traits/playerArt.js';   /* v2.3.3146: + the shirt's sides, for the dressed stand-in shirts */   /* v2.3.2429; v2.3.2431 the symmetry gate; v2.3.2855 a peer's drawings on the lumberjack */
+import { onPatternChange, parsePattern, getPattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.3146: + the shirt's pattern, yours and a peer's */
+import { composeShirt } from '../playerDecal.js';   /* v2.3.3146: the walking shirt's own dressing, on the stand-ins' strips */   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { getGearFrame, packTrimmed, registerGearSource, unregisterGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips; v2.3.3074: + its release */
 import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074: a canvas-made texture let go of for good (TRAPS §139) */
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
@@ -385,7 +385,7 @@ const STANDIN_REF_BODY_H = 84;
  * COOK_H and the firemaking FH are deliberately NOT folded in: the owner asked
  * for woodcutting only, and those two are already independent.
  *
- * ═══ v2.3.3145: 104.5 -> 136.8, THE WALKING FIGURE'S OWN SIZE ═══
+ * ═══ v2.3.3146: 104.5 -> 136.8, THE WALKING FIGURE'S OWN SIZE ═══
  * The owner: "The character's appearance changes during resource gathering
  * activities.  It needs to stay consistent", then, offered "The lumberjack is
  * still drawn about 25% smaller than your walking character ... want me to
@@ -445,7 +445,7 @@ export const CHOP_STANDIN_H = 136.8;
  * client that could notice is the one that cannot see it.  So the two sites now
  * read one number, and the next resize cannot land on one figure only.
  *
- * ═══ v2.3.3145: 65.1 -> 73.9, YOUR HEAD'S SIZE ═══
+ * ═══ v2.3.3146: 65.1 -> 73.9, YOUR HEAD'S SIZE ═══
  * The owner: "It needs to stay consistent" -- "Yes fix all".  The "22.6px
  * avatar" above is the walking head BEFORE v2.3.1821 drew the walking figure
  * PLAYER_SIZE_MULT (1.25) bigger on its container, which no stand-in carries:
@@ -475,7 +475,7 @@ export const COOK_PAN_DX = 11 / 62;
  * button (routinely 120-240 px from its base -- see mp-chopyield) and cook from
  * wherever you stand by your fire.  Your own screen draws the figure where the
  * WORK is -- the lumberjack 30 px off the trunk on its ground line (44 since
- * v2.3.3145: CHOP_OFFSET), the cook
+ * v2.3.3146: CHOP_OFFSET), the cook
  * with the pan over the flames -- while a peer's copy was drawn at their
  * POSITION, 6 px below their middle: a lumberjack swinging at air up in the
  * canopy, a cook frying beside the fire.
@@ -486,7 +486,7 @@ export const COOK_PAN_DX = 11 / 62;
  * from their campfire_lit).  The zone curve is sampled at the spot, as the
  * local placers always did (v2.3.2287) -- the figure stands at the tree, which
  * on a perspective zone is a different point on the curve from the player. */
-/* v2.3.3145: 30 -> 44, with the lumberjack's size (CHOP_STANDIN_H 104.5 ->
+/* v2.3.3146: 30 -> 44, with the lumberjack's size (CHOP_STANDIN_H 104.5 ->
    136.8).  He is scaled about his feet, so the axe reaches further: at the
    strike frame (21, CHOP_STRIKE_K) the blade's middle is 94.5 art px out from
    his anchor -- 45 px at the old size, 59 at the new -- and standing 14 px
@@ -547,7 +547,7 @@ const GEAR_STRIP_TWIN = { chop: { suffix: '-220', frames: 12 } };
    correctly if the entry above were ever removed together with the art. */
 const CHOP_GEAR_FW = 240;
 
-/* ═══ v2.3.3145: THE STAND-INS WEAR YOUR SHIRT'S PRINT AND PATTERN ═══
+/* ═══ v2.3.3146: THE STAND-INS WEAR YOUR SHIRT'S PRINT AND PATTERN ═══
  * The owner: "It needs to stay consistent" -- offered "The three gathering
  * figures show your shirt's colour but not its print or pattern yet.  Want me
  * to add that next?": "Yes fix all".
@@ -628,7 +628,7 @@ import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo +
    the same 2.327 (it multiplies sp.scale.y, which fell 0.7 -> 0.3008, to size
    the player's hat), and _updateRemoteExtraction divided by a hardcoded 220. */
 const FIRE_FW = 384, FIRE_FH = 512;
-/* ═══ v2.3.3145: THE FIRE-LIGHTER'S HEIGHT, ONE NUMBER, YOUR SIZE ═══
+/* ═══ v2.3.3146: THE FIRE-LIGHTER'S HEIGHT, ONE NUMBER, YOUR SIZE ═══
    The owner: "It needs to stay consistent" -- "Yes fix all".  The figure's
    drawn height for its 512 px cell was a literal 154 in two places (your own
    figure, and the SPEC row other players' are drawn from) -- the shape of the
@@ -683,7 +683,7 @@ const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
    islands back into the figure for everybody, drawings or not. */
 const FIRE_URL = '/sprites/skills/firemaking-strip.webp?v=2.3.1715';
 function _bakeFireSplit(img, skinT, art, clothes) {
-  /* v2.3.3145: + `clothes` ({ pantsT, shoesT }): your trousers and boots --
+  /* v2.3.3146: + `clothes` ({ pantsT, shoesT }): your trousers and boots --
      `pantsWide` for the trousers the fire's glow warms (playerSkins
      _standInClothes) */
   return recolorStandInSkinSplit(img, skinT, FIRE_FH, { ...FIRE_SKIN_OPTS, frameW: FIRE_FW,
@@ -2049,7 +2049,7 @@ _fxLoad('/sprites/world/ore-vein-break.webp?v=1').then((tex) => {
 const ORE_BREAK_SCALE = 0.5;
 /* Frame index where the rock visibly splits — the ore icon pops out here. */
 const ORE_BREAK_SPLIT_FRAME = 7;
-/* v2.3.3145: how late a frame may still play the split (the pop and the
+/* v2.3.3146: how late a frame may still play the split (the pop and the
    crack) after the break began -- past the break's own 950 ms, as a stalled
    frame is (_advanceOreBreaks); not minutes later, from a tab coming back */
 const ORE_POP_LATE_MS = 3000;
@@ -3831,7 +3831,7 @@ export class EffectsRenderer {
        2.327x smaller (154/512 = 0.3008 vs 154/220 = 0.7).  0.85 x 2.327 = 1.98
        reproduces exactly the hat size that shipped.  Left alone, every hat,
        hair and beard on this pose would have rendered at 43%. */
-    /* ═══ v2.3.3145: THE COOK'S HAT FITS HIS HEAD ═══
+    /* ═══ v2.3.3146: THE COOK'S HAT FITS HIS HEAD ═══
        The owner: "The character's appearance changes during resource gathering
        activities.  It needs to stay consistent."  A height ratio is a head
        ratio only for a figure of the walking body's build -- and the cook is
@@ -3926,7 +3926,7 @@ export class EffectsRenderer {
         this._gearStripFrame('legs', 'steelgreaves', _gp, _dirKey, _cfg.fw, 0);
       }
     }
-    /* ═══ v2.3.3145: AND YOUR SHIRT'S PRINT AND PATTERN ON THE GATHERERS ═══
+    /* ═══ v2.3.3146: AND YOUR SHIRT'S PRINT AND PATTERN ON THE GATHERERS ═══
        The three gathering figures' dressed shirt strips (_dressedShirtFrame,
        the note at SHIRT_PATTERN_K), baked behind the loading screen like the
        plain strips above -- nothing at all for a plain coloured shirt -- and
@@ -4052,7 +4052,7 @@ export class EffectsRenderer {
        the cook and the fire-lighter do -- but from the images already in hand,
        so this one costs no network at all. */
     this._offs.push(onSkinChange(() => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } }));   /* v2.3.3074: kept for destroy() */
-    /* v2.3.3145: and the trousers and boots, which it wears now */
+    /* v2.3.3146: and the trousers and boots, which it wears now */
     const _rechop = () => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } };
     this._offs.push(onPantsChange(_rechop), onShoesChange(_rechop));
     /* v2.3.2855: and when one of the three drawings the lumberjack carries
@@ -4102,7 +4102,7 @@ export class EffectsRenderer {
     /* skinTarget() returns null for the 'default' pick -- see the cook's bake
        for why that cannot stand for a painted stand-in. */
     const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
-    /* v2.3.3145: and your trousers and boots (null: the art's own, which is
+    /* v2.3.3146: and your trousers and boots (null: the art's own, which is
        the default pick's colour) */
     const _clothes = { pantsT: pantsTarget(getPants()), shoesT: shoesTarget(getShoes()) };
     /* v2.3.2855: the figure faces east in its source (the trait crown is
@@ -4125,7 +4125,7 @@ export class EffectsRenderer {
       /* v2.3.2775: cropped (_sliceStandIn), the full bake kept only until the
          probe below has read it. */
       const _plain = _bakeChopStrip(img, _keyMask, skinT, _art ? { ..._art, mirror: false } : null, key, true,
-        { ..._clothes, probe: key === '_chopSkinFrames' ? 'chop' : 'chop-legless' });   /* v2.3.3145: the probe's name (QA) */
+        { ..._clothes, probe: key === '_chopSkinFrames' ? 'chop' : 'chop-legless' });   /* v2.3.3146: the probe's name (QA) */
       this[key] = this._own(_plain.arr);   /* v2.3.3074: owned */
       this[key + 'Flip'] = _twin
         ? this._own(_bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false, _clothes).arr) : null;   /* v2.3.2855: see above */
@@ -4173,7 +4173,7 @@ export class EffectsRenderer {
     if (!img) return null;
     /* A symmetric drawing reads the same flipped, so both sides share a bake. */
     const m = !!flip && _chopArtAsymmetric(art);
-    /* v2.3.3145: + their trousers and boots, which the bake now carries */
+    /* v2.3.3146: + their trousers and boots, which the bake now carries */
     const key = (legless ? 'L' : 'B') + (m ? 'm' : 'n') + '|' + String(o.skin || '') + '|'
       + String(o.pants || '') + '|' + String(o.shoes || '') + '|'
       + CHOP_INK_KEYS.map((k) => (artHasInk(art[k]) ? artHash(art[k]) : '')).join('.');
@@ -4197,7 +4197,7 @@ export class EffectsRenderer {
       if (this._destroyed) return;   /* v2.3.3074 */
       try {
         const baked = _bakeChopStrip(img, _chopKeyMask(img), skinT, { ...art, mirror: m }, null, false,
-          { pantsT: pantsTarget(o.pants), shoesT: shoesTarget(o.shoes) });   /* v2.3.3145: their trousers and boots */
+          { pantsT: pantsTarget(o.pants), shoesT: shoesTarget(o.shoes) });   /* v2.3.3146: their trousers and boots */
         cache.set(key, { arr: this._own(baked.arr), used: now });   /* v2.3.3074: owned */
       } catch (e) { /* the shared figure keeps drawing */ }
     }, 0);
@@ -4253,7 +4253,7 @@ export class EffectsRenderer {
     /* The character menu can change the skin mid-session, so rebake on it the
        way the sword/bow stand-ins do (_rebakeBodies, v2.3.975). */
     this._offs.push(onSkinChange(() => { this._fetchAndBakeCook(); }));   /* v2.3.3074: kept for destroy() */
-    /* v2.3.3145: and the trousers and boots, which it wears now */
+    /* v2.3.3146: and the trousers and boots, which it wears now */
     this._offs.push(onPantsChange(() => { this._fetchAndBakeCook(); }), onShoesChange(() => { this._fetchAndBakeCook(); }));
     /* v2.3.2856: and the drawings' layer when one of the three drawings the
        cook carries changes -- once the strokes stop, as the lumberjack does
@@ -4321,7 +4321,7 @@ export class EffectsRenderer {
        painting, so default falls back to the explicit tan — that is the whole
        point of the fix for anyone who never opened the skin picker. */
     const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
-    /* v2.3.3145: your trousers and boots, as the lumberjack's.  This figure is
+    /* v2.3.3146: your trousers and boots, as the lumberjack's.  This figure is
        the one every OTHER player's cook is drawn from on your screen (the
        SPEC table: a peer's cook already wears your skin, the memory trade of
        v2.3.1713), so they wear your trousers and boots too -- the same trade,
@@ -4335,7 +4335,7 @@ export class EffectsRenderer {
     const _old = [];
     for (const [key, img] of [['_cookFrames', bodyImg], ['_cookLeglessFrames', leglessImg]]) {
       const { cv, ink } = _bakeCookSplit(img, skinT, _art ? { ..._art, mirror: false } : null,
-        { ..._clothes, probe: key === '_cookFrames' ? 'cook' : 'cook-legless' });   /* v2.3.3145: the probe's name (QA) */
+        { ..._clothes, probe: key === '_cookFrames' ? 'cook' : 'cook-legless' });   /* v2.3.3146: the probe's name (QA) */
       const n = Math.max(1, Math.round(cv.width / FW));
       if (!inkOnly) {
         _old.push(this[key]);
@@ -4476,7 +4476,7 @@ export class EffectsRenderer {
     /* The character menu can change the skin mid-session; rebake exactly as the
        cook does (_loadCookStrips, v2.3.1710). */
     this._offs.push(onSkinChange(() => { this._fetchAndBakeFire(); }));   /* v2.3.3074: kept for destroy() */
-    /* v2.3.3145: and the trousers and boots, which it wears now */
+    /* v2.3.3146: and the trousers and boots, which it wears now */
     this._offs.push(onPantsChange(() => { this._fetchAndBakeFire(); }), onShoesChange(() => { this._fetchAndBakeFire(); }));
     /* v2.3.2858: and the drawings' layer, once the strokes stop -- the cook's
        rule (_loadCookStrips); only the layer is rebuilt. */
@@ -4513,7 +4513,7 @@ export class EffectsRenderer {
          the camera and is never flipped: the FRONT drawings, as painted. */
       const _base = localBodyArt(false);
       const _art = _base ? artForFacing(_base, 'south') : null;
-      /* v2.3.3145: and your trousers and boots (the cook's trade, above) */
+      /* v2.3.3146: and your trousers and boots (the cook's trade, above) */
       const { cv, ink } = _bakeFireSplit(img, skinT, _art ? { ..._art, mirror: false } : null,
         { pantsT: pantsTarget(getPants()), shoesT: shoesTarget(getShoes()), probe: 'fire' });
       const n = Math.max(1, Math.round(cv.width / FIRE_FW));
@@ -10017,7 +10017,7 @@ export class EffectsRenderer {
       if (_wheelSpots && node.nodeType === 'fishSpot') {
         /* v2.3.3012: in the Wheel a fishing spot is its fish, swimming in the
            real water it stands in (WheelFish, after the loop) -- no pond
-           picture.  v2.3.3145: and no rod's disc over them -- its name plate
+           picture.  v2.3.3146: and no rod's disc over them -- its name plate
            (nodeLabels.js NAME_PLATE_ONLY) shows only while it is the one
            resource near you that says its name and level. */
         _wheelSpots.push(node);
@@ -10616,7 +10616,7 @@ export class EffectsRenderer {
       const t = now - fx.startedAt;
       const idx = Math.min(ORE_BREAK_FRAMES - 1,
         Math.floor((Math.min(t, ORE_BREAK_DURATION_MS) / ORE_BREAK_DURATION_MS) * ORE_BREAK_FRAMES));
-      /* ═══ v2.3.3145: THE SPLIT IS NEVER SKIPPED BY A LATE FRAME ═══
+      /* ═══ v2.3.3146: THE SPLIT IS NEVER SKIPPED BY A LATE FRAME ═══
          The owner, offered "The crack sound is lost on any device that freezes
          for about a second right as a rock breaks.  It's a small fix": "Yes fix
          all".  The break lives 950 ms (ORE_BREAK_DURATION_MS + HOLD_MS), and
@@ -10666,7 +10666,7 @@ export class EffectsRenderer {
       if (vol > 0.02) BT_AUDIO.play('ore-crack', { vol, pitchVar: 0.06 });
       if (typeof window !== 'undefined' && window.__btProbe) {
         (window.__btOreCracks || (window.__btOreCracks = [])).push({ at: Date.now(), self: !!fx.self, vol: +vol.toFixed(3),
-          late: Math.round(now - fx.startedAt) });   /* v2.3.3145: how far into the break it was played */
+          late: Math.round(now - fx.startedAt) });   /* v2.3.3146: how far into the break it was played */
       }
     } catch (e) { /* a sound never breaks the frame */ }
   }
@@ -11547,7 +11547,7 @@ export class EffectsRenderer {
        shortens with it in BroTown.jsx — an animation that finishes in 0.54s
        inside a 1.5s window would hold its last frame for a second, which
        reads as a freeze rather than a faster animation. */
-    const FH = FIRE_STANDIN_H, FRAME_MS = FIRE_FRAME_MS;   /* v2.3.3145: was a literal 154, shared with the peer SPEC row now */
+    const FH = FIRE_STANDIN_H, FRAME_MS = FIRE_FRAME_MS;   /* v2.3.3146: was a literal 154, shared with the peer SPEC row now */
     const elapsed = now - (fm.startedAt || now);
     const fi = Math.min(this._fireFrames.length - 1, Math.floor(elapsed / FRAME_MS));
     const sp = this.fireSprite;
@@ -11648,7 +11648,7 @@ export class EffectsRenderer {
        hides the sprite on a null texture, so an unarmoured player costs
        nothing here. */
     fireLayerPlacer('legs')(this.fireLegsSprite, this._gearStripFrame('legs', getEquip('legs'), 'fire', 'south', FIRE_FW, fi));
-    this._placeSwingShirt(this.fireShirtSprite, fireLayerPlacer('shirt'), this._shirtId(), getEquip('chest'), 'fire', 'south', FIRE_FW, fi, getShirtColor(), getShirt(), this._myShirtLook());   /* v2.3.3145: + its print and pattern */
+    this._placeSwingShirt(this.fireShirtSprite, fireLayerPlacer('shirt'), this._shirtId(), getEquip('chest'), 'fire', 'south', FIRE_FW, fi, getShirtColor(), getShirt(), this._myShirtLook());   /* v2.3.3146: + its print and pattern */
     fireLayerPlacer('chest')(this.fireChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'fire', 'south', FIRE_FW, fi));
     this._tintGearSprite(this.fireLegsSprite, getEquip('legs'), 'fireLegs');   /* v2.3.1764 */
     this._tintGearSprite(this.fireChestSprite, getEquip('chest'), 'fireChest');
@@ -11763,7 +11763,7 @@ export class EffectsRenderer {
          itself out and relighting, on a loop, starting from whatever frame the
          wall clock happened to land on.  `from`/`count` restrict chop to the
          12 downswing frames the LOCAL chopper plays. */
-      fire: { frames: this._fireFrames, h: FIRE_STANDIN_H /* v2.3.3145: was a literal 154 */, fh: FIRE_FH, ms: FIRE_FRAME_MS, traitDir: 'south', once: true, gear: { pose: 'fire', dir: 'south', fw: FIRE_FW } },
+      fire: { frames: this._fireFrames, h: FIRE_STANDIN_H /* v2.3.3146: was a literal 154 */, fh: FIRE_FH, ms: FIRE_FRAME_MS, traitDir: 'south', once: true, gear: { pose: 'fire', dir: 'south', fw: FIRE_FW } },
       /* v2.3.1713: NOTE — cook and fire now hand a peer's stand-in the LOCAL
          player's baked skin, because these arrays are the local bake (cook
          since v2.3.1710, fire since this change).  A peer's cook has quietly
@@ -12075,7 +12075,7 @@ export class EffectsRenderer {
            were baked properly and are steady. */
         const _shirtIx = (code === 'cook') ? 22 : _gi;
         this._placeSwingShirt(ent.gear.shirt, _placeGear('shirt'), _oShirt, _eq.chest,
-          _gg.pose, _gg.dir, _gg.fw, _shirtIx, o.shirtColor, o.shirt || 'tshirt', this._peerShirtLook(o));   /* v2.3.3145: + theirs */
+          _gg.pose, _gg.dir, _gg.fw, _shirtIx, o.shirtColor, o.shirt || 'tshirt', this._peerShirtLook(o));   /* v2.3.3146: + theirs */
         _placeGear('chest')(ent.gear.chest,
           this._gearStripFrame('chest', _eq.chest, _gg.pose, _gg.dir, _gg.fw, _gi));
         /* Their metals, off the already-relayed equip ids (v2.3.1764). */
@@ -12312,7 +12312,7 @@ export class EffectsRenderer {
     return (e && e !== 'none') ? e : 'none';
   }
 
-  /* ═══ v2.3.3145: YOUR SHIRT'S PRINT AND PATTERN, AND OTHERS' ═══
+  /* ═══ v2.3.3146: YOUR SHIRT'S PRINT AND PATTERN, AND OTHERS' ═══
      (the note at SHIRT_PATTERN_K).  The look -- the drawn print's two sides
      and the pattern -- is yours from the stores, re-read after a change
      (_myLookStale, set by the listeners in the constructor), or a peer's off
@@ -12456,7 +12456,7 @@ export class EffectsRenderer {
          id locally, the networked id for a remote player. */
       const t = shirtFill(tintId !== undefined ? tintId : shirtId, colorId);
       spr.tint = t ? ((t[0] << 16) | (t[1] << 8) | t[2]) : 0xffffff;
-      /* v2.3.3145: a printed or patterned shirt swaps to its dressed copy of
+      /* v2.3.3146: a printed or patterned shirt swaps to its dressed copy of
          this strip, untinted (the colour is baked in, under the pattern and
          the print), the plain one standing in while it bakes.  `mirror`: the
          strip is drawn flipped, so its print is baked pre-flipped and reads
@@ -12905,7 +12905,7 @@ export class EffectsRenderer {
       const gp = cfg.gearPose || 'swing';
       /* v2.3.1050: their tinted shirt under-layer (folder always 'tshirt' when shirted). */
       const oShirt = (eq.shirt !== undefined) ? eq.shirt : ((o.shirt && o.shirt !== 'none') ? 'tshirt' : 'none');
-      this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor, o.shirt || 'tshirt', this._peerShirtLook(o));   /* v2.3.3145: + theirs */
+      this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor, o.shirt || 'tshirt', this._peerShirtLook(o));   /* v2.3.3146: + theirs */
       place(set.legs, _jog ? null : this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
       place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
       const weaponFrames = this._swordWeaponFrames[cfgKey];
@@ -13140,7 +13140,7 @@ export class EffectsRenderer {
       const eq = o.equip || {};
       /* v2.3.1050: their tinted shirt under-layer (folder always 'tshirt' when shirted). */
       const oShirt = (eq.shirt !== undefined) ? eq.shirt : ((o.shirt && o.shirt !== 'none') ? 'tshirt' : 'none');
-      this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor, o.shirt || 'tshirt', this._peerShirtLook(o));   /* v2.3.3145: + theirs */
+      this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor, o.shirt || 'tshirt', this._peerShirtLook(o));   /* v2.3.3146: + theirs */
       place(set.legs, _jog ? null : this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
       place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
       /* v2.3.1764: the peer's metal on the remote BOWSHOT strips too. */
@@ -13524,7 +13524,7 @@ export class EffectsRenderer {
       const gp = cfg.gearPose || 'swing';
       const chestTex = this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi);
       const legsTex  = _jog ? null : this._gearStripFrame('legs',  getEquip('legs'),  gp, fmap[0], cfg.fw, fi);
-      this._placeSwingShirt(this.swordShirtSprite, place, this._shirtId(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor(), getShirt(), this._myShirtLook());   /* v2.3.3145 */
+      this._placeSwingShirt(this.swordShirtSprite, place, this._shirtId(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor(), getShirt(), this._myShirtLook());   /* v2.3.3146 */
       place(this.swordChestSprite, chestTex);
       place(this.swordLegsSprite, legsTex);
       place(this.swordWeaponSprite, weaponFrames && weaponFrames[fi]);
@@ -14029,7 +14029,7 @@ export class EffectsRenderer {
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';
-      this._placeSwingShirt(this.bowShirtSprite, place, this._shirtId(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor(), getShirt(), this._myShirtLook());   /* v2.3.3145 */
+      this._placeSwingShirt(this.bowShirtSprite, place, this._shirtId(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor(), getShirt(), this._myShirtLook());   /* v2.3.3146 */
       place(this.bowChestSprite, this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi));
       place(this.bowLegsSprite,  _jogLegs ? null : this._gearStripFrame('legs', getEquip('legs'), gp, fmap[0], cfg.fw, fi));
       this._tintGearSprite(this.bowChestSprite, getEquip('chest'), 'bowChest');  /* v2.3.1764 */
@@ -14316,7 +14316,7 @@ export class EffectsRenderer {
        The DURABLE fix is re-cutting the sheet from ONE shirt tracked across
        the 24 poses; until then this is stable and costs nothing. */
     const COOK_SHIRT_FRAME = 22;
-    this._placeSwingShirt(this.cookShirtSprite, placeCookShirt, this._shirtId(), getEquip('chest'), 'cook', 'south', 213, COOK_SHIRT_FRAME, getShirtColor(), getShirt(), this._myShirtLook());   /* v2.3.3145 */
+    this._placeSwingShirt(this.cookShirtSprite, placeCookShirt, this._shirtId(), getEquip('chest'), 'cook', 'south', 213, COOK_SHIRT_FRAME, getShirtColor(), getShirt(), this._myShirtLook());   /* v2.3.3146 */
     /* v2.3.1114: equipped leg armour over the cook's legs (untinted; the
        greaves keep their own metal colour). _gearStripFrame returns null when
        no legs are equipped, so placeCookShirt hides the sprite. */
@@ -14466,7 +14466,7 @@ export class EffectsRenderer {
     this._destroyed = true;
     for (const off of this._offs) { try { off(); } catch (e) { /* already off */ } }
     this._offs = [];
-    clearTimeout(this._dressT);   /* v2.3.3145: a pending re-warm of the dressed shirts */
+    clearTimeout(this._dressT);   /* v2.3.3146: a pending re-warm of the dressed shirts */
     if (this._dressed) this._dressed.clear();   /* ...whose sources _bakes lets go of below */
     try { this.clear(); } catch (e) { /* a half-built renderer */ }
     for (const src of this._bakes) { unregisterGearSource(src); releaseCanvasSource(src); }
@@ -15071,7 +15071,7 @@ export class EffectsRenderer {
       /* Shirt: paper-doll recolour -- the chop shirt art is a grayscale base, so
          _placeSwingShirt tints it to the player's chosen shirt colour (and hides
          it when a chest plate is worn, which replaces it). */
-      this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, this._shirtId(), getEquip('chest'), 'chop', 'west', CHOP_GEAR_FW, k, getShirtColor(), getShirt(), this._myShirtLook());   /* v2.3.3145 */
+      this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, this._shirtId(), getEquip('chest'), 'chop', 'west', CHOP_GEAR_FW, k, getShirtColor(), getShirt(), this._myShirtLook());   /* v2.3.3146 */
       placeChopLayer(this.chopLegsSprite,  _chopLegsTex);
       placeChopLayer(this.chopChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'chop', 'west', CHOP_GEAR_FW, k));
       this._tintGearSprite(this.chopLegsSprite, getEquip('legs'), 'chopLegs');   /* v2.3.1764 */

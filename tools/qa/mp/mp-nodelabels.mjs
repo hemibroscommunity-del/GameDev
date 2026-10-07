@@ -24,7 +24,7 @@
  *   4. a copper vein mined to the end hides its label while its bar is up,
  *      CRACKS on the split frame (window.__btOreCracks: yours, full voice),
  *      and the worker pays the ore;
- *   5. (v2.3.3145, the owner: "Remove the fishing icon above fish but leave
+ *   5. (v2.3.3146, the owner: "Remove the fishing icon above fish but leave
  *      the proximity based nameplate in place") sampled all through the run:
  *      no fishing spot ever shows the rod's disc alone -- a spot drawn on
  *      screen has nothing over it until it is the one near you, and then its
@@ -167,7 +167,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.waitFor(P, (S) => ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe'].filter((k) => ((S.rpg || {}).inventory || {})[k] > 0).length,
       (n) => n === 3, { timeout: 20000, label: 'the tools' }).catch(() => 0);
     await closeTalk(P);
-    /* v2.3.3145: every drawn fishing spot's label, five times a second from
+    /* v2.3.3146: every drawn fishing spot's label, five times a second from
        here to the copper vein -- a spot's label is up only as its name plate
        ('full'), never the rod's disc alone ('icon') */
     await P.page.evaluate(() => {
@@ -338,7 +338,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     }
 
-    /* ── 5. (v2.3.3145) no rod over the fish: what the sampler saw on the way
+    /* ── 5. (v2.3.3146) no rod over the fish: what the sampler saw on the way
        to the clownfish, at its seat and back ── */
     const fishSeen = await P.page.evaluate(() => {
       clearInterval(window.__qaFishTimer);

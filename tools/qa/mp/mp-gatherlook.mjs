@@ -1,4 +1,4 @@
-/* ═══ v2.3.3145: THE BRO LOOKS LIKE HIMSELF WHILE HE GATHERS ═══
+/* ═══ v2.3.3146: THE BRO LOOKS LIKE HIMSELF WHILE HE GATHERS ═══
  *
  * The owner, 2026-10-07: "The character's appearance changes during resource
  * gathering activities.  It needs to stay consistent."
@@ -38,7 +38,7 @@ import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
 const STAND = { oreVein: [0, -70], tree: [0, -130], fishSpot: [52, -43] };
-/* v2.3.3145: the art the sizes are measured on, in each picture's own px --
+/* v2.3.3146: the art the sizes are measured on, in each picture's own px --
    painted head top to boots (the rows BODY_ROWS sizes the walking body by),
    and the head at its widest above the neck:
      walk  stand-south, 256 cell: crown 33 to boots 221 = 189, head 51;
@@ -70,14 +70,14 @@ const LOOK = `try {
   localStorage.setItem('bt-shirtcolor', 'green');
   localStorage.setItem('bt-pants', 'blue');
   localStorage.setItem('bt-shoes', 'red');
-  /* v2.3.3145: a striped tee (yellow, ART_PALETTE 5) with a purple block
+  /* v2.3.3146: a striped tee (yellow, ART_PALETTE 5) with a purple block
      printed on the chest (ART_PALETTE 10, a 6 x 6 in the 16 x 16 drawing) */
   localStorage.setItem('bt-shirtpat', 'stripe-v:5');
   let art = '';
   for (let i = 0; i < 256; i++) { const x = i % 16, y = (i / 16) | 0; art += (x >= 5 && x <= 10 && y >= 4 && y <= 9) ? 'a' : '0'; }
   localStorage.setItem('bt-shirtart', art);
 } catch (e) {}
-/* v2.3.3145: the stand-ins' dressed shirt strips are emptied once uploaded
+/* v2.3.3146: the stand-ins' dressed shirt strips are emptied once uploaded
    (gpuOnly.js); this keeps their canvases so the test can read them */
 window.__btTrimVerify = true;
 /* a shirt frame read off its texture: the stripes' and the print's pixels,
@@ -187,7 +187,7 @@ const nearestNode = (P, type) => P.page.evaluate((t) => {
   return best;
 }, type);
 
-/* the cap's and the beard's scale against the body's this frame (v2.3.3145:
+/* the cap's and the beard's scale against the body's this frame (v2.3.3146:
    entityRenderer publishes the body scale the traits were placed against) */
 const traitSize = (P) => P.page.evaluate(() => {
   const pd = window._pixiRenderer && window._pixiRenderer.playerDisplayRaw ? window._pixiRenderer.playerDisplayRaw() : null;
@@ -345,7 +345,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const standB = await readBody(P);
     rec.ok('standing: his cap and beard, his skin, blue trousers and red boots read off the frame drawn (guard)',
       !!standT && isBlue(standB.pants) && isRed(standB.boots) && standB.skin.n > 200, { standT, standB });
-    /* v2.3.3145: his walking size, the yardstick the three figures are drawn
+    /* v2.3.3146: his walking size, the yardstick the three figures are drawn
        to: the painted crown-to-boots of the frame on screen, in world px */
     const walk = await P.page.evaluate(() => {
       const S = window._gameState.current;
@@ -355,7 +355,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (walk) walk.head = (walk.up * ART.walk.head) / ART.walk.up;
     rec.ok(`standing: his walking figure is ${walk && walk.up.toFixed(1)} world px from crown to boots (guard)`,
       !!walk && walk.pose === 'stand' && walk.up > 60, walk);
-    /* v2.3.3145: his walking shirt, striped and printed -- its stripes'
+    /* v2.3.3146: his walking shirt, striped and printed -- its stripes'
        repeat on screen, the yardstick for the stand-ins' (its dressed copy is
        baked the first time it is drawn, so it is waited for) */
     const walkShirt = await H.waitFor(P, () => {
@@ -422,7 +422,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const c = await P.page.evaluate(() => (window.__btStandInClothes || {}).chop || null);
         rec.ok(`the lumberjack wears his trousers and boots: legs ${c && c.legs.rgb}, boots ${c && c.boots.rgb} (the bake's reading)`,
           !!c && isBlue(c.legs) && isRed(c.boots), c);
-        /* v2.3.3145: and he is your size (CHOP_STANDIN_H 104.5 -> 136.8) */
+        /* v2.3.3146: and he is your size (CHOP_STANDIN_H 104.5 -> 136.8) */
         const z = sizeOf('chop', await P.page.evaluate(() => (window.__btChopFigure ? window.__btChopFigure() : null)));
         rec.ok(`the lumberjack is his size: ${z && z.up.toFixed(1)} px from head to boots upright against his ${walk && walk.up.toFixed(1)} (${pct1(z && z.up, walk && walk.up)}, was 76%), his head ${z && z.head.toFixed(1)} against ${walk && walk.head.toFixed(1)}`,
           !!z && !!walk && Math.abs(z.up / walk.up - 1) < 0.03 && Math.abs(z.head / walk.head - 1) < 0.03, { z, walk });
@@ -463,7 +463,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const fc = await H.waitFor(P, () => (window.__btStandInClothes || {}).fire || null, (v) => !!v, { timeout: 15000, label: 'the fire-lighter baked' }).catch(() => null);
     rec.ok(`the fire-lighter wears his trousers and boots: legs ${fc && fc.legs.rgb}, boots ${fc && fc.boots.rgb} (the bake's reading)`,
       !!fc && isBlue(fc.legs) && isRed(fc.boots), fc);
-    /* v2.3.3145: and he is your size (FIRE_STANDIN_H 154 -> 142): his head
+    /* v2.3.3146: and he is your size (FIRE_STANDIN_H 154 -> 142): his head
        runs a little big in his painting, so it is held to 5% */
     const zf = sizeOf('fire', await P.page.evaluate(() => (window.__btFireFigure ? window.__btFireFigure() : null)));
     rec.ok(`the fire-lighter is his size: ${zf && zf.up.toFixed(1)} px from head to boots standing against his ${walk && walk.up.toFixed(1)} (${pct1(zf && zf.up, walk && walk.up)}, was 108%), his head ${zf && zf.head.toFixed(1)} against ${walk && walk.head.toFixed(1)}`,
@@ -482,7 +482,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return { x: r.left + (n.x - S.camera.x) * (S._worldScaleX || 1), y: r.top + (n.y - S.camera.y) * (S._worldScaleY || 1) };
       });
       await P.page.waitForTimeout(400);
-      /* v2.3.3145: the real tap, a few times.  A tap must end within 400 ms
+      /* v2.3.3146: the real tap, a few times.  A tap must end within 400 ms
          of its start (BroTown's SELF_TAP_MAX_MS), and on the QA box a frame
          takes about a second, so a frame drawn between the touch's start and
          its end makes it no tap at all: one run lost its cook that way.
@@ -498,7 +498,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const cc = await P.page.evaluate(() => (window.__btStandInClothes || {}).cook || null);
       rec.ok(`the cook wears his trousers and boots: legs ${cc && cc.legs.rgb}, boots ${cc && cc.boots.rgb} (the bake's reading)`,
         !!cc && isBlue(cc.legs) && isRed(cc.boots), cc);
-      /* v2.3.3145: and he is your size (COOK_STANDIN_H 65.1 -> 73.9): he
+      /* v2.3.3146: and he is your size (COOK_STANDIN_H 65.1 -> 73.9): he
          crouches, so it is his head that is held to yours */
       const zc = sizeOf('cook', await P.page.evaluate(() => (window.__btCookFigure ? window.__btCookFigure() : null)));
       rec.ok(`the cook's head is his size: ${zc && zc.head.toFixed(1)} px against his ${walk && walk.head.toFixed(1)} (${pct1(zc && zc.head, walk && walk.head)}, was 88%)`,

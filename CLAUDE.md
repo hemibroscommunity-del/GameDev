@@ -769,7 +769,7 @@ remnant to migrate server-side, not a mode to preserve.
       you the hatchet and the rod, not the pickaxe, so the commons' six copper
       veins round BroTown were rock-sized walls of empty grass; solid again
       the frame the tool reaches the bag (TRAPS §140); `mp-unseenwall`.
-    - since v2.3.3145 NO ROD OVER THE FISH -- the owner: "Remove the fishing
+    - since v2.3.3146 NO ROD OVER THE FISH -- the owner: "Remove the fishing
       icon above fish but leave the proximity based nameplate in place": a
       fishing spot shows no tool's disc, only its name plate while it is the
       one near you (nodeLabels.js `NAME_PLATE_ONLY`); trees and veins as
@@ -1416,7 +1416,7 @@ remnant to migrate server-side, not a mode to preserve.
     owner, on the recommendations for finding your way round: "Continue
     building recommended": the four gate signposts (placing.js, boards blank
     by the catalog's word) each show two plates when you are within 640 px
-    (300 since v2.3.3145, popping up out of the post -- the owner: "only pops
+    (300 since v2.3.3146, popping up out of the post -- the owner: "only pops
     up when you get close"; 640 was a phone's whole view) --
     the land straight on and the land whose trail forks off that road
     (`WHEEL_GATE_ROADS`, src/data/wheelSignposts.js, checked against the
@@ -1824,7 +1824,7 @@ remnant to migrate server-side, not a mode to preserve.
       `quest_reward_stashed` dedupes by the worker's id when it has one (a
       second minted Iron Torso was dropped as a "replay");
     - `armorgrade` suite, `mp-armorgrade` (15): docs/specs/armor-grade-look.md.
-  - Since v2.3.3145 THE BRO LOOKS LIKE HIMSELF WHILE HE GATHERS -- the owner:
+  - Since v2.3.3146 THE BRO LOOKS LIKE HIMSELF WHILE HE GATHERS -- the owner:
     "The character's appearance changes during resource gathering activities.
     It needs to stay consistent" (docs/specs/gathering-look.md):
     - mining and fishing size hair, hats and beards to the HEAD: `poseTraitMul`
@@ -1864,7 +1864,7 @@ remnant to migrate server-side, not a mode to preserve.
         3 s (`_oreSplit`);
     - QA `display._bodyScale`, `window.__btStandInClothes`,
       `window.__btDressedShirt`; `mp-gatherlook`.
-  - Since v2.3.3145 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
+  - Since v2.3.3146 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
     "Also all the buildings in town should show on the minimap": each
     standing building's footprint where it stands (wheelMinimap.js
     `_buildTown`, from `wheelTownDoors()` and the placed objects' boxes,

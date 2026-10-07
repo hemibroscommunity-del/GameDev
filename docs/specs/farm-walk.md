@@ -87,7 +87,7 @@ how the kneel handles that.
 
 **The figure is the cook's, worn as the cook wears it.** The cook strip
 (`public/sprites/skills/cook-strip.webp`, 24 frames of 213 × 220, drawn
-65.1 game px tall -- 73.9 since v2.3.3145, his head your walking head's size,
+65.1 game px tall -- 73.9 since v2.3.3146, his head your walking head's size,
 docs/specs/gathering-look.md section 5) is made for each player when first wanted, as since
 v2.3.3077 (for the farmer, on arriving at the farm, under its loading
 screen):
@@ -97,7 +97,7 @@ screen):
 - the shirt, the greaves and the plate are their own strips over it, and the
   legless body is used under greaves;
 - your hair and hat are moved onto it;
-- (v2.3.3145) your trousers and boots are recoloured on it, and your hair,
+- (v2.3.3146) your trousers and boots are recoloured on it, and your hair,
   hat and beard are sized to its big head (the cook's trait size 1.16 → 1.65):
   [gathering-look.md](gathering-look.md).
 

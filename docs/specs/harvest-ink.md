@@ -40,7 +40,7 @@ drawings gets the raw frame back, exactly as before. Skin tone, trouser and shoe
 colours still do not apply while fishing; that is the trade v2.3.2304 made, and
 it stands.
 
-> **v2.3.3145: that trade is over.** Fishing now wears your skin, trousers and
+> **v2.3.3146: that trade is over.** Fishing now wears your skin, trousers and
 > boots as well (`getFishFrame(art, frameIdx, skin, pants, shoes)`). The
 > recolour never threatened the rod; it threatened the boot-grey fishing line,
 > and the bake now recolours only the boots under the trousers. See
@@ -50,7 +50,7 @@ it stands.
 (`preloadBodyAll` → `prewarmFishInk`) and again right after you edit a drawing
 (`prewarmBody`), so your first cast shows the tattoos from its first frame. The
 armour-masked fishing frames are prewarmed from the inked frame too.
-(v2.3.3145: `prewarmFish`, for every player, with your colours.)
+(v2.3.3146: `prewarmFish`, for every player, with your colours.)
 
 **Another player's** inked fish sheet bakes the first time they cast. Their
 drawings cannot be known at load, which is the exception CLAUDE.md's preload law

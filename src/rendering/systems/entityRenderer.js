@@ -1262,7 +1262,7 @@ function bodyRows(pose, dir) {
   return m[dir] || m.south;
 }
 
-/* v2.3.3145: the head traits' size on the gathering body poses -- the head
+/* v2.3.3146: the head traits' size on the gathering body poses -- the head
    there against the head standing (see poseTraitMul in _placeTrait) */
 export const MINE_TRAIT_MUL = 1.116;
 export const FISH_TRAIT_MUL = 1.07;
@@ -1554,7 +1554,7 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
      blanket guess would be applied on top of the real answer.  Those opt out,
      and their scaleByPose reads as the true head ratio instead of that ratio
      with 1/0.67 baked in to cancel a constant. */
-  /* ═══ v2.3.3145: MINE AND FISH BY THE HEAD, NOT BY EYE ═══
+  /* ═══ v2.3.3146: MINE AND FISH BY THE HEAD, NOT BY EYE ═══
      The owner: "The character's appearance changes during resource gathering
      activities.  It needs to stay consistent."  1.21 and 0.88 were v2.3.875's
      guesses from the whole FIGURE's height (mine ~221 px, fish ~160, stand
@@ -3350,7 +3350,7 @@ function _dirsFacingFirst() {
  *    cache keys on the SOURCE TEXTURE's uid, so baking from getBodyFrame here
  *    would file the result under a texture the renderer never presents -- a
  *    miss at fishing time AND an eviction out of the 520-entry cap.
- *    v2.3.3145: the fish frame takes your skin, trousers and boots now --
+ *    v2.3.3146: the fish frame takes your skin, trousers and boots now --
  *    getFishFrame with your look, here and at the draw site alike, so the
  *    texture warmed is still the one presented.
  *  - PICKUP is never masked at all: both draw sites read `pose === 'pickup'
@@ -3585,7 +3585,7 @@ export async function prewarmMaskedBodyFrames(opts) {
         /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
            v2.3.2854: ...with the drawings on it (getFishFrame), the frame the
            renderer now asks for; baked by preloadBodyAll, which this runs after.
-           v2.3.3145: ...and your skin, trousers and boots. */
+           v2.3.3146: ...and your skin, trousers and boots. */
         const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f, getSkin(), getPants(), getShoes())
           : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
         if (!tex) continue;
@@ -3713,7 +3713,7 @@ export async function prewarmAltWornSets(opts) {
           if (fast) prewarmProgress.done++;
           /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
              v2.3.2854: with the drawings on it, as the pass above.
-             v2.3.3145: and your skin, trousers and boots. */
+             v2.3.3146: and your skin, trousers and boots. */
           const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f, getSkin(), getPants(), getShoes())
             : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
           if (!tex) continue;
@@ -11090,7 +11090,7 @@ export class EntityRenderer {
            every other pose of a peer's -- their drawings cannot be known at
            load -- and only for peers who have any, so the iPhone VRAM point
            above still holds for everyone else. */
-        /* ═══ v2.3.3145: ...AND NOW THEIR SKIN, TROUSERS AND BOOTS ═══
+        /* ═══ v2.3.3146: ...AND NOW THEIR SKIN, TROUSERS AND BOOTS ═══
            The owner: "The character's appearance changes during resource
            gathering activities.  It needs to stay consistent."  What the note
            above calls the durable fix was not needed: the recolour never
@@ -12547,7 +12547,7 @@ export class EntityRenderer {
        BODY_DIR_SCALE map (silhouette-height normalization), replacing the
        old hand-tuned bump stack. */
     const bodyScale = bodyDirScale(pose, dir) * LOCAL_SCALE;
-    /* v2.3.3145: and the body scale the head traits were placed against this
+    /* v2.3.3146: and the body scale the head traits were placed against this
        frame (_placeTrait's absBodyScale) -- mp-gatherlook divides a trait's
        scale by it to read the pose's trait size (poseTraitMul) */
     display._bodyScale = bodyScale;
@@ -12805,7 +12805,7 @@ export class EntityRenderer {
          for upright poses) would mis-paint them.  The pose is brief and
          south-only, so skipping the per-player retint is an acceptable
          trade for keeping the rod art intact for everyone.
-         v2.3.3145: NO LONGER -- your skin, trousers and boots go on it
+         v2.3.3146: NO LONGER -- your skin, trousers and boots go on it
          (getFishFrame below; the owner: "The character's appearance changes
          during resource gathering activities.  It needs to stay
          consistent"), the rod and line untouched (playerSkins,
@@ -12818,7 +12818,7 @@ export class EntityRenderer {
          the raw sheet without the recolour above (playerSkins), baked behind
          the loading screen by preloadBodyAll. */
       let tex = pose === 'fish'
-        ? getFishFrame(_bodyArt, frameIdx, getSkin(), getPants(), getShoes())   /* v2.3.3145: your colours */
+        ? getFishFrame(_bodyArt, frameIdx, getSkin(), getPants(), getShoes())   /* v2.3.3146: your colours */
         : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
       if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered

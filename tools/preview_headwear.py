@@ -14,7 +14,7 @@ Two hats have already shipped wrong from being eyeballed on the art instead
 scale off a measurement with the wrong sign), which is why this exists.
 
 v2.3.1542: it now also applies the two RUNTIME factors it used to omit --
-`poseTraitMul` (the blanket 0.67 on jog east, 1.116 mine, 1.07 fish -- v2.3.3145, were 1.21 and 0.88) and
+`poseTraitMul` (the blanket 0.67 on jog east, 1.116 mine, 1.07 fish -- v2.3.3146, were 1.21 and 0.88) and
 JOG_EW_HAT_TUNE.  Without them this preview drew jog east a THIRD bigger than
 the game does, so a hat could preview seated and hover in play: exactly how the
 wizard hat shipped flying above the head.  A preview that does not reproduce
@@ -65,9 +65,9 @@ def pose_trait_mul(meta, pose, d):
     if meta.get('poseFit'):
         return 1.0
     if pose == 'mine':
-        return 1.116   # v2.3.3145: the head's own ratio (was 1.21)
+        return 1.116   # v2.3.3146: the head's own ratio (was 1.21)
     if pose == 'fish':
-        return 1.07    # v2.3.3145: the head's own ratio (was 0.88)
+        return 1.07    # v2.3.3146: the head's own ratio (was 0.88)
     return 0.67 if (pose == 'jog' and d == 'east') else 1.0
 
 

@@ -3511,7 +3511,7 @@ the town's own gates, and nothing on screen said where town was.
   Ridge it checks the badge points south-east, and reads its house, ring and
   disc off the screen.
 
-### The town's buildings on the minimap (v2.3.3145)
+### The town's buildings on the minimap (v2.3.3146)
 
 > Owner, 2026-10-07: *"Also all the buildings in town should show on the
 > minimap."*

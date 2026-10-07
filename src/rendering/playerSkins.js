@@ -236,7 +236,7 @@ export function shoesTarget(id) { return recolorEnabled('shoes') ? _target(SHOES
    The price: the default combo baked nothing before, and now bakes these eight
    sheets (five hit facings, mine, two dodge) behind the intro -- 2.3 MB,
    measured by mp-poseskin, where a chosen skin already holds 7.4 MB.
-   v2.3.3145: FISHING TOO.  It takes the recolour now (getFishFrame: the owner's
+   v2.3.3146: FISHING TOO.  It takes the recolour now (getFishFrame: the owner's
    "The character's appearance changes during resource gathering activities"),
    and its sheet is the most orange of all -- (219,120,50), green over red 0.55
    -- so a player who never picked a skin cast as an orange stranger. */
@@ -481,7 +481,7 @@ function _blankEyes(d, w, h, boxes, frameW) {
   }
 }
 function _isPants(r, g, b, a) { return a > 180 && g >= r - 10 && g > b + 8 && r < 150; }
-/* v2.3.3145: how far past the trousers' columns a boot may reach, a share of
+/* v2.3.3146: how far past the trousers' columns a boot may reach, a share of
    the frame (a toe) -- 16 px of 256, 8 of 128: recolorBodyToCanvas
    `bootsUnderLegs`.  The fishing line stands 47+ px of 128 clear of it. */
 const BOOT_TOE_FRAC = 1 / 16;
@@ -900,7 +900,7 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      the trousers: the retint below overwrites `d` in place, and v2.3.1942's
      lit-fabric test has to be asked of the ORIGINAL art. */
   const base = (pantsPx || shoesPx) ? new Uint8ClampedArray(d) : null;
-  /* ═══ v2.3.3145: THE BOOTS ARE UNDER THE LEGS (`bootsUnderLegs`) ═══
+  /* ═══ v2.3.3146: THE BOOTS ARE UNDER THE LEGS (`bootsUnderLegs`) ═══
      The fishing sheet takes the recolour now (getFishFrame), and its LINE is
      the boots' flat grey -- (60-72) against the boots' (46-75): no colour test
      can part them, so a player in red boots would have cast a red line.
@@ -946,12 +946,12 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
       if (skinT) _retint(d, i, skinT, SKIN_REF);
     } else if (a > 180 && g >= r - 10 && g > b + 8 && r < 150) {
       /* pants (green) */ if (pantsPx) pantsPx[i >> 2] = 1;
-      if (legPx) legPx[i >> 2] = 1;   /* v2.3.3145 */
+      if (legPx) legPx[i >> 2] = 1;   /* v2.3.3146 */
       if (pantsT) _retint(d, i, pantsT, PANTS_REF);
     } else if (a > 180) {
       const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
       if ((mx - mn) < 28 && mx >= 45 && mx < 140) {
-        /* boots (flat gray) -- v2.3.3145: or, under `bootsUnderLegs`, a
+        /* boots (flat gray) -- v2.3.3146: or, under `bootsUnderLegs`, a
            candidate for one, painted below once the legs are known */
         if (bootCand) bootCand[i >> 2] = 1;
         else {
@@ -1234,14 +1234,14 @@ function _standInBake(img, skinT, targetH, opts, apart) {
      have no garment of the player's to sit on. */
   const ink = (o.art && o.regions && (artHasInk(o.art.tattooFace) || artHasInk(o.art.tattoo)
     || artHasInk(o.art.tattooArm))) ? o.art : null;
-  /* v2.3.3145: and your trousers and boots (_standInClothes) */
+  /* v2.3.3146: and your trousers and boots (_standInClothes) */
   const pantsT = o.pantsT || null, shoesT = o.shoesT || null;
   const clothesFW = o.frameW || (o.regions && o.regions.fw) || 0;
   if (!skinT && !ink && !pantsT && !shoesT) return { cv, ink: null };
   const w = cv.width, h = cv.height;
   const imgData = ctx.getImageData(0, 0, w, h);
   const d = imgData.data;
-  /* v2.3.3145: found on the art as painted, before the skin is retinted */
+  /* v2.3.3146: found on the art as painted, before the skin is retinted */
   const clothes = (pantsT || shoesT) && clothesFW ? _standInClothes(d, w, h, clothesFW, !!o.pantsWide) : null;
   /* pass 1: classify, with the SAME test the body pipeline uses (plus the
      caller's optional ratio window) */
@@ -1299,7 +1299,7 @@ function _standInBake(img, skinT, targetH, opts, apart) {
     if (skinT) _retint(d, i, skinT, SKIN_REF);
     if (body) body[p] = 1;
   }
-  /* v2.3.3145: the trousers and the boots, before the drawings are stamped --
+  /* v2.3.3146: the trousers and the boots, before the drawings are stamped --
      so the split bake's ink layer (below) still holds only the drawings */
   if (clothes) {
     for (let p = 0, i = 0; p < w * h; p++, i += 4) {
@@ -1346,7 +1346,7 @@ function _standInBake(img, skinT, targetH, opts, apart) {
   return { cv, ink: ic };
 }
 
-/* ═══ v2.3.3145: A STAND-IN WEARS YOUR TROUSERS AND BOOTS ═══
+/* ═══ v2.3.3146: A STAND-IN WEARS YOUR TROUSERS AND BOOTS ═══
    The owner: "The character's appearance changes during resource gathering
    activities.  It needs to stay consistent."  The lumberjack, the cook and the
    fire-lighter were baked with your skin and drawings and nothing else (the
@@ -1535,7 +1535,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
          being baked. */
       eyeT, EYE_MASK[`${pose}-${dir}`], art, undefined, pose === 'jog',
       eyeBlank || null,   /* v2.3.2643 */
-      pose === 'fish');   /* v2.3.3145: the line is boot-grey (recolorBodyToCanvas) */
+      pose === 'fish');   /* v2.3.3146: the line is boot-grey (recolorBodyToCanvas) */
     /* v2.3.2761: the fishing rod's pine, AFTER the skin pass -- pine is the
        skin's hue family, so recolouring before it would hand the rod to the
        skin retint.  See toolRecolor.js.
@@ -1834,7 +1834,7 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
 function _fishArt(art) {
   return art && art.mirror ? { ...art, mirror: false } : art;
 }
-/* ═══ v2.3.3145: ...AND YOUR SKIN, TROUSERS AND BOOTS ═══
+/* ═══ v2.3.3146: ...AND YOUR SKIN, TROUSERS AND BOOTS ═══
    The owner: "The character's appearance changes during resource gathering
    activities.  It needs to stay consistent."  Fishing was the plainest case of
    it: a deep-skinned bro in red trousers cast as the sheet's own orange man in
@@ -1851,7 +1851,7 @@ export function getFishFrame(art, frameIdx, skinId, pantsId, shoesId) {
 }
 /** Bake the fish sheet NOW, so a cast shows your look from its first frame
  *  instead of the painted one until a lazy bake lands (animation-preload law,
- *  CLAUDE.md).  v2.3.3145: with your skin, trousers and boots -- so for every
+ *  CLAUDE.md).  v2.3.3146: with your skin, trousers and boots -- so for every
  *  player, as the default skin is recoloured to the walking tan here
  *  (POSE_SKIN_FLOOR) -- and the drawings as before (it was prewarmFishInk, for
  *  a drawn player only).  Resolves at once when it is already baked or baking.
@@ -2103,7 +2103,7 @@ export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
   const art = localBodyArt(false);   /* v2.3.1940 */
   /* v2.3.2854: a drawing edit drops every inked sheet (_dropArtSheets) and
      lands here; the inked fish sheet is rebuilt with the stand ones, so the
-     next cast is not the one that pays for it.  v2.3.3145: and a new skin,
+     next cast is not the one that pays for it.  v2.3.3146: and a new skin,
      trousers or boots change the fish sheet too (getFishFrame) -- before the
      default combo's return below, as the default skin has one of its own
      (POSE_SKIN_FLOOR) -- once preloadBodyAll has baked the first one: this
@@ -2205,7 +2205,7 @@ export function preloadBodyAll() {
   /* v2.3.2854: and the FISH sheet with the drawings on it (getFishFrame) --
      only a drawn player has one; everyone else fishes on the raw sheet, which
      loadPlayerSprites already holds.
-     v2.3.3145: every player has one now -- your skin (the walking tan for the
+     v2.3.3146: every player has one now -- your skin (the walking tan for the
      default), trousers and boots go on it too (getFishFrame) -- and from here
      on it follows a change of look (prewarmBody) */
   _fishFollows = true;

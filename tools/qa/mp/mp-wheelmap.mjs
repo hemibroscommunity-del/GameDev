@@ -33,7 +33,7 @@
  * and the box wears a thick frame: its slate band and brass line are read off
  * the screen.
  *
- * v2.3.3145, the owner: "Also all the buildings in town should show on the
+ * v2.3.3146, the owner: "Also all the buildings in town should show on the
  * minimap" -- 2 checks every standing building is drawn on the box where it
  * stands, its door on its front edge, the shut ones grey, the town's square
  * gone in their place, and their roofs read off the screen.
@@ -177,7 +177,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3031: the arrival's window is mostly the paved square now (it is 28% bigger, and the
      yards round it are lawn): 12 colours, where it was more -- still nothing like a flat fill */
   rec.ok(`...drawn on screen, in many colours (${distinct.size})`, distinct.size > 8, { distinct: distinct.size });
-  /* ═══ v2.3.3145: THE TOWN'S BUILDINGS ═══
+  /* ═══ v2.3.3146: THE TOWN'S BUILDINGS ═══
      The owner: "Also all the buildings in town should show on the minimap".
      Every standing building (the doors the ground worker posts) is drawn: its
      footprint where it stands, its door on the front edge, the shut ones

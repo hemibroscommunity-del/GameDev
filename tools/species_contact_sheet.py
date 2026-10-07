@@ -15,7 +15,7 @@ in the body's 256-space frame:
                                        + poseNudge[pose]
     and the trait is scaled about that anchor by
         scale[dir] * scaleByPose[pose][dir] * poseTraitMul * tune.mul
-    poseTraitMul: mine 1.116, fish 1.07 (v2.3.3145; were 1.21, 0.88),
+    poseTraitMul: mine 1.116, fish 1.07 (v2.3.3146; were 1.21, 0.88),
                   jog-east 0.67, else 1 (1 if poseFit)
     tune.mul:     jog-east 1.40 (JOG_EW_HAIR_TUNE -- the face-worn eyewear
                   path passes hairPoseTune; assumed for species too) unless

@@ -99,7 +99,7 @@ export function chestBox(data, W, H, x0, fw) {
  * @param {number} frameH  frame height in px (frames are square)
  * @param {boolean} [mirror]  pre-flip the drawing, for facings the renderer
  *        draws mirrored — so the print still reads the right way round
- * @param {number} [frameW]  v2.3.3145: frame WIDTH, for a strip whose frames
+ * @param {number} [frameW]  v2.3.3146: frame WIDTH, for a strip whose frames
  *        are not square (the gathering and combat stand-ins' shirt strips:
  *        240x220, 213x220, 384x512 ...); omitted, frames are square as before
  * @returns {HTMLCanvasElement} a NEW canvas; the input is never mutated
@@ -119,7 +119,7 @@ export function stampShirtArt(sheet, art, frameH, mirror, clip, report, frameW) 
   if (!artHasInk(art) && !report) return cv;
 
   const fh = frameH || H;
-  const fw = frameW || fh;   /* v2.3.3145: square unless the caller says */
+  const fw = frameW || fh;   /* v2.3.3146: square unless the caller says */
   const frames = Math.max(1, Math.round(W / fw));
   const src = ctx.getImageData(0, 0, W, H).data;
 
@@ -1389,7 +1389,7 @@ export function composeShirt(sheet, frameH, opts) {
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  /* v2.3.3145: `o.frameW` for a strip whose frames are not square (the
+  /* v2.3.3146: `o.frameW` for a strip whose frames are not square (the
      stand-ins' shirt strips); omitted, a frame is frameH wide as before */
   if (o.pattern) {
     const id = ctx.getImageData(0, 0, W, H);

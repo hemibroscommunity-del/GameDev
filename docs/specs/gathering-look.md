@@ -1,4 +1,4 @@
-# The bro looks like himself while he gathers (v2.3.3145)
+# The bro looks like himself while he gathers (v2.3.3146)
 
 > The owner, 2026-10-07: *"The character's appearance changes during resource
 > gathering activities. It needs to stay consistent. Fix this part."*
@@ -31,7 +31,7 @@ are sections 5 to 7.
   that painting.
   - Already carried before this change: your skin, your tattoos, your tee's
     colour, your armour and your head traits.
-  - Since v2.3.3145: your trousers and boots too, your shirt's print and
+  - Since v2.3.3146: your trousers and boots too, your shirt's print and
     pattern (section 6), and your size (section 5).
 
 ## 1. Hair, hats and beards on the mining and fishing heads

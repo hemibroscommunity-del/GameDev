@@ -51,7 +51,7 @@ export function gateOf(dx, dy) {
    ~2,765, and no other signpost is placed anywhere: test-world-core). */
 export const SIGNPOST_TOWN_R = 2600;
 /* Their plates show from this near, game px, fading over the last SHOW_FADE.
-   v2.3.3145: 640 -> 300 and 160 -> 60 -- the owner: "Change the signage in
+   v2.3.3146: 640 -> 300 and 160 -> 60 -- the owner: "Change the signage in
    the town to proximity based so it only pops up when you get close".  640
    is about the whole of a phone's view at the Wheel's zoom, so the plates were
    up as soon as their signpost came on screen.  300 is the street the post

@@ -25,8 +25,8 @@ import * as H from './harness.mjs';
 
 const TILE = 32;
 const ARROW_FLAT_PX = 52.5;   /* ARROW_PINE.lenPx */
-const FIRE_FLAT_H = 142;      /* the fire stand-in's FH (FIRE_STANDIN_H; v2.3.3145: 154 -> 142, your size) */
-const CHOP_FLAT_H = 136.8;    /* CHOP_STANDIN_H (v2.3.3145: 104.5 -> 136.8, your walking size) */
+const FIRE_FLAT_H = 142;      /* the fire stand-in's FH (FIRE_STANDIN_H; v2.3.3146: 154 -> 142, your size) */
+const CHOP_FLAT_H = 136.8;    /* CHOP_STANDIN_H (v2.3.3146: 104.5 -> 136.8, your walking size) */
 
 const stand = (P, x, y) => P.page.evaluate(({ px, py }) => {
   const S = window._gameState && window._gameState.current;

@@ -49,7 +49,7 @@
  * No filter (a greyed copy, not a ColorMatrixFilter per sprite), and nothing
  * new is loaded: the grey copies are made from the same three pictures.
  *
- * ═══ v2.3.3145: NO ROD OVER THE FISH ═══
+ * ═══ v2.3.3146: NO ROD OVER THE FISH ═══
  * Owner, 2026-10-07: "Remove the fishing icon above fish but leave the
  * proximity based nameplate in place."  A fishing spot is its fish, seen
  * swimming in the water (wheelNodes.js WheelFish), so a rod's disc over every
@@ -152,7 +152,7 @@ const GREY_EDGE = 0x8B9695;  /* v2.3.3059: a locked icon's ring -- the grey of t
 /* v2.3.3059: how near (world px, to you) the one resource that says its name
    and level must be; the rest show their tool alone */
 export const NODE_NAME_R = 260;
-/* v2.3.3145: the kinds whose label is the name plate only -- no tool's disc
+/* v2.3.3146: the kinds whose label is the name plate only -- no tool's disc
    when another resource is the one saying its name (the owner: "Remove the
    fishing icon above fish") */
 export const NAME_PLATE_ONLY = Object.freeze(new Set(['fishSpot']));
@@ -283,7 +283,7 @@ export function nodeNameNode(S, nodes) {
 /** Draw, place or hide the label of one resource.  `at` is the world point
  *  its foot sits on ({x, y}), or null to hide it this frame.  `full`: say the
  *  name and the level too (v2.3.3059: only nodeNameNode's), else the tool
- *  alone -- or, for a NAME_PLATE_ONLY kind (v2.3.3145: a fishing spot),
+ *  alone -- or, for a NAME_PLATE_ONLY kind (v2.3.3146: a fishing spot),
  *  nothing. */
 export function updateNodeLabel(layer, node, S, at, full = true) {
   if (!layer || !node) return;
