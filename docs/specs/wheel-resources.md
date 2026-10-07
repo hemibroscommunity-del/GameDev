@@ -476,6 +476,28 @@ Each land's second stage grows two tiers of its own, as the first stage does:
     asking Mining 10, drawn from its own picture, its label grey for a miner
     short of it, and cedar, salmon, obsidian, maple and pike around it.
 
+## A resource you can't see stops nobody (v2.3.3145)
+
+The owner: "there are invisible areas that block movement near the town".
+
+- A resource you hold no tool for is not drawn (v2.3.1680) and not marked on
+  the minimap, but its rock or trunk was still solid (BroTown.jsx
+  `nodeBlockEllipse`). The commons ring BroTown with six copper veins and six
+  pines, and "Learn a Trade" hands you the hatchet and the rod but not the
+  pickaxe. So each vein was a rock-sized patch of empty grass that stopped you
+  (on main, `mp-unseenwall` stops 45 px short of a hidden vein).
+- Now it is walkable until the tool is in the bag; the frame it is, the node is
+  drawn and solid again.
+- The same rule for the two other readers that found hidden nodes (TRAPS §140):
+  - a tap on one is a tap on the ground (`_tapHarvestAtCss`) -- no "You need a
+    tool for that" over nothing; a resource out of reach lets the tap through
+    too, so the right stick jumps (docs/specs/jumping.md "v2.3.3145");
+  - the nearest resource in reach (`S._proxNode`) is one you can see, so a
+    hidden vein beside a pine no longer leaves the harvest button offering
+    nothing.
+- `mp-unseenwall`: through a hidden vein, stopped by the drawn one, and a tap on
+  a far vein jumps.
+
 ## Not in this round
 
 - The world map (the overlay a tap on the minimap opens) shows no nodes.
