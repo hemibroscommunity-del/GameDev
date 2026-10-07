@@ -16,7 +16,10 @@
  *      brew runs BESIDE the meal, and the HUD shows both.
  *   5. Diego's shelf is his two staples -- no tonic -- and he says he won't
  *      buy a tonic back, nor a Herb Bread.
- *   6. With the kill switch thrown, a bread in the bag still eats.
+ *   6. v2.3.3131: the Cookhouse lists the Garden Stew (Cooking 4) and the
+ *      Pumpkin Pie (Cooking 8); a stew from the bag heals at once, the HUD
+ *      unchanged; a pie runs +10% XP beside the brew, its chip in minutes.
+ *   7. With the kill switch thrown, a bread in the bag still eats.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -97,6 +100,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const win = await A.page.evaluate(() => ({
       head: /meals & brews/i.test(document.body.innerText || ''),   /* the heading is drawn in capitals */
       tonics: ['whetstone', 'manaShard', 'swiftDraught'].map((k) => !!document.querySelector(`[data-cook-makes="${k}"]`)),
+      /* v2.3.3131: and the two food-crop dishes, locked at Cooking 4 and 8 */
+      food: ['meal_garden_stew', 'meal_pumpkin_pie'].map((k) => { const b = document.querySelector(`[data-cook-makes="${k}"]`); return b ? (b.textContent || '').trim() : null; }),
       bread: (() => { const b = document.querySelector('[data-cook-recipe="0"]'); const r = b && b.parentElement; return r ? (r.innerText || '').replace(/\s+/g, ' ').slice(0, 160) : null; })(),
     }));
     rec.ok('...under "Meals & Brews", saying what the bread does when eaten', win.head && /twice as fast/i.test(win.bread || ''), win);
@@ -201,7 +206,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot(A, 'diego');
     await A.page.evaluate(() => window.__broShopBus.setOpen(false));
 
-    /* ── 6. the kill switch keeps the food in bags edible ──
+    /* ── 6. v2.3.3131: the Garden Stew and the Pumpkin Pie ── */
+    rec.ok('the Cookhouse listed the Garden Stew and the Pumpkin Pie, locked at Cooking 4 and 8',
+      Array.isArray(win.food) && win.food[0] === 'Lv4' && win.food[1] === 'Lv8', win.food);
+    await H.devOp(wsPort, 'vitals', id, { god: false });
+    await H.devOp(wsPort, 'vitals', id, { hp: 30 });
+    await A.page.waitForTimeout(1200);
+    const hp0 = await H.readState(A, (S) => Math.round((S.rpg && S.rpg.hp) || 0));
+    await H.grant(wsPort, id, 'item', { invKey: 'meal_garden_stew', count: 1 });
+    await A.page.waitForTimeout(1500);
+    const stew = await useFromBag('meal_garden_stew', 'Eat');
+    const hp1 = await H.readState(A, (S) => ({ hp: Math.round((S.rpg && S.rpg.hp) || 0), max: Math.round((S.rpg && S.rpg.maxHp) || 0),
+      stew: ((S.rpg && S.rpg.inventory) || {}).meal_garden_stew || 0, meal: !!(S._regenBuff && Date.now() < S._regenBuff) }));
+    rec.ok('a Garden Stew\'s popup says what it heals, and has Eat', stew.tile && stew.btn, stew);
+    rec.ok(`...eaten, it heals at once (${hp0} -> ${hp1.hp} of ${hp1.max}), the stew used up`,
+      hp1.stew === 0 && hp1.hp >= Math.min(hp1.max, hp0 + 60), { hp0, hp1 });
+    rec.ok('...and the Herb Bread\'s meal is still running -- the stew takes no slot', hp1.meal, hp1);
+    await H.grant(wsPort, id, 'item', { invKey: 'meal_pumpkin_pie', count: 1 });
+    await A.page.waitForTimeout(1500);
+    const pie = await useFromBag('meal_pumpkin_pie', 'Eat');
+    const pz = await H.readState(A, (S) => ({ xpMs: S._xpBuff ? S._xpBuff - Date.now() : 0, mul: S._xpBuffMul || 0,
+      regen: !!(S._regenBuff && Date.now() < S._regenBuff), dmg: !!(S._dmgBuff && Date.now() < S._dmgBuff) }));
+    rec.ok('a Pumpkin Pie eats from the bag: +10% XP for half an hour', pie.tile && pie.btn && Math.abs(pz.mul - 1.1) < 0.01 && pz.xpMs > 28 * 60000, { pie, pz });
+    rec.ok('...replacing the bread (both meals) and leaving the tea (a brew)', !pz.regen && pz.dmg, pz);
+    const hud2 = await A.page.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' '));
+    rec.ok('...its HUD chip counting in minutes', /\uD83E\uDD67\s*(29|30)m/.test(hud2), hud2.slice(0, 80));
+    await shot(A, 'pie');
+
+    /* ── 7. the kill switch keeps the food in bags edible ──
        `meals: false` reaches a page as caps.meals FALSE at its next join (an
        old worker sends none at all); the bag must keep Eat on a bread then.
        The flag is thrown on the worker for real, and the page given the caps

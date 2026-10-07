@@ -1057,12 +1057,34 @@ export const COOKING_RECIPES = [{
   cookLvl: 5,
   makes: 'swiftDraught',
   desc: 'Run 1.5x as fast for 3 min'
+}, {
+  /* v2.3.3131: the potato and the pumpkin's dishes */
+  name: 'Garden Stew',
+  tier: 2,
+  ingredients: {
+    crop_carrot: 2,
+    crop_potato: 1
+  },
+  cookLvl: 4,
+  makes: 'meal_garden_stew',
+  desc: 'Heals 150 HP at once'
+}, {
+  name: 'Pumpkin Pie',
+  tier: 3,
+  ingredients: {
+    crop_pumpkin: 1,
+    crop_potato: 2
+  },
+  cookLvl: 8,
+  makes: 'meal_pumpkin_pie',
+  desc: '+10% combat XP for 30 min'
 }];
 
 /* v2.3.3130: what a dish does lives in its own small module (dishes.js), so
    the bag can read it without this whole file; re-exported here, where the
    recipes that make them are, and where mirror-audit looks. */
 export { DISHES, dishFor } from './dishes.js';
+import { dishFor as _dishFor } from './dishes.js';   /* v2.3.3131: calcDisplayHeal */
 
 /* §18 Fish Healing — fish must be COOKED via minigame to become edible */
 /* Raw fish → cooking minigame → cooked fish (heals) or burnt fish (wasted) */
@@ -5697,6 +5719,10 @@ export function calcDisplayDps(rpg, wpn) {
    both key shapes resolve the same tier).  The player_state echo
    after eat_request is the truth; this is prediction/labeling only. */
 export function calcDisplayHeal(rpg, invKey) {
+  /* v2.3.3131: a dish eaten at once (the Garden Stew) heals its own amount,
+     the worker's cooking.js _applyDish -- plus the same Recovery. */
+  var _dish = _dishFor(invKey);
+  if (_dish && _dish.buff === 'heal') return Math.ceil(_dish.power) + getRecoveryFlat(rpg);
   /* v2.3.1345: Recovery is a flat bonus on every heal. */
   return Math.ceil(getFishHealAmount(invKey)) + getRecoveryFlat(rpg);
 }

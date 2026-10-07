@@ -187,9 +187,16 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
   const last = farmBus.last;
 
   const unlocked = (id) => lvl >= FARM.CROPS[id].lvl;
+  /* v2.3.3131: only the crops THIS worker grows (caps.farmCrops counts them,
+     in the order they came -- FARM.CROPS' own).  A newer page offered an
+     older worker's farm the potato and the pumpkin, and the buy hung on "No
+     answer yet" (review).  A farm worker from before it grows the first four. */
+  const grownCount = S._serverCaps && typeof S._serverCaps.farmCrops === 'number' ? S._serverCaps.farmCrops : 4;
+  const CROP_IDS = Object.keys(FARM.CROPS);
+  const crops = FARM_CROP_ORDER.filter((id) => CROP_IDS.indexOf(id) < grownCount);
   const seedCount = (id) => Math.floor(inv[FARM.CROPS[id].seed] || 0);
   const seed = seedPick && unlocked(seedPick) ? seedPick
-    : (FARM_CROP_ORDER.find((id) => unlocked(id) && seedCount(id) > 0) || 'carrot');
+    : (crops.find((id) => unlocked(id) && seedCount(id) > 0) || 'carrot');
   const compost = Math.floor(inv[FARM.COMPOST] || 0);
   const count = (op) => plots.filter((p) => fits(op, p, now)).length;
   /* A chosen tool holds until the worker answers and it has nothing left to
@@ -198,7 +205,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
      nothing is ripe still reads as the player's choice. */
   const canDo = (op) => count(op) > 0 && (op !== 'feed' || compost > 0) && (op !== 'plant' || seedCount(seed) > 0);
   const chosen = picked && (canDo(picked.tool) || !(last && last.at > picked.at)) ? picked.tool : null;
-  const tool = chosen || autoTool(plots, now, FARM_CROP_ORDER.some((id) => unlocked(id) && seedCount(id) > 0), compost > 0);
+  const tool = chosen || autoTool(plots, now, crops.some((id) => unlocked(id) && seedCount(id) > 0), compost > 0);
   const toolCount = { dig: count('dig'), plant: seedCount(seed), water: count('water'), feed: compost, harvest: count('harvest') };
 
   const say = (text, color) => { try { const P = S.player; if (P) pushDmgPopup(S, P.x, P.y - 34, text, color || C.brass); } catch (e) { /* popup only */ } };
@@ -347,7 +354,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
               {/* which seed the Plant tool sows */}
               {tool === 'plant' && (
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
-                  {FARM_CROP_ORDER.map((id) => {
+                  {crops.map((id) => {
                     const c = FARM.CROPS[id];
                     const open = unlocked(id);
                     const on = open && id === seed;
@@ -390,7 +397,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
               <Chip icon={COIN} color={C.brass}>{coins}</Chip>
             </div>
-            {FARM_CROP_ORDER.map((id) => {
+            {crops.map((id) => {
               const c = FARM.CROPS[id];
               const open = unlocked(id);
               return (

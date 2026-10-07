@@ -48,6 +48,8 @@ Office's paid land, and visits from friends are Phases 3 and 4.
 | Firebloom (`herb_firebloom`) | 1 | 5 | 40 m / 30 m | 2 / 3 | 50 | 16 |
 | Rock Vine (`herb_rock_vine`) | 5 | 10 | 5 h 20 m / 4 h | 2 / 3 | 120 | 30 |
 | Cloudpetal (`herb_cloudpetal`) | 10 | 15 | 10 h 40 m / 8 h | 2 / 3 | 180 | 40 |
+| Potato (`crop_potato`), v2.3.3131 | 5 | 6 | 2 h 40 m / 2 h | 3 / 4 or 5 | 90 | 12 |
+| Pumpkin (`crop_pumpkin`), v2.3.3131 | 10 | 25 | 29 h 20 m / 22 h | 2 / 3 | 320 | 60 |
 
 - **Seeds** are `seed_<crop>`. **Compost** is `compost`.
 - **Where the table lives:** the worker's copy is `server/src/farm.js` `FARM`.
@@ -104,7 +106,8 @@ would have paid 10 coins for a 2-coin seed.
 `farm:<pid>` holds `{v, beds, plots}`. It is registered in
 ARCHITECTURE-HANDOFF's storage-key table.
 
-- **`v` is the record's shape** (`FARM.V`, 1). A worker refuses a record
+- **`v` is the record's shape** (`FARM.V`: 1, then 2 since v2.3.3131 added
+  the potato and the pumpkin). A worker refuses a record
   newer than it knows whole: opening, any action and the dev op answer
   `err: 'newer'`, the join says nothing, and nothing is read into it or
   written back.
@@ -115,6 +118,18 @@ ARCHITECTURE-HANDOFF's storage-key table.
     owner said yes to the guard (2026-10-06).
   - **A phase that adds a crop, a field or a state to the record must bump
     `FARM.V`.** A rollback then costs a farm visit, never a bed.
+  - **A record is stamped with what its beds HOLD** (`_farmShape`, at every
+    write): the highest `v` of the crops planted in it. A farm of the first
+    four crops is a 1 that every farm worker reads; a potato or a pumpkin
+    makes it a 2 while it grows, and its harvest a 1 again. Stamping `FARM.V`
+    on every write (v2.3.3131 at first) closed every farm touched under the
+    new worker after a rollback, carrot-only ones included (found by the
+    review). `FARM.V` is the highest crop `v`; farm.test pins both.
+- **`caps.farmCrops`** says how many crops the worker grows, in the order they
+  came (`FARM_CROP_IDS`, append-only). The window offers a crop's seeds and
+  planting only below it: `caps.farm` alone let a newer page offer an older
+  worker the potato and the pumpkin, and the buy hung on "No answer yet"
+  (TRAPS §9). Without it, the first four.
 
 - It is never a field on the rpg blob (rule 1).
 - It is one record rather than a key per bed, so each action writes one row.
@@ -263,10 +278,12 @@ The crops, seeds and compost are emoji until the art exists:
 - **Every later phase that changes `farm:<pid>` bumps `FARM.V`** (see
   Storage), so a rollback to the worker before it leaves the newer beds alone.
 
-- **Phase 2:**
-  - Meals and brews you carry, and Diego's three tonics brewed from herbs and
-    taken off his shelf: done in v2.3.3130, `docs/specs/meals.md`.
-  - Potatoes and pumpkins: Phase 2b.
+- **Phase 2:** done. Meals and brews you carry, and Diego's three tonics
+  brewed from herbs, in v2.3.3130; the potato, the pumpkin and their dishes in
+  v2.3.3131 (`docs/specs/meals.md`). A record holding a potato or a pumpkin
+  is a 2 since then: a rollback to a v1 worker refuses that farm, which it
+  would otherwise have turned to grass where they grew, and reads every other
+  farm as before.
 - **Phase 3:** your own farm to walk on (`farm:<id>` zones), the Land Office's
   free deed and paid land (500 → 7,500 coins, up to 25 beds), Mayor Bro's farm
   errand.

@@ -84,8 +84,16 @@ export const FARM = {
      the fields it knows on the first action and wrote it back: every bed
      of a crop it had never heard of became grass, for good (the review
      showed it on a copy; the owner: "Yes fix all of your recommended
-     fixes").  Not mirrored on the client: the window never reads it. */
-  V: 1,
+     fixes").  Not mirrored on the client: the window never reads it.
+     v2.3.3131: 2 -- the potato and the pumpkin.  A worker at 1 has never
+     heard of either, and would have turned their beds into grass.  A record
+     is stamped with the version its CONTENT needs (_farmShape: the highest
+     crop `v` among its planted beds), not this number: stamping every record
+     this worker wrote closed EVERY farm touched under it on a rollback, a
+     carrot-only farm included (review).  So FARM.V is the highest crop `v`
+     (farm.test pins it), and a phase that adds anything else to the record
+     raises both. */
+  V: 2,
   /* The free deed: six beds, the plan's starter farm. */
   FREE_BEDS: 6,
   /* The most a farm can ever hold (the Land Office's top step, Phase 3) --
@@ -118,12 +126,30 @@ export const FARM = {
        base   Diego's base value for the crop (shop.js): he pays half of it
               into an empty pile and less as his pile grows. */
   CROPS: {
-    carrot:     { name: 'Carrot',     seed: 'seed_carrot',     item: 'crop_carrot',     lvl: 1,  price: 2,  mins: 8,   yield: 2, xp: 25,  base: 8 },
-    firebloom:  { name: 'Firebloom',  seed: 'seed_firebloom',  item: 'herb_firebloom',  lvl: 1,  price: 5,  mins: 40,  yield: 2, xp: 50,  base: 16 },
-    rock_vine:  { name: 'Rock Vine',  seed: 'seed_rock_vine',  item: 'herb_rock_vine',  lvl: 5,  price: 10, mins: 320, yield: 2, xp: 120, base: 30 },
-    cloudpetal: { name: 'Cloudpetal', seed: 'seed_cloudpetal', item: 'herb_cloudpetal', lvl: 10, price: 15, mins: 640, yield: 2, xp: 180, base: 40 },
+    carrot:     { name: 'Carrot',     seed: 'seed_carrot',     item: 'crop_carrot',     lvl: 1,  price: 2,  mins: 8,    yield: 2, xp: 25,  base: 8 },
+    firebloom:  { name: 'Firebloom',  seed: 'seed_firebloom',  item: 'herb_firebloom',  lvl: 1,  price: 5,  mins: 40,   yield: 2, xp: 50,  base: 16 },
+    rock_vine:  { name: 'Rock Vine',  seed: 'seed_rock_vine',  item: 'herb_rock_vine',  lvl: 5,  price: 10, mins: 320,  yield: 2, xp: 120, base: 30 },
+    cloudpetal: { name: 'Cloudpetal', seed: 'seed_cloudpetal', item: 'herb_cloudpetal', lvl: 10, price: 15, mins: 640,  yield: 2, xp: 180, base: 40 },
+    /* v2.3.3131: the plan's two food crops (docs/FARMING-PLAN.md, "Six starter
+       crops"), for the Garden Stew and the Pumpkin Pie (data.js DISHES).  The
+       potato is the one crop that yields 3 -- fertilized, 4 or 5 (farmYield's
+       chance at the half).  The pumpkin is the long one: 22 hours watered,
+       planted once a day.  Every seed still costs at least a coin a crop, so
+       Diego (half of `base`, falling as his pile grows) is never a faucet. */
+    /* `v`: the record version a bed of it needs (FARM.V); the first four
+       have none, 1.  APPEND new crops: FARM_CROP_IDS below is in this order,
+       and caps.farmCrops counts it. */
+    potato:     { name: 'Potato',     seed: 'seed_potato',     item: 'crop_potato',     lvl: 5,  price: 6,  mins: 160,  yield: 3, xp: 90,  base: 12, v: 2 },
+    pumpkin:    { name: 'Pumpkin',    seed: 'seed_pumpkin',    item: 'crop_pumpkin',    lvl: 10, price: 25, mins: 1760, yield: 2, xp: 320, base: 60, v: 2 },
   },
 };
+
+/* v2.3.3131: the crops this worker grows, in the order they came (FARM.CROPS'
+   own).  caps.farmCrops is how many: the Feed & Seed window offers a crop only
+   below it, as the Cookhouse offers a recipe below caps.cookRows -- caps.farm
+   alone let a newer page offer an older worker's farm seeds it could not sell
+   or plant, and the buy hung on "No answer yet" (review; TRAPS §9). */
+export const FARM_CROP_IDS = Object.freeze(Object.keys(FARM.CROPS));
 
 /* The five things a hand can do to a bed.  A null-prototype map read with
    hasOwnProperty, so no inherited name is ever an op. */
@@ -143,7 +169,8 @@ export function farmGrowMs(crop, watered) {
 
 /* What one bed pays.  A fractional fertilized yield (a 3-crop bed would
    give 4.5) is the whole part plus a chance at one more, so the AVERAGE is
-   exactly FEED_YIELD -- the four starter crops all yield 2, so 3 exactly. */
+   exactly FEED_YIELD -- the four starter crops all yield 2, so 3 exactly.
+   v2.3.3131: the potato yields 3, so its fertilized bed pays 4 or 5. */
 export function farmYield(crop, fed, rand = Math.random) {
   if (!fed) return crop.yield;
   const q = crop.yield * FARM.FEED_YIELD;
@@ -185,7 +212,18 @@ export const farmMethods = {
   _farmNew() {
     const plots = [];
     for (let i = 0; i < FARM.FREE_BEDS; i++) plots.push({ s: 'rough' });
-    return { v: FARM.V, beds: FARM.FREE_BEDS, plots };
+    return { v: 1, beds: FARM.FREE_BEDS, plots };
+  },
+
+  /* v2.3.3131: the record version these beds need -- the highest crop `v`
+     planted in them (FARM.V's note).  A farm of the first four crops is a 1,
+     which every farm worker reads. */
+  _farmShape(plots) {
+    let v = 1;
+    for (const p of plots || []) {
+      if (p && p.s === 'planted' && own(FARM.CROPS, p.crop)) v = Math.max(v, Math.floor(Number(FARM.CROPS[p.crop].v) || 1));
+    }
+    return v;
   },
 
   /* Whatever storage holds, hand back a record every reader can trust: the
@@ -206,7 +244,7 @@ export const farmMethods = {
       }
       plots.push({ s: 'planted', crop: p.crop, plantedAt: p.plantedAt, readyAt: p.readyAt, water: p.water ? 1 : 0, feed: p.feed ? 1 : 0 });
     }
-    return { v: FARM.V, beds, plots };
+    return { v: this._farmShape(plots), beds, plots };
   },
 
   /* v2.3.3127: written by a newer worker (FARM.V above): never healed, never
@@ -284,6 +322,9 @@ export const farmMethods = {
      record's put is ISSUED first and _saveRpg's in the same synchronous run,
      no await between -- see the header. */
   _farmCommit(pid, ps, rec) {
+    /* v2.3.3131: stamped by what the beds hold NOW -- a plant of a potato
+       makes this record a 2, its harvest a 1 again (_farmShape). */
+    rec.v = this._farmShape(rec.plots);
     const p = this.state.storage.put('farm:' + pid, rec);
     if (p && p.catch) p.catch(() => { /* the next action rewrites the whole record */ });
     if (ps) this._saveRpg(pid, ps);

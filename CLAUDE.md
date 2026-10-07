@@ -1496,7 +1496,16 @@ remnant to migrate server-side, not a mode to preserve.
       row and the Eat/Drink on its dish -- `meals` alone let a newer page offer
       an older worker rows it had not got (TRAPS §9);
     - kill switch `meals: false` (caps.meals false, not absent: the bag keeps
-      Eat and Drink); `meals` suite, `mp-meals`: docs/specs/meals.md.
+      Eat and Drink); `meals` suite, `mp-meals`: docs/specs/meals.md;
+    - since v2.3.3131 (2b) the POTATO (Farming 5, yields 3 -- fertilized 4 or
+      5) and the PUMPKIN (Farming 10, 22 h watered), `FARM.V` 2; the GARDEN
+      STEW heals 150 at once (`slot: 'now'`, no slot, refused in an arena),
+      the PUMPKIN PIE is a meal of +10% combat XP (`_buffs.xpMul`, read
+      bounded in prog3.js `_prog3AwardXp`, never on flat XP;
+      `BUFF_MAGNITUDES` keeps it); a farm record is stamped with what its beds
+      HOLD (`_farmShape`: a potato or pumpkin makes it a 2), and
+      `caps.farmCrops` (how many crops the worker grows, `FARM_CROP_IDS`
+      append-only) gates the Feed & Seed's crops, as `cookRows` the recipes.
   - Since v2.3.3120 PET TRAPPING -- the owner: "your trapping level governs
     what level monster you can capture ... The best success rate for the
     lowest tier monster should be about 1%. And each trap should cost at least

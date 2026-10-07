@@ -42,11 +42,7 @@ const BUFF_MAGNITUDES = {
   damageMul: 'damage',   /* v2.3.2058: the Fury Tonic's x2 */
   spdMul: 'spd',         /* v2.3.2062: the Swift Draught's x1.5 */
   manaFlat: 'mana',      /* v2.3.2062: the Mana Draught's per-tick regen floor */
-  /* v2.3.3130: the Pumpkin Pie's +XP (a meal of the potato's phase).  This
-     worker reads no pie, but kept here so a rollback to it does not prune a
-     running pie's strength as an expired timer -- the phone then said +10%
-     while the worker paid nothing (review of that phase). */
-  xpMul: 'xp',
+  xpMul: 'xp',           /* v2.3.3131: the Pumpkin Pie's +10% combat XP (prog3.js reads it, bounded; a 2a worker keeps it too, for a rollback) */
 };
 
 export const persistenceMethods = {
