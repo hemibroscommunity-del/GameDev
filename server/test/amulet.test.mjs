@@ -101,7 +101,7 @@ const lastPlayerState = (ws) => [...ws.sent].reverse().find((m) => m.type === 'p
 const realRandom = Math.random;
 
 // ── 1. join ingestion: a first connect takes no claimed ledger ──
-/* v2.3.3113: it used to CAPTURE the claim (clamped to 250 nuggets / 50
+/* v2.3.3129: it used to CAPTURE the claim (clamped to 250 nuggets / 50
    bars).  A first join now takes nothing from the payload (join.js: a new
    character starts from the server's defaults), so a new character holds
    no gold -- the honest and the forged claim alike.  The clamps still
@@ -375,7 +375,7 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   const wsg = fakeWs('g1');
   await join(wsg, 'bp_gem_p', { rpgLifeSkills: { gems: forgedGems } });
   const psg = room.playerState['bp_gem_p'];
-  /* v2.3.3113: a first connect takes no gems from the payload (join.js: a
+  /* v2.3.3129: a first connect takes no gems from the payload (join.js: a
      new character starts from the server's defaults) -- and is stamped, so
      no later join adopts any either. */
   check('a first connect takes no claimed gems',

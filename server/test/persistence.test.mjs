@@ -23,7 +23,7 @@
  * needed here.  Uses the shared map-backed mock storage pattern from
  * hardening.test.mjs. */
 import { GameRoom } from '../src/index.js';
-import { NEW_CHARACTER_COINS } from '../src/join.js';   /* v2.3.3113: a new character's purse */
+import { NEW_CHARACTER_COINS } from '../src/join.js';   /* v2.3.3129: a new character's purse */
 
 function makeState() {
   const store = new Map();
@@ -200,7 +200,7 @@ check('reconnect restores the defense track', ps2.defenseSkill && ps2.defenseSki
   // v2.3.1659 (prog3): a fresh character is level 3 now — Σ of the
   // three trained skills at their level-1 floor (PROGRESSION-REDESIGN
   // §2; the §11 "new-player first hour" invariant).
-  /* v2.3.3113: ...holding the new character's purse, as the client's own
+  /* v2.3.3129: ...holding the new character's purse, as the client's own
      new character does (it was 0 here only because this join sent no
      rpgCoins, which a first join no longer reads). */
   check('rejoin after reset is a fresh level-3 bootstrap', ps3 && ps3.level === 3 && ps3.coins === NEW_CHARACTER_COINS && Object.keys(ps3.inventory || {}).length === 0, ps3 && { level: ps3.level, coins: ps3.coins });

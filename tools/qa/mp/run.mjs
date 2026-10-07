@@ -287,7 +287,7 @@ const SCENARIOS = {
   target: () => import('./mp-target.mjs'), /* v2.3.2243: the targeting perimeter, the lock that holds, the switch arrows, magic splash = arrow */
   tattoos: () => import('./mp-tattoos.mjs'), /* v2.3.1949: face + arm tattoos survive both server gates, end to end */
   roster: () => import('./mp-roster.mjs'), /* v2.3.1923: the device's character list — order, delete, the ten cap */
-  pickerrestart: () => import('./mp-pickerrestart.mjs'), /* v2.3.3113: the picker's restart of the bro this device plays clears the device's copy too -- nothing old comes back on screen or into the record */
+  pickerrestart: () => import('./mp-pickerrestart.mjs'), /* v2.3.3129: the picker's restart of the bro this device plays clears the device's copy too -- nothing old comes back on screen or into the record */
   drops: () => import('./mp-drops.mjs'), /* v2.3.1924: iron pieces to the bag, the gem to the glass */
   drillback: () => import('./mp-drillback.mjs'), /* v2.3.1922: the drill back-chip is not under the gold, and is paid for once */
   bootstall: () => import('./mp-bootstall.mjs'), /* v2.3.1921: a worker that never answers must not strand the login door */

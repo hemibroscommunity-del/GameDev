@@ -86,7 +86,7 @@ export function healLifeSkills(blob) {
  * when anything changed; XP is never touched (a level-0 skill's XP is already
  * counted toward level 1 -> 2 by the `|| 1`). */
 export const LIFE_SKILL_KEYS = ['woodcutting', 'fishing', 'mining', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'farming', 'trapping'];
-/* v2.3.3113: a brand-new character's life skills, exactly the client's
+/* v2.3.3129: a brand-new character's life skills, exactly the client's
  * createDefaultLifeSkills (gameSystems.js; mirror-audit pins the two) --
  * every skill at level 1, the empty pouches, no pet.  The first join used
  * to take them from the join payload, wholesale and uncapped (join.js). */

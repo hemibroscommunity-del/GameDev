@@ -498,7 +498,7 @@ export function setupWebSocket(ctx) {
             sh: getShoes(),
             bs: S.bodySize || 'slim',
             /* This device's copy of the character (the rpg* fields).
-               v2.3.3113: the worker reads NONE of them on a character's
+               v2.3.3129: the worker reads NONE of them on a character's
                first connection (no rpg:<playerId> record yet) -- a new
                character starts from the server's own defaults -- and on
                later connects the stored record wins, bar the few fields

@@ -20,7 +20,7 @@
  *      keys, keeps fresh ones, and rate-limits to one sweep per hour.
  */
 import { GameRoom } from '../src/index.js';
-import { NEW_CHARACTER_COINS } from '../src/join.js';   /* v2.3.3113: a new character's purse */
+import { NEW_CHARACTER_COINS } from '../src/join.js';   /* v2.3.3129: a new character's purse */
 import { OP_PRUNE } from '../src/inbox.js'; /* v2.3.2438 */
 
 function makeState() {
@@ -102,7 +102,7 @@ const rOff = await room._creditPlayer('bp_inbox_bob', { opId: 'test:off:1', sour
 check('offline credit parked in inbox', rOff === 'inboxed' && state._store.get('inbox:bp_inbox_bob')?.length === 1, state._store.get('inbox:bp_inbox_bob'));
 const wsB = fakeWs('bob');
 await join(wsB, 'bp_inbox_bob');
-/* v2.3.3113: a new character starts with the client's own starting purse
+/* v2.3.3129: a new character starts with the client's own starting purse
    (NEW_CHARACTER_COINS), so the drained 120 lands on top of it. */
 check('join drains inbox into coins', room.playerState['bp_inbox_bob'].coins === NEW_CHARACTER_COINS + 120, room.playerState['bp_inbox_bob'].coins);
 check('drained inbox key deleted', !state._store.has('inbox:bp_inbox_bob'));

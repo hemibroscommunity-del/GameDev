@@ -1,4 +1,4 @@
-# A new character starts from the server's defaults (v2.3.3113)
+# A new character starts from the server's defaults (v2.3.3129)
 
 > Found by the review of the farm (PR #827) and proved on a copy of `main`.
 > Owner, 2026-10-06: *"Yes fix all of your recommended fixes. Game is still a

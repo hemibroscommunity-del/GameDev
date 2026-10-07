@@ -1,4 +1,4 @@
-/* A new character starts from the server's defaults -- v2.3.3113
+/* A new character starts from the server's defaults -- v2.3.3129
  * (docs/specs/fresh-start.md).
  *
  * Found by the farm's review (PR #827), proved on a copy of main. Owner:

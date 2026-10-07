@@ -31,7 +31,7 @@ intent ONLY — never a description of what's built; code is truth.
 2026-07-02).** Every piece of client-local game logic you find —
 localStorage-first flows, client-side spawning, self-credited rewards,
 comments about "SP players" in the bootstrap caps — is a LEGACY REMNANT
-of the prototype era, not a mode to preserve.  (Since v2.3.3113 the
+of the prototype era, not a mode to preserve.  (Since v2.3.3129 the
 bootstrap trusts none of it: a character with no `rpg:` record starts from
 the server's own defaults, every `rpg*` claim in its first join dropped,
 and a READ that fails ends the join rather than passing for a new

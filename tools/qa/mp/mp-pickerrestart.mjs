@@ -1,12 +1,12 @@
-/* THE PICKER'S RESTART STARTS THE BRO CLEAN ON THIS DEVICE TOO (v2.3.3113).
+/* THE PICKER'S RESTART STARTS THE BRO CLEAN ON THIS DEVICE TOO (v2.3.3129).
  *
  * Found by the review of the fresh start (docs/specs/fresh-start.md): the
  * character picker's "Restart at level 1" wipes the record on the worker, but
  * for the bro this device plays it left the device's own copy (bt_rpg and the
  * rest) in place.  Picking the same row next joined with it:
- *   - before v2.3.3113 the worker took that join back as the character, so
+ *   - before v2.3.3129 the worker took that join back as the character, so
  *     the restart silently did nothing;
- *   - since v2.3.3113 the worker takes nothing from a first join, so the old
+ *   - since v2.3.3129 the worker takes nothing from a first join, so the old
  *     shield, stats and spare gear stayed on screen, and the next join folded
  *     the spare gear back into the record (the gear stashes merge every join).
  *
