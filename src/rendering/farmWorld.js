@@ -30,7 +30,13 @@
  *            resources' labels was "I just don't want the screen to be too
  *            busy with text" (v2.3.3059).
  *   WORK     the bits that fly from your hands as you kneel at a bed
- *            (S._farmWork): dirt, seeds, water, compost, the crop popping up.
+ *            (S._farmWork): dirt, seeds, water, compost, the crop popping up
+ *            -- from where the hands meet what stands where the cook's pan is
+ *            (effectsRenderer _updateFarmKneel, S._farmHands).
+ *   COVERS   those pictures -- the crate of earth, seeds or water and the
+ *            straw (public/sprites/skills/farm-cover-*.png) and the compost
+ *            bin (a farm picture already): src/data/farmCovers.js.  Loaded
+ *            here with the rest, so the effects renderer only looks them up.
  *
  * Nothing here decides anything: the beds are only ever the worker's
  * farm_state (ui/mobile/farmBus.js).
@@ -43,7 +49,10 @@
  */
 import { Sprite, Assets, Container, Graphics, Text, Texture } from 'pixi.js';
 import { FARM_THINGS, FARM_BEDS, FARM_CROP_FOOT_DY, farmBlockers } from '../data/farmLayout.js';
-import { FARM_ART, FARM_ART_V } from '../data/farmArt.js';
+import { FARM_ART } from '../data/farmArt.js';
+import { farmArtUrl } from '../data/farmArtUrl.js';
+import { FARM_COVERS } from '../data/farmCovers.js';   /* v2.3.3124: what stands where the cook's pan is */
+import { setFarmCoversReady } from './standIns.js';
 import { setZoneBlockerHook } from '../data/worldProps.js';
 import { SHADE } from './formShade.js';
 import { releaseShadowTextures } from './lightfx/shadows.js';
@@ -56,10 +65,8 @@ const OBJ_BASE = '/world/objects/';
 const OBJ_PREFIX = 'farm-object/';
 const OBJ_QUERY = '?farm=1';
 
-/* ── the pictures ── */
-export function farmArtUrl(name) {
-  return '/world/farm/' + name + '.png?v=' + encodeURIComponent(FARM_ART_V);
-}
+/* ── the pictures ── (the address is data: src/data/farmArtUrl.js) */
+export { farmArtUrl };
 const _tex = new Map();       /* 'farm:<name>' / 'obj:<atlas>/<frame>' -> Texture */
 const _sheets = new Map();    /* atlas -> sheet url (loaded) */
 let _loadP = null;
@@ -78,6 +85,8 @@ function farmNames() {
   for (const n of Object.keys(FARM_ART)) {
     if (n.indexOf('bed-') === 0 || n === 'plot' || /-(sprout|young|grown|ripe)$/.test(n)) out.add(n);
   }
+  /* v2.3.3124: and a cover that is a farm picture (the compost bin) */
+  for (const k of Object.keys(FARM_COVERS)) if (FARM_COVERS[k].art) out.add(FARM_COVERS[k].art);
   return [...out];
 }
 /* the five steps' pictures, the right stick's own (public/ui/controls/),
@@ -142,8 +151,28 @@ export function preloadFarmArt() {
       farmArtStats.loaded++;
     }, () => { farmArtStats.failed++; }));
   }
+  /* v2.3.3124: the covers -- what stands where the cook's pan is when you
+     kneel at a bed (effectsRenderer _updateFarmKneel looks them up by these
+     same addresses; the compost bin is a farm picture, loaded above) */
+  for (const key of Object.keys(FARM_COVERS)) {
+    const c = FARM_COVERS[key];
+    if (!c.url) continue;
+    jobs.push(Assets.load(c.url).then((t) => {
+      if (gen !== _gen) { Assets.unload(c.url).catch(() => {}); return; }
+      _tex.set('cover:' + key, t);
+      farmArtStats.loaded++;
+    }, () => { farmArtStats.failed++; }));
+  }
   _loadP = Promise.all(jobs).then(() => {
-    if (gen === _gen) _ready = true;
+    if (gen === _gen) {
+      _ready = true;
+      /* the farmer kneels only with every cover in: a step whose cover is
+         missing would show the cook's pan */
+      setFarmCoversReady(Object.keys(FARM_COVERS).every((key) => {
+        const c = FARM_COVERS[key];
+        return c.url ? _tex.has('cover:' + key) : _tex.has('farm:' + c.art);
+      }));
+    }
     farmArtStats.ms = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
   });
   return _loadP;
@@ -154,10 +183,12 @@ export function freeFarmArt() {
   _gen++;
   _loadP = null;
   _ready = false;
+  setFarmCoversReady(false);   /* v2.3.3124 */
   if (!_tex.size && !_sheets.size) return;
   try { releaseShadowTextures(); } catch (e) { /* no shadows yet */ }
   for (const [k, t] of _tex) {
     if (k.indexOf('farm:') === 0) Assets.unload(farmArtUrl(k.slice(5))).catch(() => {});
+    else if (k.indexOf('cover:') === 0) { const c = FARM_COVERS[k.slice(6)]; if (c && c.url) Assets.unload(c.url).catch(() => {}); }
     else if (k.indexOf('icon:') === 0) { try { t.destroy(true); } catch (e) { /* gone */ } }
   }
   for (const url of _sheets.values()) Assets.unload(url).catch(() => {});
@@ -399,14 +430,18 @@ export class FarmWorld {
     const t = now - w.startedAt;
     while (w._beat < w._beats.length && t >= w._beats[w._beat]) {
       w._beat++;
-      this._burst(w, now);
+      this._burst(S, w, now);
     }
   }
 
-  _burst(w, now) {
+  _burst(S, w, now) {
     const B = this.beds[w.bed];
     if (!B) return;
-    const hx = B.b.x + B.b.w / 2, hy = B.b.y + 16;   /* where the hands go into the earth */
+    /* from the mouth of what stands where the cook's pan is -- the crate's
+       opening, the bin's compost (effectsRenderer _updateFarmKneel); the bed's
+       back if it is not drawn */
+    const h = w.step !== 'harvest' && S && S._farmHands && now - S._farmHands.at < 250 ? S._farmHands : null;   /* a harvest's leaves fly from the crop */
+    const hx = h ? h.x : B.b.x + B.b.w / 2, hy = h ? h.y : B.b.y + 16;
     /* sized to be SEEN at the farm's zoom (~0.5 CSS px a game px): a clod
        is 2-4 CSS px, as a pixel of the bro's own art is */
     const KINDS = {
@@ -427,9 +462,9 @@ export class FarmWorld {
       g.fill({ color: k.cols[i % k.cols.length] });
       g.x = hx + (r1 - 0.5) * 30;
       g.y = hy;
-      /* in front of the kneeling farmer (the fire-lighter's figure is drawn
-         over `particles`), flying up from the hands */
-      (this.layers.projectiles || this.layers.particles).addChild(g);
+      /* in front of the kneeling farmer and what stands beside him (both on
+         gestureFront, created before these), flying up from the hands */
+      (this.layers.gestureFront || this.layers.projectiles || this.layers.particles).addChild(g);
       this.bits.push({ g, vx: (r1 - 0.5) * 140 * k.spread, vy: -(90 + r2 * 120) * k.up, born: now, life: 520 + r2 * 260, y0: hy + 6 });
     }
   }

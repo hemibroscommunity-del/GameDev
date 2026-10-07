@@ -16,7 +16,7 @@
  */
 import React from 'react';
 import { FARM } from '@/data/farmCrops.js';
-import { farmArtUrl } from '@/rendering/farmWorld.js';
+import { farmArtUrl } from '@/data/farmArtUrl.js';
 import { startFarmStep, farmSeedToPlant, farmSeedsInHand, pickFarmSeed } from '@/game/farmWalk.js';
 
 const WORDS = { dig: 'Dig', plant: 'Plant', water: 'Water', feed: 'Fertilize', harvest: 'Harvest' };

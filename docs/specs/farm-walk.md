@@ -10,6 +10,9 @@
 >
 > And of the old farm map: *"This map isn't suited for a farm. It was an early
 > idea of having it be in a cave."*
+>
+> And then, of the kneel: *"Cooking animation might be better. You can use
+> something to occlude the part where the pan or log is."*
 
 Until now the beds lived in the Feed & Seed's window: pick a tool, tap a
 square. Now they lie on **your farm**, a place you walk on, and you work each
@@ -34,19 +37,21 @@ take the steps, and what you see, has changed.
    - a tap on the right stick, which wears the step's picture there;
    - **E** on a keyboard;
    - a tap on the bed itself.
-4. **You kneel and work it.** You are seated at the bed's back, facing the
-   screen, and play the fire-lighter's kneel (the firemaking strip's first
-   three frames) with a mound of earth drawn where its log was. Dirt, seeds,
-   water or compost fly from your hands at each lean, with a sound each
-   (recordings already in the game: the dirt footstep at different speeds,
-   the lure's plop for water).
+4. **You kneel and work it.** You are seated at the bed's back, a little left
+   of its middle, facing the screen, and crouch as the cook does, working your
+   arms to and fro. Where the cook's pan would be stands what the step works
+   from: a crate of earth, of seeds or of water, the compost bin, or the
+   crate's straw for what you pick (below, "The farmer's kneel"). Dirt, seeds,
+   water or compost fly from it each time your hands push out, with a sound
+   each (recordings already in the game: the dirt footstep at different
+   speeds, the lure's plop for water); a harvest's leaves fly from the crop.
 5. **When the kneeling ends** the step goes to the worker as one `farm_act`.
    The bed changes when the worker answers; a harvested crop flies from the
    bed to your bag.
 6. **Walk away** (or die) while kneeling and the step is dropped. Nothing is
    sent.
 
-| Step | Kneels for | Leans |
+| Step | Kneels for | Pushes out |
 |---|---|---|
 | Dig | 1.5 s | 3 |
 | Plant | 1.1 s | 2 |
@@ -71,6 +76,82 @@ last kind you planted; else the first you hold in the crop order that your
 Farming level can plant. With two or more kinds in the bag, each kind's ripe
 picture sits over the button and a tap picks one. That is the only choice
 farming asks of you, made where you stand.
+
+## The farmer's kneel
+
+The first cut knelt in the **fire-lighter's** figure, with a mound of earth
+painted over its log. The owner asked for the cook's instead, with something
+standing in front of the pan. They also asked: *"The tricky part is that the
+character is customized from the login picker, right?"* It is, and this is
+how the kneel handles that.
+
+**The figure is the cook's, worn as the cook wears it.** The cook strip
+(`public/sprites/skills/cook-strip.webp`, 24 frames of 213 × 220, drawn
+65.1 game px tall) is made for each player when first wanted, as since
+v2.3.3077 (for the farmer, on arriving at the farm, under its loading
+screen):
+
+- your skin is baked into it, and so are your drawings, on their own layer
+  over the body;
+- the shirt, the greaves and the plate are their own strips over it, and the
+  legless body is used under greaves;
+- your hair and hat are moved onto it.
+
+Everything you picked at the login picker or put on since is already there.
+`_placeCookFigure` in effectsRenderer places all of it. The campfire's cook
+used to be placed inside `_updateExtractionCue`; it now uses the same method,
+so there is one figure and one set of rules.
+
+**The farmer plays frames 4, 5 and 6, then 5 again**
+(`FARM_KNEEL_ORDER`), one every 110 ms. These are the three frames where the
+cook holds the pan OUT to the side, its bowl clear of the hands. In the
+others the hands pull it in over themselves, and nothing in front of it could
+hide it without hiding the hands too. The dirt flies each time the hands push
+out (frame 6, every 440 ms from 220 ms), so digging pushes three times and
+planting twice.
+
+**One picture stands where the pan is,** drawn over every layer the figure
+wears. It is created after the body, drawings, greaves, shirt and plate in
+the same layer (`farmCoverSprite`), so it never needs to know what you look
+like:
+
+| Step | What stands there |
+|---|---|
+| Dig | the owner's open crate (BroTown's `crate-3`), filled with the dug bed's own earth |
+| Plant | the same crate, filled with the seed sacks' seeds |
+| Water | the same crate as a tub of the owner's fresh water |
+| Fertilize | the owner's compost bin (a farm picture already) |
+| Harvest | the crate as it is, a bed of straw for what you pick |
+
+Every pixel comes from the owner's own art (BroTown's objects, the farm
+sheets, the Fresh water picture). `tools/world/make_farm_covers.py` makes
+them:
+
+1. it finds the pan in those three frames: what is drawn right of the hands
+   between the shoulders and the knees;
+2. it fills the crate's opening with each filling;
+3. it fits each picture over the pan, at its own shape, standing just below it
+   and right of the hands;
+4. it **fails** if one pixel of the pan would show.
+
+It writes `public/sprites/skills/farm-cover-*.png` (126 × 110 each) and the
+GENERATED `src/data/farmCovers.js`. That file holds each cover's box in the
+cook frame's own pixels, which step uses which, the frames the farmer plays,
+and each cover's mouth, where the bits fly from. Re-run it after the cook
+strip or one of those pictures changes:
+`python3 tools/world/make_farm_covers.py` (numpy and Pillow).
+
+**Where it stands:** the cook's boots are put where yours are
+(`FARM_FIGURE_X`, the boots' middle in its wide cell). You are seated 19 game
+px left of the bed's middle (`FARM_KNEEL_DX`), so the cover stands over the
+bed.
+
+**Until it is ready** (`farmKneelReady`: the cook's pose made and every cover
+loaded), your walking body stays drawn, kneeling nowhere, and the step still
+goes to the worker. The farm's loading screen waits for both
+(`holdFarmUntilReady`, at most 12 s), so in practice it is always ready. Once
+it is, the figure is drawn for exactly as long as the step stands, which is
+as long as your body is hidden for it.
 
 ## The farm
 
@@ -131,7 +212,10 @@ most 12 s:
 - the Wheel's object sheets the farm uses, at an address of the farm's own
   (`?farm=1`), so the Wheel letting go of its copy never takes the farm's;
 - the five step pictures;
-- the kneel's frames (`ensureStandIn('fire')`, the mound baked in).
+- the kneel: the cook's pose with your look (`ensureStandIn('cook')`, and
+  the greaves', plate's and shirt's cook strips for what you wear) and the
+  four covers (`farm-cover-*.png`; the compost bin is a farm picture,
+  above).
 
 Every way onto the farm goes through it: the Feed & Seed, the Land Office,
 the old FarmPanel, the game-events trip, and the ways back from a Dungeon
@@ -140,7 +224,10 @@ Workshop dungeon (`zoneTransitions.js` and both of `dungeonWaves.js`'s).
 **Memory.** Everything is let go on leaving (`freeFarmArt` from
 `freeZoneAssets`, the map by `freeZoneMap`). The farm's map decodes to 22 MB,
 where the cave's was 6 MB, and the farm's pictures to at most 9 MB, all held
-only while you are on the farm.
+only while you are on the farm. The kneel's pose is the cook's own: two
+4.3 MB strips on the graphics chip (the body, and the legless body for under
+greaves), made once and kept, as cooking at a campfire keeps it. The first
+cut's fire-lighter was about 6 MB. The four crate covers are 0.2 MB.
 
 ## Wire and worker
 
@@ -181,7 +268,9 @@ The window is the farm's shop and its order board:
 | `src/game/farmTrip.js` | `holdFarmUntilReady`: the loading screen until the farm is all there. |
 | `src/rendering/farmWorld.js` | Draws the farm: the things, the beds and their crops, the labels, the bits from your hands; the pictures' loading and freeing; the shadow casters. |
 | `src/ui/mobile/FarmBedPrompt.jsx` | The step's button and the seed picker. |
-| `src/rendering/systems/effectsRenderer.js` | The kneel: the firemaking strip's frames 0–2 with the mound (`public/sprites/skills/farm-mound.png`, from `tools/make_farm_mound.py`) composited after the skin bake, so its browns are never recoloured as skin. |
+| `src/rendering/systems/effectsRenderer.js` | The kneel: the cook's figure (`_placeCookFigure`, shared with the campfire's cook) on the farmer's frames, and the step's cover over it (`_updateFarmKneel`). |
+| `src/data/farmCovers.js` | GENERATED by `tools/world/make_farm_covers.py`: the covers, their boxes in the cook frame, which step uses which, the farmer's frames. |
+| `src/data/farmArtUrl.js` | A farm picture's address, as data, so the network's code (`farmFeedback.js`) imports no renderer. |
 | `public/ui/controls/farm-*.svg` | The five step pictures (the stick, the labels, the button). |
 | `tools/world/bake_farm_ground.py` | The ground's bake. |
 | `tools/world/add-farm-art.mjs` | The owner's farm sheets cut into `public/world/farm/` and `src/data/farmArt.js`. |
@@ -198,8 +287,9 @@ two pictures still to come.
 ## Testing
 
 - **Server:** `server/test/farmwalk.test.mjs` (in `npm test`):
-  1. the kneel: each step's time, its frames standing at both ends, its
-     leans;
+  1. the kneel: the farmer's frames (4-6, to and fro), the hands pushing out
+     on the far frame, every step's cover, each cover's file the size its
+     box says, and each box over the pan and clear of the hands;
   2. `bedNext`'s words, the timer, the crop's stage and soil;
   3. **the worker agrees:** a bed walked from grass through `GameRoom`'s
      `farm_act` by exactly the steps the game offers, nothing offered while it
@@ -213,9 +303,11 @@ two pictures still to come.
   7. the tile grid: open ground but for the exit under the gate;
   8. every way onto the farm holds you under its loading screen.
 - **On a phone:** `tools/qa/mp/mp-farmwalk.mjs`
-  (`node tools/qa/mp/run.mjs farmwalk`, 20 checks). Onto the farm under its
-  loading screen; all 41 things and the step pictures drawn; E kneels (the
-  farm's frames, the body hidden) and sends one `farm_act`; the seed picker;
+  (`node tools/qa/mp/run.mjs farmwalk`, 24 checks). Onto the farm under its
+  loading screen; all 41 things and the step pictures drawn; E kneels in the
+  cook's figure, dressed in plate and greaves for the check, with the soil
+  crate drawn over every layer and over the pan, and sends one `farm_act`;
+  each step's kneel pictured (`out/farmwalk-kneel-<step>.png`); the seed picker;
   the stick's tap plants, a tap on the bed waters, the button fertilizes;
   no compost refused; walking away cancels; ripe labels; the harvest pays 3
   carrots and flies them to the bag; the barn's wall stops your boots; the

@@ -150,15 +150,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`at bed 0 the stick wears the spade (${ic0}), the prompt says "${pr0 && pr0.text}", and that bed alone says "${wa0 && wa0.beds[0].label && wa0.beds[0].label[0]}" (the others ${wa0 && wa0.beds.slice(1).map((b) => (b.label || []).length).join('')} words)`,
       n0 && n0.near && n0.near.step === 'dig' && ic0 === 'farm-dig' && pr0 && pr0.step === 'dig' && /Dig/.test(pr0.text)
         && wa0 && wa0.beds[0].label[0] === 'Needs Digging' && wa0.beds.slice(1).every((b) => b.label && b.label.length === 0), { n0, ic0, pr0, wa0: wa0 && wa0.beds });
+    /* v2.3.3124: dressed in the steel plate and greaves (the client's own equip
+       seam): what stands where the cook's pan is must lie over everything you
+       wear */
+    await A.page.evaluate(() => { window.__btSetGear('chest', 'steelplate'); window.__btSetGear('legs', 'steelgreaves'); });
+    await A.page.waitForTimeout(400);
     const a0 = (await acts()).length;
     await A.page.keyboard.press('e');
     /* read in one go while the 1.5 s step lasts (a screenshot on this box can
        take most of it) */
-    const k0 = await until(() => A.page.evaluate(() => ({ w: window.__btFarmWalk(), fig: window.__btFireFigure ? window.__btFireFigure() : null, body: !!window._gameState.current._standInBody })),
-      (v) => v.w && v.w.work && v.fig && v.fig.visible && v.fig.farm && v.fig.frame >= 1 && v.body, 2000);
+    const fig = () => A.page.evaluate(() => ({ w: window.__btFarmWalk(), fig: window.__btFarmFigure ? window.__btFarmFigure() : null, body: !!window._gameState.current._standInBody }));
+    /* a picture of the kneel: the step held while it is taken (a screenshot on
+       this box can outlast a step), then let end a moment later as ever */
+    const kneelShot = async (name) => {
+      const held = await A.page.evaluate(() => { const w = window._gameState.current._farmWork; if (!w) return false; w.doneAt = Date.now() + 4000; return true; });
+      if (!held) return;
+      await until(fig, (v) => v.fig && v.fig.visible, 1000);
+      await shot(name);
+      await A.page.evaluate(() => { const w = window._gameState.current._farmWork; if (w) w.doneAt = Date.now() + 150; });
+    };
+    const k0 = await until(fig, (v) => v.w && v.w.work && v.fig && v.fig.visible && v.body, 2000);
     await shot('kneel-dig');
-    rec.ok(`E kneels you at the bed: the fire-lighter's figure on the farmer's frames (frame ${k0.fig && k0.fig.frame} of ${k0.fig && k0.fig.farmFrames}), your walking body put away, the step "${k0.w && k0.w.work && k0.w.work.step}"`,
-      k0.w && k0.w.work && k0.w.work.step === 'dig' && k0.fig && k0.fig.farm === true && k0.fig.farmFrames === 3 && k0.fig.frame >= 1 && k0.body, k0);
+    const kf = k0.fig || {};
+    const o = kf.order || {};
+    const inside = (a, b) => !!a && !!b && b.x >= a.x - 0.5 && b.y >= a.y - 0.5 && b.x + b.w <= a.x + a.w + 0.5 && b.y + b.h <= a.y + a.h + 0.5;
+    rec.ok(`E crouches you at the bed as the cook does (the cook strip's frame ${kf.frame}, ${kf.figure && kf.figure.drawnH} px tall), your walking body put away, the step "${k0.w && k0.w.work && k0.w.work.step}"`,
+      k0.w && k0.w.work && k0.w.work.step === 'dig' && [4, 5, 6].includes(kf.frame) && k0.body && kf.figure && kf.figure.drawnH > 40, k0);
+    rec.ok(`...a crate of earth stands where the pan is (${kf.cover}), drawn over every layer you wear -- the plate and greaves too (cover ${o.cover} over body ${o.body}, greaves ${o.legs}, plate ${o.chest}) -- its box round the pan's whole area`,
+      kf.cover === 'soil' && o.cover > Math.max(o.body, o.ink, o.shirt, o.legs, o.chest) && o.legs >= 0 && o.chest >= 0 && inside(kf.coverBox, kf.panBox),
+      { cover: kf.cover, order: o, coverBox: kf.coverBox, panBox: kf.panBox });
+    await A.page.evaluate(() => { window.__btSetGear('chest', 'none'); window.__btSetGear('legs', 'none'); });
     const v0 = await until(view, (v) => v && v[0] === 'tilled', 6000);
     const w2 = await until(world, (w) => w && w.beds[0].soil === 'bed-dug' && w.beds[0].label && w.beds[0].label[0] === 'Needs Planting', 4000);
     const a0b = await acts();
@@ -191,6 +212,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         changedTouches: [new Touch({ identifier: 91, target: el, clientX: x, clientY: y })] });
       el.dispatchEvent(mk('touchstart')); el.dispatchEvent(mk('touchend'));
     });
+    await kneelShot('kneel-plant');
     const v1 = await until(view, (v) => v && v[0] === 'planted:carrot', 7000);
     const w3 = await until(world, (w) => w && w.beds[0].crop === 'carrot-sprout' && w.beds[0].label && w.beds[0].label.length === 2, 4000);
     await shot('planted');
@@ -205,6 +227,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { x: r.left + (b.x + b.w / 2 - S.camera.x) * S._worldScaleX, y: r.top + (b.y + b.h * 0.6 - S.camera.y) * S._worldScaleY };
     }, B0);
     await A.page.touchscreen.tap(bedPt.x, bedPt.y);
+    await kneelShot('kneel-water');
     const v2 = await until(view, (v) => v && v[0] === 'planted:carrot+w', 7000);
     const bt = await A.page.evaluate(() => window.__btBedTap || null);
     const w4 = await until(world, (w) => w && w.beds[0].soil === 'bed-wet' && w.beds[0].label && w.beds[0].label[1] === 'Needs Fertilizer', 4000);
@@ -213,6 +236,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(400);
     await until(() => A.page.evaluate(() => { const p = document.querySelector('[data-farm-step]'); return p ? p.getAttribute('data-farm-step') : null; }), (v) => v === 'feed', 3000);
     await tapSel('[data-farm-step="feed"]');
+    await kneelShot('kneel-feed');
     const v3 = await until(view, (v) => v && v[0] === 'planted:carrot+w+f', 7000);
     const w5 = await until(world, (w) => w && w.beds[0].soil === 'bed-wetfed' && w.beds[0].label && w.beds[0].label.length === 1, 4000);
     await shot('tended');
@@ -262,6 +286,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const f0 = (await bag()).farming || { level: 1, xp: 0 };
     await A.page.evaluate(() => { window.__flown = []; new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.tagName === 'IMG' && /carrot-ripe/.test(n.src || '')) window.__flown.push(Date.now()); }).observe(document.body, { childList: true }); });
     await A.page.keyboard.press('e');
+    await kneelShot('kneel-harvest');
     const v7 = await until(view, (v) => v && v[0] === 'rough', 7000);
     let b7 = await bag();
     for (let i = 0; i < 20 && b7.inv.crop_carrot !== 3; i++) { await A.page.waitForTimeout(200); b7 = await bag(); }
@@ -298,7 +323,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const memFarm = await gpu();
     const tot = (m) => (m && !m.err ? m.mb + ((m.cacheNotOnGpu && m.cacheNotOnGpu.mb) || 0) : NaN);
     try { writeFileSync(join(OUT, 'farmwalk-memory.json'), JSON.stringify({ wheel: memWheel, farm: memFarm }, null, 1)); } catch (e) { /* the check says */ }
-    rec.ok(`on the farm the page holds ${memFarm && memFarm.mb} MB on the GPU and ${memFarm && memFarm.cacheNotOnGpu && memFarm.cacheNotOnGpu.mb} MB cached, against the Wheel's ${memWheel && memWheel.mb} and ${memWheel && memWheel.cacheNotOnGpu && memWheel.cacheNotOnGpu.mb}: less in all`,
+    rec.ok(`on the farm the page holds ${memFarm && memFarm.mb} MB on the GPU and ${memFarm && memFarm.cacheNotOnGpu && memFarm.cacheNotOnGpu.mb} MB cached, against the Wheel's ${memWheel && memWheel.mb} and ${memWheel && memWheel.cacheNotOnGpu && memWheel.cacheNotOnGpu.mb}: less, the two together`,
       tot(memFarm) < tot(memWheel), { farm: memFarm && { mb: memFarm.mb, cache: memFarm.cacheNotOnGpu, top: (memFarm.list || []).slice(0, 8) }, wheel: memWheel && { mb: memWheel.mb, cache: memWheel.cacheNotOnGpu && memWheel.cacheNotOnGpu.mb } });
 
     /* ── 7. the barn stops your boots; the gate takes you back out ── */

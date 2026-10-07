@@ -17,7 +17,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { _flyResourceToInventory } from '@/game/lifeSkillRewards.js';   /* v2.3.3124: the crop flies to the bag */
 import { FARM_BEDS } from '@/data/farmLayout.js';
-import { farmArtUrl } from '@/rendering/farmWorld.js';
+import { farmArtUrl } from '@/data/farmArtUrl.js';   /* data only: the network imports no renderer */
 
 const GOOD = '#59BF91';
 const XP_GOLD = '#D8A94D';

@@ -4,12 +4,18 @@
  * the farm.  I want the planting process to happen by your character taking
  * action on the plot of ground.  You dig, you water, you fertilize, etc. ...
  * Make the timer appear above the crop that was planted and any next steps it
- * needs (next in sequence like 'Needs Watering') etc".
+ * needs (next in sequence like 'Needs Watering') etc".  Then: "Cooking
+ * animation might be better.  You can use something to occlude the part
+ * where the pan or log is."
  *
  * The client's rules for it (src/game/farmWork.js, src/data/farmLayout.js --
  * no imports, so node runs them) against the worker's own:
- *   1. the kneel: standing at both ends, kneeling and leaning in by turns, only
- *      the three frames the bake makes, the hands going in at every lean;
+ *   1. the kneel: the cook strip's frames where the pan is held out, to and
+ *      fro, the hands pushing out at its far end; and what stands where the
+ *      pan is (src/data/farmCovers.js): a cover for every step, each on disk
+ *      at the size it says, right of the hands, round the pan's area, its
+ *      mouth in its top half (the pixel-by-pixel check is the tool's own:
+ *      tools/world/make_farm_covers.py fails if one pixel of the pan shows);
  *   2. a bed's next step and its words, its timer, its crop's stage, its soil;
  *   3. THE STEP THE GAME OFFERS IS ONE THE WORKER TAKES: a bed walked from
  *      grass to the bag through the real farm handler, each step the one
@@ -34,14 +40,15 @@ import { fileURLToPath } from 'url';
 import { GameRoom } from '../src/index.js';
 import { FARM } from '../src/farm.js';
 import {
-  FARM_STEPS, FARM_WORK_MS, FARM_STAND_MS, farmWorkFrame, farmWorkBeats, bedNext, farmClock, bedAt,
+  FARM_STEPS, FARM_WORK_MS, FARM_KNEEL_FRAME_MS, farmWorkFrame, farmWorkBeats, bedNext, farmClock, bedAt,
   seedToPlant, seedsInHand, cropStageOf, soilOf,
 } from '../../src/game/farmWork.js';
 import {
-  FARM_ZONE, FARM_GROUND, FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY, FARM_CROP_FOOT_DY, FARM_SPOTS, FARM_GATE,
+  FARM_ZONE, FARM_GROUND, FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY, FARM_KNEEL_DX, FARM_CROP_FOOT_DY, FARM_SPOTS, FARM_GATE,
   FARM_ARRIVE, FARM_FROM_WORKSHOP, FARM_THINGS, FARM_EDGE, farmBlockers,
 } from '../../src/data/farmLayout.js';
 import { FARM_ART } from '../../src/data/farmArt.js';
+import { FARM_COVERS, FARM_STEP_COVER, FARM_KNEEL_ORDER, FARM_PAN_BOX, FARM_FIGURE_X, FARM_COVER_FRAME } from '../../src/data/farmCovers.js';
 import { generateZoneMap } from '../../src/data/gameDisplay.js';
 import { ZONES } from '../../src/data/zones.js';
 
@@ -51,23 +58,53 @@ function check(name, cond, detail) {
   if (cond) console.log('PASS', name);
   else { failures++; console.log('FAIL', name, detail !== undefined ? JSON.stringify(detail) : ''); }
 }
+/* a PNG's size, off its own header (IHDR) */
+function pngSize(file) {
+  const b = fs.readFileSync(file);
+  if (b.toString('ascii', 1, 4) !== 'PNG') return null;
+  return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+}
 const TILE = 32;
 const FOOT_DY = 52;   /* a body's middle to its boots, on a zone with no perspective (entityRenderer standFootDy) */
 
 // ── 1. the kneel ──
 {
+  const order = FARM_KNEEL_ORDER;
+  const far = Math.max(...order);
+  check(`the farmer plays the cook strip's frames ${order.join(', ')}, to and fro: frames of its 24, each one in the order's middle twice`,
+    order.length >= 3 && order.every((f) => Number.isInteger(f) && f >= 0 && f < 24) && order[0] === Math.min(...order)
+      && order.indexOf(far) === order.length / 2, order);
   for (const step of FARM_STEPS) {
     const T = FARM_WORK_MS[step];
     const frames = [];
     for (let t = 0; t < T; t += 10) frames.push(farmWorkFrame(t, T));
     const beats = farmWorkBeats(T);
-    check(`${step}: ${T} ms of kneeling, ${beats.length} times the hands go in`, T >= 900 && T <= 2000 && beats.length >= 2, { T, beats });
-    check(`...standing at both ends (the strip's frame 0), kneeling and leaning in between, never a frame the bake does not make`,
-      frames[0] === 0 && farmWorkFrame(T - 1, T) === 0 && farmWorkFrame(T, T) === 0 && frames.every((f) => f === 0 || f === 1 || f === 2)
-        && frames.includes(1) && frames.includes(2), frames.join(''));
-    check('...each beat the moment a lean begins', beats.every((b) => farmWorkFrame(b, T) === 2 && farmWorkFrame(b - 1, T) === 1 && b > FARM_STAND_MS && b < T - FARM_STAND_MS), beats);
+    check(`${step}: ${T} ms of kneeling, ${beats.length} times the hands push out`, T >= 900 && T <= 2000 && beats.length >= 2, { T, beats });
+    check('...only the order\'s frames, all of them, a frame every ' + FARM_KNEEL_FRAME_MS + ' ms',
+      frames.every((f) => order.includes(f)) && order.every((f) => frames.includes(f))
+        && farmWorkFrame(0, T) === order[0] && farmWorkFrame(FARM_KNEEL_FRAME_MS, T) === order[1], frames.join(','));
+    check('...each push the moment the hands reach the far end', beats.every((b) => farmWorkFrame(b, T) === far && farmWorkFrame(b - 1, T) !== far && b < T), beats);
   }
-  check('nonsense times are the standing frame', farmWorkFrame(-5, 1000) === 0 && farmWorkFrame(NaN, 1000) === 0 && farmWorkFrame(10, 0) === 0 && farmWorkBeats(0).length === 0);
+  check('nonsense times are the first frame', farmWorkFrame(-5, 1000) === order[0] && farmWorkFrame(NaN, 1000) === order[0] && farmWorkFrame(10, 0) === order[0] && farmWorkBeats(0).length === 0);
+
+  /* what stands where the pan is */
+  const F = FARM_COVER_FRAME;
+  const [px0, py0, px1, py1] = FARM_PAN_BOX;
+  const steps = FARM_STEPS.map((st) => st + ':' + FARM_STEP_COVER[st]);
+  check(`every step has a cover (${steps.join(' ')})`, FARM_STEPS.every((st) => !!FARM_COVERS[FARM_STEP_COVER[st]]), FARM_STEP_COVER);
+  for (const key of Object.keys(FARM_COVERS)) {
+    const c = FARM_COVERS[key];
+    const file = c.url ? path.join(REPO, 'public', c.url.split('?')[0]) : path.join(REPO, 'public/world/farm', c.art + '.png');
+    const size = fs.existsSync(file) ? pngSize(file) : null;
+    const [x0, y0, x1, y1] = c.box;
+    check(`the ${key} cover: ${c.url ? c.url.split('?')[0] : 'the farm picture ' + c.art}, ${size && size.w}x${size && size.h} as it says, its box (${c.box.join(',')}) round the pan's area (${FARM_PAN_BOX.join(',')}), right of the hands, standing on the ground and not on the figure's feet, its mouth (${c.mouth.join(',')}) in its top half`,
+      !!size && size.w === c.w && size.h === c.h && (c.art ? !!FARM_ART[c.art] : true)
+        && x0 <= px0 && y0 <= py0 && x1 >= px1 && y1 >= py1 && x0 >= 118 && y1 <= F.h - 20
+        && c.mouth[0] > x0 + (x1 - x0) * 0.3 && c.mouth[0] < x1 && c.mouth[1] > y0 && c.mouth[1] < y0 + (y1 - y0) * 0.5
+        && Math.abs((x1 - x0) / (y1 - y0) - c.w / c.h) < 0.03, { key, size, box: c.box });
+  }
+  check(`the figure stands on its boots' middle (x ${FARM_FIGURE_X} of ${F.w}), left of its cell's middle: the cell is wide for the pan`,
+    FARM_FIGURE_X > 20 && FARM_FIGURE_X < F.w / 2);
 }
 
 // ── 2. a bed's next step, its words, its timer, its look ──
@@ -249,8 +286,8 @@ const inBox = (x, y, half) => blockers.find((b) => x + half > b.x0 && x - half <
   });
   check(`the ${FARM_BEDS.length} beds -- the worker's free deed (${FARM.FREE_BEDS}) -- lie clear of each other and of every footprint`,
     FARM_BEDS.length === FARM.FREE_BEDS && overlaps.length === 0, overlaps);
-  const kneels = FARM_BEDS.map((b, i) => ({ i, x: b.x + b.w / 2, y: b.y + FARM_KNEEL_DY, in: inBox(b.x + b.w / 2, b.y + FARM_KNEEL_DY, 10) }));
-  check('each bed\'s kneel spot (your boots just inside its back edge) is open ground', kneels.every((k) => !k.in), kneels.filter((k) => k.in));
+  const kneels = FARM_BEDS.map((b, i) => ({ i, x: b.x + b.w / 2 + FARM_KNEEL_DX, y: b.y + FARM_KNEEL_DY, in: inBox(b.x + b.w / 2 + FARM_KNEEL_DX, b.y + FARM_KNEEL_DY, 10) }));
+  check('each bed\'s kneel spot (your boots just inside its back edge, left of its middle) is open ground, inside the bed', kneels.every((k, i) => !k.in && k.x > FARM_BEDS[i].x && k.x < FARM_BEDS[i].x + FARM_BEDS[i].w), kneels.filter((k) => k.in));
   check('what grows stands inside its bed', FARM_BEDS.every((b) => FARM_CROP_FOOT_DY > 0 && FARM_CROP_FOOT_DY < b.h));
 }
 
@@ -285,7 +322,7 @@ const inBox = (x, y, half) => blockers.find((b) => x + half > b.x0 && x - half <
     return false;
   };
   check('a visit arrives on open ground', open(sx, sy), { sx, sy });
-  const bedsReached = FARM_BEDS.map((b, i) => (reach(b.x + b.w / 2, b.y + FARM_KNEEL_DY) || anyIn(b.x - FARM_BED_REACH, b.y - FARM_BED_REACH, b.x + b.w + FARM_BED_REACH, b.y - 1) ? i : -1));
+  const bedsReached = FARM_BEDS.map((b, i) => (reach(b.x + b.w / 2 + FARM_KNEEL_DX, b.y + FARM_KNEEL_DY) || anyIn(b.x - FARM_BED_REACH, b.y - FARM_BED_REACH, b.x + b.w + FARM_BED_REACH, b.y - 1) ? i : -1));
   check(`from there your boots reach every bed (${bedsReached.filter((i) => i >= 0).length} of ${FARM_BEDS.length})`, bedsReached.every((i) => i >= 0), bedsReached);
   /* the three places: BroTown's own proximity boxes, on your body's middle */
   const map = generateZoneMap('farm_home');

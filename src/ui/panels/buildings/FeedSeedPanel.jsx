@@ -7,7 +7,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { rememberFarmTrip } from '@/game/wheelTownDoors.js';
 import { ITEM_NAMES, iconFor, thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3118: the order board names and draws goods as the bag does */
 import { FARM_ART } from '@/data/farmArt.js';   /* v2.3.3124: the owner's farm pictures */
-import { farmArtUrl } from '@/rendering/farmWorld.js';
+import { farmArtUrl } from '@/data/farmArtUrl.js';
 import { FARM_ARRIVE } from '@/data/farmLayout.js';   /* v2.3.3124: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
 

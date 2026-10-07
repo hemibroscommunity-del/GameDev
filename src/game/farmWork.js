@@ -6,18 +6,22 @@
  * can use the firemaking animation for all of that.  I don't want the game to
  * just be reading a bunch of boring menus.  Make the timer appear above the
  * crop that was planted and any next steps it needs (next in sequence like
- * 'Needs Watering') etc".
+ * 'Needs Watering') etc".  And then: "Cooking animation might be better.  You
+ * can use something to occlude the part where the pan or log is."
  *
  * The rules of a bed are the WORKER's (server/src/farm.js _handleFarmAct): a
  * bed is dug from grass, planted when dug, watered and fertilized while it
  * grows, harvested when ripe by the worker's clock.  This module is only what
  * the game needs to SHOW them and to ask: a bed's next step and its words,
- * its timer, how long the kneeling takes and when the hands go into the
- * earth, and which bed your boots are in reach of.  Plain arithmetic, no
- * imports: server/test/farmwalk.test.mjs runs it against the worker's own
- * handler, so a step this says is next is always one the worker takes.
+ * its timer, how long the kneeling takes, the cook's frame at each moment and
+ * when the hands push out, and which bed your boots are in reach of.  Plain
+ * arithmetic over plain data (src/data/farmCovers.js): node runs it, and
+ * server/test/farmwalk.test.mjs runs it against the worker's own handler, so
+ * a step this says is next is always one the worker takes.
  * docs/specs/farm-walk.md.
  */
+
+import { FARM_KNEEL_ORDER } from '../data/farmCovers.js';
 
 /** The five steps, in the order a bed goes through them. */
 export const FARM_STEPS = ['dig', 'plant', 'water', 'feed', 'harvest'];
@@ -27,31 +31,32 @@ export const FARM_STEPS = ['dig', 'plant', 'water', 'feed', 'harvest'];
    into the earth a few times -- and digging longest.  Short enough that six
    beds' worth of steps is a minute's work, not a chore. */
 export const FARM_WORK_MS = Object.freeze({ dig: 1500, plant: 1100, water: 1150, feed: 1100, harvest: 1250 });
-/* The standing frame at each end (the strip's frame 0: kneeling down, getting
-   up), then kneeling (frame 1) and leaning in (frame 2) by turns. */
-export const FARM_STAND_MS = 120;
-export const FARM_BEAT_MS = 190;
+/* The farmer crouches as the cook does (effectsRenderer _updateFarmKneel), on
+   the cook strip's frames where the pan is held out to the side, to and fro
+   (FARM_KNEEL_ORDER, from tools/world/make_farm_covers.py), one every
+   FARM_KNEEL_FRAME_MS: the arms work as the cook's do over the fire. */
+export const FARM_KNEEL_FRAME_MS = 110;
+/* The hands push out (the to-and-fro's far end) every half turn of it. */
+const HALF_TURN_MS = (FARM_KNEEL_ORDER.length / 2) * FARM_KNEEL_FRAME_MS;
+/* A push this near the end is not shown: you are getting up. */
+const LAST_PUSH_MS = 80;
 
-/** The fire-lighter's frame (0 standing, 1 kneeling, 2 leaning in) at `t` ms
- *  into a step of `total` ms. */
+/** The cook strip's frame the farmer shows at `t` ms into a step of `total`
+ *  ms: FARM_KNEEL_ORDER round and round, its first frame for a time that is
+ *  no time at all. */
 export function farmWorkFrame(t, total) {
-  if (!(t >= 0) || !(total > 0) || t >= total) return 0;
-  if (t < FARM_STAND_MS || t >= total - FARM_STAND_MS) return 0;
-  const k = Math.floor((t - FARM_STAND_MS) / FARM_BEAT_MS);
-  return k % 2 === 0 ? 1 : 2;
+  if (!(t >= 0) || !(total > 0)) return FARM_KNEEL_ORDER[0];
+  const k = Math.floor(Math.min(t, total) / FARM_KNEEL_FRAME_MS);
+  return FARM_KNEEL_ORDER[k % FARM_KNEEL_ORDER.length];
 }
 
-/** When the hands go in: the start of every lean (frame 2), ms from the start
- *  of a step of `total` ms.  The dirt, the seeds, the water and the compost
- *  fly then. */
+/** When the hands push out -- the far end of the to-and-fro, every half
+ *  turn -- ms from the start of a step of `total` ms.  The dirt, the seeds,
+ *  the water and the compost fly then, and the step's sound plays. */
 export function farmWorkBeats(total) {
   const out = [];
   if (!(total > 0)) return out;
-  for (let k = 1; ; k += 2) {
-    const t = FARM_STAND_MS + k * FARM_BEAT_MS;
-    if (t >= total - FARM_STAND_MS) break;
-    out.push(t);
-  }
+  for (let t = HALF_TURN_MS; t < total - LAST_PUSH_MS; t += 2 * HALF_TURN_MS) out.push(t);
   return out;
 }
 

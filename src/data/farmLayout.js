@@ -51,10 +51,13 @@ export const FARM_BEDS = Object.freeze([
 export const FARM_CROP_FOOT_DY = 46;
 /* How near your boots must be to work a bed, game px round its edge. */
 export const FARM_BED_REACH = 46;
-/* Where you kneel to work one: your boots on its back edge, a little in --
-   the fire-lighter's strip kneels behind its log, and here behind the mound
-   of earth it draws there (effectsRenderer FARM_MOUND_AT). */
+/* Where you kneel to work one: your boots on its back edge, a little in, and
+   left of its middle -- you crouch as the cook does, and what stands where
+   the cook's pan is (a crate of earth, seeds or water, the compost bin, the
+   straw: src/data/farmCovers.js) is to your right, over the bed's middle
+   (effectsRenderer _updateFarmKneel). */
 export const FARM_KNEEL_DY = 12;
+export const FARM_KNEEL_DX = -19;
 
 /* The places the old farm had as invisible spots, now things you can see:
    your bed for the night (the haystack until the owner's Farmhouse picture

@@ -12,10 +12,13 @@
  *     bedNext) -- the right stick wears that step's picture and E, a tap on
  *     the stick or a tap on the bed itself takes it (desktopControls
  *     runInteract, BroTown's bed tap);
- *   - you KNEEL at its back, facing us, and work it: the fire-lighter's
- *     strip on its own clock (effectsRenderer, the log under a mound of
- *     earth), dirt, seeds, water or compost flying from your hands at every
- *     lean (farmWorld.js), a sound at each (below);
+ *   - you CROUCH at its back, facing us, and work it, as the cook does -- the
+ *     owner: "Cooking animation might be better.  You can use something to
+ *     occlude the part where the pan or log is" -- with a crate of earth,
+ *     seeds or water, the compost bin or the straw standing where the pan
+ *     would be (effectsRenderer _updateFarmKneel), dirt, seeds, water or
+ *     compost flying from your hands each time they push out (farmWorld.js),
+ *     a sound at each (below);
  *   - when the kneeling ends the step goes to the worker (farm_act, the
  *     window's own message: farmBus.act) and the bed changes when it
  *     answers -- nothing here changes a bed, the bag or the XP;
@@ -26,7 +29,7 @@
  */
 import { BT_AUDIO } from '@/data/index.js';
 import { FARM, FARM_CROP_ORDER } from '@/data/farmCrops.js';
-import { FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY } from '@/data/farmLayout.js';
+import { FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY, FARM_KNEEL_DX } from '@/data/farmLayout.js';
 import { farmBus } from '@/ui/mobile/farmBus.js';
 import { bedNext, bedAt, farmClock, farmWorkBeats, FARM_WORK_MS, seedToPlant, seedsInHand } from '@/game/farmWork.js';
 import { pushDmgPopup, offlineRefused } from '@/game/combatHelpers.js';
@@ -146,6 +149,7 @@ export function tickFarmWalk(S, now) {
 export function startFarmStep(S, i) {
   if (!S || !S.player || S.currentZone !== FARM_WALK_ZONE) return false;
   if (S._farmWork) return true;   /* one at a time: the press is used */
+  if (S._extraction || S._firemaking) return false;   /* the cook's figure is busy at a fire */
   if (jumpAirborne(S, Date.now())) return false;
   const b = FARM_BEDS[i];
   const view = farmBus.view;
@@ -170,10 +174,11 @@ export function startFarmStep(S, i) {
     const inv = S.rpg && S.rpg.inventory;
     if (!(inv && Math.floor(Number(inv[FARM.COMPOST]) || 0) > 0)) { sayOverBed(S, i, 'No compost: the Feed & Seed sells it', BAD); return true; }
   }
-  /* kneel at its back, boots just inside its edge, facing us -- the strip
-     kneels behind its log, here behind the mound it draws on the bed */
+  /* crouch at its back, boots just inside its edge and left of its middle,
+     facing us: what stands where the cook's pan is comes to your right, over
+     the bed (farmLayout.js FARM_KNEEL_DX) */
   const P = S.player;
-  P.x = b.x + b.w / 2;
+  P.x = b.x + b.w / 2 + FARM_KNEEL_DX;
   P.y = b.y + FARM_KNEEL_DY - playerGroundDy(S.currentZone, P.x, b.y);
   P.vx = 0; P.vy = 0;
   S._facingAngle = Math.PI / 2;
