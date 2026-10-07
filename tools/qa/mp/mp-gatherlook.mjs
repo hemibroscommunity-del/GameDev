@@ -17,7 +17,18 @@
  *   3. the LUMBERJACK, the COOK and the FIRE-LIGHTER wear his trousers and
  *      boots: the bake's own reading (window.__btStandInClothes) is blue legs
  *      and red boots on each;
- *   4. no page errors.
+ *   4. (the owner's "Yes fix all") the three are HIS SIZE: the lumberjack and
+ *      the fire-lighter as tall as his walking figure from head to boots (they
+ *      were 76% and 108%), the crouching cook's head as big as his (88%) --
+ *      each figure's drawn scale (__btChopFigure etc.) times its art's own
+ *      rows (ART below), against the walking figure's painted crown-to-boots
+ *      (bodyFigureProbe, in world px);
+ *   5. (the owner's "Yes fix all") his STRIPED, PRINTED tee is on all three:
+ *      each figure's shirt is drawn from a dressed strip from its first frame
+ *      (window.__btDressedShirt: no plain frame -- baked behind the loading
+ *      screen), the stripes' yellow and the print's purple on it, and the
+ *      stripes repeating within 15% of the walking shirt's on screen;
+ *   6. no page errors.
  * Pictures: tools/qa/mp/out/gatherlook-*.png (standing, before, mid-swing,
  * at the ready and after each harvest; the fire; the cook).
  */
@@ -27,6 +38,22 @@ import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
 const STAND = { oreVein: [0, -70], tree: [0, -130], fishSpot: [52, -43] };
+/* v2.3.3145: the art the sizes are measured on, in each picture's own px --
+   painted head top to boots (the rows BODY_ROWS sizes the walking body by),
+   and the head at its widest above the neck:
+     walk  stand-south, 256 cell: crown 33 to boots 221 = 189, head 51;
+     chop  frames 17-23 (the end of a swing, upright), 220 cell: head top 49
+           to boots 218 = 170, head 46;
+     cook  220 cell, crouched: head 85;
+     fire  frame 0 (standing), 512 cell: head top 28 to his boots,
+           FIRE_FEET_ROW 408 = 381, head 104. */
+const ART = {
+  walk: { up: 189, head: 51 },
+  chop: { up: 170, head: 46 },
+  cook: { head: 85 },
+  fire: { up: 381, head: 104 },
+};
+const pct1 = (a, b) => (a && b ? Math.round((a / b) * 100) + '%' : '-');
 
 const LOOK = `try {
   const l = ['openDash', 'move', 'equip', 'dashAfterTurnIn', 'equipAll', 'cycle',
@@ -43,7 +70,45 @@ const LOOK = `try {
   localStorage.setItem('bt-shirtcolor', 'green');
   localStorage.setItem('bt-pants', 'blue');
   localStorage.setItem('bt-shoes', 'red');
-} catch (e) {}`;
+  /* v2.3.3145: a striped tee (yellow, ART_PALETTE 5) with a purple block
+     printed on the chest (ART_PALETTE 10, a 6 x 6 in the 16 x 16 drawing) */
+  localStorage.setItem('bt-shirtpat', 'stripe-v:5');
+  let art = '';
+  for (let i = 0; i < 256; i++) { const x = i % 16, y = (i / 16) | 0; art += (x >= 5 && x <= 10 && y >= 4 && y <= 9) ? 'a' : '0'; }
+  localStorage.setItem('bt-shirtart', art);
+} catch (e) {}
+/* v2.3.3145: the stand-ins' dressed shirt strips are emptied once uploaded
+   (gpuOnly.js); this keeps their canvases so the test can read them */
+window.__btTrimVerify = true;
+/* a shirt frame read off its texture: the stripes' and the print's pixels,
+   and the stripes' repeat in world px through the sprite's own transform */
+window.__qaShirtRead = (tex, spr) => {
+  try {
+    const S = window._gameState.current;
+    const cv = tex && tex.source && tex.source.resource;
+    if (!cv || !cv.getContext || !cv.width) return { err: 'no canvas' };
+    const f = tex.frame;
+    const W = Math.round(f.width), H = Math.round(f.height);
+    const d = cv.getContext('2d', { willReadFrequently: true }).getImageData(Math.round(f.x), Math.round(f.y), W, H).data;
+    const near = (i, c) => d[i + 3] > 200 && Math.abs(d[i] - c[0]) < 40 && Math.abs(d[i + 1] - c[1]) < 40 && Math.abs(d[i + 2] - c[2]) < 40;
+    const Y = [242, 201, 76], V = [142, 90, 208];
+    let yn = 0, vn = 0; const diffs = [];
+    for (let y = 0; y < H; y++) {
+      let prev = -1, inRun = false;
+      for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 4, on = near(i, Y);
+        if (on) yn++;
+        if (near(i, V)) vn++;
+        if (on && !inRun) { if (prev >= 0) diffs.push(x - prev); prev = x; }
+        inRun = on;
+      }
+    }
+    diffs.sort((a, b) => a - b);
+    const per = diffs.length ? diffs[diffs.length >> 1] : null;
+    const unit = Math.abs(spr.toGlobal({ x: 1, y: 0 }).x - spr.toGlobal({ x: 0, y: 0 }).x) / (S._worldScaleX || 1);
+    return { yellow: yn, purple: vn, period: per, runs: diffs.length, unit: +unit.toFixed(4), worldPeriod: per ? +(per * unit).toFixed(2) : null };
+  } catch (e) { return { err: String(e && e.message) }; }
+};`;
 
 /* mp-harvestbar's walk: H.hopTo's hops, checked against the worker */
 async function travel(P, wsPort, myId, tx, ty) {
@@ -280,6 +345,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const standB = await readBody(P);
     rec.ok('standing: his cap and beard, his skin, blue trousers and red boots read off the frame drawn (guard)',
       !!standT && isBlue(standB.pants) && isRed(standB.boots) && standB.skin.n > 200, { standT, standB });
+    /* v2.3.3145: his walking size, the yardstick the three figures are drawn
+       to: the painted crown-to-boots of the frame on screen, in world px */
+    const walk = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      const r = window._pixiRenderer && window._pixiRenderer.bodyFigureProbe ? window._pixiRenderer.bodyFigureProbe() : null;
+      return r && r.figurePx ? { up: r.figurePx / (S._worldScaleY || 1), pose: r.pose, facing: r.facing } : null;
+    });
+    if (walk) walk.head = (walk.up * ART.walk.head) / ART.walk.up;
+    rec.ok(`standing: his walking figure is ${walk && walk.up.toFixed(1)} world px from crown to boots (guard)`,
+      !!walk && walk.pose === 'stand' && walk.up > 60, walk);
+    /* v2.3.3145: his walking shirt, striped and printed -- its stripes'
+       repeat on screen, the yardstick for the stand-ins' (its dressed copy is
+       baked the first time it is drawn, so it is waited for) */
+    const walkShirt = await H.waitFor(P, () => {
+      const pd = window._pixiRenderer && window._pixiRenderer.playerDisplayRaw ? window._pixiRenderer.playerDisplayRaw() : null;
+      const g = pd && pd._gearShirt;
+      return g && g.visible && g.texture ? window.__qaShirtRead(g.texture, g) : null;
+    }, (v) => !!v && v.yellow > 20 && !!v.worldPeriod, { timeout: 15000, label: 'the walking shirt dressed' }).catch(() => null);
+    rec.ok(`standing: his walking tee is striped and printed, its stripes ${walkShirt && walkShirt.worldPeriod} world px apart (guard)`,
+      !!walkShirt && walkShirt.yellow > 20 && walkShirt.purple > 5, walkShirt);
+    /* each stand-in's dressed shirt, against it */
+    const dressedOk = async (key, who) => {
+      let r = null;
+      for (let i = 0; i < 40; i++) {
+        r = await P.page.evaluate((k) => {
+          const e = window.__btDressedShirt && window.__btDressedShirt[k];
+          return e ? { dressed: e.dressed, plain: e.plain, read: e.tex ? window.__qaShirtRead(e.tex, e.spr) : null } : null;
+        }, key).catch(() => null);
+        if (r && r.read && !r.read.err) break;
+        await P.page.waitForTimeout(250);
+      }
+      const rd = r && r.read;
+      const k = rd && walkShirt && rd.worldPeriod && walkShirt.worldPeriod ? rd.worldPeriod / walkShirt.worldPeriod : null;
+      rec.ok(`${who}'s tee is his: striped (${rd && rd.yellow} px of the stripes' yellow) and printed (${rd && rd.purple} px of the print's purple) from its first frame (${r && r.dressed} drawn dressed, ${r && r.plain} plain), its stripes ${rd && rd.worldPeriod} world px apart against his walking tee's ${walkShirt && walkShirt.worldPeriod} (${k ? Math.round(k * 100) + '%' : '-'})`,
+        !!rd && rd.yellow > 20 && rd.purple > 5 && r.dressed > 0 && r.plain === 0 && !!k && Math.abs(k - 1) < 0.15, r);
+    };
+    /* each figure against it, from its drawn scale (world px per art px) */
+    const sizeOf = (k, f) => (f && typeof f.scaleY === 'number'
+      ? { up: ART[k].up ? ART[k].up * Math.abs(f.scaleY) : null, head: ART[k].head * Math.abs(f.scaleY) } : null);
 
     /* one harvest of `type` at the nearest tier-1 node: a picture before, four
        mid-swing, one at the ready (the gesture's pose) and one after */
@@ -318,6 +422,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const c = await P.page.evaluate(() => (window.__btStandInClothes || {}).chop || null);
         rec.ok(`the lumberjack wears his trousers and boots: legs ${c && c.legs.rgb}, boots ${c && c.boots.rgb} (the bake's reading)`,
           !!c && isBlue(c.legs) && isRed(c.boots), c);
+        /* v2.3.3145: and he is your size (CHOP_STANDIN_H 104.5 -> 136.8) */
+        const z = sizeOf('chop', await P.page.evaluate(() => (window.__btChopFigure ? window.__btChopFigure() : null)));
+        rec.ok(`the lumberjack is his size: ${z && z.up.toFixed(1)} px from head to boots upright against his ${walk && walk.up.toFixed(1)} (${pct1(z && z.up, walk && walk.up)}, was 76%), his head ${z && z.head.toFixed(1)} against ${walk && walk.head.toFixed(1)}`,
+          !!z && !!walk && Math.abs(z.up / walk.up - 1) < 0.03 && Math.abs(z.head / walk.head - 1) < 0.03, { z, walk });
+        await dressedOk('chop-west', 'the lumberjack');
       }
       const ready = await H.waitFor(P, (S) => (S._extraction ? S._extraction.status : null), (v) => v === 'ready',
         { timeout: 40000, label: 'ready' }).catch(() => null);
@@ -354,6 +463,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const fc = await H.waitFor(P, () => (window.__btStandInClothes || {}).fire || null, (v) => !!v, { timeout: 15000, label: 'the fire-lighter baked' }).catch(() => null);
     rec.ok(`the fire-lighter wears his trousers and boots: legs ${fc && fc.legs.rgb}, boots ${fc && fc.boots.rgb} (the bake's reading)`,
       !!fc && isBlue(fc.legs) && isRed(fc.boots), fc);
+    /* v2.3.3145: and he is your size (FIRE_STANDIN_H 154 -> 142): his head
+       runs a little big in his painting, so it is held to 5% */
+    const zf = sizeOf('fire', await P.page.evaluate(() => (window.__btFireFigure ? window.__btFireFigure() : null)));
+    rec.ok(`the fire-lighter is his size: ${zf && zf.up.toFixed(1)} px from head to boots standing against his ${walk && walk.up.toFixed(1)} (${pct1(zf && zf.up, walk && walk.up)}, was 108%), his head ${zf && zf.head.toFixed(1)} against ${walk && walk.head.toFixed(1)}`,
+      !!zf && !!walk && Math.abs(zf.up / walk.up - 1) < 0.03 && Math.abs(zf.head / walk.head - 1) < 0.05, { zf, walk });
+    await dressedOk('fire-south', 'the fire-lighter');
     await P.page.keyboard.press('Escape').catch(() => {});
     const camp = await H.waitFor(P, (S) => ({ fire: !!S._campfire, lighting: !!S._firemaking, cook: window.__btStandIns().cook }),
       (v) => v.fire && !v.lighting && v.cook.state === 'ready', { timeout: 20000, label: 'a campfire, and the cook made' }).catch(() => null);
@@ -375,6 +490,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const cc = await P.page.evaluate(() => (window.__btStandInClothes || {}).cook || null);
       rec.ok(`the cook wears his trousers and boots: legs ${cc && cc.legs.rgb}, boots ${cc && cc.boots.rgb} (the bake's reading)`,
         !!cc && isBlue(cc.legs) && isRed(cc.boots), cc);
+      /* v2.3.3145: and he is your size (COOK_STANDIN_H 65.1 -> 73.9): he
+         crouches, so it is his head that is held to yours */
+      const zc = sizeOf('cook', await P.page.evaluate(() => (window.__btCookFigure ? window.__btCookFigure() : null)));
+      rec.ok(`the cook's head is his size: ${zc && zc.head.toFixed(1)} px against his ${walk && walk.head.toFixed(1)} (${pct1(zc && zc.head, walk && walk.head)}, was 88%)`,
+        !!zc && !!walk && Math.abs(zc.head / walk.head - 1) < 0.03, { zc, walk });
+      await dressedOk('cook-south', 'the cook');
       await P.page.evaluate(() => { const S = window._gameState.current; S._extraction = null; });
     }
 

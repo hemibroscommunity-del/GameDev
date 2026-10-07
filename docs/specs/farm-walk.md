@@ -87,7 +87,8 @@ how the kneel handles that.
 
 **The figure is the cook's, worn as the cook wears it.** The cook strip
 (`public/sprites/skills/cook-strip.webp`, 24 frames of 213 × 220, drawn
-65.1 game px tall) is made for each player when first wanted, as since
+65.1 game px tall -- 73.9 since v2.3.3145, his head your walking head's size,
+docs/specs/gathering-look.md section 5) is made for each player when first wanted, as since
 v2.3.3077 (for the farmer, on arriving at the farm, under its loading
 screen):
 

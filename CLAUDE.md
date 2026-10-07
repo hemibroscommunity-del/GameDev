@@ -1819,9 +1819,28 @@ remnant to migrate server-side, not a mode to preserve.
       `pantsWide` for the fire's glow); a peer's cook/fire-lighter is your
       bake (the v2.3.1713 trade), a drawn peer's lumberjack theirs;
     - the cook's head traits 1.16 -> 1.65 (`_skillTraitMul`: his head 85 px
-      against stand's 51); the stand-ins' SIZES are the owner's and stay
-      (the lumberjack ~25% under the walking figure);
-    - QA `display._bodyScale`, `window.__btStandInClothes`; `mp-gatherlook`.
+      against stand's 51);
+    - then, offered what was left, the owner: "Yes fix all":
+      - the three are YOUR SIZE -- the walking figure is drawn
+        `PLAYER_SIZE_MULT` 1.25 on its container, which no stand-in carries,
+        so every earlier tune was by eye against a figure 25% bigger:
+        `CHOP_STANDIN_H` 104.5 -> 136.8 and a shared `FIRE_STANDIN_H` 154 ->
+        142 (upright: crown to boots 105.7 world px, yours), `COOK_STANDIN_H`
+        65.1 -> 73.9 (crouched: his head, 28.5 px, yours); `CHOP_OFFSET` 30 ->
+        44 keeps the axe biting the trunk; hats, armour, the pan and the farm
+        kneel follow;
+      - YOUR SHIRT'S PRINT AND PATTERN on the three AND the sword swing and
+        bow shot (`_dressedShirtFrame`: `composeShirt` on the strip with its
+        `frameW` -- stampShirtArt sliced square frames -- the pattern's cell x
+        `SHIRT_PATTERN_K`, the strip's figure over the 128 sheet's 94.5 px);
+        only for a printed or patterned shirt; your three gatherers baked
+        behind the loading screen and 0.4 s after a shirt change, the rest on
+        first draw; `DRESSED_MAX` 10, GPU only;
+      - the ORE'S CRACK AND POP never skipped by a late frame: the split is
+        played before the 950 ms break is let go of, up to `ORE_POP_LATE_MS`
+        3 s (`_oreSplit`);
+    - QA `display._bodyScale`, `window.__btStandInClothes`,
+      `window.__btDressedShirt`; `mp-gatherlook`.
   - Since v2.3.3145 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
     "Also all the buildings in town should show on the minimap": each
     standing building's footprint where it stands (wheelMinimap.js

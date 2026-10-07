@@ -99,9 +99,12 @@ export function chestBox(data, W, H, x0, fw) {
  * @param {number} frameH  frame height in px (frames are square)
  * @param {boolean} [mirror]  pre-flip the drawing, for facings the renderer
  *        draws mirrored — so the print still reads the right way round
+ * @param {number} [frameW]  v2.3.3145: frame WIDTH, for a strip whose frames
+ *        are not square (the gathering and combat stand-ins' shirt strips:
+ *        240x220, 213x220, 384x512 ...); omitted, frames are square as before
  * @returns {HTMLCanvasElement} a NEW canvas; the input is never mutated
  */
-export function stampShirtArt(sheet, art, frameH, mirror, clip, report) {
+export function stampShirtArt(sheet, art, frameH, mirror, clip, report, frameW) {
   const W = sheet.naturalWidth || sheet.width;
   const H = sheet.naturalHeight || sheet.height;
   const cv = document.createElement('canvas');
@@ -116,7 +119,8 @@ export function stampShirtArt(sheet, art, frameH, mirror, clip, report) {
   if (!artHasInk(art) && !report) return cv;
 
   const fh = frameH || H;
-  const frames = Math.max(1, Math.round(W / fh));
+  const fw = frameW || fh;   /* v2.3.3145: square unless the caller says */
+  const frames = Math.max(1, Math.round(W / fw));
   const src = ctx.getImageData(0, 0, W, H).data;
 
   /* Paint every frame's decal onto ONE overlay, then clip the whole overlay to
@@ -146,7 +150,7 @@ export function stampShirtArt(sheet, art, frameH, mirror, clip, report) {
   }
 
   for (let f = 0; f < frames; f++) {
-    const box = chestBox(src, W, H, f * fh, fh);
+    const box = chestBox(src, W, H, f * fw, fw);
     if (!box) continue;
     const bw = box.x1 - box.x0 + 1;
     const bh = box.bot - box.top + 1;
@@ -183,7 +187,7 @@ export function stampShirtArt(sheet, art, frameH, mirror, clip, report) {
             for (let y = cpy; y < cpy + cph; y++) {
               if (y < 0 || y >= H) continue;
               for (let x = cpx; x < cpx + cpw; x++) {
-                if (x < f * fh || x >= Math.min(W, f * fh + fh)) continue;
+                if (x < f * fw || x >= Math.min(W, f * fw + fw)) continue;
                 if (clipA[(y * W + x) * 4 + 3] > 24) n++;
               }
             }
@@ -1385,9 +1389,11 @@ export function composeShirt(sheet, frameH, opts) {
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  /* v2.3.3145: `o.frameW` for a strip whose frames are not square (the
+     stand-ins' shirt strips); omitted, a frame is frameH wide as before */
   if (o.pattern) {
     const id = ctx.getImageData(0, 0, W, H);
-    stampPattern(id.data, W, H, frameH || H, lit, o.pattern, !!o.mirror);
+    stampPattern(id.data, W, H, o.frameW || frameH || H, lit, o.pattern, !!o.mirror);
     ctx.putImageData(id, 0, 0);
   }
 
@@ -1396,7 +1402,7 @@ export function composeShirt(sheet, frameH, opts) {
        and at the seam lines rather than erasing them.
        v2.3.2430: `o.report` takes the same path with no ink, so the designer
        gets the grid it needs to place a FIRST mark -- see stampShirtArt. */
-    return stampShirtArt(cv, o.art, frameH, !!o.mirror, _maskCanvas(lit, W, H), o.report);
+    return stampShirtArt(cv, o.art, frameH, !!o.mirror, _maskCanvas(lit, W, H), o.report, o.frameW);
   }
   return cv;
 }

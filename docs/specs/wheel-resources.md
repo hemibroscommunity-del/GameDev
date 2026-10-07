@@ -354,6 +354,12 @@ gesture."*
   breaks on your screen too, plays softer and fades out by 1,400 px. Before
   this a finished vein was silent: its only cue was a `beep()`, which has
   played nothing since v2.3.1103.
+  - **v2.3.3145: never skipped by a late frame.** The break lives 950 ms, and
+    a frame arriving later than that (a stall right at the payout) let it go
+    before its split was played: no ore popped out, no crack. The split is
+    played first now, on whatever frame reaches it, up to `ORE_POP_LATE_MS`
+    (3 s) after the break began (`_advanceOreBreaks`, `_oreSplit`; the probe's
+    `late` says how far in). See docs/specs/gathering-look.md section 7.
 
 Tests: `mp-wheelnodes` (a fishing spot's held display is its label now),
 `mp-harvestbar`.

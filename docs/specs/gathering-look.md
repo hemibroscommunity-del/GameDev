@@ -6,6 +6,10 @@
 Five things changed how the bro looked the moment he started to gather. Each
 is now fixed, and `mp-gatherlook` checks each on a phone.
 
+Then, offered the three differences left (the lumberjack's size, the shirt's
+print and pattern, and a lost crack sound), the owner: *"Yes fix all"*. Those
+are sections 5 to 7.
+
 | Activity | What changed before | Now |
 |---|---|---|
 | Mining | hair, hat and beard drawn ~8% too big for the head | sized to the head |
@@ -13,6 +17,8 @@ is now fixed, and `mp-gatherlook` checks each on a phone.
 | Woodcutting (the lumberjack) | the painted olive trousers and grey boots | your trousers and boots |
 | Cooking (the cook) | the painted olive trousers and grey boots; hair, hat and beard ~30% too small for his head | your trousers and boots; sized to his head |
 | Lighting a fire (the fire-lighter) | the painted trousers and boots | your trousers and boots |
+| All three figures | 76% (lumberjack), 88% of your head (cook), 108% (fire-lighter) of your size | your size |
+| All three figures, and a sword swing or a bow shot | your shirt's colour, without its print or pattern | your shirt's colour, print and pattern |
 
 ## How the bro is drawn while gathering
 
@@ -25,7 +31,8 @@ is now fixed, and `mp-gatherlook` checks each on a phone.
   that painting.
   - Already carried before this change: your skin, your tattoos, your tee's
     colour, your armour and your head traits.
-  - Since v2.3.3145: your trousers and boots too.
+  - Since v2.3.3145: your trousers and boots too, your shirt's print and
+    pattern (section 6), and your size (section 5).
 
 ## 1. Hair, hats and beards on the mining and fishing heads
 
@@ -154,15 +161,92 @@ A stand-in's head traits are scaled by `_skillTraitMul` (effectsRenderer).
   - lumberjack: 46 and 40–45 → 0.91;
   - fire-lighter: 101 and 90–100, at his 512 px frame → 1.98.
 
+## 5. The three figures are your size
+
+The walking figure is drawn `PLAYER_SIZE_MULT` (1.25, entityRenderer,
+v2.3.1821) bigger on its container. No stand-in carries that factor: they are
+drawn on the effects layer. Every earlier tune of their sizes was by eye
+against a figure 25% bigger than the numbers said.
+
+Measured instead, in world px, from the same rows the walking body is sized by
+(`BODY_ROWS`, `nominalStandFigure`):
+
+| | painted head top to boots | head at its widest |
+|---|---|---|
+| walking (every facing) | 105.7 | 28.5 (51 art px x 1.061 x 0.421875 x 1.25) |
+| lumberjack, upright (frames 17-23) | 170 art px x 104.5/220 = 80.8 (76%) | 46 art px: 21.9 |
+| cook (crouched) | - | 85 art px x 65.1/220 = 25.2 (88%) |
+| fire-lighter, standing (frame 0) | 381 art px x 154/512 = 114.6 (108%) | 104 art px: 31.3 |
+
+- **Upright figures are matched by height:** `CHOP_STANDIN_H` 104.5 -> **136.8**
+  (105.7 tall, and his head comes to 28.6) and the new shared
+  `FIRE_STANDIN_H` 154 -> **142** (105.7 tall, head 28.8). The fire-lighter's
+  154 was a literal in two places, yours and other players'; it is one constant
+  now, as the lumberjack's and the cook's are.
+- **The crouching cook is matched by his head:** `COOK_STANDIN_H` 65.1 ->
+  **73.9** (28.6). The note that set 65.1 measured him against a 22.6 px
+  walking head: that was the head before the walking figure grew 1.25x.
+- **Everything on them follows:** the hair, hat and beard (they read the
+  sprite's scale; the head ratios in `_skillTraitMul` are unchanged), the
+  armour layers, the cook's pan (`COOK_PAN_DX` is a share of his height) and
+  the farm's kneel and its covers.
+- **The axe still bites the trunk:** the lumberjack is scaled about his feet,
+  so his blade reaches further. `CHOP_OFFSET` 30 -> 44 keeps it where it was
+  (the blade's middle is 94.5 art px from his anchor at the strike frame: 45
+  world px before, 59 now).
+- The campfire's pixel grid was matched to the fire-lighter's only roughly
+  (2.4 against its 2.53); at 142 it is 2.22, and stays.
+
+## 6. Your shirt's print and pattern, on every figure
+
+The walking shirt bakes its colour, pattern and drawn print into a second copy
+of its sheet (`getShirtLookFrame` -> `composeShirt`). Every figure that stands
+in for the body drew its plain strip and tinted it (`_placeSwingShirt`), so a
+striped shirt went plain the moment you chopped, cooked, lit a fire, swung or
+shot.
+
+- **They bake their own dressed strips** (`_dressedShirtFrame`): the same
+  `composeShirt` on the strip, told its frame width (`frameW`, new) because
+  these frames are not square (240x220, 213x220, 384x512 ...).
+  `stampShirtArt` took only a frame height and sliced by it.
+- **The pattern is scaled to the strip.** A tile's `cell` is in the sheet's own
+  pixels, and the walking shirt is drawn from 128 px sheets in which you stand
+  94.5 px tall. A strip whose figure stands 170 px (the lumberjack) gets cells
+  1.8x as big, so the stripes are the same on screen
+  (`SHIRT_PATTERN_K`: the fire-lighter 4.03, the combat strips 2.0, and the
+  cook by his head, 3.33).
+- **The print needs nothing:** it is fitted to each frame's chest
+  (`chestBox`), as on the walking shirt.
+- **Only for a shirt with a print or a pattern.** A plain coloured shirt keeps
+  the shared strip and its tint, exactly as before, at no cost.
+- **Your three gathering figures are baked behind the loading screen**, and
+  again 0.4 s after the shirt changes (its print, pattern, colour or the shirt
+  itself). The cook's shirt is one pinned garment (frame 22), so only it is
+  baked.
+- **A sword swing, a bow shot and other players' figures** are baked the first
+  time they are drawn, the plain strip standing in meanwhile -- exactly as the
+  walking shirt's own dressed copy is.
+- **Memory:** `DRESSED_MAX` 10 strips are kept, the least recently drawn let go
+  of first, each on the graphics chip only (`keepOnGpuOnly`).
+
+## 7. The ore's crack and pop are never skipped
+
+The ore vein's break animation lives 950 ms, and its end was checked before its
+split frame. A frame that came more than 950 ms after the break began (a stall
+right at the payout) let it go before the split was played: no ore popped out
+and no crack was heard.
+
+- `_advanceOreBreaks` now plays the split first, on whatever frame reaches it,
+  up to `ORE_POP_LATE_MS` (3 s) after the break began. A tab back from the
+  background minutes later does not crack out of nowhere.
+- Found by `mp-nodelabels` on a test machine drawing about a frame a second.
+  Timed on main and on this branch alike: every miss followed a gap of 981 ms
+  or more, every crack a gap of 892 ms or less.
+
 ## What is still different, and why
 
-- **The three stand-ins are different paintings.** Their proportions and style
-  are the artist's.
-  - The lumberjack is drawn about 25% smaller than your walking figure. His
-    height, `CHOP_STANDIN_H` 104.5, is the owner's own choice: "+10%" in
-    v2.3.2273, made after the walking figure's last resize.
-  - The cook crouches, at `COOK_STANDIN_H` 65.1, also the owner's.
-- **A shirt's print or pattern** is not on the stand-ins: they tint the tee.
+- **The three stand-ins are different paintings.** Their style is the artist's;
+  their size is now yours (section 5).
 - **Eye colour** is not on mining, fishing or the stand-ins. Their sheets have
   no eye mask.
 - **A cape** stays off the three stand-ins: a cape on a crouch hangs into the
@@ -185,6 +269,20 @@ tee, BLUE trousers and RED boots. It checks:
 - **The stand-ins:** the lumberjack, the fire-lighter and the cook each read
   blue legs and red boots (`window.__btStandInClothes`, the bake's own reading,
   armed by `__btProbe`).
+- **Their size:** the lumberjack's upright height and the fire-lighter's
+  standing height within 3% of the walking figure's (`bodyFigureProbe`, in
+  world px), and each head within 3% (the fire-lighter's, whose painting runs
+  big in the head, 5%); the cook's head within 3%. Each from the figure's
+  drawn scale (`__btChopFigure` and its siblings) times its art's own rows.
+- **Their shirts:** the test bro wears a striped tee with a purple block
+  printed on it. Each figure's shirt is drawn from its dressed strip from its
+  first frame (`window.__btDressedShirt`: no plain frame), the stripes' yellow
+  and the print's purple on it, and the stripes repeat within 15% of the
+  walking tee's on screen (`window.__qaShirtRead`, with `__btTrimVerify`
+  keeping the strips readable).
 - **No page errors.**
+
+`mp-nodelabels` checks the crack (section 7); `mp-cookpeer` and `mp-wvscale`
+hold the new sizes on both screens.
 
 Pictures: `tools/qa/mp/out/gatherlook-*.png`.
