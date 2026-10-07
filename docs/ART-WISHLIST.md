@@ -389,6 +389,34 @@ Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clea
 Attached are the game's style key and the outside of this building. Match the style key's pixel size, colours, shading and the way it draws each material exactly, and make this room the inside of that building, in the same materials, colours and character. Do not copy either picture's layout.
 ```
 
+## Pet trapping
+
+Beastmaster Bro stands beside the Woodworker and gives the trapping quests (v2.3.3121). Until your picture comes he wears Diego's coat in green with a Snowling at his side, made by `tools/make_beastmaster.py` from art the game already has.
+
+### Beastmaster Bro: his figure
+
+- **In the game:** Standing east of the Woodworker's steps in BroTown, and his head in the dialogue window (a crop of the same picture).
+- **Attach:** Diego's or Blacksmith Bro's picture (`public/sprites/npc/shopkeeper-bro-walk-south.webp`, first frame, or `blacksmith-bro.png`), so he comes out the same style and size as the other townsfolk.
+- **How:** Ask ChatGPT for a square picture on one flat magenta background (#FF00FF). A session cuts him out, stands his feet on the townsfolk's line (256 × 256, feet 223 px down) and crops his head for the dialogue.
+
+```text
+A full-body picture of one character for BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros, drawn in exactly the same style, size and proportions as the attached townsperson: Beastmaster Bro, the town's trapper and keeper of tamed monsters. A broad, cheerful frontiersman in his thirties with a short beard, a wide-brimmed leather hat with a few feathers and a small animal tooth on its band, a long moss-green oilskin coat over a fur-trimmed vest, an orange neckerchief, sturdy leather gloves and boots, and a coil of rope and a little wooden box trap hanging from his belt. A small, friendly snowman creature (about knee-high, with a tiny top hat and a red scarf) sits at his feet, looking up at him. He stands facing the viewer, relaxed and welcoming, arms at his sides.
+
+The picture is square. He stands in the middle, his whole body in the picture with his feet near the bottom and a little space above his hat. The background is ONE flat magenta colour (#FF00FF) with nothing else on it: no floor, no shadow, no border, no text.
+
+Style: crisp pixel art like the attached townsperson: hard-edged square pixels, no blur, no anti-aliasing, no soft gradients; each colour shaded with a few flat tones; a one-pixel outline in a darker shade of its own colour, never black. Leather, fur, cloth and snow each drawn as themselves.
+```
+
+### Box trap: item icon
+
+- **In the game:** The Box Trap in your bag, and the picture on the TRAP button. Today both borrow the Trapping skill's icon.
+- **Attach:** any item icon of the game's (`public/icons/items/wood-log.webp`), so it matches.
+- **How:** Ask ChatGPT for a square picture on one flat magenta background (#FF00FF). A session cuts it out and sizes it.
+
+```text
+A square item icon for a top-down 2D action RPG, in exactly the style of the attached icon: a simple wooden box trap, a small crate of rough pine planks with its door propped open on a stick tied to a bit of string, a little bait inside. Seen from slightly above and to the front, filling most of the picture. One flat magenta background (#FF00FF), no shadow, no border, no text. Crisp pixel art: hard-edged pixels, a few flat tones per colour, a one-pixel outline in a darker shade of its own colour.
+```
+
 ## Land banners
 
 Four of the eight lands play only a plain plaque when you cross in. Attach the Frost Ridge sheet and ChatGPT copies its layout, so I can cut each sheet into the banner exactly as with the first four.
@@ -559,7 +587,7 @@ Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh
 
 ## The farm
 
-The Feed & Seed's farm (v2.3.3111, docs/specs/farm.md) draws its crops, seeds and compost with emoji until these exist: the window's beds, the Seeds tab and the bag all use them.
+The Feed & Seed's farm (v2.3.3127, docs/specs/farm.md) draws its crops, seeds and compost with emoji until these exist: the window's beds, the Seeds tab and the bag all use them.
 
 ### Farm goods: six bag icons
 

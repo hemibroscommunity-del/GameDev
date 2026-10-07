@@ -119,6 +119,9 @@ function checkAt(feetDy) {
   /* Townsfolk: NPC_PROX_OPEN (90) from the body centre to their feet. */
   for (const n of NPC_DATA) {
     if (n.zone && n.zone !== 'town') continue;
+    /* v2.3.3121: a townsperson of the Wheel's only (Beastmaster Bro) never
+       stands in today's town -- his row's x/y are placeholders */
+    if (n.wheelOnly) continue;
     ok(within(n.x, n.y, 80), `${tag} ${n.id} at (${n.x}, ${n.y}) is out of talking reach`);
   }
   /* Doors: buildingPropNear's 95 px from the body centre to the prop anchor. */
@@ -159,5 +162,5 @@ if (fails.length) {
   process.exit(1);
 }
 console.log(`town-rim: ${TOWN_RIM.length}-point outline + ${TOWN_RIM_HOLES.length} hole(s); `
-  + `spawn, arrival, exit, ${NPC_DATA.filter((n) => !n.zone || n.zone === 'town').length} townsfolk and every door reachable `
+  + `spawn, arrival, exit, ${NPC_DATA.filter((n) => (!n.zone || n.zone === 'town') && !n.wheelOnly).length} townsfolk and every door reachable `
   + `(${counts.join(' / ')} standable cells at feet 44 / 52 / 60 px); ${ROCK.length} rock samples blocked`);

@@ -151,7 +151,7 @@ const CAP_GATES = [
   'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'broVerify',
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
-  'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'petLoot', 'pets', 'potionBag', 'prog3',
+  'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'petLoot', 'potionBag', 'prog3',   /* v2.3.3120: 'pets' gone with the 20% capture */
   'prog3Chan', 'prog3elem' /* v2.3.2512 */, 'prog3shared' /* v2.3.2592 */, 'prog3rel' /* v2.3.2680 */, 'gearq' /* v2.3.2664 */, 'prog3x', 'questTrack', 'sponsor', 'store',
   'storeGear' /* v2.3.2531 */, 'storeGearRef' /* v2.3.2551 */, 'storeChat' /* v2.3.2621 */, 'storeOffer' /* v2.3.2623 */,
   't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',
@@ -163,11 +163,20 @@ const CAP_GATES = [
   'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,
-  'farm' /* v2.3.3111: the farm -- lower case, a kill switch */,
-  'meals' /* v2.3.3114: meals and brews you carry -- lower case, a kill switch */,
-  'cookRows' /* v2.3.3114: how many Cookhouse recipes the worker cooks -- a number, never a switch */,
-  'farmCrops' /* v2.3.3115: how many crops the worker grows -- a number, never a switch */,
+  'farm' /* v2.3.3127: the farm -- lower case, a kill switch */,
+  'meals' /* v2.3.3130: meals and brews you carry -- lower case, a kill switch */,
+  'cookRows' /* v2.3.3130: how many Cookhouse recipes the worker cooks -- a number, never a switch */,
+  'farmCrops' /* v2.3.3131: how many crops the worker grows -- a number, never a switch */,
   'armorforge' /* v2.3.3092: bars into armor -- lower case, a kill switch */,
+  'trapping' /* v2.3.3120: arm a trap, then kill it -- lower case, a kill switch */,
+  'trapcraft' /* v2.3.3120: box traps at the Woodworker -- lower case, a kill switch */,
+  'petbook' /* v2.3.3120: the pets record and the Pets page -- lower case, a kill switch */,
+  'petlevels' /* v2.3.3121: pets earn XP while out with you -- lower case, a kill switch */,
+  'beastmaster' /* v2.3.3121: Beastmaster Bro and his quests -- lower case, a kill switch */,
+  'pettrade' /* v2.3.3122: pets in trades, the auction house and the mail -- lower case, a kill switch */,
+  'petwards' /* v2.3.3123: the land ward of the pet out with you -- lower case, a kill switch */,
+  'petshow' /* v2.3.3123: the others see your pet -- lower case, a kill switch */,
+  'pethouse' /* v2.3.3123: more room in the Pet House for gold -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported
@@ -198,10 +207,10 @@ const CAP_NOTES = {
   sprint: 'the sprint button right of the movement stick (and Shift): a third faster while your stamina lasts (v2.3.3006; without it: no button, everyone walks)',
   wheelnodes: 'resources in the Wheel: copper, pine and fish round town, iron and softwood at levels 1-10, black steel and hardwood at 11-20 (v2.3.3012; without it: nothing to gather there)',
   wheeldungeons: 'dungeons in the Wheel: the Great Cave, the Foundry Dome and the Buried City open at their landmarks (v2.3.3016; without it: no mouths, no Enter button)',
-  farm: 'the farm: the Feed & Seed window digs, plants, waters, fertilizes and harvests beds the worker owns, on its clock, and sells seeds and compost (v2.3.3111; without it: the old browser-only plots, which never kept anything)',
-  meals: 'meals and brews you carry: the Cookhouse cooks a dish into the bag to eat or drink later, one meal and one brew at a time, and brews the three tonics Diego no longer sells (v2.3.3114; off: a cook is eaten at once instead of carried, nobody can brew a tonic, and dishes already in bags still eat and drink)',
-  cookRows: 'how many Cookhouse recipes the worker cooks: the Cookhouse, the campfire and the bag offer only those (v2.3.3114; without it, the old three)',
-  farmCrops: 'how many crops the worker grows: the Feed & Seed window offers only those (v2.3.3115; without it, the first four)',
+  farm: 'the farm: the Feed & Seed window digs, plants, waters, fertilizes and harvests beds the worker owns, on its clock, and sells seeds and compost (v2.3.3127; without it: the old browser-only plots, which never kept anything)',
+  meals: 'meals and brews you carry: the Cookhouse cooks a dish into the bag to eat or drink later, one meal and one brew at a time, and brews the three tonics Diego no longer sells (v2.3.3130; off: a cook is eaten at once instead of carried, nobody can brew a tonic, and dishes already in bags still eat and drink)',
+  cookRows: 'how many Cookhouse recipes the worker cooks: the Cookhouse, the campfire and the bag offer only those (v2.3.3130; without it, the old three)',
+  farmCrops: 'how many crops the worker grows: the Feed & Seed window offers only those (v2.3.3131; without it, the first four)',
 };
 
 export const DevPanel = ({ onClose }) => {
@@ -480,7 +489,7 @@ export const DevPanel = ({ onClose }) => {
                 ? 'God mode ON — ' + Math.ceil((state.godMsLeft || 0) / 60000) + ' min left (tap to stop)'
                 : 'God mode (stop taking damage)'}
             </button>
-            {/* v2.3.3111: a Cloudpetal takes eight real hours -- this makes every
+            {/* v2.3.3127: a Cloudpetal takes eight real hours -- this makes every
                 planted bed ripe now, so a harvest can be tried without waiting
                 (server devtools.js _devFarmRipe; the harvest itself is still the
                 worker's own). */}
