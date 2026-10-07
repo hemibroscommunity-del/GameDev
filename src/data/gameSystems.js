@@ -980,7 +980,7 @@ export function createGatheringNodes(zoneId, map) {
 
 /* §18.1 Cooking recipes — combine ingredients into food buffs
  *
- * ═══ v2.3.3114: A RECIPE MAKES SOMETHING YOU CARRY ═══
+ * ═══ v2.3.3130: A RECIPE MAKES SOMETHING YOU CARRY ═══
  * Mirror of server/src/data.js COOKING_RECIPES (mirror-audit, per index: the
  * index is the wire key, so rows are APPENDED, never reordered).  `makes` is
  * the bag item a cook puts in the bag on a worker with caps.meals; what that
@@ -1022,13 +1022,13 @@ export const COOKING_RECIPES = [{
     herb_firebloom: 2
   },
   buff: 'damage',
-  power: 0.20,   /* v2.3.3111: was 0.05 under a "+5% dmg" card while the worker paid +20% (cooking.js reads this now) */
+  power: 0.20,   /* v2.3.3127: was 0.05 under a "+5% dmg" card while the worker paid +20% (cooking.js reads this now) */
   duration: 90,
   cookLvl: 6,
   makes: 'brew_firebloom_tea',
   desc: '+20% dmg for 90s'
 }, {
-  /* v2.3.3114: the three tonics, brewed from the farm's herbs -- Diego no
+  /* v2.3.3130: the three tonics, brewed from the farm's herbs -- Diego no
      longer sells them (server data.js DIEGO_SHELF).  Same bag keys as his
      bottles, so one bought before the change still drinks. */
   name: 'Fury Tonic',
@@ -1058,7 +1058,7 @@ export const COOKING_RECIPES = [{
   makes: 'swiftDraught',
   desc: 'Run 1.5x as fast for 3 min'
 }, {
-  /* v2.3.3115: the potato and the pumpkin's dishes */
+  /* v2.3.3131: the potato and the pumpkin's dishes */
   name: 'Garden Stew',
   tier: 2,
   ingredients: {
@@ -1079,7 +1079,7 @@ export const COOKING_RECIPES = [{
   makes: 'meal_pumpkin_pie',
   desc: '+10% combat XP for 30 min'
 }, {
-  /* v2.3.3116: the Stamina Tonic -- the old Stamina Salts, brewed now that
+  /* v2.3.3132: the Stamina Tonic -- the old Stamina Salts, brewed now that
      Diego sells no food or drink (server data.js COOKING_RECIPES row 8) */
   name: 'Stamina Tonic',
   tier: 1,
@@ -1091,11 +1091,11 @@ export const COOKING_RECIPES = [{
   desc: 'Restores 60 stamina at once'
 }];
 
-/* v2.3.3114: what a dish does lives in its own small module (dishes.js), so
+/* v2.3.3130: what a dish does lives in its own small module (dishes.js), so
    the bag can read it without this whole file; re-exported here, where the
    recipes that make them are, and where mirror-audit looks. */
 export { DISHES, dishFor } from './dishes.js';
-import { dishFor as _dishFor } from './dishes.js';   /* v2.3.3115: calcDisplayHeal */
+import { dishFor as _dishFor } from './dishes.js';   /* v2.3.3131: calcDisplayHeal */
 
 /* §18 Fish Healing — fish must be COOKED via minigame to become edible */
 /* Raw fish → cooking minigame → cooked fish (heals) or burnt fish (wasted) */
@@ -5730,7 +5730,7 @@ export function calcDisplayDps(rpg, wpn) {
    both key shapes resolve the same tier).  The player_state echo
    after eat_request is the truth; this is prediction/labeling only. */
 export function calcDisplayHeal(rpg, invKey) {
-  /* v2.3.3115: a dish eaten at once (the Garden Stew) heals its own amount,
+  /* v2.3.3131: a dish eaten at once (the Garden Stew) heals its own amount,
      the worker's cooking.js _applyDish -- plus the same Recovery. */
   var _dish = _dishFor(invKey);
   if (_dish && _dish.buff === 'heal') return Math.ceil(_dish.power) + getRecoveryFlat(rpg);
@@ -6747,6 +6747,103 @@ export const QUEST_CHAINS = {
     },
   },
 
+  /* ═══ v2.3.3121: BEASTMASTER BRO — the trapping line ═══
+     docs/PET-TRAPPING-PLAN.md, Phase 2: "A Beastmaster beside the Woodworker
+     with a short quest line the server checks: make traps, arm traps, reach
+     Trapping 6" -- and "A `catch` quest goal".  He stands east of the
+     Woodworker's steps in the Wheel's Brotown (gameDisplay.js NPC_DATA,
+     wheelBuildingDoors.js WHEEL_TOWNSFOLK).
+
+     EVERY STEP IS THE SERVER'S (server/src/data.js QUEST_REWARDS beast_1..4):
+     traps made (`traps_made`, counted by trapping.js make_traps), traps sprung
+     (`trap_roll`, one a roll at a kill), the Trapping level (`skill`, read at
+     the hand-in) and a catch (`catch`).  The counters come back in
+     `_questKills` like a kill quest's; `check` reads them, as mayor_2's does.
+     No combat XP (`xp: 0`): what they pay is gold and box traps -- the
+     Trapping XP is in the doing -- so a hand-in needs no Melee/Bow/Magic
+     choice and is the auto reward (QuestPanel).
+
+     `after: 'tut_1'` (getNpcQuest): his line waits until the Mayor's first
+     quest is handed in, so a new player's first steps stay the Mayor's. */
+  beast_1: {
+    id: 'beast_1', npc: 'Beastmaster Bro', title: 'Box Traps',
+    after: 'tut_1',
+    desc: 'Make 3 box traps at the Woodworker.',
+    check: function (rpg) { return ((rpg._questKills && rpg._questKills.beast_1) || 0) >= 3; },
+    reward: { gold: 40, xp: 0, item: '2 Box Traps' },
+    next: 'beast_2',
+    gives: [
+      { when: 'accept', icon: '/icons/items/wood-log.webp', label: '3 Pine Logs' },
+      { when: 'complete', icon: '/icons/ui/skill-trapping.webp', label: '2 Box Traps' },
+    ],
+    dialogue: {
+      start: 'Pets are caught, not bought. It starts with a box.\n\n'
+        + 'Here, three pine logs. The Woodworker next door makes a box trap from each one. Make me three.',
+      progress: 'Three box traps. The Woodworker, the Traps tab.',
+      complete: 'Good boxes. Here are two more. Next we set them.',
+    },
+  },
+  beast_2: {
+    id: 'beast_2', npc: 'Beastmaster Bro', title: 'Set and Spring',
+    anyZone: true,
+    desc: 'Spring 5 traps: target a monster out in the lands, tap TRAP, then kill it.',
+    check: function (rpg) { return ((rpg._questKills && rpg._questKills.beast_2) || 0) >= 5; },
+    steps: [
+      { label: 'Carry a box trap (the Woodworker makes them)',
+        done: function (inv) { return (Number(inv.trap_box) || 0) > 0; } },
+      { label: 'Out in the lands, target a monster and tap TRAP',
+        done: function (inv, S) { return !!(S && S._trap && S._trap.mark) || ((S && S.rpg && S.rpg._questKills && S.rpg._questKills.beast_2) || 0) > 0; } },
+      { label: 'Kill it within 15 seconds: the trap springs',
+        done: function (inv, S) { return ((S && S.rpg && S.rpg._questKills && S.rpg._questKills.beast_2) || 0) > 0; } },
+      { label: 'Spring 5 traps in all',
+        done: function (inv, S) { return ((S && S.rpg && S.rpg._questKills && S.rpg._questKills.beast_2) || 0) >= 5; } },
+      { label: 'Back to Beastmaster Bro by the Woodworker',
+        done: function () { return false; } },
+    ],
+    reward: { gold: 100, xp: 0, item: '5 Box Traps' },
+    next: 'beast_3',
+    gives: [{ when: 'complete', icon: '/icons/ui/skill-trapping.webp', label: '5 Box Traps' }],
+    dialogue: {
+      start: 'A trap springs only on a monster you kill.\n\n'
+        + 'Out in the lands, target one and tap TRAP. Kill it within 15 seconds and the trap springs. Spring five, then come back.',
+      progress: 'Five traps sprung. Target, TRAP, then the kill.',
+      complete: 'Five springs, and every one taught you something. Five more traps for the road.',
+    },
+  },
+  beast_3: {
+    id: 'beast_3', npc: 'Beastmaster Bro', title: "A Trapper's Eye",
+    anyZone: true,
+    desc: 'Reach Trapping level 6.',
+    check: function (rpg) {
+      var s = rpg.lifeSkills && rpg.lifeSkills.trapping;
+      return Math.floor((s && Number(s.level)) || 1) >= 6;
+    },
+    reward: { gold: 250, xp: 0, item: '10 Box Traps' },
+    next: 'beast_4',
+    gives: [{ when: 'complete', icon: '/icons/ui/skill-trapping.webp', label: '10 Box Traps' }],
+    dialogue: {
+      start: 'Your Trapping level is what you can catch. A monster above it will not take a trap at all.\n\n'
+        + 'Every trap that springs pays Trapping XP. Come back at Trapping 6.',
+      progress: 'Trapping 6. Keep springing traps.',
+      complete: 'Level 6. The monsters past level 5 will take your traps now. Ten more, for the work.',
+    },
+  },
+  beast_4: {
+    id: 'beast_4', npc: 'Beastmaster Bro', title: 'Your Own Beast',
+    anyZone: true,
+    desc: 'Catch a pet.',
+    check: function (rpg) { return ((rpg._questKills && rpg._questKills.beast_4) || 0) >= 1; },
+    reward: { gold: 500, xp: 0, item: '15 Box Traps' },
+    next: null,
+    gives: [{ when: 'complete', icon: '/icons/ui/skill-trapping.webp', label: '15 Box Traps' }],
+    dialogue: {
+      start: 'Now the hard part. Most traps break. About one in a hundred holds, at best, and the odds are the same for everyone.\n\n'
+        + 'The TRAP button shows yours. Catch a pet and show me.',
+      progress: 'Keep at it. Every try pays, and one will hold.',
+      complete: 'There it is. Yours for good, and it grows as your Trapping does. Fifteen traps, and my thanks.',
+    },
+  },
+
   /* ═══ MAYOR BRO — World Progression Gates ═══ */
   mayor_1: {
     id: 'mayor_1',
@@ -7559,6 +7656,11 @@ export function getNpcQuest(rpg, npcName) {
        'active': the state is simply passed over and he offers mayor_2. */
     if (!questReachable(quest)) continue;
     var state = questState[qid];
+    /* v2.3.3121: a giver's whole line can wait on another quest being handed
+       in (`after`: Beastmaster Bro's on the Mayor's first, so a new player's
+       first steps stay the Mayor's).  STOP, not skip: every later quest of
+       this giver is behind this one, and skipping would offer the next. */
+    if (quest.after && !state && questState[quest.after] !== QUEST_STATUS.turnedIn) return null;
     if (!state || state === QUEST_STATUS.available) return {
       quest: quest,
       status: QUEST_STATUS.available

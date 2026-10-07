@@ -1534,7 +1534,73 @@ remnant to migrate server-side, not a mode to preserve.
       sent it; a held bite answered `eat_refused {wait}`; the page holds its
       own bite back, "Eat again in Ns", on `caps.pvpheal` from the hits it
       saw, never the duel flag, which outlives duels; kill switch `pvpheal:
-      false`); `fightfood` suite, `mp-fightfood`: docs/specs/fight-food.md.)
+      false`); `fightfood` suite, `mp-fightfood`: docs/specs/fight-food.md.
+  - Since v2.3.3120 PET TRAPPING -- the owner: "your trapping level governs
+    what level monster you can capture ... The best success rate for the
+    lowest tier monster should be about 1%. And each trap should cost at least
+    1 wood", "leave the odds exactly the same for everyone", "let people name
+    their pets" (docs/PET-TRAPPING-PLAN.md, Phase 1):
+    - box traps (`trap_box`) at the Woodworker's Traps tab, one log of any kind
+      each (`make_traps`); a TRAP pop-up over a targeted Wheel monster with the
+      TRUE odds (`src/data/trapping.js`, held to `server/src/trapping.js` by
+      mirror-audit): 1% x 0.8 a stretch, half on reaching the monster's level,
+      the best 20 above; grey above your Trapping level ("Requires Trapping N"),
+      sending nothing; nothing else moves the odds, no bad-luck rule;
+    - `trap_arm` marks it 15 s; at the kill (`_trapRollOnKill`, combat.js, before
+      dmgByPlayer is cleared; a slime judged at the blow) each armer with 5% of
+      the damage rolls four checks at the fourth root (0-3 shakes drawn in code,
+      `src/rendering/trapFx.js`), one trap a roll, Trapping XP every roll; the
+      kill's payouts untouched; never in a dungeon or on safe ground;
+    - pets live in `pets:<pid>` (`server/src/petbook.js`): worker-made ids,
+      `pets_state`, the Pets page (More -> Pets, and the farm's Pet House:
+      take out, rename, release), old `lifeSkills.pets` moved in once as
+      `legacy`; the join no longer adopts a browser's pets, and a first
+      connect's Trapping level and pets are dropped (`trapBootstrapGuard`);
+    - a pet is drawn from the pet sheet (`tools/make_pet_sheet.py`, 1.31 MB,
+      on the loading screen), out of the trap to you; no more fake pet bites,
+      Evolve, Enchant, or sample "Frost Fox"; `pet_capture` answers 'retired';
+    - caps `trapping` / `trapcraft` / `petbook` (lower case, kill switches;
+      `caps.pets` gone); admin lever `/dev/trapping`; `trapping` suite,
+      `mp-trapping`: docs/specs/trapping.md;
+    - since v2.3.3121 (Phase 2) PETS LEVEL UP: the pet out with you earns a
+      tenth of each kill's combat XP (`_petbookAddXp`, combat.js's XP loop;
+      ⌈25 x 1.08^(lv-1)⌉ a level), never past your Trapping level, in memory
+      and written once a minute, on disconnect or at a level-up, told on the
+      kill's `combat_credit` (`pet`); the Pets page's XP bars and JOURNAL (all
+      18 kinds, the uncaught their shapes); BEASTMASTER BRO east of the
+      Woodworker's steps (`WHEEL_TOWNSFOLK`, NOT "Beastmaster Kai": a dormant
+      chain keys on that name; art by `tools/make_beastmaster.py` until the
+      owner's, prompt in docs/ART-WISHLIST.md) with beast_1..4 -- make 3 traps,
+      spring 5, reach Trapping 6, catch a pet -- checked by the worker's new
+      objective types (`traps_made`, `trap_roll`, `skill`, `catch`; quests.js
+      `_questObjectiveMet`), gold and box traps, no XP to place; his line waits
+      on tut_1 (`after`), walking past him never stops you for his progress
+      (`quietProgress`), and a tap once it is done opens the Pets page; caps
+      `petlevels` / `beastmaster`; `trapping` §16-17, `mp-beastmaster`;
+    - since v2.3.3122 (Phase 3) PETS CHANGE HANDS: the trade window's pet lane
+      (`trade2_pets`, validate-at-commit: a staged pet stays in its record and
+      moves at the commit with the other debits, all out then all in), the
+      auction house's `kind: 'pet'` (escrowed in the listing, listed from the
+      Pets page) and the `pet` mail kind (STAYS QUEUED when the collection is
+      full; the join loads `pets:` BEFORE the mail drains); the gate is
+      `_petSellable` -- not out with you, not `legacy`, a day past its catch;
+      a new owner is one more `owners`; cap `pettrade`; `pettrade` suite,
+      `mp-pettrade`;
+    - since v2.3.3123 (Phase 4) PETS MATTER: the pet out with you WARDS its
+      land's element (`_petWard`, applied in monsterstatus.js `_elemOnHit`):
+      15% at Lv 1, +1 a level, at most 50% at the level it works at -- a
+      chill / hold / daze / soak shorter, a burn's or poison's ticks and a
+      storm arc on you lighter, a gust's shove (and its allowance) shorter,
+      never the hit itself; the hit says `wd`, the pet rings and says "Ward
+      n%"; GOLDEN and BIG catches are revealed (trapFx rays and ring, "Golden!"
+      / "Big one!", the card's glow, sweep and swelling badge, game.css
+      `bt-pet-*`); the OTHERS SEE YOUR PET: `pw` on your tick record (not `pt`, the pants)
+      ('kind.stage.gold.size.lv', `petWireOf` / `parsePetWire`, `_petWire` in
+      memory), drawn beside you with no name (`_updatePeerPets`, `_posePet`
+      shared with yours); MORE ROOM: `pet_house_buy {cap, confirm}` 10 places
+      for 1,000 gold, each step 1,000 more, to 120, a stale `cap` refused;
+      caps `petwards` / `petshow` / `pethouse`; dev `look: {gold, size}`;
+      `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

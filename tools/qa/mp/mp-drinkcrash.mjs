@@ -189,7 +189,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          <button>). */
       await P.page.evaluate(() => { try { window.__broDashPanelBus.open('bag'); } catch (e) {} });
       await P.page.waitForTimeout(700);
-      /* v2.3.3114: the bottle chip is "Consumable" now -- potions and the food
+      /* v2.3.3130: the bottle chip is "Consumable" now -- potions and the food
          eaten beside them (bagFilterBus.js); its id is still 'potion'. */
       const chip = await P.page.$('[aria-label="Consumable"][role="button"]');
       if (chip) { await chip.dispatchEvent('pointerup'); await P.page.waitForTimeout(500); }

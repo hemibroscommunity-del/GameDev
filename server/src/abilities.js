@@ -304,7 +304,7 @@ export const STAM_ABILITIES = {
  *                   tried to make into the bound and could not.  The pool is
  *                   REFILLABLE BY DESIGN: staminaSalts is a bottle (60 stamina,
  *                   cooking.js _applyShopItem; 12 coins at the shop until
- *                   v2.3.3116, brewed from two carrots since) drunk from the
+ *                   v2.3.3132, brewed from two carrots since) drunk from the
  *                   bag inside a combat zone with no cooldown.  That is a
  *                   feature, not a hole.  A
  *                   quantity a player is MEANT to be able to top up cannot rate-

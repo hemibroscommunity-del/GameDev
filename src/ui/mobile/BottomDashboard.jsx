@@ -49,6 +49,7 @@ import { JourneyPanel }      from './dash/JourneyPanel.jsx';
 import { MapPanel }          from './dash/MapPanel.jsx';
 import { SocialPanel }       from './dash/SocialPanel.jsx';
 import { MorePanel }         from './dash/MorePanel.jsx';
+import { PetsPanel }         from './dash/PetsPanel.jsx'; /* v2.3.3120 */
 import { StatsPanel }        from './dash/StatsPanel.jsx';
 import { SkillsPanel }       from './dash/SkillsPanel.jsx';
 import { EncyclopediaPanel } from './dash/EncyclopediaPanel.jsx';
@@ -437,6 +438,9 @@ const PANELS = {
      the wire-free client side; renaming ids resets nothing). */
   social:       { title: 'Friends',     Component: SocialPanel },
   more:         { title: 'More',        Component: MorePanel },
+  /* v2.3.3120: the Pets page (dash/PetsPanel.jsx): More -> Pets, and the
+     farm's Pet House (docs/PET-TRAPPING-PLAN.md) */
+  pets:         { title: 'Pets',        Component: PetsPanel },
   stats:        { title: 'Stats',       Component: StatsPanel },
   /* v2.3.1296 (round-5): expanded header says LIFE SKILLS to separate
      these from Hero's combat attributes; the toolbar label stays
