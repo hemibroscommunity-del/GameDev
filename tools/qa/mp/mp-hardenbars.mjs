@@ -1,12 +1,15 @@
-/* HARDENING TAKES BARS, AND ITS GOLD DOUBLES (v2.3.3139)
+/* HARDENING TAKES BARS OR HARDENED WOOD, AND ITS GOLD DOUBLES (v2.3.3139)
  *
  * The owner: "I think hardening should cost 1 bar per level (hardening lvl 1
  * cost 1 bar, hardening lvl 2 costs 2 bars, and a doubling gold cost per
- * level)", then "I meant 1000 for lvl 2, 2000 for lvl 3, etc".
+ * level)", then "I meant 1000 for lvl 2, 2000 for lvl 3, etc", and for bows
+ * and staffs "Maybe 5 logs of the raw material can make one 'hardened (name)
+ * wood' raw material so it mirrors the same structure.  Also for the number
+ * required and gold too".
  *
  * A phone in the Wheel's BroTown, against a real worker, through the real
  * doors:
- *   1. the worker advertises caps.hardenbars (and caps.harden);
+ *   1. the worker advertises caps.hardenmats (and caps.harden);
  *   2. sixty copper ore smelted at the Blacksmith (Smithing 5, twelve bars),
  *      a wooden greatsword forged into the hand -- the wood tier, so copper
  *      bars;
@@ -18,10 +21,14 @@
  *      words over the smith name the bars too;
  *   5. bars short: the chip reads "have/need" in red and Harden is off; the
  *      worker's bag agrees with the game's;
- *   6. the Woodworker: a pine bow in hand, its Harden button says what the
- *      next attempt takes or the bars it is short ("Need 1 Copper Bar more"),
- *      and with bars granted, "Attempt H1 (500G + 1 Copper Bar · 80%)" -- the
- *      worker takes one bar and 500 gold for the bow;
+ *   6. the Woodworker (caps.hardenedwood): a pine bow in hand takes HARDENED
+ *      PINE WOOD, not bars -- "Need 1 Hardened Pine Wood more"; the choices
+ *      Bow, Staff, Traps and Harden two by two; the Harden tab's five woods,
+ *      each its own picture, Softwood waiting on Woodworking 5; twelve Pine
+ *      Logs made into two Hardened Pine Wood with "All 2" (two logs over, 800
+ *      Woodworking XP, said over your head, the worker's bag the same); and
+ *      the bow's button "Attempt H1 (500G + 1 Hardened Pine Wood · 80%)",
+ *      the worker taking one of it and 500 gold;
  *   7. no page errors.
  * Pictures: tools/qa/mp/out/hardenbars-*.png.
  */
@@ -87,8 +94,8 @@ async function body({ P, wsPort, rec, errors }) {
   const me = await H.readState(P, (S) => S.myId);
 
   /* ── 1. caps ── */
-  const caps = await H.readState(P, (S) => ({ harden: !!(S._serverCaps && S._serverCaps.harden), bars: !!(S._serverCaps && S._serverCaps.hardenbars) }));
-  rec.ok('the worker advertises caps.hardenbars (and caps.harden)', caps.harden && caps.bars, caps);
+  const caps = await H.readState(P, (S) => ({ harden: !!(S._serverCaps && S._serverCaps.harden), bars: !!(S._serverCaps && S._serverCaps.hardenmats) }));
+  rec.ok('the worker advertises caps.hardenmats (and caps.harden)', caps.harden && caps.bars, caps);
   if (!(caps.harden && caps.bars)) return;
   /* every quest handed in, so no one stops us in the street */
   await H.devOp(wsPort, 'quests', me, {});
@@ -154,12 +161,12 @@ async function body({ P, wsPort, rec, errors }) {
   const readRow = () => P.page.evaluate(() => {
     const row = document.querySelector('[data-harden-row]');
     if (!row) return null;
-    const chip = row.querySelector('[data-harden-bars] > span');
+    const chip = row.querySelector('[data-harden-mat] > span');
     const nums = Array.from(row.innerText.matchAll(/(\d+)\/(\d+)/g)).map((m) => [Number(m[1]), Number(m[2])]);
     const go = row.querySelector('[data-harden-go]');
     return {
       text: row.innerText.replace(/\s+/g, ' ').trim(),
-      bar: (row.querySelector('[data-harden-bars]') || {}).getAttribute ? row.querySelector('[data-harden-bars]').getAttribute('data-harden-bars') : null,
+      bar: (row.querySelector('[data-harden-mat]') || {}).getAttribute ? row.querySelector('[data-harden-mat]').getAttribute('data-harden-mat') : null,
       chip: chip ? chip.innerText.trim() : null,
       chipImg: !!(chip && chip.querySelector('img') && chip.querySelector('img').naturalWidth > 0),
       chipColor: chip ? getComputedStyle(chip).color : null,
@@ -203,7 +210,7 @@ async function body({ P, wsPort, rec, errors }) {
   }
   const bad = attempts.filter((a) => !(a.reply && a.reply.success !== undefined && !a.reply.error
     && a.shownBars === ladderBars(a.h) && a.shownGold === ladderGold(a.h)
-    && a.reply.cost === ladderGold(a.h) && a.reply.bars === ladderBars(a.h) && a.reply.bar === 'bar_copper'
+    && a.reply.cost === ladderGold(a.h) && a.reply.amount === ladderBars(a.h) && a.reply.material === 'bar_copper'
     && a.tookBars === ladderBars(a.h) && a.tookGold === ladderGold(a.h)));
   rec.ok(`${attempts.length} attempts, each shown at the ladder's price for its level and charged exactly that (${attempts.map((a) => 'H' + a.h + ':' + a.tookBars + 'b/' + a.tookGold + 'g' + (a.reply && a.reply.success ? '✓' : '✗')).join(' ')})`,
     attempts.length >= 2 && bad.length === 0, { attempts, bad });
@@ -226,7 +233,7 @@ async function body({ P, wsPort, rec, errors }) {
   await shot(P, 'short');
   await shut();
 
-  /* ── 6. the Woodworker, a bow ── */
+  /* ── 6. the Woodworker, a bow: HARDENED WOOD ── */
   await H.devOp(wsPort, 'kit', me, { what: 'weapons' });
   await P.page.waitForFunction(() => (window._gameState.current.rpg.weaponStash || []).some((w) => w && w.type === 'bow'), null, { timeout: 8000 }).catch(() => {});
   await H.equipWeapon(P, 'bow', 'rangedWeapon', 'ranged');
@@ -238,29 +245,76 @@ async function body({ P, wsPort, rec, errors }) {
     const b = document.querySelector('button[data-harden-go]');
     return b ? { text: b.textContent.trim(), on: !b.disabled, cost: (b.querySelector('[data-harden-cost]') || { getAttribute: () => null }).getAttribute('data-harden-cost') } : null;
   });
-  const bw = await bag();
+  const hw = () => H.readState(P, (S) => ({ hw: ((S.rpg.inventory || {}).hardened_pine) || 0, logs: ((S.rpg.inventory || {}).wood_pine_log) || 0,
+    coins: S.rpg.coins || 0, xp: (((S.rpg.lifeSkills || {}).woodworking) || {}).xp || 0, lvl: (((S.rpg.lifeSkills || {}).woodworking) || {}).level || 1,
+    bow: S.rpg.rangedWeapon ? { h: S.rpg.rangedWeapon.hardness || 0, gb: S.rpg.rangedWeapon.gearBase } : null }));
+  const caps2 = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.hardenedwood));
+  rec.ok('the worker advertises caps.hardenedwood', caps2, caps2);
+  const h0 = await hw();
   const w0 = await wwBtn();
-  const shortBy = 1 - bw.bars;   /* the bow is at H0: one copper bar */
-  rec.ok(`the Woodworker's Harden button for the pine bow: "${w0 && w0.text}"`,
-    wOpen && !!w0 && !!bw.bow && bw.bow.gb === 'ww_pine'
-      && (shortBy > 0 ? (w0.text === 'Need 1 Copper Bar more' && !w0.on) : (/^Attempt H1 \(500G \+ 1 Copper Bar · 80%\)$/.test(w0.text) && w0.on)), { w0, bw });
-  await H.grant(wsPort, me, 'item', { invKey: 'bar_copper', count: 3 });
-  await P.page.waitForFunction((n) => ((window._gameState.current.rpg.inventory || {}).bar_copper || 0) >= n + 3, bw.bars, { timeout: 8000 }).catch(() => {});
-  await P.page.waitForTimeout(500);
+  rec.ok(`a pine bow takes HARDENED PINE WOOD, not bars: with none, its Harden button says "${w0 && w0.text}"`,
+    wOpen && !!w0 && !!h0.bow && h0.bow.gb === 'ww_pine' && h0.hw === 0 && w0.text === 'Need 1 Hardened Pine Wood more' && !w0.on, { w0, h0 });
+
+  /* the Harden choice: two by two with Bow, Staff and Traps */
+  const make = await P.page.evaluate(() => {
+    const g = document.querySelector('[data-ww-make]');
+    const cards = Array.from(document.querySelectorAll('[data-ww-type]')).map((b) => { const r = b.getBoundingClientRect(); return { t: b.getAttribute('data-ww-type'), x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width) }; });
+    return { n: g ? g.getAttribute('data-ww-make') : null, cards };
+  });
+  const rows = new Set(make.cards.map((c) => c.y));
+  rec.ok(`the Woodworker's choices are Bow, Staff, Traps and Harden, two by two (${make.cards.map((c) => c.t).join(', ')})`,
+    make.n === '4' && make.cards.map((c) => c.t).join() === 'bow,staff,traps,hardwood' && rows.size === 2 && make.cards.every((c) => c.w > 120), make);
+  await P.page.click('[data-ww-type="hardwood"]');
+  await P.page.waitForSelector('[data-hw-row="hardened_pine"]', { timeout: 4000 }).catch(() => {});
+  const tab0 = await P.page.$$eval('[data-hw-row]', (els) => els.map((el) => ({ key: el.getAttribute('data-hw-row'), text: el.innerText.replace(/\s+/g, ' ').trim(),
+    img: (() => { const im = el.querySelector('img'); return !!(im && im.complete && im.naturalWidth > 0 && /hardened-/.test(im.src)); })(),
+    make: (() => { const b = el.querySelector('[data-hw-make]'); return b ? { t: b.textContent.trim(), d: b.disabled } : null; })() })));
+  const pineRow = tab0.find((r) => r.key === 'hardened_pine') || null;
+  const softRow = tab0.find((r) => r.key === 'hardened_softwood') || null;
+  rec.ok(`the Harden tab: five woods, each its own picture; Hardened Pine Wood wants 5 Pine Logs (+400 XP), Softwood waits on Woodworking 5 ("${pineRow && pineRow.text}" / "${softRow && softRow.text}")`,
+    tab0.length === 5 && tab0.every((r) => r.img) && !!pineRow && /Hardened Pine Wood/.test(pineRow.text) && /0\/5/.test(pineRow.text) && /\+400 XP/.test(pineRow.text)
+      && pineRow.make && pineRow.make.d && !!softRow && /Woodworking 5/.test(softRow.text) && softRow.make && softRow.make.d, tab0);
+  /* twelve pine logs: two pieces, two logs over */
+  await H.grant(wsPort, me, 'item', { invKey: 'wood_pine_log', count: 12 });
+  await P.page.waitForFunction(() => ((window._gameState.current.rpg.inventory || {}).wood_pine_log || 0) >= 12, null, { timeout: 8000 }).catch(() => {});
+  await P.page.waitForSelector('[data-hw-all="hardened_pine"]', { timeout: 4000 }).catch(() => {});
+  const allTxt = await P.page.$eval('[data-hw-all="hardened_pine"]', (b) => b.textContent.trim()).catch(() => null);
+  await shot(P, 'hardwood-tab');
+  const h1 = await hw();
+  await P.page.click('[data-hw-all="hardened_pine"]').catch(() => {});
+  await P.page.waitForFunction(() => ((window._gameState.current.rpg.inventory || {}).hardened_pine || 0) >= 2, null, { timeout: 8000 }).catch(() => {});
+  await P.page.waitForTimeout(400);
+  const h2 = await hw();
+  const said = await P.page.evaluate(() => ((window._gameState.current.dmgNumbers) || []).map((d) => d && d.text).filter(Boolean));
+  const totalXp = (x) => x.xp + (x.lvl >= 2 ? 1000 : 0);   /* one level up is the most 800 XP can make from level 1 */
+  rec.ok(`"${allTxt}": twelve Pine Logs became two Hardened Pine Wood (${h1.logs} -> ${h2.logs} logs, ${h1.hw} -> ${h2.hw}) and 800 Woodworking XP`,
+    allTxt === 'All 2' && h2.hw === 2 && h2.logs === 2 && totalXp(h2) - totalXp(h1) === 800, { h1, h2 });
+  rec.ok(`...said over your head ("${said.filter((t) => /Hardened|Woodworking/.test(t)).join('", "')}")`,
+    said.some((t) => /\+2 Hardened Pine Wood/.test(t)) && said.some((t) => /\+800 Woodworking XP/.test(t)), said);
+  const srv2 = await H.adminPlayer(wsPort, me).catch(() => null);
+  const srvInv2 = (srv2 && srv2.rpg && srv2.rpg.inventory) || {};
+  rec.ok('...and the worker\'s bag says the same (2 hardened, 2 logs)', srvInv2.hardened_pine === 2 && srvInv2.wood_pine_log === 2, { hardened: srvInv2.hardened_pine, logs: srvInv2.wood_pine_log });
+  await shot(P, 'hardwood-made');
+
+  /* back to the bow: one Hardened Pine Wood and 500 gold */
+  await P.page.click('[data-ww-type="bow"]');
+  await P.page.waitForSelector('button[data-harden-go]', { timeout: 4000 }).catch(() => {});
+  await P.page.waitForTimeout(300);
   const w1 = await wwBtn();
-  rec.ok(`...with bars: "${w1 && w1.text}"`, !!w1 && w1.text === 'Attempt H1 (500G + 1 Copper Bar · 80%)' && w1.on && w1.cost === 'bar_copper:1', w1);
+  rec.ok(`...and the bow's Harden button: "${w1 && w1.text}"`, !!w1 && w1.text === 'Attempt H1 (500G + 1 Hardened Pine Wood · 80%)' && w1.on && w1.cost === 'hardened_pine:1', w1);
   await P.page.evaluate(() => { const b = document.querySelector('button[data-harden-go]'); if (b) b.scrollIntoView({ block: 'center' }); });
   await P.page.waitForTimeout(300);
   await shot(P, 'woodworker');
-  const before = await bag();
+  const before = await hw();
   const nR = await P.page.evaluate(() => window.__hardenReplies.length);
   await P.page.click('button[data-harden-go]').catch(() => {});
   await P.page.waitForFunction((n) => window.__hardenReplies.length > n, nR, { timeout: 8000 }).catch(() => {});
   const wr = await P.page.evaluate((n) => window.__hardenReplies[n] || null, nR);
   let after = before;
-  for (let k = 0; k < 20; k++) { after = await bag(); if (after.bars !== before.bars) break; await P.page.waitForTimeout(250); }
-  rec.ok(`...and the worker took one copper bar and 500 gold for the bow (${before.bars} -> ${after.bars} bars, ${before.coins} -> ${after.coins} gold)`,
-    !!wr && wr.slot === 'rangedWeapon' && wr.bar === 'bar_copper' && wr.bars === 1 && wr.cost === 500 && before.bars - after.bars === 1 && before.coins - after.coins === 500, { wr, before, after });
+  for (let k = 0; k < 20; k++) { after = await hw(); if (after.hw !== before.hw && after.coins !== before.coins) break; await P.page.waitForTimeout(250); }
+  rec.ok(`...and the worker took one Hardened Pine Wood and 500 gold for the bow (${before.hw} -> ${after.hw}, ${before.coins} -> ${after.coins} gold)`,
+    !!wr && wr.slot === 'rangedWeapon' && wr.material === 'hardened_pine' && wr.amount === 1 && wr.cost === 500
+      && before.hw - after.hw === 1 && before.coins - after.coins === 500, { wr, before, after });
   await shut();
 
   /* ── 7. ── */

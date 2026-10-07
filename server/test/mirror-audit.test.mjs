@@ -31,8 +31,10 @@ import { PROG3 as SRV_PROG3 } from '../src/prog3.js';
 import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_ARCH as SRV_BURROW_ARCH, SLIME_BURST as SRV_SLIME_BURST } from '../src/telegraph.js'; /* v2.3.2221; v2.3.2224 */
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
-import { HARDEN as SRV_HARDEN, HARDEN_BAR_BY_TIER as SRV_HARDEN_BAR_BY_TIER, HARDEN_BAR_NAMES as SRV_HARDEN_BAR_NAMES, hardenGoldFor as srvHardenGold, hardenBarsFor as srvHardenBars, hardenBarFor as srvHardenBar } from '../src/hardening.js'; /* v2.3.3139 */
-import { HARDEN_COSTS as CLIENT_HARDEN, HARDEN_BAR_NAMES as CLIENT_HARDEN_BAR_NAMES, hardenGoldFor as clientHardenGold, hardenBarsFor as clientHardenBars, hardenBarFor as clientHardenBar, hardenTierOf as clientHardenTier } from '../../src/data/hardenCosts.js'; /* v2.3.3139 */
+import { HARDEN as SRV_HARDEN, HARDEN_BAR_BY_TIER as SRV_HARDEN_BAR_BY_TIER, HARDEN_WOOD_BY_TIER as SRV_HARDEN_WOOD_BY_TIER, HARDEN_MATERIAL_NAMES as SRV_HARDEN_NAMES, hardenGoldFor as srvHardenGold, hardenAmountFor as srvHardenAmount, hardenMaterialFor as srvHardenMat, hardenIsWood as srvHardenIsWood } from '../src/hardening.js'; /* v2.3.3139 */
+import { HARDENED_WOOD as SRV_HARDENED_WOOD } from '../src/hardenedwood.js'; /* v2.3.3139 */
+import { HARDEN_COSTS as CLIENT_HARDEN, HARDEN_MATERIAL_NAMES as CLIENT_HARDEN_NAMES, hardenGoldFor as clientHardenGold, hardenAmountFor as clientHardenAmount, hardenMaterialFor as clientHardenMat, hardenIsWood as clientHardenIsWood, hardenTierOf as clientHardenTier } from '../../src/data/hardenCosts.js'; /* v2.3.3139 */
+import { HARDENED_WOOD_RECIPES as CLIENT_HARDENED_WOOD, HARDENED_WOOD_MAX_PER_REQUEST as CLIENT_HW_MAX, HARDEN_WOOD_BY_TIER as CLIENT_HARDEN_WOOD_BY_TIER } from '../../src/data/hardenedWood.js'; /* v2.3.3139 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
 import { FARM as SRV_FARM, farmGrowMs as srvFarmGrowMs, farmYield as srvFarmYield } from '../src/farm.js'; /* v2.3.3127 */
 import { FARM as CLIENT_FARM, FARM_CROP_ORDER as CLIENT_FARM_ORDER, farmGrowMs as clientFarmGrowMs, farmYieldShown as clientFarmYieldShown } from '../../src/data/farmCrops.js'; /* v2.3.3127 */
@@ -1808,34 +1810,56 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
 
 /* ═══ v2.3.3139: WHAT HARDENING COSTS ═══
    The owner: "hardening should cost 1 bar per level ... and a doubling gold
-   cost per level" -- the Blacksmith's and the Woodworker's Harden rows show
-   the game's copy (src/data/hardenCosts.js); it must be the price the worker
-   charges, bar for bar, coin for coin, on both ladders, and name the same
-   bar for every weapon. */
+   cost per level", and for bows and staffs "5 logs of the raw material can
+   make one 'hardened (name) wood' ... Also for the number required and gold
+   too" -- the Blacksmith's and the Woodworker's Harden rows show the game's
+   copy (src/data/hardenCosts.js); it must be the price the worker charges,
+   piece for piece, coin for coin, on both ladders, and name the same
+   material for every weapon. */
 {
-  check('hardening: the game\'s ladder is the worker\'s (base, both factors, bars a level, the bar by tier, the bars\' names)',
+  const names = (o) => JSON.stringify(Object.keys(o).sort().map((k) => [k, o[k]]));
+  check('hardening: the game\'s ladder is the worker\'s (base, both factors, a material a level, the bars and woods by tier, their names)',
     CLIENT_HARDEN.COST_BASE === SRV_HARDEN.COST_BASE && CLIENT_HARDEN.COST_FACTOR === SRV_HARDEN.COST_FACTOR
-      && CLIENT_HARDEN.OLD_COST_FACTOR === SRV_HARDEN.OLD_COST_FACTOR && CLIENT_HARDEN.BARS_PER_LEVEL === SRV_HARDEN.BARS_PER_LEVEL
+      && CLIENT_HARDEN.OLD_COST_FACTOR === SRV_HARDEN.OLD_COST_FACTOR && CLIENT_HARDEN.MATS_PER_LEVEL === SRV_HARDEN.MATS_PER_LEVEL
       && JSON.stringify(CLIENT_HARDEN.BAR_BY_TIER) === JSON.stringify(SRV_HARDEN_BAR_BY_TIER)
-      && JSON.stringify(Object.assign({}, CLIENT_HARDEN_BAR_NAMES)) === JSON.stringify(Object.assign({}, SRV_HARDEN_BAR_NAMES)),
-    { client: CLIENT_HARDEN, server: { COST_BASE: SRV_HARDEN.COST_BASE, COST_FACTOR: SRV_HARDEN.COST_FACTOR, OLD_COST_FACTOR: SRV_HARDEN.OLD_COST_FACTOR, BARS_PER_LEVEL: SRV_HARDEN.BARS_PER_LEVEL, BAR_BY_TIER: SRV_HARDEN_BAR_BY_TIER } });
+      && JSON.stringify(CLIENT_HARDEN.WOOD_BY_TIER) === JSON.stringify(SRV_HARDEN_WOOD_BY_TIER)
+      && names(CLIENT_HARDEN_NAMES) === names(SRV_HARDEN_NAMES),
+    { client: CLIENT_HARDEN, server: { COST_BASE: SRV_HARDEN.COST_BASE, COST_FACTOR: SRV_HARDEN.COST_FACTOR, OLD_COST_FACTOR: SRV_HARDEN.OLD_COST_FACTOR,
+      MATS_PER_LEVEL: SRV_HARDEN.MATS_PER_LEVEL, BAR_BY_TIER: SRV_HARDEN_BAR_BY_TIER, WOOD_BY_TIER: SRV_HARDEN_WOOD_BY_TIER } });
   const off = [];
   for (let h = 0; h < SRV_HARDEN.MAX; h++) {
     if (srvHardenGold(h, false) !== clientHardenGold(h, false)) off.push(['gold', h]);
     if (srvHardenGold(h, true) !== clientHardenGold(h, true)) off.push(['old gold', h]);
-    if (srvHardenBars(h) !== clientHardenBars(h)) off.push(['bars', h]);
+    if (srvHardenAmount(h) !== clientHardenAmount(h)) off.push(['amount', h]);
   }
-  for (let t = 1; t <= 10; t++) if (srvHardenBar(t) !== clientHardenBar(t)) off.push(['bar', t]);
-  check('hardening: every attempt\'s gold and bars the same on both sides (500..8,000 and 1..5 bars; the old ladder 500..128,000), and the same bar for every tier',
+  for (let t = 0; t <= 22; t++) for (const wood of [false, true]) if (srvHardenMat(t, wood) !== clientHardenMat(t, wood)) off.push(['material', t, wood]);
+  check('hardening: every attempt\'s gold and amount the same on both sides (500..8,000 and 1..5; the old ladder 500..128,000), and the same material for every tier, metal or wood',
     off.length === 0 && [0, 1, 2, 3, 4].map((h) => clientHardenGold(h)).join() === '500,1000,2000,4000,8000'
       && [0, 1, 2, 3, 4].map((h) => clientHardenGold(h, true)).join() === '500,2000,8000,32000,128000'
-      && [0, 1, 2, 3, 4].map((h) => clientHardenBars(h)).join() === '1,2,3,4,5', off);
-  /* the tier the game reads for the bar is the tier the worker reads for it */
+      && [0, 1, 2, 3, 4].map((h) => clientHardenAmount(h)).join() === '1,2,3,4,5', off);
+  /* the tier the game reads for the material is the tier the worker reads,
+     and both call the same weapons wood */
   const tOff = [];
   const weapons = [{ gearBase: 'wood' }, { gearBase: 'copper' }, { gearBase: 'iron' }, { gearBase: 'steel' }, { gearBase: 'titanium' },
-    { gearBase: 'ww_pine' }, { gearBase: 'ww_hardwood' }, { gearBase: 'ww_cedar' }, { tierMult: 1.3 }, { tierMult: 1 }, {}];
-  for (const w of weapons) if (room._weaponTierIndex(w) !== clientHardenTier(w)) tOff.push([w, room._weaponTierIndex(w), clientHardenTier(w)]);
-  check('hardening: the game picks the same tier, so the same bar, as the worker for every kind of weapon', tOff.length === 0, tOff);
+    { gearBase: 'ww_pine' }, { gearBase: 'ww_hardwood' }, { gearBase: 'ww_cedar' }, { gearBase: 'ww_maple' }, { gearBase: 'ww_ironbark' },
+    { tierMult: 1.3 }, { tierMult: 1 }, {}];
+  for (const w of weapons) {
+    if (room._weaponTierIndex(w) !== clientHardenTier(w)) tOff.push(['tier', w, room._weaponTierIndex(w), clientHardenTier(w)]);
+    for (const slot of ['weapon', 'rangedWeapon', 'staffWeapon']) if (srvHardenIsWood(w, slot) !== clientHardenIsWood(w, slot)) tOff.push(['wood', w, slot]);
+  }
+  check('hardening: the game picks the same tier, and calls the same weapons wood, as the worker -- so the same material', tOff.length === 0, tOff);
+  /* the hardened wood itself: the Woodworker's Harden tab draws the game's copy */
+  const RC = SRV_HARDENED_WOOD.RECIPES;
+  const hOff = [];
+  for (const k of new Set([...Object.keys(RC), ...Object.keys(CLIENT_HARDENED_WOOD)])) {
+    const a = RC[k], b = CLIENT_HARDENED_WOOD[k];
+    if (!a || !b) { hOff.push(['missing', k]); continue; }
+    for (const f of ['log', 'logCost', 'minLvl', 'xp', 'tier', 'name']) if (a[f] !== b[f]) hOff.push([k, f, a[f], b[f]]);
+  }
+  check('hardened wood: the Woodworker\'s Harden tab is the worker\'s table (log, logs a piece, level, XP, wood, name) and its "All" cap',
+    hOff.length === 0 && CLIENT_HW_MAX === SRV_HARDENED_WOOD.MAX_PER_REQUEST && Object.keys(RC).length === 5, hOff);
+  check('hardened wood: the woods by tier read off the same table on both sides',
+    JSON.stringify(CLIENT_HARDEN_WOOD_BY_TIER) === JSON.stringify(SRV_HARDEN_WOOD_BY_TIER), { client: CLIENT_HARDEN_WOOD_BY_TIER, server: SRV_HARDEN_WOOD_BY_TIER });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

@@ -161,7 +161,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const paid = await P.page.waitForFunction((c) => (window._gameState.current.rpg.coins || 0) <= c - 500, c0, { timeout: 6000 }).then(() => true).catch(() => false);
   const replies = await P.page.evaluate(() => window.__hardenReplies);
   rec.ok('Harden: the worker took the 500 gold and a copper bar, and rolled it', paid && replies.length === 1 && replies[0].cost === 500
-    && replies[0].bar === 'bar_copper' && replies[0].bars === 1,
+    && replies[0].material === 'bar_copper' && replies[0].amount === 1,
     { c0, now: await H.readState(P, (S) => S.rpg.coins), replies });
 
   /* ── 5. Amulet ── */

@@ -20,7 +20,8 @@
  *
  * HARDENING (§4.6c): the endgame Blacksmith lottery.  H0→5 ladder at
  * 80/20/5/1/0.5%, gold 500×4^level per attempt (v2.3.3139: 500×2^level and
- * level+1 bars, the owner's -- HARDEN, HARDEN_BAR_BY_TIER), +1.0417 effective base
+ * level+1 bars -- or, for a bow or a staff, level+1 HARDENED WOOD of its own
+ * wood (hardenedwood.js) -- the owner's: HARDEN, hardenMaterialFor), +1.0417 effective base
  * per level (GDD's +5 ÷ 4.8 code scale).  Failure resets hardness by
  * the TEMPER pity band (checked on the temper BEFORE this failure):
  * 0-19 → reset to 0 · 20-49 → -2 · 50-99 → -1 · 100+ → no reset.
@@ -39,6 +40,7 @@
  * only, never enforcement). */
 
 import { QUALITY_GRADES, BLACKSMITH_TIERS, WOODWORKING_TIERS } from './data.js';
+import { HARDENED_WOOD } from './hardenedwood.js';
 
 export const HARDEN = {
   MAX: 5,
@@ -47,39 +49,64 @@ export const HARDEN = {
   /* v2.3.3139: the owner: "a doubling gold cost per level ... 500 for lvl 1,
      1000 for lvl 2, 2000 for lvl 3, etc" -- 500 x 2^currentHardness: 500,
      1,000, 2,000, 4,000 and 8,000 for the attempt at H1..H5.  It was x4 (to
-     128,000 for the last), which `hardenbars: false` still charges. */
+     128,000 for the last), which `hardenmats: false` still charges. */
   COST_FACTOR: 2,
   OLD_COST_FACTOR: 4,
-  /* v2.3.3139: and BARS -- "hardening lvl 1 cost 1 bar, hardening lvl 2 costs
-     2 bars": the attempt at H(n) takes n bars, every attempt, won or lost,
-     like the gold.  Which bars: HARDEN_BAR_BY_TIER below. */
-  BARS_PER_LEVEL: 1,
+  /* v2.3.3139: and a MATERIAL -- "hardening lvl 1 cost 1 bar, hardening lvl 2
+     costs 2 bars": the attempt at H(n) takes n of it, every attempt, won or
+     lost, like the gold.  Bars for a sword, hardened wood for a bow or a staff
+     ("for the number required and gold too"): hardenMaterialFor below. */
+  MATS_PER_LEVEL: 1,
   BASE_BONUS: 1.0417,                     // +5 GDD base ÷ 4.8 code scale, per level
   LEDGER_CAP: 50,
   H5_WINDOW_MS: 90 * 24 * 3600 * 1000,    // INV-27 monitoring window
 };
 
-/* ═══ v2.3.3139: WHICH BARS A WEAPON'S HARDENING TAKES ═══
-   By the weapon's material tier -- the very index the Smithing gate reads
-   (_weaponTierIndex): tiers 1-2 copper, tier 3 iron, tier 4 and up black
+/* ═══ v2.3.3139: WHAT A WEAPON'S HARDENING TAKES ═══
+   METAL -- by the weapon's material tier, the very index the Smithing gate
+   reads (_weaponTierIndex): tiers 1-2 copper, tier 3 iron, tier 4 and up black
    steel.  So every metal blade with bars of its own takes its own metal's
-   (copper, iron, black steel), and the rest take the nearest the forge makes:
-   the wood tier copper; titanium and beyond black steel, until their own bars
-   exist; and bows and staffs by their wood's tier (pine and softwood copper,
-   hardwood iron, cedar and beyond black steel) -- one rule for every weapon
-   the ladder hardens, at the Blacksmith or the Woodworker. */
+   (copper, iron, black steel), and the rest the nearest the forge makes: the
+   wood tier copper; titanium and beyond black steel, until their own bars
+   exist.
+   WOOD -- a bow or a staff takes HARDENED WOOD of its own wood (the owner:
+   "5 logs of the raw material can make one 'hardened (name) wood' raw
+   material so it mirrors the same structure"): a pine bow Hardened Pine Wood,
+   a maple staff Hardened Maple Wood, by its tier in WOODWORKING_TIERS -- the
+   woods past maple the last, until their own logs grow.  The first cut put
+   bows and staffs on bars by their wood's tier; the owner's answer replaced it.
+   What is wood: a `ww_` gearBase, or the bow's and the staff's own slots (an
+   old bow with no `ww_` gearBase is ranked by tierMult, as the gate does). */
 export const HARDEN_BAR_BY_TIER = ['bar_copper', 'bar_copper', 'bar_iron', 'bar_black_steel'];
-export const HARDEN_BAR_NAMES = Object.assign(Object.create(null), {
-  bar_copper: 'Copper Bar', bar_iron: 'Iron Bar', bar_black_steel: 'Black Steel Bar',
+export const HARDEN_WOOD_BY_TIER = Object.keys(WOODWORKING_TIERS)
+  .map((t) => Object.keys(HARDENED_WOOD.RECIPES).find((k) => HARDENED_WOOD.RECIPES[k].tier === t))
+  .filter(Boolean);
+/* A material's name, one and many (the refusal says "Need 3 Iron Bars", "Need
+   2 Hardened Pine Wood"). */
+export const HARDEN_MATERIAL_NAMES = Object.assign(Object.create(null), {
+  bar_copper: ['Copper Bar', 'Copper Bars'], bar_iron: ['Iron Bar', 'Iron Bars'], bar_black_steel: ['Black Steel Bar', 'Black Steel Bars'],
 });
-/** The bar a weapon of material tier `tierIdx` (1-based) takes. */
-export function hardenBarFor(tierIdx) {
-  const i = Math.max(1, Math.floor(Number(tierIdx) || 1));
-  return HARDEN_BAR_BY_TIER[Math.min(i, HARDEN_BAR_BY_TIER.length) - 1];
+for (const k of Object.keys(HARDENED_WOOD.RECIPES)) HARDEN_MATERIAL_NAMES[k] = [HARDENED_WOOD.RECIPES[k].name, HARDENED_WOOD.RECIPES[k].name];
+export function hardenMaterialWord(key, n) {
+  const w = HARDEN_MATERIAL_NAMES[key];
+  return n + ' ' + (w ? w[n === 1 ? 0 : 1] : key);
 }
-/** How many bars the attempt from `hardness` takes: the level it reaches. */
-export function hardenBarsFor(hardness) {
-  return (Math.max(0, Math.floor(Number(hardness) || 0)) + 1) * HARDEN.BARS_PER_LEVEL;
+/** Is this weapon hardened with wood?  A `ww_` gearBase, or the bow's or the
+    staff's slot. */
+export function hardenIsWood(w, slot) {
+  const gb = w && typeof w.gearBase === 'string' ? w.gearBase : '';
+  return gb.indexOf('ww_') === 0 || slot === 'rangedWeapon' || slot === 'staffWeapon';
+}
+/** The material a weapon of material tier `tierIdx` (1-based) takes: its
+    metal's bars, or for wood its wood's hardened wood. */
+export function hardenMaterialFor(tierIdx, wood) {
+  const table = wood ? HARDEN_WOOD_BY_TIER : HARDEN_BAR_BY_TIER;
+  const i = Math.max(1, Math.floor(Number(tierIdx) || 1));
+  return table[Math.min(i, table.length) - 1];
+}
+/** How many the attempt from `hardness` takes: the level it reaches. */
+export function hardenAmountFor(hardness) {
+  return (Math.max(0, Math.floor(Number(hardness) || 0)) + 1) * HARDEN.MATS_PER_LEVEL;
 }
 /** The gold the attempt from `hardness` takes; `old` is the ladder before
     v2.3.3139 (the kill switch's). */
@@ -133,13 +160,14 @@ export const hardeningMethods = {
   },
 
   /* v2.3.3139: the kill switch, read the smelting way (smelting.js
-     _smeltOff): `hardenbars: false` in liveflags puts hardening back on its
-     old gold ladder (500 x 4^H) with no bars, and un-advertises
-     caps.hardenbars so the game shows that ladder again.  Nothing held is
-     touched. */
-  _hardenBarsOff() {
+     _smeltOff): `hardenmats: false` in liveflags puts hardening back on its
+     old gold ladder (500 x 4^H) with no bars or hardened wood, and
+     un-advertises caps.hardenmats so the game shows that ladder again.
+     Nothing held is touched.  (`hardenedwood: false` does the same for bows
+     and staffs alone: hardenedwood.js.) */
+  _hardenMatsOff() {
     const f = this._liveFlags;
-    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'hardenbars') && !f.hardenbars);
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'hardenmats') && !f.hardenmats);
   },
 
   _hardenSend(playerId, payload) {
@@ -168,25 +196,29 @@ export const hardeningMethods = {
     if (Math.floor(smithLvl / 5) < tierIdx) {
       return err('skill-gate', 'Need Blacksmithing Lv' + (tierIdx * 5) + ' for this tier');
     }
-    /* v2.3.3139: the owner's ladder -- doubling gold, and as many bars as
-       the level the attempt reaches, of the weapon's tier's metal */
-    const barsOn = !this._hardenBarsOff();
-    const cost = hardenGoldFor(hardness, !barsOn);
-    const bar = barsOn ? hardenBarFor(tierIdx) : null;
-    const bars = barsOn ? hardenBarsFor(hardness) : 0;
+    /* v2.3.3139: the owner's ladder -- doubling gold, and as many of the
+       weapon's material as the level the attempt reaches: its metal's bars,
+       or a bow's or a staff's own hardened wood.  Wood only while hardened
+       wood can be made (`hardenedwood: false` puts bows and staffs back on
+       gold alone, so nothing asks for a material no one can make). */
+    const wood = hardenIsWood(w, slot);
+    const matsOn = !this._hardenMatsOff() && !(wood && this._hardenedWoodOff());
+    const cost = hardenGoldFor(hardness, !matsOn);
+    const material = matsOn ? hardenMaterialFor(tierIdx, wood) : null;
+    const amount = material ? hardenAmountFor(hardness) : 0;
     if ((ps.coins || 0) < cost) return err('no-gold', 'Need ' + cost + 'g');
     if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
-    const haveBars = bar ? Math.floor(Number(ps.inventory[bar]) || 0) : 0;
-    if (bars > 0 && haveBars < bars) {
-      return err('no-bars', 'Need ' + bars + ' ' + HARDEN_BAR_NAMES[bar] + (bars === 1 ? '' : 's'));
+    const haveMats = material && Object.prototype.hasOwnProperty.call(ps.inventory, material) ? Math.floor(Number(ps.inventory[material]) || 0) : 0;
+    if (amount > 0 && haveMats < amount) {
+      return err('no-materials', 'Need ' + hardenMaterialWord(material, amount));
     }
 
     // Single-mutation settle (the gamble pattern): one input-gated
     // event on live ps, roll after the debit, no crash window.
     ps.coins -= cost;
-    if (bars > 0) {
-      ps.inventory[bar] = haveBars - bars;
-      if (ps.inventory[bar] <= 0) delete ps.inventory[bar];
+    if (amount > 0) {
+      ps.inventory[material] = haveMats - amount;
+      if (ps.inventory[material] <= 0) delete ps.inventory[material];
     }
     const success = Math.random() < HARDEN.ODDS[hardness];
     const temperBefore = (typeof w.temper === 'number' && w.temper >= 0) ? Math.floor(w.temper) : 0;
@@ -205,8 +237,8 @@ export const hardeningMethods = {
     this._queuePlayerStateFlush(session.id);
     this._hardenSend(session.id, {
       success, slot, cost,
-      /* v2.3.3139: the bars it took (none on the old ladder) */
-      ...(bars > 0 ? { bar, bars } : {}),
+      /* v2.3.3139: the material it took and how many (none on the old ladder) */
+      ...(amount > 0 ? { material, amount } : {}),
       hardness: w.hardness, temper: w.temper || 0,
       odds: HARDEN.ODDS[Math.min(w.hardness, HARDEN.MAX - 1)],
     });
@@ -214,7 +246,7 @@ export const hardeningMethods = {
     try {
       const lkey = 'harden_ledger:' + session.id;
       const ledger = (await this.state.storage.get(lkey)) || [];
-      ledger.push({ ts: Date.now(), slot, type: w.type, from: hardness, to: w.hardness, success, cost, ...(bars > 0 ? { bar, bars } : {}), temper: w.temper || 0 });
+      ledger.push({ ts: Date.now(), slot, type: w.type, from: hardness, to: w.hardness, success, cost, ...(amount > 0 ? { material, amount } : {}), temper: w.temper || 0 });
       await this.state.storage.put(lkey, ledger.slice(-HARDEN.LEDGER_CAP));
       if (success && w.hardness === HARDEN.MAX) {
         // INV-27: global H5 mint log, pruned to the 90-day window.

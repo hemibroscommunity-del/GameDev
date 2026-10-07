@@ -388,26 +388,26 @@ function UpgradeTab({ S, R, coins, lvl, caps, ask, busy }) {
     const maxed = h >= 5;
     /* v2.3.3139: the owner's ladder -- 500 x 2^H gold and H+1 bars of the
        weapon's tier's metal -- against a worker that charges it
-       (caps.hardenbars); else the old 500 x 4^H and no bars */
-    const hc = hardenCost(w, h, !!(S._serverCaps && S._serverCaps.hardenbars));
+       (caps.hardenmats); else the old 500 x 4^H and no bars */
+    const hc = hardenCost(w, h, !!(S._serverCaps && S._serverCaps.hardenmats), !!(S._serverCaps && S._serverCaps.hardenedwood), 'weapon');
     const cost = hc.gold;
-    const haveBars = hc.bar ? Math.floor(((R.inventory || {})[hc.bar]) || 0) : 0;
-    const barsOk = !hc.bar || haveBars >= hc.bars;
+    const haveMats = hc.material ? Math.floor(((R.inventory || {})[hc.material]) || 0) : 0;
+    const matsOk = !hc.material || haveMats >= hc.amount;
     const ic = weaponIcon(w.type, w.gearBase);
     const needLvl = hardenTierOf(w) * 5;
     const skillOk = lvl >= needLvl;
     rows.push(
       <Row key="harden" data-harden-row="1" icon={w.type === 'bow' ? '/icons/items/bow.webp' : w.type === 'staff' ? '/icons/items/staff.webp' : ic.src}
         iconFallback={ic.fallback} badge={'H' + h} title={maxed ? w.name + ' · max' : 'H' + h + ' → H' + (h + 1)}
-        action={!maxed && <Btn on={skillOk && coins >= cost && barsOk && !busy} primary data-harden-go="1" onClick={() => ask('harden', {
+        action={!maxed && <Btn on={skillOk && coins >= cost && matsOk && !busy} primary data-harden-go="1" onClick={() => ask('harden', {
           type: 'broadcast', event: 'harden_weapon', payload: { slot: 'weapon' },
         }, {
           kind: 'harden', workMs: SMITH_STRIKE_MS * 3,
           /* harden_result (gameEvents) says win or lose; this only clears the busy state */
-          sig: () => { const x = S.rpg && S.rpg.weapon; return x ? String(x.hardness || 0) + ':' + (x.temper || 0) + ':' + (S.rpg.coins || 0) + ':' + (hc.bar ? ((S.rpg.inventory || {})[hc.bar] || 0) : '') : ''; },
+          sig: () => { const x = S.rpg && S.rpg.weapon; return x ? String(x.hardness || 0) + ':' + (x.temper || 0) + ':' + (S.rpg.coins || 0) + ':' + (hc.material ? ((S.rpg.inventory || {})[hc.material] || 0) : '') : ''; },
         })}>Harden</Btn>}>
         {!maxed && !skillOk && <Lock>Smithing {needLvl}</Lock>}
-        {!maxed && hc.bar && <span data-harden-bars={hc.bar} style={{ display: 'contents' }}><Cost icon={BAR_THUMBS[hc.bar]} have={haveBars} need={hc.bars} /></span>}
+        {!maxed && hc.material && <span data-harden-mat={hc.material} style={{ display: 'contents' }}><Cost icon={thumbFor(hc.material)} have={haveMats} need={hc.amount} /></span>}
         {!maxed && <Cost icon={COIN} have={coins} need={cost} />}
         {!maxed && <Chip color={H_ODDS[h] >= 20 ? C.good : '#E5B36A'}>{H_ODDS[h]}%</Chip>}
         {!maxed && h > 0 && <Chip color={C.mute}>Fail → H0</Chip>}
