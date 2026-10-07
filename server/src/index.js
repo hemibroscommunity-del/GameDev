@@ -4967,9 +4967,12 @@ export class GameRoom {
         const _ps = this.playerState[session.id];
         if (!_ps) break;
         const _sid = session.id, _kind = msg.type;
+        /* v2.3.3137: the player's id goes in, so the trade is SAVED with the
+           pile (shop.js: before, a sale came undone on the next reconnect
+           and Diego's shelf kept a copy). */
         (_kind === 'shop_sell'
-          ? this._shopSell(_ps, _sp.key, _sp.qty)
-          : this._shopBuy(_ps, _sp.key, _sp.qty)
+          ? this._shopSell(_ps, _sp.key, _sp.qty, _sid)
+          : this._shopBuy(_ps, _sp.key, _sp.qty, _sid)
         ).then(async (r) => {
           this._shopSend(_sid, 'shop_result', Object.assign({ kind: _kind }, r));
           if (r && r.ok) {
