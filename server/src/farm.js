@@ -93,7 +93,7 @@ export const FARM = {
      carrot-only farm included (review).  So FARM.V is the highest crop `v`
      (farm.test pins it), and a phase that adds anything else to the record
      raises both.
-     v2.3.3119: 3 -- the ten new crops (wheat to heartroot).  A worker at 2
+     v2.3.3135: 3 -- the ten new crops (wheat to heartroot).  A worker at 2
      has never heard of them; a farm growing one is a 3 while it grows. */
   V: 3,
   /* The free deed: six beds, the plan's starter farm. */
@@ -143,7 +143,7 @@ export const FARM = {
        and caps.farmCrops counts it. */
     potato:     { name: 'Potato',     seed: 'seed_potato',     item: 'crop_potato',     lvl: 5,  price: 6,  mins: 160,  yield: 3, xp: 90,  base: 12, v: 2 },
     pumpkin:    { name: 'Pumpkin',    seed: 'seed_pumpkin',    item: 'crop_pumpkin',    lvl: 10, price: 25, mins: 1760, yield: 2, xp: 320, base: 60, v: 2 },
-    /* v2.3.3119: A GOOD VARIETY TO GROW -- the owner: "The main focus is just
+    /* v2.3.3135: A GOOD VARIETY TO GROW -- the owner: "The main focus is just
        getting a good variety of crops to grow. Then the next step is deciding
        what each one does."  Ten more, sixteen in all (docs/specs/farm.md "The
        sixteen crops"):

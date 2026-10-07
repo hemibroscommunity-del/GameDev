@@ -15,11 +15,11 @@ There are two kinds, in two styles:
 - **If one piece comes out wrong,** ask for the whole sheet again with that piece fixed. Don't mix pieces from different chats: they won't match.
 - **Already in the game,** so not asked for: the tonic bottles (Fury Tonic, Mana Draught, Swift Draught, Stamina), cooked fish, and the fences, well, water trough, hay, carts, barrels and crates a farm map can borrow.
 
-## Start here: the sixteen crops (v2.3.3119)
+## Start here: the sixteen crops (v2.3.3135)
 
 The owner: *"The main focus is just getting a good variety of crops to grow."*
 One square sheet of all sixteen crops, as bag icons: the six the farm grew
-before and the ten added in v2.3.3119. Attach your bag-icon reference picture.
+before and the ten added in v2.3.3135. Attach your bag-icon reference picture.
 
 ```text
 Square image: a sprite sheet of 16 crop icons for a 2D action RPG, in a 4×4 grid read like a page (each row left to right, rows top to bottom). Each icon sits centered in its own equal square cell, fills about three quarters of it, and touches nothing else. Every crop is shown freshly harvested.

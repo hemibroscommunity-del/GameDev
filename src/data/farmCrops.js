@@ -26,7 +26,7 @@ export const FARM = {
     /* v2.3.3131: the two food crops */
     potato:     { name: 'Potato',     seed: 'seed_potato',     item: 'crop_potato',     lvl: 5,  price: 6,  mins: 160,  yield: 3, xp: 90,  base: 12, look: '🥔' },
     pumpkin:    { name: 'Pumpkin',    seed: 'seed_pumpkin',    item: 'crop_pumpkin',    lvl: 10, price: 25, mins: 1760, yield: 2, xp: 320, base: 60, look: '🎃' },
-    /* v2.3.3119: ten more, the owner's "good variety of crops to grow" --
+    /* v2.3.3135: ten more, the owner's "good variety of crops to grow" --
        appended in the worker's order (caps.farmCrops counts them).  Glyphs
        until the crop sheet is made (docs/art/FARM-ART-PROMPTS.md); 🍠 for the
        heartroot, as there is no radish or beet that every phone draws. */
@@ -44,7 +44,7 @@ export const FARM = {
 };
 
 /* The order the window lists them in: by the level they open at, then the
-   quickest first (v2.3.3119: sixteen). */
+   quickest first (v2.3.3135: sixteen). */
 export const FARM_CROP_ORDER = [
   'carrot', 'wheat', 'firebloom', 'strawberry',
   'tomato', 'potato', 'frostberry', 'rock_vine',

@@ -1444,7 +1444,7 @@ remnant to migrate server-side, not a mode to preserve.
       screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
     - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
       docs/specs/wheel-doors.md.
-  - Since v2.3.3111 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
+  - Since v2.3.3127 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
     similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,
     water", then, on the research (docs/FARMING-PLAN.md, its Phase 1): "Good.
     Go ahead and build it":
@@ -1474,7 +1474,7 @@ remnant to migrate server-side, not a mode to preserve.
       rollback rewrites beds of crops it never heard of as grass;
     - the dev op `farmripe` ("Ripen my farm now" in the dev panel); `farm`
       suite, `mp-farm`: docs/specs/farm.md.
-  - Since v2.3.3114 MEALS AND BREWS YOU CARRY -- the plan's Phase 2a:
+  - Since v2.3.3130 MEALS AND BREWS YOU CARRY -- the plan's Phase 2a:
     - a cook with `carry` (caps.meals) puts the recipe's `makes` in the bag
       (cooking.js); `eat_request` takes `meal_*`, `potion_drink` `brew_*`
       (data.js `DISHES`, mirrored in src/data/dishes.js); an old client's
@@ -1487,7 +1487,7 @@ remnant to migrate server-side, not a mode to preserve.
       a dish's own pile paid more than its herbs' fuller ones);
     - the Herb Bread doubles the out-of-combat healing (`HERB_REGEN_MULT`),
       never mid-fight, on its own `_buffs.rest` timer -- NEVER `regen`, which
-      v2.3.3111 reads as 2% a second mid-fight (a rollback's trap); meals and
+      v2.3.3127 reads as 2% a second mid-fight (a rollback's trap); meals and
       cooked fish file under the bag's Consumable chip (no sixth chip: one per
       slot column);
     - every refused cook, meal or drink is RESENT (`_resendPlayerState`: a v2
@@ -1497,7 +1497,7 @@ remnant to migrate server-side, not a mode to preserve.
       an older worker rows it had not got (TRAPS §9);
     - kill switch `meals: false` (caps.meals false, not absent: the bag keeps
       Eat and Drink); `meals` suite, `mp-meals`: docs/specs/meals.md;
-    - since v2.3.3115 (2b) the POTATO (Farming 5, yields 3 -- fertilized 4 or
+    - since v2.3.3131 (2b) the POTATO (Farming 5, yields 3 -- fertilized 4 or
       5) and the PUMPKIN (Farming 10, 22 h watered), `FARM.V` 2; the GARDEN
       STEW heals 150 at once (`slot: 'now'`, no slot, refused in an arena),
       the PUMPKIN PIE is a meal of +10% combat XP (`_buffs.xpMul`, read
@@ -1506,7 +1506,7 @@ remnant to migrate server-side, not a mode to preserve.
       HOLD (`_farmShape`: a potato or pumpkin makes it a 2), and
       `caps.farmCrops` (how many crops the worker grows, `FARM_CROP_IDS`
       append-only) gates the Feed & Seed's crops, as `cookRows` the recipes;
-    - since v2.3.3116 DIEGO SELLS NO FOOD OR DRINK -- the owner: "Remove all
+    - since v2.3.3132 DIEGO SELLS NO FOOD OR DRINK -- the owner: "Remove all
       of Diego's potions. I want food and drink to come exclusively from
       farming and recipes": `DIEGO_SHELF` is EMPTY (mirror-audit holds it),
       the Stamina Salts' key is brewed from two carrots (recipe row 8, the
@@ -1514,7 +1514,7 @@ remnant to migrate server-side, not a mode to preserve.
       (`isCookedFood`; raw fish and crops he still buys), a new world's pile
       starts empty, and the daily chest's 10 fish are RAW minnows; the farm's
       art prompts are `docs/art/FARM-ART-PROMPTS.md`;
-    - since v2.3.3117 FOOD COUNTS IN A FIGHT -- the owner: "Farming needs a
+    - since v2.3.3133 FOOD COUNTS IN A FIGHT -- the owner: "Farming needs a
       purpose ... temporary buffs (boss fights, PvP, dueling, etc)": the
       damage brew is read in ONE place (combat.js `_brewMul`); in a fight
       with a player a claim marked `nb: 1` is the hit WITHOUT the brew and
@@ -1535,7 +1535,7 @@ remnant to migrate server-side, not a mode to preserve.
       own bite back, "Eat again in Ns", on `caps.pvpheal` from the hits it
       saw, never the duel flag, which outlives duels; kill switch `pvpheal:
       false`); `fightfood` suite, `mp-fightfood`: docs/specs/fight-food.md;
-    - since v2.3.3118 the FEED & SEED'S ORDER BOARD -- the income half of the
+    - since v2.3.3134 the FEED & SEED'S ORDER BOARD -- the income half of the
       owner's purpose: an Orders tab, three orders a day per player
       (`server/src/farmorders.js` `FARM_ORDERS.POOL`, append-only), drawn once
       a UTC day from what their Farming and Cooking levels can make, seeded by
@@ -1554,7 +1554,7 @@ remnant to migrate server-side, not a mode to preserve.
       more than Diego's opening price for its goods; ~150 gold a day new, 450
       at most; `caps.farmorders`, kill switch `farmorders: false`;
       `farmorders` suite, `mp-farmorders`: docs/specs/farm-orders.md;
-    - since v2.3.3119 SIXTEEN CROPS -- the owner: "The main focus is just
+    - since v2.3.3135 SIXTEEN CROPS -- the owner: "The main focus is just
       getting a good variety of crops to grow. Then the next step is deciding
       what each one does": ten appended to `FARM.CROPS` (both copies,
       `FARM_CROP_IDS` order, caps.farmCrops 16), each `v: 3` and `FARM.V` 3 --
