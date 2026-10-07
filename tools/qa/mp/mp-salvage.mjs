@@ -110,7 +110,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const torsoRow = list.find((r) => /Copper Torso/.test(r.text));
     rec.ok(`Salvage lists both pieces, each "+2" (${list.map((r) => r.text).join(' | ')})`, list.length === 2 && !!torsoRow
       && list.every((r) => /\+2/.test(r.text)), list);
-    const go = (key) => P.page.click(`[data-salvage-go="${key}"]`);
+    /* v2.3.3141: `force` -- straight to the button.  A "Sure?" stays armed
+       3 s (SmithyPanel SalvageTab), and this box draws the game at ~7 frames
+       a second: Playwright's click first waits for the button to sit still
+       over two frames (~2 s here), which with the pause between the taps put
+       the second one past the 3 s and it only armed "Sure?" again -- the
+       torso was never salvaged and every check after it failed.  A player
+       taps the second time well inside the window. */
+    const go = (key) => P.page.click(`[data-salvage-go="${key}"]`, { force: true });
     await go(torsoRow.key);
     await P.page.waitForTimeout(400);
     const sure = await P.page.$eval(`[data-salvage-go="${torsoRow.key}"]`, (b) => b.textContent).catch(() => null);
@@ -140,9 +147,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`the essence shows under Essences, the ${gGrade} greaves its target ("${head}")`, !!head && new RegExp(EN + ' Copper Essence').test(head)
       && ess.length === 1 && /Copper Greaves/.test(ess[0].text) && new RegExp(EN).test(ess[0].text), { head, ess });
     const useKey = ess[0] && ess[0].key;
-    await P.page.click(`[data-essence-go="${useKey}"]`).catch(() => {});
+    await P.page.click(`[data-essence-go="${useKey}"]`, { force: true }).catch(() => {});   /* v2.3.3141: force, as `go` above */
     await P.page.waitForTimeout(300);
-    await P.page.click(`[data-essence-go="${useKey}"]`).catch(() => {});
+    await P.page.click(`[data-essence-go="${useKey}"]`, { force: true }).catch(() => {});   /* v2.3.3141: force, as `go` above */
     let s2 = null;
     for (let i = 0; i < 20; i++) { s2 = await state(P); if (s2.greaves[0] && s2.greaves[0].quality === eGrade && essOf(s2, eKey) === e0) break; await P.page.waitForTimeout(250); }
     const log2 = await lastLog(P);
