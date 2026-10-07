@@ -1,9 +1,9 @@
 import React from 'react';
-import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, createDefaultCompStats, getCookingSweetSpot, getFishTierLevel, toDisplayDamage, dishFor } from '@/data/index.js'; /* v2.3.2520: the display damage scale; v2.3.3114: dishFor */
+import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, createDefaultCompStats, getCookingSweetSpot, getFishTierLevel, toDisplayDamage, dishFor } from '@/data/index.js'; /* v2.3.2520: the display damage scale; v2.3.3130: dishFor */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3117: one bite at a time in a fight with a player */
+import { pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 /* === CookPanel — buildingPanel === 'cook' sub-panel === */
 /* v2.3.879: extracted verbatim from the buildingPanel === 'cook'
@@ -47,13 +47,13 @@ export function CookPanel(props) {
     cookMinigame = props.cookMinigame,
     setCookMinigame = props.setCookMinigame;
   var _rpgState$lifeSkills14, _rpgState$lifeSkills15, _rpgState$lifeSkills16, _rpgState$lifeSkills17;
-  /* v2.3.3114: does the worker cook INTO THE BAG (caps.meals)?  Read live,
+  /* v2.3.3130: does the worker cook INTO THE BAG (caps.meals)?  Read live,
      not once: the caps land with state_sync, after the panel may be open. */
   var _mealsOn = function () {
     var S = stateRef && stateRef.current;
     return !!(S && S._serverCaps && S._serverCaps.meals);
   };
-  /* v2.3.3114: HOW MANY recipes the worker cooks (caps.cookRows): a newer
+  /* v2.3.3130: HOW MANY recipes the worker cooks (caps.cookRows): a newer
      page in front of an older worker -- a rollback -- offered rows that
      worker has not got, and their cooks vanished (review).  A worker from
      before it cooks the three old rows the old way. */
@@ -481,7 +481,7 @@ export function CookPanel(props) {
           var R = stateRef.current.rpg;
           if (!R.inventory[key] || R.inventory[key] < 1) return;
           var S = stateRef.current;
-          /* v2.3.3117: one bite at a time in a fight with a player
+          /* v2.3.3133: one bite at a time in a fight with a player
              (fightFood.js) -- held back and said, not eaten and taken back. */
           var _wait = pvpHealWaitMs(S);
           if (_wait > 0) {
@@ -526,7 +526,7 @@ export function CookPanel(props) {
     style: LS_WELL
   }, COOKING_RECIPES.map(function (recipe, ri) {
     var _rpgState$lifeSkills17;
-    /* v2.3.3114: in front of an OLD worker (no caps.meals) a cook is the old
+    /* v2.3.3130: in front of an OLD worker (no caps.meals) a cook is the old
        instant buff, and that worker has no recipe past index 2 -- so the
        brewed tonics are not offered there at all. */
     var mealsOn = _mealsOn();
@@ -577,7 +577,7 @@ export function CookPanel(props) {
     var firstMissing = ingStatus.find(function (s) {
       return s.have < s.need;
     });
-    /* v2.3.3114: on a worker with caps.meals the cook MAKES the dish, so the
+    /* v2.3.3130: on a worker with caps.meals the cook MAKES the dish, so the
        row says what the dish does when you eat or drink it (DISHES, or the
        tonic's own line) and how many you already carry. */
     var carried = mealsOn ? Math.floor(Number((rpgState.inventory || {})[recipe.makes]) || 0) : 0;
@@ -666,7 +666,7 @@ export function CookPanel(props) {
          guard is unchanged underneath) + the approved disabled recipe
          (#1A292F fill, #8D9B98 text, .11 hairline, opacity 1, 44px). */
       disabled: !canCook || !hasIngredients,
-      "data-cook-recipe": ri,   /* v2.3.3114: mp-meals */
+      "data-cook-recipe": ri,   /* v2.3.3130: mp-meals */
       "data-cook-makes": recipe.makes || '',
       style: {
         minHeight: 44,
@@ -694,7 +694,7 @@ export function CookPanel(props) {
            shortly with the authoritative inventory + buff state. */
         /* v2.3.2077: same flag, same hole -- see BroTown.jsx's eat_request
            note. A recipe cooked in town never reached the worker. */
-        /* v2.3.3114: on a worker with caps.meals the cook MAKES the dish
+        /* v2.3.3130: on a worker with caps.meals the cook MAKES the dish
            (`carry`), and nothing runs until it is eaten or drunk -- so the
            buff prediction below is skipped and the dish is predicted into the
            bag instead.  The worker echoes the bag either way. */

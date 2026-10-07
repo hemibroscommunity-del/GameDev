@@ -15,7 +15,7 @@ import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /*
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */ } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
-import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3117: a special carries the damage brew too */
+import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: a special carries the damage brew too */
 
 export function swingAttack(S) {
     /* v2.3.1473: a corpse doesn't swing (see isPlayerDead). */
@@ -276,7 +276,7 @@ export function specialAttack(S) {
        that was refused never reaches here and never spends the swing. */
     S.swingTimer = now;
     var hasElement = activeWpn.element2 || activeWpn.element1;
-    /* ═══ v2.3.3117: A SPECIAL CARRIES THE BREW ═══
+    /* ═══ v2.3.3133: A SPECIAL CARRIES THE BREW ═══
        The worker's roll has always put the damage brew on a special
        (combat.js _computeAttackDamage); the page's own number for one never
        did -- so a Fury Tonic doubled your swings and plain shots on screen and
@@ -329,7 +329,7 @@ export function specialAttack(S) {
          so the landed arrow's lingering ground-tick (projectiles.js) deals
          base damage, immune to a later weapon swap. */
       var _bowBase = Math.max(1, Math.round(calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult, activeWpn)));
-      var _bowFull = Math.round(wpnDmg * specialAtkMultFor('bow', R || {}) * _sBrew); /* v2.3.1397: bow special 3x (owner); v2.3.2592: × the SPECIAL stat; v2.3.3117: × the brew */
+      var _bowFull = Math.round(wpnDmg * specialAtkMultFor('bow', R || {}) * _sBrew); /* v2.3.1397: bow special 3x (owner); v2.3.2592: × the SPECIAL stat; v2.3.3133: × the brew */
       /* ═══ v2.3.2848: THREE WHITE-HOT ARROWS, ONE SHOT ═══
          Owner: "the bow special should be 3 white hot arrows that follow each
          other closely.  One shot for all 3 arrows" -- a third of the damage
@@ -363,7 +363,7 @@ export function specialAttack(S) {
           speedPx: _bowSpd,
           dmg: _bowVolley ? Math.max(1, Math.round(_bowFull * BOW_VOLLEY.WORTH / BOW_VOLLEY.N)) : _bowFull,   /* v2.3.2848: a third each; v2.3.2849: two-thirds (the volley is worth WORTH specials) */
           part: _bowVolley ? BOW_VOLLEY.N : 0,   /* v2.3.2848: the worker gives each arrow WORTH / part of its own roll (v2.3.2849) */
-          brew: _sBrew,   /* v2.3.3117 */
+          brew: _sBrew,   /* v2.3.3133 */
           volley: _bowVol, volleyIx: bvi,
           baseDmg: _bowBase, /* v2.3.1402: lingering ground-tick base damage */
           life: 150, /* v2.3.1335: range -25% (the 675px plant cap governs reach) */
@@ -498,8 +498,8 @@ export function specialAttack(S) {
           dist: 14,
           speedPx: _ORB_SPEED,
           /* v2.3.2849: one draw from the bolt's own band, the worker's shape */
-          dmg: Math.round(calcSpecialDmg('staff', R || {}, activeWpn.tierMult, activeWpn, STAFF_BIG_BOLT_BAND) * specialAtkMultFor('staff', R || {}) * STAFF_BIG_BOLT_ORBS * _sBrew),   /* v2.3.3117: × the brew */
-          brew: _sBrew,   /* v2.3.3117 */
+          dmg: Math.round(calcSpecialDmg('staff', R || {}, activeWpn.tierMult, activeWpn, STAFF_BIG_BOLT_BAND) * specialAtkMultFor('staff', R || {}) * STAFF_BIG_BOLT_ORBS * _sBrew),   /* v2.3.3133: × the brew */
+          brew: _sBrew,   /* v2.3.3133 */
           life: _bigLife,
           maxLife: _bigLife,
           hitIds: new Set(),
@@ -540,8 +540,8 @@ export function specialAttack(S) {
             dist: 14,
             launchDelayMs: si * _ORB_GAP_MS,
             speedPx: _spd,
-            dmg: Math.round(_wpnDmg * specialAtkMultFor('staff', R || {}) * _sBrew), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner); v2.3.2592: × the SPECIAL stat; v2.3.3117: × the brew */
-            brew: _sBrew,   /* v2.3.3117 */
+            dmg: Math.round(_wpnDmg * specialAtkMultFor('staff', R || {}) * _sBrew), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner); v2.3.2592: × the SPECIAL stat; v2.3.3133: × the brew */
+            brew: _sBrew,   /* v2.3.3133 */
             life: _life,      /* v2.3.1335's 560px reach, solved per speed */
             maxLife: _life,
             hitIds: new Set(),

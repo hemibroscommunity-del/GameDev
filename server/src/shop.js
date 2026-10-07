@@ -46,8 +46,8 @@
  * player_state echo is the tiebreaker (handoff rule 20).
  */
 
-import { SHOP_ITEMS, DIEGO_SHELF, DISHES } from './data.js';   /* v2.3.2063: his staple shelf; v2.3.3114: his shelf is DIEGO_SHELF, and no dish */
-import { FARM_SHOP_BASE } from './farm.js';   /* v2.3.3111: seeds, crops and compost */
+import { SHOP_ITEMS, DIEGO_SHELF, DISHES } from './data.js';   /* v2.3.2063: his staple shelf; v2.3.3130: his shelf is DIEGO_SHELF, and no dish */
+import { FARM_SHOP_BASE } from './farm.js';   /* v2.3.3127: seeds, crops and compost */
 
 /* ═══ v2.3.2063: THE THINGS HE ALWAYS HAS ═══
  *
@@ -71,7 +71,7 @@ import { FARM_SHOP_BASE } from './farm.js';   /* v2.3.3111: seeds, crops and com
  * at a time (owner: "Only 1 effect active at a time though") -- so a stack of
  * five would charge for five and give you one. The quantity stepper is hidden
  * for staples in the drawer for the same reason. */
-/* v2.3.3114: the shelf is DIEGO_SHELF (data.js), not the whole of SHOP_ITEMS:
+/* v2.3.3130: the shelf is DIEGO_SHELF (data.js), not the whole of SHOP_ITEMS:
    the three tonics are brewed at the Cookhouse now and he no longer sells
    them (the farming plan's "Diego keeps his staples and loses his tonics"). */
 export function shopStaples() {
@@ -83,7 +83,7 @@ export function shopStaples() {
 export function isShopStaple(key) {
   return typeof key === 'string' && DIEGO_SHELF.includes(key) && Object.prototype.hasOwnProperty.call(SHOP_ITEMS, key);
 }
-/* v2.3.3114: ...and what he never BUYS is still every SHOP_ITEMS key.  The
+/* v2.3.3130: ...and what he never BUYS is still every SHOP_ITEMS key.  The
    tonics left his shelf, not his rule: a bottle sold into the pile would turn
    up for sale on it again, the shelf he just stopped selling them on, and his
    pile pricing would make a brewer's three herbs worth more as a bottle sold
@@ -93,7 +93,7 @@ export function isShopPotion(key) {
   return typeof key === 'string' && Object.prototype.hasOwnProperty.call(SHOP_ITEMS, key);
 }
 
-/* v2.3.3114: ...and he buys no Cookhouse DISH (DISHES) either.  The first cut
+/* v2.3.3130: ...and he buys no Cookhouse DISH (DISHES) either.  The first cut
    paid a dish its herbs' worth (the sum of their bases), which held only at
    equal piles: a dish has a pile of its own, starting at the top of his curve
    while its herbs' piles sit low.  With 400 Rock Vine and 400 Cloudpetal in
@@ -104,7 +104,7 @@ export function isShopPotion(key) {
 export function isCookhouseDish(key) {
   return typeof key === 'string' && Object.prototype.hasOwnProperty.call(DISHES, key);
 }
-/* v2.3.3116: ...and no COOKED FOOD at all.  Owner: "I want food and drink to
+/* v2.3.3132: ...and no COOKED FOOD at all.  Owner: "I want food and drink to
    come exclusively from farming and recipes."  A cooked fish he bought would
    go back on his shelf, food from his counter; and the six cooked trout every
    world's pile started with (SEED, below) came from nowhere.  So cooked fish
@@ -114,7 +114,7 @@ export function isCookedFood(key) {
   return typeof key === 'string' && /^cooked/i.test(key);
 }
 /* What he neither buys nor sells out of his pile: the tonics, the dishes and
-   cooked food -- since v2.3.3116, everything you eat or drink. */
+   cooked food -- since v2.3.3132, everything you eat or drink. */
 function heWontTrade(key) {
   return isShopPotion(key) || isCookhouseDish(key) || isCookedFood(key);
 }
@@ -179,7 +179,7 @@ export const SHOP = {
        cannot disagree about what a slime is worth while they both exist. */
     slime: 14, bat: 16, skeleton: 22, crab: 16, golem: 40,
     logs: 20, rawfish: 20, cookedfish: 34, rarefish: 90,
-    /* v2.3.3111: everything the farm sells or grows (farm.js FARM_SHOP_BASE).
+    /* v2.3.3127: everything the farm sells or grows (farm.js FARM_SHOP_BASE).
        Without these every farm key fell to BASE_DEFAULT and he paid 10 for a
        2-coin seed -- buy at the Feed & Seed, sell to him, repeat: a faucet the
        size of a tap.  A seed is worth its Feed & Seed price and compost its
@@ -237,7 +237,7 @@ export const SHOP = {
    * Written ONCE, on the first read of a world that has never had a pile. A
    * pile that has been emptied is a written record of {}, which is not the
    * same as no record -- so clearing him out does not quietly restock him. */
-  /* v2.3.3116: nothing.  Food comes only from farming and recipes (owner,
+  /* v2.3.3132: nothing.  Food comes only from farming and recipes (owner,
      isCookedFood above), and a world's pile that already took its six trout
      keeps them out of sight: heWontTrade lists and sells no cooked fish. */
   SEED: {},
@@ -342,7 +342,7 @@ export const shopMethods = {
       for (const k of keys.slice(0, 60)) {
         if (typeof k !== 'string' || !k || k.length > 64) continue;
         if (seen[k] || stock[k]) continue;      /* held keys are listed below */
-        if (heWontTrade(k)) continue;          /* v2.3.2063: already on the shelf above; v2.3.3114: or a potion or dish he never buys */
+        if (heWontTrade(k)) continue;          /* v2.3.2063: already on the shelf above; v2.3.3130: or a potion or dish he never buys */
         seen[k] = 1;
         items.push({ key: k, qty: 0, buy: this._shopBuyPrice(k, 0),
           base: this._shopBuyPrice(k, 0),
@@ -350,7 +350,7 @@ export const shopMethods = {
       }
     }
     for (const k in stock) {
-      /* v2.3.3114: never a potion from the pile -- a tonic sold into it before
+      /* v2.3.3130: never a potion from the pile -- a tonic sold into it before
          his staples existed would otherwise be back on the shelf he stopped
          selling them from (found by the review) -- nor a dish. */
       if (heWontTrade(k)) continue;
@@ -410,7 +410,7 @@ export const shopMethods = {
         return { ok: true, key, qty: 1, mode, staple: true,
           total: it ? Math.max(1, Math.floor(it.cost)) : 0, settled: true };
       }
-      /* v2.3.3114: a potion off his shelf is not for sale from the pile
+      /* v2.3.3130: a potion off his shelf is not for sale from the pile
          either (_shopList skips it; _shopBuy refuses it), nor is a dish. */
       if (heWontTrade(key)) return { ok: true, key, qty: 0, mode, total: 0, settled: true };
       const held = stock[key] || 0;
@@ -418,7 +418,7 @@ export const shopMethods = {
       return { ok: true, key, qty: take, mode,
         total: this._shopSellPrice(key) * take, settled: true };
     }
-    /* v2.3.3114: a sell quote for something he will not buy is nothing --
+    /* v2.3.3130: a sell quote for something he will not buy is nothing --
        before, it priced a staple (and now would a tonic) as if he would, and
        the drawer offered a Sell button the sale then refused. */
     if (heWontTrade(key)) return { ok: true, key, qty: 0, mode: 'sell', total: 0, settled: true };
@@ -444,9 +444,9 @@ export const shopMethods = {
        printer; and a staple sold INTO the pile would then be listed twice on
        his shelf, once as a staple and once as stock. */
     if (isShopStaple(key)) return { ok: false, error: "He only sells those" };
-    /* v2.3.3114: the tonics are off his shelf and still not bought back
+    /* v2.3.3130: the tonics are off his shelf and still not bought back
        (isShopPotion above). */
-    /* v2.3.3116: one answer for all of it -- since then, nothing you eat or
+    /* v2.3.3132: one answer for all of it -- since then, nothing you eat or
        drink (heWontTrade). */
     if (heWontTrade(key)) return { ok: false, error: "He doesn't buy food or drink" };
     const want = Math.floor(Number(qty) || 0);
@@ -528,7 +528,7 @@ export const shopMethods = {
       return { ok: true, bought: want, cost, coins: ps.coins, staple: true, settled: true };
     }
 
-    /* v2.3.3114: the tonics are brewed at the Cookhouse now, so a potion that
+    /* v2.3.3130: the tonics are brewed at the Cookhouse now, so a potion that
        is not one of his staples is not for sale -- not even out of a pile that
        took some in before the staples existed. */
     if (isShopPotion(key)) return { ok: false, error: "He doesn't sell tonics any more" };

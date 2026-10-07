@@ -149,15 +149,15 @@ check('shop_result cannot be forged by a client', PRIVILEGED_EVENTS.has('shop_re
 /* ═══ v2.3.2053: WHAT HE STARTS WITH ═══
    Owner, then: the consumables go, and "his inventory can just start with a
    few cooked fish" -- a SEED of six cooked trout, ordinary decaying stock.
-   v2.3.3116: NOTHING.  Owner: "Remove all of Diego's potions. I want food and
+   v2.3.3132: NOTHING.  Owner: "Remove all of Diego's potions. I want food and
    drink to come exclusively from farming and recipes."  The trout came from
    nowhere, and his staple shelf (DIEGO_SHELF) is empty. */
 const fresh = makeState();
 const room3 = new GameRoom(fresh, mockEnv);
 const seeded = await room3._shopList();
-check('a brand-new world finds nothing on him: no seeded fish and no staples (v2.3.3116)',
+check('a brand-new world finds nothing on him: no seeded fish and no staples (v2.3.3132)',
   seeded.items.length === 0 && Object.keys(SHOP.SEED).length === 0, seeded.items);
-/* A world whose pile took its six trout before v2.3.3116 still has them
+/* A world whose pile took its six trout before v2.3.3132 still has them
    stored: they must neither show nor sell. */
 const oldPile = await room3._shopStock();
 oldPile.cooked_fish_trout = 6;
@@ -214,7 +214,7 @@ check('...and a huge one is capped', many.items.length < 100, many.items.length)
    that would have caught that, and it is written against the DAMAGE, not
    against the timer, because a timer that no combat path reads is exactly
    the bug being fixed. */
-/* v2.3.3114: the tonic is a BOTTLE now -- brewed at the Cookhouse, or one
+/* v2.3.3130: the tonic is a BOTTLE now -- brewed at the Cookhouse, or one
    bought from him before he stopped selling them -- so it is drunk from the
    bag (potion_drink) rather than bought through the vendor building's
    shop_purchase, which now sells only his shelf. */
@@ -274,7 +274,7 @@ const foodDmg = swing(psM);
 check('a cooked meal is still exactly the x1.20 it always was',
   times(foodDmg, plainDmg, 1.20), { plainDmg, foodDmg });
 
-/* The tonic: drunk through the real drink path, not hand-set (v2.3.3114: from
+/* The tonic: drunk through the real drink path, not hand-set (v2.3.3130: from
    the bag, now that he no longer sells it). */
 delete psM._buffs;
 psM.inventory = Object.assign(Object.create(null), psM.inventory, { whetstone: 1 });
@@ -294,13 +294,13 @@ check('...and the multiplier survives a save (it is not an expiring timer)',
 /* The other half, and it goes through the REAL cook handler rather than a
    hand-written mimic of it -- recipe 2 is the game's damage drink, the
    Firebloom Tea (2x herb_firebloom). A test that re-implements the line it is
-   checking passes no matter what cooking.js does.  v2.3.3114: an OLD client's
+   checking passes no matter what cooking.js does.  v2.3.3130: an OLD client's
    cook (no `carry`) -- the tea is made and drunk at once, in the brew slot,
    so it replaces the tonic. */
 psM.inventory = Object.assign(Object.create(null), psM.inventory, { herb_firebloom: 2 });
-psM.lifeSkills = Object.assign(psM.lifeSkills || {}, { cooking: { level: 6, xp: 0 } });   /* v2.3.3111: the Tea asks Cooking 6 (cooking.js) */
+psM.lifeSkills = Object.assign(psM.lifeSkills || {}, { cooking: { level: 6, xp: 0 } });   /* v2.3.3127: the Tea asks Cooking 6 (cooking.js) */
 room._handleCookRecipe({ id: 'buyer' }, { recipeIdx: 2 });
-/* v2.3.3111: and the herbs went -- the tonic's own damage timer satisfied
+/* v2.3.3127: and the herbs went -- the tonic's own damage timer satisfied
    the first half alone, so a refused cook passed this guard. */
 check('the meal really was cooked (or the next check is vacuous)',
   psM._buffs.damage > Date.now() && !psM.inventory.herb_firebloom, { buffs: psM._buffs, inv: psM.inventory });
@@ -324,7 +324,7 @@ delete psM._buffs;
    is its only usable consumable)". _handleDrinkRequest is that way, so the
    bottle can be carried. The effect itself is unchanged -- it now runs on the
    drink instead of on the sale, through the same _applyShopItem. */
-/* v2.3.3116: there is no bottle to buy from him any more -- the last two,
+/* v2.3.3132: there is no bottle to buy from him any more -- the last two,
    the Cooked Minnow and the Stamina Salts, came off his shelf ("Remove all of
    Diego's potions"); the salts are brewed at the Cookhouse as the Stamina
    Tonic.  What stays true is the rest of this section: a bottle in a bag is
@@ -334,7 +334,7 @@ const buyer2 = { coins: 200, inventory: Object.create(null), maxMana: 100, mana:
 const beforeCoins = buyer2.coins;
 for (const k of ['staminaSalts', 'cookedMinnow']) {
   const rStaple = await room._shopBuy(buyer2, k, 1);
-  check('he no longer sells ' + k + ' (v2.3.3116): refused, no coins taken, nothing in the bag',
+  check('he no longer sells ' + k + ' (v2.3.3132): refused, no coins taken, nothing in the bag',
     !rStaple.ok && buyer2.coins === beforeCoins && !buyer2.inventory[k] && buyer2.stamina === 40, { rStaple, bag: buyer2.inventory });
   const qStaple = await room._shopQuote(k, 1, 'buy');
   check('...and quotes nothing for it', qStaple.qty === 0 && qStaple.total === 0, qStaple);
@@ -350,7 +350,7 @@ room._handleShopPurchase({ id: 'buyer' }, { itemId: 'cookedMinnow' });
 check('...nor does the vendor building (shop_purchase): no coins taken, no stamina given',
   vb.coins === 500 && vb.stamina === 10, { coins: vb.coins, stamina: vb.stamina });
 
-/* ═══ v2.3.3114: THE TONICS ARE OFF HIS SHELF, AND STILL NOT BOUGHT BACK ═══ */
+/* ═══ v2.3.3130: THE TONICS ARE OFF HIS SHELF, AND STILL NOT BOUGHT BACK ═══ */
 const rTonic = await room._shopBuy(buyer2, 'swiftDraught', 1);
 check('a tonic can no longer be bought from him (brewed at the Cookhouse now)',
   !rTonic.ok && !buyer2.inventory.swiftDraught && buyer2.coins === beforeCoins, { rTonic, bag: buyer2.inventory });

@@ -4,6 +4,7 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
+import { TrapsTab } from './TrapsTab.jsx'; /* v2.3.3120: box traps from logs */
 /* === WoodworkPanel — buildingPanel === 'woodwork' sub-panel === */
 /* v2.3.873: extracted verbatim from the buildingPanel === 'woodwork' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -74,6 +75,11 @@ export function WoodworkPanel(props) {
   React.useEffect(function () {
     measureFade();
   }, [rpgState, measureFade]);
+  /* v2.3.3120: the Traps tab (TrapsTab.jsx) -- a third choice beside Bow and
+     Staff, only against a worker that makes traps (caps.trapcraft, read
+     straight off S._serverCaps so the caps audit sees the gate) */
+  var _trapCraftOn = !!(stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.trapcraft);
+  var _trapsMode = _trapCraftOn && stateRef.current && stateRef.current._wwType === 'traps';
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('woodwork', '🪚', "Woodworker", "Woodworking Lv" + (((_rpgState$lifeSkills29 = rpgState.lifeSkills) === null || _rpgState$lifeSkills29 === void 0 || (_rpgState$lifeSkills29 = _rpgState$lifeSkills29.woodworking) === null || _rpgState$lifeSkills29 === void 0 ? void 0 : _rpgState$lifeSkills29.level) || 1)),
     React.createElement("div", {
@@ -86,8 +92,8 @@ export function WoodworkPanel(props) {
       style: LS_BODY
     },
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 10, lineHeight: 1.5 } },
-        "Craft bows and staves from harvested wood. Higher tiers unlock gem slots."),
-      React.createElement("div", { style: LS_MOD }, "Weapon type"),
+        _trapsMode ? "Make box traps for catching pets." : "Craft bows and staves from harvested wood. Higher tiers unlock gem slots."),
+      React.createElement("div", { style: LS_MOD }, _trapCraftOn ? "Make" : "Weapon type"),
       React.createElement("div", {
         style: {
           display: 'flex',
@@ -102,7 +108,7 @@ export function WoodworkPanel(props) {
         type: 'staff',
         label: 'Staff' /* v2.3.1235: batch-3 rollout — 🪄 dropped, no emoji in chrome */,
         desc: 'Ranged AOE swipe'
-      }].map(function (wt) {
+      }].concat(_trapCraftOn ? [{ type: 'traps', label: 'Traps', desc: 'Box traps for pets' }] : []).map(function (wt) {
         var _stateRef$current13, _stateRef$current14, _stateRef$current15;
         return /*#__PURE__*/React.createElement("button", {
           key: wt.type,
@@ -131,8 +137,8 @@ export function WoodworkPanel(props) {
           }
         }, wt.desc));
       })),
-      React.createElement("div", { style: LS_MOD }, "Craft"),
-      Object.entries(WOODWORKING_TIERS).filter(function (_ref139) {
+      _trapsMode ? React.createElement(TrapsTab, { rpgState: rpgState, stateRef: stateRef }) : React.createElement("div", { style: LS_MOD }, "Craft"),
+      _trapsMode ? null : Object.entries(WOODWORKING_TIERS).filter(function (_ref139) {
         var _rpgState$lifeSkills30;
         var _ref140 = _slicedToArray(_ref139, 2),
           key = _ref140[0],
@@ -316,7 +322,7 @@ export function WoodworkPanel(props) {
             gap: 5
           }
         }, lsGoldImg(false), wt.goldCost)));
-      }), function () {
+      }), _trapsMode ? null : function () {
         /* v2.3.1131: SS4.6c HARDENING for the active ranged/staff weapon
            (server ladder via harden_weapon -- see the ForgePanel twin;
            distinct from the legacy hardenBonus affix below). */
@@ -367,7 +373,7 @@ export function WoodworkPanel(props) {
               gold deficit (fee - coins, same values the hAfford guard
               reads) instead of an enabled-looking attempt label. */
         hAfford ? /*#__PURE__*/React.createElement("span", null, "Attempt H", hLvl + 1, " (", hCost, "G \xB7 ", hOdds, "%)") : "Need ".concat(hCost - (rpgState.coins || 0), "G more")));
-      }(), function (_stateRef$current17, _wpn$gearBase3, _rpgState$lifeSkills32) {
+      }(), _trapsMode ? null : function (_stateRef$current17, _wpn$gearBase3, _rpgState$lifeSkills32) {
         var craftType = ((_stateRef$current17 = stateRef.current) === null || _stateRef$current17 === void 0 ? void 0 : _stateRef$current17._wwType) || 'bow';
         var wpnKey = craftType === 'bow' ? 'rangedWeapon' : 'staffWeapon';
         var wpn = rpgState[wpnKey];

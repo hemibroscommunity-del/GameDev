@@ -38,7 +38,9 @@
  * and the same null -> dash rule covers it. */
 
 import { prog3HasSkills, prog3SkillLevel } from '@/data/prog3.js';
-import { farmBus } from '@/ui/mobile/farmBus.js';   /* v2.3.3111: the worker's farm */
+import { farmBus } from '@/ui/mobile/farmBus.js';   /* v2.3.3127: the worker's farm */
+import { activePet } from '@/game/petBook.js';   /* v2.3.3120 */
+import { PET_KINDS, petKindName, petDisplayName, worldSafeText } from '@/data/trapping.js';   /* v2.3.3120 */
 import { getEquippedSlots, peerEquippedSlots } from '../mobile/sheet/equipModel.js';
 
 /* Pet rarity, from the owner's direction: "White Normal, Blue Rare, Orange
@@ -75,7 +77,7 @@ function titleCase(s) {
 
 /** How many farm plots are ready to harvest (FarmPanel's own ready test). */
 export function farmPlotsReady(lifeSkills, nowSec) {
-  /* v2.3.3111: the WORKER's farm once this tab has heard about it (farmBus:
+  /* v2.3.3127: the WORKER's farm once this tab has heard about it (farmBus:
      on join, or the Feed & Seed window) -- ripe by the worker's clock.  The
      browser-only plots below are only a farm against an old worker. */
   if (farmBus.view && typeof nowSec !== 'number') return farmBus.ripeCount();
@@ -90,29 +92,59 @@ export function farmPlotsReady(lifeSkills, nowSec) {
   return n;
 }
 
-function activePetOf(R) {
+/* v2.3.3120: the pet out with you is the pets RECORD's (game/petBook.js
+   activePet); the old lifeSkills pair only against an old worker. */
+function activePetOf(R, S) {
+  if (S) return activePet(S);
   const ls = R && R.lifeSkills;
   const i = ls ? ls.activePet : null;
   return (i != null && Array.isArray(ls.pets)) ? (ls.pets[i] || null) : null;
+}
+
+/* What a card says about a pet, from the record's shape or the old one. */
+function petCardOf(pet) {
+  if (!pet) return null;
+  if (pet.kind && Object.prototype.hasOwnProperty.call(PET_KINDS, pet.kind)) {
+    return {
+      customName: worldSafeText(petDisplayName(pet)) || 'Pet',
+      speciesName: petKindName(pet.kind, pet.stage),
+      rarity: pet.gold ? 'godly' : 'normal',
+      emoji: '🐾',
+      kind: pet.kind, stage: num(pet.stage) || 1, gold: pet.gold === true,
+      level: num(pet.lv) || 1,
+      preview: false,
+    };
+  }
+  return {
+    customName: pet.name || 'Pet',
+    speciesName: pet.archetype ? titleCase(pet.archetype) : null,
+    rarity: 'normal',
+    emoji: pet.emoji || '🐾',
+    level: num(pet.level),
+    preview: false,
+  };
 }
 
 /** The fields this card adds to the 2s rpgData relay (BroTown.jsx builds the
  *  rest).  Short and flat on purpose: the blob rides every relay, to every
  *  player, every two seconds.  Each is omitted rather than zeroed when there
  *  is nothing to say, so a peer reading it can tell "none" from "old client". */
-export function profileRelayFields(R) {
+export function profileRelayFields(R, S) {
   const out = {};
   if (!R) return out;
   /* the three trained levels (prog3), read the way the stat screen reads them */
   if (prog3HasSkills(R)) {
     out.combat = { melee: prog3SkillLevel(R, 'sword'), bow: prog3SkillLevel(R, 'bow'), staff: prog3SkillLevel(R, 'staff') };
   }
-  const pet = activePetOf(R);
+  const pet = activePetOf(R, S);
   if (pet) {
+    const c = petCardOf(pet);
     out.petInfo = {
-      name: String(pet.name || '').slice(0, 24),
-      species: String(pet.archetype || '').slice(0, 24),
-      level: num(pet.level) || 1,
+      name: String(c.customName || '').slice(0, 24),
+      species: String(c.speciesName || '').slice(0, 24),
+      level: c.level || 1,
+      /* v2.3.3120: what it is, so a peer's card draws its picture */
+      ...(c.kind ? { kind: c.kind, stage: c.stage, gold: c.gold } : {}),
     };
   }
   out.farmReady = farmPlotsReady(R.lifeSkills);
@@ -125,11 +157,15 @@ export function profileRelayFields(R) {
 
 function petFromRelay(info, emoji) {
   if (info && typeof info === 'object') {
+    /* v2.3.3120: a peer's word, shown only (never in the world's outlined
+       text, and a kind we do not know is no kind) */
+    const kind = typeof info.kind === 'string' && Object.prototype.hasOwnProperty.call(PET_KINDS, info.kind) ? info.kind : null;
     return {
-      customName: typeof info.name === 'string' && info.name ? info.name : 'Pet',
-      speciesName: info.species ? titleCase(info.species) : null,
-      rarity: 'normal',
+      customName: typeof info.name === 'string' && info.name ? worldSafeText(info.name).slice(0, 24) || 'Pet' : 'Pet',
+      speciesName: kind ? petKindName(kind, info.stage) : (info.species ? titleCase(info.species) : null),
+      rarity: info.gold === true ? 'godly' : 'normal',
       emoji: emoji || '🐾',
+      ...(kind ? { kind, stage: num(info.stage) || 1, gold: info.gold === true } : {}),
       level: num(info.level),
       preview: false,
     };
@@ -188,7 +224,9 @@ export function profileFromPeer(ip, live, rel) {
     /* nothing until the blob lands (a 2s gap -- the sample pet would be a
        claim about a player we have not heard from yet); then their real pet,
        or the sample */
-    pet: has ? (petFromRelay(r.petInfo, o.pet || snap.pet) || PROFILE_PREVIEW.pet) : null,
+    /* v2.3.3120: their real pet, or none -- not the sample Frost Fox every
+       player without a pet used to show */
+    pet: has ? petFromRelay(r.petInfo, o.pet || snap.pet) : null,
     homestead: { previewSrc: PROFILE_PREVIEW.homesteadSrc, plotsReady: has ? num(r.farmReady) : null },
   };
 }
@@ -198,7 +236,7 @@ export function profileFromSelf(S) {
   const R = (S && S.rpg) || {};
   const cs = R._compStats || {};
   const clan = S && S._clanData;
-  const pet = activePetOf(R);
+  const pet = activePetOf(R, S);
   const combat = {};
   for (const [key, cat] of COMBAT_CATS) combat[key] = prog3SkillLevel(R, cat);
   return {
@@ -224,14 +262,7 @@ export function profileFromSelf(S) {
       lifetimeKills: num(R.svKills) != null ? R.svKills : (num(cs.monstersKilled) || 0),
       rarestDrop: PROFILE_PREVIEW.rarestDrop,
     },
-    pet: pet ? {
-      customName: pet.name || 'Pet',
-      speciesName: pet.archetype ? titleCase(pet.archetype) : null,
-      rarity: 'normal',
-      emoji: pet.emoji || '🐾',
-      level: num(pet.level),
-      preview: false,
-    } : PROFILE_PREVIEW.pet,
+    pet: petCardOf(pet),   /* v2.3.3120: yours, or none (was the sample Frost Fox) */
     homestead: { previewSrc: PROFILE_PREVIEW.homesteadSrc, plotsReady: farmPlotsReady(R.lifeSkills) },
   };
 }

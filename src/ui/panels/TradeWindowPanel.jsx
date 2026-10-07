@@ -4,7 +4,7 @@ import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
 /* v2.3.1235: batch-4 state-correction — RARITY_TIERS for staged-weapon
    row rarity (existing data; plain inventory items carry no rarity). */
 import { RARITY_TIERS } from '@/data/index.js';
-import { farmLookFor, FARM_ITEM_NAMES } from '@/data/farmCrops.js';   /* v2.3.3119 */
+import { farmLookFor, FARM_ITEM_NAMES } from '@/data/farmCrops.js';   /* v2.3.3135 */
 /* ═══ v2.3.1755: THE BAG'S OWN THUMBNAILS ═══
    Owner: "I'd also like it if you included the item thumbnails next to the
    quantities and gold icon next to the gold amount for trading."
@@ -27,6 +27,10 @@ import { thumbFor } from '../mobile/dash/InventoryPanel.jsx';
    for. THEIRS is generated from their peer record through the shared recipe
    (portraitOptsFromPeer), the same call InspectPlayerPanel makes. */
 import { portraitStore } from '../mobile/sheet/portraitStore.js';
+/* v2.3.3122: the pet lane (pet trading, docs/PET-TRAPPING-PLAN.md Phase 3) */
+import { PetPortrait } from '@/ui/petPortrait.jsx';
+import { petDisplayName, petKindName, petTradeView, worldSafeText, PET_TRADE_MAX } from '@/data/trapping.js';
+import { petList, petbookOn } from '@/game/petBook.js';
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '../../rendering/characterPortrait.js';
 
 /* === TradeWindowPanel — the two-sided trade window (v2.3.1132) === */
@@ -100,7 +104,7 @@ const ITEM_EMOJI = {
 /* v2.3.2286: the owner's ladder, verbatim and in his order. Module scope so it
    is one list rather than an array literal rebuilt on every render. */
 const GOLD_STEPS = [1, 5, 25, 50, 100, 500, 1000];
-/* v2.3.3119: the farm's seeds, crops and compost by their own glyph and name
+/* v2.3.3135: the farm's seeds, crops and compost by their own glyph and name
    ("Wheat Seeds", not "📦 seed wheat") -- sixteen crops now trade.  Read with
    hasOwnProperty: a key here is the other player's word. */
 const farmName = (k) => (Object.prototype.hasOwnProperty.call(FARM_ITEM_NAMES, k) ? FARM_ITEM_NAMES[k] : null);
@@ -439,11 +443,12 @@ function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTie
 /* v2.3.1235: trade-completion receipt — optional goldSuffix ("G") lets
    the receipt render its gold rows as "25G"; live-trade wells pass
    nothing and are byte-identical. */
-function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSuffix, inv, onSetQty, ink = WELL_INK }) {
+function OfferRows({ offer, weapons, pets, empty, onRemoveItem, onRemoveWeapon, onRemovePet, goldSuffix, inv, onSetQty, ink = WELL_INK }) {
   const entries = Object.entries(offer || {}).filter(([k, v]) => k !== '_gold' && v > 0);
   const gold = (offer && offer._gold) || 0;
   const wpns = weapons || [];
-  if (!entries.length && !gold && !wpns.length) {
+  const petRows = pets || [];   /* v2.3.3122: [{id, kind, stage, gold, size, name, lv, owners}] or {id, missing} */
+  if (!entries.length && !gold && !wpns.length && !petRows.length) {
     /* v2.3.2283: the EMPTY lane is the first thing a player sees when a trade
        opens, so this is not a corner case -- on the light card the old
        #8D9B98 would be 1.87:1. */
@@ -467,6 +472,15 @@ function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSu
             onRemove={onRemoveWeapon ? () => onRemoveWeapon(w.seq) : null} ink={ink} />
         );
       })}
+      {/* v2.3.3122: pets, drawn as the Pets page draws them */}
+      {petRows.map((pt) => (
+        <StagedRow key={'p' + pt.id} rowKey={'p:' + pt.id}
+          glyph={pt.missing ? '❔' : <PetPortrait pet={pt} size={26} />}
+          name={pt.missing ? 'A pet no longer offered' : worldSafeText(petDisplayName(pt))}
+          rarityLabel={pt.missing ? null : (pt.name ? petKindName(pt.kind, pt.stage) + ' · ' : '') + 'Lv ' + (pt.lv || 1) + (pt.gold ? ' · Golden' : '')}
+          rarityColor={pt.gold ? '#EAC675' : null}
+          onRemove={onRemovePet ? () => onRemovePet(pt.id) : null} ink={ink} />
+      ))}
       {/* v2.3.2296: gold is a LINE ITEM, so it wears the same frame as the rest
           of them. It was an inline div with its own geometry, which is why it
           sat a little differently from the item rows even before they were
@@ -977,7 +991,7 @@ export function TradeWindowPanel(props) {
                   in a .bt-t2-items well, and a well states its own ramp in CSS
                   -- so the two lanes read the same WELL_INK default and each
                   resolves it against the tint it is actually on. */}
-              <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" />
+              <OfferRows offer={r.received} weapons={r.receivedWeapons} pets={r.receivedPets} empty="Nothing" goldSuffix="G" />
             </div>
           </div>
           {/* v2.3.2297: the sent lane gets its beat and then folds. It is
@@ -992,7 +1006,7 @@ export function TradeWindowPanel(props) {
                   <span className="bt-t2-lane-name">You sent</span>
                 </div>
                 <div className="bt-t2-items">
-                  <OfferRows offer={r.sent} weapons={r.sentWeapons} empty="Nothing" goldSuffix="G" />
+                  <OfferRows offer={r.sent} weapons={r.sentWeapons} pets={r.sentPets} empty="Nothing" goldSuffix="G" />
                 </div>
               </div>
             </div>
@@ -1023,6 +1037,9 @@ export function TradeWindowPanel(props) {
       <TradeDrawer title="Trade" onClose={() => setTrade2(null)}>
           <div style={{ borderRadius: 10, border: '1px solid #D8635D', background: 'transparent', color: '#D8635D', fontSize: 12, fontWeight: 700, padding: '10px 12px' }}>
             Trade failed — nothing was exchanged
+            {/* v2.3.3122: and, for a pet, why */}
+            {/^pet-gone/.test(String(trade2.reason || '')) ? <div style={{ fontWeight: 400, marginTop: 4 }}>A pet in it could no longer be traded.</div> : null}
+            {/^pets-full/.test(String(trade2.reason || '')) ? <div style={{ fontWeight: 400, marginTop: 4 }}>There was no room in a collection for the pets.</div> : null}
           </div>
       </TradeDrawer>
     );
@@ -1109,6 +1126,23 @@ export function TradeWindowPanel(props) {
   const otherWpn = (trade2.weapons && trade2.weapons[otherId]) || [];
   const stash = (rpgState && rpgState.weaponStash) || [];
   const T2_WPN_MAX = 4;
+  /* ═══ v2.3.3122: THE PET LANE ═══
+     The pets each side offers, as the worker reads them off its owner's
+     record (trade2.pets, petPublic), and the picker of yours that may change
+     hands now (data/trapping.js petTradeView: not out with you, not an old
+     pet, a day past its catch -- the worker checks it again).  A tap offers
+     one more, a row's ✕ takes it back: each sends the whole set
+     (trade2_pets), which resets both readies like any other edit.  Only
+     against a worker that advertises caps.pettrade. */
+  const petLane = !!(S && S._serverCaps && S._serverCaps.pettrade) && petbookOn(S);
+  const myPets = (trade2.pets && trade2.pets[myId]) || [];
+  const otherPets = (trade2.pets && trade2.pets[otherId]) || [];
+  const myPetIds = myPets.map((p) => p.id);
+  const sendPets = (ids) => send('trade2_pets', { ids });
+  const petActiveId = (S && S._petBook && S._petBook.active) || null;
+  const myTradeable = petLane
+    ? petList(S).filter((p) => p && p.id && myPetIds.indexOf(p.id) < 0 && petTradeView(p, petActiveId, Date.now()).ok)
+    : [];
 
   const pushStage = (next) => {
     setStage(next);
@@ -1154,7 +1188,8 @@ export function TradeWindowPanel(props) {
   const theirOffer = trade2.offers[otherId] || {};
   const theirItemCount = Object.entries(theirOffer).filter(([k, v]) => k !== '_gold' && v > 0).length;
   const theirGold = theirOffer._gold || 0;
-  const bothEmpty = !myItemCount && !myGold && !theirItemCount && !theirGold && !myWpn.length && !otherWpn.length;
+  const bothEmpty = !myItemCount && !myGold && !theirItemCount && !theirGold && !myWpn.length && !otherWpn.length
+    && !myPets.length && !otherPets.length;   /* v2.3.3122: + pets */
   const confirmDisabled = bothEmpty && !iConfirmed;
   /* v2.3.1235: batch-4 state-correction §7 — before anything is staged
      (and nobody confirmed), ✕/Cancel/scrim leave immediately as they
@@ -1199,14 +1234,19 @@ export function TradeWindowPanel(props) {
        (for the thumbnail) alongside the text rather than pre-flattening to a
        string.  Staged weapons have no inventory key — they fall back to the
        crossed-swords glyph the staged rows already use for them. */
-    const lines = (offer, wpns) => {
+    const lines = (offer, wpns, pets) => {
       const out = Object.entries(offer)
         .filter(([k, v]) => k !== '_gold' && v > 0)
         .map(([k, v]) => ({ key: k, text: `${labelFor(k)} x${v}` }));
       (wpns || []).forEach((w) => out.push({ key: null, text: wpnName(w), glyph: '⚔️' }));
+      /* v2.3.3122: each pet by name, kind and level, its picture beside it */
+      (pets || []).forEach((pt) => out.push(pt.missing
+        ? { key: null, text: 'A pet no longer offered', glyph: '❔' }
+        : { key: null, pet: pt, text: (pt.name ? worldSafeText(pt.name) + ' (' + petKindName(pt.kind, pt.stage) + ', Lv ' + (pt.lv || 1) + (pt.gold ? ', Golden' : '') + ')'
+          : petKindName(pt.kind, pt.stage) + ', Lv ' + (pt.lv || 1) + (pt.gold ? ', Golden' : '')) }));
       return out;
     };
-    const myLines = lines(mine, myWpn), theirLines = lines(theirs, otherWpn);
+    const myLines = lines(mine, myWpn, myPets), theirLines = lines(theirs, otherWpn, otherPets);
     const myGold = mine._gold || 0, theirGold = theirs._gold || 0;
     const bigGold = Math.max(myGold, theirGold) >= BIG_GOLD;
     /* v2.3.2282: `well` joins `tone` as a per-lane argument. Both are bound to
@@ -1243,7 +1283,7 @@ export function TradeWindowPanel(props) {
             halfway through. */}
         {ls.map((it) => (
           <div key={it.text} className="bt-t2-row" style={{ minHeight: 30, gap: 6, fontSize: 13, color: WELL_INK.text, lineHeight: 1.5 }}>
-            {chip(<ItemThumb itemKey={it.key} size={20} fallback={it.glyph || '📦'} />)}
+            {chip(it.pet ? <PetPortrait pet={it.pet} size={20} /> : <ItemThumb itemKey={it.key} size={20} fallback={it.glyph || '📦'} />)}
             <span>{it.text}</span>
           </div>
         ))}
@@ -1461,7 +1501,7 @@ export function TradeWindowPanel(props) {
               well, so text picks up the ramp for the ground it is standing on
               whichever lane the well happens to be in. */}
           <div className="bt-t2-items">
-            <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} empty="Nothing staged yet" />
+            <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} pets={otherPets} empty="Nothing staged yet" />
           </div>
         </div>
 
@@ -1487,10 +1527,11 @@ export function TradeWindowPanel(props) {
               empty BAG ("Your bag is empty") from an unstaged one
               ("Nothing staged yet"). */}
           <div className="bt-t2-items">
-          <OfferRows offer={stage} weapons={myWpn}
+          <OfferRows offer={stage} weapons={myWpn} pets={myPets}
             inv={inv} onSetQty={setQty}
             onRemoveItem={removeItem}
             onRemoveWeapon={(seq) => send('trade2_unstage_weapon', { seq })}
+            onRemovePet={(id) => sendPets(myPetIds.filter((x) => x !== id))}
             empty={bagEmpty ? 'Your bag is empty' : 'Nothing staged yet'} />
           </div>
 
@@ -1528,6 +1569,30 @@ export function TradeWindowPanel(props) {
                     color: myWpn.length >= T2_WPN_MAX ? '#667875' : '#9A76D3',
                   }}
                 >⚔️ {w.name || 'Weapon'}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {petLane && myTradeable.length > 0 && (
+          <div style={{ marginBottom: 8 }} data-trade-pet-picker="1">
+            <div style={{ ...laneHeader, color: '#8D9B98' }}>
+              Your pets {myPetIds.length >= PET_TRADE_MAX ? '· max ' + PET_TRADE_MAX : ''}
+            </div>
+            <div className="ls-scrollbody" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 96, overflowY: 'auto' }}>
+              {myTradeable.map((p) => (
+                <button
+                  key={p.id}
+                  data-trade-pet={p.id}
+                  disabled={myPetIds.length >= PET_TRADE_MAX}
+                  onClick={() => { if (myPetIds.length < PET_TRADE_MAX) sendPets(myPetIds.concat([p.id])); }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px 2px 2px', borderRadius: 8, fontSize: 11,
+                    cursor: myPetIds.length >= PET_TRADE_MAX ? 'not-allowed' : 'pointer',
+                    border: '1px solid rgba(126,224,168,.35)', background: 'rgba(126,224,168,.10)',
+                    color: myPetIds.length >= PET_TRADE_MAX ? '#667875' : '#7EE0A8',
+                  }}
+                ><PetPortrait pet={p} size={22} />{worldSafeText(petDisplayName(p))} · Lv {p.lv || 1}</button>
               ))}
             </div>
           </div>

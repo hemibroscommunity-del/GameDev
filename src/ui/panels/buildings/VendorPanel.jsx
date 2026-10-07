@@ -241,7 +241,7 @@ export function VendorPanel(props) {
       }, "The market is not open on this world yet. It arrives with the next server update."),
       React.createElement("div", {
         style: { fontSize: 11, color: LS.txt3, marginTop: 12, lineHeight: 1.5 }
-      }, "Meals and drinks are cooked at the Cookhouse, from what the farm grows.")));   /* v2.3.3116: Diego sells no food or drink */
+      }, "Meals and drinks are cooked at the Cookhouse, from what the farm grows.")));   /* v2.3.3132: Diego sells no food or drink */
 }
 
 /* ═══ v2.3.2618: THE SHELF THAT USED TO BE DRAWN HERE ═══

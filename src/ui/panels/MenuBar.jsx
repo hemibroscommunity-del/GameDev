@@ -1,10 +1,9 @@
 import React from 'react';
-import { BT_AUDIO, MAX_PET_SLOTS, TRAP_HP_THRESHOLD, addLifeSkillXp, createPet, xpRequired } from '@/data/index.js';
+import { xpRequired } from '@/data/index.js'; /* v2.3.3120: the trap button's imports went with it */
 import { btRpc, getBtPassphrase, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
 import { _asyncToGenerator, _objectSpread, _regenerator, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 /* === MenuBar — the bottom action / menu button bar === */
 /* v2.3.894: extracted verbatim from the scrollable HUD button-bar div in
    BroTown.jsx's render (the horizontal-scroll row of buttons that open
@@ -58,7 +57,7 @@ export function MenuBar(props) {
     setShowSkills = props.setShowSkills,
     setShowSocialPanel = props.setShowSocialPanel,
     setShowStatScreen = props.setShowStatScreen;
-  var _Object$entries8, _Object$entries9, _S$myBroData, _sk$trapping, _sk$woodcutting, _stateRef$current59, _stateRef$current60;
+  var _Object$entries8, _Object$entries9, _S$myBroData, _stateRef$current59, _stateRef$current60;
   return React.createElement("div", {
     style: {
       // Legacy bottom toolbar — replaced by the utility wheel (§1.7d).
@@ -231,86 +230,9 @@ export function MenuBar(props) {
       fn: function fn() {
         return doSpecialAttack();
       }
-    }, {
-      e: '🪤',
-      fn: function fn() {
-        var _sk$trapping, _sk$woodcutting;
-        var S = stateRef.current;
-        var R = S.rpg;
-        if (!R || !S.lockedTarget || S.lockedTarget.type !== 'monster') {
-          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lock a weak monster first!', '#D95C54');
-          return;
-        }
-        var m = S.lockedTarget.ref;
-        if (!m.alive) {
-          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Target is dead!', '#D95C54');
-          return;
-        }
-        /* v2.3.1130: server-validated capture.  The worker checks ITS
-           monster hp/range, consumes a basic_trap (they finally
-           matter -- buy them at the vendor), rolls server-side, and
-           removes the monster for everyone.  Outcome popups arrive
-           via pet_capture_result (gameEvents.js); the pet itself
-           rides the authoritative lifeSkills echo.  The local roll
-           below stays for old workers. */
-        if (S._serverCaps && S._serverCaps.pets && S._serverMonsters && S.channel && m.id) {
-          try {
-            S.channel.send({ type: 'broadcast', event: 'pet_capture', payload: { monsterId: m.id } });
-          } catch (e) {}
-          return;
-        }
-        var hpPct = m.curHp / m.hp;
-        if (hpPct > TRAP_HP_THRESHOLD) {
-          pushDmgPopup(S, m.x, m.y - 25, 'Too healthy! (<20% HP)', '#D95C54');
-          return;
-        }
-        var sk = R.lifeSkills;
-        if (!sk.pets) sk.pets = [];
-        if (sk.pets.length >= MAX_PET_SLOTS) {
-          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Pet slots full! (' + MAX_PET_SLOTS + ')', '#D95C54');
-          return;
-        }
-        var trapLvl = ((_sk$trapping = sk.trapping) === null || _sk$trapping === void 0 ? void 0 : _sk$trapping.level) || 1;
-        var wcLvl = ((_sk$woodcutting = sk.woodcutting) === null || _sk$woodcutting === void 0 ? void 0 : _sk$woodcutting.level) || 1;
-        /* Woodcutting provides better trap materials: +0.2% per woodcutting level */
-        var wcBonus = wcLvl * 0.002;
-        var baseChance = 0.4 + trapLvl * 0.005 + wcBonus;
-        var levelPenalty = Math.max(0, (m.level || 1) - R.level) * 0.05;
-        var chance = Math.max(0.1, Math.min(0.95, baseChance - levelPenalty));
-        if (Math.random() > chance) {
-          pushDmgPopup(S, m.x, m.y - 25, 'Escaped!', '#D95C54');
-          addLifeSkillXp(sk, 'trapping', 5);
-          BT_AUDIO.beep(200, 0.08, 0.12, 'square');
-          return;
-        }
-        var pet = createPet(m);
-        sk.pets.push(pet);
-        if (sk.activePet === null) sk.activePet = sk.pets.length - 1;
-        m.alive = false;
-        m.respawnAt = Date.now() + 60000;
-        var _trLvlBefore = sk.trapping.level;
-        var leveled = addLifeSkillXp(sk, 'trapping', 15 + (m.level || 1) * 2);
-        pushDmgPopup(S, m.x, m.y - 20, 'Captured ' + pet.name + '!', '#59BF91');
-        pushDmgPopup(S, m.x, m.y - 35, pet.emoji + ' ' + pet.archetype + ' Lv' + (m.level || 1), pet.color);
-        if (leveled) celebrateLifeSkillLevel(S, 'trapping', sk.trapping.level, _trLvlBefore); /* v2.3.2591 */
-        if (leveled) pushDmgPopup(S, S.player.x, S.player.y - 50, 'Trapping Lv' + sk.trapping.level + '!', '#D8A94D');
-        S.lockedTarget = null;
-        BT_AUDIO.collect();
-        setTimeout(function () {
-          return BT_AUDIO.beep(523, 0.1, 0.08, 'sine');
-        }, 100);
-        setTimeout(function () {
-          return BT_AUDIO.beep(659, 0.1, 0.08, 'sine');
-        }, 200);
-        setTimeout(function () {
-          return BT_AUDIO.beep(784, 0.15, 0.1, 'sine');
-        }, 300);
-        setRpgState(_objectSpread({}, R));
-        try {
-          localStorage.setItem('bt_rpg', JSON.stringify(R));
-        } catch (e) {}
-      }
-    }, {
+    }, /* v2.3.3120: the 🪤 capture button is RETIRED with the 20%-health capture
+          (server pets.js answers 'retired').  Pets are caught by arming a
+          trap and killing the monster: the TRAP pop-up (TrapButton.jsx). */ {
       e: '😀',
       fn: function fn() {
         return setShowEmotes(function (s) {
