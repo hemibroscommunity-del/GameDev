@@ -5,6 +5,8 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { TrapsTab } from './TrapsTab.jsx'; /* v2.3.3120: box traps from logs */
+import { hardenCost as hardenAttemptCost } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes a material and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost) */
+import { HardenedWoodTab } from './HardenedWoodTab.jsx'; /* v2.3.3139: five logs into one hardened wood */
 /* === WoodworkPanel — buildingPanel === 'woodwork' sub-panel === */
 /* v2.3.873: extracted verbatim from the buildingPanel === 'woodwork' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -80,6 +82,22 @@ export function WoodworkPanel(props) {
      straight off S._serverCaps so the caps audit sees the gate) */
   var _trapCraftOn = !!(stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.trapcraft);
   var _trapsMode = _trapCraftOn && stateRef.current && stateRef.current._wwType === 'traps';
+  /* v2.3.3139: and the Harden tab (HardenedWoodTab.jsx) -- five logs into one
+     hardened wood, a bow's or a staff's hardening material -- only against a
+     worker that makes it (caps.hardenedwood, read straight off S._serverCaps) */
+  var _hwOn = !!(stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.hardenedwood);
+  var _hwMode = _hwOn && stateRef.current && stateRef.current._wwType === 'hardwood';
+  var _otherMode = _trapsMode || _hwMode;
+  var _makeCards = [{
+    type: 'bow',
+    label: 'Bow' /* v2.3.1235: batch-3 rollout — 🏹 dropped, no emoji in chrome (label only feeds the toggle button) */,
+    desc: 'Ranged single-target'
+  }, {
+    type: 'staff',
+    label: 'Staff' /* v2.3.1235: batch-3 rollout — 🪄 dropped, no emoji in chrome */,
+    desc: 'Ranged AOE swipe'
+  }].concat(_trapCraftOn ? [{ type: 'traps', label: 'Traps', desc: 'Box traps for pets' }] : [])
+    .concat(_hwOn ? [{ type: 'hardwood', label: 'Harden', desc: 'Hardened wood' }] : []);
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('woodwork', '🪚', "Woodworker", "Woodworking Lv" + (((_rpgState$lifeSkills29 = rpgState.lifeSkills) === null || _rpgState$lifeSkills29 === void 0 || (_rpgState$lifeSkills29 = _rpgState$lifeSkills29.woodworking) === null || _rpgState$lifeSkills29 === void 0 ? void 0 : _rpgState$lifeSkills29.level) || 1)),
     React.createElement("div", {
@@ -92,26 +110,29 @@ export function WoodworkPanel(props) {
       style: LS_BODY
     },
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 10, lineHeight: 1.5 } },
-        _trapsMode ? "Make box traps for catching pets." : "Craft bows and staves from harvested wood. Higher tiers unlock gem slots."),
-      React.createElement("div", { style: LS_MOD }, _trapCraftOn ? "Make" : "Weapon type"),
+        _trapsMode ? "Make box traps for catching pets."
+          : _hwMode ? "Five logs make one hardened wood. A bow or staff is hardened with its own wood's."
+          : "Craft bows and staves from harvested wood. Higher tiers unlock gem slots."),
+      React.createElement("div", { style: LS_MOD }, (_trapCraftOn || _hwOn) ? "Make" : "Weapon type"),
       React.createElement("div", {
-        style: {
+        "data-ww-make": _makeCards.length,
+        /* v2.3.3139: four choices go two by two (four across a phone left
+           each about 75 px, its words in three lines) */
+        style: _makeCards.length > 3 ? {
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 6,
+          marginBottom: 12
+        } : {
           display: 'flex',
           gap: 6,
           marginBottom: 12
         }
-      }, [{
-        type: 'bow',
-        label: 'Bow' /* v2.3.1235: batch-3 rollout — 🏹 dropped, no emoji in chrome (label only feeds the toggle button) */,
-        desc: 'Ranged single-target'
-      }, {
-        type: 'staff',
-        label: 'Staff' /* v2.3.1235: batch-3 rollout — 🪄 dropped, no emoji in chrome */,
-        desc: 'Ranged AOE swipe'
-      }].concat(_trapCraftOn ? [{ type: 'traps', label: 'Traps', desc: 'Box traps for pets' }] : []).map(function (wt) {
+      }, _makeCards.map(function (wt) {
         var _stateRef$current13, _stateRef$current14, _stateRef$current15;
         return /*#__PURE__*/React.createElement("button", {
           key: wt.type,
+          "data-ww-type": wt.type, /* v2.3.3139: a test hook -- the old Reforge & Harden row has a "Harden (...)" button too */
           style: {
             flex: 1,
             padding: '8px 10px',
@@ -137,8 +158,10 @@ export function WoodworkPanel(props) {
           }
         }, wt.desc));
       })),
-      _trapsMode ? React.createElement(TrapsTab, { rpgState: rpgState, stateRef: stateRef }) : React.createElement("div", { style: LS_MOD }, "Craft"),
-      _trapsMode ? null : Object.entries(WOODWORKING_TIERS).filter(function (_ref139) {
+      _trapsMode ? React.createElement(TrapsTab, { rpgState: rpgState, stateRef: stateRef })
+        : _hwMode ? React.createElement(HardenedWoodTab, { rpgState: rpgState, stateRef: stateRef })
+        : React.createElement("div", { style: LS_MOD }, "Craft"),
+      _otherMode ? null : Object.entries(WOODWORKING_TIERS).filter(function (_ref139) {
         var _rpgState$lifeSkills30;
         var _ref140 = _slicedToArray(_ref139, 2),
           key = _ref140[0],
@@ -322,7 +345,7 @@ export function WoodworkPanel(props) {
             gap: 5
           }
         }, lsGoldImg(false), wt.goldCost)));
-      }), _trapsMode ? null : function () {
+      }), _otherMode ? null : function () {
         /* v2.3.1131: SS4.6c HARDENING for the active ranged/staff weapon
            (server ladder via harden_weapon -- see the ForgePanel twin;
            distinct from the legacy hardenBonus affix below). */
@@ -335,9 +358,17 @@ export function WoodworkPanel(props) {
         var hLvl = typeof hw.hardness === 'number' ? hw.hardness : 0;
         var hMaxed = hLvl >= 5;
         var hOdds = [80, 20, 5, 1, 0.5][Math.min(hLvl, 4)];
-        var hCost = 500 * Math.pow(4, hLvl);
+        /* v2.3.3139: the owner's ladder -- 500 x 2^H gold and H+1 of the bow's
+           or staff's own wood's HARDENED WOOD (data/hardenCosts.js; made on
+           the Harden tab) -- against a worker that charges it
+           (caps.hardenmats with caps.hardenedwood); else the old 500 x 4^H */
+        var hc = hardenAttemptCost(hw, hLvl, !!(_Sh._serverCaps && _Sh._serverCaps.hardenmats), !!(_Sh._serverCaps && _Sh._serverCaps.hardenedwood), hSlot);
+        var hCost = hc.gold;
         var hTemper = hw.temper || 0;
-        var hAfford = (rpgState.coins || 0) >= hCost;
+        var hMatsHave = hc.material ? Math.floor(((rpgState.inventory || {})[hc.material]) || 0) : 0;
+        var hGoldOk = (rpgState.coins || 0) >= hCost;
+        var hMatsOk = !hc.material || hMatsHave >= hc.amount;
+        var hAfford = hGoldOk && hMatsOk;
         return /*#__PURE__*/React.createElement("div", {
           style: { marginTop: 12, padding: 10, borderRadius: 10, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
         }, /*#__PURE__*/React.createElement("div", {
@@ -352,6 +383,7 @@ export function WoodworkPanel(props) {
              Unaffordable state stays readable on the well; the cost in
              the label is the requirement. */
           className: hAfford ? 'button-primary' : undefined,
+          "data-harden-go": "1", /* v2.3.3139: mp-hardenbars, as the Blacksmith's */
           /* v2.3.1235: state-correction — real disabled prop + approved
              disabled recipe (#1A292F fill, #8D9B98 label, .11 hairline,
              full opacity) when coins are short; handler untouched. */
@@ -372,8 +404,10 @@ export function WoodworkPanel(props) {
         }, /* v2.3.1235: state-correction — short-coins label states the
               gold deficit (fee - coins, same values the hAfford guard
               reads) instead of an enabled-looking attempt label. */
-        hAfford ? /*#__PURE__*/React.createElement("span", null, "Attempt H", hLvl + 1, " (", hCost, "G \xB7 ", hOdds, "%)") : "Need ".concat(hCost - (rpgState.coins || 0), "G more")));
-      }(), _trapsMode ? null : function (_stateRef$current17, _wpn$gearBase3, _rpgState$lifeSkills32) {
+        hAfford ? /*#__PURE__*/React.createElement("span", { "data-harden-cost": hc.material ? hc.material + ':' + hc.amount : 'gold' }, "Attempt H", hLvl + 1, " (", hCost, "G", hc.material ? " + " + hc.word(hc.amount) : "", " \xB7 ", hOdds, "%)")
+          : !hGoldOk ? "Need ".concat(hCost - (rpgState.coins || 0), "G more")
+          : "Need " + hc.word(hc.amount - hMatsHave) + " more"));
+      }(), _otherMode ? null : function (_stateRef$current17, _wpn$gearBase3, _rpgState$lifeSkills32) {
         var craftType = ((_stateRef$current17 = stateRef.current) === null || _stateRef$current17 === void 0 ? void 0 : _stateRef$current17._wwType) || 'bow';
         var wpnKey = craftType === 'bow' ? 'rangedWeapon' : 'staffWeapon';
         var wpn = rpgState[wpnKey];
