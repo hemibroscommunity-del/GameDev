@@ -67,9 +67,27 @@ export const TIER_COLOR = {
 export const QUALITY_COLOR = {
   normal: null,                 /* null = "no rarity hue": the caller keeps its own accent */
   rare:   '#5B99DE',
-  elite:  '#A477DF',
-  godly:  '#F0C45F',
+  elite:  '#E8893A',            /* v2.3.3127: orange, was purple -- below */
+  godly:  '#F0C45F',            /* the one hue where ONE is needed (a glow, a frame); its name is a rainbow, qualityInk */
 };
+/* ═══ v2.3.3127: THE OWNER'S GRADE COLOURS ═══
+ * Owner, asking for worn armour to show its grade: "So rare is blue, elite is
+ * orange, godly is prismatic" -- the same words as their pet rarities ("Blue
+ * Rare, Orange Elite, Prismatic Godly", playerProfile.js PET_RARITY).  The
+ * worn armour draws them (lightfx/glint.js GRADE_LOOK); the bag and the cards
+ * say the same: elite's purple became orange here, in inventoryStyles.js,
+ * ItemArt.jsx, InventoryPanel and game.css's .ls-slot--legendary, and godly's
+ * ring is a rainbow (.ls-slot--godly) and its NAME one (qualityInk). */
+export const QUALITY_PRISM = 'linear-gradient(90deg,#FF6B6B,#FFD166,#6BFF95,#5CB8FF,#C77DFF)';
+/** A grade's NAME as text: its colour, or for godly the rainbow clipped to the
+    letters (as the profile's godly pet name, .bt-pin-petname.is-godly).  Null
+    for normal, so the caller keeps its own colour.  No text-shadow with it: a
+    shadow is painted over a clipped background and greys the letters. */
+export function qualityInk(q) {
+  if (q === 'godly') return { color: 'transparent', backgroundImage: QUALITY_PRISM, WebkitBackgroundClip: 'text', backgroundClip: 'text' };
+  const c = QUALITY_COLOR[q];
+  return c ? { color: c } : null;
+}
 export const QUALITY_LABEL = {
   normal: 'Normal', rare: 'Rare', elite: 'Elite', godly: 'Godly',
 };

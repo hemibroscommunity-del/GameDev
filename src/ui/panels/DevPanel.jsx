@@ -471,6 +471,16 @@ export const DevPanel = ({ onClose }) => {
               {/* v2.3.2875: the kit hands out the copper and iron armour sets too (devtools.js DEVKIT.ARMOR) */}
               Give weapons + armor + levels
             </button>
+            {/* v2.3.3127: the kit's armour in a grade, to wear and see its look
+                (rare blue, elite orange, godly prismatic -- glint.js GRADE_LOOK) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7, marginBottom: 4 }}>
+              {['rare', 'elite', 'godly'].map((q) => (
+                <button key={q} type="button" style={chip} disabled={busy} data-dev-kit-grade={q}
+                  onClick={async () => { const j = await call('/dev/kit', { playerId: myId, what: 'armor', quality: q }); if (j) { setMsg((typeof j.armor === 'number' ? j.armor : 0) + ' ' + q + ' armour pieces — check your bag.'); refresh(); } }}>
+                  {q.charAt(0).toUpperCase() + q.slice(1)} armor
+                </button>
+              ))}
+            </div>
             <button type="button" style={btn(false)} disabled={busy}
               onClick={async () => { const j = await call('/dev/vitals', { playerId: myId, heal: true }); if (j) { setMsg('Topped up.'); refresh(); } }}>
               Heal / refill

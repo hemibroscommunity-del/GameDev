@@ -1509,7 +1509,30 @@ remnant to migrate server-side, not a mode to preserve.
       shared with yours); MORE ROOM: `pet_house_buy {cap, confirm}` 10 places
       for 1,000 gold, each step 1,000 more, to 120, a stale `cap` refused;
       caps `petwards` / `petshow` / `pethouse`; dev `look: {gold, size}`;
-      `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.)
+      `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.
+  - Since v2.3.3127 WORN ARMOUR SHOWS ITS GRADE -- the owner: "change the
+    outline hue or something on the armor so it retains the color but has
+    highlights. So rare is blue, elite is orange, godly is prismatic":
+    - the metal sheen's own filter (lightfx/glint.js `GRADE_LOOK`, the shader's
+      `uGrade` block; no new pass, no textures) draws the worn torso's and
+      greaves' edge, ~1.4 CSS px inside the silhouette (`GRADE_RIM`), in the
+      grade's colour and lights their highlights in it; godly a drifting
+      rainbow; a standing set's waist seam is not outlined (`uRimSkip`), a
+      jogging full set all round; drawn with the light effects off too;
+      weapons unchanged -- a godly WEAPON keeps its gold gleam, godly ARMOUR
+      shines in its metal;
+    - everyone else's from the worker: `eqg` on the tick's player entry, two
+      letters n/r/e/g, absent in plain armour (gearprov.js
+      `armourGradeWire`), counted by combat's rule (godly only when minted, a
+      legacy piece's described rare/elite as worn); yours by `seenGrade`; a
+      grade-only swap marks you dirty (`_gridsApplyArmor`);
+    - the bag and cards match: elite ORANGE `#E8893A` (was purple), godly's
+      ring a rainbow and its name rainbow text (`qualityInk`, dash/common.js),
+      gold kept as godly's one solid colour (the drop reveal's frame);
+    - the admin panel's Rare / Elite / Godly armor (`/dev/kit` `quality`);
+      `quest_reward_stashed` dedupes by the worker's id when it has one (a
+      second minted Iron Torso was dropped as a "replay");
+    - `armorgrade` suite, `mp-armorgrade`: docs/specs/armor-grade-look.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

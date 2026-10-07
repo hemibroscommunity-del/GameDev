@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { COL, QUALITY_COLOR, QUALITY_LABEL, getState } from './dash/common.js';
+import { COL, QUALITY_COLOR, QUALITY_LABEL, qualityInk, getState } from './dash/common.js';
 import { thumbFor } from './dash/InventoryPanel.jsx';
 import { armorIconFor } from '@/rendering/gearVariants.js';
 import { DAILY_CHEST_STRIP, DAILY_CHEST_FRAMES } from '@/rendering/chestPreload.js';
@@ -251,7 +251,7 @@ export const ChestReveal = () => {
         </div>
         {stage === 'reveal' ? (
           <div data-chest-reveal={p && p.kind} style={{ animation: 'btPrizeText .35s ease-out .25s both' }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: tone, marginTop: 2 }}>{prizeText(p)}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: tone, marginTop: 2, ...(q === 'godly' ? qualityInk('godly') : null) }}>{prizeText(p)}</div>
           </div>
         ) : (
           <div style={{ fontSize: 13, color: COL.text2, minHeight: 20, marginTop: 2 }}>

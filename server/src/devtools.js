@@ -165,8 +165,13 @@ export const devToolsMethods = {
          left on it, the player's next quest turn-in would announce these
          pieces again as that quest's reward. */
       ps._questGrantOverflow = null;
+      /* v2.3.3127: `quality` -- the kit's armour in a grade, so the owner can
+         wear and see each one's look (glint.js GRADE_LOOK).  Admin-only, like
+         every /dev/ op, and minted into the ledger like the plain kit, so a
+         godly piece counts as godly. */
+      const q = opts && (opts.quality === 'rare' || opts.quality === 'elite' || opts.quality === 'godly') ? opts.quality : null;
       for (const a of DEVKIT.ARMOR) {
-        try { this._grantQuestItem(ps, a, playerId); } catch (e) { /* one bad piece must not stop the rest */ }
+        try { this._grantQuestItem(ps, q ? { ...a, quality: q } : a, playerId); } catch (e) { /* one bad piece must not stop the rest */ }
       }
       const over = Array.isArray(ps._questGrantOverflow) ? ps._questGrantOverflow : [];
       ps._questGrantOverflow = null;

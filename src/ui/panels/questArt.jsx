@@ -1,5 +1,5 @@
 import React from 'react';
-import { QUALITY_COLOR, QUALITY_LABEL } from '../mobile/dash/common.js';
+import { QUALITY_LABEL, qualityInk } from '../mobile/dash/common.js';
 
 /* ═══ v2.3.3030: THE QUEST WINDOWS, IN THE OWNER'S OWN ART ═══
  *
@@ -142,7 +142,7 @@ export function QuestSlot(props) {
       }) : null),
     h('div', { className: 'bt-qw-item-name' }, it.label || ''),
     q ? h('div', { className: 'bt-qw-item-rarity', 'data-quality': q,
-      style: QUALITY_COLOR[q] ? { color: QUALITY_COLOR[q] } : null }, QUALITY_LABEL[q] || q) : null);
+      style: qualityInk(q) }, QUALITY_LABEL[q] || q) : null);   /* v2.3.3127: godly's name a rainbow */
 }
 
 /** A skill chip (Melee / Bow / Magic): the owner's chip with its weapon,

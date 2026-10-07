@@ -106,6 +106,9 @@ export class LightFx {
     if (!lightFxOn() || !S) {
       if (this._wasOn) { this.clear(); this._wasOn = false; }
       this.lastMs = 0;
+      /* v2.3.3127: a graded piece still wears its grade with the light
+         effects off (glint.js GRADE_LOOK) -- only those pieces are filtered */
+      if (S) { try { this.glint.update(S, now, er, fx, S.currentZone || 'town', null, true); } catch (e) { /* a look never stops a frame */ } }
       return;
     }
     this._wasOn = true;

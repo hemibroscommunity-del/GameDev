@@ -16,6 +16,7 @@
  * last-leave) stay in index.js untouched. */
 
 import { WHEEL_ZONE } from './wheelzone.js';   /* v2.3.2978: the Wheel's monsters go out by interest */
+import { armourGradeWire } from './gearprov.js';   /* v2.3.3127: the worn armour's grade, seen by others */
 
 /* v2.3.2062: server ticks between regen passes. Exported because the Mana
    Draught sizes its per-tick floor against this cadence (server/src/data.js
@@ -328,7 +329,7 @@ export const tickMethods = {
       /* v2.3.3123: the others' pets (petbook.js _petWireRefresh), unless
          `petshow: false` -- read once a tick, not once a player */
       const petShow = !(this._petShowOff && this._petShowOff());
-      const playerWire = (ps) => ({
+      const playerWire = (ps) => { const eqg = armourGradeWire(ps); return {
         x: ps.x, y: ps.y, d: ps.d, z: ps.z, vx: ps.vx, vy: ps.vy,
         f: ps.f, eqc: ps.eqc, eql: ps.eql, eqs: ps.eqs, ex: ps.ex,
         /* v2.3.1576: verified Hemi Bro token id, or undefined.  SERVER-OWNED
@@ -353,7 +354,11 @@ export const tickMethods = {
            `sp` -- and not `pet`, the old client-relayed one the profile card
            reads. */
         ...(petShow && ps._petWire ? { pw: ps._petWire } : {}),
-      });
+        /* v2.3.3127: the worn torso's and greaves' grades, 'rn' etc.
+           (gearprov.js armourGradeWire); absent in plain armour, so everyone
+           else's wire is unchanged */
+        ...(eqg ? { eqg } : {}),
+      }; };
 
       // Dirty players bucketed by the zone they are standing in, so a
       // group only pays for the peers its members can actually see.
