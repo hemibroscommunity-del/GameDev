@@ -116,9 +116,12 @@ never glint.
 | elite | 3.3 s | 1.15 |
 | godly | 1.9 s | 1.4, gold |
 
-Other players' grades are not on the wire: the relay carries the metal
-(`wpnMat`) but not the grade. So their gear glints at the normal rate until
-a grade key is relayed.
+Other players' WEAPON grades are not on the wire: the relay carries the
+metal (`wpnMat`) but not the grade. So their weapons glint at the normal rate
+until a grade key is relayed. Their ARMOUR's grades are, since v2.3.3142: the
+worker sends them as `eqg` on the tick, and the worn torso and greaves show
+them as an outline (rare blue, elite orange, godly a rainbow), on you and on
+everyone else -- `armor-grade-look.md`.
 
 **v2.3.2914: the sweep no longer runs on its own.** Owner: *"It also doesn't
 need the occasionally 10 second flash animation (to show the shine)."* The

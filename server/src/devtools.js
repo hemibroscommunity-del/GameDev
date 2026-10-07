@@ -165,8 +165,13 @@ export const devToolsMethods = {
          left on it, the player's next quest turn-in would announce these
          pieces again as that quest's reward. */
       ps._questGrantOverflow = null;
+      /* v2.3.3142: `quality` -- the kit's armour in a grade, so the owner can
+         wear and see each one's look (glint.js GRADE_LOOK).  Admin-only, like
+         every /dev/ op, and minted into the ledger like the plain kit, so a
+         godly piece counts as godly. */
+      const q = opts && (opts.quality === 'rare' || opts.quality === 'elite' || opts.quality === 'godly') ? opts.quality : null;
       for (const a of DEVKIT.ARMOR) {
-        try { this._grantQuestItem(ps, a, playerId); } catch (e) { /* one bad piece must not stop the rest */ }
+        try { this._grantQuestItem(ps, q ? { ...a, quality: q } : a, playerId); } catch (e) { /* one bad piece must not stop the rest */ }
       }
       const over = Array.isArray(ps._questGrantOverflow) ? ps._questGrantOverflow : [];
       ps._questGrantOverflow = null;
@@ -475,6 +480,7 @@ export const devToolsMethods = {
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
     else if (path === '/dev/quests') result = this._devFinishQuests(playerId, body);   /* v2.3.2277; v2.3.3121: + except */
     else if (path === '/dev/clearwave') result = this._devClearWave(playerId);   /* v2.3.3016 */
+    else if (path === '/dev/daily') result = await this._drDev(playerId, body);   /* v2.3.3140: stars, bonus spins, a quest's count */
     else if (path === '/dev/farmripe') result = await this._devFarmRipe(playerId);   /* v2.3.3127 */
     else if (path === '/dev/trapping') result = this._devTrapping(playerId, body);   /* v2.3.3120 */
     else return null;

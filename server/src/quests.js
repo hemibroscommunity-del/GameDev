@@ -346,6 +346,9 @@ export const questMethods = {
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);
+    /* v2.3.3140: handing in the first quest opens the daily quests
+       (dailyrewards.js) -- today's three appear now, not at the next login */
+    await this._drOnQuestTurnIn(session.id, questId);
   },
 
   /* ═══ v2.3.1665: quest item grants ═══
@@ -468,6 +471,10 @@ export const questMethods = {
              data.  Clamped to a short identifier because it is echoed to every
              client that can see the wearer. */
           mat: item.mat ? String(item.mat).slice(0, 16) : undefined,
+          /* v2.3.3142: a grade, only when the item names one -- no quest does;
+             the admin test kit does (devtools.js `quality`), so the owner can
+             wear and see each grade's look */
+          ...(item.quality === 'rare' || item.quality === 'elite' || item.quality === 'godly' ? { quality: item.quality } : {}),
         };
         /* v2.3.2534: record it before it leaves.  This piece goes STRAIGHT to
            the player's browser (quest_reward_stashed) and the server keeps no

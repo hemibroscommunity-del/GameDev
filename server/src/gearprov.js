@@ -183,6 +183,31 @@ export function slotForGearField(field) {
 export const PROV_MINTED = 'minted';
 export const PROV_LEGACY = 'legacy';
 
+/* ═══ v2.3.3142: THE GRADE EVERYONE ELSE SEES ON YOUR ARMOUR ═══
+   Owner: "the armor should be visibly different if you're wearing rare,
+   elite, or godly ... rare is blue, elite is orange, godly is prismatic"
+   (src/rendering/lightfx/glint.js GRADE_LOOK).  The worn torso's and greaves'
+   grades go out on each player's tick entry as `eqg`, two letters (n / r / e
+   / g, chest then legs), and only when one of them is not normal -- so a
+   player in plain armour, the usual case, sends nothing new.  Counted by
+   combat.js's rule (`grade` in _armorDrMult), so the look never says more
+   than the fight counts: a minted piece's grade is the ledger's; a piece worn
+   through the legacy lane is worn as described, grade included (the owner's
+   v2.3.2534 decision, gear-provenance.md), and there an unproven godly reads
+   elite.  Derived from the worker's own copy of what is worn (`prov` is the
+   worker's, stripped from every claim), so no message sets `eqg` itself. */
+export function wornGradeLetter(piece) {
+  if (!piece || typeof piece !== 'object') return 'n';
+  const q = piece.quality;
+  if (q === 'godly') return piece.prov === PROV_MINTED ? 'g' : 'e';
+  return q === 'rare' ? 'r' : q === 'elite' ? 'e' : 'n';
+}
+export function armourGradeWire(ps) {
+  if (!ps) return null;
+  const s = wornGradeLetter(ps.armor) + wornGradeLetter(ps.legsArmor);
+  return s === 'nn' ? null : s;
+}
+
 /* ═══ THE STRIP ═══
  * Removes both provenance fields from a piece.  Called on EVERY inbound
  * path, on the raw claim, before anything else looks at it.
@@ -839,6 +864,29 @@ export const gearProvMethods = {
     piece.gid = row.id;
     piece.prov = PROV_MINTED;
     return { piece, row: { id: row.id, slot: row.slot, src: row.src, at: row.at, p: row.p } };
+  },
+
+  /* ═══ v2.3.3141: A RECORDED PIECE TAKES A NEW GRADE (an essence, salvage.js) ═══
+     The row IS the piece (every inbound path rebuilds from `row.p`, header
+     point 1), so the grade is changed THERE, and on the server's own stash
+     entry carrying the same id where there is one -- the client changes its
+     copy from the essence_result that follows.  Only for a piece the caller
+     has already passed through `_gearSellable` (held, not worn, not in the
+     post).  Synchronous, one ledger edit and a fire-and-forget put, so it
+     runs inside one input-gated event (rule 9).  Returns the rebuilt piece,
+     or null when the row is not this player's for this slot. */
+  _gearProvSetQuality(playerId, slot, gid, quality) {
+    const ledger = this._gearProvOf(playerId);
+    const row = ledger ? findProvRow(ledger, gid) : null;
+    if (!row || row.slot !== slot || !row.p || typeof row.p !== 'object') return null;
+    row.p.quality = quality;
+    this._gearProvSave(playerId, ledger);
+    const field = GEAR_PROV_FIELD[slot];
+    const ps = this.playerState[playerId];
+    if (field && ps && Array.isArray(ps[field])) {
+      for (const g of ps[field]) if (g && g.gid === row.id) g.quality = quality;
+    }
+    return this._gearProvPieceByRef(playerId, slot, row.id);
   },
 
   /* ═══ GIVE A PIECE ITS RECORD BACK, TO WHOEVER NOW OWNS IT ═══

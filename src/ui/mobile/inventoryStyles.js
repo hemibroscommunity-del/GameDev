@@ -53,13 +53,13 @@ export const FONT = {
 export const RARITY_BORDER = {
   normal: 'rgba(139, 150, 149, 0.55)',
   rare:   '#5B99DE',
-  elite:  '#A477DF',
+  elite:  '#E8893A',   /* v2.3.3142: orange, the owner's (dash/common.js QUALITY_PRISM) */
   godly:  '#F0C45F',
 };
 export const RARITY_FILL = {
   normal: INV.tileFill,
   rare:   'rgba(91, 153, 222, 0.08)',
-  elite:  'rgba(164, 119, 223, 0.10)',
+  elite:  'rgba(232, 137, 58, 0.10)',
   godly:  'rgba(240, 196, 95, 0.12)',
 };
 

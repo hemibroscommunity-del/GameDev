@@ -417,6 +417,24 @@ Style: crisp pixel art like the attached townsperson: hard-edged square pixels, 
 A square item icon for a top-down 2D action RPG, in exactly the style of the attached icon: a simple wooden box trap, a small crate of rough pine planks with its door propped open on a stick tied to a bit of string, a little bait inside. Seen from slightly above and to the front, filling most of the picture. One flat magenta background (#FF00FF), no shadow, no border, no text. Crisp pixel art: hard-edged pixels, a few flat tones per colour, a one-pixel outline in a darker shade of its own colour.
 ```
 
+## Hardened wood
+
+Five logs make one hardened wood at the Woodworker (v2.3.3139, docs/specs/hardened-wood.md). Today each icon is its tree's log picture with the sprigs taken off, the wood darkened and two iron bands drawn round it by `tools/make_hardened_wood_icons.py`.
+
+### Hardened wood: five item icons
+
+- **In the game:** The bag, and the Woodworker's Harden tab: Hardened Pine Wood, Hardened Softwood, Hardened Hardwood, Hardened Cedar Wood and Hardened Maple Wood.
+- **Attach:** the five log icons (`public/icons/items/wood-log.webp`, `wood-softwood.webp`, `wood-hardwood.webp`, `wood-cedar.webp`, `wood-maple.webp`), so each wood keeps its colour.
+- **How:** Ask ChatGPT for one square picture holding all five; send it in chat and a session cuts it into the game's 256 px icons (`public/icons/items/hardened-<wood>.webp`).
+
+```text
+Create a single 1280x256 image: five separate game item icons in a row on a seamless pure white background (#FFFFFF), each centered in its own invisible square cell with even margins. No grid lines, no borders, no text.
+
+STYLE: match the attached log icons exactly -- the same bold dark outline, the same rich hand-painted shading and highlights, the same angle and size.
+
+SUBJECTS, left to right, one for each attached log in the same order and the same wood colour: a piece of HARDENED WOOD -- the same log, but worked: bark trimmed smooth and dark from fire-hardening, the end grain darkened at its rim, oiled to a soft sheen, bound with two riveted iron bands. No leaves or sprigs.
+```
+
 ## Land banners
 
 Four of the eight lands play only a plain plaque when you cross in. Attach the Frost Ridge sheet and ChatGPT copies its layout, so I can cut each sheet into the banner exactly as with the first four.
@@ -583,6 +601,18 @@ Flowing and watery, for a land of lagoons, sea caves and a drowned reef: harp an
 Instrumental background music for BroTown, a cozy-but-adventurous pixel-art action RPG. It plays quietly under the sound effects while players explore and fight in one land, so: no vocals, a steady tempo, a clear melody that is not tiring on repeat, and nothing sudden or very loud. 1 minute 30 seconds to 2 minutes long, and it must LOOP: no fade-in, no fade-out and no ending -- the last bar leads straight back into the first. The same feel, instruments and mix as the game's other land themes (Icy Peaks, Volcano Watch, Desert, Floral).
 
 Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh: a creeping, slightly off-kilter rhythm of plucked strings and bubbling percussion, a low clarinet or bassoon melody, buzzing insects and squelchy bubbles in the texture. Mischievous rather than horror. About 95 BPM.
+```
+
+## Item icons
+
+### Essences (v2.3.3141)
+
+- **In the game:** The nine essences salvage leaves (Rare, Elite and Godly, each in copper, iron and black steel), in the bag and on the Blacksmith's Salvage tab. Today they are glowing orbs drawn by `tools/make_essence_icons.py`, the metal's bar tucked in the corner.
+- **How:** One picture per grade is enough: the game puts the metal's bar on it. Send them on a plain background; they become `public/icons/items/essence-<grade>-<metal>.webp` (256 x 256).
+- **Attach:** the style key only (never the bro).
+
+```text
+A single game item icon of a magical ESSENCE: a small glowing orb of swirling light, about the size of a fist, floating, with a few tiny sparkles round it. Make three versions, one per picture: RARE in cool blue light, ELITE in warm orange light, GODLY in shifting rainbow (prismatic) light. Painted HD pixel art matching the attached style key, centred, nothing else in the picture, on a flat magenta (#FF00FF) background.
 ```
 
 ## The farm

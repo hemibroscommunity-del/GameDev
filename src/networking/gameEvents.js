@@ -38,6 +38,7 @@ import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, fr
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
+import { hardenMaterialWord } from '@/data/hardenCosts.js';   /* v2.3.3139: "-2 Hardened Pine Wood" on a failed attempt */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
@@ -1579,6 +1580,16 @@ export function processGameEvent(type, payload, S, deps) {
                    shows once as the same small self-dismissing toast a store
                    sale uses (storeToastBus, 6s, tap to close).  The note is
                    the server's own ("Daily reward — day 3"). */
+                /* v2.3.3140: the daily rewards' payouts (server dailyrewards.js)
+                   -- a finished daily quest's coins, a claimed or season-end
+                   tier's coins and items, the daily spin's pot taken or kept
+                   at the day's end -- are announced by their own
+                   rewards_state news (game/dailyRewards.js: a toast for a
+                   quest or a kept pot, the window itself for a claim or a
+                   pot taken), so they stay out of chat the way the daily
+                   login reward has since v2.3.2037.  The coins and items are
+                   already applied; the player_state echo carries them. */
+                if (_e.source === 'dailyquest' || _e.source === 'season' || _e.source === 'dailyspin') continue;
                 if (_e.source === 'daily') {
                   try {
                     var _dAmt = (_ep && _ep.amount) || 0;
@@ -4239,7 +4250,12 @@ export function processGameEvent(type, payload, S, deps) {
                 BT_AUDIO.collect();
                 setTimeout(function () { return BT_AUDIO.beep(784, 0.12, 0.1, 'sine'); }, 120);
               } else {
-                pushDmgPopup(S, S.player.x, S.player.y - 45, 'Hardening failed! (-' + (payload.cost || 0) + 'G) → H' + payload.hardness, '#ff5e6c');
+                /* v2.3.3139: and the material the attempt took -- bars, or a
+                   bow's hardened wood (none on the old ladder) */
+                var _hBars = payload.amount > 0 && typeof payload.material === 'string'
+                  ? ', -' + hardenMaterialWord(payload.material, payload.amount)
+                  : '';
+                pushDmgPopup(S, S.player.x, S.player.y - 45, 'Hardening failed! (-' + (payload.cost || 0) + 'G' + _hBars + ') → H' + payload.hardness, '#ff5e6c');
                 pushDmgPopup(S, S.player.x, S.player.y - 30, 'Temper ' + (payload.temper || 0) + ' (pity softens future resets)', 'rgba(255,255,255,.5)');
                 BT_AUDIO.beep(180, 0.12, 0.18, 'sawtooth');
               }

@@ -44,17 +44,19 @@ export const ARMOR_FORGE = Object.freeze({
      src/rendering/traits/materialTints.js -- 'blacksteel', not the forge's
      'steel' or the ore's 'black_steel'); `tierMult` the armour ladder's step.
      Smithing 1, 5 and 10: the owner's "levels of 5", the bars' own gates
-     (each metal's armour opens with its bar).  A torso is five bars and the
-     greaves three, as the chest piece mitigates more (combat.js
-     _armorDrMult: 30% and 20% at the first step).  XP is 200 / 300 / 400 a
-     bar used -- half what smelting that bar paid. */
+     (each metal's armour opens with its bar).  XP is 200 / 300 / 400 a bar
+     used -- half what smelting that bar paid.
+     v2.3.3141: FOUR bars a piece, torso and greaves alike (was five and
+     three) -- the owner: "maybe chest, legs, and sword each take 4 bars to
+     make (5 ore makes 1 bar).  If you salvage them you get 2 bars back"
+     (salvage.js).  The XP moves with the bars (800 / 1,200 / 1,600). */
   RECIPES: Object.freeze({
-    copper_torso: Object.freeze({ bar: 'bar_copper', bars: 5, slot: 'armor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 1000, name: 'Copper Torso' }),
-    copper_greaves: Object.freeze({ bar: 'bar_copper', bars: 3, slot: 'legsArmor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 600, name: 'Copper Greaves' }),
-    iron_torso: Object.freeze({ bar: 'bar_iron', bars: 5, slot: 'armor', mat: 'iron', tierMult: 2, minLvl: 5, xp: 1500, name: 'Iron Torso' }),
-    iron_greaves: Object.freeze({ bar: 'bar_iron', bars: 3, slot: 'legsArmor', mat: 'iron', tierMult: 2, minLvl: 5, xp: 900, name: 'Iron Greaves' }),
-    blacksteel_torso: Object.freeze({ bar: 'bar_black_steel', bars: 5, slot: 'armor', mat: 'blacksteel', tierMult: 3, minLvl: 10, xp: 2000, name: 'Black Steel Torso' }),
-    blacksteel_greaves: Object.freeze({ bar: 'bar_black_steel', bars: 3, slot: 'legsArmor', mat: 'blacksteel', tierMult: 3, minLvl: 10, xp: 1200, name: 'Black Steel Greaves' }),
+    copper_torso: Object.freeze({ bar: 'bar_copper', bars: 4, slot: 'armor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 800, name: 'Copper Torso' }),
+    copper_greaves: Object.freeze({ bar: 'bar_copper', bars: 4, slot: 'legsArmor', mat: 'copper', tierMult: 1, minLvl: 1, xp: 800, name: 'Copper Greaves' }),
+    iron_torso: Object.freeze({ bar: 'bar_iron', bars: 4, slot: 'armor', mat: 'iron', tierMult: 2, minLvl: 5, xp: 1200, name: 'Iron Torso' }),
+    iron_greaves: Object.freeze({ bar: 'bar_iron', bars: 4, slot: 'legsArmor', mat: 'iron', tierMult: 2, minLvl: 5, xp: 1200, name: 'Iron Greaves' }),
+    blacksteel_torso: Object.freeze({ bar: 'bar_black_steel', bars: 4, slot: 'armor', mat: 'blacksteel', tierMult: 3, minLvl: 10, xp: 1600, name: 'Black Steel Torso' }),
+    blacksteel_greaves: Object.freeze({ bar: 'bar_black_steel', bars: 4, slot: 'legsArmor', mat: 'blacksteel', tierMult: 3, minLvl: 10, xp: 1600, name: 'Black Steel Greaves' }),
   }),
 });
 

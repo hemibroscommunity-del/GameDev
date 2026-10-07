@@ -684,8 +684,8 @@ remnant to migrate server-side, not a mode to preserve.
     - since v2.3.3092 SMELTED BARS MAKE ARMOR -- asked "Should smelted bars
       make armour?", the owner: "Yes": iron and black steel bars smelt too
       (Smithing 5 and 10, `SMELT.RECIPES`, icons by `tools/make_bar_icons.py
-      iron blacksteel`), and the Blacksmith's ARMOR tab forges a torso (5
-      bars) or greaves (3) in each metal -- copper Smithing 1, iron 5, black
+      iron blacksteel`), and the Blacksmith's ARMOR tab forges a torso or
+      greaves (4 bars each since v2.3.3141) in each metal -- copper Smithing 1, iron 5, black
       steel 10 (`server/src/armorforge.js` `ARMOR_FORGE.RECIPES`, mirrored by
       items.js `ARMOR_FORGE_RECIPES`): the drop's own piece `{name, mat, slot,
       tierMult, quality}` on the armour ladder (1/2/3, no gearBase or type),
@@ -694,6 +694,37 @@ remnant to migrate server-side, not a mode to preserve.
       rows at last (gearVariants.js); `caps.armorforge`, kill switch
       `armorforge: false`; `armorforge` suite, `mp-armorforge`:
       docs/specs/armor-forge.md.
+    - since v2.3.3141 FOUR BARS A PIECE, AND SALVAGE -- the owner: "all items
+      like iron armor, bronze armor, etc should be salvageable at the
+      blacksmith for 50% of the bars it took to make them ... chest, legs, and
+      sword each take 4 bars ... If you salvage them you get 2 bars back", and
+      a Rare/Elite/Godly piece's "essence ... use it on whatever same tier
+      armor or weapon you want":
+      - copper, iron and black steel torsos, greaves AND swords/greatswords
+        take four of their metal's bars (armorforge.js; data.js
+        BLACKSMITH_TIERS `bar`/`bars`/`xp` on copper, iron and `steel`, which
+        replace their `oreCost`; the gold stays); a sword pays the armour's
+        XP for the same bars (800 / 1,200 / 1,600); wood and the metals past
+        black steel are unchanged;
+      - the Blacksmith's SALVAGE tab (`server/src/salvage.js`): a CARRIED piece
+        of those metals -- armour by its ledger id through `_gearSellable`
+        and `_gearProvTake` (the auction house's own gate and escrow step:
+        minted, held, not worn, not in the mail), a weapon from the weapon bag
+        by index AND signature (`weaponSig`) -- gives back 2 bars; two taps
+        ("Sure?"); legacy pieces (no id) cannot be salvaged, as they cannot
+        be sold;
+      - a Rare, Elite or Godly piece also leaves `essence_<grade>_<metal>`
+        (nine bag items, icons by `tools/make_essence_icons.py`, priced by the
+        shopkeeper at 1,500 / 8,000 / 250,000); an essence raises a carried
+        piece of ITS metal whose grade is lower to its grade -- for armour the
+        ledger row's `p.quality` (`_gearProvSetQuality`), so the next join
+        rebuilds it so;
+      - `smith_salvage` / `essence_apply`, answered by `smith_salvage_result` /
+        `essence_result` (PRIVILEGED; src/game/salvage.js splices or regrades
+        the browser's own armour lists); `caps.salvage`, kill switch
+        `salvage: false`; `src/data/salvage.js` mirrors the rules
+        (mirror-audit); `salvage` suite, `mp-salvage`:
+        docs/specs/salvage.md.
     - since v2.3.3038 a resource's LEVEL IS A REAL REQUIREMENT (owner: "black
       steel now requires a mining level of at least 5 ... Fishing clownfish
       required fishing level 5", "in levels of 5"): `GATHER_REQ_LVL`
@@ -1679,6 +1710,89 @@ remnant to migrate server-side, not a mode to preserve.
       for 1,000 gold, each step 1,000 more, to 120, a stale `cap` refused;
       caps `petwards` / `petshow` / `pethouse`; dev `look: {gold, size}`;
       `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.
+  - Since v2.3.3139 HARDENING TAKES BARS OR HARDENED WOOD AND ITS GOLD
+    DOUBLES -- the owner: "hardening should cost 1 bar per level (hardening
+    lvl 1 cost 1 bar, hardening lvl 2 costs 2 bars, and a doubling gold cost
+    per level)", "I meant 1000 for lvl 2, 2000 for lvl 3, etc", and for bows
+    and staffs "Maybe 5 logs of the raw material can make one 'hardened
+    (name) wood' raw material so it mirrors the same structure. Also for the
+    number required and gold too":
+    - the attempt at H(n) takes n of the weapon's MATERIAL and 500 x 2^(n-1)
+      gold -- 500, 1,000, 2,000, 4,000, 8,000 (was 500 x 4^H, to 128,000),
+      won or lost; the odds unchanged (80/20/5/1/0.5%);
+    - a sword its metal's BARS by its material tier, the Smithing gate's own
+      index: tiers 1-2 copper, 3 iron, 4 and up black steel
+      (`HARDEN_BAR_BY_TIER`); a bow or a staff its own wood's HARDENED WOOD,
+      pine to maple, then maple (`HARDEN_WOOD_BY_TIER`, `hardenIsWood`: a
+      `ww_` gearBase or the bow's/staff's slot) -- `hardenMaterialFor` in
+      server/src/hardening.js, the game's copy src/data/hardenCosts.js,
+      mirror-audit;
+    - HARDENED WOOD at the Woodworker's new Harden tab (Bow/Staff/Traps/Harden
+      two by two): five logs of a tree make one `hardened_<wood>` (never a
+      `wood_` key, which the game takes for a log), smelting's shape --
+      Woodworking 1/5/10/15/20, 400 to 1,200 XP, `make_hardened_wood`
+      {key, count} -> `hardened_wood_result` (server/src/hardenedwood.js,
+      src/data/hardenedWood.js, HardenedWoodTab.jsx); icons made from each
+      log's picture by `tools/make_hardened_wood_icons.py`; the shop's
+      `hardened_` family at 144;
+    - checked after the gold (`no-materials`, "Need 3 Iron Bars", "Need 1
+      Hardened Pine Wood"), taken with it before the roll; `harden_result` and
+      the ledger carry `material`/`amount`;
+    - `caps.hardenmats` (kill switch `hardenmats: false`: the old ladder, no
+      material) and `caps.hardenedwood` (`hardenedwood: false`: no making, and
+      bows and staffs back on gold alone); `hardening` §8b/§8c, `hardenedwood`
+      suite, `mp-hardenbars`: docs/specs/hardening.md, hardened-wood.md.
+  - Since v2.3.3140 DAILY REWARDS, NOTHING AT LOGIN -- the owner's layered
+    brief ("a small reward just for logging in, daily quests ... feeding a
+    longer progression track"), then: "I find the login page with the chest
+    intrusive ... a free daily spin from the gambling building", and its twist:
+    "Your first spin is for a lump sum award ... Then you have the option of
+    spinning it for double or nothing at 50% odds and that continues on"
+    (server/src/dailyrewards.js):
+    - the login pays NOTHING (no daily chest, no window; a chest still held
+      opens from the bag) and settles a FORGIVING streak (cadence.js: a freeze
+      every 7 days, 2 held, spent on a missed day);
+    - the FREE DAILY SPIN tops the Gambling Den's window (DailySpin.jsx): a
+      prize wheel lands a LUMP SUM (`SPIN.PRIZES`: 25 at 40% ... 10,000 at
+      0.1%, +10% a streak day to +60%) as a POT, then TAKE IT or DOUBLE OR
+      NOTHING at 50% (the wheel turns x2 / ✕), again and again up to the
+      house limit `POT_MAX` 100,000 (paid by itself); the pot is money at
+      rest in the record, paid once a run (`spinpot:<pid>:<run>`), and one
+      left open is paid at the day's end; bonus spins start more;
+    - THREE DAILY QUESTS once tut_1 is in (fight, gather with a tool, one
+      more; one free reroll from ANY group; paid on completion; all three =
+      +1 star and a bonus spin), counted by `_drSignal` at the kill / gather /
+      cook / smelt choke points;
+    - a 28-day SEASON of 25 tiers (stars from quests, all-three, the spin;
+      claim or "Claim all"; unclaimed tiers mailed at the season's end);
+    - the Daily Rewards window (DailyRewardsWindow.jsx) opens only from the
+      Quests tab's card and the Gambling Den; the Quests dot lights for a
+      tier to claim; `daily_rewards:<pid>`, caps/kill switches `dailyspin`
+      and `dailyquests`; `dailyrewards` suite, `mp-dailyrewards`:
+      docs/specs/daily-rewards.md.
+  - Since v2.3.3142 WORN ARMOUR SHOWS ITS GRADE -- the owner: "change the
+    outline hue or something on the armor so it retains the color but has
+    highlights. So rare is blue, elite is orange, godly is prismatic":
+    - the metal sheen's own filter (lightfx/glint.js `GRADE_LOOK`, the shader's
+      `uGrade` block; no new pass, no textures) draws the worn torso's and
+      greaves' edge, ~1.4 CSS px inside the silhouette (`GRADE_RIM`), in the
+      grade's colour and lights their highlights in it; godly a drifting
+      rainbow; a standing set's waist seam is not outlined (`uRimSkip`), a
+      jogging full set all round; drawn with the light effects off too;
+      weapons unchanged -- a godly WEAPON keeps its gold gleam, godly ARMOUR
+      shines in its metal;
+    - everyone else's from the worker: `eqg` on the tick's player entry, two
+      letters n/r/e/g, absent in plain armour (gearprov.js
+      `armourGradeWire`), counted by combat's rule (godly only when minted, a
+      legacy piece's described rare/elite as worn); yours by `seenGrade`; a
+      grade-only swap marks you dirty (`_gridsApplyArmor`);
+    - the bag and cards match: elite ORANGE `#E8893A` (was purple), godly's
+      ring a rainbow and its name rainbow text (`qualityInk`, dash/common.js),
+      gold kept as godly's one solid colour (the drop reveal's frame);
+    - the admin panel's Rare / Elite / Godly armor (`/dev/kit` `quality`);
+      `quest_reward_stashed` dedupes by the worker's id when it has one (a
+      second minted Iron Torso was dropped as a "replay");
+    - `armorgrade` suite, `mp-armorgrade` (15): docs/specs/armor-grade-look.md.
   - Since v2.3.3143 THE BUILDINGS HAVE INSIDES -- the owner sent seventeen
     pictures of them (made from docs/ART-WISHLIST.md's prompts) and said "Ok
     wire these up":

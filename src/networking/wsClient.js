@@ -17,8 +17,10 @@
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
+import { applyRewardsState, applyDailyProgress } from '@/game/dailyRewards.js'; /* v2.3.3140: the free spin, daily quests, the season */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
+import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3139: hardened wood's names */
 import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the worker's */
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
@@ -139,6 +141,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
 import { applyNmlSkull, applyNmlLoss, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land */
+import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
@@ -741,6 +744,10 @@ export function setupWebSocket(ctx) {
                       S.others[pid]._pwRaw = data.pw;
                       S.others[pid]._pet = data.pw ? parsePetWire(data.pw) : null;
                     }
+                    /* v2.3.3142: their worn torso's and greaves' grades (tick.js
+                       `eqg`: 'rn', 'ee', ...), which glint.js draws as the
+                       armour's grade look; absent is plain, as for `spr` */
+                    S.others[pid]._eqg = typeof data.eqg === 'string' ? data.eqg.slice(0, 2) : '';
                     /* v2.3.599: live equip -> the renderer reads other.equip
                        (nested), so rebuild it from the broadcast eqc/eql/eqs
                        whenever present, keeping armour on/off in sync. */
@@ -1493,6 +1500,20 @@ export function setupWebSocket(ctx) {
               if (msg.payload) applyNmlLoss(S, msg.payload, saveRpgSoon);
               break;
             }
+          /* v2.3.3140: the daily rewards (server dailyrewards.js) -- the free
+             spin's result, the day's quests and the season, and a quest's count
+             going up.  The worker has already paid; the player_state echo
+             carries the coins.  These only feed the panels and the toasts. */
+          case 'rewards_state':
+            {
+              try { applyRewardsState(S, msg.payload); } catch (_rw) { /* the next state carries it */ }
+              break;
+            }
+          case 'daily_progress':
+            {
+              try { applyDailyProgress(S, msg.payload); } catch (_rp) { /* the next state carries it */ }
+              break;
+            }
           case 'chest_opened':
             {
               /* v2.3.2820: the worker's answer to Open Chest (dailychest.js).
@@ -1537,6 +1558,24 @@ export function setupWebSocket(ctx) {
               }
               break;
             }
+          case 'smith_salvage_result':
+            {
+              /* v2.3.3141: the worker's answer to Salvage (salvage.js): the
+                 piece taken and the bars (and an essence) paid, or why not.
+                 A salvaged torso or greaves leaves the browser's own list
+                 here; the weapon bag and the totals ride the player_state
+                 that follows. */
+              applySalvageResult(S, msg.payload, saveRpgSoon);
+              break;
+            }
+          case 'essence_result':
+            {
+              /* v2.3.3141: an essence raised a piece's grade (salvage.js) --
+                 its record changed on the worker; the browser's copy of an
+                 armour piece takes the grade here. */
+              applyEssenceResult(S, msg.payload, saveRpgSoon);
+              break;
+            }
           /* ═══ v2.3.3120: PET TRAPPING (game/trapping.js) ═══
              The worker's four answers: the mark set (or why not), the trap
              sprung at a kill (the shakes, a catch), the pets record, and the
@@ -1551,6 +1590,34 @@ export function setupWebSocket(ctx) {
             { try { onPetsState(S, msg.payload); } catch (_te) { /* display only */ } break; }
           case 'make_traps_result':
             { try { onMakeTrapsResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
+          case 'hardened_wood_result':
+            {
+              /* v2.3.3139: the Woodworker's receipt for hardened wood
+                 (hardenedwood.js).  It has ALREADY taken the logs and paid the
+                 wood and the Woodworking XP; the player_state that follows
+                 carries the bag.  This is only the moment -- smelt_result's
+                 words, chime and level celebration -- and the counter that
+                 lets the Harden tab's button go (HardenedWoodTab.jsx). */
+              var _hw = msg.payload || {};
+              S._hardenedWoodSeen = (S._hardenedWoodSeen || 0) + 1;
+              if (!S.player) break;
+              try {
+                if (_hw.error) {
+                  var _hwr = HARDENED_WOOD_RECIPES[_hw.key];
+                  var _hwWhy = _hw.error === 'no-logs' && _hwr ? 'Need ' + _hwr.logCost + ' ' + _hwr.logPlural
+                    : _hw.error === 'skill' ? 'Requires Woodworking ' + (_hw.need || '')
+                    : 'Cannot harden wood right now';
+                  pushDmgPopup(S, S.player.x, S.player.y - 30, _hwWhy, '#ff5e6c');
+                } else if (_hw.count > 0) {
+                  var _hwName = (HARDENED_WOOD_RECIPES[_hw.key] || {}).name || 'Hardened Wood';
+                  pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + _hw.count + ' ' + _hwName, '#C9965A');
+                  pushDmgPopup(S, S.player.x, S.player.y - 44, '+' + _hw.xp + ' Woodworking XP', '#D8A94D');
+                  BT_AUDIO.collect();
+                  if (_hw.leveled && _hw.newLevel > _hw.fromLevel) celebrateLifeSkillLevel(S, 'woodworking', _hw.newLevel, _hw.fromLevel);
+                }
+              } catch (_he) { /* the bag still updates */ }
+              break;
+            }
           case 'forge_armor_result':
             {
               /* v2.3.3092: the armor forge's receipt (armorforge.js).  The
@@ -2751,10 +2818,20 @@ export function setupWebSocket(ctx) {
               var _qrsKey = _qrsLegs ? 'legsStash' : 'armorStash';
               if (!Array.isArray(S.rpg[_qrsKey])) S.rpg[_qrsKey] = [];
               var _qrsWorn = _qrsLegs ? S.rpg.legsArmor : S.rpg.armor;
-              var _qrsHeld = (_qrsWorn && _qrsWorn.name === _qrsName)
-                || S.rpg[_qrsKey].some(function (a) {
-                  return a && a.name === _qrsName && (Number(a.tierMult) || 1) === _qrsTm;
-                });
+              /* v2.3.3142: a piece with the worker's id is the same piece only
+                 if it has the same id -- a replay carries the one it had.  By
+                 name alone, a second Iron Torso the worker really minted (the
+                 admin kit's Godly armor after its Elite) was taken for a
+                 replay and never reached the bag, though the ledger held it.
+                 A piece with no id keeps the old by-value guard. */
+              var _qrsGid = (typeof _qrs.gid === 'string' && _qrs.gid) ? _qrs.gid : null;
+              var _qrsHeld = _qrsGid
+                ? ((_qrsWorn && _qrsWorn.gid === _qrsGid)
+                  || S.rpg[_qrsKey].some(function (a) { return a && a.gid === _qrsGid; }))
+                : ((_qrsWorn && _qrsWorn.name === _qrsName)
+                  || S.rpg[_qrsKey].some(function (a) {
+                    return a && a.name === _qrsName && (Number(a.tierMult) || 1) === _qrsTm;
+                  }));
               if (!_qrsHeld) {
                 /* v2.3.1758: the METAL rides with the piece into the bag.  It
                    is what gearVariants resolves the art and the icon from, so
@@ -2767,7 +2844,14 @@ export function setupWebSocket(ctx) {
                      too -- same reason as the loot_credit site above, and
                      the same optional shape against an old worker. */
                   gid: (typeof _qrs.gid === 'string' && _qrs.gid) ? _qrs.gid : undefined,
-                  mat: _qrs.mat ? String(_qrs.mat).slice(0, 16) : undefined });
+                  mat: _qrs.mat ? String(_qrs.mat).slice(0, 16) : undefined,
+                  /* v2.3.3142: and its grade, when it has one (only the admin
+                     kit's graded armour does -- devtools.js `quality`), with
+                     the worker's own mark that it minted it, so the bag and
+                     the worn look show it before the next join re-reads the
+                     ledger */
+                  quality: (_qrs.quality === 'rare' || _qrs.quality === 'elite' || _qrs.quality === 'godly') ? _qrs.quality : undefined,
+                  prov: _qrs.prov === 'minted' ? 'minted' : undefined });
                 try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               }
               /* ═══ v2.3.1746: A REWARD IS NOT A DANGER ═══
@@ -4203,6 +4287,14 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        /* v2.3.3140: the daily rewards' four asks (dailyRewards.js) ->
+           dailyrewards.js.  TRAPS #18: a type this allowlist does not name never
+           leaves the browser, and the Spin button would turn a wheel nothing
+           answers. */
+        if (msg.type === 'rewards_get' || msg.type === 'daily_spin' || msg.type === 'daily_reroll' || msg.type === 'season_claim') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         /* v2.3.2822: Smelt at the blacksmith (SmithyPanel) -> smelting.js. */
         if (msg.type === 'smelt_bar') {
           ws.send(JSON.stringify(msg));
@@ -4220,6 +4312,13 @@ export function setupWebSocket(ctx) {
            pop-up and the Pets page (game/trapping.js, game/petBook.js) ->
            trapping.js / petbook.js.  TRAPS #18: a type with no line here is
            silently dropped, and the button would do nothing at all. */
+        /* v2.3.3139: five logs into one hardened wood (the Woodworker's
+           Harden tab, HardenedWoodTab.jsx) -> hardenedwood.js.  TRAPS #18:
+           without this line the Make button would send nothing at all. */
+        if (msg.type === 'make_hardened_wood') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'make_traps' || msg.type === 'trap_arm' || msg.type === 'pet_active'
             || msg.type === 'pet_name' || msg.type === 'pet_release'
             || msg.type === 'pet_house_buy') {   /* v2.3.3123: more room in the Pet House */
@@ -4229,6 +4328,12 @@ export function setupWebSocket(ctx) {
         /* v2.3.3092: Forge armor from bars (SmithyPanel's Armor tab) ->
            armorforge.js.  TRAPS #18: without this the request never leaves. */
         if (msg.type === 'forge_armor') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.3141: Salvage and Use an essence (SmithyPanel's Salvage tab) ->
+           salvage.js.  TRAPS #18: without these the requests never leave. */
+        if (msg.type === 'smith_salvage' || msg.type === 'essence_apply') {
           ws.send(JSON.stringify(msg));
           return;
         }

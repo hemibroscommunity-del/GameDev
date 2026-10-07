@@ -25,6 +25,14 @@ lazy.
 
 ## Consumer 1 — daily login reward
 
+> **v2.3.3140: a login pays nothing now.** The owner found the chest window at
+> login intrusive; the day's reward is the free spin at the Gambling Den
+> (docs/specs/daily-rewards.md). This consumer keeps the login STREAK, now
+> forgiving: a freeze every 7 days of streak (2 held at most) is spent
+> automatically on a missed day. Record `{period, streak, fz, saved, best}`;
+> `_cadenceLoginReward` returns it on a day's first login, else null. The
+> paragraph below is the history.
+
 On join (after the inbox drain): first login of a UTC day pays
 `25 + 10×(min(streak,7)−1)` gold. Streak +1 when yesterday's period was
 settled, else reset to 1. **Zero client code**: the credit rides
