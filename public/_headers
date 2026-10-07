@@ -20,10 +20,18 @@
 /world/ground/*
   Cache-Control: public, max-age=31536000, immutable
 
-# v2.3.3125: the pictures of the inside of each building (public/world/
+# v2.3.3142: the pictures of the inside of each building (public/world/
 # interiors/, ~300 KB each).  Asked for at ?v=<ROOMS_V> (src/data/
 # buildingRooms.js), so replacing one is a new address and a year of immutable
 # is safe; the game fetches the other rooms' bytes in idle moments after the
 # first door (src/game/buildingRooms.js), and a second visit costs nothing.
 /world/interiors/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# v2.3.3136: the farm's pictures (public/world/farm/), the owner's.  The game
+# asks for each at ?v=<FARM_ART_V> (src/data/farmArt.js, written by
+# tools/world/add-farm-art.mjs with every run), so a new cut is a new address.
+# Nothing in the game fetches manifest.json; whatever does must ask at a fresh
+# address, as the ground's worker does.
+/world/farm/*
   Cache-Control: public, max-age=31536000, immutable

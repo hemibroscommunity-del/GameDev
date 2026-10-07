@@ -27,9 +27,9 @@
  *       zero-held / non-wood / __proto__ keys are clean no-ops.
  *   4.  cook_recipe: dry-run-then-consume (a failed recipe consumes
  *       nothing), buff timer set on ps._buffs, tier*25 cooking XP.
- *   5.  shop_purchase: exact debit, trap lands in inventory,
- *       influence discount (0.2%/pt cap 20%), insufficient coins is a
- *       clean no-op.
+ *   5.  shop_purchase: since v2.3.3132 nothing is on the shelf, so every
+ *       item -- and the retired trap -- is a clean no-op (it was an exact
+ *       debit, the influence discount, and a no-op when broke).
  *   6.  Harvest: extraction_start records the timing window; a strike
  *       BEFORE earliestOpen is rejected (node alive, reject counter);
  *       a strike inside the window (backdated startedAt) harvests --
@@ -335,21 +335,28 @@ check('firemaking: a __proto__ key is refused and leaves the prototype alone',
   Object.prototype.wood_oak === undefined && ({}).__proto__ === Object.prototype);
 
 // ── 4. cook_recipe (dry-run-then-consume) ──
-const R0 = COOKING_RECIPES[0]; // { herb_firebloom: 1 } -> regen buff
+const R0 = COOKING_RECIPES[0]; // { herb_firebloom: 1 } -> the bread's `rest` timer (v2.3.3130)
 ps.inventory = { herb_firebloom: 2 };
 ps.lifeSkills = { cooking: { level: 1, xp: 0 } };
 ps._buffs = {};
 await send(ws, 'cook_recipe', { recipeIdx: 0 });
 check('recipe: ingredient consumed, buff timer set, tier*25 cooking XP',
-  ps.inventory.herb_firebloom === 1 && ps._buffs.regen > Date.now()
+  ps.inventory.herb_firebloom === 1 && ps._buffs.rest > Date.now()
   && ps.lifeSkills.cooking.xp === (R0.tier || 1) * 25,
   { inv: ps.inventory, buffs: ps._buffs, xp: ps.lifeSkills.cooking.xp });
 // Recipe 1 needs rock_vine + cloudpetal; holding only one of the two
 // must consume NEITHER (the dry-run pass).
+ps.lifeSkills.cooking.level = 3;   /* v2.3.3127: Root Stew's level, so the refusal below is the dry run's */
 ps.inventory = { herb_rock_vine: 1 };
 const preRecipe = econSnap(ps);
 await send(ws, 'cook_recipe', { recipeIdx: 1 });
 check('recipe: missing one ingredient consumes NOTHING (dry-run rule)', econSnap(ps) === preRecipe);
+/* v2.3.3127: the recipe's Cooking level is the worker's gate (cooking.js) */
+ps.lifeSkills.cooking.level = 2;
+ps.inventory = { herb_rock_vine: 1, herb_cloudpetal: 1 };
+const preLvl = econSnap(ps);
+await send(ws, 'cook_recipe', { recipeIdx: 1 });
+check('recipe: below its Cooking level consumes NOTHING, ingredients or not', econSnap(ps) === preLvl && !(ps._buffs && ps._buffs.resist > Date.now()));
 
 // ── 5. shop_purchase ──
 /* v2.3.2069: this section used to buy a basicTrap, which is no longer on the
@@ -359,24 +366,21 @@ check('recipe: missing one ingredient consumes NOTHING (dry-run rule)', econSnap
    so it is repointed at a live item rather than deleted. The vehicle is now
    the stamina salts, whose effect is observable on ps.stamina; the trap's own
    line stays below as a guard that the removal is real. */
-const SALTS = SHOP_ITEMS.staminaSalts;
-ps.coins = 100; ps.inventory = {};
-ps.maxStamina = 100; ps.stamina = 10;
-await send(ws, 'shop_purchase', { itemId: 'staminaSalts' });
-check('shop: exact debit + the effect actually lands',
-  ps.coins === 100 - SALTS.cost && ps.stamina === 10 + SALTS.power,
-  { coins: ps.coins, stamina: ps.stamina });
-// v2.3.1155: the influence discount retired with the stat — even a blob
-// carrying a stale influence value pays full price.
-ps.coins = 100; ps.influence = 50; ps.stamina = 10;
-await send(ws, 'shop_purchase', { itemId: 'staminaSalts' });
-check('shop: retired influence discount no longer applies (full price)',
-  ps.coins === 100 - SALTS.cost, { coins: ps.coins });
+/* v2.3.3132: and the stamina salts are off the shelf too -- owner: "Remove
+   all of Diego's potions. I want food and drink to come exclusively from
+   farming and recipes" (data.js DIEGO_SHELF is empty; the salts are brewed
+   from carrots as the Stamina Tonic).  So the purchase path's property is now
+   the strongest one: for EVERY item, rich or broke, discount or none, a
+   purchase takes nothing and gives nothing. */
+for (const itemId of Object.keys(SHOP_ITEMS)) {
+  ps.coins = 100; ps.inventory = {}; ps.influence = 50;
+  ps.maxStamina = 100; ps.stamina = 10; ps.hp = 10; ps.maxHp = 100;
+  const preItem = econSnap(ps);
+  await send(ws, 'shop_purchase', { itemId });
+  check('shop: ' + itemId + ' is off the shelf -- buying it takes nothing and gives nothing',
+    econSnap(ps) === preItem && ps.coins === 100 && ps.stamina === 10 && ps.hp === 10, { coins: ps.coins, stamina: ps.stamina, hp: ps.hp });
+}
 delete ps.influence;
-ps.coins = 3;
-const preShop = econSnap(ps);
-await send(ws, 'shop_purchase', { itemId: 'staminaSalts' });
-check('shop: insufficient coins is a clean no-op', econSnap(ps) === preShop);
 /* The removal, pinned: a purchase for an itemId the table no longer carries
    must take nothing and give nothing. Without this the trap could be quietly
    re-added and no test would notice. */
@@ -500,11 +504,16 @@ check('harvest: strike with NO extraction state still harvests (legacy posture) 
   await room.webSocketMessage(wsN, JSON.stringify({ type: 'join', id: 'bp_ls_lv0', name: 'L0', phrase: 'p-bp_ls_lv0',
     data: { x: -100000, y: -100000, z: 'town', rpgLifeSkills: { mining: { level: 0, xp: 120 }, fishing: { level: 4, xp: 7 }, cooking: { level: 0, xp: 0 } } } }));
   const pN = room.playerState['bp_ls_lv0'];
-  check('level 0: a first join\'s level-0 skills heal to 1, their XP kept, a real level untouched',
-    !!pN && pN.lifeSkills.mining.level === 1 && pN.lifeSkills.mining.xp === 120 && pN.lifeSkills.cooking.level === 1 && pN.lifeSkills.fishing.level === 4,
+  /* v2.3.3138: a first join takes NO life skills from the payload (join.js:
+     a new character starts from the server's defaults) -- the level-0
+     claim, the XP and the "real" level 4 alike; every skill is the client's
+     own new character's, level 1 with no XP.  The heal this section is
+     about still matters for a record ON FILE, below. */
+  check('level 0: a first join takes none of the payload\'s skills: all level 1, no XP',
+    !!pN && pN.lifeSkills.mining.level === 1 && pN.lifeSkills.mining.xp === 0 && pN.lifeSkills.cooking.level === 1 && pN.lifeSkills.fishing.level === 1 && pN.lifeSkills.fishing.xp === 0,
     pN && pN.lifeSkills);
   /* v2.3.3090: the first level costs 1000 (was 500: life skills level half as fast) */
-  const r = room._addLifeSkillXp(pN, 'mining', 880);
+  const r = room._addLifeSkillXp(pN, 'mining', 1000);
   check('level 0: ...and its first level-up is 1 -> 2 (1000 XP)', r.leveled === true && r.newLevel === 2 && pN.lifeSkills.mining.xp === 0, { r, ls: pN.lifeSkills.mining });
   /* a record already on file with a 0 heals on the next join too */
   room._saveRpg('bp_ls_lv0', pN);

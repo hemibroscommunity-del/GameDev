@@ -1,4 +1,4 @@
-# The inside of each building (v2.3.3125)
+# The inside of each building (v2.3.3142)
 
 > Owner, 2026-10-06: sent seventeen pictures of the inside of BroTown's
 > buildings (made in ChatGPT from the prompts in `docs/ART-WISHLIST.md`,
@@ -154,7 +154,7 @@ pictures is on the gate**:
   never held (~6 MB of bytes, once, the clerk's strip included). Not on `saveData` or a 2G link, where each
   room loads as it comes to it.
 - `public/_headers` caches `/world/interiors/*` for a year; the pictures are
-  asked for at `?v=2.3.3125` (`ROOMS_V`), so replacing one is a new address.
+  asked for at `?v=2.3.3142` (`ROOMS_V`), so replacing one is a new address.
 - Gone with the old painting: `auctionInteriorPreload.js` and its entry in the
   loading gate, `public/sprites/props/auction-house-interior.png` (1.6 MB), the
   `measure-auction-interior.mjs` tool that measured it.

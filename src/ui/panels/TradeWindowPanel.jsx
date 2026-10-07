@@ -4,6 +4,7 @@ import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
 /* v2.3.1235: batch-4 state-correction — RARITY_TIERS for staged-weapon
    row rarity (existing data; plain inventory items carry no rarity). */
 import { RARITY_TIERS } from '@/data/index.js';
+import { farmLookFor, FARM_ITEM_NAMES } from '@/data/farmCrops.js';   /* v2.3.3135 */
 /* ═══ v2.3.1755: THE BAG'S OWN THUMBNAILS ═══
    Owner: "I'd also like it if you included the item thumbnails next to the
    quantities and gold icon next to the gold amount for trading."
@@ -103,8 +104,12 @@ const ITEM_EMOJI = {
 /* v2.3.2286: the owner's ladder, verbatim and in his order. Module scope so it
    is one list rather than an array literal rebuilt on every render. */
 const GOLD_STEPS = [1, 5, 25, 50, 100, 500, 1000];
-const emojiFor = (k) => ITEM_EMOJI[k] || (k.startsWith('skull') ? '💀' : k.startsWith('shard') ? '💠' : '📦');
-const labelFor = (k) => k.replace(/^(fish|cooked_fish|wood|ore|herb)_/, '').replace(/_/g, ' ');
+/* v2.3.3135: the farm's seeds, crops and compost by their own glyph and name
+   ("Wheat Seeds", not "📦 seed wheat") -- sixteen crops now trade.  Read with
+   hasOwnProperty: a key here is the other player's word. */
+const farmName = (k) => (Object.prototype.hasOwnProperty.call(FARM_ITEM_NAMES, k) ? FARM_ITEM_NAMES[k] : null);
+const emojiFor = (k) => ITEM_EMOJI[k] || farmLookFor(k) || (k.startsWith('skull') ? '💀' : k.startsWith('shard') ? '💠' : '📦');
+const labelFor = (k) => farmName(k) || k.replace(/^(fish|cooked_fish|wood|ore|herb)_/, '').replace(/_/g, ' ');
 /* v2.3.1235: batch-4 state-correction — hoisted from the component so
    the row renderer can use it (was a local const; same expression). */
 const wpnName = (w) => (w && w.weapon && w.weapon.name) || 'Weapon';

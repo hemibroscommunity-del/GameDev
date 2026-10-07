@@ -75,7 +75,7 @@ const KIND = {
   site: { color: '#9FE0C0', label: 'place' },
 };
 
-/* v2.3.3125: the Town Hall's "World map" row opens the map from outside the
+/* v2.3.3142: the Town Hall's "World map" row opens the map from outside the
    minimap's button (BroTown.jsx onMap).  The overlay hands its opener to this
    module while it is mounted; false when it is not (nothing to open). */
 let _openMap = null;

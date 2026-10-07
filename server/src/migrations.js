@@ -86,13 +86,36 @@ export function healLifeSkills(blob) {
  * when anything changed; XP is never touched (a level-0 skill's XP is already
  * counted toward level 1 -> 2 by the `|| 1`). */
 export const LIFE_SKILL_KEYS = ['woodcutting', 'fishing', 'mining', 'cooking', 'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'farming', 'trapping'];
+/* v2.3.3138: a brand-new character's life skills, exactly the client's
+ * createDefaultLifeSkills (gameSystems.js; mirror-audit pins the two) --
+ * every skill at level 1, the empty pouches, no pet.  The first join used
+ * to take them from the join payload, wholesale and uncapped (join.js). */
+export function freshLifeSkills() {
+  const ls = {};
+  for (const k of LIFE_SKILL_KEYS) ls[k] = { level: 1, xp: 0 };
+  ls.resources = {};
+  ls.gems = {};
+  ls.farmPlots = {};
+  ls.dungeonClears = {};
+  ls.gathering = null;
+  ls.pets = [];
+  ls.activePet = null;
+  return ls;
+}
 export function healLifeSkillLevels(blob) {
   const ls = blob && blob.lifeSkills;
   if (!ls || typeof ls !== 'object') return false;
   let changed = false;
   for (const k of LIFE_SKILL_KEYS) {
     const sk = Object.prototype.hasOwnProperty.call(ls, k) ? ls[k] : null;
-    if (sk && typeof sk === 'object' && !(Number(sk.level) >= 1)) { sk.level = 1; changed = true; }
+    /* v2.3.3127: a skill that is not an object at all -- `farming: 1`, a
+       string, true, a list -- is a fresh one.  A first join stores the
+       client's skills as sent, and `_addLifeSkillXp` (gathering.js) THREW
+       writing XP onto a number, after the farm's harvest had paid (farm.js:
+       one bed paid on every message).  Healed here, at the join boundary, a
+       record already on file heals on its next join. */
+    if (sk !== null && sk !== undefined && (typeof sk !== 'object' || Array.isArray(sk))) { ls[k] = { level: 1, xp: 0 }; changed = true; }
+    else if (sk && !(Number(sk.level) >= 1)) { sk.level = 1; changed = true; }
   }
   return changed;
 }

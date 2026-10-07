@@ -114,7 +114,7 @@ import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /
 const _staffTipOut = { x: 0, y: 0 };
 import { SHADE, propShade } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop; v2.3.2893 + snow props */
 import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
-import { standInReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made */
+import { standInReady, farmKneelReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -7911,7 +7911,8 @@ const RES_EN_Y = RES_MP_Y + RES_BLOCK_H + 3;
    RES_BAR_MAX_W caps the growth. Unclamped, ten blocks is ~145 display units
    = ~107 CSS px in town: wider than the ATTACK disc (96), 27% of a 390pt
    screen, and 4.6x the character's own silhouette -- and half again as wide in
-   farm_home, whose scale floor is 0.82 rather than town's ~0.589. Clamped at
+   farm_home, whose scale floor was 0.82 rather than town's ~0.589 (until
+   v2.3.3136 made the farm 1024 x 1408: it draws at town's size). Clamped at
    118 the bar never passes ~87 CSS px in town, the squeeze only starts at nine
    blocks, and because the HEIGHT is held the compression reads as "more,
    tighter blocks" rather than as distortion. Holding the total at 76 instead
@@ -11845,7 +11846,8 @@ export class EntityRenderer {
        are made the first time each can be wanted (rendering/standIns.js), and
        a body hidden for a figure not there yet would be an empty spot. */
     const _chopHide = (_exSkill === 'woodcutting' && standInReady('chop')) || (_exSkill === 'cooking' && standInReady('cook'))
-      || (!!S._firemaking && standInReady('fire'));
+      || (!!S._firemaking && standInReady('fire'))
+      || (!!S._farmWork && farmKneelReady());   /* v2.3.3136: the farmer kneels in the cook's figure (effectsRenderer _updateFarmKneel) */
     display.visible = !_chopHide;
     S._standInBody = _chopHide;   /* v2.3.3077 QA: the body is put away for a gathering pose (mp-gatherposes) */
     display.x = P.x;
@@ -12087,7 +12089,7 @@ export class EntityRenderer {
       ? (_sdx >= 0 ? 'east' : 'west')
       : (_sdy >= 0 ? 'south' : 'north');
     const _swordSwing = !!(S.isSwinging && S.swingTimer
-      && (now - S.swingTimer) < SWORD_SWING_MS && !S._extraction && !S._firemaking);
+      && (now - S.swingTimer) < SWORD_SWING_MS && !S._extraction && !S._firemaking && !S._farmWork);   /* v2.3.3136: nor kneeling at a bed */
     S._swordSwinging = _swordSwing;
     S._swordSwingDir = _swordSwing ? _swordDir : null;
     /* v2.3.925: bow-shoot stand-in -> driven by a ranged-bow shot
@@ -12098,7 +12100,7 @@ export class EntityRenderer {
     const _BOW_FACINGS = ['east', 'west', 'southwest', 'southeast', 'south', 'northwest', 'northeast', 'north'];
     let _bowDir = null;
     if (S._bowShotAt && (now - S._bowShotAt) < BOW_SHOT_MS && S._bowShotAng != null
-        && !S._extraction && !S._firemaking) {
+        && !S._extraction && !S._firemaking && !S._farmWork) {
       /* v2.3.1071: the body pose follows LIVE aim during the shot window (the
          arrow keeps its fire-time angle S._bowShotAng), so a rapid turn re-points
          the bro instead of freezing at the shot's original facing. */

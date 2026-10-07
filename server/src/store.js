@@ -186,6 +186,12 @@ export const storeMethods = {
        so the store's tabs group exactly like the bag's filter chips.  Drift
        here files an item under the wrong tab — cosmetic, not a value bug —
        which is why this is a mirror and not a new authority. */
+    /* v2.3.3130: FOOD -- cooked fish and the Cookhouse's meals, the things
+       you eat -- files with the potions, the bag's Consumable chip.  First, so
+       a fish named like a weapon (a swordfish) is still food.  A listing keeps
+       the tab it was filed under, so a cooked fish listed before this stays
+       under Crafting until it sells. */
+    if (/^cooked_fish_|^meal_/.test(k)) return 'potion';
     if (/sword|bow|staff|spear|axe|dagger|hammer|wand|gauntlet/.test(k)) return 'weapon';
     if (/helm|cuirass|armor|shield|robe|cape|boots|gloves|mail|plate/.test(k)) return 'armor';
     if (POTION_KEYS.has(k)) return 'potion';

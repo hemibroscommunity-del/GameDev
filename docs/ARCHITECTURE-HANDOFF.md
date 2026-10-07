@@ -31,7 +31,11 @@ intent ONLY — never a description of what's built; code is truth.
 2026-07-02).** Every piece of client-local game logic you find —
 localStorage-first flows, client-side spawning, self-credited rewards,
 comments about "SP players" in the bootstrap caps — is a LEGACY REMNANT
-of the prototype era, not a mode to preserve. The migration direction is
+of the prototype era, not a mode to preserve.  (Since v2.3.3138 the
+bootstrap trusts none of it: a character with no `rpg:` record starts from
+the server's own defaults, every `rpg*` claim in its first join dropped,
+and a READ that fails ends the join rather than passing for a new
+character — `join.js`, `docs/specs/fresh-start.md`.) The migration direction is
 always client→server. The only legitimate reasons for client-side game
 logic are: (a) prediction for responsiveness (server echo overwrites),
 and (b) legacy-worker fallbacks behind `caps`/`settled` flags for
@@ -73,6 +77,8 @@ extended.
    | `gearlock:<pid>` | guard gear-lock expiry timestamp | threats.md |
    | `nml_state:<pid>` | `{red, white, whiteBy, forfeit}` — No man's land (v2.3.3058): the skulls' time LEFT in ms (it counts down only while the player is connected, so it is time in the game, not on the clock), who gave the white one, and the ids of gear pieces forfeited by a death there, refused if a client offers them again on join. Deleted when all three are empty | no-mans-land.md |
    | `bounty:<pid>` | `{amount, by, ts}` escrowed Call-Guards fine on this head, paid to the killer | threats.md |
+   | `farm:<pid>` | `{v, beds, plots:[{s, crop, plantedAt, readyAt, water, feed}]}` — the player's farm (v2.3.3127): how many beds they own and, per bed, rough / tilled / planted with what and the server-clock moment it ripens. Read lazily (on opening the window, on every action, on join), never ticked, so crops grow while the owner is offline and the room is empty (rule 12). Written in the same synchronous run as `_saveRpg` when an action also changes the bag (rule 8). Created on first use with the free six-bed deed | farm.md |
+   | `farmorders:<pid>` | `{v, day, ids:[id x3], done:[0/1 x3]}` — the player's Feed & Seed order board for one UTC day (v2.3.3134): which three orders were drawn (ids into farmorders.js `FARM_ORDERS.POOL`) and which are delivered. Drawn on the first read of a day and written then, so it stays put; an earlier day is simply replaced on the next read (rule 12), a later one never is. Read fail-closed: `v` above `FARM_ORDERS.V` closes the board and is never overwritten, a done flag that is not 0 reads as done. A delivery writes it in the same synchronous run as `_saveRpg`, the board first (rule 8). A character restart keeps it (its done flags are the day's limit) | farm-orders.md |
    | `trade2wpn:<pid>:<seq>` | `{pid, sid, seq, weapon, ts}` weapon escrowed into a live trade window | trading.md |
    | `harden_ledger:<pid>` | last 50 hardening attempts (§17.5) | hardening.md |
    | `harden_h5_log` | global H5-mint timestamps, 90-day window (INV-27) | hardening.md |

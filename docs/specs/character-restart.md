@@ -22,7 +22,12 @@ skills, quests, codex/bestiary caches) resets.
      `rpgsnap:<pid>:prereset-<ts>` — same registered prefix as the
      admin daily snapshots, so the operator can undo any restart via
      the existing admin `/restore` flow.
-  2. `delete rpg:<pid>` from DO storage.
+  2. `delete rpg:<pid>` from DO storage. The other records keyed by the
+     player id go with it (`_resetCharacterData`): the quest-reward stamps
+     (v2.3.2421), the gear record `gear_prov:<pid>` (v2.3.2537) and the
+     farm `farm:<pid>` (v2.3.3127: its beds and crops were bought with the
+     gold and skills that reset; the next visit to the Feed & Seed hands out
+     the free deed again). Only `rpg:` is snapshotted.
   3. Ack `character_reset_done` (in `PRIVILEGED_EVENTS` — server-emitted
      only; a forged one would wipe another player's local caches).
   4. Evict the session (admin-freeze pattern: `sessions.delete` first,
@@ -34,8 +39,9 @@ skills, quests, codex/bestiary caches) resets.
   `bt_passphrase_prev`, `bt_device` and the social keys) and
   `location.reload()`. Close code 4005 suppresses the auto-reconnect so
   it can't race the reload.
-- The rejoin finds no stored blob → join.js first-connect bootstrap
-  from the now-empty client payload → fresh Level-1 character. The
+- The rejoin finds no stored blob → a new character from the server's
+  own defaults (join.js; since v2.3.3138 the payload is not read at all,
+  `docs/specs/fresh-start.md`) → fresh Level-1 character. The
   `auth:<pid>` first-join lock is untouched, so the same Login Key
   keeps working.
 

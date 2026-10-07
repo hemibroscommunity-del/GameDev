@@ -20,6 +20,7 @@
  *      keys, keeps fresh ones, and rate-limits to one sweep per hour.
  */
 import { GameRoom } from '../src/index.js';
+import { NEW_CHARACTER_COINS } from '../src/join.js';   /* v2.3.3138: a new character's purse */
 import { OP_PRUNE } from '../src/inbox.js'; /* v2.3.2438 */
 
 function makeState() {
@@ -101,7 +102,9 @@ const rOff = await room._creditPlayer('bp_inbox_bob', { opId: 'test:off:1', sour
 check('offline credit parked in inbox', rOff === 'inboxed' && state._store.get('inbox:bp_inbox_bob')?.length === 1, state._store.get('inbox:bp_inbox_bob'));
 const wsB = fakeWs('bob');
 await join(wsB, 'bp_inbox_bob');
-check('join drains inbox into coins', room.playerState['bp_inbox_bob'].coins === 120, room.playerState['bp_inbox_bob'].coins);
+/* v2.3.3138: a new character starts with the client's own starting purse
+   (NEW_CHARACTER_COINS), so the drained 120 lands on top of it. */
+check('join drains inbox into coins', room.playerState['bp_inbox_bob'].coins === NEW_CHARACTER_COINS + 120, room.playerState['bp_inbox_bob'].coins);
 check('drained inbox key deleted', !state._store.has('inbox:bp_inbox_bob'));
 const inbB = msgsOfType(wsB, 'inbox_delivered');
 check('drain sends inbox_delivered on the joining socket', inbB.length === 1 && inbB[0].payload.entries.length === 1, inbB);
@@ -122,9 +125,9 @@ check('overflow weapon queued, not destroyed', state._store.get('inbox:bp_inbox_
 const dFail = await room._escrowDebitGold('bp_inbox_bob', 999999, 'test:d:1');
 check('debit fails on insufficient gold', dFail.ok === false && dFail.reason === 'insufficient_gold' && !state._store.has('oplog:test:d:1'), dFail);
 const dOk = await room._escrowDebitGold('bp_inbox_bob', 100, 'test:d:2');
-check('debit succeeds and mutates live coins', dOk.ok === true && psB.coins === 20, { dOk, coins: psB.coins });
+check('debit succeeds and mutates live coins', dOk.ok === true && psB.coins === NEW_CHARACTER_COINS + 20, { dOk, coins: psB.coins });
 const dDup = await room._escrowDebitGold('bp_inbox_bob', 100, 'test:d:2');
-check('duplicate debit converges without re-debiting', dDup.ok === true && dDup.dup === true && psB.coins === 20);
+check('duplicate debit converges without re-debiting', dDup.ok === true && dDup.dup === true && psB.coins === NEW_CHARACTER_COINS + 20);
 psB.inventory = { wood: 3 };
 const tFail = await room._escrowTakeItem('bp_inbox_bob', 'wood', 5, 'test:t:1');
 const tOk = await room._escrowTakeItem('bp_inbox_bob', 'wood', 3, 'test:t:2');
@@ -139,7 +142,7 @@ delete room.playerState['bp_inbox_bob'];
 const dOffFail = await room._escrowDebitGold('bp_inbox_bob', 999, 'test:d:3');
 const dOff = await room._escrowDebitGold('bp_inbox_bob', 20, 'test:d:4');
 const storedAfter = state._store.get('rpg:bp_inbox_bob');
-check('offline debit validates and mutates the stored blob', dOffFail.ok === false && dOff.ok === true && storedAfter.coins === 0, { dOffFail, dOff, coins: storedAfter?.coins });
+check('offline debit validates and mutates the stored blob', dOffFail.ok === false && dOff.ok === true && storedAfter.coins === NEW_CHARACTER_COINS, { dOffFail, dOff, coins: storedAfter?.coins });
 
 // ── 7. inbox soft cap merges gold/items losslessly ──
 for (let i = 0; i < 200; i++) {

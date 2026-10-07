@@ -1190,7 +1190,7 @@ input{font-family:inherit}
    28px is under the 44pt touch floor; an invisible inset:-8px pseudo
    grows the TAP target to 44px with zero visual change. */
 .bt-inspect-close::after{content:'';position:absolute;inset:-8px}
-/* ═══ v2.3.3125: THE ROOM YOU WALKED INTO (BuildingRoom.jsx, data/buildingRooms.js) ═══
+/* ═══ v2.3.3142: THE ROOM YOU WALKED INTO (BuildingRoom.jsx, data/buildingRooms.js) ═══
    The owner's picture of the inside of a building, first thing in its window.
    The card's 20px padding is load-bearing (every panel bleeds into it with a
    -20px margin, above), so the room bleeds the same way on its top and sides,
@@ -1228,7 +1228,7 @@ input{font-family:inherit}
    (found by mp-buildingrooms: elementFromPoint at the close button).  While any
    .bt-inspect (window, card, scrim) is up the button lets taps through. */
 body:has(.bt-inspect) [data-world-map-open]{pointer-events:none}
-/* ═══ v2.3.2627, moved here v2.3.3125: THE AUCTION HOUSE'S CLERK ═══
+/* ═══ v2.3.2627, moved here v2.3.3142: THE AUCTION HOUSE'S CLERK ═══
    The clerk the game draws into the Auction House's room (data/buildingRooms.js
    ROOM_KEEPERS; he was on the owner's first painting of it, v2.3.2627, and is
    on the new one).  Where he stands is data; only the idle cycle needs a
@@ -6071,7 +6071,13 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 /* v2.3.3105: ...and the tap's other acts, the same way (talk, door, the bed) */
 .bt-rjoy-base[data-ricon="talk"] .bt-rjoy-icon[data-ricon-img="talk"],
 .bt-rjoy-base[data-ricon="door"] .bt-rjoy-icon[data-ricon-img="door"],
-.bt-rjoy-base[data-ricon="sleep"] .bt-rjoy-icon[data-ricon-img="sleep"]{display:block;opacity:.7}
+.bt-rjoy-base[data-ricon="sleep"] .bt-rjoy-icon[data-ricon-img="sleep"],
+/* v2.3.3136: ...and a bed's next step on your farm (controlSkin RDISC_ICONS) */
+.bt-rjoy-base[data-ricon="farm-dig"] .bt-rjoy-icon[data-ricon-img="farm-dig"],
+.bt-rjoy-base[data-ricon="farm-plant"] .bt-rjoy-icon[data-ricon-img="farm-plant"],
+.bt-rjoy-base[data-ricon="farm-water"] .bt-rjoy-icon[data-ricon-img="farm-water"],
+.bt-rjoy-base[data-ricon="farm-feed"] .bt-rjoy-icon[data-ricon-img="farm-feed"],
+.bt-rjoy-base[data-ricon="farm-harvest"] .bt-rjoy-icon[data-ricon-img="farm-harvest"]{display:block;opacity:.7}
 /* the label is the button's name; a caption only while a gesture is asked for */
 .bt-rjoy-label{transition:opacity 120ms linear}
 .bt-rjoy-label[data-show="0"]{opacity:0}

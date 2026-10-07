@@ -1444,6 +1444,175 @@ remnant to migrate server-side, not a mode to preserve.
       screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
     - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
       docs/specs/wheel-doors.md.
+  - Since v2.3.3127 THE FEED & SEED IS A REAL FARM -- the owner: "mechanics
+    similar to the old FarmVille game ... Need to dig, plant seeds, fertilize,
+    water", then, on the research (docs/FARMING-PLAN.md, its Phase 1): "Good.
+    Go ahead and build it":
+    - the WORKER owns it (`server/src/farm.js`, storage `farm:<pid>`): a free
+      deed of six beds; dig, plant, then optional water (ready 25% sooner) and
+      compost (harvest x1.5), then harvest; ripe when the worker's clock
+      passes `readyAt`, never ticked, so crops grow offline and nothing
+      withers; carrot, Firebloom, Rock Vine, Cloudpetal (`FARM.CROPS`, mirrored
+      in src/data/farmCrops.js, pinned by mirror-audit); Farming XP only at
+      harvest; seeds and compost sold in the window; Diego values every farm
+      key so reselling a seed is a loss (`FARM_SHOP_BASE`);
+    - the window is `FeedSeedPanel.jsx`: pick a tool (it follows the farm until
+      you do), tap a bed or drag across several -- one message -- gated on
+      `caps.farm` (kill switch `farm: false`); without it FarmPanel keeps the
+      old browser-only plots (`LegacyFarmPanel`), which never kept anything;
+    - Herb Bread finally HEALS (2% max HP a second; its `regen` timer was never
+      read) and Firebloom Tea's card says its real +20%; the recipes' Cooking
+      levels (Stew 3, Tea 6) are the WORKER's gate now (`cookLvl`, cooking.js);
+    - a harvest turns its bed to grass BEFORE it pays, and a life skill that
+      is not an object heals at the join (`healLifeSkillLevels`) -- found by
+      the review: a bare-number skill made the XP throw and one bed paid on
+      every message; a restart deletes `farm:<pid>`; `farm_state` is handled
+      in wsClient's DIRECT switch, never processGameEvent (relayed events
+      reach that, and a pre-farm worker relays a forged one); a record
+      carries its shape (`FARM.V`) and a worker refuses a NEWER one whole
+      (err 'newer') -- a phase that changes the record bumps it, or a
+      rollback rewrites beds of crops it never heard of as grass;
+    - the dev op `farmripe` ("Ripen my farm now" in the dev panel); `farm`
+      suite, `mp-farm`: docs/specs/farm.md.
+  - Since v2.3.3130 MEALS AND BREWS YOU CARRY -- the plan's Phase 2a:
+    - a cook with `carry` (caps.meals) puts the recipe's `makes` in the bag
+      (cooking.js); `eat_request` takes `meal_*`, `potion_drink` `brew_*`
+      (data.js `DISHES`, mirrored in src/data/dishes.js); an old client's
+      cook is the dish made and used at once;
+    - ONE MEAL AND ONE BREW: `_clearBuffSlot` clears a slot whole, its
+      magnitudes with its timers; damage is only ever a brew (combat.js's
+      ceiling was sized at one x2 brew); meals last 30 min;
+    - Diego's tonics are BREWED (recipes 3-5), off his shelf (`DIEGO_SHELF`)
+      and still never bought back; he buys NO dish either (`isCookhouseDish`:
+      a dish's own pile paid more than its herbs' fuller ones);
+    - the Herb Bread doubles the out-of-combat healing (`HERB_REGEN_MULT`),
+      never mid-fight, on its own `_buffs.rest` timer -- NEVER `regen`, which
+      v2.3.3127 reads as 2% a second mid-fight (a rollback's trap); meals and
+      cooked fish file under the bag's Consumable chip (no sixth chip: one per
+      slot column);
+    - every refused cook, meal or drink is RESENT (`_resendPlayerState`: a v2
+      delta of nothing sends nothing), a row or dish the worker never heard of
+      included; `caps.cookRows` (how many recipes it cooks) gates every recipe
+      row and the Eat/Drink on its dish -- `meals` alone let a newer page offer
+      an older worker rows it had not got (TRAPS §9);
+    - kill switch `meals: false` (caps.meals false, not absent: the bag keeps
+      Eat and Drink); `meals` suite, `mp-meals`: docs/specs/meals.md;
+    - since v2.3.3131 (2b) the POTATO (Farming 5, yields 3 -- fertilized 4 or
+      5) and the PUMPKIN (Farming 10, 22 h watered), `FARM.V` 2; the GARDEN
+      STEW heals 150 at once (`slot: 'now'`, no slot, refused in an arena),
+      the PUMPKIN PIE is a meal of +10% combat XP (`_buffs.xpMul`, read
+      bounded in prog3.js `_prog3AwardXp`, never on flat XP;
+      `BUFF_MAGNITUDES` keeps it); a farm record is stamped with what its beds
+      HOLD (`_farmShape`: a potato or pumpkin makes it a 2), and
+      `caps.farmCrops` (how many crops the worker grows, `FARM_CROP_IDS`
+      append-only) gates the Feed & Seed's crops, as `cookRows` the recipes;
+    - since v2.3.3132 DIEGO SELLS NO FOOD OR DRINK -- the owner: "Remove all
+      of Diego's potions. I want food and drink to come exclusively from
+      farming and recipes": `DIEGO_SHELF` is EMPTY (mirror-audit holds it),
+      the Stamina Salts' key is brewed from two carrots (recipe row 8, the
+      bag's "Stamina Tonic"), he neither buys nor sells cooked food
+      (`isCookedFood`; raw fish and crops he still buys), a new world's pile
+      starts empty, and the daily chest's 10 fish are RAW minnows; the farm's
+      art prompts are `docs/art/FARM-ART-PROMPTS.md`;
+    - since v2.3.3133 FOOD COUNTS IN A FIGHT -- the owner: "Farming needs a
+      purpose ... temporary buffs (boss fights, PvP, dueling, etc)": the
+      damage brew is read in ONE place (combat.js `_brewMul`); in a fight
+      with a player a claim marked `nb: 1` is the hit WITHOUT the brew and
+      the worker multiplies the clamped claim by its own (`caps.pvpbrew`,
+      kill switch `pvpbrew: false`; src/game/fightFood.js `pvpClaim`, every
+      shot carrying the brew it was fired with as `brew`) -- the bow volley
+      and the staff special never had it; a melee special swing is NOT
+      marked `special` (its claim goes out every frame of the sweep and the
+      lanes count the hits: the special lane gave it three at the special's
+      ceiling); the Element Burst's ceiling is x the brew (a Fury Tonic was
+      clipped up to a quarter); the Root Stew cuts 5% of a small hit too
+      (chance rounding, not a ceil); and ONE BITE AT A TIME -- a Garden Stew,
+      cooked fish or minnow bottle once per `PVP_HEAL.GAP_MS` 15 s in a duel
+      or within `WINDOW_MS` 10 s of a hit between players (cooking.js
+      `_pvpHealWait`, every road to one incl. the old-style cook; the clock
+      on the ROOM, `_pvpHealClocks`, so a rejoin keeps it and no joiner is
+      sent it; a held bite answered `eat_refused {wait}`; the page holds its
+      own bite back, "Eat again in Ns", on `caps.pvpheal` from the hits it
+      saw, never the duel flag, which outlives duels; kill switch `pvpheal:
+      false`); `fightfood` suite, `mp-fightfood`: docs/specs/fight-food.md;
+    - since v2.3.3134 the FEED & SEED'S ORDER BOARD -- the income half of the
+      owner's purpose: an Orders tab, three orders a day per player
+      (`server/src/farmorders.js` `FARM_ORDERS.POOL`, append-only), drawn once
+      a UTC day from what their Farming and Cooking levels can make, seeded by
+      (pid, day) and stored as `farmorders:<pid>` {v, day, ids, done}; a
+      delivery (`farm_order {slot, day, id}`, the day and id only a check -- a
+      board that turned over under an open window is 'order-stale', never
+      another order) takes the goods and pays gold and Farming XP on the live
+      player, the board's put and `_saveRpg` in one synchronous run, the board
+      first; the record is read FAIL-CLOSED (its done flags are the only replay
+      guard: a newer `v` closes the board and is never overwritten, a done flag
+      that is not 0 reads as done, a later day is never replaced by an earlier
+      one) and a restart KEEPS it; no delivery in a fight with a player
+      ('order-fight', the fight-food clock); `farm_open` carries the board
+      (null when off, and the window then says the board is closed); at
+      midnight an open window asks for the new board itself; every order pays
+      more than Diego's opening price for its goods; ~150 gold a day new, 450
+      at most; `caps.farmorders`, kill switch `farmorders: false`;
+      `farmorders` suite, `mp-farmorders`: docs/specs/farm-orders.md;
+    - since v2.3.3135 SIXTEEN CROPS -- the owner: "The main focus is just
+      getting a good variety of crops to grow. Then the next step is deciding
+      what each one does": ten appended to `FARM.CROPS` (both copies,
+      `FARM_CROP_IDS` order, caps.farmCrops 16), each `v: 3` and `FARM.V` 3 --
+      five everyday crops (`crop_`: wheat, strawberry, tomato, corn, cabbage)
+      and five magic ones (`herb_`, one per land without one: frostberry,
+      dewmelon, thunder pepper, gloomcap, heartroot), levels 1-20 in fives;
+      NOTHING COOKS THEM YET (the owner decides what each does next: the
+      suggestion is everyday meals and one land's-status guard per magic crop);
+      glyphs until the 16-crop sheet (docs/art/FARM-ART-PROMPTS.md "Start
+      here"); the Seeds tab folds locked crops into one line a level and the
+      Plant tool offers only seeds in the bag; the trade window names farm
+      goods; farm.test §17 grows every crop: docs/specs/farm.md "The sixteen
+      crops";
+    - since v2.3.3136 THE FARM YOU WALK -- the owner: "I want your character
+      to be able to walk around on the farm. I want the planting process to
+      happen by your character taking action on the plot of ground ... use
+      the firemaking animation ... Make the timer appear above the crop", and
+      of the cave map, "This map isn't suited for a farm":
+      - `farm_home` is a 32 x 44-tile farm laid out in `src/data/farmLayout.js`
+        (six beds; the barn is the Pet House, a haystack the bed and a notice
+        board the Dungeon Workshop until the owner's Farmhouse and Workshop
+        pictures; 41 things from the owner's farm art and the Wheel's sheets,
+        drawn by `src/rendering/farmWorld.js` at their feet, stopping your
+        BOOTS); its ground baked from the owner's Ground Studio swatches by
+        `tools/world/bake_farm_ground.py` (`public/maps/farm_v2.webp`, 2 px a
+        game px, drawn smooth; the cave's `farm_v1` retired);
+      - a bed's NEXT STEP (dig, plant, water, fertilize, harvest: the worker's
+        order, `src/game/farmWork.js` `bedNext`) floats over it as the step's
+        picture and its timer, in words over the nearest ("4m 12s · Needs
+        Watering"); E, a tap on the right stick (wearing the step), the button
+        over the dashboard (`FarmBedPrompt.jsx`, a seed picker with 2+ kinds)
+        or a tap on the bed KNEELS you at its back for 1.1-1.5 s, then sends
+        ONE `farm_act` for that bed
+        (`src/game/farmWalk.js`); walking away sends nothing; the bed changes
+        only on the worker's answer, a harvest flying to the bag; NO worker
+        change, and a farm never described is asked for on arrival
+        (`farm_open`, the free deed);
+      - the kneel is the COOK'S crouch -- the owner: "Cooking animation might
+        be better. You can use something to occlude the part where the pan
+        or log is": the cook strip's frames 4-6 (the pan held out, clear of
+        the hands) to and fro, worn as the cook wears it (your skin and
+        drawings baked in, shirt, armour, hair and hat on their own layers:
+        effectsRenderer `_placeCookFigure`, shared with cooking), and ONE
+        picture over every layer where the pan is (`_updateFarmKneel`) -- a
+        crate of the dug bed's earth (dig), of seeds (plant) or of water, the
+        compost bin (fertilize), the crate's straw (harvest), all the owner's
+        own art, so it never has to know your look;
+        `tools/world/make_farm_covers.py` makes them and the GENERATED
+        `src/data/farmCovers.js`, and FAILS if one pixel of the pan shows;
+        the firemaking kneel and its mound are gone;
+      - the Feed & Seed's window lost its Beds tab: Visit Your Farm on top,
+        "Your farm: 3 ready to harvest · 3 beds to plant" under it, then Seeds
+        and Orders;
+      - every way onto the farm waits under its loading screen for all of it
+        (`holdFarmUntilReady`, `src/game/farmTrip.js`), let go on leaving
+        (`freeFarmArt`); the map decodes to 22 MB (the cave's 6), held on the
+        farm only;
+      - `farmwalk` suite, `mp-farmwalk`, `mp-farm`: docs/specs/farm-walk.md.
   - Since v2.3.3120 PET TRAPPING -- the owner: "your trapping level governs
     what level monster you can capture ... The best success rate for the
     lowest tier monster should be about 1%. And each trap should cost at least
@@ -1510,7 +1679,7 @@ remnant to migrate server-side, not a mode to preserve.
       for 1,000 gold, each step 1,000 more, to 120, a stale `cap` refused;
       caps `petwards` / `petshow` / `pethouse`; dev `look: {gold, size}`;
       `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.
-  - Since v2.3.3125 THE BUILDINGS HAVE INSIDES -- the owner sent seventeen
+  - Since v2.3.3142 THE BUILDINGS HAVE INSIDES -- the owner sent seventeen
     pictures of them (made from docs/ART-WISHLIST.md's prompts) and said "Ok
     wire these up":
     - the top of every building's window is its room, edge to edge
@@ -1712,6 +1881,14 @@ Two protocol versions coexist; both must keep working:
 - Identity: stable per-browser `bp_` ids from a silent passphrase
   (`bt_passphrase`); two tabs share one identity by design — test
   multiplayer with `?guest=1` on the second tab.
+- A NEW CHARACTER STARTS FROM THE SERVER'S DEFAULTS (v2.3.3138): a join with
+  no `rpg:<pid>` record reads NO `rpg*` field of its payload
+  (`_withoutRpgClaims` in join.js, a null-prototype copy: TRAPS §6), so a
+  test that seeds a character through a first join seeds nothing -- put a
+  record on file first. A failed read of the record ends the join (1011)
+  instead of passing for a new character. The defaults that are not zero
+  are `NEW_CHARACTER_COINS` and `freshLifeSkills()`, pinned to the client's
+  by mirror-audit: docs/specs/fresh-start.md.
 
 ## Testing
 

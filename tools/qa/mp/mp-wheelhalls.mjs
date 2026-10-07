@@ -2,7 +2,7 @@
  *
  * Asked to "keep going with pragmatic enhancements": three of the plan's new
  * buildings open onto systems the game already has (data/wheelBuildingDoors.js
- * WHEEL_HALL_DOORS), and a clan invite can be taken up at last.  (v2.3.3125: and
+ * WHEEL_HALL_DOORS), and a clan invite can be taken up at last.  (v2.3.3142: and
  * the Town Hall, a fourth, section 7.)
  *
  * Two real players against a real worker, in the Wheel's Brotown, on phones:
@@ -25,7 +25,7 @@
  *   6. the Post Office: your mail -- the gold granted this visit, as the
  *      worker's mail delivered it -- and "Messages from friends" opens the
  *      Social panel;
- *   7. the Town Hall (v2.3.3125, the fourth hall: the owner chose "a Town Hall
+ *   7. the Town Hall (v2.3.3142, the fourth hall: the owner chose "a Town Hall
  *      window"): a new character, arriving 108 px south of its door, does not
  *      start with its Enter button showing; at its steps it says "Enter TOWN
  *      HALL" and opens your picture of its inside over two rows -- the
@@ -263,7 +263,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot(A, 'messages');
     rec.ok('...and Messages from friends opens the Social panel (friends, and messages that wait for them)', social, { social });
 
-    /* ── 7. the Town Hall (v2.3.3125) ── */
+    /* ── 7. the Town Hall (v2.3.3142) ── */
     const th = byId.townhall;
     /* where a new character arrives: the body's middle 108 px south of the door's foot (the boots ~52 px lower, past the 140 px reach) */
     await H.hopTo(A, th.x, th.y + 108, { step: 100, gap: 260, tries: 90 });

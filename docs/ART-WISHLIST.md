@@ -5,14 +5,15 @@ What the game could use from the owner next, each with a prompt ready to paste.
 - Attach what each item lists, and never the bro (docs/WORLD-BIBLE.md §6).
 - Send the result in chat, and a session fits it in: the "In the game" line says where each one goes.
 - Generated from `public/tools/style/bible.js` and the Object Studio's `promptFor` (`public/tools/objects/prompts.js`). The dungeon-entrance prompts are the studio's own.
+- **The farm's art** (seed, crop and dish icons, crops growing, beds and farm things, the Barn) has its own page: `docs/art/FARM-ART-PROMPTS.md`, with `docs/art/bag-icon-style-key.png` to attach to the icon sheets (v2.3.3132).
 
 ## Inside the buildings
 
-**All seventeen are in the game (v2.3.3125)**, from the pictures you sent: sixteen at the top of their windows, the Hotel's held until it has a window (docs/specs/building-rooms.md). The prompts stay here for redoing one: send the new picture in chat and a session replaces it (`tools/ui/make-room-pictures.py`). Rooms are empty of people on purpose: the game draws its own characters in. The Auction House's clerk is the first; the spec says what each other room would need.
+**All seventeen are in the game (v2.3.3142)**, from the pictures you sent: sixteen at the top of their windows, the Hotel's held until it has a window (docs/specs/building-rooms.md). The prompts stay here for redoing one: send the new picture in chat and a session replaces it (`tools/ui/make-room-pictures.py`). Rooms are empty of people on purpose: the game draws its own characters in. The Auction House's clerk is the first; the spec says what each other room would need.
 
 ### Blacksmith: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (the forge).
+- **In the game:** Done (v2.3.3142): at the top of its window (the forge).
 - **Attach:** your style key + the outside of the Blacksmith (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -34,7 +35,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### General Store: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (the market).
+- **In the game:** Done (v2.3.3142): at the top of its window (the market).
 - **Attach:** your style key + the outside of the General Store (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -56,7 +57,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Bank: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (the bank).
+- **In the game:** Done (v2.3.3142): at the top of its window (the bank).
 - **Attach:** your style key + the outside of the Bank (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -78,7 +79,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Cookhouse: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (cooking).
+- **In the game:** Done (v2.3.3142): at the top of its window (cooking).
 - **Attach:** your style key + the outside of the Cookhouse (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -100,7 +101,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Saloon: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (the party panel).
+- **In the game:** Done (v2.3.3142): at the top of its window (the party panel).
 - **Attach:** your style key + the outside of the Saloon (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -122,7 +123,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Woodworker: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (the woodworker's bench).
+- **In the game:** Done (v2.3.3142): at the top of its window (the woodworker's bench).
 - **Attach:** your style key + the outside of the Woodworker (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -144,7 +145,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Gem Cutter: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (gem cutting).
+- **In the game:** Done (v2.3.3142): at the top of its window (gem cutting).
 - **Attach:** your style key + the outside of the Gem Cutter (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -166,7 +167,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Assay Office: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (the enchanter).
+- **In the game:** Done (v2.3.3142): at the top of its window (the enchanter).
 - **Attach:** your style key + the outside of the Assay Office (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -188,7 +189,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Gambling Den: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (the gambling panel).
+- **In the game:** Done (v2.3.3142): at the top of its window (the gambling panel).
 - **Attach:** your style key + the outside of the Gambling Den (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -210,7 +211,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Feed & Seed: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (the farm panel).
+- **In the game:** Done (v2.3.3142): at the top of its window (the farm panel).
 - **Attach:** your style key + the outside of the Feed & Seed (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -232,7 +233,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Land Office: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (the trip to your farm).
+- **In the game:** Done (v2.3.3142): at the top of its window (the trip to your farm).
 - **Attach:** your style key + the outside of the Land Office (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -254,7 +255,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Post Office & Telegraph: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (mail and your inbox).
+- **In the game:** Done (v2.3.3142): at the top of its window (mail and your inbox).
 - **Attach:** your style key + the outside of the Post Office & Telegraph (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -276,7 +277,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Guild Hall: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (clans and guilds).
+- **In the game:** Done (v2.3.3142): at the top of its window (clans and guilds).
 - **Attach:** your style key + the outside of the Guild Hall (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -298,7 +299,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Sheriff's Office: inside
 
-- **In the game:** Done (v2.3.3125): at the top of its window (duels, the arena and bounties).
+- **In the game:** Done (v2.3.3142): at the top of its window (duels, the arena and bounties).
 - **Attach:** your style key + the outside of the Sheriff's Office (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -320,7 +321,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Hotel: inside
 
-- **In the game:** Done (v2.3.3125) as a picture, held until the Hotel opens (a bed and a rest; today it stands shut).
+- **In the game:** Done (v2.3.3142) as a picture, held until the Hotel opens (a bed and a rest; today it stands shut).
 - **Attach:** your style key + the outside of the Hotel (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -344,7 +345,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 *Optional: it already has your painting of its counter. Make this only if you want it to match the others in pixel art.*
 
-- **In the game:** Done (v2.3.3125): replaced your first painting of it, and the clerk stays behind the counter.
+- **In the game:** Done (v2.3.3142): replaced your first painting of it, and the clerk stays behind the counter.
 - **Attach:** your style key + the outside of the Auction House (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -368,7 +369,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 *For later: nothing opens at the Town Hall yet.*
 
-- **In the game:** Done (v2.3.3125): at the top of the Town Hall's window (the leaderboard, its trophy case, and the world map, the map on its wall); Mayor Bro still stands on its steps.
+- **In the game:** Done (v2.3.3142): at the top of the Town Hall's window (the leaderboard, its trophy case, and the world map, the map on its wall); Mayor Bro still stands on its steps.
 - **Attach:** your style key + the outside of the Town Hall (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -582,6 +583,32 @@ Flowing and watery, for a land of lagoons, sea caves and a drowned reef: harp an
 Instrumental background music for BroTown, a cozy-but-adventurous pixel-art action RPG. It plays quietly under the sound effects while players explore and fight in one land, so: no vocals, a steady tempo, a clear melody that is not tiring on repeat, and nothing sudden or very loud. 1 minute 30 seconds to 2 minutes long, and it must LOOP: no fade-in, no fade-out and no ending -- the last bar leads straight back into the first. The same feel, instruments and mix as the game's other land themes (Icy Peaks, Volcano Watch, Desert, Floral).
 
 Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh: a creeping, slightly off-kilter rhythm of plucked strings and bubbling percussion, a low clarinet or bassoon melody, buzzing insects and squelchy bubbles in the texture. Mischievous rather than horror. About 95 BPM.
+```
+
+## The farm
+
+The Feed & Seed's farm (v2.3.3127, docs/specs/farm.md) draws its crops, seeds and compost with emoji until these exist: the window's beds, the Seeds tab and the bag all use them.
+
+### Farm goods: six bag icons
+
+- **In the game:** The bag, the Feed & Seed window's beds and its Seeds tab: a carrot, a Firebloom, a Rock Vine, a Cloudpetal, a seed pouch (every seed) and a sack of compost.
+- **Attach:** the Fury Tonic bottle icon (`public/icons/items/potion-fury.webp`), as the style to match.
+- **How:** Ask ChatGPT for one square picture holding all six; send it in chat and a session cuts it into the game's 256 px icons.
+
+```text
+Create a single 1024x1024 image: a 3x2 grid of six separate game item icons on a seamless pure white background (#FFFFFF). Each icon is centered in its own invisible cell with generous even margins. No grid lines, no cell borders, no labels.
+
+STYLE (apply identically to all six): match the attached reference icon exactly -- the same bold dark outline, the same rich, glossy, hand-painted shading with crisp highlights, the same saturation and the same size and weight of object in its cell. Each icon is ONE clearly readable object with a bold silhouette that stays readable at 32 pixels. A few small sparkles around an object are fine; no background shapes.
+
+SUBJECT GRID (left to right, top to bottom):
+1. a single fat orange carrot with a bushy green leaf top, freshly pulled, a little soil on its tip
+2. a "Firebloom": a magical red-orange flower whose petals curl up like little flames, on a short green stem with two leaves
+3. a "Rock Vine": a tough dark-green climbing vine with small grey pebbles caught in its curling tendrils
+4. a "Cloudpetal": a pale blue-white flower with soft round fluffy petals like a little cloud, on a short stem
+5. a small tied burlap seed pouch, slightly open, a few seeds spilling out
+6. a stout burlap sack of rich dark compost, open at the top, with a cheerful pink earthworm peeking out
+
+HARD CONSTRAINTS: no text, no letters, no numbers anywhere; no frames or borders around icons; no drop shadows on the background; pure flat white between icons; identical outline weight, palette and lighting on all six icons; every icon roughly the same visual size and weight; each silhouette must be identifiable when shrunk to 32x32 pixels.
 ```
 
 ## Sounds
