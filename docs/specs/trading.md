@@ -127,6 +127,26 @@ are opaque blobs at REST in the stage, so they use **escrow-at-stage**
   the client shows the weapon picker + sends the command only under the
   new flag. The two commands are client PRIORITY_EVENTS.
 
+## Pet lane — v2.3.3122 (pet trading, `docs/specs/trapping.md`)
+
+- `trade2_pets {ids}` sets the pets YOU offer, wholesale, at most
+  `PETBOOK.TRADE_MAX` (4). Each must pass `_petSellable` (yours, not out with
+  you, not an old `legacy` pet, a day past its catch); one that does not refuses
+  the whole set with `reason: 'pet:<why>'`. Any change resets both readies and
+  confirms, like every other edit.
+- **Validate-at-commit, not escrow** (handoff rule 7). Unlike the weapon lane, a
+  staged pet stays in its owner's `pets:` record: it is named by an id that never
+  changes, so nothing has to be pinned, and a deploy mid-trade loses nothing. At
+  the commit each staged pet is checked again (released, set out with you or
+  listed meanwhile: `pet-gone:<pid>`), each side must have room for what it gets
+  less what it gives (`pets-full:<pid>`), and then the pets move -- all out, then
+  all in -- in the same synchronous run as the items' and gold's debits, before
+  the first await: one atomic batch of writes.
+- The wire: `pets: {<pid>: [petPublic]}` on every `trade2_state`, and
+  `petsMoved: [{from, to, pet}]` on the settled one (the receipt).
+- `caps.pettrade` gates the client's lane; `pettrade: false` refuses new pets.
+  Tests: `server/test/pettrade.test.mjs` §3, `tools/qa/mp/mp-pettrade.mjs`.
+
 ## Scope + successor notes
 
 - Item/gold sessions are memory-only (nothing escrowed; a deploy voids

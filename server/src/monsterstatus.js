@@ -42,6 +42,8 @@
  *   st     'chill' | 'burn' | 'gust' | 'stuck'  what it did, when it did
  *   stMs   how long it lasts (a gust: how long the shove takes)
  *   kb     [dx, dy] the gust's shove in world px
+ *   wd     v2.3.3123: the percent the pet out with you took off it (its land
+ *          ward, petbook.js _petWard), when it took any
  *
  * MOVEMENT IS THE CLIENT'S (movement.js), so the slow, the hold and the shove
  * are carried out by the client (src/game/elemHits.js), which acts ONLY on
@@ -219,14 +221,25 @@ export const monsterStatusMethods = {
     if (ps.dead || ps.dying || !(ps.hp > 0)) return out;
     const t = typeof now === 'number' ? now : Date.now();
     const st = ELEM_HITS[elem];
+    /* ═══ v2.3.3123: THE LAND WARD (pet trapping, Phase 4) ═══
+       The pet out with you, when it is from this element's land, takes `w`
+       off what the element does (petbook.js _petWard: 0.15 at its Lv 1, a
+       point a level, at most 0.5): a chill, a hold, a daze or a soak that
+       much shorter, a burn's or a poison's ticks that much lighter, a gust's
+       shove that much shorter.  The hit itself is untouched.  The hit's
+       monster_attack says so (`wd`, the percent) so the phone can show it;
+       the storm's arcs are softened where they land (_shockArcs). */
+    const w = this._petWard ? this._petWard(pid, ps, elem) : 0;
+    const soft = (ms) => (w > 0 ? Math.max(1, Math.round(ms * (1 - w))) : ms);
     if (st === 'chill') {
-      ps._chillUntil = t + CHILL.MS;
-      out.st = st; out.stMs = CHILL.MS;
+      const ms = soft(CHILL.MS);
+      ps._chillUntil = t + ms;
+      out.st = st; out.stMs = ms;
     } else if (st === 'burn') {
-      this._igniteBurn(zoneId, m, pid, t);
+      this._igniteDot('burn', zoneId, m, pid, t, w);
       out.st = st; out.stMs = BURN.TICKS * BURN.EVERY_MS;
     } else if (st === 'gust') {
-      const kb = this._gustShove(zoneId, m, ps);
+      const kb = this._gustShove(zoneId, m, ps, 1 - w);
       if (kb) {
         /* what is left of an earlier gust still counts, up to ALLOW_MAX */
         const live = (t < (ps._gustUntil || 0) && ps._gustLeft > 0) ? ps._gustLeft : 0;
@@ -236,16 +249,18 @@ export const monsterStatusMethods = {
       }
     } else if (st === 'stuck') {
       if (!(t < (ps._stuckImmuneUntil || 0))) {
-        ps._stuckUntil = t + STUCK.MS;
-        ps._stuckImmuneUntil = t + STUCK.MS + STUCK.IMMUNE_MS;
-        out.st = st; out.stMs = STUCK.MS;
+        const ms = soft(STUCK.MS);
+        ps._stuckUntil = t + ms;
+        ps._stuckImmuneUntil = t + ms + STUCK.IMMUNE_MS;
+        out.st = st; out.stMs = ms;
       }
     } else if (st === 'daze') {
       /* v2.3.3014: the stun, with its window after (STUCK's rule) */
       if (!(t < (ps._dazeImmuneUntil || 0))) {
-        ps._dazeUntil = t + DAZE.MS;
-        ps._dazeImmuneUntil = t + DAZE.MS + DAZE.IMMUNE_MS;
-        out.st = st; out.stMs = DAZE.MS;
+        const ms = soft(DAZE.MS);
+        ps._dazeUntil = t + ms;
+        ps._dazeImmuneUntil = t + ms + DAZE.IMMUNE_MS;
+        out.st = st; out.stMs = ms;
       }
     } else if (st === 'shock') {
       /* v2.3.3014: the crackle on you, and the arcs to whoever stands near */
@@ -253,12 +268,16 @@ export const monsterStatusMethods = {
       out.st = st; out.stMs = SHOCK.MS;
       if (n > 0) out.arcs = n;
     } else if (st === 'soak') {
-      ps._soakUntil = t + SOAK.MS;
-      out.st = st; out.stMs = SOAK.MS;
+      const ms = soft(SOAK.MS);
+      ps._soakUntil = t + ms;
+      out.st = st; out.stMs = ms;
     } else if (st === 'poison') {
-      this._igniteDot('poison', zoneId, m, pid, t);
+      this._igniteDot('poison', zoneId, m, pid, t, w);
       out.st = st; out.stMs = POISON.TICKS * POISON.EVERY_MS;
     }
+    /* v2.3.3123: the ward, when it softened something here (the storm's is
+       on the arcs, each its own monster_attack) */
+    if (w > 0 && out.st && out.st !== 'shock') out.wd = Math.round(w * 100);
     return out;
   },
 
@@ -290,7 +309,9 @@ export const monsterStatusMethods = {
     near.sort((a, b) => a.d2 - b.d2 || (a.oid < b.oid ? -1 : a.oid > b.oid ? 1 : 0));
     let n = 0;
     for (const { oid, o } of near.slice(0, SHOCK.MAX_ARCS)) {
-      const raw = Math.max(1, Math.min(Math.round((m.dmg || 0) * SHOCK.PCT), Math.floor((o.maxHp || 100) * SHOCK.MAX_HP_PCT)));
+      /* v2.3.3123: a Sparklet out with the one it reaches takes the edge off */
+      const wo = this._petWard ? this._petWard(oid, o, 'storm') : 0;
+      const raw = Math.max(1, Math.min(Math.round((m.dmg || 0) * SHOCK.PCT * (1 - wo)), Math.floor((o.maxHp || 100) * SHOCK.MAX_HP_PCT)));
       const res = this._applyDamage(o, raw, false, { elemental: true, attackerLevel: m.level });
       if (!res.dodged) this._trackMonsterDamage(o, m.id, res.graced ? (res.dmgIntent || 0) : res.dmgTaken);
       const landed = res.dmgTaken > 0;
@@ -306,6 +327,7 @@ export const monsterStatusMethods = {
           ability: 'shock',
           elem: 'storm',
           ...(landed ? { st: 'shock', stMs: SHOCK.MS } : {}),
+          ...(landed && wo > 0 ? { wd: Math.round(wo * 100) } : {}),
         },
       });
       this._saveRpgVitals(oid, o);
@@ -326,12 +348,14 @@ export const monsterStatusMethods = {
      that struck, GUST.PX long times the zone's depth where you stand (the
      dunes' far edge draws everything smaller, depth.js).  null when you stand
      on top of it and there is no "away". */
-  _gustShove(zoneId, m, ps) {
+  _gustShove(zoneId, m, ps, mult) {
     const dx = ps.x - m.x, dy = ps.y - m.y;
     const d = Math.hypot(dx, dy);
     if (!(d > 0.5)) return null;
     const k = this._depthK ? this._depthK(zoneId, ps.y) : 1;
-    const len = GUST.PX * (k > 0 ? k : 1);
+    /* v2.3.3123: `mult`, the ward's share left (1 - w); 1 when absent */
+    const wk = typeof mult === 'number' && mult > 0 && mult < 1 ? mult : 1;
+    const len = GUST.PX * (k > 0 ? k : 1) * wk;
     return [Math.round(dx / d * len), Math.round(dy / d * len)];
   },
 
@@ -358,10 +382,12 @@ export const monsterStatusMethods = {
 
   /* v2.3.3014: the burn's rule for either damage-over-time status (DOTS):
      the burn, and the venom's poison in its own Map. */
-  _igniteDot(kind, zoneId, m, pid, now) {
+  _igniteDot(kind, zoneId, m, pid, now, ward) {
     const D = DOTS[kind], C = D.cfg;
     if (!this[D.map]) this[D.map] = new Map();
-    const per = Math.max(1, Math.round((m.dmg || 0) * C.PCT));
+    /* v2.3.3123: `ward`, the land ward's share off each tick (0 when absent) */
+    const wk = typeof ward === 'number' && ward > 0 && ward < 1 ? 1 - ward : 1;
+    const per = Math.max(1, Math.round((m.dmg || 0) * C.PCT * wk));
     const b = this[D.map].get(pid);
     if (b && b.zone === zoneId) {
       b.left = C.TICKS;

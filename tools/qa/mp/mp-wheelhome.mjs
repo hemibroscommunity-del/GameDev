@@ -94,10 +94,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const shown = await P.page.evaluate(() => {
     const h = document.getElementById('bt-world-trial');
     const t = document.querySelector('.bt-zone-header__title');
-    /* v2.3.3009: the place and its gold line, the bar's two lines in the Wheel */
-    const pl = document.querySelector('[data-zone-place]'), sb = document.querySelector('[data-zone-sub]');
+    /* v2.3.3009: the place and its gold line, the bar's two lines in the Wheel --
+       v2.3.3108: the minimap's name plate's (wheelMinimap.js _plate) */
+    const pl = window.__btMinimap && window.__btMinimap.plate;
     return { readout: !!(h && h.style.display !== 'none'), title: t ? t.textContent : null,
-      place: pl ? pl.textContent : null, sub: sb ? sb.textContent : null };
+      place: pl ? pl.title : null, sub: pl ? pl.sub : null };
   });
   rec.ok(`a new character starts in the Wheel's Brotown, by its town square, without walking a step (${zones.join(' -> ')}, ${((Date.now() - t0) / 1000).toFixed(1)} s, ${r(a)} px from the middle)`,
     a.zone === 'wheel' && r(a) < 600, { zones, a });
@@ -111,7 +112,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   /* v2.3.3009: the owner: "Put the 'brotown safe' and other location
      indicators in place of the 'the wheel lvl 1-2' on the top bar" */
-  rec.ok(`...the top bar says where he is, "${shown.place}" over "${shown.sub}" (not "The Wheel (Lv1-2)"), and no test readout is on screen`,
+  rec.ok(`...the minimap's name plate says where he is, "${shown.place}" over "${shown.sub}" (the top bar "${shown.title}", not "The Wheel (Lv1-2)"), and no test readout is on screen`,
     shown.place === 'Brotown' && shown.sub === 'safe' && !/The Wheel|Lv1-2|trial/i.test(shown.title || '') && !shown.readout, shown);
 
   /* ── 8a. the way to the Mayor, before a word with him ── */

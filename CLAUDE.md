@@ -588,6 +588,12 @@ remnant to migrate server-side, not a mode to preserve.
       keep-alive key is Control;
     - `sprint` suite (47 checks, the client's rules too), mirror-audit,
       `mp-sprint`: docs/specs/sprint.md.
+    - since v2.3.3106 the button is JUST NORTH OF THE ATTACK DISC (the owner:
+      "near the right joystick instead of the left maybe just north of it",
+      then "Above, fights move up"): `sprintAnchor` centres it over the disc,
+      or sideways steps it left of the Wheel's minimap (`SPRINT_MAP_CLEAR`);
+      `rightCluster` puts Special and Whirlwind a row above it upright and
+      beside it sideways, half a button clear; mp-sprint, mp-abilslot.
   - Since v2.3.3008 the Points window's MAX MP has its before/after scene,
     "the only one missing one": both lanes cast specials at one block of
     mana each (`statSim.js` `manaPass`) until "Out of mana", the "+n" bar
@@ -619,6 +625,19 @@ remnant to migrate server-side, not a mode to preserve.
     `words`), and the minimap wears a 7 px slate-and-brass FRAME, opaque
     (`FRAME` in wheelMinimap.js): WORLD-MAP-PIPELINE "Where you are, on the
     top bar"; `mp-wheelmap`, `mp-wheelhome`.
+    Since v2.3.3108 the words are back UNDER THE MINIMAP, on a NAME PLATE --
+    the owner: "move the zone name and level band beneath the minimap but I
+    want to reduce the size of the minimap to make room for it", choosing the
+    shorter rectangle: the box stays 132 x 132, the map's window ends at
+    `MAP_BOT` 92 and the frame's slate runs on below as the plate (Pixi, so
+    it layers with the box): the land's element icon (the signposts'
+    textures, `landIconTexture`) and name in its colour, fitted down to the
+    11 px floor, over the level band in gold or "safe" at home (No man's land
+    is its own badge, v2.3.3107); the stage's name did not fit and stays on
+    the world map;
+    the top bar says "BroTown"; a land's banner docks into the plate
+    (`window.__btWheelPlate`, zoneBannerOverlay.js titleRect); the probe's
+    `plate`: WORLD-MAP-PIPELINE "The name plate under the minimap".
   - Since v2.3.3010 GREAVES ALONE HIDE THE PLAIN LEGS -- the owner: "the
     legs underneath near the shoes poke out during east jog. You can just
     remove the plain clothes legs beneath": maskedBake.js `_legsOnlyClamp`
@@ -871,8 +890,12 @@ remnant to migrate server-side, not a mode to preserve.
     you ..." (docs/specs/no-mans-land.md):
     - each land's Lv 6-10 ring is No man's land 1, the next 2, out to 15
       (`server/src/nomansland.js`, `src/data/noMansLandRings.js`,
-      mirror-audit); the banner, a chat line, and the top bar's red "☠ No
-      man's land 1 · Lv 6–10" in the stage name's place;
+      mirror-audit); the banner, a chat line, and (since v2.3.3107, the
+      owner: "above the center of the dashboard ... instead of the top bar")
+      a red skull and the number centred just over the band, riding
+      `--sheet-h`, whose tap opens the rules in InfoPopup with your own
+      skull's minutes (`src/ui/mobile/NmlBadge.jsx`; `--nml-lift` steps the
+      interact prompts over it); the top bar names the stage again;
     - two players may fight when both stand in it, their `ps.level`s at most
       the LOWER of their two numbers apart, not one party -- `_nmlAllowed`,
       asked by `_pvpAllowed` before `OPEN_PVP`, which stays off elsewhere;
@@ -926,6 +949,32 @@ remnant to migrate server-side, not a mode to preserve.
     - other players: a `player_jump` relay (no worker change), `other._jump`;
     - test-world-core "jumping", `mp-jump` (`?jumpms=` for a slow machine):
       docs/specs/jumping.md.  Not yet: jumping over attacks (the worker's).
+    - since v2.3.3105 a TAP ON THE RIGHT STICK JUMPS, the button put away (the
+      owner: "prioritize other contextual uses for the tap instead of jump
+      first if any apply"): only a tap the world's "empty space" line got
+      (`S._tapEmptySeq`) with no job on the right side (`rightTapBusy` in
+      src/game/tapJump.js: a harvest, the disc pressable, a lock) jumps;
+      `?jumpbtn` brings the button back; `mp-tapjump`; and beside a PROP a tap
+      jumps too (the owner: "a tap should jump" there, a hold attacks): with no
+      job the tap window and the first swing's wait are `TAP_JUMP_MAX_MS` 320
+      (`S._atkHoldUntil`, `?tapms=`), a swing meets a prop at the BOOTS
+      (propSwingHit + `playerGroundDy`; it never landed north of you), and the
+      stick shows the owner's JUMP arrow, see-through over the disc as it is,
+      whenever a tap would jump (`data-ricon="jump"`,
+      `public/ui/controls/jump-glyph.webp` cut off their button -- the whole
+      button was "way too intense"; painted at rest, never pressable);
+      `mp-tapprop`; and the stick's picture is the TAP'S ACT (the owner: "chat
+      bubble for speaking [to NPCs], door for entering door"): a bubble beside
+      a character, a door at steps/halls/dungeon mouths, the moon at the
+      farm's bed, the WEAPON IN YOUR HAND when it attacks (its bag picture
+      in its metal, controlSkin `weaponDiscIcon`; and WHILE you attack --
+      a hold, a drag, a swing or shot and 1.2 s after, tapJump.js
+      `attackingNow`; on the lit disc in a fight the picture follows the
+      thumb, `rKnobFollow`, the look only), else JUMP -- the tap runs
+      the E key's own chain
+      (desktopControls `runInteract` via `S._interactNow`, `interactKind`,
+      the character first for the stick: `npcFirst`), SVGs in
+      `public/ui/controls/`; `mp-tapact`.
   - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
     preview: "I was fighting fire goblins and my screen went black", and the
     crash feed had nothing:
@@ -1394,7 +1443,73 @@ remnant to migrate server-side, not a mode to preserve.
       strips cropped, single pictures for the rest, behind the Wheel's loading
       screen; the five hold 1.83 MB (`window.__btWheelNpcArt()`);
     - test-world-core "the buildings' doors", `mp-wheelfolk`, `mp-wheeldoors`:
-      docs/specs/wheel-doors.md.)
+      docs/specs/wheel-doors.md.
+  - Since v2.3.3120 PET TRAPPING -- the owner: "your trapping level governs
+    what level monster you can capture ... The best success rate for the
+    lowest tier monster should be about 1%. And each trap should cost at least
+    1 wood", "leave the odds exactly the same for everyone", "let people name
+    their pets" (docs/PET-TRAPPING-PLAN.md, Phase 1):
+    - box traps (`trap_box`) at the Woodworker's Traps tab, one log of any kind
+      each (`make_traps`); a TRAP pop-up over a targeted Wheel monster with the
+      TRUE odds (`src/data/trapping.js`, held to `server/src/trapping.js` by
+      mirror-audit): 1% x 0.8 a stretch, half on reaching the monster's level,
+      the best 20 above; grey above your Trapping level ("Requires Trapping N"),
+      sending nothing; nothing else moves the odds, no bad-luck rule;
+    - `trap_arm` marks it 15 s; at the kill (`_trapRollOnKill`, combat.js, before
+      dmgByPlayer is cleared; a slime judged at the blow) each armer with 5% of
+      the damage rolls four checks at the fourth root (0-3 shakes drawn in code,
+      `src/rendering/trapFx.js`), one trap a roll, Trapping XP every roll; the
+      kill's payouts untouched; never in a dungeon or on safe ground;
+    - pets live in `pets:<pid>` (`server/src/petbook.js`): worker-made ids,
+      `pets_state`, the Pets page (More -> Pets, and the farm's Pet House:
+      take out, rename, release), old `lifeSkills.pets` moved in once as
+      `legacy`; the join no longer adopts a browser's pets, and a first
+      connect's Trapping level and pets are dropped (`trapBootstrapGuard`);
+    - a pet is drawn from the pet sheet (`tools/make_pet_sheet.py`, 1.31 MB,
+      on the loading screen), out of the trap to you; no more fake pet bites,
+      Evolve, Enchant, or sample "Frost Fox"; `pet_capture` answers 'retired';
+    - caps `trapping` / `trapcraft` / `petbook` (lower case, kill switches;
+      `caps.pets` gone); admin lever `/dev/trapping`; `trapping` suite,
+      `mp-trapping`: docs/specs/trapping.md;
+    - since v2.3.3121 (Phase 2) PETS LEVEL UP: the pet out with you earns a
+      tenth of each kill's combat XP (`_petbookAddXp`, combat.js's XP loop;
+      ⌈25 x 1.08^(lv-1)⌉ a level), never past your Trapping level, in memory
+      and written once a minute, on disconnect or at a level-up, told on the
+      kill's `combat_credit` (`pet`); the Pets page's XP bars and JOURNAL (all
+      18 kinds, the uncaught their shapes); BEASTMASTER BRO east of the
+      Woodworker's steps (`WHEEL_TOWNSFOLK`, NOT "Beastmaster Kai": a dormant
+      chain keys on that name; art by `tools/make_beastmaster.py` until the
+      owner's, prompt in docs/ART-WISHLIST.md) with beast_1..4 -- make 3 traps,
+      spring 5, reach Trapping 6, catch a pet -- checked by the worker's new
+      objective types (`traps_made`, `trap_roll`, `skill`, `catch`; quests.js
+      `_questObjectiveMet`), gold and box traps, no XP to place; his line waits
+      on tut_1 (`after`), walking past him never stops you for his progress
+      (`quietProgress`), and a tap once it is done opens the Pets page; caps
+      `petlevels` / `beastmaster`; `trapping` §16-17, `mp-beastmaster`;
+    - since v2.3.3122 (Phase 3) PETS CHANGE HANDS: the trade window's pet lane
+      (`trade2_pets`, validate-at-commit: a staged pet stays in its record and
+      moves at the commit with the other debits, all out then all in), the
+      auction house's `kind: 'pet'` (escrowed in the listing, listed from the
+      Pets page) and the `pet` mail kind (STAYS QUEUED when the collection is
+      full; the join loads `pets:` BEFORE the mail drains); the gate is
+      `_petSellable` -- not out with you, not `legacy`, a day past its catch;
+      a new owner is one more `owners`; cap `pettrade`; `pettrade` suite,
+      `mp-pettrade`;
+    - since v2.3.3123 (Phase 4) PETS MATTER: the pet out with you WARDS its
+      land's element (`_petWard`, applied in monsterstatus.js `_elemOnHit`):
+      15% at Lv 1, +1 a level, at most 50% at the level it works at -- a
+      chill / hold / daze / soak shorter, a burn's or poison's ticks and a
+      storm arc on you lighter, a gust's shove (and its allowance) shorter,
+      never the hit itself; the hit says `wd`, the pet rings and says "Ward
+      n%"; GOLDEN and BIG catches are revealed (trapFx rays and ring, "Golden!"
+      / "Big one!", the card's glow, sweep and swelling badge, game.css
+      `bt-pet-*`); the OTHERS SEE YOUR PET: `pw` on your tick record (not `pt`, the pants)
+      ('kind.stage.gold.size.lv', `petWireOf` / `parsePetWire`, `_petWire` in
+      memory), drawn beside you with no name (`_updatePeerPets`, `_posePet`
+      shared with yours); MORE ROOM: `pet_house_buy {cap, confirm}` 10 places
+      for 1,000 gold, each step 1,000 more, to 120, a stale `cap` refused;
+      caps `petwards` / `petshow` / `pethouse`; dev `look: {gold, size}`;
+      `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

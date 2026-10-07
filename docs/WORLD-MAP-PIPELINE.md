@@ -3455,6 +3455,41 @@ confused with game screen area"*.
   under the box, and reads the frame's slate band and brass line off the
   screen. `mp-wheelhome` reads "Brotown" over "safe" on the way in.
 
+### The name plate under the minimap (v2.3.3108)
+
+The owner: *"move the zone name and level band beneath the minimap but I want
+to reduce the size of the minimap to make room for it (rather than enlargen it
+further)"*. Offered a shorter rectangle, a smaller square or a round map with a
+banner, they chose the shorter rectangle.
+
+- **The box keeps its place and size,** 132 x 132 CSS px in the top-right
+  corner. The map's window now ends 92 px down (`MAP_BOT`, was 125). The
+  frame's slate runs on below it as the plate, a darker well
+  (`wheelMinimap.js` `_plate`).
+- **Two lines:**
+  - the land's element icon and its name in the land's colour, as the top bar
+    had them (v2.3.3024);
+  - the level band in gold ("Lv 6–10"), "safe" in town, "safe, no monsters" on
+    the commons. No man's land has its own skull badge over the dashboard
+    (v2.3.3107), so the plate keeps the level band there too.
+- **The stage's name ("the thaw line") did not fit.** The plate is 124 px
+  across and text may not go under 11 px (mp-textfloor's floor). "the overgrown
+  orchards · Lv 26–30" is about 170 px at 11 px, so the stage stays on the world
+  map. A long land name ("Electric Foundry") steps down from 13 px to 11 px, and
+  only past that is it narrowed.
+- **Drawn in the game's canvas, like the rest of the box,** so a building panel
+  over the minimap covers the plate too. The icons are the signposts' own
+  textures, loaded behind the Wheel's loading screen (`landIconTexture`), and
+  let go before those are freed (`holdLandIcons`).
+- **The map centres you in its shorter window.** The quest's star, the gold road
+  and the home badge ride its new bottom edge, and the expand mark sits in its
+  corner.
+- **The top bar says "BroTown"** in the Wheel. A land's banner docks into the
+  plate (`window.__btWheelPlate`, `zoneBannerOverlay.js` `titleRect`). Tapping
+  the plate opens the world map, like the rest of the box.
+- **Tests:** `mp-wheelmap`, `mp-wheelhome`, `mp-wheeldeep`, `mp-wheelpast20` and
+  `mp-nomansland` read the probe's `plate` (`window.__btMinimap.plate`).
+
 ### The way home: Brotown's badge on the minimap's edge (v2.3.3023)
 
 > Owner, 2026-10-04: *"Right now the world feels hard to navigate without

@@ -164,6 +164,21 @@ As before, every field is additive and no cap is needed.
 - The soak and the arcs' damage are the worker's, so they happen whatever the
   client.
 
+## The land ward (v2.3.3123, pet trapping Phase 4)
+
+A pet out with you from the land of the monster that hits you takes the edge
+off what its element does: `petbook.js` `_petWard` answers how much (15% at
+its Lv 1, a point a level, at most half, at the level it works at -- never above
+your Trapping level), and `_elemOnHit` applies it -- a chill, a hold, a daze
+and a soak shorter, a burn's and a poison's ticks lighter (`_igniteDot`'s
+`ward`), a gust's shove shorter (`_gustShove`'s `mult`, so the speed allowance
+granted is the shorter shove), and a storm's arc lighter on a warded player it
+reaches (`_shockArcs`). The hit's own damage is never touched. A softened
+hit's `monster_attack` carries `wd`, the percent; the client acts on `stMs`
+and `kb` exactly as before (they are already the softened ones) and only shows
+the ward. Kill switch `petwards: false`. Spec: `docs/specs/trapping.md`, "Pets
+that matter"; suite `petsmatter`.
+
 ## Who owns what
 
 The **worker** decides every status: whether the hit landed, what it does, for

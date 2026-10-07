@@ -275,6 +275,17 @@ export const inboxMethods = {
        retiring one was a design call. The owner made it: `_sv` is retired
        and the ledger is the only mark. #643's apply still does the
        sanitizer/cap/push half; it simply no longer stamps anything. */
+    /* ═══ v2.3.3122: A PET (pet trading, docs/PET-TRAPPING-PLAN.md Phase 3) ═══
+       Into the recipient's pets record (petbook.js _petbookGive).  FALSE --
+       the entry STAYS QUEUED -- when the record is not loaded or the
+       collection is full, exactly the weapon stash's rule 3: an unknown or
+       refused kind used to be returned `true` and so silently destroyed
+       (the plan's "Today an unknown kind is silently destroyed").  The join
+       loads the record BEFORE it drains the mail (join.js), so a pet
+       waiting there lands the moment there is room. */
+    if (entry.kind === 'pet') {
+      return this._petbookGive(playerId, p.pet, typeof p.from === 'string' ? p.from : '', Date.now()) !== false;
+    }
     if (entry.kind === 'gear') {
       const gField = p && p.field;
       const beforeN = Array.isArray(ps[gField]) ? ps[gField].length : 0;
