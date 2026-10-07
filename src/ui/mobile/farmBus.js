@@ -34,6 +34,15 @@ export const farmBus = {
   view: null,
   /* worker clock minus this phone's clock, ms. */
   offset: 0,
+  /* v2.3.3134: today's order board (server farmorders.js) --
+     {day, resetsAt, list: [{id, key, n, gold, xp, done, gone?}]} -- or null
+     before the worker has sent one (or with the board switched off). */
+  orders: null,
+  /* v2.3.3134 (review): whether the worker has SAID what the board is -- a
+     board, or none (switched off, or a newer worker's record).  With `orders`
+     null the window tells "not asked yet" from "closed" by this; it used to
+     show "…" for both, forever. */
+  ordersSeen: false,
   /* {op, at} while a request is out. */
   pending: null,
   /* The last answer: {did, err, op, at} (op: what it answered). */
@@ -51,6 +60,14 @@ export const farmBus = {
     if (Array.isArray(payload.plots) && typeof payload.beds === 'number') {
       this.view = { beds: payload.beds, plots: payload.plots };
       if (Number.isFinite(payload.now)) this.offset = payload.now - Date.now();
+    }
+    /* v2.3.3134: the board rides farm_open's answer (null with it switched
+       off) and every delivery's; a bed action's answer has no `orders` key
+       and leaves it be. */
+    if (Object.prototype.hasOwnProperty.call(payload, 'orders')) {
+      const b = payload.orders;
+      this.orders = b && typeof b === 'object' && Array.isArray(b.list) ? b : null;
+      this.ordersSeen = true;
     }
     if (!payload.login) {
       const op = (payload.did && payload.did.op) || (this.pending && this.pending.op) || null;
@@ -75,6 +92,16 @@ export const farmBus = {
   buy(S, item, count) {
     return this._out(S, 'buy', () => S.channel.send({ type: 'farm_buy', payload: { item, count } }));
   },
+  /* v2.3.3134: deliver one of today's orders.  The day and id ride along as
+     a check: a board that turned over at midnight under an open window is
+     refused, not delivered from a different order (farmorders.js).  Safe to
+     repeat: a delivered order is refused the second time. */
+  order(S, slot) {
+    const b = this.orders;
+    const o = b && b.list && b.list[slot];
+    if (!o || !o.id || o.done) return false;
+    return this._out(S, 'order', () => S.channel.send({ type: 'farm_order', payload: { slot, day: b.day, id: o.id } }));
+  },
 
   _out(S, op, fire) {
     if (!S || !S.channel || this.pending) return false;
@@ -83,14 +110,21 @@ export const farmBus = {
     this.pending = { op, at };
     this.rev += 1;
     emit();
+    /* v2.3.3134 (review): a delivery waits as long as a buy, and its silence
+       asks the worker for the board instead of waking Deliver: after 4 s a
+       second tap went out, the late first answer said "Order delivered" and
+       the second's then said "Already delivered" in red.  The board's answer
+       says what is done (the worker's done flag never pays twice). */
+    const slow = op === 'buy' || op === 'order';
     setTimeout(() => {
       if (this.pending && this.pending.at === at) {
         this.pending = null;
-        this.last = { did: null, err: op === 'buy' ? 'timeout-buy' : 'timeout', op, at: Date.now() };
+        this.last = { did: null, err: op === 'buy' ? 'timeout-buy' : op === 'order' ? 'timeout-order' : 'timeout', op, at: Date.now() };
         this.rev += 1;
         emit();
+        if (op === 'order') this.open(S);
       }
-    }, op === 'buy' ? FARM_BUY_ANSWER_MS : FARM_ANSWER_MS);
+    }, slow ? FARM_BUY_ANSWER_MS : FARM_ANSWER_MS);
     return true;
   },
 
@@ -106,7 +140,7 @@ export const farmBus = {
 
   /* A new session (a re-login as someone else) starts with no farm. */
   reset() {
-    this.view = null; this.offset = 0; this.pending = null; this.last = null;
+    this.view = null; this.offset = 0; this.pending = null; this.last = null; this.orders = null; this.ordersSeen = false;
     this.rev += 1;
     emit();
   },

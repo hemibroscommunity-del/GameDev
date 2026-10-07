@@ -169,6 +169,7 @@ const CAP_GATES = [
   'farmCrops' /* v2.3.3131: how many crops the worker grows -- a number, never a switch */,
   'pvpbrew' /* v2.3.3133: the damage brew in a fight with a player is the worker's -- lower case, a kill switch */,
   'pvpheal' /* v2.3.3133: one bite at a time in a fight with a player -- lower case, a kill switch */,
+  'farmorders' /* v2.3.3134: the Feed & Seed's order board -- lower case, a kill switch */,
   'armorforge' /* v2.3.3092: bars into armor -- lower case, a kill switch */,
   'trapping' /* v2.3.3120: arm a trap, then kill it -- lower case, a kill switch */,
   'trapcraft' /* v2.3.3120: box traps at the Woodworker -- lower case, a kill switch */,
@@ -215,6 +216,7 @@ const CAP_NOTES = {
   farmCrops: 'how many crops the worker grows: the Feed & Seed window offers only those (v2.3.3131; without it, the first four)',
   pvpbrew: 'damage brews in duels and player fights: every hit (swings, shots, the bow volley, the staff special) gets the Fury Tonic or Firebloom Tea the worker says you drank (v2.3.3133; off: pages that join afterwards claim the old way, where the volley and the staff special had no brew; pages already playing get no brew in a duel until they reload)',
   pvpheal: 'one bite at a time in a duel or a fight with a player: a Garden Stew, cooked fish or minnow bottle every 15 s (v2.3.3133; off: eat as fast as you can tap)',
+  farmorders: 'the Feed & Seed order board: three orders a day for crops and dishes, each paid in gold and Farming XP (v2.3.3134; off: no Orders tab, and a delivery is refused)',
 };
 
 export const DevPanel = ({ onClose }) => {

@@ -64,6 +64,7 @@ import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south 
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
 import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
 import { farmMethods } from './farm.js'; /* v2.3.3127: the farm, settled by the worker */
+import { farmOrderMethods } from './farmorders.js'; /* v2.3.3134: the Feed & Seed's order board */
 import { armorForgeMethods } from './armorforge.js'; /* v2.3.3092: bars into armour */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monster's hit carries its element */
@@ -5092,14 +5093,18 @@ export class GameRoom {
       case 'farm_open':
       case 'farm_act':
       case 'farm_buy':
+      case 'farm_order':
         /* v2.3.3127: the farm (farm.js) -- open the window, dig / plant /
            water / fertilize / harvest beds, or buy seeds and compost at the
            Feed & Seed.  The worker owns the beds, their clocks and every
            crop; the client only asks.  Its own cases, never the default
-           branch, which would rebroadcast the request to the room. */
+           branch, which would rebroadcast the request to the room.
+           v2.3.3134: + farm_order, deliver one of today's orders
+           (farmorders.js). */
         if (session.id) {
           const _fp = msg.type === 'farm_open' ? this._handleFarmOpen(session, msg.payload || msg)
             : msg.type === 'farm_act' ? this._handleFarmAct(session, msg.payload || msg)
+            : msg.type === 'farm_order' ? this._handleFarmOrder(session, msg.payload || msg)
             : this._handleFarmBuy(session, msg.payload || msg);
           /* v2.3.3127: said, not swallowed -- a throw in here once hid a
              harvest that paid again on every message (farm.js). */
@@ -5883,6 +5888,7 @@ Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
 Object.assign(GameRoom.prototype, farmMethods); /* v2.3.3127 */
+Object.assign(GameRoom.prototype, farmOrderMethods); /* v2.3.3134 */
 Object.assign(GameRoom.prototype, armorForgeMethods); /* v2.3.3092 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */

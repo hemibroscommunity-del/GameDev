@@ -31,6 +31,14 @@ export const FARM_ERR_TEXT = {
   nothing: 'Nothing to do there',
   timeout: 'No answer, try again',
   'timeout-buy': 'No answer yet. Check your bag',   /* v2.3.3127: a buy is not safe to repeat blind (farmBus.js) */
+  /* v2.3.3134: the order board (server farmorders.js) */
+  'order-short': 'Not enough yet',
+  'order-done': 'Already delivered',
+  'order-stale': 'New orders are up',
+  'order-gone': 'That order is gone',
+  'order-fight': 'Not while fighting',   /* v2.3.3134 (review): no deliveries in a fight with a player */
+  'timeout-order': 'No answer yet. Checking the board',   /* v2.3.3134 (review): farmBus asks for the board */
+  'orders-closed': 'The order board is closed for now',
 };
 
 /* A bag key's name as the farm says it: "Carrot", "Carrot Seeds", "Compost".
@@ -68,6 +76,7 @@ const SOUND = {
   feed: () => play('footstep-v3', { vol: 0.55, rate: 0.6 }),
   harvest: () => { try { BT_AUDIO.collect(); } catch (e) { /* sound only */ } },
   buy: () => play('coin-pickup', { vol: 0.5 }),
+  order: () => play('coin-pickup', { vol: 0.7 }),   /* v2.3.3134: an order delivered, paid in gold */
 };
 
 function say(S, dy, text, color, extra) {
@@ -124,6 +133,15 @@ export function farmFeedback(S, payload, deps) {
       } catch (e) { /* a quest flag never blocks the moment */ }
     } else if (did.op === 'buy') {
       say(S, 34, '+' + did.n + ' ' + farmItemName(did.item), GOOD);
+    } else if (did.op === 'order') {
+      /* v2.3.3134: an order delivered -- what it paid; the gold and the XP
+         themselves ride the player_state that follows. */
+      say(S, 34, 'Order delivered', GOOD);
+      if (did.gold > 0) say(S, 48, '+' + did.gold + ' gold', XP_GOLD);
+      if (did.xp > 0) say(S, 62, '+' + did.xp + ' Farming XP', XP_GOLD);
+      if (did.leveled && did.newLevel > did.fromLevel) {
+        try { celebrateLifeSkillLevel(S, 'farming', did.newLevel, did.fromLevel); } catch (e) { /* visual */ }
+      }
     }
   }
   /* A refusal the player can act on gets words; 'nothing' (a tap on a bed
