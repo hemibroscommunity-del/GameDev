@@ -19,6 +19,8 @@ import { processGameEvent } from '@/networking/gameEvents.js';
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
+import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
+import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
@@ -728,6 +730,14 @@ export function setupWebSocket(ctx) {
                     /* v2.3.3058: No man's land's skull (tick.js `sk`): absent is
                        none, for the same reason as `spr` above */
                     nmlPeerSkull(S, pid, data.sk);
+                    /* v2.3.3123: the pet out with them (tick.js `pw`, pet
+                       trapping Phase 4), drawn beside them (entityRenderer
+                       _updatePeerPets): absent is none, for the same reason
+                       as `spr`.  Parsed only when it changes. */
+                    if (S.others[pid]._pwRaw !== data.pw) {
+                      S.others[pid]._pwRaw = data.pw;
+                      S.others[pid]._pet = data.pw ? parsePetWire(data.pw) : null;
+                    }
                     /* v2.3.599: live equip -> the renderer reads other.equip
                        (nested), so rebuild it from the broadcast eqc/eql/eqs
                        whenever present, keeping armour on/off in sync. */
@@ -1524,6 +1534,20 @@ export function setupWebSocket(ctx) {
               }
               break;
             }
+          /* ═══ v2.3.3120: PET TRAPPING (game/trapping.js) ═══
+             The worker's four answers: the mark set (or why not), the trap
+             sprung at a kill (the shakes, a catch), the pets record, and the
+             Woodworker's traps.  Each settled on the worker already; these
+             only show it.  Explicit cases, not the default branch below,
+             which hands everything else to gameEvents as a room event. */
+          case 'trap_armed':
+            { try { onTrapArmed(S, msg.payload); } catch (_te) { /* display only */ } break; }
+          case 'trap_result':
+            { try { onTrapResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
+          case 'pets_state':
+            { try { onPetsState(S, msg.payload); } catch (_te) { /* display only */ } break; }
+          case 'make_traps_result':
+            { try { onMakeTrapsResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
           case 'forge_armor_result':
             {
               /* v2.3.3092: the armor forge's receipt (armorforge.js).  The
@@ -2478,6 +2502,9 @@ export function setupWebSocket(ctx) {
                  to the server. */
               if (!msg.payload || !S.rpg) break;
               var cc = msg.payload;
+              /* v2.3.3121: the pet out with you earned a tenth of it (the
+                 worker's numbers, game/trapping.js onPetXp) */
+              if (cc.pet) { try { onPetXp(S, cc.pet); } catch (_pe) { /* display only */ } }
               if (cc.leveled) {
                 /* v2.3.2615: 'char', not 'combat'.  This is the legacy
                    build-point path and the level it raises is the CHARACTER
@@ -3900,6 +3927,7 @@ export function setupWebSocket(ctx) {
        server-truth renderer, so a 33ms batch delay would make every
        stage/confirm click feel laggy. */
     'trade2_open', 'trade2_set', 'trade2_ready', 'trade2_confirm', 'trade2_cancel', 'trade2_stage_weapon', 'trade2_unstage_weapon', /* v2.3.1754: trade2_ready — TRAPS #18, the third leg */
+    'trade2_pets', /* v2.3.3122: the trade window's pet lane (trade2.js _handleTrade2Pets) */
     /* v2.3.1185: party commands -- same server-truth-renderer posture
        as trade2; invite/accept clicks should not sit in a batch. */
     'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick', 'party_chat',
@@ -4127,6 +4155,16 @@ export function setupWebSocket(ctx) {
         }
         /* v2.3.2822: Smelt at the blacksmith (SmithyPanel) -> smelting.js. */
         if (msg.type === 'smelt_bar') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.3120: pet trapping -- the Woodworker's Traps tab, the TRAP
+           pop-up and the Pets page (game/trapping.js, game/petBook.js) ->
+           trapping.js / petbook.js.  TRAPS #18: a type with no line here is
+           silently dropped, and the button would do nothing at all. */
+        if (msg.type === 'make_traps' || msg.type === 'trap_arm' || msg.type === 'pet_active'
+            || msg.type === 'pet_name' || msg.type === 'pet_release'
+            || msg.type === 'pet_house_buy') {   /* v2.3.3123: more room in the Pet House */
           ws.send(JSON.stringify(msg));
           return;
         }

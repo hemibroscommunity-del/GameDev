@@ -110,8 +110,13 @@ check('claiming everything comes to EXACTLY the character that claimed nothing',
   check('the bag holds none of the claimed keys', Object.keys(t.inventory || {}).filter((k) => k !== 'daily_chest').length === 0, Object.keys(t.inventory || {}).slice(0, 5));
   check('no weapon, stash, armour or shield', t.weapon === null && (t.weaponStash || []).length === 0 && t.armor === null && t.shield === null
     && (t.armorStash || []).length === 0, { w: t.weapon, ws: t.weaponStash, a: t.armor, s: t.shield, as: t.armorStash });
+  /* no pets: since v2.3.3120 pets live in the pets record (petbook.js), and
+     a first connect's old list and active pet are taken off altogether
+     (trapping.js trapBootstrapGuard) -- so none of either */
+  const book = room._petbookOf ? room._petbookOf('bp_fresh_t') : null;
   check('no gold, no gems, no pets', t.goldNuggets === 0 && t.goldBars === 0 && Object.keys(ls.gems || {}).length === 0
-    && Array.isArray(ls.pets) && ls.pets.length === 0 && ls.activePet === null, { n: t.goldNuggets, b: t.goldBars, gems: ls.gems, pets: ls.pets });
+    && !(ls.pets && ls.pets.length) && ls.activePet == null && !(book && book.rec && book.rec.list && book.rec.list.length),
+    { n: t.goldNuggets, b: t.goldBars, gems: ls.gems, pets: ls.pets, active: ls.activePet, book: book && book.rec && book.rec.list });
   check('no achievement points and no quest state', t.achievementPoints === 0 && Object.keys(t._quests || {}).length === 0 && Object.keys(t._questFlags || {}).length === 0,
     { ap: t.achievementPoints, q: t._quests, f: t._questFlags });
   check('no raw stats, and a new character\'s HP', t.vitality === 0 && t.endurance === 0 && t.maxHp < 9999, { v: t.vitality, e: t.endurance, maxHp: t.maxHp });

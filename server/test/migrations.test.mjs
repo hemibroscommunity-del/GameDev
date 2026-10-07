@@ -123,14 +123,19 @@ const legacyBlob = () => ({
   });
   const ps = room.playerState['bp_mig_b'];
   /* v2.3.3113: stronger than healed -- a first join takes nothing from the
-     payload (join.js), so the corruption never reaches the fresh blob:
-     pets an empty ARRAY, no active pet, the client's own new character. */
+     payload (join.js), so the corruption never reaches the fresh blob: no
+     pets (and since v2.3.3120 not even the empty list or an active pet --
+     trapping.js trapBootstrapGuard; the pets record, petbook.js, is the only
+     list), the client's own new character: fishing at its default 1, not the
+     payload's 2. */
   check('a first join\'s corrupted payload never reaches the fresh blob',
-    Array.isArray(ps.lifeSkills.pets) && ps.lifeSkills.pets.length === 0 && ps.lifeSkills.activePet === null && ps.lifeSkills.fishing.level === 1,
+    !(ps.lifeSkills.pets && !Array.isArray(ps.lifeSkills.pets)) && !((ps.lifeSkills.pets || []).length)
+      && ps.lifeSkills.activePet == null && ps.lifeSkills.fishing && ps.lifeSkills.fishing.level === 1,
     ps.lifeSkills);
   await room._saveRpg('bp_mig_b', ps);
   const saved = state._store.get('rpg:bp_mig_b');
-  check('the saved fresh blob is clean AND stamped (never needs migration v1)', Array.isArray(saved.lifeSkills.pets) && saved._v === RPG_SCHEMA_VERSION, { _v: saved._v });
+  check('the saved fresh blob is clean AND stamped (never needs migration v1)',
+    !(saved.lifeSkills.pets && !Array.isArray(saved.lifeSkills.pets)) && saved._v === RPG_SCHEMA_VERSION, { _v: saved._v });
 }
 
 // ── 6. admin-restore path: an unversioned snapshot re-migrates on
