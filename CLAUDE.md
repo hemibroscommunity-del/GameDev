@@ -1679,7 +1679,7 @@ remnant to migrate server-side, not a mode to preserve.
       for 1,000 gold, each step 1,000 more, to 120, a stale `cap` refused;
       caps `petwards` / `petshow` / `pethouse`; dev `look: {gold, size}`;
       `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.
-  - Since v2.3.3142 THE BUILDINGS HAVE INSIDES -- the owner sent seventeen
+  - Since v2.3.3143 THE BUILDINGS HAVE INSIDES -- the owner sent seventeen
     pictures of them (made from docs/ART-WISHLIST.md's prompts) and said "Ok
     wire these up":
     - the top of every building's window is its room, edge to edge

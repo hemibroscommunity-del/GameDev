@@ -57,7 +57,7 @@ function lsGold(amount, size) {
   }), amount);
 }
 /* v2.3.2627 put the owner's auction-house painting here, with a clerk behind
-   the counter; v2.3.3142 moved both out.  The painting (now the owner's new one,
+   the counter; v2.3.3143 moved both out.  The painting (now the owner's new one,
    in the same family as the other sixteen rooms) and the clerk are drawn by
    BuildingRoom.jsx, once, at the top of the window card for every building --
    data/buildingRooms.js says where he stands.  Nothing of either is left in

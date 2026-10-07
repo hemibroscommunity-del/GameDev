@@ -1,4 +1,4 @@
-/* ═══ THE INSIDE OF EACH BUILDING, ON A PHONE (v2.3.3142) ═══
+/* ═══ THE INSIDE OF EACH BUILDING, ON A PHONE (v2.3.3143) ═══
  *
  * Owner, 2026-10-06: sent seventeen pictures of the inside of BroTown's
  * buildings and said "Ok wire these up".  One real player against a real
@@ -13,7 +13,7 @@
  *   3. the Auction House's clerk is drawn into his room, inside it, centred on
  *      the lectern;
  *   4. the Land Office's window (it was a separate dialog under an empty card
- *      until v2.3.3142) is a panel in the card like the others, under its
+ *      until v2.3.3143) is a panel in the card like the others, under its
  *      room, and "Travel to Farm" can be reached by a finger;
  *   5. the Market (a screen of its own, reached from a window) has no room;
  *   6. a shorter phone holds the picture to 30vh, a sideways one drops it, and
@@ -273,7 +273,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await closePanel();
 
   /* ── 7. walking away, every room asked for, no errors ── */
-  await standAt(byId.townhall.x, byId.townhall.y + 330);   /* the square, 330 px south of the Town Hall's door: clear of every door (the Town Hall is one since v2.3.3142) */
+  await standAt(byId.townhall.x, byId.townhall.y + 330);   /* the square, 330 px south of the Town Hall's door: clear of every door (the Town Hall is one since v2.3.3143) */
   await P.page.waitForTimeout(1200);
   const away = await P.page.evaluate(() => window.__btRoomWarm.held());
   const wantAsked = [...new Set(Object.values(R.BUILDING_ROOMS))];

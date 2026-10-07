@@ -1,6 +1,6 @@
 import React from 'react';
 
-/* ═══ v2.3.3142: THE LAND OFFICE'S WINDOW, A PANEL LIKE THE OTHERS ═══
+/* ═══ v2.3.3143: THE LAND OFFICE'S WINDOW, A PANEL LIKE THE OTHERS ═══
  *
  * Standing at the Land Office's door and tapping Enter (v2.3.3032) opened
  * `buildingPanel === 'farmhome'`.  Its content was NOT in the building card
