@@ -309,7 +309,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const fishB = await readBody(P);
           rec.ok(`fishing wears his colours: skin ${fishB.skin && fishB.skin.rgb} (standing ${standB.skin.rgb}), trousers ${fishB.pants && fishB.pants.rgb} (${standB.pants.rgb}), boots ${fishB.boots && fishB.boots.rgb} (${standB.boots.rgb}) -- not the sheet's orange, olive and grey`,
             fishB.pose === 'fish' && near(fishB.skin, standB.skin, 30) && isBlue(fishB.pants) && near(fishB.pants, standB.pants, 35) && isRed(fishB.boots) && near(fishB.boots, standB.boots, 35), { fishB, standB });
-          rec.ok(`...the fishing line still grey (${fishB.line && fishB.line.grey} of ${fishB.line && fishB.line.n} px) and the rod still wood (${fishB.rod && fishB.rod.wood} of ${fishB.rod && fishB.rod.n})`,
+          const pct = (v) => (v == null ? '-' : Math.round(v * 100) + '%');
+          rec.ok(`...the fishing line still grey (${pct(fishB.line && fishB.line.grey)} of its ${fishB.line && fishB.line.n} px) and the rod still wood (${pct(fishB.rod && fishB.rod.wood)} of its ${fishB.rod && fishB.rod.n})`,
             !!fishB.line && fishB.line.n > 20 && fishB.line.grey >= 0.95 && !!fishB.rod && fishB.rod.n > 50 && fishB.rod.wood >= 0.9, fishB);
         }
       }
