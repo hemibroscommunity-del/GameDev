@@ -4967,7 +4967,7 @@ export class GameRoom {
         const _ps = this.playerState[session.id];
         if (!_ps) break;
         const _sid = session.id, _kind = msg.type;
-        /* v2.3.3128: the player's id goes in, so the trade is SAVED with the
+        /* v2.3.3137: the player's id goes in, so the trade is SAVED with the
            pile (shop.js: before, a sale came undone on the next reconnect
            and Diego's shelf kept a copy). */
         (_kind === 'shop_sell'
