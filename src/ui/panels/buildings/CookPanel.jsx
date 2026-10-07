@@ -1,8 +1,9 @@
 import React from 'react';
-import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, createDefaultCompStats, getCookingSweetSpot, getFishTierLevel, toDisplayDamage } from '@/data/index.js'; /* v2.3.2520: the display damage scale */
+import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, createDefaultCompStats, getCookingSweetSpot, getFishTierLevel, toDisplayDamage, dishFor } from '@/data/index.js'; /* v2.3.2520: the display damage scale; v2.3.3130: dishFor */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 /* === CookPanel — buildingPanel === 'cook' sub-panel === */
 /* v2.3.879: extracted verbatim from the buildingPanel === 'cook'
@@ -46,6 +47,21 @@ export function CookPanel(props) {
     cookMinigame = props.cookMinigame,
     setCookMinigame = props.setCookMinigame;
   var _rpgState$lifeSkills14, _rpgState$lifeSkills15, _rpgState$lifeSkills16, _rpgState$lifeSkills17;
+  /* v2.3.3130: does the worker cook INTO THE BAG (caps.meals)?  Read live,
+     not once: the caps land with state_sync, after the panel may be open. */
+  var _mealsOn = function () {
+    var S = stateRef && stateRef.current;
+    return !!(S && S._serverCaps && S._serverCaps.meals);
+  };
+  /* v2.3.3130: HOW MANY recipes the worker cooks (caps.cookRows): a newer
+     page in front of an older worker -- a rollback -- offered rows that
+     worker has not got, and their cooks vanished (review).  A worker from
+     before it cooks the three old rows the old way. */
+  var _cookRows = function () {
+    var S = stateRef && stateRef.current;
+    var n = S && S._serverCaps && S._serverCaps.cookRows;
+    return typeof n === 'number' ? n : 3;
+  };
   /* v2.3.1232: shared Lantern Slate style fragments (styles only). */
   var LS_HEAD = {
     fontSize: 11,
@@ -465,6 +481,14 @@ export function CookPanel(props) {
           var R = stateRef.current.rpg;
           if (!R.inventory[key] || R.inventory[key] < 1) return;
           var S = stateRef.current;
+          /* v2.3.3133: one bite at a time in a fight with a player
+             (fightFood.js) -- held back and said, not eaten and taken back. */
+          var _wait = pvpHealWaitMs(S);
+          if (_wait > 0) {
+            pushDmgPopup(S, S.player.x, S.player.y - 30, pvpHealWaitText(_wait), '#B9C1BF');
+            return;
+          }
+          noteInstantHeal(S);
           /* Server-authoritative inventory + HP in MP: send eat_request
              and let the worker validate ownership + apply the heal +
              decrement.  Predict locally for snappy bar + popup feel;
@@ -492,16 +516,23 @@ export function CookPanel(props) {
     style: _objectSpread(_objectSpread({}, LS_HEAD), {}, {
       marginTop: 6
     })
-  }, "Buff Recipes — Herbs"), /*#__PURE__*/React.createElement("div", {
+  }, _mealsOn() ? "Meals & Brews — Herbs" : "Buff Recipes — Herbs"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#8D9B98',
       marginBottom: 8
     }
-  }, "Combine farmed herbs into combat buff meals. No timing needed — just ingredients."), /*#__PURE__*/React.createElement("div", {
+  }, _mealsOn() ? "Cook farmed herbs into meals and brews to carry. One meal and one brew can run at once." : "Combine farmed herbs into combat buff meals. No timing needed — just ingredients."), /*#__PURE__*/React.createElement("div", {
     style: LS_WELL
   }, COOKING_RECIPES.map(function (recipe, ri) {
     var _rpgState$lifeSkills17;
+    /* v2.3.3130: in front of an OLD worker (no caps.meals) a cook is the old
+       instant buff, and that worker has no recipe past index 2 -- so the
+       brewed tonics are not offered there at all. */
+    var mealsOn = _mealsOn();
+    if (!mealsOn && !recipe.buff) return null;
+    if (mealsOn && ri >= _cookRows()) return null;
+    var dish = dishFor(recipe.makes);
     var cookLvl = ((_rpgState$lifeSkills17 = rpgState.lifeSkills) === null || _rpgState$lifeSkills17 === void 0 || (_rpgState$lifeSkills17 = _rpgState$lifeSkills17.cooking) === null || _rpgState$lifeSkills17 === void 0 ? void 0 : _rpgState$lifeSkills17.level) || 1;
     var canCook = cookLvl >= recipe.cookLvl;
     var inv = rpgState.inventory || {};
@@ -546,7 +577,11 @@ export function CookPanel(props) {
     var firstMissing = ingStatus.find(function (s) {
       return s.have < s.need;
     });
-    var buffDesc = recipe.desc || (recipe.buff === 'heal' ? "Heals ".concat(recipe.power, " HP") : recipe.buff === 'all' ? "+".concat(Math.round(recipe.power * 100), "% all stats") : recipe.buff === 'regen' ? "+".concat(Math.round(recipe.power * 100), "% regen") : recipe.buff === 'resist' ? "+".concat(Math.round(recipe.power * 100), "% resist") : "+".concat(Math.round(recipe.power * 100), "% ").concat(recipe.buff));
+    /* v2.3.3130: on a worker with caps.meals the cook MAKES the dish, so the
+       row says what the dish does when you eat or drink it (DISHES, or the
+       tonic's own line) and how many you already carry. */
+    var carried = mealsOn ? Math.floor(Number((rpgState.inventory || {})[recipe.makes]) || 0) : 0;
+    var buffDesc = mealsOn ? ((dish && dish.desc) || recipe.desc) : recipe.desc || (recipe.buff === 'heal' ? "Heals ".concat(recipe.power, " HP") : recipe.buff === 'all' ? "+".concat(Math.round(recipe.power * 100), "% all stats") : recipe.buff === 'regen' ? "+".concat(Math.round(recipe.power * 100), "% regen") : recipe.buff === 'resist' ? "+".concat(Math.round(recipe.power * 100), "% resist") : "+".concat(Math.round(recipe.power * 100), "% ").concat(recipe.buff));
     return /*#__PURE__*/React.createElement("div", {
       key: ri,
       style: {
@@ -565,7 +600,7 @@ export function CookPanel(props) {
       style: {
         fontSize: 18
       }
-    }, "🍲"), /*#__PURE__*/React.createElement("div", {
+    }, mealsOn && dish && dish.look ? dish.look : recipe.makes && !dish && mealsOn ? "\uD83E\uDDEA" : "🍲"), /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
         minWidth: 0
@@ -591,7 +626,7 @@ export function CookPanel(props) {
         fontSize: 11,
         color: '#8D9B98'
       }
-    }, buffDesc, recipe.duration ? " \xB7 ".concat(Math.round(recipe.duration / 60), "min") : ''), /*#__PURE__*/React.createElement("div", {
+    }, buffDesc, !mealsOn && recipe.duration ? " \xB7 ".concat(Math.round(recipe.duration / 60), "min") : '', mealsOn && carried > 0 ? " \xB7 you carry ".concat(carried) : ''), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: '#8D9B98'
@@ -631,6 +666,8 @@ export function CookPanel(props) {
          guard is unchanged underneath) + the approved disabled recipe
          (#1A292F fill, #8D9B98 text, .11 hairline, opacity 1, 44px). */
       disabled: !canCook || !hasIngredients,
+      "data-cook-recipe": ri,   /* v2.3.3130: mp-meals */
+      "data-cook-makes": recipe.makes || '',
       style: {
         minHeight: 44,
         padding: '0 14px',
@@ -657,8 +694,13 @@ export function CookPanel(props) {
            shortly with the authoritative inventory + buff state. */
         /* v2.3.2077: same flag, same hole -- see BroTown.jsx's eat_request
            note. A recipe cooked in town never reached the worker. */
+        /* v2.3.3130: on a worker with caps.meals the cook MAKES the dish
+           (`carry`), and nothing runs until it is eaten or drunk -- so the
+           buff prediction below is skipped and the dish is predicted into the
+           bag instead.  The worker echoes the bag either way. */
+        var carryCook = _mealsOn();
         if (S.channel) {
-          try { S.channel.send({ type: 'cook_recipe', payload: { recipeIdx: ri } }); } catch (e) {}
+          try { S.channel.send({ type: 'cook_recipe', payload: carryCook ? { recipeIdx: ri, carry: true } : { recipeIdx: ri } }); } catch (e) {}
         }
         /* Consume ingredients */
         Object.entries(recipe.ingredients).forEach(function (_ref113) {
@@ -674,19 +716,23 @@ export function CookPanel(props) {
             if (R.inventory[k] <= 0) delete R.inventory[k];
           });
         });
-        /* Apply food buff */
-        var dur = (recipe.duration || 0) * 1000;
-        if (recipe.buff === 'heal') {
+        if (carryCook && recipe.makes) {
+          if (!R.inventory) R.inventory = {};
+          R.inventory[recipe.makes] = (Math.floor(Number(R.inventory[recipe.makes]) || 0)) + 1;
+        }
+        /* Apply food buff (an OLD worker's instant cook only) */
+        var dur = carryCook ? 0 : (recipe.duration || 0) * 1000;
+        if (!carryCook && recipe.buff === 'heal') {
           R.hp = Math.min(R.maxHp, R.hp + recipe.power);
         }
-        if (recipe.buff === 'regen') S._regenBuff = Date.now() + dur;
-        if (recipe.buff === 'resist') S._resistBuff = Date.now() + dur;
+        if (!carryCook && recipe.buff === 'regen') S._regenBuff = Date.now() + dur;
+        if (!carryCook && recipe.buff === 'resist') S._resistBuff = Date.now() + dur;
         /* v2.3.2058: cleared with the timer -- a meal states its own
              magnitude (the 1.20 fallback), it must not inherit a Fury
              Tonic's x2 that is still ticking. Mirrors the server's
              `delete ps._buffs.damageMul` in cooking.js. */
-        if (recipe.buff === 'damage') { S._dmgBuffMul = 0; S._dmgBuff = Date.now() + dur; }
-        if (recipe.buff === 'all') {
+        if (!carryCook && recipe.buff === 'damage') { S._dmgBuffMul = 0; S._dmgBuff = Date.now() + dur; }
+        if (!carryCook && recipe.buff === 'all') {
           S._dmgBuffMul = 0;   /* v2.3.2058: see above */
           S._spdBuffMul = 0;   /* v2.3.2062: nor a Swift Draught's x1.5 */
           S._dmgBuff = Date.now() + dur;
@@ -699,7 +745,7 @@ export function CookPanel(props) {
         var leveled = addLifeSkillXp(sk, 'cooking', recipe.tier * 25);
         if (!R._questFlags) R._questFlags = {};
         R._questFlags.cookedRecipe = true;
-        pushDmgPopup(S, S.player.x, S.player.y - 30, recipe.name + '!', '#ea580c');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, carryCook ? '+1 ' + recipe.name : recipe.name + '!', '#ea580c');
         if (leveled) celebrateLifeSkillLevel(S, 'cooking', sk.cooking.level, _ck2LvlBefore); /* v2.3.2591 */
         if (leveled) pushDmgPopup(S, S.player.x, S.player.y - 50, 'Cooking Lv' + sk.cooking.level + '!', '#D8A94D');
         setRpgState(_objectSpread({}, R));

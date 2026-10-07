@@ -93,7 +93,8 @@ export function attackingNow(S, held, now) {
  * is not one of these.
  */
 export function tapActIcon(kind) {
-  return (kind === 'door' || kind === 'talk' || kind === 'sleep') ? kind : 'jump';
+  /* v2.3.3136: and a bed's step on your farm (desktopControls interactKind) */
+  return (kind === 'door' || kind === 'talk' || kind === 'sleep' || (typeof kind === 'string' && kind.indexOf('farm-') === 0)) ? kind : 'jump';
 }
 
 /**

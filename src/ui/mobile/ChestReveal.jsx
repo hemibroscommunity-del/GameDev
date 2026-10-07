@@ -60,7 +60,9 @@ const ANSWER_TIMEOUT_MS = 8000;
 export function prizeText(p) {
   if (!p) return '';
   if (p.kind === 'coins') return '+' + (p.coins || 0) + ' coins';
-  if (p.kind === 'fish') return (p.count || 10) + ' Cooked Fish';
+  /* v2.3.3132: raw minnows to cook (server dailychest.js); a chest opened on
+     an older worker still says what it gave. */
+  if (p.kind === 'fish') return (p.count || 10) + (/^cooked/.test(p.invKey || '') ? ' Cooked Fish' : ' Fish to cook');
   if (p.kind === 'gem') return 'A Rare Gem';
   if (p.kind === 'armor' && p.piece) {
     const q = p.piece.quality && p.piece.quality !== 'normal' ? (QUALITY_LABEL[p.piece.quality] || p.piece.quality) + ' ' : '';
@@ -71,7 +73,7 @@ export function prizeText(p) {
 function prizeIcon(p) {
   if (!p) return null;
   if (p.kind === 'coins') return '/icons/ui/cur-gold.webp';
-  if (p.kind === 'fish') return thumbFor(p.invKey || 'cooked_fish_minnow');
+  if (p.kind === 'fish') return thumbFor(p.invKey || 'fish_minnow');
   if (p.kind === 'gem') return thumbFor(p.invKey || 'rare_gem');
   if (p.kind === 'armor' && p.piece) return armorIconFor(p.piece.slot === 'legsArmor' ? 'legsArmor' : 'armor', p.piece.mat);
   return null;
@@ -81,7 +83,7 @@ function prizeIcon(p) {
 const _warm = [];
 function warmPrizeIcons() {
   if (_warm.length || typeof Image === 'undefined') return;
-  const urls = ['/icons/ui/cur-gold.webp', thumbFor('cooked_fish_minnow'), thumbFor('rare_gem'),
+  const urls = ['/icons/ui/cur-gold.webp', thumbFor('fish_minnow'), thumbFor('rare_gem'),
     armorIconFor('armor', 'copper'), armorIconFor('legsArmor', 'copper'),
     armorIconFor('armor', 'iron'), armorIconFor('legsArmor', 'iron')];
   for (const u of urls) { if (!u) continue; const i = new Image(); i.src = u; _warm.push(i); }

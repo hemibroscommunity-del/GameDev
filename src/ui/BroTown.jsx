@@ -309,6 +309,7 @@ import { wireSlimeAudio } from '@/game/slimeAudio.js';
 import { wireOrientationSync } from '@/game/orientationSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
+import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player */
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822: stuck-dead watchdog */
 /* v2.3.2330: the SFX manifest loads once the loading gate has what it was
    waiting for -- see BT_AUDIO.unlock for why it no longer loads at the login
@@ -486,6 +487,11 @@ import { isWheelTrialZone, footstepSurface } from '@/game/worldTrial.js';   /* v
 import { wheelDoorAt, enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks */
 import { wheelObjectsInfo } from '@/game/wheelTrial.js';
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
+import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
+import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it */
+import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
+import { bedAt } from '@/game/farmWork.js';
+import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
 import { WHEEL_TOWNSFOLK, WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
@@ -4944,7 +4950,7 @@ export var BroTown = function BroTown(_ref0) {
         var _sprNow = Date.now();
         var _sprEv = updateSprint(S, _sprNow, {
           moving: (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1)
-            && !S._dodgeRoll && !S._sled && !S._zoneLoading && !S._netHold && !S._townArtHold
+            && !S._dodgeRoll && !S._sled && !S._zoneLoading && !S._netHold && !S._townArtHold && !S._farmArtHold
             && elemMoveMult(S, _sprNow) > 0,
           key: !!(K['Shift']),
           swimming: isWheelSwimming(S),
@@ -5050,7 +5056,7 @@ export var BroTown = function BroTown(_ref0) {
            behind the loading overlay (zoneTransitions.js), freeze the
            player at the hub exit so the proximity trigger stays armed and
            the entry runs the instant the load resolves. */
-        if (S._zoneLoading || S._netHold || S._townArtHold) finalSpd = 0;   /* v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
+        if (S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold) finalSpd = 0;   /* v2.3.3136: _farmArtHold -- veiled while your farm loads (game/farmTrip.js); v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
         /* v2.3.2996: a monster's element on you -- a snowman's chill walks you
            at CHILL_MULT, a blue slime's goo holds you where you stand
            (game/elemHits.js; the worker said so on the hit). */
@@ -5484,6 +5490,11 @@ export var BroTown = function BroTown(_ref0) {
         } else {
           S._nearPetHouse = false;
         }
+        /* ═══ v2.3.3136: A BED ON YOUR FARM ═══
+           The one your boots stand in reach of and its next step (the stick's
+           picture, E, a tap), and a step under way -- its sounds, its end, or
+           your walking away from it (game/farmWalk.js) */
+        tickFarmWalk(S, Date.now());
 
 
         /* Revive harvested gather nodes whose respawnAt has elapsed.
@@ -8735,6 +8746,44 @@ export var BroTown = function BroTown(_ref0) {
     return true;
   }, []);
 
+  /* ═══ v2.3.3136: A TAP ON A BED OF YOUR FARM ═══
+     The owner: "I want the planting process to happen by your character
+     taking action on the plot of ground."  A tap on a bed takes its next step
+     there, as E and the stick's tap do (game/farmWalk.js startFarmStep), when
+     your boots stand in its reach -- the reach they use (farmWork bedAt), so
+     the three cannot disagree -- and out of reach says so, the resources'
+     rule.  The bed's box reaches up over a tall crop.  True when it took the
+     tap (the caller then neither jumps nor opens chat). */
+  var _tapFarmBedAtCss = useCallback(function (cssX, cssY) {
+    var _S = stateRef.current;
+    if (!_S || !_S.player || !_S.camera || _S.currentZone !== 'farm_home') return false;
+    var _cx = _S.camera.x, _cy = _S.camera.y;
+    var _sx = _S._worldScaleX || 1, _sy = _S._worldScaleY || 1;
+    var _best = -1, _bestD = 14;   /* CSS px round a bed's box: a thumb */
+    for (var _bi = 0; _bi < FARM_BEDS.length; _bi++) {
+      var _b = FARM_BEDS[_bi];
+      var _x0 = (_b.x - _cx) * _sx, _x1 = (_b.x + _b.w - _cx) * _sx;
+      var _y0 = (_b.y - 44 - _cy) * _sy, _y1 = (_b.y + _b.h - _cy) * _sy;
+      var _ox = Math.max(_x0 - cssX, 0, cssX - _x1), _oy = Math.max(_y0 - cssY, 0, cssY - _y1);
+      var _d = Math.sqrt(_ox * _ox + _oy * _oy);
+      if (_d < _bestD) { _bestD = _d; _best = _bi; }
+    }
+    if (_best < 0) return false;
+    var _bb = FARM_BEDS[_best];
+    var _P = _S.player;
+    var _fy = _P.y + playerGroundDy(_S.currentZone, _P.x, _P.y);
+    var _inReach = bedAt([_bb], _P.x, _fy, FARM_BED_REACH) === 0;
+    var _probe = typeof window !== 'undefined' && window.__btProbe;
+    if (!_inReach && !_S._farmWork) {
+      try { pushDmgPopup(_S, _bb.x + _bb.w / 2, _bb.y - 8, 'Too far away!', '#D95C54'); } catch (_e12) { /* best-effort */ }
+      if (_probe) window.__btBedTap = { bed: _best, far: true, at: Date.now() };
+      return true;
+    }
+    var _used = startFarmStep(_S, _best);
+    if (_probe) window.__btBedTap = { bed: _best, used: !!_used, at: Date.now() };
+    return true;
+  }, []);
+
   /* Called from the swipe handler when a valid swipe lands during the
      'ready' window. Routes to the existing per-skill reward applier
      so XP + inventory + server node_strike all run unchanged. */
@@ -8803,11 +8852,43 @@ export var BroTown = function BroTown(_ref0) {
       var R = S && S.rpg;
       if (!R || !R.inventory) return;
       if ((R.inventory[key] || 0) <= 0) return;
+      /* ═══ v2.3.3130: A MEAL FROM THE COOKHOUSE ═══
+         Not a heal: half an hour of an effect in the meal slot, which the
+         worker applies and echoes (_buffs) -- so no "HP full", no heal to
+         predict, and nothing drawn but the bite.  The bag predicts the one
+         taken; the echo is the truth (rule 20).  Only offered at all on a
+         worker with caps.meals (ItemDetailPopup). */
+      var _meal = DATA.dishFor(key);
+      /* v2.3.3131: a dish eaten AT ONCE (the Garden Stew) is a heal, so it
+         takes the cooked fish's road below -- "HP full", the predicted heal. */
+      if (_meal && _meal.buff !== 'heal') {
+        if (_meal.slot !== 'meal') return;
+        R.inventory[key] -= 1;
+        if (R.inventory[key] <= 0) delete R.inventory[key];
+        if (S.channel) {
+          try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
+        }
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Ate ' + _meal.name, '#D8A94D');
+        try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
+        setRpgState(_objectSpread({}, R));
+        try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
+        return;
+      }
       var maxHp = R.maxHp || 100;
       if ((R.hp || 0) >= maxHp) {
         pushDmgPopup(S, S.player.x, S.player.y - 30, 'HP full', '#B9C1BF');
         return;
       }
+      /* v2.3.3133: one bite at a time in a fight with a player (fightFood.js;
+         the worker's rule, cooking.js _pvpHealWait) -- held back here, and
+         said, rather than eaten and taken back by the refusal. */
+      var _bite = isInstantHeal(key, _meal);
+      var _wait = _bite ? pvpHealWaitMs(S) : 0;
+      if (_wait > 0) {
+        pushDmgPopup(S, S.player.x, S.player.y - 30, pvpHealWaitText(_wait), '#B9C1BF');
+        return;
+      }
+      if (_bite) noteInstantHeal(S);
       var HEAL = calcDisplayHeal(R, key);
       var before = R.hp || 0;
       R.hp = Math.min(maxHp, before + HEAL);
@@ -8841,7 +8922,7 @@ export var BroTown = function BroTown(_ref0) {
         try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
       }
       pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + toDisplayDamage(actual) + ' HP', '#59BF91');   /* v2.3.2520: display scale */
-      pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate cooked fish', '#D8A94D');
+      pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate ' + (_meal ? _meal.name : 'cooked fish'), '#D8A94D');   /* v2.3.3131: or the stew */
       try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -9593,7 +9674,9 @@ export var BroTown = function BroTown(_ref0) {
        the tap and the caller must not also open chat. */
     var tapResourceAtClient = function (clientX, clientY) {
       var _p = clientToCanvas(clientX, clientY);
-      return _tapHarvestAtCss(_p.x, _p.y);
+      /* v2.3.3136: ...or a bed of your farm, before the self-tap's chat (a
+         farmer kneeling at a bed stands inside that circle) */
+      return _tapHarvestAtCss(_p.x, _p.y) || _tapFarmBedAtCss(_p.x, _p.y);
     };
     var tapNpcAtClient = function (clientX, clientY) {
       var _p = clientToCanvas(clientX, clientY);
@@ -11440,7 +11523,7 @@ export var BroTown = function BroTown(_ref0) {
                  is the DESKTOP door (and the strip of canvas exposed below the
                  touch zones when a sheet is open); the phone's tap arrives as
                  a synthetic click in onClick, which now calls the same thing. */
-              if (!_tapHarvestAtCss(_cssX, _cssY)) {
+              if (!_tapHarvestAtCss(_cssX, _cssY) && !_tapFarmBedAtCss(_cssX, _cssY)) {   /* v2.3.3136: + a bed of your farm */
                 /* ═══ v2.3.2305: ...AND THE NPC DOOR, WHICH WAS MISSING ═══
                    This handler stamps _touchHandledAt, which makes the canvas
                    onClick skip its own tap logic for ~600ms -- so on every
@@ -11764,6 +11847,9 @@ export var BroTown = function BroTown(_ref0) {
          click-to-harvest there alongside the E key -- welcome, and the reach
          and tool gates are the same ones the button uses. */
       if (_tapHarvestAtCss(cssX, cssY)) return;
+      /* v2.3.3136: ...or a bed of your farm -- before the count below, so a
+         tap on a bed never also jumps */
+      if (_tapFarmBedAtCss(cssX, cssY)) return;
       /* v2.3.3105: counted, so the right stick's release knows its forwarded
          tap reached here and nothing above took it -- a jump's cue (rE) */
       S._tapEmptySeq = (S._tapEmptySeq || 0) + 1;
@@ -12074,15 +12160,15 @@ export var BroTown = function BroTown(_ref0) {
     },
     onClick: function onClick() {
       var S2 = stateRef.current;
-      /* v2.3.1406: farm map is per-zone-loaded now and this warp bypasses
-         the hub-exit gate — kick the load so the ground paints promptly. */
-      import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets('farm_home'); }).catch(function () {});
       rememberFarmTrip(S2);   /* v2.3.3032: from the Wheel, the gate leads back out where you stood */
       S2.currentZone = 'farm_home';
+      updateZoneDimensions('farm_home');   /* v2.3.3136: the farm's own size (this warp never set it) */
       S2.map = generateZoneMap('farm_home');
-      var fz = ZONES.farm_home;
-      S2.player.x = fz.w * TILE / 2;
-      S2.player.y = fz.h * TILE / 2;
+      /* v2.3.3136: in at the farm's gate, held under its loading screen until
+         it is all there (game/farmTrip.js) */
+      S2.player.x = FARM_ARRIVE.x;
+      S2.player.y = FARM_ARRIVE.y;
+      holdFarmUntilReady(S2);
       S2.monsters = [];
       S2.gatherNodes = [];
       S2.npcs = null;
@@ -12515,6 +12601,9 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
     if (!S) return null;
     var effects = [];
+    /* v2.3.3130: a meal or brew lasts half an hour now, and "1800s" is not a
+       time anyone reads -- minutes from a minute up, seconds below it. */
+    var _btime = function (sec) { return sec >= 60 ? Math.ceil(sec / 60) + 'm' : sec + 's'; };
     if (S._cursedUntil && Date.now() < S._cursedUntil) {
       var rem = Math.ceil((S._cursedUntil - Date.now()) / 1000);
       effects.push({
@@ -12547,7 +12636,7 @@ export var BroTown = function BroTown(_ref0) {
         icon: '⚔️',
         label: 'Dmg+',
         color: '#ea580c',
-        time: _rem2 + 's',
+        time: _btime(_rem2),
         desc: _dmul2 >= 2 ? 'x' + (Math.round(_dmul2 * 100) / 100) : '+' + Math.round((_dmul2 - 1) * 100) + '%'
       });
     }
@@ -12560,7 +12649,7 @@ export var BroTown = function BroTown(_ref0) {
         icon: '\u{1F4A0}',
         label: 'Mana',
         color: '#4F8FDE',
-        time: _rem6 + 's',
+        time: _btime(_rem6),
         desc: Number(S._manaFlat) > 0 ? 'Surge' : '+30%'
       });
     }
@@ -12570,8 +12659,8 @@ export var BroTown = function BroTown(_ref0) {
         icon: '💚',
         label: 'Regen',
         color: '#59BF91',
-        time: _rem3 + 's',
-        desc: 'HP/s'
+        time: _btime(_rem3),
+        desc: 'x2 rest'   /* v2.3.3130: the Herb Bread doubles the out-of-combat healing (server index.js) */
       });
     }
     if (S._resistBuff && Date.now() < S._resistBuff) {
@@ -12580,8 +12669,23 @@ export var BroTown = function BroTown(_ref0) {
         icon: '🛡️',
         label: 'Resist',
         color: '#60a5fa',
-        time: _rem4 + 's',
-        desc: '-15%'
+        time: _btime(_rem4),
+        desc: '-5%'   /* v2.3.3130: what the worker takes off (combat.js x0.95); it said -15% */
+      });
+    }
+    /* v2.3.3131: the Pumpkin Pie's +10% combat XP (the worker's _buffs.xp,
+       mirrored by wsClient) -- only while its strength is one the worker pays
+       (prog3.js reads xpMul in (1, 2]): a pie whose strength an older worker
+       pruned, after a rollback, said "+10%" while nothing was paid (review). */
+    var _xm = Number(S._xpBuffMul);
+    if (S._xpBuff && Date.now() < S._xpBuff && _xm > 1 && _xm <= 2) {
+      var _remXp = Math.ceil((S._xpBuff - Date.now()) / 1000);
+      effects.push({
+        icon: '\uD83E\uDD67',
+        label: 'XP+',
+        color: '#C99A3C',
+        time: _btime(_remXp),
+        desc: '+' + Math.round((_xm - 1) * 100) + '% XP'
       });
     }
     if (S._spdBuff && Date.now() < S._spdBuff) {
@@ -12596,7 +12700,7 @@ export var BroTown = function BroTown(_ref0) {
         icon: '💨',
         label: 'Speed',
         color: '#D8A94D',
-        time: _rem5 + 's',
+        time: _btime(_rem5),
         desc: _smul5 >= 1.5 ? 'x' + (Math.round(_smul5 * 100) / 100)
           : '+' + Math.round((_smul5 - 1) * 100) + '%'
       });
@@ -13607,7 +13711,11 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 11,
       marginRight: 4
     }
-  }, "E"), "\u2694\uFE0F Enter " + ((stateRef.current._nearWheelDoor && stateRef.current._nearWheelDoor.name) || 'the dungeon')), ((_stateRef$current54 = stateRef.current) === null || _stateRef$current54 === void 0 ? void 0 : _stateRef$current54._nearPetHouse) && !showPetHouse && /*#__PURE__*/React.createElement("button", {
+  }, "E"), "\u2694\uFE0F Enter " + ((stateRef.current._nearWheelDoor && stateRef.current._nearWheelDoor.name) || 'the dungeon')),
+  /* v2.3.3136: the bed you stand at on your farm, its next step as a button
+     (and the seed it plants) -- ui/mobile/FarmBedPrompt.jsx */
+  /*#__PURE__*/React.createElement(FarmBedPrompt, { stateRef: stateRef, hidden: buildingPanel !== null || !!showPetHouse }),
+  ((_stateRef$current54 = stateRef.current) === null || _stateRef$current54 === void 0 ? void 0 : _stateRef$current54._nearPetHouse) && !showPetHouse && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     style: {
       bottom: mktMode !== 'orders' && (_stateRef$current55 = stateRef.current) !== null && _stateRef$current55 !== void 0 && _stateRef$current55._nearWorkshop ? 175 : 140,
@@ -13668,8 +13776,17 @@ export var BroTown = function BroTown(_ref0) {
     /* Find best cookable recipe the player can make */
     var cookLvl = ((_R$lifeSkills6 = R.lifeSkills) === null || _R$lifeSkills6 === void 0 || (_R$lifeSkills6 = _R$lifeSkills6.cooking) === null || _R$lifeSkills6 === void 0 ? void 0 : _R$lifeSkills6.level) || 1;
     var inv = R.inventory || {};
-    var available = COOKING_RECIPES.filter(function (r) {
+    /* v2.3.3130: on a worker with caps.meals a cook MAKES the dish, and the
+       field's one button cooks MEALS only -- it picks for you, and picking the
+       last recipe would now brew a tonic out of herbs you meant for bread.
+       Brews are made at the Cookhouse.  An old worker keeps the old three. */
+    var _fieldMeals = !!(S._serverCaps && S._serverCaps.meals);
+    /* ...and only rows the worker has (caps.cookRows, CookPanel's rule) */
+    var _fieldRows = S._serverCaps && typeof S._serverCaps.cookRows === 'number' ? S._serverCaps.cookRows : 3;
+    var available = COOKING_RECIPES.filter(function (r, ri) {
       if (cookLvl < r.cookLvl) return false;
+      if (_fieldMeals && ri >= _fieldRows) return false;
+      if (_fieldMeals ? !(DATA.dishFor(r.makes) && (DATA.dishFor(r.makes).slot === 'meal' || DATA.dishFor(r.makes).slot === 'now')) : !r.buff) return false;
       return Object.entries(r.ingredients).every(function (_ref230) {
         var _ref231 = _slicedToArray(_ref230, 2),
           type = _ref231[0],
@@ -13708,7 +13825,7 @@ export var BroTown = function BroTown(_ref0) {
         if (S.channel) {
           var _recipeIdx = COOKING_RECIPES.indexOf(best);
           if (_recipeIdx >= 0) {
-            try { S.channel.send({ type: 'cook_recipe', payload: { recipeIdx: _recipeIdx } }); } catch (e2) {}
+            try { S.channel.send({ type: 'cook_recipe', payload: _fieldMeals ? { recipeIdx: _recipeIdx, carry: true } : { recipeIdx: _recipeIdx } }); } catch (e2) {}
           }
         }
         /* Consume ingredients */
@@ -13725,17 +13842,23 @@ export var BroTown = function BroTown(_ref0) {
             if (R.inventory[k] <= 0) delete R.inventory[k];
           });
         });
+        /* v2.3.3130: the meal goes in the bag (the worker echoes it); the old
+           instant buff is predicted only in front of an old worker. */
+        if (_fieldMeals && best.makes) {
+          if (!R.inventory) R.inventory = {};
+          R.inventory[best.makes] = (Math.floor(Number(R.inventory[best.makes]) || 0)) + 1;
+        }
         /* Apply buff */
-        var dur = (best.duration || 0) * 1000;
-        if (best.buff === 'heal') R.hp = Math.min(R.maxHp, R.hp + best.power);
-        if (best.buff === 'regen') S._regenBuff = Date.now() + dur;
-        if (best.buff === 'resist') S._resistBuff = Date.now() + dur;
+        var dur = _fieldMeals ? 0 : (best.duration || 0) * 1000;
+        if (!_fieldMeals && best.buff === 'heal') R.hp = Math.min(R.maxHp, R.hp + best.power);
+        if (!_fieldMeals && best.buff === 'regen') S._regenBuff = Date.now() + dur;
+        if (!_fieldMeals && best.buff === 'resist') S._resistBuff = Date.now() + dur;
         /* v2.3.2058: cleared with the timer -- a meal states its own
              magnitude (the 1.20 fallback), it must not inherit a Fury
              Tonic's x2 that is still ticking. Mirrors the server's
              `delete ps._buffs.damageMul` in cooking.js. */
-        if (best.buff === 'damage') { S._dmgBuffMul = 0; S._dmgBuff = Date.now() + dur; }
-        if (best.buff === 'all') {
+        if (!_fieldMeals && best.buff === 'damage') { S._dmgBuffMul = 0; S._dmgBuff = Date.now() + dur; }
+        if (!_fieldMeals && best.buff === 'all') {
           S._dmgBuffMul = 0;   /* v2.3.2058: see above */
           S._spdBuffMul = 0;   /* v2.3.2062: nor a Swift Draught's x1.5 */
           S._dmgBuff = Date.now() + dur;
@@ -13744,7 +13867,7 @@ export var BroTown = function BroTown(_ref0) {
           S._manaBuff = Date.now() + dur;
         }
         addLifeSkillXp(R.lifeSkills, 'cooking', best.tier * 25);
-        pushDmgPopup(S, S.player.x, S.player.y - 30, best.name + '!', '#ea580c');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, _fieldMeals ? '+1 ' + best.name : best.name + '!', '#ea580c');
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
         try {
