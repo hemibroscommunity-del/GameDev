@@ -50,6 +50,8 @@ import { depthK } from '@/data/zones.js'; /* v2.3.2824: a peer's whirlwind is as
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
+import { petMailWords } from '@/data/trapping.js';   /* v2.3.3122: a pet in the mail */
+import { noteWard } from '@/game/trapping.js';   /* v2.3.3123: a hit the pet out with you softened */
 
 /* ═══ v2.3.2232: THE DAMAGE NUMBER NAMES THE WEAPON THAT DEALT IT ═══
  *
@@ -1646,6 +1648,7 @@ export function processGameEvent(type, payload, S, deps) {
                   : _e.kind === 'item' ? (_ep.count || 1) + '× ' + (_ep.invKey || 'item')
                   : _e.kind === 'weapon' ? ((_ep.weapon && _ep.weapon.name) || 'a weapon')
                   : _e.kind === 'gear' ? ((_ep.piece && _ep.piece.name) || 'a piece of gear')
+                  : _e.kind === 'pet' ? petMailWords(_ep.pet)   /* v2.3.3122: a pet (store, trade, the mail) */
                   : 'a delivery';
                 S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-50)), [{
                   id: 'inbox-' + Date.now() + '-' + _ie,
@@ -2654,10 +2657,13 @@ export function processGameEvent(type, payload, S, deps) {
                  has said it did (game/elemHits.js, server monsterstatus.js). */
               var _elSt = applyElemHit(S, payload, Date.now());
               if (_elSt) { try { BT_AUDIO.elemHit(_elSt); } catch (e) { /* sound only */ } }
+              /* v2.3.3123: ...and the pet out with you took the edge off it (its land ward) */
+              if (_elSt && payload.wd > 0) { try { noteWard(S, payload); } catch (e) { /* words only */ } }
               if (window.__btProbe && (payload.elem || _elSt)) {   /* QA (mp-elemhits), armed by the harness only */
                 try {
                   var _eLog = window.__btElemLog || (window.__btElemLog = []);
-                  _eLog.push({ elem: payload.elem || null, st: _elSt, stMs: payload.stMs, kb: payload.kb || null, ability: payload.ability || null, dmgTaken: payload.dmgTaken, monsterId: payload.monsterId, at: Date.now() });
+                  _eLog.push({ elem: payload.elem || null, st: _elSt, stMs: payload.stMs, kb: payload.kb || null, ability: payload.ability || null, dmgTaken: payload.dmgTaken, monsterId: payload.monsterId, at: Date.now(),
+                    wd: payload.wd || null });   /* v2.3.3123: the land ward's percent (mp-petsmatter) */
                   if (_eLog.length > 60) _eLog.splice(0, _eLog.length - 60);
                 } catch (e) { /* a probe never breaks the game */ }
               }
@@ -4034,6 +4040,9 @@ export function processGameEvent(type, payload, S, deps) {
                   received: (payload.offers && payload.offers[_t2OtherId]) || {},
                   sentWeapons: (payload.weapons && payload.weapons[S.myId]) || [],
                   receivedWeapons: (payload.weapons && payload.weapons[_t2OtherId]) || [],
+                  /* v2.3.3122: the pets that moved (trade2.js petsMoved), each way */
+                  sentPets: (Array.isArray(payload.petsMoved) ? payload.petsMoved : []).filter(function (m) { return m && m.from === S.myId; }).map(function (m) { return m.pet; }),
+                  receivedPets: (Array.isArray(payload.petsMoved) ? payload.petsMoved : []).filter(function (m) { return m && m.to === S.myId; }).map(function (m) { return m.pet; }),
                   otherName: payload.a === S.myId ? (payload.bName || 'Trader') : (payload.aName || 'Trader'),
                   /* v2.3.2294: and their ID, so the receipt can draw their
                      PORTRAIT and not just their name. The 'done' snapshot is
@@ -4084,7 +4093,7 @@ export function processGameEvent(type, payload, S, deps) {
                    session surviving a failed commit) — out of scope.
                    Every other cancel reason keeps the legacy
                    clear-window + world-popup behavior. */
-                var _t2SettleFail = !!(payload.reason && String(payload.reason).indexOf('insufficient') === 0);
+                var _t2SettleFail = !!(payload.reason && /^(insufficient|pet-gone|pets-full)/.test(String(payload.reason)));   /* v2.3.3122: + the pet lane's */
                 if (_t2SettleFail) {
                   setTrade2({ state: 'failed', reason: payload.reason, ts: Date.now() });
                 } else {
@@ -4225,34 +4234,21 @@ export function processGameEvent(type, payload, S, deps) {
           case 'pet_capture_result':
             {
               /* v2.3.1130: server-rolled capture outcome (private).
-                 On success the pet already sits in the authoritative
-                 lifeSkills echo (the per-key merge adopts it) -- this
-                 event only drives the feedback the legacy local roll
-                 drew (MenuBar). */
+                 v2.3.3120: the 20%-health capture is RETIRED (server pets.js
+                 answers 'retired' and touches nothing), and nothing in this
+                 client sends it any more -- this answers an old client's
+                 leftover request, or a worker from before the change.
+                 Pets are caught by arming a trap and killing the monster
+                 (game/trapping.js); "Need a trap! (Vendor sells them)" went
+                 with it -- nobody has sold a trap since v2.3.2069. */
               if (!payload) break;
-              if (payload.captured && payload.pet) {
-                var _pcPet = payload.pet;
-                S.lockedTarget = null;
-                pushDmgPopup(S, S.player.x, S.player.y - 35, 'Captured ' + _pcPet.name + '!', '#3dd497');
-                pushDmgPopup(S, S.player.x, S.player.y - 50, (_pcPet.emoji || '') + ' ' + _pcPet.archetype + ' Lv' + _pcPet.level, _pcPet.color || '#3dd497');
-                BT_AUDIO.collect();
-                setTimeout(function () { return BT_AUDIO.beep(523, 0.1, 0.08, 'sine'); }, 100);
-                setTimeout(function () { return BT_AUDIO.beep(659, 0.1, 0.08, 'sine'); }, 200);
+              if (payload.error === 'retired') {
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Target a monster and tap TRAP', '#D8AA58');
+              } else if (payload.captured && payload.pet) {
+                pushDmgPopup(S, S.player.x, S.player.y - 35, 'Captured ' + (payload.pet.name || 'a pet') + '!', '#3dd497');
                 if (S.rpg) setRpgState(_objectSpread({}, S.rpg));
               } else if (payload.error) {
-                var _pcMsg = {
-                  'no-monster': 'Lock a weak monster first!',
-                  'too-healthy': 'Too healthy! (<20% HP)',
-                  'too-far': 'Too far away!',
-                  'slots-full': 'Pet slots full!',
-                  'no-trap': 'Need a trap! (Vendor sells them)',
-                  'not-now': 'Cannot trap right now'
-                }[payload.error] || 'Capture failed';
-                pushDmgPopup(S, S.player.x, S.player.y - 30, _pcMsg, '#ff5e6c');
-                BT_AUDIO.beep(200, 0.08, 0.12, 'square');
-              } else {
-                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Escaped!', '#ff5e6c');
-                BT_AUDIO.beep(200, 0.08, 0.12, 'square');
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Capture failed', '#ff5e6c');
               }
               break;
             }

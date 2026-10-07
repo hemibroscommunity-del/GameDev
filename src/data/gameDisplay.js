@@ -5764,6 +5764,69 @@ export const NPC_DATA = [{
   _facing: 'down',
   _questMarker: null,
   _hitThisSwing: false,
+}, {
+  /* ═══ v2.3.3121: BEASTMASTER BRO, BESIDE THE WOODWORKER ═══
+     docs/PET-TRAPPING-PLAN.md, Phase 2: "A Beastmaster beside the Woodworker
+     with a short quest line the server checks: make traps, arm traps, reach
+     Trapping 6" -- and a catch (QUEST_CHAINS beast_1..beast_4, server
+     QUEST_REWARDS).  He stands east of the Woodworker's steps in the Wheel's
+     Brotown (wheelBuildingDoors.js WHEEL_TOWNSFOLK), where box traps are made.
+
+     NAME.  "Beastmaster Bro", NOT "Beastmaster Kai": a dormant three-quest
+     Kai chain is in gameSystems.js (kai_1..kai_3, client-checked pet gates)
+     and getNpcQuest keys on the NAME -- naming him Kai would switch it on as
+     it is (the plan's "Things found in the code", 13).
+
+     `wheelOnly`: he stands in the Wheel and nowhere else, so today's town
+     neither spawns him (_spawnTownNpcs' allowlist) nor loads his picture
+     (npcSprites.js townScenery).  `pets`: once his quests are done, a tap or
+     E beside him opens the Pets page.  He appears only against a worker that
+     knows his quests (caps.beastmaster, BroTown.jsx _spawnWheelNpcs).
+
+     ART.  Made by tools/make_beastmaster.py from art the game has (Diego's
+     figure, mirrored, coat green, scarf the Lodge's orange, a Snowling from
+     the pet sheet at his side) until the owner's own picture comes -- the
+     prompt is in docs/ART-WISHLIST.md.  Same frame as every townsperson:
+     256 x 256, feet on y = 223.  One picture, ~0.25 MB, loaded with the
+     Wheel's cast behind its loading screen (npcSprites.js loadWheelNpcArt). */
+  id: 'beastmaster_bro',
+  name: 'Beastmaster Bro',     /* MUST equal QUEST_CHAINS[].npc -- getNpcQuest keys on it */
+  plateRole: 'Beastmaster',
+  sprite: '/sprites/npc/beastmaster-bro.webp',
+  portrait: '/sprites/npc/beastmaster-bro-head.webp',
+  avatar: '🧔',
+  color: '#f97316',
+  wheelOnly: true,
+  pets: true,
+  /* walking past him to the Woodworker's door does not stop you to say how
+     his quest is going (BroTown.jsx proximity opener): only an offer or a
+     claim opens by itself; a tap or E still answers */
+  quietProgress: true,
+  /* the Quests list offers his line only while he stands (questModel.js) */
+  needsCap: 'beastmaster',
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs at his door */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 13000,
+  chatBubble: null,
+  /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
+  phrases: [
+    'One log, one trap. One trap, one chance.',
+    'Every land has its own little beasts.',
+    'Most traps break. That is trapping.',
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
 }];
 
 /* ═══ v2.3.2091: STOREKEEPER BRO IS GONE ═══
