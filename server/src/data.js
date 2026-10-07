@@ -901,8 +901,18 @@ export const BLACKSMITH_TIERS = {
          both sides prefer it, so one row change moves every consumer at once.
          oreName stays as the LABEL ("Wood 3/3"), which is what it reads as. */
       wood:         {minLvl:1, slots:1, oreName:'wood', wood:'pine_log', oreCost:3,  goldCost:8,    tierMult:1.00, statReq:0  },
-      copper:       {minLvl:6, slots:1, oreName:'copper',        oreCost:3,  goldCost:20,   tierMult:1.12, statReq:10 },
-      iron:         {minLvl:11,slots:1, oreName:'iron',          oreCost:4,  goldCost:35,   tierMult:1.25, statReq:20 },
+      /* ═══ v2.3.3141: THE METALS WITH BARS ARE FORGED FROM BARS ═══
+         Owner: "maybe chest, legs, and sword each take 4 bars to make (5 ore
+         makes 1 bar).  If you salvage them you get 2 bars back" (salvage.js).
+         So copper, iron and black steel swords and greatswords take FOUR of
+         their metal's bars (smelting.js), not three to five raw ore, and pay
+         the armour forge's Smithing XP for four bars (armorforge.js: 200 / 300
+         / 400 a bar) -- the same bars, the same work, the same pay.  `bar` and
+         `bars` replace `oreCost` on these three rows (gear.js reads them
+         first); `oreName` stays the metal's name.  The gold is unchanged.  The
+         metals past black steel have no bar yet and keep their ore. */
+      copper:       {minLvl:6, slots:1, oreName:'copper',        bar:'bar_copper', bars:4, xp:800,  goldCost:20,   tierMult:1.12, statReq:10 },
+      iron:         {minLvl:11,slots:1, oreName:'iron',          bar:'bar_iron', bars:4, xp:1200,   goldCost:35,   tierMult:1.25, statReq:20 },
       /* v2.3.3012 (owner: "let's plan on 'black steel' in like level 10+ areas
          and have its own ore to mine"): the tier after iron is BLACK STEEL, and
          its ore is the one the Wheel's levels 11-20 grow (gathering.js
@@ -910,7 +920,7 @@ export const BLACKSMITH_TIERS = {
          is the gearBase every minted piece carries, and the native art's
          material name (materialTints.js); only the name and the ore move.
          No steel ore was ever minted, so no bag holds the old key. */
-      steel:        {minLvl:16,slots:1, oreName:'black_steel',   oreCost:5,  goldCost:55,   tierMult:1.40, statReq:30 },
+      steel:        {minLvl:16,slots:1, oreName:'black_steel',   bar:'bar_black_steel', bars:4, xp:1600, goldCost:55, tierMult:1.40, statReq:30 },
       titanium:     {minLvl:21,slots:1, oreName:'titanium',      oreCost:5,  goldCost:85,   tierMult:1.56, statReq:40 },
       obsidian:     {minLvl:26,slots:1, oreName:'obsidian',      oreCost:6,  goldCost:120,  tierMult:1.74, statReq:50 },
       mythril:      {minLvl:31,slots:2, oreName:'mythril',       oreCost:7,  goldCost:170,  tierMult:1.94, statReq:60 },

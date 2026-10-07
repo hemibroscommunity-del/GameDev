@@ -866,6 +866,29 @@ export const gearProvMethods = {
     return { piece, row: { id: row.id, slot: row.slot, src: row.src, at: row.at, p: row.p } };
   },
 
+  /* ═══ v2.3.3141: A RECORDED PIECE TAKES A NEW GRADE (an essence, salvage.js) ═══
+     The row IS the piece (every inbound path rebuilds from `row.p`, header
+     point 1), so the grade is changed THERE, and on the server's own stash
+     entry carrying the same id where there is one -- the client changes its
+     copy from the essence_result that follows.  Only for a piece the caller
+     has already passed through `_gearSellable` (held, not worn, not in the
+     post).  Synchronous, one ledger edit and a fire-and-forget put, so it
+     runs inside one input-gated event (rule 9).  Returns the rebuilt piece,
+     or null when the row is not this player's for this slot. */
+  _gearProvSetQuality(playerId, slot, gid, quality) {
+    const ledger = this._gearProvOf(playerId);
+    const row = ledger ? findProvRow(ledger, gid) : null;
+    if (!row || row.slot !== slot || !row.p || typeof row.p !== 'object') return null;
+    row.p.quality = quality;
+    this._gearProvSave(playerId, ledger);
+    const field = GEAR_PROV_FIELD[slot];
+    const ps = this.playerState[playerId];
+    if (field && ps && Array.isArray(ps[field])) {
+      for (const g of ps[field]) if (g && g.gid === row.id) g.quality = quality;
+    }
+    return this._gearProvPieceByRef(playerId, slot, row.id);
+  },
+
   /* ═══ GIVE A PIECE ITS RECORD BACK, TO WHOEVER NOW OWNS IT ═══
      The other half: a sale hands the row to the BUYER, a cancel or an
      expiry hands it back to the SELLER.  Same function, because they are

@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BT_AUDIO, COOKING_RECIPES } from '@/data/index.js'; /* v2.3.2637: ui-equip tick; v2.3.3130: the recipe rows (caps.cookRows) */
 import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
+import { essenceInfo } from '@/data/salvage.js';   /* v2.3.3141: what an essence does */
 import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_BY_LOG } from '@/data/hardenedWood.js';   /* v2.3.3139 */
 import { dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
 import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player */
@@ -219,6 +220,8 @@ function resolveTarget(target) {
     /* v2.3.3092: and where a bar goes -- the Blacksmith's Armor tab */
     else if (SMELT_RECIPES[key] && SR && SR._serverCaps && SR._serverCaps.armorforge) info = 'Forge into armor at the Blacksmith';
     else if (SMELT_RECIPES[key]) info = 'Smelted from ' + SMELT_RECIPES[key].oreCost + ' ' + SMELT_RECIPES[key].oreName;
+    /* v2.3.3141: an essence -- where it is used, and on what */
+    else if (essenceInfo(key) && SR && SR._serverCaps && SR._serverCaps.salvage) info = essenceInfo(key);
     else if (count > 0) info = 'Quantity: ' + count;
     return {
       lockKey: key,

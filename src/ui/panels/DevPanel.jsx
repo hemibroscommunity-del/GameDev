@@ -173,6 +173,7 @@ const CAP_GATES = [
   'armorforge' /* v2.3.3092: bars into armor -- lower case, a kill switch */,
   'dailyspin' /* v2.3.3140: the Gambling Den's free daily spin -- lower case, a kill switch */,
   'dailyquests' /* v2.3.3140: daily quests + the season -- lower case, a kill switch */,
+  'salvage' /* v2.3.3141: salvage for bars, and the grades' essences -- lower case, a kill switch */,
   'trapping' /* v2.3.3120: arm a trap, then kill it -- lower case, a kill switch */,
   'trapcraft' /* v2.3.3120: box traps at the Woodworker -- lower case, a kill switch */,
   'petbook' /* v2.3.3120: the pets record and the Pets page -- lower case, a kill switch */,

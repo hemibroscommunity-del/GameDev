@@ -603,6 +603,18 @@ Instrumental background music for BroTown, a cozy-but-adventurous pixel-art acti
 Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh: a creeping, slightly off-kilter rhythm of plucked strings and bubbling percussion, a low clarinet or bassoon melody, buzzing insects and squelchy bubbles in the texture. Mischievous rather than horror. About 95 BPM.
 ```
 
+## Item icons
+
+### Essences (v2.3.3141)
+
+- **In the game:** The nine essences salvage leaves (Rare, Elite and Godly, each in copper, iron and black steel), in the bag and on the Blacksmith's Salvage tab. Today they are glowing orbs drawn by `tools/make_essence_icons.py`, the metal's bar tucked in the corner.
+- **How:** One picture per grade is enough: the game puts the metal's bar on it. Send them on a plain background; they become `public/icons/items/essence-<grade>-<metal>.webp` (256 x 256).
+- **Attach:** the style key only (never the bro).
+
+```text
+A single game item icon of a magical ESSENCE: a small glowing orb of swirling light, about the size of a fist, floating, with a few tiny sparkles round it. Make three versions, one per picture: RARE in cool blue light, ELITE in warm orange light, GODLY in shifting rainbow (prismatic) light. Painted HD pixel art matching the attached style key, centred, nothing else in the picture, on a flat magenta (#FF00FF) background.
+```
+
 ## The farm
 
 The Feed & Seed's farm (v2.3.3127, docs/specs/farm.md) draws its crops, seeds and compost with emoji until these exist: the window's beds, the Seeds tab and the bag all use them.
