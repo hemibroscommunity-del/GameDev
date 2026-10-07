@@ -1,5 +1,5 @@
 import React from 'react';
-import { ARCHETYPES, BLACKSMITH_TIERS, COLLISION_TABLE, COOKING_RECIPES, EFFECTIVENESS, ELEMENTS, FISHING_TIERS, MINING_TIERS, WOODCUTTING_TIERS, WOODWORKING_TIERS, ZONES, discoveredCollisions, discoveredMaterials, discoveredMonsters, visitedZones } from '@/data/index.js';
+import { ARCHETYPES, BLACKSMITH_TIERS, COLLISION_TABLE, COOKING_RECIPES, EFFECTIVENESS, ELEMENTS, FISHING_TIERS, MINING_TIERS, WOODCUTTING_TIERS, WOODWORKING_TIERS, ZONES, discoveredCollisions, discoveredMaterials, discoveredMonsters, visitedZones, dishFor } from '@/data/index.js';
 import { gatherLadderLvl } from '@/data/lifeSkills.js';   /* v2.3.3038: the level a resource asks, not its tier */
 import { _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
@@ -617,7 +617,10 @@ export function EncyclopediaPanel(props) {
         marginLeft: 'auto',
         fontVariantNumeric: 'tabular-nums'
       }
-    }, r.buff === 'heal' ? '❤️ +' + r.power + ' HP' : r.buff === 'regen' ? '💚 Regen' : r.buff === 'resist' ? '🛡️ Resist' : r.buff === 'damage' ? '⚔️ DMG' : r.buff === 'all' ? '✨ All' : '🍖', r.duration ? ' (' + r.duration + 's)' : ''));
+    }, /* v2.3.3130: what the dish it MAKES does (dishes.js), or the tonic's
+          own line -- the recipe's old instant buff and its seconds are only
+          what an old worker applies at the cook */
+    (dishFor(r.makes) || {}).desc || r.desc || ''));
   }))), encyclopediaTab === 'zones' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,

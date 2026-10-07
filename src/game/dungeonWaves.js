@@ -16,6 +16,8 @@ import { ZONES, TILE, ELEMENTS, DEPTH_CONFIG, BT_AUDIO, createMonster, createDef
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
+import { holdFarmUntilReady } from '@/game/farmTrip.js';
 export function updateDungeonWaves(S, deps) {
   /* v2.3.1127: server-authoritative dungeon instances.  When the run
      lives on the worker (S._serverDungeon set by the dungeon_started
@@ -84,9 +86,6 @@ export function updateDungeonWaves(S, deps) {
                     st._inDungeon = false;
                     st._inCustomDungeon = false;
                     st._customDungeonConfig = null;
-                    /* v2.3.1406: per-zone loading — warm the farm map (idempotent;
-                       usually still resident from the entry warp). */
-                    import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets('farm_home'); }).catch(function () {});
                     st.currentZone = 'farm_home';
                     updateZoneDimensions('farm_home');
                     st.map = generateZoneMap('farm_home');
@@ -101,9 +100,12 @@ export function updateDungeonWaves(S, deps) {
                     st.hitParticles = [];
                     st.deathExplosions = [];
                     st.arrows = [];
-                    st.player.x = Math.floor(fz.w / 2) * TILE;
-                    st.player.y = (fz.h - 4) * TILE;
+                    /* v2.3.3136: back at the Dungeon Workshop's board, held
+                       under the farm's loading screen (game/farmTrip.js) */
+                    st.player.x = FARM_FROM_WORKSHOP.x;
+                    st.player.y = FARM_FROM_WORKSHOP.y;
                     st._zoneWipe = Date.now();
+                    holdFarmUntilReady(st);
                   }, 3000);
                 }
               } else {
@@ -172,8 +174,6 @@ export function updateDungeonWaves(S, deps) {
                   st._inDungeon = false;
                   st._inCustomDungeon = false;
                   st._customDungeonConfig = null;
-                  /* v2.3.1406: per-zone loading — warm the farm map (idempotent). */
-                  import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets('farm_home'); }).catch(function () {});
                   st.currentZone = 'farm_home';
                   updateZoneDimensions('farm_home');
                   st.map = generateZoneMap('farm_home');
@@ -188,9 +188,11 @@ export function updateDungeonWaves(S, deps) {
                   st.hitParticles = [];
                   st.deathExplosions = [];
                   st.arrows = [];
-                  st.player.x = Math.floor(fz.w / 2) * TILE;
-                  st.player.y = (fz.h - 4) * TILE;
+                  /* v2.3.3136: back at the Dungeon Workshop's board (game/farmTrip.js) */
+                  st.player.x = FARM_FROM_WORKSHOP.x;
+                  st.player.y = FARM_FROM_WORKSHOP.y;
                   st._zoneWipe = Date.now();
+                  holdFarmUntilReady(st);
                 }, 3000);
               } else {
                 var _DEPTH_CONFIG$_nextDe, _DEPTH_CONFIG$_nextDe2;

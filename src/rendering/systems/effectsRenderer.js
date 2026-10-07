@@ -266,6 +266,9 @@ const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHp /* v2.3.3035: a timer harvest's bar reads the node's HP */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
+import { farmWorkFrame } from '@/game/farmWork.js';   /* v2.3.3136: the farmer's frames of the cook's strip */
+import { FARM_COVERS, FARM_STEP_COVER, FARM_COVER_FRAME, FARM_FIGURE_X, FARM_PAN_BOX } from '@/data/farmCovers.js';   /* v2.3.3136: what stands where the cook's pan is */
+import { farmArtUrl } from '@/data/farmArtUrl.js';   /* v2.3.3136: the compost bin's address */
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
@@ -3014,6 +3017,17 @@ export class EffectsRenderer {
     this.cookChestSprite.anchor.set(0.5, 1);
     this.cookChestSprite.visible = false;
     this.gestureLayer.addChild(this.cookChestSprite);   /* v2.3.1713: above trees */
+    /* v2.3.3136: what stands where the cook's pan is when the FARMER kneels
+       in this figure (_updateFarmKneel): created after every layer the cook
+       wears, in the same layer, so it covers all of them -- the body, your
+       drawings, the greaves, the shirt, the plate.  The head's traits are
+       moved into this layer later (_placeSkillTraitsOn) and may come after
+       it; they are on the head, which it never reaches. */
+    this.farmCoverSprite = new Sprite();
+    this.farmCoverSprite.anchor.set(0, 0);
+    this.farmCoverSprite.visible = false;
+    this.farmCoverSprite.label = 'farmCover';
+    this.gestureLayer.addChild(this.farmCoverSprite);
     /* v2.3.1710: both cook bodies now load through _loadCookStrips, which bakes
        the PLAYER'S skin into them (owner: the cooking character "has the wrong
        skin color").  v2.3.1114's legs-erased body rides the same bake so the two
@@ -3858,6 +3872,17 @@ export class EffectsRenderer {
     if (ex && ex.skill === 'woodcutting') ensureStandIn('chop', 'chopping');
     else if (ex && ex.skill === 'cooking') ensureStandIn('cook', 'cooking');
     if (S._campfire && S._campfire.alive) ensureStandIn('cook', 'a campfire lit');
+    if (S._farmWork || S.currentZone === 'farm_home') {
+      /* v2.3.3136: the farmer kneels in the cook's figure -- made, with what
+         you wear in that pose, from the moment you are on the farm (under its
+         loading screen), not on the first step: a strip loaded on first sight
+         is a hitch (the preloading law).  _gearStripFrame starts a load and is
+         a lookup after; 'none' asks for nothing. */
+      ensureStandIn('cook', 'the farm');
+      this._gearStripFrame('legs', getEquip('legs'), 'cook', 'south', 213, 0);
+      this._gearStripFrame('chest', getEquip('chest'), 'cook', 'south', 213, 0);
+      this._gearStripFrame('shirt', this._shirtId(), 'cook', 'south', 213, 0);
+    }
     if (S._firemaking) ensureStandIn('fire', 'lighting a fire');
     else if (!standInStarted('fire')) {
       const inv = S.rpg && S.rpg.inventory;
@@ -4459,6 +4484,11 @@ export class EffectsRenderer {
     try { this._publishPeerBlockArms(S); } catch (e) { /* no arm this frame: the shield still draws */ }   /* v2.3.2920 */
     this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
+    /* v2.3.3136: after the cue, which hides the cook's layers every frame: the
+       farmer kneels in them.  Cosmetic -- a throw is logged once and the frame
+       goes on. */
+    try { this._updateFarmKneel(S, now); }
+    catch (e) { if (!this._farmKneelErr) { this._farmKneelErr = true; console.error('[effects] farm kneel threw', e && e.message); } }
     /* v2.3.1092: full-character harvest stand-ins for OTHER players
        (chop/cook/fire). Guarded like the remote attack stand-ins. */
     try { this._updateRemoteExtraction(S, now); } catch (e) { /* skip remote skill stand-in */ }
@@ -13880,6 +13910,161 @@ export class EffectsRenderer {
       tmp.destroy();
     }
   }
+
+  /* ═══ v2.3.3136: THE COOK'S FIGURE, WHEREVER IT KNEELS ═══
+     Everything the cook wears, on frame `cookFi`, its feet at (x, y): the body
+     baked with your skin (the legless one under greaves), your drawings, the
+     shirt, the greaves, the plate, your hair and hat.  Moved here whole from
+     _updateExtractionCue, where the campfire's cook is placed, because the
+     FARMER kneels in it too (_updateFarmKneel): one figure, one set of rules.
+     Returns the body sprite, its transform the one every layer copies. */
+  _placeCookFigure(x, y, pscale, cookFi) {
+    const COOK_H = COOK_STANDIN_H;
+    const sp = this.cookSprite;
+    /* v2.3.1114: when leg armour is equipped, use the legs-erased body so the
+       bare legs don't peek out behind the greaves; otherwise the normal body. */
+    const _legsOn = getEquip('legs') !== 'none' && this._cookLeglessFrames.length === this._cookFrames.length;
+    sp.texture = (_legsOn ? this._cookLeglessFrames : this._cookFrames)[cookFi];
+    const s = (COOK_H / 220) * pscale;
+    const _bC = _localBuild();   /* v2.3.2500: your build, as on the body */
+    sp.scale.set(s * _bC.sx, s * _bC.sy);
+    sp.x = x;
+    sp.y = y;
+    sp.visible = true;
+    /* v2.3.2856: your drawings' layer, on the same frame of the matching strip
+       with the figure's exact transform (see _bakeCookStrips). */
+    const _cInk = (_legsOn ? this._cookLeglessFramesInk : this._cookFramesInk);
+    const _cInkT = _cInk && _cInk[cookFi];
+    const isp = this.cookInkSprite;
+    if (isp) {
+      if (_cInkT) {
+        isp.texture = _cInkT;
+        isp.scale.set(sp.scale.x, sp.scale.y);
+        isp.x = sp.x; isp.y = sp.y;
+        isp.visible = true;
+      } else isp.visible = false;
+      sp._cookK = cookFi;   /* for mp-cookink: which frame both sprites are on */
+    }
+    /* v2.3.1113: draw the player's shirt over the cook torso, copying the
+       cook sprite's exact transform so the 213x220 shirt frame aligns with
+       the body frame-for-frame. Hidden when no shirt is selected or a chest
+       plate is worn (handled inside _placeSwingShirt). */
+    const placeCookShirt = (s, t) => {
+      if (!s) return;
+      if (!t) { s.visible = false; return; }
+      s.anchor.set(0.5, 1); s.texture = t;
+      s.scale.set(sp.scale.x, sp.scale.y); s.x = sp.x; s.y = sp.y; s.visible = true;
+    };
+    /* ═══ v2.3.1710: THE FLASHING SHIRT ═══
+       Owner: the cooking character has a "flashing shirt".  This one is in the
+       ASSET, not in the loop.  gear/shirt/tshirt/cook-south.png was assembled
+       by tools/build_cook_shirt.mjs, which walks the 6x4 grid of the owner's
+       shirt contact sheet and writes `shirts[f]` — a DIFFERENT painting — into
+       frame f, each one luminance-normalised to its OWN peak (`L/peak*245`).
+       So the 24 frames are 24 different garments, not 24 poses of one.
+       Measured on the shipped sheet: mean shirt luminance swings 185.1 -> 207.9
+       (12.3% peak-to-peak) and the mask width 104 -> 126 px, frame to frame, at
+       16.7 fps.  That is the flash.  The proof it is this sheet and not the
+       cook pipeline: the chest and legs sheets for the SAME pose were baked
+       properly and are steady — legs/steelgreaves/cook-south.png is literally
+       byte-identical frame to frame, chest/steelplate/cook-south.png varies
+       smoothly with the arms.
+       Fix without touching art: PIN the shirt to one frame.  Nothing is lost —
+       the cook's torso and head do not move across the loop (only the arms and
+       the pan do), which is exactly why a single garment reads correctly on
+       all 24 bodies.  Frame 22 was chosen by measurement, not by eye: of the
+       24 it leaves the fewest uncovered torso pixels (158/frame vs a 541
+       median) with the least overhang of that low-gap group, and its luminance
+       (201.9) sits within 2% of the sheet median so the shirt does not get
+       brighter or darker than what has been shipping.
+       The DURABLE fix is re-cutting the sheet from ONE shirt tracked across
+       the 24 poses; until then this is stable and costs nothing. */
+    const COOK_SHIRT_FRAME = 22;
+    this._placeSwingShirt(this.cookShirtSprite, placeCookShirt, this._shirtId(), getEquip('chest'), 'cook', 'south', 213, COOK_SHIRT_FRAME, getShirtColor(), getShirt());
+    /* v2.3.1114: equipped leg armour over the cook's legs (untinted; the
+       greaves keep their own metal colour). _gearStripFrame returns null when
+       no legs are equipped, so placeCookShirt hides the sprite. */
+    placeCookShirt(this.cookLegsSprite, this._gearStripFrame('legs', getEquip('legs'), 'cook', 'south', 213, cookFi));
+    /* v2.3.1115: equipped chest plate over the cook's torso (untinted). Drawn
+       after the shirt (which _placeSwingShirt already hides when a chest plate
+       is worn) so the plate replaces it. */
+    placeCookShirt(this.cookChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'cook', 'south', 213, cookFi));
+    this._tintGearSprite(this.cookLegsSprite, getEquip('legs'), 'cookLegs');   /* v2.3.1764 */
+    this._tintGearSprite(this.cookChestSprite, getEquip('chest'), 'cookChest');
+    this._placeSkillTraitsOn('cook', sp, cookFi, 'south', false);
+    return sp;
+  }
+
+  /* ═══ v2.3.3136: THE FARMER KNEELS AS THE COOK DOES ═══
+     The owner: "Cooking animation might be better.  You can use something to
+     occlude the part where the pan or log is."  While you work a bed
+     (S._farmWork, game/farmWalk.js) your figure is the cook's -- everything you
+     wear, as at the campfire (_placeCookFigure) -- on the frames where the pan
+     is held out to the side, to and fro (farmWork.js farmWorkFrame), and ONE
+     of the owner's pictures stands where the pan is: the crate of earth, of
+     seeds or of water, the compost bin, or the crate's straw
+     (src/data/farmCovers.js, made by tools/world/make_farm_covers.py, which
+     fails if a pixel of the pan would show).  It is drawn over every layer the
+     figure wears -- farmCoverSprite is created after them in the same layer --
+     so it never has to know what you look like.  That is why it is a picture
+     on top and not a bake into your frames: the fire-lighter's first cut baked
+     a mound of earth into the body, and greaves are drawn over the body.
+     The cover is a cache LOOKUP, never a load: the farm's loading screen loads
+     it (farmWorld.js preloadFarmArt), and until it is in, and the cook's pose is
+     made, the walking body stays drawn (standIns.js farmKneelReady). */
+  _updateFarmKneel(S, now) {
+    const cov = this.farmCoverSprite;
+    if (cov) cov.visible = false;
+    const w = S && S._farmWork;
+    if (!w || !cov || !S.player || S.currentZone !== 'farm_home' || this._selfCorpse) return;
+    if (S._extraction || !this.cookSprite || !this._cookFrames.length || !standInReady('cook')) return;
+    /* drawn for as long as the step stands, its last frame held past doneAt:
+       the body is hidden for exactly that long (entityRenderer _chopHide), and
+       the step is ended by the game's tick (farmWalk.js), whose clock this
+       frame's may be a moment ahead of -- a `now > doneAt` return here drew
+       neither body nor figure for that frame */
+    const name = FARM_STEP_COVER[w.step];
+    const c = name ? FARM_COVERS[name] : null;
+    const url = c ? (c.art ? farmArtUrl(c.art) : c.url) : null;
+    const tex = url ? Assets.cache.get(url) : null;
+    if (!tex) return;
+    const P = S.player;
+    const feetY = P.y + playerGroundDy(S.currentZone, P.x, P.y);
+    const pscale = zonePlayerScale(S.currentZone, P.x, feetY, TILE) || 1;
+    const F = FARM_COVER_FRAME;
+    const s = (COOK_STANDIN_H / F.h) * pscale * _localBuild().sx;
+    /* the cook's boots where yours were: its cell is wide for the pan */
+    const fi = farmWorkFrame(now - w.startedAt, w.doneAt - w.startedAt);
+    const sp = this._placeCookFigure(P.x + (F.w / 2 - FARM_FIGURE_X) * s, feetY, pscale, fi);
+    const kx = sp.scale.x, ky = sp.scale.y, b = c.box;
+    cov.texture = tex;
+    cov.x = sp.x + (b[0] - F.w / 2) * kx;
+    cov.y = sp.y + (b[1] - F.h) * ky;
+    cov.scale.set(((b[2] - b[0]) * kx) / tex.width, ((b[3] - b[1]) * ky) / tex.height);
+    cov.visible = true;
+    /* the cover's mouth -- the crate's opening, the bin's compost -- where
+       what you take from it flies from (farmWorld.js _burst): not the hands,
+       which are at the figure's chin, so the bits flew across its face */
+    S._farmHands = { x: sp.x + (c.mouth[0] - F.w / 2) * kx, y: sp.y + (c.mouth[1] - F.h) * ky, at: now };
+    if (typeof window !== 'undefined' && window.__btProbe) {
+      window.__btFarmFigure = () => {
+        const kids = this.gestureLayer.children;
+        const at = (o) => (o && o.visible ? kids.indexOf(o) : -1);
+        return {
+          visible: !!sp.visible && !!cov.visible, frame: fi, cover: name,
+          figure: { x: sp.x, y: sp.y, scaleX: kx, scaleY: ky, drawnH: +(ky * F.h).toFixed(2), feetY, px: P.x },
+          coverBox: { x: cov.x, y: cov.y, w: (b[2] - b[0]) * kx, h: (b[3] - b[1]) * ky },
+          /* the pan's area in those frames, where the figure is: inside the cover's box */
+          panBox: { x: sp.x + (FARM_PAN_BOX[0] - F.w / 2) * kx, y: sp.y + (FARM_PAN_BOX[1] - F.h) * ky,
+            w: (FARM_PAN_BOX[2] - FARM_PAN_BOX[0]) * kx, h: (FARM_PAN_BOX[3] - FARM_PAN_BOX[1]) * ky },
+          /* the cover over every layer the figure wears: its place among them */
+          order: { cover: at(cov), body: at(sp), ink: at(this.cookInkSprite), shirt: at(this.cookShirtSprite),
+            legs: at(this.cookLegsSprite), chest: at(this.cookChestSprite) },
+        };
+      };
+    }
+  }
+
   /** v2.3.2986: the renderer the capture above photographs with (pixiRenderer). */
   setCaptureRenderer(renderer) { this._captureRenderer = renderer || null; }
 
@@ -14712,50 +14897,28 @@ export class EffectsRenderer {
       /* v2.3.2607: COOK_STANDIN_H, shared with the remote SPEC row below --
          see its note for the 62 -> 65.1 bump and why a local-only edit would
          have re-run the v2.3.1710 chop drift. */
-      const COOK_H = COOK_STANDIN_H, COOK_FRAME_MS = 60;
-      const sp = this.cookSprite;
+      const COOK_FRAME_MS = 60;
       /* v2.3.2245: the flip follows the thumb once the window is open (one
          up-flick on the button is one flip, capped at one per 1600ms -- the
          pan marker's own v2.3.1442 rate); the wind-up keeps the clock loop. */
       const _gpK = gesturePose01(ex, now);   /* v2.3.2760: hand-paced; holds until the first flick */
       const cookFi = (_gpK != null) ? Math.max(0, Math.min(this._cookFrames.length - 1, Math.floor(_gpK * this._cookFrames.length)))
         : Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
-      /* v2.3.1114: when leg armour is equipped, use the legs-erased body so the
-         bare legs don't peek out behind the greaves; otherwise the normal body. */
-      const _legsOn = getEquip('legs') !== 'none' && this._cookLeglessFrames.length === this._cookFrames.length;
-      sp.texture = (_legsOn ? this._cookLeglessFrames : this._cookFrames)[cookFi];
       /* v2.3.2287: the vista curve, as on the fire and chop figures.
          v2.3.2915: sampled, and the spot placed, by cookStandInSpot -- the
          peer twin reads it too (it drew a peer's cook at their position, off
          to the side of the fire, instead of here with the pan over it). */
       const _spot = cookStandInSpot(S.currentZone, node);
       const pscale = _spot.pscale;
-      const s = (COOK_H / 220) * pscale;
-      const _bC = _localBuild();   /* v2.3.2500: your build, as on the body */
-      sp.scale.set(s * _bC.sx, s * _bC.sy);
       /* The pan hangs to the figure's RIGHT, so this offset is what keeps it
          over the flames — it has to track COOK_H or the pan slides off the
          fire.  v2.3.1429 doubled it with the 2x; v2.3.1710 scales it back by
          the same ratio (14 * 62/82 = 10.6).
          v2.3.2287: ...and it takes the curve for the same reason -- an offset
          in flat pixels slides the pan off a shrunken fire. */
-      sp.x = _spot.x;   /* v2.3.2607: COOK_STANDIN_H * COOK_PAN_DX left of the fire */
-      sp.y = _spot.y;
-      sp.visible = true;
-      /* v2.3.2856: your drawings' layer, on the same frame of the matching strip
-         with the figure's exact transform (see _bakeCookStrips). */
-      const _cInk = (_legsOn ? this._cookLeglessFramesInk : this._cookFramesInk);
-      const _cInkT = _cInk && _cInk[cookFi];
-      const isp = this.cookInkSprite;
-      if (isp) {
-        if (_cInkT) {
-          isp.texture = _cInkT;
-          isp.scale.set(sp.scale.x, sp.scale.y);
-          isp.x = sp.x; isp.y = sp.y;
-          isp.visible = true;
-        } else isp.visible = false;
-        sp._cookK = cookFi;   /* for mp-cookink: which frame both sprites are on */
-      }
+      /* v2.3.3136: everything the cook wears, placed by _placeCookFigure (the
+         farmer kneels in it too) */
+      const sp = this._placeCookFigure(_spot.x, _spot.y, pscale, cookFi);   /* v2.3.2607: COOK_STANDIN_H * COOK_PAN_DX left of the fire */
       /* v2.3.2607 QA probe, house style and the exact twin of __btChopFigure
          above.  It exists for the reason that probe's note gives: the thing
          that actually breaks on these figures is the LOCAL and PEER copies
@@ -14771,53 +14934,6 @@ export class EffectsRenderer {
           x: sp.x, y: sp.y,
         });
       }
-      /* v2.3.1113: draw the player's shirt over the cook torso, copying the
-         cook sprite's exact transform so the 213x220 shirt frame aligns with
-         the body frame-for-frame. Hidden when no shirt is selected or a chest
-         plate is worn (handled inside _placeSwingShirt). */
-      const placeCookShirt = (s, t) => {
-        if (!s) return;
-        if (!t) { s.visible = false; return; }
-        s.anchor.set(0.5, 1); s.texture = t;
-        s.scale.set(sp.scale.x, sp.scale.y); s.x = sp.x; s.y = sp.y; s.visible = true;
-      };
-      /* ═══ v2.3.1710: THE FLASHING SHIRT ═══
-         Owner: the cooking character has a "flashing shirt".  This one is in the
-         ASSET, not in the loop.  gear/shirt/tshirt/cook-south.png was assembled
-         by tools/build_cook_shirt.mjs, which walks the 6x4 grid of the owner's
-         shirt contact sheet and writes `shirts[f]` — a DIFFERENT painting — into
-         frame f, each one luminance-normalised to its OWN peak (`L/peak*245`).
-         So the 24 frames are 24 different garments, not 24 poses of one.
-         Measured on the shipped sheet: mean shirt luminance swings 185.1 -> 207.9
-         (12.3% peak-to-peak) and the mask width 104 -> 126 px, frame to frame, at
-         16.7 fps.  That is the flash.  The proof it is this sheet and not the
-         cook pipeline: the chest and legs sheets for the SAME pose were baked
-         properly and are steady — legs/steelgreaves/cook-south.png is literally
-         byte-identical frame to frame, chest/steelplate/cook-south.png varies
-         smoothly with the arms.
-         Fix without touching art: PIN the shirt to one frame.  Nothing is lost —
-         the cook's torso and head do not move across the loop (only the arms and
-         the pan do), which is exactly why a single garment reads correctly on
-         all 24 bodies.  Frame 22 was chosen by measurement, not by eye: of the
-         24 it leaves the fewest uncovered torso pixels (158/frame vs a 541
-         median) with the least overhang of that low-gap group, and its luminance
-         (201.9) sits within 2% of the sheet median so the shirt does not get
-         brighter or darker than what has been shipping.
-         The DURABLE fix is re-cutting the sheet from ONE shirt tracked across
-         the 24 poses; until then this is stable and costs nothing. */
-      const COOK_SHIRT_FRAME = 22;
-      this._placeSwingShirt(this.cookShirtSprite, placeCookShirt, this._shirtId(), getEquip('chest'), 'cook', 'south', 213, COOK_SHIRT_FRAME, getShirtColor(), getShirt());
-      /* v2.3.1114: equipped leg armour over the cook's legs (untinted; the
-         greaves keep their own metal colour). _gearStripFrame returns null when
-         no legs are equipped, so placeCookShirt hides the sprite. */
-      placeCookShirt(this.cookLegsSprite, this._gearStripFrame('legs', getEquip('legs'), 'cook', 'south', 213, cookFi));
-      /* v2.3.1115: equipped chest plate over the cook's torso (untinted). Drawn
-         after the shirt (which _placeSwingShirt already hides when a chest plate
-         is worn) so the plate replaces it. */
-      placeCookShirt(this.cookChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'cook', 'south', 213, cookFi));
-      this._tintGearSprite(this.cookLegsSprite, getEquip('legs'), 'cookLegs');   /* v2.3.1764 */
-      this._tintGearSprite(this.cookChestSprite, getEquip('chest'), 'cookChest');
-      this._placeSkillTraitsOn('cook', sp, cookFi, 'south', false);
     }
     /* ═══ v2.3.2245: THE WORLD CUE IS GONE ═══
        Owner: "No resource extraction button in the middle of the screen or
