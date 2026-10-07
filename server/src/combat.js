@@ -402,7 +402,7 @@ export const combatMethods = {
     // Resist buff (cooking recipe with buff:'resist', power 0.05 = 5%
     // reduction).  Cooking recipe power values are stored as the
     // fractional reduction; mirror the client's intent here.
-    /* v2.3.3117: the Root Stew's resist is applied AFTER the percentage cuts
+    /* v2.3.3133: the Root Stew's resist is applied AFTER the percentage cuts
        below (Defense or Elem Resist, then armour) -- see there. */
     // v2.3.1659 (prog3): the allocated `defense` stat is the game's
     // first real mitigation dial — −0.4% damage taken per point, cap
@@ -453,7 +453,7 @@ export const combatMethods = {
     const _armorDr = this._armorDrMult(ps);
     if (_armorDr < 1) dmgTaken = Math.max(1, Math.round(dmgTaken * _armorDr));
 
-    /* ═══ v2.3.3117: THE ROOT STEW CUTS SMALL HITS TOO ═══
+    /* ═══ v2.3.3133: THE ROOT STEW CUTS SMALL HITS TOO ═══
        It was ceil(dmg x 0.95) at the top of the chain, and a ceil gives back
        the whole 5% on any hit under 20: 19 x 0.95 = 18.05, ceil 19 -- the stew
        did nothing against most monsters and every PvP hit (halved by
@@ -693,7 +693,7 @@ export const combatMethods = {
     return Math.max(critDmg, rangeTop * CRIT_ANCHOR_MULT);
   },
 
-  /* ═══ v2.3.3117: HOW HARD YOUR BREW MAKES YOU HIT ═══
+  /* ═══ v2.3.3133: HOW HARD YOUR BREW MAKES YOU HIT ═══
    * Owner: "Farming needs a purpose. I think the best purpose it can serve
    * are temporary buffs (boss fights, PvP, dueling, etc)".
    *
@@ -715,7 +715,7 @@ export const combatMethods = {
     return (m >= 1 && m <= 4) ? m : 1.20;
   },
 
-  /* v2.3.3117: the kill switch for the brew in PvP, read the meals' way:
+  /* v2.3.3133: the kill switch for the brew in PvP, read the meals' way:
      `pvpbrew: false` un-advertises caps.pvpbrew, so a new page claims its PvP
      hits with the brew folded in as before, and the worker stops multiplying
      the claims of a page that joined while it was on. */
@@ -952,7 +952,7 @@ export const combatMethods = {
        _buffs.damageMul is set by anything that buffs damage by its own amount
        (the Fury Tonic at 2.0). Guarded and bounded because it is persisted
        state -- a corrupted blob must not become a damage multiplier. */
-    base *= this._brewMul(ps);   /* v2.3.3117: the one reader, shared with PvP and the burst */
+    base *= this._brewMul(ps);   /* v2.3.3133: the one reader, shared with PvP and the burst */
     // Crit (calcCritChance + calcCritMult).
     // v2.3.1345 (counter skills): the crit CHANNEL is a deterministic
     // accumulator — "a LUCKY hit every N hits", never streaky.  Power's
@@ -1969,7 +1969,7 @@ export const combatMethods = {
     // the previous level-only formula.  Pass payload.special if the
     // PvP attack is a swipe so the Mind-scaled cap applies.
     const dmgCap = this._maxDmgForAttacker(attackerPs, !!payload.special);
-    /* ═══ v2.3.3117: THE BREW IS THE WORKER'S, IN A DUEL TOO ═══
+    /* ═══ v2.3.3133: THE BREW IS THE WORKER'S, IN A DUEL TOO ═══
        A page that sees caps.pvpbrew claims its hit WITHOUT its damage brew
        and says so with `nb: 1`; the worker multiplies the clamped claim by the
        brew IT holds (_brewMul).  So every attack the brew can make bigger --
@@ -2106,7 +2106,7 @@ export const combatMethods = {
          _handleMonsterDamage) — otherwise a PvP aggressor in a lawless zone
          out-regenerates the fight they are winning. */
       attackerPs._lastDealtAt = Date.now();
-      /* v2.3.3117: a fight between players, for the eating rule (cooking.js
+      /* v2.3.3133: a fight between players, for the eating rule (cooking.js
          _pvpHealWait): both sides, on every exchange that sends a pvp_hit --
          the same event the page stamps its own copy from, so the two agree.
          On the room's clock, not on playerState (a rejoin rebuilds that). */

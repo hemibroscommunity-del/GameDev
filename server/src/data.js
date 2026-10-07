@@ -508,7 +508,7 @@ export const DISHES = {
       meal_pumpkin_pie:   { slot: 'meal', buff: 'xp',     power: 0.10, duration: 1800 },
     };
 
-/* ═══ v2.3.3117: ONE BITE AT A TIME IN A FIGHT WITH A PLAYER ═══
+/* ═══ v2.3.3133: ONE BITE AT A TIME IN A FIGHT WITH A PLAYER ═══
  * Owner: "Farming needs a purpose. I think the best purpose it can serve are
  * temporary buffs (boss fights, PvP, dueling, etc)".
  *

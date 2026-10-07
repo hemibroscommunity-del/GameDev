@@ -3,7 +3,7 @@ import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, createDefau
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3117: one bite at a time in a fight with a player */
+import { pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 /* === CookPanel — buildingPanel === 'cook' sub-panel === */
 /* v2.3.879: extracted verbatim from the buildingPanel === 'cook'
@@ -481,7 +481,7 @@ export function CookPanel(props) {
           var R = stateRef.current.rpg;
           if (!R.inventory[key] || R.inventory[key] < 1) return;
           var S = stateRef.current;
-          /* v2.3.3117: one bite at a time in a fight with a player
+          /* v2.3.3133: one bite at a time in a fight with a player
              (fightFood.js) -- held back and said, not eaten and taken back. */
           var _wait = pvpHealWaitMs(S);
           if (_wait > 0) {
