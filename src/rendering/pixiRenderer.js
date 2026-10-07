@@ -918,6 +918,8 @@ export async function initPixiRenderer(canvas) {
     /* v2.3.2078: what the pet display is doing — the pet was invisible
        for its whole life and nothing could see that. */
     petDrawn: () => entityRenderer.petDrawn(),
+    /* v2.3.3123: the others' pets as drawn (mp-petshow) */
+    peerPetsDrawn: () => entityRenderer.peerPetsDrawn(),
     blockGeomProbe: () => {
       const pd = entityRenderer.playerDisplay;
       const sb = pd && pd._spriteBody;

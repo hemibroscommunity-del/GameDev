@@ -14,8 +14,10 @@
 This plan comes from a study of the game's code and of how other games let
 players catch creatures. The research report behind it is
 `docs/research/pet-trapping/other_games_report.md`. The notes behind both, with
-every source, are in that folder; start with its README. Nothing here is built
-yet. Every choice is now made; the full list is near the end.
+every source, are in that folder; start with its README. Every choice is now
+made; the full list is near the end.
+
+**Built:** Phase 1, v2.3.3120; Phase 2, v2.3.3121; Phase 3, v2.3.3122; Phase 4, v2.3.3123 (`docs/specs/trapping.md`). One change from the plan in Phase 3: the trade window checks a pet at the commit instead of holding it in storage while the window is open (see the spec's "Trading pets"). Phase 4's numbers the plan left open: the ward is 15% at Lv 1, a point more a level, at most half (Lv 36); 10 more Pet House places cost 1,000 gold, each step 1,000 more (45,000 for all ninety). Phase 5 is not built: it waits on the owner.
 
 ## What you decided (2026-10-06)
 

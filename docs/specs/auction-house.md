@@ -437,6 +437,24 @@ The browser decides only the **two permanent answers** on its own
 state only the worker has, and a browser that greys a button on a guess
 about live state hides a sale the player could really make.
 
+## Pet listings (v2.3.3122) — `kind: 'pet'`
+
+- Listed from the Pets page (`storeListPet(petId, price)` → `/api/store/list`
+  `{kind: 'pet', petId, price}`), never from the bag. The gate is the pets
+  record's `_petSellable` (yours, not out with you, not an old pet, a day past
+  its catch); a refusal carries its `reason` and the phone says it in words.
+- Escrowed at placement: `_petbookTake` takes the pet out of `pets:<pid>` and the
+  whole pet rides in the listing record as `pet`. Every way out goes through
+  `_stGoodsCredit` → `{kind: 'pet', payload: {pet, from: sellerId}}`, so a pet
+  travels the same markers and wake-time rebuild as every other listing. The
+  buyer is one more owner; the seller taking it back is not.
+- A buyer whose collection is full, or a seller offline at an expiry, gets it
+  in the mail (`inbox.js` `pet`), where it waits until there is room.
+- `_stPublic` ships `disp: {name, pet: petPublic}` -- kind, stage, golden, size,
+  name, level, owners -- never the record's whole pet. Its own `cat: 'pet'` and
+  a Pets chip on the shelf (against a worker with `caps.pettrade`).
+- Tests: `server/test/pettrade.test.mjs` §4, `tools/qa/mp/mp-pettrade.mjs`.
+
 ### Prices
 
 **There is no gear sell-value formula, and none was invented.** The store

@@ -6,9 +6,10 @@
  * on a tap on Ace -- so it could not be played at all.  Now they stand in the
  * Wheel's Brotown (src/data/wheelBuildingDoors.js WHEEL_TOWNSFOLK).
  *
- *   1. the cast is all there: Mayor Bro, Diego, Ace, Blacksmith Bro and Lil
- *      Bro, each where WHEEL_TOWNSFOLK puts him, standing still;
- *   2. their pictures came in behind the loading screen: none of the five
+ *   1. the cast is all there: Mayor Bro, Diego, Ace, Blacksmith Bro, Lil Bro
+ *      and (v2.3.3121) Beastmaster Bro, each where WHEEL_TOWNSFOLK puts him,
+ *      standing still;
+ *   2. their pictures came in behind the loading screen: none of the six
  *      fetched after you arrive (the preload law), and what they hold;
  *   3. Lil Bro is on your screen where you arrive;
  *   4. each is drawn, the size Diego is, facing the street;
@@ -73,7 +74,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const cast = await H.waitFor(P, (S) => ({
       npcs: (S.npcs || []).map((n) => ({ name: n.name, x: n.x, y: n.y, r: n.pathRadius, flip: !!n.flip })),
       doors: window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : [],
-    }), (v) => v.npcs.length >= 5 && v.doors.length > 0, { timeout: 20000, label: 'the cast' }).catch(() => null);
+    }), (v) => v.npcs.length >= 6 && v.doors.length > 0, { timeout: 20000, label: 'the cast' }).catch(() => null);
     const byDoor = Object.fromEntries(((cast && cast.doors) || []).map((d) => [d.id, d]));
     const where = (name) => {
       const f = WHEEL_TOWNSFOLK.find((q) => q.name === name), d = f && byDoor[f.door];
@@ -83,16 +84,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const names = ((cast && cast.npcs) || []).map((n) => n.name).sort().join(', ');
     const placedRight = WHEEL_TOWNSFOLK.every((f) => { const n = npc(f.name), w = where(f.name); return n && w && Math.abs(n.x - w.x) < 1 && Math.abs(n.y - w.y) < 1 && n.r === 0; });
     rec.ok(`the Wheel's Brotown has its whole cast (${names}), each where WHEEL_TOWNSFOLK puts him, standing still`,
-      names === 'Ace, Blacksmith Bro, Diego, Lil Bro, Mayor Bro' && placedRight && !!npc('Ace').flip,
+      names === 'Ace, Beastmaster Bro, Blacksmith Bro, Diego, Lil Bro, Mayor Bro' && placedRight && !!npc('Ace').flip,   /* v2.3.3121: + Beastmaster Bro */
       { names, placed: WHEEL_TOWNSFOLK.map((f) => [f.name, npc(f.name), where(f.name)]) });
 
     /* ── 2. their pictures, behind the loading screen ── */
     await P.page.waitForTimeout(1500);
     const late = npcReqs.filter((q) => q.t > arrivedAt);
     const art = await P.page.evaluate(() => (window.__btWheelNpcArt ? window.__btWheelNpcArt() : null));
-    rec.ok(`their pictures came in behind the loading screen -- none fetched after arriving -- and the five hold ${art ? art.mb : '?'} MB (walkers' south strips ${art ? art.cropMb : '?'} MB cropped, pictures ${art ? art.picMb : '?'} MB)`,
+    rec.ok(`their pictures came in behind the loading screen -- none fetched after arriving -- and the six hold ${art ? art.mb : '?'} MB (walkers' south strips ${art ? art.cropMb : '?'} MB cropped, pictures ${art ? art.picMb : '?'} MB)`,
       late.length === 0 && !!art && art.loaded && art.walkers.sort().join() === ['card_sharp', 'lil_bro', 'shopkeeper_bro'].sort().join()
-        && art.pictures.length === 2 && art.mb < 3,
+        && art.pictures.length === 3 && art.mb < 3,   /* v2.3.3121: Beastmaster Bro's is the third picture */
       { late, art, asked: npcReqs.map((q) => [q.f, q.t - arrivedAt]) });
 
     /* ── 3. Lil Bro on screen where you arrive ── */
