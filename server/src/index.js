@@ -29,7 +29,7 @@ import {
   ARCHETYPES, ZONES,
   MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
   MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY,
-  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */, DISHES /* v2.3.3114: the Herb Bread's regen mult */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */, DISHES /* v2.3.3130: the Herb Bread's regen mult */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -63,7 +63,7 @@ import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
 import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
-import { farmMethods } from './farm.js'; /* v2.3.3111: the farm, settled by the worker */
+import { farmMethods } from './farm.js'; /* v2.3.3127: the farm, settled by the worker */
 import { armorForgeMethods } from './armorforge.js'; /* v2.3.3092: bars into armour */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
 import { monsterStatusMethods } from './monsterstatus.js'; /* v2.3.2996: a monster's hit carries its element */
@@ -82,6 +82,10 @@ import { threatMethods } from './threat.js';
 // v2.3.1200: PETS config also imported directly -- _handleLootPickup
 // reads PETS.VACUUM_RANGE for the pet loot vacuum (viaPet pickups).
 import { petMethods, PETS } from './pets.js';
+/* v2.3.3120: pet trapping -- arm a trap, then kill it (trapping.js) -- and the
+   pets record, pets:<pid> (petbook.js).  docs/specs/trapping.md. */
+import { trappingMethods } from './trapping.js';
+import { petbookMethods } from './petbook.js';
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
 // loot layers (effective_base formula, forge quality roll, harden
 // ladder).  See hardening.js for the name-collision warning vs the
@@ -133,7 +137,7 @@ import { persistenceMethods } from './persistence.js';
 // v2.3.1173 (P4 decomposition): identity gate + join bootstrap -- see join.js.
 import { joinMethods, cosmeticCap } from './join.js';   /* v2.3.1940: ONE cap rule for the drawing keys */
 // v2.3.1174 (P4 decomposition): the 45Hz tick loop -- see tick.js.
-import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3111: + the regen cadence, for Herb Bread */
+import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3127: + the regen cadence, for Herb Bread */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -175,7 +179,7 @@ import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.29
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
-/* v2.3.3114: the Herb Bread's out-of-combat healing multiplier, read once
+/* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
 const HERB_REGEN_MULT = (DISHES.meal_herb_bread && Number(DISHES.meal_herb_bread.power) > 1) ? Number(DISHES.meal_herb_bread.power) : 2;
 
@@ -394,7 +398,7 @@ export const PRIVILEGED_EVENTS = new Set([
   'ability_windup',
   /* v2.3.2822: the smelt's receipt (smelting.js) -- bars made and XP paid. */
   'smelt_result',
-  /* v2.3.3111: the farm (farm.js) -- the beds, what grows in them and when it
+  /* v2.3.3127: the farm (farm.js) -- the beds, what grows in them and when it
      is ready, and what an action paid.  A forged one would paint ripe crops
      and harvests the worker never settled on another player's screen. */
   'farm_state',
@@ -505,6 +509,12 @@ export const PRIVILEGED_EVENTS = new Set([
   'threat_penalty', 'threat_expired', 'gear_locked',
   // v2.3.1130: pet-capture outcomes are server-rolled + private.
   'pet_capture_result',
+  /* v2.3.3120: pet trapping (trapping.js) and the pets record (petbook.js).
+     All four server-sent and private.  Forged, `trap_result` would show
+     another player a catch the worker never rolled, `pets_state` would paint
+     pets they do not own on their Pets page, `trap_armed` a mark and odds the
+     worker never set, and `make_traps_result` traps that never reached a bag. */
+  'make_traps_result', 'trap_armed', 'trap_result', 'pets_state',
   // v2.3.1131: hardening rolls are server-side + private.
   'harden_result',
   // v2.3.1347: character-restart ack (persistence.js) -- the client
@@ -1926,6 +1936,10 @@ export class GameRoom {
                _burstUntil would explode on arrival, at full health. */
             m._burstUntil = 0; m._burstKiller = null; m._burstSlot = null;
             m._burstDone = false;
+            /* v2.3.3120: and its trap marks (trapping.js): a mark is on THIS
+               life of the monster, and the kill path clears it -- this is the
+               belt and braces dmgByPlayer has above. */
+            m._armedBy = null; m._trapJudgeAt = 0;
             // Revert any in-life variant transform (mummy -> skeleton)
             // so a respawned monster comes back in its original form
             // with the original spd.  Stamped at spawn time and
@@ -3433,13 +3447,13 @@ export class GameRoom {
           /* ROUND, not ceil: at 1% a ceil turns every maxHp above 100 into
              2 hp/tick (a level-3 prog3 character has 106), which is nearly
              double the intended pace for no reason anyone could see.
-             v2.3.3114: the HERB BREAD is this trickle, faster -- its meal
+             v2.3.3130: the HERB BREAD is this trickle, faster -- its meal
              doubles it (DISHES.meal_herb_bread.power) for half an hour.  It was
-             2% of max HP a second in or out of a fight for 60 s (v2.3.3111,
+             2% of max HP a second in or out of a fight for 60 s (v2.3.3127,
              below until now); as a meal you carry for thirty minutes that would
              be a full bar every fifty seconds mid-fight, so it is the plan's
              "out-of-combat healing twice as fast" instead -- read off its own
-             timer, `rest`: v2.3.3111 reads `regen` the old way, so a rollback
+             timer, `rest`: v2.3.3127 reads `regen` the old way, so a rollback
              to it must not find a half-hour one there (data.js DISHES). */
           const _herb = this._buffActive(ps, 'rest') ? HERB_REGEN_MULT : 1;
           const heal = Math.max(1, Math.round(ps.maxHp * this.SPOKE_REGEN_PCT * _herb));
@@ -3448,8 +3462,8 @@ export class GameRoom {
           if (ps.hp !== beforeHp) changed = true;
         }
       }
-      /* v2.3.3111 made HERB BREAD heal at all: its recipe always wrote a
-         `regen` timer that nothing on the worker read.  v2.3.3114 moved that
+      /* v2.3.3127 made HERB BREAD heal at all: its recipe always wrote a
+         `regen` timer that nothing on the worker read.  v2.3.3130 moved that
          reader into the out-of-combat trickle above (a meal now lasts half an
          hour) under the bread's own `rest` timer, so it is read in exactly one
          place and `regen` in none. */
@@ -4291,9 +4305,10 @@ export class GameRoom {
     // the wider vacuum radius is the pet's feature, not a free upgrade
     // any client can flip on with a payload flag.
     if (viaPet) {
-      const petList = (ps.lifeSkills && Array.isArray(ps.lifeSkills.pets)) ? ps.lifeSkills.pets : [];
-      const petIdx = ps.lifeSkills ? ps.lifeSkills.activePet : null;
-      if (typeof petIdx !== 'number' || !petList[petIdx]) return reject('no-pet');
+      /* v2.3.3120: the active pet is the record's (petbook.js) -- the old
+         lifeSkills.pets / activePet pair is emptied at join once its pets
+         have moved in. */
+      if (!this._petbookActive(session.id)) return reject('no-pet');
     }
     const dx = ps.x - pile.x;
     const dy = ps.y - pile.y;
@@ -5074,7 +5089,7 @@ export class GameRoom {
       case 'farm_open':
       case 'farm_act':
       case 'farm_buy':
-        /* v2.3.3111: the farm (farm.js) -- open the window, dig / plant /
+        /* v2.3.3127: the farm (farm.js) -- open the window, dig / plant /
            water / fertilize / harvest beds, or buy seeds and compost at the
            Feed & Seed.  The worker owns the beds, their clocks and every
            crop; the client only asks.  Its own cases, never the default
@@ -5083,7 +5098,7 @@ export class GameRoom {
           const _fp = msg.type === 'farm_open' ? this._handleFarmOpen(session, msg.payload || msg)
             : msg.type === 'farm_act' ? this._handleFarmAct(session, msg.payload || msg)
             : this._handleFarmBuy(session, msg.payload || msg);
-          /* v2.3.3111: said, not swallowed -- a throw in here once hid a
+          /* v2.3.3127: said, not swallowed -- a throw in here once hid a
              harvest that paid again on every message (farm.js). */
           if (_fp && _fp.catch) _fp.catch((e) => { console.error('[farm]', msg.type, session.id, e && e.message); });
         }
@@ -5219,6 +5234,13 @@ export class GameRoom {
       case 'trade2_unstage_weapon':
         if (session.id) await this._handleTrade2UnstageWeapon(session, msg.payload || msg);
         break;
+      case 'trade2_pets':
+        /* v2.3.3122: the pet lane -- the pets YOU offer, by id (trade2.js
+           _handleTrade2Pets).  Explicit case so a forged one meets
+           validation, never the rebroadcast branch; gated client-side on
+           caps.pettrade. */
+        if (session.id) this._handleTrade2Pets(session, msg.payload || msg);
+        break;
 
       case 'party_invite':
         // v2.3.1185: party roster (party.js).  Explicit cases so forged
@@ -5337,13 +5359,36 @@ export class GameRoom {
         break;
 
       case 'pet_capture':
-        // v2.3.1130: server-validated capture -- checks the SERVER's
-        // monster hp/range, consumes a basic_trap (finally), rolls
-        // server-side, and removes the monster for everyone (see
-        // pets.js; the client's local roll stays as caps fallback).
+        // v2.3.1130: server-validated capture.  v2.3.3120: RETIRED -- it
+        // answers 'retired' and touches nothing (pets.js); pets are caught
+        // by arming a trap and killing the monster (trapping.js).
         if (session.id) {
           this._handlePetCapture(session, msg.payload || msg);
         }
+        break;
+
+      /* ═══ v2.3.3120: PET TRAPPING (trapping.js) AND THE PETS RECORD
+         (petbook.js) ═══  Each an explicit case: the default branch below
+         REBROADCASTS an unknown type to the room, which would relay a trap or
+         a pet's new name to everyone and settle nothing. */
+      case 'make_traps':
+        if (session.id) this._handleMakeTraps(session, msg.payload || msg);
+        break;
+      case 'trap_arm':
+        if (session.id) this._handleTrapArm(session, msg.payload || msg);
+        break;
+      case 'pet_active':
+        if (session.id) this._handlePetActive(session, msg.payload || msg);
+        break;
+      case 'pet_name':
+        if (session.id) this._handlePetName(session, msg.payload || msg);
+        break;
+      case 'pet_release':
+        if (session.id) this._handlePetRelease(session, msg.payload || msg);
+        break;
+      /* v2.3.3123: more room in the Pet House (petbook.js) */
+      case 'pet_house_buy':
+        if (session.id) this._handlePetHouseBuy(session, msg.payload || msg);
         break;
 
       case 'dungeon_start':
@@ -5647,6 +5692,7 @@ export class GameRoom {
 
   async webSocketClose(ws) {
     const session = this.sessions.get(ws);
+    let _petsLeft = null;   /* v2.3.3120: see below */
     if (session?.id) {
       if (this.playerState[session.id]) this.playerState[session.id].disconnected = true;
       /* v2.3.1619: flush coalesced regen before the in-memory blob is
@@ -5665,6 +5711,14 @@ export class GameRoom {
          The record itself is durable in gear_prov:<pid> and reloads on the
          next join (gearprov.js); this is only the cache. */
       this._gearProvForget(session.id);
+      /* v2.3.3120: the pets record's cache goes with the session too
+         (petbook.js).  A try counted only in memory is copied out here and
+         written at the very END of this handler -- awaited, as the last
+         chance to keep it, but after every synchronous step, because the AFK
+         sweep (tick.js) calls this without awaiting and must still see the
+         player leave at once. */
+      _petsLeft = this._petbookDirtyCopy(session.id);
+      this._petbookForget(session.id);
       delete this.stateHistory[session.id];
       delete this.extractions[session.id];
       this.dirtyPlayers.delete(session.id);
@@ -5687,6 +5741,7 @@ export class GameRoom {
     }
     this.sessions.delete(ws);
     if (this.sessions.size === 0 && this.tickInterval) { clearInterval(this.tickInterval); this.tickInterval = null; }
+    if (_petsLeft) await this._petbookPut(session.id, _petsLeft);
   }
 
   async webSocketError(ws) { this.webSocketClose(ws); }
@@ -5824,7 +5879,7 @@ Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
-Object.assign(GameRoom.prototype, farmMethods); /* v2.3.3111 */
+Object.assign(GameRoom.prototype, farmMethods); /* v2.3.3127 */
 Object.assign(GameRoom.prototype, armorForgeMethods); /* v2.3.3092 */
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
 Object.assign(GameRoom.prototype, monsterStatusMethods); /* v2.3.2996 */
@@ -5839,6 +5894,8 @@ Object.assign(GameRoom.prototype, guildMethods);
 Object.assign(GameRoom.prototype, threatMethods);
 // v2.3.1130 (PR14): pet capture -- see pets.js.
 Object.assign(GameRoom.prototype, petMethods);
+Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3120 */
+Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
 Object.assign(GameRoom.prototype, hardeningMethods);
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.

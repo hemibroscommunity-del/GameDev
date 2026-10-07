@@ -10,7 +10,7 @@
  *   ZONES              <-> src/data/zones.js (level bands MUST match)
  *   FISH_TIERS         <-> src/data/lifeSkills.js FISHING_TIERS
  *   COOKING_RECIPES    <-> src/data/gameSystems.js (index order matters)
- *   DISHES             <-> src/data/gameSystems.js DISHES (v2.3.3114)
+ *   DISHES             <-> src/data/gameSystems.js DISHES (v2.3.3130)
  *   SHOP_ITEMS         <-> src/ui/panels/buildings/VendorPanel.jsx
  *                          (v2.3.1151: pointer fixed -- the vendor table
  *                          moved out of BroTown.jsx in the v2.3.882
@@ -430,12 +430,12 @@ export const FISH_TIERS = [
       { lvl: 21, name: 'pike' },     /* v2.3.3094: ...and 31-40 */
     ];
 
-/* v2.3.3111: `cookLvl` is the Cooking level a recipe asks -- the window's
+/* v2.3.3127: `cookLvl` is the Cooking level a recipe asks -- the window's
    lock (gameSystems.js) and, now, the worker's gate (cooking.js
    _handleCookRecipe; mirror-audit keeps the two equal).  It only ever held on
    the client, which was moot while nothing could make these herbs; the farm
    grows them. */
-/* ═══ v2.3.3114: A RECIPE MAKES SOMETHING YOU CARRY ═══
+/* ═══ v2.3.3130: A RECIPE MAKES SOMETHING YOU CARRY ═══
  * Farming plan, Phase 2 (docs/FARMING-PLAN.md, "What farming pays"): a cook
  * used to apply its buff on the spot; now it puts `makes` in the bag, to eat
  * or drink when you want it, trade, or list on the auction house -- so a
@@ -454,7 +454,7 @@ export const COOKING_RECIPES = [
       { ingredients: { herb_firebloom: 1 },                          tier: 1, cookLvl: 1,  makes: 'meal_herb_bread' },
       { ingredients: { herb_rock_vine: 1, herb_cloudpetal: 1 },      tier: 1, cookLvl: 3,  makes: 'meal_root_stew' },
       { ingredients: { herb_firebloom: 2 },                          tier: 2, cookLvl: 6,  makes: 'brew_firebloom_tea' },
-      /* v2.3.3114: the three tonics, brewed from herbs (the plan's "Diego keeps
+      /* v2.3.3130: the three tonics, brewed from herbs (the plan's "Diego keeps
          his staples and loses his tonics").  The Fury Tonic is the strongest
          thing in the game a player can drink and its herb the cheapest to grow,
          so it asks the most Cooking; the other two ask Cooking 5 and herbs that
@@ -467,7 +467,7 @@ export const COOKING_RECIPES = [
       { ingredients: { crop_pumpkin: 1, crop_potato: 2 },            tier: 3, cookLvl: 8,  makes: 'meal_pumpkin_pie' },
     ];
 
-/* ═══ v2.3.3114: WHAT A DISH DOES ═══
+/* ═══ v2.3.3130: WHAT A DISH DOES ═══
  * One MEAL and one BREW may run at once (the plan's recommendation, Stardew's
  * food-and-drink rule): eating replaces the meal you had, drinking replaces
  * the brew, and neither touches the other.  It was one effect of any kind
@@ -478,7 +478,7 @@ export const COOKING_RECIPES = [
  * meal on top would cross it (~109%), so no meal raises damage.
  *   meal: half an hour, modest.  The Herb Bread doubles the out-of-combat
  *         healing (`power` is that multiplier, read in index.js's regen tick)
- *         under its OWN timer, `rest` -- never `regen`, which v2.3.3111's
+ *         under its OWN timer, `rest` -- never `regen`, which v2.3.3127's
  *         worker reads as 2% of max HP a second in or out of a fight: a
  *         rollback to it would have read a half-hour bread that way (review);
  *         the Root Stew takes 5% off every hit (combat.js).
@@ -590,7 +590,7 @@ export const SHOP_ITEMS = {
       swiftDraught:  { cost: 30, effect: 'spdBuff', duration: 180, mult: 1.5 },
     };
 
-/* ═══ v2.3.3114: WHAT DIEGO SELLS IS NOT EVERYTHING HE STOCKS ═══
+/* ═══ v2.3.3130: WHAT DIEGO SELLS IS NOT EVERYTHING HE STOCKS ═══
  * The farming plan's "Diego keeps his staples and loses his tonics": under the
  * one-effect rule a 35-coin bottle of double damage beat anything a farm could
  * grow, so the three tonics come off his shelf the day the farm brews them
@@ -785,6 +785,37 @@ export const QUEST_REWARDS = {
                   does anything per hit (v2.3.1679: torso 30%). */
                objective:{type:'collect', invPrefix:'ore_', count:5, consume:true},
                item:{kind:'armor', name:"Copper Torso", mat:'copper', tierMult:1.0}},
+
+      /* ═══ v2.3.3121: BEASTMASTER BRO -- the trapping line ═══
+         docs/PET-TRAPPING-PLAN.md, Phase 2: "A Beastmaster beside the
+         Woodworker with a short quest line the server checks: make traps, arm
+         traps, reach Trapping 6", and "A `catch` quest goal".  Every step is
+         checked HERE, by four objective types of trapping's own (quests.js
+         _questObjectiveMet):
+           traps_made  box traps made at the Woodworker (trapping.js
+                       _handleMakeTraps credits the count made);
+           trap_roll   traps SPRUNG -- one a roll at a kill (_trapRollOnKill):
+                       an arm alone costs nothing and proves nothing;
+           skill       a life skill's level, read at the hand-in;
+           catch       a pet caught (_trapRollOnKill, on the catch).
+         The counters live in _questKills beside the kill quests', counted only
+         while the quest is active.  No combat XP (xp 0): no Melee/Bow/Magic
+         to choose at the hand-in; they pay gold and box traps.  beast_1 hands
+         over the three pine logs its traps are made from.  Mirrored by
+         QUEST_CHAINS in src/data/gameSystems.js (mirror-audit). */
+      beast_1:    {gold:40,  xp:0, next:'beast_2',
+                   objective:{type:'traps_made', count:3},
+                   grantOnAccept:[{kind:'inv', key:'wood_pine_log', n:3}],
+                   item:{kind:'inv', key:'trap_box', n:2}},
+      beast_2:    {gold:100, xp:0, next:'beast_3',
+                   objective:{type:'trap_roll', count:5},
+                   item:{kind:'inv', key:'trap_box', n:5}},
+      beast_3:    {gold:250, xp:0, next:'beast_4',
+                   objective:{type:'skill', skill:'trapping', level:6},
+                   item:{kind:'inv', key:'trap_box', n:10}},
+      beast_4:    {gold:500, xp:0, next:null,
+                   objective:{type:'catch', count:1},
+                   item:{kind:'inv', key:'trap_box', n:15}},
 
       mayor_1:    {gold:50,  xp:10,  next:'mayor_2'},
       mayor_2:    {gold:100, xp:28,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3114: WHAT A COOKHOUSE DISH DOES ═══
+/* ═══ v2.3.3130: WHAT A COOKHOUSE DISH DOES ═══
  * The farming plan, Phase 2 (docs/FARMING-PLAN.md, "What farming pays"): the
  * Cookhouse makes things you CARRY.  Mirror of server/src/data.js DISHES
  * (mirror-audit: slot, buff, power, duration); the recipes that make them are

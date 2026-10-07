@@ -124,4 +124,15 @@ export const WHEEL_TOWNSFOLK = [
   { name: 'Ace', door: 'gambling', dx: -105, dy: 34 },
   { name: 'Blacksmith Bro', door: 'blacksmith', dx: 105, dy: 34 },
   { name: 'Lil Bro', door: 'townhall', dx: -260, dy: 110 },
+  /* ═══ v2.3.3121: BEASTMASTER BRO, EAST OF THE WOODWORKER'S STEPS ═══
+     docs/PET-TRAPPING-PLAN.md, Phase 2: "A Beastmaster beside the Woodworker"
+     -- where the box traps his first quest asks for are made.  EAST, as the
+     blacksmith stands at the forge: the Woodworker's crate is 193 px west of
+     its steps and its barrel 197 px east, and the Snowling drawn at his side
+     (tools/make_beastmaster.py) stands ~24 px east of him, clear of both and
+     of the steps.  From the door's foot he is 110 px; from a player standing
+     at the door 119 px, past the 90 px his quest opens at by itself.  Only
+     against a worker that knows his quests (caps.beastmaster; BroTown.jsx
+     _spawnWheelNpcs). */
+  { name: 'Beastmaster Bro', door: 'woodworker', dx: 105, dy: 34, cap: 'beastmaster' },
 ];

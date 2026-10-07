@@ -36,6 +36,15 @@ export function itemWords(invKey) {
 
 /** One delivery (an inbox_delivered entry: { kind, source, note, payload })
  *  as a line of mail: { what, note, kind, source }. */
+/* v2.3.3122: a pet in the mail, in words, with no imports (see the header):
+   its own name, else its kind's, and its level ("Snowball, Lv 4"). */
+function petWords(pet) {
+  if (!pet || typeof pet !== 'object') return 'A pet';
+  const kind = typeof pet.kind === 'string' && /^[a-z]{2,16}$/.test(pet.kind) ? pet.kind.charAt(0).toUpperCase() + pet.kind.slice(1) : 'Pet';
+  const name = typeof pet.name === 'string' && pet.name ? pet.name.replace(/[^\p{L}\p{N} '-]/gu, '').slice(0, 16) : '';
+  return (name ? name + ' the ' + kind : 'A ' + kind) + ', Lv ' + Math.max(1, Math.floor(Number(pet.lv) || 1));
+}
+
 export function mailLine(e) {
   const p = (e && e.payload) || {};
   const kind = e && typeof e.kind === 'string' ? e.kind : 'item';
@@ -45,6 +54,7 @@ export function mailLine(e) {
   else if (kind === 'item') what = source === 'daily' ? 'A daily chest' : `${Math.max(1, Math.round(Number(p.count) || 1))}× ${itemWords(p.invKey)}`;
   else if (kind === 'weapon') what = (p.weapon && typeof p.weapon.name === 'string' && p.weapon.name) || 'A weapon';
   else if (kind === 'gear') what = (p.piece && typeof p.piece.name === 'string' && p.piece.name) || 'A piece of gear';
+  else if (kind === 'pet') what = petWords(p.pet);   /* v2.3.3122: a pet (a sale, a trade, an unsold one back) */
   else what = 'A delivery';
   let note = e && typeof e.note === 'string' ? e.note : '';
   if (!note && source === 'daily') note = 'Daily reward';

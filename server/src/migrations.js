@@ -92,7 +92,7 @@ export function healLifeSkillLevels(blob) {
   let changed = false;
   for (const k of LIFE_SKILL_KEYS) {
     const sk = Object.prototype.hasOwnProperty.call(ls, k) ? ls[k] : null;
-    /* v2.3.3111: a skill that is not an object at all -- `farming: 1`, a
+    /* v2.3.3127: a skill that is not an object at all -- `farming: 1`, a
        string, true, a list -- is a fresh one.  A first join stores the
        client's skills as sent, and `_addLifeSkillXp` (gathering.js) THREW
        writing XP onto a number, after the farm's harvest had paid (farm.js:

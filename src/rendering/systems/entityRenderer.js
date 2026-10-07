@@ -101,6 +101,12 @@ import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.
 import { jumpActive, jumpFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
+import { activePet } from '../../game/petBook.js'; /* v2.3.3120: the pet out with you is the record's */
+import { petFrames, petSideFaces, petArtHeight } from '../petSprites.js'; /* v2.3.3120: the pet sheet */
+import { PET_ART, petTint, petLevelScale, petDisplayName, petKindOfOld, worldSafeText } from '../../data/trapping.js'; /* v2.3.3120 */
+import { elemLook } from '../../game/elemHits.js'; /* v2.3.3123: the ward's ring in its element's colour */
+const PET_DRAW_K = 0.85;   /* v2.3.3120: see _updatePet */
+const WARD_RING_MS = 520;   /* v2.3.3123: the land ward's ring after a hit the pet softened */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
 import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2841: the staff kick + where its crystal is */
@@ -8213,6 +8219,7 @@ export class EntityRenderer {
     this.playerDisplay = null;
     this.npcDisplays = new Map();
     this.petDisplay = null;
+    this.peerPetDisplays = new Map();   /* v2.3.3123: the others' pets, by player id (a Map: client-supplied keys) */
   }
 
   update(S, now) {
@@ -8224,6 +8231,7 @@ export class EntityRenderer {
     this._updateForeground(S);   /* v2.3.2655: near-camera framing art */
     this._updateNPCs(S, now);
     this._updatePet(S, now);
+    this._updatePeerPets(S, now);   /* v2.3.3123: the others' pets */
     this._updatePlayerHud(S, now);
     /* v2.3.2635: the depth pass moved OUT of here and into the frame loop.
        effectsRenderer runs after this and places the trees and ore, so
@@ -14935,10 +14943,26 @@ export class EntityRenderer {
      involved (Text falls back to the system emoji font), so this does not
      touch the preload manifest. */
   _updatePet(S, now) {
-    const _ls = S && S.rpg && S.rpg.lifeSkills;
-    const _idx = _ls ? _ls.activePet : null;
-    const pet = (_idx != null && _ls.pets) ? _ls.pets[_idx] : null;
+    /* ═══ v2.3.3120: DRAWN FROM THE PET SHEET ═══
+       The pet out with you is the pets RECORD's (game/petBook.js activePet:
+       the worker's pets_state; the old lifeSkills pair only against an old
+       worker), drawn from the pet sheet (petSprites.js) -- the monster it was
+       caught from, small, walking the way it goes, in its kind's colour, its
+       stage's or gold (data/trapping.js petTint), as big as its size and a
+       little bigger for its level.  It replaces the 15 px emoji in outlined
+       text (nine device px on a phone at the Wheel's zoom, and the iPhone
+       Safari crash nodeLabels.js records).  Nothing is loaded here: the sheet
+       is on the loading screen, and a pet whose frames are not in is simply
+       not drawn. */
+    const pet = S ? activePet(S) : null;
     if (!pet || !S.player) {
+      if (this.petDisplay) { this.petDisplay.visible = false; }
+      return;
+    }
+    const kind = (pet.kind && Object.prototype.hasOwnProperty.call(PET_ART, pet.kind)) ? pet.kind : petKindOfOld(pet);
+    const art = PET_ART[kind];
+    const front = petFrames(art.base, 'front');
+    if (!front.length) {
       if (this.petDisplay) { this.petDisplay.visible = false; }
       return;
     }
@@ -14946,49 +14970,182 @@ export class EntityRenderer {
     if (!this.petDisplay) {
       this.petDisplay = new Container();
       this.petDisplay.label = 'pet';
-      const petBody = new Graphics();
-      this.petDisplay.addChild(petBody);
-      this.petDisplay._body = petBody;
-      const petFace = new Text({ text: '', style: { fontSize: 15, align: 'center' } });
-      petFace.anchor.set(0.5, 0.5);
-      this.petDisplay.addChild(petFace);
-      this.petDisplay._faceText = petFace;
-      const petName = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 7 } });
+      const shadow = new Graphics();
+      shadow.ellipse(0, 0, 11, 4).fill({ color: 0x000000, alpha: 0.25 });
+      this.petDisplay.addChild(shadow);
+      this.petDisplay._shadow = shadow;
+      const body = new Sprite(front[0]);
+      body.anchor.set(0.5, 1);
+      this.petDisplay.addChild(body);
+      this.petDisplay._sprite = body;
+      const petName = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 22 } });   /* about the height of a nameplate's small type on the phone */
       petName.anchor.set(0.5, 1);
-      petName.y = -12;
       this.petDisplay.addChild(petName);
       this.petDisplay._nameText = petName;
+      /* v2.3.3123: the land ward's ring -- drawn only for the moment after a
+         hit it softened, cleared otherwise (one Graphics, no texture) */
+      const ward = new Graphics();
+      this.petDisplay.addChildAt(ward, 1);
+      this.petDisplay._wardRing = ward;
       this.entityLayer.addChild(this.petDisplay);
+      this._petLastX = null;
     }
 
-    this.petDisplay.visible = true;
-    /* The simulated follow position, which is also where the coin popup is
-       floated -- so the two finally agree.  Falls back to the spot the old
-       code used if the simulation has not seeded itself yet (one frame). */
-    this.petDisplay.x = (typeof S._petX === 'number') ? S._petX : S.player.x + 20;
-    this.petDisplay.y = (typeof S._petY === 'number') ? S._petY : S.player.y + 15;
-
-    const bounce = Math.sin(now / 300) * 2;
-    const petBody = this.petDisplay._body;
-    petBody.clear();
-    /* A soft ground shadow under the emoji so it sits ON the world rather
-       than floating over it; the disc is only drawn as the pet itself when
-       the pet has no emoji to show. */
-    if (pet.emoji) {
-      petBody.ellipse(0, 7, 6, 2.5);
-      petBody.fill({ color: 0x000000, alpha: 0.25 });
-    } else {
-      petBody.circle(0, bounce, 6);
-      petBody.fill({ color: cssColorToHex(pet.color || '#f5c542') });
-      petBody.circle(0, bounce, 6);
-      petBody.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+    const d = this.petDisplay;
+    d.visible = true;
+    /* The simulated follow position (BroTown's PET FOLLOW), which is also
+       where the loot vacuum's popups float -- so the two agree.  Falls back to
+       the spot beside you for the one frame before it seeds itself. */
+    const x = (typeof S._petX === 'number') ? S._petX : S.player.x + 20;
+    const y = (typeof S._petY === 'number') ? S._petY : S.player.y + 15;
+    const { k, hop } = this._posePet(d, art, pet, x, y, now);
+    const nm = worldSafeText(petDisplayName({ ...pet, kind }));
+    if (d._nameText.text !== nm) d._nameText.text = nm;
+    d._nameText.y = -petArtHeight(art.base) * k * 2 - 4 + hop;
+    d._kind = kind;
+    /* ═══ v2.3.3123: THE LAND WARD, SEEN ═══
+       For WARD_RING_MS after a hit the pet softened (game/elemHits.js stamps
+       S._wardAt from the worker's `wd`), a ring of its element's colour
+       swells out from it and fades: the pet doing its job, where you look. */
+    const wr = d._wardRing;
+    if (wr) {
+      const age = (typeof S._wardAt === 'number') ? now - S._wardAt : Infinity;
+      if (age >= 0 && age < WARD_RING_MS) {
+        const u = age / WARD_RING_MS;
+        const h = petArtHeight(art.base) * k * 2;
+        const look = elemLook(S._wardElem);
+        const col = look ? parseInt(look.color.slice(1), 16) : 0x7ee0a8;
+        wr.clear();
+        wr.ellipse(0, -h * 0.45, (h * 0.55 + 6) * (0.8 + 0.6 * u), (h * 0.6 + 6) * (0.8 + 0.6 * u))
+          .stroke({ color: col, width: 4 * (1 - u) + 1, alpha: 0.9 * (1 - u) });
+        wr.ellipse(0, 0, 14 + 18 * u, 5 + 6 * u).fill({ color: col, alpha: 0.35 * (1 - u) });
+        wr.visible = true;
+        d._wardShown = (d._wardShown || 0) + (d._wardLastAt === S._wardAt ? 0 : 1);
+        d._wardLastAt = S._wardAt;
+      } else if (wr.visible) {
+        wr.clear();
+        wr.visible = false;
+      }
     }
-    this.petDisplay._faceText.text = pet.emoji || '';
-    this.petDisplay._faceText.visible = !!pet.emoji;
-    this.petDisplay._faceText.y = bounce;
+  }
 
-    this.petDisplay._nameText.text = pet.name || '🐾';
-    this.petDisplay._nameText.y = -10 + bounce;
+  /* ═══ v2.3.3123: ONE PET'S POSE, YOURS OR ANOTHER PLAYER'S ═══
+     Lifted out of _updatePet when the others' pets came (Phase 4), so the two
+     can never be drawn differently: the frame for the way it walks (side
+     frames when it goes more across than up or down, held while it stands),
+     the bounce or the hop, the flip, its tint, and its size -- its own and a
+     little for its level.  The walk state lives on the display `d`. */
+  _posePet(d, art, pet, x, y, now) {
+    const front = petFrames(art.base, 'front');
+    const dx = d._lastX == null ? 0 : x - d._lastX;
+    const dy = d._lastY == null ? 0 : y - d._lastY;
+    d._lastX = x; d._lastY = y;
+    const moving = Math.abs(dx) + Math.abs(dy) > 0.25;
+    if (moving) {
+      d._walkSide = Math.abs(dx) > Math.abs(dy) * 1.1;
+      if (Math.abs(dx) > 0.15) d._goesEast = dx > 0;
+    }
+    const side = !!d._walkSide && petFrames(art.base, 'side').length > 0;
+    const frames = side ? petFrames(art.base, 'side') : front;
+    /* slimes bounce standing still too; a walker steps only while it walks */
+    const bounces = art.base === 'slime' || art.base === 'blueSlime';
+    const fi = frames.length > 1 && (moving || bounces) ? Math.floor(now / (bounces ? 120 : 105)) % frames.length : 0;
+    const spr = d._sprite;
+    if (spr.texture !== frames[fi]) spr.texture = frames[fi];
+    /* PET_DRAW_K: the sheet is 2 px a game px (k 0.5 draws its 30 px art 30
+       game px tall); a bro stands ~105 game px on the phone, so 0.85 puts a
+       size-1 pet at ~50 -- about half of him, half a monster, readable at a
+       glance (mp-trapping's pictures: at 0.5 a slime pet was a speck) */
+    const k = PET_DRAW_K * Math.max(0.5, Math.min(1.6, Number(pet.size) || 1)) * petLevelScale(pet.lv || pet.level);
+    const faces = petSideFaces(art.base);
+    const flip = side && faces && ((faces === 'e') !== !!d._goesEast) ? -1 : 1;
+    spr.scale.set(k * flip, k);
+    spr.tint = petTint(pet);
+    /* a one-pose pet (the rock monster, the fishman) is carried by a hop */
+    const hop = frames.length === 1 && moving ? -Math.abs(Math.sin(now / 120)) * 3 : 0;
+    spr.y = hop;
+    d.x = x; d.y = y;
+    d._shadow.scale.set(Math.max(0.8, k * 2), 1.2);
+    d._frame = fi; d._side = side; d._flip = flip;
+    return { k, hop };
+  }
+
+  /* ═══ v2.3.3123: THE OTHERS' PETS (pet trapping, Phase 4) ═══
+     "Other players see your pet."  The worker puts the pet out with each
+     player on their tick record (server tick.js playerWire `pw`, petbook.js
+     petWireOf) and wsClient keeps it as other._pet ({kind, stage, gold,
+     size, lv}, data/trapping.js parsePetWire).  Each is drawn as yours is
+     (_posePet) and follows its player the same distance behind -- eased by
+     time, not by frames, so a slow phone does not leave it behind -- WITHOUT
+     its name: a crowd's pets with a name each would bury the screen, and the
+     name is their owner's to show on their own screen.  Nothing is loaded
+     (the pet sheet is on the loading screen); a pet whose frames are not in,
+     or a player in another zone, draws nothing, and a display whose player or
+     pet is gone is destroyed (memory rule). */
+  _updatePeerPets(S, now) {
+    if (!this.peerPetDisplays) this.peerPetDisplays = new Map();
+    /* only against a worker that says it shows them (caps.petshow); its
+       `petshow: false` takes every one away at once */
+    const others = (S._serverCaps && S._serverCaps.petshow) ? (S.others || {}) : {};
+    const seen = new Set();
+    const dt = this._peerPetLastNow ? Math.max(0, Math.min(100, now - this._peerPetLastNow)) : 16;
+    this._peerPetLastNow = now;
+    const ease = 1 - Math.exp(-dt / 160);
+    for (const [id, other] of Object.entries(others)) {
+      const pet = other && other._pet;
+      if (!pet || (other.zone || other.z || 'town') !== S.currentZone) continue;
+      const kind = Object.prototype.hasOwnProperty.call(PET_ART, pet.kind) ? pet.kind : null;
+      if (!kind) continue;
+      const art = PET_ART[kind];
+      if (!petFrames(art.base, 'front').length) continue;
+      seen.add(id);
+      let d = this.peerPetDisplays.get(id);
+      if (!d || d.destroyed) {
+        d = new Container();
+        d.label = 'peerPet_' + id;
+        const shadow = new Graphics();
+        shadow.ellipse(0, 0, 11, 4).fill({ color: 0x000000, alpha: 0.25 });
+        d.addChild(shadow);
+        d._shadow = shadow;
+        const body = new Sprite(petFrames(art.base, 'front')[0]);
+        body.anchor.set(0.5, 1);
+        d.addChild(body);
+        d._sprite = body;
+        this.entityLayer.addChild(d);
+        this.peerPetDisplays.set(id, d);
+      }
+      const px = other.renderX != null ? other.renderX : other.x;
+      const py = other.renderY != null ? other.renderY : other.y;
+      if (!Number.isFinite(px) || !Number.isFinite(py)) { d.visible = false; continue; }
+      /* behind its player, on the side it walks from: 30 px back, 20 down,
+         as yours stands when you stop */
+      const facesWest = (typeof other._renderFacing === 'string' && other._renderFacing.indexOf('west') >= 0) || other.dir === 'left';   /* 8-way names (gameEvents _FACING8), else the old 4-way dir */
+      const back = facesWest ? 30 : -30;
+      const tx = px + back, ty = py + 20;
+      if (!Number.isFinite(d._fx) || Math.abs(d._fx - tx) + Math.abs(d._fy - ty) > 900) { d._fx = tx; d._fy = ty; }
+      else { d._fx += (tx - d._fx) * ease; d._fy += (ty - d._fy) * ease; }
+      d.visible = true;
+      this._posePet(d, art, pet, d._fx, d._fy, now);
+      d._kind = kind;
+    }
+    for (const [id, d] of this.peerPetDisplays) {
+      if (!seen.has(id)) {
+        try { d.destroy({ children: true }); } catch (e) { /* gone */ }
+        this.peerPetDisplays.delete(id);
+      }
+    }
+  }
+
+  /* for the QA scenario (mp-petshow): the others' pets as drawn */
+  peerPetsDrawn() {
+    const out = [];
+    if (!this.peerPetDisplays) return out;
+    for (const [id, d] of this.peerPetDisplays) {
+      out.push({ id, visible: !!d.visible, kind: d._kind || null, x: d.x, y: d.y,
+        tint: d._sprite ? d._sprite.tint : null, scale: d._sprite ? Math.abs(d._sprite.scale.x) : null,
+        tex: !!(d._sprite && d._sprite.texture && d._sprite.texture.source) });
+    }
+    return out;
   }
 
   /* v2.3.2078: what the pet display is doing, for a scenario to read.  The
@@ -14998,8 +15155,14 @@ export class EntityRenderer {
     const d = this.petDisplay;
     if (!d) return null;
     return { visible: !!d.visible, x: d.x, y: d.y,
-      emoji: d._faceText ? d._faceText.text : null,
-      name: d._nameText ? d._nameText.text : null };
+      /* v2.3.3120: drawn from the pet sheet -- which kind, which frame */
+      kind: d._kind || null, frame: d._frame, side: !!d._side, flip: d._flip,
+      tint: d._sprite ? d._sprite.tint : null,
+      scale: d._sprite ? Math.abs(d._sprite.scale.x) : null,
+      tex: !!(d._sprite && d._sprite.texture && d._sprite.texture.source),
+      name: d._nameText ? d._nameText.text : null,
+      /* v2.3.3123: how many softened hits its ring has shown */
+      wards: d._wardShown || 0 };
   }
 
   /* ═══ v2.3.1775: WORLD PROPS ═══
@@ -16078,6 +16241,11 @@ export class EntityRenderer {
     this.otherPlayerDisplays.clear();
     for (const [, d] of this.npcDisplays) d.destroy({ children: true });
     this.npcDisplays.clear();
+    /* v2.3.3123: the others' pets go with the others */
+    if (this.peerPetDisplays) {
+      for (const [, d] of this.peerPetDisplays) { try { d.destroy({ children: true }); } catch (e) { /* gone */ } }
+      this.peerPetDisplays.clear();
+    }
     /* playerDisplay + petDisplay intentionally NOT destroyed here. */
   }
 }

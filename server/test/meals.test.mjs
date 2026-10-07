@@ -1,4 +1,4 @@
-/* MEALS AND BREWS YOU CARRY -- v2.3.3114 (docs/specs/meals.md).
+/* MEALS AND BREWS YOU CARRY -- v2.3.3130 (docs/specs/meals.md).
  *
  * The farming plan's Phase 2 (docs/FARMING-PLAN.md, "What farming pays"):
  * the Cookhouse makes things you carry, one meal and one brew may run at
@@ -14,7 +14,7 @@
  *   4. The three tonics brew from herbs, at their Cooking levels.
  *   5. The Herb Bread doubles the out-of-combat healing -- never mid-fight,
  *      never in a duel or an arena match -- under its own `rest` timer, never
- *      `regen` (a rollback to v2.3.3111 reads `regen` as 2% a second).
+ *      `regen` (a rollback to v2.3.3127 reads `regen` as 2% a second).
  *   6. The kill switch (`meals: false`) un-advertises and refuses a carry
  *      cook before anything is used; dishes in bags still eat and drink.
  *   7. Diego sells his two staples, not the tonics, and buys no tonic and no
@@ -76,7 +76,7 @@ await join(ws, PID);
 const P = room.playerState[PID];
 const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
 check('caps.meals is advertised', !!sync && sync.caps.meals === true, sync && sync.caps && sync.caps.meals);
-/* v2.3.3114 (review of the potato's phase): and HOW MANY recipes it cooks --
+/* v2.3.3130 (review of the potato's phase): and HOW MANY recipes it cooks --
    the phone offers a row, and Eat or Drink on its dish, only below this. */
 check('caps.cookRows says how many recipes this worker cooks', !!sync && sync.caps.cookRows === COOKING_RECIPES.length, sync && sync.caps && sync.caps.cookRows);
 P.lifeSkills.cooking = { level: 10, xp: 0 };
@@ -107,7 +107,7 @@ P._buffs = {};
   await send(ws, 'eat_request', { invKey: 'meal_herb_bread' });
   check('eating a Herb Bread runs it for half an hour', room._buffActive(P, 'rest')
     && P._buffs.rest > now() + 29 * 60000 && P._buffs.rest <= now() + 30 * 60000, P._buffs);
-  /* v2.3.3111's worker heals 2% of max HP a second, in or out of a fight,
+  /* v2.3.3127's worker heals 2% of max HP a second, in or out of a fight,
      while a `regen` timer runs -- its bread's, for 60 s.  A rollback to it
      must not find a half-hour one there (review: three finders proved it). */
   check('...on its OWN timer, `rest` -- no `regen` for an older worker to misread', P._buffs.regen === undefined, P._buffs);
@@ -158,7 +158,7 @@ P._buffs = {};
     await send(ws, 'cook_recipe', { recipeIdx: idx(k), carry: true });
     check('...and a brew puts the very bottle Diego used to sell in the bag', P.inventory[k] === 1 && Object.prototype.hasOwnProperty.call(SHOP_ITEMS, k), P.inventory[k]);
   }
-  /* The level gates are the worker's (v2.3.3111's rule, kept). */
+  /* The level gates are the worker's (v2.3.3127's rule, kept). */
   P.lifeSkills.cooking = { level: 4, xp: 0 };
   const fb = P.inventory.herb_firebloom;
   await send(ws, 'cook_recipe', { recipeIdx: idx('whetstone'), carry: true });
@@ -187,7 +187,7 @@ P._buffs = {};
   room._duels = new Map([['d1', { status: 'active', a: PID, b: 'bp_meals_rival' }]]);
   check('...never in a duel', tick(10000) === 0, P.hp);
   room._duels = duels0;
-  /* An older worker's 60 s `regen` timer (v2.3.3111) doubles nothing here. */
+  /* An older worker's 60 s `regen` timer (v2.3.3127) doubles nothing here. */
   P._buffs = { regen: now() + 60000 };
   check('...and an old `regen` timer is not the bread', tick(10000) === plain, P.hp);
   P._buffs = {};
