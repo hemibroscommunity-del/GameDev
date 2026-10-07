@@ -187,7 +187,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const doors = await P.page.evaluate(() => (window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : []));
     const bl = (m && m.buildings) || [];
     const placed = doors.every((d) => bl.some((b) => b.id === d.id && d.x >= b.x0 - 1 && d.x <= b.x1 + 1 && Math.abs(d.y - b.y1) <= 2 && b.closed === !!d.closed));
-    rec.ok(`the town's buildings are on the minimap: all ${bl.length} of the ${doors.length} standing, each over the ground it stands on with its door on its front edge (${bl.filter((b) => b.closed).length} shut, grey), about ${bl.length ? Math.round(bl[0].w) : 0} x ${bl.length ? Math.round(bl[0].h) : 0} px -- and the town's square no longer drawn`,
+    /* the sizes, smallest to biggest (by area) */
+    const bySize = bl.slice().sort((a, b) => a.w * a.h - b.w * b.h);
+    const sz = (b) => (b ? `${Math.round(b.w)} x ${Math.round(b.h)}` : '0 x 0');
+    rec.ok(`the town's buildings are on the minimap: all ${bl.length} of the ${doors.length} standing, each over the ground it stands on with its door on its front edge (${bl.filter((b) => b.closed).length} shut, grey), from ${sz(bySize[0])} px to ${sz(bySize[bySize.length - 1])} (${bySize.length ? bySize[bySize.length - 1].id : '-'}) -- and the town's square no longer drawn`,
       doors.length >= 17 && bl.length === doors.length && placed && bl.every((b) => b.w >= 10 && b.h >= 5) && m.townMark === false,
       { n: bl.length, doors: doors.length, placed, townMark: m && m.townMark, sample: bl.slice(0, 3) });
     let roof = 0;
