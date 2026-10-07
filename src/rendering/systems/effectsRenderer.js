@@ -208,9 +208,11 @@ function _chopKeyMask(img) {
  *  is what keeps the skin classifier off the axe (v2.3.2761).  `img` is one of
  *  the key-intact crops in _chopSrc; recolorStandInSkin draws it into a canvas
  *  of its own, so a later rebake always starts from the untouched art. */
-function _bakeChopStrip(img, keyMask, skinT, art, statKey, keepCanvas) {
+function _bakeChopStrip(img, keyMask, skinT, art, statKey, keepCanvas, clothes) {
   const FW = 240, FH = 220, COUNT = 12;
-  const cv = recolorStandInSkin(img, skinT, FH, { minBlob: CHOP_MIN_BLOB, art, regions: CHOP_INK_REGIONS });
+  /* v2.3.3145: + `clothes` ({ pantsT, shoesT }): your trousers and boots
+     (playerSkins _standInClothes) */
+  const cv = recolorStandInSkin(img, skinT, FH, { minBlob: CHOP_MIN_BLOB, art, regions: CHOP_INK_REGIONS, frameW: FW, ...(clothes || {}) });
   recolorToolKeyCanvas(cv, TOOL_SPECS.axe, 1, keyMask);
   /* v2.3.2775: every stand-in bake is cropped to its art and the full canvas
      released -- see _sliceStandIn.  `keepCanvas` for a caller that still has
@@ -241,8 +243,10 @@ function _loadStandInImg(url) {
 }
 /** One cook strip, split: the skin bake (`cv`, the shared figure) and the
  *  drawings' layer (`ink`, a canvas, or null when there are none). */
-function _bakeCookSplit(img, skinT, art) {
-  return recolorStandInSkinSplit(img, skinT, COOK_FH, { keepX: COOK_KEEP_X, art, regions: COOK_INK_REGIONS });
+function _bakeCookSplit(img, skinT, art, clothes) {
+  /* v2.3.3145: + `clothes` ({ pantsT, shoesT }): your trousers and boots,
+     the pan kept out of them by where it is (playerSkins _standInClothes) */
+  return recolorStandInSkinSplit(img, skinT, COOK_FH, { keepX: COOK_KEEP_X, art, regions: COOK_INK_REGIONS, frameW: COOK_FW, ...(clothes || {}) });
 }
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale, depthK /* v2.3.2790 */ } from '@/data/zones.js';
@@ -572,9 +576,12 @@ const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
    table).  One strip, no legless twin.  FIRE_KEEP_BOXES puts the fist's
    islands back into the figure for everybody, drawings or not. */
 const FIRE_URL = '/sprites/skills/firemaking-strip.webp?v=2.3.1715';
-function _bakeFireSplit(img, skinT, art) {
+function _bakeFireSplit(img, skinT, art, clothes) {
+  /* v2.3.3145: + `clothes` ({ pantsT, shoesT }): your trousers and boots --
+     `pantsWide` for the trousers the fire's glow warms (playerSkins
+     _standInClothes) */
   return recolorStandInSkinSplit(img, skinT, FIRE_FH, { ...FIRE_SKIN_OPTS, frameW: FIRE_FW,
-    keepBoxes: FIRE_KEEP_BOXES, art, regions: FIRE_INK_REGIONS });
+    keepBoxes: FIRE_KEEP_BOXES, art, regions: FIRE_INK_REGIONS, ...(clothes ? { ...clothes, pantsWide: true } : {}) });
 }
 /* The drawn-peer layers, per figure (_peerStandInInk): the strip a variant
    loads, its frame size and the split bake.  The cook's variant is its legless
@@ -3714,7 +3721,19 @@ export class EffectsRenderer {
        2.327x smaller (154/512 = 0.3008 vs 154/220 = 0.7).  0.85 x 2.327 = 1.98
        reproduces exactly the hat size that shipped.  Left alone, every hat,
        hair and beard on this pose would have rendered at 43%. */
-    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 1.98, sword: 1.03, sword_se: 1.03, sword_e: 1.03, sword_n: 1.03, bow_e: 1.0, bow_sw: 1.0, bow_s: 1.0, bow_nw: 1.0, bow_n: 1.0 };
+    /* ═══ v2.3.3145: THE COOK'S HAT FITS HIS HEAD ═══
+       The owner: "The character's appearance changes during resource gathering
+       activities.  It needs to stay consistent."  A height ratio is a head
+       ratio only for a figure of the walking body's build -- and the cook is
+       neither: he crouches, and his head is big.  Measured as the walking body
+       is measured (the widest row through the crown, down to the neck, and the
+       skull's top, where a hat sits): the cook's head is 85 art px wide and 70
+       across its top against stand-south's 51 and 43 -- 1.67 and 1.63 -- so at
+       1.16 every hat, hair and beard sat on him 30% too small, a child's cap on
+       a grown head.  1.65 now.  The lumberjack's (46 and 40-45 against 51 and
+       43) and the fire-lighter's (101 and 90-100, at his 512 frame) fit their
+       0.91 and 1.98 within a tenth, and stay. */
+    this._skillTraitMul = { chop: 0.91, cook: 1.65, fire: 1.98, sword: 1.03, sword_se: 1.03, sword_e: 1.03, sword_n: 1.03, bow_e: 1.0, bow_sw: 1.0, bow_s: 1.0, bow_nw: 1.0, bow_n: 1.0 };
     /* crowns.json frame widths MUST match the strip-loading FWs above
        (chop 240, cook 213, fire 384 — v2.3.1715, was 161).  If those strips are
        re-cut, rerun the crown generator with the matching widths or the traits
@@ -3905,6 +3924,9 @@ export class EffectsRenderer {
        the cook and the fire-lighter do -- but from the images already in hand,
        so this one costs no network at all. */
     this._offs.push(onSkinChange(() => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } }));   /* v2.3.3074: kept for destroy() */
+    /* v2.3.3145: and the trousers and boots, which it wears now */
+    const _rechop = () => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } };
+    this._offs.push(onPantsChange(_rechop), onShoesChange(_rechop));
     /* v2.3.2855: and when one of the three drawings the lumberjack carries
        changes.  The designer commits every STROKE through setArt, so this waits
        for the strokes to stop rather than rebaking both strips per stroke; the
@@ -3952,6 +3974,9 @@ export class EffectsRenderer {
     /* skinTarget() returns null for the 'default' pick -- see the cook's bake
        for why that cannot stand for a painted stand-in. */
     const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
+    /* v2.3.3145: and your trousers and boots (null: the art's own, which is
+       the default pick's colour) */
+    const _clothes = { pantsT: pantsTarget(getPants()), shoesT: shoesTarget(getShoes()) };
     /* v2.3.2855: the figure faces east in its source (the trait crown is
        composited 'east' too), so it takes the FRONT drawings. */
     const _base = localBodyArt(false);
@@ -3971,10 +3996,11 @@ export class EffectsRenderer {
       const _keyMask = _chopKeyMask(img);
       /* v2.3.2775: cropped (_sliceStandIn), the full bake kept only until the
          probe below has read it. */
-      const _plain = _bakeChopStrip(img, _keyMask, skinT, _art ? { ..._art, mirror: false } : null, key, true);
+      const _plain = _bakeChopStrip(img, _keyMask, skinT, _art ? { ..._art, mirror: false } : null, key, true,
+        { ..._clothes, probe: key === '_chopSkinFrames' ? 'chop' : 'chop-legless' });   /* v2.3.3145: the probe's name (QA) */
       this[key] = this._own(_plain.arr);   /* v2.3.3074: owned */
       this[key + 'Flip'] = _twin
-        ? this._own(_bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false).arr) : null;   /* v2.3.2855: see above */
+        ? this._own(_bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false, _clothes).arr) : null;   /* v2.3.2855: see above */
       /* v2.3.2500: the mp-standinskin probe, the same reading the sword and
          bow bakes publish -- see _probeStandInSkin. */
       _probeStandInSkin('/sprites/skills/chop' + (key === '_chopSkinFrames' ? '' : '-legless') + '-strip.webp', _plain.cv);
@@ -4019,7 +4045,9 @@ export class EffectsRenderer {
     if (!img) return null;
     /* A symmetric drawing reads the same flipped, so both sides share a bake. */
     const m = !!flip && _chopArtAsymmetric(art);
+    /* v2.3.3145: + their trousers and boots, which the bake now carries */
     const key = (legless ? 'L' : 'B') + (m ? 'm' : 'n') + '|' + String(o.skin || '') + '|'
+      + String(o.pants || '') + '|' + String(o.shoes || '') + '|'
       + CHOP_INK_KEYS.map((k) => (artHasInk(art[k]) ? artHash(art[k]) : '')).join('.');
     const cache = this._peerChopBakes || (this._peerChopBakes = new Map());
     const hit = cache.get(key);
@@ -4040,7 +4068,8 @@ export class EffectsRenderer {
       this._peerChopPending = false;
       if (this._destroyed) return;   /* v2.3.3074 */
       try {
-        const baked = _bakeChopStrip(img, _chopKeyMask(img), skinT, { ...art, mirror: m }, null, false);
+        const baked = _bakeChopStrip(img, _chopKeyMask(img), skinT, { ...art, mirror: m }, null, false,
+          { pantsT: pantsTarget(o.pants), shoesT: shoesTarget(o.shoes) });   /* v2.3.3145: their trousers and boots */
         cache.set(key, { arr: this._own(baked.arr), used: now });   /* v2.3.3074: owned */
       } catch (e) { /* the shared figure keeps drawing */ }
     }, 0);
@@ -4096,6 +4125,8 @@ export class EffectsRenderer {
     /* The character menu can change the skin mid-session, so rebake on it the
        way the sword/bow stand-ins do (_rebakeBodies, v2.3.975). */
     this._offs.push(onSkinChange(() => { this._fetchAndBakeCook(); }));   /* v2.3.3074: kept for destroy() */
+    /* v2.3.3145: and the trousers and boots, which it wears now */
+    this._offs.push(onPantsChange(() => { this._fetchAndBakeCook(); }), onShoesChange(() => { this._fetchAndBakeCook(); }));
     /* v2.3.2856: and the drawings' layer when one of the three drawings the
        cook carries changes -- once the strokes stop, as the lumberjack does
        (the designer commits every stroke; the cook is not on screen while you
@@ -4162,6 +4193,12 @@ export class EffectsRenderer {
        painting, so default falls back to the explicit tan — that is the whole
        point of the fix for anyone who never opened the skin picker. */
     const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
+    /* v2.3.3145: your trousers and boots, as the lumberjack's.  This figure is
+       the one every OTHER player's cook is drawn from on your screen (the
+       SPEC table: a peer's cook already wears your skin, the memory trade of
+       v2.3.1713), so they wear your trousers and boots too -- the same trade,
+       and the same figure the farm's kneel is cut from. */
+    const _clothes = { pantsT: pantsTarget(getPants()), shoesT: shoesTarget(getShoes()) };
     const FW = COOK_FW, FH = COOK_FH;
     /* v2.3.2856: the cook faces the camera and is never drawn flipped, so his
        drawings are the FRONT ones, as painted -- no mirrored twin. */
@@ -4169,7 +4206,8 @@ export class EffectsRenderer {
     const _art = _base ? artForFacing(_base, 'south') : null;
     const _old = [];
     for (const [key, img] of [['_cookFrames', bodyImg], ['_cookLeglessFrames', leglessImg]]) {
-      const { cv, ink } = _bakeCookSplit(img, skinT, _art ? { ..._art, mirror: false } : null);
+      const { cv, ink } = _bakeCookSplit(img, skinT, _art ? { ..._art, mirror: false } : null,
+        { ..._clothes, probe: key === '_cookFrames' ? 'cook' : 'cook-legless' });   /* v2.3.3145: the probe's name (QA) */
       const n = Math.max(1, Math.round(cv.width / FW));
       if (!inkOnly) {
         _old.push(this[key]);
@@ -4310,6 +4348,8 @@ export class EffectsRenderer {
     /* The character menu can change the skin mid-session; rebake exactly as the
        cook does (_loadCookStrips, v2.3.1710). */
     this._offs.push(onSkinChange(() => { this._fetchAndBakeFire(); }));   /* v2.3.3074: kept for destroy() */
+    /* v2.3.3145: and the trousers and boots, which it wears now */
+    this._offs.push(onPantsChange(() => { this._fetchAndBakeFire(); }), onShoesChange(() => { this._fetchAndBakeFire(); }));
     /* v2.3.2858: and the drawings' layer, once the strokes stop -- the cook's
        rule (_loadCookStrips); only the layer is rebuilt. */
     let _fireArtT = 0;
@@ -4345,7 +4385,9 @@ export class EffectsRenderer {
          the camera and is never flipped: the FRONT drawings, as painted. */
       const _base = localBodyArt(false);
       const _art = _base ? artForFacing(_base, 'south') : null;
-      const { cv, ink } = _bakeFireSplit(img, skinT, _art ? { ..._art, mirror: false } : null);
+      /* v2.3.3145: and your trousers and boots (the cook's trade, above) */
+      const { cv, ink } = _bakeFireSplit(img, skinT, _art ? { ..._art, mirror: false } : null,
+        { pantsT: pantsTarget(getPants()), shoesT: shoesTarget(getShoes()), probe: 'fire' });
       const n = Math.max(1, Math.round(cv.width / FIRE_FW));
       const _old = [];
       if (!inkOnly) {

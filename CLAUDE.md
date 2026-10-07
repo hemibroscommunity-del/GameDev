@@ -1800,7 +1800,35 @@ remnant to migrate server-side, not a mode to preserve.
     - the admin panel's Rare / Elite / Godly armor (`/dev/kit` `quality`);
       `quest_reward_stashed` dedupes by the worker's id when it has one (a
       second minted Iron Torso was dropped as a "replay");
-    - `armorgrade` suite, `mp-armorgrade` (15): docs/specs/armor-grade-look.md.)
+    - `armorgrade` suite, `mp-armorgrade` (15): docs/specs/armor-grade-look.md.
+  - Since v2.3.3145 THE BRO LOOKS LIKE HIMSELF WHILE HE GATHERS -- the owner:
+    "The character's appearance changes during resource gathering activities.
+    It needs to stay consistent" (docs/specs/gathering-look.md):
+    - mining and fishing size hair, hats and beards to the HEAD: `poseTraitMul`
+      1.21/0.88 -> `MINE_TRAIT_MUL` 1.116 / `FISH_TRAIT_MUL` 1.07 (the skull's
+      top, tune_headwear.py `sheet_head`: 48/46 against stand's 43; the
+      numbers every poseFit item already had), mirrored in the four tools;
+    - FISHING WEARS YOUR SKIN, TROUSERS AND BOOTS (`getFishFrame(art, f, skin,
+      pants, shoes)`, `prewarmFish` for everyone, `POSE_SKIN_FLOOR` + fish):
+      the rod never needed the raw sheet (its key is b > g); the boot-grey LINE
+      did, and `recolorBodyToCanvas(..., bootsUnderLegs)` paints boots only
+      under the trousers; ~1.2 MB of canvas per player;
+    - the LUMBERJACK, COOK and FIRE-LIGHTER WEAR YOUR TROUSERS AND BOOTS
+      (playerSkins `_standInClothes`: the trousers' big pieces, boot pieces
+      mostly below their hem -- the pan held at the waist goes whole;
+      `pantsWide` for the fire's glow); a peer's cook/fire-lighter is your
+      bake (the v2.3.1713 trade), a drawn peer's lumberjack theirs;
+    - the cook's head traits 1.16 -> 1.65 (`_skillTraitMul`: his head 85 px
+      against stand's 51); the stand-ins' SIZES are the owner's and stay
+      (the lumberjack ~25% under the walking figure);
+    - QA `display._bodyScale`, `window.__btStandInClothes`; `mp-gatherlook`.
+  - Since v2.3.3145 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
+    "Also all the buildings in town should show on the minimap": each
+    standing building's footprint where it stands (wheelMinimap.js
+    `_buildTown`, from `wheelTownDoors()` and the placed objects' boxes,
+    ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
+    town's white square only without them; `__btMinimap.buildings`,
+    `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

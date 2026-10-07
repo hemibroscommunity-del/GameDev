@@ -95,9 +95,14 @@ screen):
   over the body;
 - the shirt, the greaves and the plate are their own strips over it, and the
   legless body is used under greaves;
-- your hair and hat are moved onto it.
+- your hair and hat are moved onto it;
+- (v2.3.3145) your trousers and boots are recoloured on it, and your hair,
+  hat and beard are sized to its big head (the cook's trait size 1.16 → 1.65):
+  [gathering-look.md](gathering-look.md).
 
-Everything you picked at the login picker or put on since is already there.
+Everything you picked at the login picker or put on since is already there,
+except a shirt's print or pattern, your eye colour and a cape (the cook's
+figure carries none of those).
 `_placeCookFigure` in effectsRenderer places all of it. The campfire's cook
 used to be placed inside `_updateExtractionCue`; it now uses the same method,
 so there is one figure and one set of rules.
