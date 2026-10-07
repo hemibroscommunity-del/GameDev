@@ -66,12 +66,12 @@ function check(name, cond, detail) {
 
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
-/* v2.3.3129: every character this suite joins is ON FILE.  A first join
+/* v2.3.3138: every character this suite joins is ON FILE.  A first join
    takes no claims at all (join.js: a new character starts from the
    server's defaults), and the stash merge tested here is what a character
    on file meets on every later join -- so, unless `opts.fresh`, a minimal
    record is put on file first (straight into the store: §4's put throws).
-   The pre-v2.3.3129 suite joined brand-new ids and relied on the first
+   The pre-v2.3.3138 suite joined brand-new ids and relied on the first
    join reading the claim. */
 async function join(roomRef, ws, id, data, opts) {
   roomRef.sessions.set(ws, { id: null, name: 'T', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
@@ -133,7 +133,7 @@ const clientClaim = () => ({
 // ── 2. adoption by a record that predates the slice, and survival of the
 // fixed field list ──
 {
-  /* v2.3.3129: a FIRST join adopts nothing -- a new character starts from
+  /* v2.3.3138: a FIRST join adopts nothing -- a new character starts from
      the server's defaults (join.js), with every stash empty and the stamp
      set (there was nothing to capture). */
   {
@@ -223,7 +223,7 @@ const clientClaim = () => ({
   const wsC = fakeWs('crashA');
   await join(roomC, wsC, 'bp_gs_crash', clientClaim());
   check('crash sim: the in-memory adoption happened', roomC.playerState['bp_gs_crash'].armorStash.length === 3);
-  /* v2.3.3129: the character is on file (the join helper), so "nothing
+  /* v2.3.3138: the character is on file (the join helper), so "nothing
      reached storage" means its record still holds no stash and no stamp. */
   check('crash sim: NOTHING reached storage -- neither stash nor stamp',
     ((crashStore.get('rpg:bp_gs_crash') || {}).armorStash || []).length === 0 && !(crashStore.get('rpg:bp_gs_crash') || {}).gearStashCaptured, crashStore.get('rpg:bp_gs_crash'));

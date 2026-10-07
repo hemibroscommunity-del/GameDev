@@ -122,7 +122,7 @@ const legacyBlob = () => ({
     rpgCoins: 50,
   });
   const ps = room.playerState['bp_mig_b'];
-  /* v2.3.3129: stronger than healed -- a first join takes nothing from the
+  /* v2.3.3138: stronger than healed -- a first join takes nothing from the
      payload (join.js), so the corruption never reaches the fresh blob: no
      pets (and since v2.3.3120 not even the empty list or an active pet --
      trapping.js trapBootstrapGuard; the pets record, petbook.js, is the only
@@ -224,7 +224,7 @@ const legacyBlob = () => ({
   const wsT = fakeWs('t2r');
   await join(wsT, 'bp_mig_t2', { rpgFerocity: 999, rpgInfluence: 50, rpgVitality: 5 });
   const psT = room.playerState['bp_mig_t2'];
-  /* v2.3.3129: and nor does T1 any more -- a first join takes no stat from
+  /* v2.3.3138: and nor does T1 any more -- a first join takes no stat from
      the payload (join.js), so the claimed vitality 5 is 0 too. */
   check('join payload no longer re-injects retired stats (nor, on a first join, T1)',
     psT.ferocity === undefined && psT.influence === undefined && psT.vitality === 0,

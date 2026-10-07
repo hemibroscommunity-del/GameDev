@@ -86,13 +86,13 @@ stomped — pure theatre. It now routes through the REAL loot path:
   `noRespawn` — a captured wave member counts as cleared). No loot,
   no XP/gold shares, no quest credit: a capture is not a kill.
 
-## Join-time sanitization (the legacy adoption is gone, v2.3.3129)
+## Join-time sanitization (the legacy adoption is gone, v2.3.3138)
 
 `_petsAdoptOnJoin` runs at every join:
 
 - Sanitizes whatever pets the server already holds (old bootstraps
   took `rpgLifeSkills` wholesale, unvalidated).
-- **No adoption.** Until v2.3.3129, a player with **no** pets on record
+- **No adoption.** Until v2.3.3138, a player with **no** pets on record
   who brought some had the sanitized list adopted. It was meant to be
   one-time, but nothing stamped it: every join of a player with no pets
   took up to six level-100 pets from what the browser said. Captures

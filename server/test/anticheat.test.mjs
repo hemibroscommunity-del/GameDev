@@ -21,7 +21,7 @@
  * they touch is money.
  */
 import { GameRoom, CHAT_RELAY } from '../src/index.js';
-import { DRAWING_KEYS, NEW_CHARACTER_COINS } from '../src/join.js';   /* v2.3.2445: assert the gate's own set, not a copy of it; v2.3.3129 the new purse */
+import { DRAWING_KEYS, NEW_CHARACTER_COINS } from '../src/join.js';   /* v2.3.2445: assert the gate's own set, not a copy of it; v2.3.3138 the new purse */
 import { HARVEST_PERFECT_PER_MIN, HONEST_CYCLE_MIN_MS } from '../src/gathering.js'; /* v2.3.3036 */
 import { COOK_PER_MIN } from '../src/cooking.js';                                   /* v2.3.3036 */
 
@@ -409,7 +409,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     },
   }));
   const psZ = room.playerState.pz;
-  /* v2.3.3129: a first join takes NO weapon from the payload at all -- a
+  /* v2.3.3138: a first join takes NO weapon from the payload at all -- a
      new character starts from the server's defaults (join.js), and the
      client's own new character holds no weapon (the Mayor hands out the
      sword).  The sanitizer still guards every stored blob, so it is
@@ -514,7 +514,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   }));
   room.state.storage.put = origPutN;
   const psN = room.playerState.pn;
-  /* ═══ v2.3.3129: THE CAPS NO LONGER BIND -- NOTHING IS TAKEN ═══
+  /* ═══ v2.3.3138: THE CAPS NO LONGER BIND -- NOTHING IS TAKEN ═══
      These asserted the claims were CLAMPED (2,000 coins, level 1,000, ...).
      Owner, on the farm's review: "Yes fix all of your recommended fixes.
      Game is still a demo."  A first join now drops every rpg* claim, so the
@@ -544,7 +544,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      v2.3.2361 includes the contextual lunge's damage leg.
      Live state, not the bootstrap blob: these are session-only equipment-
      derived values and _saveRpg does not carry them. */
-  /* v2.3.3129: and on a first join they are not taken at all (0): a new
+  /* v2.3.3138: and on a first join they are not taken at all (0): a new
      character wears no amulet.  The 100 ceiling still binds every later
      join of a character on file, where these are re-read each connect. */
   check('bootstrap: a first join takes no amulet regen mults (0)',
@@ -565,7 +565,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      Asserted on the LIVE state, not on bootN: the raw-stat block runs AFTER
      the bootstrap _saveRpg this section's put-intercept captures, so the first
      blob legitimately has no stats in it at all. */
-  /* v2.3.3129: not taken at all on a first join (0); the _statCap(100)
+  /* v2.3.3138: not taken at all on a first join (0); the _statCap(100)
      bound above still holds for a stored record missing its stats. */
   check('bootstrap: a first join takes no raw T1 stats (0)',
     psN.endurance === 0 && psN.power === 0, { end: psN.endurance, pow: psN.power });
@@ -575,12 +575,12 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      cadence hook AFTER the bootstrap this section measures, so it is not part
      of what the client claimed and is left out of the bootstrap's counts. */
   const invKeys = Object.keys(psN.inventory || {}).filter((k) => k !== 'daily_chest');
-  /* v2.3.3129: 200 forged keys of 9,999 were truncated to 100 keys of 50 --
+  /* v2.3.3138: 200 forged keys of 9,999 were truncated to 100 keys of 50 --
      any names at all, which Diego priced by substring ('bar_00' is a bar:
      ~392,000 coins a throwaway, proved by the review).  Now none land. */
   check('bootstrap: a first join takes no forged inventory (empty bag)', invKeys.length === 0, invKeys.slice(0, 5));
 
-  /* ═══ v2.3.3129: ...AND THE TWO DOORS A CHARACTER ON FILE STILL MEETS ═══
+  /* ═══ v2.3.3138: ...AND THE TWO DOORS A CHARACTER ON FILE STILL MEETS ═══
      The first join above takes nothing, so the ceilings it used to prove are
      proved here on a REJOIN of the same character, answered from a record on
      file (this suite's storage keeps nothing).  The amulet regen mults are
@@ -634,7 +634,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   }));
   room.state.storage.put = origPutG;
   const psG = room.playerState.pg;
-  check('bootstrap: a negative purse is not taken either -- the new character\'s ' + NEW_CHARACTER_COINS, bootG && bootG.coins === NEW_CHARACTER_COINS, bootG && bootG.coins);   /* v2.3.3129 */
+  check('bootstrap: a negative purse is not taken either -- the new character\'s ' + NEW_CHARACTER_COINS, bootG && bootG.coins === NEW_CHARACTER_COINS, bootG && bootG.coins);   /* v2.3.3138 */
   check('bootstrap: null (wire NaN) level defaults to 1', bootG && bootG.level === 1, bootG && bootG.level);
   check('bootstrap: negative xp floors to 0', psG.xp === 0, psG.xp);
   check('bootstrap: string unspentT2 defaults to 0', psG.unspentT2 === 0, psG.unspentT2);
@@ -1335,7 +1335,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      it were bigger the frame gate would drop the whole join and this
      would assert nothing. */
   const bigStash = new Array(200).fill({ type: 'sword', tierMult: 1, name: 'junk-padding-value' });
-  /* v2.3.3129: a character ON FILE.  A first join drops every rpg* key
+  /* v2.3.3138: a character ON FILE.  A first join drops every rpg* key
      before the allowlist's copy is used (join.js), so the copy's size guard
      -- what this block tests -- only applies to a character that exists.
      This suite's storage remembers nothing, so the read is answered here. */

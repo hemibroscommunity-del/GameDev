@@ -73,7 +73,7 @@ v2.3.1185, amulet tiers v2.3.1192 (table lookups need
 onto a plain `{}` (`out[k] = data[k]`) is not a no-op for `'__proto__'`
 -- JSON.parse makes it an own key, and the copy SETS `out`'s prototype to
 the sender's object, so every key the copy left out reads through it
-again. The first cut of v2.3.3129's claims-free join copy did exactly
+again. The first cut of v2.3.3138's claims-free join copy did exactly
 this, and its review bought 1,999 coins and 392,500 from Diego through
 it; the copy is `Object.create(null)` now (`_withoutRpgClaims`, join.js).
 **Receipt:** CLAUDE.md AI-session protocol; `docs/DEV-TOOLS.md`.

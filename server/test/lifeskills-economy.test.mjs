@@ -504,7 +504,7 @@ check('harvest: strike with NO extraction state still harvests (legacy posture) 
   await room.webSocketMessage(wsN, JSON.stringify({ type: 'join', id: 'bp_ls_lv0', name: 'L0', phrase: 'p-bp_ls_lv0',
     data: { x: -100000, y: -100000, z: 'town', rpgLifeSkills: { mining: { level: 0, xp: 120 }, fishing: { level: 4, xp: 7 }, cooking: { level: 0, xp: 0 } } } }));
   const pN = room.playerState['bp_ls_lv0'];
-  /* v2.3.3129: a first join takes NO life skills from the payload (join.js:
+  /* v2.3.3138: a first join takes NO life skills from the payload (join.js:
      a new character starts from the server's defaults) -- the level-0
      claim, the XP and the "real" level 4 alike; every skill is the client's
      own new character's, level 1 with no XP.  The heal this section is

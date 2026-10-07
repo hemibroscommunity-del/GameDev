@@ -1835,7 +1835,7 @@ Two protocol versions coexist; both must keep working:
 - Identity: stable per-browser `bp_` ids from a silent passphrase
   (`bt_passphrase`); two tabs share one identity by design — test
   multiplayer with `?guest=1` on the second tab.
-- A NEW CHARACTER STARTS FROM THE SERVER'S DEFAULTS (v2.3.3129): a join with
+- A NEW CHARACTER STARTS FROM THE SERVER'S DEFAULTS (v2.3.3138): a join with
   no `rpg:<pid>` record reads NO `rpg*` field of its payload
   (`_withoutRpgClaims` in join.js, a null-prototype copy: TRAPS §6), so a
   test that seeds a character through a first join seeds nothing -- put a
