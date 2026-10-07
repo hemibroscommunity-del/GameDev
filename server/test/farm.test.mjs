@@ -22,8 +22,10 @@
  *   9. The rate limit drops a script; the kill switch refuses and
  *      un-advertises.
  *  10. Diego: selling a seed or compost you just bought is always a loss.
- *  11. The Cookhouse: Herb Bread now heals (2% max HP a second), Firebloom
- *      Tea is +20% damage as its card says, and both cook from farm herbs.
+ *  11. The Cookhouse: Herb Bread heals (v2.3.3130: twice the out-of-combat
+ *      trickle, for half an hour), Firebloom Tea is +20% damage as its card
+ *      says, both cook from farm herbs -- and a cook with `carry` puts the
+ *      dish in the bag to eat later; a meal runs beside a brew.
  *  12. The bed turns before anything is paid: a Farming skill stored as a
  *      bare number (a first join keeps the client's skills as sent) once made
  *      the XP throw after the crops were paid, so one bed paid on every
@@ -339,22 +341,32 @@ function ws2Ref() {
   P.inventory.herb_firebloom = 3;
   P.inventory.herb_rock_vine = 1;
   P.inventory.herb_cloudpetal = 1;
-  /* Herb Bread (index 0): 1 Firebloom -> regen */
+  /* Herb Bread (index 0): 1 Firebloom -> its `rest` timer (v2.3.3130) */
   wsB.sent.length = 0;
   await room.webSocketMessage(wsB, JSON.stringify({ type: 'cook_recipe', payload: { recipeIdx: 0 } }));
   await settle();
-  check('Herb Bread cooks from one farm Firebloom', P.inventory.herb_firebloom === 2 && room._buffActive(P, 'regen'), { inv: P.inventory, buffs: P._buffs });
+  check('Herb Bread cooks from one farm Firebloom', P.inventory.herb_firebloom === 2 && room._buffActive(P, 'rest'), { inv: P.inventory, buffs: P._buffs });
+  /* v2.3.3130: an OLD client's cook (no `carry`) is the meal at once, and a
+     meal lasts half an hour now. */
+  check('...a meal: half an hour', P._buffs.rest > Date.now() + 29 * 60000, P._buffs);
   P.z = 'wheel';               /* a combat zone, not a hub */
   P.maxHp = 200; P.hp = 100;
-  P.lastDamageAt = Date.now(); /* mid-fight: the out-of-combat trickle is off */
+  P.lastDamageAt = Date.now() - 10000;   /* out of combat: the trickle runs */
+  P._lastDealtAt = Date.now() - 10000;
+  room._tickPlayerRegen();
+  const plain = Math.round(200 * room.SPOKE_REGEN_PCT);
+  check('...and HEALS: twice the out-of-combat trickle (' + (2 * plain) + ' HP a tick at 200 max HP, against ' + plain + ')',
+    P.hp === 100 + 2 * plain, { hp: P.hp, plain });
+  P.hp = 100;
+  P.lastDamageAt = Date.now();   /* mid-fight: no trickle, and no bread either */
   P._lastDealtAt = Date.now();
   room._tickPlayerRegen();
-  const perTick = Math.round(200 * 0.02 * (30 * room.TICK_RATE) / 1000);
-  check('...and HEALS: ~2% of max HP a second, mid-fight (' + perTick + ' HP a ~660 ms tick)', P.hp === 100 + perTick, { hp: P.hp, perTick });
+  check('...but not mid-fight: a half-hour meal that healed in a fight would be a full bar every minute', P.hp === 100, P.hp);
   P._buffs = {};
-  P.hp = 100;
+  P.lastDamageAt = Date.now() - 10000;
+  P._lastDealtAt = Date.now() - 10000;
   room._tickPlayerRegen();
-  check('...which is the bread: with no buff, mid-fight, nothing heals', P.hp === 100, P.hp);
+  check('...which is the bread: with no buff, the plain trickle', P.hp === 100 + plain, P.hp);
   /* v2.3.3127: the recipe's Cooking level is the WORKER's gate, not only the
      window's: at Cooking 1 the Tea (Cooking 6) is refused, nothing is used,
      and the bag is echoed so a predicted cook snaps back. */
@@ -377,8 +389,23 @@ function ws2Ref() {
   /* Root Stew (index 1): Rock Vine + Cloudpetal -> resist */
   await room.webSocketMessage(wsB, JSON.stringify({ type: 'cook_recipe', payload: { recipeIdx: 1 } }));
   await settle();
-  check('Root Stew cooks from a Rock Vine and a Cloudpetal (one effect at a time: the tea is gone)', room._buffActive(P, 'resist')
-    && !room._buffActive(P, 'damage') && !P.inventory.herb_rock_vine && !P.inventory.herb_cloudpetal, P._buffs);
+  check('Root Stew cooks from a Rock Vine and a Cloudpetal, and runs BESIDE the tea (v2.3.3130: one meal and one brew)', room._buffActive(P, 'resist')
+    && room._buffActive(P, 'damage') && P._buffs.damageMul === 1.2 && !P.inventory.herb_rock_vine && !P.inventory.herb_cloudpetal, P._buffs);
+
+  /* ═══ v2.3.3130: A COOK WITH `carry` PUTS THE DISH IN THE BAG ═══ */
+  P._buffs = {};
+  P.inventory.herb_firebloom = 1;
+  const xp0 = P.lifeSkills.cooking.xp;
+  wsB.sent.length = 0;
+  await room.webSocketMessage(wsB, JSON.stringify({ type: 'cook_recipe', payload: { recipeIdx: 0, carry: true } }));
+  await settle();
+  check('a carried cook makes a Herb Bread in the bag, uses the Firebloom and pays the Cooking XP -- and runs nothing yet',
+    P.inventory.meal_herb_bread === 1 && !P.inventory.herb_firebloom && P.lifeSkills.cooking.xp === xp0 + 25
+    && !room._buffActive(P, 'rest') && wsB.sent.some((m) => m.type === 'player_state'), { inv: P.inventory, buffs: P._buffs, ck: P.lifeSkills.cooking });
+  await room.webSocketMessage(wsB, JSON.stringify({ type: 'eat_request', payload: { invKey: 'meal_herb_bread' } }));
+  await settle();
+  check('...eaten later, it is the meal: half an hour of the bread', !P.inventory.meal_herb_bread && room._buffActive(P, 'rest')
+    && P._buffs.rest > Date.now() + 29 * 60000, { inv: P.inventory, buffs: P._buffs });
 }
 
 // ── 12. the bed turns before anything is paid (v2.3.3127, review) ──

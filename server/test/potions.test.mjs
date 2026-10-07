@@ -48,6 +48,18 @@ function check(name, cond, detail) {
 const room = new GameRoom(makeState(), mockEnv);
 const TICK_MS = REGEN_TICKS * room.TICK_RATE;
 
+/* v2.3.3130: a potion is DRUNK FROM THE BAG.  These used to buy-and-apply in
+   one go through the vendor building's shop_purchase; the tonics are brewed at
+   the Cookhouse now and no longer on sale (data.js DIEGO_SHELF), so a bottle is
+   put in the bag and drunk through the real potion_drink handler -- the effect
+   code under test (_applyShopItem) is the same either way. */
+const drink = (id, key) => {
+  const p = room.playerState[id];
+  if (!p.inventory) p.inventory = Object.create(null);
+  p.inventory[key] = (p.inventory[key] || 0) + 1;
+  room._handleDrinkRequest({ id }, { invKey: key });
+};
+
 /* ═══════════════ THE MANA DRAUGHT ═══════════════ */
 room.playerState.caster = {
   z: 'meadow', x: 100, y: 100, hp: 100, maxHp: 100,
@@ -60,9 +72,9 @@ check('a special costs what the client thinks it costs (guard)',
 
 /* ── DRINKING FILLS THE POOL ──
    Without this the first special waits on regen, which is not "constantly". */
-room._handleShopPurchase({ id: 'caster' }, { itemId: 'manaShard' });
+drink('caster', 'manaShard');
 check('drinking it fills the pool immediately', ps.mana === ps.maxMana, ps.mana);
-check('...and costs the listed coins', ps.coins === 500 - SHOP_ITEMS.manaShard.cost, ps.coins);
+check('...and uses up the bottle', !ps.inventory.manaShard && ps.coins === 500, { bag: ps.inventory, coins: ps.coins });
 check('...and arms a three-minute timer',
   ps._buffs.mana > Date.now() + 175 * 1000 && ps._buffs.mana < Date.now() + 185 * 1000,
   { remainingMs: ps._buffs.mana - Date.now() });
@@ -84,7 +96,7 @@ const simulate = (withPotion) => {
     z: 'meadow', x: 0, y: 0, hp: 100, maxHp: 100,
     mana: 100, maxMana: 100, stamina: 100, maxStamina: 100, coins: 500,
   };
-  if (withPotion) room._handleShopPurchase({ id: 'sim' }, { itemId: 'manaShard' });
+  if (withPotion) drink('sim', 'manaShard');
   let casts = 0, dry = 0, sinceCast = 0;
   const TOTAL_MS = 180 * 1000;
   for (let t = 0; t < TOTAL_MS; t += TICK_MS) {
@@ -154,8 +166,7 @@ const tryStep = () => {
 check('un-buffed, a 640px-per-second sprint is refused as a teleport (the control)',
   tryStep() === 1000, { x: rp.x });
 
-rp.coins = 500;
-room._handleShopPurchase({ id: 'runner' }, { itemId: 'swiftDraught' });
+drink('runner', 'swiftDraught');
 check('the Swift Draught arms a three-minute timer',
   rp._buffs.spd > Date.now() + 175 * 1000, { remainingMs: rp._buffs.spd - Date.now() });
 check('...carrying its own 1.5x, not the cooked-food 1.15',
@@ -186,52 +197,70 @@ rp.x = 1000; rp.y = 1000; rp.lastMoveAt = Date.now() - 1000;
 room._handleMove(sess, ws, { type: 'move', x: 1000 + 2000, y: 1000, z: 'meadow' });
 check('an absurd stored speed multiplier does not open the cap', rp.x === 1000, { x: rp.x });
 
-/* ═══════════════ ONE EFFECT AT A TIME ═══════════════
-   Owner: "Only 1 effect active at a time though."
+/* ═══════════════ ONE BREW AT A TIME ═══════════════
+   Owner: "Only 1 effect active at a time though."  v2.3.3130: one MEAL and one
+   BREW (the farming plan) -- the three tonics are brews, so this rule holds
+   between them exactly as it did; a meal now runs beside a brew (below).
 
    Stated as what a player would notice: the buff they were running STOPS when
    they drink something else. Checked on the magnitudes as well as the timers,
    because a leftover multiplier with no timer is the failure mode
-   BUFF_MAGNITUDES exists to catch -- and it is exactly what a key-by-key
-   clear would leave behind. */
+   BUFF_MAGNITUDES exists to catch. */
 const one = room.playerState.only = {
   z: 'meadow', hp: 100, maxHp: 100, mana: 50, maxMana: 100,
   stamina: 100, maxStamina: 100, coins: 1000,
   inventory: Object.create(null), lifeSkills: { cooking: { level: 6, xp: 0 } },   /* v2.3.3127: the Tea asks Cooking 6 (cooking.js) */
 };
-room._handleShopPurchase({ id: 'only' }, { itemId: 'swiftDraught' });
+drink('only', 'swiftDraught');
 check('the Swift Draught is running (guard)',
   room._buffActive(one, 'spd') && one._buffs.spdMul === 1.5, one._buffs);
 
-room._handleShopPurchase({ id: 'only' }, { itemId: 'whetstone' });
-check('drinking a Fury Tonic ENDS the Swift Draught -- one effect at a time',
+drink('only', 'whetstone');
+check('drinking a Fury Tonic ENDS the Swift Draught -- one brew at a time',
   !room._buffActive(one, 'spd'), one._buffs);
 check('...and takes its multiplier with it, leaving nothing stranded',
   one._buffs.spdMul === undefined, one._buffs);
 check('...while the tonic itself is now the one that is running',
   room._buffActive(one, 'damage') && one._buffs.damageMul === 2.0, one._buffs);
 
-room._handleShopPurchase({ id: 'only' }, { itemId: 'manaShard' });
+drink('only', 'manaShard');
 check('and the Mana Draught ends the tonic in turn',
   !room._buffActive(one, 'damage') && one._buffs.damageMul === undefined, one._buffs);
 check('...leaving exactly the mana surge', room._buffActive(one, 'mana')
   && one._buffs.manaFlat > 0, one._buffs);
 
-/* A MEAL IS AN EFFECT TOO, or the rule is only half true. */
-const allIdx = (await import('../src/data.js')).COOKING_RECIPES.findIndex((r) => r.buff === 'damage');
+/* The Cookhouse's Firebloom Tea is a brew too: cooked by an OLD client (no
+   `carry`), it is made and drunk at once, and ends the brew that was running. */
+const { COOKING_RECIPES: RECIPES, DISHES } = await import('../src/data.js');
+const teaIdx = RECIPES.findIndex((r) => r.makes === 'brew_firebloom_tea');
 one.inventory = Object.assign(Object.create(null), one.inventory,
-  Object.fromEntries(Object.entries((await import('../src/data.js')).COOKING_RECIPES[allIdx].ingredients)
-    .map(([k, v]) => [k, v + 5])));
-room._handleCookRecipe({ id: 'only' }, { recipeIdx: allIdx });
-check('eating a cooked meal ends the potion that was running',
+  Object.fromEntries(Object.entries(RECIPES[teaIdx].ingredients).map(([k, v]) => [k, v + 5])));
+room._handleCookRecipe({ id: 'only' }, { recipeIdx: teaIdx });
+check('the Firebloom Tea ends the potion that was running (both are brews)',
   !room._buffActive(one, 'mana') && one._buffs.manaFlat === undefined, one._buffs);
-/* v2.3.3127: the meal now STATES its strength -- 1 + its recipe's power,
-   Firebloom Tea's x1.20 (cooking.js) -- where it used to leave damageMul
-   unset and lean on the combat reader's 1.20 default.  Same number; the
-   point of this check is unchanged: not the tonic's x2. */
-const mealMul = 1 + (await import('../src/data.js')).COOKING_RECIPES[allIdx].power;
-check('...and the meal is what is running now, at ITS strength not the potion\'s',
-  room._buffActive(one, 'damage') && one._buffs.damageMul === mealMul && mealMul !== 2.0, one._buffs);
+/* v2.3.3127: the tea STATES its strength -- 1 + its power, x1.20 -- where it
+   used to leave damageMul unset and lean on the combat reader's 1.20 default.
+   The point of this check is unchanged: not the tonic's x2. */
+const teaMul = 1 + DISHES.brew_firebloom_tea.power;
+check('...and the tea is what is running now, at ITS strength not the potion\'s',
+  room._buffActive(one, 'damage') && one._buffs.damageMul === teaMul && teaMul !== 2.0, one._buffs);
+
+/* ═══════════════ A MEAL RUNS BESIDE A BREW (v2.3.3130) ═══════════════ */
+one.inventory.meal_root_stew = 1;
+room._handleEatRequest({ id: 'only' }, { invKey: 'meal_root_stew' });
+check('eating a Root Stew leaves the brew running',
+  room._buffActive(one, 'damage') && one._buffs.damageMul === teaMul, one._buffs);
+check('...and runs beside it, for half an hour',
+  room._buffActive(one, 'resist') && one._buffs.resist > Date.now() + 29 * 60 * 1000, one._buffs);
+drink('only', 'swiftDraught');
+check('a new brew replaces the old brew and nothing else -- the meal keeps going',
+  room._buffActive(one, 'spd') && !room._buffActive(one, 'damage') && one._buffs.damageMul === undefined
+    && room._buffActive(one, 'resist'), one._buffs);
+one.inventory.meal_herb_bread = 1;
+room._handleEatRequest({ id: 'only' }, { invKey: 'meal_herb_bread' });
+check('...and a new meal replaces the old meal and nothing else -- the brew keeps going',
+  room._buffActive(one, 'rest') && !room._buffActive(one, 'resist') && room._buffActive(one, 'spd')
+    && one._buffs.spdMul === 1.5, one._buffs);
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
 process.exit(failures ? 1 : 0);

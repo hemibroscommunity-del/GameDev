@@ -13,7 +13,23 @@
  * only consumers (mirror-audit still pins them against the client
  * tables).  Original section comments preserved on each method. */
 
-import { FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS, manaSurgePerTick } from './data.js';
+import { FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS, DISHES, DIEGO_SHELF, manaSurgePerTick } from './data.js';
+
+/* v2.3.3130: the timers -- and their magnitudes -- each slot owns
+   (_clearBuffSlot).  A magnitude listed here goes with its timer, never
+   apart from it.  `rest` is the Herb Bread's; `regen` is the bread's timer
+   from before (v2.3.3127, 60 s), cleared with the meal slot and read by
+   nothing here (data.js DISHES says why the bread moved off it). */
+const MEAL_BUFF_KEYS = ['rest', 'regen', 'resist', 'xp', 'xpMul'];
+/* (`xp` and `xpMul` are the Pumpkin Pie's, a meal of the potato's phase: this
+   worker cooks no pie, but a rollback to it from one that does must still
+   clear a running pie when a meal is eaten -- a pie and a bread showed as two
+   meals at once otherwise (review of that phase).) */
+/* v2.3.3130: how many recipes a worker before caps.meals had (Herb Bread, Root
+   Stew, Firebloom Tea) -- the only ones an old client can cook, the old
+   (instant) way, and the only ones that still cook with `meals: false`. */
+const OLD_RECIPES = 3;
+const BREW_BUFF_KEYS = ['damage', 'damageMul', 'mana', 'manaFlat', 'spd', 'spdMul', 'hp'];
 import { PROG3 } from './prog3.js';        /* v2.3.2062: the special's mana cost */
 import { REGEN_TICKS } from './tick.js';   /* v2.3.2062: the regen cadence */
 
@@ -72,18 +88,48 @@ export const cookingMethods = {
     if (!session || !session.id) return;
     const { invKey } = payload || {};
     if (typeof invKey !== 'string') return;
+    /* ═══ v2.3.3130: A MEAL IS EATEN TOO ═══
+       A Herb Bread or Root Stew from the Cookhouse (DISHES, slot 'meal') is
+       eaten here, by the same message a cooked fish is: the meal slot is
+       replaced, a running brew is not.  Effect before the decrement, so a
+       refusal uses nothing.  A brew is DRUNK (potion_drink), never eaten. */
+    const meal = this._getDish(invKey);
+    if (meal) {
+      if (meal.slot !== 'meal') return;
+      const ps = this.playerState[session.id];
+      if (!ps) return;
+      /* v2.3.3130: the phone took one out of its bag already -- a refusal
+         puts the bag (and the HP, the effects) back on its screen. */
+      const refuse = () => { const w = this._wsBySessionId(session.id); if (w) this._resendPlayerState(w, session.id, ['inventory', 'hp', '_buffs']); };
+      if (ps.dying || ps.dead || ps.disconnected) { refuse(); return; }
+      if (!ps.inventory) ps.inventory = {};   // proto-ok: invKey is an own key of DISHES (_getDish)
+      if ((ps.inventory[invKey] || 0) <= 0) { refuse(); return; }
+      if (!this._applyDish(ps, meal)) { refuse(); return; }
+      ps.inventory[invKey] -= 1;
+      if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
+      this._saveRpg(session.id, ps);
+      const ws = this._wsBySessionId(session.id);
+      if (ws) this._sendPlayerState(ws, session.id);
+      return;
+    }
+    /* v2.3.3130: every refusal below the phone may have predicted is RESENT
+       -- the bag and the HP, which a v2 delta of nothing would never send:
+       a dish this worker does not know (a newer page's, after a rollback),
+       and the cooked fish's own refusals, silent until now (review). */
+    const refuseEat = () => { const w = this._wsBySessionId(session.id); if (w) this._resendPlayerState(w, session.id, ['inventory', 'hp', '_buffs']); };
+    if (/^(meal|brew)_/.test(invKey)) { if (this.playerState[session.id]) refuseEat(); return; }
     // Only cooked_fish_* keys are edible this slice; raw fish goes
     // through cook_request first.
     if (!invKey.startsWith('cooked_fish_')) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
-    if (ps.dying || ps.dead || ps.disconnected) return;
-    if (ps._arenaMatch) return; // v2.3.1126: no healing during an arena match (GDD §43)
+    if (ps.dying || ps.dead || ps.disconnected) { refuseEat(); return; }
+    if (ps._arenaMatch) { refuseEat(); return; } // v2.3.1126: no healing during an arena match (GDD §43)
     if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith cooked_fish_ above
-    if ((ps.inventory[invKey] || 0) <= 0) return;
+    if ((ps.inventory[invKey] || 0) <= 0) { refuseEat(); return; }
     // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap +50%).
     const heal = Math.ceil(this._fishHealAmount(invKey)) + this._recoveryFlat(ps); // v2.3.1345: flat recovery bonus
-    if (heal <= 0) return;
+    if (heal <= 0) { refuseEat(); return; }
     // Decrement inventory + apply heal.  Heal is "wasted" if at max;
     // we still consume the item to match client semantics (the click
     // handler returns early at full, but a race-condition cheater
@@ -185,15 +231,32 @@ export const cookingMethods = {
     if (!session || !session.id) return;
     const { invKey } = payload || {};
     if (typeof invKey !== 'string') return;
-    const item = this._getShopItem(invKey);      /* own-property gated */
-    if (!item) return;
+    /* v2.3.3130: a BREW from the Cookhouse drinks here too (DISHES, slot
+       'brew' -- the Firebloom Tea; the three tonics are SHOP_ITEMS and always
+       did).  A meal is eaten (eat_request), never drunk. */
+    const dish = this._getDish(invKey);          /* own-property gated */
+    if (dish && dish.slot !== 'brew') return;
+    const item = dish ? null : this._getShopItem(invKey);      /* own-property gated */
+    if (!dish && !item) {
+      /* v2.3.3130: a brew this worker does not know (a newer page's, after a
+         rollback) is resent, so the bottle the phone took comes back. */
+      if (/^brew_/.test(invKey) && this.playerState[session.id]) {
+        const w = this._wsBySessionId(session.id);
+        if (w) this._resendPlayerState(w, session.id, ['inventory', 'hp', '_buffs']);
+      }
+      return;
+    }
     const ps = this.playerState[session.id];
     if (!ps) return;
-    if (ps.dying || ps.dead || ps.disconnected) return;
+    /* v2.3.3130: the phone took the bottle out of its bag and drew its effect
+       already -- a refusal puts both back on its screen, as eating's does
+       (a plain echo of nothing that changed sends a v2 client nothing). */
+    const refuse = () => { const w = this._wsBySessionId(session.id); if (w) this._resendPlayerState(w, session.id, ['inventory', 'hp', '_buffs']); };
+    if (ps.dying || ps.dead || ps.disconnected) { refuse(); return; }
     if (!ps.inventory) ps.inventory = {};
-    if ((ps.inventory[invKey] || 0) <= 0) return;
+    if ((ps.inventory[invKey] || 0) <= 0) { refuse(); return; }
     /* Before the decrement -- see REFUSAL DOES NOT CONSUME above. */
-    if (!this._applyShopItem(ps, item)) return;
+    if (!(dish ? this._applyDish(ps, dish) : this._applyShopItem(ps, item))) { refuse(); return; }
     ps.inventory[invKey] -= 1;
     if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
     this._saveRpg(session.id, ps);
@@ -271,9 +334,17 @@ export const cookingMethods = {
     if (!session || !session.id) return;
     const { recipeIdx } = payload || {};
     const recipe = this._getCookingRecipe(recipeIdx);
-    if (!recipe) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
+    /* v2.3.3130: a row this worker has not got is refused and RESENT too: a
+       newer page, rolled back onto this worker, offers its newer rows (it is
+       told how many there are, caps.cookRows, but a page from before that is
+       not), and predicts the dish into its bag (review). */
+    if (!recipe) {
+      const w = this._wsBySessionId(session.id);
+      if (w) this._resendPlayerState(w, session.id, ['inventory', 'lifeSkills', '_buffs']);
+      return;
+    }
     if (ps.dying || ps.dead || ps.disconnected) return;
     if (!ps.inventory) ps.inventory = {}; // proto-ok: recipe-index path; inventory keys server-validated
     /* ═══ v2.3.3127: THE RECIPE'S COOKING LEVEL IS THE WORKER'S GATE ═══
@@ -283,14 +354,37 @@ export const cookingMethods = {
        make the herbs; the farm (farm.js) grows them, so the worker keeps it too
        (review finding; TRAPS #19: "client-side gates are a picture, never a
        rule").
-       Checked BEFORE the dry run and _clearTimedBuffs below, so a refusal
-       uses nothing and ends no running tonic.  The bag is echoed, as
+       Checked BEFORE the dry run below, so a refusal uses nothing and ends
+       no running effect.  The bag is echoed, as
        cook_request's refusals are, so a cook the client predicted snaps
        back.  An honest client never asks: it has always locked these. */
     const ck = ps.lifeSkills && Object.prototype.hasOwnProperty.call(ps.lifeSkills, 'cooking') ? ps.lifeSkills.cooking : null;
-    if (((ck && typeof ck === 'object' && Number(ck.level)) || 1) < (recipe.cookLvl || 1)) {
+    /* v2.3.3130: every refusal below that a client may have predicted
+       RESENDS the bag, skills and effects (persistence.js
+       _resendPlayerState) -- a plain echo of nothing that changed sends
+       nothing to a v2 client. */
+    const _refuse = () => {
       const ws = this._wsBySessionId(session.id);
-      if (ws) this._sendPlayerState(ws, session.id);
+      if (ws) this._resendPlayerState(ws, session.id, ['inventory', 'lifeSkills', '_buffs']);
+    };
+    if (((ck && typeof ck === 'object' && Number(ck.level)) || 1) < (recipe.cookLvl || 1)) {
+      _refuse();
+      return;
+    }
+
+    /* ═══ v2.3.3130: THE DISH GOES IN THE BAG ═══
+       A client that knows (caps.meals) sends `carry: true`, and the cook puts
+       the recipe's dish in the bag -- eaten (eat_request) or drunk
+       (potion_drink) when the player wants it, traded, or listed on the
+       auction house.  The kill switch refuses it BEFORE anything is used, and
+       the bag is echoed so nothing the client drew stays drawn. */
+    const carry = !!(payload && payload.carry === true);
+    /* ...and with the switch off, a recipe an old worker never had (rows
+       OLD_RECIPES and up: the tonics, and every dish added since) is refused
+       even without `carry` -- a forged old-style cook must not brew a tonic
+       the switch is meant to stop (found by the review). */
+    if (this._mealsOff() && (carry || recipeIdx >= OLD_RECIPES)) {
+      _refuse();
       return;
     }
 
@@ -301,66 +395,32 @@ export const cookingMethods = {
       for (const [k, v] of Object.entries(ps.inventory)) {
         if (this._ingredientMatches(k, type) && v > 0) total += v;
       }
-      if (total < count) return;
+      /* v2.3.3130: refused, and resent -- the client counts ingredients more
+         loosely than this (CookPanel's k.includes(type)), so it can predict
+         a cook the worker refuses here. */
+      if (total < count) { _refuse(); return; }
     }
     // Second pass: actually consume.
     for (const [type, count] of Object.entries(recipe.ingredients)) {
       this._consumeIngredient(ps, type, count);
     }
 
-    // Apply the recipe effect.  Buffs go onto ps._buffs as endsAt
-    // timestamps; heal modifies hp directly.  Duration is seconds
-    // in the recipe table, ms on the wire.
-    /* ═══ v2.3.2063: A MEAL IS AN EFFECT TOO ═══
-       Owner: "Only 1 effect active at a time though." Applied HERE as well as
-       on the potion path, or the rule would only be half true -- a player
-       could drink a Swift Draught and then eat a damage meal and be running
-       two. Clearing here also makes the per-key `delete ps._buffs.spdMul` /
-       `damageMul` lines below redundant; they are kept because they are the
-       statement of intent for each writer, and a future granter that forgets
-       to clear is then still correct. */
-    this._clearTimedBuffs(ps);
-    const dur = (recipe.duration || 0) * 1000;
-    const endsAt = Date.now() + dur;
-    if (recipe.buff === 'heal') {
-      // v2.3.1126: dead data today (no recipe carries buff:'heal') but
-      // gated anyway -- arena matches disable healing (GDD §43).
-      if (ps._arenaMatch) return;
-      if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
-      ps.hp = Math.min(ps.maxHp, (ps.hp || 0) + (recipe.power || 0));
-    } else if (recipe.buff === 'regen') {
-      ps._buffs.regen = endsAt;
-    } else if (recipe.buff === 'resist') {
-      ps._buffs.resist = endsAt;
-    } else if (recipe.buff === 'damage') {
-      /* v2.3.2058: CLEARED, not left. A potion may have set damageMul to 2.0,
-         and a meal eaten before it expired would otherwise inherit the
-         potion's multiplier -- a cooked fish quietly worth double. Every
-         writer of _buffs.damage must state its own magnitude. */
-      delete ps._buffs.damageMul;
-      /* v2.3.3127: ...and the recipe's own `power` IS that magnitude.  Firebloom
-         Tea's card said "+5% dmg" over a table row of power 0.05 while this
-         branch ignored the row and the combat reader fell back to the cooked-
-         food x1.20 -- three numbers, two of them wrong.  It could not be cooked
-         until the farm grew Firebloom (farm.js), so nobody ever drank the
-         difference; the row now says 0.20, the card +20%, and this reads it,
-         so they cannot drift apart again (combat.js bounds damageMul 1..4). */
-      if (Number.isFinite(recipe.power) && recipe.power > 0 && recipe.power <= 3) ps._buffs.damageMul = 1 + recipe.power;
-      ps._buffs.damage = endsAt;
-    } else if (recipe.buff === 'all') {
-      // 'all' buff sets all four sub-buffs.  Mirrors the client at
-      // BroTown.jsx ~29766: damage + spd + hp + mana all extended.
-      delete ps._buffs.damageMul;   /* v2.3.2058: see the note above */
-      /* v2.3.2062: and the same for the two magnitudes this recipe's OTHER
-         sub-buffs would otherwise inherit -- a meal must not carry a Swift
-         Draught's x1.5 or a Mana Draught's regen floor just because it happens
-         to set the same timers. Every writer states its own strength. */
-      delete ps._buffs.spdMul;
-      delete ps._buffs.manaFlat;
-      ps._buffs.damage = endsAt;
-      ps._buffs.spd = endsAt;
-      ps._buffs.hp = endsAt;
-      ps._buffs.mana = endsAt;
+    /* `makes` is a key of our own table (COOKING_RECIPES), never the
+       client's, so the plain-{} bag cannot be handed '__proto__' here. */
+    const makes = recipe.makes;
+    const addToBag = () => { ps.inventory[makes] = (Math.floor(Number(ps.inventory[makes]) || 0)) + 1; };
+    if (carry) {
+      addToBag();
+    } else {
+      /* An OLD client's cook (no `carry`): it expects the effect at once, as
+         every worker before this one gave it -- so the dish is made and used
+         in the same moment, by the same rules a carried one is (its own slot
+         only; a tonic through the potion path).  Never lost: a dish that
+         cannot be applied lands in the bag instead. */
+      const dish = this._getDish(makes);
+      const item = dish ? null : this._getShopItem(makes);
+      const applied = dish ? this._applyDish(ps, dish) : (item ? this._applyShopItem(ps, item) : false);
+      if (!applied) addToBag();
     }
 
     // Cooking XP grant -- mirrors addLifeSkillXp on the client.
@@ -417,9 +477,60 @@ export const cookingMethods = {
    * (damageMul, spdMul, manaFlat) live in this same record beside their
    * timers, so clearing by name would strand a multiplier belonging to an
    * effect that is no longer running -- exactly the bug BUFF_MAGNITUDES was
-   * added to stop. Nothing else is stored in _buffs; see _pruneBuffs. */
-  _clearTimedBuffs(ps) {
-    if (ps) ps._buffs = {};
+   * added to stop. Nothing else is stored in _buffs; see _pruneBuffs.
+   *
+   * v2.3.3130: replaced by the two slots below; the wholesale clear
+   * (_clearTimedBuffs) is gone with its last caller. */
+
+  /* ═══ v2.3.3130: ONE MEAL AND ONE BREW ═══
+   * The farming plan's recommendation (docs/FARMING-PLAN.md, "Decisions"):
+   * a meal and a brew may run side by side, each replacing only its own kind.
+   * The rule above it was wholesale because every timed effect shared one
+   * record and a magnitude cleared by name could outlive its timer -- so each
+   * slot lists its timers WITH their magnitudes, and a slot is cleared whole:
+   * a brew never strands damageMul, a meal never leaves a stale rest.
+   * Damage, mana and speed are brews; rest and resist are meals.  `hp` was
+   * only ever written by the retired 'all' recipe shape, a brew-like grab-bag;
+   * it goes with the brews so nothing can keep it alive.  Anything else in
+   * _buffs is pruned by _saveRpg (persistence.js _pruneBuffs). */
+  _clearBuffSlot(ps, slot) {
+    if (!ps) return;
+    if (!ps._buffs || typeof ps._buffs !== 'object') { ps._buffs = {}; return; }
+    for (const k of (slot === 'meal' ? MEAL_BUFF_KEYS : BREW_BUFF_KEYS)) delete ps._buffs[k];
+  },
+
+  /* A dish by its bag key, own-property gated like _getShopItem (TRAPS §6). */
+  _getDish(key) {
+    if (typeof key !== 'string' || !Object.prototype.hasOwnProperty.call(DISHES, key)) return null;
+    return DISHES[key];
+  },
+
+  /* The kill switch, read the farm's way: `meals: false` stops the cook-to-bag
+     path (caps.meals reads false, so new clients cook the old way) without a
+     deploy.  Dishes already in bags still eat and drink. */
+  _mealsOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'meals') && !f.meals);
+  },
+
+  /* What eating a meal or drinking a brew does: its own slot is replaced, the
+     other slot is left alone.  Extends from NOW, never stacks -- a second Herb
+     Bread restarts the half hour, it does not make an hour.  Returns false for
+     a dish it cannot apply (nothing is used up then). */
+  _applyDish(ps, dish) {
+    if (!ps || !dish || (dish.slot !== 'meal' && dish.slot !== 'brew')) return false;
+    if (dish.buff !== 'rest' && dish.buff !== 'resist' && dish.buff !== 'damage') return false;
+    this._clearBuffSlot(ps, dish.slot);
+    const endsAt = Date.now() + Math.max(1, Math.floor(Number(dish.duration) || 60)) * 1000;
+    if (dish.buff === 'rest') ps._buffs.rest = endsAt;
+    else if (dish.buff === 'resist') ps._buffs.resist = endsAt;
+    else {
+      /* The dish's own `power` is its magnitude (v2.3.3127); combat.js bounds
+         damageMul to 1..4 and falls back to x1.20 without one. */
+      if (Number.isFinite(dish.power) && dish.power > 0 && dish.power <= 3) ps._buffs.damageMul = 1 + dish.power;
+      ps._buffs.damage = endsAt;
+    }
+    return true;
   },
 
   /* The EFFECT half of a shop purchase, without the coin handling.
@@ -467,7 +578,7 @@ export const cookingMethods = {
          meal and a potion can both buff mana without either one inheriting
          the other's strength. */
       if (typeof ps.maxMana !== 'number') ps.maxMana = 100;
-      this._clearTimedBuffs(ps);   /* v2.3.2063: one effect at a time */
+      this._clearBuffSlot(ps, 'brew');   /* v2.3.3130: replaces the brew, keeps the meal (v2.3.2063: one effect) */
       ps.mana = ps.maxMana;
       /* v2.3.2302: sized off the LIVE cost, not the dead flat constant.  The
          draught promises "special attacks constantly"; PROG3.SPECIAL_MANA_COST
@@ -491,7 +602,7 @@ export const cookingMethods = {
          build -- 1.5x puts a maxed character over it, so a player who bought
          this would have been rubber-banded by the server for using the thing
          the server sold them. The cap reads this same buff. */
-      this._clearTimedBuffs(ps);   /* v2.3.2063: one effect at a time */
+      this._clearBuffSlot(ps, 'brew');   /* v2.3.3130: replaces the brew, keeps the meal (v2.3.2063: one effect) */
       ps._buffs.spdMul = Number(item.mult) > 0 ? Number(item.mult) : 1.5;
       const durMs = Math.max(1, Math.floor(item.duration || 180)) * 1000;
       ps._buffs.spd = Date.now() + durMs;
@@ -513,7 +624,7 @@ export const cookingMethods = {
        * Nothing new is needed to fix it: ps._buffs.damage already exists for
        * cooked food and combat.js already reads it at x1.20. This is the one
        * line that was missing. */
-      this._clearTimedBuffs(ps);   /* v2.3.2063: one effect at a time */
+      this._clearBuffSlot(ps, 'brew');   /* v2.3.3130: replaces the brew, keeps the meal (v2.3.2063: one effect) */
       /* v2.3.2058: the magnitude rides WITH the timer. combat.js reads
          _buffs.damageMul when it is set and falls back to its own 1.20, so a
          cooked meal is untouched and this potion is its own thing. */
@@ -530,6 +641,11 @@ export const cookingMethods = {
     if (!session || !session.id) return;
     const { itemId } = payload || {};
     if (typeof itemId !== 'string') return;
+    /* v2.3.3130: only what is ON his shelf (DIEGO_SHELF).  No live client sends
+       this (the vendor building's shelf went in v2.3.2618), but the message
+       still settles, so a forged one must not buy the tonics he no longer
+       sells. */
+    if (!DIEGO_SHELF.includes(itemId)) return;
     const item = this._getShopItem(itemId);
     if (!item) return;
     const ps = this.playerState[session.id];

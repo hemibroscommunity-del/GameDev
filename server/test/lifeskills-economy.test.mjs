@@ -335,13 +335,13 @@ check('firemaking: a __proto__ key is refused and leaves the prototype alone',
   Object.prototype.wood_oak === undefined && ({}).__proto__ === Object.prototype);
 
 // ── 4. cook_recipe (dry-run-then-consume) ──
-const R0 = COOKING_RECIPES[0]; // { herb_firebloom: 1 } -> regen buff
+const R0 = COOKING_RECIPES[0]; // { herb_firebloom: 1 } -> the bread's `rest` timer (v2.3.3130)
 ps.inventory = { herb_firebloom: 2 };
 ps.lifeSkills = { cooking: { level: 1, xp: 0 } };
 ps._buffs = {};
 await send(ws, 'cook_recipe', { recipeIdx: 0 });
 check('recipe: ingredient consumed, buff timer set, tier*25 cooking XP',
-  ps.inventory.herb_firebloom === 1 && ps._buffs.regen > Date.now()
+  ps.inventory.herb_firebloom === 1 && ps._buffs.rest > Date.now()
   && ps.lifeSkills.cooking.xp === (R0.tier || 1) * 25,
   { inv: ps.inventory, buffs: ps._buffs, xp: ps.lifeSkills.cooking.xp });
 // Recipe 1 needs rock_vine + cloudpetal; holding only one of the two

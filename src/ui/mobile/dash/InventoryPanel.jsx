@@ -30,6 +30,7 @@ import { tradeBagBus } from '../tradeBagBus.js';   /* v2.3.2149: ...and half the
 import { lifeKindFor, lifeKindForGear } from './bagLife.js';   /* v2.3.2815: the bag's small motions */
 import { DAILY_CHEST_ICON } from '@/rendering/chestPreload.js';   /* v2.3.2820 */
 import { FARM_ITEM_NAMES, farmLookFor } from '@/data/farmCrops.js';   /* v2.3.3127: the farm's goods */
+import { DISH_NAMES, dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* v2.3.3120: the box trap's picture */
 
 // Light heuristic — classify an inventory key into one of the four
@@ -38,6 +39,12 @@ import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* v2.3.3120: 
 // monster bones, etc.) are crafting materials.
 export const classify = (key) => {
   const k = (key || '').toLowerCase();
+  /* v2.3.3130: FOOD -- cooked fish and the Cookhouse's meals, the things you
+     EAT (the farming plan's "a Food filter ... in the bag") -- files under the
+     potions' chip, renamed Consumable (bagFilterBus.js says why it is not a
+     chip of its own).  First, so a fish named like a weapon is still food.
+     Mirrored by the store's tab (server store.js _stCategory). */
+  if (/^cooked_fish_|^meal_/.test(k)) return 'potion';
   if (/sword|bow|staff|spear|axe|dagger|hammer|wand|gauntlet/.test(k)) return 'weapon';
   if (/helm|cuirass|armor|shield|robe|cape|boots|gloves|mail|plate/.test(k)) return 'armor';
   /* ═══ v2.3.2145: THE BOTTLE YOU JUST BOUGHT IS UNDER *POTIONS* ═══
@@ -269,6 +276,9 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
   /* v2.3.3127: seeds, crops and compost (server farm.js) -- prettyName would
      say "Seed Carrot" and "Herb Firebloom" */
   ...FARM_ITEM_NAMES,
+  /* v2.3.3130: the Cookhouse's dishes (data/dishes.js) -- prettyName would say
+     "Meal Herb Bread" and "Brew Firebloom Tea" */
+  ...DISH_NAMES,
   bar_iron: 'Iron Bar',         /* v2.3.3092 */
   bar_black_steel: 'Black Steel Bar',   /* v2.3.3092: prettyName would say "Bar Black Steel" */
   trap_box: 'Box Trap',         /* v2.3.3120: one log at the Woodworker (server trapping.js); prettyName would say "Trap Box" */
@@ -326,7 +336,10 @@ export const isCapeItemKey = (key) => String(key || '').startsWith(CAPE_ITEM_PRE
  * mirror-audit suite already pins the client's vendor table against that same
  * server table, which is what keeps the two from drifting. */
 export const isPotionKey = (key) => Object.prototype.hasOwnProperty.call(
-  POTION_THUMBS, String(key || '').toLowerCase());
+  POTION_THUMBS, String(key || '').toLowerCase())
+  /* v2.3.3130: ...and the Cookhouse's brews, drunk by the same potion_drink
+     (the worker's _handleDrinkRequest takes DISHES brews too). */
+  || !!((dishFor(key) || {}).slot === 'brew');
 
 export const iconFor = (key) => {
   /* v2.3.2103: FIRST, above every pattern below. 'goldticket_crimson'
@@ -345,6 +358,10 @@ export const iconFor = (key) => {
      Glyphs until crop art is made, the daily chest's honest placeholder. */
   const farmLook = farmLookFor(k);
   if (farmLook) return farmLook;
+  /* v2.3.3130: a Cookhouse dish, its own glyph (data/dishes.js) -- a glyph
+     until dish art is made, as the crops have. */
+  const dish = dishFor(key);
+  if (dish && dish.look) return dish.look;
   /* v2.3.2052: the three town-shop consumables, by EXACT key and above every
      pattern below. They had no entry at all, so a whetstone in your bag drew
      the '◇' fallback -- and it did so before Shopkeeper Bro existed; putting

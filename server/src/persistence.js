@@ -42,6 +42,11 @@ const BUFF_MAGNITUDES = {
   damageMul: 'damage',   /* v2.3.2058: the Fury Tonic's x2 */
   spdMul: 'spd',         /* v2.3.2062: the Swift Draught's x1.5 */
   manaFlat: 'mana',      /* v2.3.2062: the Mana Draught's per-tick regen floor */
+  /* v2.3.3130: the Pumpkin Pie's +XP (a meal of the potato's phase).  This
+     worker reads no pie, but kept here so a rollback to it does not prune a
+     running pie's strength as an expired timer -- the phone then said +10%
+     while the worker paid nothing (review of that phase). */
+  xpMul: 'xp',
 };
 
 export const persistenceMethods = {
@@ -600,5 +605,20 @@ export const persistenceMethods = {
       }
       ws.send(JSON.stringify({ type: 'player_state', payload }));
     } catch (e) {}
+  },
+
+  /* ═══ v2.3.3130: A REFUSAL'S ECHO HAS TO BE SENT ═══
+   * A refused action changes nothing on the worker -- and the v2 delta above
+   * sends only what changed, so the echo a refusal sends to snap a client's
+   * prediction back (the dish it drew in the bag, the herbs it took out, the
+   * XP it added) sent NOTHING to any live client: they all speak v2.  The
+   * review proved it on the cook kill switch.  Forgetting what was last sent
+   * for the named fields makes them go again, whatever the client drew. */
+  _resendPlayerState(ws, playerId, fields) {
+    const session = ws ? this.sessions.get(ws) : null;
+    if (session && session.lastPlayerStateSent && Array.isArray(fields)) {
+      for (const f of fields) delete session.lastPlayerStateSent[f];
+    }
+    this._sendPlayerState(ws, playerId);
   },
 };

@@ -29,7 +29,7 @@ import {
   ARCHETYPES, ZONES,
   MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
   MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY,
-  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */, DISHES /* v2.3.3130: the Herb Bread's regen mult */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -179,6 +179,9 @@ import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.29
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
+/* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
+   from its dish (data.js DISHES) -- 2, "twice as fast". */
+const HERB_REGEN_MULT = (DISHES.meal_herb_bread && Number(DISHES.meal_herb_bread.power) > 1) ? Number(DISHES.meal_herb_bread.power) : 2;
 
 /* ═══ v2.3.2113: AN ERROR IN HERE MUST NOT LOOK LIKE AN OUTAGE ═══
  * Owner, of tools/draw: "This tool says can't reach the game server anymore."
@@ -836,9 +839,6 @@ export class GameRoom {
        few seconds early, which is the cheapest possible thing to lose. */
     this.SPOKE_REGEN_OOC_MS = 6000;
     this.SPOKE_REGEN_PCT = 0.01;
-    /* v2.3.3127: Herb Bread's regen, a share of max HP a SECOND (its card's
-       "Regen 2%/s"), paid per regen tick in _tickPlayerRegen. */
-    this.HERB_REGEN_PER_S = 0.02;
     /* v2.3.1623: below this fraction of max HP, a damage write bypasses
        the coalescing and persists immediately.  25% is roughly "one or
        two more hits from death" across the damage curve -- the band
@@ -3446,29 +3446,27 @@ export class GameRoom {
         if (_oocSpoke) {
           /* ROUND, not ceil: at 1% a ceil turns every maxHp above 100 into
              2 hp/tick (a level-3 prog3 character has 106), which is nearly
-             double the intended pace for no reason anyone could see. */
-          const heal = Math.max(1, Math.round(ps.maxHp * this.SPOKE_REGEN_PCT));
+             double the intended pace for no reason anyone could see.
+             v2.3.3130: the HERB BREAD is this trickle, faster -- its meal
+             doubles it (DISHES.meal_herb_bread.power) for half an hour.  It was
+             2% of max HP a second in or out of a fight for 60 s (v2.3.3127,
+             below until now); as a meal you carry for thirty minutes that would
+             be a full bar every fifty seconds mid-fight, so it is the plan's
+             "out-of-combat healing twice as fast" instead -- read off its own
+             timer, `rest`: v2.3.3127 reads `regen` the old way, so a rollback
+             to it must not find a half-hour one there (data.js DISHES). */
+          const _herb = this._buffActive(ps, 'rest') ? HERB_REGEN_MULT : 1;
+          const heal = Math.max(1, Math.round(ps.maxHp * this.SPOKE_REGEN_PCT * _herb));
           const beforeHp = ps.hp;
           ps.hp = Math.min(ps.maxHp, ps.hp + heal);
           if (ps.hp !== beforeHp) changed = true;
         }
       }
-      /* v2.3.3127: HERB BREAD HEALS.  Its recipe has always written a `regen`
-         timer (cooking.js) and its card has always said "Regen 2%/s for
-         60s", but nothing on the worker ever read the timer -- the meal did
-         nothing at all.  It could not be cooked either, since nothing made
-         Firebloom; the farm (farm.js) grows it now, so the effect has to be
-         real.  2% of max HP a second, in or out of a fight, for as long as
-         the timer runs (REGEN_TICKS x TICK_RATE, ~660 ms, is one tick of it).
-         Not in a hub, where the 10% top-off already outruns it, and never in
-         an arena match or a duel, for the v2.3.1126 / v2.3.1613 reason above:
-         a heal that outruns the damage makes the fight unendable. */
-      if (!ps._arenaMatch && !inDuel && !inHub && ps.hp < ps.maxHp && this._buffActive(ps, 'regen')) {
-        const heal = Math.max(1, Math.round(ps.maxHp * this.HERB_REGEN_PER_S * (REGEN_TICKS * this.TICK_RATE) / 1000));
-        const beforeHp = ps.hp;
-        ps.hp = Math.min(ps.maxHp, ps.hp + heal);
-        if (ps.hp !== beforeHp) changed = true;
-      }
+      /* v2.3.3127 made HERB BREAD heal at all: its recipe always wrote a
+         `regen` timer that nothing on the worker read.  v2.3.3130 moved that
+         reader into the out-of-combat trickle above (a meal now lasts half an
+         hour) under the bread's own `rest` timer, so it is read in exactly one
+         place and `regen` in none. */
 
       // Stamina: shield drain takes priority over regen.  When blocking,
       // drain ~5/tick and auto-release at 0 (mirrors client behavior at

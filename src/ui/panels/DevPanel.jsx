@@ -164,6 +164,8 @@ const CAP_GATES = [
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,
   'farm' /* v2.3.3127: the farm -- lower case, a kill switch */,
+  'meals' /* v2.3.3130: meals and brews you carry -- lower case, a kill switch */,
+  'cookRows' /* v2.3.3130: how many Cookhouse recipes the worker cooks -- a number, never a switch */,
   'armorforge' /* v2.3.3092: bars into armor -- lower case, a kill switch */,
   'trapping' /* v2.3.3120: arm a trap, then kill it -- lower case, a kill switch */,
   'trapcraft' /* v2.3.3120: box traps at the Woodworker -- lower case, a kill switch */,
@@ -205,6 +207,8 @@ const CAP_NOTES = {
   wheelnodes: 'resources in the Wheel: copper, pine and fish round town, iron and softwood at levels 1-10, black steel and hardwood at 11-20 (v2.3.3012; without it: nothing to gather there)',
   wheeldungeons: 'dungeons in the Wheel: the Great Cave, the Foundry Dome and the Buried City open at their landmarks (v2.3.3016; without it: no mouths, no Enter button)',
   farm: 'the farm: the Feed & Seed window digs, plants, waters, fertilizes and harvests beds the worker owns, on its clock, and sells seeds and compost (v2.3.3127; without it: the old browser-only plots, which never kept anything)',
+  meals: 'meals and brews you carry: the Cookhouse cooks a dish into the bag to eat or drink later, one meal and one brew at a time, and brews the three tonics Diego no longer sells (v2.3.3130; off: a cook is eaten at once instead of carried, nobody can brew a tonic, and dishes already in bags still eat and drink)',
+  cookRows: 'how many Cookhouse recipes the worker cooks: the Cookhouse, the campfire and the bag offer only those (v2.3.3130; without it, the old three)',
 };
 
 export const DevPanel = ({ onClose }) => {

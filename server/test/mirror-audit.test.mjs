@@ -69,6 +69,7 @@ import { TRAPPING as CLIENT_TRAPPING, trapChance as clientTrapChance, trapRollXp
 import { WHEEL_CENTRE as SRV_WHEEL_CENTRE } from '../src/wheelspawns.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
+  DISHES as CLIENT_DISHES, /* v2.3.3130: what a Cookhouse dish does */
   MONSTER_DMG_CURVE, monsterHpFlat as clientMonsterHpFlat, /* v2.3.3055 */
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
   QUALITY_MULTS, RARITY_TIERS,
@@ -170,14 +171,57 @@ const room = Object.create(GameRoom.prototype);
 // reordering either side changes what players cook) ──
 {
   const bad = [];
+  /* v2.3.3130: compared on what the WORKER reads -- tier, cooking level,
+     ingredients and what it makes.  The client's buff/power/duration on rows
+     0-2 are the OLD instant effect, read only in front of an old worker (no
+     caps.meals); the new worker's effect is DISHES (§4b). */
   SRV.COOKING_RECIPES.forEach((r, i) => {
     const c = COOKING_RECIPES[i];
-    if (!c || c.buff !== r.buff || c.power !== r.power || c.duration !== r.duration
-      || c.tier !== r.tier || c.cookLvl !== r.cookLvl /* v2.3.3127: the worker's gate */ || JSON.stringify(c.ingredients) !== JSON.stringify(r.ingredients)) {
+    if (!c || c.tier !== r.tier || c.cookLvl !== r.cookLvl /* v2.3.3127: the worker's gate */
+      || c.makes !== r.makes /* v2.3.3130 */ || JSON.stringify(c.ingredients) !== JSON.stringify(r.ingredients)) {
       bad.push({ i, server: r, client: c });
     }
   });
+  if (COOKING_RECIPES.length !== SRV.COOKING_RECIPES.length) bad.push({ length: { server: SRV.COOKING_RECIPES.length, client: COOKING_RECIPES.length } });
   check('COOKING_RECIPES per-index mirror (order is the wire format)', bad.length === 0, bad);
+  /* v2.3.3130: ...and those old effect fields are pinned to the worker they
+     describe, frozen here as v2.3.3127's table said them (review: comparing
+     on what the new worker reads had left them pinned to nothing).  Only the
+     first three rows carry one: CookPanel and the campfire offer a row an old
+     worker can cook by `recipe.buff`, and that worker has no fourth row. */
+  const OLD_WORKER = [
+    { buff: 'regen', power: 0.02, duration: 60 },
+    { buff: 'resist', power: 0.05, duration: 60 },
+    { buff: 'damage', power: 0.20, duration: 90 },
+  ];
+  const legacy = [];
+  COOKING_RECIPES.forEach((c, i) => {
+    const o = OLD_WORKER[i];
+    if (o ? (c.buff !== o.buff || c.power !== o.power || c.duration !== o.duration) : c.buff !== undefined) {
+      legacy.push({ i, client: { buff: c.buff, power: c.power, duration: c.duration }, oldWorker: o || 'none (no buff)' });
+    }
+  });
+  check('the client\'s old-worker effects match v2.3.3127\'s, on its three rows only', legacy.length === 0, legacy);
+}
+
+// ── 4b. v2.3.3130: DISHES, both directions, and every recipe makes a thing
+// the worker can eat or drink (a dish, or a SHOP_ITEMS bottle) ──
+{
+  const bad = [];
+  for (const [k, d] of Object.entries(SRV.DISHES)) {
+    const c = CLIENT_DISHES[k];
+    if (!c) { bad.push({ k, missing: 'client' }); continue; }
+    for (const f of ['slot', 'buff', 'power', 'duration']) if (c[f] !== d[f]) bad.push({ k, f, server: d[f], client: c[f] });
+  }
+  for (const k of Object.keys(CLIENT_DISHES)) if (!SRV.DISHES[k]) bad.push({ k, missing: 'server (the bag shows a dish the worker cannot eat)' });
+  check('DISHES mirror: slot, buff, power and duration, both directions', bad.length === 0, bad);
+  const orphan = SRV.COOKING_RECIPES.filter((r) => !r.makes || !(Object.prototype.hasOwnProperty.call(SRV.DISHES, r.makes) || Object.prototype.hasOwnProperty.call(SRV.SHOP_ITEMS, r.makes)));
+  check('every recipe makes a dish or a bottle the worker knows', orphan.length === 0, orphan);
+  /* Damage only in a brew: combat.js's cheat ceiling was sized at one x2 brew. */
+  const mealDmg = Object.entries(SRV.DISHES).filter(([, d]) => d.slot === 'meal' && d.buff === 'damage');
+  check('no meal raises damage (damage is only ever a brew)', mealDmg.length === 0, mealDmg);
+  const shelf = SRV.DIEGO_SHELF.filter((k) => !Object.prototype.hasOwnProperty.call(SRV.SHOP_ITEMS, k));
+  check('DIEGO_SHELF sells only SHOP_ITEMS (what he sells, the worker can settle)', shelf.length === 0 && SRV.DIEGO_SHELF.length >= 1, SRV.DIEGO_SHELF);
 }
 
 // ── 5. QUEST_REWARDS vs QUEST_CHAINS: payouts + chain links, BOTH

@@ -10,6 +10,7 @@
  *   ZONES              <-> src/data/zones.js (level bands MUST match)
  *   FISH_TIERS         <-> src/data/lifeSkills.js FISHING_TIERS
  *   COOKING_RECIPES    <-> src/data/gameSystems.js (index order matters)
+ *   DISHES             <-> src/data/gameSystems.js DISHES (v2.3.3130)
  *   SHOP_ITEMS         <-> src/ui/panels/buildings/VendorPanel.jsx
  *                          (v2.3.1151: pointer fixed -- the vendor table
  *                          moved out of BroTown.jsx in the v2.3.882
@@ -434,11 +435,60 @@ export const FISH_TIERS = [
    _handleCookRecipe; mirror-audit keeps the two equal).  It only ever held on
    the client, which was moot while nothing could make these herbs; the farm
    grows them. */
+/* ═══ v2.3.3130: A RECIPE MAKES SOMETHING YOU CARRY ═══
+ * Farming plan, Phase 2 (docs/FARMING-PLAN.md, "What farming pays"): a cook
+ * used to apply its buff on the spot; now it puts `makes` in the bag, to eat
+ * or drink when you want it, trade, or list on the auction house -- so a
+ * player who never farms can still buy a farmer's food.  What a dish DOES is
+ * DISHES below (or SHOP_ITEMS for the three tonics, which keep their keys and
+ * effects so a bottle bought from Diego before the change still drinks).
+ *
+ * THE INDEX IS THE WIRE KEY (cook_recipe {recipeIdx}), so rows are APPENDED,
+ * never reordered: 0-2 are the original three, 3-5 the tonics Diego no longer
+ * sells (DIEGO_SHELF).  Rows 0-2 have no instant effect of their own any more
+ * -- an OLD client's cook (no `carry`) gets the dish applied at once, which is
+ * what it predicted, only longer.  The client's mirror keeps its old
+ * buff/power/duration for the one case it still needs them: a new client in
+ * front of an OLD worker (no caps.meals), which applies those itself. */
 export const COOKING_RECIPES = [
-      { ingredients: { herb_firebloom: 1 },                          buff: 'regen',  power: 0.02, duration: 60, tier: 1, cookLvl: 1 },
-      { ingredients: { herb_rock_vine: 1, herb_cloudpetal: 1 },      buff: 'resist', power: 0.05, duration: 60, tier: 1, cookLvl: 3 },
-      { ingredients: { herb_firebloom: 2 },                          buff: 'damage', power: 0.20, duration: 90, tier: 2, cookLvl: 6 },   /* v2.3.3127: 0.05 -> 0.20, what the worker always applied (cooking.js) */
+      { ingredients: { herb_firebloom: 1 },                          tier: 1, cookLvl: 1,  makes: 'meal_herb_bread' },
+      { ingredients: { herb_rock_vine: 1, herb_cloudpetal: 1 },      tier: 1, cookLvl: 3,  makes: 'meal_root_stew' },
+      { ingredients: { herb_firebloom: 2 },                          tier: 2, cookLvl: 6,  makes: 'brew_firebloom_tea' },
+      /* v2.3.3130: the three tonics, brewed from herbs (the plan's "Diego keeps
+         his staples and loses his tonics").  The Fury Tonic is the strongest
+         thing in the game a player can drink and its herb the cheapest to grow,
+         so it asks the most Cooking; the other two ask Cooking 5 and herbs that
+         themselves ask Farming 5 and 10. */
+      { ingredients: { herb_firebloom: 3 },                          tier: 3, cookLvl: 10, makes: 'whetstone' },
+      { ingredients: { herb_rock_vine: 2 },                          tier: 3, cookLvl: 5,  makes: 'manaShard' },
+      { ingredients: { herb_cloudpetal: 2 },                         tier: 3, cookLvl: 5,  makes: 'swiftDraught' },
     ];
+
+/* ═══ v2.3.3130: WHAT A DISH DOES ═══
+ * One MEAL and one BREW may run at once (the plan's recommendation, Stardew's
+ * food-and-drink rule): eating replaces the meal you had, drinking replaces
+ * the brew, and neither touches the other.  It was one effect of any kind
+ * (v2.3.2063, cooking.js _clearTimedBuffs) because a meal had to compete with
+ * a 35-coin bottle of double damage; with the bottle off the shelf a meal can
+ * sit beside it.  DAMAGE ONLY EVER IN A BREW: combat.js's cheat ceiling was
+ * sized at the Fury Tonic's x2 (90.5% of it at the measured peak), and a x1.2
+ * meal on top would cross it (~109%), so no meal raises damage.
+ *   meal: half an hour, modest.  The Herb Bread doubles the out-of-combat
+ *         healing (`power` is that multiplier, read in index.js's regen tick)
+ *         under its OWN timer, `rest` -- never `regen`, which v2.3.3127's
+ *         worker reads as 2% of max HP a second in or out of a fight: a
+ *         rollback to it would have read a half-hour bread that way (review);
+ *         the Root Stew takes 5% off every hit (combat.js).
+ *   brew: the Firebloom Tea is the long, gentle damage drink, +20% for half
+ *         an hour, against the Fury Tonic's x2 for three minutes; one at once.
+ * `duration` in SECONDS, like SHOP_ITEMS.  The three tonics are brews too;
+ * their effects stay in SHOP_ITEMS, where every bottle already drinks from.
+ *   DISHES     <-> src/data/gameSystems.js DISHES (mirror-audit) */
+export const DISHES = {
+      meal_herb_bread:    { slot: 'meal', buff: 'rest',   power: 2,    duration: 1800 },
+      meal_root_stew:     { slot: 'meal', buff: 'resist', power: 0.05, duration: 1800 },
+      brew_firebloom_tea: { slot: 'brew', buff: 'damage', power: 0.20, duration: 1800 },
+    };
 
 /* ═══ v2.3.2062: WHAT "CONSTANTLY" IS WORTH, IN NUMBERS ═══
  *
@@ -530,6 +580,18 @@ export const SHOP_ITEMS = {
          written against this value. */
       swiftDraught:  { cost: 30, effect: 'spdBuff', duration: 180, mult: 1.5 },
     };
+
+/* ═══ v2.3.3130: WHAT DIEGO SELLS IS NOT EVERYTHING HE STOCKS ═══
+ * The farming plan's "Diego keeps his staples and loses his tonics": under the
+ * one-effect rule a 35-coin bottle of double damage beat anything a farm could
+ * grow, so the three tonics come off his shelf the day the farm brews them
+ * (COOKING_RECIPES 3-5).  They stay in SHOP_ITEMS -- their keys, their effects,
+ * the bag's bottles and the auction house's potion tab all keep working, and a
+ * bottle bought before the change still drinks.  The two instant items stay on
+ * sale: they never touch a timed effect, and a brand-new player at a quiet hour
+ * needs something to buy.  shop.js's shelf and the vendor building both read
+ * this; he still buys none of SHOP_ITEMS back (shop.js isShopPotion). */
+export const DIEGO_SHELF = Object.freeze(['cookedMinnow', 'staminaSalts']);
 
 /* v2.3.1120: declarative quest objectives.  An entry WITH `objective`
  * is server-verified: the GameRoom increments its counter (kill credit

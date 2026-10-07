@@ -109,25 +109,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.grant(wsPort, id, 'gold', { amount: 500 });
   await P.page.waitForTimeout(1000);
 
-  /* ── 1. THEY ARE ON SHOPKEEPER BRO'S SHELF ──
+  /* ── 1. HIS SHELF: THE TWO STAPLES ──
      Owner: "These potions should be purchasable there." Bro, not the vendor
-     building -- which is why this drives his drawer and not a door. */
+     building -- which is why this drives his drawer and not a door.
+     v2.3.3130: the farming plan takes the three tonics off his shelf the day
+     the farm brews them (server data.js DIEGO_SHELF), so his staples are the
+     cooked minnow and the stamina salts, and the draughts below come from the
+     Cookhouse -- granted here as a brewed bottle would arrive. */
   const openBro = async () => {
     await P.page.evaluate(() => window.__broShopBus.setOpen(true));
     for (let i = 0; i < 40; i++) {
       const ready = await P.page.evaluate(() =>
-        !!document.querySelector('[data-shop-bro="swiftDraught"]'));
+        !!document.querySelector('[data-shop-bro="staminaSalts"]'));
       if (ready) return true;
       await P.page.waitForTimeout(150);
     }
     return false;
   };
-  rec.ok('both draughts are on Shopkeeper Bro\'s shelf', await openBro(), null);
+  rec.ok('his staples are on Shopkeeper Bro\'s shelf', await openBro(), null);
 
   const shelf = await P.page.evaluate(() => {
     const ids = [...document.querySelectorAll('[data-shop-bro]')]
       .map((e) => e.getAttribute('data-shop-bro'));
-    const slot = document.querySelector('[data-shop-bro="swiftDraught"]');
+    const slot = document.querySelector('[data-shop-bro="staminaSalts"]');
     const price = slot && slot.parentElement && slot.parentElement.lastElementChild.textContent.trim();
     const badge = slot && slot.querySelector('.bt-item-qty');
     return { ids, price, badge: badge ? badge.textContent : null };
@@ -137,6 +141,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* A count on a thing he cannot run out of would be a lie. */
   rec.ok('...with no count badge, because a staple never runs out',
     shelf.badge === null, shelf);
+  rec.ok('...and no tonic among them -- they are brewed at the Cookhouse now (v2.3.3130)',
+    !shelf.ids.includes('swiftDraught') && !shelf.ids.includes('manaShard') && !shelf.ids.includes('whetstone'), shelf);
 
   /* ═══ v2.3.2127: BUYING IS HALF OF IT NOW ═══
      Owner: "Also work on putting a potions to inventory after buying." A
@@ -207,8 +213,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const before = await sprint(P);
   rec.ok(`the control sprint covers ground (${before} px/frame)`, before > 4, { before });
 
+  /* A staple, bought through his drawer: the buying half of this scenario. */
   await openBro();
-  await P.page.click('[data-shop-bro="swiftDraught"]');
+  await P.page.click('[data-shop-bro="staminaSalts"]');
   await P.page.waitForTimeout(900);
   const deal = await P.page.evaluate(() => {
     const act = document.querySelector('[data-shop-act]');
@@ -230,14 +237,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const c0 = await coins(P);
   await P.page.click('[data-shop-act]');
   await P.page.waitForTimeout(1800);
-  rec.ok('the Swift Draught can be bought from him', (await coins(P)) < c0,
+  rec.ok('Stamina Salts can be bought from him', (await coins(P)) < c0,
     { before: c0, after: await coins(P) });
   await P.page.evaluate(() => window.__broShopBus.setOpen(false));
   await P.page.waitForTimeout(500);
-  /* v2.3.2127: it is a bottle now -- it has to reach the bag, and then be
-     drunk, before any of the speed assertions below can mean anything. */
+  /* v2.3.2127: it is a bottle now -- it has to reach the bag. */
+  const salts = await H.readState(P, (S) => ((S.rpg && S.rpg.inventory) || {}).staminaSalts || 0);
+  rec.ok('...and it lands in the BAG rather than firing at the counter', salts >= 1, { salts });
+  /* v2.3.3130: the Swift Draught is brewed now -- it arrives as a brewed
+     bottle would, by the server's own credit, and is drunk from the bag. */
+  await H.grant(wsPort, id, 'item', { invKey: 'swiftDraught', count: 1 });
+  await P.page.waitForTimeout(1500);
   const bagged = await H.readState(P, (S) => ((S.rpg && S.rpg.inventory) || {}).swiftDraught || 0);
-  rec.ok('...and it lands in the BAG rather than firing at the counter', bagged >= 1, { bagged });
+  rec.ok('a Swift Draught bottle is in the bag (as brewed at the Cookhouse)', bagged >= 1, { bagged });
 
   /* ═══ v2.3.2145: AND UNDER THE *POTIONS* CHIP ═══
      The assertion above is the one that let the owner report this twice. It
@@ -293,30 +305,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`three specials really drained the pool server-side (${drained})`,
     drained < 60, { drained });
 
-  await openBro();
-  const c1 = await coins(P);
-  await P.page.click('[data-shop-bro="manaShard"]');
-  await P.page.waitForTimeout(900);
-  await P.page.click('[data-shop-act]');
-  await P.page.waitForTimeout(1800);
-  rec.ok('the Mana Draught can be bought from him', (await coins(P)) < c1,
-    { before: c1, after: await coins(P) });
-  await P.page.evaluate(() => window.__broShopBus.setOpen(false));
-  await P.page.waitForTimeout(400);
+  /* v2.3.3130: brewed, not bought -- see section 1. */
+  await H.grant(wsPort, id, 'item', { invKey: 'manaShard', count: 1 });
+  await P.page.waitForTimeout(1500);
+  rec.ok('a Mana Draught bottle is in the bag (as brewed at the Cookhouse)',
+    (await held('manaShard')) >= 1, { held: await held('manaShard') });
   await drink('manaShard');                       /* v2.3.2127 */
   const filled = await mana(P);
   rec.ok(`...and fills the pool on the drink, so the first special lands now `
        + `(${drained} -> ${filled})`,
     filled > drained + 40, { drained, filled });
 
-  /* ── ONE EFFECT AT A TIME ──
-     Owner: "Only 1 effect active at a time though." The Swift Draught was
-     running a moment ago; drinking this must have ended it. */
+  /* ── ONE BREW AT A TIME ──
+     Owner: "Only 1 effect active at a time though." v2.3.3130: one meal and
+     one brew -- and both draughts are brews, so the Swift Draught that was
+     running a moment ago must have ended. */
   const excl = await H.readState(P, (S) => ({
     spd: S._spdBuff && Date.now() < S._spdBuff ? 1 : 0,
     spdMul: S._spdBuffMul || 0,
     mana: S._manaBuff && Date.now() < S._manaBuff ? 1 : 0 }));
-  rec.ok('drinking the Mana Draught ENDED the Swift Draught -- one effect at a time',
+  rec.ok('drinking the Mana Draught ENDED the Swift Draught -- one brew at a time',
     excl.spd === 0 && excl.mana === 1, excl);
   rec.ok('...and took its multiplier with it, so nothing is left applying 1.5x',
     !excl.spdMul, excl);
@@ -412,7 +420,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* His shelf, open, for the record: staples lead and the pile follows, so
      what the artifact shows is the order a player actually sees. */
   await openBro();
-  await P.page.click('[data-shop-bro="swiftDraught"]').catch(() => {});
+  await P.page.click('[data-shop-bro="staminaSalts"]').catch(() => {});
   await P.page.waitForTimeout(900);
   await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/potions.png' }).catch(() => {});
   const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));
