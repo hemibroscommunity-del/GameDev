@@ -1,4 +1,4 @@
-/* ═══ v2.3.3111: THE FARM, SETTLED BY THE WORKER (Phase 1) ═══
+/* ═══ v2.3.3127: THE FARM, SETTLED BY THE WORKER (Phase 1) ═══
  *
  * Owner, 2026-10-06: "Research how farming can work in my game.  I'm
  * thinking mechanics similar to the old FarmVille game where you have to
@@ -50,7 +50,7 @@
  * a few coins, never take two.  The bed's own state is the replay guard: a
  * resent harvest finds a rough bed and pays nothing -- which holds only
  * because the bed turns BEFORE anything is paid and nothing between the pay
- * and the commit can throw (v2.3.3111, the harvest branch).
+ * and the commit can throw (v2.3.3127, the harvest branch).
  *
  * WHAT THE CLIENT MAY SAY.  Bed indexes (clamped, deduplicated) and a crop
  * id looked up with hasOwnProperty, so '__proto__' / 'constructor' resolve to
@@ -66,7 +66,7 @@
  * un-advertises the cap AND answers every farm message with err 'off';
  * beds, seeds and crops are untouched and keep their times.
  *
- * A NEWER RECORD (v2.3.3111).  Every record says which shape it is
+ * A NEWER RECORD (v2.3.3127).  Every record says which shape it is
  * (FARM.V).  A record from a newer worker is refused whole -- err 'newer',
  * nothing read into it or written back -- so a rollback to this worker can
  * cost a farm visit but never the beds of a crop it does not know.  A phase
@@ -76,7 +76,7 @@
  * table is mirrored in src/data/farmCrops.js and pinned by mirror-audit. */
 
 export const FARM = {
-  /* v2.3.3111: the shape of a `farm:<pid>` record this worker reads and
+  /* v2.3.3127: the shape of a `farm:<pid>` record this worker reads and
      writes.  A later phase that adds a crop, a field or a state to the
      record BUMPS it, and this worker refuses to write a record newer than
      it knows (err 'newer', read nothing into it, write nothing).  Without
@@ -85,7 +85,7 @@ export const FARM = {
      of a crop it had never heard of became grass, for good (the review
      showed it on a copy; the owner: "Yes fix all of your recommended
      fixes").  Not mirrored on the client: the window never reads it.
-     v2.3.3115: 2 -- the potato and the pumpkin.  A worker at 1 has never
+     v2.3.3131: 2 -- the potato and the pumpkin.  A worker at 1 has never
      heard of either, and would have turned their beds into grass.  A record
      is stamped with the version its CONTENT needs (_farmShape: the highest
      crop `v` among its planted beds), not this number: stamping every record
@@ -132,7 +132,7 @@ export const FARM = {
     firebloom:  { name: 'Firebloom',  seed: 'seed_firebloom',  item: 'herb_firebloom',  lvl: 1,  price: 5,  mins: 40,   yield: 2, xp: 50,  base: 16 },
     rock_vine:  { name: 'Rock Vine',  seed: 'seed_rock_vine',  item: 'herb_rock_vine',  lvl: 5,  price: 10, mins: 320,  yield: 2, xp: 120, base: 30 },
     cloudpetal: { name: 'Cloudpetal', seed: 'seed_cloudpetal', item: 'herb_cloudpetal', lvl: 10, price: 15, mins: 640,  yield: 2, xp: 180, base: 40 },
-    /* v2.3.3115: the plan's two food crops (docs/FARMING-PLAN.md, "Six starter
+    /* v2.3.3131: the plan's two food crops (docs/FARMING-PLAN.md, "Six starter
        crops"), for the Garden Stew and the Pumpkin Pie (data.js DISHES).  The
        potato is the one crop that yields 3 -- fertilized, 4 or 5 (farmYield's
        chance at the half).  The pumpkin is the long one: 22 hours watered,
@@ -171,7 +171,7 @@ export const FARM = {
   },
 };
 
-/* v2.3.3115: the crops this worker grows, in the order they came (FARM.CROPS'
+/* v2.3.3131: the crops this worker grows, in the order they came (FARM.CROPS'
    own).  caps.farmCrops is how many: the Feed & Seed window offers a crop only
    below it, as the Cookhouse offers a recipe below caps.cookRows -- caps.farm
    alone let a newer page offer an older worker's farm seeds it could not sell
@@ -197,7 +197,7 @@ export function farmGrowMs(crop, watered) {
 /* What one bed pays.  A fractional fertilized yield (a 3-crop bed would
    give 4.5) is the whole part plus a chance at one more, so the AVERAGE is
    exactly FEED_YIELD -- the four starter crops all yield 2, so 3 exactly.
-   v2.3.3115: the potato yields 3, so its fertilized bed pays 4 or 5. */
+   v2.3.3131: the potato yields 3, so its fertilized bed pays 4 or 5. */
 export function farmYield(crop, fed, rand = Math.random) {
   if (!fed) return crop.yield;
   const q = crop.yield * FARM.FEED_YIELD;
@@ -242,7 +242,7 @@ export const farmMethods = {
     return { v: 1, beds: FARM.FREE_BEDS, plots };
   },
 
-  /* v2.3.3115: the record version these beds need -- the highest crop `v`
+  /* v2.3.3131: the record version these beds need -- the highest crop `v`
      planted in them (FARM.V's note).  A farm of the first four crops is a 1,
      which every farm worker reads. */
   _farmShape(plots) {
@@ -274,7 +274,7 @@ export const farmMethods = {
     return { v: this._farmShape(plots), beds, plots };
   },
 
-  /* v2.3.3111: written by a newer worker (FARM.V above): never healed, never
+  /* v2.3.3127: written by a newer worker (FARM.V above): never healed, never
      written, never paid from.  Only the worker writes these records, so `v`
      is always a number. */
   _farmNewer(stored) {
@@ -309,7 +309,7 @@ export const farmMethods = {
 
   /* A fixed one-minute window per player, in memory.  A deploy resets it,
      which buys a script one more minute at most; a reconnect does not, as it
-     is keyed by player id.  v2.3.3111: windows already over are swept once
+     is keyed by player id.  v2.3.3127: windows already over are swept once
      the map passes 256 players, so it never grows past the farmers of the
      last minute (it was never pruned, and its comment said a reconnect
      reset it). */
@@ -325,7 +325,7 @@ export const farmMethods = {
     return r.n <= FARM.MSG_PER_MIN;
   },
 
-  /* v2.3.3111: the player's Farming level as a whole number, 1 at least,
+  /* v2.3.3127: the player's Farming level as a whole number, 1 at least,
      whatever the record holds -- a first join stores the client's life
      skills as sent (join.js), so a level could be a string or the skill a
      bare number.  A string compared with a crop's level was coerced, and a
@@ -349,7 +349,7 @@ export const farmMethods = {
      record's put is ISSUED first and _saveRpg's in the same synchronous run,
      no await between -- see the header. */
   _farmCommit(pid, ps, rec) {
-    /* v2.3.3115: stamped by what the beds hold NOW -- a plant of a potato
+    /* v2.3.3131: stamped by what the beds hold NOW -- a plant of a potato
        makes this record a 2, its harvest a 1 again (_farmShape). */
     rec.v = this._farmShape(rec.plots);
     const p = this.state.storage.put('farm:' + pid, rec);
@@ -369,7 +369,7 @@ export const farmMethods = {
     if (fresh) this._farmCommit(session.id, null, rec);
     const now = Date.now();
     const view = this._farmView(rec, now);
-    /* v2.3.3118: and today's order board (farmorders.js) -- null when it is
+    /* v2.3.3134: and today's order board (farmorders.js) -- null when it is
        switched off, so the window drops a board it was showing (a bed
        action's answer carries no `orders` at all and leaves it be). */
     if (this._farmOrdersForOpen) view.orders = await this._farmOrdersForOpen(session.id, ps, now);
@@ -464,7 +464,7 @@ export const farmMethods = {
         did.used = { [FARM.COMPOST]: did.n };
       }
     } else if (op === 'harvest') {
-      /* v2.3.3111: THE BED FIRST, THEN THE BAG, AND NOTHING BETWEEN THEM AND
+      /* v2.3.3127: THE BED FIRST, THEN THE BAG, AND NOTHING BETWEEN THEM AND
          THE COMMIT THAT CAN THROW.  The first cut paid each bed's crops, then
          its Farming XP, then turned the bed back to grass.  `_addLifeSkillXp`
          threw on a life skill stored as a bare number (a first join copied

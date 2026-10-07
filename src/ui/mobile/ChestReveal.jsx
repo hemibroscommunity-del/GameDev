@@ -53,7 +53,7 @@ const ANSWER_TIMEOUT_MS = 8000;
 export function prizeText(p) {
   if (!p) return '';
   if (p.kind === 'coins') return '+' + (p.coins || 0) + ' coins';
-  /* v2.3.3116: raw minnows to cook (server dailychest.js); a chest opened on
+  /* v2.3.3132: raw minnows to cook (server dailychest.js); a chest opened on
      an older worker still says what it gave. */
   if (p.kind === 'fish') return (p.count || 10) + (/^cooked/.test(p.invKey || '') ? ' Cooked Fish' : ' Fish to cook');
   if (p.kind === 'gem') return 'A Rare Gem';

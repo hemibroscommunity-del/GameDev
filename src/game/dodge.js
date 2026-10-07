@@ -18,7 +18,7 @@ import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 import { monsterHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: the lunge's hit in its monster's voice (was hitMaterialOf, v2.3.2452) */
 import { isStuck } from '@/game/elemHits.js'; /* v2.3.2996: a slime's goo holds you */
-import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3117: the retreat shot carries the damage brew */
+import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: the retreat shot carries the damage brew */
 
 /* ═══ v2.3.2916: HOW LONG A ROLL LASTS -- ONE ANSWER, SENT WITH IT ═══
    Owner: "check all other broadcasted player animations to make sure they
@@ -290,7 +290,7 @@ export var doRetreatShot = function (S, R, ang) {
                         : Math.atan2((lt.y || P.y) - P.y, (lt.x || P.x) - P.x);
     var activeWpn = getActiveWeapon(R);
     var pDmg = calcWeaponDmg(activeWpn.type || 'bow', R || {}, activeWpn.tierMult || 1, activeWpn);
-    /* v2.3.3117: x the damage brew, as every shot carries it (fightFood.js),
+    /* v2.3.3133: x the damage brew, as every shot carries it (fightFood.js),
        and tagged with it so a duel claim can hand it to the worker. */
     var _rBrew = brewMulNow(S);
     var shotDmg = Math.max(1, Math.round(pDmg * (RETREAT_SHOT_DAMAGE_MULT || 0.5) * _rBrew));

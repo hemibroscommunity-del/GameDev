@@ -1,4 +1,4 @@
-/* FOOD THAT COUNTS IN A FIGHT -- v2.3.3117 (docs/specs/fight-food.md).
+/* FOOD THAT COUNTS IN A FIGHT -- v2.3.3133 (docs/specs/fight-food.md).
  *
  * Owner: "Farming needs a purpose. I think the best purpose it can serve are
  * temporary buffs (boss fights, PvP, dueling, etc)".

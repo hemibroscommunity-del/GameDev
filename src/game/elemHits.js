@@ -124,6 +124,10 @@ export function applyElemHit(S, p, now, who) {
   if (!ms) return null;
   const t = typeof now === 'number' ? now : Date.now();
   const R = who || S;
+  /* v2.3.3123: the pet out with you took the edge off it -- its land ward
+     (server petbook.js _petWard), `wd` the percent.  Yours only: the pet
+     flashes and says so (game/trapping.js noteWard, entityRenderer). */
+  if (!who && Number(p.wd) > 0) { S._wardAt = t; S._wardPct = Math.min(50, Math.round(Number(p.wd))); S._wardElem = typeof p.elem === 'string' ? p.elem : null; }
   if (p.st === 'chill') R._chillUntil = Math.max(R._chillUntil || 0, t + ms);
   else if (p.st === 'stuck') R._stuckUntil = Math.max(R._stuckUntil || 0, t + ms);
   else if (p.st === 'burn') R._burnUntil = Math.max(R._burnUntil || 0, t + ms);

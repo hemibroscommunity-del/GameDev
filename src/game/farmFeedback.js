@@ -1,4 +1,4 @@
-/* ═══ v2.3.3111: WHAT THE FARM SAYS BACK ═══
+/* ═══ v2.3.3127: WHAT THE FARM SAYS BACK ═══
  *
  * The moment after the worker answers a farm request (server/src/farm.js):
  * the words over the player, the sound, the level celebration, and on join
@@ -27,22 +27,22 @@ export const FARM_ERR_TEXT = {
   level: 'Farming level too low',
   coins: 'Not enough gold',
   off: 'The farm is closed for now',
-  newer: 'The farm is closed for now',   /* v2.3.3111: the record is a newer worker's (farm.js FARM.V) */
+  newer: 'The farm is closed for now',   /* v2.3.3127: the record is a newer worker's (farm.js FARM.V) */
   nothing: 'Nothing to do there',
   timeout: 'No answer, try again',
-  'timeout-buy': 'No answer yet. Check your bag',   /* v2.3.3111: a buy is not safe to repeat blind (farmBus.js) */
-  /* v2.3.3118: the order board (server farmorders.js) */
+  'timeout-buy': 'No answer yet. Check your bag',   /* v2.3.3127: a buy is not safe to repeat blind (farmBus.js) */
+  /* v2.3.3134: the order board (server farmorders.js) */
   'order-short': 'Not enough yet',
   'order-done': 'Already delivered',
   'order-stale': 'New orders are up',
   'order-gone': 'That order is gone',
-  'order-fight': 'Not while fighting',   /* v2.3.3118 (review): no deliveries in a fight with a player */
-  'timeout-order': 'No answer yet. Checking the board',   /* v2.3.3118 (review): farmBus asks for the board */
+  'order-fight': 'Not while fighting',   /* v2.3.3134 (review): no deliveries in a fight with a player */
+  'timeout-order': 'No answer yet. Checking the board',   /* v2.3.3134 (review): farmBus asks for the board */
   'orders-closed': 'The order board is closed for now',
 };
 
 /* A bag key's name as the farm says it: "Carrot", "Carrot Seeds", "Compost".
-   v2.3.3111: a key the farm does not know is "Crop" (a newer worker's), never
+   v2.3.3127: a key the farm does not know is "Crop" (a newer worker's), never
    the key itself -- the words over a player are never text a message chose. */
 export function farmItemName(key) {
   if (key === FARM.COMPOST) return 'Compost';
@@ -53,7 +53,7 @@ export function farmItemName(key) {
   return 'Crop';
 }
 
-/* v2.3.3111: how many ripe beds the player has already been told of this
+/* v2.3.3127: how many ripe beds the player has already been told of this
    page session.  The worker sends the farm on EVERY join (farm.js
    _farmOnJoin), and an iPhone rejoins on nearly every return to the app, so
    "3 beds are ready" came back each time for crops that never wither.  Said
@@ -76,7 +76,7 @@ const SOUND = {
   feed: () => play('footstep-v3', { vol: 0.55, rate: 0.6 }),
   harvest: () => { try { BT_AUDIO.collect(); } catch (e) { /* sound only */ } },
   buy: () => play('coin-pickup', { vol: 0.5 }),
-  order: () => play('coin-pickup', { vol: 0.7 }),   /* v2.3.3118: an order delivered, paid in gold */
+  order: () => play('coin-pickup', { vol: 0.7 }),   /* v2.3.3134: an order delivered, paid in gold */
 };
 
 function say(S, dy, text, color, extra) {
@@ -121,7 +121,7 @@ export function farmFeedback(S, payload, deps) {
       if (did.leveled && did.newLevel > did.fromLevel) {
         try { celebrateLifeSkillLevel(S, 'farming', did.newLevel, did.fromLevel); } catch (e) { /* visual */ }
       }
-      /* v2.3.3111: the quest flag the old browser-only window set on a harvest
+      /* v2.3.3127: the quest flag the old browser-only window set on a harvest
          (trader_3, "Plant and harvest a crop"), now on the worker's confirmed
          one.  Trader Tix is not in the game today, so nothing reads it yet;
          without it his chain would stall the day he returns.  The client's
@@ -134,7 +134,7 @@ export function farmFeedback(S, payload, deps) {
     } else if (did.op === 'buy') {
       say(S, 34, '+' + did.n + ' ' + farmItemName(did.item), GOOD);
     } else if (did.op === 'order') {
-      /* v2.3.3118: an order delivered -- what it paid; the gold and the XP
+      /* v2.3.3134: an order delivered -- what it paid; the gold and the XP
          themselves ride the player_state that follows. */
       say(S, 34, 'Order delivered', GOOD);
       if (did.gold > 0) say(S, 48, '+' + did.gold + ' gold', XP_GOLD);

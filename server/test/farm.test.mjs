@@ -1,4 +1,4 @@
-/* The farm -- v2.3.3111 (docs/specs/farm.md, docs/FARMING-PLAN.md Phase 1).
+/* The farm -- v2.3.3127 (docs/specs/farm.md, docs/FARMING-PLAN.md Phase 1).
  *
  * Owner: "mechanics similar to the old FarmVille game where you have to wait
  * to harvest and each has a wait time different depending on what it is.
@@ -22,7 +22,7 @@
  *   9. The rate limit drops a script; the kill switch refuses and
  *      un-advertises.
  *  10. Diego: selling a seed or compost you just bought is always a loss.
- *  11. The Cookhouse: Herb Bread heals (v2.3.3114: twice the out-of-combat
+ *  11. The Cookhouse: Herb Bread heals (v2.3.3130: twice the out-of-combat
  *      trickle, for half an hour), Firebloom Tea is +20% damage as its card
  *      says, both cook from farm herbs -- and a cook with `carry` puts the
  *      dish in the bag to eat later; a meal runs beside a brew.
@@ -106,7 +106,7 @@ const C = FARM.CROPS;
 {
   const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
   check('caps.farm is advertised', !!sync && sync.caps.farm === true);
-  /* v2.3.3115 (review): and HOW MANY crops this worker grows, in the order
+  /* v2.3.3131 (review): and HOW MANY crops this worker grows, in the order
      they came -- the window offers a crop only below it. */
   check('caps.farmCrops says how many crops this worker grows', !!sync && sync.caps.farmCrops === FARM_CROP_IDS.length
     && FARM_CROP_IDS.join(',') === Object.keys(FARM.CROPS).join(','), sync && sync.caps.farmCrops);
@@ -218,7 +218,7 @@ const C = FARM.CROPS;
   check('...and the XP is per bed (2 x ' + C.carrot.xp + ')', h2.did.xp === 2 * C.carrot.xp, h2.did);
   check('the yield rule: 2 dry, 3 fertilized, for every 2-crop bed',
     Object.values(C).filter((c) => c.yield === 2).every((c) => farmYield(c, false) === 2 && farmYield(c, true) === 3));
-  /* v2.3.3115: the potato yields 3, so a fertilized bed is 4.5 -- paid as 4
+  /* v2.3.3131: the potato yields 3, so a fertilized bed is 4.5 -- paid as 4
      or 5 by chance, the average exactly x1.5. */
   check('...and the potato: 3 dry, 4 or 5 fertilized, averaging 4.5',
     farmYield(C.potato, false) === 3 && farmYield(C.potato, true, () => 0.99) === 4 && farmYield(C.potato, true, () => 0) === 5
@@ -350,12 +350,12 @@ function ws2Ref() {
   P.inventory.herb_firebloom = 3;
   P.inventory.herb_rock_vine = 1;
   P.inventory.herb_cloudpetal = 1;
-  /* Herb Bread (index 0): 1 Firebloom -> its `rest` timer (v2.3.3114) */
+  /* Herb Bread (index 0): 1 Firebloom -> its `rest` timer (v2.3.3130) */
   wsB.sent.length = 0;
   await room.webSocketMessage(wsB, JSON.stringify({ type: 'cook_recipe', payload: { recipeIdx: 0 } }));
   await settle();
   check('Herb Bread cooks from one farm Firebloom', P.inventory.herb_firebloom === 2 && room._buffActive(P, 'rest'), { inv: P.inventory, buffs: P._buffs });
-  /* v2.3.3114: an OLD client's cook (no `carry`) is the meal at once, and a
+  /* v2.3.3130: an OLD client's cook (no `carry`) is the meal at once, and a
      meal lasts half an hour now. */
   check('...a meal: half an hour', P._buffs.rest > Date.now() + 29 * 60000, P._buffs);
   P.z = 'wheel';               /* a combat zone, not a hub */
@@ -376,7 +376,7 @@ function ws2Ref() {
   P._lastDealtAt = Date.now() - 10000;
   room._tickPlayerRegen();
   check('...which is the bread: with no buff, the plain trickle', P.hp === 100 + plain, P.hp);
-  /* v2.3.3111: the recipe's Cooking level is the WORKER's gate, not only the
+  /* v2.3.3127: the recipe's Cooking level is the WORKER's gate, not only the
      window's: at Cooking 1 the Tea (Cooking 6) is refused, nothing is used,
      and the bag is echoed so a predicted cook snaps back. */
   P.lifeSkills.cooking = { level: 1, xp: 0 };
@@ -398,10 +398,10 @@ function ws2Ref() {
   /* Root Stew (index 1): Rock Vine + Cloudpetal -> resist */
   await room.webSocketMessage(wsB, JSON.stringify({ type: 'cook_recipe', payload: { recipeIdx: 1 } }));
   await settle();
-  check('Root Stew cooks from a Rock Vine and a Cloudpetal, and runs BESIDE the tea (v2.3.3114: one meal and one brew)', room._buffActive(P, 'resist')
+  check('Root Stew cooks from a Rock Vine and a Cloudpetal, and runs BESIDE the tea (v2.3.3130: one meal and one brew)', room._buffActive(P, 'resist')
     && room._buffActive(P, 'damage') && P._buffs.damageMul === 1.2 && !P.inventory.herb_rock_vine && !P.inventory.herb_cloudpetal, P._buffs);
 
-  /* ═══ v2.3.3114: A COOK WITH `carry` PUTS THE DISH IN THE BAG ═══ */
+  /* ═══ v2.3.3130: A COOK WITH `carry` PUTS THE DISH IN THE BAG ═══ */
   P._buffs = {};
   P.inventory.herb_firebloom = 1;
   const xp0 = P.lifeSkills.cooking.xp;
@@ -417,7 +417,7 @@ function ws2Ref() {
     && P._buffs.rest > Date.now() + 29 * 60000, { inv: P.inventory, buffs: P._buffs });
 }
 
-// ── 12. the bed turns before anything is paid (v2.3.3111, review) ──
+// ── 12. the bed turns before anything is paid (v2.3.3127, review) ──
 {
   const PD = 'bp_farm_d';
   const wsD = fakeWs();
@@ -468,7 +468,7 @@ function ws2Ref() {
     { t1: t1 && t1.did, t2: t2 && t2.did, inv: pD.inventory });
 }
 
-// ── 13. a character restart takes the farm with it (v2.3.3111, review) ──
+// ── 13. a character restart takes the farm with it (v2.3.3127, review) ──
 {
   const PR = 'bp_farm_r';
   const wsR = fakeWs();
@@ -490,7 +490,7 @@ function ws2Ref() {
     && v.plots.length === FARM.FREE_BEDS && v.plots.every((p) => p.s === 'rough'), v);
 }
 
-// ── 14. a newer worker's record is left alone (v2.3.3111, review) ──
+// ── 14. a newer worker's record is left alone (v2.3.3127, review) ──
 {
   const PN = 'bp_farm_n';
   const wsN = fakeWs();
@@ -516,12 +516,12 @@ function ws2Ref() {
   check('...no join notice is sent from it', !wsN2.sent.some((m) => m.type === 'farm_state'));
   check('...and storage holds the newer record exactly as it was', JSON.stringify(st._store.get('farm:' + PN)) === before);
   const deed = st._store.get('farm:bp_farm_r');   /* §13's free deed, made after the restart */
-  /* v2.3.3115 (review): a record says the shape its BEDS need -- a deed of
+  /* v2.3.3131 (review): a record says the shape its BEDS need -- a deed of
      rough beds is a 1, which every farm worker reads. */
   check('a fresh deed says it is a 1 (nothing in it needs more)', !!deed && deed.v === 1, deed && deed.v);
 }
 
-// ── 15. v2.3.3115: a record's version is what its beds HOLD (review) ──
+// ── 15. v2.3.3131: a record's version is what its beds HOLD (review) ──
 {
   /* Stamping FARM.V on every write closed every farm touched under this
      worker after a rollback, a carrot-only one included.  Now a potato or a
@@ -550,7 +550,7 @@ function ws2Ref() {
   check('...and with the potato harvested it is a 1 again', sv().v === 1 && sv().plots[0].crop === 'carrot', sv());
 }
 
-// ── 16. v2.3.3115: every seed costs at least a coin a crop (review) ──
+// ── 16. v2.3.3131: every seed costs at least a coin a crop (review) ──
 {
   /* farm.js's own rule, so Diego (half of `base`, falling) is never a
      faucet once his pile is full: the plan's "Every seed costs at least one

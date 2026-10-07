@@ -243,7 +243,7 @@ export function ShopkeeperPanel() {
   const liveQuote = (quote && selKey && quote.key === selKey && quote.qty === clamped
     && quote.mode === (selSide === 'bro' ? 'buy' : 'sell')) ? quote : null;
   const tooPoor = selSide === 'bro' && liveQuote && coins < liveQuote.total;
-  /* v2.3.3114: his sell quote is 0 for anything he will not buy -- his own
+  /* v2.3.3130: his sell quote is 0 for anything he will not buy -- his own
      staples, the tonics (brewed at the Cookhouse now, never bought back), or
      a pile already full -- and the button says so instead of a "…" that
      looks like it is still loading. */
@@ -411,7 +411,7 @@ export function ShopkeeperPanel() {
                 {/* v2.3.2063: "Bro has 0" is not a fact about a staple -- he
                     cannot run out of them. What matters instead is that
                     drinking it replaces whatever you are running. */}
-                {/* v2.3.3114: his staples are the two instant items now (the
+                {/* v2.3.3130: his staples are the two instant items now (the
                     tonics are brewed at the Cookhouse), and neither replaces a
                     running effect -- the line said they did. */}
                 {selStaple

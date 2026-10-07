@@ -71,8 +71,15 @@ export function deriveQuestLog(S) {
   /* NEXT UP: for each quest-giving NPC, the first incomplete quest that
      is not yet accepted — the same selection the NPC dialogue uses.
      getNpcQuest returns a { quest, status } wrapper, NOT the quest. */
+  /* v2.3.3121: a giver who stands only against a worker that advertises him
+     (Beastmaster Bro: `needsCap` on his NPC_DATA row, caps.beastmaster) offers
+     nothing here while he is not there -- an old worker, or his switch off */
+  const capOk = (npc) => {
+    const row = (NPC_DATA || []).find((n) => n && n.name === npc);
+    return !row || !row.needsCap || !!(S && S._serverCaps && S._serverCaps[row.needsCap]);
+  };
   const npcs = [...new Set(Object.values(QUEST_CHAINS).map(q => q.npc))].filter(
-    (npc) => LIVE_QUEST_GIVERS.has(npc));
+    (npc) => LIVE_QUEST_GIVERS.has(npc) && capOk(npc));
   const upcoming = [];
   for (const npc of npcs) {
     const r = getNpcQuest(R, npc);
