@@ -259,6 +259,61 @@ joystick".
   blows; the face shows JUMP, then the weapon with a job), test-world-core
   "the tap that jumps".
 
+## v2.3.3145: a tap that jumps shows nothing of the attack, and a far resource lets it jump
+
+The owner: "When you tap jump with bow equipped it shows you and your line of
+sight facing southward for a brief instant. Fix. Same for staff and sword",
+and "Sometimes jumping doesn't work because 'too far away!' message. Make
+jumping work and just remove the too far away message when too far away from
+resource extraction areas."
+
+- **The flash.** A press on the right stick with nothing to fight switched the
+  attack on at once (`S.autoAttack`), and only its first SWING waited to see
+  whether the press was a tap (v2.3.3105's `S._atkHoldUntil`). So for the
+  length of every tap:
+  - the body turned to `S._aimAngle`, whatever aim was left over -- a monster
+    killed below you (its lock's aim outlives it) or an old drag of the stick
+    (entityRenderer `aimAttackActive`);
+  - the bow drew its sight line and the sword its swing preview
+    (effectsRenderer);
+  - the walk halved, and a sprint ended ("an attack ends it").
+  - Measured on main (`mp-tapstance`): facing east with an old aim pointing
+    south, a tap turned the bro south and drew the line, with all three
+    weapons.
+- **Now such a press is PENDING** (`S._atkPending`, set by BroTown's
+  `handleRBtnPress` while the tap's window is open). It becomes the attack only
+  when it turns out to be one: still held when the window closes, or dragged
+  (`settleTapPress` in `src/game/tapJump.js`, once a frame at the top of the
+  game loop). A release first -- the tap, the jump -- lets go of it, and
+  nothing of the attack is ever shown. Raising the shield or going into the
+  water lets go of it too. A hold pays nothing: its first swing already waited
+  for the window.
+- **A thumb that rolls on its tap no longer aims.** The aim's dead zone was 8
+  px and a tap's 10, so a tap whose thumb rolled 9 px wrote the roll into
+  `S._aimAngle` and `S._lastAimAngle` -- the way the body turned and the bow
+  aimed from then on -- and still jumped. While the press is pending and the
+  thumb is inside the tap's 10 px, the knob follows and nothing aims
+  (`rKnobFollow`, not `rJoyAim`).
+- **"Too far away!" is gone.** The right stick is the whole right half of the
+  screen, so the thumb that taps it to jump is often over a tree or a rock
+  across the screen, which took the tap, said "Too far away!" and ate the jump.
+  `_tapHarvestAtCss` now passes over a resource out of reach, and over one you
+  hold no tool for (it isn't drawn), so the tap goes on to the jump; one in
+  reach still starts its harvest. v2.3.2273's "You need a tool for that" went
+  with it: it existed because the scan found resources the renderer hides.
+  A bed of your farm out of reach lets the tap through the same way.
+- **And a resource you can't see stops nobody.** Not the jump's, but found
+  beside it (the owner: "there are invisible areas that block movement near the
+  town"): a resource you hold no tool for isn't drawn, but its rock or trunk
+  was still solid (`nodeBlockEllipse`). The commons ring BroTown with six
+  copper veins and six pines, and "Learn a Trade" hands you the hatchet and the
+  rod but not the pickaxe, so each vein was a rock-sized patch of empty grass
+  that stopped you. It is solid again the frame the tool reaches the bag.
+- Tests: `mp-tapstance` (22 checks; 7 fail on main) and `mp-unseenwall` (10; 2
+  fail on main), with mp-tapjump, mp-tapprop, mp-tapact, mp-jump, mp-tapswing,
+  mp-sprint, mp-aimpath, mp-cooktap, mp-nodelabels, mp-farmwalk and
+  mp-wheelnodes unchanged.
+
 ## Not in this round
 
 - **Jumping over attacks.** A jump doesn't dodge anything: the worker decides

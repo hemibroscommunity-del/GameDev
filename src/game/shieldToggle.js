@@ -89,6 +89,7 @@ export function raiseShieldToggle(S) {
      starts (BroTown.jsx `if (S._extraction) S.autoAttack = false`); the
      useState mirror is write-only and nothing reads it. */
   S.autoAttack = false;
+  S._atkPending = false;   /* v2.3.3145: and a press still waiting on its tap (game/tapJump.js) */
   S.isSwinging = false;
   S._swingSfxPending = false;
   S._aiming = false;
