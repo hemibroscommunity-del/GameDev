@@ -375,7 +375,7 @@ export const shopMethods = {
   /** Sell player stock TO him. Each unit is priced against the pile as it
    *  grows, not all at his opening offer -- otherwise a hundred-unit sale
    *  would dodge the decay entirely, which is the rule's whole point. */
-  /* v2.3.3112: `pid` is the seller's id, so the sale can be SAVED (below).
+  /* v2.3.3128: `pid` is the seller's id, so the sale can be SAVED (below).
      The router passes it; the suite's direct calls, on bare objects with
      no stored player, leave it out. */
   async _shopSell(ps, key, qty, pid) {
@@ -412,7 +412,7 @@ export const shopMethods = {
     if (ps.inventory[key] <= 0) delete ps.inventory[key];
     ps.coins = Math.max(0, Math.floor(Number(ps.coins) || 0) + paid);
     stock[key] = held;
-    /* ═══ v2.3.3112: THE SELLER'S BAG AND PURSE ARE SAVED WITH THE PILE ═══
+    /* ═══ v2.3.3128: THE SELLER'S BAG AND PURSE ARE SAVED WITH THE PILE ═══
        Neither buy nor sell ever called _saveRpg, and nothing else saves a
        player who stands still at full health (the regen tick writes only a
        pool that moved, webSocketClose only a dirty one, and a reconnect
@@ -436,7 +436,7 @@ export const shopMethods = {
   /** Buy FROM his pile. Priced flat, so buying does not get cheaper as you
    *  clear him out -- but every unit you take raises what he will pay the next
    *  seller, which is how the pile drains and the price recovers. */
-  async _shopBuy(ps, key, qty, pid) {   /* v2.3.3112: pid, as _shopSell's */
+  async _shopBuy(ps, key, qty, pid) {   /* v2.3.3128: pid, as _shopSell's */
     if (!ps || typeof key !== 'string' || !key) return { ok: false, error: 'Bad request' };
     const want = Math.floor(Number(qty) || 0);
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
@@ -478,7 +478,7 @@ export const shopMethods = {
          cannot be '__proto__' (rule 4). */
       if (!ps.inventory) ps.inventory = {};
       ps.inventory[key] = (Math.floor(Number(ps.inventory[key]) || 0)) + want;
-      /* v2.3.3112: saved, or the purchase came undone on the next reconnect
+      /* v2.3.3128: saved, or the purchase came undone on the next reconnect
          (see _shopSell). A staple touches no pile, so this is the one write. */
       if (pid) this._saveRpg(pid, ps);
       return { ok: true, bought: want, cost, coins: ps.coins, staple: true, settled: true };
@@ -497,7 +497,7 @@ export const shopMethods = {
     if (!ps.inventory) ps.inventory = {};
     ps.inventory[key] = (Math.floor(Number(ps.inventory[key]) || 0)) + take;
     stock[key] = held - take;
-    /* v2.3.3112: the buyer saved in the pile's batch (see _shopSell) */
+    /* v2.3.3128: the buyer saved in the pile's batch (see _shopSell) */
     if (pid) this._saveRpg(pid, ps);
     await this._shopSaveStock(stock);
     return { ok: true, bought: take, cost, coins: ps.coins, stock: stock[key],

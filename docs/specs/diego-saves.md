@@ -1,4 +1,4 @@
-# Diego's trades are saved (v2.3.3112)
+# Diego's trades are saved (v2.3.3128)
 
 > Found by the review of the farm (PR #827). It was in the game before the
 > farm and was proved on a copy of `main`. Owner, 2026-10-06: *"Yes fix all of

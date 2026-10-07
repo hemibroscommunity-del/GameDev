@@ -18,7 +18,7 @@ function makeState() {
   return {
     storage: {
       get: async (k) => store.get(k),
-      /* v2.3.3112: a COPY, as Durable Object storage keeps (it structured-clones
+      /* v2.3.3128: a COPY, as Durable Object storage keeps (it structured-clones
          on put).  By reference, a saved record went on changing with the live
          player, and a check of what storage holds could not fail. */
       put: async (k, v) => { store.set(k, structuredClone(v)); },
@@ -400,7 +400,7 @@ const rNo = await room._shopBuy(skint, 'whetstone', 1);
 check('a player who cannot afford it is refused, and keeps their coin',
   !rNo.ok && skint.coins === 1 && !room._buffActive(skint, 'damage'), { rNo, skint });
 
-/* ═══ v2.3.3112: A TRADE WITH DIEGO IS SAVED ═══
+/* ═══ v2.3.3128: A TRADE WITH DIEGO IS SAVED ═══
    Through the real message path, storage must hold the trade. Before this,
    neither shop_sell nor shop_buy saved the player: a sale followed by a
    reconnect came undone (coins gone, goods back in the bag) while Diego's
