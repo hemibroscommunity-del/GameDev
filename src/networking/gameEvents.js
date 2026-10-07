@@ -101,6 +101,7 @@ export function dmgIconForSlot(S, payload, isOwn) {
   return SLOT_ICON[(R && R.activeSlot) || 'melee'] || 'sword';
 }
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
+import { notePvpHit } from '@/game/fightFood.js'; /* v2.3.3133: a pvp_hit starts a fight with a player (the one-bite rule) */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -3379,6 +3380,17 @@ export function processGameEvent(type, payload, S, deps) {
           case 'pvp_hit':
             {
               var _R2$armor, _R2$_shieldBonus;
+              /* v2.3.3133: a hit to or from me is a fight with a player, for
+                 the one-bite rule (fightFood.js) -- stamped off the same event
+                 the worker stamps its own copy beside. */
+              if (notePvpHit(S, payload) && typeof window !== 'undefined') {
+                /* QA probe (mp-fightfood): the last hits to or from me, with
+                   the worker's resolved dmgBase -- the brew it put on. */
+                var _ffq = window.__btFightFood || (window.__btFightFood = { hits: [] });
+                _ffq.hits.push({ attacker: payload.attacker, target: payload.target, dmgBase: payload.dmgBase,
+                  dmgTaken: payload.dmgTaken, at: Date.now() });
+                if (_ffq.hits.length > 60) _ffq.hits.shift();
+              }
               // §16.12 — Server-authoritative PvP hit (lag-compensated)
               // Server already decided this is a hit. Defender applies own defense calc.
               /* v2.3.1917: stamp the target's authoritative HP onto the peer

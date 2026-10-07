@@ -1513,7 +1513,28 @@ remnant to migrate server-side, not a mode to preserve.
       bag's "Stamina Tonic"), he neither buys nor sells cooked food
       (`isCookedFood`; raw fish and crops he still buys), a new world's pile
       starts empty, and the daily chest's 10 fish are RAW minnows; the farm's
-      art prompts are `docs/art/FARM-ART-PROMPTS.md`.
+      art prompts are `docs/art/FARM-ART-PROMPTS.md`;
+    - since v2.3.3133 FOOD COUNTS IN A FIGHT -- the owner: "Farming needs a
+      purpose ... temporary buffs (boss fights, PvP, dueling, etc)": the
+      damage brew is read in ONE place (combat.js `_brewMul`); in a fight
+      with a player a claim marked `nb: 1` is the hit WITHOUT the brew and
+      the worker multiplies the clamped claim by its own (`caps.pvpbrew`,
+      kill switch `pvpbrew: false`; src/game/fightFood.js `pvpClaim`, every
+      shot carrying the brew it was fired with as `brew`) -- the bow volley
+      and the staff special never had it; a melee special swing is NOT
+      marked `special` (its claim goes out every frame of the sweep and the
+      lanes count the hits: the special lane gave it three at the special's
+      ceiling); the Element Burst's ceiling is x the brew (a Fury Tonic was
+      clipped up to a quarter); the Root Stew cuts 5% of a small hit too
+      (chance rounding, not a ceil); and ONE BITE AT A TIME -- a Garden Stew,
+      cooked fish or minnow bottle once per `PVP_HEAL.GAP_MS` 15 s in a duel
+      or within `WINDOW_MS` 10 s of a hit between players (cooking.js
+      `_pvpHealWait`, every road to one incl. the old-style cook; the clock
+      on the ROOM, `_pvpHealClocks`, so a rejoin keeps it and no joiner is
+      sent it; a held bite answered `eat_refused {wait}`; the page holds its
+      own bite back, "Eat again in Ns", on `caps.pvpheal` from the hits it
+      saw, never the duel flag, which outlives duels; kill switch `pvpheal:
+      false`); `fightfood` suite, `mp-fightfood`: docs/specs/fight-food.md.
   - Since v2.3.3120 PET TRAPPING -- the owner: "your trapping level governs
     what level monster you can capture ... The best success rate for the
     lowest tier monster should be about 1%. And each trap should cost at least

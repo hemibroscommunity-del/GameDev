@@ -13,7 +13,11 @@
  * only consumers (mirror-audit still pins them against the client
  * tables).  Original section comments preserved on each method. */
 
-import { FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS, DISHES, DIEGO_SHELF, manaSurgePerTick } from './data.js';
+import { FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS, DISHES, DIEGO_SHELF, PVP_HEAL, manaSurgePerTick } from './data.js';
+
+/* v2.3.3133: the most players the one-bite clocks keep before a prune drops
+   the ones that can no longer hold anyone back (_pvpHealPrune). */
+const PVP_HEAL_CLOCKS_MAX = 512;
 
 /* v2.3.3130: the timers -- and their magnitudes -- each slot owns
    (_clearBuffSlot).  A magnitude listed here goes with its timer, never
@@ -100,7 +104,11 @@ export const cookingMethods = {
       if (ps.dying || ps.dead || ps.disconnected) { refuse(); return; }
       if (!ps.inventory) ps.inventory = {};   // proto-ok: invKey is an own key of DISHES (_getDish)
       if ((ps.inventory[invKey] || 0) <= 0) { refuse(); return; }
+      /* v2.3.3133: a heal eaten at once is one bite at a time in a fight
+         with a player (data.js PVP_HEAL); a half-hour meal never is. */
+      if (meal.slot === 'now' && this._pvpHealHeld(session.id, ps)) { refuse(); return; }
       if (!this._applyDish(ps, meal)) { refuse(); return; }
+      if (meal.slot === 'now') this._noteInstantHeal(session.id);   /* v2.3.3133 */
       ps.inventory[invKey] -= 1;
       if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
       this._saveRpg(session.id, ps);
@@ -123,9 +131,11 @@ export const cookingMethods = {
     if (ps._arenaMatch) { refuseEat(); return; } // v2.3.1126: no healing during an arena match (GDD §43)
     if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith cooked_fish_ above
     if ((ps.inventory[invKey] || 0) <= 0) { refuseEat(); return; }
+    if (this._pvpHealHeld(session.id, ps)) { refuseEat(); return; }   /* v2.3.3133: one bite at a time in a fight with a player */
     // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap +50%).
     const heal = Math.ceil(this._fishHealAmount(invKey)) + this._recoveryFlat(ps); // v2.3.1345: flat recovery bonus
     if (heal <= 0) { refuseEat(); return; }
+    this._noteInstantHeal(session.id);   /* v2.3.3133: counted wherever it is eaten (_pvpHealWait) */
     // Decrement inventory + apply heal.  Heal is "wasted" if at max;
     // we still consume the item to match client semantics (the click
     // handler returns early at full, but a race-condition cheater
@@ -251,8 +261,13 @@ export const cookingMethods = {
     if (ps.dying || ps.dead || ps.disconnected) { refuse(); return; }
     if (!ps.inventory) ps.inventory = {};
     if ((ps.inventory[invKey] || 0) <= 0) { refuse(); return; }
+    /* v2.3.3133: the old minnow bottle is a heal at once too (data.js
+       PVP_HEAL); the brews are not heals and are never held back. */
+    const _bite = !!(item && item.effect === 'healFish');
+    if (_bite && this._pvpHealHeld(session.id, ps)) { refuse(); return; }
     /* Before the decrement -- see REFUSAL DOES NOT CONSUME above. */
     if (!(dish ? this._applyDish(ps, dish) : this._applyShopItem(ps, item))) { refuse(); return; }
+    if (_bite) this._noteInstantHeal(session.id);
     ps.inventory[invKey] -= 1;
     if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
     this._saveRpg(session.id, ps);
@@ -415,7 +430,14 @@ export const cookingMethods = {
          cannot be applied lands in the bag instead. */
       const dish = this._getDish(makes);
       const item = dish ? null : this._getShopItem(makes);
-      const applied = dish ? this._applyDish(ps, dish) : (item ? this._applyShopItem(ps, item) : false);
+      /* v2.3.3133 (review): a heal eaten at once keeps the one-bite rule on
+         this road too -- a forged old-style cook of a Garden Stew healed past
+         it, as often as there were carrots.  Held back, the stew lands in the
+         bag like any dish that cannot be applied. */
+      const bite = !!((dish && dish.slot === 'now') || (item && item.effect === 'healFish'));
+      const held = bite && this._pvpHealHeld(session.id, ps);
+      const applied = held ? false : (dish ? this._applyDish(ps, dish) : (item ? this._applyShopItem(ps, item) : false));
+      if (applied && bite) this._noteInstantHeal(session.id);
       if (!applied) addToBag();
     }
 
@@ -499,6 +521,88 @@ export const cookingMethods = {
   _getDish(key) {
     if (typeof key !== 'string' || !Object.prototype.hasOwnProperty.call(DISHES, key)) return null;
     return DISHES[key];
+  },
+
+  /* ═══ v2.3.3133: ONE BITE AT A TIME IN A FIGHT WITH A PLAYER ═══
+   * (data.js PVP_HEAL has the why.)  How long this player must still wait
+   * before a heal eaten at once -- 0 when they may eat.  "In a fight with a
+   * player" is an active duel (_duelFor: derived from this._duels, the regen
+   * gate's way, so nothing needs clearing when a duel ends however it ends)
+   * or a pvp_hit to or from them within WINDOW_MS (`pvpAt`, stamped by
+   * combat.js _resolvePvPAttack through _notePvpExchange).  The wait runs from
+   * their last such heal wherever they ate it (`healAt`, _noteInstantHeal,
+   * stamped by each of the four roads to one), so a fish eaten just before
+   * the first blow counts too.  `pvpheal: false` turns the rule off.
+   *
+   * THE CLOCK IS THE ROOM'S, keyed by player id (review).  It was two stamps
+   * on playerState, and a join builds that afresh: every reconnect handed out
+   * a bite, and joins are not throttled, so a modified client could eat once
+   * a rejoin instead of once in fifteen seconds.  And playerState is copied
+   * whole into every joiner's state_sync, so an opponent could read when you
+   * could next eat.  A Map on the room survives a rejoin and is sent to
+   * nobody.  Memory only (rule 11): a deploy lets one more bite through,
+   * which costs nothing.  Pruned once it passes PVP_HEAL_CLOCKS_MAX. */
+  _pvpHealWait(id, ps, now) {
+    if (!ps || this._pvpHealOff()) return 0;
+    const t = typeof now === 'number' ? now : Date.now();
+    const c = this._pvpHealClocks ? this._pvpHealClocks.get(id) : null;
+    const inFight = !!(this._duelFor && this._duelFor(id))
+      || (!!c && t - c.pvpAt < PVP_HEAL.WINDOW_MS);
+    if (!inFight) return 0;
+    const last = c ? c.healAt : 0;
+    return Math.max(0, PVP_HEAL.GAP_MS - (t - last));
+  },
+
+  /* v2.3.3133 (review): held back by the rule?  Says so to the phone, with
+     the wait, so its own copy of the clock is the worker's -- a page that ate
+     in a lull of a duel (no hit in the window) or reconnected cannot know the
+     worker's clock otherwise, and its bite just came back without a word. */
+  _pvpHealHeld(id, ps) {
+    const wait = this._pvpHealWait(id, ps);
+    if (wait <= 0) return false;
+    const ws = this._wsBySessionId(id);
+    if (ws) { try { ws.send(JSON.stringify({ type: 'eat_refused', payload: { wait: Math.ceil(wait) } })); } catch (e) { /* the resend still puts the bag back */ } }
+    return true;
+  },
+
+  _pvpHealClock(id) {
+    if (!this._pvpHealClocks) this._pvpHealClocks = new Map();
+    let c = this._pvpHealClocks.get(id);
+    if (!c) {
+      if (this._pvpHealClocks.size >= PVP_HEAL_CLOCKS_MAX) this._pvpHealPrune(Date.now());
+      c = { pvpAt: 0, healAt: 0 };
+      this._pvpHealClocks.set(id, c);
+    }
+    return c;
+  },
+
+  /* A clock that can no longer hold anyone back is dropped: past the fight
+     window AND the gap.  Run only when the map is full, so it costs nothing
+     in the common case. */
+  _pvpHealPrune(now) {
+    const keep = Math.max(PVP_HEAL.WINDOW_MS, PVP_HEAL.GAP_MS);
+    for (const [k, c] of this._pvpHealClocks) {
+      if (now - c.pvpAt >= keep && now - c.healAt >= keep) this._pvpHealClocks.delete(k);
+    }
+  },
+
+  /* A hit between two players (combat.js _resolvePvPAttack): both sides. */
+  _notePvpExchange(a, b, now) {
+    const t = typeof now === 'number' ? now : Date.now();
+    this._pvpHealClock(a).pvpAt = t;
+    this._pvpHealClock(b).pvpAt = t;
+  },
+
+  /* A heal eaten at once, by any of its roads. */
+  _noteInstantHeal(id, now) {
+    this._pvpHealClock(id).healAt = typeof now === 'number' ? now : Date.now();
+  },
+
+  /* v2.3.3133: the rule's kill switch, read the meals' way.  caps.pvpheal
+     reads false with it, so a page stops holding its own bites back too. */
+  _pvpHealOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'pvpheal') && !f.pvpheal);
   },
 
   /* The kill switch, read the farm's way: `meals: false` stops the cook-to-bag
