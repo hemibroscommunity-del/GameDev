@@ -106,7 +106,10 @@ window.__qaShirtRead = (tex, spr) => {
     diffs.sort((a, b) => a - b);
     const per = diffs.length ? diffs[diffs.length >> 1] : null;
     const unit = Math.abs(spr.toGlobal({ x: 1, y: 0 }).x - spr.toGlobal({ x: 0, y: 0 }).x) / (S._worldScaleX || 1);
-    return { yellow: yn, purple: vn, period: per, runs: diffs.length, unit: +unit.toFixed(4), worldPeriod: per ? +(per * unit).toFixed(2) : null };
+    /* and the whole strip's size on the graphics chip (its canvas is kept
+       readable only for QA, __btTrimVerify) */
+    return { yellow: yn, purple: vn, period: per, runs: diffs.length, unit: +unit.toFixed(4), worldPeriod: per ? +(per * unit).toFixed(2) : null,
+      strip: cv.width + 'x' + cv.height, mb: +(cv.width * cv.height * 4 / 1048576).toFixed(2) };
   } catch (e) { return { err: String(e && e.message) }; }
 };`;
 
@@ -378,7 +381,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       const rd = r && r.read;
       const k = rd && walkShirt && rd.worldPeriod && walkShirt.worldPeriod ? rd.worldPeriod / walkShirt.worldPeriod : null;
-      rec.ok(`${who}'s tee is his: striped (${rd && rd.yellow} px of the stripes' yellow) and printed (${rd && rd.purple} px of the print's purple) from its first frame (${r && r.dressed} drawn dressed, ${r && r.plain} plain), its stripes ${rd && rd.worldPeriod} world px apart against his walking tee's ${walkShirt && walkShirt.worldPeriod} (${k ? Math.round(k * 100) + '%' : '-'})`,
+      rec.ok(`${who}'s tee is his: striped (${rd && rd.yellow} px of the stripes' yellow) and printed (${rd && rd.purple} px of the print's purple) from its first frame (${r && r.dressed} drawn dressed, ${r && r.plain} plain), its stripes ${rd && rd.worldPeriod} world px apart against his walking tee's ${walkShirt && walkShirt.worldPeriod} (${k ? Math.round(k * 100) + '%' : '-'}); the strip ${rd && rd.strip}, ${rd && rd.mb} MB`,
         !!rd && rd.yellow > 20 && rd.purple > 5 && r.dressed > 0 && r.plain === 0 && !!k && Math.abs(k - 1) < 0.15, r);
     };
     /* each figure against it, from its drawn scale (world px per art px) */
