@@ -173,6 +173,7 @@ const CAP_GATES = [
   'petwards' /* v2.3.3123: the land ward of the pet out with you -- lower case, a kill switch */,
   'petshow' /* v2.3.3123: the others see your pet -- lower case, a kill switch */,
   'pethouse' /* v2.3.3123: more room in the Pet House for gold -- lower case, a kill switch */,
+  'hardenbars' /* v2.3.3139: hardening takes bars and a doubling gold ladder -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported

@@ -64,13 +64,16 @@ with the server-side weapon-drop migration (successor item below).
 
 ## Hardening (§4.6c)
 
-| From → To | Success | Cost |
-|---|---|---|
-| H0→1 | 80% | 500g |
-| H1→2 | 20% | 2,000g |
-| H2→3 | 5% | 8,000g |
-| H3→4 | 1% | 32,000g |
-| H4→5 | 0.5% | 128,000g |
+| From → To | Success | Cost (v2.3.3139) | Cost before |
+|---|---|---|---|
+| H0→1 | 80% | 500g + 1 bar | 500g |
+| H1→2 | 20% | 1,000g + 2 bars | 2,000g |
+| H2→3 | 5% | 2,000g + 3 bars | 8,000g |
+| H3→4 | 1% | 4,000g + 4 bars | 32,000g |
+| H4→5 | 0.5% | 8,000g + 5 bars | 128,000g |
+
+Every attempt pays, won or lost. Which bars, and the switch back to the old
+column: "v2.3.3139: bars, and gold that doubles" below.
 
 - +1.0417 effective base per level (GDD's +5 ÷ 4.8 code scale).
 - **Failure resets hardness by the Temper pity band** (evaluated on
@@ -84,21 +87,65 @@ with the server-side weapon-drop migration (successor item below).
   The guard gear lock (threats.md) blocks hardening — it mutates the
   equipped weapon.
 
+## v2.3.3139: bars, and gold that doubles
+
+The owner: "I think hardening should cost 1 bar per level (hardening lvl 1
+cost 1 bar, hardening lvl 2 costs 2 bars, and a doubling gold cost per
+level) ... up until lvl 5 (which is almost impossibly hard)", then "I meant
+1000 for lvl 2, 2000 for lvl 3, etc".
+
+- **Gold** doubles a level instead of quadrupling: `500 × 2^H` for the
+  attempt from H (`HARDEN.COST_FACTOR` 2; the old 4 kept as
+  `OLD_COST_FACTOR`). The last attempt is 8,000g, not 128,000g.
+- **Bars**: the attempt at H(n) takes n bars (`HARDEN.BARS_PER_LEVEL` 1,
+  `hardenBarsFor`), every attempt, won or lost, like the gold. The odds are
+  untouched, so H5 stays the 1-in-2.5-million climb.
+- **Which bars** (`HARDEN_BAR_BY_TIER`, `hardenBarFor`): by the weapon's
+  material tier, the same index the Smithing gate reads
+  (`_weaponTierIndex`) -- tiers 1-2 copper, tier 3 iron, tier 4 and up black
+  steel. So a copper blade takes copper bars, an iron blade iron and a black
+  steel blade black steel; the wood tier takes copper, titanium and beyond
+  black steel until their own bars exist; bows and staffs go by their wood's
+  tier (pine and softwood copper, hardwood iron, cedar and beyond black
+  steel). One rule for everything the ladder hardens, at the Blacksmith or
+  the Woodworker. Another metal's bars never count.
+- **Order of the checks**: the Smithing gate, then the gold (`no-gold`),
+  then the bars (`no-bars`, "Need 3 Iron Bars"), then gold and bars come off
+  together and the roll happens -- the single-mutation settle as before. A
+  refusal takes nothing.
+- **The screens** read the same table (`src/data/hardenCosts.js`, held to the
+  worker's by mirror-audit): the Blacksmith's Upgrade tab shows the bar's
+  picture with "have / need" beside the gold, and its Harden button is off
+  until both are there; the Woodworker's Harden button says "Attempt H2
+  (1000G + 2 Copper Bars · 20%)" or what is missing. A failed attempt's
+  words over the player say the bars too: "Hardening failed! (-1000G, -2
+  Copper Bars) → H0".
+- **Kill switch**: `hardenbars: false` in liveflags puts the old ladder back
+  (500 × 4^H gold, no bars) and stops advertising `caps.hardenbars`, so the
+  screens show that ladder again. Against an older worker (no cap) the
+  screens show the old ladder too, which is what it charges.
+- Tests: `hardening` suite §8b (the ladder, the bar by tier, refusals before
+  the roll, exactly n bars and the gold spent, the ledger, a forged
+  `stats_update` cannot pay, the kill switch); mirror-audit "hardening";
+  `mp-hardenbars` on a phone.
+
 ## Wire surface
 
 | Direction | Type | Payload | Notes |
 |---|---|---|---|
 | c→s | `harden_weapon` | `{slot: weapon\|rangedWeapon\|staffWeapon}` | Explicit case. |
-| s→c | `harden_result` | `{success, slot, cost, hardness, temper, odds}` or `{success:false, error, message}` | Private. Errors: `not-now`, `bad-slot`, `no-weapon`, `maxed`, `skill-gate`, `no-gold`. Weapon state rides the authoritative player_state echo. |
+| s→c | `harden_result` | `{success, slot, cost, bar?, bars?, hardness, temper, odds}` or `{success:false, error, message}` | Private. Errors: `not-now`, `bad-slot`, `no-weapon`, `maxed`, `skill-gate`, `no-gold`, `no-bars` (v2.3.3139). `bar`/`bars` (v2.3.3139): the bars the attempt took, absent on the old ladder. Weapon state, gold and the bag ride the authoritative player_state echo. |
 
 `harden_result` is in `PRIVILEGED_EVENTS`. Capability:
-`state_sync.caps.harden` gates the new panel sections.
+`state_sync.caps.harden` gates the new panel sections;
+`state_sync.caps.hardenbars` (v2.3.3139) says the worker charges bars and
+the doubling ladder.
 
 ## Storage / ledgers
 
 | Key | Value |
 |---|---|
-| `harden_ledger:<pid>` | last 50 attempts `{ts, slot, type, from, to, success, cost, temper}` (§17.5) |
+| `harden_ledger:<pid>` | last 50 attempts `{ts, slot, type, from, to, success, cost, bar?, bars?, temper}` (§17.5; `bar`/`bars` since v2.3.3139) |
 | `harden_h5_log` | global H5-mint timestamps, pruned to a 90-day window — **INV-27 monitoring only** (≤10 per 90 days is the health check, never enforcement) |
 
 ## Sanitizer contract

@@ -31,6 +31,8 @@ import { PROG3 as SRV_PROG3 } from '../src/prog3.js';
 import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_ARCH as SRV_BURROW_ARCH, SLIME_BURST as SRV_SLIME_BURST } from '../src/telegraph.js'; /* v2.3.2221; v2.3.2224 */
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
+import { HARDEN as SRV_HARDEN, HARDEN_BAR_BY_TIER as SRV_HARDEN_BAR_BY_TIER, HARDEN_BAR_NAMES as SRV_HARDEN_BAR_NAMES, hardenGoldFor as srvHardenGold, hardenBarsFor as srvHardenBars, hardenBarFor as srvHardenBar } from '../src/hardening.js'; /* v2.3.3139 */
+import { HARDEN_COSTS as CLIENT_HARDEN, HARDEN_BAR_NAMES as CLIENT_HARDEN_BAR_NAMES, hardenGoldFor as clientHardenGold, hardenBarsFor as clientHardenBars, hardenBarFor as clientHardenBar, hardenTierOf as clientHardenTier } from '../../src/data/hardenCosts.js'; /* v2.3.3139 */
 import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
 import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3092 */
 import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
@@ -1708,6 +1710,38 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const houseCodes = ['house-full', 'stale', 'no-gold', 'confirm'];
   check('pets: every Pet House refusal the worker sends has words on the phone', houseCodes.every((c) => typeof CLIENT_TRAP_WORDS[c] === 'string' && CLIENT_TRAP_WORDS[c].length > 0),
     houseCodes.filter((c) => !CLIENT_TRAP_WORDS[c]));
+}
+
+/* ═══ v2.3.3139: WHAT HARDENING COSTS ═══
+   The owner: "hardening should cost 1 bar per level ... and a doubling gold
+   cost per level" -- the Blacksmith's and the Woodworker's Harden rows show
+   the game's copy (src/data/hardenCosts.js); it must be the price the worker
+   charges, bar for bar, coin for coin, on both ladders, and name the same
+   bar for every weapon. */
+{
+  check('hardening: the game\'s ladder is the worker\'s (base, both factors, bars a level, the bar by tier, the bars\' names)',
+    CLIENT_HARDEN.COST_BASE === SRV_HARDEN.COST_BASE && CLIENT_HARDEN.COST_FACTOR === SRV_HARDEN.COST_FACTOR
+      && CLIENT_HARDEN.OLD_COST_FACTOR === SRV_HARDEN.OLD_COST_FACTOR && CLIENT_HARDEN.BARS_PER_LEVEL === SRV_HARDEN.BARS_PER_LEVEL
+      && JSON.stringify(CLIENT_HARDEN.BAR_BY_TIER) === JSON.stringify(SRV_HARDEN_BAR_BY_TIER)
+      && JSON.stringify(Object.assign({}, CLIENT_HARDEN_BAR_NAMES)) === JSON.stringify(Object.assign({}, SRV_HARDEN_BAR_NAMES)),
+    { client: CLIENT_HARDEN, server: { COST_BASE: SRV_HARDEN.COST_BASE, COST_FACTOR: SRV_HARDEN.COST_FACTOR, OLD_COST_FACTOR: SRV_HARDEN.OLD_COST_FACTOR, BARS_PER_LEVEL: SRV_HARDEN.BARS_PER_LEVEL, BAR_BY_TIER: SRV_HARDEN_BAR_BY_TIER } });
+  const off = [];
+  for (let h = 0; h < SRV_HARDEN.MAX; h++) {
+    if (srvHardenGold(h, false) !== clientHardenGold(h, false)) off.push(['gold', h]);
+    if (srvHardenGold(h, true) !== clientHardenGold(h, true)) off.push(['old gold', h]);
+    if (srvHardenBars(h) !== clientHardenBars(h)) off.push(['bars', h]);
+  }
+  for (let t = 1; t <= 10; t++) if (srvHardenBar(t) !== clientHardenBar(t)) off.push(['bar', t]);
+  check('hardening: every attempt\'s gold and bars the same on both sides (500..8,000 and 1..5 bars; the old ladder 500..128,000), and the same bar for every tier',
+    off.length === 0 && [0, 1, 2, 3, 4].map((h) => clientHardenGold(h)).join() === '500,1000,2000,4000,8000'
+      && [0, 1, 2, 3, 4].map((h) => clientHardenGold(h, true)).join() === '500,2000,8000,32000,128000'
+      && [0, 1, 2, 3, 4].map((h) => clientHardenBars(h)).join() === '1,2,3,4,5', off);
+  /* the tier the game reads for the bar is the tier the worker reads for it */
+  const tOff = [];
+  const weapons = [{ gearBase: 'wood' }, { gearBase: 'copper' }, { gearBase: 'iron' }, { gearBase: 'steel' }, { gearBase: 'titanium' },
+    { gearBase: 'ww_pine' }, { gearBase: 'ww_hardwood' }, { gearBase: 'ww_cedar' }, { tierMult: 1.3 }, { tierMult: 1 }, {}];
+  for (const w of weapons) if (room._weaponTierIndex(w) !== clientHardenTier(w)) tOff.push([w, room._weaponTierIndex(w), clientHardenTier(w)]);
+  check('hardening: the game picks the same tier, so the same bar, as the worker for every kind of weapon', tOff.length === 0, tOff);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

@@ -457,7 +457,7 @@ Summary of the wire-visible changes:
 | `guild_quest_result` / `guild_quest_error` | Guild-quest turn-ins (private; `guild_quest_turn_in` c→s case) | guild-quests.md |
 | `threat_penalty` / `threat_expired` / `gear_locked` | Threat machine (pvp_threat/threat_response stay relays, intercepted + annotated with server countdown/settled/levy) | threats.md |
 | `pet_capture_result` | Server-rolled pet capture (private; `pet_capture` c→s case; consumes a basic_trap) | pets.md |
-| `harden_result` | §4.6c hardening roll (private; `harden_weapon` c→s case; forge mints now carry `quality`/`hardness`/`temper`) | hardening.md |
+| `harden_result` | §4.6c hardening roll (private; `harden_weapon` c→s case; forge mints now carry `quality`/`hardness`/`temper`; v2.3.3139 adds `bar`/`bars`, the bars the attempt took, and the `no-bars` refusal) | hardening.md |
 | `trade2_state` / `trade2_invite` | Two-sided trade window (private; `trade2_open/set/confirm/cancel` c→s cases; gift trade relay unchanged) | trading.md addendum |
 | `party_state` / `party_invited` / `party_error` | Party roster echo + invite/error notices (private; `party_invite/accept/decline/leave/kick` c→s cases; roster re-echoed ~2s for cross-zone vitals) | party.md |
 

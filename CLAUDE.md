@@ -1509,7 +1509,24 @@ remnant to migrate server-side, not a mode to preserve.
       shared with yours); MORE ROOM: `pet_house_buy {cap, confirm}` 10 places
       for 1,000 gold, each step 1,000 more, to 120, a stale `cap` refused;
       caps `petwards` / `petshow` / `pethouse`; dev `look: {gold, size}`;
-      `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.)
+      `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.
+  - Since v2.3.3139 HARDENING TAKES BARS AND ITS GOLD DOUBLES -- the owner:
+    "hardening should cost 1 bar per level (hardening lvl 1 cost 1 bar,
+    hardening lvl 2 costs 2 bars, and a doubling gold cost per level)", "I
+    meant 1000 for lvl 2, 2000 for lvl 3, etc":
+    - the attempt at H(n) takes n bars and 500 x 2^(n-1) gold -- 500, 1,000,
+      2,000, 4,000, 8,000 (was 500 x 4^H, to 128,000), won or lost; the odds
+      unchanged (80/20/5/1/0.5%);
+    - the bars by the weapon's material tier, the Smithing gate's own index:
+      tiers 1-2 copper, 3 iron, 4 and up black steel -- bows and staffs by
+      their wood's tier (`HARDEN_BAR_BY_TIER` in server/src/hardening.js,
+      the game's copy src/data/hardenCosts.js, mirror-audit);
+    - checked after the gold (`no-bars`, "Need 3 Iron Bars"), taken with it
+      before the roll; `harden_result` and the ledger carry `bar`/`bars`;
+    - the Blacksmith's Upgrade tab shows the bar's picture "have / need", the
+      Woodworker's button "Attempt H2 (1000G + 2 Copper Bars · 20%)";
+    - `caps.hardenbars`, kill switch `hardenbars: false` (the old ladder, no
+      bars); `hardening` §8b, `mp-hardenbars`: docs/specs/hardening.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

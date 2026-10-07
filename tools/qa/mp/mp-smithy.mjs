@@ -12,7 +12,8 @@
  *   2. Smelt: the smith works -- mining swing, anvil, fire, strike sparks.
  *   3. Forge: a wooden greatsword is forged by the WORKER (3 pine logs +
  *      8 gold), and the panel says so.
- *   4. Upgrade: a harden attempt is settled by the worker (500 gold).
+ *   4. Upgrade: a harden attempt is settled by the worker (500 gold and,
+ *      since v2.3.3139, a copper bar).
  *   5. Amulet: the rows are there, and costs are chips, not sentences.
  */
 import * as H from './harness.mjs';
@@ -143,8 +144,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const gated = await P.page.$eval('[data-harden-go]', (b) => b.disabled).catch(() => null);
   rec.ok('...and below Smithing 5 it shows the lock and holds the button (the worker would refuse)',
     gated === true && /Smithing 5/.test(hRow), { gated, hRow });
-  /* earn it: 20 more ore -> 4 bars -> Smithing 5 */
-  await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 20 });
+  /* earn it: 50 more ore -> 10 bars -> Smithing 5.
+     v2.3.3139: it was 20 ore (4 bars), which stopped reaching Smithing 5 when
+     v2.3.3090 made every life-skill level cost twice the XP -- 6 bars' 2,400
+     XP is Smithing 3 now, the button stayed locked and the click below timed
+     out.  4,507 XP is Smithing 5: 12 bars of 400.  And the attempt takes a
+     copper bar now as well as the 500 gold. */
+  await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 50 });
   await P.page.waitForTimeout(900);
   await tab(P, 'smelt');
   await P.page.click('[data-smelt-all="bar_copper"]');
@@ -154,7 +160,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.click('[data-harden-go]');
   const paid = await P.page.waitForFunction((c) => (window._gameState.current.rpg.coins || 0) <= c - 500, c0, { timeout: 6000 }).then(() => true).catch(() => false);
   const replies = await P.page.evaluate(() => window.__hardenReplies);
-  rec.ok('Harden: the worker took the 500 gold and rolled it', paid && replies.length === 1 && replies[0].cost === 500,
+  rec.ok('Harden: the worker took the 500 gold and a copper bar, and rolled it', paid && replies.length === 1 && replies[0].cost === 500
+    && replies[0].bar === 'bar_copper' && replies[0].bars === 1,
     { c0, now: await H.readState(P, (S) => S.rpg.coins), replies });
 
   /* ── 5. Amulet ── */

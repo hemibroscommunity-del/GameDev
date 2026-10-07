@@ -4224,7 +4224,11 @@ export function processGameEvent(type, payload, S, deps) {
                 BT_AUDIO.collect();
                 setTimeout(function () { return BT_AUDIO.beep(784, 0.12, 0.1, 'sine'); }, 120);
               } else {
-                pushDmgPopup(S, S.player.x, S.player.y - 45, 'Hardening failed! (-' + (payload.cost || 0) + 'G) → H' + payload.hardness, '#ff5e6c');
+                /* v2.3.3139: and the bars the attempt took (none on the old ladder) */
+                var _hBars = payload.bars > 0 && typeof payload.bar === 'string'
+                  ? ', -' + payload.bars + ' ' + ({ bar_copper: 'Copper', bar_iron: 'Iron', bar_black_steel: 'Black Steel' }[payload.bar] || 'Bar') + (payload.bars === 1 ? ' Bar' : ' Bars')
+                  : '';
+                pushDmgPopup(S, S.player.x, S.player.y - 45, 'Hardening failed! (-' + (payload.cost || 0) + 'G' + _hBars + ') → H' + payload.hardness, '#ff5e6c');
                 pushDmgPopup(S, S.player.x, S.player.y - 30, 'Temper ' + (payload.temper || 0) + ' (pity softens future resets)', 'rgba(255,255,255,.5)');
                 BT_AUDIO.beep(180, 0.12, 0.18, 'sawtooth');
               }

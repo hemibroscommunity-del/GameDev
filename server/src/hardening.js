@@ -19,7 +19,8 @@
  * structures matched so they can't drift).
  *
  * HARDENING (§4.6c): the endgame Blacksmith lottery.  H0→5 ladder at
- * 80/20/5/1/0.5%, gold 500×4^level per attempt, +1.0417 effective base
+ * 80/20/5/1/0.5%, gold 500×4^level per attempt (v2.3.3139: 500×2^level and
+ * level+1 bars, the owner's -- HARDEN, HARDEN_BAR_BY_TIER), +1.0417 effective base
  * per level (GDD's +5 ÷ 4.8 code scale).  Failure resets hardness by
  * the TEMPER pity band (checked on the temper BEFORE this failure):
  * 0-19 → reset to 0 · 20-49 → -2 · 50-99 → -1 · 100+ → no reset.
@@ -43,11 +44,48 @@ export const HARDEN = {
   MAX: 5,
   ODDS: [0.80, 0.20, 0.05, 0.01, 0.005], // success chance for H(i) -> H(i+1)
   COST_BASE: 500,
-  COST_FACTOR: 4,                         // cost = 500 × 4^currentHardness
+  /* v2.3.3139: the owner: "a doubling gold cost per level ... 500 for lvl 1,
+     1000 for lvl 2, 2000 for lvl 3, etc" -- 500 x 2^currentHardness: 500,
+     1,000, 2,000, 4,000 and 8,000 for the attempt at H1..H5.  It was x4 (to
+     128,000 for the last), which `hardenbars: false` still charges. */
+  COST_FACTOR: 2,
+  OLD_COST_FACTOR: 4,
+  /* v2.3.3139: and BARS -- "hardening lvl 1 cost 1 bar, hardening lvl 2 costs
+     2 bars": the attempt at H(n) takes n bars, every attempt, won or lost,
+     like the gold.  Which bars: HARDEN_BAR_BY_TIER below. */
+  BARS_PER_LEVEL: 1,
   BASE_BONUS: 1.0417,                     // +5 GDD base ÷ 4.8 code scale, per level
   LEDGER_CAP: 50,
   H5_WINDOW_MS: 90 * 24 * 3600 * 1000,    // INV-27 monitoring window
 };
+
+/* ═══ v2.3.3139: WHICH BARS A WEAPON'S HARDENING TAKES ═══
+   By the weapon's material tier -- the very index the Smithing gate reads
+   (_weaponTierIndex): tiers 1-2 copper, tier 3 iron, tier 4 and up black
+   steel.  So every metal blade with bars of its own takes its own metal's
+   (copper, iron, black steel), and the rest take the nearest the forge makes:
+   the wood tier copper; titanium and beyond black steel, until their own bars
+   exist; and bows and staffs by their wood's tier (pine and softwood copper,
+   hardwood iron, cedar and beyond black steel) -- one rule for every weapon
+   the ladder hardens, at the Blacksmith or the Woodworker. */
+export const HARDEN_BAR_BY_TIER = ['bar_copper', 'bar_copper', 'bar_iron', 'bar_black_steel'];
+export const HARDEN_BAR_NAMES = Object.assign(Object.create(null), {
+  bar_copper: 'Copper Bar', bar_iron: 'Iron Bar', bar_black_steel: 'Black Steel Bar',
+});
+/** The bar a weapon of material tier `tierIdx` (1-based) takes. */
+export function hardenBarFor(tierIdx) {
+  const i = Math.max(1, Math.floor(Number(tierIdx) || 1));
+  return HARDEN_BAR_BY_TIER[Math.min(i, HARDEN_BAR_BY_TIER.length) - 1];
+}
+/** How many bars the attempt from `hardness` takes: the level it reaches. */
+export function hardenBarsFor(hardness) {
+  return (Math.max(0, Math.floor(Number(hardness) || 0)) + 1) * HARDEN.BARS_PER_LEVEL;
+}
+/** The gold the attempt from `hardness` takes; `old` is the ladder before
+    v2.3.3139 (the kill switch's). */
+export function hardenGoldFor(hardness, old) {
+  return HARDEN.COST_BASE * Math.pow(old ? HARDEN.OLD_COST_FACTOR : HARDEN.COST_FACTOR, Math.max(0, Math.floor(Number(hardness) || 0)));
+}
 
 // §4.6b drop table, cumulative from the rare end.
 /* v2.3.2664: godly 1 in 400,000 → 1 in 2,000,000 (owner: "literally one in
@@ -94,6 +132,16 @@ export const hardeningMethods = {
     return Math.max(1, Object.values(BLACKSMITH_TIERS).filter((t) => t.tierMult <= tm).length);
   },
 
+  /* v2.3.3139: the kill switch, read the smelting way (smelting.js
+     _smeltOff): `hardenbars: false` in liveflags puts hardening back on its
+     old gold ladder (500 x 4^H) with no bars, and un-advertises
+     caps.hardenbars so the game shows that ladder again.  Nothing held is
+     touched. */
+  _hardenBarsOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'hardenbars') && !f.hardenbars);
+  },
+
   _hardenSend(playerId, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
@@ -120,12 +168,26 @@ export const hardeningMethods = {
     if (Math.floor(smithLvl / 5) < tierIdx) {
       return err('skill-gate', 'Need Blacksmithing Lv' + (tierIdx * 5) + ' for this tier');
     }
-    const cost = HARDEN.COST_BASE * Math.pow(HARDEN.COST_FACTOR, hardness);
+    /* v2.3.3139: the owner's ladder -- doubling gold, and as many bars as
+       the level the attempt reaches, of the weapon's tier's metal */
+    const barsOn = !this._hardenBarsOff();
+    const cost = hardenGoldFor(hardness, !barsOn);
+    const bar = barsOn ? hardenBarFor(tierIdx) : null;
+    const bars = barsOn ? hardenBarsFor(hardness) : 0;
     if ((ps.coins || 0) < cost) return err('no-gold', 'Need ' + cost + 'g');
+    if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
+    const haveBars = bar ? Math.floor(Number(ps.inventory[bar]) || 0) : 0;
+    if (bars > 0 && haveBars < bars) {
+      return err('no-bars', 'Need ' + bars + ' ' + HARDEN_BAR_NAMES[bar] + (bars === 1 ? '' : 's'));
+    }
 
     // Single-mutation settle (the gamble pattern): one input-gated
     // event on live ps, roll after the debit, no crash window.
     ps.coins -= cost;
+    if (bars > 0) {
+      ps.inventory[bar] = haveBars - bars;
+      if (ps.inventory[bar] <= 0) delete ps.inventory[bar];
+    }
     const success = Math.random() < HARDEN.ODDS[hardness];
     const temperBefore = (typeof w.temper === 'number' && w.temper >= 0) ? Math.floor(w.temper) : 0;
     if (success) {
@@ -143,6 +205,8 @@ export const hardeningMethods = {
     this._queuePlayerStateFlush(session.id);
     this._hardenSend(session.id, {
       success, slot, cost,
+      /* v2.3.3139: the bars it took (none on the old ladder) */
+      ...(bars > 0 ? { bar, bars } : {}),
       hardness: w.hardness, temper: w.temper || 0,
       odds: HARDEN.ODDS[Math.min(w.hardness, HARDEN.MAX - 1)],
     });
@@ -150,7 +214,7 @@ export const hardeningMethods = {
     try {
       const lkey = 'harden_ledger:' + session.id;
       const ledger = (await this.state.storage.get(lkey)) || [];
-      ledger.push({ ts: Date.now(), slot, type: w.type, from: hardness, to: w.hardness, success, cost, temper: w.temper || 0 });
+      ledger.push({ ts: Date.now(), slot, type: w.type, from: hardness, to: w.hardness, success, cost, ...(bars > 0 ? { bar, bars } : {}), temper: w.temper || 0 });
       await this.state.storage.put(lkey, ledger.slice(-HARDEN.LEDGER_CAP));
       if (success && w.hardness === HARDEN.MAX) {
         // INV-27: global H5 mint log, pruned to the 90-day window.

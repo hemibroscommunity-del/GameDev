@@ -5,6 +5,7 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { TrapsTab } from './TrapsTab.jsx'; /* v2.3.3120: box traps from logs */
+import { hardenCost as hardenAttemptCost } from '@/data/hardenCosts.js'; /* v2.3.3139: hardening takes bars and a doubling gold ladder (renamed: the legacy affix section below has a local hardenCost) */
 /* === WoodworkPanel — buildingPanel === 'woodwork' sub-panel === */
 /* v2.3.873: extracted verbatim from the buildingPanel === 'woodwork' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -335,9 +336,17 @@ export function WoodworkPanel(props) {
         var hLvl = typeof hw.hardness === 'number' ? hw.hardness : 0;
         var hMaxed = hLvl >= 5;
         var hOdds = [80, 20, 5, 1, 0.5][Math.min(hLvl, 4)];
-        var hCost = 500 * Math.pow(4, hLvl);
+        /* v2.3.3139: the owner's ladder -- 500 x 2^H gold and H+1 bars of the
+           bow's or staff's tier's metal (data/hardenCosts.js) -- against a
+           worker that charges it (caps.hardenbars); else the old 500 x 4^H */
+        var hc = hardenAttemptCost(hw, hLvl, !!(_Sh._serverCaps && _Sh._serverCaps.hardenbars));
+        var hCost = hc.gold;
         var hTemper = hw.temper || 0;
-        var hAfford = (rpgState.coins || 0) >= hCost;
+        var hBarsHave = hc.bar ? Math.floor(((rpgState.inventory || {})[hc.bar]) || 0) : 0;
+        var hGoldOk = (rpgState.coins || 0) >= hCost;
+        var hBarsOk = !hc.bar || hBarsHave >= hc.bars;
+        var hAfford = hGoldOk && hBarsOk;
+        var hBarWord = function (n) { return n + ' ' + hc.barName + (n === 1 ? '' : 's'); };
         return /*#__PURE__*/React.createElement("div", {
           style: { marginTop: 12, padding: 10, borderRadius: 10, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
         }, /*#__PURE__*/React.createElement("div", {
@@ -352,6 +361,7 @@ export function WoodworkPanel(props) {
              Unaffordable state stays readable on the well; the cost in
              the label is the requirement. */
           className: hAfford ? 'button-primary' : undefined,
+          "data-harden-go": "1", /* v2.3.3139: mp-hardenbars, as the Blacksmith's */
           /* v2.3.1235: state-correction — real disabled prop + approved
              disabled recipe (#1A292F fill, #8D9B98 label, .11 hairline,
              full opacity) when coins are short; handler untouched. */
@@ -372,7 +382,9 @@ export function WoodworkPanel(props) {
         }, /* v2.3.1235: state-correction — short-coins label states the
               gold deficit (fee - coins, same values the hAfford guard
               reads) instead of an enabled-looking attempt label. */
-        hAfford ? /*#__PURE__*/React.createElement("span", null, "Attempt H", hLvl + 1, " (", hCost, "G \xB7 ", hOdds, "%)") : "Need ".concat(hCost - (rpgState.coins || 0), "G more")));
+        hAfford ? /*#__PURE__*/React.createElement("span", { "data-harden-cost": hc.bar ? hc.bar + ':' + hc.bars : 'gold' }, "Attempt H", hLvl + 1, " (", hCost, "G", hc.bar ? " + " + hBarWord(hc.bars) : "", " \xB7 ", hOdds, "%)")
+          : !hGoldOk ? "Need ".concat(hCost - (rpgState.coins || 0), "G more")
+          : "Need " + hBarWord(hc.bars - hBarsHave) + " more"));
       }(), _trapsMode ? null : function (_stateRef$current17, _wpn$gearBase3, _rpgState$lifeSkills32) {
         var craftType = ((_stateRef$current17 = stateRef.current) === null || _stateRef$current17 === void 0 ? void 0 : _stateRef$current17._wwType) || 'bow';
         var wpnKey = craftType === 'bow' ? 'rangedWeapon' : 'staffWeapon';
