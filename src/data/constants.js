@@ -34,7 +34,7 @@ export const TILE = 32;
    The real ceiling is PER ZONE and belongs to the zone, not to this constant:
 
        town       1664x1760      worldview  1536x1536
-       shadow/radiant 1280x1280  farm_home  1024x1408 (v2.3.3124; 960x800 before)
+       shadow/radiant 1280x1280  farm_home  1024x1408 (v2.3.3136; 960x800 before)
        the nine combat zones     1024x1024
 
    A 1024px-deep zone does not CONTAIN 1845px of world to show, so past its own

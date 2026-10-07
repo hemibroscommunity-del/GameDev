@@ -7912,7 +7912,7 @@ const RES_EN_Y = RES_MP_Y + RES_BLOCK_H + 3;
    = ~107 CSS px in town: wider than the ATTACK disc (96), 27% of a 390pt
    screen, and 4.6x the character's own silhouette -- and half again as wide in
    farm_home, whose scale floor was 0.82 rather than town's ~0.589 (until
-   v2.3.3124 made the farm 1024 x 1408: it draws at town's size). Clamped at
+   v2.3.3136 made the farm 1024 x 1408: it draws at town's size). Clamped at
    118 the bar never passes ~87 CSS px in town, the squeeze only starts at nine
    blocks, and because the HEIGHT is held the compression reads as "more,
    tighter blocks" rather than as distortion. Holding the total at 76 instead
@@ -11847,7 +11847,7 @@ export class EntityRenderer {
        a body hidden for a figure not there yet would be an empty spot. */
     const _chopHide = (_exSkill === 'woodcutting' && standInReady('chop')) || (_exSkill === 'cooking' && standInReady('cook'))
       || (!!S._firemaking && standInReady('fire'))
-      || (!!S._farmWork && farmKneelReady());   /* v2.3.3124: the farmer kneels in the cook's figure (effectsRenderer _updateFarmKneel) */
+      || (!!S._farmWork && farmKneelReady());   /* v2.3.3136: the farmer kneels in the cook's figure (effectsRenderer _updateFarmKneel) */
     display.visible = !_chopHide;
     S._standInBody = _chopHide;   /* v2.3.3077 QA: the body is put away for a gathering pose (mp-gatherposes) */
     display.x = P.x;
@@ -12089,7 +12089,7 @@ export class EntityRenderer {
       ? (_sdx >= 0 ? 'east' : 'west')
       : (_sdy >= 0 ? 'south' : 'north');
     const _swordSwing = !!(S.isSwinging && S.swingTimer
-      && (now - S.swingTimer) < SWORD_SWING_MS && !S._extraction && !S._firemaking && !S._farmWork);   /* v2.3.3124: nor kneeling at a bed */
+      && (now - S.swingTimer) < SWORD_SWING_MS && !S._extraction && !S._firemaking && !S._farmWork);   /* v2.3.3136: nor kneeling at a bed */
     S._swordSwinging = _swordSwing;
     S._swordSwingDir = _swordSwing ? _swordDir : null;
     /* v2.3.925: bow-shoot stand-in -> driven by a ranged-bow shot

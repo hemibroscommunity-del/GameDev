@@ -266,9 +266,9 @@ const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHp /* v2.3.3035: a timer harvest's bar reads the node's HP */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
-import { farmWorkFrame } from '@/game/farmWork.js';   /* v2.3.3124: the farmer's frames of the cook's strip */
-import { FARM_COVERS, FARM_STEP_COVER, FARM_COVER_FRAME, FARM_FIGURE_X, FARM_PAN_BOX } from '@/data/farmCovers.js';   /* v2.3.3124: what stands where the cook's pan is */
-import { farmArtUrl } from '@/data/farmArtUrl.js';   /* v2.3.3124: the compost bin's address */
+import { farmWorkFrame } from '@/game/farmWork.js';   /* v2.3.3136: the farmer's frames of the cook's strip */
+import { FARM_COVERS, FARM_STEP_COVER, FARM_COVER_FRAME, FARM_FIGURE_X, FARM_PAN_BOX } from '@/data/farmCovers.js';   /* v2.3.3136: what stands where the cook's pan is */
+import { farmArtUrl } from '@/data/farmArtUrl.js';   /* v2.3.3136: the compost bin's address */
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
@@ -3017,7 +3017,7 @@ export class EffectsRenderer {
     this.cookChestSprite.anchor.set(0.5, 1);
     this.cookChestSprite.visible = false;
     this.gestureLayer.addChild(this.cookChestSprite);   /* v2.3.1713: above trees */
-    /* v2.3.3124: what stands where the cook's pan is when the FARMER kneels
+    /* v2.3.3136: what stands where the cook's pan is when the FARMER kneels
        in this figure (_updateFarmKneel): created after every layer the cook
        wears, in the same layer, so it covers all of them -- the body, your
        drawings, the greaves, the shirt, the plate.  The head's traits are
@@ -3873,7 +3873,7 @@ export class EffectsRenderer {
     else if (ex && ex.skill === 'cooking') ensureStandIn('cook', 'cooking');
     if (S._campfire && S._campfire.alive) ensureStandIn('cook', 'a campfire lit');
     if (S._farmWork || S.currentZone === 'farm_home') {
-      /* v2.3.3124: the farmer kneels in the cook's figure -- made, with what
+      /* v2.3.3136: the farmer kneels in the cook's figure -- made, with what
          you wear in that pose, from the moment you are on the farm (under its
          loading screen), not on the first step: a strip loaded on first sight
          is a hitch (the preloading law).  _gearStripFrame starts a load and is
@@ -4484,7 +4484,7 @@ export class EffectsRenderer {
     try { this._publishPeerBlockArms(S); } catch (e) { /* no arm this frame: the shield still draws */ }   /* v2.3.2920 */
     this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
-    /* v2.3.3124: after the cue, which hides the cook's layers every frame: the
+    /* v2.3.3136: after the cue, which hides the cook's layers every frame: the
        farmer kneels in them.  Cosmetic -- a throw is logged once and the frame
        goes on. */
     try { this._updateFarmKneel(S, now); }
@@ -13911,7 +13911,7 @@ export class EffectsRenderer {
     }
   }
 
-  /* ═══ v2.3.3124: THE COOK'S FIGURE, WHEREVER IT KNEELS ═══
+  /* ═══ v2.3.3136: THE COOK'S FIGURE, WHEREVER IT KNEELS ═══
      Everything the cook wears, on frame `cookFi`, its feet at (x, y): the body
      baked with your skin (the legless one under greaves), your drawings, the
      shirt, the greaves, the plate, your hair and hat.  Moved here whole from
@@ -13995,7 +13995,7 @@ export class EffectsRenderer {
     return sp;
   }
 
-  /* ═══ v2.3.3124: THE FARMER KNEELS AS THE COOK DOES ═══
+  /* ═══ v2.3.3136: THE FARMER KNEELS AS THE COOK DOES ═══
      The owner: "Cooking animation might be better.  You can use something to
      occlude the part where the pan or log is."  While you work a bed
      (S._farmWork, game/farmWalk.js) your figure is the cook's -- everything you
@@ -14916,7 +14916,7 @@ export class EffectsRenderer {
          the same ratio (14 * 62/82 = 10.6).
          v2.3.2287: ...and it takes the curve for the same reason -- an offset
          in flat pixels slides the pan off a shrunken fire. */
-      /* v2.3.3124: everything the cook wears, placed by _placeCookFigure (the
+      /* v2.3.3136: everything the cook wears, placed by _placeCookFigure (the
          farmer kneels in it too) */
       const sp = this._placeCookFigure(_spot.x, _spot.y, pscale, cookFi);   /* v2.3.2607: COOK_STANDIN_H * COOK_PAN_DX left of the fire */
       /* v2.3.2607 QA probe, house style and the exact twin of __btChopFigure

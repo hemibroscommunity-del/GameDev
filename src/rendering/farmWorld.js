@@ -1,4 +1,4 @@
-/* ═══ v2.3.3124: THE FARM YOU WALK ═══
+/* ═══ v2.3.3136: THE FARM YOU WALK ═══
  *
  * The owner, 2026-10-06: "I want your character to be able to walk around on
  * the farm.  I want the planting process to happen by your character taking
@@ -51,7 +51,7 @@ import { Sprite, Assets, Container, Graphics, Text, Texture } from 'pixi.js';
 import { FARM_THINGS, FARM_BEDS, FARM_CROP_FOOT_DY, farmBlockers } from '../data/farmLayout.js';
 import { FARM_ART } from '../data/farmArt.js';
 import { farmArtUrl } from '../data/farmArtUrl.js';
-import { FARM_COVERS } from '../data/farmCovers.js';   /* v2.3.3124: what stands where the cook's pan is */
+import { FARM_COVERS } from '../data/farmCovers.js';   /* v2.3.3136: what stands where the cook's pan is */
 import { setFarmCoversReady } from './standIns.js';
 import { setZoneBlockerHook } from '../data/worldProps.js';
 import { SHADE } from './formShade.js';
@@ -85,7 +85,7 @@ function farmNames() {
   for (const n of Object.keys(FARM_ART)) {
     if (n.indexOf('bed-') === 0 || n === 'plot' || /-(sprout|young|grown|ripe)$/.test(n)) out.add(n);
   }
-  /* v2.3.3124: and a cover that is a farm picture (the compost bin) */
+  /* v2.3.3136: and a cover that is a farm picture (the compost bin) */
   for (const k of Object.keys(FARM_COVERS)) if (FARM_COVERS[k].art) out.add(FARM_COVERS[k].art);
   return [...out];
 }
@@ -151,7 +151,7 @@ export function preloadFarmArt() {
       farmArtStats.loaded++;
     }, () => { farmArtStats.failed++; }));
   }
-  /* v2.3.3124: the covers -- what stands where the cook's pan is when you
+  /* v2.3.3136: the covers -- what stands where the cook's pan is when you
      kneel at a bed (effectsRenderer _updateFarmKneel looks them up by these
      same addresses; the compost bin is a farm picture, loaded above) */
   for (const key of Object.keys(FARM_COVERS)) {
@@ -183,7 +183,7 @@ export function freeFarmArt() {
   _gen++;
   _loadP = null;
   _ready = false;
-  setFarmCoversReady(false);   /* v2.3.3124 */
+  setFarmCoversReady(false);   /* v2.3.3136 */
   if (!_tex.size && !_sheets.size) return;
   try { releaseShadowTextures(); } catch (e) { /* no shadows yet */ }
   for (const [k, t] of _tex) {

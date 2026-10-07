@@ -1,4 +1,4 @@
-/* ═══ THE FARM YOU WALK, ON A PHONE (v2.3.3124) ═══
+/* ═══ THE FARM YOU WALK, ON A PHONE (v2.3.3136) ═══
  *
  * The owner, 2026-10-06: "I want your character to be able to walk around on
  * the farm.  I want the planting process to happen by your character taking
@@ -130,7 +130,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot('arrive');
     rec.ok(`"Visit Your Farm" takes you onto the farm under its loading screen (${holds.length} hold, ready ${holds.length ? holds[holds.length - 1].ready : '-'}), and it lifts on the farm all there: ${w1 && w1.things} things of ${FARM_THINGS.length}, six beds of grass`,
       onFarm.zone === 'farm_home' && holds.length >= 1 && holds[holds.length - 1].ready === true && w1 && w1.built && w1.things === FARM_THINGS.length, { onFarm, holds, w1, ground });
-    /* v2.3.3124: the farm is bigger than an upright phone's view both ways
+    /* v2.3.3136: the farm is bigger than an upright phone's view both ways
        now (1024 x 1408), so it draws at the character size every zone does
        -- the cave farm's 960 x 800 forced 0.82, the bro 64% bigger than in town */
     const farmScale = await H.readState(A, (S) => S._worldScaleX);
@@ -150,7 +150,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`at bed 0 the stick wears the spade (${ic0}), the prompt says "${pr0 && pr0.text}", and that bed alone says "${wa0 && wa0.beds[0].label && wa0.beds[0].label[0]}" (the others ${wa0 && wa0.beds.slice(1).map((b) => (b.label || []).length).join('')} words)`,
       n0 && n0.near && n0.near.step === 'dig' && ic0 === 'farm-dig' && pr0 && pr0.step === 'dig' && /Dig/.test(pr0.text)
         && wa0 && wa0.beds[0].label[0] === 'Needs Digging' && wa0.beds.slice(1).every((b) => b.label && b.label.length === 0), { n0, ic0, pr0, wa0: wa0 && wa0.beds });
-    /* v2.3.3124: dressed in the steel plate and greaves (the client's own equip
+    /* v2.3.3136: dressed in the steel plate and greaves (the client's own equip
        seam): what stands where the cook's pan is must lie over everything you
        wear */
     await A.page.evaluate(() => { window.__btSetGear('chest', 'steelplate'); window.__btSetGear('legs', 'steelgreaves'); });

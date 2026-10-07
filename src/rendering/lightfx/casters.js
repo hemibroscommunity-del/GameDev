@@ -28,7 +28,7 @@
 import { Sprite } from 'pixi.js';
 import { figureFeetY } from '../systems/entityRenderer.js';
 import { wheelObjectCasters } from '../wheelObjects.js';   /* v2.3.3000: the Wheel's objects cast */
-import { farmCasters } from '../farmWorld.js';   /* v2.3.3124 */
+import { farmCasters } from '../farmWorld.js';   /* v2.3.3136 */
 
 /* The local player's stand-in sprites on the effects renderer.  NOT every
    sprite it owns: `slashSprite` is the sword's arc effect, light rather than
@@ -215,7 +215,7 @@ export function collectCasters(S, er, fx, zone) {
      billboards and the column-by-column buildings, as the props above
      (wheelObjects.js wheelObjectCasters); nothing outside the Wheel */
   wheelObjectCasters(out);
-  /* v2.3.3124: your farm's barn, props, trees and crops (farmWorld.js) */
+  /* v2.3.3136: your farm's barn, props, trees and crops (farmWorld.js) */
   farmCasters(out);
   return out;
 }

@@ -15,7 +15,7 @@ import { BT_AUDIO } from '@/data/index.js';
 import { FARM, FARM_LOOK, farmCropOfSeed, farmCropOfItem } from '@/data/farmCrops.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
-import { _flyResourceToInventory } from '@/game/lifeSkillRewards.js';   /* v2.3.3124: the crop flies to the bag */
+import { _flyResourceToInventory } from '@/game/lifeSkillRewards.js';   /* v2.3.3136: the crop flies to the bag */
 import { FARM_BEDS } from '@/data/farmLayout.js';
 import { farmArtUrl } from '@/data/farmArtUrl.js';   /* data only: the network imports no renderer */
 
@@ -99,7 +99,7 @@ export function farmFeedback(S, payload, deps) {
     const news = ripe > toldRipe;
     toldRipe = ripe;
     if (news && S) {
-      /* v2.3.3124: on your farm -- the beds are worked where they lie now */
+      /* v2.3.3136: on your farm -- the beds are worked where they lie now */
       const text = FARM_LOOK.harvest + ' ' + ripe + (ripe === 1 ? ' bed is' : ' beds are') + ' ready on your farm';
       try {
         S.chatLog = (S.chatLog || []).slice(-50).concat([{ id: 'farm-' + Date.now(), name: '', text, ts: Date.now() }]);
@@ -116,7 +116,7 @@ export function farmFeedback(S, payload, deps) {
     const fx = SOUND[did.op];
     if (fx) fx();
     if (did.op === 'harvest' && did.items) {
-      /* ═══ v2.3.3124: THE CROP JUMPS OUT OF ITS BED AND INTO THE BAG ═══
+      /* ═══ v2.3.3136: THE CROP JUMPS OUT OF ITS BED AND INTO THE BAG ═══
          On your farm, from the bed you just pulled it from (farmWalk.js
          S._farmLastStep), in the owner's own ripe picture -- the fish's way
          out of the water (lifeSkillRewards v2.3.1429, `pop`). */

@@ -12,7 +12,7 @@
  * RAM".  This picture is 480x300 (3x the panel), ~65KB on disk and ~0.6MB
  * decoded.
  *
- * v2.3.3124: the cave farm (farm_v1) is gone -- the owner, "This map isn't
+ * v2.3.3136: the cave farm (farm_v1) is gone -- the owner, "This map isn't
  * suited for a farm" -- and the farm you walk is a ground picture with the
  * barn, the props and the trees standing on it as sprites
  * (src/data/farmLayout.js, drawn by src/rendering/farmWorld.js).  So the

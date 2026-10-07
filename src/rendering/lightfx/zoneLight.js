@@ -35,7 +35,7 @@
  *            game, so the longest, darkest shadow.
  *   verdant  canopy light from the upper-left, dappled -- softer.
  *   mist     a swamp under haze: short and faint.
- *   farm     v2.3.3124: an open farm on the commons' grass under the
+ *   farm     v2.3.3136: an open farm on the commons' grass under the
  *            Wheel's own sun (WHEEL_SUN below, its commons shade) -- it was
  *            a grotto lit through its roof, shadows straight down.
  */
@@ -47,7 +47,7 @@ export const ZONE_LIGHT = Object.assign(Object.create(null), {
   sky:       { lx: 0.60, ly: 0.38, alpha: 0.42, color: 0x3a220c },
   verdant:   { lx: 0.46, ly: 0.32, alpha: 0.30, color: 0x0e220e },
   mist:      { lx: 0.36, ly: 0.26, alpha: 0.22, color: 0x14200e },
-  farm_home: { lx: 0.50, ly: 0.34, alpha: 0.36, color: 0x13240c },   /* v2.3.3124: WHEEL_SUN, WHEEL_LAND_LIGHT.commons */
+  farm_home: { lx: 0.50, ly: 0.34, alpha: 0.36, color: 0x13240c },   /* v2.3.3136: WHEEL_SUN, WHEEL_LAND_LIGHT.commons */
 });
 
 /** The zone's light, or null for a zone that casts no shadow. */

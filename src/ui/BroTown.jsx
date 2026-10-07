@@ -487,11 +487,11 @@ import { isWheelTrialZone, footstepSurface } from '@/game/worldTrial.js';   /* v
 import { wheelDoorAt, enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks */
 import { wheelObjectsInfo } from '@/game/wheelTrial.js';
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
-import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3124: the farm you walk */
-import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3124: the way onto it waits for it */
-import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3124: a bed worked where it lies */
+import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
+import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it */
+import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
 import { bedAt } from '@/game/farmWork.js';
-import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3124 */
+import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
 import { WHEEL_TOWNSFOLK, WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
@@ -5056,7 +5056,7 @@ export var BroTown = function BroTown(_ref0) {
            behind the loading overlay (zoneTransitions.js), freeze the
            player at the hub exit so the proximity trigger stays armed and
            the entry runs the instant the load resolves. */
-        if (S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold) finalSpd = 0;   /* v2.3.3124: _farmArtHold -- veiled while your farm loads (game/farmTrip.js); v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
+        if (S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold) finalSpd = 0;   /* v2.3.3136: _farmArtHold -- veiled while your farm loads (game/farmTrip.js); v2.3.2439: _netHold — veiled, waiting for the server (serverReady.js); v2.3.2859: _townArtHold — veiled while town's NPCs load (zoneTransitions syncTownScenery) */
         /* v2.3.2996: a monster's element on you -- a snowman's chill walks you
            at CHILL_MULT, a blue slime's goo holds you where you stand
            (game/elemHits.js; the worker said so on the hit). */
@@ -5490,7 +5490,7 @@ export var BroTown = function BroTown(_ref0) {
         } else {
           S._nearPetHouse = false;
         }
-        /* ═══ v2.3.3124: A BED ON YOUR FARM ═══
+        /* ═══ v2.3.3136: A BED ON YOUR FARM ═══
            The one your boots stand in reach of and its next step (the stick's
            picture, E, a tap), and a step under way -- its sounds, its end, or
            your walking away from it (game/farmWalk.js) */
@@ -8746,7 +8746,7 @@ export var BroTown = function BroTown(_ref0) {
     return true;
   }, []);
 
-  /* ═══ v2.3.3124: A TAP ON A BED OF YOUR FARM ═══
+  /* ═══ v2.3.3136: A TAP ON A BED OF YOUR FARM ═══
      The owner: "I want the planting process to happen by your character
      taking action on the plot of ground."  A tap on a bed takes its next step
      there, as E and the stick's tap do (game/farmWalk.js startFarmStep), when
@@ -9674,7 +9674,7 @@ export var BroTown = function BroTown(_ref0) {
        the tap and the caller must not also open chat. */
     var tapResourceAtClient = function (clientX, clientY) {
       var _p = clientToCanvas(clientX, clientY);
-      /* v2.3.3124: ...or a bed of your farm, before the self-tap's chat (a
+      /* v2.3.3136: ...or a bed of your farm, before the self-tap's chat (a
          farmer kneeling at a bed stands inside that circle) */
       return _tapHarvestAtCss(_p.x, _p.y) || _tapFarmBedAtCss(_p.x, _p.y);
     };
@@ -11523,7 +11523,7 @@ export var BroTown = function BroTown(_ref0) {
                  is the DESKTOP door (and the strip of canvas exposed below the
                  touch zones when a sheet is open); the phone's tap arrives as
                  a synthetic click in onClick, which now calls the same thing. */
-              if (!_tapHarvestAtCss(_cssX, _cssY) && !_tapFarmBedAtCss(_cssX, _cssY)) {   /* v2.3.3124: + a bed of your farm */
+              if (!_tapHarvestAtCss(_cssX, _cssY) && !_tapFarmBedAtCss(_cssX, _cssY)) {   /* v2.3.3136: + a bed of your farm */
                 /* ═══ v2.3.2305: ...AND THE NPC DOOR, WHICH WAS MISSING ═══
                    This handler stamps _touchHandledAt, which makes the canvas
                    onClick skip its own tap logic for ~600ms -- so on every
@@ -11847,7 +11847,7 @@ export var BroTown = function BroTown(_ref0) {
          click-to-harvest there alongside the E key -- welcome, and the reach
          and tool gates are the same ones the button uses. */
       if (_tapHarvestAtCss(cssX, cssY)) return;
-      /* v2.3.3124: ...or a bed of your farm -- before the count below, so a
+      /* v2.3.3136: ...or a bed of your farm -- before the count below, so a
          tap on a bed never also jumps */
       if (_tapFarmBedAtCss(cssX, cssY)) return;
       /* v2.3.3105: counted, so the right stick's release knows its forwarded
@@ -12162,9 +12162,9 @@ export var BroTown = function BroTown(_ref0) {
       var S2 = stateRef.current;
       rememberFarmTrip(S2);   /* v2.3.3032: from the Wheel, the gate leads back out where you stood */
       S2.currentZone = 'farm_home';
-      updateZoneDimensions('farm_home');   /* v2.3.3124: the farm's own size (this warp never set it) */
+      updateZoneDimensions('farm_home');   /* v2.3.3136: the farm's own size (this warp never set it) */
       S2.map = generateZoneMap('farm_home');
-      /* v2.3.3124: in at the farm's gate, held under its loading screen until
+      /* v2.3.3136: in at the farm's gate, held under its loading screen until
          it is all there (game/farmTrip.js) */
       S2.player.x = FARM_ARRIVE.x;
       S2.player.y = FARM_ARRIVE.y;
@@ -13712,7 +13712,7 @@ export var BroTown = function BroTown(_ref0) {
       marginRight: 4
     }
   }, "E"), "\u2694\uFE0F Enter " + ((stateRef.current._nearWheelDoor && stateRef.current._nearWheelDoor.name) || 'the dungeon')),
-  /* v2.3.3124: the bed you stand at on your farm, its next step as a button
+  /* v2.3.3136: the bed you stand at on your farm, its next step as a button
      (and the seed it plants) -- ui/mobile/FarmBedPrompt.jsx */
   /*#__PURE__*/React.createElement(FarmBedPrompt, { stateRef: stateRef, hidden: buildingPanel !== null || !!showPetHouse }),
   ((_stateRef$current54 = stateRef.current) === null || _stateRef$current54 === void 0 ? void 0 : _stateRef$current54._nearPetHouse) && !showPetHouse && /*#__PURE__*/React.createElement("button", {

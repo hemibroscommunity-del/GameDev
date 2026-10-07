@@ -5,20 +5,20 @@ import { farmBus } from '@/ui/mobile/farmBus.js';
 import { FARM_ERR_TEXT, farmItemName } from '@/game/farmFeedback.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { rememberFarmTrip } from '@/game/wheelTownDoors.js';
-import { ITEM_NAMES, iconFor, thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3118: the order board names and draws goods as the bag does */
-import { FARM_ART } from '@/data/farmArt.js';   /* v2.3.3124: the owner's farm pictures */
+import { ITEM_NAMES, iconFor, thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3134: the order board names and draws goods as the bag does */
+import { FARM_ART } from '@/data/farmArt.js';   /* v2.3.3136: the owner's farm pictures */
 import { farmArtUrl } from '@/data/farmArtUrl.js';
-import { FARM_ARRIVE } from '@/data/farmLayout.js';   /* v2.3.3124: the farm you walk */
+import { FARM_ARRIVE } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
 
-/* ═══ v2.3.3111: THE FEED & SEED, A REAL FARM ═══
+/* ═══ v2.3.3127: THE FEED & SEED, A REAL FARM ═══
  *
  * Owner: "mechanics similar to the old FarmVille game where you have to wait
  * to harvest and each has a wait time different depending on what it is.
  * Need to dig, plant seeds, fertilize, water, etc."  Then: "Good.  Go ahead
  * and build it" (docs/FARMING-PLAN.md, Phase 1).
  *
- * ═══ v2.3.3124: ...AND THE BEDS ARE ON YOUR FARM, NOT IN HERE ═══
+ * ═══ v2.3.3136: ...AND THE BEDS ARE ON YOUR FARM, NOT IN HERE ═══
  * The owner, 2026-10-06: "Hold on I don't want this type of farming.  I want
  * your character to be able to walk around on the farm.  I want the planting
  * process to happen by your character taking action on the plot of ground
@@ -37,7 +37,7 @@ import { holdFarmUntilReady } from '@/game/farmTrip.js';
  * Test hooks: data-farm, data-farm-tab, data-farm-buy, data-farm-row,
  * data-farm-pic, data-farm-locked(-crop), data-farm-status, data-farm-visit,
  * data-farm-summary; window.__btFarm (the bus).
- * v2.3.3118: data-farm-orders, data-farm-order={slot} / data-farm-order-done,
+ * v2.3.3134: data-farm-orders, data-farm-order={slot} / data-farm-order-done,
  * data-farm-deliver={slot}, data-farm-orders-reset. */
 
 const C = {
@@ -56,7 +56,7 @@ const Glyph = ({ g, size = 18, style }) => (
   <span aria-hidden="true" style={{ fontSize: size, lineHeight: 1, display: 'inline-block', ...style }}>{g}</span>
 );
 
-/* ═══ v2.3.3124: THE OWNER'S PICTURES ═══
+/* ═══ v2.3.3136: THE OWNER'S PICTURES ═══
    Each crop as the owner drew it grown, and the compost bin (ChatGPT, from
    docs/art/FARM-ART-PROMPTS.md, cut into game sprites by
    tools/world/add-farm-art.mjs: public/world/farm/, src/data/farmArt.js).
@@ -78,7 +78,7 @@ function Chip({ children, color, icon }) {
   );
 }
 
-/* v2.3.3124: how your beds are doing, in one line -- what is ready, what is
+/* v2.3.3136: how your beds are doing, in one line -- what is ready, what is
    growing, what waits for you -- so the window says when the farm is worth a
    visit (the beds themselves are on the farm) */
 function farmSummary(view, now) {
@@ -106,14 +106,14 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
   const need = LIFE_SKILL_XP(lvl);
   const pct = Math.max(0, Math.min(1, (skill.xp || 0) / need));
 
-  /* v2.3.3124: Seeds first -- the beds are on your farm now */
+  /* v2.3.3136: Seeds first -- the beds are on your farm now */
   const [tab, setTab] = React.useState('seeds');
   const [, tick] = React.useReducer((x) => x + 1, 0);
 
   /* Ask the worker for the farm when the window opens (its summary and
      today's orders); redraw once a second so the board's countdown counts
      down (the times are the worker's, not ours). */
-  /* v2.3.3111: `closed` (FarmPanel: the worker's kill switch) asks nothing --
+  /* v2.3.3127: `closed` (FarmPanel: the worker's kill switch) asks nothing --
      the switch can outlive a rollback to a worker with no farm at all, which
      would hand a farm_open to the whole room. */
   React.useEffect(() => { if (!closed) farmBus.open(S); }, []);
@@ -121,7 +121,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
 
   const view = farmBus.view;
   const now = farmBus.serverNow();
-  /* v2.3.3118 (review): yesterday's board, past midnight by the worker's
+  /* v2.3.3134 (review): yesterday's board, past midnight by the worker's
      clock -- its Deliver stays dark while the new one is asked for. */
   const boardOld = !!(farmBus.orders && now >= farmBus.orders.resetsAt);
   const pending = !!farmBus.pending;
@@ -129,16 +129,16 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
   const last = farmBus.last;
 
   const unlocked = (id) => lvl >= FARM.CROPS[id].lvl;
-  /* v2.3.3115: only the crops THIS worker grows (caps.farmCrops counts them,
+  /* v2.3.3131: only the crops THIS worker grows (caps.farmCrops counts them,
      in the order they came -- FARM.CROPS' own).  A newer page offered an
      older worker's farm the potato and the pumpkin, and the buy hung on "No
      answer yet" (review).  A farm worker from before it grows the first four. */
   const grownCount = S._serverCaps && typeof S._serverCaps.farmCrops === 'number' ? S._serverCaps.farmCrops : 4;
-  /* v2.3.3118: the order board, only on a worker that has one (caps.farmorders;
+  /* v2.3.3134: the order board, only on a worker that has one (caps.farmorders;
      an older worker has no case for farm_order and would rebroadcast it). */
   const ordersOn = !!(S._serverCaps && S._serverCaps.farmorders);
   const board = ordersOn ? farmBus.orders : null;
-  /* v2.3.3118 (review): the board asks for itself.  At midnight, with the
+  /* v2.3.3134 (review): the board asks for itself.  At midnight, with the
      window open, it asks for the new day's board -- "New orders in 0m" stood
      beside yesterday's until a refused tap or a reopen; and the Orders tab
      with no board yet asks once (a page that rejoined a worker with the
@@ -158,7 +158,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
   });
   const CROP_IDS = Object.keys(FARM.CROPS);
   const crops = FARM_CROP_ORDER.filter((id) => CROP_IDS.indexOf(id) < grownCount);
-  /* v2.3.3119: the Farming levels that still have crops to open, lowest first. */
+  /* v2.3.3135: the Farming levels that still have crops to open, lowest first. */
   const lockedLevels = Array.from(new Set(crops.filter((id) => !unlocked(id)).map((id) => FARM.CROPS[id].lvl))).sort((a, b) => a - b);
   const seedCount = (id) => Math.floor(inv[FARM.CROPS[id].seed] || 0);
   const compost = Math.floor(inv[FARM.COMPOST] || 0);
@@ -173,7 +173,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
     updateZoneDimensions('farm_home');
     S2.map = generateZoneMap('farm_home');
     S2.monsters = []; S2.gatherNodes = []; S2.npcs = null;
-    /* v2.3.3124: in at the farm's gate (data/farmLayout.js), under the
+    /* v2.3.3136: in at the farm's gate (data/farmLayout.js), under the
        farm's loading screen until it is all there (game/farmTrip.js) */
     P2.x = FARM_ARRIVE.x; P2.y = FARM_ARRIVE.y; P2.vx = 0; P2.vy = 0;
     holdFarmUntilReady(S2);
@@ -193,7 +193,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
     if (d.op === 'harvest' && d.items) {
       status = { text: Object.keys(d.items).map((k) => '+' + d.items[k] + ' ' + farmItemName(k)).join(' · ') + (d.xp ? ' · +' + d.xp + ' XP' : ''), color: C.good };
     } else if (d.op === 'buy') status = { text: '+' + d.n + ' ' + farmItemName(d.item), color: C.good };
-    else if (d.op === 'order') status = { text: 'Delivered · +' + d.gold + ' gold · +' + d.xp + ' XP', color: C.good };   /* v2.3.3118 */
+    else if (d.op === 'order') status = { text: 'Delivered · +' + d.gold + ' gold · +' + d.xp + ' XP', color: C.good };   /* v2.3.3134 */
   }
 
   return (
@@ -212,7 +212,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
           </div>
         </div>
       </div>
-      {/* v2.3.3124: your farm -- how its beds are doing, and the way there */}
+      {/* v2.3.3136: your farm -- how its beds are doing, and the way there */}
       <div style={{ margin: '0 12px 10px' }}>
         {!closed && summary && summary.text ? (
           <div data-farm-summary={summary.ready} style={{ fontSize: 12, fontWeight: 700, color: summary.ready ? C.good : C.sub, marginBottom: 6 }}>
@@ -268,7 +268,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
               coins={coins} pending={pending} onBuy={(n) => farmBus.buy(S, FARM.COMPOST, n)}>
               <Chip color={C.good}>+50% harvest</Chip>
             </ShopRow>
-            {/* v2.3.3119: the crops still to come, one line a level -- twelve
+            {/* v2.3.3135: the crops still to come, one line a level -- twelve
                 locked rows stood between a new farmer and the compost. */}
             {lockedLevels.map((l) => (
               <div key={l} data-farm-locked={l} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '8px 0',
@@ -281,7 +281,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
                 ))}
               </div>
             ))}
-            {/* v2.3.3111: every answer to a buy -- and its silence: a timeout
+            {/* v2.3.3127: every answer to a buy -- and its silence: a timeout
                 said nothing here, so the buttons just woke up again and invited a
                 second purchase of something the worker may already have sold. */}
             {status && last && ((last.did && last.did.op === 'buy') || last.op === 'buy' || last.err === 'off') ? (
@@ -290,14 +290,14 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
           </div>
         )}
 
-        {/* ═══ v2.3.3118: THE ORDER BOARD (server farmorders.js) ═══
+        {/* ═══ v2.3.3134: THE ORDER BOARD (server farmorders.js) ═══
             Three orders a day, each the worker's: what it wants, what it
             pays, whether it is done.  Deliver is lit only when the bag holds
             enough -- the worker checks again and takes the goods itself. */}
         {!closed && tab === 'orders' && (
           <div data-farm-orders="1" data-farm-orders-old={boardOld ? 1 : 0}>
             {!board ? (
-              /* v2.3.3118 (review): closed, failed or on its way -- this was "…"
+              /* v2.3.3134 (review): closed, failed or on its way -- this was "…"
                  for all three, forever (farmBus.ordersSeen). */
               <div data-farm-status={farmBus.ordersSeen ? 'orders-closed' : 'loading'} style={{ padding: '28px 0', textAlign: 'center', color: C.mute, fontSize: 13 }}>
                 {farmBus.ordersSeen ? (

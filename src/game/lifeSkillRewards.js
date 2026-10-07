@@ -30,7 +30,7 @@ import { gatherNeed } from '@/data/lifeSkills.js';   /* v2.3.3038: a resource's 
    resume spinner) so it floats above the canvas/HUD and animates on the
    compositor; world->screen is node minus camera (world canvas pinned
    top-left, 1:1 CSS px).  No-ops outside the browser. */
-/* v2.3.3124: exported for the farm's harvest -- the crop's own picture pops
+/* v2.3.3136: exported for the farm's harvest -- the crop's own picture pops
    out of its bed and flies to the bag (game/farmFeedback.js) */
 export function _flyResourceToInventory(S, wx, wy, iconUrl, opts) {
   try {

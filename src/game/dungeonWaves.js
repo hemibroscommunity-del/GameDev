@@ -16,7 +16,7 @@ import { ZONES, TILE, ELEMENTS, DEPTH_CONFIG, BT_AUDIO, createMonster, createDef
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3124: the farm you walk */
+import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
 export function updateDungeonWaves(S, deps) {
   /* v2.3.1127: server-authoritative dungeon instances.  When the run
@@ -100,7 +100,7 @@ export function updateDungeonWaves(S, deps) {
                     st.hitParticles = [];
                     st.deathExplosions = [];
                     st.arrows = [];
-                    /* v2.3.3124: back at the Dungeon Workshop's board, held
+                    /* v2.3.3136: back at the Dungeon Workshop's board, held
                        under the farm's loading screen (game/farmTrip.js) */
                     st.player.x = FARM_FROM_WORKSHOP.x;
                     st.player.y = FARM_FROM_WORKSHOP.y;
@@ -188,7 +188,7 @@ export function updateDungeonWaves(S, deps) {
                   st.hitParticles = [];
                   st.deathExplosions = [];
                   st.arrows = [];
-                  /* v2.3.3124: back at the Dungeon Workshop's board (game/farmTrip.js) */
+                  /* v2.3.3136: back at the Dungeon Workshop's board (game/farmTrip.js) */
                   st.player.x = FARM_FROM_WORKSHOP.x;
                   st.player.y = FARM_FROM_WORKSHOP.y;
                   st._zoneWipe = Date.now();

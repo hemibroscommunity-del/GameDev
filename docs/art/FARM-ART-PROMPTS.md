@@ -5,7 +5,7 @@ Everything the farm needs drawn, as sprite sheets you can make in ChatGPT and se
 There are two kinds, in two styles:
 
 - **Bag icons (sheets 1-3), needed now.** The bag, the Feed & Seed window and the Cookhouse show emoji where these go. They match the painted icons the bag already uses.
-- **The farm you walk on (sheets 4-6, the Barn, the Farmhouse and the Dungeon Workshop).** They are for the farm you walk around on (in the game since v2.3.3124: docs/specs/farm-walk.md). They follow the world's HD pixel-art rules (docs/WORLD-BIBLE.md §6), like every Object Studio picture.
+- **The farm you walk on (sheets 4-6, the Barn, the Farmhouse and the Dungeon Workshop).** They are for the farm you walk around on (in the game since v2.3.3136: docs/specs/farm-walk.md). They follow the world's HD pixel-art rules (docs/WORLD-BIBLE.md §6), like every Object Studio picture.
 
 ## How
 
@@ -102,7 +102,7 @@ Attached are some of the game's own item icons. Match their style, outline, colo
 
 ## The farm you walk on
 
-For the farm map, where your beds and crops stand in the world: four growth stages for each crop, the beds under them, a few farm things, and its buildings. Sheets 4-6 and the Barn are in the game (v2.3.3124). The **Farmhouse** and the **Dungeon Workshop** are still to make: until they come, a haystack stands in as your bed ("Sleep in the hay") and a notice board as the Workshop.
+For the farm map, where your beds and crops stand in the world: four growth stages for each crop, the beds under them, a few farm things, and its buildings. Sheets 4-6 and the Barn are in the game (v2.3.3136). The **Farmhouse** and the **Dungeon Workshop** are still to make: until they come, a haystack stands in as your bed ("Sleep in the hay") and a notice board as the Workshop.
 
 The farm's GROUND needs no picture: the game lays it from your own Ground Studio pictures (the commons' grass, the yards' packed earth, Main Street's dirt), so it matches BroTown. One ChatGPT picture of a whole farm would come out far below the game's level of detail.
 

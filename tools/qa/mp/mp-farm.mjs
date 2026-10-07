@@ -1,11 +1,11 @@
-/* ═══ THE FARM, ON A PHONE (v2.3.3111) ═══
+/* ═══ THE FARM, ON A PHONE (v2.3.3127) ═══
  *
  * Owner: "mechanics similar to the old FarmVille game where you have to wait
  * to harvest and each has a wait time different depending on what it is.
  * Need to dig, plant seeds, fertilize, water, etc."  Then: "Good.  Go ahead
  * and build it" (docs/FARMING-PLAN.md Phase 1, docs/specs/farm.md).
  *
- * v2.3.3124: the beds are worked ON YOUR FARM, where they lie -- the owner:
+ * v2.3.3136: the beds are worked ON YOUR FARM, where they lie -- the owner:
  * "I don't want the game to just be reading a bunch of boring menus" --
  * and mp-farmwalk walks that.  The Feed & Seed is the farm's shop and its
  * order board.  So here, one real player, on a phone, in the Wheel's
@@ -98,7 +98,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return {
         open: !!document.querySelector('[data-farm]'),
         beds: v ? v.plots.map((p) => p.s + (p.crop ? ':' + p.crop : '') + (p.water ? '+w' : '') + (p.feed ? '+f' : '')) : null,
-        /* v2.3.3124: the window draws no beds and offers no tools */
+        /* v2.3.3136: the window draws no beds and offers no tools */
         drawnBeds: document.querySelectorAll('[data-bed]').length,
         tools: document.querySelectorAll('[data-farm-tool]').length,
         tabs: Array.from(document.querySelectorAll('[data-farm-tab]')).map((t) => t.getAttribute('data-farm-tab')),
@@ -123,7 +123,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
     const bag = () => H.readState(A, (S) => ({ inv: Object.assign({}, S.rpg && S.rpg.inventory), coins: S.rpg && S.rpg.coins, farming: S.rpg && S.rpg.lifeSkills && S.rpg.lifeSkills.farming }));
     const tap = (sel) => A.page.evaluate((s) => { const e = document.querySelector(s); if (e && !e.disabled) { e.click(); return true; } return false; }, sel);
-    /* v2.3.3124: every farm picture in the window has come in (complete, with
+    /* v2.3.3136: every farm picture in the window has come in (complete, with
        a size) -- a broken address would show nothing where a crop should be */
     const artIn = async () => {
       let v = null;
@@ -144,7 +144,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot(A, 'open');
     rec.ok(`"${enter}" opens the Feed & Seed on its Seeds tab (${v1.tab}; tabs ${v1.tabs.join(', ')}), the worker's six beds of grass behind it (${v1.beds && v1.beds.join(' ')})`,
       !!enter && v1.open && v1.tab === 'seeds' && v1.tabs[0] === 'seeds' && v1.tabs.indexOf('beds') < 0 && v1.beds && v1.beds.length === 6 && v1.beds.every((b) => b === 'rough'), v1);
-    rec.ok(`v2.3.3124: no beds and no tools in the window (${v1.drawnBeds} beds, ${v1.tools} tools) -- they are worked on your farm -- and "Visit Your Farm" above the tabs`,
+    rec.ok(`v2.3.3136: no beds and no tools in the window (${v1.drawnBeds} beds, ${v1.tools} tools) -- they are worked on your farm -- and "Visit Your Farm" above the tabs`,
       v1.drawnBeds === 0 && v1.tools === 0 && v1.visitFirst, v1);
     rec.ok(`...with a line saying how your beds are doing: "${v1.summary}"`, v1.summary === 'Your farm: 6 beds to plant' && v1.ready === 0, v1.summary);
 
@@ -158,7 +158,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await tap('[data-farm-buy="compost"][data-farm-buy-n="1"]');
     let b2 = b1;
     for (let i = 0; i < 30 && !(b2.inv.compost >= 1); i++) { await A.page.waitForTimeout(200); b2 = await bag(); }
-    /* v2.3.3119: the crops still to open sit in one line a level, with no
+    /* v2.3.3135: the crops still to open sit in one line a level, with no
        buy button -- Cloudpetal among Farming 10's. */
     const shop = await A.page.evaluate(() => ({
       rows: Array.from(document.querySelectorAll('[data-farm-row]')).map((r) => r.getAttribute('data-farm-row')),
@@ -170,7 +170,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const vS = await farmView();
     rec.ok(`the Seeds tab sells 5 carrot seeds for 10 coins and a bag of compost for 4 (${b0.coins} -> ${b2.coins}), the worker's bag says so ("${vS.status}"); Cloudpetal (Farming 10) cannot be bought`,
       b1.inv.seed_carrot === 5 && b2.inv.compost === 1 && b2.coins === b0.coins - 14 && !shop.cloudBuy && cloudLocked, { b0, b2, shop, status: vS.status });
-    /* v2.3.3119: sixteen crops -- at Farming 1 it sells the four that open
+    /* v2.3.3135: sixteen crops -- at Farming 1 it sells the four that open
        there, then compost, and lists the other twelve by the level they
        open at. */
     const want1 = ['seed_carrot', 'seed_wheat', 'seed_firebloom', 'seed_strawberry', 'compost'];
@@ -182,7 +182,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ];
     rec.ok(`...at Farming 1 it sells carrot, wheat, firebloom and strawberry seeds and compost (${shop.rows.join(', ')}), and lists the other twelve crops under the level they open at`,
       JSON.stringify(shop.rows) === JSON.stringify(want1) && JSON.stringify(shop.locked) === JSON.stringify(wantLocked), shop);
-    /* v2.3.3124: each row shows its crop grown (the compost its bin), and so
+    /* v2.3.3136: each row shows its crop grown (the compost its bin), and so
        does each crop still to open */
     const a3 = await artIn();
     const pics3 = await A.page.evaluate(() => ({
@@ -191,7 +191,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }));
     const wantRowPics = ['carrot-ripe', 'wheat-ripe', 'firebloom-ripe', 'strawberry-ripe', 'compost-bin'];
     const wantLockedPics = wantLocked.flatMap((l) => l.crops.map((c) => c + '-ripe'));
-    rec.ok(`v2.3.3124: the Seeds tab draws each crop as the owner drew it grown (${pics3.rows.join(', ')}), the twelve still to open too, every picture in (${a3 && a3.n})`,
+    rec.ok(`v2.3.3136: the Seeds tab draws each crop as the owner drew it grown (${pics3.rows.join(', ')}), the twelve still to open too, every picture in (${a3 && a3.n})`,
       same(pics3.rows, wantRowPics) && same(pics3.locked, wantLockedPics) && a3 && a3.n === 17 && !a3.bad.length, { pics3, a3 });
 
     /* ── 3. the summary follows the worker's farm.  The beds' own steps on
@@ -247,7 +247,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`closed and opened again, the farm is the worker's (${v7.beds && v7.beds.join(' ')}): "${v7.summary}"`,
       v7.beds && v7.beds.every((b) => b === 'rough') && v7.summary === 'Your farm: 6 beds to plant', v7);
 
-    /* ── 9. v2.3.3111: the kill switch.  A tab that joins while `farm: false`
+    /* ── 9. v2.3.3127: the kill switch.  A tab that joins while `farm: false`
        is set gets the window CLOSED -- a card that asks the worker nothing --
        not the old browser-only plots (the review's finding: "No seeds" beside
        beds it could not see).  A second player, so the caps are fresh. ── */

@@ -20,7 +20,7 @@ import { ZONES, isWorldViewZone } from './zones.js'; /* v2.3.2978: + either name
 import { TOWN_BUILDINGS } from './buildings.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS } from './effects.js';
 import { FOOTSTEP_CLIPS } from './footstepClips.js';   /* v2.3.2967: each ground its own step */
-import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3124: the farm you walk */
+import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
 function _defineProperty(e, r, t) { return (r in e) ? Object.defineProperty(e, r, { value: t, enumerable: true, configurable: true, writable: true }) : e[r] = t, e; }
@@ -769,7 +769,7 @@ export function generateZoneMap(zoneId) {
       }
     });
   } else if (zoneId === 'farm_home') {
-    /* ═══ v2.3.3124: YOUR FARM, THE FARM YOU WALK ═══
+    /* ═══ v2.3.3136: YOUR FARM, THE FARM YOU WALK ═══
        The owner: "I want your character to be able to walk around on the
        farm" -- and of the old cave grotto, "This map isn't suited for a
        farm".  Everything the farm IS lives in src/data/farmLayout.js: its

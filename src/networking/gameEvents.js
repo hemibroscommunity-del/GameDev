@@ -37,7 +37,7 @@ import { recordMail } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
-import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3124: the farm you walk */
+import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
@@ -904,7 +904,7 @@ export function processGameEvent(type, payload, S, deps) {
                 S.deathExplosions = [];
                 S.arrows = [];
                 S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */ S.slimeShockwaves = []; /* v2.3.2912: and the slime burst's shockwave */
-                /* v2.3.3124: back at the Dungeon Workshop's board, held under
+                /* v2.3.3136: back at the Dungeon Workshop's board, held under
                    the farm's loading screen until it is all there
                    (game/farmTrip.js; v2.3.1406 only kicked the load) */
                 S.player.x = FARM_FROM_WORKSHOP.x;

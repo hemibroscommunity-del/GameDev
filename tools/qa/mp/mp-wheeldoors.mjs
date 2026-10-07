@@ -26,7 +26,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { FARM_GATE } from '../../../src/data/farmLayout.js';   /* v2.3.3124: the farm you walk */
+import { FARM_GATE } from '../../../src/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 
 const PHONE = { width: 390, height: 844 };
 
@@ -114,7 +114,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     return r;
   };
-  /* out by the farm's gate (v2.3.3124: the farm you walk, data/farmLayout.js
+  /* out by the farm's gate (v2.3.3136: the farm you walk, data/farmLayout.js
      FARM_GATE -- the exit tiles under its gate in the bottom row of 32 x 44):
      hop toward it and STOP the moment the zone is not the farm -- a hop loop
      that carried on into the next zone walked the player off toward the

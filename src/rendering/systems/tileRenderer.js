@@ -373,7 +373,7 @@ export class TileRenderer {
       : Assets.load(imageUrl);
     loadP.then((loaded) => {
       if (loaded && !sprite.destroyed) {
-        if (loaded.source) loaded.source.scaleMode = mapScaleMode(zoneId);   /* v2.3.3124: the farm's is smooth */
+        if (loaded.source) loaded.source.scaleMode = mapScaleMode(zoneId);   /* v2.3.3136: the farm's is smooth */
         sprite.texture = loaded;
         sprite.width = w;
         sprite.height = h;
@@ -824,7 +824,7 @@ export class TileRenderer {
         reload = true;
         cachedTex = null;
       }
-      if (cachedTex && cachedTex.source) cachedTex.source.scaleMode = mapScaleMode(zoneId);   /* v2.3.3124 */
+      if (cachedTex && cachedTex.source) cachedTex.source.scaleMode = mapScaleMode(zoneId);   /* v2.3.3136 */
       const sprite = new Sprite(cachedTex || Texture.EMPTY);
       sprite.x = 0;
       sprite.y = 0;

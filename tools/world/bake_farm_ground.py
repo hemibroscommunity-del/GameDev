@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3124: your farm's ground, laid from the owner's own Ground Studio pictures.
+"""v2.3.3136: your farm's ground, laid from the owner's own Ground Studio pictures.
 
     python3 tools/world/bake_farm_ground.py            # writes public/maps/farm_v2.webp
     python3 tools/world/bake_farm_ground.py --out x.webp --preview x.png

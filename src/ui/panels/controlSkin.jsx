@@ -329,7 +329,7 @@ export const RDISC_ICONS = [
   ['talk', '/ui/controls/talk.svg?v=2.3.3105'],
   ['door', '/ui/controls/door.svg?v=2.3.3105'],
   ['sleep', '/ui/controls/sleep.svg?v=2.3.3105'],
-  /* v2.3.3124: and at a bed on your farm, its next step (game/farmWalk.js;
+  /* v2.3.3136: and at a bed on your farm, its next step (game/farmWalk.js;
      desktopControls interactKind 'farm-<step>') -- the owner: "You dig, you
      water, you fertilize, etc." -- a spade, a sprout, a watering can, a sack
      of compost and a basket, in the same white-and-outline style */
