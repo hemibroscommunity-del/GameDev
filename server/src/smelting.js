@@ -93,7 +93,7 @@ export const smeltingMethods = {
       if (res.leveled) leveled = true;
       newLevel = res.newLevel;
     }
-    /* v2.3.3125: every bar counts for "Smelt 2 bars" (dailyrewards.js) */
+    /* v2.3.3140: every bar counts for "Smelt 2 bars" (dailyrewards.js) */
     this._drSignal(session.id, 'smelt', barKey, count);
 
     this._saveRpg(session.id, ps);

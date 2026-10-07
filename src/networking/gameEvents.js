@@ -1575,7 +1575,7 @@ export function processGameEvent(type, payload, S, deps) {
                    shows once as the same small self-dismissing toast a store
                    sale uses (storeToastBus, 6s, tap to close).  The note is
                    the server's own ("Daily reward — day 3"). */
-                /* v2.3.3125: the daily rewards' payouts (server dailyrewards.js)
+                /* v2.3.3140: the daily rewards' payouts (server dailyrewards.js)
                    -- a finished daily quest's coins, a claimed or season-end
                    tier's coins and items, the daily spin's pot taken or kept
                    at the day's end -- are announced by their own

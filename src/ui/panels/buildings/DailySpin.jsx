@@ -4,7 +4,7 @@ import {
   dailyRewardsBus, spinLive, askSpin, coinsShort, untilText,
 } from '@/game/dailyRewards.js';
 
-/* ═══ v2.3.3125: THE FREE DAILY SPIN, AT THE GAMBLING DEN ═══
+/* ═══ v2.3.3140: THE FREE DAILY SPIN, AT THE GAMBLING DEN ═══
  *
  * Owner, 2026-10-06: "Personally I find the login page with the chest
  * intrusive.  I'd rather have it be something like a free daily spin from

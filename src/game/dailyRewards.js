@@ -1,4 +1,4 @@
-/* ═══ v2.3.3125: THE DAILY REWARDS, ON THE GAME'S SIDE ═══
+/* ═══ v2.3.3140: THE DAILY REWARDS, ON THE GAME'S SIDE ═══
  *
  * Owner, 2026-10-06: a layered daily system -- "a small reward just for
  * logging in, daily quests that get people playing, and both feeding a

@@ -14,7 +14,7 @@
  *   3. The Debug switch is gone without ?dev=1.
  *   4. PARTY CHAT: a Party lane exists only while you are in a party, sends
  *      /p, and a party line whose party has gone is refused, not shouted.
- *   5. DAILY REWARD: shown once as a toast, not in chat.  v2.3.3125: the login
+ *   5. DAILY REWARD: shown once as a toast, not in chat.  v2.3.3140: the login
  *      pays no chest and opens no window (the free spin at the Gambling Den is
  *      the day's reward, mp-dailyrewards); a chest still held opens from the bag.
  *   6. ABOUT: privacy, rules and credits open from Settings.
@@ -54,7 +54,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      reward"; then, with the chest art: "you need to click the claim button to
      get it.  You can stack them.  It'll reveal whatever the reward is coming
      out of it.") ═══
-     v2.3.3125 (owner: "Personally I find the login page with the chest
+     v2.3.3140 (owner: "Personally I find the login page with the chest
      intrusive ... You can remove the daily chest and just do the gambling
      spin"): the day pays NO chest and no window opens by itself -- the free
      spin at the Gambling Den is the day's reward (mp-dailyrewards).  A chest
@@ -66,7 +66,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the daily reward is still not a chat line (v2.3.2037)', inChat === false, { inChat });
   const hasChest = await H.readState(A, (S) => (S.rpg && S.rpg.inventory && S.rpg.inventory.daily_chest) || 0);
   await A.page.waitForTimeout(2500);
-  rec.ok('v2.3.3125: the day puts NO chest in the bag, and no chest window opens by itself (even with the offer allowed)',
+  rec.ok('v2.3.3140: the day puts NO chest in the bag, and no chest window opens by itself (even with the offer allowed)',
     hasChest === 0 && !(await A.page.$('[data-chest-window]')), { hasChest });
 
   /* A chest still held (granted here, as one left from before) opens from the
@@ -113,7 +113,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(300);
   rec.ok('Done closes the window', !(await A.page.$('[data-chest-window]')));
 
-  /* The second player: no window either (v2.3.3125) -- nothing in the way of
+  /* The second player: no window either (v2.3.3140) -- nothing in the way of
      the quest checks below. */
   rec.ok('the second player has no chest window at login either', !(await B.page.$('[data-chest-window]')));
 

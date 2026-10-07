@@ -8,7 +8,7 @@ import {
   questLabel, questIcon, grantLabel, untilText, claimableTiers, nextTier, tierNeed, coinsShort,
 } from '@/game/dailyRewards.js';
 
-/* ═══ v2.3.3125: THE DAILY REWARDS WINDOW ═══
+/* ═══ v2.3.3140: THE DAILY REWARDS WINDOW ═══
  *
  * Owner, 2026-10-06: "a small reward just for logging in, daily quests that
  * get people playing, and both feeding a longer progression track like a

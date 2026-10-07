@@ -3,7 +3,7 @@ import { COL } from './common.js';
 import { dailyRewardsBus, questsLive, spinLive, claimableTiers } from '@/game/dailyRewards.js';
 import { useScrollTap } from '../sheet/scrollTap.js'; /* the card sits in the Quests scroller */
 
-/* ═══ v2.3.3125: THE DAILY REWARDS CARD, AT THE TOP OF QUESTS ═══
+/* ═══ v2.3.3140: THE DAILY REWARDS CARD, AT THE TOP OF QUESTS ═══
  * The way into the Daily Rewards window (DailyRewardsWindow.jsx): where a
  * player's head already is when they think "what should I do now".  Not a
  * HUD button (the owner has asked more than once to keep the HUD clear) and

@@ -346,7 +346,7 @@ export const questMethods = {
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);
-    /* v2.3.3125: handing in the first quest opens the daily quests
+    /* v2.3.3140: handing in the first quest opens the daily quests
        (dailyrewards.js) -- today's three appear now, not at the next login */
     await this._drOnQuestTurnIn(session.id, questId);
   },

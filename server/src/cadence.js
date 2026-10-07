@@ -22,7 +22,7 @@
  *   1. Daily login reward (per-player, on join).  Zero client work:
  *      rides _creditPlayer -> inbox_delivered, which the client already
  *      renders as a "📫 You received ..." chat line.
- *      v2.3.3125: the login itself PAYS NOTHING now (owner: the chest
+ *      v2.3.3140: the login itself PAYS NOTHING now (owner: the chest
  *      window was intrusive; the day's reward is the free spin at the
  *      Gambling Den, dailyrewards.js).  This consumer keeps the login
  *      STREAK, with freezes, and the spin reads it.
@@ -40,9 +40,9 @@
  *      atomic under the input gate; simpler than the two-key sketch in
  *      the handoff item J note.) */
 
-import { DAILY, dayOfPeriod } from './dailyrewards.js'; /* v2.3.3125: the streak's freezes */
+import { DAILY, dayOfPeriod } from './dailyrewards.js'; /* v2.3.3140: the streak's freezes */
 
-/* v2.3.3125: the three gold numbers below no longer pay a login (the login
+/* v2.3.3140: the three gold numbers below no longer pay a login (the login
    pays nothing now -- see _cadenceLoginReward); they are still the coin
    floor of a DAILY CHEST already in a bag (dailychest.js CHEST.COINS_*). */
 export const CADENCE = {
@@ -84,7 +84,7 @@ export const cadenceMethods = {
   // ── Consumer 1: the login STREAK ──
   // Called from the join handler after the inbox drain.  One storage
   // get per join; a put only when a new UTC day started.
-  /* ═══ v2.3.3125: A LOGIN PAYS NOTHING NOW -- THE STREAK STAYS, FORGIVING ═══
+  /* ═══ v2.3.3140: A LOGIN PAYS NOTHING NOW -- THE STREAK STAYS, FORGIVING ═══
      Owner, 2026-10-06: "Personally I find the login page with the chest
      intrusive.  I'd rather have it be something like a free daily spin from
      the gambling building ... You can remove the daily chest and just do the

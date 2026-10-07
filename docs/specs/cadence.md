@@ -25,7 +25,7 @@ lazy.
 
 ## Consumer 1 — daily login reward
 
-> **v2.3.3125: a login pays nothing now.** The owner found the chest window at
+> **v2.3.3140: a login pays nothing now.** The owner found the chest window at
 > login intrusive; the day's reward is the free spin at the Gambling Den
 > (docs/specs/daily-rewards.md). This consumer keeps the login STREAK, now
 > forgiving: a freeze every 7 days of streak (2 held at most) is spent

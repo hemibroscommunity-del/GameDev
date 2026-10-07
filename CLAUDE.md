@@ -1510,7 +1510,7 @@ remnant to migrate server-side, not a mode to preserve.
       for 1,000 gold, each step 1,000 more, to 120, a stale `cap` refused;
       caps `petwards` / `petshow` / `pethouse`; dev `look: {gold, size}`;
       `petsmatter` suite, `mp-petsmatter`. Phase 5 waits on the owner.
-  - Since v2.3.3125 DAILY REWARDS, NOTHING AT LOGIN -- the owner's layered
+  - Since v2.3.3140 DAILY REWARDS, NOTHING AT LOGIN -- the owner's layered
     brief ("a small reward just for logging in, daily quests ... feeding a
     longer progression track"), then: "I find the login page with the chest
     intrusive ... a free daily spin from the gambling building", and its twist:

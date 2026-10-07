@@ -3,7 +3,7 @@ import { BT_AUDIO, GAMBLE_MIN_BET, GAMBLE_WIN_CHANCE, JACKPOT_MIN_DEPOSIT, creat
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { DailySpin } from './DailySpin.jsx'; /* v2.3.3125: the free daily spin */
+import { DailySpin } from './DailySpin.jsx'; /* v2.3.3140: the free daily spin */
 /* === GamblePanel — buildingPanel === 'gamble' sub-panel === */
 /* v2.3.880: extracted verbatim from the buildingPanel === 'gamble'
    clause in BroTown.jsx (the casino: coin-flip bet + jackpot deposit).
@@ -89,7 +89,7 @@ export function GamblePanel(props) {
     measureFade();
   }, [rpgState, measureFade]);
   return React.createElement("div", { style: _objectSpread(_objectSpread({}, LS_WRAP), {}, { display: 'flex', flexDirection: 'column', maxHeight: '100%' }) /* v2.3.1235: state-correction §10 — flex column: fixed header + ONE scroll body */ },
-    /* v2.3.3125: the free daily spin leads the window (DailySpin.jsx) --
+    /* v2.3.3140: the free daily spin leads the window (DailySpin.jsx) --
        the day's reward lives here now, not in a window at login */
     lsHeader('gamble', '🎰', "Gambling Den", "Free daily spin, coin flips & the weekly jackpot"),
     React.createElement("div", {
@@ -98,7 +98,7 @@ export function GamblePanel(props) {
       className: "ls-scrollbody" /* v2.3.1235: state-correction §10 — hides the scrollbar (game.css); reachability is signalled by the sticky fade */,
       style: _objectSpread(_objectSpread({}, LS_BODY), {}, { overflowY: 'auto', touchAction: 'pan-y', flex: '1 1 auto', minHeight: 0, paddingBottom: 12 })
     },
-      React.createElement(DailySpin, null) /* v2.3.3125: renders nothing against a worker without caps.dailyspin */,
+      React.createElement(DailySpin, null) /* v2.3.3140: renders nothing against a worker without caps.dailyspin */,
       React.createElement("div", {
         style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }
       }, React.createElement("span", {

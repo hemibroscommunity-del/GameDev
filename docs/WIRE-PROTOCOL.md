@@ -469,7 +469,7 @@ winnerName, amount, period}` (broadcast on the lazy weekly draw). The
 daily login reward reuses `inbox_delivered` — no new types. GamblePanel
 deposits are caps-gated; the legacy local stub remains for old workers.
 
-**Daily rewards (v2.3.3125, caps.dailyspin + caps.dailyquests):** the login
+**Daily rewards (v2.3.3140, caps.dailyspin + caps.dailyquests):** the login
 pays nothing now (the daily chest and its gold fallback are gone; a chest
 still held opens as before). New c→s cases `rewards_get {}`, `daily_spin
 {act: 'spin'|'double'|'collect', opId}` (a lump sum, double or nothing on

@@ -5,7 +5,7 @@
  *   1.  Period keys: UTC day boundaries; ISO week key shape + Monday
  *       rollover.
  *   2.  Daily reward: first join credits base gold with the streak
- *       (v2.3.3125: NOT ANY MORE -- the login settles the streak, with
+ *       (v2.3.3140: NOT ANY MORE -- the login settles the streak, with
  *       freezes, and pays nothing; see §2 below)
  *       note (inbox_delivered renders it client-side for free);
  *       same-day rejoin is silent (fast path AND the oplog wall);
@@ -82,7 +82,7 @@ check('weekly key rolls on Monday', room._cadencePeriodWeekly(Date.UTC(2026, 6, 
 room._cadencePeriodWeekly(Date.UTC(2026, 6, 6, 1, 0)));
 
 // ── 2. the login streak ──
-// v2.3.3125: a login PAYS NOTHING now (owner: "I find the login page with
+// v2.3.3140: a login PAYS NOTHING now (owner: "I find the login page with
 // the chest intrusive ... You can remove the daily chest and just do the
 // gambling spin").  The day's reward is the free spin at the Gambling Den
 // (dailyrewards.test.mjs); this consumer keeps the STREAK, now forgiving:
