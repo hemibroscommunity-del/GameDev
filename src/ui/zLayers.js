@@ -69,6 +69,8 @@
      100      minigames (Fishing/Cooking/WoodChop/Mining)
     9000      chat panel (ChatPanel)
     9200      MoreOverlay
+    9250      DailyRewardsWindow (v2.3.3140) -- over the building panels (32)
+              it can be opened from (the Gambling Den), under InfoPopup
     9300      ControlsTutorial, MasteryNotification
     9400      InfoPopup (v2.3.2131) -- opened from panels inside
               MoreOverlay, so it has to clear 9200, and it is an aside

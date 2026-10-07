@@ -62,6 +62,7 @@ import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
+import { dailyRewardsMethods } from './dailyrewards.js'; /* v2.3.3140: the free daily spin, daily quests, the season */
 import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
 import { farmMethods } from './farm.js'; /* v2.3.3127: the farm, settled by the worker */
 import { farmOrderMethods } from './farmorders.js'; /* v2.3.3134: the Feed & Seed's order board */
@@ -395,6 +396,10 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.2820: the daily chest's result (dailychest.js) -- it names a prize,
      so a forged one would put a fake jackpot on another player's screen. */
   'chest_opened',
+  /* v2.3.3140: the daily rewards (dailyrewards.js) -- the spin's result, the
+     day's quests and the season, and a quest's count going up.  Forged, one
+     would paint a won jackpot or a finished quest on another player's screen. */
+  'rewards_state', 'daily_progress',
   /* v2.3.2824: a windup ability's ring (abilities.js) -- names a caster and a
      circle, so a forged one would draw a fake whirlwind over another player. */
   'ability_windup',
@@ -5090,6 +5095,21 @@ export class GameRoom {
         }
         break;
 
+      /* v2.3.3140: the daily rewards (dailyrewards.js) -- the client only asks;
+         the worker rolls the spin, counts the quests and pays the season. */
+      case 'rewards_get':
+        if (session.id) this._handleRewardsGet(session).catch(() => {});
+        break;
+      case 'daily_spin':
+        if (session.id) this._handleDailySpin(session, msg.payload || msg).catch(() => {});
+        break;
+      case 'daily_reroll':
+        if (session.id) this._handleDailyReroll(session, msg.payload || msg).catch(() => {});
+        break;
+      case 'season_claim':
+        if (session.id) this._handleSeasonClaim(session, msg.payload || msg).catch(() => {});
+        break;
+
       case 'smelt_bar':
         /* v2.3.2822: smelt ore into bars at the blacksmith (smelting.js).  The
            worker takes the ore and pays the bars and the Smithing XP; the
@@ -5727,6 +5747,13 @@ export class GameRoom {
          player whose last write was value-bearing. */
       const _ps = this.playerState[session.id];
       if (_ps && _ps._regenDirty) await this._saveRpg(session.id, _ps);
+      /* v2.3.3140: the daily quests' counting is written at most every 30 s;
+         this is its last chance (dailyrewards.js).  Awaited for the same
+         reason as the regen flush above -- and, like it, ONLY when there is
+         something to write: a promise comes back just then, so a clean close
+         stays synchronous for the AFK sweep (afk.test.mjs). */
+      const _drClose = this._drOnClose(session.id);
+      if (_drClose) await _drClose;
       delete this.playerState[session.id];
       /* v2.3.2534: drop the in-memory provenance ledger with the session.
          The record itself is durable in gear_prov:<pid> and reloads on the
@@ -5899,6 +5926,7 @@ Object.assign(GameRoom.prototype, dungeonMethods);
 Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
+Object.assign(GameRoom.prototype, dailyRewardsMethods); /* v2.3.3140 */
 Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
 Object.assign(GameRoom.prototype, farmMethods); /* v2.3.3127 */
 Object.assign(GameRoom.prototype, farmOrderMethods); /* v2.3.3134 */

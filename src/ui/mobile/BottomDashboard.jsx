@@ -30,6 +30,7 @@ import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 
 import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 */
 import { friendsSrv } from './sheet/friendsSync.js';               /* v2.3.1324 */
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
+import { rewardsWaiting } from '@/game/dailyRewards.js';          /* v2.3.3140: a season tier to claim lights the Quests dot */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
 import { bagLife, startBagLife } from './dash/bagLife.js'; /* v2.3.2815: the bag's small motions */
@@ -943,7 +944,10 @@ export const BottomDashboard = () => {
      the in-bag sparkles stay. */
   const dots = {
     skills: hasUnseenLevelUps((Sb && Sb.rpg) || {}),
-    quests: readyQuestCount(Sb) > 0,
+    /* v2.3.3140: ...or a season tier waiting to be claimed (dailyRewards.js).
+       Only a reward that is really there -- not the free spin, which would
+       light the dot every day for players who never gamble. */
+    quests: readyQuestCount(Sb) > 0 || rewardsWaiting(Sb) > 0,
     hero: unspentPointsTotal(Sb && Sb.rpg),
     social: (() => {
       try {

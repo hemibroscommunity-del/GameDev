@@ -1710,7 +1710,35 @@ remnant to migrate server-side, not a mode to preserve.
     - `caps.hardenmats` (kill switch `hardenmats: false`: the old ladder, no
       material) and `caps.hardenedwood` (`hardenedwood: false`: no making, and
       bows and staffs back on gold alone); `hardening` §8b/§8c, `hardenedwood`
-      suite, `mp-hardenbars`: docs/specs/hardening.md, hardened-wood.md.)
+      suite, `mp-hardenbars`: docs/specs/hardening.md, hardened-wood.md.
+  - Since v2.3.3140 DAILY REWARDS, NOTHING AT LOGIN -- the owner's layered
+    brief ("a small reward just for logging in, daily quests ... feeding a
+    longer progression track"), then: "I find the login page with the chest
+    intrusive ... a free daily spin from the gambling building", and its twist:
+    "Your first spin is for a lump sum award ... Then you have the option of
+    spinning it for double or nothing at 50% odds and that continues on"
+    (server/src/dailyrewards.js):
+    - the login pays NOTHING (no daily chest, no window; a chest still held
+      opens from the bag) and settles a FORGIVING streak (cadence.js: a freeze
+      every 7 days, 2 held, spent on a missed day);
+    - the FREE DAILY SPIN tops the Gambling Den's window (DailySpin.jsx): a
+      prize wheel lands a LUMP SUM (`SPIN.PRIZES`: 25 at 40% ... 10,000 at
+      0.1%, +10% a streak day to +60%) as a POT, then TAKE IT or DOUBLE OR
+      NOTHING at 50% (the wheel turns x2 / ✕), again and again up to the
+      house limit `POT_MAX` 100,000 (paid by itself); the pot is money at
+      rest in the record, paid once a run (`spinpot:<pid>:<run>`), and one
+      left open is paid at the day's end; bonus spins start more;
+    - THREE DAILY QUESTS once tut_1 is in (fight, gather with a tool, one
+      more; one free reroll from ANY group; paid on completion; all three =
+      +1 star and a bonus spin), counted by `_drSignal` at the kill / gather /
+      cook / smelt choke points;
+    - a 28-day SEASON of 25 tiers (stars from quests, all-three, the spin;
+      claim or "Claim all"; unclaimed tiers mailed at the season's end);
+    - the Daily Rewards window (DailyRewardsWindow.jsx) opens only from the
+      Quests tab's card and the Gambling Den; the Quests dot lights for a
+      tier to claim; `daily_rewards:<pid>`, caps/kill switches `dailyspin`
+      and `dailyquests`; `dailyrewards` suite, `mp-dailyrewards`:
+      docs/specs/daily-rewards.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

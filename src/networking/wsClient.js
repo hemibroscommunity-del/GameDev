@@ -17,6 +17,7 @@
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
+import { applyRewardsState, applyDailyProgress } from '@/game/dailyRewards.js'; /* v2.3.3140: the free spin, daily quests, the season */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
 import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3139: hardened wood's names */
@@ -1492,6 +1493,20 @@ export function setupWebSocket(ctx) {
           case 'nml_loss':
             {
               if (msg.payload) applyNmlLoss(S, msg.payload, saveRpgSoon);
+              break;
+            }
+          /* v2.3.3140: the daily rewards (server dailyrewards.js) -- the free
+             spin's result, the day's quests and the season, and a quest's count
+             going up.  The worker has already paid; the player_state echo
+             carries the coins.  These only feed the panels and the toasts. */
+          case 'rewards_state':
+            {
+              try { applyRewardsState(S, msg.payload); } catch (_rw) { /* the next state carries it */ }
+              break;
+            }
+          case 'daily_progress':
+            {
+              try { applyDailyProgress(S, msg.payload); } catch (_rp) { /* the next state carries it */ }
               break;
             }
           case 'chest_opened':
@@ -4229,6 +4244,14 @@ export function setupWebSocket(ctx) {
            passes only the types it names, so without this the button sent
            nothing at all -- caught by mp-polish opening a real chest. */
         if (msg.type === 'chest_open') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.3140: the daily rewards' four asks (dailyRewards.js) ->
+           dailyrewards.js.  TRAPS #18: a type this allowlist does not name never
+           leaves the browser, and the Spin button would turn a wheel nothing
+           answers. */
+        if (msg.type === 'rewards_get' || msg.type === 'daily_spin' || msg.type === 'daily_reroll' || msg.type === 'season_claim') {
           ws.send(JSON.stringify(msg));
           return;
         }

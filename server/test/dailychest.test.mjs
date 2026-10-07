@@ -6,6 +6,11 @@
  * reward."
  *
  *   1. The day's login pays ONE chest into the bag, not gold, once per day.
+ *      v2.3.3140: NOT ANY MORE -- the owner found the chest window intrusive
+ *      and the day's reward is the free spin at the Gambling Den
+ *      (dailyrewards.test.mjs).  A login pays nothing; a chest already in a
+ *      bag still opens, every prize as before, which is what this suite
+ *      keeps pinning.
  *   2. Opening takes the chest and pays exactly one prize, of each kind:
  *      coins (never below the old daily gold), 10 raw minnows (v2.3.3132; cooked until then), a rare gem,
  *      a piece of armour with a rolled quality and a provenance id.
@@ -73,14 +78,17 @@ await join(ws, 'bp_chest_a');
 const ps = room.playerState['bp_chest_a'];
 {
   const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
-  check('caps.dailyChest is advertised', !!sync && sync.caps.dailyChest === true);
-  check('the first join of the day puts ONE chest in the bag', (ps.inventory || {}).daily_chest === 1, ps.inventory);
+  check('caps.dailyChest is advertised (a chest already in a bag still opens)', !!sync && sync.caps.dailyChest === true);
+  /* v2.3.3140: the login pays NOTHING -- no chest, no gold (owner: "I find
+     the login page with the chest intrusive ... You can remove the daily
+     chest and just do the gambling spin") */
+  check('v2.3.3140: the first join of the day puts NO chest in the bag', !(ps.inventory || {}).daily_chest, ps.inventory);
   const deliv = ws.sent.find((m) => m.type === 'inbox_delivered');
   const e = deliv && deliv.payload.entries.find((x) => x.source === 'daily');
-  check('...announced as a daily item, not gold', !!e && e.kind === 'item' && e.payload.invKey === 'daily_chest' && /Daily chest/.test(e.note), e);
+  check('...and nothing is delivered for the day (no chest, no gold)', !e, e);
   const ws2 = fakeWs();
   await join(ws2, 'bp_chest_a');
-  check('a second join the same day does not pay a second chest', room.playerState['bp_chest_a'].inventory.daily_chest === 1,
+  check('a second join the same day pays nothing either', !(room.playerState['bp_chest_a'].inventory || {}).daily_chest,
     room.playerState['bp_chest_a'].inventory);
   ws = ws2;   /* the second join superseded the first socket */
 }
@@ -89,6 +97,7 @@ const ps = room.playerState['bp_chest_a'];
 const ps2 = () => room.playerState['bp_chest_a'];
 const giveChest = () => { ps2().inventory.daily_chest = (ps2().inventory.daily_chest || 0) + 1; };
 {
+  giveChest();                                    /* v2.3.3140: a chest already held (the login pays none now) */
   const coins0 = ps2().coins || 0;
   force(0.10, 0.0);                               /* coins, lowest roll */
   const r = await open(ws);
@@ -158,8 +167,10 @@ const giveChest = () => { ps2().inventory.daily_chest = (ps2().inventory.daily_c
   const psB = room.playerState['bp_chest_b'];
   const d = ws3.sent.find((m) => m.type === 'inbox_delivered');
   const e = d && d.payload.entries.find((x) => x.source === 'daily');
-  check('switched off: the day pays plain gold again, no chest',
-    !!e && e.kind === 'gold' && !(psB.inventory || {}).daily_chest, e);
+  /* v2.3.3140: the switch used to send the day back to plain gold; the
+     login pays nothing at all now, switch or no switch */
+  check('switched off: the login pays nothing (no gold, no chest)',
+    !e && !(psB.inventory || {}).daily_chest, e);
   const sync = ws3.sent.find((m) => m.type === 'state_sync' && m.caps);
   check('...and the next join is told the chest is off', !!sync && sync.caps.dailyChest === false);
 }
