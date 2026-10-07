@@ -841,7 +841,7 @@ export const InventoryPanel = () => {
                         else setEqSel(sl.slot);
                       };
                   const rarityEdge = sl.quality === 'rare' ? '#5B99DE'
-                    : sl.quality === 'elite' ? '#A477DF' : null;
+                    : sl.quality === 'elite' ? '#E8893A' : null;   /* v2.3.3142: elite orange */
                   const art = sl.iconSrc || GHOST_SRC[sl.slot];
                   return (
                     <div key={`eq-${sl.slot}`}
@@ -1359,7 +1359,7 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
      Godly gets the conic ring class instead of a border color. */
   const q = obj && obj.quality;
   const color = q === 'rare' ? '#5B99DE'
-    : q === 'elite' ? '#A477DF'
+    : q === 'elite' ? '#E8893A'   /* v2.3.3142: orange, the owner's */
     : q === 'godly' ? 'transparent'
     : 'rgba(139, 150, 149, 0.55)';
   const edgeWidth = (q === 'rare' || q === 'elite' || q === 'godly') ? 2 : 1;

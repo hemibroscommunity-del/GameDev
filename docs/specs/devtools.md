@@ -22,6 +22,7 @@ A panel inside the game with four operations:
 | **Unlock every gated zone** | sets each zone-gating quest to `active` |
 | **Warp** | stands you on a zone's trail-head on the World View |
 | **Give weapons + armor + levels** | the tutorial's three starter weapons, the copper and iron armour sets (torso + greaves each, into the bag through the quest-reward path, provenance-minted; v2.3.2875), plus levels |
+| **Rare / Elite / Godly armor** | v2.3.3142: the same two armour sets in that grade (`/dev/kit` `{ what: 'armor', quality }`), minted, so a godly piece counts as godly -- to wear and see each grade's outline (`armor-grade-look.md`) |
 | **Heal / God mode** | refill the bars; stop taking damage, on a timer |
 
 **Opened by a 1.2-second press on the zone name** in the header. That target

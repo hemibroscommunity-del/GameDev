@@ -744,6 +744,10 @@ export function setupWebSocket(ctx) {
                       S.others[pid]._pwRaw = data.pw;
                       S.others[pid]._pet = data.pw ? parsePetWire(data.pw) : null;
                     }
+                    /* v2.3.3142: their worn torso's and greaves' grades (tick.js
+                       `eqg`: 'rn', 'ee', ...), which glint.js draws as the
+                       armour's grade look; absent is plain, as for `spr` */
+                    S.others[pid]._eqg = typeof data.eqg === 'string' ? data.eqg.slice(0, 2) : '';
                     /* v2.3.599: live equip -> the renderer reads other.equip
                        (nested), so rebuild it from the broadcast eqc/eql/eqs
                        whenever present, keeping armour on/off in sync. */
@@ -2814,10 +2818,20 @@ export function setupWebSocket(ctx) {
               var _qrsKey = _qrsLegs ? 'legsStash' : 'armorStash';
               if (!Array.isArray(S.rpg[_qrsKey])) S.rpg[_qrsKey] = [];
               var _qrsWorn = _qrsLegs ? S.rpg.legsArmor : S.rpg.armor;
-              var _qrsHeld = (_qrsWorn && _qrsWorn.name === _qrsName)
-                || S.rpg[_qrsKey].some(function (a) {
-                  return a && a.name === _qrsName && (Number(a.tierMult) || 1) === _qrsTm;
-                });
+              /* v2.3.3142: a piece with the worker's id is the same piece only
+                 if it has the same id -- a replay carries the one it had.  By
+                 name alone, a second Iron Torso the worker really minted (the
+                 admin kit's Godly armor after its Elite) was taken for a
+                 replay and never reached the bag, though the ledger held it.
+                 A piece with no id keeps the old by-value guard. */
+              var _qrsGid = (typeof _qrs.gid === 'string' && _qrs.gid) ? _qrs.gid : null;
+              var _qrsHeld = _qrsGid
+                ? ((_qrsWorn && _qrsWorn.gid === _qrsGid)
+                  || S.rpg[_qrsKey].some(function (a) { return a && a.gid === _qrsGid; }))
+                : ((_qrsWorn && _qrsWorn.name === _qrsName)
+                  || S.rpg[_qrsKey].some(function (a) {
+                    return a && a.name === _qrsName && (Number(a.tierMult) || 1) === _qrsTm;
+                  }));
               if (!_qrsHeld) {
                 /* v2.3.1758: the METAL rides with the piece into the bag.  It
                    is what gearVariants resolves the art and the icon from, so
@@ -2830,7 +2844,14 @@ export function setupWebSocket(ctx) {
                      too -- same reason as the loot_credit site above, and
                      the same optional shape against an old worker. */
                   gid: (typeof _qrs.gid === 'string' && _qrs.gid) ? _qrs.gid : undefined,
-                  mat: _qrs.mat ? String(_qrs.mat).slice(0, 16) : undefined });
+                  mat: _qrs.mat ? String(_qrs.mat).slice(0, 16) : undefined,
+                  /* v2.3.3142: and its grade, when it has one (only the admin
+                     kit's graded armour does -- devtools.js `quality`), with
+                     the worker's own mark that it minted it, so the bag and
+                     the worn look show it before the next join re-reads the
+                     ledger */
+                  quality: (_qrs.quality === 'rare' || _qrs.quality === 'elite' || _qrs.quality === 'godly') ? _qrs.quality : undefined,
+                  prov: _qrs.prov === 'minted' ? 'minted' : undefined });
                 try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               }
               /* ═══ v2.3.1746: A REWARD IS NOT A DANGER ═══

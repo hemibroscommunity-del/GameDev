@@ -183,6 +183,31 @@ export function slotForGearField(field) {
 export const PROV_MINTED = 'minted';
 export const PROV_LEGACY = 'legacy';
 
+/* ═══ v2.3.3142: THE GRADE EVERYONE ELSE SEES ON YOUR ARMOUR ═══
+   Owner: "the armor should be visibly different if you're wearing rare,
+   elite, or godly ... rare is blue, elite is orange, godly is prismatic"
+   (src/rendering/lightfx/glint.js GRADE_LOOK).  The worn torso's and greaves'
+   grades go out on each player's tick entry as `eqg`, two letters (n / r / e
+   / g, chest then legs), and only when one of them is not normal -- so a
+   player in plain armour, the usual case, sends nothing new.  Counted by
+   combat.js's rule (`grade` in _armorDrMult), so the look never says more
+   than the fight counts: a minted piece's grade is the ledger's; a piece worn
+   through the legacy lane is worn as described, grade included (the owner's
+   v2.3.2534 decision, gear-provenance.md), and there an unproven godly reads
+   elite.  Derived from the worker's own copy of what is worn (`prov` is the
+   worker's, stripped from every claim), so no message sets `eqg` itself. */
+export function wornGradeLetter(piece) {
+  if (!piece || typeof piece !== 'object') return 'n';
+  const q = piece.quality;
+  if (q === 'godly') return piece.prov === PROV_MINTED ? 'g' : 'e';
+  return q === 'rare' ? 'r' : q === 'elite' ? 'e' : 'n';
+}
+export function armourGradeWire(ps) {
+  if (!ps) return null;
+  const s = wornGradeLetter(ps.armor) + wornGradeLetter(ps.legsArmor);
+  return s === 'nn' ? null : s;
+}
+
 /* ═══ THE STRIP ═══
  * Removes both provenance fields from a piece.  Called on EVERY inbound
  * path, on the raw claim, before anything else looks at it.
