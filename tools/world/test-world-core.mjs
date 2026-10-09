@@ -3290,16 +3290,19 @@ console.log("the buildings' doors (v2.3.3032)");
      Wheel's own (the Guild Hall, the Post Office, the Sheriff's Office), the
      Hotel stays shut */
   const actions = TOWN_BUILDINGS.map((b) => b.action || b.id).concat(['farmhome']);
-  ok('...all twelve of today\'s buildings have a door (none twice), and the other five plots are accounted for: the Town Hall (Mayor Bro), three halls of the Wheel\'s own and one shut that says so',
+  /* v2.3.3147: the Town Hall (the plan's `mayor (NPC)`, Mayor Bro on its steps) is a fourth hall,
+     so every plot of the town opens something or says it is shut */
+  ok('...all twelve of today\'s buildings have a door (none twice), and the other five plots are accounted for, none left over: four halls of the Wheel\'s own (three of the plan\'s "(new: ...)" buildings, and the Town Hall, Mayor Bro\'s) and one shut that says so',
     new Set(Object.values(WHEEL_BUILDING_DOORS)).size === 12 && tbIds.every((id) => Object.values(WHEEL_BUILDING_DOORS).includes(id))
-    && hallIds.length === 3 && closedIds.length === 1
-    && hallIds.concat(closedIds).every((k) => lotIds.has(k) && !openIds.includes(k) && /^\(new:/.test(todayOf[k]))
+    && hallIds.length === 4 && closedIds.length === 1
+    && hallIds.concat(closedIds).every((k) => lotIds.has(k) && !openIds.includes(k))
+    && hallIds.concat(closedIds).filter((k) => k !== 'townhall').every((k) => /^\(new:/.test(todayOf[k])) && todayOf.townhall === 'mayor (NPC)'
     && !hallIds.some((k) => closedIds.includes(k))
-    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id).join() === 'townhall',
+    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).length === 0,
     { halls: hallIds, closed: closedIds, rest: lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id) });
   ok('...each hall has its window\'s name and picture, and opens a panel of its own, never one of today\'s buildings\' (no `buildingPanel` value twice)',
     hallIds.every((k) => { const h = WHEEL_HALLS[WHEEL_HALL_DOORS[k]]; return h && h.title && h.sub && /^\/icons\/ui\/.+\.webp$/.test(h.icon); })
-    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 3 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
+    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 4 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
   {
     const PO = await import('../../src/game/postOffice.js');
     const S = {};
@@ -3498,6 +3501,102 @@ console.log('the lands\' music (v2.3.3064)');
   const trial = fs.readFileSync(new URL('../../src/game/wheelTrial.js', import.meta.url), 'utf8');
   ok('the minimap\'s frame asks, with where you are, beside the banner; wheelHere says whether its answer is for the cell you are in',
     /noteWheelMusic\(here, S, BT_AUDIO\)/.test(mini) && /fresh: _here\.x === cx && _here\.y === cy/.test(trial));
+}
+
+/* ── v2.3.3147: the inside of each building ──
+   Owner, 2026-10-06: sent seventeen pictures of the insides and said "Ok wire
+   these up". */
+console.log("the buildings' insides (v2.3.3147)");
+{
+  const fs = await import('node:fs');
+  const R = await import('../../src/data/buildingRooms.js');
+  const { WHEEL_BUILDING_DOORS, WHEEL_HALL_DOORS, WHEEL_SHUT_DOORS, WHEEL_HALLS } = await import('../../src/data/wheelBuildingDoors.js');
+  const { TOWN_BUILDINGS } = await import('../../src/data/buildings.js');
+  const dbp = buildBlueprint(PLAN);
+  const lotIds = dbp.lots.filter((l) => l.town && l.foot).map((l) => l.id);
+  const panelOf = (bid) => { const b = TOWN_BUILDINGS.find((q) => q.id === bid); return b && (b.action || b.id); };
+  /* every door of the Wheel's Brotown opens a window, and the window shows the room of THAT building */
+  const wrong = [];
+  for (const [plot, bid] of Object.entries(WHEEL_BUILDING_DOORS)) if (R.BUILDING_ROOMS[panelOf(bid)] !== plot) wrong.push([plot, panelOf(bid), R.BUILDING_ROOMS[panelOf(bid)]]);
+  for (const [plot, panel] of Object.entries(WHEEL_HALL_DOORS)) if (R.BUILDING_ROOMS[panel] !== plot) wrong.push([plot, panel, R.BUILDING_ROOMS[panel]]);
+  ok('every door that opens a window opens the window of its own room: the twelve buildings (through their `action`) and the four halls, each picture named for the plot it shows',
+    Object.keys(WHEEL_BUILDING_DOORS).length === 12 && Object.keys(WHEEL_HALL_DOORS).length === 4 && wrong.length === 0, wrong);
+  const rooms = Object.values(R.BUILDING_ROOMS);
+  ok('...sixteen windows, sixteen rooms (none shown twice), every one a plot of the town; the Hotel (shut) is the one with a picture and no window, so all seventeen plots are accounted for',
+    rooms.length === 16 && new Set(rooms).size === 16 && rooms.every((r) => lotIds.includes(r))
+      && R.SPARE_ROOMS.length === 1 && R.SPARE_ROOMS.every((r) => lotIds.includes(r) && !rooms.includes(r))
+      && WHEEL_SHUT_DOORS.every((r) => R.SPARE_ROOMS.includes(r)) && R.SPARE_ROOMS.join() === 'hotel'
+      && rooms.concat(R.SPARE_ROOMS).slice().sort().join() === lotIds.slice().sort().join(),
+    { rooms, spare: R.SPARE_ROOMS, lots: lotIds });
+  ok('a panel that is no building has no room (the Market is a screen of its own), and a client-supplied name can never reach a prototype key',
+    R.roomIdFor('store') === null && R.roomIdFor('shop') === null && R.roomIdFor(null) === null && R.roomIdFor('__proto__') === null
+      && R.roomIdFor('constructor') === null && R.keeperFor('__proto__') === null && R.keeperFor('toString') === null, {});
+  /* the pictures: all seventeen on disk, at the size the table says, and only those */
+  const dir = new URL('../../public/world/interiors/', import.meta.url);
+  const files = fs.readdirSync(dir).filter((f) => !f.startsWith('.')).sort();
+  const want = rooms.concat(R.SPARE_ROOMS).map((r) => r + '.webp').sort();
+  const dims = (f) => {
+    const b = fs.readFileSync(new URL(f, dir));
+    if (b.toString('ascii', 0, 4) !== 'RIFF' || b.toString('ascii', 8, 12) !== 'WEBP' || b.toString('ascii', 12, 16) !== 'VP8 ') return null;   /* lossy, no alpha */
+    return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff, kb: Math.round(b.length / 1024) };
+  };
+  const sizes = files.map((f) => [f, dims(f)]);
+  ok(`all seventeen pictures are in public/world/interiors/ and nothing else is (${files.length} files)`, files.join() === want.join(), { files, want });
+  ok(`...each a lossy WebP of exactly ${R.ROOM_W} x ${R.ROOM_H} under 450 KB (3.5 MB decoded; the raw 1536 x 1024 would be 6.3 MB for one window)`,
+    sizes.every(([, d]) => d && d.w === R.ROOM_W && d.h === R.ROOM_H && d.kb < 450), sizes.filter(([, d]) => !(d && d.w === R.ROOM_W && d.h === R.ROOM_H && d.kb < 450)));
+  /* the people the game draws into a room: their strip is the size the table says and they stand inside the scene */
+  const png = (url) => { const b = fs.readFileSync(new URL('../../public' + url, import.meta.url)); return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) }; };
+  const kproblems = [];
+  for (const [id, k] of Object.entries(R.ROOM_KEEPERS)) {
+    const d = png(k.src), q = R.keeperBox(k);
+    if (!rooms.includes(id)) kproblems.push([id, 'no such room']);
+    if (d.w !== k.cell.w * k.frames || d.h !== k.cell.h) kproblems.push([id, 'strip', d]);
+    if (!(k.art.x0 >= 0 && k.art.x1 < k.cell.w && k.art.y1 < k.cell.h)) kproblems.push([id, 'art box outside its cell']);
+    if (!(q.left >= 0 && q.top >= 0 && q.left + q.width <= 100 && q.top + q.height <= 100)) kproblems.push([id, 'outside the room', q]);
+  }
+  ok('the Auction House\'s clerk is a keeper of the table: his strip is 6 frames of 362 x 724 as the table says, and his cell lies inside the room\'s box (his forearms on the counter at 66.5% down, his head clear of the sign)',
+    Object.keys(R.ROOM_KEEPERS).join() === 'auction' && kproblems.length === 0 && R.keeperBox(R.ROOM_KEEPERS.auction).top > 30, kproblems);
+  /* where it is drawn */
+  const bt = fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
+  const css = fs.readFileSync(new URL('../../src/styles/game.css', import.meta.url), 'utf8');
+  ok('BroTown draws the room first inside the window card, once, keyed by the panel (so a panel that opens another gets its own), and the card says which room it holds',
+    /React\.createElement\(BuildingRoom, \{ key: buildingPanel, panel: buildingPanel \}\)/.test(bt) && /"data-room": roomIdFor\(buildingPanel\)/.test(bt)
+      && (bt.match(/React\.createElement\(BuildingRoom,/g) || []).length === 1, {});
+  ok('...and the Land Office\'s window is a panel in that card like the others (it was a separate z-30 dialog under an EMPTY card, which the room\'s picture would have covered whole): LandOfficePanel in the chain, no overlay of its own for it',
+    /buildingPanel === 'farmhome' && \/\*#__PURE__\*\/React\.createElement\(LandOfficePanel, \{/.test(bt)
+      && !/buildingPanel === 'farmhome' && \/\*#__PURE__\*\/React\.createElement\("div"/.test(bt)
+      && /Travel to Farm/.test(fs.readFileSync(new URL('../../src/ui/panels/buildings/LandOfficePanel.jsx', import.meta.url), 'utf8')), {});
+  /* v2.3.3147: the Town Hall is a hall, its rows open things that exist */
+  {
+    const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
+    const th = WHEEL_HALLS.townhall;
+    const hallSrc = read('../../src/ui/panels/buildings/WheelHallPanel.jsx');
+    ok('the Town Hall is a hall of the Wheel\'s own with a window: its name, a bell-tower icon on disk, and two rows -- the Leaderboard (the dashboard\'s own Ranks page, a ranking for every combat and life skill) and the World map (the Wheel\'s labelled map, opened by the overlay\'s own opener, not the QA hook)',
+      !!th && th.title === 'Town Hall' && WHEEL_HALL_DOORS.townhall === 'townhall' && fs.existsSync(new URL('../../public' + th.icon, import.meta.url))
+        && /row\('leaderboard', '\/icons\/ui\/panel-leaderboard\.webp'/.test(hallSrc) && /row\('map', '\/icons\/ui\/nav-map\.webp'/.test(hallSrc)
+        && fs.existsSync(new URL('../../public/icons/ui/panel-leaderboard.webp', import.meta.url)) && fs.existsSync(new URL('../../public/icons/ui/nav-map.webp', import.meta.url))
+        && /leaderboard:\s+\{ title: 'Leaderboard', Component: LeaderboardPanel \}/.test(read('../../src/ui/mobile/BottomDashboard.jsx'))
+        && /export function openWorldMap\(\)/.test(read('../../src/ui/WorldMapOverlay.jsx'))
+        && /onLeaderboard: function onLeaderboard\(\) \{ setBuildingPanel\(null\); dashboardPanelBus\.open\('more'\); dashboardPanelBus\.push\('leaderboard'\); \}/.test(bt)
+        && /onMap: function onMap\(\) \{ setBuildingPanel\(null\); openWorldMap\(\); \}/.test(bt)
+        && /Object\.prototype\.hasOwnProperty\.call\(WHEEL_HALLS, buildingPanel\) && \/\*#__PURE__\*\/React\.createElement\(WheelHallPanel/.test(bt), {});
+  }
+  ok('...the door you stand at decodes its room (a cap of one) and a shop\'s or hall\'s door -- not the Town Hall\'s, where everyone starts -- starts the rest coming in idle moments at low priority; none of the pictures rides the loading screen, and the Auction House\'s old painting and its gate preload are gone',
+    /warmRoom\(_panel \|\| null\);/.test(bt) && !/prefetchRooms/.test(bt)
+      && /const HUB_ROOMS = \['townhall'\];/.test(fs.readFileSync(new URL('../../src/game/buildingRooms.js', import.meta.url), 'utf8'))
+      && /if \(HUB_ROOMS\.indexOf\(id\) < 0\) prefetchRooms\(\);/.test(fs.readFileSync(new URL('../../src/game/buildingRooms.js', import.meta.url), 'utf8'))
+      && /fetchPriority = 'low'/.test(fs.readFileSync(new URL('../../src/game/buildingRooms.js', import.meta.url), 'utf8'))
+      && !fs.existsSync(new URL('../../src/rendering/auctionInteriorPreload.js', import.meta.url))
+      && !fs.existsSync(new URL('../../public/sprites/props/auction-house-interior.png', import.meta.url))
+      && !/auctionInterior/.test(fs.readFileSync(new URL('../../src/rendering/preloadAnimations.js', import.meta.url), 'utf8'))
+      && !/roomScene|auction-house-interior/.test(fs.readFileSync(new URL('../../src/ui/panels/buildings/VendorPanel.jsx', import.meta.url), 'utf8')), {});
+  ok('the card\'s load-bearing 20 px padding is kept: the room bleeds -20 px on its top and sides with +20 px under it, squares the panel\'s top corners, hides on a sideways phone, and the forge\'s slim band is 4:1',
+    /\.bt-room\{[^}]*margin:-20px -20px 20px/.test(css) && /\.bt-room \+ \*\{border-top-left-radius:0!important/.test(css)
+      && /@media \(max-height:460px\)\{\.bt-room\{display:none\}\}/.test(css) && /\.bt-room\[data-shape="band"\]\{[^}]*aspect-ratio:4\/1/.test(css)
+      && /\.bt-inspect-card\{[^}]*padding:20px/.test(css), {});
+  const hd = fs.readFileSync(new URL('../../public/_headers', import.meta.url), 'utf8');
+  ok(`the pictures are asked for at ?v=${R.ROOMS_V} and cached for a year (public/_headers)`,
+    R.roomUrl('bank') === `/world/interiors/bank.webp?v=${R.ROOMS_V}` && /\/world\/interiors\/\*\s*\n\s*Cache-Control: public, max-age=31536000, immutable/.test(hd), {});
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

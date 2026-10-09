@@ -135,10 +135,14 @@ import { GamblePanel } from './panels/buildings/GamblePanel.jsx';
 import { PartyPanel } from './panels/buildings/PartyPanel.jsx';
 import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
 import { WheelHallPanel } from './panels/buildings/WheelHallPanel.jsx';   /* v2.3.3066: the Wheel's halls */
+import { LandOfficePanel } from './panels/buildings/LandOfficePanel.jsx';   /* v2.3.3147: the Land Office's window, in the card like the others */
+import { BuildingRoom } from './panels/buildings/BuildingRoom.jsx';   /* v2.3.3147: the inside of each building, at the top of its window */
+import { warmRoom } from '@/game/buildingRooms.js';   /* v2.3.3147 */
+import { roomIdFor } from '@/data/buildingRooms.js';   /* v2.3.3147 */
 import { ClanInviteCard } from './panels/ClanInviteCard.jsx';            /* v2.3.3066: a clan invite you can take up */
 import { StorePanel } from './panels/buildings/StorePanel.jsx';   /* v2.3.2476: the auction house */
 import { StoreToast } from './mobile/StoreToast.jsx';   /* v2.3.2476: "your thing sold" */
-import { WorldMapOverlay } from './WorldMapOverlay.jsx';  /* v2.3.2966: the Wheel's labelled world map */
+import { WorldMapOverlay, openWorldMap } from './WorldMapOverlay.jsx';  /* v2.3.2966: the Wheel's labelled world map */
 import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
 import { pageIsPinchZoomed } from '@/data/joinGate.js';   /* v2.3.2388 */
 /* v2.3.1189: LEGACY DEBT burn-down — these five resolved only via the
@@ -1659,6 +1663,16 @@ export var BroTown = function BroTown(_ref0) {
   var _useStateWH = useState(null),
     nearHall = _useStateWH[0],
     setNearHall = _useStateWH[1];
+  /* v2.3.3147: the picture of the room behind the door you stand at is decoded
+     while you stand there (game/buildingRooms.js), so the window opens with it
+     and not a beat after; the first shop or hall door you reach (not the Town
+     Hall's, where everyone starts) also starts the other rooms' bytes coming in
+     idle moments.  Walk away and it is let go (a cap of one). */
+  useEffect(function () {
+    var _b = nearBuilding !== null && BUILDINGS[nearBuilding] ? BUILDINGS[nearBuilding] : null;
+    var _panel = _b ? (_b.action || _b.id) : nearHall;
+    warmRoom(_panel || null);
+  }, [nearBuilding, nearHall]);
   var _useStateCI = useState(null),
     clanInvite = _useStateCI[0],
     setClanInvite = _useStateCI[1];
@@ -11997,6 +12011,7 @@ export var BroTown = function BroTown(_ref0) {
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect-card",
     "data-building-panel": buildingPanel /* v2.3.3032: which building's panel is open (mp-wheeldoors) */,
+    "data-room": roomIdFor(buildingPanel) || undefined /* v2.3.3147: the room pictured at its top (game.css .bt-room) */,
     onClick: function onClick(e) {
       return e.stopPropagation();
     },
@@ -12029,17 +12044,48 @@ export var BroTown = function BroTown(_ref0) {
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "\u2715"), /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
+  }, "\u2715"), /*#__PURE__*/React.createElement(BuildingRoom, { key: buildingPanel, panel: buildingPanel }) /* v2.3.3147: the inside of the building, first in its window */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
        opens the panel that does the work and closes the hall */
-  (buildingPanel === 'guildhall' || buildingPanel === 'post' || buildingPanel === 'sheriff') && /*#__PURE__*/React.createElement(WheelHallPanel, {
+  Object.prototype.hasOwnProperty.call(WHEEL_HALLS, buildingPanel) && /*#__PURE__*/React.createElement(WheelHallPanel, {   /* v2.3.3147: every hall in the table, the Town Hall's too */
     hall: buildingPanel,
     stateRef: stateRef,
     onClan: function onClan() { setBuildingPanel(null); setShowClanPanel(true); },
     onGuild: function onGuild() { setBuildingPanel(null); setShowGuildPanel(true); },
     onMessages: function onMessages() { setBuildingPanel(null); dashboardPanelBus.open('social'); },
     onPlayers: function onPlayers() { setBuildingPanel(null); setShowPlayerList(true); },
-    onArena: function onArena() { setBuildingPanel('party'); }
-  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'enchant' && /*#__PURE__*/React.createElement(EnchantPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'party' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'gemcut' && /*#__PURE__*/React.createElement(GemcutPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
+    onArena: function onArena() { setBuildingPanel('party'); },
+    /* v2.3.3147: the Town Hall's rows -- the dashboard's Ranks page (More -> Leaderboard, as its tile opens it), and the Wheel's world map */
+    onLeaderboard: function onLeaderboard() { setBuildingPanel(null); dashboardPanelBus.open('more'); dashboardPanelBus.push('leaderboard'); },
+    onMap: function onMap() { setBuildingPanel(null); openWorldMap(); }
+  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'enchant' && /*#__PURE__*/React.createElement(EnchantPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'party' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'gemcut' && /*#__PURE__*/React.createElement(GemcutPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), /* v2.3.3147: the Land Office's window is a panel in the card now (it was a separate dialog under an empty card, panels/buildings/LandOfficePanel.jsx) */
+  buildingPanel === 'farmhome' && /*#__PURE__*/React.createElement(LandOfficePanel, {
+    onCancel: function onCancel() { return setBuildingPanel(null); },
+    onTravel: function onTravel() {
+      var S2 = stateRef.current;
+      rememberFarmTrip(S2);   /* v2.3.3032: from the Wheel, the gate leads back out where you stood */
+      S2.currentZone = 'farm_home';
+      updateZoneDimensions('farm_home');   /* v2.3.3136: the farm's own size (this warp never set it) */
+      S2.map = generateZoneMap('farm_home');
+      /* v2.3.3136: in at the farm's gate, held under its loading screen until
+         it is all there (game/farmTrip.js) */
+      S2.player.x = FARM_ARRIVE.x;
+      S2.player.y = FARM_ARRIVE.y;
+      holdFarmUntilReady(S2);
+      S2.monsters = [];
+      S2.gatherNodes = [];
+      S2.npcs = null;
+      S2.groundLoot = [];
+      S2.hitParticles = [];
+      S2.deathExplosions = [];
+      S2.arrows = [];
+      S2._currentDepth = 'shallow';
+      S2._ambientParticles = [];
+      S2._zoneWipe = Date.now();
+      setBuildingPanel(null);
+      BT_AUDIO.startZoneAmbient('town');
+      BT_AUDIO.beep(500, 0.08, 0.12, 'sine');
+    }
+  }))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 8,
@@ -12168,92 +12214,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       color: '#D8A94D'
     }
-  }, "\uD83C\uDF1F Well Rested +10% XP \xB7 ", Math.ceil((rpgState._wellRestedUntil - Date.now()) / 60000), "min")), showSocialPanel && /*#__PURE__*/React.createElement(SocialPanel, { blockedList: blockedList, friendsList: friendsList, mutedList: mutedList, setBlockedList: setBlockedList, setFriendsList: setFriendsList, setMutedList: setMutedList, setShowSocialPanel: setShowSocialPanel, stateRef: stateRef }), showClanPanel && rpgState && /*#__PURE__*/React.createElement(ClanPanel, { rpgState: rpgState, clanCreateMode: clanCreateMode, setClanCreateMode: setClanCreateMode, clanData: clanData, setClanData: setClanData, setRpgState: setRpgState, setShowClanPanel: setShowClanPanel, stateRef: stateRef }), buildingPanel === 'farmhome' && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      inset: 0,
-      zIndex: 30,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'rgba(0,0,0,.6)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: 'var(--ink2)',
-      border: '1px solid var(--line)',
-      borderRadius: 14,
-      padding: 20,
-      maxWidth: 280,
-      width: '90%',
-      textAlign: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 800,
-      color: '#4a7a3a',
-      marginBottom: 8
-    }
-  }, "\uD83C\uDFE1 Your Farm"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: 'rgba(255,255,255,.5)',
-      marginBottom: 12
-    }
-  }, "Visit your personal farm to grow crops, rest in bed, and tend your homestead."), /*#__PURE__*/React.createElement("button", {
-    style: {
-      padding: '8px 20px',
-      borderRadius: 8,
-      border: 'none',
-      background: '#4a7a3a',
-      color: '#fff',
-      fontSize: 12,
-      fontWeight: 700,
-      cursor: 'pointer',
-      width: '100%',
-      marginBottom: 6
-    },
-    onClick: function onClick() {
-      var S2 = stateRef.current;
-      rememberFarmTrip(S2);   /* v2.3.3032: from the Wheel, the gate leads back out where you stood */
-      S2.currentZone = 'farm_home';
-      updateZoneDimensions('farm_home');   /* v2.3.3136: the farm's own size (this warp never set it) */
-      S2.map = generateZoneMap('farm_home');
-      /* v2.3.3136: in at the farm's gate, held under its loading screen until
-         it is all there (game/farmTrip.js) */
-      S2.player.x = FARM_ARRIVE.x;
-      S2.player.y = FARM_ARRIVE.y;
-      holdFarmUntilReady(S2);
-      S2.monsters = [];
-      S2.gatherNodes = [];
-      S2.npcs = null;
-      S2.groundLoot = [];
-      S2.hitParticles = [];
-      S2.deathExplosions = [];
-      S2.arrows = [];
-      S2._currentDepth = 'shallow';
-      S2._ambientParticles = [];
-      S2._zoneWipe = Date.now();
-      setBuildingPanel(null);
-      BT_AUDIO.startZoneAmbient('town');
-      BT_AUDIO.beep(500, 0.08, 0.12, 'sine');
-    }
-  }, "\uD83D\uDEB6 Travel to Farm"), /*#__PURE__*/React.createElement("button", {
-    style: {
-      padding: '6px 12px',
-      borderRadius: 6,
-      border: '1px solid rgba(255,255,255,.15)',
-      background: 'rgba(255,255,255,.06)',
-      color: 'rgba(255,255,255,.5)',
-      fontSize: 11,
-      cursor: 'pointer',
-      width: '100%'
-    },
-    onClick: function onClick() {
-      return setBuildingPanel(null);
-    }
-  }, "Cancel"))), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), /* v2.3.3066: a clan invite raises its own card (ClanInviteCard) */ clanInvite && !duelRequest && /*#__PURE__*/React.createElement(ClanInviteCard, { stateRef: stateRef, invite: clanInvite, onDone: function onDone() { setClanInvite(null); } }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
+  }, "\uD83C\uDF1F Well Rested +10% XP \xB7 ", Math.ceil((rpgState._wellRestedUntil - Date.now()) / 60000), "min")), showSocialPanel && /*#__PURE__*/React.createElement(SocialPanel, { blockedList: blockedList, friendsList: friendsList, mutedList: mutedList, setBlockedList: setBlockedList, setFriendsList: setFriendsList, setMutedList: setMutedList, setShowSocialPanel: setShowSocialPanel, stateRef: stateRef }), showClanPanel && rpgState && /*#__PURE__*/React.createElement(ClanPanel, { rpgState: rpgState, clanCreateMode: clanCreateMode, setClanCreateMode: setClanCreateMode, clanData: clanData, setClanData: setClanData, setRpgState: setRpgState, setShowClanPanel: setShowClanPanel, stateRef: stateRef }), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), /* v2.3.3066: a clan invite raises its own card (ClanInviteCard) */ clanInvite && !duelRequest && /*#__PURE__*/React.createElement(ClanInviteCard, { stateRef: stateRef, invite: clanInvite, onDone: function onDone() { setClanInvite(null); } }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
    prototype era -- the step machine ran all along, only the display was
    gated, so veterans' bt_tutorial already reads 7/10 and never see it) */
   /* v2.3.1235: §6 — the banner yields to every blocking decision
