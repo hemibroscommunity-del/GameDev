@@ -76,8 +76,8 @@ try {
       lines.forEach((l, i) => ctx.fillText(l, x, y + (i - (lines.length - 1) / 2) * size * 1.15));
     };
     const wrap = (name) => name.replace(' & ', ' &\n').replace("Sheriff's Office", "Sheriff's\nOffice").replace('Gambling Den', 'Gambling\nDen')
-      .replace('General Store', 'General\nStore').replace('Auction House', 'Auction\nHouse').replace('Assay Office', 'Assay\nOffice')
-      .replace('Land Office', 'Land\nOffice').replace('Guild Hall', 'Guild\nHall').replace('Gem Cutter', 'Gem\nCutter').replace('Town Hall', 'Town\nHall');
+      .replace('General Store', 'General\nStore').replace('Auction House', 'Auction\nHouse')
+      .replace('Land Office', 'Land\nOffice').replace('Guild Hall', 'Guild\nHall').replace('Gem Works', 'Gem\nWorks').replace('Town Hall', 'Town\nHall');
     for (const l of S.bp.lots) {
       const x = X((l.x0 + l.x1) / 2), y = Y((l.y0 + l.y1) / 2);
       if (x < 0 || y < 0 || x > OUTPX || y > OUTPX) continue;

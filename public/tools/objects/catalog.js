@@ -85,8 +85,8 @@ export const BUILDINGS = [
     bro: 'a chopping log with an axe stuck in it, next to a scoreboard of tally marks; and a carved wooden bear in sunglasses flexing beside the door. Bows and staves are racked along the porch like trophies',
   }),
   B({
-    id: 'gemcutter', name: 'Gem Cutter', end: 'north', key: 'green', sign: 'GEMS',
-    job: 'where players cut raw gems',
+    id: 'gemcutter', name: 'Gem Works', end: 'north', key: 'green', sign: 'GEMS',
+    job: 'where players cut raw gems and have them set into their gear',
     look: 'A narrow, tidy two-storey shop of fieldstone and dark timber, with iron-barred windows and one big bay window of small glass panes.',
     bro: 'a giant cut amethyst the size of a barrel mounted on the roof like a trophy, and a jeweller\'s magnifying glass as big as a cartwheel hanging over the door as the shop\'s sign',
   }),
@@ -149,12 +149,6 @@ export const BUILDINGS = [
     job: 'where players keep their things safe',
     look: 'A solid, handsome bank of pale cut sandstone blocks with a columned front, heavy iron-barred windows, and a round steel vault door set into the front wall beside the entrance.',
     bro: 'two stone lions in sunglasses guarding the steps, and gold bars stacked on a bar like barbell weights on a bench by the door',
-  }),
-  B({
-    id: 'assay', name: 'Assay Office', end: 'east', sign: 'ASSAY',
-    job: 'where players set gems into their gear',
-    look: 'A narrow two-storey office of red brick with a cut sandstone ground floor, an iron-shuttered window, and glass bottles of coloured liquids in its front window.',
-    bro: 'a giant brass balance scale hung over the door as the shop\'s sign, a gold nugget in one pan and a dumbbell in the other; and a sword with gems in its hilt stuck in a rock by the steps',
   }),
   B({
     id: 'store', name: 'General Store', end: 'east', sign: 'DEALS',

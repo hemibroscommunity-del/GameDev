@@ -123,7 +123,7 @@ const sqAt = (p) => { const [x, y] = art(p); const c = cellAt(g, x, y); return c
      the bigger town reaching nearly to the Sweetwater River) */
   ok('past the gates the streets become roads', [[0, -(gNS + 150)], [gEW + 150, 0], [0, gNS + 150], [-(gEW + 150), 0]].every(([dx, dy]) => at(g.cx + dx, g.cy + dy) === C.path || at(g.cx + dx, g.cy + dy) === C.bridge));
   const townLots = bp.lots.filter((l) => l.town), places = bp.lots.filter((l) => !l.town);
-  ok('Brotown has the Town Hall plus 16 plots along its streets', townLots.length === 17 && townLots.every((l) => at((l.x0 + l.x1) / 2, (l.y0 + l.y1) / 2) === C.lot), townLots.length);
+  ok('Brotown has the Town Hall plus 15 plots along its streets (v2.3.3148: the Assay Office is gone)', townLots.length === 16 && townLots.every((l) => at((l.x0 + l.x1) / 2, (l.y0 + l.y1) / 2) === C.lot), townLots.length);
   /* v2.3.2960, owner: "The one thing I want to change are the boards. They
      do not look good and I don't know what those are supposed to be." */
   let townBoards = 0;
@@ -1257,7 +1257,7 @@ console.log('objects');
   const lots = [PLAN.town.hallLot.id];
   for (const sides of Object.values(PLAN.town.lots)) for (const list of Object.values(sides)) for (const l of list) lots.push(l.id);
   ok(`every one of the town's ${lots.length} plots has its building, under the plot's id, and every building is on a plot`,
-    lots.length === 17 && BUILDINGS.length === 17 && lots.every((id) => BUILDINGS.some((b) => b.id === id)) && BUILDINGS.every((b) => lots.includes(b.id) && ENDS[b.end]));
+    lots.length === 16 && BUILDINGS.length === 16 && lots.every((id) => BUILDINGS.some((b) => b.id === id)) && BUILDINGS.every((b) => lots.includes(b.id) && ENDS[b.end]));
   /* the frame: as tall as a ground swatch covers, so ChatGPT draws its
      pixels the ground's size; every object fits inside it with room */
   ok(`every picture is as tall as a ground swatch covers (${FRAME_GAME_PX} game px), and every object fits inside it with room to spare`,
@@ -1484,7 +1484,7 @@ console.log('objects on the Wheel (v2.3.2975)');
   const bAt = Object.create(null);
   for (let i = 0; i < P1.n; i++) if (byId[idOf(i)] && byId[idOf(i)].kind === 'building') bAt[idOf(i)] = [P1.x[i], P1.y[i]];
   ok('every building stands on its own plot, the bottom of its steps on the plot\'s door, the Town Hall too',
-    townLots.length === 17 && townLots.every((l) => { const b = bAt[l.id], [fx, fy] = gOf(l.foot.x, l.foot.y); return b && Math.abs(b[0] - fx) < 1 && Math.abs(b[1] - fy) < 1; }), Object.keys(bAt).length);
+    townLots.length === 16 && townLots.every((l) => { const b = bAt[l.id], [fx, fy] = gOf(l.foot.x, l.foot.y); return b && Math.abs(b[0] - fx) < 1 && Math.abs(b[1] - fy) < 1; }), Object.keys(bAt).length);
   /* every door opens to the south onto a street, the square or a walk */
   const shut = townLots.filter((l) => { const [fx, fy] = gOf(l.foot.x, l.foot.y + T.lot.porch + 6); const c = clsAtG(fx, fy); return c !== C.street && c !== C.plaza; });
   ok('every building faces south, as drawn, and its door opens onto a street, the square, the Back Lane or a front walk to Main Street',
@@ -1590,7 +1590,7 @@ console.log('objects on the Wheel (v2.3.2975)');
   /* a building's footprint: its plot's width, back from its door */
   const bBox = boxes.filter((q) => byId[q[4]].kind === 'building');
   ok('each building stops you on its own plot: its width, and back from its porch half its height (the roof you walk behind)',
-    bBox.length === 17 && bBox.every((q) => { const l = townLots.find((t) => t.id === q[4]); const [x0, y0] = gOf(l.x0, l.y0), [x1, y1] = gOf(l.x1, l.y1); return q[0] >= x0 - 2 && q[2] <= x1 + 2 && Math.abs(q[3] - y1) < 1 && q[3] - q[1] > 140; }), bBox.length);
+    bBox.length === 16 && bBox.every((q) => { const l = townLots.find((t) => t.id === q[4]); const [x0, y0] = gOf(l.x0, l.y0), [x1, y1] = gOf(l.x1, l.y1); return q[0] >= x0 - 2 && q[2] <= x1 + 2 && Math.abs(q[3] - y1) < 1 && q[3] - q[1] > 140; }), bBox.length);
   /* v2.3.2976: the door check above went by the plan's height budgets; with
      all seventeen pictures in, by the pictures themselves -- one drawn in
      front of another's door would hide it */
@@ -1604,7 +1604,7 @@ console.log('objects on the Wheel (v2.3.2975)');
     if (b.foot.x > a.foot.x - hw && b.foot.x < a.foot.x + hw && b.foot.y > a.foot.y - h && b.foot.y < a.foot.y) covered.push([a.id, b.id]);
   }
   ok(`...and as drawn: no building's picture covers another's door, all ${Object.keys(picOf).length} of them (the Town Hall ${picOf.townhall ? `${picOf.townhall.gameW} x ${picOf.townhall.gameH}` : 'missing'} game px)`,
-    Object.keys(picOf).length === 17 && covered.length === 0, covered);
+    Object.keys(picOf).length === 16 && covered.length === 0, covered);
 
   /* the sprite sheets: palette PNGs, a few objects a page, a building a page */
   const dir = new URL('../../public/world/objects/', import.meta.url);
@@ -1626,7 +1626,7 @@ console.log('objects on the Wheel (v2.3.2975)');
   }
   ok(`the game's objects are ${man.atlases.length} sprite sheets, every one a palette PNG of ${PAGE_COLOURS} colours or fewer (at most ${maxCol}): ${(bytes / 1048576).toFixed(1)} MB, where one full-colour sheet a land was 15.7`,
     palette === man.atlases.length && maxCol <= PAGE_COLOURS && bytes < 7 * 1048576, { palette, bytes, maxCol });
-  ok('...each building a page of its own, so only the ones near you are in memory', buildingPages.length === 17 && buildingPages.every((a) => a.kinds.length === PAGE_KINDS.buildings), buildingPages.length);
+  ok('...each building a page of its own, so only the ones near you are in memory', buildingPages.length === 16 && buildingPages.every((a) => a.kinds.length === PAGE_KINDS.buildings), buildingPages.length);
   ok('...every object\'s every piece a frame of its page, its size, its anchor at its foot, 2 px a game px', framesOk);
   /* the packer itself: kinds join a page while their colours fit */
   const fake = (id, n, w = 60, h = 60) => ({ id, colours: new Set(Array.from({ length: n }, (_, k) => (id.length << 16) + k * 7 + id.charCodeAt(0) * 1000)), items: [{ name: id + '-1', w, h }] });
@@ -2113,7 +2113,7 @@ console.log('the big-town preview (v2.3.2982)');
   const lots2 = bbp.lots.filter((l) => l.town), bAt = Object.create(null);
   for (let i = 0; i < BO.n; i++) { const id = BO.kinds[BO.kind[i]]; if (byId[id] && byId[id].kind === 'building') bAt[id] = [BO.x[i], BO.y[i]]; }
   ok(`${BO.buildings} of its ${BO.buildingsOf} buildings stand, Market Row keeping one plot a side, each on its plot's door, drawn twice the size (everything else as made)`,
-    BO.buildings === 13 && BO.buildingsOf === 17 && lots2.length === 13 &&
+    BO.buildings === 13 && BO.buildingsOf === 16 && lots2.length === 13 &&   /* v2.3.3148: 13 of 16 (the Assay Office is gone; the Auction House, Feed & Seed and General Store are the three Market Row keeps out) */
     lots2.every((l) => { const b = bAt[l.id], [fx, fy] = gOf(l.foot.x, l.foot.y); return b && Math.abs(b[0] - fx) < 1 && Math.abs(b[1] - fy) < 1; }) &&
     BO.kinds.every((id, k) => BO.kindScale[k] === (byId[id] && byId[id].kind === 'building' ? 2 : 1)), Object.keys(bAt));
   const shut = lots2.filter((l) => { const [fx, fy] = gOf(l.foot.x, l.foot.y + T2.lot.porch + 6); const c = clsAtG(fx, fy); return c !== C.street && c !== C.plaza; });
@@ -2180,7 +2180,7 @@ console.log('the big-town preview (v2.3.2982)');
     if (b.foot.x > a.foot.x - hw && b.foot.x < a.foot.x + hw && b.foot.y > a.foot.y - h && b.foot.y < a.foot.y) cov15.push([a.id, b.id]);
   }
   ok(`at 1.5x all ${O15.buildings} of the ${O15.buildingsOf} buildings stand (Market Row two a side, up to ${TWO_A_SIDE_MAX}x), every door open, none covering another's`,
-    TWO_A_SIDE_MAX === 1.5 && O15.buildings === 17 && O15.buildingsOf === 17 && lots15.length === 17 && shut15.length === 0 && cov15.length === 0
+    TWO_A_SIDE_MAX === 1.5 && O15.buildings === 16 && O15.buildingsOf === 16 && lots15.length === 16 && shut15.length === 0 && cov15.length === 0
     && bigTownPlan(1.6).town.lot.perSideRow === 1, { buildings: O15.buildings, shut: shut15.map((l) => l.id), cov15 });
   const t15 = b15.regionIds.indexOf('town'), hub15 = P15.wheel.hub * (P15.square.px - P15.square.overlap);
   let beyond15 = 0, wet15 = 0;
@@ -2241,7 +2241,7 @@ console.log('the town laid roomier (v2.3.3022)');
   const pair = (pics, a, b) => gap(pics.find((p) => p.id === a), pics.find((p) => p.id === b));
   const hallHotel = [pair(was, 'townhall', 'hotel'), pair(now, 'townhall', 'hotel')];
   ok(`the standard town is laid ${TOWN}x round ${BUILDINGS}x buildings, all ${O.buildings} of ${O.buildingsOf} standing, the gates at ${townGates(PLAN.town).ns} and ${townGates(PLAN.town).ew} art px`,
-    PLAN.bigTown === 1.5 && PLAN.town.buildingScale === 1.15 && O.buildings === 17 && O.buildingsOf === 17 && now.length === 17
+    PLAN.bigTown === 1.5 && PLAN.town.buildingScale === 1.15 && O.buildings === 16 && O.buildingsOf === 16 && now.length === 16
     && townGates(PLAN.town).ns === 1326 && townGates(PLAN.town).ew === 1447, { gates: townGates(PLAN.town) });
   ok(`room between the buildings: the closest two pictures ${Math.round(tN.d)} game px apart (${tN.a} and ${tN.b}; laid 1.15x it was ${Math.round(tB.d)}, ${tB.a} and ${tB.b}), the Town Hall and the Hotel ${Math.round(hallHotel[0])} -> ${Math.round(hallHotel[1])}`,
     tN.d >= 60 && tB.d < 20 && hallHotel[1] >= 90, { tN, tB, hallHotel });
@@ -2341,17 +2341,17 @@ console.log('the designed town (v2.3.3031)');
 
   /* the districts, and plots off their rows */
   const ids = (arm) => tp.lots.filter((l) => l.arm === arm).map((l) => l.id).sort().join();
-  ok('each arm is a district: the civic front and trades in the north, the mine side east (Bank, Assay, Gem Cutter, Auction), the strip south (Saloon, Hotel, Gambling Den, the Sheriff at its end), the farm road west',
-    ids('north') === 'blacksmith,guildhall,post,woodworker' && ids('east') === 'assay,auction,bank,gemcutter' && ids('south') === 'gambling,hotel,saloon,sheriff' && ids('west') === 'cookhouse,feedseed,landoffice,store' &&
-    tp.lots.length === 17);
+  ok('each arm is a district: the civic front and trades in the north, the mine side east (Bank, Gem Works, Auction; v2.3.3148: the Assay Office is gone), the strip south (Saloon, Hotel, Gambling Den, the Sheriff at its end), the farm road west',
+    ids('north') === 'blacksmith,guildhall,post,woodworker' && ids('east') === 'auction,bank,gemcutter' && ids('south') === 'gambling,hotel,saloon,sheriff' && ids('west') === 'cookhouse,feedseed,landoffice,store' &&
+    tp.lots.length === 16);
   /* the same lots with their offsets taken off: where each stands in its row */
   const rowLots = Object.fromEntries(Object.entries(T.lots).map(([arm, sides]) => [arm, Object.fromEntries(Object.entries(sides).map(([side, list]) => [side, list.map(({ dx, dy, ...r }) => r)]))]));
   const plain = townPlan({ ...T, lots: rowLots });
   const moved = tp.lots.filter((l) => { const p = plain.lots.find((q) => q.id === l.id); return Math.abs(l.x0 - p.x0) >= 8 || Math.abs(l.y0 - p.y0) >= 8; });
   const overlap = [];
   for (const a of tp.lots) for (const b of tp.lots) if (a.id < b.id && a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1) overlap.push([a.id, b.id]);
-  const rowDy = new Set(tp.lots.filter((l) => l.arm === 'east' && l.side === 'north').map((l) => Math.round(l.y1)));
-  ok(`no row is a ruler line: ${moved.length} of the 16 plots stand off their row, none on another, Market Row's north side at ${rowDy.size} different depths, and the gates are where the farthest plot puts them (${G.ns}, ${G.ew})`,
+  const rowDy = new Set(tp.lots.filter((l) => (l.arm === 'east' || l.arm === 'west') && l.side === 'north').map((l) => Math.round(l.y1)));   /* v2.3.3148: both arms -- the east one is the Bank alone now */
+  ok(`no row is a ruler line: ${moved.length} of the 15 plots stand off their row, none on another, Market Row's north side at ${rowDy.size} different depths, and the gates are where the farthest plot puts them (${G.ns}, ${G.ew})`,
     moved.length >= 14 && overlap.length === 0 && rowDy.size >= 2 && G.ew <= 1455, { moved: moved.length, overlap });
   const shut = tp.lots.filter((l) => { const [fx, fy] = gOf(l.foot.x, l.foot.y + T.lot.porch + 6), c = bp.cls[cellOfG(fx, fy)]; return c !== C.street && c !== C.plaza; });
   ok('...every door still opens onto the square, a street, the Back Lane or a walk -- a plot set back from Market Row has its own', shut.length === 0 && tp.fronts.some((f) => f.door), shut.map((l) => l.id));
@@ -3270,7 +3270,7 @@ console.log("the buildings' doors (v2.3.3032)");
   const lots = dbp.lots.filter((l) => l.town && l.foot);
   const byDoor = Object.fromEntries(doors.map((d) => [d.id, d]));
   ok(`every standing building has a door, ${doors.length} of ${lots.length}, at the foot of its steps exactly as the building is placed`,
-    lots.length === 17 && doors.length === 17 && lots.every((l) => {
+    lots.length === 16 && doors.length === 16 && lots.every((l) => {
       const d = byDoor[l.id];
       return d && d.name === l.name
         && Math.abs(d.x - Math.round((l.foot.x - dbp.x0) * WPA * 2) / 2) < 1e-6 && Math.abs(d.y - Math.round((l.foot.y - dbp.y0) * WPA * 2) / 2) < 1e-6;
@@ -3278,28 +3278,33 @@ console.log("the buildings' doors (v2.3.3032)");
   const noBank = objectFootprints(placed, { ...man, objects: man.objects.filter((o) => o.id !== 'bank') });
   const doorsNoBank = doorSpots(PLAN, dbp, { ...placed, present: noBank.present });
   ok('...and a building with no picture has no door (nothing is drawn to walk up to)',
-    doorsNoBank.length === 16 && !doorsNoBank.some((d) => d.id === 'bank'), doorsNoBank.length);
+    doorsNoBank.length === 15 && !doorsNoBank.some((d) => d.id === 'bank'), doorsNoBank.length);
   const lotIds = new Set(lots.map((l) => l.id));
   const todayOf = Object.fromEntries(lots.map((l) => [l.id, l.today]));
   const tbIds = TOWN_BUILDINGS.map((b) => b.id);
   const openIds = Object.keys(WHEEL_BUILDING_DOORS), closedIds = WHEEL_SHUT_DOORS.slice(), hallIds = Object.keys(WHEEL_HALL_DOORS);
   ok('what opens at each door is the plan\'s own: every plot of the table is a plot of the town, and its value is what the plan says the plot is `today`, a building of today\'s town',
-    openIds.length === 12 && openIds.every((k) => lotIds.has(k) && WHEEL_BUILDING_DOORS[k] === todayOf[k] && tbIds.includes(WHEEL_BUILDING_DOORS[k])),
+    openIds.length === 11 && openIds.every((k) => lotIds.has(k) && WHEEL_BUILDING_DOORS[k] === todayOf[k] && tbIds.includes(WHEEL_BUILDING_DOORS[k])),   /* v2.3.3148: eleven doors (the Assay Office's is gone) */
     openIds.filter((k) => !(lotIds.has(k) && WHEEL_BUILDING_DOORS[k] === todayOf[k] && tbIds.includes(WHEEL_BUILDING_DOORS[k]))));
   /* v2.3.3066: three of the four "(new: ...)" plots open halls of the
      Wheel's own (the Guild Hall, the Post Office, the Sheriff's Office), the
      Hotel stays shut */
   const actions = TOWN_BUILDINGS.map((b) => b.action || b.id).concat(['farmhome']);
-  ok('...all twelve of today\'s buildings have a door (none twice), and the other five plots are accounted for: the Town Hall (Mayor Bro), three halls of the Wheel\'s own and one shut that says so',
-    new Set(Object.values(WHEEL_BUILDING_DOORS)).size === 12 && tbIds.every((id) => Object.values(WHEEL_BUILDING_DOORS).includes(id))
-    && hallIds.length === 3 && closedIds.length === 1
-    && hallIds.concat(closedIds).every((k) => lotIds.has(k) && !openIds.includes(k) && /^\(new:/.test(todayOf[k]))
+  /* v2.3.3147: the Town Hall (the plan's `mayor (NPC)`, Mayor Bro on its steps) is a fourth hall,
+     so every plot of the town opens something or says it is shut */
+  /* v2.3.3148: the twelfth of today's buildings, the Enchanter, has no door of its own: it is the Gem Works' second tab */
+  ok('...eleven of today\'s buildings have a door (none twice; the twelfth, the Enchanter, is the Gem Works\' second tab), and the other five plots are accounted for, none left over: four halls of the Wheel\'s own (three of the plan\'s "(new: ...)" buildings, and the Town Hall, Mayor Bro\'s) and one shut that says so',
+    new Set(Object.values(WHEEL_BUILDING_DOORS)).size === 11 && tbIds.filter((id) => id !== 'enchanting').every((id) => Object.values(WHEEL_BUILDING_DOORS).includes(id))
+    && tbIds.includes('enchanting') && !Object.values(WHEEL_BUILDING_DOORS).includes('enchanting') && WHEEL_BUILDING_DOORS.gemcutter === 'gemcutter'
+    && hallIds.length === 4 && closedIds.length === 1
+    && hallIds.concat(closedIds).every((k) => lotIds.has(k) && !openIds.includes(k))
+    && hallIds.concat(closedIds).filter((k) => k !== 'townhall').every((k) => /^\(new:/.test(todayOf[k])) && todayOf.townhall === 'mayor (NPC)'
     && !hallIds.some((k) => closedIds.includes(k))
-    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id).join() === 'townhall',
+    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).length === 0,
     { halls: hallIds, closed: closedIds, rest: lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id) });
   ok('...each hall has its window\'s name and picture, and opens a panel of its own, never one of today\'s buildings\' (no `buildingPanel` value twice)',
     hallIds.every((k) => { const h = WHEEL_HALLS[WHEEL_HALL_DOORS[k]]; return h && h.title && h.sub && /^\/icons\/ui\/.+\.webp$/.test(h.icon); })
-    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 3 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
+    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 4 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
   {
     const PO = await import('../../src/game/postOffice.js');
     const S = {};
@@ -3498,6 +3503,149 @@ console.log('the lands\' music (v2.3.3064)');
   const trial = fs.readFileSync(new URL('../../src/game/wheelTrial.js', import.meta.url), 'utf8');
   ok('the minimap\'s frame asks, with where you are, beside the banner; wheelHere says whether its answer is for the cell you are in',
     /noteWheelMusic\(here, S, BT_AUDIO\)/.test(mini) && /fresh: _here\.x === cx && _here\.y === cy/.test(trial));
+}
+
+/* ── v2.3.3147: the inside of each building ──
+   Owner, 2026-10-06: sent seventeen pictures of the insides and said "Ok wire
+   these up". */
+console.log("the buildings' insides (v2.3.3147)");
+{
+  const fs = await import('node:fs');
+  const R = await import('../../src/data/buildingRooms.js');
+  const { WHEEL_BUILDING_DOORS, WHEEL_HALL_DOORS, WHEEL_SHUT_DOORS, WHEEL_HALLS } = await import('../../src/data/wheelBuildingDoors.js');
+  const { TOWN_BUILDINGS } = await import('../../src/data/buildings.js');
+  const dbp = buildBlueprint(PLAN);
+  const lotIds = dbp.lots.filter((l) => l.town && l.foot).map((l) => l.id);
+  const panelOf = (bid) => { const b = TOWN_BUILDINGS.find((q) => q.id === bid); return b && (b.action || b.id); };
+  /* every door of the Wheel's Brotown opens a window, and the window shows the room of THAT building */
+  const wrong = [];
+  for (const [plot, bid] of Object.entries(WHEEL_BUILDING_DOORS)) if (R.BUILDING_ROOMS[panelOf(bid)] !== plot) wrong.push([plot, panelOf(bid), R.BUILDING_ROOMS[panelOf(bid)]]);
+  for (const [plot, panel] of Object.entries(WHEEL_HALL_DOORS)) if (R.BUILDING_ROOMS[panel] !== plot) wrong.push([plot, panel, R.BUILDING_ROOMS[panel]]);
+  ok('every door that opens a window opens the window of its own room: the eleven buildings (through their `action`) and the four halls, each picture named for the plot it shows; the Enchanter\'s tab (v2.3.3148) is the Gem Works\' own room',
+    Object.keys(WHEEL_BUILDING_DOORS).length === 11 && Object.keys(WHEEL_HALL_DOORS).length === 4 && wrong.length === 0 && R.BUILDING_ROOMS.enchant === 'gemcutter' && R.BUILDING_ROOMS.gemcut === 'gemcutter', wrong);
+  const windows = Object.values(R.BUILDING_ROOMS);
+  const rooms = [...new Set(windows)];   /* v2.3.3148: the Gem Works' two tabs are one room */
+  ok('...sixteen windows, fifteen rooms (the Gem Works\' Cut and Set tabs share one, nothing else is shown twice), every one a plot of the town; the Hotel (shut) is the one with a picture and no window, so all sixteen plots are accounted for',
+    windows.length === 16 && rooms.length === 15 && windows.filter((r) => r === 'gemcutter').length === 2 && rooms.every((r) => lotIds.includes(r))
+      && R.SPARE_ROOMS.length === 1 && R.SPARE_ROOMS.every((r) => lotIds.includes(r) && !rooms.includes(r))
+      && WHEEL_SHUT_DOORS.every((r) => R.SPARE_ROOMS.includes(r)) && R.SPARE_ROOMS.join() === 'hotel'
+      && rooms.concat(R.SPARE_ROOMS).slice().sort().join() === lotIds.slice().sort().join(),
+    { rooms, windows, spare: R.SPARE_ROOMS, lots: lotIds });
+  ok('a panel that is no building has no room (the Market is a screen of its own), and a client-supplied name can never reach a prototype key',
+    R.roomIdFor('store') === null && R.roomIdFor('shop') === null && R.roomIdFor(null) === null && R.roomIdFor('__proto__') === null
+      && R.roomIdFor('constructor') === null && R.keeperFor('__proto__') === null && R.keeperFor('toString') === null, {});
+  /* the pictures: all sixteen on disk (v2.3.3148: the Assay Office's is gone), at the size the table says, and only those */
+  const dir = new URL('../../public/world/interiors/', import.meta.url);
+  const files = fs.readdirSync(dir).filter((f) => !f.startsWith('.')).sort();
+  const want = rooms.concat(R.SPARE_ROOMS).map((r) => r + '.webp').sort();
+  const dims = (f) => {
+    const b = fs.readFileSync(new URL(f, dir));
+    if (b.toString('ascii', 0, 4) !== 'RIFF' || b.toString('ascii', 8, 12) !== 'WEBP' || b.toString('ascii', 12, 16) !== 'VP8 ') return null;   /* lossy, no alpha */
+    return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff, kb: Math.round(b.length / 1024) };
+  };
+  const sizes = files.map((f) => [f, dims(f)]);
+  ok(`all sixteen pictures are in public/world/interiors/ and nothing else is (${files.length} files)`, files.join() === want.join(), { files, want });
+  ok(`...each a lossy WebP of exactly ${R.ROOM_W} x ${R.ROOM_H} under 450 KB (3.5 MB decoded; the raw 1536 x 1024 would be 6.3 MB for one window)`,
+    sizes.every(([, d]) => d && d.w === R.ROOM_W && d.h === R.ROOM_H && d.kb < 450), sizes.filter(([, d]) => !(d && d.w === R.ROOM_W && d.h === R.ROOM_H && d.kb < 450)));
+  /* the people the game draws into a room: their strip is the size the table says and they stand inside the scene */
+  const png = (url) => { const b = fs.readFileSync(new URL('../../public' + url, import.meta.url)); return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) }; };
+  const kproblems = [];
+  for (const [id, k] of Object.entries(R.ROOM_KEEPERS)) {
+    const d = png(k.src), q = R.keeperBox(k);
+    if (!rooms.includes(id)) kproblems.push([id, 'no such room']);
+    if (d.w !== k.cell.w * k.frames || d.h !== k.cell.h) kproblems.push([id, 'strip', d]);
+    if (!(k.art.x0 >= 0 && k.art.x1 < k.cell.w && k.art.y1 < k.cell.h)) kproblems.push([id, 'art box outside its cell']);
+    if (!(q.left >= 0 && q.top >= 0 && q.left + q.width <= 100 && q.top + q.height <= 100)) kproblems.push([id, 'outside the room', q]);
+  }
+  ok('the Auction House\'s clerk is a keeper of the table: his strip is 6 frames of 362 x 724 as the table says, and his cell lies inside the room\'s box (his forearms on the counter at 66.5% down, his head clear of the sign)',
+    Object.keys(R.ROOM_KEEPERS).join() === 'auction' && kproblems.length === 0 && R.keeperBox(R.ROOM_KEEPERS.auction).top > 30, kproblems);
+  /* where it is drawn */
+  const bt = fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
+  const css = fs.readFileSync(new URL('../../src/styles/game.css', import.meta.url), 'utf8');
+  ok('BroTown draws the room first inside the window card, once, keyed by its ROOM (so a window that opens another room gets its own, and the Gem Works\' two tabs, one room, do not flash), and the card says which room it holds',
+    /React\.createElement\(BuildingRoom, \{ key: roomIdFor\(buildingPanel\) \|\| buildingPanel, panel: buildingPanel \}\)/.test(bt) && /"data-room": roomIdFor\(buildingPanel\)/.test(bt)
+      && (bt.match(/React\.createElement\(BuildingRoom,/g) || []).length === 1, {});
+  ok('...and the Land Office\'s window is a panel in that card like the others (it was a separate z-30 dialog under an EMPTY card, which the room\'s picture would have covered whole): LandOfficePanel in the chain, no overlay of its own for it',
+    /buildingPanel === 'farmhome' && \/\*#__PURE__\*\/React\.createElement\(LandOfficePanel, \{/.test(bt)
+      && !/buildingPanel === 'farmhome' && \/\*#__PURE__\*\/React\.createElement\("div"/.test(bt)
+      && /Travel to Farm/.test(fs.readFileSync(new URL('../../src/ui/panels/buildings/LandOfficePanel.jsx', import.meta.url), 'utf8')), {});
+  /* v2.3.3147: the Town Hall is a hall, its rows open things that exist */
+  {
+    const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
+    const th = WHEEL_HALLS.townhall;
+    const hallSrc = read('../../src/ui/panels/buildings/WheelHallPanel.jsx');
+    ok('the Town Hall is a hall of the Wheel\'s own with a window: its name, a bell-tower icon on disk, and two rows -- the Leaderboard (the dashboard\'s own Ranks page, a ranking for every combat and life skill) and the World map (the Wheel\'s labelled map, opened by the overlay\'s own opener, not the QA hook)',
+      !!th && th.title === 'Town Hall' && WHEEL_HALL_DOORS.townhall === 'townhall' && fs.existsSync(new URL('../../public' + th.icon, import.meta.url))
+        && /row\('leaderboard', '\/icons\/ui\/panel-leaderboard\.webp'/.test(hallSrc) && /row\('map', '\/icons\/ui\/nav-map\.webp'/.test(hallSrc)
+        && fs.existsSync(new URL('../../public/icons/ui/panel-leaderboard.webp', import.meta.url)) && fs.existsSync(new URL('../../public/icons/ui/nav-map.webp', import.meta.url))
+        && /leaderboard:\s+\{ title: 'Leaderboard', Component: LeaderboardPanel \}/.test(read('../../src/ui/mobile/BottomDashboard.jsx'))
+        && /export function openWorldMap\(\)/.test(read('../../src/ui/WorldMapOverlay.jsx'))
+        && /onLeaderboard: function onLeaderboard\(\) \{ setBuildingPanel\(null\); dashboardPanelBus\.open\('more'\); dashboardPanelBus\.push\('leaderboard'\); \}/.test(bt)
+        && /onMap: function onMap\(\) \{ setBuildingPanel\(null\); openWorldMap\(\); \}/.test(bt)
+        && /Object\.prototype\.hasOwnProperty\.call\(WHEEL_HALLS, buildingPanel\) && \/\*#__PURE__\*\/React\.createElement\(WheelHallPanel/.test(bt), {});
+  }
+  ok('...the door you stand at decodes its room (a cap of one) and a shop\'s or hall\'s door -- not the Town Hall\'s, where everyone starts -- starts the rest coming in idle moments at low priority; none of the pictures rides the loading screen, and the Auction House\'s old painting and its gate preload are gone',
+    /warmRoom\(_panel \|\| null\);/.test(bt) && !/prefetchRooms/.test(bt)
+      && /const HUB_ROOMS = \['townhall'\];/.test(fs.readFileSync(new URL('../../src/game/buildingRooms.js', import.meta.url), 'utf8'))
+      && /if \(HUB_ROOMS\.indexOf\(id\) < 0\) prefetchRooms\(\);/.test(fs.readFileSync(new URL('../../src/game/buildingRooms.js', import.meta.url), 'utf8'))
+      && /fetchPriority = 'low'/.test(fs.readFileSync(new URL('../../src/game/buildingRooms.js', import.meta.url), 'utf8'))
+      && !fs.existsSync(new URL('../../src/rendering/auctionInteriorPreload.js', import.meta.url))
+      && !fs.existsSync(new URL('../../public/sprites/props/auction-house-interior.png', import.meta.url))
+      && !/auctionInterior/.test(fs.readFileSync(new URL('../../src/rendering/preloadAnimations.js', import.meta.url), 'utf8'))
+      && !/roomScene|auction-house-interior/.test(fs.readFileSync(new URL('../../src/ui/panels/buildings/VendorPanel.jsx', import.meta.url), 'utf8')), {});
+  ok('the card\'s load-bearing 20 px padding is kept: the room bleeds -20 px on its top and sides with +20 px under it, squares the panel\'s top corners, hides on a sideways phone, and the forge\'s slim band is 4:1',
+    /\.bt-room\{[^}]*margin:-20px -20px 20px/.test(css) && /\.bt-room \+ \*\{border-top-left-radius:0!important/.test(css)
+      && /@media \(max-height:460px\)\{\.bt-room\{display:none\}\}/.test(css) && /\.bt-room\[data-shape="band"\]\{[^}]*aspect-ratio:4\/1/.test(css)
+      && /\.bt-inspect-card\{[^}]*padding:20px/.test(css), {});
+  const hd = fs.readFileSync(new URL('../../public/_headers', import.meta.url), 'utf8');
+  ok(`the pictures are asked for at ?v=${R.ROOMS_V} and cached for a year (public/_headers)`,
+    R.roomUrl('bank') === `/world/interiors/bank.webp?v=${R.ROOMS_V}` && /\/world\/interiors\/\*\s*\n\s*Cache-Control: public, max-age=31536000, immutable/.test(hd), {});
+}
+
+/* ── v2.3.3148: the Gem Works ──
+   Owner, 2026-10-07, after the Assay Office's name came up ("what does that even
+   mean"): "I think one gem building is enough and can do both the gem cutting and
+   gem setting maybe with two different NPCs in the same building".  Asked what
+   should happen to the Assay Office's building, they chose "Remove it", and named
+   the combined building "Gem Works". */
+console.log('the Gem Works (v2.3.3148)');
+{
+  const fs = await import('node:fs');
+  const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
+  const exists = (f) => fs.existsSync(new URL(f, import.meta.url));
+  const man = JSON.parse(read('../../public/world/objects/manifest.json'));
+  const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
+  const cat = objectCatalog();
+  const dbp = buildBlueprint(PLAN);
+  const plots = dbp.lots.filter((l) => l.town && l.foot);
+  const { WHEEL_BUILDING_DOORS } = await import('../../src/data/wheelBuildingDoors.js');
+  const { BUILDING_LIFE } = await import('../../src/data/buildingLife.js');
+  const { WHEEL_MATERIALS } = await import('../../src/data/wheelMaterials.js');
+  const gone = [];
+  if (plots.some((l) => l.id === 'assay')) gone.push('plot');
+  if (cat.some((e) => e.id === 'assay')) gone.push('catalog entry');
+  if (man.objects.some((o) => o.id === 'assay')) gone.push('manifest object');
+  if (man.atlases.some((a) => (a.kinds || []).includes('assay'))) gone.push('manifest page');
+  if (exists('../../public/world/objects/buildings-14.png') || exists('../../public/world/objects/buildings-14.json')) gone.push('page files');
+  if (exists('../../public/world/interiors/assay.webp')) gone.push('room picture');
+  if (WHEEL_BUILDING_DOORS.assay) gone.push('door');
+  if (BUILDING_LIFE.assay) gone.push('life spots');
+  if (WHEEL_MATERIALS.assay) gone.push('material');
+  ok('the Assay Office is gone from the town: no plot, no catalog entry, no sprite page or manifest row, no room picture, no door, no life spots, no material', gone.length === 0, gone);
+  const gwLot = plots.find((l) => l.id === 'gemcutter'), gwCat = cat.find((e) => e.id === 'gemcutter'), gwMan = man.objects.find((o) => o.id === 'gemcutter');
+  ok('the Gem Cutter\'s building is the Gem Works in the plan, the catalog and the manifest, still signed GEMS (so nothing is repainted), and its job says both: cut and set',
+    !!gwLot && gwLot.name === 'Gem Works' && !!gwCat && gwCat.name === 'Gem Works' && gwCat.sign === 'GEMS' && /cut/.test(gwCat.job) && /set/.test(gwCat.job) && !!gwMan && gwMan.name === 'Gem Works',
+    { lot: gwLot && gwLot.name, cat: gwCat && [gwCat.name, gwCat.sign, gwCat.job], man: gwMan && gwMan.name });
+  const gws = read('../../src/ui/panels/buildings/GemWorksPanel.jsx'), bt = read('../../src/ui/BroTown.jsx');
+  ok('the Gem Works\' window has two tabs, Cut gems and Set gems, drawing GemcutPanel and EnchantPanel as they are (each in a body padded 20 px to take back its own -20 px margin): BroTown draws it for both panel names, a tab is the panel name, and neither panel is drawn on its own any more',
+    /import \{ GemcutPanel \} from '\.\/GemcutPanel\.jsx'/.test(gws) && /import \{ EnchantPanel \} from '\.\/EnchantPanel\.jsx'/.test(gws)
+      && /key: 'gemcut', label: 'Cut gems'/.test(gws) && /key: 'enchant', label: 'Set gems'/.test(gws) && /padding: 20/.test(gws)
+      && /\(buildingPanel === 'gemcut' \|\| buildingPanel === 'enchant'\) && \/\*#__PURE__\*\/React\.createElement\(GemWorksPanel, \{ tab: buildingPanel, onTab: setBuildingPanel,/.test(bt)
+      && !/createElement\(GemcutPanel/.test(bt) && !/createElement\(EnchantPanel/.test(bt) && WHEEL_BUILDING_DOORS.gemcutter === 'gemcutter', {});
+  ok('...and the panel squares its own corners under the tab strip (.bt-gw-body > div)', /\.bt-gw-body > div\{border-radius:0!important\}/.test(read('../../src/styles/game.css')), {});
+  /* the east street, the mine side: the Bank alone on its north side, the Gem Works and the Auction House on its south */
+  const east = (side) => plots.filter((l) => l.arm === 'east' && l.side === side).map((l) => l.id).sort().join();
+  ok('the east street (the mine side) keeps the Bank alone on its north side and the Gem Works and the Auction House on its south', east('north') === 'bank' && east('south') === 'auction,gemcutter', { north: east('north'), south: east('south') });
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -1190,6 +1190,83 @@ input{font-family:inherit}
    28px is under the 44pt touch floor; an invisible inset:-8px pseudo
    grows the TAP target to 44px with zero visual change. */
 .bt-inspect-close::after{content:'';position:absolute;inset:-8px}
+/* ═══ v2.3.3147: THE ROOM YOU WALKED INTO (BuildingRoom.jsx, data/buildingRooms.js) ═══
+   The owner's picture of the inside of a building, first thing in its window.
+   The card's 20px padding is load-bearing (every panel bleeds into it with a
+   -20px margin, above), so the room bleeds the same way on its top and sides,
+   and its +20px bottom margin cancels the panel's own -20px top margin: the
+   panel starts exactly where the picture ends.
+   The scene inside is always the whole room, 3:2 (239px at a phone's window
+   width); the outer box only clips it.  On a shorter screen it is held to 30vh
+   and the FLOOR is cut, never the sign; on a sideways phone (under 460px tall,
+   where the whole window is ~190px) there is no room for it at all and it
+   steps aside.  The forge's window sits low so the smith shows above it: its
+   room is a slim band (the sign, the forge, the anvil) -- 4:1, the scene pulled
+   up 7.33% of the width = 11% of the picture's height. */
+.bt-room{position:relative;margin:-20px -20px 20px;max-height:30vh;overflow:hidden;background:#111E23}
+.bt-room-scene{position:relative;width:100%;aspect-ratio:3/2}
+.bt-room-img{position:absolute;left:0;top:0;display:block;width:100%;height:100%;opacity:0;transition:opacity .18s ease-out}
+.bt-room[data-room-state="ready"] .bt-room-img{opacity:1}
+.bt-room[data-shape="band"]{max-height:none;aspect-ratio:4/1}
+.bt-room[data-shape="band"] .bt-room-scene{margin-top:-7.33%}
+/* the panel under the picture meets it square: every panel rounds its own top
+   corners with an inline radius, and the card behind shows through them */
+.bt-room + *{border-top-left-radius:0!important;border-top-right-radius:0!important}
+/* the close button sits on the picture now, not on a plain header strip: above it
+   (the room is positioned and later in the card, so it would paint over the button),
+   and dark enough to read on any of the rooms */
+.bt-inspect-card[data-room] .bt-inspect-close{z-index:2;background:rgba(17,30,35,.78);color:#fff}
+@media (max-height:460px){.bt-room{display:none}}
+@media (prefers-reduced-motion:reduce){.bt-room-img{transition:none}}
+/* ═══ v2.3.3148: THE GEM WORKS (panels/buildings/GemWorksPanel.jsx) ═══
+   The Cut and Set tabs sit on a strip under the room, and the panel they show
+   (GemcutPanel or EnchantPanel, neither touched) fills a body padded 20px to take
+   back its own -20px margin.  Each panel rounds its own corners with an inline
+   radius, which under a strip of its own would cut four small notches in the body's
+   edge; the strip and the window's own edge do the rounding here. */
+.bt-gw-body > div{border-radius:0!important}
+/* the tab strip keeps 44px clear on its right for the card's close button, which lies over
+   it when there is no picture above (a sideways phone, a picture that cannot load); under a
+   picture the button is on the picture and the tabs take the whole width */
+.bt-gw-tabs{padding:12px 44px 12px 14px}
+.bt-room + [data-gem-works] .bt-gw-tabs{padding-right:14px}
+@media (max-height:460px){.bt-room + [data-gem-works] .bt-gw-tabs{padding-right:44px}}
+/* A window open over the minimap is not a tap on the minimap.  The world map's
+   invisible "open" button (WorldMapOverlay.jsx) is a fixed, z-index 45 portal in
+   the page body -- above everything inside the game's wrapper, the windows
+   included -- laid over the minimap's box.  A tall window's close button sits in
+   that box (its card's top is held 74px down, the minimap runs to ~175px), so a
+   finger on it opened the world map and the window stayed.  It was already so for the
+   Marketplace and the Gambling Den; the room pictures make most windows tall
+   (found by mp-buildingrooms: elementFromPoint at the close button).  While any
+   .bt-inspect (window, card, scrim) is up the button lets taps through. */
+body:has(.bt-inspect) [data-world-map-open]{pointer-events:none}
+/* ═══ v2.3.2627, moved here v2.3.3147: THE AUCTION HOUSE'S CLERK ═══
+   The clerk the game draws into the Auction House's room (data/buildingRooms.js
+   ROOM_KEEPERS; he was on the owner's first painting of it, v2.3.2627, and is
+   on the new one).  Where he stands is data; only the idle cycle needs a
+   stylesheet, because @keyframes cannot be written inline.
+
+   THE IDLE IS NOT A FLIPBOOK.  The six frames are expressions, not a walk
+   cycle, so a constant-rate steps(6) would read as a man vibrating.  He
+   holds the neutral frame for most of the loop and the others punctuate it
+   -- a blink, then a smile and a grin -- on step-end so the frames cut
+   rather than cross-fade.  Six frames of 362px in a 600%-wide background:
+   frame i sits at background-position-x i*20%. */
+@keyframes bt-room-keeper-idle{
+  0%,54%{background-position-x:0%}      /* neutral */
+  55%,58%{background-position-x:80%}    /* blink */
+  59%,72%{background-position-x:0%}
+  73%,78%{background-position-x:20%}    /* small smile */
+  79%,84%{background-position-x:40%}    /* grin */
+  85%,100%{background-position-x:0%}
+}
+.bt-room-keeper{position:absolute;background-repeat:no-repeat;background-position:0% 0%;pointer-events:none;animation:bt-room-keeper-idle 11s step-end infinite}
+/* An expression loop is decoration; a reader who asked for less motion gets
+   the neutral frame and nothing moving. */
+@media (prefers-reduced-motion: reduce){
+  .bt-room-keeper{animation:none;background-position-x:0%}
+}
 .bt-inspect-av{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 8px;
   display:block;border:2.5px solid var(--pop)}
 .bt-inspect-name{font-size:16px;font-weight:800;color:#fff;margin-bottom:2px}
@@ -5875,39 +5952,6 @@ html[data-orient="landscape"] .bt-zone-banner{
   --zb-bar-h:28px;
 }
 html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14px}
-
-/* ═══ v2.3.2627: THE AUCTION HOUSE'S INTERIOR ═══
-   The owner's room painting, with the clerk behind the counter.  Was the
-   general store's room in v2.3.2624, until #686 renamed the building and
-   #678 took the shopkeeper's shelf out of its panel -- see VendorPanel.jsx.
-   Geometry is measured, not eyeballed: the room PNG is 1288x773, opaque,
-   already cropped to the rows the panel shows -- the sign, the shelves and
-   the counter, stopping before the floorboards, because this panel wants a
-   counter you are standing at rather than a room you are looking into.
-   Those numbers live in VendorPanel.jsx beside the element that uses them;
-   only the idle cycle needs a stylesheet, because @keyframes cannot be
-   written inline.
-
-   THE IDLE IS NOT A FLIPBOOK.  The six frames are expressions, not a walk
-   cycle, so a constant-rate steps(6) would read as a man vibrating.  He
-   holds the neutral frame for most of the loop and the others punctuate it
-   -- a blink, then a smile and a grin -- on step-end so the frames cut
-   rather than cross-fade.  Six frames of 362px in a 600%-wide background:
-   frame i sits at background-position-x i*20%. */
-@keyframes bt-auction-keeper-idle{
-  0%,54%{background-position-x:0%}      /* neutral */
-  55%,58%{background-position-x:80%}    /* blink */
-  59%,72%{background-position-x:0%}
-  73%,78%{background-position-x:20%}    /* small smile */
-  79%,84%{background-position-x:40%}    /* grin */
-  85%,100%{background-position-x:0%}
-}
-.bt-auction-keeper{animation:bt-auction-keeper-idle 11s step-end infinite}
-/* An expression loop is decoration; a reader who asked for less motion gets
-   the neutral frame and nothing moving. */
-@media (prefers-reduced-motion: reduce){
-  .bt-auction-keeper{animation:none;background-position-x:0%}
-}
 
 /* ═══ v2.3.3006: THE SPRINT BUTTON'S "NO" ═══
    A tap with too little stamina to start a sprint shakes the button's face

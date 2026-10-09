@@ -2,11 +2,12 @@
  *
  * Asked to "keep going with pragmatic enhancements": three of the plan's new
  * buildings open onto systems the game already has (data/wheelBuildingDoors.js
- * WHEEL_HALL_DOORS), and a clan invite can be taken up at last.
+ * WHEEL_HALL_DOORS), and a clan invite can be taken up at last.  (v2.3.3147: and
+ * the Town Hall, a fourth, section 7.)
  *
  * Two real players against a real worker, in the Wheel's Brotown, on phones:
  *   1. the client knows the halls -- the Guild Hall, the Post Office, the
- *      Sheriff's Office -- and only the Hotel is still shut;
+ *      Sheriff's Office, the Town Hall -- and only the Hotel is still shut;
  *   2. the Guild Hall: "Enter GUILD HALL" at its steps; inside, Clans and
  *      Skill guilds; each opens its panel (the clan and guild panels nothing
  *      in play opened before); a clan FOUNDED there (500 gold), the worker
@@ -24,7 +25,13 @@
  *   6. the Post Office: your mail -- the gold granted this visit, as the
  *      worker's mail delivered it -- and "Messages from friends" opens the
  *      Social panel;
- *   7. no page errors.
+ *   7. the Town Hall (v2.3.3147, the fourth hall: the owner chose "a Town Hall
+ *      window"): a new character, arriving 108 px south of its door, does not
+ *      start with its Enter button showing; at its steps it says "Enter TOWN
+ *      HALL" and opens your picture of its inside over two rows -- the
+ *      Leaderboard (the dashboard's Ranks page, More -> Leaderboard) and the
+ *      World map (the Wheel's labelled map); each closes the hall;
+ *   8. no page errors.
  * Pictures: tools/qa/mp/out/wheelhalls-*.png.
  */
 import * as H from './harness.mjs';
@@ -118,7 +125,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const byId = Object.fromEntries(doors.map((d) => [d.id, d]));
     const halls = doors.filter((d) => d.hall), shut = doors.filter((d) => d.closed);
     rec.ok(`the client knows the halls -- ${halls.map((d) => d.name).join(', ')} -- and only ${shut.map((d) => d.name).join(', ')} is still shut`,
-      halls.length === 3 && Object.keys(WHEEL_HALL_DOORS).every((k) => byId[k] && byId[k].hall === WHEEL_HALL_DOORS[k] && byId[k].index < 0 && !byId[k].closed)
+      halls.length === 4 && Object.keys(WHEEL_HALL_DOORS).every((k) => byId[k] && byId[k].hall === WHEEL_HALL_DOORS[k] && byId[k].index < 0 && !byId[k].closed)
         && shut.length === 1 && WHEEL_SHUT_DOORS.every((k) => byId[k] && byId[k].closed), doors.map((d) => [d.id, d.index, d.hall, d.closed]));
 
     /* ── 2. the Guild Hall ── */
@@ -255,6 +262,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const social = await waitSel(A, '[data-dash-social]', 5000);
     await shot(A, 'messages');
     rec.ok('...and Messages from friends opens the Social panel (friends, and messages that wait for them)', social, { social });
+
+    /* ── 7. the Town Hall (v2.3.3147) ── */
+    const th = byId.townhall;
+    /* where a new character arrives: the body's middle 108 px south of the door's foot (the boots ~52 px lower, past the 140 px reach) */
+    await H.hopTo(A, th.x, th.y + 108, { step: 100, gap: 260, tries: 90 });
+    await A.page.waitForTimeout(1200);
+    const atArrival = await enterBtn(A);
+    rec.ok('a new character does not start with the Town Hall\'s Enter button showing: arriving 108 px south of its door, there is none', !atArrival.btn && !atArrival.shut, atArrival);
+    const t1 = await enterHall(A, th);
+    const trows = await A.page.evaluate(() => Array.from(document.querySelectorAll('[data-wheel-hall="townhall"] [data-hall-row]')).map((b) => b.getAttribute('data-hall-row')));
+    let troom = null;
+    for (let i = 0; i < 20; i++) {
+      troom = await A.page.evaluate(() => { const r = document.querySelector('.bt-inspect-card > .bt-room'); return r ? { id: r.getAttribute('data-room'), state: r.getAttribute('data-room-state') } : null; });
+      if (troom && troom.state === 'ready') break;
+      await A.page.waitForTimeout(250);
+    }
+    await shot(A, 'townhall');
+    rec.ok(`the Town Hall: "${t1.r && t1.r.btn}" at its steps, your picture of its inside on top, and ${trows.join(' and ')} under it`,
+      !!t1.r && /Enter\s*TOWN HALL/.test(t1.r.btn || '') && t1.r.hall === 'townhall' && t1.open && trows.join() === 'leaderboard,map'
+        && !!troom && troom.id === 'townhall' && troom.state === 'ready', { t1, trows, troom });
+    await tap(A, '[data-hall-row="leaderboard"]');
+    await A.page.waitForTimeout(900);
+    const lb = await A.page.evaluate(() => {
+      const b = window.__broDashPanelBus;
+      return { hallGone: !document.querySelector('[data-wheel-hall]'), stack: b ? b.state.stack.slice() : null, mode: b ? b.state.mode : null };
+    });
+    await shot(A, 'leaderboard');
+    rec.ok('...Leaderboard closes the hall and opens the dashboard\'s Ranks page (More, then Leaderboard)', lb.hallGone && lb.mode === 'expanded' && lb.stack && lb.stack.join() === 'more,leaderboard', lb);
+    await A.page.evaluate(() => { try { window.__broDashPanelBus.toBar(); } catch (e) { /* bare */ } });
+    await A.page.waitForTimeout(500);
+    const t2 = await enterHall(A, th);
+    await tap(A, '[data-hall-row="map"]');
+    const mapOpen = await waitSel(A, '[data-world-map]', 4000);
+    const hallGone2 = await A.page.evaluate(() => !document.querySelector('[data-wheel-hall]'));
+    await shot(A, 'worldmap');
+    rec.ok('...and World map closes the hall and opens the Wheel\'s world map', t2.open && mapOpen && hallGone2, { t2: t2.open, mapOpen, hallGone2 });
+    await A.page.evaluate(() => { const b = document.querySelector('[data-world-map-close]'); if (b) b.click(); });
+    await A.page.waitForTimeout(500);
 
     rec.ok(`no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   } finally {

@@ -1870,7 +1870,81 @@ remnant to migrate server-side, not a mode to preserve.
     `_buildTown`, from `wheelTownDoors()` and the placed objects' boxes,
     ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
     town's white square only without them; `__btMinimap.buildings`,
-    `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".)
+    `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
+  - Since v2.3.3147 THE BUILDINGS HAVE INSIDES -- the owner sent seventeen
+    pictures of them (made from docs/ART-WISHLIST.md's prompts) and said "Ok
+    wire these up":
+    - the top of every building's window is its room, edge to edge
+      (`src/ui/panels/buildings/BuildingRoom.jsx`, drawn once by BroTown.jsx
+      first inside the card, so no panel is touched): `BUILDING_ROOMS` in
+      src/data/buildingRooms.js maps the `buildingPanel` a door opens to its
+      plot's picture, `public/world/interiors/<plot id>.webp` (1152 x 768
+      lossy WebP, ~300 KB, from `tools/ui/make-room-pictures.py`); sixteen
+      windows show one, the Hotel's (shut) waits in `SPARE_ROOMS`;
+    - it bleeds into the card's load-bearing 20 px padding the way every panel
+      does (-20 on its top and sides, +20 under it to cancel the panel's own
+      -20), so the panel starts where the picture ends; held to 30vh on a short
+      phone (the floor is cut), gone on a sideways one, a slim 4:1 band for the
+      forge (its card sits low so the smith shows above it); the Land Office's
+      window was a separate z-30 dialog UNDER an empty card (the picture would
+      have covered its Travel button) and is a panel in the card now
+      (`LandOfficePanel.jsx`);
+    - a tall window's ✕ lay under the world map's invisible z-45 "open" button
+      (WorldMapOverlay.jsx, fixed in the body over the minimap), so a finger on
+      it opened the map and left the window up -- already so for the
+      Marketplace and the Gambling Den; any `.bt-inspect` up now lets taps
+      through it (game.css, `body:has(.bt-inspect) [data-world-map-open]`);
+    - NONE ON THE LOADING GATE (the preloading law against the memory
+      budget): the door you stand at decodes its room, a cap of one
+      (game/buildingRooms.js `warmRoom`), and the first shop's or hall's door
+      (not the Town Hall's, where everyone starts: `HUB_ROOMS`) starts the
+      others' bytes coming in idle moments at low priority, never decoded or
+      held; `public/_headers`
+      caches them a year, asked for at `?v=` `ROOMS_V`;
+    - the Auction House's painting is replaced and its clerk kept, moved into
+      the shared component (`ROOM_KEEPERS`: his strip, painted box and three
+      fractions -- another room's keeper is a row, none yet); the old painting,
+      its gate preload and its measure tool are gone;
+    - THE TOWN HALL IS THE FOURTH HALL -- the owner, asked what its picture
+      should do, chose "a Town Hall window": `WHEEL_HALL_DOORS.townhall`, a
+      `townHall()` in WheelHallPanel.jsx with the two things its own picture
+      shows -- the trophy case is the LEADERBOARD (the dashboard's Ranks page,
+      More -> Leaderboard) and the map on the wall the WORLD MAP
+      (`openWorldMap()`, exported by WorldMapOverlay.jsx); every plot of the
+      town now opens a building, opens a hall, or says it is shut (only the
+      Hotel); its Enter button is not showing at arrival (the arrival is 108 px
+      south of the door, the reach is 140 from the BOOTS, ~52 px below the
+      body's middle) and Mayor Bro's dialogue is above it (z 44 against 35);
+    - test-world-core "the buildings' insides", `mp-buildingrooms`,
+      `mp-wheelhalls` §7: docs/specs/building-rooms.md, wheel-halls.md.
+  - Since v2.3.3148 ONE GEM BUILDING -- the owner, after the Assay Office's name
+    came up ("what does that even mean"): "I think one gem building is enough
+    and can do both the gem cutting and gem setting maybe with two different
+    NPCs in the same building"; asked what to do with the Assay Office's plot:
+    "Remove it"; the name they chose: "Gem Works" (docs/specs/gem-works.md):
+    - the Assay Office is GONE: its plot (plan.js, both lot lists), catalog
+      entry, manifest row and `buildings-14` sprite page, yard crate, life
+      spots, material row, door and room picture (`assay.webp`); the Bank stands
+      alone on the east street's north side and nothing else in the town moved
+      (the gates stay 1,326 / 1,447);
+    - the Gem Cutter's building is the GEM WORKS (plan, catalog, manifest; its id
+      stays `gemcutter`, its sign GEMS covers both jobs, so nothing was
+      repainted): one door ("Enter GEM WORKS"), one window with two tabs over the
+      one room picture, Cut gems (GemcutPanel) and Set gems (EnchantPanel), both
+      panels UNTOUCHED, each in a body padded 20 px to take back its own -20 px
+      margin (`GemWorksPanel.jsx`; game.css `.bt-gw-body`, `.bt-gw-tabs`); a tab
+      IS the `buildingPanel` name (`gemcut` / `enchant`) and `BuildingRoom` is
+      keyed by its ROOM, so a tab change does not flash; eleven building doors,
+      sixteen windows over fifteen rooms (src/data/buildingRooms.js), mayor_1's
+      "visit 3" counts the eleven;
+    - the re-bake changed ONLY the plan's fingerprint in
+      `server/src/wheelspawns.js` (every monster place, node and door identical):
+      one worker deploy at merge with nothing new in it;
+    - not done: the two NPCs (a cutter and a setter, each with a visitor: prompts
+      on the owner's NPC page; `ROOM_KEEPERS` is one keeper a room today) and an
+      optional two-station inside picture (docs/ART-WISHLIST.md);
+    - test-world-core "the Gem Works", `mp-buildingrooms` (the tabs),
+      `mp-wheeldoors`: docs/specs/gem-works.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

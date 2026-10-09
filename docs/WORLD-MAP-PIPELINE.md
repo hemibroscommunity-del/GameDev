@@ -3179,8 +3179,8 @@ inside changed; the server settles it all as before.
 
 - **Where: the worker.** `placing.js` `doorSpots(plan, bp, placed)` reads the
   placed objects -- a building is placed with its foot on its plot's door --
-  and `ground-worker.js` ships `objects.doors` (17 entries) once the pictures
-  are known. A building with no picture has no door.
+  and `ground-worker.js` ships `objects.doors` (17 entries; 16 since v2.3.3148)
+  once the pictures are known. A building with no picture has no door.
 - **What: a table.** `src/data/wheelBuildingDoors.js`, plot id -> the
   `TOWN_BUILDINGS` id it opens, read by test-world-core against the plan's own
   `today` words (a mirror).
@@ -3198,7 +3198,8 @@ inside changed; the server settles it all as before.
   behind the loading overlay (~0.4 MB); his window opens within 90 px of him, not
   at the store's door.
 - **Quests.** `setWheelDoorsOpen` (gameSystems.js, set with the zones
-  worldTrial.js closes) counts the twelve actions the Wheel opens, so
+  worldTrial.js closes) counts the twelve actions the Wheel opens (eleven since
+  v2.3.3148), so
   mayor_1 ("Visit 3 buildings") and mayor_3 (its Farm) are offered again --
   v2.3.3029 hid them while the Wheel had no doors.
 - **The farm.** The Land Office and Feed & Seed both send you to your farm
@@ -3211,6 +3212,30 @@ test-world-core "the buildings' doors" (10), `tutorial.test.mjs` §9.
 
 **Still shut.** The sheriff's, hotel, post office and guild hall have nothing
 to open; the blacksmith, Ace and Lil Bro are still only in today's town.
+
+### The Gem Works (v2.3.3148)
+
+Owner, 2026-10-07, after the Assay Office's name came up ("what does that even
+mean"): "I think one gem building is enough and can do both the gem cutting and
+gem setting maybe with two different NPCs in the same building." The Assay
+Office's door opened the Enchanter (its window already said "Enchanter"); it is
+out of the town, and the Gem Cutter's building, signed GEMS, is the **Gem Works**
+(docs/specs/gem-works.md).
+
+- **The plan.** The `assay` plot is out of both `lots` lists and the Bank stands
+  alone on the east street's north side; `rowEnd` is set by the west arm's
+  General Store, so the Back Lane, the town's rectangles and the gates (1,326 /
+  1,447 art px) did not move. 15 plots and the Town Hall.
+- **The bake.** Only the plan's fingerprint changed in `server/src/wheelspawns.js`:
+  no monster place, node or door moved.
+- **The art.** The catalog's 75 objects, 40 sprite sheets (`buildings-14` is out),
+  16 room pictures; nothing was repainted.
+- **The window.** One door, one window, two tabs over the Gem Cutter's room, Cut
+  gems and Set gems (`GemWorksPanel.jsx`), the two old panels untouched.
+
+**Tests.** test-world-core "the Gem Works" and the counts that moved with it
+(sixteen buildings, eleven doors); `mp-buildingrooms`' Gem Works tabs;
+`mp-wheeldoors`.
 
 ## The Wheel trial: your own swatches under your feet (v2.3.2943)
 

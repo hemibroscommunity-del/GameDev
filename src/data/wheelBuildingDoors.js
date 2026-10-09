@@ -18,7 +18,9 @@
  * Bro on its steps.  The other four are the plan's "(new: ...)" buildings:
  * since v2.3.3066 three of them open halls of their own (WHEEL_HALL_DOORS),
  * and the Hotel stands shut, saying so (WHEEL_SHUT_DOORS) instead of leaving
- * a player to wonder whether the door is broken.
+ * a player to wonder whether the door is broken.  Since v2.3.3147 the Town
+ * Hall is a fourth hall (Mayor Bro still stands on its steps), so only the
+ * Hotel is shut.
  */
 
 /* How near a door (game px) the Enter button comes up: from your BOOTS to the
@@ -33,14 +35,13 @@ export const WHEEL_DOOR_REACH = 140;
 export const WHEEL_BUILDING_DOORS = {
   blacksmith: 'blacksmith',     /* the forge */
   woodworker: 'woodworker',
-  gemcutter: 'gemcutter',
+  gemcutter: 'gemcutter',       /* v2.3.3148: the Gem Works -- its window has the Enchanter on a second tab (GemWorksPanel) */
   saloon: 'party',              /* the tavern's party panel */
   gambling: 'gambler',
   cookhouse: 'cooking',
   feedseed: 'farm',             /* Feed & Seed: the farm panel */
   landoffice: 'farmhome',       /* Land Office: travel to your own farm */
   bank: 'bank',
-  assay: 'enchanting',          /* Assay Office: the enchanter */
   store: 'marketplace',         /* General Store: the market */
   auction: 'auctionhouse',
 };
@@ -69,6 +70,7 @@ export const WHEEL_HALL_DOORS = {
   guildhall: 'guildhall',
   post: 'post',
   sheriff: 'sheriff',
+  townhall: 'townhall',     /* v2.3.3147, below */
 };
 
 /* What each hall is called and wears: its window's header and the Enter
@@ -77,6 +79,19 @@ export const WHEEL_HALLS = {
   guildhall: { title: 'Guild Hall', sub: 'Clans and guilds', icon: '/icons/ui/panel-guild.webp', emoji: '🏰' },
   post: { title: 'Post Office', sub: 'Your mail and messages', icon: '/icons/ui/evt-mail.webp', emoji: '📫' },
   sheriff: { title: "Sheriff's Office", sub: 'Duels and the arena', icon: '/icons/ui/evt-duel.webp', emoji: '⚔️' },
+  /* ═══ v2.3.3147: THE TOWN HALL IS A HALL TOO ═══
+     The owner sent the picture of its inside (data/buildingRooms.js) and, asked
+     what the Town Hall should do, chose "a Town Hall window": your picture on
+     top, then two things the game already has, set where the room's own props
+     are -- the trophy case is the LEADERBOARD (a ranking for every combat and
+     life skill) and the painted map on the wall is the WORLD MAP (the Wheel's
+     labelled map, opened from the minimap until now).  Mayor Bro still stands on
+     its steps, east of the door; his dialogue window is above the Enter button
+     (z 44 against 35), so talking to him is not touched.  The way you arrive is
+     108 px south of the door's foot, and the button comes up 140 px from your
+     BOOTS (a body's middle is ~52 px above them), so a new character does not
+     start with it showing -- it comes as you walk up to the Mayor. */
+  townhall: { title: 'Town Hall', sub: 'Rankings and the world map', icon: '/icons/ui/bldg-townhall.webp', emoji: '🏛' },
 };
 
 /* The plot with nothing to open yet: the Hotel ("(new: rest, respawn)") --
@@ -84,9 +99,10 @@ export const WHEEL_HALLS = {
    worker settles: the HP it restores is the worker's to give), so it stays
    shut until the worker can pay it.  Stood at, it shows its name and "Shut
    for now" (BroTown.jsx) instead of leaving a player to wonder whether the
-   door is broken.  The Town Hall is in no list: Mayor Bro stands on its
-   steps.  MIRROR: plan.js's own `today` words -- test-world-core checks the
-   halls and the shut ones are the four "(new: ...)" plots. */
+   door is broken.  (The Town Hall was in no list until v2.3.3147: Mayor Bro
+   stands on its steps; it is a hall now.)  MIRROR: plan.js's own `today`
+   words -- test-world-core checks the shut one and the three halls beside
+   it are the four "(new: ...)" plots. */
 export const WHEEL_SHUT_DOORS = ['hotel'];
 
 /* Who stands at which door, besides Mayor Bro (who has the Town Hall's steps,

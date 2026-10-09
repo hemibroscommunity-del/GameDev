@@ -307,7 +307,12 @@ const BASE_PLAN = {
                            the Post Office -- with the smithy and the
                            woodworker's yard out by the gate;
                     EAST   the mine side, the way the railway leaves: the Bank,
-                           the Assay Office, the Gem Cutter, the Auction House;
+                           the Gem Works, the Auction House (v2.3.3148: the
+                           Assay Office is gone -- the owner, "one gem
+                           building is enough and can do both the gem cutting
+                           and gem setting" -- so the Gem Cutter's building is
+                           the Gem Works, both jobs, and the Bank stands alone
+                           on the street's north side);
                     SOUTH  the strip: the Saloon, the Hotel and the Gambling
                            Den, the Sheriff at its far end by the gate;
                     WEST   the farm road: the Cookhouse, the Feed & Seed, the
@@ -337,9 +342,8 @@ const BASE_PLAN = {
                   { id: 'store', name: 'General Store', today: 'marketplace', dx: 8 }],
         },
         east: {
-          north: [{ id: 'bank', name: 'Bank', today: 'bank', dx: 20, dy: -18 },
-                  { id: 'assay', name: 'Assay Office', today: 'enchanting', dx: -12, dy: -48 }],
-          south: [{ id: 'gemcutter', name: 'Gem Cutter', today: 'gemcutter', dx: 12 },
+          north: [{ id: 'bank', name: 'Bank', today: 'bank', dx: 20, dy: -18 }],
+          south: [{ id: 'gemcutter', name: 'Gem Works', today: 'gemcutter', dx: 12 },
                   { id: 'auction', name: 'Auction House', today: 'auctionhouse', dx: -22 }],
         },
       },
@@ -348,7 +352,7 @@ const BASE_PLAN = {
     lots: {
       north: {
         west: [{ id: 'blacksmith', name: 'Blacksmith', today: 'blacksmith' }, { id: 'woodworker', name: 'Woodworker', today: 'woodworker' }],
-        east: [{ id: 'gemcutter', name: 'Gem Cutter', today: 'gemcutter' }, { id: 'sheriff', name: "Sheriff's Office", today: '(new: duels, arena sign-up, bounties)' }],
+        east: [{ id: 'gemcutter', name: 'Gem Works', today: 'gemcutter' }, { id: 'sheriff', name: "Sheriff's Office", today: '(new: duels, arena sign-up, bounties)' }],
       },
       south: {
         west: [{ id: 'saloon', name: 'Saloon', today: 'party' }, { id: 'gambling', name: 'Gambling Den', today: 'gambler' }],
@@ -359,7 +363,7 @@ const BASE_PLAN = {
         south: [{ id: 'landoffice', name: 'Land Office', today: 'farmhome' }, { id: 'guildhall', name: 'Guild Hall', today: '(new: clans and guilds)' }],
       },
       east: {
-        north: [{ id: 'bank', name: 'Bank', today: 'bank' }, { id: 'assay', name: 'Assay Office', today: 'enchanting' }],
+        north: [{ id: 'bank', name: 'Bank', today: 'bank' }],
         south: [{ id: 'store', name: 'General Store', today: 'marketplace' }, { id: 'auction', name: 'Auction House', today: 'auctionhouse' }],
       },
     },
