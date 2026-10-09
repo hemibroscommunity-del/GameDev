@@ -125,7 +125,7 @@ def retint(body, tone):
 def pose_mul(meta, pose, d):
     """_placeTrait's size factor, with the eyewear path's tune (hairPoseTune)"""
     fit = meta.get('poseFit')
-    legacy = {'mine': 1.21, 'fish': 0.88}.get(pose, 0.67 if (pose, d) == ('jog', 'east') else 1)
+    legacy = {'mine': 1.116, 'fish': 1.07}.get(pose, 0.67 if (pose, d) == ('jog', 'east') else 1)   # v2.3.3146: were 1.21, 0.88
     tune = 1.40 if (pose, d) == ('jog', 'east') else 1
     return (meta.get('scale', {}).get(d, 1)
             * meta.get('scaleByPose', {}).get(pose, {}).get(d, 1)

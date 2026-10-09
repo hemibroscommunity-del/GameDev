@@ -61,6 +61,10 @@ await page.waitForTimeout(2000);
 const HOME = await page.evaluate(() => {
   const S = window._gameState.current;
   S.monsters = [];                    // monsters are solid too -- keep them out of it
+  /* v2.3.3145: a resource is drawn (v2.3.1680) and solid (v2.3.3145) only
+     while its tool is in the bag, so the measurer holds all three */
+  const inv = (S.rpg.inventory = S.rpg.inventory || {});
+  inv.mining_pickaxe = inv.woodcutting_axe = inv.fishing_pole = 1;
   return { x: Math.round(S.player.x), y: Math.round(S.player.y) };
 });
 

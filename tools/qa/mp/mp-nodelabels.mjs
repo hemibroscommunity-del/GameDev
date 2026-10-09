@@ -24,7 +24,12 @@
  *   4. a copper vein mined to the end hides its label while its bar is up,
  *      CRACKS on the split frame (window.__btOreCracks: yours, full voice),
  *      and the worker pays the ore;
- *   5. no page errors.
+ *   5. (v2.3.3146, the owner: "Remove the fishing icon above fish but leave
+ *      the proximity based nameplate in place") sampled all through the run:
+ *      no fishing spot ever shows the rod's disc alone -- a spot drawn on
+ *      screen has nothing over it until it is the one near you, and then its
+ *      name plate;
+ *   6. no page errors.
  * Pictures: tools/qa/mp/out/nodelabels-{commons,clownfish,try}.png.
  */
 import * as H from './harness.mjs';
@@ -162,6 +167,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.waitFor(P, (S) => ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe'].filter((k) => ((S.rpg || {}).inventory || {})[k] > 0).length,
       (n) => n === 3, { timeout: 20000, label: 'the tools' }).catch(() => 0);
     await closeTalk(P);
+    /* v2.3.3146: every drawn fishing spot's label, five times a second from
+       here to the copper vein -- a spot's label is up only as its name plate
+       ('full'), never the rod's disc alone ('icon') */
+    await P.page.evaluate(() => {
+      const seen = window.__qaFishLabels = { looks: 0, bare: 0, plate: 0, disc: 0, discAt: [] };
+      window.__qaFishTimer = setInterval(() => {
+        const S = window._gameState && window._gameState.current;
+        if (!S || !S.player) return;
+        for (const n of S.gatherNodes || []) {
+          if (n.nodeType !== 'fishSpot' || !n.alive || n._wheelNear !== true) continue;
+          seen.looks++;
+          const L = n._pixiLabel;
+          if (!L || L.destroyed || !L.visible) seen.bare++;
+          else if (L._nl && L._nl.mode === 'full') seen.plate++;
+          else {
+            seen.disc++;
+            if (seen.discAt.length < 5) seen.discAt.push({ id: n.id, d: Math.round(Math.hypot(n.x - S.player.x, n.y - S.player.y)) });
+          }
+        }
+      }, 200);
+    });
 
     /* ── 1-2. the commons' labels ── */
     const near = await P.page.evaluate(() => {
@@ -311,6 +337,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await P.page.waitForTimeout(1500);
       }
     }
+
+    /* ── 5. (v2.3.3146) no rod over the fish: what the sampler saw on the way
+       to the clownfish, at its seat and back ── */
+    const fishSeen = await P.page.evaluate(() => {
+      clearInterval(window.__qaFishTimer);
+      return window.__qaFishLabels || null;
+    });
+    rec.ok(`no fishing spot ever showed the rod's disc alone (${fishSeen && fishSeen.disc} of ${fishSeen && fishSeen.looks} looks at a drawn spot)`,
+      !!fishSeen && fishSeen.looks > 0 && fishSeen.disc === 0, fishSeen);
+    rec.ok(`...a spot drawn on screen had nothing over it until it was the one near you (${fishSeen && fishSeen.bare} looks bare), then its name plate (${fishSeen && fishSeen.plate})`,
+      !!fishSeen && fishSeen.bare > 0 && fishSeen.plate > 0, fishSeen);
 
     /* ── 4. a copper vein, mined to the end: its label steps aside, it cracks ── */
     const vein = await P.page.evaluate(() => {

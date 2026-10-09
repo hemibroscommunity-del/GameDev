@@ -46,14 +46,16 @@ DIRS = ['south', 'southwest', 'east', 'northeast', 'north']
 
 # the blanket per-pose multiplier _placeTrait applies to EVERY head trait
 # (entityRenderer poseTraitMul).  A per-hat fit has to divide it back out.
-POSE_TRAIT_MUL = {('mine', None): 1.21, ('fish', None): 0.88, ('jog', 'east'): 0.67}
+# v2.3.3146: mine and fish are the head's own ratios (sheet_head: 48 and 46
+# against stand's 43), were 1.21 and 0.88
+POSE_TRAIT_MUL = {('mine', None): 1.116, ('fish', None): 1.07, ('jog', 'east'): 0.67}
 
 
 def pose_trait_mul(pose, d):
     if pose == 'mine':
-        return 1.21
+        return 1.116
     if pose == 'fish':
-        return 0.88
+        return 1.07
     if pose == 'jog' and d == 'east':
         return 0.67
     return 1.0

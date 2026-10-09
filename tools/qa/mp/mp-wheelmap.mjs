@@ -33,6 +33,11 @@
  * and the box wears a thick frame: its slate band and brass line are read off
  * the screen.
  *
+ * v2.3.3146, the owner: "Also all the buildings in town should show on the
+ * minimap" -- 2 checks every standing building is drawn on the box where it
+ * stands, its door on its front edge, the shut ones grey, the town's square
+ * gone in their place, and their roofs read off the screen.
+ *
  * Pictures land in tools/qa/mp/out/wheelmap-*.png.
  */
 import * as H from './harness.mjs';
@@ -172,6 +177,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3031: the arrival's window is mostly the paved square now (it is 28% bigger, and the
      yards round it are lawn): 12 colours, where it was more -- still nothing like a flat fill */
   rec.ok(`...drawn on screen, in many colours (${distinct.size})`, distinct.size > 8, { distinct: distinct.size });
+  /* ═══ v2.3.3146: THE TOWN'S BUILDINGS ═══
+     The owner: "Also all the buildings in town should show on the minimap".
+     Every standing building (the doors the ground worker posts) is drawn: its
+     footprint where it stands, its door on the front edge, the shut ones
+     grey; the town's white square gone in their place; and on the screen the
+     roofs' terracotta round you on arrival. */
+  {
+    const doors = await P.page.evaluate(() => (window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : []));
+    const bl = (m && m.buildings) || [];
+    const placed = doors.every((d) => bl.some((b) => b.id === d.id && d.x >= b.x0 - 1 && d.x <= b.x1 + 1 && Math.abs(d.y - b.y1) <= 2 && b.closed === !!d.closed));
+    /* the sizes, smallest to biggest (by area) */
+    const bySize = bl.slice().sort((a, b) => a.w * a.h - b.w * b.h);
+    const sz = (b) => (b ? `${Math.round(b.w)} x ${Math.round(b.h)}` : '0 x 0');
+    rec.ok(`the town's buildings are on the minimap: all ${bl.length} of the ${doors.length} standing, each over the ground it stands on with its door on its front edge (${bl.filter((b) => b.closed).length} shut, grey), from ${sz(bySize[0])} px to ${sz(bySize[bySize.length - 1])} (${bySize.length ? bySize[bySize.length - 1].id : '-'}) -- and the town's square no longer drawn`,
+      doors.length >= 17 && bl.length === doors.length && placed && bl.every((b) => b.w >= 10 && b.h >= 5) && m.townMark === false,
+      { n: bl.length, doors: doors.length, placed, townMark: m && m.townMark, sample: bl.slice(0, 3) });
+    let roof = 0;
+    for (let y = m.topInset + m.frame; y < m.topInset + m.mapBottom; y += 1) for (let x = m.rootX + m.frame; x < PHONE.width - m.frame; x += 1) {
+      if (like(px(x, y), 0xa4553a, 26)) roof++;
+    }
+    rec.ok(`...drawn: the roofs' terracotta on the box round the square (${roof} CSS px)`, roof > 60, { roof });
+  }
   /* v2.3.3108: and the plate is drawn under it: its dark well, with lettering
      on it (light pixels among the dark) */
   {

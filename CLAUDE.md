@@ -762,6 +762,19 @@ remnant to migrate server-side, not a mode to preserve.
       itself (lifeSkillRewards.js `_startLockedTry`, `ex.locked`) -- NOTHING
       is sent to the worker; `__btLockedTries`; docs/specs/wheel-resources.md
       "Quieter labels, a grey tool, and a try you can watch fail".
+    - since v2.3.3145 a resource you hold no tool for STOPS NOBODY -- the
+      owner: "there are invisible areas that block movement near the town":
+      it is not drawn (v2.3.1680) nor on the minimap, but its rock or trunk was
+      still solid (BroTown.jsx `nodeBlockEllipse`), and "Learn a Trade" hands
+      you the hatchet and the rod, not the pickaxe, so the commons' six copper
+      veins round BroTown were rock-sized walls of empty grass; solid again
+      the frame the tool reaches the bag (TRAPS §140); `mp-unseenwall`.
+    - since v2.3.3146 NO ROD OVER THE FISH -- the owner: "Remove the fishing
+      icon above fish but leave the proximity based nameplate in place": a
+      fishing spot shows no tool's disc, only its name plate while it is the
+      one near you (nodeLabels.js `NAME_PLATE_ONLY`); trees and veins as
+      before; `mp-nodelabels` samples every drawn spot: wheel-resources.md
+      "No rod over the fish".
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
@@ -1006,6 +1019,22 @@ remnant to migrate server-side, not a mode to preserve.
       (desktopControls `runInteract` via `S._interactNow`, `interactKind`,
       the character first for the stick: `npcFirst`), SVGs in
       `public/ui/controls/`; `mp-tapact`.
+    - since v2.3.3145 a TAP THAT JUMPS SHOWS NOTHING OF THE ATTACK (the owner:
+      "When you tap jump with bow equipped it shows you and your line of sight
+      facing southward for a brief instant"): with no job on the right side a
+      press is PENDING (`S._atkPending`), not `S.autoAttack`, until it turns
+      out to be a hold (its window closes, the thumb still down) or a drag --
+      tapJump.js `settleTapPress`, once a frame at the top of the game loop;
+      the shield and the water let go of it as they do of the attack. Before,
+      every tap turned the body to the leftover `S._aimAngle` (a monster killed
+      a while ago, an old drag), drew the bow's sight line and the sword's
+      preview, halved the walk and ended a sprint. And a pending tap's thumb
+      roll inside the tap's 10 px no longer aims (the aim's dead zone was 8);
+      a tap on the right stick over a resource out of reach, or one you hold
+      no tool for, is a tap on the ground -- it jumps, and "Too far away!" (and
+      "You need a tool for that") is gone, a farm bed out of reach the same
+      (`_tapHarvestAtCss`, `_tapFarmBedAtCss`); `mp-tapstance`:
+      docs/specs/jumping.md "v2.3.3145".
   - Since v2.3.3017 a BLACK SCREEN LEAVES EVIDENCE -- the owner, on #782's
     preview: "I was fighting fire goblins and my screen went black", and the
     crash feed had nothing:
@@ -1386,7 +1415,9 @@ remnant to migrate server-side, not a mode to preserve.
   - Since v2.3.3062 BROTOWN'S SIGNPOSTS SAY WHERE THEIR ROADS GO -- the
     owner, on the recommendations for finding your way round: "Continue
     building recommended": the four gate signposts (placing.js, boards blank
-    by the catalog's word) each show two plates when you are within 640 px --
+    by the catalog's word) each show two plates when you are within 640 px
+    (300 since v2.3.3146, popping up out of the post -- the owner: "only pops
+    up when you get close"; 640 was a phone's whole view) --
     the land straight on and the land whose trail forks off that road
     (`WHEEL_GATE_ROADS`, src/data/wheelSignposts.js, checked against the
     plan's roads), an arrow the way it lies, its element icon and its name in
@@ -1793,6 +1824,53 @@ remnant to migrate server-side, not a mode to preserve.
       `quest_reward_stashed` dedupes by the worker's id when it has one (a
       second minted Iron Torso was dropped as a "replay");
     - `armorgrade` suite, `mp-armorgrade` (15): docs/specs/armor-grade-look.md.
+  - Since v2.3.3146 THE BRO LOOKS LIKE HIMSELF WHILE HE GATHERS -- the owner:
+    "The character's appearance changes during resource gathering activities.
+    It needs to stay consistent" (docs/specs/gathering-look.md):
+    - mining and fishing size hair, hats and beards to the HEAD: `poseTraitMul`
+      1.21/0.88 -> `MINE_TRAIT_MUL` 1.116 / `FISH_TRAIT_MUL` 1.07 (the skull's
+      top, tune_headwear.py `sheet_head`: 48/46 against stand's 43; the
+      numbers every poseFit item already had), mirrored in the four tools;
+    - FISHING WEARS YOUR SKIN, TROUSERS AND BOOTS (`getFishFrame(art, f, skin,
+      pants, shoes)`, `prewarmFish` for everyone, `POSE_SKIN_FLOOR` + fish):
+      the rod never needed the raw sheet (its key is b > g); the boot-grey LINE
+      did, and `recolorBodyToCanvas(..., bootsUnderLegs)` paints boots only
+      under the trousers; ~1.2 MB of canvas per player;
+    - the LUMBERJACK, COOK and FIRE-LIGHTER WEAR YOUR TROUSERS AND BOOTS
+      (playerSkins `_standInClothes`: the trousers' big pieces, boot pieces
+      mostly below their hem -- the pan held at the waist goes whole;
+      `pantsWide` for the fire's glow); a peer's cook/fire-lighter is your
+      bake (the v2.3.1713 trade), a drawn peer's lumberjack theirs;
+    - the cook's head traits 1.16 -> 1.65 (`_skillTraitMul`: his head 85 px
+      against stand's 51);
+    - then, offered what was left, the owner: "Yes fix all":
+      - the three are YOUR SIZE -- the walking figure is drawn
+        `PLAYER_SIZE_MULT` 1.25 on its container, which no stand-in carries,
+        so every earlier tune was by eye against a figure 25% bigger:
+        `CHOP_STANDIN_H` 104.5 -> 136.8 and a shared `FIRE_STANDIN_H` 154 ->
+        142 (upright: crown to boots 105.7 world px, yours), `COOK_STANDIN_H`
+        65.1 -> 73.9 (crouched: his head, 28.5 px, yours); `CHOP_OFFSET` 30 ->
+        44 keeps the axe biting the trunk; hats, armour, the pan and the farm
+        kneel follow;
+      - YOUR SHIRT'S PRINT AND PATTERN on the three AND the sword swing and
+        bow shot (`_dressedShirtFrame`: `composeShirt` on the strip with its
+        `frameW` -- stampShirtArt sliced square frames -- the pattern's cell x
+        `SHIRT_PATTERN_K`, the strip's figure over the 128 sheet's 94.5 px);
+        only for a printed or patterned shirt; your three gatherers baked
+        behind the loading screen and 0.4 s after a shirt change, the rest on
+        first draw; `DRESSED_MAX` 10, GPU only;
+      - the ORE'S CRACK AND POP never skipped by a late frame: the split is
+        played before the 950 ms break is let go of, up to `ORE_POP_LATE_MS`
+        3 s (`_oreSplit`);
+    - QA `display._bodyScale`, `window.__btStandInClothes`,
+      `window.__btDressedShirt`; `mp-gatherlook`.
+  - Since v2.3.3146 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
+    "Also all the buildings in town should show on the minimap": each
+    standing building's footprint where it stands (wheelMinimap.js
+    `_buildTown`, from `wheelTownDoors()` and the placed objects' boxes,
+    ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
+    town's white square only without them; `__btMinimap.buildings`,
+    `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
   - Since v2.3.3143 THE BUILDINGS HAVE INSIDES -- the owner sent seventeen
     pictures of them (made from docs/ART-WISHLIST.md's prompts) and said "Ok
     wire these up":

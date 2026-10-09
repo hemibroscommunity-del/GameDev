@@ -25,7 +25,8 @@ import * as H from './harness.mjs';
 
 const TILE = 32;
 const ARROW_FLAT_PX = 52.5;   /* ARROW_PINE.lenPx */
-const FIRE_FLAT_H = 154;      /* the fire stand-in's FH */
+const FIRE_FLAT_H = 142;      /* the fire stand-in's FH (FIRE_STANDIN_H; v2.3.3146: 154 -> 142, your size) */
+const CHOP_FLAT_H = 136.8;    /* CHOP_STANDIN_H (v2.3.3146: 104.5 -> 136.8, your walking size) */
 
 const stand = (P, x, y) => P.page.evaluate(({ px, py }) => {
   const S = window._gameState && window._gameState.current;
@@ -103,8 +104,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const chopTown = await P.page.evaluate(() => (window.__btChopFigure ? window.__btChopFigure() : null));
   if (chopTown) {
-    rec.ok('...and the chopper is still exactly 104.5 tall in town',
-      Math.abs(chopTown.drawnH - 104.5) < 0.01, chopTown);
+    rec.ok(`...and the chopper is still exactly ${CHOP_FLAT_H} tall in town`,
+      Math.abs(chopTown.drawnH - CHOP_FLAT_H) < 0.01, chopTown);
   }
 
   const dodgeTown = await dodgeGhostR(P);
