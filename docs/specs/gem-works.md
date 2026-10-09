@@ -1,4 +1,4 @@
-# The Gem Works (v2.3.3144)
+# The Gem Works (v2.3.3148)
 
 > Owner, 2026-10-07, after the Assay Office's name came up ("what does that even
 > mean"): *"I think one gem building is enough and can do both the gem cutting

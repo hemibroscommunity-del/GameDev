@@ -1871,7 +1871,7 @@ remnant to migrate server-side, not a mode to preserve.
     ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
     town's white square only without them; `__btMinimap.buildings`,
     `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
-  - Since v2.3.3143 THE BUILDINGS HAVE INSIDES -- the owner sent seventeen
+  - Since v2.3.3147 THE BUILDINGS HAVE INSIDES -- the owner sent seventeen
     pictures of them (made from docs/ART-WISHLIST.md's prompts) and said "Ok
     wire these up":
     - the top of every building's window is its room, edge to edge
@@ -1917,7 +1917,7 @@ remnant to migrate server-side, not a mode to preserve.
       body's middle) and Mayor Bro's dialogue is above it (z 44 against 35);
     - test-world-core "the buildings' insides", `mp-buildingrooms`,
       `mp-wheelhalls` §7: docs/specs/building-rooms.md, wheel-halls.md.
-  - Since v2.3.3144 ONE GEM BUILDING -- the owner, after the Assay Office's name
+  - Since v2.3.3148 ONE GEM BUILDING -- the owner, after the Assay Office's name
     came up ("what does that even mean"): "I think one gem building is enough
     and can do both the gem cutting and gem setting maybe with two different
     NPCs in the same building"; asked what to do with the Assay Office's plot:

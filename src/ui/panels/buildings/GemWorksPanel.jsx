@@ -2,7 +2,7 @@ import React from 'react';
 import { GemcutPanel } from './GemcutPanel.jsx';
 import { EnchantPanel } from './EnchantPanel.jsx';
 
-/* ═══ v2.3.3144: THE GEM WORKS -- CUTTING AND SETTING, ONE WINDOW ═══
+/* ═══ v2.3.3148: THE GEM WORKS -- CUTTING AND SETTING, ONE WINDOW ═══
  *
  * Owner, 2026-10-07, after the Assay Office's name came up ("what does that
  * even mean"): "I think one gem building is enough and can do both the gem

@@ -9,11 +9,11 @@ What the game could use from the owner next, each with a prompt ready to paste.
 
 ## Inside the buildings
 
-**All seventeen are in the game (v2.3.3143)**, from the pictures you sent: sixteen at the top of their windows, the Hotel's held until it has a window (docs/specs/building-rooms.md). **Since v2.3.3144 it is sixteen** (the Assay Office is gone; the Gem Works, the Gem Cutter's building, does both gem jobs, docs/specs/gem-works.md): fifteen at the top of their sixteen windows, the Hotel's held. The prompts stay here for redoing one: send the new picture in chat and a session replaces it (`tools/ui/make-room-pictures.py`). Rooms are empty of people on purpose: the game draws its own characters in. The Auction House's clerk is the first; the spec says what each other room would need.
+**All seventeen are in the game (v2.3.3147)**, from the pictures you sent: sixteen at the top of their windows, the Hotel's held until it has a window (docs/specs/building-rooms.md). **Since v2.3.3148 it is sixteen** (the Assay Office is gone; the Gem Works, the Gem Cutter's building, does both gem jobs, docs/specs/gem-works.md): fifteen at the top of their sixteen windows, the Hotel's held. The prompts stay here for redoing one: send the new picture in chat and a session replaces it (`tools/ui/make-room-pictures.py`). Rooms are empty of people on purpose: the game draws its own characters in. The Auction House's clerk is the first; the spec says what each other room would need.
 
 ### Blacksmith: inside
 
-- **In the game:** Done (v2.3.3143): at the top of its window (the forge).
+- **In the game:** Done (v2.3.3147): at the top of its window (the forge).
 - **Attach:** your style key + the outside of the Blacksmith (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -35,7 +35,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### General Store: inside
 
-- **In the game:** Done (v2.3.3143): at the top of its window (the market).
+- **In the game:** Done (v2.3.3147): at the top of its window (the market).
 - **Attach:** your style key + the outside of the General Store (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -57,7 +57,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Bank: inside
 
-- **In the game:** Done (v2.3.3143): at the top of its window (the bank).
+- **In the game:** Done (v2.3.3147): at the top of its window (the bank).
 - **Attach:** your style key + the outside of the Bank (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -79,7 +79,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Cookhouse: inside
 
-- **In the game:** Done (v2.3.3143): at the top of its window (cooking).
+- **In the game:** Done (v2.3.3147): at the top of its window (cooking).
 - **Attach:** your style key + the outside of the Cookhouse (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -101,7 +101,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Saloon: inside
 
-- **In the game:** Done (v2.3.3143): at the top of its window (the party panel).
+- **In the game:** Done (v2.3.3147): at the top of its window (the party panel).
 - **Attach:** your style key + the outside of the Saloon (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -123,7 +123,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Woodworker: inside
 
-- **In the game:** Done (v2.3.3143): at the top of its window (the woodworker's bench).
+- **In the game:** Done (v2.3.3147): at the top of its window (the woodworker's bench).
 - **Attach:** your style key + the outside of the Woodworker (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -145,7 +145,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Gem Cutter: inside
 
-- **In the game:** Done (v2.3.3143): at the top of its window (gem cutting). Since v2.3.3144 this building is the **Gem Works** and this picture is the room on both of its tabs, "Cut gems" and "Set gems".
+- **In the game:** Done (v2.3.3147): at the top of its window (gem cutting). Since v2.3.3148 this building is the **Gem Works** and this picture is the room on both of its tabs, "Cut gems" and "Set gems".
 - **Attach:** your style key + the outside of the Gem Cutter (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -167,7 +167,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Gem Works: inside (optional: a new picture with two stations)
 
-- **In the game:** Not made yet, and nothing needs it: the Gem Works shows the Gem Cutter's picture above on both tabs (v2.3.3144). This would give the cutter and the setter a station each, for when the two keepers are drawn in. It replaces the Assay Office's prompt, which went with that building.
+- **In the game:** Not made yet, and nothing needs it: the Gem Works shows the Gem Cutter's picture above on both tabs (v2.3.3148). This would give the cutter and the setter a station each, for when the two keepers are drawn in. It replaces the Assay Office's prompt, which went with that building.
 - **Attach:** your style key + the outside of the Gem Works (the Gem Cutter's Object Studio picture, sign GEMS)
 - **How:** Ask ChatGPT for a wide 3:2 picture. Send it in chat as the Gem Works' and a session replaces `gemcutter.webp` (`tools/ui/make-room-pictures.py`).
 
@@ -189,7 +189,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Gambling Den: inside
 
-- **In the game:** Done (v2.3.3143): at the top of its window (the gambling panel).
+- **In the game:** Done (v2.3.3147): at the top of its window (the gambling panel).
 - **Attach:** your style key + the outside of the Gambling Den (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -211,7 +211,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Feed & Seed: inside
 
-- **In the game:** Done (v2.3.3143): at the top of its window (the farm panel).
+- **In the game:** Done (v2.3.3147): at the top of its window (the farm panel).
 - **Attach:** your style key + the outside of the Feed & Seed (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -233,7 +233,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Land Office: inside
 
-- **In the game:** Done (v2.3.3143): at the top of its window (the trip to your farm).
+- **In the game:** Done (v2.3.3147): at the top of its window (the trip to your farm).
 - **Attach:** your style key + the outside of the Land Office (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -255,7 +255,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Post Office & Telegraph: inside
 
-- **In the game:** Done (v2.3.3143): at the top of its window (mail and your inbox).
+- **In the game:** Done (v2.3.3147): at the top of its window (mail and your inbox).
 - **Attach:** your style key + the outside of the Post Office & Telegraph (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -277,7 +277,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Guild Hall: inside
 
-- **In the game:** Done (v2.3.3143): at the top of its window (clans and guilds).
+- **In the game:** Done (v2.3.3147): at the top of its window (clans and guilds).
 - **Attach:** your style key + the outside of the Guild Hall (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -299,7 +299,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Sheriff's Office: inside
 
-- **In the game:** Done (v2.3.3143): at the top of its window (duels, the arena and bounties).
+- **In the game:** Done (v2.3.3147): at the top of its window (duels, the arena and bounties).
 - **Attach:** your style key + the outside of the Sheriff's Office (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -321,7 +321,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Hotel: inside
 
-- **In the game:** Done (v2.3.3143) as a picture, held until the Hotel opens (a bed and a rest; today it stands shut).
+- **In the game:** Done (v2.3.3147) as a picture, held until the Hotel opens (a bed and a rest; today it stands shut).
 - **Attach:** your style key + the outside of the Hotel (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -345,7 +345,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 *Optional: it already has your painting of its counter. Make this only if you want it to match the others in pixel art.*
 
-- **In the game:** Done (v2.3.3143): replaced your first painting of it, and the clerk stays behind the counter.
+- **In the game:** Done (v2.3.3147): replaced your first painting of it, and the clerk stays behind the counter.
 - **Attach:** your style key + the outside of the Auction House (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -369,7 +369,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 *For later: nothing opens at the Town Hall yet.*
 
-- **In the game:** Done (v2.3.3143): at the top of the Town Hall's window (the leaderboard, its trophy case, and the world map, the map on its wall); Mayor Bro still stands on its steps.
+- **In the game:** Done (v2.3.3147): at the top of the Town Hall's window (the leaderboard, its trophy case, and the world map, the map on its wall); Mayor Bro still stands on its steps.
 - **Attach:** your style key + the outside of the Town Hall (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 

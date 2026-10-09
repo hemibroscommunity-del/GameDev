@@ -3179,7 +3179,7 @@ inside changed; the server settles it all as before.
 
 - **Where: the worker.** `placing.js` `doorSpots(plan, bp, placed)` reads the
   placed objects -- a building is placed with its foot on its plot's door --
-  and `ground-worker.js` ships `objects.doors` (17 entries; 16 since v2.3.3144)
+  and `ground-worker.js` ships `objects.doors` (17 entries; 16 since v2.3.3148)
   once the pictures are known. A building with no picture has no door.
 - **What: a table.** `src/data/wheelBuildingDoors.js`, plot id -> the
   `TOWN_BUILDINGS` id it opens, read by test-world-core against the plan's own
@@ -3199,7 +3199,7 @@ inside changed; the server settles it all as before.
   at the store's door.
 - **Quests.** `setWheelDoorsOpen` (gameSystems.js, set with the zones
   worldTrial.js closes) counts the twelve actions the Wheel opens (eleven since
-  v2.3.3144), so
+  v2.3.3148), so
   mayor_1 ("Visit 3 buildings") and mayor_3 (its Farm) are offered again --
   v2.3.3029 hid them while the Wheel had no doors.
 - **The farm.** The Land Office and Feed & Seed both send you to your farm
@@ -3213,7 +3213,7 @@ test-world-core "the buildings' doors" (10), `tutorial.test.mjs` §9.
 **Still shut.** The sheriff's, hotel, post office and guild hall have nothing
 to open; the blacksmith, Ace and Lil Bro are still only in today's town.
 
-### The Gem Works (v2.3.3144)
+### The Gem Works (v2.3.3148)
 
 Owner, 2026-10-07, after the Assay Office's name came up ("what does that even
 mean"): "I think one gem building is enough and can do both the gem cutting and

@@ -307,7 +307,7 @@ const BASE_PLAN = {
                            the Post Office -- with the smithy and the
                            woodworker's yard out by the gate;
                     EAST   the mine side, the way the railway leaves: the Bank,
-                           the Gem Works, the Auction House (v2.3.3144: the
+                           the Gem Works, the Auction House (v2.3.3148: the
                            Assay Office is gone -- the owner, "one gem
                            building is enough and can do both the gem cutting
                            and gem setting" -- so the Gem Cutter's building is

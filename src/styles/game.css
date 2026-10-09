@@ -1190,7 +1190,7 @@ input{font-family:inherit}
    28px is under the 44pt touch floor; an invisible inset:-8px pseudo
    grows the TAP target to 44px with zero visual change. */
 .bt-inspect-close::after{content:'';position:absolute;inset:-8px}
-/* ═══ v2.3.3143: THE ROOM YOU WALKED INTO (BuildingRoom.jsx, data/buildingRooms.js) ═══
+/* ═══ v2.3.3147: THE ROOM YOU WALKED INTO (BuildingRoom.jsx, data/buildingRooms.js) ═══
    The owner's picture of the inside of a building, first thing in its window.
    The card's 20px padding is load-bearing (every panel bleeds into it with a
    -20px margin, above), so the room bleeds the same way on its top and sides,
@@ -1218,7 +1218,7 @@ input{font-family:inherit}
 .bt-inspect-card[data-room] .bt-inspect-close{z-index:2;background:rgba(17,30,35,.78);color:#fff}
 @media (max-height:460px){.bt-room{display:none}}
 @media (prefers-reduced-motion:reduce){.bt-room-img{transition:none}}
-/* ═══ v2.3.3144: THE GEM WORKS (panels/buildings/GemWorksPanel.jsx) ═══
+/* ═══ v2.3.3148: THE GEM WORKS (panels/buildings/GemWorksPanel.jsx) ═══
    The Cut and Set tabs sit on a strip under the room, and the panel they show
    (GemcutPanel or EnchantPanel, neither touched) fills a body padded 20px to take
    back its own -20px margin.  Each panel rounds its own corners with an inline
@@ -1241,7 +1241,7 @@ input{font-family:inherit}
    (found by mp-buildingrooms: elementFromPoint at the close button).  While any
    .bt-inspect (window, card, scrim) is up the button lets taps through. */
 body:has(.bt-inspect) [data-world-map-open]{pointer-events:none}
-/* ═══ v2.3.2627, moved here v2.3.3143: THE AUCTION HOUSE'S CLERK ═══
+/* ═══ v2.3.2627, moved here v2.3.3147: THE AUCTION HOUSE'S CLERK ═══
    The clerk the game draws into the Auction House's room (data/buildingRooms.js
    ROOM_KEEPERS; he was on the owner's first painting of it, v2.3.2627, and is
    on the new one).  Where he stands is data; only the idle cycle needs a
