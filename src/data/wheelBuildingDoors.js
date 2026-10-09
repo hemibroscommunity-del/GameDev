@@ -18,7 +18,7 @@
  * Bro on its steps.  The other four are the plan's "(new: ...)" buildings:
  * since v2.3.3066 three of them open halls of their own (WHEEL_HALL_DOORS),
  * and the Hotel stands shut, saying so (WHEEL_SHUT_DOORS) instead of leaving
- * a player to wonder whether the door is broken.  Since v2.3.3143 the Town
+ * a player to wonder whether the door is broken.  Since v2.3.3147 the Town
  * Hall is a fourth hall (Mayor Bro still stands on its steps), so only the
  * Hotel is shut.
  */
@@ -71,7 +71,7 @@ export const WHEEL_HALL_DOORS = {
   guildhall: 'guildhall',
   post: 'post',
   sheriff: 'sheriff',
-  townhall: 'townhall',     /* v2.3.3143, below */
+  townhall: 'townhall',     /* v2.3.3147, below */
 };
 
 /* What each hall is called and wears: its window's header and the Enter
@@ -80,7 +80,7 @@ export const WHEEL_HALLS = {
   guildhall: { title: 'Guild Hall', sub: 'Clans and guilds', icon: '/icons/ui/panel-guild.webp', emoji: '🏰' },
   post: { title: 'Post Office', sub: 'Your mail and messages', icon: '/icons/ui/evt-mail.webp', emoji: '📫' },
   sheriff: { title: "Sheriff's Office", sub: 'Duels and the arena', icon: '/icons/ui/evt-duel.webp', emoji: '⚔️' },
-  /* ═══ v2.3.3143: THE TOWN HALL IS A HALL TOO ═══
+  /* ═══ v2.3.3147: THE TOWN HALL IS A HALL TOO ═══
      The owner sent the picture of its inside (data/buildingRooms.js) and, asked
      what the Town Hall should do, chose "a Town Hall window": your picture on
      top, then two things the game already has, set where the room's own props
@@ -100,7 +100,7 @@ export const WHEEL_HALLS = {
    worker settles: the HP it restores is the worker's to give), so it stays
    shut until the worker can pay it.  Stood at, it shows its name and "Shut
    for now" (BroTown.jsx) instead of leaving a player to wonder whether the
-   door is broken.  (The Town Hall was in no list until v2.3.3143: Mayor Bro
+   door is broken.  (The Town Hall was in no list until v2.3.3147: Mayor Bro
    stands on its steps; it is a hall now.)  MIRROR: plan.js's own `today`
    words -- test-world-core checks the shut one and the three halls beside
    it are the four "(new: ...)" plots. */

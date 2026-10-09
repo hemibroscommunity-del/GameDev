@@ -1,4 +1,4 @@
-# The inside of each building (v2.3.3143)
+# The inside of each building (v2.3.3147)
 
 > Owner, 2026-10-06: sent seventeen pictures of the inside of BroTown's
 > buildings (made in ChatGPT from the prompts in `docs/ART-WISHLIST.md`,

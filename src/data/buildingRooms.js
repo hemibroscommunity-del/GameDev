@@ -1,4 +1,4 @@
-/* ═══ v2.3.3143: THE INSIDE OF EACH BUILDING ═══
+/* ═══ v2.3.3147: THE INSIDE OF EACH BUILDING ═══
  *
  * Owner, 2026-10-06: sent seventeen pictures of the inside of BroTown's
  * buildings (the prompts are docs/ART-WISHLIST.md "Inside the buildings"; the
@@ -33,7 +33,7 @@ export const ROOM_H = 768;
 /* buildingPanel value -> plot id.  Sixteen windows (the Feed & Seed, the Land
    Office's trip to your farm, the Saloon and the rest open today's own
    panels; the Guild Hall, Post Office and Sheriff's Office are the Wheel's
-   halls, v2.3.3066, and so is the Town Hall, v2.3.3143).  'store' (the Market,
+   halls, v2.3.3066, and so is the Town Hall, v2.3.3147).  'store' (the Market,
    reached by a button inside the Auction House's and the General Store's
    windows) has none: it is a screen of its own, not a building. */
 export const BUILDING_ROOMS = {
@@ -51,7 +51,7 @@ export const BUILDING_ROOMS = {
   post: 'post',
   sheriff: 'sheriff',
   guildhall: 'guildhall',
-  townhall: 'townhall',       /* v2.3.3143: a hall of the Wheel's own, the leaderboard and the world map */
+  townhall: 'townhall',       /* v2.3.3147: a hall of the Wheel's own, the leaderboard and the world map */
   auctionhouse: 'auction',
 };
 
@@ -59,7 +59,7 @@ export const BUILDING_ROOMS = {
    is shut (its rest is the farm bed's, on this device only --
    WHEEL_SHUT_DOORS).  It costs nothing until a window asks for it;
    test-world-core checks the file is there, so the day it opens it is one line
-   in BUILDING_ROOMS.  (The Town Hall's was held here until v2.3.3143 made it a
+   in BUILDING_ROOMS.  (The Town Hall's was held here until v2.3.3147 made it a
    hall.) */
 export const SPARE_ROOMS = ['hotel'];
 

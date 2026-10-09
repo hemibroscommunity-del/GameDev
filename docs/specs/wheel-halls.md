@@ -123,7 +123,7 @@ closes the hall.
 - `mp-wheeldoors`: now 12 open, 3 halls, 1 shut and the Town Hall. Its 11 checks
   pass.
 
-## v2.3.3143: the Town Hall is the fourth hall
+## v2.3.3147: the Town Hall is the fourth hall
 
 The Town Hall had no window: Mayor Bro stands on its steps, and its plot is the
 plan's `mayor (NPC)`, not one of the "(new: …)" four. When the owner sent the

@@ -3290,7 +3290,7 @@ console.log("the buildings' doors (v2.3.3032)");
      Wheel's own (the Guild Hall, the Post Office, the Sheriff's Office), the
      Hotel stays shut */
   const actions = TOWN_BUILDINGS.map((b) => b.action || b.id).concat(['farmhome']);
-  /* v2.3.3143: the Town Hall (the plan's `mayor (NPC)`, Mayor Bro on its steps) is a fourth hall,
+  /* v2.3.3147: the Town Hall (the plan's `mayor (NPC)`, Mayor Bro on its steps) is a fourth hall,
      so every plot of the town opens something or says it is shut */
   ok('...all twelve of today\'s buildings have a door (none twice), and the other five plots are accounted for, none left over: four halls of the Wheel\'s own (three of the plan\'s "(new: ...)" buildings, and the Town Hall, Mayor Bro\'s) and one shut that says so',
     new Set(Object.values(WHEEL_BUILDING_DOORS)).size === 12 && tbIds.every((id) => Object.values(WHEEL_BUILDING_DOORS).includes(id))
@@ -3503,10 +3503,10 @@ console.log('the lands\' music (v2.3.3064)');
     /noteWheelMusic\(here, S, BT_AUDIO\)/.test(mini) && /fresh: _here\.x === cx && _here\.y === cy/.test(trial));
 }
 
-/* ── v2.3.3143: the inside of each building ──
+/* ── v2.3.3147: the inside of each building ──
    Owner, 2026-10-06: sent seventeen pictures of the insides and said "Ok wire
    these up". */
-console.log("the buildings' insides (v2.3.3143)");
+console.log("the buildings' insides (v2.3.3147)");
 {
   const fs = await import('node:fs');
   const R = await import('../../src/data/buildingRooms.js');
@@ -3566,7 +3566,7 @@ console.log("the buildings' insides (v2.3.3143)");
     /buildingPanel === 'farmhome' && \/\*#__PURE__\*\/React\.createElement\(LandOfficePanel, \{/.test(bt)
       && !/buildingPanel === 'farmhome' && \/\*#__PURE__\*\/React\.createElement\("div"/.test(bt)
       && /Travel to Farm/.test(fs.readFileSync(new URL('../../src/ui/panels/buildings/LandOfficePanel.jsx', import.meta.url), 'utf8')), {});
-  /* v2.3.3143: the Town Hall is a hall, its rows open things that exist */
+  /* v2.3.3147: the Town Hall is a hall, its rows open things that exist */
   {
     const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
     const th = WHEEL_HALLS.townhall;
