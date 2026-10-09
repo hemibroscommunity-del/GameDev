@@ -374,7 +374,7 @@ import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a s
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
-import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it */
+import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
 import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
@@ -676,6 +676,19 @@ function nodeBlockEllipse(S, n) {
   if (n.respawnAt && Date.now() < n.respawnAt) return null;
   var art = NODE_ART[n.nodeType];
   if (!art) return null;          /* campfire and anything new: walkable */
+  /* ═══ v2.3.3145: WHAT YOU CANNOT SEE DOES NOT STOP YOU ═══
+     The owner: "there are invisible areas that block movement near the
+     town".  A resource you hold no tool for is not drawn (effectsRenderer's
+     hasGatherTool filter, v2.3.1680: "it only becomes visible after giving
+     you the quest and equipment"), nor marked on the minimap -- but it was
+     still solid here.  The Wheel's commons ring BroTown with six copper veins
+     and six pines, and Mayor Bro's "Learn a Trade" hands you the hatchet and
+     the rod but not the pickaxe, so a rock-sized patch of empty grass round
+     each vein stopped you dead.  The Wheel's objects already keep this rule
+     (wheelObjects.js: "what you can see is what stops you"); the resources
+     now do too, and the moment the tool is in the bag the node is drawn and
+     solid on the same frame. */
+  if (!hasGatherTool(S && S.rpg, n.nodeType)) return null;
   /* v2.3.3012: the Wheel's fishing spots stand in its real water -- water
      you swim in (v2.3.3003), its fish under you, or with ?noswim a wall the
      walk grid already keeps -- so the pond's ellipse would only take a bite
@@ -4541,6 +4554,11 @@ export var BroTown = function BroTown(_ref0) {
         S._viewH = H;
         var P = S.player;
         var K = S.keys;
+        /* v2.3.3145: a press that waited to see whether it was a tap and is
+           still held past its window is the attack now -- before the sprint,
+           the walk, the fight and the drawing read S.autoAttack this frame
+           (game/tapJump.js settleTapPress) */
+        settleTapPress(S, Date.now());
 
         /* ═══ Defensive death-flow catch ═══
            The "rich" death handlers (server monster_attack ~2272, local
@@ -4938,6 +4956,7 @@ export var BroTown = function BroTown(_ref0) {
         if (_swEv === 'in' || _swEv === 'landed') {
           dropShield(S, 'swim');
           S.autoAttack = false;
+          S._atkPending = false;   /* v2.3.3145: nor one still waiting on its tap */
           S.isSwinging = false;
           S._swingSfxPending = false;
           S._aiming = false;
@@ -5554,6 +5573,11 @@ export var BroTown = function BroTown(_ref0) {
         if (S.gatherNodes) {
           S.gatherNodes.forEach(function (n) {
             if (!n.alive || n.respawnAt && Date.now() < n.respawnAt) return;
+            /* v2.3.3145: one you hold no tool for is not drawn, so it is not
+               in reach either -- it was, and a hidden copper vein nearer than
+               the pine beside it took this, and the gate below then offered
+               NOTHING: no harvest of the tree you can see (TRAPS §140) */
+            if (n.nodeType && !hasGatherTool(S.rpg, n.nodeType)) return;
             var nd = nodeReachDist(S, n);
             if (nd != null && nd < closestDist) { closestDist = nd; S._proxNode = n; }
           });
@@ -8708,6 +8732,21 @@ export var BroTown = function BroTown(_ref0) {
        can tap and what you can reach are one shape. */
     var _tapScan = function (n) {
       if (!n || !n.alive || (n.respawnAt && Date.now() < n.respawnAt)) return;
+      /* ═══ v2.3.3145: ONLY WHAT YOU CAN SEE AND REACH TAKES THE TAP ═══
+         The owner: "Sometimes jumping doesn't work because 'too far away!'
+         message.  Make jumping work and just remove the too far away message
+         when too far away from resource extraction areas."  The right stick
+         is the whole right half of the screen, so the thumb that taps it to
+         jump is often over a tree or a rock across the screen -- which took
+         the tap, said "Too far away!" and ate the jump.  A resource out of
+         reach is passed over now, as is one you hold no tool for: the
+         renderer does not draw it (effectsRenderer's hasGatherTool filter)
+         and since v2.3.3145 it stops nobody either (nodeBlockEllipse), so a
+         tap there is a tap on the ground it looks like -- which also lets a
+         visible resource beside it win the tap.  The tap then goes on to
+         what it would do with nothing under it: let go of a lock, or jump. */
+      if (n !== _S._campfire && n.nodeType && !hasGatherTool(_S.rpg, n.nodeType)) return;
+      if (nodeReachDist(_S, n) == null) return;
       var _nb = nodeWorldBox(_S, n);
       var _nsx, _nsy;
       if (_nb) {
@@ -8730,22 +8769,13 @@ export var BroTown = function BroTown(_ref0) {
     if (_S._campfire) _tapScan(_S._campfire);
     if (!_tapNodeBest) return false;
     /* CLOSE ENOUGH, as he asked -- the same reach the button and the E key
-       use, so the three cannot disagree about what is in range.  Out of reach
-       SAYS so rather than doing nothing: a tap that silently fails reads as a
-       broken resource, which the v2.3.1717 NPC note calls the worse bug. */
-    if (nodeReachDist(_S, _tapNodeBest) == null) {
-      try { pushDmgPopup(_S, _tapNodeBest.x, _tapNodeBest.y - 15, 'Too far away!', '#D95C54'); } catch (_e9) { /* best-effort */ }
-      return true;
-    }
-    /* v2.3.2273: the tool gate the button path has had all along.  The
-       renderer HIDES an untooled node but the entry stays in the list with its
-       full box, so a tap on apparently-empty ground started a harvest the
-       worker then refused twice over, in silence. */
-    if (_tapNodeBest.nodeType && _tapNodeBest !== _S._campfire
-        && !hasGatherTool(_S.rpg, _tapNodeBest.nodeType)) {
-      try { pushDmgPopup(_S, _tapNodeBest.x, _tapNodeBest.y - 15, 'You need a tool for that', '#D95C54'); } catch (_e11) { /* best-effort */ }
-      return true;
-    }
+       use, so the three cannot disagree about what is in range.
+       v2.3.3145: the scan above passes over what is out of reach, so the
+       "Too far away!" this said there is gone (the owner's ask), and with it
+       v2.3.2273's "You need a tool for that": that gate stood here because
+       the scan used to find a resource the renderer hides, and it no longer
+       does -- so a tap on apparently-empty ground starts nothing, which was
+       v2.3.2273's point. */
     /* Already harvesting: leave it alone -- you are doing the thing the tap
        would start.  Still consumed, so the caller does not fall through to
        clearing the lock or opening chat under the finger. */
@@ -8766,32 +8796,38 @@ export var BroTown = function BroTown(_ref0) {
      there, as E and the stick's tap do (game/farmWalk.js startFarmStep), when
      your boots stand in its reach -- the reach they use (farmWork bedAt), so
      the three cannot disagree -- and out of reach says so, the resources'
-     rule.  The bed's box reaches up over a tall crop.  True when it took the
-     tap (the caller then neither jumps nor opens chat). */
+     rule (v2.3.3145: no longer -- a bed out of reach lets the tap through,
+     below).  The bed's box reaches up over a tall crop.  True when it took
+     the tap (the caller then neither jumps nor opens chat). */
   var _tapFarmBedAtCss = useCallback(function (cssX, cssY) {
     var _S = stateRef.current;
     if (!_S || !_S.player || !_S.camera || _S.currentZone !== 'farm_home') return false;
     var _cx = _S.camera.x, _cy = _S.camera.y;
     var _sx = _S._worldScaleX || 1, _sy = _S._worldScaleY || 1;
+    var _P = _S.player;
+    var _fy = _P.y + playerGroundDy(_S.currentZone, _P.x, _P.y);
+    var _probe = typeof window !== 'undefined' && window.__btProbe;
     var _best = -1, _bestD = 14;   /* CSS px round a bed's box: a thumb */
+    var _far = -1;
     for (var _bi = 0; _bi < FARM_BEDS.length; _bi++) {
       var _b = FARM_BEDS[_bi];
       var _x0 = (_b.x - _cx) * _sx, _x1 = (_b.x + _b.w - _cx) * _sx;
       var _y0 = (_b.y - 44 - _cy) * _sy, _y1 = (_b.y + _b.h - _cy) * _sy;
       var _ox = Math.max(_x0 - cssX, 0, cssX - _x1), _oy = Math.max(_y0 - cssY, 0, cssY - _y1);
       var _d = Math.sqrt(_ox * _ox + _oy * _oy);
-      if (_d < _bestD) { _bestD = _d; _best = _bi; }
+      if (!(_d < _bestD)) continue;
+      /* ═══ v2.3.3145: A BED OUT OF REACH DOES NOT TAKE THE TAP ═══
+         ...and says nothing: the resources' rule again (_tapHarvestAtCss).
+         "Too far away!" here ate the jump of a thumb on the right stick over
+         a bed across the farm, where six beds cover much of the screen, so
+         such a tap goes on to the jump.  (Kneeling at one, any bed still takes
+         it: startFarmStep says the press is used, and you cannot jump there.) */
+      if (!_S._farmWork && bedAt([_b], _P.x, _fy, FARM_BED_REACH) !== 0) { _far = _bi; continue; }
+      _bestD = _d; _best = _bi;
     }
-    if (_best < 0) return false;
-    var _bb = FARM_BEDS[_best];
-    var _P = _S.player;
-    var _fy = _P.y + playerGroundDy(_S.currentZone, _P.x, _P.y);
-    var _inReach = bedAt([_bb], _P.x, _fy, FARM_BED_REACH) === 0;
-    var _probe = typeof window !== 'undefined' && window.__btProbe;
-    if (!_inReach && !_S._farmWork) {
-      try { pushDmgPopup(_S, _bb.x + _bb.w / 2, _bb.y - 8, 'Too far away!', '#D95C54'); } catch (_e12) { /* best-effort */ }
-      if (_probe) window.__btBedTap = { bed: _best, far: true, at: Date.now() };
-      return true;
+    if (_best < 0) {
+      if (_probe && _far >= 0) window.__btBedTap = { bed: _far, far: true, at: Date.now() };
+      return false;
     }
     var _used = startFarmStep(_S, _best);
     if (_probe) window.__btBedTap = { bed: _best, used: !!_used, at: Date.now() };
@@ -9314,8 +9350,20 @@ export var BroTown = function BroTown(_ref0) {
     if (_lt && _lt.ref && _lt.type === 'monster' && _lt.src !== 'tap') {
       S.lockedTarget = { type: 'monster', id: _lt.id, ref: _lt.ref, src: 'tap' };
     }
-    S.autoAttack = true;
-    setAutoAttack(true);
+    /* ═══ v2.3.3145: A PRESS THAT MAY BE A TAP IS NOT AN ATTACK YET ═══
+       The owner: "When you tap jump with bow equipped it shows you and your
+       line of sight facing southward for a brief instant."  With no job on
+       this side (rS opened the tap's window, S._atkHoldUntil) the press
+       waits as PENDING: the game loop makes it the attack once the window
+       closes with the thumb still down, or a drag ends the window
+       (game/tapJump.js settleTapPress), and a release first -- a tap, a jump
+       -- lets go of it before anything of the attack was shown. */
+    if (tapPending(S, Date.now())) {
+      S._atkPending = true;
+    } else {
+      S.autoAttack = true;
+      setAutoAttack(true);
+    }
     /* ═══ v2.3.2258: AND THE FIRST ONE LUNGES ═══
        Owner: "the default first attack will be very similar to 'shield bash'
        ... I've been feeling like melee is a little underpowered."
@@ -9435,6 +9483,7 @@ export var BroTown = function BroTown(_ref0) {
        here rather than made to serve out a delay it cannot use. */
     S._atkPressAt = 0;
     S._atkHoldUntil = 0;   /* v2.3.3105 */
+    S._atkPending = false;   /* v2.3.3145: a tap's press never becomes the attack */
     S.autoAttack = false;
     setAutoAttack(false);
     S._aiming = false;
@@ -10060,7 +10109,14 @@ export var BroTown = function BroTown(_ref0) {
            588cf49: deflection from the touch ORIGIN (v2.3.949's relative drag),
            an 8px dead zone, the 4-way _facing quantisation, and the rod + knob
            transforms on the docked disc so the drag has something to look at. */
-        rJoyAim(t.clientX, t.clientY, rts2.startX, rts2.startY);
+        /* v2.3.3145: ...but a press still waiting to see whether it is a tap
+           does not aim while the thumb stays inside the tap's 10 px.  The aim's
+           dead zone is 8 px, so a thumb that rolled 9 px on a tap wrote its
+           roll into S._aimAngle and S._lastAimAngle -- the way the body turned
+           and the bow aimed from then on -- switched the attack on, and still
+           jumped.  The knob follows; the aim waits for a drag. */
+        if (!rts2.moved && tapPending(stateRef.current, Date.now())) rKnobFollow(t.clientX, t.clientY, rts2.startX, rts2.startY);
+        else rJoyAim(t.clientX, t.clientY, rts2.startX, rts2.startY);
       }
     };
     var rE = function rE(e) {

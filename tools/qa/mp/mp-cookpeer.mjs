@@ -143,7 +143,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        other.  "Both wrong by the same factor" is what a one-sided assertion
        passes, which is why the peer figure is measured from its own scale
        rather than assumed to match. */
-    const COOK_H = 65.1;   /* COOK_STANDIN_H (effectsRenderer) */
+    const COOK_H = 73.9;   /* COOK_STANDIN_H (effectsRenderer; v2.3.3146: 65.1 -> 73.9, your head's size) */
     const peerCookH = (typeof cook.probe.scaleY === 'number')
       ? Math.abs(cook.probe.scaleY) * 220 : null;
     rec.ok(`a cooking PEER is drawn at the shared cook height (${COOK_H})`,
@@ -160,8 +160,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { own: ownCook && ownCook.drawnH, peer: peerCookH });
     /* The pan has to stay over the flames, and its offset is a fraction of the
        height now rather than a literal that must be re-tuned by hand. */
-    rec.ok('...and the pan offset tracked the new height (11 * 65.1/62 = 11.55)',
-      !!ownCook && typeof ownCook.panDx === 'number' && Math.abs(ownCook.panDx - 11.55) < 0.2,
+    rec.ok(`...and the pan offset tracked the new height (11 * ${COOK_H}/62 = ${(11 * COOK_H / 62).toFixed(2)})`,
+      !!ownCook && typeof ownCook.panDx === 'number' && Math.abs(ownCook.panDx - 11 * COOK_H / 62) < 0.2,
       ownCook);
 
     rec.ok('...and the stand-in is still actually on screen (a peer that fails '
@@ -208,7 +208,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        Both figures are checked against the SAME constant they are drawn from,
        and against each other, because "both wrong by the same factor" is the
        failure a one-sided assertion would pass. */
-    const CHOP_H = 104.5;   /* CHOP_STANDIN_H (effectsRenderer) */
+    const CHOP_H = 136.8;   /* CHOP_STANDIN_H (effectsRenderer; v2.3.3146: 104.5 -> 136.8, your walking size) */
     rec.ok('a chopping PEER\'s armour is drawn the same height as his body '
       + '(the layer scale comes off the layer texture, not a literal)',
       typeof chop.probe.gearDrawnH === 'number'

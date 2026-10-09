@@ -2965,6 +2965,31 @@ console.log('the tap that jumps (v2.3.3105)');
     /rightTapBusy\(_tjS, endT\)[\s\S]*_tjSeq = [\s\S]*dispatchEvent[\s\S]*_tapEmptySeq \|\| 0\) > _tjSeq/.test(rE)
       && /S\._tapEmptySeq = \(S\._tapEmptySeq \|\| 0\) \+ 1;\s*\/\* Tap on empty space = unlock \*\/\s*S\.lockedTarget = null;/.test(bt)
       && /rts\.busy = rightTapBusy\(/.test(bt));
+  /* v2.3.3145: the owner, "When you tap jump with bow equipped it shows you and
+     your line of sight facing southward for a brief instant" -- a press that
+     may be a tap is PENDING, not the attack, until it is a hold or a drag */
+  {
+    const S1 = { _atkHoldUntil: now + 100, _atkPending: true };
+    const held = TJ.settleTapPress(S1, now);
+    const S2 = { _atkHoldUntil: now - 1, _atkPending: true };
+    const late = TJ.settleTapPress(S2, now);
+    const S3 = { _atkHoldUntil: 0, _atkPending: false };
+    ok('a press still inside its tap window stays pending (no attack); one held past it, or dragged (the window ended), is the attack; none pending, nothing',
+      TJ.tapPending(S1, now) && !held && S1._atkPending && !S1.autoAttack
+        && !TJ.tapPending(S2, now) && late && !S2._atkPending && S2.autoAttack === true
+        && !TJ.settleTapPress(S3, now) && !S3.autoAttack && !TJ.settleTapPress(null, now) && !TJ.tapPending(null, now));
+    const press = bt.slice(bt.indexOf('var handleRBtnPress = useCallback'), bt.indexOf('var rKnobFollow = useCallback'));
+    const rel = bt.slice(bt.indexOf('var handleRBtnRelease = useCallback'), bt.indexOf('var handleRJoyMove = handleRBtnPress'));
+    const rM = bt.slice(bt.indexOf('var rM = function rM(e)'), bt.indexOf('var rE = function rE(e)'));
+    ok('...the press marks it pending in its window, the release lets go of it, the loop settles it before anything reads the attack, and the shield and the water let go of it',
+      /if \(tapPending\(S, Date\.now\(\)\)\) \{\s*S\._atkPending = true;\s*\} else \{\s*S\.autoAttack = true;/.test(press)
+        && /S\._atkPending = false;/.test(rel)
+        && /var K = S\.keys;[\s\S]{0,400}settleTapPress\(S, Date\.now\(\)\);/.test(bt)
+        && /S\._atkPending = false;/.test(fs.readFileSync(new URL('../../src/game/shieldToggle.js', import.meta.url), 'utf8'))
+        && /S\.autoAttack = false;\s*S\._atkPending = false;/.test(bt));
+    ok('...and a pending tap\'s thumb, inside the tap\'s 10 px, moves the knob and aims nothing (the aim\'s dead zone is 8)',
+      /if \(!rts2\.moved && tapPending\(stateRef\.current, Date\.now\(\)\)\) rKnobFollow\(/.test(rM));
+  }
 }
 
 /* ── v2.3.3017: which land a Wheel point is on (src/data/zones.js wheelLandAt) ──

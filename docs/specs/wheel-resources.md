@@ -354,6 +354,12 @@ gesture."*
   breaks on your screen too, plays softer and fades out by 1,400 px. Before
   this a finished vein was silent: its only cue was a `beep()`, which has
   played nothing since v2.3.1103.
+  - **v2.3.3146: never skipped by a late frame.** The break lives 950 ms, and
+    a frame arriving later than that (a stall right at the payout) let it go
+    before its split was played: no ore popped out, no crack. The split is
+    played first now, on whatever frame reaches it, up to `ORE_POP_LATE_MS`
+    (3 s) after the break began (`_advanceOreBreaks`, `_oreSplit`; the probe's
+    `late` says how far in). See docs/specs/gathering-look.md section 7.
 
 Tests: `mp-wheelnodes` (a fishing spot's held display is its label now),
 `mp-harvestbar`.
@@ -415,6 +421,32 @@ Tests (`mp-nodelabels`):
   sent, and the try ends by itself.
 - Picture: `nodelabels-try.png`.
 
+## No rod over the fish (v2.3.3146)
+
+The owner, 2026-10-07: *"Remove the fishing icon above fish but leave the
+proximity based nameplate in place."*
+
+- A fishing spot in the Wheel is its fish, seen swimming in the water
+  (`WheelFish`), so the rod's disc over every school said again what the fish
+  already say.
+- A fishing spot's label is now its **name plate alone**: the pill with the
+  rod, the fish's name and its level, shown while the spot is the one resource
+  near you that says its name (`nodeNameNode`, within 260 px), and nothing
+  otherwise. While another resource is nearer, or you are further off, nothing
+  is over the fish.
+- Trees and veins are unchanged: their tool's picture alone, the nearest's
+  name plate, the grey tool for a level you do not have.
+- The plate is exactly as it was: the rod, the name, the level in red while
+  yours is below it, the rod grey then, stepping aside while a harvest bar is
+  up or a try runs.
+- How: `NAME_PLATE_ONLY` in `src/rendering/nodeLabels.js` (the kinds whose
+  label is the name plate only), read in `updateNodeLabel`.
+
+Tests (`mp-nodelabels`): five times a second from the commons to the
+clownfish's seat and back, every fishing spot drawn is looked at. None ever
+shows the rod's disc alone; spots drawn on screen are bare until they are the
+one near you; and then the name plate is up.
+
 ## Past level 20 (v2.3.3094)
 
 > The owner: *"build the world past level 20 (levels 21–40 in each land with
@@ -475,6 +507,28 @@ Each land's second stage grows two tiers of its own, as the first stage does:
   - `mp-wheelpast20`: a titanium vein on Frost Ridge's second stage, named,
     asking Mining 10, drawn from its own picture, its label grey for a miner
     short of it, and cedar, salmon, obsidian, maple and pike around it.
+
+## A resource you can't see stops nobody (v2.3.3145)
+
+The owner: "there are invisible areas that block movement near the town".
+
+- A resource you hold no tool for is not drawn (v2.3.1680) and not marked on
+  the minimap, but its rock or trunk was still solid (BroTown.jsx
+  `nodeBlockEllipse`). The commons ring BroTown with six copper veins and six
+  pines, and "Learn a Trade" hands you the hatchet and the rod but not the
+  pickaxe. So each vein was a rock-sized patch of empty grass that stopped you
+  (on main, `mp-unseenwall` stops 45 px short of a hidden vein).
+- Now it is walkable until the tool is in the bag; the frame it is, the node is
+  drawn and solid again.
+- The same rule for the two other readers that found hidden nodes (TRAPS §140):
+  - a tap on one is a tap on the ground (`_tapHarvestAtCss`) -- no "You need a
+    tool for that" over nothing; a resource out of reach lets the tap through
+    too, so the right stick jumps (docs/specs/jumping.md "v2.3.3145");
+  - the nearest resource in reach (`S._proxNode`) is one you can see, so a
+    hidden vein beside a pine no longer leaves the harvest button offering
+    nothing.
+- `mp-unseenwall`: through a hidden vein, stopped by the drawn one, and a tap on
+  a far vein jumps.
 
 ## Not in this round
 

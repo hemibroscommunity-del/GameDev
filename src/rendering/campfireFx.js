@@ -49,7 +49,9 @@ import { standFootDy } from './systems/entityRenderer.js';
 /* World px per art pixel: the size the fire-lighting strip draws ITS pixels at
    (8 source px per art pixel x 154/512 = 2.4) and the size the hit-reaction
    pieces use (hitMaterialFx, 2.53), so the fire, the strip that lights it and
-   the debris of a fight beside it are one pixel grid. */
+   the debris of a fight beside it are one pixel grid.  (v2.3.3146: the strip
+   is drawn at FIRE_STANDIN_H 142 now, your own size -- 2.22 a pixel, still
+   near enough for the half second it is on screen; this stays the debris'.) */
 const PIX = 2.53;
 const FLAME_MS = 80;                 /* 12.5 fps */
 /* catching: [ms since lit, flame size index].  Short on purpose: the

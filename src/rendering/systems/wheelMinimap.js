@@ -58,12 +58,22 @@
  *     "BroTown" in the Wheel now (ZoneHeader.jsx), and a land's banner docks
  *     into the plate (zoneBannerOverlay.js titleRect, window.__btWheelPlate).
  *
+ *   - v2.3.3146: and draws THE TOWN'S BUILDINGS -- the owner: "Also all the
+ *     buildings in town should show on the minimap".  The town was one white
+ *     square at its middle; now each of its buildings is drawn where it
+ *     stands, the ground it stands on (its footprint, from the ground worker's
+ *     placed objects: about 17 x 9 px here, the Town Hall 21 x 11) in a roof's
+ *     colour, a shut one grey (as the world map has them), each with a light
+ *     mark at its door.  The white square stays only for a Wheel whose
+ *     buildings are not known (`?noobjects`).
+ *
  * PRELOADING: nothing to load.  The overview is a canvas the worker made
  * before the Wheel opened (behind its loading screen); the lines and marks
  * are drawn once from numbers.
  */
 import { Container, Graphics, Sprite, Texture, CanvasSource, Text } from 'pixi.js';
-import { wheelOverviewLands, wheelMapInfo, wheelHere } from '@/game/wheelTrial.js';
+import { wheelOverviewLands, wheelMapInfo, wheelHere, wheelObjectsInfo } from '@/game/wheelTrial.js';
+import { wheelTownDoors } from '@/game/wheelTownDoors.js';   /* v2.3.3146: the town's buildings */
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
 import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
@@ -136,6 +146,12 @@ const HOME_R = 10, HOME_ICON_PX = 13, C_HOME = 0xf4f0e7, C_HOME_BG = 0x0b161b, C
    so the quest's star riding the top edge (QUEST_EDGE in) loses only its
    tip under it. */
 const NORTH_R = 6.5, NORTH_Y = FRAME / 2, NORTH_FONT = 9, NORTH_UP = NORTH_R - NORTH_Y;
+/* ═══ v2.3.3146: THE TOWN'S BUILDINGS (the header's note) ═══
+   A roof's terracotta on the town's tan ground, under a dark keyline; a shut
+   one (nothing behind its door yet) the world map's grey; the door a light
+   notch on the footprint's front edge, where the building's steps are. */
+const C_BUILDING = 0xa4553a, C_BUILDING_SHUT = 0x7d8a88, C_BUILDING_KEY = 0x0b161b, C_DOOR = 0xf2e4c2;
+const DOOR_W = 3.5, DOOR_H = 2;
 
 /* v2.3.3108: the land's colour lifted toward white to read on the dark plate,
    as the top bar had it (ZoneHeader.jsx landTint, k 0.42) */
@@ -169,10 +185,12 @@ export class WheelMinimap {
     this.root.addChild(mask);
     this.clip.mask = mask;
     this.lines = new Graphics();     /* roads, river, railway: drawn once */
-    this.places = new Graphics();    /* town, camps, passes, gates, landmarks: drawn once */
+    this.buildings = new Graphics(); /* v2.3.3146: the town's buildings: drawn once their places are known */
+    this.places = new Graphics();    /* camps, passes, gates, landmarks: drawn once */
+    this.townMark = new Graphics();  /* the town's square: v2.3.3146, only while its buildings are not known */
     this.marks = new Container();    /* bros and monsters: every frame */
     this.road = new Graphics();      /* v2.3.2992: the gold road to the quest's star: every frame */
-    this.pan.addChild(this.lines, this.places, this.road, this.marks);
+    this.pan.addChild(this.lines, this.buildings, this.places, this.townMark, this.road, this.marks);
     this.player = new Sprite(this.icons.self || this.dotTex);
     this.player.anchor.set(0.5);
     this.player.width = 15; this.player.height = 15;
@@ -269,6 +287,8 @@ export class WheelMinimap {
 
     this.pool = [];
     this.used = 0;
+    this._doorsFor = null;  /* v2.3.3146: the doors the buildings were drawn from */
+    this._bld = [];         /* ...and what was drawn, for the probe */
     this.built = null;      /* the map the lines were drawn from */
     this.under = null;      /* the overview sprite */
     this._rectFor = '';
@@ -353,8 +373,56 @@ export class WheelMinimap {
       else if (p.kind === 'pass') P.poly([x, y - 4, x + 4, y, x, y + 4, x - 4, y]).fill(C_PASS).stroke({ width: 1, color: 0x0b161b });
       else if (p.kind === 'landmark') P.circle(x, y, 4).fill(C_LANDMARK).stroke({ width: 1, color: 0x0b161b });
     }
+    /* the town's square: v2.3.3146, only while its buildings are not known
+       (_buildTown draws them, and puts it away) */
     const t = map.hub.town;
-    P.rect(t.x * SCALE - 5, t.y * SCALE - 5, 10, 10).fill(C_TOWN).stroke({ width: 1.2, color: 0x0b161b });
+    this.townMark.clear();
+    this.townMark.rect(t.x * SCALE - 5, t.y * SCALE - 5, 10, 10).fill(C_TOWN).stroke({ width: 1.2, color: 0x0b161b });
+    this.townMark.visible = !this._bld.length;
+  }
+
+  /* ═══ v2.3.3146: THE TOWN'S BUILDINGS (the header's note) ═══
+     Once per set of doors the ground worker posts (wheelTownDoors, one per
+     standing building, the foot of its steps): each building's footprint --
+     its placed object's boxes, the ground it stops you on, which is the
+     ground it stands on -- and its door.  [] before the worker has posted
+     its objects, or with `?noobjects`: then the town is its square again. */
+  _buildTown(doors) {
+    this._doorsFor = Array.isArray(doors) && doors.length ? doors : null;
+    const G = this.buildings;
+    G.clear();
+    this._bld = [];
+    const info = wheelObjectsInfo();
+    if (info && info.kinds && info.boxOf && info.boxes && Array.isArray(doors) && doors.length) {
+      /* each building kind's first placed object: a building stands once */
+      const want = new Map(doors.map((d) => [info.kinds.indexOf(d.id), d]));
+      want.delete(-1);
+      const seen = new Set();
+      for (let i = 0; i < info.n && seen.size < want.size; i++) {
+        const k = info.kind[i];
+        const d = want.get(k);
+        if (!d || seen.has(k)) continue;
+        seen.add(k);
+        const b0 = info.boxOf[i], b1 = info.boxOf[i + 1];
+        if (!(b1 > b0)) continue;
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (let b = b0; b < b1; b++) {
+          const q = 4 * b;
+          x0 = Math.min(x0, info.boxes[q]); y0 = Math.min(y0, info.boxes[q + 1]);
+          x1 = Math.max(x1, info.boxes[q + 2]); y1 = Math.max(y1, info.boxes[q + 3]);
+        }
+        if (!isFinite(x0) || !(x1 > x0) || !(y1 > y0)) continue;
+        const bx = x0 * SCALE, by = y0 * SCALE, bw = (x1 - x0) * SCALE, bh = (y1 - y0) * SCALE;
+        G.rect(bx, by, bw, bh).fill(d.closed ? C_BUILDING_SHUT : C_BUILDING)
+          .stroke({ width: 1, color: C_BUILDING_KEY, alpha: 0.9 });
+        /* the door: a notch on the front edge, at the foot of its steps */
+        const dx = Math.max(bx + 1, Math.min(bx + bw - 1 - DOOR_W, d.x * SCALE - DOOR_W / 2));
+        G.rect(dx, by + bh - DOOR_H, DOOR_W, DOOR_H).fill(C_DOOR);
+        this._bld.push({ id: d.id, closed: !!d.closed, x0: Math.round(x0), y0: Math.round(y0), x1: Math.round(x1), y1: Math.round(y1),
+          w: +bw.toFixed(1), h: +bh.toFixed(1), doorX: Math.round(d.x), doorY: Math.round(d.y) });
+      }
+    }
+    this.townMark.visible = !this._bld.length;
   }
 
   _placeUnder(map) {
@@ -403,6 +471,12 @@ export class WheelMinimap {
        canvas too */
     if (this.built !== map) { this._build(map); this._dropUnder(); }
     this._placeUnder(map);
+    /* v2.3.3146: the town's buildings, once their doors are known (the same
+       array until the worker posts new objects) */
+    let doors = [];
+    try { doors = wheelTownDoors(); } catch (e) { doors = []; }
+    /* (none yet is a fresh [] on every call: nothing to redraw for it) */
+    if ((doors.length ? doors : null) !== this._doorsFor) this._buildTown(doors);
 
     /* centred on you, held at the world's edge like the camera */
     const spanW = map.worldW * SCALE, spanH = map.worldH * SCALE;
@@ -550,6 +624,10 @@ export class WheelMinimap {
         home,
         /* v2.3.3065: the north bead, in the box (its middle and radius) */
         north: { x: this.north.x, y: this.north.y, r: NORTH_R, up: NORTH_UP, text: 'N', visible: !!this.north.visible },
+        /* v2.3.3146: the town's buildings drawn (game px boxes, their size in
+           the box, their doors), and whether the town's square still shows */
+        buildings: this._bld.map((b) => ({ ...b })), townMark: !!this.townMark.visible,
+        scale: SCALE,
       };
     } catch (e) { /* never breaks the frame */ }
   }

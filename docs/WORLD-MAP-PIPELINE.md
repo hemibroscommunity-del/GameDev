@@ -3511,6 +3511,34 @@ the town's own gates, and nothing on screen said where town was.
   Ridge it checks the badge points south-east, and reads its house, ring and
   disc off the screen.
 
+### The town's buildings on the minimap (v2.3.3146)
+
+> Owner, 2026-10-07: *"Also all the buildings in town should show on the
+> minimap."*
+
+The town was one white square at its middle. Now every standing building is
+drawn on the box where it stands.
+
+- **What is drawn.** The building's footprint: its placed object's boxes, the
+  ground it stops you on, which is the ground it stands on. On the box that is
+  about 17 x 9 px, the Town Hall 21 x 11.
+  - The roof's terracotta, under a dark keyline.
+  - A shut building (nothing behind its door yet, the Hotel) in the world
+    map's grey.
+  - A light notch on its front edge where its steps and door are.
+- **What it reads.** `wheelTownDoors()`: one door per building that has a
+  picture, the doors the world map names at their doors. And
+  `wheelObjectsInfo()`: the boxes.
+  - Drawn once per set of doors, under the camps, passes and quest marks.
+- **The white square** stays only for a Wheel whose buildings are not known:
+  `?noobjects`, or before the ground worker has posted its objects.
+- **Probe:** `__btMinimap.buildings` (each one's game-px box, its size on the
+  box, its door) and `__btMinimap.townMark`.
+- **Tests:** `mp-wheelmap` checks every standing building is drawn over the
+  ground it stands on, with its door on its front edge and the shut ones grey.
+  It also checks the square is gone, and reads the roofs off the screen round
+  the arrival.
+
 ### Which land you are in: its colour, its icon, its banner (v2.3.3024)
 
 > Owner, 2026-10-04: *"There might need to be flat colors on the minimap to

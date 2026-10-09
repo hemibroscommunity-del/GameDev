@@ -1262,6 +1262,11 @@ function bodyRows(pose, dir) {
   return m[dir] || m.south;
 }
 
+/* v2.3.3146: the head traits' size on the gathering body poses -- the head
+   there against the head standing (see poseTraitMul in _placeTrait) */
+export const MINE_TRAIT_MUL = 1.116;
+export const FISH_TRAIT_MUL = 1.07;
+
 function bodyDirScale(pose, dir) {
   if (pose === 'hit') return dir === 'east' ? 0.88 : 1.0;
   const m = BODY_DIR_SCALE[pose];
@@ -1549,8 +1554,21 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
      blanket guess would be applied on top of the real answer.  Those opt out,
      and their scaleByPose reads as the true head ratio instead of that ratio
      with 1/0.67 baked in to cancel a constant. */
+  /* ═══ v2.3.3146: MINE AND FISH BY THE HEAD, NOT BY EYE ═══
+     The owner: "The character's appearance changes during resource gathering
+     activities.  It needs to stay consistent."  1.21 and 0.88 were v2.3.875's
+     guesses from the whole FIGURE's height (mine ~221 px, fish ~160, stand
+     ~182) -- but a trait sits on the HEAD, and the head is what
+     tools/tune_headwear.py sheet_head measures: 48 px wide on mine-south, 46
+     on fish-south, 43 on stand-south (256-space).  So every hair, the beard
+     and 37 of the 39 hats were 8% too big swinging a pickaxe and 18% too small
+     holding a rod, against the head they sit on -- a different bro at the
+     rock and at the water.  The head's own ratios, 1.116 and 1.07, are the
+     numbers every poseFit item (the glasses, the eye styles, the crown) was
+     already measured to.  The tools mirror these (tune_headwear.py,
+     preview_headwear.py, species_frames.py, species_contact_sheet.py). */
   const poseTraitMul = meta.poseFit ? 1
-    : pose === 'mine' ? 1.21 : pose === 'fish' ? 0.88
+    : pose === 'mine' ? MINE_TRAIT_MUL : pose === 'fish' ? FISH_TRAIT_MUL
       : (pose === 'jog' && dir === 'east') ? 0.67 : 1;
   const dscale = (_pick(meta.scale) || 1) * poseScale * poseTraitMul * ((tune && tune.mul) || 1);
   if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
@@ -3332,6 +3350,9 @@ function _dirsFacingFirst() {
  *    cache keys on the SOURCE TEXTURE's uid, so baking from getBodyFrame here
  *    would file the result under a texture the renderer never presents -- a
  *    miss at fishing time AND an eviction out of the 520-entry cap.
+ *    v2.3.3146: the fish frame takes your skin, trousers and boots now --
+ *    getFishFrame with your look, here and at the draw site alike, so the
+ *    texture warmed is still the one presented.
  *  - PICKUP is never masked at all: both draw sites read `pose === 'pickup'
  *    ? tex : _maskedBodyFrame(...)` (v2.3.1057 -- the per-frame bake inside
  *    the 0.5 s freeze was 29 GPU uploads in a burst).  So its frames are
@@ -3563,8 +3584,9 @@ export async function prewarmMaskedBodyFrames(opts) {
         prewarmProgress.done++;
         /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
            v2.3.2854: ...with the drawings on it (getFishFrame), the frame the
-           renderer now asks for; baked by preloadBodyAll, which this runs after. */
-        const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f)
+           renderer now asks for; baked by preloadBodyAll, which this runs after.
+           v2.3.3146: ...and your skin, trousers and boots. */
+        const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f, getSkin(), getPants(), getShoes())
           : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
         if (!tex) continue;
         const worn = [];
@@ -3690,8 +3712,9 @@ export async function prewarmAltWornSets(opts) {
           if (seq !== _altPrewarmSeq) return;
           if (fast) prewarmProgress.done++;
           /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
-             v2.3.2854: with the drawings on it, as the pass above. */
-          const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f)
+             v2.3.2854: with the drawings on it, as the pass above.
+             v2.3.3146: and your skin, trousers and boots. */
+          const tex = (pose === 'fish') ? getFishFrame(localBodyArt(false), f, getSkin(), getPants(), getShoes())
             : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false), getEyeStyle());   /* v2.3.2643 */
           if (!tex) continue;
           const worn = [];
@@ -11067,8 +11090,19 @@ export class EntityRenderer {
            every other pose of a peer's -- their drawings cannot be known at
            load -- and only for peers who have any, so the iPhone VRAM point
            above still holds for everyone else. */
+        /* ═══ v2.3.3146: ...AND NOW THEIR SKIN, TROUSERS AND BOOTS ═══
+           The owner: "The character's appearance changes during resource
+           gathering activities.  It needs to stay consistent."  What the note
+           above calls the durable fix was not needed: the recolour never
+           mis-painted the rod (its key is b > g, which neither the skin test
+           nor the trouser test takes), only the LINE, which is boot-grey --
+           and getFishFrame's bake now keeps the boots to under the legs
+           (playerSkins, recolorBodyToCanvas `bootsUnderLegs`).  So a peer
+           fishes in their own colours: baked the first time they cast, as
+           every pose of a peer's is (their look is the preload law's named
+           exception), the painted frame shown until it lands. */
         let tex = pose === 'fish'
-          ? getFishFrame(_oBodyArt, frameIdx)
+          ? getFishFrame(_oBodyArt, frameIdx, other.skin, other.pants, other.shoes)
           : getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);   /* v2.3.2643: THEIR style */
         if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);   /* v2.3.2643 */
         if (tex) {
@@ -12513,6 +12547,10 @@ export class EntityRenderer {
        BODY_DIR_SCALE map (silhouette-height normalization), replacing the
        old hand-tuned bump stack. */
     const bodyScale = bodyDirScale(pose, dir) * LOCAL_SCALE;
+    /* v2.3.3146: and the body scale the head traits were placed against this
+       frame (_placeTrait's absBodyScale) -- mp-gatherlook divides a trait's
+       scale by it to read the pose's trait size (poseTraitMul) */
+    display._bodyScale = bodyScale;
     /* v2.3.1826: publish the (pose, dir) the body is ACTUALLY drawn as, for
        bodyFigureProbe.  Not the same as S._facing: this is post-
        resolveDirection, so it carries the mirror collapse (west renders as
@@ -12766,7 +12804,13 @@ export class EntityRenderer {
          rod + line are baked art and the body-region recolor seeds (tuned
          for upright poses) would mis-paint them.  The pose is brief and
          south-only, so skipping the per-player retint is an acceptable
-         trade for keeping the rod art intact for everyone. */
+         trade for keeping the rod art intact for everyone.
+         v2.3.3146: NO LONGER -- your skin, trousers and boots go on it
+         (getFishFrame below; the owner: "The character's appearance changes
+         during resource gathering activities.  It needs to stay
+         consistent"), the rod and line untouched (playerSkins,
+         recolorBodyToCanvas `bootsUnderLegs`), baked behind the loading
+         screen (preloadBodyAll -> prewarmFish). */
       /* v2.3.1940: my own drawn pants print / tattoo, pre-flipped for the three
          mirrored facings (the sheet is drawn with scale.x -1 there). */
       const _bodyArt = localBodyArt(mirror);
@@ -12774,7 +12818,7 @@ export class EntityRenderer {
          the raw sheet without the recolour above (playerSkins), baked behind
          the loading screen by preloadBodyAll. */
       let tex = pose === 'fish'
-        ? getFishFrame(_bodyArt, frameIdx)
+        ? getFishFrame(_bodyArt, frameIdx, getSkin(), getPants(), getShoes())   /* v2.3.3146: your colours */
         : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
       if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
