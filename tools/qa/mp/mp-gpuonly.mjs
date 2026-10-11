@@ -24,6 +24,15 @@
  *      picture aged 61 s and the collector run): none is unloaded -- it would
  *      come back from an emptied canvas, blank -- and a number still draws;
  *   6. no page errors.
+ *
+ * v2.3.3150: and the GATHERING figures -- the lumberjack, the cook and the
+ * fire-lighter, made the first time each can be wanted (standIns.js) and since
+ * then let go of from the page once on the GPU too (effectsRenderer _gpuOnly):
+ *   2b. made on both phones, what the GPU draws for every one of their strips
+ *       is the same on both, byte for byte, their canvases let go of here and
+ *       kept on the other phone, and the page that much lighter;
+ *   4b. after the rebuild, made again by the new renderer: the same on both,
+ *       and let go of again.
  */
 import * as H from './harness.mjs';
 
@@ -94,6 +103,32 @@ const stripPrints = (P) => P.page.evaluate(() => {
   return out;
 });
 
+/* v2.3.3150: the same print for the gathering figures' strips */
+const standInPrints = (P) => P.page.evaluate(() => {
+  const strips = window._pixiRenderer.standInStrips ? window._pixiRenderer.standInStrips() : {};
+  const out = {};
+  for (const key of Object.keys(strips)) {
+    const frames = strips[key];
+    let h = 2166136261 >>> 0, lit = 0;
+    for (const f of frames) {
+      if (!f || f.destroyed) continue;
+      const { pixels } = window._pixiRenderer.drawnPixels(f);
+      for (let i = 0; i < pixels.length; i++) {
+        h ^= pixels[i]; h = Math.imul(h, 16777619) >>> 0;
+        if ((i & 3) === 3 && pixels[i] > 0) lit++;
+      }
+    }
+    const src = frames[0] && frames[0].source;
+    out[key] = { h, lit, n: frames.length, canvasW: src && src.resource ? src.resource.width : null };
+  }
+  return out;
+});
+/* the three made now, as a player's first want would (window.__btStandInMake) */
+const makeStandIns = (Q) => Q.page.evaluate(async () => {
+  for (const k of ['chop', 'cook', 'fire']) await window.__btStandInMake(k);
+  return window.__btStandIns();
+});
+
 /* A minute without drawing them, as Pixi's GPU collector sees it: every
    picture kept on the chip only is aged 61 s and the collector run (pixi 8.17
    unloads after 60 s what may be collected -- and would upload it again from
@@ -103,6 +138,9 @@ const ageAndCollect = (P) => P.page.evaluate(() => {
   const srcs = new Set(window.__btDmgFont().pages.map((t) => t.source));
   const strips = window._pixiRenderer.combatStrips();
   for (const k in strips) for (const f of strips[k]) srcs.add(f.source);
+  /* v2.3.3150: and the gathering figures' */
+  const si = window._pixiRenderer.standInStrips ? window._pixiRenderer.standInStrips() : {};
+  for (const k in si) for (const f of si[k]) if (f && f.source) srcs.add(f.source);
   const back = performance.now() - 61000;
   for (const s of srcs) if (s._gcLastUsed !== -1) s._gcLastUsed = back;
   if (R.gc && R.gc.run) R.gc.run();
@@ -187,6 +225,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`what the GPU draws for every combat strip is the same on both, byte for byte (${s1.keys} strips, ${s1.lit} lit pixels; ${emptied} of them with their canvas let go of here)`,
       s1.keys >= 20 && s1.diff.length === 0 && s1.lit > 0 && emptied >= s1.keys - 1, { diff: s1.diff.slice(0, 4) });
 
+    /* 2b (v2.3.3150): the gathering figures */
+    const cBefore = await canvases(A), cBBefore = await canvases(B);
+    const mA = await makeStandIns(A), mB = await makeStandIns(B);
+    const made = (m) => !!m && ['chop', 'cook', 'fire'].every((k) => m[k] && m[k].state === 'ready');
+    rec.ok('the lumberjack, the cook and the fire-lighter made on both phones (guard)', made(mA) && made(mB), { mA, mB });
+    const gi1 = await standInPrints(A), gi1B = await standInPrints(B);
+    const g1 = sameStrips(gi1, gi1B);
+    const gEmptied = Object.values(gi1).filter((v) => v.canvasW === 0).length;
+    const gKept = Object.values(gi1B).filter((v) => v.canvasW > 0).length;
+    rec.ok(`what the GPU draws for every gathering strip is the same on both, byte for byte (${g1.keys} strips, ${g1.lit} lit pixels), `
+      + `their canvases let go of here (${gEmptied}) and kept on the phone with ?gpucopies (${gKept})`,
+      g1.keys >= 7 && g1.diff.length === 0 && g1.lit > 0 && gEmptied === g1.keys && gKept === g1.keys,
+      { diff: g1.diff.slice(0, 4).map((k) => ({ k, a: gi1[k], b: gi1B[k] })), gi1 });
+    const cAfter = await canvases(A), cBAfter = await canvases(B);
+    const grewA = +(cAfter.mb - cBefore.mb).toFixed(1), grewB = +(cBAfter.mb - cBBefore.mb).toFixed(1);
+    rec.ok(`...and making them adds ${grewA} MB of 2D canvases to this page, against ${grewB} MB on the phone keeping them (only the lumberjack's source crops stay)`,
+      grewB - grewA >= 15 && grewA <= 7, { cBefore, cAfter, cBBefore, cBAfter });
+
     /* 3 */
     const f1 = await fontPages(A);
     const f1ok = f1.pages.filter((p) => p.held != null && p.gpu === p.held && p.lit > 0 && p.canvasW === 0).length;
@@ -241,13 +297,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`...and the new renderer's canvases are let go of too (${gA2.emptied} in all, ${gA2.mb} MB): 2D canvases ${cA2.mb} MB against ${cB2.mb} MB on the phone keeping them`,
       gA2.emptied >= gA.emptied * 2 && cB2.mb - cA2.mb >= gA.mb * 0.8, { cA2, cB2, gA2 });
 
+    /* 4b (v2.3.3150): the gathering figures, made again by the new renderers
+       (setStandInMaker starts every pose over) */
+    const mA2 = await makeStandIns(A), mB2 = await makeStandIns(B);
+    const gi2 = await standInPrints(A), gi2B = await standInPrints(B);
+    const g2 = sameStrips(gi2, gi2B);
+    const gEmptied2 = Object.values(gi2).filter((v) => v.canvasW === 0).length;
+    rec.ok(`after the rebuild the gathering figures are made again and let go of again, the same on both (${g2.keys} strips, ${gEmptied2} let go of)`,
+      made(mA2) && made(mB2) && g2.keys >= 7 && g2.diff.length === 0 && gEmptied2 === g2.keys,
+      { mA2, mB2, diff: g2.diff.slice(0, 4) });
+
     /* 5 -- a minute without a fight */
     const aged = await ageAndCollect(A);
     const n3 = await numberDraws(A, '1234');
     const sA3 = await stripPrints(A);
     const s3 = sameStrips(sA3, sB2);
-    rec.ok(`a minute without drawing them, Pixi's GPU collector run: all ${aged.sources} pictures kept on the chip stay there (${aged.kept}), a number still draws (fill ${n3.white} px, outline ${n3.dark}) and every strip still the same (${s3.diff.length} differ)`,
-      aged.kept === aged.sources && n3.white > 1000 && n3.dark > 1000 && s3.diff.length === 0, { aged, n3, diff: s3.diff.slice(0, 4) });
+    const gi3 = await standInPrints(A);
+    const g3 = sameStrips(gi3, gi2B);
+    rec.ok(`a minute without drawing them, Pixi's GPU collector run: all ${aged.sources} pictures kept on the chip stay there (${aged.kept}), a number still draws (fill ${n3.white} px, outline ${n3.dark}) and every strip still the same (${s3.diff.length} differ, gathering ${g3.diff.length})`,
+      aged.kept === aged.sources && n3.white > 1000 && n3.dark > 1000 && s3.diff.length === 0 && g3.keys >= 7 && g3.diff.length === 0,
+      { aged, n3, diff: s3.diff.slice(0, 4), gdiff: g3.diff.slice(0, 4) });
 
     /* 6 */
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));

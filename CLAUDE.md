@@ -506,6 +506,16 @@ remnant to migrate server-side, not a mode to preserve.
       `color`), snow prints on the Wheel's snow (footprintSprites `printsAt`)
       and every print drawn at the boots (`fdy`);
     - WORLD-MAP-PIPELINE "The old map's shadows and air", `mp-wheelshadows`.
+    - since v2.3.3149 the shadows GLIDE WITH THE WORLD -- the owner: "the
+      shadows look a bit flickery when you move on some of the props": the
+      layer's filter draws at CSS resolution (three device px a texel on an
+      iPhone) and each frame redrew every shadow at a new fraction of that grid
+      as the camera slid, so a shadow crawled against its prop; it is now drawn
+      on a grid locked to the world and slid back by the camera's fraction in
+      the filter (shadows.js `lockToWorldGrid`, `uShift`), same texture and
+      cost, ~5x steadier; a full-resolution pass would be ~32 MB of graphics
+      memory (TRAPS §141); `?shadowlock=0` is the layer as it was;
+      `mp-shadowlock`.
   - Since v2.3.3001 HITS SOUND LIKE THEIR MATERIAL -- the owner: "modify hit
     sound effects based on material type so hitting wood vs plants etc for
     props and also against monsters (arrow, melee, magic hit sound for
@@ -2139,7 +2149,16 @@ Two protocol versions coexist; both must keep working:
     nothing reads the canvas back and a rebuilt renderer makes it again for
     itself, empty it once uploaded with `keepOnGpuOnly`
     (src/rendering/gpuOnly.js; its header says when that is safe -- the
-    walking gear sheets are not: drawGearFrame reads them).
+    walking gear sheets are not: drawGearFrame reads them). Kept that way:
+    the combat gear strips and the damage font (v2.3.3088), and since
+    v2.3.3150 the gathering figures -- the lumberjack, cook and fire-lighter,
+    ~30 MB of canvases a player who gathers held for the rest of the visit
+    (effectsRenderer `_gpuOnly`, called after each bake's last read; not the
+    lumberjack's source crops, which every re-bake reads; `mp-gatherposes`,
+    `mp-gpuonly`). A test that reads such a picture's pixels off its canvas
+    sets `window.__btTrimVerify` in its init script (mp-chopink, mp-cookink,
+    mp-fireink) -- not `?gpucopies`, which a guest's page loses when it
+    reloads into `?guest=1` on the way in.
   - MUSIC, and any sound longer than a few seconds, plays through the music
     deck (BT_AUDIO's zone and global music, streamed from its file since
     v2.3.3073) -- never SFX_MANIFEST, which decodes the whole file into memory

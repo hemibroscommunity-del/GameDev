@@ -3022,7 +3022,7 @@ export class EffectsRenderer {
       /* v2.3.2775: the peer copy is cropped like every stand-in bake
          (_sliceStandIn); the 24-slot aliasing below is unchanged.  _chopSrc
          stays whole -- it is what a skin change re-bakes from. */
-      const played = this._own(_sliceStandIn(peer, FW, FH, COUNT, 'chopPeer|' + key));   /* v2.3.3074: owned */
+      const played = this._gpuOnly(this._own(_sliceStandIn(peer, FW, FH, COUNT, 'chopPeer|' + key)));   /* v2.3.3074: owned; v2.3.3150: on the GPU only (_gpuOnly) */
       for (let i = 0; i < n; i++) arr.push(played[Math.max(0, i - FROM)]);
       try { Assets.unload(url); } catch (e) { /* the crops are what draw now */ }
     };
@@ -4128,11 +4128,12 @@ export class EffectsRenderer {
         { ..._clothes, probe: key === '_chopSkinFrames' ? 'chop' : 'chop-legless' });   /* v2.3.3146: the probe's name (QA) */
       this[key] = this._own(_plain.arr);   /* v2.3.3074: owned */
       this[key + 'Flip'] = _twin
-        ? this._own(_bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false, _clothes).arr) : null;   /* v2.3.2855: see above */
+        ? this._gpuOnly(this._own(_bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false, _clothes).arr)) : null;   /* v2.3.2855: see above; v2.3.3150: _gpuOnly */
       /* v2.3.2500: the mp-standinskin probe, the same reading the sword and
          bow bakes publish -- see _probeStandInSkin. */
       _probeStandInSkin('/sprites/skills/chop' + (key === '_chopSkinFrames' ? '' : '-legless') + '-strip.webp', _plain.cv);
       if (_plain.arr.cropped) { _plain.cv.width = 0; _plain.cv.height = 0; }   /* v2.3.2775 */
+      this._gpuOnly(this[key]);   /* v2.3.3150: read by nothing from here (_gpuOnly) */
     }
     const sp = this.chopSprite;
     for (const arr of _old) {
@@ -4198,7 +4199,7 @@ export class EffectsRenderer {
       try {
         const baked = _bakeChopStrip(img, _chopKeyMask(img), skinT, { ...art, mirror: m }, null, false,
           { pantsT: pantsTarget(o.pants), shoesT: shoesTarget(o.shoes) });   /* v2.3.3146: their trousers and boots */
-        cache.set(key, { arr: this._own(baked.arr), used: now });   /* v2.3.3074: owned */
+        cache.set(key, { arr: this._gpuOnly(this._own(baked.arr)), used: now });   /* v2.3.3074: owned; v2.3.3150: _gpuOnly */
       } catch (e) { /* the shared figure keeps drawing */ }
     }, 0);
     return null;
@@ -4343,11 +4344,12 @@ export class EffectsRenderer {
         this[key] = arr;
         _probeStandInSkin('/sprites/skills/cook' + (key === '_cookFrames' ? '' : '-legless') + '-strip.webp', cv);   /* v2.3.2500 */
         if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
+        this._gpuOnly(arr);   /* v2.3.3150: read by nothing from here (_gpuOnly) */
       } else {
         cv.width = 0; cv.height = 0;
       }
       _old.push(this[key + 'Ink']);
-      this[key + 'Ink'] = ink ? this._own(_sliceStandIn(ink, FW, FH, n, key + 'Ink', false)) : null;   /* v2.3.3074: owned */
+      this[key + 'Ink'] = ink ? this._gpuOnly(this._own(_sliceStandIn(ink, FW, FH, n, key + 'Ink', false))) : null;   /* v2.3.3074: owned; v2.3.3150: _gpuOnly */
     }
     /* v2.3.2856: the textures these replace, released once nothing draws them
        -- a rebake follows every pause while you draw, so leaving each old pair
@@ -4412,7 +4414,7 @@ export class EffectsRenderer {
       const { cv, ink } = spec.bake(img, skinT, { ...art, mirror: false });
       const n = Math.max(1, Math.round(cv.width / spec.fw));
       cv.width = 0; cv.height = 0;   /* the figure is the shared one; only the layer is kept */
-      cache.set(key, { arr: ink ? this._own(_sliceStandIn(ink, spec.fw, spec.fh, n, null, false)) : [], used: now });   /* v2.3.3074: owned */
+      cache.set(key, { arr: ink ? this._gpuOnly(this._own(_sliceStandIn(ink, spec.fw, spec.fh, n, null, false))) : [], used: now });   /* v2.3.3074: owned; v2.3.3150: _gpuOnly */
     }).catch(() => { /* the shared figure keeps drawing, bare */ })
       .then(() => { pending[kind] = false; });
     return null;
@@ -4524,11 +4526,12 @@ export class EffectsRenderer {
         this._fireFrames = arr;
         _probeStandInSkin('/sprites/skills/firemaking-strip.webp', cv, FIRE_SKIN_OPTS);   /* v2.3.2500: measured through the bake's own window -- see _probeStandInSkin */
         if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
+        this._gpuOnly(arr);   /* v2.3.3150: read by nothing from here (_gpuOnly) */
       } else {
         cv.width = 0; cv.height = 0;
       }
       _old.push(this._fireFramesInk);
-      this._fireFramesInk = ink ? this._own(_sliceStandIn(ink, FIRE_FW, FIRE_FH, n, '_fireFramesInk', false)) : null;   /* v2.3.3074: owned */
+      this._fireFramesInk = ink ? this._gpuOnly(this._own(_sliceStandIn(ink, FIRE_FW, FIRE_FH, n, '_fireFramesInk', false))) : null;   /* v2.3.3074: owned; v2.3.3150: _gpuOnly */
       /* v2.3.2858: the replaced textures, released as the cook's are (see
          _bakeCookStrips) -- a skin change used to leave the old strip to
          Pixi's idle collector, and a drawing change now rebakes too.  Other
@@ -14419,6 +14422,36 @@ export class EffectsRenderer {
   _own(arr) {
     const src = arr && arr[0] && arr[0].source;
     if (src) this._bakes.add(src);
+    return arr;
+  }
+  /* ═══ v2.3.3150: THE GATHERING FIGURES ON THE GRAPHICS CHIP ONLY ═══
+     The owner, 2026-10-11: "there's a memory leak somewhere because after
+     completing all the quests up until the point where you need to visit the 3
+     buildings the games framerate dropped significantly towards the end".
+     Measured on a phone-sized page, playing that line: the lumberjack, the
+     cook and the fire-lighter are made on the way (life_1 hands you the axe,
+     a log in the bag and the first fire do the rest -- rendering/standIns.js),
+     and every one of their strips was then held TWICE for the rest of the
+     visit, the canvas it was baked on and its copy on the GPU: ~30 MB of 2D
+     canvases that nothing ever read again.
+     They are the combat gear strips' kind (gpuOnly.js, the owner's yes to
+     "character art kept only on the graphics chip", v2.3.3088): only ever
+     drawn, and made again by a rebuilt renderer for itself (setStandInMaker
+     starts every pose over).  So each strip's canvas is let go of the moment
+     it is on the GPU -- called after the last read of the bake (the skin
+     probe), as each bake's own code passes it.  NOT the lumberjack's source
+     crops (_chopSrc): every re-bake reads them.  `?gpucopies` keeps it all,
+     as before; mp-gatherposes, mp-gpuonly. */
+  _gpuOnly(arr) {
+    const src = arr && arr[0] && arr[0].source;
+    if (!src) return arr;
+    /* not on a lost context, where an upload would not count (wheelGround's
+       _toGpu): the canvas stays, and the rebuild 2.5 s on makes it again */
+    try {
+      const gl = this._captureRenderer && this._captureRenderer.gl;
+      if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return arr;
+    } catch (e) { return arr; }
+    keepOnGpuOnly(this._captureRenderer, src);
     return arr;
   }
   _release(src) {

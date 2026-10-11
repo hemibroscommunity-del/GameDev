@@ -5482,6 +5482,35 @@ the rule by construction -- their footprints come only from pages that are drawn
 (wheelObjects.js) -- and `mp-unseenwall` walks through a hidden vein and into a
 drawn one.
 
+## 141. "The shadows flicker, so draw them at full resolution" (v2.3.3149)
+
+**The plausible move.** The shadow layer's filter runs at CSS resolution
+(shadows.js, one texel a CSS px: three device px on a 3x iPhone), the owner says
+the shadows flicker as you walk past props, so set the filter's resolution to
+`'inherit'` and draw them as sharp as everything else. It works: measured, the
+shadows then follow the world to 0.3% of their darkness a step instead of ~2%.
+
+**Why it is wrong.** A filter draws into a texture from Pixi's TexturePool, and
+the pool rounds every texture up to a power of two. The shadow layer's bounds
+are most of the screen, so at device resolution that is a 2048 x 4096 texture,
+~32 MB of graphics memory on a 3x phone -- for one soft, translucent layer, in a
+game whose black screens are iPhone Safari running out of memory
+(docs/MEMORY-PLAN.md). The flicker was never the resolution: it was the coarse
+grid MOVING. The camera slides in fractions of a pixel, so each frame every
+shadow was rasterised at a new fraction of the CSS grid (its vertices snapped
+to the nearest texel by roundPixels, its edges sampled at a new phase) while
+its prop moved smoothly a device pixel at a time.
+
+**The rule.** A layer drawn at a lower resolution than the screen is drawn on a
+grid locked to the world: offset it by minus the camera's fraction of a texel,
+so it is rasterised at the same phase every frame, and slide the finished
+picture back by that fraction in the filter (shadows.js `lockToWorldGrid`,
+`uShift`). Same texture, same cost, ~5x steadier (mp-shadowlock). And when you
+MEASURE motion on the screen, check in the pictures that the world moved: a
+screenshot of the world under the Mayor's welcome scrim does not move when the
+camera does, and every first measurement of this read "the shadows never move"
+because his greeting was open.
+
 ## 142. "Dark is a share of black pixels" (v2.3.3151)
 
 The black-screen watchdog (BroTown.jsx) judged a 32 x 18 thumbnail of the
