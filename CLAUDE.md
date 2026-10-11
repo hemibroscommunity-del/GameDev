@@ -1071,6 +1071,17 @@ remnant to migrate server-side, not a mode to preserve.
       a WebGL canvas reads black -- and screenshots measured), `mp-wheelmem`
       measures the walk out (the cache, and every texture WebGL allocates, by
       a shim on its calls).
+    - since v2.3.3151 THE WHEEL WITH ITS GROUND GONE IS DARK TOO -- the owner:
+      "the screen went black up until the point I began fighting the fire
+      goblins": the same reset caught part way, the ground blank (GPU only
+      since v2.3.3076) and the buildings, trees and townsfolk (files) still
+      standing on the navy -- 30-39% lit in town, never under the 1% line. In
+      the Wheel a sample under `WD_WHEEL_LIT_MIN` 75% is a strike
+      (BroTown.jsx): two rebuild, four reload, never the first join's one.
+      Measured at 51 places, town and all eight spokes: 95-100% lit with the
+      ground, 9-56% without. A part of the Wheel drawn dark on purpose (a
+      night, the Dark realm) lowers it first. TRAPS §142, `mp-bareground`
+      (the `wheelGround` container hidden through `window._pixiRenderer`).
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:

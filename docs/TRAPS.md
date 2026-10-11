@@ -5481,3 +5481,31 @@ tap, the E key's proximity) and give each the filter. The Wheel's objects keep
 the rule by construction -- their footprints come only from pages that are drawn
 (wheelObjects.js) -- and `mp-unseenwall` walks through a hidden vein and into a
 drawn one.
+
+## 142. "Dark is a share of black pixels" (v2.3.3151)
+
+The black-screen watchdog (BroTown.jsx) judged a 32 x 18 thumbnail of the
+world by how much of it was lit, and called the screen dark under 1%.  That
+catches a screen gone wholly black or wholly to the canvas's navy (§130).  It
+does not catch a screen gone PART way, and an iPhone graphics reset leaves
+exactly that: it blanks what the game made on the GPU and keeps what was
+loaded from a file.  In the Wheel the biggest thing the game makes is its
+ground -- every piece lives on the GPU only (v2.3.3076), and the small map
+under them and the water too -- while the buildings, trees, lamps and
+townsfolk are pictures from files.  So the screen it leaves is those things
+standing on the navy: black to anyone looking at it, and 30-39% lit in town
+to the watchdog.  No strike, no rebuild, no reload, until the owner walked
+far enough out over open ground that the share fell under 1% at last
+("the screen went black up until the point I began fighting the fire
+goblins").
+
+Measured at 51 places (town and all eight spokes, a phone at 3x): with its
+ground the Wheel reads 95-100% lit, with the ground hidden 9-56%.  The rule
+since: where something is MEANT to cover the screen, a screen far short of
+that is the failure, whatever else is drawn -- in the Wheel, under 75% lit
+is a strike.
+
+And make the failure itself in a test, not only the total blackout:
+mp-glrestore hides the whole stage, which no partial reset looks like.
+mp-bareground hides just the ground (the `wheelGround` container, found
+through `window._pixiRenderer`), and on main the watchdog sits through it.
