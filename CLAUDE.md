@@ -506,6 +506,16 @@ remnant to migrate server-side, not a mode to preserve.
       `color`), snow prints on the Wheel's snow (footprintSprites `printsAt`)
       and every print drawn at the boots (`fdy`);
     - WORLD-MAP-PIPELINE "The old map's shadows and air", `mp-wheelshadows`.
+    - since v2.3.3149 the shadows GLIDE WITH THE WORLD -- the owner: "the
+      shadows look a bit flickery when you move on some of the props": the
+      layer's filter draws at CSS resolution (three device px a texel on an
+      iPhone) and each frame redrew every shadow at a new fraction of that grid
+      as the camera slid, so a shadow crawled against its prop; it is now drawn
+      on a grid locked to the world and slid back by the camera's fraction in
+      the filter (shadows.js `lockToWorldGrid`, `uShift`), same texture and
+      cost, ~5x steadier; a full-resolution pass would be ~32 MB of graphics
+      memory (TRAPS §141); `?shadowlock=0` is the layer as it was;
+      `mp-shadowlock`.
   - Since v2.3.3001 HITS SOUND LIKE THEIR MATERIAL -- the owner: "modify hit
     sound effects based on material type so hitting wood vs plants etc for
     props and also against monsters (arrow, melee, magic hit sound for
