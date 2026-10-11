@@ -1343,6 +1343,18 @@ export async function initPixiRenderer(canvas) {
       for (const k in g) { if (Array.isArray(g[k]) && g[k].length) out[k] = g[k]; }
       return out;
     },
+    /* v2.3.3150 QA (mp-gpuonly): THIS renderer's gathering strips, by name --
+       the lumberjack's (yours, its legless twin, and the raw pair other
+       players' lumberjacks are drawn from), the cook's and the fire-lighter's */
+    standInStrips: () => {
+      const e = effectsRenderer;
+      const out = {};
+      for (const k of ['_chopSkinFrames', '_chopLeglessSkinFrames', '_chopFrames', '_chopLeglessFrames',
+        '_cookFrames', '_cookLeglessFrames', '_fireFrames']) {
+        if (Array.isArray(e[k]) && e[k].length) out[k] = e[k];
+      }
+      return out;
+    },
     /* ...and a texture as the screen draws it: a Sprite of it drawn into a
        fresh target and read back.  (extract.pixels on the texture itself
        attaches its picture to a framebuffer instead, and that changes what
@@ -1362,21 +1374,34 @@ export async function initPixiRenderer(canvas) {
     /* v2.3.3077: what each gathering pose holds right now -- the pictures
        behind its frames, each counted once (w x h x 4).  Nothing until the
        pose is first wanted (rendering/standIns.js); mp-gatherposes. */
+    /* v2.3.3150: + `gpu`, the MB of those pictures on the GPU, and `frames`,
+       how many strips have frames: a strip kept on the GPU only (effects
+       renderer _gpuOnly) holds no canvas, so `mb` alone reads it as gone */
     standInPictures: () => {
       const e = effectsRenderer;
       const seen = new Set();
-      const grab = (v, out, depth) => {
+      const seenSrc = new Set();
+      const uid = app.renderer && app.renderer.uid;
+      const grab = (v, out, depth, srcs) => {
         if (!v || depth > 3) return;
-        if (v.source && v.source.resource) { out.add(v.source.resource); return; }
+        if (v.source && typeof v.source === 'object' && 'resource' in v.source) {
+          if (srcs) srcs.add(v.source);
+          if (v.source.resource) out.add(v.source.resource);
+          return;
+        }
         if (typeof v.width === 'number' && typeof v.height === 'number' && v.width && !Array.isArray(v)) { out.add(v); return; }
-        if (Array.isArray(v)) { for (const x of v) grab(x, out, depth + 1); return; }
-        if (v instanceof Map) { for (const x of v.values()) grab(x, out, depth + 1); return; }
-        if (typeof v === 'object') for (const k in v) grab(v[k], out, depth + 1);
+        if (Array.isArray(v)) { for (const x of v) grab(x, out, depth + 1, srcs); return; }
+        if (v instanceof Map) { for (const x of v.values()) grab(x, out, depth + 1, srcs); return; }
+        if (typeof v === 'object') for (const k in v) grab(v[k], out, depth + 1, srcs);
       };
       const tally = (names) => {
-        const all = new Set();
-        for (const k of names) grab(e[k], all, 0);
-        let b = 0, n = 0;
+        const all = new Set(), srcs = new Set();
+        let frames = 0;
+        for (const k of names) {
+          if (Array.isArray(e[k]) && e[k].length) frames++;
+          grab(e[k], all, 0, srcs);
+        }
+        let b = 0, n = 0, g = 0;
         for (const r of all) {
           if (seen.has(r)) continue;
           seen.add(r);
@@ -1384,7 +1409,12 @@ export async function initPixiRenderer(canvas) {
           if (!w || !h) continue;
           b += w * h * 4; n++;
         }
-        return { mb: +(b / 1048576).toFixed(1), n };
+        for (const s of srcs) {
+          if (seenSrc.has(s) || s.destroyed) continue;
+          seenSrc.add(s);
+          if (uid != null && s._gpuData && s._gpuData[uid]) g += (s.pixelWidth | 0) * (s.pixelHeight | 0) * 4;
+        }
+        return { mb: +(b / 1048576).toFixed(1), n, gpu: +(g / 1048576).toFixed(1), frames };
       };
       return {
         chop: tally(['_chopSrc', '_chopFrames', '_chopLeglessFrames', '_chopSkinFrames', '_chopLeglessSkinFrames',
