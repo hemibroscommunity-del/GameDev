@@ -7775,6 +7775,29 @@ export var BroTown = function BroTown(_ref0) {
       return r + g + b > 30 && Math.abs(r - _BG_R) + Math.abs(g - _BG_G) + Math.abs(b - _BG_B) > 24;
     }
     window.__btLitPx = _wdLitPx;   /* QA (mp-glrestore): the same rule */
+    /* ═══ v2.3.3151: THE WHEEL WITH NO GROUND IS A BLACK SCREEN TOO ═══
+       The owner, 2026-10-11: "the screen went black up until the point I
+       began fighting the fire goblins".  The same iPhone graphics reset as
+       v2.3.3017's, caught part way: the pictures the game made on the GPU
+       gone -- the Wheel's ground above all (its pieces live on the GPU only
+       since v2.3.3076, and so do the small map under them and the water) --
+       and the ones loaded from a file still drawn: the buildings, trees,
+       lamps and townsfolk, standing on the canvas's navy.  To the owner, a
+       black screen.  To this watchdog, 30-39% lit in town (mp-bareground),
+       far past its 1% line: no strike, no rebuild, no reload, until the walk
+       out to the Flame Fields' open ground left so little standing on screen
+       that the line was crossed at last, and the rebuild came.
+       In the Wheel the ground covers the whole screen, and almost none of it
+       is dark: measured in town and out along all eight spokes (51 places,
+       a phone at 3x), a screen with its ground reads 95-100% lit, and the
+       same screens with the ground blanked 9-56% (the Verdant Wilds' woods
+       the most: their trees cover the most of it).  The darkest swatch,
+       thunder-3, is 11% dark pixels, 17% all in shade.  So there a screen
+       under WD_WHEEL_LIT_MIN lit is a ground gone, and counts as dark.
+       Nowhere else: a dungeon's walls, the farm, a zone's own black are
+       drawn on purpose.  A part of the Wheel drawn dark on purpose (a night,
+       the Dark realm) has to lower this first. */
+    var WD_WHEEL_LIT_MIN = 75;
     /* ═══ v2.3.3068: THE GPU MAKES THE THUMBNAIL, AND NOTHING WAITS FOR IT ═══
        The sample is a 32 x 18 thumbnail of the world canvas.  drawImage from a
        WebGL canvas made it by copying the WHOLE drawing buffer out of the GPU
@@ -8115,13 +8138,19 @@ export var BroTown = function BroTown(_ref0) {
             _wdPendingAt = 0;
             /* ...and a veil that went up while it came back is judged as above */
             if (_pctWd < 0 || _wdVeiled()) return;
+            /* v2.3.3151: the Wheel with its ground gone (WD_WHEEL_LIT_MIN) */
+            var _wdBare = _pctWd >= 1 && _pctWd < WD_WHEEL_LIT_MIN && S.currentZone === 'wheel';
             /* v2.3.1721: the world has rendered at least once — from here the
                conservative two-strike rule applies. */
-            if (_pctWd >= 1) { S.__wdDark = 0; S.__wdEverLit = true; return; }
+            if (_pctWd >= 1 && !_wdBare) { S.__wdDark = 0; S.__wdEverLit = true; return; }
+            /* v2.3.3151: a bare Wheel still draws what came from a file, so the
+               renderer works: two strikes, never the first join's one */
+            if (_wdBare) S.__wdEverLit = true;
             S.__wdDark = (S.__wdDark || 0) + 1;
+            var _wdWhy = _wdBare ? "the Wheel's ground gone, " : '';
             try {
               import('../debug/crashTrap.js').then(function (ct) {
-                ct.recordCrash('watchdog-dark', 'screen ' + _pctWd + '% lit, strike ' + S.__wdDark);
+                ct.recordCrash('watchdog-dark', _wdWhy + 'screen ' + _pctWd + '% lit, strike ' + S.__wdDark);
               }).catch(function () {});
             } catch (e) {}
             /* v2.3.1721: one strike before the first lit frame, two after. */
@@ -8129,7 +8158,7 @@ export var BroTown = function BroTown(_ref0) {
             if (S.__wdDark === _strikesNeeded && window._rebuildRenderer) {
               if (!S.__wdEverLit) S.__wdFastRebuiltAt = Date.now();
               window._rebuildRenderer(S.__wdEverLit
-                ? 'watchdog: screen dark 10s'
+                ? (_wdBare ? "watchdog: the Wheel's ground gone 10s" : 'watchdog: screen dark 10s')
                 : 'watchdog: black on first join');
             }
             /* v2.3.1722: a first join still black a beat after its rebuild
@@ -8146,7 +8175,7 @@ export var BroTown = function BroTown(_ref0) {
             }
             if (S.__wdDark >= 4) {
               S.__wdDark = 0;
-              _recoveryReload('world dark 20s despite rebuild -- reloading into game');
+              _recoveryReload(_wdWhy + 'world dark 20s despite rebuild -- reloading into game');
             }
             });
           });
