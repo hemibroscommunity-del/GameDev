@@ -178,6 +178,10 @@ export const salvageMethods = {
     const w = list[idx];
     if (!w || typeof w !== 'object') return { reason: 'gone' };
     if (typeof payload.sig !== 'string' || payload.sig !== weaponSig(w)) return { reason: 'changed' };
+    /* v2.3.3160: a piece of gear that crossed into the weapon bag before the
+       equip fix (gear.js _isGearNotWeapon) is not a weapon: its quality and
+       metal are whatever its description said, so it pays nothing here. */
+    if (this._isGearNotWeapon(w)) return { reason: 'not_metal' };
     const metal = weaponMetal(w);
     if (!metal) return { reason: 'not_metal' };
     return { w, idx, metal };
