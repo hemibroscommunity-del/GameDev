@@ -51,6 +51,11 @@ the pot — no suiciding out of a losing wager) but is a normal death.
   both sides of orphaned records >10 min old — but checks the
   `duelpot:<id>` oplog stamp first, so a crash between pot-credit and
   record-delete can never double-pay.
+- v2.3.3185: the two stakes and the `duelEscrow:` record are ONE write
+  (`_escrowDebitGoldTogether`, inbox.js; both purses checked first). They
+  were three, and a restart after a stake but before the record lost it --
+  the sweep refunds only what a record names. `duel.test.mjs` §7b crashes the
+  start at every write (inbox-escrow.md "Writes that must commit together").
 
 ## Wire surface (for future UI)
 
