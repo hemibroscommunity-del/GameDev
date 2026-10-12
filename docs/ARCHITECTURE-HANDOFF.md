@@ -339,8 +339,12 @@ equipped gearBase slots (weapon/rangedWeapon/staffWeapon/shield) and
 stash weapons — now strip the SERVER blob, credit polished gems, and
 charge coins server-side, name-rebuilt from mirror-pinned label tables
 (amulet-forge.md "Gem extraction"). The amulet extract button is dead
-code (gearBase filter), so it's excluded per the dormant-content rule. What
-remains is the **EnchantPanel shield/weapon gem-SLOT consume**: still a
+code (gearBase filter), so it's excluded per the dormant-content rule. The
+SHIELD half of the slot shipped v2.3.3187 (`shieldgem.js`, `shield_gem` →
+`shield_gem_result`, `caps.shieldgem`; docs/specs/shield-gems.md): the gem
+comes off the worker's count, the shield it holds takes it, and the ledger
+row follows, so Take out works. What remains is the **EnchantPanel weapon
+gem-SLOT consume**: still a
 client-local `lifeSkills.gems` edit, echo-restored. Blocked, not just
 unbuilt — non-flame gem bonuses are client-side point-of-use effects
 (v2.3.1139 posture), so the server has nothing authoritative to

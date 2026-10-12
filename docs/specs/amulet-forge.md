@@ -186,7 +186,7 @@ a drifted label would flip every extracted item's name).
 
 ### Residuals (still client-side, documented)
 
-- **Shield/weapon gem-slot consumption** (EnchantPanel non-amulet
+- **Weapon gem-slot consumption** (the shield's moved to the worker in v2.3.3187, docs/specs/shield-gems.md; EnchantPanel's weapon
   slots): client-local consume, echo restores the gem. Non-flame gem
   bonuses are client-side point-of-use effects (v2.3.1139 posture), so
   the server has nothing to validate yet; migrate alongside the slots'

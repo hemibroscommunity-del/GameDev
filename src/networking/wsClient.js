@@ -142,6 +142,7 @@ import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
 import { applyNmlSkull, applyNmlLoss, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
+import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
@@ -1576,6 +1577,15 @@ export function setupWebSocket(ctx) {
               applyEssenceResult(S, msg.payload, saveRpgSoon);
               break;
             }
+          case 'shield_gem_result':
+            {
+              /* v2.3.3187: the worker put a gem into a shield, or says why not
+                 (shieldgem.js).  The shield it names takes the gem and the
+                 worker's name for it here; the gem count and the Enchanting
+                 XP ride the player_state that follows. */
+              applyShieldGemResult(S, msg.payload, saveRpgSoon);
+              break;
+            }
           /* ═══ v2.3.3120: PET TRAPPING (game/trapping.js) ═══
              The worker's four answers: the mark set (or why not), the trap
              sprung at a kill (the shakes, a catch), the pets record, and the
@@ -2151,6 +2161,7 @@ export function setupWebSocket(ctx) {
                 S.rpg.activeSlot = msg.payload.activeSlot;
               }
               var _armorChanged = false;
+              var _shieldGemChanged = false; /* v2.3.3187: the shield's gem adopted from the worker */
               if ('armor' in msg.payload) {
                 _rescueDisplacedArmor(S, 'armor', 'armorStash', msg.payload.armor);
                 S.rpg.armor = msg.payload.armor;
@@ -2204,6 +2215,17 @@ export function setupWebSocket(ctx) {
                   /* v2.3.3091: a new one is in the BAG here, so say what the
                      arm really holds -- the worker has it on the arm */
                   try { syncShieldWorn(S); } catch (e) { /* the next change reports it */ }
+                } else if (S._serverCaps && S._serverCaps.shieldgem) {
+                  /* v2.3.3187: a worker that puts shield gems in (shieldgem.js)
+                     holds the truth of what is IN a shield: its copy's gem onto
+                     ours -- by id (and the name) for a shield it made, by
+                     signature for one from before the ledger, whose name the
+                     worker never changes (game/shieldGem.js).  After the
+                     Blacksmith's Take out (which never reached this copy
+                     before), after an answer lost to a reconnect, and over a
+                     gem this browser once put into a shield the worker made,
+                     alone, that the worker never took. */
+                  try { if (adoptShieldGem(S.rpg, _svShield)) _shieldGemChanged = true; } catch (e) { /* the next echo carries it */ }
                 }
               }
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
@@ -2252,6 +2274,7 @@ export function setupWebSocket(ctx) {
                  one re-derive after a server-echoed equipment change and
                  also refreshes the amulet/shield bonus caches. */
               if (_armorChanged) recalcDerived(S.rpg);
+              if (_shieldGemChanged && !_armorChanged) recalcDerived(S.rpg); /* v2.3.3187: the shield's bonus follows its gem */
               if (Array.isArray(msg.payload.weaponStash)) S.rpg.weaponStash = msg.payload.weaponStash;
               /* Quest state mirror (slice 17).  Worker is authoritative
                  for chain progression + reward grants.  Quest completion
@@ -4340,6 +4363,12 @@ export function setupWebSocket(ctx) {
         /* v2.3.3091: the shield on the arm (game/shieldWear.js) -> shieldwear.js.
            TRAPS #18: without this line the report never leaves the browser. */
         if (msg.type === 'shield_wear') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.3187: a gem into the shield (game/shieldGem.js) -> shieldgem.js.
+           TRAPS #18: without this line the ask never leaves the browser. */
+        if (msg.type === 'shield_gem') {
           ws.send(JSON.stringify(msg));
           return;
         }
