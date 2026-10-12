@@ -31,12 +31,12 @@ exported for the wrangler binding, the marketplace.js precedent).
   activation while their match clock runs (a stall can't deadlock the
   bracket).
 - **Money**: entry 100g via `_escrowDebitGold` into
-  `arena_entry:<tid>:<pid>` records; champion 2000g via `_creditPlayer`
-  opId `arenapot:<tid>` (offline-safe). A deploy voids the tournament by
-  design — the join-path sweep refunds orphaned entries, checking the
-  pot's oplog stamp first (never refund over a payout). **Economics
-  flag**: 2000g out vs ≤800g in mints up to 1,200g/tournament — an
-  intentional prototype faucet; tune `ARENA.CHAMPION_REWARD`.
+  `arena_entry:<tid>:<pid>` records; the champion's prize via
+  `_creditPlayer` opId `arenapot:<tid>` (offline-safe). A deploy voids the
+  tournament by design — the join-path sweep refunds orphaned entries,
+  checking the pot's oplog stamp first (never refund over a payout).
+  **Economics**: since v2.3.3178 the prize follows the bracket and the
+  house's part of it is capped per hour — see "The champion's prize" below.
 - **Healing disabled during matches** (`ps._arenaMatch`, set/cleared by
   activation/resolution): town HP regen (critical — 10% maxHp/670ms
   would make town fights unendable; HP only, stamina/mana still
@@ -47,6 +47,37 @@ exported for the wrangler binding, the marketplace.js precedent).
   server has no push-teleport and the anti-teleport gate rejects
   same-zone jumps). A dedicated non-lawless arena zone with zone-change
   teleport is the v2 path (handoff backlog).
+
+## The champion's prize (v2.3.3178)
+
+The prize was 2,000 for any bracket, so a 2-player tournament paid 2,000
+for 200 of entries, and two accounts could run one every 2-3 minutes
+(about 43,000 gold an hour). Accounts are free, so no rule about who may
+enter can stop that; only a limit on the whole game can.
+
+- The prize is `ARENA.PRIZE_PER_ENTRANT` (250) a gladiator in the bracket:
+  8 → 2,000 (GDD §43's number, unchanged), 4 → 1,000, 2 → 500.
+- The entries are its first `ENTRY_FEE` (100) each; the **house** adds the
+  rest (150 a gladiator), out of at most `ARENA.HOUSE_GOLD_PER_HOUR`
+  (3,600, three full brackets' worth) in any UTC clock hour, across the
+  whole game. Past that the champion takes the entries plus whatever the
+  hour has left, so a tournament never pays less than its entries.
+- `_arenaPrize(entrants, now)` works it out synchronously at the crown, so
+  `arena_tournament_complete` and the poll's `champion` carry the real
+  `prize` (the game's champion box shows it; a worker from before sends
+  none and the box shows 2,000).
+- The hour's total is the storage key `arena_house` `{hour, used}`, read
+  once at the first join after a start (`_arenaHouseLoad`) and saved
+  BEFORE the pot is paid: a restart between them costs the hour some of
+  its budget, never adds any. If the read fails the house adds nothing
+  (the champion takes the entries) and the next join tries again.
+- The most the arena can now make, all accounts together, is 3,600 gold an
+  hour, and only with full 8-player brackets; two accounts make at most
+  300 a tournament until the hour's 3,600 is gone, then nothing.
+
+Tests: `arena.test.mjs` §4 (a 2-bracket pays 500) and §4b (the table, the
+hour's budget and its reset, the save-before-pay order, the wire, a
+restart, an unreadable total).
 
 ## Wire surface
 
@@ -70,7 +101,8 @@ debit/refund and round/champion self-credit. The Gladiator title stays
 client-granted for now (titles aren't server-owned — handoff backlog).
 
 **Sponsorship/betting is PR-B2** (stretch/backlog): `arena_stake:` escrow
-keys, 3× payout on server-observed results, stake-to-competitor on loss.
+keys settled on server-observed results -- since v2.3.3177 a pool, the
+winning backers sharing the losing stakes (sponsorship.md).
 The legacy `arena_bet` relay remains cosmetic display only.
 
 Deploy-order note: old client + new worker still self-credits phantom

@@ -28,7 +28,9 @@
  * first, per ARCHITECTURE-HANDOFF rule 6).  ECONOMICS NOTE, flagged
  * deliberately: champion 2000g (GDD §43) vs <= 800g of entries mints up
  * to 1,200g of house gold per tournament -- an intentional prototype
- * faucet the owner can tune by changing CHAMPION_REWARD.
+ * faucet.  v2.3.3178: the prize now follows the bracket (PRIZE_PER_ENTRANT,
+ * 2,000 for a full 8) and the house adds at most HOUSE_GOLD_PER_HOUR to
+ * prizes in a clock hour, game-wide (_arenaPrize).
  *
  * Healing is disabled for players in an active arena match
  * (ps._arenaMatch): town HP regen, eat_request, shop healFish, and the
@@ -44,18 +46,37 @@
 
 export const ARENA = {
   ENTRY_FEE: 100,          // GDD §43
-  CHAMPION_REWARD: 2000,   // GDD §43 (see economics note above)
+  /* v2.3.3178: the champion's prize FOLLOWS THE BRACKET.  It was 2,000 for
+     any bracket, so a 2-player tournament paid 2,000 for 200 of entries and
+     two accounts could run one every 2-3 minutes (~43,000 gold an hour).
+     Now the prize is PRIZE_PER_ENTRANT a gladiator -- a full bracket of 8
+     still 2,000 (GDD §43), 4 pay 1,000, 2 pay 500 -- of which the entries
+     are the first ENTRY_FEE each and the HOUSE adds the rest, at most
+     HOUSE_GOLD_PER_HOUR in any clock hour across the whole game (three full
+     brackets).  Past that the champion takes the entries and whatever the
+     hour has left.  Free accounts can't be told apart, so only a game-wide
+     bound bounds what they can make. */
+  PRIZE_PER_ENTRANT: 250,
+  HOUSE_GOLD_PER_HOUR: 3600,
   MAX_BRACKET: 8,          // design review: 16 never fills at prototype population
   GATHER_MS: 60000,        // start timer from the first join
   MATCH_MS: 180000,        // per-match shot-clock (duel.expiresAt)
   STALE_ENTRY_MS: 600000,  // orphaned entry age before the sweep refunds
-  // v2.3.1128 (PR11): sponsorship -- 3x stakes on matches (GDD §44).
-  // A won stake mints 2x extra from the house (same deliberate faucet
-  // posture as CHAMPION_REWARD; tune STAKE_MULT to change it).  A lost
-  // stake goes to the WINNING competitor, not the house.
+  // v2.3.1128 (PR11): sponsorship -- stakes on matches (GDD §44).
+  /* v2.3.3177: a POOL, not the house's money.  A won stake paid 3x from
+     the house and a lost one went to the winning fighter, so backing both
+     sides of any match minted +stake for the backers and +stake for the
+     winner whoever won (~+10,000 a match with four accounts), and backing
+     the winner of a match your own two accounts fought minted 2x per
+     backer.  Now a match's winning backers share its LOSING stakes, pro rata
+     to what they staked, on top of their own stakes back; the winning
+     fighter keeps FIGHTER_CUT of the losing stakes (and every losing stake
+     when nobody backed the winner, as before).  Gold only moves between
+     the people who staked: nothing is minted.  The game's own bet panel
+     already said "Payout: pot split among winners". */
   STAKE_MIN: 10,           // mirrors client ARENA_BET_MIN
   STAKE_MAX: 5000,         // mirrors client ARENA_BET_MAX
-  STAKE_MULT: 3,           // GDD §44 "sponsorship pays triple"
+  FIGHTER_CUT: 0.10,       // the winning fighter's share of the losing stakes
   STALE_STAKE_MS: 600000,  // orphaned stake age before the sweep refunds
 };
 
@@ -151,6 +172,9 @@ export const arenaMethods = {
 
   async _arenaJoin(playerId, playerName) {
     if (!playerId || typeof playerId !== 'string') return { ok: false, settled: true, error: 'Missing playerId' };
+    /* v2.3.3178: the house's prize money this hour, read before the first
+       tournament can exist (a crown is synchronous; _arenaPrize). */
+    await this._arenaHouseLoad();
     const ps = this.playerState[playerId];
     if (!ps || ps.dying || ps.dead) return { ok: false, settled: true, error: 'Not in game' };
     /* v2.3.3171: only a GATHERING tournament takes an entry.  This refused
@@ -372,23 +396,56 @@ export const arenaMethods = {
   /* Stake settlement for one resolved match.  Fire-and-forget from
    * _arenaOnMatchResolved; converges via opId idempotency + the
    * stamp-checking sweep (a crash between credit and delete cannot
-   * double-pay).  Backed the winner -> sponsor gets STAKE_MULT x.
-   * Backed the loser -> the stake goes to the winning competitor. */
+   * double-pay).
+   * v2.3.3177: a pool (ARENA's note).  Backed the winner -> the stake back
+   * plus a pro-rata share of the losing stakes after the fighter's cut.
+   * Backed the loser -> the stake is the pool; when nobody backed the
+   * winner it goes to the winning competitor whole, as it always did.
+   * Every losing stake is STAMPED settled before any winner is paid, so
+   * the sweep can never refund one that a winner was paid from (a crash
+   * part-way costs a payout, never makes one twice). */
   async _arenaSettleStakes(tid, matchId, winnerId) {
     try {
       const stakes = await this.state.storage.list({ prefix: 'arena_stake:' + tid + ':' + matchId + ':' });
-      for (const [k, rec] of stakes) {
-        const won = rec.targetId === winnerId;
-        if (won) {
-          await this._creditPlayer(rec.sponsorId, { opId: 'arenastakewin:' + tid + ':' + matchId + ':' + rec.sponsorId, source: 'arena', kind: 'gold', payload: { amount: rec.amount * ARENA.STAKE_MULT }, note: 'sponsorship paid off' });
-        } else {
-          await this._creditPlayer(winnerId, { opId: 'arenastakeloss:' + tid + ':' + matchId + ':' + rec.sponsorId, source: 'arena', kind: 'gold', payload: { amount: rec.amount }, note: 'claimed a failed sponsorship' });
+      const all = [];
+      for (const [k, rec] of stakes) if (rec && typeof rec.sponsorId === 'string') all.push({ k, rec });
+      const amt = (rec) => Math.max(0, Math.floor(Number(rec.amount) || 0));
+      const winners = all.filter((x) => x.rec.targetId === winnerId);
+      const losers = all.filter((x) => x.rec.targetId !== winnerId);
+      const totalW = winners.reduce((n, x) => n + amt(x.rec), 0);
+      const totalL = losers.reduce((n, x) => n + amt(x.rec), 0);
+      const payout = new Map();   // sponsorId -> what this settlement returns them
+      if (totalW > 0) {
+        const cut = Math.floor(totalL * ARENA.FIGHTER_CUT);
+        const pool = totalL - cut;
+        let shared = 0;
+        for (const x of winners) {
+          const share = Math.floor(pool * amt(x.rec) / totalW);
+          shared += share;
+          payout.set(x.rec.sponsorId, amt(x.rec) + share);
         }
-        await this.state.storage.delete(k);
-        const ws = this._wsBySessionId(rec.sponsorId);
+        /* the rounding's leftover coins go to the fighter with the cut, so
+           what is paid out is exactly what was staked */
+        const toFighter = cut + (pool - shared);
+        for (const x of losers) await this._opStamp('arenastakeloss:' + tid + ':' + matchId + ':' + x.rec.sponsorId);
+        if (toFighter > 0) {
+          await this._creditPlayer(winnerId, { opId: 'arenastakecut:' + tid + ':' + matchId, source: 'arena', kind: 'gold', payload: { amount: toFighter }, note: 'your cut of a sponsorship pool' });
+        }
+        for (const x of winners) {
+          await this._creditPlayer(x.rec.sponsorId, { opId: 'arenastakewin:' + tid + ':' + matchId + ':' + x.rec.sponsorId, source: 'arena', kind: 'gold', payload: { amount: payout.get(x.rec.sponsorId) }, note: 'sponsorship paid off' });
+        }
+      } else {
+        for (const x of losers) {
+          await this._creditPlayer(winnerId, { opId: 'arenastakeloss:' + tid + ':' + matchId + ':' + x.rec.sponsorId, source: 'arena', kind: 'gold', payload: { amount: amt(x.rec) }, note: 'claimed a failed sponsorship' });
+        }
+      }
+      for (const x of all) {
+        await this.state.storage.delete(x.k);
+        const won = x.rec.targetId === winnerId;
+        const ws = this._wsBySessionId(x.rec.sponsorId);
         if (ws) {
           try {
-            ws.send(JSON.stringify({ type: 'arena_stake_result', payload: { matchId, targetId: rec.targetId, won, amount: rec.amount, payout: won ? rec.amount * ARENA.STAKE_MULT : 0 } }));
+            ws.send(JSON.stringify({ type: 'arena_stake_result', payload: { matchId, targetId: x.rec.targetId, won, amount: x.rec.amount, payout: won ? (payout.get(x.rec.sponsorId) || 0) : 0 } }));
           } catch (e) {}
         }
       }
@@ -500,19 +557,60 @@ export const arenaMethods = {
     for (const nm of nextRound) this._arenaTryActivate(nm);
   },
 
+  /* v2.3.3178: the house's share of this hour's prizes, read once from
+     storage (`arena_house` {hour, used}).  Left undefined when the read
+     fails, and _arenaPrize then adds nothing (the champion still takes the
+     entries); the next join tries again. */
+  async _arenaHouseLoad() {
+    if (this._arenaHouse) return;
+    try {
+      const rec = await this.state.storage.get('arena_house');
+      if (this._arenaHouse) return;
+      const hour = Math.floor(Number(rec && rec.hour) || 0);
+      const used = Math.max(0, Math.floor(Number(rec && rec.used) || 0));
+      this._arenaHouse = { hour, used };
+    } catch (e) { /* unknown: no top-up until a join reads it */ }
+  },
+
+  /* v2.3.3178: the champion's prize (ARENA's note).  The entries are the
+     prize's first ENTRY_FEE a gladiator; the house tops it up to
+     PRIZE_PER_ENTRANT a gladiator out of what this clock hour has left of
+     HOUSE_GOLD_PER_HOUR.  Synchronous, so the crown's event and the poll
+     carry the real number at once; the caller saves the hour's total
+     before it pays. */
+  _arenaPrize(entrants, now) {
+    const n = Math.max(0, Math.floor(Number(entrants) || 0));
+    const pot = ARENA.ENTRY_FEE * n;
+    const want = Math.max(0, (ARENA.PRIZE_PER_ENTRANT - ARENA.ENTRY_FEE) * n);
+    const h = this._arenaHouse;
+    let topUp = 0;
+    if (h) {
+      const hour = Math.floor(now / 3600000);
+      if (h.hour !== hour) { h.hour = hour; h.used = 0; }
+      topUp = Math.min(want, Math.max(0, ARENA.HOUSE_GOLD_PER_HOUR - h.used));
+      h.used += topUp;
+    }
+    return { prize: pot + topUp, topUp };
+  },
+
   _arenaCrown(champion) {
     const t = this._arena;
     if (!t || t.champion) return;
-    t.champion = { playerId: champion.playerId, playerName: champion.playerName };
+    const { prize, topUp } = this._arenaPrize(t.players.length, Date.now());
+    t.champion = { playerId: champion.playerId, playerName: champion.playerName, prize };
     t.status = 'complete';
     this.eventBuffer.push({ type: 'arena_tournament_complete', payload: { tid: t.id, champion: t.champion } });
     const tid = t.id;
     const entrants = t.players.map((p) => p.playerId);
+    const house = topUp > 0 && this._arenaHouse ? { hour: this._arenaHouse.hour, used: this._arenaHouse.used } : null;
     // Fire-and-forget settle: champion pot (stamped) then entry-record
     // cleanup; the sweep converges a crash between the two (rule 6).
+    // v2.3.3178: the hour's house total is saved BEFORE the pot is paid,
+    // so a restart between them costs the hour some budget, never adds any.
     (async () => {
       try {
-        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: ARENA.CHAMPION_REWARD }, note: 'Gladiator Arena champion' });
+        if (house) await this.state.storage.put('arena_house', house);
+        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: prize }, note: 'Gladiator Arena champion' });
         for (const pid of entrants) await this.state.storage.delete('arena_entry:' + tid + ':' + pid);
       } catch (e) { /* sweep repairs */ }
     })();
