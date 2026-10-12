@@ -8,14 +8,14 @@
  * (`codex_state`) and, on every kill it counted, the kind's new counts on that
  * kill's own `combat_credit` (`cx`).  This keeps the latest of those in
  * `S._codex` for the Codex page (src/ui/mobile/dash/MonsterCodex.jsx) and,
- * when a kill opens something new in an entry -- its page, its element, its
- * special attack, its story, its elder form -- says so over your head, in
- * plain words (world text never carries emoji: the iPhone Safari crash,
- * nodeLabels.js), and remembers it as NEW until its page is opened.
+ * when a kill opens a page -- the first of its kind; every fact on the page
+ * opens with it, the owner's call -- says so over your head, in plain words
+ * (world text never carries emoji: the iPhone Safari crash, nodeLabels.js),
+ * and remembers it as NEW until its page is opened.
  *
  * Nothing here decides anything: a count is only ever the worker's. */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { CODEX_KINDS, codexEntry, codexFactsAt, CODEX_FACT_WORDS } from '@/data/monsterCodex.js';
+import { CODEX_KINDS, codexEntry, codexFactsAt } from '@/data/monsterCodex.js';
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -63,17 +63,16 @@ export function onCodexKill(S, cx) {
   const n = Math.max(0, Math.floor(Number(cx.n) || 0));
   const n2 = Math.max(0, Math.min(n, Math.floor(Number(cx.n2) || 0)));
   c.k[cx.k] = [n, n2];
-  /* what this kill opened that the last count had not */
-  const was = codexFactsAt(before[0], before[1]);
-  const now = codexFactsAt(n, n2);
-  const opened = now.filter((f) => !was.includes(f));
+  /* what this kill opened that the last count had not -- the whole page at
+     the first kill, nothing after */
+  const was = codexFactsAt(before[0]);
+  const opened = codexFactsAt(n).filter((f) => !was.includes(f));
   if (opened.length) {
     const fresh = has(c.fresh, cx.k) ? c.fresh[cx.k] : [];
     for (const f of opened) if (!fresh.includes(f)) fresh.push(f);
     c.fresh[cx.k] = fresh;
     const e = codexEntry(cx.k);
-    const name = e ? (opened.includes('elder') && e.elder ? e.elder.name : e.name) : 'a monster';
-    const what = opened.includes('page') ? 'New in the Codex: ' + name : 'Codex: ' + name + ' - ' + CODEX_FACT_WORDS[opened[opened.length - 1]];
+    const what = 'New in the Codex: ' + (e ? e.name : 'a monster');
     try { const P = S.player; if (P) pushDmgPopup(S, P.x, P.y - 96, what, '#5FD3C0'); } catch (e2) { /* popup only */ }
   }
   bump(c);

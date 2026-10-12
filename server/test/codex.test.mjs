@@ -8,7 +8,8 @@
  *      threshold) reaches storage at once.
  *   3. COUNTING IS COALESCED: a kill that crosses no threshold waits for the
  *      next write (SAVE_MS, or the next threshold), so a fight does not write
- *      a row a kill; the thresholds 3, 10 and 25 are written at once.
+ *      a row a kill.  The first kill is the only threshold: it opens the whole
+ *      page (the owner: "I want all the facts revealed after just 1 kill").
  *   4. THE KINDS: the Poison Forest's two looks apart; a party's kill teaches
  *      every player it pays; the second stage (past level 20) counted on its
  *      own and its first kill written at once; a monster with no land counts
@@ -129,15 +130,17 @@ await flush();
   check('...but not written yet (no new fact, inside SAVE_MS)', s.k.snowling[0] === 1 && room._codexOf('bp_cx_a').dirty === true, { s, dirty: room._codexOf('bp_cx_a').dirty });
   kill(snow, { bp_cx_a: snow.maxHp }, 'bp_cx_a');
   await flush();
-  check('the third (a threshold: its element) is written at once', stored('bp_cx_a').k.snowling[0] === 3 && room._codexOf('bp_cx_a').dirty === false, stored('bp_cx_a'));
+  check('the third waits too: everything opened with the first kill, so no later kill is a threshold',
+    stored('bp_cx_a').k.snowling[0] === 1 && room._codexOf('bp_cx_a').dirty === true, stored('bp_cx_a'));
   kill(snow, { bp_cx_a: snow.maxHp }, 'bp_cx_a');
   await flush();
-  check('the fourth waits again', stored('bp_cx_a').k.snowling[0] === 3, stored('bp_cx_a'));
+  check('the fourth waits again', stored('bp_cx_a').k.snowling[0] === 1, stored('bp_cx_a'));
   room._codexOf('bp_cx_a').savedAt -= CODEX.SAVE_MS + 1;
   kill(snow, { bp_cx_a: snow.maxHp }, 'bp_cx_a');
   await flush();
   check('...and SAVE_MS after the last write, the next kill writes all of it (5)', stored('bp_cx_a').k.snowling[0] === 5, stored('bp_cx_a'));
-  check('codexCrossed: 2->3, 9->10 and 24->25 are facts; 3->4 is not', codexCrossed(2, 3) && codexCrossed(9, 10) && codexCrossed(24, 25) && !codexCrossed(3, 4) && codexCrossed(0, 1));
+  check('codexCrossed: only 0->1 is a fact now (all of the page opens with the first kill); 2->3, 9->10, 24->25 are not',
+    codexCrossed(0, 1) && !codexCrossed(2, 3) && !codexCrossed(9, 10) && !codexCrossed(24, 25) && !codexCrossed(3, 4) && JSON.stringify(CODEX.TIERS) === '[1]');
 }
 
 // ── 4. THE KINDS ────────────────────────────────────────────────────────────
@@ -278,7 +281,7 @@ const B = await join(wsB, 'bp_cx_b');
   check('...unknown kinds, __proto__ and negatives dropped', !('dragon' in n.rec.k) && !Object.prototype.hasOwnProperty.call(n.rec.k, '__proto__') && !('mumling' in n.rec.k), Object.keys(n.rec.k));
   check('...and a count clamped to MAX', n.rec.k.pebbling[0] === CODEX.MAX, n.rec.k.pebbling);
   check('normalizeCodex: nothing stored is an empty record, not locked', normalizeCodex(undefined).locked === false && Object.keys(normalizeCodex(undefined).rec.k).length === 0);
-  check('CODEX: the nine kinds are the pets\' nine, and the thresholds rise', CODEX.KINDS.length === 9 && CODEX.TIERS.every((t, i) => i === 0 || t > CODEX.TIERS[i - 1]), { kinds: CODEX.KINDS, tiers: CODEX.TIERS });
+  check('CODEX: the nine kinds are the pets\' nine, and the one threshold is the first kill', CODEX.KINDS.length === 9 && JSON.stringify(CODEX.TIERS) === '[1]', { kinds: CODEX.KINDS, tiers: CODEX.TIERS });
 }
 
 // ── 9. THE DROP TABLE'S ODDS ARE THE ONES ROLLED ────────────────────────────

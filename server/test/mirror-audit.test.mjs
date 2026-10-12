@@ -72,6 +72,9 @@ import { CODEX_DROP_RATES as CLIENT_CODEX_DROP_RATES, CODEX_GRADE_ODDS as CLIENT
   CODEX_REMNANTS as CLIENT_CODEX_REMNANTS, codexWeaponOdds as clientCodexWeaponOdds, codexGoldAt as clientCodexGoldAt, codexDropsFor as clientCodexDropsFor } from '../../src/data/codexDrops.js';
 import { WEAPON_QUALITY_ODDS as SRV_WEAPON_QUALITY_ODDS } from '../src/hardening.js';
 import { WHEEL_ZONE as SRV_WHEEL_ZONE } from '../src/wheelzone.js';
+import { WHEEL_DOORS as SRV_WHEEL_DOORS } from '../src/wheelspawns.js';   /* v2.3.3189: a codex page's dungeon */
+import { CODEX_ROADS as CLIENT_CODEX_ROADS } from '../../src/data/monsterCodex.js';   /* v2.3.3189: ...and its way there */
+import { PLAN as WORLD_PLAN } from '../../public/tools/world/plan.js';
 import { PET_KINDS as SRV_PET_KINDS, PET_NAME as SRV_PET_NAME, cleanPetName as srvCleanPetName, petKindOf as srvPetKindOf, PETBOOK as SRV_PETBOOK,
   petXpToNext as srvPetXpToNext, petGainXp as srvPetGainXp,
   petWardOf as srvPetWardOf, petHousePrice as srvPetHousePrice, petWireOf as srvPetWireOf } from '../src/petbook.js';
@@ -1953,6 +1956,25 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const missing = CLIENT_CODEX_KINDS.filter((k) => !Object.prototype.hasOwnProperty.call(CLIENT_CODEX_ENTRIES, k));
   check('codex: the nine kinds, in the worker\'s order, each with a page',
     JSON.stringify(CLIENT_CODEX_KINDS) === JSON.stringify(SRV_CODEX.KINDS) && missing.length === 0, { client: CLIENT_CODEX_KINDS, server: SRV_CODEX.KINDS, missing });
+  /* a page's Locations tab names its land's dungeon and its levels there: the
+     ones the worker baked (WHEEL_DOORS), and none for a land without one */
+  const dOff = [];
+  for (const kind of CLIENT_CODEX_KINDS) {
+    const e = CLIENT_CODEX_ENTRIES[kind];
+    const d = Object.prototype.hasOwnProperty.call(SRV_WHEEL_DOORS, e.home) ? SRV_WHEEL_DOORS[e.home] : null;
+    if (!d) { if (e.dungeon || e.dungeonLevels) dOff.push([kind, 'no dungeon in its land', e.dungeon]); continue; }
+    if (e.dungeon !== d.name || JSON.stringify(e.dungeonLevels) !== JSON.stringify(d.levels)) dOff.push([kind, e.dungeon, e.dungeonLevels, d.name, d.levels]);
+  }
+  check('codex: each page\'s dungeon and its levels are the ones the worker baked (the Great Cave, the Foundry Dome, the Buried City)', dOff.length === 0, dOff);
+  /* ...and the road its Locations tab says leads there is the plan's */
+  const rOff = [];
+  for (const kind of CLIENT_CODEX_KINDS) {
+    const home = CLIENT_CODEX_ENTRIES[kind].home;
+    const reg = WORLD_PLAN.regions && WORLD_PLAN.regions[home];
+    const want = reg && reg.road && reg.road.name;
+    if (!want || CLIENT_CODEX_ROADS[home] !== want) rOff.push([home, CLIENT_CODEX_ROADS[home], want]);
+  }
+  check('codex: the road each page says leads to its land is the plan\'s own (the North Road, the Frost Trail ...)', rOff.length === 0, rOff);
 }
 
 /* ═══ v2.3.3189: EACH MONSTER'S DROP TABLE (src/data/codexDrops.js) ═══

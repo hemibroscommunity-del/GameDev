@@ -121,6 +121,12 @@ const REMNANT_NAMES = Object.freeze({
   'skeleton-remnants': 'Skeleton Remnants',
   'slime-remnants': 'Slime Remnants',
 });
+const REMNANT_DESC = Object.freeze({
+  'snowman': 'Coal, a carrot and some very cold snow: all that is left of a snowman.',
+  'fire-goblin-remnants': 'A goblin\'s last embers, still warm, and the smell of singed hair.',
+  'skeleton-remnants': 'Old bones and older bandages from the Buried City.',
+  'slime-remnants': 'A puddle of slime that has finally given up.',
+});
 
 /** "1 in 10", "1 in 200", "1 in 2,000" -- two figures past twenty, so a rate
  *  reads as the game's own round number (1/0.0024 is "1 in 410"). */
@@ -146,55 +152,115 @@ export function codexPercent(p) {
   return (s.indexOf('.') >= 0 ? s.replace(/\.?0+$/, '') : s) + '%';
 }
 
-/** Every row of `kind`'s drop table, most often first:
- *  [{ id, key, name, icon, chance, chanceTop?, odds, sub, note, who, graded, color }]
- *    chance    the chance a kill drops it (1: every kill); for the weapon, at
- *              the lowest level its monsters stand at, `chanceTop` at the
- *              highest
- *    odds/sub  what the page prints: "1 in 200" over "0.5%"
- *    who       'pile' (picked up), 'killer' (the killing blow, into the bag)
- *    graded    rolls a grade as it drops
+/** A grade's share, as the rarity tiles print it: "90.09995%", "9%", "0.9%",
+ *  "0.00005%" -- every digit the roll has, as the owner's mockup does. */
+export function codexGradePercent(p) {
+  if (!(p > 0)) return '0%';
+  return (p * 100).toFixed(5).replace(/\.?0+$/, '') + '%';
+}
+
+/** The four grades a dropped piece can roll, in order, with their shares:
+ *  [{ q: 'normal'|'rare'|'elite'|'godly', p }] -- normal is what is left. */
+export function codexGrades() {
+  const g = CODEX_GRADE_ODDS;
+  return [
+    { q: 'normal', p: 1 - g.rare - g.elite - g.godly },
+    { q: 'rare', p: g.rare },
+    { q: 'elite', p: g.elite },
+    { q: 'godly', p: g.godly },
+  ];
+}
+
+const cap = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+const PARTY_PILE = 'In a party, only players who did at least 5% of its damage can loot the pile, and the first of them to pick it up takes this.';
+
+/** Every row of `kind`'s drop table, most often first -- what the page's
+ *  Drops tab lists and what a tap on a row opens (the owner's mockup):
+ *  [{ id, key, name, icon, type, chance, chanceTop?, pct, oneIn, amount?,
+ *     who, graded, tier?, color?, desc, chanceNote, info: [lines] }]
+ *    type        the TYPE column: Currency, Material, Gem, Armor, Weapon, Craft
+ *    chance      the chance a kill drops it (1: every kill); for the weapon,
+ *                at the lowest level its monsters stand at, `chanceTop` at
+ *                the highest
+ *    pct/oneIn   "10%" / "1 in 10" (the weapon's "0.05–0.24%")
+ *    who         'pile' (picked up), 'killer' (the killing blow, into the bag)
+ *    graded      rolls a grade as it drops (the card's POSSIBLE RARITY)
+ *    tier        a weapon or armour piece's base rarity: 'common'
  *  or null for a kind with no page. */
 export function codexDropsFor(kind) {
   const e = has(CODEX_ENTRIES, kind) ? CODEX_ENTRIES[kind] : null;
   if (!e) return null;
   const lo = WHEEL_LAND_LEVELS[0], hi = WHEEL_LAND_LEVELS[1];
+  const land = e.home;
   const rows = [];
   const g0 = codexGoldAt(lo), g1 = codexGoldAt(hi);
-  rows.push({ id: 'gold', key: 'coins', name: 'Gold', icon: ICON.gold, chance: 1,
-    odds: g0 === g1 ? String(g0) : g0 + '–' + g1, sub: 'every kill', who: 'pile',
-    note: 'More the higher its level (Lv ' + lo + ' → Lv ' + hi + '). A party splits it by the damage each did.' });
+  const amount = g0 === g1 ? String(g0) : g0 + '–' + g1;
+  rows.push({ id: 'gold', key: 'coins', name: 'Gold', icon: ICON.gold, type: 'Currency', chance: 1, amount, who: 'pile',
+    desc: 'The Wheel\'s money: every shop, bench and auction in BroTown takes it.',
+    chanceNote: amount + ' gold every kill, more the higher its level',
+    info: ['Every kill drops ' + g0 + ' to ' + g1 + ' gold: ' + g0 + ' at Lv ' + lo + ', ' + g1 + ' at Lv ' + hi + '.',
+      'In a party it is shared by everyone who did at least 5% of its damage, split by the damage each did.'] });
   const rem = has(CODEX_REMNANTS, kind) ? CODEX_REMNANTS[kind] : null;
   if (rem) {
-    rows.push({ id: 'remnant', key: rem, name: REMNANT_NAMES[rem] || rem, icon: ICON[rem], chance: 1,
-      odds: 'Every kill', sub: '', who: 'pile', note: 'For quests, and Diego buys them.' });
+    rows.push({ id: 'remnant', key: rem, name: REMNANT_NAMES[rem] || rem, icon: ICON[rem], type: 'Material', chance: 1, who: 'pile',
+      desc: REMNANT_DESC[rem] || 'What is left of it.',
+      chanceNote: 'one every kill',
+      info: ['Every kill drops one.', 'Quests ask for them, and Diego buys them.', PARTY_PILE] });
   }
-  const shard = has(ZONE_SHARDS, e.home) ? ZONE_SHARDS[e.home] : null;
+  const shard = has(ZONE_SHARDS, land) ? ZONE_SHARDS[land] : null;
   if (shard) {
-    rows.push({ id: 'shard', key: shard.key, name: shard.label, icon: '/icons/items/' + shard.key + '.webp' + IV,
-      chance: CODEX_DROP_RATES.shard, who: 'pile', color: shard.color });
+    rows.push({ id: 'shard', key: shard.key, name: shard.label, icon: '/icons/items/' + shard.key + '.webp' + IV, type: 'Material',
+      chance: CODEX_DROP_RATES.shard, who: 'pile', color: shard.color,
+      desc: 'A splinter of its land\'s own element, cold or hot or humming to the touch. Diego pays well for one.',
+      info: ['About ' + codexOneIn(CODEX_DROP_RATES.shard).toLowerCase() + ' kills drops one.', PARTY_PILE] });
   }
   if (CODEX_RAW_GEM_ELEMENTS.includes(e.element) && has(ZONE_RESOURCES, e.element)) {
     const zr = ZONE_RESOURCES[e.element];
-    rows.push({ id: 'rawgem', key: 'raw_' + e.element, name: 'Raw ' + zr.gem, icon: ICON.gem,
+    rows.push({ id: 'rawgem', key: 'raw_' + e.element, name: 'Raw ' + zr.gem, icon: ICON.gem, type: 'Gem',
       chance: GEM_DROP_RATES.monsterKill, who: 'killer', color: zr.gemColor,
-      note: 'To whoever lands the killing blow. The Gem Cutter polishes it.' });
+      desc: 'A rough ' + zr.gem + ', still in its stone. The Gem Cutter polishes it into a gem for an amulet or a shield.',
+      info: ['About ' + codexOneIn(GEM_DROP_RATES.monsterKill).toLowerCase() + ' kills drops one.',
+        'It goes to whoever lands the killing blow, straight into the bag.'] });
   }
-  rows.push({ id: 'raregem', key: 'rare_gem', name: 'Rare Gem', icon: ICON.gem, chance: CODEX_DROP_RATES.rareGem, who: 'pile' });
-  rows.push({ id: 'irontorso', key: 'iron_torso', name: 'Iron Torso', icon: ICON.ironTorso, chance: CODEX_DROP_RATES.ironTorso, who: 'pile', graded: true });
-  rows.push({ id: 'irongreaves', key: 'iron_greaves', name: 'Iron Greaves', icon: ICON.ironGreaves, chance: CODEX_DROP_RATES.ironGreaves, who: 'pile', graded: true });
-  rows.push({ id: 'irongreatsword', key: 'iron_greatsword', name: 'Iron Great Sword', icon: ICON.ironGreatsword, chance: CODEX_DROP_RATES.ironGreatsword, who: 'pile', graded: true });
+  rows.push({ id: 'raregem', key: 'rare_gem', name: 'Rare Gem', icon: ICON.gem, type: 'Gem', chance: CODEX_DROP_RATES.rareGem, who: 'pile',
+    desc: 'A bright stone, rare and pretty. Nothing is made from it yet: Diego buys it, and the season\'s rewards give a few.',
+    info: ['About ' + codexOneIn(CODEX_DROP_RATES.rareGem).toLowerCase() + ' kills drops one.', PARTY_PILE] });
+  const gear = (pct) => ['After it drops, a separate roll decides its grade (shown above).',
+    'The grade makes it stronger and colours its name in your bag, but does not change the ' + pct + ' drop chance.'];
+  rows.push({ id: 'irontorso', key: 'iron_torso', name: 'Iron Torso', icon: ICON.ironTorso, type: 'Armor', chance: CODEX_DROP_RATES.ironTorso,
+    who: 'pile', graded: true, tier: 'common',
+    desc: 'Iron chest armour, the step up from copper. The Blacksmith forges the same piece from four iron bars.',
+    info: ['This drops at a ' + codexPercent(CODEX_DROP_RATES.ironTorso) + ' chance from ' + e.name + ', about ' + codexOneIn(CODEX_DROP_RATES.ironTorso).toLowerCase() + ' kills.',
+      ...gear(codexPercent(CODEX_DROP_RATES.ironTorso)), PARTY_PILE] });
+  rows.push({ id: 'irongreaves', key: 'iron_greaves', name: 'Iron Greaves', icon: ICON.ironGreaves, type: 'Armor', chance: CODEX_DROP_RATES.ironGreaves,
+    who: 'pile', graded: true, tier: 'common',
+    desc: 'Iron leg armour, the step up from copper. The Blacksmith forges the same pair from four iron bars.',
+    info: ['This drops at a ' + codexPercent(CODEX_DROP_RATES.ironGreaves) + ' chance from ' + e.name + ', about ' + codexOneIn(CODEX_DROP_RATES.ironGreaves).toLowerCase() + ' kills, on its own roll: a kill can drop both iron pieces.',
+      ...gear(codexPercent(CODEX_DROP_RATES.ironGreaves)), PARTY_PILE] });
+  rows.push({ id: 'irongreatsword', key: 'iron_greatsword', name: 'Iron Great Sword', icon: ICON.ironGreatsword, type: 'Weapon', chance: CODEX_DROP_RATES.ironGreatsword,
+    who: 'pile', graded: true, tier: 'common',
+    desc: 'A heavy two-handed iron blade, the same one the Blacksmith forges from four iron bars.',
+    info: ['This drops at a ' + codexPercent(CODEX_DROP_RATES.ironGreatsword) + ' chance from ' + e.name + ', about ' + codexOneIn(CODEX_DROP_RATES.ironGreatsword).toLowerCase() + ' kills.',
+      ...gear(codexPercent(CODEX_DROP_RATES.ironGreatsword)), PARTY_PILE] });
   const w0 = codexWeaponOdds(lo), w1 = codexWeaponOdds(hi);
-  const elName = e.element.charAt(0).toUpperCase() + e.element.slice(1);
-  rows.push({ id: 'weapon', key: 'weapon', name: 'A random weapon', icon: ICON.weapon, chance: w0.drop, chanceTop: w1.drop,
-    odds: codexOneIn(w0.drop), sub: 'Lv ' + hi + ': ' + codexOneIn(w1.drop), who: 'pile', graded: true,
-    note: 'A sword, great sword, bow or staff, likelier the higher its level. At Lv ' + hi
-      + ' about ' + codexOneIn(w1.elemental) + ' of them is a ' + elName + ' weapon.' });
-  rows.push({ id: 'nugget', key: 'goldNuggets', name: 'Gold Nugget', icon: ICON.nugget, chance: GOLD_NUGGET_DROP.monsterKill, who: 'killer',
-    note: 'To whoever lands the killing blow. Five make a gold bar for an amulet.' });
+  const elName = cap(e.element);
+  const wPct = codexPercent(w0.drop).replace('%', '') + '–' + codexPercent(w1.drop);
+  rows.push({ id: 'weapon', key: 'weapon', name: 'A random weapon', icon: ICON.weapon, type: 'Weapon', chance: w0.drop, chanceTop: w1.drop,
+    pct: wPct, who: 'pile', graded: true, tier: 'common',
+    desc: 'A sword, great sword, bow or staff, picked at random. Most are plain; a few carry ' + elName + ', or two elements fused, and a very few are prismatic.',
+    chanceNote: 'at Lv ' + lo + ', rising to ' + codexPercent(w1.drop) + ' at Lv ' + hi,
+    info: ['This drops at a ' + codexPercent(w0.drop) + ' chance from a Lv ' + lo + ' ' + e.name + ', rising with its level to ' + codexPercent(w1.drop) + ' at Lv ' + hi + '.',
+      'At Lv ' + hi + ', about ' + codexOneIn(w1.elemental).toLowerCase() + ' of them is a ' + elName + ' weapon, ' + codexOneIn(w1.fusion).toLowerCase() + ' a fusion of two elements and ' + codexOneIn(w1.shift).toLowerCase() + ' prismatic.',
+      ...gear(wPct),
+      'If the Iron Great Sword drops on the same kill, it takes this one\'s place.'] });
+  rows.push({ id: 'nugget', key: 'goldNuggets', name: 'Gold Nugget', icon: ICON.nugget, type: 'Craft', chance: GOLD_NUGGET_DROP.monsterKill, who: 'killer',
+    desc: 'A lump of gold the size of a thumb. Five smelt into a gold bar for the amulet forge.',
+    info: ['About ' + codexOneIn(GOLD_NUGGET_DROP.monsterKill).toLowerCase() + ' kills drops one.',
+      'It goes to whoever lands the killing blow, straight into the bag.'] });
   for (const r of rows) {
-    if (!r.odds) r.odds = codexOneIn(r.chance);
-    if (r.sub == null) r.sub = codexPercent(r.chance);
+    if (!r.pct) r.pct = codexPercent(r.chance);
+    r.oneIn = codexOneIn(r.chance);
+    if (!r.chanceNote) r.chanceNote = r.chance >= 1 ? 'every kill' : 'about ' + r.oneIn.toLowerCase() + ' kills';
   }
   return rows;
 }

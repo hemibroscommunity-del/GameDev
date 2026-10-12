@@ -1905,18 +1905,26 @@ remnant to migrate server-side, not a mode to preserve.
     `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
   - Since v2.3.3189 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
-    special attack, (make up a backstory) etc." and "Also include drop tables
-    for all items that monster can drop" (docs/specs/monster-codex.md):
+    special attack, (make up a backstory) etc.", "Also include drop tables
+    for all items that monster can drop", and with a mockup: "I want all the
+    facts revealed after just 1 kill ... change the structure of each monster
+    entry to look like this" (docs/specs/monster-codex.md):
     - More -> Codex -> Monsters (was the always-empty Bestiary): a card per
-      kind, the pets' nine; a page opens fact by fact at kills the WORKER
+      kind, the pets' nine; its WHOLE page opens at the first kill the WORKER
       counts (`server/src/codex.js`, `codex:<pid>`; `codex_state` at join,
-      `cx` on the kill's combat_credit): what it does, where from and its
-      DROP TABLE at 1, its element at 3, its special at 10, its made-up story
-      at 25, its elder form after a kill past level 20 (`CODEX_TIERS`);
+      `cx` on the kill's combat_credit; `CODEX_OPEN_AT`, `CODEX.TIERS` [1]);
+    - the page is the owner's mockup: a header (portrait, name, Lv / element
+      / creature-type badges), Drops (ITEM / TYPE / CHANCE with bars; a tap
+      opens the item's card: FOUND FROM, BASE DROP CHANCE, the four grades it
+      rolls), Info (the stage and every fact) and Locations (land, stages, the
+      road from BroTown, its dungeon); while it is open the sheet grows TALL
+      with the dashboard's row on its top edge (`sheetTallBus.js`, portrait
+      only; every other destination keeps the one height);
     - its STAGE plays it beside your character, the Points preview's make
       (`CodexStage.jsx`, `data/codexStage.js`): its own strips, loaded when
-      the page opens and freed on close (the owner's call to confirm: ~20 MB
-      for all nine preloaded), the world's wind-ups and warning circles;
+      the Info tab opens and freed when it closes (the owner's call to
+      confirm: ~20 MB for all nine preloaded), the world's wind-ups and
+      warning circles;
     - the drop table (`data/codexDrops.js`) prints the worker's own rolls --
       `SHARD_MONSTER_DROP`, `monsterWeaponDropOdds` (data.js),
       `WEAPON_QUALITY_ODDS` (hardening.js) -- and mirror-audit holds it to

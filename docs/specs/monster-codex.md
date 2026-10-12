@@ -6,24 +6,57 @@ elemental type, special attack, (make up a backstory) etc. it'll be another
 dashboard section that just displays information. Maybe an animation similar
 to how the skills preview window currently works."*
 
-More → Codex → **Monsters** (the tab that used to be "Bestiary"). One card for
-each of the Wheel's nine kinds of monster; killing them opens their page a fact
-at a time, and each page plays the monster on a little stage the way the
-Points window's stat preview plays the slime.
+Then, with a mockup of the page: *"I want all the facts revealed after just 1
+kill. I also want to change the structure of each monster entry to look like
+this. This is just a mockup with fake items but the structure is correct."*
 
-## What a kill teaches
+More → Codex → **Monsters** (the tab that used to be "Bestiary"). One card for
+each of the Wheel's nine kinds of monster, its shape alone until you kill one;
+**the first kill opens its whole page**.
+
+## The page (the owner's mockup)
+
+While a monster's page is open the dashboard's sheet grows TALL, the
+dashboard's own row (CLOSE, back, the nav buttons) riding its top edge, as the
+mockup draws it (`src/ui/mobile/sheetTallBus.js`; upright only -- sideways the
+band never grows; the sheet and the row come back down with the list, and the
+Codex's own Monsters / Codex / Materials / Zones tabs step aside meanwhile).
+Every other destination keeps the one height (v2.3.1638).
+
+- **The header**: its portrait, its name, and three badges -- its levels
+  (`Lv 1–40`), its element with its icon, and its kind of creature
+  (`CODEX_ENTRIES[*].type`: Elemental, Goblin, Undead, Golem, Slime, Aquatic,
+  Spirit -- made up to fit the stories, the owner's to change), and how many
+  you have defeated.
+- **Drops** (the first tab): ITEM / TYPE / CHANCE, every item a kill can drop,
+  most often first, a bar for each chance. A tap on a row opens the item's
+  **card**: its picture, name, type and base rarity ("Common" for a weapon or
+  armour piece), what it is, FOUND FROM (the monster), BASE DROP CHANCE, for a
+  weapon or armour piece the POSSIBLE RARITY it rolls after it drops (Normal
+  90.09995%, Rare 9%, Elite 0.9%, Godly 0.00005%, each tile the item in that
+  grade's frame), and a note of how it drops. Its X comes back to the list with
+  that row marked.
+- **Info**: the stage (below) and what it does, its element, its special
+  attack with a tip, its story, and its elder form (a toggle shows it).
+- **Locations**: its land and levels, the first stage's levels and the elder
+  form's past the first pass, the way there from BroTown (which gate, which
+  road: `CODEX_ROADS`, the plan's own road names), and its land's dungeon with
+  its levels where it has one (`dungeonLevels`, the worker's baked
+  `WHEEL_DOORS`).
+
+## When it opens
 
 | Kills of that kind | What the page shows |
 |---|---|
 | 0 | its shape only, "???" |
-| 1 | its **name**, its picture moving, **where it is from** (land and levels), **what it does** in a fight, and its **drop table** |
-| 3 | its **element**, and what that element's hits do to you |
-| 10 | its **special attack** — what it is, how long it winds up, how to get out of it — and the stage starts playing it |
-| 25 | its **story** |
-| 1 at level 21+ | its **elder form**: the recoloured monster past the first pass, its name and a line about it |
+| 1 | **everything**: its drops, what it does, its element, its special attack, its story, its elder form and where it lives |
 
-The thresholds are one table, `CODEX_TIERS` in `src/data/monsterCodex.js`,
-held to the worker's `CODEX.TIERS` (server/src/codex.js) by mirror-audit.
+Until the owner's "all the facts after just 1 kill" the facts opened at 1, 3,
+10 and 25 kills and the elder form at a kill past level 20. `CODEX_OPEN_AT` /
+`CODEX_TIERS` in `src/data/monsterCodex.js` are held to the worker's
+`CODEX.TIERS` ([1], server/src/codex.js) by mirror-audit: the first kill of a
+kind is the one the worker writes to storage at once. Kills past level 20 are
+still counted (the header's "past Lv 20").
 
 A party's kill teaches every player it pays XP to, as it counts for their
 quests. A monster with no land (the closed old zones) teaches nothing.
@@ -41,7 +74,7 @@ down to its skeleton is still a mummy); its stage is `petStageOf` (2 from level
 
 Owner, 2026-10-12: *"Also include drop tables for all items that monster can
 drop."* Every row is the worker's own roll (`src/data/codexDrops.js`), most
-often first, open with the page at the first kill:
+often first, open with the page at the first kill (the Drops tab):
 
 | Drop | Chance | Where it is rolled |
 |---|---|---|
@@ -77,13 +110,12 @@ own strips at the URLs the world loads them from, one ground line, and every
 motion CSS: a beat is one `setState`, a strip steps through its cells
 (`bt-sd-strip`), a walk is a transition. Nothing is drawn a frame at a time.
 
-What it plays grows with the page:
+What it plays:
 
-- **1 kill**: its ordinary attack, over and over -- a snowball, a fireball or a
-  glob crossing the gap, or a walk up to you and a swing.
-- **3**: ...and the hit says what its element does to you (the element's icon
-  and its status over your head; a gust shoves you).
-- **10**: ...and every other round its special, with the world's own word for
+- its ordinary attack -- a snowball, a fireball or a glob crossing the gap, or
+  a walk up to you and a swing -- and the hit says what its element does to
+  you (the element's icon and its status over your head; a gust shoves you);
+- and every other round its **special**, with the world's own word for
   it (SLAM!, LUNGE!), the world's wind-up times (`CODEX_WINDUP_MS`, from
   `server/src/telegraph.js`), and for a slam or a lunge the world's own
   WARNING CIRCLE under you, filling as it winds up (effectsRenderer's
@@ -98,7 +130,7 @@ What it plays grows with the page:
 
 Under `prefers-reduced-motion` nothing runs: the monster stands still.
 
-**Its pictures load when the page opens and go when it closes** -- one
+It plays on the **Info** tab. **Its pictures load when that tab opens and go when it closes** -- one
 monster's strips at a time, and what it throws, all in before the first beat
 (a fireball loading as it was thrown crossed the gap undrawn). Until they are
 in, the monster stands as its portrait from the pet sheet, which the loading
@@ -117,8 +149,8 @@ in `preloadAnimations.js` if the owner wants it.
 1: never a new field on the rpg blob), registered in ARCHITECTURE-HANDOFF.
 
 - One GET at join, cached for the session (`_codexLoadOnJoin`).
-- A kill that crosses a threshold, or a first second-stage kill, is written at
-  once. Any other kill at most once every `CODEX.SAVE_MS` (60 s), on the next
+- A kill that crosses a threshold -- the first of its kind, which opens the
+  page -- or a first second-stage kill, is written at once. Any other kill at most once every `CODEX.SAVE_MS` (60 s), on the next
   kill after it, and on disconnect (index.js `webSocketClose`). A deploy (rule
   11) loses at most a minute of counting and never a fact.
 - A record a **newer** worker wrote (`v` above `CODEX.V`) is LOCKED: never
@@ -151,27 +183,32 @@ shown.
 ## The dev lever
 
 `POST /api/admin/dev/codex {playerId, kind | all, n, n2}` sets a kind's counts
-(or every kind's), writes and tells the phone — for looking at a full page
-without 25 kills of nine kinds. `n: 0` forgets a kind. Audit-logged like every
+(or every kind's), writes and tells the phone — for looking at every page
+without walking out to kill one of all nine kinds. `n: 0` forgets a kind. Audit-logged like every
 dev op.
 
 ## Tests
 
 - `server/test/codex.test.mjs` (47 checks): caps and the first look; a kill counted on its
-  credit and its first kill written at once; coalesced counting and the
-  thresholds; the Poison Forest's two kinds, a party's kill, the second stage, a
+  credit and its first kill written at once; coalesced counting, the first
+  kill the one threshold; the Poison Forest's two kinds, a party's kill, the second stage, a
   monster with no land (and a land named `__proto__`); disconnect and rejoin;
   a newer record and a failed read left alone; the kill switch; a restart; the
   dev lever; `normalizeCodex`; and the drop table's odds are the ones rolled (a
   weapon, its element and a shard drop just under their line and not just over
   it).
 - `mirror-audit`: `CODEX_TIERS` and the client's nine kinds against the
-  worker's; every drop rate, the grade odds, the weapon curve at every level 1
+  worker's; each page's dungeon and levels against `WHEEL_DOORS` and its road
+  against the plan's; every drop rate, the grade odds, the weapon curve at every level 1
   to 100, and each of the Wheel's monsters' gold and remnants against the
   page's drop table.
-- `mp-codex` (phone, 22 checks): the Monsters tab, a page opening fact by fact
-  from real kills and the dev lever, its drop table from the first kill and
-  every page's its own, every stage playing its own special, a
+- `mp-codex` (phone, 26 checks): the Monsters tab; a real kill opening the
+  whole page on a tall sheet, its header badges and tabs; its drop table; the
+  Iron Great Sword's card (Common, 0.2%, the four grades) and a shard's (no
+  grades), the X back to the marked row; every fact open on Info from one
+  kill, the stage playing its special; Locations (the land, both stages, the
+  way there, the dungeons); the sheet back down on the list; every page's own
+  drop table, every stage playing its own special, a
   slam's or a lunge's warning circle, what it throws in before its first
   flight, no monster ever standing over your character, nothing left behind
   on close, the counts back after a reload.

@@ -6,28 +6,39 @@
  * another dashboard section that just displays information.  Maybe an
  * animation similar to how the skills preview window currently works."
  *
+ * And then, with a mockup: "I want all the facts revealed after just 1 kill.
+ * I also want to change the structure of each monster entry to look like
+ * this."
+ *
  * A real player in the Wheel, a real worker, real kills (the test kit's
  * `kill`, which kills through _resolveMonsterKill, the path every kill takes):
  *   1. the worker says it counts (caps.codex) and sends the codex at join;
  *      More -> Codex opens on Monsters: nine cards, every one a shape;
  *   2. a snowman's kill: counted (snowling 1), said over your head, its card
- *      known and NEW, and its page open -- what it does and where it is from,
- *      the rest locked -- with its stage loaded and playing its throw;
- *   3. two more: its ELEMENT opens, and the stage's hit says "Chill";
- *   4. the dev lever (25 kills, one past 20): its special attack plays on the
- *      stage (the burrow), its story and its elder form open, and the elder
- *      toggle names it a Glacier Snowman;
- *   5. every one of the nine pages, all open: its stage loads, and plays its
- *      own special (lunge, slam, unwrap, burst, burrow), what it throws in
- *      before its first flight, and nothing standing over your character --
- *      pictures in tools/qa/mp/out/codex-<kind>.png -- and its DROP TABLE
- *      (the owner: "Also include drop tables for all items that monster can
- *      drop"): every pile drop with its chance, remnants only from the six
- *      kinds that leave them, a raw gem from every land but the Verdant
- *      Wilds;
- *   6. closed, nothing is left behind: every picture a stage baked revoked;
- *   7. a reload: the counts come back from the worker;
- *   8. no page errors.
+ *      known and NEW;
+ *   3. its page, as the mockup lays it out, on a sheet grown TALL with the
+ *      dashboard's own row at its top: the header (name, Lv / element / kind
+ *      badges), the Drops / Info / Locations tabs, and the drop table -- ITEM,
+ *      TYPE, CHANCE -- every pile drop with its percentage;
+ *   4. a tap on the Iron Great Sword opens its card: Weapon, Common, FOUND
+ *      FROM the Snowman, a 0.2% BASE DROP CHANCE and the four grades it can
+ *      roll with their shares; its X comes back to the list with the row
+ *      marked; a Frost Shard's card has no grades;
+ *   5. Info, from that one kill: every fact open, the stage loading and
+ *      playing its throw AND its special (the burrow), its hit saying "Chill",
+ *      the elder toggle naming it a Glacier Snowman;
+ *   6. Locations: Frost Ridge, both stages' levels, the way there from
+ *      BroTown; back to the list, the sheet is its own height again;
+ *   7. every one of the nine pages: its stage plays its own special (lunge,
+ *      slam, unwrap, burst, burrow), what it throws in before its first
+ *      flight, nothing standing over your character, a slam's or lunge's
+ *      warning circle, its own drop table (remnants only from the six kinds
+ *      that leave them, a raw gem from every land but the Verdant Wilds) and
+ *      its dungeon on Locations where it has one -- pictures in
+ *      tools/qa/mp/out/codex-<kind>.png;
+ *   8. closed, nothing is left behind: every picture a stage baked revoked;
+ *   9. a reload: the counts come back from the worker;
+ *  10. no page errors.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -36,6 +47,7 @@ import { join } from 'node:path';
 const PHONE = { width: 390, height: 844 };
 const KINDS = ['snowling', 'gobling', 'mumling', 'pebbling', 'sparklet', 'finling', 'wisplet', 'lurkling', 'dewdrop'];
 /* the phase each kind's special shows on its stage (CodexStage planFor) */
+const DUNGEONS = { pebbling: ['the Great Cave', 'Lv 26–30'], sparklet: ['the Foundry Dome', 'Lv 26–30'], mumling: ['the Buried City', 'Lv 41–45'] };
 const SPECIAL_PHASE = { snowling: 'pile', gobling: 'dash', mumling: 'unwrap', pebbling: 'slam', sparklet: 'dash', finling: 'slam', wisplet: 'dash', lurkling: 'slam', dewdrop: 'swell' };
 
 /* every blob picture made and let go, counted from the page's start */
@@ -71,11 +83,39 @@ const openPage = async (P, kind) => {
 };
 const back = (P) => P.page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /All monsters/.test(x.innerText)); if (b) b.click(); });
 const facts = (P) => P.page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-cx-fact]')].map((f) => [f.dataset.cxFact, f.dataset.cxOpen === '1'])));
-/* the page's drop table: { id: its odds as printed } */
+/* the page's drop table: { id: [its chance as printed, its type] } */
 const drops = (P) => P.page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-cx-drop]')].map((r) => {
-  const o = r.querySelector('[data-cx-odds]');
-  return [r.dataset.cxDrop, o ? o.innerText.trim() : ''];
+  const o = r.querySelector('[data-cx-pct]'), t = r.querySelector('[data-cx-type]');
+  return [r.dataset.cxDrop, [o ? o.innerText.trim() : '', t ? t.innerText.trim() : '']];
 })));
+const tab = async (P, id) => {
+  await P.page.evaluate((i) => { const b = document.querySelector(`[data-cx-tab="${i}"]`); if (b) b.click(); }, id);
+  await P.page.waitForTimeout(250);
+  /* the Info tab's stage loads its strips when it opens: the watch below
+     times its loop, not this box's picture decoding */
+  if (id === 'info') await P.page.waitForSelector('[data-cx-stage][data-cx-ready="1"]', { timeout: 15000 }).catch(() => {});
+};
+/* where the sheet and its row sit, and what the header says */
+const sheetLook = (P) => P.page.evaluate(() => {
+  const d = document.querySelector('.bt-dashboard');
+  const c = [...document.querySelectorAll('button')].find((b) => /^(CLOSE|OPEN)$/.test(b.innerText.trim()));
+  const r = d ? d.getBoundingClientRect() : null, cr = c ? c.getBoundingClientRect() : null;
+  const pill = (a) => { const e = document.querySelector(`[data-cx-pill="${a}"]`); return e ? e.innerText.trim() : null; };
+  const chips = [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Materials');
+  return { top: r ? Math.round(r.top) : null, h: r ? Math.round(r.height) : null, closeTop: cr ? Math.round(cr.top) : null,
+    level: pill('level'), element: pill('element'), type: pill('type'),
+    tabs: [...document.querySelectorAll('[data-cx-tab]')].map((t) => t.dataset.cxTab + (t.dataset.cxOn === '1' ? '*' : '')),
+    chips: !!(chips && chips.offsetParent) };
+});
+const cardLook = (P) => P.page.evaluate(() => {
+  const c = document.querySelector('[data-cx-item]');
+  if (!c) return null;
+  const tier = c.querySelector('[data-cx-tier]'), base = c.querySelector('[data-cx-base]'), found = c.querySelector('[data-cx-found]');
+  return { id: c.dataset.cxItem, text: c.innerText.replace(/\s+/g, ' '), tier: tier ? tier.innerText.trim() : null, base: base ? base.innerText.trim() : null,
+    found: found ? found.innerText.replace(/\s+/g, ' ') : '',
+    grades: [...c.querySelectorAll('[data-cx-grade]')].map((g) => g.dataset.cxGrade + ' ' + ((g.querySelector('[data-cx-grade-pct]') || {}).innerText || '').trim()) };
+});
+const locations = (P) => P.page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-cx-loc]')].map((r) => [r.dataset.cxLoc, r.innerText.replace(/\s+/g, ' ')])));
 /* every phase the stage passes through in `ms` -- watched as it changes (a
    MutationObserver), so a 0.2 s dash on a page drawing a few frames a second
    is never missed between two looks.  Also:
@@ -164,59 +204,84 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const cs1 = await cards(P);
     const snowCard = cs1.find((c) => c.kind === 'snowling');
     rec.ok(`...its card is known and NEW ("${snowCard && snowCard.text}")`, !!snowCard && snowCard.known && snowCard.fresh && /Snowman/.test(snowCard.text) && /1 defeated/.test(snowCard.text), snowCard);
+    /* ── 3 ── */
     const pg1 = await openPage(P, 'snowling');
-    const f1 = await facts(P);
+    await P.page.waitForTimeout(600);
+    const sl = await sheetLook(P);
     const d1 = await drops(P);
-    const w1 = await watchStage(P, 7000);
-    rec.ok('...its page: what it does open; element, special attack, story and elder form locked', pg1 && f1.page && !f1.element && !f1.special && !f1.story && !f1.elder, f1);
-    rec.ok(`...and its drop table, with the first kill: ${Object.keys(d1).length} drops (remnants "${d1.remnant}", Frost Shard "${d1.shard}", gold nugget "${d1.nugget}")`,
-      d1.gold && d1.remnant === 'Every kill' && d1.shard === '1 in 10' && d1.rawgem === '1 in 20' && d1.raregem === '1 in 200'
-      && d1.irontorso === '1 in 500' && d1.irongreaves === '1 in 500' && d1.irongreatsword === '1 in 500' && d1.weapon === '1 in 2,000' && d1.nugget === '1 in 10,000', d1);
-    rec.ok(`...its stage loads its strips and plays its throw (${w1.phases.join(' > ')})`,
-      w1.ready && w1.strips >= 1 && ['throw', 'fly', 'impact'].every((p) => w1.phases.includes(p)) && w1.pops.length === 0, w1);
+    rec.ok(`...its page fills a TALL sheet as the mockup does, the dashboard's row at its top (sheet ${sl.h} px from y ${sl.top}, CLOSE at y ${sl.closeTop}), the Codex's own tabs put away`,
+      pg1 && sl.h > 600 && sl.closeTop != null && sl.closeTop < sl.top + 40 && !sl.chips, sl);
+    rec.ok(`...its header says ${sl.level} / ${sl.element} / ${sl.type}, its tabs ${sl.tabs.join(' ')}`,
+      sl.level === 'Lv 1–40' && sl.element === 'Frost' && sl.type === 'Elemental' && sl.tabs.join(' ') === 'drops* info locations', sl);
+    const want = { gold: ['100%', 'Currency'], remnant: ['100%', 'Material'], shard: ['10%', 'Material'], rawgem: ['5%', 'Gem'], raregem: ['0.5%', 'Gem'],
+      irontorso: ['0.2%', 'Armor'], irongreaves: ['0.2%', 'Armor'], irongreatsword: ['0.2%', 'Weapon'], weapon: ['0.05–0.24%', 'Weapon'], nugget: ['0.01%', 'Craft'] };
+    const dOff = Object.keys(want).filter((k) => !d1[k] || d1[k][0] !== want[k][0] || d1[k][1] !== want[k][1]);
+    rec.ok(`...and its drop table from the first kill -- ITEM, TYPE, CHANCE: ${Object.keys(d1).map((k) => k + ' ' + d1[k][0]).join(', ')}`,
+      Object.keys(d1).length === 10 && dOff.length === 0, { d1, dOff });
     await P.page.screenshot({ path: join(OUT, 'codex-1-snowman.png') });
     const fr1 = await codex(P);
     rec.ok('...and opening it clears its NEW', !(fr1.fresh && fr1.fresh.snowling), fr1.fresh);
 
-    /* ── 3 ── */
-    await kill(wsPort, me, 'wm-frost-1');
-    await kill(wsPort, me, 'wm-frost-2');
-    await H.waitFor(P, (S) => (S._codex && S._codex.k.snowling ? S._codex.k.snowling[0] : 0), (v) => v >= 3, { timeout: 8000, label: 'three kills counted' }).catch(() => null);
-    const s3 = await said(P, /Codex: Snowman - its element/);
-    await P.page.waitForTimeout(600);
-    const f3 = await facts(P);
-    const w3 = await watchStage(P, 7000);
-    rec.ok(`three kills open its ELEMENT ("${s3[0] || '?'}"), and the stage's hit says Chill (${w3.pops.join(', ')})`,
-      s3.length >= 1 && f3.element && !f3.special && w3.pops.some((p) => /^frost:.*Chill/.test(p)), { s3, f3, w3 });
-
     /* ── 4 ── */
-    const d4 = await H.devOp(wsPort, 'codex', me, { kind: 'snowling', n: 25, n2: 1 });
-    await H.waitFor(P, (S) => (S._codex && S._codex.k.snowling ? S._codex.k.snowling[0] : 0), (v) => v >= 25, { timeout: 8000, label: 'the dev lever' }).catch(() => null);
-    await P.page.waitForTimeout(600);
-    const f4 = await facts(P);
-    const w4 = await watchStage(P, 16000);
-    rec.ok('the dev lever (25, one past 20): special attack, story and elder form open', d4 && d4.ok && f4.special && f4.story && f4.elder, { d4, f4 });
-    rec.ok(`...and the stage plays the burrow: ${w4.labels.join(', ') || 'no word'} (${w4.phases.join(' > ')})`,
-      ['burrow', 'pile', 'touch', 'emerge'].every((p) => w4.phases.includes(p)) && w4.labels.includes('BURROW!'), w4);
+    await P.page.evaluate(() => { const b = document.querySelector('[data-cx-drop="irongreatsword"]'); if (b) b.click(); });
+    await P.page.waitForSelector('[data-cx-item="irongreatsword"]', { timeout: 3000 }).catch(() => {});
+    const ic = await cardLook(P);
+    rec.ok(`a tap on the Iron Great Sword opens its card: ${ic && ic.tier}, base ${ic && ic.base}, grades ${ic && ic.grades.join(' / ')}`,
+      !!ic && /Iron Great Sword/.test(ic.text) && /Weapon/.test(ic.text) && ic.tier === 'Common' && ic.base === '0.2%' && /Snowman/.test(ic.found) && /Lv 1–40/.test(ic.found)
+        && ic.grades.join('|') === 'normal 90.09995%|rare 9%|elite 0.9%|godly 0.00005%' && /does not change the 0.2% drop chance/.test(ic.text), ic);
+    await P.page.screenshot({ path: join(OUT, 'codex-2-card.png') });
+    await P.page.evaluate(() => { const b = document.querySelector('[data-cx-item-close]'); if (b) b.click(); });
+    await P.page.waitForTimeout(300);
+    const selNow = await P.page.evaluate(() => [...document.querySelectorAll('[data-cx-drop][data-cx-sel="1"]')].map((r) => r.dataset.cxDrop));
+    await P.page.evaluate(() => { const b = document.querySelector('[data-cx-drop="shard"]'); if (b) b.click(); });
+    await P.page.waitForSelector('[data-cx-item="shard"]', { timeout: 3000 }).catch(() => {});
+    const sc = await cardLook(P);
+    await P.page.evaluate(() => { const b = document.querySelector('[data-cx-item-close]'); if (b) b.click(); });
+    await P.page.waitForTimeout(300);
+    rec.ok(`...its X comes back to the list with that row marked (${selNow.join(',')}); a Frost Shard's card is 10% with no grades to roll`,
+      selNow.join(',') === 'irongreatsword' && !!sc && sc.base === '10%' && sc.grades.length === 0 && sc.tier === null && /Frost Shard/.test(sc.text), { selNow, sc });
+
+    /* ── 5 ── */
+    await tab(P, 'info');
+    const f1 = await facts(P);
+    const w1 = await watchStage(P, 16000);
+    rec.ok('Info, from the one kill: what it does, its element, its special attack, its story and its elder form all open', f1.page && f1.element && f1.special && f1.story && f1.elder, f1);
+    rec.ok(`...its stage loads and plays its throw AND its special: ${w1.labels.join(', ') || 'no word'} (${w1.phases.join(' > ')}), its hit saying ${w1.pops.join(', ')}`,
+      w1.ready && ['throw', 'fly', 'impact', 'burrow', 'pile', 'touch', 'emerge'].every((p) => w1.phases.includes(p)) && w1.labels.includes('BURROW!') && w1.pops.some((p) => /^frost:.*Chill/.test(p)), w1);
     await P.page.evaluate(() => { const b = document.querySelector('[data-cx-elder-toggle="1"]'); if (b) b.click(); });
     await P.page.waitForTimeout(400);
     const elderName = await P.page.evaluate(() => { const n = document.querySelector('[data-cx-name]'); return n ? n.innerText : ''; });
-    const w4b = await watchStage(P, 5000);
-    rec.ok(`...the elder toggle names it "${elderName}", its stage re-coloured and playing`, elderName === 'Glacier Snowman' && w4b.ready, { elderName, w4b });
-    await P.page.screenshot({ path: join(OUT, 'codex-2-snowman-elder.png') });
-    await back(P);
+    const w1b = await watchStage(P, 5000);
+    rec.ok(`...the elder toggle names it "${elderName}", its stage re-coloured and playing`, elderName === 'Glacier Snowman' && w1b.ready, { elderName, w1b });
+    await P.page.screenshot({ path: join(OUT, 'codex-3-info.png') });
 
-    /* ── 5 ── */
+    /* ── 6 ── */
+    await tab(P, 'locations');
+    const loc = await locations(P);
+    rec.ok(`Locations: its land, both stages, the way there (${loc.road || '?'})`,
+      /Frost Ridge/.test(loc.land || '') && /Lv 1–20/.test(loc.levels || '') && /Glacier Snowman/.test(loc.elder || '') && /Lv 21–40/.test(loc.elder || '')
+        && /north gate/.test(loc.road || '') && /Frost Trail/.test(loc.road || '') && !loc.dungeon, loc);
+    await P.page.screenshot({ path: join(OUT, 'codex-4-locations.png') });
+    await back(P);
+    /* the band eases back down (its 220 ms height transition): wait for it */
+    await P.page.waitForFunction(() => { const d = document.querySelector('.bt-dashboard'); return d && d.getBoundingClientRect().height < 400; }, null, { timeout: 4000 }).catch(() => {});
+    const sl2 = await sheetLook(P);
+    rec.ok(`...and back on the list the sheet is its own height again (${sl2.h} px), the Codex's tabs back`, sl2.h < 400 && sl2.chips, sl2);
+
+    /* ── 7 ── */
     await H.devOp(wsPort, 'codex', me, { all: true, n: 25, n2: 1 });
     await P.page.waitForTimeout(700);
     const every = [];
     for (const kind of KINDS) {
       const ok = await openPage(P, kind);
-      const w = await watchStage(P, kind === 'snowling' ? 15000 : 12000);
       const dr = await drops(P);
-      every.push({ kind, ok, ready: w.ready, special: w.phases.includes(SPECIAL_PHASE[kind]), phases: w.phases, labels: w.labels, pops: w.pops,
-        zones: w.zones, shots: w.shots, gap: w.gap, gapAt: w.gapAt, drops: dr });
+      await tab(P, 'info');
+      const w = await watchStage(P, kind === 'snowling' ? 15000 : 12000);
       await P.page.screenshot({ path: join(OUT, 'codex-' + kind + '.png') });
+      await tab(P, 'locations');
+      const lc = await locations(P);
+      every.push({ kind, ok, ready: w.ready, special: w.phases.includes(SPECIAL_PHASE[kind]), phases: w.phases, labels: w.labels, pops: w.pops,
+        zones: w.zones, shots: w.shots, gap: w.gap, gapAt: w.gapAt, drops: dr, loc: lc });
       await back(P);
       await P.page.waitForTimeout(300);
     }
@@ -241,24 +306,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (!['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'weapon', 'nugget'].every((id) => d[id])) return true;
       if (!!d.remnant === NO_REMNANT.includes(e.kind)) return true;
       if (!!d.rawgem === NO_GEM.includes(e.kind)) return true;
-      return d.shard !== '1 in 10';
+      return d.shard[0] !== '10%';
     });
     rec.ok(`...and every page's drop table is its own (${every.map((e) => e.kind + ' ' + Object.keys(e.drops || {}).length).join(', ')})`,
       dropOff.length === 0, dropOff.map((e) => ({ kind: e.kind, drops: e.drops })));
+    /* Locations: the way there for all nine, and the three lands' dungeons
+       with their own levels (WHEEL_DOORS) */
+    const locOff = every.filter((e) => {
+      const l = e.loc || {};
+      if (!l.land || !l.road || !/gate/.test(l.road)) return true;
+      const dg = DUNGEONS[e.kind];
+      return dg ? !(l.dungeon && l.dungeon.includes(dg[0].replace(/^the /, '')) && l.dungeon.includes(dg[1])) : !!l.dungeon;
+    });
+    rec.ok(`...every page's Locations says the way there, and the Great Cave, the Foundry Dome and the Buried City where they are (${every.filter((e) => e.loc && e.loc.dungeon).map((e) => e.kind).join(', ')})`,
+      locOff.length === 0, locOff.map((e) => ({ kind: e.kind, loc: e.loc })));
     const thrown = every.filter((e) => e.shots.length);
     rec.ok(`...every thrown picture is in as its first flight begins (${thrown.map((e) => e.kind + ' ' + e.shots.join('/')).join(', ')})`,
       thrown.length >= 5 && thrown.every((e) => e.shots.every((x) => x === 'in' || x === 'ball')), thrown.map((e) => ({ kind: e.kind, shots: e.shots })));
     rec.ok(`...and no monster ever stands over your character (nearest ${Math.min(...every.map((e) => (e.gap == null ? 99 : e.gap)))} px from its middle)`,
       every.every((e) => e.gap != null && e.gap >= 0), every.map((e) => e.kind + ' ' + e.gap + ' at ' + e.gapAt));
 
-    /* ── 6 ── */
+    /* ── 8 ── */
     await H.closeDest(P).catch(() => {});
     await P.page.waitForTimeout(800);
     const left = await P.page.evaluate(() => ({ blobs: window.__qaBlobs ? window.__qaBlobs() : null, stage: !!document.querySelector('[data-cx-stage]') }));
     rec.ok(`closed, nothing is left behind: no stage, and every picture the stages baked revoked (${left.blobs} blob(s) alive, ${blobs0} before the codex opened)`,
       !left.stage && left.blobs != null && blobs0 != null && left.blobs <= blobs0, { left, blobs0 });
 
-    /* ── 7 ── */
+    /* ── 9 ── */
     await P.page.reload();
     await H.enterWorld(P).catch(() => {});
     const back7 = await H.waitFor(P, (S) => (S._codex && S._codex.known ? S._codex.k : null), (v) => !!v && v.snowling && v.snowling[0] === 25, { timeout: 90000, label: 'the codex after a reload' }).catch(() => null);

@@ -6,15 +6,17 @@
  *
  * One page for each of the Wheel's nine kinds of monster -- the pets' nine
  * (src/data/trapping.js PET_KINDS, the worker's petbook.js), so a codex page
- * and a pet journal page are always about the same monster.  Each fact on a
- * page opens at a number of kills the WORKER counts (server/src/codex.js):
+ * and a pet journal page are always about the same monster.  A page opens at
+ * a number of kills the WORKER counts (server/src/codex.js), and since the
+ * owner's "I want all the facts revealed after just 1 kill" (2026-10-12)
+ * EVERYTHING on it opens with the first: its drops, what it does, its element,
+ * its special attack, its story, its elder form and where it lives.
  *
- *   CODEX_TIERS     the kills at which the page, the element, the special
- *                   attack and the story open.  mirror-audit holds them to the
- *                   worker's CODEX.TIERS -- it writes a kill to storage at once
- *                   exactly when it opens something here.
- *   CODEX_STAGE2_AT kills past level 20 that open the elder form (the land's
- *                   recoloured second stage, src/data/wheelStageLooks.js).
+ *   CODEX_OPEN_AT   the kills that open a page -- all of it.
+ *   CODEX_TIERS     the same, as the worker's CODEX.TIERS: the kill it writes to
+ *                   storage at once (mirror-audit holds the two together).
+ *   CODEX_STAGE2_AT kills past level 20 the worker writes at once too; the page
+ *                   only counts them now ("past Lv 20").
  *
  * Every number in a page's words is the game's own, read from the code that
  * does it (server/src/telegraph.js's kits and the snowman's burrow, index.js's
@@ -25,32 +27,24 @@
  * No imports from the game: the Codex page and the worker's mirror audit both
  * read this file. */
 
-/* the kills that open each fact, in order -- mirror-audit pins the values to
-   server/src/codex.js CODEX.TIERS */
-export const CODEX_TIERS = Object.freeze({ page: 1, element: 3, special: 10, story: 25 });
+/* the kills that open a page, and every fact on it -- the owner, 2026-10-12:
+   "I want all the facts revealed after just 1 kill" (it was 1 for the page, 3
+   for the element, 10 for the special attack and 25 for the story, an elder
+   form past level 20).  mirror-audit pins CODEX_TIERS to server/src/codex.js
+   CODEX.TIERS. */
+export const CODEX_OPEN_AT = 1;
+export const CODEX_TIERS = Object.freeze({ page: CODEX_OPEN_AT });
 export const CODEX_STAGE2_AT = 1;
 
 /* the nine kinds, the worker's order (server/src/codex.js CODEX.KINDS) */
 export const CODEX_KINDS = Object.freeze(['snowling', 'gobling', 'mumling', 'pebbling', 'sparklet', 'finling', 'wisplet', 'lurkling', 'dewdrop']);
 
-/* what each fact is called when it opens ("Codex: Snowman - its element") */
-export const CODEX_FACT_WORDS = Object.freeze({
-  page: 'its page', element: 'its element', special: 'its special attack', story: 'its story', elder: 'its elder form',
-});
-const FACT_ORDER = ['page', 'element', 'special', 'story'];
+/* every fact on a page, all open at CODEX_OPEN_AT kills */
+export const CODEX_FACTS = Object.freeze(['page', 'element', 'special', 'story', 'elder']);
 
-/** The facts `n` kills (`n2` of them past level 20) have opened. */
-export function codexFactsAt(n, n2) {
-  const out = [];
-  for (const f of FACT_ORDER) if (n >= CODEX_TIERS[f]) out.push(f);
-  if (n >= CODEX_TIERS.page && n2 >= CODEX_STAGE2_AT) out.push('elder');
-  return out;
-}
-
-/** The next fact `n` kills will open: { fact, at, left }, or null with all open. */
-export function codexNextFact(n) {
-  for (const f of FACT_ORDER) if (n < CODEX_TIERS[f]) return { fact: f, at: CODEX_TIERS[f], left: CODEX_TIERS[f] - n };
-  return null;
+/** The facts `n` kills have opened: all of them, or none. */
+export function codexFactsAt(n) {
+  return n >= CODEX_OPEN_AT ? CODEX_FACTS.slice() : [];
 }
 
 /* ═══ THE EIGHT ELEMENTS, AND WHAT A HIT OF EACH DOES TO YOU ═══
@@ -80,11 +74,15 @@ export const CODEX_ELEMENTS = Object.freeze({
    name / elder.name: what the world calls it (src/data/gameDisplay.js
    MONSTER_DISPLAY_NAMES, src/data/wheelStageLooks.js).  home: its land
    (src/data/zones.js names it).  look: the look it is drawn in, for its
-   portrait and stage (src/data/codexStage.js).  dungeon: the Wheel dungeon
-   whose waves are its land's monsters (server/src/wheeldungeon.js). */
+   portrait and stage (src/data/codexStage.js).  type: what kind of creature
+   it is, the page's third badge (the owner's mockup: "Lv 40 · Ice · Beast") --
+   made up to fit its story, like the stories, the owner's to change.
+   dungeon / dungeonLevels: the Wheel dungeon whose waves are its land's
+   monsters, and their levels there (server/src/wheelspawns.js WHEEL_DOORS,
+   held to it by mirror-audit). */
 export const CODEX_ENTRIES = Object.freeze({
   snowling: Object.freeze({
-    name: 'Snowman', home: 'frost', look: 'snowman', element: 'frost',
+    name: 'Snowman', home: 'frost', look: 'snowman', element: 'frost', type: 'Elemental',
     what: 'Slow, heavy and hard to put down. It can never catch you, so it does not try: from a few paces off it lobs snowballs, and up close it swings. The snowball takes almost a second to land, so a step aside is enough.',
     special: Object.freeze({
       name: 'Snow-Pile Burrow',
@@ -98,7 +96,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Glacier Snowman', text: 'Past the first pass the snow never thaws. The snowmen up there have frozen right through to the middle, blue as glacier ice and twice as stubborn.' }),
   }),
   gobling: Object.freeze({
-    name: 'Fire Goblin', home: 'ember', look: 'fireGoblin', element: 'flame',
+    name: 'Fire Goblin', home: 'ember', look: 'fireGoblin', element: 'flame', type: 'Goblin',
     what: 'Quick on its feet and quick to fall. It rushes you, pitching fireballs from a little way off, and as it chases you it leaves burning footprints behind it: standing in one hurts, and a shield does not help.',
     special: Object.freeze({
       name: 'The Lunge',
@@ -112,7 +110,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Cinder Goblin', text: 'The goblins past the first pass have burned so long they have gone grey as charcoal. They still smoulder, and they are meaner for it.' }),
   }),
   mumling: Object.freeze({
-    name: 'Mummy', home: 'sky', look: 'mummy', element: 'wind', dungeon: 'the Buried City',
+    name: 'Mummy', home: 'sky', look: 'mummy', element: 'wind', type: 'Undead', dungeon: 'the Buried City', dungeonLevels: Object.freeze([41, 45]),
     what: 'Slow, shuffling and wrapped up tight, until you hit it. The Wind Dunes\' mummies come in three kinds under the same old bandages: stalkers hit harder than the rest, and a hexer\'s hit curses you, so your own hits do 30% less for 4 seconds.',
     special: Object.freeze({
       name: 'Unwrapped',
@@ -126,7 +124,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Gilded Mummy', text: 'Deeper in the dunes walk the city\'s nobles, still wrapped in gold leaf. Their bones, when they lose the wrappings, are gilded too.' }),
   }),
   pebbling: Object.freeze({
-    name: 'Rock Monster', home: 'hollows', look: 'rockmonster', element: 'stone', dungeon: 'the Great Cave',
+    name: 'Rock Monster', home: 'hollows', look: 'rockmonster', element: 'stone', type: 'Golem', dungeon: 'the Great Cave', dungeonLevels: Object.freeze([26, 30]),
     what: 'A walking boulder: slow, tougher than most, and its hits land like a rockslide.',
     special: Object.freeze({
       name: 'Slam',
@@ -140,7 +138,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Amethyst Golem', text: 'Past the first pass the hollows run with amethyst, and so do the monsters. Collectors would pay well for one, if anyone had ever brought one home in one piece.' }),
   }),
   sparklet: Object.freeze({
-    name: 'Slime', home: 'thunder', look: 'fodder', element: 'storm', dungeon: 'the Foundry Dome',
+    name: 'Slime', home: 'thunder', look: 'fodder', element: 'storm', type: 'Slime', dungeon: 'the Foundry Dome', dungeonLevels: Object.freeze([26, 30]),
     what: 'Bouncy and quick to anger. From a distance it spits globs of itself at you; up close it throws its whole self.',
     special: Object.freeze({
       name: 'The Lunge',
@@ -154,7 +152,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Storm Slime', text: 'Deeper in the foundry the slimes have soaked up so much charge they glow storm-blue. Stand close to a friend near one and you will both find out why.' }),
   }),
   finling: Object.freeze({
-    name: 'Fishman', home: 'tidal', look: 'fishman', element: 'water',
+    name: 'Fishman', home: 'tidal', look: 'fishman', element: 'water', type: 'Aquatic',
     what: 'Slow out of the water, but tough and heavy-handed. It walks right up to you and hits hard.',
     special: Object.freeze({
       name: 'Slam',
@@ -168,7 +166,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Coral Fishman', text: 'The fishmen of the deep caves are crusted over with coral, orange and spiny. It is armour, it is fashion, and it is very hard to get off your boots.' }),
   }),
   wisplet: Object.freeze({
-    name: 'Mire Wisp', home: 'mist', look: 'mireWisp', element: 'venom',
+    name: 'Mire Wisp', home: 'mist', look: 'mireWisp', element: 'venom', type: 'Spirit',
     what: 'A drifting blob of poisoned light. It spits venom from a distance and flings itself at you up close.',
     special: Object.freeze({
       name: 'The Lunge',
@@ -182,7 +180,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Spectral Wisp', text: 'Deeper in the forest the wisps burn a pale, see-through cyan, like ghosts of themselves. Their venom is just as real.' }),
   }),
   lurkling: Object.freeze({
-    name: 'Bog Lurker', home: 'mist', look: 'bogLurker', element: 'venom',
+    name: 'Bog Lurker', home: 'mist', look: 'bogLurker', element: 'venom', type: 'Aquatic',
     what: 'A fishman that stayed far too long in the poisoned bog. Slow and tough, and it hits hard.',
     special: Object.freeze({
       name: 'Slam',
@@ -196,7 +194,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Shade Lurker', text: 'The lurkers of the deep bog have gone violet and shadowy, hard to see even when you know where to look. Look anyway.' }),
   }),
   dewdrop: Object.freeze({
-    name: 'Blue Slime', home: 'verdant', look: 'blueSlime', element: 'flora',
+    name: 'Blue Slime', home: 'verdant', look: 'blueSlime', element: 'flora', type: 'Slime',
     what: 'Fast and fragile: it goes down quickly, spitting globs as it comes. But kill it and it does not simply die.',
     special: Object.freeze({
       name: 'Death Burst',
@@ -209,6 +207,17 @@ export const CODEX_ENTRIES = Object.freeze({
     ],
     elder: Object.freeze({ name: 'Jade Slime', text: 'Past the first pass the slimes are a deep jade green and the dew they are made of is older. The burst is the same. Walk away anyway.' }),
   }),
+});
+
+/* ═══ THE WAY THERE ═══
+   The road from BroTown to each land, by the plan's own names
+   (public/tools/world/plan.js regions[land].road -- mirror-audit holds these
+   to it); which gate each leaves by is the signposts' table
+   (src/data/wheelSignposts.js WHEEL_GATE_ROADS: a gate's road runs straight
+   to its first land, and its second land's road forks off it). */
+export const CODEX_ROADS = Object.freeze({
+  frost: 'the Frost Trail', ember: 'the North Road', sky: 'the Dune Trail', hollows: 'the East Road',
+  thunder: 'the Foundry Road', tidal: 'the South Road', mist: 'the Bog Trail', verdant: 'the West Road',
 });
 
 /** A kind's page, or null. */

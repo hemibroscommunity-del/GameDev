@@ -29,7 +29,8 @@
  * THE RECORD `codex:<pid>` (handoff rule 1: never a new field on the rpg
  * blob) is `{ v, k: { <kind>: [kills, secondStageKills] } }` -- nine pairs of
  * numbers at most.  One GET at join, cached for the session:
- *   - a kill that crosses a threshold (a new fact) is written AT ONCE;
+ *   - a kill that crosses a threshold (a new fact: since all the facts open
+ *     together, the first kill of a kind) is written AT ONCE;
  *   - any other kill at most once every SAVE_MS, on the next kill after it,
  *     and on disconnect (index.js webSocketClose) -- a deploy (rule 11) can
  *     lose at most a minute of counting and never a fact already learned;
@@ -58,9 +59,10 @@ export const CODEX = Object.freeze({
   V: 1,
   /* the nine kinds, in the pets' order */
   KINDS: Object.freeze(Object.keys(PET_KINDS)),
-  /* the kills at which an entry tells more: its page, its element, its
-     special attack, its story (src/data/monsterCodex.js CODEX_TIERS) */
-  TIERS: Object.freeze([1, 3, 10, 25]),
+  /* the kills at which an entry tells more (src/data/monsterCodex.js
+     CODEX_TIERS) -- since the owner's "I want all the facts revealed after
+     just 1 kill" only the first: it opens the whole page (was 1, 3, 10, 25) */
+  TIERS: Object.freeze([1]),
   /* second-stage kills that show the elder form */
   STAGE2_AT: 1,
   /* counting that crosses no threshold reaches storage at most this often */
