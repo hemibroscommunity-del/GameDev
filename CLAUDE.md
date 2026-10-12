@@ -1917,9 +1917,12 @@ remnant to migrate server-side, not a mode to preserve.
       / creature-type badges), Drops (ITEM / TYPE / CHANCE with bars; a tap
       opens the item's card: FOUND FROM, BASE DROP CHANCE, the four grades it
       rolls), Info (the stage and every fact) and Locations (land, stages, the
-      road from BroTown, its dungeon); while it is open the sheet grows TALL
-      with the dashboard's row on its top edge (`sheetTallBus.js`, portrait
-      only; every other destination keeps the one height);
+      road from BroTown, its dungeon); on the sheet's ONE height, scrolling
+      (the owner: "Stay short and scroll"), a tap's result put in view
+      (MonsterCodex.jsx `reveal`: a page or card from its top, a tab's content
+      at the sheet's top, the row or card you came from); the type badge is
+      the creature's BODY, the owner's "humanoid, beast, ..." (`CODEX_TYPES`:
+      Humanoid, Beast, Winged, Insectoid, Aquatic, Ooze);
     - its STAGE plays it beside your character, the Points preview's make
       (`CodexStage.jsx`, `data/codexStage.js`): its own strips, loaded when
       the Info tab opens and freed when it closes (the owner's call to

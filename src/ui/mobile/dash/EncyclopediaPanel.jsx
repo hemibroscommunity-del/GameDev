@@ -52,10 +52,10 @@ const chip = (active) => ({
 
 export const EncyclopediaPanel = () => {
   const [tab, setTab] = useState('monsters');
-  /* v2.3.3189: a monster's page fills the (tall) sheet as the owner's mockup
-     draws it: these tabs step aside while one is open, "‹ All monsters"
-     bringing them back */
-  const [paged, setPaged] = useState(false);
+  /* v2.3.3189: the monster page open (MonsterCodex.jsx).  These tabs step
+     aside while one is, its header and tabs taking their place on the
+     sheet's short height; "‹ All monsters" brings them back */
+  const [monster, setMonster] = useState(null);
   const [, force] = useState(0);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 800);
@@ -79,14 +79,14 @@ export const EncyclopediaPanel = () => {
 
   return (
     <div style={panelStyle}>
-      <div style={{ display: tab === 'monsters' && paged ? 'none' : 'flex', gap: 6, marginBottom: 6, overflowX: 'auto', padding: '2px 0' }}>
+      <div style={{ display: tab === 'monsters' && monster ? 'none' : 'flex', gap: 6, marginBottom: 6, overflowX: 'auto', padding: '2px 0' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={chipHit}>
             <span style={chip(t.id === tab)}>{t.label}</span>
           </button>
         ))}
       </div>
-      {tab === 'monsters' ? <MonsterCodex onPage={setPaged} /> : rows.length === 0 ? (
+      {tab === 'monsters' ? <MonsterCodex open={monster} setOpen={setMonster} /> : rows.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '16px 0' }}>
           {/* v2.3.1235: batch-1 rollout — empty-state contract: icon ≤40px,
               message 13/700 secondary (was 44px icon + 13/400 muted). */}

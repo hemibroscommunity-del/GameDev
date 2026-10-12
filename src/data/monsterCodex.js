@@ -70,19 +70,37 @@ export const CODEX_ELEMENTS = Object.freeze({
     effect: 'Its hits hold you where you stand for 0.7 seconds: no walking and no rolling. It cannot hold you again for 2 seconds.' }),
 });
 
+/* ═══ THE CREATURE TYPES, BY BODY ═══
+   The owner, of the first set (Elemental, Goblin, Undead, Golem, Slime,
+   Aquatic, Spirit): "The monster type should be more along the lines of
+   humanoid, beast, (some word along those lines that means flying creature,
+   bug-like creature, swimming creature)".  So a type says what shape of
+   creature it is, as the world draws it:
+     Humanoid   upright, with arms to swing (the snowman, goblin, mummy)
+     Beast      a monster that lives like an animal, teeth first (the rock
+                monster: a boulder with a mouth)
+     Winged     a flying creature (none in the Wheel yet)
+     Insectoid  a bug-like creature (none yet)
+     Aquatic    a swimming creature (the fishman and the bog lurker)
+     Ooze       a slime with no fixed shape -- the one word the owner's list
+                did not have, for the Wheel's three slimes (the mire wisp is
+                drawn as one)
+   A new monster takes one of these; mp-codex reads every page's badge. */
+export const CODEX_TYPES = Object.freeze(['Humanoid', 'Beast', 'Winged', 'Insectoid', 'Aquatic', 'Ooze']);
+
 /* ═══ THE NINE PAGES ═══
    name / elder.name: what the world calls it (src/data/gameDisplay.js
    MONSTER_DISPLAY_NAMES, src/data/wheelStageLooks.js).  home: its land
    (src/data/zones.js names it).  look: the look it is drawn in, for its
    portrait and stage (src/data/codexStage.js).  type: what kind of creature
-   it is, the page's third badge (the owner's mockup: "Lv 40 · Ice · Beast") --
-   made up to fit its story, like the stories, the owner's to change.
+   it is, the page's third badge (the owner's mockup: "Lv 40 · Ice · Beast"),
+   one of CODEX_TYPES above -- its body, as it is drawn.
    dungeon / dungeonLevels: the Wheel dungeon whose waves are its land's
    monsters, and their levels there (server/src/wheelspawns.js WHEEL_DOORS,
    held to it by mirror-audit). */
 export const CODEX_ENTRIES = Object.freeze({
   snowling: Object.freeze({
-    name: 'Snowman', home: 'frost', look: 'snowman', element: 'frost', type: 'Elemental',
+    name: 'Snowman', home: 'frost', look: 'snowman', element: 'frost', type: 'Humanoid',
     what: 'Slow, heavy and hard to put down. It can never catch you, so it does not try: from a few paces off it lobs snowballs, and up close it swings. The snowball takes almost a second to land, so a step aside is enough.',
     special: Object.freeze({
       name: 'Snow-Pile Burrow',
@@ -96,7 +114,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Glacier Snowman', text: 'Past the first pass the snow never thaws. The snowmen up there have frozen right through to the middle, blue as glacier ice and twice as stubborn.' }),
   }),
   gobling: Object.freeze({
-    name: 'Fire Goblin', home: 'ember', look: 'fireGoblin', element: 'flame', type: 'Goblin',
+    name: 'Fire Goblin', home: 'ember', look: 'fireGoblin', element: 'flame', type: 'Humanoid',
     what: 'Quick on its feet and quick to fall. It rushes you, pitching fireballs from a little way off, and as it chases you it leaves burning footprints behind it: standing in one hurts, and a shield does not help.',
     special: Object.freeze({
       name: 'The Lunge',
@@ -110,7 +128,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Cinder Goblin', text: 'The goblins past the first pass have burned so long they have gone grey as charcoal. They still smoulder, and they are meaner for it.' }),
   }),
   mumling: Object.freeze({
-    name: 'Mummy', home: 'sky', look: 'mummy', element: 'wind', type: 'Undead', dungeon: 'the Buried City', dungeonLevels: Object.freeze([41, 45]),
+    name: 'Mummy', home: 'sky', look: 'mummy', element: 'wind', type: 'Humanoid', dungeon: 'the Buried City', dungeonLevels: Object.freeze([41, 45]),
     what: 'Slow, shuffling and wrapped up tight, until you hit it. The Wind Dunes\' mummies come in three kinds under the same old bandages: stalkers hit harder than the rest, and a hexer\'s hit curses you, so your own hits do 30% less for 4 seconds.',
     special: Object.freeze({
       name: 'Unwrapped',
@@ -124,7 +142,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Gilded Mummy', text: 'Deeper in the dunes walk the city\'s nobles, still wrapped in gold leaf. Their bones, when they lose the wrappings, are gilded too.' }),
   }),
   pebbling: Object.freeze({
-    name: 'Rock Monster', home: 'hollows', look: 'rockmonster', element: 'stone', type: 'Golem', dungeon: 'the Great Cave', dungeonLevels: Object.freeze([26, 30]),
+    name: 'Rock Monster', home: 'hollows', look: 'rockmonster', element: 'stone', type: 'Beast', dungeon: 'the Great Cave', dungeonLevels: Object.freeze([26, 30]),
     what: 'A walking boulder: slow, tougher than most, and its hits land like a rockslide.',
     special: Object.freeze({
       name: 'Slam',
@@ -138,7 +156,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Amethyst Golem', text: 'Past the first pass the hollows run with amethyst, and so do the monsters. Collectors would pay well for one, if anyone had ever brought one home in one piece.' }),
   }),
   sparklet: Object.freeze({
-    name: 'Slime', home: 'thunder', look: 'fodder', element: 'storm', type: 'Slime', dungeon: 'the Foundry Dome', dungeonLevels: Object.freeze([26, 30]),
+    name: 'Slime', home: 'thunder', look: 'fodder', element: 'storm', type: 'Ooze', dungeon: 'the Foundry Dome', dungeonLevels: Object.freeze([26, 30]),
     what: 'Bouncy and quick to anger. From a distance it spits globs of itself at you; up close it throws its whole self.',
     special: Object.freeze({
       name: 'The Lunge',
@@ -166,7 +184,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Coral Fishman', text: 'The fishmen of the deep caves are crusted over with coral, orange and spiny. It is armour, it is fashion, and it is very hard to get off your boots.' }),
   }),
   wisplet: Object.freeze({
-    name: 'Mire Wisp', home: 'mist', look: 'mireWisp', element: 'venom', type: 'Spirit',
+    name: 'Mire Wisp', home: 'mist', look: 'mireWisp', element: 'venom', type: 'Ooze',
     what: 'A drifting blob of poisoned light. It spits venom from a distance and flings itself at you up close.',
     special: Object.freeze({
       name: 'The Lunge',
@@ -194,7 +212,7 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Shade Lurker', text: 'The lurkers of the deep bog have gone violet and shadowy, hard to see even when you know where to look. Look anyway.' }),
   }),
   dewdrop: Object.freeze({
-    name: 'Blue Slime', home: 'verdant', look: 'blueSlime', element: 'flora', type: 'Slime',
+    name: 'Blue Slime', home: 'verdant', look: 'blueSlime', element: 'flora', type: 'Ooze',
     what: 'Fast and fragile: it goes down quickly, spitting globs as it comes. But kill it and it does not simply die.',
     special: Object.freeze({
       name: 'Death Burst',

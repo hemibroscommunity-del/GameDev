@@ -22,7 +22,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { expandedSheetHeight, drillSheetHeight, tallSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
+import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -68,7 +68,6 @@ import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 import { playVw, playVh, playIsLandscape } from './playViewport.js'; /* v2.3.2157: the band has a sideways shape */
 import { dashMinBus } from './dashMinBus.js';
-import { sheetTallBus } from './sheetTallBus.js';   /* v2.3.3189: the codex's monster page reads tall */
 import { startGearFlash } from './gearFlash.js';   /* v2.3.3049: the first quest's gear flashes until it is on */
 import { stampSheetH, unstampSheetH } from './sheetStamp.js'; /* v2.3.2197: one --sheet-h formula, shared with resize() + the watchdog */ /* v2.3.2119: fold the band to the identity row */
 
@@ -583,7 +582,6 @@ export const BottomDashboard = () => {
      still here.  Initialised from the bus — the preference is persisted and
      this component remounts on reconnect (the v2.3.2085 lesson). */
   const [dashMin, setDashMin] = useState(() => dashMinBus.min);
-  const [sheetTall, setSheetTall] = useState(() => sheetTallBus.tall);   /* v2.3.3189 */
   /* ═══ v2.3.2157: WHICH SHAPE IS THE BAND? ═══
      Owner: "Landscape would be an optional view."  Self-subscribed from
      playIsLandscape() exactly the way ElementBurstButton and SpecialChargePie
@@ -625,9 +623,6 @@ export const BottomDashboard = () => {
     };
   }, []);
   useEffect(() => dashMinBus.subscribe(setDashMin), []);
-  /* v2.3.3189: a page that asks for the tall sheet (sheetTallBus.js); the
-     --sheet-h stamp follows it at once */
-  useEffect(() => sheetTallBus.subscribe((v) => { setSheetTall(v); stampSheetH(); }), []);
   /* v2.3.2178: the landscape dock's box and the room panels keep clear of
      it, from one seam (sheetGeometry.landDockFootprint).  Recomputed every
      render like the other playVw()-derived numbers here -- the component
@@ -770,7 +765,6 @@ export const BottomDashboard = () => {
   const [snapPx, setSnapPx] = useState(() => ({
     expanded: expandedSheetHeight(playVw(), playVh()),
     drill: drillSheetHeight(playVw(), playVh()),
-    tall: tallSheetHeight(playVw(), playVh()),   /* v2.3.3189 */
   }));
   useEffect(() => {
     const vv = window.visualViewport;
@@ -778,7 +772,7 @@ export const BottomDashboard = () => {
       const vw = playVw();   /* v2.3.1715 */
       const vh = vv ? vv.height : window.innerHeight;
       if (vv && window.innerHeight - vh > 100) return; /* keyboard up */
-      setSnapPx({ expanded: expandedSheetHeight(vw, vh), drill: drillSheetHeight(vw, vh), tall: tallSheetHeight(vw, vh) });
+      setSnapPx({ expanded: expandedSheetHeight(vw, vh), drill: drillSheetHeight(vw, vh) });
     };
     recompute();
     window.addEventListener('resize', recompute);
@@ -1260,11 +1254,7 @@ export const BottomDashboard = () => {
            same arithmetic, that v2.3.2178's note describes. */
         height: land ? 'var(--dash-h)'
           : mode === 'expanded'
-            /* v2.3.3189: a page that asked for the tall sheet (the codex's
-               monster page) fills the screen under its top strip and the
-               notch (sheetTallBus.js) */
-            ? (sheetTall ? `calc(${snapPx.tall}px - var(--sat, 0px) + var(--sab, 0px))`
-              : `calc(${stack.length > 1 ? snapPx.drill : snapPx.expanded}px + var(--sab, 0px))`) /* v2.3.1311e: drill = taller */
+            ? `calc(${stack.length > 1 ? snapPx.drill : snapPx.expanded}px + var(--sab, 0px))` /* v2.3.1311e: drill = taller */
           : 'var(--dash-h)',
         transition: sheetTransition(),
         /* v2.3.1240: surface, rounded top edge, and crisp contact shadow
@@ -1467,14 +1457,7 @@ export const BottomDashboard = () => {
       <div style={{
         position: 'absolute',
         left: 0, right: 0,
-        /* v2.3.3189: on the TALL sheet (the codex's monster page,
-           sheetTallBus.js) the row rides the sheet's top edge, as the owner's
-           mockup draws it -- left where it rests it would cross the middle of
-           the page, and the page's own top would be the row's empty
-           reservation.  It comes back down with the sheet. */
-        ...(sheetTall && !land && mode === 'expanded'
-          ? { top: 0 }
-          : { bottom: 'calc(var(--sab, 0px) + var(--cols-h, 93px))' }),
+        bottom: 'calc(var(--sab, 0px) + var(--cols-h, 93px))',
         /* v2.3.2178: --dash-h carries the home-indicator inset now (see
            bandFootprint), and this row is offset from the band's bottom by
            that same inset -- so it must come OUT of the height, or the row

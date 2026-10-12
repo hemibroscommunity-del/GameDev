@@ -16,20 +16,29 @@
  *      More -> Codex opens on Monsters: nine cards, every one a shape;
  *   2. a snowman's kill: counted (snowling 1), said over your head, its card
  *      known and NEW;
- *   3. its page, as the mockup lays it out, on a sheet grown TALL with the
- *      dashboard's own row at its top: the header (name, Lv / element / kind
- *      badges), the Drops / Info / Locations tabs, and the drop table -- ITEM,
- *      TYPE, CHANCE -- every pile drop with its percentage;
- *   4. a tap on the Iron Great Sword opens its card: Weapon, Common, FOUND
- *      FROM the Snowman, a 0.2% BASE DROP CHANCE and the four grades it can
- *      roll with their shares; its X comes back to the list with the row
- *      marked; a Frost Shard's card has no grades;
- *   5. Info, from that one kill: every fact open, the stage loading and
- *      playing its throw AND its special (the burrow), its hit saying "Chill",
- *      the elder toggle naming it a Glacier Snowman;
+ *   3. its page, as the mockup lays it out, on the sheet's own short height
+ *      (the owner: "Stay short and scroll"), scrolling in it from its top: the
+ *      header (name, Lv / element / kind badges -- the kind by its body, the
+ *      owner's "humanoid, beast, ..."), the Drops / Info / Locations tabs, and
+ *      the drop table -- ITEM, TYPE, CHANCE -- every pile drop with its
+ *      percentage;
+ *   4. scrolled to the table's end, a tap on the Iron Great Sword opens its
+ *      card from its top: Weapon, Common, FOUND FROM the Snowman, a 0.2% BASE
+ *      DROP CHANCE and the four grades it can roll with their shares; its X
+ *      comes back to the list with the row marked and in view; a Frost
+ *      Shard's card has no grades;
+ *      A tap on a tab, the open one's too, puts what it opened at the top of
+ *      the sheet;
+ *   5. Info, from that one kill: its stage at the top of the sheet, all of
+ *      it in view, every fact open, the stage loading and playing its throw
+ *      AND its special (the burrow), its hit saying "Chill", the elder toggle
+ *      naming it a Glacier Snowman;
  *   6. Locations: Frost Ridge, both stages' levels, the way there from
- *      BroTown; back to the list, the sheet is its own height again;
- *   7. every one of the nine pages: its stage plays its own special (lunge,
+ *      BroTown; back to the list, the sheet never grew, the Codex's tabs back;
+ *   7. every one of the nine pages, each opening at its top however far the
+ *      list was scrolled, its kind's badge its body's (Humanoid, Beast,
+ *      Aquatic, Ooze), and back the card it came from in view: its stage
+ *      plays its own special (lunge,
  *      slam, unwrap, burst, burrow), what it throws in before its first
  *      flight, nothing standing over your character, a slam's or lunge's
  *      warning circle, its own drop table (remnants only from the six kinds
@@ -49,6 +58,8 @@ const KINDS = ['snowling', 'gobling', 'mumling', 'pebbling', 'sparklet', 'finlin
 /* the phase each kind's special shows on its stage (CodexStage planFor) */
 const DUNGEONS = { pebbling: ['the Great Cave', 'Lv 26–30'], sparklet: ['the Foundry Dome', 'Lv 26–30'], mumling: ['the Buried City', 'Lv 41–45'] };
 const SPECIAL_PHASE = { snowling: 'pile', gobling: 'dash', mumling: 'unwrap', pebbling: 'slam', sparklet: 'dash', finling: 'slam', wisplet: 'dash', lurkling: 'slam', dewdrop: 'swell' };
+/* each kind's badge, by its body (src/data/monsterCodex.js CODEX_TYPES) */
+const TYPES = { snowling: 'Humanoid', gobling: 'Humanoid', mumling: 'Humanoid', pebbling: 'Beast', sparklet: 'Ooze', finling: 'Aquatic', wisplet: 'Ooze', lurkling: 'Aquatic', dewdrop: 'Ooze' };
 
 /* every blob picture made and let go, counted from the page's start */
 const BLOB_INIT = () => {
@@ -107,6 +118,28 @@ const sheetLook = (P) => P.page.evaluate(() => {
     tabs: [...document.querySelectorAll('[data-cx-tab]')].map((t) => t.dataset.cxTab + (t.dataset.cxOn === '1' ? '*' : '')),
     chips: !!(chips && chips.offsetParent) };
 });
+/* the box the codex scrolls in (EncyclopediaPanel's), how far it is
+   scrolled, and whether `sel` is wholly in its view, clear of its 18 px
+   bottom fade */
+const boxLook = (P, sel) => P.page.evaluate((sel) => {
+  const inner = document.querySelector('[data-cx-page]') || document.querySelector('[data-cx-grid]');
+  let box = inner ? inner.parentElement : null;
+  while (box && !/^(auto|scroll)$/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+  if (!box) return null;
+  const br = box.getBoundingClientRect();
+  const el = sel ? document.querySelector(sel) : null;
+  const er = el ? el.getBoundingClientRect() : null;
+  return { top: Math.round(box.scrollTop), h: box.clientHeight, sh: box.scrollHeight,
+    seen: er ? er.top >= br.top - 1 && er.bottom <= br.bottom - 18 + 1 : null,
+    at: er ? Math.round(er.top - br.top) : null, end: er ? Math.round(er.bottom - br.top) : null };
+}, sel || null);
+const scrollTo = (P, y) => P.page.evaluate((y) => {
+  const inner = document.querySelector('[data-cx-page]') || document.querySelector('[data-cx-grid]');
+  let box = inner ? inner.parentElement : null;
+  while (box && !/^(auto|scroll)$/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+  if (box) box.scrollTop = y < 0 ? box.scrollHeight : y;
+  return box ? Math.round(box.scrollTop) : null;
+}, y);
 const cardLook = (P) => P.page.evaluate(() => {
   const c = document.querySelector('[data-cx-item]');
   if (!c) return null;
@@ -205,14 +238,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const snowCard = cs1.find((c) => c.kind === 'snowling');
     rec.ok(`...its card is known and NEW ("${snowCard && snowCard.text}")`, !!snowCard && snowCard.known && snowCard.fresh && /Snowman/.test(snowCard.text) && /1 defeated/.test(snowCard.text), snowCard);
     /* ── 3 ── */
+    const sl0 = await sheetLook(P);
+    await scrollTo(P, -1);
     const pg1 = await openPage(P, 'snowling');
     await P.page.waitForTimeout(600);
     const sl = await sheetLook(P);
+    const bx = await boxLook(P, '[data-cx-page] > button');
     const d1 = await drops(P);
-    rec.ok(`...its page fills a TALL sheet as the mockup does, the dashboard's row at its top (sheet ${sl.h} px from y ${sl.top}, CLOSE at y ${sl.closeTop}), the Codex's own tabs put away`,
-      pg1 && sl.h > 600 && sl.closeTop != null && sl.closeTop < sl.top + 40 && !sl.chips, sl);
+    rec.ok(`...its page keeps the sheet's own height (${sl0.h} px on the list, ${sl.h} on the page) and scrolls in it (${bx && bx.h} px of ${bx && bx.sh}), opened at its top though the list was scrolled down, the Codex's own tabs put away`,
+      pg1 && sl0.h > 0 && Math.abs(sl.h - sl0.h) <= 1 && !!bx && bx.sh > bx.h + 100 && bx.top === 0 && bx.seen && !sl.chips, { sl0, sl, bx });
     rec.ok(`...its header says ${sl.level} / ${sl.element} / ${sl.type}, its tabs ${sl.tabs.join(' ')}`,
-      sl.level === 'Lv 1–40' && sl.element === 'Frost' && sl.type === 'Elemental' && sl.tabs.join(' ') === 'drops* info locations', sl);
+      sl.level === 'Lv 1–40' && sl.element === 'Frost' && sl.type === 'Humanoid' && sl.tabs.join(' ') === 'drops* info locations', sl);
     const want = { gold: ['100%', 'Currency'], remnant: ['100%', 'Material'], shard: ['10%', 'Material'], rawgem: ['5%', 'Gem'], raregem: ['0.5%', 'Gem'],
       irontorso: ['0.2%', 'Armor'], irongreaves: ['0.2%', 'Armor'], irongreatsword: ['0.2%', 'Weapon'], weapon: ['0.05–0.24%', 'Weapon'], nugget: ['0.01%', 'Craft'] };
     const dOff = Object.keys(want).filter((k) => !d1[k] || d1[k][0] !== want[k][0] || d1[k][1] !== want[k][1]);
@@ -223,26 +259,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and opening it clears its NEW', !(fr1.fresh && fr1.fresh.snowling), fr1.fresh);
 
     /* ── 4 ── */
+    const deep = await scrollTo(P, -1);
+    await P.page.screenshot({ path: join(OUT, 'codex-1b-scrolled.png') });
     await P.page.evaluate(() => { const b = document.querySelector('[data-cx-drop="irongreatsword"]'); if (b) b.click(); });
     await P.page.waitForSelector('[data-cx-item="irongreatsword"]', { timeout: 3000 }).catch(() => {});
     const ic = await cardLook(P);
-    rec.ok(`a tap on the Iron Great Sword opens its card: ${ic && ic.tier}, base ${ic && ic.base}, grades ${ic && ic.grades.join(' / ')}`,
-      !!ic && /Iron Great Sword/.test(ic.text) && /Weapon/.test(ic.text) && ic.tier === 'Common' && ic.base === '0.2%' && /Snowman/.test(ic.found) && /Lv 1–40/.test(ic.found)
-        && ic.grades.join('|') === 'normal 90.09995%|rare 9%|elite 0.9%|godly 0.00005%' && /does not change the 0.2% drop chance/.test(ic.text), ic);
+    const icBox = await boxLook(P, '[data-cx-item-close]');
+    rec.ok(`scrolled ${deep} px down the table, a tap on the Iron Great Sword opens its card at its top (its X in view): ${ic && ic.tier}, base ${ic && ic.base}, grades ${ic && ic.grades.join(' / ')}`,
+      !!ic && deep > 0 && !!icBox && icBox.top === 0 && icBox.seen && /Iron Great Sword/.test(ic.text) && /Weapon/.test(ic.text) && ic.tier === 'Common' && ic.base === '0.2%' && /Snowman/.test(ic.found) && /Lv 1–40/.test(ic.found)
+        && ic.grades.join('|') === 'normal 90.09995%|rare 9%|elite 0.9%|godly 0.00005%' && /does not change the 0.2% drop chance/.test(ic.text), { ic, icBox, deep });
     await P.page.screenshot({ path: join(OUT, 'codex-2-card.png') });
+    await scrollTo(P, -1);
+    await P.page.screenshot({ path: join(OUT, 'codex-2b-card-end.png') });
     await P.page.evaluate(() => { const b = document.querySelector('[data-cx-item-close]'); if (b) b.click(); });
     await P.page.waitForTimeout(300);
     const selNow = await P.page.evaluate(() => [...document.querySelectorAll('[data-cx-drop][data-cx-sel="1"]')].map((r) => r.dataset.cxDrop));
+    const selBox = await boxLook(P, '[data-cx-drop="irongreatsword"]');
     await P.page.evaluate(() => { const b = document.querySelector('[data-cx-drop="shard"]'); if (b) b.click(); });
     await P.page.waitForSelector('[data-cx-item="shard"]', { timeout: 3000 }).catch(() => {});
     const sc = await cardLook(P);
     await P.page.evaluate(() => { const b = document.querySelector('[data-cx-item-close]'); if (b) b.click(); });
     await P.page.waitForTimeout(300);
-    rec.ok(`...its X comes back to the list with that row marked (${selNow.join(',')}); a Frost Shard's card is 10% with no grades to roll`,
-      selNow.join(',') === 'irongreatsword' && !!sc && sc.base === '10%' && sc.grades.length === 0 && sc.tier === null && /Frost Shard/.test(sc.text), { selNow, sc });
+    rec.ok(`...its X comes back to the list with that row marked (${selNow.join(',')}) and in view (${selBox && selBox.at} px down the box); a Frost Shard's card is 10% with no grades to roll`,
+      selNow.join(',') === 'irongreatsword' && !!selBox && selBox.seen && !!sc && sc.base === '10%' && sc.grades.length === 0 && sc.tier === null && /Frost Shard/.test(sc.text), { selNow, selBox, sc });
+    /* the open tab tapped again (the list scrolled down to the shard's row) */
+    await scrollTo(P, 0);
+    await tab(P, 'drops');
+    const dTop = await boxLook(P, '[data-cx-drops]');
+    rec.ok(`a tap on the open Drops tab puts its table at the top of the sheet (${dTop && dTop.at} px down, the box at ${dTop && dTop.top})`,
+      !!dTop && dTop.at >= 0 && dTop.at <= 8 && dTop.top > 0, dTop);
 
     /* ── 5 ── */
     await tab(P, 'info');
+    const stTop = await boxLook(P, '[data-cx-stage]');
+    rec.ok(`a tap on Info puts its stage at the top of the sheet, all of it in view (${stTop && stTop.at}-${stTop && stTop.end} px of ${stTop && stTop.h})`,
+      !!stTop && stTop.at >= 0 && stTop.at <= 8 && stTop.end <= stTop.h, stTop);
     const f1 = await facts(P);
     const w1 = await watchStage(P, 16000);
     rec.ok('Info, from the one kill: what it does, its element, its special attack, its story and its elder form all open', f1.page && f1.element && f1.special && f1.story && f1.elder, f1);
@@ -258,33 +309,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 6 ── */
     await tab(P, 'locations');
     const loc = await locations(P);
-    rec.ok(`Locations: its land, both stages, the way there (${loc.road || '?'})`,
+    const lTop = await boxLook(P, '[data-cx-locations]');
+    rec.ok(`Locations at the top of the sheet (${lTop && lTop.at} px down): its land, both stages, the way there (${loc.road || '?'})`,
+      !!lTop && lTop.at >= 0 && lTop.at <= 8 &&
       /Frost Ridge/.test(loc.land || '') && /Lv 1–20/.test(loc.levels || '') && /Glacier Snowman/.test(loc.elder || '') && /Lv 21–40/.test(loc.elder || '')
-        && /north gate/.test(loc.road || '') && /Frost Trail/.test(loc.road || '') && !loc.dungeon, loc);
+        && /north gate/.test(loc.road || '') && /Frost Trail/.test(loc.road || '') && !loc.dungeon, { loc, lTop });
     await P.page.screenshot({ path: join(OUT, 'codex-4-locations.png') });
+    await scrollTo(P, -1);
+    await P.page.screenshot({ path: join(OUT, 'codex-4b-locations-end.png') });
     await back(P);
-    /* the band eases back down (its 220 ms height transition): wait for it */
-    await P.page.waitForFunction(() => { const d = document.querySelector('.bt-dashboard'); return d && d.getBoundingClientRect().height < 400; }, null, { timeout: 4000 }).catch(() => {});
+    await P.page.waitForTimeout(300);
     const sl2 = await sheetLook(P);
-    rec.ok(`...and back on the list the sheet is its own height again (${sl2.h} px), the Codex's tabs back`, sl2.h < 400 && sl2.chips, sl2);
+    const bk = await boxLook(P, '[data-cx-card="snowling"]');
+    rec.ok(`...and back on the list the sheet never grew (${sl2.h} px), the Codex's tabs back and the Snowman's card in view`,
+      Math.abs(sl2.h - sl0.h) <= 1 && sl2.chips && !!bk && bk.seen, { sl2, bk });
 
     /* ── 7 ── */
     await H.devOp(wsPort, 'codex', me, { all: true, n: 25, n2: 1 });
     await P.page.waitForTimeout(700);
     const every = [];
     for (const kind of KINDS) {
+      const listTop = (await boxLook(P)).top;
       const ok = await openPage(P, kind);
+      const opened = await boxLook(P);
+      const type = await P.page.evaluate(() => { const e = document.querySelector('[data-cx-pill="type"]'); return e ? e.innerText.trim() : null; });
       const dr = await drops(P);
       await tab(P, 'info');
       const w = await watchStage(P, kind === 'snowling' ? 15000 : 12000);
       await P.page.screenshot({ path: join(OUT, 'codex-' + kind + '.png') });
       await tab(P, 'locations');
       const lc = await locations(P);
-      every.push({ kind, ok, ready: w.ready, special: w.phases.includes(SPECIAL_PHASE[kind]), phases: w.phases, labels: w.labels, pops: w.pops,
-        zones: w.zones, shots: w.shots, gap: w.gap, gapAt: w.gapAt, drops: dr, loc: lc });
+      await scrollTo(P, -1);
       await back(P);
       await P.page.waitForTimeout(300);
+      const backAt = await boxLook(P, `[data-cx-card="${kind}"]`);
+      every.push({ kind, ok, ready: w.ready, special: w.phases.includes(SPECIAL_PHASE[kind]), phases: w.phases, labels: w.labels, pops: w.pops,
+        zones: w.zones, shots: w.shots, gap: w.gap, gapAt: w.gapAt, drops: dr, loc: lc, type, listTop, openTop: opened && opened.top, backSeen: backAt && backAt.seen, backTop: backAt && backAt.top });
     }
+    rec.ok(`every page's kind is its body's: ${every.map((e) => e.kind + ' ' + e.type).join(', ')}`,
+      every.every((e) => e.type === TYPES[e.kind]), every.map((e) => ({ kind: e.kind, type: e.type, want: TYPES[e.kind] })));
+    /* the list scrolled down by the last trip back (the Blue Slime is on its
+       third row): every page opens at its top all the same, and back on the
+       list its card is in view */
+    rec.ok(`...each opens at its top however far the list was scrolled (the list at ${every.map((e) => e.listTop).join('/')} px), and back on the list its card is in view (the list at ${every.map((e) => e.backTop).join('/')} px)`,
+      every.every((e) => e.openTop === 0 && e.backSeen) && every.some((e) => e.listTop > 0) && every.some((e) => e.backTop > 0), every.map((e) => ({ kind: e.kind, listTop: e.listTop, openTop: e.openTop, backSeen: e.backSeen, backTop: e.backTop })));
     const bad = every.filter((e) => !e.ok || !e.ready || !e.special);
     rec.ok(`every page's stage loads and plays its own special (${every.filter((e) => e.special).length}/9)`, bad.length === 0, bad.length ? bad : every.map((e) => e.kind + ':' + e.labels.join('/')));
     rec.ok('...and every hit there says its element', every.every((e) => e.pops.length >= 1), every.map((e) => e.kind + ' ' + e.pops.join(',')));

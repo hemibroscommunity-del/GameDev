@@ -830,16 +830,6 @@ export function expandedSheetHeight(vw, vh) {
   return barHeight(vw, vh);
 }
 
-/* ═══ v2.3.3189: THE TALL SHEET -- a page that asks for it (sheetTallBus.js) ═══
-   The owner's codex mockup: the monster page fills the screen under the
-   dashboard's own top row, a strip of the world left above it.  The strip is
-   TALL_SHEET_TOP px plus the notch (--sat, which the band's style subtracts:
-   BottomDashboard, sheetStamp.js).  Never shorter than the ordinary sheet. */
-export const TALL_SHEET_TOP = 52;
-export function tallSheetHeight(vw, vh) {
-  return Math.max(expandedSheetHeight(vw, vh), Math.round(vh - TALL_SHEET_TOP));
-}
-
 /* v2.3.1311e (owner: the T2 spend screen's 5 categories must fit one
    screen): DRILL panels (stack depth > 1 — T2 spend, Settings, quest
    detail) get the taller pre-v2.3.1311 56vh sheet.  The 44px-ground

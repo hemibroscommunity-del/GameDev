@@ -38,8 +38,7 @@
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { dashMinBus } from './dashMinBus.js';
 import { playVw, playVh } from './playViewport.js';
-import { expandedSheetHeight, drillSheetHeight, bandFootprint, tallSheetHeight } from './sheet/sheetGeometry.js';
-import { sheetTallBus } from './sheetTallBus.js';   /* v2.3.3189: a page that reads tall */ /* v2.3.2255: barHeight is reached through bandFootprint now, so the fold cannot be forgotten */
+import { expandedSheetHeight, drillSheetHeight, bandFootprint } from './sheet/sheetGeometry.js'; /* v2.3.2255: barHeight is reached through bandFootprint now, so the fold cannot be forgotten */
 
 /* Why the "has it changed?" test reads the DOM rather than a remembered
    value: a module-local memo would be asserting that this function is the
@@ -106,8 +105,7 @@ export function stampSheetH() {
        band height there (v2.3.2168), so adding it again would double it. */
     ? bandFootprint(vw, vh, dashMinBus.min, false, inset).dashH
     : (mode === 'expanded'
-      ? inset + (sheetTallBus.tall ? tallSheetHeight(vw, vh) - topInset()
-        : dashboardPanelBus.state.stack.length > 1 ? drillSheetHeight(vw, vh) : expandedSheetHeight(vw, vh))
+      ? inset + (dashboardPanelBus.state.stack.length > 1 ? drillSheetHeight(vw, vh) : expandedSheetHeight(vw, vh))
       : bandFootprint(vw, vh, dashMinBus.min, false, inset).dashH);
   const root = document.documentElement;
   if (root.dataset.btSheet !== mode) root.dataset.btSheet = mode;
@@ -115,12 +113,6 @@ export function stampSheetH() {
   if (root.style.getPropertyValue('--sheet-h') !== want) {
     root.style.setProperty('--sheet-h', want);
   }
-}
-
-/* v2.3.3189: the notch, as resize() stamped it (--sat) -- the tall sheet
-   stops under it, as the band's own style does */
-function topInset() {
-  try { return parseFloat(document.documentElement.style.getPropertyValue('--sat')) || 0; } catch (e) { return 0; }
 }
 
 /** Remove the stamp — for BottomDashboard's unmount, which owns it. */

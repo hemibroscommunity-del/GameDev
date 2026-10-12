@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { COL, getState, QUALITY_COLOR, QUALITY_LABEL, QUALITY_PRISM, qualityInk } from './common.js';
 import { PetPortrait } from '@/ui/petPortrait.jsx';
 import { CODEX_KINDS, CODEX_ENTRIES, CODEX_ELEMENTS, CODEX_OPEN_AT, CODEX_ROADS, codexFactsAt } from '@/data/monsterCodex.js';
@@ -9,7 +9,6 @@ import { landLevelsText, WHEEL_LAND_LEVELS, WHEEL_GATE_ROADS } from '@/data/whee
 import { RARITY_TIERS } from '@/data/gameSystems.js';
 import { CodexStage } from './CodexStage.jsx';
 import { codexDropsFor, codexGrades, codexGradePercent } from '@/data/codexDrops.js';
-import { sheetTallBus } from '../sheetTallBus.js';
 
 /* ═══ v2.3.3189: THE CODEX'S MONSTERS ═══
  *
@@ -43,7 +42,15 @@ import { sheetTallBus } from '../sheetTallBus.js';
  *
  * It only displays: nothing here sends anything.  Its pictures are the
  * bag's and the world's own (the stage's load only while the Info tab is
- * open). */
+ * open).
+ *
+ * It lives on the dashboard's own sheet, at the height every other page has,
+ * and scrolls in it -- asked whether it should grow tall as the mockup draws
+ * it, the owner: "Stay short and scroll".  So what a tap brings up is put
+ * where it can be seen (`reveal`): a page and an item's card from their top,
+ * a tab's content at the top of the sheet (Info's stage first: it is 150 of
+ * the ~167 px a phone's sheet shows), the list again at the row, and the
+ * monsters at the card, you came from. */
 
 function landName(home) {
   return (ZONES[home] && ZONES[home].name) || home;
@@ -66,6 +73,27 @@ function wayThere(home) {
     if (home === fork) return 'Leave BroTown by its ' + gate + ' gate on ' + CODEX_ROADS[straight] + ', then take ' + CODEX_ROADS[home] + ' where it forks off.';
   }
   return null;
+}
+
+/* the scrolling box a page sits in (EncyclopediaPanel's, common.js
+   panelStyle), and putting something in its view: its top at the box's top
+   ('top'), or as little scrolling as shows all of it ('near') -- clear of the
+   box's bottom fade (panelStyle's 18 px mask) */
+const FADE = 18;
+function scrollBox(el) {
+  for (let p = el ? el.parentElement : null; p; p = p.parentElement) {
+    const oy = getComputedStyle(p).overflowY;
+    if (oy === 'auto' || oy === 'scroll') return p;
+  }
+  return null;
+}
+function reveal(el, how) {
+  const box = scrollBox(el);
+  if (!box) return;
+  const br = box.getBoundingClientRect(), er = el.getBoundingClientRect();
+  const at = er.top - br.top + box.scrollTop;
+  if (how === 'top' || er.top < br.top) box.scrollTop = Math.max(0, at - 4);
+  else if (er.bottom > br.bottom - FADE) box.scrollTop = Math.max(0, Math.min(at - 4, at + er.height + FADE - box.clientHeight));
 }
 
 /* ── small drawn glyphs: the TYPE line's, and the card's info mark ── */
@@ -320,8 +348,9 @@ function InfoTab({ kind, e, S, elder, setElder }) {
   const el = CODEX_ELEMENTS[e.element];
   return (
     <div data-cx-info={kind}>
+      <CodexStage kind={kind} facts={codexFactsAt(CODEX_OPEN_AT)} elder={elder} S={S} />
       {e.elder && (
-        <div style={{ display: 'flex', gap: 6, margin: '0 2px 8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, margin: '8px 2px 0' }}>
           {[[false, e.name], [true, e.elder.name]].map(([on, nm]) => (
             <button key={String(on)} onClick={() => setElder(on)} data-cx-elder-toggle={on ? 1 : 0}
               style={{ minHeight: 32, padding: '0 10px', borderRadius: 999, border: '1px solid ' + (elder === on ? COL.accent : COL.border),
@@ -330,7 +359,6 @@ function InfoTab({ kind, e, S, elder, setElder }) {
           ))}
         </div>
       )}
-      <CodexStage kind={kind} facts={codexFactsAt(CODEX_OPEN_AT)} elder={elder} S={S} />
       <Fact fact="page" title="What it does">
         <div style={{ fontSize: 13, lineHeight: 1.45, color: COL.text }}>{e.what}</div>
       </Fact>
@@ -408,17 +436,28 @@ function Page({ kind, S, onBack }) {
   const [n, n2] = codexCounts(S, kind);
   const [elder, setElder] = useState(false);
   const [tab, setTab] = useState('drops');
+  const [tabTap, setTabTap] = useState(0);    /* every tap on a tab, the open one's too */
   const [sel, setSel] = useState(null);       /* the drop row last tapped */
   const [card, setCard] = useState(null);     /* ...whose card is open */
+  const root = useRef(null);
+  const body = useRef(null);
   useEffect(() => { codexSeen(S, kind); }, [kind]);
-  /* the owner's mockup fills the screen: while a page is open the sheet
-     reads tall (sheetTallBus.js), and goes back down with the list */
-  useEffect(() => { sheetTallBus.set(true); return () => sheetTallBus.set(false); }, []);
+  /* the page opens at its top, a card too (it takes the list's place); its
+     X brings the list back with the row it came from in view */
+  useLayoutEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    const row = !card && sel ? el.querySelector(`[data-cx-drop="${sel}"]`) : null;
+    if (row) reveal(row, 'near');
+    else reveal(el, 'top');
+  }, [card]);
+  /* a tap on a tab shows what it opened, at the top of the sheet */
+  useLayoutEffect(() => { if (tabTap && body.current) reveal(body.current, 'top'); }, [tabTap]);
   const known = n >= CODEX_OPEN_AT;
   const rows = known ? (codexDropsFor(kind) || []) : [];
   const open = card ? rows.find((r) => r.id === card) : null;
   return (
-    <div data-cx-page={kind} data-cx-kills={n} data-cx-tabbed={known ? tab : ''}>
+    <div ref={root} data-cx-page={kind} data-cx-kills={n} data-cx-tabbed={known ? tab : ''}>
       <button onClick={onBack} style={{ minHeight: 40, padding: '0 10px 0 4px', background: 'transparent', border: 'none', color: COL.accent,
         fontFamily: 'inherit', fontSize: 13, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation' }}>‹ All monsters</button>
       {!known ? (
@@ -433,22 +472,30 @@ function Page({ kind, S, onBack }) {
       ) : (
         <>
           <Header kind={kind} e={e} n={n} n2={n2} elder={elder} />
-          <Tabs tab={tab} setTab={setTab} />
-          {tab === 'drops' ? <DropsTab rows={rows} sel={sel} onPick={(id) => { setSel(id); setCard(id); }} />
-            : tab === 'info' ? <InfoTab kind={kind} e={e} S={S} elder={elder} setElder={setElder} />
-              : <LocationsTab kind={kind} e={e} />}
+          <Tabs tab={tab} setTab={(id) => { setTab(id); setTabTap((v) => v + 1); }} />
+          <div ref={body}>
+            {tab === 'drops' ? <DropsTab rows={rows} sel={sel} onPick={(id) => { setSel(id); setCard(id); }} />
+              : tab === 'info' ? <InfoTab kind={kind} e={e} S={S} elder={elder} setElder={setElder} />
+                : <LocationsTab kind={kind} e={e} />}
+          </div>
         </>
       )}
     </div>
   );
 }
 
-export function MonsterCodex({ onPage } = {}) {
-  const [open, setOpen] = useState(null);
+/* `open` / `setOpen`: the page open, held by EncyclopediaPanel, which puts
+   the Codex's own tabs away in the same render while one is */
+export function MonsterCodex({ open = null, setOpen = () => {} } = {}) {
   const [, force] = useState(0);
-  /* the Codex's own tabs step aside while a page is open (EncyclopediaPanel) */
-  useEffect(() => { if (onPage) onPage(!!open); }, [open]);
-  useEffect(() => () => { if (onPage) onPage(false); }, []);
+  const grid = useRef(null);
+  const from = useRef(null);
+  /* back on the monsters, the card you came from is in view */
+  useLayoutEffect(() => {
+    if (open) { from.current = open; return; }
+    const c = from.current && grid.current ? grid.current.querySelector(`[data-cx-card="${from.current}"]`) : null;
+    if (c) reveal(c, 'near');
+  }, [open]);
   useEffect(() => {
     let rev = -1;
     const id = setInterval(() => {
@@ -464,7 +511,7 @@ export function MonsterCodex({ onPage } = {}) {
   const rows = CODEX_KINDS.map((k) => ({ k, counts: codexCounts(S, k), fresh: codexFresh(S, k).length > 0 }));
   const met = rows.filter((r) => r.counts[0] >= CODEX_OPEN_AT).length;
   return (
-    <div data-cx-grid={met}>
+    <div ref={grid} data-cx-grid={met}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '2px 2px 6px' }}>
         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted }}>Monsters of the Wheel</div>
         <div style={{ fontSize: 11, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{met} of {CODEX_KINDS.length} met</div>

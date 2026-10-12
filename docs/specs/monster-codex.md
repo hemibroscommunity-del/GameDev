@@ -16,18 +16,35 @@ each of the Wheel's nine kinds of monster, its shape alone until you kill one;
 
 ## The page (the owner's mockup)
 
-While a monster's page is open the dashboard's sheet grows TALL, the
-dashboard's own row (CLOSE, back, the nav buttons) riding its top edge, as the
-mockup draws it (`src/ui/mobile/sheetTallBus.js`; upright only -- sideways the
-band never grows; the sheet and the row come back down with the list, and the
-Codex's own Monsters / Codex / Materials / Zones tabs step aside meanwhile).
-Every other destination keeps the one height (v2.3.1638).
+The page lives on the dashboard's own sheet, at the one height every
+destination has (v2.3.1638), and SCROLLS in it. It grew tall at first, as the
+mockup draws it; asked, the owner: *"Stay short and scroll."* On a 390 x 844
+phone the sheet shows ~167 px of it at a time, so what a tap brings up is put
+where it can be seen (`reveal` in MonsterCodex.jsx):
+
+- a page opens at its top, however far the monsters were scrolled;
+- a tap on a tab (the open one's too) puts what it opened at the top of the
+  sheet -- Info's stage comes first on its tab, its elder toggle under it, as
+  the stage (150 px) is nearly the whole view;
+- an item's card opens at its top; its X brings the list back with that row in
+  view;
+- back on the monsters, the card you came from is in view.
+
+The Codex's own Monsters / Codex / Materials / Zones tabs step aside while a
+page is open (EncyclopediaPanel holds which page, so both change in one
+render), "‹ All monsters" bringing them back.
 
 - **The header**: its portrait, its name, and three badges -- its levels
-  (`Lv 1–40`), its element with its icon, and its kind of creature
-  (`CODEX_ENTRIES[*].type`: Elemental, Goblin, Undead, Golem, Slime, Aquatic,
-  Spirit -- made up to fit the stories, the owner's to change), and how many
-  you have defeated.
+  (`Lv 1–40`), its element with its icon, and its type of creature, by its
+  body (`CODEX_TYPES`; the owner: *"more along the lines of humanoid, beast,
+  (some word along those lines that means flying creature, bug-like creature,
+  swimming creature)"*): **Humanoid** (the snowman, the fire goblin, the
+  mummy), **Beast** (the rock monster, a boulder with a mouth), **Aquatic**
+  (the fishman, the bog lurker) and **Ooze** (the two slimes and the mire wisp,
+  drawn as one -- the one word the owner's list did not have); **Winged** and
+  **Insectoid** wait for a monster that flies or a bug. And how many you have
+  defeated. (The first set, Elemental, Goblin, Undead, Golem, Slime, Aquatic
+  and Spirit, was replaced.)
 - **Drops** (the first tab): ITEM / TYPE / CHANCE, every item a kill can drop,
   most often first, a bar for each chance. A tap on a row opens the item's
   **card**: its picture, name, type and base rarity ("Common" for a weapon or
@@ -36,8 +53,9 @@ Every other destination keeps the one height (v2.3.1638).
   90.09995%, Rare 9%, Elite 0.9%, Godly 0.00005%, each tile the item in that
   grade's frame), and a note of how it drops. Its X comes back to the list with
   that row marked.
-- **Info**: the stage (below) and what it does, its element, its special
-  attack with a tip, its story, and its elder form (a toggle shows it).
+- **Info**: the stage (below), a toggle for its elder form under it, and what
+  it does, its element, its special attack with a tip, its story, and its
+  elder form.
 - **Locations**: its land and levels, the first stage's levels and the elder
   form's past the first pass, the way there from BroTown (which gate, which
   road: `CODEX_ROADS`, the plan's own road names), and its land's dungeon with
@@ -202,13 +220,18 @@ dev op.
   against the plan's; every drop rate, the grade odds, the weapon curve at every level 1
   to 100, and each of the Wheel's monsters' gold and remnants against the
   page's drop table.
-- `mp-codex` (phone, 26 checks): the Monsters tab; a real kill opening the
-  whole page on a tall sheet, its header badges and tabs; its drop table; the
-  Iron Great Sword's card (Common, 0.2%, the four grades) and a shard's (no
-  grades), the X back to the marked row; every fact open on Info from one
+- `mp-codex` (phone, 30 checks): the Monsters tab; a real kill opening the
+  whole page on the sheet's own height, scrolling in it from its top, its
+  header badges (a Humanoid snowman) and tabs; its drop table; scrolled to
+  its end, the Iron Great Sword's card opening at its top (Common, 0.2%, the
+  four grades) and a shard's (no grades), the X back to the marked row in
+  view; a tap on a tab, the open one's too, putting its content at the
+  sheet's top, Info's whole stage in view; every fact open on Info from one
   kill, the stage playing its special; Locations (the land, both stages, the
-  way there, the dungeons); the sheet back down on the list; every page's own
-  drop table, every stage playing its own special, a
+  way there, the dungeons); the sheet never growing and the card you came
+  from in view on the list; every page's type badge by its body and each page
+  opening at its top; every page's own drop table, every stage playing its
+  own special, a
   slam's or a lunge's warning circle, what it throws in before its first
   flight, no monster ever standing over your character, nothing left behind
   on close, the counts back after a reload.
