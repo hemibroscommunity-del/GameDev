@@ -17,6 +17,8 @@
  *       drops WITHOUT consuming the fish.
  *   9.  Storage round-trip: close flushes botstat:; rejoin re-hydrates
  *       the hour window + replay ring (reconnect-cycling pin).
+ *   9b. v2.3.3174: a SECOND LOGIN (the first socket superseded, no close)
+ *       keeps the live hour count; the next harvest is still clamped.
  *   10. /api/botstat is 404 without a configured+presented ADMIN_KEY.
  *   11. state_sync advertises caps.botfp. */
 import { GameRoom } from '../src/index.js';
@@ -291,6 +293,39 @@ const invKey = room._harvestInvKey(n0.nodeType, n0.tierLvl);
   check('storage: rejoin hydrates hour window + replay ring + counters',
     recB2.hour.bySkill[skillName] === 200 && recB2.hRing.length > 0 && recB2.counters.syntheticStrikes === 6,
     { hour: recB2.hour.bySkill, hRing: recB2.hRing.length });
+}
+
+// ── 9b. v2.3.3174: a second login rolls the hour count back by nothing ──
+// botstat: is written at most every 30 s, and a second login (same id, the
+// first socket superseded without webSocketClose) re-read it over the LIVE
+// record: the hour count fell back to the last write, so a login every ~29 s
+// kept the harvest and cook caps from ever binding.  Real DO storage keeps a
+// COPY of what was put; this suite's mock keeps the object itself, which
+// would make the stored count follow the live one, so the snapshot is copied
+// here the way storage would have.
+{
+  const wsR1 = fakeWs('r1');
+  await join(wsR1, 'bp_bot_r');
+  const psR = room.playerState.bp_bot_r;
+  psR.z = 'meadow'; psR.x = n0.x; psR.y = n0.y; psR.inventory = { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1 };
+  await strike(wsR1, 'bp_bot_r', n0, humanFp());
+  const recR = room._botfp.get('bp_bot_r');
+  room._botfpMaybePut('bp_bot_r', recR, true);                       // botstat: written now ...
+  state._store.set('botstat:bp_bot_r', JSON.parse(JSON.stringify(state._store.get('botstat:bp_bot_r'))));
+  recR.hour.bySkill[skillName] = BOTFP.HARVEST_HOUR_CAP;              // ... and the cap is reached inside the next 30 s
+  recR.dirty = true;
+  const storedCount = state._store.get('botstat:bp_bot_r').hour.bySkill[skillName];
+  check('setup: the stored hour count lags the live one', storedCount < BOTFP.HARVEST_HOUR_CAP, storedCount);
+  const wsR2 = fakeWs('r2');
+  await join(wsR2, 'bp_bot_r');                                       // the second login
+  const recR2 = room._botfp.get('bp_bot_r');
+  check('a second login keeps the hour count where it was',
+    (recR2.hour.bySkill[skillName] || 0) >= BOTFP.HARVEST_HOUR_CAP, recR2.hour.bySkill);
+  const psR2 = room.playerState.bp_bot_r;
+  psR2.z = 'meadow'; psR2.x = n0.x; psR2.y = n0.y; psR2.inventory = { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1 };
+  await strike(wsR2, 'bp_bot_r', n0, humanFp());
+  check('...so the next harvest is still over the cap and grants nothing',
+    (psR2.inventory[invKey] || 0) === 0, psR2.inventory);
 }
 
 // ── 10. admin surface auth ──
