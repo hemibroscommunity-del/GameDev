@@ -225,6 +225,12 @@ export const trade2Methods = {
     if (Date.now() - (s.changedAt || 0) < TRADE2.ACCEPT_COOLDOWN_MS) {
       return this._t2Broadcast(s, { reason: 'cooling' });
     }
+    /* v2.3.3183: no trade while either side is in a fight with a player --
+       a trade to a friend emptied a losing bag before the killer's pile
+       (nomansland.js _bagLockedByFight).  The window stays open. */
+    if (this._bagLockedByFight && (this._bagLockedByFight(s.a) || this._bagLockedByFight(s.b))) {
+      return this._t2Broadcast(s, { reason: 'fight' });
+    }
     s.confirmed[session.id] = true;
     s.ts = Date.now();
     if (!(s.confirmed[s.a] && s.confirmed[s.b])) {

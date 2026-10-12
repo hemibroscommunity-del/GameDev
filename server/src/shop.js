@@ -473,6 +473,8 @@ export const shopMethods = {
     /* v2.3.3132: one answer for all of it -- since then, nothing you eat or
        drink (heWontTrade). */
     if (heWontTrade(key)) return { ok: false, error: "He doesn't buy food or drink" };
+    /* v2.3.3183: not in a fight with a player (nomansland.js _bagLockedByFight) */
+    if (pid && this._bagLockedByFight && this._bagLockedByFight(pid)) return { ok: false, error: 'Not while you are fighting a player' };
     const want = Math.floor(Number(qty) || 0);
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
     if (!ps.inventory) ps.inventory = {};
