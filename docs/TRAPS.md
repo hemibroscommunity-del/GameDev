@@ -5648,3 +5648,180 @@ no rate limit: 200 refusals sent 200 copies of the pile to each bystander.
 siblings have (`ps.dying || ps.dead || ps.disconnected`, the gear lock, a
 cooldown). Only a change that happened is news to everyone; a refusal
 answers the asker.
+
+## 151. "The hook already excludes duel kills" (v2.3.3168)
+
+**The plausible move.** Clan-war scoring and bounties must not count a
+consensual duel, and both hooks say so: each asks `_duelFor(killer)` and
+returns if the victim is the duel partner. The suites test exactly that.
+
+**Why it is wrong.** `_handlePlayerDeath` runs the duel hook FIRST, and
+`_resolveDuel` deletes the duel from the map. By the time the war and bounty
+hooks ask, there is no duel, so every thrown duel scored the war and paid the
+bounty. The suites called the hooks directly with a live duel in the map,
+the one state the real path never has.
+
+**The rule.** Decide "was this X" before the step that removes X, and pass
+the answer along (`_duelKill`). Test a hook through the call site that runs
+it, never by calling it alone with state the call site would already have
+changed.
+
+## 152. "The challenge's number is authoritative" (v2.3.3168)
+
+**The plausible move.** A duel's stake comes from the server's own record of
+the challenge, not from the accept, so an edited accept cannot raise it.
+
+**Why it is wrong.** Authoritative is not agreed. The record kept the
+challenger's LATEST challenge, a plain `duel_request` (shown as no-stakes)
+could carry a stake, and the accept took whatever was on file from a player
+whose screen said 0 or a smaller number.
+
+**The rule.** Money taken from a player needs that player's own number: the
+accept echoes what it showed, and the server refuses a stake above it. The
+other side's record decides only what is at or under the consent.
+
+## 153. "The shield keeps what the pickup gave" (v2.3.3169)
+
+**The plausible move.** A death inside a second of a pickup keeps what the
+pickup handed over; the pile drops `held - shield`, the bag keeps `shield`.
+
+**Why it is wrong.** The shield is a memory of a quantity, not proof of
+possession. Anything sold, listed or traded after the pickup was written
+back by both wipes, and a listing taken down after the respawn doubled the
+stack.
+
+**The rule.** A carve-out that writes a quantity back is capped at what is
+still held: keep `min(shield, held)`. Kept plus dropped must equal held for
+every key, checked against the bag at the moment of the wipe.
+
+## 154. "Every zone's kills drop that zone's shard" (v2.3.3170)
+
+**The plausible move.** A shard is `'shard_' + zoneId`, so any zone a monster
+dies in names its own shard.
+
+**Why it is wrong.** Some zone ids are runtime ids. A Workshop instance is
+`dungeon:<uuid>`, so each run minted a new item key that the game could not
+draw and that Diego's substring pricer bought at full price forever, one more
+permanent key in his pile each time.
+
+**The rule.** Item keys come from a fixed table (`ZONES`, a catalog), never
+from an id the server invents at runtime. Gate a built key on the table.
+
+## 155. "Refuse the bad state" (v2.3.3171)
+
+**The plausible move.** An arena join must not land in a tournament that is
+running, so refuse `status === 'running'`.
+
+**Why it is wrong.** There was a third state. A finished tournament is kept
+60 s for the completion poll, and a join in that minute paid 100 g into a
+queue nothing would start, with no refund.
+
+**The rule.** Gate on the one state that is allowed (`status === 'gathering'`),
+not on the states you thought of that are not.
+
+## 156. "The op id makes the debit idempotent" (v2.3.3171)
+
+**The plausible move.** Key the entry fee's debit on (tournament, player);
+a retry is answered "already paid", which is the point.
+
+**Why it is wrong.** Leaving refunds under its own id but the debit's stamp
+stays, so a second entry into the same tournament was "already paid" and
+free. An op id names one operation; a refund ends it, and a new entry is a
+new operation.
+
+**The rule.** An id may be reused only by a retry of the same act. After a
+refund or cancel, the next act carries a new id (`:n`), and so does its
+refund.
+
+## 157. "Activate each match as it is built" (v2.3.3171)
+
+**The plausible move.** Build round 2's matches in a loop and start each one
+as it is pushed.
+
+**Why it is wrong.** A walkover resolves synchronously, back into the bracket
+code, which read "this round" as the matches pushed so far. One match, one
+winner: it crowned (and paid) the champion before the other semifinal
+existed.
+
+**The rule.** Build the whole collection, then act on it. Code that can call
+back into itself must never see a half-built list.
+
+## 158. "Only the server writes that slot" (v2.3.3172)
+
+**The plausible move.** Gem extraction trusts `ps.shield.gem`, because only
+server code writes `ps.shield`.
+
+**Why it is wrong.** A later feature (`shield_wear`, v2.3.3091) let a shield
+adopted from the join's bag claim, shape-checked only, become `ps.shield`.
+Every reader that trusted the slot now read client data: about 31 free
+polished gems a join.
+
+**The rule.** When a new path moves claimed or adopted data into a slot the
+server trusted, audit every reader of that slot. Pay out only for what the
+server can prove it put there (`prov: 'minted'`).
+
+## 159. "Clamp the gems on the way in" (v2.3.3172)
+
+**The plausible move.** Every join runs the gem map through a whitelist and a
+200-per-key clamp, so tampered numbers never land.
+
+**Why it is wrong.** The clamp was written for a CLAIM, but it also ran over
+the server's own stored map, which kills and cuts raise with no ceiling.
+Every reconnect deleted what the server itself had paid past 200.
+
+**The rule.** A limit for untrusted input applies to that input. The
+server's own record is healed only once, when it may still hold an old
+unclamped capture, and is otherwise left alone.
+
+## 160. "A stack is just a stack" (v2.3.3173)
+
+**The plausible move.** Ace's item wager works on any stack in the bag;
+doubling a stack mints nothing unique.
+
+**Why it is wrong.** A golden ticket is a stack in the bag, and the contest's
+"only N capes" cap is checked only when a ticket drops. A won wager made one
+ticket two, and the second was redeemed by whoever it was traded to.
+
+**The rule.** A generic operation on the bag (wager, double, dupe-shaped
+rewards) must exclude every capped or one-of item. A cap checked at the
+source holds only if nothing downstream can multiply what it issued.
+
+## 161. "The writes are in the same handler" (v2.3.3173)
+
+**The plausible move.** The redeem consumes the ticket and grants the cape in
+one synchronous block, so they cannot disagree.
+
+**Why it is wrong.** Memory agreed; storage did not. The ledger was put before
+the op stamp's `await`, the bag after it: two batches. A restart at the await
+kept "redeemed" and the stored ticket, which was traded and redeemed again.
+(§147 is the same shape for a debit.)
+
+**The rule.** Writes that must land together are issued in one synchronous
+run with no `await` between them. An await is a batch boundary.
+
+## 162. "A second login is a reconnect" (v2.3.3174)
+
+**The plausible move.** The second-login eviction drops the old socket, and
+the join hydrates the anti-bot record from storage, as on any reconnect.
+
+**Why it is wrong.** A clean close flushes the record first; this eviction
+skips `webSocketClose`, so storage was up to 30 s stale and the join
+overwrote the live hour count with it. A login every ~29 s kept the
+harvest and cook caps from ever binding.
+
+**The rule.** Every way a session ends does the close's duties (flushes,
+forfeits, cancels), or the reconnect path must merge rather than overwrite
+live state with stored state.
+
+## 163. "Leaving is refused mid-war, so the roster is safe" (v2.3.3175)
+
+**The plausible move.** v2.3.2301 refuses leaving a clan mid-war because a
+leaver kept the payout; the hole is closed.
+
+**Why it is wrong.** A kick (kept on purpose, for griefers) has the same
+effect: the kicked member stays on the frozen roster, clanless, free to join
+another clan and be frozen onto a second war's roster.
+
+**The rule.** When a rule guards one exit, list every exit with the same
+effect (leave, kick, dissolve, a reset). Here the guard went on the far side:
+nobody on an active war's roster joins another clan until it ends.
