@@ -633,6 +633,14 @@ export const joinMethods = {
     if (msg.id) {
       for (const [oldWs, oldS] of this.sessions) {
         if (oldS.id === msg.id && oldWs !== ws) {
+          /* v2.3.3174: write the bot fingerprint's summary first, as a clean
+             close does (webSocketClose -> _botfpFlush).  This eviction skips
+             webSocketClose, and _botfpOnJoin below re-reads botstat: (written
+             at most every PUT_MIN_MS, 30 s) over the LIVE record -- so a
+             second login rolled the gathering and cooking hour counts back by
+             up to 30 s of strikes, and one every ~29 s kept the 2,400-an-hour
+             caps from ever binding (botfp.test §9b). */
+          try { this._botfpFlush(oldS); } catch (e) { /* evidence is best-effort; the join goes on */ }
           this.sessions.delete(oldWs);
           try { oldWs.close(1000, 'superseded by reconnect'); } catch {}
         }

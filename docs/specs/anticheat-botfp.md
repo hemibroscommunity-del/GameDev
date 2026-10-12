@@ -96,7 +96,12 @@ the `_extractionMissing` posture — old clients never punished):
   (n capped 200 with halving = exponential forgetting), score, flags
   (≤20, each with a counter snapshot). Written fire-and-forget from
   event handlers only, throttled 30s; flags and first cap-clamp flush
-  immediately; final flush on socket close.
+  immediately; final flush on socket close -- and, since v2.3.3174, when a
+  second login supersedes the socket (join.js's eviction skips
+  `webSocketClose`, and the join re-reads `botstat:` over the live record:
+  a second login every ~29 s rolled the hour count back and kept the
+  harvest and cook caps from binding; found by the overnight economy
+  review, 2026-10-12; `botfp.test.mjs` §9b).
 - `device:<deviceId>` (~200B): env hash, firstSeen, last 8 identities
   (30-day prune). Written at join only when the identity list changes.
 - Live state (in-memory, rule 11): per-identity record ring (64 fps),
