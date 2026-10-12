@@ -295,6 +295,20 @@ before asking the gate, rather than setting `ps.armor` by hand.
 > message for the slot behind its own cap, which is its own change.
 > **Do not close it by matching the worn slot by VALUE** — that is this
 > section's own history, and it ate real spares.
+>
+> **v2.3.3164: closed, by the equip message it asked for.** `shield_wear`
+> (v2.3.3091, shieldwear.js) is that message, and the gate now reads it the
+> way No man's land does: once the game has said this session which shield is
+> on the arm (`ps._shieldKnown`), the one in `ps.shield` is refused as `worn`,
+> matched by its id. Before the first report, `ps.shield` is still the
+> ownership record and the starter shield still sells. The AMULET was the
+> same hole, and wider: the forge makes it onto the neck and nothing takes it
+> off into a bag, so `ps.amulet` is always the worn one. It is refused as
+> `worn`, and an amulet in neither `ps.amulet` nor `amuletStash` (one the
+> forge replaced, whose row it keeps) is `not_held`. Both reproduced on main
+> through a hand-built listing: the seller kept wearing the piece (its gem
+> still counted by the worker's damage roll) while the buyer held a provable
+> copy. Tests: gearprov.test.mjs, the last section.
 
 **Cosmetics are a separate answer, and permanently so.** The server stores
 no worn-cosmetic slot at all — there is no such field in `_saveRpg`'s
