@@ -32,6 +32,7 @@
  * heap fading early past that.  Everything goes on leaving the Wheel.
  */
 import { Container, Sprite, Texture, Rectangle, CanvasSource } from 'pixi.js';
+import { drawSourceRect } from './paletteDraw.js';   /* v2.3.3190 */
 
 const G = 0.42;              /* gravity, world px per frame^2 at 60 Hz */
 const HEAP_PX = 6e6;         /* every heap's canvases together, pixels */
@@ -119,7 +120,8 @@ function cutPicture(tex, n, hu, hv) {
   const FW = fp.w, FH = fp.h;
   const pic = document.createElement('canvas'); pic.width = FW; pic.height = FH;
   const pg = pic.getContext('2d');
-  try { pg.drawImage(src, fp.x, fp.y, FW, FH, 0, 0, FW, FH); } catch (e) { freeCanvas(pic); return null; }
+  /* v2.3.3190: drawSourceRect, so a page kept as colour numbers cuts the same */
+  try { drawSourceRect(pg, tex.source, fp.x, fp.y, FW, FH, 0, 0, FW, FH); } catch (e) { freeCanvas(pic); return null; }
   /* where the picture is solid, at a quarter size (seeds and empty cells) */
   const Q = 4, qw = Math.max(1, Math.ceil(FW / Q)), qh = Math.max(1, Math.ceil(FH / Q));
   let alpha;

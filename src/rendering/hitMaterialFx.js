@@ -48,6 +48,7 @@
  * LEAF MODULE (the staffCastFx / fxStrips precedent): effectsRenderer owns the
  * instance; nothing here imports a renderer. */
 import { Container, Rectangle, Sprite, Texture } from 'pixi.js';
+import { drawSourceRect } from './paletteDraw.js';   /* v2.3.3190 */
 import { zonePlayerScale } from '@/data/zones.js';
 import { TILE } from '@/data/constants.js';
 
@@ -531,7 +532,8 @@ function propChips(art, fx) {
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
     const g = cv.getContext('2d', { willReadFrequently: true });
     try {
-      g.drawImage(src, FX + x0, FY + y0, w, h, 0, 0, w, h);
+      /* v2.3.3190: drawSourceRect, so a page kept as colour numbers cuts the same */
+      drawSourceRect(g, tex.source, FX + x0, FY + y0, w, h, 0, 0, w, h);
       out = bakeChipsFrom(cv, g, w, h, fx, radiiW.map((r) => Math.max(1.5, r / art.cs)), 0.6);
     } catch (e) { out = null; }
     /* v2.3.3046: the window's scratch canvas goes now (the chips are their own

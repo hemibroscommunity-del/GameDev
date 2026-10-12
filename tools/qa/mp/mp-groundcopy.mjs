@@ -26,6 +26,11 @@
  *      which lays the ground again from the worker, checked the same way.
  * The main thread's ArrayBuffer memory is printed at each step, after a forced
  * GC, for the before / after in the PR.
+ *
+ * v2.3.3190: where the game draws pictures as colour numbers (paletteTex.js;
+ * not `?nopalette`) a piece comes as its numbers and colours and is kept as an
+ * R8 texture; read back through the palette batcher it must be the worker's
+ * colours exactly, and the page must keep neither its colours nor its numbers.
  */
 import * as H from './harness.mjs';
 
@@ -40,11 +45,24 @@ const INIT = () => {
     try {
       w.addEventListener('message', (ev) => {
         const m = ev.data;
-        if (!m || m.type !== 'chunk' || !m.data || !m.w) return;
-        refs.push({ k: m.i + ',' + m.j, r: new WeakRef(m.data) });
+        /* v2.3.3190: a piece comes as its colours (`data`), or as colour
+           numbers and its colours (`idx`, `pal`: rendering/paletteTex.js) --
+           the test keeps its colours either way, and a weak hold on what the
+           page would keep */
+        if (!m || m.type !== 'chunk' || !m.w || !(m.data || m.idx)) return;
+        const held = m.data || m.idx;
+        refs.push({ k: m.i + ',' + m.j, r: new WeakRef(held) });
         const k = m.i + ',' + m.j;
+        let bytes;
+        if (m.idx) {
+          bytes = new Uint8Array(m.w * m.h * 4);
+          for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+            const c = m.idx[y * m.stride + x] * 4, o = (y * m.w + x) * 4;
+            bytes[o] = m.pal[c]; bytes[o + 1] = m.pal[c + 1]; bytes[o + 2] = m.pal[c + 2]; bytes[o + 3] = m.pal[c + 3];
+          }
+        } else bytes = new Uint8Array(m.data.buffer, m.data.byteOffset, m.data.byteLength).slice();
         copies.delete(k);
-        copies.set(k, { w: m.w, h: m.h, bytes: new Uint8Array(m.data.buffer, m.data.byteOffset, m.data.byteLength).slice() });
+        copies.set(k, { w: m.w, h: m.h, bytes, numbers: !!m.idx });
         if (copies.size > 16) copies.delete(copies.keys().next().value);
       });
     } catch (e) { /* not a worker we can watch */ }
@@ -83,7 +101,11 @@ const INIT = () => {
       const c = copies.get(k);
       if (!R || !s || !c) return { k, err: !s ? 'no sprite' : 'no copy' };
       const src = s.texture.source;
-      if (src.pixelWidth !== c.w || src.pixelHeight !== c.h) return { k, err: `size ${src.pixelWidth}x${src.pixelHeight} vs ${c.w}x${c.h}` };
+      /* v2.3.3190: a piece kept as colour numbers is its picture's size with
+         its rows padded on the right (paletteTex.js) */
+      const P = src._btPal;
+      const sw = P ? P.w : src.pixelWidth, sh = P ? P.h : src.pixelHeight;
+      if (sw !== c.w || sh !== c.h) return { k, err: `size ${sw}x${sh} vs ${c.w}x${c.h}` };
       const SpriteC = s.constructor, TextureC = s.texture.constructor;
       /* which way up the read-back comes: a 1 x 4 probe, top row opaque */
       const cv = document.createElement('canvas'); cv.width = 1; cv.height = 4;
@@ -92,7 +114,8 @@ const INIT = () => {
       const pp = R.app.renderer.extract.pixels({ target: pt, resolution: 1 });
       const topDown = pp.pixels[3] > 128;
       pt.destroy(true);
-      const t = new TextureC({ source: src });
+      const RectC = R.app.screen.constructor;
+      const t = P ? new TextureC({ source: src, frame: new RectC(0, 0, P.w, P.h) }) : new TextureC({ source: src });
       const sp = new SpriteC(t);
       const got = R.app.renderer.extract.pixels({ target: sp, resolution: 1 });
       sp.destroy();
@@ -110,7 +133,7 @@ const INIT = () => {
           if (d > worst) worst = d;
         }
       }
-      return { k, w, h, opaque, same, worst, cpu: !!(src.resource && src.resource.byteLength) };
+      return { k, w, h, opaque, same, worst, cpu: !!(src.resource && src.resource.byteLength), numbers: !!P };
     },
   };
 };
@@ -160,6 +183,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const c1 = await checkHere('standing');
     rec.ok(`the GPU holds the ground exactly as the worker laid it: ${c1.good.length} of ${c1.res.length} piece(s) read back identical`,
       c1.res.length >= 2 && c1.good.length === c1.res.length, c1.res);
+    /* v2.3.3190 */
+    const pal = await P.page.evaluate(() => (window.__btPalette ? window.__btPalette() : null));
+    rec.ok(`...kept as colour numbers where the game draws pictures so (${pal && pal.on ? 'on' : 'off'}): ${c1.res.filter((r) => r.numbers).length} of ${c1.res.length} read back`,
+      !!pal && (pal.on ? c1.res.every((r) => r.numbers) : c1.res.every((r) => !r.numbers)), { pal, res: c1.res.map((r) => [r.k, !!r.numbers]) });
     rec.ok(`...and the page keeps none of its colours: ${a.alive} of ${a.laid} pieces' alive after a GC, ${a.mb} MB (${a.resident} standing; main: one a piece, 34 MB)`,
       a.resident >= 20 && a.alive === 0, a);
 
