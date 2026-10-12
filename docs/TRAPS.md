@@ -5571,3 +5571,18 @@ Pixi as it ships).  If you upgrade Pixi, keep mp-sceneleak's mask check: it
 draws a sprite mask with a picture of its own, frees the picture, and draws
 another.  And when a picture "nobody draws" is freed and something breaks,
 look in Pixi's pools and shared shaders, not only at your own sprites.
+
+The pools themselves hold memory the same way.  Pixi's TexturePool hands out
+the scratch textures of every filter pass and the texture of every canvas
+Text, by size, and keeps every one handed back -- on the GPU, for good: the
+most of each size ever in use at once (~30 name plates after a cave wave,
+6 MB of render textures nobody draws).  `texturePoolTrim.js` destroys one
+unused for 30 s and empties the pool on a zone change.  Two things it must
+do, and that a "just call TexturePool.clear()" would not: it never touches a
+texture that is out of the pool (clear() also drops the pool's arrays, and a
+texture handed back later then throws in returnTexture), and it unhooks the
+POOL'S OWN sampler from a text's texture before destroying it (a text is
+handed back wearing `TexturePool.textureStyle`, shared by every pooled text,
+and destroying a source destroys its sampler).  And it only runs with the
+bind-group fix on: the filter system's own bind group keeps its last input
+texture.

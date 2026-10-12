@@ -22,6 +22,7 @@ import { setFighterEffects } from './fighterCapture.js';   /* v2.3.2986; v2.3.29
 import { setMonsterDeathRenderer } from './monsterDeathFx.js';   /* v2.3.2913 */
 import { setArrowWoundRenderer } from './arrowWound.js';   /* v2.3.2923 */
 import { LightFx, setLightFx, lightFxOn } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1; v2.3.2904: + lightFxOn for the loading-screen warm */
+import { sweepTexturePool } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool lets go of what it does not use */
 import { setSheen, prewarmGlintPipe } from './lightfx/glint.js'; /* v2.3.2864: the permanent soft metal shine, behind ?sheen=1; v2.3.2887: on for everyone, ?sheen=0 turns it off; v2.3.2904: its shader built behind the loading screen */
 import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
 import { setWorldCasts } from './lightfx/casters.js'; /* v2.3.2749: QA before/after of the world's shadows */
@@ -315,6 +316,10 @@ export async function initPixiRenderer(canvas) {
     entityRenderer.clear();
     effectsRenderer.clear();
     lightFx.clear();   /* v2.3.2710: last zone's shadows and glints go with its figures */
+    /* v2.3.3152: and every texture in Pixi's pool -- the last zone's name
+       plates and filter scratch, handed back by the clears above
+       (texturePoolTrim.js); behind the zone's loading screen */
+    try { sweepTexturePool(performance.now(), 0); } catch (e) { /* the pool as it was */ }
     ambientFx.setZone(zoneId);   /* v2.3.2762 */
     /* ═══ v2.3.2596: THE ZONE-ENTRY BANNER'S ONE TRIGGER ═══
        This function is the single place in the client that observes every zone
@@ -587,6 +592,9 @@ export async function initPixiRenderer(canvas) {
     }
     const _t5 = performance.now();
     update._lastStages.appMs = _t5 - _t4;
+    /* v2.3.3152: every few seconds, Pixi's texture pool lets go of what has
+       sat unused for 30 s (texturePoolTrim.js) */
+    if (!(_t5 - (update._poolSweepAt || 0) < 5000)) { update._poolSweepAt = _t5; try { sweepTexturePool(_t5); } catch (e) { /* the pool as it was */ } }
 
     const _renderTotal = _t5 - _t0;
     if (!update._pp) update._pp = { lastT: 0, worst: 0, tile: 0, entity: 0, effects: 0, fps: 0, render: 0, monsters: 0 };

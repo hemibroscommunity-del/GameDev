@@ -79,6 +79,10 @@ export function installBindGroupFix() {
   return true;
 }
 
+/* texturePoolTrim.js destroys pooled textures a Pixi bind group may still hold
+   (the filter system's keeps its last input): only safe with this on */
+export function bindGroupFixOn() { return _installed; }
+
 if (typeof window !== 'undefined') {
   window.__btBindFix = () => ({ installed: _installed, off: urlOff(), swaps: _swaps });   /* QA (mp-sceneleak) */
 }

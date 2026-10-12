@@ -15,6 +15,11 @@
  *     mask was its own picture, Pixi's pooled mask filter kept it, freeing the
  *     cave's art made Pixi destroy that filter's bind group, and the next
  *     sprite mask that took the filter broke the frame (bindGroupFix.js).
+ *   - PIXI'S TEXTURE POOL KEPT EVERY TEXTURE IT HANDED OUT: the scratch
+ *     textures of its filters and every canvas Text's (name plates, words),
+ *     on the GPU for good -- render textures at home 2.3 -> 8 -> 10 MB over
+ *     two cave trips.  Now one unused for 30 s is destroyed, and a zone
+ *     change lets go of them all (texturePoolTrim.js).
  *   - A REBUILD LEFT ITS SHADOW SYSTEM BEHIND, in shadows.js's module list,
  *     with its pools, its filter and its old world container: a black
  *     screen's rebuild (v2.3.3017, v2.3.3151) made one more every time.
@@ -29,8 +34,11 @@
  *      another sprite mask drawn: no render throw (Pixi's pooled mask filter
  *      kept the freed picture, and Pixi destroyed the filter's bind group --
  *      the hunt's app.render crash after a Great Cave trip; bindGroupFix.js);
- *   4. after two renderer rebuilds the module holds ONE shadow system;
- *   5. the render loop did not throw, and no page errors.
+ *   4. twenty texts drawn and destroyed (a cave wave's name plates): their
+ *      textures go back to Pixi's texture pool, a sweep destroys them
+ *      (texturePoolTrim.js), and a text and the filters still draw;
+ *   5. after two renderer rebuilds the module holds ONE shadow system;
+ *   6. the render loop did not throw, and no page errors.
  */
 import * as H from './harness.mjs';
 
@@ -139,7 +147,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`a sprite mask's picture freed, the next sprite mask still draws: no render throw (${maskThrows.length}; the fix swapped ${maskTest && maskTest.fix ? maskTest.fix.swaps : '?'} entries)`,
       !!(maskTest && maskTest.ok) && maskThrows.length === 0, { maskTest, maskThrows: maskThrows.slice(0, 2) });
 
-    /* 4: two rebuilds, one shadow system */
+    /* 4: Pixi's texture pool lets go.  Twenty texts drawn at once (a cave
+       wave's name plates), then destroyed: their textures go back to the
+       pool, which kept them on the GPU for good.  A sweep (the zone change's,
+       or the render loop's after 30 s) destroys them; then a text and the
+       filters (the shadows' layer, a sprite mask) still draw. */
+    H.takeRenderThrows();
+    const pool = await P.page.evaluate(async () => {
+      const r = window._pixiRenderer, app = r && r.app;
+      if (!app || !window.__btTexPool) return { err: 'no probe' };
+      let any = null;
+      const find = (n) => { if (any || !n) return; if (n.text != null && n.style && n.constructor && n.constructor.name !== 'BitmapText') { any = n; return; } for (const c of n.children || []) find(c); };
+      find(app.stage);
+      if (!any) return { err: 'no Text on the stage to borrow the class from' };
+      const TextCls = any.constructor;
+      const frames = (n) => new Promise((res) => { let k = 0; const f = () => (++k >= n ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+      const S = window._gameState.current;
+      const world = app.stage.children.find((c) => c.label === 'world') || app.stage;
+      const before = window.__btTexPool();
+      const texts = [];
+      for (let i = 0; i < 20; i++) {
+        const t = new TextCls({ text: 'Lv 26 Rock Golem ' + i, style: { fontSize: 22, fill: 0xffffff } });
+        t.x = S.player.x - 80; t.y = S.player.y - 140 - i * 4;
+        world.addChild(t); texts.push(t);
+      }
+      await frames(4);
+      for (const t of texts) t.destroy();
+      await frames(3);
+      const handedBack = window.__btTexPool();
+      window.__btTexPoolSweep(0);
+      const swept = window.__btTexPool();
+      const t2 = new TextCls({ text: 'still drawn', style: { fontSize: 22, fill: 0xffffff } });
+      t2.x = S.player.x - 60; t2.y = S.player.y - 160;
+      world.addChild(t2);
+      await frames(8);
+      t2.destroy();
+      return { before, handedBack, swept };
+    });
+    const poolThrows = H.takeRenderThrows();
+    rec.ok(`Pixi's texture pool lets go: twenty name plates' textures handed back (${pool.handedBack ? pool.handedBack.pooled : '?'} pooled, ${pool.handedBack ? pool.handedBack.pooledMB : '?'} MB), swept to ${pool.swept ? pool.swept.pooled : '?'}, and text and filters still draw (${poolThrows.length} render throws)`,
+      !!(pool.handedBack && pool.swept) && pool.handedBack.installed && pool.handedBack.pooled >= 20 && pool.swept.pooled === 0 && poolThrows.length === 0,
+      { pool, poolThrows: poolThrows.slice(0, 2) });
+
+    /* 5: two rebuilds, one shadow system */
     const systemsOf = () => P.page.evaluate(() => { const p = window.__btLightFx && window.__btLightFx.probe(); return p && p.shadows ? p.shadows.systems : null; });
     const sys0 = await systemsOf();
     for (let k = 0; k < 2; k++) {

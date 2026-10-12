@@ -2173,9 +2173,14 @@ Two protocol versions coexist; both must keep working:
     picture freed is not only your sprites' business: Pixi's pooled mask
     filter and shared shaders keep the last picture they drew, and pixi 8.17
     destroyed their bind group with it, so the next sprite mask broke the
-    frame (TRAPS §143, `src/rendering/bindGroupFix.js`). The census is
+    frame (TRAPS §143, `src/rendering/bindGroupFix.js`). Pixi's own
+    TexturePool (every filter pass's scratch, every canvas Text's texture)
+    kept on the GPU the most of each size ever used at once; one unused for
+    30 s is destroyed now, and a zone change empties it
+    (`src/rendering/texturePoolTrim.js`, only with the bind-group fix on;
+    `?poolkeep` to compare; `window.__btTexPool()`). The census is
     `window.__btSceneCensus(depth)` (the scene counted by path); `mp-sceneleak`
-    checks all three, a rebuild's shadow system included.
+    checks all four, a rebuild's shadow system included.
   - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
     the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
     home again, three times. Each kind of memory's highest reading must stay

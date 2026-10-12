@@ -5,6 +5,7 @@
 import { watchContextLoss } from '../debug/crashTrap.js';
 import { installSharpPixels } from './sharpPixels.js'; /* v2.3.2770 */
 import { installBindGroupFix } from './bindGroupFix.js'; /* v2.3.3152: a freed picture no longer breaks Pixi's pooled mask */
+import { installTexturePoolTrim } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool gives back what it does not use */
 import { SHADE } from './formShade.js';
 import { Application, Cache, Container, TextureSource } from 'pixi.js';
 
@@ -628,6 +629,7 @@ export async function createPixiApp(canvas) {
   /* v2.3.3152: bindGroupFix.js -- on BindGroup's prototype, so the groups
      made before this (module-level filters) are covered too; once a page */
   try { installBindGroupFix(); } catch (e) { /* Pixi as it ships */ }
+  try { installTexturePoolTrim(); } catch (e) { /* the pool as Pixi ships it */ }
   try {
     const app = new Application();
     const putBack = withoutDepthBuffer(canvas);   /* v2.3.3072 */
