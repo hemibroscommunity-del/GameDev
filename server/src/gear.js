@@ -623,8 +623,19 @@ export const gearMethods = {
     if (!stashItem) return;
     /* v2.3.3160: ...a weapon (never a piece of gear that crossed before this
        fix), into the one slot its type is worn in. */
-    if (this._isGearNotWeapon(stashItem)) return;
-    if (slot !== this._weaponSlotFor(stashItem)) return;
+    /* v2.3.3160: ...and refused OUT LOUD.  The game moves the weapon on its
+       own screen before the worker answers (ItemDetailPopup), putting the old
+       one at the END of the bag where the worker swaps in place -- so a
+       second equip tapped before the first answer names an index that holds a
+       different weapon here, and these checks refuse it.  Silent, the screen
+       kept its guess until the next join; resending the weapon fields puts it
+       back to what the worker holds (the cooking refusals' shape). */
+    const refuseWeapons = () => {
+      const w = this._wsBySessionId(session.id);
+      if (w) this._resendPlayerState(w, session.id, ['weapon', 'rangedWeapon', 'staffWeapon', 'weaponStash', 'activeSlot']);
+    };
+    if (this._isGearNotWeapon(stashItem)) return refuseWeapons();
+    if (slot !== this._weaponSlotFor(stashItem)) return refuseWeapons();
     // v2.3.1661 (prog3): the tier gate, server-enforced at last —
     // see _prog3EquipOk above.  Silent reject (the stat_allocate
     // posture); the client's own gate shows the requirement.

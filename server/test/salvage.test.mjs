@@ -329,6 +329,17 @@ const mkSword = (gearBase, type, quality) => ({ type: type || 'sword', tier: 'co
   await msg('equip_request', { stashIdx: 0, slot: 'staffWeapon' });
   await msg('equip_request', { stashIdx: 0, slot: 'rangedWeapon' });
   check('a sword is refused by the staff and bow slots', !ps().staffWeapon && !ps().rangedWeapon && ps().weaponStash.length === 3);
+  /* v2.3.3160: ...and the refusal is ANSWERED.  The game moves the weapon on
+     its own screen first, so a refused equip left it showing a swap the
+     worker never made until the next join (two quick equips can name an index
+     that now holds another weapon here). */
+  {
+    const st = ws.sent.filter((m) => m.type === 'player_state');
+    const p = st.length ? (st[st.length - 1].payload || st[st.length - 1]) : null;
+    check('a refused equip is answered with the worker\'s own weapons and bag',
+      !!p && Array.isArray(p.weaponStash) && p.weaponStash.length === 3 && 'rangedWeapon' in p,
+      st.map((m) => Object.keys(m.payload || m)));
+  }
   await msg('equip_request', { stashIdx: 1, slot: 'weapon' });
   await msg('equip_request', { stashIdx: 2, slot: 'weapon' });
   check('a bow and a staff are refused by the melee slot', !ps().weapon && ps().weaponStash.length === 3);
