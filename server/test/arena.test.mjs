@@ -9,8 +9,11 @@
  *      activates as a wager-0 duel tagged arenaMatch, consent pair
  *      registered, ps._arenaMatch flags set, arena_match_start sent.
  *   4. A server-resolved kill advances the bracket: champion crowned,
- *      2000g paid via _creditPlayer, entry records cleaned,
- *      arena_tournament_complete emitted, flags cleared.
+ *      the bracket's prize paid via _creditPlayer (v2.3.3178: 250g a
+ *      gladiator, so 500g for this 2-bracket; was 2000g for any bracket),
+ *      entry records cleaned, arena_tournament_complete emitted, flags
+ *      cleared.  §4b (v2.3.3178): the prize follows the bracket and the
+ *      house adds at most HOUSE_GOLD_PER_HOUR to prizes in a clock hour.
  *   5. 4-player bracket: concurrent round-1 matches, round 2 forms from
  *      the winners, final crowns the champion.
  *   6. Shot-clock timeout resolves by hp-fraction tiebreak.
@@ -25,6 +28,7 @@
  *      coins or bracket state.
  */
 import { GameRoom } from '../src/index.js';
+import { ARENA } from '../src/gladiator.js';
 
 const PREMIX = !!globalThis.__ARENA_PREMIX;
 
@@ -152,12 +156,100 @@ psB4.hp = 0;
 room._handlePlayerDeath(psB4, P('b'), 'pvp:' + P('a'));
 await new Promise((r) => setTimeout(r, 25));
 check('kill resolves the match server-side', room._arena.champion && room._arena.champion.playerId === P('a'), room._arena.champion);
-check('champion paid via mail/escrow', room.playerState[P('a')].coins === 900 + 2000, room.playerState[P('a')].coins);
+check('champion paid via mail/escrow', room.playerState[P('a')].coins === 900 + 2 * ARENA.PRIZE_PER_ENTRANT, room.playerState[P('a')].coins);
+check('v2.3.3178: a 2-gladiator bracket pays 500, not 2,000 for 200 of entries', room.playerState[P('a')].coins === 900 + 500, room.playerState[P('a')].coins);
 check('entry records cleaned after the pot', ![...state._store.keys()].some((k) => k.startsWith('arena_entry:' + tid2 + ':')));
 check('completion + result events emitted', room.eventBuffer.some((e) => e.type === 'arena_match_result') && room.eventBuffer.some((e) => e.type === 'arena_tournament_complete'));
 check('healing-gate flags cleared', !room.playerState[P('a')]._arenaMatch);
 psB4.dying = false; psB4.dead = false; psB4.hp = 100;
 room._arena = null; room._arenaClearAt = 0;
+
+/* ── 4b. v2.3.3178: the champion's prize follows the bracket ──
+ * It was 2,000 for any bracket, so a 2-player tournament paid 2,000 for
+ * 200 of entries and two accounts could run one every 2-3 minutes.  Now it
+ * is 250 a gladiator (a full 8 still 2,000), the entries its first 100
+ * each, and the house adds the rest out of at most 3,600 an hour, game-wide. */
+{
+  const HOUR = 3600000;
+  const hourOf = (t) => Math.floor(t / HOUR);
+  const prizeFn = typeof room._arenaPrize === 'function';
+  check('the prize is worked out by the bracket (_arenaPrize)', prizeFn);
+  const prizeAt = (n, now, used) => {
+    if (!prizeFn) return null;
+    room._arenaHouse = { hour: hourOf(now), used };
+    return room._arenaPrize(n, now).prize;
+  };
+  const now = Date.now();
+  check('8 gladiators: 2,000, as before', prizeAt(8, now, 0) === 2000, prizeAt(8, now, 0));
+  check('4 gladiators: 1,000', prizeAt(4, now, 0) === 1000, prizeAt(4, now, 0));
+  check('2 gladiators: 500', prizeAt(2, now, 0) === 500, prizeAt(2, now, 0));
+  check('the house tops up only what the hour has left (100 left: 200 + 100)', prizeAt(2, now, ARENA.HOUSE_GOLD_PER_HOUR - 100) === 300, prizeAt(2, now, ARENA.HOUSE_GOLD_PER_HOUR - 100));
+  check('...and nothing once the hour is spent: the champion takes the entries', prizeAt(8, now, ARENA.HOUSE_GOLD_PER_HOUR) === 800, prizeAt(8, now, ARENA.HOUSE_GOLD_PER_HOUR));
+  if (prizeFn) {
+    room._arenaHouse = { hour: hourOf(now) - 1, used: ARENA.HOUSE_GOLD_PER_HOUR };
+    check('a new hour starts a new budget', room._arenaPrize(8, now).prize === 2000 && room._arenaHouse.used === 1200, room._arenaHouse);
+    room._arenaHouse = { hour: hourOf(now), used: 0 };
+    let total = 0;
+    for (let i = 0; i < 20; i++) total += room._arenaPrize(2, now).prize - 200;
+    check('twenty 2-player tournaments in one hour get 3,600 from the house, no more', total === ARENA.HOUSE_GOLD_PER_HOUR, total);
+  }
+
+  // End to end: a 2-bracket crowned with the hour nearly spent, the hour's
+  // total saved BEFORE the pot is paid, and the wire telling the real prize.
+  const tour = async (w, l) => {
+    room._arena = null; room._arenaClearAt = 0;
+    for (const id of [w, l]) { const ps = room.playerState[id]; ps.coins = 1000; ps.hp = 100; ps.dying = false; ps.dead = false; }
+    await room._arenaJoin(w, w);
+    await room._arenaJoin(l, l);
+    room._arena.gatherDeadline = Date.now() - 1;
+    room._arenaLazyTick(Date.now());
+    const t = room._arena;
+    const ps = room.playerState[l];
+    ps.hp = 0;
+    room._handlePlayerDeath(ps, l, 'pvp:' + w);
+    await new Promise((r) => setTimeout(r, 25));
+    ps.dying = false; ps.dead = false; ps.hp = 100;
+    return t;
+  };
+  const order = [];
+  const put0 = state.storage.put;
+  state.storage.put = async (k, v) => { order.push(k); return put0(k, v); };
+  room._arenaHouse = { hour: hourOf(Date.now()), used: ARENA.HOUSE_GOLD_PER_HOUR - 50 };
+  const t4b = await tour(P('a'), P('b'));
+  state.storage.put = put0;
+  check('a 2-bracket with 50 left in the hour pays the entries + 50', room.playerState[P('a')].coins === 900 + 250, room.playerState[P('a')].coins);
+  const rec4b = state._store.get('arena_house');
+  check('the hour\'s house total is saved', rec4b && rec4b.used === ARENA.HOUSE_GOLD_PER_HOUR && rec4b.hour === hourOf(Date.now()), rec4b);
+  const iHouse = order.indexOf('arena_house'), iPot = order.indexOf('oplog:arenapot:' + (t4b && t4b.id));
+  check('...before the pot is paid (a restart between them adds nothing)', iHouse >= 0 && iPot > iHouse, { iHouse, iPot });
+  const wire4b = room._arenaWire();
+  check('the poll\'s champion carries the prize paid', wire4b && wire4b.champion && wire4b.champion.prize === 250, wire4b && wire4b.champion);
+  check('...and so does the crown\'s event', room.eventBuffer.some((e) => e.type === 'arena_tournament_complete' && e.payload.champion && e.payload.champion.prize === 250));
+  await tour(P('a'), P('b'));
+  check('the next crown that hour takes the entries only', room.playerState[P('a')].coins === 900 + 200, room.playerState[P('a')].coins);
+
+  // A restart: the hour's total comes back from storage at the first join.
+  const room2 = new GameRoom(state, mockEnv);
+  const ws2 = fakeWs('r2');
+  room2.sessions.set(ws2, baseSession());
+  await room2.webSocketMessage(ws2, JSON.stringify({ type: 'join', id: P('a'), name: 'A', phrase: 'p-' + P('a'), data: { x: 0, y: 0, z: 'town' } }));
+  room2.playerState[P('a')].coins = 1000;
+  await room2._arenaJoin(P('a'), 'A');
+  check('a restart keeps the hour\'s house total (read at the first join)', room2._arenaHouse && room2._arenaHouse.used === ARENA.HOUSE_GOLD_PER_HOUR, room2._arenaHouse);
+  await room2._arenaLeave(P('a'));
+
+  // A failed read of the total adds nothing (the champion takes the entries).
+  room._arenaHouse = undefined;
+  const get0 = state.storage.get;
+  state.storage.get = async (k) => { if (k === 'arena_house') throw new Error('storage down'); return get0(k); };
+  await tour(P('a'), P('b'));
+  state.storage.get = get0;
+  check('with the hour\'s total unreadable the house adds nothing', room.playerState[P('a')].coins === 900 + 200, room.playerState[P('a')].coins);
+
+  room._arena = null; room._arenaClearAt = 0; room._arenaHouse = { hour: 0, used: 0 };
+  state._store.delete('arena_house');
+  room.eventBuffer.length = 0;
+}
 
 // ── 5 + 6 + 7. 4-player bracket: kill, timeout tiebreak, walkover ──
 for (const n of ['a', 'b', 'c', 'd']) { room.playerState[P(n)].coins = 1000; }

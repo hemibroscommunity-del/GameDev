@@ -28,7 +28,9 @@
  * first, per ARCHITECTURE-HANDOFF rule 6).  ECONOMICS NOTE, flagged
  * deliberately: champion 2000g (GDD §43) vs <= 800g of entries mints up
  * to 1,200g of house gold per tournament -- an intentional prototype
- * faucet the owner can tune by changing CHAMPION_REWARD.
+ * faucet.  v2.3.3178: the prize now follows the bracket (PRIZE_PER_ENTRANT,
+ * 2,000 for a full 8) and the house adds at most HOUSE_GOLD_PER_HOUR to
+ * prizes in a clock hour, game-wide (_arenaPrize).
  *
  * Healing is disabled for players in an active arena match
  * (ps._arenaMatch): town HP regen, eat_request, shop healFish, and the
@@ -44,7 +46,18 @@
 
 export const ARENA = {
   ENTRY_FEE: 100,          // GDD §43
-  CHAMPION_REWARD: 2000,   // GDD §43 (see economics note above)
+  /* v2.3.3178: the champion's prize FOLLOWS THE BRACKET.  It was 2,000 for
+     any bracket, so a 2-player tournament paid 2,000 for 200 of entries and
+     two accounts could run one every 2-3 minutes (~43,000 gold an hour).
+     Now the prize is PRIZE_PER_ENTRANT a gladiator -- a full bracket of 8
+     still 2,000 (GDD §43), 4 pay 1,000, 2 pay 500 -- of which the entries
+     are the first ENTRY_FEE each and the HOUSE adds the rest, at most
+     HOUSE_GOLD_PER_HOUR in any clock hour across the whole game (three full
+     brackets).  Past that the champion takes the entries and whatever the
+     hour has left.  Free accounts can't be told apart, so only a game-wide
+     bound bounds what they can make. */
+  PRIZE_PER_ENTRANT: 250,
+  HOUSE_GOLD_PER_HOUR: 3600,
   MAX_BRACKET: 8,          // design review: 16 never fills at prototype population
   GATHER_MS: 60000,        // start timer from the first join
   MATCH_MS: 180000,        // per-match shot-clock (duel.expiresAt)
@@ -159,6 +172,9 @@ export const arenaMethods = {
 
   async _arenaJoin(playerId, playerName) {
     if (!playerId || typeof playerId !== 'string') return { ok: false, settled: true, error: 'Missing playerId' };
+    /* v2.3.3178: the house's prize money this hour, read before the first
+       tournament can exist (a crown is synchronous; _arenaPrize). */
+    await this._arenaHouseLoad();
     const ps = this.playerState[playerId];
     if (!ps || ps.dying || ps.dead) return { ok: false, settled: true, error: 'Not in game' };
     if (this._arena && this._arena.status === 'running') return { ok: false, settled: true, error: 'Tournament in progress' };
@@ -489,19 +505,60 @@ export const arenaMethods = {
     }
   },
 
+  /* v2.3.3178: the house's share of this hour's prizes, read once from
+     storage (`arena_house` {hour, used}).  Left undefined when the read
+     fails, and _arenaPrize then adds nothing (the champion still takes the
+     entries); the next join tries again. */
+  async _arenaHouseLoad() {
+    if (this._arenaHouse) return;
+    try {
+      const rec = await this.state.storage.get('arena_house');
+      if (this._arenaHouse) return;
+      const hour = Math.floor(Number(rec && rec.hour) || 0);
+      const used = Math.max(0, Math.floor(Number(rec && rec.used) || 0));
+      this._arenaHouse = { hour, used };
+    } catch (e) { /* unknown: no top-up until a join reads it */ }
+  },
+
+  /* v2.3.3178: the champion's prize (ARENA's note).  The entries are the
+     prize's first ENTRY_FEE a gladiator; the house tops it up to
+     PRIZE_PER_ENTRANT a gladiator out of what this clock hour has left of
+     HOUSE_GOLD_PER_HOUR.  Synchronous, so the crown's event and the poll
+     carry the real number at once; the caller saves the hour's total
+     before it pays. */
+  _arenaPrize(entrants, now) {
+    const n = Math.max(0, Math.floor(Number(entrants) || 0));
+    const pot = ARENA.ENTRY_FEE * n;
+    const want = Math.max(0, (ARENA.PRIZE_PER_ENTRANT - ARENA.ENTRY_FEE) * n);
+    const h = this._arenaHouse;
+    let topUp = 0;
+    if (h) {
+      const hour = Math.floor(now / 3600000);
+      if (h.hour !== hour) { h.hour = hour; h.used = 0; }
+      topUp = Math.min(want, Math.max(0, ARENA.HOUSE_GOLD_PER_HOUR - h.used));
+      h.used += topUp;
+    }
+    return { prize: pot + topUp, topUp };
+  },
+
   _arenaCrown(champion) {
     const t = this._arena;
     if (!t || t.champion) return;
-    t.champion = { playerId: champion.playerId, playerName: champion.playerName };
+    const { prize, topUp } = this._arenaPrize(t.players.length, Date.now());
+    t.champion = { playerId: champion.playerId, playerName: champion.playerName, prize };
     t.status = 'complete';
     this.eventBuffer.push({ type: 'arena_tournament_complete', payload: { tid: t.id, champion: t.champion } });
     const tid = t.id;
     const entrants = t.players.map((p) => p.playerId);
+    const house = topUp > 0 && this._arenaHouse ? { hour: this._arenaHouse.hour, used: this._arenaHouse.used } : null;
     // Fire-and-forget settle: champion pot (stamped) then entry-record
     // cleanup; the sweep converges a crash between the two (rule 6).
+    // v2.3.3178: the hour's house total is saved BEFORE the pot is paid,
+    // so a restart between them costs the hour some budget, never adds any.
     (async () => {
       try {
-        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: ARENA.CHAMPION_REWARD }, note: 'Gladiator Arena champion' });
+        if (house) await this.state.storage.put('arena_house', house);
+        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: prize }, note: 'Gladiator Arena champion' });
         for (const pid of entrants) await this.state.storage.delete('arena_entry:' + tid + ':' + pid);
       } catch (e) { /* sweep repairs */ }
     })();

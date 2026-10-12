@@ -140,7 +140,7 @@ const dRes = msgsOfType(wss.d, 'arena_stake_result');
 /* v2.3.3177: a pool.  c's 100 on the winner, d's 200 on the loser: the
    fighter keeps 10% of the 200 (20), c gets 100 back + the other 180. */
 check('winning sponsor paid their stake + the losing pool after the cut', room.playerState[P('c')].coins === 900 + 280 && cRes.length === 1 && cRes[0].payload.won === true && cRes[0].payload.payout === 280, { coins: room.playerState[P('c')].coins, cRes: cRes.map((r) => r.payload) });
-check('the winning competitor keeps the cut of the losing stakes', room.playerState[P('a')].coins === 900 + 20 + ARENA.CHAMPION_REWARD, { a: room.playerState[P('a')].coins });
+check('the winning competitor keeps the cut of the losing stakes', room.playerState[P('a')].coins === 900 + 20 + 2 * ARENA.PRIZE_PER_ENTRANT, { a: room.playerState[P('a')].coins });
 check('losing sponsor notified, no payout', dRes.length === 1 && dRes[0].payload.won === false && dRes[0].payload.payout === 0 && room.playerState[P('d')].coins === 800, dRes.map((r) => r.payload));
 check('stake records deleted after settlement', !state._store.has(stakeKey) && !state._store.has('arena_stake:' + t.id + ':' + m.id + ':' + P('d')));
 
