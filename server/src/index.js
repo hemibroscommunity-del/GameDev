@@ -2867,6 +2867,17 @@ export class GameRoom {
 
   _rollShardForKill(zoneId) {
     if (Math.random() >= this.SHARD_DROP_RATE) return null;
+    /* v2.3.3170: only a zone that HAS a shard -- the nine element zones, which
+       are exactly ZONES' keys, each with its shard_<zone> item.  A Workshop
+       dungeon's monsters die in 'dungeon:<instance id>' and carry no `home`
+       (wheelzone.js _rewardZone), so this minted 'shard_dungeon:1a2b3c4d':
+       not an item (the game cannot name or draw it) and a NEW key every run,
+       which Diego's pricer reads as a shard and buys at his empty-pile price
+       every time, never decaying, each sale one more permanent key in his
+       one shop_stock record.  The Wheel met the same thing as 'shard_wheel'
+       and was fixed for itself only (v2.3.2978).  Checked AFTER the roll so
+       the kill draws exactly the random numbers it always did. */
+    if (!Object.prototype.hasOwnProperty.call(ZONES, zoneId)) return null;
     return 'shard_' + zoneId;
   }
 

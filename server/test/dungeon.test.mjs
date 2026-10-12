@@ -65,6 +65,8 @@
  *       the same instance (same dungeon_started, no new client code);
  *       members in another zone are left behind, and a non-leader start
  *       pulls nobody.
+ *   27. v2.3.3170: a Workshop kill drops no shard named after its instance
+ *       (a real zone's and a Wheel monster's kills still drop theirs).
  */
 import { GameRoom } from '../src/index.js';
 import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
@@ -613,6 +615,43 @@ check('non-leader start pulls nobody (leader-initiated only)',
   msgsOfType(wsL, 'dungeon_started').length === 0 && msgsOfType(wsN, 'dungeon_started').length === 0,
   { L: msgsOfType(wsL, 'dungeon_started').length, N: msgsOfType(wsN, 'dungeon_started').length });
 room._dungeonCleanup(room._dungeons.get(zoneG2.slice('dungeon:'.length)));
+
+/* ── 27. v2.3.3170: a Workshop kill drops no shard named after its instance ──
+ * A Workshop monster dies in 'dungeon:<instance id>' with no `home`, so the
+ * 10% shard roll minted 'shard_dungeon:<id>': not an item, a new key every
+ * run, bought by Diego at his empty-pile price every time.  The roll is
+ * forced to land (Math.random 0) so every kill below answers the question;
+ * the controls show a real zone's kill and a Wheel monster's still drop
+ * their land's shard. */
+{
+  const wsS = fakeWs('shards');
+  await join(wsS, 'bp_dg_shards');
+  const psS = room.playerState['bp_dg_shards'];
+  psS.level = 5;
+  wsS.sent.length = 0;
+  await start(wsS, { waves: 1, monsterLevel: 1, hasBoss: false, monsters: [{ archetype: 'fodder', count: 4 }] });
+  const zoneS = msgsOfType(wsS, 'dungeon_started')[0]?.payload?.zone;
+  check('setup: a Workshop run for the shard check', typeof zoneS === 'string' && zoneS.startsWith('dungeon:') && (room.monsters[zoneS] || []).length === 4, zoneS);
+  const realRandom = Math.random;
+  Math.random = () => 0;                       // every roll lands, the shard's included
+  let piles;
+  try {
+    piles = (room.monsters[zoneS] || []).map((m) => room._spawnLootForKill(zoneS, m, 'bp_dg_shards', ['bp_dg_shards'], { bp_dg_shards: 1 }));
+    const meadowPile = room._spawnLootForKill('meadow', { id: 'm-shard-ctl', arch: 'fodder', level: 1, gold: 5, x: 0, y: 0 }, 'bp_dg_shards', ['bp_dg_shards'], { bp_dg_shards: 1 });
+    const wheelPile = room._spawnLootForKill('wheel', { id: 'wm-shard-ctl', arch: 'fodder', level: 1, gold: 5, x: 0, y: 0, home: 'frost' }, 'bp_dg_shards', ['bp_dg_shards'], { bp_dg_shards: 1 });
+    check('control: a kill in a real zone still drops that zone\'s shard', meadowPile && meadowPile.shard === 'shard_meadow', meadowPile && meadowPile.shard);
+    check('control: a Wheel monster still drops its land\'s shard', wheelPile && wheelPile.shard === 'shard_frost', wheelPile && wheelPile.shard);
+  } finally {
+    Math.random = realRandom;
+  }
+  const shards = piles.filter(Boolean).map((p) => p.shard);
+  check('a Workshop kill drops no shard named after its instance',
+    piles.length === 4 && shards.every((s) => s == null), shards);
+  for (const z of [zoneS, 'meadow', 'wheel']) {
+    if (room.loot[z]) room.loot[z] = room.loot[z].filter((p) => !String(p.lootId).includes('shard-ctl') && p.zone !== zoneS);
+  }
+  room._dungeonCleanup(room._dungeons.get(zoneS.slice('dungeon:'.length)));
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
