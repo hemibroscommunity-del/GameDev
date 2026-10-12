@@ -76,6 +76,7 @@
  */
 import { Container, Mesh, MeshGeometry, Shader, GlProgram, UniformGroup, Texture, BufferImageSource, Rectangle } from 'pixi.js';
 import { setWheelWaterMoves } from '../game/wheelTrial.js';
+import { isPaletteSource, paletteAtlasSource, paletteOn, makePaletteSource } from './paletteTex.js';   /* v2.3.3190 */
 
 const VERT = `
 in vec2 aPosition;
@@ -424,6 +425,47 @@ function program() {
   if (!_program) _program = GlProgram.from({ vertex: VERT, fragment: FRAG, name: 'bt-wheel-water', preferredFragmentPrecision: 'highp' });
   return _program;
 }
+
+/* ═══ v2.3.3190: THE SAME WATER OVER A PIECE KEPT AS COLOUR NUMBERS ═══
+   A piece the palette batcher draws (rendering/paletteTex.js) is an R8
+   texture of colour numbers and a row of the colours' atlas, so the swell
+   reads the piece through the same lookup the batcher does: the four texels
+   round the point, their colours, blended as the chip's smooth sampling
+   blends them -- in the piece's OWN size (the texture's rows are padded on
+   the right; the quad's coordinates span the picture, as before).  GLSL ES
+   3.00 for texelFetch; every other line is the program above. */
+const PAL_SAMPLE = `
+uniform highp sampler2D uPieceIdx;
+uniform highp sampler2D uPal;
+uniform highp float uPalRow;
+uniform highp vec2 uPieceSize;
+highp vec4 palColour(highp ivec2 p, highp int row)
+{
+    return texelFetch(uPal, ivec2(int(texelFetch(uPieceIdx, p, 0).r * 255.0 + 0.5), row), 0);
+}
+vec4 pieceAt(highp vec2 uv)
+{
+    highp vec2 tc = uv * uPieceSize - 0.5;
+    highp vec2 fl = floor(tc);
+    highp vec2 f = tc - fl;
+    highp ivec2 mx = ivec2(uPieceSize) - 1;
+    highp ivec2 a = clamp(ivec2(fl), ivec2(0), mx);
+    highp ivec2 b = clamp(ivec2(fl) + 1, ivec2(0), mx);
+    highp int row = int(uPalRow + 0.5);
+    return mix(mix(palColour(a, row), palColour(ivec2(b.x, a.y), row), f.x),
+               mix(palColour(ivec2(a.x, b.y), row), palColour(b, row), f.x), f.y);
+}
+`;
+function palFrag() {
+  const a = 'uniform sampler2D uPiece;', b = 'texture(uPiece, vUV + off * uUvPerPx)';
+  if (FRAG.indexOf(a) < 0 || FRAG.indexOf(b) < 0) throw new Error('the water program changed: its palette twin needs the same edit');
+  return '#version 300 es\n' + FRAG.replace(a, PAL_SAMPLE).replace(b, 'pieceAt(vUV + off * uUvPerPx)');
+}
+let _palProgram = null;
+function palProgram() {
+  if (!_palProgram) _palProgram = GlProgram.from({ vertex: '#version 300 es\n' + VERT, fragment: palFrag(), name: 'bt-wheel-water-pal', preferredFragmentPrecision: 'highp' });
+  return _palProgram;
+}
 /* `?waves=k` in the address: the motion k times as strong, 0.25 to 3 (the
    owner can try it bolder or calmer on a phone, where there is no console) */
 function wavesStrength() {
@@ -484,10 +526,10 @@ function webgl2() {
 }
 
 /* did the program link?  Read off the GL program Pixi built for it */
-function linked() {
+function linked(prog) {
   try {
     const r = _renderer, gl = r && r.gl;
-    const pd = r && r.shader && typeof r.shader._getProgramData === 'function' ? r.shader._getProgramData(program()) : null;
+    const pd = r && r.shader && typeof r.shader._getProgramData === 'function' ? r.shader._getProgramData(prog || program()) : null;
     if (!gl || !pd || !pd.program) return false;
     return !!gl.getProgramParameter(pd.program, gl.LINK_STATUS);
   } catch (e) { return false; }
@@ -537,9 +579,22 @@ function unmake(mesh) {
   try { if (sh) sh.destroy(false); } catch (e) { /* gone */ }
 }
 
-/* the field's texture and the piece's own picture, over the piece's quad */
+/* the field's texture and the piece's own picture, over the piece's quad --
+   v2.3.3190: or the piece's colour numbers and their row of the atlas */
 function meshFor(tex, pic, geometry) {
-  const shader = new Shader({ glProgram: program(), resources: { uField: tex.source, uPiece: pic.source, waterUniforms: _uni } });
+  const ps = pic.source;
+  if (isPaletteSource(ps)) {
+    const P = ps._btPal;
+    const shader = new Shader({ glProgram: palProgram(), resources: {
+      uField: tex.source, uPieceIdx: ps, uPal: paletteAtlasSource(), waterUniforms: _uni,
+      pieceUniforms: new UniformGroup({
+        uPalRow: { value: P.row, type: 'f32' },
+        uPieceSize: { value: new Float32Array([P.w, P.h]), type: 'vec2<f32>' },
+      }),
+    } });
+    return new Mesh({ geometry, shader });
+  }
+  const shader = new Shader({ glProgram: program(), resources: { uField: tex.source, uPiece: ps, waterUniforms: _uni } });
   return new Mesh({ geometry, shader });
 }
 
@@ -549,16 +604,30 @@ function meshFor(tex, pic, geometry) {
 export function prewarmWheelWater() {
   if (_ok != null) return _ok;
   if (!wavesOn() || !webgl2()) { _ok = false; return false; }
-  let mesh = null;
+  let mesh = null, pmesh = null, psrc = null;
   try {
     const sea = uniformTexture([240, 255, 128, 128]);
     mesh = meshFor(sea, sea, quad(0, 0, 8, 8, 0, 0, 1, 1));
     mesh.alpha = 0.001;
     _renderer.render({ container: mesh });
     _ok = linked();
+    /* v2.3.3190: and its twin over a piece kept as colour numbers, where the
+       ground is drawn so */
+    if (_ok && paletteOn()) {
+      psrc = makePaletteSource({ idx: new Uint8Array([0, 0, 0, 0]), w: 1, h: 1, stride: 4,
+        rgba: new Uint8Array([40, 90, 140, 255]), alphaMode: 'no-premultiply-alpha', label: 'bt-water-prewarm' });
+      if (psrc) {
+        pmesh = meshFor(sea, new Texture({ source: psrc }), quad(0, 0, 8, 8, 0, 0, 1, 1));
+        pmesh.alpha = 0.001;
+        _renderer.render({ container: pmesh });
+        _ok = linked(palProgram());
+      }
+    }
   } catch (e) { _ok = false; }
   if (!_ok) _stats.linkError = 'the water program did not build on this device';
   unmake(mesh);
+  unmake(pmesh);
+  try { if (psrc) psrc.destroy(); } catch (e) { /* gone */ }
   _stats.prewarmed = true;
   return _ok;
 }

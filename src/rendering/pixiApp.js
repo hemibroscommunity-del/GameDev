@@ -464,15 +464,21 @@ function buildScene(app) {
         const rows = [];
         const byKind = {};
         let bytes = 0;
+        /* v2.3.3190: bytes a pixel by the texture's format -- the Wheel's
+           ground and objects are one byte a pixel, colour numbers
+           (paletteTex.js) -- not four for every texture */
+        const bpp = (f) => (f === 'r8unorm' || f === 'r8snorm' || f === 'r8uint' || f === 'r8sint' ? 1
+          : (f === 'rg8unorm' || f === 'r16float' || f === 'r16uint' || f === 'rg8uint' ? 2
+            : (f === 'rgba16float' || f === 'rg32float' ? 8 : (f === 'rgba32float' ? 16 : 4))));
         for (const s of list) {
           if (!s || s.destroyed) continue;
           const w = s.pixelWidth || 0, h = s.pixelHeight || 0;
           const mip = !!(s.autoGenerateMipmaps || s.mipLevelCount > 1);
-          const b = w * h * 4 * (mip ? 4 / 3 : 1);
+          const b = w * h * bpp(s.format) * (mip ? 4 / 3 : 1);
           const kind = kindOf(s);
           bytes += b;
           byKind[kind] = (byKind[kind] || 0) + b;
-          rows.push({ label: String(s.label || '').replace(/^https?:\/\/[^/]+/, '').split('?')[0], kind, w, h, mip,
+          rows.push({ label: String(s.label || '').replace(/^https?:\/\/[^/]+/, '').split('?')[0], kind, w, h, mip, format: s.format,
             mb: +(b / 1048576).toFixed(2), idleS: s._gcLastUsed >= 0 ? Math.round((now - s._gcLastUsed) / 1000) : null });
         }
         rows.sort((a, b) => b.mb - a.mb);

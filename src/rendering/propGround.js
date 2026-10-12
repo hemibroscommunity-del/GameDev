@@ -46,6 +46,8 @@
    which is what every prop used before this file existed.
    ═══════════════════════════════════════════════════════════════════════ */
 
+import { drawSourceRect } from './paletteDraw.js';   /* v2.3.3190: a picture kept as colour numbers */
+
 /* How wide the copy is.  At the town's scales one column is ~4 world px --
    finer than a foot, and the whole read is a 64 KB image. */
 const COLS = 128;
@@ -101,7 +103,12 @@ export function readArtBottoms(texture, extras) {
   try {
     _canvas.width = W; _canvas.height = H;
     c.clearRect(0, 0, W, H);
-    c.drawImage(res, fr.x * k, fr.y * k, fr.width * k, fr.height * k, 0, 0, W, H);
+    /* v2.3.3190: drawSourceRect -- drawImage of its resource, as before, or of
+       a picture kept as colour numbers (paletteDraw.js).  A browser scales a
+       canvas of those pixels a little differently from the picture (TRAPS
+       §166), so the Wheel's sheets have their bases read off their own <img>
+       as they load (wheelObjects.js readPageBottoms); this is the fallback */
+    drawSourceRect(c, src, fr.x * k, fr.y * k, fr.width * k, fr.height * k, 0, 0, W, H);
     if (extras) {
       const sx = W / fr.width, sy = H / fr.height;
       for (let i = 0; i < extras.length; i++) {
@@ -109,7 +116,7 @@ export function readArtBottoms(texture, extras) {
         const t2 = e && e.texture, s2 = t2 && t2.source, r2 = s2 && s2.resource, f2 = t2 && t2.frame;
         if (!r2 || !f2) continue;
         const k2 = (s2.pixelWidth && s2.width) ? s2.pixelWidth / s2.width : 1;
-        c.drawImage(r2, f2.x * k2, f2.y * k2, f2.width * k2, f2.height * k2, e.x * sx, e.y * sy, f2.width * sx, f2.height * sy);
+        drawSourceRect(c, s2, f2.x * k2, f2.y * k2, f2.width * k2, f2.height * k2, e.x * sx, e.y * sy, f2.width * sx, f2.height * sy);
       }
     }
     const px = c.getImageData(0, 0, W, H).data;

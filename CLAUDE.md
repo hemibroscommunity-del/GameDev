@@ -2192,6 +2192,34 @@ Two protocol versions coexist; both must keep working:
     `?poolkeep` to compare; `window.__btTexPool()`). The census is
     `window.__btSceneCensus(depth)` (the scene counted by path); `mp-sceneleak`
     checks all four, a rebuild's shadow system included.
+  - A PICTURE ON 256 COLOURS OR FEWER IS KEPT AS COLOUR NUMBERS (v2.3.3190 --
+    the owner asked whether the art could be "recreated byte for byte using
+    pure code"; not that, a drawn picture costs the GPU what a loaded one does,
+    but "Yes" to this): the Wheel's ground pieces and object sheets are R8
+    textures, one byte a pixel, and their colours a row each of one 256 x 256
+    atlas, drawn by a second Pixi batcher whose shader does the smooth lookup
+    itself (`src/rendering/paletteTex.js`; the worker sends a piece as numbers,
+    `public/tools/world/core/piecePalette.js`; a sheet is read as its numbers
+    in `src/rendering/png8Worker.js`). The rules that come with it:
+    - which batcher draws a sprite or mesh is decided by its TEXTURE where Pixi
+      hands it to its batcher (BatcherPipe.addToBatch, inside sharpPixels' own
+      wrapper) -- anything drawing an object's picture (its shadow pool too)
+      needs nothing;
+    - NEVER read such a picture's `source.resource` on the CPU (it is numbers):
+      `drawSourceRect` (paletteDraw.js) for a read at its own size, and a read
+      that SCALES it reads the sheet's own `<img>` (TRAPS §166);
+    - a buffer at resolution 2 must be uploaded at its pixels (TRAPS §165);
+    - `?nopalette` is the old way, all of it; `mp-palette` compares the two
+      frame for frame (0.03-0.05% of pixels one level of 255 apart) and times
+      the frame both ways, `server/test/palette.test.mjs` the decoders,
+      `__btPalette()` the probe;
+    - measured, BroTown's arrival on the QA phone: GPU 104 -> 72 MB, art from
+      files 156 -> 125, buffers +8 (the sheets' numbers, kept to upload again
+      and for the CPU readers; mp-membudget's `buffers` line raised to 24 for
+      it); the cost, eight reads a pixel where the chip did one, on the QA
+      box's software chip a frame 20-27% longer in BroTown and 14-21% among
+      trees and water -- not measured on a phone:
+      docs/specs/palette-textures.md.
   - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
     the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
     home again, three times. Each kind of memory's highest reading must stay

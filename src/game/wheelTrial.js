@@ -178,6 +178,14 @@ export function wheelBuildingScale() { return _info && _info.buildings > 1 ? _in
    web moves).  Never said (Node, a tool): the pictures as made. */
 let _waterMoves = false;
 export function setWheelWaterMoves(on) { _waterMoves = !!on; }
+/* v2.3.3190: does the game draw pictures as colour numbers here
+   (rendering/paletteTex.js: WebGL2, its programs built, not `?nopalette`)?
+   Said as the renderer is made, and handed to the worker, which then sends
+   each piece as one byte a pixel and its colours instead of four bytes a
+   pixel.  Never said (Node, a tool): colours, as before. */
+let _palette = false;
+export function setWheelPalette(on) { _palette = !!on; }
+export function wheelPaletteAsked() { return _palette; }
 
 /* Start the worker (once) and build the plan.  Resolves with its 'ready'
    message; rejects, and leaves the trial on flat sea, if this browser cannot
@@ -206,7 +214,7 @@ export function wheelStart() {
     /* v2.3.3021: and whether the game draws the water moving here, so the
        worker takes the frozen web of light out of the water pictures
        (ground.js CALM WATER; setWheelWaterMoves, from wheelWater.js) */
-    w.postMessage({ type: 'init', search, moving: _waterMoves });
+    w.postMessage({ type: 'init', search, moving: _waterMoves, palette: _palette });
   });
   _initP.catch((e) => { wheelStats.error = String((e && e.message) || e); });
   return _initP;
@@ -223,7 +231,12 @@ function onMessage(m, resolveInit, rejectInit) {
     _overviewLands = landsCanvas(m.overview, m.overviewLands);
     wheelStats.planMs = m.planMs;
     wheelStats.swatchMs = m.swatchMs;
-    wheelStats.pieceBytes = (m.chunk.px + 2 * m.chunk.apronPx) ** 2 * 4;
+    /* v2.3.3190: one byte a pixel when the worker sends colour numbers
+       (its rows padded to 4 bytes), four when it sends colours */
+    {
+      const side = m.chunk.px + 2 * m.chunk.apronPx;
+      wheelStats.pieceBytes = m.palette ? ((side + 3) & ~3) * side : side * side * 4;
+    }
     resolveInit(m);
     return;
   }

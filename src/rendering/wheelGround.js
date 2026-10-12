@@ -21,7 +21,8 @@
  * and up to ~48 on the move (mp-wheeltrial): 16-30 MB of colours.  That is
  * the price of the sharpness, and the readout shows it;
  * the way to a quarter of it is pieces kept as palette numbers and coloured
- * on the GPU (docs/WORLD-MAP-PIPELINE.md, the Wheel trial).  (v2.3.3076: the
+ * on the GPU (docs/WORLD-MAP-PIPELINE.md, the Wheel trial) -- done since
+ * v2.3.3190 (_source below, rendering/paletteTex.js).  (v2.3.3076: the
  * colours are on the GPU only -- the page's copy goes once a piece is
  * uploaded, _toGpu below.)  Under them lies
  * the whole Wheel, small, in the plan's colours, so a piece still being laid
@@ -42,6 +43,7 @@ import { Container, Sprite, Texture, Rectangle, BufferImageSource, CanvasSource 
 import { wheelInfo, wheelStart, wheelChunk, wheelIsWarm, wheelDropWarm, wheelOverview, wheelStats, wheelOnGot } from '../game/wheelTrial.js';
 import { worldTrialLeft } from '../game/worldTrial.js';
 import { WheelWater } from './wheelWater.js';   /* v2.3.3019: the water moves */
+import { paletteOn, makePaletteSource, paletteStats } from './paletteTex.js';   /* v2.3.3190: pieces as colour numbers */
 
 const MAX_IN_FLIGHT = 3;
 const MARGIN = 96;
@@ -68,6 +70,21 @@ function letGoOfColours(src) {
   if (!src) return;
   src.resource = null;
   if (src.options) src.options.resource = null;
+}
+
+/* v2.3.3190: a piece's colour numbers back to its colours (wheelGround
+   _source: only where the game cannot draw numbers after all) */
+function pieceColours(m) {
+  const { w, h, stride, idx, pal } = m;
+  const out = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    const r = y * stride;
+    for (let x = 0; x < w; x++) {
+      const k = idx[r + x] * 4, o = (y * w + x) * 4;
+      out[o] = pal[k]; out[o + 1] = pal[k + 1]; out[o + 2] = pal[k + 2]; out[o + 3] = pal[k + 3];
+    }
+  }
+  return out;
 }
 
 export class WheelGround {
@@ -220,10 +237,7 @@ export class WheelGround {
   /* the sprite of a piece the worker laid: one ground px of the apron shown
      each side, half a game px */
   _sprite(m, info, i, j) {
-    const src = new BufferImageSource({
-      resource: m.data, width: m.w, height: m.h,
-      format: 'rgba8unorm', scaleMode: 'linear', alphaMode: 'no-premultiply-alpha',
-    });
+    const src = this._source(m);
     const a = info.chunk.apronPx - 1, cs = info.chunk.gamePx, half = cs / info.chunk.px;
     const tex = new Texture({ source: src, frame: new Rectangle(a, a, m.w - 2 * a, m.h - 2 * a) });
     const s = new Sprite(tex);
@@ -232,6 +246,37 @@ export class WheelGround {
     this.pieceRoot.addChild(s);
     this._toGpu(src);
     return s;
+  }
+
+  /* ═══ v2.3.3190: A PIECE AS ITS COLOUR NUMBERS ═══
+     The worker sends a piece as one byte a pixel and its colours where the
+     game draws pictures so (rendering/paletteTex.js): an R8 texture, a
+     quarter of the 0.62 MB of colours on the graphics chip, drawn by the
+     palette batcher, smooth as before.  The frame is the same (the rows are
+     only padded on the right, past the apron).  Where it cannot after all --
+     the programs did not build on a rebuilt renderer, or the colours' atlas
+     is full -- the numbers are turned back into colours here, and the piece
+     is what it always was. */
+  _source(m) {
+    const st = paletteStats();
+    if (m.idx) {
+      if (paletteOn()) {
+        const ps = makePaletteSource({ idx: m.idx, w: m.w, h: m.h, stride: m.stride, rgba: m.pal,
+          alphaMode: 'no-premultiply-alpha', label: 'wheel-ground' });
+        if (ps) {
+          st.pieces++;
+          st.pieceColours = m.colours || 0;
+          st.pieceColoursMax = Math.max(st.pieceColoursMax, m.colours || 0);
+          return ps;
+        }
+      }
+      m.data = pieceColours(m);
+      st.expanded++;
+    } else if (m.overPalette) st.piecesRgba++;
+    return new BufferImageSource({
+      resource: m.data, width: m.w, height: m.h,
+      format: 'rgba8unorm', scaleMode: 'linear', alphaMode: 'no-premultiply-alpha',
+    });
   }
 
   /* v2.3.3076: the renderer this ground was made for is gone (Pixi's
