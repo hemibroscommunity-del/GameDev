@@ -219,7 +219,7 @@ the same (gear.js):
   so a piece that crossed before the fix leaves the bag and the hand on the
   next join and can't be listed, staged in a trade or delivered.
 
-No price, odd or rule changed. Tests: `salvage.test.mjs` §7b (17 checks: the
+No price, odd or rule changed. Tests: `salvage.test.mjs` §7b (13 checks: the
 chain refused at the armour slot, every non-weapon slot, each weapon type
 only in its own slot, a crossed piece refused at salvage, essence and equip
 and dropped on the next join). 11 of them fail on main.
