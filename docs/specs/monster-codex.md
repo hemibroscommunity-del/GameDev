@@ -178,12 +178,12 @@ monster's strips at a time, and what it throws, all in before the first beat
 in, the monster stands as its portrait from the pet sheet, which the loading
 screen already fetched. A recoloured monster (the wisp, the lurker, the blue
 slime, every elder form) is baked onto the stage's own copies, revoked on
-close. This is the OWNER'S CALL to confirm (the preloading law,
-Conventions): all nine monsters' strips held for the session would be ~20 MB
-of decoded pictures, most of them the very looks the Wheel loads only as you
-walk toward them. Nothing loads during play, so the law's purpose -- no hitch
-in a fight -- is kept; preloading them on the loading screen is a small change
-in `preloadAnimations.js` if the owner wants it.
+close. This was the OWNER'S CALL (the preloading law, Conventions), made on
+2026-10-12: asked whether to hold all nine monsters' strips for the session
+instead -- ~20 MB of decoded pictures, most of them the very looks the Wheel
+loads only as you walk toward them -- the owner: *"I think loading only when
+you open the info tab"*. Nothing loads during play, so the law's purpose -- no
+hitch in a fight -- is kept. Do not move them onto the loading screen.
 
 ## Storage: `codex:<pid>`
 

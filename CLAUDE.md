@@ -1925,8 +1925,9 @@ remnant to migrate server-side, not a mode to preserve.
       Humanoid, Beast, Winged, Insectoid, Aquatic, Ooze);
     - its STAGE plays it beside your character, the Points preview's make
       (`CodexStage.jsx`, `data/codexStage.js`): its own strips, loaded when
-      the Info tab opens and freed when it closes (the owner's call to
-      confirm: ~20 MB for all nine preloaded), the world's wind-ups and
+      the Info tab opens and freed when it closes (the owner's call, against
+      ~20 MB for all nine up front: "I think loading only when you open the
+      info tab"), the world's wind-ups and
       warning circles; a near-black scene in a frame, everyone standing ON
       its land-coloured ground strip and nothing ever past the frame (the
       owner saw them "in a layer above the container", feet "visible on the

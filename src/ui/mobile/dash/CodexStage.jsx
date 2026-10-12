@@ -28,9 +28,11 @@ import { PetPortrait } from '@/ui/petPortrait.jsx';
  *   elder    a toggle puts it in its second stage's colour.
  * Under prefers-reduced-motion nothing runs: the monster stands still.
  *
- * ITS PICTURES LOAD WHEN THE PAGE OPENS, and go when it closes: one monster's
- * strips at a time (at most ~8 MB decoded, the mummy's and its skeleton's),
- * never all nine for the session.  Until they are in, the monster stands as
+ * ITS PICTURES LOAD WHEN THE INFO TAB OPENS, and go when it closes -- the
+ * owner's call against the preloading law's loading screen, asked about
+ * holding all nine for the session (~20 MB): "I think loading only when you
+ * open the info tab".  One monster's strips at a time (at most ~8 MB decoded,
+ * the mummy's and its skeleton's).  Until they are in, the monster stands as
  * its portrait (the pet sheet, which the loading screen already fetched) --
  * never a blank, and never a hitch in play: this is a menu.  A recoloured
  * monster (the wisp, the lurker, the blue slime, every elder form) is baked
