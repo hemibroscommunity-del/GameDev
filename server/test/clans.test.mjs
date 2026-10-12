@@ -362,6 +362,30 @@ check('last leave dissolves the clan', !room._clans.has(redClan.id) && !state._s
     { stillIn: !!room._clanOf('bp_cl_hana'), errs: msgsOfType(wsH, 'clan_error').map((m) => m.payload.text) });
   check('9.7b ...and a kick is still allowed mid-war (a leader ejecting a griefer)',
     await (async () => { await cmd(wsG, 'clan_kick', { target: 'bp_cl_hana' }); return !room._clanOf('bp_cl_hana'); })());
+
+  /* 9.7c v2.3.3175: ...but the kicked member is still on that war's roster
+     (it pays the roster frozen at declare), so joining another clan put her
+     on a SECOND war's roster -- paid twice, or on both sides of one. */
+  const war97 = [...room._clanWars.values()].find((w) => w.status === 'active' && (w.challenger.clanId === grt.id || w.defender.clanId === grt.id));
+  check('9.7c fixture: the kicked member is still on the war\'s roster',
+    !!war97 && (war97.challenger.members.includes('bp_cl_hana') || war97.defender.members.includes('bp_cl_hana')));
+  const wsJ = fakeWs('jo');
+  await join(wsJ, 'bp_cl_jo', 'Jo');
+  room.playerState['bp_cl_jo'].coins = 5000;
+  await room._handleClanCreate(sessionOf('bp_cl_jo'), { name: 'Jo Crew', tag: 'JOC' });
+  wsH.sent.length = 0;
+  await enlist('bp_cl_jo', wsH, 'bp_cl_hana');
+  check('9.7c a member kicked mid-war cannot join another clan while that war is on',
+    !room._clanOf('bp_cl_hana') && msgsOfType(wsH, 'clan_error').some((m) => m.payload.text === 'Cannot join during a clan war'),
+    { clan: room._clanOf('bp_cl_hana') && room._clanOf('bp_cl_hana').tag, errs: msgsOfType(wsH, 'clan_error').map((m) => m.payload.text) });
+  await enlist('bp_cl_ivan', wsH, 'bp_cl_hana');
+  check('...nor the clan on the other side of it', !room._clanOf('bp_cl_hana'), room._clanOf('bp_cl_hana') && room._clanOf('bp_cl_hana').tag);
+  war97.endTime = Date.now() - 1;
+  room._tickClanWars(Date.now());
+  await new Promise((r) => setTimeout(r, 20));
+  await enlist('bp_cl_jo', wsH, 'bp_cl_hana');
+  check('9.7d ...and once the war is over she can join', !!room._clanOf('bp_cl_hana') && room._clanOf('bp_cl_hana').tag === 'JOC',
+    room._clanOf('bp_cl_hana') && room._clanOf('bp_cl_hana').tag);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
