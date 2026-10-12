@@ -114,7 +114,14 @@ export const duelMethods = {
     const now = Date.now();
 
     if (msg.type === 'duel_request' || msg.type === 'duel_wager_request') {
-      const wager = Math.max(0, Math.min(999999, Math.floor(Number(payload.wager) || 0)));
+      /* v2.3.3168: only a duel_wager_request carries a stake.  The game opens
+         a plain duel_request as a no-stakes duel (gameEvents.js shows it with
+         no gold line, and its Accept echoes 0), so a stake riding on one was
+         a stake the other player never saw -- and the accept below used to
+         escrow it from them all the same. */
+      const wager = msg.type === 'duel_wager_request'
+        ? Math.max(0, Math.min(999999, Math.floor(Number(payload.wager) || 0)))
+        : 0;
       this._duelChallenges.set(fromId + '>' + target, { wager, ts: now });
       payload.wager = wager; // relay the sanitized number
       return msg;
@@ -162,6 +169,15 @@ export const duelMethods = {
     // CHALLENGE's number is authoritative (an edited accept can't
     // inflate the opponent's stake).
     const wager = chal.wager;
+    /* v2.3.3168: ...and never MORE than the accepter was shown.  The map
+       above keeps only a challenger's latest challenge, so one re-sent with
+       a bigger stake between the popup and the press was escrowed from an
+       accepter whose screen (and whose echo) said the smaller number.  A
+       stake at or under the echo is one they agreed to; anything over it is
+       refused before any gold moves, answered to both like every refusal
+       here.  The honest game always echoes the number it relayed. */
+    const shown = Math.max(0, Math.floor(Number(payload.wager) || 0));
+    if (wager > shown) return declineBoth();
     const duelId = crypto.randomUUID();
     if (wager > 0) {
       const dA = await this._escrowDebitGold(a, wager, 'duel:' + duelId + ':a');

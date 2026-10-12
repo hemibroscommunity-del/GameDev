@@ -24,6 +24,11 @@
  *      damage is 0.5x-scaled + def-mitigated (no one-shots), legacy
  *      payloads (no kind) keep the tight 250 melee clamp, and
  *      out-of-range hits of either kind are still rejected.
+ *  15. v2.3.3168: nobody pays a stake they were not shown (a plain
+ *      duel_request carries none; a stake raised before the press is
+ *      refused).
+ *  16. v2.3.3168: a duel kill scores no clan war and claims no bounty,
+ *      driven through _handlePlayerDeath.
  */
 import { GameRoom } from '../src/index.js';
 
@@ -440,6 +445,107 @@ check('an over-long duel target is refused', fatChal === null);
 check('...and parks nothing in the challenge map', room._duelChallenges.size === 0, room._duelChallenges.size);
 const okChal = await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 0));
 check('...while a real id still records a challenge', okChal !== null && room._duelChallenges.size === 1);
+
+/* ── 15. v2.3.3168: nobody pays a stake they were not shown ──
+ *
+ * The challenge map keeps the stake the challenger's LATEST challenge named,
+ * and the accept escrowed it from both whatever the accepter's screen said.
+ * Two ways in, both reproduced on main:
+ *   - a plain duel_request carrying a stake: the game opens one as a
+ *     no-stakes duel (no gold line, its Accept echoes 0);
+ *   - a challenge re-sent with a bigger stake between the popup and the
+ *     press (the accept echoes the smaller number it showed).
+ * The accepter's echo is the most they agreed to; the challenge's number
+ * still wins when it is at or under it (§1's inflated echo still duels at
+ * the challenged 40). */
+const endAnyDuel = async () => {
+  room._tickDuels(Date.now() + 3600000);          // the shot clock (§12) ends whatever is open
+  await new Promise((r) => setTimeout(r, 20));    // its pot settle is fire-and-forget
+  for (const p of [psA, psB]) { p.hp = 100; p.maxHp = 100; p.dying = false; p.dead = false; p.z = 'town'; }
+  psA.coins = 1000; psB.coins = 1000;
+  room._duelChallenges.clear();
+  room.eventBuffer.length = 0;
+};
+await endAnyDuel();
+check('setup: no duel open for the stake checks', !room._duelFor('bp_duel_a') && !room._duelFor('bp_duel_b'));
+
+// (a) a stake hidden on a plain duel_request
+const plain = await room._interceptDuel('bp_duel_a', { type: 'duel_request', payload: { target: 'bp_duel_b', fromName: 'A', wager: 900 } });
+check('a plain duel_request is relayed with no stake', plain !== null && plain.payload.wager === 0, plain && plain.payload);
+const accPlain = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 0)); // what the game's Accept sends for it
+const dPlain = room._duelFor('bp_duel_a');
+check('...accepting it starts a no-stakes duel', accPlain !== null && dPlain && dPlain.wager === 0, dPlain && dPlain.wager);
+check('...and takes no gold from either side', psA.coins === 1000 && psB.coins === 1000, { a: psA.coins, b: psB.coins });
+await endAnyDuel();
+
+// (b) a challenge re-sent with a bigger stake before the accepter's press lands
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 10));   // B's popup says 10
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 900));  // re-sent while B is pressing Accept
+const accSwitch = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 10));
+check('an accept is refused when the stake grew past what the accepter was shown',
+  accSwitch === null && !room._duelFor('bp_duel_a') && !room._duelFor('bp_duel_b'));
+check('...taking no gold from either side', psA.coins === 1000 && psB.coins === 1000, { a: psA.coins, b: psB.coins });
+check('...answered with a decline to BOTH, not silence',
+  room.eventBuffer.filter((e) => e.type === 'duel_decline').length === 2, room.eventBuffer.map((e) => e.type));
+check('...and nothing escrowed for it', ![...state._store.keys()].some((k) => k.startsWith('duelEscrow:') && state._store.get(k).wager === 900));
+await endAnyDuel();
+
+// (c) the honest handshake is untouched
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 25));
+const accHonest = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 25));
+check('the stake the accepter was shown still duels, both escrowed',
+  accHonest !== null && room._duelFor('bp_duel_a') && room._duelFor('bp_duel_a').wager === 25 && psA.coins === 975 && psB.coins === 975,
+  { wager: room._duelFor('bp_duel_a') && room._duelFor('bp_duel_a').wager, a: psA.coins, b: psB.coins });
+await endAnyDuel();
+
+// (d) a stake LOWERED before the press is still one they agreed to
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 300));
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 10));
+const accLower = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 300));
+check('a stake lowered before the press duels at the LOWER number',
+  accLower !== null && accLower.payload.wager === 10 && psA.coins === 990 && psB.coins === 990,
+  { wager: accLower && accLower.payload.wager, a: psA.coins, b: psB.coins });
+await endAnyDuel();
+
+/* ── 16. v2.3.3168: a duel kill scores no clan war and claims no bounty ──
+ *
+ * Both hooks exclude a consensual duel by asking _duelFor(killer) -- but
+ * _handlePlayerDeath ran them AFTER the duel hook had resolved the duel and
+ * taken it out of the map, so the answer was always "no duel": every thrown
+ * duel scored a clan-war point and paid out a bounty.  clans §6 and threat §8
+ * call the hooks directly with a live duel in the map, which is why they were
+ * green; this goes through _handlePlayerDeath, the blow combat.js delivers. */
+psA.coins = 2000; psB.coins = 2000;
+await room.webSocketMessage(wsA, JSON.stringify({ type: 'clan_create', payload: { name: 'Reds', tag: 'RED' } }));
+await room.webSocketMessage(wsB, JSON.stringify({ type: 'clan_create', payload: { name: 'Blues', tag: 'BLU' } }));
+check('setup: two clans', !!room._clanOf('bp_duel_a') && !!room._clanOf('bp_duel_b') && room._clanOf('bp_duel_a').id !== room._clanOf('bp_duel_b').id);
+psA.z = psB.z = 'meadow';                         // a lawless war zone
+await room.webSocketMessage(wsA, JSON.stringify({ type: 'clan_war_declare', payload: { defenderTag: 'BLU', zone: 'meadow' } }));
+const war16 = room._clanWars && [...room._clanWars.values()].find((w) => w.status === 'active');
+check('setup: RED and BLU at war in the meadow', !!war16 && war16.zone === 'meadow');
+/* A guard fine on A's head.  Only Call Guards makes one, and that needs open
+   PvP (off since v2.3.1917), so it is put on file the way that path stores it. */
+state._store.set('bounty:bp_duel_a', { amount: 1000, ts: Date.now() });
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 0));
+await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 0));
+check('setup: a no-stakes duel between the two leaders', !!room._duelFor('bp_duel_a'));
+const coinsB16 = psB.coins;
+room._handlePlayerDeath(psA, 'bp_duel_a', 'pvp:bp_duel_b'); // B wins the duel
+await new Promise((r) => setTimeout(r, 30));
+check('a duel kill scores nothing in the clan war',
+  war16 && war16.challenger.score === 0 && war16.defender.score === 0,
+  war16 && { challenger: war16.challenger.score, defender: war16.defender.score });
+check('...and claims no bounty: the duel winner is paid nothing for it', psB.coins === coinsB16, { before: coinsB16, after: psB.coins });
+check('...and the bounty stays on file for a real hunter', !!state._store.get('bounty:bp_duel_a'));
+// The same blow with no duel open still counts for both: the hooks still run.
+psA.dying = false; psA.dead = false; psA.hp = 100;
+state._store.set('bounty:bp_duel_a', { amount: 1000, ts: Date.now() + 1 });
+const scoreD16 = war16 ? war16.defender.score : 0;
+const coinsB16b = psB.coins;
+room._handlePlayerDeath(psA, 'bp_duel_a', 'pvp:bp_duel_b');
+await new Promise((r) => setTimeout(r, 30));
+check('a PvP kill outside a duel still scores the clan war', war16 && war16.defender.score === scoreD16 + 1, war16 && war16.defender.score);
+check('...and still claims the bounty', psB.coins === coinsB16b + 1000 && !state._store.get('bounty:bp_duel_a'), { before: coinsB16b, after: psB.coins });
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
