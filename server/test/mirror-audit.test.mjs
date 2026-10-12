@@ -78,6 +78,7 @@ import { TRAPPING as CLIENT_TRAPPING, trapChance as clientTrapChance, trapRollXp
 import { WHEEL_CENTRE as SRV_WHEEL_CENTRE } from '../src/wheelspawns.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
+  NPC_DATA as CLIENT_NPC_DATA, /* v2.3.3179: who gives quests in the world */
   DISHES as CLIENT_DISHES, /* v2.3.3130: what a Cookhouse dish does */
   MONSTER_DMG_CURVE, monsterHpFlat as clientMonsterHpFlat, /* v2.3.3055 */
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
@@ -286,6 +287,26 @@ const room = Object.create(GameRoom.prototype);
     }
   }
   check('QUEST_CHAINS.gives thumbnails match a real server payout moment', bad.length === 0, bad);
+}
+
+// ── 5b2. v2.3.3179: the quests the worker closes are exactly the quests whose
+// giver is not in the world (data.js QUEST_DORMANT vs the game's NPC_DATA).
+// A giver brought back with their chain still closed could hand out quests
+// the worker refuses; a giver taken away with their chain still open lets a
+// new character be paid for quests nobody can see.
+{
+  const live = new Set((CLIENT_NPC_DATA || []).map((n) => n && n.name).filter(Boolean));
+  const dormant = new Set(SRV.QUEST_DORMANT || []);
+  const bad = [];
+  for (const [k, c] of Object.entries(QUEST_CHAINS)) {
+    const gone = !live.has(c.npc);
+    if (gone !== dormant.has(k)) bad.push({ quest: k, npc: c.npc, giverInWorld: !gone, closedByWorker: dormant.has(k) });
+  }
+  for (const k of dormant) if (!QUEST_CHAINS[k]) bad.push({ quest: k, reason: 'closed by the worker but not a quest' });
+  check('QUEST_DORMANT is exactly the quests whose giver is not in NPC_DATA', bad.length === 0 && dormant.size > 0, bad);
+  check('the first quest (QUEST_FIRST) is a checked quest a live giver offers',
+    !!SRV.QUEST_REWARDS[SRV.QUEST_FIRST] && !!SRV.QUEST_REWARDS[SRV.QUEST_FIRST].objective
+      && !dormant.has(SRV.QUEST_FIRST) && live.has(QUEST_CHAINS[SRV.QUEST_FIRST] && QUEST_CHAINS[SRV.QUEST_FIRST].npc), SRV.QUEST_FIRST);
 }
 
 // ── 5c. Every icon named by `gives` is a file that exists.  A 404 here is a
