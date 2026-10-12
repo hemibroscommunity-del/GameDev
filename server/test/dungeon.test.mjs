@@ -247,9 +247,26 @@ psA.coins = 0;
 wsA.sent.length = 0;
 room._tickDungeons(Date.now()); // -> complete
 const nb = msgsOfType(wsA, 'dungeon_complete');
-check('no-boss completion pays 20w gold / 50w xp', nb.length === 1 && nb[0].payload.gold === 40 && nb[0].payload.xp === 100 && nb[0].payload.boss === false && psA.coins === 40, nb.map((e) => e.payload));
+/* v2.3.3182: a run of ONE monster a wave pays a quarter of the clear
+   (DUNGEONS.CLEAR_FULL_WAVE 4): 10 gold and 25 xp where it paid 40 and 100 */
+check('no-boss completion pays 20w gold / 50w xp, x the share of a full wave (one of four: a quarter)', nb.length === 1 && nb[0].payload.gold === 10 && nb[0].payload.xp === 25 && nb[0].payload.boss === false && psA.coins === 10, nb.map((e) => e.payload));
 room._tickDungeons(Date.now() + 301000); // sweep it
 await move(wsA, 'town');
+/* ...and a run of four a wave (or more) pays the whole 20w / 50w */
+{
+  wsA.sent.length = 0;
+  await start(wsA, { waves: 2, hasBoss: false, monsters: [{ archetype: 'fodder', count: 3 }, { archetype: 'brute', count: 1 }] });
+  const zf = msgsOfType(wsA, 'dungeon_started')[0].payload.zone;
+  await move(wsA, zf);
+  killAll(zf); room._tickDungeons(Date.now());
+  killAll(zf);
+  psA.coins = 0; wsA.sent.length = 0;
+  room._tickDungeons(Date.now());
+  const full = msgsOfType(wsA, 'dungeon_complete');
+  check('v2.3.3182: four monsters a wave pay the whole clear (40 gold / 100 xp)', full.length === 1 && full[0].payload.gold === 40 && full[0].payload.xp === 100 && psA.coins === 40, full.map((e) => e.payload));
+  room._tickDungeons(Date.now() + 301000);
+  await move(wsA, 'town');
+}
 
 // ── 11. empty-instance sweep ──
 wsB.sent.length = 0;
@@ -388,6 +405,9 @@ check('charge lunged the boss and landed contact damage', bossB.x > bossX0 + 20 
 // ── 18. summon: minions, re-push, cap ──
 bossB._abilityPattern = 2; bossB._nextAbilityAt = 0; // rotation slot 2 = summon
 const t4 = tc + 10000;
+/* v2.3.3182: a boss summons only while it is being fought -- it takes a
+   point of damage between two ticks (dungeon.js SUMMON.FOUGHT_MS) */
+bossB._hpSeen = bossB.hp; bossB.hp -= 1;
 room._tickDungeons(t4); // telegraph summon
 wsA.sent.length = 0; wsV1.sent.length = 0;
 room._tickDungeons(t4 + BOSS_ABILITIES.TELEGRAPH_MS + 10); // execute
@@ -419,6 +439,91 @@ check('no minions past the cap', room.monsters[zoneB].filter((m) => m._bossMinio
 room.eventBuffer.length = 0;
 await room.webSocketMessage(wsC, JSON.stringify({ type: 'dungeon_boss_ability', payload: { zone: zoneB, ability: 'slam', phase: 'execute' } }));
 check('forged dungeon_boss_ability dropped by deny-list', room.eventBuffer.filter((e) => e.type === 'dungeon_boss_ability').length === 0, room.eventBuffer.map((e) => e.type));
+
+// ── 18b. v2.3.3182: the Workshop is not a private pen ──
+// A swarm boss nobody touched summoned 2-3 adds a cast forever (151 in ten
+// minutes), and a strong character's level-1 Workshop monsters rolled the
+// rare gem and iron drops at the world's full rate.  Self-contained: its own
+// run, cleaned up at the end.
+{
+  room._dungeonCleanup(instB);
+  await move(wsA, 'town');
+  wsA.sent.length = 0;
+  await start(wsA, { waves: 1, hasBoss: true, monsterLevel: 1, bossArchetype: 'swarm', bossMultiplier: 8, monsters: [{ archetype: 'fodder', count: 1 }] });
+  const zs = msgsOfType(wsA, 'dungeon_started')[0].payload.zone;
+  const instS = room._dungeons.get(zs.slice('dungeon:'.length));
+  await move(wsA, zs);
+  killAll(zs);
+  let t = Date.now();
+  room._tickDungeons(t);                           // the boss comes
+  const bs = room.monsters[zs].find((m) => m._dungeonBoss);
+  check('setup: a swarm boss, whose kit summons from level 1', !!bs && bs._abilities[0] === 'summon', bs && bs._abilities);
+  const hold = () => { psA.hp = psA.maxHp = 1e9; psA.dying = false; psA.dead = false; psA.x = 40; psA.y = 40; };
+  const minionsNow = () => room.monsters[zs].filter((m) => m._bossMinion).length;
+  // ten simulated minutes, nobody touching it, every add killed as it comes
+  for (let i = 0; i < 3000; i++) {
+    hold();
+    t += 200;
+    room._tickDungeons(t);
+    for (const m of room.monsters[zs]) if (m._bossMinion) m.alive = false;
+  }
+  check('a boss nobody fights summons nothing in ten minutes (was ~150)', minionsNow() === 0, minionsNow());
+  // fought: it summons as ever
+  bs._abilityPattern = 0; bs._nextAbilityAt = 0; bs._abilityPhase = null;
+  hold();
+  bs.hp -= 1;                                      // a point of damage between two ticks
+  t += 200; room._tickDungeons(t);                 // telegraph
+  t += BOSS_ABILITIES.TELEGRAPH_MS + 10; hold(); room._tickDungeons(t);   // execute
+  const fought = minionsNow();
+  check('...hurt, it summons as before', fought >= BOSS_ABILITIES.SUMMON.COUNT_MIN && fought <= BOSS_ABILITIES.SUMMON.COUNT_MAX, fought);
+  check('...and keeps count of what it summoned', bs._summoned === fought, bs._summoned);
+  // the total: at most MAX_TOTAL for one boss
+  for (const m of room.monsters[zs]) if (m._bossMinion) m.alive = false;
+  bs._summoned = BOSS_ABILITIES.SUMMON.MAX_TOTAL - 1;
+  bs._abilityPattern = 0; bs._nextAbilityAt = 0; bs._abilityPhase = null;
+  hold(); bs.hp -= 1;
+  t += 6000; room._tickDungeons(t);
+  t += BOSS_ABILITIES.TELEGRAPH_MS + 10; hold(); room._tickDungeons(t);
+  check('one short of its total, it summons just one more', minionsNow() === fought + 1 && bs._summoned === BOSS_ABILITIES.SUMMON.MAX_TOTAL, { minions: minionsNow(), summoned: bs._summoned });
+  for (const m of room.monsters[zs]) if (m._bossMinion) m.alive = false;
+  bs._abilityPattern = 0; bs._nextAbilityAt = 0; bs._abilityPhase = null;
+  hold(); bs.hp -= 1;
+  wsA.sent.length = 0;
+  t += 6000; room._tickDungeons(t);
+  const tele = msgsOfType(wsA, 'dungeon_boss_ability').filter((e) => e.payload.phase === 'telegraph');
+  check('...and at its total, a hurt boss skips summon in its turn', tele.length === 1 && tele[0].payload.ability !== 'summon' && minionsNow() === fought + 1, tele.map((e) => e.payload.ability));
+  check('the total is fifteen times the live cap', BOSS_ABILITIES.SUMMON.MAX_TOTAL === 15 * BOSS_ABILITIES.SUMMON.MAX_ALIVE && BOSS_ABILITIES.SUMMON.FOUGHT_MS === 15000);
+
+  // the flat drops: a level-1 Workshop monster for a level-45 claimant
+  const scaleFn = typeof room._workshopDropScale === 'function';
+  check('a Workshop run\'s flat drops are scaled (_workshopDropScale)', scaleFn);
+  const sc = (zone, lvl) => (scaleFn ? room._workshopDropScale(zone, { level: lvl }, ['bp_dg_a']) : 1);
+  check('...a level-1 monster, a level-45 player: 1/45 of the chance', Math.abs(sc(zs, 1) - 1 / 45) < 1e-9, sc(zs, 1));
+  check('...a monster at the player\'s own level: the whole chance', sc(zs, 45) === 1 && sc(zs, 50) === 1, [sc(zs, 45), sc(zs, 50)]);
+  check('...outside the Workshop (the world) always the whole chance', sc('meadow', 1) === 1 && sc('wheel', 1) === 1);
+  room._dungeons.set('wheelx', { id: 'wheelx', zone: 'dungeon:wheelx', state: 'active', cfg: { home: 'frost', monsters: [], waves: 1 } });
+  check('...and in a Wheel dungeon (the world\'s own content) too', sc('dungeon:wheelx', 1) === 1);
+  check('a Wheel dungeon\'s clear is never cut', !room._dungeonClearShare || room._dungeonClearShare({ home: 'frost', monsters: [{ count: 1 }] }) === 1);
+  room._dungeons.delete('wheelx');
+  // end to end: the same roll that drops everything at the world's rate
+  // drops nothing from that level-1 Workshop monster
+  const mon = room._dungeonMonster(instS, 'fodder', 1, null, 'drop-test');
+  const rnd = Math.random;
+  Math.random = () => 0.001;   // under the gem's 1/200 and each iron piece's 1/500
+  let pileW = null, pileM = null;
+  try {
+    pileW = room._spawnLootForKill(zs, mon, 'bp_dg_a', ['bp_dg_a'], { bp_dg_a: mon.gold });
+    const monMeadow = { ...mon, id: 'mw-drop-test', x: 100, y: 100 };
+    if (!room.loot.meadow) room.loot.meadow = [];
+    pileM = room._spawnLootForKill('meadow', monMeadow, 'bp_dg_a', ['bp_dg_a'], { bp_dg_a: mon.gold });
+  } finally { Math.random = rnd; }
+  check('the world drops the gem and the iron on that roll', !!pileM && pileM.gem === 'rare_gem' && Array.isArray(pileM.armor) && pileM.armor.length >= 1, pileM && { gem: pileM.gem, armor: pileM.armor, weapon: pileM.weapon && pileM.weapon.name });
+  check('...a level-1 Workshop monster for a level-45 player drops neither (main: both)', !!pileW && !pileW.gem && !pileW.armor && !(pileW.weapon && pileW.weapon.gearBase === 'iron'), pileW && { gem: pileW.gem, armor: pileW.armor, weapon: pileW.weapon && pileW.weapon.name });
+
+  room._dungeonCleanup(instS);
+  psA.hp = psA.maxHp = 500;
+  await move(wsA, 'town');
+}
 
 /* ═══ v2.3.1199: enrage soft timer (anti-stall; clean redesign of the
    legacy depth-dungeon enrage that v2.3.1194 deliberately left

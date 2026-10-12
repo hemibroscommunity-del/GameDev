@@ -3727,10 +3727,12 @@ export class GameRoom {
      one silently shadowing the other.  The minted record is the same shape a
      quest piece is, so nothing downstream can tell them apart — see the
      constant's note for why that matters. */
-  _rollArmorDropsForKill() {
+  /* v2.3.3182: `scale` (0-1, default 1) -- a Workshop run's share of the
+     chance (dungeon.js _workshopDropScale); the random draws are the same */
+  _rollArmorDropsForKill(scale = 1) {
     const out = [];
     for (const d of MONSTER_ARMOR_DROPS) {
-      if (Math.random() >= d.chance) continue;
+      if (Math.random() >= d.chance * scale) continue;
       /* ═══ v2.3.1925: ARMOUR ROLLS QUALITY TOO ═══
          Owner: "I also want the drop to consider a rarity system."  Quality
          has been weapon-only since v2.3.1131; GDD §4.6b is explicit that the
@@ -3754,9 +3756,9 @@ export class GameRoom {
      Built here rather than in _rollWeaponDropForKill because they answer
      different questions — that function decides what RARITY a random weapon
      is, and this one is not random. */
-  _rollIronWeaponForKill() {
+  _rollIronWeaponForKill(scale = 1) {   /* v2.3.3182: `scale`, as the armour's */
     const d = MONSTER_IRON_WEAPON_DROP;
-    if (Math.random() >= d.chance) return null;
+    if (Math.random() >= d.chance * scale) return null;
     return {
       type: d.type,
       tier: 'common',
@@ -3784,8 +3786,8 @@ export class GameRoom {
      stackable that lands in the bag — NOT the elemental raw_<element> the
      Gem Cutter eats (_gemRawOnKill, amulet.js), which is zone-gated and
      lives in lifeSkills.  Two different things on purpose; see RARE_GEM_KEY. */
-  _rollRareGemForKill() {
-    return Math.random() < RARE_GEM_MONSTER_DROP ? RARE_GEM_KEY : null;
+  _rollRareGemForKill(scale = 1) {   /* v2.3.3182: `scale`, as the armour's */
+    return Math.random() < RARE_GEM_MONSTER_DROP * scale ? RARE_GEM_KEY : null;
   }
 
   /* ═══ v2.3.1925: THE MYSTERY GRADES ═══
@@ -3963,15 +3965,18 @@ export class GameRoom {
        Also gated by disable_weapon_drops (v2.3.1150): that kill switch exists
        to stop weapons entering the economy, and a drop that ignored it would
        be a hole in the lever rather than a new feature. */
-    const ironWeapon = wpnDropsOn ? this._rollIronWeaponForKill() : null;
+    /* v2.3.3182: a Workshop run's flat drops at its monster's level over the
+       strongest claimant's (dungeon.js _workshopDropScale); 1 everywhere else */
+    const dropScale = anyClaimant && this._workshopDropScale ? this._workshopDropScale(zone, monster, recipients) : 1;
+    const ironWeapon = wpnDropsOn ? this._rollIronWeaponForKill(dropScale) : null;
     const weapon = ironWeapon
       || (wpnDropsOn ? this._rollWeaponDropForKill(rewardZone, monster) : null);
     /* v2.3.1924: both gated on there being someone who could claim them, the
        same condition the weapon roll uses — rolling loot for an empty
        recipient list mints an item nobody can ever pick up and then counts it
        against the player's odds. */
-    const armor = anyClaimant ? this._rollArmorDropsForKill() : null;
-    const gem = anyClaimant ? this._rollRareGemForKill() : null;
+    const armor = anyClaimant ? this._rollArmorDropsForKill(dropScale) : null;
+    const gem = anyClaimant ? this._rollRareGemForKill(dropScale) : null;
     /* v2.3.1924: !armor && !gem are BELT-AND-BRACES and cannot fire today —
        this early-out is recipient-gated, and both new rolls are themselves
        gated on there being a recipient, so any pile that could carry them has
