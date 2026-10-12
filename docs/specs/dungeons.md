@@ -90,6 +90,9 @@ worth the same XP/gold as world monsters of their level.
   legacy client formulas verbatim (value-neutral migration):
   - boss route: gold `30·waves + 2·monsterLevel`, xp `80·waves + 5·monsterLevel`
   - no boss: gold `20·waves`, xp `50·waves`
+  - since v2.3.3182 a **Workshop** run's clear is × its share of a full wave
+    (`min(1, monsters a wave / 4)`, `DUNGEONS.CLEAR_FULL_WAVE`; see "The
+    Workshop is not a pen" below); a Wheel dungeon's is never cut
   Paid by single mutation on live ps (the gamble pattern — recipients
   are online by definition; no escrow, no opId, no crash window).
 - Sweeps: instance empty for 60s → deleted (covers owner-never-entered,
@@ -158,6 +161,41 @@ in `dungeon.js`.
 - Minions count toward the all-dead check like any instance monster:
   the boss wave completes only when boss AND minions are down (legacy
   parity).
+
+## The Workshop is not a pen (v2.3.3182)
+
+The Workshop's runs are the player's own design, free to start, private, and
+as small or as easy as they like. Three things made that a gold and loot pen
+(overnight economy review, decision 6):
+
+- **The clear paid whatever the run held.** One wave of one level-1 monster
+  paid the 20-gold clear for a single kill (its own pile ~5 g), as fast as a
+  script could start runs. Now a Workshop run's clear (gold and XP, boss
+  route or not) is × `min(1, monsters a wave / 4)`: four or more a wave pay
+  the whole clear, one a wave a quarter (`_dungeonClearShare`).
+- **The flat drops rolled at the world's rate on trivial monsters.** The rare
+  gem (1 in 200) and the iron torso, greaves and greatsword (1 in 500 each)
+  roll at one chance whatever the monster's level, and the Workshop lets a
+  strong character fill a room with level-1 monsters it kills in a blow. In a
+  Workshop run they now roll at `min(1, monster level / the strongest
+  claimant's level)` of their chance (`_workshopDropScale`, the same random
+  draws): a run at your own level drops them as the world does, a level-1 run
+  for a level-45 character at 1/45. The world, and the Wheel's dungeons
+  (fixed levels), are unchanged.
+- **A boss nobody fought summoned forever.** Only LIVE minions were capped,
+  and an untouched boss never enrages, so a swarm boss left alone summoned
+  2–3 adds a cast without end (151 in ten minutes), each rolling the flat
+  drops. Now a boss summons only while it is being fought — it took damage
+  in the last `SUMMON.FOUGHT_MS` (15 s), read off its hp from tick to tick —
+  and at most `SUMMON.MAX_TOTAL` (60, fifteen times the live cap: about four
+  minutes of adds killed as they come) in all (`m._summoned`). This holds in
+  every dungeon, the Wheel's too.
+
+Tests: `dungeon.test.mjs` §10 (a quarter for one a wave, the whole clear for
+four) and §18b (ten minutes of an untouched boss: no adds; hurt, it summons;
+its total; the drop scale in the Workshop, the world and a Wheel dungeon; one
+roll that drops the gem and iron in the world and nothing from a level-1
+Workshop monster for a level-45 player).
 
 ## Enrage soft timer (v2.3.1199)
 
