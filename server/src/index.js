@@ -90,6 +90,9 @@ import { petMethods, PETS } from './pets.js';
 import { trappingMethods } from './trapping.js';
 import { hardenedWoodMethods } from './hardenedwood.js'; /* v2.3.3139: logs into hardened wood */
 import { petbookMethods } from './petbook.js';
+/* v2.3.3153: the monster codex -- what each kill teaches you, codex:<pid>
+   (codex.js).  docs/specs/monster-codex.md. */
+import { codexMethods } from './codex.js';
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
 // loot layers (effective_base formula, forge quality roll, harden
 // ladder).  See hardening.js for the name-collision warning vs the
@@ -534,6 +537,9 @@ export const PRIVILEGED_EVENTS = new Set([
      pets they do not own on their Pets page, `trap_armed` a mark and odds the
      worker never set, and `make_traps_result` traps that never reached a bag. */
   'make_traps_result', 'trap_armed', 'trap_result', 'pets_state',
+  /* v2.3.3153: the monster codex's counts (codex.js), server-sent and private.
+     Forged, it would paint facts the player never earned on their Codex page. */
+  'codex_state',
   // v2.3.1131: hardening rolls are server-side + private.
   'harden_result',
   // v2.3.1347: character-restart ack (persistence.js) -- the client
@@ -5754,6 +5760,7 @@ export class GameRoom {
   async webSocketClose(ws) {
     const session = this.sessions.get(ws);
     let _petsLeft = null;   /* v2.3.3120: see below */
+    let _codexLeft = null;  /* v2.3.3153: the same, for the codex (codex.js) */
     if (session?.id) {
       if (this.playerState[session.id]) this.playerState[session.id].disconnected = true;
       /* v2.3.1619: flush coalesced regen before the in-memory blob is
@@ -5787,6 +5794,10 @@ export class GameRoom {
          player leave at once. */
       _petsLeft = this._petbookDirtyCopy(session.id);
       this._petbookForget(session.id);
+      /* v2.3.3153: and the codex's (codex.js): counting since its last write,
+         copied out now and written at the end with the pets record */
+      _codexLeft = this._codexDirtyCopy(session.id);
+      this._codexForget(session.id);
       delete this.stateHistory[session.id];
       delete this.extractions[session.id];
       this.dirtyPlayers.delete(session.id);
@@ -5810,6 +5821,7 @@ export class GameRoom {
     this.sessions.delete(ws);
     if (this.sessions.size === 0 && this.tickInterval) { clearInterval(this.tickInterval); this.tickInterval = null; }
     if (_petsLeft) await this._petbookPut(session.id, _petsLeft);
+    if (_codexLeft) await this._codexPut(session.id, _codexLeft);
   }
 
   async webSocketError(ws) { this.webSocketClose(ws); }
@@ -5968,6 +5980,7 @@ Object.assign(GameRoom.prototype, petMethods);
 Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, hardenedWoodMethods); /* v2.3.3139 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
+Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3153 */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
 Object.assign(GameRoom.prototype, hardeningMethods);
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.

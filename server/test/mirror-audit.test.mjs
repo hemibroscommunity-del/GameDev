@@ -65,6 +65,8 @@ import { NML as CLIENT_NML, NML_CENTRE as CLIENT_NML_CENTRE, nmlLevelAt as clien
 import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.js';
 /* v2.3.3120: pet trapping -- the button's odds, the Traps tab, the kinds, the name rule */
 import { TRAPPING as SRV_TRAPPING, trapChance as srvTrapChance, trapRollXp as srvTrapRollXp, trapCatchXp as srvTrapCatchXp } from '../src/trapping.js';
+import { CODEX as SRV_CODEX } from '../src/codex.js'; /* v2.3.3153 */
+import { CODEX_TIERS as CLIENT_CODEX_TIERS, CODEX_KINDS as CLIENT_CODEX_KINDS, CODEX_STAGE2_AT as CLIENT_CODEX_STAGE2_AT, CODEX_ENTRIES as CLIENT_CODEX_ENTRIES } from '../../src/data/monsterCodex.js'; /* v2.3.3153 */
 import { PET_KINDS as SRV_PET_KINDS, PET_NAME as SRV_PET_NAME, cleanPetName as srvCleanPetName, petKindOf as srvPetKindOf, PETBOOK as SRV_PETBOOK,
   petXpToNext as srvPetXpToNext, petGainXp as srvPetGainXp,
   petWardOf as srvPetWardOf, petHousePrice as srvPetHousePrice, petWireOf as srvPetWireOf } from '../src/petbook.js';
@@ -1909,6 +1911,22 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     hOff.length === 0 && CLIENT_HW_MAX === SRV_HARDENED_WOOD.MAX_PER_REQUEST && Object.keys(RC).length === 5, hOff);
   check('hardened wood: the woods by tier read off the same table on both sides',
     JSON.stringify(CLIENT_HARDEN_WOOD_BY_TIER) === JSON.stringify(SRV_HARDEN_WOOD_BY_TIER), { client: CLIENT_HARDEN_WOOD_BY_TIER, server: SRV_HARDEN_WOOD_BY_TIER });
+}
+
+/* ═══ v2.3.3153: THE MONSTER CODEX (server/src/codex.js, src/data/monsterCodex.js) ═══
+   The worker writes a kill to storage at once when it crosses a threshold,
+   because that kill opens a fact on the phone's page: the two lists must be
+   the same, or a fact could open on a count the worker only kept in memory
+   (and a deploy could take it back).  And the nine kinds are the worker's,
+   in its order, each with a page. */
+{
+  check('codex: the facts open at the kills the worker writes at once (' + SRV_CODEX.TIERS.join(', ') + ')',
+    JSON.stringify(Object.values(CLIENT_CODEX_TIERS)) === JSON.stringify(SRV_CODEX.TIERS), { client: CLIENT_CODEX_TIERS, server: SRV_CODEX.TIERS });
+  check('codex: the elder form opens at the second-stage kill the worker writes at once',
+    CLIENT_CODEX_STAGE2_AT === SRV_CODEX.STAGE2_AT, { client: CLIENT_CODEX_STAGE2_AT, server: SRV_CODEX.STAGE2_AT });
+  const missing = CLIENT_CODEX_KINDS.filter((k) => !Object.prototype.hasOwnProperty.call(CLIENT_CODEX_ENTRIES, k));
+  check('codex: the nine kinds, in the worker\'s order, each with a page',
+    JSON.stringify(CLIENT_CODEX_KINDS) === JSON.stringify(SRV_CODEX.KINDS) && missing.length === 0, { client: CLIENT_CODEX_KINDS, server: SRV_CODEX.KINDS, missing });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

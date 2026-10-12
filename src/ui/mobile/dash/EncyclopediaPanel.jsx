@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
+import { MonsterCodex } from './MonsterCodex.jsx';   /* v2.3.3153: the monster codex */
 
+/* v2.3.3153: 'Bestiary' -> 'Monsters', the monster codex (MonsterCodex.jsx).
+   The old tab listed `rpg._seenMonsters || rpg.killedMonsters`, which nothing
+   has written since the fights moved to the worker -- it was empty for
+   everyone.  The worker counts the kills now (server/src/codex.js). */
 const TABS = [
-  { id: 'bestiary',  label: 'Bestiary' },
+  { id: 'monsters',  label: 'Monsters' },
   { id: 'codex',     label: 'Codex' },
   { id: 'materials', label: 'Materials' },
   { id: 'zones',     label: 'Zones' },
@@ -46,7 +51,7 @@ const chip = (active) => ({
 });
 
 export const EncyclopediaPanel = () => {
-  const [tab, setTab] = useState('bestiary');
+  const [tab, setTab] = useState('monsters');
   const [, force] = useState(0);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 800);
@@ -55,15 +60,12 @@ export const EncyclopediaPanel = () => {
 
   const S = getState();
   const R = S?.rpg || {};
-  const seenMonsters  = R._seenMonsters  || R.killedMonsters || {};
   const seenCol       = R._seenCollisions || {};
   const seenMats      = R._seenMaterials || {};
   const seenZones     = R._visitedZones || R._seenZones || [];
 
   let rows = [];
-  if (tab === 'bestiary') {
-    rows = Object.entries(seenMonsters).map(([id, n]) => ({ id, label: id, count: n }));
-  } else if (tab === 'codex') {
+  if (tab === 'codex') {
     rows = Object.keys(seenCol).map(id => ({ id, label: id }));
   } else if (tab === 'materials') {
     rows = Object.entries(seenMats).map(([id, n]) => ({ id, label: id, count: n }));
@@ -80,7 +82,7 @@ export const EncyclopediaPanel = () => {
           </button>
         ))}
       </div>
-      {rows.length === 0 ? (
+      {tab === 'monsters' ? <MonsterCodex /> : rows.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '16px 0' }}>
           {/* v2.3.1235: batch-1 rollout — empty-state contract: icon ≤40px,
               message 13/700 secondary (was 44px icon + 13/400 muted). */}

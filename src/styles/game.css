@@ -6313,3 +6313,64 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
   .bt-pet-shine{opacity:0}
   .bt-pet-glow{animation:none;opacity:.8}
 }
+
+/* ═══ v2.3.3153: THE MONSTER CODEX'S STAGE (src/ui/mobile/dash/CodexStage.jsx) ═══
+   The Points window preview's make (bt-sd-*): one ground line 9px up the
+   stage, your character on the left, the monster on the right in its own
+   strips (stepped by bt-sd-strip, the preview's keyframes), every motion
+   CSS.  The monster is two layers: .bt-cx-mon walks (an inline transform and
+   its transition), .bt-cx-body moves on the spot (one transform each). */
+.bt-cx-stage{position:relative;width:300px;max-width:100%;height:150px;margin:0 auto;overflow:hidden;border-radius:10px;background:#111E23;border:1px solid rgba(229,237,233,.08)}
+.bt-cx-stage::before{content:"";position:absolute;left:0;right:0;bottom:0;height:40px;background:var(--cx-land,#3a4a50);opacity:.2;pointer-events:none}
+.bt-cx-stage::after{content:"";position:absolute;left:0;right:0;bottom:9px;height:1px;background:rgba(229,237,233,.09);pointer-events:none}
+.bt-cx-hero{position:absolute;left:10px;bottom:-4px;line-height:0;will-change:transform}
+.bt-cx-hero--hit{animation:bt-cx-flinch .38s ease-out 1}
+.bt-cx-hero--shove{animation:bt-cx-shove .6s ease-out 1}
+.bt-cx-hero--swing{animation:bt-sd-lunge .34s ease-out 1}
+@keyframes bt-cx-flinch{0%{transform:translateX(0);filter:none}25%{transform:translateX(-6px);filter:brightness(1.7)}100%{transform:translateX(0);filter:none}}
+@keyframes bt-cx-shove{0%{transform:translateX(0)}30%{transform:translateX(-18px)}100%{transform:translateX(0)}}
+.bt-cx-mon{position:absolute;bottom:0;width:0;height:0;will-change:transform}
+.bt-cx-body{position:absolute;left:0;bottom:0;width:0;height:0;transform-origin:0 100%}
+.bt-cx-strip{position:absolute;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;pointer-events:none}
+.bt-cx-portrait{position:absolute;opacity:.92;pointer-events:none}
+.bt-cx-body--breathe{animation:bt-cx-breathe 1.8s ease-in-out infinite}
+.bt-cx-body--throb{animation:bt-cx-throb 1.2s ease-in 1 forwards}
+.bt-cx-body--rise{animation:bt-cx-rise .9s ease-out 1 forwards}
+.bt-cx-body--slam{animation:bt-cx-slam .26s ease-in 1}
+.bt-cx-body--swell{animation:bt-cx-swell 1.6s ease-in 1 forwards}
+.bt-cx-body--burst{transform:scale(2.4)}
+.bt-cx-body--swing{animation:bt-cx-swing .26s ease-out 1}
+.bt-cx-body--fadein{animation:bt-cx-fadein .5s ease-out 1 both}
+.bt-cx-body--struck{animation:bt-cx-struck .34s ease-out 1}
+@keyframes bt-cx-breathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.025)}}
+@keyframes bt-cx-throb{0%{transform:scale(1)}60%{transform:scale(1.08,.92)}100%{transform:scale(1.12,.86)}}
+@keyframes bt-cx-rise{0%{transform:translateY(0)}100%{transform:translateY(-12px) scale(1.04)}}
+@keyframes bt-cx-slam{0%{transform:translateY(-12px)}40%{transform:translateY(2px) scale(1.06,.94)}70%{transform:translateX(-3px)}85%{transform:translateX(3px)}100%{transform:none}}
+@keyframes bt-cx-swell{0%{transform:scale(1)}100%{transform:scale(2.4)}}
+@keyframes bt-cx-swing{0%{transform:translateX(0)}40%{transform:translateX(-12px)}100%{transform:translateX(0)}}
+@keyframes bt-cx-fadein{0%{opacity:0}100%{opacity:1}}
+@keyframes bt-cx-struck{0%{transform:none;filter:none}30%{transform:translateX(5px);filter:brightness(2)}100%{transform:none;filter:none}}
+/* the special's word over it, as the world says SLAM! and LUNGE! */
+.bt-cx-label{position:absolute;width:88px;text-align:center;font-size:15px;font-weight:900;letter-spacing:.04em;text-shadow:0 2px 0 rgba(0,0,0,.65),0 0 6px rgba(0,0,0,.5);pointer-events:none;animation:bt-cx-label .9s ease-out 1 both}
+@keyframes bt-cx-label{0%{transform:translateY(6px) scale(.8);opacity:0}25%{transform:translateY(0) scale(1.05);opacity:1}100%{transform:translateY(-4px) scale(1);opacity:1}}
+/* a slam's (or a burst's) ring at its feet, flat on the ground */
+/* the world's warning circle (effectsRenderer _telegraphZones), under you,
+   filling as the wind-up runs; and the world's kick as a slam or a burst lands */
+.bt-cx-zone{position:absolute;width:80px;height:22px;margin-left:-40px;border:2px solid var(--cx-zone,#f5c542);border-radius:50%;box-sizing:border-box;pointer-events:none;animation:bt-cx-zone var(--cx-zone-ms,.9s) linear 1 both}
+.bt-cx-zone::before{content:"";position:absolute;inset:0;border-radius:50%;background:var(--cx-zone,#f5c542);animation:bt-cx-zonefill var(--cx-zone-ms,.9s) linear 1 both}
+@keyframes bt-cx-zone{0%{opacity:.45}100%{opacity:.95}}
+@keyframes bt-cx-zonefill{0%{opacity:.1}100%{opacity:.34}}
+.bt-cx-world{position:absolute;inset:0}
+.bt-cx-world--shake{animation:bt-cx-shake .32s linear 1}
+@keyframes bt-cx-shake{0%,100%{transform:none}20%{transform:translate(-4px,1px)}40%{transform:translate(4px,-1px)}60%{transform:translate(-3px,1px)}80%{transform:translate(2px,0)}}
+/* a ball crossing the gap: its hand, over the top, your chest */
+.bt-cx-shot{position:absolute;left:0;top:0;pointer-events:none;animation-name:bt-cx-fly;animation-duration:.65s;animation-timing-function:linear;animation-iteration-count:1;animation-fill-mode:both}
+.bt-cx-shot--ball{border-radius:50%;box-shadow:inset -2px -3px 0 rgba(0,0,0,.28),inset 2px 2px 0 rgba(255,255,255,.35)}
+@keyframes bt-cx-fly{0%{transform:translate(var(--cx-sx),var(--cx-sy))}50%{transform:translate(var(--cx-mx),var(--cx-my))}100%{transform:translate(var(--cx-ex),var(--cx-ey))}}
+.bt-cx-burst{position:absolute;width:44px;height:44px;background-repeat:no-repeat;pointer-events:none;animation:bt-sd-strip .42s steps(8,jump-none) 1 forwards,bt-cx-fadeout .42s linear 1 forwards}
+@keyframes bt-cx-fadeout{0%,70%{opacity:1}100%{opacity:0}}
+/* what its element did, over your head */
+.bt-cx-pop{position:absolute;display:flex;align-items:center;gap:4px;padding:2px 8px 2px 3px;border-radius:999px;background:rgba(11,22,27,.75);color:#F4F0E7;font-size:12px;font-weight:900;white-space:nowrap;pointer-events:none;animation:bt-cx-pop 1s ease-out 1 both}
+.bt-cx-pop img{width:20px;height:20px;object-fit:contain}
+@keyframes bt-cx-pop{0%{transform:translateY(6px);opacity:0}20%{transform:translateY(0);opacity:1}75%{opacity:1}100%{transform:translateY(-10px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.bt-cx-body,.bt-cx-hero,.bt-cx-label,.bt-cx-zone,.bt-cx-world,.bt-cx-pop{animation:none!important}}
