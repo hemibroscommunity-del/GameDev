@@ -51,6 +51,38 @@ Rules encoded (don't regress these):
 - **No cross-DO await between validation and commit** — every method here
   only awaits storage ops, which close the DO's input gate.
 
+## Writes that must commit together (v2.3.3185)
+
+A Durable Object commits every write made in one synchronous run as one
+batch; an `await` between two writes splits them, and a restart (every
+server merge restarts the room) can land between the batches. Two places
+split writes that only make sense together, and a restart between them LOST
+a player's gold (never doubled it), found by the overnight economy review
+(decision 10):
+
+- **The mail drain** (`_drainInbox`) rewrote or deleted the mailbox, awaited,
+  and saved the player after: a restart between them took the mail away with
+  its gold or goods never saved. Saving the player first would be no better
+  (the mail would pay again). Both are now issued in one run.
+- **A duel's stakes** (duel.js accept): a's stake, b's stake and the
+  `duelEscrow:` record were three writes, and the restart sweep refunds only
+  what a record names, so a stake taken before the record was gone. They now
+  go through `_escrowDebitGoldTogether(debits, puts)`: every purse checked
+  first, then every debit, its save, its oplog stamp and the caller's records
+  in one run, for players who are online. (An arena entry's debit and its
+  `arena_entry:` record are written the same way, in gladiator.js.)
+
+Tests: `inbox.test.mjs` §8b and `duel.test.mjs` §7b run the flow on a storage
+that commits by batch and crash it at EVERY batch in turn, restart on what
+was written, and require the exact amounts (the mail's 500 delivered once;
+both duellists back to their 100 after the sweep).
+
+Still open, and noted rather than changed: `_creditPlayer` stamps its opId
+before it applies the credit, so a restart between them loses that payout;
+moving the stamp after the credit would let a retry pay twice, which is
+worse. And two records (market orders, clan wars) rely on oplog stamps that
+are pruned after 48 hours.
+
 ## Wire surface (for future UI)
 
 | Message | Direction | Payload |

@@ -203,6 +203,93 @@ room._lastDuelSweep = 0;
 await room._duelEscrowSweep();
 check('sweep never refunds a settled pot', psA.coins === coinsA7b && !state._store.has('duelEscrow:paid-duel'), psA.coins);
 
+// ── 7b. v2.3.3185: a restart at ANY write of a duel's start loses no stake ──
+// A storage where every write made in one synchronous run commits as one
+// batch, as a Durable Object's does, and the room dies before batch `crashAt`
+// (that batch and every later one are lost).  The duel's start took a's
+// stake, then b's, then wrote the escrow record the restart sweep refunds
+// from -- so a restart between them kept a stake no record named.  For every
+// batch of the accept: crash there, restart on what was written, sweep, and
+// both players must have their 100 back -- never less, never more.
+{
+  const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
+  const mkBatchState = (seed) => {
+    const store = new Map(seed ? [...seed].map(([k, v]) => [k, clone(v)]) : []);
+    let pending = null, batches = 0, crashAt = Infinity, dead = false;
+    const commit = () => {
+      const w = pending; pending = null;
+      const n = batches++;
+      if (dead || n >= crashAt) { dead = true; return; }
+      for (const [op, k, v] of w) { if (op === 'put') store.set(k, v); else store.delete(k); }
+    };
+    const write = (op, k, v) => {
+      if (!pending) { pending = []; queueMicrotask(commit); }
+      pending.push([op, k, clone(v)]);
+    };
+    const view = (k) => {
+      if (pending) for (let i = pending.length - 1; i >= 0; i--) if (pending[i][1] === k) return pending[i][0] === 'put' ? clone(pending[i][2]) : undefined;
+      return clone(store.get(k));
+    };
+    return {
+      _store: store,
+      batches: () => batches,
+      crashAt(n) { crashAt = n; },
+      storage: {
+        get: async (k) => view(k),
+        put: async (k, v) => {
+          if (k && typeof k === 'object') { for (const [kk, vv] of Object.entries(k)) write('put', kk, vv); return; }
+          write('put', k, v);
+        },
+        delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) write('del', x); return true; },
+        list: async (opts) => { const out = new Map(); for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, clone(v)); return out; },
+      },
+      getWebSockets: () => [],
+      acceptWebSocket: () => {},
+    };
+  };
+  const settleIo = () => new Promise((r) => setTimeout(r, 5));
+  const joinOn = async (rm, ws, id) => {
+    rm.sessions.set(ws, baseSession());
+    await rm.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, data: { x: 0, y: 0, z: 'town' } }));
+  };
+  const A = 'bp_duel_ra', B = 'bp_duel_rb';
+  /* the world before: two players with 100 each, written */
+  const s0 = mkBatchState();
+  const r0 = new GameRoom(s0, mockEnv);
+  await joinOn(r0, fakeWs('a0'), A); await joinOn(r0, fakeWs('b0'), B);
+  r0.playerState[A].coins = 100; r0.playerState[B].coins = 100;
+  r0._saveRpg(A, r0.playerState[A]); r0._saveRpg(B, r0.playerState[B]);
+  await settleIo();
+  const seed = s0._store;
+  const lost = [];
+  let acceptBatches = 0;
+  for (let k = 0; k <= 8; k++) {
+    const s1 = mkBatchState(seed);
+    const r1 = new GameRoom(s1, mockEnv);
+    await joinOn(r1, fakeWs('a1'), A); await joinOn(r1, fakeWs('b1'), B);
+    await settleIo();
+    const before = s1.batches();
+    s1.crashAt(before + k);
+    await r1._interceptDuel(A, chalMsg(B, 40));
+    await r1._interceptDuel(B, acceptMsg(A, 40));
+    await settleIo();
+    acceptBatches = Math.max(acceptBatches, s1.batches() - before);
+    /* the restart: a new room on what was written; the record aged past the
+       sweep's wait, the sweep run */
+    const s2 = mkBatchState(s1._store);
+    for (const [kk, v] of s2._store) if (kk.startsWith('duelEscrow:')) s2._store.set(kk, { ...v, startedAt: 0 });
+    const r2 = new GameRoom(s2, mockEnv);
+    await joinOn(r2, fakeWs('a2'), A); await joinOn(r2, fakeWs('b2'), B);
+    r2._lastDuelSweep = 0;
+    await r2._duelEscrowSweep();
+    await settleIo();
+    const ca = r2.playerState[A].coins, cb = r2.playerState[B].coins;
+    if (ca !== 100 || cb !== 100) lost.push({ crashAt: k, a: ca, b: cb });
+  }
+  check('a restart at any write of a duel\'s start leaves both players their 100 after the sweep (none lost, none doubled)', lost.length === 0, lost);
+  check('...the stakes and the record go out as ONE write', acceptBatches === 1, acceptBatches);
+}
+
 // ── 8. zero-wager duel ──
 await room._interceptDuel('bp_duel_a', { type: 'duel_request', payload: { target: 'bp_duel_b', fromName: 'A' } });
 const accFree = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 0));

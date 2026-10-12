@@ -164,14 +164,15 @@ export const duelMethods = {
     const wager = chal.wager;
     const duelId = crypto.randomUUID();
     if (wager > 0) {
-      const dA = await this._escrowDebitGold(a, wager, 'duel:' + duelId + ':a');
-      if (!dA.ok) return declineBoth();
-      const dB = await this._escrowDebitGold(b, wager, 'duel:' + duelId + ':b');
-      if (!dB.ok) {
-        await this._creditPlayer(a, { opId: 'duelrefund:' + duelId + ':a', source: 'duel', kind: 'gold', payload: { amount: wager }, note: 'duel wager returned' });
-        return declineBoth();
-      }
-      await this.state.storage.put('duelEscrow:' + duelId, { a, b, wager, startedAt: now });
+      /* v2.3.3185: both stakes and the escrow record in ONE write
+         (inbox.js _escrowDebitGoldTogether).  They were three -- a's stake,
+         b's stake, then the record -- and a restart after a stake but before
+         the record lost it: the sweep refunds only what a record names.  Now
+         both purses are checked first and nothing moves unless both pay. */
+      const staked = await this._escrowDebitGoldTogether(
+        [{ id: a, amount: wager, opId: 'duel:' + duelId + ':a' }, { id: b, amount: wager, opId: 'duel:' + duelId + ':b' }],
+        [['duelEscrow:' + duelId, { a, b, wager, startedAt: now }]]);
+      if (!staked.ok) return declineBoth();
     }
     // v2.3.1175: away is a per-player map {pid: forfeitDeadline}.  The
     // old single-slot graceUntil/awayId pair meant a second disconnect
