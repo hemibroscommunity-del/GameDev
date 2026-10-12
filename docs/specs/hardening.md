@@ -215,3 +215,20 @@ it makes hardened wood and charges it for bows and staffs.
   with marketplace pricing if elite listings need price floors.
 - Stash-row quality badges + quality border art (Gold/Notched,
   Prismatic/Radiant per GDD §4.6b) are cosmetic follow-ups.
+
+## v2.3.3161: the material is decided by the weapon, not the slot
+
+`hardenIsWood(w, slot)` (server `hardening.js`, the game's copy in
+`src/data/hardenCosts.js`) used to answer "wood" for anything in the bow or
+staff slot. Until v2.3.3160 (gear.js `_weaponSlotFor`), `equip_request` let a
+sword sit in the staff slot. Reproduced on main: an iron sword there was
+hardened with Hardened Hardwood and never paid an iron bar, and a black-steel
+greatsword in the bow slot took Hardened Cedar Wood. That is about 40% cheaper
+at Diego's counter, and it let a smith with no Smithing for black-steel bars
+harden a black-steel blade.
+
+Now a `ww_` gearBase or a bow or staff TYPE is wood, any other typed weapon
+takes its metal's bars, and only a weapon with no type at all (a legacy blob)
+still goes by its slot. For every weapon the game's own screens can seat, the
+answer is the one the slot gave. No price, odd or rule changed.
+`hardening.test.mjs` §8b: three new checks (two fail on main).
