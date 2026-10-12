@@ -338,9 +338,20 @@ requests a second**. Their own example is a game with 50,000 players sending
 - **Today's cap of 60 may already be above that** at the full send rate. A
   bot load test (build order, step 4) should settle it before any launch
   push.
-- **200 in one room will not work** as the game stands. The processor is not
-  the limit: 60 players cost 0.16 ms of each 22 ms tick
-  (`docs/specs/room-full.md`). Taking the messages in is.
+  - **Measured, v2.3.3192** (`docs/specs/load-test.md`, the bot load test in
+    `tools/qa/load/`): in the sandbox, against the real runtime, the room is
+    smooth up to about **60 busy players** (its one thread 88-90% busy),
+    slows from 70 (fewer ticks a second, so the world runs slower), and
+    **freezes at about 95-100**, without recovering when players leave.
+    Cloudflare's own machines are not measured.
+- **200 in one room will not work** as the game stands. Both halves bind:
+  - **taking the messages in** costs the runtime about 0.3-0.5 ms of the
+    room's thread each, about half the thread at 60 moving players;
+  - **the processor** is the other half. The old figure, 60 players at
+    0.16 ms of each 22 ms tick (`docs/specs/room-full.md`), was the meadow,
+    before the Wheel. In the Wheel each player's tick is built on its own and
+    lists every moving player, so the room's own work grows with the square of
+    the crowd: 32% of a core at 50 players, 116% at 150.
 
 ### The fix: fewer messages, and a world of area servers
 

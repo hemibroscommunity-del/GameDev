@@ -5970,3 +5970,21 @@ shadow lock worked out for it, the pieces in one order, and refuses to compare
 until both pages have every piece and page in and both workers calmed the
 water.  Then it measures 0.03-0.05% of pixels one level of 255 apart, nothing
 more -- the arithmetic of a blend done in a shader rather than by the chip.
+
+## 168. "The room's CPU is nowhere near the wall, so raise the cap" (v2.3.3192)
+
+`docs/specs/room-full.md` and the comment at the room's admission gate
+(`server/src/index.js`, the 61st player) say the worker spends 0.16 ms of its
+22 ms tick on 60 players, so CPU is "nowhere near the wall" and sixty is only a
+phone's number.  That was measured in the meadow, in a simulated room, before
+the whole world became one zone.  In the Wheel each player's tick is built on
+its own and lists every moving player, so the room's own work grows with the
+square of the crowd, and the real runtime spends 0.3-0.5 ms of the room's one
+thread taking each message in.  The bot load test (`tools/qa/load/`,
+`docs/specs/load-test.md`) puts the room at 88-90% of its thread with 60 busy
+players in the sandbox, slower from 70, frozen at about 95-100 -- and a frozen
+room did not come back when players left.
+
+**The rule.**  Never raise `MAX_PLAYERS` (or read a capacity figure) without
+re-running `node tools/qa/load/load.mjs` on the code as it is.  A number
+measured before the world changed shape describes a different game.
