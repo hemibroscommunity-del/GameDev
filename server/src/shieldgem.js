@@ -128,7 +128,7 @@ export const shieldGemMethods = {
     const pid = session.id;
     const ps = this.playerState[pid];
     if (!ps) return null;
-    const p = payload && typeof payload === 'object' ? payload : {};
+    const p = payload && typeof payload === 'object' ? payload : Object.create(null);
     const gem = typeof p.gem === 'string' && AMULET_GEMS.has(p.gem) ? p.gem : null;
     const refuse = (reason) => {
       const r = { ok: false, reason, gem };
