@@ -153,13 +153,14 @@ let P;
   const r = await slot({ gem: 'frost', sig: sig0 });
   check('an old shield takes a gem by its signature', !!r && r.ok === true && r.gid === null && r.worn === true && ps().shield.gem === 'frost', r);
   check('...and KEEPS ITS NAME: its signature (which holds the name) is how both sides know it, so it must not change under the game',
-    ps().shield.name === 'Pine Shield' && shieldSig(ps().shield) === sig0 && r.name === 'Pine Shield', ps().shield);
+    ps().shield.name === 'Pine Shield' && shieldSig(ps().shield) === sig0 && !!r && r.name === 'Pine Shield', ps().shield);
   check('...the receipt names it by that same signature', r && r.sig === sig0, r && r.sig);
   check('...one frost gem taken', gems().polished_frost === 1, gems());
   check('...nothing is minted: it stays unproven, no ledger row added', !ps().shield.gid && ps().shield.prov === 'legacy' && (room._gearProvOf(PID) || { list: [] }).list.length === rows0);
   const again = await slot({ gem: 'frost', sig: sig0 });
   check('...so the same signature names it again (a second gem replaces the first)', !!again && again.ok === true && !('polished_frost' in gems()) && ps().shield.gem === 'frost', again);
-  check('...while a shield the worker made is named by its id, never by a signature', (await slot({ gem: 'frost', sig: shieldSig(P) })).reason === 'not_held');
+  const bySig = await slot({ gem: 'frost', sig: shieldSig(P) });
+  check('...while a shield the worker made is named by its id, never by a signature', !!bySig && bySig.reason === 'not_held', bySig);
 }
 
 // ── 5. A shield in the bag; a gem replaced ──
