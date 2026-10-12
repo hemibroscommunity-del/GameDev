@@ -215,6 +215,34 @@ tell the shield on your arm from a spare. Now the game tells it:
 
   Before, both read the shield you were first given.
 
+## Nothing leaves the bag in a fight (v2.3.3183)
+
+A death to a player drops the bag in a pile that is the killer's (and a red
+skull's gold). A modified game could empty a losing bag in the fight's last
+seconds -- sell it to Diego, list it on the auction house, put it in a market
+order or a trade to a friend, plant the seeds -- so the pile was empty, and
+cancel the orders afterwards (overnight economy review, decision 7). The
+order board already refused this (`order-fight`, farmorders.js). Now every
+road out of the bag does, on the same test: **in a duel, or a hit between
+players in the last 10 s** (`PVP_HEAL.WINDOW_MS`, cooking.js's clock), in
+`_bagLockedByFight(pid)`:
+
+| Road | Refusal |
+|---|---|
+| Diego buys (`_shopSell`) | "Not while you are fighting a player" |
+| Auction house: list, buy, bid (`_stCreateListing`, `/buy`, `/bid`) | the same, `settled: true` |
+| Market order, buy or sell (`_mktPlaceOrder`) | the same |
+| Trade confirm (`trade2_confirm`, either side in a fight) | the window stays open, `reason: 'fight'` |
+| Farm plant, compost (`farm_act` plant / feed) | `farm_state {err: 'fight'}` |
+
+Honest players never meet it: the shops are in town and a fight is not, and
+the window is ten seconds after the last hit. What only rearranges the bag
+(cooking, smelting, salvage, forging) or brings things in is untouched, and
+cancelling an order or a listing stays open (the escrow is yours). The game
+says "Not while fighting a player" on the farm and "Not while one of you is
+fighting a player. Try again in a few seconds." in the trade window. Kill
+switch: the live flag `fightlock: false`. Tests: `nomansland` suite §10.
+
 ## Wire, storage and switches
 
 - **Client → worker:** attacks are the existing `player_attack`;

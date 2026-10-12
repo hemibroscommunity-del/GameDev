@@ -437,5 +437,99 @@ const ps = (k) => room.playerState[ids[k]];
   room._liveFlags = keep;
 }
 
+// ── 10. v2.3.3183: nothing leaves the bag in a fight with a player ─────────
+// A modified game could empty a losing bag in the last seconds of a fight --
+// to Diego, the auction house, a market order, a trade, the farm's beds -- so
+// the killer's pile was empty, and cancel the orders afterwards.  Every road
+// out of the bag now refuses on the order board's test: a duel, or a hit
+// between players in the last 10 s.
+{
+  const idH = 'bp_nml_h', idI = 'bp_nml_i', idJ = 'bp_nml_j';
+  const wsH = fakeWs('h'), wsI = fakeWs('i'), wsJ = fakeWs('j');
+  await join(wsH, idH, 'NmlH'); await join(wsI, idI, 'NmlI'); await join(wsJ, idJ, 'NmlJ');
+  const H = room.playerState[idH], I = room.playerState[idI], J = room.playerState[idJ];
+  const fill = () => {
+    H.inventory = { crop_carrot: 10, seed_carrot: 4, compost: 3 };
+    H.coins = 5000;
+    H.weaponStash = [{ type: 'sword', tier: 'common', tierMult: 1.4, name: 'Spare Sword', gearBase: 'iron', quality: 'normal', hardness: 0, temper: 0 }];
+  };
+  fill();
+  const lockFn = typeof room._bagLockedByFight === 'function';
+  const locked = () => (lockFn ? room._bagLockedByFight(idH) : false);
+  check('setup: before any fight, nothing holds the bag', lockFn && locked() === false);
+  /* the farm before the fight: two beds dug, one of them planted (a seed
+     spent), so a plant and a compost mid-fight would really happen */
+  const farmCmd = async (payload) => { await room.webSocketMessage(wsH, JSON.stringify({ type: 'farm_act', payload })); await settle(); };
+  await farmCmd({ op: 'dig', beds: [0, 1] });
+  if (room._farmRate) room._farmRate.delete(idH);
+  await farmCmd({ op: 'plant', crop: 'carrot', beds: [1] });
+  if (room._farmRate) room._farmRate.delete(idH);
+  check('setup: two beds dug and one planted before the fight (a seed spent: 3 left)', H.inventory.seed_carrot === 3, H.inventory);
+  place(H, at(RING(2)), 7); place(I, at(RING(2) + 60), 7);
+  room._pvpHitLanes && room._pvpHitLanes.clear();
+  await attack(wsI, I, idH, H);
+  check('setup: a hit between players in No man\'s land (I hits H)', !!room.eventBuffer.find((e) => e.type === 'pvp_hit' && e.payload.target === idH) && locked() === true, locked());
+
+  // Diego
+  const sell = await room._shopSell(H, 'crop_carrot', 5, idH);
+  check('Diego buys nothing from a player in a fight', !!sell && sell.ok === false && /fight/i.test(sell.error || '') && H.inventory.crop_carrot === 10 && H.coins === 5000, { sell, inv: H.inventory, coins: H.coins });
+  // the auction house: listing (its index loaded, as its HTTP route does)
+  await room._stEnsureIndex();
+  const lst = await room._stCreateListing({ playerId: idH, kind: 'item', invKey: 'crop_carrot', qty: 5, price: 100 });
+  check('...the auction house lists nothing', !!lst && lst.ok === false && /fight/i.test(lst.error || '') && H.inventory.crop_carrot === 10, { lst, inv: H.inventory });
+  // ...buying or bidding (gold to another player, or into an escrow)
+  const sreq = (path, body) => room.fetch(new Request('https://x' + path, { method: 'POST', body: JSON.stringify(body) }));
+  const buyBody = await (await sreq('/api/store/buy', { playerId: idH, listingId: 'nope' })).json();
+  const bidBody = await (await sreq('/api/store/bid', { playerId: idH, listingId: 'nope', amount: 50 })).json();
+  check('...nor buys or bids there', buyBody.ok === false && /fight/i.test(buyBody.error || '') && bidBody.ok === false && /fight/i.test(bidBody.error || '') && H.coins === 5000, { buyBody, bidBody });
+  // the market (its index loaded, as its HTTP route does)
+  await room._mktEnsureIndex();
+  const sellOrder = await room._mktPlaceOrder({ type: 'sell', category: 'weapon', subtype: 'sword', tierKey: 'iron', price: 100, tierLabel: 'Iron', playerName: 'H', playerId: idH, stashIndex: 0 });
+  const buyOrder = await room._mktPlaceOrder({ type: 'buy', category: 'weapon', subtype: 'sword', tierKey: 'iron', price: 4000, tierLabel: 'Iron', playerName: 'H', playerId: idH });
+  check('...the market takes no order, a weapon or gold (a red skull\'s gold hid there)', sellOrder.ok === false && buyOrder.ok === false && /fight/i.test(buyOrder.error || '')
+    && H.weaponStash.length === 1 && H.coins === 5000, { sellOrder, buyOrder, stash: H.weaponStash.length, coins: H.coins });
+  // the farm
+  wsH.sent.length = 0;
+  await farmCmd({ op: 'plant', crop: 'carrot', beds: [0] });
+  await farmCmd({ op: 'feed', beds: [1] });
+  const farmErrs = msgs(wsH, 'farm_state').map((m) => m.payload && m.payload.err);
+  check('...the farm plants no seed and spreads no compost', farmErrs.filter((e) => e === 'fight').length === 2 && H.inventory.seed_carrot === 3 && H.inventory.compost === 3, { farmErrs, inv: H.inventory });
+  // a trade with a friend (J, not in the fight)
+  const cmd = (w, type, payload) => room.webSocketMessage(w, JSON.stringify({ type, payload: payload || {} }));
+  place(J, at(RING(2) + 30), 7);
+  await cmd(wsH, 'trade2_open', { target: idJ });
+  await cmd(wsJ, 'trade2_open', { target: idH });
+  await cmd(wsH, 'trade2_set', { offer: { crop_carrot: 10 } });
+  await cmd(wsH, 'trade2_ready', { ready: true });
+  await cmd(wsJ, 'trade2_ready', { ready: true });
+  for (const s2 of (room._trades2 || new Map()).values()) s2.changedAt = Date.now() - 999999;
+  wsH.sent.length = 0;
+  await cmd(wsH, 'trade2_confirm');
+  await cmd(wsJ, 'trade2_confirm');
+  const t2 = msgs(wsH, 'trade2_state').pop();
+  check('...and no trade goes through, the window staying open ("fight")', !!t2 && t2.payload.state === 'open' && t2.payload.reason === 'fight' && H.inventory.crop_carrot === 10 && !((J.inventory || {}).crop_carrot), t2 && t2.payload);
+
+  // ten seconds after the last hit, all of it is open again
+  const clock = room._pvpHealClocks && room._pvpHealClocks.get(idH);
+  if (clock) clock.pvpAt -= 11000;
+  check('ten seconds after the last hit the bag is free again', locked() === false);
+  const sell2 = await room._shopSell(H, 'crop_carrot', 5, idH);
+  check('...Diego buys again', !!sell2 && sell2.ok === true && H.inventory.crop_carrot === 5, sell2);
+  const buy2 = await room._mktPlaceOrder({ type: 'buy', category: 'weapon', subtype: 'sword', tierKey: 'iron', price: 100, tierLabel: 'Iron', playerName: 'H', playerId: idH });
+  check('...the market takes the order', buy2.ok === true, buy2);
+
+  // the kill switch
+  const keep = room._liveFlags;
+  room._pvpHitLanes && room._pvpHitLanes.clear();
+  await attack(wsI, I, idH, H);
+  check('setup: fighting again', locked() === true);
+  room._liveFlags = { ...(keep || {}), fightlock: false };
+  check('kill switch: fightlock:false lets the bag go mid-fight', locked() === false);
+  const sell3 = await room._shopSell(H, 'crop_carrot', 1, idH);
+  check('...Diego buying as before', !!sell3 && sell3.ok === true, sell3);
+  room._liveFlags = keep;
+  for (const s2 of (room._trades2 || new Map()).values()) room._t2Cancel && room._t2Cancel(s2, 'test');
+}
+
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }
 console.log('\nnomansland: all passed');

@@ -388,6 +388,12 @@ export const farmMethods = {
     if (!this._farmRateOk(session.id)) return null;
     const op = payload && payload.op;
     if (!own(OPS, op)) return null;
+    /* v2.3.3183: seeds and compost don't leave the bag in a fight with a
+       player (nomansland.js _bagLockedByFight) */
+    if ((op === 'plant' || op === 'feed') && this._bagLockedByFight && this._bagLockedByFight(session.id)) {
+      this._farmSend(session.id, { op, err: 'fight' });
+      return null;
+    }
     const rawBeds = payload && payload.beds;
     if (!Array.isArray(rawBeds)) return null;
 

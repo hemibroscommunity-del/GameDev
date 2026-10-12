@@ -237,6 +237,10 @@ export const marketMethods = {
 
     const ps = this.playerState[playerId];
     if (!ps) return { ok: false, error: 'Not in game' };
+    /* v2.3.3183: not in a fight with a player -- an order escrows a weapon or
+       gold out of the death's reach, and its cancel hands them back
+       (nomansland.js _bagLockedByFight).  Cancelling stays open. */
+    if (this._bagLockedByFight && this._bagLockedByFight(playerId)) return { ok: false, error: 'Not while you are fighting a player' };
 
     if ((this._mktOrderCounts.get(playerId) || 0) >= MARKET.MAX_ORDERS_PER_PLAYER) {
       return { ok: false, error: 'Max 10 orders' };
