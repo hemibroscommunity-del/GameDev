@@ -78,6 +78,29 @@ rewards locally (stomped by the echo) and its `POST /result` is ignored —
 but the bracket advances server-side regardless, so mixed-version
 tournaments complete correctly.
 
+## v2.3.3171: three bracket fixes
+
+Found by the overnight economy review (2026-10-12), each reproduced on main
+in `arena.test.mjs` §12-§14:
+
+- **No entries after the crown.** A finished tournament is kept 60 s for
+  the game's completion poll, and `_arenaJoin` refused only a *running*
+  one. A join in that minute took the 100 g and queued the player on a
+  bracket nothing would start; the tournament was then dropped with no
+  refund, and the sweep deleted the record because the pot was paid. Now
+  only a *gathering* tournament takes an entry ("Tournament just ended").
+- **One id per entry.** A leave refunded under `arenarefund:<tid>:<pid>`
+  but the debit's stamp `arena:<tid>:entry:<pid>` stayed, so re-joining the
+  same tournament was answered "already paid" and was free. The n-th entry
+  of a tournament now debits and refunds with `:n` on both ids (the first
+  keeps the old ids), and its `arena_entry:` record carries `n` so the
+  sweep refunds the right one.
+- **A whole round before any of it starts.** The next round was activated
+  match by match as it was built, so a walkover in its first match resolved
+  while it was the whole round so far, and crowned (and paid) its winner
+  before the other semifinal existed. The round is now built first and then
+  activated, as round 1 always was.
+
 ## Tests
 
 `server/test/arena.test.mjs` (23+ assertions, in `npm test`): entry
@@ -86,4 +109,5 @@ undersubscribed cancel, overflow refund, duel-tagged activation with
 consent pair + flags + private start events, server-kill resolution →
 champion pot → entry cleanup → events → flag clears, concurrent 4-bracket
 with timeout tiebreak and offline walkover, sweep orphan refund +
-paid-pot protection, and (post-wiring) the healing gates.
+paid-pot protection, (post-wiring) the healing gates, and since v2.3.3171 the
+late-join refusal, the paid re-join and the 8-bracket walkover (§12-§14).
