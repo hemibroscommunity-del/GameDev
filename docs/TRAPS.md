@@ -5511,7 +5511,110 @@ screenshot of the world under the Mayor's welcome scrim does not move when the
 camera does, and every first measurement of this read "the shadows never move"
 because his greeting was open.
 
-_§145–§164 (the economy review of 2026-10-12) sit before §142 on purpose: §143–§144 were written the same night in another branch, and this way the two lists merge in either order._
+## 142. "Dark is a share of black pixels" (v2.3.3151)
+
+The black-screen watchdog (BroTown.jsx) judged a 32 x 18 thumbnail of the
+world by how much of it was lit, and called the screen dark under 1%.  That
+catches a screen gone wholly black or wholly to the canvas's navy (§130).  It
+does not catch a screen gone PART way, and an iPhone graphics reset leaves
+exactly that: it blanks what the game made on the GPU and keeps what was
+loaded from a file.  In the Wheel the biggest thing the game makes is its
+ground -- every piece lives on the GPU only (v2.3.3076), and the small map
+under them and the water too -- while the buildings, trees, lamps and
+townsfolk are pictures from files.  So the screen it leaves is those things
+standing on the navy: black to anyone looking at it, and 30-39% lit in town
+to the watchdog.  No strike, no rebuild, no reload, until the owner walked
+far enough out over open ground that the share fell under 1% at last
+("the screen went black up until the point I began fighting the fire
+goblins").
+
+Measured at 51 places (town and all eight spokes, a phone at 3x): with its
+ground the Wheel reads 95-100% lit, with the ground hidden 9-56%.  The rule
+since: where something is MEANT to cover the screen, a screen far short of
+that is the failure, whatever else is drawn -- in the Wheel, under 75% lit
+is a strike.
+
+And make the failure itself in a test, not only the total blackout:
+mp-glrestore hides the whole stage, which no partial reset looks like.
+mp-bareground hides just the ground (the `wheelGround` container, found
+through `window._pixiRenderer`), and on main the watchdog sits through it.
+
+## 143. "Nothing draws that picture any more, so freeing it is safe" (v2.3.3152)
+
+A land's monster art is freed when you leave it (the zone-asset exception,
+CLAUDE.md), after the game has pointed every sprite of its own away from it.
+That is not everything that holds a picture.  Pixi keeps SHARED shaders that
+remember the last picture they drew: the mesh pipe's default shader, and the
+mask filter it draws every sprite mask through, which lives in a global pool
+(AlphaMaskPipe: `BigPool.get(AlphaMaskEffect)` ... `BigPool.return`) and is
+handed back with the last mask's picture still bound.  When a picture is
+destroyed, every bind group holding it hears it, and pixi 8.17's
+`BindGroup.onResourceChange` answers by destroying the WHOLE GROUP -- inside a
+pooled filter nobody destroyed.  The next sprite mask anywhere that takes that
+filter from the pool sets `inverse`, reads the dead group, and app.render
+throws ("Cannot read properties of null (reading '0')" at
+BindGroup.getResource <- MaskFilter set inverse <- AlphaMaskPipe.execute):
+a frame not drawn for every poisoned filter after a big fight, each time you
+leave a land or a dungeon -- and when the sprite mask sat inside a polygon
+mask, as a cut monster's does, a screen left BLACK until the watchdog's
+rebuild (§144).  Found by the leak
+hunt on its second Great Cave trip: a cut monster's death (monsterDeathFx.js)
+masks its keyline with a sprite of the monster's own picture, and leaving the
+cave freed the rock monsters' art.
+
+The stack never says who destroyed the group.  Patching BindGroup's
+`destroy` in the page to keep its caller's stack, and `getResource` to print
+it, named the chain in one run (the leak hunt's bgtrace).
+
+**The rule.**  Since v2.3.3152 a bind group whose picture or sampler is
+destroyed swaps that entry for Pixi's empty picture and stays alive
+(`src/rendering/bindGroupFix.js`, installed with the app; `?bindfix=0` is
+Pixi as it ships).  If you upgrade Pixi, keep mp-sceneleak's mask check: it
+draws a sprite mask with a picture of its own, frees the picture, and draws
+another.  And when a picture "nobody draws" is freed and something breaks,
+look in Pixi's pools and shared shaders, not only at your own sprites.
+
+The pools themselves hold memory the same way.  Pixi's TexturePool hands out
+the scratch textures of every filter pass and the texture of every canvas
+Text, by size, and keeps every one handed back -- on the GPU, for good: the
+most of each size ever in use at once (~30 name plates after a cave wave,
+6 MB of render textures nobody draws).  `texturePoolTrim.js` destroys one
+unused for 30 s and empties the pool on a zone change.  Two things it must
+do, and that a "just call TexturePool.clear()" would not: it never touches a
+texture that is out of the pool (clear() also drops the pool's arrays, and a
+texture handed back later then throws in returnTexture), and it unhooks the
+POOL'S OWN sampler from a text's texture before destroying it (a text is
+handed back wearing `TexturePool.textureStyle`, shared by every pooled text,
+and destroying a source destroys its sampler).  And it only runs with the
+bind-group fix on: the filter system's own bind group keeps its last input
+texture.
+
+## 144. "One frame threw, so one frame was lost" (v2.3.3152)
+
+app.render throwing is caught (pixiRenderer.js), logged, and the next frame
+runs -- so a throw reads as one dropped frame, and a run of them as a few.
+It is not, when the frame threw between a push and its pop.  Pixi keeps some
+of its drawing state from one frame to the next: the stencil masks' depth per
+render target (StencilMaskPipe `_maskStackHash`), the stencil mode each
+target puts back when it is drawn to again (GlStencilSystem
+`_renderTargetStencilState`), the colour mask, the filter stack's depth
+(FilterSystem `_filterStackIndex`) and the sprite masks in flight
+(AlphaMaskPipe `_activeMaskStage`).  A throw inside a polygon mask -- a cut
+monster's death nests a sprite mask inside one -- left the screen's stencil
+test on, at a reference nothing on the freshly cleared stencil matches, so
+every frame after drew nothing at all.  Made on main by the leak hunt: 0% lit
+for 22 s, until the watchdog's rebuild (v2.3.3017, v2.3.3151) -- the owner's
+"the screen went black".  The rebuild is the only thing that ended it.
+
+**The rule.**  Since v2.3.3152 every app.render throw is followed by
+`healAfterRenderThrow` (`src/rendering/renderHeal.js`), which puts those back
+to "nothing open"; the next frame draws whatever threw or not.  The watchdog
+stays the floor for a screen that goes dark any other way.  A new Pixi with
+other state carried across frames needs adding there -- mp-renderheal makes a
+throw inside a mask (with `bindfix=0`) and fails if the screen does not come
+back lit, and with `noheal` shows the black screen it prevents.
+
+_§145–§164 come from the economy review of 2026-10-12 (added v2.3.3188); each is tagged with the version of the fix it came from._
 
 ## 145. "A swap is just a swap" (v2.3.3160)
 
@@ -5813,106 +5916,3 @@ depositor of the week won the whole pool every time.
 **The rule.** Refuse every `Object.getOwnPropertyNames(Object.prototype)`
 name at the gate, and still count by own property (`hasOwnProperty`, or an
 `Object.create(null)` map) and as numbers wherever an id is a key.
-
-## 142. "Dark is a share of black pixels" (v2.3.3151)
-
-The black-screen watchdog (BroTown.jsx) judged a 32 x 18 thumbnail of the
-world by how much of it was lit, and called the screen dark under 1%.  That
-catches a screen gone wholly black or wholly to the canvas's navy (§130).  It
-does not catch a screen gone PART way, and an iPhone graphics reset leaves
-exactly that: it blanks what the game made on the GPU and keeps what was
-loaded from a file.  In the Wheel the biggest thing the game makes is its
-ground -- every piece lives on the GPU only (v2.3.3076), and the small map
-under them and the water too -- while the buildings, trees, lamps and
-townsfolk are pictures from files.  So the screen it leaves is those things
-standing on the navy: black to anyone looking at it, and 30-39% lit in town
-to the watchdog.  No strike, no rebuild, no reload, until the owner walked
-far enough out over open ground that the share fell under 1% at last
-("the screen went black up until the point I began fighting the fire
-goblins").
-
-Measured at 51 places (town and all eight spokes, a phone at 3x): with its
-ground the Wheel reads 95-100% lit, with the ground hidden 9-56%.  The rule
-since: where something is MEANT to cover the screen, a screen far short of
-that is the failure, whatever else is drawn -- in the Wheel, under 75% lit
-is a strike.
-
-And make the failure itself in a test, not only the total blackout:
-mp-glrestore hides the whole stage, which no partial reset looks like.
-mp-bareground hides just the ground (the `wheelGround` container, found
-through `window._pixiRenderer`), and on main the watchdog sits through it.
-
-## 143. "Nothing draws that picture any more, so freeing it is safe" (v2.3.3152)
-
-A land's monster art is freed when you leave it (the zone-asset exception,
-CLAUDE.md), after the game has pointed every sprite of its own away from it.
-That is not everything that holds a picture.  Pixi keeps SHARED shaders that
-remember the last picture they drew: the mesh pipe's default shader, and the
-mask filter it draws every sprite mask through, which lives in a global pool
-(AlphaMaskPipe: `BigPool.get(AlphaMaskEffect)` ... `BigPool.return`) and is
-handed back with the last mask's picture still bound.  When a picture is
-destroyed, every bind group holding it hears it, and pixi 8.17's
-`BindGroup.onResourceChange` answers by destroying the WHOLE GROUP -- inside a
-pooled filter nobody destroyed.  The next sprite mask anywhere that takes that
-filter from the pool sets `inverse`, reads the dead group, and app.render
-throws ("Cannot read properties of null (reading '0')" at
-BindGroup.getResource <- MaskFilter set inverse <- AlphaMaskPipe.execute):
-a frame not drawn for every poisoned filter after a big fight, each time you
-leave a land or a dungeon -- and when the sprite mask sat inside a polygon
-mask, as a cut monster's does, a screen left BLACK until the watchdog's
-rebuild (§144).  Found by the leak
-hunt on its second Great Cave trip: a cut monster's death (monsterDeathFx.js)
-masks its keyline with a sprite of the monster's own picture, and leaving the
-cave freed the rock monsters' art.
-
-The stack never says who destroyed the group.  Patching BindGroup's
-`destroy` in the page to keep its caller's stack, and `getResource` to print
-it, named the chain in one run (the leak hunt's bgtrace).
-
-**The rule.**  Since v2.3.3152 a bind group whose picture or sampler is
-destroyed swaps that entry for Pixi's empty picture and stays alive
-(`src/rendering/bindGroupFix.js`, installed with the app; `?bindfix=0` is
-Pixi as it ships).  If you upgrade Pixi, keep mp-sceneleak's mask check: it
-draws a sprite mask with a picture of its own, frees the picture, and draws
-another.  And when a picture "nobody draws" is freed and something breaks,
-look in Pixi's pools and shared shaders, not only at your own sprites.
-
-The pools themselves hold memory the same way.  Pixi's TexturePool hands out
-the scratch textures of every filter pass and the texture of every canvas
-Text, by size, and keeps every one handed back -- on the GPU, for good: the
-most of each size ever in use at once (~30 name plates after a cave wave,
-6 MB of render textures nobody draws).  `texturePoolTrim.js` destroys one
-unused for 30 s and empties the pool on a zone change.  Two things it must
-do, and that a "just call TexturePool.clear()" would not: it never touches a
-texture that is out of the pool (clear() also drops the pool's arrays, and a
-texture handed back later then throws in returnTexture), and it unhooks the
-POOL'S OWN sampler from a text's texture before destroying it (a text is
-handed back wearing `TexturePool.textureStyle`, shared by every pooled text,
-and destroying a source destroys its sampler).  And it only runs with the
-bind-group fix on: the filter system's own bind group keeps its last input
-texture.
-
-## 144. "One frame threw, so one frame was lost" (v2.3.3152)
-
-app.render throwing is caught (pixiRenderer.js), logged, and the next frame
-runs -- so a throw reads as one dropped frame, and a run of them as a few.
-It is not, when the frame threw between a push and its pop.  Pixi keeps some
-of its drawing state from one frame to the next: the stencil masks' depth per
-render target (StencilMaskPipe `_maskStackHash`), the stencil mode each
-target puts back when it is drawn to again (GlStencilSystem
-`_renderTargetStencilState`), the colour mask, the filter stack's depth
-(FilterSystem `_filterStackIndex`) and the sprite masks in flight
-(AlphaMaskPipe `_activeMaskStage`).  A throw inside a polygon mask -- a cut
-monster's death nests a sprite mask inside one -- left the screen's stencil
-test on, at a reference nothing on the freshly cleared stencil matches, so
-every frame after drew nothing at all.  Made on main by the leak hunt: 0% lit
-for 22 s, until the watchdog's rebuild (v2.3.3017, v2.3.3151) -- the owner's
-"the screen went black".  The rebuild is the only thing that ended it.
-
-**The rule.**  Since v2.3.3152 every app.render throw is followed by
-`healAfterRenderThrow` (`src/rendering/renderHeal.js`), which puts those back
-to "nothing open"; the next frame draws whatever threw or not.  The watchdog
-stays the floor for a screen that goes dark any other way.  A new Pixi with
-other state carried across frames needs adding there -- mp-renderheal makes a
-throw inside a mask (with `bindfix=0`) and fails if the screen does not come
-back lit, and with `noheal` shows the black screen it prevents.
