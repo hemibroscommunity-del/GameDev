@@ -456,6 +456,12 @@ export const shopMethods = {
      no stored player, leave it out. */
   async _shopSell(ps, key, qty, pid) {
     if (!ps || typeof key !== 'string' || !key) return { ok: false, error: 'Bad request' };
+    /* v2.3.3163: not with the dead -- the check every other counter makes
+       (salvage, the forges, smelting, traps, the farm, the weapon vendor).
+       Reproduced on main: a dying player bought 5 bars for 1,200 and the
+       respawn wiped them, gold spent; nobody honest is at his counter then
+       (he stands in town, where no one dies). */
+    if (ps.dying || ps.dead || ps.disconnected) return { ok: false, error: 'Not now' };
     /* v2.3.2063: he does not buy his own stock back. Two reasons, and the
        second is the load-bearing one: his staple price is fixed, so buying at
        a decayed price and selling back at the fixed one would be a coin
@@ -519,6 +525,7 @@ export const shopMethods = {
    *  seller, which is how the pile drains and the price recovers. */
   async _shopBuy(ps, key, qty, pid) {   /* v2.3.3137: pid, as _shopSell's */
     if (!ps || typeof key !== 'string' || !key) return { ok: false, error: 'Bad request' };
+    if (ps.dying || ps.dead || ps.disconnected) return { ok: false, error: 'Not now' };   /* v2.3.3163: see _shopSell */
     const want = Math.floor(Number(qty) || 0);
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
 

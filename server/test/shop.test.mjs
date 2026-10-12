@@ -445,5 +445,48 @@ check('a refused drink keeps the bottle and heals nothing',
      so the purchase from his pile above is the purchase there is) */
 }
 
+/* ═══ v2.3.3163: NOT WITH THE DEAD, AND A REFUSAL IS NOBODY ELSE'S NEWS ═══
+   Reproduced on main: a dying player bought 5 bars for 1,200 gold and the
+   respawn wiped them; and every refused sale sent the whole pile to every
+   player in the room (200 refusals, 200 copies to each bystander). */
+{
+  const tick = () => new Promise((r) => setTimeout(r, 10));
+  const send = async (ws, type, payload) => { await room.webSocketMessage(ws, JSON.stringify({ type, payload })); await tick(); };
+  const D = fakeWs('dead1');
+  const W = fakeWs('watcher');
+  await join(D, 'deadbro');
+  await join(W, 'watcher');
+  const d = room.playerState.deadbro;
+  d.inventory = { 'slime-remnants': 10 };
+  d.coins = 5000;
+  room._saveRpg('deadbro', d);
+  await tick();
+  const results = () => D.sent.filter((m) => m.type === 'shop_result').map((m) => m.payload);
+  for (const flag of ['dying', 'dead', 'disconnected']) {
+    d[flag] = true;
+    D.sent.length = 0;
+    const pile0 = ((await room._shopStock())['slime-remnants']) || 0;
+    await send(D, 'shop_sell', { key: 'slime-remnants', qty: 5 });
+    await send(D, 'shop_buy', { key: 'slime-remnants', qty: 1 });
+    const rs = results();
+    check('a ' + flag + ' player can neither sell to Diego nor buy from him, and nothing moves',
+      rs.length === 2 && rs.every((r) => !r.ok) && d.coins === 5000 && d.inventory['slime-remnants'] === 10
+        && (((await room._shopStock())['slime-remnants']) || 0) === pile0,
+      { rs, coins: d.coins, inv: d.inventory });
+    d[flag] = false;
+  }
+  W.sent.length = 0;
+  D.sent.length = 0;
+  await send(D, 'shop_sell', { key: 'slime-remnants', qty: 0 });   /* refused: no quantity */
+  await send(D, 'shop_buy', { key: 'no-such-thing', qty: 1 });   /* refused: nothing to buy */
+  check('a refused sale or purchase sends the pile to its own player only, not to everyone',
+    W.sent.filter((m) => m.type === 'shop_state').length === 0 && D.sent.filter((m) => m.type === 'shop_state').length === 2,
+    { watcher: W.sent.filter((m) => m.type === 'shop_state').length, asker: D.sent.filter((m) => m.type === 'shop_state').length });
+  W.sent.length = 0;
+  await send(D, 'shop_sell', { key: 'slime-remnants', qty: 1 });
+  check('...while a sale that changed the pile still reaches every player',
+    W.sent.filter((m) => m.type === 'shop_state').length === 1 && results().pop().ok === true);
+}
+
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
 process.exit(failures ? 1 : 0);
