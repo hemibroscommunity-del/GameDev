@@ -4129,8 +4129,21 @@ export class GameRoom {
     const keep = this._keepGatherTools(ps.inventory);
     const shield = ps && ps._deathShield;
     if (shield) {
+      const inv = (ps && ps.inventory) || {};
       for (const k of Object.keys(shield)) {
-        const q = Math.floor(Number(shield[k]) || 0);
+        /* v2.3.3169: never more than the bag still HOLDS.  The shield is what
+           a pickup handed over in the last second, and it was written back
+           whole -- so whatever of it had LEFT the bag since (sold to Diego,
+           listed on the auction house, handed over), before the blow or in
+           the five dying seconds before the respawn wipe, came back as well:
+           pick a pile up, sell it, die inside the second, and the bars were
+           in the bag again beside the coins.  A listing taken down after the
+           respawn doubled the stack every cycle.  Capped at the bag, the
+           pile's (held - shield) and this (min(shield, held)) sum to exactly
+           what the player had, for every key -- the rule this helper exists
+           to keep. */
+        const have = Object.prototype.hasOwnProperty.call(inv, k) ? Math.floor(Number(inv[k]) || 0) : 0;
+        const q = Math.min(Math.floor(Number(shield[k]) || 0), have);
         if (q > 0) keep[k] = Math.max(keep[k] || 0, q);
       }
     }
