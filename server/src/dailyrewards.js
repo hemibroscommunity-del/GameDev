@@ -566,6 +566,12 @@ export const dailyRewardsMethods = {
     let news;
     if (act === 'spin') {
       if (sp.open) { await this._drSendState(pid, { kind: 'spin', act, refused: 'open' }); return; }
+      /* v2.3.3181: the spin waits for the first quest, as the daily quests
+         do (_dqUnlocked).  A character is free to make, so a free spin a day
+         for one that has done nothing (144 coins on average, 1 in 1,000 the
+         10,000 jackpot) was gold for every throwaway.  Only a NEW run waits:
+         a pot already open is still doubled or taken. */
+      if (!this._dqUnlocked(pid)) { await this._drSendState(pid, { kind: 'spin', act, refused: 'locked' }); return; }
       let started;
       if (!sp.free) { sp.free = 1; started = 'free'; }
       else if (sp.extra > 0) { sp.extra -= 1; started = 'bonus'; }
@@ -952,6 +958,7 @@ export const dailyRewardsMethods = {
         return {
           on: !this._spinOff(),
           ready: spinToday && sp.free ? 0 : 1,       /* today's free spin still to take */
+          locked: this._dqUnlocked(pid) ? 0 : 1,     /* v2.3.3181: until the first quest is handed in */
           open,
           pot: open ? sp.pot : 0,
           k: open ? sp.k : 0,

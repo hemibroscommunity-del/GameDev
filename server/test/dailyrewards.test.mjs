@@ -136,6 +136,28 @@ const ps = () => room.playerState['bp_dr_a'];
 }
 
 // ── 3. The free spin: a lump sum, then double or nothing ──
+/* v2.3.3181: it waits for the first quest, as the daily quests do -- a
+   character is free to make, and a spin a day for one that had done nothing
+   (144 coins on average, 1 in 1,000 the 10,000 jackpot) was gold for every
+   throwaway.  Then it is unlocked for the rest of this section; section 4
+   tests the daily quests' own unlock from a clean slate. */
+{
+  const st0 = lastState(ws);
+  check('v2.3.3181: before the first quest the wire says the spin is locked', !!st0 && st0.spin.locked === 1 && st0.spin.ready === 1, st0 && st0.spin);
+  const c0 = ps().coins || 0;
+  const rec0 = room._drMap().get('bp_dr_a');
+  const free0 = rec0 && rec0.sp.free;
+  force(AT(7));
+  ws.sent.length = 0;
+  await send(ws, 'daily_spin', { act: 'spin', opId: 's0-locked' });
+  const st = lastState(ws);
+  check('...a spin before the first quest is refused ("locked"), no pot, no coins, the day\'s spin not used',
+    !!st && st.news && st.news.refused === 'locked' && st.spin.open === 0 && ps().coins === c0 && rec0.sp.free === free0 && st.spin.ready === 1,
+    st && { news: st.news, spin: st.spin, coins: ps().coins - c0 });
+  NOW += 1000;
+  if (!ps()._quests) ps()._quests = Object.create(null);
+  ps()._quests.tut_1 = 'turnedIn';
+}
 {
   const c0 = ps().coins || 0;
   force(AT(2));
@@ -302,6 +324,10 @@ const ps = () => room.playerState['bp_dr_a'];
 
 // ── 4. The daily quests ──
 {
+  /* v2.3.3181: section 3 handed in tut_1 for the spin; back to a clean
+     slate, so the unlock below is the first one */
+  delete ps()._quests.tut_1;
+  { const r = room._drMap().get('bp_dr_a'); if (r) r.dq.list = []; }
   /* the unlock, mid-session: handing in tut_1 */
   ps()._quests = Object.create(null);
   ps()._quests.tut_1 = 'turnedIn';
