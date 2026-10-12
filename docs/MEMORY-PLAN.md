@@ -110,6 +110,9 @@ Memory spent on nothing:
 | Freed on close: the world map's canvas (11.3 MB an open at 3x, held until the next GC) | five opens: 3 dead canvases, 31.4 MB -> 0 (`mp-worldmapfree`) | #812, v2.3.3070 |
 | Freed on close: the loading clip's warm-up copy | a hidden `<video>` of `loading-ashore.mp4` (a 0.6 MB file) and its poster, held for the session by BroTown's `_introWarmRef` -- only on a session that shows the welcome; ~1-3 MB on a phone at most; rubble's scratch canvases are locals the GC takes | small; not done on its own |
 | A snowball burst playing when the frost art is handed back (found on the way: app.render threw until the burst ended) | retired before the frame draws (`mp-burstfree`) | #813, v2.3.3071 |
+| The hit effects' pools give back what a big fight made (found by the 2026-10-11 leak hunt: a phone in the Wheel doing each trip four times, the whole scene counted by path after each with `__btSceneCensus`).  The pools grew to the most pieces drawn at once and kept every sprite: a Great Cave wave cleared in one go left 1,436 hidden sprites in the scene at home for the visit | the scene at home after a Great Cave trip 851 -> 2,385 nodes and heap +7 MB, kept; now a pool keeps what it drew in the last 6 s and 16 more (`mp-sceneleak`: a wave of 786 pieces, 1,377 sprites -> 128 once it is over) | v2.3.3152 |
+| A rebuild left its shadow system in shadows.js's module list (its pools, filter and old world container), one more per black screen | one system after two rebuilds, not three (`mp-sceneleak`) | v2.3.3152 |
+| A freed picture still bound in Pixi's pooled mask filter (found on the way: after a cut monster's death, leaving the land made Pixi destroy the pooled filter's bind group, and the next sprite mask threw inside app.render -- a frame not drawn per poisoned filter; TRAPS §143) | no render throw (`mp-sceneleak`'s mask check; `bindGroupFix.js`) | v2.3.3152 |
 
 **Phase 2 -- stop paying for what nobody sees or hears.**
 

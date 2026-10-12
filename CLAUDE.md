@@ -2166,6 +2166,16 @@ Two protocol versions coexist; both must keep working:
   - Anything made per zone change, per land, per fight, per dungeon or per
     renderer rebuild is DESTROYED when it goes; a cache has a cap (an LRU),
     never "until the page closes".
+  - A POOL GIVES BACK WHAT A SPIKE MADE (v2.3.3152, found by a leak hunt): the
+    hit effects' pools kept every sprite a big fight drew (1,436 hidden after
+    one Great Cave wave) -- a pool trims to what it drew in its last few
+    seconds (hitMaterialFx.js `TRIM_MS`) and empties on a zone change. And a
+    picture freed is not only your sprites' business: Pixi's pooled mask
+    filter and shared shaders keep the last picture they drew, and pixi 8.17
+    destroyed their bind group with it, so the next sprite mask broke the
+    frame (TRAPS §143, `src/rendering/bindGroupFix.js`). The census is
+    `window.__btSceneCensus(depth)` (the scene counted by path); `mp-sceneleak`
+    checks all three, a rebuild's shadow system included.
   - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
     the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
     home again, three times. Each kind of memory's highest reading must stay

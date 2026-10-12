@@ -627,7 +627,9 @@ export async function initPixiRenderer(canvas) {
        listeners and the WebGL renderer it held, or every rebuild left ~90 MB
        behind (TRAPS §139, mp-bakeleak) */
     try { effectsRenderer.destroy(); } catch (e) { /* ignore */ }
-    lightFx.clear();   /* v2.3.2710 */
+    /* v2.3.2710; v2.3.3152: destroy, not clear -- the shadow system stayed in
+       shadows.js's module list after every rebuild, its old world with it */
+    try { lightFx.destroy(); } catch (e) { /* ignore */ }
     try { minimap.destroy(); } catch (e) {}
     if (fpsOverlay) fpsOverlay.destroy();
     /* ═══ v2.3.3074: CUT THE OLD RENDERER LOOSE FROM TEXTURES THAT OUTLIVE IT ═══

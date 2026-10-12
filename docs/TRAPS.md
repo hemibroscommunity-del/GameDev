@@ -5538,3 +5538,36 @@ And make the failure itself in a test, not only the total blackout:
 mp-glrestore hides the whole stage, which no partial reset looks like.
 mp-bareground hides just the ground (the `wheelGround` container, found
 through `window._pixiRenderer`), and on main the watchdog sits through it.
+
+## 143. "Nothing draws that picture any more, so freeing it is safe" (v2.3.3152)
+
+A land's monster art is freed when you leave it (the zone-asset exception,
+CLAUDE.md), after the game has pointed every sprite of its own away from it.
+That is not everything that holds a picture.  Pixi keeps SHARED shaders that
+remember the last picture they drew: the mesh pipe's default shader, and the
+mask filter it draws every sprite mask through, which lives in a global pool
+(AlphaMaskPipe: `BigPool.get(AlphaMaskEffect)` ... `BigPool.return`) and is
+handed back with the last mask's picture still bound.  When a picture is
+destroyed, every bind group holding it hears it, and pixi 8.17's
+`BindGroup.onResourceChange` answers by destroying the WHOLE GROUP -- inside a
+pooled filter nobody destroyed.  The next sprite mask anywhere that takes that
+filter from the pool sets `inverse`, reads the dead group, and app.render
+throws ("Cannot read properties of null (reading '0')" at
+BindGroup.getResource <- MaskFilter set inverse <- AlphaMaskPipe.execute):
+one frame not drawn for every poisoned filter, a flicker or a black flash
+after a big fight each time you leave a land or a dungeon.  Found by the leak
+hunt on its second Great Cave trip: a cut monster's death (monsterDeathFx.js)
+masks its keyline with a sprite of the monster's own picture, and leaving the
+cave freed the rock monsters' art.
+
+The stack never says who destroyed the group.  Patching BindGroup's
+`destroy` in the page to keep its caller's stack, and `getResource` to print
+it, named the chain in one run (the leak hunt's bgtrace).
+
+**The rule.**  Since v2.3.3152 a bind group whose picture or sampler is
+destroyed swaps that entry for Pixi's empty picture and stays alive
+(`src/rendering/bindGroupFix.js`, installed with the app; `?bindfix=0` is
+Pixi as it ships).  If you upgrade Pixi, keep mp-sceneleak's mask check: it
+draws a sprite mask with a picture of its own, frees the picture, and draws
+another.  And when a picture "nobody draws" is freed and something breaks,
+look in Pixi's pools and shared shaders, not only at your own sprites.
