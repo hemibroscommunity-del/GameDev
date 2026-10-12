@@ -43,6 +43,15 @@ export const CLANS = {
   INVITE_TTL: 120000,
   WAR_DURATION: 1800000,      // 30 min (GDD §42)
   WAR_REWARDS: { winner: { gold: 500 }, loser: { gold: 50 } }, // client CLAN_WAR_REWARDS mirror (gold only)
+  /* v2.3.3180: a war pays only the members who FOUGHT in it -- made a war
+     kill or were killed by the other side in the war zone -- and are still
+     in their clan when it ends (_resolveClanWar), so a 0-0 war pays nobody.
+     It paid every member of the roster frozen at declare: 50 each on 0-0
+     (two 20-member clans, 2,000 gold every 30 minutes for nothing), and a
+     single staged kill paid all 20 winners 500 (10,000).  And a clan waits
+     WAR_COOLDOWN after a war's end before it can fight another: wars
+     could be declared back to back. */
+  WAR_COOLDOWN: 3600000,      // 1 h
   // v2.3.1179: ended-war snapshot retention.  clan_war:<id> was written
   // on declare/kill/resolve but never deleted -- one orphan key per war
   // ever declared.  48h after endTime mirrors the oplog prune window
@@ -288,11 +297,22 @@ export const clanMethods = {
       : (payload && payload.war && payload.war.zone) || null;
     if (!zone || !ZONES[zone] || !ZONES[zone].lawless) return this._clanError(session.id, 'Pick a wilderness war zone');
     const now = Date.now();
+    /* v2.3.3180: an hour's rest after a war (CLANS.WAR_COOLDOWN), for both
+       clans; the end is stamped on each clan's record (_resolveClanWar) */
+    for (const c of [clan, defender]) {
+      const wait = (Number(c.lastWarEnd) || 0) + CLANS.WAR_COOLDOWN - now;
+      if (wait > 0) {
+        return this._clanError(session.id, (c === clan ? 'Your clan' : '[' + c.tag + ']')
+          + ' fought a war less than an hour ago (' + Math.ceil(wait / 60000) + ' min to go)');
+      }
+    }
     const war = {
       id: crypto.randomUUID(), zone, status: 'active',
       startTime: now, endTime: now + CLANS.WAR_DURATION,
-      challenger: { clanId: clan.id, tag: clan.tag, name: clan.name, score: 0, members: [...clan.members] },
-      defender: { clanId: defender.id, tag: defender.tag, name: defender.name, score: 0, members: [...defender.members] },
+      /* v2.3.3180: `fought` -- the roster members who made or took a war
+         kill; the war pays only them (_resolveClanWar) */
+      challenger: { clanId: clan.id, tag: clan.tag, name: clan.name, score: 0, members: [...clan.members], fought: [] },
+      defender: { clanId: defender.id, tag: defender.tag, name: defender.name, score: 0, members: [...defender.members], fought: [] },
       killLog: [],
     };
     this._clanWars.set(war.id, war);
@@ -322,6 +342,12 @@ export const clanMethods = {
       if (!side || war[otherSide].clanId !== vClan.id) continue;
       if (!victimPs || victimPs.z !== war.zone) return; // outside the war zone
       war[side].score += 1;
+      /* v2.3.3180: both of them fought (roster members only, so the lists
+         stay as small as the rosters) */
+      for (const [sd, pid] of [[side, attackerId], [otherSide, victimId]]) {
+        const f = war[sd].fought;
+        if (Array.isArray(f) && (war[sd].members || []).includes(pid) && !f.includes(pid)) f.push(pid);
+      }
       const aSession = [...this.sessions.values()].find((s) => s.id === attackerId);
       const vSession = [...this.sessions.values()].find((s) => s.id === victimId);
       const kill = { killer: (aSession && aSession.name) || attackerId, victim: (vSession && vSession.name) || victimId, points: 1, ts: Date.now() };
@@ -373,16 +399,39 @@ export const clanMethods = {
     const winnerSide = war.challenger.score > war.defender.score ? 'challenger'
       : war.defender.score > war.challenger.score ? 'defender' : null;
     const winnerTag = winnerSide ? war[winnerSide].tag : null; // null = draw; client shows both as losers
-    this.eventBuffer.push({ type: 'clan_war_end', payload: { warId: war.id, winner: winnerTag } });
+    /* v2.3.3180: who is paid (CLANS' note).  A roster member who fought
+       (`fought`) and is still in the clan -- a member kicked mid-war is not.
+       A 0-0 war pays nobody.  A war declared before this version has no
+       `fought` lists: it pays its roster as it always did, unless 0-0. */
+    const legacy = !Array.isArray(war.challenger.fought) || !Array.isArray(war.defender.fought);
+    const noKills = !(war.challenger.score > 0) && !(war.defender.score > 0);
+    const paidOf = (sideName) => {
+      const side = war[sideName];
+      if (noKills) return [];
+      const roster = Array.isArray(side.members) ? side.members : [];
+      if (legacy) return roster.slice();
+      const fought = new Set(side.fought);
+      return roster.filter((pid) => fought.has(pid) && this._clanByPlayer && this._clanByPlayer.get(pid) === side.clanId);
+    };
+    const paid = { challenger: paidOf('challenger'), defender: paidOf('defender') };
+    /* ...and both clans rest WAR_COOLDOWN from the war's END (a war that
+       ended while the room was empty resolves late) */
+    const rested = [];
+    for (const sideName of ['challenger', 'defender']) {
+      const c = this._clans && this._clans.get(war[sideName].clanId);
+      if (c) { c.lastWarEnd = Math.max(Number(c.lastWarEnd) || 0, Number(war.endTime) || Date.now()); rested.push(c); }
+    }
+    this.eventBuffer.push({ type: 'clan_war_end', payload: { warId: war.id, winner: winnerTag, paid: [...paid.challenger, ...paid.defender] } });
     // Flat gold per member, offline-safe + idempotent.  Draw pays the
     // loser rate to both sides.  AP deliberately not granted (GDD §27.3
     // deleted AP; the client popup text is cosmetic).
     (async () => {
       try {
+        for (const c of rested) await this.state.storage.put('clan:' + c.id, c);
         for (const sideName of ['challenger', 'defender']) {
           const side = war[sideName];
           const rate = (winnerSide && sideName === winnerSide) ? CLANS.WAR_REWARDS.winner : CLANS.WAR_REWARDS.loser;
-          for (const pid of side.members || []) {
+          for (const pid of paid[sideName]) {
             await this._creditPlayer(pid, {
               opId: 'clanwar:' + war.id + ':' + pid, source: 'clanwar', kind: 'gold',
               payload: { amount: rate.gold },
