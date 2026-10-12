@@ -407,19 +407,34 @@ export const inboxMethods = {
     if (amt <= 0) return { ok: false, reason: 'bad_amount' };
     if (await this._opSeen(opId)) return { ok: true, dup: true };
     const ps = this.playerState[playerId];
+    /* ═══ v2.3.3165: THE STAMP AND THE DEBIT ARE ONE WRITE ═══
+       The stamp went first, awaited, and the debit was saved after it -- two
+       batches.  A worker restart between them (every server merge restarts
+       the room) left "paid" in the oplog with the gold never taken, and the
+       auction house's rebuild takes that stamp as proof of payment
+       (store.js: a buy-now's `store:<id>:pay`, a bid's, an offer's).  Found
+       by the overnight economy review with a simulated restart: a 900-gold
+       buy settled while the buyer kept his 1,000; an outbid refund paid back
+       500 never taken.  Now the debit's own save and the stamp are issued in
+       ONE synchronous run (both puts before any await, rule 8's "single
+       mutation"), so they commit together: both, or neither and the retry
+       debits as if for the first time. */
     if (ps) {
       if ((ps.coins || 0) < amt) return { ok: false, reason: 'insufficient_gold' };
-      await this._opStamp(opId);
       ps.coins -= amt;
       this._saveRpg(playerId, ps);
+      const stamped = this._opStamp(opId);
       this._queuePlayerStateFlush(playerId);
+      await stamped;
       return { ok: true };
     }
     const stored = await this._loadRpg(playerId);
     if (!stored || (stored.coins || 0) < amt) return { ok: false, reason: 'insufficient_gold' };
-    await this._opStamp(opId);
     stored.coins -= amt;
-    await this.state.storage.put('rpg:' + playerId, stored);
+    const saved = this.state.storage.put('rpg:' + playerId, stored);
+    const stampedOff = this._opStamp(opId);
+    await saved;
+    await stampedOff;
     return { ok: true };
   },
 
@@ -431,21 +446,25 @@ export const inboxMethods = {
     const ps = this.playerState[playerId];
     // v2.3.1971: own-property counts on both branches (see _invCount) --
     // `(inv.constructor || 0) < c` was false, so this debited NaN.
+    /* v2.3.3165: the take and its stamp in one write -- see _escrowDebitGold. */
     if (ps) {
       if (this._invCount(ps, k) < c) return { ok: false, reason: 'insufficient_items' };
-      await this._opStamp(opId);
       ps.inventory[k] = this._invCount(ps, k) - c;
       if (ps.inventory[k] <= 0) delete ps.inventory[k];
       this._saveRpg(playerId, ps);
+      const stamped = this._opStamp(opId);
       this._queuePlayerStateFlush(playerId);
+      await stamped;
       return { ok: true };
     }
     const stored = await this._loadRpg(playerId);
     if (this._invCount(stored, k) < c) return { ok: false, reason: 'insufficient_items' };
-    await this._opStamp(opId);
     stored.inventory[k] = this._invCount(stored, k) - c;
     if (stored.inventory[k] <= 0) delete stored.inventory[k];
-    await this.state.storage.put('rpg:' + playerId, stored);
+    const saved = this.state.storage.put('rpg:' + playerId, stored);
+    const stampedOff = this._opStamp(opId);
+    await saved;
+    await stampedOff;
     return { ok: true };
   },
 };
