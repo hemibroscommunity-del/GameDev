@@ -3229,11 +3229,18 @@ export class GameRoom {
     const _duelKill = _hook('duel', () => this._duelOnDeath(playerId, cause));
     // v2.3.1125: clan-war scoring rides the same server-resolved death
     // (cause 'pvp:<attacker>'); duel kills are excluded inside the hook.
-    _hook('war', () => this._warOnDeath(playerId, cause));
+    /* v2.3.3168: ...which never worked through this path: the duel hook
+       above has already resolved the duel and taken it out of _duels, so
+       the war and bounty hooks' own "is this a duel between them?" check
+       (_duelFor) found nothing, and a thrown duel scored the clan war and
+       collected the bounty.  The duel hook's own answer -- a clean kill by
+       the duel opponent -- is used here, while it is still known.  Any other
+       death (a third player, a monster) runs both hooks as before. */
+    if (!_duelKill) _hook('war', () => this._warOnDeath(playerId, cause));
     // v2.3.1211 (item C): a killed threatener's guard-fine bounty pays
     // out to their killer here too (same server-observed 'pvp:' cause;
     // self / duel / same-clan / non-PvP excluded inside the hook).
-    _hook('bounty', () => this._bountyOnDeath(playerId, cause).catch(() => {}));
+    if (!_duelKill) _hook('bounty', () => this._bountyOnDeath(playerId, cause).catch(() => {}));
     // v2.3.1116: death ends any remaining threat consent this player
     // was party to -- the survivor can't keep hitting them through the
     // respawn.  (Duel pairs already cleared by the resolution above.)

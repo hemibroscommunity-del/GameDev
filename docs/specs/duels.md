@@ -34,7 +34,11 @@ the pot — no suiciding out of a losing wager) but is a normal death.
   own session; wager sanitized; 2 min TTL. One duel per player.
 - Accept: valid only against a live challenge from the other side. The
   **challenge's wager is authoritative** (an edited accept can't inflate
-  the opponent's stake). Both escrows debit inside one gated event; if
+  the opponent's stake) -- but since v2.3.3168 never MORE than the
+  accepter was shown: a challenge whose stake is over the accept's echoed
+  `wager` is refused (`duel_decline` to both, nothing escrowed). Only a
+  `duel_wager_request` carries a stake; a plain `duel_request` is a
+  no-stakes duel, as the game shows it. Both escrows debit inside one gated event; if
   the accepter can't pay, the challenger's already-taken wager refunds
   and both sides get `duel_decline`. On success the relayed accept
   carries `settled: true` + the authoritative `wager`, and the pair is
@@ -135,9 +139,33 @@ trades), `_duelOnDeath` in `_handlePlayerDeath` (before the pile),
 `_tickPlayerRespawn`. Threat-machine (red-skull) consent remains the
 PR1 interim observer — deliberately deferred.
 
+## v2.3.3168: no hidden stakes, and duel kills stay out of wars and bounties
+
+Found by the overnight economy review (2026-10-12), both reproduced on main
+in `duel.test.mjs` §15-§16:
+
+- **A stake the accepter never saw.** The challenge map keeps only the
+  challenger's latest challenge, and the accept escrowed its stake whatever
+  the accepter's screen said. A plain `duel_request` (which the game opens
+  as a no-stakes duel, its Accept echoing 0) could carry a stake, and a
+  `duel_wager_request` re-sent with a bigger stake just before the press
+  took the bigger number. Now a plain request is relayed and stored with
+  stake 0, and an accept whose echoed `wager` is under the challenge's
+  stake is refused before any gold moves. A stake at or under the echo
+  (the honest case, or a challenger who LOWERED it) still duels at the
+  challenge's number.
+- **Duel kills scored clan wars and paid bounties.** `_warOnDeath`
+  (clans.js) and `_bountyOnDeath` (threat.js) each skip a consensual duel by
+  asking `_duelFor(killer)`, but `_handlePlayerDeath` ran them after
+  `_duelOnDeath` had resolved the duel and removed it, so the check never
+  matched. They are now skipped when the duel hook reports a clean duel
+  kill (`_duelKill`); a kill by anyone else, or with no duel open, runs
+  them as before. Arena matches ride the duel machine, so an arena kill is
+  excluded too, as both hooks always intended.
+
 ## Tests
 
-`server/test/duel.test.mjs` (39 assertions, in `npm test`): handshake +
+`server/test/duel.test.mjs` (in `npm test`): handshake +
 escrow + gate registration, wager-inflation immunity, forged-accept
 drop, poor-accepter refund, clean-kill pot/no-pile/no-wipe, monster-
 death forfeit with normal death, reconnect grace + forfeit (including
@@ -148,4 +176,6 @@ PvP resolution block (ranged kind lands at projectile distance,
 0.5×+def-mitigated damage with exact expected values, no one-shot at
 the old lethal dmgBase, legacy no-kind payload keeps the 250 clamp
 but still lands in melee reach, 950 ranged cap intact, def-0
-scale-only case).
+scale-only case), and since v2.3.3168 no hidden or switched stake (§15)
+and no war point or bounty from a duel kill, driven through
+`_handlePlayerDeath` (§16).
