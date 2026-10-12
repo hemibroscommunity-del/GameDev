@@ -75,6 +75,19 @@ once, at death**, and stored on `ps` — the respawn wipe would fail any
 freshness test against the clock by the time it runs. It is cleared at
 respawn, so one death spends one shield.
 
+**Never more than the bag still holds (v2.3.3169).** The shield names what a
+pickup handed over; it does not prove the player still has it. Until
+v2.3.3169 `_wipeInventoryOnDeath` wrote the shield's quantity back whole, so
+anything of it that had left the bag since -- sold to Diego before the blow,
+listed on the auction house during the five dying seconds, handed over --
+was written back too, and saved. Pick a pile up, sell it, die inside the
+second: the bars were back beside the coins. A listing taken down after the
+respawn doubled a stack every cycle. Found by the overnight economy review
+(2026-10-12). Now the add-back is `min(shield, what the bag holds)` at each
+wipe, so the first rule holds for every key: the pile drops
+`held - shield`, the bag keeps `min(shield, held)`, and together they are
+exactly `held`.
+
 ### Deliberate limits
 
 - **In-memory only** (handoff rule 11). `_saveRpg` writes from a fixed field
@@ -97,6 +110,9 @@ quest-objective carve-outs it mirrors. It drives the **real**
 "not in the pile" partner. The control is the point: a recovery older than
 the grace is **not** shielded and the bag drops exactly as it always has —
 without it, a build that simply stopped dropping anything would pass.
+Since v2.3.3169 a second block there sells the recovered bars to Diego
+before the blow (all, then part), and lists them on the auction house while
+dying, and checks that neither wipe gives them back.
 
 ---
 
