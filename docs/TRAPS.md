@@ -5825,3 +5825,17 @@ another clan and be frozen onto a second war's roster.
 **The rule.** When a rule guards one exit, list every exit with the same
 effect (leave, kick, dissolve, a reset). Here the guard went on the far side:
 nobody on an active war's roster joins another clan until it ends.
+
+## 164. "Refusing three names covers the prototype" (v2.3.3167)
+
+**The plausible move.** The join refuses the ids `__proto__`, `constructor`
+and `prototype`, so a player id can never collide with `Object.prototype`.
+
+**Why it is wrong.** `Object.prototype` has a dozen more names. With the id
+`toString`, the jackpot's `entries[id] || 0` read the inherited function,
+the entry became a string, the weighted roll was NaN, and the first
+depositor of the week won the whole pool every time.
+
+**The rule.** Refuse every `Object.getOwnPropertyNames(Object.prototype)`
+name at the gate, and still count by own property (`hasOwnProperty`, or an
+`Object.create(null)` map) and as numbers wherever an id is a key.
