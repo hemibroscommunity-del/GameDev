@@ -70,3 +70,28 @@ credit + notification, opId idempotency, offline park + join drain +
 key cleanup + drain-before-state_sync ordering, weapon partial drain at
 stash cap, escrow validation failures, live vs stored-blob mutation,
 duplicate-debit convergence, cap merge.
+
+## v2.3.3165: an escrow's stamp and its debit are one write
+
+`_escrowDebitGold` and `_escrowTakeItem` wrote the oplog stamp first,
+awaited, and saved the debit after it, in the next batch. A worker restart
+between the two (every merge touching `server/**` restarts the room) left
+"paid" in the oplog with nothing taken. The auction house's wake-time
+rebuild takes that stamp as proof of payment (store.js: a buy-now's
+`store:<id>:pay`, a bid's `store:<id>:bid:<seq>`, an offer's
+`store:<id>:offer:<seq>`), so it settled sales nobody paid for. In the
+overnight economy review's simulated restart, a 900-gold buy settled while the
+buyer kept all 1,000, and an outbid refund paid back 500 that was never taken.
+The window is about a millisecond wide and only a restart opens it, but every
+merge brings one.
+
+Now the debit's own save and the stamp are issued in ONE synchronous run:
+both puts go out before any await, so they commit together (rule 8). Either
+both land, or neither does and the retry debits as if for the first time. A
+retry of a stamped payment is still `{ ok: true, dup: true }` and takes
+nothing more. The callers (duel wagers, the arena's entry fee and stakes,
+the auction house's listing escrow, buy-now, bids and offers) are unchanged.
+
+Tests: `inbox.test.mjs`, the last section (5 checks). Its storage "crashes"
+the instant the stamp is written: online and offline, gold and items, the
+debit is already durable. All 5 fail on main.

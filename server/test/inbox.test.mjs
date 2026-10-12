@@ -258,5 +258,79 @@ await room.state.storage.delete('oplog:old'); // don't leak into later checks
   check('a throwing page ends the sweep (no spin) and arms the anchor', rt === false && room._opPrune === null && room._lastOpPrune > 0, { rt });
 }
 
+/* ── v2.3.3165: AN ESCROW STAMP NEVER LANDS WITHOUT ITS DEBIT ──
+   The stamp was written first and the debit saved after, in the next batch;
+   a worker restart between them left "paid" with nothing taken, and the
+   auction house's rebuild settles on that stamp (store.js).  Here the
+   storage "crashes" the instant the stamp is written: every put after it is
+   lost, as it would be.  Puts are copied, so only what was written counts. */
+{
+  const mkCrashState = () => {
+    const store = new Map();
+    let crashAfter = null;
+    let crashed = false;
+    const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
+    return {
+      _store: store,
+      arm(key) { crashAfter = key; crashed = false; },
+      storage: {
+        get: async (k) => clone(store.get(k)),
+        put: async (k, v) => {
+          if (crashed) return;
+          store.set(k, clone(v));
+          if (k === crashAfter) crashed = true;
+        },
+        list: async (opts) => { const out = new Map(); for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, clone(v)); return out; },
+        delete: async (k) => { if (crashed) return; for (const x of (Array.isArray(k) ? k : [k])) store.delete(x); },
+      },
+      getWebSockets: () => [],
+      acceptWebSocket: () => {},
+    };
+  };
+  const cs = mkCrashState();
+  const cr = new GameRoom(cs, mockEnv);
+  const PIDC = 'bp_inbox_crash';
+  const wsC = fakeWs('crash');
+  cr.sessions.set(wsC, baseSession());
+  await cr.webSocketMessage(wsC, JSON.stringify({ type: 'join', id: PIDC, name: 'T', phrase: 'p-' + PIDC, data: { x: 0, y: 0, z: 'town' } }));
+  const pc = cr.playerState[PIDC];
+  pc.coins = 1000;
+  pc.inventory = { rare_gem: 5 };
+  await cr._saveRpg(PIDC, pc);
+  const durable = () => cs._store.get('rpg:' + PIDC);
+
+  cs.arm('oplog:test:crash:gold');
+  await cr._escrowDebitGold(PIDC, 300, 'test:crash:gold');
+  check('online gold: when the payment\'s stamp is written, the debit is written with it',
+    cs._store.has('oplog:test:crash:gold') && durable().coins === 700, { stamp: cs._store.has('oplog:test:crash:gold'), coins: durable().coins });
+
+  cs.arm('oplog:test:crash:item');
+  await cr._escrowTakeItem(PIDC, 'rare_gem', 2, 'test:crash:item');
+  check('online item: when the take\'s stamp is written, the take is written with it',
+    cs._store.has('oplog:test:crash:item') && (durable().inventory || {}).rare_gem === 3, { stamp: cs._store.has('oplog:test:crash:item'), inv: durable().inventory });
+
+  /* offline: the stored record is debited directly */
+  cs.arm(null);
+  const st0 = durable();
+  st0.coins = 1000;
+  st0.inventory = { rare_gem: 5 };
+  await cs.storage.put('rpg:' + PIDC, st0);
+  cr.sessions.delete(wsC);
+  delete cr.playerState[PIDC];
+  cs.arm('oplog:test:crash:gold-off');
+  await cr._escrowDebitGold(PIDC, 300, 'test:crash:gold-off');
+  check('offline gold: the same, on the stored record',
+    cs._store.has('oplog:test:crash:gold-off') && durable().coins === 700, { stamp: cs._store.has('oplog:test:crash:gold-off'), coins: durable().coins });
+  cs.arm('oplog:test:crash:item-off');
+  await cr._escrowTakeItem(PIDC, 'rare_gem', 2, 'test:crash:item-off');
+  check('offline item: the same, on the stored record',
+    cs._store.has('oplog:test:crash:item-off') && (durable().inventory || {}).rare_gem === 3, { stamp: cs._store.has('oplog:test:crash:item-off'), inv: durable().inventory });
+
+  /* and nothing else moved: a retry of a paid op is still a dup, never a second debit */
+  cs.arm(null);
+  const again = await cr._escrowDebitGold(PIDC, 300, 'test:crash:gold-off');
+  check('...and a retry of a stamped payment is a dup that takes nothing more', again.ok === true && again.dup === true && durable().coins === 700, { again, coins: durable().coins });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
