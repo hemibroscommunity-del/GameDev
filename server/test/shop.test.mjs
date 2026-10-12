@@ -457,7 +457,7 @@ check('a refused drink keeps the bottle and heals nothing',
   await join(D, 'deadbro');
   await join(W, 'watcher');
   const d = room.playerState.deadbro;
-  d.inventory = { 'bat-wing': 10 };
+  d.inventory = { 'slime-remnants': 10 };
   d.coins = 5000;
   room._saveRpg('deadbro', d);
   await tick();
@@ -465,25 +465,25 @@ check('a refused drink keeps the bottle and heals nothing',
   for (const flag of ['dying', 'dead', 'disconnected']) {
     d[flag] = true;
     D.sent.length = 0;
-    const pile0 = ((await room._shopStock())['bat-wing']) || 0;
-    await send(D, 'shop_sell', { key: 'bat-wing', qty: 5 });
-    await send(D, 'shop_buy', { key: 'bat-wing', qty: 1 });
+    const pile0 = ((await room._shopStock())['slime-remnants']) || 0;
+    await send(D, 'shop_sell', { key: 'slime-remnants', qty: 5 });
+    await send(D, 'shop_buy', { key: 'slime-remnants', qty: 1 });
     const rs = results();
     check('a ' + flag + ' player can neither sell to Diego nor buy from him, and nothing moves',
-      rs.length === 2 && rs.every((r) => !r.ok) && d.coins === 5000 && d.inventory['bat-wing'] === 10
-        && (((await room._shopStock())['bat-wing']) || 0) === pile0,
+      rs.length === 2 && rs.every((r) => !r.ok) && d.coins === 5000 && d.inventory['slime-remnants'] === 10
+        && (((await room._shopStock())['slime-remnants']) || 0) === pile0,
       { rs, coins: d.coins, inv: d.inventory });
     d[flag] = false;
   }
   W.sent.length = 0;
   D.sent.length = 0;
-  await send(D, 'shop_sell', { key: 'bat-wing', qty: 0 });   /* refused: no quantity */
+  await send(D, 'shop_sell', { key: 'slime-remnants', qty: 0 });   /* refused: no quantity */
   await send(D, 'shop_buy', { key: 'no-such-thing', qty: 1 });   /* refused: nothing to buy */
   check('a refused sale or purchase sends the pile to its own player only, not to everyone',
     W.sent.filter((m) => m.type === 'shop_state').length === 0 && D.sent.filter((m) => m.type === 'shop_state').length === 2,
     { watcher: W.sent.filter((m) => m.type === 'shop_state').length, asker: D.sent.filter((m) => m.type === 'shop_state').length });
   W.sent.length = 0;
-  await send(D, 'shop_sell', { key: 'bat-wing', qty: 1 });
+  await send(D, 'shop_sell', { key: 'slime-remnants', qty: 1 });
   check('...while a sale that changed the pile still reaches every player',
     W.sent.filter((m) => m.type === 'shop_state').length === 1 && results().pop().ok === true);
 }
