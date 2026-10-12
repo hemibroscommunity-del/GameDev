@@ -229,6 +229,19 @@ It sends the redeem and waits for the echo. Everything else is the server's.
    Cover at minimum: one-per-account refusal, the global cap of three, and
    a retry not double-granting.
 
+### v2.3.3173: the bag is saved with the ledger
+
+`_handleCapeRedeem` consumed the ticket and granted the cape in one
+synchronous block, but wrote them in two: the ledger before the opId
+stamp's await, the bag after it. A restart at that await kept "redeemed"
+and lost the bag's write, so the stored bag still held the ticket, and its
+next holder (it is tradeable) redeemed it again: two capes from one issued
+ticket. Found by the overnight economy review (2026-10-12). `_saveRpg` now
+runs in the same synchronous run as `_capeLedgerSave`, before the stamp.
+`eventcapes.test.mjs` simulates the restart at both sides of the stamp.
+Separately, Ace's item wager no longer takes a ticket as a stake
+(ace-coin-flip.md, "Never a golden ticket").
+
 ---
 
 ## 5. Part C — the merch draw tool

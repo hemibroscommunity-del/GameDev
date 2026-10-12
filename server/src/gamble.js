@@ -20,6 +20,10 @@
  * requests are ignored silently -- the panel's own client gates keep
  * legitimate players from ever sending them. */
 
+/* v2.3.3173: the golden ticket's key prefix -- the item wager refuses it
+   (_handleAceItemFlipRequest). */
+import { TICKET_PREFIX } from './eventcapes.js';
+
 /* ═══ v2.3.2618: ACE'S COIN FLIP ═══
  * Owner: "You can triple your money or lose 3x of your bag (you can only bet
  * what you can lose 3x of).  The odds are 55% him winning, 45% you winning."
@@ -169,6 +173,14 @@ export const gambleMethods = {
     let kinds = 0; let total = 0;
     for (const k of keys) {
       if (typeof k !== 'string' || !k || PROTO_KEYS.indexOf(k) >= 0) continue;
+      /* v2.3.3173: never a golden ticket.  The contest's promise is "only N
+         capes exist" (EVENT_CAPES cap), checked once, at the drop; a ticket is
+         an ordinary stackable in the bag and tradeable by owner decision, and
+         the redeem checks only "you hold one and have not redeemed".  A won
+         wager made 1 ticket 2 -- redeem one, trade the other, and the contest
+         had more capes than winners.  Refused like a key the bag lacks; the
+         rest of the stake still flips. */
+      if (k.startsWith(TICKET_PREFIX)) continue;
       if (!Object.prototype.hasOwnProperty.call(ps.inventory, k)) continue;
       const held = Math.floor(Number(ps.inventory[k]) || 0);
       if (held <= 0) continue;
