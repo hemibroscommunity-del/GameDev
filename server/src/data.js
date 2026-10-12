@@ -647,7 +647,11 @@ export const DIEGO_SHELF = Object.freeze([]);
  * it's met.  Entries WITHOUT one stay client-trusted -- their signals
  * (building visits, dungeon clears, collision discoveries, crafting
  * flags, pet counts) only exist client-side today; add objectives here
- * one quest at a time as those signals move server-side.  Types:
+ * one quest at a time as those signals move server-side.  v2.3.3179: they
+ * are no longer paid for nothing -- their giver must be in the world
+ * (QUEST_DORMANT below) and the first quest handed in (QUEST_FIRST), and a
+ * later step waits for a checked step before it (quests.js _questBarred).
+ * Types:
  *   {type:'kill',   arch:null|'<archetype>', count:N}  -- monster kills
  *   {type:'gather', count:N}                           -- node harvests
  *   {type:'flag', flag} / {type:'collect', invKey, count} -- reserved;
@@ -882,6 +886,36 @@ export const QUEST_REWARDS = {
       ash_3:      {gold:500, xp:123, next:'ash_4'},
       ash_4:      {gold:800, xp:175, next:null},
     };
+
+/* ═══ v2.3.3179: QUESTS NOBODY CAN GIVE YOU ═══
+ * Every chain here belongs to a giver who is not in the world: the game's
+ * NPC_DATA (src/data/gameDisplay.js) has Mayor Bro and Beastmaster Bro, and
+ * no Trader Tix, Enchantress, Scout, Blacksmith Bron, Healer Luna,
+ * Beastmaster Kai or Veteran Ash -- the game has hidden their quests since
+ * v2.3.1681 ("a quest whose giver is not in the world can never be accepted
+ * OR turned in").  The worker still took any of them on request, and 21 of
+ * the 22 have no objective it can check, so a brand-new character was paid
+ * 4,675 coins for them in a few dozen messages and could trade the gold to a
+ * main.  None of these can be accepted or handed in now (quests.js
+ * _questBarred).  Bring a giver back -> take their chain off this list;
+ * mirror-audit holds it to the game's NPC_DATA both ways. */
+export const QUEST_DORMANT = Object.freeze([
+  'trader_1', 'trader_2', 'trader_3',
+  'enchant_1', 'enchant_2', 'enchant_3',
+  'scout_1', 'scout_2',
+  'bron_1', 'bron_2', 'bron_3', 'bron_4',
+  'luna_1', 'luna_2', 'luna_3',
+  'kai_1', 'kai_2', 'kai_3',
+  'ash_1', 'ash_2', 'ash_3', 'ash_4',
+]);
+
+/* v2.3.3179: the first quest, and the one the worker can check that opens
+ * the ones it can't.  A quest with no `objective` (mayor_1, mayor_3) is paid
+ * on the game's word, so it waits until this one is handed in -- the Mayor
+ * never offers them before it anyway (the game's getNpcQuest goes down his
+ * line in order).  The daily quests wait on the same quest
+ * (dailyrewards.js QUESTS.UNLOCK_QUEST). */
+export const QUEST_FIRST = 'tut_1';
 
 export const BLACKSMITH_TIERS = {
       /* ═══ v2.3.2123: THE FIRST MELEE TIER IS MADE OF WOOD, AND NOW SAYS SO ═══
