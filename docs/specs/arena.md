@@ -100,6 +100,14 @@ in `arena.test.mjs` §12-§14:
   while it was the whole round so far, and crowned (and paid) its winner
   before the other semifinal existed. The round is now built first and then
   activated, as round 1 always was.
+- **The fee and its record are one write** (v2.3.3185). The fee was taken in
+  one write and the `arena_entry:` record -- what the restart sweep refunds
+  from -- written in the next, so a restart between them (every server merge
+  restarts the room) kept 100 g no record named. The fee, its oplog stamp,
+  the record and the place in the queue now go out in one synchronous run
+  (`arena.test.mjs` §15 crashes an entry at every write). Nothing is awaited
+  between the purse check and the queue, so two quick presses can no longer
+  both pass "Already queued".
 
 ## Tests
 

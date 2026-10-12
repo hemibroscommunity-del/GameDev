@@ -309,5 +309,86 @@ check('...and NOBODY is crowned while the other semifinal is still to be fought'
 check('...whose match is live', r2.some((m) => m.a === P('f') && m.b === P('h') && !m.winner && m.active), r2.map((m) => ({ a: m.a, b: m.b, active: m.active, w: m.winner })));
 check('the champion\'s 2,000 is not paid early', room.playerState[P('a')].coins === 900, room.playerState[P('a')].coins);
 
+/* ── 15. v2.3.3185: a restart at ANY write of an entry loses no fee ──
+ * The fee was taken in one write and the entry record -- what the restart
+ * sweep refunds from -- written in the next, so a restart between them kept
+ * 100 g no record named.  A storage where every write made in one
+ * synchronous run commits as one batch (a Durable Object's), the room dying
+ * before batch `crashAt`: for every batch of a join, crash there, restart on
+ * what was written, sweep, and the player must have the 1,000 back. */
+{
+  const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
+  const mkBatchState = (seed) => {
+    const store = new Map(seed ? [...seed].map(([k, v]) => [k, clone(v)]) : []);
+    let pending = null, batches = 0, crashAt = Infinity, dead = false;
+    const commit = () => {
+      const w = pending; pending = null;
+      const n = batches++;
+      if (dead || n >= crashAt) { dead = true; return; }
+      for (const [op, k, v] of w) { if (op === 'put') store.set(k, v); else store.delete(k); }
+    };
+    const write = (op, k, v) => {
+      if (!pending) { pending = []; queueMicrotask(commit); }
+      pending.push([op, k, clone(v)]);
+    };
+    const view = (k) => {
+      if (pending) for (let i = pending.length - 1; i >= 0; i--) if (pending[i][1] === k) return pending[i][0] === 'put' ? clone(pending[i][2]) : undefined;
+      return clone(store.get(k));
+    };
+    return {
+      _store: store,
+      batches: () => batches,
+      crashAt(n) { crashAt = n; },
+      storage: {
+        get: async (k) => view(k),
+        put: async (k, v) => {
+          if (k && typeof k === 'object') { for (const [kk, vv] of Object.entries(k)) write('put', kk, vv); return; }
+          write('put', k, v);
+        },
+        delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) write('del', x); return true; },
+        list: async (opts) => { const out = new Map(); for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, clone(v)); return out; },
+      },
+      getWebSockets: () => [],
+      acceptWebSocket: () => {},
+    };
+  };
+  const settleIo = () => new Promise((r) => setTimeout(r, 5));
+  const PIDR = 'bp_ar_restart';
+  const joinOn = async (rm) => {
+    rm.sessions.set(fakeWs('r'), baseSession());
+    const ws = [...rm.sessions.keys()].pop();
+    await rm.webSocketMessage(ws, JSON.stringify({ type: 'join', id: PIDR, name: 'R', phrase: 'p-' + PIDR, data: { x: 0, y: 0, z: 'town' } }));
+  };
+  const s0 = mkBatchState();
+  const r0 = new GameRoom(s0, mockEnv);
+  await joinOn(r0);
+  r0.playerState[PIDR].coins = 1000;
+  r0._saveRpg(PIDR, r0.playerState[PIDR]);
+  await settleIo();
+  const lost = [];
+  let joinWrites = 0;
+  for (let k = 0; k <= 6; k++) {
+    const s1 = mkBatchState(s0._store);
+    const r1 = new GameRoom(s1, mockEnv);
+    await joinOn(r1);
+    await settleIo();
+    const before = s1.batches();
+    s1.crashAt(before + k);
+    await r1._arenaJoin(PIDR, 'R');
+    await settleIo();
+    joinWrites = Math.max(joinWrites, s1.batches() - before);
+    const s2 = mkBatchState(s1._store);
+    for (const [kk, v] of s2._store) if (kk.startsWith('arena_entry:')) s2._store.set(kk, { ...v, paidAt: 0 });
+    const r2 = new GameRoom(s2, mockEnv);
+    await joinOn(r2);
+    r2._lastArenaSweep = 0;
+    await r2._arenaEntrySweep();
+    await settleIo();
+    if (r2.playerState[PIDR].coins !== 1000) lost.push({ crashAt: k, coins: r2.playerState[PIDR].coins });
+  }
+  check('a restart at any write of an arena entry leaves the 1,000 after the sweep (no fee lost, none refunded twice)', lost.length === 0, lost);
+  check('...the fee, its stamp and the entry record go out as ONE write', joinWrites === 1, joinWrites);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

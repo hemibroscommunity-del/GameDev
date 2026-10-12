@@ -178,14 +178,27 @@ export const arenaMethods = {
        refund carry ':n' (the first keeps the old ids, so an entry made
        before this deploy refunds exactly as it would have); the record
        carries n for the sweep. */
+    /* v2.3.3185: the fee, its stamp, the entry record and the place in the
+       queue in ONE synchronous run.  _escrowDebitGold took the fee and the
+       record was written after, in a write of its own: a restart between
+       them (every server merge restarts the room) took the 100 g with no
+       record for the entry sweep to refund.  And with nothing awaited between
+       the purse and the queue, two presses can no longer both pass
+       "Already queued". */
+    if ((ps.coins || 0) < ARENA.ENTRY_FEE) return { ok: false, settled: true, error: 'Need ' + ARENA.ENTRY_FEE + 'g' };
     if (!t.entryN) t.entryN = Object.create(null);   // player-keyed (rule 4)
     const n = (t.entryN[playerId] || 0) + 1;
     t.entryN[playerId] = n;
-    const debit = await this._escrowDebitGold(playerId, ARENA.ENTRY_FEE, 'arena:' + t.id + ':entry:' + playerId + this._arenaEntrySfx(n));
-    if (!debit.ok) return { ok: false, settled: true, error: 'Need ' + ARENA.ENTRY_FEE + 'g' };
-    await this.state.storage.put('arena_entry:' + t.id + ':' + playerId, { wager: ARENA.ENTRY_FEE, paidAt: Date.now(), n });
+    ps.coins -= ARENA.ENTRY_FEE;
+    const writes = [
+      this._saveRpg(playerId, ps),
+      this._opStamp('arena:' + t.id + ':entry:' + playerId + this._arenaEntrySfx(n)),
+      this.state.storage.put('arena_entry:' + t.id + ':' + playerId, { wager: ARENA.ENTRY_FEE, paidAt: Date.now(), n }),
+    ];
+    this._queuePlayerStateFlush(playerId);
     t.queue.push({ playerId, playerName: (typeof playerName === 'string' && playerName.slice(0, 24)) || 'Gladiator', n });
     if (t.queue.length >= ARENA.MAX_BRACKET) this._arenaStart();
+    await Promise.all(writes);
     return { ok: true, settled: true, queueSize: t.queue.length };
   },
 
