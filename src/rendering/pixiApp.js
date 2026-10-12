@@ -4,6 +4,8 @@
  */
 import { watchContextLoss } from '../debug/crashTrap.js';
 import { installSharpPixels } from './sharpPixels.js'; /* v2.3.2770 */
+import { installBindGroupFix } from './bindGroupFix.js'; /* v2.3.3152: a freed picture no longer breaks Pixi's pooled mask */
+import { installTexturePoolTrim } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool gives back what it does not use */
 import { SHADE } from './formShade.js';
 import { Application, Cache, Container, TextureSource } from 'pixi.js';
 
@@ -244,6 +246,30 @@ function buildScene(app) {
       let total = null;
       try { total = count(app.stage); } catch (e) { total = null; }
       return { total, byLayer };
+    };
+    /* v2.3.3152: the same count by PATH and by class, so a node count that
+       climbs says which container holds what climbs (the leak hunt that found
+       the hit effects' pools, mp-sceneleak).  A path is the labels down to
+       `maxDepth` (3), a deeper node counted on its ancestor's path; class
+       names read true only on an unminified build.  Probe only: nothing in
+       the game calls it. */
+    window.__btSceneCensus = function (maxDepth) {
+      const depthCap = typeof maxDepth === 'number' ? maxDepth : 3;
+      const byPath = Object.create(null), byClass = Object.create(null);
+      let total = 0, visible = 0;
+      const walk = (n, path, depth, shown) => {
+        total++;
+        const on = shown && n.visible !== false && n.renderable !== false;
+        if (on) visible++;
+        const cls = (n && n.constructor && n.constructor.name) || '?';
+        byClass[cls] = (byClass[cls] || 0) + 1;
+        const p = depth <= depthCap ? (path ? path + '/' : '') + ((n && n.label) ? String(n.label) : cls) : path;
+        byPath[p] = (byPath[p] || 0) + 1;
+        const k = (n && n.children) || [];
+        for (let i = 0; i < k.length; i++) walk(k[i], p, depth + 1, on);
+      };
+      try { walk(app.stage, '', 0, true); } catch (e) { return null; }
+      return { total, visible, byPath, byClass };
     };
   }
 
@@ -600,6 +626,10 @@ export async function createPixiApp(canvas) {
   // handler: crash-log entry + fresh-canvas retry with backoff, with the
   // black-screen watchdog as the floor.  Strictly better than a broken
   // canvas renderer even on first boot.
+  /* v2.3.3152: bindGroupFix.js -- on BindGroup's prototype, so the groups
+     made before this (module-level filters) are covered too; once a page */
+  try { installBindGroupFix(); } catch (e) { /* Pixi as it ships */ }
+  try { installTexturePoolTrim(); } catch (e) { /* the pool as Pixi ships it */ }
   try {
     const app = new Application();
     const putBack = withoutDepthBuffer(canvas);   /* v2.3.3072 */

@@ -209,6 +209,8 @@ const _systems = new Set();
 export function releaseShadowTextures() {
   for (const sys of _systems) { try { sys.clear(); } catch (e) { /* one pool's trouble */ } }
 }
+/* v2.3.3152: QA -- how many shadow systems the module holds (one a renderer) */
+export function shadowSystemCount() { return _systems.size; }
 
 export class ShadowSystem {
   constructor(layer, root) {
@@ -401,6 +403,24 @@ export class ShadowSystem {
       n++;
     }
     return n;
+  }
+
+  /* ═══ v2.3.3152: A RENDERER'S SHADOWS GO WITH IT ═══
+     Every ShadowSystem joins the module's list (releaseShadowTextures) and
+     nothing took one out: a black screen's rebuild made a new one and the old
+     one stayed for the visit -- its pools, its held casters' textures, its
+     filter and its old world container -- and every sheet the Wheel freed
+     cleared them all again.  Found by the leak hunt (mp-sceneleak: one
+     system after two rebuilds, not three). */
+  destroy() {
+    _systems.delete(this);
+    try { this.clear(); } catch (e) { /* its layer may be gone already */ }
+    this._held.clear();
+    this.pool = [];
+    this.meshPool = [];
+    this._pieceMeshes.clear();
+    this._pieceList = [];
+    if (this.filter) { try { this.filter.destroy(); } catch (e) { /* gone */ } this.filter = null; }
   }
 
   clear() {
