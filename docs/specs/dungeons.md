@@ -98,6 +98,20 @@ worth the same XP/gold as world monsters of their level.
   Cleanup deletes `monsters/loot/nodes[zone]` + dirty-set entries —
   **loot piles die with the instance**.
 
+## Workshop kills drop no made-up shard (v2.3.3170)
+
+A monster's 10% shard roll names the shard after the zone it pays out for
+(`_rewardZone`). A Workshop monster dies in `dungeon:<instance id>` and has
+no `home`, so until v2.3.3170 it dropped `shard_dungeon:<id>`: not an item
+(the game can't name or draw it), a new key every run, which Diego's pricer
+read as a shard and bought at his empty-pile price every time, each sale
+adding one more permanent key to his `shop_stock` record. Found by the
+overnight economy review (2026-10-12). `_rollShardForKill` now returns
+nothing for a zone outside `ZONES` (the nine element zones, each with its
+shard). A Wheel dungeon's monsters carry their land as `home`, so they
+still drop that land's shard. Keys minted before the fix stay where they
+are; nothing new is made. `dungeon.test.mjs` §27.
+
 ## Boss abilities (v2.3.1194)
 
 The slam/charge/summon/sweep kit from the DEAD client boss AI
