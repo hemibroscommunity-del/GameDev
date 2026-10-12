@@ -410,6 +410,21 @@ export const dailyRewardsMethods = {
       rec.dq.list = this._dqRoll(pid, day);
       changed = changed || rec.dq.list.length > 0;
     }
+    /* v2.3.3162: a turn-over that changed anything is DIRTY until it is
+       written.  It may already have PAID -- yesterday's open pot (_spinPay),
+       a finished season's unclaimed tiers and its freezes (_seClose) -- and
+       the record is what says so.  Three acts (a refused double or collect,
+       a reroll, a season claim) turned the day over and returned without
+       saving it; nothing marked it dirty, so the close forgot the cached
+       copy and the next join turned the STORED day over again.  The oplog
+       stamps made that second payout a 'dup' -- for 48 hours, until
+       _opPruneMaybe deleted them; the freezes have no stamp at all.
+       Reproduced on main: a 40,000 pot paid 80,000, a season's track twice
+       (8,600 coins -> 17,200, every gem, fish and bar doubled).  Every
+       caller now saves a changed turn-over at once; this mark is the
+       backstop for one that does not (the tick writes it within SAVE_MS,
+       the close at once). */
+    if (changed) this._drMarkDirty(pid);
     return changed;
   },
 
@@ -560,7 +575,8 @@ export const dailyRewardsMethods = {
       /* the first act of a new day: the streak advances first (and a pot
          left open yesterday is paid by the rollover) */
       await this._cadenceLoginReward(pid, now);
-      await this._drRollover(pid, rec, now);
+      /* v2.3.3162: SAVED, as every other caller does -- see _drRollover. */
+      if (await this._drRollover(pid, rec, now)) await this._drSave(pid);
     }
     const sp = rec.sp;
     let news;
@@ -748,7 +764,8 @@ export const dailyRewardsMethods = {
     const now = this._drNow();
     if (rec.dq.day !== dayOf(now)) {
       await this._cadenceLoginReward(pid, now);
-      await this._drRollover(pid, rec, now);
+      /* v2.3.3162: SAVED, as every other caller does -- see _drRollover. */
+      if (await this._drRollover(pid, rec, now)) await this._drSave(pid);
     }
     const q = rec.dq.list[i];
     if (!q || q.d || rec.dq.rr >= QUESTS.REROLLS) return;
@@ -855,7 +872,8 @@ export const dailyRewardsMethods = {
     const now = this._drNow();
     if (rec.dq.day !== dayOf(now) || rec.se.s !== seasonOf(dayOf(now))) {
       await this._cadenceLoginReward(pid, now);
-      await this._drRollover(pid, rec, now);
+      /* v2.3.3162: SAVED, as every other caller does -- see _drRollover. */
+      if (await this._drRollover(pid, rec, now)) await this._drSave(pid);
     }
     const se = rec.se;
     let want = [];
