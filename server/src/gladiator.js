@@ -153,17 +153,52 @@ export const arenaMethods = {
     if (!playerId || typeof playerId !== 'string') return { ok: false, settled: true, error: 'Missing playerId' };
     const ps = this.playerState[playerId];
     if (!ps || ps.dying || ps.dead) return { ok: false, settled: true, error: 'Not in game' };
-    if (this._arena && this._arena.status === 'running') return { ok: false, settled: true, error: 'Tournament in progress' };
+    /* v2.3.3171: only a GATHERING tournament takes an entry.  This refused
+       only 'running', so in the 60 s a finished tournament is kept for the
+       game's completion poll (_arenaCrown) a press took the 100 g, wrote its
+       entry record and queued the player on a bracket nothing would ever
+       start (_arenaStart wants 'gathering').  The tournament was then
+       dropped with no refund, and the entry sweep, seeing the champion's pot
+       paid, deleted the record as "entries fund the pot" -- this one did
+       not.  The game showed "Enter" (a settled /status carries no status
+       field) and answered "Entered arena queue!". */
+    if (this._arena && this._arena.status !== 'gathering') {
+      return { ok: false, settled: true, error: this._arena.status === 'running' ? 'Tournament in progress' : 'Tournament just ended' };
+    }
     if (!this._arena) {
       this._arena = { id: crypto.randomUUID(), status: 'gathering', queue: [], gatherDeadline: Date.now() + ARENA.GATHER_MS, round: 0, players: [], matches: [], champion: null };
     }
     const t = this._arena;
     if (t.queue.some((p) => p.playerId === playerId)) return { ok: false, settled: true, error: 'Already queued' };
-    const debit = await this._escrowDebitGold(playerId, ARENA.ENTRY_FEE, 'arena:' + t.id + ':entry:' + playerId);
-    if (!debit.ok) return { ok: false, settled: true, error: 'Need ' + ARENA.ENTRY_FEE + 'g' };
-    await this.state.storage.put('arena_entry:' + t.id + ':' + playerId, { wager: ARENA.ENTRY_FEE, paidAt: Date.now() });
-    t.queue.push({ playerId, playerName: (typeof playerName === 'string' && playerName.slice(0, 24)) || 'Gladiator' });
+    /* v2.3.3171: one id per ENTRY, not per (tournament, player).  A leave
+       refunds under its own id but the entry's debit stamp stays, so a
+       second join of the same tournament (it keeps its id while anyone else
+       is queued) found that stamp, was answered "already paid" by
+       _escrowDebitGold, and was queued for free.  The n-th entry's debit and
+       refund carry ':n' (the first keeps the old ids, so an entry made
+       before this deploy refunds exactly as it would have); the record
+       carries n for the sweep. */
+    /* v2.3.3185: the fee, its stamp, the entry record and the place in the
+       queue in ONE synchronous run.  _escrowDebitGold took the fee and the
+       record was written after, in a write of its own: a restart between
+       them (every server merge restarts the room) took the 100 g with no
+       record for the entry sweep to refund.  And with nothing awaited between
+       the purse and the queue, two presses can no longer both pass
+       "Already queued". */
+    if ((ps.coins || 0) < ARENA.ENTRY_FEE) return { ok: false, settled: true, error: 'Need ' + ARENA.ENTRY_FEE + 'g' };
+    if (!t.entryN) t.entryN = Object.create(null);   // player-keyed (rule 4)
+    const n = (t.entryN[playerId] || 0) + 1;
+    t.entryN[playerId] = n;
+    ps.coins -= ARENA.ENTRY_FEE;
+    const writes = [
+      this._saveRpg(playerId, ps),
+      this._opStamp('arena:' + t.id + ':entry:' + playerId + this._arenaEntrySfx(n)),
+      this.state.storage.put('arena_entry:' + t.id + ':' + playerId, { wager: ARENA.ENTRY_FEE, paidAt: Date.now(), n }),
+    ];
+    this._queuePlayerStateFlush(playerId);
+    t.queue.push({ playerId, playerName: (typeof playerName === 'string' && playerName.slice(0, 24)) || 'Gladiator', n });
     if (t.queue.length >= ARENA.MAX_BRACKET) this._arenaStart();
+    await Promise.all(writes);
     return { ok: true, settled: true, queueSize: t.queue.length };
   },
 
@@ -172,15 +207,23 @@ export const arenaMethods = {
     if (!t || t.status !== 'gathering') return { ok: false, settled: true, error: 'No open queue' };
     const idx = t.queue.findIndex((p) => p.playerId === playerId);
     if (idx < 0) return { ok: false, settled: true, error: 'Not queued' };
-    t.queue.splice(idx, 1);
-    await this._arenaRefundEntry(t.id, playerId, 'left the arena queue');
+    const [entry] = t.queue.splice(idx, 1);
+    await this._arenaRefundEntry(t.id, playerId, 'left the arena queue', entry && entry.n);
     if (t.queue.length === 0) this._arena = null;
     return { ok: true, settled: true };
   },
 
-  async _arenaRefundEntry(tid, playerId, why) {
-    await this._creditPlayer(playerId, { opId: 'arenarefund:' + tid + ':' + playerId, source: 'arena', kind: 'gold', payload: { amount: ARENA.ENTRY_FEE }, note: why });
+  async _arenaRefundEntry(tid, playerId, why, n) {
+    await this._creditPlayer(playerId, { opId: 'arenarefund:' + tid + ':' + playerId + this._arenaEntrySfx(n), source: 'arena', kind: 'gold', payload: { amount: ARENA.ENTRY_FEE }, note: why });
     await this.state.storage.delete('arena_entry:' + tid + ':' + playerId);
+  },
+
+  /* v2.3.3171: the n-th entry's op-id suffix (see _arenaJoin).  The first
+     entry -- and every record written before n existed -- has none, so it
+     keeps the old ids. */
+  _arenaEntrySfx(n) {
+    const k = Math.floor(Number(n) || 1);
+    return k > 1 ? ':' + k : '';
   },
 
   // Gathering timer + deferred match activation.  Called from the tick
@@ -194,7 +237,7 @@ export const arenaMethods = {
         // Undersubscribed: cancel + refund (fire-and-forget, idempotent).
         const tid = t.id, queued = [...t.queue];
         this._arena = null;
-        (async () => { try { for (const p of queued) await this._arenaRefundEntry(tid, p.playerId, 'arena cancelled (not enough gladiators)'); } catch (e) {} })();
+        (async () => { try { for (const p of queued) await this._arenaRefundEntry(tid, p.playerId, 'arena cancelled (not enough gladiators)', p.n); } catch (e) {} })();
       }
       return;
     }
@@ -214,7 +257,7 @@ export const arenaMethods = {
     while (size * 2 <= Math.min(t.queue.length, ARENA.MAX_BRACKET)) size *= 2;
     const fighters = t.queue.slice(0, size);
     const overflow = t.queue.slice(size);
-    (async () => { try { for (const p of overflow) await this._arenaRefundEntry(t.id, p.playerId, 'arena bracket was full'); } catch (e) {} })();
+    (async () => { try { for (const p of overflow) await this._arenaRefundEntry(t.id, p.playerId, 'arena bracket was full', p.n); } catch (e) {} })();
     t.status = 'running';
     t.queue = [];
     t.round = 1;
@@ -441,11 +484,20 @@ export const arenaMethods = {
       return;
     }
     t.round += 1;
+    /* v2.3.3171: build the WHOLE round, then activate it -- the shape
+       _arenaStart already uses for round 1.  Activating each match as it was
+       pushed let a walkover (an opponent offline) resolve synchronously,
+       right back into this function, which read "the round" as the matches
+       pushed SO FAR -- one, decided -- and crowned its winner (2,000 g,
+       status 'complete') before the round's other match existed.  An
+       8-player bracket could be won in round 2 with two semifinalists who
+       never fought. */
+    const nextRound = [];
     for (let i = 0; i < advancing.length; i += 2) {
-      const nm = this._arenaMakeMatch(t, t.round, advancing[i], advancing[i + 1]);
-      t.matches.push(nm);
-      this._arenaTryActivate(nm);
+      nextRound.push(this._arenaMakeMatch(t, t.round, advancing[i], advancing[i + 1]));
     }
+    for (const nm of nextRound) t.matches.push(nm);
+    for (const nm of nextRound) this._arenaTryActivate(nm);
   },
 
   _arenaCrown(champion) {
@@ -494,7 +546,7 @@ export const arenaMethods = {
         if (this._arena && this._arena.id === tid) continue; // live tournament
         if (now - (rec.paidAt || 0) < ARENA.STALE_ENTRY_MS) continue;
         if (await this._opSeen('arenapot:' + tid)) { await this.state.storage.delete(k); continue; }
-        await this._creditPlayer(pid, { opId: 'arenarefund:' + tid + ':' + pid, source: 'arena', kind: 'gold', payload: { amount: rec.wager || ARENA.ENTRY_FEE }, note: 'arena voided (server restart)' });
+        await this._creditPlayer(pid, { opId: 'arenarefund:' + tid + ':' + pid + this._arenaEntrySfx(rec.n), source: 'arena', kind: 'gold', payload: { amount: rec.wager || ARENA.ENTRY_FEE }, note: 'arena voided (server restart)' });
         await this.state.storage.delete(k);
       }
     } catch (e) { /* best-effort */ }
