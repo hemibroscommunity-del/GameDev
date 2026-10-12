@@ -1331,7 +1331,8 @@ remnant to migrate server-side, not a mode to preserve.
       start with "+", and is a hit taken, carries a weapon / crit / heart /
       element mark, or is a plain number); "Blocked!", "Dodged", "+30 XP",
       "+25 G", a heal's "+12" and every word keep 21 px, so a kill's number is
-      the biggest thing over the monster and its XP and gold read under it;
+      the biggest thing over the monster and its XP and gold read under it
+      (no longer since v2.3.3192, below);
     - what depends on the size follows it: the crit still 1.8x the plain one,
       the 22 px mark cap and the gap after the digits x the scale, the stroke
       and halo of classic Text, the stacking (26 px at two 21 px numbers is
@@ -1346,6 +1347,21 @@ remnant to migrate server-side, not a mode to preserve.
       stacks, a kill's XP and gold, the words), mp-elemhits and mp-critpreview
       read the scaled cap; TRAPS §136 (emptying `S.dmgNumbers` leaves its Texts
       drawn): docs/specs/damage-number-size.md.
+    - since v2.3.3192 EVERY MESSAGE IS THE PLAIN HIT'S SIZE -- the owner: "Make
+      the messages in the game like "no mana" and other things like "quest
+      complete!" the same font size as the combat damage numbers": every popup
+      `isDamagePopup` calls no number (words, reward lines, heals, a
+      crit-flagged note) is `MSG_FONT_PX` = 21 x `DMG_SCALE`, its outline,
+      lift, stacking and climb with it (`_k` is DMG_SCALE for all; a crit
+      stays bigger); a long one WRAPS into even lines no wider than
+      `MSG_WRAP_W` 520 world px (`msgLines`, `wrapMessage`), never smaller
+      type, and grows upward; a message is held `MSG_EDGE_PX` 12 inside the
+      view (a number never moves); still WORLD px, so numbers and messages
+      alike grow 1.31x with the dashboard folded (the owner had read the
+      numbers as fixed); the stacking runs after the Text is made now (a
+      wrapped one's height); `mp-dmgsize` reads sizes AT REST (this box's
+      slow frames catch the spawn pop): damage-number-size.md "Messages as
+      big as the numbers".
   - Since v2.3.3034 A LOST CONNECTION IS NOTICED, AND NOTHING THE WORKER
     SETTLES IS LOST TO IT -- the owner: "Logs aren't going to the inventory
     after getting chopped, and points in point stat allocation menu weren't
