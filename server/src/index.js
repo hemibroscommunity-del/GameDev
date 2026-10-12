@@ -4998,8 +4998,16 @@ export class GameRoom {
           }
           /* Everyone's view of the pile, not just this player's: it is a
              PUBLIC inventory, so a sale has to change what the next player
-             sees without them reopening the panel. */
-          this.broadcastAll({ type: 'shop_state', payload: await this._shopList() });
+             sees without them reopening the panel.
+             v2.3.3163: ...but only a trade that HAPPENED is everyone's news.
+             A refused one changed nothing, and was broadcast all the same: one
+             client sending refused sales as fast as it liked made every player
+             in the room receive the whole pile each time (reproduced: 200
+             refusals, 200 copies to each bystander).  The asker still gets the
+             fresh pile, so a stale panel still refreshes. */
+          const _pile = await this._shopList();
+          if (r && r.ok) this.broadcastAll({ type: 'shop_state', payload: _pile });
+          else this._shopSend(_sid, 'shop_state', _pile);
         }).catch(() => {
           this._shopSend(_sid, 'shop_result', { ok: false, error: 'Shop unavailable' });
         });
