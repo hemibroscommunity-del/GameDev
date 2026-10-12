@@ -58,12 +58,19 @@ import { prog3FromLegacy } from './prog3.js';
  * Cosmetics overlap TRACK_COSMETIC_KEYS in index.js; join carries
  * `eqst` in addition, and does not carry mask/cape/pet. */
 const JOIN_PRESENCE_KEYS = ['x', 'y', 'd', 'z'];
+/* v2.3.3167: ids no player may have -- every own name of Object.prototype
+   (constructor, __proto__, toString, valueOf, hasOwnProperty, ...) and
+   'prototype'.  A plain-object map keyed by player id reads these as
+   inherited members (handoff rule: Object.create(null) or Map for such maps;
+   this gate is the backstop for the ones nobody audited). */
+const MAGIC_IDS = new Set([...Object.getOwnPropertyNames(Object.prototype), 'prototype']);
 /* v2.3.2445: EXPORTED so the suites can be driven off it rather than off a
    literal copy.  Two literal arrays in anticheat and thirteen hand-written
    checks in identity had drifted from this list -- `sb` was never asserted at
    all in the seven years since it shipped, and `tr`/`pb` were added to the
    gates without either suite noticing, including by the very commit whose
    subject was that incident class. */
+
 export const JOIN_COSMETIC_KEYS = [
   'name', 'color', 'avatar',
   'bt', 'bl', 'hw', 'fh', 'hr', 'sk', 'hc', 'htc', 'fhc', 'st', 'stc',
@@ -566,7 +573,15 @@ export const joinMethods = {
     // 21).  The maps themselves are Object.create(null) as of this
     // version too (defense-in-depth), but new plain-object maps keep
     // appearing -- the gate is what protects the ones nobody audited.
-    if (msg.id === '__proto__' || msg.id === 'constructor' || msg.id === 'prototype') {
+    /* v2.3.3167: EVERY name Object.prototype carries, not three of them.
+       `toString` and `valueOf` were legal ids, and a plain-object map keyed
+       by player id read their inherited FUNCTION as a value: the weekly
+       jackpot added a deposit to it, stored the ticket count as the string
+       "function toString() { [native code] }1", the draw's roll went NaN,
+       and the week's FIRST depositor won the whole pool every time (1 ticket
+       against 400: 40 of 40 draws, reproduced on main).  The gate protects
+       the maps nobody audited, so it names them all (MAGIC_IDS). */
+    if (typeof msg.id === 'string' && MAGIC_IDS.has(msg.id)) {
       try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'auth' })); } catch {}
       try { ws.close(4003, 'auth'); } catch {}
       this.sessions.delete(ws);

@@ -214,5 +214,34 @@ room.eventBuffer.length = 0;
 await room.webSocketMessage(ws, JSON.stringify({ type: 'jackpot_result', payload: { winnerName: 'Hacker', amount: 999999 } }));
 check('forged jackpot_result dropped by deny-list', room.eventBuffer.filter((e) => e.type === 'jackpot_result').length === 0);
 
+// ── v2.3.3167: a ticket count that is not a number cannot steer the draw ──
+// Reproduced on main: an id named after an Object.prototype member
+// ('toString', 'valueOf') stored its ticket count as a STRING, the roll went
+// NaN, and the week's first depositor won every draw (1 ticket against 400).
+// join.js now refuses those ids (identity.test); these pin the draw and the
+// deposit themselves.
+{
+  const twoWeeksAgo = room._cadencePeriodWeekly(T0 - 14 * DAY);
+  state._store.set('jackpot:draw', { period: twoWeeksAgo, pool: 700,
+    entries: { bp_cd_first: 1, toString: 'function toString() { [native code] }1', bp_cd_whale: 400 } });
+  room.eventBuffer.length = 0;
+  Math.random = () => 0.99;   // the roll lands deep in the whale's 400 tickets
+  await room._jackpotMaybeResolve(T0);
+  Math.random = realRandom;
+  const result = room.eventBuffer.find((e) => e.type === 'jackpot_result');
+  check('a stored ticket count that is not a number is not weighed: the draw follows the real tickets',
+    !!result && result.payload.winnerId === 'bp_cd_whale', result && result.payload);
+}
+{
+  /* the deposit counts the player's OWN entry, as a number */
+  state._store.set('jackpot:draw', { period: room._cadencePeriodWeekly(), pool: 0, entries: {} });
+  room.playerState.valueOf = { coins: 1000, inventory: {}, x: 0, y: 0, z: 'town' };
+  await room._handleJackpotDeposit({ id: 'valueOf' }, { amount: 2 * CADENCE.JACKPOT_TICKET });
+  const draw = state._store.get('jackpot:draw');
+  check('a deposit adds to the depositor\'s own ticket count, as a number',
+    !!draw && Object.prototype.hasOwnProperty.call(draw.entries, 'valueOf') && draw.entries.valueOf === 2, draw && draw.entries);
+  delete room.playerState.valueOf;
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
