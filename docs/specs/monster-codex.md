@@ -1,4 +1,4 @@
-# The monster codex (v2.3.3189)
+# The monster codex (v2.3.3191)
 
 Owner, 2026-10-12: *"Begin working on the monster section of the codex. After
 you kill a monster you learn more about it, what it does, where it's from,

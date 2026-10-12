@@ -1133,7 +1133,7 @@ export const GEM_CUT_TIERS = {
 };
 export const GEM_RAW_MONSTER_DROP = 0.05;
 
-/* ═══ v2.3.3189: THE MONSTER CODEX SHOWS EACH MONSTER'S DROP TABLE ═══
+/* ═══ v2.3.3191: THE MONSTER CODEX SHOWS EACH MONSTER'S DROP TABLE ═══
  * Owner, 2026-10-12: "Also include drop tables for all items that monster can
  * drop."  The codex page (src/data/codexDrops.js) prints these numbers, so
  * the two that were written inline are named here, and mirror-audit holds
@@ -1172,7 +1172,7 @@ export function monsterWeaponDropOdds(level) {
  * nothing reads, i.e. a mirror with no consumer and one more thing to drift;
  * the GOLD_NUGGET_DROP.lifeSkill precedent above is the same call made for
  * the same reason.  What the client DOES receive is the minted piece.
- * v2.3.3189: there IS a reader now -- the monster codex's drop table prints
+ * v2.3.3191: there IS a reader now -- the monster codex's drop table prints
  * them (src/data/codexDrops.js), so they are mirrored there and mirror-audit
  * pins the copy.  Still rolled here and only here.
  *

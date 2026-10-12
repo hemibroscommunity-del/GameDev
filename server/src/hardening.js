@@ -130,7 +130,7 @@ export function hardenGoldFor(hardness, old) {
 const Q_GODLY = 1 / 2000000;
 const Q_ELITE = 0.009;
 const Q_RARE = 0.09;
-/* v2.3.3189: the same three, for the monster codex's drop table to print
+/* v2.3.3191: the same three, for the monster codex's drop table to print
    (src/data/codexDrops.js CODEX_GRADE_ODDS, held to these by mirror-audit) */
 export const WEAPON_QUALITY_ODDS = Object.freeze({ rare: Q_RARE, elite: Q_ELITE, godly: Q_GODLY });
 

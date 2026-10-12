@@ -1,4 +1,4 @@
-/* ═══ v2.3.3189: WHAT EACH MONSTER CAN DROP -- THE CODEX'S DROP TABLES ═══
+/* ═══ v2.3.3191: WHAT EACH MONSTER CAN DROP -- THE CODEX'S DROP TABLES ═══
  *
  * Owner, 2026-10-12: "Also include drop tables for all items that monster can
  * drop."

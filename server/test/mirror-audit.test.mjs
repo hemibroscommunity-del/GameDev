@@ -65,15 +65,15 @@ import { NML as CLIENT_NML, NML_CENTRE as CLIENT_NML_CENTRE, nmlLevelAt as clien
 import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.js';
 /* v2.3.3120: pet trapping -- the button's odds, the Traps tab, the kinds, the name rule */
 import { TRAPPING as SRV_TRAPPING, trapChance as srvTrapChance, trapRollXp as srvTrapRollXp, trapCatchXp as srvTrapCatchXp } from '../src/trapping.js';
-import { CODEX as SRV_CODEX } from '../src/codex.js'; /* v2.3.3189 */
-import { CODEX_TIERS as CLIENT_CODEX_TIERS, CODEX_KINDS as CLIENT_CODEX_KINDS, CODEX_STAGE2_AT as CLIENT_CODEX_STAGE2_AT, CODEX_ENTRIES as CLIENT_CODEX_ENTRIES } from '../../src/data/monsterCodex.js'; /* v2.3.3189 */
-/* v2.3.3189: the codex's drop tables, and what they are held to */
+import { CODEX as SRV_CODEX } from '../src/codex.js'; /* v2.3.3191 */
+import { CODEX_TIERS as CLIENT_CODEX_TIERS, CODEX_KINDS as CLIENT_CODEX_KINDS, CODEX_STAGE2_AT as CLIENT_CODEX_STAGE2_AT, CODEX_ENTRIES as CLIENT_CODEX_ENTRIES } from '../../src/data/monsterCodex.js'; /* v2.3.3191 */
+/* v2.3.3191: the codex's drop tables, and what they are held to */
 import { CODEX_DROP_RATES as CLIENT_CODEX_DROP_RATES, CODEX_GRADE_ODDS as CLIENT_CODEX_GRADE_ODDS, CODEX_RAW_GEM_ELEMENTS as CLIENT_CODEX_RAW_GEMS,
   CODEX_REMNANTS as CLIENT_CODEX_REMNANTS, codexWeaponOdds as clientCodexWeaponOdds, codexGoldAt as clientCodexGoldAt, codexDropsFor as clientCodexDropsFor } from '../../src/data/codexDrops.js';
 import { WEAPON_QUALITY_ODDS as SRV_WEAPON_QUALITY_ODDS } from '../src/hardening.js';
 import { WHEEL_ZONE as SRV_WHEEL_ZONE } from '../src/wheelzone.js';
-import { WHEEL_DOORS as SRV_WHEEL_DOORS } from '../src/wheelspawns.js';   /* v2.3.3189: a codex page's dungeon */
-import { CODEX_ROADS as CLIENT_CODEX_ROADS } from '../../src/data/monsterCodex.js';   /* v2.3.3189: ...and its way there */
+import { WHEEL_DOORS as SRV_WHEEL_DOORS } from '../src/wheelspawns.js';   /* v2.3.3191: a codex page's dungeon */
+import { CODEX_ROADS as CLIENT_CODEX_ROADS } from '../../src/data/monsterCodex.js';   /* v2.3.3191: ...and its way there */
 import { PLAN as WORLD_PLAN } from '../../public/tools/world/plan.js';
 import { PET_KINDS as SRV_PET_KINDS, PET_NAME as SRV_PET_NAME, cleanPetName as srvCleanPetName, petKindOf as srvPetKindOf, PETBOOK as SRV_PETBOOK,
   petXpToNext as srvPetXpToNext, petGainXp as srvPetGainXp,
@@ -1942,7 +1942,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     JSON.stringify(CLIENT_HARDEN_WOOD_BY_TIER) === JSON.stringify(SRV_HARDEN_WOOD_BY_TIER), { client: CLIENT_HARDEN_WOOD_BY_TIER, server: SRV_HARDEN_WOOD_BY_TIER });
 }
 
-/* ═══ v2.3.3189: THE MONSTER CODEX (server/src/codex.js, src/data/monsterCodex.js) ═══
+/* ═══ v2.3.3191: THE MONSTER CODEX (server/src/codex.js, src/data/monsterCodex.js) ═══
    The worker writes a kill to storage at once when it crosses a threshold,
    because that kill opens a fact on the phone's page: the two lists must be
    the same, or a fact could open on a count the worker only kept in memory
@@ -1977,7 +1977,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('codex: the road each page says leads to its land is the plan\'s own (the North Road, the Frost Trail ...)', rOff.length === 0, rOff);
 }
 
-/* ═══ v2.3.3189: EACH MONSTER'S DROP TABLE (src/data/codexDrops.js) ═══
+/* ═══ v2.3.3191: EACH MONSTER'S DROP TABLE (src/data/codexDrops.js) ═══
    Owner: "Also include drop tables for all items that monster can drop."  The
    page prints chances the worker rolls; every one is held to the roll's own
    number here, and the per-monster facts (its gold at each level, its
