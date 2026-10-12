@@ -268,7 +268,10 @@ export function DailySpin() {
   /* while an act is in flight, the panel as it was asked */
   const sp = running && beforeRef.current ? beforeRef.current : live;
   const prizes = Array.isArray(live.prizes) ? live.prizes : [];
-  const canStart = !!(sp.ready || sp.extra > 0);
+  /* v2.3.3181: the worker opens the spin with the Mayor's first quest, as
+     the daily quests; `locked` until then (a worker before it never sends it) */
+  const locked = !!sp.locked;
+  const canStart = !locked && !!(sp.ready || sp.extra > 0);
 
   const ask = (act) => {
     if (running) return;
@@ -324,6 +327,7 @@ export function DailySpin() {
   else if (shown && shown.refused === 'none') line = 'No spins left today.';
   else if (shown && shown.refused === 'open') line = 'Take your pot or double it first.';
   else if (shown && shown.refused === 'limit') line = 'That\'s the house limit — take it!';
+  else if (shown && shown.refused === 'locked') line = 'Hand in Mayor Bro\'s first quest to unlock the free spin.';
   else if (shown && shown.refused) line = 'Nothing to take.';
   else if (running && act === 'collect') line = 'Taking ' + fmt(sp.pot) + '…';
   else if (running && act === 'double') line = 'Double or nothing…';
@@ -334,6 +338,7 @@ export function DailySpin() {
   else if (shown && shown.act === 'double') { line = 'Lost it all — ' + fmt(shown.lost) + ' coins.'; tone = LS.lose; }
   else if (shown && shown.act === 'collect') { line = '+' + fmt(shown.paid) + ' coins!'; tone = LS.win; }
   else if (potOpen) line = 'Your pot: ' + fmt(sp.pot) + ' coins.';
+  else if (locked) line = 'Hand in Mayor Bro\'s first quest to unlock the free spin.';
   else if (sp.ready) line = 'Free today! Spin for a lump sum of coins.';
   else if (sp.extra > 0) line = 'You have ' + sp.extra + ' bonus spin' + (sp.extra === 1 ? '' : 's') + '.';
   else line = 'Today\'s spin is done.';
@@ -342,11 +347,13 @@ export function DailySpin() {
   let sub;
   if (potOpen && sp.canDouble) sub = 'Take it, or double or nothing: 50% to make it ' + fmt(sp.pot * 2) + ', 50% to lose it.';
   else if (potOpen) sub = 'The house limit is ' + fmt(sp.limit) + '. Take it!';
+  else if (locked && !running) sub = rare;
   else if (!canStart && !running) sub = 'Next free spin in ' + untilText(st.resetAt, st) + '.';
   else sub = rare;
 
   let label;
   if (running && act === 'spin') label = 'Spinning…';
+  else if (locked) label = 'Unlocks with the first quest';
   else if (sp.ready) label = 'Spin · free';
   else if (sp.extra > 0) label = 'Use a bonus spin (' + sp.extra + ')';
   else label = 'Next free spin in ' + untilText(st.resetAt, st);
@@ -359,7 +366,7 @@ export function DailySpin() {
   const off = { cursor: 'default', border: '1px solid ' + LS.border, background: '#1A292F', color: LS.txt3 };
 
   return (
-    <div data-daily-spin={potOpen ? 'open' : (sp.ready ? 'ready' : (sp.extra > 0 ? 'bonus' : 'done'))}
+    <div data-daily-spin={potOpen ? 'open' : (locked ? 'locked' : (sp.ready ? 'ready' : (sp.extra > 0 ? 'bonus' : 'done')))}
       style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid ' + LS.border }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: LS.txt3 }}>Free daily spin</div>

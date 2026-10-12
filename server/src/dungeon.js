@@ -55,6 +55,13 @@ export const DUNGEONS = {
   EMPTY_SWEEP_MS: 60000,   // no players inside for this long -> instance dies
   PARTY_HP_SCALE: [1.0, 1.6, 2.2, 3.0], // boss HP by players present (GDD §55.7)
   VALID_ELEMENTS: ['flame', 'venom', 'frost', 'storm', 'stone', 'wind', 'water'],
+  /* v2.3.3182: a Workshop run's clear pays for what the run held.  It paid
+     20 a wave (30 + level x 2 with a boss) whatever the waves were, so the
+     smallest run -- one wave of one level-1 monster -- paid 20 gold for a
+     kill, as fast as a script could start runs.  A wave of CLEAR_FULL_WAVE
+     monsters or more pays the whole clear, a smaller one its share (one
+     monster a wave: a quarter).  The Wheel's dungeons are untouched. */
+  CLEAR_FULL_WAVE: 4,
 };
 
 /* v2.3.1194: BOSS ABILITY SCRIPT (handoff item F follow-up).  Server
@@ -132,6 +139,15 @@ export const BOSS_ABILITIES = {
     HP_MULT: 0.3,               // legacy: 30%-HP swarm adds
     MAX_ALIVE: 4,               // live-minion cap (legacy: uncapped)
     REWARD_MULT: 0.5,           // XP/gold haircut vs a real swarm (faucet guard)
+    /* v2.3.3182: a boss summons only while it is being FOUGHT -- hurt by
+       someone in the last FOUGHT_MS -- and at most MAX_TOTAL minions in all.
+       A swarm boss nobody touched summoned 2-3 adds a cast forever (only the
+       live ones were capped, and an untouched boss never enrages): 151 in
+       ten minutes, a standing spawner whose every add rolled the full-rate
+       gem and iron drops.  MAX_TOTAL is fifteen times MAX_ALIVE, about four
+       minutes of adds killed as fast as they come. */
+    FOUGHT_MS: 15000,
+    MAX_TOTAL: 60,
   },
   /* v2.3.1199: ENRAGE -- soft anti-stall timer, a clean REDESIGN of
    * the legacy depth-dungeon enrage that v2.3.1194 deliberately did
@@ -509,7 +525,10 @@ export const dungeonMethods = {
     if (headroom <= 0) return 0;
     const want = BOSS_ABILITIES.SUMMON.COUNT_MIN + Math.floor(
       Math.random() * (BOSS_ABILITIES.SUMMON.COUNT_MAX - BOSS_ABILITIES.SUMMON.COUNT_MIN + 1));
-    const n = Math.min(want, headroom);
+    /* v2.3.3182: and never past MAX_TOTAL for this boss */
+    const left = BOSS_ABILITIES.SUMMON.MAX_TOTAL - (m._summoned || 0);
+    const n = Math.max(0, Math.min(want, headroom, left));
+    m._summoned = (m._summoned || 0) + n;
     if (inst._minionSeq === undefined) inst._minionSeq = 0;
     for (let i = 0; i < n; i++) {
       const lvl = Math.max(1, m.level - BOSS_ABILITIES.SUMMON.LEVEL_DELTA);
@@ -585,6 +604,11 @@ export const dungeonMethods = {
     const m = list.find((x) => x._dungeonBoss && x.alive);
     if (!m) return;
     const B = BOSS_ABILITIES;
+    /* v2.3.3182: when the boss was last HURT -- its summon needs a fight
+       (SUMMON.FOUGHT_MS).  Read off its hp from tick to tick, so every way
+       a player hurts it counts and a siphon's heal does not. */
+    if (m._hpSeen !== undefined && m.hp < m._hpSeen) m._hurtAt = now;
+    m._hpSeen = m.hp;
 
     // v2.3.1199: enrage soft timer ticks BEFORE the cast machine's
     // early returns so the ramp keeps counting mid-charge/telegraph.
@@ -700,6 +724,10 @@ export const dungeonMethods = {
         // burning the cast on a no-op.
         const aliveMinions = list.filter((x) => x._bossMinion && x.alive).length;
         if (aliveMinions >= B.SUMMON.MAX_ALIVE) continue;
+        /* v2.3.3182: nor for a boss nobody is fighting, or one that has
+           summoned its MAX_TOTAL (BOSS_ABILITIES.SUMMON) */
+        if (!(m._hurtAt && now - m._hurtAt <= B.SUMMON.FOUGHT_MS)) continue;
+        if ((m._summoned || 0) >= B.SUMMON.MAX_TOTAL) continue;
       }
       ability = cand;
       break;
@@ -765,8 +793,12 @@ export const dungeonMethods = {
     const cfg = inst.cfg;
     // Legacy client formulas, verbatim (dungeonWaves.js) -- the
     // feature ships value-neutral vs. the self-credit it replaces.
-    const gold = cfg.hasBoss ? 30 * cfg.waves + cfg.monsterLevel * 2 : 20 * cfg.waves;
-    const xp = cfg.hasBoss ? 80 * cfg.waves + cfg.monsterLevel * 5 : 50 * cfg.waves;
+    /* v2.3.3182: x the share of a full wave a Workshop run held
+       (DUNGEONS.CLEAR_FULL_WAVE); a Wheel dungeon (cfg.home) is the world's
+       own content and pays as ever */
+    const k = this._dungeonClearShare(cfg);
+    const gold = Math.round((cfg.hasBoss ? 30 * cfg.waves + cfg.monsterLevel * 2 : 20 * cfg.waves) * k);
+    const xp = Math.round((cfg.hasBoss ? 80 * cfg.waves + cfg.monsterLevel * 5 : 50 * cfg.waves) * k);
     for (const pid of players) {
       const ps = this.playerState[pid];
       if (!ps) continue;
@@ -780,6 +812,38 @@ export const dungeonMethods = {
       this._queuePlayerStateFlush(pid);
       this._dungeonSend(pid, { type: 'dungeon_complete', payload: { zone: inst.zone, gold, xp, boss: cfg.hasBoss } });
     }
+  },
+
+  /* v2.3.3182: the share of the clear a run earns -- its monsters a wave
+     over CLEAR_FULL_WAVE, at most 1.  A Wheel dungeon always 1. */
+  _dungeonClearShare(cfg) {
+    if (!cfg || cfg.home) return 1;
+    const perWave = (Array.isArray(cfg.monsters) ? cfg.monsters : [])
+      .reduce((n, g) => n + Math.max(0, Math.floor(Number(g && g.count) || 0)), 0);
+    return Math.max(0, Math.min(1, perWave / DUNGEONS.CLEAR_FULL_WAVE));
+  },
+
+  /* v2.3.3182: the drops every monster rolls at one flat chance whatever its
+     level -- the rare gem (1 in 200), the iron torso, greaves and greatsword
+     (1 in 500 each) -- roll in a Workshop run at the monster's level over the
+     strongest claimant's (index.js _spawnLootForKill).  The Workshop is a
+     private pen whose monsters' kind, number and level are the player's
+     choice: a strong character filling it with level-1 monsters it kills in
+     a blow rolled them at the full rate, as often as it could swing.  A run
+     at your own level rolls them as the world does; a Wheel dungeon (fixed
+     levels, the world's content) and every other zone always do. */
+  _workshopDropScale(zone, monster, recipients) {
+    if (typeof zone !== 'string' || !zone.startsWith('dungeon:') || !this._dungeons) return 1;
+    const inst = this._dungeons.get(zone.slice('dungeon:'.length));
+    if (!inst || !inst.cfg || inst.cfg.home) return 1;
+    let top = 1;
+    for (const pid of Array.isArray(recipients) ? recipients : []) {
+      const ps = this.playerState[pid];
+      const lv = ps ? Math.floor(Number(ps.level) || 1) : 1;
+      if (lv > top) top = lv;
+    }
+    const lvl = Math.max(1, Math.floor(Number(monster && monster.level) || 1));
+    return Math.min(1, lvl / top);
   },
 
   _dungeonCleanup(inst) {

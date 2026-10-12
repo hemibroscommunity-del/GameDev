@@ -15348,7 +15348,8 @@ export class EffectsRenderer {
       }
       this._splatPool = [];
     }
-    /* v2.3.2843: the material hit reaction's pieces (pooled; hidden, not destroyed) */
+    /* v2.3.2843: the material hit reaction's pieces (pooled; since v2.3.3152
+       the pools' sprites are destroyed here too, not only hidden) */
     if (this._hitFx) this._hitFx.clear();
     /* v2.3.2760: and the cook's smoke puffs. */
     if (this._cookSmoke) {

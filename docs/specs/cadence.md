@@ -80,3 +80,29 @@ The primitive makes these cheap: daily quests (cadence scope `dailyquest`),
 weekend XP events (weekly scope + a caps flag), rested-XP pools, market
 listing fee holidays. Pattern: pick a scope, decide per-player vs global,
 settle through `_creditPlayer` with a period-keyed opId.
+
+## v2.3.3167: the jackpot weighs real tickets, and no player id is a built-in name
+
+Found by the overnight economy review and reproduced on main. `jackpot:draw`'s
+`entries` is a plain object keyed by player id, and the join refused only
+`__proto__`, `constructor` and `prototype` as ids. For an id like `toString`
+or `valueOf`, the inherited FUNCTION was the "previous" ticket count, so a
+deposit stored `"function toString() { [native code] }1"`. At the draw the
+total became a string and the roll NaN, so no entrant was ever reached, and
+the week's FIRST depositor won the whole pool every time: 1 ticket against
+400 won 40 of 40 draws. One alt with such an id was enough to hand a
+partner, or itself, every honest depositor's gold each week.
+
+- `_handleJackpotDeposit` adds to the depositor's OWN entry, as a number.
+- `_jackpotMaybeResolve` weighs only entries that are a finite, positive
+  number of tickets.
+- join.js refuses every own name of `Object.prototype` as an id (`MAGIC_IDS`),
+  not three of them. This backstops every other plain-object map keyed by
+  player id. No real client makes such an id (they are `bp_<hash>` or
+  legacy randoms), so the refusal is the same `join_rejected { reason:
+  'auth' }` as before.
+
+No price, odd or rule changed. Tests: `cadence.test.mjs` (the draw follows the
+real tickets past a string count; a deposit stores a number) and
+`identity.test.mjs` (six more names refused, four checks each). All fail on
+main.

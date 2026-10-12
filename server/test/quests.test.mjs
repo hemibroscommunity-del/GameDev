@@ -17,6 +17,7 @@
  *      _quests pollution.
  */
 import { GameRoom } from '../src/index.js';
+import { QUEST_REWARDS } from '../src/data.js';
 
 function makeState() {
   const store = new Map();
@@ -110,9 +111,69 @@ const coinsAfter = ps.coins;
 await room.webSocketMessage(ws, JSON.stringify({ type: 'quest_turn_in', payload: { questId: 'mayor_2', xpCat: 'sword' } }));
 check('replayed turn-in pays nothing', ps.coins === coinsAfter);
 
-// ── 5. objective-less quests stay client-trusted ──
+// ── 5. v2.3.3179: what the worker can't check is not paid for nothing ──
+// 22 quests belong to givers who are not in the world (data.js
+// QUEST_DORMANT) and 21 of those have no objective, so a brand-new character
+// was paid for them on request.  The Mayor's own unchecked quests (mayor_1,
+// mayor_3) wait for the first quest, and a later step waits for the CHECKED
+// step before it.
 await room.webSocketMessage(ws, JSON.stringify({ type: 'quest_turn_in', payload: { questId: 'trader_1', xpCat: 'sword' } }));
-check('objective-less quest turns in as before', ps._quests.trader_1 === 'turnedIn' && ps.coins === coinsAfter + 25, { q: ps._quests.trader_1, coins: ps.coins });
+check('an unchecked quest whose giver is not in the world is not paid (trader_1)', ps._quests.trader_1 === 'active' && ps.coins === coinsAfter, { q: ps._quests.trader_1, coins: ps.coins });
+{
+  const wsN = fakeWs('new');
+  await join(wsN, 'bp_quest_new');
+  const N = room.playerState['bp_quest_new'];
+  const send = (type, questId) => room.webSocketMessage(wsN, JSON.stringify({ type, payload: { questId, xpCat: 'sword' } }));
+  const unchecked = Object.keys(QUEST_REWARDS).filter((q) => !QUEST_REWARDS[q].objective);
+  check('setup: 23 quests have no objective the worker can check', unchecked.length === 23, unchecked.length);
+  const coins0 = N.coins, ap0 = N.achievementPoints || 0;
+  for (const q of unchecked) { await send('quest_accept', q); await send('quest_turn_in', q); }
+  check('a new character asking for all 23 is paid nothing (was 5,025 coins + 115 AP)', N.coins === coins0 && (N.achievementPoints || 0) === ap0, { coins: N.coins - coins0, ap: (N.achievementPoints || 0) - ap0 });
+  check('...and none of them is even taken', unchecked.every((q) => !N._quests[q]), N._quests);
+
+  // the giver is gone: refused even after the first quest, and at the hand-in
+  N._quests.tut_1 = 'turnedIn';
+  const gone = ['trader_1', 'enchant_3', 'ash_4', 'bron_4', 'trader_2'];
+  for (const q of gone) await send('quest_accept', q);
+  check('a quest whose giver is not in the world is never taken, first quest or not', gone.every((q) => !N._quests[q]), N._quests);
+  N._quests.ash_4 = 'active';                       // accepted before this rule
+  const coinsG = N.coins;
+  await send('quest_turn_in', 'ash_4');
+  check('...nor handed in when an old save has it active (800 coins)', N._quests.ash_4 === 'active' && N.coins === coinsG, { q: N._quests.ash_4, coins: N.coins - coinsG });
+
+  // the Mayor's unchecked quests wait for the first quest
+  const wsSent = () => wsN.sent.filter((m) => m.type === 'player_state' && m.payload && m.payload._quests).length;
+  N._quests.tut_1 = 'active';
+  const echo0 = wsSent();
+  await send('quest_accept', 'mayor_1');
+  check('mayor_1 (no objective) is not taken before the first quest is handed in', !N._quests.mayor_1, N._quests.mayor_1);
+  check('...and the refusal sends the quest list back (the game drew it taken)', wsSent() > echo0, wsSent() - echo0);
+  N._quests.mayor_1 = 'active';                     // an old save
+  const coinsM = N.coins;
+  await send('quest_turn_in', 'mayor_1');
+  check('...nor handed in before it', N._quests.mayor_1 === 'active' && N.coins === coinsM, { q: N._quests.mayor_1, coins: N.coins - coinsM });
+  N._quests.tut_1 = 'turnedIn';
+  await send('quest_turn_in', 'mayor_1');
+  check('...and once the first quest is in, mayor_1 pays its 50 as before', N._quests.mayor_1 === 'turnedIn' && N.coins === coinsM + 50, { q: N._quests.mayor_1, coins: N.coins - coinsM });
+
+  // a step behind a CHECKED step waits for it
+  delete N._quests.mayor_2;
+  await send('quest_accept', 'mayor_3');
+  check('mayor_3 (300 g) is not taken ahead of mayor_2\'s five kills', !N._quests.mayor_3, N._quests.mayor_3);
+  await send('quest_accept', 'tut_4');
+  check('tut_4 is not taken ahead of tut_3', !N._quests.tut_4, N._quests.tut_4);
+  N._quests.mayor_1 = undefined; delete N._quests.mayor_1;
+  await send('quest_accept', 'mayor_2');
+  check('mayor_2 is still taken with mayor_1 not done (unchecked; the Mayor offers it while mayor_1 is hidden)', N._quests.mayor_2 === 'active', N._quests.mayor_2);
+  N._questKills = N._questKills || {};
+  N._questKills.mayor_2 = 5;
+  await send('quest_turn_in', 'mayor_2');
+  check('...handing mayor_2 in opens mayor_3', N._quests.mayor_2 === 'turnedIn' && N._quests.mayor_3 === 'available', N._quests);
+  const coins3 = N.coins;
+  await send('quest_accept', 'mayor_3');
+  await send('quest_turn_in', 'mayor_3');
+  check('...and mayor_3 is taken and paid as before (300)', N._quests.mayor_3 === 'turnedIn' && N.coins === coins3 + 300, { q: N._quests.mayor_3, coins: N.coins - coins3 });
+}
 
 // ── 7. v2.3.1214 (item H): an inherited-property questId can't farm the
 // unconditional AP reward or pollute _quests.  Before the own-property

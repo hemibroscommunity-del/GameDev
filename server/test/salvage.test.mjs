@@ -298,6 +298,87 @@ const mkSword = (gearBase, type, quality) => ({ type: type || 'sword', tier: 'co
   check('...a stale signature is refused ("changed")', r && r.reason === 'changed', r);
 }
 
+// ── 7b. v2.3.3160: a piece of gear never becomes a weapon ──
+// Reproduced on main: a described armour piece (stats_update's legacy lane)
+// dressed as a "Godly Iron Greatsword" went into the armour slot, an
+// equip_request {slot: 'armor'} swapped it into the weapon bag, and salvage
+// paid 2 iron bars and a Godly Iron Essence for it -- Diego buys one for
+// 125,000 -- once per 8-gold wooden sword; equipped to the hand it was a
+// tierMult-8 Godly weapon.  Every step below is a real message.
+{
+  const DRESSED = { name: 'Iron Greatsword', type: 'greatsword', gearBase: 'iron', quality: 'godly', tierMult: 1.25, hardness: 0 };
+  const msg = async (type, payload) => { ps()._lastSalvageAt = 0; ws.sent.length = 0; await room.webSocketMessage(ws, JSON.stringify({ type, payload })); };
+  ps().weapon = null;
+  ps().armor = null;
+  ps().weaponStash = [mkSword('wood')];
+  const coins0 = ps().coins;
+  const iron0 = bars('bar_iron');
+  await msg('stats_update', { armor: DRESSED });
+  check('(the described piece is worn as armour -- the legacy lane, unchanged)', !!ps().armor && ps().armor.type === 'greatsword' && ps().armor.prov === 'legacy', ps().armor);
+  await msg('equip_request', { stashIdx: 0, slot: 'armor' });
+  check('equip_request into the ARMOUR slot is refused: the bag keeps its sword, the armour slot its piece',
+    ps().weaponStash.length === 1 && ps().weaponStash[0].gearBase === 'wood' && ps().armor.type === 'greatsword', { bag: ps().weaponStash, armor: ps().armor });
+  for (const slot of ['shield', 'amulet', 'legsArmor', 'gear', '__proto__']) await msg('equip_request', { stashIdx: 0, slot });
+  check('...and so are the shield, amulet and every other non-weapon slot', ps().weaponStash.length === 1 && ps().weaponStash[0].gearBase === 'wood' && !ps().shield);
+  const r = await salvage({ field: 'weaponStash', idx: 0, sig: weaponSig(DRESSED) });
+  check('...so there is nothing of it in the bag to salvage', !(r && r.ok) && bars('bar_iron') === iron0 && !inv().essence_godly_iron && ps().coins === coins0, r);
+
+  /* A weapon goes in the one slot its type is worn in (the client's slotFor). */
+  ps().weaponStash = [mkSword('iron', 'sword'), mkSword('wood', 'bow'), mkSword('wood', 'staff')];
+  ps().weapon = null; ps().rangedWeapon = null; ps().staffWeapon = null;
+  await msg('equip_request', { stashIdx: 0, slot: 'staffWeapon' });
+  await msg('equip_request', { stashIdx: 0, slot: 'rangedWeapon' });
+  check('a sword is refused by the staff and bow slots', !ps().staffWeapon && !ps().rangedWeapon && ps().weaponStash.length === 3);
+  /* v2.3.3160: ...and the refusal is ANSWERED.  The game moves the weapon on
+     its own screen first, so a refused equip left it showing a swap the
+     worker never made until the next join (two quick equips can name an index
+     that now holds another weapon here). */
+  {
+    const st = ws.sent.filter((m) => m.type === 'player_state');
+    const p = st.length ? (st[st.length - 1].payload || st[st.length - 1]) : null;
+    check('a refused equip is answered with the worker\'s own weapons and bag',
+      !!p && Array.isArray(p.weaponStash) && p.weaponStash.length === 3 && 'rangedWeapon' in p,
+      st.map((m) => Object.keys(m.payload || m)));
+  }
+  await msg('equip_request', { stashIdx: 1, slot: 'weapon' });
+  await msg('equip_request', { stashIdx: 2, slot: 'weapon' });
+  check('a bow and a staff are refused by the melee slot', !ps().weapon && ps().weaponStash.length === 3);
+  await msg('equip_request', { stashIdx: 0, slot: 'weapon' });
+  check('...and each still goes where it belongs: the sword to the hand', !!ps().weapon && ps().weapon.type === 'sword' && ps().weaponStash.length === 2);
+  await msg('equip_request', { stashIdx: 0, slot: 'rangedWeapon' });
+  await msg('equip_request', { stashIdx: 0, slot: 'staffWeapon' });
+  check('...the bow to the bow slot and the staff to the staff slot', !!ps().rangedWeapon && ps().rangedWeapon.type === 'bow'
+    && !!ps().staffWeapon && ps().staffWeapon.type === 'staff' && ps().weaponStash.length === 0);
+
+  /* A piece that already crossed before this fix (a stored bag from main). */
+  const crossed = { ...DRESSED, prov: 'legacy' };
+  ps().weapon = null;
+  ps().weaponStash = [crossed, mkSword('iron')];
+  const r2 = await salvage({ field: 'weaponStash', idx: 0, sig: weaponSig(crossed) });
+  check('a gear piece already in the bag pays nothing at salvage ("not_metal")', r2 && r2.reason === 'not_metal' && bars('bar_iron') === iron0 && !inv().essence_godly_iron, r2);
+  inv().essence_godly_iron = 1;
+  const r3 = await apply({ essence: 'essence_godly_iron', field: 'weaponStash', idx: 0, sig: weaponSig(crossed) });
+  check('...takes no essence', r3 && r3.reason === 'not_metal' && inv().essence_godly_iron === 1, r3);
+  delete inv().essence_godly_iron;
+  await msg('equip_request', { stashIdx: 0, slot: 'weapon' });
+  check('...and never reaches the hand', !ps().weapon && ps().weaponStash.length === 2);
+  check('the weapon sanitizer drops a gear-marked piece (join, credit, market, store and trade all read it)',
+    room._sanitizeWeapon(crossed) === null && room._sanitizeWeapon({ ...mkSword('iron'), gid: 'g1' }) === null
+    && !!room._sanitizeWeapon(mkSword('iron')), room._sanitizeWeapon(crossed));
+
+  /* ...and on the next join it is gone from the bag and the hand. */
+  ps().weapon = { ...crossed, tierMult: 8 };
+  ps().weaponStash = [crossed, mkSword('iron')];
+  await room._saveRpg(PID, ps());
+  const wsR = fakeWs();
+  await join(wsR, PID);
+  check('the next join drops it from the hand and the bag, the real sword kept',
+    !ps().weapon && ps().weaponStash.length === 1 && ps().weaponStash[0].gearBase === 'iron', { weapon: ps().weapon, bag: ps().weaponStash });
+  /* the suite's own socket back (that join superseded it) */
+  await join(ws, PID);
+  ps().armor = null;
+}
+
 // ── 8. The shopkeeper, the cooldown, the kill switch ──
 {
   check('the shopkeeper prices essences by their grade', room._shopBaseValue('essence_rare_iron') === 1500

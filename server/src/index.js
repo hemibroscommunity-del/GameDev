@@ -182,6 +182,7 @@ import { spawnScaleMethods } from './spawnscale.js';
 import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.2978 */
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
+import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into a shield on the worker */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
@@ -425,6 +426,10 @@ export const PRIVILEGED_EVENTS = new Set([
      a fake rare piece on another player's screen. */
   'smith_salvage_result',
   'essence_result',
+  /* v2.3.3187: the shield gem's receipt (shieldgem.js) -- it says a gem went
+     into a shield and names the shield.  Forgeable, it would put a gem in
+     another player's shield on their screen that the worker never put there. */
+  'shield_gem_result',
   /* v2.3.2047: the shopkeeper's two answers. Both are SERVER-EMITTED and
      both carry money -- `shop_result` names coins paid and `shop_state` is
      the public pile every client prices against. Forgeable, they would let
@@ -2867,6 +2872,17 @@ export class GameRoom {
 
   _rollShardForKill(zoneId) {
     if (Math.random() >= this.SHARD_DROP_RATE) return null;
+    /* v2.3.3170: only a zone that HAS a shard -- the nine element zones, which
+       are exactly ZONES' keys, each with its shard_<zone> item.  A Workshop
+       dungeon's monsters die in 'dungeon:<instance id>' and carry no `home`
+       (wheelzone.js _rewardZone), so this minted 'shard_dungeon:1a2b3c4d':
+       not an item (the game cannot name or draw it) and a NEW key every run,
+       which Diego's pricer reads as a shard and buys at his empty-pile price
+       every time, never decaying, each sale one more permanent key in his
+       one shop_stock record.  The Wheel met the same thing as 'shard_wheel'
+       and was fixed for itself only (v2.3.2978).  Checked AFTER the roll so
+       the kill draws exactly the random numbers it always did. */
+    if (!Object.prototype.hasOwnProperty.call(ZONES, zoneId)) return null;
     return 'shard_' + zoneId;
   }
 
@@ -3229,11 +3245,18 @@ export class GameRoom {
     const _duelKill = _hook('duel', () => this._duelOnDeath(playerId, cause));
     // v2.3.1125: clan-war scoring rides the same server-resolved death
     // (cause 'pvp:<attacker>'); duel kills are excluded inside the hook.
-    _hook('war', () => this._warOnDeath(playerId, cause));
+    /* v2.3.3168: ...which never worked through this path: the duel hook
+       above has already resolved the duel and taken it out of _duels, so
+       the war and bounty hooks' own "is this a duel between them?" check
+       (_duelFor) found nothing, and a thrown duel scored the clan war and
+       collected the bounty.  The duel hook's own answer -- a clean kill by
+       the duel opponent -- is used here, while it is still known.  Any other
+       death (a third player, a monster) runs both hooks as before. */
+    if (!_duelKill) _hook('war', () => this._warOnDeath(playerId, cause));
     // v2.3.1211 (item C): a killed threatener's guard-fine bounty pays
     // out to their killer here too (same server-observed 'pvp:' cause;
     // self / duel / same-clan / non-PvP excluded inside the hook).
-    _hook('bounty', () => this._bountyOnDeath(playerId, cause).catch(() => {}));
+    if (!_duelKill) _hook('bounty', () => this._bountyOnDeath(playerId, cause).catch(() => {}));
     // v2.3.1116: death ends any remaining threat consent this player
     // was party to -- the survivor can't keep hitting them through the
     // respawn.  (Duel pairs already cleared by the resolution above.)
@@ -3727,10 +3750,12 @@ export class GameRoom {
      one silently shadowing the other.  The minted record is the same shape a
      quest piece is, so nothing downstream can tell them apart — see the
      constant's note for why that matters. */
-  _rollArmorDropsForKill() {
+  /* v2.3.3182: `scale` (0-1, default 1) -- a Workshop run's share of the
+     chance (dungeon.js _workshopDropScale); the random draws are the same */
+  _rollArmorDropsForKill(scale = 1) {
     const out = [];
     for (const d of MONSTER_ARMOR_DROPS) {
-      if (Math.random() >= d.chance) continue;
+      if (Math.random() >= d.chance * scale) continue;
       /* ═══ v2.3.1925: ARMOUR ROLLS QUALITY TOO ═══
          Owner: "I also want the drop to consider a rarity system."  Quality
          has been weapon-only since v2.3.1131; GDD §4.6b is explicit that the
@@ -3754,9 +3779,9 @@ export class GameRoom {
      Built here rather than in _rollWeaponDropForKill because they answer
      different questions — that function decides what RARITY a random weapon
      is, and this one is not random. */
-  _rollIronWeaponForKill() {
+  _rollIronWeaponForKill(scale = 1) {   /* v2.3.3182: `scale`, as the armour's */
     const d = MONSTER_IRON_WEAPON_DROP;
-    if (Math.random() >= d.chance) return null;
+    if (Math.random() >= d.chance * scale) return null;
     return {
       type: d.type,
       tier: 'common',
@@ -3784,8 +3809,8 @@ export class GameRoom {
      stackable that lands in the bag — NOT the elemental raw_<element> the
      Gem Cutter eats (_gemRawOnKill, amulet.js), which is zone-gated and
      lives in lifeSkills.  Two different things on purpose; see RARE_GEM_KEY. */
-  _rollRareGemForKill() {
-    return Math.random() < RARE_GEM_MONSTER_DROP ? RARE_GEM_KEY : null;
+  _rollRareGemForKill(scale = 1) {   /* v2.3.3182: `scale`, as the armour's */
+    return Math.random() < RARE_GEM_MONSTER_DROP * scale ? RARE_GEM_KEY : null;
   }
 
   /* ═══ v2.3.1925: THE MYSTERY GRADES ═══
@@ -3963,15 +3988,18 @@ export class GameRoom {
        Also gated by disable_weapon_drops (v2.3.1150): that kill switch exists
        to stop weapons entering the economy, and a drop that ignored it would
        be a hole in the lever rather than a new feature. */
-    const ironWeapon = wpnDropsOn ? this._rollIronWeaponForKill() : null;
+    /* v2.3.3182: a Workshop run's flat drops at its monster's level over the
+       strongest claimant's (dungeon.js _workshopDropScale); 1 everywhere else */
+    const dropScale = anyClaimant && this._workshopDropScale ? this._workshopDropScale(zone, monster, recipients) : 1;
+    const ironWeapon = wpnDropsOn ? this._rollIronWeaponForKill(dropScale) : null;
     const weapon = ironWeapon
       || (wpnDropsOn ? this._rollWeaponDropForKill(rewardZone, monster) : null);
     /* v2.3.1924: both gated on there being someone who could claim them, the
        same condition the weapon roll uses — rolling loot for an empty
        recipient list mints an item nobody can ever pick up and then counts it
        against the player's odds. */
-    const armor = anyClaimant ? this._rollArmorDropsForKill() : null;
-    const gem = anyClaimant ? this._rollRareGemForKill() : null;
+    const armor = anyClaimant ? this._rollArmorDropsForKill(dropScale) : null;
+    const gem = anyClaimant ? this._rollRareGemForKill(dropScale) : null;
     /* v2.3.1924: !armor && !gem are BELT-AND-BRACES and cannot fire today —
        this early-out is recipient-gated, and both new rolls are themselves
        gated on there being a recipient, so any pile that could carry them has
@@ -4129,8 +4157,21 @@ export class GameRoom {
     const keep = this._keepGatherTools(ps.inventory);
     const shield = ps && ps._deathShield;
     if (shield) {
+      const inv = (ps && ps.inventory) || {};
       for (const k of Object.keys(shield)) {
-        const q = Math.floor(Number(shield[k]) || 0);
+        /* v2.3.3169: never more than the bag still HOLDS.  The shield is what
+           a pickup handed over in the last second, and it was written back
+           whole -- so whatever of it had LEFT the bag since (sold to Diego,
+           listed on the auction house, handed over), before the blow or in
+           the five dying seconds before the respawn wipe, came back as well:
+           pick a pile up, sell it, die inside the second, and the bars were
+           in the bag again beside the coins.  A listing taken down after the
+           respawn doubled the stack every cycle.  Capped at the bag, the
+           pile's (held - shield) and this (min(shield, held)) sum to exactly
+           what the player had, for every key -- the rule this helper exists
+           to keep. */
+        const have = Object.prototype.hasOwnProperty.call(inv, k) ? Math.floor(Number(inv[k]) || 0) : 0;
+        const q = Math.min(Math.floor(Number(shield[k]) || 0), have);
         if (q > 0) keep[k] = Math.max(keep[k] || 0, q);
       }
     }
@@ -4998,8 +5039,16 @@ export class GameRoom {
           }
           /* Everyone's view of the pile, not just this player's: it is a
              PUBLIC inventory, so a sale has to change what the next player
-             sees without them reopening the panel. */
-          this.broadcastAll({ type: 'shop_state', payload: await this._shopList() });
+             sees without them reopening the panel.
+             v2.3.3163: ...but only a trade that HAPPENED is everyone's news.
+             A refused one changed nothing, and was broadcast all the same: one
+             client sending refused sales as fast as it liked made every player
+             in the room receive the whole pile each time (reproduced: 200
+             refusals, 200 copies to each bystander).  The asker still gets the
+             fresh pile, so a stale panel still refreshes. */
+          const _pile = await this._shopList();
+          if (r && r.ok) this.broadcastAll({ type: 'shop_state', payload: _pile });
+          else this._shopSend(_sid, 'shop_state', _pile);
         }).catch(() => {
           this._shopSend(_sid, 'shop_result', { ok: false, error: 'Shop unavailable' });
         });
@@ -5171,6 +5220,13 @@ export class GameRoom {
            already holds for this player, named by id or signature; the arm's
            and the bag's lists move, nothing is described or minted. */
         if (session.id) this._handleShieldWear(session, msg.payload || msg);
+        break;
+
+      case 'shield_gem':
+        /* v2.3.3187: a polished gem into a shield the worker holds for this
+           player (shieldgem.js) -- named by id or signature, the gem taken
+           from the worker's own count; answered by shield_gem_result. */
+        if (session.id) this._handleShieldGem(session, msg.payload || msg);
         break;
 
       case 'cape_redeem':
@@ -6028,3 +6084,4 @@ Object.assign(GameRoom.prototype, spawnScaleMethods);
 Object.assign(GameRoom.prototype, wheelzoneMethods); /* v2.3.2978 */
 Object.assign(GameRoom.prototype, noMansLandMethods); /* v2.3.3058 */
 Object.assign(GameRoom.prototype, shieldWearMethods); /* v2.3.3091 */
+Object.assign(GameRoom.prototype, shieldGemMethods); /* v2.3.3187 */

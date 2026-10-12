@@ -496,6 +496,14 @@ field, gid|idx, essence, grade, metal, piece}`, or `{ok: false, reason}`
 no_essence, wrong_metal, not_lower, bad); a player_state follows each paid
 act. Full table: docs/specs/salvage.md.
 
+**Shield gems (v2.3.3187, caps.shieldgem):** new c→s case `shield_gem {gem,
+gid}` or `{gem, sig}` (a polished gem into the shield the worker holds for
+you, named by its ledger id or, with no id, by its signature
+name|gearBase|tierMult|tier); new s→c type (PRIVILEGED, private)
+`shield_gem_result {ok, gem, name, gid, was, worn}` or `{ok: false, reason,
+gem}` (off, down, bad_gem, locked, bad, not_held, no_gem); a player_state
+follows a slotted gem. Full table: docs/specs/shield-gems.md.
+
 **Server-minted weapon drops (v2.3.1141, caps.weaponDrops):** no new
 message types. The loot pile broadcast (`loot_drop`/`zone_loot`/
 `state_sync.loot` via `_serializePile`) gains `hasWeapon`,

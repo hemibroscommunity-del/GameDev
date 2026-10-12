@@ -1092,6 +1092,17 @@ remnant to migrate server-side, not a mode to preserve.
       ground, 9-56% without. A part of the Wheel drawn dark on purpose (a
       night, the Dark realm) lowers it first. TRAPS §142, `mp-bareground`
       (the `wheelGround` container hidden through `window._pixiRenderer`).
+    - since v2.3.3152 A FRAME THAT THROWS DOES NOT LEAVE THE SCREEN BLACK --
+      found by a leak hunt, which made the owner's black screen on main: after
+      a Great Cave trip one frame threw (Pixi's pooled mask filter; TRAPS
+      §143, `bindGroupFix.js`) inside a polygon mask, and Pixi KEPT that
+      mask's stencil test on for every frame after -- 0% lit for 22 s, until
+      the watchdog's rebuild. Pixi carries its stencil-mask depth, each render
+      target's stencil mode, the colour mask and the filter stack from frame
+      to frame, so whenever app.render throws, pixiRenderer now puts them
+      back to "nothing open" (`src/rendering/renderHeal.js`; `?noheal` to
+      compare) and the next frame draws. TRAPS §144, `mp-renderheal` (the
+      throw made as it happened, with `bindfix=0`; `noheal` shows the black).
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:
@@ -2166,6 +2177,21 @@ Two protocol versions coexist; both must keep working:
   - Anything made per zone change, per land, per fight, per dungeon or per
     renderer rebuild is DESTROYED when it goes; a cache has a cap (an LRU),
     never "until the page closes".
+  - A POOL GIVES BACK WHAT A SPIKE MADE (v2.3.3152, found by a leak hunt): the
+    hit effects' pools kept every sprite a big fight drew (1,436 hidden after
+    one Great Cave wave) -- a pool trims to what it drew in its last few
+    seconds (hitMaterialFx.js `TRIM_MS`) and empties on a zone change. And a
+    picture freed is not only your sprites' business: Pixi's pooled mask
+    filter and shared shaders keep the last picture they drew, and pixi 8.17
+    destroyed their bind group with it, so the next sprite mask broke the
+    frame (TRAPS §143, `src/rendering/bindGroupFix.js`). Pixi's own
+    TexturePool (every filter pass's scratch, every canvas Text's texture)
+    kept on the GPU the most of each size ever used at once; one unused for
+    30 s is destroyed now, and a zone change empties it
+    (`src/rendering/texturePoolTrim.js`, only with the bind-group fix on;
+    `?poolkeep` to compare; `window.__btTexPool()`). The census is
+    `window.__btSceneCensus(depth)` (the scene counted by path); `mp-sceneleak`
+    checks all four, a rebuild's shadow system included.
   - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
     the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
     home again, three times. Each kind of memory's highest reading must stay

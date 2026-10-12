@@ -178,3 +178,48 @@ Both c→s types are passthrough lines in the client's `channelShim` allowlist
   greatsword from the weapon bag; the nine pictures; no page errors.
 - Updated: `mp-armorforge` (four bars), `mp-smithy` (six tabs; and its harden
   step, which had needed more Smithing XP since v2.3.3090 doubled each level).
+
+## v2.3.3160: a piece of gear never becomes a weapon
+
+Found by an overnight review of the economy, and reproduced on main: the
+weapon bag could be given a piece of ARMOUR, and salvage paid for it as a
+weapon.
+
+1. `stats_update {armor: {...}}` (the legacy describe lane, grids.js) puts any
+   armour-shaped description in the armour slot, marked `prov: 'legacy'`,
+   tierMult clamped to 8 and nothing else. A description can call itself a
+   Godly Iron Greatsword.
+2. `equip_request {stashIdx, slot: 'armor'}` swapped the armour slot with a
+   weapon-bag entry. The worker accepted every slot `_isValidEquipSlot`
+   knows, armour, shield and amulet included, and never asked whether the
+   entry fit the slot.
+3. `smith_salvage {field: 'weaponStash'}` paid 2 iron bars and a Godly Iron
+   Essence for it, and Diego buys one for 125,000. One wooden sword (three
+   pine logs and 8 gold) per turn.
+4. The same entry equipped to the hand was a Godly weapon at tierMult 8,
+   about 160 times a wooden sword's damage, and survived a reconnect.
+
+The game's own screens never sent either request: they send `equip_request`
+for the three weapon slots only, the slot from the weapon's type
+(ItemDetailPopup.jsx `slotFor`, InventoryPanel.jsx). So the worker now asks
+the same (gear.js):
+
+- `_isWeaponSlot`: `equip_request` takes `weapon`, `rangedWeapon` or
+  `staffWeapon` only. Armour, shields and amulets are worn through their own
+  routes (stats_update / armorRef, shield_wear, the amulet forge), none of
+  which touch the weapon bag. `unequip_request` is unchanged.
+- `_weaponSlotFor`: the slot must be the one the weapon's type is worn in (a
+  bow the bow slot, a staff the staff slot, anything else the melee slot). A
+  sword in the staff slot also let hardening take the staff's hardened wood
+  instead of the sword's bars.
+- `_isGearNotWeapon`: an entry carrying the gear ledger's `gid` or `prov` is
+  gear. `GEAR_PROV_SLOTS` has no weapon slot and no weapon path mints either
+  mark. Such an entry is refused by `equip_request`, pays nothing at salvage
+  and takes no essence (`not_metal`). `_sanitizeWeapon` returns null for it,
+  so a piece that crossed before the fix leaves the bag and the hand on the
+  next join and can't be listed, staged in a trade or delivered.
+
+No price, odd or rule changed. Tests: `salvage.test.mjs` §7b (13 checks: the
+chain refused at the armour slot, every non-weapon slot, each weapon type
+only in its own slot, a crossed piece refused at salvage, essence and equip
+and dropped on the next join). 11 of them fail on main.

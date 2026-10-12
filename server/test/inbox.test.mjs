@@ -195,6 +195,93 @@ check('fully drained inbox key deleted', !state._store.has('inbox:bp_inbox_dave'
 const inbD3 = msgsOfType(wsD3, 'inbox_delivered');
 check('second drain reports queued === 0', inbD3.length === 1 && inbD3[0].payload.queued === 0 && inbD3[0].payload.entries[0].kind === 'weapon', inbD3);
 
+// ── 8b. v2.3.3185: a restart at ANY write of a join's mail delivery ──
+// The drain rewrote (or deleted) the mailbox, awaited, and saved the player
+// after -- two writes: a restart between them took the mail away with its
+// gold never saved.  A storage where every write made in one synchronous run
+// commits as one batch, as a Durable Object's does, and the room dies before
+// batch `crashAt`.  For every batch of a join that delivers 500 gold: crash
+// there, restart on what was written, join again -- exactly 500 arrives.
+{
+  const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
+  const mkBatchState = (seed) => {
+    const store = new Map(seed ? [...seed].map(([k, v]) => [k, clone(v)]) : []);
+    let pending = null, batches = 0, crashAt = Infinity, dead = false;
+    const commit = () => {
+      const w = pending; pending = null;
+      const n = batches++;
+      if (dead || n >= crashAt) { dead = true; return; }
+      for (const [op, k, v] of w) { if (op === 'put') store.set(k, v); else store.delete(k); }
+    };
+    const write = (op, k, v) => {
+      if (!pending) { pending = []; queueMicrotask(commit); }
+      pending.push([op, k, clone(v)]);
+    };
+    const view = (k) => {
+      if (pending) for (let i = pending.length - 1; i >= 0; i--) if (pending[i][1] === k) return pending[i][0] === 'put' ? clone(pending[i][2]) : undefined;
+      return clone(store.get(k));
+    };
+    return {
+      _store: store,
+      batches: () => batches,
+      crashAt(n) { crashAt = n; },
+      storage: {
+        get: async (k) => view(k),
+        put: async (k, v) => {
+          if (k && typeof k === 'object') { for (const [kk, vv] of Object.entries(k)) write('put', kk, vv); return; }
+          write('put', k, v);
+        },
+        delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) write('del', x); return true; },
+        list: async (opts) => { const out = new Map(); for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, clone(v)); return out; },
+      },
+      getWebSockets: () => [],
+      acceptWebSocket: () => {},
+    };
+  };
+  const settleIo = () => new Promise((r) => setTimeout(r, 5));
+  const PIDM = 'bp_inbox_restart';
+  const joinOn = async (rm, ws) => {
+    rm.sessions.set(ws, baseSession());
+    await rm.state.storage.put('cadence:login:' + PIDM, { period: rm._cadencePeriodDaily(), streak: 1, ts: Date.now() });
+    await rm.webSocketMessage(ws, JSON.stringify({ type: 'join', id: PIDM, name: 'T', phrase: 'p-' + PIDM, data: { x: 100, y: 100, z: 'town' } }));
+  };
+  /* the world before: 100 in the purse, 500 waiting in the mail */
+  const s0 = mkBatchState();
+  const r0 = new GameRoom(s0, mockEnv);
+  const w0 = fakeWs('m0');
+  await joinOn(r0, w0);
+  r0.playerState[PIDM].coins = 100;
+  r0._saveRpg(PIDM, r0.playerState[PIDM]);
+  await settleIo();
+  r0.sessions.delete(w0);
+  delete r0.playerState[PIDM];
+  await r0._creditPlayer(PIDM, { opId: 'test:restart:mail', source: 'test', kind: 'gold', payload: { amount: 500 }, note: 'mail' });
+  await settleIo();
+  check('setup: 500 gold waits in the mail', ((s0._store.get('inbox:' + PIDM) || [])[0] || {}).payload?.amount === 500, s0._store.get('inbox:' + PIDM));
+  /* how many writes a join makes */
+  const dry = mkBatchState(s0._store);
+  const rd = new GameRoom(dry, mockEnv);
+  await joinOn(rd, fakeWs('md'));
+  await settleIo();
+  const joinBatches = dry.batches();
+  check('setup: a join that delivers it ends with 600', rd.playerState[PIDM].coins === 600, rd.playerState[PIDM].coins);
+  const wrong = [];
+  for (let k = 0; k <= joinBatches; k++) {
+    const s1 = mkBatchState(s0._store);
+    s1.crashAt(k);
+    const r1 = new GameRoom(s1, mockEnv);
+    await joinOn(r1, fakeWs('m1'));
+    await settleIo();
+    const s2 = mkBatchState(s1._store);
+    const r2 = new GameRoom(s2, mockEnv);
+    await joinOn(r2, fakeWs('m2'));
+    await settleIo();
+    const c = r2.playerState[PIDM].coins;
+    if (c !== 600) wrong.push({ crashAt: k, coins: c });
+  }
+  check('a restart at any of a join\'s ' + joinBatches + ' writes delivers the mail exactly once after the next join (600)', wrong.length === 0, wrong);
+}
+
 // ── 9. v2.3.1182: _opPruneMaybe (48h expiry + junk cleanup + hourly rate limit) ──
 // Both failure directions are silent (best-effort catch), so assert
 // each explicitly: expired and junk-valued keys go, fresh keys stay,
@@ -256,6 +343,80 @@ await room.state.storage.delete('oplog:old'); // don't leak into later checks
   const rt = await room._opPruneMaybe();
   state.storage.list = realList;
   check('a throwing page ends the sweep (no spin) and arms the anchor', rt === false && room._opPrune === null && room._lastOpPrune > 0, { rt });
+}
+
+/* ── v2.3.3165: AN ESCROW STAMP NEVER LANDS WITHOUT ITS DEBIT ──
+   The stamp was written first and the debit saved after, in the next batch;
+   a worker restart between them left "paid" with nothing taken, and the
+   auction house's rebuild settles on that stamp (store.js).  Here the
+   storage "crashes" the instant the stamp is written: every put after it is
+   lost, as it would be.  Puts are copied, so only what was written counts. */
+{
+  const mkCrashState = () => {
+    const store = new Map();
+    let crashAfter = null;
+    let crashed = false;
+    const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
+    return {
+      _store: store,
+      arm(key) { crashAfter = key; crashed = false; },
+      storage: {
+        get: async (k) => clone(store.get(k)),
+        put: async (k, v) => {
+          if (crashed) return;
+          store.set(k, clone(v));
+          if (k === crashAfter) crashed = true;
+        },
+        list: async (opts) => { const out = new Map(); for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, clone(v)); return out; },
+        delete: async (k) => { if (crashed) return; for (const x of (Array.isArray(k) ? k : [k])) store.delete(x); },
+      },
+      getWebSockets: () => [],
+      acceptWebSocket: () => {},
+    };
+  };
+  const cs = mkCrashState();
+  const cr = new GameRoom(cs, mockEnv);
+  const PIDC = 'bp_inbox_crash';
+  const wsC = fakeWs('crash');
+  cr.sessions.set(wsC, baseSession());
+  await cr.webSocketMessage(wsC, JSON.stringify({ type: 'join', id: PIDC, name: 'T', phrase: 'p-' + PIDC, data: { x: 0, y: 0, z: 'town' } }));
+  const pc = cr.playerState[PIDC];
+  pc.coins = 1000;
+  pc.inventory = { rare_gem: 5 };
+  await cr._saveRpg(PIDC, pc);
+  const durable = () => cs._store.get('rpg:' + PIDC);
+
+  cs.arm('oplog:test:crash:gold');
+  await cr._escrowDebitGold(PIDC, 300, 'test:crash:gold');
+  check('online gold: when the payment\'s stamp is written, the debit is written with it',
+    cs._store.has('oplog:test:crash:gold') && durable().coins === 700, { stamp: cs._store.has('oplog:test:crash:gold'), coins: durable().coins });
+
+  cs.arm('oplog:test:crash:item');
+  await cr._escrowTakeItem(PIDC, 'rare_gem', 2, 'test:crash:item');
+  check('online item: when the take\'s stamp is written, the take is written with it',
+    cs._store.has('oplog:test:crash:item') && (durable().inventory || {}).rare_gem === 3, { stamp: cs._store.has('oplog:test:crash:item'), inv: durable().inventory });
+
+  /* offline: the stored record is debited directly */
+  cs.arm(null);
+  const st0 = durable();
+  st0.coins = 1000;
+  st0.inventory = { rare_gem: 5 };
+  await cs.storage.put('rpg:' + PIDC, st0);
+  cr.sessions.delete(wsC);
+  delete cr.playerState[PIDC];
+  cs.arm('oplog:test:crash:gold-off');
+  await cr._escrowDebitGold(PIDC, 300, 'test:crash:gold-off');
+  check('offline gold: the same, on the stored record',
+    cs._store.has('oplog:test:crash:gold-off') && durable().coins === 700, { stamp: cs._store.has('oplog:test:crash:gold-off'), coins: durable().coins });
+  cs.arm('oplog:test:crash:item-off');
+  await cr._escrowTakeItem(PIDC, 'rare_gem', 2, 'test:crash:item-off');
+  check('offline item: the same, on the stored record',
+    cs._store.has('oplog:test:crash:item-off') && (durable().inventory || {}).rare_gem === 3, { stamp: cs._store.has('oplog:test:crash:item-off'), inv: durable().inventory });
+
+  /* and nothing else moved: a retry of a paid op is still a dup, never a second debit */
+  cs.arm(null);
+  const again = await cr._escrowDebitGold(PIDC, 300, 'test:crash:gold-off');
+  check('...and a retry of a stamped payment is a dup that takes nothing more', again.ok === true && again.dup === true && durable().coins === 700, { again, coins: durable().coins });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

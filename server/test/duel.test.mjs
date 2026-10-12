@@ -24,6 +24,11 @@
  *      damage is 0.5x-scaled + def-mitigated (no one-shots), legacy
  *      payloads (no kind) keep the tight 250 melee clamp, and
  *      out-of-range hits of either kind are still rejected.
+ *  15. v2.3.3168: nobody pays a stake they were not shown (a plain
+ *      duel_request carries none; a stake raised before the press is
+ *      refused).
+ *  16. v2.3.3168: a duel kill scores no clan war and claims no bounty,
+ *      driven through _handlePlayerDeath.
  */
 import { GameRoom } from '../src/index.js';
 
@@ -202,6 +207,93 @@ const coinsA7b = psA.coins;
 room._lastDuelSweep = 0;
 await room._duelEscrowSweep();
 check('sweep never refunds a settled pot', psA.coins === coinsA7b && !state._store.has('duelEscrow:paid-duel'), psA.coins);
+
+// ── 7b. v2.3.3185: a restart at ANY write of a duel's start loses no stake ──
+// A storage where every write made in one synchronous run commits as one
+// batch, as a Durable Object's does, and the room dies before batch `crashAt`
+// (that batch and every later one are lost).  The duel's start took a's
+// stake, then b's, then wrote the escrow record the restart sweep refunds
+// from -- so a restart between them kept a stake no record named.  For every
+// batch of the accept: crash there, restart on what was written, sweep, and
+// both players must have their 100 back -- never less, never more.
+{
+  const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
+  const mkBatchState = (seed) => {
+    const store = new Map(seed ? [...seed].map(([k, v]) => [k, clone(v)]) : []);
+    let pending = null, batches = 0, crashAt = Infinity, dead = false;
+    const commit = () => {
+      const w = pending; pending = null;
+      const n = batches++;
+      if (dead || n >= crashAt) { dead = true; return; }
+      for (const [op, k, v] of w) { if (op === 'put') store.set(k, v); else store.delete(k); }
+    };
+    const write = (op, k, v) => {
+      if (!pending) { pending = []; queueMicrotask(commit); }
+      pending.push([op, k, clone(v)]);
+    };
+    const view = (k) => {
+      if (pending) for (let i = pending.length - 1; i >= 0; i--) if (pending[i][1] === k) return pending[i][0] === 'put' ? clone(pending[i][2]) : undefined;
+      return clone(store.get(k));
+    };
+    return {
+      _store: store,
+      batches: () => batches,
+      crashAt(n) { crashAt = n; },
+      storage: {
+        get: async (k) => view(k),
+        put: async (k, v) => {
+          if (k && typeof k === 'object') { for (const [kk, vv] of Object.entries(k)) write('put', kk, vv); return; }
+          write('put', k, v);
+        },
+        delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) write('del', x); return true; },
+        list: async (opts) => { const out = new Map(); for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, clone(v)); return out; },
+      },
+      getWebSockets: () => [],
+      acceptWebSocket: () => {},
+    };
+  };
+  const settleIo = () => new Promise((r) => setTimeout(r, 5));
+  const joinOn = async (rm, ws, id) => {
+    rm.sessions.set(ws, baseSession());
+    await rm.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, data: { x: 0, y: 0, z: 'town' } }));
+  };
+  const A = 'bp_duel_ra', B = 'bp_duel_rb';
+  /* the world before: two players with 100 each, written */
+  const s0 = mkBatchState();
+  const r0 = new GameRoom(s0, mockEnv);
+  await joinOn(r0, fakeWs('a0'), A); await joinOn(r0, fakeWs('b0'), B);
+  r0.playerState[A].coins = 100; r0.playerState[B].coins = 100;
+  r0._saveRpg(A, r0.playerState[A]); r0._saveRpg(B, r0.playerState[B]);
+  await settleIo();
+  const seed = s0._store;
+  const lost = [];
+  let acceptBatches = 0;
+  for (let k = 0; k <= 8; k++) {
+    const s1 = mkBatchState(seed);
+    const r1 = new GameRoom(s1, mockEnv);
+    await joinOn(r1, fakeWs('a1'), A); await joinOn(r1, fakeWs('b1'), B);
+    await settleIo();
+    const before = s1.batches();
+    s1.crashAt(before + k);
+    await r1._interceptDuel(A, chalMsg(B, 40));
+    await r1._interceptDuel(B, acceptMsg(A, 40));
+    await settleIo();
+    acceptBatches = Math.max(acceptBatches, s1.batches() - before);
+    /* the restart: a new room on what was written; the record aged past the
+       sweep's wait, the sweep run */
+    const s2 = mkBatchState(s1._store);
+    for (const [kk, v] of s2._store) if (kk.startsWith('duelEscrow:')) s2._store.set(kk, { ...v, startedAt: 0 });
+    const r2 = new GameRoom(s2, mockEnv);
+    await joinOn(r2, fakeWs('a2'), A); await joinOn(r2, fakeWs('b2'), B);
+    r2._lastDuelSweep = 0;
+    await r2._duelEscrowSweep();
+    await settleIo();
+    const ca = r2.playerState[A].coins, cb = r2.playerState[B].coins;
+    if (ca !== 100 || cb !== 100) lost.push({ crashAt: k, a: ca, b: cb });
+  }
+  check('a restart at any write of a duel\'s start leaves both players their 100 after the sweep (none lost, none doubled)', lost.length === 0, lost);
+  check('...the stakes and the record go out as ONE write', acceptBatches === 1, acceptBatches);
+}
 
 // ── 8. zero-wager duel ──
 await room._interceptDuel('bp_duel_a', { type: 'duel_request', payload: { target: 'bp_duel_b', fromName: 'A' } });
@@ -440,6 +532,107 @@ check('an over-long duel target is refused', fatChal === null);
 check('...and parks nothing in the challenge map', room._duelChallenges.size === 0, room._duelChallenges.size);
 const okChal = await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 0));
 check('...while a real id still records a challenge', okChal !== null && room._duelChallenges.size === 1);
+
+/* ── 15. v2.3.3168: nobody pays a stake they were not shown ──
+ *
+ * The challenge map keeps the stake the challenger's LATEST challenge named,
+ * and the accept escrowed it from both whatever the accepter's screen said.
+ * Two ways in, both reproduced on main:
+ *   - a plain duel_request carrying a stake: the game opens one as a
+ *     no-stakes duel (no gold line, its Accept echoes 0);
+ *   - a challenge re-sent with a bigger stake between the popup and the
+ *     press (the accept echoes the smaller number it showed).
+ * The accepter's echo is the most they agreed to; the challenge's number
+ * still wins when it is at or under it (§1's inflated echo still duels at
+ * the challenged 40). */
+const endAnyDuel = async () => {
+  room._tickDuels(Date.now() + 3600000);          // the shot clock (§12) ends whatever is open
+  await new Promise((r) => setTimeout(r, 20));    // its pot settle is fire-and-forget
+  for (const p of [psA, psB]) { p.hp = 100; p.maxHp = 100; p.dying = false; p.dead = false; p.z = 'town'; }
+  psA.coins = 1000; psB.coins = 1000;
+  room._duelChallenges.clear();
+  room.eventBuffer.length = 0;
+};
+await endAnyDuel();
+check('setup: no duel open for the stake checks', !room._duelFor('bp_duel_a') && !room._duelFor('bp_duel_b'));
+
+// (a) a stake hidden on a plain duel_request
+const plain = await room._interceptDuel('bp_duel_a', { type: 'duel_request', payload: { target: 'bp_duel_b', fromName: 'A', wager: 900 } });
+check('a plain duel_request is relayed with no stake', plain !== null && plain.payload.wager === 0, plain && plain.payload);
+const accPlain = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 0)); // what the game's Accept sends for it
+const dPlain = room._duelFor('bp_duel_a');
+check('...accepting it starts a no-stakes duel', accPlain !== null && dPlain && dPlain.wager === 0, dPlain && dPlain.wager);
+check('...and takes no gold from either side', psA.coins === 1000 && psB.coins === 1000, { a: psA.coins, b: psB.coins });
+await endAnyDuel();
+
+// (b) a challenge re-sent with a bigger stake before the accepter's press lands
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 10));   // B's popup says 10
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 900));  // re-sent while B is pressing Accept
+const accSwitch = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 10));
+check('an accept is refused when the stake grew past what the accepter was shown',
+  accSwitch === null && !room._duelFor('bp_duel_a') && !room._duelFor('bp_duel_b'));
+check('...taking no gold from either side', psA.coins === 1000 && psB.coins === 1000, { a: psA.coins, b: psB.coins });
+check('...answered with a decline to BOTH, not silence',
+  room.eventBuffer.filter((e) => e.type === 'duel_decline').length === 2, room.eventBuffer.map((e) => e.type));
+check('...and nothing escrowed for it', ![...state._store.keys()].some((k) => k.startsWith('duelEscrow:') && state._store.get(k).wager === 900));
+await endAnyDuel();
+
+// (c) the honest handshake is untouched
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 25));
+const accHonest = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 25));
+check('the stake the accepter was shown still duels, both escrowed',
+  accHonest !== null && room._duelFor('bp_duel_a') && room._duelFor('bp_duel_a').wager === 25 && psA.coins === 975 && psB.coins === 975,
+  { wager: room._duelFor('bp_duel_a') && room._duelFor('bp_duel_a').wager, a: psA.coins, b: psB.coins });
+await endAnyDuel();
+
+// (d) a stake LOWERED before the press is still one they agreed to
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 300));
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 10));
+const accLower = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 300));
+check('a stake lowered before the press duels at the LOWER number',
+  accLower !== null && accLower.payload.wager === 10 && psA.coins === 990 && psB.coins === 990,
+  { wager: accLower && accLower.payload.wager, a: psA.coins, b: psB.coins });
+await endAnyDuel();
+
+/* ── 16. v2.3.3168: a duel kill scores no clan war and claims no bounty ──
+ *
+ * Both hooks exclude a consensual duel by asking _duelFor(killer) -- but
+ * _handlePlayerDeath ran them AFTER the duel hook had resolved the duel and
+ * taken it out of the map, so the answer was always "no duel": every thrown
+ * duel scored a clan-war point and paid out a bounty.  clans §6 and threat §8
+ * call the hooks directly with a live duel in the map, which is why they were
+ * green; this goes through _handlePlayerDeath, the blow combat.js delivers. */
+psA.coins = 2000; psB.coins = 2000;
+await room.webSocketMessage(wsA, JSON.stringify({ type: 'clan_create', payload: { name: 'Reds', tag: 'RED' } }));
+await room.webSocketMessage(wsB, JSON.stringify({ type: 'clan_create', payload: { name: 'Blues', tag: 'BLU' } }));
+check('setup: two clans', !!room._clanOf('bp_duel_a') && !!room._clanOf('bp_duel_b') && room._clanOf('bp_duel_a').id !== room._clanOf('bp_duel_b').id);
+psA.z = psB.z = 'meadow';                         // a lawless war zone
+await room.webSocketMessage(wsA, JSON.stringify({ type: 'clan_war_declare', payload: { defenderTag: 'BLU', zone: 'meadow' } }));
+const war16 = room._clanWars && [...room._clanWars.values()].find((w) => w.status === 'active');
+check('setup: RED and BLU at war in the meadow', !!war16 && war16.zone === 'meadow');
+/* A guard fine on A's head.  Only Call Guards makes one, and that needs open
+   PvP (off since v2.3.1917), so it is put on file the way that path stores it. */
+state._store.set('bounty:bp_duel_a', { amount: 1000, ts: Date.now() });
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 0));
+await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 0));
+check('setup: a no-stakes duel between the two leaders', !!room._duelFor('bp_duel_a'));
+const coinsB16 = psB.coins;
+room._handlePlayerDeath(psA, 'bp_duel_a', 'pvp:bp_duel_b'); // B wins the duel
+await new Promise((r) => setTimeout(r, 30));
+check('a duel kill scores nothing in the clan war',
+  war16 && war16.challenger.score === 0 && war16.defender.score === 0,
+  war16 && { challenger: war16.challenger.score, defender: war16.defender.score });
+check('...and claims no bounty: the duel winner is paid nothing for it', psB.coins === coinsB16, { before: coinsB16, after: psB.coins });
+check('...and the bounty stays on file for a real hunter', !!state._store.get('bounty:bp_duel_a'));
+// The same blow with no duel open still counts for both: the hooks still run.
+psA.dying = false; psA.dead = false; psA.hp = 100;
+state._store.set('bounty:bp_duel_a', { amount: 1000, ts: Date.now() + 1 });
+const scoreD16 = war16 ? war16.defender.score : 0;
+const coinsB16b = psB.coins;
+room._handlePlayerDeath(psA, 'bp_duel_a', 'pvp:bp_duel_b');
+await new Promise((r) => setTimeout(r, 30));
+check('a PvP kill outside a duel still scores the clan war', war16 && war16.defender.score === scoreD16 + 1, war16 && war16.defender.score);
+check('...and still claims the bounty', psB.coins === coinsB16b + 1000 && !state._store.get('bounty:bp_duel_a'), { before: coinsB16b, after: psB.coins });
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

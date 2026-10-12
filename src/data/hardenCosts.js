@@ -56,11 +56,15 @@ export function hardenTierOf(w) {
   return Math.max(1, Object.values(BLACKSMITH_TIERS).filter((t) => t.tierMult <= tm).length);
 }
 
-/** Is this weapon hardened with wood?  A `ww_` gearBase, or the bow's or the
-    staff's slot (the worker's hardenIsWood). */
+/** Is this weapon hardened with wood?  A `ww_` gearBase, or a bow or a staff
+    (the worker's hardenIsWood).  v2.3.3161: by the WEAPON's type, not the
+    slot it sits in; a weapon with no type still goes by its slot. */
 export function hardenIsWood(w, slot) {
   const gb = w && typeof w.gearBase === 'string' ? w.gearBase : '';
-  return gb.indexOf('ww_') === 0 || slot === 'rangedWeapon' || slot === 'staffWeapon';
+  if (gb.indexOf('ww_') === 0) return true;
+  const t = w && typeof w.type === 'string' ? w.type : '';
+  if (t) return t === 'bow' || t === 'staff';
+  return slot === 'rangedWeapon' || slot === 'staffWeapon';
 }
 
 /** The material a weapon of material tier `tierIdx` takes: its metal's bars,

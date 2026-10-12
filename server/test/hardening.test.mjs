@@ -265,6 +265,33 @@ check('reaching H5 appends the INV-27 global log', ps.weapon.hardness === 5 && A
     barOf({ gearBase: 'ww_ironbark' }) === 'hardened_maple' && barOf({ gearBase: 'ww_worldbreaker' }) === 'hardened_maple'
       && barOf({ type: 'bow', gearBase: 'wood', tierMult: 1 }, 'rangedWeapon') === 'hardened_pine' && barOf({ type: 'staff', tierMult: 1 }, 'staffWeapon') === 'hardened_pine'
       && hardenIsWood({ gearBase: 'ww_pine' }, 'weapon') === true && hardenIsWood({ gearBase: 'iron' }, 'weapon') === false);
+  /* v2.3.3161: by the WEAPON, not the slot the client names.  Reproduced on
+     main: an iron sword equipped into the staff slot (equip_request asked
+     nothing of the slot until v2.3.3160) was hardened with Hardened Hardwood
+     and never paid an iron bar. */
+  check('v2.3.3161: by the weapon -- a sword or greatsword in the staff or bow slot takes its own bars, a bow in the melee slot its wood',
+    barOf({ type: 'sword', gearBase: 'iron', tierMult: 1.25 }, 'staffWeapon') === 'bar_iron'
+      && barOf({ type: 'greatsword', gearBase: 'steel' }, 'rangedWeapon') === 'bar_black_steel'
+      && barOf({ type: 'bow', gearBase: 'wood', tierMult: 1 }, 'weapon') === 'hardened_pine',
+    [barOf({ type: 'sword', gearBase: 'iron', tierMult: 1.25 }, 'staffWeapon'), barOf({ type: 'greatsword', gearBase: 'steel' }, 'rangedWeapon')]);
+  check('...and a weapon with no type at all still goes by its slot, as before',
+    barOf({ tierMult: 1 }, 'staffWeapon') === 'hardened_pine' && barOf({ tierMult: 1 }, 'weapon') === 'bar_copper');
+  {
+    const keep = { staff: ps.staffWeapon, inv: ps.inventory, coins: ps.coins, lvl: ps.lifeSkills.blacksmithing.level };
+    ps.staffWeapon = { type: 'sword', gearBase: 'iron', tierMult: 1.25, name: 'Iron Sword', quality: 'normal', hardness: 0, temper: 0 };
+    ps.lifeSkills.blacksmithing.level = 15;
+    ps.inventory = { hardened_hardwood: 5 };
+    ps.coins = 5000;
+    ws.sent.length = 0;
+    Math.random = () => 0.0;   // it would succeed -- but it must never roll
+    await harden(ws, 'staffWeapon');
+    Math.random = realRandom;
+    const rs = lastHR(ws);
+    check('...at the real handler: an iron sword sitting in the staff slot asks for an Iron Bar, takes no hardened wood and stays H0',
+      !!rs && rs.error === 'no-materials' && /Iron Bar/.test(rs.message) && ps.inventory.hardened_hardwood === 5 && ps.coins === 5000 && ps.staffWeapon.hardness === 0,
+      { rs, inv: ps.inventory, w: ps.staffWeapon });
+    ps.staffWeapon = keep.staff; ps.inventory = keep.inv; ps.coins = keep.coins; ps.lifeSkills.blacksmithing.level = keep.lvl;
+  }
   check('materials: junk tiers clamp (0, NaN, 99) and the tables are the four bars and five woods they say', hardenMaterialFor(0, false) === 'bar_copper' && hardenMaterialFor(NaN, false) === 'bar_copper'
     && hardenMaterialFor(99, false) === 'bar_black_steel' && HARDEN_BAR_BY_TIER.length === 4
     && hardenMaterialFor(0, true) === 'hardened_pine' && hardenMaterialFor(99, true) === 'hardened_maple' && HARDEN_WOOD_BY_TIER.join() === 'hardened_pine,hardened_softwood,hardened_hardwood,hardened_cedar,hardened_maple',

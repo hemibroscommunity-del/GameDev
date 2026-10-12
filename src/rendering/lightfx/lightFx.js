@@ -17,7 +17,7 @@
  * runtime (window.__btLightFx.set(true)) takes effect on the next frame, which
  * is how the QA pictures take a before and an after of the same moment.
  */
-import { ShadowSystem } from './shadows.js';
+import { ShadowSystem, shadowSystemCount } from './shadows.js';
 import { GlintSystem, sheenOn } from './glint.js';
 import { collectCasters, SELF_STAND_IN_FIELDS, SELF_STAND_IN_SETS } from './casters.js';
 import { Sprite } from 'pixi.js';
@@ -101,6 +101,13 @@ export class LightFx {
     this.glint.clear();
   }
 
+  /* v2.3.3152: the renderer is going -- clear() is a zone change's; this also
+     takes the shadow system out of the module's list (shadows.js destroy) */
+  destroy() {
+    if (this.shadows) { try { this.shadows.destroy(); } catch (e) { /* gone */ } this.shadows = null; }
+    this.glint.clear();
+  }
+
   update(S, now, er, fx) {
     this._fx = fx || null;
     if (!lightFxOn() || !S) {
@@ -164,7 +171,8 @@ export class LightFx {
       zone: this.zone,
       /* v2.3.3000: the light used last frame -- the Wheel's eased one there */
       light: this.light ? { lx: this.light.lx, ly: this.light.ly, alpha: +(+this.light.alpha).toFixed(3), color: this.light.color, region: this.light.region || null } : zoneLight(this.zone),
-      shadows: sh ? { ...sh.stats, keys: sh.stats.keys.slice(), filtered: !!(layer && layer.filters && layer.filters.length), pool: sh.pool.length } : null,
+      shadows: sh ? { ...sh.stats, keys: sh.stats.keys.slice(), filtered: !!(layer && layer.filters && layer.filters.length), pool: sh.pool.length,
+        systems: shadowSystemCount() } : null,   /* v2.3.3152: + systems, the module's (mp-sceneleak) */
       glint: { ...this.glint.probeStats(), force: this.glint.force, sheenOn: sheenOn() },
       ms: +this.lastMs.toFixed(3),
       /* the stand-in names casters.js reads off the effects renderer that are

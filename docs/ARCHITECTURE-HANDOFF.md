@@ -73,6 +73,7 @@ extended.
    | `clan:<clanId>` / `clan_by_player:<pid>` / `clan_war:<warId>` | clan registry + war snapshots | clans.md |
    | `arena_entry:<tid>:<pid>` | escrowed 100g tournament entry | arena.md |
    | `arena_stake:<tid>:<mid>:<pid>` | escrowed sponsorship stake | sponsorship.md |
+   | `arena_house` | `{hour, used}` — the gold the house has added to arena champions' prizes in the current UTC clock hour (`hour` = ms / 3,600,000), at most `ARENA.HOUSE_GOLD_PER_HOUR` (v2.3.3178). Read once at the first join after a start; written BEFORE the prize is paid. A single bounded key, never a prefix | arena.md |
    | `guild_claims:<pid>` | `{skillKey: completedCount}` quest-ladder claims | guild-quests.md |
    | `gearlock:<pid>` | guard gear-lock expiry timestamp | threats.md |
    | `nml_state:<pid>` | `{red, white, whiteBy, forfeit}` — No man's land (v2.3.3058): the skulls' time LEFT in ms (it counts down only while the player is connected, so it is time in the game, not on the clock), who gave the white one, and the ids of gear pieces forfeited by a death there, refused if a client offers them again on join. Deleted when all three are empty | no-mans-land.md |
@@ -339,8 +340,12 @@ equipped gearBase slots (weapon/rangedWeapon/staffWeapon/shield) and
 stash weapons — now strip the SERVER blob, credit polished gems, and
 charge coins server-side, name-rebuilt from mirror-pinned label tables
 (amulet-forge.md "Gem extraction"). The amulet extract button is dead
-code (gearBase filter), so it's excluded per the dormant-content rule. What
-remains is the **EnchantPanel shield/weapon gem-SLOT consume**: still a
+code (gearBase filter), so it's excluded per the dormant-content rule. The
+SHIELD half of the slot shipped v2.3.3187 (`shieldgem.js`, `shield_gem` →
+`shield_gem_result`, `caps.shieldgem`; docs/specs/shield-gems.md): the gem
+comes off the worker's count, the shield it holds takes it, and the ledger
+row follows, so Take out works. What remains is the **EnchantPanel weapon
+gem-SLOT consume**: still a
 client-local `lifeSkills.gems` edit, echo-restored. Blocked, not just
 unbuilt — non-flame gem bonuses are client-side point-of-use effects
 (v2.3.1139 posture), so the server has nothing authoritative to
