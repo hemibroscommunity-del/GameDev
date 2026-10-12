@@ -21,7 +21,8 @@ export const DailyRewardsCard = () => {
   const list = Array.isArray(dq.list) ? dq.list : [];
   const done = list.filter((q) => q.d).length;
   const claim = qLive ? claimableTiers(st).length : 0;
-  const spinReady = sLive && st.spin && st.spin.on && (st.spin.ready || st.spin.open || st.spin.extra > 0);
+  /* v2.3.3181: a spin the first quest has not opened yet is not ready */
+  const spinReady = sLive && st.spin && st.spin.on && (st.spin.open || (!st.spin.locked && (st.spin.ready || st.spin.extra > 0)));
   const warm = claim > 0 || spinReady;
   const bits = [];
   if (qLive && dq.on !== false) bits.push(dq.locked ? 'Daily quests: soon' : done + '/' + (list.length || 3) + ' daily quests');

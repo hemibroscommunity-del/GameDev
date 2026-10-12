@@ -278,6 +278,7 @@ try {
       open: (tab) => dailyRewardsBus.openWindow(tab),
       close: () => dailyRewardsBus.closeWindow(),
       claimable: () => claimableTiers(_state),
+      ask: () => askRewards(),   /* v2.3.3181: QA asks for a fresh state (mp-dailyrewards) */
     };
   }
 } catch (e) { /* probe only */ }

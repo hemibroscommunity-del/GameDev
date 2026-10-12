@@ -5613,3 +5613,306 @@ stays the floor for a screen that goes dark any other way.  A new Pixi with
 other state carried across frames needs adding there -- mp-renderheal makes a
 throw inside a mask (with `bindfix=0`) and fails if the screen does not come
 back lit, and with `noheal` shows the black screen it prevents.
+
+_§145–§164 come from the economy review of 2026-10-12 (added v2.3.3188); each is tagged with the version of the fix it came from._
+
+## 145. "A swap is just a swap" (v2.3.3160)
+
+**The plausible move.** `equip_request {stashIdx, slot}` swapped a weapon-bag
+entry with whatever slot `_isValidEquipSlot` knew, armour, shield and amulet
+included. The client says which two places, the server exchanges what is
+there.
+
+**Why it is wrong.** The two containers hold different things under
+different trust. The armour slot can hold a DESCRIBED piece (stats_update's
+legacy lane: anything armour-shaped, tierMult clamped and nothing else). The
+weapon bag is where salvage, the vendor, the market, the auction house, the
+trade window and the hand all take entries as server-made. So a description
+of a "Godly Iron Greatsword" went into the armour slot, across into the bag,
+and out of salvage as 2 iron bars and a Godly essence that Diego buys for
+125,000, once per 8-gold wooden sword. Equipped, it was a tierMult-8 Godly
+weapon. The honest client never sends either swap, which is how it survived
+review after review.
+
+**The rule.** A verb that moves an item between two containers checks that
+the item belongs in BOTH, and that the slot fits the item (a bow in the bow
+slot), whatever the client names. Where a container's entries are trusted
+downstream, every way IN is a gate: grep every writer of the container
+(gear.js `_isWeaponSlot`, `_weaponSlotFor`, `_isGearNotWeapon`). And let
+marks speak: the gear ledger's `gid` / `prov` are never on a weapon, so a
+"weapon" carrying one is gear.
+
+## 146. "The oplog makes it idempotent" (v2.3.3162)
+
+**The plausible move.** A payout carries a deterministic opId (rule 5), so a
+second payout is a "dup". The record that says it was paid can be saved
+whenever.
+
+**Why it is wrong.** oplog stamps are pruned after 48 hours
+(`_opPruneMaybe`). The daily rewards' turn-over paid yesterday's open spin pot
+and a finished season's tiers. Three acts (a refused double or collect, an
+empty reroll, an empty season claim) then returned without saving the
+turned-over record. Nothing marked it dirty, the close forgot the cached
+copy, and the next join turned the STORED day over again. That was a "dup"
+for two days, and then it paid again: a 40,000 pot paid 80,000, and a
+season's track paid twice. Its freezes had no stamp at all.
+
+**The rule.** The oplog stops a retry inside 48 hours; it is not the record.
+The state that says "paid" is saved in the same run as the payment, by every
+caller. A function that pays marks its own record dirty
+(dailyrewards.js `_drRollover`), so a caller that forgets is caught by the
+tick or the close.
+
+## 147. "Stamp first, then debit" (v2.3.3165)
+
+**The plausible move.** `_escrowDebitGold` / `_escrowTakeItem` stamped the
+opId (awaited) and then debited and saved. With the stamp first, a retry can
+never charge twice.
+
+**Why it is wrong.** That is two batches. A restart between them (every
+server merge restarts the room) left "paid" with nothing taken, and the
+auction house's wake-time rebuild takes that stamp as proof of payment. In a
+simulated restart a 900-gold buy settled while the buyer kept his 1,000, and
+an outbid refund paid back 500 that had never been taken.
+
+**The rule.** A debit and its stamp are one write: mutate, `_saveRpg`,
+`_opStamp`, all issued before any await (rule 8's single mutation), then
+await. Both land or neither does, and a stamp can never stand for a payment
+that did not happen. inbox.test's crash storage (it drops every put after a
+named key) is the way to test it.
+
+## 148. "The row exists, so the player can sell it" (v2.3.3164)
+
+**The plausible move.** The gear ledger's row is the proof a piece is yours
+(`_gearSellable`), so a row is enough to list it.
+
+**Why it is wrong.** A row proves where a piece CAME FROM, not where it IS.
+The worn amulet listed and sold while it stayed on the neck, its gem still in
+the server's damage roll. An amulet the forge had replaced kept its row and
+sold. The shield that shield_wear had put on the arm sold and stayed on it.
+In each case one piece ended up in two places.
+
+**The rule.** For every slot where the server can know, a sell gate asks two
+questions: is the piece WORN (refuse), and is it HELD (refuse if not). A
+ledger row answers neither. Where the server cannot know (a shield before
+the game has reported the arm), it says so rather than guessing (§ the a2
+test in gearprov.test).
+
+## 149. "The slot tells you what the weapon is" (v2.3.3161)
+
+**The plausible move.** Hardening a bow or staff takes hardened wood and a
+sword takes bars. What sits in the bow or staff slot is a bow or staff, so
+decide by the slot.
+
+**Why it is wrong.** The slot is whatever the client named, and a sword could
+be put there. It was then hardened with cheap wood instead of its bars.
+
+**The rule.** Decide by the item's own fields, never by the container the
+client named. hardening.js `hardenIsWood` checks for a `ww_` gearBase or a
+bow or staff TYPE, and uses the slot only for a legacy weapon with no type.
+
+## 150. "The dead are never at his counter, so his counter needs no check" (v2.3.3163)
+
+**The plausible move.** A new counter (Diego's buy and sell) is written from
+its own needs. A dying player is in the wilds, nowhere near the shop.
+
+**Why it is wrong.** The server does not check where a player stands, so
+"nowhere near" is not a guard. A dying player bought, and the respawn wiped
+the purchase. And every refused trade was broadcast to the whole room with
+no rate limit: 200 refusals sent 200 copies of the pile to each bystander.
+
+**The rule.** A new value-moving handler copies the full preamble its
+siblings have (`ps.dying || ps.dead || ps.disconnected`, the gear lock, a
+cooldown). Only a change that happened is news to everyone; a refusal
+answers the asker.
+
+## 151. "The hook already excludes duel kills" (v2.3.3168)
+
+**The plausible move.** Clan-war scoring and bounties must not count a
+consensual duel, and both hooks say so: each asks `_duelFor(killer)` and
+returns if the victim is the duel partner. The suites test exactly that.
+
+**Why it is wrong.** `_handlePlayerDeath` runs the duel hook FIRST, and
+`_resolveDuel` deletes the duel from the map. By the time the war and bounty
+hooks ask, there is no duel, so every thrown duel scored the war and paid the
+bounty. The suites called the hooks directly with a live duel in the map,
+the one state the real path never has.
+
+**The rule.** Decide "was this X" before the step that removes X, and pass
+the answer along (`_duelKill`). Test a hook through the call site that runs
+it, never by calling it alone with state the call site would already have
+changed.
+
+## 152. "The challenge's number is authoritative" (v2.3.3168)
+
+**The plausible move.** A duel's stake comes from the server's own record of
+the challenge, not from the accept, so an edited accept cannot raise it.
+
+**Why it is wrong.** Authoritative is not agreed. The record kept the
+challenger's LATEST challenge, a plain `duel_request` (shown as no-stakes)
+could carry a stake, and the accept took whatever was on file from a player
+whose screen said 0 or a smaller number.
+
+**The rule.** Money taken from a player needs that player's own number: the
+accept echoes what it showed, and the server refuses a stake above it. The
+other side's record decides only what is at or under the consent.
+
+## 153. "The shield keeps what the pickup gave" (v2.3.3169)
+
+**The plausible move.** A death inside a second of a pickup keeps what the
+pickup handed over; the pile drops `held - shield`, the bag keeps `shield`.
+
+**Why it is wrong.** The shield is a memory of a quantity, not proof of
+possession. Anything sold, listed or traded after the pickup was written
+back by both wipes, and a listing taken down after the respawn doubled the
+stack.
+
+**The rule.** A carve-out that writes a quantity back is capped at what is
+still held: keep `min(shield, held)`. Kept plus dropped must equal held for
+every key, checked against the bag at the moment of the wipe.
+
+## 154. "Every zone's kills drop that zone's shard" (v2.3.3170)
+
+**The plausible move.** A shard is `'shard_' + zoneId`, so any zone a monster
+dies in names its own shard.
+
+**Why it is wrong.** Some zone ids are runtime ids. A Workshop instance is
+`dungeon:<uuid>`, so each run minted a new item key that the game could not
+draw and that Diego's substring pricer bought at full price forever, one more
+permanent key in his pile each time.
+
+**The rule.** Item keys come from a fixed table (`ZONES`, a catalog), never
+from an id the server invents at runtime. Gate a built key on the table.
+
+## 155. "Refuse the bad state" (v2.3.3171)
+
+**The plausible move.** An arena join must not land in a tournament that is
+running, so refuse `status === 'running'`.
+
+**Why it is wrong.** There was a third state. A finished tournament is kept
+60 s for the completion poll, and a join in that minute paid 100 g into a
+queue nothing would start, with no refund.
+
+**The rule.** Gate on the one state that is allowed (`status === 'gathering'`),
+not on the states you thought of that are not.
+
+## 156. "The op id makes the debit idempotent" (v2.3.3171)
+
+**The plausible move.** Key the entry fee's debit on (tournament, player);
+a retry is answered "already paid", which is the point.
+
+**Why it is wrong.** Leaving refunds under its own id but the debit's stamp
+stays, so a second entry into the same tournament was "already paid" and
+free. An op id names one operation; a refund ends it, and a new entry is a
+new operation.
+
+**The rule.** An id may be reused only by a retry of the same act. After a
+refund or cancel, the next act carries a new id (`:n`), and so does its
+refund.
+
+## 157. "Activate each match as it is built" (v2.3.3171)
+
+**The plausible move.** Build round 2's matches in a loop and start each one
+as it is pushed.
+
+**Why it is wrong.** A walkover resolves synchronously, back into the bracket
+code, which read "this round" as the matches pushed so far. One match, one
+winner: it crowned (and paid) the champion before the other semifinal
+existed.
+
+**The rule.** Build the whole collection, then act on it. Code that can call
+back into itself must never see a half-built list.
+
+## 158. "Only the server writes that slot" (v2.3.3172)
+
+**The plausible move.** Gem extraction trusts `ps.shield.gem`, because only
+server code writes `ps.shield`.
+
+**Why it is wrong.** A later feature (`shield_wear`, v2.3.3091) let a shield
+adopted from the join's bag claim, shape-checked only, become `ps.shield`.
+Every reader that trusted the slot now read client data: about 31 free
+polished gems a join.
+
+**The rule.** When a new path moves claimed or adopted data into a slot the
+server trusted, audit every reader of that slot. Pay out only for what the
+server can prove it put there (`prov: 'minted'`).
+
+## 159. "Clamp the gems on the way in" (v2.3.3172)
+
+**The plausible move.** Every join runs the gem map through a whitelist and a
+200-per-key clamp, so tampered numbers never land.
+
+**Why it is wrong.** The clamp was written for a CLAIM, but it also ran over
+the server's own stored map, which kills and cuts raise with no ceiling.
+Every reconnect deleted what the server itself had paid past 200.
+
+**The rule.** A limit for untrusted input applies to that input. The
+server's own record is healed only once, when it may still hold an old
+unclamped capture, and is otherwise left alone.
+
+## 160. "A stack is just a stack" (v2.3.3173)
+
+**The plausible move.** Ace's item wager works on any stack in the bag;
+doubling a stack mints nothing unique.
+
+**Why it is wrong.** A golden ticket is a stack in the bag, and the contest's
+"only N capes" cap is checked only when a ticket drops. A won wager made one
+ticket two, and the second was redeemed by whoever it was traded to.
+
+**The rule.** A generic operation on the bag (wager, double, dupe-shaped
+rewards) must exclude every capped or one-of item. A cap checked at the
+source holds only if nothing downstream can multiply what it issued.
+
+## 161. "The writes are in the same handler" (v2.3.3173)
+
+**The plausible move.** The redeem consumes the ticket and grants the cape in
+one synchronous block, so they cannot disagree.
+
+**Why it is wrong.** Memory agreed; storage did not. The ledger was put before
+the op stamp's `await`, the bag after it: two batches. A restart at the await
+kept "redeemed" and the stored ticket, which was traded and redeemed again.
+(§147 is the same shape for a debit.)
+
+**The rule.** Writes that must land together are issued in one synchronous
+run with no `await` between them. An await is a batch boundary.
+
+## 162. "A second login is a reconnect" (v2.3.3174)
+
+**The plausible move.** The second-login eviction drops the old socket, and
+the join hydrates the anti-bot record from storage, as on any reconnect.
+
+**Why it is wrong.** A clean close flushes the record first; this eviction
+skips `webSocketClose`, so storage was up to 30 s stale and the join
+overwrote the live hour count with it. A login every ~29 s kept the
+harvest and cook caps from ever binding.
+
+**The rule.** Every way a session ends does the close's duties (flushes,
+forfeits, cancels), or the reconnect path must merge rather than overwrite
+live state with stored state.
+
+## 163. "Leaving is refused mid-war, so the roster is safe" (v2.3.3175)
+
+**The plausible move.** v2.3.2301 refuses leaving a clan mid-war because a
+leaver kept the payout; the hole is closed.
+
+**Why it is wrong.** A kick (kept on purpose, for griefers) has the same
+effect: the kicked member stays on the frozen roster, clanless, free to join
+another clan and be frozen onto a second war's roster.
+
+**The rule.** When a rule guards one exit, list every exit with the same
+effect (leave, kick, dissolve, a reset). Here the guard went on the far side:
+nobody on an active war's roster joins another clan until it ends.
+
+## 164. "Refusing three names covers the prototype" (v2.3.3167)
+
+**The plausible move.** The join refuses the ids `__proto__`, `constructor`
+and `prototype`, so a player id can never collide with `Object.prototype`.
+
+**Why it is wrong.** `Object.prototype` has a dozen more names. With the id
+`toString`, the jackpot's `entries[id] || 0` read the inherited function,
+the entry became a string, the weighted roll was NaN, and the first
+depositor of the week won the whole pool every time.
+
+**The rule.** Refuse every `Object.getOwnPropertyNames(Object.prototype)`
+name at the gate, and still count by own property (`hasOwnProperty`, or an
+`Object.create(null)` map) and as numbers wherever an id is a key.

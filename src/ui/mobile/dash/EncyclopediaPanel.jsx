@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
-import { MonsterCodex } from './MonsterCodex.jsx';   /* v2.3.3153: the monster codex */
+import { MonsterCodex } from './MonsterCodex.jsx';   /* v2.3.3189: the monster codex */
 
-/* v2.3.3153: 'Bestiary' -> 'Monsters', the monster codex (MonsterCodex.jsx).
+/* v2.3.3189: 'Bestiary' -> 'Monsters', the monster codex (MonsterCodex.jsx).
    The old tab listed `rpg._seenMonsters || rpg.killedMonsters`, which nothing
    has written since the fights moved to the worker -- it was empty for
    everyone.  The worker counts the kills now (server/src/codex.js). */

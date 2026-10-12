@@ -107,6 +107,13 @@ export const gearMethods = {
   //     ours.  Strict stays strip.
   _sanitizeWeapon(w, strict) {
     if (!w || typeof w !== 'object') return null;
+    /* v2.3.3160: a piece of gear is not a weapon (see _isGearNotWeapon).
+       Every caller reads a weapon slot or the weapon bag -- join's load, the
+       weapon credit, the market, the auction house and the trade window's
+       weapon lane -- so an armour piece that crossed into one through the
+       old equip_request (before v2.3.3160) is dropped here: it leaves the
+       bag on the next join and can be listed, staged or delivered nowhere. */
+    if (this._isGearNotWeapon(w)) return null;
     const out = { ...w };
     out.tierMult = (typeof out.tierMult === 'number' && out.tierMult > 0)
       ? Math.min(8, out.tierMult) : 1;
@@ -194,6 +201,9 @@ export const gearMethods = {
     if (!Array.isArray(ps.weaponStash) || stashIdx >= ps.weaponStash.length) return;
     const weapon = ps.weaponStash[stashIdx];
     if (!weapon) return;
+    /* v2.3.3160: a piece of gear that crossed into the bag before the equip
+       fix is not a weapon and is not bought as one (_isGearNotWeapon). */
+    if (this._isGearNotWeapon(weapon)) return;
     const sellVal = this._weaponSellValue(weapon);
     ps.weaponStash.splice(stashIdx, 1);
     ps.coins = (ps.coins || 0) + sellVal;
@@ -209,6 +219,48 @@ export const gearMethods = {
   _isValidEquipSlot(slot) {
     return slot === 'weapon' || slot === 'rangedWeapon' || slot === 'staffWeapon'
         || slot === 'armor' || slot === 'shield' || slot === 'amulet';
+  },
+
+  /* ═══ v2.3.3160: THE WEAPON BAG HOLDS WEAPONS, AND A WEAPON FITS ONE SLOT ═══
+     equip_request swapped a bag entry with ANY slot _isValidEquipSlot knows,
+     armour, shield and amulet included, and never asked whether the entry
+     fit the slot.  Two things followed, both reproduced on main:
+       - the worn ARMOUR crossed into the weapon bag.  The armour slot can
+         hold a DESCRIBED piece (the legacy lane, grids.js stats_update,
+         tierMult clamped and nothing else), so a hand-built description of
+         a "Godly Iron Greatsword" became a bag entry, then a weapon in the
+         hand (tierMult 8, x5 quality: ~160x a wooden sword's damage) or a
+         salvage worth 2 iron bars and a Godly essence, which Diego buys for
+         125,000.  Repeatable with one 8-gold wooden sword a turn.
+       - a sword sat in the STAFF slot, where hardening took the staff's
+         hardened wood instead of the sword's bars (hardening.js names the
+         material by slot).
+     The game's own screens never do either: they send equip_request for the
+     three weapon slots only, the slot from the weapon's type
+     (ItemDetailPopup.jsx slotFor, InventoryPanel.jsx).  So the worker now
+     asks the same: a weapon slot, the slot that weapon's type goes in, and
+     a bag entry that is a weapon at all.  Armour, shields and amulets are
+     worn through their own routes (stats_update / armorRef, shield_wear,
+     the amulet forge), none of which touch the weapon bag. */
+  _isWeaponSlot(slot) {
+    return slot === 'weapon' || slot === 'rangedWeapon' || slot === 'staffWeapon';
+  },
+  /* The slot a weapon of this type is worn in -- the client's slotFor: a bow
+     the ranged slot, a staff the staff slot, anything else (sword,
+     greatsword, an unknown type) the melee slot. */
+  _weaponSlotFor(w) {
+    const t = w && typeof w === 'object' ? w.type : null;
+    if (t === 'bow') return 'rangedWeapon';
+    if (t === 'staff') return 'staffWeapon';
+    return 'weapon';
+  },
+  /* A piece of GEAR, not a weapon: the provenance ledger's `gid` and `prov`
+     (gearprov.js) are stamped on armour, legs, shields and amulets only --
+     GEAR_PROV_SLOTS has no weapon slot, and no weapon path mints either.
+     So a weapon-bag or weapon-slot entry carrying one came there through the
+     hole above. */
+  _isGearNotWeapon(w) {
+    return !!(w && typeof w === 'object' && ('gid' in w || 'prov' in w));
   },
 
   // ═══ v2.3.1661: THE server equip gate (PROGRESSION-REDESIGN §6) ═══
@@ -554,7 +606,9 @@ export const gearMethods = {
     // v2.3.1129: guard gear lock (see threat.js).
     if (this._threatGearLocked(session.id, ps)) return;
     const { stashIdx, slot } = payload || {};
-    if (!this._isValidEquipSlot(slot)) return;
+    /* v2.3.3160: a WEAPON slot only -- see _isWeaponSlot.  The armour,
+       shield and amulet slots never swap with the weapon bag. */
+    if (!this._isWeaponSlot(slot)) return;
     if (!Number.isInteger(stashIdx) || stashIdx < 0) return;
     if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
     if (stashIdx >= ps.weaponStash.length) return;
@@ -567,6 +621,21 @@ export const gearMethods = {
     // splice-on-empty logic existed).  Without this, a cheater
     // could equip a "null" stash entry to wipe the active slot.
     if (!stashItem) return;
+    /* v2.3.3160: ...a weapon (never a piece of gear that crossed before this
+       fix), into the one slot its type is worn in. */
+    /* v2.3.3160: ...and refused OUT LOUD.  The game moves the weapon on its
+       own screen before the worker answers (ItemDetailPopup), putting the old
+       one at the END of the bag where the worker swaps in place -- so a
+       second equip tapped before the first answer names an index that holds a
+       different weapon here, and these checks refuse it.  Silent, the screen
+       kept its guess until the next join; resending the weapon fields puts it
+       back to what the worker holds (the cooking refusals' shape). */
+    const refuseWeapons = () => {
+      const w = this._wsBySessionId(session.id);
+      if (w) this._resendPlayerState(w, session.id, ['weapon', 'rangedWeapon', 'staffWeapon', 'weaponStash', 'activeSlot']);
+    };
+    if (this._isGearNotWeapon(stashItem)) return refuseWeapons();
+    if (slot !== this._weaponSlotFor(stashItem)) return refuseWeapons();
     // v2.3.1661 (prog3): the tier gate, server-enforced at last —
     // see _prog3EquipOk above.  Silent reject (the stat_allocate
     // posture); the client's own gate shows the requirement.

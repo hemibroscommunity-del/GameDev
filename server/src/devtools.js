@@ -46,6 +46,7 @@
  * _applyDamage rather than inventing a second immunity mechanism.
  */
 import { QUEST_ZONE_GATE } from './movement.js';
+import { AMULET_GEMS } from './data.js'; /* v2.3.3187: the kit's polished gems */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -179,6 +180,27 @@ export const devToolsMethods = {
       for (const piece of over) {
         if (!ws) break;
         try { ws.send(JSON.stringify({ type: 'quest_reward_stashed', payload: { questId: 'devkit', item: piece } })); out.armor++; } catch (e) { /* best effort */ }
+      }
+    }
+    /* ═══ v2.3.3187: A SHIELD, AND POLISHED GEMS ═══
+       For the shield gem slot (shieldgem.js) and mp-shieldgem: the
+       tutorial's own Pine Shield through _grantQuestItem -- minted into the
+       ledger exactly as tut_1 mints it, and only into an empty ps.shield, the
+       quest's own rule -- and polished gems onto the worker's own count, the
+       elements the game has (AMULET_GEMS), `count` each (3; 1-50).  Neither is
+       part of 'all': the owner's kit button gives what it always gave. */
+    if (want === 'shield') {
+      try { out.shield = !!this._grantQuestItem(ps, { kind: 'shield', gearBase: 'wood', tierMult: 1.0, name: 'Pine Shield' }, playerId); } catch (e) { out.shield = false; }
+    }
+    if (want === 'gems') {
+      const n = Math.max(1, Math.min(50, Math.floor(Number(opts && opts.count) || 3)));
+      if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
+      if (!ps.lifeSkills.gems || typeof ps.lifeSkills.gems !== 'object') ps.lifeSkills.gems = {};
+      out.gems = {};
+      for (const g of AMULET_GEMS) {
+        const k = 'polished_' + g;
+        ps.lifeSkills.gems[k] = Math.floor(Number(ps.lifeSkills.gems[k]) || 0) + n;
+        out.gems[k] = ps.lifeSkills.gems[k];
       }
     }
     if (want === 'all' || want === 'levels') {
@@ -483,7 +505,7 @@ export const devToolsMethods = {
     else if (path === '/dev/daily') result = await this._drDev(playerId, body);   /* v2.3.3140: stars, bonus spins, a quest's count */
     else if (path === '/dev/farmripe') result = await this._devFarmRipe(playerId);   /* v2.3.3127 */
     else if (path === '/dev/trapping') result = this._devTrapping(playerId, body);   /* v2.3.3120 */
-    else if (path === '/dev/codex') result = this._codexDevSet(playerId, body);   /* v2.3.3153: {kind | all, n, n2} (codex.js) */
+    else if (path === '/dev/codex') result = this._codexDevSet(playerId, body);   /* v2.3.3189: {kind | all, n, n2} (codex.js) */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

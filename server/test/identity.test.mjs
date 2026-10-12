@@ -99,7 +99,9 @@ check('legacy join stamps no auth record', !state._store.has('auth:r4nd0m1d'));
 // path BEFORE the auth gate, so a magic id never mints an auth:
 // storage record or a playerState key.  Legacy phraseless joins on
 // other ids stay allowed (section 5 above; re-checked after).
-for (const magic of ['__proto__', 'constructor', 'prototype']) {
+/* v2.3.3167: + every other Object.prototype name -- 'toString' and 'valueOf'
+   ids rigged the weekly jackpot (cadence.test) */
+for (const magic of ['__proto__', 'constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty', 'isPrototypeOf', 'toLocaleString', '__defineGetter__']) {
   const wsM = fakeWs('magic-' + magic);
   await join(wsM, magic, 'evil-evil-evil-evil-1');
   const rej = msgsOfType(wsM, 'join_rejected');

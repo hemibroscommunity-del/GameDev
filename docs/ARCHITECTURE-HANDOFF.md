@@ -62,7 +62,7 @@ extended.
    | `gear_prov:<playerId>` | `{_v, seq, forgotten, list:[{id, slot, src, at, p}]}` — the GEAR PROVENANCE ledger (v2.3.2534): one row per piece of gear this server minted for this player, holding the server-assigned `gid` and a verbatim copy of the minted blob. The row is the ownership proof; an inbound `gid` is looked up here and the piece rebuilt from `p`, never trusted from the wire. FIFO-capped at 256 with `forgotten` counting what aged out. v2.3.2551: it is also the STORE'S SELL GATE (`_gearSellable`) — a listing takes the row out of the ledger and escrows it inside `store_listing:<id>` as `gearRow`, so the store's own wake-time rebuild recovers it | gear-provenance.md |
    | `auth:<playerId>` | `{pfHash, createdAt}` SHA-256 of `btv1\|phrase` | identity.md |
    | `pets:<playerId>` | `{v, cap, active, moved, list:[{id, kind, look, home, stage, gold, size, name, lv, xp, at, caughtBy, owners, tradeAfter, legacy?}], journal:{'<kind>.<stage>': {tries, n, gold, big}}}` — the PETS RECORD (v2.3.3120, petbook.js): the only proof a pet is yours, written only by the worker. Ids `p_...` are the worker's and never change. One GET at join; a catch and every Pets-page action write at once, a miss's try only in memory (written at most once a minute and on disconnect); v2.3.3121: so is a pet's XP from kills (`lv`, `xp`), except a level-up, written at once. A newer `v` is left whole and untouched (a rollback must not destroy it). Old `lifeSkills.pets` move in once (`moved`), from a stored blob only, as `legacy`. v2.3.3123: `cap` grows by 10 for gold (`pet_house_buy`, 30 to 120), the gold off `rpg:` and the place on this record in one synchronous run; the pet out with you is mirrored onto playerState as `_petWire` (memory only, the tick's `pw`). Deleted by `_resetCharacterData`; not in the daily `rpgsnap:` | trapping.md |
-   | `codex:<playerId>` | `{v, k: {<kind>: [kills, killsPastLevel20]}}` — the MONSTER CODEX (v2.3.3153, codex.js): each of the nine kinds (petbook.js PET_KINDS) this player has helped kill, counted at the kill's choke point for every XP recipient. One GET at join, cached for the session; a kill that crosses a threshold (`CODEX.TIERS`, a new fact on the Codex page) or a first second-stage kill is written at once, any other kill at most once a minute and on disconnect (a deploy loses at most a minute of counting, never a fact). A newer `v`, or a failed read, LOCKS it: never counted into or overwritten. Deleted by `_resetCharacterData`; not in the daily `rpgsnap:` | monster-codex.md |
+   | `codex:<playerId>` | `{v, k: {<kind>: [kills, killsPastLevel20]}}` — the MONSTER CODEX (v2.3.3189, codex.js): each of the nine kinds (petbook.js PET_KINDS) this player has helped kill, counted at the kill's choke point for every XP recipient. One GET at join, cached for the session; a kill that crosses a threshold (`CODEX.TIERS`, a new fact on the Codex page) or a first second-stage kill is written at once, any other kill at most once a minute and on disconnect (a deploy loses at most a minute of counting, never a fact). A newer `v`, or a failed read, LOCKS it: never counted into or overwritten. Deleted by `_resetCharacterData`; not in the daily `rpgsnap:` | monster-codex.md |
    | `char:<playerId>` | `{name, look, createdAt}` the PERMANENT name + appearance; first write wins and a stored record beats the join payload | identity.md |
    | `inbox:<playerId>` | pending credit entries (offline mail); v2.3.3122: a `pet` entry (`{pet, from}`) STAYS QUEUED while the recipient's pets record is not loaded or full, and the join loads `pets:` before it drains | inbox-escrow.md |
    | `oplog:<opId>` | timestamp; idempotency journal, pruned >48h | inbox-escrow.md |
@@ -74,6 +74,7 @@ extended.
    | `clan:<clanId>` / `clan_by_player:<pid>` / `clan_war:<warId>` | clan registry + war snapshots | clans.md |
    | `arena_entry:<tid>:<pid>` | escrowed 100g tournament entry | arena.md |
    | `arena_stake:<tid>:<mid>:<pid>` | escrowed sponsorship stake | sponsorship.md |
+   | `arena_house` | `{hour, used}` — the gold the house has added to arena champions' prizes in the current UTC clock hour (`hour` = ms / 3,600,000), at most `ARENA.HOUSE_GOLD_PER_HOUR` (v2.3.3178). Read once at the first join after a start; written BEFORE the prize is paid. A single bounded key, never a prefix | arena.md |
    | `guild_claims:<pid>` | `{skillKey: completedCount}` quest-ladder claims | guild-quests.md |
    | `gearlock:<pid>` | guard gear-lock expiry timestamp | threats.md |
    | `nml_state:<pid>` | `{red, white, whiteBy, forfeit}` — No man's land (v2.3.3058): the skulls' time LEFT in ms (it counts down only while the player is connected, so it is time in the game, not on the clock), who gave the white one, and the ids of gear pieces forfeited by a death there, refused if a client offers them again on join. Deleted when all three are empty | no-mans-land.md |
@@ -340,8 +341,12 @@ equipped gearBase slots (weapon/rangedWeapon/staffWeapon/shield) and
 stash weapons — now strip the SERVER blob, credit polished gems, and
 charge coins server-side, name-rebuilt from mirror-pinned label tables
 (amulet-forge.md "Gem extraction"). The amulet extract button is dead
-code (gearBase filter), so it's excluded per the dormant-content rule. What
-remains is the **EnchantPanel shield/weapon gem-SLOT consume**: still a
+code (gearBase filter), so it's excluded per the dormant-content rule. The
+SHIELD half of the slot shipped v2.3.3187 (`shieldgem.js`, `shield_gem` →
+`shield_gem_result`, `caps.shieldgem`; docs/specs/shield-gems.md): the gem
+comes off the worker's count, the shield it holds takes it, and the ledger
+row follows, so Take out works. What remains is the **EnchantPanel weapon
+gem-SLOT consume**: still a
 client-local `lifeSkills.gems` edit, echo-restored. Blocked, not just
 unbuilt — non-flame gem bonuses are client-side point-of-use effects
 (v2.3.1139 posture), so the server has nothing authoritative to

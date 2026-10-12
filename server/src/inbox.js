@@ -72,6 +72,40 @@ export const inboxMethods = {
     if (opId) await this.state.storage.put('oplog:' + opId, Date.now());
   },
 
+  /* ═══ v2.3.3185: SEVERAL STAKES AND THEIR RECORD IN ONE WRITE ═══
+     For players who are online (a duel's two sides).  Every purse is checked
+     first; then every debit, its save, its oplog stamp and the caller's
+     records (`puts`: [[key, value], ...]) are issued in ONE synchronous run,
+     so they commit together -- all of them, or none (rule 8).
+     _escrowDebitGold took each stake in a write of its own and the caller
+     wrote its escrow record after, so a restart between them (every server
+     merge restarts the room) took a stake with no record for the sweep to
+     refund: the gold was simply gone.  The opIds are the caller's and must
+     be fresh (a new duel's id); nothing here is a retry. */
+  async _escrowDebitGoldTogether(debits, puts) {
+    const list = Array.isArray(debits) ? debits : [];
+    if (!list.length) return { ok: false, reason: 'nothing' };
+    for (const d of list) {
+      const ps = d && this.playerState[d.id];
+      const amt = Math.floor(Number(d && d.amount) || 0);
+      if (!ps || !(amt > 0) || !d.opId) return { ok: false, reason: 'bad' };
+      if ((ps.coins || 0) < amt) return { ok: false, reason: 'insufficient_gold', who: d.id };
+    }
+    const writes = [];
+    for (const d of list) {
+      const ps = this.playerState[d.id];
+      ps.coins -= Math.floor(Number(d.amount));
+      writes.push(this._saveRpg(d.id, ps));
+      writes.push(this._opStamp(d.opId));
+    }
+    for (const kv of Array.isArray(puts) ? puts : []) {
+      if (Array.isArray(kv) && typeof kv[0] === 'string') writes.push(this.state.storage.put(kv[0], kv[1]));
+    }
+    for (const d of list) this._queuePlayerStateFlush(d.id);
+    await Promise.all(writes);
+    return { ok: true };
+  },
+
   /* ═══ v2.3.2438: THE PRUNE THAT STOPPED THE ROOM ═══
    *
    * This used to be one call: list EVERY `oplog:` stamp ever written, then
@@ -362,12 +396,18 @@ export const inboxMethods = {
          entries this drain has just handed over. */
       for (const e of delivered) this._gearCreditMail(playerId, e, false);
       for (const e of remainder) this._gearCreditMail(playerId, e, true);
-      if (remainder.length) await this.state.storage.put(key, remainder);
-      else await this.state.storage.delete(key);
-      if (delivered.length) {
-        this._saveRpg(playerId, ps);
-        this._sendInboxDelivered(playerId, delivered, remainder.length, ws);
-      }
+      /* v2.3.3185: the player and the mailbox in ONE write.  The box was
+         rewritten (or deleted) first, awaited, and the player saved after --
+         two writes, so a restart between them took the mail away with its
+         gold or goods never saved: the payout was lost.  Saving the player
+         first in a write of its own would be no better -- the mail would come
+         round again and pay twice.  Both now go out in one synchronous run,
+         so they commit together (rule 8). */
+      const writes = [];
+      if (delivered.length) writes.push(this._saveRpg(playerId, ps));
+      writes.push(remainder.length ? this.state.storage.put(key, remainder) : this.state.storage.delete(key));
+      await Promise.all(writes);
+      if (delivered.length) this._sendInboxDelivered(playerId, delivered, remainder.length, ws);
     } catch (e) { /* mail must never block a join */ }
   },
 
@@ -407,19 +447,34 @@ export const inboxMethods = {
     if (amt <= 0) return { ok: false, reason: 'bad_amount' };
     if (await this._opSeen(opId)) return { ok: true, dup: true };
     const ps = this.playerState[playerId];
+    /* ═══ v2.3.3165: THE STAMP AND THE DEBIT ARE ONE WRITE ═══
+       The stamp went first, awaited, and the debit was saved after it -- two
+       batches.  A worker restart between them (every server merge restarts
+       the room) left "paid" in the oplog with the gold never taken, and the
+       auction house's rebuild takes that stamp as proof of payment
+       (store.js: a buy-now's `store:<id>:pay`, a bid's, an offer's).  Found
+       by the overnight economy review with a simulated restart: a 900-gold
+       buy settled while the buyer kept his 1,000; an outbid refund paid back
+       500 never taken.  Now the debit's own save and the stamp are issued in
+       ONE synchronous run (both puts before any await, rule 8's "single
+       mutation"), so they commit together: both, or neither and the retry
+       debits as if for the first time. */
     if (ps) {
       if ((ps.coins || 0) < amt) return { ok: false, reason: 'insufficient_gold' };
-      await this._opStamp(opId);
       ps.coins -= amt;
       this._saveRpg(playerId, ps);
+      const stamped = this._opStamp(opId);
       this._queuePlayerStateFlush(playerId);
+      await stamped;
       return { ok: true };
     }
     const stored = await this._loadRpg(playerId);
     if (!stored || (stored.coins || 0) < amt) return { ok: false, reason: 'insufficient_gold' };
-    await this._opStamp(opId);
     stored.coins -= amt;
-    await this.state.storage.put('rpg:' + playerId, stored);
+    const saved = this.state.storage.put('rpg:' + playerId, stored);
+    const stampedOff = this._opStamp(opId);
+    await saved;
+    await stampedOff;
     return { ok: true };
   },
 
@@ -431,21 +486,25 @@ export const inboxMethods = {
     const ps = this.playerState[playerId];
     // v2.3.1971: own-property counts on both branches (see _invCount) --
     // `(inv.constructor || 0) < c` was false, so this debited NaN.
+    /* v2.3.3165: the take and its stamp in one write -- see _escrowDebitGold. */
     if (ps) {
       if (this._invCount(ps, k) < c) return { ok: false, reason: 'insufficient_items' };
-      await this._opStamp(opId);
       ps.inventory[k] = this._invCount(ps, k) - c;
       if (ps.inventory[k] <= 0) delete ps.inventory[k];
       this._saveRpg(playerId, ps);
+      const stamped = this._opStamp(opId);
       this._queuePlayerStateFlush(playerId);
+      await stamped;
       return { ok: true };
     }
     const stored = await this._loadRpg(playerId);
     if (this._invCount(stored, k) < c) return { ok: false, reason: 'insufficient_items' };
-    await this._opStamp(opId);
     stored.inventory[k] = this._invCount(stored, k) - c;
     if (stored.inventory[k] <= 0) delete stored.inventory[k];
-    await this.state.storage.put('rpg:' + playerId, stored);
+    const saved = this.state.storage.put('rpg:' + playerId, stored);
+    const stampedOff = this._opStamp(opId);
+    await saved;
+    await stampedOff;
     return { ok: true };
   },
 };

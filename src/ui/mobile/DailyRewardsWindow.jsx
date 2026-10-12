@@ -166,19 +166,26 @@ function TodayTab({ st }) {
       </div>
 
       {/* the spin */}
-      {spinLive() && sp.on && (
-        <div data-daily-spinrow={sp.ready ? 'ready' : (sp.open ? 'open' : (sp.extra > 0 ? 'bonus' : 'done'))} style={{
+      {/* v2.3.3181: until the first quest is handed in the spin is `locked`
+          (a pot already open can still be taken) */}
+      {spinLive() && sp.on && (() => {
+        const spLocked = !!sp.locked && !sp.open;
+        const lit = !spLocked && (sp.ready || sp.open || sp.extra > 0);
+        return (
+        <div data-daily-spinrow={spLocked ? 'locked' : (sp.ready ? 'ready' : (sp.open ? 'open' : (sp.extra > 0 ? 'bonus' : 'done')))} style={{
           display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, padding: '10px 10px', borderRadius: 10,
-          background: sp.ready || sp.open || sp.extra > 0 ? COL.accentFill : COL.well,
-          border: '1px solid ' + (sp.ready || sp.open || sp.extra > 0 ? COL.edgeWarm : COL.border),
+          background: lit ? COL.accentFill : COL.well,
+          border: '1px solid ' + (lit ? COL.edgeWarm : COL.border),
         }}>
           <SpinGlyph size={30} />
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: COL.text }}>
-              {sp.open ? 'Your pot of ' + coinsShort(sp.pot) + ' coins is waiting' : (sp.ready ? 'Your free spin is ready' : (sp.extra > 0 ? sp.extra + ' bonus spin' + (sp.extra === 1 ? '' : 's') + ' to use' : 'Today\'s spin is done'))}
+              {spLocked ? 'The free daily spin' : (sp.open ? 'Your pot of ' + coinsShort(sp.pot) + ' coins is waiting' : (sp.ready ? 'Your free spin is ready' : (sp.extra > 0 ? sp.extra + ' bonus spin' + (sp.extra === 1 ? '' : 's') + ' to use' : 'Today\'s spin is done')))}
             </span>
             <span style={{ display: 'block', fontSize: 11.5, color: COL.text2, marginTop: 1, lineHeight: 1.35 }}>
-              {sp.open
+              {spLocked
+                ? 'Opens when you hand in Mayor Bro\'s first quest.'
+                : sp.open
                 ? 'At the Gambling Den in BroTown: take it, or double or nothing.'
                 : (sp.ready || sp.extra > 0
                   ? 'At the Gambling Den in BroTown. Spin for a lump sum' + (jackpot ? ', up to the ' + coinsShort(jackpot) + ' jackpot.' : '.')
@@ -186,7 +193,8 @@ function TodayTab({ st }) {
             </span>
           </span>
         </div>
-      )}
+        );
+      })()}
 
       {/* the quests */}
       {questsLive() && dq.on !== false && (

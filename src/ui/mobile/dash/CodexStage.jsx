@@ -7,7 +7,7 @@ import { retintToCanvas } from '@/rendering/monsterRecolor.js';
 import { getActiveWeapon } from '@/data/gameSystems.js';
 import { PetPortrait } from '@/ui/petPortrait.jsx';
 
-/* ═══ v2.3.3153: A CODEX PAGE'S STAGE -- THE MONSTER, DOING WHAT IT DOES ═══
+/* ═══ v2.3.3189: A CODEX PAGE'S STAGE -- THE MONSTER, DOING WHAT IT DOES ═══
  *
  * Owner, 2026-10-12: "Maybe an animation similar to how the skills preview
  * window currently works."  The same make as the Points window's preview

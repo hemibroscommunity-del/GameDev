@@ -3310,7 +3310,15 @@ export function processGameEvent(type, payload, S, deps) {
                 if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += reward.gold;
               }
               pushDmgPopup(S, S.player.x, S.player.y - 50, isWinner ? 'WAR WON!' : 'War lost...', isWinner ? '#f5c542' : '#ff5e6c');
-              pushDmgPopup(S, S.player.x, S.player.y - 35, '+' + reward.gold + 'G +' + reward.ap + 'AP', '#f5c542');
+              /* v2.3.3180: the worker pays only the members who fought (made
+                 or took a war kill) and are still in the clan, and names them
+                 in `paid`; a worker from before it sends no list and paid
+                 every member */
+              if (!Array.isArray(payload.paid) || payload.paid.indexOf(S.myId) >= 0) {
+                pushDmgPopup(S, S.player.x, S.player.y - 35, '+' + reward.gold + 'G +' + reward.ap + 'AP', '#f5c542');
+              } else {
+                pushDmgPopup(S, S.player.x, S.player.y - 35, 'No pay: only those who fought are paid', '#8D9B98');
+              }
               if (isWinner) BT_AUDIO.levelUp();else BT_AUDIO.beep(150, 0.1, 0.15, 'triangle');
               setTimeout(function () {
                 S._activeClanWar = null;

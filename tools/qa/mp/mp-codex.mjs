@@ -1,4 +1,4 @@
-/* ═══ THE MONSTER CODEX, ON A PHONE (v2.3.3153) ═══
+/* ═══ THE MONSTER CODEX, ON A PHONE (v2.3.3189) ═══
  *
  * Owner, 2026-10-12: "Begin working on the monster section of the codex.
  * After you kill a monster you learn more about it, what it does, where it's

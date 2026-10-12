@@ -4,6 +4,7 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
+import { askShieldGem, shieldGemBus, shieldGemOnServer, shieldGemReasonText, SHIELD_GEM_WAIT_MS } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
 /* === EnchantPanel — buildingPanel === 'enchant' sub-panel === */
 /* v2.3.874: extracted verbatim from the buildingPanel === 'enchant' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -72,6 +73,27 @@ export function EnchantPanel(props) {
      section can render an explicit control when the pickers would
      otherwise render nothing. */
   var gemsOwned = (rpgState.lifeSkills && rpgState.lifeSkills.gems) || {};
+  /* v2.3.3187: against a worker that puts shield gems in (caps.shieldgem), the
+     shield's buttons ASK and wait for its answer (game/shieldGem.js): each
+     answer re-renders the window, a refusal says why under the buttons, and an
+     ask in flight holds them (every gem is spent for real now, so a second tap
+     must not send a second gem). */
+  React.useEffect(function () {
+    return shieldGemBus.subscribe(function () {
+      try { setRpgState(_objectSpread({}, stateRef.current.rpg)); } catch (e) { /* the next echo re-renders */ }
+    });
+  }, []);
+  var sgOnServer = shieldGemOnServer(stateRef.current);
+  var sgWait = sgOnServer ? shieldGemBus.pending() : null;
+  var sgLast = sgOnServer ? shieldGemBus.get() : null;
+  React.useEffect(function () {
+    if (!sgWait) return undefined;
+    /* an ask nobody answered lets go of the buttons after its wait */
+    var t = setTimeout(function () {
+      try { setRpgState(_objectSpread({}, stateRef.current.rpg)); } catch (e) { /* closed */ }
+    }, SHIELD_GEM_WAIT_MS + 50);
+    return function () { clearTimeout(t); };
+  }, [sgWait && sgWait.at]);
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('enchant', '✨', "Enchanter", "Enchanting Lv" + (((_rpgState$lifeSkills1 = rpgState.lifeSkills) === null || _rpgState$lifeSkills1 === void 0 || (_rpgState$lifeSkills1 = _rpgState$lifeSkills1.enchanting) === null || _rpgState$lifeSkills1 === void 0 ? void 0 : _rpgState$lifeSkills1.level) || 1)),
     React.createElement("div", {
@@ -469,14 +491,27 @@ export function EnchantPanel(props) {
             fontSize: 11.5,
             fontWeight: 700,
             fontVariantNumeric: 'tabular-nums',
-            cursor: 'pointer'
+            cursor: sgWait ? 'default' : 'pointer',
+            opacity: sgWait ? 0.55 : 1
           },
+          disabled: !!sgWait,
+          "data-shield-gem": elem,
           onClick: function onClick() {
             var _BLACKSMITH_TIERS$R$s;
             var R = stateRef.current.rpg;
             var sk = R.lifeSkills;
             if (!sk.gems) sk.gems = {};
             if ((sk.gems[polKey] || 0) < 1) return;
+            /* v2.3.3187: the worker puts it in (server/src/shieldgem.js): the
+               gem off ITS count, the shield it holds for you, the gear
+               ledger's row following -- so the Blacksmith's Take out can give
+               it back.  Nothing changes here until it answers
+               (game/shieldGem.js).  The local slot below is kept for a worker
+               without caps.shieldgem, where it is what there is. */
+            if (shieldGemOnServer(stateRef.current)) {
+              askShieldGem(stateRef.current, elem);
+              return;
+            }
             sk.gems[polKey]--;
             R.shield.gem = elem;
             R.shield.name = (((_BLACKSMITH_TIERS$R$s = BLACKSMITH_TIERS[R.shield.gearBase]) === null || _BLACKSMITH_TIERS$R$s === void 0 ? void 0 : _BLACKSMITH_TIERS$R$s.label) || 'Basic') + ' ' + elem.charAt(0).toUpperCase() + elem.slice(1) + ' Shield';
@@ -490,7 +525,15 @@ export function EnchantPanel(props) {
             } catch (e) {}
           }
         }, "💎", elem, " (", polCount, ") +", previewVal, gemStat.unit);
-      })), /* v2.3.1235: state-correction §6 — explicit control when the
+      })), /* v2.3.3187: the worker's last refusal, in words (game/shieldGem.js) */
+      sgLast && !sgLast.ok && Date.now() - sgLast.at < 8000 && /*#__PURE__*/React.createElement("div", {
+        "data-shield-gem-refused": sgLast.reason || 'bad',
+        style: {
+          fontSize: 11,
+          color: '#E58C7A',
+          margin: '6px 0 2px'
+        }
+      }, shieldGemReasonText(sgLast.reason)), /* v2.3.1235: state-correction §6 — explicit control when the
          shield pill picker would render nothing (empty polished-gem
          pouch for the shield-slottable elements). */
       !Object.keys(ELEMENTS).some(function (e) {

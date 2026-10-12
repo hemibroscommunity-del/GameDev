@@ -1902,7 +1902,28 @@ remnant to migrate server-side, not a mode to preserve.
     `_buildTown`, from `wheelTownDoors()` and the placed objects' boxes,
     ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
     town's white square only without them; `__btMinimap.buildings`,
-    `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".)
+    `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
+  - Since v2.3.3189 THE MONSTER CODEX -- the owner: "After you kill a monster
+    you learn more about it, what it does, where it's from, elemental type,
+    special attack, (make up a backstory) etc." and "Also include drop tables
+    for all items that monster can drop" (docs/specs/monster-codex.md):
+    - More -> Codex -> Monsters (was the always-empty Bestiary): a card per
+      kind, the pets' nine; a page opens fact by fact at kills the WORKER
+      counts (`server/src/codex.js`, `codex:<pid>`; `codex_state` at join,
+      `cx` on the kill's combat_credit): what it does, where from and its
+      DROP TABLE at 1, its element at 3, its special at 10, its made-up story
+      at 25, its elder form after a kill past level 20 (`CODEX_TIERS`);
+    - its STAGE plays it beside your character, the Points preview's make
+      (`CodexStage.jsx`, `data/codexStage.js`): its own strips, loaded when
+      the page opens and freed on close (the owner's call to confirm: ~20 MB
+      for all nine preloaded), the world's wind-ups and warning circles;
+    - the drop table (`data/codexDrops.js`) prints the worker's own rolls --
+      `SHARD_MONSTER_DROP`, `monsterWeaponDropOdds` (data.js),
+      `WEAPON_QUALITY_ODDS` (hardening.js) -- and mirror-audit holds it to
+      them and to the Wheel's real monsters (gold, remnants): change a drop
+      rate and the page changes with it, or the audit fails;
+    - `caps.codex`, kill switch `codex: false`, dev lever `/dev/codex`;
+      `codex` suite, mirror-audit, `mp-codex`.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

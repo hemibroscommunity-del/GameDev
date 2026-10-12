@@ -7,9 +7,9 @@ import { landLook } from '@/data/wheelLands.js';
 import { ZONES } from '@/data/zones.js';
 import { landLevelsText } from '@/data/wheelSignposts.js';
 import { CodexStage } from './CodexStage.jsx';
-import { codexDropsFor, CODEX_GRADE_ODDS, codexOneIn } from '@/data/codexDrops.js';   /* v2.3.3153: its drop table */
+import { codexDropsFor, CODEX_GRADE_ODDS, codexOneIn } from '@/data/codexDrops.js';   /* v2.3.3189: its drop table */
 
-/* ═══ v2.3.3153: THE CODEX'S MONSTERS ═══
+/* ═══ v2.3.3189: THE CODEX'S MONSTERS ═══
  *
  * Owner, 2026-10-12: "Begin working on the monster section of the codex.
  * After you kill a monster you learn more about it, what it does, where it's
@@ -87,7 +87,7 @@ function Fact({ fact, open, n, title, children }) {
   );
 }
 
-/* ═══ v2.3.3153: ITS DROP TABLE ═══
+/* ═══ v2.3.3189: ITS DROP TABLE ═══
    Owner, 2026-10-12: "Also include drop tables for all items that monster can
    drop."  Every row the worker's own roll (data/codexDrops.js, held to it by
    mirror-audit), most often first, with its page at the first kill -- what

@@ -91,11 +91,21 @@ export function hardenMaterialWord(key, n) {
   const w = HARDEN_MATERIAL_NAMES[key];
   return n + ' ' + (w ? w[n === 1 ? 0 : 1] : key);
 }
-/** Is this weapon hardened with wood?  A `ww_` gearBase, or the bow's or the
-    staff's slot. */
+/** Is this weapon hardened with wood?  A `ww_` gearBase, or a bow or a staff.
+    v2.3.3161: decided by the WEAPON, not by the slot the client names -- a
+    sword moved into the staff slot (equip_request asked nothing of the slot
+    until v2.3.3160, gear.js _weaponSlotFor) took the staff's hardened wood
+    instead of its own bars, ~40% cheaper at Diego's counter, and a smith
+    with no Smithing for black-steel bars could harden a black-steel blade.
+    A weapon with no type at all (a legacy blob) still goes by its slot, as
+    before; for every weapon the game's own screens can seat, the answer is
+    the one the slot gave. */
 export function hardenIsWood(w, slot) {
   const gb = w && typeof w.gearBase === 'string' ? w.gearBase : '';
-  return gb.indexOf('ww_') === 0 || slot === 'rangedWeapon' || slot === 'staffWeapon';
+  if (gb.indexOf('ww_') === 0) return true;
+  const t = w && typeof w.type === 'string' ? w.type : '';
+  if (t) return t === 'bow' || t === 'staff';
+  return slot === 'rangedWeapon' || slot === 'staffWeapon';
 }
 /** The material a weapon of material tier `tierIdx` (1-based) takes: its
     metal's bars, or for wood its wood's hardened wood. */
@@ -120,7 +130,7 @@ export function hardenGoldFor(hardness, old) {
 const Q_GODLY = 1 / 2000000;
 const Q_ELITE = 0.009;
 const Q_RARE = 0.09;
-/* v2.3.3153: the same three, for the monster codex's drop table to print
+/* v2.3.3189: the same three, for the monster codex's drop table to print
    (src/data/codexDrops.js CODEX_GRADE_ODDS, held to these by mirror-audit) */
 export const WEAPON_QUALITY_ODDS = Object.freeze({ rare: Q_RARE, elite: Q_ELITE, godly: Q_GODLY });
 

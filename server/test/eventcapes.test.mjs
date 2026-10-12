@@ -401,5 +401,68 @@ await room._capeLedgersLoad();
     rB._capeEventOpen() === false, { open: rB._capeEventOpen() });
 }
 
+/* ── v2.3.3173: a restart inside cape_redeem never leaves the cape AND the ticket ──
+ * The redeem consumed the ticket and granted the cape in one synchronous
+ * block, but saved them in two: the ledger before the opId stamp's await, the
+ * bag after it.  A restart at that await kept "redeemed" and lost the bag's
+ * write, so the stored bag still held the (tradeable) ticket and its next
+ * holder redeemed it again.  Simulated the way the inbox suite does it: every
+ * write after the crash point is dropped, then a new room on the same storage
+ * is the restarted Durable Object.  Two crash points: the stamp's own write
+ * dropped, and the stamp landed with nothing after it. */
+for (const crashAt of ['before the stamp', 'after the stamp']) {
+  const store = new Map();
+  let frozen = false;
+  const sX = {
+    storage: {
+      get: async (k) => { const v = store.get(k); return v === undefined ? undefined : JSON.parse(JSON.stringify(v)); },
+      put: async (k, v) => {
+        if (frozen) return;
+        const stamp = String(k).startsWith('oplog:capered:');
+        if (stamp && crashAt === 'before the stamp') { frozen = true; return; }
+        store.set(k, JSON.parse(JSON.stringify(v)));
+        if (stamp) frozen = true;
+      },
+      list: async (opts) => {
+        const out = new Map();
+        for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, JSON.parse(JSON.stringify(v)));
+        return out;
+      },
+      delete: async (k) => { if (!frozen) store.delete(k); },
+    },
+    getWebSockets: () => [],
+    acceptWebSocket: () => {},
+  };
+  const PIDX = 'bp_cape_crash';
+  store.set('cape_start_id', EVENT_START_ID);
+  store.set('capegrant:crimson', { issued: [PIDX], redeemed: [] });
+  store.set('rpg:' + PIDX, {
+    coins: 0, inventory: { goldticket_crimson: 1 }, lifeSkills: {}, level: 1, xp: 0, hp: 100, maxHp: 100,
+    stamina: 100, maxStamina: 100, mana: 100, maxMana: 100, _buffs: {}, weaponStash: [], _v: 17,
+  });
+  const joinX = async (room, id) => {
+    const ws = { sent: [], send(m) { this.sent.push(JSON.parse(m)); }, close() {} };
+    room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+    await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'X', phrase: 'p-' + id, protocolVersion: 2, data: { x: 0, y: 0, z: 'town' } }));
+    return ws;
+  };
+  const rX = new GameRoom(sX, mockEnv);
+  const wsX = await joinX(rX, PIDX);
+  await rX._capeLedgersLoad();
+  check('setup (' + crashAt + '): the character holds the one issued ticket',
+    rX.playerState[PIDX] && rX.playerState[PIDX].inventory.goldticket_crimson === 1, rX.playerState[PIDX] && rX.playerState[PIDX].inventory);
+  await rX.webSocketMessage(wsX, JSON.stringify({ type: 'cape_redeem', payload: { invKey: 'goldticket_crimson', opId: 'crash-1' } }));
+  await new Promise((r) => setTimeout(r, 10));
+  frozen = false;                                 // the restart
+  const rY = new GameRoom(sX, mockEnv);
+  await joinX(rY, PIDX);
+  await rY._capeLedgersLoad();
+  const led = store.get('capegrant:crimson');
+  const bag = rY.playerState[PIDX] && rY.playerState[PIDX].inventory;
+  check('a restart ' + crashAt + ' leaves the cape redeemed AND the ticket gone, never both kept',
+    led && led.redeemed.includes(PIDX) && bag && !bag.goldticket_crimson,
+    { redeemed: led && led.redeemed, bag });
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\neventcapes: ALL PASS');
 process.exit(failures ? 1 : 0);

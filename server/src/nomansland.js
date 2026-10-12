@@ -139,6 +139,26 @@ export const noMansLandMethods = {
     return !!(f && typeof f === 'object' && own(f, 'nomansland') && !f.nomansland);
   },
 
+  /* ═══ v2.3.3183: NOTHING LEAVES THE BAG IN A FIGHT WITH A PLAYER ═══
+     A death to a player drops the bag in a pile that is the killer's (and a
+     red skull's gold), but a modified game could empty the bag in the last
+     seconds of a losing fight -- sell it to Diego, list it on the auction
+     house, put it in a market order or a trade, plant the seeds -- so the
+     pile was empty, and cancel the orders afterwards.  The order board
+     already refused this ('order-fight', farmorders.js); now every road out
+     of the bag does, on the same test: in a duel, or a hit between players
+     in the last PVP_HEAL.WINDOW_MS (10 s, cooking.js's clock).  Honest
+     players never meet it: the shops are in town and a fight is not.  What
+     only rearranges the bag (cooking, smelting, salvage) or brings things in
+     is untouched; cancelling an order or a listing stays open.  Kill switch:
+     the live flag `fightlock: false`. */
+  _bagLockedByFight(pid, now) {
+    if (!pid || typeof pid !== 'string') return false;
+    const f = this._liveFlags;
+    if (f && typeof f === 'object' && own(f, 'fightlock') && !f.fightlock) return false;
+    return !!(this._farmOrderInFight && this._farmOrderInFight(pid, typeof now === 'number' ? now : Date.now()));
+  },
+
   /* the No man's land level a live player stands in */
   _nmlLevelOf(ps) {
     if (!ps || ps.dead || ps.dying) return 0;

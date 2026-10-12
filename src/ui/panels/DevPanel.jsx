@@ -160,6 +160,7 @@ const CAP_GATES = [
   'sprint' /* v2.3.3006: lower case, a kill switch */,
   'wheelnodes' /* v2.3.3012: lower case, a kill switch */,
   'shieldwear' /* v2.3.3091: the shield on the arm -- lower case, a kill switch */,
+  'shieldgem' /* v2.3.3187: a gem goes into a shield on the worker -- lower case, a kill switch */,
   'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,
@@ -185,7 +186,7 @@ const CAP_GATES = [
   'pethouse' /* v2.3.3123: more room in the Pet House for gold -- lower case, a kill switch */,
   'hardenmats' /* v2.3.3139: hardening takes a material (bars, or a bow's hardened wood) and a doubling gold ladder -- lower case, a kill switch */,
   'hardenedwood' /* v2.3.3139: five logs into one hardened wood at the Woodworker -- lower case, a kill switch */,
-  'codex' /* v2.3.3153: the monster codex's kill counts (server/src/codex.js) -- lower case, a kill switch */,
+  'codex' /* v2.3.3189: the monster codex's kill counts (server/src/codex.js) -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported

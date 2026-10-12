@@ -236,6 +236,10 @@ const sess = { id: 'bp_t' };
 // ── 3. Turn-in gating and item grants ──
 {
   ps._quests = Object.create(null);
+  /* v2.3.3179: tut_4 is a later step behind tut_3's checked one, and a later
+     step is taken only once the checked step before it is in (quests.js
+     _questBarred 'order') -- the chain this section skips to its end */
+  ps._quests.tut_3 = 'turnedIn';
   ps._questKills = Object.create(null);
   ps.coins = 0; ps.armor = null; ps.weapon = null; ps.weaponStash = [];
 
