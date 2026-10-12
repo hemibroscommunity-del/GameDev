@@ -10,8 +10,9 @@
  *      their own match; amount clamps; bogus targets rejected.
  *   4. matchId optional: the open current-round match containing the
  *      target is resolved server-side.
- *   5. Server-observed resolution pays 3x to winning sponsors and the
- *      stake itself to the winning COMPETITOR for losing sponsors;
+ *   5. Server-observed resolution pays winning sponsors their stake back
+ *      plus a pro-rata share of the losing stakes (v2.3.3177: a pool, after
+ *      the winning competitor's FIGHTER_CUT; was 3x from the house);
  *      private arena_stake_result either way.
  *   6. Re-settling is opId-idempotent (a re-put record can't double-pay).
  *   7. Sweep refunds orphaned stakes but never over a stamped payout.
@@ -136,8 +137,10 @@ room._resolveDuel(duel, P('a'), P('b'), 'kill'); // server-observed result
 await new Promise((r) => setTimeout(r, 30));
 const cRes = msgsOfType(wss.c, 'arena_stake_result');
 const dRes = msgsOfType(wss.d, 'arena_stake_result');
-check('winning sponsor paid 3x', room.playerState[P('c')].coins === 900 + 300 && cRes.length === 1 && cRes[0].payload.won === true && cRes[0].payload.payout === 300, { coins: room.playerState[P('c')].coins, cRes: cRes.map((r) => r.payload) });
-check('losing stake goes to the winning competitor', room.playerState[P('a')].coins === 900 + 200 + ARENA.CHAMPION_REWARD, { a: room.playerState[P('a')].coins });
+/* v2.3.3177: a pool.  c's 100 on the winner, d's 200 on the loser: the
+   fighter keeps 10% of the 200 (20), c gets 100 back + the other 180. */
+check('winning sponsor paid their stake + the losing pool after the cut', room.playerState[P('c')].coins === 900 + 280 && cRes.length === 1 && cRes[0].payload.won === true && cRes[0].payload.payout === 280, { coins: room.playerState[P('c')].coins, cRes: cRes.map((r) => r.payload) });
+check('the winning competitor keeps the cut of the losing stakes', room.playerState[P('a')].coins === 900 + 20 + ARENA.CHAMPION_REWARD, { a: room.playerState[P('a')].coins });
 check('losing sponsor notified, no payout', dRes.length === 1 && dRes[0].payload.won === false && dRes[0].payload.payout === 0 && room.playerState[P('d')].coins === 800, dRes.map((r) => r.payload));
 check('stake records deleted after settlement', !state._store.has(stakeKey) && !state._store.has('arena_stake:' + t.id + ':' + m.id + ':' + P('d')));
 
@@ -150,7 +153,7 @@ check('wire recentMatches carry winnerId', wireC.recentMatches.length === 1 && w
 await state.storage.put(stakeKey, { tid: t.id, matchId: m.id, sponsorId: P('c'), targetId: P('a'), amount: 100, ts: Date.now() });
 await room._arenaSettleStakes(t.id, m.id, P('a'));
 await new Promise((r) => setTimeout(r, 10));
-check('re-put record cannot double-pay (opId stamp)', room.playerState[P('c')].coins === 1200 && !state._store.has(stakeKey), room.playerState[P('c')].coins);
+check('re-put record cannot double-pay (opId stamp)', room.playerState[P('c')].coins === 1180 && !state._store.has(stakeKey), room.playerState[P('c')].coins);
 
 // ── 7. sweep: refund unstamped orphans, never over a stamped payout ──
 room._arena = null; // deploy wiped the bracket
@@ -230,6 +233,57 @@ check('forged arena_stake_result dropped by deny-list', room.eventBuffer.filter(
   await room.webSocketMessage(wss.d, JSON.stringify({ type: 'arena_stake_board', payload: { tid: t2.id, board: [{ matchId: m2.id, aId: m2.a, aTotal: 999999, aBackers: 1 }] } }));
   check('forged arena_stake_board dropped by PRIVILEGED deny-list',
     room.eventBuffer.filter((e) => e.type === 'arena_stake_board').length === 0, room.eventBuffer.map((e) => e.type));
+}
+
+// ── 11. v2.3.3177: sponsorship is a pool -- it moves gold, it never makes it ──
+// A won stake paid 3x from the house and a lost one went to the winning
+// fighter.  So backing BOTH sides of a match netted the backers +stake and
+// the winner +stake whoever won, and backing the winner of a match your own
+// two accounts fought paid 2x per backer.  Settled directly here (records
+// put the way placement writes them; the escrow already took the gold).
+{
+  const coins = (id) => room.playerState[id].coins;
+  const putStake = (tid, mid, sponsorId, targetId, amount) =>
+    state.storage.put('arena_stake:' + tid + ':' + mid + ':' + sponsorId, { tid, matchId: mid, sponsorId, targetId, amount, ts: Date.now() });
+  const W = P('a'), L = P('b');            // the two fighters of each made-up match
+  const settle = async (tid, mid, stakes) => {
+    for (const [sp, tg, n] of stakes) await putStake(tid, mid, sp, tg, n);
+    const ids = [...new Set([W, L, ...stakes.map((x) => x[0])])];
+    const before = Object.fromEntries(ids.map((id) => [id, coins(id)]));
+    await room._arenaSettleStakes(tid, mid, W);
+    await new Promise((r) => setTimeout(r, 10));
+    const got = Object.fromEntries(ids.map((id) => [id, coins(id) - before[id]]));
+    const staked = stakes.reduce((n, x) => n + x[2], 0);
+    const paid = Object.values(got).reduce((n, v) => n + v, 0);
+    return { got, staked, paid };
+  };
+
+  // (a) the hedge: 5,000 on each side
+  const h = await settle('pool-t', 'pool-m1', [[P('c'), W, 5000], [P('d'), L, 5000]]);
+  check('a hedge on both sides pays out exactly what was staked: nothing is made', h.paid === h.staked, h);
+  check('...the two backers lose the cut between them instead of gaining a stake', h.got[P('c')] + h.got[P('d')] === 9500 && h.got[P('c')] === 9500, h.got);
+  check('...and the winning fighter gets the cut, not the whole losing stake', h.got[W] === 500, h.got);
+
+  // (b) a fixed match: every backer on the winner
+  const f = await settle('pool-t', 'pool-m2', [[P('c'), W, 5000], [P('d'), W, 3000]]);
+  check('backing the known winner of a fixed match only returns the stakes', f.got[P('c')] === 5000 && f.got[P('d')] === 3000 && f.paid === f.staked, f.got);
+
+  // (c) nobody backed the winner: the losing stakes go to the fighter, as before
+  const n0 = await settle('pool-t', 'pool-m3', [[P('c'), L, 400], [P('d'), L, 100]]);
+  check('with nobody backing the winner, every losing stake goes to the winning fighter', n0.got[W] === 500 && n0.paid === n0.staked, n0.got);
+
+  // (d) rounding: three equal winners and an odd pool still pay out exactly
+  const r = await settle('pool-t', 'pool-m4', [[P('c'), W, 10], [P('d'), W, 10], [P('e'), W, 10], [P('f'), L, 101]]);
+  check('pro-rata shares and the rounding leftovers sum to exactly what was staked', r.paid === r.staked && r.got[P('c')] === r.got[P('d')] && r.got[P('d')] === r.got[P('e')], r);
+
+  // (e) a pool-settled loser can never be refunded by the sweep
+  room._arena = null;                                      // a deploy wiped the bracket
+  /* the record a crash part-way through settlement would have left behind */
+  const dBefore = coins(P('d'));
+  await state.storage.put('arena_stake:pool-t:pool-m1:' + P('d'), { tid: 'pool-t', matchId: 'pool-m1', sponsorId: P('d'), targetId: L, amount: 5000, ts: Date.now() - ARENA.STALE_STAKE_MS - 1000 });
+  room._lastStakeSweep = 0;
+  await room._arenaStakeSweep();
+  check('the sweep never refunds a losing stake a pool already paid out', coins(P('d')) === dBefore && !state._store.has('arena_stake:pool-t:pool-m1:' + P('d')), coins(P('d')) - dBefore);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

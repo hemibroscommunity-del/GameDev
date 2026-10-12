@@ -49,13 +49,21 @@ export const ARENA = {
   GATHER_MS: 60000,        // start timer from the first join
   MATCH_MS: 180000,        // per-match shot-clock (duel.expiresAt)
   STALE_ENTRY_MS: 600000,  // orphaned entry age before the sweep refunds
-  // v2.3.1128 (PR11): sponsorship -- 3x stakes on matches (GDD §44).
-  // A won stake mints 2x extra from the house (same deliberate faucet
-  // posture as CHAMPION_REWARD; tune STAKE_MULT to change it).  A lost
-  // stake goes to the WINNING competitor, not the house.
+  // v2.3.1128 (PR11): sponsorship -- stakes on matches (GDD §44).
+  /* v2.3.3177: a POOL, not the house's money.  A won stake paid 3x from
+     the house and a lost one went to the winning fighter, so backing both
+     sides of any match minted +stake for the backers and +stake for the
+     winner whoever won (~+10,000 a match with four accounts), and backing
+     the winner of a match your own two accounts fought minted 2x per
+     backer.  Now a match's winning backers share its LOSING stakes, pro rata
+     to what they staked, on top of their own stakes back; the winning
+     fighter keeps FIGHTER_CUT of the losing stakes (and every losing stake
+     when nobody backed the winner, as before).  Gold only moves between
+     the people who staked: nothing is minted.  The game's own bet panel
+     already said "Payout: pot split among winners". */
   STAKE_MIN: 10,           // mirrors client ARENA_BET_MIN
   STAKE_MAX: 5000,         // mirrors client ARENA_BET_MAX
-  STAKE_MULT: 3,           // GDD §44 "sponsorship pays triple"
+  FIGHTER_CUT: 0.10,       // the winning fighter's share of the losing stakes
   STALE_STAKE_MS: 600000,  // orphaned stake age before the sweep refunds
 };
 
@@ -329,23 +337,56 @@ export const arenaMethods = {
   /* Stake settlement for one resolved match.  Fire-and-forget from
    * _arenaOnMatchResolved; converges via opId idempotency + the
    * stamp-checking sweep (a crash between credit and delete cannot
-   * double-pay).  Backed the winner -> sponsor gets STAKE_MULT x.
-   * Backed the loser -> the stake goes to the winning competitor. */
+   * double-pay).
+   * v2.3.3177: a pool (ARENA's note).  Backed the winner -> the stake back
+   * plus a pro-rata share of the losing stakes after the fighter's cut.
+   * Backed the loser -> the stake is the pool; when nobody backed the
+   * winner it goes to the winning competitor whole, as it always did.
+   * Every losing stake is STAMPED settled before any winner is paid, so
+   * the sweep can never refund one that a winner was paid from (a crash
+   * part-way costs a payout, never makes one twice). */
   async _arenaSettleStakes(tid, matchId, winnerId) {
     try {
       const stakes = await this.state.storage.list({ prefix: 'arena_stake:' + tid + ':' + matchId + ':' });
-      for (const [k, rec] of stakes) {
-        const won = rec.targetId === winnerId;
-        if (won) {
-          await this._creditPlayer(rec.sponsorId, { opId: 'arenastakewin:' + tid + ':' + matchId + ':' + rec.sponsorId, source: 'arena', kind: 'gold', payload: { amount: rec.amount * ARENA.STAKE_MULT }, note: 'sponsorship paid off' });
-        } else {
-          await this._creditPlayer(winnerId, { opId: 'arenastakeloss:' + tid + ':' + matchId + ':' + rec.sponsorId, source: 'arena', kind: 'gold', payload: { amount: rec.amount }, note: 'claimed a failed sponsorship' });
+      const all = [];
+      for (const [k, rec] of stakes) if (rec && typeof rec.sponsorId === 'string') all.push({ k, rec });
+      const amt = (rec) => Math.max(0, Math.floor(Number(rec.amount) || 0));
+      const winners = all.filter((x) => x.rec.targetId === winnerId);
+      const losers = all.filter((x) => x.rec.targetId !== winnerId);
+      const totalW = winners.reduce((n, x) => n + amt(x.rec), 0);
+      const totalL = losers.reduce((n, x) => n + amt(x.rec), 0);
+      const payout = new Map();   // sponsorId -> what this settlement returns them
+      if (totalW > 0) {
+        const cut = Math.floor(totalL * ARENA.FIGHTER_CUT);
+        const pool = totalL - cut;
+        let shared = 0;
+        for (const x of winners) {
+          const share = Math.floor(pool * amt(x.rec) / totalW);
+          shared += share;
+          payout.set(x.rec.sponsorId, amt(x.rec) + share);
         }
-        await this.state.storage.delete(k);
-        const ws = this._wsBySessionId(rec.sponsorId);
+        /* the rounding's leftover coins go to the fighter with the cut, so
+           what is paid out is exactly what was staked */
+        const toFighter = cut + (pool - shared);
+        for (const x of losers) await this._opStamp('arenastakeloss:' + tid + ':' + matchId + ':' + x.rec.sponsorId);
+        if (toFighter > 0) {
+          await this._creditPlayer(winnerId, { opId: 'arenastakecut:' + tid + ':' + matchId, source: 'arena', kind: 'gold', payload: { amount: toFighter }, note: 'your cut of a sponsorship pool' });
+        }
+        for (const x of winners) {
+          await this._creditPlayer(x.rec.sponsorId, { opId: 'arenastakewin:' + tid + ':' + matchId + ':' + x.rec.sponsorId, source: 'arena', kind: 'gold', payload: { amount: payout.get(x.rec.sponsorId) }, note: 'sponsorship paid off' });
+        }
+      } else {
+        for (const x of losers) {
+          await this._creditPlayer(winnerId, { opId: 'arenastakeloss:' + tid + ':' + matchId + ':' + x.rec.sponsorId, source: 'arena', kind: 'gold', payload: { amount: amt(x.rec) }, note: 'claimed a failed sponsorship' });
+        }
+      }
+      for (const x of all) {
+        await this.state.storage.delete(x.k);
+        const won = x.rec.targetId === winnerId;
+        const ws = this._wsBySessionId(x.rec.sponsorId);
         if (ws) {
           try {
-            ws.send(JSON.stringify({ type: 'arena_stake_result', payload: { matchId, targetId: rec.targetId, won, amount: rec.amount, payout: won ? rec.amount * ARENA.STAKE_MULT : 0 } }));
+            ws.send(JSON.stringify({ type: 'arena_stake_result', payload: { matchId, targetId: x.rec.targetId, won, amount: x.rec.amount, payout: won ? (payout.get(x.rec.sponsorId) || 0) : 0 } }));
           } catch (e) {}
         }
       }
