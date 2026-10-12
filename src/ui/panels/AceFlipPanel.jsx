@@ -2,7 +2,7 @@ import React from 'react';
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';
 import { ACE_FLIP_MIN_STAKE, ACE_FLIP_RISK_MULT, ACE_FLIP_WIN_CHANCE, aceFlipMaxStake, BT_AUDIO } from '@/data/index.js';
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '@/rendering/characterPortrait.js';
-import { thumbFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';
+import { thumbFor, ITEM_NAMES, TICKET_KEY_PREFIX } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
 
 /* ═══ v2.3.2618: ACE'S COIN FLIP ═══
@@ -280,7 +280,11 @@ export function AceFlipPanel() {
   var bag = (S && S.rpg && S.rpg.inventory) || {};
   var bagKeys = Object.keys(bag).filter(function (k) {
     return (Number(bag[k]) || 0) > 0
-      && k !== '__proto__' && k !== 'constructor' && k !== 'prototype';
+      && k !== '__proto__' && k !== 'constructor' && k !== 'prototype'
+      /* v2.3.3173: never a golden ticket -- the worker refuses one as a stake
+         (gamble.js: a won wager doubled a capped prize), so offering it here
+         only left a ticket-only bet spinning until the timeout. */
+      && k.indexOf(TICKET_KEY_PREFIX) !== 0;
   }).sort();
   var staged = aceFlipBus.items;
   var stagedKeys = Object.keys(staged);
