@@ -7,6 +7,7 @@ import { landLook } from '@/data/wheelLands.js';
 import { ZONES } from '@/data/zones.js';
 import { landLevelsText } from '@/data/wheelSignposts.js';
 import { CodexStage } from './CodexStage.jsx';
+import { codexDropsFor, CODEX_GRADE_ODDS, codexOneIn } from '@/data/codexDrops.js';   /* v2.3.3153: its drop table */
 
 /* ═══ v2.3.3153: THE CODEX'S MONSTERS ═══
  *
@@ -86,6 +87,42 @@ function Fact({ fact, open, n, title, children }) {
   );
 }
 
+/* ═══ v2.3.3153: ITS DROP TABLE ═══
+   Owner, 2026-10-12: "Also include drop tables for all items that monster can
+   drop."  Every row the worker's own roll (data/codexDrops.js, held to it by
+   mirror-audit), most often first, with its page at the first kill -- what
+   it drops is part of what it is. */
+function DropTable({ kind }) {
+  const rows = codexDropsFor(kind) || [];
+  return (
+    <div data-cx-drops={kind} data-cx-drop-count={rows.length}
+      style={{ background: COL.raised, border: '1px solid ' + COL.border, borderRadius: 10, padding: '8px 10px 6px', marginTop: 8 }}>
+      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.accent, marginBottom: 2 }}>Drops</div>
+      {rows.map((r, i) => (
+        <div key={r.id} data-cx-drop={r.id} data-cx-who={r.who}
+          style={{ display: 'flex', alignItems: 'center', gap: 9, minHeight: 40, padding: '5px 0', borderTop: i ? '1px solid ' + COL.divider : 'none' }}>
+          <img src={r.icon} alt="" draggable={false} style={{ width: 28, height: 28, objectFit: 'contain', flex: 'none' }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.2, color: r.color || COL.text }}>
+              {r.name}{r.graded ? <span style={{ color: '#EAC675', marginLeft: 4 }} aria-label="rolls a grade">★</span> : null}
+            </div>
+            {r.note ? <div style={{ fontSize: 11, lineHeight: 1.35, color: COL.text2, marginTop: 1 }}>{r.note}</div> : null}
+          </div>
+          <div style={{ flex: 'none', textAlign: 'right', maxWidth: 104 }}>
+            <div data-cx-odds style={{ fontSize: 13, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{r.odds}</div>
+            {r.sub ? <div style={{ fontSize: 10.5, color: COL.muted, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{r.sub}</div> : null}
+          </div>
+        </div>
+      ))}
+      <div style={{ fontSize: 11, lineHeight: 1.4, color: COL.muted, borderTop: '1px solid ' + COL.divider, paddingTop: 6, marginTop: 2 }}>
+        <span style={{ color: '#EAC675' }}>★</span> Rolls its grade as it drops: Rare {codexOneIn(CODEX_GRADE_ODDS.rare)}, Elite {codexOneIn(CODEX_GRADE_ODDS.elite)},
+        Godly {codexOneIn(CODEX_GRADE_ODDS.godly)}. Only players who did at least 5% of its damage can loot the pile: they split the gold by damage,
+        and everything else on it goes to whoever picks it up first.
+      </div>
+    </div>
+  );
+}
+
 function Page({ kind, S, onBack }) {
   const e = CODEX_ENTRIES[kind];
   const [n, n2] = codexCounts(S, kind);
@@ -133,6 +170,7 @@ function Page({ kind, S, onBack }) {
           <Fact fact="page" open={facts.includes('page')} n={n} title="What it does">
             <div style={{ fontSize: 13, lineHeight: 1.45, color: COL.text }}>{e.what}</div>
           </Fact>
+          <DropTable kind={kind} />
           <Fact fact="element" open={facts.includes('element')} n={n} title={'Element · ' + (el ? el.name : '')}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
               {el ? <img src={el.icon} alt="" draggable={false} style={{ width: 30, height: 30, objectFit: 'contain', flex: 'none' }} /> : null}

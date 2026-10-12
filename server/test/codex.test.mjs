@@ -22,10 +22,15 @@
  *      what was learned is still sent.
  *   8. A RESTART forgets it; the dev lever sets it; normalizeCodex drops what
  *      it does not know (a `__proto__` kind included).
+ *   9. THE DROP TABLE'S ODDS ARE THE ONES ROLLED: a kill's weapon drops just
+ *      under data.js monsterWeaponDropOdds and not just over it, and its
+ *      element on the same thresholds; the shard on SHARD_MONSTER_DROP.  (The
+ *      codex page's copy of them is held by mirror-audit.)
  */
 import { GameRoom } from '../src/index.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
 import { CODEX, CODEX_KEY, normalizeCodex, codexCrossed } from '../src/codex.js';
+import { monsterWeaponDropOdds, SHARD_MONSTER_DROP } from '../src/data.js';   /* §9 */
 
 function makeState() {
   const store = new Map();
@@ -274,6 +279,42 @@ const B = await join(wsB, 'bp_cx_b');
   check('...and a count clamped to MAX', n.rec.k.pebbling[0] === CODEX.MAX, n.rec.k.pebbling);
   check('normalizeCodex: nothing stored is an empty record, not locked', normalizeCodex(undefined).locked === false && Object.keys(normalizeCodex(undefined).rec.k).length === 0);
   check('CODEX: the nine kinds are the pets\' nine, and the thresholds rise', CODEX.KINDS.length === 9 && CODEX.TIERS.every((t, i) => i === 0 || t > CODEX.TIERS[i - 1]), { kinds: CODEX.KINDS, tiers: CODEX.TIERS });
+}
+
+// ── 9. THE DROP TABLE'S ODDS ARE THE ONES ROLLED ────────────────────────────
+{
+  /* Math.random answered from a list, so a roll can be put exactly on either
+     side of its line: the drop check, the element roll, the weapon type, its
+     grade -- the order _rollWeaponDropForKill asks in */
+  const realRandom = Math.random;
+  const rolls = (list) => { let i = 0; Math.random = () => (i < list.length ? list[i++] : 0.5); };
+  try {
+    const m = { level: 40, home: 'frost' };
+    const o = monsterWeaponDropOdds(40);
+    const eps = 1e-9;
+    rolls([o.drop - eps, 0.9, 0.1, 0.5]);
+    const w = room._rollWeaponDropForKill('frost', m);
+    rolls([o.drop + eps]);
+    const none = room._rollWeaponDropForKill('frost', m);
+    check(`a Lv 40 kill's weapon drops just under the codex's chance (${(o.drop * 100).toFixed(3)}%) and not just over it`, !!w && none === null, { w, none });
+    rolls([0, o.shift + o.fusion + o.elemental - eps, 0.1, 0.5]);
+    const el = room._rollWeaponDropForKill('frost', m);
+    rolls([0, o.shift + o.fusion + o.elemental + eps, 0.1, 0.5]);
+    const plain = room._rollWeaponDropForKill('frost', m);
+    check('...and it is of its land\'s element just under the codex\'s element chance, plain just over it',
+      el && el.tier === 'elemental' && el.element1 === 'frost' && plain && plain.tier === 'common', { el, plain });
+    const o1 = monsterWeaponDropOdds(1);
+    rolls([o1.drop - eps, 0.9, 0.1, 0.5]);
+    const w1 = room._rollWeaponDropForKill('frost', { level: 1 });
+    rolls([o1.drop + eps]);
+    check('...and at Lv 1 on its own line too (1 in 2,000)', !!w1 && room._rollWeaponDropForKill('frost', { level: 1 }) === null && Math.abs(1 / o1.drop - 2000) < 1);
+    rolls([SHARD_MONSTER_DROP - eps]);
+    const sh = room._rollShardForKill('frost');
+    rolls([SHARD_MONSTER_DROP + eps]);
+    check('a kill\'s shard drops on the codex\'s 1 in 10, of its land', sh === 'shard_frost' && room._rollShardForKill('frost') === null && SHARD_MONSTER_DROP === 0.10, { sh });
+  } finally {
+    Math.random = realRandom;
+  }
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CODEX CHECKS PASSED');

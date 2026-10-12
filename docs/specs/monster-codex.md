@@ -16,7 +16,7 @@ Points window's stat preview plays the slime.
 | Kills of that kind | What the page shows |
 |---|---|
 | 0 | its shape only, "???" |
-| 1 | its **name**, its picture moving, **where it is from** (land and levels) and **what it does** in a fight |
+| 1 | its **name**, its picture moving, **where it is from** (land and levels), **what it does** in a fight, and its **drop table** |
 | 3 | its **element**, and what that element's hits do to you |
 | 10 | its **special attack** — what it is, how long it winds up, how to get out of it — and the stage starts playing it |
 | 25 | its **story** |
@@ -36,6 +36,37 @@ a land, the Poison Forest's wisps and lurkers apart. The kind of a live monster 
 the worker's `petKindOf` (its land, and the look it spawned in — a mummy torn
 down to its skeleton is still a mummy); its stage is `petStageOf` (2 from level
 21).
+
+## The drop table
+
+Owner, 2026-10-12: *"Also include drop tables for all items that monster can
+drop."* Every row is the worker's own roll (`src/data/codexDrops.js`), most
+often first, open with the page at the first kill:
+
+| Drop | Chance | Where it is rolled |
+|---|---|---|
+| Gold | every kill, 5–18 by level (Lv 1–40) | the monster's own (`_makeZoneMonster`), split by damage |
+| Its remnants | every kill (6 of the 9 kinds) | `_isRemnantSkullArch` / `_invKeyForSkull`; none from the rock monster, fishman, bog lurker |
+| Its land's shard | 1 in 10 | `SHARD_MONSTER_DROP` |
+| Raw gem of its element | 1 in 20, killing blow | `GEM_RAW_MONSTER_DROP`; only the Gem Cutter's elements (`AMULET_GEMS`), so none from the Verdant Wilds' Flora |
+| Rare Gem | 1 in 200 | `RARE_GEM_MONSTER_DROP` |
+| Iron Torso, Iron Greaves | 1 in 500 each | `MONSTER_ARMOR_DROPS` |
+| Iron Great Sword | 1 in 500 | `MONSTER_IRON_WEAPON_DROP` |
+| A random weapon | 1 in 2,000 at Lv 1, 1 in 410 at Lv 40; ~1 in 62 of those its element at Lv 40 | `monsterWeaponDropOdds` |
+| Gold Nugget | 1 in 10,000, killing blow | `GOLD_NUGGET_MONSTER_DROP` |
+
+Every weapon and armour piece rolls its grade as it drops (Rare 1 in 11, Elite
+1 in 110, Godly 1 in 2,000,000: hardening.js `WEAPON_QUALITY_ODDS`). Only
+players who did 5% of its damage can loot the pile; they split the gold by
+damage, and everything else on it goes to whoever picks it up first.
+
+The two numbers that were inline on the worker are named in `server/src/data.js`
+for this (`SHARD_MONSTER_DROP`, `monsterWeaponDropOdds`), the rolls reading the
+same names, and the grade odds exported from hardening.js. mirror-audit holds
+the page's copy to all of them, and the per-monster facts to the worker's real
+Wheel: every one of its 384 monsters' gold at its level, each kind's remnants,
+its shard and whether its element gives a gem. A rate changed on the worker and
+not on the page fails the audit.
 
 ## The stage
 
@@ -126,16 +157,21 @@ dev op.
 
 ## Tests
 
-- `server/test/codex.test.mjs`: caps and the first look; a kill counted on its
+- `server/test/codex.test.mjs` (47 checks): caps and the first look; a kill counted on its
   credit and its first kill written at once; coalesced counting and the
   thresholds; the Poison Forest's two kinds, a party's kill, the second stage, a
   monster with no land (and a land named `__proto__`); disconnect and rejoin;
   a newer record and a failed read left alone; the kill switch; a restart; the
-  dev lever; `normalizeCodex`.
+  dev lever; `normalizeCodex`; and the drop table's odds are the ones rolled (a
+  weapon, its element and a shard drop just under their line and not just over
+  it).
 - `mirror-audit`: `CODEX_TIERS` and the client's nine kinds against the
-  worker's.
-- `mp-codex` (phone, 20 checks): the Monsters tab, a page opening fact by fact
-  from real kills and the dev lever, every stage playing its own special, a
+  worker's; every drop rate, the grade odds, the weapon curve at every level 1
+  to 100, and each of the Wheel's monsters' gold and remnants against the
+  page's drop table.
+- `mp-codex` (phone, 22 checks): the Monsters tab, a page opening fact by fact
+  from real kills and the dev lever, its drop table from the first kill and
+  every page's its own, every stage playing its own special, a
   slam's or a lunge's warning circle, what it throws in before its first
   flight, no monster ever standing over your character, nothing left behind
   on close, the counts back after a reload.

@@ -67,6 +67,11 @@ import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.j
 import { TRAPPING as SRV_TRAPPING, trapChance as srvTrapChance, trapRollXp as srvTrapRollXp, trapCatchXp as srvTrapCatchXp } from '../src/trapping.js';
 import { CODEX as SRV_CODEX } from '../src/codex.js'; /* v2.3.3153 */
 import { CODEX_TIERS as CLIENT_CODEX_TIERS, CODEX_KINDS as CLIENT_CODEX_KINDS, CODEX_STAGE2_AT as CLIENT_CODEX_STAGE2_AT, CODEX_ENTRIES as CLIENT_CODEX_ENTRIES } from '../../src/data/monsterCodex.js'; /* v2.3.3153 */
+/* v2.3.3153: the codex's drop tables, and what they are held to */
+import { CODEX_DROP_RATES as CLIENT_CODEX_DROP_RATES, CODEX_GRADE_ODDS as CLIENT_CODEX_GRADE_ODDS, CODEX_RAW_GEM_ELEMENTS as CLIENT_CODEX_RAW_GEMS,
+  CODEX_REMNANTS as CLIENT_CODEX_REMNANTS, codexWeaponOdds as clientCodexWeaponOdds, codexGoldAt as clientCodexGoldAt, codexDropsFor as clientCodexDropsFor } from '../../src/data/codexDrops.js';
+import { WEAPON_QUALITY_ODDS as SRV_WEAPON_QUALITY_ODDS } from '../src/hardening.js';
+import { WHEEL_ZONE as SRV_WHEEL_ZONE } from '../src/wheelzone.js';
 import { PET_KINDS as SRV_PET_KINDS, PET_NAME as SRV_PET_NAME, cleanPetName as srvCleanPetName, petKindOf as srvPetKindOf, PETBOOK as SRV_PETBOOK,
   petXpToNext as srvPetXpToNext, petGainXp as srvPetGainXp,
   petWardOf as srvPetWardOf, petHousePrice as srvPetHousePrice, petWireOf as srvPetWireOf } from '../src/petbook.js';
@@ -1927,6 +1932,74 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const missing = CLIENT_CODEX_KINDS.filter((k) => !Object.prototype.hasOwnProperty.call(CLIENT_CODEX_ENTRIES, k));
   check('codex: the nine kinds, in the worker\'s order, each with a page',
     JSON.stringify(CLIENT_CODEX_KINDS) === JSON.stringify(SRV_CODEX.KINDS) && missing.length === 0, { client: CLIENT_CODEX_KINDS, server: SRV_CODEX.KINDS, missing });
+}
+
+/* ═══ v2.3.3153: EACH MONSTER'S DROP TABLE (src/data/codexDrops.js) ═══
+   Owner: "Also include drop tables for all items that monster can drop."  The
+   page prints chances the worker rolls; every one is held to the roll's own
+   number here, and the per-monster facts (its gold at each level, its
+   remnants, its shard and gem) to the worker's real Wheel monsters -- a rate
+   changed on the worker and not on the page fails this. */
+{
+  const R = CLIENT_CODEX_DROP_RATES;
+  const armour = (slot) => (SRV.MONSTER_ARMOR_DROPS.find((d) => d.slot === slot) || {});
+  check('codex drops: the shard, rare gem, iron torso, iron greaves and iron great sword chances are the worker\'s',
+    R.shard === SRV.SHARD_MONSTER_DROP && R.rareGem === SRV.RARE_GEM_MONSTER_DROP
+    && R.ironTorso === armour('armor').chance && R.ironGreaves === armour('legsArmor').chance
+    && R.ironGreatsword === SRV.MONSTER_IRON_WEAPON_DROP.chance && SRV.MONSTER_ARMOR_DROPS.length === 2
+    && armour('armor').name === 'Iron Torso' && armour('legsArmor').name === 'Iron Greaves' && SRV.MONSTER_IRON_WEAPON_DROP.gearBase === 'iron'
+    && SRV.MONSTER_IRON_WEAPON_DROP.type === 'greatsword',
+    { client: R, server: { shard: SRV.SHARD_MONSTER_DROP, rareGem: SRV.RARE_GEM_MONSTER_DROP, armour: SRV.MONSTER_ARMOR_DROPS, iron: SRV.MONSTER_IRON_WEAPON_DROP } });
+  check('codex drops: the grades a dropped piece rolls are the worker\'s',
+    JSON.stringify(CLIENT_CODEX_GRADE_ODDS) === JSON.stringify(SRV_WEAPON_QUALITY_ODDS), { client: CLIENT_CODEX_GRADE_ODDS, server: SRV_WEAPON_QUALITY_ODDS });
+  let wOff = null;
+  for (let l = 1; l <= 100 && !wOff; l++) {
+    const a = clientCodexWeaponOdds(l), b = SRV.monsterWeaponDropOdds(l);
+    if (JSON.stringify(a) !== JSON.stringify(b)) wOff = { level: l, client: a, server: b };
+  }
+  check('codex drops: a random weapon\'s chance (and its element\'s) is the worker\'s at every level, 1 to 100', !wOff, wOff);
+  check('codex drops: the raw gems are the Gem Cutter\'s elements', JSON.stringify([...CLIENT_CODEX_RAW_GEMS].sort()) === JSON.stringify([...SRV.AMULET_GEMS].sort()),
+    { client: CLIENT_CODEX_RAW_GEMS, server: [...SRV.AMULET_GEMS] });
+
+  /* the real Wheel, as the worker spawns it: every monster's kind, gold and
+     remnants, against the page's */
+  const room = new GameRoom({ storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+    getWebSockets: () => [], acceptWebSocket: () => {} }, { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  check('codex drops: the page\'s shard rate is the one the room rolls', room.SHARD_DROP_RATE === R.shard, { room: room.SHARD_DROP_RATE, client: R.shard });
+  const wheel = room._ensureZoneMonsters(SRV_WHEEL_ZONE) || [];
+  const gOff = [], rOff = [], seen = new Set();
+  for (const m of wheel) {
+    const kind = srvPetKindOf(m);
+    if (!kind) continue;
+    seen.add(kind);
+    if (m.gold !== clientCodexGoldAt(m.level)) gOff.push({ id: m.id, level: m.level, server: m.gold, client: clientCodexGoldAt(m.level) });
+    const sk = m.variant || m.arch;
+    const srvRem = room._isRemnantSkullArch(sk, m.arch) ? room._invKeyForSkull(sk, m.arch) : null;
+    const cliRem = Object.prototype.hasOwnProperty.call(CLIENT_CODEX_REMNANTS, kind) ? CLIENT_CODEX_REMNANTS[kind] : null;
+    if (srvRem !== cliRem) rOff.push({ id: m.id, kind, server: srvRem, client: cliRem });
+  }
+  check(`codex drops: every one of the Wheel's ${wheel.length} monsters carries the gold the page says for its level`, wheel.length > 300 && gOff.length === 0, gOff.slice(0, 5));
+  check('codex drops: each kind leaves the remnants the page says (the rock monster, fishman and bog lurker none)',
+    rOff.length === 0 && CLIENT_CODEX_KINDS.every((k) => seen.has(k)), { off: rOff.slice(0, 5), seen: [...seen] });
+  /* the mummy's bones, after its first hit, leave the same */
+  check('codex drops: a mummy torn down to its skeleton still leaves Skeleton Remnants',
+    room._isRemnantSkullArch('skeleton', 'stalker') && room._invKeyForSkull('skeleton', 'stalker') === CLIENT_CODEX_REMNANTS.mumling);
+  const eOff = [];
+  for (const kind of CLIENT_CODEX_KINDS) {
+    const e = CLIENT_CODEX_ENTRIES[kind], z = SRV.ZONES[e.home];
+    const rows = clientCodexDropsFor(kind) || [];
+    const ids = rows.map((r) => r.id);
+    const gem = rows.find((r) => r.id === 'rawgem');
+    const shard = rows.find((r) => r.id === 'shard');
+    if (!z || e.element !== z.element) eOff.push([kind, 'element', e.element, z && z.element]);
+    if (!!gem !== SRV.AMULET_GEMS.has(z && z.element)) eOff.push([kind, 'raw gem', !!gem]);
+    if (gem && gem.key !== 'raw_' + z.element) eOff.push([kind, 'raw gem key', gem.key]);
+    if (!shard || shard.key !== 'shard_' + e.home) eOff.push([kind, 'shard', shard && shard.key]);
+    for (const id of ['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'weapon', 'nugget']) if (!ids.includes(id)) eOff.push([kind, 'missing', id]);
+    if (ids.includes('remnant') !== Object.prototype.hasOwnProperty.call(CLIENT_CODEX_REMNANTS, kind)) eOff.push([kind, 'remnant row']);
+  }
+  check('codex drops: each page\'s table is its land\'s -- the shard the worker rolls ("shard_" + its home), a raw gem only when its element is a Gem Cutter one (not Flora), and every pile drop listed',
+    eOff.length === 0, eOff);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

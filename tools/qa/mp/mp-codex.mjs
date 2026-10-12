@@ -20,7 +20,11 @@
  *   5. every one of the nine pages, all open: its stage loads, and plays its
  *      own special (lunge, slam, unwrap, burst, burrow), what it throws in
  *      before its first flight, and nothing standing over your character --
- *      pictures in tools/qa/mp/out/codex-<kind>.png;
+ *      pictures in tools/qa/mp/out/codex-<kind>.png -- and its DROP TABLE
+ *      (the owner: "Also include drop tables for all items that monster can
+ *      drop"): every pile drop with its chance, remnants only from the six
+ *      kinds that leave them, a raw gem from every land but the Verdant
+ *      Wilds;
  *   6. closed, nothing is left behind: every picture a stage baked revoked;
  *   7. a reload: the counts come back from the worker;
  *   8. no page errors.
@@ -67,6 +71,11 @@ const openPage = async (P, kind) => {
 };
 const back = (P) => P.page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /All monsters/.test(x.innerText)); if (b) b.click(); });
 const facts = (P) => P.page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-cx-fact]')].map((f) => [f.dataset.cxFact, f.dataset.cxOpen === '1'])));
+/* the page's drop table: { id: its odds as printed } */
+const drops = (P) => P.page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-cx-drop]')].map((r) => {
+  const o = r.querySelector('[data-cx-odds]');
+  return [r.dataset.cxDrop, o ? o.innerText.trim() : ''];
+})));
 /* every phase the stage passes through in `ms` -- watched as it changes (a
    MutationObserver), so a 0.2 s dash on a page drawing a few frames a second
    is never missed between two looks.  Also:
@@ -157,8 +166,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`...its card is known and NEW ("${snowCard && snowCard.text}")`, !!snowCard && snowCard.known && snowCard.fresh && /Snowman/.test(snowCard.text) && /1 defeated/.test(snowCard.text), snowCard);
     const pg1 = await openPage(P, 'snowling');
     const f1 = await facts(P);
+    const d1 = await drops(P);
     const w1 = await watchStage(P, 7000);
     rec.ok('...its page: what it does open; element, special attack, story and elder form locked', pg1 && f1.page && !f1.element && !f1.special && !f1.story && !f1.elder, f1);
+    rec.ok(`...and its drop table, with the first kill: ${Object.keys(d1).length} drops (remnants "${d1.remnant}", Frost Shard "${d1.shard}", gold nugget "${d1.nugget}")`,
+      d1.gold && d1.remnant === 'Every kill' && d1.shard === '1 in 10' && d1.rawgem === '1 in 20' && d1.raregem === '1 in 200'
+      && d1.irontorso === '1 in 500' && d1.irongreaves === '1 in 500' && d1.irongreatsword === '1 in 500' && d1.weapon === '1 in 2,000' && d1.nugget === '1 in 10,000', d1);
     rec.ok(`...its stage loads its strips and plays its throw (${w1.phases.join(' > ')})`,
       w1.ready && w1.strips >= 1 && ['throw', 'fly', 'impact'].every((p) => w1.phases.includes(p)) && w1.pops.length === 0, w1);
     await P.page.screenshot({ path: join(OUT, 'codex-1-snowman.png') });
@@ -200,8 +213,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const kind of KINDS) {
       const ok = await openPage(P, kind);
       const w = await watchStage(P, kind === 'snowling' ? 15000 : 12000);
+      const dr = await drops(P);
       every.push({ kind, ok, ready: w.ready, special: w.phases.includes(SPECIAL_PHASE[kind]), phases: w.phases, labels: w.labels, pops: w.pops,
-        zones: w.zones, shots: w.shots, gap: w.gap, gapAt: w.gapAt });
+        zones: w.zones, shots: w.shots, gap: w.gap, gapAt: w.gapAt, drops: dr });
       await P.page.screenshot({ path: join(OUT, 'codex-' + kind + '.png') });
       await back(P);
       await P.page.waitForTimeout(300);
@@ -217,6 +231,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ZONED = { gobling: 'lunge', pebbling: 'slam', sparklet: 'lunge', finling: 'slam', wisplet: 'lunge', lurkling: 'slam' };
     rec.ok(`...a slam or a lunge marks the ground under you as it winds up (${every.filter((e) => e.zones.length).map((e) => e.kind + ':' + e.zones.join('/')).join(', ')})`,
       every.every((e) => (ZONED[e.kind] ? e.zones.length === 1 && e.zones[0] === ZONED[e.kind] : e.zones.length === 0)), every.map((e) => e.kind + ' ' + e.zones.join('/')));
+    /* the drop tables: every pile drop on every page; remnants from the six
+       kinds that leave them (the rock monster, the fishman and the bog lurker
+       leave none, index.js _isRemnantSkullArch); a raw gem from every land
+       but the Verdant Wilds (Flora is not a Gem Cutter element) */
+    const NO_REMNANT = ['pebbling', 'finling', 'lurkling'], NO_GEM = ['dewdrop'];
+    const dropOff = every.filter((e) => {
+      const d = e.drops || {};
+      if (!['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'weapon', 'nugget'].every((id) => d[id])) return true;
+      if (!!d.remnant === NO_REMNANT.includes(e.kind)) return true;
+      if (!!d.rawgem === NO_GEM.includes(e.kind)) return true;
+      return d.shard !== '1 in 10';
+    });
+    rec.ok(`...and every page's drop table is its own (${every.map((e) => e.kind + ' ' + Object.keys(e.drops || {}).length).join(', ')})`,
+      dropOff.length === 0, dropOff.map((e) => ({ kind: e.kind, drops: e.drops })));
     const thrown = every.filter((e) => e.shots.length);
     rec.ok(`...every thrown picture is in as its first flight begins (${thrown.map((e) => e.kind + ' ' + e.shots.join('/')).join(', ')})`,
       thrown.length >= 5 && thrown.every((e) => e.shots.every((x) => x === 'in' || x === 'ball')), thrown.map((e) => ({ kind: e.kind, shots: e.shots })));

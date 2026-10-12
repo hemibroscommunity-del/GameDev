@@ -29,7 +29,8 @@ import {
   ARCHETYPES, ZONES,
   MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
   MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY,
-  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */, DISHES /* v2.3.3130: the Herb Bread's regen mult */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */, DISHES /* v2.3.3130: the Herb Bread's regen mult */,
+  SHARD_MONSTER_DROP, monsterWeaponDropOdds /* v2.3.3153: named for the monster codex's drop table */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -1245,7 +1246,7 @@ export class GameRoom {
     // 'no-this-mon'.  500 ms is enough to read positions on entry
     // without suppressing the first incoming hit of a normal fight.
     this.ZONE_ENTRY_GRACE_MS = 500;
-    this.SHARD_DROP_RATE = 0.10; // 10% per kill, matches client rollMonsterShard
+    this.SHARD_DROP_RATE = SHARD_MONSTER_DROP; // 10% per kill, matches client rollMonsterShard; v2.3.3153: named in data.js (the codex prints it)
 
     // AFK timeout — drop sessions that haven't sent real input (move /
     // combat / zone change / etc.) for this long.  Pong replies do NOT
@@ -3668,16 +3669,18 @@ export class GameRoom {
   // hardenBonus stays null: that field belongs to the client's legacy
   // affix system (NAME COLLISION warning in hardening.js).
   _rollWeaponDropForKill(zoneId, monster) {
-    const lvl = Math.max(1, monster.level || 1);
-    const lvlFactor = Math.pow(lvl / 100, 3); // cubic: L1≈0, L50=0.125, L100=1
-    const dropChance = 0.0005 + lvlFactor * 0.03; // L1: 0.05%, L100: ~3%
+    /* v2.3.3153: the odds are data.js monsterWeaponDropOdds -- the same
+       numbers, moved there so the monster codex's drop table prints exactly
+       what this rolls (mirror-audit holds its copy).  L1: 0.05%, L100: ~3%. */
+    const odds = monsterWeaponDropOdds(monster.level);
+    const dropChance = odds.drop;
     if (Math.random() >= dropChance) return null;
     const zone = this._getZoneConfig(zoneId);
     const zoneElem = (zone && zone.element) || null;
     const secondaryElem = (zone && zone.secondary) || null;
-    const shiftChance = 0.0000002 + lvlFactor * 0.002;
-    const fusionChance = 0.000002 + lvlFactor * 0.02;
-    const elemChance = 0.0002 + lvlFactor * 0.25;
+    const shiftChance = odds.shift;
+    const fusionChance = odds.fusion;
+    const elemChance = odds.elemental;
     const tierRoll = Math.random();
     let tier = 'common', e1 = null, e2 = null, isVolatile = false;
     if (tierRoll < shiftChance && zoneElem) {
