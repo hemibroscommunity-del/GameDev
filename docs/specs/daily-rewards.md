@@ -343,3 +343,35 @@ The news says it instead, the daily login reward's rule since v2.3.2037.
 - **Admin test hook** `POST /api/admin/dev/daily {playerId, stars?, spins?,
   quest?: [i, n]}`. It is behind the admin key and its audit log, like every
   `/dev/` op.
+
+## v2.3.3162: every act that turns the day over saves it
+
+Found by the overnight economy review and reproduced on main. The first act
+of a new UTC day turns the record over (`_drRollover`): it pays yesterday's
+open pot (`_spinPay`), and at a season's end it mails the unclaimed tiers and
+grants their freezes (`_seClose`). `_drOnJoin`, `rewards_get` and the online
+midnight turn-over (`_drNewDayOnline`) then saved the record. Three acts did
+not:
+
+- a `daily_spin` double or collect refused because the pot was already paid;
+- a `daily_reroll` that rerolled nothing;
+- a `season_claim` that claimed nothing.
+
+Nothing marked the record dirty either. So the close forgot the cached copy
+and the next join turned the STORED day over again. The oplog stamps
+(`spinpot:`, `season:`) made that second payout a "dup", but only for 48
+hours, until `_opPruneMaybe` deleted them; the freezes have no stamp at all.
+Online across midnight, a player could send one of those acts before the
+10-second tick, leave, and come back two days later. A 40,000 pot paid
+80,000, and a season's track paid twice (8,600 coins became 17,200, and every
+gem, fish and bar was doubled).
+
+Now each of the three saves a turn-over that changed anything, the shape the
+other callers already had. `_drRollover` also marks a changed record dirty,
+so a caller that forgets is written by the tick within `SAVE_MS`, or by the
+close at once. No price, odd or rule changed.
+
+Tests: `dailyrewards.test.mjs` §6, 11 new checks. Each of the four acts pays
+yesterday's pot once and saves the day, and a join after the prune pays
+nothing more. A claim that closes an old season mails its tiers once, and
+the backstop marks the record dirty. All 11 fail on main.

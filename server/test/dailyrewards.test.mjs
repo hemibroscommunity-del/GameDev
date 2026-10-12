@@ -569,6 +569,71 @@ const ps = () => room.playerState['bp_dr_a'];
   check('a pot still open at midnight is paid by the new day, online too', ps().coins - c0 === 250 && rec.sp.open === 0 && paidSpin(ws).length === 1
     && lastState(ws).spin.ready === 1, { got: ps().coins - c0, sp: rec.sp });
 }
+{
+  /* v2.3.3162: EVERY act that turns the day over saves it.  Reproduced on
+     main: a refused double or collect, a reroll and a season claim turned the
+     day over -- PAYING yesterday's open pot -- and returned without writing
+     the record, so the close forgot it and the next join paid the same pot
+     again once the 48 h prune had deleted its oplog stamp. */
+  const PID = 'bp_dr_a';
+  const stored = () => state._store.get(DAILY.KEY + PID);
+  const cases = [
+    ['a refused collect', 'daily_spin', { act: 'collect' }],
+    ['a refused double', 'daily_spin', { act: 'double' }],
+    ['a reroll with no quests to reroll', 'daily_reroll', { i: 0 }],
+    ['a season claim of nothing', 'season_claim', { tier: 0 }],
+  ];
+  for (const [label, type, payload] of cases) {
+    const rec = room._drMap().get(PID);
+    const run = 'stale-' + type + '-' + JSON.stringify(payload).replace(/\W/g, '');
+    rec.sp.open = 1; rec.sp.pot = 400; rec.sp.k = 0; rec.sp.run = run;
+    await room._drSave(PID);
+    /* the reroll's own save ran only when it rerolled: no quests, no reroll */
+    ps()._quests = Object.create(null);
+    NOW += DAY;
+    ps()._lastDailySpinAt = 0;
+    const c0 = ps().coins;
+    await send(ws, type, payload);
+    check(label + ' on a new day pays yesterday\'s open pot once, and SAVES the turned-over day',
+      ps().coins - c0 === 400 && !!stored() && stored().sp.open === 0 && stored().sp.day === Math.floor(NOW / DAY),
+      { got: ps().coins - c0, stored: stored() && stored().sp });
+    await room.webSocketClose(ws);
+    state._store.delete('oplog:spinpot:' + PID + ':' + run);   /* the 48 h prune */
+    ws = fakeWs();
+    await join(ws, PID);
+    await settle();
+    check('...so a join after the 48 h prune does not pay that pot again', room.playerState[PID].coins - c0 === 400,
+      { got: room.playerState[PID].coins - c0 });
+  }
+  /* a finished season mailed by a refused claim: the same, with the tiers */
+  {
+    const rec = room._drMap().get(PID);
+    rec.se = { s: 99, st: tierNeed(2), cl: [], ov: 0 };   /* an old season, tiers 1 and 2 reached, nothing claimed */
+    await room._drSave(PID);
+    const tier1 = DAILY.SEASON.TIERS[0].filter((g) => g.kind === 'coins').reduce((s, g) => s + g.n, 0);
+    const c0 = ps().coins;
+    await send(ws, 'season_claim', { tier: 0 });
+    check('a season claim that closes an old season mails its tiers once and SAVES the new season',
+      ps().coins - c0 === tier1 && !!stored() && stored().se.s !== 99, { got: ps().coins - c0, se: stored() && stored().se });
+    await room.webSocketClose(ws);
+    for (const k of [...state._store.keys()]) if (k.startsWith('oplog:season:' + PID + ':99:')) state._store.delete(k);
+    ws = fakeWs();
+    await join(ws, PID);
+    await settle();
+    check('...so a join after the prune does not mail the old season again', room.playerState[PID].coins - c0 === tier1,
+      { got: room.playerState[PID].coins - c0 });
+  }
+  /* the backstop: a turn-over is dirty until it is written */
+  {
+    const rec = room._drMap().get(PID);
+    NOW += DAY;
+    await room._drRollover(PID, rec, NOW);
+    check('a turn-over nobody saved is marked dirty, so the tick or the close writes it', room._drDirtyMap().has(PID));
+    await room._drSave(PID);
+  }
+  ps()._quests = Object.create(null);
+  ps()._quests.tut_1 = 'turnedIn';
+}
 
 // ── 7. The wire ──
 {
