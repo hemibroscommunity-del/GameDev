@@ -179,6 +179,19 @@ export const clanMethods = {
     const clan = this._clans.get(inv.clanId);
     if (!clan || clan.members.length >= CLANS.MAX_MEMBERS) return;
     if (this._clanOf(session.id)) return;
+    /* v2.3.3175: one war roster at a time.  A war pays the roster it froze
+       at declare, and a kick mid-war (allowed on purpose: a leader ejecting
+       a griefer) leaves the kicked member on it -- clanless, so free to join
+       another clan whose next declare froze them onto a SECOND war: paid by
+       both, or by both sides of one.  The same reason v2.3.2301 refuses
+       leaving mid-war.  A kicked member waits out that war (30 min at most);
+       nothing else changes. */
+    for (const w of this._clanWars.values()) {
+      if (w.status === 'active'
+        && ((w.challenger.members || []).includes(session.id) || (w.defender.members || []).includes(session.id))) {
+        return this._clanError(session.id, 'Cannot join during a clan war');
+      }
+    }
     clan.members.push(session.id);
     this._clanByPlayer.set(session.id, clan.id);
     await this.state.storage.put('clan:' + clan.id, clan);

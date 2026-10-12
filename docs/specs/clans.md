@@ -105,3 +105,14 @@ mid-war refusal. Its fixture order matters — the refusal case runs LAST
 on its own clan, because when the guard is missing the leave succeeds and
 every later "her tag is gone" assertion then passes for the wrong reason,
 about a player who is in no clan at all.
+
+v2.3.3175 adds 9.7c-9.7d: **one war roster at a time.** A war pays the
+roster it froze at declare, and a kick mid-war (allowed on purpose, for a
+griefer) leaves the kicked member on it, clanless and free to join another
+clan, whose next declare froze them onto a second war's roster, paid by
+both (or onto the other side of the same war). `_handleClanJoinAccept` now
+refuses a player who is on any active war's roster ("Cannot join during a
+clan war"), the same reason v2.3.2301 refuses leaving mid-war. A kicked
+member waits out that war, 30 minutes at most. Found by the overnight
+economy review (2026-10-12). Whether a member kicked mid-war should still
+be paid by that war is left as it is, an owner call.
