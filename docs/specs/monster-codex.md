@@ -46,7 +46,10 @@ render), "‹ All monsters" bringing them back.
   defeated. (The first set, Elemental, Goblin, Undead, Golem, Slime, Aquatic
   and Spirit, was replaced.)
 - **Drops** (the first tab): ITEM / TYPE / CHANCE, every item a kill can drop,
-  most often first, a bar for each chance. A tap on a row opens the item's
+  most often first, a bar for each chance, on a near-black panel of its own
+  (the owner: *"The drops table needs a different background so the
+  information can stand out more from the dashboard background. Maybe
+  black?"* -- `#05090B`, the stage's own black). A tap on a row opens the item's
   **card**: its picture, name, type and base rarity ("Common" for a weapon or
   armour piece), what it is, FOUND FROM (the monster), BASE DROP CHANCE, for a
   weapon or armour piece the POSSIBLE RARITY it rolls after it drops (Normal
@@ -127,6 +130,27 @@ left (the Equipment screen's `CharacterView`), the monster on the right in its
 own strips at the URLs the world loads them from, one ground line, and every
 motion CSS: a beat is one `setState`, a strip steps through its cells
 (`bt-sd-strip`), a walk is a transition. Nothing is drawn a frame at a time.
+
+**One box, and everyone stands inside it.** The owner, of the first look: *"the
+animation shows the player and monster in a layer above the container they're
+supposed to be in and the bottom of the characters are visible on the
+dashboard container"*. The stage's bottom 40 px were the land's tint at .2 --
+the dashboard's own slate -- with the feet on a line 9 px up and your boots on
+the box's very edge, so both stood half out of a dark box onto the dashboard.
+Now the stage is a near-black scene in a visible frame (game.css `bt-cx-stage`)
+with a GROUND STRIP of the land's colour exactly `GROUND` (16) px tall and a
+bright top edge, and every foot stands on that edge: yours where the figure
+says it drew your boots (`onDrawn`, `__btFigure`, as StatDemo plants its
+fighter), the monster's strips CUT at their art's lowest row so their boxes end
+there, and its body standing on the strip so a swell or the blue slime's 2.4x
+burst grows from its feet (from the box's bottom edge, the burst came out
+10 px past the frame's top). Your figure is 18 px in, so a gust's shove keeps it
+inside. The stage is isolated (its own stacking context) and nothing in it asks
+for a compositing layer of its own (no `will-change`), so nothing drawn there
+can paint outside the frame on a phone, whether or not its compositor clips a
+moving layer at a rounded edge. `mp-codex` measures every stage: your figure's
+painted pixels and the monster's art never past the frame, both at rest within
+1.5 px of the ground strip's edge.
 
 What it plays:
 
@@ -220,14 +244,16 @@ dev op.
   against the plan's; every drop rate, the grade odds, the weapon curve at every level 1
   to 100, and each of the Wheel's monsters' gold and remnants against the
   page's drop table.
-- `mp-codex` (phone, 30 checks): the Monsters tab; a real kill opening the
+- `mp-codex` (phone, 33 checks): the Monsters tab; a real kill opening the
   whole page on the sheet's own height, scrolling in it from its top, its
   header badges (a Humanoid snowman) and tabs; its drop table; scrolled to
   its end, the Iron Great Sword's card opening at its top (Common, 0.2%, the
   four grades) and a shard's (no grades), the X back to the marked row in
-  view; a tap on a tab, the open one's too, putting its content at the
+  view; the table's near-black panel, darker than the sheet; a tap on a tab, the open one's too, putting its content at the
   sheet's top, Info's whole stage in view; every fact open on Info from one
-  kill, the stage playing its special; Locations (the land, both stages, the
+  kill, the stage playing its special, your character and the monster on its
+  ground strip and never past its frame (the stage isolated, nothing in it
+  with `will-change`), on every one of the nine; Locations (the land, both stages, the
   way there, the dungeons); the sheet never growing and the card you came
   from in view on the list; every page's type badge by its body and each page
   opening at its top; every page's own drop table, every stage playing its

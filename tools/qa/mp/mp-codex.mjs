@@ -31,8 +31,9 @@
  *      the sheet;
  *   5. Info, from that one kill: its stage at the top of the sheet, all of
  *      it in view, every fact open, the stage loading and playing its throw
- *      AND its special (the burrow), its hit saying "Chill", the elder toggle
- *      naming it a Glacier Snowman;
+ *      AND its special (the burrow), its hit saying "Chill", your character
+ *      and the snowman standing ON its ground strip and never past its frame,
+ *      the elder toggle naming it a Glacier Snowman;
  *   6. Locations: Frost Ridge, both stages' levels, the way there from
  *      BroTown; back to the list, the sheet never grew, the Codex's tabs back;
  *   7. every one of the nine pages, each opening at its top however far the
@@ -157,10 +158,30 @@ const locations = (P) => P.page.evaluate(() => Object.fromEntries([...document.q
      gap    the nearest the monster's art ever came to your character's
             middle, px (sampled every 50 ms: a swelling slime or the mummy's
             bigger bones standing over you reads below 0) */
+/*   out    how far your figure's painted pixels and the monster's art ever
+            got past the stage's frame, px (v2.3.3191: the owner saw them
+            "in a layer above the container ... the bottom of the characters
+            ... visible on the dashboard container"); 0 is inside, always
+     feet   at rest, how far above the ground strip's edge your boots and the
+            monster's feet are, px (0: standing on it) */
 const watchStage = (P, ms) => P.page.evaluate((ms) => new Promise((resolve) => {
   const seen = new Set(); const pops = new Set(); const labels = new Set(); const zones = new Set();
   const shots = [];
   let ready = false, lastPhase = null, gap = Infinity, gapAt = null;
+  let heroOut = 0, monOut = 0, heroFeet = null, monFeet = null, fig = null, outAt = null;
+  /* the hero canvas's painted box, as shares of the canvas */
+  const figOf = (cv) => {
+    try {
+      const w = cv.width, h = cv.height;
+      if (!w || !h) return null;
+      const d = cv.getContext('2d').getImageData(0, 0, w, h).data;
+      let x0 = w, y0 = h, x1 = -1, y1 = -1;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        if (d[(y * w + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      }
+      return x1 < 0 ? null : { x0: x0 / w, x1: (x1 + 1) / w, y0: y0 / h, y1: (y1 + 1) / h };
+    } catch (e) { return null; }
+  };
   const look = () => {
     const st = document.querySelector('[data-cx-stage]');
     if (!st) return;
@@ -180,6 +201,30 @@ const watchStage = (P, ms) => P.page.evaluate((ms) => new Promise((resolve) => {
     const st = document.querySelector('[data-cx-stage]');
     if (!st || st.dataset.cxReady !== '1') return;
     const hero = st.querySelector('.bt-cx-hero');
+    /* inside the frame: the stage's box less its border */
+    const so = st.getBoundingClientRect();
+    const box = { l: so.left + st.clientLeft, t: so.top + st.clientTop };
+    box.r = box.l + st.clientWidth; box.b = box.t + st.clientHeight;
+    const ground = box.b - (parseFloat(st.style.getPropertyValue('--cx-ground')) || 0);
+    const past = (R) => Math.max(0, box.l - R.l, R.r - box.r, box.t - R.t, R.b - box.b);
+    const ph = st.dataset.cxPhase;
+    const cv = hero && hero.querySelector('canvas');
+    if (cv && !fig) fig = figOf(cv);
+    if (cv && fig) {
+      const cr = cv.getBoundingClientRect(), wr = cv.parentElement.getBoundingClientRect();
+      const R = { l: Math.max(wr.left, cr.left + fig.x0 * cr.width), r: Math.min(wr.right, cr.left + fig.x1 * cr.width),
+        t: Math.max(wr.top, cr.top + fig.y0 * cr.height), b: Math.min(wr.bottom, cr.top + fig.y1 * cr.height) };
+      const o = past(R);
+      if (o > heroOut) { heroOut = o; outAt = 'hero ' + ph; }
+      if (ph === 'idle') heroFeet = Math.round((ground - R.b) * 10) / 10;
+    }
+    for (const sp of st.querySelectorAll('.bt-cx-mon .bt-cx-strip')) {
+      const r = sp.getBoundingClientRect();
+      const R = { l: r.left + (+sp.dataset.cxX0 || 0) * r.width, r: r.left + (+sp.dataset.cxX1 || 1) * r.width, t: r.top + (+sp.dataset.cxTop || 0) * r.height, b: r.bottom };
+      const o = past(R);
+      if (o > monOut) { monOut = o; outAt = 'monster ' + ph; }
+      if (ph === 'idle') monFeet = Math.round((ground - R.b) * 10) / 10;
+    }
     const strip = st.querySelector('.bt-cx-mon .bt-cx-strip');
     if (!hero || !strip) return;
     const hr = hero.getBoundingClientRect(), sr = strip.getBoundingClientRect();
@@ -194,7 +239,8 @@ const watchStage = (P, ms) => P.page.evaluate((ms) => new Promise((resolve) => {
     mo.disconnect(); clearInterval(iv); look();
     const st = document.querySelector('[data-cx-stage]');
     resolve({ phases: [...seen], ready, pops: [...pops], labels: [...labels], zones: [...zones], strips: st ? st.querySelectorAll('.bt-cx-strip').length : 0,
-      shots, gap: Number.isFinite(gap) ? Math.round(gap) : null, gapAt });
+      shots, gap: Number.isFinite(gap) ? Math.round(gap) : null, gapAt,
+      out: Math.round(Math.max(heroOut, monOut) * 10) / 10, outAt, heroFeet, monFeet, fig: !!fig });
   }, ms);
 }), ms);
 
@@ -254,6 +300,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const dOff = Object.keys(want).filter((k) => !d1[k] || d1[k][0] !== want[k][0] || d1[k][1] !== want[k][1]);
     rec.ok(`...and its drop table from the first kill -- ITEM, TYPE, CHANCE: ${Object.keys(d1).map((k) => k + ' ' + d1[k][0]).join(', ')}`,
       Object.keys(d1).length === 10 && dOff.length === 0, { d1, dOff });
+    /* the owner: "The drops table needs a different background so the
+       information can stand out more from the dashboard background. Maybe
+       black?" -- its panel is near-black, well darker than the sheet */
+    const wells = await P.page.evaluate(() => {
+      const lum = (c) => { const m = String(c).match(/[\d.]+/g); if (!m) return null; const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(+m[0]) + 0.7152 * f(+m[1]) + 0.0722 * f(+m[2]); };
+      const p = document.querySelector('[data-cx-drops-panel]'), d = document.querySelector('.bt-dashboard');
+      let sheet = null;
+      for (let e = p && p.parentElement; e && !sheet; e = e.parentElement) { const bg = getComputedStyle(e).backgroundColor; if (bg && !/rgba\(0, 0, 0, 0\)|transparent/.test(bg)) sheet = bg; }
+      return { panel: p ? getComputedStyle(p).backgroundColor : null, sheet: sheet || (d ? getComputedStyle(d).backgroundColor : null),
+        lp: p ? lum(getComputedStyle(p).backgroundColor) : null, ls: lum(sheet || (d ? getComputedStyle(d).backgroundColor : '')) };
+    });
+    rec.ok(`...on a near-black panel of its own (${wells.panel}, the sheet behind it ${wells.sheet})`,
+      wells.lp != null && wells.ls != null && wells.lp < 0.006 && (wells.ls + 0.05) / (wells.lp + 0.05) >= 1.3, wells);
     await P.page.screenshot({ path: join(OUT, 'codex-1-snowman.png') });
     const fr1 = await codex(P);
     rec.ok('...and opening it clears its NEW', !(fr1.fresh && fr1.fresh.snowling), fr1.fresh);
@@ -299,6 +358,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('Info, from the one kill: what it does, its element, its special attack, its story and its elder form all open', f1.page && f1.element && f1.special && f1.story && f1.elder, f1);
     rec.ok(`...its stage loads and plays its throw AND its special: ${w1.labels.join(', ') || 'no word'} (${w1.phases.join(' > ')}), its hit saying ${w1.pops.join(', ')}`,
       w1.ready && ['throw', 'fly', 'impact', 'burrow', 'pile', 'touch', 'emerge'].every((p) => w1.phases.includes(p)) && w1.labels.includes('BURROW!') && w1.pops.some((p) => /^frost:.*Chill/.test(p)), w1);
+    /* the owner: "the animation shows the player and monster in a layer above
+       the container they're supposed to be in and the bottom of the characters
+       are visible on the dashboard container" -- both stand ON the stage's
+       ground strip and never get past its frame; and the causes: the stage is
+       its own stacking context and nothing in it asks for a layer of its own */
+    const causes = await P.page.evaluate(() => {
+      const st = document.querySelector('[data-cx-stage]');
+      const cs = (sel) => { const e = st && st.querySelector(sel); return e ? getComputedStyle(e).willChange : null; };
+      return { isolation: st ? getComputedStyle(st).isolation : null, overflow: st ? getComputedStyle(st).overflow : null, hero: cs('.bt-cx-hero'), mon: cs('.bt-cx-mon'),
+        border: st ? getComputedStyle(st).borderTopColor : null };
+    });
+    rec.ok(`...your character and the snowman stand on its ground strip (boots ${w1.heroFeet} px, its feet ${w1.monFeet} px above it) and never get past its frame (${w1.out} px at most)`,
+      w1.fig && w1.heroFeet != null && Math.abs(w1.heroFeet) <= 1.5 && w1.monFeet != null && Math.abs(w1.monFeet) <= 1.5 && w1.out <= 0.5
+        && causes.isolation === 'isolate' && causes.overflow === 'hidden' && causes.hero === 'auto' && causes.mon === 'auto', { w1: { heroFeet: w1.heroFeet, monFeet: w1.monFeet, out: w1.out, outAt: w1.outAt, fig: w1.fig }, causes });
     await P.page.evaluate(() => { const b = document.querySelector('[data-cx-elder-toggle="1"]'); if (b) b.click(); });
     await P.page.waitForTimeout(400);
     const elderName = await P.page.evaluate(() => { const n = document.querySelector('[data-cx-name]'); return n ? n.innerText : ''; });
@@ -344,7 +417,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(300);
       const backAt = await boxLook(P, `[data-cx-card="${kind}"]`);
       every.push({ kind, ok, ready: w.ready, special: w.phases.includes(SPECIAL_PHASE[kind]), phases: w.phases, labels: w.labels, pops: w.pops,
-        zones: w.zones, shots: w.shots, gap: w.gap, gapAt: w.gapAt, drops: dr, loc: lc, type, listTop, openTop: opened && opened.top, backSeen: backAt && backAt.seen, backTop: backAt && backAt.top });
+        zones: w.zones, shots: w.shots, gap: w.gap, gapAt: w.gapAt, drops: dr, loc: lc, type, listTop, openTop: opened && opened.top, backSeen: backAt && backAt.seen, backTop: backAt && backAt.top,
+        out: w.out, outAt: w.outAt, heroFeet: w.heroFeet, monFeet: w.monFeet });
     }
     rec.ok(`every page's kind is its body's: ${every.map((e) => e.kind + ' ' + e.type).join(', ')}`,
       every.every((e) => e.type === TYPES[e.kind]), every.map((e) => ({ kind: e.kind, type: e.type, want: TYPES[e.kind] })));
@@ -393,6 +467,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       thrown.length >= 5 && thrown.every((e) => e.shots.every((x) => x === 'in' || x === 'ball')), thrown.map((e) => ({ kind: e.kind, shots: e.shots })));
     rec.ok(`...and no monster ever stands over your character (nearest ${Math.min(...every.map((e) => (e.gap == null ? 99 : e.gap)))} px from its middle)`,
       every.every((e) => e.gap != null && e.gap >= 0), every.map((e) => e.kind + ' ' + e.gap + ' at ' + e.gapAt));
+    rec.ok(`...on every stage both stand on the ground strip and nothing gets past the frame (${every.map((e) => e.kind + ' ' + e.out + (e.outAt ? ' (' + e.outAt + ')' : '')).join(', ')})`,
+      every.every((e) => e.out != null && e.out <= 0.5 && e.heroFeet != null && Math.abs(e.heroFeet) <= 1.5 && e.monFeet != null && Math.abs(e.monFeet) <= 1.5),
+      every.map((e) => ({ kind: e.kind, out: e.out, outAt: e.outAt, heroFeet: e.heroFeet, monFeet: e.monFeet })));
 
     /* ── 8 ── */
     await H.closeDest(P).catch(() => {});

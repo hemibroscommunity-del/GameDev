@@ -37,9 +37,18 @@ import { PetPortrait } from '@/ui/petPortrait.jsx';
  * onto this stage's own copies of its strips, revoked when it closes. */
 
 const STAGE_H = 150;
-const GROUND = 9;                 /* the ground line, px from the stage's bottom */
+/* the top of the stage's ground strip, px from its bottom, where every foot
+   stands (game.css --cx-ground draws the strip this tall) -- was a line 9 px
+   up, the feet a tint the colour of the dashboard behind them */
+const GROUND = 16;
 const HERO_SIZE = 120;
-const HERO_LEFT = 10;
+/* far enough in that a gust's shove (game.css bt-cx-shove, 18 px) keeps your
+   figure inside the frame -- at 10 it put three of its px past the left edge */
+const HERO_LEFT = 18;
+/* your figure's boots, px above its canvas's bottom, until the figure says
+   where it drew them (`onDrawn`, __btFigure): the old -4 put them on the
+   stage's edge */
+const HERO_FEET = 4;
 const HERO_X = HERO_LEFT + Math.round(cropWidth(HERO_SIZE) / 2);   /* the hero's middle */
 const MON_X = 236;                /* where the monster's feet stand, px from the left */
 const IDLE_MS = 1500;
@@ -248,16 +257,24 @@ function geom(L) {
   return { k, cx, half, reach, near: reach + Math.round(half * (SWELL - 1)) + 4 };
 }
 
-/* one strip, standing on the ground line with its art's middle on the spot */
+/* one strip, standing on the ground line with its art's middle on the spot
+   (the body it is in stands on the strip's edge: game.css bt-cx-body) --
+   its box CUT at the art's lowest row (`ground`), so it ends on the ground
+   strip's edge instead of hanging its empty rows below the stage: nothing
+   below that row is drawn (the row was measured as the art's lowest), and a
+   box that never leaves the stage cannot be drawn outside it.  data-cx-x0/x1/
+   top say where the art is in the box, for the phone test. */
 function Strip({ L, s, url, loop, k, cx }) {
   if (!s || !url) return null;
   const px = Math.round(L.cell * k);
+  const h = Math.round((s.ground + 1) * k);
   const steps = s.n >= 2 && !s.still;
+  const top = Math.max(0, s.ground + 1 - L.artRows) / (s.ground + 1);
   return (
-    <span className="bt-cx-strip" data-cx-x0={(L.x0 / L.cell).toFixed(3)}
+    <span className="bt-cx-strip" data-cx-x0={(L.x0 / L.cell).toFixed(3)} data-cx-x1={(L.x1 / L.cell).toFixed(3)} data-cx-top={top.toFixed(3)}
       style={{
-        width: px, height: px, left: -Math.round(cx * k),
-        bottom: GROUND - Math.round((L.cell - 1 - s.ground) * k),
+        width: px, height: h, left: -Math.round(cx * k),
+        bottom: 0,
         backgroundImage: `url(${url})`, backgroundSize: `${s.n * px}px ${px}px`,
         '--sd-strip': -((s.n - 1) * px) + 'px',
         animation: steps ? `bt-sd-strip ${Math.max(60, s.ms)}ms steps(${s.n}, jump-none) ${loop ? 'infinite' : '1 forwards'}` : 'none',
@@ -288,6 +305,15 @@ export function CodexStage({ kind, facts, elder, S }) {
   const st = CODEX_STAGE[kind];
   const urls = useStageStrips(kind, elder);
   const [beat, setBeat] = React.useState({ b: null, n: 0 });
+  /* your figure's box stands with its boots on the ground strip's edge: where
+     the portrait drew them (as StatDemo plants its fighter) */
+  const [heroFeet, setHeroFeet] = React.useState(HERO_FEET);
+  const onHeroDrawn = React.useCallback((cv) => {
+    const f = cv && cv.__btFigure;
+    if (!f || !(f.px > 0) || !f.feet) return;
+    const up = Math.round(HERO_SIZE - f.feet[1] * (HERO_SIZE / f.px));
+    if (up >= 0 && up < HERO_SIZE / 2) setHeroFeet(up);
+  }, []);
   const factsKey = facts.join(',');
   const ready = !!urls;
   React.useEffect(() => {
@@ -329,7 +355,7 @@ export function CodexStage({ kind, facts, elder, S }) {
 
   return (
     <div className="bt-cx-stage" data-cx-stage={kind} data-cx-phase={b.p} data-cx-ready={urls ? 1 : 0}
-      style={{ '--cx-land': (land && land.color) || '#3a4a50' }}>
+      style={{ '--cx-land': (land && land.color) || '#3a4a50', '--cx-ground': GROUND + 'px' }}>
       {/* everything that moves, in one layer the world's kick shakes (never
           two shakes in a row, so the class coming back restarts it -- a key
           would remount your character) */}
@@ -338,9 +364,10 @@ export function CodexStage({ kind, facts, elder, S }) {
         <i key={'z' + beat.n} className="bt-cx-zone" data-cx-zone={st.special}
           style={{ left: HERO_X, bottom: GROUND - 10, '--cx-zone': b.zone, '--cx-zone-ms': b.ms + 'ms' }} />
       )}
-      <div key={'h' + ((b.hit || b.swing) ? beat.n : 0)}
-        className={'bt-cx-hero' + (b.hit ? (shove ? ' bt-cx-hero--shove' : ' bt-cx-hero--hit') : '') + (b.swing ? ' bt-cx-hero--swing' : '')}>
-        <CharacterView size={HERO_SIZE} weapon={R ? getActiveWeapon(R) : null} shield={!!(R && R.shield)} crop dir="east" />
+      <div key={'h' + ((b.hit || b.swing) ? beat.n : 0)} data-cx-hero-feet={heroFeet}
+        className={'bt-cx-hero' + (b.hit ? (shove ? ' bt-cx-hero--shove' : ' bt-cx-hero--hit') : '') + (b.swing ? ' bt-cx-hero--swing' : '')}
+        style={{ left: HERO_LEFT, bottom: GROUND - heroFeet }}>
+        <CharacterView size={HERO_SIZE} weapon={R ? getActiveWeapon(R) : null} shield={!!(R && R.shield)} crop dir="east" onDrawn={onHeroDrawn} />
       </div>
       {/* two layers: the outer one walks (an inline transform and its
           transition), the inner one moves on the spot (a wind-up, a slam, a
@@ -351,7 +378,7 @@ export function CodexStage({ kind, facts, elder, S }) {
         <div key={'m' + (b.cls && b.cls !== 'breathe' ? beat.n : 0)} className={'bt-cx-body' + (b.cls ? ' bt-cx-body--' + b.cls : '')}>
           {body}
           {!urls && (
-            <span className="bt-cx-portrait" style={{ left: -Math.round(L.artH * 0.55), bottom: GROUND - 2 }}>
+            <span className="bt-cx-portrait" style={{ left: -Math.round(L.artH * 0.55), bottom: -2 }}>
               <PetPortrait pet={{ kind, stage: elder ? 2 : 1 }} size={Math.round(L.artH * 1.1)} />
             </span>
           )}

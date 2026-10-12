@@ -6320,17 +6320,34 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
    strips (stepped by bt-sd-strip, the preview's keyframes), every motion
    CSS.  The monster is two layers: .bt-cx-mon walks (an inline transform and
    its transition), .bt-cx-body moves on the spot (one transform each). */
-.bt-cx-stage{position:relative;width:300px;max-width:100%;height:150px;margin:0 auto;overflow:hidden;border-radius:10px;background:#111E23;border:1px solid rgba(229,237,233,.08)}
-.bt-cx-stage::before{content:"";position:absolute;left:0;right:0;bottom:0;height:40px;background:var(--cx-land,#3a4a50);opacity:.2;pointer-events:none}
-.bt-cx-stage::after{content:"";position:absolute;left:0;right:0;bottom:9px;height:1px;background:rgba(229,237,233,.09);pointer-events:none}
-.bt-cx-hero{position:absolute;left:10px;bottom:-4px;line-height:0;will-change:transform}
+/* v2.3.3191: ONE BOX, AND EVERYONE STANDS INSIDE IT -- the owner, of the first
+   look: "the animation shows the player and monster in a layer above the
+   container they're supposed to be in and the bottom of the characters are
+   visible on the dashboard container".  Its bottom 40 px were the land's tint
+   over the stage at .2 -- the dashboard's own slate -- with the feet on a line
+   9 px up and your boots on the box's very edge, so the two stood half out of
+   a dark box onto the dashboard.  Now: a near-black scene in a frame you can
+   see, a GROUND STRIP of the land's colour exactly --cx-ground tall
+   (CodexStage.jsx GROUND) with a bright top edge, and every foot on that edge
+   (yours placed by the figure's own feet).  Isolated, its strip and edge
+   painted under everything (z-index -1), and nothing in it composited for good
+   (no will-change): nothing drawn here can paint outside the frame or over the
+   dashboard, on a phone whose compositor clips what this box holds or not. */
+.bt-cx-stage{position:relative;width:300px;max-width:100%;height:150px;margin:0 auto;overflow:hidden;border-radius:10px;
+  background:linear-gradient(#0C161B,#05090B);border:1px solid rgba(229,237,233,.24);isolation:isolate}
+.bt-cx-stage::before{content:"";position:absolute;z-index:-1;left:0;right:0;bottom:0;height:var(--cx-ground,16px);background:var(--cx-land,#3a4a50);opacity:.3;pointer-events:none}
+.bt-cx-stage::after{content:"";position:absolute;z-index:-1;left:0;right:0;bottom:calc(var(--cx-ground,16px) - 1px);height:1px;background:var(--cx-land,#3a4a50);opacity:.75;pointer-events:none}
+.bt-cx-hero{position:absolute;line-height:0}
 .bt-cx-hero--hit{animation:bt-cx-flinch .38s ease-out 1}
 .bt-cx-hero--shove{animation:bt-cx-shove .6s ease-out 1}
 .bt-cx-hero--swing{animation:bt-sd-lunge .34s ease-out 1}
 @keyframes bt-cx-flinch{0%{transform:translateX(0);filter:none}25%{transform:translateX(-6px);filter:brightness(1.7)}100%{transform:translateX(0);filter:none}}
 @keyframes bt-cx-shove{0%{transform:translateX(0)}30%{transform:translateX(-18px)}100%{transform:translateX(0)}}
-.bt-cx-mon{position:absolute;bottom:0;width:0;height:0;will-change:transform}
-.bt-cx-body{position:absolute;left:0;bottom:0;width:0;height:0;transform-origin:0 100%}
+.bt-cx-mon{position:absolute;bottom:0;width:0;height:0}
+/* v2.3.3191: the body stands ON the ground strip, so every scale of it (a
+   swell, the burst, a throb) grows from the feet -- from the stage's bottom
+   edge the blue slime's 2.4x burst came out 10 px past the frame's top */
+.bt-cx-body{position:absolute;left:0;bottom:var(--cx-ground,0px);width:0;height:0;transform-origin:0 100%}
 .bt-cx-strip{position:absolute;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;pointer-events:none}
 .bt-cx-portrait{position:absolute;opacity:.92;pointer-events:none}
 .bt-cx-body--breathe{animation:bt-cx-breathe 1.8s ease-in-out infinite}

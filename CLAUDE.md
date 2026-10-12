@@ -1927,7 +1927,11 @@ remnant to migrate server-side, not a mode to preserve.
       (`CodexStage.jsx`, `data/codexStage.js`): its own strips, loaded when
       the Info tab opens and freed when it closes (the owner's call to
       confirm: ~20 MB for all nine preloaded), the world's wind-ups and
-      warning circles;
+      warning circles; a near-black scene in a frame, everyone standing ON
+      its land-coloured ground strip and nothing ever past the frame (the
+      owner saw them "in a layer above the container", feet "visible on the
+      dashboard container"; `GROUND`, `onDrawn` feet, strips cut at their
+      feet, isolated, no `will-change`); the Drops table on near-black too;
     - the drop table (`data/codexDrops.js`) prints the worker's own rolls --
       `SHARD_MONSTER_DROP`, `monsterWeaponDropOdds` (data.js),
       `WEAPON_QUALITY_ODDS` (hardening.js) -- and mirror-audit holds it to
