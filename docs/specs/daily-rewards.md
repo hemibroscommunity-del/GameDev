@@ -51,6 +51,15 @@ Nothing opens on login. Each of the three layers lives in its own place.
   fairground wheel's are. The real odds are the server's weights.
 - One free spin each UTC day. The button counts down to the next one: "Next
   free spin in 7h 12m".
+- **Since v2.3.3181 the spin opens with Mayor Bro's first quest (`tut_1`)**,
+  as the daily quests do. A character is free to make, and a spin a day for
+  one that had done nothing (144 coins on average, 1 in 1,000 the 10,000
+  jackpot) was gold for every throwaway. Until then the window says "Hand in
+  Mayor Bro's first quest to unlock the free spin", its button "Unlocks with
+  the first quest"; the Daily Rewards window's spin row and the Quests tab's
+  card don't call it ready. Only a NEW run waits: a pot already open is still
+  doubled or taken. The day's free spin isn't used up by waiting -- hand in
+  `tut_1` and that day's spin is there.
 - **Bonus spins** start extra runs. You get them by finishing all three daily
   quests and from the season. The button says "Use a bonus spin (2)".
 - The **login streak** raises every prize by 10% a day past the first, up to
@@ -273,14 +282,14 @@ settled, or null on a second login the same day.
 | c→s | `daily_spin` | `{act, opId}` | `act` `spin` (today's free spin, else a bonus spin; refused while a pot is open), `double` (double or nothing on the open pot) or `collect` (take it); no act is a spin |
 | c→s | `daily_reroll` | `{i}` | slot 0–2, exact integer; once a day; not a finished quest |
 | c→s | `season_claim` | `{tier}` or `{all: true}` | exact integer tier, reached and unclaimed |
-| s→c | `rewards_state` | `{now, resetAt, spin, streak, dq, season, news, kept?}` | PRIVILEGED; after `player_state` on join, and after every change. `spin` is `{on, ready, open, pot, k, i, canDouble, limit, chance, mult, prizes: [{c, w}], extra}`; `kept` is a pot paid at the day's end |
+| s→c | `rewards_state` | `{now, resetAt, spin, streak, dq, season, news, kept?}` | PRIVILEGED; after `player_state` on join, and after every change. `spin` is `{on, ready, locked, open, pot, k, i, canDouble, limit, chance, mult, prizes: [{c, w}], extra}` (`locked` 1 until `tut_1` is handed in, v2.3.3181); `kept` is a pot paid at the day's end |
 | s→c | `daily_progress` | `{i, n, g}` | PRIVILEGED; a quest's count between two states |
 
 `news` kinds:
 
 | Kind | Fields |
 |---|---|
-| `spin` | `act`, then for `spin`: `started`, `i`, `lump`, `pot`, `mult`, `jackpot`; for `double`: `won`, `k`, `pot`, `lost`; for `collect`: `paid`, `k`; `paid` and `top` when the house limit paid it; or `refused` (`none`, `open`, `closed`, `limit`) |
+| `spin` | `act`, then for `spin`: `started`, `i`, `lump`, `pot`, `mult`, `jackpot`; for `double`: `won`, `k`, `pot`, `lost`; for `collect`: `paid`, `k`; `paid` and `top` when the house limit paid it; or `refused` (`none`, `open`, `closed`, `limit`, and since v2.3.3181 `locked`: a new run before `tut_1`) |
 | `daily` | `i`, `t`, `p`, `coins`, `stars`, `all` |
 | `reroll` | `i` |
 | `claim` | `tiers`, `grants` |
