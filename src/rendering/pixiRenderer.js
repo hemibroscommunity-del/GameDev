@@ -23,6 +23,7 @@ import { setMonsterDeathRenderer } from './monsterDeathFx.js';   /* v2.3.2913 */
 import { setArrowWoundRenderer } from './arrowWound.js';   /* v2.3.2923 */
 import { LightFx, setLightFx, lightFxOn } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1; v2.3.2904: + lightFxOn for the loading-screen warm */
 import { sweepTexturePool } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool lets go of what it does not use */
+import { healAfterRenderThrow } from './renderHeal.js'; /* v2.3.3152: a frame that throws does not leave the screen black */
 import { setSheen, prewarmGlintPipe } from './lightfx/glint.js'; /* v2.3.2864: the permanent soft metal shine, behind ?sheen=1; v2.3.2887: on for everyone, ?sheen=0 turns it off; v2.3.2904: its shader built behind the loading screen */
 import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
 import { setWorldCasts } from './lightfx/casters.js'; /* v2.3.2749: QA before/after of the world's shadows */
@@ -552,6 +553,10 @@ export async function initPixiRenderer(canvas) {
     try { app.render(); update._renderStreak = 0; }
     catch (e) {
       update._renderStreak = (update._renderStreak || 0) + 1;
+      /* v2.3.3152: Pixi's masks and filters put back to "nothing open", or the
+         stencil test the throw left on draws nothing every frame after it --
+         a black screen until the watchdog's rebuild (renderHeal.js) */
+      try { healAfterRenderThrow(app.renderer); } catch (eh) { /* never */ }
       if (!update._renderErr) {
         update._renderErr = true;
         /* v2.3.2975: and WHAT it tripped on -- "reading 'alphaMode'" is a

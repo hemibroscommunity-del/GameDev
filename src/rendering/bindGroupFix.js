@@ -21,8 +21,10 @@
  *   5. the next sprite mask anywhere (a hood over the hair, the next cut
  *      monster) takes that filter from the pool, sets `inverse`, reads the
  *      dead bind group, and the frame is not drawn.  One frame for every
- *      poisoned filter in the pool: a flicker, or a black flash, after a big
- *      fight, each time you leave a land or a dungeon.
+ *      poisoned filter in the pool after a big fight, each time you leave a
+ *      land or a dungeon -- and, as a cut monster's sprite mask sits inside a
+ *      polygon mask, a screen left BLACK: on main the leak hunt read 0% lit
+ *      for 22 s, until the watchdog's rebuild (renderHeal.js, TRAPS §144).
  *
  * The same shape waits anywhere Pixi keeps a shared shader that was last
  * drawn with a picture the game later frees (the mesh pipe's default shader

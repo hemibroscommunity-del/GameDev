@@ -1092,6 +1092,17 @@ remnant to migrate server-side, not a mode to preserve.
       ground, 9-56% without. A part of the Wheel drawn dark on purpose (a
       night, the Dark realm) lowers it first. TRAPS §142, `mp-bareground`
       (the `wheelGround` container hidden through `window._pixiRenderer`).
+    - since v2.3.3152 A FRAME THAT THROWS DOES NOT LEAVE THE SCREEN BLACK --
+      found by a leak hunt, which made the owner's black screen on main: after
+      a Great Cave trip one frame threw (Pixi's pooled mask filter; TRAPS
+      §143, `bindGroupFix.js`) inside a polygon mask, and Pixi KEPT that
+      mask's stencil test on for every frame after -- 0% lit for 22 s, until
+      the watchdog's rebuild. Pixi carries its stencil-mask depth, each render
+      target's stencil mode, the colour mask and the filter stack from frame
+      to frame, so whenever app.render throws, pixiRenderer now puts them
+      back to "nothing open" (`src/rendering/renderHeal.js`; `?noheal` to
+      compare) and the next frame draws. TRAPS §144, `mp-renderheal` (the
+      throw made as it happened, with `bindfix=0`; `noheal` shows the black).
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:

@@ -5554,8 +5554,10 @@ pooled filter nobody destroyed.  The next sprite mask anywhere that takes that
 filter from the pool sets `inverse`, reads the dead group, and app.render
 throws ("Cannot read properties of null (reading '0')" at
 BindGroup.getResource <- MaskFilter set inverse <- AlphaMaskPipe.execute):
-one frame not drawn for every poisoned filter, a flicker or a black flash
-after a big fight each time you leave a land or a dungeon.  Found by the leak
+a frame not drawn for every poisoned filter after a big fight, each time you
+leave a land or a dungeon -- and when the sprite mask sat inside a polygon
+mask, as a cut monster's does, a screen left BLACK until the watchdog's
+rebuild (§144).  Found by the leak
 hunt on its second Great Cave trip: a cut monster's death (monsterDeathFx.js)
 masks its keyline with a sprite of the monster's own picture, and leaving the
 cave freed the rock monsters' art.
@@ -5586,3 +5588,28 @@ handed back wearing `TexturePool.textureStyle`, shared by every pooled text,
 and destroying a source destroys its sampler).  And it only runs with the
 bind-group fix on: the filter system's own bind group keeps its last input
 texture.
+
+## 144. "One frame threw, so one frame was lost" (v2.3.3152)
+
+app.render throwing is caught (pixiRenderer.js), logged, and the next frame
+runs -- so a throw reads as one dropped frame, and a run of them as a few.
+It is not, when the frame threw between a push and its pop.  Pixi keeps some
+of its drawing state from one frame to the next: the stencil masks' depth per
+render target (StencilMaskPipe `_maskStackHash`), the stencil mode each
+target puts back when it is drawn to again (GlStencilSystem
+`_renderTargetStencilState`), the colour mask, the filter stack's depth
+(FilterSystem `_filterStackIndex`) and the sprite masks in flight
+(AlphaMaskPipe `_activeMaskStage`).  A throw inside a polygon mask -- a cut
+monster's death nests a sprite mask inside one -- left the screen's stencil
+test on, at a reference nothing on the freshly cleared stencil matches, so
+every frame after drew nothing at all.  Made on main by the leak hunt: 0% lit
+for 22 s, until the watchdog's rebuild (v2.3.3017, v2.3.3151) -- the owner's
+"the screen went black".  The rebuild is the only thing that ended it.
+
+**The rule.**  Since v2.3.3152 every app.render throw is followed by
+`healAfterRenderThrow` (`src/rendering/renderHeal.js`), which puts those back
+to "nothing open"; the next frame draws whatever threw or not.  The watchdog
+stays the floor for a screen that goes dark any other way.  A new Pixi with
+other state carried across frames needs adding there -- mp-renderheal makes a
+throw inside a mask (with `bindfix=0`) and fails if the screen does not come
+back lit, and with `noheal` shows the black screen it prevents.
