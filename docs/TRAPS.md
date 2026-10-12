@@ -5538,3 +5538,113 @@ And make the failure itself in a test, not only the total blackout:
 mp-glrestore hides the whole stage, which no partial reset looks like.
 mp-bareground hides just the ground (the `wheelGround` container, found
 through `window._pixiRenderer`), and on main the watchdog sits through it.
+
+## 145. "A swap is just a swap" (v2.3.3160)
+
+**The plausible move.** `equip_request {stashIdx, slot}` swapped a weapon-bag
+entry with whatever slot `_isValidEquipSlot` knew, armour, shield and amulet
+included. The client says which two places, the server exchanges what is
+there.
+
+**Why it is wrong.** The two containers hold different things under
+different trust. The armour slot can hold a DESCRIBED piece (stats_update's
+legacy lane: anything armour-shaped, tierMult clamped and nothing else). The
+weapon bag is where salvage, the vendor, the market, the auction house, the
+trade window and the hand all take entries as server-made. So a description
+of a "Godly Iron Greatsword" went into the armour slot, across into the bag,
+and out of salvage as 2 iron bars and a Godly essence that Diego buys for
+125,000, once per 8-gold wooden sword. Equipped, it was a tierMult-8 Godly
+weapon. The honest client never sends either swap, which is how it survived
+review after review.
+
+**The rule.** A verb that moves an item between two containers checks that
+the item belongs in BOTH, and that the slot fits the item (a bow in the bow
+slot), whatever the client names. Where a container's entries are trusted
+downstream, every way IN is a gate: grep every writer of the container
+(gear.js `_isWeaponSlot`, `_weaponSlotFor`, `_isGearNotWeapon`). And let
+marks speak: the gear ledger's `gid` / `prov` are never on a weapon, so a
+"weapon" carrying one is gear.
+
+## 146. "The oplog makes it idempotent" (v2.3.3162)
+
+**The plausible move.** A payout carries a deterministic opId (rule 5), so a
+second payout is a "dup". The record that says it was paid can be saved
+whenever.
+
+**Why it is wrong.** oplog stamps are pruned after 48 hours
+(`_opPruneMaybe`). The daily rewards' turn-over paid yesterday's open spin pot
+and a finished season's tiers. Three acts (a refused double or collect, an
+empty reroll, an empty season claim) then returned without saving the
+turned-over record. Nothing marked it dirty, the close forgot the cached
+copy, and the next join turned the STORED day over again. That was a "dup"
+for two days, and then it paid again: a 40,000 pot paid 80,000, and a
+season's track paid twice. Its freezes had no stamp at all.
+
+**The rule.** The oplog stops a retry inside 48 hours; it is not the record.
+The state that says "paid" is saved in the same run as the payment, by every
+caller. A function that pays marks its own record dirty
+(dailyrewards.js `_drRollover`), so a caller that forgets is caught by the
+tick or the close.
+
+## 147. "Stamp first, then debit" (v2.3.3165)
+
+**The plausible move.** `_escrowDebitGold` / `_escrowTakeItem` stamped the
+opId (awaited) and then debited and saved. With the stamp first, a retry can
+never charge twice.
+
+**Why it is wrong.** That is two batches. A restart between them (every
+server merge restarts the room) left "paid" with nothing taken, and the
+auction house's wake-time rebuild takes that stamp as proof of payment. In a
+simulated restart a 900-gold buy settled while the buyer kept his 1,000, and
+an outbid refund paid back 500 that had never been taken.
+
+**The rule.** A debit and its stamp are one write: mutate, `_saveRpg`,
+`_opStamp`, all issued before any await (rule 8's single mutation), then
+await. Both land or neither does, and a stamp can never stand for a payment
+that did not happen. inbox.test's crash storage (it drops every put after a
+named key) is the way to test it.
+
+## 148. "The row exists, so the player can sell it" (v2.3.3164)
+
+**The plausible move.** The gear ledger's row is the proof a piece is yours
+(`_gearSellable`), so a row is enough to list it.
+
+**Why it is wrong.** A row proves where a piece CAME FROM, not where it IS.
+The worn amulet listed and sold while it stayed on the neck, its gem still in
+the server's damage roll. An amulet the forge had replaced kept its row and
+sold. The shield that shield_wear had put on the arm sold and stayed on it.
+In each case one piece ended up in two places.
+
+**The rule.** For every slot where the server can know, a sell gate asks two
+questions: is the piece WORN (refuse), and is it HELD (refuse if not). A
+ledger row answers neither. Where the server cannot know (a shield before
+the game has reported the arm), it says so rather than guessing (§ the a2
+test in gearprov.test).
+
+## 149. "The slot tells you what the weapon is" (v2.3.3161)
+
+**The plausible move.** Hardening a bow or staff takes hardened wood and a
+sword takes bars. What sits in the bow or staff slot is a bow or staff, so
+decide by the slot.
+
+**Why it is wrong.** The slot is whatever the client named, and a sword could
+be put there. It was then hardened with cheap wood instead of its bars.
+
+**The rule.** Decide by the item's own fields, never by the container the
+client named. hardening.js `hardenIsWood` checks for a `ww_` gearBase or a
+bow or staff TYPE, and uses the slot only for a legacy weapon with no type.
+
+## 150. "The dead are never at his counter, so his counter needs no check" (v2.3.3163)
+
+**The plausible move.** A new counter (Diego's buy and sell) is written from
+its own needs. A dying player is in the wilds, nowhere near the shop.
+
+**Why it is wrong.** The server does not check where a player stands, so
+"nowhere near" is not a guard. A dying player bought, and the respawn wiped
+the purchase. And every refused trade was broadcast to the whole room with
+no rate limit: 200 refusals sent 200 copies of the pile to each bystander.
+
+**The rule.** A new value-moving handler copies the full preamble its
+siblings have (`ps.dying || ps.dead || ps.disconnected`, the gear lock, a
+cooldown). Only a change that happened is news to everyone; a refusal
+answers the asker.
