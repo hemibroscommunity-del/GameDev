@@ -10,8 +10,17 @@
  * pile one player fills is the pile another player sees.
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
-import { SHOP } from '../src/shop.js';
+import { SHOP, isShopPotion, isCookhouseDish, isCookedFood } from '../src/shop.js';
 import { SHOP_ITEMS } from '../src/data.js';   /* v2.3.2063: his staple shelf */
+/* v2.3.3184: every key the game mints, read out of the tables that mint them */
+import * as DATA from '../src/data.js';
+import { SMELT } from '../src/smelting.js';
+import { HARDENED_WOOD } from '../src/hardenedwood.js';
+import { TRAPPING } from '../src/trapping.js';
+import { FARM } from '../src/farm.js';
+import { SALVAGE, essenceKey } from '../src/salvage.js';
+import { CHEST } from '../src/dailychest.js';
+import { EVENT_CAPES, capeItemKey } from '../src/eventcapes.js';
 
 function makeState() {
   const store = new Map();
@@ -200,12 +209,101 @@ check('...at a price that reflects what the item is worth, not a flat default',
 check('...and below what he charges for it, so flipping is a loss',
   qw.buy < room._shopSellPrice('ore_copper'), { buy: qw.buy, sell: room._shopSellPrice('ore_copper') });
 /* The key list arrives from a client, so it is bounded and type-checked. */
-const junk = await room._shopList([123, null, {}, 'x'.repeat(500), 'ok_key']);
+/* v2.3.3184: a real key -- 'ok_key' has no price now, and he quotes nothing
+   he has no price for */
+const junk = await room._shopList([123, null, {}, 'x'.repeat(500), 'ore_iron_ore']);
 check('a malformed quote list is filtered rather than trusted',
-  junk.items.some((i) => i.key === 'ok_key')
+  junk.items.some((i) => i.key === 'ore_iron_ore')
   && !junk.items.some((i) => typeof i.key !== 'string' || i.key.length > 64), junk.items.length);
 const many = await room._shopList(Array.from({ length: 500 }, (_, i) => 'k' + i));
 check('...and a huge one is capped', many.items.length < 100, many.items.length);
+
+/* ═══ v2.3.3184: A FAMILY PRICES ITS OWN, AND NOTHING ELSE HAS A PRICE ═══
+   His pricer matched a family ANYWHERE in a key (`k.indexOf(pre)`), so a key
+   merely containing `essence_godly_` priced at 250,000 and `crowbar_` as a
+   bar; and anything matching no family fell to a 20-coin default -- a golden
+   ticket he bought for 10 was one of the contest's ten capes for whoever paid
+   20, a quest's pickaxe skipped its quest, the old daily chest paid more to
+   open than 20.  Now a family matches as a family (shop.js shopFamilyMatch),
+   and a key with no price is neither bought nor sold.  Every key the game
+   mints keeps its exact price, but the five kinds that had only the default. */
+{
+  const keys = new Map();
+  const add = (k, src) => { if (typeof k === 'string' && k && !keys.has(k)) keys.set(k, src); };
+  for (const t of ['tree', 'rock', 'fishSpot']) for (const tier of [1, 6, 11, 16, 21]) {
+    const k = room._harvestInvKey(t, tier);
+    add(k, 'gathering');
+    if (t === 'fishSpot') add('cooked_' + k, 'cooked');
+  }
+  add('burnt_dust', 'burnt');
+  for (const [bar, r] of Object.entries(SMELT.RECIPES)) { add(bar, 'smelt'); add(r.ore, 'gathering'); }
+  for (const [hw, r] of Object.entries(HARDENED_WOOD.RECIPES)) { add(hw, 'hardened wood'); add(r.log, 'gathering'); }
+  add(TRAPPING.TRAP, 'traps'); add(TRAPPING.LEGACY_TRAP, 'legacy trap');
+  for (const g of SALVAGE.ESSENCE_GRADES) for (const m of Object.keys(SALVAGE.METALS)) add(essenceKey(g, m), 'salvage');
+  for (const c of Object.values(FARM.CROPS)) { add(c.seed, 'seed'); add(c.item, 'crop'); }
+  add(FARM.COMPOST, 'compost');
+  for (const r of DATA.COOKING_RECIPES) add(r.makes, 'cooking');
+  for (const k of Object.keys(DATA.DISHES)) add(k, 'dish');
+  for (const k of Object.keys(DATA.SHOP_ITEMS)) add(k, 'shop item');
+  for (const k of Object.values(room._GATHER_TOOL_FOR_SKILL)) add(k, 'tool');
+  for (const k of ['fire-goblin-remnants', 'skeleton-remnants', 'slime-remnants', 'snowman']) add(k, 'remains');
+  for (const z of Object.keys(DATA.ZONES)) add('shard_' + z, 'shard');
+  add(DATA.RARE_GEM_KEY, 'rare gem');
+  add(CHEST.KEY, 'daily chest');
+  for (const [id, def] of Object.entries(EVENT_CAPES)) { add(def.ticket, 'ticket'); add(capeItemKey(id), 'cape'); }
+  for (const q of Object.values(DATA.QUEST_REWARDS)) {
+    for (const it of [].concat(q.item || [], q.grantOnAccept || [])) if (it && it.kind === 'inv') add(it.key, 'quest');
+  }
+  /* the old rule, to compare against */
+  const oldBase = (key) => {
+    const k = key.toLowerCase();
+    let best = 0, val = SHOP.BASE_DEFAULT;
+    for (const pre in SHOP.BASE) if (k.indexOf(pre) !== -1 && pre.length > best) { best = pre.length; val = SHOP.BASE[pre]; }
+    return val;
+  };
+  const NO_PRICE = new Set(['ticket', 'cape', 'tool', 'daily chest', 'legacy trap']);
+  const moved = [], kept = [], dropped = [];
+  for (const [k, src] of keys) {
+    const now = room._shopBaseValue(k);
+    if (NO_PRICE.has(src)) { if (now !== null) dropped.push([k, now]); continue; }
+    if (isShopPotion(k) || isCookhouseDish(k) || isCookedFood(k)) continue;   /* food and drink: refused before any price is read */
+    if (now !== oldBase(k)) moved.push([k, src, oldBase(k), now]); else kept.push(k);
+  }
+  check('every key the game mints keeps its exact price (' + kept.length + ' keys)', moved.length === 0 && kept.length > 80, moved);
+  check('...the golden tickets, cape trophies, quest tools, old daily chest and legacy trap have NO price (they had the 20 default)',
+    dropped.length === 0 && [...keys.values()].filter((v) => NO_PRICE.has(v)).length >= 6, dropped);
+  check('...and the rare gem, box trap and burnt dust keep that 20 as their own price',
+    room._shopBaseValue('rare_gem') === 20 && room._shopBaseValue('trap_box') === 20 && room._shopBaseValue('burnt_dust') === 20);
+  /* look-alikes: a family only as a family */
+  const lookalikes = ['xessence_godly_mithril', 'my_essence_elite_thing', 'crowbar_', 'hardened', 'shard', 'ore', 'bat-wing', 'not_a_real_thing', 'cratebar_iron'];
+  check('a key that only CONTAINS a family has no price (was 250,000 for xessence_godly_..., a bar for crowbar_)',
+    lookalikes.every((k) => room._shopBaseValue(k) === null), lookalikes.map((k) => [k, room._shopBaseValue(k)]));
+  check('...while the families still price their own: a prefix, a remains suffix, a camelCase exact',
+    room._shopBaseValue('essence_godly_iron') === 250000 && room._shopBaseValue('bar_iron') === 240 && room._shopBaseValue('slime-remnants') === 18
+      && room._shopBaseValue('manaShard') === 18 && room._shopBaseValue('cooked_fish_trout') === 45 && room._shopBaseValue('crop_carrot') === 8);
+
+  /* he neither buys nor sells what has no price */
+  const tk = Object.values(EVENT_CAPES)[0].ticket;
+  const seller = { coins: 0, inventory: { [tk]: 1, mining_pickaxe: 1 } };
+  const r1 = await room._shopSell(seller, tk, 1);
+  const r2 = await room._shopSell(seller, 'mining_pickaxe', 1);
+  check('he buys no golden ticket and no quest tool (paid 10 each before)', !r1.ok && !r2.ok && seller.coins === 0 && seller.inventory[tk] === 1 && seller.inventory.mining_pickaxe === 1, { r1, r2 });
+  const q1 = await room._shopQuote(tk, 1, 'sell');
+  check('...quotes nothing for one', q1.ok && q1.total === 0 && q1.qty === 0, q1);
+  /* a pile that took a ticket in under the old default keeps it, unsold */
+  const st = await room._shopStock();
+  st[tk] = 2; st.mining_pickaxe = 1;
+  await room._shopSaveStock(st);
+  const shelf = await room._shopList([tk]);
+  check('...lists none from his pile (two tickets and a pickaxe bought at the old default)', !shelf.items.some((i) => i.key === tk || i.key === 'mining_pickaxe'), shelf.items.map((i) => i.key));
+  const buyer = { coins: 1000, inventory: {} };
+  const r3 = await room._shopBuy(buyer, tk, 1);
+  const r4 = await room._shopBuy(buyer, 'mining_pickaxe', 1);
+  check('...and sells none of them: a cape for 20, a pickaxe without the quest', !r3.ok && !r4.ok && buyer.coins === 1000 && !buyer.inventory[tk] && (await room._shopStock())[tk] === 2, { r3, r4 });
+  const gemSeller = { coins: 0, inventory: { rare_gem: 1 } };
+  const r5 = await room._shopSell(gemSeller, 'rare_gem', 1);
+  check('...the rare gem still sells for 10, as before', r5.ok && gemSeller.coins === 10, r5);
+}
 
 /* ═══ v2.3.2056: THE TONIC ACTUALLY DOES SOMETHING ═══
    Owner: "Make it worthwhile to buy a potion."
@@ -414,18 +512,20 @@ check('a refused drink keeps the bottle and heals nothing',
   const S1 = fakeWs('saver');
   await join(S1, 'saver');
   const p = room.playerState.saver;
-  p.inventory = { 'bat-wing': 10 };
+  /* v2.3.3184: a real key (it was 'bat-wing', priced only because 'bat'
+     was a SUBSTRING of it -- shop.js shopFamilyMatch) */
+  p.inventory = { 'slime-remnants': 10 };
   p.coins = 100;
   room._saveRpg('saver', p);
   await tick();
-  const pileBefore = ((await room._shopStock())['bat-wing']) || 0;
-  await send(S1, 'shop_sell', { key: 'bat-wing', qty: 10 });
+  const pileBefore = ((await room._shopStock())['slime-remnants']) || 0;
+  await send(S1, 'shop_sell', { key: 'slime-remnants', qty: 10 });
   const r1 = S1.sent.filter((m) => m.type === 'shop_result').pop();
   const st1 = state._store.get('rpg:saver');
   check('a sale to Diego is SAVED: storage holds the coins it paid and the bag without the goods',
-    !!r1 && r1.payload.ok && p.coins > 100 && st1.coins === p.coins && !st1.inventory['bat-wing'],
+    !!r1 && r1.payload.ok && p.coins > 100 && st1.coins === p.coins && !st1.inventory['slime-remnants'],
     { r1: r1 && r1.payload, mem: p.coins, stored: st1 && { coins: st1.coins, inv: st1.inventory } });
-  check('...in the same batch as his pile', ((await room._shopStock())['bat-wing'] || 0) === pileBefore + 10);
+  check('...in the same batch as his pile', ((await room._shopStock())['slime-remnants'] || 0) === pileBefore + 10);
   /* the reconnect that used to undo it */
   room.sessions.delete(S1);
   delete room.playerState.saver;
@@ -433,13 +533,13 @@ check('a refused drink keeps the bottle and heals nothing',
   await join(S2, 'saver');
   const q = room.playerState.saver;
   check('...so a reconnect keeps the sale: the coins stay and the goods do not come back',
-    q.coins === st1.coins && !q.inventory['bat-wing'], { coins: q.coins, inv: q.inventory });
+    q.coins === st1.coins && !q.inventory['slime-remnants'], { coins: q.coins, inv: q.inventory });
   /* buying back from his pile */
   const c0 = q.coins;
-  await send(S2, 'shop_buy', { key: 'bat-wing', qty: 2 });
+  await send(S2, 'shop_buy', { key: 'slime-remnants', qty: 2 });
   const st2 = state._store.get('rpg:saver');
   check('a purchase from his pile is SAVED: storage holds the goods and the coins they cost',
-    st2.inventory['bat-wing'] === 2 && st2.coins < c0 && st2.coins === q.coins, { c0, stored: { coins: st2.coins, inv: st2.inventory } });
+    st2.inventory['slime-remnants'] === 2 && st2.coins < c0 && st2.coins === q.coins, { c0, stored: { coins: st2.coins, inv: st2.inventory } });
   /* (a staple bought off his shelf was checked here too; since v2.3.3132
      his shelf is empty -- DIEGO_SHELF, food and drink come from farming --
      so the purchase from his pile above is the purchase there is) */

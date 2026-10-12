@@ -202,7 +202,18 @@ export const SHOP = {
        the plan's value (docs/FARMING-PLAN.md), a carrot 8 and a Cloudpetal 40,
        and his pile's decay does the rest. */
     ...FARM_SHOP_BASE,
+    /* v2.3.3184: three keys that were priced only by the old 20-coin default
+       (below) and are worth selling to him, kept at exactly that price: the
+       rare gem has no other use yet (a drop and a season reward), a box trap
+       is made from one log, burnt dust is a burnt fish's leftovers. */
+    rare_gem: 20, trap_box: 20, burnt_dust: 20,
   },
+  /* v2.3.3184: NO LONGER USED -- a key with no family has no price, and he
+     neither buys nor sells it (_shopBaseValue returns null).  It priced
+     everything unknown at 20 (he paid 10): a golden ticket bought back for
+     20 was one of the contest's ten capes, a quest's pickaxe skipped the
+     quest, the old daily chest paid more to open than 20.  Kept as the
+     number the three keys above were held to. */
   BASE_DEFAULT: 20,
   /* He buys at half his asking price before decay -- the ordinary shopkeeper
      spread, and the thing that stops buy-then-sell-back being a money loop. */
@@ -258,6 +269,19 @@ export const SHOP = {
   SEED: {},
 };
 
+/* v2.3.3184: does family `pre` (a SHOP.BASE key) price the lower-cased key
+   `k`?  As a family, never as any piece of the name: the key itself; a family
+   ending in '_' as the key's start (ore_, bar_, shard_, hardened_,
+   essence_godly_ ...); a whole name continued with '_' (cooked_fish ->
+   cooked_fish_trout); or a monster's remains, '-' + family at the end
+   (remnants -> slime-remnants).  Every key the game mints is priced exactly
+   as the old substring rule priced it (shop suite §25). */
+export function shopFamilyMatch(k, pre) {
+  if (k === pre) return true;
+  if (pre.endsWith('_')) return k.startsWith(pre);
+  return k.startsWith(pre + '_') || k.endsWith('-' + pre);
+}
+
 export const shopMethods = {
   /** One event to one player, by session id. Mirrors _sendInboxDelivered:
    *  a dead socket is not an error here -- the stock and the coins are
@@ -268,23 +292,30 @@ export const shopMethods = {
     try { ws.send(JSON.stringify({ type, payload })); } catch (e) { /* dead socket */ }
   },
 
-  /** Base worth of one unit, by longest matching family prefix. Longest wins
-   *  so a specific key beats a general one when both would match. */
+  /** Base worth of one unit, by longest matching family. Longest wins
+   *  so a specific key beats a general one when both would match.
+   *  v2.3.3184: a family matches AS A FAMILY (shopFamilyMatch), never as any
+   *  piece of the name -- it was `k.indexOf(pre) !== -1`, so a key merely
+   *  CONTAINING `essence_godly_` priced at 250,000 and `crowbar_` as a bar --
+   *  and a key no family matches has NO price: null, and he neither buys nor
+   *  sells it (it fell to BASE_DEFAULT's 20). */
   _shopBaseValue(key) {
-    if (typeof key !== 'string' || !key) return SHOP.BASE_DEFAULT;
+    if (typeof key !== 'string' || !key) return null;
     const k = key.toLowerCase();
-    let best = 0, val = SHOP.BASE_DEFAULT;
+    let best = 0, val = null;
     for (const pre in SHOP.BASE) {
-      if (k.indexOf(pre) !== -1 && pre.length > best) { best = pre.length; val = SHOP.BASE[pre]; }
+      if (pre.length > best && shopFamilyMatch(k, pre)) { best = pre.length; val = SHOP.BASE[pre]; }
     }
     return val;
   },
 
   /** What he PAYS for one more unit, given how many he already holds.
    *  The decay is the owner's rule; see the module note for why it is
-   *  hyperbolic rather than linear. */
+   *  hyperbolic rather than linear.  v2.3.3184: 0 for a key with no price
+   *  (its callers refuse it first). */
   _shopBuyRaw(key, stock) {
     const base = this._shopBaseValue(key);
+    if (base == null) return 0;
     const held = Math.max(0, Number(stock) || 0);
     return (base * SHOP.BUY_RATE) / (1 + held / SHOP.SOFTEN);
   },
@@ -292,9 +323,11 @@ export const shopMethods = {
     return Math.max(SHOP.MIN_BUY, Math.floor(this._shopBuyRaw(key, stock)));
   },
 
-  /** What he CHARGES for one unit. Flat -- see the module note. */
+  /** What he CHARGES for one unit. Flat -- see the module note.
+   *  v2.3.3184: 0 for a key with no price (its callers refuse it first). */
   _shopSellPrice(key) {
-    return Math.max(1, Math.ceil(this._shopBaseValue(key)));
+    const base = this._shopBaseValue(key);
+    return base == null ? 0 : Math.max(1, Math.ceil(base));
   },
 
   async _shopStock() {
@@ -358,6 +391,7 @@ export const shopMethods = {
         if (typeof k !== 'string' || !k || k.length > 64) continue;
         if (seen[k] || stock[k]) continue;      /* held keys are listed below */
         if (heWontTrade(k)) continue;          /* v2.3.2063: already on the shelf above; v2.3.3130: or a potion or dish he never buys */
+        if (this._shopBaseValue(k) == null) continue;   /* v2.3.3184: nor anything he has no price for */
         seen[k] = 1;
         items.push({ key: k, qty: 0, buy: this._shopBuyPrice(k, 0),
           base: this._shopBuyPrice(k, 0),
@@ -369,6 +403,10 @@ export const shopMethods = {
          his staples existed would otherwise be back on the shelf he stopped
          selling them from (found by the review) -- nor a dish. */
       if (heWontTrade(k)) continue;
+      /* v2.3.3184: nor anything he has no price for -- a pile that took
+         golden tickets or quest tools in at the old 20-coin default keeps
+         them, unsold */
+      if (this._shopBaseValue(k) == null) continue;
       items.push({
         key: k,
         qty: stock[k],
@@ -428,6 +466,7 @@ export const shopMethods = {
       /* v2.3.3130: a potion off his shelf is not for sale from the pile
          either (_shopList skips it; _shopBuy refuses it), nor is a dish. */
       if (heWontTrade(key)) return { ok: true, key, qty: 0, mode, total: 0, settled: true };
+      if (this._shopBaseValue(key) == null) return { ok: true, key, qty: 0, mode, total: 0, settled: true };   /* v2.3.3184 */
       const held = stock[key] || 0;
       const take = Math.min(want, held);
       return { ok: true, key, qty: take, mode,
@@ -437,6 +476,7 @@ export const shopMethods = {
        before, it priced a staple (and now would a tonic) as if he would, and
        the drawer offered a Sell button the sale then refused. */
     if (heWontTrade(key)) return { ok: true, key, qty: 0, mode: 'sell', total: 0, settled: true };
+    if (this._shopBaseValue(key) == null) return { ok: true, key, qty: 0, mode: 'sell', total: 0, settled: true };   /* v2.3.3184 */
     let held = stock[key] || 0;
     let total = 0, n = 0;
     for (let i = 0; i < want; i++) {
@@ -472,6 +512,8 @@ export const shopMethods = {
     if (!ps.inventory) ps.inventory = {};
     const have = Math.floor(Number(ps.inventory[key]) || 0);
     if (have < want) return { ok: false, error: "You don't have that many" };
+    /* v2.3.3184: nothing he has no price for (_shopBaseValue) */
+    if (this._shopBaseValue(key) == null) return { ok: false, error: "He doesn't deal in those" };
 
     const stock = await this._shopStock();
     let held = stock[key] || 0;
@@ -570,6 +612,8 @@ export const shopMethods = {
        took some in before the staples existed. */
     if (isShopPotion(key)) return { ok: false, error: "He doesn't sell tonics any more" };
     if (isCookhouseDish(key) || isCookedFood(key)) return { ok: false, error: "He hasn't got any" };
+    /* v2.3.3184: nor anything he has no price for, though his pile holds it */
+    if (this._shopBaseValue(key) == null) return { ok: false, error: "He doesn't deal in those" };
     const stock = await this._shopStock();
     const held = stock[key] || 0;
     if (held <= 0) return { ok: false, error: "He hasn't got any" };
