@@ -479,6 +479,25 @@ export const trade2Methods = {
     this._t2Broadcast(s);
   },
 
+  /* v2.3.3186: a pet staged in `pid`'s open window was renamed (petbook.js
+     _handlePetName).  The window shows each pet by its name, and every other
+     change to an offer resets both readies and accepts -- a rename did not,
+     so the other side could accept a trade showing one name and get the pet
+     under another.  Now it is an edit like any: both back to the offer, and
+     the accept cooldown starts again. */
+  _t2PetRenamed(pid, petId) {
+    const s = this._t2SessionFor(pid);
+    if (!s || s.state !== 'open' || !s.pets || !Array.isArray(s.pets[pid]) || s.pets[pid].indexOf(petId) < 0) return;
+    const now = Date.now();
+    s.confirmed[s.a] = false;
+    s.confirmed[s.b] = false;
+    if (s.ready) { s.ready[s.a] = false; s.ready[s.b] = false; }
+    s.changedAt = now;
+    s.changedBy = pid;
+    s.ts = now;
+    this._t2Broadcast(s);
+  },
+
   /* ═══ v2.3.1213: weapon lane (handoff item E) ═══
    *
    * v1 traded items + gold via validate-at-commit -- nothing escrowed, a
