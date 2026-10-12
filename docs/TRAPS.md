@@ -5916,3 +5916,57 @@ depositor of the week won the whole pool every time.
 **The rule.** Refuse every `Object.getOwnPropertyNames(Object.prototype)`
 name at the gate, and still count by own property (`hasOwnProperty`, or an
 `Object.create(null)` map) and as numbers wherever an id is a key.
+
+## 165. "A buffer texture is uploaded at its size" (v2.3.3190)
+
+Pixi's buffer uploader (glUploadBufferImageResource) calls texImage2D with the
+source's `width` and `height` -- its size in POINTS, its pixels over its
+resolution -- not `pixelWidth` / `pixelHeight`.  At resolution 1 they are the
+same, which is every buffer the game made before.  The Wheel's object sheets
+are resolution 2 (their sheet's `meta.scale`, which Pixi's Spritesheet sets on
+the source), so the first sheet kept as colour numbers went up as a quarter of
+itself read with half its rows' length: every row sheared, every building on
+the first phone picture a smear of diagonal streaks -- and nothing threw.
+
+**The rule.**  A buffer source at any resolution but 1 is uploaded at its
+pixels.  paletteTex.js wraps the uploader for its own sources (every other
+buffer exactly as Pixi does it); a new buffer source at resolution 2 needs the
+same, or Pixi fixed.  mp-palette's pictures and its frame-for-frame compare
+are what show it; a probe of the texture's size does not (pixelWidth is right).
+
+## 166. "A canvas of the same pixels scales like the picture" (v2.3.3190)
+
+A shadow's base is read by drawing a frame of a sheet scaled down onto a
+128-column canvas and finding each column's lowest solid pixel
+(propGround.readArtBottoms).  For a sheet kept as colour numbers the obvious
+move is a canvas built from its pixels, drawn the same way.  Chromium scales
+an `<img>` and a canvas holding the very same pixels differently: of the 183
+frames on the game's 41 sheets, 25 of a fence sheet's columns and 98 of the
+Verdant Wilds' first sheet's came out a row or more apart -- a margin round the
+region, or the whole sheet as one canvas, the same.  On screen that was the
+low things' shadows a CSS pixel off along their far edge.
+
+**The rule.**  A read that SCALES a picture reads it off the same kind of
+source the old way did: the sheet's own `<img>`, decoded once as its page loads
+and let go of (wheelObjects.js readPageBottoms; all 183 frames the same, and a
+second `<img>` from the same bytes always reads the same).  A read at the
+picture's own size (a hit's chips, a burn mark, a shatter's shards) may use the
+canvas: 1:1, every frame of every sheet came out identical.
+
+## 167. "Two pages at the same spot draw the same frame" (v2.3.3190)
+
+Comparing a picture drawn two ways means two pages drawing the same frame.
+Holding the water's clock and standing both players on the same pixel is not
+enough.  The camera eases for seconds after a player stops; the shadow layer
+locks itself to whole CSS pixels of the camera's LAST frame (shadows.js
+lockToWorldGrid, v2.3.3149), so two pages read a moment apart drew their
+shadows a whole CSS pixel apart (1.5% of the screen differing by up to 75 of
+255) while every picture under them matched; where two ground pieces overlap,
+the one on top is the one that happened to load later; and a ground worker
+that never heard the water moves keeps the pictures' frozen web of light.
+
+**The rule.**  mp-palette renders the world with the camera set and the
+shadow lock worked out for it, the pieces in one order, and refuses to compare
+until both pages have every piece and page in and both workers calmed the
+water.  Then it measures 0.03-0.05% of pixels one level of 255 apart, nothing
+more -- the arithmetic of a blend done in a shader rather than by the chip.
