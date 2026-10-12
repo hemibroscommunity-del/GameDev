@@ -182,6 +182,7 @@ import { spawnScaleMethods } from './spawnscale.js';
 import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.2978 */
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
+import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into a shield on the worker */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
@@ -425,6 +426,10 @@ export const PRIVILEGED_EVENTS = new Set([
      a fake rare piece on another player's screen. */
   'smith_salvage_result',
   'essence_result',
+  /* v2.3.3187: the shield gem's receipt (shieldgem.js) -- it says a gem went
+     into a shield and names the shield.  Forgeable, it would put a gem in
+     another player's shield on their screen that the worker never put there. */
+  'shield_gem_result',
   /* v2.3.2047: the shopkeeper's two answers. Both are SERVER-EMITTED and
      both carry money -- `shop_result` names coins paid and `shop_state` is
      the public pile every client prices against. Forgeable, they would let
@@ -5217,6 +5222,13 @@ export class GameRoom {
         if (session.id) this._handleShieldWear(session, msg.payload || msg);
         break;
 
+      case 'shield_gem':
+        /* v2.3.3187: a polished gem into a shield the worker holds for this
+           player (shieldgem.js) -- named by id or signature, the gem taken
+           from the worker's own count; answered by shield_gem_result. */
+        if (session.id) this._handleShieldGem(session, msg.payload || msg);
+        break;
+
       case 'cape_redeem':
         /* v2.3.2026: the player tapped Open on a golden ticket in the bag.
            The client never consumes it or grants the cape -- see the
@@ -6072,3 +6084,4 @@ Object.assign(GameRoom.prototype, spawnScaleMethods);
 Object.assign(GameRoom.prototype, wheelzoneMethods); /* v2.3.2978 */
 Object.assign(GameRoom.prototype, noMansLandMethods); /* v2.3.3058 */
 Object.assign(GameRoom.prototype, shieldWearMethods); /* v2.3.3091 */
+Object.assign(GameRoom.prototype, shieldGemMethods); /* v2.3.3187 */
