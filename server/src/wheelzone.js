@@ -128,7 +128,7 @@ export const WHEEL = Object.freeze({
      state is fresh before it can be drawn. */
   INTEREST_R: 2400,
   INTEREST_OUT: 2800,
-  /* v2.3.3193: the side of _wheelMonsterGrid's squares: half INTEREST_OUT,
+  /* v2.3.3195: the side of _wheelMonsterGrid's squares: half INTEREST_OUT,
      so a player's reach covers at most 5 x 5 of them */
   GRID_CELL: 1400,
   /* v2.3.3012: WHEEL_NODES' kind letters, and the only gathering tiers a baked
@@ -141,7 +141,7 @@ export const WHEEL = Object.freeze({
   NODE_TIERS: Object.freeze([1, 6, 11, 16, 21]),
 });
 
-/* v2.3.3193: the indices of the monsters in the grid squares within `r` of
+/* v2.3.3195: the indices of the monsters in the grid squares within `r` of
    (x, y) on both axes, in the monsters' own order (each square's list is
    already in order; the merge sorts the few that are left).  A position that
    is not finite reaches nothing, as the full walk's distance test says. */
@@ -358,7 +358,7 @@ export const wheelzoneMethods = {
      none is ever drawn where it stood when it was last in reach.  Kept on the
      session; tick.js drops it when the session is anywhere else, so coming
      back re-sends every one in reach.  Monster ids are server-minted. */
-  /* v2.3.3193: `grid` (optional) is _wheelMonsterGrid's index of the same
+  /* v2.3.3195: `grid` (optional) is _wheelMonsterGrid's index of the same
      monsters, built once a tick by tick.js: only the cells within
      INTEREST_OUT of the player are walked, in the monsters' own order, so the
      answer is exactly the full walk's -- a monster in any other cell is more
@@ -391,7 +391,7 @@ export const wheelzoneMethods = {
     return { seen, entered, list };
   },
 
-  /* v2.3.3193: the Wheel's monsters by GRID_CELL square, as array indices in
+  /* v2.3.3195: the Wheel's monsters by GRID_CELL square, as array indices in
      array order -- built once a tick (tick.js), for _wheelInterest */
   _wheelMonsterGrid(monsters) {
     const cells = new Map();

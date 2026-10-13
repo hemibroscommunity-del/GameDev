@@ -1,4 +1,4 @@
-# More players in one room, the same game (v2.3.3193)
+# More players in one room, the same game (v2.3.3195)
 
 > Owner, 2026-10-12, after the bot load test (#883): *"After testing with this
 > many players, are there optimizations you can add that allow more players

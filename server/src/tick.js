@@ -28,7 +28,7 @@ const HOUSEKEEP_SLOT_MS = 3000;
 export const REGEN_TICKS = 30;
 
 export const tickMethods = {
-  /* v2.3.3193: `tickshare: false` in the live flags builds every tick message
+  /* v2.3.3195: `tickshare: false` in the live flags builds every tick message
      whole again (buildFor), the way it was before the shared parts */
   _tickShareOff() {
     const f = this._liveFlags;
@@ -104,7 +104,7 @@ export const tickMethods = {
 
     this.tickInterval = setInterval(() => {
       // §16.12 — Snapshot player states to history buffer
-      /* v2.3.3193: the snapshot that falls off the end is written over and
+      /* v2.3.3195: the snapshot that falls off the end is written over and
          put back, instead of a new object for every player every tick (and
          an Object.entries array of the whole room) -- the same fields, the
          same values, the same order in the array.  The one reader
@@ -610,7 +610,7 @@ export const tickMethods = {
         return any ? JSON.stringify(d) : null;
       };
 
-      /* ═══ v2.3.3193: THE SHARED PARTS OF A TICK ARE SERIALISED ONCE ═══
+      /* ═══ v2.3.3195: THE SHARED PARTS OF A TICK ARE SERIALISED ONCE ═══
          The bot load test (docs/specs/load-test.md) found the Wheel paying
          for its own interest rule: every v2 Wheel session gets its own key
          above (it hears only the monsters near it), so buildFor ran once PER
@@ -739,7 +739,7 @@ export const tickMethods = {
       };
       const share = !this._tickShareOff();
       const verify = share && this._tickShareVerify;
-      /* v2.3.3193: the Wheel's monsters on a grid, built at most once a tick
+      /* v2.3.3195: the Wheel's monsters on a grid, built at most once a tick
          for the first Wheel player's _wheelInterest, so each player walks
          only the squares in its reach (wheelzone.js _wheelMonsterGrid) */
       let wheelGridMemo;
@@ -773,7 +773,7 @@ export const tickMethods = {
           const muted = muteKey ? this._chatModMuteSet(s.id) : null;
           msg = share ? buildShared(zone, pv, muteKey, muted, interest) : buildFor(zone, pv, muted, interest);
           if (verify) {
-            /* tests only (v2.3.3193): the message the old way, byte for byte */
+            /* tests only (v2.3.3195): the message the old way, byte for byte */
             const ref = buildFor(zone, pv, muted, interest);
             verify.checked++;
             if (ref !== msg) { verify.mismatched++; if (!verify.first) verify.first = { zone, pv, ref, got: msg }; }

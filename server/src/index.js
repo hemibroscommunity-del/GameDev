@@ -2211,7 +2211,7 @@ export class GameRoom {
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < nearestDist) {
               /* v2.3.2978: safe ground; v2.3.3056: unless provoked from it.
-                 v2.3.3193: asked only of a player who would be the nearest so
+                 v2.3.3195: asked only of a player who would be the nearest so
                  far, not of every player for every monster -- the same pick
                  (the nearest player it may target, the first of any tie) with
                  a fraction of the calls.  _wheelSheltered has no side effects,
