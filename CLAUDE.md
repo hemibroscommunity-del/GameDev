@@ -2351,7 +2351,7 @@ Two protocol versions coexist; both must keep working:
     same bytes. Also fixed by it: a monster's slam shook every screen in the
     Wheel (gameEvents.js monster_ability, a zone check only), now within
     2,800 px. No caps flag; `eventplace: false` the kill switch. `event-place`
-    suite (35, eight mutations), `tools/qa/load/events-bench.mjs`:
+    suite (35, ten mutations), `tools/qa/load/events-bench.mjs`:
     docs/specs/events-by-place.md.
 
 ## Conventions

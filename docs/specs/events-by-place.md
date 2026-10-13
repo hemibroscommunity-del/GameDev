@@ -211,7 +211,7 @@ E events a tick, every message UTF-8-encoded as the runtime does):
 - **Every placed type is real**: the room sends it, or a phone relays it.
   A typo in the list would place nothing and fail here.
 
-Eight bugs put in on purpose each fail the suite:
+Ten bugs put in on purpose each fail the suite:
 
 - `who` ignored;
 - the zone check dropped;
@@ -219,7 +219,9 @@ Eight bugs put in on purpose each fail the suite:
 - R too small;
 - the cache key without the selection, in either of its two places;
 - the old builder sending every event;
-- a v1 phone told by distance.
+- a v1 phone told by distance;
+- a kill placed;
+- a raised shield placed.
 
 `load.mjs --relays` (the fighters send a phone's swing or arrow with each
 blow) and `--events` (what the probes' ticks carry, by type) are new.
