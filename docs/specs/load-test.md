@@ -48,7 +48,7 @@ the same picks: smooth to about 125. **v2.3.3202 (`docs/specs/tick-pace.md`)**
 paces the gap between ticks, since "a tick starts 22 ms after the last one
 finishes" is the runtime's `setInterval` (TRAPS §170): a busy room keeps a
 quiet room's speed while its thread has the time -- 40.4 ticks a second at
-100 players, 32.4 at 150, smooth to about 145.
+100 players, about 30 at 150, smooth to about 130.
 
 **What each phone downloads** grows with the crowd, because every phone is sent
 every moving player's position: about 3.5 KB a second for each moving player
@@ -253,7 +253,8 @@ without a deploy.
    room. *v2.3.3201 (`docs/specs/near-searches.md`): the part that grew with
    the crowd -- every monster measuring its distance to every player, a
    quarter of the room's work at 150 -- now looks only in the squares near
-   the monster, with the same picks; 3-4 more ticks a second at every size.*
+   the monster, with the same picks; 3-4 more ticks a second at every size,
+   smooth to about 120.*
 6. **Refuse new players before the room slows down too much**, for example
    when it runs fewer than 30 ticks a second, instead of letting everyone's
    world slow.
