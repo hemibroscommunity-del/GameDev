@@ -307,6 +307,13 @@ node tools/qa/load/load.mjs --server ../other/server   # another branch's server
 node tools/qa/load/load.mjs --no-deflate             # bots that don't ask for compression (what it costs)
 node tools/qa/load/load.mjs --move-ms 66              # every bot moves every 66 ms, not 33
 node tools/qa/load/tickmix.mjs 'ws://127.0.0.1:PORT/ws?room=loadtest&rf=1' 25   # beside a run: what one phone is sent, by part
+node tools/qa/load/load.mjs --town-move-ms 66         # only the town walkers move every 66 ms (v2.3.3203)
+node tools/qa/load/load.mjs --worker-log /tmp/w.log   # keep the worker's whole log (console.log of a copy)
+
+# where the real runtime's thread goes, during a long hold (v2.3.3203)
+node tools/qa/load/load.mjs --steps 150 --hold 120 --inspector-port 9230 &
+node tools/qa/load/cdpprof.mjs 9230 20 /tmp/room.cpuprofile   # its JavaScript, through its debugger
+node tools/qa/load/gdbprof.mjs 30                              # its C++ too: compressing, writing, parsing
 
 # the server's own code, no runtime: CPU per player count, and a profile
 node tools/qa/load/load-wheel.mjs 1,10,25,50,100

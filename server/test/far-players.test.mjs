@@ -62,6 +62,11 @@ async function makeRoom() {
   };
   room.startTickLoop();
   globalThis.setInterval = realSetInterval;
+  /* v2.3.3203: these checks are about who is near and who is far, one tick's
+     small test moves at a time -- which steady-movers holding (a player on
+     the line their last update drew, steadymovers.js) would rightly hold.
+     steady-movers.test.mjs checks that, with near and far players too. */
+  room._liveFlags = { steadymovers: false };
   return { room, tickFn };
 }
 async function join(room, id, { pv = 2 } = {}) {
@@ -143,13 +148,13 @@ step(room, tickFn, everyone);
   const pb = (playersOf(A) || {}).fb;
   check('1a a position is sent in whole pixels', pb && pb.x === ARRIVAL.x + 1000 && pb.y === ARRIVAL.y + 1, pb);
   check('1b a velocity in whole numbers', pb && pb.vx === 13 && pb.vy === -7, pb);
-  room._liveFlags = { roundpos: false };
+  room._liveFlags = { roundpos: false, steadymovers: false };
   skipPresence(room, tickFn, everyone);
   await move(room, B, ARRIVAL.x + 1000.41, ARRIVAL.y + 0.62, 'wheel', 12.6, -7.4);
   step(room, tickFn, everyone);
   const pb2 = (playersOf(A) || {}).fb;
   check('1c roundpos: false sends them as they came', pb2 && pb2.x === ARRIVAL.x + 1000.41 && pb2.vx === 12.6, pb2);
-  room._liveFlags = null;
+  room._liveFlags = { steadymovers: false };
 }
 
 /* ── 2. near every tick, far at most every EVERY_MS, at the latest ─────── */
@@ -254,14 +259,14 @@ step(room, tickFn, everyone);
 
 /* ── 7. the kill switch ────────────────────────────────────────────────── */
 {
-  room._liveFlags = { farplayers: false };
+  room._liveFlags = { farplayers: false, steadymovers: false };
   skipPresence(room, tickFn, everyone);
   room._farLastAt = NOW;
   await move(room, C, C.x + 4, C.y);
   step(room, tickFn, everyone);
   check('7a farplayers: false sends the far mover on its tick', !!(playersOf(A) || {}).fc);
   check('7b and holds nothing back', !room._farPending);
-  room._liveFlags = null;
+  room._liveFlags = { steadymovers: false };
 }
 
 /* ── 8. leaving the Wheel; the roster ──────────────────────────────────── */

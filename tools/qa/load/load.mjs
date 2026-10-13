@@ -11,7 +11,8 @@
  *   node tools/qa/load/load.mjs [--steps 10,25,50] [--hold 20] [--settle 20]
  *        [--procs 3] [--fighters 0.3] [--cap 400] [--idle] [--pong N]
  *        [--server <a server/ folder>] [--observability] [--url ws://127.0.0.1:PORT]
- *        [--no-deflate] [--move-ms 33] [--seen-r 2400]
+ *        [--no-deflate] [--move-ms 33] [--town-move-ms 66] [--seen-r 2400]
+ *        [--inspector-port 9230] [--worker-log <file>]
  *
  * What it does:
  *   1. copies server/ to a temporary folder and raises MAX_PLAYERS there
@@ -77,8 +78,11 @@ const OPT = {
      the local runtime negotiating it, tried 2026-10-13: hence the client.) */
   noDeflate: process.argv.includes('--no-deflate'),
   moveMs: +arg('move-ms', 0),             /* v2.3.3199: a walker's move every N ms (0: the phone's 33) */
+  townMoveMs: +arg('town-move-ms', 0),     /* v2.3.3203: the town walkers' (not the fighters') move every N ms */
   seenR: +arg('seen-r', 0),               /* v2.3.3199: "others' moves seen" counts senders this near (0: 2,400) */
+  inspectorPort: +arg('inspector-port', 0),   /* v2.3.3203: the runtime's debugger port, for a CPU profile (cdpprof.mjs) */
   server: arg('server', null),             /* a server/ folder to test instead of this repo's own */
+  workerLog: arg('worker-log', null),      /* v2.3.3203: write the worker's whole log here at the end */
   recoverTo: +arg('recover-to', 0.6),       /* share of the players kept after a break */
   recoverSettle: +arg('recover-settle', 20), /* seconds given to come back before measuring */
 };
@@ -153,7 +157,10 @@ async function startWorker(dir, port) {
      for it: the cost being measured is the room's, not the dev tooling's. */
   const env = Object.assign({}, process.env, OPT.observability ? {} : { X_LOCAL_OBSERVABILITY: 'false', X_LOCAL_EXPLORER: 'false' });
   const proc = spawn('npx', ['wrangler', 'dev', '--port', String(port), '--local', '--ip', '127.0.0.1',
-    '--persist-to', state, '--var', 'ADMIN_KEY:load-test-' + process.pid], {
+    '--persist-to', state, '--var', 'ADMIN_KEY:load-test-' + process.pid,
+    /* v2.3.3203: --inspector-port N: the runtime's own debugger on N, so a
+       CPU profile of the real room can be taken while it runs (cdpprof.mjs) */
+    ...(OPT.inspectorPort ? ['--inspector-port', String(OPT.inspectorPort)] : [])], {
     cwd: dir, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   });
   let log = '';
@@ -236,7 +243,7 @@ function startBots(url, wireUrl) {
     const child = fork(join(HERE, 'bots.mjs'), [], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
     const g = { child, last: null, n: 0 };
     child.on('message', (m) => { if (m && m.type === 'report') { g.last = m.data; reports.push(m.data); } });
-    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, noDeflate: OPT.noDeflate, seenR: OPT.seenR } });
+    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, noDeflate: OPT.noDeflate, seenR: OPT.seenR } });
     groups.push(g);
   }
 }
@@ -328,6 +335,7 @@ function summarise(n, rs, whole, cpu, secs) {
     downKBps: r1(players ? sum('rxBytes') / secs / players / 1024 : 0),
     downTickKBps: r1(players ? sum('rxTickBytes') / secs / players / 1024 : 0),
     ticksPerPlayerPerSec: r1(players ? sum('rxTicks') / secs / players : 0),
+    msgsPerPlayerPerSec: r1(players ? sum('rxMsgs') / secs / players : 0),
     roomOutMBps: r1(sum('rxBytes') / secs / 1048576),
     joinP50: r1(pct(allStep('joins'), 50)),
     joinP95: r1(pct(allStep('joins'), 95)),
@@ -468,6 +476,7 @@ async function main() {
     results.push(s);
     console.log(row(s) + (label === 'step' ? '' : '   <- ' + label) + (s.broken ? '   BROKEN: ' + s.broken : ''));
     console.log(`        probes: room answers HTTP in ${s.httpProbeP50} ms (max ${s.httpProbeMax}, unanswered ${s.httpProbeUnanswered}); a new player's first snapshot in ${s.newJoinP50} ms (max ${s.newJoinMax}, none ${s.newJoinUnanswered})`);
+    console.log(`        each player is sent ${s.msgsPerPlayerPerSec} messages a second, ${s.ticksPerPlayerPerSec} ticks`);
     await save();
     return s;
   };
@@ -500,6 +509,7 @@ async function main() {
   }
   console.log(`\nwritten: ${base}.json (and .md)`);
   if (worker) {
+    if (OPT.workerLog) { try { (await import('node:fs')).writeFileSync(OPT.workerLog, worker.log()); } catch { /* best effort */ } }
     const errs = (worker.log().match(/\b(Error|Uncaught|guard)\b.*$/gm) || []).slice(-10);
     if (errs.length) console.log('\nlast errors in the worker log:\n  ' + errs.join('\n  '));
   }
