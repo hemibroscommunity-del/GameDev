@@ -1744,7 +1744,7 @@ export const combatMethods = {
            a kill. */
         let petGain = null;
         try { petGain = this._petbookAddXp(rid, recipPs, xpForRecipient, Date.now()); } catch (e) { petGain = null; }
-        /* v2.3.3191: and the monster codex learns from it (codex.js): this kind's
+        /* v2.3.3196: and the monster codex learns from it (codex.js): this kind's
            kills for this player, told on this kill's combat_credit below as
            `cx` -- counted here, past the XP gate, so every kill it counts is a
            kill the phone is told about.  Inside a try: a page of a book must
@@ -1798,7 +1798,7 @@ export const combatMethods = {
                 levelsGained,
                 newLevel,
                 ...(petGain ? { pet: petGain } : {}),   /* v2.3.3121: {id, lv, xp, gain, leveled, cap} */
-                ...(codexBit ? { cx: codexBit } : {}),   /* v2.3.3191: {k, n, n2} -- the monster codex (codex.js) */
+                ...(codexBit ? { cx: codexBit } : {}),   /* v2.3.3196: {k, n, n2} -- the monster codex (codex.js) */
               },
             }));
           } catch (e) {}

@@ -1925,7 +1925,7 @@ remnant to migrate server-side, not a mode to preserve.
     ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
     town's white square only without them; `__btMinimap.buildings`,
     `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
-  - Since v2.3.3191 THE MONSTER CODEX -- the owner: "After you kill a monster
+  - Since v2.3.3196 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
     special attack, (make up a backstory) etc.", "Also include drop tables
     for all items that monster can drop", and with a mockup: "I want all the
@@ -1954,7 +1954,10 @@ remnant to migrate server-side, not a mode to preserve.
       its land-coloured ground strip and nothing ever past the frame (the
       owner saw them "in a layer above the container", feet "visible on the
       dashboard container"; `GROUND`, `onDrawn` feet, strips cut at their
-      feet, isolated, no `will-change`); the Drops table on near-black too;
+      feet, isolated, no `will-change`); the Drops table on near-black too,
+      readable on it (the owner: "more readable with the background"):
+      striped rows, a heading band, names that wrap, bars by how common
+      over powers of ten (`barWidth`);
     - the drop table (`data/codexDrops.js`) prints the worker's own rolls --
       `SHARD_MONSTER_DROP`, `monsterWeaponDropOdds` (data.js),
       `WEAPON_QUALITY_ODDS` (hardening.js) -- and mirror-audit holds it to

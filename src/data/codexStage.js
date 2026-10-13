@@ -1,4 +1,4 @@
-/* ═══ v2.3.3191: THE CODEX'S STAGE -- EACH MONSTER, PLAYED FROM ITS OWN STRIPS ═══
+/* ═══ v2.3.3196: THE CODEX'S STAGE -- EACH MONSTER, PLAYED FROM ITS OWN STRIPS ═══
  *
  * Owner, 2026-10-12: "Maybe an animation similar to how the skills preview
  * window currently works."  The Points window's preview (src/ui/mobile/sheet/

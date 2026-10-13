@@ -1,4 +1,4 @@
-/* ═══ THE MONSTER CODEX, ON A PHONE (v2.3.3191) ═══
+/* ═══ THE MONSTER CODEX, ON A PHONE (v2.3.3196) ═══
  *
  * Owner, 2026-10-12: "Begin working on the monster section of the codex.
  * After you kill a monster you learn more about it, what it does, where it's
@@ -159,7 +159,7 @@ const locations = (P) => P.page.evaluate(() => Object.fromEntries([...document.q
             middle, px (sampled every 50 ms: a swelling slime or the mummy's
             bigger bones standing over you reads below 0) */
 /*   out    how far your figure's painted pixels and the monster's art ever
-            got past the stage's frame, px (v2.3.3191: the owner saw them
+            got past the stage's frame, px (v2.3.3196: the owner saw them
             "in a layer above the container ... the bottom of the characters
             ... visible on the dashboard container"); 0 is inside, always
      feet   at rest, how far above the ground strip's edge your boots and the

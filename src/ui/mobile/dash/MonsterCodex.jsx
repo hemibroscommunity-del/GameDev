@@ -10,7 +10,7 @@ import { RARITY_TIERS } from '@/data/gameSystems.js';
 import { CodexStage } from './CodexStage.jsx';
 import { codexDropsFor, codexGrades, codexGradePercent } from '@/data/codexDrops.js';
 
-/* ═══ v2.3.3191: THE CODEX'S MONSTERS ═══
+/* ═══ v2.3.3196: THE CODEX'S MONSTERS ═══
  *
  * Owner, 2026-10-12: "Begin working on the monster section of the codex.
  * After you kill a monster you learn more about it, what it does, where it's
