@@ -69,7 +69,8 @@ import { CODEX as SRV_CODEX } from '../src/codex.js'; /* v2.3.3198 */
 import { CODEX_TIERS as CLIENT_CODEX_TIERS, CODEX_KINDS as CLIENT_CODEX_KINDS, CODEX_STAGE2_AT as CLIENT_CODEX_STAGE2_AT, CODEX_ENTRIES as CLIENT_CODEX_ENTRIES } from '../../src/data/monsterCodex.js'; /* v2.3.3198 */
 /* v2.3.3198: the codex's drop tables, and what they are held to */
 import { CODEX_DROP_RATES as CLIENT_CODEX_DROP_RATES, CODEX_GRADE_ODDS as CLIENT_CODEX_GRADE_ODDS, CODEX_RAW_GEM_ELEMENTS as CLIENT_CODEX_RAW_GEMS,
-  CODEX_REMNANTS as CLIENT_CODEX_REMNANTS, codexWeaponOdds as clientCodexWeaponOdds, codexGoldAt as clientCodexGoldAt, codexDropsFor as clientCodexDropsFor } from '../../src/data/codexDrops.js';
+  CODEX_REMNANTS as CLIENT_CODEX_REMNANTS, codexGoldAt as clientCodexGoldAt, codexDropsFor as clientCodexDropsFor,
+  CODEX_ROLL_SIDES as CLIENT_CODEX_ROLL_SIDES, codexRoll as clientCodexRoll } from '../../src/data/codexDrops.js';
 import { WEAPON_QUALITY_ODDS as SRV_WEAPON_QUALITY_ODDS } from '../src/hardening.js';
 import { WHEEL_ZONE as SRV_WHEEL_ZONE } from '../src/wheelzone.js';
 import { WHEEL_DOORS as SRV_WHEEL_DOORS } from '../src/wheelspawns.js';   /* v2.3.3198: a codex page's dungeon */
@@ -1995,12 +1996,10 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { client: R, server: { shard: SRV.SHARD_MONSTER_DROP, rareGem: SRV.RARE_GEM_MONSTER_DROP, armour: SRV.MONSTER_ARMOR_DROPS, iron: SRV.MONSTER_IRON_WEAPON_DROP } });
   check('codex drops: the grades a dropped piece rolls are the worker\'s',
     JSON.stringify(CLIENT_CODEX_GRADE_ODDS) === JSON.stringify(SRV_WEAPON_QUALITY_ODDS), { client: CLIENT_CODEX_GRADE_ODDS, server: SRV_WEAPON_QUALITY_ODDS });
-  let wOff = null;
-  for (let l = 1; l <= 100 && !wOff; l++) {
-    const a = clientCodexWeaponOdds(l), b = SRV.monsterWeaponDropOdds(l);
-    if (JSON.stringify(a) !== JSON.stringify(b)) wOff = { level: l, client: a, server: b };
-  }
-  check('codex drops: a random weapon\'s chance (and its element\'s) is the worker\'s at every level, 1 to 100', !wOff, wOff);
+  /* v2.3.3198: "a random weapon" is out of the game (the owner: "Remove it
+     from the game"): the worker has no curve for it and the page no row */
+  check('codex drops: no random weapon -- the worker has no curve for it any more',
+    typeof SRV.monsterWeaponDropOdds === 'undefined' && typeof GameRoom.prototype._rollWeaponDropForKill === 'undefined');
   check('codex drops: the raw gems are the Gem Cutter\'s elements', JSON.stringify([...CLIENT_CODEX_RAW_GEMS].sort()) === JSON.stringify([...SRV.AMULET_GEMS].sort()),
     { client: CLIENT_CODEX_RAW_GEMS, server: [...SRV.AMULET_GEMS] });
 
@@ -2038,11 +2037,22 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     if (!!gem !== SRV.AMULET_GEMS.has(z && z.element)) eOff.push([kind, 'raw gem', !!gem]);
     if (gem && gem.key !== 'raw_' + z.element) eOff.push([kind, 'raw gem key', gem.key]);
     if (!shard || shard.key !== 'shard_' + e.home) eOff.push([kind, 'shard', shard && shard.key]);
-    for (const id of ['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'weapon', 'nugget']) if (!ids.includes(id)) eOff.push([kind, 'missing', id]);
+    for (const id of ['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'nugget']) if (!ids.includes(id)) eOff.push([kind, 'missing', id]);
+    if (ids.includes('weapon')) eOff.push([kind, 'a random weapon row']);
+    /* v2.3.3198: the owner's dice -- each drop's own roll of 1 to 10,000,
+       on its number or lower: a whole number of the die's faces, so the page
+       never rounds one, and none for an every-kill drop */
+    for (const r of rows) {
+      const faces = r.chance * CLIENT_CODEX_ROLL_SIDES;
+      if (r.chance < 1 && (Math.abs(faces - Math.round(faces)) > 1e-9 || r.roll !== Math.round(faces) || r.roll < 1)) eOff.push([kind, 'roll', r.id, r.chance, r.roll]);
+      if (r.chance >= 1 && r.roll !== null) eOff.push([kind, 'roll on an every-kill drop', r.id, r.roll]);
+      if (/[–-]/.test(r.pct)) eOff.push([kind, 'a chance that is not one number', r.id, r.pct]);
+    }
     if (ids.includes('remnant') !== Object.prototype.hasOwnProperty.call(CLIENT_CODEX_REMNANTS, kind)) eOff.push([kind, 'remnant row']);
   }
-  check('codex drops: each page\'s table is its land\'s -- the shard the worker rolls ("shard_" + its home), a raw gem only when its element is a Gem Cutter one (not Flora), and every pile drop listed',
-    eOff.length === 0, eOff);
+  check('codex drops: each page\'s table is its land\'s -- the shard the worker rolls ("shard_" + its home), a raw gem only when its element is a Gem Cutter one (not Flora), every pile drop listed and no random weapon; every chance one number, and its dice a whole number of the 1-10,000 roll (nugget 1, an iron piece 20, shard 1,000)',
+    eOff.length === 0 && CLIENT_CODEX_ROLL_SIDES === 10000 && clientCodexRoll(SRV.GOLD_NUGGET_MONSTER_DROP) === 1
+      && clientCodexRoll(SRV.MONSTER_IRON_WEAPON_DROP.chance) === 20 && clientCodexRoll(SRV.SHARD_MONSTER_DROP) === 1000 && clientCodexRoll(1) === null, eOff);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

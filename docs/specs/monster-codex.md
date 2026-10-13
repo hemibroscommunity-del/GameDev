@@ -46,7 +46,7 @@ render), "‹ All monsters" bringing them back.
   defeated. (The first set, Elemental, Goblin, Undead, Golem, Slime, Aquatic
   and Spirit, was replaced.)
 - **Drops** (the first tab): ITEM / TYPE / CHANCE, every item a kill can drop,
-  most often first, a bar for each chance, on a near-black panel of its own
+  most often first, a bar for each chance and its dice, on a near-black panel of its own
   (the owner: *"The drops table needs a different background so the
   information can stand out more from the dashboard background. Maybe
   black?"* -- `#05090B`, the stage's own black). Then *"Make the codex section
@@ -65,14 +65,39 @@ render), "‹ All monsters" bringing them back.
   numbers still lined up on their right; the type column its longest word's,
   "Currency" (52 px); and the name and the bar share the rest, the bar the
   bigger part (`minmax(0, 1fr)` and `minmax(0, 1.2fr)`): on a 390 px phone the
-  bars are 117 px long (were 44) and the names 97 px wide, "Snowman Remnants",
-  "Iron Great Sword" and "A random weapon" on two lines. A tap on a row opens the item's
+  bars are 117 px long (were 44) and the names 97 px wide, "Snowman Remnants"
+  and "Iron Great Sword" on two lines. Then *"Remove 'a random weapon' drop.
+  All drop chances should be a single value. Also make the percentage bars out
+  of 100%. The 10% bar almost looks as long as the 100%. I also thought about
+  maybe a 'roll-based system' where you see dice and number ... The rarest
+  drop in the table is the lowest number beginning at 1"*, and asked, the
+  random weapon out of the GAME ("Remove it from the game", below) and "Each
+  drop's own roll": every chance one number; the bar its share of 100%
+  (`barWidth`: 10% is a tenth of the bar, a 2 px nub for anything under a
+  pixel's worth); and under each chance under 100% its DICE (the Gambling
+  Den's two dice, the card's picture) and the number a kill's roll of 1 to
+  10,000 for it must come in at or under (`codexRoll`, `CODEX_ROLL_SIDES`):
+
+  | Drop | Chance | Dice |
+  |---|---|---|
+  | Its land's shard | 10% | 1,000 |
+  | Raw gem | 5% | 500 |
+  | Rare Gem | 0.5% | 50 |
+  | Iron Torso, Iron Greaves, Iron Great Sword | 0.2% each | 20 |
+  | Gold Nugget | 0.01% | 1 |
+
+  That is the worker's own roll (`Math.random() < chance`, each drop on its
+  own, so one kill can still give a shard and a gem) said on a 10,000-sided
+  die, and a key under the table says so: "Each kill rolls 1–10,000 for every
+  item. It drops on its number or lower." Gold and remnants drop every kill
+  and have none. A tap on a row opens the item's
   **card**: its picture, name, type and base rarity ("Common" for a weapon or
   armour piece), what it is, FOUND FROM (the monster), BASE DROP CHANCE, for a
   weapon or armour piece the POSSIBLE RARITY it rolls after it drops (Normal
   90.09995%, Rare 9%, Elite 0.9%, Godly 0.00005%, each tile the item in that
-  grade's frame), and a note of how it drops. Its X comes back to the list with
-  that row marked.
+  grade's frame), and a note of how it drops. Its BASE DROP CHANCE says its
+  dice too ("a roll of 20 or lower of 1–10,000"). Its X comes back to the list
+  with that row marked.
 - **Info**: the stage (below), a toggle for its elder form under it, and what
   it does, its element, its special attack with a tip, its story, and its
   elder form.
@@ -123,7 +148,6 @@ often first, open with the page at the first kill (the Drops tab):
 | Rare Gem | 1 in 200 | `RARE_GEM_MONSTER_DROP` |
 | Iron Torso, Iron Greaves | 1 in 500 each | `MONSTER_ARMOR_DROPS` |
 | Iron Great Sword | 1 in 500 | `MONSTER_IRON_WEAPON_DROP` |
-| A random weapon | 1 in 2,000 at Lv 1, 1 in 410 at Lv 40; ~1 in 62 of those its element at Lv 40 | `monsterWeaponDropOdds` |
 | Gold Nugget | 1 in 10,000, killing blow | `GOLD_NUGGET_MONSTER_DROP` |
 
 Every weapon and armour piece rolls its grade as it drops (Rare 1 in 11, Elite
@@ -131,9 +155,22 @@ Every weapon and armour piece rolls its grade as it drops (Rare 1 in 11, Elite
 players who did 5% of its damage can loot the pile; they split the gold by
 damage, and everything else on it goes to whoever picks it up first.
 
-The two numbers that were inline on the worker are named in `server/src/data.js`
-for this (`SHARD_MONSTER_DROP`, `monsterWeaponDropOdds`), the rolls reading the
-same names, and the grade odds exported from hardening.js. mirror-audit holds
+**No random weapon off a kill (v2.3.3198).** The owner: *"Remove 'a random
+weapon' drop"*, and asked whether from the table or the game: *"Remove it from
+the game"*. v2.3.1141's server-minted random weapon (a sword, great sword, bow
+or staff, its element and rarity by the land, 0.05% a kill at Lv 1 rising on a
+cubic curve to 0.24% at Lv 40 and ~3% at Lv 100) is gone: `_rollWeaponDropForKill`
+and data.js `monsterWeaponDropOdds` are deleted, and a kill's one weapon is the
+Iron Great Sword's 1 in 500 (`_rollIronWeaponForKill`). So elemental, fusion
+and prismatic weapons no longer come off monsters. `disable_weapon_drops` still
+stops the iron blade, and `caps.weaponDrops` stays true, so no page mints a
+weapon itself (the client's legacy mint runs only without it). `drops` suite
+§6b pins it gone: a level-40 kill whose every roll is 0.0021 (over the iron
+blade's 0.2%, under the old weapon's 0.24%) drops no weapon.
+
+The number that was inline on the worker is named in `server/src/data.js` for
+this (`SHARD_MONSTER_DROP`), the roll reading the same name, and the grade odds
+exported from hardening.js. mirror-audit holds
 the page's copy to all of them, and the per-monster facts to the worker's real
 Wheel: every one of its 384 monsters' gold at its level, each kind's remnants,
 its shard and whether its element gives a gem. A rate changed on the worker and
@@ -248,29 +285,36 @@ dev op.
 
 ## Tests
 
-- `server/test/codex.test.mjs` (47 checks): caps and the first look; a kill counted on its
+- `server/test/codex.test.mjs` (45 checks): caps and the first look; a kill counted on its
   credit and its first kill written at once; coalesced counting, the first
   kill the one threshold; the Poison Forest's two kinds, a party's kill, the second stage, a
   monster with no land (and a land named `__proto__`); disconnect and rejoin;
   a newer record and a failed read left alone; the kill switch; a restart; the
   dev lever; `normalizeCodex`; and the drop table's odds are the ones rolled (a
-  weapon, its element and a shard drop just under their line and not just over
-  it).
+  shard drops just under its line and not just over it; no random weapon is
+  rolled at all).
+- `drops` §6b: the iron blade is a kill's one weapon, and a level-40 kill whose
+  every roll would have dropped the old random weapon drops none.
 - `mirror-audit`: `CODEX_TIERS` and the client's nine kinds against the
   worker's; each page's dungeon and levels against `WHEEL_DOORS` and its road
-  against the plan's; every drop rate, the grade odds, the weapon curve at every level 1
-  to 100, and each of the Wheel's monsters' gold and remnants against the
-  page's drop table.
+  against the plan's; every drop rate, the grade odds, no random weapon on
+  either side, every chance one number and its dice a whole number of the
+  1–10,000 roll, and each of the Wheel's monsters' gold and remnants against
+  the page's drop table.
 - `mp-codex` (phone, 36 checks): the Monsters tab; a real kill opening the
   whole page on the sheet's own height, scrolling in it from its top, its
   header badges (a Humanoid snowman) and tabs; its drop table; scrolled to
   its end, the Iron Great Sword's card opening at its top (Common, 0.2%, the
   four grades) and a shard's (no grades), the X back to the marked row in
-  view; the table's near-black panel, darker than the sheet, its stripes,
-  heading band and bars by how common; the bars at least 100 px long, the
-  chance column its widest number's width (6-10 px from a bar's end to that
-  number), the weapon's range on two lines and every other chance on one, a
-  long name wrapping to two lines; no name, type or chance cut short on any
+  view; the table's near-black panel, darker than the sheet, its stripes and
+  heading band; nine rows and no random weapon, every chance one number with
+  its dice under it (the shard's 1,000 to the nugget's 1, each with the dice
+  picture, right-aligned with its chance, inside its row; none for gold and
+  remnants) and the key under the table; each bar's fill its chance's share of
+  the track (10% a tenth, a 2 px nub under that); the bars at least 100 px
+  long, the chance column its widest number's width (6-10 px from a bar's end
+  to that number), a long name wrapping to two lines; the cards' dice ("a roll
+  of 20 or lower of 1–10,000"); no name, type or chance cut short on any
   page; a tap on a tab, the open one's too, putting its content at the
   sheet's top, Info's whole stage in view; every fact open on Info from one
   kill, the stage playing its special, your character and the monster on its

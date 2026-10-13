@@ -1136,29 +1136,18 @@ export const GEM_RAW_MONSTER_DROP = 0.05;
 /* ═══ v2.3.3198: THE MONSTER CODEX SHOWS EACH MONSTER'S DROP TABLE ═══
  * Owner, 2026-10-12: "Also include drop tables for all items that monster can
  * drop."  The codex page (src/data/codexDrops.js) prints these numbers, so
- * the two that were written inline are named here, and mirror-audit holds
- * the page's copy to every one of them -- the rolls below read the same
- * names, so the table cannot say one thing while the kill does another.
+ * the one that was written inline is named here, and mirror-audit holds the
+ * page's copy to every one of them -- the rolls below read the same names,
+ * so the table cannot say one thing while the kill does another.
  *
  * SHARD_MONSTER_DROP: a kill's element shard (index.js SHARD_DROP_RATE, which
  * the suites still turn up to 1 to force one). */
 export const SHARD_MONSTER_DROP = 0.10;
 
-/* A random weapon off a kill (index.js _rollWeaponDropForKill), moved here
- * verbatim: the chance it drops at all, a cubic curve on the monster's level
- * (L1 0.05%, L50 ~0.43%, L100 ~3%), and given a drop, the chance it is a
- * prismatic ("shift"), a fusion of two elements, or the land's element --
- * tested in that order from one roll, each on top of the one before. */
-export function monsterWeaponDropOdds(level) {
-  const lvl = Math.max(1, Number(level) || 1);
-  const f = Math.pow(lvl / 100, 3); // cubic: L1≈0, L50=0.125, L100=1
-  return {
-    drop: 0.0005 + f * 0.03,
-    shift: 0.0000002 + f * 0.002,
-    fusion: 0.000002 + f * 0.02,
-    elemental: 0.0002 + f * 0.25,
-  };
-}
+/* A random weapon off a kill (index.js _rollWeaponDropForKill) was named
+ * here as monsterWeaponDropOdds, its cubic level curve; v2.3.3198 took the
+ * drop out of the game -- the owner: "Remove it from the game", and "All drop
+ * chances should be a single value" -- so the curve went with it. */
 
 /* ═══ v2.3.1924: THE THREE KILL DROPS THE OWNER ASKED FOR ═══
  *

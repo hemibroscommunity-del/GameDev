@@ -15,9 +15,9 @@
  *     a rare gem    RARE_GEM_MONSTER_DROP;
  *                   (those three are one lane: whoever picks the pile up first)
  *     iron torso, iron greaves   MONSTER_ARMOR_DROPS, each on its own roll;
- *     a weapon      MONSTER_IRON_WEAPON_DROP (the iron great sword, which wins
- *                   the pile's one weapon place), else a random one on the
- *                   monster's level (monsterWeaponDropOdds);
+ *     a weapon      MONSTER_IRON_WEAPON_DROP, the iron great sword -- the only
+ *                   weapon a kill drops since v2.3.3198 took the random one
+ *                   out of the game (the owner: "Remove it from the game");
  *     every weapon and armour piece rolls its grade as it drops
  *     (hardening.js WEAPON_QUALITY_ODDS).
  *   THE KILLING BLOW (combat.js, the killer only, straight into the bag):
@@ -27,11 +27,23 @@
  *
  * EVERY NUMBER IS THE WORKER'S.  The two the client already mirrored are read
  * from items.js (GOLD_NUGGET_DROP, GEM_DROP_RATES); the rest are copied here,
- * and mirror-audit pins every one -- the rates, the grade odds, the weapon
- * curve at every level, the gold at every level the Wheel's monsters stand
- * at, each kind's remnant and whether its element gives a gem -- against the
- * worker's own code.  The roll stays the worker's; this only says what it
- * is.  A rate changed there and not here fails the audit.
+ * and mirror-audit pins every one -- the rates, the grade odds, the gold at
+ * every level the Wheel's monsters stand at, each kind's remnant and whether
+ * its element gives a gem -- against the worker's own code.  The roll stays
+ * the worker's; this only says what it is.  A rate changed there and not
+ * here fails the audit.
+ *
+ * v2.3.3198: EVERY CHANCE IS ONE NUMBER, AND EACH HAS ITS DICE.  The owner:
+ * "All drop chances should be a single value" (the random weapon's
+ * 0.05–0.24% went with it), and "a 'roll-based system' where you see dice
+ * and number ... The rarest drop in the table is the lowest number beginning
+ * at 1" -- asked how, since the worker rolls each drop on its own: "Each
+ * drop's own roll".  So a drop under every kill shows the number it drops on
+ * or under when a kill rolls 1 to CODEX_ROLL_SIDES for it (`codexRoll`): the
+ * gold nugget's 1, an iron piece's 20, the rare gem's 50, a raw gem's 500, a
+ * shard's 1,000.  That IS the worker's roll (Math.random() < chance), said
+ * on a 10,000-sided die; mirror-audit holds every chance to a whole number
+ * of its sides, so no number here is rounded.
  *
  * No game imports beyond plain data tables: the worker's mirror audit reads
  * this file too. */
@@ -71,18 +83,16 @@ export const CODEX_REMNANTS = Object.freeze({
   dewdrop: 'slime-remnants',
 });
 
-/** A random weapon off a kill at `level` (server data.js
- *  monsterWeaponDropOdds): the chance it drops, and given one, the chances it
- *  is prismatic, a fusion of two elements, or of its land's element. */
-export function codexWeaponOdds(level) {
-  const lvl = Math.max(1, Number(level) || 1);
-  const f = Math.pow(lvl / 100, 3);
-  return {
-    drop: 0.0005 + f * 0.03,
-    shift: 0.0000002 + f * 0.002,
-    fusion: 0.000002 + f * 0.02,
-    elemental: 0.0002 + f * 0.25,
-  };
+/* the die a kill rolls for each drop, as the page says it: 1 to 10,000 --
+   the rarest drop's 1 in 10,000 (the gold nugget) is one face */
+export const CODEX_ROLL_SIDES = 10000;
+
+/** The number a kill's roll of 1 to CODEX_ROLL_SIDES must come in at or under
+ *  for a drop of chance `p`: 0.1 -> 1000, 1/500 -> 20, 0.0001 -> 1.  Null for
+ *  a drop every kill has (nothing to roll) or none at all. */
+export function codexRoll(p) {
+  if (!(p > 0) || p >= 1) return null;
+  return Math.max(1, Math.round(p * CODEX_ROLL_SIDES));
 }
 
 /** The gold a monster of `level` carries (index.js _makeZoneMonster:
@@ -107,7 +117,6 @@ const ICON = Object.freeze({
   ironTorso: '/icons/items/chest-plate-iron.webp' + IV,
   ironGreaves: '/icons/items/greaves-iron.webp' + IV,
   ironGreatsword: '/icons/items/great-sword-iron.webp' + IV,
-  weapon: '/icons/items/sword.webp' + IV,
   'snowman': '/icons/items/remnants-snowman.webp' + IV,
   'fire-goblin-remnants': '/icons/items/remnants-fire-goblin.webp' + IV,
   'skeleton-remnants': '/icons/items/remnants-skeleton.webp' + IV,
@@ -176,13 +185,14 @@ const PARTY_PILE = 'In a party, only players who did at least 5% of its damage c
 
 /** Every row of `kind`'s drop table, most often first -- what the page's
  *  Drops tab lists and what a tap on a row opens (the owner's mockup):
- *  [{ id, key, name, icon, type, chance, chanceTop?, pct, oneIn, amount?,
+ *  [{ id, key, name, icon, type, chance, pct, oneIn, roll, amount?,
  *     who, graded, tier?, color?, desc, chanceNote, info: [lines] }]
  *    type        the TYPE column: Currency, Material, Gem, Armor, Weapon, Craft
- *    chance      the chance a kill drops it (1: every kill); for the weapon,
- *                at the lowest level its monsters stand at, `chanceTop` at
- *                the highest
- *    pct/oneIn   "10%" / "1 in 10" (the weapon's "0.05–0.24%")
+ *    chance      the chance a kill drops it (1: every kill), one number at
+ *                every level (v2.3.3198)
+ *    pct/oneIn   "10%" / "1 in 10"
+ *    roll        its dice: drops on this or under, of 1 to CODEX_ROLL_SIDES
+ *                (`codexRoll`); null for an every-kill drop
  *    who         'pile' (picked up), 'killer' (the killing blow, into the bag)
  *    graded      rolls a grade as it drops (the card's POSSIBLE RARITY)
  *    tier        a weapon or armour piece's base rarity: 'common'
@@ -242,24 +252,14 @@ export function codexDropsFor(kind) {
     desc: 'A heavy two-handed iron blade, the same one the Blacksmith forges from four iron bars.',
     info: ['This drops at a ' + codexPercent(CODEX_DROP_RATES.ironGreatsword) + ' chance from ' + e.name + ', about ' + codexOneIn(CODEX_DROP_RATES.ironGreatsword).toLowerCase() + ' kills.',
       ...gear(codexPercent(CODEX_DROP_RATES.ironGreatsword)), PARTY_PILE] });
-  const w0 = codexWeaponOdds(lo), w1 = codexWeaponOdds(hi);
-  const elName = cap(e.element);
-  const wPct = codexPercent(w0.drop).replace('%', '') + '–' + codexPercent(w1.drop);
-  rows.push({ id: 'weapon', key: 'weapon', name: 'A random weapon', icon: ICON.weapon, type: 'Weapon', chance: w0.drop, chanceTop: w1.drop,
-    pct: wPct, who: 'pile', graded: true, tier: 'common',
-    desc: 'A sword, great sword, bow or staff, picked at random. Most are plain; a few carry ' + elName + ', or two elements fused, and a very few are prismatic.',
-    chanceNote: 'at Lv ' + lo + ', rising to ' + codexPercent(w1.drop) + ' at Lv ' + hi,
-    info: ['This drops at a ' + codexPercent(w0.drop) + ' chance from a Lv ' + lo + ' ' + e.name + ', rising with its level to ' + codexPercent(w1.drop) + ' at Lv ' + hi + '.',
-      'At Lv ' + hi + ', about ' + codexOneIn(w1.elemental).toLowerCase() + ' of them is a ' + elName + ' weapon, ' + codexOneIn(w1.fusion).toLowerCase() + ' a fusion of two elements and ' + codexOneIn(w1.shift).toLowerCase() + ' prismatic.',
-      ...gear(wPct),
-      'If the Iron Great Sword drops on the same kill, it takes this one\'s place.'] });
   rows.push({ id: 'nugget', key: 'goldNuggets', name: 'Gold Nugget', icon: ICON.nugget, type: 'Craft', chance: GOLD_NUGGET_DROP.monsterKill, who: 'killer',
     desc: 'A lump of gold the size of a thumb. Five smelt into a gold bar for the amulet forge.',
     info: ['About ' + codexOneIn(GOLD_NUGGET_DROP.monsterKill).toLowerCase() + ' kills drops one.',
       'It goes to whoever lands the killing blow, straight into the bag.'] });
   for (const r of rows) {
-    if (!r.pct) r.pct = codexPercent(r.chance);
+    r.pct = codexPercent(r.chance);
     r.oneIn = codexOneIn(r.chance);
+    r.roll = codexRoll(r.chance);
     if (!r.chanceNote) r.chanceNote = r.chance >= 1 ? 'every kill' : 'about ' + r.oneIn.toLowerCase() + ' kills';
   }
   return rows;

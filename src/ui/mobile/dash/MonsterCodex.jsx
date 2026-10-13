@@ -8,7 +8,7 @@ import { ZONES } from '@/data/zones.js';
 import { landLevelsText, WHEEL_LAND_LEVELS, WHEEL_GATE_ROADS } from '@/data/wheelSignposts.js';
 import { RARITY_TIERS } from '@/data/gameSystems.js';
 import { CodexStage } from './CodexStage.jsx';
-import { codexDropsFor, codexGrades, codexGradePercent } from '@/data/codexDrops.js';
+import { codexDropsFor, codexGrades, codexGradePercent, CODEX_ROLL_SIDES } from '@/data/codexDrops.js';
 
 /* ═══ v2.3.3198: THE CODEX'S MONSTERS ═══
  *
@@ -28,8 +28,9 @@ import { codexDropsFor, codexGrades, codexGradePercent } from '@/data/codexDrops
  *   the header   its portrait, its name, and three badges: its levels, its
  *                element, its kind of creature;
  *   Drops        ITEM / TYPE / CHANCE, every item a kill can drop, most often
- *                first, a bar for each chance (data/codexDrops.js, the
- *                worker's own rolls); a tap on a row opens its CARD -- the
+ *                first, a bar for each chance out of 100% and its dice
+ *                (data/codexDrops.js, the worker's own rolls); a tap on a
+ *                row opens its CARD -- the
  *                item, what it is, FOUND FROM, BASE DROP CHANCE, and for a
  *                weapon or armour piece the POSSIBLE RARITY it rolls after it
  *                drops -- whose X comes back to the list, that row marked;
@@ -225,24 +226,37 @@ function Tabs({ tab, setTab }) {
    area for the bar size. Looks like the chance column reserves too much
    space" -- the chance column was 76 px for the one long chance, the random
    weapon's "0.05–0.24%", so every other number sat far from its bar.  It is
-   one number wide now (`PCT_W`), that range taking two lines at its dash
-   (`pctLines`); the type column is its longest word's ("Currency"); and the
-   name and the bar share the rest, the bar the bigger part (44 -> ~115 px on
-   a 390 px phone), a long name taking two lines. */
+   one number wide now (`PCT_W`); the type column is its longest word's
+   ("Currency"); and the name and the bar share the rest, the bar the bigger
+   part (44 -> ~115 px on a 390 px phone), a long name taking two lines.
+   And then: "Remove 'a random weapon' drop.  All drop chances should be a
+   single value.  Also make the percentage bars out of 100%.  The 10% bar
+   almost looks as long as the 100%" -- the random weapon is out of the game
+   (data/codexDrops.js), every chance one number, and the bar the chance OUT
+   OF 100% (`barWidth`; the powers-of-ten scale drew 10% at 77%), a drop
+   rarer than a pixel's worth a 2 px nub so no bar reads "never".  And the
+   owner's dice, "a 'roll-based system' where you see dice and number", each
+   drop's own roll (their pick): under each chance the number a kill's roll of
+   1 to 10,000 must come in at or under (`r.roll`), the rarest 1. */
 const PCT_W = 40;
 const COLS = `26px minmax(0, 1fr) 52px minmax(0, 1.2fr) ${PCT_W}px`;
 const TABLE_BG = '#05090B';
 const STRIPE = 'rgba(229,237,233,.055)';
 const HEAD_BG = '#101A1F';
-/* a chance (0..1) as the bar's width, %: every kill full, 1 in 10,000 a stub */
+const DICE = '/icons/ui/bldg-gamble.webp';
+/* a chance (0..1) as the bar's width: its share of 100%, to 0.01 */
 function barWidth(p) {
-  const x = Math.max(1e-4, Math.min(1, Number(p) || 0));
-  return Math.round(8 + 92 * (1 + Math.log10(x) / 4));
+  const x = Math.max(0, Math.min(1, Number(p) || 0));
+  return Math.round(x * 10000) / 100;
 }
-/* a range of chances may break after its dash, so the column is one number wide */
-function pctLines(pct) {
-  const s = String(pct), i = s.indexOf('–');
-  return i < 0 ? s : <>{s.slice(0, i + 1)}<wbr />{s.slice(i + 1)}</>;
+const n0 = (n) => Number(n).toLocaleString('en-US');
+/* the Gambling Den's two dice (the card's own picture), cut to the dice
+   themselves: they stand at 50-206 x 90-216 of its 256 px */
+function Dice({ h = 12 }) {
+  const k = h / 126;
+  return <span aria-hidden="true" style={{ display: 'inline-block', flex: 'none', width: Math.round(156 * k), height: h,
+    backgroundImage: `url(${DICE})`, backgroundRepeat: 'no-repeat', backgroundSize: `${256 * k}px ${256 * k}px`,
+    backgroundPosition: `${-50 * k}px ${-90 * k}px` }} />;
 }
 function DropsTab({ rows, sel, onPick }) {
   return (
@@ -258,28 +272,42 @@ function DropsTab({ rows, sel, onPick }) {
       <div style={{ padding: 3 }}>
         {rows.map((r, i) => {
           const on = sel === r.id;
-          const w = barWidth(r.chanceTop || r.chance);
+          const w = barWidth(r.chance);
+          /* a row with dice is two lines: the bar and its chance, then the
+             dice under the chance; the picture, name and type span both */
+          const both = r.roll ? { gridRow: '1 / span 2' } : null;
           return (
             <button key={r.id} onClick={() => onPick(r.id)} data-cx-drop={r.id} data-cx-sel={on ? 1 : 0} data-cx-who={r.who} data-cx-bar={w}
-              style={{ display: 'grid', gridTemplateColumns: COLS, gap: 6, alignItems: 'center', width: '100%', minHeight: 42, padding: '4px 6px',
+              style={{ display: 'grid', gridTemplateColumns: COLS, columnGap: 6, rowGap: 2, alignItems: 'center', width: '100%', minHeight: 42, padding: '4px 6px',
                 fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer', touchAction: 'manipulation', color: COL.text, borderRadius: 7,
                 background: on ? 'rgba(216,170,88,.16)' : i % 2 ? STRIPE : 'transparent',
                 border: '1px solid ' + (on ? COL.accent : 'transparent') }}>
-              <img src={r.icon} alt="" draggable={false} style={{ width: 26, height: 26, objectFit: 'contain' }} />
-              <span data-cx-name-cell style={{ minWidth: 0, fontSize: 13.5, fontWeight: 700, lineHeight: 1.15, color: r.color || COL.text, overflowWrap: 'anywhere' }}>
+              <img src={r.icon} alt="" draggable={false} style={{ width: 26, height: 26, objectFit: 'contain', ...both }} />
+              <span data-cx-name-cell style={{ minWidth: 0, fontSize: 13.5, fontWeight: 700, lineHeight: 1.15, color: r.color || COL.text, overflowWrap: 'anywhere', ...both }}>
                 {r.name}{r.amount ? <span style={{ color: '#B3BEBB', fontWeight: 600 }}> {r.amount}</span> : null}
               </span>
-              <span data-cx-type style={{ fontSize: 12.5, color: '#CBD3D0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.type}</span>
+              <span data-cx-type style={{ fontSize: 12.5, color: '#CBD3D0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', ...both }}>{r.type}</span>
               <span data-cx-bar-track style={{ height: 8, borderRadius: 4, background: 'rgba(229,237,233,.18)', overflow: 'hidden' }}>
-                <span style={{ display: 'block', width: w + '%', height: '100%', borderRadius: 4, background: BAR }} />
+                <span data-cx-bar-fill style={{ display: 'block', width: w + '%', minWidth: w > 0 ? 2 : 0, height: '100%', borderRadius: 4, background: BAR }} />
               </span>
-              <span data-cx-pct style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.15, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#FFFFFF' }}>{pctLines(r.pct)}</span>
+              <span data-cx-pct style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.15, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: '#FFFFFF' }}>{r.pct}</span>
+              {r.roll ? (
+                <span data-cx-roll={r.roll} style={{ gridColumn: '4 / span 2', justifySelf: 'end', display: 'inline-flex', alignItems: 'center', gap: 4,
+                  fontSize: 12, fontWeight: 700, lineHeight: 1.15, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: '#B3BEBB' }}>
+                  <Dice h={11} />{n0(r.roll)}
+                </span>
+              ) : null}
             </button>
           );
         })}
       </div>
       </div>
-      <div style={{ fontSize: 11.5, color: COL.text2, lineHeight: 1.4, margin: '7px 4px 0' }}>Tap an item to see what it is and the grades it can roll. A longer bar is a more common drop.</div>
+      <div style={{ fontSize: 11.5, color: COL.text2, lineHeight: 1.4, margin: '7px 4px 0' }}>
+        <div data-cx-dice-key style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Dice h={13} /><span>Each kill rolls 1–{n0(CODEX_ROLL_SIDES)} for every item. It drops on its number or lower.</span>
+        </div>
+        <div style={{ marginTop: 3 }}>Tap an item to see what it is and the grades it can roll.</div>
+      </div>
     </div>
   );
 }
@@ -348,6 +376,9 @@ function ItemCard({ kind, e, r, onClose }) {
           <div data-cx-base style={{ fontSize: 28, fontWeight: 900, color: COL.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{r.pct}</div>
           <div style={{ fontSize: 12, lineHeight: 1.35, color: COL.text2, minWidth: 0 }}>
             (chance for this item to drop)<br /><span style={{ color: COL.muted }}>{r.chanceNote}</span>
+            {/* v2.3.3198: its dice, as the table shows them */}
+            {r.roll ? <><br /><span data-cx-card-roll={r.roll} style={{ color: COL.muted }}>
+              {r.roll === 1 ? 'a roll of 1' : 'a roll of ' + n0(r.roll) + ' or lower'} of 1–{n0(CODEX_ROLL_SIDES)}</span></> : null}
           </div>
         </div>
       </div>

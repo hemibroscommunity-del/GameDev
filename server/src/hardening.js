@@ -13,7 +13,10 @@
  * site -- server-rolled monster weapon drops (_rollWeaponDropForKill,
  * index.js), which roll quality at DROP time with the mystery reveal
  * (§4.6b.ii: pile broadcast hides quality; the private loot_credit
- * reveals it).  Join-time strict-strip still applies to client blobs.
+ * reveals it).  v2.3.3198: that random weapon is out of the game (the
+ * owner's call); the Iron Great Sword drop (_rollIronWeaponForKill) is a
+ * kill's one weapon now, rolled the same way.  Join-time strict-strip still
+ * applies to client blobs.
  * At Hardness 0 / Normal the formula reduces EXACTLY to the live one
  * (tools/balance-sim.mjs asserts this equivalence at startup; keep the
  * structures matched so they can't drift).
