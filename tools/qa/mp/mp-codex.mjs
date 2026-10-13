@@ -313,6 +313,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok(`...on a near-black panel of its own (${wells.panel}, the sheet behind it ${wells.sheet})`,
       wells.lp != null && wells.ls != null && wells.lp < 0.006 && (wells.ls + 0.05) / (wells.lp + 0.05) >= 1.3, wells);
+    /* the owner: "Make the codex section that has the table more readable with
+       the background" -- every other row shaded, the headings on a band of
+       their own, no name cut short, and each bar how common its drop is
+       (powers of ten: every kill full, 1 in 10,000 a stub) */
+    const legible = await P.page.evaluate(() => {
+      const rows = [...document.querySelectorAll('[data-cx-drop]')];
+      const bg = rows.map((r) => getComputedStyle(r).backgroundColor);
+      const head = document.querySelector('[data-cx-drops-head]');
+      const names = [...document.querySelectorAll('[data-cx-name-cell]')];
+      return { bg, head: head ? getComputedStyle(head).backgroundColor : null,
+        cut: names.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.innerText),
+        tall: names.filter((e) => e.getBoundingClientRect().height > 2.4 * 13.5 * 1.15).map((e) => e.innerText),
+        bars: Object.fromEntries(rows.map((r) => [r.dataset.cxDrop, +r.dataset.cxBar])) };
+    });
+    const striped = legible.bg.length > 2 && legible.bg[0] !== legible.bg[1] && legible.bg.every((c, i) => c === legible.bg[i % 2]);
+    rec.ok(`...readable on its black: every other row shaded, the headings on their own band (${legible.head}), no name cut short, the bars by how common (${Object.entries(legible.bars).map(([k, v]) => k + ' ' + v).join(', ')})`,
+      striped && legible.head === 'rgb(16, 26, 31)' && legible.cut.length === 0 && legible.tall.length === 0
+        && legible.bars.gold === 100 && legible.bars.shard === 77 && legible.bars.rawgem === 70 && legible.bars.raregem === 47
+        && legible.bars.irongreatsword === 38 && legible.bars.weapon === 40 && legible.bars.nugget === 8, { striped, ...legible });
     await P.page.screenshot({ path: join(OUT, 'codex-1-snowman.png') });
     const fr1 = await codex(P);
     rec.ok('...and opening it clears its NEW', !(fr1.fresh && fr1.fresh.snowling), fr1.fresh);
@@ -407,6 +426,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const opened = await boxLook(P);
       const type = await P.page.evaluate(() => { const e = document.querySelector('[data-cx-pill="type"]'); return e ? e.innerText.trim() : null; });
       const dr = await drops(P);
+      const cut = await P.page.evaluate(() => [...document.querySelectorAll('[data-cx-name-cell]')]
+        .filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().height > 2.4 * 13.5 * 1.15).map((e) => e.innerText));
       await tab(P, 'info');
       const w = await watchStage(P, kind === 'snowling' ? 15000 : 12000);
       await P.page.screenshot({ path: join(OUT, 'codex-' + kind + '.png') });
@@ -418,7 +439,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const backAt = await boxLook(P, `[data-cx-card="${kind}"]`);
       every.push({ kind, ok, ready: w.ready, special: w.phases.includes(SPECIAL_PHASE[kind]), phases: w.phases, labels: w.labels, pops: w.pops,
         zones: w.zones, shots: w.shots, gap: w.gap, gapAt: w.gapAt, drops: dr, loc: lc, type, listTop, openTop: opened && opened.top, backSeen: backAt && backAt.seen, backTop: backAt && backAt.top,
-        out: w.out, outAt: w.outAt, heroFeet: w.heroFeet, monFeet: w.monFeet });
+        out: w.out, outAt: w.outAt, heroFeet: w.heroFeet, monFeet: w.monFeet, cut });
     }
     rec.ok(`every page's kind is its body's: ${every.map((e) => e.kind + ' ' + e.type).join(', ')}`,
       every.every((e) => e.type === TYPES[e.kind]), every.map((e) => ({ kind: e.kind, type: e.type, want: TYPES[e.kind] })));
@@ -452,6 +473,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok(`...and every page's drop table is its own (${every.map((e) => e.kind + ' ' + Object.keys(e.drops || {}).length).join(', ')})`,
       dropOff.length === 0, dropOff.map((e) => ({ kind: e.kind, drops: e.drops })));
+    rec.ok('...and no drop\'s name is cut short on any of them ("Fire Goblin Remnants" in two lines at most)',
+      every.every((e) => e.cut && e.cut.length === 0), every.filter((e) => !e.cut || e.cut.length).map((e) => ({ kind: e.kind, cut: e.cut })));
     /* Locations: the way there for all nine, and the three lands' dungeons
        with their own levels (WHEEL_DOORS) */
     const locOff = every.filter((e) => {

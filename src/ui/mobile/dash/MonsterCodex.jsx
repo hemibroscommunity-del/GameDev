@@ -207,50 +207,65 @@ function Tabs({ tab, setTab }) {
 }
 
 /* ═══ DROPS: ITEM / TYPE / CHANCE ═══
-   The bar is the chance on a straight scale, a sliver at the least, so a
-   1-in-10,000 still has one; the weapon's is its best (Lv 40).
    On a near-black panel of its own -- the owner: "The drops table needs a
    different background so the information can stand out more from the
    dashboard background. Maybe black?" -- the stage's own black (game.css
-   bt-cx-stage), so the page's two wells match. */
-const COLS = '26px minmax(0, 1fr) 64px 46px 66px';
+   bt-cx-stage), so the page's two wells match.  Then: "Make the codex section
+   that has the table more readable with the background" -- so on that black:
+     - every other row a shade lighter, no lines: the eye runs from a name
+       across to its chance without slipping a row;
+     - the headings on a band of their own, brighter;
+     - names a size up and never cut short ("Fire Goblin Remnants" was
+       "Fire Goblin Re..."): a long one takes two lines;
+     - the type and the chance brighter and a size up;
+     - the bar says HOW COMMON over the chance's powers of ten (`barWidth`):
+       on a straight scale every drop rarer than the shard was the same
+       sliver, so the bars said nothing; the number beside it is exact. */
+const COLS = '26px minmax(0, 1fr) 60px 44px 76px';
 const TABLE_BG = '#05090B';
+const STRIPE = 'rgba(229,237,233,.055)';
+const HEAD_BG = '#101A1F';
+/* a chance (0..1) as the bar's width, %: every kill full, 1 in 10,000 a stub */
+function barWidth(p) {
+  const x = Math.max(1e-4, Math.min(1, Number(p) || 0));
+  return Math.round(8 + 92 * (1 + Math.log10(x) / 4));
+}
 function DropsTab({ rows, sel, onPick }) {
   return (
     <div data-cx-drops={rows.length}>
-      <div data-cx-drops-panel style={{ background: TABLE_BG, border: '1px solid rgba(229,237,233,.18)', borderRadius: 10, padding: '7px 3px 3px',
+      <div data-cx-drops-panel style={{ background: TABLE_BG, border: '1px solid rgba(229,237,233,.18)', borderRadius: 10, overflow: 'hidden',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,.04)' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 6, alignItems: 'center', padding: '0 6px 5px', ...SECTION, fontSize: 10.5 }}>
+      <div data-cx-drops-head style={{ display: 'grid', gridTemplateColumns: COLS, gap: 6, alignItems: 'center', padding: '7px 9px 6px', background: HEAD_BG,
+        borderBottom: '1px solid rgba(229,237,233,.14)', ...SECTION, fontSize: 11, color: '#CBD5D2' }}>
         <span style={{ gridColumn: '1 / span 2' }}>Item</span>
         <span>Type</span>
         <span style={{ gridColumn: '4 / span 2', textAlign: 'right' }}>Chance</span>
       </div>
-      <div style={{ borderTop: '1px solid ' + COL.divider }}>
+      <div style={{ padding: 3 }}>
         {rows.map((r, i) => {
           const on = sel === r.id;
-          const w = Math.max(3, Math.round(Math.min(1, r.chanceTop || r.chance) * 100));
-          const last = i === rows.length - 1;
+          const w = barWidth(r.chanceTop || r.chance);
           return (
-            <button key={r.id} onClick={() => onPick(r.id)} data-cx-drop={r.id} data-cx-sel={on ? 1 : 0} data-cx-who={r.who}
-              style={{ display: 'grid', gridTemplateColumns: COLS, gap: 6, alignItems: 'center', width: '100%', minHeight: 38, padding: '3px 6px',
-                fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer', touchAction: 'manipulation', color: COL.text,
-                background: on ? 'rgba(216,170,88,.14)' : 'transparent', borderRadius: on ? 8 : 0,
-                border: on ? '1px solid ' + COL.accent : '1px solid transparent', borderBottomColor: on ? COL.accent : last ? 'transparent' : COL.divider }}>
-              <img src={r.icon} alt="" draggable={false} style={{ width: 24, height: 24, objectFit: 'contain' }} />
-              <span style={{ minWidth: 0, fontSize: 13, fontWeight: 700, color: r.color || COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {r.name}{r.amount ? <span style={{ color: COL.muted, fontWeight: 600 }}> {r.amount}</span> : null}
+            <button key={r.id} onClick={() => onPick(r.id)} data-cx-drop={r.id} data-cx-sel={on ? 1 : 0} data-cx-who={r.who} data-cx-bar={w}
+              style={{ display: 'grid', gridTemplateColumns: COLS, gap: 6, alignItems: 'center', width: '100%', minHeight: 42, padding: '4px 6px',
+                fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer', touchAction: 'manipulation', color: COL.text, borderRadius: 7,
+                background: on ? 'rgba(216,170,88,.16)' : i % 2 ? STRIPE : 'transparent',
+                border: '1px solid ' + (on ? COL.accent : 'transparent') }}>
+              <img src={r.icon} alt="" draggable={false} style={{ width: 26, height: 26, objectFit: 'contain' }} />
+              <span data-cx-name-cell style={{ minWidth: 0, fontSize: 13.5, fontWeight: 700, lineHeight: 1.15, color: r.color || COL.text, overflowWrap: 'anywhere' }}>
+                {r.name}{r.amount ? <span style={{ color: '#B3BEBB', fontWeight: 600 }}> {r.amount}</span> : null}
               </span>
-              <span data-cx-type style={{ fontSize: 12, color: COL.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.type}</span>
-              <span style={{ height: 7, borderRadius: 4, background: 'rgba(229,237,233,.14)', overflow: 'hidden' }}>
+              <span data-cx-type style={{ fontSize: 12.5, color: '#CBD3D0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.type}</span>
+              <span style={{ height: 8, borderRadius: 4, background: 'rgba(229,237,233,.18)', overflow: 'hidden' }}>
                 <span style={{ display: 'block', width: w + '%', height: '100%', borderRadius: 4, background: BAR }} />
               </span>
-              <span data-cx-pct style={{ fontSize: 12.5, fontWeight: 800, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{r.pct}</span>
+              <span data-cx-pct style={{ fontSize: 13.5, fontWeight: 800, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: '#FFFFFF' }}>{r.pct}</span>
             </button>
           );
         })}
       </div>
       </div>
-      <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4, margin: '7px 4px 0' }}>Tap an item to see what it is and the grades it can roll.</div>
+      <div style={{ fontSize: 11.5, color: COL.text2, lineHeight: 1.4, margin: '7px 4px 0' }}>Tap an item to see what it is and the grades it can roll. A longer bar is a more common drop.</div>
     </div>
   );
 }
