@@ -94,6 +94,7 @@ import { petbookMethods } from './petbook.js';
 /* v2.3.3198: the monster codex -- what each kill teaches you, codex:<pid>
    (codex.js).  docs/specs/monster-codex.md. */
 import { codexMethods } from './codex.js';
+import { killRollMethods } from './killroll.js';   /* v2.3.3198: one roll a kill, each drop its own numbers */
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
 // loot layers (effective_base formula, forge quality roll, harden
 // ladder).  See hardening.js for the name-collision warning vs the
@@ -2885,8 +2886,11 @@ export class GameRoom {
     return b === 'fodder' || b === 'snowman';
   }
 
-  _rollShardForKill(zoneId) {
-    if (Math.random() >= this.SHARD_DROP_RATE) return null;
+  /* v2.3.3198: `hit` -- the kill's one roll landed on the shard's numbers
+     (killroll.js), or did not.  Left out (the `killroll: false` switch, and a
+     suite calling this alone), it rolls on its own as it always did. */
+  _rollShardForKill(zoneId, hit) {
+    if (hit === undefined ? Math.random() >= this.SHARD_DROP_RATE : !hit) return null;
     /* v2.3.3170: only a zone that HAS a shard -- the nine element zones, which
        are exactly ZONES' keys, each with its shard_<zone> item.  A Workshop
        dungeon's monsters die in 'dungeon:<instance id>' and carry no `home`
@@ -3715,10 +3719,15 @@ export class GameRoom {
      constant's note for why that matters. */
   /* v2.3.3182: `scale` (0-1, default 1) -- a Workshop run's share of the
      chance (dungeon.js _workshopDropScale); the random draws are the same */
-  _rollArmorDropsForKill(scale = 1) {
+  /* v2.3.3198: `hit` -- the slot the kill's one roll landed on ('armor',
+     'legsArmor'), or false (killroll.js): a roll is one piece at most, and on
+     its numbers it drops at the Workshop's share.  Left out, each piece rolls
+     on its own as before (the `killroll: false` switch). */
+  _rollArmorDropsForKill(scale = 1, hit) {
     const out = [];
     for (const d of MONSTER_ARMOR_DROPS) {
-      if (Math.random() >= d.chance * scale) continue;
+      if (hit === undefined) { if (Math.random() >= d.chance * scale) continue; }
+      else if (hit !== d.slot || (scale < 1 && Math.random() >= scale)) continue;
       /* ═══ v2.3.1925: ARMOUR ROLLS QUALITY TOO ═══
          Owner: "I also want the drop to consider a rarity system."  Quality
          has been weapon-only since v2.3.1131; GDD §4.6b is explicit that the
@@ -3744,9 +3753,10 @@ export class GameRoom {
      random weapon was, and this one is not random.  v2.3.3198: that roll is
      gone (the owner: "Remove it from the game"), so this is a kill's only
      weapon. */
-  _rollIronWeaponForKill(scale = 1) {   /* v2.3.3182: `scale`, as the armour's */
+  _rollIronWeaponForKill(scale = 1, hit) {   /* v2.3.3182: `scale`, as the armour's; v2.3.3198: `hit`, as theirs */
     const d = MONSTER_IRON_WEAPON_DROP;
-    if (Math.random() >= d.chance * scale) return null;
+    if (hit === undefined) { if (Math.random() >= d.chance * scale) return null; }
+    else if (!hit || (scale < 1 && Math.random() >= scale)) return null;
     return {
       type: d.type,
       tier: 'common',
@@ -3774,7 +3784,8 @@ export class GameRoom {
      stackable that lands in the bag — NOT the elemental raw_<element> the
      Gem Cutter eats (_gemRawOnKill, amulet.js), which is zone-gated and
      lives in lifeSkills.  Two different things on purpose; see RARE_GEM_KEY. */
-  _rollRareGemForKill(scale = 1) {   /* v2.3.3182: `scale`, as the armour's */
+  _rollRareGemForKill(scale = 1, hit) {   /* v2.3.3182: `scale`, as the armour's; v2.3.3198: `hit`, as theirs */
+    if (hit !== undefined) return hit && !(scale < 1 && Math.random() >= scale) ? RARE_GEM_KEY : null;
     return Math.random() < RARE_GEM_MONSTER_DROP * scale ? RARE_GEM_KEY : null;
   }
 
@@ -3873,7 +3884,11 @@ export class GameRoom {
   //   { lootId, zone, x, y, coins, skull, shard, gem, weapon, weaponClaimed,
   //     armor, armorClaimed, recipients, shares: {pid: number}, killerName,
   //     ts, inventoryClaimed, claimedBy: {pid: true} }
-  _spawnLootForKill(zone, monster, killerSessionId, recipients, shares) {
+  /* v2.3.3198: `kr`, the kill's one roll (killroll.js _killRollFor) -- which
+     of the pile's drops it landed on, if any; `kr.minted` is set when that drop
+     is made.  Left out (the `killroll: false` switch, and a suite building a
+     pile alone), every drop rolls on its own as before. */
+  _spawnLootForKill(zone, monster, killerSessionId, recipients, shares, kr) {
     /* ═══ v2.3.2613: A PILE IS A DEATH, NOT A SPAWN SLOT ═══
        Owner, more than once: "loot sometimes drops and magnetizes but is
        unable to be picked up."
@@ -3926,7 +3941,8 @@ export class GameRoom {
        'shard_wheel' is not an item (wheelzone.js _rewardZone).  The pile
        itself still lies where it died, in `zone`. */
     const rewardZone = this._rewardZone(zone, monster);
-    const shard = this._rollShardForKill(rewardZone);
+    const hit = kr ? (kr.hit || false) : undefined;   /* v2.3.3198: the roll's drop, or no roll */
+    const shard = this._rollShardForKill(rewardZone, hit === undefined ? undefined : hit === 'shard');
     // v2.3.1141: weapon rides the pile; only rolled when someone can
     // actually claim it (the claim is recipient-gated below).
     // v2.3.1150: disable_weapon_drops kill switch -- caps.weaponDrops
@@ -3947,13 +3963,17 @@ export class GameRoom {
     /* v2.3.3182: a Workshop run's flat drops at its monster's level over the
        strongest claimant's (dungeon.js _workshopDropScale); 1 everywhere else */
     const dropScale = anyClaimant && this._workshopDropScale ? this._workshopDropScale(zone, monster, recipients) : 1;
-    const weapon = wpnDropsOn ? this._rollIronWeaponForKill(dropScale) : null;
+    const weapon = wpnDropsOn ? this._rollIronWeaponForKill(dropScale, hit === undefined ? undefined : hit === 'irongreatsword') : null;
     /* v2.3.1924: both gated on there being someone who could claim them, the
        same condition the weapon roll uses — rolling loot for an empty
        recipient list mints an item nobody can ever pick up and then counts it
        against the player's odds. */
-    const armor = anyClaimant ? this._rollArmorDropsForKill(dropScale) : null;
-    const gem = anyClaimant ? this._rollRareGemForKill(dropScale) : null;
+    const armor = anyClaimant ? this._rollArmorDropsForKill(dropScale,
+      hit === undefined ? undefined : (hit === 'irontorso' ? 'armor' : hit === 'irongreaves' ? 'legsArmor' : false)) : null;
+    const gem = anyClaimant ? this._rollRareGemForKill(dropScale, hit === undefined ? undefined : hit === 'raregem') : null;
+    /* v2.3.3198: the roll's drop is made -- told to whoever may pick the pile up (combat_credit `rh`) */
+    if (kr && hit && ((hit === 'shard' && shard) || (hit === 'raregem' && gem) || (hit === 'irongreatsword' && weapon)
+      || ((hit === 'irontorso' || hit === 'irongreaves') && armor))) kr.minted = true;
     /* v2.3.1924: !armor && !gem are BELT-AND-BRACES and cannot fire today —
        this early-out is recipient-gated, and both new rolls are themselves
        gated on there being a recipient, so any pile that could carry them has
@@ -5985,6 +6005,7 @@ Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, hardenedWoodMethods); /* v2.3.3139 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3198 */
+Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3198: the kill's one roll (killroll.js) */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
 Object.assign(GameRoom.prototype, hardeningMethods);
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.

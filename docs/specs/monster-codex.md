@@ -77,31 +77,43 @@ render), "‹ All monsters" bringing them back.
   pixel's worth); and each drop under 100% its DICE: the numbers of a kill's
   roll of 1 to 10,000 for it that drop it (`codexRoll`, `CODEX_ROLL_SIDES`).
   Then *"Actually 'roll' column with a number range and drop chance percentage
-  in parentheses might be better"*: the chance column is a **ROLL** column
-  (`ROLL_W` 50), the Gambling Den's two dice in its heading, each row its range
-  over its chance in parentheses, "Always" for an every-kill drop (nothing to
-  roll); the bars stay, 111 px on a 390 px phone:
+  in parentheses might be better"*: the chance column is a **ROLL** column,
+  the Gambling Den's two dice in its heading, each row its range over its
+  chance in parentheses, "Always" for an every-kill drop (nothing to roll);
+  the bars stay. Each drop rolled on its own then, so every range began at 1.
+  And then *"Shouldn't these numbers not overlap each other? Getting a roll of
+  1 implies you'd get all the loot with 1, but it's really just the gold
+  nugget. I think these should be number ranges. That way a player hunting for
+  something can also be looking for a roll number within that range"*: the
+  worker rolls **once a kill** and each drop owns its own numbers (*One roll a
+  kill*, below), so the column (`ROLL_W` 64, for "612–1,611"; the bars 104 px
+  on a 390 px phone) reads, for a snowman:
 
   | Drop | Roll |
   |---|---|
   | Gold, its remnants | Always (100%) |
-  | Its land's shard | 1–1,000 (10%) |
-  | Raw gem | 1–500 (5%) |
-  | Rare Gem | 1–50 (0.5%) |
-  | Iron Torso, Iron Greaves, Iron Great Sword | 1–20 (0.2%) each |
+  | Its land's shard | 612–1,611 (10%) |
+  | Raw gem | 112–611 (5%) |
+  | Rare Gem | 62–111 (0.5%) |
+  | Iron Torso | 42–61 (0.2%) |
+  | Iron Greaves | 22–41 (0.2%) |
+  | Iron Great Sword | 2–21 (0.2%) |
   | Gold Nugget | 1 (0.01%) |
 
-  That is the worker's own roll (`Math.random() < chance`, each drop on its
-  own, so one kill can still give a shard and a gem) said on a 10,000-sided
-  die, and a key under the table says so: "Each kill rolls 1–10,000 for every
-  item. A roll in its range drops it." A tap on a row opens the item's
+  The blue slime has no raw gem, so its shard is 112–1,111. A key under the
+  table says it: "Each kill rolls once, 1–10,000. The item whose numbers it
+  lands on drops; 1,612–10,000 drops nothing more." (Against a worker that
+  does not roll once a kill, an older one or `killroll: false`, every range is
+  1 to its drop's own number and the key says each drop rolls on its own:
+  `codexDropsFor(kind, { shared: false })`, read off `caps.killroll`.) A tap
+  on a row opens the item's
   **card**: its picture, name, type and base rarity ("Common" for a weapon or
   armour piece), what it is, FOUND FROM (the monster), BASE DROP CHANCE, for a
   weapon or armour piece the POSSIBLE RARITY it rolls after it drops (Normal
   90.09995%, Rare 9%, Elite 0.9%, Godly 0.00005%, each tile the item in that
   grade's frame), and a note of how it drops. Its BASE DROP CHANCE says its
-  roll too ("drops on a roll of 1–20 out of 10,000"). Its X comes back to the
-  list with that row marked.
+  numbers too ("drops on a roll of 2–21 out of 10,000"). Its X comes back to
+  the list with that row marked.
 - **Info**: the stage (below), a toggle for its elder form under it, and what
   it does, its element, its special attack with a tip, its story, and its
   elder form.
@@ -171,6 +183,60 @@ stops the iron blade, and `caps.weaponDrops` stays true, so no page mints a
 weapon itself (the client's legacy mint runs only without it). `drops` suite
 §6b pins it gone: a level-40 kill whose every roll is 0.0021 (over the iron
 blade's 0.2%, under the old weapon's 0.24%) drops no weapon.
+
+## One roll a kill (v2.3.3198)
+
+The owner, on the Roll column when every range began at 1: *"Shouldn't these
+numbers not overlap each other? Getting a roll of 1 implies you'd get all the
+loot with 1, but it's really just the gold nugget. I think these should be
+number ranges. That way a player hunting for something can also be looking for
+a roll number within that range."*
+
+So a kill rolls **one** number, 1 to 10,000 (`server/src/killroll.js`), and
+every drop that is not on every kill owns a run of those numbers: its chance x
+10,000 of them, laid from 1 up, the rarest first (`KILL_ROLL.ORDER`; the three
+1-in-500s the reverse of the codex's rows, so its table reads straight down).
+A drop a monster cannot give has no numbers (`_killRollCan`: its land's shard,
+and a raw gem only for a Gem Cutter element), so every number of a monster's
+table is one drop's or none (`killRollLayout`, `killRollHit`).
+
+- **Each drop's chance is what it was** (its numbers over 10,000; mirror-audit
+  holds every chance to a whole number of them), so over many kills each drops
+  as often as before. What changed: a kill drops **one of them at most**. Each
+  had its own roll, and about one kill in 170 dropped two.
+- **Who gets it is as before**: the pile's drops (the shard, the rare gem, the
+  iron pieces) whoever picks the pile up; the raw gem and the nugget the
+  killing blow, into the bag. The pile's and the killing blow's rolls all read
+  the kill's one (`_spawnLootForKill(..., kr)`, `_amuletNuggetOnKill(ps, hit)`,
+  `_gemRawOnKill(ps, zone, hit)`); called with no roll they roll on their own,
+  as the kill switch does.
+- **A Workshop run** (dungeon.js `_workshopDropScale`): a roll on a flat drop's
+  numbers drops it at the run's share, one more draw only when the share is
+  under 1; the shard and the raw gem are never scaled there (they were not).
+- **`disable_weapon_drops`** leaves the iron blade's numbers where they are,
+  dropping nothing; every other drop keeps the numbers the codex shows.
+
+**The roll is shown.** Every player the kill credits gets it on the kill's
+`combat_credit`: `roll`, and `rh` (the drop's codex row id) when that drop is
+theirs (a pile's for anyone who may pick the pile up, the killing blow's for
+the killer: `_killRollTheirs`). The game shows it over the monster
+(`src/game/killRoll.js`), the Gambling Den's dice in front of it
+(`/icons/popups/dice.webp`, effectsRenderer's `dice` mark, `iconLead`):
+
+- nothing more: "7,431" in a quiet grey (`KILL_ROLL_MISS`), held 1 s, gone in
+  2.4 (a damage number fades from its first frame, in 1.5);
+- on a drop: "640 Frost Shard" in gold (`KILL_ROLL_HIT`), held 1.8 s, gone in
+  3.2, the name the codex's own row's (`killRollDropName`);
+- drawn as a message (`roll: true`): the plain hit's size, never a number's
+  white;
+- a kill off your screen (a burn finishing it, a party's kill across the
+  field): over your own head.
+
+`caps.killroll`; `killroll: false` in liveflags is the kill switch (every drop
+on its own roll again, nothing sent, the codex's ranges back to 1 to each
+drop's own number). The dev lever `/dev/killroll {next, kill}`: `next` is this
+player's next kill's roll (1 to 10,000), `kill` a live monster's id in their
+zone, killed now through `_resolveMonsterKill`.
 
 The number that was inline on the worker is named in `server/src/data.js` for
 this (`SHARD_MONSTER_DROP`), the roll reading the same name, and the grade odds
@@ -267,6 +333,9 @@ hitch in a fight -- is kept. Do not move them onto the loading screen.
 | `codex_state` | worker → phone | `{v, k}` or `{unavailable: true}` | at join, after the pets record; PRIVILEGED |
 | `combat_credit.cx` | worker → phone | `{k, n, n2}` | the kill's kind and its new counts, on the credit message the recipient already gets — no new message per kill |
 | `caps.codex` | worker → phone | `true` | advertised at join; `codex: false` in liveflags turns it off |
+| `combat_credit.roll` | worker → phone | 1 to 10,000 | the kill's one roll (killroll.js), to everyone the kill credits |
+| `combat_credit.rh` | worker → phone | a codex row id | the drop it landed on, when that drop is this player's |
+| `caps.killroll` | worker → phone | `true` | the worker rolls once a kill; `killroll: false` in liveflags turns it off |
 
 No phone → worker message: the codex is read-only.
 
@@ -280,12 +349,21 @@ opens after the next update.
 `_codexOff` stops the counting, and what was already learned is still sent and
 shown.
 
+`killroll: false`: the join's spread un-advertises `caps.killroll`,
+`_killRollOff` puts every drop back on its own roll, no `roll` is sent, and the
+codex's ranges go back to 1 to each drop's own number.
+
 ## The dev lever
 
 `POST /api/admin/dev/codex {playerId, kind | all, n, n2}` sets a kind's counts
 (or every kind's), writes and tells the phone — for looking at every page
 without walking out to kill one of all nine kinds. `n: 0` forgets a kind. Audit-logged like every
 dev op.
+
+`POST /api/admin/dev/killroll {playerId, next, kill}`: `next` (1 to 10,000) is
+the roll of this player's next kill as its killing blow; `kill`, a live
+monster's id in their zone, killed at once through `_resolveMonsterKill` (the
+answer carries that monster's `layout`).
 
 ## Tests
 
@@ -299,12 +377,25 @@ dev op.
   rolled at all).
 - `drops` §6b: the iron blade is a kill's one weapon, and a level-40 kill whose
   every roll would have dropped the old random weapon drops none.
+- `server/test/killroll.test.mjs` (29 checks): each drop's numbers (its chance
+  x 10,000, from 1 with no gap and none shared, the very constants it rolled
+  at; the blue slime's shard 112–1,111); caps.killroll; a roll on each drop's
+  first and last number dropping that drop and nothing else, past 1,611
+  nothing, its combat_credit saying the roll and the drop; where each one goes
+  (the raw gem into the killer's bag, the shard in the pile, the torso the
+  pile's one armour piece); with every other draw of the kill forced to 0, a
+  roll of 7,777 dropping nothing; a party (everyone told the roll, `rh` only to
+  whom the drop is for); the Workshop's share; `disable_weapon_drops`; the
+  kill switch (no roll, every drop back on its own roll); the dev lever; and
+  over 300,000 rolls each drop at its chance.
 - `mirror-audit`: `CODEX_TIERS` and the client's nine kinds against the
   worker's; each page's dungeon and levels against `WHEEL_DOORS` and its road
   against the plan's; every drop rate, the grade odds, no random weapon on
   either side, every chance one number and its dice a whole number of the
   1–10,000 roll, and each of the Wheel's monsters' gold and remnants against
-  the page's drop table.
+  the page's drop table; and the one roll: the same order, die and chances on
+  both sides, and every kind's numbers on the page the worker's own
+  (`killRollLayout` for a real Wheel monster of that kind).
 - `mp-codex` (phone, 36 checks): the Monsters tab; a real kill opening the
   whole page on the sheet's own height, scrolling in it from its top, its
   header badges (a Humanoid snowman) and tabs; its drop table; scrolled to
@@ -312,13 +403,15 @@ dev op.
   four grades) and a shard's (no grades), the X back to the marked row in
   view; the table's near-black panel, darker than the sheet, its stripes and
   heading band; nine rows and no random weapon, the ROLL column (its heading
-  and its dice) with every row's range over its chance in parentheses (the
-  shard's "1–1,000 (10%)" to the nugget's "1 (0.01%)", "Always (100%)" for
-  gold and remnants; each a line, right edges together, inside its row) and
-  the key under the table; each bar's fill its chance's share of the track
-  (10% a tenth, a 2 px nub under that); the bars at least 100 px long, the
-  roll column its widest text's width, a long name wrapping to two lines; the
-  cards' roll ("drops on a roll of 1–20 out of 10,000"); no name, type or
+  and its dice) with every row's own numbers over its chance in parentheses
+  (the shard's "612–1,611 (10%)" down to the nugget's "1 (0.01%)", "Always
+  (100%)" for gold and remnants, the blue slime's shard "112–1,111"; each a
+  line, right edges together, inside its row) and the key under the table
+  ("Each kill rolls once ... 1,612–10,000 drops nothing more"); each bar's
+  fill its chance's share of the track (10% a tenth, a 2 px nub under that);
+  the bars at least 100 px long, the roll column its widest text's width, a
+  long name wrapping to two lines; the cards' numbers ("drops on a roll of
+  2–21 out of 10,000", the shard's "612–1,611"); no name, type or
   chance cut short on any page; a tap on a tab, the open one's too, putting its content at the
   sheet's top, Info's whole stage in view; every fact open on Info from one
   kill, the stage playing its special, your character and the monster on its
@@ -331,3 +424,10 @@ dev op.
   slam's or a lunge's warning circle, what it throws in before its first
   flight, no monster ever standing over your character, nothing left behind
   on close, the counts back after a reload.
+- `mp-killroll` (phone, 11 checks): caps.killroll; walked out to Frost
+  Ridge's first snowmen, a kill showing its own roll over the snowman; a roll
+  of 7,431 "7,431" in grey, no drop; 640 "640 Frost Shard" in gold, held
+  longer, the shard on the ground; 300 "300 Raw Frost Gem", the gem in the
+  bag; 1 "1 Gold Nugget"; drawn as a message (the plain hit's size, its own
+  colour) with the dice drawn in front of the number; a kill off your screen
+  over you; no page errors -- pictures in tools/qa/mp/out/killroll-*.png.

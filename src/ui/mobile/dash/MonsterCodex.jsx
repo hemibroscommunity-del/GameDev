@@ -8,7 +8,8 @@ import { ZONES } from '@/data/zones.js';
 import { landLevelsText, WHEEL_LAND_LEVELS, WHEEL_GATE_ROADS } from '@/data/wheelSignposts.js';
 import { RARITY_TIERS } from '@/data/gameSystems.js';
 import { CodexStage } from './CodexStage.jsx';
-import { codexDropsFor, codexGrades, codexGradePercent, CODEX_ROLL_SIDES } from '@/data/codexDrops.js';
+import { codexDropsFor, codexGrades, codexGradePercent, codexRollText, codexRollFreeFrom, CODEX_ROLL_SIDES } from '@/data/codexDrops.js';
+import { killRollLive } from '@/game/killRoll.js';   /* v2.3.3198: does the worker roll once a kill (caps.killroll) */
 
 /* ═══ v2.3.3198: THE CODEX'S MONSTERS ═══
  *
@@ -237,13 +238,22 @@ function Tabs({ tab, setTab }) {
    rarer than a pixel's worth a 2 px nub so no bar reads "never".  And the
    owner's dice, "a 'roll-based system' where you see dice and number", each
    drop's own roll (their pick): the numbers of a kill's roll of 1 to 10,000
-   that drop it (`r.roll` the top one), the rarest 1.  Then: "Actually 'roll'
+   that drop it (then `r.roll`, the top one), the rarest 1.  Then: "Actually 'roll'
    column with a number range and drop chance percentage in parentheses might
    be better" -- so the chance column is a ROLL column, its range ("1–1,000")
    over its chance in parentheses ("(10%)"), "Always" for an every-kill drop
    (nothing to roll), the dice in its heading; the bar stays the chance out of
-   100%, and the range is the widest thing in the column (`ROLL_W`). */
-const ROLL_W = 50;
+   100%, and the range is the widest thing in the column (`ROLL_W`).
+   And then: "Shouldn't these numbers not overlap each other? Getting a roll
+   of 1 implies you'd get all the loot with 1, but it's really just the gold
+   nugget. I think these should be number ranges" -- so the worker rolls ONCE
+   a kill and each drop owns its own run of the numbers (server killroll.js,
+   data/codexDrops.js `from`-`to`): "612–1,611" down to the nugget's "1", the
+   numbers that drop nothing more said under the table.  Against a worker that
+   rolls each drop on its own (`shared` false: no caps.killroll) the column
+   still says 1 to each drop's own number.  The widest is a shard's
+   "612–1,611": 64 px. */
+const ROLL_W = 64;
 const COLS = `26px minmax(0, 1fr) 52px minmax(0, 1.2fr) ${ROLL_W}px`;
 const TABLE_BG = '#05090B';
 const STRIPE = 'rgba(229,237,233,.055)';
@@ -255,9 +265,9 @@ function barWidth(p) {
   return Math.round(x * 10000) / 100;
 }
 const n0 = (n) => Number(n).toLocaleString('en-US');
-/* the numbers of the roll that drop it: "1–1,000", "1"; null for an
-   every-kill drop */
-const rollRange = (roll) => (roll ? (roll === 1 ? '1' : '1–' + n0(roll)) : null);
+/* the numbers of the roll that drop it: "612–1,611", "1"; null for an
+   every-kill drop (v2.3.3198: its own run of them, data/codexDrops.js) */
+const rollRange = (r) => (r && r.from ? codexRollText(r.from, r.to) : null);
 /* the Gambling Den's two dice (the card's own picture), cut to the dice
    themselves: they stand at 50-206 x 90-216 of its 256 px */
 function Dice({ h = 12 }) {
@@ -266,7 +276,8 @@ function Dice({ h = 12 }) {
     backgroundImage: `url(${DICE})`, backgroundRepeat: 'no-repeat', backgroundSize: `${256 * k}px ${256 * k}px`,
     backgroundPosition: `${-50 * k}px ${-90 * k}px` }} />;
 }
-function DropsTab({ rows, sel, onPick }) {
+function DropsTab({ rows, sel, onPick, shared }) {
+  const free = codexRollFreeFrom(rows, shared);
   return (
     <div data-cx-drops={rows.length}>
       <div data-cx-drops-panel style={{ background: TABLE_BG, border: '1px solid rgba(229,237,233,.18)', borderRadius: 10, overflow: 'hidden',
@@ -296,7 +307,7 @@ function DropsTab({ rows, sel, onPick }) {
                 <span data-cx-bar-fill style={{ display: 'block', width: w + '%', minWidth: w > 0 ? 2 : 0, height: '100%', borderRadius: 4, background: BAR }} />
               </span>
               <span data-cx-roll-cell style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 0, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                <span data-cx-roll={r.roll || 'always'} style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.15, color: '#FFFFFF' }}>{rollRange(r.roll) || 'Always'}</span>
+                <span data-cx-roll={r.from ? r.from + '-' + r.to : 'always'} style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.15, color: '#FFFFFF' }}>{rollRange(r) || 'Always'}</span>
                 <span data-cx-pct style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.15, color: '#B3BEBB' }}>({r.pct})</span>
               </span>
             </button>
@@ -305,8 +316,11 @@ function DropsTab({ rows, sel, onPick }) {
       </div>
       </div>
       <div style={{ fontSize: 11.5, color: COL.text2, lineHeight: 1.4, margin: '7px 4px 0' }}>
-        <div data-cx-dice-key style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Dice h={13} /><span>Each kill rolls 1–{n0(CODEX_ROLL_SIDES)} for every item. A roll in its range drops it.</span>
+        <div data-cx-dice-key={shared ? 'shared' : 'own'} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Dice h={13} />
+          {shared
+            ? <span>Each kill rolls once, 1–{n0(CODEX_ROLL_SIDES)}. The item whose numbers it lands on drops{free ? <>; <span data-cx-free={free} style={{ whiteSpace: 'nowrap' }}>{n0(free)}–{n0(CODEX_ROLL_SIDES)}</span> drops nothing more</> : null}.</span>
+            : <span>Each kill rolls 1–{n0(CODEX_ROLL_SIDES)} for every item. A roll in its range drops it.</span>}
         </div>
         <div style={{ marginTop: 3 }}>Tap an item to see what it is and the grades it can roll.</div>
       </div>
@@ -379,8 +393,8 @@ function ItemCard({ kind, e, r, onClose }) {
           <div style={{ fontSize: 12, lineHeight: 1.35, color: COL.text2, minWidth: 0 }}>
             (chance for this item to drop)<br /><span style={{ color: COL.muted }}>{r.chanceNote}</span>
             {/* v2.3.3198: its dice, as the table shows them */}
-            {r.roll ? <><br /><span data-cx-card-roll={r.roll} style={{ color: COL.muted }}>
-              drops on a roll of {rollRange(r.roll)} out of {n0(CODEX_ROLL_SIDES)}</span></> : null}
+            {r.from ? <><br /><span data-cx-card-roll={r.from + '-' + r.to} style={{ color: COL.muted }}>
+              drops on a roll of {rollRange(r)} out of {n0(CODEX_ROLL_SIDES)}</span></> : null}
           </div>
         </div>
       </div>
@@ -525,7 +539,8 @@ function Page({ kind, S, onBack }) {
   /* a tap on a tab shows what it opened, at the top of the sheet */
   useLayoutEffect(() => { if (tabTap && body.current) reveal(body.current, 'top'); }, [tabTap]);
   const known = n >= CODEX_OPEN_AT;
-  const rows = known ? (codexDropsFor(kind) || []) : [];
+  const shared = killRollLive(S);   /* v2.3.3198: one roll a kill, each drop its own numbers */
+  const rows = known ? (codexDropsFor(kind, { shared }) || []) : [];
   const open = card ? rows.find((r) => r.id === card) : null;
   return (
     <div ref={root} data-cx-page={kind} data-cx-kills={n} data-cx-tabbed={known ? tab : ''}>
@@ -545,7 +560,7 @@ function Page({ kind, S, onBack }) {
           <Header kind={kind} e={e} n={n} n2={n2} elder={elder} />
           <Tabs tab={tab} setTab={(id) => { setTab(id); setTabTap((v) => v + 1); }} />
           <div ref={body}>
-            {tab === 'drops' ? <DropsTab rows={rows} sel={sel} onPick={(id) => { setSel(id); setCard(id); }} />
+            {tab === 'drops' ? <DropsTab rows={rows} sel={sel} shared={shared} onPick={(id) => { setSel(id); setCard(id); }} />
               : tab === 'info' ? <InfoTab kind={kind} e={e} S={S} elder={elder} setElder={setElder} />
                 : <LocationsTab kind={kind} e={e} />}
           </div>

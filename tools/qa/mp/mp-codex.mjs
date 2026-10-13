@@ -309,8 +309,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
        with a number range and drop chance percentage in parentheses might be
        better": the range that drops it over its chance in parentheses,
        "Always" for an every-kill drop, the dice in the column's heading */
-    const want = { gold: ['100%', 'Currency', 'Always'], remnant: ['100%', 'Material', 'Always'], shard: ['10%', 'Material', '1–1,000'], rawgem: ['5%', 'Gem', '1–500'],
-      raregem: ['0.5%', 'Gem', '1–50'], irontorso: ['0.2%', 'Armor', '1–20'], irongreaves: ['0.2%', 'Armor', '1–20'], irongreatsword: ['0.2%', 'Weapon', '1–20'],
+    /* ...and then: "Shouldn't these numbers not overlap each other? ... I
+       think these should be number ranges" -- one roll a kill, each drop its
+       own numbers, the rarest from 1 (server killroll.js) */
+    const want = { gold: ['100%', 'Currency', 'Always'], remnant: ['100%', 'Material', 'Always'], shard: ['10%', 'Material', '612–1,611'], rawgem: ['5%', 'Gem', '112–611'],
+      raregem: ['0.5%', 'Gem', '62–111'], irontorso: ['0.2%', 'Armor', '42–61'], irongreaves: ['0.2%', 'Armor', '22–41'], irongreatsword: ['0.2%', 'Weapon', '2–21'],
       nugget: ['0.01%', 'Craft', '1'] };
     const dOff = Object.keys(want).filter((k) => !d1[k] || d1[k].slice(0, 3).join('|') !== want[k].join('|') || d1[k][3] !== '(' + want[k][0] + ')');
     const diceKey = await P.page.evaluate(() => { const k = document.querySelector('[data-cx-dice-key]'); return k ? k.innerText.replace(/\s+/g, ' ').trim() : null; });
@@ -318,7 +321,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return h ? { text: h.innerText.trim(), dice: !!d && /bldg-gamble/.test(getComputedStyle(d).backgroundImage) && d.getBoundingClientRect().width >= 10 } : null; });
     rec.ok(`...and its drop table from the first kill -- ITEM, TYPE, ROLL (${rollHead && rollHead.text}, its dice drawn), no random weapon: ${Object.keys(d1).map((k) => k + ' ' + d1[k][2] + ' ' + d1[k][3]).join(', ')}; "${diceKey}"`,
       Object.keys(d1).length === 9 && !d1.weapon && dOff.length === 0 && !!rollHead && /^roll$/i.test(rollHead.text) && rollHead.dice
-        && /Each kill rolls 1–10,000 for every item\. A roll in its range drops it\./.test(diceKey || ''), { d1, dOff, diceKey, rollHead });
+        && /Each kill rolls once, 1–10,000\. The item whose numbers it lands on drops; 1,612–10,000 drops nothing more\./.test(diceKey || ''), { d1, dOff, diceKey, rollHead });
     /* the owner: "The drops table needs a different background so the
        information can stand out more from the dashboard background. Maybe
        black?" -- its panel is near-black, well darker than the sheet */
@@ -382,20 +385,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && legible.bars.gold === 100 && legible.bars.remnant === 100 && legible.bars.shard === 10 && legible.bars.rawgem === 5 && legible.bars.raregem === 0.5
         && legible.bars.irongreatsword === 0.2 && legible.bars.nugget === 0.01 && fillOff.length === 0, { striped, fillOff, ...legible });
     /* the bars ~2.5x the 44 px they had; the roll column no wider than its
-       widest text (the shard's "1–1,000": the grid's 6 px gap plus a few px
+       widest text (the shard's "612–1,611": the grid's 6 px gap plus a few px
        of slack from its bar's end -- in the old 76 px chance column a "100%"
-       stood ~50 px off and a "5%" ~63), lined up on the right; a long name on
-       two lines; every roll's range and chance one line each, the chance
-       under the range, inside its row, its number its chance's faces of the
-       10,000 ("always" at 100%) */
+       stood ~50 px off and a "5%" ~63; the shortest, "(0.2%)" under "2–21",
+       ~35 now, the column 64 px for the shard's range), lined up on the
+       right; a long name on two lines; every roll's range and chance one line
+       each, the chance under the range, inside its row, its numbers its own
+       run of the one roll's 10,000 ("always" at 100%) */
     const lay = legible.lay || [];
     const barMin = Math.min(...lay.map((l) => l.bar));
     const gapMin = Math.min(...lay.map((l) => l.gap)), gapMax = Math.max(...lay.map((l) => l.gap));
     const twoLine = lay.filter((l) => l.nameLines === 2).map((l) => l.id);
+    const RUN = { gold: 'always', remnant: 'always', shard: '612-1611', rawgem: '112-611', raregem: '62-111', irontorso: '42-61', irongreaves: '22-41', irongreatsword: '2-21', nugget: '1-1' };
     const rollOff = lay.filter((l) => !(l.roll && l.roll.fits && l.roll.oneLine && l.roll.under && l.roll.right <= 1 && l.roll.inRow
-      && l.roll.n === (CH[l.id] >= 1 ? 'always' : String(Math.round(CH[l.id] * 10000)))));
+      && l.roll.n === RUN[l.id]));
     rec.ok(`...its bars ${barMin} px long (were 44), the roll column its widest text's width (${gapMin}-${gapMax} px from a bar's end to its text), each roll's range over its chance, names wrapping (${twoLine.join(', ')} on two lines; columns ${legible.cols})`,
-      lay.length === 9 && barMin >= 100 && gapMin <= 14 && gapMax <= 30 && lay.every((l) => l.typeFits && l.nameLines <= 2)
+      lay.length === 9 && barMin >= 100 && gapMin <= 14 && gapMax <= 40 && lay.every((l) => l.typeFits && l.nameLines <= 2)
         && twoLine.length >= 1 && rollOff.length === 0, { rollOff, lay });
     await P.page.screenshot({ path: join(OUT, 'codex-1-snowman.png') });
     const fr1 = await codex(P);
@@ -410,7 +415,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const icBox = await boxLook(P, '[data-cx-item-close]');
     rec.ok(`scrolled ${deep} px down the table, a tap on the Iron Great Sword opens its card at its top (its X in view): ${ic && ic.tier}, base ${ic && ic.base} ("${ic && ic.roll}"), grades ${ic && ic.grades.join(' / ')}`,
       !!ic && deep > 0 && !!icBox && icBox.top === 0 && icBox.seen && /Iron Great Sword/.test(ic.text) && /Weapon/.test(ic.text) && ic.tier === 'Common' && ic.base === '0.2%' && /Snowman/.test(ic.found) && /Lv 1–40/.test(ic.found)
-        && ic.roll === 'drops on a roll of 1–20 out of 10,000'
+        && ic.roll === 'drops on a roll of 2–21 out of 10,000'
         && ic.grades.join('|') === 'normal 90.09995%|rare 9%|elite 0.9%|godly 0.00005%' && /does not change the 0.2% drop chance/.test(ic.text), { ic, icBox, deep });
     await P.page.screenshot({ path: join(OUT, 'codex-2-card.png') });
     /* v2.3.3198: a picture of its BASE DROP CHANCE, with its dice */
@@ -429,12 +434,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { const b = document.querySelector('[data-cx-item-close]'); if (b) b.click(); });
     await P.page.waitForTimeout(300);
     rec.ok(`...its X comes back to the list with that row marked (${selNow.join(',')}) and in view (${selBox && selBox.at} px down the box); a Frost Shard's card is 10% ("${sc && sc.roll}") with no grades to roll`,
-      selNow.join(',') === 'irongreatsword' && !!selBox && selBox.seen && !!sc && sc.base === '10%' && sc.roll === 'drops on a roll of 1–1,000 out of 10,000' && sc.grades.length === 0 && sc.tier === null && /Frost Shard/.test(sc.text), { selNow, selBox, sc });
+      selNow.join(',') === 'irongreatsword' && !!selBox && selBox.seen && !!sc && sc.base === '10%' && sc.roll === 'drops on a roll of 612–1,611 out of 10,000' && sc.grades.length === 0 && sc.tier === null && /Frost Shard/.test(sc.text), { selNow, selBox, sc });
     /* the open tab tapped again (the list scrolled down to the shard's row) */
     await scrollTo(P, 0);
     await tab(P, 'drops');
     const dTop = await boxLook(P, '[data-cx-drops]');
     await P.page.screenshot({ path: join(OUT, 'codex-1c-table.png') });
+    /* v2.3.3198: and its middle rows (the raw gem's 112–611 down to the
+       greaves' 22–41), for the picture of the whole table; put back after */
+    const keepTop = await boxLook(P, null);
+    await P.page.evaluate(() => { const r = document.querySelector('[data-cx-drop="rawgem"]'); if (r) r.scrollIntoView({ block: 'start' }); });
+    await P.page.waitForTimeout(150);
+    await P.page.screenshot({ path: join(OUT, 'codex-1e-table-middle.png') });
+    await scrollTo(P, keepTop ? keepTop.top : 0);
     rec.ok(`a tap on the open Drops tab puts its table at the top of the sheet (${dTop && dTop.at} px down, the box at ${dTop && dTop.top})`,
       !!dTop && dTop.at >= 0 && dTop.at <= 8 && dTop.top > 0, dTop);
 
@@ -540,7 +552,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const d = e.drops || {};
       if (!['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'nugget'].every((id) => d[id]) || d.weapon) return true;
       /* v2.3.3198: every drop under 100% its dice, the rest none */
-      if (d.shard[2] !== '1–1,000' || d.nugget[2] !== '1' || d.irongreatsword[2] !== '1–20' || d.gold[2] !== 'Always' || d.shard[3] !== '(10%)') return true;
+      /* ...each its own numbers: the blue slime has no raw gem, so its shard is lower down */
+      if (d.shard[2] !== (NO_GEM.includes(e.kind) ? '112–1,111' : '612–1,611') || d.nugget[2] !== '1' || d.irongreatsword[2] !== '2–21' || d.gold[2] !== 'Always' || d.shard[3] !== '(10%)') return true;
       if (!!d.remnant === NO_REMNANT.includes(e.kind)) return true;
       if (!!d.rawgem === NO_GEM.includes(e.kind)) return true;
       return d.shard[0] !== '10%';

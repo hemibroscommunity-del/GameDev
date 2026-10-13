@@ -70,7 +70,9 @@ import { CODEX_TIERS as CLIENT_CODEX_TIERS, CODEX_KINDS as CLIENT_CODEX_KINDS, C
 /* v2.3.3198: the codex's drop tables, and what they are held to */
 import { CODEX_DROP_RATES as CLIENT_CODEX_DROP_RATES, CODEX_GRADE_ODDS as CLIENT_CODEX_GRADE_ODDS, CODEX_RAW_GEM_ELEMENTS as CLIENT_CODEX_RAW_GEMS,
   CODEX_REMNANTS as CLIENT_CODEX_REMNANTS, codexGoldAt as clientCodexGoldAt, codexDropsFor as clientCodexDropsFor,
-  CODEX_ROLL_SIDES as CLIENT_CODEX_ROLL_SIDES, codexRoll as clientCodexRoll } from '../../src/data/codexDrops.js';
+  CODEX_ROLL_SIDES as CLIENT_CODEX_ROLL_SIDES, codexRoll as clientCodexRoll,
+  CODEX_ROLL_ORDER as CLIENT_CODEX_ROLL_ORDER, codexRollLayout as clientCodexRollLayout } from '../../src/data/codexDrops.js';
+import { KILL_ROLL as SRV_KILL_ROLL, KILL_ROLL_CHANCES as SRV_KILL_ROLL_CHANCES, killRollLayout as srvKillRollLayout } from '../src/killroll.js'; /* v2.3.3198: one roll a kill */
 import { WEAPON_QUALITY_ODDS as SRV_WEAPON_QUALITY_ODDS } from '../src/hardening.js';
 import { WHEEL_ZONE as SRV_WHEEL_ZONE } from '../src/wheelzone.js';
 import { WHEEL_DOORS as SRV_WHEEL_DOORS } from '../src/wheelspawns.js';   /* v2.3.3198: a codex page's dungeon */
@@ -2039,13 +2041,17 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     if (!shard || shard.key !== 'shard_' + e.home) eOff.push([kind, 'shard', shard && shard.key]);
     for (const id of ['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'nugget']) if (!ids.includes(id)) eOff.push([kind, 'missing', id]);
     if (ids.includes('weapon')) eOff.push([kind, 'a random weapon row']);
-    /* v2.3.3198: the owner's dice -- each drop's own roll of 1 to 10,000,
-       on its number or lower: a whole number of the die's faces, so the page
-       never rounds one, and none for an every-kill drop */
+    /* v2.3.3198: the owner's dice -- a whole number of the 1-to-10,000 roll's
+       faces for each drop, so the page never rounds one, and none for an
+       every-kill drop.  Under the one roll (the default) each drop owns its
+       own run of them; on its own roll (an older worker), 1 to its number. */
+    const own = clientCodexDropsFor(kind, { shared: false }) || [];
     for (const r of rows) {
       const faces = r.chance * CLIENT_CODEX_ROLL_SIDES;
-      if (r.chance < 1 && (Math.abs(faces - Math.round(faces)) > 1e-9 || r.roll !== Math.round(faces) || r.roll < 1)) eOff.push([kind, 'roll', r.id, r.chance, r.roll]);
-      if (r.chance >= 1 && r.roll !== null) eOff.push([kind, 'roll on an every-kill drop', r.id, r.roll]);
+      const o = own.find((x) => x.id === r.id);
+      if (r.chance < 1 && (Math.abs(faces - Math.round(faces)) > 1e-9 || !(r.from >= 1) || r.to - r.from + 1 !== Math.round(faces))) eOff.push([kind, 'roll', r.id, r.chance, r.from, r.to]);
+      if (r.chance < 1 && (!o || o.from !== 1 || o.to !== Math.round(faces))) eOff.push([kind, 'its own roll', r.id, o && o.from, o && o.to]);
+      if (r.chance >= 1 && (r.from !== null || r.to !== null)) eOff.push([kind, 'roll on an every-kill drop', r.id, r.from, r.to]);
       if (/[–-]/.test(r.pct)) eOff.push([kind, 'a chance that is not one number', r.id, r.pct]);
     }
     if (ids.includes('remnant') !== Object.prototype.hasOwnProperty.call(CLIENT_CODEX_REMNANTS, kind)) eOff.push([kind, 'remnant row']);
@@ -2053,6 +2059,39 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('codex drops: each page\'s table is its land\'s -- the shard the worker rolls ("shard_" + its home), a raw gem only when its element is a Gem Cutter one (not Flora), every pile drop listed and no random weapon; every chance one number, and its dice a whole number of the 1-10,000 roll (nugget 1, an iron piece 20, shard 1,000)',
     eOff.length === 0 && CLIENT_CODEX_ROLL_SIDES === 10000 && clientCodexRoll(SRV.GOLD_NUGGET_MONSTER_DROP) === 1
       && clientCodexRoll(SRV.MONSTER_IRON_WEAPON_DROP.chance) === 20 && clientCodexRoll(SRV.SHARD_MONSTER_DROP) === 1000 && clientCodexRoll(1) === null, eOff);
+
+  /* ═══ v2.3.3198: ONE ROLL A KILL -- THE PAGE'S NUMBERS ARE THE WORKER'S ═══
+     The owner: "Shouldn't these numbers not overlap each other?"  The worker
+     lays each monster's drops on one roll's numbers (killroll.js
+     killRollLayout); the page lays its own copy (codexDropsFor's from-to,
+     codexRollLayout).  Held here, kind by kind, against a real Wheel monster
+     of that kind as the worker sees it (_killRollCan): a drop moved, added or
+     re-rated on one side and not the other fails. */
+  const chanceOff = [];
+  const rowRate = { nugget: SRV.GOLD_NUGGET_MONSTER_DROP, irongreatsword: R.ironGreatsword, irongreaves: R.ironGreaves, irontorso: R.ironTorso,
+    raregem: R.rareGem, rawgem: SRV.GEM_RAW_MONSTER_DROP, shard: R.shard };
+  for (const id of SRV_KILL_ROLL.ORDER) if (SRV_KILL_ROLL_CHANCES[id] !== rowRate[id]) chanceOff.push([id, SRV_KILL_ROLL_CHANCES[id], rowRate[id]]);
+  check('kill roll: one order, one die and the same chances on both sides (the rarest from 1: nugget, iron great sword, greaves, torso, rare gem, raw gem, shard)',
+    JSON.stringify(SRV_KILL_ROLL.ORDER) === JSON.stringify(CLIENT_CODEX_ROLL_ORDER) && SRV_KILL_ROLL.SIDES === CLIENT_CODEX_ROLL_SIDES
+      && chanceOff.length === 0 && SRV_KILL_ROLL.ORDER[0] === 'nugget' && SRV_KILL_ROLL.ORDER[SRV_KILL_ROLL.ORDER.length - 1] === 'shard',
+    { server: SRV_KILL_ROLL.ORDER, client: CLIENT_CODEX_ROLL_ORDER, chanceOff });
+  const layOff = [];
+  for (const kind of CLIENT_CODEX_KINDS) {
+    const m = wheel.find((x) => srvPetKindOf(x) === kind);
+    if (!m) { layOff.push([kind, 'no Wheel monster']); continue; }
+    const srv = srvKillRollLayout(room._killRollCan(SRV_WHEEL_ZONE, m));
+    const cli = (clientCodexDropsFor(kind) || []).filter((r) => r.from).map((r) => ({ id: r.id, from: r.from, to: r.to }))
+      .sort((a, b) => a.from - b.from);
+    if (JSON.stringify(srv) !== JSON.stringify(cli)) layOff.push([kind, srv, cli]);
+    /* never two drops on one number, none past the die, from 1 with no gap */
+    let at = 1;
+    for (const l of srv) { if (l.from !== at || l.to < l.from || l.to > SRV_KILL_ROLL.SIDES) layOff.push([kind, 'run', l]); at = l.to + 1; }
+  }
+  const snow = srvKillRollLayout({ shard: true, rawgem: true });
+  check('kill roll: every kind\'s numbers on the page are the worker\'s own, laid from 1 with no gap and no overlap (a snowman: nugget 1, iron great sword 2-21, greaves 22-41, torso 42-61, rare gem 62-111, raw gem 112-611, shard 612-1,611; the blue slime, with no raw gem, its shard 112-1,111)',
+    layOff.length === 0 && JSON.stringify(snow) === JSON.stringify(clientCodexRollLayout(rowRate))
+      && JSON.stringify(snow.map((l) => [l.from, l.to])) === JSON.stringify([[1, 1], [2, 21], [22, 41], [42, 61], [62, 111], [112, 611], [612, 1611]]),
+    { layOff: layOff.slice(0, 3), snow });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

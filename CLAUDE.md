@@ -1968,10 +1968,35 @@ remnant to migrate server-side, not a mode to preserve.
       ("a 'roll-based system' where you see dice and number", their pick
       "Each drop's own roll"), shown as the owner then asked ("'roll' column
       with a number range and drop chance percentage in parentheses"): a ROLL
-      column (`ROLL_W` 50, the dice in its heading), each row the numbers of a
-      kill's roll of 1 to 10,000 that drop it over its chance -- "1–1,000
-      (10%)" ... "1 (0.01%)", "Always (100%)" (`codexRoll`,
-      `CODEX_ROLL_SIDES`, `rollRange`) -- the worker's own roll, said on a die;
+      column (the dice in its heading), each row the numbers of a kill's roll
+      of 1 to 10,000 that drop it over its chance, "Always (100%)" for gold
+      and remnants;
+    - ONE ROLL A KILL, EACH DROP ITS OWN NUMBERS (the owner: "Shouldn't these
+      numbers not overlap each other? Getting a roll of 1 implies you'd get
+      all the loot with 1 ... That way a player hunting for something can
+      also be looking for a roll number within that range"):
+      `server/src/killroll.js` rolls once, 1 to 10,000, and each drop that is
+      not on every kill owns its chance x 10,000 numbers from 1 up, the
+      rarest first (`KILL_ROLL.ORDER`, `killRollLayout`): a snowman's nugget
+      1, Iron Great Sword 2–21, Greaves 22–41, Torso 42–61, Rare Gem 62–111,
+      raw gem 112–611, shard 612–1,611, nothing more past it (the blue slime,
+      no raw gem: its shard 112–1,111); each chance unchanged, a kill drops
+      ONE of them at most (each had its own roll: ~1 kill in 170 dropped two);
+      who gets each is as before; a Workshop run's share is one more draw on
+      its numbers; `disable_weapon_drops` leaves the blade's numbers dropping
+      nothing; the roll functions called with no roll roll on their own (the
+      kill switch's path, and the old suites');
+    - THE ROLL IS SHOWN: combat_credit `roll` to everyone credited and `rh`
+      (the drop's codex row id) to whom it is theirs (`_killRollTheirs`); the
+      game shows it over the monster (`src/game/killRoll.js`), the Gambling
+      Den's dice in FRONT (`/icons/popups/dice.webp`, the popup's `dice` mark,
+      `iconLead`), "7,431" grey (gone in 2.4 s) or "640 Frost Shard" gold
+      (3.2 s), a message not a damage number (`roll: true`), over you when
+      the monster is off your screen; the codex's ROLL column the same numbers
+      (`codexRollLayout`, `ROLL_W` 64; an older worker's 1 to each drop's own
+      number, `shared: false`), mirror-audit holding it to `killRollLayout`
+      for every kind; `caps.killroll`, kill switch `killroll: false`, dev
+      lever `/dev/killroll {next, kill}`; `killroll` suite, `mp-killroll`;
     - NO RANDOM WEAPON OFF A KILL (the owner: "Remove 'a random weapon'
       drop", then "Remove it from the game"): `_rollWeaponDropForKill` and
       its level curve are gone, a kill's one weapon the Iron Great Sword's 1

@@ -15,6 +15,11 @@
  *      is one roll that picks a side, which halves each rate while still
  *      dropping iron often enough to look right in play.  So a run where
  *      both pass their own roll must produce BOTH pieces.
+ *      v2.3.3198: a live kill rolls ONCE now, each drop owning its own
+ *      numbers (killroll.js -- the owner: "Shouldn't these numbers not
+ *      overlap each other?"), so a kill gives one piece at most, each still
+ *      at its 1 in 500 (killroll.test.mjs).  These rolls called alone, as
+ *      this suite calls them, are the `killroll: false` switch's path.
  *   3. THE CLAIMS DO NOT EAT EACH OTHER.  The pile already had two claim
  *      lanes (the one-of inventory slot, and the weapon's own flag,
  *      v2.3.1141); the armour adds a third and the gem joins the first.

@@ -47,6 +47,18 @@
  * owner then asked, a ROLL column: the range 1 to it ("1–1,000") over the
  * chance in parentheses (MonsterCodex.jsx `rollRange`).
  *
+ * v2.3.3198: AND THE NUMBERS NEVER OVERLAP.  The owner: "Shouldn't these
+ * numbers not overlap each other? Getting a roll of 1 implies you'd get all
+ * the loot with 1, but it's really just the gold nugget. I think these should
+ * be number ranges. That way a player hunting for something can also be
+ * looking for a roll number within that range".  So the worker rolls ONCE a
+ * kill (server/src/killroll.js), and each drop owns its own run of the 10,000
+ * numbers, the rarest from 1: a row's `from`-`to` (`codexRollLayout`, the
+ * worker's killRollLayout, which mirror-audit holds this to for every kind).
+ * Against a worker that does not advertise it (an old one, or `killroll:
+ * false`), each drop still rolls on its own, and the rows say so: 1 to each
+ * drop's own number, as before (`shared: false`).
+ *
  * No game imports beyond plain data tables: the worker's mirror audit reads
  * this file too. */
 import { GOLD_NUGGET_DROP, GEM_DROP_RATES, ZONE_RESOURCES } from './items.js';
@@ -89,12 +101,32 @@ export const CODEX_REMNANTS = Object.freeze({
    the rarest drop's 1 in 10,000 (the gold nugget) is one face */
 export const CODEX_ROLL_SIDES = 10000;
 
-/** The number a kill's roll of 1 to CODEX_ROLL_SIDES must come in at or under
- *  for a drop of chance `p`: 0.1 -> 1000, 1/500 -> 20, 0.0001 -> 1.  Null for
- *  a drop every kill has (nothing to roll) or none at all. */
+/** How many of the CODEX_ROLL_SIDES numbers a drop of chance `p` owns: 0.1 ->
+ *  1000, 1/500 -> 20, 0.0001 -> 1.  Null for a drop every kill has (nothing to
+ *  roll) or none at all. */
 export function codexRoll(p) {
   if (!(p > 0) || p >= 1) return null;
   return Math.max(1, Math.round(p * CODEX_ROLL_SIDES));
+}
+
+/* v2.3.3198: the order a kill's one roll lays its drops in, from 1 up -- the
+   rarest first, the three 1-in-500s the reverse of the rows below so the
+   table reads straight down (server/src/killroll.js KILL_ROLL.ORDER) */
+export const CODEX_ROLL_ORDER = Object.freeze(['nugget', 'irongreatsword', 'irongreaves', 'irontorso', 'raregem', 'rawgem', 'shard']);
+
+/** A kind's numbers under the one roll: [{ id, from, to }], from 1 up, none
+ *  overlapping, of the drops in `chances` ({ rowId: chance }) -- the worker's
+ *  killRollLayout, laid from the same chances. */
+export function codexRollLayout(chances) {
+  const out = [];
+  let at = 1;
+  for (const id of CODEX_ROLL_ORDER) {
+    const n = has(chances, id) ? codexRoll(chances[id]) : null;
+    if (!n) continue;
+    out.push({ id, from: at, to: at + n - 1 });
+    at += n;
+  }
+  return out;
 }
 
 /** The gold a monster of `level` carries (index.js _makeZoneMonster:
@@ -187,19 +219,24 @@ const PARTY_PILE = 'In a party, only players who did at least 5% of its damage c
 
 /** Every row of `kind`'s drop table, most often first -- what the page's
  *  Drops tab lists and what a tap on a row opens (the owner's mockup):
- *  [{ id, key, name, icon, type, chance, pct, oneIn, roll, amount?,
+ *  [{ id, key, name, icon, type, chance, pct, oneIn, from, to, amount?,
  *     who, graded, tier?, color?, desc, chanceNote, info: [lines] }]
  *    type        the TYPE column: Currency, Material, Gem, Armor, Weapon, Craft
  *    chance      the chance a kill drops it (1: every kill), one number at
  *                every level (v2.3.3198)
  *    pct/oneIn   "10%" / "1 in 10"
- *    roll        its dice: drops on this or under, of 1 to CODEX_ROLL_SIDES
- *                (`codexRoll`); null for an every-kill drop
+ *    from, to    its dice: the numbers of a kill's roll of 1 to
+ *                CODEX_ROLL_SIDES that drop it -- its own run of them under the
+ *                one roll (v2.3.3198), else 1 to its own number; null for an
+ *                every-kill drop
  *    who         'pile' (picked up), 'killer' (the killing blow, into the bag)
  *    graded      rolls a grade as it drops (the card's POSSIBLE RARITY)
  *    tier        a weapon or armour piece's base rarity: 'common'
- *  or null for a kind with no page. */
-export function codexDropsFor(kind) {
+ *  or null for a kind with no page.
+ *  `opts.shared` (default true): the worker rolls once a kill (caps.killroll);
+ *  false, each drop on its own roll (an older worker, or `killroll: false`). */
+export function codexDropsFor(kind, opts) {
+  const shared = !(opts && opts.shared === false);
   const e = has(CODEX_ENTRIES, kind) ? CODEX_ENTRIES[kind] : null;
   if (!e) return null;
   const lo = WHEEL_LAND_LEVELS[0], hi = WHEEL_LAND_LEVELS[1];
@@ -247,7 +284,8 @@ export function codexDropsFor(kind) {
   rows.push({ id: 'irongreaves', key: 'iron_greaves', name: 'Iron Greaves', icon: ICON.ironGreaves, type: 'Armor', chance: CODEX_DROP_RATES.ironGreaves,
     who: 'pile', graded: true, tier: 'common',
     desc: 'Iron leg armour, the step up from copper. The Blacksmith forges the same pair from four iron bars.',
-    info: ['This drops at a ' + codexPercent(CODEX_DROP_RATES.ironGreaves) + ' chance from ' + e.name + ', about ' + codexOneIn(CODEX_DROP_RATES.ironGreaves).toLowerCase() + ' kills, on its own roll: a kill can drop both iron pieces.',
+    info: ['This drops at a ' + codexPercent(CODEX_DROP_RATES.ironGreaves) + ' chance from ' + e.name + ', about ' + codexOneIn(CODEX_DROP_RATES.ironGreaves).toLowerCase() + ' kills'
+      + (shared ? '.' : ', on its own roll: a kill can drop both iron pieces.'),
       ...gear(codexPercent(CODEX_DROP_RATES.ironGreaves)), PARTY_PILE] });
   rows.push({ id: 'irongreatsword', key: 'iron_greatsword', name: 'Iron Great Sword', icon: ICON.ironGreatsword, type: 'Weapon', chance: CODEX_DROP_RATES.ironGreatsword,
     who: 'pile', graded: true, tier: 'common',
@@ -258,11 +296,37 @@ export function codexDropsFor(kind) {
     desc: 'A lump of gold the size of a thumb. Five smelt into a gold bar for the amulet forge.',
     info: ['About ' + codexOneIn(GOLD_NUGGET_DROP.monsterKill).toLowerCase() + ' kills drops one.',
       'It goes to whoever lands the killing blow, straight into the bag.'] });
+  /* v2.3.3198: each drop's numbers -- its own run of the one roll's, or (an
+     older worker) 1 to its own number */
+  const chances = Object.create(null);
+  for (const r of rows) if (r.chance < 1) chances[r.id] = r.chance;
+  const lay = Object.create(null);
+  if (shared) for (const l of codexRollLayout(chances)) lay[l.id] = l;
   for (const r of rows) {
     r.pct = codexPercent(r.chance);
     r.oneIn = codexOneIn(r.chance);
-    r.roll = codexRoll(r.chance);
+    const own = codexRoll(r.chance);
+    r.from = own ? (shared ? (lay[r.id] ? lay[r.id].from : null) : 1) : null;
+    r.to = own ? (shared ? (lay[r.id] ? lay[r.id].to : null) : own) : null;
     if (!r.chanceNote) r.chanceNote = r.chance >= 1 ? 'every kill' : 'about ' + r.oneIn.toLowerCase() + ' kills';
+    if (shared && r.from) r.info.push('Each kill rolls once, 1 to ' + CODEX_ROLL_SIDES.toLocaleString('en-US') + ': ' + codexRollText(r.from, r.to)
+      + ' ' + (r.from === r.to ? 'is its number' : 'are its numbers') + ', and no other drop shares them.');
   }
   return rows;
+}
+
+/** "612–1,611", "1": a drop's numbers as the page prints them; null for none. */
+export function codexRollText(from, to) {
+  if (!(from >= 1) || !(to >= from)) return null;
+  const f = (n) => Number(n).toLocaleString('en-US');
+  return from === to ? f(from) : f(from) + '–' + f(to);
+}
+
+/** Under the one roll (`shared`), the first number of it that drops nothing
+ *  more -- the table's highest `to`, plus one; null otherwise. */
+export function codexRollFreeFrom(rows, shared) {
+  if (!shared) return null;
+  let top = 0;
+  for (const r of rows || []) if (r && r.to > top) top = r.to;
+  return top > 0 && top < CODEX_ROLL_SIDES ? top + 1 : null;
 }
