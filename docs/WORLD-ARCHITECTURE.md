@@ -338,9 +338,29 @@ requests a second**. Their own example is a game with 50,000 players sending
 - **Today's cap of 60 may already be above that** at the full send rate. A
   bot load test (build order, step 4) should settle it before any launch
   push.
-- **200 in one room will not work** as the game stands. The processor is not
-  the limit: 60 players cost 0.16 ms of each 22 ms tick
-  (`docs/specs/room-full.md`). Taking the messages in is.
+  - **Measured, v2.3.3194** (`docs/specs/load-test.md`, the bot load test in
+    `tools/qa/load/`): in the sandbox, against the real runtime, the room is
+    smooth up to about **70 busy players** (its one thread 55% busy at 50,
+    73% at 75). Past that it does not fall over, it slows: fewer ticks a
+    second, so the world runs slower, at about half speed from 125. No freeze
+    up to 150, and it recovers when players leave. Cloudflare's own machines
+    are not measured.
+  - **#885** (`docs/specs/room-capacity.md`) makes the room's own
+    work cheaper with the same bytes to every player: smooth to about **110**,
+    and not yet at half speed with 150.
+- **200 in one room will not work** as the game stands:
+  - **the processor.** The old figure, 60 players at 0.16 ms of each 22 ms
+    tick (`docs/specs/room-full.md`), was the meadow, before the Wheel. In the
+    Wheel each player's tick is built on its own and lists every moving
+    player, so the room's own work grew with the square of the crowd: 32% of a
+    core at 50 players, 116% at 150 (after #885: 17% and 26%);
+  - **the messages.** Taking one in costs the runtime about 0.06-0.09 ms of
+    the room's thread (a tenth of it at 60 moving players), and sending every
+    player's update every tick grows with the square of the crowd. That is
+    the limit left once the room's own code is cheap;
+  - **the phones.** Each downloads about 3.5 KB a second for every moving
+    player in the Wheel, about 205 KB/s at 60 (#886 sends far players
+    less often: `docs/specs/far-players.md`).
 
 ### The fix: fewer messages, and a world of area servers
 
