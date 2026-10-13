@@ -19,6 +19,23 @@
  *      "+30 XP", "+25 G", a heal's "+12";
  *   5. pictures: tools/qa/mp/out/dmgsize-<tag>-*.png (run against another
  *      build with QA_DIST and they are the "before").
+ *
+ * ═══ v2.3.3192: A MESSAGE IS AS BIG AS A DAMAGE NUMBER ═══
+ * Owner, 2026-10-12: "Make the messages in the game like "no mana" and other
+ * things like "quest complete!" the same font size as the combat damage
+ * numbers".  So 4 turns over: every popup that is not a damage number --
+ * "No mana!", "Quest Complete!", "Blocked!", "Dodged", "+30 XP", a heal's
+ * "+12", a crit-flagged note (the plain hit's size, not the crit's) -- is drawn
+ * at the plain hit's size, its outline with it.  And:
+ *   6. a long message wraps into even lines no wider than MSG_WRAP_W, at the
+ *      same size, a cut 60-character announcement too;
+ *   7. a message at the view's edge is kept inside it; a number is not moved;
+ *   8. ONE SIZE ON THE SCREEN (the owner, then: "Yes do fixed size instead"):
+ *      with the dashboard up and folded (the world drawn at two zooms) a
+ *      damage number is the same height in CSS px, a message exactly as tall
+ *      as it, and two stacked numbers the same distance apart.  Every
+ *      measurement here is taken AT REST -- the spawn pop and a note's wiggle
+ *      divided out, the popup's screen factor (`_z`) kept in.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -30,13 +47,19 @@ const TAG = process.env.DMGSIZE_TAG || (process.env.QA_DIST ? 'before' : 'after'
 /* what a number was before this change: effectsRenderer DMG_FONT_PX / DMG_CRIT_FONT_PX, and the icon cap */
 const OLD = { font: 21, crit: 38, cap: 22 };
 
-/* One monster_attack on you, through the game's own dispatcher (mp-elemhits' way). */
-const hitMe = (P, p) => P.page.evaluate((p) => {
+/* monster_attacks on you, through the game's own dispatcher (mp-elemhits' way) -- v2.3.3192: several, and the hold
+   (below), in ONE step.  The dispatcher pushes a hit's number with the default
+   1.5 s life, and on a loaded test box three round trips (two hits, then the hold) took longer than that: a run found
+   only the second hit, the first gone before the hold reached it. */
+const hitMeHeld = (P, list) => P.page.evaluate((list) => {
   const S = window._gameState.current;
-  window.__btDispatch({ type: 'monster_attack', payload: Object.assign({
-    monsterId: 'qa-dmg', targetId: S.myId, dmg: 4, dmgTaken: 4, zone: S.currentZone,
-    attackerX: S.player.x + 24, attackerY: S.player.y, ability: 'qa' }, p) });
-}, p);
+  for (const p of list) {
+    window.__btDispatch({ type: 'monster_attack', payload: Object.assign({
+      monsterId: 'qa-dmg', targetId: S.myId, dmg: 4, dmgTaken: 4, zone: S.currentZone,
+      attackerX: S.player.x + 24, attackerY: S.player.y, ability: 'qa' }, p) });
+  }
+  for (const d of S.dmgNumbers) { d.rise = 0; d.ttl = 12; }
+}, list);
 
 /* Popups as pushDmgPopup builds them (the shape is {x, y, text, color, ts} + extras), at the
    anchor a number spawns at over your head's band -- combatHelpers heroPopupY. */
@@ -76,8 +99,20 @@ const drawn = (P) => P.page.evaluate(() => {
     const ic = d._pixiIcon && !d._pixiIcon.destroyed ? d._pixiIcon : null;
     /* a glyph-atlas number is a BitmapText at the bake's size (style.fontSize) scaled down to its font */
     const font = t._bmpBaseScale ? t._bmpBaseScale * (+t.style.fontSize || 100) : (t.style && +t.style.fontSize) || null;
+    /* v2.3.3192: what is drawn (a wrapped message's lines), its lines and whether it is a message, and its size
+       AT REST -- this box draws a frame in about half a second, so a read can catch the 1.6x spawn pop or a note's
+       wiggle (`anim`, as section 7 measures it): its height on the screen (getBounds walks up through the world's
+       zoom, so CSS px) and its width in world px, both divided by it */
+    /* v2.3.3192: and the popup's screen factor Z (`_z`, effectsRenderer POPUP_ZOOM) is part of its size at rest, not of
+       its animation: popups are one size on the screen now */
+    const z = d._z || 1;
+    const anim = (t._bmpBaseScale ? t.scale.x / t._bmpBaseScale : (t.scale.x || 1)) / z;
+    let cssH = null, cssCY = null;
+    try { const bb = t.getBounds(); cssH = +(bb.height / anim).toFixed(2); cssCY = +(bb.y + bb.height / 2).toFixed(2); } catch (e) { /* a mid-teardown text */ }
     rows.push({
       text: String(d.text), crit: !!d.crit, taken: !!d.taken, icon: d.iconKey || null, ts: d.ts,
+      shown: String(t.text), lines: d._lines || 1, msg: !!d._msg, cssH, cssCY, anim: +anim.toFixed(3), z: +z.toFixed(4),
+      wRest: +(t.width / anim).toFixed(1), hRest: +(t.height / anim).toFixed(1),
       font: font == null ? null : +font.toFixed(2),
       x: +t.x.toFixed(1), y: +t.y.toFixed(1), w: +t.width.toFixed(1), h: +t.height.toFixed(1),
       iconX: ic ? +ic.x.toFixed(1) : null, iconW: ic ? +ic.width.toFixed(1) : null, iconH: ic ? +ic.height.toFixed(2) : null,
@@ -85,13 +120,23 @@ const drawn = (P) => P.page.evaluate(() => {
       halo: !t._bmpBaseScale && t.style && t.style.dropShadow ? +(+t.style.dropShadow.blur || 0).toFixed(2) : null,
       age: +((Date.now() - d.ts) / 1000).toFixed(2), band, lift: +((d._lift || 0)).toFixed(1),
       /* where it was spawned (before any rise), and the air between the glyph box's bottom edge and the band's top */
-      spawnY: +(d.y + (d._stackOffset || 0) - (d._lift || 0)).toFixed(1),
-      air: band == null ? null : +(band - ((d.y + (d._stackOffset || 0) - (d._lift || 0)) + t.height / 2)).toFixed(1),
+      spawnY: +(d.y + z * ((d._stackOffset || 0) - (d._lift || 0))).toFixed(1),
+      air: band == null ? null : +(band - ((d.y + z * ((d._stackOffset || 0) - (d._lift || 0))) + t.height / 2)).toFixed(1),
     });
   }
   return rows;
 });
 const by = (rows, text) => rows.find((r) => r.text === text) || null;
+/* v2.3.3192: the renderer makes a popup's Text on its next frame, and this box draws a phone's frame in about half a
+   second -- a fixed beat sometimes read before it (a run found no hit on you at all).  Wait until what is asked for
+   is drawn, up to 6 s, then read. */
+const drawnWhen = async (P, pred, ms = 6000) => {
+  const t0 = Date.now();
+  let rows = await drawn(P);
+  while (!pred(rows) && Date.now() - t0 < ms) { await P.page.waitForTimeout(250); rows = await drawn(P); }
+  return rows;
+};
+const hasAll = (texts) => (rows) => texts.every((t) => !!by(rows, t));
 
 export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
@@ -180,11 +225,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 2. hits you take, through the real dispatcher ── */
     await clearPops(P);
-    await hitMe(P, { dmg: 7, dmgTaken: 7 });
-    await hitMe(P, { dmg: 9, dmgTaken: 9, elem: 'frost' });
+    await hitMeHeld(P, [{ dmg: 7, dmgTaken: 7 }, { dmg: 9, dmgTaken: 9, elem: 'frost' }]);
     await P.page.waitForTimeout(420);
     await hold(P);
-    rows = await drawn(P);
+    rows = await drawnWhen(P, (r) => r.filter((x) => x.taken).length >= 2);
     const taken = rows.filter((r) => r.taken);
     console.log('    taken: ' + JSON.stringify(taken));
     rec.ok('two hits on you reached the renderer (guard)', taken.length >= 2, rows);
@@ -262,13 +306,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { rec: { text: '+25 G', color: '#f5c542' }, tsAdd: 2 },
     ]);
     await P.page.waitForTimeout(450);
-    rows = await drawn(P);
+    rows = await drawnWhen(P, hasAll(['63', '+30 XP', '+25 G']));
     const dm = by(rows, '63'), xp = by(rows, '+30 XP'), gd = by(rows, '+25 G');
     console.log('    kill: ' + JSON.stringify({ dm, xp, gd }));
     rec.ok('a kill\'s number, XP and gold reached the renderer (guard)', !!dm && !!xp && !!gd, rows.map((r) => r.text));
     if (dm && xp && gd) {
-      rec.ok(`the XP and gold stay at the notice size (${xp.font} / ${gd.font} px), the damage number at ${dm.font}`,
-        Math.abs(xp.font - OLD.font) <= 0.6 && Math.abs(gd.font - OLD.font) <= 0.6 && Math.abs(dm.font - OLD.font * k) <= 0.6, { dm: dm.font, xp: xp.font, gd: gd.font });
+      /* v2.3.3192: they were the notice size (21); every popup is the plain number's size now */
+      rec.ok(`the XP and gold are the damage number's size (${xp.font} / ${gd.font} px, the number ${dm.font})`,
+        Math.abs(xp.font - OLD.font * k) <= 0.6 && Math.abs(gd.font - OLD.font * k) <= 0.6 && Math.abs(dm.font - OLD.font * k) <= 0.6, { dm: dm.font, xp: xp.font, gd: gd.font });
       const sorted = [dm, xp, gd].sort((a, b) => a.y - b.y);
       let worst = Infinity;
       for (let i = 1; i < sorted.length; i++) worst = Math.min(worst, (sorted[i].y - sorted[i - 1].y) - (sorted[i - 1].font + sorted[i].font) / 2 * 0.62);
@@ -295,7 +340,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     await frame('classic', rows);
 
-    /* ── 6. words are not damage numbers ── */
+    /* ── 6. words: v2.3.3192, the damage number's size (they kept 21 px until the owner asked) ── */
     await clearPops(P);
     await pushAt(P, [
       { rec: { text: 'Blocked!', color: '#60a5fa' }, tsAdd: 0, dx: -80 },
@@ -304,12 +349,179 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { rec: { text: 'Swimming!', color: '#9ae0ff' }, tsAdd: 3, dx: 80, dy: -60 },
     ]);
     await P.page.waitForTimeout(450);
-    rows = await drawn(P);
+    rows = await drawnWhen(P, hasAll(['Blocked!', 'Dodged', '+12', 'Swimming!']));
     const words = ['Blocked!', 'Dodged', '+12', 'Swimming!'].map((t) => by(rows, t));
     console.log('    words: ' + JSON.stringify(words.map((r) => r && { t: r.text, font: r.font })));
-    rec.ok(`"Blocked!", "Dodged", a heal's "+12" and "Swimming!" keep the ${OLD.font} px they had`,
-      words.every((r) => r && Math.abs(r.font - OLD.font) <= 0.6), words);
+    rec.ok(`"Blocked!", "Dodged", a heal's "+12" and "Swimming!" are the damage number's ${OLD.font * k} px (they were ${OLD.font})`,
+      words.every((r) => r && Math.abs(r.font - OLD.font * k) <= 0.6), words);
     await frame('words', rows);
+
+    /* ── 6b. the owner's own two, where the game pushes them (held still here to be measured), beside a hit:
+          "No mana!" (playerActions specialAttack, 30 px over you) and the quest's pair (questComplete.js: 70 and 55
+          over you; in the game 4.5 s, rising 12 px a second);
+          a crit-flagged note (BroTown's pushNpcMsg: the E key's "...has nothing for you right now", 38 px before) at
+          the PLAIN number's size, not the crit's; and a message drawn as classic Text (a "/" is not in the glyph
+          atlas: the dungeon's "Wave 1/3") with its outline grown with it ── */
+    await clearPops(P);
+    await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      const now = Date.now();
+      const at = (p) => S.dmgNumbers.push(Object.assign({ x: S.player.x, ts: now, ttl: 12, rise: 0 }, p));
+      at({ text: '37', iconKey: 'sword', color: '#fff', x: S.player.x - 150, y: S.player.y - 30 });
+      at({ text: 'No mana!', color: '#3498DB', y: S.player.y - 30, ts: now + 1 });
+      at({ text: 'Quest Complete!', color: '#f5c542', y: S.player.y - 70, ts: now + 2 });
+      at({ text: 'Return to Mayor Bro', color: '#ffe9bd', y: S.player.y - 55, ts: now + 2 });
+    });
+    await P.page.waitForTimeout(450);
+    rows = await drawnWhen(P, hasAll(['37', 'No mana!', 'Quest Complete!', 'Return to Mayor Bro']));
+    const hit37 = by(rows, '37'), noMana = by(rows, 'No mana!'), qc = by(rows, 'Quest Complete!'), ret = by(rows, 'Return to Mayor Bro');
+    console.log('    the owner\'s: ' + JSON.stringify([hit37, noMana, qc, ret].map((r) => r && { t: r.text, font: r.font, cssH: r.cssH, y: r.y, lines: r.lines })));
+    rec.ok('"No mana!", "Quest Complete!" and "Return to Mayor Bro" reached the renderer beside a hit (guard)', !!hit37 && !!noMana && !!qc && !!ret, rows.map((r) => r.text));
+    if (hit37 && noMana && qc && ret) {
+      rec.ok(`"No mana!" and "Quest Complete!" are drawn at the damage number's size (${noMana.font} / ${qc.font} px, the hit ${hit37.font})`,
+        [noMana, qc, ret].every((r) => Math.abs(r.font - hit37.font) <= 0.6) && Math.abs(hit37.font - OLD.font * k) <= 0.6, { hit: hit37.font, noMana: noMana.font, qc: qc.font, ret: ret.font });
+      rec.ok(`...and are as tall on the screen as it (${noMana.cssH} / ${qc.cssH} CSS px, the hit ${hit37.cssH})`,
+        hit37.cssH > 0 && [noMana, qc, ret].every((r) => r.cssH != null && Math.abs(r.cssH - hit37.cssH) <= 0.6), { hit: hit37.cssH, noMana: noMana.cssH, qc: qc.cssH, ret: ret.cssH });
+      /* pushed 15 px apart at 21 px; at the bigger size the stack keeps them a line apart, the quest's name on top */
+      rec.ok(`...the quest's two lines stacked a line apart, "Quest Complete!" on top (${(ret.y - qc.y).toFixed(1)} px between their centres for ${qc.font} px type)`,
+        ret.y - qc.y >= qc.font * 0.9, { qc: qc.y, ret: ret.y });
+    }
+    await frame('messages', rows);
+    await clearPops(P);
+    await pushAt(P, [
+      { rec: { text: 'Mayor Bro has nothing for you right now', color: '#D8A94D', crit: true }, tsAdd: 0, dy: -40 },
+      { rec: { text: 'Wave 1/3', color: 'rgba(255,255,255,.5)' }, tsAdd: 1, dy: 80 },
+    ]);
+    await P.page.waitForTimeout(450);
+    rows = await drawnWhen(P, hasAll(['Mayor Bro has nothing for you right now', 'Wave 1/3']));
+    const note = by(rows, 'Mayor Bro has nothing for you right now'), wave = by(rows, 'Wave 1/3');
+    console.log('    note/classic: ' + JSON.stringify({ note: note && { font: note.font, lines: note.lines }, wave: wave && { font: wave.font, stroke: wave.stroke } }));
+    rec.ok('a crit-flagged note and a classic-Text message reached the renderer (guard)', !!note && !!wave, rows.map((r) => r.text));
+    if (note && wave) {
+      rec.ok(`a crit-flagged note is the PLAIN number's ${OLD.font * k} px (${note.font}), not a crit's ${OLD.crit * k}`,
+        Math.abs(note.font - OLD.font * k) <= 0.6, note);
+      rec.ok(`a classic-Text message ("Wave 1/3") is ${OLD.font * k} px with its outline grown with it (${wave.stroke}, was 3)`,
+        Math.abs(wave.font - OLD.font * k) <= 0.6 && wave.stroke != null && Math.abs(wave.stroke - 3 * k) <= 0.3, wave);
+    }
+
+    /* ── 7a. v2.3.3192: a long message WRAPS, never shrinks: lines no wider than the wrap width, at the same size ── */
+    const msgFont = await P.page.evaluate(() => window.__btMsgFont || null);
+    rec.ok(`the message size and wrap width are published (${JSON.stringify(msgFont)}), the message size the plain hit's (guard)`,
+      !!msgFont && Math.abs(msgFont.px - OLD.font * k) <= 0.01 && msgFont.wrap > 0, msgFont);
+    if (msgFont) {
+      await clearPops(P);
+      const LONG2 = 'Element Burst needs an enchanted weapon';
+      /* an announcement as gameEvents.js floats one: the text cut to 57 characters and an ellipsis after "📢 " */
+      const LONG3 = '\u{1F4E2} ' + 'The arena opens at sundown tonight, bring your friends and your best gear'.slice(0, 57) + '…';
+      await pushAt(P, [
+        { rec: { text: LONG2, color: '#8E44AD' }, tsAdd: 0, dy: -10 },
+        { rec: { text: 'No weapon equipped!', color: '#D8A94D' }, tsAdd: 1, dy: -190 },
+        { rec: { text: LONG3, color: '#fff' }, tsAdd: 2, dy: 190 },
+      ]);
+      await P.page.waitForTimeout(450);
+      rows = await drawnWhen(P, hasAll([LONG2, 'No weapon equipped!', LONG3]));
+      const two = by(rows, LONG2), one = by(rows, 'No weapon equipped!'), three = by(rows, LONG3);
+      console.log('    wrap: ' + JSON.stringify([two, one, three].map((r) => r && { t: r.text.slice(0, 20), shown: r.shown, lines: r.lines, wRest: r.wRest, hRest: r.hRest, anim: r.anim, font: r.font })));
+      rec.ok('three messages, short and long, reached the renderer (guard)', !!two && !!one && !!three, rows.map((r) => r.text));
+      if (two && one && three) {
+        rec.ok(`a short message keeps one line ("No weapon equipped!", ${one.wRest} world px wide)`, one.lines === 1 && one.shown === 'No weapon equipped!' && one.wRest / one.z <= msgFont.wrap, one);
+        const lines2 = two.shown.split('\n');
+        rec.ok(`"${LONG2}" wraps into two even lines ("${lines2.join('" / "')}"), no wider than ${msgFont.wrap} (${two.wRest}), at ${two.font} px`,
+          two.lines === 2 && lines2.length === 2 && lines2.join(' ') === LONG2 && two.wRest / two.z <= msgFont.wrap + 0.5 && Math.abs(two.font - OLD.font * k) <= 0.6, two);
+        rec.ok(`...two lines tall (${two.hRest} against one line's ${one.hRest})`, two.hRest >= one.hRest * 1.7 && two.hRest <= one.hRest * 2.5, { two: two.hRest, one: one.hRest });
+        /* the ellipsis-cut announcement: two or more lines, every one inside the wrap width, at the same size */
+        const lines3 = three.shown.split('\n');
+        rec.ok(`a 60-character announcement wraps too (${three.lines} lines, ${three.wRest} world px wide, ${three.font} px): "${lines3.join('" / "')}"`,
+          three.lines >= 2 && lines3.length === three.lines && lines3.join(' ') === LONG3 && three.wRest / three.z <= msgFont.wrap + 0.5 && Math.abs(three.font - OLD.font * k) <= 0.6, three);
+      }
+      await frame('wrap', rows);
+
+      /* ── 7b. kept inside the view: a message pushed at the view's very edge is drawn MSG edge px inside it;
+            a damage number pushed there is left where it was put ── */
+      await clearPops(P);
+      await P.page.evaluate(() => {
+        const S = window._gameState.current;
+        const now = Date.now();
+        const L = S.camera.x, R = S.camera.x + S._viewW;
+        const y = S.player.y - 160;
+        S.dmgNumbers.push({ x: L + 4, y, text: 'Requires Fishing Lv 5', color: '#D95C54', ts: now, ttl: 12, rise: 0 });
+        S.dmgNumbers.push({ x: R - 4, y: y - 120, text: 'Mayor Bro has nothing for you right now', color: '#D8A94D', crit: true, ts: now + 1, ttl: 12, rise: 0 });
+        S.dmgNumbers.push({ x: L + 4, y: y + 140, text: '88', iconKey: 'sword', color: '#fff', ts: now + 2, ttl: 12, rise: 0 });
+      });
+      await P.page.waitForTimeout(600);
+      await drawnWhen(P, hasAll(['Requires Fishing Lv 5', 'Mayor Bro has nothing for you right now', '88']));
+      /* the view's edges read in the same frame as the places (the camera is the view's top-left, world px), and
+         each message's resting width (`_w`, what the renderer holds it in by -- a read can catch the spawn pop) */
+      const placed = await P.page.evaluate(() => {
+        const S = window._gameState.current;
+        const out = { L: S.camera.x, R: S.camera.x + S._viewW };
+        for (const d of S.dmgNumbers) {
+          const t = d._pixiText;
+          if (!t || t.destroyed) continue;
+          out[String(d.text)] = { x: +t.x.toFixed(1), pushedX: +d.x.toFixed(1), w: +(d._w || 0).toFixed(1), z: d._z || 1 };
+        }
+        return out;
+      });
+      console.log('    edge: ' + JSON.stringify(placed));
+      const req = placed['Requires Fishing Lv 5'], nt = placed['Mayor Bro has nothing for you right now'], n88 = placed['88'];
+      rec.ok('two messages and a number at the view\'s edges reached the renderer (guard)', !!req && !!nt && !!n88 && req.w > 0 && nt.w > 0, placed);
+      if (req && nt && n88) {
+        /* v2.3.3192: widths and the margin are popup px, x the popup's screen factor in the world */
+        const reqLeft = req.x - req.z * req.w / 2;
+        rec.ok(`a message pushed at the view's left edge is drawn inside it, ${msgFont.edge} px in (its left ${(reqLeft - placed.L).toFixed(1)} world px in, moved ${(req.x - req.pushedX).toFixed(1)})`,
+          Math.abs(reqLeft - (placed.L + req.z * msgFont.edge)) <= 1.5 && req.x + req.z * req.w / 2 <= placed.R, req);
+        /* a crit-flagged note wiggles 10% wider: held in by that */
+        const ntRight = nt.x + nt.z * nt.w / 2 * 1.1;
+        rec.ok(`...and a wiggling note at the right edge, held in at its widest (its right ${(placed.R - ntRight).toFixed(1)} world px in)`,
+          Math.abs(ntRight - (placed.R - nt.z * msgFont.edge)) <= 1.5 && nt.x - nt.z * nt.w / 2 * 1.1 >= placed.L, nt);
+        rec.ok(`...but a damage number is left where it was put (${n88.x} = ${n88.pushedX})`, Math.abs(n88.x - n88.pushedX) <= 0.01, n88);
+      }
+      await frame('edge', await drawn(P));
+    }
+
+    /* ── 7c. ONE SIZE ON THE SCREEN (v2.3.3192, the owner's "fixed size"): the dashboard up and folded draw the world
+          at two zooms, and in both a damage number is the same height on the screen, "No mana!" exactly as tall as it,
+          and two stacked numbers the same distance apart (a popup's offsets are pinned with its size) ── */
+    const bandTwice = [];
+    for (let pass = 0; pass < 2; pass++) {
+      await clearPops(P);
+      await pushAt(P, [
+        { rec: { text: '37', iconKey: 'sword' }, tsAdd: 0, dx: -90 },
+        { rec: { text: 'No mana!', color: '#3498DB' }, tsAdd: 1, dx: 60 },
+        { rec: { text: '38', iconKey: 'sword' }, tsAdd: 2, dx: -90 },
+      ]);
+      await P.page.waitForTimeout(450);
+      rows = await drawnWhen(P, hasAll(['37', 'No mana!', '38']));
+      const fold = await P.page.evaluate(() => { const b = document.querySelector('[data-dash-fold]'); return b ? b.getAttribute('data-dash-fold') : null; });
+      const scaleNow = await H.readState(P, (S) => +(S._worldScaleX || 0).toFixed(4));
+      const a = by(rows, '37'), b = by(rows, 'No mana!'), c = by(rows, '38');
+      bandTwice.push({ fold, scale: scaleNow, z: a && a.z, hit: a && a.cssH, msg: b && b.cssH,
+        stack: a && c && a.cssCY != null && c.cssCY != null ? +Math.abs(a.cssCY - c.cssCY).toFixed(2) : null });
+      if (pass === 0) {
+        /* the fold chip, as a thumb presses it (mp-worldtext's way) */
+        await P.page.evaluate(() => {
+          const el = document.querySelector('[data-dash-fold]');
+          if (el) el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+        });
+        await P.page.waitForTimeout(1500);
+      }
+    }
+    console.log('    band: ' + JSON.stringify(bandTwice));
+    const [s0, s1] = bandTwice;
+    rec.ok(`the dashboard chip changed the zoom (${s0.fold} ${s0.scale} -> ${s1.fold} ${s1.scale}) (guard)`,
+      !!s0.fold && !!s1.fold && s0.fold !== s1.fold && Math.abs(s0.scale - s1.scale) > 0.01, bandTwice);
+    rec.ok(`a damage number is the SAME size on the screen at both zooms (${s0.hit} and ${s1.hit} CSS px tall; it was 24.9 folded and 19.0 up)`,
+      s0.hit > 0 && s1.hit > 0 && Math.abs(s0.hit - s1.hit) <= 0.6, bandTwice);
+    rec.ok(`...and at both "No mana!" is exactly as tall as it (${s0.msg} = ${s0.hit}, ${s1.msg} = ${s1.hit} CSS px)`,
+      [s0, s1].every((s) => s.hit > 0 && s.msg != null && Math.abs(s.msg - s.hit) <= 0.6), bandTwice);
+    rec.ok(`...and two stacked numbers the same distance apart on the screen at both (${s0.stack} and ${s1.stack} CSS px)`,
+      s0.stack > 0 && s1.stack > 0 && Math.abs(s0.stack - s1.stack) <= 1, bandTwice);
+    /* and back as it was for the walk below */
+    await P.page.evaluate(() => {
+      const el = document.querySelector('[data-dash-fold]');
+      if (el) el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+    });
+    await P.page.waitForTimeout(1200);
 
     /* ── 7. over a real monster: a fire goblin of the Flame Fields takes a hit through the worker ──
           (the same `monster_damage` the game sends -- mp-wheelmonsters' fight).  Its number spawns where a monster's
@@ -359,10 +571,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
             if (!nums.length) return null;
             const d = nums[nums.length - 1], t = d._pixiText;
             const top = d._qaBarTop;
-            const spawnY = d.y + (d._stackOffset || 0) - (d._lift || 0);
+            const z = d._z || 1;   /* v2.3.3192: the popup's screen factor -- its offsets and size are x it in the world */
+            const spawnY = d.y + z * ((d._stackOffset || 0) - (d._lift || 0));
             const font = t._bmpBaseScale ? t._bmpBaseScale * (+t.style.fontSize || 100) : (+t.style.fontSize || null);
             /* the number may be caught inside its spawn pop (1.6x for 120 ms) or the crit's wiggle: measure it at rest */
-            const anim = t._bmpBaseScale ? t.scale.x / t._bmpBaseScale : 1;
+            const anim = (t._bmpBaseScale ? t.scale.x / t._bmpBaseScale : 1) / z;
             const hRest = t.height / anim;
             return { text: String(d.text), font: +font.toFixed(2), lift: +(d._lift || 0).toFixed(1), h: +hRest.toFixed(1), anim: +anim.toFixed(2),
               barTop: +top.toFixed(1), spawnY: +spawnY.toFixed(1), air: +(top - (spawnY + hRest / 2)).toFixed(1), mx: +m.x.toFixed(0), my: +m.y.toFixed(0), dy: +(d.y - top).toFixed(1) };
