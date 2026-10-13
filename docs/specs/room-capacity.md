@@ -87,23 +87,26 @@ share of one core):
 | 150 | 117% (cannot keep up) | 26% | 24.7 → 4.7 ms |
 | 200 | 174% | 32% | 36.8 → 5.6 ms |
 
-The real runtime (`tools/qa/load/load.mjs`, fake players over real sockets),
-both servers run back to back through the same steps:
+The real runtime (`tools/qa/load/load.mjs`, fake players over real sockets,
+each sending what a phone sends), both servers through the same steps one
+after the other:
 
 | Players | Ticks a second, before → after | The others' moves (95%), before → after | A new player's first message, before → after |
 |---|---|---|---|
-| 50 | 35 → 37 | 35 → 32 ms | 32 → 26 ms |
-| 75 | 32 → 37 | 43 → 35 ms | 54 → 37 ms |
-| 100 | 27 → 33 | 56 → 42 ms | 67 → 81 ms |
-| 125 | 22 → 26 | 62 → 46 ms | 201 → 155 ms |
-| 150 | 17 → 21 | 88 → 54 ms | 296 → 261 ms |
+| 50 | 36 → 39 | 36 → 30 ms | 33 → 27 ms |
+| 75 | 32 → 37 | 40 → 33 ms | 31 → 36 ms |
+| 100 | 29 → 35 | 46 → 38 ms | 91 → 54 ms |
+| 125 | 25 → 30 | 57 → 46 ms | 141 → 76 ms |
+| 150 | 20 → 26 | 57 → 48 ms | 283 → 169 ms |
 
 - **Smooth play** (33 ticks a second or more, the world at three quarters of
-  its designed speed or better) now lasts to **about 100 players instead of
-  about 65**.
+  its designed speed or better) now lasts to **about 110 players instead of
+  about 70**.
 - **Badly degraded** (under 25 ticks a second, the world at about half speed
-  or less) now starts at **about 130 players instead of about 110**.
+  or less) no longer comes **by 150 players; it came at about 125 before**.
 - Neither server froze; both slow down past these points.
+- (A first comparison used bots that sent 16-digit numbers, dearer to read and
+  write than a phone's moves: about 65 -> 100 and 110 -> 130 then.)
 
 The gain on the real runtime is smaller than the code-alone table, because the
 code is now the smaller part of the room's work.
@@ -111,8 +114,8 @@ code is now the smaller part of the room's work.
 Why ticks a second matter: a tick starts 22 ms after the last one finishes,
 and the world moves a fixed step each tick (a monster's `spd` is pixels a
 tick). So a slower tick is a slower world, not only a later one. With 100
-players the monsters walked at 60% of their designed speed before (27 ticks a
-second of the 45 a 22 ms tick would give), and 73% now (33).
+players the monsters walked at 64% of their designed speed before (29 ticks a
+second of the 45 a 22 ms tick would give), and 78% now (35).
 
 What binds now is no longer the game's code. It is the runtime taking the
 players' messages in and pushing every player's update out. Those updates
@@ -120,17 +123,16 @@ grow with the square of the crowd, because every phone is sent every moving
 player. That is the next limit for the server and the phones alike, and it is
 the first item below.
 
-## Not done (each would change what players get)
+## Not done here (each would change what players get)
 
-- **Send each phone only the players near it.** Each phone still downloads
-  every moving player's position (about 3 KB a second per player). That is now
-  the limit that matters more than the server's, and only a change in what is
-  sent can cut it. Players farther away than the screen could be sent less
-  often: the only visible difference would be how smoothly their dots move on
-  the map.
-- **Shorter numbers on the wire.** Positions to a tenth of a pixel instead of
-  sixteen digits would cut about a quarter of those bytes. The difference is
-  invisible, but the bytes are not the same.
+- **Send far players less often** -- done next, in v2.3.3196
+  (`docs/specs/far-players.md`, the owner's go-ahead): each phone still
+  downloads every moving player's position here, about 3.5 KB a second per
+  player, and that is the limit that matters more than the server's now.
+- **Shorter numbers on the wire** -- also v2.3.3196, whole pixels. The phones
+  already send a tenth of a pixel, so it saves only ~2.4% of a player's update;
+  "about a quarter", written here first, came from bots sending 16-digit
+  numbers.
 - **The message diet** (WORLD-ARCHITECTURE §11): fewer position messages from
   each phone. The bigger change, because the server would have to fill in the
   movement between them.
