@@ -181,6 +181,7 @@ const SCENARIOS = {
   standinart: () => import('./mp-standinart.mjs'), /* v2.3.2429: a swing and a raised shield wear your drawings */
   designs: () => import('./mp-designs.mjs'), /* v2.3.2436: the ready-made design gallery, and what picking one puts on the character */
   lookrestore: () => import('./mp-lookrestore.mjs'), /* v2.3.2444: your drawings, patterns and eye colour follow you to a new phone */
+  cclandscape: () => import('./mp-cclandscape.mjs'), /* v2.3.3216: held sideways, the creator is three columns and ENTER BRO TOWN is on the screen */
   ccink: () => import('./mp-ccink.mjs'), /* v2.3.2414: the inline ink card replaces the Design button nobody noticed */
   ccfit: () => import('./mp-ccfit.mjs'), /* v2.3.2395: the monocle hangs off the eye in SW; the golden glasses stop overhanging the head in S */
   ewcolour: () => import('./mp-ewcolour.mjs'), /* v2.3.2424: the eyewear swatch, and which part it paints */
