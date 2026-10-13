@@ -359,7 +359,7 @@ requests a second**. Their own example is a game with 50,000 players sending
     player's update every tick grows with the square of the crowd. That is
     the limit left once the room's own code is cheap;
   - **the phones.** Each downloads about 3.5 KB a second for every moving
-    player in the Wheel, about 205 KB/s at 60 (v2.3.3196 sends far players
+    player in the Wheel, about 205 KB/s at 60 (v2.3.3197 sends far players
     less often: `docs/specs/far-players.md`).
 
 ### The fix: fewer messages, and a world of area servers
