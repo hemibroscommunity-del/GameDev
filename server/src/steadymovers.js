@@ -35,7 +35,8 @@
  * already draw this way, and an old phone gets the same updates, fewer.
  *
  * Kill switch: `steadymovers: false` in the live flags -- every move goes out
- * again, from the next tick.
+ * again, from the next tick.  /dev/overview's `steadyMovers` says how much it
+ * saves with real thumbs (_steadyInfo).
  */
 export const STEADY = Object.freeze({
   /* off the line they are drawn along: at most this far to either side */
@@ -115,11 +116,29 @@ export const steadyMoversMethods = {
   _steadyHold(id, w, now, at) {
     let m = this._steadyLast;
     if (!m) m = this._steadyLast = new Map();
-    const sig = steadySig(w);
     const t = typeof at === 'number' ? at : now;
-    if (steadyHold(m.get(id), w, sig, now, t)) return true;
+    /* counted for /dev/overview: every look is an update the room sent
+       before this, except a held one looked at again with no new move since
+       (`held`: id -> the move time it was held at) */
+    const c = this._steadyCount || (this._steadyCount = { moved: 0, sent: 0, held: new Map() });
+    if (c.held.get(id) !== t) c.moved++;
+    const sig = steadySig(w);
+    if (steadyHold(m.get(id), w, sig, now, t)) { c.held.set(id, t); return true; }
+    c.held.delete(id);
+    c.sent++;
     this._steadySent(id, w, now, t, sig);
     return false;
+  },
+
+  /* /dev/overview: since the room started, the Wheel's movers' updates the
+     room would have sent before (one a tick with a new move: `moved`), the
+     ones it did send (`sent`), and the share it saved.  The load test's bots
+     walk dead straight and real thumbs wobble (docs/specs/steady-movers.md),
+     so this is the real saving. */
+  _steadyInfo() {
+    const c = this._steadyCount;
+    const moved = c ? c.moved : 0, sent = c ? c.sent : 0;
+    return { on: !this._steadyOff(), moved, sent, saved: moved ? Math.round(1000 * (1 - sent / moved)) / 1000 : null };
   },
 
   /* What went out for a player, to hold the next ones against: from
@@ -140,7 +159,8 @@ export const steadyMoversMethods = {
      ticks, tick.js) */
   _steadyPrune() {
     const m = this._steadyLast;
-    if (!m || m.size === 0) return;
-    for (const id of m.keys()) if (!this.playerState[id]) m.delete(id);
+    if (m && m.size) for (const id of m.keys()) if (!this.playerState[id]) m.delete(id);
+    const held = this._steadyCount && this._steadyCount.held;
+    if (held && held.size) for (const id of held.keys()) if (!this.playerState[id]) held.delete(id);
   },
 };

@@ -15,7 +15,11 @@
  *      (src/game/visualSystems.js, copied below) fed the updates the watcher
  *      got, on a walk of straight runs, turns, a zigzag and stops, with and
  *      without the hold: where it draws the walker, against where the walker
- *      really is.
+ *      really is;
+ *   4. a SHAKY THUMB: the stick is analog (BroTown.jsx: its angle straight
+ *      from the finger), so a real walk is never perfectly straight -- each
+ *      move's heading drifts a little.  Still held about half the time, and
+ *      still drawn where every update would draw it.
  */
 import { GameRoom } from '../src/index.js';
 import { STEADY, steadySig, steadyHold } from '../src/steadymovers.js';
@@ -99,11 +103,27 @@ const SPEED = 165;                       /* px a second, a phone's walk */
 const PER_FRAME = SPEED / 60 * 100;      /* the move's vx/vy unit: hundredths of a px a 60 Hz frame */
 const MOVE_MS = 33;                      /* a phone's move every 33 ms (wsClient.js MOVE_GAP_SEEN_MS) */
 
-/* A walk: a list of legs {ms, dir: [dx, dy] unit or null to stand, eqc?}.
-   Runs a phone's moves and the room's ticks on one clock (1 ms steps) and
-   records what the watcher was sent about the walker, and where the walker
-   really was at every ms. */
-async function walkScenario(flags, legs, { far = false } = {}) {
+/* a seeded random number (mulberry32): the shaky thumb is the same every run */
+function seeded(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* A walk: a list of legs {ms, dir: [dx, dy] unit or null to stand, eqc?,
+   wobble?}.  `wobble` is a shaky thumb: at every move the heading drifts by a
+   random step of about that many degrees, pulled a tenth of the way back to
+   `dir` each time.  Runs a phone's moves and the room's ticks on one clock
+   (1 ms steps) and records what the watcher was sent about the walker, and
+   where the walker really was at every ms. */
+async function walkScenario(flags, legs, { far = false, seed = 7 } = {}) {
+  const rnd = seeded(seed);
+  const gauss = () => { let u = 0; while (!u) u = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd()); };
   const { room, tickFn } = await makeRoom(flags);
   const A = await join(room, 'sa');      /* the watcher */
   const B = await join(room, 'sb');      /* the walker */
@@ -123,12 +143,21 @@ async function walkScenario(flags, legs, { far = false } = {}) {
     if (leg.eqc) B.eqc = leg.eqc;
     vx = leg.dir ? leg.dir[0] * PER_FRAME : 0;
     vy = leg.dir ? leg.dir[1] * PER_FRAME : 0;
+    const heading = leg.dir ? Math.atan2(leg.dir[1], leg.dir[0]) : 0;
+    let off = 0;
     /* the stick moved: a phone sends the new speed on its next batch window */
     while (NOW < end) {
       NOW += 1;
       x += vx * 0.0006; y += vy * 0.0006;      /* 0.0006 = 60 / 100 / 1000: hundredths of a px a frame -> px a ms */
       truth.push([NOW - t0, x, y, vx, vy]);
-      if (NOW >= nextMove) { nextMove += MOVE_MS; await move(room, B, Math.round(x * 10) / 10, Math.round(y * 10) / 10, 'wheel', Math.round(vx), Math.round(vy)); }
+      if (NOW >= nextMove) {
+        nextMove += MOVE_MS;
+        if (leg.dir && leg.wobble) {
+          off += gauss() * leg.wobble * Math.PI / 180 - 0.1 * off;
+          vx = Math.cos(heading + off) * PER_FRAME; vy = Math.sin(heading + off) * PER_FRAME;
+        }
+        await move(room, B, Math.round(x * 10) / 10, Math.round(y * 10) / 10, 'wheel', Math.round(vx), Math.round(vy));
+      }
       if (NOW >= nextTick) {
         nextTick += room.TICK_RATE;
         tickFn();
@@ -156,6 +185,14 @@ const E = [1, 0], N = [0, -1], S = [0, 1], W = [-1, 0], NE = [Math.SQRT1_2, -Mat
     + Math.round(off.got.length / 2) + ' without the hold)', on.got.length < off.got.length * 0.6 && on.got.length > 2000 / (STEADY.MAX_MS + 30), { on: on.got.length, off: off.got.length });
   check('2b. ...never more than MAX_MS + a tick apart', gaps.every((g) => g <= STEADY.MAX_MS + on.room.TICK_RATE + 1), { max: Math.max(...gaps) });
   check('2c. `steadymovers: false`: on every tick the walker moved, as before', off.got.length >= on.tickTimes.length * 0.6, { off: off.got.length, ticks: on.tickTimes.length });
+  /* /dev/overview's readout: the updates the room sent before (one a tick
+     with a new move), the ones it sent, the share saved -- presence ticks
+     (never held) left out of both */
+  const info = on.room._steadyInfo(), infoOff = off.room._steadyInfo();
+  const presence = on.got.filter((g) => g[2]).length;
+  check('2l. the overview counts what it saved (' + JSON.stringify(info) + ')', info.on === true
+    && Math.abs(info.moved - (off.got.length - presence)) <= 3 && Math.abs(info.sent - (on.got.length - presence)) <= 3
+    && info.saved > 0.3 && infoOff.on === false && infoOff.moved === 0, { info, infoOff, on: on.got.length, off: off.got.length, presence });
 }
 {
   /* a turn, a stop, a start, new gear: each out on the next tick */
@@ -240,6 +277,24 @@ function drawn(updates, truth) {
   check('3a. the phone draws the walker as close to where they are as with every update (mean within 1 px)', dOn.mean <= dOff.mean + 1, { on: dOn, off: dOff });
   check('3b. ...and never more than ERR_PX + 1 px further off at the worst moments (95%)', dOn.p95 <= dOff.p95 + STEADY.ERR_PX + 1, { on: dOn, off: dOff });
   check('3c. with fewer updates', on.got.length < off.got.length * 0.75, { on: on.got.length, off: off.got.length });
+}
+
+/* ── 4. a shaky thumb ──────────────────────────────────────────────────── */
+{
+  /* bots and tests walk dead straight; a thumb does not.  2 degrees of drift
+     a move is a shaky one (the hold's speed check allows ~2.3 at a walk) --
+     still held about half the time, and drawn where every update draws it */
+  const legs = [{ ms: 1500, dir: E, wobble: 2 }, { ms: 1500, dir: S, wobble: 2 }, { ms: 300, dir: null }];
+  const on = await walkScenario({}, legs, { seed: 11 });
+  const off = await walkScenario({ steadymovers: false }, legs, { seed: 11 });
+  const dOn = drawn(on.got, on.truth), dOff = drawn(off.got, off.truth);
+  const r1 = (v) => Math.round(v * 10) / 10;
+  console.log(`      a shaky thumb (2 degrees a move): updates ${off.got.length} -> ${on.got.length}; drawn vs real, every update: mean ${r1(dOff.mean)} px, 95% ${r1(dOff.p95)}; with the hold: mean ${r1(dOn.mean)}, 95% ${r1(dOn.p95)}`);
+  check('4a. a shaky thumb\'s walk is still held: at most 3/4 of the updates', on.got.length <= off.got.length * 0.75, { on: on.got.length, off: off.got.length });
+  check('4b. ...and drawn as close to where they are as with every update (mean within 1 px, 95% within ERR_PX + 1)',
+    dOn.mean <= dOff.mean + 1 && dOn.p95 <= dOff.p95 + STEADY.ERR_PX + 1, { on: dOn, off: dOff });
+  const last = on.got[on.got.length - 1][1];
+  check('4c. ...and its last place sent', Math.abs(last.x - on.end[0]) <= 1 && Math.abs(last.y - on.end[1]) <= 1, { last, end: on.end });
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

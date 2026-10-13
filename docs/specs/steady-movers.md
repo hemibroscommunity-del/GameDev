@@ -51,6 +51,11 @@ phones already draw this way, and an old phone gets the same updates, fewer.
 **Kill switch:** `steadymovers: false` in the live flags -- every move goes
 out again, from the next tick.
 
+**Readout:** `/dev/overview` shows `steadyMovers`: since the room started, the
+movers' updates the room would have sent before (`moved`: one a tick with a
+new move), the ones it sent (`sent`) and the share it saved (`saved`). The load
+test's bots walk dead straight; this is what real thumbs save.
+
 ## What a phone draws
 
 `server/test/steady-movers.test.mjs` §3 feeds the phone's own dead reckoning
@@ -69,6 +74,17 @@ Half the updates, and the phone draws the walker exactly where it did. (The
 14 px is the phone's own way of drawing anyone: it starts a walker where the
 first update put them, a network trip behind, and never pulls them in under 30
 px -- the same with every update or half of them.)
+
+**A real thumb is shakier than a test's walk.** The stick is analog -- its
+angle comes straight from the finger (`BroTown.jsx`) -- so a real walk's
+heading drifts a little from one move to the next, and the load test's bots
+walk dead straight. §4 of the test walks with a shaky thumb, 2 degrees of drift
+a move (the hold's speed check allows about 2.3 at a walk): 100 updates -> 58,
+drawn 16.1 px off on average with every update and 16.2 with the hold. A
+simulation of the rule alone (one walker, 30 moves a second, a new direction
+every 2 s) gives about 14 updates a second for a straight walk, 14 at 1 degree
+a move, 17 at 2, 19 at 3 and 22 at 5 -- against about 30 without the hold. So
+real players should save less than the bots below, though still a good part.
 
 ## What it does for a crowd
 
@@ -120,12 +136,14 @@ the other, the thread busy and the ticks a second (the same runs as
 
 ## Tests
 
-`server/test/steady-movers.test.mjs` (27 checks): the rule on its own (a turn,
+`server/test/steady-movers.test.mjs` (32 checks): the rule on its own (a turn,
 a stop, a start, new gear, a shove, standing still, time running backwards,
 the line checked between moves' times); a room with a walker beside a watcher
 at a phone's 30 moves a second -- a straight walk about 16 updates a second
 instead of 30, never more than 66 ms + a tick apart, every change out on the
 next tick, the walk's last place always sent, a far watcher still served, a
-presence tick holding nobody, the kill switch; and the drawing above.
+presence tick holding nobody, the kill switch, the overview's count; the
+drawing above; and a shaky thumb's walk, still held and still drawn in the same
+place.
 `far-players.test.mjs` runs with the hold off: its checks are about who is
 near and far, one small test move at a time.

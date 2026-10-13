@@ -2170,8 +2170,10 @@ Two protocol versions coexist; both must keep working:
     ways: identical). 50-100 players: the room 13-18% less busy, phones
     download 30-39% less; 150: -6 points, no more ticks; on the night's ramp
     68% of the thread at 100 against 78%, the smooth line where it was
-    (~120-130). Positions arrive 2-5 ms later on average. Kill switch
-    `steadymovers: false`: docs/specs/steady-movers.md.
+    (~120-130); a shaky thumb (2 degrees a move) still 100 -> 58 updates,
+    drawn the same. Positions arrive 2-5 ms later on average. Kill switch
+    `steadymovers: false`; /dev/overview's `steadyMovers` shows the real
+    saving: docs/specs/steady-movers.md.
 
 ## Conventions
 
