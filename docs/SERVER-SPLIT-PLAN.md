@@ -33,8 +33,8 @@ next one starts.
 - **The phone has its own limit.** With 100 players on one screen, the game's
   own work for each frame was about **4 times** an empty town's. So each
   phone should draw the **nearest 40-60 players** in full, and always your
-  party, your target and whoever is fighting you. Choosing that number on your
-  own phone is your call. It is worth doing even at today's cap of 120.
+  party, your target and whoever is fighting you. Decided: **50** (below). It
+  is worth doing even at today's cap of 120.
 - **Area servers are still the plan for later,** when the one world server
   fills, which by these numbers is somewhere past 1,000. The front doors would make
   their borders invisible: your connection never moves, only which server is
@@ -364,7 +364,28 @@ These are needed by ANY split. Several help at today's 120.
    script on one thread and enforces no Cloudflare limits. The lab is the
    only real answer for 1-4.
 
-## What I need from you
+## Decided (the owner, 2026-10-13)
+
+> *"Go recommended but I want you to stress test to see what can be optimized"*
+
+1. **The crowd cap: 50.**
+   - Each phone draws the nearest 50 players in full, and always:
+     - your party;
+     - your target;
+     - whoever hit you in the last 10 s;
+     - your duel.
+   - Past 50, **light figures**: one body picture each, with no gear, name,
+     shadow or effects, IF the stress test shows them cheap enough.
+     Otherwise they are hidden, and the minimap's dots still show them.
+   - `?crowd=K` tries another number on a phone.
+2. **The Cloudflare lab: yes**, after Phase 0.
+3. **The order:** Phase 0, then the lab, then Phase 1.
+4. **Stress tests first**, to find what can be optimized: the server well
+   past its cap, and a phone in big crowds. Each optimization they find is
+   measured before and after; the results go in `docs/specs/stress-tests.md`
+   as they come.
+
+The questions as they were put:
 
 1. **The crowd cap:** how many players a phone draws in full, and what is
    shown past that: nothing, simple figures, or only minimap dots. I can build

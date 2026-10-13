@@ -2006,8 +2006,10 @@ remnant to migrate server-side, not a mode to preserve.
   batched sockets, and WORLD-ARCHITECTURE §11's area servers only behind the
   doors once that world fills (TRAPS §172); a phone drawing ~100 players on
   one screen does ~4x an empty town's frame work, so a crowd cap per phone
-  (`mp-crowdbots`); phases 0-4, ~$245 a month at 1,000 around the clock,
-  and a Cloudflare lab that waits on the owner's yes; nothing built yet),
+  (`mp-crowdbots`); phases 0-4, ~$245 a month at 1,000 around the clock;
+  the owner: "Go recommended but I want you to stress test to see what can be
+  optimized" -- a crowd cap of 50 drawn in full, the Cloudflare lab after
+  Phase 0, stress tests first; nothing of the split built yet),
   `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
   `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
   decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates
