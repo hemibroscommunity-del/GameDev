@@ -212,7 +212,7 @@ const deep = wheel.filter((m) => m.tier);
   room.SHARD_DROP_RATE = 1;
   check('deeper: its shard is its home\'s too', !!snow20 && room._rollShardForKill(room._rewardZone(WHEEL_ZONE, snow20)) === 'shard_frost');
   room.SHARD_DROP_RATE = keep;
-  /* v2.3.3198: the random weapon whose chance climbed with the level is out of
+  /* v2.3.3207: the random weapon whose chance climbed with the level is out of
      the game (the owner: "Remove it from the game"); a kill's one weapon is
      the iron blade's flat 1 in 500, the same off a level-20 snowman as off a
      level-1 one */

@@ -1,4 +1,4 @@
-# The monster codex (v2.3.3198)
+# The monster codex (v2.3.3207)
 
 Owner, 2026-10-12: *"Begin working on the monster section of the codex. After
 you kill a monster you learn more about it, what it does, where it's from,
@@ -171,7 +171,7 @@ Every weapon and armour piece rolls its grade as it drops (Rare 1 in 11, Elite
 players who did 5% of its damage can loot the pile; they split the gold by
 damage, and everything else on it goes to whoever picks it up first.
 
-**No random weapon off a kill (v2.3.3198).** The owner: *"Remove 'a random
+**No random weapon off a kill (v2.3.3207).** The owner: *"Remove 'a random
 weapon' drop"*, and asked whether from the table or the game: *"Remove it from
 the game"*. v2.3.1141's server-minted random weapon (a sword, great sword, bow
 or staff, its element and rarity by the land, 0.05% a kill at Lv 1 rising on a
@@ -184,7 +184,7 @@ weapon itself (the client's legacy mint runs only without it). `drops` suite
 §6b pins it gone: a level-40 kill whose every roll is 0.0021 (over the iron
 blade's 0.2%, under the old weapon's 0.24%) drops no weapon.
 
-## One roll a kill (v2.3.3198)
+## One roll a kill (v2.3.3207)
 
 The owner, on the Roll column when every range began at 1: *"Shouldn't these
 numbers not overlap each other? Getting a roll of 1 implies you'd get all the

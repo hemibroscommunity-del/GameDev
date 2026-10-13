@@ -9,9 +9,9 @@ import { landLevelsText, WHEEL_LAND_LEVELS, WHEEL_GATE_ROADS } from '@/data/whee
 import { RARITY_TIERS } from '@/data/gameSystems.js';
 import { CodexStage } from './CodexStage.jsx';
 import { codexDropsFor, codexGrades, codexGradePercent, codexRollText, codexRollFreeFrom, CODEX_ROLL_SIDES } from '@/data/codexDrops.js';
-import { killRollLive } from '@/game/killRoll.js';   /* v2.3.3198: does the worker roll once a kill (caps.killroll) */
+import { killRollLive } from '@/game/killRoll.js';   /* v2.3.3207: does the worker roll once a kill (caps.killroll) */
 
-/* ═══ v2.3.3198: THE CODEX'S MONSTERS ═══
+/* ═══ v2.3.3207: THE CODEX'S MONSTERS ═══
  *
  * Owner, 2026-10-12: "Begin working on the monster section of the codex.
  * After you kill a monster you learn more about it, what it does, where it's
@@ -223,7 +223,7 @@ function Tabs({ tab, setTab }) {
      - the bar says HOW COMMON over the chance's powers of ten (`barWidth`):
        on a straight scale every drop rarer than the shard was the same
        sliver, so the bars said nothing; the number beside it is exact.
-   v2.3.3198: and then: "Wrap text for the item name and increase the usable
+   v2.3.3207: and then: "Wrap text for the item name and increase the usable
    area for the bar size. Looks like the chance column reserves too much
    space" -- the chance column was 76 px for the one long chance, the random
    weapon's "0.05–0.24%", so every other number sat far from its bar.  It was
@@ -266,7 +266,7 @@ function barWidth(p) {
 }
 const n0 = (n) => Number(n).toLocaleString('en-US');
 /* the numbers of the roll that drop it: "612–1,611", "1"; null for an
-   every-kill drop (v2.3.3198: its own run of them, data/codexDrops.js) */
+   every-kill drop (v2.3.3207: its own run of them, data/codexDrops.js) */
 const rollRange = (r) => (r && r.from ? codexRollText(r.from, r.to) : null);
 /* the Gambling Den's two dice (the card's own picture), cut to the dice
    themselves: they stand at 50-206 x 90-216 of its 256 px */
@@ -392,7 +392,7 @@ function ItemCard({ kind, e, r, onClose }) {
           <div data-cx-base style={{ fontSize: 28, fontWeight: 900, color: COL.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{r.pct}</div>
           <div style={{ fontSize: 12, lineHeight: 1.35, color: COL.text2, minWidth: 0 }}>
             (chance for this item to drop)<br /><span style={{ color: COL.muted }}>{r.chanceNote}</span>
-            {/* v2.3.3198: its dice, as the table shows them */}
+            {/* v2.3.3207: its dice, as the table shows them */}
             {r.from ? <><br /><span data-cx-card-roll={r.from + '-' + r.to} style={{ color: COL.muted }}>
               drops on a roll of {rollRange(r)} out of {n0(CODEX_ROLL_SIDES)}</span></> : null}
           </div>
@@ -539,7 +539,7 @@ function Page({ kind, S, onBack }) {
   /* a tap on a tab shows what it opened, at the top of the sheet */
   useLayoutEffect(() => { if (tabTap && body.current) reveal(body.current, 'top'); }, [tabTap]);
   const known = n >= CODEX_OPEN_AT;
-  const shared = killRollLive(S);   /* v2.3.3198: one roll a kill, each drop its own numbers */
+  const shared = killRollLive(S);   /* v2.3.3207: one roll a kill, each drop its own numbers */
   const rows = known ? (codexDropsFor(kind, { shared }) || []) : [];
   const open = card ? rows.find((r) => r.id === card) : null;
   return (

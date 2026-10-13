@@ -1925,7 +1925,7 @@ remnant to migrate server-side, not a mode to preserve.
     ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
     town's white square only without them; `__btMinimap.buildings`,
     `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
-  - Since v2.3.3198 THE MONSTER CODEX -- the owner: "After you kill a monster
+  - Since v2.3.3207 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
     special attack, (make up a backstory) etc.", "Also include drop tables
     for all items that monster can drop", and with a mockup: "I want all the
@@ -2204,12 +2204,82 @@ Two protocol versions coexist; both must keep working:
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's
-  own code. Measured: smooth to about 70 busy players (today's cap is 60), a
+  own code. Measured: smooth to about 70 busy players (the cap was 60), a
   slower world past that (fewer ticks a second), half speed from about 125, no
-  freeze up to 150. Wrangler's own local tracing (on by default) made every
+  freeze up to 150; since #885 (docs/specs/room-capacity.md) smooth to about
+  110. Wrangler's own local tracing (on by default) made every
   message ~5x dearer and froze the room at ~95: the tool turns it off (TRAPS
   §168). Re-run it after any change to the tick, the move path or the Wheel's
   monsters.
+  - v2.3.3199: THE ROOM COMPRESSES EVERY MESSAGE (permessage-deflate: the
+    worker's compatibility date turns it on, every browser asks for it), and
+    the compressing is about 40% of its thread (79.6% at 100 players, 44.6%
+    with `--no-deflate`), so every message sent, and what changes in it,
+    costs the server CPU -- repeated text is nearly free (leaving the unchanged
+    gear keys out saved 29% of the bytes and no CPU; TRAPS §169). A phone's
+    download on the wire is about a thirteenth of what it unzips (~17 KB/s at
+    100 players): the load test's `wire` column, the bots' own byte counts
+    being unzipped (TRAPS §169). In BroTown 98% of the bytes are other
+    players' entries. `--move-ms`, `--seen-r` and `--no-deflate` are the
+    tool's levers: docs/specs/load-test.md "What a phone really downloads".
+  - v2.3.3201: WHO IS NEAR WHOM, BY SQUARES -- each Wheel monster looks for a
+    player to chase only in the 256 px squares its aggro range reaches
+    (server/src/aggrogrid.js; it measured every player, a quarter of the
+    room's work at 150), and the monsters a phone hears about are found by
+    number-keyed squares (wheelzone.js `GRID_KEY`). The same picks and the
+    same bytes: aggro-grid.test.mjs runs two rooms side by side, the old
+    search and the new, and compares every monster and message every tick.
+    A sticky aggro that has run out is now cleared up front (nothing read
+    one). 3-4 more ticks a second at every size; kill switch `aggrogrid:
+    false`: docs/specs/near-searches.md.
+  - v2.3.3202: THE TICK IS PACED -- the runtime's setInterval waits the whole
+    22 ms AFTER each tick (measured: period = 23.1 ms + the tick, TRAPS §170),
+    so a busy room was a slower world with its thread partly idle.
+    server/src/tickpace.js shortens the interval when ticks start more than
+    24 ms apart (a quiet room's period) and puts it back when they come
+    sooner; never under 6 ms, never over TICK_RATE, never faster than a quiet
+    room; the Workers runtime only (`WebSocketPair`), so the Node harnesses
+    that call the tick by hand are untouched. 100 players 37 -> 40.4 ticks a
+    second, 150: 29.2 -> ~30-32; 41-42 ticks to ~100 players, then a drop as
+    the thread fills: smooth to ~130 (main ~105). Kill switch `tickpace: false`;
+    /dev/overview's `tickPace` reads the real tick rate: docs/specs/tick-pace.md.
+  - v2.3.3203: A PLAYER WALKING STEADILY IS SENT LESS OFTEN -- a Wheel player's
+    tick entry is held (server/src/steadymovers.js) while every other field is
+    unchanged, they keep moving (or standing) at the speed last sent (4%),
+    within 2 px of the line it drew them on and about as far along it (50 ms
+    of a busy room's lateness allowed), for at most 66 ms; a turn, stop,
+    start, new gear or shove goes out at once; the far send and the roster
+    count as sent. Phones draw peers from the speed, so the drawn place is
+    unchanged (steady-movers.test.mjs runs the phone's dead reckoning both
+    ways: identical). 50-100 players: the room 13-18% less busy, phones
+    download 30-39% less; 150: -6 points, no more ticks; on the night's ramp
+    68% of the thread at 100 against 78%, the smooth line where it was
+    (~120-130); a shaky thumb (2 degrees a move) still 100 -> 58 updates,
+    drawn the same. Positions arrive 2-5 ms later on average. Kill switch
+    `steadymovers: false`; /dev/overview's `steadyMovers` shows the real
+    saving: docs/specs/steady-movers.md.
+  - v2.3.3204: A STEADY WALK ON THE SAFE GROUND IS SENT HALF AS OFTEN -- on
+    the Wheel's safe ground and not in a fight (no lock, attack, duel or arena:
+    wsClient.js `moveDietOn`), the PHONE keeps a move back while it is on the
+    line its last one drew, until 66 ms after it (src/game/moveDiet.js
+    `dietMayWait`: the worker's own steady rule, its numbers pinned to STEADY by
+    move-diet.test.mjs); a turn, stop, start, gear or any other change goes on
+    the next 33 ms batch. The worker never re-holds such a spaced move
+    (STEADY.SPACED_MS 44: held by its ticks' times, half came a tick late).
+    Incoming moves about halved (Cloudflare bills incoming messages); smooth
+    (33+ ticks) to ~145 with all five (125: 32.0 -> 37.7-38.8, 150: 30.5 ->
+    32.2-33.8);
+    others' moves 4-6 ms sooner at 50-100, 4-15 ms later at 125-150. Kill
+    switch `movediet: false` (caps.movediet: each phone at its next join);
+    `mp-movediet` (slows the page's drawing while it walks: this box's software
+    GL starves page timers): docs/specs/move-diet.md.
+  - v2.3.3205: THE CAP IS 120 -- the owner: "I think 120 is a good cap limit
+    for now" (index.js `MAX_PLAYERS`; `max_players` can still only lower it;
+    chatmod `SEEN_MAX` 240, twice the cap). With #887-#891 the room is smooth
+    to ~145; at 120 players 39 ticks a second, and its memory about 9 MB kept
+    after a full GC, 44 MB at the most in use, against Cloudflare's 128 MB
+    (`tools/qa/load/heapprobe.mjs`, the inspector's heap during a load test):
+    docs/specs/cap-120.md.
 
 ## Conventions
 

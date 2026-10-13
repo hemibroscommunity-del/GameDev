@@ -456,7 +456,7 @@ check('forged harden_result dropped by deny-list', room.eventBuffer.filter((e) =
 
 // ── 10. v2.3.1141: server-minted weapon drops ──
 // This suite owns the drop tests because the drop mint is the second
-// server quality-roll site (after the forge).  v2.3.3198: the random weapon
+// server quality-roll site (after the forge).  v2.3.3207: the random weapon
 // whose rarity chain (shift/fusion/elemental) these tests forced is out of
 // the game (the owner: "Remove it from the game"), so the drop under test is
 // a kill's one weapon now, the Iron Great Sword: Math.random = () => 0 lands

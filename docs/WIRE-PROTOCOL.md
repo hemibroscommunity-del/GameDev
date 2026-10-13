@@ -204,6 +204,24 @@ and `vy` are whole numbers. Kill switches (live flags): `farplayers: false`,
 `roundpos: false`. No caps flag: an old client already handles a peer updated
 less often (the 1 Hz roster). `docs/specs/far-players.md`.
 
+**v2.3.3203: a player walking steadily is sent less often.** A Wheel player's
+entry is held for the next tick while they stay on the line their last entry
+drew them along (its `x`, `y`, `vx`, `vy`; within 2 px), with every other field
+unchanged and still moving (or still standing), for at most 66 ms; a turn, a
+stop, a start, new gear, a shove or any other change goes out at once, and the
+far send and the 1 Hz roster count as sent. Same fields, fewer entries: a
+straight walk about 15 a second instead of 30. Kill switch: `steadymovers:
+false`. `docs/specs/steady-movers.md`.
+
+**v2.3.3204: a steady walk on the safe ground is sent half as often.** The
+client's `move` cadence: on the Wheel's safe ground, not in a fight, against a
+worker advertising `caps.movediet`, a move on the line the last one drew waits
+until 66 ms after it (`src/game/moveDiet.js`, the worker's own steady rule); a
+turn, stop, start or any other change goes on the next 33 ms batch. The worker
+passes such a move on at its next tick (`STEADY.SPACED_MS`). Same message, sent
+less often; an old worker gets every move, an old client sends every move. Kill
+switch: `movediet: false` (un-advertises the cap). `docs/specs/move-diet.md`.
+
 ### `track` is cosmetics-only (v2.3.1465)
 
 `track` carries appearance and display values, nothing authoritative. The

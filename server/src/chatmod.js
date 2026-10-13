@@ -67,7 +67,7 @@ export const CHATMOD = {
   ID_MAX: 64,                // a bp_ id is ~20 chars; this is the sanity bound
   CONTEXT_LINES: 3,          // server-seen lines attached to a report
   CONTEXT_AGE_MS: 15 * 60 * 1000, // older lines are not evidence of THIS report
-  SEEN_MAX: 120,             // speakers held in the line ring (2x MAX_PLAYERS)
+  SEEN_MAX: 240,             // speakers held in the line ring (2x MAX_PLAYERS; v2.3.3205: the cap 60 -> 120)
   REPORT_PER_HOUR: 5,        // per reporter
   REPORT_PER_DAY: 20,        // per reporter
   REPORT_DUP_MS: 60 * 1000,  // same reporter + same target inside this = dup

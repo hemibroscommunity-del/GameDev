@@ -1,4 +1,4 @@
-/* ═══ THE MONSTER CODEX, ON A PHONE (v2.3.3198) ═══
+/* ═══ THE MONSTER CODEX, ON A PHONE (v2.3.3207) ═══
  *
  * Owner, 2026-10-12: "Begin working on the monster section of the codex.
  * After you kill a monster you learn more about it, what it does, where it's
@@ -167,7 +167,7 @@ const locations = (P) => P.page.evaluate(() => Object.fromEntries([...document.q
             middle, px (sampled every 50 ms: a swelling slime or the mummy's
             bigger bones standing over you reads below 0) */
 /*   out    how far your figure's painted pixels and the monster's art ever
-            got past the stage's frame, px (v2.3.3198: the owner saw them
+            got past the stage's frame, px (v2.3.3207: the owner saw them
             "in a layer above the container ... the bottom of the characters
             ... visible on the dashboard container"); 0 is inside, always
      feet   at rest, how far above the ground strip's edge your boots and the
@@ -303,7 +303,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       pg1 && sl0.h > 0 && Math.abs(sl.h - sl0.h) <= 1 && !!bx && bx.sh > bx.h + 100 && bx.top === 0 && bx.seen && !sl.chips, { sl0, sl, bx });
     rec.ok(`...its header says ${sl.level} / ${sl.element} / ${sl.type}, its tabs ${sl.tabs.join(' ')}`,
       sl.level === 'Lv 1–40' && sl.element === 'Frost' && sl.type === 'Humanoid' && sl.tabs.join(' ') === 'drops* info locations', sl);
-    /* v2.3.3198: the owner: "Remove 'a random weapon' drop.  All drop chances
+    /* v2.3.3207: the owner: "Remove 'a random weapon' drop.  All drop chances
        should be a single value" -- their dice, "Each drop's own roll": a
        kill's roll of 1 to 10,000 for it -- and then "Actually 'roll' column
        with a number range and drop chance percentage in parentheses might be
@@ -344,7 +344,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const bg = rows.map((r) => getComputedStyle(r).backgroundColor);
       const head = document.querySelector('[data-cx-drops-head]');
       const names = [...document.querySelectorAll('[data-cx-name-cell]')];
-      /* v2.3.3198: the owner: "Wrap text for the item name and increase the
+      /* v2.3.3207: the owner: "Wrap text for the item name and increase the
          usable area for the bar size. Looks like the chance column reserves
          too much space" -- each row's bar track, how far its roll's widest
          TEXT starts from the bar's end (a Range: the column's slack
@@ -418,7 +418,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && ic.roll === 'drops on a roll of 2–21 out of 10,000'
         && ic.grades.join('|') === 'normal 90.09995%|rare 9%|elite 0.9%|godly 0.00005%' && /does not change the 0.2% drop chance/.test(ic.text), { ic, icBox, deep });
     await P.page.screenshot({ path: join(OUT, 'codex-2-card.png') });
-    /* v2.3.3198: a picture of its BASE DROP CHANCE, with its dice */
+    /* v2.3.3207: a picture of its BASE DROP CHANCE, with its dice */
     await P.page.evaluate(() => { const b = document.querySelector('[data-cx-base]'); if (b) b.scrollIntoView({ block: 'center' }); });
     await P.page.waitForTimeout(150);
     await P.page.screenshot({ path: join(OUT, 'codex-2c-card-chance.png') });
@@ -440,7 +440,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await tab(P, 'drops');
     const dTop = await boxLook(P, '[data-cx-drops]');
     await P.page.screenshot({ path: join(OUT, 'codex-1c-table.png') });
-    /* v2.3.3198: and its middle rows (the raw gem's 112–611 down to the
+    /* v2.3.3207: and its middle rows (the raw gem's 112–611 down to the
        greaves' 22–41), for the picture of the whole table; put back after */
     const keepTop = await boxLook(P, null);
     await P.page.evaluate(() => { const r = document.querySelector('[data-cx-drop="rawgem"]'); if (r) r.scrollIntoView({ block: 'start' }); });
@@ -551,7 +551,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const dropOff = every.filter((e) => {
       const d = e.drops || {};
       if (!['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'nugget'].every((id) => d[id]) || d.weapon) return true;
-      /* v2.3.3198: every drop under 100% its dice, the rest none */
+      /* v2.3.3207: every drop under 100% its dice, the rest none */
       /* ...each its own numbers: the blue slime has no raw gem, so its shard is lower down */
       if (d.shard[2] !== (NO_GEM.includes(e.kind) ? '112–1,111' : '612–1,611') || d.nugget[2] !== '1' || d.irongreatsword[2] !== '2–21' || d.gold[2] !== 'Always' || d.shard[3] !== '(10%)') return true;
       if (!!d.remnant === NO_REMNANT.includes(e.kind)) return true;

@@ -425,7 +425,7 @@ export const persistenceMethods = {
     try { await this.state.storage.delete('pets:' + pid); } catch (e) { /* best-effort, as above */ }
     this._petbookForget(pid);
     this._trapForget(pid);
-    /* v2.3.3198: and the monster codex (codex.js): a restarted character has
+    /* v2.3.3207: and the monster codex (codex.js): a restarted character has
        killed nothing, so it knows nothing.  Its cache goes without a flush too
        (a flush would write the old counts straight back). */
     try { await this.state.storage.delete('codex:' + pid); } catch (e) { /* best-effort, as above */ }

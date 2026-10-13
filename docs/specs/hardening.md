@@ -203,7 +203,7 @@ it makes hardened wood and charges it for bows and staffs.
   pile with their own claim flag; `_rollWeaponQuality` applies at the
   drop mint; strict-strip for join blobs unchanged. The client mint
   paths remain only as the legacy-worker fallback, gated on
-  `!caps.weaponDrops`. **v2.3.3198:** that random weapon is out of the
+  `!caps.weaponDrops`. **v2.3.3207:** that random weapon is out of the
   game (the owner, on the monster codex's drop table: "Remove it from the
   game"); a kill's one weapon is the Iron Great Sword's 1-in-500
   (`_rollIronWeaponForKill`), minted and graded the same way, and

@@ -24,12 +24,14 @@ import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3139: ha
 import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the worker's */
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
-import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3198: the monster codex's counts (server/src/codex.js) */
-import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3198: a kill's one roll, over the monster (server/src/killroll.js) */
+import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3207: the monster codex's counts (server/src/codex.js) */
+import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3207: a kill's one roll, over the monster (server/src/killroll.js) */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
+import { MOVE_DIET, dietMayWait } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often */
+import { NML_CENTRE } from '@/data/noMansLandRings.js'; /* v2.3.3204: the Wheel's middle, the safe ground's centre */
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
 /* v2.3.1961: the ONE wire-key -> peer-field rename table, read by the join
@@ -1600,7 +1602,7 @@ export function setupWebSocket(ctx) {
             { try { onTrapResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
           case 'pets_state':
             { try { onPetsState(S, msg.payload); } catch (_te) { /* display only */ } break; }
-          /* v2.3.3198: the monster codex's counts at join (codex.js).  Here, not
+          /* v2.3.3207: the monster codex's counts at join (codex.js).  Here, not
              the default branch: that hands everything to gameEvents as a room
              event, which is where a forged one would come from (it is in
              PRIVILEGED_EVENTS, so the worker never relays one). */
@@ -2648,9 +2650,9 @@ export function setupWebSocket(ctx) {
               /* v2.3.3121: the pet out with you earned a tenth of it (the
                  worker's numbers, game/trapping.js onPetXp) */
               if (cc.pet) { try { onPetXp(S, cc.pet); } catch (_pe) { /* display only */ } }
-              /* v2.3.3198: ...and the monster codex counted the kill (codex.js) */
+              /* v2.3.3207: ...and the monster codex counted the kill (codex.js) */
               if (cc.cx) { try { onCodexKill(S, cc.cx); } catch (_ce) { /* display only */ } }
-              /* v2.3.3198: ...and its one roll, 1 to 10,000, with the drop it landed on (killroll.js) */
+              /* v2.3.3207: ...and its one roll, 1 to 10,000, with the drop it landed on (killroll.js) */
               if (cc.roll) { try { onKillRoll(S, cc); } catch (_kr) { /* display only */ } }
               if (cc.leveled) {
                 /* v2.3.2615: 'char', not 'combat'.  This is the legacy
@@ -4191,15 +4193,61 @@ export function setupWebSocket(ctx) {
     var _inputBuffer = [];
     var _pendingMove = null;
     var _batchTimer = null;
+    /* ═══ v2.3.3204: A STEADY WALK ON THE SAFE GROUND IS SENT HALF AS OFTEN ═══
+       The worker passes a steady walker on to the other phones at most every
+       66 ms (server/src/steadymovers.js, v2.3.3203), so on the Wheel's safe
+       ground a move on the line the last one drew waits here until then
+       instead (game/moveDiet.js has the rule and why).  _pendingMoveAt is
+       when the frame wrote the pending move; _moveSent / _moveSentMadeAt the
+       last move that went out and when IT was written. */
+    var _pendingMoveAt = 0;
+    var _moveSent = null;
+    var _moveSentMadeAt = 0;
+    var _dietStats = { sent: 0, waited: 0 };
+    /* the phone's say: the worker advertises it, you are in the Wheel, and
+       not in a fight -- a lock (a monster near), an attack held, a duel or an
+       arena match, which the worker judges against where you are */
+    function moveDietOn() {
+      try {
+        var _S = stateRef.current;
+        if (!_S || !_S._serverCaps || !_S._serverCaps.movediet) return false;
+        if (_S.currentZone !== 'wheel') return false;
+        return !(_S.autoAttack || _S.lockedTarget || _S._inDuel || _S._activeDuel || _S._arenaMatch);
+      } catch (e) {
+        return false;
+      }
+    }
+    function moveMayWait() {
+      try {
+        return dietMayWait(moveDietOn(), _pendingMove, _pendingMoveAt, _moveSent, _moveSentMadeAt,
+          NML_CENTRE, ZONES && ZONES.wheel && ZONES.wheel.safeR);
+      } catch (e) {
+        return false;
+      }
+    }
+    /* QA: what the diet did (mp-movediet) */
+    try { if (typeof window !== 'undefined') window.__btMoveDiet = function () { return { on: moveDietOn(), sent: _dietStats.sent, waited: _dietStats.waited }; }; } catch (e) { /* QA only */ }
+    function noteMoveSent(at) {
+      _moveSent = _pendingMove;
+      _moveSentMadeAt = _pendingMoveAt;
+      _pendingMove = null;
+      _lastMoveSentAt = at;
+      _dietStats.sent++;
+    }
     function flushInputBuffer() {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
       // Send pending move if any, subject to the adaptive rate above.
       if (_pendingMove) {
         var _nowMv = Date.now();
-        if (_nowMv - _lastMoveSentAt >= moveGapMs()) {
+        var _gapMv = moveGapMs();
+        /* v2.3.3204: ...and a steady walk on the safe ground waits longer */
+        if (_gapMv < MOVE_DIET.GAP_MS && _nowMv - _lastMoveSentAt >= _gapMv && moveMayWait()) {
+          _gapMv = MOVE_DIET.GAP_MS;
+          if (_nowMv - _lastMoveSentAt < _gapMv) _dietStats.waited++;
+        }
+        if (_nowMv - _lastMoveSentAt >= _gapMv) {
           ws.send(JSON.stringify(_pendingMove));
-          _pendingMove = null;
-          _lastMoveSentAt = _nowMv;
+          noteMoveSent(_nowMv);
         }
         /* else: hold it.  The next frame overwrites it with a fresher
            position and the timer re-checks in INPUT_BATCH_WINDOW ms. */
@@ -4245,8 +4293,7 @@ export function setupWebSocket(ctx) {
       if (!_pendingMove) return false;
       if (!ws || ws.readyState !== WebSocket.OPEN) return false;
       ws.send(JSON.stringify(_pendingMove));
-      _pendingMove = null;
-      _lastMoveSentAt = Date.now();
+      noteMoveSent(Date.now());
       return true;
     }
     function startBatchTimer() {
@@ -4675,6 +4722,7 @@ export function setupWebSocket(ctx) {
                  caps.sprint does the client sprint at all (game/sprint.js). */
               sp: sprintStepFlag(_S4) ? 1 : undefined
             };
+            _pendingMoveAt = Date.now();   /* v2.3.3204: when this frame wrote it */
             startBatchTimer();
           } else if (msg.event === 'player_attack') {
             // §16.12 — PvP attacks go directly to server for lag-compensated resolution

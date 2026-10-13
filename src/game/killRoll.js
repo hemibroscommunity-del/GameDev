@@ -1,4 +1,4 @@
-/* ═══ v2.3.3198: A KILL'S ROLL, OVER THE MONSTER ═══
+/* ═══ v2.3.3207: A KILL'S ROLL, OVER THE MONSTER ═══
  *
  * The owner, on the codex's Roll column: "I think these should be number
  * ranges. That way a player hunting for something can also be looking for a
