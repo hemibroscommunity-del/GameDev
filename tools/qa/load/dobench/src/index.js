@@ -1,4 +1,4 @@
-/* ═══ v2.3.3206: WHAT A MESSAGE BETWEEN TWO SERVERS COSTS (local only) ═══
+/* ═══ v2.3.3208: WHAT A MESSAGE BETWEEN TWO SERVERS COSTS (local only) ═══
  *
  * docs/SERVER-SPLIT-PLAN.md plans front doors (Durable Objects holding the
  * phones' sockets) talking to one world (another Durable Object).  This

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3206: WHAT A BIG CROWD COSTS THE PHONE ═══
+/* ═══ v2.3.3208: WHAT A BIG CROWD COSTS THE PHONE ═══
  *
  * The owner, 2026-10-13: "I want to see how many players I can fit while
  * appearing to be in the same world. Hopefully 1000 while just as smooth is

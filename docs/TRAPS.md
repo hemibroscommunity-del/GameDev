@@ -6061,7 +6061,7 @@ until the thread is full.  And a Node test that captures the tick from
 `setInterval` must never see the interval set again (`WebSocketPair` is the
 runtime check, `tickpace.js`).
 
-## 171. "Area servers are how one world grows past one room" (v2.3.3206)
+## 172. "Area servers are how one world grows past one room" (v2.3.3208)
 
 It is the natural first cut, and WORLD-ARCHITECTURE §11 planned it: one
 server for Brotown and its commons, one per spoke, one per realm.  Measured

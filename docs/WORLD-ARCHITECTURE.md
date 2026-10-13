@@ -101,7 +101,7 @@ old and new ways side by side.
   v2.3.3205 (the owner's call, `docs/specs/cap-120.md`), the room smooth to
   about 145 after #887-#891. It grows past that by splitting the room by
   connection first -- front doors doing each phone's work, one world behind
-  them -- and only later by area (v2.3.3206, `docs/SERVER-SPLIT-PLAN.md`).
+  them -- and only later by area (v2.3.3208, `docs/SERVER-SPLIT-PLAN.md`).
 
 ---
 
@@ -386,7 +386,7 @@ requests a second**. Their own example is a game with 50,000 players sending
      server's copy of you, which then moved in 40 px jumps. v2.3.1767 put
      the floor back to 15 Hz. With direction and speed, the server moves
      your copy between messages, and monsters chase that.
-2. **Area servers.** *(v2.3.3206: measured, this is NOT the first cut. The
+2. **Area servers.** *(v2.3.3208: measured, this is NOT the first cut. The
    room's work turned out to be mostly per PHONE (about four fifths of its
    thread at 150 players, growing with the square of a crowd) and the world
    itself little, and Brotown holds the crowd that an area split would leave
@@ -410,7 +410,7 @@ requests a second**. Their own example is a game with 50,000 players sending
 
 **The order:** distance-based updates and the message diet first (needed
 anyway, and they cut the bill); the Wheel's area borders at the gates and
-passes; one world until it fills, then a second.  *(v2.3.3206: the order is
+passes; one world until it fills, then a second.  *(v2.3.3208: the order is
 now `docs/SERVER-SPLIT-PLAN.md`'s: crowd-proof the wire and the phone, then
 front doors, then the doors building each phone's messages; area servers
 last, only if the one world server fills.)*

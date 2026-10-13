@@ -258,7 +258,7 @@ without a deploy.
 6. **Refuse new players before the room slows down too much**, for example
    when it runs fewer than 30 ticks a second, instead of letting everyone's
    world slow.
-7. **Past one room: split it by connection** (v2.3.3206,
+7. **Past one room: split it by connection** (v2.3.3208,
    `docs/SERVER-SPLIT-PLAN.md`): front doors that do each phone's work, one
    world behind them. A scratch copy of the room doing only the world's part
    ran 1,000 players in 6 ms of a 22 ms tick. And the phone's side of a big

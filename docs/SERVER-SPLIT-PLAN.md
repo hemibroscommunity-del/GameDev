@@ -1,4 +1,4 @@
-# One world for 1,000 players: how to split the server (v2.3.3206)
+# One world for 1,000 players: how to split the server (v2.3.3208)
 
 > Owner, 2026-10-13: *"I think 120 is a good cap limit for now. But I want to
 > see how many players I can fit while appearing to be in the same world.
