@@ -1,4 +1,4 @@
-# Far players less often, positions in whole pixels (v2.3.3196)
+# Far players less often, positions in whole pixels (v2.3.3197)
 
 > Owner, 2026-10-13, on the load test's next steps (`docs/specs/load-test.md`):
 > *"Send far away players less often and using shorter position numbers make

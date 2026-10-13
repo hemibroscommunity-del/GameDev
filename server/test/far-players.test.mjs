@@ -1,4 +1,4 @@
-/* ═══ v2.3.3196: FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS ═══
+/* ═══ v2.3.3197: FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS ═══
  *
  * tick.js FAR_PLAYERS: a v2 session in the Wheel is sent the players within
  * NEAR_R of it on every tick, and the ones further off at most every EVERY_MS,

@@ -27,7 +27,7 @@ const HOUSEKEEP_SLOT_MS = 3000;
 
 export const REGEN_TICKS = 30;
 
-/* ═══ v2.3.3196: FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS ═══
+/* ═══ v2.3.3197: FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS ═══
    Owner, 2026-10-13, on the load test's next steps (docs/specs/load-test.md):
    "Send far away players less often and using shorter position numbers make
    sense go ahead with it".
@@ -77,7 +77,7 @@ export const tickMethods = {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'tickshare') && !f.tickshare);
   },
-  /* v2.3.3196: `farplayers: false` / `roundpos: false` (FAR_PLAYERS above) */
+  /* v2.3.3197: `farplayers: false` / `roundpos: false` (FAR_PLAYERS above) */
   _farPlayersOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'farplayers') && !f.farplayers);
@@ -394,7 +394,7 @@ export const tickMethods = {
       const hasEvents = this.eventBuffer.length > 0;
       const hasMonsters = this.dirtyMonsters.size > 0;
       const hasNodes = this.dirtyNodes.size > 0;
-      /* v2.3.3196: far players held back (FAR_PLAYERS) keep a quiet tick
+      /* v2.3.3197: far players held back (FAR_PLAYERS) keep a quiet tick
          going until they are sent, so the last of a walk is never stuck */
       const farOn = !this._farPlayersOff();
       if (!farOn && this._farPending) this._farPending = null;
@@ -408,7 +408,7 @@ export const tickMethods = {
       /* v2.3.3123: the others' pets (petbook.js _petWireRefresh), unless
          `petshow: false` -- read once a tick, not once a player */
       const petShow = !(this._petShowOff && this._petShowOff());
-      /* v2.3.3196: positions and velocities in whole numbers (FAR_PLAYERS
+      /* v2.3.3197: positions and velocities in whole numbers (FAR_PLAYERS
          note), unless `roundpos: false` */
       const rp = this._roundPosOff() ? (v) => v : (v) => (typeof v === 'number' ? Math.round(v) : v);
       const playerWire = (ps) => { const eqg = armourGradeWire(ps); return {
@@ -454,7 +454,7 @@ export const tickMethods = {
       }
       this.dirtyPlayers.clear();
 
-      /* v2.3.3196: FAR PLAYERS (the note at FAR_PLAYERS).  Everyone who moved
+      /* v2.3.3197: FAR PLAYERS (the note at FAR_PLAYERS).  Everyone who moved
          in the Wheel since the last far send waits in _farPending, in the order
          they first moved; when EVERY_MS has passed, every v2 session there is
          sent all of them at once, at where they are now (farList, the same list
@@ -629,7 +629,7 @@ export const tickMethods = {
       /* v2.3.2978: `interest` -- for a v2 session in the Wheel, the monsters
          it hears about ({seen, entered}, wheelzone.js _wheelInterest); null
          everywhere else, which is the unchanged shared path. */
-      /* v2.3.3196: `plan` -- playersPlanFor's answer for a v2 session in the
+      /* v2.3.3197: `plan` -- playersPlanFor's answer for a v2 session in the
          Wheel (never on a presence tick); null is the zone's list, as before */
       const buildFor = (zone, pv, muted, interest, plan) => {
         const d = { type: 'tick', seq, ts };
@@ -770,7 +770,7 @@ export const tickMethods = {
         playersByZoneJson.set(zone, out);
         return out;
       };
-      /* v2.3.3196: a plan's players (playersPlanFor), each player's entry
+      /* v2.3.3197: a plan's players (playersPlanFor), each player's entry
          stringified once a tick however many sessions get it, and farList's
          whole list once.  An id JSON.stringify would move to the front of an
          object (an array index) is put in an object instead, so the bytes stay
@@ -912,7 +912,7 @@ export const tickMethods = {
         let plan = null;
         if (zone === WHEEL_ZONE && pv === 2 && ps && typeof ps.x === 'number' && typeof ps.y === 'number') {
           interest = this._wheelInterest(s, ps, this.monsters[zone] || [], share ? wheelGrid() : null);
-          plan = playersPlanFor(ps);   /* v2.3.3196: far players less often */
+          plan = playersPlanFor(ps);   /* v2.3.3197: far players less often */
           key += '|' + s.id;
         } else if (s._wheelSeen) s._wheelSeen = null;
         let msg = groupCache.get(key);
@@ -930,7 +930,7 @@ export const tickMethods = {
         if (msg) { try { ws.send(msg); } catch {} }
       }
 
-      /* v2.3.3196: the far players went out (farList, or the roster) */
+      /* v2.3.3197: the far players went out (farList, or the roster) */
       if (farFlush) {
         if (this._farPending) this._farPending.clear();
         this._farLastAt = ts;

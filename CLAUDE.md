@@ -2067,7 +2067,7 @@ Two protocol versions coexist; both must keep working:
   instead of passing for a new character. The defaults that are not zero
   are `NEW_CHARACTER_COINS` and `freshLifeSkills()`, pinned to the client's
   by mirror-audit: docs/specs/fresh-start.md.
-- FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS (v2.3.3196, the owner:
+- FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS (v2.3.3197, the owner:
   "Send far away players less often and using shorter position numbers"):
   in the Wheel a v2 session gets the movers within `FAR_PLAYERS.NEAR_R` 2,400
   px of it on every tick and the rest at most every `EVERY_MS` 250 ms, at

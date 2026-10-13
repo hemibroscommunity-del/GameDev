@@ -1,4 +1,4 @@
-/* ═══ v2.3.3196: A FAR PLAYER LESS OFTEN, A NEAR ONE ON EVERY MOVE ═══
+/* ═══ v2.3.3197: A FAR PLAYER LESS OFTEN, A NEAR ONE ON EVERY MOVE ═══
  *
  * Owner, 2026-10-13: "Send far away players less often and using shorter
  * position numbers make sense go ahead with it" (server/src/tick.js
