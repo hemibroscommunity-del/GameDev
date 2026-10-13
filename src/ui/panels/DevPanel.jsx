@@ -186,6 +186,7 @@ const CAP_GATES = [
   'pethouse' /* v2.3.3123: more room in the Pet House for gold -- lower case, a kill switch */,
   'hardenmats' /* v2.3.3139: hardening takes a material (bars, or a bow's hardened wood) and a doubling gold ladder -- lower case, a kill switch */,
   'hardenedwood' /* v2.3.3139: five logs into one hardened wood at the Woodworker -- lower case, a kill switch */,
+  'movediet' /* v2.3.3204: a steady walk on the Wheel's safe ground sent every 66 ms -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported

@@ -48,6 +48,11 @@ standing still (`entityRenderer.js` `STALE_UPDATE_MS`), well above 66.
 **Server only.** The fields are the same, there are just fewer of them; the
 phones already draw this way, and an old phone gets the same updates, fewer.
 
+*v2.3.3204:* a move that comes 44 ms or more after the last one sent, by the
+moves' own times, is never held (`STEADY.SPACED_MS`): its phone already spaced
+it -- a phone on the safe ground now sends a steady walk every 66 ms itself
+(`docs/specs/move-diet.md`).
+
 **Kill switch:** `steadymovers: false` in the live flags -- every move goes
 out again, from the next tick.
 

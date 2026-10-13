@@ -33,6 +33,7 @@
  */
 import { performance, monitorEventLoopDelay } from 'node:perf_hooks';
 import { PlainWS } from './plainws.mjs';
+import { MOVE_DIET, dietMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3204: --diet, the phone's own rule */
 
 /* v2.3.3199: --no-deflate's WebSocket (plainws.mjs) */
 
@@ -46,6 +47,7 @@ const IDLE_KEEPALIVE_MS = 1000;  /* the client's standing-still keepalive */
 const moveGap = (bot) => (bot && !bot.fighter && CFG && CFG.townMoveMs > 0 ? CFG.townMoveMs
   : (CFG && CFG.moveGapMs > 0 ? CFG.moveGapMs : MOVE_GAP_MS));
 const WALK_R = 1400;             /* walkers stay in the town and its commons (WHEEL_SAFE_R 2937) */
+const DIET_CENTRE = [21504, 21504], DIET_SAFE_R = 2937;   /* v2.3.3204: the safe ground (wheelspawns.js) */
 const FIGHT_R = 350;
 const SWING_MS = 700;
 const REACH_PX = 70;
@@ -321,13 +323,22 @@ function sendMove(bot, entering, vx = 0, vy = 0) {
   const f = moving ? FACE8[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8] : (bot.face || 'south');
   bot.face = f;
   const perFrame = bot.speed / 60;
-  const ok = send(bot, {
+  const m = {
     type: 'move', x, y, d, f, eqc: 'none', eql: 'none', eqs: 'none', ex: null, z: 'wheel',
     vx: Math.round(vx * perFrame * 100), vy: Math.round(vy * perFrame * 100),
     dodging: false, blocking: false, ba: null, dead: false,
-  });
+  };
+  /* v2.3.3204: --diet, as a phone on the Wheel's safe ground does it
+     (src/game/moveDiet.js, wsClient.js moveDietOn): a move on the line the
+     last one drew waits until GAP_MS after it -- this bot's next step makes
+     a fresher one */
+  const now = performance.now();
+  if (CFG.diet && !entering && now - bot.lastSent < MOVE_DIET.GAP_MS
+      && dietMayWait(!bot.fighter, m, now, bot.lastMove, bot.lastMoveAt, DIET_CENTRE, DIET_SAFE_R)) { M.dieted = (M.dieted || 0) + 1; return; }
+  const ok = send(bot, m);
   if (!ok) return;
   M.moves++;
+  bot.lastMove = m; bot.lastMoveAt = now;
   bot.lastSent = performance.now();
   if (!entering) {
     /* keyed in whole pixels: a worker with #886 (docs/specs/far-players.md) sends them so */

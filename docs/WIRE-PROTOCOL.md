@@ -213,6 +213,15 @@ far send and the 1 Hz roster count as sent. Same fields, fewer entries: a
 straight walk about 15 a second instead of 30. Kill switch: `steadymovers:
 false`. `docs/specs/steady-movers.md`.
 
+**v2.3.3204: a steady walk on the safe ground is sent half as often.** The
+client's `move` cadence: on the Wheel's safe ground, not in a fight, against a
+worker advertising `caps.movediet`, a move on the line the last one drew waits
+until 66 ms after it (`src/game/moveDiet.js`, the worker's own steady rule); a
+turn, stop, start or any other change goes on the next 33 ms batch. The worker
+passes such a move on at its next tick (`STEADY.SPACED_MS`). Same message, sent
+less often; an old worker gets every move, an old client sends every move. Kill
+switch: `movediet: false` (un-advertises the cap). `docs/specs/move-diet.md`.
+
 ### `track` is cosmetics-only (v2.3.1465)
 
 `track` carries appearance and display values, nothing authoritative. The

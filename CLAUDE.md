@@ -2174,6 +2174,20 @@ Two protocol versions coexist; both must keep working:
     drawn the same. Positions arrive 2-5 ms later on average. Kill switch
     `steadymovers: false`; /dev/overview's `steadyMovers` shows the real
     saving: docs/specs/steady-movers.md.
+  - v2.3.3204: A STEADY WALK ON THE SAFE GROUND IS SENT HALF AS OFTEN -- on
+    the Wheel's safe ground and not in a fight (no lock, attack, duel or arena:
+    wsClient.js `moveDietOn`), the PHONE keeps a move back while it is on the
+    line its last one drew, until 66 ms after it (src/game/moveDiet.js
+    `dietMayWait`: the worker's own steady rule, its numbers pinned to STEADY by
+    move-diet.test.mjs); a turn, stop, start, gear or any other change goes on
+    the next 33 ms batch. The worker never re-holds such a spaced move
+    (STEADY.SPACED_MS 44: held by its ticks' times, half came a tick late).
+    Incoming moves about halved (Cloudflare bills incoming messages); smooth
+    (33+ ticks) to ~150 with all five (125: 32.0 -> 37.7, 150: 30.5 -> 33.8);
+    others' moves 4-6 ms sooner at 50-100, 4-15 ms later at 125-150. Kill
+    switch `movediet: false` (caps.movediet: each phone at its next join);
+    `mp-movediet` (slows the page's drawing while it walks: this box's software
+    GL starves page timers): docs/specs/move-diet.md.
 
 ## Conventions
 
