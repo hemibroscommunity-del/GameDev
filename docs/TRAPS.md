@@ -6001,3 +6001,34 @@ measured before the world changed shape describes a different game.  And any
 local measurement of a Durable Object's message handling runs with the local
 tracing off (`load.mjs` does; `--observability` compares): a cost or a freeze
 seen only with it on is wrangler's, not the room's.
+
+## 169. "mp-wheelbreak's arrows stick, so the bow shoots props" (v2.3.3200)
+
+**Plausible:** the Wheel's objects take arrows. `mp-wheelbreak` sends 28
+arrows at a barrel, a lamp, a tree and a building and every check passes, so a
+player with a bow can do the same.
+
+**Wrong:** the scenario puts its own arrows in `S.arrows`, so they never meet
+the bow's fire gate. That gate (v2.3.2473) fires only while the sight line is
+on a target, and it asked about monsters alone. Held on the Town Hall, the bow
+drew its line straight through the wall and fired nothing, from 70 px or from
+point blank. The owner found it by playing: "Make the bow able to shoot at any
+props including buildings".
+
+**And its twin: the arrow's ground was the shooter's chest.** "Subtract the
+grip offset and at dist 0 you get exactly P.x/P.y" (v2.3.2652) was taken as
+proof that the arrow was on the ground. But P is the body's centre, 52 px above
+the boots (v2.3.2748). Walking, the swing (v2.3.3105) and the water had all
+moved down to the boots; the arrow had not:
+
+- point blank, its track started INSIDE the hall's footprint, and a step that
+  starts inside a box never stops at it;
+- a level shot at a trunk ran 52 px behind it.
+
+**The rule:**
+
+- A test that launches its own projectiles proves the flight, not the shot:
+  add one that holds the real attack (`mp-bowprops`).
+- Every ground question about what a player does is asked at the boots:
+  `_gdy` on the shot (combatHelpers `shotGroundDy`), and the other player's
+  boots for anything aimed at them.

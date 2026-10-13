@@ -124,6 +124,50 @@ export function bowGripPoint(S) {
   return { x: px, y: py };
 }
 
+/* ═══ v2.3.3200: A SHOT'S GROUND IS UNDER ITS SHOOTER'S BOOTS ═══
+ * Owner: "Make the bow able to shoot at any props including buildings".
+ *
+ * A shot is drawn from the shooter's POSITION -- the body's centre (v2.3.2748),
+ * the bow's grip 20-33 px above that -- and a prop's footprint is on the
+ * ground, under the boots, playerGroundDy (52 px) below the centre.  The arrow
+ * sim used to take the centre for the ground, which left its track 52 px north
+ * of the boots: standing at a building's front the centre is already INSIDE its
+ * footprint, and a box a shot starts inside is one it flies out of
+ * (sweepBlockPoint), so an arrow went through the Town Hall point blank; and a
+ * level shot at a tree's trunk or a lamp post ran 52 px behind it.  Walking
+ * (v2.3.2748), the swing (v2.3.3105), the water, the doors and the prints all
+ * ask the ground at the boots already.
+ *
+ * So every shot the game fires carries `_gdy`, this drop, and projectiles.js
+ * takes it off the drawn point to find the ground under it; the bow's sight
+ * (firstSightHit's `ground`) casts from the same boots.  A shot WITHOUT `_gdy`
+ * (a scenario's hand-made arrow) keeps the old meaning, drawn point minus the
+ * grip offset, so the scenarios built on that geometry still mean what they
+ * say. */
+export function shotGroundDy(S) {
+  var P = S && S.player;
+  if (!P || !Number.isFinite(P.x) || !Number.isFinite(P.y)) return 0;
+  var d = playerGroundDy(S.currentZone, P.x, P.y);
+  return Number.isFinite(d) ? d : 0;
+}
+
+/* ═══ v2.3.3200: ...AND A HIT ON A PROP IS SHOWN ON THE PROP ═══
+ * Judged at the boots, an arrow flies ~80 px over the ground it is tracking --
+ * shoulder height -- and a bench is 46 px tall, a barrel 61: drawn where it
+ * flew, the arrow would stand in the air above what it hit.  So the point a hit
+ * is SHOWN at (the arrow left in it, the chips, the burn) is lifted
+ * `flightH` above the contact, but never more than PROP_HIT_SHARE of the
+ * prop's picture: a building, a tree or a lamp post takes it where it flew; a
+ * low thing takes it in its upper part.  `box.h` is the picture's height in
+ * game px (the Wheel's footprints carry it, wheelObjects.js); a box without
+ * one (the farm's, the old zones') shows it where it flew. */
+var PROP_HIT_SHARE = 0.7;
+export function propHitHeight(box, flightH) {
+  if (!Number.isFinite(flightH)) return 0;
+  var ph = box && Number.isFinite(box.h) && box.h > 0 ? box.h : 0;
+  return ph && flightH > 0 ? Math.min(flightH, ph * PROP_HIT_SHARE) : flightH;
+}
+
 export function rangedAimAngle(S, originX, originY) {
   /* v2.3.2845: at the torso, not the hitbox centre -- see lockShotPoint */
   var lockPt = lockShotPoint(S && S.lockedTarget && S.lockedTarget.ref, S && S.currentZone);

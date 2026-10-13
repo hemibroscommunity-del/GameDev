@@ -100,7 +100,7 @@ const armStaff = (P) => P.page.evaluate(() => {
 
 /* Hold the fire control down along a fixed aim.  Re-stamped every sample
    because monsterCombat and the input layer both write these fields. */
-const hold = (P, on) => P.page.evaluate(({ ang, on }) => {
+const hold = (P, on, ang = AIM) => P.page.evaluate(({ ang, on }) => {
   const S = window._gameState.current;
   S._aimAngle = ang;
   S._lastAimAngle = ang;
@@ -108,7 +108,21 @@ const hold = (P, on) => P.page.evaluate(({ ang, on }) => {
   S.autoAttack = !!on;
   if (!on) S._aiming = false;
   return { aim: S._aimAngle, auto: !!S.autoAttack };
-}, { ang: AIM, on });
+}, { ang, on });
+
+/* v2.3.3200: a prop on the line is something too -- the sight stops at it and
+   the bow fires (projectiles.js firstSightHit's prop note) -- so "nothing on
+   the line" needs a heading no prop stands on within the bow's reach.  The
+   nearest to AIM, from your boots along the game's own sweep. */
+const clearAim = (P) => P.page.evaluate((a0) => {
+  const S = window._gameState.current, g = window.__btPlayerGround ? window.__btPlayerGround() : null;
+  if (!g || !window.__btSweepBlockPoint) return a0;
+  for (let k = 0; k < 64; k++) {
+    const a = a0 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 32);
+    if (!window.__btSweepBlockPoint(S.currentZone, g.x, g.y, g.x + Math.cos(a) * 760, g.y + Math.sin(a) * 760)) return a;
+  }
+  return null;
+}, AIM);
 
 /* One tick that reads the arrows AND the renderer's streak list together.
    Two reads separated by a wait compare two different frames — the mistake
@@ -284,9 +298,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
          the two ends of the shared constant being compared and not a second
          copy of the renderer's own number. */
       await P.page.evaluate(() => { const S = window._gameState.current; S.monsters = []; });
-      await hold(P, true);
+      const clearAng = await clearAim(P);   /* v2.3.3200: and no prop on it either */
+      await hold(P, true, clearAng == null ? AIM : clearAng);
       await P.page.waitForTimeout(200);
       const clear = await snap(P);
+      await hold(P, true);   /* back on AIM for what follows */
       rec.ok(`${vp.height}: with nothing on the line the stream is exactly the arrow's own reach (${clear.beam ? clear.beam.len.toFixed(0) : '?'} px vs ${want.toFixed(0)} px)`,
         !!clear.beam && clear.beam.clipped === false && Math.abs(clear.beam.len - want) < 0.5,
         { beam: clear.beam, want, mult });

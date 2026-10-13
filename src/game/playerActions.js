@@ -13,7 +13,7 @@ import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
 import { ARROW_SPEED_PX } from '@/game/projectiles.js';   /* v2.3.2848: the volley's stagger is sized from it */
 import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /* v2.3.2848 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
-import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */ } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso */
+import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */, shotGroundDy /* v2.3.3200 */ } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso; v2.3.3200: shotGroundDy, a shot's ground under the boots */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
 import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: a special carries the damage brew too */
 
@@ -372,6 +372,7 @@ export function specialAttack(S) {
           isSpecial: true,
           isStaff: false,
           pierce: true,
+          _gdy: shotGroundDy(S),   /* v2.3.3200: its ground is under your boots (projectiles.js _goy) */
           _rangeMult: _bowRange, /* v2.3.2592: the special reaches as far as an ordinary arrow does; v2.3.2790 x depth */
           element: hasElement || null
         });
@@ -506,6 +507,7 @@ export function specialAttack(S) {
           isSpecial: true,
           isStaff: true,
           big: true,
+          _gdy: shotGroundDy(S),   /* v2.3.3200 */
           orbs: STAFF_BIG_BOLT_ORBS,
           element: hasElement || null
         });
@@ -548,7 +550,8 @@ export function specialAttack(S) {
             isSpecial: true,
             isStaff: true,
             element: hasElement || null,
-            ice: true
+            ice: true,
+            _gdy: shotGroundDy(S)   /* v2.3.3200 */
           });
         }
         /* v2.3.840: broadcast the staff special so peers see it.

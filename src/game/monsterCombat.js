@@ -42,7 +42,7 @@ import { BOW_RANGE_PX, toDisplayDamage, staffOrbLife, meleeRangeMult } from '@/d
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */, shotGroundDy /* v2.3.3200: a shot's ground is under the boots */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
 import { firstSightHit } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
@@ -59,6 +59,23 @@ import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock mon
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 import { brewMulNow, pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: the brew, read once and claimed right in a duel */
+
+/* ═══ v2.3.3200: HOW FAR A PLAIN ARROW FLIES BEFORE THE SCREEN'S EDGE ═══
+   projectiles.js plants a bow arrow once its drawn point comes within 24 px of
+   the view's edge (v2.3.1095).  The bow's sight hands this to firstSightHit as
+   `ground.len`, so a prop past the edge -- out of the arrow's reach -- never
+   opens the gate.  From the grip, along the shot, in world px; Infinity
+   without a view to measure. */
+function _viewEdgeDist(S, ox, oy, ang) {
+  var cam = S && S.camera;
+  if (!cam || !(S._viewW > 0) || !(S._viewH > 0) || !isFinite(ox) || !isFinite(oy) || !isFinite(ang)) return Infinity;
+  var m = 24;
+  var x0 = cam.x + m, x1 = cam.x + S._viewW - m, y0 = cam.y + m, y1 = cam.y + S._viewH - m;
+  var c = Math.cos(ang), sn = Math.sin(ang), t = Infinity;
+  if (c > 1e-9) t = Math.min(t, (x1 - ox) / c); else if (c < -1e-9) t = Math.min(t, (x0 - ox) / c);
+  if (sn > 1e-9) t = Math.min(t, (y1 - oy) / sn); else if (sn < -1e-9) t = Math.min(t, (y0 - oy) / sn);
+  return Math.max(0, t);
+}
 
 export function updateMonsterCombat(S, deps) {
   var P = S.player;
@@ -1493,8 +1510,12 @@ export function updateMonsterCombat(S, deps) {
             var _bsAimAt = (_bsAim.src === 'lock' && S.lockedTarget && S.lockedTarget.ref) ? S.lockedTarget.ref.id : null;
             var _bsHit = null;
             try {
+              /* v2.3.3200: + `ground`, your boots, so a prop on the line -- a
+                 building, a tree, a barrel -- opens the gate and ends the line
+                 where the arrow will stop (firstSightHit's prop note) */
               _bsHit = firstSightHit(S, _bsX, _bsY, _bsA,
-                BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1) * depthK(S.currentZone, P.y), { isStaff: false, isSpecial: false, aimAt: _bsAimAt });   /* v2.3.2790: the sight line ends where the (depth-scaled) arrow does */
+                BOW_RANGE_PX * (bowRangeMult(S.rpg) || 1) * depthK(S.currentZone, P.y), { isStaff: false, isSpecial: false, aimAt: _bsAimAt,
+                  ground: { x: P.x, y: P.y + shotGroundDy(S), len: _viewEdgeDist(S, _bsX, _bsY, _bsA) } });   /* v2.3.2790: the sight line ends where the (depth-scaled) arrow does */
             } catch (e) { _bsHit = null; }
             S._bowSight = { ang: _bsA, d: _bsHit ? _bsHit.dist : null,
               id: _bsHit ? _bsHit.id : null, at: Date.now(),
@@ -1701,6 +1722,7 @@ export function updateMonsterCombat(S, deps) {
                      the old immediate feet-origin (dist 14, no fromGrip). */
                   dist: isStaff ? 14 : 2,
                   fromGrip: !isStaff,
+                  _gdy: shotGroundDy(S),   /* v2.3.3200: its ground is under your boots (projectiles.js _goy) */
                   /* v2.3.109: bow's 0.7x flat now lives inside
                      calcWeaponDmg as the 0.6x-0.8x range, so no
                      per-projectile multiplier is needed here. */

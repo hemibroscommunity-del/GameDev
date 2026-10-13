@@ -866,7 +866,9 @@ export function zoneBlockers(zoneId) {
     const f = propFootprint(p);
     /* v2.3.2730: the footprint says whose it is, so a hit on it can ask what
        the prop is made of (propMaterial) and where to draw on it. */
-    if (f) { f.id = p.id; out.push(f); }
+    /* v2.3.3200: + `h`, how tall it is drawn, so a shot judged at the boots
+       is shown on the picture (combatHelpers.propHitHeight) */
+    if (f) { f.id = p.id; if (p.worldH > 0) f.h = p.worldH; out.push(f); }
   }
   _blockerCache[zoneId] = out;
   return out;

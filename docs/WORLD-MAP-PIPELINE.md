@@ -2480,6 +2480,29 @@ arrow flying through, standing where it stood; the mending, its fade, never
 over you; a lamp ringing as metal, the well as stone, a tree's leaves; a
 building's 24 arrows and its collapse; no errors.
 
+### The bow can aim at them (v2.3.3200)
+
+Owner: *"Make the bow able to shoot at any props including buildings"*.
+
+`mp-wheelbreak` puts its own arrows in the air. A player could not: the bow
+looses only when its line is on something (v2.3.2473), and that gate asked about
+monsters alone. Held on the Town Hall, the bow drew its line through the wall
+and waited. The arrow also judged props 52 px north of your feet, at your
+body's centre: point blank it started inside the Town Hall's footprint and flew
+through, and a level shot at a trunk ran behind it.
+
+Now:
+
+- The gate and the drawn line read the prop on the line (`firstSightHit`'s
+  `ground`): any object with a footprint, from a bench to a building.
+- Every shot is judged at your boots (`_gdy`). Another player's shots on your
+  screen are judged at their boots.
+- A hit is shown on the picture: where the shot flew, but never above 0.7 of a
+  low thing's height (`propHitHeight`, the footprints' `h`).
+
+Things you walk through (flowers, ferns, shells...) are still not targets.
+`mp-bowprops`; docs/specs/bow-at-props.md.
+
 ### Still to come (asked for, not in this round)
 
 Elemental damage by monster (a snowman's snowball slowing you with a snowflake
