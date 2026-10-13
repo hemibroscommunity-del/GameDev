@@ -6001,3 +6001,36 @@ measured before the world changed shape describes a different game.  And any
 local measurement of a Durable Object's message handling runs with the local
 tracing off (`load.mjs` does; `--observability` compares): a cost or a freeze
 seen only with it on is wrangler's, not the room's.
+
+## 169. "A bot's byte count is what the phone downloads" (v2.3.3199)
+
+The room's messages are compressed on the way out.  The worker's
+`compatibility_date` (2024-12-01) is past 2023-08-15, which turns on the
+runtime's `web_socket_compression`; every browser offers `permessage-deflate`
+when it connects, so does Node's own WebSocket, and the room accepts.  Anything
+that counts a message's `ev.data.length` -- the load test's bots, a page's own
+counter, `mp-crowd`'s 4 KB/s per peer -- counts it UNZIPPED, about thirteen
+times what crossed the wire (50 players in BroTown: 177 KB/s unzipped, 13.4 on
+the wire).  The figures "205 KB/s, 740 MB an hour at 60 players" went into four
+documents that way before a byte-counting proxy measured the wire.
+
+**And its twin: the bytes are the server's cost, not only the phone's.**
+Deflate runs once per message per socket over the message's whole length, on
+the room's one thread.  Bots that do not ask for compression (`load.mjs
+--no-deflate`) take the room from 79.6% to 44.6% of its thread at 100 players.
+So "compression makes the size free" is wrong in the direction that matters --
+but so is "every byte costs the same": REPEATED text is nearly free to
+compress.  Leaving the unchanged gear keys out of every player entry cut 29% of
+the bytes and saved the room nothing measurable (79.5% -> 82.9%, noise); half
+the MESSAGES (every other tick, each carrying both ticks' changes) took it from
+79.5% to 61.5%.  What costs is the number of messages and what changes inside
+them.
+
+**The rule.**  Quote a phone's download from the load test's `wire` column
+(one bot through `startWireProxy`), and say "unzipped" for anything counted off
+`ev.data`.  Do not turn compression off to save the server: each phone would
+download thirteen times as much.  Send fewer messages, and less of what
+changes in them, instead -- not merely fewer repeated bytes.  And do not trust
+`no_web_socket_compression` in a copy's `wrangler.toml` to turn it off for a
+measurement: the local runtime negotiated it anyway (tried 2026-10-13); the
+bots' `PlainWS` does it from the client side.

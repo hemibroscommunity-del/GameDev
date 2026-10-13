@@ -11,6 +11,7 @@
  *   node tools/qa/load/load.mjs [--steps 10,25,50] [--hold 20] [--settle 20]
  *        [--procs 3] [--fighters 0.3] [--cap 400] [--idle] [--pong N]
  *        [--server <a server/ folder>] [--observability] [--url ws://127.0.0.1:PORT]
+ *        [--no-deflate] [--move-ms 33] [--seen-r 2400]
  *
  * What it does:
  *   1. copies server/ to a temporary folder and raises MAX_PLAYERS there
@@ -40,7 +41,7 @@ import { readFileSync } from 'node:fs';
 import { tmpdir, cpus } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createServer } from 'node:net';
+import { createServer, createConnection } from 'node:net';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..', '..', '..');
@@ -67,6 +68,16 @@ const OPT = {
   pongHz: +arg('pong', 0),                 /* extra do-nothing messages a second per player */
   recover: !process.argv.includes('--no-recover'),
   observability: process.argv.includes('--observability'),   /* wrangler's local tracing on (off by default) */
+  /* v2.3.3199: the bots do not OFFER permessage-deflate, so the room sends
+     them its messages uncompressed -- to measure what compressing every
+     message costs the room.  The live game compresses: compatibility_date
+     2024-12-01 turns web_socket_compression on, every phone's browser offers
+     it, and so does Node's own WebSocket, which the bots use otherwise.  (The
+     no_web_socket_compression flag in a copy's wrangler.toml did NOT stop
+     the local runtime negotiating it, tried 2026-10-13: hence the client.) */
+  noDeflate: process.argv.includes('--no-deflate'),
+  moveMs: +arg('move-ms', 0),             /* v2.3.3199: a walker's move every N ms (0: the phone's 33) */
+  seenR: +arg('seen-r', 0),               /* v2.3.3199: "others' moves seen" counts senders this near (0: 2,400) */
   server: arg('server', null),             /* a server/ folder to test instead of this repo's own */
   recoverTo: +arg('recover-to', 0.6),       /* share of the players kept after a break */
   recoverSettle: +arg('recover-settle', 20), /* seconds given to come back before measuring */
@@ -90,6 +101,28 @@ async function freePort() {
     s.on('error', rej);
     s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => res(p)); });
   });
+}
+
+/* ── v2.3.3199: what a phone is sent ON THE WIRE ───────────────────────
+   The room compresses every message to a phone (permessage-deflate: the
+   worker's compatibility date turns web_socket_compression on, and every
+   browser offers it), so a bot's own byte count -- the messages as it reads
+   them, unzipped -- is not what a phone downloads.  Measured at 50 players
+   in town: 177 KB/s unzipped, 13 KB/s on the wire.  One bot (the first of
+   the first process) goes through this proxy, which counts the bytes the
+   room really sent it; its own unzipped count over the same window gives
+   the ratio, and every player's download on the wire follows from it. */
+async function startWireProxy(targetPort) {
+  const counts = { down: 0, up: 0 };
+  const server = createServer((c) => {
+    const s = createConnection({ host: '127.0.0.1', port: targetPort });
+    c.on('data', (d) => { counts.up += d.length; s.write(d); });
+    s.on('data', (d) => { counts.down += d.length; c.write(d); });
+    const end = () => { c.destroy(); s.destroy(); };
+    c.on('close', end); s.on('close', end); c.on('error', end); s.on('error', end);
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  return { port: server.address().port, counts, server };
 }
 
 /* ── the server copy ──────────────────────────────────────────────────── */
@@ -198,12 +231,12 @@ function cpuBetween(a, b) {
 /* ── the bots ─────────────────────────────────────────────────────────── */
 const groups = [];
 let reports = [];
-function startBots(url) {
+function startBots(url, wireUrl) {
   for (let i = 0; i < OPT.procs; i++) {
     const child = fork(join(HERE, 'bots.mjs'), [], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
     const g = { child, last: null, n: 0 };
     child.on('message', (m) => { if (m && m.type === 'report') { g.last = m.data; reports.push(m.data); } });
-    child.send({ cmd: 'config', cfg: { url, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz } });
+    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, noDeflate: OPT.noDeflate, seenR: OPT.seenR } });
     groups.push(g);
   }
 }
@@ -311,10 +344,10 @@ function summarise(n, rs, whole, cpu, secs) {
 
 function row(s) {
   const c = (v, w) => String(v === null || v === undefined ? '-' : v).padStart(w);
-  return `${c(s.players, 7)} | ${c(s.inMsgsPerSec, 7)} | ${c(s.serverThreadPct, 6)}% | ${c(s.tickRate, 5)} | ${c(s.tickDelayP50, 5)} / ${c(s.tickDelayP95, 6)} | ${c(s.seenP50, 5)} / ${c(s.seenP95, 6)} / ${c(s.seenP99, 6)} | ${c(s.downKBps, 7)} | ${c(s.workerdRssMb, 6)} | ${c(s.botCpuPct, 5)}% | ${c(Object.values(s.closes).reduce((a, b) => a + b, 0), 6)}`;
+  return `${c(s.players, 7)} | ${c(s.inMsgsPerSec, 7)} | ${c(s.serverThreadPct, 6)}% | ${c(s.tickRate, 5)} | ${c(s.tickDelayP50, 5)} / ${c(s.tickDelayP95, 6)} | ${c(s.seenP50, 5)} / ${c(s.seenP95, 6)} / ${c(s.seenP99, 6)} | ${c(s.downKBps, 7)} | ${c(s.downWireKBps, 5)} | ${c(s.workerdRssMb, 6)} | ${c(s.botCpuPct, 5)}% | ${c(Object.values(s.closes).reduce((a, b) => a + b, 0), 6)}`;
 }
-const HEAD = `players | msgs/s  | server |ticks/s| tick delay ms  | others' moves seen ms  | down KB/s | RSS MB | bots  | drops\n` +
-  `        | in      | thread | (45)  |  p50 / p95     |  p50 / p95 / p99       | /player   |        | CPU   |`;
+const HEAD = `players | msgs/s  | server |ticks/s| tick delay ms  | others' moves seen ms  | down KB/s | wire  | RSS MB | bots  | drops\n` +
+  `        | in      | thread | (45)  |  p50 / p95     |  p50 / p95 / p99       | /player   | KB/s  |        | CPU   |`;
 
 /* ── the run ──────────────────────────────────────────────────────────── */
 let worker = null, copy = null;
@@ -344,7 +377,14 @@ async function main() {
     url = OPT.url;
     console.log('using the worker at', url, '(no CPU readings: it is not ours)');
   }
-  startBots(url);
+  let wire = null, wireUrl = null;
+  try {
+    const u = new URL(url);
+    wire = await startWireProxy(+u.port);
+    u.port = String(wire.port);
+    wireUrl = u.toString();
+  } catch (e) { console.log('no wire probe:', e.message); }
+  startBots(url, wireUrl);
   console.log(`machine: ${cpus().length} cores, ${cpus()[0].model.trim()}`);
   console.log(`bots: ${OPT.procs} processes, ${Math.round(OPT.fighters * 100)}% fighters; steps ${OPT.steps.join(', ')}; ${OPT.hold}s measured a step\n`);
   console.log(HEAD);
@@ -357,7 +397,7 @@ async function main() {
      machine) keeps everything it measured */
   const save = async () => {
     const out = {
-      version: 'v2.3.3194', startedAt: startedAt.toISOString(), options: OPT,
+      version: 'v2.3.3199', startedAt: startedAt.toISOString(), options: OPT,
       machine: { cores: cpus().length, model: cpus()[0].model.trim() },
       serverCap: copy ? { real: copy.realCap, test: OPT.cap } : null,
       steps: results,
@@ -380,6 +420,7 @@ async function main() {
     const holdFrom = reports.length;
     const c0 = worker ? await cpuSnapshot(pids) : null;
     const m0 = Date.now();
+    const w0 = wire ? wire.counts.down : 0;
     const http = [], joins = [];
     let probing = true;
     const httpBase = url.replace(/^ws/, 'http').replace(/\/ws\?.*$/, '');
@@ -397,6 +438,14 @@ async function main() {
     const cpu = c0 && c1 ? cpuBetween(c0, c1) : {};
     const s = summarise(n, reports.slice(holdFrom), reports.slice(), cpu, secs);
     s.label = label;
+    /* v2.3.3199: the wire bot's bytes on the wire against its own unzipped
+       bytes, the same window; every player's wire download from the ratio */
+    const wireDown = wire ? wire.counts.down - w0 : 0;
+    const wireRx = reports.slice(holdFrom).reduce((a, r) => a + (r.wireRx || 0), 0);
+    s.wireProbeKBps = r1(wireDown / secs / 1024);
+    s.wireProbeUnzippedKBps = r1(wireRx / secs / 1024);
+    s.wireRatio = wireDown > 0 && wireRx > 0 ? r1(wireRx / wireDown) : null;
+    s.downWireKBps = s.wireRatio ? r1(s.downKBps * wireDown / wireRx) : null;
     s.rssGrowMb = c0 && c1 ? r1(c1.rssMb - c0.rssMb) : null;
     const answered = (a) => a.filter((v) => v !== null);
     s.httpProbeP50 = r1(pct(answered(http), 50));
