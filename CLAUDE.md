@@ -2156,7 +2156,8 @@ Two protocol versions coexist; both must keep working:
     sooner; never under 6 ms, never over TICK_RATE, never faster than a quiet
     room; the Workers runtime only (`WebSocketPair`), so the Node harnesses
     that call the tick by hand are untouched. 100 players 37 -> 40.4 ticks a
-    second, 150: 29.2 -> 32.4; smooth to ~145. Kill switch `tickpace: false`;
+    second, 150: 29.2 -> ~30-32; 41-42 ticks to ~100 players, then a drop as
+    the thread fills: smooth to ~130 (main ~105). Kill switch `tickpace: false`;
     /dev/overview's `tickPace` reads the real tick rate: docs/specs/tick-pace.md.
 
 ## Conventions

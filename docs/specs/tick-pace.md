@@ -82,14 +82,27 @@ steps one after the other), with #888's grids in both columns:
 | 150 | 90%, 29.2 ticks, 27 ms, 88 ms | 97%, 32.4 ticks, 28 ms, 153 ms |
 
 At 100 players the world now runs at 97% of a quiet room's speed instead of
-89%, and the room stays smooth (33 ticks a second or more, the load test's
-line) to about **145 players** -- against about 125 with #888 alone and about
-105-110 before it. The others' moves arrive as fast as before; a player
-joining a busy room waits a little longer for the first picture of the world
-(54 ms instead of 37 at 100 players, behind the loading screen).
+89%. The others' moves arrive as fast as before; a player joining a busy room
+waits a little longer for the first picture of the world (54 ms instead of 37
+at 100 players, behind the loading screen).
 
-Against main before #888 and this, at 100 players: 33.4 -> 40.4 ticks a second
-(+21%); at 150: 25.4 -> 32.4 (+28%).
+A whole ramp later in the night, each run from 10 to 175 players one step after
+the other (the bots moving by the time that really passed, as a phone does:
+#890), the thread busy and the ticks a second:
+
+| Players | 10 | 25 | 50 | 75 | 100 | 125 | 150 | 175 |
+|---|---|---|---|---|---|---|---|---|
+| main | 15%, 39.8 | 30%, 37.6 | 45%, 37.8 | 64%, 36.1 | 81%, 33.5 | 86%, 31.8 | 92%, 25.7 | 98%, 20.6 |
+| #888 | 13%, 41.0 | 24%, 40.4 | 43%, 39.2 | 61%, 38.3 | 79%, 36.7 | 87%, 32.4 | 94%, 25.8 | 95%, 22.0 |
+| #888 + this | 14%, 42.1 | 24%, 41.8 | 42%, 41.5 | 62%, 41.8 | 78%, 40.5 | 95%, 34.9 | 98%, 29.9 | 98%, 22.4 |
+
+**The world keeps 41-42 ticks a second up to about 100 players, then falls off
+as the thread fills**: the room stays smooth (33 ticks a second or more, the
+load test's line) to about **130 players**, against about 120 with #888 alone
+and about 105 on main. (The first version of this page said "about 145",
+drawn as a straight line between 100 and 150; the ramp shows the speed held
+flat and then a drop where the thread is full.) Against main, at 100 players:
+33.5 -> 40.5 ticks a second (+21%); at 150: 25.7 -> 29.9 (+16%).
 
 ## What to keep in mind
 
