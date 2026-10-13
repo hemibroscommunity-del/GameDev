@@ -423,6 +423,40 @@ remnant to migrate server-side, not a mode to preserve.
       `REPAIR_MS` 3 min (`src/game/wheelBreak.js`, `?repairms=`), never over
       you. A footprint's `oi` says which object.
     - `mp-wheelbreak` tests it: WORLD-MAP-PIPELINE "The objects take hits".
+    - since v2.3.3206 THE BOW SHOOTS THEM, buildings included -- the owner:
+      "Make the bow able to shoot at any props including buildings":
+      - the bow's sight gate (v2.3.2473) asked about monsters alone, so held on
+        a prop the bow never loosed. `firstSightHit`'s `ground` (your boots)
+        now finds the prop on the arrow's own ground track: the gate opens,
+        the line stops at its face (`id` `prop:<oi>`), a monster in front of
+        it or standing in its box still wins, the farm's edge never counts,
+        nor a prop past the screen's edge, where a plain arrow comes down
+        (`ground.len`, monsterCombat `_viewEdgeDist`);
+      - EVERY SHOT IS JUDGED AT THE SHOOTER'S BOOTS: the game's shots carry
+        `_gdy` (combatHelpers `shotGroundDy`) and projectiles.js asks the
+        ground at the drawn point minus (`_ox`, `_goy`). At the chest, point
+        blank started inside the Town Hall's footprint and flew through, and a
+        level shot ran 52 px behind a trunk. A hand-made arrow without `_gdy`
+        keeps the old meaning, so the prop scenarios still mean what they say.
+        Peers' shots are judged at THEIR boots (visualSystems), and a duel
+        target's rock test at theirs;
+      - a hit is SHOWN on the picture, lifted the height it flew but never above
+        0.7 of it (`propHitHeight`; footprints carry `h`, the farm's none);
+      - a new arrow takes the grip as its offset from you (`_bowGripDX/DY`):
+        the absolute was where you last shot, and on a slow frame the first
+        arrow after a walk left from there;
+      - SHOTS FLY OVER LOW THINGS -- asked whether a bench right in front of
+        you should catch your arrow, the owner: "I want arrows to fly over low
+        things": low is what you can jump (jump.js `JUMP_OVER`, by footprint
+        id, the jump's own test), and every game shot -- arrows, bolts, both
+        specials, the retreat shot, a peer's -- flies over one unless it is
+        what the shot is AIMED at: nothing else (monster, duel target,
+        anything tall) on the line within reach, the sight's `low` answer.
+        The shot carries it as `_lp` (a ground point in that footprint; the
+        relay's `lp`, so other screens agree), `shotSkip(lp)` is the skip
+        handed to `sweepBlockPoint` / `attackBlocked`, and the staff, with no
+        sight, asks `lowAimAlong`;
+      - `mp-bowprops`: docs/specs/bow-at-props.md.
   - Since v2.3.2996 a MONSTER'S HIT CARRIES ITS ELEMENT (the owner's snowflake,
     fire and air icons, and "slime for floral damage ... a brief held in place"):
     - a landed hit by a frost/flame/wind/flora monster chills (walk x0.55 for

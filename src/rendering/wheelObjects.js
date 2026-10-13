@@ -560,7 +560,10 @@ export class WheelObjects {
         for (let b = o.boxOf[i]; b < o.boxOf[i + 1]; b++) {
           /* v2.3.2995: + `oi`, which object: a hit on it is that object's
              (wheelBreak.js), not every one of its kind's */
-          out.push({ x0: o.boxes[b * 4], y0: o.boxes[b * 4 + 1], x1: o.boxes[b * 4 + 2], y1: o.boxes[b * 4 + 3], id: o.kinds[o.kind[i]], oi: i });
+          /* v2.3.3206: + `h`, its picture's height, so a hit at the boots is
+             shown on the picture, not in the air over a bench
+             (combatHelpers.propHitHeight) */
+          out.push({ x0: o.boxes[b * 4], y0: o.boxes[b * 4 + 1], x1: o.boxes[b * 4 + 2], y1: o.boxes[b * 4 + 3], id: o.kinds[o.kind[i]], oi: i, h: ix.h[i] });
         }
       });
       this._blockers = out;
