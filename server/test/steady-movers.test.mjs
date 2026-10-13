@@ -57,9 +57,14 @@ Date.now = () => NOW;
   check('1j. new gear mid-walk: out', steadyHold(last, w({ x: 1000 + 0.165 * 22, eqc: 'iron' }), steadySig(w({ eqc: 'iron' })), 22, 22) === false);
   check('1k. a shove (a jump, same speed): out', steadyHold(last, w({ x: 1050 }), sig, 22, 22) === false);
   check('1l. a time that runs backwards: out', steadyHold(last, base, sig, -5, -5) === false && steadyHold(last, base, sig, 10, -5) === false);
+  /* v2.3.3204: kept under SPACED_MS, which sends whatever comes later */
   check('1m. along the line: as far as the speed takes them, give or take a busy room\'s lateness', steadyHold(last, w({ x: 1000 + 0.165 * 20 }), sig, 44, 20) === true
-    && steadyHold(last, w({ x: 1000 + 0.165 * 20 }), sig, 44, 20 + STEADY.JITTER_MS) === true
-    && steadyHold(last, w({ x: 1000 + 0.165 * 20 }), sig, 44, 20 + STEADY.JITTER_MS + 20) === false);
+    && steadyHold(last, w({ x: 1000 + 0.165 * (10 + STEADY.JITTER_MS) }), sig, 44, 10) === true
+    && steadyHold(last, w({ x: 1000 + 0.165 * (10 + STEADY.JITTER_MS + 20) }), sig, 44, 10) === false);
+  check('1o. v2.3.3204: a move SPACED_MS after the last one sent (by the moves\' times) goes out -- its phone spaced it',
+    steadyHold(last, w({ x: 1000 + 0.165 * (STEADY.SPACED_MS - 1) }), sig, 50, STEADY.SPACED_MS - 1) === true
+    && steadyHold(last, w({ x: 1000 + 0.165 * STEADY.SPACED_MS }), sig, 50, STEADY.SPACED_MS) === false
+    && STEADY.SPACED_MS < STEADY.MAX_MS);
   check('1n. a thumb\'s wobble in the speed: held; a real change: out', steadyHold(last, w({ x: 1000 + 0.165 * 20, vx: 278, vy: 4 }), sig, 44, 20) === true
     && steadyHold(last, w({ x: 1000 + 0.165 * 20, vx: 300 }), sig, 44, 20) === false
     && steadyHold(last, w({ x: 1000 + 0.165 * 20, vy: 20 }), sig, 44, 20) === false);

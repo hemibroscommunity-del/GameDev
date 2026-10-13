@@ -50,6 +50,12 @@ export const STEADY = Object.freeze({
      says by what this much lateness in the moves' arrival would make: a busy
      room takes moves in late and unevenly, a phone does not send them late */
   JITTER_MS: 50,
+  /* v2.3.3204: a move this long after the last one sent (by the MOVES'
+     times) is never held: its phone already spaced it.  A phone on the safe
+     ground sends a steady walk every MAX_MS itself (src/game/moveDiet.js);
+     held by the TICKS' times, half of those came a tick late (measured: the
+     others saw positions 12-16 ms later).  MAX_MS less a tick and a bit. */
+  SPACED_MS: 44,
 });
 
 /* an update's vx/vy: hundredths of a pixel per 60 Hz frame (wsClient.js reads
@@ -96,7 +102,7 @@ export function steadyHold(last, w, sig, now, at) {
   /* ... and about as far along it as that speed takes them (the moves'
      times are when the room took them in, which a busy room does late) */
   const dt = at - last.t;
-  if (!(dt >= 0)) return false;
+  if (!(dt >= 0) || dt >= STEADY.SPACED_MS) return false;
   const along = dx * ux + dy * uy;
   const expect = sp * PX_PER_MS * dt;
   return Math.abs(along - expect) <= E + sp * PX_PER_MS * STEADY.JITTER_MS;
