@@ -866,7 +866,7 @@ export function zoneBlockers(zoneId) {
     const f = propFootprint(p);
     /* v2.3.2730: the footprint says whose it is, so a hit on it can ask what
        the prop is made of (propMaterial) and where to draw on it. */
-    /* v2.3.3200: + `h`, how tall it is drawn, so a shot judged at the boots
+    /* v2.3.3206: + `h`, how tall it is drawn, so a shot judged at the boots
        is shown on the picture (combatHelpers.propHitHeight) */
     if (f) { f.id = p.id; if (p.worldH > 0) f.h = p.worldH; out.push(f); }
   }
@@ -961,7 +961,7 @@ export function propSwingContact(zoneId, px, py, ang, reach, halfArc) {
  *  down before it is asked (see projectiles.js).
  *  The NEAREST blocker wins: with two props on one line an arrow must stop at
  *  the first, not the furthest.
- *  v2.3.3200: `skip`, when given, is asked of each footprint, and one it says
+ *  v2.3.3206: `skip`, when given, is asked of each footprint, and one it says
  *  yes to is not in the way -- the low things a player's arrow flies over
  *  (projectiles.js shotSkip). */
 export function attackBlockPoint(zoneId, x0, y0, x1, y1, skip) {
@@ -980,7 +980,7 @@ export function attackBlockPoint(zoneId, x0, y0, x1, y1, skip) {
   return { x: x0 + (x1 - x0) * best, y: y0 + (y1 - y0) * best, t: best };
 }
 
-/** Does a prop stand between these two ground points?  (v2.3.3200: `skip`
+/** Does a prop stand between these two ground points?  (v2.3.3206: `skip`
  *  as attackBlockPoint's.) */
 export function attackBlocked(zoneId, x0, y0, x1, y1, skip) {
   return !!attackBlockPoint(zoneId, x0, y0, x1, y1, skip);
@@ -1017,7 +1017,7 @@ export function attackBlocked(zoneId, x0, y0, x1, y1, skip) {
    v2.3.2701: `box` is the footprint it entered (the shared object from
    zoneBlockers -- read it, never write it), so the arrow sim can ask who is
    standing in it.
-   v2.3.3200: `skip`, when given, is asked of each footprint first, and one it
+   v2.3.3206: `skip`, when given, is asked of each footprint first, and one it
    says yes to is flown over (projectiles.js shotSkip: a player's arrow over
    the low things you can jump). */
 export function sweepBlockPoint(zoneId, x0, y0, x1, y1, skip) {
@@ -1056,6 +1056,6 @@ if (typeof window !== 'undefined') {
   window.__btBlockers = (z) => zoneBlockers(z);
   window.__btAttackBlocked = (z, x0, y0, x1, y1) => attackBlocked(z, x0, y0, x1, y1);
   window.__btBlockPoint = (z, x0, y0, x1, y1) => attackBlockPoint(z, x0, y0, x1, y1);
-  window.__btSweepBlockPoint = (z, x0, y0, x1, y1, skip) => sweepBlockPoint(z, x0, y0, x1, y1, skip); /* v2.3.2699; v2.3.3200: + skip */
+  window.__btSweepBlockPoint = (z, x0, y0, x1, y1, skip) => sweepBlockPoint(z, x0, y0, x1, y1, skip); /* v2.3.2699; v2.3.3206: + skip */
   window.__btPropSwingContact = (z, x, y, ang, reach, half) => propSwingContact(z, x, y, ang, reach, half); /* v2.3.2730 */
 }

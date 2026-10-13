@@ -124,7 +124,7 @@ export function bowGripPoint(S) {
   return { x: px, y: py };
 }
 
-/* ═══ v2.3.3200: A SHOT'S GROUND IS UNDER ITS SHOOTER'S BOOTS ═══
+/* ═══ v2.3.3206: A SHOT'S GROUND IS UNDER ITS SHOOTER'S BOOTS ═══
  * Owner: "Make the bow able to shoot at any props including buildings".
  *
  * A shot is drawn from the shooter's POSITION -- the body's centre (v2.3.2748),
@@ -151,7 +151,7 @@ export function shotGroundDy(S) {
   return Number.isFinite(d) ? d : 0;
 }
 
-/* ═══ v2.3.3200: ...AND A HIT ON A PROP IS SHOWN ON THE PROP ═══
+/* ═══ v2.3.3206: ...AND A HIT ON A PROP IS SHOWN ON THE PROP ═══
  * Judged at the boots, an arrow flies ~80 px over the ground it is tracking --
  * shoulder height -- and a bench is 46 px tall, a barrel 61: drawn where it
  * flew, the arrow would stand in the air above what it hit.  So the point a hit

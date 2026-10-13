@@ -42,9 +42,9 @@ import { BOW_RANGE_PX, toDisplayDamage, staffOrbLife, meleeRangeMult } from '@/d
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */, shotGroundDy /* v2.3.3200: a shot's ground is under the boots */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */, shotGroundDy /* v2.3.3206: a shot's ground is under the boots */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
-import { firstSightHit, shotLowAim, lowAimAlong } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3200: + the low thing a shot is aimed at */
+import { firstSightHit, shotLowAim, lowAimAlong } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
@@ -60,7 +60,7 @@ import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking bre
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 import { brewMulNow, pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: the brew, read once and claimed right in a duel */
 
-/* ═══ v2.3.3200: HOW FAR A PLAIN ARROW FLIES BEFORE THE SCREEN'S EDGE ═══
+/* ═══ v2.3.3206: HOW FAR A PLAIN ARROW FLIES BEFORE THE SCREEN'S EDGE ═══
    projectiles.js plants a bow arrow once its drawn point comes within 24 px of
    the view's edge (v2.3.1095).  The bow's sight hands this to firstSightHit as
    `ground.len`, so a prop past the edge -- out of the arrow's reach -- never
@@ -1510,7 +1510,7 @@ export function updateMonsterCombat(S, deps) {
             var _bsAimAt = (_bsAim.src === 'lock' && S.lockedTarget && S.lockedTarget.ref) ? S.lockedTarget.ref.id : null;
             var _bsHit = null;
             try {
-              /* v2.3.3200: + `ground`, your boots, so a prop on the line -- a
+              /* v2.3.3206: + `ground`, your boots, so a prop on the line -- a
                  building, a tree, a barrel -- opens the gate and ends the line
                  where the arrow will stop (firstSightHit's prop note) */
               _bsHit = firstSightHit(S, _bsX, _bsY, _bsA,
@@ -1520,7 +1520,7 @@ export function updateMonsterCombat(S, deps) {
             S._bowSight = { ang: _bsA, d: _bsHit ? _bsHit.dist : null,
               id: _bsHit ? _bsHit.id : null, at: Date.now(),
               ox: _bsX, oy: _bsY,
-              /* v2.3.3200: a low thing it is aimed at (nothing else on the
+              /* v2.3.3206: a low thing it is aimed at (nothing else on the
                  line), the one low thing its arrow will not fly over */
               lp: shotLowAim(_bsHit) };
           } else if (S._bowSight) {
@@ -1716,7 +1716,7 @@ export function updateMonsterCombat(S, deps) {
                    the 1-in-8 snap (data/arrowSnap.js) rolls the same on the
                    shooter's screen and every peer's. */
                 var _shotTs = Date.now();
-                /* ═══ v2.3.3200: OVER THE LOW THINGS, BAR THE ONE AIMED AT ═══
+                /* ═══ v2.3.3206: OVER THE LOW THINGS, BAR THE ONE AIMED AT ═══
                    Owner: "I want arrows to fly over low things".  A shot flies
                    over a bench, a fence, a barrel, a bush (projectiles.js
                    shotSkip) unless that is what it is aimed at: the bow's sight
@@ -1728,14 +1728,14 @@ export function updateMonsterCombat(S, deps) {
                 S.arrows.push({
                   ang: arrAngle,
                   _shotTs: _shotTs,
-                  _lp: _shotLp || undefined,   /* v2.3.3200 */
+                  _lp: _shotLp || undefined,   /* v2.3.3206 */
                   /* v2.3.937: bow shots nock at the teal grip and launch at the
                      (early) release -- start near the player and let projectiles.js
                      hold them at the grip until BOW_RELEASE_MS.  Staff bolts keep
                      the old immediate feet-origin (dist 14, no fromGrip). */
                   dist: isStaff ? 14 : 2,
                   fromGrip: !isStaff,
-                  _gdy: shotGroundDy(S),   /* v2.3.3200: its ground is under your boots (projectiles.js _goy) */
+                  _gdy: shotGroundDy(S),   /* v2.3.3206: its ground is under your boots (projectiles.js _goy) */
                   /* v2.3.109: bow's 0.7x flat now lives inside
                      calcWeaponDmg as the 0.6x-0.8x range, so no
                      per-projectile multiplier is needed here. */
@@ -1775,7 +1775,7 @@ export function updateMonsterCombat(S, deps) {
                      and every bolt the no-element lavender.  Additive: an older
                      client ignores it. */
                   el: ((getActiveWeapon(S.rpg) || {}).element1) || undefined,
-                  /* v2.3.3200: the low thing it is aimed at, so it stops there on
+                  /* v2.3.3206: the low thing it is aimed at, so it stops there on
                      every screen and flies over the rest (visualSystems.js).
                      Additive: an older client ignores it. */
                   lp: _shotLp ? [Math.round(_shotLp.x), Math.round(_shotLp.y)] : undefined,

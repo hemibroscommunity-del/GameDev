@@ -6061,7 +6061,7 @@ until the thread is full.  And a Node test that captures the tick from
 `setInterval` must never see the interval set again (`WebSocketPair` is the
 runtime check, `tickpace.js`).
 
-## 171. "mp-wheelbreak's arrows stick, so the bow shoots props" (v2.3.3200)
+## 171. "mp-wheelbreak's arrows stick, so the bow shoots props" (v2.3.3206)
 
 **Plausible:** the Wheel's objects take arrows. `mp-wheelbreak` sends 28
 arrows at a barrel, a lamp, a tree and a building and every check passes, so a

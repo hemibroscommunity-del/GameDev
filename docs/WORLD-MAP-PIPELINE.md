@@ -2480,7 +2480,7 @@ arrow flying through, standing where it stood; the mending, its fade, never
 over you; a lamp ringing as metal, the well as stone, a tree's leaves; a
 building's 24 arrows and its collapse; no errors.
 
-### The bow can aim at them (v2.3.3200)
+### The bow can aim at them (v2.3.3206)
 
 Owner: *"Make the bow able to shoot at any props including buildings"*.
 

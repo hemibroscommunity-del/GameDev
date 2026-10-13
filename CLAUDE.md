@@ -423,7 +423,7 @@ remnant to migrate server-side, not a mode to preserve.
       `REPAIR_MS` 3 min (`src/game/wheelBreak.js`, `?repairms=`), never over
       you. A footprint's `oi` says which object.
     - `mp-wheelbreak` tests it: WORLD-MAP-PIPELINE "The objects take hits".
-    - since v2.3.3200 THE BOW SHOOTS THEM, buildings included -- the owner:
+    - since v2.3.3206 THE BOW SHOOTS THEM, buildings included -- the owner:
       "Make the bow able to shoot at any props including buildings":
       - the bow's sight gate (v2.3.2473) asked about monsters alone, so held on
         a prop the bow never loosed. `firstSightHit`'s `ground` (your boots)

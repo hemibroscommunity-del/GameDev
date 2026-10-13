@@ -493,9 +493,9 @@ function _quarryInBox(S, a, b) {
    actually was.  Asked only when a hit is about to land. */
 function _rockBetween(S, a, ox, oy, fx, fy) {
   if (a._prevX == null || a._prevY == null) return false;
-  return attackBlocked(S.currentZone, a._prevX - ox, a._prevY - oy, fx, fy, _shotSkipOf(a) || undefined);   /* v2.3.3200: not a low thing it flies over */
+  return attackBlocked(S.currentZone, a._prevX - ox, a._prevY - oy, fx, fy, _shotSkipOf(a) || undefined);   /* v2.3.3206: not a low thing it flies over */
 }
-/* ═══ v2.3.3200: A SHOT FLIES OVER LOW THINGS ═══
+/* ═══ v2.3.3206: A SHOT FLIES OVER LOW THINGS ═══
    Owner, asked whether a bench, a fence or a bush right in front of you should
    catch your arrow: "I want arrows to fly over low things".
 
@@ -518,7 +518,7 @@ function _rockBetween(S, a, ox, oy, fx, fy) {
    keeps the old meaning, every prop in its way. */
 function _isLow(b) { return !!(b && JUMP_OVER.has(b.id)); }
 function _notLow(b) { return !_isLow(b); }
-/** v2.3.3200: the footprints a shot aimed at `lp` (a ground point, or null)
+/** v2.3.3206: the footprints a shot aimed at `lp` (a ground point, or null)
  *  flies over: the low ones, except the one it is aimed at. */
 export function shotSkip(lp) {
   return function (b) {
@@ -530,13 +530,13 @@ function _shotSkipOf(a) {
   if (!a._skip) a._skip = shotSkip(a._lp || null);
   return a._skip;
 }
-/** v2.3.3200: the low thing a sight answer (firstSightHit) is aimed at, as a
+/** v2.3.3206: the low thing a sight answer (firstSightHit) is aimed at, as a
  *  ground point inside its footprint ({x, y}, its middle), or null. */
 export function shotLowAim(hit) {
   var b = hit && hit.low ? hit.prop : null;
   return b ? { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 } : null;
 }
-/** v2.3.3200: for a shot with no sight of its own (the staff, the bow's
+/** v2.3.3206: for a shot with no sight of its own (the staff, the bow's
  *  retreat shot): the low thing it is aimed at, by firstSightHit's own rule,
  *  from (ox, oy) along `ang` with its boots at (gx, gy), as far as `len` --
  *  or null. */
@@ -583,7 +583,7 @@ if (typeof window !== 'undefined') {
  * Returns { dist, id, m } for the NEAREST thing on the line inside maxLen, or
  * null.  `dist` is the distance from the origin to where the ray ENTERS that
  * circle -- the near edge, which is where the drawn line should stop.
- * (v2.3.3200: or a prop's face, with `opts.ground`: { dist, id: 'prop:...',
+ * (v2.3.3206: or a prop's face, with `opts.ground`: { dist, id: 'prop:...',
  * m: null, prop: its footprint } -- see below; `low: true` when it is a low
  * thing the shot is aimed at, nothing else being on the line.)
  */
@@ -607,9 +607,9 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
     if (enter < 0) enter = 0;          /* the origin is already inside it */
     if (enter > maxLen) return;
     if (!best || enter < best.dist) best = { dist: enter, id: id, m: ref };
-    return true;   /* v2.3.3200: on the line, for the prop's let-in below */
+    return true;   /* v2.3.3206: on the line, for the prop's let-in below */
   };
-  /* ═══ v2.3.3200: AND THE PROPS -- a building, a tree, a barrel ═══
+  /* ═══ v2.3.3206: AND THE PROPS -- a building, a tree, a barrel ═══
      Owner: "Make the bow able to shoot at any props including buildings".
      The arrow already stopped at a prop and the Wheel's objects already took
      the hit (v2.3.2730, v2.3.2995) -- but this gate asked only about monsters
@@ -629,7 +629,7 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
      v2.3.1095 range rule), so a prop past it -- a building off to the side of
      an upright phone -- is not something this shot can reach, and must not
      set the bow firing at it. */
-  /* v2.3.3200: the shot flies over the low things (_isLow), so the prop that
+  /* v2.3.3206: the shot flies over the low things (_isLow), so the prop that
      STOPS it is the first one past them; and the first low thing before that,
      `low`, is what it is aimed at if nothing else is on the line (below). */
   var prop = null, low = null;
@@ -657,7 +657,7 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
       /* v2.3.2845: the monster the shot is aimed at, round its torso -- as the hit test will */
       var onLine = consider(mx, my - ((opts && opts.aimAt != null && opts.aimAt === m.id) ? torsoLift(m, S.currentZone) : monsterBodyOffsetY(mArch)),
         monsterProjRadius(m, S, opts) + half, m.id, m);
-      /* v2.3.3200: on the line with its feet in the prop's box: the arrow is let in */
+      /* v2.3.3206: on the line with its feet in the prop's box: the arrow is let in */
       if (onLine && prop) {
         var b = prop.box;
         if (mx >= b.x0 && mx <= b.x1 && my >= b.y0 && my <= b.y1) letIn = true;
@@ -682,13 +682,13 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
       consider(oxp, oyp - 24, Math.max(pr, PVP_BODY_R + half), 'p_' + pid, o);
     }
   }
-  /* v2.3.3200: the prop, when it comes first and the arrow will not be let
+  /* v2.3.3206: the prop, when it comes first and the arrow will not be let
      into it.  `id` says which (the Wheel's object number, else the prop's
      own id), for a scenario reading the gate. */
   if (prop && !letIn && (!best || prop.dist < best.dist)) {
     best = { dist: prop.dist, id: 'prop:' + (prop.box.oi != null ? prop.box.oi : prop.box.id), m: null, prop: prop.box };
   }
-  /* v2.3.3200: nothing else on the line -- the low thing is what the shot is
+  /* v2.3.3206: nothing else on the line -- the low thing is what the shot is
      aimed at, and it stops there (`low`; the shot carries it, shotLowAim).
      Anything else on the line, behind it or not, and the shot flies over it. */
   if (!best && low) {
@@ -748,10 +748,10 @@ import { monsterHitSfx, shotEndSfx } from '@/game/hitSounds.js'; /* v2.3.3001: h
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockShotPoint, torsoLift, monsterDrawScale /* v2.3.2845: aimed at, and landing round, the torso */, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */, STUCK_ARROW_MS, SCORCH_MS, scorchStyle, scorchGlow /* v2.3.2995 */, propHitHeight /* v2.3.3200: a hit on a prop is shown on the prop */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockShotPoint, torsoLift, monsterDrawScale /* v2.3.2845: aimed at, and landing round, the torso */, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */, STUCK_ARROW_MS, SCORCH_MS, scorchStyle, scorchGlow /* v2.3.2995 */, propHitHeight /* v2.3.3206: a hit on a prop is shown on the prop */ } from '@/game/combatHelpers.js';
 import { strikeWheelObject } from '@/game/wheelBreak.js'; /* v2.3.2995: the Wheel's objects take hits, break, and are mended */
-import { JUMP_OVER } from '@/game/jump.js'; /* v2.3.3200: what you can jump, a shot flies over */
-import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.3200: a duel target's ground is under its boots */
+import { JUMP_OVER } from '@/game/jump.js'; /* v2.3.3206: what you can jump, a shot flies over */
+import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.3206: a duel target's ground is under its boots */
 import { arrowSnaps } from '@/data/arrowSnap.js'; /* v2.3.2731: one arrow in eight breaks on what it hits */
 import { BOW_VOLLEY, burnT0, burnLifeMs, volleyRested, volleyBurns, volleyShoves } from '@/game/bowVolley.js'; /* v2.3.2848: the special's three arrows share one train, one burn and one shove; v2.3.2849: + its burn length */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -1136,7 +1136,7 @@ export function updateArrows(S, deps) {
             if (!a._released) a._released = !a.fromGrip || (Date.now() - a._bornTs) >= 110;
             var _released = a._released;
             if (a.fromGrip && (!_released || a._ox == null) && S._bowGripX != null) {
-              /* ═══ v2.3.3200: THE GRIP AS AN OFFSET, NOT WHERE YOU LAST SHOT ═══
+              /* ═══ v2.3.3206: THE GRIP AS AN OFFSET, NOT WHERE YOU LAST SHOT ═══
                  The absolute grip is rewritten only while the bow pose shows
                  (bowGripPoint's note), so between volleys it is where you last
                  SHOT.  `absolute - P` taken on a new shot's first frame is
@@ -1156,7 +1156,7 @@ export function updateArrows(S, deps) {
               }
             }
             var _ox = a._ox || 0, _oy = a._oy || 0;
-            /* ═══ v2.3.3200: THE GROUND UNDER THE SHOT IS UNDER THE BOOTS ═══
+            /* ═══ v2.3.3206: THE GROUND UNDER THE SHOT IS UNDER THE BOOTS ═══
                _ox/_oy carry the drawn shot back to the shooter's POSITION, the
                body's centre; `_gdy` (combatHelpers.shotGroundDy, stamped when
                the game fires it) carries it on down to the boots.  Every ground
@@ -1446,7 +1446,7 @@ export function updateArrows(S, deps) {
 
                The stop itself is the v2.3.2652 code, moved below the loop
                unchanged: plant on the face, or for magic, be spent on it. */
-            /* ═══ v2.3.3200: "AT DIST 0 THAT RETURNS EXACTLY P.x/P.y" WAS THE CHEST ═══
+            /* ═══ v2.3.3206: "AT DIST 0 THAT RETURNS EXACTLY P.x/P.y" WAS THE CHEST ═══
                v2.3.2748 found the player's position is the body's CENTRE, 52 px
                over the boots, and moved walking down to the boots; this test
                stayed up at the chest.  Standing at the Town Hall's front the
@@ -1456,7 +1456,7 @@ export function updateArrows(S, deps) {
                0 is the boots. */
             var _propStop = null;
             if (_released && !a.planting) {
-              var _gx0 = a._prevX - _ox, _gy0 = a._prevY - _goy;   /* v2.3.3200: _goy, to the boots */
+              var _gx0 = a._prevX - _ox, _gy0 = a._prevY - _goy;   /* v2.3.3206: _goy, to the boots */
               var _gx1 = a._renderX - _ox, _gy1 = a._renderY - _goy;
               /* Out the far side of a rock it was let into: that face ends it. */
               var _ib = a._inBox;
@@ -1464,7 +1464,7 @@ export function updateArrows(S, deps) {
                 _propStop = boxExitPoint(_ib, _gx0, _gy0, _gx1, _gy1);
                 a._inBox = _ib = null;
               }
-              var _gp = sweepBlockPoint(S.currentZone, _gx0, _gy0, _gx1, _gy1, _shotSkipOf(a) || undefined);   /* v2.3.3200: over the low things, bar the one it is aimed at */
+              var _gp = sweepBlockPoint(S.currentZone, _gx0, _gy0, _gx1, _gy1, _shotSkipOf(a) || undefined);   /* v2.3.3206: over the low things, bar the one it is aimed at */
               if (_gp && !(_propStop && _propStop.t <= _gp.t)) {
                 if (!_propStop && !_ib && _quarryInBox(S, a, _gp.box)) {
                   /* Let in.  If this same step already comes out the far side
@@ -2203,7 +2203,7 @@ export function updateArrows(S, deps) {
                 var _pvpPointGap = Math.sqrt(Math.pow(_pvpX - a._renderX, 2) + Math.pow(_pvpY - 24 - a._renderY, 2));
                 var _pvpGap = _segGap(_pvpX, _pvpY - 24, _capAx, _capAy, _capBx, _capBy);
                 /* v2.3.2701: and not through a rock, exactly as for a monster. */
-                /* v2.3.3200: a player's position is their body's centre, and a
+                /* v2.3.3206: a player's position is their body's centre, and a
                    shot fired with `_gdy` looks for rocks at the ground, so the
                    other end of the line is their boots too. */
                 var _pvpGy = a._gdy ? _pvpY + playerGroundDy(S.currentZone, _pvpX, _pvpY) : _pvpY;
@@ -2305,7 +2305,7 @@ export function updateArrows(S, deps) {
                special that has just embedded in a survivor -- the stuckIn
                branch at the top owns that arrow now. */
             if (_propStop && !a.stuckIn) {
-              /* v2.3.3200: shown ON the prop -- lifted the height the shot flew
+              /* v2.3.3206: shown ON the prop -- lifted the height the shot flew
                  at (-_goy), but never above PROP_HIT_SHARE of its picture, so a
                  bench or a barrel hit at the boots takes the arrow in its upper
                  part rather than in the air over it (combatHelpers.propHitHeight).

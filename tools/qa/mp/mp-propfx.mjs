@@ -252,7 +252,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.2731: a shot the snap roll says STICKS -- one arrow in eight breaks
        instead (data/arrowSnap.js), and a timestamp picked by the clock would
        make this a one-in-eight flake */
-    /* v2.3.3200: watched for up to 3 s, not read at 700 ms: the shot is judged
+    /* v2.3.3206: watched for up to 3 s, not read at 700 ms: the shot is judged
        from the peer's BOOTS now (visualSystems), 52 px further from the face
        than their chest, and a headless page flies that in a few slow frames */
     await P.page.evaluate((qid) => new Promise((resolve) => {
@@ -274,7 +274,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        interpolated peer drifted 17px while the first run's arrow flew */
     /* up the face at bow height (visualSystems REMOTE_SHOT_H), not in the dirt
        at its foot -- a peer's shot is drawn from the peer's feet
-       v2.3.3200: judged at the peer's boots and shown where it was drawn
+       v2.3.3206: judged at the peer's boots and shown where it was drawn
        flying, at their chest: BOOTS (52) up the face, the fountain (260 tall)
        being far taller (combatHelpers.propHitHeight) */
     rec.ok('peer: their arrow stands in the fountain on MY screen too, headless, up the face',
@@ -292,7 +292,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const t0 = performance.now();
       const tick = () => {
         for (const r of (S._impactRings || [])) if (!seenR.has(r)) { seenR.add(r); window.__qaPeerRings.push({ x: r.x, y: r.y, maxR: r.maxR }); }
-        if (performance.now() - t0 < 3200) requestAnimationFrame(tick);   /* v2.3.3200: was 1.2 s, see the arrow above */
+        if (performance.now() - t0 < 3200) requestAnimationFrame(tick);   /* v2.3.3206: was 1.2 s, see the arrow above */
       };
       requestAnimationFrame(tick);
       window.__btDispatch({ type: 'player_projectile', payload: { id: qid, x: 0, y: 0, ang: -Math.PI / 2, isStaff: true, ts: Date.now() } });
@@ -301,7 +301,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const pr = await P.page.evaluate(() => window.__qaPeerRings.slice());
     const q5 = await drained(P);
     rec.ok('peer: their bolt CRASHES on the fountain on my screen -- the rings and the chips',
-      pr.filter((r) => r.y < FOUNT.y1 - BOOTS + 8 && r.y > FOUNT.y1 - BOOTS - 8).length === 2   /* v2.3.3200: at the peer's chest height, as the arrow */
+      pr.filter((r) => r.y < FOUNT.y1 - BOOTS + 8 && r.y > FOUNT.y1 - BOOTS - 8).length === 2   /* v2.3.3206: at the peer's chest height, as the arrow */
         && q5.debris.some((b) => b.monsterId === 'prop:' + FOUNT.id && b.weapon === 'bolt'), { pr, ringsBefore, debris: q5.debris });
 
     /* v2.3.2731: and one the roll says BREAKS -- it snaps on the fountain on
@@ -320,12 +320,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         for (const z of ((window.__btArrowSnapFx && window.__btArrowSnapFx()) || [])) {
           if (!seen.some((q) => q.x === z.x && q.y === z.y)) seen.push(z);
         }
-        if (performance.now() - t0 < 3000) requestAnimationFrame(tick); else resolve(seen);   /* v2.3.3200: was 2 s, see the arrow above */
+        if (performance.now() - t0 < 3000) requestAnimationFrame(tick); else resolve(seen);   /* v2.3.3206: was 2 s, see the arrow above */
       };
       requestAnimationFrame(tick);
     }), qid);
     const arrowsAfter = ((await marks(P)) || []).filter((m) => m.kind === 'arrow').length;
-    const psHere = (ps || []).filter((z) => Math.abs(z.y - (FOUNT.y1 - BOOTS)) < 3 && z.x > FOUNT.x0 && z.x < FOUNT.x1);   /* v2.3.3200: BOOTS up, was REMOTE_SHOT_H 26 */
+    const psHere = (ps || []).filter((z) => Math.abs(z.y - (FOUNT.y1 - BOOTS)) < 3 && z.x > FOUNT.x0 && z.x < FOUNT.x1);   /* v2.3.3206: BOOTS up, was REMOTE_SHOT_H 26 */
     rec.ok('peer: their arrow that the roll breaks SNAPS on the fountain on my screen -- two halves and splinters, nothing left standing',
       psHere.length === 1 && psHere[0].pieces.filter((pc) => pc.kind !== 'splinter').length === 2
         && arrowsAfter <= arrowsBefore, { ps, arrowsBefore, arrowsAfter });

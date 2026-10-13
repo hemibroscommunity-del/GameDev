@@ -110,7 +110,7 @@ const hold = (P, on, ang = AIM) => P.page.evaluate(({ ang, on }) => {
   return { aim: S._aimAngle, auto: !!S.autoAttack };
 }, { ang, on });
 
-/* v2.3.3200: a prop on the line is something too -- the sight stops at it and
+/* v2.3.3206: a prop on the line is something too -- the sight stops at it and
    the bow fires (projectiles.js firstSightHit's prop note) -- so "nothing on
    the line" needs a heading no prop stands on within the bow's reach.  The
    nearest to AIM, from your boots along the game's own sweep. */
@@ -298,7 +298,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          the two ends of the shared constant being compared and not a second
          copy of the renderer's own number. */
       await P.page.evaluate(() => { const S = window._gameState.current; S.monsters = []; });
-      const clearAng = await clearAim(P);   /* v2.3.3200: and no prop on it either */
+      const clearAng = await clearAim(P);   /* v2.3.3206: and no prop on it either */
       await hold(P, true, clearAng == null ? AIM : clearAng);
       await P.page.waitForTimeout(200);
       const clear = await snap(P);

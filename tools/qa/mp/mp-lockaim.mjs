@@ -65,7 +65,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the archer is holding a bow (guard)', !!armed && armed.bow && armed.slot === 'ranged', armed);
   if (!armed || !armed.bow) return;
 
-  /* ═══ v2.3.3200: STAND WHERE NO PROP IS ON A LINE ═══
+  /* ═══ v2.3.3206: STAND WHERE NO PROP IS ON A LINE ═══
      A shot is judged at the archer's BOOTS now (projectiles.js `_goy`), 52 px
      below the position this scenario offsets its slimes from, and from the
      plaza spawn the lamp post west of the fountain and the fountain itself

@@ -10,10 +10,10 @@
    setter). All other references are module imports below. */
 import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult, STAFF_BIG_BOLT_ORBS, STAFF_BIG_BOLT_BAND } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat; v2.3.2842: the one-bolt special; v2.3.2849: its band */
 import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
-import { ARROW_SPEED_PX, lowAimAlong } from '@/game/projectiles.js';   /* v2.3.2848: the volley's stagger is sized from it; v2.3.3200: + the low thing a shot is aimed at */
+import { ARROW_SPEED_PX, lowAimAlong } from '@/game/projectiles.js';   /* v2.3.2848: the volley's stagger is sized from it; v2.3.3206: + the low thing a shot is aimed at */
 import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /* v2.3.2848 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
-import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */, shotGroundDy /* v2.3.3200 */ } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso; v2.3.3200: shotGroundDy, a shot's ground under the boots */
+import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */, shotGroundDy /* v2.3.3206 */ } from '@/game/combatHelpers.js';   /* v2.3.2845: lockShotPoint, the torso; v2.3.3206: shotGroundDy, a shot's ground under the boots */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
 import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: a special carries the damage brew too */
 
@@ -351,7 +351,7 @@ export function specialAttack(S) {
          so its three arrows read as three; a lone arrow (old worker) keeps the
          bow's own speed */
       var _bowSpd = _bowVolley ? ARROW_SPEED_PX * _bowRange * BOW_VOLLEY.SPEED_K : null;
-      /* v2.3.3200: the volley flies over the low things too, bar the one the
+      /* v2.3.3206: the volley flies over the low things too, bar the one the
          bow's sight is on (it goes out only when the sight is on something:
          monsterCombat's gate) -- projectiles.js shotSkip */
       var _bowLp = (S._bowSight && S._bowSight.lp) || null;
@@ -376,8 +376,8 @@ export function specialAttack(S) {
           isSpecial: true,
           isStaff: false,
           pierce: true,
-          _gdy: shotGroundDy(S),   /* v2.3.3200: its ground is under your boots (projectiles.js _goy) */
-          _lp: _bowLp || undefined,   /* v2.3.3200 */
+          _gdy: shotGroundDy(S),   /* v2.3.3206: its ground is under your boots (projectiles.js _goy) */
+          _lp: _bowLp || undefined,   /* v2.3.3206 */
           _rangeMult: _bowRange, /* v2.3.2592: the special reaches as far as an ordinary arrow does; v2.3.2790 x depth */
           element: hasElement || null
         });
@@ -394,7 +394,7 @@ export function specialAttack(S) {
             id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: false, isSpecial: true, ts: now, el: hasElement || undefined,   /* v2.3.2919: the element these shots are drawn in (hasElement above: the second element first); see monsterCombat's player_projectile */
             delayMs: Math.round(volleyDelayMs(bvj, BOW_VOLLEY.PEER_PX_PER_FRAME)),
             volley: _bowVolley ? 1 : undefined,   /* v2.3.2849: additive -- a peer burns it out on the volley's 2.5 s, not the lone arrow's 4 */
-            lp: _bowLp ? [Math.round(_bowLp.x), Math.round(_bowLp.y)] : undefined,   /* v2.3.3200: additive */
+            lp: _bowLp ? [Math.round(_bowLp.x), Math.round(_bowLp.y)] : undefined,   /* v2.3.3206: additive */
             life: Math.round(90 * _bowStat * depthK(S.currentZone, S.player.y)), /* v2.3.2592: peers see the stat's reach too; v2.3.2790 x depth */
           }});
         }
@@ -486,7 +486,7 @@ export function specialAttack(S) {
       var _ORB_RANGE_PX = STAFF_RANGE_PX * staffRangeMult(R || {}) * depthK(S.currentZone, S.player.y); /* v2.3.2592: × the Magic lane's RANGE stat; v2.3.2790: × your depth */
       var _ORB_SPEED = 5;              /* the staff's own bolt speed */
       var _ORB_SPEEDS = [_ORB_SPEED, _ORB_SPEED, _ORB_SPEED];
-      /* v2.3.3200: over the low things, bar the one it is aimed at (nothing
+      /* v2.3.3206: over the low things, bar the one it is aimed at (nothing
          else on its line) -- projectiles.js shotSkip / lowAimAlong */
       var _orbLp = lowAimAlong(S, S.player.x, S.player.y, aimAng, _ORB_RANGE_PX,
         S.player.x, S.player.y + shotGroundDy(S), { isSpecial: true });
@@ -517,8 +517,8 @@ export function specialAttack(S) {
           isSpecial: true,
           isStaff: true,
           big: true,
-          _gdy: shotGroundDy(S),   /* v2.3.3200 */
-          _lp: _orbLp || undefined,   /* v2.3.3200 */
+          _gdy: shotGroundDy(S),   /* v2.3.3206 */
+          _lp: _orbLp || undefined,   /* v2.3.3206 */
           orbs: STAFF_BIG_BOLT_ORBS,
           element: hasElement || null
         });
@@ -535,7 +535,7 @@ export function specialAttack(S) {
             big: true,   /* additive: an older peer draws one charged orb, which is what one bolt is */
             speedPx: _ORB_SPEED,
             life: _bigLife,
-            lp: _orbLp ? [Math.round(_orbLp.x), Math.round(_orbLp.y)] : undefined,   /* v2.3.3200: additive */
+            lp: _orbLp ? [Math.round(_orbLp.x), Math.round(_orbLp.y)] : undefined,   /* v2.3.3206: additive */
             ts: now
           }});
         }
@@ -563,8 +563,8 @@ export function specialAttack(S) {
             isStaff: true,
             element: hasElement || null,
             ice: true,
-            _gdy: shotGroundDy(S),   /* v2.3.3200 */
-            _lp: _orbLp || undefined   /* v2.3.3200 */
+            _gdy: shotGroundDy(S),   /* v2.3.3206 */
+            _lp: _orbLp || undefined   /* v2.3.3206 */
           });
         }
         /* v2.3.840: broadcast the staff special so peers see it.
@@ -579,7 +579,7 @@ export function specialAttack(S) {
               delayMs: _bcj * _ORB_GAP_MS,
               speedPx: _ORB_SPEEDS[_bcj],   /* v2.3.2262: peers see the same fast/medium/slow spread */
               life: Math.round(_ORB_RANGE_PX / _ORB_SPEEDS[_bcj]), /* v2.3.2592: ...and the same reach */
-              lp: _orbLp ? [Math.round(_orbLp.x), Math.round(_orbLp.y)] : undefined,   /* v2.3.3200: additive */
+              lp: _orbLp ? [Math.round(_orbLp.x), Math.round(_orbLp.y)] : undefined,   /* v2.3.3206: additive */
               ts: now
             }});
           }

@@ -12,13 +12,13 @@ import { zoneLeavesPrints, printsAt } from '@/rendering/footprintSprites.js'; /*
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';   /* v2.3.3000: prints are where the boots are */
 import { jumpActive } from '@/game/jump.js';   /* v2.3.3017: no prints in the air */
 import { sweepBlockPoint, boxFace } from '@/data/worldProps.js';   /* v2.3.2730: a peer's shot stops at a prop on your screen too */
-import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap, STUCK_ARROW_MS, SCORCH_MS, scorchStyle, propHitHeight } from '@/game/combatHelpers.js';   /* v2.3.2730; v2.3.2731 the snap; v2.3.2995 what stays in the Wheel's objects; v2.3.3200 how high a hit shows */
+import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap, STUCK_ARROW_MS, SCORCH_MS, scorchStyle, propHitHeight } from '@/game/combatHelpers.js';   /* v2.3.2730; v2.3.2731 the snap; v2.3.2995 what stays in the Wheel's objects; v2.3.3206 how high a hit shows */
 import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: a peer's shot hits the Wheel's objects on your screen too */
 import { arrowSnaps } from '@/data/arrowSnap.js';   /* v2.3.2731 */
-import { shotSkip } from '@/game/projectiles.js';   /* v2.3.3200: a peer's shot flies over low things as yours does */
+import { shotSkip } from '@/game/projectiles.js';   /* v2.3.3206: a peer's shot flies over low things as yours does */
 import { BOW_VOLLEY, LONE_BURN_MS } from '@/game/bowVolley.js';   /* v2.3.2849: how long a peer's special stands burning */
 /* (v2.3.2730's REMOTE_SHOT_H, how far up a prop's face a peer's shot marked
-   it, went in v2.3.3200: the shot is now judged at its owner's boots and shown
+   it, went in v2.3.3206: the shot is now judged at its owner's boots and shown
    where it flew -- see the remote projectile sweep below.) */
 
 /* World px between footprint PAIRS, and the live cap.  PRINT_TTL_MS lives in
@@ -333,12 +333,12 @@ export function updateVisualSystems(S) {
                it), and the prop throws its chips.  A remote projectile is drawn
                from its owner's FEET, so its drawn point is a ground point and
                needs no conversion.
-               v2.3.3200: not the feet -- a player's position is the body's
+               v2.3.3206: not the feet -- a player's position is the body's
                CENTRE (v2.3.2748), the boots playerGroundDy below it.  The
                shooter's own copy now asks the ground at the boots
                (projectiles.js _goy), so this one does too, or the two screens
                would put the same arrow in different props.
-               v2.3.3200: and over the low things, as the shooter's own copy
+               v2.3.3206: and over the low things, as the shooter's own copy
                flies (projectiles.js shotSkip) -- bar the one it was aimed at,
                which the shooter sends as `lp` (gameEvents.js).  A shot from an
                older client says nothing, and flies over them all. */
@@ -353,7 +353,7 @@ export function updateVisualSystems(S) {
                    literally it would stand in the dirt at the foot of the rock,
                    which reads as a miss that planted.  Yours hit at the bow
                    grip, ~30px up; this is that height, give or take a hand.
-                   v2.3.3200: where it was drawn flying, _rpG over the contact,
+                   v2.3.3206: where it was drawn flying, _rpG over the contact,
                    and on a low thing in its upper part, as your own
                    (combatHelpers.propHitHeight). */
                 var _rpY = _rpHit.y - propHitHeight(_rpHit.box, _rpG);
