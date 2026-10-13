@@ -184,7 +184,6 @@ let questShieldGid = null;
 
   /* ── the armour DROP, through the real pickup handler ── */
   room._rollShardForKill = () => null;
-  room._rollWeaponDropForKill = () => null;
   room._rollIronWeaponForKill = () => null;
   room.loot = {};
   room.eventBuffer = [];

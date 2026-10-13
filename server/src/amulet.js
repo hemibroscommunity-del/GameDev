@@ -106,11 +106,16 @@ export const amuletMethods = {
   // which ran on the killing player's machine).  Caller's _saveRpg +
   // player_state flush carry the credit; no popup event (the client
   // detects the goldNuggets increase in its player_state handler).
-  _amuletNuggetOnKill(ps) {
-    if (!ps) return;
-    if (Math.random() < GOLD_NUGGET_MONSTER_DROP) {
+  /* v2.3.3209: `hit` -- the kill's one roll landed on the nugget's number
+     (killroll.js), or did not; left out (the `killroll: false` switch), it
+     rolls on its own as before.  True when it paid one. */
+  _amuletNuggetOnKill(ps, hit) {
+    if (!ps) return false;
+    if (hit === undefined ? Math.random() < GOLD_NUGGET_MONSTER_DROP : hit) {
       ps.goldNuggets = (ps.goldNuggets || 0) + 1;
+      return true;
     }
+    return false;
   },
 
   _handleAmuletForge(session, payload) {
@@ -405,16 +410,20 @@ export const amuletMethods = {
   // handler (the v2.3.1192 goldNuggets-popup pattern).  Dungeon zones
   // have no _getZoneConfig entry -> no roll, matching the reward
   // posture of dungeon.js (instances pay via their own tables).
-  _gemRawOnKill(ps, zone) {
-    if (!ps) return;
+  /* v2.3.3209: `hit`, as the nugget's -- the kill's one roll on the raw gem's
+     numbers, which a monster of a zone with no such element has none of
+     (killroll.js _killRollCan reads the same element).  True when it paid. */
+  _gemRawOnKill(ps, zone, hit) {
+    if (!ps) return false;
     const cfg = this._getZoneConfig(zone);
     const elem = (cfg && cfg.element) || null;
-    if (!elem || !AMULET_GEMS.has(elem)) return;
-    if (Math.random() >= GEM_RAW_MONSTER_DROP) return;
+    if (!elem || !AMULET_GEMS.has(elem)) return false;
+    if (hit === undefined ? Math.random() >= GEM_RAW_MONSTER_DROP : !hit) return false;
     if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
     if (!ps.lifeSkills.gems || typeof ps.lifeSkills.gems !== 'object') ps.lifeSkills.gems = {};
     const k = 'raw_' + elem;
     ps.lifeSkills.gems[k] = (ps.lifeSkills.gems[k] || 0) + 1;
+    return true;
   },
 
   // Gem Cutter settle: gem_cut_request { gem }.  Validates the raw gem

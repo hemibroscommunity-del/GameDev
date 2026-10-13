@@ -212,20 +212,18 @@ const deep = wheel.filter((m) => m.tier);
   room.SHARD_DROP_RATE = 1;
   check('deeper: its shard is its home\'s too', !!snow20 && room._rollShardForKill(room._rewardZone(WHEEL_ZONE, snow20)) === 'shard_frost');
   room.SHARD_DROP_RATE = keep;
-  /* the weapon roll's chance climbs with the level (index.js, the cubic curve) */
+  /* v2.3.3209: the random weapon whose chance climbed with the level is out of
+     the game (the owner: "Remove it from the game"); a kill's one weapon is
+     the iron blade's flat 1 in 500, the same off a level-20 snowman as off a
+     level-1 one */
   const rnd = Math.random;
-  let p1 = 0, p20 = 0;
-  for (const [m, set] of [[snow1, (v) => { p1 = v; }], [snow20, (v) => { p20 = v; }]]) {
-    let lo = 0, hi = 0.01;
-    for (let i = 0; i < 30; i++) {
-      const midP = (lo + hi) / 2;
-      Math.random = () => midP;
-      if (room._rollWeaponDropForKill('frost', m)) lo = midP; else hi = midP;
-    }
-    set(lo);
-  }
+  Math.random = () => 1 / 500 - 1e-9;
+  const ironIn = room._rollIronWeaponForKill();
+  Math.random = () => 1 / 500 + 1e-9;
+  const ironOut = room._rollIronWeaponForKill();
   Math.random = rnd;
-  check(`deeper: a weapon drops a little more often off it (${(p1 * 100).toFixed(3)}% at level 1, ${(p20 * 100).toFixed(3)}% at level 20)`, p20 > p1 && p1 > 0, { p1, p20 });
+  check('deeper: no random weapon off it at any level, only the iron blade\'s flat 1 in 500',
+    typeof room._rollWeaponDropForKill === 'undefined' && !!ironIn && ironIn.gearBase === 'iron' && ironOut === null, { ironIn, ironOut });
 }
 
 // ── 2. THE REWARDS ────────────────────────────────────────────────────────

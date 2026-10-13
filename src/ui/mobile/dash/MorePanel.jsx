@@ -10,6 +10,8 @@ import { friendsSrv } from '../sheet/friendsSync.js';
 import { hasUnseenLevelUps } from '../sheet/skillsModel.js';
 /* v2.3.2038: the Login Key tile's status line reads the real credential. */
 import { getBtPassphrase } from '@/networking/index.js';
+import { CODEX_KINDS, CODEX_TIERS } from '@/data/monsterCodex.js';   /* v2.3.3209 */
+import { codexCounts, codexFreshCount } from '@/game/monsterCodex.js';   /* v2.3.3209 */
 
 // v2.3.1224: swapped to the UI Bible icon set (docs/UI-BIBLE.md Part 4,
 // sliced by tools/process_icon_sheets.py); every tile has a real icon.
@@ -78,9 +80,13 @@ function statusFor(id, S) {
       return n > 0 ? `Travel log · ${n} entr${n === 1 ? 'y' : 'ies'}` : 'Your travels, logged live';
     }
     case 'encyclopedia': {
-      const n = Object.keys(R._seenMonsters || R.killedMonsters || {}).length
-        + Object.keys(R._seenMaterials || {}).length;
-      return n > 0 ? `${n} discovered` : 'Discover monsters & materials';
+      /* v2.3.3209: the monster codex -- the monsters met and the pages with
+         something new on them (game/monsterCodex.js; the old count read a
+         list nothing wrote) */
+      const met = CODEX_KINDS.filter((k) => codexCounts(S, k)[0] >= CODEX_TIERS.page).length;
+      const fresh = codexFreshCount(S);
+      if (fresh > 0) return `${fresh} new in the codex`;
+      return met > 0 ? `${met} of ${CODEX_KINDS.length} monsters met` : 'Learn about the monsters you defeat';
     }
     case 'leaderboard': return 'View the leaderboards';
     /* v2.3.1641: same rule as every line above — real state only. */

@@ -1133,6 +1133,22 @@ export const GEM_CUT_TIERS = {
 };
 export const GEM_RAW_MONSTER_DROP = 0.05;
 
+/* ═══ v2.3.3209: THE MONSTER CODEX SHOWS EACH MONSTER'S DROP TABLE ═══
+ * Owner, 2026-10-12: "Also include drop tables for all items that monster can
+ * drop."  The codex page (src/data/codexDrops.js) prints these numbers, so
+ * the one that was written inline is named here, and mirror-audit holds the
+ * page's copy to every one of them -- the rolls below read the same names,
+ * so the table cannot say one thing while the kill does another.
+ *
+ * SHARD_MONSTER_DROP: a kill's element shard (index.js SHARD_DROP_RATE, which
+ * the suites still turn up to 1 to force one). */
+export const SHARD_MONSTER_DROP = 0.10;
+
+/* A random weapon off a kill (index.js _rollWeaponDropForKill) was named
+ * here as monsterWeaponDropOdds, its cubic level curve; v2.3.3209 took the
+ * drop out of the game -- the owner: "Remove it from the game", and "All drop
+ * chances should be a single value" -- so the curve went with it. */
+
 /* ═══ v2.3.1924: THE THREE KILL DROPS THE OWNER ASKED FOR ═══
  *
  * Owner: "make it so monsters now have a 1 in 500 chance to drop an iron
@@ -1145,6 +1161,9 @@ export const GEM_RAW_MONSTER_DROP = 0.05;
  * nothing reads, i.e. a mirror with no consumer and one more thing to drift;
  * the GOLD_NUGGET_DROP.lifeSkill precedent above is the same call made for
  * the same reason.  What the client DOES receive is the minted piece.
+ * v2.3.3209: there IS a reader now -- the monster codex's drop table prints
+ * them (src/data/codexDrops.js), so they are mirrored there and mirror-audit
+ * pins the copy.  Still rolled here and only here.
  *
  * WHY IRON, AND WHY THESE FIELDS.  Copper is tier one and arrives from the
  * Mayor's quests (v2.3.1758, "the second tier of armor will be iron"); iron

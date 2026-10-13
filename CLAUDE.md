@@ -1958,7 +1958,91 @@ remnant to migrate server-side, not a mode to preserve.
     `_buildTown`, from `wheelTownDoors()` and the placed objects' boxes,
     ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
     town's white square only without them; `__btMinimap.buildings`,
-    `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".)
+    `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
+  - Since v2.3.3209 THE MONSTER CODEX -- the owner: "After you kill a monster
+    you learn more about it, what it does, where it's from, elemental type,
+    special attack, (make up a backstory) etc.", "Also include drop tables
+    for all items that monster can drop", and with a mockup: "I want all the
+    facts revealed after just 1 kill ... change the structure of each monster
+    entry to look like this" (docs/specs/monster-codex.md):
+    - More -> Codex -> Monsters (was the always-empty Bestiary): a card per
+      kind, the pets' nine; its WHOLE page opens at the first kill the WORKER
+      counts (`server/src/codex.js`, `codex:<pid>`; `codex_state` at join,
+      `cx` on the kill's combat_credit; `CODEX_OPEN_AT`, `CODEX.TIERS` [1]);
+    - the page is the owner's mockup: a header (portrait, name, Lv / element
+      / creature-type badges), Drops (ITEM / TYPE / CHANCE with bars; a tap
+      opens the item's card: FOUND FROM, BASE DROP CHANCE, the four grades it
+      rolls), Info (the stage and every fact) and Locations (land, stages, the
+      road from BroTown, its dungeon); on the sheet's ONE height, scrolling
+      (the owner: "Stay short and scroll"), a tap's result put in view
+      (MonsterCodex.jsx `reveal`: a page or card from its top, a tab's content
+      at the sheet's top, the row or card you came from); the type badge is
+      the creature's BODY, the owner's "humanoid, beast, ..." (`CODEX_TYPES`:
+      Humanoid, Beast, Winged, Insectoid, Aquatic, Ooze);
+    - its STAGE plays it beside your character, the Points preview's make
+      (`CodexStage.jsx`, `data/codexStage.js`): its own strips, loaded when
+      the Info tab opens and freed when it closes (the owner's call, against
+      ~20 MB for all nine up front: "I think loading only when you open the
+      info tab"), the world's wind-ups and
+      warning circles; a near-black scene in a frame, everyone standing ON
+      its land-coloured ground strip and nothing ever past the frame (the
+      owner saw them "in a layer above the container", feet "visible on the
+      dashboard container"; `GROUND`, `onDrawn` feet, strips cut at their
+      feet, isolated, no `will-change`); the Drops table on near-black too,
+      readable on it (the owner: "more readable with the background"):
+      striped rows, a heading band, names that wrap, bars by how common
+      over powers of ten (`barWidth`); and the bar gets the room (the owner:
+      "Wrap text for the item name and increase the usable area for the bar
+      size. Looks like the chance column reserves too much space"): the
+      chance column one number wide (`PCT_W` 40), the bar 1.2x the name's
+      share, 117 px on the QA phone where it was 44; and then (the owner:
+      "All drop chances should be a single value. Also make the percentage
+      bars out of 100%") every chance one number and the bar its share of
+      100% (`barWidth`, a 2 px nub for the rarest), with the owner's DICE
+      ("a 'roll-based system' where you see dice and number", their pick
+      "Each drop's own roll"), shown as the owner then asked ("'roll' column
+      with a number range and drop chance percentage in parentheses"): a ROLL
+      column (the dice in its heading), each row the numbers of a kill's roll
+      of 1 to 10,000 that drop it over its chance, "Always (100%)" for gold
+      and remnants;
+    - ONE ROLL A KILL, EACH DROP ITS OWN NUMBERS (the owner: "Shouldn't these
+      numbers not overlap each other? Getting a roll of 1 implies you'd get
+      all the loot with 1 ... That way a player hunting for something can
+      also be looking for a roll number within that range"):
+      `server/src/killroll.js` rolls once, 1 to 10,000, and each drop that is
+      not on every kill owns its chance x 10,000 numbers from 1 up, the
+      rarest first (`KILL_ROLL.ORDER`, `killRollLayout`): a snowman's nugget
+      1, Iron Great Sword 2–21, Greaves 22–41, Torso 42–61, Rare Gem 62–111,
+      raw gem 112–611, shard 612–1,611, nothing more past it (the blue slime,
+      no raw gem: its shard 112–1,111); each chance unchanged, a kill drops
+      ONE of them at most (each had its own roll: ~1 kill in 170 dropped two);
+      who gets each is as before; a Workshop run's share is one more draw on
+      its numbers; `disable_weapon_drops` leaves the blade's numbers dropping
+      nothing; the roll functions called with no roll roll on their own (the
+      kill switch's path, and the old suites');
+    - THE ROLL IS SHOWN: combat_credit `roll` to everyone credited and `rh`
+      (the drop's codex row id) to whom it is theirs (`_killRollTheirs`); the
+      game shows it over the monster (`src/game/killRoll.js`), the Gambling
+      Den's dice in FRONT (`/icons/popups/dice.webp`, the popup's `dice` mark,
+      `iconLead`), "7,431" grey (gone in 2.4 s) or "640 Frost Shard" gold
+      (3.2 s), a message not a damage number (`roll: true`), over you when
+      the monster is off your screen; the codex's ROLL column the same numbers
+      (`codexRollLayout`, `ROLL_W` 64; an older worker's 1 to each drop's own
+      number, `shared: false`), mirror-audit holding it to `killRollLayout`
+      for every kind; `caps.killroll`, kill switch `killroll: false`, dev
+      lever `/dev/killroll {next, kill}`; `killroll` suite, `mp-killroll`;
+    - NO RANDOM WEAPON OFF A KILL (the owner: "Remove 'a random weapon'
+      drop", then "Remove it from the game"): `_rollWeaponDropForKill` and
+      its level curve are gone, a kill's one weapon the Iron Great Sword's 1
+      in 500 (`_rollIronWeaponForKill`); `caps.weaponDrops` stays true for it,
+      `disable_weapon_drops` still stops it; `drops` suite §6b;
+    - the drop table (`data/codexDrops.js`) prints the worker's own rolls --
+      `SHARD_MONSTER_DROP` (data.js), `WEAPON_QUALITY_ODDS` (hardening.js) --
+      and mirror-audit holds it to them and to the Wheel's real monsters
+      (gold, remnants), every chance a whole number of the die's faces:
+      change a drop rate and the page changes with it, or the audit fails;
+    - `caps.codex`, kill switch `codex: false`, dev lever `/dev/codex`;
+      `codex` suite, mirror-audit, `mp-codex`.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
