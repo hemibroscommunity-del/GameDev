@@ -1,4 +1,4 @@
-/* ONE ROLL A KILL -- v2.3.3207 (server/src/killroll.js; spec
+/* ONE ROLL A KILL -- v2.3.3209 (server/src/killroll.js; spec
  * docs/specs/monster-codex.md "One roll a kill").
  *
  * The owner, on the codex's Roll column: "Shouldn't these numbers not overlap

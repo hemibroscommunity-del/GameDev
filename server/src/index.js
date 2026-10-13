@@ -30,7 +30,7 @@ import {
   MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
   MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY,
   MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */, DISHES /* v2.3.3130: the Herb Bread's regen mult */,
-  SHARD_MONSTER_DROP /* v2.3.3207: named for the monster codex's drop table */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+  SHARD_MONSTER_DROP /* v2.3.3209: named for the monster codex's drop table */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -91,10 +91,10 @@ import { petMethods, PETS } from './pets.js';
 import { trappingMethods } from './trapping.js';
 import { hardenedWoodMethods } from './hardenedwood.js'; /* v2.3.3139: logs into hardened wood */
 import { petbookMethods } from './petbook.js';
-/* v2.3.3207: the monster codex -- what each kill teaches you, codex:<pid>
+/* v2.3.3209: the monster codex -- what each kill teaches you, codex:<pid>
    (codex.js).  docs/specs/monster-codex.md. */
 import { codexMethods } from './codex.js';
-import { killRollMethods } from './killroll.js';   /* v2.3.3207: one roll a kill, each drop its own numbers */
+import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
 // loot layers (effective_base formula, forge quality roll, harden
 // ladder).  See hardening.js for the name-collision warning vs the
@@ -547,7 +547,7 @@ export const PRIVILEGED_EVENTS = new Set([
      pets they do not own on their Pets page, `trap_armed` a mark and odds the
      worker never set, and `make_traps_result` traps that never reached a bag. */
   'make_traps_result', 'trap_armed', 'trap_result', 'pets_state',
-  /* v2.3.3207: the monster codex's counts (codex.js), server-sent and private.
+  /* v2.3.3209: the monster codex's counts (codex.js), server-sent and private.
      Forged, it would paint facts the player never earned on their Codex page. */
   'codex_state',
   // v2.3.1131: hardening rolls are server-side + private.
@@ -1260,7 +1260,7 @@ export class GameRoom {
     // 'no-this-mon'.  500 ms is enough to read positions on entry
     // without suppressing the first incoming hit of a normal fight.
     this.ZONE_ENTRY_GRACE_MS = 500;
-    this.SHARD_DROP_RATE = SHARD_MONSTER_DROP; // 10% per kill, matches client rollMonsterShard; v2.3.3207: named in data.js (the codex prints it)
+    this.SHARD_DROP_RATE = SHARD_MONSTER_DROP; // 10% per kill, matches client rollMonsterShard; v2.3.3209: named in data.js (the codex prints it)
 
     // AFK timeout — drop sessions that haven't sent real input (move /
     // combat / zone change / etc.) for this long.  Pong replies do NOT
@@ -2935,7 +2935,7 @@ export class GameRoom {
     return b === 'fodder' || b === 'snowman';
   }
 
-  /* v2.3.3207: `hit` -- the kill's one roll landed on the shard's numbers
+  /* v2.3.3209: `hit` -- the kill's one roll landed on the shard's numbers
      (killroll.js), or did not.  Left out (the `killroll: false` switch, and a
      suite calling this alone), it rolls on its own as it always did. */
   _rollShardForKill(zoneId, hit) {
@@ -3737,7 +3737,7 @@ export class GameRoom {
     }
   }
 
-  /* ═══ v2.3.3207: NO RANDOM WEAPON OFF A KILL ═══
+  /* ═══ v2.3.3209: NO RANDOM WEAPON OFF A KILL ═══
      The owner, reviewing the monster codex's drop table: "Remove 'a random
      weapon' drop", and asked whether from the table or the game: "Remove it
      from the game".  So _rollWeaponDropForKill is gone -- v2.3.1141's
@@ -3768,7 +3768,7 @@ export class GameRoom {
      constant's note for why that matters. */
   /* v2.3.3182: `scale` (0-1, default 1) -- a Workshop run's share of the
      chance (dungeon.js _workshopDropScale); the random draws are the same */
-  /* v2.3.3207: `hit` -- the slot the kill's one roll landed on ('armor',
+  /* v2.3.3209: `hit` -- the slot the kill's one roll landed on ('armor',
      'legsArmor'), or false (killroll.js): a roll is one piece at most, and on
      its numbers it drops at the Workshop's share.  Left out, each piece rolls
      on its own as before (the `killroll: false` switch). */
@@ -3799,10 +3799,10 @@ export class GameRoom {
 
      Built apart from the old random weapon's roll (_rollWeaponDropForKill)
      because they answered different questions -- that decided what RARITY a
-     random weapon was, and this one is not random.  v2.3.3207: that roll is
+     random weapon was, and this one is not random.  v2.3.3209: that roll is
      gone (the owner: "Remove it from the game"), so this is a kill's only
      weapon. */
-  _rollIronWeaponForKill(scale = 1, hit) {   /* v2.3.3182: `scale`, as the armour's; v2.3.3207: `hit`, as theirs */
+  _rollIronWeaponForKill(scale = 1, hit) {   /* v2.3.3182: `scale`, as the armour's; v2.3.3209: `hit`, as theirs */
     const d = MONSTER_IRON_WEAPON_DROP;
     if (hit === undefined) { if (Math.random() >= d.chance * scale) return null; }
     else if (!hit || (scale < 1 && Math.random() >= scale)) return null;
@@ -3833,7 +3833,7 @@ export class GameRoom {
      stackable that lands in the bag — NOT the elemental raw_<element> the
      Gem Cutter eats (_gemRawOnKill, amulet.js), which is zone-gated and
      lives in lifeSkills.  Two different things on purpose; see RARE_GEM_KEY. */
-  _rollRareGemForKill(scale = 1, hit) {   /* v2.3.3182: `scale`, as the armour's; v2.3.3207: `hit`, as theirs */
+  _rollRareGemForKill(scale = 1, hit) {   /* v2.3.3182: `scale`, as the armour's; v2.3.3209: `hit`, as theirs */
     if (hit !== undefined) return hit && !(scale < 1 && Math.random() >= scale) ? RARE_GEM_KEY : null;
     return Math.random() < RARE_GEM_MONSTER_DROP * scale ? RARE_GEM_KEY : null;
   }
@@ -3933,7 +3933,7 @@ export class GameRoom {
   //   { lootId, zone, x, y, coins, skull, shard, gem, weapon, weaponClaimed,
   //     armor, armorClaimed, recipients, shares: {pid: number}, killerName,
   //     ts, inventoryClaimed, claimedBy: {pid: true} }
-  /* v2.3.3207: `kr`, the kill's one roll (killroll.js _killRollFor) -- which
+  /* v2.3.3209: `kr`, the kill's one roll (killroll.js _killRollFor) -- which
      of the pile's drops it landed on, if any; `kr.minted` is set when that drop
      is made.  Left out (the `killroll: false` switch, and a suite building a
      pile alone), every drop rolls on its own as before. */
@@ -3990,7 +3990,7 @@ export class GameRoom {
        'shard_wheel' is not an item (wheelzone.js _rewardZone).  The pile
        itself still lies where it died, in `zone`. */
     const rewardZone = this._rewardZone(zone, monster);
-    const hit = kr ? (kr.hit || false) : undefined;   /* v2.3.3207: the roll's drop, or no roll */
+    const hit = kr ? (kr.hit || false) : undefined;   /* v2.3.3209: the roll's drop, or no roll */
     const shard = this._rollShardForKill(rewardZone, hit === undefined ? undefined : hit === 'shard');
     // v2.3.1141: weapon rides the pile; only rolled when someone can
     // actually claim it (the claim is recipient-gated below).
@@ -4001,7 +4001,7 @@ export class GameRoom {
     const wpnDropsOn = anyClaimant && !this._flagOn('disable_weapon_drops');
     /* ═══ v2.3.1924b: THE IRON GREATSWORD ═══
        A pile carries ONE weapon (its own claim lane, v2.3.1141).  Until
-       v2.3.3207 two rolls shared it, the iron blade winning over v2.3.1141's
+       v2.3.3209 two rolls shared it, the iron blade winning over v2.3.1141's
        random weapon so the owner's 1 in 500 stayed exact; that random weapon
        is gone (the owner: "Remove it from the game", _rollWeaponDropForKill's
        tombstone above), so the iron blade is a kill's only weapon roll.
@@ -4020,7 +4020,7 @@ export class GameRoom {
     const armor = anyClaimant ? this._rollArmorDropsForKill(dropScale,
       hit === undefined ? undefined : (hit === 'irontorso' ? 'armor' : hit === 'irongreaves' ? 'legsArmor' : false)) : null;
     const gem = anyClaimant ? this._rollRareGemForKill(dropScale, hit === undefined ? undefined : hit === 'raregem') : null;
-    /* v2.3.3207: the roll's drop is made -- told to whoever may pick the pile up (combat_credit `rh`) */
+    /* v2.3.3209: the roll's drop is made -- told to whoever may pick the pile up (combat_credit `rh`) */
     if (kr && hit && ((hit === 'shard' && shard) || (hit === 'raregem' && gem) || (hit === 'irongreatsword' && weapon)
       || ((hit === 'irontorso' || hit === 'irongreaves') && armor))) kr.minted = true;
     /* v2.3.1924: !armor && !gem are BELT-AND-BRACES and cannot fire today —
@@ -5833,7 +5833,7 @@ export class GameRoom {
   async webSocketClose(ws) {
     const session = this.sessions.get(ws);
     let _petsLeft = null;   /* v2.3.3120: see below */
-    let _codexLeft = null;  /* v2.3.3207: the same, for the codex (codex.js) */
+    let _codexLeft = null;  /* v2.3.3209: the same, for the codex (codex.js) */
     if (session?.id) {
       if (this.playerState[session.id]) this.playerState[session.id].disconnected = true;
       /* v2.3.1619: flush coalesced regen before the in-memory blob is
@@ -5867,7 +5867,7 @@ export class GameRoom {
          player leave at once. */
       _petsLeft = this._petbookDirtyCopy(session.id);
       this._petbookForget(session.id);
-      /* v2.3.3207: and the codex's (codex.js): counting since its last write,
+      /* v2.3.3209: and the codex's (codex.js): counting since its last write,
          copied out now and written at the end with the pets record */
       _codexLeft = this._codexDirtyCopy(session.id);
       this._codexForget(session.id);
@@ -6053,8 +6053,8 @@ Object.assign(GameRoom.prototype, petMethods);
 Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, hardenedWoodMethods); /* v2.3.3139 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
-Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3207 */
-Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3207: the kill's one roll (killroll.js) */
+Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
+Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
 Object.assign(GameRoom.prototype, hardeningMethods);
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.

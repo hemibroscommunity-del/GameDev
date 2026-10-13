@@ -15,7 +15,7 @@
  *      is one roll that picks a side, which halves each rate while still
  *      dropping iron often enough to look right in play.  So a run where
  *      both pass their own roll must produce BOTH pieces.
- *      v2.3.3207: a live kill rolls ONCE now, each drop owning its own
+ *      v2.3.3209: a live kill rolls ONCE now, each drop owning its own
  *      numbers (killroll.js -- the owner: "Shouldn't these numbers not
  *      overlap each other?"), so a kill gives one piece at most, each still
  *      at its 1 in 500 (killroll.test.mjs).  These rolls called alone, as
@@ -37,7 +37,7 @@
  *      indistinguishable from a crafted one — same fields, `gearBase` set
  *      (which is what the client rebuilds the name and the tint from) — or it
  *      arrives as a nameless grey blade.  A pile carries ONE weapon; until
- *      v2.3.3207 the iron blade won it over v2.3.1141's random weapon, and
+ *      v2.3.3209 the iron blade won it over v2.3.1141's random weapon, and
  *      since then (the owner: "Remove it from the game") the iron blade is a
  *      kill's only weapon -- pinned so the random one cannot quietly return.
  *   7. A PILE THAT WOULD OTHERWISE BE EMPTY still spawns for these.  The
@@ -169,7 +169,7 @@ check('the second piece can drop without the first',
   !!onlyLegs && onlyLegs.length === 1 && onlyLegs[0].slot === 'legsArmor', onlyLegs);
 
 /* ── 3/4/5/6. the pile, and who gets what on pickup ───────────────────── */
-/* The other rolls in _spawnLootForKill — the shard (and, until v2.3.3207,
+/* The other rolls in _spawnLootForKill — the shard (and, until v2.3.3209,
    a random weapon) — run BEFORE these and draw from the same Math.random.  A fixed sequence of
    stubbed values therefore pins this suite to the ORDER of rolls it does not
    care about: the first cut of this test fed its zeros to the shard roll and
@@ -271,7 +271,7 @@ check('...and the broadcast advertises neither',
   wireMiss && { armor: wireMiss.armor, gem: wireMiss.gem });
 
 /* ── 6b. THE IRON BLADE IS A KILL'S ONE WEAPON ───────────────────────────
-   A pile carries ONE weapon.  Until v2.3.3207 two rolls shared it, the iron
+   A pile carries ONE weapon.  Until v2.3.3209 two rolls shared it, the iron
    blade winning over v2.3.1141's random weapon; the owner then took the
    random weapon out of the game ("Remove it from the game", asked whether
    from the codex's table or the game), so it is pinned gone: no roll of it
@@ -280,7 +280,7 @@ check('...and the broadcast advertises neither',
    level -- drops no weapon. */
 room.loot = {};
 room._rollIronWeaponForKill = GameRoom.prototype._rollIronWeaponForKill;
-check('the random weapon\'s roll is gone from the room (v2.3.3207)',
+check('the random weapon\'s roll is gone from the room (v2.3.3209)',
   typeof GameRoom.prototype._rollWeaponDropForKill === 'undefined' && typeof room._rollWeaponDropForKill === 'undefined');
 const D = mkPlayer('pD');
 const ironOnly = withRandom([0], () =>

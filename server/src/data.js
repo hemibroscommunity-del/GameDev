@@ -1133,7 +1133,7 @@ export const GEM_CUT_TIERS = {
 };
 export const GEM_RAW_MONSTER_DROP = 0.05;
 
-/* ═══ v2.3.3207: THE MONSTER CODEX SHOWS EACH MONSTER'S DROP TABLE ═══
+/* ═══ v2.3.3209: THE MONSTER CODEX SHOWS EACH MONSTER'S DROP TABLE ═══
  * Owner, 2026-10-12: "Also include drop tables for all items that monster can
  * drop."  The codex page (src/data/codexDrops.js) prints these numbers, so
  * the one that was written inline is named here, and mirror-audit holds the
@@ -1145,7 +1145,7 @@ export const GEM_RAW_MONSTER_DROP = 0.05;
 export const SHARD_MONSTER_DROP = 0.10;
 
 /* A random weapon off a kill (index.js _rollWeaponDropForKill) was named
- * here as monsterWeaponDropOdds, its cubic level curve; v2.3.3207 took the
+ * here as monsterWeaponDropOdds, its cubic level curve; v2.3.3209 took the
  * drop out of the game -- the owner: "Remove it from the game", and "All drop
  * chances should be a single value" -- so the curve went with it. */
 
@@ -1161,7 +1161,7 @@ export const SHARD_MONSTER_DROP = 0.10;
  * nothing reads, i.e. a mirror with no consumer and one more thing to drift;
  * the GOLD_NUGGET_DROP.lifeSkill precedent above is the same call made for
  * the same reason.  What the client DOES receive is the minted piece.
- * v2.3.3207: there IS a reader now -- the monster codex's drop table prints
+ * v2.3.3209: there IS a reader now -- the monster codex's drop table prints
  * them (src/data/codexDrops.js), so they are mirrored there and mirror-audit
  * pins the copy.  Still rolled here and only here.
  *

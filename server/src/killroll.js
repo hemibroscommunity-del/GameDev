@@ -1,4 +1,4 @@
-/* ═══ v2.3.3207: ONE ROLL A KILL -- EACH DROP OWNS ITS OWN NUMBERS ═══
+/* ═══ v2.3.3209: ONE ROLL A KILL -- EACH DROP OWNS ITS OWN NUMBERS ═══
  *
  * The owner, on the monster codex's Roll column ("1–1,000 (10%)", "1–500
  * (5%)", ... each drop on its own 1-to-10,000 die): "Shouldn't these numbers

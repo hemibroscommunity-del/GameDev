@@ -1028,7 +1028,7 @@ const DMG_PLAIN_RE = /^[^A-Za-z+]*-?\d+[^A-Za-z\d]*$/;
    does -- the bare `crit` flag is also how BroTown's pushNpcMsg makes a NOTE big
    and wiggly, and a note stays a note), or a plain number. */
 function isDamagePopup(dmg, t) {
-  /* v2.3.3207: a kill's roll ("7,431") is a number that is no hit: a message */
+  /* v2.3.3209: a kill's roll ("7,431") is a number that is no hit: a message */
   if (dmg && dmg.roll) return false;
   if (typeof t !== 'string') t = String(t == null ? '' : t);   /* a site may push a bare number */
   if (!/\d/.test(t) || t.charAt(0) === '+') return false;
@@ -1169,7 +1169,7 @@ const POPUP_ICONS = {};
 /* v2.3.2996: + the four elements a monster's hit carries (game/elemHits.js):
    the snowflake, the flame, the wind and the slime, in the heart's place on
    the number.  Loaded here with the rest, at start -- never on first hit. */
-/* v2.3.3207: + the dice a kill's roll wears in front of it (game/killRoll.js):
+/* v2.3.3209: + the dice a kill's roll wears in front of it (game/killRoll.js):
    the Gambling Den's two, cut to their own edge (/icons/popups/dice.webp) */
 const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit', 'dice'].concat(Object.keys(ELEM_ICON_SRC));
 /* v2.3.2211: 'crit' is the one key whose art does not live in /icons/popups.
@@ -5220,7 +5220,7 @@ export class EffectsRenderer {
            The override still owns every non-crit number -- v2.3.103's
            reason (uniform white reads best against zone art) is untouched
            for the bulk of fight popups it was written for. */
-        if (!dmg.crit && !dmg.roll && /^[^A-Za-z+]*-?\d+$/.test(t)) {   /* v2.3.3207: a kill's roll keeps its own grey or gold */
+        if (!dmg.crit && !dmg.roll && /^[^A-Za-z+]*-?\d+$/.test(t)) {   /* v2.3.3209: a kill's roll keeps its own grey or gold */
           /* v2.3.103 user request: combat damage in white reads more
              clearly than the previous orange (#ff8c1a) against most
              zone backgrounds. */
@@ -5489,7 +5489,7 @@ export class EffectsRenderer {
       if (dmg._msg && dmg._w > 0 && S.camera && S._viewW > 0) {
         const _half = Z * (dmg._w / 2 * (dmg.crit ? 1.1 : 1) + MSG_EDGE_PX);
         const _mark = _icon ? Z * _iconGap + _icon.width : 0;
-        /* v2.3.3207: a mark in FRONT (`iconLead`, a kill's roll) on the left */
+        /* v2.3.3209: a mark in FRONT (`iconLead`, a kill's roll) on the left */
         const _left = _half + (dmg.iconLead ? _mark : 0);
         const _right = _half + (dmg.iconLead ? 0 : _mark);
         const _lo = S.camera.x + _left, _hi = S.camera.x + S._viewW - _right;
@@ -5540,7 +5540,7 @@ export class EffectsRenderer {
            fire-goblin hits ("32" reading as "3[magic]").  Stroked text
            extends a few px past text.width on iOS canvas rendering.
            (v2.3.3192: `_iconGap` is worked out above, for the edge too.) */
-        /* v2.3.3207: `iconLead` puts it in FRONT of the text instead -- a
+        /* v2.3.3209: `iconLead` puts it in FRONT of the text instead -- a
            kill's roll wears its dice before the number (game/killRoll.js) */
         dmg._pixiIcon.x = dmg.iconLead
           ? text.x - text.width / 2 - Z * _iconGap - dmg._pixiIcon.width

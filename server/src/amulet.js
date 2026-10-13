@@ -106,7 +106,7 @@ export const amuletMethods = {
   // which ran on the killing player's machine).  Caller's _saveRpg +
   // player_state flush carry the credit; no popup event (the client
   // detects the goldNuggets increase in its player_state handler).
-  /* v2.3.3207: `hit` -- the kill's one roll landed on the nugget's number
+  /* v2.3.3209: `hit` -- the kill's one roll landed on the nugget's number
      (killroll.js), or did not; left out (the `killroll: false` switch), it
      rolls on its own as before.  True when it paid one. */
   _amuletNuggetOnKill(ps, hit) {
@@ -410,7 +410,7 @@ export const amuletMethods = {
   // handler (the v2.3.1192 goldNuggets-popup pattern).  Dungeon zones
   // have no _getZoneConfig entry -> no roll, matching the reward
   // posture of dungeon.js (instances pay via their own tables).
-  /* v2.3.3207: `hit`, as the nugget's -- the kill's one roll on the raw gem's
+  /* v2.3.3209: `hit`, as the nugget's -- the kill's one roll on the raw gem's
      numbers, which a monster of a zone with no such element has none of
      (killroll.js _killRollCan reads the same element).  True when it paid. */
   _gemRawOnKill(ps, zone, hit) {

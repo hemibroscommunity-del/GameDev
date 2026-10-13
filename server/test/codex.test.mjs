@@ -1,4 +1,4 @@
-/* The monster codex -- v2.3.3207 (server/src/codex.js; spec
+/* The monster codex -- v2.3.3209 (server/src/codex.js; spec
  * docs/specs/monster-codex.md).
  *
  *   1. CAPS AND THE FIRST LOOK: caps.codex advertised; codex_state at join,
@@ -24,7 +24,7 @@
  *   8. A RESTART forgets it; the dev lever sets it; normalizeCodex drops what
  *      it does not know (a `__proto__` kind included).
  *   9. THE DROP TABLE'S ODDS ARE THE ONES ROLLED: the shard on
- *      SHARD_MONSTER_DROP; and no random weapon at all -- v2.3.3207 took it
+ *      SHARD_MONSTER_DROP; and no random weapon at all -- v2.3.3209 took it
  *      out of the game (the owner: "Remove it from the game"), so the page
  *      lists none and the room rolls none.  (The codex page's copy of every
  *      rate is held by mirror-audit.)
@@ -293,7 +293,7 @@ const B = await join(wsB, 'bp_cx_b');
   const rolls = (list) => { let i = 0; Math.random = () => (i < list.length ? list[i++] : 0.5); };
   try {
     const eps = 1e-9;
-    /* v2.3.3207: "a random weapon" is out of the game (the owner, asked
+    /* v2.3.3209: "a random weapon" is out of the game (the owner, asked
        whether from the table or the game: "Remove it from the game") */
     check('no random weapon is rolled off a kill any more', typeof room._rollWeaponDropForKill === 'undefined');
     rolls([SHARD_MONSTER_DROP - eps]);

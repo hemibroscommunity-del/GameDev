@@ -1,4 +1,4 @@
-/* ═══ v2.3.3207: WHAT EACH MONSTER CAN DROP -- THE CODEX'S DROP TABLES ═══
+/* ═══ v2.3.3209: WHAT EACH MONSTER CAN DROP -- THE CODEX'S DROP TABLES ═══
  *
  * Owner, 2026-10-12: "Also include drop tables for all items that monster can
  * drop."
@@ -16,7 +16,7 @@
  *                   (those three are one lane: whoever picks the pile up first)
  *     iron torso, iron greaves   MONSTER_ARMOR_DROPS, each on its own roll;
  *     a weapon      MONSTER_IRON_WEAPON_DROP, the iron great sword -- the only
- *                   weapon a kill drops since v2.3.3207 took the random one
+ *                   weapon a kill drops since v2.3.3209 took the random one
  *                   out of the game (the owner: "Remove it from the game");
  *     every weapon and armour piece rolls its grade as it drops
  *     (hardening.js WEAPON_QUALITY_ODDS).
@@ -33,7 +33,7 @@
  * the worker's; this only says what it is.  A rate changed there and not
  * here fails the audit.
  *
- * v2.3.3207: EVERY CHANCE IS ONE NUMBER, AND EACH HAS ITS DICE.  The owner:
+ * v2.3.3209: EVERY CHANCE IS ONE NUMBER, AND EACH HAS ITS DICE.  The owner:
  * "All drop chances should be a single value" (the random weapon's
  * 0.05–0.24% went with it), and "a 'roll-based system' where you see dice
  * and number ... The rarest drop in the table is the lowest number beginning
@@ -47,7 +47,7 @@
  * owner then asked, a ROLL column: the range 1 to it ("1–1,000") over the
  * chance in parentheses (MonsterCodex.jsx `rollRange`).
  *
- * v2.3.3207: AND THE NUMBERS NEVER OVERLAP.  The owner: "Shouldn't these
+ * v2.3.3209: AND THE NUMBERS NEVER OVERLAP.  The owner: "Shouldn't these
  * numbers not overlap each other? Getting a roll of 1 implies you'd get all
  * the loot with 1, but it's really just the gold nugget. I think these should
  * be number ranges. That way a player hunting for something can also be
@@ -109,7 +109,7 @@ export function codexRoll(p) {
   return Math.max(1, Math.round(p * CODEX_ROLL_SIDES));
 }
 
-/* v2.3.3207: the order a kill's one roll lays its drops in, from 1 up -- the
+/* v2.3.3209: the order a kill's one roll lays its drops in, from 1 up -- the
    rarest first, the three 1-in-500s the reverse of the rows below so the
    table reads straight down (server/src/killroll.js KILL_ROLL.ORDER) */
 export const CODEX_ROLL_ORDER = Object.freeze(['nugget', 'irongreatsword', 'irongreaves', 'irontorso', 'raregem', 'rawgem', 'shard']);
@@ -223,11 +223,11 @@ const PARTY_PILE = 'In a party, only players who did at least 5% of its damage c
  *     who, graded, tier?, color?, desc, chanceNote, info: [lines] }]
  *    type        the TYPE column: Currency, Material, Gem, Armor, Weapon, Craft
  *    chance      the chance a kill drops it (1: every kill), one number at
- *                every level (v2.3.3207)
+ *                every level (v2.3.3209)
  *    pct/oneIn   "10%" / "1 in 10"
  *    from, to    its dice: the numbers of a kill's roll of 1 to
  *                CODEX_ROLL_SIDES that drop it -- its own run of them under the
- *                one roll (v2.3.3207), else 1 to its own number; null for an
+ *                one roll (v2.3.3209), else 1 to its own number; null for an
  *                every-kill drop
  *    who         'pile' (picked up), 'killer' (the killing blow, into the bag)
  *    graded      rolls a grade as it drops (the card's POSSIBLE RARITY)
@@ -296,7 +296,7 @@ export function codexDropsFor(kind, opts) {
     desc: 'A lump of gold the size of a thumb. Five smelt into a gold bar for the amulet forge.',
     info: ['About ' + codexOneIn(GOLD_NUGGET_DROP.monsterKill).toLowerCase() + ' kills drops one.',
       'It goes to whoever lands the killing blow, straight into the bag.'] });
-  /* v2.3.3207: each drop's numbers -- its own run of the one roll's, or (an
+  /* v2.3.3209: each drop's numbers -- its own run of the one roll's, or (an
      older worker) 1 to its own number */
   const chances = Object.create(null);
   for (const r of rows) if (r.chance < 1) chances[r.id] = r.chance;

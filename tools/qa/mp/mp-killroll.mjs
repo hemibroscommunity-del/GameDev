@@ -1,4 +1,4 @@
-/* ═══ A KILL'S ONE ROLL, ON A PHONE (v2.3.3207) ═══
+/* ═══ A KILL'S ONE ROLL, ON A PHONE (v2.3.3209) ═══
  *
  * The owner, on the monster codex's Roll column: "Shouldn't these numbers not
  * overlap each other? Getting a roll of 1 implies you'd get all the loot with
