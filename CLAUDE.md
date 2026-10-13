@@ -2343,8 +2343,10 @@ Two protocol versions coexist; both must keep working:
       old code, four mutations caught);
     - `load.mjs --keep-bundle <dir>` (a profile's lines, mapped to source) and
       `--tick-parts` (a tick at 120 players is 95% the players' positions);
-    - next: the crowd cap on the wire (each phone sent the players it draws
-      every tick, the rest four times a second), after #896.
+    - then measured: the crowd cap on the wire (each phone sent only the
+      movers among its nearest 65 every tick) gave nothing at 120-150 --
+      steady movers keep a tick's movers near a phone at ~25-35 -- while far
+      players with the once-a-second roster gave ~5 points at 120 (#898).
 
 ## Conventions
 

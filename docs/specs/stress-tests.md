@@ -122,13 +122,25 @@ made of. With real looks, 30% fighting:
 | 120 | 95% (4.46 KB a tick) | 3% | 2% |
 
 At 120 players each phone downloads about 160-180 KB a second, unzipped, and
-nearly all of it is the other players' positions, 40 times a second: in a busy
-town every walker is within reach (`FAR_PLAYERS.NEAR_R`, 2,400 px) of every
-other. Events and monsters are small. So the next step for the phones' download
-and the room's sending is the crowd cap on the wire: send a phone the players it
-draws (#896's nearest 50) every tick, and the rest with the far players, four
-times a second. That needs the phone to say it has the cap, so it waits on
-#896.
+nearly all of it is the other players' positions: in a busy town every walker
+is within reach (`FAR_PLAYERS.NEAR_R`, 2,400 px) of every other. Events and
+monsters are small.
+
+Two ways to cut it were then built and measured with the load test (120 and 150
+players, real looks, each run more than once):
+
+- **The crowd cap on the wire** -- each phone sent, every tick, only the movers
+  among its nearest 65 (the 50 it draws, #896, and room for the ones it holds),
+  the rest four times a second: **no gain** (the room 78.9-80.2% busy at 120
+  with or without it, 174-182 KB a second to each phone). Steady movers
+  (v2.3.3203) already keep the movers near a phone in one tick to about 25-35,
+  so a tick almost never had more than 65. Kept on a local branch for when a
+  door builds the ticks of a crowd of hundreds (split plan, Phase 2).
+- **The far send** -- four times a second, every player who had moved, to
+  every phone, the near ones it already had included -- about a third of what a
+  phone in town was sent. Far players now go with the once-a-second roster
+  (#898): at 120 players the room 78-80% -> 73-76% busy and each phone 175-182
+  -> 145-150 KB a second; at 150, 35 -> 37 ticks a second.
 
 ### 5. Smaller things noticed
 
