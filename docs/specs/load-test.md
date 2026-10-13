@@ -43,6 +43,13 @@ run, taken back down to 60 after 100: 34 ticks a second again).
 cheaper, with the same bytes to every player: smooth to about 110 players
 instead of about 70, and not yet at half speed with 150 (26 ticks a second).
 
+**#888 (`docs/specs/near-searches.md`)** finds who is near whom by squares,
+the same picks: smooth to about 125. **v2.3.3202 (`docs/specs/tick-pace.md`)**
+paces the gap between ticks, since "a tick starts 22 ms after the last one
+finishes" is the runtime's `setInterval` (TRAPS §170): a busy room keeps a
+quiet room's speed while its thread has the time -- 40.4 ticks a second at
+100 players, about 30 at 150, smooth to about 130.
+
 **What each phone downloads** grows with the crowd, because every phone is sent
 every moving player's position: about 3.5 KB a second for each moving player
 while the room keeps up, **as the phone unzips it**. On the wire it is about a

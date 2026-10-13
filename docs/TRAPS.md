@@ -6034,3 +6034,29 @@ changes in them, instead -- not merely fewer repeated bytes.  And do not trust
 `no_web_socket_compression` in a copy's `wrangler.toml` to turn it off for a
 measurement: the local runtime negotiated it anyway (tried 2026-10-13); the
 bots' `PlainWS` does it from the client side.
+
+## 170. "setInterval(tick, 22) runs the tick 45 times a second" (v2.3.3202)
+
+Not in the Workers runtime.  Its `setInterval` waits the whole interval AFTER
+the callback has finished: measured with a one-line Durable Object on the local
+runtime, a callback of nothing ran 43.2 times a second, one of 5 ms 35.0, one
+of 10 ms 29.5, one of 20 ms 22.6 -- 23.1 ms PLUS the callback.  The room's tick
+is that callback, and the world moves a fixed step a tick, so every millisecond
+a busy room spends ticking slowed the whole world, with the thread still
+partly idle (100 players: 37 ticks a second, a quarter of the thread unused).
+Cutting the tick's own work is therefore worth more than its share of the CPU:
+#888's grids took 3-4 ms off the tick and gave 3-4 more ticks a second.
+
+**And its twin: `Date.now()` inside a tick.**  Production freezes the clock
+while code runs (it moves on I/O), so a tick cannot time itself there; the
+local runtime does not freeze it, so a measurement that works under `wrangler
+dev` can read 0 in production.  What both can measure is how far apart ticks
+START, which is what `tickpace.js` uses.
+
+**The rule.**  Do not read `TICK_RATE` as the real period: the real one is
+`/dev/overview`'s `tickPace.periodMs`.  Anything that converts ticks to time
+(`REGEN_TICKS * TICK_RATE`, `rewindTicks`, a DoT's `TICK_RATE / 1000`) was
+off by that difference under load; with the pacer it is off by about 2 ms
+until the thread is full.  And a Node test that captures the tick from
+`setInterval` must never see the interval set again (`WebSocketPair` is the
+runtime check, `tickpace.js`).
