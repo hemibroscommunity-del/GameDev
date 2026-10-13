@@ -87,16 +87,26 @@ share of one core):
 | 150 | 117% (cannot keep up) | 26% | 24.7 → 4.7 ms |
 | 200 | 174% | 32% | 36.8 → 5.6 ms |
 
-The real runtime (`tools/qa/load/load.mjs`, fake players over real sockets):
+The real runtime (`tools/qa/load/load.mjs`, fake players over real sockets),
+both servers run back to back through the same steps:
 
-| Players | Before | After |
-|---|---|---|
-| 50 | 35 ticks a second; the others' moves within 35 ms (95%) | 38 ticks a second; 32 ms |
-| 100 | **24 ticks a second: the world at half speed**; moves within 65 ms; a new player waits 0.1 s | **34 ticks a second**; moves within 42 ms; a new player waits 0.05 s |
-| 150 | (past breaking) | 21 ticks a second: past breaking |
-| breaks at (under 25 ticks a second) | **about 100** | **about 150** |
+| Players | Ticks a second, before → after | The others' moves (95%), before → after | A new player's first message, before → after |
+|---|---|---|---|
+| 50 | 35 → 37 | 35 → 32 ms | 32 → 26 ms |
+| 75 | 32 → 37 | 43 → 35 ms | 54 → 37 ms |
+| 100 | 27 → 33 | 56 → 42 ms | 67 → 81 ms |
+| 125 | 22 → 26 | 62 → 46 ms | 201 → 155 ms |
+| 150 | 17 → 21 | 88 → 54 ms | 296 → 261 ms |
 
-Both recovered once 40% of the players left.
+- **Smooth play** (33 ticks a second or more, the world at three quarters of
+  its designed speed or better) now lasts to **about 100 players instead of
+  about 65**.
+- **Badly degraded** (under 25 ticks a second, the world at half speed or
+  less) now starts at **about 130 players instead of about 110**.
+- Neither server froze; both slow down past these points.
+
+The gain on the real runtime is smaller than the code-alone table, because the
+code is now the smaller part of the room's work.
 
 Why ticks a second matter: a tick starts 22 ms after the last one finishes,
 and the world moves a fixed step each tick (a monster's `spd` is pixels a
