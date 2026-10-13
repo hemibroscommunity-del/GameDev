@@ -1356,12 +1356,18 @@ remnant to migrate server-side, not a mode to preserve.
       stays bigger); a long one WRAPS into even lines no wider than
       `MSG_WRAP_W` 520 world px (`msgLines`, `wrapMessage`), never smaller
       type, and grows upward; a message is held `MSG_EDGE_PX` 12 inside the
-      view (a number never moves); still WORLD px, so numbers and messages
-      alike grow 1.31x with the dashboard folded (the owner had read the
-      numbers as fixed); the stacking runs after the Text is made now (a
-      wrapped one's height); `mp-dmgsize` reads sizes AT REST (this box's
-      slow frames catch the spawn pop): damage-number-size.md "Messages as
-      big as the numbers".
+      view (a number never moves); and ONE SIZE ON THE SCREEN for numbers and
+      messages alike (the owner had read the numbers as fixed -- they grew
+      1.31x with the dashboard folded -- and chose "Yes do fixed size
+      instead"): every popup size and every offset from its spot (lift,
+      stack, climb, mark, gap, wrap, edge) is popup px drawn x `Z` =
+      `POPUP_ZOOM` 0.606 / `S._worldScaleX` (`popupZoomK`; the QA phone's
+      folded scale, where they were tuned: a plain hit 22.3 CSS px), like the
+      name plates; the spot stays the world's; a line no wider than 0.82 of
+      the screen (`msgWrapW`); `?popupworld` the world-px way; the stacking
+      runs after the Text is made now (a wrapped one's height); `mp-dmgsize`
+      reads sizes AT REST (this box's slow frames catch the spawn pop; `_z`
+      kept in): damage-number-size.md "Messages as big as the numbers".
   - Since v2.3.3034 A LOST CONNECTION IS NOTICED, AND NOTHING THE WORKER
     SETTLES IS LOST TO IT -- the owner: "Logs aren't going to the inventory
     after getting chopped, and points in point stat allocation menu weren't

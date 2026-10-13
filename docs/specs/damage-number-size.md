@@ -84,14 +84,35 @@ live Pixi objects: a plain hit 24.9 CSS px tall with the dashboard folded and
 19.0 with it up; "No mana!", "Quest Complete!" and "+30 XP" 14.3 and 10.9 --
 about 57% of the number, at both zooms.
 
-**The zoom.** The numbers DO change with the dashboard: they are drawn in the
+**The zoom.** The numbers DID change with the dashboard: they were drawn in the
 world, and folding the dashboard draws the world 1.31x bigger (scale 0.4625 ->
-0.6061), so a plain hit goes 19.0 -> 24.9 CSS px, as everything in the world
-does -- which is why it reads as not changing. The messages did exactly the
-same, just smaller. So the answer is to make the messages the numbers' size in
-the world: then they are the same size at every zoom. (Pinning both to one
-screen size, as the name plates are since v2.3.2513, would be a different
-change -- the numbers would stop growing with the world -- and was not asked for.)
+0.6061), so a plain hit went 19.0 -> 24.9 CSS px, as everything in the world
+does -- which is why it read as not changing. The messages did exactly the
+same, just smaller. The first cut of this change only made the messages the
+numbers' size in the world; told so, the owner asked for the other way: "Yes do
+fixed size instead".
+
+**One size on the screen.** Every popup -- number and message -- is now drawn
+at the size it has at `POPUP_ZOOM` 0.606, the world's scale on the QA phone with
+the dashboard folded (the bro 64 px tall, where every popup size here was
+tuned): a plain hit's type 22.3 CSS px, a crit's 40.3, whatever the dashboard
+does. Each frame the world's own scale is divided back out, `Z` =
+`POPUP_ZOOM` / `S._worldScaleX` (`popupZoomK`), as the name plates (v2.3.2513)
+and the chat bubble (v2.3.2247) do theirs. With the dashboard up (0.4625) a
+popup is drawn 1.31x the world px it had, so it is the same on the screen; on a
+bigger phone, sideways, or in the desktop shell it is that CSS size too. Z
+scales a popup's size AND everything measured from the spot it was pushed at:
+its lift, its place in a stack (the neighbour scan compares spots plus Z x
+offsets, and keeps the offset in popup px), its climb, its mark and the gap
+before it, the wrap width and the edge margin. Only the spot itself (over a
+monster's bar, over your head) stays the world's. `?popupworld` draws them in
+the world as before, to compare; `_z` on a popup record says what it was drawn
+at (QA).
+
+The wrap width is capped by the screen too (`msgWrapW`): popups being one CSS
+size, a line may take at most `MSG_WRAP_SCREEN` 0.82 of the canvas's CSS width
+(on the QA phone the cap is 528 popup px, so MSG_WRAP_W's 520 holds; a 320 px
+phone gets about 21 characters a line).
 
 **The rule.** Every popup that is not a damage number (`isDamagePopup` false) is a
 message, drawn at `MSG_FONT_PX` = `DMG_FONT_PX` x `DMG_SCALE` (36.75 world px),
@@ -127,7 +148,8 @@ smaller one's was, so it grows upward.
 
 | | Before | After |
 |---|---|---|
-| a message, folded / dashboard up (QA phone) | 14.3 / 10.9 CSS px | 24.9 / 19.0, the plain hit's |
+| a plain hit, folded / dashboard up (QA phone) | 24.9 / 19.0 CSS px | 24.9 / 24.9 (one size) |
+| a message, folded / dashboard up (QA phone) | 14.3 / 10.9 CSS px | 24.9 / 24.9, the plain hit's |
 | "Element Burst needs an enchanted weapon" | one line, 21 px | two lines, 36.75 px |
 | the E key's crit-flagged note | 38 px, wiggling | 36.75 px, wiggling |
 | a message at the view's edge | half off the screen | 12 px inside it |
@@ -161,9 +183,11 @@ smaller one's was, so it grows upward.
   grown; "Element Burst needs an enchanted weapon" in two even lines and a cut
   announcement wrapped, inside the wrap width, at the same size; a message at
   each edge of the view held 12 px inside it while a number is left where it is;
-  and with the dashboard up and folded (two zooms) "No mana!" exactly as tall on
-  the screen as a hit. Measurements are taken at rest (a read on the test box can
-  catch the spawn pop).
+  and with the dashboard up and folded (two zooms) a hit the SAME height on the
+  screen, "No mana!" exactly as tall as it, and two stacked hits the same
+  distance apart (one size on the screen). Measurements are taken at rest (a
+  read on the test box can catch the spawn pop), the popup's screen factor
+  `_z` kept in.
   Run against another build with `QA_DIST` it takes the "before".
 - `mp-elemhits` (the marks on a hit taken, now against the scaled cap the probe
   reports) and `mp-critpreview`.

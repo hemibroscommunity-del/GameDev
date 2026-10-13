@@ -30,8 +30,12 @@
  *   6. a long message wraps into even lines no wider than MSG_WRAP_W, at the
  *      same size, a cut 60-character announcement too;
  *   7. a message at the view's edge is kept inside it; a number is not moved;
- *   8. with the dashboard up and folded (the world drawn at two zooms) a
- *      message is exactly as tall on the screen as a damage number, in CSS px.
+ *   8. ONE SIZE ON THE SCREEN (the owner, then: "Yes do fixed size instead"):
+ *      with the dashboard up and folded (the world drawn at two zooms) a
+ *      damage number is the same height in CSS px, a message exactly as tall
+ *      as it, and two stacked numbers the same distance apart.  Every
+ *      measurement here is taken AT REST -- the spawn pop and a note's wiggle
+ *      divided out, the popup's screen factor (`_z`) kept in.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -99,12 +103,15 @@ const drawn = (P) => P.page.evaluate(() => {
        AT REST -- this box draws a frame in about half a second, so a read can catch the 1.6x spawn pop or a note's
        wiggle (`anim`, as section 7 measures it): its height on the screen (getBounds walks up through the world's
        zoom, so CSS px) and its width in world px, both divided by it */
-    const anim = t._bmpBaseScale ? t.scale.x / t._bmpBaseScale : (t.scale.x || 1);
-    let cssH = null;
-    try { cssH = +(t.getBounds().height / anim).toFixed(2); } catch (e) { /* a mid-teardown text */ }
+    /* v2.3.3192: and the popup's screen factor Z (`_z`, effectsRenderer POPUP_ZOOM) is part of its size at rest, not of
+       its animation: popups are one size on the screen now */
+    const z = d._z || 1;
+    const anim = (t._bmpBaseScale ? t.scale.x / t._bmpBaseScale : (t.scale.x || 1)) / z;
+    let cssH = null, cssCY = null;
+    try { const bb = t.getBounds(); cssH = +(bb.height / anim).toFixed(2); cssCY = +(bb.y + bb.height / 2).toFixed(2); } catch (e) { /* a mid-teardown text */ }
     rows.push({
       text: String(d.text), crit: !!d.crit, taken: !!d.taken, icon: d.iconKey || null, ts: d.ts,
-      shown: String(t.text), lines: d._lines || 1, msg: !!d._msg, cssH, anim: +anim.toFixed(3),
+      shown: String(t.text), lines: d._lines || 1, msg: !!d._msg, cssH, cssCY, anim: +anim.toFixed(3), z: +z.toFixed(4),
       wRest: +(t.width / anim).toFixed(1), hRest: +(t.height / anim).toFixed(1),
       font: font == null ? null : +font.toFixed(2),
       x: +t.x.toFixed(1), y: +t.y.toFixed(1), w: +t.width.toFixed(1), h: +t.height.toFixed(1),
@@ -113,8 +120,8 @@ const drawn = (P) => P.page.evaluate(() => {
       halo: !t._bmpBaseScale && t.style && t.style.dropShadow ? +(+t.style.dropShadow.blur || 0).toFixed(2) : null,
       age: +((Date.now() - d.ts) / 1000).toFixed(2), band, lift: +((d._lift || 0)).toFixed(1),
       /* where it was spawned (before any rise), and the air between the glyph box's bottom edge and the band's top */
-      spawnY: +(d.y + (d._stackOffset || 0) - (d._lift || 0)).toFixed(1),
-      air: band == null ? null : +(band - ((d.y + (d._stackOffset || 0) - (d._lift || 0)) + t.height / 2)).toFixed(1),
+      spawnY: +(d.y + z * ((d._stackOffset || 0) - (d._lift || 0))).toFixed(1),
+      air: band == null ? null : +(band - ((d.y + z * ((d._stackOffset || 0) - (d._lift || 0))) + t.height / 2)).toFixed(1),
     });
   }
   return rows;
@@ -417,15 +424,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       console.log('    wrap: ' + JSON.stringify([two, one, three].map((r) => r && { t: r.text.slice(0, 20), shown: r.shown, lines: r.lines, wRest: r.wRest, hRest: r.hRest, anim: r.anim, font: r.font })));
       rec.ok('three messages, short and long, reached the renderer (guard)', !!two && !!one && !!three, rows.map((r) => r.text));
       if (two && one && three) {
-        rec.ok(`a short message keeps one line ("No weapon equipped!", ${one.wRest} world px wide)`, one.lines === 1 && one.shown === 'No weapon equipped!' && one.wRest <= msgFont.wrap, one);
+        rec.ok(`a short message keeps one line ("No weapon equipped!", ${one.wRest} world px wide)`, one.lines === 1 && one.shown === 'No weapon equipped!' && one.wRest / one.z <= msgFont.wrap, one);
         const lines2 = two.shown.split('\n');
         rec.ok(`"${LONG2}" wraps into two even lines ("${lines2.join('" / "')}"), no wider than ${msgFont.wrap} (${two.wRest}), at ${two.font} px`,
-          two.lines === 2 && lines2.length === 2 && lines2.join(' ') === LONG2 && two.wRest <= msgFont.wrap + 0.5 && Math.abs(two.font - OLD.font * k) <= 0.6, two);
+          two.lines === 2 && lines2.length === 2 && lines2.join(' ') === LONG2 && two.wRest / two.z <= msgFont.wrap + 0.5 && Math.abs(two.font - OLD.font * k) <= 0.6, two);
         rec.ok(`...two lines tall (${two.hRest} against one line's ${one.hRest})`, two.hRest >= one.hRest * 1.7 && two.hRest <= one.hRest * 2.5, { two: two.hRest, one: one.hRest });
         /* the ellipsis-cut announcement: two or more lines, every one inside the wrap width, at the same size */
         const lines3 = three.shown.split('\n');
         rec.ok(`a 60-character announcement wraps too (${three.lines} lines, ${three.wRest} world px wide, ${three.font} px): "${lines3.join('" / "')}"`,
-          three.lines >= 2 && lines3.length === three.lines && lines3.join(' ') === LONG3 && three.wRest <= msgFont.wrap + 0.5 && Math.abs(three.font - OLD.font * k) <= 0.6, three);
+          three.lines >= 2 && lines3.length === three.lines && lines3.join(' ') === LONG3 && three.wRest / three.z <= msgFont.wrap + 0.5 && Math.abs(three.font - OLD.font * k) <= 0.6, three);
       }
       await frame('wrap', rows);
 
@@ -451,7 +458,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         for (const d of S.dmgNumbers) {
           const t = d._pixiText;
           if (!t || t.destroyed) continue;
-          out[String(d.text)] = { x: +t.x.toFixed(1), pushedX: +d.x.toFixed(1), w: +(d._w || 0).toFixed(1) };
+          out[String(d.text)] = { x: +t.x.toFixed(1), pushedX: +d.x.toFixed(1), w: +(d._w || 0).toFixed(1), z: d._z || 1 };
         }
         return out;
       });
@@ -459,34 +466,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const req = placed['Requires Fishing Lv 5'], nt = placed['Mayor Bro has nothing for you right now'], n88 = placed['88'];
       rec.ok('two messages and a number at the view\'s edges reached the renderer (guard)', !!req && !!nt && !!n88 && req.w > 0 && nt.w > 0, placed);
       if (req && nt && n88) {
-        const reqLeft = req.x - req.w / 2;
+        /* v2.3.3192: widths and the margin are popup px, x the popup's screen factor in the world */
+        const reqLeft = req.x - req.z * req.w / 2;
         rec.ok(`a message pushed at the view's left edge is drawn inside it, ${msgFont.edge} px in (its left ${(reqLeft - placed.L).toFixed(1)} world px in, moved ${(req.x - req.pushedX).toFixed(1)})`,
-          Math.abs(reqLeft - (placed.L + msgFont.edge)) <= 1.5 && req.x + req.w / 2 <= placed.R, req);
+          Math.abs(reqLeft - (placed.L + req.z * msgFont.edge)) <= 1.5 && req.x + req.z * req.w / 2 <= placed.R, req);
         /* a crit-flagged note wiggles 10% wider: held in by that */
-        const ntRight = nt.x + nt.w / 2 * 1.1;
+        const ntRight = nt.x + nt.z * nt.w / 2 * 1.1;
         rec.ok(`...and a wiggling note at the right edge, held in at its widest (its right ${(placed.R - ntRight).toFixed(1)} world px in)`,
-          Math.abs(ntRight - (placed.R - msgFont.edge)) <= 1.5 && nt.x - nt.w / 2 * 1.1 >= placed.L, nt);
+          Math.abs(ntRight - (placed.R - nt.z * msgFont.edge)) <= 1.5 && nt.x - nt.z * nt.w / 2 * 1.1 >= placed.L, nt);
         rec.ok(`...but a damage number is left where it was put (${n88.x} = ${n88.pushedX})`, Math.abs(n88.x - n88.pushedX) <= 0.01, n88);
       }
       await frame('edge', await drawn(P));
     }
 
-    /* ── 7c. the dashboard up and folded: the world drawn at two zooms, and in each a message exactly as tall on the
-          screen as a damage number (the owner read the numbers as not changing with the zoom -- they do, with the
-          whole world, and the messages now do exactly as they do) ── */
+    /* ── 7c. ONE SIZE ON THE SCREEN (v2.3.3192, the owner's "fixed size"): the dashboard up and folded draw the world
+          at two zooms, and in both a damage number is the same height on the screen, "No mana!" exactly as tall as it,
+          and two stacked numbers the same distance apart (a popup's offsets are pinned with its size) ── */
     const bandTwice = [];
     for (let pass = 0; pass < 2; pass++) {
       await clearPops(P);
       await pushAt(P, [
         { rec: { text: '37', iconKey: 'sword' }, tsAdd: 0, dx: -90 },
         { rec: { text: 'No mana!', color: '#3498DB' }, tsAdd: 1, dx: 60 },
+        { rec: { text: '38', iconKey: 'sword' }, tsAdd: 2, dx: -90 },
       ]);
       await P.page.waitForTimeout(450);
-      rows = await drawnWhen(P, hasAll(['37', 'No mana!']));
+      rows = await drawnWhen(P, hasAll(['37', 'No mana!', '38']));
       const fold = await P.page.evaluate(() => { const b = document.querySelector('[data-dash-fold]'); return b ? b.getAttribute('data-dash-fold') : null; });
       const scaleNow = await H.readState(P, (S) => +(S._worldScaleX || 0).toFixed(4));
-      const a = by(rows, '37'), b = by(rows, 'No mana!');
-      bandTwice.push({ fold, scale: scaleNow, hit: a && a.cssH, msg: b && b.cssH });
+      const a = by(rows, '37'), b = by(rows, 'No mana!'), c = by(rows, '38');
+      bandTwice.push({ fold, scale: scaleNow, z: a && a.z, hit: a && a.cssH, msg: b && b.cssH,
+        stack: a && c && a.cssCY != null && c.cssCY != null ? +Math.abs(a.cssCY - c.cssCY).toFixed(2) : null });
       if (pass === 0) {
         /* the fold chip, as a thumb presses it (mp-worldtext's way) */
         await P.page.evaluate(() => {
@@ -500,8 +510,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const [s0, s1] = bandTwice;
     rec.ok(`the dashboard chip changed the zoom (${s0.fold} ${s0.scale} -> ${s1.fold} ${s1.scale}) (guard)`,
       !!s0.fold && !!s1.fold && s0.fold !== s1.fold && Math.abs(s0.scale - s1.scale) > 0.01, bandTwice);
-    rec.ok(`at both zooms "No mana!" is exactly as tall on the screen as a damage number (${s0.msg} = ${s0.hit}, ${s1.msg} = ${s1.hit} CSS px)`,
+    rec.ok(`a damage number is the SAME size on the screen at both zooms (${s0.hit} and ${s1.hit} CSS px tall; it was 24.9 folded and 19.0 up)`,
+      s0.hit > 0 && s1.hit > 0 && Math.abs(s0.hit - s1.hit) <= 0.6, bandTwice);
+    rec.ok(`...and at both "No mana!" is exactly as tall as it (${s0.msg} = ${s0.hit}, ${s1.msg} = ${s1.hit} CSS px)`,
       [s0, s1].every((s) => s.hit > 0 && s.msg != null && Math.abs(s.msg - s.hit) <= 0.6), bandTwice);
+    rec.ok(`...and two stacked numbers the same distance apart on the screen at both (${s0.stack} and ${s1.stack} CSS px)`,
+      s0.stack > 0 && s1.stack > 0 && Math.abs(s0.stack - s1.stack) <= 1, bandTwice);
     /* and back as it was for the walk below */
     await P.page.evaluate(() => {
       const el = document.querySelector('[data-dash-fold]');
@@ -557,10 +571,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
             if (!nums.length) return null;
             const d = nums[nums.length - 1], t = d._pixiText;
             const top = d._qaBarTop;
-            const spawnY = d.y + (d._stackOffset || 0) - (d._lift || 0);
+            const z = d._z || 1;   /* v2.3.3192: the popup's screen factor -- its offsets and size are x it in the world */
+            const spawnY = d.y + z * ((d._stackOffset || 0) - (d._lift || 0));
             const font = t._bmpBaseScale ? t._bmpBaseScale * (+t.style.fontSize || 100) : (+t.style.fontSize || null);
             /* the number may be caught inside its spawn pop (1.6x for 120 ms) or the crit's wiggle: measure it at rest */
-            const anim = t._bmpBaseScale ? t.scale.x / t._bmpBaseScale : 1;
+            const anim = (t._bmpBaseScale ? t.scale.x / t._bmpBaseScale : 1) / z;
             const hRest = t.height / anim;
             return { text: String(d.text), font: +font.toFixed(2), lift: +(d._lift || 0).toFixed(1), h: +hRest.toFixed(1), anim: +anim.toFixed(2),
               barTop: +top.toFixed(1), spawnY: +spawnY.toFixed(1), air: +(top - (spawnY + hRest / 2)).toFixed(1), mx: +m.x.toFixed(0), my: +m.y.toFixed(0), dy: +(d.y - top).toFixed(1) };

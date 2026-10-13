@@ -17,8 +17,9 @@ The words are in the game's own font, Source Sans 3.
 
 ## Dashboard up
 
-The world is drawn smaller with the dashboard up -- the numbers with it (24.9
--> 19.0 CSS px tall here), and the messages now exactly as they do.
+The world is drawn smaller with the dashboard up. Before, the numbers shrank
+with it (24.9 -> 19.0 CSS px tall here) and the messages further; now both are
+ONE SIZE ON THE SCREEN, exactly as tall as with the dashboard folded.
 
 | Before | After |
 |---|---|
