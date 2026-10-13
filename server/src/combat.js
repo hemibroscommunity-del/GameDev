@@ -1695,7 +1695,17 @@ export const combatMethods = {
       // _handleLootPickup).  The client still applies the credit to
       // local rpg state -- moving that store to the worker is a
       // follow-up slice.
-      const pile = this._spawnLootForKill(zone, m, killerId, goldRecipients, shares);
+      /* ═══ v2.3.3209: ONE ROLL A KILL (killroll.js) ═══
+         The owner: "Shouldn't these numbers not overlap each other? ... That
+         way a player hunting for something can also be looking for a roll
+         number within that range".  One number, 1 to 10,000, and every drop
+         that is not on every kill owns its own run of them -- so the pile's
+         drops below and the killing blow's two in the XP loop all read THIS
+         roll, a kill dropping one of them at most, each at the chance it had.
+         Told to every recipient on its combat_credit (`roll`, `rh`).  Null
+         with `killroll: false`: each drop rolls on its own, as before. */
+      const kr = this._killRollFor ? this._killRollFor(zone, m, killerId) : null;
+      const pile = this._spawnLootForKill(zone, m, killerId, goldRecipients, shares, kr || undefined);
       if (pile) {
         this.eventBuffer.push({
           type: 'loot_drop',
@@ -1744,6 +1754,13 @@ export const combatMethods = {
            a kill. */
         let petGain = null;
         try { petGain = this._petbookAddXp(rid, recipPs, xpForRecipient, Date.now()); } catch (e) { petGain = null; }
+        /* v2.3.3209: and the monster codex learns from it (codex.js): this kind's
+           kills for this player, told on this kill's combat_credit below as
+           `cx` -- counted here, past the XP gate, so every kill it counts is a
+           kill the phone is told about.  Inside a try: a page of a book must
+           never break a kill. */
+        let codexBit = null;
+        try { codexBit = this._codexOnKill(rid, m, Date.now()); } catch (e) { codexBit = null; }
         // Level-up restores all three pools to max (mirrors the client's
         // existing level-up restore at BroTown.jsx:8973 / 8504 / 9851).
         // Also recompute maxes since level bumps the maxHp formula
@@ -1769,14 +1786,14 @@ export const combatMethods = {
            a client-reported figure on a permanent public ledger would make
            it LOOK verified while being no better than the client's word. */
         if (rid === killerId) recipPs.svKills = (recipPs.svKills || 0) + 1;
-        if (rid === killerId) this._amuletNuggetOnKill(recipPs);
+        if (rid === killerId && this._amuletNuggetOnKill(recipPs, kr ? kr.hit === 'nugget' : undefined) && kr) kr.minted = true;   /* v2.3.3209: the kill's roll */
         // v2.3.1198 (gem income): raw-gem drop roll, server-rolled now
         // that gems feed the server-settled Gem Cutter + amulet gem op
         // (amulet.js).  Killer-only, zone-element only, mirroring the
         // client's legacy roll site (monsterCombat.js "GEM DROP FROM
         // MONSTER KILL", now gated off under caps.gems).  Rides the
         // same _saveRpg + player_state flush as the nugget roll above.
-        if (rid === killerId) this._gemRawOnKill(recipPs, this._rewardZone(zone, m));   /* v2.3.2978: its home's element */
+        if (rid === killerId && this._gemRawOnKill(recipPs, this._rewardZone(zone, m), kr ? kr.hit === 'rawgem' : undefined) && kr) kr.minted = true;   /* v2.3.2978: its home's element; v2.3.3209: the kill's roll */
         this._saveRpg(rid, recipPs);
         const recipWs = this._wsBySessionId(rid);
         if (recipWs) {
@@ -1791,6 +1808,11 @@ export const combatMethods = {
                 levelsGained,
                 newLevel,
                 ...(petGain ? { pet: petGain } : {}),   /* v2.3.3121: {id, lv, xp, gain, leveled, cap} */
+                ...(codexBit ? { cx: codexBit } : {}),   /* v2.3.3209: {k, n, n2} -- the monster codex (codex.js) */
+                /* v2.3.3209: the kill's one roll, and the drop it landed on when
+                   that drop is this player's to have (killroll.js) */
+                ...(kr ? { roll: kr.roll } : {}),
+                ...(kr && this._killRollTheirs(kr, rid, killerId, goldRecipients) ? { rh: kr.hit } : {}),
               },
             }));
           } catch (e) {}

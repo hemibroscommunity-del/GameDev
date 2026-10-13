@@ -24,6 +24,8 @@ import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3139: ha
 import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the worker's */
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
+import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
+import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
@@ -1600,6 +1602,12 @@ export function setupWebSocket(ctx) {
             { try { onTrapResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
           case 'pets_state':
             { try { onPetsState(S, msg.payload); } catch (_te) { /* display only */ } break; }
+          /* v2.3.3209: the monster codex's counts at join (codex.js).  Here, not
+             the default branch: that hands everything to gameEvents as a room
+             event, which is where a forged one would come from (it is in
+             PRIVILEGED_EVENTS, so the worker never relays one). */
+          case 'codex_state':
+            { try { onCodexState(S, msg.payload); } catch (_ce) { /* display only */ } break; }
           case 'make_traps_result':
             { try { onMakeTrapsResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
           case 'hardened_wood_result':
@@ -2642,6 +2650,10 @@ export function setupWebSocket(ctx) {
               /* v2.3.3121: the pet out with you earned a tenth of it (the
                  worker's numbers, game/trapping.js onPetXp) */
               if (cc.pet) { try { onPetXp(S, cc.pet); } catch (_pe) { /* display only */ } }
+              /* v2.3.3209: ...and the monster codex counted the kill (codex.js) */
+              if (cc.cx) { try { onCodexKill(S, cc.cx); } catch (_ce) { /* display only */ } }
+              /* v2.3.3209: ...and its one roll, 1 to 10,000, with the drop it landed on (killroll.js) */
+              if (cc.roll) { try { onKillRoll(S, cc); } catch (_kr) { /* display only */ } }
               if (cc.leveled) {
                 /* v2.3.2615: 'char', not 'combat'.  This is the legacy
                    build-point path and the level it raises is the CHARACTER
