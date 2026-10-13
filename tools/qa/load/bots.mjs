@@ -32,12 +32,22 @@
  *     told apart from one where the server was.
  */
 import { performance, monitorEventLoopDelay } from 'node:perf_hooks';
+import { PlainWS } from './plainws.mjs';
+import { MOVE_DIET, dietMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3204: --diet, the phone's own rule */
+
+/* v2.3.3199: --no-deflate's WebSocket (plainws.mjs) */
 
 /* worldTrial.js WHEEL.arrival -- the Wheel's town square */
 const ARRIVAL = { x: 21504, y: 21792 };
 const MOVE_GAP_MS = 33;          /* wsClient.js MOVE_GAP_SEEN_MS */
 const IDLE_KEEPALIVE_MS = 1000;  /* the client's standing-still keepalive */
+/* v2.3.3199: --move-ms N (load.mjs): a walker's move every N ms instead of
+   the phone's 33, to measure what the room's incoming moves cost it */
+/* v2.3.3203: --town-move-ms N, the town walkers' alone (a phone on safe ground) */
+const moveGap = (bot) => (bot && !bot.fighter && CFG && CFG.townMoveMs > 0 ? CFG.townMoveMs
+  : (CFG && CFG.moveGapMs > 0 ? CFG.moveGapMs : MOVE_GAP_MS));
 const WALK_R = 1400;             /* walkers stay in the town and its commons (WHEEL_SAFE_R 2937) */
+const DIET_CENTRE = [21504, 21504], DIET_SAFE_R = 2937;   /* v2.3.3204: the safe ground (wheelspawns.js) */
 const FIGHT_R = 350;
 const SWING_MS = 700;
 const REACH_PX = 70;
@@ -45,7 +55,9 @@ const SAMPLE_CAP = 4000;         /* per report: samples beyond this are thinned 
 /* v2.3.3194: "the others' moves seen" counts only a sender this near the probe
    when it arrives -- the players on a phone's screen, whose lag a player
    feels (the worker's FAR_PLAYERS.NEAR_R, server/src/tick.js) */
-const SEEN_NEAR_R = 2400;
+const SEEN_NEAR_R_DEFAULT = 2400;
+/* v2.3.3199: --seen-r N (load.mjs), for a server whose near circle is not 2,400 */
+const seenNearR = () => (CFG && CFG.seenR > 0 ? CFG.seenR : SEEN_NEAR_R_DEFAULT);
 /* the client's 8-way facing names (BroTown.jsx S._renderFacing) */
 const FACE8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 
@@ -63,6 +75,7 @@ let wall0 = performance.now();
 function fresh() {
   return {
     rxBytes: 0, rxMsgs: 0, rxTickBytes: 0, rxTicks: 0, rxZoneStateBytes: 0, rxOtherBytes: 0,
+    wireRx: 0,   /* v2.3.3199: what the WIRE bot was sent, unzipped (load.mjs wireProxy) */
     txMsgs: 0, txBytes: 0, moves: 0, swings: 0,
     joins: [], entries: [], deliver: [], seen: [], tickRates: [],
     closes: {}, rejects: {}, errors: 0, deaths: 0, respawns: 0, roomFull: 0,
@@ -91,6 +104,10 @@ function newBot(k) {
   const id = ('lt' + CFG.tag + (seq++).toString(36) + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)).slice(0, 22);
   const bot = {
     id, k, fighter, probe: bots.length < 2,
+    /* v2.3.3199: the first bot of the process given a `wireUrl` goes through
+       load.mjs's byte-counting proxy, so a step knows what a phone is sent ON
+       THE WIRE (compressed, permessage-deflate) beside what it unzips */
+    wire: !!CFG.wireUrl && bots.length === 0,
     ws: null, state: 'off', x: ARRIVAL.x + rand(-60, 60), y: ARRIVAL.y + rand(-40, 40),
     tx: 0, ty: 0, speed: rand(150, 180), standUntil: 0, lastSent: 0, timer: null,
     home: fighter ? CFG.homes[k % CFG.homes.length] : null, anchor: null,
@@ -106,7 +123,8 @@ function connect(bot) {
   bot.state = 'connecting';
   bot.openedAt = performance.now();
   let ws;
-  try { ws = new WebSocket(CFG.url); } catch { M.errors++; retry(bot); return; }
+  const url = bot.wire ? CFG.wireUrl : CFG.url;
+  try { ws = CFG.noDeflate ? new PlainWS(url) : new WebSocket(url); } catch { M.errors++; retry(bot); return; }
   bot.ws = ws;
   ws.onopen = () => {
     bot.state = 'joining';
@@ -137,6 +155,7 @@ function onMessage(bot, data) {
   if (typeof data !== 'string') return;
   const len = data.length;
   M.rxBytes += len; M.rxMsgs++;
+  if (bot.wire) M.wireRx += len;
   if (data.startsWith('{"type":"tick"')) {
     M.rxTicks++; M.rxTickBytes += len;
     if (bot.probe) probeTick(bot, data);
@@ -232,8 +251,8 @@ function startWalking(bot) {
   /* each bot on its own clock, so the room hears a crowd, not a drum */
   setTimeout(() => {
     if (bot.state !== 'walking') return;
-    bot.timer = setInterval(() => step(bot), MOVE_GAP_MS);
-  }, rand(0, MOVE_GAP_MS));
+    bot.timer = setInterval(() => step(bot), moveGap(bot));
+  }, rand(0, moveGap(bot)));
 }
 
 function newTarget(bot) {
@@ -257,6 +276,12 @@ function nearestMonster(bot) {
 function step(bot) {
   if (bot.state !== 'walking') return;
   const now = performance.now();
+  /* v2.3.3203: a step is the time that really passed since the last one, as
+     a phone moves by its frame's dt -- a late timer (a busy bot process) used
+     to move the bot a whole step anyway, so the speed it reported was not the
+     speed it moved at */
+  const elapsed = bot.lastStepAt ? Math.min(200, Math.max(1, now - bot.lastStepAt)) : moveGap(bot);
+  bot.lastStepAt = now;
   if (bot.fighter) {
     const near = nearestMonster(bot);
     if (near) {
@@ -273,7 +298,7 @@ function step(bot) {
   }
   const dx = bot.tx - bot.x, dy = bot.ty - bot.y;
   const dist = Math.hypot(dx, dy);
-  const stepPx = bot.speed * (MOVE_GAP_MS / 1000);
+  const stepPx = bot.speed * (elapsed / 1000);
   const stopAt = bot.fighter && nearestMonster(bot) ? REACH_PX - 20 : 0;
   if (dist <= Math.max(stepPx, stopAt)) {
     if (!bot.fighter && Math.random() < 0.3) bot.standUntil = now + rand(1000, 4000);
@@ -298,13 +323,22 @@ function sendMove(bot, entering, vx = 0, vy = 0) {
   const f = moving ? FACE8[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8] : (bot.face || 'south');
   bot.face = f;
   const perFrame = bot.speed / 60;
-  const ok = send(bot, {
+  const m = {
     type: 'move', x, y, d, f, eqc: 'none', eql: 'none', eqs: 'none', ex: null, z: 'wheel',
     vx: Math.round(vx * perFrame * 100), vy: Math.round(vy * perFrame * 100),
     dodging: false, blocking: false, ba: null, dead: false,
-  });
+  };
+  /* v2.3.3204: --diet, as a phone on the Wheel's safe ground does it
+     (src/game/moveDiet.js, wsClient.js moveDietOn): a move on the line the
+     last one drew waits until GAP_MS after it -- this bot's next step makes
+     a fresher one */
+  const now = performance.now();
+  if (CFG.diet && !entering && now - bot.lastSent < MOVE_DIET.GAP_MS
+      && dietMayWait(!bot.fighter, m, now, bot.lastMove, bot.lastMoveAt, DIET_CENTRE, DIET_SAFE_R)) { M.dieted = (M.dieted || 0) + 1; return; }
+  const ok = send(bot, m);
   if (!ok) return;
   M.moves++;
+  bot.lastMove = m; bot.lastMoveAt = now;
   bot.lastSent = performance.now();
   if (!entering) {
     /* keyed in whole pixels: a worker with #886 (docs/specs/far-players.md) sends them so */
@@ -315,9 +349,13 @@ function sendMove(bot, entering, vx = 0, vy = 0) {
 
 /* A probe parses every tick it gets. */
 function probeTick(bot, data) {
-  const now = performance.now();
   let d;
   try { d = JSON.parse(data); } catch { return; }
+  probeTickObj(bot, d);
+}
+function probeTickObj(bot, d) {
+  const now = performance.now();
+  if (!d || typeof d !== 'object') return;
   if (typeof d.ts === 'number') push(M.deliver, Date.now() - d.ts);
   if (typeof d.seq === 'number' && typeof d.ts === 'number') {
     if (bot.firstSeq === null) bot.firstSeq = [d.seq, d.ts];
@@ -334,7 +372,7 @@ function probeTick(bot, data) {
       if (t === undefined) continue;
       sender.sentAt.delete(key);
       /* only the ones near enough to be on this probe's screen */
-      if (Math.hypot(p.x - bot.x, p.y - bot.y) <= SEEN_NEAR_R) push(M.seen, now - t);
+      if (Math.hypot(p.x - bot.x, p.y - bot.y) <= seenNearR()) push(M.seen, now - t);
     }
   }
   if (bot.fighter) updateMonsters(bot, d);

@@ -87,16 +87,20 @@ old and new ways side by side.
 - **Nearby players update at full rate; players further off update less
   often.** That keeps each phone's download flat however crowded the island
   gets. Download is the real limit today: about 4 KB/s per moving player near
-  you.
+  you. (v2.3.3199: as the phone unzips it. The room compresses every message,
+  about 13 to 1, so on the wire it is about 0.3 KB/s a player -- and the
+  compressing is about 40% of the room's thread, so the bytes are the
+  SERVER's limit more than the phone's: `docs/specs/load-test.md`.)
 - **The server knows the walls.** Every move is checked against the walk mask
   and blocking objects, not only against speed (today: speed only).
 - **Every message type has a rate cap.** `move` has none today. With
   Cloudflare billing for incoming messages, a tampered client flooding moves
   would cost money as well as fairness.
-- **The room cap is set by messages, not by the tick** (§11). Today's
-  `MAX_PLAYERS` 60 is a receiver number (what one phone can hear); what one
-  room can *take in* is lower than it looks, and splitting a world into area
-  servers is how it grows.
+- **The room cap is set by messages, not by the tick** (§11). `MAX_PLAYERS`
+  was 60, thought a receiver number (what one phone can hear); it is 120 since
+  v2.3.3205 (the owner's call, `docs/specs/cap-120.md`), the room smooth to
+  about 145 after #887-#891. Splitting a world into area servers is how it
+  grows past that.
 
 ---
 
@@ -358,9 +362,17 @@ requests a second**. Their own example is a game with 50,000 players sending
     the room's thread (a tenth of it at 60 moving players), and sending every
     player's update every tick grows with the square of the crowd. That is
     the limit left once the room's own code is cheap;
-  - **the phones.** Each downloads about 3.5 KB a second for every moving
-    player in the Wheel, about 205 KB/s at 60 (#886 sends far players
-    less often: `docs/specs/far-players.md`).
+  - **the phones.** Each is sent about 3.5 KB a second for every moving
+    player in the Wheel, about 205 KB/s at 60, as it unzips it (#886 sends far
+    players less often: `docs/specs/far-players.md`). On the wire that is
+    about a thirteenth, ~15 KB/s at 60 (v2.3.3199);
+  - **the compressing.** The room compresses every message for every phone
+    (`permessage-deflate`), and that is about 40% of its thread: 79.6% busy
+    at 100 players compressed, 44.6% sending the same plain (v2.3.3199,
+    `docs/specs/load-test.md`). So every message sent, and what changes in
+    it, costs the server CPU (repeated text is nearly free to compress), and
+    the message diet below saves twice: fewer messages in, and fewer player
+    entries to build and compress for every phone.
 
 ### The fix: fewer messages, and a world of area servers
 

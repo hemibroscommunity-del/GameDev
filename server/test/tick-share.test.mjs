@@ -283,6 +283,19 @@ const LANDS = Object.keys(WHEEL_SPAWNS);
   check('5b ... with monsters in reach and coming into reach on the way', seenSome > 1000 && enteredSome > 50, { seenSome, enteredSome });
   const off = room._wheelInterest({}, { x: Infinity, y: 21000 }, monsters, room._wheelMonsterGrid(monsters));
   check('5c a position that is not finite reaches nothing (and returns)', off.seen.size === 0 && off.list.length === 0);
+  /* v2.3.3201: the squares' keys are numbers, good to 2^20 squares each way;
+     past that (no Wheel is that big) the grid steps aside for the full walk */
+  const far = monsters.concat([{ id: 'gfar', x: 1e12, y: 21000 }]);
+  const gFar = room._wheelMonsterGrid(far);
+  const a2 = room._wheelInterest({}, { x: 21500, y: 21500 }, far);
+  const b2 = room._wheelInterest({}, { x: 21500, y: 21500 }, far, gFar);
+  check('5d a monster past the keys\' reach: no grid, and the full walk\'s answer', gFar.cells === null
+    && ids(a2.list) === ids(b2.list) && a2.list.length > 0, { cells: gFar.cells === null, a: a2.list.length, b: b2.list.length });
+  const pFar = { x: 3e9, y: 21000 };
+  const nearFar = monsters.concat([{ id: 'gfar2', x: 3e9 + 100, y: 21000 }]);
+  const a3 = room._wheelInterest({}, pFar, nearFar);
+  const b3 = room._wheelInterest({}, pFar, nearFar, room._wheelMonsterGrid(nearFar));
+  check('5e a player past the keys\' reach: the full walk\'s answer', ids(a3.list) === ids(b3.list) && a3.list.length === 1, { a: ids(a3.list), b: ids(b3.list) });
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

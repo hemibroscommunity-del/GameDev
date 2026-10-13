@@ -6002,7 +6002,66 @@ local measurement of a Durable Object's message handling runs with the local
 tracing off (`load.mjs` does; `--observability` compares): a cost or a freeze
 seen only with it on is wrangler's, not the room's.
 
-## 169. "mp-wheelbreak's arrows stick, so the bow shoots props" (v2.3.3200)
+## 169. "A bot's byte count is what the phone downloads" (v2.3.3199)
+
+The room's messages are compressed on the way out.  The worker's
+`compatibility_date` (2024-12-01) is past 2023-08-15, which turns on the
+runtime's `web_socket_compression`; every browser offers `permessage-deflate`
+when it connects, so does Node's own WebSocket, and the room accepts.  Anything
+that counts a message's `ev.data.length` -- the load test's bots, a page's own
+counter, `mp-crowd`'s 4 KB/s per peer -- counts it UNZIPPED, about thirteen
+times what crossed the wire (50 players in BroTown: 177 KB/s unzipped, 13.4 on
+the wire).  The figures "205 KB/s, 740 MB an hour at 60 players" went into four
+documents that way before a byte-counting proxy measured the wire.
+
+**And its twin: the bytes are the server's cost, not only the phone's.**
+Deflate runs once per message per socket over the message's whole length, on
+the room's one thread.  Bots that do not ask for compression (`load.mjs
+--no-deflate`) take the room from 79.6% to 44.6% of its thread at 100 players.
+So "compression makes the size free" is wrong in the direction that matters --
+but so is "every byte costs the same": REPEATED text is nearly free to
+compress.  Leaving the unchanged gear keys out of every player entry cut 29% of
+the bytes and saved the room nothing measurable (79.5% -> 82.9%, noise); half
+the MESSAGES (every other tick, each carrying both ticks' changes) took it from
+79.5% to 61.5%.  What costs is the number of messages and what changes inside
+them.
+
+**The rule.**  Quote a phone's download from the load test's `wire` column
+(one bot through `startWireProxy`), and say "unzipped" for anything counted off
+`ev.data`.  Do not turn compression off to save the server: each phone would
+download thirteen times as much.  Send fewer messages, and less of what
+changes in them, instead -- not merely fewer repeated bytes.  And do not trust
+`no_web_socket_compression` in a copy's `wrangler.toml` to turn it off for a
+measurement: the local runtime negotiated it anyway (tried 2026-10-13); the
+bots' `PlainWS` does it from the client side.
+
+## 170. "setInterval(tick, 22) runs the tick 45 times a second" (v2.3.3202)
+
+Not in the Workers runtime.  Its `setInterval` waits the whole interval AFTER
+the callback has finished: measured with a one-line Durable Object on the local
+runtime, a callback of nothing ran 43.2 times a second, one of 5 ms 35.0, one
+of 10 ms 29.5, one of 20 ms 22.6 -- 23.1 ms PLUS the callback.  The room's tick
+is that callback, and the world moves a fixed step a tick, so every millisecond
+a busy room spends ticking slowed the whole world, with the thread still
+partly idle (100 players: 37 ticks a second, a quarter of the thread unused).
+Cutting the tick's own work is therefore worth more than its share of the CPU:
+#888's grids took 3-4 ms off the tick and gave 3-4 more ticks a second.
+
+**And its twin: `Date.now()` inside a tick.**  Production freezes the clock
+while code runs (it moves on I/O), so a tick cannot time itself there; the
+local runtime does not freeze it, so a measurement that works under `wrangler
+dev` can read 0 in production.  What both can measure is how far apart ticks
+START, which is what `tickpace.js` uses.
+
+**The rule.**  Do not read `TICK_RATE` as the real period: the real one is
+`/dev/overview`'s `tickPace.periodMs`.  Anything that converts ticks to time
+(`REGEN_TICKS * TICK_RATE`, `rewindTicks`, a DoT's `TICK_RATE / 1000`) was
+off by that difference under load; with the pacer it is off by about 2 ms
+until the thread is full.  And a Node test that captures the tick from
+`setInterval` must never see the interval set again (`WebSocketPair` is the
+runtime check, `tickpace.js`).
+
+## 171. "mp-wheelbreak's arrows stick, so the bow shoots props" (v2.3.3200)
 
 **Plausible:** the Wheel's objects take arrows. `mp-wheelbreak` sends 28
 arrows at a barrel, a lamp, a tree and a building and every check passes, so a

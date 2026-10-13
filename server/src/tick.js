@@ -154,7 +154,18 @@ export const tickMethods = {
     let pingCounter = 0;
     let regenCounter = 0;
 
-    this.tickInterval = setInterval(() => {
+    /* v2.3.3202: the tick is paced (tickpace.js): `tick` measures how far
+       apart the ticks start, runs the world (`body`), and sets the interval
+       again when the gap between ticks has to change.  A fresh pacer for a
+       fresh loop. */
+    this._tickPace = null;
+    const tick = () => {
+      this._tickPaceStart(Date.now());
+      try { body(); } finally { this._tickPaceEnd(tick); }
+    };
+    this.tickInterval = setInterval(tick, this.TICK_RATE);
+
+    const body = () => {
       // §16.12 — Snapshot player states to history buffer
       /* v2.3.3195: the snapshot that falls off the end is written over and
          put back, instead of a new object for every player every tick (and
@@ -445,14 +456,26 @@ export const tickMethods = {
       // Dirty players bucketed by the zone they are standing in, so a
       // group only pays for the peers its members can actually see.
       const dirtyByZone = new Map();
+      /* v2.3.3203: a Wheel player walking steadily -- along the line their
+         last update drew them on every phone -- is held for the next tick
+         (steadymovers.js); presence ticks hold nobody */
+      const steadyOn = !this._steadyOff();
+      const steady = steadyOn && !presenceTick;
+      let held = null;
       for (const id of this.dirtyPlayers) {
         const ps = this.playerState[id];
         if (!ps) continue;
+        if (steady && ps.z === WHEEL_ZONE && this._steadyHold(id, playerWire(ps), ts, ps.lastMoveAt)) {
+          (held || (held = [])).push(id);
+          continue;
+        }
         let arr = dirtyByZone.get(ps.z);
         if (!arr) dirtyByZone.set(ps.z, arr = []);
         arr.push([id, ps]);
       }
       this.dirtyPlayers.clear();
+      if (held) for (const id of held) this.dirtyPlayers.add(id);
+      if (presenceTick) this._steadyPrune();
 
       /* v2.3.3197: FAR PLAYERS (the note at FAR_PLAYERS).  Everyone who moved
          in the Wheel since the last far send waits in _farPending, in the order
@@ -472,7 +495,12 @@ export const tickMethods = {
         farList = [];
         for (const id of this._farPending) {
           const ps = this.playerState[id];
-          if (ps && ps.z === WHEEL_ZONE) farList.push([id, ps]);
+          if (ps && ps.z === WHEEL_ZONE) {
+            farList.push([id, ps]);
+            /* v2.3.3203: every phone in the Wheel gets this list, so it is
+               what went out for these players (steadymovers.js) */
+            if (steady) this._steadySent(id, playerWire(ps), ts, ps.lastMoveAt);
+          }
         }
       }
       /* What of the Wheel's players one v2 session there is sent, when it is
@@ -503,7 +531,11 @@ export const tickMethods = {
       if (presenceTick) {
         roster = Object.create(null);
         for (const [id, ps] of Object.entries(this.playerState)) {
-          if (ps) roster[id] = playerWire(ps);
+          if (ps) {
+            roster[id] = playerWire(ps);
+            /* v2.3.3203: the roster is what went out for everyone in it */
+            if (steadyOn && ps.z === WHEEL_ZONE) this._steadySent(id, roster[id], ts, ps.lastMoveAt);
+          }
         }
       }
 
@@ -944,6 +976,6 @@ export const tickMethods = {
          null-proto guarantee one tick later (TRAPS #6). */
       this.dirtyMonsterIds = Object.create(null);
       this.dirtyNodeIds = Object.create(null);
-    }, this.TICK_RATE);
+    };
   },
 };

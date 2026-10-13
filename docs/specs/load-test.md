@@ -32,8 +32,8 @@ message about five times dearer (see "The trap in local numbers" below).
 
 So with today's code the room is **smooth to about 70 busy players** (33 ticks
 a second or more: the world at three quarters of its designed speed or
-better), and today's cap of 60 (`MAX_PLAYERS`, `server/src/index.js`) sits
-inside that. Past it the room does not fall over: it slows. A tick starts
+better), and the cap of 60 then (`MAX_PLAYERS`, `server/src/index.js`; 120
+since v2.3.3205, `docs/specs/cap-120.md`) sat inside that. Past it the room does not fall over: it slows. A tick starts
 22 ms after the last one finishes, and the world moves a fixed step a tick (a
 monster's `spd` is pixels a tick), so a busier room is a slower world. It
 never froze, up to 150 players, and it came back when players left (an earlier
@@ -43,12 +43,80 @@ run, taken back down to 60 after 100: 34 ticks a second again).
 cheaper, with the same bytes to every player: smooth to about 110 players
 instead of about 70, and not yet at half speed with 150 (26 ticks a second).
 
+**#888 (`docs/specs/near-searches.md`)** finds who is near whom by squares,
+the same picks: smooth to about 125. **v2.3.3202 (`docs/specs/tick-pace.md`)**
+paces the gap between ticks, since "a tick starts 22 ms after the last one
+finishes" is the runtime's `setInterval` (TRAPS §170): a busy room keeps a
+quiet room's speed while its thread has the time -- 40.4 ticks a second at
+100 players, about 30 at 150, smooth to about 130.
+
 **What each phone downloads** grows with the crowd, because every phone is sent
-every moving player's position, wherever they are in the Wheel: about 3.5 KB a
-second for each moving player while the room keeps up -- **about 205 KB/s at
-60 players**, about 740 MB per hour of play, on a phone that may be on a
-mobile data plan. A room that slows sends less (fewer ticks), which is not a
-saving anyone wants.
+every moving player's position: about 3.5 KB a second for each moving player
+while the room keeps up, **as the phone unzips it**. On the wire it is about a
+thirteenth of that, because the room compresses every message (v2.3.3199,
+below): **about 15 KB/s at 60 players, about 55 MB per hour of play** -- not
+the 205 KB/s and 740 MB this page first said, which were the unzipped bytes.
+A room that slows sends less (fewer ticks), which is not a saving anyone wants.
+
+## What a phone really downloads, and what compressing it costs (v2.3.3199)
+
+**The room compresses everything it sends.** The worker's compatibility date
+(`compatibility_date = "2024-12-01"` in `server/wrangler.toml`) is past
+2023-08-15, which turns on the runtime's `web_socket_compression`, and every
+browser asks for compression (`permessage-deflate`) when it connects. So does
+Node's own WebSocket, which the bots use: the bots were always compressed, and
+the room's CPU in every table here already includes the compressing. What the
+tables did NOT show is the wire: a bot counts the messages as it reads them,
+unzipped.
+
+`load.mjs` now measures the wire too: the first bot of the first process goes
+through a byte-counting proxy (`startWireProxy`), and the `wire KB/s` column is
+every phone's download on the wire, from that bot's ratio of unzipped to
+compressed bytes (about 13 to 1).
+
+**Compressing is about 40% of the room's work.** `--no-deflate` makes the bots
+connect without asking for compression (a WebSocket of their own, `PlainWS` in
+`bots.mjs`, since the `no_web_socket_compression` flag in a copy's
+`wrangler.toml` did not stop the local runtime compressing), so the room sends
+them plain text. On main after #886, the same steps one after the other:
+
+| Players | Room's thread, compressed (as phones are) | Room's thread, plain | Ticks a second, compressed / plain | Each phone, unzipped / on the wire |
+|---|---|---|---|---|
+| 50 | 45.5% | 27.3% | 36.3 / 37.3 | 135 / 10.4 KB/s |
+| 100 | 79.6% | 44.6% | 34.0 / 34.3 | 217 / 17.4 KB/s |
+| 150 | 92.3% | 55.5% | 26.2 / 31.7 | 199 / 19.9 KB/s |
+
+So **what the room sends costs it CPU**: deflate runs once per message per
+phone, over that message's whole length. Turning compression off is not an
+answer -- each phone would download thirteen times as much. But not every byte
+costs the same: **repeated text is nearly free and new text is not.** Leaving
+the unchanged gear keys out of every player entry (item 3 below) cut 29% of
+the bytes at 100 players and saved the room nothing it could measure (79.5% of
+its thread before, 82.9% after, inside the run-to-run noise): deflate finds
+those repeats at once. What costs is what changes from tick to tick --
+positions, speeds -- and the number of messages: the same 100 players sent a
+message every other tick instead of every tick (half the messages, each
+carrying both ticks' changes, so about a quarter fewer player entries) took
+the room from 79.5% to 61.5%.
+
+**What the bytes are.** A phone walking in BroTown with 100 players about
+(`tools/qa/load/tickmix.mjs`, a probe that sorts each message it receives): 98% of its bytes are
+other players' entries in the tick (55 a tick, 146 bytes each), 1.4% combat
+events, and no monsters (the town is safe ground). Each entry repeats the
+player's zone, gear and activity (`z`, `eqc`, `eql`, `eqs`, `ex`) on every
+move.
+
+**Two other ideas measured and dropped** (main after #886, same steps):
+
+| Tried | 50 | 100 | 150 | |
+|---|---|---|---|---|
+| plain `accept()`ed sockets instead of the hibernation API (index.js) | 45.1% | 76.3% | 91% | within run-to-run noise (about 3 points) |
+| near circle 1,400 px instead of 2,400 (`FAR_PLAYERS.NEAR_R`) | 46% | 79.9% | 92.6% | 6-15% fewer bytes, the same CPU: most of a town crowd is inside 1,400 px anyway |
+
+**And one that works: fewer moves.** `--move-ms 66` has every bot send a move
+every 66 ms instead of a phone's 33: messages in drop from 2,098 to 1,156 a
+second at 100 players, the room's thread from 79.6% to 68.9%, and each phone's
+download by a quarter. That is the message diet's lever (§11, item 4 below).
 
 ## Why: where the room's time goes
 
@@ -58,7 +126,7 @@ runtime around it. "% of a core" is what one second of play costs (measured
 with the first bots' moves, whose 16-digit numbers cost the room a little more
 to read and write than a phone's do):
 
-| Players | Messages in a second | % of a core | KB/s per phone |
+| Players | Messages in a second | % of a core | KB/s per phone (unzipped) |
 |---|---|---|---|
 | 1 | 24 | 7.5% | 53 |
 | 10 | 230 | 12.8% | 48 |
@@ -146,8 +214,10 @@ the live game). That is a decision for the owner, not done here.
 **For planning:** with today's code, treat **60 busy players** (today's cap)
 as the most one room holds smoothly. The server would hold more after #885, but
 each phone's download grows with the crowd too (about 3.5 KB a second per
-moving player, less after #886: `docs/specs/far-players.md`). So raising the cap is a choice about phones as much as about the
-server. `max_players` (a live flag, `docs/specs/room-full.md`) lowers the cap
+moving player unzipped, about a quarter of a kilobyte on the wire; less after
+#886: `docs/specs/far-players.md`). On the wire that is small: a room of 150
+sends each phone about 20 KB a second. What the phones pay for a bigger crowd
+is mostly drawing it (`tools/qa/mp/mp-crowd.mjs` measures that), not downloading it. `max_players` (a live flag, `docs/specs/room-full.md`) lowers the cap
 without a deploy.
 
 ## What would raise the limit
@@ -165,15 +235,26 @@ without a deploy.
    pixel, so that part saves only ~2.4% of a player's update; the "about a
    quarter" this list once said came from the first bots' 16-digit numbers.
 3. **Leave out what did not change**: a player's zone, gear and activity ride
-   every move (about 40% of the update). Needs the phone to say it can do
-   without them, so a change on both sides.
+   every move (about 40% of the update). The gear and activity can go with no
+   change on the phone: the game already keeps the last gear and activity it
+   was sent when an entry leaves them out (`wsClient.js`, the tick's players).
+   The zone cannot: an entry without one puts the player in no zone.
+   Measured (v2.3.3199): 29% fewer bytes for each phone, but none of the
+   room's time -- the repeated keys were nearly free to compress (above).
 4. **The message diet** (§11): five positions a second with direction and
    speed instead of thirty. The biggest change: the server has to move each
    player between their messages, or monsters chasing them lurch (v2.3.1635
-   tried a plain 5 Hz and was rolled back, §11).
+   tried a plain 5 Hz and was rolled back, §11). Half the moves alone took the
+   room from 79.6% to 68.9% of its thread at 100 players (`--move-ms 66`,
+   above): fewer messages in, and fewer player entries to build and compress
+   for every phone.
 5. **Run monster AI only near players.** Most of the 384 monsters are far from
    everyone at any moment, yet they cost 7.5% of a core with one player in the
-   room.
+   room. *v2.3.3201 (`docs/specs/near-searches.md`): the part that grew with
+   the crowd -- every monster measuring its distance to every player, a
+   quarter of the room's work at 150 -- now looks only in the squares near
+   the monster, with the same picks; 3-4 more ticks a second at every size,
+   smooth to about 120.*
 6. **Refuse new players before the room slows down too much**, for example
    when it runs fewer than 30 ticks a second, instead of letting everyone's
    world slow.
@@ -224,6 +305,16 @@ node tools/qa/load/load.mjs --steps 10,25,50 --hold 10
 node tools/qa/load/load.mjs --idle --fighters 0   # everyone standing still
 node tools/qa/load/load.mjs --idle --fighters 0 --pong 30   # plus 30 do-nothing messages a second each
 node tools/qa/load/load.mjs --server ../other/server   # another branch's server, same steps
+node tools/qa/load/load.mjs --no-deflate             # bots that don't ask for compression (what it costs)
+node tools/qa/load/load.mjs --move-ms 66              # every bot moves every 66 ms, not 33
+node tools/qa/load/tickmix.mjs 'ws://127.0.0.1:PORT/ws?room=loadtest&rf=1' 25   # beside a run: what one phone is sent, by part
+node tools/qa/load/load.mjs --town-move-ms 66         # only the town walkers move every 66 ms (v2.3.3203)
+node tools/qa/load/load.mjs --worker-log /tmp/w.log   # keep the worker's whole log (console.log of a copy)
+
+# where the real runtime's thread goes, during a long hold (v2.3.3203)
+node tools/qa/load/load.mjs --steps 150 --hold 120 --inspector-port 9230 &
+node tools/qa/load/cdpprof.mjs 9230 20 /tmp/room.cpuprofile   # its JavaScript, through its debugger
+node tools/qa/load/gdbprof.mjs 30                              # its C++ too: compressing, writing, parsing
 
 # the server's own code, no runtime: CPU per player count, and a profile
 node tools/qa/load/load-wheel.mjs 1,10,25,50,100
@@ -247,6 +338,11 @@ node --cpu-prof --cpu-prof-dir=/tmp/prof tools/qa/load/load-wheel.mjs 100
   copied the same way;
 - `--url ws://127.0.0.1:PORT`: an already running LOCAL worker. Anything else
   is refused, because the tool fills a room with hundreds of characters.
+- `--no-deflate` (v2.3.3199): the bots do not ask for compression, so the room
+  sends them plain text: what compressing costs the room;
+- `--move-ms N` (v2.3.3199): a bot's move every N ms instead of a phone's 33;
+- `--seen-r N` (v2.3.3199): "others' moves seen" counts senders within N px
+  (2,400 by default, the worker's near circle).
 
 A step counts as broken when:
 - the others' moves arrive later than 1.5 s at p95; or
@@ -271,7 +367,8 @@ they were the bottleneck can be spotted. Afterwards check `ps` for stray
 | ticks/s | how many ticks the server really ran a second. The tick is set for every 22 ms (45 a second); even with 10 players the local room ran about 40 |
 | tick delay | from a tick's own timestamp to a player receiving it |
 | others' moves seen | from one player sending a position to another player receiving it: the lag a player sees in everyone else |
-| down KB/s /player | what each phone downloads a second |
+| down KB/s /player | what each phone is sent a second, as it reads it (unzipped) |
+| wire KB/s | what each phone downloads a second on the wire, compressed (v2.3.3199: one bot through a byte-counting proxy gives the ratio) |
 | RSS MB | the local runtime's memory (the whole process, not only the room) |
 | bots CPU | each fake-player process, as a share of one core |
 | drops | sockets that closed during the step |
