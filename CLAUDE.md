@@ -2168,9 +2168,10 @@ Two protocol versions coexist; both must keep working:
     count as sent. Phones draw peers from the speed, so the drawn place is
     unchanged (steady-movers.test.mjs runs the phone's dead reckoning both
     ways: identical). 50-100 players: the room 13-18% less busy, phones
-    download 30-39% less; 150: -6 points, no more ticks. Positions arrive 2-5
-    ms later on average. Kill switch `steadymovers: false`:
-    docs/specs/steady-movers.md.
+    download 30-39% less; 150: -6 points, no more ticks; on the night's ramp
+    68% of the thread at 100 against 78%, the smooth line where it was
+    (~120-130). Positions arrive 2-5 ms later on average. Kill switch
+    `steadymovers: false`: docs/specs/steady-movers.md.
 
 ## Conventions
 

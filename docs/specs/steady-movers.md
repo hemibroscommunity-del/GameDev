@@ -97,6 +97,27 @@ speed it moved at -- `tools/qa/load/bots.mjs`.)
   newest position a tick or two later. What the phones DRAW does not change
   (above): they draw from the speed, and the speed is never held.
 
+A whole ramp later in the night, each run from 10 to 175 players one step after
+the other, the thread busy and the ticks a second (the same runs as
+`tick-pace.md`'s ramp):
+
+| Players | 10 | 25 | 50 | 75 | 100 | 125 | 150 | 175 |
+|---|---|---|---|---|---|---|---|---|
+| main | 15%, 39.8 | 30%, 37.6 | 45%, 37.8 | 64%, 36.1 | 81%, 33.5 | 86%, 31.8 | 92%, 25.7 | 98%, 20.6 |
+| #888 | 13%, 41.0 | 24%, 40.4 | 43%, 39.2 | 61%, 38.3 | 79%, 36.7 | 87%, 32.4 | 94%, 25.8 | 95%, 22.0 |
+| #888 + #889 | 14%, 42.1 | 24%, 41.8 | 42%, 41.5 | 62%, 41.8 | 78%, 40.5 | 95%, 34.9 | 98%, 29.9 | 98%, 22.4 |
+| #888 + #889 + this | 14%, 42.2 | 20%, 42.2 | 34%, 41.9 | 54%, 41.7 | 68%, 40.8 | 88%, 32.0 | 91%, 30.5 | 96%, 23.4 |
+
+- **From 25 to 100 players the thread is 4-10 points less busy at the same
+  speed of the world** -- at 100, 68% against 78%. That is the room's spare
+  time for a spike, a crowd fight, or more players.
+- **It does not move where the room stops being smooth** (33 ticks a second,
+  the load test's line): about 120-130 players with or without it. At 125 the
+  column with the hold read 32.0 against 34.9 without -- within what that step
+  varies from one run to the next (about 3 ticks a second). Past that point the
+  tick itself -- building and compressing a message for every phone -- is the
+  limit, and the hold barely changes how many there are.
+
 ## Tests
 
 `server/test/steady-movers.test.mjs` (27 checks): the rule on its own (a turn,
