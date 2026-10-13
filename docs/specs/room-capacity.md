@@ -101,8 +101,8 @@ both servers run back to back through the same steps:
 - **Smooth play** (33 ticks a second or more, the world at three quarters of
   its designed speed or better) now lasts to **about 100 players instead of
   about 65**.
-- **Badly degraded** (under 25 ticks a second, the world at half speed or
-  less) now starts at **about 130 players instead of about 110**.
+- **Badly degraded** (under 25 ticks a second, the world at about half speed
+  or less) now starts at **about 130 players instead of about 110**.
 - Neither server froze; both slow down past these points.
 
 The gain on the real runtime is smaller than the code-alone table, because the
@@ -111,8 +111,8 @@ code is now the smaller part of the room's work.
 Why ticks a second matter: a tick starts 22 ms after the last one finishes,
 and the world moves a fixed step each tick (a monster's `spd` is pixels a
 tick). So a slower tick is a slower world, not only a later one. With 100
-players the monsters walked at 54% of their designed speed before, and 75%
-now.
+players the monsters walked at 60% of their designed speed before (27 ticks a
+second of the 45 a 22 ms tick would give), and 73% now (33).
 
 What binds now is no longer the game's code. It is the runtime taking the
 players' messages in and pushing every player's update out. Those updates
