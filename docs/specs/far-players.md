@@ -58,7 +58,45 @@ download. The bots now send what a phone sends.
 
 ## What it buys
 
-RESULTS
+Measured in the sandbox with the bot load test (`tools/qa/load/load.mjs
+--server`, #883), the v2.3.3195 server (#885) against this one, the same
+steps one after the other, the bots sending what a phone sends. Each phone's
+download, the room's thread and its ticks a second:
+
+**A crowd mostly in town** (70% walking BroTown and its commons, 30% fighting
+out in their lands -- the default mix):
+
+| Players | Each phone downloads | Room's thread | Ticks a second |
+|---|---|---|---|
+| 25 | 92 -> 81 KB/s (-13%) | 26% -> 28% | 39 -> 39 |
+| 50 | 167 -> 136 KB/s (-19%) | 45% -> 45% | 39 -> 38 |
+| 75 | 231 -> 179 KB/s (-23%) | 68% -> 62% | 37 -> 37 |
+| 100 | 270 -> 202 KB/s (-25%) | 82% -> 77% | 35 -> 35 |
+
+**Everyone out in the lands** (`--fighters 1`: each player fighting in their
+own land, the eight lands far apart):
+
+| Players | Each phone downloads | Room's thread | Ticks a second |
+|---|---|---|---|
+| 25 | 68 -> 52 KB/s (-23%) | 26% -> 23% | 39 -> 39 |
+| 50 | 87 -> 62 KB/s (-28%) | 41% -> 37% | 38 -> 39 |
+| 75 | 116 -> 69 KB/s (-41%) | 58% -> 52% | 37 -> 37 |
+| 100 | 114 -> 77 KB/s (-33%) | 71% -> 65% | 35 -> 36 |
+
+- **Players on your screen are no later.** The lag the probes measure for
+  players within 2,400 px of them is the same on both servers: at 100 players
+  22 ms half the time and 38 ms for 95% (town), 22 / 36 ms (lands).
+- **The saving is from far-away players who are moving.** In town everyone
+  is near everyone and nothing changes. In the town runs above many of the
+  fighters were still walking out to their lands while a step was measured;
+  in a run that filled straight to 125 and 150 players most had arrived and
+  were fighting in place, and the saving was smaller: 218 -> 211 KB/s (-3%)
+  at 125 and 231 -> 205 KB/s (-11%) at 150, at the same ticks a second (30
+  and 26). A real world is somewhere between these and the lands' table.
+- **The room's thread works a little less, not more**: less to send.
+- Bots move at random, so a step's numbers move a few percent from run to run
+  (the messages the room took in differed by up to 15% between the two
+  servers' runs of the same step); the trend is the same at every step.
 
 ## How we know it works
 
@@ -75,7 +113,13 @@ RESULTS
 - `server/test/tick-share.test.mjs` (v2.3.3195) still compares every message
   both ways over 300 ticks of a busy mixed room: the far rule is in both
   builders.
-- `tools/qa/mp/mp-farpeer.mjs`: two phones in the Wheel. PHONE
+- `tools/qa/mp/mp-farpeer.mjs`: a real phone in BroTown watching a walker
+  that sends a phone's 30 moves a second. Beside it: 31 updates a second.
+  2,700 px away: 4.7 a second (the four far sends and the roster), never
+  missing from the game's players, and exactly where it stopped (0.0 px off)
+  once it stops. Back beside it: 29 a second again. Positions in whole pixels,
+  no page errors. (The walker is a bare socket because this box draws a
+  browser a few frames a second, and a page sends a move a frame.)
 
 ## Turning it off
 
