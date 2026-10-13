@@ -1,4 +1,4 @@
-/* ═══ v2.3.3192: A GROUP OF FAKE PLAYERS, ONE PROCESS ═══
+/* ═══ v2.3.3194: A GROUP OF FAKE PLAYERS, ONE PROCESS ═══
  *
  * Forked by load.mjs (the conductor), never run by hand.  Each bot is a guest
  * who does what a phone does on the wire, and nothing a phone does not:

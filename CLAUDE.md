@@ -2086,12 +2086,15 @@ Two protocol versions coexist; both must keep working:
   (mp-questline, v2.3.1729, client-ci.yml) and `memory-budget`
   (mp-membudget, v2.3.3101, memory.yml -- Conventions, "Memory is
   budgeted").
-- Capacity (v2.3.3192, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
+- Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's
-  own code. Measured: smooth to about 60 busy players (today's cap), slower from
-  70, frozen at about 95-100 with no recovery. Re-run it after any change to
-  the tick, the move path or the Wheel's monsters.
+  own code. Measured: smooth to about 65 busy players (today's cap is 60), a
+  slower world past that (fewer ticks a second), half speed from about 110, no
+  freeze up to 150. Wrangler's own local tracing (on by default) made every
+  message ~5x dearer and froze the room at ~95: the tool turns it off (TRAPS
+  §168). Re-run it after any change to the tick, the move path or the Wheel's
+  monsters.
 
 ## Conventions
 

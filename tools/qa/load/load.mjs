@@ -1,4 +1,4 @@
-/* ═══ v2.3.3192: THE BOT LOAD TEST — HOW MANY PLAYERS DOES THE ROOM HOLD? ═══
+/* ═══ v2.3.3194: THE BOT LOAD TEST — HOW MANY PLAYERS DOES THE ROOM HOLD? ═══
  *
  * docs/WORLD-ARCHITECTURE.md §11 said a room "tops out around 30-60 busy
  * players" and asked for "a bot load test ... before any launch push".  The
@@ -8,14 +8,18 @@
  * a per-player view of them (tick.js builds every Wheel player's tick on its
  * own), and nothing had measured that against the real runtime.  This does.
  *
- *   node tools/qa/load/load.mjs [--steps 10,25,50] [--hold 20] [--settle 6]
- *        [--procs 3] [--fighters 0.3] [--cap 400] [--url ws://127.0.0.1:PORT]
+ *   node tools/qa/load/load.mjs [--steps 10,25,50] [--hold 20] [--settle 20]
+ *        [--procs 3] [--fighters 0.3] [--cap 400] [--idle] [--pong N]
+ *        [--server <a server/ folder>] [--observability] [--url ws://127.0.0.1:PORT]
  *
  * What it does:
  *   1. copies server/ to a temporary folder and raises MAX_PLAYERS there
  *      (only there: the game's own code is never edited), then starts that
  *      copy with `wrangler dev --local` -- the real GameRoom, the real
- *      workerd, real WebSockets on 127.0.0.1, its own empty storage;
+ *      workerd, real WebSockets on 127.0.0.1, its own empty storage, and
+ *      wrangler's own local tracing OFF (it made every message about five
+ *      times dearer than the room's own handling of it, and froze the room
+ *      at ~95 players, which the room without it never did);
  *   2. forks `--procs` bot processes (bots.mjs), each a group of fake
  *      players that join, go down to the Wheel and walk or fight there the
  *      way a phone does;
@@ -62,6 +66,8 @@ const OPT = {
   idle: process.argv.includes('--idle'),   /* everyone stands still: 1 keepalive a second */
   pongHz: +arg('pong', 0),                 /* extra do-nothing messages a second per player */
   recover: !process.argv.includes('--no-recover'),
+  observability: process.argv.includes('--observability'),   /* wrangler's local tracing on (off by default) */
+  server: arg('server', null),             /* a server/ folder to test instead of this repo's own */
   recoverTo: +arg('recover-to', 0.6),       /* share of the players kept after a break */
   recoverSettle: +arg('recover-settle', 20), /* seconds given to come back before measuring */
 };
@@ -89,8 +95,11 @@ async function freePort() {
 /* ── the server copy ──────────────────────────────────────────────────── */
 async function serverCopy(cap) {
   const dir = await mkdtemp(join(tmpdir(), 'bt-load-server-'));
-  await cp(join(REPO, 'server', 'src'), join(dir, 'src'), { recursive: true });
-  for (const f of ['wrangler.toml', 'package.json']) await cp(join(REPO, 'server', f), join(dir, f));
+  /* --server: another checkout's server/ (a branch under test), copied the
+     same way; this repo's own by default */
+  const from = OPT.server ? resolve(OPT.server) : join(REPO, 'server');
+  await cp(join(from, 'src'), join(dir, 'src'), { recursive: true });
+  for (const f of ['wrangler.toml', 'package.json']) await cp(join(from, f), join(dir, f));
   const f = join(dir, 'src', 'index.js');
   const src = await readFile(f, 'utf8');
   const re = /this\.MAX_PLAYERS = (\d+);/;
@@ -104,9 +113,15 @@ async function startWorker(dir, port) {
   const state = await mkdtemp(join(tmpdir(), 'bt-load-state-'));
   /* detached, so the whole npx -> node -> workerd tail is one process group
      and one kill reaches all of it (tools/qa/mp/harness.mjs, same lesson) */
+  /* wrangler 4.x records a trace and the logs of EVERY event for its local
+     explorer page (X_LOCAL_OBSERVABILITY / X_LOCAL_EXPLORER, both on by
+     default).  The live runtime does nothing of the kind, and every incoming
+     WebSocket message is an event, so it is off unless --observability asks
+     for it: the cost being measured is the room's, not the dev tooling's. */
+  const env = Object.assign({}, process.env, OPT.observability ? {} : { X_LOCAL_OBSERVABILITY: 'false', X_LOCAL_EXPLORER: 'false' });
   const proc = spawn('npx', ['wrangler', 'dev', '--port', String(port), '--local', '--ip', '127.0.0.1',
     '--persist-to', state, '--var', 'ADMIN_KEY:load-test-' + process.pid], {
-    cwd: dir, stdio: ['ignore', 'pipe', 'pipe'], detached: true,
+    cwd: dir, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   });
   let log = '';
   proc.stdout.on('data', (d) => { log += d; if (log.length > 2e6) log = log.slice(-1e6); });
@@ -342,7 +357,7 @@ async function main() {
      machine) keeps everything it measured */
   const save = async () => {
     const out = {
-      version: 'v2.3.3192', startedAt: startedAt.toISOString(), options: OPT,
+      version: 'v2.3.3194', startedAt: startedAt.toISOString(), options: OPT,
       machine: { cores: cpus().length, model: cpus()[0].model.trim() },
       serverCap: copy ? { real: copy.realCap, test: OPT.cap } : null,
       steps: results,

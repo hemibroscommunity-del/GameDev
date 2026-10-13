@@ -5971,7 +5971,7 @@ until both pages have every piece and page in and both workers calmed the
 water.  Then it measures 0.03-0.05% of pixels one level of 255 apart, nothing
 more -- the arithmetic of a blend done in a shader rather than by the chip.
 
-## 168. "The room's CPU is nowhere near the wall, so raise the cap" (v2.3.3192)
+## 168. "The room's CPU is nowhere near the wall, so raise the cap" (v2.3.3194)
 
 `docs/specs/room-full.md` and the comment at the room's admission gate
 (`server/src/index.js`, the 61st player) say the worker spends 0.16 ms of its
@@ -5979,12 +5979,25 @@ more -- the arithmetic of a blend done in a shader rather than by the chip.
 phone's number.  That was measured in the meadow, in a simulated room, before
 the whole world became one zone.  In the Wheel each player's tick is built on
 its own and lists every moving player, so the room's own work grows with the
-square of the crowd, and the real runtime spends 0.3-0.5 ms of the room's one
-thread taking each message in.  The bot load test (`tools/qa/load/`,
-`docs/specs/load-test.md`) puts the room at 88-90% of its thread with 60 busy
-players in the sandbox, slower from 70, frozen at about 95-100 -- and a frozen
-room did not come back when players left.
+square of the crowd.  The bot load test (`tools/qa/load/`,
+`docs/specs/load-test.md`) puts the room's thread at 57% with 50 busy players
+in the sandbox and 84% with 75: smooth to about 65, past that a slower world
+(a tick starts 22 ms after the last one ends, and the world moves a fixed step
+a tick), at half speed from about 110.
+
+**And its twin: a local number that is the dev tool's.**  `wrangler dev` 4.x
+traces and logs EVERY event for its local explorer page, on by default
+(`X_LOCAL_OBSERVABILITY`, `X_LOCAL_EXPLORER`), and every incoming WebSocket
+message is an event.  With it on, the first run of the load test read each
+message at 0.3-0.5 ms of the room's thread (0.06-0.09 off), the room full at
+60, and FROZEN at about 95-100 players -- nothing reaching anyone, memory
+climbing 0.6 -> 1.9 GB in two minutes, no recovery when players left -- a
+finding that went into four documents before a run with the tracing off showed
+no freeze up to 150.  The live runtime traces nothing of the kind.
 
 **The rule.**  Never raise `MAX_PLAYERS` (or read a capacity figure) without
 re-running `node tools/qa/load/load.mjs` on the code as it is.  A number
-measured before the world changed shape describes a different game.
+measured before the world changed shape describes a different game.  And any
+local measurement of a Durable Object's message handling runs with the local
+tracing off (`load.mjs` does; `--observability` compares): a cost or a freeze
+seen only with it on is wrangler's, not the room's.

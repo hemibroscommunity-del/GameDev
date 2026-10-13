@@ -31,12 +31,13 @@ roughly **4 KB/s per co-located moving peer**, so about 20 people in one
 zone before an iPhone on cellular suffers (`tools/qa/mp/mp-crowd.mjs`).
 Sixty is a receiver-side number. The fix is a message.
 
-**v2.3.3192: the CPU half of that is no longer true.** It was measured in the
+**v2.3.3194: the CPU half of that is no longer true.** It was measured in the
 meadow, before the whole world became one zone, the Wheel. The bot load test
-(`docs/specs/load-test.md`) puts the Wheel's room at 88-90% of its one thread
-with 60 busy players in the sandbox, slowing from 70 and freezing at about
-95-100. Sixty is now the edge for the server as well as for the phones. Still
-do not raise it.
+(`docs/specs/load-test.md`) puts the Wheel's room at 57% of its one thread with
+50 busy players in the sandbox and 84% with 75: smooth to about 65, a slower
+world past that. Sixty is now near the edge for the server as well as for the
+phones. Still do not raise it without re-running the test, and without
+weighing each phone's download (about 3 KB a second per moving player).
 
 ## Wire surface
 

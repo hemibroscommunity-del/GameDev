@@ -1,4 +1,4 @@
-# How many players one room holds — the bot load test (v2.3.3192)
+# How many players one room holds — the bot load test (v2.3.3194)
 
 > Owner, 2026-10-12, picking the first of the recommendations ("Find out how
 > many players the game can hold ... A load test would connect 100 or more
@@ -17,36 +17,38 @@ Wheel, and the first against the real runtime.
 
 Measured here, in the sandbox, with everyone in the Wheel: 70% of the players
 walking the town and its commons, 30% fighting their land's first stretch,
-every one sending positions at a phone's rate (33 ms while moving).
+every one sending positions at a phone's rate (33 ms while moving). The local
+runtime's own tracing was off: it is on by default and made every message
+about five times dearer (see "The trap in local numbers" below).
 
 | Players | What a player would see | The room |
 |---|---|---|
-| 10 | smooth: the others' moves arrive in 17 ms (half the time), 28 ms (95%) | its thread 32% busy, 40 ticks a second |
-| 25 | smooth: 20 / 32 ms | 56% busy, 38 ticks a second |
-| 40 | smooth: 21 / 34 ms | 74% busy, 37 ticks a second |
-| **60 (today's cap)** | smooth: 25 / 41 ms; a new player gets in within 57 ms | **88-90% busy**, 33-34 ticks a second |
-| 70 | the world slows: 30 ticks a second; moves 31 / 52 ms | 95% busy |
-| 80 | slower: 28 ticks a second; moves 37 / 54 ms | 96% busy |
-| 90 | slower still: 24 ticks a second, so monsters, burns and timers run at about half speed; moves 47 / 69 ms | 98% busy |
-| **about 95-100** | **frozen**: nothing reaches anyone, a new player cannot get in, the room does not answer a web request within 10 s | 99% busy, memory climbing (0.6 -> 1.9 GB in two minutes) |
-| back down to 60, or to 30 | **still frozen** a minute later | still 99% busy, memory still climbing |
+| 25 | smooth: the others' moves arrive in 18 ms (half the time), 30 ms (95%) | its thread 33% busy, 39 ticks a second |
+| 50 | smooth: 23 / 35 ms; a new player gets in within 32 ms | 57% busy, 35 ticks a second |
+| 75 | the world starts to slow: 32 ticks a second; moves 27 / 43 ms | 84% busy |
+| 100 | slower: 27 ticks a second, monsters at 60% of their speed; moves 33 / 56 ms; a new player 67 ms | 86% busy |
+| 125 | about half speed: 22 ticks a second; moves 37 / 62 ms; a new player 0.2 s | 95% busy |
+| 150 | 17 ticks a second; moves 40 / 88 ms; a new player 0.3 s | 98% busy |
+| back down to 60 after 100 | recovered: 34 ticks a second | 72% busy |
 
-(60 was measured three times: 88.1%, 90.3% and 87.7% busy; 34.1, 33.8 and 33.2
-ticks a second.)
+So with today's code the room is **smooth to about 65 busy players** (33 ticks
+a second or more: the world at three quarters of its designed speed or
+better), and today's cap of 60 (`MAX_PLAYERS`, `server/src/index.js`) sits
+just inside that. Past it the room does not fall over: it slows. A tick starts
+22 ms after the last one finishes, and the world moves a fixed step a tick (a
+monster's `spd` is pixels a tick), so a busier room is a slower world. It
+never froze, up to 150 players, and it came back when players left.
 
-So on this machine **about 60 busy players is the edge**, and that is exactly
-today's cap (`MAX_PLAYERS` 60, `server/src/index.js`). Past it the room does not
-fall over at once: it slows down, because a room whose one thread is full runs
-fewer ticks, and the world moves a fixed step per tick. Past about 95 it
-freezes, and **a frozen room did not come back** when 40% or even 70% of the
-players left. On Cloudflare a room is capped at 128 MB of memory, so the likely
-end there is the platform resetting the room, which disconnects everyone at once.
+**v2.3.3195 (#885, `docs/specs/room-capacity.md`)** makes the room's own work
+cheaper, with the same bytes to every player: smooth to about 100 players, and
+half speed from about 130 instead of about 110.
 
 **What each phone downloads** grows with the crowd, because every phone is sent
-every moving player's position many times a second, wherever they are in the
-Wheel: 46 KB/s at 10 players, 83 at 25, 130 at 40, **170-190 KB/s at 60**. That
-is about 600-700 MB per hour of play at 60 players, on a phone that may be on a
-mobile data plan.
+every moving player's position, wherever they are in the Wheel: about 3 KB a
+second for each moving player while the room keeps up -- **170-190 KB/s at 60
+players**, about 600-700 MB per hour of play, on a phone that may be on a
+mobile data plan. A room that slows sends less (fewer ticks), which is not a
+saving anyone wants.
 
 ## Why: where the room's time goes
 
@@ -80,57 +82,58 @@ The biggest line is the Wheel's own: each player hears only the monsters near
 them, so tick.js builds every Wheel player's message on its own
 (`key += '|' + s.id`), and every one of those messages lists every moving
 player in the Wheel. That is the same player list serialised once per person
--- work that grows with the square of the crowd.
+-- work that grows with the square of the crowd. (#885 builds the shared parts
+once, among other things: room-capacity.md.)
 
-The real runtime costs more than the code alone: at 10 players the local
-runtime's thread was 32% busy where the code alone is 13%. The difference is
-**taking each message in**. Measured with players who stand still and send
-extra `pong`s (the cheapest message the worker accepts: its case only folds a
-number into the session's round-trip time):
+The real runtime costs more than the code alone (at 50 players its thread was
+57% busy where the code alone is 32%). Taking a message in is a small part of
+that, measured with players who stand still and send extra `pong`s (the
+cheapest message the worker accepts: its case only folds a number into the
+session's round-trip time):
 
 | Standing players | Messages in a second | Room's thread |
 |---|---|---|
-| 25 | 34 | 14% |
-| 25, plus 30 pongs a second each | 789 | 54% |
-| 50 | 72 | 24% |
-| 50, plus 30 pongs a second each | 1,576 | 70% |
+| 25 | 36 | 11% |
+| 25, plus 30 pongs a second each | 790 | 18% |
+| 50 | 69 | 19% |
+| 50, plus 30 pongs a second each | 1,575 | 28% |
 
-So the local runtime spends about **0.3-0.5 ms of the room's one thread on
-every incoming message**, whatever the message does. At 60 moving players
-(1,250-1,430 messages a second) that is roughly half the thread; the game's own
-work above is the other half. A crowd standing still is cheap (50 standing
-players, 24%): it is moving players that cost, twice -- their messages in, and
+About **0.06-0.09 ms of the room's thread a message**, so 60 moving players'
+1,250-1,430 messages a second cost about a tenth of it. The rest is mostly
+**sending**: every player's update, every tick, which grows with the square of
+the crowd like the bytes above. A crowd standing still is cheap (50 standing
+players, 19%): moving players are what cost, twice -- their messages in, and
 their positions out to everyone else.
 
-## Why it freezes instead of slowing down
+## The trap in local numbers
 
-The probes show the freeze is the room's whole input and output, not only its
-tick: a web request into the room (`/api/market`) went unanswered for 10 s, and
-a brand-new player's join, whose first message is sent from inside the join
-itself, got nothing in 15 s. Meanwhile the thread stayed 99% busy and memory
-grew by megabytes a second.
+`wrangler dev` (4.x) records a trace and the logs of EVERY event for its local
+explorer page, on by default (`X_LOCAL_OBSERVABILITY`, `X_LOCAL_EXPLORER`). The
+live runtime does nothing of the kind, and every incoming WebSocket message is
+an event. With it on, the same measurements said:
 
-That fits a Durable Object rule: what a room sends (messages and replies) is
-held back until the storage writes it made before are confirmed (the "output
-gate"), and the room saves often (over a hundred `storage.put` sites, none
-with `allowUnconfirmed`). A room with no spare time falls behind on those
-confirmations, so everything it sends piles up in memory, and the players'
-moves keep arriving. This is the likely mechanism, not a proven one: confirming
-it means running the copy with the saves taken out of the picture and seeing
-whether the freeze moves.
+- a message cost the room 0.3-0.5 ms, not 0.06-0.09;
+- the room was full at about 60 players;
+- at about 95-100 players it froze. Nothing reached anyone, a web request into
+  the room went unanswered, memory climbed 0.6 -> 1.9 GB in two minutes, and it
+  did not come back when players left.
+
+None of that happens with it off (tested to 150 players). `load.mjs` turns it
+off; `--observability` turns it back on to compare. Any local measurement of a
+Durable Object's message handling should do the same.
 
 ## How sure this is: this machine is not Cloudflare
 
 - **The processor.** The sandbox is a 4-core 2.1 GHz Xeon virtual machine.
-  Cloudflare's servers are newer and probably faster per thread, so the real
-  room may hold more players before its thread fills.
+  Cloudflare's servers are newer and probably faster per thread.
 - **The runtime.** `wrangler dev --local` runs `workerd`, the same open-source
-  runtime Cloudflare runs, plus local development tooling. Production adds its
-  own layers. Neither is measured here.
+  runtime Cloudflare runs. Production adds its own layers (routing, metering),
+  not measured here.
 - **Cloudflare's own guidance** (WORLD-ARCHITECTURE §11) is about 500-1,000
   requests a second for one Durable Object. 60 moving players send 1,250-1,430
-  messages a second. If incoming WebSocket messages count fully against that,
-  production would be past it at 25-45 players.
+  messages a second. Whether incoming WebSocket messages count fully against
+  that is not documented; if they do, production would be past it at 25-45
+  players.
 - **The network** here is the machine itself. Real phones add 50-200 ms and
   need the download speeds above.
 
@@ -138,35 +141,37 @@ The only way to know production's number is to run this tool against a copy of
 the server deployed on Cloudflare (a separate worker with its own name, never
 the live game). That is a decision for the owner, not done here.
 
-**For planning:** treat about **40-50 busy players** as what one room holds
-comfortably today, 60 as the edge, and never more. `max_players` (a live flag,
-`docs/specs/room-full.md`) lowers the cap without a deploy.
+**For planning:** with today's code, treat **60 busy players** (today's cap)
+as the most one room holds smoothly. The server would hold more after #885, but
+each phone's download grows with the crowd too (about 3 KB a second per moving
+player). So raising the cap is a choice about phones as much as about the
+server. `max_players` (a live flag, `docs/specs/room-full.md`) lowers the cap
+without a deploy.
 
 ## What would raise the limit
 
-None of these is built yet.
-
-1. **The message diet** (§11): five positions a second with direction and
-   speed instead of thirty. The biggest lever: incoming messages are about half
-   the room's thread at 60 players, and this takes away four fifths of them. It
-   is also the biggest change: the server has to move each player between
-   their messages, or monsters chasing them lurch (v2.3.1635 tried a plain
-   5 Hz and was rolled back, §11).
-2. **Build the moving players' part of the Wheel's tick once, not once per
-   player.** The quickest win: the player list is the same for everyone in the
-   Wheel, only the monsters differ, and that repetition is most of the 43%
-   `buildFor` line. A contained change in `tick.js`. It leaves what each phone
-   downloads unchanged.
-3. **Send each phone only the players near it** (§11's "distance-based
+1. **Done in v2.3.3195 (#885), the same bytes to everyone:**
+   - each tick's shared parts are built once;
+   - each player's monsters are found on a grid;
+   - the safe-ground check comes after the distance check;
+   - the history snapshot reuses its entries.
+2. **Send each phone only the players near it** (§11's "distance-based
    updates"). Monsters already work this way (`_wheelInterest`, 2,400 px). This
-   is the only change here that cuts each phone's download. In town, where
-   everyone is close, it helps less.
-4. **Run monster AI only near players.** Most of the 384 monsters are far from
+   cuts each phone's download and the room's sending. In town, where everyone
+   is close, it helps less. Players off the screen would update less often:
+   only their dots on the map would show it.
+3. **Shorter numbers on the wire.** Positions to a tenth of a pixel instead of
+   sixteen digits: about a quarter fewer bytes, invisible on screen.
+4. **The message diet** (§11): five positions a second with direction and
+   speed instead of thirty. The biggest change: the server has to move each
+   player between their messages, or monsters chasing them lurch (v2.3.1635
+   tried a plain 5 Hz and was rolled back, §11).
+5. **Run monster AI only near players.** Most of the 384 monsters are far from
    everyone at any moment, yet they cost 7.5% of a core with one player in the
-   room, and every one is checked against every player for safe ground.
-5. **Never freeze.** A room that cannot keep up should refuse new players and
-   shed load (for example, stop admitting when the tick rate falls below about
-   30 a second) rather than reach a state it does not recover from.
+   room.
+6. **Refuse new players before the room slows down too much**, for example
+   when it runs fewer than 30 ticks a second, instead of letting everyone's
+   world slow.
 
 ## How it was measured
 
@@ -188,6 +193,8 @@ None of these is built yet.
 - The server's CPU is read from `/proc`: the busiest thread of `workerd` (a
   Durable Object runs on one thread, so that is the number that says "full").
 - `tools/qa/load/load-wheel.mjs` measures the code alone, as above.
+- The local runtime's tracing is off (`X_LOCAL_OBSERVABILITY=false`,
+  `X_LOCAL_EXPLORER=false`; "The trap in local numbers").
 
 The fake players' own CPU (about 20% of a core per process, three processes)
 and event-loop delay (13-15 ms at p99) were watched in every step. They were
@@ -203,6 +210,7 @@ node tools/qa/load/load.mjs                       # 10 .. 200 players, about 12 
 node tools/qa/load/load.mjs --steps 10,25,50 --hold 10
 node tools/qa/load/load.mjs --idle --fighters 0   # everyone standing still
 node tools/qa/load/load.mjs --idle --fighters 0 --pong 30   # plus 30 do-nothing messages a second each
+node tools/qa/load/load.mjs --server ../other/server   # another branch's server, same steps
 
 # the server's own code, no runtime: CPU per player count, and a profile
 node tools/qa/load/load-wheel.mjs 1,10,25,50,100
@@ -221,6 +229,9 @@ node --cpu-prof --cpu-prof-dir=/tmp/prof tools/qa/load/load-wheel.mjs 100
 - `--recover-to`: share kept after a break (0.6);
 - `--recover-settle`: seconds given to recover (20);
 - `--no-recover`;
+- `--observability`: leave wrangler's local tracing on (off by default, see above);
+- `--server <folder>`: test another checkout's `server/` (a branch under test),
+  copied the same way;
 - `--url ws://127.0.0.1:PORT`: an already running LOCAL worker. Anything else
   is refused, because the tool fills a room with hundreds of characters.
 

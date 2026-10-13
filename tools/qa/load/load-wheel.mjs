@@ -1,4 +1,4 @@
-/* ═══ v2.3.3192: WHEEL LOAD — the room's CPU with everyone in the Wheel ═══
+/* ═══ v2.3.3194: WHEEL LOAD — the room's CPU with everyone in the Wheel ═══
  *
  * load-crowd.mjs (v2.3.1973) measured a crowd in the MEADOW: one zone, one
  * shared serialisation per tick, 0.16 ms of the 22 ms tick at 60 players.
