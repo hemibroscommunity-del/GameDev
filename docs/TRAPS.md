@@ -6129,3 +6129,30 @@ server for Brotown and its commons, one per spoke, one per realm.  Measured
 work, and one world behind them. Area servers come behind the doors only when
 the one world server itself is full. Measure where a room's time goes, by
 kind of work, before choosing a split.
+
+## 174. "The join snapshot is the room's state, so spread it" (v2.3.3214)
+
+`getAllPlayerData()` built each player in a joiner's `state_sync` as
+`{...playerState, name, ...session.data}`: the player's WHOLE server state.
+Every joining phone was told every other player's coins, bag, stashes,
+quests, life skills, buffs and the anti-cheat's own histories, and the join's
+`rpg*` claims (the phone's own coins, bag and weapons) went to everyone in
+`player_join` too. Earlier passes cropped what they noticed (gear ids,
+v2.3.2537; the gear stashes kept off the session, v2.3.2523) and left the
+spread "behaviour-frozen".
+
+- No phone read any of it: a peer is drawn from its position, name and look
+  (wsClient.js, `peerCosmetics.js`).
+- It was most of the snapshot: 2.3 KB for a brand-new character, 4.6 KB for a
+  played one with a real look, so ~550 KB a join at 120 players.
+- And it was a leak with a game in it: in No man's land the victim's bag is
+  the killer's (nomansland.js), and anyone reading their own socket could see
+  who was worth hunting.
+
+**The rule.** What other players are told about a player is built from an
+ALLOWLIST of what is public anyway (`PEER_PUBLIC_KEYS`, index.js: the look
+relay's keys, the join's look, a tick's fields), never by spreading a state
+object, and never by cropping the fields someone happened to notice. A field
+added to `playerState` later stays private until it is put on the list on
+purpose. `peer-view.test.mjs` holds every key a phone reads on the snapshot
+road to the list, so the list cannot quietly starve a phone either.

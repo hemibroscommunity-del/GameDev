@@ -78,6 +78,7 @@ function fresh() {
     wireRx: 0,   /* v2.3.3199: what the WIRE bot was sent, unzipped (load.mjs wireProxy) */
     txMsgs: 0, txBytes: 0, moves: 0, swings: 0,
     joins: [], entries: [], deliver: [], seen: [], tickRates: [],
+    joinBytes: [],   /* v2.3.3214: each state_sync's size, unzipped (load.mjs --storm) */
     closes: {}, rejects: {}, errors: 0, deaths: 0, respawns: 0, roomFull: 0,
   };
 }
@@ -176,6 +177,7 @@ function onMessage(bot, data) {
     case 'state_sync':
       if (bot.state !== 'joining') break;
       push(M.joins, performance.now() - bot.openedAt);
+      push(M.joinBytes, len);
       bot.state = 'synced';
       /* wheelHome.js: "a beat in the world before the trip" */
       setTimeout(() => enterWheel(bot), rand(500, 1500));
@@ -443,6 +445,28 @@ process.on('message', (msg) => {
       b.state = 'gone';
       try { if (b.ws) { b.ws.onclose = null; b.ws.close(1000, 'left'); } } catch { /* already gone */ }
       b.ws = null;
+    }
+  } else if (msg.cmd === 'drop') {
+    /* v2.3.3214: load.mjs --storm -- every socket dropped at once, as a
+       network blip or a deploy does; each bot comes back on its own after
+       retry()'s 1-3 s, as a phone does (wsClient's backoff) */
+    for (const b of bots) {
+      if (b.retired || !b.ws) continue;
+      /* the phone gives the old socket up at once (a closing handshake the
+         network never finishes would keep it "open" for minutes): its
+         handlers off, a close sent for form's sake, and a new one in 1-3 s,
+         which the room takes over from the old (join.js, "superseded by
+         reconnect") */
+      const old = b.ws;
+      old.onopen = old.onmessage = old.onerror = old.onclose = null;
+      try { old.close(4001, 'storm'); } catch { /* already going */ }
+      clearInterval(b.timer); b.timer = null;
+      clearInterval(b.pongTimer); b.pongTimer = null;
+      if (b.trackTimer) { clearInterval(b.trackTimer); b.trackTimer = null; }
+      b.ws = null;
+      b.state = 'off';
+      M.closes.storm = (M.closes.storm || 0) + 1;
+      retry(b);
     }
   } else if (msg.cmd === 'stop') {
     stopping = true;
