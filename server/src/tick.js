@@ -64,6 +64,37 @@ export const FAR_PLAYERS = Object.freeze({
   EVERY_MS: 250,
 });
 
+/* ═══ v2.3.3218: THE ROSTER'S FAR PLAYERS, SLIM (the split plan's Phase 0b) ═══
+   Owner, 2026-10-13: "Go recommended but I want you to stress test to see
+   what can be optimized."  About once a second (PRESENCE_REFRESH_TICKS) every
+   phone is sent EVERY connected player's whole entry: the presence roster,
+   which keeps the client's ghost sweep from dropping a player who stands
+   still, carries far players to the world map (FAR_PLAYERS), and heals a join
+   a suspended tab missed.  At 120 players that is ~150 bytes x 120 a second to
+   each phone; at 1,000, ~150 KB a second.
+
+   Now, in the Wheel, a v2 phone's roster is its own (rosterPlanFor below):
+     - a player NEAR it (same zone, within FAR_PLAYERS.NEAR_R -- everyone on
+       its screen and minimap) is sent whole, as before;
+     - a FAR player only {x, y, d, z, vx, vy}: where they are for the world
+       map, which way they face, their zone and their speed -- the fields the
+       client writes whether or not they are there (wsClient.js, `dir` and
+       `zone`), so a slim entry never blanks them.  The rest it leaves as it
+       was, or reads as "none" (sprint, skull, pet, the armour's grade) for a
+       player it does not draw: the first whole entry puts them back, long
+       before they are on screen (a mover coming into reach is sent whole on
+       that tick; a standing one in the next roster);
+     - a far player who has not changed since the last roster is sent again
+       only once FAR_STILL_MS has passed, which keeps the client's 10 s ghost
+       sweep fed (at most FAR_STILL_MS + one roster apart: 4 + 1.1 s, or
+       8.5 s with the room down to 10 ticks a second).
+   v1 phones and every other zone get the whole roster, as before.  No caps
+   flag: an old client reads the same fields.  `slimroster: false` in the live
+   flags sends everyone the whole roster again. */
+export const ROSTER = Object.freeze({
+  FAR_STILL_MS: 4000,
+});
+
 /* a property name JSON.stringify would move to the front of an object
    (an array index: "0", "17", ... below 2^32 - 1) */
 function indexLikeKey(k) {
@@ -81,6 +112,11 @@ export const tickMethods = {
   _farPlayersOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'farplayers') && !f.farplayers);
+  },
+  /* v2.3.3218: `slimroster: false` (ROSTER above) */
+  _slimRosterOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'slimroster') && !f.slimroster);
   },
   _roundPosOff() {
     const f = this._liveFlags;
@@ -453,6 +489,10 @@ export const tickMethods = {
         ...(eqg ? { eqg } : {}),
       }; };
 
+      /* v2.3.3218: a far player in a phone's roster (ROSTER): the first six
+         fields of their whole entry, in its order */
+      const slimWire = (ps) => ({ x: rp(ps.x), y: rp(ps.y), d: ps.d, z: ps.z, vx: rp(ps.vx), vy: rp(ps.vy) });
+
       // Dirty players bucketed by the zone they are standing in, so a
       // group only pays for the peers its members can actually see.
       const dirtyByZone = new Map();
@@ -462,9 +502,13 @@ export const tickMethods = {
       const steadyOn = !this._steadyOff();
       const steady = steadyOn && !presenceTick;
       let held = null;
+      /* v2.3.3218: who changed since the last roster (ROSTER) */
+      const slimOn = !this._slimRosterOff();
+      const rosterMoved = slimOn ? (this._rosterMoved || (this._rosterMoved = new Set())) : null;
       for (const id of this.dirtyPlayers) {
         const ps = this.playerState[id];
         if (!ps) continue;
+        if (rosterMoved) rosterMoved.add(id);
         if (steady && ps.z === WHEEL_ZONE && this._steadyHold(id, playerWire(ps), ts, ps.lastMoveAt)) {
           (held || (held = [])).push(id);
           continue;
@@ -510,7 +554,8 @@ export const tickMethods = {
          mover is near it, so a crowd in town still shares one string. */
       const NEAR2 = FAR_PLAYERS.NEAR_R * FAR_PLAYERS.NEAR_R;
       const playersPlanFor = (rps) => {
-        if (!farOn || presenceTick) return null;
+        if (presenceTick) return rosterPlanFor(rps);   /* v2.3.3218 */
+        if (!farOn) return null;
         if (farList) return { list: farList, far: true };
         if (!wheelDirty) return null;
         const x = rps.x, y = rps.y;
@@ -528,16 +573,46 @@ export const tickMethods = {
       // 1 Hz presence roster -- EVERY connected player, dirty or not
       // (see the ghost-sweep note above; an idle peer is never dirty).
       let roster = null;
+      /* v2.3.3218: the roster's players in its order, and the far ones whose
+         slim entry is due (ROSTER): changed since the last roster, or not
+         sent for FAR_STILL_MS */
+      let rosterPairs = null, rosterDue = null;
       if (presenceTick) {
         roster = Object.create(null);
+        rosterPairs = [];
         for (const [id, ps] of Object.entries(this.playerState)) {
           if (ps) {
             roster[id] = playerWire(ps);
+            rosterPairs.push([id, ps]);
             /* v2.3.3203: the roster is what went out for everyone in it */
             if (steadyOn && ps.z === WHEEL_ZONE) this._steadySent(id, roster[id], ts, ps.lastMoveAt);
           }
         }
+        if (slimOn) {
+          const at = this._rosterSlimAt || (this._rosterSlimAt = new Map());
+          rosterDue = new Set();
+          for (const [id] of rosterPairs) {
+            const was = at.get(id);
+            if (rosterMoved.has(id) || was === undefined || !(ts - was < ROSTER.FAR_STILL_MS)) rosterDue.add(id);
+          }
+        }
       }
+      /* v2.3.3218: one v2 Wheel phone's roster -- the players near it whole,
+         the far ones slim and only when due (ROSTER), in the roster's order;
+         null (the zone's whole roster) with the slim roster off */
+      const rosterPlanFor = (rps) => {
+        if (!rosterDue) return null;
+        const x = rps.x, y = rps.y;
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        const list = [];
+        for (const e of rosterPairs) {
+          const q = e[1];
+          const dx = q.x - x, dy = q.y - y;
+          if (q.z === rps.z && dx * dx + dy * dy <= NEAR2) list.push(e);
+          else if (rosterDue.has(e[0])) list.push([e[0], q, true]);
+        }
+        return { list, far: false };
+      };
 
       /* Batched game events (capped).  v2.3.1163: overflow used to be
          dropped (slice-then-wipe threw away everything past the cap);
@@ -670,7 +745,8 @@ export const tickMethods = {
         const players = Object.create(null);
         let hasPlayers = false;
         if (plan) {
-          for (const [id, ps] of plan.list) { players[id] = playerWire(ps); hasPlayers = true; }
+          /* v2.3.3218: a roster plan's far player is slim (ROSTER) */
+          for (const [id, ps, slim] of plan.list) { players[id] = slim ? slimWire(ps) : playerWire(ps); hasPlayers = true; }
         } else {
           if (roster) {
             for (const id of Object.keys(roster)) { players[id] = roster[id]; hasPlayers = true; }
@@ -813,11 +889,18 @@ export const tickMethods = {
         if (j === undefined) { j = JSON.stringify(id) + ':' + JSON.stringify(playerWire(ps)); playerEntryJson.set(id, j); }
         return j;
       };
+      /* v2.3.3218: and a far player's slim roster entry (ROSTER) */
+      const slimEntryJson = new Map();
+      const slimEntryOf = (id, ps) => {
+        let j = slimEntryJson.get(id);
+        if (j === undefined) { j = JSON.stringify(id) + ':' + JSON.stringify(slimWire(ps)); slimEntryJson.set(id, j); }
+        return j;
+      };
       let indexIds;
       const anyIndexId = () => {
         if (indexIds === undefined) {
           indexIds = false;
-          for (const l of [wheelDirty, farList]) if (l) for (const [id] of l) if (indexLikeKey(id)) { indexIds = true; break; }
+          for (const l of [wheelDirty, farList, rosterPairs]) if (l) for (const [id] of l) if (indexLikeKey(id)) { indexIds = true; break; }
         }
         return indexIds;
       };
@@ -828,10 +911,10 @@ export const tickMethods = {
         if (plan.list.length > 0) {
           if (anyIndexId()) {
             const players = Object.create(null);
-            for (const [id, ps] of plan.list) players[id] = playerWire(ps);
+            for (const [id, ps, slim] of plan.list) players[id] = slim ? slimWire(ps) : playerWire(ps);
             out = JSON.stringify(players);
           } else {
-            out = '{' + plan.list.map(([id, ps]) => playerEntryOf(id, ps)).join(',') + '}';
+            out = '{' + plan.list.map(([id, ps, slim]) => (slim ? slimEntryOf(id, ps) : playerEntryOf(id, ps))).join(',') + '}';
           }
         }
         if (plan.far) farListJson = out;
@@ -960,6 +1043,18 @@ export const tickMethods = {
           groupCache.set(key, msg);
         }
         if (msg) { try { ws.send(msg); } catch {} }
+      }
+
+      /* v2.3.3218: the due far players went out (ROSTER); a player gone from
+         the room is forgotten */
+      if (rosterDue) {
+        const at = this._rosterSlimAt;
+        for (const id of rosterDue) at.set(id, ts);
+        if (at.size > rosterPairs.length) for (const id of at.keys()) if (!this.playerState[id]) at.delete(id);
+        this._rosterMoved.clear();
+      } else if (presenceTick && !slimOn) {
+        this._rosterMoved = null;
+        this._rosterSlimAt = null;
       }
 
       /* v2.3.3197: the far players went out (farList, or the roster) */
