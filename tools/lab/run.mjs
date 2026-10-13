@@ -76,8 +76,11 @@ const out = { started: started.toISOString(), base: LOCAL ? 'local' : BASE, roun
 
 /* ── up? ──────────────────────────────────────────────────────────────────── */
 {
+  /* a brand-new worker's workers.dev address can take a minute or more to
+     answer after its first deploy: wait up to 5 minutes (locally, wrangler's
+     start-up) before calling it a failure */
   let up = false;
-  for (let i = 0; i < 120 && !up; i++) {
+  for (let i = 0; i < 300 && !up; i++) {
     try { const r = await fetch(BASE + '/'); up = r.ok && (await r.text()).startsWith('brotown-lab'); } catch { /* not yet */ }
     if (!up) await sleep(1000);
   }
