@@ -125,11 +125,11 @@ the first item below.
 
 ## Not done here (each would change what players get)
 
-- **Send far players less often** -- done next, in v2.3.3197
+- **Send far players less often** -- done next, in #886
   (`docs/specs/far-players.md`, the owner's go-ahead): each phone still
   downloads every moving player's position here, about 3.5 KB a second per
   player, and that is the limit that matters more than the server's now.
-- **Shorter numbers on the wire** -- also v2.3.3197, whole pixels. The phones
+- **Shorter numbers on the wire** -- also #886, whole pixels. The phones
   already send a tenth of a pixel, so it saves only ~2.4% of a player's update;
   "about a quarter", written here first, came from bots sending 16-digit
   numbers.
