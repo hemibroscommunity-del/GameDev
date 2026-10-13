@@ -61,7 +61,14 @@ download. The bots now send what a phone sends.
 Measured in the sandbox with the bot load test (`tools/qa/load/load.mjs
 --server`, #883), the v2.3.3195 server (#885) against this one, the same
 steps one after the other, the bots sending what a phone sends. Each phone's
-download, the room's thread and its ticks a second:
+download, the room's thread and its ticks a second.
+
+> **v2.3.3199: the downloads below are UNZIPPED** -- the messages as a phone
+> reads them. The room compresses every message it sends, about 13 to 1, so on
+> the wire each figure is about a thirteenth (100 players in town: 202 KB/s
+> unzipped is about 15-17 KB/s on the wire). The percentages hold, and since
+> compressing costs the room CPU per byte, the saving is the server's as well:
+> `docs/specs/load-test.md`, "What a phone really downloads".
 
 **A crowd mostly in town** (70% walking BroTown and its commons, 30% fighting
 out in their lands -- the default mix):

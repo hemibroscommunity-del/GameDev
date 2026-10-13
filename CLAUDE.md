@@ -2122,10 +2122,20 @@ Two protocol versions coexist; both must keep working:
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's
   own code. Measured: smooth to about 70 busy players (today's cap is 60), a
   slower world past that (fewer ticks a second), half speed from about 125, no
-  freeze up to 150. Wrangler's own local tracing (on by default) made every
+  freeze up to 150; since #885 (docs/specs/room-capacity.md) smooth to about
+  110. Wrangler's own local tracing (on by default) made every
   message ~5x dearer and froze the room at ~95: the tool turns it off (TRAPS
   §168). Re-run it after any change to the tick, the move path or the Wheel's
   monsters.
+  - v2.3.3199: THE ROOM COMPRESSES EVERY MESSAGE (permessage-deflate: the
+    worker's compatibility date turns it on, every browser asks for it), and
+    the compressing is about 40% of its thread (79.6% at 100 players, 44.6%
+    with `--no-deflate`), so every byte sent costs the server CPU. A phone's
+    download on the wire is about a thirteenth of what it unzips (~17 KB/s at
+    100 players): the load test's `wire` column, the bots' own byte counts
+    being unzipped (TRAPS §169). In BroTown 98% of the bytes are other
+    players' entries. `--move-ms`, `--seen-r` and `--no-deflate` are the
+    tool's levers: docs/specs/load-test.md "What a phone really downloads".
 
 ## Conventions
 

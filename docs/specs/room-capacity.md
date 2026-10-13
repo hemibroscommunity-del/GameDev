@@ -128,7 +128,10 @@ the first item below.
 - **Send far players less often** -- done next, in #886
   (`docs/specs/far-players.md`, the owner's go-ahead): each phone still
   downloads every moving player's position here, about 3.5 KB a second per
-  player, and that is the limit that matters more than the server's now.
+  player as it unzips it. (v2.3.3199: on the wire about a thirteenth of that,
+  because the room compresses every message -- and the compressing is about
+  40% of the room's thread, so every byte sent costs the server too:
+  `docs/specs/load-test.md`, "What a phone really downloads".)
 - **Shorter numbers on the wire** -- also #886, whole pixels. The phones
   already send a tenth of a pixel, so it saves only ~2.4% of a player's update;
   "about a quarter", written here first, came from bots sending 16-digit
