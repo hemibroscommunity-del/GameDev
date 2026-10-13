@@ -2138,6 +2138,16 @@ Two protocol versions coexist; both must keep working:
     being unzipped (TRAPS §169). In BroTown 98% of the bytes are other
     players' entries. `--move-ms`, `--seen-r` and `--no-deflate` are the
     tool's levers: docs/specs/load-test.md "What a phone really downloads".
+  - v2.3.3201: WHO IS NEAR WHOM, BY SQUARES -- each Wheel monster looks for a
+    player to chase only in the 256 px squares its aggro range reaches
+    (server/src/aggrogrid.js; it measured every player, a quarter of the
+    room's work at 150), and the monsters a phone hears about are found by
+    number-keyed squares (wheelzone.js `GRID_KEY`). The same picks and the
+    same bytes: aggro-grid.test.mjs runs two rooms side by side, the old
+    search and the new, and compares every monster and message every tick.
+    A sticky aggro that has run out is now cleared up front (nothing read
+    one). 3-4 more ticks a second at every size; kill switch `aggrogrid:
+    false`: docs/specs/near-searches.md.
 
 ## Conventions
 
