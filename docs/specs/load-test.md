@@ -253,7 +253,8 @@ without a deploy.
    room. *v2.3.3201 (`docs/specs/near-searches.md`): the part that grew with
    the crowd -- every monster measuring its distance to every player, a
    quarter of the room's work at 150 -- now looks only in the squares near
-   the monster, with the same picks; 3-4 more ticks a second at every size.*
+   the monster, with the same picks; 3-4 more ticks a second at every size,
+   smooth to about 120.*
 6. **Refuse new players before the room slows down too much**, for example
    when it runs fewer than 30 ticks a second, instead of letting everyone's
    world slow.
