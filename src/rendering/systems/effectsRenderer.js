@@ -989,6 +989,8 @@ const DMG_CRIT_FONT_PX = 38;
    damage number keeps its size: "Blocked!", "Dodged", "+30 XP", "+25 G", a
    heal's "+12" and every word are DMG_FONT_PX as ever, so a kill's number is
    the biggest thing over the monster and its XP and gold read under it.
+   (v2.3.3192: no longer -- every one of those is now the plain hit's size, the
+   owner's ask; see MSG_FONT_PX below.)
 
    `?dmgscale=1.5` .. `?dmgscale=2` (1 .. 3) tries another size in a tab, the way
    `?zoom=` does, so nobody waits for a build to see 1.5 or 2.  Where it is
@@ -1020,7 +1022,7 @@ const DMG_MARK_ICONS = new Set(['sword', 'arrow', 'spell', 'crit', 'heart'].conc
    trailing symbol, as in "-12 🌵" (thorns). */
 const DMG_PLAIN_RE = /^[^A-Za-z+]*-?\d+[^A-Za-z\d]*$/;
 /* Is this popup a damage number (drawn DMG_SCALE x) or a notice (drawn as it
-   was)?  Needs a digit, so "Dodged" and "Blocked!" -- which carry `taken` -- are
+   was; v2.3.3192: drawn at MSG_FONT_PX)?  Needs a digit, so "Dodged" and "Blocked!" -- which carry `taken` -- are
    words; never a pay-out or a heal, which start with "+".  Then: a hit on
    someone, a number carrying a weapon, crit or element mark (every real crit
    does -- the bare `crit` flag is also how BroTown's pushNpcMsg makes a NOTE big
@@ -1031,6 +1033,128 @@ function isDamagePopup(dmg, t) {
   if (dmg.taken) return true;
   if (dmg.iconKey && DMG_MARK_ICONS.has(dmg.iconKey)) return true;
   return DMG_PLAIN_RE.test(t);
+}
+/* ═══ v2.3.3192: A MESSAGE IS AS BIG AS A DAMAGE NUMBER ═══
+   Owner, 2026-10-12: "Make the messages in the game like "no mana" and other
+   things like "quest complete!" the same font size as the combat damage
+   numbers".
+
+   v2.3.3033 grew the numbers and left everything else at DMG_FONT_PX, and
+   measured on the QA phone (390 x 844) in BroTown that is what it drew: a plain
+   hit 24.9 CSS px tall and "No mana!", "Quest Complete!" and "+30 XP" 14.3
+   beside it, folded; 19.0 against 10.9 with the dashboard up.
+
+   So every popup that is not a damage number -- a word ("No mana!",
+   "Blocked!", "Swimming!", "Requires Fishing Lv 5"), a reward line ("+12
+   Woodcutting XP", "+ Frost Shard"), a heal's "+12" -- is drawn at the PLAIN
+   hit's size: DMG_FONT_PX x DMG_SCALE, so it follows `?dmgscale=` with them.
+   A crit stays the one bigger thing.  A crit-flagged NOTE (BroTown's
+   pushNpcMsg, 38 px before this) is a message too: the plain hit's size, and
+   it still wiggles.  What follows a number's size -- its outline, the lift
+   off whatever is under it, the stacking, the climb -- follows a message's
+   the same way (`_k`, DMG_SCALE, for both).
+
+   The owner read the numbers as not changing with the zoom; they did -- they
+   were drawn in the world, and the dashboard folded draws it 1.31x, the plain
+   hit above 19.0 -> 24.9 CSS px.  So, asked, the owner chose ONE SIZE ON THE
+   SCREEN for both: POPUP_ZOOM below. */
+const MSG_FONT_PX = DMG_FONT_PX * DMG_SCALE;
+/* ═══ v2.3.3192: ...AND ONE SIZE ON THE SCREEN, WHATEVER THE ZOOM ═══
+   Owner, offered numbers and messages pinned to one size on the screen like
+   the name plates: "Yes do fixed size instead".
+
+   Every size and distance in this popup code is in world px AS DRAWN AT
+   POPUP_ZOOM: the world's scale on the 390 x 844 phone with the dashboard
+   folded (VIEW_OUT 0.77 x its 806 px canvas / 1024 -- the bro 64 px tall,
+   v2.3.3020), the zoom every one of them was tuned at (v2.3.3033): a plain
+   hit's type 22.3 CSS px, a crit's 40.3.  Each frame the world's own scale is
+   divided back out -- `Z` = POPUP_ZOOM / S._worldScaleX, as the name plates
+   (v2.3.2513) and the chat bubble (v2.3.2247) do theirs -- so with the
+   dashboard up (scale 0.4625) a popup is drawn 1.31x the world px and is the
+   same on the screen, and on a bigger phone, sideways or in the desktop shell
+   it is that CSS size too.  Z scales a popup's size AND everything measured
+   from where it was pushed -- its lift, its place in a stack, its climb, its
+   mark and the gap before it, its wrap and its margin from the screen's edge
+   -- so it looks at every zoom as it does at POPUP_ZOOM; only the spot it was
+   pushed at (over a bar, over your head) stays the world's.  `?popupworld`
+   draws them in the world as before, to compare. */
+const POPUP_ZOOM = 0.606;
+const POPUP_Z_MIN = 0.25, POPUP_Z_MAX = 3;   /* a sanity bound (a near-zero scale from a mid-rebuild frame), never a design term */
+const POPUP_WORLD = (() => {
+  try { return typeof location !== 'undefined' && /[?&]popupworld\b/.test(location.search || ''); }
+  catch (e) { return false; }
+})();
+function popupZoomK(S) {
+  const w = S && S._worldScaleX;
+  if (POPUP_WORLD || !(w > 0.01)) return 1;
+  return Math.min(POPUP_Z_MAX, Math.max(POPUP_Z_MIN, POPUP_ZOOM / w));
+}
+/* ═══ v2.3.3192: ...AND A LONG ONE WRAPS, NEVER SHRINKS ═══
+   At that size a long message is wider than a phone: "Element Burst needs an
+   enchanted weapon" is ~750 world px, a "📢" announcement (60 characters)
+   ~1,000, and an upright phone sees ~640 world px across in the Wheel (the
+   bro 64 px tall, worldViewport).  So a message wider than MSG_WRAP_W is
+   broken at its spaces into as few lines as fit, as even as they can be,
+   centred (msgLines) -- the type stays the numbers' size.  520 is about 26
+   characters a line, so the common ones keep one ("Return to Mayor Bro",
+   "Requires Woodcutting Lv 10"), and at most MSG_MAX_LINES; on a narrower
+   screen no wider than MSG_WRAP_SCREEN of it (popups being one CSS size, a
+   320 px phone gets ~21 characters a line).  And it is kept inside the view,
+   MSG_EDGE_PX clear of its sides (_updateDamageNumbers): over you against a
+   dungeon's wall the camera stops following, and half of a centred message
+   would be off the screen. */
+const MSG_WRAP_W = 520;
+const MSG_WRAP_SCREEN = 0.82;
+const MSG_MAX_LINES = 4;
+const MSG_EDGE_PX = 12;
+if (typeof window !== 'undefined') window.__btMsgFont = { px: MSG_FONT_PX, wrap: MSG_WRAP_W, edge: MSG_EDGE_PX, zoom: POPUP_ZOOM, world: POPUP_WORLD };   /* QA: mp-dmgsize */
+/* The widest a message may be laid out, in popup px: MSG_WRAP_W, or less where
+   the screen (its CSS width = the view x the world's scale) is narrower. */
+function msgWrapW(S) {
+  const cssW = S && S._viewW > 0 && S._worldScaleX > 0.01 ? S._viewW * S._worldScaleX : 0;
+  return cssW > 0 && !POPUP_WORLD ? Math.min(MSG_WRAP_W, MSG_WRAP_SCREEN * cssW / POPUP_ZOOM) : MSG_WRAP_W;
+}
+/* `words` laid in `n` lines whose longest is as short as it can be, by
+   characters (within one message its letters are near enough one width), each
+   line at least one word.  A message is a dozen words at most, so every way of
+   cutting it is tried. */
+function msgLines(words, n) {
+  const m = words.length;
+  n = Math.min(n, m);
+  if (n <= 1) return [words.join(' ')];
+  const pre = [0];
+  for (let i = 0; i < m; i++) pre.push(pre[i] + words[i].length);
+  const len = (i, j) => pre[j] - pre[i] + (j - i - 1);   /* words[i..j-1] with a space between each */
+  /* best[l][j]: the shortest possible longest line, laying the first j words in l lines; cut[l][j]: where that l-th line starts */
+  const best = [], cut = [];
+  for (let l = 0; l <= n; l++) { best.push(new Array(m + 1).fill(Infinity)); cut.push(new Array(m + 1).fill(0)); }
+  best[0][0] = 0;
+  for (let l = 1; l <= n; l++) {
+    for (let j = l; j <= m; j++) {
+      for (let i = l - 1; i < j; i++) {
+        const v = Math.max(best[l - 1][i], len(i, j));
+        if (v < best[l][j]) { best[l][j] = v; cut[l][j] = i; }
+      }
+    }
+  }
+  const lines = [];
+  for (let l = n, j = m; l > 0; l--) { const i = cut[l][j]; lines.unshift(words.slice(i, j).join(' ')); j = i; }
+  return lines;
+}
+/* Wrap a message's freshly made Text / BitmapText (at its resting scale, so
+   `width` is popup px) if it is wider than `maxW` (msgWrapW).  Returns its lines. */
+function wrapMessage(text, plain, maxW) {
+  if (!(text.width > maxW) || plain.indexOf('\n') >= 0) return 1;
+  const words = plain.split(' ').filter(Boolean);
+  const most = Math.min(MSG_MAX_LINES, words.length);
+  if (most < 2) return 1;   /* one long word: nowhere to break it */
+  /* centred lines -- the glyph atlas's text is made left-aligned; one line is the same either way */
+  if (text.style && text.style.align !== 'center') text.style.align = 'center';
+  let n = Math.max(2, Math.min(most, Math.ceil(text.width / maxW)));
+  for (;; n++) {
+    text.text = msgLines(words, n).join('\n');
+    if (n >= most || text.width <= maxW) return n;
+  }
 }
 /* v2.3.2212 (owner: "change the damage color to a light yellow when it's a
    crit").  Was the gold #f5c542 / amber #fbbf24 pair -- two shades for one
@@ -5029,6 +5153,9 @@ export class EffectsRenderer {
        Text).  Age-based cleanup below (1.5 s TTL) handles bounding by
        itself; with reasonable spawn rates we never hold more than a few
        dozen dmg numbers concurrently. */
+    /* v2.3.3192: one size on the screen (POPUP_ZOOM): every size and distance
+       below is in popup px, drawn x Z in the world. */
+    const Z = popupZoomK(S);
     for (let i = numbers.length - 1; i >= 0; i--) {
       const dmg = numbers[i];
       const age = (now - dmg.ts) / 1000;
@@ -5104,73 +5231,23 @@ export class EffectsRenderer {
            notice keeps DMG_FONT_PX.  Its centre is lifted by DMG_LIFT of the
            extra height, so the bigger glyph keeps the air under it that the
            old one had over the bar.  Both are stamped on the record: the
-           stacking below, the icon's cap and gap and the QA probe read them. */
-        const k = isDamagePopup(dmg, t) ? DMG_SCALE : 1;
-        const baseFontSize = dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX;
+           stacking below, the icon's cap and gap and the QA probe read them.
+           v2.3.3192: a notice is the plain number's size now (MSG_FONT_PX):
+           its design size is DMG_FONT_PX whatever its `crit` flag says, so
+           everything scales by DMG_SCALE, and the lift is measured from the
+           size it USED to be drawn at (a 38 px crit note needs none). */
+        const isDmg = isDamagePopup(dmg, t);
+        const oldFontSize = dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX;
+        const baseFontSize = isDmg ? oldFontSize : DMG_FONT_PX;
+        const k = DMG_SCALE;
         const fontSize = baseFontSize * k;
         dmg._k = k;
         dmg._fs = fontSize;
-        dmg._lift = (fontSize - baseFontSize) * DMG_LIFT;
-        /* Anti-overlap: separate a new popup from nearby live ones so
-           kill-shot popups (damage, XP, gold spawned in one frame at
-           slightly different Y) don't visually overlap. We compute a
-           target Y rather than adding a fixed offset, because the spawn
-           Ys differ.
-
-           v2.3.1638 — STACK UPWARD, AND NEVER BELOW SPAWN.  This is the
-           real fix for "damage numbers appear over the monster HP
-           number", reported three times.  The previous two fixes both
-           raised the SPAWN clearance in entityRenderer
-           (_popupTopOff: 24 -> 40 in v2.3.1402, 40 -> 62 in v2.3.1403)
-           and the owner kept seeing it, because the spawn was never the
-           mechanism — THIS loop was.  It placed each new popup
-           SPACING px BELOW the lowest live neighbour, i.e. walking the
-           stack back DOWN toward the bar it had just been raised above.
-           A neighbour qualifies while it is within 50 px of the spawn Y,
-           so the worst-case placement was spawn + 50 + 26 = spawn + 76 —
-           and with only 62 px of clearance that lands 14 px past the bar's
-           top edge, right on the centred HP number (bar is 44x13).  That
-           is why sustained fights overlapped and single hits didn't, and
-           why each clearance bump reduced the overlap (52 -> 36 -> 14 px
-           past the bar) without ever removing it.
-           Stacking AWAY from the monster fixes it structurally: the
-           Math.min(0, ...) clamp makes _stackOffset provably <= 0, and
-           since the float only ever subtracts (age * 40), a popup can now
-           never render below its spawn Y.  The clearance in
-           entityRenderer.js is therefore a true floor rather than a
-           starting point, and no future clearance bump can be eaten. */
-        const SPACING = 26;
-        let highestY = Infinity;
-        let highestSp = SPACING;
-        let hasNeighbor = false;
-        /* v2.3.3033: where THIS popup spawns once lifted, and (below) how far
-           apart two popups must be for their sizes: 26 px was a 21 px number's
-           line (26/21 of its font), so two of any size keep that same share of
-           their average font -- 26 at 21 + 21, 46 at 37 + 37, 64 at a crit over
-           a plain hit -- and the window that finds a neighbour grows with it
-           (50 px at 26, so a stack is still three deep in one frame). */
-        const myY = dmg.y - dmg._lift;
-        /* v2.3.1347: the neighbor scan is O(n) per NEW popup (O(n²) in a
-           burst). Past ~40 live popups the field is dense chaos where
-           stacking placement is unreadable anyway — skip the scan and
-           take the raw spawn position. */
-        for (let j = 0; numbers.length <= 40 && j < numbers.length; j++) {
-          if (j === i) continue;
-          const o = numbers[j];
-          if (!o._pixiText || o._pixiText.destroyed) continue;
-          const pairSp = Math.max(SPACING, (fontSize + (o._fs || DMG_FONT_PX)) / 2 * (SPACING / DMG_FONT_PX));
-          if (Math.abs(o.x - dmg.x) > 60 * Math.max(1, pairSp / SPACING)) continue;
-          const oAge = (now - o.ts) / 1000;
-          if (oAge > 0.6) continue;
-          const oY = o.y + (o._stackOffset || 0) - (o._lift || 0) - oAge * (typeof o.rise === 'number' ? o.rise : 40 * (o._k || 1));
-          if (Math.abs(oY - myY) > 50 * Math.max(1, pairSp / SPACING)) continue;
-          hasNeighbor = true;
-          if (oY < highestY) { highestY = oY; highestSp = pairSp; }
-        }
-        /* Clamp to <= 0: a neighbour sitting BELOW this popup's spawn
-           would otherwise push the offset positive and re-open the exact
-           hole this fix closes. */
-        dmg._stackOffset = hasNeighbor ? Math.min(0, (highestY - highestSp) - myY) : 0;
+        dmg._base = baseFontSize;
+        dmg._msg = !isDmg;
+        dmg._lift = Math.max(0, fontSize - oldFontSize) * DMG_LIFT;
+        /* (v2.3.3192: the stacking that was here comes after the Text is made
+           now -- a wrapped message's height is known only then.) */
         /* Special-attack hits used to render at 2x to read as "heavy", but
            that crowded the screen and hid the normal-hit cadence. They now
            match normal size and instead get a bright outer glow (see
@@ -5238,6 +5315,89 @@ export class EffectsRenderer {
           }
         }
         text.anchor.set(0.5, 0.5);
+        /* ═══ v2.3.3192: A LONG MESSAGE WRAPS (MSG_WRAP_W) ═══
+           Before the stacking below, which has to know how tall it came out
+           and how far it reaches to the side (`_lines`, `_w`: a number's
+           are never read, so it is never measured).  Lifted by its extra
+           lines' height so its LAST line sits where the one line would have:
+           it grows upward, off whatever it was pushed over. */
+        dmg._lines = 1;
+        if (dmg._msg) {
+          const _h1 = text.height;
+          const _n = wrapMessage(text, String(dmg.text == null ? '' : dmg.text), msgWrapW(S));
+          if (_n > 1) {
+            dmg._lines = _n;
+            dmg._lift += Math.max(0, text.height - _h1) / 2;
+          }
+          dmg._w = text.width;
+        }
+        /* Anti-overlap: separate a new popup from nearby live ones so
+           kill-shot popups (damage, XP, gold spawned in one frame at
+           slightly different Y) don't visually overlap. We compute a
+           target Y rather than adding a fixed offset, because the spawn
+           Ys differ.
+
+           v2.3.1638 — STACK UPWARD, AND NEVER BELOW SPAWN.  This is the
+           real fix for "damage numbers appear over the monster HP
+           number", reported three times.  The previous two fixes both
+           raised the SPAWN clearance in entityRenderer
+           (_popupTopOff: 24 -> 40 in v2.3.1402, 40 -> 62 in v2.3.1403)
+           and the owner kept seeing it, because the spawn was never the
+           mechanism — THIS loop was.  It placed each new popup
+           SPACING px BELOW the lowest live neighbour, i.e. walking the
+           stack back DOWN toward the bar it had just been raised above.
+           A neighbour qualifies while it is within 50 px of the spawn Y,
+           so the worst-case placement was spawn + 50 + 26 = spawn + 76 —
+           and with only 62 px of clearance that lands 14 px past the bar's
+           top edge, right on the centred HP number (bar is 44x13).  That
+           is why sustained fights overlapped and single hits didn't, and
+           why each clearance bump reduced the overlap (52 -> 36 -> 14 px
+           past the bar) without ever removing it.
+           Stacking AWAY from the monster fixes it structurally: the
+           Math.min(0, ...) clamp makes _stackOffset provably <= 0, and
+           since the float only ever subtracts (age * 40), a popup can now
+           never render below its spawn Y.  The clearance in
+           entityRenderer.js is therefore a true floor rather than a
+           starting point, and no future clearance bump can be eaten. */
+        const SPACING = 26;
+        let highestY = Infinity;
+        let highestSp = SPACING;
+        let hasNeighbor = false;
+        /* v2.3.3033: where THIS popup spawns once lifted, and (below) how far
+           apart two popups must be for their sizes: 26 px was a 21 px number's
+           line (26/21 of its font), so two of any size keep that same share of
+           their average font -- 26 at 21 + 21, 46 at 37 + 37, 64 at a crit over
+           a plain hit -- and the window that finds a neighbour grows with it
+           (50 px at 26, so a stack is still three deep in one frame).
+           v2.3.3192: a popup stands as tall as its font times its lines, and a
+           wide message reaches half its width to each side, so a neighbour
+           under either end of it counts.  And all of it is popup px: where
+           two popups stand in the WORLD is their spots plus Z x their offsets
+           (as they are drawn, below), every distance compared Z x, and the
+           offset kept in popup px again. */
+        const myY = dmg.y - Z * dmg._lift;
+        const myH = fontSize * dmg._lines;
+        /* v2.3.1347: the neighbor scan is O(n) per NEW popup (O(n²) in a
+           burst). Past ~40 live popups the field is dense chaos where
+           stacking placement is unreadable anyway — skip the scan and
+           take the raw spawn position. */
+        for (let j = 0; numbers.length <= 40 && j < numbers.length; j++) {
+          if (j === i) continue;
+          const o = numbers[j];
+          if (!o._pixiText || o._pixiText.destroyed) continue;
+          const pairSp = Math.max(SPACING, (myH + (o._fs || DMG_FONT_PX) * (o._lines || 1)) / 2 * (SPACING / DMG_FONT_PX));
+          if (Math.abs(o.x - dmg.x) > Z * Math.max(60 * Math.max(1, pairSp / SPACING), ((dmg._w || 0) + (o._w || 0)) / 2)) continue;
+          const oAge = (now - o.ts) / 1000;
+          if (oAge > 0.6) continue;
+          const oY = o.y + Z * ((o._stackOffset || 0) - (o._lift || 0) - oAge * (typeof o.rise === 'number' ? o.rise : 40 * (o._k || 1)));
+          if (Math.abs(oY - myY) > Z * 50 * Math.max(1, pairSp / SPACING)) continue;
+          hasNeighbor = true;
+          if (oY < highestY) { highestY = oY; highestSp = pairSp; }
+        }
+        /* Clamp to <= 0: a neighbour sitting BELOW this popup's spawn
+           would otherwise push the offset positive and re-open the exact
+           hole this fix closes. */
+        dmg._stackOffset = hasNeighbor ? Math.min(0, ((highestY - Z * highestSp) - myY) / Z) : 0;
         this.dmgLayer.addChild(text);
         this.dmgTexts.push(text);
         dmg._pixiText = text;
@@ -5268,6 +5428,8 @@ export class EffectsRenderer {
              the height, which the round badges never reach */
           const _wide = TIGHT_POPUP_ICONS.has(iconKey) ? (targetH * 1.5) / tex.width : Infinity;
           icon.scale.set(Math.min(targetH / tex.height, _wide));
+          /* v2.3.3192: its popup-px scale, drawn x Z each frame (below) */
+          icon._popupScale = icon.scale.x;
           this.dmgLayer.addChild(icon);
           dmg._pixiIcon = icon;
           /* v2.3.2996: QA -- which icons the numbers were actually drawn with
@@ -5303,7 +5465,30 @@ export class EffectsRenderer {
         }
       }
       const text = dmg._pixiText;
-      text.x = dmg.x;
+      /* v2.3.3192: the gap after the text, before its mark: a number's own
+         (below); a message's is the plain number's, crit-flagged or not */
+      const _icon = dmg._pixiIcon && !dmg._pixiIcon.destroyed ? dmg._pixiIcon : null;
+      const _iconGap = Math.max(10, (dmg._base || (dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX)) * 0.35) * (dmg._k || 1);   /* v2.3.3033: x the number's scale */
+      /* v2.3.3192: one size on the screen -- the mark x Z (POPUP_ZOOM), before
+         its width is read for the edge below; `_z` for QA (mp-dmgsize) */
+      dmg._z = Z;
+      if (_icon && _icon._popupScale) _icon.scale.set(_icon._popupScale * Z);
+      /* ═══ v2.3.3192: A MESSAGE STAYS ON THE SCREEN ═══
+         Kept MSG_EDGE_PX inside the view's sides by its resting width (`_w`,
+         so the spawn pop does not shove it about) and its mark's: against a
+         dungeon's wall the camera stops following you, and a message centred
+         over you there ran off the screen.  Numbers are where they are.  A
+         crit-flagged note wiggles 10% wider at most, so it is held in by that.
+         Wider than the view (one word longer than it, never in this game),
+         it is centred on it. */
+      let _x = dmg.x;
+      if (dmg._msg && dmg._w > 0 && S.camera && S._viewW > 0) {
+        const _left = Z * (dmg._w / 2 * (dmg.crit ? 1.1 : 1) + MSG_EDGE_PX);
+        const _right = _left + (_icon ? Z * _iconGap + _icon.width : 0);
+        const _lo = S.camera.x + _left, _hi = S.camera.x + S._viewW - _right;
+        _x = _lo <= _hi ? Math.min(_hi, Math.max(_lo, _x)) : (_lo + _hi) / 2;
+      }
+      text.x = _x;
       /* v2.3.1985: the climb rate is per-popup now.  40 px/s is right for a
          damage number, which exists to be glanced at and get out of the way,
          and wrong for anything you are meant to READ: at 40 px/s a popup held
@@ -5315,7 +5500,8 @@ export class EffectsRenderer {
          apart were 28 px apart for a 14 px digit, and at 1.75x the size would have
          been 28 px for a 26 px one -- touching.  Scaled, they keep their gap. */
       const rise = (typeof dmg.rise === 'number') ? dmg.rise : 40 * (dmg._k || 1);
-      text.y = dmg.y + (dmg._stackOffset || 0) - (dmg._lift || 0) - age * rise;   /* v2.3.3033: lifted by the bigger glyph's extra half height */
+      /* v2.3.3033: lifted by the bigger glyph's extra half height; v2.3.3192: every offset from the spot it was pushed at x Z */
+      text.y = dmg.y + Z * ((dmg._stackOffset || 0) - (dmg._lift || 0) - age * rise);
       /* Fade over 80% of ttl so longer-lived popups (kill messages with
          ttl=2.5) actually stay visible, not invisible most of their life.
          v2.3.3059: `hold` (s) -- full strength that long, then the fade over
@@ -5338,16 +5524,16 @@ export class EffectsRenderer {
       const critWiggle = dmg.crit ? Math.sin(age * 8) * 0.1 : 0;
       /* v2.3.1357: BitmapText popups render at a 2x bake scaled down —
          the pop/wiggle multiplies AROUND that base scale, not around 1. */
-      text.scale.set((text._bmpBaseScale || 1) * (1 + popBoost + critWiggle));
-      if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
+      text.scale.set((text._bmpBaseScale || 1) * (1 + popBoost + critWiggle) * Z);   /* v2.3.3192: x Z, one size on the screen */
+      if (_icon) {
         /* Place icon flush to the right of the text. Text anchor is
            (0.5, 0.5), so the right edge sits at text.x + text.width/2.
            Gap scales with fontSize.  Min 10 px because the prior 4 px
            floor still let the magic icon clip the last digit on
            fire-goblin hits ("32" reading as "3[magic]").  Stroked text
-           extends a few px past text.width on iOS canvas rendering. */
-        const _iconGap = Math.max(10, (dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX) * 0.35) * (dmg._k || 1);   /* v2.3.3033: x the number's scale */
-        dmg._pixiIcon.x = text.x + text.width / 2 + _iconGap;
+           extends a few px past text.width on iOS canvas rendering.
+           (v2.3.3192: `_iconGap` is worked out above, for the edge too.) */
+        dmg._pixiIcon.x = text.x + text.width / 2 + Z * _iconGap;
         dmg._pixiIcon.y = text.y;
         dmg._pixiIcon.alpha = text.alpha;
       }
@@ -5355,7 +5541,10 @@ export class EffectsRenderer {
         /* Sub text sits after the icon if there is one, otherwise flush
            to the right edge of the main text.  Anchor is (0, 0.5) so
            setting .x places its left edge. */
-        const _subGap = Math.max(10, (text.style.fontSize || 21) * 0.35);
+        /* v2.3.3192: in popup px x Z, its own pop and wiggle -- it is classic
+           Text at its own size, so never the glyph atlas text's bake scale
+           (text.scale.x drew it a third of its size beside a BitmapText) */
+        const _subGap = Z * Math.max(10, (dmg._fs || DMG_FONT_PX) * 0.35);
         let subX = text.x + text.width / 2 + _subGap;
         if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
           subX = dmg._pixiIcon.x + (dmg._pixiIcon.width || 0) + _subGap;
@@ -5363,7 +5552,7 @@ export class EffectsRenderer {
         dmg._pixiSub.x = subX;
         dmg._pixiSub.y = text.y;
         dmg._pixiSub.alpha = text.alpha;
-        dmg._pixiSub.scale.set(text.scale.x);
+        dmg._pixiSub.scale.set((1 + popBoost + critWiggle) * Z);
       }
     }
     /* Compact dmgTexts: drop refs to destroyed Text instances
