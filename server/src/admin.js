@@ -144,6 +144,9 @@ export const adminMethods = {
           tickPace: this._tickPaceInfo(),
           /* v2.3.3203: how often a walker's update waited (steadymovers.js) */
           steadyMovers: this._steadyInfo(),
+          /* v2.3.3210: the 2 s look relay -- tracks in, and how many went out
+             whole, as only what changed, or not at all (lookrelay.js) */
+          lookRelay: this._lookInfo(),
           eventBufferLen: this.eventBuffer.length,
           protocolVersions: v,
           ts: Date.now(),

@@ -6129,3 +6129,27 @@ server for Brotown and its commons, one per spoke, one per realm.  Measured
 work, and one world behind them. Area servers come behind the doors only when
 the one world server itself is full. Measure where a room's time goes, by
 kind of work, before choosing a split.
+
+## 173. "The bots do what a phone does on the wire" (v2.3.3210)
+
+`tools/qa/load/bots.mjs` says it, and for the messages it models it is true:
+the join, the zone change, moves at a phone's rate, pongs, swings. But a phone
+also sends `track` every 2 s: its whole look and stats, about 940 bytes. The
+worker relayed each one to every other player in the room as a message of its
+own. The bots never sent it.
+
+That is N(N-1)/2 sends a second, more messages than all the ticks at 120
+players, and every capacity number before v2.3.3210 left it out. "Smooth to
+about 145" was really about 105, and the cap of 120 went past it.
+
+**The rule.**
+
+- Before trusting a load test, list every message the client sends on a timer
+  (`setInterval`, the game loop's "every N s" slots in BroTown.jsx), not only
+  the ones a player triggers.
+- Check each against the bots. A message the server FANS OUT costs it
+  N times over, so a small one the bots skip can matter more than a big one
+  they model.
+- `--track` (a real phone's payload, `track-sample.json` from
+  `mp-trackcapture`) is the bots' now. `docs/specs/look-relay.md` has the before
+  and after.

@@ -302,6 +302,18 @@ The fake players' own CPU (about 20% of a core per process, three processes)
 and event-loop delay (13-15 ms at p99) were watched in every step. They were
 not the bottleneck.
 
+## v2.3.3210: `--track`, the phones' 2 s look
+
+The bots never sent `track`: a phone's whole look, every 2 s, which the worker
+relayed to every other player. So every number above it left that out.
+
+- `--track` makes each bot send a real phone's payload
+  (`track-sample.json`, caught by `mp-trackcapture`).
+- Without the look relay's change (`docs/specs/look-relay.md`) the room was
+  smooth only to about 105. With it, about 145, as these pages say.
+- Use `--track` for any capacity number from now on (TRAPS §173).
+- `--walk-r N` packs the walkers into a smaller circle round the square.
+
 ## How to run it
 
 Both tools run here in the sandbox. Neither touches the live game.

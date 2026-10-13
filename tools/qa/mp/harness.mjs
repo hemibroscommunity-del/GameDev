@@ -30,7 +30,7 @@ import { chromium } from 'playwright';
 import zlib from 'node:zlib';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { readFile, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, writeFile, cp, mkdtemp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { extname, join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -237,9 +237,23 @@ export async function startWorker(port) {
   const env = process.env.BT_NO_TRACE === '1'
     ? Object.assign({}, process.env, { X_LOCAL_OBSERVABILITY: 'false', X_LOCAL_EXPLORER: 'false' })
     : process.env;
+  /* v2.3.3210: BT_MAX_PLAYERS=N runs a COPY of server/ with the player cap
+     set to N (load.mjs serverCopy's way), for a crowd scenario past the
+     shipped cap (mp-crowdbots).  The repo's own server/ is never edited. */
+  let cwd = join(REPO, 'server');
+  if (+process.env.BT_MAX_PLAYERS > 0) {
+    const dir = await mkdtemp(join(tmpdir(), 'bt-crowd-server-'));
+    await cp(join(REPO, 'server', 'src'), join(dir, 'src'), { recursive: true });
+    for (const f of ['wrangler.toml', 'package.json']) await cp(join(REPO, 'server', f), join(dir, f));
+    const f = join(dir, 'src', 'index.js');
+    const src = await readFile(f, 'utf8');
+    if (!/this\.MAX_PLAYERS = \d+;/.test(src)) throw new Error('harness: MAX_PLAYERS not found in server/src/index.js');
+    await writeFile(f, src.replace(/this\.MAX_PLAYERS = \d+;/, `this.MAX_PLAYERS = ${+process.env.BT_MAX_PLAYERS};`));
+    cwd = dir;
+  }
   const proc = spawn('npx', ['wrangler', 'dev', '--port', String(port), '--local',
     '--ip', '127.0.0.1', '--persist-to', state, '--var', `ADMIN_KEY:${ADMIN_KEY}`], {
-    cwd: join(REPO, 'server'), env, stdio: ['ignore', 'pipe', 'pipe'], detached: true,
+    cwd, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   });
   let log = '';
   proc.stdout.on('data', (d) => { log += d; });

@@ -279,8 +279,19 @@ export const clanMethods = {
     if (lsession) this._clanStampTag(playerId, lsession.data);
     /* null, not delete: the peer merge is Object.assign, so a falsy VALUE is
        the only way to clear a key across the wire.  Every reader is
-       truthiness-gated, so null renders as "no tag" rather than as "null". */
-    this.broadcastExcept(lws, { type: 'player_update', id: playerId, data: { clanTag: null, clanColor1: null } });
+       truthiness-gated, so null renders as "no tag" rather than as "null".
+       v2.3.3210: with the build keys (hg/fr) the player has -- the phone sets
+       a peer's height and frame from EVERY player_update (`_ud.hg || null`,
+       wsClient.js), so a relay without them put a tall or broad player back
+       to average on every screen.  The 2 s look relay used to repair that two
+       seconds later; it now goes only when the look changes (lookrelay.js),
+       so the next one is told to go whole too (_lookForget). */
+    const _cd = { clanTag: null, clanColor1: null };
+    const _ld = lsession && lsession.data;
+    if (_ld && _ld.hg) _cd.hg = _ld.hg;
+    if (_ld && _ld.fr) _cd.fr = _ld.fr;
+    this.broadcastExcept(lws, { type: 'player_update', id: playerId, data: _cd });
+    if (lsession && typeof this._lookForget === 'function') this._lookForget(lsession);
     this._clanSendState(playerId);
   },
 
