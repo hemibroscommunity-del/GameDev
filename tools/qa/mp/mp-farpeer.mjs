@@ -10,7 +10,8 @@
  * cadence on a phone; this box draws a browser too few frames a second to
  * send them from a page).  It
  *   1. walks beside the watcher: the watcher's copy of them is updated on
- *      nearly every move;
+ *      nearly every move (v2.3.3203: on a straight walk about every 66 ms,
+ *      steady movers -- 12 a second at least);
  *   2. is carried out past NEAR_R and walks there: the watcher's copy is
  *      updated about four times a second, never drops out of the watcher's
  *      players, and ends where the walker stopped;
@@ -146,8 +147,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.waitForTimeout(400);
   const p1 = await peerOnB();
   const d1 = Math.hypot(W.x - b0.x, W.y - b0.y);
+  /* v2.3.3203: a straight walk is held to an update every ~66 ms (steady
+     movers, server/src/steadymovers.js) -- about 15 a second, the turns at
+     once -- where every move went out before */
   rec.ok(`near (${Math.round(d1)} px): the watcher's copy was updated ${near.perSec} times a second for the walker's ${near.sentPerSec} moves`,
-    near.perSec >= near.sentPerSec * 0.6 && near.perSec >= 15, { near, d1 });
+    near.perSec >= 12, { near, d1 });
   rec.ok(`positions reach the watcher in whole pixels (${p1 && p1.x}, ${p1 && p1.y})`, !!p1 && Number.isInteger(p1.x) && Number.isInteger(p1.y), p1);
 
   /* ── 2. far ── */
@@ -170,7 +174,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.waitForTimeout(1500);
   const near2 = await watch(3000);
   const d3 = Math.hypot(W.x - b0.x, W.y - b0.y);
-  rec.ok(`back near (${Math.round(d3)} px): updated ${near2.perSec} times a second again`, near2.perSec >= near2.sentPerSec * 0.6 && near2.perSec >= 15, { near2, d3 });
+  rec.ok(`back near (${Math.round(d3)} px): updated ${near2.perSec} times a second again`, near2.perSec >= 12, { near2, d3 });
 
   W.close();
   stopAlive = true;
