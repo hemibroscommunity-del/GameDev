@@ -9,7 +9,9 @@ the aim line is drawn only then.
 
 - **Before** is main's build (v2.3.3197). It was held for 7 seconds.
 - **After** is this change. It was held until the target had taken 3 arrows
-  (the Town Hall) or 2 (the rock).
+  (the Town Hall) or 2 (the rock). The rock was taken again on the final
+  build, after arrows began flying over low things: nothing else is on its
+  line, so it is still what the bow is aimed at.
 
 The pictures are cropped round the archer and the target.
 
