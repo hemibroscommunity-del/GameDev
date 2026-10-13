@@ -592,6 +592,7 @@ export class GlintSystem {
       for (const [id, d] of er.otherPlayerDisplays) {
         const o = others[id];
         if (!d || d.destroyed || !o || (o.zone || o.z || 'town') !== zone || d._swimK > 0) continue;   /* v2.3.3003 */
+        if (d._farHidden) continue;   /* v2.3.3211: far off screen in the Wheel, not drawn (entityRenderer PEER_FAR_MARGIN) */
         const sw = fx && fx._remoteSwordSprites && fx._remoteSwordSprites.get(id);
         /* v2.3.2887: their bow shot and their chop / cook / fire figure draw
            the armour on sprites of their own, as the swing does -- the shine

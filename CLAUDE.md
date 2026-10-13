@@ -2042,7 +2042,32 @@ remnant to migrate server-side, not a mode to preserve.
       (gold, remnants), every chance a whole number of the die's faces:
       change a drop rate and the page changes with it, or the audit fails;
     - `caps.codex`, kill switch `codex: false`, dev lever `/dev/codex`;
-      `codex` suite, mirror-audit, `mp-codex`.)
+      `codex` suite, mirror-audit, `mp-codex`.
+  - Since v2.3.3211 A CROWD COSTS THE PHONE LESS -- found by the owner's
+    "stress test to see what can be optimized" (`mp-crowdbots` with the bots
+    spread out: 12 of 150 on screen cost a phone's frame as much as all 150):
+    - in the Wheel, a player past the view's half-diagonal plus
+      `PEER_FAR_MARGIN` 400 from its middle is not drawn, the monsters' rule
+      (entityRenderer `_updateOtherPlayers`): hidden, nothing else done that
+      frame, no figure MADE until near (a join into a full Wheel built every
+      player's figure in one frame), kept once made; nothing of theirs
+      either -- pet, glint, gathering/swing/shot stand-ins, trails, status
+      looks, bubbles (`S._peersNotDrawn`, effectsRenderer `_peerNotDrawn`);
+      `S._peersFarHidden`;
+    - the peer loop no longer fights the depth pass: it moved every player
+      south of you back into the entity layer each frame and the pass moved
+      them out again -- two re-parentings a frame each, and Pixi rebuilt the
+      world's draw list for them; the front layer is now an accepted place;
+    - THE CROWD CAP, Phase 0a of docs/SERVER-SPLIT-PLAN.md as the owner chose
+      it: of the players near enough to draw, the nearest `CROWD_K` 50 in
+      full and always your party, target, duel and whoever is fighting you;
+      the rest not drawn (the minimap still shows them), the edge held
+      `CROWD_HOLD` 8 places so it does not flicker (src/game/crowdCap.js,
+      `crowd-cap` suite); `S._peersCrowdHidden`; `?crowd=K`, `?crowd=all`;
+    - measured on the QA box (`mp-crowdbots`): 150 players spread out, the
+      frame's work 36 -> 20 ms; 150 on screen, 31 -> 21 with the cap;
+    - `?nopeercull` is all three off; `mp-peercull` (two phones),
+      `mp-crowdbots` `BT_CROWD_QUERY`: docs/specs/peer-cull.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
