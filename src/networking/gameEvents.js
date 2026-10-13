@@ -1863,7 +1863,15 @@ export function processGameEvent(type, payload, S, deps) {
                 /* v2.3.2731: the SHOOTER's timestamp, which `ts` above is not (it
                    is when this screen heard about it) -- the snap roll hashes
                    this, so an arrow that breaks on their screen breaks on yours */
-                shotTs: Number.isFinite(Number(payload.ts)) ? Number(payload.ts) : null
+                shotTs: Number.isFinite(Number(payload.ts)) ? Number(payload.ts) : null,
+                /* v2.3.3206: the low thing the shot was aimed at, a ground point
+                   in its footprint -- it flies over every other (visualSystems,
+                   projectiles.js shotSkip).  Two finite numbers or nothing: the
+                   value is peer-supplied, and it only decides where a drawn
+                   arrow stops on this screen. */
+                _lp: (Array.isArray(payload.lp) && payload.lp.length === 2
+                  && Number.isFinite(Number(payload.lp[0])) && Number.isFinite(Number(payload.lp[1])))
+                  ? { x: Number(payload.lp[0]), y: Number(payload.lp[1]) } : null
               });
               /* v2.3.1011: a bow shot (non-staff) drives the remote bow-draw
                  stand-in (Phase 4 reads _bowShotAt/_bowShotAng). */

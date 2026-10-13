@@ -12,7 +12,7 @@
 import { staffOrbLife, bowRangeMult } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: × the RANGE stat */
 import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
 import { BT_AUDIO, ELEMENTS, LUNGE_DAMAGE_MULT, LUNGE_DIRECTION_THRESHOLD, LUNGE_IFRAMES_MS, LUNGE_STAMINA_FRACTION, RETREAT_SHOT_DAMAGE_MULT, RETREAT_SHOT_STAMINA_FRACTION, RETREAT_STAFF_CONE_RAD, applyStatus, calcWeaponDmg, getActiveWeapon, rpgBlockSize } from '@/data/index.js';
-import { addBuildUse, pushDmgPopup, lockAimPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, pushDmgPopup, lockAimPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */, shotGroundDy /* v2.3.3206 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
@@ -307,6 +307,7 @@ export var doRetreatShot = function (S, R, ang) {
         maxLife: isStaff ? Math.round(staffOrbLife(R) * _dk) : 90, hitIds: new Set(), isStaff: isStaff,
         _rangeMult: (isStaff ? 1 : bowRangeMult(R)) * _dk, /* v2.3.2592: the retreat shot reaches as far as an ordinary arrow; v2.3.2790 x depth */
         element: activeWpn.element1 || null, retreatShot: true, brew: _rBrew,
+        _gdy: shotGroundDy(S),   /* v2.3.3206: its ground is under your boots (projectiles.js _goy) */
         _shotTs: _shotTs   /* v2.3.2731: the snap roll's timestamp (data/arrowSnap.js) */
       });
       /* ═══ v2.3.2919: AND EVERYONE ELSE SEES IT ═══

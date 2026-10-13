@@ -6060,3 +6060,49 @@ off by that difference under load; with the pacer it is off by about 2 ms
 until the thread is full.  And a Node test that captures the tick from
 `setInterval` must never see the interval set again (`WebSocketPair` is the
 runtime check, `tickpace.js`).
+
+## 171. "mp-wheelbreak's arrows stick, so the bow shoots props" (v2.3.3206)
+
+**Plausible:** the Wheel's objects take arrows. `mp-wheelbreak` sends 28
+arrows at a barrel, a lamp, a tree and a building and every check passes, so a
+player with a bow can do the same.
+
+**Wrong:** the scenario puts its own arrows in `S.arrows`, so they never meet
+the bow's fire gate. That gate (v2.3.2473) fires only while the sight line is
+on a target, and it asked about monsters alone. Held on the Town Hall, the bow
+drew its line straight through the wall and fired nothing, from 70 px or from
+point blank. The owner found it by playing: "Make the bow able to shoot at any
+props including buildings".
+
+**And its twin: the arrow's ground was the shooter's chest.** "Subtract the
+grip offset and at dist 0 you get exactly P.x/P.y" (v2.3.2652) was taken as
+proof that the arrow was on the ground. But P is the body's centre, 52 px above
+the boots (v2.3.2748). Walking, the swing (v2.3.3105) and the water had all
+moved down to the boots; the arrow had not:
+
+- point blank, its track started INSIDE the hall's footprint, and a step that
+  starts inside a box never stops at it;
+- a level shot at a trunk ran 52 px behind it.
+
+**The rule:**
+
+- A test that launches its own projectiles proves the flight, not the shot:
+  add one that holds the real attack (`mp-bowprops`).
+- Every ground question about what a player does is asked at the boots:
+  `_gdy` on the shot (combatHelpers `shotGroundDy`), and the other player's
+  boots for anything aimed at them.
+
+**And a third, once the owner said "I want arrows to fly over low things":
+"so skip the low footprints".** Skipped outright, a bench alone in front of you
+can no longer be shot at all -- the bow's gate finds nothing on its line and
+waits -- and the ask that started this was "any props". A low thing is flown
+over unless it is what the shot is AIMED at: nothing else on the line within
+reach (firstSightHit's `low`). The shot carries which (`_lp`), and so does its
+relay (`lp`), or another screen would draw the arrow sailing over the barrel it
+broke on yours.
+
+- Low is the jump's list, `JUMP_OVER`, asked by footprint id -- never a height
+  line: `fence-down` is drawn 170 px tall and is as low as `fence`.
+- The prop stop, the rock-between test and a peer's copy all take the same
+  skip (projectiles.js `shotSkip`); one left on "every footprint" catches the
+  arrow the other two let through.
