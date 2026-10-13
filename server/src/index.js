@@ -2206,11 +2206,19 @@ export class GameRoom {
                player in the zone is extracting, `nearest` stays null and the
                monster wanders — which is the whole point. */
             if (p.extracting) continue;
-            if (zoneId === WHEEL_ZONE && this._wheelSheltered(m, p.id, p.x, p.y, now)) continue;   /* v2.3.2978: safe ground; v2.3.3056: unless provoked from it */
             const dx = p.x - m.x;
             const dy = p.y - m.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < nearestDist) {
+              /* v2.3.2978: safe ground; v2.3.3056: unless provoked from it.
+                 v2.3.3193: asked only of a player who would be the nearest so
+                 far, not of every player for every monster -- the same pick
+                 (the nearest player it may target, the first of any tie) with
+                 a fraction of the calls.  _wheelSheltered has no side effects,
+                 and a player it turns away here could not have been picked
+                 anyway.  Before, every Wheel monster asked it of every player
+                 every tick (the load test's profile, docs/specs/load-test.md). */
+              if (zoneId === WHEEL_ZONE && this._wheelSheltered(m, p.id, p.x, p.y, now)) continue;
               nearest = p;
               nearestDist = dist;
             }

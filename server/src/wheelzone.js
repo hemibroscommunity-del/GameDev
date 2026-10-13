@@ -128,6 +128,9 @@ export const WHEEL = Object.freeze({
      state is fresh before it can be drawn. */
   INTEREST_R: 2400,
   INTEREST_OUT: 2800,
+  /* v2.3.3193: the side of _wheelMonsterGrid's squares: half INTEREST_OUT,
+     so a player's reach covers at most 5 x 5 of them */
+  GRID_CELL: 1400,
   /* v2.3.3012: WHEEL_NODES' kind letters, and the only gathering tiers a baked
      node may carry -- the three gathering.js _harvestNameForTier names */
   NODE_TYPES: Object.freeze({ o: 'oreVein', t: 'tree', f: 'fishSpot' }),
@@ -137,6 +140,25 @@ export const WHEEL = Object.freeze({
   /* v2.3.3094: + 16 and 21, the second stage's (levels 21-30, 31-40) */
   NODE_TIERS: Object.freeze([1, 6, 11, 16, 21]),
 });
+
+/* v2.3.3193: the indices of the monsters in the grid squares within `r` of
+   (x, y) on both axes, in the monsters' own order (each square's list is
+   already in order; the merge sorts the few that are left).  A position that
+   is not finite reaches nothing, as the full walk's distance test says. */
+function wheelGridNear(grid, x, y, r) {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return [];
+  const C = WHEEL.GRID_CELL;
+  const x0 = Math.floor((x - r) / C), x1 = Math.floor((x + r) / C);
+  const y0 = Math.floor((y - r) / C), y1 = Math.floor((y + r) / C);
+  const out = [];
+  for (let cx = x0; cx <= x1; cx++) {
+    for (let cy = y0; cy <= y1; cy++) {
+      const c = grid.cells.get(cx + ',' + cy);
+      if (c) for (let k = 0; k < c.length; k++) out.push(c[k]);
+    }
+  }
+  return out.sort((a, b) => a - b);
+}
 
 export const wheelzoneMethods = {
   _wheelMonstersOff() {
@@ -336,20 +358,53 @@ export const wheelzoneMethods = {
      none is ever drawn where it stood when it was last in reach.  Kept on the
      session; tick.js drops it when the session is anywhere else, so coming
      back re-sends every one in reach.  Monster ids are server-minted. */
-  _wheelInterest(session, ps, monsters) {
+  /* v2.3.3193: `grid` (optional) is _wheelMonsterGrid's index of the same
+     monsters, built once a tick by tick.js: only the cells within
+     INTEREST_OUT of the player are walked, in the monsters' own order, so the
+     answer is exactly the full walk's -- a monster in any other cell is more
+     than INTEREST_OUT away on one axis, and both tests below refuse it.
+     `list` is the seen monsters in that order, so tick.js no longer filters
+     all of them a second time per player.  Before, every Wheel player walked
+     all 384 monsters every tick, twice (the load test's profile,
+     docs/specs/load-test.md). */
+  _wheelInterest(session, ps, monsters, grid) {
     const prev = session._wheelSeen || null;
-    const seen = new Set(), entered = new Set();
+    const seen = new Set(), entered = new Set(), list = [];
     const rIn2 = WHEEL.INTEREST_R * WHEEL.INTEREST_R, rOut2 = WHEEL.INTEREST_OUT * WHEEL.INTEREST_OUT;
-    for (const m of monsters) {
+    const test = (m) => {
       const dx = m.x - ps.x, dy = m.y - ps.y, d2 = dx * dx + dy * dy;
       const had = !!(prev && prev.has(m.id));
       if (d2 <= rIn2 || (had && d2 <= rOut2)) {
         seen.add(m.id);
+        list.push(m);
         if (!had) entered.add(m.id);
       }
+    };
+    if (grid && grid.monsters === monsters) {
+      /* one pixel past INTEREST_OUT: a monster on a square's edge is never
+         lost to rounding, and the distance test above still decides */
+      for (const i of wheelGridNear(grid, ps.x, ps.y, WHEEL.INTEREST_OUT + 1)) test(monsters[i]);
+    } else {
+      for (const m of monsters) test(m);
     }
     session._wheelSeen = seen;
-    return { seen, entered };
+    return { seen, entered, list };
+  },
+
+  /* v2.3.3193: the Wheel's monsters by GRID_CELL square, as array indices in
+     array order -- built once a tick (tick.js), for _wheelInterest */
+  _wheelMonsterGrid(monsters) {
+    const cells = new Map();
+    for (let i = 0; i < monsters.length; i++) {
+      const m = monsters[i];
+      const cx = Math.floor(m.x / WHEEL.GRID_CELL), cy = Math.floor(m.y / WHEEL.GRID_CELL);
+      if (!Number.isFinite(cx) || !Number.isFinite(cy)) continue;   /* a NaN position is never in reach */
+      const k = cx + ',' + cy;
+      let c = cells.get(k);
+      if (!c) cells.set(k, c = []);
+      c.push(i);
+    }
+    return { monsters, cells };
   },
 
   /* The zone a kill pays out for: a Wheel monster's home, everywhere else the
