@@ -195,6 +195,15 @@ The v1/v2 split is unchanged *within* a zone. No caps flag — nothing new is
 claimed, so it is deploy-order safe both ways. Full detail and the measurements:
 `docs/specs/interest-management.md`.
 
+**v2.3.3196: far players less often, positions in whole pixels.** In the Wheel
+a v2 session's `players` carries the movers within 2,400 px of it on every tick
+(`FAR_PLAYERS.NEAR_R` in `server/src/tick.js`, the monsters' own reach) and
+the ones further off at most every 250 ms, each time where they are now; v1
+sessions and every other zone are as above. Every player entry's `x`, `y`, `vx`
+and `vy` are whole numbers. Kill switches (live flags): `farplayers: false`,
+`roundpos: false`. No caps flag: an old client already handles a peer updated
+less often (the 1 Hz roster). `docs/specs/far-players.md`.
+
 ### `track` is cosmetics-only (v2.3.1465)
 
 `track` carries appearance and display values, nothing authoritative. The
