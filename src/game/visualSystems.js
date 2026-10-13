@@ -15,6 +15,7 @@ import { sweepBlockPoint, boxFace } from '@/data/worldProps.js';   /* v2.3.2730:
 import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap, STUCK_ARROW_MS, SCORCH_MS, scorchStyle, propHitHeight } from '@/game/combatHelpers.js';   /* v2.3.2730; v2.3.2731 the snap; v2.3.2995 what stays in the Wheel's objects; v2.3.3200 how high a hit shows */
 import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: a peer's shot hits the Wheel's objects on your screen too */
 import { arrowSnaps } from '@/data/arrowSnap.js';   /* v2.3.2731 */
+import { shotSkip } from '@/game/projectiles.js';   /* v2.3.3200: a peer's shot flies over low things as yours does */
 import { BOW_VOLLEY, LONE_BURN_MS } from '@/game/bowVolley.js';   /* v2.3.2849: how long a peer's special stands burning */
 /* (v2.3.2730's REMOTE_SHOT_H, how far up a prop's face a peer's shot marked
    it, went in v2.3.3200: the shot is now judged at its owner's boots and shown
@@ -336,9 +337,14 @@ export function updateVisualSystems(S) {
                CENTRE (v2.3.2748), the boots playerGroundDy below it.  The
                shooter's own copy now asks the ground at the boots
                (projectiles.js _goy), so this one does too, or the two screens
-               would put the same arrow in different props. */
+               would put the same arrow in different props.
+               v2.3.3200: and over the low things, as the shooter's own copy
+               flies (projectiles.js shotSkip) -- bar the one it was aimed at,
+               which the shooter sends as `lp` (gameEvents.js).  A shot from an
+               older client says nothing, and flies over them all. */
             var _rpG = playerGroundDy(S.currentZone, originX, originY);
-            var _rpHit = sweepBlockPoint(S.currentZone, _rpX0, _rpY0 + _rpG, rp._renderX, rp._renderY + _rpG);
+            if (!rp._skip) rp._skip = shotSkip(rp._lp || null);
+            var _rpHit = sweepBlockPoint(S.currentZone, _rpX0, _rpY0 + _rpG, rp._renderX, rp._renderY + _rpG, rp._skip);
             if (_rpHit) {
               var _rpId = _rpHit.box ? _rpHit.box.id : null;
               if (_rpId) {

@@ -960,13 +960,17 @@ export function propSwingContact(zoneId, px, py, ang, reach, halfArc) {
  *  already use, so a projectile drawn at bow-grip height has to be converted
  *  down before it is asked (see projectiles.js).
  *  The NEAREST blocker wins: with two props on one line an arrow must stop at
- *  the first, not the furthest. */
-export function attackBlockPoint(zoneId, x0, y0, x1, y1) {
+ *  the first, not the furthest.
+ *  v2.3.3200: `skip`, when given, is asked of each footprint, and one it says
+ *  yes to is not in the way -- the low things a player's arrow flies over
+ *  (projectiles.js shotSkip). */
+export function attackBlockPoint(zoneId, x0, y0, x1, y1, skip) {
   if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return null;
   const boxes = zoneBlockers(zoneId);
   let best = -1;
   for (let i = 0; i < boxes.length; i++) {
     const b = boxes[i];
+    if (skip && skip(b)) continue;
     /* An endpoint inside the box is "at" the prop, not behind it. */
     if (pointInBox(x0, y0, b) || pointInBox(x1, y1, b)) continue;
     const t = segEnterT(x0, y0, x1, y1, b);
@@ -976,9 +980,10 @@ export function attackBlockPoint(zoneId, x0, y0, x1, y1) {
   return { x: x0 + (x1 - x0) * best, y: y0 + (y1 - y0) * best, t: best };
 }
 
-/** Does a prop stand between these two ground points? */
-export function attackBlocked(zoneId, x0, y0, x1, y1) {
-  return !!attackBlockPoint(zoneId, x0, y0, x1, y1);
+/** Does a prop stand between these two ground points?  (v2.3.3200: `skip`
+ *  as attackBlockPoint's.) */
+export function attackBlocked(zoneId, x0, y0, x1, y1, skip) {
+  return !!attackBlockPoint(zoneId, x0, y0, x1, y1, skip);
 }
 
 /* ═══ v2.3.2699: A MOVING PROJECTILE NEEDS A DIFFERENT QUESTION ═══
@@ -1011,13 +1016,17 @@ export function attackBlocked(zoneId, x0, y0, x1, y1) {
    Returns { x, y, t, box } for the nearest entry along the step, or null.
    v2.3.2701: `box` is the footprint it entered (the shared object from
    zoneBlockers -- read it, never write it), so the arrow sim can ask who is
-   standing in it. */
-export function sweepBlockPoint(zoneId, x0, y0, x1, y1) {
+   standing in it.
+   v2.3.3200: `skip`, when given, is asked of each footprint first, and one it
+   says yes to is flown over (projectiles.js shotSkip: a player's arrow over
+   the low things you can jump). */
+export function sweepBlockPoint(zoneId, x0, y0, x1, y1, skip) {
   if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return null;
   const boxes = zoneBlockers(zoneId);
   let best = -1, bestBox = null;
   for (let i = 0; i < boxes.length; i++) {
     const b = boxes[i];
+    if (skip && skip(b)) continue;
     if (pointInBox(x0, y0, b)) continue;   /* launched from inside it: fly out */
     const t = segEnterT(x0, y0, x1, y1, b);
     if (t >= 0 && (best < 0 || t < best)) { best = t; bestBox = b; }
@@ -1047,6 +1056,6 @@ if (typeof window !== 'undefined') {
   window.__btBlockers = (z) => zoneBlockers(z);
   window.__btAttackBlocked = (z, x0, y0, x1, y1) => attackBlocked(z, x0, y0, x1, y1);
   window.__btBlockPoint = (z, x0, y0, x1, y1) => attackBlockPoint(z, x0, y0, x1, y1);
-  window.__btSweepBlockPoint = (z, x0, y0, x1, y1) => sweepBlockPoint(z, x0, y0, x1, y1); /* v2.3.2699 */
+  window.__btSweepBlockPoint = (z, x0, y0, x1, y1, skip) => sweepBlockPoint(z, x0, y0, x1, y1, skip); /* v2.3.2699; v2.3.3200: + skip */
   window.__btPropSwingContact = (z, x, y, ang, reach, half) => propSwingContact(z, x, y, ang, reach, half); /* v2.3.2730 */
 }

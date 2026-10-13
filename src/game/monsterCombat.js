@@ -44,7 +44,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armou
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */, shotGroundDy /* v2.3.3200: a shot's ground is under the boots */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
-import { firstSightHit } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii */
+import { firstSightHit, shotLowAim, lowAimAlong } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3200: + the low thing a shot is aimed at */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
@@ -1519,7 +1519,10 @@ export function updateMonsterCombat(S, deps) {
             } catch (e) { _bsHit = null; }
             S._bowSight = { ang: _bsA, d: _bsHit ? _bsHit.dist : null,
               id: _bsHit ? _bsHit.id : null, at: Date.now(),
-              ox: _bsX, oy: _bsY };
+              ox: _bsX, oy: _bsY,
+              /* v2.3.3200: a low thing it is aimed at (nothing else on the
+                 line), the one low thing its arrow will not fly over */
+              lp: shotLowAim(_bsHit) };
           } else if (S._bowSight) {
             S._bowSight = null;
           }
@@ -1713,9 +1716,19 @@ export function updateMonsterCombat(S, deps) {
                    the 1-in-8 snap (data/arrowSnap.js) rolls the same on the
                    shooter's screen and every peer's. */
                 var _shotTs = Date.now();
+                /* ═══ v2.3.3200: OVER THE LOW THINGS, BAR THE ONE AIMED AT ═══
+                   Owner: "I want arrows to fly over low things".  A shot flies
+                   over a bench, a fence, a barrel, a bush (projectiles.js
+                   shotSkip) unless that is what it is aimed at: the bow's sight
+                   says so above (nothing else on its line); the staff has no
+                   sight, so the same question is asked along its bolt's reach. */
+                var _shotLp = !isStaff ? ((S._bowSight && S._bowSight.lp) || null)
+                  : lowAimAlong(S, _shotX, _shotY, arrAngle, staffOrbLife(S.rpg) * depthK(S.currentZone, P.y) * 5,
+                    P.x, P.y + shotGroundDy(S), { isStaff: true });   /* a bolt flies 5 px a tick for its life */
                 S.arrows.push({
                   ang: arrAngle,
                   _shotTs: _shotTs,
+                  _lp: _shotLp || undefined,   /* v2.3.3200 */
                   /* v2.3.937: bow shots nock at the teal grip and launch at the
                      (early) release -- start near the player and let projectiles.js
                      hold them at the grip until BOW_RELEASE_MS.  Staff bolts keep
@@ -1762,6 +1775,10 @@ export function updateMonsterCombat(S, deps) {
                      and every bolt the no-element lavender.  Additive: an older
                      client ignores it. */
                   el: ((getActiveWeapon(S.rpg) || {}).element1) || undefined,
+                  /* v2.3.3200: the low thing it is aimed at, so it stops there on
+                     every screen and flies over the rest (visualSystems.js).
+                     Additive: an older client ignores it. */
+                  lp: _shotLp ? [Math.round(_shotLp.x), Math.round(_shotLp.y)] : undefined,
                   /* v2.3.2592: the RANGE stat lengthens the flight, so the peer
                      mirror needs the life too or a remote orb dies at 675 px
                      while it flew 1012 on the caster's screen (the v2.3.2387

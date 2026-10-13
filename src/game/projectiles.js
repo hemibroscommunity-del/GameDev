@@ -493,7 +493,65 @@ function _quarryInBox(S, a, b) {
    actually was.  Asked only when a hit is about to land. */
 function _rockBetween(S, a, ox, oy, fx, fy) {
   if (a._prevX == null || a._prevY == null) return false;
-  return attackBlocked(S.currentZone, a._prevX - ox, a._prevY - oy, fx, fy);
+  return attackBlocked(S.currentZone, a._prevX - ox, a._prevY - oy, fx, fy, _shotSkipOf(a) || undefined);   /* v2.3.3200: not a low thing it flies over */
+}
+/* ═══ v2.3.3200: A SHOT FLIES OVER LOW THINGS ═══
+   Owner, asked whether a bench, a fence or a bush right in front of you should
+   catch your arrow: "I want arrows to fly over low things".
+
+   LOW is what you can jump: game/jump.js JUMP_OVER -- fences, walls, benches,
+   barrels, crates, rocks, bushes, stumps, troughs, hay bales, the things 70
+   game px tall or less as drawn -- asked of a footprint by its id, the test
+   the jump itself makes.  A shot leaves the bow grip 72-85 px over the boots
+   (a bolt the staff, about the same), over the top of every one of them.
+   Everything else -- a building, a tree, a lamp post, a boulder, a cart, the
+   farm's edge -- still stops it where it stands.
+
+   A low thing still takes the shot AIMED at it.  The bow is aimed at a low
+   thing when nothing else is on its line (firstSightHit: no monster, no duel
+   target, nothing tall within reach), so a bench alone in front of you is
+   still shot, and a slime behind the same bench is shot over it.  The shot
+   carries which, as `_lp`: a ground point inside that footprint (shotLowAim),
+   and on every other screen too (the relay's `lp`, visualSystems.js).
+
+   Only the game's own shots, which carry `_gdy`: a scenario's hand-made arrow
+   keeps the old meaning, every prop in its way. */
+function _isLow(b) { return !!(b && JUMP_OVER.has(b.id)); }
+function _notLow(b) { return !_isLow(b); }
+/** v2.3.3200: the footprints a shot aimed at `lp` (a ground point, or null)
+ *  flies over: the low ones, except the one it is aimed at. */
+export function shotSkip(lp) {
+  return function (b) {
+    return _isLow(b) && !(lp && lp.x >= b.x0 && lp.x <= b.x1 && lp.y >= b.y0 && lp.y <= b.y1);
+  };
+}
+function _shotSkipOf(a) {
+  if (!a || a._gdy == null) return null;
+  if (!a._skip) a._skip = shotSkip(a._lp || null);
+  return a._skip;
+}
+/** v2.3.3200: the low thing a sight answer (firstSightHit) is aimed at, as a
+ *  ground point inside its footprint ({x, y}, its middle), or null. */
+export function shotLowAim(hit) {
+  var b = hit && hit.low ? hit.prop : null;
+  return b ? { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 } : null;
+}
+/** v2.3.3200: for a shot with no sight of its own (the staff, the bow's
+ *  retreat shot): the low thing it is aimed at, by firstSightHit's own rule,
+ *  from (ox, oy) along `ang` with its boots at (gx, gy), as far as `len` --
+ *  or null. */
+export function lowAimAlong(S, ox, oy, ang, len, gx, gy, opts) {
+  if (!(len > 0) || !isFinite(gx) || !isFinite(gy)) return null;
+  try {
+    return shotLowAim(firstSightHit(S, ox, oy, ang, len, {
+      isSpecial: !!(opts && opts.isSpecial), ground: { x: gx, y: gy, len: len } }));
+  } catch (e) { return null; }
+}
+/* Dev probe, house style: would a game shot aimed at `lp` (null: at nothing
+   low) fly over footprint `b`?  mp-bowprops picks its spots with it, so a
+   scenario never keeps its own list of the low things. */
+if (typeof window !== 'undefined') {
+  window.__btShotFliesOver = function (b, lp) { return shotSkip(lp || null)(b); };
 }
 /* ═══ v2.3.2473: WHAT IS THE BOW ACTUALLY POINTED AT? ═══
  *
@@ -526,7 +584,8 @@ function _rockBetween(S, a, ox, oy, fx, fy) {
  * null.  `dist` is the distance from the origin to where the ray ENTERS that
  * circle -- the near edge, which is where the drawn line should stop.
  * (v2.3.3200: or a prop's face, with `opts.ground`: { dist, id: 'prop:...',
- * m: null, prop: its footprint } -- see below.)
+ * m: null, prop: its footprint } -- see below; `low: true` when it is a low
+ * thing the shot is aimed at, nothing else being on the line.)
  */
 export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
   if (!S || typeof ox !== 'number' || typeof oy !== 'number' || !isFinite(ang)) return null;
@@ -570,12 +629,20 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
      v2.3.1095 range rule), so a prop past it -- a building off to the side of
      an upright phone -- is not something this shot can reach, and must not
      set the bow firing at it. */
-  var prop = null;
+  /* v2.3.3200: the shot flies over the low things (_isLow), so the prop that
+     STOPS it is the first one past them; and the first low thing before that,
+     `low`, is what it is aimed at if nothing else is on the line (below). */
+  var prop = null, low = null;
   var g = opts && opts.ground;
   if (g && isFinite(g.x) && isFinite(g.y) && S.currentZone) {
     var gLen = (typeof g.len === 'number' && g.len >= 0) ? Math.min(maxLen, g.len) : maxLen;
-    var ph = gLen > 0 ? sweepBlockPoint(S.currentZone, g.x, g.y, g.x + dx * gLen, g.y + dy * gLen) : null;
-    if (ph && ph.box && ph.box.id !== 'edge') prop = { dist: ph.t * gLen, box: ph.box };
+    if (gLen > 0) {
+      var gx1 = g.x + dx * gLen, gy1 = g.y + dy * gLen;
+      var ph = sweepBlockPoint(S.currentZone, g.x, g.y, gx1, gy1, _isLow);
+      if (ph && ph.box && ph.box.id !== 'edge') prop = { dist: ph.t * gLen, box: ph.box };
+      var lh = sweepBlockPoint(S.currentZone, g.x, g.y, gx1, gy1, _notLow);
+      if (lh && lh.box && (!ph || lh.t < ph.t)) low = { dist: lh.t * gLen, box: lh.box };
+    }
   }
   var letIn = false;
   var list = S.monsters;
@@ -620,6 +687,12 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
      own id), for a scenario reading the gate. */
   if (prop && !letIn && (!best || prop.dist < best.dist)) {
     best = { dist: prop.dist, id: 'prop:' + (prop.box.oi != null ? prop.box.oi : prop.box.id), m: null, prop: prop.box };
+  }
+  /* v2.3.3200: nothing else on the line -- the low thing is what the shot is
+     aimed at, and it stops there (`low`; the shot carries it, shotLowAim).
+     Anything else on the line, behind it or not, and the shot flies over it. */
+  if (!best && low) {
+    best = { dist: low.dist, id: 'prop:' + (low.box.oi != null ? low.box.oi : low.box.id), m: null, prop: low.box, low: true };
   }
   return best;
 }
@@ -677,6 +750,7 @@ import { rollMonsterShard } from '@/data/shards.js';
 import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockShotPoint, torsoLift, monsterDrawScale /* v2.3.2845: aimed at, and landing round, the torso */, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, orbCrashFx, spawnPropDebris, propImpactSound, markProp /* v2.3.2730 */, queueArrowSnap /* v2.3.2731 */, STUCK_ARROW_MS, SCORCH_MS, scorchStyle, scorchGlow /* v2.3.2995 */, propHitHeight /* v2.3.3200: a hit on a prop is shown on the prop */ } from '@/game/combatHelpers.js';
 import { strikeWheelObject } from '@/game/wheelBreak.js'; /* v2.3.2995: the Wheel's objects take hits, break, and are mended */
+import { JUMP_OVER } from '@/game/jump.js'; /* v2.3.3200: what you can jump, a shot flies over */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.3200: a duel target's ground is under its boots */
 import { arrowSnaps } from '@/data/arrowSnap.js'; /* v2.3.2731: one arrow in eight breaks on what it hits */
 import { BOW_VOLLEY, burnT0, burnLifeMs, volleyRested, volleyBurns, volleyShoves } from '@/game/bowVolley.js'; /* v2.3.2848: the special's three arrows share one train, one burn and one shove; v2.3.2849: + its burn length */
@@ -1390,7 +1464,7 @@ export function updateArrows(S, deps) {
                 _propStop = boxExitPoint(_ib, _gx0, _gy0, _gx1, _gy1);
                 a._inBox = _ib = null;
               }
-              var _gp = sweepBlockPoint(S.currentZone, _gx0, _gy0, _gx1, _gy1);
+              var _gp = sweepBlockPoint(S.currentZone, _gx0, _gy0, _gx1, _gy1, _shotSkipOf(a) || undefined);   /* v2.3.3200: over the low things, bar the one it is aimed at */
               if (_gp && !(_propStop && _propStop.t <= _gp.t)) {
                 if (!_propStop && !_ib && _quarryInBox(S, a, _gp.box)) {
                   /* Let in.  If this same step already comes out the far side

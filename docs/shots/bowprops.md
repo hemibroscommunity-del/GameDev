@@ -26,6 +26,8 @@ it at the height they flew.
 ## A rock level with you, aimed east
 
 The rock is 45 px tall, and an arrow flies at your shoulder, about 80 px up.
+Nothing else is on the line, so the rock is what the bow is aimed at (with a
+monster or a building behind it, the arrows would fly over it: below).
 
 - **Before:** the line passes over the rock and no arrow leaves.
 - **After:** the line stops at the rock. The arrows that hit stay IN it, in
@@ -34,3 +36,13 @@ The rock is 45 px tall, and an arrow flies at your shoulder, about 80 px up.
 | Before | After |
 |---|---|
 | ![before](bowprops-before-rock.webp) | ![after](bowprops-after-rock.webp) |
+
+## Over a bench, into the hotel behind it
+
+The owner: *"I want arrows to fly over low things"*. The archer stands behind a
+bench, and the hotel is on the other side of it on the same line. The bow is
+held on the hotel. The arrows fly over the bench, which takes no hit, and stay
+in the hotel.
+
+![over the bench](bowprops-over-bench.webp)
+

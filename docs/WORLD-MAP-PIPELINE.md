@@ -2499,6 +2499,11 @@ Now:
   screen are judged at their boots.
 - A hit is shown on the picture: where the shot flew, but never above 0.7 of a
   low thing's height (`propHitHeight`, the footprints' `h`).
+- Shots fly OVER low things (the owner: *"I want arrows to fly over low
+  things"*). Low is what you can jump (`JUMP_OVER` in game/jump.js): fences,
+  walls, benches, barrels, crates, rocks, bushes, stumps, troughs, hay bales. A
+  low thing is hit only when it is what the shot is aimed at, with nothing
+  else on the line (`shotSkip`, `_lp` in projectiles.js).
 
 Things you walk through (flowers, ferns, shells...) are still not targets.
 `mp-bowprops`; docs/specs/bow-at-props.md.

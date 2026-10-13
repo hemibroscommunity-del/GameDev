@@ -6032,3 +6032,18 @@ moved down to the boots; the arrow had not:
 - Every ground question about what a player does is asked at the boots:
   `_gdy` on the shot (combatHelpers `shotGroundDy`), and the other player's
   boots for anything aimed at them.
+
+**And a third, once the owner said "I want arrows to fly over low things":
+"so skip the low footprints".** Skipped outright, a bench alone in front of you
+can no longer be shot at all -- the bow's gate finds nothing on its line and
+waits -- and the ask that started this was "any props". A low thing is flown
+over unless it is what the shot is AIMED at: nothing else on the line within
+reach (firstSightHit's `low`). The shot carries which (`_lp`), and so does its
+relay (`lp`), or another screen would draw the arrow sailing over the barrel it
+broke on yours.
+
+- Low is the jump's list, `JUMP_OVER`, asked by footprint id -- never a height
+  line: `fence-down` is drawn 170 px tall and is as low as `fence`.
+- The prop stop, the rock-between test and a peer's copy all take the same
+  skip (projectiles.js `shotSkip`); one left on "every footprint" catches the
+  arrow the other two let through.

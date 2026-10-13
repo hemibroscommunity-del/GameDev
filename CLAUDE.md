@@ -445,6 +445,17 @@ remnant to migrate server-side, not a mode to preserve.
       - a new arrow takes the grip as its offset from you (`_bowGripDX/DY`):
         the absolute was where you last shot, and on a slow frame the first
         arrow after a walk left from there;
+      - SHOTS FLY OVER LOW THINGS -- asked whether a bench right in front of
+        you should catch your arrow, the owner: "I want arrows to fly over low
+        things": low is what you can jump (jump.js `JUMP_OVER`, by footprint
+        id, the jump's own test), and every game shot -- arrows, bolts, both
+        specials, the retreat shot, a peer's -- flies over one unless it is
+        what the shot is AIMED at: nothing else (monster, duel target,
+        anything tall) on the line within reach, the sight's `low` answer.
+        The shot carries it as `_lp` (a ground point in that footprint; the
+        relay's `lp`, so other screens agree), `shotSkip(lp)` is the skip
+        handed to `sweepBlockPoint` / `attackBlocked`, and the staff, with no
+        sight, asks `lowAimAlong`;
       - `mp-bowprops`: docs/specs/bow-at-props.md.
   - Since v2.3.2996 a MONSTER'S HIT CARRIES ITS ELEMENT (the owner's snowflake,
     fire and air icons, and "slime for floral damage ... a brief held in place"):
