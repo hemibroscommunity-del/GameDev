@@ -30,7 +30,7 @@ import {
   MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
   MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY,
   MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */, DISHES /* v2.3.3130: the Herb Bread's regen mult */,
-  SHARD_MONSTER_DROP, monsterWeaponDropOdds /* v2.3.3196: named for the monster codex's drop table */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+  SHARD_MONSTER_DROP, monsterWeaponDropOdds /* v2.3.3198: named for the monster codex's drop table */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -91,7 +91,7 @@ import { petMethods, PETS } from './pets.js';
 import { trappingMethods } from './trapping.js';
 import { hardenedWoodMethods } from './hardenedwood.js'; /* v2.3.3139: logs into hardened wood */
 import { petbookMethods } from './petbook.js';
-/* v2.3.3196: the monster codex -- what each kill teaches you, codex:<pid>
+/* v2.3.3198: the monster codex -- what each kill teaches you, codex:<pid>
    (codex.js).  docs/specs/monster-codex.md. */
 import { codexMethods } from './codex.js';
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
@@ -543,7 +543,7 @@ export const PRIVILEGED_EVENTS = new Set([
      pets they do not own on their Pets page, `trap_armed` a mark and odds the
      worker never set, and `make_traps_result` traps that never reached a bag. */
   'make_traps_result', 'trap_armed', 'trap_result', 'pets_state',
-  /* v2.3.3196: the monster codex's counts (codex.js), server-sent and private.
+  /* v2.3.3198: the monster codex's counts (codex.js), server-sent and private.
      Forged, it would paint facts the player never earned on their Codex page. */
   'codex_state',
   // v2.3.1131: hardening rolls are server-side + private.
@@ -1251,7 +1251,7 @@ export class GameRoom {
     // 'no-this-mon'.  500 ms is enough to read positions on entry
     // without suppressing the first incoming hit of a normal fight.
     this.ZONE_ENTRY_GRACE_MS = 500;
-    this.SHARD_DROP_RATE = SHARD_MONSTER_DROP; // 10% per kill, matches client rollMonsterShard; v2.3.3196: named in data.js (the codex prints it)
+    this.SHARD_DROP_RATE = SHARD_MONSTER_DROP; // 10% per kill, matches client rollMonsterShard; v2.3.3198: named in data.js (the codex prints it)
 
     // AFK timeout — drop sessions that haven't sent real input (move /
     // combat / zone change / etc.) for this long.  Pong replies do NOT
@@ -3700,7 +3700,7 @@ export class GameRoom {
   // hardenBonus stays null: that field belongs to the client's legacy
   // affix system (NAME COLLISION warning in hardening.js).
   _rollWeaponDropForKill(zoneId, monster) {
-    /* v2.3.3196: the odds are data.js monsterWeaponDropOdds -- the same
+    /* v2.3.3198: the odds are data.js monsterWeaponDropOdds -- the same
        numbers, moved there so the monster codex's drop table prints exactly
        what this rolls (mirror-audit holds its copy).  L1: 0.05%, L100: ~3%. */
     const odds = monsterWeaponDropOdds(monster.level);
@@ -5827,7 +5827,7 @@ export class GameRoom {
   async webSocketClose(ws) {
     const session = this.sessions.get(ws);
     let _petsLeft = null;   /* v2.3.3120: see below */
-    let _codexLeft = null;  /* v2.3.3196: the same, for the codex (codex.js) */
+    let _codexLeft = null;  /* v2.3.3198: the same, for the codex (codex.js) */
     if (session?.id) {
       if (this.playerState[session.id]) this.playerState[session.id].disconnected = true;
       /* v2.3.1619: flush coalesced regen before the in-memory blob is
@@ -5861,7 +5861,7 @@ export class GameRoom {
          player leave at once. */
       _petsLeft = this._petbookDirtyCopy(session.id);
       this._petbookForget(session.id);
-      /* v2.3.3196: and the codex's (codex.js): counting since its last write,
+      /* v2.3.3198: and the codex's (codex.js): counting since its last write,
          copied out now and written at the end with the pets record */
       _codexLeft = this._codexDirtyCopy(session.id);
       this._codexForget(session.id);
@@ -6047,7 +6047,7 @@ Object.assign(GameRoom.prototype, petMethods);
 Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, hardenedWoodMethods); /* v2.3.3139 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
-Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3196 */
+Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3198 */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
 Object.assign(GameRoom.prototype, hardeningMethods);
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.

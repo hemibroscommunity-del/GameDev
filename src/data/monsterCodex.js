@@ -1,4 +1,4 @@
-/* ═══ v2.3.3196: THE MONSTER CODEX'S PAGES ═══
+/* ═══ v2.3.3198: THE MONSTER CODEX'S PAGES ═══
  *
  * Owner, 2026-10-12: "After you kill a monster you learn more about it, what
  * it does, where it's from, elemental type, special attack, (make up a

@@ -1,4 +1,4 @@
-/* The monster codex -- v2.3.3196 (server/src/codex.js; spec
+/* The monster codex -- v2.3.3198 (server/src/codex.js; spec
  * docs/specs/monster-codex.md).
  *
  *   1. CAPS AND THE FIRST LOOK: caps.codex advertised; codex_state at join,

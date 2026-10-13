@@ -505,7 +505,7 @@ export const devToolsMethods = {
     else if (path === '/dev/daily') result = await this._drDev(playerId, body);   /* v2.3.3140: stars, bonus spins, a quest's count */
     else if (path === '/dev/farmripe') result = await this._devFarmRipe(playerId);   /* v2.3.3127 */
     else if (path === '/dev/trapping') result = this._devTrapping(playerId, body);   /* v2.3.3120 */
-    else if (path === '/dev/codex') result = this._codexDevSet(playerId, body);   /* v2.3.3196: {kind | all, n, n2} (codex.js) */
+    else if (path === '/dev/codex') result = this._codexDevSet(playerId, body);   /* v2.3.3198: {kind | all, n, n2} (codex.js) */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

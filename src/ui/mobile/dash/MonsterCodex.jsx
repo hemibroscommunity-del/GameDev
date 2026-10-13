@@ -10,7 +10,7 @@ import { RARITY_TIERS } from '@/data/gameSystems.js';
 import { CodexStage } from './CodexStage.jsx';
 import { codexDropsFor, codexGrades, codexGradePercent } from '@/data/codexDrops.js';
 
-/* ═══ v2.3.3196: THE CODEX'S MONSTERS ═══
+/* ═══ v2.3.3198: THE CODEX'S MONSTERS ═══
  *
  * Owner, 2026-10-12: "Begin working on the monster section of the codex.
  * After you kill a monster you learn more about it, what it does, where it's
@@ -221,7 +221,7 @@ function Tabs({ tab, setTab }) {
      - the bar says HOW COMMON over the chance's powers of ten (`barWidth`):
        on a straight scale every drop rarer than the shard was the same
        sliver, so the bars said nothing; the number beside it is exact.
-   v2.3.3196: and then: "Wrap text for the item name and increase the usable
+   v2.3.3198: and then: "Wrap text for the item name and increase the usable
    area for the bar size. Looks like the chance column reserves too much
    space" -- the chance column was 76 px for the one long chance, the random
    weapon's "0.05–0.24%", so every other number sat far from its bar.  It is

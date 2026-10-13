@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
-import { MonsterCodex } from './MonsterCodex.jsx';   /* v2.3.3196: the monster codex */
+import { MonsterCodex } from './MonsterCodex.jsx';   /* v2.3.3198: the monster codex */
 
-/* v2.3.3196: 'Bestiary' -> 'Monsters', the monster codex (MonsterCodex.jsx).
+/* v2.3.3198: 'Bestiary' -> 'Monsters', the monster codex (MonsterCodex.jsx).
    The old tab listed `rpg._seenMonsters || rpg.killedMonsters`, which nothing
    has written since the fights moved to the worker -- it was empty for
    everyone.  The worker counts the kills now (server/src/codex.js). */
@@ -52,7 +52,7 @@ const chip = (active) => ({
 
 export const EncyclopediaPanel = () => {
   const [tab, setTab] = useState('monsters');
-  /* v2.3.3196: the monster page open (MonsterCodex.jsx).  These tabs step
+  /* v2.3.3198: the monster page open (MonsterCodex.jsx).  These tabs step
      aside while one is, its header and tabs taking their place on the
      sheet's short height; "‹ All monsters" brings them back */
   const [monster, setMonster] = useState(null);
