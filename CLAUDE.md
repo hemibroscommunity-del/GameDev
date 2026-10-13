@@ -2183,7 +2183,8 @@ Two protocol versions coexist; both must keep working:
     the next 33 ms batch. The worker never re-holds such a spaced move
     (STEADY.SPACED_MS 44: held by its ticks' times, half came a tick late).
     Incoming moves about halved (Cloudflare bills incoming messages); smooth
-    (33+ ticks) to ~150 with all five (125: 32.0 -> 37.7, 150: 30.5 -> 33.8);
+    (33+ ticks) to ~145 with all five (125: 32.0 -> 37.7-38.8, 150: 30.5 ->
+    32.2-33.8);
     others' moves 4-6 ms sooner at 50-100, 4-15 ms later at 125-150. Kill
     switch `movediet: false` (caps.movediet: each phone at its next join);
     `mp-movediet` (slows the page's drawing while it walks: this box's software

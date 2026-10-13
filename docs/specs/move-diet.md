@@ -97,9 +97,16 @@ the walkers with `--diet`, the phone's own rule), with #888-#890 in both:
 - **The messages coming in are about halved** (the bots' walkers stay on the
   safe ground; the fighters, out in the lands, send every move as before).
   Those are the messages Cloudflare bills.
-- **The room stays smooth (33+ ticks a second) to about 150 players**, against
+- **The room stays smooth (33+ ticks a second) to about 145 players**, against
   about 120-130 with #888-#890: 37.7 ticks at 125 instead of 32.0, 33.8 at 150
-  instead of 30.5.
+  instead of 30.5. A whole ramp later (10 to 175 players one step after the
+  other, as the other PRs' ramps were run) read 38.8 at 125 and 32.2 at 150 --
+  so 150 sits on the line:
+
+  | Players | 10 | 25 | 50 | 75 | 100 | 125 | 150 | 175 |
+  |---|---|---|---|---|---|---|---|---|
+  | #888-#890 | 14%, 42.2 | 20%, 42.2 | 34%, 41.9 | 54%, 41.7 | 68%, 40.8 | 88%, 32.0 | 91%, 30.5 | 96%, 23.4 |
+  | + this | 12%, 42.1 | 20%, 42.2 | 37%, 41.6 | 55%, 41.9 | 71%, 41.3 | 83%, 38.8 | 95%, 32.2 | 98%, 22.6 |
 - **Others' moves arrive sooner up to 100 players** (16 ms against 22 at 50, 20
   against 24 at 100) and **later at 125-150** (35 against 31, 46 against 31): a
   busy room is slower to get each message out. These are the steady stretches
