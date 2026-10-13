@@ -43,7 +43,9 @@
  * gold nugget's 1, an iron piece's 20, the rare gem's 50, a raw gem's 500, a
  * shard's 1,000.  That IS the worker's roll (Math.random() < chance), said
  * on a 10,000-sided die; mirror-audit holds every chance to a whole number
- * of its sides, so no number here is rounded.
+ * of its sides, so no number here is rounded.  The page shows it as the
+ * owner then asked, a ROLL column: the range 1 to it ("1–1,000") over the
+ * chance in parentheses (MonsterCodex.jsx `rollRange`).
  *
  * No game imports beyond plain data tables: the worker's mirror audit reads
  * this file too. */

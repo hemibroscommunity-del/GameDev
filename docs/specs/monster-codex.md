@@ -74,30 +74,34 @@ render), "‹ All monsters" bringing them back.
   random weapon out of the GAME ("Remove it from the game", below) and "Each
   drop's own roll": every chance one number; the bar its share of 100%
   (`barWidth`: 10% is a tenth of the bar, a 2 px nub for anything under a
-  pixel's worth); and under each chance under 100% its DICE (the Gambling
-  Den's two dice, the card's picture) and the number a kill's roll of 1 to
-  10,000 for it must come in at or under (`codexRoll`, `CODEX_ROLL_SIDES`):
+  pixel's worth); and each drop under 100% its DICE: the numbers of a kill's
+  roll of 1 to 10,000 for it that drop it (`codexRoll`, `CODEX_ROLL_SIDES`).
+  Then *"Actually 'roll' column with a number range and drop chance percentage
+  in parentheses might be better"*: the chance column is a **ROLL** column
+  (`ROLL_W` 50), the Gambling Den's two dice in its heading, each row its range
+  over its chance in parentheses, "Always" for an every-kill drop (nothing to
+  roll); the bars stay, 111 px on a 390 px phone:
 
-  | Drop | Chance | Dice |
-  |---|---|---|
-  | Its land's shard | 10% | 1,000 |
-  | Raw gem | 5% | 500 |
-  | Rare Gem | 0.5% | 50 |
-  | Iron Torso, Iron Greaves, Iron Great Sword | 0.2% each | 20 |
-  | Gold Nugget | 0.01% | 1 |
+  | Drop | Roll |
+  |---|---|
+  | Gold, its remnants | Always (100%) |
+  | Its land's shard | 1–1,000 (10%) |
+  | Raw gem | 1–500 (5%) |
+  | Rare Gem | 1–50 (0.5%) |
+  | Iron Torso, Iron Greaves, Iron Great Sword | 1–20 (0.2%) each |
+  | Gold Nugget | 1 (0.01%) |
 
   That is the worker's own roll (`Math.random() < chance`, each drop on its
   own, so one kill can still give a shard and a gem) said on a 10,000-sided
   die, and a key under the table says so: "Each kill rolls 1–10,000 for every
-  item. It drops on its number or lower." Gold and remnants drop every kill
-  and have none. A tap on a row opens the item's
+  item. A roll in its range drops it." A tap on a row opens the item's
   **card**: its picture, name, type and base rarity ("Common" for a weapon or
   armour piece), what it is, FOUND FROM (the monster), BASE DROP CHANCE, for a
   weapon or armour piece the POSSIBLE RARITY it rolls after it drops (Normal
   90.09995%, Rare 9%, Elite 0.9%, Godly 0.00005%, each tile the item in that
   grade's frame), and a note of how it drops. Its BASE DROP CHANCE says its
-  dice too ("a roll of 20 or lower of 1–10,000"). Its X comes back to the list
-  with that row marked.
+  roll too ("drops on a roll of 1–20 out of 10,000"). Its X comes back to the
+  list with that row marked.
 - **Info**: the stage (below), a toggle for its elder form under it, and what
   it does, its element, its special attack with a tip, its story, and its
   elder form.
@@ -307,15 +311,15 @@ dev op.
   its end, the Iron Great Sword's card opening at its top (Common, 0.2%, the
   four grades) and a shard's (no grades), the X back to the marked row in
   view; the table's near-black panel, darker than the sheet, its stripes and
-  heading band; nine rows and no random weapon, every chance one number with
-  its dice under it (the shard's 1,000 to the nugget's 1, each with the dice
-  picture, right-aligned with its chance, inside its row; none for gold and
-  remnants) and the key under the table; each bar's fill its chance's share of
-  the track (10% a tenth, a 2 px nub under that); the bars at least 100 px
-  long, the chance column its widest number's width (6-10 px from a bar's end
-  to that number), a long name wrapping to two lines; the cards' dice ("a roll
-  of 20 or lower of 1–10,000"); no name, type or chance cut short on any
-  page; a tap on a tab, the open one's too, putting its content at the
+  heading band; nine rows and no random weapon, the ROLL column (its heading
+  and its dice) with every row's range over its chance in parentheses (the
+  shard's "1–1,000 (10%)" to the nugget's "1 (0.01%)", "Always (100%)" for
+  gold and remnants; each a line, right edges together, inside its row) and
+  the key under the table; each bar's fill its chance's share of the track
+  (10% a tenth, a 2 px nub under that); the bars at least 100 px long, the
+  roll column its widest text's width, a long name wrapping to two lines; the
+  cards' roll ("drops on a roll of 1–20 out of 10,000"); no name, type or
+  chance cut short on any page; a tap on a tab, the open one's too, putting its content at the
   sheet's top, Info's whole stage in view; every fact open on Info from one
   kill, the stage playing its special, your character and the monster on its
   ground strip and never past its frame (the stage isolated, nothing in it

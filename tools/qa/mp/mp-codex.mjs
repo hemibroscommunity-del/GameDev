@@ -20,10 +20,11 @@
  *      (the owner: "Stay short and scroll"), scrolling in it from its top: the
  *      header (name, Lv / element / kind badges -- the kind by its body, the
  *      owner's "humanoid, beast, ..."), the Drops / Info / Locations tabs, and
- *      the drop table -- ITEM, TYPE, CHANCE -- every pile drop with one
- *      percentage, its bar that share of 100% and under it its dice (the
- *      owner's "roll-based system": a kill's roll of 1 to 10,000 for it, on
- *      that number or lower), and no random weapon (out of the game);
+ *      the drop table -- ITEM, TYPE, ROLL -- every pile drop with its bar its
+ *      chance's share of 100% and its ROLL (the owner's "'roll' column with a
+ *      number range and drop chance percentage in parentheses": the numbers of
+ *      a kill's roll of 1 to 10,000 that drop it, "1–1,000 (10%)", "Always"
+ *      for an every-kill drop), and no random weapon (out of the game);
  *   4. scrolled to the table's end, a tap on the Iron Great Sword opens its
  *      card from its top: Weapon, Common, FOUND FROM the Snowman, a 0.2% BASE
  *      DROP CHANCE and the four grades it can roll with their shares; its X
@@ -97,11 +98,13 @@ const openPage = async (P, kind) => {
 };
 const back = (P) => P.page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /All monsters/.test(x.innerText)); if (b) b.click(); });
 const facts = (P) => P.page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-cx-fact]')].map((f) => [f.dataset.cxFact, f.dataset.cxOpen === '1'])));
-/* the page's drop table: { id: [its chance as printed, its type, its dice
-   number as printed ('' for none)] } */
+/* the page's drop table: { id: [its chance as printed, out of its
+   parentheses; its type; its roll's range as printed; the chance exactly as
+   printed] } */
 const drops = (P) => P.page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-cx-drop]')].map((r) => {
   const o = r.querySelector('[data-cx-pct]'), t = r.querySelector('[data-cx-type]'), d = r.querySelector('[data-cx-roll]');
-  return [r.dataset.cxDrop, [o ? o.innerText.trim() : '', t ? t.innerText.trim() : '', d ? d.innerText.trim() : '']];
+  const raw = o ? o.innerText.trim() : '';
+  return [r.dataset.cxDrop, [raw.replace(/^\((.*)\)$/, '$1'), t ? t.innerText.trim() : '', d ? d.innerText.trim() : '', raw]];
 })));
 const tab = async (P, id) => {
   await P.page.evaluate((i) => { const b = document.querySelector(`[data-cx-tab="${i}"]`); if (b) b.click(); }, id);
@@ -301,15 +304,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`...its header says ${sl.level} / ${sl.element} / ${sl.type}, its tabs ${sl.tabs.join(' ')}`,
       sl.level === 'Lv 1–40' && sl.element === 'Frost' && sl.type === 'Humanoid' && sl.tabs.join(' ') === 'drops* info locations', sl);
     /* v2.3.3198: the owner: "Remove 'a random weapon' drop.  All drop chances
-       should be a single value" -- and their dice, "Each drop's own roll": a
-       kill's roll of 1 to 10,000 for it, the number it drops on or under */
-    const want = { gold: ['100%', 'Currency', ''], remnant: ['100%', 'Material', ''], shard: ['10%', 'Material', '1,000'], rawgem: ['5%', 'Gem', '500'],
-      raregem: ['0.5%', 'Gem', '50'], irontorso: ['0.2%', 'Armor', '20'], irongreaves: ['0.2%', 'Armor', '20'], irongreatsword: ['0.2%', 'Weapon', '20'],
+       should be a single value" -- their dice, "Each drop's own roll": a
+       kill's roll of 1 to 10,000 for it -- and then "Actually 'roll' column
+       with a number range and drop chance percentage in parentheses might be
+       better": the range that drops it over its chance in parentheses,
+       "Always" for an every-kill drop, the dice in the column's heading */
+    const want = { gold: ['100%', 'Currency', 'Always'], remnant: ['100%', 'Material', 'Always'], shard: ['10%', 'Material', '1–1,000'], rawgem: ['5%', 'Gem', '1–500'],
+      raregem: ['0.5%', 'Gem', '1–50'], irontorso: ['0.2%', 'Armor', '1–20'], irongreaves: ['0.2%', 'Armor', '1–20'], irongreatsword: ['0.2%', 'Weapon', '1–20'],
       nugget: ['0.01%', 'Craft', '1'] };
-    const dOff = Object.keys(want).filter((k) => !d1[k] || d1[k].join('|') !== want[k].join('|'));
+    const dOff = Object.keys(want).filter((k) => !d1[k] || d1[k].slice(0, 3).join('|') !== want[k].join('|') || d1[k][3] !== '(' + want[k][0] + ')');
     const diceKey = await P.page.evaluate(() => { const k = document.querySelector('[data-cx-dice-key]'); return k ? k.innerText.replace(/\s+/g, ' ').trim() : null; });
-    rec.ok(`...and its drop table from the first kill -- ITEM, TYPE, CHANCE and its dice, no random weapon: ${Object.keys(d1).map((k) => k + ' ' + d1[k][0] + (d1[k][2] ? ' (' + d1[k][2] + ')' : '')).join(', ')}; "${diceKey}"`,
-      Object.keys(d1).length === 9 && !d1.weapon && dOff.length === 0 && /Each kill rolls 1–10,000 for every item\. It drops on its number or lower\./.test(diceKey || ''), { d1, dOff, diceKey });
+    const rollHead = await P.page.evaluate(() => { const h = document.querySelector('[data-cx-roll-head]'); const d = h && h.querySelector('span[aria-hidden]');
+      return h ? { text: h.innerText.trim(), dice: !!d && /bldg-gamble/.test(getComputedStyle(d).backgroundImage) && d.getBoundingClientRect().width >= 10 } : null; });
+    rec.ok(`...and its drop table from the first kill -- ITEM, TYPE, ROLL (${rollHead && rollHead.text}, its dice drawn), no random weapon: ${Object.keys(d1).map((k) => k + ' ' + d1[k][2] + ' ' + d1[k][3]).join(', ')}; "${diceKey}"`,
+      Object.keys(d1).length === 9 && !d1.weapon && dOff.length === 0 && !!rollHead && /^roll$/i.test(rollHead.text) && rollHead.dice
+        && /Each kill rolls 1–10,000 for every item\. A roll in its range drops it\./.test(diceKey || ''), { d1, dOff, diceKey, rollHead });
     /* the owner: "The drops table needs a different background so the
        information can stand out more from the dashboard background. Maybe
        black?" -- its panel is near-black, well darker than the sheet */
@@ -334,23 +343,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const names = [...document.querySelectorAll('[data-cx-name-cell]')];
       /* v2.3.3198: the owner: "Wrap text for the item name and increase the
          usable area for the bar size. Looks like the chance column reserves
-         too much space" -- each row's bar track, how far its chance's TEXT
-         starts from the bar's end (a Range: the column's slack included), and
-         how many lines its name and chance take */
+         too much space" -- each row's bar track, how far its roll's widest
+         TEXT starts from the bar's end (a Range: the column's slack
+         included), how many lines its name takes, and its roll cell: the
+         range on one line, its chance in parentheses on one line under it,
+         right edges together, inside its row */
       const line = 13.5 * 1.15;
-      const textLeft = (el) => { const g = document.createRange(); g.selectNodeContents(el); return g.getBoundingClientRect().left; };
+      const textBox = (el) => { const g = document.createRange(); g.selectNodeContents(el); return g.getBoundingClientRect(); };
       const lay = rows.map((r) => {
         const bar = r.querySelector('[data-cx-bar-track]').getBoundingClientRect();
-        const pc = r.querySelector('[data-cx-pct]'), nm = r.querySelector('[data-cx-name-cell]'), ty = r.querySelector('[data-cx-type]');
+        const nm = r.querySelector('[data-cx-name-cell]'), ty = r.querySelector('[data-cx-type]');
         const fill = r.querySelector('[data-cx-bar-fill]').getBoundingClientRect();
-        /* the dice: under its chance, right edges together, its picture drawn */
-        const dc = r.querySelector('[data-cx-roll]'), pr = pc.getBoundingClientRect();
-        const dr = dc ? dc.getBoundingClientRect() : null, dimg = dc ? dc.querySelector('span[aria-hidden]') : null;
-        return { id: r.dataset.cxDrop, bar: Math.round(bar.width), barExact: bar.width, fill: Math.round(fill.width * 10) / 10, gap: Math.round(textLeft(pc) - bar.right),
-          pctFits: pc.scrollWidth <= pc.clientWidth + 1, pctLines: Math.round(pc.getBoundingClientRect().height / line),
-          nameLines: Math.round(nm.getBoundingClientRect().height / line), typeFits: ty.scrollWidth <= ty.clientWidth + 1,
-          dice: dc ? { n: dc.dataset.cxRoll, under: dr.top >= pr.bottom - 1, right: Math.round(Math.abs(dr.right - pr.right)), fits: dc.scrollWidth <= dc.clientWidth + 1,
-            inRow: dr.bottom <= r.getBoundingClientRect().bottom + 0.5, pic: !!dimg && /bldg-gamble/.test(getComputedStyle(dimg).backgroundImage) && dimg.getBoundingClientRect().width >= 10 } : null };
+        const cell = r.querySelector('[data-cx-roll-cell]'), rg = r.querySelector('[data-cx-roll]'), pc = r.querySelector('[data-cx-pct]');
+        /* the text's own boxes for where it starts and ends; the lines' boxes
+           (a text box is the font's whole height, taller than its 1.15 line,
+           so two stacked lines' text boxes overlap) for which is under which */
+        const rb = textBox(rg), pb = textBox(pc), rowBox = r.getBoundingClientRect();
+        const rl = rg.getBoundingClientRect(), pl = pc.getBoundingClientRect();
+        return { id: r.dataset.cxDrop, bar: Math.round(bar.width), barExact: bar.width, fill: Math.round(fill.width * 10) / 10,
+          gap: Math.round(Math.min(rb.left, pb.left) - bar.right),
+          roll: { n: rg.dataset.cxRoll, fits: cell.scrollWidth <= cell.clientWidth + 1, oneLine: rb.height < 1.5 * line && pb.height < 1.5 * line,
+            under: pl.top >= rl.bottom - 0.5, right: Math.round(Math.abs(rb.right - pb.right)), inRow: rl.top >= rowBox.top - 0.5 && pl.bottom <= rowBox.bottom + 0.5 },
+          nameLines: Math.round(nm.getBoundingClientRect().height / line), typeFits: ty.scrollWidth <= ty.clientWidth + 1 };
       });
       return { bg, head: head ? getComputedStyle(head).backgroundColor : null,
         cut: names.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.innerText),
@@ -367,20 +381,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
       striped && legible.head === 'rgb(16, 26, 31)' && legible.cut.length === 0 && legible.tall.length === 0
         && legible.bars.gold === 100 && legible.bars.remnant === 100 && legible.bars.shard === 10 && legible.bars.rawgem === 5 && legible.bars.raregem === 0.5
         && legible.bars.irongreatsword === 0.2 && legible.bars.nugget === 0.01 && fillOff.length === 0, { striped, fillOff, ...legible });
-    /* the bars ~2.5x the 44 px they had; the chance column no wider than its
-       widest number (that one 6 px, the grid's gap, plus a few px of slack
-       from its bar's end -- in the old 76 px column a "100%" stood ~50 px off
-       and a "5%" ~63), the numbers still lined up on their right, every one on
-       one line; a long name on two; and every drop under 100% its dice under
-       its chance, right edges together, inside its row -- the 100% ones none */
+    /* the bars ~2.5x the 44 px they had; the roll column no wider than its
+       widest text (the shard's "1–1,000": the grid's 6 px gap plus a few px
+       of slack from its bar's end -- in the old 76 px chance column a "100%"
+       stood ~50 px off and a "5%" ~63), lined up on the right; a long name on
+       two lines; every roll's range and chance one line each, the chance
+       under the range, inside its row, its number its chance's faces of the
+       10,000 ("always" at 100%) */
     const lay = legible.lay || [];
     const barMin = Math.min(...lay.map((l) => l.bar));
     const gapMin = Math.min(...lay.map((l) => l.gap)), gapMax = Math.max(...lay.map((l) => l.gap));
     const twoLine = lay.filter((l) => l.nameLines === 2).map((l) => l.id);
-    const diceOff = lay.filter((l) => (CH[l.id] >= 1) ? !!l.dice : !(l.dice && l.dice.n === String(Math.round(CH[l.id] * 10000)) && l.dice.under && l.dice.right <= 1 && l.dice.fits && l.dice.inRow && l.dice.pic));
-    rec.ok(`...its bars ${barMin} px long (were 44), the chance column its widest number's width (${gapMin}-${gapMax} px from a bar's end to its number), every chance on one line with its dice under it, names wrapping (${twoLine.join(', ')} on two lines; columns ${legible.cols})`,
-      lay.length === 9 && barMin >= 100 && gapMin <= 10 && gapMax <= 30 && lay.every((l) => l.pctFits && l.typeFits && l.nameLines <= 2 && l.pctLines === 1)
-        && twoLine.length >= 1 && diceOff.length === 0, { diceOff, lay });
+    const rollOff = lay.filter((l) => !(l.roll && l.roll.fits && l.roll.oneLine && l.roll.under && l.roll.right <= 1 && l.roll.inRow
+      && l.roll.n === (CH[l.id] >= 1 ? 'always' : String(Math.round(CH[l.id] * 10000)))));
+    rec.ok(`...its bars ${barMin} px long (were 44), the roll column its widest text's width (${gapMin}-${gapMax} px from a bar's end to its text), each roll's range over its chance, names wrapping (${twoLine.join(', ')} on two lines; columns ${legible.cols})`,
+      lay.length === 9 && barMin >= 100 && gapMin <= 14 && gapMax <= 30 && lay.every((l) => l.typeFits && l.nameLines <= 2)
+        && twoLine.length >= 1 && rollOff.length === 0, { rollOff, lay });
     await P.page.screenshot({ path: join(OUT, 'codex-1-snowman.png') });
     const fr1 = await codex(P);
     rec.ok('...and opening it clears its NEW', !(fr1.fresh && fr1.fresh.snowling), fr1.fresh);
@@ -394,7 +410,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const icBox = await boxLook(P, '[data-cx-item-close]');
     rec.ok(`scrolled ${deep} px down the table, a tap on the Iron Great Sword opens its card at its top (its X in view): ${ic && ic.tier}, base ${ic && ic.base} ("${ic && ic.roll}"), grades ${ic && ic.grades.join(' / ')}`,
       !!ic && deep > 0 && !!icBox && icBox.top === 0 && icBox.seen && /Iron Great Sword/.test(ic.text) && /Weapon/.test(ic.text) && ic.tier === 'Common' && ic.base === '0.2%' && /Snowman/.test(ic.found) && /Lv 1–40/.test(ic.found)
-        && ic.roll === 'a roll of 20 or lower of 1–10,000'
+        && ic.roll === 'drops on a roll of 1–20 out of 10,000'
         && ic.grades.join('|') === 'normal 90.09995%|rare 9%|elite 0.9%|godly 0.00005%' && /does not change the 0.2% drop chance/.test(ic.text), { ic, icBox, deep });
     await P.page.screenshot({ path: join(OUT, 'codex-2-card.png') });
     /* v2.3.3198: a picture of its BASE DROP CHANCE, with its dice */
@@ -413,7 +429,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { const b = document.querySelector('[data-cx-item-close]'); if (b) b.click(); });
     await P.page.waitForTimeout(300);
     rec.ok(`...its X comes back to the list with that row marked (${selNow.join(',')}) and in view (${selBox && selBox.at} px down the box); a Frost Shard's card is 10% ("${sc && sc.roll}") with no grades to roll`,
-      selNow.join(',') === 'irongreatsword' && !!selBox && selBox.seen && !!sc && sc.base === '10%' && sc.roll === 'a roll of 1,000 or lower of 1–10,000' && sc.grades.length === 0 && sc.tier === null && /Frost Shard/.test(sc.text), { selNow, selBox, sc });
+      selNow.join(',') === 'irongreatsword' && !!selBox && selBox.seen && !!sc && sc.base === '10%' && sc.roll === 'drops on a roll of 1–1,000 out of 10,000' && sc.grades.length === 0 && sc.tier === null && /Frost Shard/.test(sc.text), { selNow, selBox, sc });
     /* the open tab tapped again (the list scrolled down to the shard's row) */
     await scrollTo(P, 0);
     await tab(P, 'drops');
@@ -524,7 +540,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const d = e.drops || {};
       if (!['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'nugget'].every((id) => d[id]) || d.weapon) return true;
       /* v2.3.3198: every drop under 100% its dice, the rest none */
-      if (d.shard[2] !== '1,000' || d.nugget[2] !== '1' || d.irongreatsword[2] !== '20' || d.gold[2] !== '') return true;
+      if (d.shard[2] !== '1–1,000' || d.nugget[2] !== '1' || d.irongreatsword[2] !== '1–20' || d.gold[2] !== 'Always' || d.shard[3] !== '(10%)') return true;
       if (!!d.remnant === NO_REMNANT.includes(e.kind)) return true;
       if (!!d.rawgem === NO_GEM.includes(e.kind)) return true;
       return d.shard[0] !== '10%';

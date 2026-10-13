@@ -1966,10 +1966,12 @@ remnant to migrate server-side, not a mode to preserve.
       bars out of 100%") every chance one number and the bar its share of
       100% (`barWidth`, a 2 px nub for the rarest), with the owner's DICE
       ("a 'roll-based system' where you see dice and number", their pick
-      "Each drop's own roll"): under each chance the number a kill's roll of
-      1 to 10,000 must come in at or under (`codexRoll`, `CODEX_ROLL_SIDES`:
-      the nugget 1, an iron piece 20, the rare gem 50, a raw gem 500, a shard
-      1,000) -- the worker's own roll, said on a die;
+      "Each drop's own roll"), shown as the owner then asked ("'roll' column
+      with a number range and drop chance percentage in parentheses"): a ROLL
+      column (`ROLL_W` 50, the dice in its heading), each row the numbers of a
+      kill's roll of 1 to 10,000 that drop it over its chance -- "1–1,000
+      (10%)" ... "1 (0.01%)", "Always (100%)" (`codexRoll`,
+      `CODEX_ROLL_SIDES`, `rollRange`) -- the worker's own roll, said on a die;
     - NO RANDOM WEAPON OFF A KILL (the owner: "Remove 'a random weapon'
       drop", then "Remove it from the game"): `_rollWeaponDropForKill` and
       its level curve are gone, a kill's one weapon the Iron Great Sword's 1

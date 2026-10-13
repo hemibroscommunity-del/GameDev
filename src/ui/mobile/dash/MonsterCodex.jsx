@@ -225,8 +225,8 @@ function Tabs({ tab, setTab }) {
    v2.3.3198: and then: "Wrap text for the item name and increase the usable
    area for the bar size. Looks like the chance column reserves too much
    space" -- the chance column was 76 px for the one long chance, the random
-   weapon's "0.05–0.24%", so every other number sat far from its bar.  It is
-   one number wide now (`PCT_W`); the type column is its longest word's
+   weapon's "0.05–0.24%", so every other number sat far from its bar.  It was
+   one number wide (40 px; the ROLL column below took its place); the type column is its longest word's
    ("Currency"); and the name and the bar share the rest, the bar the bigger
    part (44 -> ~115 px on a 390 px phone), a long name taking two lines.
    And then: "Remove 'a random weapon' drop.  All drop chances should be a
@@ -236,10 +236,15 @@ function Tabs({ tab, setTab }) {
    OF 100% (`barWidth`; the powers-of-ten scale drew 10% at 77%), a drop
    rarer than a pixel's worth a 2 px nub so no bar reads "never".  And the
    owner's dice, "a 'roll-based system' where you see dice and number", each
-   drop's own roll (their pick): under each chance the number a kill's roll of
-   1 to 10,000 must come in at or under (`r.roll`), the rarest 1. */
-const PCT_W = 40;
-const COLS = `26px minmax(0, 1fr) 52px minmax(0, 1.2fr) ${PCT_W}px`;
+   drop's own roll (their pick): the numbers of a kill's roll of 1 to 10,000
+   that drop it (`r.roll` the top one), the rarest 1.  Then: "Actually 'roll'
+   column with a number range and drop chance percentage in parentheses might
+   be better" -- so the chance column is a ROLL column, its range ("1–1,000")
+   over its chance in parentheses ("(10%)"), "Always" for an every-kill drop
+   (nothing to roll), the dice in its heading; the bar stays the chance out of
+   100%, and the range is the widest thing in the column (`ROLL_W`). */
+const ROLL_W = 50;
+const COLS = `26px minmax(0, 1fr) 52px minmax(0, 1.2fr) ${ROLL_W}px`;
 const TABLE_BG = '#05090B';
 const STRIPE = 'rgba(229,237,233,.055)';
 const HEAD_BG = '#101A1F';
@@ -250,6 +255,9 @@ function barWidth(p) {
   return Math.round(x * 10000) / 100;
 }
 const n0 = (n) => Number(n).toLocaleString('en-US');
+/* the numbers of the roll that drop it: "1–1,000", "1"; null for an
+   every-kill drop */
+const rollRange = (roll) => (roll ? (roll === 1 ? '1' : '1–' + n0(roll)) : null);
 /* the Gambling Den's two dice (the card's own picture), cut to the dice
    themselves: they stand at 50-206 x 90-216 of its 256 px */
 function Dice({ h = 12 }) {
@@ -267,36 +275,30 @@ function DropsTab({ rows, sel, onPick }) {
         borderBottom: '1px solid rgba(229,237,233,.14)', ...SECTION, fontSize: 11, color: '#CBD5D2' }}>
         <span style={{ gridColumn: '1 / span 2' }}>Item</span>
         <span>Type</span>
-        <span style={{ gridColumn: '4 / span 2', textAlign: 'right' }}>Chance</span>
+        <span data-cx-roll-head style={{ gridColumn: '4 / span 2', justifySelf: 'end', display: 'inline-flex', alignItems: 'center', gap: 5 }}><Dice h={12} />Roll</span>
       </div>
       <div style={{ padding: 3 }}>
         {rows.map((r, i) => {
           const on = sel === r.id;
           const w = barWidth(r.chance);
-          /* a row with dice is two lines: the bar and its chance, then the
-             dice under the chance; the picture, name and type span both */
-          const both = r.roll ? { gridRow: '1 / span 2' } : null;
           return (
             <button key={r.id} onClick={() => onPick(r.id)} data-cx-drop={r.id} data-cx-sel={on ? 1 : 0} data-cx-who={r.who} data-cx-bar={w}
-              style={{ display: 'grid', gridTemplateColumns: COLS, columnGap: 6, rowGap: 2, alignItems: 'center', width: '100%', minHeight: 42, padding: '4px 6px',
+              style={{ display: 'grid', gridTemplateColumns: COLS, gap: 6, alignItems: 'center', width: '100%', minHeight: 42, padding: '4px 6px',
                 fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer', touchAction: 'manipulation', color: COL.text, borderRadius: 7,
                 background: on ? 'rgba(216,170,88,.16)' : i % 2 ? STRIPE : 'transparent',
                 border: '1px solid ' + (on ? COL.accent : 'transparent') }}>
-              <img src={r.icon} alt="" draggable={false} style={{ width: 26, height: 26, objectFit: 'contain', ...both }} />
-              <span data-cx-name-cell style={{ minWidth: 0, fontSize: 13.5, fontWeight: 700, lineHeight: 1.15, color: r.color || COL.text, overflowWrap: 'anywhere', ...both }}>
+              <img src={r.icon} alt="" draggable={false} style={{ width: 26, height: 26, objectFit: 'contain' }} />
+              <span data-cx-name-cell style={{ minWidth: 0, fontSize: 13.5, fontWeight: 700, lineHeight: 1.15, color: r.color || COL.text, overflowWrap: 'anywhere' }}>
                 {r.name}{r.amount ? <span style={{ color: '#B3BEBB', fontWeight: 600 }}> {r.amount}</span> : null}
               </span>
-              <span data-cx-type style={{ fontSize: 12.5, color: '#CBD3D0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', ...both }}>{r.type}</span>
+              <span data-cx-type style={{ fontSize: 12.5, color: '#CBD3D0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.type}</span>
               <span data-cx-bar-track style={{ height: 8, borderRadius: 4, background: 'rgba(229,237,233,.18)', overflow: 'hidden' }}>
                 <span data-cx-bar-fill style={{ display: 'block', width: w + '%', minWidth: w > 0 ? 2 : 0, height: '100%', borderRadius: 4, background: BAR }} />
               </span>
-              <span data-cx-pct style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.15, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: '#FFFFFF' }}>{r.pct}</span>
-              {r.roll ? (
-                <span data-cx-roll={r.roll} style={{ gridColumn: '4 / span 2', justifySelf: 'end', display: 'inline-flex', alignItems: 'center', gap: 4,
-                  fontSize: 12, fontWeight: 700, lineHeight: 1.15, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: '#B3BEBB' }}>
-                  <Dice h={11} />{n0(r.roll)}
-                </span>
-              ) : null}
+              <span data-cx-roll-cell style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 0, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                <span data-cx-roll={r.roll || 'always'} style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.15, color: '#FFFFFF' }}>{rollRange(r.roll) || 'Always'}</span>
+                <span data-cx-pct style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.15, color: '#B3BEBB' }}>({r.pct})</span>
+              </span>
             </button>
           );
         })}
@@ -304,7 +306,7 @@ function DropsTab({ rows, sel, onPick }) {
       </div>
       <div style={{ fontSize: 11.5, color: COL.text2, lineHeight: 1.4, margin: '7px 4px 0' }}>
         <div data-cx-dice-key style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Dice h={13} /><span>Each kill rolls 1–{n0(CODEX_ROLL_SIDES)} for every item. It drops on its number or lower.</span>
+          <Dice h={13} /><span>Each kill rolls 1–{n0(CODEX_ROLL_SIDES)} for every item. A roll in its range drops it.</span>
         </div>
         <div style={{ marginTop: 3 }}>Tap an item to see what it is and the grades it can roll.</div>
       </div>
@@ -378,7 +380,7 @@ function ItemCard({ kind, e, r, onClose }) {
             (chance for this item to drop)<br /><span style={{ color: COL.muted }}>{r.chanceNote}</span>
             {/* v2.3.3198: its dice, as the table shows them */}
             {r.roll ? <><br /><span data-cx-card-roll={r.roll} style={{ color: COL.muted }}>
-              {r.roll === 1 ? 'a roll of 1' : 'a roll of ' + n0(r.roll) + ' or lower'} of 1–{n0(CODEX_ROLL_SIDES)}</span></> : null}
+              drops on a roll of {rollRange(r.roll)} out of {n0(CODEX_ROLL_SIDES)}</span></> : null}
           </div>
         </div>
       </div>
