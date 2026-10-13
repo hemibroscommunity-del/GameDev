@@ -75,6 +75,13 @@ Half the updates, and the phone draws the walker exactly where it did. (The
 first update put them, a network trip behind, and never pulls them in under 30
 px -- the same with every update or half of them.)
 
+A second test, measured later the same night (#891's `move-diet.test.mjs`,
+whose phone writes its place every frame and sends it every 33 ms rather than
+on a fixed 33 ms clock), puts the hold's cost a little higher: the same on
+average (14.2 px against 14.6) and **2.6 px further at the 95th percentile**
+(32.8 against 30.2) -- inside the 30 px the phone lets anyone drift before it
+pulls them back, so still nothing a player would see.
+
 **A real thumb is shakier than a test's walk.** The stick is analog -- its
 angle comes straight from the finger (`BroTown.jsx`) -- so a real walk's
 heading drifts a little from one move to the next, and the load test's bots
