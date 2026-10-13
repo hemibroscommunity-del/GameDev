@@ -350,7 +350,13 @@ node --cpu-prof --cpu-prof-dir=/tmp/prof tools/qa/load/load-wheel.mjs 100
   sends them plain text: what compressing costs the room;
 - `--move-ms N` (v2.3.3199): a bot's move every N ms instead of a phone's 33;
 - `--seen-r N` (v2.3.3199): "others' moves seen" counts senders within N px
-  (2,400 by default, the worker's near circle).
+  (2,400 by default, the worker's near circle);
+- `--relays` (v2.3.3215): with each blow, a fighter also sends what a phone
+  tells the others about it: its swing (`player_swing`) or, for half of them,
+  its arrow (`player_projectile`). The room relays these to every phone
+  (before events by place), and without them the bots never showed it;
+- `--events` (v2.3.3215): what the probes' ticks carry in `events`, a second,
+  in all and by type (docs/specs/events-by-place.md).
 
 A step counts as broken when:
 - the others' moves arrive later than 1.5 s at p95; or
