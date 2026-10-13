@@ -258,6 +258,14 @@ without a deploy.
 6. **Refuse new players before the room slows down too much**, for example
    when it runs fewer than 30 ticks a second, instead of letting everyone's
    world slow.
+7. **Past one room: split it by connection** (v2.3.3206,
+   `docs/SERVER-SPLIT-PLAN.md`): front doors that do each phone's work, one
+   world behind them. A scratch copy of the room doing only the world's part
+   ran 1,000 players in 6 ms of a 22 ms tick. And the phone's side of a big
+   crowd: `tools/qa/mp/mp-crowdbots.mjs` stands a phone page among the load
+   test's bots (`BT_NO_TRACE=1 node tools/qa/mp/run.mjs crowdbots`). The
+   game's own work for one frame grew about 4x from an empty town to 106
+   players on screen.
 
 ## How it was measured
 

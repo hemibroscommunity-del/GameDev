@@ -1,0 +1,20 @@
+# ═══ v2.3.3206: dobench -- LOCAL MEASUREMENT ONLY, NEVER DEPLOYED ═══
+# A two-class worker for docs/SERVER-SPLIT-PLAN.md: what a message between two
+# Durable Objects costs (a JS RPC call, a socket message) against a phone's
+# socket message.  Run by drive.mjs under `wrangler dev --local`.  Nothing
+# deploys it: .github/workflows/deploy-worker.yml deploys server/ only.
+name = "dobench"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+
+[[durable_objects.bindings]]
+name = "WORLD"
+class_name = "World"
+
+[[durable_objects.bindings]]
+name = "DOOR"
+class_name = "Door"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["World", "Door"]

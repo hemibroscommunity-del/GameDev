@@ -1962,6 +1962,18 @@ remnant to migrate server-side, not a mode to preserve.
   owner's business model: free play capped at 2 h a day, a $2-a-month
   supporter pass for unlimited — the server counts the hours, and logging
   every room message would cost more than the game),
+  `docs/SERVER-SPLIT-PLAN.md` (v2.3.3206, the owner's "Hopefully 1000 while
+  just as smooth is possible ... begin planning what the best server split
+  would look like": MEASURED, about four fifths of the room's thread at 150
+  players is each phone's own messages, growing with the square of a crowd,
+  and the world itself little -- a copy doing only the world's part ran 1,000
+  players in 6 ms of a 22 ms tick -- so the split is by CONNECTION first,
+  front doors doing each phone's work with one world behind them over
+  batched sockets, and WORLD-ARCHITECTURE §11's area servers only behind the
+  doors once that world fills (TRAPS §171); a phone drawing ~100 players on
+  one screen does ~4x an empty town's frame work, so a crowd cap per phone
+  (`mp-crowdbots`); phases 0-4, ~$245 a month at 1,000 around the clock,
+  and a Cloudflare lab that waits on the owner's yes; nothing built yet),
   `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
   `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
   decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates
