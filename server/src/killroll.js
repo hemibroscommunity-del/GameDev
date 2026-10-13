@@ -153,7 +153,7 @@ export const killRollMethods = {
   _killRollDev(playerId, body) {
     const ps = this.playerState[playerId];
     if (!ps) return { ok: false, error: 'not online' };
-    const b = body && typeof body === 'object' ? body : {};
+    const b = body && typeof body === 'object' ? body : Object.create(null);   /* rule 4: never a plain {} */
     const out = { ok: true };
     if (b.next != null) {
       const n = Math.floor(Number(b.next));
