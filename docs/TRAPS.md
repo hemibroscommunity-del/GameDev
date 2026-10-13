@@ -6106,3 +6106,26 @@ broke on yours.
 - The prop stop, the rock-between test and a peer's copy all take the same
   skip (projectiles.js `shotSkip`); one left on "every footprint" catches the
   arrow the other two let through.
+
+## 172. "Area servers are how one world grows past one room" (v2.3.3208)
+
+It is the natural first cut, and WORLD-ARCHITECTURE §11 planned it: one
+server for Brotown and its commons, one per spoke, one per realm.  Measured
+(`docs/SERVER-SPLIT-PLAN.md`), it splits the wrong thing first:
+
+- **The room's work is per PHONE, not per place.** On the real runtime at
+  150 players about four fifths of the thread went on each phone's own
+  messages: receiving, building, compressing. At 600 players the world itself
+  (monsters, fights, the other systems) was 6% of the room's own JavaScript,
+  against 69% building the phones' messages, which grows with the square of
+  the crowd. A scratch copy that did only the world's part ran 1,000 players
+  in 6 ms of a 22 ms tick (in Node).
+- **The crowd is in one place.** Everyone starts, respawns, shops, banks and
+  takes quests in Brotown, so an area split leaves the biggest crowd on one
+  area server, which is where the limit was in the first place. Cutting the
+  town itself puts a border down its busiest street.
+
+**The rule.** Split by connection first: front doors that do each phone's
+work, and one world behind them. Area servers come behind the doors only when
+the one world server itself is full. Measure where a room's time goes, by
+kind of work, before choosing a split.
