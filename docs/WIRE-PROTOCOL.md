@@ -204,6 +204,15 @@ and `vy` are whole numbers. Kill switches (live flags): `farplayers: false`,
 `roundpos: false`. No caps flag: an old client already handles a peer updated
 less often (the 1 Hz roster). `docs/specs/far-players.md`.
 
+**v2.3.3203: a player walking steadily is sent less often.** A Wheel player's
+entry is held for the next tick while they stay on the line their last entry
+drew them along (its `x`, `y`, `vx`, `vy`; within 2 px), with every other field
+unchanged and still moving (or still standing), for at most 66 ms; a turn, a
+stop, a start, new gear, a shove or any other change goes out at once, and the
+far send and the 1 Hz roster count as sent. Same fields, fewer entries: a
+straight walk about 15 a second instead of 30. Kill switch: `steadymovers:
+false`. `docs/specs/steady-movers.md`.
+
 ### `track` is cosmetics-only (v2.3.1465)
 
 `track` carries appearance and display values, nothing authoritative. The

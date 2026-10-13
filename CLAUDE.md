@@ -2159,6 +2159,21 @@ Two protocol versions coexist; both must keep working:
     second, 150: 29.2 -> ~30-32; 41-42 ticks to ~100 players, then a drop as
     the thread fills: smooth to ~130 (main ~105). Kill switch `tickpace: false`;
     /dev/overview's `tickPace` reads the real tick rate: docs/specs/tick-pace.md.
+  - v2.3.3203: A PLAYER WALKING STEADILY IS SENT LESS OFTEN -- a Wheel player's
+    tick entry is held (server/src/steadymovers.js) while every other field is
+    unchanged, they keep moving (or standing) at the speed last sent (4%),
+    within 2 px of the line it drew them on and about as far along it (50 ms
+    of a busy room's lateness allowed), for at most 66 ms; a turn, stop,
+    start, new gear or shove goes out at once; the far send and the roster
+    count as sent. Phones draw peers from the speed, so the drawn place is
+    unchanged (steady-movers.test.mjs runs the phone's dead reckoning both
+    ways: identical). 50-100 players: the room 13-18% less busy, phones
+    download 30-39% less; 150: -6 points, no more ticks; on the night's ramp
+    68% of the thread at 100 against 78%, the smooth line where it was
+    (~120-130); a shaky thumb (2 degrees a move) still 100 -> 58 updates,
+    drawn the same. Positions arrive 2-5 ms later on average. Kill switch
+    `steadymovers: false`; /dev/overview's `steadyMovers` shows the real
+    saving: docs/specs/steady-movers.md.
 
 ## Conventions
 
