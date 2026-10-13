@@ -189,7 +189,7 @@ The tick no longer carries the whole room. Per receiving session:
   the client's ghost-sweep deletes any peer silent for 10 s and counts the
   survivors for "N online".
 - `events` — **unchanged, room-wide.** They are 1% of egress and mix zone-local
-  combat with social relays; do not scope them. *(Superseded by v2.3.3215,
+  combat with social relays; do not scope them. *(Superseded by v2.3.3217,
   below: the fights' events are placed by an allowlist; the social relays are
   still room-wide.)*
 
@@ -330,7 +330,7 @@ feeds the `state_sync` snapshot, `player_join`, both self-heal placeholders
 and the `player_update` relay; before it existed the relay wrote the SHORT
 keys onto peers and every renamed cosmetic was frozen at its join value.
 
-**v2.3.3215: a fight's events go to the phones near it.** The events a tick
+**v2.3.3217: a fight's events go to the phones near it.** The events a tick
 carries are now chosen per phone from an ALLOWLIST of the ones that happen at a
 place (`server/src/eventplace.js`): monsters' hits, attacks, special moves,
 thrown balls, fire patches, parries, bow blasts, element bursts, a bash's

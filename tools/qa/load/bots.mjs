@@ -19,7 +19,7 @@
  *     (monsterCombat.js: no damage number, the worker rolls it); when it
  *     dies it waits for `player_respawned` and walks back in, as the
  *     client's applyLocalRespawn does;
- *   - v2.3.3215: with --relays, each swing also sends what a phone tells the
+ *   - v2.3.3217: with --relays, each swing also sends what a phone tells the
  *     others about it (`player_swing`, or an archer's `player_projectile`),
  *     which the room relays to every phone.
  *
@@ -293,7 +293,7 @@ function step(bot) {
       bot.tx = near.m.x; bot.ty = near.m.y;
       if (near.d <= REACH_PX && now - bot.lastSwing >= SWING_MS) {
         bot.lastSwing = now + rand(0, 100);
-        /* v2.3.3215: --relays: what a phone tells the others about each blow
+        /* v2.3.3217: --relays: what a phone tells the others about each blow
            (monsterCombat.js): the swing it draws for them, or the arrow it
            looses for them -- relayed by the room to every phone (index.js's
            default branch, the eventBuffer).  Half the fighters are archers. */
@@ -370,7 +370,7 @@ function probeTick(bot, data) {
   try { d = JSON.parse(data); } catch { return; }
   probeTickObj(bot, d);
 }
-/* v2.3.3215: --events (load.mjs): what the probes' ticks carry in `events`,
+/* v2.3.3217: --events (load.mjs): what the probes' ticks carry in `events`,
    by type -- how many, and their bytes as JSON (unzipped) */
 function countEvents(d) {
   if (!Array.isArray(d.events)) return;
@@ -437,7 +437,7 @@ function report() {
   for (const b of bots) states[b.state] = (states[b.state] || 0) + 1;
   const out = Object.assign(M, {
     bots: bots.length, states,
-    probesIn: bots.filter((b) => b.probe && b.state === 'walking').length,   /* v2.3.3215: --events' per-probe rate */
+    probesIn: bots.filter((b) => b.probe && b.state === 'walking').length,   /* v2.3.3217: --events' per-probe rate */
     cpuPct: ((cpu.user + cpu.system) / 1000 / wall) * 100,
     loopP99: loopDelay.percentile(99) / 1e6,
     loopMax: loopDelay.max / 1e6,

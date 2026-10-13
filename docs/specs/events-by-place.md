@@ -1,4 +1,4 @@
-# Events by place: a fight is told to the phones near it (v2.3.3215)
+# Events by place: a fight is told to the phones near it (v2.3.3217)
 
 > Owner, 2026-10-13: *"Go recommended but I want you to stress test to see
 > what can be optimized."* This is Phase 0d of the server split plan

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3215: EVENTS BY PLACE (the split plan's Phase 0d) ═══
+/* ═══ v2.3.3217: EVENTS BY PLACE (the split plan's Phase 0d) ═══
  *
  * Owner, 2026-10-13: "Go recommended but I want you to stress test to see
  * what can be optimized."  The plan's Phase 0d (docs/SERVER-SPLIT-PLAN.md).

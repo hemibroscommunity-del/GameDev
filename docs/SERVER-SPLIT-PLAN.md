@@ -253,7 +253,7 @@ These are needed by ANY split. Several help at today's 120.
   - Events should carry where they happened, and a phone should get those
     near it.
   - Truly global ones (world chat, clan wars) still go to everyone.
-  - *v2.3.3215, done:* the fights' events are placed by an allowlist
+  - *v2.3.3217, done:* the fights' events are placed by an allowlist
     (`server/src/eventplace.js`). They go to the players they are about, and
     to the phones within 2,800 px of them in the Wheel; everything else still
     goes to everyone. At 120 players with real swings and arrows, each phone
