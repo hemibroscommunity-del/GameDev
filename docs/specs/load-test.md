@@ -17,36 +17,36 @@ Wheel, and the first against the real runtime.
 
 Measured here, in the sandbox, with everyone in the Wheel: 70% of the players
 walking the town and its commons, 30% fighting their land's first stretch,
-every one sending positions at a phone's rate (33 ms while moving). The local
-runtime's own tracing was off: it is on by default and made every message
-about five times dearer (see "The trap in local numbers" below).
+every one sending what a phone sends at a phone's rate (33 ms while moving).
+The local runtime's own tracing was off: it is on by default and made every
+message about five times dearer (see "The trap in local numbers" below).
 
 | Players | What a player would see | The room |
 |---|---|---|
-| 25 | smooth: the others' moves arrive in 18 ms (half the time), 30 ms (95%) | its thread 33% busy, 39 ticks a second |
-| 50 | smooth: 23 / 35 ms; a new player gets in within 32 ms | 57% busy, 35 ticks a second |
-| 75 | the world starts to slow: 32 ticks a second; moves 27 / 43 ms | 84% busy |
-| 100 | slower: 27 ticks a second, monsters at 60% of their speed; moves 33 / 56 ms; a new player 67 ms | 86% busy |
-| 125 | about half speed: 22 ticks a second; moves 37 / 62 ms; a new player 0.2 s | 95% busy |
-| 150 | 17 ticks a second; moves 40 / 88 ms; a new player 0.3 s | 98% busy |
-| back down to 60 after 100 | recovered: 34 ticks a second | 72% busy |
+| 25 | smooth: the others' moves arrive in 18 ms (half the time), 30 ms (95%) | its thread 29% busy, 39 ticks a second |
+| 50 | smooth: 22 / 36 ms; a new player gets in within 33 ms | 55% busy, 36 ticks a second |
+| 75 | the world starts to slow: 32 ticks a second; moves 26 / 40 ms | 73% busy |
+| 100 | slower: 29 ticks a second, monsters at 64% of their speed; moves 32 / 46 ms; a new player 91 ms | 88% busy |
+| 125 | about half speed: 25 ticks a second; moves 37 / 57 ms; a new player 0.14 s | 89% busy |
+| 150 | 20 ticks a second; moves 37 / 57 ms; a new player 0.3 s | 98% busy |
 
-So with today's code the room is **smooth to about 65 busy players** (33 ticks
+So with today's code the room is **smooth to about 70 busy players** (33 ticks
 a second or more: the world at three quarters of its designed speed or
 better), and today's cap of 60 (`MAX_PLAYERS`, `server/src/index.js`) sits
-just inside that. Past it the room does not fall over: it slows. A tick starts
+inside that. Past it the room does not fall over: it slows. A tick starts
 22 ms after the last one finishes, and the world moves a fixed step a tick (a
 monster's `spd` is pixels a tick), so a busier room is a slower world. It
-never froze, up to 150 players, and it came back when players left.
+never froze, up to 150 players, and it came back when players left (an earlier
+run, taken back down to 60 after 100: 34 ticks a second again).
 
 **v2.3.3195 (#885, `docs/specs/room-capacity.md`)** makes the room's own work
 cheaper, with the same bytes to every player: smooth to about 100 players, and
 half speed from about 130 instead of about 110.
 
 **What each phone downloads** grows with the crowd, because every phone is sent
-every moving player's position, wherever they are in the Wheel: about 3 KB a
-second for each moving player while the room keeps up -- **170-190 KB/s at 60
-players**, about 600-700 MB per hour of play, on a phone that may be on a
+every moving player's position, wherever they are in the Wheel: about 3.5 KB a
+second for each moving player while the room keeps up -- **about 205 KB/s at
+60 players**, about 740 MB per hour of play, on a phone that may be on a
 mobile data plan. A room that slows sends less (fewer ticks), which is not a
 saving anyone wants.
 
@@ -54,7 +54,9 @@ saving anyone wants.
 
 `tools/qa/load/load-wheel.mjs` runs the real room code inside Node with simulated
 connections and a simulated clock, which measures the game's own code with no
-runtime around it. "% of a core" is what one second of play costs:
+runtime around it. "% of a core" is what one second of play costs (measured
+with the first bots' moves, whose 16-digit numbers cost the room a little more
+to read and write than a phone's do):
 
 | Players | Messages in a second | % of a core | KB/s per phone |
 |---|---|---|---|
@@ -86,7 +88,7 @@ player in the Wheel. That is the same player list serialised once per person
 once, among other things: room-capacity.md.)
 
 The real runtime costs more than the code alone (at 50 players its thread was
-57% busy where the code alone is 32%). Taking a message in is a small part of
+55% busy where the code alone is 32%). Taking a message in is a small part of
 that, measured with players who stand still and send extra `pong`s (the
 cheapest message the worker accepts: its case only folds a number into the
 session's round-trip time):
@@ -143,8 +145,8 @@ the live game). That is a decision for the owner, not done here.
 
 **For planning:** with today's code, treat **60 busy players** (today's cap)
 as the most one room holds smoothly. The server would hold more after #885, but
-each phone's download grows with the crowd too (about 3 KB a second per moving
-player). So raising the cap is a choice about phones as much as about the
+each phone's download grows with the crowd too (about 3.5 KB a second per
+moving player, less after v2.3.3196: `docs/specs/far-players.md`). So raising the cap is a choice about phones as much as about the
 server. `max_players` (a live flag, `docs/specs/room-full.md`) lowers the cap
 without a deploy.
 
@@ -155,13 +157,16 @@ without a deploy.
    - each player's monsters are found on a grid;
    - the safe-ground check comes after the distance check;
    - the history snapshot reuses its entries.
-2. **Send each phone only the players near it** (§11's "distance-based
-   updates"). Monsters already work this way (`_wheelInterest`, 2,400 px). This
-   cuts each phone's download and the room's sending. In town, where everyone
-   is close, it helps less. Players off the screen would update less often:
-   only their dots on the map would show it.
-3. **Shorter numbers on the wire.** Positions to a tenth of a pixel instead of
-   sixteen digits: about a quarter fewer bytes, invisible on screen.
+2. **Done in v2.3.3196 (`docs/specs/far-players.md`): players far from you
+   less often** (§11's "distance-based updates"), as monsters already were
+   (`_wheelInterest`, 2,400 px): each phone downloads 13-25% less with a crowd
+   mostly in town and 23-41% less with everyone out in the lands. And
+   **positions in whole pixels** -- but the phones already send a tenth of a
+   pixel, so that part saves only ~2.4% of a player's update; the "about a
+   quarter" this list once said came from the first bots' 16-digit numbers.
+3. **Leave out what did not change**: a player's zone, gear and activity ride
+   every move (about 40% of the update). Needs the phone to say it can do
+   without them, so a change on both sides.
 4. **The message diet** (§11): five positions a second with direction and
    speed instead of thirty. The biggest change: the server has to move each
    player between their messages, or monsters chasing them lurch (v2.3.1635
@@ -188,8 +193,16 @@ without a deploy.
   a beat after `state_sync`, positions every 33 ms while walking at 150-180
   px/s and once a second standing (the client's own cadence, `wsClient.js`),
   `monster_damage` every ~0.7 s for fighters within reach, and a walk back in
-  after `player_respawned`. Two players in each process read every tick and
-  time how long another player's move took to reach them.
+  after `player_respawned`. Each move is a phone's (BroTown.jsx's broadcast
+  through the shim): positions to a tenth of a pixel, speed in whole
+  hundredths of a pixel a frame, the 8-way facing, worn gear, and an id as long
+  as a real one. Two players in each process read every tick and time how long
+  the move of another player within 2,400 px of them (on their screen) took
+  to reach them.
+- The first version of this test sent positions to a hundredth of a pixel and
+  speed as a 16-digit fraction. Against those the room measured a little worse
+  (smooth to about 65, half speed from about 110) and the phones' download a
+  little lower (no gear in the moves); the tables here are a phone's moves.
 - The server's CPU is read from `/proc`: the busiest thread of `workerd` (a
   Durable Object runs on one thread, so that is the number that says "full").
 - `tools/qa/load/load-wheel.mjs` measures the code alone, as above.

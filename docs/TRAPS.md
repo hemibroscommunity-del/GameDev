@@ -5980,10 +5980,10 @@ phone's number.  That was measured in the meadow, in a simulated room, before
 the whole world became one zone.  In the Wheel each player's tick is built on
 its own and lists every moving player, so the room's own work grows with the
 square of the crowd.  The bot load test (`tools/qa/load/`,
-`docs/specs/load-test.md`) puts the room's thread at 57% with 50 busy players
-in the sandbox and 84% with 75: smooth to about 65, past that a slower world
+`docs/specs/load-test.md`) puts the room's thread at 55% with 50 busy players
+in the sandbox and 73% with 75: smooth to about 70, past that a slower world
 (a tick starts 22 ms after the last one ends, and the world moves a fixed step
-a tick), at half speed from about 110.
+a tick), at half speed from about 125.
 
 **And its twin: a local number that is the dev tool's.**  `wrangler dev` 4.x
 traces and logs EVERY event for its local explorer page, on by default

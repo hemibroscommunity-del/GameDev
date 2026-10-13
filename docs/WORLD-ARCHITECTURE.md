@@ -340,9 +340,9 @@ requests a second**. Their own example is a game with 50,000 players sending
   push.
   - **Measured, v2.3.3194** (`docs/specs/load-test.md`, the bot load test in
     `tools/qa/load/`): in the sandbox, against the real runtime, the room is
-    smooth up to about **65 busy players** (its one thread 57% busy at 50,
-    84% at 75). Past that it does not fall over, it slows: fewer ticks a
-    second, so the world runs slower, at about half speed from 110. No freeze
+    smooth up to about **70 busy players** (its one thread 55% busy at 50,
+    73% at 75). Past that it does not fall over, it slows: fewer ticks a
+    second, so the world runs slower, at about half speed from 125. No freeze
     up to 150, and it recovers when players leave. Cloudflare's own machines
     are not measured.
   - **v2.3.3195** (#885, `docs/specs/room-capacity.md`) makes the room's own
@@ -358,8 +358,9 @@ requests a second**. Their own example is a game with 50,000 players sending
     the room's thread (a tenth of it at 60 moving players), and sending every
     player's update every tick grows with the square of the crowd. That is
     the limit left once the room's own code is cheap;
-  - **the phones.** Each downloads about 3 KB a second for every moving player
-    in the Wheel, 170-190 KB/s at 60.
+  - **the phones.** Each downloads about 3.5 KB a second for every moving
+    player in the Wheel, about 205 KB/s at 60 (v2.3.3196 sends far players
+    less often: `docs/specs/far-players.md`).
 
 ### The fix: fewer messages, and a world of area servers
 
