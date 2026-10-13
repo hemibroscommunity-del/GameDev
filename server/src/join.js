@@ -307,10 +307,11 @@ const JOIN_RPG_INGEST_ONLY = new Set([
  *     this is a NEW type on an opt-in channel and not a new
  *     `join_rejected` reason.
  *
- * The cap is not raised here and should not be: 60 players cost the
- * worker 0.16ms of a 22ms tick, so nothing on the server is straining.
- * The binding constraint is the RECEIVER -- ~4KB/s of download per
- * co-located moving peer on a phone.  Sixty is a bandwidth number.     */
+ * v2.3.3205: the cap is 120 (index.js MAX_PLAYERS, the owner's call).
+ * The note that stood here -- "sixty is a bandwidth number", ~4 KB/s per
+ * moving peer -- counted the download UNZIPPED; on the wire it is about a
+ * thirteenth (v2.3.3199).  What binds is the room's one thread: smooth to
+ * about 145 players since #887-#891 (docs/specs/load-test.md).          */
 const ROOM_FULL = {
   /* What we ask the client to wait between attempts.  Sent on the wire so
      a future worker can slow the herd down without a client deploy; the

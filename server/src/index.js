@@ -236,7 +236,7 @@ async function routeHttp(request, env) {
     // returns the same room.  The ?room=X URL query stays as the escape
     // hatch for testing / private sessions.  Re-introduce sharding (the
     // scan loop is in git history at v2.3.1111) only when concurrent
-    // population approaches MAX_PLAYERS=60, and prefer explicit shard
+    // population approaches MAX_PLAYERS (120 since v2.3.3205), and prefer explicit shard
     // assignment over count-probing when that day comes.
     // Room name 'brotown-1' (not 'brotown') on purpose: the old lobby's
     // first pick was brotown-1, so that DO holds the existing players'
@@ -810,14 +810,19 @@ export class GameRoom {
     this.tickInterval = null;
     this.tickSeq = 0;
     this.TICK_RATE = 22; // 45Hz (22ms)
-    /* The hard ceiling on concurrent sockets in this room.  It is a
-       RECEIVER-side number, not a server one (see the refusal comment in
-       fetch() below): ~4KB/s of download per co-located moving peer is
-       what an iPhone on cellular can carry, so ~20 people in one zone is
-       the real comfort limit and 60 in the room is the ceiling above it.
+    /* The hard ceiling on concurrent sockets in this room.
        v2.3.1982: `_roomCap()` (join.js) is the read path -- the
-       `max_players` live-ops flag can only LOWER this, never raise it. */
-    this.MAX_PLAYERS = 60;
+       `max_players` live-ops flag can only LOWER this, never raise it.
+       v2.3.3205: 60 -> 120, the owner's call ("I think 120 is a good cap
+       limit for now").  The old reasoning -- a phone's download -- was
+       counted UNZIPPED (~4 KB/s a peer); on the wire it is about a
+       thirteenth (v2.3.3199, docs/specs/load-test.md).  What binds is the
+       room's one thread, and with #887-#891 the load test keeps it smooth
+       (33+ ticks a second) to about 145 players: 38.8 ticks at 125, 39 at
+       120.  Its memory at 120 players: about 9 MB kept after a full GC,
+       44 MB at the most in use between GCs, against Cloudflare's 128 MB
+       (tools/qa/load/heapprobe.mjs).  docs/specs/cap-120.md. */
+    this.MAX_PLAYERS = 120;
     this.EVENTS_PER_TICK_CAP = 500;
     /* ═══ v2.3.1618: inbound abuse bounds ═══
        Sized from the real client, not guessed.
