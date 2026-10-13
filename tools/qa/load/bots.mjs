@@ -257,7 +257,9 @@ function startWalking(bot) {
 
 function newTarget(bot) {
   const c = bot.fighter && bot.anchor ? bot.anchor : ARRIVAL;
-  const r = (bot.fighter ? FIGHT_R : WALK_R) * Math.sqrt(Math.random());
+  /* v2.3.3208: CFG.walkR -- walkers kept closer to the square (the phone
+     crowd test, mp-crowdbots.mjs, wants them on its screen) */
+  const r = (bot.fighter ? FIGHT_R : (CFG && CFG.walkR > 0 ? CFG.walkR : WALK_R)) * Math.sqrt(Math.random());
   const a = Math.random() * Math.PI * 2;
   bot.tx = c.x + Math.cos(a) * r;
   bot.ty = c.y + Math.sin(a) * r;

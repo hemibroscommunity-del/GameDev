@@ -230,9 +230,16 @@ export async function startWorker(port) {
      stray processes and a held port per run, which after a few runs is a
      machine that can no longer start a worker.  Its own process GROUP is the
      only handle that reaches all of them. */
+  /* v2.3.3208: BT_NO_TRACE=1 turns wrangler's own local tracing off (TRAPS
+     §168: it made every message ~5x dearer and froze a room of ~95) -- for a
+     crowd scenario (mp-crowdbots) whose room must hold 110 bots.  Opt-in, so
+     every other scenario keeps the worker it was written against. */
+  const env = process.env.BT_NO_TRACE === '1'
+    ? Object.assign({}, process.env, { X_LOCAL_OBSERVABILITY: 'false', X_LOCAL_EXPLORER: 'false' })
+    : process.env;
   const proc = spawn('npx', ['wrangler', 'dev', '--port', String(port), '--local',
     '--ip', '127.0.0.1', '--persist-to', state, '--var', `ADMIN_KEY:${ADMIN_KEY}`], {
-    cwd: join(REPO, 'server'), stdio: ['ignore', 'pipe', 'pipe'], detached: true,
+    cwd: join(REPO, 'server'), env, stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   });
   let log = '';
   proc.stdout.on('data', (d) => { log += d; });
