@@ -364,6 +364,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await scrollTo(P, 0);
     await tab(P, 'drops');
     const dTop = await boxLook(P, '[data-cx-drops]');
+    await P.page.screenshot({ path: join(OUT, 'codex-1c-table.png') });
     rec.ok(`a tap on the open Drops tab puts its table at the top of the sheet (${dTop && dTop.at} px down, the box at ${dTop && dTop.top})`,
       !!dTop && dTop.at >= 0 && dTop.at <= 8 && dTop.top > 0, dTop);
 
