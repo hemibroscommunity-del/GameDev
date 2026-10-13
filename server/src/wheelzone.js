@@ -141,23 +141,45 @@ export const WHEEL = Object.freeze({
   NODE_TIERS: Object.freeze([1, 6, 11, 16, 21]),
 });
 
+/* v2.3.3201: a square's key is a NUMBER, cx * GRID_KEY + cy (unique while
+   |cy| < 2^20), where it was the string 'cx,cy' -- up to 25 strings made and
+   looked up for every Wheel player every tick, and then a sort calling a
+   comparator, were two thirds of this search's cost in the load test's
+   profile.  A square past GRID_LIM (a position no Wheel has) sends the
+   search back to the full walk, so no two squares can ever share a key. */
+const GRID_KEY = 2 ** 21;
+const GRID_LIM = 2 ** 20 - 2;
+const gridKeyOk = (cx, cy) => cx >= -GRID_LIM && cx <= GRID_LIM && cy >= -GRID_LIM && cy <= GRID_LIM;
+/* the indices found, reused from call to call (read before the next call) */
+let nearIdx = new Int32Array(512);
+
 /* v2.3.3195: the indices of the monsters in the grid squares within `r` of
-   (x, y) on both axes, in the monsters' own order (each square's list is
-   already in order; the merge sorts the few that are left).  A position that
-   is not finite reaches nothing, as the full walk's distance test says. */
+   (x, y) on both axes, in the monsters' own order.  v2.3.3201: written into
+   `nearIdx`, and the count returned -- sorted as numbers by the typed array's
+   own sort (no comparator), the same order; -1 when the grid cannot answer
+   (the full walk does).  A position that is not finite reaches nothing, as
+   the full walk's distance test says. */
 function wheelGridNear(grid, x, y, r) {
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return [];
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return 0;
   const C = WHEEL.GRID_CELL;
   const x0 = Math.floor((x - r) / C), x1 = Math.floor((x + r) / C);
   const y0 = Math.floor((y - r) / C), y1 = Math.floor((y + r) / C);
-  const out = [];
+  if (!gridKeyOk(x0, y0) || !gridKeyOk(x1, y1)) return -1;
+  let n = 0;
   for (let cx = x0; cx <= x1; cx++) {
     for (let cy = y0; cy <= y1; cy++) {
-      const c = grid.cells.get(cx + ',' + cy);
-      if (c) for (let k = 0; k < c.length; k++) out.push(c[k]);
+      const c = grid.cells.get(cx * GRID_KEY + cy);
+      if (c === undefined) continue;
+      if (n + c.length > nearIdx.length) {
+        const bigger = new Int32Array(Math.max(nearIdx.length * 2, n + c.length));
+        bigger.set(nearIdx.subarray(0, n));
+        nearIdx = bigger;
+      }
+      for (let k = 0; k < c.length; k++) nearIdx[n++] = c[k];
     }
   }
-  return out.sort((a, b) => a - b);
+  if (n > 1) nearIdx.subarray(0, n).sort();
+  return n;
 }
 
 export const wheelzoneMethods = {
@@ -380,10 +402,13 @@ export const wheelzoneMethods = {
         if (!had) entered.add(m.id);
       }
     };
-    if (grid && grid.monsters === monsters) {
-      /* one pixel past INTEREST_OUT: a monster on a square's edge is never
-         lost to rounding, and the distance test above still decides */
-      for (const i of wheelGridNear(grid, ps.x, ps.y, WHEEL.INTEREST_OUT + 1)) test(monsters[i]);
+    /* one pixel past INTEREST_OUT: a monster on a square's edge is never
+       lost to rounding, and the distance test above still decides */
+    const n = (grid && grid.monsters === monsters && grid.cells)
+      ? wheelGridNear(grid, ps.x, ps.y, WHEEL.INTEREST_OUT + 1) : -1;
+    if (n >= 0) {
+      const idx = nearIdx;
+      for (let k = 0; k < n; k++) test(monsters[idx[k]]);
     } else {
       for (const m of monsters) test(m);
     }
@@ -399,7 +424,10 @@ export const wheelzoneMethods = {
       const m = monsters[i];
       const cx = Math.floor(m.x / WHEEL.GRID_CELL), cy = Math.floor(m.y / WHEEL.GRID_CELL);
       if (!Number.isFinite(cx) || !Number.isFinite(cy)) continue;   /* a NaN position is never in reach */
-      const k = cx + ',' + cy;
+      /* v2.3.3201: a number for a key (GRID_KEY); a square no Wheel has
+         leaves the grid unusable, and _wheelInterest walks them all */
+      if (!gridKeyOk(cx, cy)) return { monsters, cells: null };
+      const k = cx * GRID_KEY + cy;
       let c = cells.get(k);
       if (!c) cells.set(k, c = []);
       c.push(i);

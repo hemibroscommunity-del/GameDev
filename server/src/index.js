@@ -183,6 +183,7 @@ import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.29
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into a shield on the worker */
+import { aggroGridMethods } from './aggrogrid.js'; /* v2.3.3201: a monster looks for players near it, not through every one */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
@@ -1901,6 +1902,11 @@ export class GameRoom {
       if (!monsters || monsters.length === 0) continue;
 
       const playersInZone = playersByZone.get(zoneId) || [];
+      /* v2.3.3201: the Wheel's players dropped into cells once a tick, so each
+         monster looks only near itself for one to go after (aggrogrid.js);
+         null = the full loop (another zone, a handful of players, the kill
+         switch, a position that is not a plain number) */
+      const _aggroCells = zoneId === WHEEL_ZONE ? this._aggroGridOf(playersInZone) : null;
 
       for (const m of monsters) {
         // Respawn check
@@ -2182,6 +2188,17 @@ export class GameRoom {
         let nearest = null;
         let nearestDist = Infinity;
         const stickyAggroActive = m._aggroOverrideUntil && now < m._aggroOverrideUntil;
+        /* v2.3.3201: an override that has run out is cleared HERE, the tick
+           after it runs out, instead of whenever the leash below next met this
+           monster with a player in hand.  Nothing reads one that has run out
+           (every read is behind stickyAggroActive), so nothing behaves
+           differently -- and it is what lets the grid below leave out the
+           players beyond the aggro range and still leave the monster exactly
+           as the full loop would (aggrogrid.js). */
+        if (!stickyAggroActive && (m._aggroOverrideUntil || m._aggroOverrideTarget != null)) {
+          m._aggroOverrideTarget = null;
+          m._aggroOverrideUntil = 0;
+        }
         if (stickyAggroActive) {
           const _sticky = playersInZone.find(p => p.id === m._aggroOverrideTarget);
           /* v2.3.2978: ...nor is anyone on the Wheel's safe ground, the commons
@@ -2200,7 +2217,50 @@ export class GameRoom {
             m._aggroOverrideUntil = 0;
           }
         }
-        if (!nearest) {
+        /* ═══ v2.3.2790: ...TIMES THE ZONE'S DEPTH AT THIS MONSTER'S FEET ═══
+           Wind Dunes draws a monster at 0.42 of its size on the north edge
+           (zones.js `depth`), so a reach measured in flat pixels hit you from
+           well outside the body on screen.  _dk is 1 on every other zone and
+           the multiply is exact there.  The SAME factor scales the aggro
+           ring, the chase / wander / leash steps and the knockback repay
+           below, and _basicAtkGeom (telegraph.js) re-measures with it, so
+           the tick's stop ring and the wind-up's whiff ring stay paired --
+           the v2.3.2482 "all three move together" rule, per monster. */
+        /* v2.3.3201: _dk and the aggro range are worked out here, before the
+           search, and no longer under "Movement AI" below: the grid needs the
+           range to know where to look.  Nothing in between moves the
+           monster, so they are the same numbers. */
+        const _dk = this._depthK(zoneId, m.y);
+        // Effective aggro range -- bumps to 1200 px when the sticky
+        // override is active, so a bow-snipe from anywhere on screen
+        // pulls the monster.  Without the bump the monster could be
+        // damaged but still wouldn't pass the proximity gate to enter
+        // the chase branch.
+        /* v2.3.1639: per-archetype base range (MONSTER_AGGRO_BY_ARCH),
+           falling back to the 120 default for every archetype not listed.
+           Object.create(null)-safe: `m.arch` is a server-authored spawn
+           field, never client-supplied, but read it defensively anyway so a
+           future client-fed arch can't reach Object.prototype. */
+        const _archAggro = Object.prototype.hasOwnProperty.call(this.MONSTER_AGGRO_BY_ARCH, m.arch)
+          ? this.MONSTER_AGGRO_BY_ARCH[m.arch]
+          : this.MONSTER_AGGRO_RANGE;
+        /* v2.3.2790: a far monster notices you as far off as it LOOKS (x _dk).
+           The 1200 sticky bump is not scaled: it means "whoever shot me,
+           from anywhere on screen", and anywhere on screen is still that. */
+        const effAggroRange = stickyAggroActive ? 1200 : _archAggro * _dk;
+        /* v2.3.3201: in the Wheel, the cells near the monster answer instead
+           of every player in it -- the same player (aggrogrid.js); -2 is "the
+           grid cannot answer", and the full loop does */
+        const _gridPick = (!nearest && _aggroCells)
+          ? this._aggroGridPick(_aggroCells, playersInZone, m, effAggroRange, zoneId, zoneId === WHEEL_ZONE, now)
+          : -2;
+        if (_gridPick >= 0) {
+          nearest = playersInZone[_gridPick];
+          const dxG = nearest.x - m.x;
+          const dyG = nearest.y - m.y;
+          nearestDist = Math.sqrt(dxG * dxG + dyG * dyG);
+        }
+        if (!nearest && _gridPick === -2) {
           for (const p of playersInZone) {
             /* v2.3.1704: harvesters are skipped, not merely spared.  If every
                player in the zone is extracting, `nearest` stays null and the
@@ -2268,35 +2328,12 @@ export class GameRoom {
            45px default; now that the default is 72 it would be a narrowing,
            so take whichever is larger.  His 1.5 Y-scale still does the work
            the note above describes (the tall collision body). */
-        /* ═══ v2.3.2790: ...TIMES THE ZONE'S DEPTH AT THIS MONSTER'S FEET ═══
-           Wind Dunes draws a monster at 0.42 of its size on the north edge
-           (zones.js `depth`), so a reach measured in flat pixels hit you from
-           well outside the body on screen.  _dk is 1 on every other zone and
-           the multiply is exact there.  The SAME factor scales the aggro
-           ring, the chase / wander / leash steps and the knockback repay
-           below, and _basicAtkGeom (telegraph.js) re-measures with it, so
-           the tick's stop ring and the wind-up's whiff ring stay paired --
-           the v2.3.2482 "all three move together" rule, per monster. */
-        const _dk = this._depthK(zoneId, m.y);
+        /* v2.3.2790: x _dk, the zone's depth at this monster's feet (worked
+           out above the search, v2.3.3201) */
         const _atkRange = (m.arch === 'snowman' ? Math.max(70, ATTACK_RANGE) : ATTACK_RANGE) * _dk;
         const _yScale = m.arch === 'snowman' ? 1.5 : Y_SCALE;
-        // Effective aggro range -- bumps to 1200 px when the sticky
-        // override is active, so a bow-snipe from anywhere on screen
-        // pulls the monster.  Without the bump the monster could be
-        // damaged but still wouldn't pass the proximity gate to enter
-        // the chase branch.
-        /* v2.3.1639: per-archetype base range (MONSTER_AGGRO_BY_ARCH),
-           falling back to the 120 default for every archetype not listed.
-           Object.create(null)-safe: `m.arch` is a server-authored spawn
-           field, never client-supplied, but read it defensively anyway so a
-           future client-fed arch can't reach Object.prototype. */
-        const _archAggro = Object.prototype.hasOwnProperty.call(this.MONSTER_AGGRO_BY_ARCH, m.arch)
-          ? this.MONSTER_AGGRO_BY_ARCH[m.arch]
-          : this.MONSTER_AGGRO_RANGE;
-        /* v2.3.2790: a far monster notices you as far off as it LOOKS (x _dk).
-           The 1200 sticky bump is not scaled: it means "whoever shot me,
-           from anywhere on screen", and anywhere on screen is still that. */
-        const effAggroRange = stickyAggroActive ? 1200 : _archAggro * _dk;
+        /* the aggro range, effAggroRange, is worked out above the search too
+           (v2.3.3201) */
         /* v2.3.2978: on the Wheel a chase ends WHEEL.CHASE_LEASH from home,
            shot or not -- an ordinary zone's edge ends one, and the Wheel's
            commons and town are meant to be safe ground (wheelzone.js).  The
@@ -2310,8 +2347,13 @@ export class GameRoom {
             && (Math.hypot(m.x - m.spawnX, m.y - m.spawnY) > (_pursuing ? WHEEL.PURSUE_LEASH : WHEEL.CHASE_LEASH)
               || (!_pursuing && this._wheelSafeAt(m.x, m.y)))) {   /* ...or it has stepped onto the safe ground */
           nearest = null;
-          m._aggroOverrideTarget = null;
-          m._aggroOverrideUntil = 0;
+          /* v2.3.3201: only over an override that is there -- one that ran out
+             was cleared above the search -- so a monster that never had one
+             is left as it was, as it is when the grid found nobody in range */
+          if (m._aggroOverrideUntil || m._aggroOverrideTarget != null) {
+            m._aggroOverrideTarget = null;
+            m._aggroOverrideUntil = 0;
+          }
         }
         if (nearest && nearestDist < effAggroRange) {
           m.targetId = nearest.id;
@@ -6093,3 +6135,4 @@ Object.assign(GameRoom.prototype, wheelzoneMethods); /* v2.3.2978 */
 Object.assign(GameRoom.prototype, noMansLandMethods); /* v2.3.3058 */
 Object.assign(GameRoom.prototype, shieldWearMethods); /* v2.3.3091 */
 Object.assign(GameRoom.prototype, shieldGemMethods); /* v2.3.3187 */
+Object.assign(GameRoom.prototype, aggroGridMethods); /* v2.3.3201 */
