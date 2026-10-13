@@ -154,6 +154,62 @@ players, real looks, each run more than once):
   `visible` change marks it, and a walking crowd changes many `zIndex`es. The
   world is one render group (v2.3.3079). Fewer things drawn is what helps.
 
+### 6. Found later the same night
+
+- **The join snapshot carried every player's whole state** (#899): bag,
+  stashes, quests, skills, not only what the others draw. Now it carries only
+  what they draw. At 120 players a join's snapshot went from 142 KB to 8 KB,
+  and after everyone dropped at once (a deploy or a blip) all were back in 5 s
+  instead of 6.
+- **Every fight's events went to every phone in the Wheel** (#901). Now they
+  go to the phones within 2,800 px of where they happened, and to whoever they
+  are about. At 120 players a phone gets 77% fewer events, about 6 KB a second
+  less.
+- **The once-a-second roster sent every player whole to every phone** (#903).
+  Now a far player goes slim (where, facing, zone, speed), and one standing
+  still goes every 4 s. Each phone's download at 120 players is about 8% less.
+
+### 7. All of it together: the final ramp
+
+Today's main against main with all seven of the round's server PRs merged
+together (#895, #896, #897, #898, #899, #901, #903).
+
+The same load test drove both:
+- real looks (`--track`);
+- the fighters' swings and arrows (`--relays`);
+- the safe ground's walk diet (`--diet`);
+- 30% fighting;
+- steps of 30 players up to 210, 45 s measured each step.
+
+Each side ran twice, alternating (2026-10-13 night, this machine). The ranges
+are the two runs.
+
+| players | today's main | with all seven |
+|---|---|---|
+| 60 | 41% busy, 41.7 ticks a second, others' moves 28 ms | 36%, 41.9 ticks, 28 ms |
+| 90 | 58-63%, 41.6, 34-40 ms | 51-53%, 41.6, 29 ms |
+| 120 | 82-83%, 38-39, 69-78 ms | 71-74%, 41.3, 46-49 ms |
+| 150 | 97%, 21-22, 123-128 ms | 83-88%, 37.5-39, 65-69 ms |
+| 180 | 97-98%, **4**, 260-308 ms | 95-98%, 29-33, 81-91 ms |
+| 210 | 97%, **0.5-0.7** (stopped), 0.9-1.1 s | 98%, 20-21, 107 ms |
+
+"Busy" is the room's thread. "Ticks" is out of 45. "Others' moves" is how late
+another player's moves arrive, at p95.
+
+- **Full speed** (about 41 ticks a second): today to about 120 players; with
+  all seven, about 150.
+- **Half speed:** today from about 150; with all seven, about 210.
+- **Today's room nearly stops at 180.** With all seven it still ran 20 ticks a
+  second at 210.
+- **Each phone's download at 120 players:** 225-242 KB a second today,
+  142-154 with all seven (-37%).
+
+These are this machine's numbers: wrangler runs everything on one thread here.
+The Cloudflare lab (#904) measures what only Cloudflare can tell. The rest of
+the room's time at 150-210 players is mostly the runtime's own work for each
+message it sends (section 4). Taking that off the room is the split plan's
+Phase 1 (`docs/SERVER-SPLIT-PLAN.md`).
+
 ## Tools added
 
 - `load.mjs --track` (#895): the bots send a real phone's 2 s look, caught off a
