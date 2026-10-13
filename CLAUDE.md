@@ -2328,6 +2328,22 @@ Two protocol versions coexist; both must keep working:
     after a full GC, 44 MB at the most in use, against Cloudflare's 128 MB
     (`tools/qa/load/heapprobe.mjs`, the inspector's heap during a load test):
     docs/specs/cap-120.md.
+  - v2.3.3219: THE CLOUDFLARE LAB -- the split plan's lab, which the owner
+    said yes to ("Go recommended": the lab after Phase 0). Started BY HAND:
+    Actions tab -> "Cloudflare lab" -> Run workflow (`.github/workflows/
+    lab.yml`). It deploys a tiny worker of its own, `brotown-lab`
+    (tools/lab/: Burner, World and Door objects; NEVER the game, nothing
+    stored, every request but "/" needs the run's own key), times it from the
+    runner (tools/lab/run.mjs): do K objects of one script run side by side
+    (and in how many isolates), the delay between two objects (a call, a
+    plain socket, a hibernated one), floods of known size, and the account's
+    own figures for them (GraphQL, the fields asked of the schema; best
+    effort) -- and deletes it whatever happened. About a cent a run; results
+    on the run's summary and its `lab-results` download. It lives under
+    tools/, so a merge never sets off deploy-worker.yml. `node tools/lab/
+    run.mjs --local` is the same run on wrangler dev (one thread: side by side
+    1 at every K, which is what the test tells apart). The game's room on
+    Cloudflare with the bots is the next lab: docs/specs/cloudflare-lab.md.
 
 ## Conventions
 

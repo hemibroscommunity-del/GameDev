@@ -1,0 +1,85 @@
+# ═══ v2.3.3219: THE CLOUDFLARE LAB (docs/specs/cloudflare-lab.md) ═══
+#
+# The server split plan's lab, which the owner said yes to on 2026-10-13
+# (docs/SERVER-SPLIT-PLAN.md, "Decided" 2: "The Cloudflare lab: yes, after
+# Phase 0").  It answers what only Cloudflare can tell, before anything is
+# built on it:
+#   1. do Durable Objects of one script run side by side, or wait for each
+#      other (one machine, one isolate, one thread)?
+#   2. how long a message takes between two of them;
+#   3. how Cloudflare counts (bills) a socket message between two of them.
+#
+# What a run does:
+#   - deploys a TINY worker of its own, "brotown-lab" (tools/lab/), never the
+#     game: its own name, its own objects, nothing stored, and every request
+#     but "/" needs this run's own key;
+#   - times it from this runner for a few minutes (tools/lab/run.mjs);
+#   - DELETES it, whatever happened (the last step runs even after a failure).
+# It costs about a cent.  The results are on the run's page (the summary) and
+# in its "lab-results" download.
+#
+#   Actions tab -> Cloudflare lab -> Run workflow
+#
+# workflow_dispatch only works once this file is on the default branch.
+name: Cloudflare lab
+on:
+  workflow_dispatch:
+    inputs:
+      rounds:
+        description: 'How many times each timing runs (2-20)'
+        default: '5'
+# one lab at a time: two runs would deploy over each other
+concurrency:
+  group: cloudflare-lab
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # wrangler-action@v3 still declares node20 (deploy-worker.yml, same note)
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: A key for this run only
+        run: |
+          KEY=$(openssl rand -hex 24)
+          echo "::add-mask::$KEY"
+          echo "LAB_KEY=$KEY" >> "$GITHUB_ENV"
+      - name: Deploy the lab worker (brotown-lab -- never brotown-server)
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          wranglerVersion: '4.96.0'
+          workingDirectory: tools/lab
+          command: deploy --var LAB_KEY:${{ env.LAB_KEY }}
+      - name: Time it
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          LAB_URL: ${{ steps.deploy.outputs.deployment-url }}
+          ROUNDS: ${{ github.event.inputs.rounds || '5' }}
+        run: |
+          BASE="https://brotown-lab.hemibroscommunity.workers.dev"
+          case "$LAB_URL" in https://brotown-lab.*.workers.dev*) BASE="${LAB_URL%/}";; esac
+          node tools/lab/run.mjs --base "$BASE" --key "$LAB_KEY" --rounds "$ROUNDS" --out lab-results
+          cat lab-results/*.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Delete the lab worker
+        if: always()
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          wranglerVersion: '4.96.0'
+          workingDirectory: tools/lab
+          command: delete --name brotown-lab --force
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lab-results
+          path: lab-results/
+          if-no-files-found: ignore
