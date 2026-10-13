@@ -52,13 +52,23 @@ last relay, and only when something did:
 - **`x`, `y` and `dir` never send a relay on their own.** The ticks carry where
   everyone stands and which way they face, and the 1 Hz roster carries
   everyone. They still ride along in a relay that goes, as before.
-- **Nor do HP and the inspect card's stats** (`rpgHp`, `rpgMaxHp`, `rpgData`).
-  - These change on every hit and kill: in a fight, every 2 s.
+- **Nor does HP** (`rpgHp`, `rpgMaxHp`, the LAZY keys).
+  - It changes on every hit: in a fight, every 2 s.
   - The health bar over another player is armed and fed by the worker's own
     PvP hits (`gameEvents.js`, `_hpSeenAt`), not by this relay.
-  - So here they only feed the inspect card. They ride along with the next
-    relay that goes for another reason, and with every whole copy: at most a
-    minute old.
+  - So here it only feeds the inspect card. It rides along with the next relay
+    that goes for another reason, and with every whole copy: at most a minute
+    old.
+- **Nor do the inspect card's counters** (LAZY_IN: `rpgData`'s `kills`,
+  `svKills`, `goldEarned` and `playtime`), which change on every kill and every
+  minute and which only the card shows. They ride along the same way.
+- **The rest of `rpgData` is news, relayed whole at once.** The phone draws a
+  peer's slung shield and block pose from `rpgData.shield` (entityRenderer),
+  and the equipment sheet and clan lists read its gear and clan names.
+  - The first cut of this change held ALL of `rpgData` back. A shield put on
+    or taken off could then take up to a minute to show on everyone else's
+    screen. Found reading every use of `rpgData` before merging; the property
+    test now changes the shield and the weapon too, and fails on that cut.
 - **`hg` and `fr` (height and frame) go in every relay that has them.** The
   phone sets a peer's build from each relay unconditionally, so leaving them out
   would put everyone of another build back to average. Going back to average
@@ -81,25 +91,31 @@ many went out whole, as a delta, or not at all.
 
 ## What the others see
 
-`server/test/look-relay.test.mjs` (24 checks):
+`server/test/look-relay.test.mjs` (29 checks):
 
 - the rule on its own;
 - a room: the same look twice relays once, a change relays only the change, HP
   alone relays nothing and rides along with the next, a whole copy every
   minute, the kill switch, a rejoin starts whole;
 - a key that went and came back (a clan left and rejoined) is relayed;
+- a shield put on or taken off, or a new weapon's name, relays `rpgData` at
+  once; its counters alone relay nothing and ride along with the next;
 - a property test: **24,000 tracks of random looks** go through a copy of the
   phone's merge both ways, one phone sent every track whole and one sent what
   the rule lets through.
-  - What changes between tracks: walking, HP, kills, gear, the under-shirt, a
-    build, drawings coming and going, the zone, the away flag, a clan joined or
-    left (with the leave's own clear).
+  - What changes between tracks: walking, HP, kills, minutes played, gold, the
+    shield, the weapon, stat points, gear, the under-shirt, a build, drawings
+    coming and going, the zone, the away flag, a clan joined or left (with the
+    leave's own clear).
   - After every track the two phones hold the same player, key for key, apart
-    from where they stand, and apart from HP and the card until the next relay
-    goes.
-  - 20% of those tracks still relayed: this test changes a lot on purpose.
-  - Breaking the rule four ways each fails it: no build keys in a delta, no news
-    when a build goes, the zone riding along, HP never riding along.
+    from where they stand, and apart from HP and the card's counters until the
+    next relay goes. What may lag is written in the test itself, not read from
+    the code under test.
+  - 26% of those tracks still relayed: this test changes a lot on purpose.
+  - Breaking the rule eight ways each fails it: no build keys in a delta, no
+    news when a build goes, the zone riding along, HP never riding along, all
+    of `rpgData` held back, none of it held back, its counters never riding
+    along, only the shield counted as news.
 
 ## What it does for a crowd
 

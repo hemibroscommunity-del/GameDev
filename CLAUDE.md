@@ -2337,7 +2337,11 @@ Two protocol versions coexist; both must keep working:
       was really ~105, and 120 was past it (25.8 ticks a second);
     - server/src/lookrelay.js now relays only the keys that changed, and only
       when one did:
-      - x/y/dir and the LAZY keys (rpgHp, rpgMaxHp, rpgData) ride along only;
+      - x/y/dir, HP (LAZY: rpgHp, rpgMaxHp) and the inspect card's counters
+        (LAZY_IN: rpgData's kills, svKills, goldEarned, playtime) ride along
+        only; any other change to rpgData relays it at once -- the phone draws
+        a peer's slung shield from rpgData.shield (the first cut held all of
+        rpgData back, and a shield could take a minute to show);
       - hg/fr go in every relay that has them (wsClient sets a peer's build
         from each one);
       - a whole copy every minute;
@@ -2346,7 +2350,7 @@ Two protocol versions coexist; both must keep working:
       it had been resetting a leaver's build on every screen;
     - with real looks (`load.mjs --track`): 38.0 ticks at 120, 31.1 at 150 --
       smooth to ~145 again;
-    - look-relay.test.mjs (24, a 24,000-track property test against the
+    - look-relay.test.mjs (29, a 24,000-track property test against the
       phone's merge), clans.test 9.3c/d, mp-trackcapture (the sample),
       mp-crowdbots (BT_MAX_PLAYERS, the bots' looks): docs/specs/look-relay.md.
 

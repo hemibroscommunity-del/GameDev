@@ -1,8 +1,8 @@
 /* ═══ v2.3.3210: A PLAYER'S LOOK IS RELAYED WHEN IT CHANGES, NOT EVERY 2 s ═══
  *
  * lookrelay.js relays a player's `track` to the others only when something
- * other than where they stand, their HP or their inspect card's stats changed,
- * and then only what changed (plus the build keys a phone assigns
+ * other than where they stand, their HP or their inspect card's counters
+ * changed, and then only what changed (plus the build keys a phone assigns
  * unconditionally), with a whole copy every FULL_EVERY_MS.  Checked:
  *
  *   1. the rule on its own;
@@ -11,8 +11,9 @@
  *      one phone sent every track whole (the old way), one sent what the rule
  *      lets through -- after every track the two hold the same look, key for
  *      key, but for where the player stands (`x`, `y`, `dir`), which the ticks
- *      carry, and the LAZY keys (HP, the inspect card), which match too once a
- *      relay goes;
+ *      carry, HP (LAZY) and the card's counters (LAZY_IN), which match too once
+ *      a relay goes.  The rest of the card (`rpgData`) must match after EVERY
+ *      track: the phone draws a peer's slung shield from `rpgData.shield`;
  *   3. a room: two players, the second's relays of the first's look --
  *      the same look twice relays once, a change relays only the change, a
  *      whole copy every FULL_EVERY_MS, `lookdelta: false` relays every one
@@ -47,8 +48,8 @@ const look = (o) => Object.assign({ x: 1000, y: 1000, name: 'Bro' }, JSON.parse(
   const r4 = lookDelta(look({ eqc: 'iron', x: 1300 }), r1.last, NOW + 2000);
   check('1d. one key changed (new gear): only it, with x/y/dir riding along',
     r4.data && Object.keys(r4.data).sort().join() === ['dir', 'eqc', 'x', 'y'].sort().join() && r4.data.eqc === 'iron' && r4.data.x === 1300, r4.data);
-  const hpOnly = lookDelta(look({ rpgHp: 40, rpgData: Object.assign({}, SAMPLE.rpgData, { kills: 99 }) }), r1.last, NOW + 2000);
-  check('1e. HP and the inspect card alone (LAZY): nothing goes', hpOnly.data === null);
+  const hpOnly = lookDelta(look({ rpgHp: 40, rpgData: Object.assign({}, SAMPLE.rpgData, { kills: 99, svKills: 98, goldEarned: 5000, playtime: 77 }) }), r1.last, NOW + 2000);
+  check('1e. HP and the inspect card\'s counters alone (LAZY, LAZY_IN): nothing goes', hpOnly.data === null);
   const r5 = lookDelta(look({ rpgHp: 40, rpgData: Object.assign({}, SAMPLE.rpgData, { kills: 99 }), eqc: 'iron' }), hpOnly.last, NOW + 4000);
   check('1e2. ...and they ride along with the next relay that goes: the card whole, the HP as it is now',
     r5.data && r5.data.rpgHp === 40 && r5.data.rpgData && r5.data.rpgData.kills === 99 && r5.data.eqc === 'iron', r5.data);
@@ -75,6 +76,21 @@ const look = (o) => Object.assign({ x: 1000, y: 1000, name: 'Bro' }, JSON.parse(
   const c3 = lookDelta(look({ clanTag: 'BRO', clanColor1: '#f00' }), c2.last, NOW + 4000);
   check('1l. a key that went and came back the same (the clan left and rejoined): relayed -- something else may have cleared it',
     c2.data === null && c3.data && c3.data.clanTag === 'BRO' && c3.data.clanColor1 === '#f00', { c2: c2.data, c3: c3.data });
+  /* the card is news but for its counters: the phone draws a peer's slung
+     shield from rpgData.shield (entityRenderer), so a shield put on or taken
+     off must go at once -- the first cut held all of rpgData back a minute */
+  const s1 = lookDelta(look(), null, NOW);
+  const s2 = lookDelta(look({ rpgData: Object.assign({}, SAMPLE.rpgData, { shield: 'Wooden Shield', kills: 5 }) }), s1.last, NOW + 2000);
+  check('1m. a shield put on (rpgData.shield): rpgData relayed at once, whole, its counters with it',
+    s2.data && s2.data.rpgData && s2.data.rpgData.shield === 'Wooden Shield' && s2.data.rpgData.kills === 5
+      && JSON.stringify(s2.data.rpgData) === JSON.stringify(Object.assign({}, SAMPLE.rpgData, { shield: 'Wooden Shield', kills: 5 })), s2.data);
+  const s3 = lookDelta(look({ rpgData: Object.assign({}, SAMPLE.rpgData, { shield: null, kills: 5 }) }), s2.last, NOW + 4000);
+  check('1n. ...and taken off: relayed at once', s3.data && s3.data.rpgData && s3.data.rpgData.shield === null, s3.data);
+  const s4 = lookDelta(look({ rpgData: Object.assign({}, SAMPLE.rpgData, { shield: null, kills: 9, playtime: 3 }) }), s3.last, NOW + 6000);
+  check('1o. then only its counters: nothing', s4.data === null);
+  const s5 = lookDelta(look({ rpgData: Object.assign({}, SAMPLE.rpgData, { shield: null, kills: 9, playtime: 3, weapon: 'Iron Sword' }) }), s4.last, NOW + 8000);
+  check('1p. the weapon\'s name (the equipment sheet): relayed, with the counters that waited',
+    s5.data && s5.data.rpgData && s5.data.rpgData.weapon === 'Iron Sword' && s5.data.rpgData.kills === 9 && s5.data.rpgData.playtime === 3, s5.data);
 }
 
 /* ── 2. the phone sees the same player ─────────────────────────────────── */
@@ -107,6 +123,14 @@ function seeded(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+/* What a phone may hold stale until the next relay goes -- the test's own
+   word, not read from the module under test, so a rule that held back more
+   than this fails here (and a change to the lists has to be made in both). */
+const MAY_LAG = ['rpgHp', 'rpgMaxHp'];
+const MAY_LAG_IN = { rpgData: ['kills', 'svKills', 'goldEarned', 'playtime'] };
+check('2-. the module\'s lazy lists are the test\'s',
+  JSON.stringify(LOOK_RELAY.LAZY) === JSON.stringify(MAY_LAG) && JSON.stringify(LOOK_RELAY.LAZY_IN) === JSON.stringify(MAY_LAG_IN),
+  { LAZY: LOOK_RELAY.LAZY, LAZY_IN: LOOK_RELAY.LAZY_IN });
 {
   const rnd = seeded(20261013);
   const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
@@ -127,6 +151,9 @@ function seeded(seed) {
       if (r < 0.5) { cur.x += Math.round((rnd() - 0.5) * 600); cur.y += Math.round((rnd() - 0.5) * 600); cur.dir = pick(['up', 'down', 'left', 'right']); }
       if (rnd() < 0.2) cur.rpgHp = Math.floor(rnd() * cur.rpgMaxHp);
       if (rnd() < 0.08) cur.rpgData = Object.assign({}, cur.rpgData, { kills: (cur.rpgData.kills || 0) + 1 });
+      if (rnd() < 0.3) cur.rpgData = Object.assign({}, cur.rpgData, { playtime: (cur.rpgData.playtime || 0) + 1, svKills: (cur.rpgData.svKills || 0) + 2, goldEarned: (cur.rpgData.goldEarned || 0) + 10 });
+      if (rnd() < 0.04) cur.rpgData = Object.assign({}, cur.rpgData, { shield: pick([null, 'Wooden Shield', 'Iron Shield']) });
+      if (rnd() < 0.03) cur.rpgData = Object.assign({}, cur.rpgData, { weapon: pick(['Fists', 'Iron Sword', 'Pine Bow']), power: Math.floor(rnd() * 9) });
       if (rnd() < 0.05) cur.eqc = pick(['none', 'iron', 'copper', 'blacksteel']);
       if (rnd() < 0.05) cur.eqst = pick(['tshirt', 'none', 'hoodie']);
       if (rnd() < 0.04) cur.zone = pick(['wheel', 'town', 'dungeon_1']);
@@ -158,18 +185,23 @@ function seeded(seed) {
       if (res.data) { relays++; applyRelay(viaDelta, res.data); }
       steps++;
       /* the same peer, but for where they stand -- and, while nothing has
-         gone since they changed, HP and the inspect card (LAZY) */
+         gone since they changed, HP (LAZY) and the card's counters (LAZY_IN) */
       for (const k of new Set([...Object.keys(viaFull), ...Object.keys(viaDelta)])) {
         if (k === 'x' || k === 'y' || k === 'dir') continue;
-        if (!res.data && LOOK_RELAY.LAZY.includes(k)) continue;
-        if (JSON.stringify(viaFull[k]) !== JSON.stringify(viaDelta[k])) {
+        if (!res.data && MAY_LAG.includes(k)) continue;
+        let a = viaFull[k], b = viaDelta[k];
+        if (!res.data && MAY_LAG_IN[k] && a && b && typeof a === 'object' && typeof b === 'object') {
+          a = Object.assign({}, a); b = Object.assign({}, b);
+          for (const c of MAY_LAG_IN[k]) { delete a[c]; delete b[c]; }
+        }
+        if (JSON.stringify(a) !== JSON.stringify(b)) {
           mismatches++;
           if (!firstBad) firstBad = { run, step, k, full: viaFull[k], delta: viaDelta[k] };
         }
       }
     }
   }
-  check('2a. 24,000 tracks of random looks: the phone holds the same player both ways after every one, key for key (but where they stand; HP and the card once a relay goes)', mismatches === 0, firstBad);
+  check('2a. 24,000 tracks of random looks: the phone holds the same player both ways after every one, key for key (but where they stand; HP and the card\'s counters once a relay goes)', mismatches === 0, firstBad);
   check(`2b. ...with far fewer relays: ${relays} of ${tracks} tracks went out (${(100 * relays / tracks).toFixed(0)}%)`, relays < tracks * 0.6, { relays, tracks });
 }
 

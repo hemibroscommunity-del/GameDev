@@ -245,8 +245,11 @@ Two properties make this safe and worth preserving:
 something did** (`server/src/lookrelay.js`, `docs/specs/look-relay.md`).
 The phones merge it, writing only the keys it carries.
 
-- `x`/`y`/`dir` and the LAZY keys (`rpgHp`, `rpgMaxHp`, `rpgData`) never send a
-  relay on their own; they ride along in one that goes.
+- `x`/`y`/`dir`, the LAZY keys (`rpgHp`, `rpgMaxHp`) and the inspect card's
+  counters (LAZY_IN: `rpgData`'s `kills`, `svKills`, `goldEarned`, `playtime`)
+  never send a relay on their own; they ride along in one that goes.  Any
+  other change to `rpgData` relays it, whole, at once: the phone draws a
+  peer's slung shield from `rpgData.shield`.
 - `hg`/`fr` are in every relay that has them: the phone sets the build from
   each relay unconditionally.
 - A whole copy goes every minute.

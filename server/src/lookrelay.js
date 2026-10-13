@@ -21,11 +21,19 @@
  *   - `x`, `y`, `dir` never send one on their own (RIDE_ALONG): the ticks carry
  *     where everyone is and which way they face, and the 1 Hz roster carries
  *     everyone; they still ride along in a relay that goes, as before;
- *   - nor do HP and the inspect card's stats (LAZY: `rpgHp`, `rpgMaxHp`,
- *     `rpgData`), which change on every hit and kill: a peer's health bar is
- *     armed and fed by the worker's own PvP hits (gameEvents.js, `_hpSeenAt`),
- *     so these only feed the inspect card -- they go with the next relay that
- *     goes for another reason, and in every whole copy (at most a minute old);
+ *   - nor does HP (LAZY: `rpgHp`, `rpgMaxHp`), which changes on every hit: a
+ *     peer's health bar is armed and fed by the worker's own PvP hits
+ *     (gameEvents.js, `_hpSeenAt`), so these only feed the inspect card --
+ *     they go with the next relay that goes for another reason, and in every
+ *     whole copy (at most a minute old);
+ *   - nor do the inspect card's COUNTERS (LAZY_IN: `rpgData`'s kills, server
+ *     kills, gold earned and minutes played), which change on every kill and
+ *     every minute.  The rest of `rpgData` IS news: the phone draws a peer's
+ *     slung shield and block pose from `rpgData.shield` (entityRenderer), and
+ *     the equipment sheet and clan lists read its gear and clan names -- so
+ *     any change there relays `rpgData`, whole, at once.  (The first cut of
+ *     v2.3.3210 held ALL of rpgData back, and a shield put on or taken off
+ *     could take a minute to show on the others' screens.)
  *   - `hg` and `fr` go in EVERY relay that carries them (ALWAYS): wsClient sets
  *     a peer's height and frame from them unconditionally (`_ud.hg || null`), so
  *     a relay without them would put everyone of a different build back to
@@ -50,13 +58,18 @@
 export const LOOK_RELAY = Object.freeze({
   FULL_EVERY_MS: 60000,
   RIDE_ALONG: Object.freeze(['x', 'y', 'dir']),
-  LAZY: Object.freeze(['rpgHp', 'rpgMaxHp', 'rpgData']),
+  LAZY: Object.freeze(['rpgHp', 'rpgMaxHp']),
+  /* inside these keys, the fields that change on every kill or minute and
+     that nothing draws: a change to them alone sends nothing; any other
+     change to the key relays it, whole */
+  LAZY_IN: Object.freeze({ rpgData: Object.freeze(['kills', 'svKills', 'goldEarned', 'playtime']) }),
   ALWAYS: Object.freeze(['hg', 'fr']),
 });
 
 const RIDE_ALONG = new Set(LOOK_RELAY.RIDE_ALONG);
 const LAZY = new Set(LOOK_RELAY.LAZY);
 const ALWAYS = new Set(LOOK_RELAY.ALWAYS);
+const LAZY_IN = new Map(Object.entries(LOOK_RELAY.LAZY_IN).map(([k, v]) => [k, new Set(v)]));
 
 /* a value's signature: equal looks, equal strings (the relay goes out as
    JSON, so JSON is what a phone can tell apart) */
@@ -64,23 +77,37 @@ function sigOf(v) {
   if (v === undefined) return undefined;
   try { return JSON.stringify(v); } catch { return '\u0000' + String(Math.random()); }
 }
+/* ...and of the part of a LAZY_IN key that is news: the value without its
+   counters (anything not a plain object is all news) */
+function newsSigOf(v, lazy) {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return sigOf(v);
+  const o = {};
+  for (const k of Object.keys(v)) if (!lazy.has(k)) o[k] = v[k];
+  return sigOf(o);
+}
 
 /**
  * What to relay of `clean` given what was relayed of this player before
- * (`last`: { sigs, fullAt } or null), at `now`.  Pure, so the test can drive
+ * (`last`: { sigs, news, fullAt } or null), at `now`.  Pure, so the test can drive
  * it.  Returns { data, full, last } -- `data` null when nothing goes out --
  * and the new `last` to keep.
  */
 export function lookDelta(clean, last, now) {
   const sigs = Object.create(null);
-  for (const k of Object.keys(clean)) sigs[k] = sigOf(clean[k]);
-  if (!last || !(now - last.fullAt < LOOK_RELAY.FULL_EVERY_MS)) {
-    return { data: clean, full: true, last: { sigs, fullAt: now } };
+  const news = Object.create(null);   /* LAZY_IN keys: the signature of what is news in them */
+  for (const k of Object.keys(clean)) {
+    sigs[k] = sigOf(clean[k]);
+    const lz = LAZY_IN.get(k);
+    if (lz && clean[k] !== undefined) news[k] = newsSigOf(clean[k], lz);
   }
+  if (!last || !(now - last.fullAt < LOOK_RELAY.FULL_EVERY_MS)) {
+    return { data: clean, full: true, last: { sigs, news, fullAt: now } };
+  }
+  const lastNews = last.news || Object.create(null);
   let changed = false;
   for (const k in sigs) {
     if (RIDE_ALONG.has(k) || LAZY.has(k)) continue;
-    if (last.sigs[k] !== sigs[k]) { changed = true; break; }
+    if (LAZY_IN.has(k) ? (lastNews[k] !== news[k]) : (last.sigs[k] !== sigs[k])) { changed = true; break; }
   }
   /* going back to an average build: the key gone is the news */
   if (!changed) for (const k of ALWAYS) if (last.sigs[k] !== undefined && sigs[k] === undefined) { changed = true; break; }
@@ -93,16 +120,18 @@ export function lookDelta(clean, last, now) {
   if (!changed) {
     if (!gone) return { data: null, full: false, last };
     const kept = Object.create(null);
+    const keptNews = Object.create(null);
     for (const k in last.sigs) if (sigs[k] !== undefined) kept[k] = last.sigs[k];
-    return { data: null, full: false, last: { sigs: kept, fullAt: last.fullAt } };
+    for (const k in lastNews) if (sigs[k] !== undefined) keptNews[k] = lastNews[k];
+    return { data: null, full: false, last: { sigs: kept, news: keptNews, fullAt: last.fullAt } };
   }
+  /* what goes: where they stand, the build, and every key whose value is not
+     the one last relayed -- a LAZY or LAZY_IN key's counters too, riding along */
   const data = {};
-  const kept = Object.create(null);
   for (const k in sigs) {
     if (RIDE_ALONG.has(k) || ALWAYS.has(k) || last.sigs[k] !== sigs[k]) data[k] = clean[k];
-    kept[k] = sigs[k];
   }
-  return { data, full: false, last: { sigs: kept, fullAt: last.fullAt } };
+  return { data, full: false, last: { sigs, news, fullAt: last.fullAt } };
 }
 
 export const lookRelayMethods = {
