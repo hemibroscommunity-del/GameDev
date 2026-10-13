@@ -307,7 +307,7 @@ function sendMove(bot, entering, vx = 0, vy = 0) {
   M.moves++;
   bot.lastSent = performance.now();
   if (!entering) {
-    /* keyed in whole pixels: a worker since v2.3.3197 sends them so */
+    /* keyed in whole pixels: a worker with #886 (docs/specs/far-players.md) sends them so */
     bot.sentAt.set(Math.round(x) + ',' + Math.round(y), bot.lastSent);
     if (bot.sentAt.size > 64) bot.sentAt.delete(bot.sentAt.keys().next().value);
   }

@@ -39,7 +39,7 @@ monster's `spd` is pixels a tick), so a busier room is a slower world. It
 never froze, up to 150 players, and it came back when players left (an earlier
 run, taken back down to 60 after 100: 34 ticks a second again).
 
-**v2.3.3195 (#885, `docs/specs/room-capacity.md`)** makes the room's own work
+**#885 (`docs/specs/room-capacity.md`)** makes the room's own work
 cheaper, with the same bytes to every player: smooth to about 110 players
 instead of about 70, and not yet at half speed with 150 (26 ticks a second).
 
@@ -146,18 +146,18 @@ the live game). That is a decision for the owner, not done here.
 **For planning:** with today's code, treat **60 busy players** (today's cap)
 as the most one room holds smoothly. The server would hold more after #885, but
 each phone's download grows with the crowd too (about 3.5 KB a second per
-moving player, less after v2.3.3197: `docs/specs/far-players.md`). So raising the cap is a choice about phones as much as about the
+moving player, less after #886: `docs/specs/far-players.md`). So raising the cap is a choice about phones as much as about the
 server. `max_players` (a live flag, `docs/specs/room-full.md`) lowers the cap
 without a deploy.
 
 ## What would raise the limit
 
-1. **Done in v2.3.3195 (#885), the same bytes to everyone:**
+1. **#885, the same bytes to everyone:**
    - each tick's shared parts are built once;
    - each player's monsters are found on a grid;
    - the safe-ground check comes after the distance check;
    - the history snapshot reuses its entries.
-2. **Done in v2.3.3197 (`docs/specs/far-players.md`): players far from you
+2. **#886 (`docs/specs/far-players.md`): players far from you
    less often** (§11's "distance-based updates"), as monsters already were
    (`_wheelInterest`, 2,400 px): each phone downloads 13-25% less with a crowd
    mostly in town and 23-41% less with everyone out in the lands. And

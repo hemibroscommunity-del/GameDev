@@ -345,7 +345,7 @@ requests a second**. Their own example is a game with 50,000 players sending
     second, so the world runs slower, at about half speed from 125. No freeze
     up to 150, and it recovers when players leave. Cloudflare's own machines
     are not measured.
-  - **v2.3.3195** (#885, `docs/specs/room-capacity.md`) makes the room's own
+  - **#885** (`docs/specs/room-capacity.md`) makes the room's own
     work cheaper with the same bytes to every player: smooth to about **110**,
     and not yet at half speed with 150.
 - **200 in one room will not work** as the game stands:
@@ -353,13 +353,13 @@ requests a second**. Their own example is a game with 50,000 players sending
     tick (`docs/specs/room-full.md`), was the meadow, before the Wheel. In the
     Wheel each player's tick is built on its own and lists every moving
     player, so the room's own work grew with the square of the crowd: 32% of a
-    core at 50 players, 116% at 150 (v2.3.3195: 17% and 26%);
+    core at 50 players, 116% at 150 (after #885: 17% and 26%);
   - **the messages.** Taking one in costs the runtime about 0.06-0.09 ms of
     the room's thread (a tenth of it at 60 moving players), and sending every
     player's update every tick grows with the square of the crowd. That is
     the limit left once the room's own code is cheap;
   - **the phones.** Each downloads about 3.5 KB a second for every moving
-    player in the Wheel, about 205 KB/s at 60 (v2.3.3197 sends far players
+    player in the Wheel, about 205 KB/s at 60 (#886 sends far players
     less often: `docs/specs/far-players.md`).
 
 ### The fix: fewer messages, and a world of area servers
