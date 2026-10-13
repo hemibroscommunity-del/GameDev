@@ -163,9 +163,12 @@ async function run(n) {
         const stepPx = speed * dtMs;
         if (dist <= (target ? 50 : stepPx)) { if (!target) retarget(p); }
         else { p.x += (dx / dist) * stepPx; p.y += (dy / dist) * stepPx; }
+        /* v2.3.3194: what a phone sends (bots.mjs sendMove): a tenth of a
+           pixel, velocity in hundredths of a pixel a 60 Hz frame, its gear */
         await room.webSocketMessage(p.ws, JSON.stringify({
-          type: 'move', x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100,
-          d: 'south', f: 'south', ex: null, z: 'wheel', vx: dx / (dist || 1), vy: dy / (dist || 1),
+          type: 'move', x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10,
+          d: 'down', f: 'south', eqc: 'none', eql: 'none', eqs: 'none', ex: null, z: 'wheel',
+          vx: Math.round(dx / (dist || 1) * speed * 1000 / 60 * 100), vy: Math.round(dy / (dist || 1) * speed * 1000 / 60 * 100),
           dodging: false, blocking: false, ba: null, dead: false,
         }));
         if (measuring) msgs++;

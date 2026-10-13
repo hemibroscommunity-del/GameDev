@@ -42,6 +42,12 @@ const FIGHT_R = 350;
 const SWING_MS = 700;
 const REACH_PX = 70;
 const SAMPLE_CAP = 4000;         /* per report: samples beyond this are thinned */
+/* v2.3.3194: "the others' moves seen" counts only a sender this near the probe
+   when it arrives -- the players on a phone's screen, whose lag a player
+   feels (the worker's FAR_PLAYERS.NEAR_R, server/src/tick.js) */
+const SEEN_NEAR_R = 2400;
+/* the client's 8-way facing names (BroTown.jsx S._renderFacing) */
+const FACE8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 
 let CFG = null;
 const bots = [];
@@ -78,7 +84,11 @@ function send(bot, obj) {
 
 function newBot(k) {
   const fighter = Math.random() < CFG.fighters;
-  const id = 'lt' + CFG.tag + (seq++).toString(36) + Math.random().toString(36).slice(2, 7);
+  /* v2.3.3194: as long as a real id ('bp_' + a hash + '_' + two words,
+     about 22 characters, src/networking/index.js), since every player's
+     entry in every tick carries it; 'lt', not 'bp_', so no character record
+     is made for a bot */
+  const id = ('lt' + CFG.tag + (seq++).toString(36) + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)).slice(0, 22);
   const bot = {
     id, k, fighter, probe: bots.length < 2,
     ws: null, state: 'off', x: ARRIVAL.x + rand(-60, 60), y: ARRIVAL.y + rand(-40, 40),
@@ -276,20 +286,29 @@ function step(bot) {
   sendMove(bot, false, vx, vy);
 }
 
-const DIRS = ['east', 'south', 'west', 'north'];
 function sendMove(bot, entering, vx = 0, vy = 0) {
-  const x = Math.round(bot.x * 100) / 100, y = Math.round(bot.y * 100) / 100;
-  const d = (vx || vy) ? DIRS[((Math.round(Math.atan2(vy, vx) / (Math.PI / 2)) % 4) + 4) % 4] : 'south';
-  /* the client's move as the shim writes it (wsClient.js _pendingMove) */
+  /* v2.3.3194: what a phone sends (BroTown.jsx's move broadcast through the
+     shim, wsClient.js _pendingMove): positions to a tenth of a pixel,
+     velocities as whole hundredths of a pixel a 60 Hz frame, the 4-way `d`
+     and 8-way `f` the client uses, and its worn gear */
+  const x = Math.round(bot.x * 10) / 10, y = Math.round(bot.y * 10) / 10;
+  const moving = !!(vx || vy);
+  const ang = Math.atan2(vy, vx);
+  const d = moving ? (Math.abs(vx) > Math.abs(vy) ? (vx > 0 ? 'right' : 'left') : (vy > 0 ? 'down' : 'up')) : 'down';
+  const f = moving ? FACE8[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8] : (bot.face || 'south');
+  bot.face = f;
+  const perFrame = bot.speed / 60;
   const ok = send(bot, {
-    type: 'move', x, y, d, f: d, ex: null, z: 'wheel', vx, vy,
+    type: 'move', x, y, d, f, eqc: 'none', eql: 'none', eqs: 'none', ex: null, z: 'wheel',
+    vx: Math.round(vx * perFrame * 100), vy: Math.round(vy * perFrame * 100),
     dodging: false, blocking: false, ba: null, dead: false,
   });
   if (!ok) return;
   M.moves++;
   bot.lastSent = performance.now();
   if (!entering) {
-    bot.sentAt.set(x + ',' + y, bot.lastSent);
+    /* keyed in whole pixels: a worker since v2.3.3196 sends them so */
+    bot.sentAt.set(Math.round(x) + ',' + Math.round(y), bot.lastSent);
     if (bot.sentAt.size > 64) bot.sentAt.delete(bot.sentAt.keys().next().value);
   }
 }
@@ -309,9 +328,13 @@ function probeTick(bot, data) {
       const sender = byId.get(id);
       if (!sender || sender === bot) continue;
       const p = d.players[id];
-      const key = p.x + ',' + p.y;
+      if (typeof p.x !== 'number' || typeof p.y !== 'number') continue;
+      const key = Math.round(p.x) + ',' + Math.round(p.y);
       const t = sender.sentAt.get(key);
-      if (t !== undefined) { push(M.seen, now - t); sender.sentAt.delete(key); }
+      if (t === undefined) continue;
+      sender.sentAt.delete(key);
+      /* only the ones near enough to be on this probe's screen */
+      if (Math.hypot(p.x - bot.x, p.y - bot.y) <= SEEN_NEAR_R) push(M.seen, now - t);
     }
   }
   if (bot.fighter) updateMonsters(bot, d);
