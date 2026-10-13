@@ -24,6 +24,11 @@ player the game is simply broken, with no idea whether waiting helps.
 
 ## The cap is not the bug
 
+> **v2.3.3205: the cap is now 120** (the owner's call, `docs/specs/cap-120.md`).
+> The reasoning below -- a phone's download -- counted it unzipped; on the
+> wire it is about a thirteenth (v2.3.3199), and what binds is the room's one
+> thread, smooth to about 145 players since #887-#891. Kept as history.
+
 Do **not** raise it. The same campaign measured the worker at **0.16 ms of
 its 22 ms tick** with 60 players (`server/test/load-crowd.mjs`) — CPU is
 nowhere near the wall. What binds is per-client **download bandwidth**:

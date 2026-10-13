@@ -2120,7 +2120,7 @@ Two protocol versions coexist; both must keep working:
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's
-  own code. Measured: smooth to about 70 busy players (today's cap is 60), a
+  own code. Measured: smooth to about 70 busy players (the cap was 60), a
   slower world past that (fewer ticks a second), half speed from about 125, no
   freeze up to 150; since #885 (docs/specs/room-capacity.md) smooth to about
   110. Wrangler's own local tracing (on by default) made every
@@ -2189,6 +2189,13 @@ Two protocol versions coexist; both must keep working:
     switch `movediet: false` (caps.movediet: each phone at its next join);
     `mp-movediet` (slows the page's drawing while it walks: this box's software
     GL starves page timers): docs/specs/move-diet.md.
+  - v2.3.3205: THE CAP IS 120 -- the owner: "I think 120 is a good cap limit
+    for now" (index.js `MAX_PLAYERS`; `max_players` can still only lower it;
+    chatmod `SEEN_MAX` 240, twice the cap). With #887-#891 the room is smooth
+    to ~145; at 120 players 39 ticks a second, and its memory about 9 MB kept
+    after a full GC, 44 MB at the most in use, against Cloudflare's 128 MB
+    (`tools/qa/load/heapprobe.mjs`, the inspector's heap during a load test):
+    docs/specs/cap-120.md.
 
 ## Conventions
 

@@ -96,10 +96,11 @@ old and new ways side by side.
 - **Every message type has a rate cap.** `move` has none today. With
   Cloudflare billing for incoming messages, a tampered client flooding moves
   would cost money as well as fairness.
-- **The room cap is set by messages, not by the tick** (§11). Today's
-  `MAX_PLAYERS` 60 is a receiver number (what one phone can hear); what one
-  room can *take in* is lower than it looks, and splitting a world into area
-  servers is how it grows.
+- **The room cap is set by messages, not by the tick** (§11). `MAX_PLAYERS`
+  was 60, thought a receiver number (what one phone can hear); it is 120 since
+  v2.3.3205 (the owner's call, `docs/specs/cap-120.md`), the room smooth to
+  about 145 after #887-#891. Splitting a world into area servers is how it
+  grows past that.
 
 ---
 

@@ -32,8 +32,8 @@ message about five times dearer (see "The trap in local numbers" below).
 
 So with today's code the room is **smooth to about 70 busy players** (33 ticks
 a second or more: the world at three quarters of its designed speed or
-better), and today's cap of 60 (`MAX_PLAYERS`, `server/src/index.js`) sits
-inside that. Past it the room does not fall over: it slows. A tick starts
+better), and the cap of 60 then (`MAX_PLAYERS`, `server/src/index.js`; 120
+since v2.3.3205, `docs/specs/cap-120.md`) sat inside that. Past it the room does not fall over: it slows. A tick starts
 22 ms after the last one finishes, and the world moves a fixed step a tick (a
 monster's `spd` is pixels a tick), so a busier room is a slower world. It
 never froze, up to 150 players, and it came back when players left (an earlier
