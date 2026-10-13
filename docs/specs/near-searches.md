@@ -80,12 +80,21 @@ after the other, main after #886 against this change):
 
 **The world runs faster at every size**: 3-4 more ticks a second, so at 100
 players it moves at 82% of its designed speed instead of 74%, and the room
-stays smooth (33 ticks a second or more, the load test's line) to about 125
-players instead of about 105-110. The thread is still nearly full at 150 because
+stays smooth (33 ticks a second or more, the load test's line) to about 120
+players instead of about 105. The thread is still nearly full at 150 because
 the extra ticks are extra messages to compress: compressing is now most of the
 thread's work (`docs/specs/load-test.md`, "What a phone really downloads"), so
 what raises the limit next is sending less, not computing less. Each tick
 costs the thread about 15% less than before.
+
+A whole ramp later in the night, each run from 10 to 175 players one step
+after the other (the bots moving by the time that really passed, as a phone
+does: #890), the thread busy and the ticks a second:
+
+| Players | 10 | 25 | 50 | 75 | 100 | 125 | 150 | 175 |
+|---|---|---|---|---|---|---|---|---|
+| main | 15%, 39.8 | 30%, 37.6 | 45%, 37.8 | 64%, 36.1 | 81%, 33.5 | 86%, 31.8 | 92%, 25.7 | 98%, 20.6 |
+| this | 13%, 41.0 | 24%, 40.4 | 43%, 39.2 | 61%, 38.3 | 79%, 36.7 | 87%, 32.4 | 94%, 25.8 | 95%, 22.0 |
 
 ## How it is tested
 
