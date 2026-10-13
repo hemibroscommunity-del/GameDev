@@ -79,10 +79,18 @@ them plain text. On main after #886, the same steps one after the other:
 | 100 | 79.6% | 44.6% | 34.0 / 34.3 | 217 / 17.4 KB/s |
 | 150 | 92.3% | 55.5% | 26.2 / 31.7 | 199 / 19.9 KB/s |
 
-So **every byte the room sends costs it CPU**: deflate runs once per message
-per phone, over that message's whole length. Turning compression off is not an
-answer -- each phone would download thirteen times as much -- but sending fewer
-bytes is, and it now saves the room's time as well as the phones' data.
+So **what the room sends costs it CPU**: deflate runs once per message per
+phone, over that message's whole length. Turning compression off is not an
+answer -- each phone would download thirteen times as much. But not every byte
+costs the same: **repeated text is nearly free and new text is not.** Leaving
+the unchanged gear keys out of every player entry (item 3 below) cut 29% of
+the bytes at 100 players and saved the room nothing it could measure (79.5% of
+its thread before, 82.9% after, inside the run-to-run noise): deflate finds
+those repeats at once. What costs is what changes from tick to tick --
+positions, speeds -- and the number of messages: the same 100 players sent a
+message every other tick instead of every tick (half the messages, each
+carrying both ticks' changes, so about a quarter fewer player entries) took
+the room from 79.5% to 61.5%.
 
 **What the bytes are.** A phone walking in BroTown with 100 players about
 (`tools/qa/load/tickmix.mjs`, a probe that sorts each message it receives): 98% of its bytes are
@@ -223,9 +231,9 @@ without a deploy.
    every move (about 40% of the update). The gear and activity can go with no
    change on the phone: the game already keeps the last gear and activity it
    was sent when an entry leaves them out (`wsClient.js`, the tick's players).
-   The zone cannot: an entry without one puts the player in no zone. Since
-   compressing costs the room CPU per byte (above), this saves the room's
-   time too, not only the phones' data.
+   The zone cannot: an entry without one puts the player in no zone.
+   Measured (v2.3.3199): 29% fewer bytes for each phone, but none of the
+   room's time -- the repeated keys were nearly free to compress (above).
 4. **The message diet** (§11): five positions a second with direction and
    speed instead of thirty. The biggest change: the server has to move each
    player between their messages, or monsters chasing them lurch (v2.3.1635

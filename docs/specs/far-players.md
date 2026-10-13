@@ -67,7 +67,8 @@ download, the room's thread and its ticks a second.
 > reads them. The room compresses every message it sends, about 13 to 1, so on
 > the wire each figure is about a thirteenth (100 players in town: 202 KB/s
 > unzipped is about 15-17 KB/s on the wire). The percentages hold, and since
-> compressing costs the room CPU per byte, the saving is the server's as well:
+> what changes in a message costs the room CPU to compress -- and a far
+> player's new position is exactly that -- the saving is the server's as well:
 > `docs/specs/load-test.md`, "What a phone really downloads".
 
 **A crowd mostly in town** (70% walking BroTown and its commons, 30% fighting

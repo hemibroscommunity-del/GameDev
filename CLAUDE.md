@@ -2130,7 +2130,9 @@ Two protocol versions coexist; both must keep working:
   - v2.3.3199: THE ROOM COMPRESSES EVERY MESSAGE (permessage-deflate: the
     worker's compatibility date turns it on, every browser asks for it), and
     the compressing is about 40% of its thread (79.6% at 100 players, 44.6%
-    with `--no-deflate`), so every byte sent costs the server CPU. A phone's
+    with `--no-deflate`), so every message sent, and what changes in it,
+    costs the server CPU -- repeated text is nearly free (leaving the unchanged
+    gear keys out saved 29% of the bytes and no CPU; TRAPS §169). A phone's
     download on the wire is about a thirteenth of what it unzips (~17 KB/s at
     100 players): the load test's `wire` column, the bots' own byte counts
     being unzipped (TRAPS §169). In BroTown 98% of the bytes are other

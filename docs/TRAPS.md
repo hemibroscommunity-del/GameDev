@@ -6018,13 +6018,19 @@ documents that way before a byte-counting proxy measured the wire.
 Deflate runs once per message per socket over the message's whole length, on
 the room's one thread.  Bots that do not ask for compression (`load.mjs
 --no-deflate`) take the room from 79.6% to 44.6% of its thread at 100 players.
-So a byte left out of a tick is CPU the room keeps, and "compression makes the
-size free" is wrong in the direction that matters.
+So "compression makes the size free" is wrong in the direction that matters --
+but so is "every byte costs the same": REPEATED text is nearly free to
+compress.  Leaving the unchanged gear keys out of every player entry cut 29% of
+the bytes and saved the room nothing measurable (79.5% -> 82.9%, noise); half
+the MESSAGES (every other tick, each carrying both ticks' changes) took it from
+79.5% to 61.5%.  What costs is the number of messages and what changes inside
+them.
 
 **The rule.**  Quote a phone's download from the load test's `wire` column
 (one bot through `startWireProxy`), and say "unzipped" for anything counted off
 `ev.data`.  Do not turn compression off to save the server: each phone would
-download thirteen times as much.  Send fewer bytes instead.  And do not trust
+download thirteen times as much.  Send fewer messages, and less of what
+changes in them, instead -- not merely fewer repeated bytes.  And do not trust
 `no_web_socket_compression` in a copy's `wrangler.toml` to turn it off for a
 measurement: the local runtime negotiated it anyway (tried 2026-10-13); the
 bots' `PlainWS` does it from the client side.

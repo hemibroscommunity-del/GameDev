@@ -130,7 +130,8 @@ the first item below.
   downloads every moving player's position here, about 3.5 KB a second per
   player as it unzips it. (v2.3.3199: on the wire about a thirteenth of that,
   because the room compresses every message -- and the compressing is about
-  40% of the room's thread, so every byte sent costs the server too:
+  40% of the room's thread, so every message sent, and what changes in it,
+  costs the server too (repeated text is nearly free):
   `docs/specs/load-test.md`, "What a phone really downloads".)
 - **Shorter numbers on the wire** -- also #886, whole pixels. The phones
   already send a tenth of a pixel, so it saves only ~2.4% of a player's update;

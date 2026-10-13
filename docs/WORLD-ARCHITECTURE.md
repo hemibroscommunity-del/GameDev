@@ -368,7 +368,8 @@ requests a second**. Their own example is a game with 50,000 players sending
   - **the compressing.** The room compresses every message for every phone
     (`permessage-deflate`), and that is about 40% of its thread: 79.6% busy
     at 100 players compressed, 44.6% sending the same plain (v2.3.3199,
-    `docs/specs/load-test.md`). So every byte sent costs the server CPU, and
+    `docs/specs/load-test.md`). So every message sent, and what changes in
+    it, costs the server CPU (repeated text is nearly free to compress), and
     the message diet below saves twice: fewer messages in, and fewer player
     entries to build and compress for every phone.
 
