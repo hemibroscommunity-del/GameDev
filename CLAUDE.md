@@ -2148,6 +2148,16 @@ Two protocol versions coexist; both must keep working:
     A sticky aggro that has run out is now cleared up front (nothing read
     one). 3-4 more ticks a second at every size; kill switch `aggrogrid:
     false`: docs/specs/near-searches.md.
+  - v2.3.3202: THE TICK IS PACED -- the runtime's setInterval waits the whole
+    22 ms AFTER each tick (measured: period = 23.1 ms + the tick, TRAPS §170),
+    so a busy room was a slower world with its thread partly idle.
+    server/src/tickpace.js shortens the interval when ticks start more than
+    24 ms apart (a quiet room's period) and puts it back when they come
+    sooner; never under 6 ms, never over TICK_RATE, never faster than a quiet
+    room; the Workers runtime only (`WebSocketPair`), so the Node harnesses
+    that call the tick by hand are untouched. 100 players 37 -> 40.4 ticks a
+    second, 150: 29.2 -> 32.4; smooth to ~145. Kill switch `tickpace: false`;
+    /dev/overview's `tickPace` reads the real tick rate: docs/specs/tick-pace.md.
 
 ## Conventions
 

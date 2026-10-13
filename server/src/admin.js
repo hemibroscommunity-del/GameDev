@@ -139,6 +139,9 @@ export const adminMethods = {
           playerStateCount: Object.keys(this.playerState).length,
           zones: [...this._activeZones()],
           tickRunning: !!this.tickInterval,
+          /* v2.3.3202: the tick's pacer -- the interval it uses now, and how
+             far apart the ticks really start (tickpace.js) */
+          tickPace: this._tickPaceInfo(),
           eventBufferLen: this.eventBuffer.length,
           protocolVersions: v,
           ts: Date.now(),

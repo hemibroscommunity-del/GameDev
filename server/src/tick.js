@@ -154,7 +154,18 @@ export const tickMethods = {
     let pingCounter = 0;
     let regenCounter = 0;
 
-    this.tickInterval = setInterval(() => {
+    /* v2.3.3202: the tick is paced (tickpace.js): `tick` measures how far
+       apart the ticks start, runs the world (`body`), and sets the interval
+       again when the gap between ticks has to change.  A fresh pacer for a
+       fresh loop. */
+    this._tickPace = null;
+    const tick = () => {
+      this._tickPaceStart(Date.now());
+      try { body(); } finally { this._tickPaceEnd(tick); }
+    };
+    this.tickInterval = setInterval(tick, this.TICK_RATE);
+
+    const body = () => {
       // §16.12 — Snapshot player states to history buffer
       /* v2.3.3195: the snapshot that falls off the end is written over and
          put back, instead of a new object for every player every tick (and
@@ -944,6 +955,6 @@ export const tickMethods = {
          null-proto guarantee one tick later (TRAPS #6). */
       this.dirtyMonsterIds = Object.create(null);
       this.dirtyNodeIds = Object.create(null);
-    }, this.TICK_RATE);
+    };
   },
 };
