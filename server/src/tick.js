@@ -27,12 +27,64 @@ const HOUSEKEEP_SLOT_MS = 3000;
 
 export const REGEN_TICKS = 30;
 
+/* ═══ v2.3.3197: FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS ═══
+   Owner, 2026-10-13, on the load test's next steps (docs/specs/load-test.md):
+   "Send far away players less often and using shorter position numbers make
+   sense go ahead with it".
+
+   In the Wheel every phone was sent every moving player's position on every
+   tick, wherever they were -- about 30 updates a second for each of them, the
+   download growing with the square of the crowd.  Now a v2 session in the
+   Wheel gets the players within NEAR_R of it on every tick, as before, and
+   the ones further off at most every EVERY_MS, each time at the latest place
+   they reached (nothing is lost, only the steps between).
+
+   NEAR_R is the monsters' own reach (wheelzone.js WHEEL.INTEREST_R): the
+   minimap is 3,200 game px across (wheelMinimap.js WHEEL_WINDOW), so everyone
+   on it is within ~2,263 px, and a phone's screen is smaller still.  So a
+   player sent less often is off your screen and off your minimap; only the
+   world map, opened, shows them, moving four times a second.  The client
+   already carries a peer between updates on their last velocity
+   (visualSystems.js, the dead reckoning) and keeps a silent peer for 10 s
+   (wsClient.js ghost sweep), with the 1 Hz presence roster underneath.
+
+   Positions and velocities go out as whole numbers (`rp` below).  The phones
+   already send positions to a tenth of a pixel and velocities as whole
+   numbers (BroTown.jsx's move broadcast), so this saves the ".n" of each
+   position: a few percent of a player's entry, invisible on screen (half a
+   game px at most).  It also bounds what any other client can put on
+   everyone's wire.
+
+   Kill switches, live flags (no deploy): `farplayers: false` sends everyone
+   every tick again, `roundpos: false` sends positions as the phones sent
+   them.  Deploy-order safe both ways: an old client reads the same fields
+   and already handles a peer updated less often (the 1 Hz roster). */
+export const FAR_PLAYERS = Object.freeze({
+  NEAR_R: 2400,
+  EVERY_MS: 250,
+});
+
+/* a property name JSON.stringify would move to the front of an object
+   (an array index: "0", "17", ... below 2^32 - 1) */
+function indexLikeKey(k) {
+  return /^(?:0|[1-9][0-9]{0,9})$/.test(k) && Number(k) < 4294967295;
+}
+
 export const tickMethods = {
   /* v2.3.3195: `tickshare: false` in the live flags builds every tick message
      whole again (buildFor), the way it was before the shared parts */
   _tickShareOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'tickshare') && !f.tickshare);
+  },
+  /* v2.3.3197: `farplayers: false` / `roundpos: false` (FAR_PLAYERS above) */
+  _farPlayersOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'farplayers') && !f.farplayers);
+  },
+  _roundPosOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'roundpos') && !f.roundpos);
   },
 
   /* v2.3.1913: RTT ping + AFK eviction, hoisted out of the tick loop
@@ -342,7 +394,13 @@ export const tickMethods = {
       const hasEvents = this.eventBuffer.length > 0;
       const hasMonsters = this.dirtyMonsters.size > 0;
       const hasNodes = this.dirtyNodes.size > 0;
-      if (!hasDirty && !hasEvents && !hasMonsters && !hasNodes && !presenceTick) { this.tickSeq++; return; }
+      /* v2.3.3197: far players held back (FAR_PLAYERS) keep a quiet tick
+         going until they are sent, so the last of a walk is never stuck */
+      const farOn = !this._farPlayersOff();
+      if (!farOn && this._farPending) this._farPending = null;
+      const farWaiting = farOn && !!this._farPending && this._farPending.size > 0
+        && Date.now() - (this._farLastAt || 0) >= FAR_PLAYERS.EVERY_MS;
+      if (!hasDirty && !hasEvents && !hasMonsters && !hasNodes && !presenceTick && !farWaiting) { this.tickSeq++; return; }
 
       const seq = this.tickSeq++;
       const ts = Date.now();
@@ -350,8 +408,11 @@ export const tickMethods = {
       /* v2.3.3123: the others' pets (petbook.js _petWireRefresh), unless
          `petshow: false` -- read once a tick, not once a player */
       const petShow = !(this._petShowOff && this._petShowOff());
+      /* v2.3.3197: positions and velocities in whole numbers (FAR_PLAYERS
+         note), unless `roundpos: false` */
+      const rp = this._roundPosOff() ? (v) => v : (v) => (typeof v === 'number' ? Math.round(v) : v);
       const playerWire = (ps) => { const eqg = armourGradeWire(ps); return {
-        x: ps.x, y: ps.y, d: ps.d, z: ps.z, vx: ps.vx, vy: ps.vy,
+        x: rp(ps.x), y: rp(ps.y), d: ps.d, z: ps.z, vx: rp(ps.vx), vy: rp(ps.vy),
         f: ps.f, eqc: ps.eqc, eql: ps.eql, eqs: ps.eqs, ex: ps.ex,
         /* v2.3.1576: verified Hemi Bro token id, or undefined.  SERVER-OWNED
            (broverify.js is the only writer) and absent from
@@ -392,6 +453,49 @@ export const tickMethods = {
         arr.push([id, ps]);
       }
       this.dirtyPlayers.clear();
+
+      /* v2.3.3197: FAR PLAYERS (the note at FAR_PLAYERS).  Everyone who moved
+         in the Wheel since the last far send waits in _farPending, in the order
+         they first moved; when EVERY_MS has passed, every v2 session there is
+         sent all of them at once, at where they are now (farList, the same list
+         for everyone).  A presence tick's roster already carries everyone. */
+      const wheelDirty = farOn ? (dirtyByZone.get(WHEEL_ZONE) || null) : null;
+      if (wheelDirty) {
+        if (!this._farPending) this._farPending = new Set();
+        for (const [id] of wheelDirty) this._farPending.add(id);
+      }
+      const farDue = farOn && !!this._farPending && this._farPending.size > 0
+        && ts - (this._farLastAt || 0) >= FAR_PLAYERS.EVERY_MS;
+      const farFlush = farOn && (presenceTick || farDue);
+      let farList = null;
+      if (farDue && !presenceTick) {
+        farList = [];
+        for (const id of this._farPending) {
+          const ps = this.playerState[id];
+          if (ps && ps.z === WHEEL_ZONE) farList.push([id, ps]);
+        }
+      }
+      /* What of the Wheel's players one v2 session there is sent, when it is
+         not simply the zone's shared list (null): on a far send, farList; on
+         any other tick but the roster's, only this tick's movers within
+         NEAR_R of it -- itself included, as before.  null too when every
+         mover is near it, so a crowd in town still shares one string. */
+      const NEAR2 = FAR_PLAYERS.NEAR_R * FAR_PLAYERS.NEAR_R;
+      const playersPlanFor = (rps) => {
+        if (!farOn || presenceTick) return null;
+        if (farList) return { list: farList, far: true };
+        if (!wheelDirty) return null;
+        const x = rps.x, y = rps.y;
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        let near = null;
+        for (let i = 0; i < wheelDirty.length; i++) {
+          const q = wheelDirty[i][1];
+          const dx = q.x - x, dy = q.y - y;
+          if (dx * dx + dy * dy <= NEAR2) { if (near) near.push(wheelDirty[i]); }
+          else if (!near) near = wheelDirty.slice(0, i);   /* the first far one: keep the near ones before it */
+        }
+        return near ? { list: near, far: false } : null;
+      };
 
       // 1 Hz presence roster -- EVERY connected player, dirty or not
       // (see the ghost-sweep note above; an idle peer is never dirty).
@@ -525,18 +629,24 @@ export const tickMethods = {
       /* v2.3.2978: `interest` -- for a v2 session in the Wheel, the monsters
          it hears about ({seen, entered}, wheelzone.js _wheelInterest); null
          everywhere else, which is the unchanged shared path. */
-      const buildFor = (zone, pv, muted, interest) => {
+      /* v2.3.3197: `plan` -- playersPlanFor's answer for a v2 session in the
+         Wheel (never on a presence tick); null is the zone's list, as before */
+      const buildFor = (zone, pv, muted, interest, plan) => {
         const d = { type: 'tick', seq, ts };
         let any = false;
 
         const players = Object.create(null);
         let hasPlayers = false;
-        if (roster) {
-          for (const id of Object.keys(roster)) { players[id] = roster[id]; hasPlayers = true; }
-        }
-        const dz = dirtyByZone.get(zone);
-        if (dz) {
-          for (const [id, ps] of dz) { players[id] = playerWire(ps); hasPlayers = true; }
+        if (plan) {
+          for (const [id, ps] of plan.list) { players[id] = playerWire(ps); hasPlayers = true; }
+        } else {
+          if (roster) {
+            for (const id of Object.keys(roster)) { players[id] = roster[id]; hasPlayers = true; }
+          }
+          const dz = dirtyByZone.get(zone);
+          if (dz) {
+            for (const [id, ps] of dz) { players[id] = playerWire(ps); hasPlayers = true; }
+          }
         }
         if (hasPlayers) { d.players = players; any = true; }
 
@@ -660,6 +770,41 @@ export const tickMethods = {
         playersByZoneJson.set(zone, out);
         return out;
       };
+      /* v2.3.3197: a plan's players (playersPlanFor), each player's entry
+         stringified once a tick however many sessions get it, and farList's
+         whole list once.  An id JSON.stringify would move to the front of an
+         object (an array index) is put in an object instead, so the bytes stay
+         buildFor's in every case. */
+      const playerEntryJson = new Map();
+      const playerEntryOf = (id, ps) => {
+        let j = playerEntryJson.get(id);
+        if (j === undefined) { j = JSON.stringify(id) + ':' + JSON.stringify(playerWire(ps)); playerEntryJson.set(id, j); }
+        return j;
+      };
+      let indexIds;
+      const anyIndexId = () => {
+        if (indexIds === undefined) {
+          indexIds = false;
+          for (const l of [wheelDirty, farList]) if (l) for (const [id] of l) if (indexLikeKey(id)) { indexIds = true; break; }
+        }
+        return indexIds;
+      };
+      let farListJson;
+      const planPart = (plan) => {
+        if (plan.far && farListJson !== undefined) return farListJson;
+        let out = null;
+        if (plan.list.length > 0) {
+          if (anyIndexId()) {
+            const players = Object.create(null);
+            for (const [id, ps] of plan.list) players[id] = playerWire(ps);
+            out = JSON.stringify(players);
+          } else {
+            out = '{' + plan.list.map(([id, ps]) => playerEntryOf(id, ps)).join(',') + '}';
+          }
+        }
+        if (plan.far) farListJson = out;
+        return out;
+      };
       const eventsPart = (muteKey, muted) => {
         if (!events) return null;
         if (eventsByMuteJson.has(muteKey)) return eventsByMuteJson.get(muteKey);
@@ -724,8 +869,8 @@ export const tickMethods = {
         nodesSharedJson.set(k, out);
         return out;
       };
-      const buildShared = (zone, pv, muteKey, muted, interest) => {
-        const p = playersPart(zone);
+      const buildShared = (zone, pv, muteKey, muted, interest, plan) => {
+        const p = plan ? planPart(plan) : playersPart(zone);
         const e = eventsPart(muteKey, muted);
         const mo = zone ? monstersPart(zone, pv, interest) : null;
         const no = zone ? nodesPart(zone, pv) : null;
@@ -764,23 +909,31 @@ export const tickMethods = {
            (wheelzone.js INTEREST_R), so it serialises on its own; leaving the
            Wheel forgets what it had heard, so a return re-sends all in reach */
         let interest = null;
+        let plan = null;
         if (zone === WHEEL_ZONE && pv === 2 && ps && typeof ps.x === 'number' && typeof ps.y === 'number') {
           interest = this._wheelInterest(s, ps, this.monsters[zone] || [], share ? wheelGrid() : null);
+          plan = playersPlanFor(ps);   /* v2.3.3197: far players less often */
           key += '|' + s.id;
         } else if (s._wheelSeen) s._wheelSeen = null;
         let msg = groupCache.get(key);
         if (msg === undefined) {
           const muted = muteKey ? this._chatModMuteSet(s.id) : null;
-          msg = share ? buildShared(zone, pv, muteKey, muted, interest) : buildFor(zone, pv, muted, interest);
+          msg = share ? buildShared(zone, pv, muteKey, muted, interest, plan) : buildFor(zone, pv, muted, interest, plan);
           if (verify) {
             /* tests only (v2.3.3195): the message the old way, byte for byte */
-            const ref = buildFor(zone, pv, muted, interest);
+            const ref = buildFor(zone, pv, muted, interest, plan);
             verify.checked++;
             if (ref !== msg) { verify.mismatched++; if (!verify.first) verify.first = { zone, pv, ref, got: msg }; }
           }
           groupCache.set(key, msg);
         }
         if (msg) { try { ws.send(msg); } catch {} }
+      }
+
+      /* v2.3.3197: the far players went out (farList, or the roster) */
+      if (farFlush) {
+        if (this._farPending) this._farPending.clear();
+        this._farLastAt = ts;
       }
 
       // Cleared AFTER the send loop -- buildFor reads them lazily.

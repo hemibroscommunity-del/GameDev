@@ -2089,6 +2089,15 @@ Two protocol versions coexist; both must keep working:
   instead of passing for a new character. The defaults that are not zero
   are `NEW_CHARACTER_COINS` and `freshLifeSkills()`, pinned to the client's
   by mirror-audit: docs/specs/fresh-start.md.
+- FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS (v2.3.3197, the owner:
+  "Send far away players less often and using shorter position numbers"):
+  in the Wheel a v2 session gets the movers within `FAR_PLAYERS.NEAR_R` 2,400
+  px of it on every tick and the rest at most every `EVERY_MS` 250 ms, at
+  where they are now (tick.js `_farPending`, `playersPlanFor`); every player
+  entry's x/y/vx/vy go out whole (`rp`; the phones already send a tenth of a
+  pixel, so that part is ~2.4%). Kill switches `farplayers: false`,
+  `roundpos: false`. Both tick builders carry it (tick-share.test.mjs compares
+  them); `far-players` suite, `mp-farpeer`: docs/specs/far-players.md.
 
 ## Testing
 
