@@ -204,6 +204,14 @@ and `vy` are whole numbers. Kill switches (live flags): `farplayers: false`,
 `roundpos: false`. No caps flag: an old client already handles a peer updated
 less often (the 1 Hz roster). `docs/specs/far-players.md`.
 
+**v2.3.3213: far players once a second, with the roster.** The far send above
+is gone by default (`FAR_PLAYERS.EVERY_MS` 0): a player more than 2,400 px from
+a v2 session in the Wheel reaches it only in the presence roster, every
+`PRESENCE_REFRESH_TICKS` (about once a second), where they are now. Near players
+are unchanged. `far_ms` in the live flags (a number, 100-5000) brings back a far
+send that often (250 is v2.3.3197's). Same fields; no caps flag, for the same
+reason. `docs/specs/far-players.md` "Once a second".
+
 **v2.3.3203: a player walking steadily is sent less often.** A Wheel player's
 entry is held for the next tick while they stay on the line their last entry
 drew them along (its `x`, `y`, `vx`, `vy`; within 2 px), with every other field
