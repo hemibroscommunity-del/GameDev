@@ -2328,6 +2328,23 @@ Two protocol versions coexist; both must keep working:
     after a full GC, 44 MB at the most in use, against Cloudflare's 128 MB
     (`tools/qa/load/heapprobe.mjs`, the inspector's heap during a load test):
     docs/specs/cap-120.md.
+  - v2.3.3212: THE STRESS TESTS' SERVER FIXES -- the owner's "stress test to
+    see what can be optimized" (docs/specs/stress-tests.md, the round's whole
+    report, server and phone):
+    - `reportToLeaderboard` reads its clock first: every `track` built the
+      Leaderboard stub, the whole chain-score series and a signature, to throw
+      them away inside the 5 minute floor (~100 us a track); the same reports
+      go at the same times (`anticheat` §7b);
+    - `_wheelInterest`, the room's biggest single function at 120 players
+      (145 ms a second): the distance first, the session's two sets used in
+      turn, `entered` only when something enters, the grid's answer for a
+      block of squares kept for the tick (`wheelGridNearKept`): 95 ms a
+      second, the same answer exactly (`tick-share` §5f against a copy of the
+      old code, four mutations caught);
+    - `load.mjs --keep-bundle <dir>` (a profile's lines, mapped to source) and
+      `--tick-parts` (a tick at 120 players is 95% the players' positions);
+    - next: the crowd cap on the wire (each phone sent the players it draws
+      every tick, the rest four times a second), after #896.
 
 ## Conventions
 

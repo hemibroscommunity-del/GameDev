@@ -381,3 +381,12 @@ they were the bottleneck can be spotted. Afterwards check `ps` for stray
 | bots CPU | each fake-player process, as a share of one core |
 | drops | sockets that closed during the step |
 | probes | how fast the room answers a web request, and how fast a brand-new player gets its first message |
+
+## v2.3.3212: two more options
+
+- `--keep-bundle <dir>` keeps the bundle the runtime ran (`index.js` and its
+  source map), so a CPU profile's lines (`cdpprof.mjs`) can be read and mapped
+  back to `server/src`. Without it the copy, bundle and all, is deleted at the end.
+- `--tick-parts` counts what the probes' ticks are made of, by their top-level
+  parts (players, events, monsters, nodes), and prints each step's shares and KB
+  a tick. At 120 players: 95% the players' positions (docs/specs/stress-tests.md).

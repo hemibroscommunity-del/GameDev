@@ -12,7 +12,7 @@
  *        [--procs 3] [--fighters 0.3] [--cap 400] [--idle] [--pong N]
  *        [--server <a server/ folder>] [--observability] [--url ws://127.0.0.1:PORT]
  *        [--no-deflate] [--move-ms 33] [--town-move-ms 66] [--diet] [--seen-r 2400]
- *        [--inspector-port 9230] [--worker-log <file>]
+ *        [--inspector-port 9230] [--worker-log <file>] [--keep-bundle <dir>] [--tick-parts]
  *
  * What it does:
  *   1. copies server/ to a temporary folder and raises MAX_PLAYERS there
@@ -84,6 +84,8 @@ const OPT = {
   inspectorPort: +arg('inspector-port', 0),   /* v2.3.3203: the runtime's debugger port, for a CPU profile (cdpprof.mjs) */
   server: arg('server', null),             /* a server/ folder to test instead of this repo's own */
   workerLog: arg('worker-log', null),      /* v2.3.3203: write the worker's whole log here at the end */
+  keepBundle: arg('keep-bundle', null),    /* v2.3.3212: copy the runtime's bundle (index.js + .map) here at the end, so a CPU profile's line numbers can be read (cdpprof.mjs) */
+  tickParts: process.argv.includes('--tick-parts'),   /* v2.3.3212: what a tick is made of (bots.mjs countTickParts, from the probes) */
   recoverTo: +arg('recover-to', 0.6),       /* share of the players kept after a break */
   recoverSettle: +arg('recover-settle', 20), /* seconds given to come back before measuring */
 };
@@ -241,7 +243,8 @@ const groups = [];
 let reports = [];
 function startBots(url, wireUrl) {
   for (let i = 0; i < OPT.procs; i++) {
-    const child = fork(join(HERE, 'bots.mjs'), [], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
+    const child = fork(join(HERE, 'bots.mjs'), [], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+      env: OPT.tickParts ? Object.assign({}, process.env, { BT_TICK_PARTS: '1' }) : process.env });
     const g = { child, last: null, n: 0 };
     child.on('message', (m) => { if (m && m.type === 'report') { g.last = m.data; reports.push(m.data); } });
     child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, diet: OPT.diet, noDeflate: OPT.noDeflate, seenR: OPT.seenR } });
@@ -299,6 +302,18 @@ function probeJoin(url) {
 /* ── one step ─────────────────────────────────────────────────────────── */
 /* `rs` is the measured window; `whole` the step from its first join, so the
    joins and zone entries the step made are counted with it */
+/* v2.3.3212: --tick-parts: the probes' tick parts, summed, as shares and KB a
+   tick (bots.mjs countTickParts) */
+function tickPartsLine(rs) {
+  const tot = {};
+  for (const r of rs) if (r.tickParts) for (const k in r.tickParts) tot[k] = (tot[k] || 0) + r.tickParts[k];
+  const ticks = tot._ticks || 0;
+  delete tot._ticks;
+  const all = Object.values(tot).reduce((a, b) => a + b, 0);
+  if (!ticks || !all) return null;
+  return Object.entries(tot).sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `${k} ${Math.round((100 * v) / all)}% (${(v / ticks / 1024).toFixed(2)} KB)`).join(', ');
+}
 function summarise(n, rs, whole, cpu, secs) {
   const sum = (k) => rs.reduce((a, r) => a + (r[k] || 0), 0);
   const all = (k) => rs.flatMap((r) => r[k] || []);
@@ -335,6 +350,7 @@ function summarise(n, rs, whole, cpu, secs) {
     seenSamples: seen.length,
     downKBps: r1(players ? sum('rxBytes') / secs / players / 1024 : 0),
     downTickKBps: r1(players ? sum('rxTickBytes') / secs / players / 1024 : 0),
+    tickParts: tickPartsLine(rs),   /* v2.3.3212: --tick-parts */
     ticksPerPlayerPerSec: r1(players ? sum('rxTicks') / secs / players : 0),
     msgsPerPlayerPerSec: r1(players ? sum('rxMsgs') / secs / players : 0),
     roomOutMBps: r1(sum('rxBytes') / secs / 1048576),
@@ -368,7 +384,23 @@ async function cleanup() {
     try { process.kill(-worker.proc.pid, 'SIGKILL'); } catch { /* gone */ }
     try { await rm(worker.state, { recursive: true, force: true }); } catch { /* best effort */ }
   }
+  if (copy && OPT.keepBundle) await keepBundle(copy.dir, OPT.keepBundle);
   if (copy) { try { await rm(copy.dir, { recursive: true, force: true }); } catch { /* best effort */ } }
+}
+/* v2.3.3212: --keep-bundle <dir>.  A CPU profile of the room (cdpprof.mjs)
+   names lines of the BUNDLE wrangler built, which goes with the copy; keep it
+   (and its source map) to read them. */
+async function keepBundle(from, to) {
+  try {
+    const base = join(from, '.wrangler', 'tmp');
+    await mkdir(to, { recursive: true });
+    for (const d of await readdir(base)) {
+      for (const f of ['index.js', 'index.js.map']) {
+        try { await cp(join(base, d, f), join(to, f)); } catch { /* not in this one */ }
+      }
+    }
+    console.log('bundle kept in ' + to);
+  } catch (e) { console.log('--keep-bundle: ' + (e && e.message)); }
 }
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, async () => { await cleanup(); process.exit(130); });
 
@@ -477,6 +509,7 @@ async function main() {
     results.push(s);
     console.log(row(s) + (label === 'step' ? '' : '   <- ' + label) + (s.broken ? '   BROKEN: ' + s.broken : ''));
     console.log(`        probes: room answers HTTP in ${s.httpProbeP50} ms (max ${s.httpProbeMax}, unanswered ${s.httpProbeUnanswered}); a new player's first snapshot in ${s.newJoinP50} ms (max ${s.newJoinMax}, none ${s.newJoinUnanswered})`);
+    if (OPT.tickParts && s.tickParts) console.log(`        a tick is made of (--tick-parts, the probes): ${s.tickParts}`);
     console.log(`        each player is sent ${s.msgsPerPlayerPerSec} messages a second, ${s.ticksPerPlayerPerSec} ticks`);
     await save();
     return s;
