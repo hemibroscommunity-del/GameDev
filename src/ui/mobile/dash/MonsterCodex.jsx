@@ -220,8 +220,17 @@ function Tabs({ tab, setTab }) {
      - the type and the chance brighter and a size up;
      - the bar says HOW COMMON over the chance's powers of ten (`barWidth`):
        on a straight scale every drop rarer than the shard was the same
-       sliver, so the bars said nothing; the number beside it is exact. */
-const COLS = '26px minmax(0, 1fr) 60px 44px 76px';
+       sliver, so the bars said nothing; the number beside it is exact.
+   v2.3.3196: and then: "Wrap text for the item name and increase the usable
+   area for the bar size. Looks like the chance column reserves too much
+   space" -- the chance column was 76 px for the one long chance, the random
+   weapon's "0.05–0.24%", so every other number sat far from its bar.  It is
+   one number wide now (`PCT_W`), that range taking two lines at its dash
+   (`pctLines`); the type column is its longest word's ("Currency"); and the
+   name and the bar share the rest, the bar the bigger part (44 -> ~115 px on
+   a 390 px phone), a long name taking two lines. */
+const PCT_W = 40;
+const COLS = `26px minmax(0, 1fr) 52px minmax(0, 1.2fr) ${PCT_W}px`;
 const TABLE_BG = '#05090B';
 const STRIPE = 'rgba(229,237,233,.055)';
 const HEAD_BG = '#101A1F';
@@ -229,6 +238,11 @@ const HEAD_BG = '#101A1F';
 function barWidth(p) {
   const x = Math.max(1e-4, Math.min(1, Number(p) || 0));
   return Math.round(8 + 92 * (1 + Math.log10(x) / 4));
+}
+/* a range of chances may break after its dash, so the column is one number wide */
+function pctLines(pct) {
+  const s = String(pct), i = s.indexOf('–');
+  return i < 0 ? s : <>{s.slice(0, i + 1)}<wbr />{s.slice(i + 1)}</>;
 }
 function DropsTab({ rows, sel, onPick }) {
   return (
@@ -256,10 +270,10 @@ function DropsTab({ rows, sel, onPick }) {
                 {r.name}{r.amount ? <span style={{ color: '#B3BEBB', fontWeight: 600 }}> {r.amount}</span> : null}
               </span>
               <span data-cx-type style={{ fontSize: 12.5, color: '#CBD3D0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.type}</span>
-              <span style={{ height: 8, borderRadius: 4, background: 'rgba(229,237,233,.18)', overflow: 'hidden' }}>
+              <span data-cx-bar-track style={{ height: 8, borderRadius: 4, background: 'rgba(229,237,233,.18)', overflow: 'hidden' }}>
                 <span style={{ display: 'block', width: w + '%', height: '100%', borderRadius: 4, background: BAR }} />
               </span>
-              <span data-cx-pct style={{ fontSize: 13.5, fontWeight: 800, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: '#FFFFFF' }}>{r.pct}</span>
+              <span data-cx-pct style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.15, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#FFFFFF' }}>{pctLines(r.pct)}</span>
             </button>
           );
         })}

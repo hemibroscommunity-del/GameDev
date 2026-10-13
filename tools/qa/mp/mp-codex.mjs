@@ -322,16 +322,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const bg = rows.map((r) => getComputedStyle(r).backgroundColor);
       const head = document.querySelector('[data-cx-drops-head]');
       const names = [...document.querySelectorAll('[data-cx-name-cell]')];
+      /* v2.3.3196: the owner: "Wrap text for the item name and increase the
+         usable area for the bar size. Looks like the chance column reserves
+         too much space" -- each row's bar track, how far its chance's TEXT
+         starts from the bar's end (a Range: the column's slack included), and
+         how many lines its name and chance take */
+      const line = 13.5 * 1.15;
+      const textLeft = (el) => { const g = document.createRange(); g.selectNodeContents(el); return g.getBoundingClientRect().left; };
+      const lay = rows.map((r) => {
+        const bar = r.querySelector('[data-cx-bar-track]').getBoundingClientRect();
+        const pc = r.querySelector('[data-cx-pct]'), nm = r.querySelector('[data-cx-name-cell]'), ty = r.querySelector('[data-cx-type]');
+        return { id: r.dataset.cxDrop, bar: Math.round(bar.width), gap: Math.round(textLeft(pc) - bar.right),
+          pctFits: pc.scrollWidth <= pc.clientWidth + 1, pctLines: Math.round(pc.getBoundingClientRect().height / line),
+          nameLines: Math.round(nm.getBoundingClientRect().height / line), typeFits: ty.scrollWidth <= ty.clientWidth + 1 };
+      });
       return { bg, head: head ? getComputedStyle(head).backgroundColor : null,
         cut: names.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.innerText),
-        tall: names.filter((e) => e.getBoundingClientRect().height > 2.4 * 13.5 * 1.15).map((e) => e.innerText),
-        bars: Object.fromEntries(rows.map((r) => [r.dataset.cxDrop, +r.dataset.cxBar])) };
+        tall: names.filter((e) => e.getBoundingClientRect().height > 2.4 * line).map((e) => e.innerText),
+        bars: Object.fromEntries(rows.map((r) => [r.dataset.cxDrop, +r.dataset.cxBar])),
+        cols: rows[0] ? getComputedStyle(rows[0]).gridTemplateColumns : null, lay };
     });
     const striped = legible.bg.length > 2 && legible.bg[0] !== legible.bg[1] && legible.bg.every((c, i) => c === legible.bg[i % 2]);
     rec.ok(`...readable on its black: every other row shaded, the headings on their own band (${legible.head}), no name cut short, the bars by how common (${Object.entries(legible.bars).map(([k, v]) => k + ' ' + v).join(', ')})`,
       striped && legible.head === 'rgb(16, 26, 31)' && legible.cut.length === 0 && legible.tall.length === 0
         && legible.bars.gold === 100 && legible.bars.shard === 77 && legible.bars.rawgem === 70 && legible.bars.raregem === 47
         && legible.bars.irongreatsword === 38 && legible.bars.weapon === 40 && legible.bars.nugget === 8, { striped, ...legible });
+    /* the bars ~2.5x the 44 px they had; the chance column no wider than its
+       widest number (that one 6 px, the grid's gap, plus a few px of slack
+       from its bar's end -- in the old 76 px column a "100%" stood ~50 px off
+       and a "5%" ~63), the numbers still lined up on their right; the random
+       weapon's range on two lines at its dash and every other chance on one;
+       a long name on two */
+    const lay = legible.lay || [];
+    const barMin = Math.min(...lay.map((l) => l.bar));
+    const gapMin = Math.min(...lay.map((l) => l.gap)), gapMax = Math.max(...lay.map((l) => l.gap));
+    const twoLine = lay.filter((l) => l.nameLines === 2).map((l) => l.id);
+    rec.ok(`...its bars ${barMin} px long (were 44), the chance column its widest number's width (${gapMin}-${gapMax} px from a bar's end to its number), the weapon's range on two lines, names wrapping (${twoLine.join(', ')} on two lines; columns ${legible.cols})`,
+      lay.length === 10 && barMin >= 100 && gapMin <= 10 && gapMax <= 30 && lay.every((l) => l.pctFits && l.typeFits && l.nameLines <= 2 && l.pctLines === (l.id === 'weapon' ? 2 : 1))
+        && twoLine.length >= 1, lay);
     await P.page.screenshot({ path: join(OUT, 'codex-1-snowman.png') });
     const fr1 = await codex(P);
     rec.ok('...and opening it clears its NEW', !(fr1.fresh && fr1.fresh.snowling), fr1.fresh);
@@ -428,7 +456,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const type = await P.page.evaluate(() => { const e = document.querySelector('[data-cx-pill="type"]'); return e ? e.innerText.trim() : null; });
       const dr = await drops(P);
       const cut = await P.page.evaluate(() => [...document.querySelectorAll('[data-cx-name-cell]')]
-        .filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().height > 2.4 * 13.5 * 1.15).map((e) => e.innerText));
+        .filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().height > 2.4 * 13.5 * 1.15).map((e) => e.innerText)
+        .concat([...document.querySelectorAll('[data-cx-type], [data-cx-pct]')].filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.innerText)));
       await tab(P, 'info');
       const w = await watchStage(P, kind === 'snowling' ? 15000 : 12000);
       await P.page.screenshot({ path: join(OUT, 'codex-' + kind + '.png') });
@@ -474,7 +503,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok(`...and every page's drop table is its own (${every.map((e) => e.kind + ' ' + Object.keys(e.drops || {}).length).join(', ')})`,
       dropOff.length === 0, dropOff.map((e) => ({ kind: e.kind, drops: e.drops })));
-    rec.ok('...and no drop\'s name is cut short on any of them ("Fire Goblin Remnants" in two lines at most)',
+    rec.ok('...and no drop\'s name, type or chance is cut short on any of them ("Fire Goblin Remnants" in two lines at most)',
       every.every((e) => e.cut && e.cut.length === 0), every.filter((e) => !e.cut || e.cut.length).map((e) => ({ kind: e.kind, cut: e.cut })));
     /* Locations: the way there for all nine, and the three lands' dungeons
        with their own levels (WHEEL_DOORS) */

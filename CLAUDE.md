@@ -1957,7 +1957,12 @@ remnant to migrate server-side, not a mode to preserve.
       feet, isolated, no `will-change`); the Drops table on near-black too,
       readable on it (the owner: "more readable with the background"):
       striped rows, a heading band, names that wrap, bars by how common
-      over powers of ten (`barWidth`);
+      over powers of ten (`barWidth`); and the bar gets the room (the owner:
+      "Wrap text for the item name and increase the usable area for the bar
+      size. Looks like the chance column reserves too much space"): the
+      chance column one number wide (`PCT_W` 40, the weapon's "0.05–0.24%"
+      on two lines at its dash, `pctLines`), the bar 1.2x the name's share,
+      117 px on the QA phone where it was 44;
     - the drop table (`data/codexDrops.js`) prints the worker's own rolls --
       `SHARD_MONSTER_DROP`, `monsterWeaponDropOdds` (data.js),
       `WEAPON_QUALITY_ODDS` (hardening.js) -- and mirror-audit holds it to

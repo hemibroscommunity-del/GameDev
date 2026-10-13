@@ -56,7 +56,17 @@ render), "‹ All monsters" bringing them back.
   instead of cut short ("Fire Goblin Remnants"), and the bar HOW COMMON over
   the chance's powers of ten (`barWidth`: every kill full, 10% 77%, 0.2% 38%,
   1 in 10,000 a stub) -- on a straight scale every drop rarer than the shard
-  was the same sliver. The number beside it is exact. A tap on a row opens the item's
+  was the same sliver. The number beside it is exact. Then *"Wrap text for the
+  item name and increase the usable area for the bar size. Looks like the
+  chance column reserves too much space"*: the chance column was 76 px for the
+  one long chance, the random weapon's "0.05–0.24%", so every other number
+  stood far from its bar (a "100%" ~50 px, a "5%" ~63). It is one number wide
+  now (`PCT_W` 40), that range taking two lines at its dash (`pctLines`), the
+  numbers still lined up on their right; the type column its longest word's,
+  "Currency" (52 px); and the name and the bar share the rest, the bar the
+  bigger part (`minmax(0, 1fr)` and `minmax(0, 1.2fr)`): on a 390 px phone the
+  bars are 117 px long (were 44) and the names 97 px wide, "Snowman Remnants",
+  "Iron Great Sword" and "A random weapon" on two lines. A tap on a row opens the item's
   **card**: its picture, name, type and base rarity ("Common" for a weapon or
   armour piece), what it is, FOUND FROM (the monster), BASE DROP CHANCE, for a
   weapon or armour piece the POSSIBLE RARITY it rolls after it drops (Normal
@@ -251,13 +261,17 @@ dev op.
   against the plan's; every drop rate, the grade odds, the weapon curve at every level 1
   to 100, and each of the Wheel's monsters' gold and remnants against the
   page's drop table.
-- `mp-codex` (phone, 35 checks): the Monsters tab; a real kill opening the
+- `mp-codex` (phone, 36 checks): the Monsters tab; a real kill opening the
   whole page on the sheet's own height, scrolling in it from its top, its
   header badges (a Humanoid snowman) and tabs; its drop table; scrolled to
   its end, the Iron Great Sword's card opening at its top (Common, 0.2%, the
   four grades) and a shard's (no grades), the X back to the marked row in
   view; the table's near-black panel, darker than the sheet, its stripes,
-  heading band and bars by how common, no name cut short on any page; a tap on a tab, the open one's too, putting its content at the
+  heading band and bars by how common; the bars at least 100 px long, the
+  chance column its widest number's width (6-10 px from a bar's end to that
+  number), the weapon's range on two lines and every other chance on one, a
+  long name wrapping to two lines; no name, type or chance cut short on any
+  page; a tap on a tab, the open one's too, putting its content at the
   sheet's top, Info's whole stage in view; every fact open on Info from one
   kill, the stage playing its special, your character and the monster on its
   ground strip and never past its frame (the stage isolated, nothing in it
