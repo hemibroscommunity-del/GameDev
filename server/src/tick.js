@@ -28,6 +28,13 @@ const HOUSEKEEP_SLOT_MS = 3000;
 export const REGEN_TICKS = 30;
 
 export const tickMethods = {
+  /* v2.3.3195: `tickshare: false` in the live flags builds every tick message
+     whole again (buildFor), the way it was before the shared parts */
+  _tickShareOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'tickshare') && !f.tickshare);
+  },
+
   /* v2.3.1913: RTT ping + AFK eviction, hoisted out of the tick loop
      (body unchanged apart from the close code below) so it can be
      called directly from a test without starting the real 22 ms
@@ -97,24 +104,33 @@ export const tickMethods = {
 
     this.tickInterval = setInterval(() => {
       // §16.12 — Snapshot player states to history buffer
-      for (const [id, ps] of Object.entries(this.playerState)) {
-        if (!this.stateHistory[id]) this.stateHistory[id] = [];
-        this.stateHistory[id].push({
-          x: ps.x, y: ps.y, d: ps.d, z: ps.z,
-          dodging: ps.dodging || false,
-          blocking: ps.blocking || false,
-          /* v2.3.1726: shield facing rides the history so the PvP block
-             check can be directional against the REWOUND shield, not the
-             current one.  Null (not false) when absent — _blockArcCovers
-             reads a non-number as "old client, keep omni block", and that
-             fail-open must survive the rewind for pre-fix entries too. */
-          ba: (typeof ps.ba === 'number' && Number.isFinite(ps.ba)) ? ps.ba : null,
-          dead: ps.dead || false,
-          tick: this.tickSeq,
-        });
-        if (this.stateHistory[id].length > this.LAGCOMP_BUFFER_TICKS) {
-          this.stateHistory[id].shift();
-        }
+      /* v2.3.3195: the snapshot that falls off the end is written over and
+         put back, instead of a new object for every player every tick (and
+         an Object.entries array of the whole room) -- the same fields, the
+         same values, the same order in the array.  The one reader
+         (combat.js _resolvePvPAttack's rewind) uses an entry inside its own
+         synchronous handler and keeps no reference, so reusing one a tick
+         later cannot change what it saw.  playerState is null-prototype
+         (index.js), so for...in walks exactly its own ids. */
+      const _hist = this.stateHistory, _lim = this.LAGCOMP_BUFFER_TICKS;
+      for (const id in this.playerState) {
+        const ps = this.playerState[id];
+        let h = _hist[id];
+        if (!h) h = _hist[id] = [];
+        const e = (h.length && h.length >= _lim) ? h.shift() : Object.create(null);   /* fixed field names only, but no prototype to trip on */
+        e.x = ps.x; e.y = ps.y; e.d = ps.d; e.z = ps.z;
+        e.dodging = ps.dodging || false;
+        e.blocking = ps.blocking || false;
+        /* v2.3.1726: shield facing rides the history so the PvP block
+           check can be directional against the REWOUND shield, not the
+           current one.  Null (not false) when absent — _blockArcCovers
+           reads a non-number as "old client, keep omni block", and that
+           fail-open must survive the rewind for pre-fix entries too. */
+        e.ba = (typeof ps.ba === 'number' && Number.isFinite(ps.ba)) ? ps.ba : null;
+        e.dead = ps.dead || false;
+        e.tick = this.tickSeq;
+        h.push(e);
+        if (h.length > _lim) h.shift();   /* only reachable with a limit under 1: the old rule, kept */
       }
 
       /* v2.3.1562 (owner: "I just died and it didn't return me to town —
@@ -594,6 +610,142 @@ export const tickMethods = {
         return any ? JSON.stringify(d) : null;
       };
 
+      /* ═══ v2.3.3195: THE SHARED PARTS OF A TICK ARE SERIALISED ONCE ═══
+         The bot load test (docs/specs/load-test.md) found the Wheel paying
+         for its own interest rule: every v2 Wheel session gets its own key
+         above (it hears only the monsters near it), so buildFor ran once PER
+         PLAYER, and each run re-built and re-stringified EVERY moving
+         player in the Wheel -- the same players object, N times a tick.  At
+         100 players that was 43% of the room's own CPU (a profile of
+         load-wheel.mjs), and since the next tick waits for this one to end,
+         a slower tick is also a slower world: monsters step a fixed amount a
+         tick.
+
+         buildShared sends the SAME BYTES: the parts every recipient shares
+         -- the players for a zone, the events for a mute key, a zone's
+         nodes, a non-interest zone's monsters -- are stringified once a tick
+         and kept, a monster's wire once a tick however many players hear
+         it, and each message is put together from those strings in
+         JSON.stringify's own key order (type, seq, ts, players, events,
+         monsters, nodes).  Only the Wheel's per-player monster list is still
+         built per player.  Tests set `_tickShareVerify` and every message is
+         built both ways and compared byte for byte (tick-share.test.mjs);
+         `tickshare: false` in the live flags puts buildFor back.  So a
+         change to what a tick carries goes in BOTH builders -- buildFor and
+         the parts below -- and tick-share.test.mjs fails until they agree. */
+      const tickHead = '{"type":"tick","seq":' + JSON.stringify(seq) + ',"ts":' + JSON.stringify(ts);
+      const playersByZoneJson = new Map();
+      const eventsByMuteJson = new Map();
+      const monstersSharedJson = new Map();
+      const nodesSharedJson = new Map();
+      const monsterJson = new Map();
+      const monsterJsonOf = (m) => {
+        let j = monsterJson.get(m);
+        if (j === undefined) { j = JSON.stringify(monsterWire(m)); monsterJson.set(m, j); }
+        return j;
+      };
+      const zoneListJson = (zone, list) => '{' + JSON.stringify(zone) + ':[' + list.map(monsterJsonOf).join(',') + ']}';
+      const playersPart = (zone) => {
+        if (playersByZoneJson.has(zone)) return playersByZoneJson.get(zone);
+        const players = Object.create(null);
+        let hasPlayers = false;
+        if (roster) {
+          for (const id of Object.keys(roster)) { players[id] = roster[id]; hasPlayers = true; }
+        }
+        const dz = dirtyByZone.get(zone);
+        if (dz) {
+          for (const [id, ps] of dz) { players[id] = playerWire(ps); hasPlayers = true; }
+        }
+        const out = hasPlayers ? JSON.stringify(players) : null;
+        playersByZoneJson.set(zone, out);
+        return out;
+      };
+      const eventsPart = (muteKey, muted) => {
+        if (!events) return null;
+        if (eventsByMuteJson.has(muteKey)) return eventsByMuteJson.get(muteKey);
+        const ev = muted
+          ? events.filter((e) => { const sp = this._chatModSpeakerOf(e); return !(sp && muted.has(sp)); })
+          : events;
+        const out = ev.length ? JSON.stringify(ev) : null;
+        eventsByMuteJson.set(muteKey, out);
+        return out;
+      };
+      const monstersPart = (zone, pv, interest) => {
+        if (!(this.dirtyMonsters.has(zone) || (interest && interest.entered.size > 0))) return null;
+        const monsters = this.monsters[zone];
+        if (!monsters) return null;
+        if (interest) {
+          const ids = this.dirtyMonsterIds[zone];
+          /* the ones in reach, already in the monsters' order (wheelzone.js
+             _wheelInterest `list`), not all 384 again */
+          const changed = (interest.list || monsters).filter((m) => interest.seen.has(m.id)
+            && (interest.entered.has(m.id) || (ids && ids.has(m.id))));
+          return changed.length > 0 ? zoneListJson(zone, changed) : null;
+        }
+        const k = pv + '|' + zone;
+        if (monstersSharedJson.has(k)) return monstersSharedJson.get(k);
+        let list = null;
+        if (pv === 2) {
+          const ids = this.dirtyMonsterIds[zone];
+          if (ids) {
+            const changed = monsters.filter((m) => ids.has(m.id));
+            if (changed.length > 0) list = changed;
+          }
+        } else {
+          list = monsters;
+        }
+        const out = list ? zoneListJson(zone, list) : null;
+        monstersSharedJson.set(k, out);
+        return out;
+      };
+      const nodesPart = (zone, pv) => {
+        if (!this.dirtyNodes.has(zone)) return null;
+        const k = pv + '|' + zone;
+        if (nodesSharedJson.has(k)) return nodesSharedJson.get(k);
+        const nodes = this.nodes[zone];
+        let out = null;
+        if (nodes) {
+          let list = null;
+          if (pv === 2) {
+            const ids = this.dirtyNodeIds[zone];
+            if (ids) {
+              const changed = nodes.filter((n) => ids.has(n.id));
+              if (changed.length > 0) list = changed;
+            }
+          } else {
+            list = nodes;
+          }
+          if (list) {
+            const nData = Object.create(null);
+            nData[zone] = list.map(nodeWire);
+            out = JSON.stringify(nData);
+          }
+        }
+        nodesSharedJson.set(k, out);
+        return out;
+      };
+      const buildShared = (zone, pv, muteKey, muted, interest) => {
+        const p = playersPart(zone);
+        const e = eventsPart(muteKey, muted);
+        const mo = zone ? monstersPart(zone, pv, interest) : null;
+        const no = zone ? nodesPart(zone, pv) : null;
+        if (p === null && e === null && mo === null && no === null) return null;
+        let out = tickHead;
+        if (p !== null) out += ',"players":' + p;
+        if (e !== null) out += ',"events":' + e;
+        if (mo !== null) out += ',"monsters":' + mo;
+        if (no !== null) out += ',"nodes":' + no;
+        return out + '}';
+      };
+      const share = !this._tickShareOff();
+      const verify = share && this._tickShareVerify;
+      /* v2.3.3195: the Wheel's monsters on a grid, built at most once a tick
+         for the first Wheel player's _wheelInterest, so each player walks
+         only the squares in its reach (wheelzone.js _wheelMonsterGrid) */
+      let wheelGridMemo;
+      const wheelGrid = () => (wheelGridMemo !== undefined ? wheelGridMemo
+        : (wheelGridMemo = this._wheelMonsterGrid(this.monsters[WHEEL_ZONE] || [])));
+
       // One serialization per (zone, protocolVersion) group, reused
       // across every socket in that group.
       const groupCache = new Map();
@@ -613,12 +765,19 @@ export const tickMethods = {
            Wheel forgets what it had heard, so a return re-sends all in reach */
         let interest = null;
         if (zone === WHEEL_ZONE && pv === 2 && ps && typeof ps.x === 'number' && typeof ps.y === 'number') {
-          interest = this._wheelInterest(s, ps, this.monsters[zone] || []);
+          interest = this._wheelInterest(s, ps, this.monsters[zone] || [], share ? wheelGrid() : null);
           key += '|' + s.id;
         } else if (s._wheelSeen) s._wheelSeen = null;
         let msg = groupCache.get(key);
         if (msg === undefined) {
-          msg = buildFor(zone, pv, muteKey ? this._chatModMuteSet(s.id) : null, interest);
+          const muted = muteKey ? this._chatModMuteSet(s.id) : null;
+          msg = share ? buildShared(zone, pv, muteKey, muted, interest) : buildFor(zone, pv, muted, interest);
+          if (verify) {
+            /* tests only (v2.3.3195): the message the old way, byte for byte */
+            const ref = buildFor(zone, pv, muted, interest);
+            verify.checked++;
+            if (ref !== msg) { verify.mismatched++; if (!verify.first) verify.first = { zone, pv, ref, got: msg }; }
+          }
           groupCache.set(key, msg);
         }
         if (msg) { try { ws.send(msg); } catch {} }
