@@ -40,8 +40,8 @@ never froze, up to 150 players, and it came back when players left (an earlier
 run, taken back down to 60 after 100: 34 ticks a second again).
 
 **v2.3.3195 (#885, `docs/specs/room-capacity.md`)** makes the room's own work
-cheaper, with the same bytes to every player: smooth to about 100 players, and
-half speed from about 130 instead of about 110.
+cheaper, with the same bytes to every player: smooth to about 110 players
+instead of about 70, and not yet at half speed with 150 (26 ticks a second).
 
 **What each phone downloads** grows with the crowd, because every phone is sent
 every moving player's position, wherever they are in the Wheel: about 3.5 KB a

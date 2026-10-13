@@ -346,8 +346,8 @@ requests a second**. Their own example is a game with 50,000 players sending
     up to 150, and it recovers when players leave. Cloudflare's own machines
     are not measured.
   - **v2.3.3195** (#885, `docs/specs/room-capacity.md`) makes the room's own
-    work cheaper with the same bytes to every player: smooth to about **100**,
-    half speed from about 130.
+    work cheaper with the same bytes to every player: smooth to about **110**,
+    and not yet at half speed with 150.
 - **200 in one room will not work** as the game stands:
   - **the processor.** The old figure, 60 players at 0.16 ms of each 22 ms
     tick (`docs/specs/room-full.md`), was the meadow, before the Wheel. In the
