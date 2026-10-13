@@ -2042,7 +2042,28 @@ remnant to migrate server-side, not a mode to preserve.
       (gold, remnants), every chance a whole number of the die's faces:
       change a drop rate and the page changes with it, or the audit fails;
     - `caps.codex`, kill switch `codex: false`, dev lever `/dev/codex`;
-      `codex` suite, mirror-audit, `mp-codex`.)
+      `codex` suite, mirror-audit, `mp-codex`.
+    - since v2.3.3215 THE CODEX HAS ITS OWN BUTTON, AND MORE OF IT FITS -- the
+      owner: "Are you able to fit the codex as another dashboard button? Also
+      is there a way to display more data without needing to scroll down so
+      much?":
+      - SIX buttons on the dashboard's row (Dashboard, Character, Quests, Life
+        Skills, Codex, More), the Codex's counting its NEW pages
+        (`codexFreshCount`); More's Codex tile opens the same destination.
+        Asked whether to narrow all six or move the drill's back arrow, the
+        owner: "Move back arrow": a drilled panel's header is one button,
+        "◂ SETTINGS" (BottomDashboard `data-dash-back`), the row the CLOSE
+        pill and the buttons in every mode -- 44 px at 390 (five were 46), 39
+        at 360 (sheetGeometry `IDENTITY_MIN_LINE` 84, `RAIL_COUNT` 6), and the
+        buttons no longer step right when a drill opens; sideways
+        `LAND_NAV_BTN_W` 26, the side column 238 px;
+      - the codex on the 191 px sheet: all nine cards at once (compact, two
+        across sideways), the Codex's three always-empty tabs aside, a 48 px
+        header, the tabs PINNED to the sheet's top with "‹ All monsters" their
+        first button, Info's stage scaled to fit under them (`StageFit`), and
+        tighter rows -- a page's first look shows its table (was all header),
+        Drops/Info/Locations scroll 301/730/131 px (were 482/907/266);
+      - `mp-codexfit`: docs/specs/monster-codex.md "Its own button".)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

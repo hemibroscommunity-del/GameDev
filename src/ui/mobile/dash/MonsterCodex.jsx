@@ -10,6 +10,7 @@ import { RARITY_TIERS } from '@/data/gameSystems.js';
 import { CodexStage } from './CodexStage.jsx';
 import { codexDropsFor, codexGrades, codexGradePercent, codexRollText, codexRollFreeFrom, CODEX_ROLL_SIDES } from '@/data/codexDrops.js';
 import { killRollLive } from '@/game/killRoll.js';   /* v2.3.3209: does the worker roll once a kill (caps.killroll) */
+import { panelVw } from '../playViewport.js';   /* v2.3.3215: the sheet's own width (sideways it is the side column) */
 
 /* ═══ v2.3.3209: THE CODEX'S MONSTERS ═══
  *
@@ -89,13 +90,25 @@ function scrollBox(el) {
   }
   return null;
 }
-function reveal(el, how) {
+/* v2.3.3215: `inset` is what stands pinned over the box's top -- the page's
+   tab bar, which stays put while you scroll (`Tabs`) -- so "at the top" is
+   just under it, never behind it */
+function reveal(el, how, inset = 0) {
   const box = scrollBox(el);
   if (!box) return;
   const br = box.getBoundingClientRect(), er = el.getBoundingClientRect();
   const at = er.top - br.top + box.scrollTop;
-  if (how === 'top' || er.top < br.top) box.scrollTop = Math.max(0, at - 4);
-  else if (er.bottom > br.bottom - FADE) box.scrollTop = Math.max(0, Math.min(at - 4, at + er.height + FADE - box.clientHeight));
+  const pad = inset || 4;
+  if (how === 'top' || er.top < br.top + inset) box.scrollTop = Math.max(0, at - pad);
+  else if (er.bottom > br.bottom - FADE) box.scrollTop = Math.max(0, Math.min(at - pad, at + er.height + FADE - box.clientHeight));
+}
+/* the pinned tab bar's height and the gap under it, when the page has one:
+   what stands over the box's top once it is pinned (it pins at the box's own
+   top edge: `top` -4 against panelStyle's 4 px padding) */
+function barInset(root) {
+  const bar = root ? root.querySelector('[data-cx-tabbar]') : null;
+  if (!bar) return 0;
+  return Math.round(bar.getBoundingClientRect().height + (parseFloat(getComputedStyle(bar).marginBottom) || 0));
 }
 
 /* ── small drawn glyphs: the TYPE line's, and the card's info mark ── */
@@ -141,64 +154,95 @@ function Frame({ size, children, edge }) {
 }
 function Pill({ children, attr }) {
   return (
-    <span data-cx-pill={attr} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minHeight: 24, padding: '0 9px', borderRadius: 7,
-      border: '1px solid rgba(229,237,233,.28)', background: 'rgba(11,22,27,.55)', color: COL.text, fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap' }}>{children}</span>
+    <span data-cx-pill={attr} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minHeight: 21, padding: '0 8px', borderRadius: 7,
+      border: '1px solid rgba(229,237,233,.28)', background: 'rgba(11,22,27,.55)', color: COL.text, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{children}</span>
   );
 }
 
-function Card({ kind, n, fresh, onOpen }) {
+/* ═══ v2.3.3215: A CARD IS ONE LINE OF ITS GRID ═══
+   The owner: "is there a way to display more data without needing to scroll
+   down so much?"  Measured on the QA phone (mp-codexfit), the list showed NO
+   whole card without scrolling: each stood 122 px tall (its picture over its
+   name, its land and its count) in a box of 167.  Now the picture stands
+   beside the three lines, ~44 px a card, and all nine are on the screen at
+   once.  Nothing it said is gone.  `wrap`: in a narrow sheet (sideways, the
+   ~220 px side column) its lines take two rows rather than lose their ends
+   ("N..." for "Not met yet"). */
+function Card({ kind, n, fresh, onOpen, wrap }) {
   const e = CODEX_ENTRIES[kind];
   const known = n >= CODEX_OPEN_AT;
   const look = landLook(e.home);
+  const line = wrap ? { lineHeight: 1.15, overflowWrap: 'anywhere' }
+    : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 };
   return (
     <button onClick={() => onOpen(kind)} data-cx-card={kind} data-cx-known={known ? 1 : 0} data-cx-fresh={fresh ? 1 : 0}
-      style={{ position: 'relative', background: known ? COL.slot : COL.well, border: '1px solid ' + COL.border,
-        borderTop: '3px solid ' + ((look && look.color) || COL.border), borderRadius: 10, padding: '6px 5px 7px',
-        textAlign: 'center', minWidth: 0, minHeight: 44, fontFamily: 'inherit', color: COL.text, cursor: 'pointer', touchAction: 'manipulation' }}>
-      {fresh ? <span style={{ position: 'absolute', top: 4, right: 4, padding: '0 5px', borderRadius: 999, background: '#2E7D6F', color: '#E9FFF8', fontSize: 9, fontWeight: 900, letterSpacing: '.06em' }}>NEW</span> : null}
-      <div style={{ display: 'grid', placeItems: 'center', height: 44 }}>
-        <PetPortrait pet={{ kind, stage: 1 }} size={44} shadow={!known} />
-      </div>
-      <div style={{ fontSize: 11.5, fontWeight: 800, lineHeight: 1.15, marginTop: 2, color: known ? COL.text : COL.text2, minHeight: 27,
-        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{known ? e.name : '???'}</div>
-      <div style={{ fontSize: 9.5, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{landName(e.home)}</div>
-      <div style={{ fontSize: 10.5, fontWeight: 800, marginTop: 3, color: known ? '#7EE0A8' : COL.muted, fontVariantNumeric: 'tabular-nums' }}>
-        {known ? n + ' defeated' : 'Not met yet'}
-      </div>
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 5, background: known ? COL.slot : COL.well, border: '1px solid ' + COL.border,
+        borderTop: '3px solid ' + ((look && look.color) || COL.border), borderRadius: 9, padding: '2px 4px 2px 2px',
+        textAlign: 'left', minWidth: 0, minHeight: 44, fontFamily: 'inherit', color: COL.text, cursor: 'pointer', touchAction: 'manipulation' }}>
+      <span style={{ position: 'relative', flex: 'none', width: 34, height: 34, display: 'grid', placeItems: 'center' }}>
+        <PetPortrait pet={{ kind, stage: 1 }} size={34} shadow={!known} />
+        {fresh ? <span style={{ position: 'absolute', top: -2, left: -1, padding: '0 3px', borderRadius: 999, background: '#2E7D6F', color: '#E9FFF8', fontSize: 8, fontWeight: 900, letterSpacing: '.05em', lineHeight: '11px' }}>NEW</span> : null}
+      </span>
+      <span style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <span data-cx-card-name style={{ ...line, fontSize: 12, fontWeight: 800, color: known ? COL.text : COL.text2 }}>{known ? e.name : '???'}</span>
+        <span style={{ ...line, fontSize: 9.5, color: COL.muted }}>{landName(e.home)}</span>
+        <span style={{ ...line, fontSize: 10.5, fontWeight: 800, color: known ? '#7EE0A8' : COL.muted, fontVariantNumeric: 'tabular-nums' }}>
+          {known ? n + ' defeated' : 'Not met yet'}
+        </span>
+      </span>
     </button>
   );
 }
 
-/* ═══ THE HEADER: portrait, name, and its three badges ═══ */
+/* ═══ THE HEADER: portrait, name, and its three badges ═══
+   v2.3.3215 (the owner: "is there a way to display more data without needing
+   to scroll down so much?"): 78 px -> 50.  Measured on the QA phone, a page's
+   first look was ALL header -- "‹ All monsters", this, and the tabs ended 172
+   px down a box 167 px tall, so not one line of its tab showed.  The picture
+   goes 60 -> 44, the count rides the name's line, the badges a size down. */
 function Header({ kind, e, n, n2, elder }) {
   const el = CODEX_ELEMENTS[e.element];
   return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '2px 2px 8px' }}>
-      <Frame size={60} edge={GOLD_EDGE}><PetPortrait pet={{ kind, stage: elder ? 2 : 1 }} size={56} /></Frame>
+    <div data-cx-header style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '0 2px 2px' }}>
+      <Frame size={44} edge={GOLD_EDGE}><PetPortrait pet={{ kind, stage: elder ? 2 : 1 }} size={40} /></Frame>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div data-cx-name style={{ fontSize: 20, fontWeight: 900, lineHeight: 1.1, color: COL.text }}>{elder && e.elder ? e.elder.name : e.name}</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 5 }}>
-          <Pill attr="level">{landLevelsText()}</Pill>
-          {el ? <Pill attr="element">{el.name}<img src={el.icon} alt="" draggable={false} style={{ width: 15, height: 15, objectFit: 'contain' }} /></Pill> : null}
-          <Pill attr="type">{e.type}</Pill>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <div data-cx-name style={{ minWidth: 0, fontSize: 17, fontWeight: 900, lineHeight: 1.1, color: COL.text }}>{elder && e.elder ? e.elder.name : e.name}</div>
+          <div data-cx-kills style={{ marginLeft: 'auto', flex: 'none', fontSize: 11, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
+            {n} defeated{n2 ? ' · ' + n2 + ' past Lv 20' : ''}
+          </div>
         </div>
-        <div style={{ fontSize: 11, color: COL.muted, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
-          {n} defeated{n2 ? ' · ' + n2 + ' past Lv 20' : ''}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+          <Pill attr="level">{landLevelsText()}</Pill>
+          {el ? <Pill attr="element">{el.name}<img src={el.icon} alt="" draggable={false} style={{ width: 14, height: 14, objectFit: 'contain' }} /></Pill> : null}
+          <Pill attr="type">{e.type}</Pill>
         </div>
       </div>
     </div>
   );
 }
 
+/* ═══ v2.3.3215: THE TABS STAY AT THE TOP, AND THE WAY BACK RIDES WITH THEM ═══
+   Scrolled down a long tab -- Info is ~900 px of story on a 190 px sheet --
+   changing tab, or going back to the monsters, meant scrolling all the way up
+   again.  So the bar is PINNED to the top of the sheet while you scroll
+   (`position: sticky`, its own opaque ground so the table passes under it),
+   and "‹ All monsters", which was a 40 px row of its own above the header,
+   is its first button.  `reveal` keeps what a tap brings up just under it. */
 const TABS = [['drops', 'Drops'], ['info', 'Info'], ['locations', 'Locations']];
-function Tabs({ tab, setTab }) {
+function Tabs({ tab, setTab, onBack }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, margin: '0 0 8px' }}>
+    <div data-cx-tabbar className="bt-cx-tabbar"
+      style={{ position: 'sticky', top: -4, zIndex: 3, display: 'grid', gridTemplateColumns: '38px repeat(3, minmax(0, 1fr))', gap: 5,
+        padding: '3px 0 4px', margin: '0 0 2px' }}>
+      <button onClick={onBack} data-cx-back aria-label="All monsters" title="All monsters"
+        style={{ minHeight: 34, borderRadius: 9, fontFamily: 'inherit', fontSize: 22, fontWeight: 800, lineHeight: 1, cursor: 'pointer', touchAction: 'manipulation',
+          border: '1px solid rgba(229,237,233,.18)', color: COL.accent, background: 'rgba(11,22,27,.45)', padding: 0 }}>‹</button>
       {TABS.map(([id, label]) => {
         const on = tab === id;
         return (
           <button key={id} onClick={() => setTab(id)} data-cx-tab={id} data-cx-on={on ? 1 : 0}
-            style={{ minHeight: 40, borderRadius: 9, fontFamily: 'inherit', fontSize: 14, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation',
+            style={{ minHeight: 34, borderRadius: 9, fontFamily: 'inherit', fontSize: 14, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation',
               border: '1px solid ' + (on ? COL.accent : 'rgba(229,237,233,.18)'), color: on ? COL.focus : COL.text,
               background: on ? 'linear-gradient(rgba(216,170,88,.30), rgba(216,170,88,.12))' : 'rgba(11,22,27,.45)',
               boxShadow: on ? 'inset 0 0 0 1px rgba(234,198,117,.25)' : 'none' }}>{label}</button>
@@ -282,24 +326,27 @@ function DropsTab({ rows, sel, onPick, shared }) {
     <div data-cx-drops={rows.length}>
       <div data-cx-drops-panel style={{ background: TABLE_BG, border: '1px solid rgba(229,237,233,.18)', borderRadius: 10, overflow: 'hidden',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,.04)' }}>
-      <div data-cx-drops-head style={{ display: 'grid', gridTemplateColumns: COLS, gap: 6, alignItems: 'center', padding: '7px 9px 6px', background: HEAD_BG,
+      <div data-cx-drops-head style={{ display: 'grid', gridTemplateColumns: COLS, gap: 6, alignItems: 'center', padding: '4px 9px 3px', background: HEAD_BG,
         borderBottom: '1px solid rgba(229,237,233,.14)', ...SECTION, fontSize: 11, color: '#CBD5D2' }}>
         <span style={{ gridColumn: '1 / span 2' }}>Item</span>
         <span>Type</span>
         <span data-cx-roll-head style={{ gridColumn: '4 / span 2', justifySelf: 'end', display: 'inline-flex', alignItems: 'center', gap: 5 }}><Dice h={12} />Roll</span>
       </div>
-      <div style={{ padding: 3 }}>
+      <div style={{ padding: 2 }}>
         {rows.map((r, i) => {
           const on = sel === r.id;
           const w = barWidth(r.chance);
           return (
+            /* v2.3.3215: 42 -> 34 px a row, what the roll over its chance
+               needs (a two-line name takes 36) -- the owner: "display more
+               data without needing to scroll down so much" */
             <button key={r.id} onClick={() => onPick(r.id)} data-cx-drop={r.id} data-cx-sel={on ? 1 : 0} data-cx-who={r.who} data-cx-bar={w}
-              style={{ display: 'grid', gridTemplateColumns: COLS, gap: 6, alignItems: 'center', width: '100%', minHeight: 42, padding: '4px 6px',
+              style={{ display: 'grid', gridTemplateColumns: COLS, gap: 6, alignItems: 'center', width: '100%', minHeight: 34, padding: '2px 6px',
                 fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer', touchAction: 'manipulation', color: COL.text, borderRadius: 7,
                 background: on ? 'rgba(216,170,88,.16)' : i % 2 ? STRIPE : 'transparent',
                 border: '1px solid ' + (on ? COL.accent : 'transparent') }}>
               <img src={r.icon} alt="" draggable={false} style={{ width: 26, height: 26, objectFit: 'contain' }} />
-              <span data-cx-name-cell style={{ minWidth: 0, fontSize: 13.5, fontWeight: 700, lineHeight: 1.15, color: r.color || COL.text, overflowWrap: 'anywhere' }}>
+              <span data-cx-name-cell style={{ minWidth: 0, fontSize: 13.5, fontWeight: 700, lineHeight: 1.1, color: r.color || COL.text, overflowWrap: 'anywhere' }}>
                 {r.name}{r.amount ? <span style={{ color: '#B3BEBB', fontWeight: 600 }}> {r.amount}</span> : null}
               </span>
               <span data-cx-type style={{ fontSize: 12.5, color: '#CBD3D0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.type}</span>
@@ -307,22 +354,22 @@ function DropsTab({ rows, sel, onPick, shared }) {
                 <span data-cx-bar-fill style={{ display: 'block', width: w + '%', minWidth: w > 0 ? 2 : 0, height: '100%', borderRadius: 4, background: BAR }} />
               </span>
               <span data-cx-roll-cell style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 0, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                <span data-cx-roll={r.from ? r.from + '-' + r.to : 'always'} style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.15, color: '#FFFFFF' }}>{rollRange(r) || 'Always'}</span>
-                <span data-cx-pct style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.15, color: '#B3BEBB' }}>({r.pct})</span>
+                <span data-cx-roll={r.from ? r.from + '-' + r.to : 'always'} style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.1, color: '#FFFFFF' }}>{rollRange(r) || 'Always'}</span>
+                <span data-cx-pct style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.1, color: '#B3BEBB' }}>({r.pct})</span>
               </span>
             </button>
           );
         })}
       </div>
       </div>
-      <div style={{ fontSize: 11.5, color: COL.text2, lineHeight: 1.4, margin: '7px 4px 0' }}>
+      <div style={{ fontSize: 11.5, color: COL.text2, lineHeight: 1.35, margin: '6px 4px 0' }}>
         <div data-cx-dice-key={shared ? 'shared' : 'own'} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Dice h={13} />
           {shared
             ? <span>Each kill rolls once, 1–{n0(CODEX_ROLL_SIDES)}. The item whose numbers it lands on drops{free ? <>; <span data-cx-free={free} style={{ whiteSpace: 'nowrap' }}>{n0(free)}–{n0(CODEX_ROLL_SIDES)}</span> drops nothing more</> : null}.</span>
             : <span>Each kill rolls 1–{n0(CODEX_ROLL_SIDES)} for every item. A roll in its range drops it.</span>}
         </div>
-        <div style={{ marginTop: 3 }}>Tap an item to see what it is and the grades it can roll.</div>
+        <div style={{ marginTop: 2 }}>Tap an item to see what it is and the grades it can roll.</div>
       </div>
     </div>
   );
@@ -418,12 +465,53 @@ function ItemCard({ kind, e, r, onClose }) {
   );
 }
 
+/* ═══ v2.3.3215: THE STAGE, AS BIG AS FITS UNDER THE PINNED TABS ═══
+   With the tab bar pinned to the sheet's top (`Tabs`), Info's 150 px stage
+   no longer fits under it on a phone's sheet (~190 px, the bar ~46), and the
+   tap on Info is meant to show ALL of it (mp-codex).  So the stage is drawn
+   smaller to fit -- one CSS scale of the whole thing (its strips, its
+   numbers, its frame), so nothing inside it moves against anything else --
+   never bigger than it was, and never wider than the sheet: sideways the
+   sheet is ~205 px and the 300 px stage was simply cut off.  STAGE_IN_FADE:
+   the lower part of the ground strip may sit under the sheet's 18 px bottom
+   fade (panelStyle); the feet stand on its top edge, 16 px up, clear of it. */
+const STAGE_W = 300, STAGE_HT = 150, STAGE_IN_FADE = 10, STAGE_MIN = 0.6;
+function StageFit({ children }) {
+  const ref = useRef(null);
+  const [k, setK] = useState(1);
+  useLayoutEffect(() => {
+    const fit = () => {
+      const el = ref.current;
+      const box = el ? scrollBox(el) : null;
+      if (!el || !box) return;
+      /* a tap on Info puts the stage's top just under the pinned bar
+         (`reveal` with the bar's inset), and its foot may reach STAGE_IN_FADE
+         into the fade: what is left between the two, a pixel spare */
+      const room = box.clientHeight - barInset(el.closest('[data-cx-page]')) - (FADE - STAGE_IN_FADE) - 1;
+      const wide = el.parentElement ? el.parentElement.clientWidth : STAGE_W;
+      const next = Math.max(STAGE_MIN, Math.min(1, room / STAGE_HT, wide / STAGE_W));
+      setK((cur) => (Math.abs(cur - next) > 0.005 ? next : cur));
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, []);
+  return (
+    <div ref={ref} data-cx-stage-fit={k.toFixed(3)}
+      style={{ position: 'relative', width: Math.round(STAGE_W * k), height: Math.round(STAGE_HT * k), margin: '0 auto' }}>
+      <div style={{ position: 'absolute', left: 0, top: 0, width: STAGE_W, height: STAGE_HT, transformOrigin: '0 0', transform: k < 1 ? `scale(${k})` : 'none' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /* ═══ INFO: its stage, and everything it does ═══ */
 function Fact({ fact, title, children, gold }) {
   return (
     <div data-cx-fact={fact} data-cx-open={1}
-      style={{ background: COL.raised, border: '1px solid ' + (gold ? 'rgba(234,198,117,.35)' : COL.border), borderRadius: 10, padding: '8px 10px', marginTop: 8 }}>
-      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: gold ? '#EAC675' : COL.accent, marginBottom: 4 }}>{title}</div>
+      style={{ background: COL.raised, border: '1px solid ' + (gold ? 'rgba(234,198,117,.35)' : COL.border), borderRadius: 10, padding: '6px 9px', marginTop: 6 }}>
+      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: gold ? '#EAC675' : COL.accent, marginBottom: 2 }}>{title}</div>
       {children}
     </div>
   );
@@ -433,39 +521,39 @@ function InfoTab({ kind, e, S, elder, setElder }) {
   const el = CODEX_ELEMENTS[e.element];
   return (
     <div data-cx-info={kind}>
-      <CodexStage kind={kind} facts={codexFactsAt(CODEX_OPEN_AT)} elder={elder} S={S} />
+      <StageFit><CodexStage kind={kind} facts={codexFactsAt(CODEX_OPEN_AT)} elder={elder} S={S} /></StageFit>
       {e.elder && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, margin: '8px 2px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, margin: '6px 2px 0' }}>
           {[[false, e.name], [true, e.elder.name]].map(([on, nm]) => (
             <button key={String(on)} onClick={() => setElder(on)} data-cx-elder-toggle={on ? 1 : 0}
-              style={{ minHeight: 32, padding: '0 10px', borderRadius: 999, border: '1px solid ' + (elder === on ? COL.accent : COL.border),
+              style={{ minHeight: 30, padding: '0 10px', borderRadius: 999, border: '1px solid ' + (elder === on ? COL.accent : COL.border),
                 background: elder === on ? COL.accentFill : 'transparent', color: elder === on ? COL.accent : COL.text2,
                 fontFamily: 'inherit', fontSize: 12, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation' }}>{nm}</button>
           ))}
         </div>
       )}
       <Fact fact="page" title="What it does">
-        <div style={{ fontSize: 13, lineHeight: 1.45, color: COL.text }}>{e.what}</div>
+        <div style={{ fontSize: 13, lineHeight: 1.4, color: COL.text }}>{e.what}</div>
       </Fact>
       <Fact fact="element" title={'Element · ' + (el ? el.name : '')}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
           {el ? <img src={el.icon} alt="" draggable={false} style={{ width: 30, height: 30, objectFit: 'contain', flex: 'none' }} /> : null}
-          <div style={{ fontSize: 13, lineHeight: 1.45, color: COL.text }}>
+          <div style={{ fontSize: 13, lineHeight: 1.4, color: COL.text }}>
             <b style={{ color: (look && look.color) || COL.text }}>{el ? el.status : ''}.</b> {el ? el.effect : ''}
-            <div style={{ fontSize: 11.5, color: COL.text2, marginTop: 4 }}>A pet from {landName(e.home)}, out with you, softens it.</div>
+            <div style={{ fontSize: 11.5, color: COL.text2, marginTop: 3 }}>A pet from {landName(e.home)}, out with you, softens it.</div>
           </div>
         </div>
       </Fact>
       <Fact fact="special" title={'Special attack · ' + e.special.name}>
-        <div style={{ fontSize: 13, lineHeight: 1.45, color: COL.text }}>{e.special.text}</div>
-        <div style={{ fontSize: 12, lineHeight: 1.4, color: '#B9E4C9', marginTop: 5 }}><b>Tip:</b> {e.special.tip}</div>
+        <div style={{ fontSize: 13, lineHeight: 1.4, color: COL.text }}>{e.special.text}</div>
+        <div style={{ fontSize: 12, lineHeight: 1.35, color: '#B9E4C9', marginTop: 4 }}><b>Tip:</b> {e.special.tip}</div>
       </Fact>
       <Fact fact="story" title="Its story">
-        {e.story.map((para, i) => <p key={i} style={{ fontSize: 13, lineHeight: 1.5, color: COL.text, margin: i ? '6px 0 0' : 0 }}>{para}</p>)}
+        {e.story.map((para, i) => <p key={i} style={{ fontSize: 13, lineHeight: 1.45, color: COL.text, margin: i ? '5px 0 0' : 0 }}>{para}</p>)}
       </Fact>
       {e.elder && (
         <Fact fact="elder" title={'Elder form · ' + e.elder.name} gold>
-          <div style={{ fontSize: 13, lineHeight: 1.45, color: COL.text }}>{e.elder.text}</div>
+          <div style={{ fontSize: 13, lineHeight: 1.4, color: COL.text }}>{e.elder.text}</div>
         </Fact>
       )}
     </div>
@@ -475,11 +563,11 @@ function InfoTab({ kind, e, S, elder, setElder }) {
 /* ═══ LOCATIONS: where it lives, and the way there ═══ */
 function LocRow({ attr, icon, title, children }) {
   return (
-    <div data-cx-loc={attr} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '9px 4px', borderBottom: '1px solid ' + COL.divider }}>
+    <div data-cx-loc={attr} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '6px 4px', borderBottom: '1px solid ' + COL.divider }}>
       <div style={{ width: 30, flex: 'none', display: 'grid', placeItems: 'center' }}>{icon}</div>
       <div style={{ minWidth: 0 }}>
         <div style={{ ...SECTION, fontSize: 10.5 }}>{title}</div>
-        <div style={{ fontSize: 13, lineHeight: 1.45, color: COL.text, marginTop: 2 }}>{children}</div>
+        <div style={{ fontSize: 13, lineHeight: 1.4, color: COL.text, marginTop: 1 }}>{children}</div>
       </div>
     </div>
   );
@@ -533,19 +621,25 @@ function Page({ kind, S, onBack }) {
     const el = root.current;
     if (!el) return;
     const row = !card && sel ? el.querySelector(`[data-cx-drop="${sel}"]`) : null;
-    if (row) reveal(row, 'near');
+    if (row) reveal(row, 'near', barInset(el));
     else reveal(el, 'top');
   }, [card]);
-  /* a tap on a tab shows what it opened, at the top of the sheet */
-  useLayoutEffect(() => { if (tabTap && body.current) reveal(body.current, 'top'); }, [tabTap]);
+  /* a tap on a tab shows what it opened, at the top of the sheet -- just
+     under the pinned tab bar (v2.3.3215) */
+  useLayoutEffect(() => { if (tabTap && body.current) reveal(body.current, 'top', barInset(root.current)); }, [tabTap]);
   const known = n >= CODEX_OPEN_AT;
   const shared = killRollLive(S);   /* v2.3.3209: one roll a kill, each drop its own numbers */
   const rows = known ? (codexDropsFor(kind, { shared }) || []) : [];
   const open = card ? rows.find((r) => r.id === card) : null;
   return (
     <div ref={root} data-cx-page={kind} data-cx-kills={n} data-cx-tabbed={known ? tab : ''}>
-      <button onClick={onBack} style={{ minHeight: 40, padding: '0 10px 0 4px', background: 'transparent', border: 'none', color: COL.accent,
-        fontFamily: 'inherit', fontSize: 13, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation' }}>‹ All monsters</button>
+      {/* v2.3.3215: a known page's way back is the tab bar's first button
+         (`Tabs`, pinned while you scroll); a page not yet open has no tabs,
+         so it keeps its own */}
+      {!known ? (
+        <button onClick={onBack} data-cx-back style={{ minHeight: 40, padding: '0 10px 0 4px', background: 'transparent', border: 'none', color: COL.accent,
+          fontFamily: 'inherit', fontSize: 13, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation' }}>‹ All monsters</button>
+      ) : null}
       {!known ? (
         <div style={{ textAlign: 'center', padding: '10px 0 4px' }}>
           <div style={{ display: 'grid', placeItems: 'center' }}><PetPortrait pet={{ kind, stage: 1 }} size={96} shadow /></div>
@@ -558,7 +652,7 @@ function Page({ kind, S, onBack }) {
       ) : (
         <>
           <Header kind={kind} e={e} n={n} n2={n2} elder={elder} />
-          <Tabs tab={tab} setTab={(id) => { setTab(id); setTabTap((v) => v + 1); }} />
+          <Tabs tab={tab} setTab={(id) => { setTab(id); setTabTap((v) => v + 1); }} onBack={onBack} />
           <div ref={body}>
             {tab === 'drops' ? <DropsTab rows={rows} sel={sel} shared={shared} onPick={(id) => { setSel(id); setCard(id); }} />
               : tab === 'info' ? <InfoTab kind={kind} e={e} S={S} elder={elder} setElder={setElder} />
@@ -596,9 +690,10 @@ export function MonsterCodex({ open = null, setOpen = () => {} } = {}) {
   if (open) return <Page kind={open} S={S} onBack={() => setOpen(null)} />;
   const rows = CODEX_KINDS.map((k) => ({ k, counts: codexCounts(S, k), fresh: codexFresh(S, k).length > 0 }));
   const met = rows.filter((r) => r.counts[0] >= CODEX_OPEN_AT).length;
+  const narrow = panelVw() < 300;
   return (
-    <div ref={grid} data-cx-grid={met}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '2px 2px 6px' }}>
+    <div ref={grid} data-cx-grid={met} data-cx-narrow={narrow ? 1 : 0}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '1px 2px 4px' }}>
         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted }}>Monsters of the Wheel</div>
         <div style={{ fontSize: 11, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{met} of {CODEX_KINDS.length} met</div>
       </div>
@@ -608,8 +703,10 @@ export function MonsterCodex({ open = null, setOpen = () => {} } = {}) {
       {c && c.unavailable ? (
         <div data-cx-note="unavailable" style={{ fontSize: 12, color: COL.muted, margin: '0 2px 8px' }}>Your codex can't be read right now. It will be back.</div>
       ) : null}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 5 }}>
-        {rows.map((r) => <Card key={r.k} kind={r.k} n={r.counts[0]} fresh={r.fresh} onOpen={setOpen} />)}
+      {/* v2.3.3215: three across, all nine on a phone's sheet at once; two
+         across in a narrow one, their words wrapping (sideways) */}
+      <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))', gap: 4 }}>
+        {rows.map((r) => <Card key={r.k} kind={r.k} n={r.counts[0]} fresh={r.fresh} onOpen={setOpen} wrap={narrow} />)}
       </div>
       <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4, marginTop: 8 }}>
         Defeat one of a kind to open its whole page: everything it drops, what it does, its story and where it lives. Kills in a party count for everyone in it.
