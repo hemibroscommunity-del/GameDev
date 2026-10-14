@@ -175,12 +175,28 @@ async function steps({ A, B, wsPort, rec, errors }) {
       });
       if (m) await H.hopTo(A, m.x, m.y + 36, { step: 60, gap: 200, tries: 4 });
     }
-    if (i % 20 === 19) await H.devOp(wsPort, 'vitals', aId, { heal: true });
+    /* v2.3.3249: healed every few steps, not every 20.  Frost's snowmen,
+       several at once and each blow chilling, killed the player between
+       heals in about half the runs on main; the death animation then
+       outlived the next heal (it restores HP, not the life), and section 6
+       below failed with its lock dropped as 'dead' -- no TRAP button, no
+       trap set, no reveal -- far from the cause.  Not god mode: that zeroes
+       the blow before its element ever lands, and the chill is what this
+       section measures. */
+    if (i % 4 === 3) await H.devOp(wsPort, 'vitals', aId, { heal: true });
     const log = await A.page.evaluate((since) => (window.__btElemLog || []).filter((e) => e.at >= since && e.st === 'chill'), t0);
     got = log.find((e) => e.wd) || null;
     if (!got) await A.page.waitForTimeout(250);
   }
+  /* v2.3.3249: the chill is measured -- stop taking blows NOW.  The snowmen
+     went on swinging while the checks below read and the screenshot was
+     taken, and a death in those seconds (the god mode further down came too
+     late) dropped section 6's lock the same way. */
+  await H.devOp(wsPort, 'vitals', aId, { heal: true, god: true, godMinutes: 10 });
   const wardSaid = await H.readState(A, (S) => ({ said: S._wardSaid || null, hits: S._wardHits || 0, chillLeft: (S._chillUntil || 0) - Date.now() }));
+  /* v2.3.3249: said HERE if the fight killed us, not two sections later */
+  const alive = await H.readState(A, (S) => ({ dying: !!S._dying, hp: S.rpg && S.rpg.hp }));
+  rec.ok('the player came through the ward fight alive (guard)', !alive.dying, alive);
   const ring = await A.page.evaluate(() => window._pixiRenderer.petDrawn());
   rec.ok(`a snowman's chill lands ${got && got.stMs} ms, not 1000, the hit saying wd ${got && got.wd}`, !!got && got.stMs === 660 && got.wd === 34, got);
   rec.ok(`..."${wardSaid.said}" over the pet, and its ring drawn (${ring && ring.wards} time(s))`, wardSaid.said === 'Ward 34%' && !!ring && ring.wards >= 1, { wardSaid, ring });
@@ -203,9 +219,18 @@ async function steps({ A, B, wsPort, rec, errors }) {
   if (m && m.d > 200) { await H.hopTo(A, m.x + 90, m.y + 40, { tries: 40 }); await A.page.waitForTimeout(500); m = await target(); }
   rec.ok('a snowman to trap (guard)', !!m, m);
   if (!m) { rec.ok('no page errors on either phone', errors.length === 0, errors.slice(0, 5)); return; }
-  await A.page.waitForSelector('[data-trap-button="ready"]', { timeout: 5000 }).catch(() => {});
-  await A.page.evaluate(() => { const b = document.querySelector('[data-trap-button="ready"]'); if (b) b.click(); });
-  await A.page.waitForFunction((id) => { const t = window.__btTrap && window.__btTrap(); return t && t.mark && t.mark.monsterId === id; }, m.id, { timeout: 5000 }).catch(() => {});
+  /* v2.3.3249: up to three tries to set the trap.  What this section tests is
+     the reveal, not how long a tap's lock lives, and a lock let go of under
+     the test (a death, a re-sync) left it with no button to press and
+     reported the reveal as broken. */
+  for (let tries = 0; tries < 3; tries++) {
+    await A.page.waitForSelector('[data-trap-button="ready"]', { timeout: 5000 }).catch(() => {});
+    await A.page.evaluate(() => { const b = document.querySelector('[data-trap-button="ready"]'); if (b) b.click(); });
+    const marked = await A.page.waitForFunction((id) => { const t = window.__btTrap && window.__btTrap(); return t && t.mark && t.mark.monsterId === id; }, m.id, { timeout: 5000 }).then(() => true).catch(() => false);
+    if (marked) break;
+    const again = await target();
+    if (!again || again.id !== m.id) break;
+  }
   await A.page.evaluate(() => { window.__btTrapFxDrawn = { gold: 0, big: 0 }; });
   await H.devOp(wsPort, 'trapping', aId, { next: 'catch', kill: m.id });
   /* the snap: the rays and the ring drawn, the words said -- before the card */

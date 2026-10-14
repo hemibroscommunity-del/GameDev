@@ -583,6 +583,14 @@ for (const name of names) {
      was running, because that is the one that can reproduce it. */
   const _rt = H.takeRenderThrows();
   if (_rt.length) rec.ok('the render loop did not throw', false, { threw: _rt.slice(0, 3) });
+  /* v2.3.3249: EVERY PAGE A SCENARIO LEFT OPEN IS CLOSED HERE.  One browser
+     serves every scenario, and most never close their own pages, so each
+     world page went on drawing (software GL on this box) under every later
+     scenario: mp-hitvoices failed 8 checks run after mp-farfeel and passed
+     alone, and mp-slimeburst's peak-hold checks failed late in a list and
+     passed early.  Scenarios are isolated by their own fresh contexts, so
+     none can need another's page afterwards. */
+  for (const c of browser.contexts()) await c.close().catch(() => {});
   console.log(`   (${((Date.now() - started) / 1000).toFixed(0)}s)\n`);
   all.push(...rec.rows());
 }

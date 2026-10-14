@@ -6156,3 +6156,38 @@ breakage. The owner never saw it because they hold the phone upright.
   `100dvh` with `100vh` before it, as the modal's own height falls back. Never
   from `vw`, which says nothing about how tall the screen is.
 
+
+## 177. "A phone scenario that fails on main is a broken feature" (v2.3.3249)
+
+Four phone scenarios failed on `main` for days, and each was logged as "broken
+on main" while other work went round them. None was the game. Each was the test
+drifting from a game that had moved on, or tests disturbing each other:
+
+- **`mp-deathstrip`** read the forge's swinging sign (a building's moving part,
+  `worldLife.js` `life_<prop>`) and a few dust particles as gear left on a
+  corpse. The player dies a few steps from the forge. Its watcher also stood on
+  the corpse's own tile, so its OWN shadow lay on the body.
+- **`mp-firetrail`** told the worker it stood at (500, 500) in the meadow, but
+  left the player at today's town spawn, (1014, 944). That is the meadow's
+  south-east corner, so the camera stopped at the map's edge, and every fire the
+  test dropped 90-130 px east of him was off screen. It also looked for a burn's
+  number as "-37", which no build has drawn since the display scale (k 5: "-7").
+- **`mp-petsmatter`** let Frost Ridge's snowmen kill the player in its ward
+  fight about half the time. The death dropped the next section's target lock
+  (`player_died`), so that section reported the golden catch's reveal as broken.
+- **`mp-hitvoices`** and **`mp-slimeburst`** passed alone and failed in a list.
+  76 of the 469 scenarios never closed their pages, and one browser serves the
+  whole run, so every world they left behind went on drawing (software GL here)
+  under the scenarios after it.
+
+**The rule.**
+
+- A scenario red on `main` is a question about the TEST first: read what it
+  measured (positions, texts, the screen) against what the game does today,
+  before reading it as a broken feature or quietly living with it.
+- A test sets the player where it says it does. Telling the worker is not
+  moving the player on his own screen.
+- Look for a number as the game draws it: import the game's own conversion
+  (`toDisplayDamage`, as `mp-hpscale` does), never the raw number.
+- `run.mjs` closes every page a scenario leaves open (v2.3.3249). A scenario
+  that only passes first in a list is measuring the box, not the game.
