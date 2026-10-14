@@ -20,6 +20,27 @@
  *      a message between two servers is counted as.  Best effort: if the token
  *      may not read them, the run says so and the rest still stands.
  * Writes <out>/lab-<time>.json and .md, and prints the .md.
+ *
+ * ═══ v2.3.3252: THE FREE PLAN ═══
+ * The first run (2026-10-14) never started: Cloudflare refused the deploy, "In
+ * order to use Durable Objects with a free plan, you must create a namespace
+ * using a `new_sqlite_classes` migration" (code 10097).  This account is on the
+ * Workers FREE plan -- the game's brotown-server too (server/wrangler.toml) --
+ * and there Durable Objects have DAILY limits for the whole account, reset at
+ * 00:00 UTC: 100,000 requests (a web request, a call, an alarm, or 20 incoming
+ * socket messages) and 13,000 GB-s of time awake.  Past either, Cloudflare
+ * refuses that kind of work until midnight, the GAME'S as well.  So:
+ *   - the lab's objects are SQLite ones (wrangler.toml), the only kind the free
+ *     plan takes;
+ *   - a run is sized for the free plan: about 2,700 billed requests (BUDGET),
+ *     was about 25,000 (its call flood alone was 20,000), and the Door waits
+ *     for a flood with a call every 50 ms, not every 5.  `--big` (the
+ *     workflow's "big" input) runs the old sizes: the paid plan only;
+ *   0. THE DAY SO FAR: before anything, the account's billed requests today; a
+ *      run that could take them past 90% of the day's 100,000 stops there;
+ *   4. THE GAME'S OWN DAYS: the last 7 days of brotown-server's Durable Objects
+ *      from the account's own figures, against the free plan's daily limits.
+ *      Read only, and best effort like the bill.
  */
 import { spawn } from 'node:child_process';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
@@ -32,6 +53,22 @@ const arg = (name, d) => { const i = process.argv.indexOf('--' + name); return i
 const LOCAL = process.argv.includes('--local');
 const ROUNDS = (() => { const v = Math.floor(+arg('rounds', LOCAL ? 3 : 5)); return Number.isFinite(v) ? Math.min(20, Math.max(2, v)) : 5; })();
 const OUT = arg('out', join(here, '..', 'qa', 'out', 'lab'));
+/* v2.3.3252: the free plan (header) */
+const BIG = process.argv.includes('--big');
+const N = BIG
+  ? { warm: 20, rtt: 400, ws: 20000, rpc: 20000, ws2k: 4000 }
+  : { warm: 10, rtt: 200, ws: 10000, rpc: 1000, ws2k: 2000 };
+const POLL_MS = 50;   /* the Door's wait for a flood to land: one call a poll */
+const FREE_DAY = Object.freeze({ requests: 100000, gbs: 13000 });
+/* a run's billed Durable Object requests, about: every call and web request to
+   an object is one, 20 incoming socket messages are one */
+const BUDGET = Math.ceil(
+  8 + 31 * (ROUNDS + 1)                                     /* 1: the burns */
+  + 3 * 2 * 4 + (N.warm + N.rtt) * (1 + 2 / 20)              /* 2: the round trips */
+  + 4 * 4 + (2 * N.ws + N.ws2k) / 20 + N.rpc + 3 * 40);      /* 3: the floods, ~40 polls each */
+/* the account and the GraphQL schema, read once (the helpers at the bottom
+   run before any line down there would declare them) */
+const CACHE = { account: undefined, accountErr: null, acctType: null, ds: Object.create(null) };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const pct = (arr, p) => { if (!arr.length) return null; const s = [...arr].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))]; };
 const r1 = (v) => (v === null || v === undefined || !Number.isFinite(v) ? null : Math.round(v * 10) / 10);
@@ -44,7 +81,7 @@ if (LOCAL) {
   const state = await mkdtemp(join(tmpdir(), 'lab-'));
   /* wrangler's local tracing off: TRAPS §168 */
   const env = Object.assign({}, process.env, { X_LOCAL_OBSERVABILITY: 'false', X_LOCAL_EXPLORER: 'false' });
-  worker = spawn('npx', ['wrangler', 'dev', '--port', String(port), '--local', '--ip', '127.0.0.1', '--persist-to', state, '--var', 'LAB_KEY:' + KEY],
+  worker = spawn('npx', ['wrangler', 'dev', '--port', String(port), '--local', '--ip', '127.0.0.1', '--persist-to', state, '--var', 'LAB_KEY:' + KEY, '--var', 'LAB_LOCAL:1'],
     { cwd: here, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
   let log = '';
   worker.stdout.on('data', (d) => { log += d; });
@@ -73,6 +110,18 @@ async function get(path) {
 
 const started = new Date();
 const out = { started: started.toISOString(), base: LOCAL ? 'local' : BASE, rounds: ROUNDS, runner: process.env.RUNNER_NAME || null };
+
+/* ── 0. the day so far (v2.3.3252) ────────────────────────────────────────── */
+out.plan = { big: BIG, budget: BUDGET, sizes: N, freePerDay: FREE_DAY };
+if (!LOCAL && process.env.CLOUDFLARE_API_TOKEN) {
+  out.plan.today = await accountToday().catch((e) => ({ error: String(e && e.message || e) }));
+  const used = out.plan.today && out.plan.today.billed;
+  if (!BIG && Number.isFinite(used) && used + BUDGET > 0.9 * FREE_DAY.requests) {
+    out.plan.refused = `the account has used about ${Math.round(used).toLocaleString('en-US')} of the free plan's ${FREE_DAY.requests.toLocaleString('en-US')} Durable Object requests today; this run's ~${BUDGET.toLocaleString('en-US')} could take it past 90%, and the game shares that limit. Run it after 00:00 UTC.`;
+    await writeOut(out);
+    process.exit(3);
+  }
+}
 
 /* ── up? ──────────────────────────────────────────────────────────────────── */
 {
@@ -103,7 +152,10 @@ const out = { started: started.toISOString(), base: LOCAL ? 'local' : BASE, roun
   for (let i = 0; i < ROUNDS; i++) one.push((await get(`/burn?name=cal&iters=${iters}`)).ms - rtt);
   const work = pct(one, 50);
   out.burn = { iters, workMs: r1(work), rows: [] };
-  for (const K of [1, 2, 4, 8, 16]) {
+  /* v2.3.3252: on `wrangler dev --local` 8 at once never all came back (the
+     third waited out the runner's 300 s): the local runtime's own limit, so a
+     local dry run stops at 4 */
+  for (const K of LOCAL ? [1, 2, 4] : [1, 2, 4, 8, 16]) {
     const walls = [], isolates = new Set(), colos = new Set(), workerIsolates = new Set();
     for (let round = 0; round <= ROUNDS; round++) {
       const t0 = performance.now();
@@ -126,18 +178,20 @@ const out = { started: started.toISOString(), base: LOCAL ? 'local' : BASE, roun
 /* ── 2. the delay between servers ─────────────────────────────────────────── */
 out.rtt = {};
 for (const [name, q] of [['call (JS RPC)', 'mode=rtt-rpc'], ['socket, plain', 'mode=rtt-ws&hib=0'], ['socket, hibernation', 'mode=rtt-ws&hib=1']]) {
-  await get(`/door?${q}&n=20&door=warm`);
-  const r = (await get(`/door?${q}&n=${LOCAL ? 200 : 400}&door=rtt`)).body;
+  await get(`/door?${q}&n=${N.warm}&door=warm`);
+  const r = (await get(`/door?${q}&n=${N.rtt}&door=rtt`)).body;   /* v2.3.3252: N, the free plan's sizes */
   out.rtt[name] = { ...r.rttMs, where: r.where };
 }
 
 /* ── 3. floods, for the speed and the bill ───────────────────────────────── */
 out.flood = [];
+/* v2.3.3252: sized for the free plan (N); a call is a billed request each, 20
+   socket messages one, and the Door's wait polls every POLL_MS */
 const floods = [
-  ['socket, plain, 100 B', 'mode=flood-ws&hib=0&size=100', 20000],
-  ['socket, hibernation, 100 B', 'mode=flood-ws&hib=1&size=100', 20000],
-  ['call (JS RPC), 100 B', 'mode=flood-rpc&size=100', 20000],
-  ['socket, hibernation, 2 KB', 'mode=flood-ws&hib=1&size=2000', 4000],
+  ['socket, plain, 100 B', `mode=flood-ws&hib=0&size=100&poll=${POLL_MS}`, N.ws],
+  ['socket, hibernation, 100 B', `mode=flood-ws&hib=1&size=100&poll=${POLL_MS}`, N.ws],
+  ['call (JS RPC), 100 B', 'mode=flood-rpc&size=100', N.rpc],
+  ['socket, hibernation, 2 KB', `mode=flood-ws&hib=1&size=2000&poll=${POLL_MS}`, N.ws2k],
 ];
 const floodFrom = new Date();
 for (const [name, q, n] of floods) {
@@ -150,17 +204,27 @@ const floodTo = new Date();
 /* ── the bill (best effort) ───────────────────────────────────────────────── */
 out.billing = await billing(floodFrom, floodTo).catch((e) => ({ error: String(e && e.message || e) }));
 
+/* ── 4. the game's own days (v2.3.3252; read only) ────────────────────────── */
+out.game = (LOCAL || !process.env.CLOUDFLARE_API_TOKEN)
+  ? { skipped: LOCAL ? 'local run' : 'no CLOUDFLARE_API_TOKEN' }
+  : await gameDays(7).catch((e) => ({ error: String(e && e.message || e) }));
+
 /* ── write it ─────────────────────────────────────────────────────────────── */
-const md = render(out);
-await mkdir(OUT, { recursive: true });
-const stamp = started.toISOString().replace(/[:.]/g, '-');
-await writeFile(join(OUT, `lab-${stamp}.json`), JSON.stringify(out, null, 2));
-await writeFile(join(OUT, `lab-${stamp}.md`), md);
-console.log(md);
+await writeOut(out);
 if (worker) { try { process.kill(-worker.pid, 'SIGKILL'); } catch { /* gone */ } }
 process.exit(0);
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
+async function writeOut(o) {
+  await mkdir(OUT, { recursive: true });
+  const stamp = started.toISOString().replace(/[:.]/g, '-');
+  /* the figures first: a report that cannot be drawn must not lose them */
+  await writeFile(join(OUT, `lab-${stamp}.json`), JSON.stringify(o, null, 2));
+  let md;
+  try { md = render(o); } catch (e) { md = `# Cloudflare lab, ${o.started}\n\nThe report could not be drawn (${String(e && e.message || e)}); every figure is in lab-${stamp}.json.`; }
+  await writeFile(join(OUT, `lab-${stamp}.md`), md);
+  console.log(md);
+}
 async function cf(path, init) {
   const token = process.env.CLOUDFLARE_API_TOKEN;
   const res = await fetch('https://api.cloudflare.com/client/v4' + path, Object.assign({}, init, { headers: Object.assign({ Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, (init && init.headers) || {}) }));
@@ -176,72 +240,196 @@ async function fieldsOf(typeName) {
   return (r && r.data && r.data.__type) || null;
 }
 const baseType = (t) => { while (t && !t.name && t.ofType) t = t.ofType; return t ? t.name : null; };
+const num = (v) => (v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v));
+
+/* v2.3.3252: the account, read once (CACHE is made at the top: these run
+   before the line that would declare it here) */
+async function accountId() {
+  if (CACHE.account !== undefined) return CACHE.account;
+  CACHE.account = process.env.CLOUDFLARE_ACCOUNT_ID || null;
+  if (!CACHE.account) {
+    const a = await cf('/accounts');
+    CACHE.account = (a && a.result && a.result[0] && a.result[0].id) || null;
+    if (!CACHE.account) CACHE.accountErr = a && a.errors;
+  }
+  return CACHE.account;
+}
+/* a dataset's sums, dimensions and filters, as the schema has them */
+async function discover(ds) {
+  if (CACHE.ds[ds]) return CACHE.ds[ds];
+  if (!CACHE.acctType) CACHE.acctType = await fieldsOf('account');
+  const acct = CACHE.acctType;
+  const f = acct && acct.fields && acct.fields.find((x) => x.name === ds);
+  if (!f) return (CACHE.ds[ds] = { error: 'not in this schema (or not readable with this token)' });
+  const groupType = await fieldsOf(baseType(f.type));
+  const gf = (n) => groupType && groupType.fields && groupType.fields.find((x) => x.name === n);
+  const sumT = gf('sum') ? await fieldsOf(baseType(gf('sum').type)) : null;
+  const dimT = gf('dimensions') ? await fieldsOf(baseType(gf('dimensions').type)) : null;
+  const NUMT = ['Int', 'Float', 'uint64', 'float64', 'int64', 'uint32'];
+  const sums = ((sumT && sumT.fields) || []).filter((x) => NUMT.includes(baseType(x.type))).map((x) => x.name);
+  const dims = ((dimT && dimT.fields) || []).map((x) => x.name);
+  const ft = await fieldsOf('Account' + ds[0].toUpperCase() + ds.slice(1) + 'Filter_InputObject');
+  const filters = ((ft && ft.inputFields) || []).map((x) => x.name);
+  const timeKey = ['datetime', 'datetimeMinute', 'datetimeHour', 'date'].find((k) => filters.includes(k + '_geq')) || null;
+  return (CACHE.ds[ds] = { sums, dims, filters, timeKey, count: !!gf('count') });
+}
+/* one dataset's sums between two times -- for some namespaces (`ids`), or the
+   whole account -- added up over its rows */
+async function dsSums(ds, { from, to, ids = null }) {
+  const d = await discover(ds);
+  if (d.error) return d;
+  if (!d.sums.length) return { error: 'no sum fields found', dims: d.dims };
+  if (!d.timeKey) return { error: 'no time filter found', filters: d.filters.slice(0, 30) };
+  if (ids && !d.filters.includes('namespaceId_in')) return { error: 'no namespace filter', filters: d.filters.slice(0, 30) };
+  const acct = await accountId();
+  if (!acct) return { error: 'no account readable with this token', detail: CACHE.accountErr };
+  const lit = (t) => JSON.stringify(d.timeKey === 'date' ? t.toISOString().slice(0, 10) : t.toISOString().replace(/\.\d{3}Z$/, 'Z'));
+  const parts = [`${d.timeKey}_geq: ${lit(from)}`, `${d.timeKey}_leq: ${lit(to)}`];
+  if (ids) parts.push(`namespaceId_in: ${JSON.stringify(ids)}`);
+  const q = `query { viewer { accounts(filter: {accountTag: ${JSON.stringify(acct)}}) { g: ${ds}(limit: 10000, filter: {${parts.join(', ')}}) { ${d.count ? 'count ' : ''}sum { ${d.sums.join(' ')} } } } } }`;
+  const r = await gql(q);
+  if (r && r.errors && r.errors.length) return { error: r.errors.map((e) => e.message).slice(0, 3).join('; '), query: q.slice(0, 500) };
+  const rows = r && r.data && r.data.viewer && r.data.viewer.accounts && r.data.viewer.accounts[0] && r.data.viewer.accounts[0].g;
+  if (!rows) return { error: 'no rows', raw: JSON.stringify(r).slice(0, 300) };
+  const total = Object.create(null);
+  for (const row of rows) {
+    if (d.count) total.count = (total.count || 0) + (Number(row.count) || 0);
+    for (const [k, v] of Object.entries(row.sum || {})) total[k] = (total[k] || 0) + (Number(v) || 0);
+  }
+  return { total, rows: rows.length };
+}
+/* what the free plan counts, from the two datasets: a request is a call, a web
+   request or an alarm (the invocations), or 20 incoming socket messages; time
+   awake is billed at 128 MB.  `billed` is the higher reading -- the socket
+   messages NOT already among the invocations -- the lab's own floods (3, the
+   bill) say which is right */
+function usageOf(inv, per) {
+  const it = (inv && inv.total) || {}, pt = (per && per.total) || {};
+  const pick = (o, re) => { const k = Object.keys(o).find((x) => re.test(x)); return k ? num(o[k]) : null; };
+  const u = {
+    invocations: num(it.requests) ?? num(it.count),
+    wsIn: num(pt.inboundWebsocketMsgCount),
+    wsOut: num(pt.outboundWebsocketMsgCount),
+    activeS: num(pt.activeTime) === null ? null : pt.activeTime / 1e6,   /* microseconds */
+    cpuS: num(pt.cpuTime) === null ? null : pt.cpuTime / 1e6,
+    rowsRead: pick(pt, /^rowsRead$/i) ?? pick(pt, /read/i),
+    rowsWritten: pick(pt, /^rowsWritten$/i) ?? pick(pt, /write/i),
+  };
+  u.gbs = u.activeS === null ? null : u.activeS * 0.125;
+  u.billed = (u.invocations === null && u.wsIn === null) ? null : (u.invocations || 0) + (u.wsIn || 0) / 20;
+  if (inv && inv.error) u.invocationsError = inv.error;
+  if (per && per.error) u.periodicError = per.error;
+  u.raw = { invocations: it, periodic: pt };
+  return u;
+}
+/* 0: the whole account's use so far today (UTC), for the preflight */
+async function accountToday() {
+  const now = new Date();
+  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const inv = await dsSums('durableObjectsInvocationsAdaptiveGroups', { from, to: now });
+  const per = await dsSums('durableObjectsPeriodicGroups', { from, to: now });
+  return usageOf(inv, per);
+}
+/* 4: the game's own objects (brotown-server), day by day, read only */
+async function gameDays(days) {
+  const acct = await accountId();
+  if (!acct) return { error: 'no account readable with this token', detail: CACHE.accountErr };
+  const ns = await cf(`/accounts/${acct}/workers/durable_objects/namespaces?per_page=100`);
+  const game = ((ns && ns.result) || []).filter((x) => x.script === 'brotown-server');
+  if (!game.length) return { error: 'the game\'s object namespaces were not listed', detail: ns && ns.errors };
+  const ids = game.map((x) => x.id);
+  const res = { classes: game.map((x) => x.class), days: [] };
+  const now = new Date();
+  const d0 = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  for (let i = days - 1; i >= 0; i--) {
+    const from = new Date(d0 - i * 86400000);
+    const to = i === 0 ? now : new Date(d0 - (i - 1) * 86400000 - 1000);
+    const inv = await dsSums('durableObjectsInvocationsAdaptiveGroups', { from, to, ids });
+    const per = await dsSums('durableObjectsPeriodicGroups', { from, to, ids });
+    res.days.push({ date: from.toISOString().slice(0, 10), partial: i === 0, ...usageOf(inv, per) });
+  }
+  return res;
+}
 
 async function billing(from, to) {
   if (LOCAL) return { skipped: 'local run' };
   if (!process.env.CLOUDFLARE_API_TOKEN) return { skipped: 'no CLOUDFLARE_API_TOKEN' };
-  let account = process.env.CLOUDFLARE_ACCOUNT_ID || null;
-  if (!account) {
-    const a = await cf('/accounts');
-    account = a && a.result && a.result[0] && a.result[0].id;
-    if (!account) return { error: 'no account readable with this token', detail: a && a.errors };
-  }
+  const account = await accountId();
+  if (!account) return { error: 'no account readable with this token', detail: CACHE.accountErr };
   const ns = await cf(`/accounts/${account}/workers/durable_objects/namespaces?per_page=100`);
   const mine = ((ns && ns.result) || []).filter((x) => x.script === 'brotown-lab');
   if (!mine.length) return { error: 'the lab\'s object namespaces were not listed', detail: ns && ns.errors };
   const ids = mine.map((x) => x.id);
   const byId = Object.fromEntries(mine.map((x) => [x.id, x.class]));
-  /* the two datasets the docs name, and their fields as the schema has them */
-  const acct = await fieldsOf('account');
-  const datasets = ['durableObjectsPeriodicGroups', 'durableObjectsInvocationsAdaptiveGroups'];
   const res = { account: account.slice(0, 6) + '...', namespaces: byId, datasets: {} };
-  for (const ds of datasets) {
-    const f = acct && acct.fields && acct.fields.find((x) => x.name === ds);
-    if (!f) { res.datasets[ds] = { error: 'not in this schema' }; continue; }
-    const groupType = await fieldsOf(baseType(f.type));
-    const sumF = groupType && groupType.fields && groupType.fields.find((x) => x.name === 'sum');
-    const dimF = groupType && groupType.fields && groupType.fields.find((x) => x.name === 'dimensions');
-    const sumT = sumF ? await fieldsOf(baseType(sumF.type)) : null;
-    const dimT = dimF ? await fieldsOf(baseType(dimF.type)) : null;
-    const sums = ((sumT && sumT.fields) || []).filter((x) => ['Int', 'Float', 'uint64', 'float64', 'int64', 'uint32'].includes(baseType(x.type))).map((x) => x.name);
-    const dims = ((dimT && dimT.fields) || []).map((x) => x.name);
-    const filterName = ['AccountDurableObjectsPeriodicGroupsFilter_InputObject', 'AccountDurableObjectsInvocationsAdaptiveGroupsFilter_InputObject'];
-    let filterFields = [];
-    for (const fn of filterName) { const t = await fieldsOf(fn); if (t && t.inputFields) filterFields = filterFields.concat(t.inputFields.map((x) => x.name)); }
-    const timeKey = ['datetimeMinute', 'datetime', 'datetimeFiveMinutes', 'date'].find((k) => filterFields.includes(k + '_geq')) || 'datetimeMinute';
-    const dimSel = ['namespaceId', 'scriptName'].filter((d) => dims.includes(d));
-    if (!sums.length) { res.datasets[ds] = { error: 'no sum fields found', dims }; continue; }
-    const q = `query($tag: string!, $from: Time!, $to: Time!, $ids: [string!]) { viewer { accounts(filter: {accountTag: $tag}) { g: ${ds}(limit: 50, filter: {${timeKey}_geq: $from, ${timeKey}_leq: $to, namespaceId_in: $ids}) { ${dimSel.length ? 'dimensions { ' + dimSel.join(' ') + ' }' : ''} sum { ${sums.join(' ')} } } } } }`;
-    /* the figures arrive a few minutes late: wait for them, up to six */
-    const fromIso = new Date(from.getTime() - 60000).toISOString(), toIso = new Date(to.getTime() + 120000).toISOString();
+  /* the figures arrive a few minutes late: wait for them, up to six */
+  const fromT = new Date(from.getTime() - 60000), toT = new Date(to.getTime() + 120000);
+  for (const ds of ['durableObjectsPeriodicGroups', 'durableObjectsInvocationsAdaptiveGroups']) {
     let got = null;
     for (let i = 0; i < 12; i++) {
-      const r = await gql(q, { tag: account, from: fromIso, to: toIso, ids });
-      if (r && r.errors && r.errors.length) { got = { errors: r.errors.map((e) => e.message).slice(0, 3), query: q }; break; }
-      const rows = r && r.data && r.data.viewer && r.data.viewer.accounts && r.data.viewer.accounts[0] && r.data.viewer.accounts[0].g;
-      if (rows && rows.length) { got = { rows: rows.map((x) => ({ class: x.dimensions && byId[x.dimensions.namespaceId], ...x.sum })) }; if (i >= 4) break; }
+      const r = await dsSums(ds, { from: fromT, to: toT, ids });
+      if (r.error && r.error !== 'no rows') { got = r; break; }
+      if (r.total && r.rows) { got = r; if (i >= 4) break; }
       await sleep(30000);
     }
     res.datasets[ds] = got || { error: 'no figures after six minutes' };
   }
+  res.usage = usageOf(res.datasets.durableObjectsInvocationsAdaptiveGroups, res.datasets.durableObjectsPeriodicGroups);
   return res;
 }
 
 function render(o) {
   const L = [];
+  const fmt = (v) => (v === null || v === undefined ? '-' : Math.round(v).toLocaleString('en-US'));
+  const pc = (v, of) => (v === null || v === undefined ? '-' : (100 * v / of).toFixed(1) + '%');
   L.push(`# Cloudflare lab, ${o.started}`, '');
-  L.push(`Worker: ${o.base}.  A request from this runner and back: ${o.httpRttMs.p50} ms (max ${o.httpRttMs.max}).`, '');
-  L.push('## 1. Side by side', '');
-  L.push(`Each object does the same fixed work, ${o.burn.workMs} ms alone (${o.burn.iters} loop steps).  "Side by side" is how many objects' work was done in the time one takes: K means they all ran at once, 1 means one after another.`, '');
-  L.push('| objects at once | time | side by side | isolates they ran in | where |', '|---|---|---|---|---|');
-  for (const r of o.burn.rows) L.push(`| ${r.K} | ${r.wallMs} ms | ${r.sideBySide} | ${r.isolates} | ${r.colos.join(', ') || '-'} |`);
-  L.push('', '## 2. The delay between two servers', '');
-  L.push('| way | p50 | p95 | p99 | max | where (door / world) |', '|---|---|---|---|---|---|');
-  for (const [k, v] of Object.entries(o.rtt)) L.push(`| ${k} | ${v.p50} ms | ${v.p95} ms | ${v.p99} ms | ${v.max} ms | ${(v.where && v.where.door) || '-'} / ${(v.where && v.where.world) || '-'} |`);
-  L.push('', '## 3. Floods, one way', '');
-  L.push('| what | messages | arrived | time | per message |', '|---|---|---|---|---|');
-  for (const f of o.flood) L.push(`| ${f.name} | ${f.n} | ${f.got} | ${f.wallMs} ms | ${f.usPerMsg} µs |`);
-  L.push('', '## The bill (the account\'s own figures for the lab\'s objects)', '');
-  L.push('```', JSON.stringify(o.billing, null, 2).slice(0, 6000), '```');
+  /* v2.3.3252: the plan and the day so far */
+  if (o.plan) {
+    L.push('## 0. The free plan', '');
+    L.push(`This run's size: ${o.plan.big ? 'BIG (the paid plan\'s sizes)' : 'sized for the free plan'}, about ${fmt(o.plan.budget)} billed Durable Object requests of the free plan's ${fmt(o.plan.freePerDay.requests)} a day, which the game shares.`, '');
+    const t = o.plan.today;
+    if (t && !t.error) L.push(`The whole account so far today (UTC): about ${fmt(t.billed)} billed requests (${pc(t.billed, o.plan.freePerDay.requests)} of the day's limit; ${fmt(t.invocations)} calls and web requests, ${fmt(t.wsIn)} socket messages in), ${fmt(t.gbs)} GB-s awake (${pc(t.gbs, o.plan.freePerDay.gbs)}).`, '');
+    else if (t) L.push(`The account's use today could not be read: ${t.error || t.invocationsError || t.periodicError}.`, '');
+    if (o.plan.refused) { L.push(`**Stopped before starting:** ${o.plan.refused}`, ''); return L.join('\n'); }
+  }
+  if (o.httpRttMs) L.push(`Worker: ${o.base}.  A request from this runner and back: ${o.httpRttMs.p50} ms (max ${o.httpRttMs.max}).`, '');
+  if (o.burn) {
+    L.push('## 1. Side by side', '');
+    L.push(`Each object does the same fixed work, ${o.burn.workMs} ms alone (${o.burn.iters} loop steps).  "Side by side" is how many objects' work was done in the time one takes: K means they all ran at once, 1 means one after another.`, '');
+    L.push('| objects at once | time | side by side | isolates they ran in | where |', '|---|---|---|---|---|');
+    for (const r of o.burn.rows) L.push(`| ${r.K} | ${r.wallMs} ms | ${r.sideBySide} | ${r.isolates} | ${r.colos.join(', ') || '-'} |`);
+  }
+  if (o.rtt) {
+    L.push('', '## 2. The delay between two servers', '');
+    L.push('| way | p50 | p95 | p99 | max | where (door / world) |', '|---|---|---|---|---|---|');
+    for (const [k, v] of Object.entries(o.rtt)) L.push(`| ${k} | ${v.p50} ms | ${v.p95} ms | ${v.p99} ms | ${v.max} ms | ${(v.where && v.where.door) || '-'} / ${(v.where && v.where.world) || '-'} |`);
+  }
+  if (o.flood) {
+    L.push('', '## 3. Floods, one way', '');
+    L.push('| what | messages | arrived | time | per message |', '|---|---|---|---|---|');
+    for (const f of o.flood) L.push(`| ${f.name} | ${f.n} | ${f.got} | ${f.wallMs} ms | ${f.usPerMsg} µs |`);
+  }
+  if (o.billing) {
+    L.push('', '## The bill (the account\'s own figures for the lab\'s objects)', '');
+    const u = o.billing.usage;
+    if (u && u.billed !== null && o.flood) {
+      const ws = o.flood.filter((f) => f.name.startsWith('socket')).reduce((a, f) => a + f.n, 0);
+      const rpc = o.flood.filter((f) => f.name.startsWith('call')).reduce((a, f) => a + f.n, 0);
+      L.push(`The lab's objects: ${fmt(u.invocations)} invocations and ${fmt(u.wsIn)} socket messages in, for floods of ${fmt(ws)} socket messages and ${fmt(rpc)} calls (and the other tests' few hundred). If the invocations are near ${fmt(rpc)} plus a few hundred, a socket message is not an invocation, and 20 of them are one billed request; if they are near ${fmt(rpc + ws)}, every message is one.`, '');
+    }
+    L.push('```', JSON.stringify(o.billing, (k, v) => (k === 'raw' ? undefined : v), 2).slice(0, 6000), '```');   /* raw: in the .json */
+  }
+  if (o.game) {
+    L.push('', '## 4. The game\'s own days (brotown-server, read only)', '');
+    if (o.game.days) {
+      L.push(`Its objects: ${o.game.classes.join(', ')}.  The free plan's daily limits, for the whole account: ${fmt(FREE_DAY.requests)} requests and ${fmt(FREE_DAY.gbs)} GB-s.  "Billed" counts every call and web request, plus each socket message in at 20 to a request (the higher reading: section 3 says whether socket messages are already among the calls).`, '');
+      L.push('| day (UTC) | billed requests | of 100,000 | calls + web requests | socket msgs in | socket msgs out | awake GB-s | of 13,000 | CPU s | rows read | rows written |', '|---|---|---|---|---|---|---|---|---|---|---|');
+      for (const d of o.game.days) L.push(`| ${d.date}${d.partial ? ' (so far)' : ''} | ${fmt(d.billed)} | ${pc(d.billed, FREE_DAY.requests)} | ${fmt(d.invocations)} | ${fmt(d.wsIn)} | ${fmt(d.wsOut)} | ${fmt(d.gbs)} | ${pc(d.gbs, FREE_DAY.gbs)} | ${fmt(d.cpuS)} | ${fmt(d.rowsRead)} | ${fmt(d.rowsWritten)} |`);
+      const errs = o.game.days.map((d) => d.invocationsError || d.periodicError).filter(Boolean);
+      if (errs.length) L.push('', `Not read: ${[...new Set(errs)].join('; ')}`);
+    } else {
+      L.push(`Not read: ${o.game.error || o.game.skipped}${o.game.detail ? ' (' + JSON.stringify(o.game.detail).slice(0, 300) + ')' : ''}.  The same figures are in the Cloudflare dashboard: Workers & Pages -> brotown-server -> Durable Objects (metrics), and Manage Account -> Billing (usage).`);
+    }
+  }
   return L.join('\n');
 }

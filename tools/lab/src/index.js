@@ -44,8 +44,12 @@ function burn(iters) {
 async function coloOf(self) {
   if (self._colo !== undefined) return self._colo;
   self._colo = null;
+  /* v2.3.3252: never more than 3 s, and not at all on `wrangler dev --local`
+     (run.mjs --local passes LAB_LOCAL): with no way out to the internet the
+     lookup hung there until the runner gave up on the request (300 s) */
+  if (self.env && self.env.LAB_LOCAL) return self._colo;
   try {
-    const t = await (await fetch('https://www.cloudflare.com/cdn-cgi/trace')).text();
+    const t = await (await fetch('https://www.cloudflare.com/cdn-cgi/trace', { signal: AbortSignal.timeout(3000) })).text();
     const m = t.match(/^colo=(\w+)$/m);
     self._colo = m ? m[1] : null;
   } catch { /* unknown */ }
@@ -151,9 +155,14 @@ export class Door extends DurableObject {
         const ws = await this._open(world, hib);
         for (let i = 0; i < n; i++) ws.send(s);
         let st = { n: 0 };
-        for (let k = 0; k < 6000 && st.n < n; k++) {
+        /* v2.3.3252: every look is a call, and every call a billed request --
+           on the free plan from a daily 100,000 the game shares -- so look
+           every `poll` ms (50 from run.mjs; it was 5, hundreds of calls a
+           flood), and give up after 30 s */
+        const poll = clamp(+url.searchParams.get('poll'), 5, 1000, 50);
+        for (let k = 0, most = Math.ceil(30000 / poll); k < most && st.n < n; k++) {
           st = await world.stats();
-          if (st.n < n) await new Promise((r) => setTimeout(r, 5));
+          if (st.n < n) await new Promise((r) => setTimeout(r, poll));
         }
         try { ws.close(); } catch { /* gone */ }
         out.worldGot = st.n;

@@ -28,6 +28,14 @@ on:
       rounds:
         description: 'How many times each timing runs (2-20)'
         default: '5'
+      # v2.3.3252: this account is on the Workers FREE plan (the first run's
+      # deploy said so): 100,000 Durable Object requests a day for the whole
+      # account, the game's included.  A run is sized for it (~2,700) and
+      # stops before starting if the day is already near the limit.
+      big:
+        description: 'Paid plan only: the bigger floods (~25,000 billed requests). Never on the free plan, whose daily 100,000 the game shares.'
+        type: boolean
+        default: false
 # one lab at a time: two runs would deploy over each other
 concurrency:
   group: cloudflare-lab
@@ -64,11 +72,19 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           LAB_URL: ${{ steps.deploy.outputs.deployment-url }}
           ROUNDS: ${{ github.event.inputs.rounds || '5' }}
+          BIG: ${{ github.event.inputs.big }}
         run: |
           BASE="https://brotown-lab.hemibroscommunity.workers.dev"
           case "$LAB_URL" in https://brotown-lab.*.workers.dev*) BASE="${LAB_URL%/}";; esac
-          node tools/lab/run.mjs --base "$BASE" --key "$LAB_KEY" --rounds "$ROUNDS" --out lab-results
-          cat lab-results/*.md >> "$GITHUB_STEP_SUMMARY"
+          EXTRA=""
+          if [ "$BIG" = "true" ]; then EXTRA="--big"; fi
+          # v2.3.3252: the summary even when the run stops early (the day near
+          # the free plan's limit), then the run's own exit code
+          set +e
+          node tools/lab/run.mjs --base "$BASE" --key "$LAB_KEY" --rounds "$ROUNDS" --out lab-results $EXTRA
+          code=$?
+          cat lab-results/*.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null
+          exit $code
       - name: Delete the lab worker
         if: always()
         uses: cloudflare/wrangler-action@v3

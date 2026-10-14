@@ -354,6 +354,9 @@ These are needed by ANY split. Several help at today's 120.
   table still stands.
 - **A real 1,000-player game peaks at 1,000** and averages far less, so the
   real bill would be a fraction of this.
+- **These are the paid plan's prices.** The account is on the FREE plan today
+  (v2.3.3252, found by the lab's first run), where Durable Objects have daily
+  limits instead of a bill: risk 8.
 
 ## Risks and unknowns
 
@@ -388,6 +391,34 @@ These are needed by ANY split. Several help at today's 120.
 7. **Every local test is only half the story.** Wrangler runs all objects of a
    script on one thread and enforces no Cloudflare limits. The lab is the
    only real answer for 1-4.
+8. **The free plan (v2.3.3252).** The lab's first run was refused at its
+   deploy: "In order to use Durable Objects with a free plan, you must create
+   a namespace using a `new_sqlite_classes` migration" (code 10097). So this
+   account, and the game's `brotown-server` with it, is on the Workers FREE
+   plan. There, Durable Objects have limits **per day, for the whole account**,
+   reset at 00:00 UTC, and past one Cloudflare refuses that kind of work until
+   midnight -- the game stops working:
+   - **100,000 requests.** A web request, a call or an alarm is one, and so
+     are 20 incoming socket messages. A playing phone sends about 10-30
+     messages a second (the move diet, safe ground and standing still keep it
+     near the low end), so one player-hour is about 1,800-5,400 requests:
+     **about 20-55 player-hours of play a day in all** (*estimate*). That is a
+     handful of players for an evening, or 120 players for 10-30 minutes.
+   - **13,000 GB-s awake.** The room is awake while anyone is connected
+     (`startTickLoop` / the last leave), at 128 MB: about 29 hours of one room
+     a day. Phase 1's doors break this alone -- 9 servers always on are
+     about 97,000 GB-s a day.
+   - Rows written (100,000 a day) bind later: about 340 a player-hour since
+     v2.3.1619 (ARCHITECTURE-HANDOFF).
+
+   **So the paid plan (Workers Paid, $5 a month, then the prices above)
+   comes before anything else in this plan, and is the owner's call.** On it
+   there are no daily limits: the same play costs about $5-6 a month (the $5
+   includes 1 million requests and 400,000 GB-s a month), and more play the
+   prices above. The lab's part 4 now reads the game's own last 7 days
+   against these limits, and the lab itself is sized to under 3% of a day's
+   requests and stops if the day is already near the limit
+   (`docs/specs/cloudflare-lab.md`).
 
 ## Decided (the owner, 2026-10-13)
 

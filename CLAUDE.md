@@ -2582,6 +2582,29 @@ Two protocol versions coexist; both must keep working:
     261-311) -- groundwork: a phone's download stops growing with far players. Old phones keep the v2.3.3246 roster; kill switch
     `presence2: false`; `presence2` suite (55, twenty bugs caught), `mp-presence2`
     (15), mp-farpeer opens the map for its far step: docs/specs/presence-v2.md.
+  - v2.3.3252: THE ACCOUNT IS ON CLOUDFLARE'S FREE PLAN -- found by the
+    lab's first run (the owner's "Push to main. Then resume your
+    recommendations autonomously"): Cloudflare refused its deploy, "In order
+    to use Durable Objects with a free plan, you must create a namespace
+    using a `new_sqlite_classes` migration" (code 10097). The game's
+    brotown-server is on the same free plan, where Durable Objects have DAILY
+    limits for the whole account, reset at 00:00 UTC -- 100,000 requests (a
+    web request, call or alarm, or 20 incoming socket messages) and 13,000
+    GB-s awake -- and past one Cloudflare refuses that work until midnight,
+    the game's too. A playing phone's 10-30 messages a second make that about
+    20-55 player-hours of play a day in all (*estimate*), and Phase 1's
+    always-on doors could not run at all: SERVER-SPLIT-PLAN risk 8 -- the
+    paid plan ($5 a month) comes first, the owner's call. The lab: SQLite
+    objects (tools/lab/wrangler.toml); a run sized for the free plan, ~2,700
+    billed requests (was ~25,000: a 20,000-call flood, and the Door polling a
+    flood's end every 5 ms -- now 50 ms, at most 30 s), `--big` (the
+    workflow's "big" box) the old sizes, paid plan only; "0. the day so far"
+    stops a run that could take the account past 90% of the day; "4. the
+    game's own days" reads brotown-server's last 7 days against the free
+    limits (read only, best effort); the data centre lookup gives up after
+    3 s and is skipped locally (LAB_LOCAL); a local dry run stops at 4
+    objects at once (8 hung on wrangler 4.96.0's local runtime);
+    docs/specs/cloudflare-lab.md.
 
 ## Conventions
 

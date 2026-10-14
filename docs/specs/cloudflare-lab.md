@@ -4,6 +4,56 @@
 > *"Go recommended"*, which said yes to the lab: "The Cloudflare lab: yes,
 > after Phase 0".
 
+## v2.3.3252: the account is on the free plan
+
+The first run (2026-10-14) never started. Cloudflare refused the deploy: "In
+order to use Durable Objects with a free plan, you must create a namespace
+using a `new_sqlite_classes` migration" (code 10097). So the account, and the
+game's `brotown-server` on it, is on the Workers **free** plan. Nothing was
+left behind (the delete step found no worker).
+
+That matters for the lab, and much more for the game:
+
+- **The free plan has daily limits for the whole account**, reset at 00:00
+  UTC. Durable Objects get 100,000 requests a day (a web request, a call or
+  an alarm is one, and so are 20 incoming socket messages) and 13,000 GB-s
+  of time awake. Past either, Cloudflare refuses that kind of work until
+  midnight, **the game's included**.
+- **The old lab would have used a quarter of a day.** Its call flood alone
+  was 20,000 calls, each a billed request, and the Door looked for a flood's
+  end every 5 ms, one call a look: about 25,000 requests a run.
+- **The game's own room is the bigger story.** A playing phone sends about
+  10-30 messages a second, so 100,000 requests is about 20-55 player-hours of
+  play a day in all (*estimate*). SERVER-SPLIT-PLAN risk 8 has the rest.
+
+What changed in the lab:
+
+- **Its objects are SQLite ones** (`tools/lab/wrangler.toml`), the only kind
+  the free plan takes. They store nothing, so the kind changes nothing the lab
+  measures.
+- **A run is sized for the free plan: about 2,700 billed requests**, under 3%
+  of a day. Round trips 200 (were 400). Floods of 10,000 socket messages each
+  way (were 20,000), 1,000 calls (were 20,000) and 2,000 messages of 2 KB
+  (were 4,000). The Door looks for a flood's end every 50 ms, for at most
+  30 s. The workflow's **big** box runs the old sizes, for the paid plan only.
+- **0. The day so far.** Before anything else, the run reads the account's
+  requests so far today. If this run could take them past 90% of the day's
+  100,000, it stops there and says so: run it after 00:00 UTC.
+- **4. The game's own days.** After the bill, the run reads the last 7 days of
+  `brotown-server`'s Durable Objects from the account's own figures, day by
+  day, against the free plan's limits:
+  - requests (calls and web requests, and socket messages in at 20 to one);
+  - time awake (GB-s);
+  - CPU;
+  - rows read and written.
+
+  It is read only, and best effort like the bill. If the token may not read
+  the figures, the report says where they are in the Cloudflare dashboard.
+- **The report is written even when the run stops early**, and its figures are
+  saved before the page is drawn.
+- **The data centre lookup** (each object asks Cloudflare's trace page where
+  it runs) gives up after 3 s, and is skipped on a local dry run.
+
 ## What it is for
 
 The plan to hold about 1,000 players in one world puts "front doors" in front
@@ -46,14 +96,15 @@ The lab answers them on Cloudflare itself, without touching the game.
        centre.
      - Workers freeze the clock while code runs, so the work is a fixed loop
        and the timing is the runner's.
-   - **The delay between two servers.** A "Door" object times 400 round trips
-       to a "World" object, one at a time, three ways:
+   - **The delay between two servers.** A "Door" object times 200 round trips
+       (400 with "big") to a "World" object, one at a time, three ways:
      - a call (JS RPC);
      - a socket the World takes the plain way;
      - a socket the World takes with the hibernation API, the way the game's
        room takes phones.
-   - **Floods.** 20,000 messages one way by each of the three ways, then 4,000
-     of 2 KB (a door's batch), to time each message on Cloudflare's machines.
+   - **Floods.** 10,000 socket messages one way each way, 1,000 calls, then
+     2,000 of 2 KB (a door's batch), to time each message on Cloudflare's
+     machines (with "big": 20,000, 20,000 and 4,000).
    - **The bill.** With the deploy token, it reads the account's own figures
      for the lab's objects through Cloudflare's GraphQL API. Cloudflare's docs
      name the two datasets:
@@ -67,14 +118,18 @@ The lab answers them on Cloudflare itself, without touching the game.
 4. **It deletes the worker, whatever happened.** The last step runs even after
    a failure.
 
-**What it costs:** about a cent a run. That is a few seconds of work in 16
-small objects, and about 70,000 messages, which Cloudflare bills at 20 to a
-request.
+**What it costs:** on the free plan, nothing in money, but about 2,700 of the
+account's 100,000 Durable Object requests that day, which the game shares (the
+run stops first if the day is already near the limit). On the paid plan, about
+a cent. That is a few seconds of work in 16 small objects and about 23,000
+messages.
 
 ## How to run it
 
 **Actions** tab, then **Cloudflare lab**, then **Run workflow**. Leave
-"rounds" at 5. It takes about 5-10 minutes. The results are on the run's page
+"rounds" at 5 and "big" unticked (tick it only on the paid plan). It takes
+about 5-10 minutes; soon after 00:00 UTC is the safest time, when the day's
+requests have just reset. The results are on the run's page
 (its summary), and in the `lab-results` download as `.md` and `.json`.
 
 If the delete step ever fails, delete it by hand: Cloudflare dashboard,
@@ -127,6 +182,13 @@ The floods locally:
 
 Round trips were 0-1 ms.
 
+Again on 2026-10-14 with the free plan's sizes (v2.3.3252), the lab's own
+wrangler (4.96.0, its package.json): 1, 2 and 4 objects as before (306, 605,
+1,263 ms), and the floods 7.3 µs, 10.2 µs, 39 µs and 27 µs a message. But 8
+objects at once never all came back: the third waited out the runner's 300 s.
+That is the local runtime's limit, so a local dry run now stops at 4; the run
+on Cloudflare still does 8 and 16.
+
 ## Safety
 
 - **Never the game.** The lab has its own worker name, its own objects and no
@@ -139,6 +201,9 @@ Round trips were 0-1 ms.
   deploy and delete, and for reading the account's figures (accounts, the
   lab's object namespaces, GraphQL).
 - **One run at a time** (the workflow's concurrency group).
+- **Never more than a sliver of the day** (v2.3.3252): about 2,700 billed
+  requests on the free plan, and none at all if the day is already near its
+  limit.
 
 ## Not in this lab yet
 
