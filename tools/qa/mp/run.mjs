@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  peercull: () => import('./mp-peercull.mjs'), /* v2.3.3241: in the Wheel another player far off screen is not drawn (kept, and drawn again when back), and one standing south of you is never re-parented frame after frame (the peer loop used to fight the depth pass) -- two phones */
   trackcapture: () => import('./mp-trackcapture.mjs'), /* v2.3.3240: a real phone's 2 s look (`track`) caught off the wire and written to tools/qa/load/track-sample.json, which the load test's bots send with --track */
   crowdbots: () => import('./mp-crowdbots.mjs'), /* v2.3.3208: what a big crowd costs the phone -- one phone page in the Wheel's BroTown with the load test's bots walking round it in steps (0, 25, 50, 80, 110): the game's frame cost (workMs, entityMs) and the page's whole main-thread time a second at each step; a measurement for docs/SERVER-SPLIT-PLAN.md, read as growth over the empty town */
   movediet: () => import('./mp-movediet.mjs'), /* v2.3.3204: a steady walk on the safe ground, half as often -- a phone in BroTown with a peer beside it: a straight walk about 15 moves a second on the wire, a walk that keeps turning every batch, the peer's copy updated as often as sent, a held attack or a lock stepping the diet aside */
