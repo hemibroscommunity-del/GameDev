@@ -144,7 +144,7 @@ import { movementMethods } from './movement.js';
 // v2.3.1172 (P4 decomposition): rpg-blob load/save + player_state emit -- see persistence.js.
 import { persistenceMethods } from './persistence.js';
 // v2.3.1173 (P4 decomposition): identity gate + join bootstrap -- see join.js.
-import { joinMethods, cosmeticCap } from './join.js';   /* v2.3.1940: ONE cap rule for the drawing keys */
+import { joinMethods, cosmeticCap, JOIN_COSMETIC_KEYS } from './join.js';   /* v2.3.1940: ONE cap rule for the drawing keys; v2.3.3244: + the join's look keys, for PEER_PUBLIC_KEYS */
 // v2.3.1174 (P4 decomposition): the 45Hz tick loop -- see tick.js.
 import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3127: + the regen cadence, for Herb Bread */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
@@ -191,6 +191,7 @@ import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into
 import { aggroGridMethods } from './aggrogrid.js'; /* v2.3.3201: a monster looks for players near it, not through every one */
 import { tickPaceMethods } from './tickpace.js'; /* v2.3.3202: the world keeps its speed in a busy room */
 import { steadyMoversMethods } from './steadymovers.js'; /* v2.3.3203: a player walking steadily is sent less often */
+import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look relayed when it changes, not every 2 s */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
@@ -803,6 +804,38 @@ export const TRACK_COSMETIC_KEYS = new Set([
  * keepalive the client's ghost-sweep relies on), so track's copy was
  * pure redundancy AND the cap bypass above. */
 export const TRACK_STATE_EXCLUDED = new Set(['x', 'y']);
+
+/* ═══ v2.3.3244: WHAT THE OTHER PLAYERS ARE TOLD ABOUT YOU ═══
+ *
+ * Found by the owner's "stress test to see what can be optimized" (the
+ * reconnect storm, docs/specs/peer-view.md): a joining phone's snapshot
+ * (state_sync, getAllPlayerData below) gave every other player as
+ * `{...playerState, name, ...session.data}` -- their WHOLE server state.
+ * Their coins, bag, gold, every stash (weapons, armour, gear, shields,
+ * amulets), quests, life skills, buffs, points, and the anti-cheat's own
+ * histories (_cookHistory, _perfectHistory), plus the join's own `rpg*`
+ * claims (the phone's coins, bag and weapons as it saw them).  And
+ * player_join (join.js) told everyone those claims when anyone joined.
+ *   - Nothing on any phone reads them: a peer is drawn from its position,
+ *     name and look (wsClient.js state_sync / player_join, peerCosmetics.js).
+ *   - It is an information leak with a game in it: in No man's land a killer
+ *     takes the victim's bag (nomansland.js), and anyone reading their own
+ *     socket could see who was worth hunting.
+ *   - It is most of the snapshot: 2.3 KB for a brand-new character, far more
+ *     for a played one; at 120 players a join was sent ~140-300 KB.
+ *
+ * So the others are told only what is public anyway: what the look relay
+ * already sends everyone (TRACK_COSMETIC_KEYS), what a join's look is
+ * (JOIN_COSMETIC_KEYS), and what every tick says (tick.js playerWire:
+ * position, facing, zone, speed, armour on show, what they are harvesting,
+ * the Hemi Bro badge).  A key not listed is not sent -- an allowlist, so a
+ * field added to playerState later stays private until someone means it to
+ * be public (TRAPS #13's shape, as the join and track allowlists above). */
+const PEER_PUBLIC_KEYS = new Set([
+  ...TRACK_COSMETIC_KEYS,
+  ...JOIN_COSMETIC_KEYS,
+  'name', 'x', 'y', 'd', 'z', 'vx', 'vy', 'f', 'ex', 'bro',
+]);
 
 export class GameRoom {
   constructor(state, env) {
@@ -4955,7 +4988,10 @@ export class GameRoom {
               if (!TRACK_STATE_EXCLUDED.has(k)) _trackPs[k] = clean[k];
             }
           }
-          this.broadcastExcept(ws, { type: 'player_update', id: session.id, data: clean });
+          /* v2.3.3240: only what changed since this player's last relay,
+             and only when something did (lookrelay.js) -- every 2 s whole,
+             to every other player, was more messages than all the ticks */
+          this._lookRelay(ws, session, clean);
           this.reportToLeaderboard(session);
         }
         break;
@@ -5907,6 +5943,19 @@ export class GameRoom {
   async reportToLeaderboard(session, force) {
     try {
       if (!session || !session.id) return;
+      /* ═══ v2.3.3242: THE CLOCK BEFORE THE WORK ═══
+         Every `track` (every player, every 2 s) calls this, and it built the
+         Leaderboard stub, the whole chain-score series (_chainScoreSeries:
+         every combat and life skill level) and a JSON signature of all of it,
+         to return at the throttle below on all but one call in 150 (MIN_MS,
+         5 min): ~100 us a track, 7.6 ms of every second of the room's thread
+         at 150 players in the stress test's profile (docs/specs/stress-tests.md).
+         Inside MIN_MS of the last
+         report the throttle returns whatever the signature says -- it needs
+         `since >= MIN_MS` for a changed record and `since >= HEARTBEAT_MS` for
+         an unchanged one -- so reading the clock first returns on exactly the
+         same calls, and every report that went still goes. */
+      if (!force && Date.now() - (session._lbAt || 0) < Math.min(this.LEADERBOARD_MIN_MS, this.LEADERBOARD_HEARTBEAT_MS)) return;
       const stub = this.env.LEADERBOARD.get(this.env.LEADERBOARD.idFromName('global'));
       /* v2.3.1465: RANK COMES FROM THE SERVER.  This used to post
          `session.data.rpgLv` -- a number the client typed into a track
@@ -6002,7 +6051,24 @@ export class GameRoom {
   /* v2.3.2537: the peer copy is cropped of gear ids before it goes out --
      see _gearProvCropPeer (gearprov.js) for why a gid has no business on a
      room-wide broadcast even though it is not exploitable. */
-  getAllPlayerData() { const r = {}; for (const [, s] of this.sessions) { if (s.id) r[s.id] = this._gearProvCropPeer({ ...this.playerState[s.id], name: s.name, ...s.data }); } return r; }
+  /* v2.3.3244: one player as the others are told about them (PEER_PUBLIC_KEYS
+     above): `{...ps, name, ...data}` as before -- the look the phone sent
+     wins over the state, the session's name over the state's -- but only
+     the public keys of it.  `s` may be just `{ data }` (join.js player_join). */
+  _peerPublic(ps, s) {
+    const out = {};
+    const data = s && s.data && typeof s.data === 'object' ? s.data : null;
+    for (const k of PEER_PUBLIC_KEYS) {
+      let v;
+      if (data && Object.prototype.hasOwnProperty.call(data, k)) v = data[k];
+      else if (k === 'name' && s && s.name !== undefined) v = s.name;
+      else if (ps && Object.prototype.hasOwnProperty.call(ps, k)) v = ps[k];
+      else continue;
+      if (v !== undefined) out[k] = v;
+    }
+    return out;
+  }
+  getAllPlayerData() { const r = {}; for (const [, s] of this.sessions) { if (s.id) r[s.id] = this._gearProvCropPeer(this._peerPublic(this.playerState[s.id], s)); } return r; }
   getPlayerCount() { let c = 0; for (const [, s] of this.sessions) { if (s.id) c++; } return c; }
 }
 
@@ -6119,3 +6185,4 @@ Object.assign(GameRoom.prototype, shieldGemMethods); /* v2.3.3187 */
 Object.assign(GameRoom.prototype, aggroGridMethods); /* v2.3.3201 */
 Object.assign(GameRoom.prototype, tickPaceMethods); /* v2.3.3202 */
 Object.assign(GameRoom.prototype, steadyMoversMethods); /* v2.3.3203 */
+Object.assign(GameRoom.prototype, lookRelayMethods); /* v2.3.3240 */
