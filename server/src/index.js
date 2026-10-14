@@ -147,6 +147,7 @@ import { persistenceMethods } from './persistence.js';
 import { joinMethods, cosmeticCap } from './join.js';   /* v2.3.1940: ONE cap rule for the drawing keys */
 // v2.3.1174 (P4 decomposition): the 45Hz tick loop -- see tick.js.
 import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3127: + the regen cadence, for Herb Bread */
+import { presence2Methods } from './presence2.js'; /* v2.3.3250: far players only while the world map is open */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -5238,6 +5239,13 @@ export class GameRoom {
         if (session.id) this._handleEssenceApply(session, msg.payload || msg);
         break;
 
+      case 'map_watch':
+        /* v2.3.3250: the world map is open (and still open), or shut --
+           presence v2 sends far players only while it is (presence2.js).
+           Its own case, so it is never rebroadcast by the default branch. */
+        if (session.id) this._presence2Watch(session, msg.payload || msg);
+        break;
+
       case 'shield_wear':
         /* v2.3.3091: the shield on the arm (shieldwear.js) -- one the worker
            already holds for this player, named by id or signature; the arm's
@@ -6096,6 +6104,7 @@ Object.assign(GameRoom.prototype, httpAuthMethods);
 Object.assign(GameRoom.prototype, joinMethods);
 // v2.3.1174 (P4 decomposition): tick loop -- see tick.js.
 Object.assign(GameRoom.prototype, tickMethods);
+Object.assign(GameRoom.prototype, presence2Methods); /* v2.3.3250 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
 // v2.3.1191 (P4 decomposition): combat/damage core -- see combat.js.

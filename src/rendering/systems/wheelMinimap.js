@@ -507,7 +507,9 @@ export class WheelMinimap {
     }
     /* other bros and monsters */
     const others = S.others;
-    if (others) for (const id in others) { const o = others[id]; if (o && (o.zone || o.z) === S.currentZone) this._mark(o.x, o.y, 'player', C_OTHER, 13); }
+    /* v2.3.3250: never a parked copy (src/game/presence2.js) -- it is kept
+       past the box's corner anyway, so this only spares it a sprite */
+    if (others) for (const id in others) { const o = others[id]; if (o && !o._away && (o.zone || o.z) === S.currentZone) this._mark(o.x, o.y, 'player', C_OTHER, 13); }
     const mons = S.monsters || [];
     for (let i = 0; i < mons.length; i++) {
       const m = mons[i];

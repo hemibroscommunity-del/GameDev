@@ -17,6 +17,7 @@ import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: a peer
 import { arrowSnaps } from '@/data/arrowSnap.js';   /* v2.3.2731 */
 import { shotSkip } from '@/game/projectiles.js';   /* v2.3.3206: a peer's shot flies over low things as yours does */
 import { BOW_VOLLEY, LONE_BURN_MS } from '@/game/bowVolley.js';   /* v2.3.2849: how long a peer's special stands burning */
+import { parkAway } from '@/game/presence2.js';   /* v2.3.3250: a far player's copy stays out of sight */
 /* (v2.3.2730's REMOTE_SHOT_H, how far up a prop's face a peer's shot marked
    it, went in v2.3.3206: the shot is now judged at its owner's boots and shown
    where it flew -- see the remote projectile sweep below.) */
@@ -216,6 +217,12 @@ export function updateVisualSystems(S) {
         var _oNearK = 1 - Math.pow(0.97, _oDt); /* was 0.03 per frame */
         var _oIdleK = 1 - Math.pow(0.85, _oDt); /* was 0.15 per frame */
         Object.values(S.others).forEach(function (o) {
+          /* v2.3.3250: a PARKED copy (presence v2, src/game/presence2.js: the
+             worker said this player is not near you) is kept at least PARK_R
+             from you wherever you walk -- off the screen and the minimap, out
+             of every reach, light and sound -- so their last copy is never a
+             ghost standing where they were last seen */
+          if (o._away) parkAway(S, o);
           if (o.renderX === undefined) { o.renderX = o.x; o.renderY = o.y; }
           var rawVx = o._vx || 0, rawVy = o._vy || 0;
           if (o._smoothVx === undefined) { o._smoothVx = rawVx; o._smoothVy = rawVy; }
