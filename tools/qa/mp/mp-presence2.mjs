@@ -240,15 +240,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`...while an old phone (no pres) far from the walker is still sent them (${E.seen} ticks)`, E.seen > 0, E.seen);
 
   /* ── 6. gone without a word ── */
-  const onAt6 = await H.readState(W, (S) => S._onlineAt || 0);
-  await W.page.evaluate((x) => {
+  /* the ghost put in and the last list's time read in ONE evaluate: the page
+     runs it whole, so no list can land between the two -- read apart, a list
+     landing between them ended the wait at once with the ghost still there */
+  const onAt6 = await W.page.evaluate((x) => {
     const S = window._gameState.current;
     S.others.p2qaghost = { x: x.x + 100, y: x.y, renderX: x.x + 100, renderY: x.y, zone: 'wheel', name: 'Ghost', _lastUpdate: Date.now() };
+    return S._onlineAt || 0;
   }, w0);
+  const t6 = Date.now();
   const swept = await until(async () => (await H.readState(W, (S) => (S._onlineAt || 0))) > onAt6, 36000, 500);
   const s6 = await W.page.evaluate((id) => { const S = window._gameState.current; return { ghost: Object.prototype.hasOwnProperty.call(S.others, 'p2qaghost'), walker: !!S.others[id] }; }, K.id);
-  rec.ok('a player gone without a word is forgotten at the next online list, and the silent walker is kept',
-    !!swept && !s6.ghost && s6.walker, { swept, s6 });
+  rec.ok(`a player gone without a word is forgotten at the next online list (${((Date.now() - t6) / 1000).toFixed(1)} s later), and the silent walker is kept`,
+    !!swept && !s6.ghost && s6.walker, { swept, s6, waitedMs: Date.now() - t6 });
 
   /* ── 7. the kill switch ── */
   const set = await flag(wsPort, false);
