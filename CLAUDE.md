@@ -457,6 +457,22 @@ remnant to migrate server-side, not a mode to preserve.
         handed to `sweepBlockPoint` / `attackBlocked`, and the staff, with no
         sight, asks `lowAimAlong`;
       - `mp-bowprops`: docs/specs/bow-at-props.md.
+    - since v2.3.3230 A BUILDING YOU KEEP HITTING CATCHES FIRE -- the owner:
+      "add flame effects on the building after getting hit a while in the
+      location where the building is getting struck and make the flames grow
+      higher the closer it gets to falling apart. Keep the flames going as the
+      building in pieces": `src/rendering/buildingFire.js`, owned by
+      WheelObjects, fed each building's `hit`/`break`/`repair` and the new
+      `heal` (wheelBreak.js: a count forgotten after `HEAL_MS`, `?healms=`,
+      used to say nothing); hits within 40 px are one spot (5 at most), it
+      smoulders from 12% of its hits and catches at 25% there, a cluster of up
+      to ten of the CAMPFIRE'S OWN pixel flames a spot (campfireFx
+      `campfireAtlas()`: nothing loaded or made) climbing the wall as the
+      damage grows, sparks, smoke, coals, glow and soot; it sinks from 12 s
+      and is out at the heal; at the break nine shards fall burning, lie
+      charred (wheelShatter `burnt`) and burn on until the mending; each fire
+      rides what it burns on (depthSort `_ridesOn`), hidden off the screen;
+      `?nobuildingfire`; `mp-buildingfire`: docs/specs/building-fire.md.
   - Since v2.3.2996 a MONSTER'S HIT CARRIES ITS ELEMENT (the owner's snowflake,
     fire and air icons, and "slime for floral damage ... a brief held in place"):
     - a landed hit by a frost/flame/wind/flora monster chills (walk x0.55 for
@@ -819,6 +835,20 @@ remnant to migrate server-side, not a mode to preserve.
       one near you (nodeLabels.js `NAME_PLATE_ONLY`); trees and veins as
       before; `mp-nodelabels` samples every drawn spot: wheel-resources.md
       "No rod over the fish".
+    - since v2.3.3229 THE HIT LADDER -- the owner: "after the first level you
+      get a 10% chance of hitting 1 number higher ... the number 1 will
+      eventually get replaced by the 2 as more 10% chances get added with each
+      level": every hit of a harvest or a cook is a ten-sided die read down
+      from the skill level, `max(1, level - 9 + face)` (gathering.js
+      `gatherHitRoll`, `GATHER_HITS.LADDER` 10; it was an even 1..level) --
+      level 3 hits 1 eight times in ten, level 10 is as before, from 11 there
+      are no 1s; slower than before below 10, faster above; Skills -> Mining,
+      Woodcutting, Fishing and Cooking print "Each hit" and "At Lv N+1"
+      (lifeSkills.js `gatherHitOddsText`; the old timer's Benefit line only
+      when the worker rolls no hits); `caps.hitladder`, kill switch
+      `hitladder: false` (1..level again); test lever `/dev/lifeskill`
+      {skill | 'hits', level} and the test panel's level buttons; gather-hits
+      §11, mirror-audit "hit ladder", `mp-hitladder`: docs/specs/hit-ladder.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
@@ -2063,7 +2093,32 @@ remnant to migrate server-side, not a mode to preserve.
         first button, Info's stage scaled to fit under them (`StageFit`), and
         tighter rows -- a page's first look shows its table (was all header),
         Drops/Info/Locations scroll 301/730/131 px (were 482/907/266);
-      - `mp-codexfit`: docs/specs/monster-codex.md "Its own button".)
+      - `mp-codexfit`: docs/specs/monster-codex.md "Its own button".
+  - Since v2.3.3241 A CROWD COSTS THE PHONE LESS -- found by the owner's
+    "stress test to see what can be optimized" (`mp-crowdbots` with the bots
+    spread out: 12 of 150 on screen cost a phone's frame as much as all 150):
+    - in the Wheel, a player past the view's half-diagonal plus
+      `PEER_FAR_MARGIN` 400 from its middle is not drawn, the monsters' rule
+      (entityRenderer `_updateOtherPlayers`): hidden, nothing else done that
+      frame, no figure MADE until near (a join into a full Wheel built every
+      player's figure in one frame), kept once made; nothing of theirs
+      either -- pet, glint, gathering/swing/shot stand-ins, trails, status
+      looks, bubbles (`S._peersNotDrawn`, effectsRenderer `_peerNotDrawn`);
+      `S._peersFarHidden`;
+    - the peer loop no longer fights the depth pass: it moved every player
+      south of you back into the entity layer each frame and the pass moved
+      them out again -- two re-parentings a frame each, and Pixi rebuilt the
+      world's draw list for them; the front layer is now an accepted place;
+    - THE CROWD CAP, Phase 0a of docs/SERVER-SPLIT-PLAN.md as the owner chose
+      it: of the players near enough to draw, the nearest `CROWD_K` 50 in
+      full and always your party, target, duel and whoever is fighting you;
+      the rest not drawn (the minimap still shows them), the edge held
+      `CROWD_HOLD` 8 places so it does not flicker (src/game/crowdCap.js,
+      `crowd-cap` suite); `S._peersCrowdHidden`; `?crowd=K`, `?crowd=all`;
+    - measured on the QA box (`mp-crowdbots`): 150 players spread out, the
+      frame's work 36 -> 20 ms; 150 on screen, 31 -> 21 with the cap;
+    - `?nopeercull` is all three off; `mp-peercull` (two phones),
+      `mp-crowdbots` `BT_CROWD_QUERY`: docs/specs/peer-cull.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
@@ -2353,6 +2408,31 @@ Two protocol versions coexist; both must keep working:
     after a full GC, 44 MB at the most in use, against Cloudflare's 128 MB
     (`tools/qa/load/heapprobe.mjs`, the inspector's heap during a load test):
     docs/specs/cap-120.md.
+  - v2.3.3240: A LOOK IS RELAYED WHEN IT CHANGES -- found by the owner's
+    "stress test to see what can be optimized":
+    - every phone sends `track` (its whole look and stats, ~940 B) every 2 s,
+      and the worker relayed each to every other player as its own message:
+      N(N-1)/2 sends a second, more than all the ticks;
+    - the load test's bots never sent it (TRAPS §173), so "smooth to ~145"
+      was really ~105, and 120 was past it (25.8 ticks a second);
+    - server/src/lookrelay.js now relays only the keys that changed, and only
+      when one did:
+      - x/y/dir, HP (LAZY: rpgHp, rpgMaxHp) and the inspect card's counters
+        (LAZY_IN: rpgData's kills, svKills, goldEarned, playtime) ride along
+        only; any other change to rpgData relays it at once -- the phone draws
+        a peer's slung shield from rpgData.shield (the first cut held all of
+        rpgData back, and a shield could take a minute to show);
+      - hg/fr go in every relay that has them (wsClient sets a peer's build
+        from each one);
+      - a whole copy every minute;
+      - kill switch `lookdelta: false`; /dev/overview `lookRelay`;
+    - the clan clear carries hg/fr too and resets the relay (`_lookForget`);
+      it had been resetting a leaver's build on every screen;
+    - with real looks (`load.mjs --track`): 38.0 ticks at 120, 31.1 at 150 --
+      smooth to ~145 again;
+    - look-relay.test.mjs (29, a 24,000-track property test against the
+      phone's merge), clans.test 9.3c/d, mp-trackcapture (the sample),
+      mp-crowdbots (BT_MAX_PLAYERS, the bots' looks): docs/specs/look-relay.md.
   - v2.3.3245: A FIGHT'S EVENTS GO TO THE PHONES NEAR IT -- the split plan's
     Phase 0d, found by the owner's "stress test to see what can be optimized"
     once the bots sent the swings and arrows a phone relays (`load.mjs
