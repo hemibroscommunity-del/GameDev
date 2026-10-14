@@ -306,6 +306,26 @@ These are needed by ANY split. Several help at today's 120.
   - the local load test with the doors in their own process, which is how
     wrangler runs a second script;
   - then the Cloudflare lab.
+- **What the lab says (v2.3.3252, runs 3 and 4, docs/specs/cloudflare-lab.md):**
+  - **One script of doors works.** Objects of one script run side by side:
+    8 at once did the work of 5.9-6.6, 16 of 6.2-8.6. Plan for about 6
+    doors' worth of parallel work per 8, not 8.
+  - **The world makes its doors, and keeps them in its city.** Two objects in
+    one city were 3-4 ms apart a round trip (p95 4-6 ms); in two cities
+    (Newark, Chicago), 22 ms. A door is made near whoever asks for it first,
+    so the world asks first, by names of its own, and a door that finds itself
+    elsewhere (its own trace page says where) should be retired.
+  - **Doors talk over sockets.** In one city a socket message cost 75-81 µs
+    end to end; a call, 852 µs. A call is also billed one for one, against 20
+    socket messages to a request. The game's room keeps its hibernation
+    sockets: one city made them as cheap as plain ones.
+  - **Billing adds, it doesn't save.** Phones' messages to a door are billed
+    as they are to the room today, plus each door's batches to the world. On
+    the paid plan that is cents; on the free plan Phase 1 does not fit at all
+    (risk 8).
+  - **So the gate is now Workers Paid,** then the local load test with doors,
+    then a lab run of a door and a world in one city carrying a load-test
+    crowd.
 
 ### Phase 2: doors build each phone's messages
 
