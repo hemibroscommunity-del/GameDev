@@ -53,6 +53,16 @@ What changed in the lab:
   saved before the page is drawn.
 - **The data centre lookup** (each object asks Cloudflare's trace page where
   it runs) gives up after 3 s, and is skipped on a local dry run.
+- **A brand-new address is not everywhere at once.** The second run deployed
+  and timed 1 and 2 objects. Then one request met Cloudflare's own "not
+  found" page, seconds after the address had answered, and the run ended
+  with nothing written. Now:
+  - the run waits for 20 answers in a row, half a second apart;
+  - a request that meets Cloudflare's own page is tried again, up to 5
+    times. It never reached the lab, so trying again costs nothing;
+  - a lost connection is tried again too, but only for the cheap requests;
+  - whatever goes wrong, what was measured before it is written, with the
+    error.
 
 ## What it is for
 
