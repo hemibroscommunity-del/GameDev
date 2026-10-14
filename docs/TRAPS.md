@@ -6156,7 +6156,7 @@ breakage. The owner never saw it because they hold the phone upright.
   `100dvh` with `100vh` before it, as the modal's own height falls back. Never
   from `vw`, which says nothing about how tall the screen is.
 
-## 176. "An event that happens at a place can go to the phones near it" (v2.3.3225)
+## 176. "An event that happens at a place can go to the phones near it" (v2.3.3245)
 
 Most of them can: a swing, an arrow, a hit on a monster, a monster's slam.
 A phone far away has nothing to draw them on, and the bytes and the room's

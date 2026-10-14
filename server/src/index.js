@@ -147,7 +147,7 @@ import { persistenceMethods } from './persistence.js';
 import { joinMethods, cosmeticCap } from './join.js';   /* v2.3.1940: ONE cap rule for the drawing keys */
 // v2.3.1174 (P4 decomposition): the 45Hz tick loop -- see tick.js.
 import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3127: + the regen cadence, for Herb Bread */
-import { eventPlaceMethods } from './eventplace.js'; /* v2.3.3225: events by place */
+import { eventPlaceMethods } from './eventplace.js'; /* v2.3.3245: events by place */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -6097,7 +6097,7 @@ Object.assign(GameRoom.prototype, httpAuthMethods);
 Object.assign(GameRoom.prototype, joinMethods);
 // v2.3.1174 (P4 decomposition): tick loop -- see tick.js.
 Object.assign(GameRoom.prototype, tickMethods);
-Object.assign(GameRoom.prototype, eventPlaceMethods); /* v2.3.3225 */
+Object.assign(GameRoom.prototype, eventPlaceMethods); /* v2.3.3245 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
 // v2.3.1191 (P4 decomposition): combat/damage core -- see combat.js.

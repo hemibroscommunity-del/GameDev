@@ -62,7 +62,7 @@ social relays (`chat`, `emote`, clan/trade/duel handshakes). Filtering would buy
 approximately nothing and risks silently dropping social traffic. Left exactly
 as it was.
 
-*(v2.3.3225: no longer. In the Wheel, with the swings and arrows real phones
+*(v2.3.3245: no longer. In the Wheel, with the swings and arrows real phones
 relay, events were 6-7% of a phone's download at 120 players and grow with the
 square of the crowd. The fights' events are now placed by an ALLOWLIST and the
 social relays stay room-wide, which keeps this paragraph's concern:

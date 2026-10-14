@@ -17,7 +17,7 @@
 
 import { WHEEL_ZONE } from './wheelzone.js';   /* v2.3.2978: the Wheel's monsters go out by interest */
 import { armourGradeWire } from './gearprov.js';   /* v2.3.3142: the worn armour's grade, seen by others */
-import { eventHeardBy } from './eventplace.js';   /* v2.3.3225: events by place */
+import { eventHeardBy } from './eventplace.js';   /* v2.3.3245: events by place */
 
 /* v2.3.2062: server ticks between regen passes. Exported because the Mana
    Draught sizes its per-tick floor against this cadence (server/src/data.js
@@ -556,7 +556,7 @@ export const tickMethods = {
          always goes through, so a single oversized entry can never wedge
          the queue behind it. */
       let events = null;
-      /* v2.3.3225: the strings measured here are each event's JSON for the
+      /* v2.3.3245: the strings measured here are each event's JSON for the
          tick's messages too (eventsPart below) */
       let eventJson = null;
       if (hasEvents) {
@@ -570,7 +570,7 @@ export const tickMethods = {
         }
         events = this.eventBuffer.splice(0, take);
       }
-      /* v2.3.3225: where each event happened (eventplace.js), or null when
+      /* v2.3.3245: where each event happened (eventplace.js), or null when
          none of this tick's has a place -- then every phone is sent every
          event, exactly as before */
       const places = events ? this._eventPlaces(events) : null;
@@ -672,7 +672,7 @@ export const tickMethods = {
          everywhere else, which is the unchanged shared path. */
       /* v2.3.3197: `plan` -- playersPlanFor's answer for a v2 session in the
          Wheel (never on a presence tick); null is the zone's list, as before */
-      /* v2.3.3225: `sel` -- the events this phone is sent (eventsFor below) */
+      /* v2.3.3245: `sel` -- the events this phone is sent (eventsFor below) */
       const buildFor = (zone, pv, muted, interest, plan, sel) => {
         const d = { type: 'tick', seq, ts };
         let any = false;
@@ -848,7 +848,7 @@ export const tickMethods = {
         if (plan.far) farListJson = out;
         return out;
       };
-      /* v2.3.3225: a phone's events put together from each event's JSON,
+      /* v2.3.3245: a phone's events put together from each event's JSON,
          made once a tick where the batch was measured (above) -- the bytes
          JSON.stringify gives the list (an event is a plain object), whichever
          events it is sent */
@@ -867,7 +867,7 @@ export const tickMethods = {
         eventsByMuteJson.set(k, out);
         return out;
       };
-      /* ═══ v2.3.3225: THE EVENTS A PHONE IS SENT (eventplace.js) ═══
+      /* ═══ v2.3.3245: THE EVENTS A PHONE IS SENT (eventplace.js) ═══
          Every event without a place, and each placed one this phone hears
          (eventHeardBy: the players it is about, else the phone's zone, and in
          the Wheel its surroundings when `near`).  The same answer object for
@@ -981,7 +981,7 @@ export const tickMethods = {
            A muter's key names exactly the intersection, so two players who
            mute the same flooder still share ONE serialization. */
         const muteKey = chatSpeakers ? this._chatModMuteKey(s.id, chatSpeakers) : '';
-        /* v2.3.3225: a v2 phone with a place in the Wheel hears the events
+        /* v2.3.3245: a v2 phone with a place in the Wheel hears the events
            around it; any other the events of its zone (eventsFor above) */
         const near = zone === WHEEL_ZONE && pv === 2 && !!ps && typeof ps.x === 'number' && typeof ps.y === 'number';
         const sel = eventsFor(s.id, ps, near);

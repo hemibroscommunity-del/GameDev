@@ -80,8 +80,8 @@ const OPT = {
   moveMs: +arg('move-ms', 0),             /* v2.3.3199: a walker's move every N ms (0: the phone's 33) */
   townMoveMs: +arg('town-move-ms', 0),     /* v2.3.3203: the town walkers' (not the fighters') move every N ms */
   diet: process.argv.includes('--diet'),     /* v2.3.3204: the walkers keep a steady walk's moves back as a phone on the safe ground does (src/game/moveDiet.js) */
-  relays: process.argv.includes('--relays'), /* v2.3.3225: the fighters send a phone's swing / arrow relay with each blow (bots.mjs) */
-  events: process.argv.includes('--events'), /* v2.3.3225: what the probes' ticks carry in `events`, by type (bots.mjs countEvents) */
+  relays: process.argv.includes('--relays'), /* v2.3.3245: the fighters send a phone's swing / arrow relay with each blow (bots.mjs) */
+  events: process.argv.includes('--events'), /* v2.3.3245: what the probes' ticks carry in `events`, by type (bots.mjs countEvents) */
   seenR: +arg('seen-r', 0),               /* v2.3.3199: "others' moves seen" counts senders this near (0: 2,400) */
   inspectorPort: +arg('inspector-port', 0),   /* v2.3.3203: the runtime's debugger port, for a CPU profile (cdpprof.mjs) */
   server: arg('server', null),             /* a server/ folder to test instead of this repo's own */
@@ -298,7 +298,7 @@ function probeJoin(url) {
   });
 }
 
-/* v2.3.3225: --events: the events a probe was sent each second, in all and
+/* v2.3.3245: --events: the events a probe was sent each second, in all and
    by type (bots.mjs countEvents); a report is a second, so the probes'
    seconds are the reports' probesIn summed */
 function eventsLine(rs) {
@@ -370,7 +370,7 @@ function summarise(n, rs, whole, cpu, secs) {
     roomFull: sumStep('roomFull'),
     botCpuPct: r1(botCpu),
     botLoopP99: r1(Math.max(0, ...rs.map((r) => r.loopP99 || 0))),
-    events: OPT.events ? eventsLine(rs) : undefined,   /* v2.3.3225 */
+    events: OPT.events ? eventsLine(rs) : undefined,   /* v2.3.3245 */
   };
 }
 
