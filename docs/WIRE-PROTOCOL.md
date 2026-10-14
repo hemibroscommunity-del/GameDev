@@ -118,7 +118,7 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 | Type | Purpose / payload | Client handler (BroTown.jsx) |
 |---|---|---|
 | `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields; v2.3.3015: `spr: 1` while that player sprints -- a step the worker paid for in the last 600 ms, absent when walking, and deliberately not `sp`, which in a player's data is the shirt pattern; docs/specs/sprint.md "Seen and heard"; v2.3.3123: `pw`, the pet out with that player as the worker keeps it, `'kind.stage.gold.size.lv'`, absent with none -- deliberately not `pt`, which in a player's data is the pants, nor `pet`, the old client-relayed one; docs/specs/trapping.md "Pets that matter"; v2.3.3142: `eqg`, the grades of the torso and greaves that player wears as the worker counts them, two letters `n`/`r`/`e`/`g` (`'rn'`, `'ee'`; godly only on a piece the worker minted, else `e`, combat.js's rule), absent in plain armour; docs/specs/armor-grade-look.md), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only). **Zone-scoped since v2.3.1575** — see below | ~2048 |
-| `state_sync` | Full room snapshot on join: players, zone monsters, etc. | ~2223 |
+| `state_sync` | Full room snapshot on join: players, zone monsters, etc. v2.3.3244: each other player as the public keys only (`PEER_PUBLIC_KEYS`, index.js: position, name, look, gear on show) -- see "What the others are told about you" below | ~2223 |
 | `zone_state` | v2 zone change: `{ zone, monsters, nodes, loot }` merged. **v2.3.1983: also sent MID-SESSION**, unprompted, when population-scaled spawns change a zone's roster — the client already replaces its lists wholesale on it, and a per-entity `tick` delta cannot introduce an entity, so this resend is how a new monster becomes real on any client (`docs/specs/spawn-scaling.md`) | ~2352 |
 | `zone_monsters` / `zone_nodes` / `zone_loot` | v1 legacy zone-change trio (kept as fallback). v2.3.1983: `zone_monsters` + `zone_nodes` are the v1 half of the mid-session roster push above (no `zone_loot` — piles are unaffected) | ~2732 / ~2727 / ~2347 |
 | `player_state` | Authoritative pool/progression mirror (hp, coins, xp, inventory…); v2 sends field deltas | ~2421 |
@@ -302,6 +302,24 @@ A forged `_zoneEntryGraceUntil` bought permanent immunity to all damage
 (`_applyDamage` short-circuits on it) on an id that needs no passphrase.
 It was the same primitive as `track`, one message earlier, and the
 v2.3.1465 pass did not reach it.
+
+### What the others are told about you (v2.3.3244)
+
+A joining phone's `state_sync.players` and the `player_join` every phone gets
+when someone joins describe each player by the **public** keys alone
+(`PEER_PUBLIC_KEYS` / `_peerPublic` in `server/src/index.js`): what the look
+relay already sends everyone (`TRACK_COSMETIC_KEYS`), the join's look
+(`JOIN_COSMETIC_KEYS`), and what every tick says (`playerWire`: position,
+facing, zone, speed, the armour on show, what they are harvesting, the Hemi
+Bro badge). Until v2.3.3244 they spread the player's whole `playerState` --
+coins, bag, every stash, quests, life skills, buffs, the anti-cheat's own
+histories -- and the join's `rpg*` claims (`player_join` too); no phone read
+them, and in No man's land the bag is the killer's prize. Precedence is
+unchanged (the phone's look over the state, the session's name over the
+state's). A field added to `playerState` later stays private unless it is
+added to the list on purpose. `server/test/peer-view.test.mjs` holds every key
+a phone reads on the snapshot road (wsClient.js, `peerCosmetics.js`) to the
+list. No caps flag: a phone reads a subset of these keys, from any worker.
 
 `_sanitizeJoinData` (`server/src/join.js`) now admits exactly:
 
