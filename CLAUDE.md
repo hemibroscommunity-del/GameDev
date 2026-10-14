@@ -2344,7 +2344,7 @@ Two protocol versions coexist; both must keep working:
     Everything else stays room-wide: chat, emotes, trades, duels, clans, the
     arena, hits between players, and what a phone KEEPS until the next one --
     kills (a far monster's only news of its death; missed, its return in reach
-    reads as a fresh kill, a phantom remnant pile: TRAPS §175), loot, a raised
+    reads as a fresh kill, a phantom remnant pile: TRAPS §176), loot, a raised
     shield, a mummy's change, a lit campfire -- found by an audit of every
     client handler. 120 players: 17 events a second a phone (3.4 KB/s), the
     download ~4% less, the room no busier; a phone near every event gets the

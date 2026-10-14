@@ -6130,7 +6130,7 @@ work, and one world behind them. Area servers come behind the doors only when
 the one world server itself is full. Measure where a room's time goes, by
 kind of work, before choosing a split.
 
-## 175. "An event that happens at a place can go to the phones near it" (v2.3.3225)
+## 176. "An event that happens at a place can go to the phones near it" (v2.3.3225)
 
 Most of them can: a swing, an arrow, a hit on a monster, a monster's slam.
 A phone far away has nothing to draw them on, and the bytes and the room's
