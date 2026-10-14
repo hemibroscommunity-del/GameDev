@@ -169,7 +169,13 @@ const Icon = ({ t, px }) => t.src ? (
     }} />
 ) : <span style={{ fontSize: px - 6, flex: 'none' }}>{t.glyph}</span>;
 
-const open = (id) => dashboardPanelBus.push(id);
+/* v2.3.3215: the Codex has its own button on the dashboard's row now, and its
+   tile here opens that same screen, lighting that button -- not a drill under
+   More.  Its page is laid out for a destination's own height (all nine cards
+   at once, the tabs pinned over a stage that fits under them), and a drill's
+   "◂ CODEX" header would take 32 px of it. */
+const OWN_BUTTON = new Set(['encyclopedia']);
+const open = (id) => (OWN_BUTTON.has(id) ? dashboardPanelBus.open(id) : dashboardPanelBus.push(id));
 const tile = (id) => TILES.find(t => t.id === id);
 
 /* v2.3.1299 (ChatGPT round-6, owner-approved): expanded More = a
