@@ -1,0 +1,31 @@
+# ═══ v2.3.3247: THE CLOUDFLARE LAB WORKER ("brotown-lab") ═══
+# docs/specs/cloudflare-lab.md.  A tiny worker, NOT the game: three Durable
+# Object classes that time what the server split plan needs to know and only
+# Cloudflare can tell (docs/SERVER-SPLIT-PLAN.md, "Risks and unknowns" 1-3).
+#
+# Deployed ONLY by .github/workflows/lab.yml, started by hand from the Actions
+# tab, and deleted by the same run when it is done.  It has its own name, so it
+# never touches brotown-server, its room or anyone's saves; it stores nothing;
+# and every request but "/" needs the run's own key (LAB_KEY, made by the run
+# and passed with --var).  It lives under tools/, so a merge never sets off
+# deploy-worker.yml (which deploys server/ only).
+name = "brotown-lab"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+workers_dev = true
+
+[[durable_objects.bindings]]
+name = "BURNER"
+class_name = "Burner"
+
+[[durable_objects.bindings]]
+name = "WORLD"
+class_name = "World"
+
+[[durable_objects.bindings]]
+name = "DOOR"
+class_name = "Door"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["Burner", "World", "Door"]

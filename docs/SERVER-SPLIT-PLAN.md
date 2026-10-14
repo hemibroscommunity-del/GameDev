@@ -395,6 +395,10 @@ These are needed by ANY split. Several help at today's 120.
      Otherwise they are hidden, and the minimap's dots still show them.
    - `?crowd=K` tries another number on a phone.
 2. **The Cloudflare lab: yes**, after Phase 0.
+   - *v2.3.3247, built.* Actions tab, then "Cloudflare lab", then "Run
+     workflow" (`.github/workflows/lab.yml`, `tools/lab/`). It answers risks
+     1-3 with a tiny worker of its own, then deletes it; about a cent a run
+     (`docs/specs/cloudflare-lab.md`).
 3. **The order:** Phase 0, then the lab, then Phase 1.
 4. **Stress tests first**, to find what can be optimized: the server well
    past its cap, and a phone in big crowds. Each optimization they find is
