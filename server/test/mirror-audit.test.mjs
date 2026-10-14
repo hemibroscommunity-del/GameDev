@@ -42,8 +42,8 @@ import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3
 import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
 import * as SRV_SALVAGE from '../src/salvage.js'; /* v2.3.3141 */
 import * as CLIENT_SALVAGE from '../../src/data/salvage.js'; /* v2.3.3141 */
-import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl, gatherHitRoll as srvGatherHitRoll } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038; gatherHitRoll v2.3.3229 */
-import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl, GATHER_HIT_LADDER as CLIENT_GATHER_HIT_LADDER, gatherHitOdds as clientGatherHitOdds, gatherHitOddsText as clientGatherHitOddsText } from '../../src/data/lifeSkills.js'; /* v2.3.3038; the hit ladder v2.3.3229 */
+import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl, gatherHitRoll as srvGatherHitRoll, GATHER_NODE_HP as SRV_GATHER_NODE_HP, gatherNodeHp as srvGatherNodeHp } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038; gatherHitRoll v2.3.3229 */
+import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl, GATHER_HIT_LADDER as CLIENT_GATHER_HIT_LADDER, gatherHitOdds as clientGatherHitOdds, gatherHitOddsText as clientGatherHitOddsText, GATHER_NODE_HP as CLIENT_GATHER_NODE_HP } from '../../src/data/lifeSkills.js'; /* v2.3.3038; the hit ladder v2.3.3229 */
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
 import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES, ELEM_LOOK as CLIENT_ELEM_LOOK, ELEM_ICON_SRC as CLIENT_ELEM_ICON_SRC } from '../../src/game/elemHits.js'; /* v2.3.2996 */
 import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
@@ -53,7 +53,7 @@ import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wh
 import { PVP_HEAL as CLIENT_PVP_HEAL } from '../../src/game/fightFood.js'; /* v2.3.3133 */
 import { WHEEL_SPAWNS as SRV_WHEEL_SPAWNS } from '../src/wheelspawns.js'; /* v2.3.3089 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
-import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */, createDefaultRpg as clientDefaultRpg /* v2.3.3138 */ } from '../../src/data/gameSystems.js';
+import { GATHER_PLAN_MAX as CLIENT_GATHER_PLAN_MAX /* v2.3.3251 */, GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */, createDefaultRpg as clientDefaultRpg /* v2.3.3138 */ } from '../../src/data/gameSystems.js';
 import { NEW_CHARACTER_COINS as SRV_NEW_CHARACTER_COINS } from '../src/join.js';   /* v2.3.3138 */
 import { freshLifeSkills as srvFreshLifeSkills } from '../src/migrations.js';       /* v2.3.3138 */ /* v2.3.2956; the lead and settle v2.3.3036 */
 import { GESTURE_FLOOR_MS as CLIENT_GESTURE_FLOOR_MS } from '../../src/game/gesturePose.js'; /* v2.3.3036 */
@@ -1804,6 +1804,25 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('hit ladder: the Skills panel says it as the owner did (lvl 2: 10% of 2, else 1; lvl 11: no 1 left)',
     JSON.stringify(words) === JSON.stringify(['Always 1', '1 (90%) · 2 (10%)', '1 (80%) · 2–3 (10% each)', '1 (30%) · 2–8 (10% each)',
       '1–10 (10% each)', '2–11 (10% each)', '11–20 (10% each)']), words);
+  /* v2.3.3251: each tier twice as long as the one before -- the HP table the
+     bar shows before a plan lands is the one the worker rolls against, and
+     the longest plan the worker can send is one the game plays. */
+  const flatHp = (t) => JSON.stringify(Object.keys(t).sort().map((k) => [k, Object.keys(t[k]).sort().map((l) => [l, t[k][l]])]));
+  check('tier hp: the same table on both sides (GATHER_NODE_HP)', flatHp(SRV_GATHER_NODE_HP) === flatHp(CLIENT_GATHER_NODE_HP),
+    { srv: SRV_GATHER_NODE_HP, cli: CLIENT_GATHER_NODE_HP });
+  let hpBad = null;
+  for (const type of ['oreVein', 'tree', 'fishSpot', 'campfire', '__proto__', 'constructor', undefined, null, 7]) {
+    for (const t of [0, 1, 2, 6, 11, 16, 21, 26, 96, '11', 11.5, null, '__proto__']) {
+      for (const on of [true, false]) {
+        if (srvGatherNodeHp(t, type, on) !== clientGatherNodeHp(t, type, on)) { hpBad = { type, t, on, srv: srvGatherNodeHp(t, type, on), cli: clientGatherNodeHp(t, type, on) }; break; }
+      }
+      if (hpBad) break;
+    }
+    if (hpBad) break;
+  }
+  check('tier hp: and the same answer for every type and tier, table on and off, forged ones included', hpBad === null, hpBad);
+  check('tier hp: the game plays every plan the worker can send (GATHER_PLAN_MAX >= GATHER_HITS.MAX_HITS)',
+    CLIENT_GATHER_PLAN_MAX >= SRV_GATHER_HITS.MAX_HITS, { cli: CLIENT_GATHER_PLAN_MAX, srv: SRV_GATHER_HITS.MAX_HITS });
   check('hit ladder: ...and the old dice as they were (the kill switch)',
     clientGatherHitOddsText(3, false) === '1–3 (33.3% each)' && clientGatherHitOddsText(1, false) === 'Always 1',
     [clientGatherHitOddsText(3, false), clientGatherHitOddsText(1, false)]);

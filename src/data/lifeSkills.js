@@ -56,6 +56,22 @@ export function gatherReqLvl(nodeType, tierLvl) {
   return Math.max(1, Math.floor(Number(need) || 1));
 }
 
+/* ═══ v2.3.3251: EACH TIER TAKES TWICE AS LONG AS THE ONE BEFORE ═══
+   Owner: "I want each tiers unlocks (lvl 5 required, lvl 10 required, etc) to
+   take about 2x longer on average than the previous tier's lowest level
+   extraction time."  A resource's hit points by its type and tier, solved so
+   that at the level it opens (GATHER_REQ_LVL) it takes 10, 20, 40, 80, then
+   160 hits of the hit ladder on average.  Mirror of server/src/gathering.js
+   GATHER_NODE_HP, pinned by mirror-audit.test.mjs.  The worker sends every
+   plan's own hp, so the game reads this only for the HP bar before a plan
+   lands, on the timer and on a locked try (gameSystems.js gatherNodeHp), and
+   only against a worker that advertises caps.nodehp. */
+export const GATHER_NODE_HP = {
+  oreVein:  { 1: 10, 6: 20, 11: 80, 16: 440, 21: 1680 },
+  tree:     { 1: 10, 6: 40, 11: 220, 16: 840, 21: 2480 },
+  fishSpot: { 1: 10, 6: 40, 11: 220, 16: 840, 21: 2480 },
+};
+
 /* v2.3.3038: the level to PRINT for a tier on a ladder (Skills' "next
    unlock", the Encyclopedia): its requirement where one is set, else the tier
    number as before -- the tiers past the third grow nowhere yet, and "Lv 1"

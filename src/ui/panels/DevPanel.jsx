@@ -190,6 +190,7 @@ const CAP_GATES = [
   'codex' /* v2.3.3209: the monster codex's kill counts (server/src/codex.js) -- lower case, a kill switch */,
   'killroll' /* v2.3.3209: one roll a kill, each drop its own numbers, shown over the monster (server/src/killroll.js) -- lower case, a kill switch */,
   'hitladder' /* v2.3.3229: the hit ladder -- each life-skill level adds a 10% chance of one more (server/src/gathering.js gatherHitRoll) -- lower case, a kill switch */,
+  'nodehp' /* v2.3.3251: each tier's HP twice as long as the one before (server/src/gathering.js GATHER_NODE_HP) -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported
@@ -216,6 +217,7 @@ const CAP_NOTES = {
   zoneDepth: 'Wind Dunes perspective — things shrink and slow toward the north edge',
   gatherhits: 'gathering hits — a rock, tree or pond has HP that your swings knock off (each hit rolled off your skill level: see hitladder) before the gesture; without it: the old timer (v2.3.2956)',
   hitladder: 'the hit ladder — each life-skill level adds a 10% chance of hitting one more (level 3: 1 eight times in ten, 2 or 3 once each; from level 11 no more 1s); without it: every hit 1 to your level, evenly (v2.3.3229)',
+  nodehp: 'each tier of a resource twice as long as the one before at the level it opens (copper 10 HP, iron 20, black steel 80, titanium 440, obsidian 1,680; pine and minnow 10, then 40, 220, 840, 2,480); without it: every tier 5 x (tier + 1), 10 to 110 (v2.3.3251)',
   bowvolley: 'the bow special as three white-hot arrows, two-thirds of a special each, a 2.5 s burn, no blast (v2.3.2849; without it: one arrow, its 4 s burn and the blast)',
   wheelmonsters: 'monsters in the Wheel (?trial=wheel): each land\'s own at the inner end of its spoke (v2.3.2978; without it: the Wheel has none)',
   sprint: 'the sprint button right of the movement stick (and Shift): a third faster while your stamina lasts (v2.3.3006; without it: no button, everyone walks)',

@@ -45,6 +45,10 @@ The average hit, against the old even roll:
 **Slower than before below level 10, exactly the same at 10, faster above
 it.** A slow start that pays off.
 
+**Since v2.3.3251 the resources' HP is different**: each tier takes twice the
+hits of the tier before at the level it opens (`docs/specs/resource-hp.md`).
+The table below is v2.3.3229's, at the old 5 × (tier + 1) HP.
+
 Hits to break a resource on average (each hit is one swing: 0.65 s for a pick,
 rod or pan, 0.54 s for an axe):
 
@@ -131,4 +135,6 @@ take its place.
   opens, the ones that open at 5 now take about half as long again (softwood
   and clownfish 12 → 18 hits, black steel 20 → 30), the ones at 1 and 10 take
   the same, and the ones at 15 and 20 are quicker. If level 5's resources feel
-  slow, their HP is the knob, not the ladder.
+  slow, their HP is the knob, not the ladder. (Answered in v2.3.3251: the owner set every
+  tier to twice the one before, and the HP were solved for it:
+  `docs/specs/resource-hp.md`.)

@@ -272,7 +272,7 @@ const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
                               feet; 32 is ~43% and still reads at phone size. */
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHp /* v2.3.3035: a timer harvest's bar reads the node's HP */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHpFor /* v2.3.3035: a timer harvest's bar reads the node's HP; v2.3.3251: by its type */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
 import { farmWorkFrame } from '@/game/farmWork.js';   /* v2.3.3136: the farmer's frames of the cook's strip */
 import { FARM_COVERS, FARM_STEP_COVER, FARM_COVER_FRAME, FARM_FIGURE_X, FARM_PAN_BOX } from '@/data/farmCovers.js';   /* v2.3.3136: what stands where the cook's pan is */
 import { farmArtUrl } from '@/data/farmArtUrl.js';   /* v2.3.3136: the compost bin's address */
@@ -10449,7 +10449,7 @@ export class EffectsRenderer {
       at = node ? this._nodeHpBarAt(S, node) : null;
       m = at ? extractionMeter01(ex, Date.now()) : null;
       if (m) {
-        const timerMax = gatherNodeHp((node && node.gatherLvl) || 1);
+        const timerMax = gatherNodeHpFor(S, (node && node.gatherLvl) || 1, node && node.nodeType);
         bar = h
           ? { show: true, hp: h.hp, maxHp: h.maxHp }
           : { show: true, hp: Math.ceil((1 - m.windup) * timerMax - 1e-9), maxHp: timerMax, frac: 1 - m.windup, smooth: true };

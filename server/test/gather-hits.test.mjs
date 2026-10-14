@@ -33,12 +33,18 @@
  *   11. the HIT LADDER (v2.3.3229, owner: "after the first level you get a
  *      10% chance of hitting 1 number higher"): a ten-sided die read down
  *      from the level, every face of it, the shares real dice give, the
- *      plans and cooks that roll it, its cap and its kill switch.
+ *      plans and cooks that roll it, its cap and its kill switch;
+ *   12. EACH TIER TWICE AS LONG (v2.3.3251, owner: "each tiers unlocks ... to
+ *      take about 2x longer on average than the previous tier's lowest level
+ *      extraction time"): the HP table solved again exactly over the dice,
+ *      no plan at a resource's own level reaching MAX_HITS, plans by the
+ *      node's type, cooks unchanged, the shield from the window's opening,
+ *      the cap and its kill switch.
  * mp-gatherhits covers the other half -- the client actually playing the
  * plan, through the real shim, in a real zone -- which no fixture here can
  * reach (TRAPS #18). */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
-import { GATHER_HITS, gatherHitRoll } from '../src/gathering.js';   /* gatherHitRoll v2.3.3229 */
+import { GATHER_HITS, gatherHitRoll, GATHER_NODE_HP, GATHER_REQ_LVL, gatherNodeHp } from '../src/gathering.js';   /* gatherHitRoll v2.3.3229; the HP table v2.3.3251 */
 
 function makeState(liveflags) {
   const store = new Map();
@@ -102,7 +108,7 @@ async function withRandom(fn, body) {
 {
   const { room } = await setup();
   check('hp: the first tier is the owner\'s 10', room._gatherNodeHp(1) === 10, room._gatherNodeHp(1));
-  check('hp: a tier unlocked at 6 is 35 (about ten hits at its own level)', room._gatherNodeHp(6) === 35, room._gatherNodeHp(6));
+  check('hp: with no node type (a cook\'s fish) tier 6 is still 5 x (6 + 1) = 35 (v2.3.3251: a node\'s is by its type, section 12)', room._gatherNodeHp(6) === 35, room._gatherNodeHp(6));
   check('hp: junk tiers read as the first tier', room._gatherNodeHp(undefined) === 10 && room._gatherNodeHp('x') === 10 && room._gatherNodeHp(-4) === 10);
 
   const l1 = room._rollGatherHits(1, 10);
@@ -450,13 +456,14 @@ async function withRandom(fn, body) {
 }
 {
   /* The cook's shield (monsters leave a cook alone) has to outlast the
-     longest cook a plan can make: MAX_HITS pan beats, then the gesture.
+     longest cook a plan can make: COOK_MAX_HITS pan beats (v2.3.3251: a
+     cook's own bound, MAX_HITS being a node's), then the gesture.
      It used to lapse at 30 s, mid-flip (index.js COOK_SHIELD_MS). */
   const { room, ps } = await setup();
   ps.ex = 'cook'; ps._exX = ps.x; ps._exY = ps.y;
-  const longest = GATHER_HITS.MAX_HITS * GATHER_HITS.MS.cooking;
+  const longest = GATHER_HITS.COOK_MAX_HITS * GATHER_HITS.MS.cooking;
   ps._exAt = Date.now() - (longest + 30000);
-  check('cook: the shield outlasts the longest plan plus a slow gesture (MAX_HITS beats + 30 s)',
+  check('cook: the shield outlasts the longest plan plus a slow gesture (COOK_MAX_HITS beats + 30 s)',
     room._extractionShielded('bp_gh') === true, { longestMs: longest, ceiling: room.COOK_SHIELD_MS });
   ps._exAt = Date.now() - room.COOK_SHIELD_MS - 1000;
   check('cook: ...and still has a ceiling', room._extractionShielded('bp_gh') === false);
@@ -620,5 +627,148 @@ async function withRandom(fn, body) {
   check('lever: anything but a life skill\'s name is refused', bad.every((ok) => ok === false) && ps.lifeSkills.resources === undefined, bad);
   check('lever: an unknown player is refused', room._devLifeSkill('bp_nobody', { skill: 'hits', level: 3 }).ok === false);
 }
+// ── 12. each tier twice as long as the one before (v2.3.3251) ──
+// Owner, 2026-10-14: "I want each tiers unlocks (lvl 5 required, lvl 10
+// required, etc) to take about 2x longer on average than the previous tier's
+// lowest level extraction time.  You can figure out what "hp" to give the
+// resources during extraction."  Solved again here, exactly, over the
+// worker's own dice: a tier's average hits at the level it opens
+// (GATHER_REQ_LVL) is twice the tier before's at ITS opening level.
+{
+  /* the exact chance of each hit at level L, face by face (section 11) */
+  const oddsAt = (L) => {
+    const m = new Map();
+    for (let f = 0; f < GATHER_HITS.LADDER; f++) {
+      const d = gatherHitRoll(L, (f + 0.5) / GATHER_HITS.LADDER, true);
+      m.set(d, (m.get(d) || 0) + 1 / GATHER_HITS.LADDER);
+    }
+    return [...m];
+  };
+  /* the exact average plan length on `hp` at level L, MAX_HITS as the worker
+     applies it, the chance a plan meets MAX_HITS at all, and the length by
+     which all but one plan in a million have ended (obsidian could in
+     principle need 280 hits of all 6s -- about a 1-in-10^30 plan) */
+  const planOf = (hp, L) => {
+    const o = oddsAt(L);
+    let dist = new Map([[hp, 1]]), mean = 0, capped = 0, ended = 0, p999999 = 0;
+    for (let i = 1; i <= GATHER_HITS.MAX_HITS && dist.size; i++) {
+      const nd = new Map();
+      for (const [left, p] of dist) {
+        if (i === GATHER_HITS.MAX_HITS) { mean += p * i; capped += p; ended += p; continue; }
+        for (const [d, q] of o) {
+          const l2 = left - d;
+          if (l2 <= 0) { mean += p * q * i; ended += p * q; } else nd.set(l2, (nd.get(l2) || 0) + p * q);
+        }
+      }
+      if (!p999999 && ended >= 1 - 1e-6) p999999 = i;
+      dist = nd;
+    }
+    return { mean, capped, longest: p999999 };
+  };
+  const TIERS = [1, 6, 11, 16, 21];
+  const report = {};
+  let ratiosOk = true, targetOk = true, neverCapped = true, longestAll = 0;
+  for (const type of ['oreVein', 'tree', 'fishSpot']) {
+    report[type] = TIERS.map((t, k) => {
+      const L = GATHER_REQ_LVL[type][t];
+      const r = planOf(gatherNodeHp(t, type), L);
+      if (Math.abs(r.mean - 10 * 2 ** k) > 0.03 * 10 * 2 ** k) targetOk = false;
+      if (r.capped > 1e-9) neverCapped = false;
+      longestAll = Math.max(longestAll, r.longest);
+      return { t, L, hp: gatherNodeHp(t, type), hits: +r.mean.toFixed(2), longest: r.longest };
+    });
+    for (let k = 1; k < TIERS.length; k++) {
+      const ratio = report[type][k].hits / report[type][k - 1].hits;
+      if (ratio < 1.94 || ratio > 2.06) ratiosOk = false;
+    }
+  }
+  check('tier hp: the first tier is still ten hits at level 1 (copper, pine, minnow 10 HP)',
+    ['oreVein', 'tree', 'fishSpot'].every((ty) => report[ty][0].hp === 10 && report[ty][0].hits === 10), report);
+  check('tier hp: every tier, at the level it opens, takes 2x the hits of the tier before at ITS opening level (1.94-2.06)', ratiosOk, report);
+  check('tier hp: ...10, 20, 40, 80, 160 hits on average, each within 3%', targetOk, report);
+  check('tier hp: no plan at a resource\'s own opening level meets MAX_HITS (under 1 in 10^9; all but 1 in a million end by ' + longestAll + ' hits)',
+    neverCapped && longestAll < GATHER_HITS.MAX_HITS, { longestAll, max: GATHER_HITS.MAX_HITS });
+  check('tier hp: the owner\'s table (iron 20 at Mining 1 beside copper; black steel 80; obsidian, maple, pike the top)',
+    JSON.stringify(GATHER_NODE_HP) === JSON.stringify({
+      oreVein: { 1: 10, 6: 20, 11: 80, 16: 440, 21: 1680 },
+      tree: { 1: 10, 6: 40, 11: 220, 16: 840, 21: 2480 },
+      fishSpot: { 1: 10, 6: 40, 11: 220, 16: 840, 21: 2480 },
+    }), GATHER_NODE_HP);
+  const old = (t) => GATHER_HITS.HP_PER_TIER * (t + 1);
+  const junk = [
+    gatherNodeHp(26, 'oreVein') === old(26), gatherNodeHp(11, 'campfire') === old(11), gatherNodeHp(11, '__proto__') === old(11),
+    gatherNodeHp(11, 'constructor') === old(11), gatherNodeHp(11, undefined) === old(11), gatherNodeHp(11, { toString: () => 'oreVein' }) === old(11),
+    gatherNodeHp('11', 'oreVein') === 80, gatherNodeHp(11.7, 'oreVein') === 80, gatherNodeHp(null, 'tree') === 10, gatherNodeHp(11, 'oreVein', false) === old(11),
+  ];
+  check('tier hp: a tier or type not in the table, a forged type, or the table off read 5 x (tier + 1); levels read as numbers', junk.every(Boolean), junk);
+}
+{
+  /* The plans: by the NODE's type and tier, never the cook's formula. */
+  const { room, ws, ps, byType, send, stand } = await setup();
+  const planOf = () => (ofType(ws, 'gather_hits').pop() || {}).payload;
+  const go = async (n, skill, seq) => { stand(n); delete room.extractions.bp_gh; ws.sent.length = 0;
+    await send('extraction_start', { nodeId: n.id, zone: 'meadow', skill, hitSeq: seq }); return planOf(); };
+  const ore = byType('oreVein'), tree = byType('tree'), fish = byType('fishSpot');
+  ore.tierLvl = 11; tree.tierLvl = 21; fish.tierLvl = 6;
+  ps.lifeSkills = { mining: { level: 5, xp: 0 }, woodcutting: { level: 20, xp: 0 }, fishing: { level: 5, xp: 0 }, cooking: { level: 1, xp: 0 } };
+  const bs = await go(ore, 'mining', 1);
+  const rec = room.extractions.bp_gh;
+  check('tier hp: a black steel vein (tier 11) is planned at 80 HP for a Mining 5 player', !!bs && bs.hp === 80
+    && bs.hits.reduce((a, b) => a + b, 0) >= 80 && bs.hits.slice(0, -1).reduce((a, b) => a + b, 0) < 80, bs && { hp: bs.hp, n: bs.hits.length });
+  check('tier hp: ...and its strike is held to that plan\'s own length', !!rec && rec.openDelayBase === (rec.hits.length - 1) * GATHER_HITS.MS.mining);
+  const maple = await go(tree, 'woodcutting', 2);
+  check('tier hp: a maple (tier 21) at Woodcutting 20 is 2,480 HP, ~160 hits and never the cap',
+    !!maple && maple.hp === 2480 && maple.hits.length > 130 && maple.hits.length < GATHER_HITS.MAX_HITS, maple && { hp: maple.hp, n: maple.hits.length });
+  const clown = await go(fish, 'fishing', 3);
+  check('tier hp: a clownfish spot (tier 6) at Fishing 5 is 40 HP', !!clown && clown.hp === 40, clown && clown.hp);
+  ws.sent.length = 0;
+  await send('extraction_start', { skill: 'cooking', fishKey: 'fish_trout', hitSeq: 4 });
+  const cook = planOf();
+  check('tier hp: a cook is as it was -- a trout still 60 HP, and a Cooking 1 cook of it still 40 hits (COOK_MAX_HITS)',
+    !!cook && cook.hp === 60 && cook.hits.length === GATHER_HITS.COOK_MAX_HITS && GATHER_HITS.COOK_MAX_HITS === 40, cook && { hp: cook.hp, n: cook.hits.length });
+
+  /* The monster shield: a planned harvest's ceiling from its window's opening. */
+  await go(tree, 'woodcutting', 5);
+  const r2 = room.extractions.bp_gh;
+  stand(tree);
+  ps.ex = 'chop';
+  const win = r2.openDelayBase;
+  const now = Date.now();
+  r2.startedAt = now - (win + room.EXTRACT_SHIELD_MS - 1000);
+  const inside = room._extractionShielded('bp_gh', now);
+  r2.startedAt = now - (win + room.EXTRACT_SHIELD_MS + 1000);
+  const past = room._extractionShielded('bp_gh', now);
+  check('tier hp: a long plan keeps the monster shield EXTRACT_SHIELD_MS past its window\'s opening (' + Math.round(win / 1000) + ' s of hits)',
+    win > 60000 && inside === true && past === false, { win, inside, past });
+  ws.sent.length = 0;
+  delete room.extractions.bp_gh;
+  await send('extraction_start', { nodeId: tree.id, zone: 'meadow', skill: 'woodcutting' });   /* an old client: the timer */
+  const r3 = room.extractions.bp_gh;
+  r3.startedAt = now - room.EXTRACT_SHIELD_MS - 1;
+  check('tier hp: ...the timer\'s record (an old client) keeps the ceiling from its start', !!r3 && !r3.hits && room._extractionShielded('bp_gh', now) === false);
+  ps.ex = null;
+
+  const sync = (await setup()).ws.sent.find((m) => m.type === 'state_sync');
+  check('tier hp: a fresh room advertises nodehp', !!sync && !!sync.caps && sync.caps.nodehp === true, sync && sync.caps && sync.caps.nodehp);
+  const { LIVEOPS } = await import('../src/liveops.js');
+  check('tier hp: the kill switch\'s name is one the admin flags route accepts (TRAPS §117)', LIVEOPS.FLAG_NAME_RE.test('nodehp'));
+}
+{
+  /* THE KILL SWITCH: nodehp:false -> every node on 5 x (tier + 1) again. */
+  const k = await setup({ nodehp: false });
+  const sync = k.ws.sent.find((m) => m.type === 'state_sync');
+  check('tier hp kill switch: nodehp:false un-advertises it and leaves the hits and the ladder on',
+    !!sync && !!sync.caps && sync.caps.nodehp === false && sync.caps.gatherhits === true && sync.caps.hitladder === true,
+    sync && sync.caps && [sync.caps.nodehp, sync.caps.gatherhits, sync.caps.hitladder]);
+  const ore = k.byType('oreVein');
+  ore.tierLvl = 11;
+  k.stand(ore);
+  k.ps.lifeSkills = { mining: { level: 5, xp: 0 } };
+  k.ws.sent.length = 0;
+  await k.send('extraction_start', { nodeId: ore.id, zone: 'meadow', skill: 'mining', hitSeq: 9 });
+  const p = (ofType(k.ws, 'gather_hits')[0] || {}).payload;
+  check('tier hp kill switch: ...and black steel is 60 HP again', !!p && p.hp === 60, p && p.hp);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

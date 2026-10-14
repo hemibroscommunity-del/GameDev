@@ -15,7 +15,7 @@
    call time, identical). The only React setter any of them touches is
    setRpgState, threaded via deps; succeedExtraction forwards deps to the
    appliers. All other refs are module imports below. */
-import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeOpenDelay, createDefaultCompStats, migrateLifeSkills, GATHER_SWING, GATHER_HIT_PLAN_WAIT_MS, GATHER_HIT_SETTLE_MS, gatherHitTimes, gatherNodeHp, zonePlayerScale, TILE } from '@/data/index.js'; /* v2.3.2956: the gathering hits (and the zone scale a cook's hit pops at) */
+import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeOpenDelay, createDefaultCompStats, migrateLifeSkills, GATHER_SWING, GATHER_HIT_PLAN_WAIT_MS, GATHER_HIT_SETTLE_MS, gatherHitTimes, gatherNodeHpFor, GATHER_PLAN_MAX, zonePlayerScale, TILE } from '@/data/index.js'; /* v2.3.2956: the gathering hits (and the zone scale a cook's hit pops at) */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.1915 */
 import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
@@ -204,8 +204,8 @@ export function startExtraction(S, node, skill, extra) {
         plan: null,                       /* the worker's dice, once they land */
         times: null,                      /* when each one lands (Date.now() ms) */
         shown: 0,                         /* how many have landed */
-        maxHp: gatherNodeHp(nodeTier),    /* replaced by the plan's own hp */
-        hp: gatherNodeHp(nodeTier),
+        maxHp: gatherNodeHpFor(S, nodeTier, node.nodeType),    /* replaced by the plan's own hp; v2.3.3251: by the node's type (a campfire's is the old formula) */
+        hp: gatherNodeHpFor(S, nodeTier, node.nodeType),
         lastHitAt: 0,
         waitUntil: now + GATHER_HIT_PLAN_WAIT_MS,
       };
@@ -260,7 +260,7 @@ var LOCKED_END_MS = 450;
 export var LOCKED_TRY = { TRIES: LOCKED_TRIES, END_MS: LOCKED_END_MS };   /* for mp-nodelabels */
 function _startLockedTry(S, node, skill, need) {
     var now = Date.now();
-    var hp = gatherNodeHp(node.gatherLvl || 1);
+    var hp = gatherNodeHpFor(S, node.gatherLvl || 1, node.nodeType);   /* v2.3.3251: the node's own, by its type */
     /* QA only: a longer try for a slow machine's picture (mp-nodelabels sets
        window.__btLockedTryN; a screenshot there takes longer than a try) */
     var n = LOCKED_TRIES;
@@ -337,7 +337,7 @@ export function applyGatherHits(S, p) {
     if (p.off) { _gatherHitsToTimer(S, ex, false); return false; }
     var hits = Array.isArray(p.hits) ? p.hits : null;
     var hp = Math.floor(Number(p.hp));
-    var ok = !!hits && hits.length > 0 && hits.length <= 200 && hp > 0;
+    var ok = !!hits && hits.length > 0 && hits.length <= GATHER_PLAN_MAX && hp > 0;   /* v2.3.3251: named, held to the worker's MAX_HITS */
     for (var i = 0; ok && i < hits.length; i++) {
       if (!(Number.isInteger(hits[i]) && hits[i] >= 1)) ok = false;
     }

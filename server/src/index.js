@@ -1185,7 +1185,8 @@ export class GameRoom {
        the timeout off `ready` (the window waits for you), v2.3.2761 doubled
        the gesture (~6 s of work, never under 4.8 s), and the gathering hits
        (gathering.js _planCookHits) make the wind-up a run of 650 ms hits --
-       10 on a minnow at level 1, up to MAX_HITS (26 s) on an older catch at a
+       10 on a minnow at level 1, up to MAX_HITS (26 s; COOK_MAX_HITS since
+       v2.3.3251, MAX_HITS being a node's 200) on an older catch at a
        low level.  So the 30 s ceiling expired MID-COOK.  Measured on a
        headless cook: the shield dropped exactly 30 s after the cook began,
        with the pan still being flipped.  In mp-gatherhits' first cooking run

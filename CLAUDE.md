@@ -849,6 +849,22 @@ remnant to migrate server-side, not a mode to preserve.
       `hitladder: false` (1..level again); test lever `/dev/lifeskill`
       {skill | 'hits', level} and the test panel's level buttons; gather-hits
       §11, mirror-audit "hit ladder", `mp-hitladder`: docs/specs/hit-ladder.md.
+    - since v2.3.3251 EACH TIER TAKES TWICE AS LONG AS THE ONE BEFORE -- the
+      owner: "each tiers unlocks (lvl 5 required, lvl 10 required, etc) to take
+      about 2x longer on average than the previous tier's lowest level
+      extraction time ... determine all of those hp lvls per resource": a
+      resource's HP by its type and tier (gathering.js `GATHER_NODE_HP`,
+      `gatherNodeHp`; the game's copy in lifeSkills.js, mirror-audit), solved
+      over the ladder's dice so that at the level it opens it takes 10, 20, 40,
+      80, 160 hits -- copper 10, iron 20 (Mining 1 beside copper), black steel
+      80, titanium 440, obsidian 1,680; pine/minnow 10, then 40, 220, 840,
+      2,480 (was 5 x (tier + 1) for all); top tiers ~104 s of swings at their
+      own level; `MAX_HITS` 40 -> 200 (= the game's `GATHER_PLAN_MAX`), a cook
+      unchanged (its own HP and `COOK_MAX_HITS` 40); a planned harvest's
+      monster shield runs from its window's opening; a harvest's running hits
+      count as play for the 2-minute idle logout; `caps.nodehp`, kill switch
+      `nodehp: false`; gather-hits §12, mirror-audit "tier hp", `mp-tierhp`:
+      docs/specs/resource-hp.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
