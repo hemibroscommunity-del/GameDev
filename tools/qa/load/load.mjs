@@ -84,8 +84,8 @@ const OPT = {
   inspectorPort: +arg('inspector-port', 0),   /* v2.3.3203: the runtime's debugger port, for a CPU profile (cdpprof.mjs) */
   server: arg('server', null),             /* a server/ folder to test instead of this repo's own */
   workerLog: arg('worker-log', null),      /* v2.3.3203: write the worker's whole log here at the end */
-  keepBundle: arg('keep-bundle', null),    /* v2.3.3212: copy the runtime's bundle (index.js + .map) here at the end, so a CPU profile's line numbers can be read (cdpprof.mjs) */
-  tickParts: process.argv.includes('--tick-parts'),   /* v2.3.3212: what a tick is made of (bots.mjs countTickParts, from the probes) */
+  keepBundle: arg('keep-bundle', null),    /* v2.3.3222: copy the runtime's bundle (index.js + .map) here at the end, so a CPU profile's line numbers can be read (cdpprof.mjs) */
+  tickParts: process.argv.includes('--tick-parts'),   /* v2.3.3222: what a tick is made of (bots.mjs countTickParts, from the probes) */
   recoverTo: +arg('recover-to', 0.6),       /* share of the players kept after a break */
   recoverSettle: +arg('recover-settle', 20), /* seconds given to come back before measuring */
 };
@@ -302,7 +302,7 @@ function probeJoin(url) {
 /* ── one step ─────────────────────────────────────────────────────────── */
 /* `rs` is the measured window; `whole` the step from its first join, so the
    joins and zone entries the step made are counted with it */
-/* v2.3.3212: --tick-parts: the probes' tick parts, summed, as shares and KB a
+/* v2.3.3222: --tick-parts: the probes' tick parts, summed, as shares and KB a
    tick (bots.mjs countTickParts) */
 function tickPartsLine(rs) {
   const tot = {};
@@ -350,7 +350,7 @@ function summarise(n, rs, whole, cpu, secs) {
     seenSamples: seen.length,
     downKBps: r1(players ? sum('rxBytes') / secs / players / 1024 : 0),
     downTickKBps: r1(players ? sum('rxTickBytes') / secs / players / 1024 : 0),
-    tickParts: tickPartsLine(rs),   /* v2.3.3212: --tick-parts */
+    tickParts: tickPartsLine(rs),   /* v2.3.3222: --tick-parts */
     ticksPerPlayerPerSec: r1(players ? sum('rxTicks') / secs / players : 0),
     msgsPerPlayerPerSec: r1(players ? sum('rxMsgs') / secs / players : 0),
     roomOutMBps: r1(sum('rxBytes') / secs / 1048576),
@@ -387,7 +387,7 @@ async function cleanup() {
   if (copy && OPT.keepBundle) await keepBundle(copy.dir, OPT.keepBundle);
   if (copy) { try { await rm(copy.dir, { recursive: true, force: true }); } catch { /* best effort */ } }
 }
-/* v2.3.3212: --keep-bundle <dir>.  A CPU profile of the room (cdpprof.mjs)
+/* v2.3.3222: --keep-bundle <dir>.  A CPU profile of the room (cdpprof.mjs)
    names lines of the BUNDLE wrangler built, which goes with the copy; keep it
    (and its source map) to read them. */
 async function keepBundle(from, to) {
