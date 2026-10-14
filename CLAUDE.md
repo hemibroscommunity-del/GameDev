@@ -2604,10 +2604,15 @@ Two protocol versions coexist; both must keep working:
     limits (read only, best effort); the data centre lookup gives up after
     3 s and is skipped locally (LAB_LOCAL); a local dry run stops at 4
     objects at once (8 hung on wrangler 4.96.0's local runtime). On Cloudflare
-    (third run): objects of one script DO run side by side (8 at once 6.6x, 16
-    8.6x, in their own isolates), a Door in Newark and its World in Chicago
-    22 ms apart (p95 26, no stall in 630) -- placement is real -- and a
-    hibernation socket 4x dearer per message (218 against 51 us). One request
+    (third and fourth runs): objects of one script DO run side by side (8 at
+    once 5.9-6.6x, 16 6.2-8.6x, in their own isolates); two in one city 3-4 ms
+    apart, in two cities (Newark, Chicago) 22 ms -- placement is the whole
+    story; a hibernation socket's message about a plain one's (81 against 75
+    us in one city; the third run's 4x was the two cities), a call 10x a
+    socket message; the game's busiest recent day 76,277 invocations
+    (2026-10-11; every hibernation socket message is one -- "socket messages
+    in" reads 0 -- and whether the free plan's daily limit counts them 20:1 is
+    not documented: 4-5% of it, or 76%). One request
     may make at most 1,000 calls out (the call flood is 900); only Cloudflare's
     404 page is tried again (a 5xx means the lab ran); `node
     tools/lab/selftest.mjs` runs run.mjs whole against fakes, before every

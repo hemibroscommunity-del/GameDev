@@ -399,11 +399,17 @@ These are needed by ANY split. Several help at today's 120.
    reset at 00:00 UTC, and past one Cloudflare refuses that kind of work until
    midnight -- the game stops working:
    - **100,000 requests.** A web request, a call or an alarm is one, and so
-     are 20 incoming socket messages. A playing phone sends about 10-30
-     messages a second (the move diet, safe ground and standing still keep it
-     near the low end), so one player-hour is about 1,800-5,400 requests:
-     **about 20-55 player-hours of play a day in all** (*estimate*). That is a
-     handful of players for an evening, or 120 players for 10-30 minutes.
+     are 20 incoming socket messages -- for the BILL. A playing phone sends
+     about 10-30 messages a second (the move diet, safe ground and standing
+     still keep it near the low end), so one player-hour is about 1,800-5,400
+     requests: **about 20-55 player-hours of play a day in all** (*estimate*).
+     That is a handful of players for an evening, or 120 players for 10-30
+     minutes. Whether the free plan's daily LIMIT counts phone messages 20 to
+     one as well is not documented; if it counts each one, it is about 1-3
+     player-hours. Measured (the lab's part 4): the game's objects counted
+     76,277 on 2026-10-11, an hour of the room awake with a few players, and
+     1,983-3,613 on the days round it. Cloudflare counts every hibernation
+     socket message among the invocations (socket messages in read 0).
    - **13,000 GB-s awake.** The room is awake while anyone is connected
      (`startTickLoop` / the last leave), at 128 MB: about 29 hours of one room
      a day. Phase 1's doors break this alone -- 9 servers always on are

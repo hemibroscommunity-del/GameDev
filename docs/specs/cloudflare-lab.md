@@ -23,8 +23,11 @@ That matters for the lab, and much more for the game:
   was 20,000 calls, each a billed request, and the Door looked for a flood's
   end every 5 ms, one call a look: about 25,000 requests a run.
 - **The game's own room is the bigger story.** A playing phone sends about
-  10-30 messages a second, so 100,000 requests is about 20-55 player-hours of
-  play a day in all (*estimate*). SERVER-SPLIT-PLAN risk 8 has the rest.
+  10-30 messages a second. If the daily limit counts them 20 to one, as the
+  bill does, 100,000 requests is about 20-55 player-hours of play a day in
+  all; if it counts each one, about 1-3 (*estimates*). The fourth run's
+  figures (below) show the game's busiest recent day at 76,277 of them.
+  SERVER-SPLIT-PLAN risk 8 has the rest.
 
 What changed in the lab:
 
@@ -113,13 +116,83 @@ No stall in 630 round trips. That is risk 4 (placement) made real: an object
 starts near whoever first asks for it, so the world must make its own doors
 to keep them in its city.
 
-**Floods: a hibernation socket is about 4x dearer per message on Cloudflare.**
-10,000 messages took 505 ms on a plain socket (51 µs each) and 2,181 ms on a
-hibernation one (218 µs each). Locally the two were 6 and 10 µs. The game's
-room takes phones with the hibernation API.
+**Floods:** 10,000 messages took 505 ms on a plain socket (51 µs each) and
+2,181 ms on a hibernation one (218 µs each). That looked like a hibernation
+message costing 4x a plain one, but the fourth run (below), with both objects
+in one city, found the two the same. The gap was crossing between cities.
 
-The bill and the game's own days were not reached; the fourth run is for
-them.
+### What the fourth run measured (2026-10-14, every part)
+
+**Side by side: yes again**, a little lower: 8 at once did the work of 5.9,
+16 of 6.2. The objects were in Chicago and Dallas (ORD, DFW).
+
+| objects at once | time | side by side | isolates | where |
+|---|---|---|---|---|
+| 1 | 284 ms | 0.7 | 2 | ORD |
+| 2 | 344 ms | 1.2 | 4 | ORD |
+| 4 | 312 ms | 2.6 | 8 | ORD, DFW |
+| 8 | 279 ms | 5.9 | 11 | ORD, DFW |
+| 16 | 526 ms | 6.2 | 27 | ORD, DFW |
+
+**The delay between two servers in ONE city: 3-4 ms.** The Door and the
+World were both in Chicago this time:
+
+| way | p50 | p95 | p99 | max |
+|---|---|---|---|---|
+| call (JS RPC) | 4 ms | 6 ms | 8 ms | 9 ms |
+| socket, plain | 3 ms | 4 ms | 6 ms | 8 ms |
+| socket, hibernation | 3 ms | 4 ms | 6 ms | 7 ms |
+
+Against 22 ms when they were in different cities (the third run). Placement is
+the whole story: a door in the world's city adds a few ms, one elsewhere 20+.
+
+**Floods, in one city:**
+
+| what | messages | time | each |
+|---|---|---|---|
+| socket, plain, 100 B | 10,000 | 748 ms | 75 µs |
+| socket, hibernation, 100 B | 10,000 | 811 ms | 81 µs |
+| call (JS RPC), 100 B | 900 | 767 ms | 852 µs (64 at a time) |
+| socket, hibernation, 2 KB | 2,000 | 212 ms | 106 µs |
+
+- **A hibernation socket's message is about a plain one's** (81 against 75
+  µs). So the third run's 4x was the two cities, and switching the game's
+  room off the hibernation API is not worth it.
+- **A call is about 10x a socket message,** and each call is a billed
+  request, while 20 socket messages make one. Doors should talk to the world
+  over sockets, as the plan has it.
+
+**The bill:** the account's figures for the lab's objects had not come in
+after six minutes. That whole day's figures were still missing, the game's
+too, so the lab now asks only once more after the first comes up empty.
+
+**The game's own days** (brotown-server, every object), from the account's
+figures:
+
+| day (UTC) | calls and requests | socket msgs in | socket msgs out | awake GB-s | CPU s | rows written |
+|---|---|---|---|---|---|---|
+| 10-08 | 1 | 0 | 0 | 0 | 0 | 0 |
+| 10-09 | 5 | 0 | 0 | 0 | 0 | 0 |
+| 10-10 | 2,290 | 0 | 13,829 | 48 | 27 | 69 |
+| **10-11** | **76,277** | 0 | 262,824 | 433 | 304 | 747 |
+| 10-12 | 1,983 | 0 | 5,382 | 29 | 16 | 56 |
+| 10-13 | 3,613 | 0 | 27,759 | 89 | 45 | 88 |
+| 10-14 | not in yet | | | | | |
+
+- **"Socket messages in" is always 0, and the calls are many.** A
+  hibernation socket's every message is counted among the object's
+  invocations (Cloudflare: "metrics reflect actual usage"; the 20:1 is a
+  billing rule).
+- **So how much of the free plan's daily 100,000 did 10-11 use?** If the
+  limit counts phone messages 20 to one, as the bill does, about 4-5%. If it
+  counts them one for one, 76%: about an hour of the room awake (433 GB-s)
+  with a few players. Cloudflare's docs say the limit "includes WebSocket
+  messages" without saying which. A Cloudflare Community post (community
+  thread 967650) reports a free account refused below 100,000 even after the
+  20:1. Until it is known, a long playtest on the free plan can hit the
+  limit, and the game would stop until 00:00 UTC.
+- **Awake time and rows are far from their limits** (433 GB-s of 13,000; 747
+  rows written of 100,000).
 
 ## What it is for
 

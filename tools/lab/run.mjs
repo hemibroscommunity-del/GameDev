@@ -403,15 +403,20 @@ async function billing(from, to) {
   const res = { account: account.slice(0, 6) + '...', namespaces: byId, datasets: {} };
   /* the figures arrive a few minutes late: wait for them, up to six */
   const fromT = new Date(from.getTime() - 60000), toT = new Date(to.getTime() + 120000);
+  /* v2.3.3252: the fourth run waited the whole six minutes for each dataset
+     and got nothing (that day's figures had not come in at all, the game's
+     too): once one dataset has come up empty, the other is asked once */
+  let late = false;
   for (const ds of ['durableObjectsPeriodicGroups', 'durableObjectsInvocationsAdaptiveGroups']) {
     let got = null;
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < (late ? 1 : 12); i++) {
       const r = await dsSums(ds, { from: fromT, to: toT, ids });
       if (r.error && r.error !== 'no rows') { got = r; break; }
       if (r.total && r.rows) { got = r; if (i >= 4) break; }
-      await sleep(30000);
+      if (!late) await sleep(30000);
     }
-    res.datasets[ds] = got || { error: 'no figures after six minutes' };
+    if (!got) late = true;
+    res.datasets[ds] = got || { error: late && ds === 'durableObjectsInvocationsAdaptiveGroups' ? 'no figures yet (asked once: the other dataset had none after six minutes)' : 'no figures after six minutes' };
   }
   res.usage = usageOf(res.datasets.durableObjectsInvocationsAdaptiveGroups, res.datasets.durableObjectsPeriodicGroups);
   /* v2.3.3252: each flood's World by its own id -- its CPU over the messages
