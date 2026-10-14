@@ -84,7 +84,7 @@ const OPT = {
   inspectorPort: +arg('inspector-port', 0),   /* v2.3.3203: the runtime's debugger port, for a CPU profile (cdpprof.mjs) */
   server: arg('server', null),             /* a server/ folder to test instead of this repo's own */
   workerLog: arg('worker-log', null),      /* v2.3.3203: write the worker's whole log here at the end */
-  storm: process.argv.includes('--storm'), /* v2.3.3224: after the last step, every socket dropped at once and the way back measured */
+  storm: process.argv.includes('--storm'), /* v2.3.3244: after the last step, every socket dropped at once and the way back measured */
   stormMax: +arg('storm-max', 90),           /* seconds the storm is watched at most */
   recoverTo: +arg('recover-to', 0.6),       /* share of the players kept after a break */
   recoverSettle: +arg('recover-settle', 20), /* seconds given to come back before measuring */
@@ -401,7 +401,7 @@ async function main() {
   console.log(HEAD);
 
   const results = [];
-  let stormResult = null;   /* v2.3.3224: --storm */
+  let stormResult = null;   /* v2.3.3244: --storm */
   await mkdir(join(REPO, 'tools', 'qa', 'out', 'load'), { recursive: true });
   const stamp = startedAt.toISOString().replace(/[:.]/g, '-');
   const base = join(REPO, 'tools', 'qa', 'out', 'load', 'load-' + stamp);
@@ -496,7 +496,7 @@ async function main() {
     if (s.broken) { broke = s; break; }
   }
 
-  /* v2.3.3224: THE RECONNECT STORM (--storm).  A worker deploy, or a blip in
+  /* v2.3.3244: THE RECONNECT STORM (--storm).  A worker deploy, or a blip in
      the network, drops every phone at once, and each comes back on its own a
      second or so later: a join each, all at once, and each join is sent a
      snapshot of the whole room (join.js state_sync, getAllPlayerData).  Drop

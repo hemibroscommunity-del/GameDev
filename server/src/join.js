@@ -1422,7 +1422,7 @@ export const joinMethods = {
        one the allowlist exists to close, and it re-opens the moment any
        client merges player_join data wholesale, the way player_update
        already does for track relays. */
-    /* v2.3.3224: and only the public part of it (index.js PEER_PUBLIC_KEYS):
+    /* v2.3.3244: and only the public part of it (index.js PEER_PUBLIC_KEYS):
        cleanJoinData also holds the join's rpg* claims -- the phone's coins,
        bag, life skills and weapons -- which no peer reads and nobody else
        should see */

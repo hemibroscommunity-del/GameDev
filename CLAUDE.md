@@ -2353,7 +2353,7 @@ Two protocol versions coexist; both must keep working:
     after a full GC, 44 MB at the most in use, against Cloudflare's 128 MB
     (`tools/qa/load/heapprobe.mjs`, the inspector's heap during a load test):
     docs/specs/cap-120.md.
-  - v2.3.3224: THE OTHERS ARE TOLD WHAT THEY SEE, NOT YOUR BAG -- found by the
+  - v2.3.3244: THE OTHERS ARE TOLD WHAT THEY SEE, NOT YOUR BAG -- found by the
     owner's "stress test to see what can be optimized" (`load.mjs --storm`:
     every socket dropped at once, the way back measured): a joiner's
     `state_sync` gave every other player as `{...playerState, name,

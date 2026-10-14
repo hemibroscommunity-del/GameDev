@@ -78,7 +78,7 @@ function fresh() {
     wireRx: 0,   /* v2.3.3199: what the WIRE bot was sent, unzipped (load.mjs wireProxy) */
     txMsgs: 0, txBytes: 0, moves: 0, swings: 0,
     joins: [], entries: [], deliver: [], seen: [], tickRates: [],
-    joinBytes: [],   /* v2.3.3224: each state_sync's size, unzipped (load.mjs --storm) */
+    joinBytes: [],   /* v2.3.3244: each state_sync's size, unzipped (load.mjs --storm) */
     closes: {}, rejects: {}, errors: 0, deaths: 0, respawns: 0, roomFull: 0,
   };
 }
@@ -447,7 +447,7 @@ process.on('message', (msg) => {
       b.ws = null;
     }
   } else if (msg.cmd === 'drop') {
-    /* v2.3.3224: load.mjs --storm -- every socket dropped at once, as a
+    /* v2.3.3244: load.mjs --storm -- every socket dropped at once, as a
        network blip or a deploy does; each bot comes back on its own after
        retry()'s 1-3 s, as a phone does (wsClient's backoff) */
     for (const b of bots) {

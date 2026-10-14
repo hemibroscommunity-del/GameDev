@@ -962,12 +962,12 @@ let amuletGid = null;
     !/"gid"/.test(blob) && blob.indexOf(wornGid) === -1, blob.slice(0, 300));
   check('...nor the provenance mark, which is nobody else\'s business',
     !/"prov"/.test(blob));
-  /* v2.3.3224: the snapshot carries only what the others are drawn with
+  /* v2.3.3244: the snapshot carries only what the others are drawn with
      (index.js PEER_PUBLIC_KEYS): the worn objects and the stashes are not on
      it at all any more -- the armour on show goes as eqc/eql/eqs, the
      weapon's look as wpnType/wpnMat.  These two checks used to say the crop
      had kept them; now they say they are not sent. */
-  check('the WORN slots are not on it at all (only what is drawn: v2.3.3224)',
+  check('the WORN slots are not on it at all (only what is drawn: v2.3.3244)',
     !!all[PID8] && all[PID8].armor === undefined && all[PID8].shield === undefined,
     all[PID8] && { armor: all[PID8].armor, shield: all[PID8].shield });
   check('...nor the stash lists', !!all[PID8] && all[PID8].armorStash === undefined, all[PID8] && all[PID8].armorStash);
