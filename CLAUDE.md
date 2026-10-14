@@ -2519,6 +2519,42 @@ Two protocol versions coexist; both must keep working:
     2,800 px. No caps flag; `eventplace: false` the kill switch. `event-place`
     suite (35, ten mutations), `tools/qa/load/events-bench.mjs`:
     docs/specs/events-by-place.md.
+  - v2.3.3246: THE ROSTER'S FAR PLAYERS, SLIM -- the split plan's Phase 0b,
+    its first step (the worker alone), from the owner's "stress test to see
+    what can be optimized": once a second every phone was sent EVERY player's
+    whole entry (the presence roster, ~150 bytes each: 150 KB a second at
+    1,000). Now, on a presence tick, a v2 phone in the Wheel gets its own
+    roster (tick.js `rosterPlanFor`): the players within FAR_PLAYERS.NEAR_R in
+    its zone whole, as before; the far ones slim, `{x, y, d, z, vx, vy}` (the
+    fields wsClient.js's tick merge writes whether or not they are there --
+    slim-roster §8 reads them from the client itself); and a far player who has
+    not changed since the last roster only every `ROSTER.FAR_STILL_MS` 4 s,
+    inside the client's 10 s ghost sweep (§2: at most 4 s and one roster apart,
+    at 45 ticks a second and at 10). Sprint, skull, pet and the armour's grade
+    read as none for a far player the phone does not draw; the first whole
+    entry puts them back long before they are on screen. v1 phones, the other
+    zones and a socket that has not joined still get everyone whole. A phone at
+    120 ~9% less; in-process 12% / 17% / 23% less at 120 / 500 / 1,000 with
+    the room's time unchanged. No caps flag; kill switch `slimroster: false`.
+    `slim-roster` suite (21), far-players §8c, `tools/qa/load/
+    roster-bench.mjs`: docs/specs/slim-roster.md. The rest of 0b (far
+    positions only while the world map asks) needs a phone change.
+  - v2.3.3247: THE CLOUDFLARE LAB -- the split plan's lab, which the owner
+    said yes to ("Go recommended": the lab after Phase 0). Started BY HAND:
+    Actions tab -> "Cloudflare lab" -> Run workflow (`.github/workflows/
+    lab.yml`). It deploys a tiny worker of its own, `brotown-lab`
+    (tools/lab/: Burner, World and Door objects; NEVER the game, nothing
+    stored, every request but "/" needs the run's own key), times it from the
+    runner (tools/lab/run.mjs): do K objects of one script run side by side
+    (and in how many isolates), the delay between two objects (a call, a
+    plain socket, a hibernated one), floods of known size, and the account's
+    own figures for them (GraphQL, the fields asked of the schema; best
+    effort) -- and deletes it whatever happened. About a cent a run; results
+    on the run's summary and its `lab-results` download. It lives under
+    tools/, so a merge never sets off deploy-worker.yml. `node tools/lab/
+    run.mjs --local` is the same run on wrangler dev (one thread: side by side
+    1 at every K, which is what the test tells apart). The game's room on
+    Cloudflare with the bots is the next lab: docs/specs/cloudflare-lab.md.
 
 ## Conventions
 
