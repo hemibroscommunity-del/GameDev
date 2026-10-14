@@ -59,10 +59,30 @@ export const REGEN_TICKS = 30;
    Kill switches, live flags (no deploy): `farplayers: false` sends everyone
    every tick again, `roundpos: false` sends positions as the phones sent
    them.  Deploy-order safe both ways: an old client reads the same fields
-   and already handles a peer updated less often (the 1 Hz roster). */
+   and already handles a peer updated less often (the 1 Hz roster).
+
+   ═══ v2.3.3243: FAR PLAYERS ONCE A SECOND, WITH THE ROSTER ═══
+   Found by the owner's "stress test to see what can be optimized": the far
+   send above went to every phone in the Wheel four times a second, and it
+   carried EVERY player who had moved -- in a town crowd, all the near ones
+   the phone was already being sent on every tick, again.  At 120 players
+   that was about a third of what a phone in BroTown was sent.  The presence
+   roster (PRESENCE_REFRESH_TICKS, about once a second) already carries
+   everyone to everyone, where they are now; a player past NEAR_R is on
+   neither your screen nor your minimap, so the roster is enough for them.
+   EVERY_MS is now 0: no far send, the far players go with the roster.
+   Measured (docs/specs/far-players.md "Once a second"): at 120 players the
+   room ~5 points less busy (78-80% -> 73-76%), at 150 two more ticks a
+   second (35 -> 37), each phone's download 15-18% less, and the near
+   players' moves arriving sooner (less to do).  What shows: on the world
+   map, zoomed in on a part of the Wheel more than 2,400 px away, other
+   players' dots get an update once a second, and are carried along their
+   last speed in between (src/game/peerDot.js).
+   `far_ms` in the live flags (a number, 100-5000) brings back a far send
+   that often, without a deploy: 250 is v2.3.3197's. */
 export const FAR_PLAYERS = Object.freeze({
   NEAR_R: 2400,
-  EVERY_MS: 250,
+  EVERY_MS: 0,
 });
 
 /* a property name JSON.stringify would move to the front of an object
@@ -82,6 +102,12 @@ export const tickMethods = {
   _farPlayersOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'farplayers') && !f.farplayers);
+  },
+  /* v2.3.3243: how often the far players go out on their own (FAR_PLAYERS);
+     0 is "with the presence roster only".  `far_ms` in the live flags
+     overrides it, kept to 100-5000 ms. */
+  _farEveryMs() {
+    return this._flagNum ? this._flagNum('far_ms', FAR_PLAYERS.EVERY_MS, 100, 5000) : FAR_PLAYERS.EVERY_MS;
   },
   _roundPosOff() {
     const f = this._liveFlags;
@@ -409,9 +435,11 @@ export const tickMethods = {
       /* v2.3.3197: far players held back (FAR_PLAYERS) keep a quiet tick
          going until they are sent, so the last of a walk is never stuck */
       const farOn = !this._farPlayersOff();
+      /* v2.3.3243: 0 -- no far send, the far players go with the roster */
+      const farEvery = farOn ? this._farEveryMs() : 0;
       if (!farOn && this._farPending) this._farPending = null;
-      const farWaiting = farOn && !!this._farPending && this._farPending.size > 0
-        && Date.now() - (this._farLastAt || 0) >= FAR_PLAYERS.EVERY_MS;
+      const farWaiting = farEvery > 0 && !!this._farPending && this._farPending.size > 0
+        && Date.now() - (this._farLastAt || 0) >= farEvery;
       if (!hasDirty && !hasEvents && !hasMonsters && !hasNodes && !presenceTick && !farWaiting) { this.tickSeq++; return; }
 
       const seq = this.tickSeq++;
@@ -484,12 +512,14 @@ export const tickMethods = {
          sent all of them at once, at where they are now (farList, the same list
          for everyone).  A presence tick's roster already carries everyone. */
       const wheelDirty = farOn ? (dirtyByZone.get(WHEEL_ZONE) || null) : null;
-      if (wheelDirty) {
+      /* v2.3.3243: only kept for a far send of their own (`far_ms`); with the
+         roster alone nobody waits */
+      if (wheelDirty && farEvery > 0) {
         if (!this._farPending) this._farPending = new Set();
         for (const [id] of wheelDirty) this._farPending.add(id);
       }
-      const farDue = farOn && !!this._farPending && this._farPending.size > 0
-        && ts - (this._farLastAt || 0) >= FAR_PLAYERS.EVERY_MS;
+      const farDue = farEvery > 0 && !!this._farPending && this._farPending.size > 0
+        && ts - (this._farLastAt || 0) >= farEvery;
       const farFlush = farOn && (presenceTick || farDue);
       let farList = null;
       if (farDue && !presenceTick) {
