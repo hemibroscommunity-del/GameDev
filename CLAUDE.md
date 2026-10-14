@@ -596,6 +596,17 @@ remnant to migrate server-side, not a mode to preserve.
       there is no limiter on the bus);
     - test-world-core "hits sound like what they hit", `mp-hitsound`,
       `mp-hitvoices`, `mp-wheelbreak`: docs/specs/material-hit-sounds.md.
+    - since v2.3.3248 A FAR DEATH, SLAM OR BLAST IS NOT HEARD OR FELT -- the
+      owner, on the logged loose ends 21/22: "Go recommended": the Wheel is
+      one zone, so every monster's death sound, every landed slam's shake,
+      camera kick and beep, every wind-up's and miss's beep, every bow
+      special's blast and every slime's burst reached every phone in it; each
+      now goes by distance on the hits' curve (`earVol`), a death in full when
+      you helped kill it (`deathVol`, the worker's recipients stamped as
+      `_killMine`), a wind-up by the nearer of its caster and its aim, your
+      own blast in full; `BT_AUDIO.monsterDeath(arch, opts, k)`; kills still
+      go to every phone; `mp-farfeel`: material-hit-sounds.md "A far death,
+      slam or blast".
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
