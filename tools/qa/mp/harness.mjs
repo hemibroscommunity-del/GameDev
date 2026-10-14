@@ -237,7 +237,7 @@ export async function startWorker(port) {
   const env = process.env.BT_NO_TRACE === '1'
     ? Object.assign({}, process.env, { X_LOCAL_OBSERVABILITY: 'false', X_LOCAL_EXPLORER: 'false' })
     : process.env;
-  /* v2.3.3210: BT_MAX_PLAYERS=N runs a COPY of server/ with the player cap
+  /* v2.3.3220: BT_MAX_PLAYERS=N runs a COPY of server/ with the player cap
      set to N (load.mjs serverCopy's way), for a crowd scenario past the
      shipped cap (mp-crowdbots).  The repo's own server/ is never edited. */
   let cwd = join(REPO, 'server');

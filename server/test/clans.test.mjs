@@ -399,7 +399,7 @@ check('last leave dissolves the clan', !room._clans.has(redClan.id) && !state._s
   check('9.2a positive control: a reconnected member HAS the tag on playerState',
     room.playerState['bp_cl_hana'].clanTag === 'GRN', room.playerState['bp_cl_hana'].clanTag);
 
-  /* v2.3.3210: a tall, broad leaver -- the clear must keep the build */
+  /* v2.3.3220: a tall, broad leaver -- the clear must keep the build */
   sessionOf('bp_cl_hana').data.hg = 'tall';
   sessionOf('bp_cl_hana').data.fr = 'broad';
   sessionOf('bp_cl_hana')._look = { sigs: Object.create(null), fullAt: Date.now() };
@@ -409,9 +409,9 @@ check('last leave dissolves the clan', !room._clans.has(redClan.id) && !state._s
   {
     const upd = msgsOfType(wsI, 'player_update').filter((m) => m.id === 'bp_cl_hana');
     const last = upd[upd.length - 1];
-    check('9.3c v2.3.3210: the tag clear carries the leaver\'s build (hg/fr) -- a phone sets a peer\'s build from every relay',
+    check('9.3c v2.3.3220: the tag clear carries the leaver\'s build (hg/fr) -- a phone sets a peer\'s build from every relay',
       last && last.data.hg === 'tall' && last.data.fr === 'broad', last && last.data);
-    check('9.3d v2.3.3210: and the leaver\'s next look relay goes whole (lookrelay.js _lookForget)',
+    check('9.3d v2.3.3220: and the leaver\'s next look relay goes whole (lookrelay.js _lookForget)',
       sessionOf('bp_cl_hana')._look === null);
   }
   check('9.2 leaving strips the tag from playerState',

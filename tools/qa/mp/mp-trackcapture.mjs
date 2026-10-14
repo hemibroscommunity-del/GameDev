@@ -1,4 +1,4 @@
-/* ═══ v2.3.3210: A REAL PHONE'S 2-SECOND LOOK, FOR THE LOAD TEST'S BOTS ═══
+/* ═══ v2.3.3220: A REAL PHONE'S 2-SECOND LOOK, FOR THE LOAD TEST'S BOTS ═══
  *
  * Every phone sends `track` every 2 s (BroTown.jsx): its whole look, level,
  * HP, weapon and the inspect card's stats.  The worker relays each one to

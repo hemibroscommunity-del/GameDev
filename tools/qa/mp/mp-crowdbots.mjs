@@ -28,7 +28,7 @@
  * BT_NO_TRACE=1 (harness.mjs startWorker): without it wrangler's own local
  * tracing makes every message ~5x dearer (TRAPS §168) and the local room stops
  * letting bots in at about 95 players.  BT_MAX_PLAYERS=N runs a copy of the
- * server with that cap, for steps past 119 bots (v2.3.3210).  The bots send a
+ * server with that cap, for steps past 119 bots (v2.3.3220).  The bots send a
  * real phone's 2 s look (`track`) unless BT_CROWD_TRACK=0.
  */
 import * as H from './harness.mjs';
@@ -41,7 +41,7 @@ const STEPS = (process.env.BT_CROWD_STEPS || '0,25,50,80,110').split(',').map(Nu
 const SAMPLE_MS = Number(process.env.BT_CROWD_SAMPLE_MS || 10000);
 /* the bots' circle round the square: 420 keeps them on the phone's screen;
    BT_CROWD_WALKR=2400 spreads them over the town and commons, most of them
-   off it (v2.3.3210) */
+   off it (v2.3.3220) */
 const WALK_R = Number(process.env.BT_CROWD_WALKR || 420);
 const HOMES = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'];
 
@@ -64,7 +64,7 @@ function startBots(wsPort) {
     child.send({ cmd: 'config', cfg: {
       url: `ws://127.0.0.1:${wsPort}/ws?room=${ROOM}&rf=1`, wireUrl: null, fighters: 0, homes: HOMES, tag: String.fromCharCode(99 + i),
       idle: false, walkR: WALK_R,
-      /* v2.3.3210: each bot sends a real phone's 2 s look, as players do
+      /* v2.3.3220: each bot sends a real phone's 2 s look, as players do
          (bots.mjs --track), so the phone hears the worker's relays too */
       track: process.env.BT_CROWD_TRACK !== '0',
     } });

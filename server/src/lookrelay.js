@@ -1,4 +1,4 @@
-/* ═══ v2.3.3210: A PLAYER'S LOOK IS RELAYED WHEN IT CHANGES, NOT EVERY 2 s ═══
+/* ═══ v2.3.3220: A PLAYER'S LOOK IS RELAYED WHEN IT CHANGES, NOT EVERY 2 s ═══
  *
  * Owner, 2026-10-13: "Go recommended but I want you to stress test to see what
  * can be optimized."
@@ -32,7 +32,7 @@
  *     slung shield and block pose from `rpgData.shield` (entityRenderer), and
  *     the equipment sheet and clan lists read its gear and clan names -- so
  *     any change there relays `rpgData`, whole, at once.  (The first cut of
- *     v2.3.3210 held ALL of rpgData back, and a shield put on or taken off
+ *     v2.3.3220 held ALL of rpgData back, and a shield put on or taken off
  *     could take a minute to show on the others' screens.)
  *   - `hg` and `fr` go in EVERY relay that carries them (ALWAYS): wsClient sets
  *     a peer's height and frame from them unconditionally (`_ud.hg || null`), so

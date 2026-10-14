@@ -2328,7 +2328,7 @@ Two protocol versions coexist; both must keep working:
     after a full GC, 44 MB at the most in use, against Cloudflare's 128 MB
     (`tools/qa/load/heapprobe.mjs`, the inspector's heap during a load test):
     docs/specs/cap-120.md.
-  - v2.3.3210: A LOOK IS RELAYED WHEN IT CHANGES -- found by the owner's
+  - v2.3.3220: A LOOK IS RELAYED WHEN IT CHANGES -- found by the owner's
     "stress test to see what can be optimized":
     - every phone sends `track` (its whole look and stats, ~940 B) every 2 s,
       and the worker relayed each to every other player as its own message:

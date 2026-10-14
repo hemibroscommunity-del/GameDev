@@ -36,12 +36,12 @@ import { PlainWS } from './plainws.mjs';
 import { MOVE_DIET, dietMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3204: --diet, the phone's own rule */
 import { readFileSync } from 'node:fs';
 
-/* ═══ v2.3.3210: --track, THE LOOK EVERY PHONE SENDS EVERY 2 s ═══
+/* ═══ v2.3.3220: --track, THE LOOK EVERY PHONE SENDS EVERY 2 s ═══
    BroTown.jsx sends `track` every 2 s whatever changed: the whole look (hair,
    clothes, gear, drawings), level, HP, weapon and the inspect card's stats.
    The worker relays each one to EVERY other player in the room as a message of
    its own (index.js case 'track', broadcastExcept).  The bots never sent it,
-   so every capacity number before v2.3.3210 left it out.  The payload is a
+   so every capacity number before v2.3.3220 left it out.  The payload is a
    real phone's (track-sample.json, captured from the game by
    mp-trackcapture), each bot's own name, place and zone put in. */
 const TRACK_MS = 2000;
@@ -180,7 +180,7 @@ function onMessage(bot, data) {
     else if (bot.fighter && bot.state === 'walking' && (++bot.tickN % 4) === 0) fighterTick(bot, data);
     return;
   }
-  /* v2.3.3210: the worker's relay of another player's 2 s look (--track):
+  /* v2.3.3220: the worker's relay of another player's 2 s look (--track):
      counted, not parsed -- a bot has no use for it, and parsing N/2 of them a
      second each would make the BOTS the bottleneck */
   if (data.startsWith('{"type":"player_update"')) {
@@ -278,7 +278,7 @@ function startWalking(bot) {
     if (bot.state !== 'walking') return;
     bot.timer = setInterval(() => step(bot), moveGap(bot));
   }, rand(0, moveGap(bot)));
-  /* v2.3.3210: --track, the phone's 2 s look (above) */
+  /* v2.3.3220: --track, the phone's 2 s look (above) */
   if (CFG.track && !bot.trackTimer) {
     setTimeout(() => {
       if (bot.trackTimer || bot.retired) return;

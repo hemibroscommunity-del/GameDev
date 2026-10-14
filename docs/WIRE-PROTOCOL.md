@@ -241,7 +241,7 @@ Two properties make this safe and worth preserving:
   as a visual hint, **never** merged into player state. Position belongs to
   `move` alone, behind the 500 px/s anti-teleport cap.
 
-**v2.3.3210: the `player_update` relay carries what CHANGED, and only when
+**v2.3.3220: the `player_update` relay carries what CHANGED, and only when
 something did** (`server/src/lookrelay.js`, `docs/specs/look-relay.md`).
 The phones merge it, writing only the keys it carries.
 
