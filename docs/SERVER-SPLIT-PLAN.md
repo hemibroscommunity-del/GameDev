@@ -261,6 +261,11 @@ These are needed by ANY split. Several help at today's 120.
 - **0c. Far players at scale.** Four times a second, every phone is sent every
   player who moved anywhere in the Wheel (`FAR_PLAYERS`, #886). At 1,000 this
   becomes "the players on your minimap", as positions only.
+  - *v2.3.3243, the first step:* that send is gone. A player past 2,400 px
+    (who is on neither your screen nor your minimap) reaches you only in the
+    once-a-second roster, which is 0b's to slim down. At 120 players the room
+    is about 5 points less busy and each phone downloads 15-18% less
+    (`docs/specs/far-players.md` "Once a second").
 - **0d. Events by place.** Every game event goes to every phone in the Wheel:
   up to 500 events and 64 KB a tick (tick.js). At 1,000 players that is one
   room-wide queue of everyone's fights.

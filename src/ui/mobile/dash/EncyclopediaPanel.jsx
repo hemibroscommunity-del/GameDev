@@ -68,25 +68,33 @@ export const EncyclopediaPanel = () => {
   const seenMats      = R._seenMaterials || {};
   const seenZones     = R._visitedZones || R._seenZones || [];
 
-  let rows = [];
-  if (tab === 'codex') {
-    rows = Object.keys(seenCol).map(id => ({ id, label: id }));
-  } else if (tab === 'materials') {
-    rows = Object.entries(seenMats).map(([id, n]) => ({ id, label: id, count: n }));
-  } else if (tab === 'zones') {
-    rows = (seenZones || []).map(z => ({ id: z, label: z }));
-  }
+  /* ═══ v2.3.3215: TABS WITH NOTHING IN THEM, FOR ANYONE, STEP ASIDE ═══
+     The owner: "is there a way to display more data without needing to
+     scroll down so much?"  The row of tabs over the monsters is 50 px of a
+     ~190 px sheet, and three of its four tabs read lists nothing in the game
+     writes any more (`_seenCollisions`, `_seenMaterials`, `_visitedZones`:
+     grep finds no writer, only readers) -- "Nothing discovered in this
+     category yet" for every player.  So the row shows only once one of them
+     has something in it; the code that draws them is all still here. */
+  const lists = {
+    codex: Object.keys(seenCol).map(id => ({ id, label: id })),
+    materials: Object.entries(seenMats).map(([id, n]) => ({ id, label: id, count: n })),
+    zones: (Array.isArray(seenZones) ? seenZones : []).map(z => ({ id: z, label: z })),
+  };
+  const showTabs = lists.codex.length + lists.materials.length + lists.zones.length > 0;
+  const cur = showTabs ? tab : 'monsters';
+  const rows = cur === 'monsters' ? [] : lists[cur] || [];
 
   return (
     <div style={panelStyle}>
-      <div style={{ display: tab === 'monsters' && monster ? 'none' : 'flex', gap: 6, marginBottom: 6, overflowX: 'auto', padding: '2px 0' }}>
+      <div data-cx-panel-tabs style={{ display: !showTabs || (cur === 'monsters' && monster) ? 'none' : 'flex', gap: 6, marginBottom: 6, overflowX: 'auto', padding: '2px 0' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={chipHit}>
-            <span style={chip(t.id === tab)}>{t.label}</span>
+            <span style={chip(t.id === cur)}>{t.label}</span>
           </button>
         ))}
       </div>
-      {tab === 'monsters' ? <MonsterCodex open={monster} setOpen={setMonster} /> : rows.length === 0 ? (
+      {cur === 'monsters' ? <MonsterCodex open={monster} setOpen={setMonster} /> : rows.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '16px 0' }}>
           {/* v2.3.1235: batch-1 rollout — empty-state contract: icon ≤40px,
               message 13/700 secondary (was 44px icon + 13/400 muted). */}

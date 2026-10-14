@@ -20,9 +20,22 @@
  *      still in it, and the presence roster still carries everyone;
  *   9. the two message builders agree byte for byte with far players about,
  *      ids that are array indexes included (they change JSON's key order).
+ *
+ * v2.3.3243: EVERY is 0 -- no far send, the far players go
+ * with the presence roster (about once a second).  Sections 2-9 run with
+ * `far_ms: 250` in the live flags, which brings v2.3.3197's far send back
+ * (EVERY below), so they check that lever; section 10 checks the default:
+ *  10. a far walker reaches a phone on the roster's ticks only, at its latest
+ *      place; a near one on every tick; a far player who stopped is where it
+ *      stopped at the next roster; nobody waits for a far send; `far_ms` is
+ *      kept to 100-5000 ms; the two builders still agree byte for byte.
  */
 import { GameRoom } from '../src/index.js';
 import { FAR_PLAYERS } from '../src/tick.js';
+
+/* v2.3.3243: the far send sections 2-9 check, brought back by `far_ms` */
+const EVERY = 250;
+const FLAGS = { steadymovers: false, far_ms: EVERY };
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -30,7 +43,7 @@ function check(name, cond, detail) {
   else { failed++; console.log('FAIL ' + name + (detail === undefined ? '' : '  ' + JSON.stringify(detail).slice(0, 600))); }
 }
 
-/* a clock the test moves, so EVERY_MS is exact */
+/* a clock the test moves, so EVERY is exact */
 let NOW = 1_800_000_000_000;
 const realNow = Date.now;
 Date.now = () => NOW;
@@ -52,7 +65,7 @@ const mockEnv = { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: asy
 function fakeWs() { return { sent: [], send(s) { this.sent.push(s); }, close() {} }; }
 function baseSession() { return { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '' }; }
 
-async function makeRoom() {
+async function makeRoom(flags) {
   const room = new GameRoom(mockState(), mockEnv);
   let tickFn = null;
   const realSetInterval = globalThis.setInterval;
@@ -66,7 +79,7 @@ async function makeRoom() {
      small test moves at a time -- which steady-movers holding (a player on
      the line their last update drew, steadymovers.js) would rightly hold.
      steady-movers.test.mjs checks that, with near and far players too. */
-  room._liveFlags = { steadymovers: false };
+  room._liveFlags = Object.assign({}, flags || FLAGS);
   return { room, tickFn };
 }
 async function join(room, id, { pv = 2 } = {}) {
@@ -148,16 +161,16 @@ step(room, tickFn, everyone);
   const pb = (playersOf(A) || {}).fb;
   check('1a a position is sent in whole pixels', pb && pb.x === ARRIVAL.x + 1000 && pb.y === ARRIVAL.y + 1, pb);
   check('1b a velocity in whole numbers', pb && pb.vx === 13 && pb.vy === -7, pb);
-  room._liveFlags = { roundpos: false, steadymovers: false };
+  room._liveFlags = Object.assign({}, FLAGS, { roundpos: false });
   skipPresence(room, tickFn, everyone);
   await move(room, B, ARRIVAL.x + 1000.41, ARRIVAL.y + 0.62, 'wheel', 12.6, -7.4);
   step(room, tickFn, everyone);
   const pb2 = (playersOf(A) || {}).fb;
   check('1c roundpos: false sends them as they came', pb2 && pb2.x === ARRIVAL.x + 1000.41 && pb2.vx === 12.6, pb2);
-  room._liveFlags = { steadymovers: false };
+  room._liveFlags = Object.assign({}, FLAGS);
 }
 
-/* ── 2. near every tick, far at most every EVERY_MS, at the latest ─────── */
+/* ── 2. near every tick, far at most every EVERY ms (`far_ms`), at the latest */
 {
   skipPresence(room, tickFn, everyone);
   freshFar(room);
@@ -169,7 +182,7 @@ step(room, tickFn, everyone);
   check('2b the far mover is not, yet', !p1.fc, Object.keys(p1));
   const own = playersOf(C) || {};
   check('2c the far mover still gets its own move', !!own.fc, Object.keys(own));
-  /* C walks on; nothing reaches A until EVERY_MS has passed since the last far send */
+  /* C walks on; nothing reaches A until EVERY ms have passed since the last far send */
   let sawEarly = false, sawAt = -1, got = null;
   const t0 = room._farLastAt;
   for (let i = 0; i < 20 && sawAt < 0; i++) {
@@ -177,11 +190,11 @@ step(room, tickFn, everyone);
     step(room, tickFn, everyone);
     const pc = (playersOf(A) || {}).fc;
     if (pc) {
-      if (NOW - t0 < FAR_PLAYERS.EVERY_MS && room.tickSeq % room.PRESENCE_REFRESH_TICKS !== 1) sawEarly = true;
+      if (NOW - t0 < EVERY && room.tickSeq % room.PRESENCE_REFRESH_TICKS !== 1) sawEarly = true;
       sawAt = NOW - t0; got = pc;
     }
   }
-  check('2d the far mover is held back until EVERY_MS', !sawEarly && sawAt >= FAR_PLAYERS.EVERY_MS && sawAt < FAR_PLAYERS.EVERY_MS + 2 * room.TICK_RATE, { sawAt });
+  check('2d the far mover is held back until EVERY ms', !sawEarly && sawAt >= EVERY && sawAt < EVERY + 2 * room.TICK_RATE, { sawAt });
   check('2e ...and then sent where it is now', got && got.x === Math.round(C.x) && got.y === Math.round(C.y), { got, C: [C.x, C.y] });
   skipPresence(room, tickFn, everyone);
   step(room, tickFn, everyone);
@@ -210,7 +223,7 @@ step(room, tickFn, everyone);
     const pc = (playersOf(A) || {}).fc;
     if (pc && pc.x === Math.round(C.x)) at = NOW - t0;
   }
-  check('3a a far player who stopped is sent within EVERY_MS anyway', at >= 0 && at <= FAR_PLAYERS.EVERY_MS + room.TICK_RATE, { at });
+  check('3a a far player who stopped is sent within EVERY ms anyway', at >= 0 && at <= EVERY + room.TICK_RATE, { at });
 }
 
 /* ── 4. NEAR_R is the line ─────────────────────────────────────────────── */
@@ -259,14 +272,14 @@ step(room, tickFn, everyone);
 
 /* ── 7. the kill switch ────────────────────────────────────────────────── */
 {
-  room._liveFlags = { farplayers: false, steadymovers: false };
+  room._liveFlags = Object.assign({}, FLAGS, { farplayers: false });
   skipPresence(room, tickFn, everyone);
   room._farLastAt = NOW;
   await move(room, C, C.x + 4, C.y);
   step(room, tickFn, everyone);
   check('7a farplayers: false sends the far mover on its tick', !!(playersOf(A) || {}).fc);
   check('7b and holds nothing back', !room._farPending);
-  room._liveFlags = { steadymovers: false };
+  room._liveFlags = Object.assign({}, FLAGS);
 }
 
 /* ── 8. leaving the Wheel; the roster ──────────────────────────────────── */
@@ -334,6 +347,88 @@ step(room, tickFn, everyone);
   /* 200 ticks of 22 ms is 4.4 s: one far send every 12 ticks (264 ms) */
   check('9c far sends happened (~4 a second)', farSends >= 14 && farSends <= 22, farSends);
   check('9d and ticks carried only the near ones', partial > 50, partial);
+}
+
+/* ── 10. v2.3.3243: by default the far players go with the roster ──────── */
+{
+  const r2 = await makeRoom({ steadymovers: false });
+  const room2 = r2.room, tick2 = r2.tickFn;
+  const A2 = await join(room2, 'ga');
+  const B2 = await join(room2, 'gb');
+  const C2 = await join(room2, 'gc');
+  const all2 = [A2, B2, C2];
+  const far2 = quietSpot(room2, 5000);
+  await place(room2, A2, ARRIVAL.x, ARRIVAL.y);
+  await place(room2, B2, ARRIVAL.x + 1000, ARRIVAL.y);
+  await place(room2, C2, far2.x, far2.y);
+  step(room2, tick2, all2);
+  check('10a the default sends no far players on their own (FAR_PLAYERS.EVERY_MS 0)', FAR_PLAYERS.EVERY_MS === 0 && room2._farEveryMs() === 0);
+  /* both walk for 2.5 s: B near A, C far from it */
+  let farTicks = 0, farOffRoster = 0, stale = null, nearMissed = 0, nearMoves = 0;
+  const t0 = NOW;
+  while (NOW - t0 < 2500) {
+    await move(room2, B2, B2.x + (nearMoves % 2 ? -4 : 4), B2.y); nearMoves++;
+    await move(room2, C2, C2.x + (nearMoves % 2 ? -4 : 4), C2.y);
+    const roster = room2.tickSeq % room2.PRESENCE_REFRESH_TICKS === 0;
+    step(room2, tick2, all2);
+    const pa = playersOf(A2) || {};
+    if (!pa.gb) nearMissed++;
+    if (pa.gc) {
+      farTicks++;
+      if (!roster) farOffRoster++;
+      if (pa.gc.x !== Math.round(C2.x) && !stale) stale = { sent: pa.gc.x, at: C2.x };
+    }
+  }
+  const rosters = Math.floor(2500 / room2.TICK_RATE / room2.PRESENCE_REFRESH_TICKS);
+  check(`10b a far walker reaches A on the roster's ticks only, about once a second (${farTicks} times in 2.5 s)`,
+    farOffRoster === 0 && farTicks >= rosters && farTicks <= rosters + 1, { farTicks, farOffRoster, rosters });
+  check('10c ...each time where it is now', !stale, stale);
+  check('10d the near walker on every tick it moves, as before', nearMissed === 0, { nearMissed, nearMoves });
+  check('10e nobody waits for a far send', !room2._farPending || room2._farPending.size === 0, room2._farPending && room2._farPending.size);
+  /* C stops; its last place is at the next roster, and no tick runs early for it */
+  skipPresence(room2, tick2, all2);
+  await move(room2, C2, C2.x + 3, C2.y, 'wheel', 0, 0);
+  let at = -1, sentEarly = false;
+  for (let i = 0; i < room2.PRESENCE_REFRESH_TICKS + 2 && at < 0; i++) {
+    const roster = room2.tickSeq % room2.PRESENCE_REFRESH_TICKS === 0;
+    step(room2, tick2, all2);
+    const pc = (playersOf(A2) || {}).gc;
+    if (pc) { if (!roster) sentEarly = true; if (pc.x === Math.round(C2.x)) at = i; }
+  }
+  check('10f a far player who stopped is where it stopped at the next roster', at >= 0 && !sentEarly, { at, sentEarly });
+  /* `far_ms` is kept to 100-5000 ms */
+  room2._liveFlags = { steadymovers: false, far_ms: 20 };
+  const low = room2._farEveryMs();
+  room2._liveFlags = { steadymovers: false, far_ms: 99999 };
+  const high = room2._farEveryMs();
+  room2._liveFlags = { steadymovers: false, far_ms: 'often' };
+  const junk = room2._farEveryMs();
+  check('10g far_ms is kept to 100-5000 ms, and only a number counts', low === 100 && high === 5000 && junk === 0, { low, high, junk });
+  /* turned on, a far send comes back; turned off again, it goes */
+  room2._liveFlags = { steadymovers: false, far_ms: 250 };
+  skipPresence(room2, tick2, all2);
+  freshFar(room2);
+  let back = 0;
+  const t1 = NOW;
+  while (NOW - t1 < 1000) {
+    await move(room2, C2, C2.x + (back % 2 ? -4 : 4), C2.y);
+    const roster = room2.tickSeq % room2.PRESENCE_REFRESH_TICKS === 0;
+    step(room2, tick2, all2);
+    if ((playersOf(A2) || {}).gc && !roster) back++;
+  }
+  check('10h far_ms 250 brings the far send back (~4 a second besides the roster)', back >= 3 && back <= 5, { back });
+  room2._liveFlags = { steadymovers: false };
+  /* the two builders, with the far players riding the roster */
+  const verify = { checked: 0, mismatched: 0, first: null };
+  room2._tickShareVerify = verify;
+  let seed = 11;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
+  for (let t = 0; t < 150; t++) {
+    for (const p of all2) if (rnd() < 0.6) await move(room2, p, p.x + (rnd() - 0.5) * 10, p.y + (rnd() - 0.5) * 10);
+    step(room2, tick2, all2);
+  }
+  room2._tickShareVerify = null;
+  check(`10i the shared and the whole-message builders agree byte for byte (${verify.checked} messages)`, verify.checked > 200 && verify.mismatched === 0, verify.first);
 }
 
 Date.now = realNow;

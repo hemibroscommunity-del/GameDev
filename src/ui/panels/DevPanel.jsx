@@ -189,6 +189,7 @@ const CAP_GATES = [
   'movediet' /* v2.3.3204: a steady walk on the Wheel's safe ground sent every 66 ms -- lower case, a kill switch */,
   'codex' /* v2.3.3209: the monster codex's kill counts (server/src/codex.js) -- lower case, a kill switch */,
   'killroll' /* v2.3.3209: one roll a kill, each drop its own numbers, shown over the monster (server/src/killroll.js) -- lower case, a kill switch */,
+  'hitladder' /* v2.3.3229: the hit ladder -- each life-skill level adds a 10% chance of one more (server/src/gathering.js gatherHitRoll) -- lower case, a kill switch */,
   'presence2' /* v2.3.3250: far players only while the world map is open, the online list, far copies parked (server/src/presence2.js) -- lower case, a kill switch */,
 ];
 
@@ -214,7 +215,8 @@ const CAP_NOTES = {
   bigorb: 'the staff special as one big, swingy bolt that explodes (v2.3.2849; without it: the three-orb volley, no blast)',
   blockScale: 'the shield block count',
   zoneDepth: 'Wind Dunes perspective — things shrink and slow toward the north edge',
-  gatherhits: 'gathering hits — a rock, tree or pond has HP that your swings knock off (1 to your skill level each) before the gesture; without it: the old timer (v2.3.2956)',
+  gatherhits: 'gathering hits — a rock, tree or pond has HP that your swings knock off (each hit rolled off your skill level: see hitladder) before the gesture; without it: the old timer (v2.3.2956)',
+  hitladder: 'the hit ladder — each life-skill level adds a 10% chance of hitting one more (level 3: 1 eight times in ten, 2 or 3 once each; from level 11 no more 1s); without it: every hit 1 to your level, evenly (v2.3.3229)',
   bowvolley: 'the bow special as three white-hot arrows, two-thirds of a special each, a 2.5 s burn, no blast (v2.3.2849; without it: one arrow, its 4 s burn and the blast)',
   wheelmonsters: 'monsters in the Wheel (?trial=wheel): each land\'s own at the inner end of its spoke (v2.3.2978; without it: the Wheel has none)',
   sprint: 'the sprint button right of the movement stick (and Shift): a third faster while your stamina lasts (v2.3.3006; without it: no button, everyone walks)',
@@ -523,6 +525,21 @@ export const DevPanel = ({ onClose }) => {
               onClick={async () => { const j = await call('/dev/farmripe', { playerId: myId }); if (j) { setMsg(j.ripened ? 'Ripened ' + j.ripened + ' bed' + (j.ripened === 1 ? '' : 's') + ' — open the Feed & Seed to harvest.' : 'Nothing growing to ripen.'); } }}>
               Ripen my farm now
             </button>
+            {/* v2.3.3229: the hit ladder is felt by level (Mining 3 hits 1 eight
+                times in ten, Mining 11 never does) -- set the four hit skills
+                (mining, woodcutting, fishing, cooking) to one level at once
+                (server devtools.js _devLifeSkill); the next harvest rolls it. */}
+            <div style={{ color: COL.muted, fontSize: 12, margin: '6px 0 4px' }}>
+              Gathering + cooking level (the hit ladder)
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginBottom: 4 }}>
+              {[1, 3, 5, 10, 11, 20].map((lv) => (
+                <button key={lv} type="button" style={{ ...chip, minHeight: 34 }} disabled={busy || !myId} data-dev-hit-level={lv}
+                  onClick={async () => { const j = await call('/dev/lifeskill', { playerId: myId, skill: 'hits', level: lv }); if (j) { setMsg('Mining, Woodcutting, Fishing and Cooking are level ' + j.level + ' -- open Skills to see each hit\'s odds.'); refresh(); } }}>
+                  {lv}
+                </button>
+              ))}
+            </div>
 
             <div style={label}>Key</div>
             {/* ═══ v2.3.2277: RESOURCES FOR TESTING ═══

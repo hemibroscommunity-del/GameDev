@@ -14,8 +14,12 @@
  *      steady movers -- 12 a second at least);
  *   2. is carried out past NEAR_R and walks there: the watcher's copy is
  *      updated about four times a second, never drops out of the watcher's
- *      players, and ends where the walker stopped (v2.3.3250: with the
- *      watcher's world map open -- presence v2 sends far players only then);
+ *      players, and ends where the walker stopped (v2.3.3243: about once a
+ *      second, with the presence roster -- no far send of its own any more,
+ *      FAR_PLAYERS.EVERY_MS 0; `BT_FARPEER_FAR_MS=250` runs it against a
+ *      server whose live flags carry `far_ms: 250`, the old four; v2.3.3250:
+ *      with the watcher's world map open -- presence v2 sends far players
+ *      only then);
  *   3. comes back and walks beside the watcher again: every move again;
  *   4. positions reach the watcher in whole pixels;
  *   5. no page errors.
@@ -29,6 +33,9 @@ const NEAR_R = 2400;   /* server/src/tick.js FAR_PLAYERS.NEAR_R */
 const ROOM = 'farpeer';
 const STEP_MS = 33;    /* wsClient.js MOVE_GAP_SEEN_MS */
 const SPEED = 165;     /* px a second */
+/* v2.3.3243: the far send's own interval on the server under test (its live
+   flag `far_ms`); 0, the default, is "with the presence roster only" */
+const FAR_MS = Number(process.env.BT_FARPEER_FAR_MS || 0);
 
 /* the walker: a bare socket speaking the game's protocol (tools/qa/load/bots.mjs) */
 function walker(wsPort) {
@@ -96,6 +103,16 @@ function countTicks() {
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
+  /* v2.3.3243: BT_FARPEER_FAR_MS -- the room's own far send back, through its
+     live flags (POST /api/admin/flags, liveops.js), before anyone joins */
+  if (FAR_MS > 0) {
+    const res = await fetch(`http://127.0.0.1:${wsPort}/api/admin/flags?room=${ROOM}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${H.ADMIN_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'far_ms', value: FAR_MS }),
+    }).catch((e) => ({ ok: false, status: String(e) }));
+    rec.ok(`far_ms ${FAR_MS} in the room's live flags`, !!res.ok, res.status);
+  }
   const B = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort, world: 'wheel', viewport: VIEW, query: 'room=' + ROOM, init: countTicks });
   await H.enterWorld(B);
   let inWheel = false;
@@ -164,12 +181,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await W.place(b0.x + 300, b0.y - 2700);
   await B.page.waitForTimeout(1500);
   const far = await watch(3000);
-  await B.page.waitForTimeout(800);   /* the next far send, and its trip */
+  await B.page.waitForTimeout(1600);   /* the next roster (about a second), and its trip */
   const p2 = await peerOnB();
   const d2 = Math.hypot(W.x - b0.x, W.y - b0.y);
   const gap = p2 ? Math.hypot(p2.x - W.x, p2.y - W.y) : Infinity;
-  rec.ok(`far (${Math.round(d2)} px): the watcher's copy was updated ${far.perSec} times a second for the walker's ${far.sentPerSec} moves`,
-    d2 > NEAR_R && far.perSec >= 3 && far.perSec <= 6 && far.sentPerSec >= 25, { far, d2 });
+  /* v2.3.3243: with the presence roster only, about once a second (every 45
+     ticks); a far send of its own (`far_ms`) was four a second */
+  const [lo, hi] = FAR_MS > 0 ? [Math.min(3, 1000 / FAR_MS - 1), 1000 / FAR_MS + 2] : [0.5, 1.5];
+  rec.ok(`far (${Math.round(d2)} px): the watcher's copy was updated ${far.perSec} times a second for the walker's ${far.sentPerSec} moves (${FAR_MS > 0 ? 'far_ms ' + FAR_MS : 'with the roster'})`,
+    d2 > NEAR_R && far.perSec >= lo && far.perSec <= hi && far.sentPerSec >= 25, { far, d2, lo, hi });
   rec.ok(`far: the walker never dropped out of the watcher's players (${far.missing} of ${far.present + far.missing} samples missing)`,
     far.missing === 0 && far.present > 0, far);
   rec.ok(`far: once they stop, the watcher's copy is where they stopped (${gap.toFixed(1)} px off, in the Wheel)`,

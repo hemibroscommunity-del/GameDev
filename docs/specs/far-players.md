@@ -129,10 +129,87 @@ own land, the eight lands far apart):
   no page errors. (The walker is a bare socket because this box draws a
   browser a few frames a second, and a page sends a move a frame.)
 
+## Once a second, with the roster (v2.3.3243)
+
+> Owner, 2026-10-13: *"Go recommended but I want you to stress test to see
+> what can be optimized."*
+
+**What the stress test found.** The far send went to every phone in the Wheel
+four times a second, and it carried EVERY player who had moved since the last
+one -- in a town crowd, all the near players the phone was already being sent
+on every tick, again. At 120 players that was about a third of the player
+entries a phone in BroTown was sent. And the presence roster
+(`PRESENCE_REFRESH_TICKS`, about once a second) already carries every player
+to every phone, where they are now.
+
+**What changed.** `FAR_PLAYERS.EVERY_MS` is 0: there is no far send. A player
+more than 2,400 px from you reaches your phone only in the roster, about once a
+second, where they are now. Players near you are sent exactly as before.
+
+- They are on neither your screen nor your minimap (above, "Why nobody sees
+  the difference").
+- **The world map**, zoomed in on a part of the Wheel more than 2,400 px from
+  you, shows their dots. Each dot is now carried along that player's last speed
+  since their last update (`src/game/peerDot.js`, at most 1.5 s), so a walker
+  glides instead of hopping once a second; a stop or a turn shows at the next
+  roster. The minimap does the same, which matters only at the Wheel's edge,
+  where the box stops centring on you and can show a player past 2,400 px.
+- A player coming into your 2,400 px circle is sent on the tick they move,
+  still well off your screen, as before.
+
+**Measured** with the load test (`load.mjs --track --diet --tick-parts`, 120
+then 150 players, 90 s each), today's server three times against this one
+twice, interleaved:
+
+| | today (3 runs) | once a second (2 runs) |
+|---|---|---|
+| **120 players:** the room's thread | 78.2-80.1% | 73.0-75.9% |
+| ticks a second | 39.8-40.0 | 40.9-41.0 |
+| each phone's download, unzipped | 175-182 KB/s | 145-150 KB/s |
+| near players' moves seen, half / 95% under | 25-27 / 63-66 ms | 20-21 / 51-53 ms |
+| **150 players:** the room's thread | 90.0-91.5% | 87.6-89.5% |
+| ticks a second | 34.8-35.4 | 36.5-37.6 |
+| each phone's download, unzipped | 205-206 KB/s | 174-176 KB/s |
+| near players' moves seen, half / 95% under | 41-45 / 80-84 ms | 32-38 / 70-73 ms |
+
+- The room does about 5 points less work at 120 players, and at 150 it turns
+  the room it gains into 2 more ticks a second (the world nearer full speed).
+- Each phone downloads 15-18% less. The far send's entries were new positions,
+  which is what costs the room to compress (`docs/specs/load-test.md`).
+- "Near players' moves seen" counts only players within 2,400 px of the probe:
+  the ones on your screen arrive sooner, because the room is less busy.
+- `mp-farpeer` on a phone: a walker 2,700 px away updated once a second, never
+  missing from the game's players, and exactly where it stopped (0.0 px off)
+  at the next roster; beside it, 15 a second, as before. With `far_ms: 250`
+  set in the room's live flags, 4 a second again.
+
+**Tried first, and dropped: the crowd cap on the wire.** Before this, each
+phone was sent only the movers among its nearest 65 on every tick (the 50 a
+phone draws, `src/game/crowdCap.js`, and room for the ones it holds), the rest
+with the far send. Measured the same way it made no difference at 120 or 150
+players (the room 78.9-80.2% busy at 120 with or without it, 174-182 KB a
+second to each phone): steady movers (v2.3.3203) already keep the movers near a
+phone in one tick to about 25-35, a walker being sent about 15 times a second,
+not 40, so a tick almost never has more than 65. It was kept on a local branch
+for Phase 2 of `docs/SERVER-SPLIT-PLAN.md`, when a door builds the ticks of a
+crowd of hundreds.
+
+**Tests.** `far-players.test.mjs` runs its sections 2-9 with `far_ms: 250`
+(the far send, brought back by the live flag) and adds section 10, the
+default: a far walker reaches a phone on the roster's ticks only, each time
+where it is now; a near walker on every tick it moves; a far player who stopped
+is where it stopped at the next roster; nobody waits for a far send; `far_ms`
+kept to 100-5000 ms; `far_ms: 250` brings four a second back; both message
+builders byte for byte. `steady-movers.test.mjs` 2k checks a far watcher with
+`far_ms: 250`, 2m the default. `mp-farpeer` now expects a far walker about once
+a second (`BT_FARPEER_FAR_MS=250` sets the room's flag and expects four).
+
 ## Turning it off
 
 Live flags, no deploy: `farplayers: false` sends every mover every tick again;
-`roundpos: false` sends positions as the phones sent them.
+`roundpos: false` sends positions as the phones sent them; `far_ms` (a number,
+100-5000 ms) sends the far players on their own that often again -- 250 is
+v2.3.3197's four times a second.
 
 ## Not done (each changes what the phones must understand)
 

@@ -383,7 +383,11 @@ export function identityRowHeight(vw, vh) {
    The rail is why the band cannot simply shrink by the ribbon's 87px.
    Six buttons still need vertical room, so the band's floor is whichever
    is taller: what the three columns need, or what the rail needs. */
-export const RAIL_COUNT = 5; /* v2.3.1651: Quests; v2.3.1655: Life Skills */
+/* v2.3.3215 (owner: "Are you able to fit the codex as another dashboard
+   button?"): SIX -- the Codex, between Life Skills and More.  It costs the
+   others almost nothing because the drill back chip left this row in the same
+   change (IDENTITY_MIN_LINE below): 44 at 390, where the five were 46. */
+export const RAIL_COUNT = 6; /* v2.3.1651: Quests; v2.3.1655: Life Skills; v2.3.3215: Codex */
 const NAV_GAP = 4;
 
 /* v2.3.1642 (owner: "put the rail buttons on the top to the left of the
@@ -502,7 +506,18 @@ export function navButtonSize(vw, vh) {
    flexes instead (BottomDashboard gives it `flex: 0 1 auto` and an ellipsis),
    so on a drilled screen it is the title that gets abbreviated rather than the
    buttons that leave the phone. */
-const IDENTITY_MIN_LINE = 122; /* the CLOSE pill, the drill back chip, gaps */
+/* ═══ v2.3.3215: THE BACK CHIP LEFT THIS ROW ═══
+   Asked whether a sixth button (the Codex) should make all six narrower or
+   move the drill's back arrow out of this row and down beside the screen's
+   title, the owner: "Move back arrow".  So on a drilled screen the panel's
+   own header is "◂ SETTINGS", one button (BottomDashboard's drill header,
+   as landscape's has been since v2.3.2168), and this row holds the CLOSE
+   pill and the buttons in EVERY mode -- which also ends the buttons
+   stepping 38 px right whenever a drill opened (measured, codexfit), the
+   very move the one-position rule (v2.3.1637b) is about.  84 is the pill
+   (75.9) and its two 4 px gaps: six buttons at 44 on a 390 phone (the five
+   were 46), 41 at 375, 39 at 360, 51 at 430. */
+const IDENTITY_MIN_LINE = 84; /* the CLOSE pill and its gaps (v2.3.3215: the back chip moved out) */
 function navGroupLeftLimit(vw) {
   return DASH_GAP + IDENTITY_MIN_LINE;
 }
@@ -631,7 +646,13 @@ export function navGroupWidth(vw, vh) {
    `fill`), which spends the very slack the screenshot circles.  This
    constant is the geometry FLOOR the container width is derived from;
    the rendered buttons come out ~31px once the slack is shared. */
-export const LAND_NAV_BTN_W = 28;
+/* v2.3.3215: 28 -> 26 with the Codex's button.  The dock row is seven slots
+   now (the fold chip and six destinations), and at 28 the container -- and
+   every sideways sheet, the dashboard's 2x4 column included -- would have
+   grown 32 px, all of it out of the world.  26 is portrait's own floor (a 24
+   px icon and its borders) and grows the container 18 px instead; the
+   buttons still flex into the row's slack (`fill`). */
+export const LAND_NAV_BTN_W = 26;
 export const LAND_PILL_H = 44;
 export function landscapeNavGroupW() {
   /* v2.3.2171 (owner: "add a button for minimizing that whole dashboard

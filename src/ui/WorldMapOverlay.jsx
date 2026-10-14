@@ -52,6 +52,7 @@ import { questRoutePoint } from '../game/questRoute.js';          /* v2.3.3057: 
 import { wheelTownDoors } from '../game/wheelTownDoors.js';       /* v2.3.3057: the buildings, named */
 import { hasGatherTool } from '../data/lifeSkills.js';            /* v2.3.3057: faint where you have no tool */
 import { sendMapWatch, PRESENCE2_CLIENT } from '../game/presence2.js';   /* v2.3.3250: far players come while the map is open */
+import { peerDotAt } from '../game/peerDot.js';                    /* v2.3.3243: a far player's dot glides between rosters */
 
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 /* v2.3.3057: 12 -> 28, so the town's buildings can be read by name */
@@ -416,6 +417,9 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   }
   const othersAt = [];
   if (z >= AT.others && S && S.others) {
+    /* v2.3.3243: where each is now -- a far one is sent about once a second
+       (src/game/peerDot.js) */
+    const now = Date.now(), at = { x: 0, y: 0 };
     for (const id in S.others) {
       const o = S.others[id];
       if (!o || (o.zone || o.z) !== S.currentZone || typeof o.x !== 'number') continue;
@@ -423,7 +427,8 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
          watch this map opened brings them all, where they are, within a
          roster */
       if (o._away) continue;
-      const x = X(o.x), y = Y(o.y);
+      peerDotAt(o, now, at);
+      const x = X(at.x), y = Y(at.y);
       if (!onScreen(x, y)) continue;
       g.beginPath(); g.arc(x, y, 4.5, 0, Math.PI * 2);
       g.fillStyle = C_OTHER; g.fill(); g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
