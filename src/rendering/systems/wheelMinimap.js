@@ -76,7 +76,7 @@ import { wheelOverviewLands, wheelMapInfo, wheelHere, wheelObjectsInfo } from '@
 import { wheelTownDoors } from '@/game/wheelTownDoors.js';   /* v2.3.3146: the town's buildings */
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
-import { peerDotAt } from '@/game/peerDot.js';             /* v2.3.3213: a player's dot where they are now */
+import { peerDotAt } from '@/game/peerDot.js';             /* v2.3.3223: a player's dot where they are now */
 import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
 import { noteNoMansLand } from '@/game/noMansLand.js';       /* v2.3.3058: No man's land's banner */
 import { noteWheelMusic } from '@/game/wheelMusic.js';      /* v2.3.3064: ...and its music */
@@ -94,7 +94,7 @@ const TITLE_PX = 13, SUB_PX = 11, MIN_PX = 11, ICON_PX = 14, ICON_GAP = 4;
 const C_PLATE = 0x141d22, C_SUB = 0xeac675, C_TITLE = 0xf7f2e7;
 export const WHEEL_WINDOW = 3200;  /* game px across the box: about three zones */
 const SCALE = WHEEL_BOX / WHEEL_WINDOW;
-/* v2.3.3213: peerDotAt's answer, reused every frame */
+/* v2.3.3223: peerDotAt's answer, reused every frame */
 const _peerAt = { x: 0, y: 0 };
 
 const C_SEA = 0x16324a, C_FRAME = 0xd8aa58, C_ROAD = 0xf2e4c2, C_PATH = 0xe6d5ae, C_RIVER = 0x5aaee8, C_RAIL = 0x2b2320;
@@ -508,7 +508,7 @@ export class WheelMinimap {
       this._mark(n.x, n.y, NODE_ICON[n.nodeType], C_NODE[n.nodeType][tier], NODE_PX);
       nodeMarks++;
     }
-    /* other bros and monsters (v2.3.3213: each where they are now -- one
+    /* other bros and monsters (v2.3.3223: each where they are now -- one
        past 2,400 px, at the Wheel's edge where the box stops centring on you,
        is sent about once a second: src/game/peerDot.js) */
     const others = S.others;

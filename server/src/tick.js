@@ -60,7 +60,7 @@ export const REGEN_TICKS = 30;
    them.  Deploy-order safe both ways: an old client reads the same fields
    and already handles a peer updated less often (the 1 Hz roster).
 
-   ═══ v2.3.3213: FAR PLAYERS ONCE A SECOND, WITH THE ROSTER ═══
+   ═══ v2.3.3223: FAR PLAYERS ONCE A SECOND, WITH THE ROSTER ═══
    Found by the owner's "stress test to see what can be optimized": the far
    send above went to every phone in the Wheel four times a second, and it
    carried EVERY player who had moved -- in a town crowd, all the near ones
@@ -102,7 +102,7 @@ export const tickMethods = {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'farplayers') && !f.farplayers);
   },
-  /* v2.3.3213: how often the far players go out on their own (FAR_PLAYERS);
+  /* v2.3.3223: how often the far players go out on their own (FAR_PLAYERS);
      0 is "with the presence roster only".  `far_ms` in the live flags
      overrides it, kept to 100-5000 ms. */
   _farEveryMs() {
@@ -434,7 +434,7 @@ export const tickMethods = {
       /* v2.3.3197: far players held back (FAR_PLAYERS) keep a quiet tick
          going until they are sent, so the last of a walk is never stuck */
       const farOn = !this._farPlayersOff();
-      /* v2.3.3213: 0 -- no far send, the far players go with the roster */
+      /* v2.3.3223: 0 -- no far send, the far players go with the roster */
       const farEvery = farOn ? this._farEveryMs() : 0;
       if (!farOn && this._farPending) this._farPending = null;
       const farWaiting = farEvery > 0 && !!this._farPending && this._farPending.size > 0
@@ -511,7 +511,7 @@ export const tickMethods = {
          sent all of them at once, at where they are now (farList, the same list
          for everyone).  A presence tick's roster already carries everyone. */
       const wheelDirty = farOn ? (dirtyByZone.get(WHEEL_ZONE) || null) : null;
-      /* v2.3.3213: only kept for a far send of their own (`far_ms`); with the
+      /* v2.3.3223: only kept for a far send of their own (`far_ms`); with the
          roster alone nobody waits */
       if (wheelDirty && farEvery > 0) {
         if (!this._farPending) this._farPending = new Set();

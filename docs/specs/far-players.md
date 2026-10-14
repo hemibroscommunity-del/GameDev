@@ -129,7 +129,7 @@ own land, the eight lands far apart):
   no page errors. (The walker is a bare socket because this box draws a
   browser a few frames a second, and a page sends a move a frame.)
 
-## Once a second, with the roster (v2.3.3213)
+## Once a second, with the roster (v2.3.3223)
 
 > Owner, 2026-10-13: *"Go recommended but I want you to stress test to see
 > what can be optimized."*

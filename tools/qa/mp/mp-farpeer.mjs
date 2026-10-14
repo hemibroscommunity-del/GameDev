@@ -14,7 +14,7 @@
  *      steady movers -- 12 a second at least);
  *   2. is carried out past NEAR_R and walks there: the watcher's copy is
  *      updated about four times a second, never drops out of the watcher's
- *      players, and ends where the walker stopped (v2.3.3213: about once a
+ *      players, and ends where the walker stopped (v2.3.3223: about once a
  *      second, with the presence roster -- no far send of its own any more,
  *      FAR_PLAYERS.EVERY_MS 0; `BT_FARPEER_FAR_MS=250` runs it against a
  *      server whose live flags carry `far_ms: 250`, the old four);
@@ -31,7 +31,7 @@ const NEAR_R = 2400;   /* server/src/tick.js FAR_PLAYERS.NEAR_R */
 const ROOM = 'farpeer';
 const STEP_MS = 33;    /* wsClient.js MOVE_GAP_SEEN_MS */
 const SPEED = 165;     /* px a second */
-/* v2.3.3213: the far send's own interval on the server under test (its live
+/* v2.3.3223: the far send's own interval on the server under test (its live
    flag `far_ms`); 0, the default, is "with the presence roster only" */
 const FAR_MS = Number(process.env.BT_FARPEER_FAR_MS || 0);
 
@@ -101,7 +101,7 @@ function countTicks() {
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  /* v2.3.3213: BT_FARPEER_FAR_MS -- the room's own far send back, through its
+  /* v2.3.3223: BT_FARPEER_FAR_MS -- the room's own far send back, through its
      live flags (POST /api/admin/flags, liveops.js), before anyone joins */
   if (FAR_MS > 0) {
     const res = await fetch(`http://127.0.0.1:${wsPort}/api/admin/flags?room=${ROOM}`, {
@@ -178,7 +178,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const p2 = await peerOnB();
   const d2 = Math.hypot(W.x - b0.x, W.y - b0.y);
   const gap = p2 ? Math.hypot(p2.x - W.x, p2.y - W.y) : Infinity;
-  /* v2.3.3213: with the presence roster only, about once a second (every 45
+  /* v2.3.3223: with the presence roster only, about once a second (every 45
      ticks); a far send of its own (`far_ms`) was four a second */
   const [lo, hi] = FAR_MS > 0 ? [Math.min(3, 1000 / FAR_MS - 1), 1000 / FAR_MS + 2] : [0.5, 1.5];
   rec.ok(`far (${Math.round(d2)} px): the watcher's copy was updated ${far.perSec} times a second for the walker's ${far.sentPerSec} moves (${FAR_MS > 0 ? 'far_ms ' + FAR_MS : 'with the roster'})`,

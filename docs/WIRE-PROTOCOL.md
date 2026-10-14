@@ -204,7 +204,7 @@ and `vy` are whole numbers. Kill switches (live flags): `farplayers: false`,
 `roundpos: false`. No caps flag: an old client already handles a peer updated
 less often (the 1 Hz roster). `docs/specs/far-players.md`.
 
-**v2.3.3213: far players once a second, with the roster.** The far send above
+**v2.3.3223: far players once a second, with the roster.** The far send above
 is gone by default (`FAR_PLAYERS.EVERY_MS` 0): a player more than 2,400 px from
 a v2 session in the Wheel reaches it only in the presence roster, every
 `PRESENCE_REFRESH_TICKS` (about once a second), where they are now. Near players
