@@ -15,7 +15,7 @@
    call time, identical). The only React setter any of them touches is
    setRpgState, threaded via deps; succeedExtraction forwards deps to the
    appliers. All other refs are module imports below. */
-import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeOpenDelay, createDefaultCompStats, migrateLifeSkills, GATHER_SWING, GATHER_HIT_PLAN_WAIT_MS, GATHER_HIT_SETTLE_MS, gatherHitTimes, gatherNodeHpFor, GATHER_PLAN_MAX, zonePlayerScale, TILE } from '@/data/index.js'; /* v2.3.2956: the gathering hits (and the zone scale a cook's hit pops at) */
+import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeOpenDelay, createDefaultCompStats, migrateLifeSkills, GATHER_SWING, GATHER_HIT_PLAN_WAIT_MS, GATHER_HIT_SETTLE_MS, gatherHitTimes, gatherNodeHpFor, GATHER_PLAN_MAX, harvestXpFor, zonePlayerScale, TILE } from '@/data/index.js'; /* v2.3.2956: the gathering hits (and the zone scale a cook's hit pops at) */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.1915 */
 import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
@@ -544,7 +544,9 @@ function applyFishingReward(S, node, result, deps) {
        LOCALLY in both modes as a client-side prediction so the skill
        level moves up immediately on harvest; the server's player_state
        push reconciles with authoritative xp/level on arrival. v2.3.224. */
-    var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
+    /* v2.3.3251: the tier's XP and the fade, as this worker pays them
+       (gameSystems.js harvestXpFor) -- read at the level BEFORE this XP */
+    var xpAmt = harvestXpFor(S, node, (R.lifeSkills && R.lifeSkills.fishing && R.lifeSkills.fishing.level) || 1, reward.xpMult);
     var leveled = false;
     if (!S._serverGatherNodes) {
       var _shardF1 = rollHarvestShard(S.currentZone);
@@ -650,7 +652,9 @@ function applyWoodReward(S, node, result, deps) {
     /* v2.3.224: skill XP applied locally in both SP and MP for instant
        feedback; server's player_state reconciles. Shard roll is still
        MP-server-only (non-deterministic RNG). */
-    var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
+    /* v2.3.3251: the tier's XP and the fade, as this worker pays them
+       (gameSystems.js harvestXpFor) -- read at the level BEFORE this XP */
+    var xpAmt = harvestXpFor(S, node, (R.lifeSkills && R.lifeSkills.woodcutting && R.lifeSkills.woodcutting.level) || 1, reward.xpMult);
     var leveled = false;
     if (!S._serverGatherNodes) {
       var _shardF2 = rollHarvestShard(S.currentZone);
@@ -741,7 +745,9 @@ function applyMiningReward(S, node, result, deps) {
     /* v2.3.224: skill XP applied locally in both SP and MP for instant
        feedback; server's player_state reconciles. Shard roll is still
        MP-server-only (non-deterministic RNG). */
-    var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
+    /* v2.3.3251: the tier's XP and the fade, as this worker pays them
+       (gameSystems.js harvestXpFor) -- read at the level BEFORE this XP */
+    var xpAmt = harvestXpFor(S, node, (R.lifeSkills && R.lifeSkills.mining && R.lifeSkills.mining.level) || 1, reward.xpMult);
     var leveled = false;
     if (!S._serverGatherNodes) {
       var _shardF3 = rollHarvestShard(S.currentZone);

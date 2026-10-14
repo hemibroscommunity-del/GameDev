@@ -72,6 +72,7 @@
  *          permissive legacy branch below).  Harden both together, when that
  *          branch is retired. */
 import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3012: the Wheel's baked nodes */
+import { xpDecayMult, xpAfterDecay } from './xpdecay.js'; /* v2.3.3251: XP fades 5+ levels below you */
 
 export const GATHER_HITS = {
   MS: { mining: 650, woodcutting: 540, fishing: 650, cooking: 650 },
@@ -276,6 +277,36 @@ export function gatherNodeHp(tierLvl, nodeType, table) {
   const row = (table !== false && typeof nodeType === 'string' && has.call(GATHER_NODE_HP, nodeType)) ? GATHER_NODE_HP[nodeType] : null;
   if (row && has.call(row, t)) return row[t];
   return GATHER_HITS.HP_PER_TIER * (t + 1);
+}
+
+/* ═══ v2.3.3251: ...AND EACH TIER PAYS TWICE THE XP OF THE ONE BEFORE ═══
+ * Owner, asked whether XP should grow with the time now that each tier takes
+ * twice as long: "Yes adjust the xp."  A harvest's base XP (before the
+ * accuracy grade, _harvestXpMult) by its tier, doubling as the time does:
+ *              tier 1    6     11     16     21
+ *              163      326    652   1304   2608   (was 163, 350, 538, 725, 913)
+ * so at the level each one opens every tier pays about the same XP a second
+ * (~22-30 a second with the ~1.5 s gesture; it was 9 on obsidian against 20
+ * on copper).  Every type alike: the hits double per tier for all three.  A
+ * tier not in the table (the world grows none past 21) keeps the old
+ * (tier x 1.5 + 5) x 25.  What is well below you pays less on top
+ * (xpdecay.js, _harvestXpPaid).
+ *
+ * Mirror: src/data/lifeSkills.js GATHER_TIER_XP / harvestBaseXp, pinned by
+ * mirror-audit.  KILL SWITCH: `tierxp: false` in liveflags (lower case) puts
+ * every harvest back on the old XP and un-advertises caps.tierxp -- and so
+ * does `nodehp: false`, as doubled XP for the old, quick HP would level a
+ * player through the top tiers several times faster than before
+ * (_tierXpOff). */
+export const GATHER_TIER_XP = { 1: 163, 6: 326, 11: 652, 16: 1304, 21: 2608 };
+
+/** v2.3.3251: a harvest's base XP for its tier -- the table's, else (a tier
+ *  not in it, or `table` false: the kill switch) the old
+ *  ceil((tier x 1.5 + 5) x 25).  Own properties only (TRAPS #6). */
+export function harvestBaseXp(tierLvl, table) {
+  const t = Math.max(1, Math.floor(Number(tierLvl) || 1));
+  if (table !== false && Object.prototype.hasOwnProperty.call(GATHER_TIER_XP, t)) return GATHER_TIER_XP[t];
+  return Math.ceil(((t * 1.5) + 5) * 25);
 }
 
 /* ═══ v2.3.3090: LIFE SKILLS LEVEL HALF AS FAST, LIKE COMBAT ═══
@@ -578,6 +609,7 @@ export const gatheringMethods = {
   // Base XP per harvest = ceil(tierLvl * 1.5 + 5); the accuracy
   // multiplier (xpMult above) is applied on top.  Mirrors the client
   // formula in createGatherNode (lifeSkills.js).
+  // v2.3.3251: the base is GATHER_TIER_XP's, doubling a tier (harvestBaseXp).
   _harvestXpForTier(tierLvl, accuracy) {
     /* v2.3.1435 (owner): life-skill XP rate x5.  Client mirror:
        createGatherNode in src/data/lifeSkills.js — keep in lockstep.
@@ -585,8 +617,29 @@ export const gatheringMethods = {
        increase it by about 5x"): x5 again, so the rate is 25x the original.
        The LEVEL CURVE is untouched — this multiplies what a swing pays, not
        what a level costs, which is the knob the owner asked for. */
-    const baseXp = Math.ceil((((tierLvl || 1) * 1.5) + 5) * 25);
+    const baseXp = harvestBaseXp(tierLvl, !this._tierXpOff());
     return Math.ceil(baseXp * this._harvestXpMult(accuracy));
+  },
+
+  /** v2.3.3251: what a harvest of node `n` PAYS a player: the tier's XP at
+   *  its grade (_harvestXpForTier), then faded when the resource's level
+   *  (GATHER_REQ_LVL) is 5 or more below the player's skill (xpdecay.js) --
+   *  their level BEFORE this harvest's XP lands.  The game predicts the same
+   *  number for its "+N Mining XP" (gameSystems.js harvestXpFor). */
+  _harvestXpPaid(ps, skill, n, accuracy) {
+    const xp = this._harvestXpForTier(n.tierLvl, accuracy);
+    if (typeof this._xpDecayOff !== 'function' || this._xpDecayOff()) return xp;
+    const s = ps && ps.lifeSkills && Object.prototype.hasOwnProperty.call(ps.lifeSkills, skill) ? ps.lifeSkills[skill] : null;
+    const lvl = (s && typeof s === 'object') ? Math.max(1, Math.floor(Number(s.level) || 1)) : 1;
+    return xpAfterDecay(xp, xpDecayMult(lvl, gatherReqLvl(n.nodeType, n.tierLvl)));
+  },
+
+  /** v2.3.3251: GATHER_TIER_XP's kill switch -- `tierxp: false`, or
+   *  `nodehp: false` (the doubled XP is for the doubled HP). */
+  _tierXpOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'tierxp') && !f.tierxp)
+      || this._nodeHpOff();
   },
 
   // lifeSkill level-up threshold curve.  Mirrors LIFE_SKILL_XP on the
@@ -1315,7 +1368,9 @@ export const gatheringMethods = {
        now it predicts the popup locally but the authoritative
        lifeSkills snapshot rides on the player_state event below. */
     const skillName = this._harvestSkillName(n.nodeType);
-    const xpAmt = this._harvestXpForTier(n.tierLvl, ratedAccuracy);
+    /* v2.3.3251: the tier's XP, faded 5+ levels below the player (read
+       before the XP below lands, as the game reads it) */
+    const xpAmt = this._harvestXpPaid(ps, skillName, n, ratedAccuracy);
     const { leveled, newLevel } = this._addLifeSkillXp(ps, skillName, xpAmt);
 
     /* Shard roll -- 33% per successful harvest.  Server-rolled so a

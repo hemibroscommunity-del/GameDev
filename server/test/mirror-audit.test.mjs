@@ -55,6 +55,11 @@ import { WHEEL_SPAWNS as SRV_WHEEL_SPAWNS } from '../src/wheelspawns.js'; /* v2.
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
 import { GATHER_PLAN_MAX as CLIENT_GATHER_PLAN_MAX /* v2.3.3251 */, GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */, createDefaultRpg as clientDefaultRpg /* v2.3.3138 */ } from '../../src/data/gameSystems.js';
 import { NEW_CHARACTER_COINS as SRV_NEW_CHARACTER_COINS } from '../src/join.js';   /* v2.3.3138 */
+import { GATHER_TIER_XP as SRV_GATHER_TIER_XP, harvestBaseXp as srvHarvestBaseXp } from '../src/gathering.js';   /* v2.3.3251 */
+import { XP_DECAY as SRV_XP_DECAY, xpDecayMult as srvXpDecayMult, xpAfterDecay as srvXpAfterDecay } from '../src/xpdecay.js';   /* v2.3.3251 */
+import { GATHER_TIER_XP as CLIENT_GATHER_TIER_XP, harvestBaseXp as clientHarvestBaseXp } from '../../src/data/lifeSkills.js';   /* v2.3.3251 */
+import { XP_DECAY as CLIENT_XP_DECAY, xpDecayMult as clientXpDecayMult, xpAfterDecay as clientXpAfterDecay } from '../../src/data/xpDecay.js';   /* v2.3.3251 */
+import { harvestXpFor as clientHarvestXpFor } from '../../src/data/gameSystems.js';   /* v2.3.3251 */
 import { freshLifeSkills as srvFreshLifeSkills } from '../src/migrations.js';       /* v2.3.3138 */ /* v2.3.2956; the lead and settle v2.3.3036 */
 import { GESTURE_FLOOR_MS as CLIENT_GESTURE_FLOOR_MS } from '../../src/game/gesturePose.js'; /* v2.3.3036 */
 import { LIFE_SKILL_XP_BASE as SRV_LIFE_SKILL_XP_BASE } from '../src/gathering.js'; /* v2.3.3090 */
@@ -1823,6 +1828,77 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('tier hp: and the same answer for every type and tier, table on and off, forged ones included', hpBad === null, hpBad);
   check('tier hp: the game plays every plan the worker can send (GATHER_PLAN_MAX >= GATHER_HITS.MAX_HITS)',
     CLIENT_GATHER_PLAN_MAX >= SRV_GATHER_HITS.MAX_HITS, { cli: CLIENT_GATHER_PLAN_MAX, srv: SRV_GATHER_HITS.MAX_HITS });
+  /* v2.3.3251: each tier pays twice the XP of the one before, and XP fades
+     5+ levels below you.  The game predicts a harvest's "+N Mining XP" from
+     its own copies; every piece of that prediction is held to the worker's. */
+  check('tier xp: the same table on both sides (GATHER_TIER_XP)',
+    JSON.stringify(SRV_GATHER_TIER_XP) === JSON.stringify(CLIENT_GATHER_TIER_XP), { srv: SRV_GATHER_TIER_XP, cli: CLIENT_GATHER_TIER_XP });
+  let txBad = null;
+  for (const t of [0, 1, 2, 6, 11, 16, 21, 26, 96, '11', 11.5, null, '__proto__', -3]) {
+    for (const on of [true, false, undefined]) {
+      if (srvHarvestBaseXp(t, on) !== clientHarvestBaseXp(t, on)) { txBad = { t, on, srv: srvHarvestBaseXp(t, on), cli: clientHarvestBaseXp(t, on) }; break; }
+    }
+    if (txBad) break;
+  }
+  check('tier xp: and the same base for every tier, table on and off, junk included', txBad === null, txBad);
+  check('xp fade: the same constants on both sides (XP_DECAY)',
+    JSON.stringify(SRV_XP_DECAY) === JSON.stringify(CLIENT_XP_DECAY), { srv: SRV_XP_DECAY, cli: CLIENT_XP_DECAY });
+  let fadeBad = null;
+  const lv = [];
+  for (let i = -5; i <= 125; i++) lv.push(i);
+  lv.push(null, undefined, NaN, '12', 7.9, Infinity, 'x');
+  outer: for (const you of lv) {
+    for (const it of lv) {
+      const a2 = srvXpDecayMult(you, it), b2 = clientXpDecayMult(you, it);
+      if (!(a2 === b2 || (Number.isNaN(a2) && Number.isNaN(b2)))) { fadeBad = { you, it, srv: a2, cli: b2 }; break outer; }
+    }
+  }
+  check('xp fade: the same share, bit for bit, for every pair of levels -5..125 and junk', fadeBad === null, fadeBad);
+  let roundBad = null;
+  for (const x of [1, 2, 54, 163, 245, 326, 489, 652, 978, 1304, 2608, 3912, 5216]) {
+    for (let g = 0; g <= 40; g++) {
+      const m = srvXpDecayMult(50, 50 - g);
+      if (srvXpAfterDecay(x, m) !== clientXpAfterDecay(x, m)) { roundBad = { x, g, srv: srvXpAfterDecay(x, m), cli: clientXpAfterDecay(x, m) }; break; }
+    }
+    if (roundBad) break;
+  }
+  check('xp fade: the same whole number after the fade', roundBad === null, roundBad);
+  /* the whole prediction: the worker's _harvestXpPaid against the game's
+     harvestXpFor, at every type, tier, level and grade, under each switch the
+     worker can be in -- and the caps that worker would advertise */
+  const payRoom = new GameRoom({ storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+    getWebSockets: () => [], acceptWebSocket: () => {} }, { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  const GRADE = { ok: 1, good: 1.5, perfect: 2 };
+  const SKILL_OF = { oreVein: 'mining', tree: 'woodcutting', fishSpot: 'fishing' };
+  let payBad = null, payN = 0;
+  for (const flags of [{}, { xpdecay: false }, { tierxp: false }, { nodehp: false }, { tierxp: false, xpdecay: false }]) {
+    payRoom._liveFlags = flags;
+    const S = { _serverCaps: { tierxp: !payRoom._tierXpOff(), xpdecay: !payRoom._xpDecayOff() } };
+    for (const type of ['oreVein', 'tree', 'fishSpot']) {
+      for (const t of [1, 6, 11, 16, 21, 26]) {
+        const node = { nodeType: type, gatherLvl: t, reqLvl: clientGatherReqLvl(type, t) };
+        for (let level = 1; level <= 60; level++) {
+          for (const g of Object.keys(GRADE)) {
+            const srv = payRoom._harvestXpPaid({ lifeSkills: { [SKILL_OF[type]]: { level, xp: 0 } } }, SKILL_OF[type], { nodeType: type, tierLvl: t }, g);
+            const cli = clientHarvestXpFor(S, node, level, GRADE[g]);
+            payN++;
+            if (srv !== cli) { payBad = { flags, type, t, level, g, srv, cli }; break; }
+          }
+          if (payBad) break;
+        }
+        if (payBad) break;
+      }
+      if (payBad) break;
+    }
+    if (payBad) break;
+  }
+  check('xp fade: the game\'s "+N XP" is the worker\'s pay at every type, tier, level and grade, under every switch (' + payN + ' cases)',
+    payBad === null && payN > 10000, payBad);
+  payRoom._liveFlags = {};
+  check('xp fade: ...including a faded one (black steel, Mining 11, good: 277) and a full one (Mining 9: 978)',
+    clientHarvestXpFor({ _serverCaps: { tierxp: true, xpdecay: true } }, { nodeType: 'oreVein', gatherLvl: 11 }, 11, 1.5) === 277
+      && clientHarvestXpFor({ _serverCaps: { tierxp: true, xpdecay: true } }, { nodeType: 'oreVein', gatherLvl: 11 }, 9, 1.5) === 978
+      && clientHarvestXpFor({}, { nodeType: 'oreVein', gatherLvl: 11 }, 11, 1.5) === 807);
   check('hit ladder: ...and the old dice as they were (the kill switch)',
     clientGatherHitOddsText(3, false) === '1–3 (33.3% each)' && clientGatherHitOddsText(1, false) === 'Always 1',
     [clientGatherHitOddsText(3, false), clientGatherHitOddsText(1, false)]);

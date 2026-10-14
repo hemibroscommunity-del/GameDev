@@ -186,6 +186,7 @@ export const burstMethods = {
     const r2 = PROG3.BURST_RADIUS * PROG3.BURST_RADIUS;
     const targets = [];
     let dealt = 0;
+    let xpDealt = 0;   /* v2.3.3251: the same, each monster's faded by its level (xpdecay.js) */
 
     for (const m of monsters) {
       if (!m || !m.alive || m.hp <= 0) continue;
@@ -233,14 +234,17 @@ export const burstMethods = {
          damage SOURCE would not grow a second copy of kill credit); `tag`
          rides through to the monster_hit payload so the caster's client can
          draw its own popup. */
-      dealt += this._applyMonsterDot(zone, m, dmg, session.id, null, { burst: true });
+      const got = this._applyMonsterDot(zone, m, dmg, session.id, null, { burst: true });
+      dealt += got;
+      xpDealt += got * this._combatXpDecay(ps, slot === 'ranged' ? 'bow' : slot === 'staff' ? 'staff' : 'sword', m.level);
     }
 
     /* Trained XP, same rule a swing follows: the weapon that fired it earns
-       it, priced off the CREDITED damage (v2.3.1710 / §9-A). */
+       it, priced off the CREDITED damage (v2.3.1710 / §9-A).
+       v2.3.3251: each monster's share faded by its own level (xpDealt). */
     if (ps.prog3 && dealt > 0) {
       const cat = slot === 'ranged' ? 'bow' : slot === 'staff' ? 'staff' : 'sword';
-      this._prog3AwardXp(session.id, ps, cat, dealt);
+      this._prog3AwardXp(session.id, ps, cat, xpDealt);
     }
 
     /* The visual.  Broadcast (everyone in the zone sees the nova) and

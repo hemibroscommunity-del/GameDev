@@ -192,6 +192,7 @@ import { aggroGridMethods } from './aggrogrid.js'; /* v2.3.3201: a monster looks
 import { tickPaceMethods } from './tickpace.js'; /* v2.3.3202: the world keeps its speed in a busy room */
 import { steadyMoversMethods } from './steadymovers.js'; /* v2.3.3203: a player walking steadily is sent less often */
 import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look relayed when it changes, not every 2 s */
+import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what is 5+ levels below you, harvests and fights */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
@@ -6125,3 +6126,4 @@ Object.assign(GameRoom.prototype, aggroGridMethods); /* v2.3.3201 */
 Object.assign(GameRoom.prototype, tickPaceMethods); /* v2.3.3202 */
 Object.assign(GameRoom.prototype, steadyMoversMethods); /* v2.3.3203 */
 Object.assign(GameRoom.prototype, lookRelayMethods); /* v2.3.3240 */
+Object.assign(GameRoom.prototype, xpDecayMethods); /* v2.3.3251 */

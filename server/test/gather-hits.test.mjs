@@ -40,11 +40,20 @@
  *      no plan at a resource's own level reaching MAX_HITS, plans by the
  *      node's type, cooks unchanged, the shield from the window's opening,
  *      the cap and its kill switch.
+ *   13. EACH TIER PAYS TWICE THE XP, AND XP FADES BELOW YOU (v2.3.3251,
+ *      owner: "Yes adjust the xp.  Also make xp decay if you're trying to
+ *      harvest lower level things ... It should always be most efficient to
+ *      harvest or fight things within your current level"): the XP table,
+ *      what a strike really pays at, 4 and 10 levels past a resource, the
+ *      rule held over the dice at every level 1-100 of all three skills,
+ *      the caps and both kill switches.  The fight half: xp-decay.test.mjs.
  * mp-gatherhits covers the other half -- the client actually playing the
  * plan, through the real shim, in a real zone -- which no fixture here can
  * reach (TRAPS #18). */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { GATHER_HITS, gatherHitRoll, GATHER_NODE_HP, GATHER_REQ_LVL, gatherNodeHp } from '../src/gathering.js';   /* gatherHitRoll v2.3.3229; the HP table v2.3.3251 */
+import { GATHER_TIER_XP, harvestBaseXp, HONEST_CYCLE } from '../src/gathering.js';   /* v2.3.3251: the XP a tier */
+import { xpDecayMult, xpAfterDecay } from '../src/xpdecay.js';   /* v2.3.3251: the fade */
 
 function makeState(liveflags) {
   const store = new Map();
@@ -768,6 +777,142 @@ async function withRandom(fn, body) {
   await k.send('extraction_start', { nodeId: ore.id, zone: 'meadow', skill: 'mining', hitSeq: 9 });
   const p = (ofType(k.ws, 'gather_hits')[0] || {}).payload;
   check('tier hp kill switch: ...and black steel is 60 HP again', !!p && p.hp === 60, p && p.hp);
+}
+
+// ── 13. each tier pays twice the XP, and XP fades below you (v2.3.3251) ──
+// Owner, 2026-10-14: "Yes adjust the xp.  Also make xp decay if you're trying
+// to harvest lower level things.  This also applies to combat.  Xp should
+// begin decaying starting at 5 levels below your current level.  It should
+// always be most efficient to harvest or fight things within your current
+// level."
+{
+  check('tier xp: the table doubles a tier -- 163, 326, 652, 1,304, 2,608 (was 163, 350, 538, 725, 913)',
+    JSON.stringify(GATHER_TIER_XP) === JSON.stringify({ 1: 163, 6: 326, 11: 652, 16: 1304, 21: 2608 })
+      && [1, 6, 11, 16].every((t) => GATHER_TIER_XP[t + 5] === 2 * GATHER_TIER_XP[t]), GATHER_TIER_XP);
+  const oldXp = (t) => Math.ceil(((t * 1.5) + 5) * 25);
+  const junk = [
+    harvestBaseXp(26) === oldXp(26), harvestBaseXp(11, false) === oldXp(11), harvestBaseXp('11') === 652, harvestBaseXp(11.7) === 652,
+    harvestBaseXp(null) === 163, harvestBaseXp('__proto__') === 163, harvestBaseXp(-4) === 163, harvestBaseXp(21, false) === 913,
+  ];
+  check('tier xp: a tier not in the table, or the table off, is the old (tier x 1.5 + 5) x 25; junk tiers read as tier 1', junk.every(Boolean), junk);
+
+  /* THE RULE, held over the worker's own dice.  A harvest's time is its hits
+     plus the honest cycle's fixed part (HONEST_CYCLE: the hit lead, the
+     settle and the gesture's FLOOR -- the quickest an honest harvest comes
+     round, which is the worst case for the rule: any more time per harvest
+     favours the bigger, newer resources).  The average hits by the exact
+     recursion E[n] = 1 + sum over the die's faces of E[n - hit]. */
+  const memo = new Map();
+  const meanHits = (hp, L) => {
+    const key = hp + ':' + L;
+    if (memo.has(key)) return memo.get(key);
+    const faces = [];
+    for (let f = 0; f < GATHER_HITS.LADDER; f++) faces.push(gatherHitRoll(L, (f + 0.5) / GATHER_HITS.LADDER, true));
+    const E = new Float64Array(hp + 1);
+    for (let n = 1; n <= hp; n++) {
+      let sum = 0;
+      for (const d of faces) sum += n - d > 0 ? E[n - d] : 0;
+      E[n] = 1 + sum / faces.length;
+    }
+    memo.set(key, E[hp]);
+    return E[hp];
+  };
+  const MS = { oreVein: GATHER_HITS.MS.mining, tree: GATHER_HITS.MS.woodcutting, fishSpot: GATHER_HITS.MS.fishing };
+  const secs = (type, t, L) => (HONEST_CYCLE.LEAD_MS + (meanHits(gatherNodeHp(t, type), L) - 1) * MS[type]
+    + HONEST_CYCLE.SETTLE_MS + HONEST_CYCLE.GESTURE_FLOOR_MS) / 1000;
+  const TIERS = [1, 6, 11, 16, 21];
+  const rateOf = (type, t, L, fade) => harvestBaseXp(t) * (fade ? xpDecayMult(L, GATHER_REQ_LVL[type][t]) : 1) / secs(type, t, L);
+  let worstWithin = Infinity, atWithin = null, worstNewest = Infinity, atNewest = null, checked = 0;
+  for (const type of ['oreVein', 'tree', 'fishSpot']) {
+    for (let L = 1; L <= 100; L++) {
+      const open = TIERS.filter((t) => GATHER_REQ_LVL[type][t] <= L)
+        .map((t) => ({ t, gap: L - GATHER_REQ_LVL[type][t], r: rateOf(type, t, L, true) }));
+      const within = open.filter((x) => x.gap <= 4), faded = open.filter((x) => x.gap >= 5);
+      if (within.length && faded.length) {
+        const k = Math.max(...within.map((x) => x.r)) / Math.max(...faded.map((x) => x.r));
+        if (k < worstWithin) { worstWithin = k; atWithin = { type, L }; }
+        checked++;
+      }
+      const newest = open.reduce((a, x) => (x.gap < a.gap || (x.gap === a.gap && x.t > a.t)) ? x : a);
+      const others = open.filter((x) => x !== newest && x.gap >= 5);
+      if (others.length) {
+        const k = newest.r / Math.max(...others.map((x) => x.r));
+        if (k < worstNewest) { worstNewest = k; atNewest = { type, L }; }
+      }
+    }
+  }
+  check('xp fade: at every level 1-100 of all three skills, what is within your level (4 below or nearer) pays more XP a second than anything 5+ below -- by 15% at the least (worst ' + worstWithin.toFixed(3) + ')',
+    checked > 50 && worstWithin >= 1.15, { worstWithin, atWithin, checked });
+  check('xp fade: ...and the newest resource you can harvest pays the most of all, even where nothing is within your level (worst ' + worstNewest.toFixed(3) + ')',
+    worstNewest >= 1.15, { worstNewest, atNewest });
+  /* ...and WITHOUT the fade it does not hold: the rule is the fade's doing,
+     not a property the table had anyway (Mining 10: black steel ~2.5x
+     titanium). */
+  const bsAt10 = rateOf('oreVein', 11, 10, false) / rateOf('oreVein', 16, 10, false);
+  check('xp fade: without it, black steel at Mining 10 would pay ' + bsAt10.toFixed(2) + 'x titanium\'s XP a second (the reason for it)', bsAt10 > 2, bsAt10);
+  /* the owner's "adjust the xp": every tier pays about what the first does,
+     at the level it opens (it was 9 a second on obsidian against 20 on copper) */
+  const atOpen = {};
+  let even = true;
+  for (const type of ['oreVein', 'tree', 'fishSpot']) {
+    atOpen[type] = TIERS.map((t) => +rateOf(type, t, GATHER_REQ_LVL[type][t], true).toFixed(1));
+    if (!atOpen[type].every((r) => r >= atOpen[type][0] * 0.9 && r <= atOpen[type][0] * 1.25)) even = false;
+  }
+  check('tier xp: at the level each one opens, every tier pays within -10%/+25% of the first tier\'s XP a second', even, atOpen);
+}
+{
+  /* WHAT A STRIKE REALLY PAYS: the worker's own payout, harvest_credit and the
+     skill's XP, a black steel vein (tier 11, Mining 5) struck at Mining 9
+     (4 past it: full), then at Mining 11 (6 past: a third x 0.85) -- and an
+     iron vein (tier 6, Mining 1) at Mining 11, 10 past. */
+  const strikeAt = async (liveflags, tier, level) => {
+    const k = await setup(liveflags);
+    const caps = ((k.ws.sent.find((m) => m.type === 'state_sync') || {}).caps) || null;   /* before the log is cleared */
+    const ore = k.byType('oreVein');
+    ore.tierLvl = tier;
+    k.stand(ore);
+    k.ps.lifeSkills = { mining: { level, xp: 0 } };
+    await k.send('extraction_start', { nodeId: ore.id, zone: 'meadow', skill: 'mining', hitSeq: 1 });
+    const rec = k.room.extractions.bp_gh;
+    if (!rec) return { why: 'no record' };
+    rec.startedAt = Date.now() - (rec.openDelayBase + 1000);
+    k.ws.sent.length = 0;
+    await k.send('node_strike', { id: ore.id, zone: 'meadow', accuracy: 'good' });
+    const cred = (ofType(k.ws, 'harvest_credit')[0] || {}).payload;
+    return { paid: !!cred, xpAmt: cred && cred.xpAmt, skillXp: k.ps.lifeSkills.mining.xp, caps };
+  };
+  const good = (t) => Math.ceil(harvestBaseXp(t) * 1.5);
+  const full = await strikeAt(null, 11, 9);
+  check('xp fade: black steel struck at Mining 9 (4 past its level 5) pays in full -- 652 x 1.5 = 978',
+    full.paid && full.xpAmt === good(11) && full.xpAmt === 978 && full.skillXp === 978, { xpAmt: full.xpAmt, skillXp: full.skillXp });
+  const six = await strikeAt(null, 11, 11);
+  const want6 = xpAfterDecay(good(11), (1 / 3) * 0.85);
+  check('xp fade: ...at Mining 11 (6 past) a third, then 15% less: ' + want6 + ' (credited and in the skill)',
+    six.paid && six.xpAmt === want6 && six.skillXp === want6 && want6 === 277, { xpAmt: six.xpAmt, skillXp: six.skillXp, want6 });
+  const ten = await strikeAt(null, 6, 11);
+  const want10 = xpAfterDecay(good(6), xpDecayMult(11, 1));
+  check('xp fade: an iron vein (Mining 1) struck at Mining 11 pays ' + want10 + ' of its 489',
+    ten.paid && ten.xpAmt === want10 && want10 === Math.round(489 * (1 / 3) * Math.pow(0.85, 5)), { xpAmt: ten.xpAmt, want10 });
+  check('xp fade: a fresh room advertises tierxp and xpdecay', !!ten.caps && ten.caps.tierxp === true && ten.caps.xpdecay === true,
+    ten.caps && { tierxp: ten.caps.tierxp, xpdecay: ten.caps.xpdecay });
+  const { LIVEOPS } = await import('../src/liveops.js');
+  check('xp fade: both kill switches\' names are ones the admin flags route accepts (TRAPS §117)',
+    LIVEOPS.FLAG_NAME_RE.test('xpdecay') && LIVEOPS.FLAG_NAME_RE.test('tierxp'));
+
+  /* THE KILL SWITCHES */
+  const off = await strikeAt({ xpdecay: false }, 11, 11);
+  check('xp fade kill switch: xpdecay:false pays black steel in full at Mining 11 (978) and un-advertises it, the doubled XP still on',
+    off.paid && off.xpAmt === 978 && !!off.caps && off.caps.xpdecay === false && off.caps.tierxp === true,
+    { xpAmt: off.xpAmt, caps: off.caps && [off.caps.xpdecay, off.caps.tierxp] });
+  const flat = await strikeAt({ tierxp: false }, 11, 9);
+  check('tier xp kill switch: tierxp:false puts black steel back on the old 538 (x 1.5 = 807) and un-advertises it',
+    flat.paid && flat.xpAmt === Math.ceil(538 * 1.5) && !!flat.caps && flat.caps.tierxp === false && flat.caps.xpdecay === true,
+    { xpAmt: flat.xpAmt, caps: flat.caps && [flat.caps.tierxp, flat.caps.xpdecay] });
+  const k3 = await setup({ nodehp: false });
+  const s3 = k3.ws.sent.find((m) => m.type === 'state_sync');
+  check('tier xp: nodehp:false (the old, quick HP) turns the doubled XP off too, and says so',
+    k3.room._harvestXpForTier(16, 'ok') === 725 && !!s3 && s3.caps.tierxp === false && s3.caps.xpdecay === true,
+    { xp: k3.room._harvestXpForTier(16, 'ok'), caps: s3 && [s3.caps.tierxp, s3.caps.xpdecay] });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

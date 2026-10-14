@@ -1,4 +1,5 @@
-import { LIFE_SKILLS, FISHING_TIERS, WOODCUTTING_TIERS, MINING_TIERS, gatherLadderLvl } from '../../../data/lifeSkills.js';
+import { LIFE_SKILLS, FISHING_TIERS, WOODCUTTING_TIERS, MINING_TIERS, gatherLadderLvl, GATHER_REQ_LVL } from '../../../data/lifeSkills.js';
+import { xpDecayMult } from '../../../data/xpDecay.js';   /* v2.3.3251 */
 import { BLACKSMITH_TIERS, WOODWORKING_TIERS, GEM_CUT_TIERS, COOKING_RECIPES } from '../../../data/gameSystems.js';
 
 /* v2.3.1312: normalize the four crafting unlock tables that always
@@ -18,8 +19,12 @@ const GEMCUT_LADDER = _fromMinLvl(GEM_CUT_TIERS);
    (GATHER_REQ_LVL: black steel at Mining 5, clownfish at Fishing 5, ...), not
    its tier number -- "Next: Clownfish at Lv 6" would have been a level early
    and still wrong. */
+/* v2.3.3251: + `tier` (the tier number the ladder's lvl replaces) and `grows`
+   (a tier the worker sets a level for, GATHER_REQ_LVL -- the five the Wheel
+   grows), for the XP fade's lines (skillXpFade). */
 const _gatherLadder = (tiers, nodeType) => tiers
-  .map(t => ({ ...t, lvl: gatherLadderLvl(nodeType, t.lvl) }))
+  .map(t => ({ ...t, tier: t.lvl, lvl: gatherLadderLvl(nodeType, t.lvl),
+    grows: Object.prototype.hasOwnProperty.call(GATHER_REQ_LVL[nodeType] || {}, t.lvl) }))
   .sort((a, b) => a.lvl - b.lvl);
 const WOODCUT_LADDER = _gatherLadder(WOODCUTTING_TIERS, 'tree');
 const FISH_LADDER = _gatherLadder(FISHING_TIERS, 'fishSpot');
@@ -54,9 +59,9 @@ const COOK_LADDER = COOKING_RECIPES
      `timerPassive` now and shows only then. */
 
 const META = {
-  woodcutting:   { icon: '🪓', name: 'Woodcutting',  iconSrc: '/icons/ui/skill-woodcutting.webp?v=2.3.1224',  group: 'gather',  accent: '#8FBF6A', iconScale: 1.15, tiers: WOODCUT_LADDER, tierNoun: (t) => t.tree, where: 'Frost Ridge', hits: true, timerPassive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Chop trees in the wild — higher-level trees give more XP.' },
-  fishing:       { icon: '🎣', name: 'Fishing',      iconSrc: '/icons/ui/skill-fishing.webp?v=2.3.1224',      group: 'gather',  accent: '#5B99DE', iconScale: 1.0,  tiers: FISH_LADDER,     tierNoun: (t) => t.name, where: 'Starting Meadow', hits: true, timerPassive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Cast at fishing spots and win the reel minigame.' },
-  mining:        { icon: '⛏',  name: 'Mining',       iconSrc: '/icons/ui/skill-mining.webp?v=2.3.1224',       group: 'gather',  accent: '#B0885A', iconScale: 1.15, tiers: MINE_LADDER,      tierNoun: (t) => t.name, where: 'Stone Hollows', hits: true, timerPassive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Break ore veins — deeper zones hold richer ore.' },
+  woodcutting:   { icon: '🪓', name: 'Woodcutting',  iconSrc: '/icons/ui/skill-woodcutting.webp?v=2.3.1224',  group: 'gather',  accent: '#8FBF6A', iconScale: 1.15, tiers: WOODCUT_LADDER, tierNoun: (t) => t.tree, where: 'Frost Ridge', hits: true, fades: true, timerPassive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Chop trees in the wild — higher-level trees give more XP.' },
+  fishing:       { icon: '🎣', name: 'Fishing',      iconSrc: '/icons/ui/skill-fishing.webp?v=2.3.1224',      group: 'gather',  accent: '#5B99DE', iconScale: 1.0,  tiers: FISH_LADDER,     tierNoun: (t) => t.name, where: 'Starting Meadow', hits: true, fades: true, timerPassive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Cast at fishing spots and win the reel minigame.' },
+  mining:        { icon: '⛏',  name: 'Mining',       iconSrc: '/icons/ui/skill-mining.webp?v=2.3.1224',       group: 'gather',  accent: '#B0885A', iconScale: 1.15, tiers: MINE_LADDER,      tierNoun: (t) => t.name, where: 'Stone Hollows', hits: true, fades: true, timerPassive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Break ore veins — deeper zones hold richer ore.' },
   farming:       { icon: '🌾', name: 'Farming',      iconSrc: '/icons/ui/skill-farming.webp?v=2.3.1224',      group: 'gather',  accent: '#D8C05A', iconScale: 1.0,  where: 'Your farm plots', earnHint: 'Plant, tend and harvest crops on your plot.' },
   trapping:      { icon: '🪤', name: 'Trapping',     iconSrc: '/icons/ui/skill-trapping.webp?v=2.3.1224',     group: 'gather',  accent: '#C08A5A', iconScale: 1.0,  where: 'Out in the lands', earnHint: 'Make box traps at the Woodworker, tap TRAP on a monster, then kill it. Every try pays XP; your level decides what you can catch.' },   /* v2.3.3120: what Trapping really is now (docs/PET-TRAPPING-PLAN.md) */
   cooking:       { icon: '🍳', name: 'Cooking',      iconSrc: '/icons/ui/skill-cooking.webp?v=2.3.1224',      group: 'process', accent: '#E0955A', iconScale: 1.0,  tiers: COOK_LADDER, earnHint: 'Cook raw food at a campfire — perfect timing pays.', hits: true, passive: (lvl) => `Cook timing window +${Math.min(30, lvl * 0.4).toFixed(1)}%` },
@@ -90,6 +95,32 @@ export function skillUnlocks(sd, level) {
     next: upcoming[0] ? { name: noun(upcoming[0]), lvl: upcoming[0].lvl } : null,
     later: upcoming[1] ? { name: noun(upcoming[1]), lvl: upcoming[1].lvl } : null,
   };
+}
+
+/* ═══ v2.3.3251: WHICH RESOURCES PAY FULL XP AT THIS LEVEL ═══
+   The owner's "make xp decay if you're trying to harvest lower level things":
+   what is 5+ levels below your level pays less (xpDecay.js).  For the gather
+   trio's detail view: `full`, the names of the resources you can harvest that
+   still pay full XP (asked level within 4 of yours), and `less`, the ones that
+   pay less with their share, nearest first.  Only the resources the worker
+   sets a level for (`grows`); the ladder's later tiers grow nowhere. */
+export function skillXpFade(sd, level) {
+  if (!sd || !sd.fades || !sd.tiers) return null;
+  const noun = sd.tierNoun || ((t) => t.name);
+  const lvl = Math.max(1, Math.floor(Number(level) || 1));
+  const open = sd.tiers.filter(t => t.grows && t.lvl <= lvl);
+  const full = [], less = [];
+  for (const t of open.slice().sort((a, b) => b.lvl - a.lvl || b.tier - a.tier)) {
+    const m = xpDecayMult(lvl, t.lvl);
+    if (m >= 1) full.push(noun(t));
+    else less.push({ name: noun(t), share: m });
+  }
+  return { full: full.reverse(), less };
+}
+/* "33%", "6.6%" -- a share for the line, a decimal under 10%. */
+export function xpShareText(m) {
+  const p = m * 100;
+  return (p >= 10 ? String(Math.round(p)) : p.toFixed(1)) + '%';
 }
 
 /* v2.3.1296: level-up badge — the Skills toolbar button shows a dot

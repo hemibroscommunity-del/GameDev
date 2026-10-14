@@ -865,6 +865,35 @@ remnant to migrate server-side, not a mode to preserve.
       count as play for the 2-minute idle logout; `caps.nodehp`, kill switch
       `nodehp: false`; gather-hits §12, mirror-audit "tier hp", `mp-tierhp`:
       docs/specs/resource-hp.md.
+    - since v2.3.3251 EACH TIER PAYS TWICE THE XP, AND XP FADES 5 LEVELS BELOW
+      YOU -- the owner: "Yes adjust the xp.  Also make xp decay if you're
+      trying to harvest lower level things.  This also applies to combat.  Xp
+      should begin decaying starting at 5 levels below your current level.  It
+      should always be most efficient to harvest or fight things within your
+      current level":
+      - a harvest's base XP by tier, doubling as its time does: 163, 326, 652,
+        1,304, 2,608 (gathering.js `GATHER_TIER_XP`, `harvestBaseXp`; was 163
+        to 913), so every tier pays ~22-30 XP a second at the level it opens;
+      - the FADE (`server/src/xpdecay.js` `xpDecayMult`): full XP up to 4
+        levels below you, a third at 5 below, 15% less each level past it --
+        a harvest by your skill against the resource's `GATHER_REQ_LVL`
+        (`_harvestXpPaid`), a fight by the trained skill the XP goes INTO
+        (Melee/Bow/Magic) against the monster's level, never the character
+        level (a sum), each damage source per monster (`_combatXpDecay`:
+        swing, lunge/dash/bash/whirlwind, staff splash, burst, arrow blast);
+        quest XP, cooking and the rest unchanged;
+      - the two numbers are the gentlest that keep the rule: at every level
+        1-100 of all three skills what is within your level pays the most XP a
+        second, by 20% at least, and the newest resource most of all
+        (gather-hits §13 checks it over the dice); past the top resources
+        (Mining 20, the others 25) and the monsters (Lv 40) everything fades;
+      - Skills -> the gather trio's "Full XP" / "Less XP" lines
+        (skillsModel.js `skillXpFade`); the game's "+N Mining XP" is
+        gameSystems.js `harvestXpFor`, held to the worker by mirror-audit;
+      - `caps.tierxp` (off with `tierxp: false` or `nodehp: false`) and
+        `caps.xpdecay` (kill switch `xpdecay: false`); `xp-decay` suite,
+        gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`:
+        docs/specs/xp-decay.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":

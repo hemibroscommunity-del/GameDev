@@ -20,7 +20,8 @@ import { TOWN_EXITS } from './effects.js';
    Now imported from where they live; the eslint LEGACY DEBT block for
    this file is gone. */
 import { AMULET_TIERS, SALVAGE_RETURN_RATE, DEPTH_TIERS, ZONE_RESOURCES, getAmuletBonus, getShieldBonus, getShieldStats, skillXpRequired } from './items.js';
-import { FISHING_TIERS, GATHER_NODE_HP } from './lifeSkills.js';   /* GATHER_NODE_HP v2.3.3251 */
+import { FISHING_TIERS, GATHER_NODE_HP, harvestBaseXp, gatherReqLvl } from './lifeSkills.js';   /* GATHER_NODE_HP, harvestBaseXp v2.3.3251 */
+import { xpDecayMult, xpAfterDecay, xpDecayOn } from './xpDecay.js';   /* v2.3.3251 */
 import { applyZoneVariant, hitShapeOf, variantForArchetype } from './monsterVariants.js';
 /* v2.3.1660: the trained-skill combat rebuild's client mirror — every
    prog3Live(rpg) branch below keeps its legacy body for old workers
@@ -2267,6 +2268,20 @@ export function gatherNodeHp(tierLvl, nodeType, table) {
    (caps.nodehp, v2.3.3251) -- an older worker's plans are 5 x (tier + 1). */
 export function gatherNodeHpFor(S, tierLvl, nodeType) {
   return gatherNodeHp(tierLvl, nodeType, !!(S && S._serverCaps && S._serverCaps.nodehp));
+}
+/* v2.3.3251: what a harvest of `node` PAYS, as THIS worker pays it -- the
+   game's "+N Mining XP".  The tier's XP (GATHER_TIER_XP with caps.tierxp, the
+   old formula without), times the accuracy grade's `xpMult`, then faded when
+   the resource's level is 5 or more below `level`, the skill's level BEFORE
+   this harvest's XP lands (with caps.xpdecay).  The worker's
+   gathering.js _harvestXpPaid; mirror-audit holds the two to each other. */
+export function harvestXpFor(S, node, level, xpMult) {
+  var caps = (S && S._serverCaps) || {};
+  var tier = node && (node.gatherLvl || node.tierLvl);
+  var xp = Math.ceil(harvestBaseXp(tier, !!caps.tierxp) * (Number(xpMult) || 1));
+  if (!xpDecayOn(S)) return xp;
+  var need = (node && node.reqLvl) || gatherReqLvl(node && node.nodeType, tier);
+  return xpAfterDecay(xp, xpDecayMult(Math.max(1, Math.floor(Number(level) || 1)), need));
 }
 /* v2.3.3251: the longest plan the game plays (applyGatherHits); a longer one
    drops to the timer.  At least the worker's GATHER_HITS.MAX_HITS, which

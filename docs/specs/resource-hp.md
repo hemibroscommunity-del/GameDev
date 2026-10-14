@@ -111,11 +111,10 @@ At the level each one opens:
 
 ## Open for the owner
 
-- **XP per harvest does not double.** It grows by tier
-  (`_harvestXpForTier`: 163, 350, 538, 725, 913 base XP), while the time now
-  doubles. At their opening levels the top tiers therefore pay fewer XP per
-  minute than copper: about 9 XP a second on obsidian against about 20 on
-  copper.
+- ~~**XP per harvest does not double.**~~ Answered: the owner said "Yes adjust
+  the xp", and it doubles a tier now (163, 326, 652, 1,304, 2,608), so every
+  tier pays about the same XP a second at the level it opens. XP also fades for
+  what is 5+ levels below you, harvests and fights: `docs/specs/xp-decay.md`.
 - **2× is one rule.** Every number above comes from the "twice the tier before"
   target, so 1.5× per tier would be a one-line change to the solver's target and
   the table.

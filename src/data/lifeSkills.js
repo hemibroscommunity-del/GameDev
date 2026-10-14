@@ -72,6 +72,23 @@ export const GATHER_NODE_HP = {
   fishSpot: { 1: 10, 6: 40, 11: 220, 16: 840, 21: 2480 },
 };
 
+/* ═══ v2.3.3251: ...AND EACH TIER PAYS TWICE THE XP OF THE ONE BEFORE ═══
+   The owner's "Yes adjust the xp": a harvest's base XP (before its accuracy
+   grade) doubles a tier as the time does -- 163, 326, 652, 1304, 2608 (was
+   163, 350, 538, 725, 913) -- so each tier pays about the same XP a second at
+   the level it opens.  A tier not in the table keeps the old
+   (tier x 1.5 + 5) x 25, as does `table` false (a worker without
+   caps.tierxp).  Mirror of server/src/gathering.js GATHER_TIER_XP /
+   harvestBaseXp, pinned by mirror-audit.  What is 5+ levels below you pays
+   less on top (xpDecay.js; gameSystems.js harvestXpFor). */
+export const GATHER_TIER_XP = { 1: 163, 6: 326, 11: 652, 16: 1304, 21: 2608 };
+
+export function harvestBaseXp(tierLvl, table) {
+  const t = Math.max(1, Math.floor(Number(tierLvl) || 1));
+  if (table !== false && Object.prototype.hasOwnProperty.call(GATHER_TIER_XP, t)) return GATHER_TIER_XP[t];
+  return Math.ceil(((t * 1.5) + 5) * 25);
+}
+
 /* v2.3.3038: the level to PRINT for a tier on a ladder (Skills' "next
    unlock", the Encyclopedia): its requirement where one is set, else the tier
    number as before -- the tiers past the third grow nowhere yet, and "Lv 1"
@@ -266,8 +283,11 @@ export function createGatherNode(zoneId, depth, x, y, nodeType, forcedTierLvl) {
 
   /* v2.3.1435 (owner): life-skill XP rate x5. Server mirror:
      gathering.js _harvestXpForTier — keep in lockstep.
-     v2.3.1765 (owner: "Lifeskills xp is far too slow"): x5 again -> 25x. */
-  const xp = Math.ceil((tier.lvl * 1.5 + 5) * 25);
+     v2.3.1765 (owner: "Lifeskills xp is far too slow"): x5 again -> 25x.
+     v2.3.3251: the tier's own XP, doubling a tier (GATHER_TIER_XP) -- what a
+     current worker pays at OK grade.  A harvest's "+N XP" is predicted by
+     gameSystems.js harvestXpFor, which asks the worker's caps and the fade. */
+  const xp = harvestBaseXp(tier.lvl, true);
   const respawnTime = 120000; /* 2 minutes after harvest the node revives in place */
   return {
     x, y, zoneId, depth,
