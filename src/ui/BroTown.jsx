@@ -8232,7 +8232,7 @@ export var BroTown = function BroTown(_ref0) {
           name: o.name,
           color: o.color,
           avatar: o.avatar,
-          bro: o.bro,
+          bro: o.bro, brn: o.brn,
           x: o.x,
           y: o.y,
           badges: o.badges,
@@ -9844,7 +9844,7 @@ export var BroTown = function BroTown(_ref0) {
       var o = S2 && S2.others && S2.others[fid];
       if (!o) return false;
       setInspectPlayer({
-        id: fid, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro,
+        id: fid, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
         x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
         rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1,
       });
@@ -11899,7 +11899,7 @@ export var BroTown = function BroTown(_ref0) {
           if (_isPartyMate) {
             if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
             setInspectPlayer({
-              id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro,
+              id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
               rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1
             });
@@ -11961,7 +11961,7 @@ export var BroTown = function BroTown(_ref0) {
           } else if (!_isDuelOpponent) {
             if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
             setInspectPlayer({
-              id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro,
+              id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
               rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1
             });
@@ -11977,7 +11977,7 @@ export var BroTown = function BroTown(_ref0) {
               name: o.name,
               color: o.color,
               avatar: o.avatar,
-              bro: o.bro,
+              bro: o.bro, brn: o.brn,
               x: o.x,
               y: o.y,
               rpgLv: o.rpgLv,

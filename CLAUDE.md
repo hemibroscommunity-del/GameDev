@@ -2390,6 +2390,27 @@ Two protocol versions coexist; both must keep working:
   instead of passing for a new character. The defaults that are not zero
   are `NEW_CHARACTER_COINS` and `freshLifeSkills()`, pinned to the client's
   by mirror-audit: docs/specs/fresh-start.md.
+- THE HEMI BRO CHECKMARK IS "OWNS ONE OR MORE", AND THE PROFILE SAYS HOW MANY
+  (v2.3.3255) -- the owner: "a 'verified' checkmark for people who own 1 hemi
+  bro or more ... list the number of hemi bros owned somewhere on their
+  profile ... small surface area":
+  - NO CONTRACT, NO TRANSACTION, NO KEY: the v2.3.1576 free signature proves
+    the wallet, and the worker READS the collection's `balanceOf` (onchain.js);
+    `bro_verify {count: 1}` against `caps.broCount`, the worn Bro optional;
+  - `ps.broN` server-owned like `ps.bro`, on the tick's player as `brn` (absent
+    at 0) and state_sync's `broN`; the checkmark is `bro` OR a count of 1+
+    (broWallet.js `broBadgeOf`), on the name plate, the profile ("3 Hemi Bros"
+    beside the AP) and the player list;
+  - the phone NEVER READ the tick's `bro` before: nobody saw anyone else's
+    badge. It reads both now, a far player's slim entry leaving them as they
+    were (`peerEntrySlim`);
+  - sign once: a link older than a day is READ again in the background when
+    its player joins (`_broRefresh`), never re-signed; one chain read per 5 s a
+    socket; everything fails closed; kill switch `broCount: false`;
+  - `broverify` suite (96), `onchain` (balanceOf), `mp-brobadge`:
+    docs/specs/hemi-bro-count.md.  The $2 supporter pass the owner asked about
+    in the same message is NOT built: it waits on their coin, receiving wallet
+    and the free-play cap.
 - FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS (v2.3.3197, the owner:
   "Send far away players less often and using shorter position numbers"):
   in the Wheel a v2 session gets the movers within `FAR_PLAYERS.NEAR_R` 2,400

@@ -23,6 +23,7 @@
 import {
   keccak256, toHex, fromHex, personalHash,
   recoverSigner, ownerOf, verifyBroOwnership, HEMI_BROS, CHAIN,
+  balanceOf, verifyBroWallet, MAX_BRO_COUNT,
 } from '../src/onchain.js';
 
 let failures = 0;
@@ -196,6 +197,74 @@ check('Transfer event topic matches',
 
   const malformed = await verifyBroOwnership('nonce-abc', '0xdead', 7, { fetchImpl: route(ME, ME) });
   check('a malformed signature is refused before any chain read', malformed.ok === false, malformed);
+}
+
+// ── 9b. v2.3.3255: balanceOf -- how many Bros a wallet holds ──
+{
+  check('selector balanceOf(address) === 70a08231 (the selector this module sends)',
+    hash('balanceOf(address)').slice(0, 8) === '70a08231');
+  const WALLET = '0x3333333333333333333333333333333333333333';
+  let seen = null, calls = 0;
+  const answer = (hex) => async (url, opts) => {
+    calls++; seen = JSON.parse(opts.body);
+    return { ok: true, json: async () => ({ result: hex }) };
+  };
+  const word = (n) => '0x' + BigInt(n).toString(16).padStart(64, '0');
+  check('balanceOf reads the count', (await balanceOf(WALLET, { fetchImpl: answer(word(3)) })) === 3);
+  check('  …calls the configured collection', seen.params[0].to === HEMI_BROS, seen.params[0].to);
+  check('  …with selector 70a08231 + the padded, lowercased address',
+    seen.params[0].data === '0x70a08231' + '0'.repeat(24) + WALLET.slice(2), seen.params[0].data);
+  check('  …mixed-case addresses are lowercased on the wire',
+    (await balanceOf('0xAbCdEf0000000000000000000000000000000001', { fetchImpl: answer(word(1)) })) === 1
+      && seen.params[0].data.endsWith('abcdef0000000000000000000000000000000001'));
+  check('a wallet holding none reads 0 (not null)', (await balanceOf(WALLET, { fetchImpl: answer(word(0)) })) === 0);
+  check('the most the collection can hold is a count', (await balanceOf(WALLET, { fetchImpl: answer(word(MAX_BRO_COUNT)) })) === MAX_BRO_COUNT);
+  check('MORE than the collection could hold is no answer (null): an ERC-1155 or a broken proxy grants nothing',
+    (await balanceOf(WALLET, { fetchImpl: answer(word(MAX_BRO_COUNT + 1)) })) === null);
+  check('a huge word is no answer either', (await balanceOf(WALLET, { fetchImpl: answer('0x' + 'f'.repeat(64)) })) === null);
+  check('an empty answer ("0x": no code there) is null', (await balanceOf(WALLET, { fetchImpl: answer('0x') })) === null);
+  check('a revert is null', (await balanceOf(WALLET, { fetchImpl: async () => { throw new Error('execution reverted'); } })) === null);
+  check('an RPC outage is null', (await balanceOf(WALLET, { fetchImpl: async () => ({ ok: false, status: 503 }) })) === null);
+  const before = calls;
+  check('a malformed address is null WITHOUT a chain read',
+    (await balanceOf('0x123', { fetchImpl: answer(word(5)) })) === null
+      && (await balanceOf(null, { fetchImpl: answer(word(5)) })) === null
+      && (await balanceOf('0x' + 'g'.repeat(40), { fetchImpl: answer(word(5)) })) === null
+      && calls === before, { calls, before });
+}
+
+// ── 9c. v2.3.3255: verifyBroWallet -- the signer, its count, the worn Bro ──
+{
+  const ME = '0x1111111111111111111111111111111111111111';
+  const THEM = '0x2222222222222222222222222222222222222222';
+  const SIG = '0x' + 'ab'.repeat(32) + 'cd'.repeat(32) + '1b';
+  const w = (a) => '0x' + '00'.repeat(12) + a.slice(2);
+  const n = (k) => '0x' + BigInt(k).toString(16).padStart(64, '0');
+  /* by callee and selector: the precompile answers the signer, ownerOf the
+     holder, balanceOf the count */
+  const chain = ({ signer, holder, count }) => async (url, opts) => {
+    const b = JSON.parse(opts.body);
+    const { to, data } = b.params[0];
+    let result = '0x';
+    if (to === '0x0000000000000000000000000000000000000001') result = signer ? w(signer) : '0x';
+    else if (data.startsWith('0x6352211e')) result = holder ? w(holder) : '0x';
+    else if (data.startsWith('0x70a08231')) result = count === null ? '0x' : n(count);
+    return { ok: true, json: async () => ({ result }) };
+  };
+  let r = await verifyBroWallet('msg', SIG, null, { fetchImpl: chain({ signer: ME, count: 4 }) });
+  check('a wallet check with no worn Bro: ok, the signer and its count', r.ok === true && r.address === ME && r.count === 4 && r.tokenOk === false, r);
+  r = await verifyBroWallet('msg', SIG, 77, { fetchImpl: chain({ signer: ME, holder: ME, count: 2 }) });
+  check('  …with the worn Bro theirs: tokenOk', r.ok === true && r.tokenOk === true && r.count === 2, r);
+  r = await verifyBroWallet('msg', SIG, 77, { fetchImpl: chain({ signer: ME, holder: THEM, count: 2 }) });
+  check('  …with the worn Bro someone else\'s: still ok, tokenOk false, the count stands', r.ok === true && r.tokenOk === false && r.count === 2, r);
+  r = await verifyBroWallet('msg', SIG, null, { fetchImpl: chain({ signer: ME, count: 0 }) });
+  check('  …a wallet holding none: ok, count 0', r.ok === true && r.count === 0, r);
+  r = await verifyBroWallet('msg', SIG, null, { fetchImpl: chain({ signer: ME, count: null }) });
+  check('a count the chain will not give FAILS the check (no badge on a guess)', r.ok === false && r.reason === 'chain_unreachable', r);
+  r = await verifyBroWallet('msg', SIG, null, { fetchImpl: chain({ signer: null, count: 5 }) });
+  check('an unrecoverable signature fails before any count', r.ok === false && r.reason === 'bad_signature', r);
+  r = await verifyBroWallet('msg', SIG, null, { fetchImpl: async () => { throw new Error('offline'); } });
+  check('an outage fails closed', r.ok === false, r);
 }
 
 // ── 10. configuration is the Hemi collection the owner supplied ──
