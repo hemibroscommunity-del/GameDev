@@ -244,6 +244,11 @@ These are needed by ANY split. Several help at today's 120.
   - Instead, send only what changed: joins, leaves, names, levels.
   - Positions go only for players within the minimap's reach.
   - The world map asks for a snapshot when it is opened.
+  - *v2.3.3246, the first step (the worker alone).* A far player is sent
+    slim: position, facing, zone and speed. A far player standing still is
+    sent every 4 s instead of every second (`docs/specs/slim-roster.md`). The
+    rest needs a phone change: the phone has to stop sweeping away the far
+    players it no longer hears from.
 - **0c. Far players at scale.** Four times a second, every phone is sent every
   player who moved anywhere in the Wheel (`FAR_PLAYERS`, #886). At 1,000 this
   becomes "the players on your minimap", as positions only.
@@ -390,6 +395,10 @@ These are needed by ANY split. Several help at today's 120.
      Otherwise they are hidden, and the minimap's dots still show them.
    - `?crowd=K` tries another number on a phone.
 2. **The Cloudflare lab: yes**, after Phase 0.
+   - *v2.3.3247, built.* Actions tab, then "Cloudflare lab", then "Run
+     workflow" (`.github/workflows/lab.yml`, `tools/lab/`). It answers risks
+     1-3 with a tiny worker of its own, then deletes it; about a cent a run
+     (`docs/specs/cloudflare-lab.md`).
 3. **The order:** Phase 0, then the lab, then Phase 1.
 4. **Stress tests first**, to find what can be optimized: the server well
    past its cap, and a phone in big crowds. Each optimization they find is
