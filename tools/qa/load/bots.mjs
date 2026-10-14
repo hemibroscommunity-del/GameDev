@@ -18,7 +18,10 @@
  *     nearest monster every ~0.7 s with the client's own `monster_damage`
  *     (monsterCombat.js: no damage number, the worker rolls it); when it
  *     dies it waits for `player_respawned` and walks back in, as the
- *     client's applyLocalRespawn does.
+ *     client's applyLocalRespawn does;
+ *   - v2.3.3245: with --relays, each swing also sends what a phone tells the
+ *     others about it (`player_swing`, or an archer's `player_projectile`),
+ *     which the room relays to every phone.
  *
  * What it measures, reported to the conductor once a second:
  *   - bytes and messages received, by kind (tick / zone_state / other);
@@ -95,6 +98,7 @@ function fresh() {
     wireRx: 0,   /* v2.3.3199: what the WIRE bot was sent, unzipped (load.mjs wireProxy) */
     txMsgs: 0, txBytes: 0, moves: 0, swings: 0, tracks: 0, rxUpdates: 0, rxUpdateBytes: 0,
     joins: [], entries: [], deliver: [], seen: [], tickRates: [],
+    joinBytes: [],   /* v2.3.3244: each state_sync's size, unzipped (load.mjs --storm) */
     closes: {}, rejects: {}, errors: 0, deaths: 0, respawns: 0, roomFull: 0,
   };
 }
@@ -147,6 +151,8 @@ function connect(bot) {
     bot.state = 'joining';
     send(bot, {
       type: 'join', id: bot.id, name: 'Load' + bot.k, protocolVersion: 2, httpAuth: true,
+      /* v2.3.3250: --pres -- a phone of presence v2 whose world map stays shut */
+      ...(CFG.pres ? { pres: 2 } : {}),
       data: { x: 1000, y: 1000, d: 'south', z: 'town', name: 'Load' + bot.k },
     });
   };
@@ -201,6 +207,7 @@ function onMessage(bot, data) {
     case 'state_sync':
       if (bot.state !== 'joining') break;
       push(M.joins, performance.now() - bot.openedAt);
+      push(M.joinBytes, len);
       bot.state = 'synced';
       /* wheelHome.js: "a beat in the world before the trip" */
       setTimeout(() => enterWheel(bot), rand(500, 1500));
@@ -336,7 +343,19 @@ function step(bot) {
       bot.tx = near.m.x; bot.ty = near.m.y;
       if (near.d <= REACH_PX && now - bot.lastSwing >= SWING_MS) {
         bot.lastSwing = now + rand(0, 100);
-        if (send(bot, { type: 'monster_damage', payload: { monsterId: near.m.id, zone: 'wheel', element: null, slot: 'melee', special: false } })) M.swings++;
+        /* v2.3.3245: --relays: what a phone tells the others about each blow
+           (monsterCombat.js): the swing it draws for them, or the arrow it
+           looses for them -- relayed by the room to every phone (index.js's
+           default branch, the eventBuffer).  Half the fighters are archers. */
+        const archer = !!(CFG && CFG.relays) && (bot.k % 2) === 1;
+        if (CFG && CFG.relays) {
+          const ang = Math.round(Math.atan2(near.m.y - bot.y, near.m.x - bot.x) * 1000) / 1000;
+          const relay = archer
+            ? { type: 'player_projectile', payload: { id: bot.id, x: Math.round(bot.x), y: Math.round(bot.y), ang, isStaff: false, ts: Date.now(), life: 90 } }
+            : { type: 'player_swing', payload: { id: bot.id, ts: Date.now(), wpn: 'sword', ang } };
+          if (send(bot, relay)) M.relays = (M.relays || 0) + 1;
+        }
+        if (send(bot, { type: 'monster_damage', payload: { monsterId: near.m.id, zone: 'wheel', element: null, slot: archer ? 'ranged' : 'melee', special: false } })) M.swings++;
       }
     }
   }
@@ -401,9 +420,36 @@ function probeTick(bot, data) {
   try { d = JSON.parse(data); } catch { return; }
   probeTickObj(bot, d);
 }
+/* v2.3.3242: --tick-parts (load.mjs sets BT_TICK_PARTS): what a tick is made
+   of, by its top-level parts' JSON length, from the probes -- where the
+   phones' download goes (players, events, monsters, nodes) */
+const TICK_PARTS = process.env.BT_TICK_PARTS === '1';
+function countTickParts(d) {
+  const tp = M.tickParts || (M.tickParts = {});
+  for (const k in d) {
+    if (k === 'type' || k === 'seq' || k === 'ts') continue;
+    let n = 0;
+    try { n = JSON.stringify(d[k]).length; } catch { /* not countable */ }
+    tp[k] = (tp[k] || 0) + n;
+  }
+  tp._ticks = (tp._ticks || 0) + 1;
+}
+/* v2.3.3245: --events (load.mjs): what the probes' ticks carry in `events`,
+   by type -- how many, and their bytes as JSON (unzipped) */
+function countEvents(d) {
+  if (!Array.isArray(d.events)) return;
+  const t = M.evTypes || (M.evTypes = Object.create(null));
+  for (const e of d.events) {
+    const k = e && typeof e.type === 'string' ? e.type : '?';
+    const c = t[k] || (t[k] = [0, 0]);
+    c[0]++; c[1] += JSON.stringify(e).length;
+  }
+}
 function probeTickObj(bot, d) {
   const now = performance.now();
   if (!d || typeof d !== 'object') return;
+  if (TICK_PARTS) countTickParts(d);
+  if (CFG && CFG.events) countEvents(d);
   if (typeof d.ts === 'number') push(M.deliver, Date.now() - d.ts);
   if (typeof d.seq === 'number' && typeof d.ts === 'number') {
     if (bot.firstSeq === null) bot.firstSeq = [d.seq, d.ts];
@@ -456,6 +502,7 @@ function report() {
   for (const b of bots) states[b.state] = (states[b.state] || 0) + 1;
   const out = Object.assign(M, {
     bots: bots.length, states,
+    probesIn: bots.filter((b) => b.probe && b.state === 'walking').length,   /* v2.3.3245: --events' per-probe rate */
     cpuPct: ((cpu.user + cpu.system) / 1000 / wall) * 100,
     loopP99: loopDelay.percentile(99) / 1e6,
     loopMax: loopDelay.max / 1e6,
@@ -489,6 +536,28 @@ process.on('message', (msg) => {
       b.state = 'gone';
       try { if (b.ws) { b.ws.onclose = null; b.ws.close(1000, 'left'); } } catch { /* already gone */ }
       b.ws = null;
+    }
+  } else if (msg.cmd === 'drop') {
+    /* v2.3.3244: load.mjs --storm -- every socket dropped at once, as a
+       network blip or a deploy does; each bot comes back on its own after
+       retry()'s 1-3 s, as a phone does (wsClient's backoff) */
+    for (const b of bots) {
+      if (b.retired || !b.ws) continue;
+      /* the phone gives the old socket up at once (a closing handshake the
+         network never finishes would keep it "open" for minutes): its
+         handlers off, a close sent for form's sake, and a new one in 1-3 s,
+         which the room takes over from the old (join.js, "superseded by
+         reconnect") */
+      const old = b.ws;
+      old.onopen = old.onmessage = old.onerror = old.onclose = null;
+      try { old.close(4001, 'storm'); } catch { /* already going */ }
+      clearInterval(b.timer); b.timer = null;
+      clearInterval(b.pongTimer); b.pongTimer = null;
+      if (b.trackTimer) { clearInterval(b.trackTimer); b.trackTimer = null; }
+      b.ws = null;
+      b.state = 'off';
+      M.closes.storm = (M.closes.storm || 0) + 1;
+      retry(b);
     }
   } else if (msg.cmd === 'stop') {
     stopping = true;

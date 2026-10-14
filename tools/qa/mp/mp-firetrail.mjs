@@ -29,6 +29,12 @@
  * everything the payload shape cannot.
  */
 import * as H from './harness.mjs';
+/* v2.3.3249: the burn's number as the game DRAWS it (the display scale, §5.8
+   D1: a 37-point burn reads "-7" at k 5) -- this file looked for "-37", which
+   no build since the scale has drawn, and failed both number checks on main.
+   The game's own function, as mp-hpscale imports it, so a retune of the
+   scale moves the expectation with it. */
+import { toDisplayDamage } from '../../../src/data/gameSystems.js';
 
 /* The fire_trail payload firetrail.js emits, field for field. */
 const dropPatch = (P, opts) => P.page.evaluate((o) => {
@@ -79,7 +85,7 @@ const burnTick = (P, opts) => P.page.evaluate((o) => {
 
 const popped = (P) => P.page.evaluate((want) => (window._gameState.current.dmgNumbers || [])
   .filter((p) => p.text === '-' + want)
-  .map((p) => ({ text: p.text, icon: p.iconKey || null })), BURN);
+  .map((p) => ({ text: p.text, icon: p.iconKey || null })), toDisplayDamage(BURN));
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Ashwalker', wsPort, webPort });
@@ -105,6 +111,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     S.currentZone = 'meadow';
+    /* v2.3.3249: and STAND there on this screen too.  Only the worker was
+       told (500, 500); the player stayed at today's town spawn, (1014, 944),
+       which in the 1024 px meadow is its south-east corner -- the camera
+       stops at the map's edge, so he was drawn at the right edge of the view
+       and the patches this file drops 90-130 px east of him landed off it:
+       every pixel check read 0 warm pixels, lit or bare. */
+    if (S.player) { S.player.x = 500; S.player.y = 500; S.player.vx = 0; S.player.vy = 0; }
     if (S.channel) S.channel.send({ type: 'move', x: 500, y: 500, z: 'meadow' });
   });
   await P.page.waitForTimeout(3000);

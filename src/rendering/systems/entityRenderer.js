@@ -98,6 +98,7 @@ import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel) */
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
+import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
 import { jumpActive, jumpFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
@@ -115,6 +116,7 @@ const _staffTipOut = { x: 0, y: 0 };
 import { SHADE, propShade } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop; v2.3.2893 + snow props */
 import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
 import { standInReady, farmKneelReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made */
+import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -403,6 +405,19 @@ if (typeof window !== 'undefined') window.__btForeground = () => _fgDrawn.slice(
    only; the rest are unnamed graphics. */
 let _entityLayerRef = null;
 let _frontLayerRef = null;
+/* v2.3.3241: `?nopeercull` is the peer loop as it was, to compare: every other
+   player in the Wheel drawn wherever they stand (PEER_FAR_MARGIN in
+   _updateOtherPlayers), and moved back into the entity layer every frame */
+const _noPeerCull = typeof location !== 'undefined' && /[?&]nopeercull\b/.test(location.search || '');
+/* v2.3.3241: the crowd cap's K -- the owner's 50, or `?crowd=K` (`?crowd=all`
+   draws everyone); `?nopeercull` draws everyone too (src/game/crowdCap.js) */
+const _crowdK = (() => {
+  if (_noPeerCull) return Infinity;
+  const q = typeof location !== 'undefined' ? crowdFromSearch(location.search) : null;
+  return q == null ? CROWD_K : q;
+})();
+/* "everyone was drawn last frame", for crowdPick's shownBefore */
+const _CROWD_ALL_SHOWN = { has: () => true };
 /* ═══ v2.3.2768: WHAT THE LOCAL FIGURE IS MADE OF, AND HOW SHARP EACH PIECE IS ═══
    Owner: "The character also looks soft compared to the art he's wearing like
    sword or shirt."  Softness is a number: how many DEVICE pixels each texel
@@ -8397,9 +8412,14 @@ export class EntityRenderer {
       if (!m.alive && (isFodder || variantKey) && m._slimeDeathStart == null) {
         m._slimeDeathStart = now;
         if (isFodder) {
+          /* v2.3.3248: by how near it died, or in full when you helped kill
+             it (hitSounds.deathVol, the kill event's `_killMine`): every
+             slime with its look loaded -- ~2,600 px round you, most of that
+             off screen -- splatted at this level (OPEN-DECISIONS 21). */
+          const _spK = deathVol(S, m);
           try {
-            if (typeof window !== 'undefined' && window.BT_AUDIO) {
-              window.BT_AUDIO.play('slime-death', { vol: 0.425 });
+            if (_spK > 0 && typeof window !== 'undefined' && window.BT_AUDIO) {
+              window.BT_AUDIO.play('slime-death', { vol: 0.425 * _spK });
             }
           } catch {}
         }
@@ -10545,17 +10565,114 @@ export class EntityRenderer {
     if (!S._peerShieldHeld) S._peerShieldHeld = new Map();
     else S._peerShieldHeld.clear();
 
+    /* ═══ v2.3.3241: IN THE WHEEL, ANOTHER PLAYER FAR OFF SCREEN IS NOT DRAWN ═══
+       Owner, 2026-10-13: "stress test to see what can be optimized".  A phone
+       in a crowd (mp-crowdbots, the bots walking 2,400 px around BroTown's
+       square, 12 of 150 on screen) did as much work a frame as with all 150
+       on screen: every other player in the zone was posed, dressed and handed
+       to Pixi every frame, wherever they stood -- 43 display objects each --
+       and the frame's work grew 6.5 -> 36 ms on the QA box.  The monsters
+       have skipped this since v2.3.2978 (FAR_MARGIN in _updateMonsters); a
+       player now follows the same rule: past the view's half-diagonal plus
+       PEER_FAR_MARGIN from its middle, their display is hidden and nothing
+       else of theirs is done this frame, and one is not even MADE until they
+       come that near (a join into a full Wheel no longer builds every
+       player's figure in one frame).  It is kept while they are away, so
+       walking back costs no re-create; the frame they come in range the
+       lines below show them again (`display.visible = !_rexStandIn`).  The
+       Wheel only, as for the monsters: an ordinary zone is a screen or two.
+       `?nopeercull` is the old way, for comparing (this and the layer below). */
+    const PEER_FAR_MARGIN = 400;
+    const _pFar = !_noPeerCull && !!(zoneHomes(S.currentZone) && S.camera && S._viewW > 0 && S._viewH > 0);
+    const _pFarCX = _pFar ? S.camera.x + S._viewW / 2 : 0;
+    const _pFarCY = _pFar ? S.camera.y + S._viewH / 2 : 0;
+    const _pFarR = _pFar ? Math.hypot(S._viewW, S._viewH) / 2 + PEER_FAR_MARGIN : 0;
+    let _peersFar = 0;
+
+    /* ═══ v2.3.3241: THE CROWD CAP -- AT MOST K DRAWN IN FULL ═══
+       The owner's Phase 0a (docs/SERVER-SPLIT-PLAN.md): of the players near
+       enough to be drawn, the nearest CROWD_K (50) in full, and always your
+       party, your target, your duel and whoever is fighting you; the rest are
+       not drawn (the minimap still shows them), the edge held so it does not
+       flicker (src/game/crowdCap.js).  Counted first, so a crowd under K
+       costs one pass and no allocation. */
+    const _peerOut = this._peerNotDrawn || (this._peerNotDrawn = new Set());
+    _peerOut.clear();
+    let _crowdKeep = null;
+    let _peersCrowd = 0;
+    if (Number.isFinite(_crowdK)) {
+      const _nearHere = (o) => {
+        if (!o || (o.zone || o.z || 'town') !== S.currentZone) return false;
+        if (!_pFar) return true;
+        const _fx = (o.renderX || o.x || 0) - _pFarCX, _fy = (o.renderY || o.y || 0) - _pFarCY;
+        return _fx * _fx + _fy * _fy <= _pFarR * _pFarR;
+      };
+      let _near = 0;
+      for (const id in others) if (_nearHere(others[id])) _near++;
+      if (_near > _crowdK) {
+        const me = S.player || {};
+        const party = (S._party && Array.isArray(S._party.members)) ? S._party.members : null;
+        const lockId = (S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id != null) ? String(S.lockedTarget.id) : null;
+        const duelId = (S._inDuel && S._inDuel.opponent != null) ? String(S._inDuel.opponent) : null;
+        const cands = [];
+        for (const id in others) {
+          const o = others[id];
+          if (!_nearHere(o)) continue;
+          const dx = (o.renderX || o.x || 0) - (me.x || 0), dy = (o.renderY || o.y || 0) - (me.y || 0);
+          const _tm = S._threatMarks ? S._threatMarks[id] : null;
+          const prio = id === lockId || id === duelId
+            || !!(party && party.some((m) => m && m.id === id))
+            || !!(_tm && threatSkullPhase(_tm.type, _tm.until, now))
+            || !!(o._hpSeenAt && now - o._hpSeenAt < PEER_HPBAR_HOLD_MS);
+          cands.push({ id, d2: dx * dx + dy * dy, prio });
+        }
+        _crowdKeep = crowdPick(cands, _crowdK, this._crowdShown === 'all' ? _CROWD_ALL_SHOWN : this._crowdShown);
+      }
+    }
+    this._crowdShown = _crowdKeep || 'all';
+
     for (const [id, other] of Object.entries(others)) {
       if (!other || (other.zone || other.z || 'town') !== S.currentZone) continue;
-      activeIds.add(id);
 
       let display = this.otherPlayerDisplays.get(id);
+      if (_pFar) {   /* v2.3.3241: see PEER_FAR_MARGIN above */
+        const _fox = (other.renderX || other.x || 0) - _pFarCX;
+        const _foy = (other.renderY || other.y || 0) - _pFarCY;
+        if (_fox * _fox + _foy * _foy > _pFarR * _pFarR) {
+          if (display) {
+            activeIds.add(id);
+            if (display.visible) display.visible = false;
+            display._farHidden = true;
+          }
+          other._bandTopY = null;
+          /* not drawn: the QA probe says so (null), as for one never drawn */
+          if (typeof window !== 'undefined' && window.__btPeersDrawn && window.__btPeersDrawn._m) window.__btPeersDrawn._m.delete(id);
+          _peerOut.add(id);
+          _peersFar++;
+          continue;
+        }
+      }
+      if (_crowdKeep && !_crowdKeep.has(id)) {   /* v2.3.3241: the crowd cap, above */
+        if (display) {
+          activeIds.add(id);
+          if (display.visible) display.visible = false;
+          display._farHidden = true;
+        }
+        other._bandTopY = null;
+        if (typeof window !== 'undefined' && window.__btPeersDrawn && window.__btPeersDrawn._m) window.__btPeersDrawn._m.delete(id);
+        _peerOut.add(id);
+        _peersCrowd++;
+        continue;
+      }
+      activeIds.add(id);
+
       if (!display) {
         display = createOtherPlayerDisplay();
         display.label = `other_${id}`;
         this.entityLayer.addChild(display);
         this.otherPlayerDisplays.set(id, display);
       }
+      if (display._farHidden) display._farHidden = false;
 
       // Use pre-computed interpolated position
       display.x = other.renderX || other.x || 0;
@@ -10575,7 +10692,20 @@ export class EntityRenderer {
       {
         const _peerLayer = ((_oEx === 'mine' || _oEx === 'fish') && this.gestureLayer)
           ? this.gestureLayer : this.entityLayer;
-        if (display.parent !== _peerLayer) _peerLayer.addChild(display);
+        /* ═══ v2.3.3241: ...OR THE DEPTH PASS'S FRONT LAYER ═══
+           The depth pass (depthSort.js applyDepthBuckets, after this) moves
+           everyone standing south of you into propFrontLayer, over your body.
+           This line then moved them back into the entity layer the next
+           frame, and the pass moved them out again: two re-parentings a frame
+           for every player south of you, and Pixi rebuilt the scene's draw
+           list every frame for it (the crowd test's profile: _buildInstructions
+           10.8 ms a second with 150 players, 2.9 with none).  Where they end
+           each frame was always right.  An ordinary player in the front layer
+           is now left there; the pass moves them back when they cross. */
+        if (display.parent !== _peerLayer
+          && (_noPeerCull || !(_peerLayer === this.entityLayer && display.parent && display.parent === this.propFrontLayer))) {
+          _peerLayer.addChild(display);
+        }
       }
       /* ═══ v2.3.2083: WHERE A PEER WAS ACTUALLY DRAWN ═══
          The local player has had __btPlayerDrawn since v2.3.2078; a peer had
@@ -11772,6 +11902,11 @@ export class EntityRenderer {
         this.otherPlayerDisplays.delete(id);
       }
     }
+    S._peersFarHidden = _peersFar;   /* v2.3.3241: QA readout (mp-crowdbots, mp-peercull) */
+    S._peersCrowdHidden = _peersCrowd;
+    /* ...and who was not drawn, for their effects (effectsRenderer, after
+       this: no stand-in, trail or bubble where nobody is drawn) and pets */
+    S._peersNotDrawn = _peerOut;
   }
 
   _updatePlayer(S, now) {
@@ -15146,6 +15281,13 @@ export class EntityRenderer {
       if (!petFrames(art.base, 'front').length) continue;
       seen.add(id);
       let d = this.peerPetDisplays.get(id);
+      /* v2.3.3241: a player not drawn (far off screen in the Wheel, or past
+         the crowd cap) has their pet not drawn either -- kept hidden if made,
+         not made until drawn (_updateOtherPlayers, just before this) */
+      if (this._peerNotDrawn && this._peerNotDrawn.has(id)) {
+        if (d && !d.destroyed && d.visible) d.visible = false;
+        continue;
+      }
       if (!d || d.destroyed) {
         d = new Container();
         d.label = 'peerPet_' + id;

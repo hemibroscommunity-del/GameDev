@@ -6154,6 +6154,33 @@ about 145" was really about 105, and the cap of 120 went past it.
   `mp-trackcapture`) is the bots' now. `docs/specs/look-relay.md` has the before
   and after.
 
+## 174. "The join snapshot is the room's state, so spread it" (v2.3.3244)
+
+`getAllPlayerData()` built each player in a joiner's `state_sync` as
+`{...playerState, name, ...session.data}`: the player's WHOLE server state.
+Every joining phone was told every other player's coins, bag, stashes,
+quests, life skills, buffs and the anti-cheat's own histories, and the join's
+`rpg*` claims (the phone's own coins, bag and weapons) went to everyone in
+`player_join` too. Earlier passes cropped what they noticed (gear ids,
+v2.3.2537; the gear stashes kept off the session, v2.3.2523) and left the
+spread "behaviour-frozen".
+
+- No phone read any of it: a peer is drawn from its position, name and look
+  (wsClient.js, `peerCosmetics.js`).
+- It was most of the snapshot: 2.3 KB for a brand-new character, 4.6 KB for a
+  played one with a real look, so ~550 KB a join at 120 players.
+- And it was a leak with a game in it: in No man's land the victim's bag is
+  the killer's (nomansland.js), and anyone reading their own socket could see
+  who was worth hunting.
+
+**The rule.** What other players are told about a player is built from an
+ALLOWLIST of what is public anyway (`PEER_PUBLIC_KEYS`, index.js: the look
+relay's keys, the join's look, a tick's fields), never by spreading a state
+object, and never by cropping the fields someone happened to notice. A field
+added to `playerState` later stays private until it is put on the list on
+purpose. `peer-view.test.mjs` holds every key a phone reads on the snapshot
+road to the list, so the list cannot quietly starve a phone either.
+
 ## 175. "The creator fits a phone, and a phone held sideways is the same phone" (v2.3.3216)
 
 **Plausible:** every creator scenario measures it at 390x844 or 390x664,
@@ -6180,3 +6207,93 @@ breakage. The owner never saw it because they hold the phone upright.
   `100dvh` with `100vh` before it, as the modal's own height falls back. Never
   from `vw`, which says nothing about how tall the screen is.
 
+
+
+## 176. "An event that happens at a place can go to the phones near it" (v2.3.3245)
+
+Most of them can: a swing, an arrow, a hit on a monster, a monster's slam.
+A phone far away has nothing to draw them on, and the bytes and the room's
+compressing grow with the square of the crowd (`docs/specs/events-by-place.md`).
+But some events tell a phone something it KEEPS until the next one, and nothing
+else on the wire tells it again. Sending those by place makes a phone that was
+far away draw the world wrong when it walks up:
+
+- `monster_kill` -- a phone in the Wheel keeps a copy of every monster, and
+  the tick tells it only about the ones near it, so a kill is its only news of
+  a far death.  A monster that comes back into reach still dead is read as a
+  kill on the spot (`wsClient.js`, the tick's alive -> dead edge): a remnant
+  pile that never goes away, and a death sound.
+- `player_shield` -- the shield stays up, or down, until the next toggle.
+- `monster_transform` -- the mummy that became a skeleton is on no other wire.
+- `campfire_lit` -- sent once, and the fire lasts 45 s.
+- `loot_drop` / `loot_claimed` / `loot_despawn` -- a pile lies there until it
+  is taken; one a phone missed is invisible, and one whose despawn it missed is
+  drawn forever.
+
+**The rule.** Before placing an event type, read its client handler for state
+that outlives the moment (a flag with no timeout, a list, a field the tick
+does not resend), and keep that type room-wide.  `server/src/eventplace.js` is an
+ALLOWLIST for this reason: a new type goes to everyone until someone has done
+that reading and placed it.
+
+## 177. "A phone scenario that fails on main is a broken feature" (v2.3.3249)
+
+Four phone scenarios failed on `main` for days, and each was logged as "broken
+on main" while other work went round them. None was the game. Each was the test
+drifting from a game that had moved on, or tests disturbing each other:
+
+- **`mp-deathstrip`** read the forge's swinging sign (a building's moving part,
+  `worldLife.js` `life_<prop>`) and a few dust particles as gear left on a
+  corpse. The player dies a few steps from the forge. Its watcher also stood on
+  the corpse's own tile, so its OWN shadow lay on the body.
+- **`mp-firetrail`** told the worker it stood at (500, 500) in the meadow, but
+  left the player at today's town spawn, (1014, 944). That is the meadow's
+  south-east corner, so the camera stopped at the map's edge, and every fire the
+  test dropped 90-130 px east of him was off screen. It also looked for a burn's
+  number as "-37", which no build has drawn since the display scale (k 5: "-7").
+- **`mp-petsmatter`** let Frost Ridge's snowmen kill the player in its ward
+  fight about half the time. The death dropped the next section's target lock
+  (`player_died`), so that section reported the golden catch's reveal as broken.
+- **`mp-hitvoices`** and **`mp-slimeburst`** passed alone and failed in a list.
+  76 of the 469 scenarios never closed their pages, and one browser serves the
+  whole run, so every world they left behind went on drawing (software GL here)
+  under the scenarios after it.
+
+**The rule.**
+
+- A scenario red on `main` is a question about the TEST first: read what it
+  measured (positions, texts, the screen) against what the game does today,
+  before reading it as a broken feature or quietly living with it.
+- A test sets the player where it says it does. Telling the worker is not
+  moving the player on his own screen.
+- Look for a number as the game draws it: import the game's own conversion
+  (`toDisplayDamage`, as `mp-hpscale` does), never the raw number.
+- `run.mjs` closes every page a scenario leaves open (v2.3.3249). A scenario
+  that only passes first in a list is measuring the box, not the game.
+
+## 178. "Stop sending a far player, and the phone just keeps their last copy" (v2.3.3250)
+
+It does keep it -- that is the trap. Presence v2 (`docs/specs/presence-v2.md`)
+stops sending a phone the players far from it while its world map is shut,
+and stands the 10 s ghost sweep down so their silence does not delete them.
+Their last copy then stays where they were last seen, frozen, still walking on
+the spot. Nobody sees it while it is far from them, so every server check
+passed. But walk toward where they were, and they are standing there: a ghost.
+About forty places read other players' positions -- bodies, pets, lights,
+dust, sounds, PvP targets, the minimap -- and most of them do not even check
+the zone, so hiding the copy in each one would have missed some.
+
+- **The fix is where the copy's position is made, not where it is read.** The
+  worker marks each roster `nr` (every player near you is in it), the phone
+  marks a player missing from it `_away`, and once a frame (the peers'
+  interpolation loop, visualSystems.js) keeps an `_away` copy at least 2,400 px
+  from you along the line from you through it. Nothing that reads positions
+  had to change.
+- **Found by the phone test, written before shipping** (`mp-presence2`: the
+  watcher walks toward where the walker was last seen). A test that only asks
+  "was the far player sent?" passes a ghost.
+
+**The rule.** When a phone stops hearing about something on purpose, decide
+what its last copy does from then on -- a stale copy is not "nothing", it is
+wrong data at a real place. And TRAPS #18 again: the page's channel lets out
+only the message types it names (`map_watch` was dropped until it had a line).

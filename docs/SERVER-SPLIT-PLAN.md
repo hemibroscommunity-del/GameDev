@@ -244,15 +244,40 @@ These are needed by ANY split. Several help at today's 120.
   - Instead, send only what changed: joins, leaves, names, levels.
   - Positions go only for players within the minimap's reach.
   - The world map asks for a snapshot when it is opened.
+  - *v2.3.3246, the first step (the worker alone).* A far player is sent
+    slim: position, facing, zone and speed. A far player standing still is
+    sent every 4 s instead of every second (`docs/specs/slim-roster.md`). The
+    rest needs a phone change: the phone has to stop sweeping away the far
+    players it no longer hears from.
+  - *v2.3.3250, the rest (worker and phone).* A phone that joins with
+    `pres: 2` is sent, in the Wheel, the players near it and its party; far
+    players only while its world map is open (`map_watch`); and everyone's
+    id and zone every 30 s (`on`), which replaces its 10 s ghost sweep. A far
+    player's copy is parked out of sight, so it is never a ghost where they
+    were last seen. In-process, 20-25% less to each phone than the slim roster
+    at 120 players and 34-42% less at 500; merged with 0c's roster-only far
+    players (#898) the extra cut is small at 120 (1-10%) and 8-24% at 1,000
+    (`docs/specs/presence-v2.md`).
 - **0c. Far players at scale.** Four times a second, every phone is sent every
   player who moved anywhere in the Wheel (`FAR_PLAYERS`, #886). At 1,000 this
   becomes "the players on your minimap", as positions only.
+  - *v2.3.3243, the first step:* that send is gone. A player past 2,400 px
+    (who is on neither your screen nor your minimap) reaches you only in the
+    once-a-second roster, which is 0b's to slim down. At 120 players the room
+    is about 5 points less busy and each phone downloads 15-18% less
+    (`docs/specs/far-players.md` "Once a second").
 - **0d. Events by place.** Every game event goes to every phone in the Wheel:
   up to 500 events and 64 KB a tick (tick.js). At 1,000 players that is one
   room-wide queue of everyone's fights.
   - Events should carry where they happened, and a phone should get those
     near it.
   - Truly global ones (world chat, clan wars) still go to everyone.
+  - *v2.3.3245, done:* the fights' events are placed by an allowlist
+    (`server/src/eventplace.js`). They go to the players they are about, and
+    to the phones within 2,800 px of them in the Wheel; everything else still
+    goes to everyone. At 120 players with real swings and arrows, each phone
+    gets about 16 events a second instead of 50
+    (`docs/specs/events-by-place.md`).
 - **0e. The join snapshot.** A joining phone is sent every player's full state
   (`getAllPlayerData`, `state_sync`). That is O(N) work for each join and
   about 1-2 MB at 1,000 players (*estimate*). Send only what the joiner's surroundings
@@ -379,6 +404,10 @@ These are needed by ANY split. Several help at today's 120.
      Otherwise they are hidden, and the minimap's dots still show them.
    - `?crowd=K` tries another number on a phone.
 2. **The Cloudflare lab: yes**, after Phase 0.
+   - *v2.3.3247, built.* Actions tab, then "Cloudflare lab", then "Run
+     workflow" (`.github/workflows/lab.yml`, `tools/lab/`). It answers risks
+     1-3 with a tiny worker of its own, then deletes it; about a cent a run
+     (`docs/specs/cloudflare-lab.md`).
 3. **The order:** Phase 0, then the lab, then Phase 1.
 4. **Stress tests first**, to find what can be optimized: the server well
    past its cap, and a phone in big crowds. Each optimization they find is

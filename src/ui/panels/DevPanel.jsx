@@ -193,6 +193,7 @@ const CAP_GATES = [
   'nodehp' /* v2.3.3251: each tier's HP twice as long as the one before (server/src/gathering.js GATHER_NODE_HP) -- lower case, a kill switch */,
   'tierxp' /* v2.3.3251: each tier's harvest XP twice the one before (server/src/gathering.js GATHER_TIER_XP) -- lower case, a kill switch; off with nodehp too */,
   'xpdecay' /* v2.3.3251: XP fades 5+ levels below you, harvests and fights (server/src/xpdecay.js) -- lower case, a kill switch */,
+  'presence2' /* v2.3.3250: far players only while the world map is open, the online list, far copies parked (server/src/presence2.js) -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported

@@ -17,6 +17,8 @@
 
 import { WHEEL_ZONE } from './wheelzone.js';   /* v2.3.2978: the Wheel's monsters go out by interest */
 import { armourGradeWire } from './gearprov.js';   /* v2.3.3142: the worn armour's grade, seen by others */
+import { eventHeardBy } from './eventplace.js';   /* v2.3.3245: events by place */
+import { PRESENCE2 } from './presence2.js';   /* v2.3.3250: far players only while your world map is open */
 
 /* v2.3.2062: server ticks between regen passes. Exported because the Mana
    Draught sizes its per-tick floor against this cadence (server/src/data.js
@@ -58,10 +60,61 @@ export const REGEN_TICKS = 30;
    Kill switches, live flags (no deploy): `farplayers: false` sends everyone
    every tick again, `roundpos: false` sends positions as the phones sent
    them.  Deploy-order safe both ways: an old client reads the same fields
-   and already handles a peer updated less often (the 1 Hz roster). */
+   and already handles a peer updated less often (the 1 Hz roster).
+
+   ═══ v2.3.3243: FAR PLAYERS ONCE A SECOND, WITH THE ROSTER ═══
+   Found by the owner's "stress test to see what can be optimized": the far
+   send above went to every phone in the Wheel four times a second, and it
+   carried EVERY player who had moved -- in a town crowd, all the near ones
+   the phone was already being sent on every tick, again.  At 120 players
+   that was about a third of what a phone in BroTown was sent.  The presence
+   roster (PRESENCE_REFRESH_TICKS, about once a second) already carries
+   everyone to everyone, where they are now; a player past NEAR_R is on
+   neither your screen nor your minimap, so the roster is enough for them.
+   EVERY_MS is now 0: no far send, the far players go with the roster.
+   Measured (docs/specs/far-players.md "Once a second"): at 120 players the
+   room ~5 points less busy (78-80% -> 73-76%), at 150 two more ticks a
+   second (35 -> 37), each phone's download 15-18% less, and the near
+   players' moves arriving sooner (less to do).  What shows: on the world
+   map, zoomed in on a part of the Wheel more than 2,400 px away, other
+   players' dots get an update once a second, and are carried along their
+   last speed in between (src/game/peerDot.js).
+   `far_ms` in the live flags (a number, 100-5000) brings back a far send
+   that often, without a deploy: 250 is v2.3.3197's. */
 export const FAR_PLAYERS = Object.freeze({
   NEAR_R: 2400,
-  EVERY_MS: 250,
+  EVERY_MS: 0,
+});
+
+/* ═══ v2.3.3246: THE ROSTER'S FAR PLAYERS, SLIM (the split plan's Phase 0b) ═══
+   Owner, 2026-10-13: "Go recommended but I want you to stress test to see
+   what can be optimized."  About once a second (PRESENCE_REFRESH_TICKS) every
+   phone is sent EVERY connected player's whole entry: the presence roster,
+   which keeps the client's ghost sweep from dropping a player who stands
+   still, carries far players to the world map (FAR_PLAYERS), and heals a join
+   a suspended tab missed.  At 120 players that is ~150 bytes x 120 a second to
+   each phone; at 1,000, ~150 KB a second.
+
+   Now, in the Wheel, a v2 phone's roster is its own (rosterPlanFor below):
+     - a player NEAR it (same zone, within FAR_PLAYERS.NEAR_R -- everyone on
+       its screen and minimap) is sent whole, as before;
+     - a FAR player only {x, y, d, z, vx, vy}: where they are for the world
+       map, which way they face, their zone and their speed -- the fields the
+       client writes whether or not they are there (wsClient.js, `dir` and
+       `zone`), so a slim entry never blanks them.  The rest it leaves as it
+       was, or reads as "none" (sprint, skull, pet, the armour's grade) for a
+       player it does not draw: the first whole entry puts them back, long
+       before they are on screen (a mover coming into reach is sent whole on
+       that tick; a standing one in the next roster);
+     - a far player who has not changed since the last roster is sent again
+       only once FAR_STILL_MS has passed, which keeps the client's 10 s ghost
+       sweep fed (at most FAR_STILL_MS + one roster apart: 4 + 1.1 s, or
+       8.5 s with the room down to 10 ticks a second).
+   v1 phones and every other zone get the whole roster, as before.  No caps
+   flag: an old client reads the same fields.  `slimroster: false` in the live
+   flags sends everyone the whole roster again. */
+export const ROSTER = Object.freeze({
+  FAR_STILL_MS: 4000,
 });
 
 /* a property name JSON.stringify would move to the front of an object
@@ -81,6 +134,17 @@ export const tickMethods = {
   _farPlayersOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'farplayers') && !f.farplayers);
+  },
+  /* v2.3.3243: how often the far players go out on their own (FAR_PLAYERS);
+     0 is "with the presence roster only".  `far_ms` in the live flags
+     overrides it, kept to 100-5000 ms. */
+  _farEveryMs() {
+    return this._flagNum ? this._flagNum('far_ms', FAR_PLAYERS.EVERY_MS, 100, 5000) : FAR_PLAYERS.EVERY_MS;
+  },
+  /* v2.3.3246: `slimroster: false` (ROSTER above) */
+  _slimRosterOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'slimroster') && !f.slimroster);
   },
   _roundPosOff() {
     const f = this._liveFlags;
@@ -408,9 +472,11 @@ export const tickMethods = {
       /* v2.3.3197: far players held back (FAR_PLAYERS) keep a quiet tick
          going until they are sent, so the last of a walk is never stuck */
       const farOn = !this._farPlayersOff();
+      /* v2.3.3243: 0 -- no far send, the far players go with the roster */
+      const farEvery = farOn ? this._farEveryMs() : 0;
       if (!farOn && this._farPending) this._farPending = null;
-      const farWaiting = farOn && !!this._farPending && this._farPending.size > 0
-        && Date.now() - (this._farLastAt || 0) >= FAR_PLAYERS.EVERY_MS;
+      const farWaiting = farEvery > 0 && !!this._farPending && this._farPending.size > 0
+        && Date.now() - (this._farLastAt || 0) >= farEvery;
       if (!hasDirty && !hasEvents && !hasMonsters && !hasNodes && !presenceTick && !farWaiting) { this.tickSeq++; return; }
 
       const seq = this.tickSeq++;
@@ -453,6 +519,10 @@ export const tickMethods = {
         ...(eqg ? { eqg } : {}),
       }; };
 
+      /* v2.3.3246: a far player in a phone's roster (ROSTER): the first six
+         fields of their whole entry, in its order */
+      const slimWire = (ps) => ({ x: rp(ps.x), y: rp(ps.y), d: ps.d, z: ps.z, vx: rp(ps.vx), vy: rp(ps.vy) });
+
       // Dirty players bucketed by the zone they are standing in, so a
       // group only pays for the peers its members can actually see.
       const dirtyByZone = new Map();
@@ -462,9 +532,15 @@ export const tickMethods = {
       const steadyOn = !this._steadyOff();
       const steady = steadyOn && !presenceTick;
       let held = null;
+      /* v2.3.3246: who changed since the last roster (ROSTER) */
+      const slimOn = !this._slimRosterOff();
+      /* v2.3.3250: presence v2 (presence2.js) rides on the slim roster */
+      const pres2On = slimOn && !this._presence2Off();
+      const rosterMoved = slimOn ? (this._rosterMoved || (this._rosterMoved = new Set())) : null;
       for (const id of this.dirtyPlayers) {
         const ps = this.playerState[id];
         if (!ps) continue;
+        if (rosterMoved) rosterMoved.add(id);
         if (steady && ps.z === WHEEL_ZONE && this._steadyHold(id, playerWire(ps), ts, ps.lastMoveAt)) {
           (held || (held = [])).push(id);
           continue;
@@ -483,12 +559,14 @@ export const tickMethods = {
          sent all of them at once, at where they are now (farList, the same list
          for everyone).  A presence tick's roster already carries everyone. */
       const wheelDirty = farOn ? (dirtyByZone.get(WHEEL_ZONE) || null) : null;
-      if (wheelDirty) {
+      /* v2.3.3243: only kept for a far send of their own (`far_ms`); with the
+         roster alone nobody waits */
+      if (wheelDirty && farEvery > 0) {
         if (!this._farPending) this._farPending = new Set();
         for (const [id] of wheelDirty) this._farPending.add(id);
       }
-      const farDue = farOn && !!this._farPending && this._farPending.size > 0
-        && ts - (this._farLastAt || 0) >= FAR_PLAYERS.EVERY_MS;
+      const farDue = farEvery > 0 && !!this._farPending && this._farPending.size > 0
+        && ts - (this._farLastAt || 0) >= farEvery;
       const farFlush = farOn && (presenceTick || farDue);
       let farList = null;
       if (farDue && !presenceTick) {
@@ -509,9 +587,13 @@ export const tickMethods = {
          NEAR_R of it -- itself included, as before.  null too when every
          mover is near it, so a crowd in town still shares one string. */
       const NEAR2 = FAR_PLAYERS.NEAR_R * FAR_PLAYERS.NEAR_R;
-      const playersPlanFor = (rps) => {
-        if (!farOn || presenceTick) return null;
-        if (farList) return { list: farList, far: true };
+      const playersPlanFor = (rps, s) => {
+        if (presenceTick) return rosterPlanFor(rps, s);   /* v2.3.3246 */
+        if (!farOn) return null;
+        /* v2.3.3250: a pres-2 phone whose world map is shut is sent no far
+           player: on a far send it takes this tick's near movers instead */
+        const blind = pres2On && !!(s && s.pres2) && !(s._mapWatchUntil > ts);
+        if (farList && !blind) return { list: farList, far: true };
         if (!wheelDirty) return null;
         const x = rps.x, y = rps.y;
         if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
@@ -528,16 +610,55 @@ export const tickMethods = {
       // 1 Hz presence roster -- EVERY connected player, dirty or not
       // (see the ghost-sweep note above; an idle peer is never dirty).
       let roster = null;
+      /* v2.3.3246: the roster's players in its order, and the far ones whose
+         slim entry is due (ROSTER): changed since the last roster, or not
+         sent for FAR_STILL_MS */
+      let rosterPairs = null, rosterDue = null;
       if (presenceTick) {
         roster = Object.create(null);
+        rosterPairs = [];
         for (const [id, ps] of Object.entries(this.playerState)) {
           if (ps) {
             roster[id] = playerWire(ps);
+            rosterPairs.push([id, ps]);
             /* v2.3.3203: the roster is what went out for everyone in it */
             if (steadyOn && ps.z === WHEEL_ZONE) this._steadySent(id, roster[id], ts, ps.lastMoveAt);
           }
         }
+        if (slimOn) {
+          const at = this._rosterSlimAt || (this._rosterSlimAt = new Map());
+          rosterDue = new Set();
+          for (const [id] of rosterPairs) {
+            const was = at.get(id);
+            if (rosterMoved.has(id) || was === undefined || !(ts - was < ROSTER.FAR_STILL_MS)) rosterDue.add(id);
+          }
+        }
       }
+      /* v2.3.3246: one v2 Wheel phone's roster -- the players near it whole,
+         the far ones slim and only when due (ROSTER), in the roster's order;
+         null (the zone's whole roster) with the slim roster off */
+      const rosterPlanFor = (rps, s) => {
+        if (!rosterDue) return null;
+        const x = rps.x, y = rps.y;
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        /* v2.3.3250: a pres-2 phone (presence2.js) is told its party whole,
+           wherever they are, and far players only while its world map is
+           open -- every one of them on the first roster of a watch */
+        const p2 = pres2On && !!(s && s.pres2);
+        const watching = p2 && s._mapWatchUntil > ts;
+        const fresh = watching && !!s._mapWatchFresh;
+        const party = p2 ? this._presence2Party(s.id) : null;
+        const list = [];
+        for (const e of rosterPairs) {
+          const q = e[1];
+          const dx = q.x - x, dy = q.y - y;
+          if (q.z === rps.z && dx * dx + dy * dy <= NEAR2) list.push(e);
+          else if (party && party.has(e[0])) list.push(e);
+          else if (!p2 || watching) { if (fresh || rosterDue.has(e[0])) list.push([e[0], q, true]); }
+        }
+        if (fresh) s._mapWatchFresh = false;
+        return { list, far: false };
+      };
 
       /* Batched game events (capped).  v2.3.1163: overflow used to be
          dropped (slice-then-wipe threw away everything past the cap);
@@ -555,16 +676,24 @@ export const tickMethods = {
          always goes through, so a single oversized entry can never wedge
          the queue behind it. */
       let events = null;
+      /* v2.3.3245: the strings measured here are each event's JSON for the
+         tick's messages too (eventsPart below) */
+      let eventJson = null;
       if (hasEvents) {
         const cap = Math.min(this.eventBuffer.length, this.EVENTS_PER_TICK_CAP);
         let take = 0, bytes = 0;
+        eventJson = [];
         while (take < cap) {
-          const b = JSON.stringify(this.eventBuffer[take]).length;
-          if (take > 0 && bytes + b > this.EVENT_BYTES_PER_TICK) break;
-          bytes += b; take++;
+          const j = JSON.stringify(this.eventBuffer[take]);
+          if (take > 0 && bytes + j.length > this.EVENT_BYTES_PER_TICK) break;
+          bytes += j.length; eventJson.push(j); take++;
         }
         events = this.eventBuffer.splice(0, take);
       }
+      /* v2.3.3245: where each event happened (eventplace.js), or null when
+         none of this tick's has a place -- then every phone is sent every
+         event, exactly as before */
+      const places = events ? this._eventPlaces(events) : null;
 
       /* ═══ v2.3.1981: A MUTED LINE IS NEVER SENT ═══
          Room chat and emotes are the one relay family that is deliberately
@@ -663,14 +792,16 @@ export const tickMethods = {
          everywhere else, which is the unchanged shared path. */
       /* v2.3.3197: `plan` -- playersPlanFor's answer for a v2 session in the
          Wheel (never on a presence tick); null is the zone's list, as before */
-      const buildFor = (zone, pv, muted, interest, plan) => {
+      /* v2.3.3245: `sel` -- the events this phone is sent (eventsFor below) */
+      const buildFor = (zone, pv, muted, interest, plan, sel) => {
         const d = { type: 'tick', seq, ts };
         let any = false;
 
         const players = Object.create(null);
         let hasPlayers = false;
         if (plan) {
-          for (const [id, ps] of plan.list) { players[id] = playerWire(ps); hasPlayers = true; }
+          /* v2.3.3246: a roster plan's far player is slim (ROSTER) */
+          for (const [id, ps, slim] of plan.list) { players[id] = slim ? slimWire(ps) : playerWire(ps); hasPlayers = true; }
         } else {
           if (roster) {
             for (const id of Object.keys(roster)) { players[id] = roster[id]; hasPlayers = true; }
@@ -689,9 +820,10 @@ export const tickMethods = {
              (MUTABLE_RELAY_TYPES, chatmod.js).  An empty result leaves
              `any` alone, so a tick whose only content was a muted line
              produces no frame at all rather than an empty one. */
+          const list = sel.idx ? sel.idx.map((i) => events[i]) : events;
           const ev = muted
-            ? events.filter((e) => { const sp = this._chatModSpeakerOf(e); return !(sp && muted.has(sp)); })
-            : events;
+            ? list.filter((e) => { const sp = this._chatModSpeakerOf(e); return !(sp && muted.has(sp)); })
+            : list;
           if (ev.length) { d.events = ev; any = true; }
         }
 
@@ -813,11 +945,18 @@ export const tickMethods = {
         if (j === undefined) { j = JSON.stringify(id) + ':' + JSON.stringify(playerWire(ps)); playerEntryJson.set(id, j); }
         return j;
       };
+      /* v2.3.3246: and a far player's slim roster entry (ROSTER) */
+      const slimEntryJson = new Map();
+      const slimEntryOf = (id, ps) => {
+        let j = slimEntryJson.get(id);
+        if (j === undefined) { j = JSON.stringify(id) + ':' + JSON.stringify(slimWire(ps)); slimEntryJson.set(id, j); }
+        return j;
+      };
       let indexIds;
       const anyIndexId = () => {
         if (indexIds === undefined) {
           indexIds = false;
-          for (const l of [wheelDirty, farList]) if (l) for (const [id] of l) if (indexLikeKey(id)) { indexIds = true; break; }
+          for (const l of [wheelDirty, farList, rosterPairs]) if (l) for (const [id] of l) if (indexLikeKey(id)) { indexIds = true; break; }
         }
         return indexIds;
       };
@@ -828,24 +967,58 @@ export const tickMethods = {
         if (plan.list.length > 0) {
           if (anyIndexId()) {
             const players = Object.create(null);
-            for (const [id, ps] of plan.list) players[id] = playerWire(ps);
+            for (const [id, ps, slim] of plan.list) players[id] = slim ? slimWire(ps) : playerWire(ps);
             out = JSON.stringify(players);
           } else {
-            out = '{' + plan.list.map(([id, ps]) => playerEntryOf(id, ps)).join(',') + '}';
+            out = '{' + plan.list.map(([id, ps, slim]) => (slim ? slimEntryOf(id, ps) : playerEntryOf(id, ps))).join(',') + '}';
           }
         }
         if (plan.far) farListJson = out;
         return out;
       };
-      const eventsPart = (muteKey, muted) => {
+      /* v2.3.3245: a phone's events put together from each event's JSON,
+         made once a tick where the batch was measured (above) -- the bytes
+         JSON.stringify gives the list (an event is a plain object), whichever
+         events it is sent */
+      const eventsPart = (muteKey, muted, sel) => {
         if (!events) return null;
-        if (eventsByMuteJson.has(muteKey)) return eventsByMuteJson.get(muteKey);
-        const ev = muted
-          ? events.filter((e) => { const sp = this._chatModSpeakerOf(e); return !(sp && muted.has(sp)); })
-          : events;
-        const out = ev.length ? JSON.stringify(ev) : null;
-        eventsByMuteJson.set(muteKey, out);
+        const k = sel.sig + muteKey;
+        if (eventsByMuteJson.has(k)) return eventsByMuteJson.get(k);
+        const parts = [];
+        const n = sel.idx ? sel.idx.length : events.length;
+        for (let a = 0; a < n; a++) {
+          const i = sel.idx ? sel.idx[a] : a;
+          if (muted) { const sp = this._chatModSpeakerOf(events[i]); if (sp && muted.has(sp)) continue; }
+          parts.push(eventJson[i]);
+        }
+        const out = parts.length ? '[' + parts.join(',') + ']' : null;
+        eventsByMuteJson.set(k, out);
         return out;
+      };
+      /* ═══ v2.3.3245: THE EVENTS A PHONE IS SENT (eventplace.js) ═══
+         Every event without a place, and each placed one this phone hears
+         (eventHeardBy: the players it is about, else the phone's zone, and in
+         the Wheel its surroundings when `near`).  The same answer object for
+         every phone that hears the same events, so the shared parts stay
+         shared: `sig` goes into the message's cache key, '' when the phone is
+         sent them all (every tick with no placed event) -- the key it had
+         before.  `sig` is '#' and the indices, so it never runs into the zone
+         before it or the mute key ('|m:...') after it. */
+      const ALL_EVENTS = { sig: '', idx: null };
+      const selByIdx = new Map();
+      const eventsFor = (sid, ps, near) => {
+        if (!places) return ALL_EVENTS;
+        let idx = null;
+        for (let i = 0; i < events.length; i++) {
+          const pl = places[i];
+          if (!pl || eventHeardBy(pl, sid, ps, near)) { if (idx) idx.push(i); }
+          else if (!idx) { idx = []; for (let j = 0; j < i; j++) idx.push(j); }
+        }
+        if (!idx) return ALL_EVENTS;
+        const k = idx.join(',');
+        let sel = selByIdx.get(k);
+        if (!sel) { sel = { sig: '#' + k, idx }; selByIdx.set(k, sel); }
+        return sel;
       };
       const monstersPart = (zone, pv, interest) => {
         if (!(this.dirtyMonsters.has(zone) || (interest && interest.entered.size > 0))) return null;
@@ -901,9 +1074,9 @@ export const tickMethods = {
         nodesSharedJson.set(k, out);
         return out;
       };
-      const buildShared = (zone, pv, muteKey, muted, interest, plan) => {
+      const buildShared = (zone, pv, muteKey, muted, interest, plan, sel) => {
         const p = plan ? planPart(plan) : playersPart(zone);
-        const e = eventsPart(muteKey, muted);
+        const e = eventsPart(muteKey, muted, sel);
         const mo = zone ? monstersPart(zone, pv, interest) : null;
         const no = zone ? nodesPart(zone, pv) : null;
         if (p === null && e === null && mo === null && no === null) return null;
@@ -926,6 +1099,10 @@ export const tickMethods = {
       // One serialization per (zone, protocolVersion) group, reused
       // across every socket in that group.
       const groupCache = new Map();
+      /* v2.3.3250: everyone in the room and their zone, for a pres-2
+         phone's `on` (presence2.js), made at most once a tick and only when
+         one is due */
+      let onJson;
       for (const [ws, s] of this.sessions) {
         const ps = s.id ? this.playerState[s.id] : null;
         const zone = ps ? ps.z : null;
@@ -936,30 +1113,70 @@ export const tickMethods = {
            A muter's key names exactly the intersection, so two players who
            mute the same flooder still share ONE serialization. */
         const muteKey = chatSpeakers ? this._chatModMuteKey(s.id, chatSpeakers) : '';
-        let key = pv + '|' + zone + muteKey;
+        /* v2.3.3245: a v2 phone with a place in the Wheel hears the events
+           around it; any other the events of its zone (eventsFor above) */
+        const near = zone === WHEEL_ZONE && pv === 2 && !!ps && typeof ps.x === 'number' && typeof ps.y === 'number';
+        const sel = eventsFor(s.id, ps, near);
+        let key = pv + '|' + zone + sel.sig + muteKey;
         /* v2.3.2978: a v2 session in the Wheel hears its own part of it
            (wheelzone.js INTEREST_R), so it serialises on its own; leaving the
            Wheel forgets what it had heard, so a return re-sends all in reach */
         let interest = null;
         let plan = null;
-        if (zone === WHEEL_ZONE && pv === 2 && ps && typeof ps.x === 'number' && typeof ps.y === 'number') {
+        if (near) {
           interest = this._wheelInterest(s, ps, this.monsters[zone] || [], share ? wheelGrid() : null);
-          plan = playersPlanFor(ps);   /* v2.3.3197: far players less often */
+          plan = playersPlanFor(ps, s);   /* v2.3.3197: far players less often; v2.3.3250: + the session (presence v2) */
           key += '|' + s.id;
         } else if (s._wheelSeen) s._wheelSeen = null;
         let msg = groupCache.get(key);
         if (msg === undefined) {
           const muted = muteKey ? this._chatModMuteSet(s.id) : null;
-          msg = share ? buildShared(zone, pv, muteKey, muted, interest, plan) : buildFor(zone, pv, muted, interest, plan);
+          msg = share ? buildShared(zone, pv, muteKey, muted, interest, plan, sel) : buildFor(zone, pv, muted, interest, plan, sel);
           if (verify) {
             /* tests only (v2.3.3195): the message the old way, byte for byte */
-            const ref = buildFor(zone, pv, muted, interest, plan);
+            const ref = buildFor(zone, pv, muted, interest, plan, sel);
             verify.checked++;
             if (ref !== msg) { verify.mismatched++; if (!verify.first) verify.first = { zone, pv, ref, got: msg }; }
           }
           groupCache.set(key, msg);
         }
+        /* v2.3.3250: a pres-2 phone's roster in the Wheel says so (`nr`):
+           every player near it is in it, whole (rosterPlanFor), so one
+           missing from it is far or elsewhere, and the phone parks its copy
+           out of sight (src/game/presence2.js) -- a far player's last copy
+           would otherwise stand frozen where they were last seen, a ghost on
+           the screen of anyone who walked that way.  Never while the map is
+           open: the far players not due this second are missing then too,
+           and the map draws them.  Added to this phone's copy only. */
+        if (presenceTick && plan && msg && pres2On && s.pres2 && !(s._mapWatchUntil > ts)) msg = msg.slice(0, -1) + ',"nr":1}';
+        /* v2.3.3250: a pres-2 phone's online list, every ONLINE_EVERY_MS and
+           on its first tick -- it forgets a player missing from it, in place
+           of the 10 s silence that far players' quiet would now trip -- with
+           each one's zone, which a far player's copy no longer hears of.
+           Added to this phone's copy only: the cached message stays as it
+           was. */
+        if (pres2On && s.pres2 && pv === 2 && !(ts - (s._onlineAt || 0) < PRESENCE2.ONLINE_EVERY_MS)) {
+          if (onJson === undefined) {
+            const zones = Object.create(null);
+            for (const id of Object.keys(this.playerState)) { const q = this.playerState[id]; zones[id] = (q && typeof q.z === 'string') ? q.z : null; }
+            onJson = JSON.stringify(zones);
+          }
+          msg = (msg ? msg.slice(0, -1) : tickHead) + ',"on":' + onJson + '}';
+          s._onlineAt = ts;
+        }
         if (msg) { try { ws.send(msg); } catch {} }
+      }
+
+      /* v2.3.3246: the due far players went out (ROSTER); a player gone from
+         the room is forgotten */
+      if (rosterDue) {
+        const at = this._rosterSlimAt;
+        for (const id of rosterDue) at.set(id, ts);
+        if (at.size > rosterPairs.length) for (const id of at.keys()) if (!this.playerState[id]) at.delete(id);
+        this._rosterMoved.clear();
+      } else if (presenceTick && !slimOn) {
+        this._rosterMoved = null;
+        this._rosterSlimAt = null;
       }
 
       /* v2.3.3197: the far players went out (farList, or the roster) */

@@ -596,6 +596,17 @@ remnant to migrate server-side, not a mode to preserve.
       there is no limiter on the bus);
     - test-world-core "hits sound like what they hit", `mp-hitsound`,
       `mp-hitvoices`, `mp-wheelbreak`: docs/specs/material-hit-sounds.md.
+    - since v2.3.3248 A FAR DEATH, SLAM OR BLAST IS NOT HEARD OR FELT -- the
+      owner, on the logged loose ends 21/22: "Go recommended": the Wheel is
+      one zone, so every monster's death sound, every landed slam's shake,
+      camera kick and beep, every wind-up's and miss's beep, every bow
+      special's blast and every slime's burst reached every phone in it; each
+      now goes by distance on the hits' curve (`earVol`), a death in full when
+      you helped kill it (`deathVol`, the worker's recipients stamped as
+      `_killMine`), a wind-up by the nearer of its caster and its aim, your
+      own blast in full; `BT_AUDIO.monsterDeath(arch, opts, k)`; kills still
+      go to every phone; `mp-farfeel`: material-hit-sounds.md "A far death,
+      slam or blast".
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
@@ -2138,7 +2149,32 @@ remnant to migrate server-side, not a mode to preserve.
         first button, Info's stage scaled to fit under them (`StageFit`), and
         tighter rows -- a page's first look shows its table (was all header),
         Drops/Info/Locations scroll 301/730/131 px (were 482/907/266);
-      - `mp-codexfit`: docs/specs/monster-codex.md "Its own button".)
+      - `mp-codexfit`: docs/specs/monster-codex.md "Its own button".
+  - Since v2.3.3241 A CROWD COSTS THE PHONE LESS -- found by the owner's
+    "stress test to see what can be optimized" (`mp-crowdbots` with the bots
+    spread out: 12 of 150 on screen cost a phone's frame as much as all 150):
+    - in the Wheel, a player past the view's half-diagonal plus
+      `PEER_FAR_MARGIN` 400 from its middle is not drawn, the monsters' rule
+      (entityRenderer `_updateOtherPlayers`): hidden, nothing else done that
+      frame, no figure MADE until near (a join into a full Wheel built every
+      player's figure in one frame), kept once made; nothing of theirs
+      either -- pet, glint, gathering/swing/shot stand-ins, trails, status
+      looks, bubbles (`S._peersNotDrawn`, effectsRenderer `_peerNotDrawn`);
+      `S._peersFarHidden`;
+    - the peer loop no longer fights the depth pass: it moved every player
+      south of you back into the entity layer each frame and the pass moved
+      them out again -- two re-parentings a frame each, and Pixi rebuilt the
+      world's draw list for them; the front layer is now an accepted place;
+    - THE CROWD CAP, Phase 0a of docs/SERVER-SPLIT-PLAN.md as the owner chose
+      it: of the players near enough to draw, the nearest `CROWD_K` 50 in
+      full and always your party, target, duel and whoever is fighting you;
+      the rest not drawn (the minimap still shows them), the edge held
+      `CROWD_HOLD` 8 places so it does not flicker (src/game/crowdCap.js,
+      `crowd-cap` suite); `S._peersCrowdHidden`; `?crowd=K`, `?crowd=all`;
+    - measured on the QA box (`mp-crowdbots`): 150 players spread out, the
+      frame's work 36 -> 20 ms; 150 on screen, 31 -> 21 with the cap;
+    - `?nopeercull` is all three off; `mp-peercull` (two phones),
+      `mp-crowdbots` `BT_CROWD_QUERY`: docs/specs/peer-cull.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
@@ -2349,6 +2385,11 @@ Two protocol versions coexist; both must keep working:
   (mp-questline, v2.3.1729, client-ci.yml) and `memory-budget`
   (mp-membudget, v2.3.3101, memory.yml -- Conventions, "Memory is
   budgeted").
+- A phone scenario red on `main` is a question about the TEST first (TRAPS
+  §177, v2.3.3249): mp-deathstrip, mp-firetrail, mp-petsmatter, mp-hitvoices
+  and mp-slimeburst were all the test, never the game. `run.mjs` closes every
+  page a scenario leaves open, since one browser serves the whole run and an
+  open world page slows every scenario after it.
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's
@@ -2453,6 +2494,139 @@ Two protocol versions coexist; both must keep working:
     - look-relay.test.mjs (29, a 24,000-track property test against the
       phone's merge), clans.test 9.3c/d, mp-trackcapture (the sample),
       mp-crowdbots (BT_MAX_PLAYERS, the bots' looks): docs/specs/look-relay.md.
+  - v2.3.3242: THE STRESS TESTS' SERVER FIXES -- the owner's "stress test to
+    see what can be optimized" (docs/specs/stress-tests.md, the round's whole
+    report, server and phone):
+    - `reportToLeaderboard` reads its clock first: every `track` built the
+      Leaderboard stub, the whole chain-score series and a signature, to throw
+      them away inside the 5 minute floor (~100 us a track); the same reports
+      go at the same times (`anticheat` §7b);
+    - `_wheelInterest`, the room's biggest single function at 120 players
+      (145 ms a second): the distance first, the session's two sets used in
+      turn, `entered` only when something enters, the grid's answer for a
+      block of squares kept for the tick (`wheelGridNearKept`): 95 ms a
+      second, the same answer exactly (`tick-share` §5f against a copy of the
+      old code, four mutations caught);
+    - `load.mjs --keep-bundle <dir>` (a profile's lines, mapped to source) and
+      `--tick-parts` (a tick at 120 players is 95% the players' positions);
+    - then measured: the crowd cap on the wire (each phone sent only the
+      movers among its nearest 65 every tick) gave nothing at 120-150 --
+      steady movers keep a tick's movers near a phone at ~25-35 -- while far
+      players with the once-a-second roster gave ~5 points at 120 (#898).
+  - v2.3.3243: FAR PLAYERS ONCE A SECOND, WITH THE ROSTER -- found by the
+    owner's "stress test to see what can be optimized": the far send
+    (v2.3.3197) went to every phone in the Wheel four times a second with
+    EVERY player who had moved, the near ones it already got each tick
+    included -- about a third of what a phone in town was sent at 120. A
+    player past 2,400 px is on neither your screen nor your minimap, so they
+    now reach you only in the presence roster, about once a second, where
+    they are now (tick.js `FAR_PLAYERS.EVERY_MS` 0); the world map and the
+    minimap carry a dot along its last speed between updates
+    (src/game/peerDot.js). 120 players: the room 78-80% -> 73-76% busy, each
+    phone 175-182 -> 145-150 KB/s unzipped; 150: 35 -> 37 ticks a second;
+    near players' moves arrive sooner. `far_ms` in the live flags (100-5000)
+    brings a far send of their own back (250: v2.3.3197's); far-players §10,
+    steady-movers 2k/2m, `mp-farpeer` (`BT_FARPEER_FAR_MS`). Tried first and
+    dropped: the crowd cap on the wire (each phone sent only the movers among
+    its nearest 65) -- no gain at 120-150, as steady movers keep a tick's
+    movers near a phone at ~25-35: docs/specs/far-players.md "Once a second".
+  - v2.3.3244: THE OTHERS ARE TOLD WHAT THEY SEE, NOT YOUR BAG -- found by the
+    owner's "stress test to see what can be optimized" (`load.mjs --storm`:
+    every socket dropped at once, the way back measured): a joiner's
+    `state_sync` gave every other player as `{...playerState, name,
+    ...session.data}` -- coins, bag, every stash, quests, life skills, buffs,
+    the anti-cheat's histories -- and `player_join` told everyone the join's
+    `rpg*` claims; no phone read them, and in No man's land the bag is the
+    killer's prize. Both now carry the PUBLIC keys only (index.js
+    `PEER_PUBLIC_KEYS` / `_peerPublic`: the look relay's keys, the join's look,
+    a tick's fields), an allowlist (TRAPS §174); precedence as before. A played
+    character with a real look: 4,595 -> 948 bytes; the storm at 120: a join's
+    snapshot 142 -> 8 KB, a join's p95 611 -> 240 ms. No caps flag (a phone
+    reads a subset). `peer-view` suite (every key a phone reads on the
+    snapshot road held to the list), gearprov §8: docs/specs/peer-view.md.
+  - v2.3.3245: A FIGHT'S EVENTS GO TO THE PHONES NEAR IT -- the split plan's
+    Phase 0d, found by the owner's "stress test to see what can be optimized"
+    once the bots sent the swings and arrows a phone relays (`load.mjs
+    --relays --events`): every event a tick carries went to every phone, so at
+    120 players each phone got 50-66 a second, nearly all from fights it could
+    not see, growing with the square of the crowd. Now an ALLOWLIST of the ones
+    that happen at a place (server/src/eventplace.js `placeOf`: monsters' hits,
+    attacks, special moves, balls, fire patches, parries, bow blasts, bursts, a
+    bash's wind-up, and the relays player_swing/projectile/dodge/jump,
+    gather_node and two legacy ones) goes to the players it is about (attacker,
+    target, sender) anywhere, to v2 phones within 2,800 px of it in the Wheel
+    (`EVENT_PLACE.R` = INTEREST_OUT), and to the zone elsewhere (tick.js
+    `eventsFor`, the selection in the cache key, each event's JSON made once).
+    Everything else stays room-wide: chat, emotes, trades, duels, clans, the
+    arena, hits between players, and what a phone KEEPS until the next one --
+    kills (a far monster's only news of its death; missed, its return in reach
+    reads as a fresh kill, a phantom remnant pile: TRAPS §176), loot, a raised
+    shield, a mummy's change, a lit campfire -- found by an audit of every
+    client handler. 120 players: 17 events a second a phone (3.4 KB/s), the
+    download ~4% less, the room no busier; a phone near every event gets the
+    same bytes. Also fixed by it: a monster's slam shook every screen in the
+    Wheel (gameEvents.js monster_ability, a zone check only), now within
+    2,800 px. No caps flag; `eventplace: false` the kill switch. `event-place`
+    suite (35, ten mutations), `tools/qa/load/events-bench.mjs`:
+    docs/specs/events-by-place.md.
+  - v2.3.3246: THE ROSTER'S FAR PLAYERS, SLIM -- the split plan's Phase 0b,
+    its first step (the worker alone), from the owner's "stress test to see
+    what can be optimized": once a second every phone was sent EVERY player's
+    whole entry (the presence roster, ~150 bytes each: 150 KB a second at
+    1,000). Now, on a presence tick, a v2 phone in the Wheel gets its own
+    roster (tick.js `rosterPlanFor`): the players within FAR_PLAYERS.NEAR_R in
+    its zone whole, as before; the far ones slim, `{x, y, d, z, vx, vy}` (the
+    fields wsClient.js's tick merge writes whether or not they are there --
+    slim-roster §8 reads them from the client itself); and a far player who has
+    not changed since the last roster only every `ROSTER.FAR_STILL_MS` 4 s,
+    inside the client's 10 s ghost sweep (§2: at most 4 s and one roster apart,
+    at 45 ticks a second and at 10). Sprint, skull, pet and the armour's grade
+    read as none for a far player the phone does not draw; the first whole
+    entry puts them back long before they are on screen. v1 phones, the other
+    zones and a socket that has not joined still get everyone whole. A phone at
+    120 ~9% less; in-process 12% / 17% / 23% less at 120 / 500 / 1,000 with
+    the room's time unchanged. No caps flag; kill switch `slimroster: false`.
+    `slim-roster` suite (21), far-players §8c, `tools/qa/load/
+    roster-bench.mjs`: docs/specs/slim-roster.md. The rest of 0b (far
+    positions only while the world map asks) needs a phone change.
+  - v2.3.3247: THE CLOUDFLARE LAB -- the split plan's lab, which the owner
+    said yes to ("Go recommended": the lab after Phase 0). Started BY HAND:
+    Actions tab -> "Cloudflare lab" -> Run workflow (`.github/workflows/
+    lab.yml`). It deploys a tiny worker of its own, `brotown-lab`
+    (tools/lab/: Burner, World and Door objects; NEVER the game, nothing
+    stored, every request but "/" needs the run's own key), times it from the
+    runner (tools/lab/run.mjs): do K objects of one script run side by side
+    (and in how many isolates), the delay between two objects (a call, a
+    plain socket, a hibernated one), floods of known size, and the account's
+    own figures for them (GraphQL, the fields asked of the schema; best
+    effort) -- and deletes it whatever happened. About a cent a run; results
+    on the run's summary and its `lab-results` download. It lives under
+    tools/, so a merge never sets off deploy-worker.yml. `node tools/lab/
+    run.mjs --local` is the same run on wrangler dev (one thread: side by side
+    1 at every K, which is what the test tells apart). The game's room on
+    Cloudflare with the bots is the next lab: docs/specs/cloudflare-lab.md.
+  - v2.3.3250: FAR PLAYERS ONLY WHILE YOUR WORLD MAP IS OPEN (presence v2) --
+    the rest of Phase 0b, from the owner's "Go recommended" (open decision
+    24): a phone that joins with `pres: 2` (wsClient.js; `caps.presence2`) is
+    sent, in the Wheel, the players near it whole, its party whole wherever
+    they are (server/src/presence2.js `_presence2Party`), and far players only
+    while its WORLD MAP is open -- WorldMapOverlay.jsx sends `map_watch` on
+    opening, every 4 s and on closing (src/game/presence2.js `sendMapWatch`;
+    the channel's allowlist names it, TRAPS #18), one `true` lasting 8 s, the
+    first roster of a watch carrying every far player; every 30 s `on`
+    (everyone's id -> zone), which forgets whoever left in place of the 10 s
+    ghost sweep (stood down while it is fresh, 75 s). A FAR PLAYER'S COPY IS
+    PARKED: the roster is marked `nr` while the map is shut (every near player
+    is in it), a player missing from it is `_away` and stopped, and every frame
+    (visualSystems.js) an `_away` copy is kept PARK_R 2,400 px from you -- their
+    frozen copy was a ghost for anyone who walked to where they were last seen
+    (TRAPS §178); the world map and minimap skip parked copies. In-process
+    72-74 KB a second a phone at 120 (slim 90-98) and 144-149 at 500 (218-250),
+    the room's time the same; merged with #898's roster-only far players the
+    extra cut is small (120: 74 against 75-82; 1,000: 235-242 against
+    261-311) -- groundwork: a phone's download stops growing with far players. Old phones keep the v2.3.3246 roster; kill switch
+    `presence2: false`; `presence2` suite (55, twenty bugs caught), `mp-presence2`
+    (15), mp-farpeer opens the map for its far step: docs/specs/presence-v2.md.
 
 ## Conventions
 
