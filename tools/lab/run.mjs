@@ -55,9 +55,12 @@ const ROUNDS = (() => { const v = Math.floor(+arg('rounds', LOCAL ? 3 : 5)); ret
 const OUT = arg('out', join(here, '..', 'qa', 'out', 'lab'));
 /* v2.3.3252: the free plan (header) */
 const BIG = process.argv.includes('--big');
+/* rpc: Cloudflare allows one request at most 1,000 calls out (its
+   "subrequests"), and the Door's call flood makes n + 3 in one: the third run's
+   flood of 1,000 failed (a 500), so 900, on either plan (20,000 never could) */
 const N = BIG
-  ? { warm: 20, rtt: 400, ws: 20000, rpc: 20000, ws2k: 4000 }
-  : { warm: 10, rtt: 200, ws: 10000, rpc: 1000, ws2k: 2000 };
+  ? { warm: 20, rtt: 400, ws: 20000, rpc: 900, ws2k: 4000 }
+  : { warm: 10, rtt: 200, ws: 10000, rpc: 900, ws2k: 2000 };
 const POLL_MS = 50;   /* the Door's wait for a flood to land: one call a poll */
 const FREE_DAY = Object.freeze({ requests: 100000, gbs: 13000 });
 /* a run's billed Durable Object requests, about: every call and web request to
@@ -116,7 +119,9 @@ async function get(path) {
       throw e;
     }
     const ms = performance.now() - t0;
-    if (!res.ok && attempt < 4 && /^\s*<(!doctype|html)/i.test(text)) { out.retries = (out.retries || 0) + 1; await sleep(2000); continue; }
+    /* only Cloudflare's own 404 page: a 5xx page means the lab threw, so the
+       test ran (the third run tried a call flood's 500 four more times) */
+    if (res.status === 404 && attempt < 4 && /^\s*<(!doctype|html)/i.test(text)) { out.retries = (out.retries || 0) + 1; await sleep(2000); continue; }
     let body = null;
     try { body = JSON.parse(text); } catch { body = { text: text.slice(0, 200) }; }
     if (!res.ok) throw new Error(`${path}: ${res.status} ${text.slice(0, 200)}`);
@@ -267,8 +272,11 @@ async function fieldsOf(typeName) {
   const r = await gql('query($n: String!) { __type(name: $n) { name inputFields { name } fields { name type { name kind ofType { name kind ofType { name kind ofType { name } } } } } } }', { n: typeName });
   return (r && r.data && r.data.__type) || null;
 }
-const baseType = (t) => { while (t && !t.name && t.ofType) t = t.ofType; return t ? t.name : null; };
-const num = (v) => (v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v));
+/* function declarations, not consts: the preflight calls these before the
+   line down here runs (the third run's "Cannot access 'baseType' before
+   initialization") */
+function baseType(t) { while (t && !t.name && t.ofType) t = t.ofType; return t ? t.name : null; }
+function num(v) { return v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v); }
 
 /* v2.3.3252: the account, read once (CACHE is made at the top: these run
    before the line that would declare it here) */

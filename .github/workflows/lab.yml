@@ -54,6 +54,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # v2.3.3252: the lab's own check first, with no Cloudflare (a fake lab and
+      # a fake Cloudflare API): its third run died on a bug this catches
+      - name: Check the lab's own code (no Cloudflare)
+        run: node tools/lab/selftest.mjs
       - name: A key for this run only
         run: |
           KEY=$(openssl rand -hex 24)

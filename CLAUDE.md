@@ -2603,8 +2603,15 @@ Two protocol versions coexist; both must keep working:
     game's own days" reads brotown-server's last 7 days against the free
     limits (read only, best effort); the data centre lookup gives up after
     3 s and is skipped locally (LAB_LOCAL); a local dry run stops at 4
-    objects at once (8 hung on wrangler 4.96.0's local runtime);
-    docs/specs/cloudflare-lab.md.
+    objects at once (8 hung on wrangler 4.96.0's local runtime). On Cloudflare
+    (third run): objects of one script DO run side by side (8 at once 6.6x, 16
+    8.6x, in their own isolates), a Door in Newark and its World in Chicago
+    22 ms apart (p95 26, no stall in 630) -- placement is real -- and a
+    hibernation socket 4x dearer per message (218 against 51 us). One request
+    may make at most 1,000 calls out (the call flood is 900); only Cloudflare's
+    404 page is tried again (a 5xx means the lab ran); `node
+    tools/lab/selftest.mjs` runs run.mjs whole against fakes, before every
+    deploy: docs/specs/cloudflare-lab.md.
 
 ## Conventions
 

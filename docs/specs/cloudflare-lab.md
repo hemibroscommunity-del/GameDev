@@ -63,6 +63,63 @@ What changed in the lab:
   - a lost connection is tried again too, but only for the cheap requests;
   - whatever goes wrong, what was measured before it is written, with the
     error.
+- **The third run answered half the questions, then hit three bugs:**
+  - **The day-so-far check never ran.** Two helpers were declared in a way
+    that can't be used before their line runs ("Cannot access 'baseType'
+    before initialization"), and the check runs first. They are function
+    declarations now.
+  - **The call flood failed** with a 500. Cloudflare lets one request make
+    at most 1,000 calls out, and the flood made 1,003. It is 900 calls now,
+    on either plan (the old 20,000 never could have run).
+  - **The retry ran it again.** It treated that 500 page like "not
+    everywhere yet" and repeated the flood 4 more times. Only a 404 page is
+    tried again now: a 5xx means the lab ran and threw.
+
+  That run cost about 6,500 billed requests (6.5% of the day).
+- **`node tools/lab/selftest.mjs`**, the lab's own check with no Cloudflare,
+  runs `run.mjs` whole against a fake lab and a fake Cloudflare API: a quiet
+  day (every part, exit 0) and a day 89% used (stopped before starting,
+  exit 3). Each of the third run's bugs, put back, fails it (6 and 5 checks).
+  The workflow runs it before deploying anything.
+
+### What the third run measured (2026-10-14)
+
+The runner was GitHub's; the objects landed in Chicago (ORD) and Newark (EWR).
+
+**Side by side: yes, mostly.**
+
+| objects at once | time | side by side | isolates | where |
+|---|---|---|---|---|
+| 1 | 232 ms | 1 | 2 | ORD |
+| 2 | 233 ms | 2 | 2 | ORD |
+| 4 | 211 ms | 4.4 | 4 | ORD, EWR |
+| 8 | 278 ms | 6.6 | 10 | EWR, ORD |
+| 16 | 426 ms | 8.6 | 20 | EWR, ORD |
+
+Objects of one script run in separate isolates, so 8 doors are worth about
+6.6, not 1: the split plan's risk 1 is mostly answered, and doors can be one
+script.
+
+**The delay between two servers: about 22 ms**, because these two were in
+DIFFERENT cities (the Door in Newark, the World in Chicago):
+
+| way | p50 | p95 | p99 | max |
+|---|---|---|---|---|
+| call (JS RPC) | 22 ms | 26 ms | 28 ms | 30 ms |
+| socket, plain | 22 ms | 25 ms | 29 ms | 32 ms |
+| socket, hibernation | 22 ms | 25 ms | 26 ms | 26 ms |
+
+No stall in 630 round trips. That is risk 4 (placement) made real: an object
+starts near whoever first asks for it, so the world must make its own doors
+to keep them in its city.
+
+**Floods: a hibernation socket is about 4x dearer per message on Cloudflare.**
+10,000 messages took 505 ms on a plain socket (51 µs each) and 2,181 ms on a
+hibernation one (218 µs each). Locally the two were 6 and 10 µs. The game's
+room takes phones with the hibernation API.
+
+The bill and the game's own days were not reached; the fourth run is for
+them.
 
 ## What it is for
 
