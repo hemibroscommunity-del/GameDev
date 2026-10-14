@@ -42,7 +42,7 @@ import { IncomingTradePanel } from './panels/IncomingTradePanel.jsx';
 import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
 import { EmotePanel } from './panels/EmotePanel.jsx';
 import { InspectPlayerPanel } from './panels/InspectPlayerPanel.jsx';
-import { nmlCanAttack } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land */
+import { nmlCanAttack, nmlHere } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land; v2.3.3253: + where you stand */
 import { profileRelayFields } from './panels/playerProfile.js'; /* v2.3.2926: the Inspect card's relay fields */
 import { NameModal } from './panels/NameModal.jsx';
 /* v2.3.1814: the login door that now sits in front of the creator.
@@ -374,6 +374,8 @@ import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settl
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
 import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
+import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
+import { nmlAsk, nmlAskOn, nmlAim, nmlHitBack } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
@@ -9770,6 +9772,38 @@ export var BroTown = function BroTown(_ref0) {
       var _p = clientToCanvas(clientX, clientY);
       return tapNpcAtCss(_p.x, _p.y);
     };
+    /* ═══ v2.3.3253: A PLAYER YOU COULD FIGHT BEATS THE SELF-CHAT CIRCLE ═══
+       In No man's land a tap on a player asks "Attack <name>?" (game/nmlAsk.js)
+       -- but isSelfTouch's 52 world px circle round your own body claims a tap
+       before it is forwarded, and two players at a sword's reach (~34 px)
+       stand inside it: a tap on the one beside you opened your chat, every
+       time (found by mp-nmlask).  So, as an NPC and a resource already do,
+       such a player under the finger -- inside the world tap's own 25 px of
+       them, and nearer them than your own body -- takes the tap: it is
+       forwarded to the world, whose player branch raises the window (or aims,
+       hitting back).  Only there, and only for a player the rule lets you
+       fight: everywhere else your own circle still opens chat. */
+    var nmlPlayerAtClient = function (clientX, clientY) {
+      var S = stateRef.current;
+      if (!S || !S.others || !S.player || !S.camera || !nmlAskOn(S) || !nmlHere(S)) return false;
+      var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
+      var _p = clientToCanvas(clientX, clientY);
+      var cam = S.camera, P = S.player;
+      var selfD = Math.hypot(_p.x - (P.x - cam.x) * sx, _p.y - (P.y - 24 - cam.y) * sy);
+      for (var _nid in S.others) {
+        var _no = S.others[_nid];
+        if (!_no || typeof _no.renderX !== 'number' || typeof _no.renderY !== 'number') continue;
+        var _nd = Math.hypot(_p.x - (_no.renderX - cam.x) * sx, _p.y - (_no.renderY - cam.y) * sy);
+        if (_nd < 25 && _nd < selfD && nmlCanAttack(S, _nid)) return true;
+      }
+      return false;
+    };
+    /* ...and the forward itself, as each zone's own tap forward does */
+    var forwardTapToWorld = function (clientX, clientY) {
+      try {
+        if (canvasRef.current) canvasRef.current.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: clientX, clientY: clientY }));
+      } catch (err) { /* the tap is lost, as any forward's would be */ }
+    };
     var openSelfChat = function () {
       /* v2.3.2306: stamp the GESTURE, for the coach's chat lesson. A state
          stamp rather than a callback pushed into this control -- the coach
@@ -9936,6 +9970,13 @@ export var BroTown = function BroTown(_ref0) {
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
             && tapNpcAtClient(t.clientX, t.clientY)) {
           lts.lastEndAt = 0;
+          return;
+        }
+        /* v2.3.3253: a player you could fight in No man's land beats it too */
+        if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
+            && nmlPlayerAtClient(t.clientX, t.clientY)) {
+          lts.lastEndAt = 0;
+          forwardTapToWorld(t.clientX, t.clientY);
           return;
         }
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
@@ -10201,6 +10242,13 @@ export var BroTown = function BroTown(_ref0) {
          where the touchstart used to start a swing at him. */
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
           && tapNpcAtClient(t.clientX, t.clientY)) {
+        return;
+      }
+      /* v2.3.3253: a player you could fight in No man's land beats the
+         self-chat circle too (nmlPlayerAtClient) */
+      if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
+          && nmlPlayerAtClient(t.clientX, t.clientY)) {
+        forwardTapToWorld(t.clientX, t.clientY);
         return;
       }
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
@@ -11889,8 +11937,22 @@ export var BroTown = function BroTown(_ref0) {
                swing a plain one (mp-nomansland).  Tap empty ground to let go,
                as for any lock. */
             if (!(S.lockedTarget && S.lockedTarget.id === id)) {
-              S.lockedTarget = { type: 'player', id: id, ref: o, nml: true };
-              try { pushDmgPopup(S, o.x, o.y - 70, 'TARGET', '#ff6b5e', { ts: Date.now() }); } catch (e) { /* the reticle says it */ }
+              /* ═══ v2.3.3253: ...BUT THE TAP ASKS FIRST ═══
+                 Owner: "I want attacking other players to be intentional ...
+                 Tapping on the player while they're in the no man's land can
+                 still have the party and attack (with red skull) options
+                 there."  A tap within 25 px of a player aimed at them at once,
+                 so a tap meant for the monster beside them started a fight,
+                 and the first hit a red skull.  It now raises the small
+                 window (ui/mobile/NmlAskCard.jsx): Attack aims exactly as
+                 this tap did (nmlAim: the `nml` lock and "TARGET"), Party
+                 invites, Ignore lets it go.  Except the one who attacked you
+                 (nml_skull's `by`, and you carry no red skull): hitting them
+                 back gives no red skull, so the tap aims at once, as before.
+                 ?nmlask=0, or a worker without No man's land, aims as before. */
+              var _nmlAsked = false;
+              try { _nmlAsked = nmlAskOn(S) && !nmlHitBack(S, id) && nmlAsk(S, id, 'tap'); } catch (e) { _nmlAsked = false; }
+              if (!_nmlAsked) nmlAim(S, id);
             }
             return;
           }
@@ -13579,7 +13641,11 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
-  React.createElement(NmlBadge, { stateRef: stateRef }), /* v2.3.2051 (owner: "Yeah replace it"): the building-side town shop is
+  React.createElement(NmlBadge, { stateRef: stateRef }),
+  /* v2.3.3253: the small window a tap or a stray shot raises about a player
+     you could fight there (game/nmlAsk.js), portalled to the top of the
+     screen, under the minimap */
+  React.createElement(NmlAskCard, { stateRef: stateRef }), /* v2.3.2051 (owner: "Yeah replace it"): the building-side town shop is
      RETIRED -- both the "Open Shop" prompt and the ShopPanel it opened.
      Shopkeeper Bro does this job now, and does it server-side: the old
      panel credited coins and edited the bag in the CLIENT and then told

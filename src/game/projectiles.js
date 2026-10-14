@@ -495,6 +495,45 @@ function _rockBetween(S, a, ox, oy, fx, fy) {
   if (a._prevX == null || a._prevY == null) return false;
   return attackBlocked(S.currentZone, a._prevX - ox, a._prevY - oy, fx, fy, _shotSkipOf(a) || undefined);   /* v2.3.3206: not a low thing it flies over */
 }
+/* ═══ v2.3.3253: A STRAY SHOT THROUGH A PLAYER ASKS, ONCE ═══
+   Owner: "I don't necessarily want stray projectiles to hit another player and
+   have a red skull appear above the player just for that ... Maybe if a stray
+   projectile hits a player a one time window pops up asking if you want to
+   attack the player ... The window won't pop up again."
+
+   A stray shot never hurt anyone: the PvP hit test below this file's monster
+   loop looks only at the player you aim at or duel.  This asks the question
+   instead (game/nmlAsk.js, ui/mobile/NmlAskCard.jsx) when one of YOUR shots --
+   S.arrows holds only yours; the others' are S._remoteProjectiles -- passes
+   through a player you could fight in No man's land who is not your aim: by
+   the very test a real hit uses (the drawn capsule swept this frame, the same
+   radius, not through a rock), so "it would have hit them" means what it says.
+   The shot flies on and does them nothing.  nmlAsk keeps the rules: once per
+   player, never over an open window, never your attacker, never in a duel.
+   Asked only while you stand in No man's land (nmlHere), and of players drawn
+   on your screen; the geometry first, the rule only for a player the shot
+   crossed. */
+function _nmlStrayShot(S, a, ox, goy) {
+  if (!S.others || S._inDuel || !nmlAskOn(S) || nmlAskCurrent() || !nmlHere(S)) return;
+  var lt = S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id != null ? String(S.lockedTarget.id) : null;
+  var half = _projCapsule(a);
+  var r = a.isStaff ? 34 : PVP_BODY_R;
+  if (a.isSpecial) r *= 1.5;
+  r = Math.max(r, PVP_BODY_R + half);
+  var notDrawn = S._peersNotDrawn;
+  for (var id in S.others) {
+    if (id === lt || (notDrawn && notDrawn.has(id))) continue;
+    var o = S.others[id];
+    if (!o) continue;
+    var x = (typeof o.renderX === 'number') ? o.renderX : o.x;
+    var y = (typeof o.renderY === 'number') ? o.renderY : o.y;
+    if (typeof x !== 'number' || typeof y !== 'number') continue;
+    if (_segGap(x, y - 24, _capAx, _capAy, _capBx, _capBy) >= r) continue;
+    var gy = a._gdy ? y + playerGroundDy(S.currentZone, x, y) : y;
+    if (_rockBetween(S, a, ox, goy, x, gy)) continue;
+    if (nmlAsk(S, id, 'shot')) return;
+  }
+}
 /* ═══ v2.3.3206: A SHOT FLIES OVER LOW THINGS ═══
    Owner, asked whether a bench, a fence or a bush right in front of you should
    catch your arrow: "I want arrows to fly over low things".
@@ -760,6 +799,8 @@ import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: a duel claim without the brew, for a worker that adds its own */
+import { nmlAsk, nmlAskOn, nmlAskCurrent } from '@/game/nmlAsk.js'; /* v2.3.3253: a stray shot through a player asks, once */
+import { nmlHere } from '@/game/noMansLand.js'; /* v2.3.3253: ...only while you stand in No man's land */
 
 /* ═══ v2.3.2217: THE SNOWBALL BURSTS WHERE ITS FLIGHT ENDS ═══
    The thrown ball had no impact at all — it simply stopped existing on the
@@ -2287,6 +2328,10 @@ export function updateArrows(S, deps) {
                 }
               }
             }
+            /* v2.3.3253: no hit, but through a player you could fight in No
+               man's land who is not your aim: ask (once) whether to attack
+               them -- the shot itself does them nothing (_nmlStrayShot) */
+            if (!hit) _nmlStrayShot(S, a, _ox, _goy);
             /* Non-piercing arrows die on the first hit.  Piercing
                arrows survive each hit and only expire when a.life
                (line 8954, decrements each frame) hits zero -- so

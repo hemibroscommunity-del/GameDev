@@ -138,6 +138,9 @@ const ps = (k) => room.playerState[ids[k]];
   check('...the one hit a WHITE skull for 20 minutes, remembering who', room._nmlSkullOf(B) === 'w' && B._nml.white === NML.SKULL_MS && B._nml.whiteBy === ids.a, B._nml);
   const sa = msgs(ws.a, 'nml_skull').pop(), sb = msgs(ws.b, 'nml_skull').pop();
   check('...each told their own (nml_skull, ms left)', !!sa && sa.payload.red === NML.SKULL_MS && !!sb && sb.payload.white === NML.SKULL_MS && sb.payload.red === 0, { sa, sb });
+  /* v2.3.3253: the one hit is told WHO, so its game can tell hitting back
+     from attacking (src/game/nmlAsk.js nmlHitBack); no `by` without a white */
+  check('...the white skull says who gave it (`by`), the red alone says no one', sb.payload.by === ids.a && !('by' in sa.payload), { sa: sa.payload, sb: sb.payload });
   check('...and both are dirty, so the tick carries them to everyone else', room.dirtyPlayers.has(ids.a) && room.dirtyPlayers.has(ids.b));
   /* the tick's wire */
   const wireA = { ...(A._nml.red > 0 ? { sk: 'r' } : {}) };
@@ -147,6 +150,8 @@ const ps = (k) => room.playerState[ids[k]];
   await attack(ws.b, B, ids.a, A);
   check('hitting back the one who attacked you is no red skull', room._nmlSkullOf(B) === 'w' && !(B._nml.red > 0), B._nml);
   check('...but marks them white too (red still shows)', A._nml.white === NML.SKULL_MS && A._nml.whiteBy === ids.b && room._nmlSkullOf(A) === 'r');
+  const saBack = msgs(ws.a, 'nml_skull').pop();
+  check('...and the attacker is told who hit them back (`by`, beside their red)', !!saBack && saBack.payload.by === ids.b && saBack.payload.red > 0, saBack && saBack.payload);
   /* a fresh attack resets the red */
   const first = state._store.get(NML_KEY(ids.a));
   check('a skull is stored when it starts (nml_state:)', !!first && first.red === NML.SKULL_MS, first);
@@ -188,12 +193,16 @@ const ps = (k) => room.playerState[ids[k]];
   ws.c.sent.length = 0;
   room._tickNml(Date.now());
   check('a skull that runs out is gone, and you are told', room._nmlSkullOf(C) === null && C._nml.whiteBy === null && msgs(ws.c, 'nml_skull').length === 1);
+  check('...with no `by` once the white skull is gone (v2.3.3253)', !('by' in msgs(ws.c, 'nml_skull')[0].payload), msgs(ws.c, 'nml_skull')[0].payload);
   /* back on join */
   room._nmlSave(ids.a, A);
   const ws2 = fakeWs('a2');
   await join(ws2, ids.a, 'NmlA');
   const A2 = ps('a');
   check('it comes back on join, with its time left, and you are told', !!A2._nml && A2._nml.red > NML.SKULL_MS - 5000 && msgs(ws2, 'nml_skull').length >= 1, A2._nml);
+  const joinSkull = msgs(ws2, 'nml_skull').pop();
+  check('...the white skull\'s giver too (`by`, from nml_state\'s whiteBy)', A2._nml.white > 0 && A2._nml.whiteBy === ids.b && !!joinSkull && joinSkull.payload.by === ids.b,
+    { white: A2._nml.white, whiteBy: A2._nml.whiteBy, sent: joinSkull && joinSkull.payload });
   ws.a = ws2;
 }
 
