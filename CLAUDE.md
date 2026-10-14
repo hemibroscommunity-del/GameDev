@@ -2494,6 +2494,31 @@ Two protocol versions coexist; both must keep working:
     snapshot 142 -> 8 KB, a join's p95 611 -> 240 ms. No caps flag (a phone
     reads a subset). `peer-view` suite (every key a phone reads on the
     snapshot road held to the list), gearprov §8: docs/specs/peer-view.md.
+  - v2.3.3245: A FIGHT'S EVENTS GO TO THE PHONES NEAR IT -- the split plan's
+    Phase 0d, found by the owner's "stress test to see what can be optimized"
+    once the bots sent the swings and arrows a phone relays (`load.mjs
+    --relays --events`): every event a tick carries went to every phone, so at
+    120 players each phone got 50-66 a second, nearly all from fights it could
+    not see, growing with the square of the crowd. Now an ALLOWLIST of the ones
+    that happen at a place (server/src/eventplace.js `placeOf`: monsters' hits,
+    attacks, special moves, balls, fire patches, parries, bow blasts, bursts, a
+    bash's wind-up, and the relays player_swing/projectile/dodge/jump,
+    gather_node and two legacy ones) goes to the players it is about (attacker,
+    target, sender) anywhere, to v2 phones within 2,800 px of it in the Wheel
+    (`EVENT_PLACE.R` = INTEREST_OUT), and to the zone elsewhere (tick.js
+    `eventsFor`, the selection in the cache key, each event's JSON made once).
+    Everything else stays room-wide: chat, emotes, trades, duels, clans, the
+    arena, hits between players, and what a phone KEEPS until the next one --
+    kills (a far monster's only news of its death; missed, its return in reach
+    reads as a fresh kill, a phantom remnant pile: TRAPS §176), loot, a raised
+    shield, a mummy's change, a lit campfire -- found by an audit of every
+    client handler. 120 players: 17 events a second a phone (3.4 KB/s), the
+    download ~4% less, the room no busier; a phone near every event gets the
+    same bytes. Also fixed by it: a monster's slam shook every screen in the
+    Wheel (gameEvents.js monster_ability, a zone check only), now within
+    2,800 px. No caps flag; `eventplace: false` the kill switch. `event-place`
+    suite (35, ten mutations), `tools/qa/load/events-bench.mjs`:
+    docs/specs/events-by-place.md.
 
 ## Conventions
 
