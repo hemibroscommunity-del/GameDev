@@ -193,7 +193,7 @@ every phone in the Wheel:
   most of it off screen.
 
 Kills still go to every phone. A kill is the phone's only news that a far
-monster died (TRAPS §175, events by place). So the fix is on the phone: each
+monster died (TRAPS §176, events by place, #901). So the fix is on the phone: each
 of these now goes by how near you are, on the hits' own curve (`earVol`: all
 of it within 220 px, none past 1,150, the square in between):
 

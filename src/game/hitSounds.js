@@ -241,7 +241,7 @@ export function heroHitSfx(S, payload, armored) {
    ONE zone, and the kill handlers asked only "is it in my zone?", so every
    monster's death sound played on every phone in the Wheel, at one level,
    wherever it died -- and kills must keep going to every phone (the phone's
-   only news of a far monster's death; TRAPS §175, events by place).
+   only news of a far monster's death; TRAPS §176, events by place).
    How loud a monster's death is where you stand: FULL when you helped kill it
    (the kill event stamps `_killMine` from the worker's own recipients), so
    your own arrow's kill is heard however far it flew; otherwise by distance

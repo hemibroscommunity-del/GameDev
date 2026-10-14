@@ -5,7 +5,7 @@
  * every phone in the Wheel:
  *   - every monster's death sound played at one level, wherever it died
  *     (kills still go to every phone: the phone's only news of a far
- *     monster's death -- TRAPS §175);
+ *     monster's death -- TRAPS §176, events by place);
  *   - every landed slam shook the screen, kicked the camera and beeped, and
  *     every wind-up and miss beeped;
  *   - the bow special's blast boomed, and every slime's burst beeped.
