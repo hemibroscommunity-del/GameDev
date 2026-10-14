@@ -97,15 +97,31 @@ if (!LOCAL && !/^https:\/\/brotown-lab\.[a-z0-9-]+\.workers\.dev\/?$/.test(BASE)
 }
 BASE = BASE.replace(/\/$/, '');
 const H = { 'x-lab-key': KEY };
+/* v2.3.3252: a brand-new workers.dev address is not on every Cloudflare
+   machine at once -- the second run died on Cloudflare's own "not found" page
+   (HTML, a 404) seconds after the address had answered.  Such a request never
+   reached the lab, so it is tried again, up to 5 times 2 s apart; so is a lost
+   connection, but only for the cheap requests (a Door's may have run its test).
+   An answer from the lab itself is never tried again. */
 async function get(path) {
-  const t0 = performance.now();
-  const res = await fetch(BASE + path, { headers: H });
-  const ms = performance.now() - t0;
-  const text = await res.text();
-  let body = null;
-  try { body = JSON.parse(text); } catch { body = { text: text.slice(0, 200) }; }
-  if (!res.ok) throw new Error(`${path}: ${res.status} ${text.slice(0, 200)}`);
-  return { ms, body };
+  const cheap = !path.startsWith('/door');
+  for (let attempt = 0; ; attempt++) {
+    const t0 = performance.now();
+    let res, text;
+    try {
+      res = await fetch(BASE + path, { headers: H });
+      text = await res.text();
+    } catch (e) {
+      if (cheap && attempt < 4) { out.retries = (out.retries || 0) + 1; await sleep(2000); continue; }
+      throw e;
+    }
+    const ms = performance.now() - t0;
+    if (!res.ok && attempt < 4 && /^\s*<(!doctype|html)/i.test(text)) { out.retries = (out.retries || 0) + 1; await sleep(2000); continue; }
+    let body = null;
+    try { body = JSON.parse(text); } catch { body = { text: text.slice(0, 200) }; }
+    if (!res.ok) throw new Error(`${path}: ${res.status} ${text.slice(0, 200)}`);
+    return { ms, body };
+  }
 }
 
 const started = new Date();
@@ -123,17 +139,25 @@ if (!LOCAL && process.env.CLOUDFLARE_API_TOKEN) {
   }
 }
 
+/* v2.3.3252: whatever goes wrong from here, what was measured is written
+   (the second run lost everything to one failed request) */
+try {
 /* ── up? ──────────────────────────────────────────────────────────────────── */
 {
   /* a brand-new worker's workers.dev address can take a minute or more to
      answer after its first deploy: wait up to 5 minutes (locally, wrangler's
-     start-up) before calling it a failure */
-  let up = false;
-  for (let i = 0; i < 300 && !up; i++) {
-    try { const r = await fetch(BASE + '/'); up = r.ok && (await r.text()).startsWith('brotown-lab'); } catch { /* not yet */ }
-    if (!up) await sleep(1000);
+     start-up) before calling it a failure -- and, v2.3.3252, until it has
+     answered 20 times running, half a second apart: one answer did not mean
+     every Cloudflare machine had it (get above) */
+  let run = 0;
+  const need = LOCAL ? 1 : 20;
+  for (let i = 0; i < 600 && run < need; i++) {
+    let ok = false;
+    try { const r = await fetch(BASE + '/'); ok = r.ok && (await r.text()).startsWith('brotown-lab'); } catch { /* not yet */ }
+    run = ok ? run + 1 : 0;
+    if (run < need) await sleep(500);
   }
-  if (!up) { console.error('lab: the worker never answered' + (worker ? '\n' + worker._log().slice(-2000) : '')); process.exit(1); }
+  if (run < need) throw new Error('the worker never answered' + (worker ? '\n' + worker._log().slice(-2000) : ''));
   const who = [];
   for (let i = 0; i < 12; i++) who.push((await get('/whoami')).ms);
   out.httpRttMs = { p50: r1(pct(who.slice(2), 50)), max: r1(Math.max(...who.slice(2))) };
@@ -209,10 +233,14 @@ out.game = (LOCAL || !process.env.CLOUDFLARE_API_TOKEN)
   ? { skipped: LOCAL ? 'local run' : 'no CLOUDFLARE_API_TOKEN' }
   : await gameDays(7).catch((e) => ({ error: String(e && e.message || e) }));
 
+} catch (e) {
+  out.error = String((e && e.stack) || e).slice(0, 2000);
+}
+
 /* ── write it ─────────────────────────────────────────────────────────────── */
 await writeOut(out);
 if (worker) { try { process.kill(-worker.pid, 'SIGKILL'); } catch { /* gone */ } }
-process.exit(0);
+process.exit(out.error ? 1 : 0);
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 async function writeOut(o) {
@@ -392,6 +420,8 @@ function render(o) {
     else if (t) L.push(`The account's use today could not be read: ${t.error || t.invocationsError || t.periodicError}.`, '');
     if (o.plan.refused) { L.push(`**Stopped before starting:** ${o.plan.refused}`, ''); return L.join('\n'); }
   }
+  if (o.error) L.push('**The run stopped part way:**', '', '```', o.error, '```', '', 'Everything measured before that is below.', '');
+  if (o.retries) L.push(`Requests tried again after meeting Cloudflare's own page (the address not yet everywhere) or a lost connection: ${o.retries}.`, '');
   if (o.httpRttMs) L.push(`Worker: ${o.base}.  A request from this runner and back: ${o.httpRttMs.p50} ms (max ${o.httpRttMs.max}).`, '');
   if (o.burn) {
     L.push('## 1. Side by side', '');
