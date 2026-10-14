@@ -2248,7 +2248,10 @@ remnant to migrate server-side, not a mode to preserve.
   to 100,000 monthly players, about $5 to $1,100–2,800 a month, and the
   owner's business model: free play capped at 2 h a day, a $2-a-month
   supporter pass for unlimited — the server counts the hours, and logging
-  every room message would cost more than the game),
+  every room message would cost more than the game; since v2.3.3256 the pass
+  is on the backlog as $2 for 30 days in USDC on Hemi, no contract, and NO
+  PLAY CAPS for now -- the owner: "Dont ship any caps yet" --
+  `docs/SUPPORTER-PASS-PLAN.md`, waiting on the owner's pass address),
   `docs/SERVER-SPLIT-PLAN.md` (v2.3.3208, the owner's "Hopefully 1000 while
   just as smooth is possible ... begin planning what the best server split
   would look like": MEASURED, about four fifths of the room's thread at 150

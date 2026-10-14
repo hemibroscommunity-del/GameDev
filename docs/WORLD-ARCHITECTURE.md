@@ -423,6 +423,13 @@ last, only if the one world server fills.)*
 > free players capped at let's say 2 hours a day then usage goes to a $2 a
 > month supporter pass where they can play as long as they want."*
 
+**Since v2.3.3256 (owner, 2026-10-14):** the pass is $2 for 30 days in USDC
+on Hemi, its days starting when the player activates it, one pass for a
+wallet's characters (up to 10), with no contract (a plain transfer the
+server reads), and NO PLAY CAPS for now ("Dont ship any caps yet"). It waits
+on the owner's dedicated pass address: `docs/SUPPORTER-PASS-PLAN.md`. The
+card-payment arithmetic below stays as the comparison it was.
+
 **The business model (the owner's intent; not built yet):** free play up to
 2 hours a day, and a $2-a-month supporter pass for unlimited play. The server
 counts the hours, per character (§1): the phone cannot be trusted with it.
