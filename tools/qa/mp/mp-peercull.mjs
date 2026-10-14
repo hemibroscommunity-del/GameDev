@@ -1,4 +1,4 @@
-/* ═══ v2.3.3221: A PLAYER FAR OFF SCREEN IS NOT DRAWN; A PLAYER SOUTH OF YOU STAYS PUT ═══
+/* ═══ v2.3.3241: A PLAYER FAR OFF SCREEN IS NOT DRAWN; A PLAYER SOUTH OF YOU STAYS PUT ═══
  *
  * entityRenderer _updateOtherPlayers, after the owner's "stress test to see
  * what can be optimized":

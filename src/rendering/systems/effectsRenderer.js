@@ -46,7 +46,7 @@ const _fxPreload = [];
  * Multiplying again there would square the build. */
 const _localBuild = () => buildScale(getBuildHeight(), getBuildFrame());
 const _peerBuild = (o) => buildScale(o && o.buildHeight, o && o.buildFrame);
-/* v2.3.3221: a player the renderer did not draw this frame -- far off screen
+/* v2.3.3241: a player the renderer did not draw this frame -- far off screen
    in the Wheel, or past the crowd cap (entityRenderer _updateOtherPlayers,
    which runs first) -- gets none of their effects either: no stand-in figure,
    trail, status look or bubble where nobody is drawn */
@@ -5075,7 +5075,7 @@ export class EffectsRenderer {
       for (const oid in S.others) {
         const o = S.others[oid];
         if (!o || (!o._dodgeRoll && !(o._dodgeTrail && o._dodgeTrail.length))) continue;
-        if (_peerNotDrawn(S, oid)) { if (o._dodgeTrail) o._dodgeTrail.length = 0; continue; }   /* v2.3.3221 */
+        if (_peerNotDrawn(S, oid)) { if (o._dodgeTrail) o._dodgeTrail.length = 0; continue; }   /* v2.3.3241 */
         if (o._dodgeRoll) {
           const dage = now - (o._dodgeRoll.startTime || 0);
           /* v2.3.2916: the roll ends when THEIR window does (player_dodge
@@ -8425,7 +8425,7 @@ export class EffectsRenderer {
     /* Player + others' bubbles. */
     const allSources = { [S.myId]: S.player };
     for (const [id, o] of Object.entries(S.others || {})) {
-      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3221: no bubble over nobody */
+      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241: no bubble over nobody */
       allSources[id] = o;
     }
     for (const [pid, bubble] of Object.entries(bubbles)) {
@@ -11523,7 +11523,7 @@ export class EffectsRenderer {
       for (const id of Object.keys(others)) {
         const o = others[id];
         if (!o || o._isDead || (o.zone || o.z || 'town') !== zone) continue;
-        if (_peerNotDrawn(S, id)) continue;   /* v2.3.3221 */
+        if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241 */
         if (!(o._chillUntil > now || o._stuckUntil > now || o._burnUntil > now || (o._gustAt && now - o._gustAt < GUST_FX_MS)
           || o._dazeUntil > now || o._shockUntil > now || o._soakUntil > now || o._poisonUntil > now)) continue;   /* v2.3.3014: + the other four */
         const ox = typeof o.renderX === 'number' ? o.renderX : o.x;
@@ -11583,7 +11583,7 @@ export class EffectsRenderer {
         const e = pw[id];
         const o = S.others && S.others[id];
         if (!o || now >= e.until) { delete pw[id]; continue; }
-        if (_peerNotDrawn(S, id)) continue;   /* v2.3.3221 */
+        if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241 */
         const ox = typeof o.renderX === 'number' ? o.renderX : o.x;
         const oy = typeof o.renderY === 'number' ? o.renderY : o.y;
         if (typeof ox === 'number' && typeof oy === 'number') draw(ox, oy, e);
@@ -11998,7 +11998,7 @@ export class EffectsRenderer {
       const code = o._ex;
       if (code !== 'chop' && code !== 'cook' && code !== 'fire') continue;
       if ((o.zone || o.z || 'town') !== zone) continue;
-      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3221: not drawn, nor is their stand-in */
+      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241: not drawn, nor is their stand-in */
       const spec = SPEC[code];
       if (!spec.frames || !spec.frames.length || !standInReady(code)) continue;   /* v2.3.3077: drawn once made whole, as the body is hidden (entityRenderer _rexStandIn) */
       let ent = pool.get(id);
@@ -12965,7 +12965,7 @@ export class EffectsRenderer {
          and a swing shirt hanging on it, on everybody else's screen. Your own
          screen is fixed in the same version, one file over. */
       if (!o || o._isDead) continue;
-      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3221: not drawn, nor is their swing */
+      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241: not drawn, nor is their swing */
       /* ═══ v2.3.2920: A BASH IS NOT A SWING, HERE EITHER ═══
          v2.3.1735 took the sword stand-in off YOUR Shield Bash (owner: "just
          display the shield being held during the course of the animation in
@@ -13250,7 +13250,7 @@ export class EffectsRenderer {
     for (const id in others) {
       const o = others[id];
       if (!o || o._isDead) continue;   /* v2.3.2281: see the swing */
-      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3221: not drawn, nor is their shot */
+      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241: not drawn, nor is their shot */
       /* ═══ v2.3.2920: ...AND THEIR BLOCK, DRAWN AS YOURS IS ═══
          Owner: "check all other broadcasted player animations to make sure
          they match what your character does client side."

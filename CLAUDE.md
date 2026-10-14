@@ -2064,7 +2064,7 @@ remnant to migrate server-side, not a mode to preserve.
         tighter rows -- a page's first look shows its table (was all header),
         Drops/Info/Locations scroll 301/730/131 px (were 482/907/266);
       - `mp-codexfit`: docs/specs/monster-codex.md "Its own button".
-  - Since v2.3.3221 A CROWD COSTS THE PHONE LESS -- found by the owner's
+  - Since v2.3.3241 A CROWD COSTS THE PHONE LESS -- found by the owner's
     "stress test to see what can be optimized" (`mp-crowdbots` with the bots
     spread out: 12 of 150 on screen cost a phone's frame as much as all 150):
     - in the Wheel, a player past the view's half-diagonal plus

@@ -1,4 +1,4 @@
-# A crowd costs the phone less: far players not drawn, at most 50 in full (v2.3.3221)
+# A crowd costs the phone less: far players not drawn, at most 50 in full (v2.3.3241)
 
 > Owner, 2026-10-13: *"Go recommended but I want you to stress test to see
 > what can be optimized."*

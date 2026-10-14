@@ -1,4 +1,4 @@
-/* ═══ v2.3.3221: THE CROWD CAP (src/game/crowdCap.js) ═══
+/* ═══ v2.3.3241: THE CROWD CAP (src/game/crowdCap.js) ═══
  *
  * The phone draws at most K other players in full: the nearest, and always
  * the ones that matter to you (party, target, fighting you, your duel); the
