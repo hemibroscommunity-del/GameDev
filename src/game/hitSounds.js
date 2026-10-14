@@ -236,7 +236,7 @@ export function heroHitSfx(S, payload, armored) {
   if (vol > 0) { try { BT_AUDIO.monsterHitHero(armored, { vol }); } catch (e) { /* audio is best-effort */ } }
 }
 
-/* ═══ v2.3.3228: A DEATH FAR AWAY IS NOT HEARD ═══
+/* ═══ v2.3.3248: A DEATH FAR AWAY IS NOT HEARD ═══
    OPEN-DECISIONS 21 (the owner, 2026-10-14: "Go recommended"): the Wheel is
    ONE zone, and the kill handlers asked only "is it in my zone?", so every
    monster's death sound played on every phone in the Wheel, at one level,
@@ -259,7 +259,7 @@ if (typeof window !== 'undefined') {
     stats: hitSoundStats,
     soundOf: (arch) => hitSoundOf(arch),
     earVol: (x, y) => { const S = window._gameState && window._gameState.current; return S ? earVol(S, x, y) : null; },
-    deathVol: (m, x, y) => { const S = window._gameState && window._gameState.current; return S ? deathVol(S, m, x, y) : null; },   /* v2.3.3228 */
+    deathVol: (m, x, y) => { const S = window._gameState && window._gameState.current; return S ? deathVol(S, m, x, y) : null; },   /* v2.3.3248 */
     shotHitMe: (id) => { const S = window._gameState && window._gameState.current; return S ? shotHitMe(S, id) : null; },
     consts: { EAR_NEAR, EAR_FAR, ECHO_K, ECHO_GAP_MS, ECHO_BURST, ECHO_WINDOW_MS, SHOT_RECENT_MS, SHOT_CLANG_K },
   };

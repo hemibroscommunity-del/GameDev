@@ -1,4 +1,4 @@
-/* ═══ A FAR-AWAY DEATH IS NOT HEARD, A FAR-AWAY SLAM NOT FELT (v2.3.3228) ═══
+/* ═══ A FAR-AWAY DEATH IS NOT HEARD, A FAR-AWAY SLAM NOT FELT (v2.3.3248) ═══
  *
  * OPEN-DECISIONS 21 and 22 (the owner, 2026-10-14: "Go recommended").  The
  * Wheel is ONE zone, and the handlers asked only "is it in my zone?", so on

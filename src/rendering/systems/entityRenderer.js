@@ -98,7 +98,7 @@ import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel) */
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
-import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3228: a far slime's splat heard by distance */
+import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
 import { jumpActive, jumpFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
@@ -8398,7 +8398,7 @@ export class EntityRenderer {
       if (!m.alive && (isFodder || variantKey) && m._slimeDeathStart == null) {
         m._slimeDeathStart = now;
         if (isFodder) {
-          /* v2.3.3228: by how near it died, or in full when you helped kill
+          /* v2.3.3248: by how near it died, or in full when you helped kill
              it (hitSounds.deathVol, the kill event's `_killMine`): every
              slime with its look loaded -- ~2,600 px round you, most of that
              off screen -- splatted at this level (OPEN-DECISIONS 21). */

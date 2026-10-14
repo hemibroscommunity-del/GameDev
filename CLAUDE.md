@@ -580,7 +580,7 @@ remnant to migrate server-side, not a mode to preserve.
       there is no limiter on the bus);
     - test-world-core "hits sound like what they hit", `mp-hitsound`,
       `mp-hitvoices`, `mp-wheelbreak`: docs/specs/material-hit-sounds.md.
-    - since v2.3.3228 A FAR DEATH, SLAM OR BLAST IS NOT HEARD OR FELT -- the
+    - since v2.3.3248 A FAR DEATH, SLAM OR BLAST IS NOT HEARD OR FELT -- the
       owner, on the logged loose ends 21/22: "Go recommended": the Wheel is
       one zone, so every monster's death sound, every landed slam's shake,
       camera kick and beep, every wind-up's and miss's beep, every bow

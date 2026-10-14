@@ -3795,7 +3795,7 @@ BT_AUDIO.monsterDeath = function (arch, opts, k) {
      loop death-detection in BroTown.jsx — playing the bony-death wav
      here too was layering the "old death sound" on top of the splat. */
   if (arch === 'fodder') return;
-  /* v2.3.3228: `k`, how much of it you hear where you stand (0-1, the kill
+  /* v2.3.3248: `k`, how much of it you hear where you stand (0-1, the kill
      handlers' hitSounds.deathVol; absent = all of it, as every older caller
      wants): each sample's own level times k, nothing at 0. */
   var v = typeof k === 'number' && isFinite(k) ? Math.max(0, Math.min(1, k)) : 1;

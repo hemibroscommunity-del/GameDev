@@ -31,7 +31,7 @@ import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2699: a snowbal
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
 import { applyElemHit, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks */
-import { echoHitSfx, heroHitSfx, earVol, deathVol } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's; v2.3.3228: a far death, slam or blast heard and felt by distance */
+import { echoHitSfx, heroHitSfx, earVol, deathVol } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's; v2.3.3248: a far death, slam or blast heard and felt by distance */
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
 import { recordMail } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
@@ -980,7 +980,7 @@ export function processGameEvent(type, payload, S, deps) {
                  a stuck arrow rides a monster that is still walking. */
               S._lastArrowBoom = { x: payload.x, y: payload.y, r: payload.r, at: Date.now(),
                 targets: payload.targets || [] };
-              /* v2.3.3228: in full for the shooter, by distance for the
+              /* v2.3.3248: in full for the shooter, by distance for the
                  rest -- it boomed on every phone in the Wheel. */
               var _abK = payload.id && payload.id === S.myId ? 1 : earVol(S, payload.x, payload.y);
               if (_abK > 0) { try { BT_AUDIO.play('tree-fall', { vol: 0.7 * _abK }); } catch (e) { /* audio is best-effort */ } }
@@ -1202,7 +1202,7 @@ export function processGameEvent(type, payload, S, deps) {
                       }
                     }
                   }
-                  /* v2.3.3228: heard by how near it went off (hitSounds.earVol),
+                  /* v2.3.3248: heard by how near it went off (hitSounds.earVol),
                      not by every phone in the Wheel (OPEN-DECISIONS 22). */
                   var _sbK = isFinite(_sbX) && isFinite(_sbY) ? earVol(S, _sbX, _sbY) : 1;
                   if (_sbK > 0) BT_AUDIO.beep(90, 0.16, 0.09 * _sbK, 'sawtooth');
@@ -1360,7 +1360,7 @@ export function processGameEvent(type, payload, S, deps) {
                     }
                   }
                 }
-                /* v2.3.3228: the warning beep for whoever is near the caster
+                /* v2.3.3248: the warning beep for whoever is near the caster
                    or where it aims (its target stands there): the Wheel is one
                    zone, and every wind-up in it beeped on every phone. */
                 var _tgK = Math.max(earVol(S, _maX, _maY),
@@ -1370,7 +1370,7 @@ export function processGameEvent(type, payload, S, deps) {
               }
               /* execute — a landed hit shakes, a whiff deliberately does
                  not, so "I got out of the way" reads as a win on screen.
-                 v2.3.3228: FELT WHERE IT LANDED (OPEN-DECISIONS 22).  The
+                 v2.3.3248: FELT WHERE IT LANDED (OPEN-DECISIONS 22).  The
                  Wheel is one zone, so this shook, punched and beeped every
                  phone in it for every slam anywhere (events by place, #901,
                  cut that to 2,800 px, still mostly off screen).  The shake,
@@ -2533,7 +2533,7 @@ export function processGameEvent(type, payload, S, deps) {
                      hook in entityRenderer).  Local hit paths call this
                      too but bail in MP before reaching it -- monster_kill
                      is the only path that knows the kill happened here. */
-                  /* v2.3.3228: heard by how near it died, or in full when you
+                  /* v2.3.3248: heard by how near it died, or in full when you
                      helped kill it (hitSounds.deathVol; OPEN-DECISIONS 21) --
                      every death in the Wheel used to play on every phone.
                      `_killMine` is cleared with the other per-life flags on

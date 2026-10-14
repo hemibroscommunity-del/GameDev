@@ -176,7 +176,7 @@ The fallback is asked for even when it is still loading itself, so the
 browser fetches it from the manifest; a Wheel clip outside the Wheel would
 never come.
 
-## A far death, slam or blast (v2.3.3228)
+## A far death, slam or blast (v2.3.3248)
 
 > The owner, 2026-10-14, on the logged loose ends 21 and 22: *"Go
 > recommended"*.
@@ -217,9 +217,9 @@ whole sound, as before.
 | `src/data/gameDisplay.js` | `HIT_VOICES`, `materialHit` (and `swordHit`, the old name, which now plays the same voice), `PROP_SOUNDS` (plant, mushroom, leaf), `CROWN_SOUNDS`, `SHOT_SOUNDS`, `shotHit`, the test notes `_noteHit` / `_noteShot` / `_noteHero` / `_lastProp.crown` |
 | `src/data/monsterVariants.js` | `HIT_MATERIALS[...].sound` (fishman `wet`, bog lurker `mud`), `hitSoundOf()` |
 | `src/data/wheelMaterials.js` | `plant`, `mushroom`; the cactus, giant flower and toadstool moved to them |
-| `src/game/hitSounds.js` | when and how loud: `monsterHitSfx`, `echoHitSfx`, `shotEndSfx`, `shotHitMe`, `heroHitSfx`, `earVol`, `deathVol` (v2.3.3228); the probe `window.__btHitSounds` |
+| `src/game/hitSounds.js` | when and how loud: `monsterHitSfx`, `echoHitSfx`, `shotEndSfx`, `shotHitMe`, `heroHitSfx`, `earVol`, `deathVol` (v2.3.3248); the probe `window.__btHitSounds` |
 | `src/game/monsterCombat.js`, `dodge.js`, `projectiles.js` | the sword, the lunge, the arrow and the bolt call `monsterHitSfx`; the balls' ends call `shotEndSfx` |
-| `src/networking/gameEvents.js` | `monster_hit` calls `echoHitSfx`; `monster_attack` calls `heroHitSfx`; v2.3.3228: `monster_kill`, `monster_ability` and `arrow_boom` go by distance (the tick's dead edge in `wsClient.js` and the slime's splat in `entityRenderer.js` too) |
+| `src/networking/gameEvents.js` | `monster_hit` calls `echoHitSfx`; `monster_attack` calls `heroHitSfx`; v2.3.3248: `monster_kill`, `monster_ability` and `arrow_boom` go by distance (the tick's dead edge in `wsClient.js` and the slime's splat in `entityRenderer.js` too) |
 | `src/game/wheelBreak.js` | passes a tree's crown to the prop sound |
 
 ## Tests
@@ -241,7 +241,7 @@ whole sound, as before.
   and bolt through the real hit paths; the snowman one hit; the echoes; the
   balls on you, your shield and the ground; the blow for a ball.
 - `tools/qa/mp/run.mjs wheelbreak`: a tree's crown heard, a bush a rustle.
-- `tools/qa/mp/run.mjs farfeel` (v2.3.3228, 15 checks): the real handlers fed
+- `tools/qa/mp/run.mjs farfeel` (v2.3.3248, 15 checks): the real handlers fed
   kills, slams, wind-ups, misses, blasts and bursts for real Wheel monsters, at
   100, 700 and 2,000 px. A far kill you had no part in is silent, a near one
   and your own far one are full; a far slam has no shake, kick or beep, a near
