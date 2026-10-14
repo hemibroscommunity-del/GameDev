@@ -366,7 +366,8 @@ check('0b the session took pres: 2 from its join (v2)', sessionOf(room, A).pres2
   check('9q ...applies a tick\'s `on`, and sweeps by silence only while the list is not fresh',
     /if \(msg\.on && typeof msg\.on === 'object'\)[\s\S]{0,900}applyOnlineList\(S, msg\.on, Date\.now\(\), _p2Make\)/.test(ws) && /if \(!onlineListFresh\(S, Date\.now\(\)\)\) \{\s*var _gsNow/.test(ws));
   check('9q2 ...and its channel lets map_watch out (TRAPS #18: the allowlist drops a type it does not name)',
-    /if \(msg\.type === 'map_watch'\) \{\s*ws\.send\(JSON\.stringify\(msg\)\);\s*return;/.test(ws));
+    /* v2.3.3254: through wsOut, the quiet phone's way out (one frame a moment) */
+    /if \(msg\.type === 'map_watch'\) \{\s*(ws\.send\(JSON\.stringify\(msg\)\)|wsOut\(msg\));\s*return;/.test(ws));
   check('9r ...parks whoever an `nr` roster leaves out, and un-parks anyone a tick updates',
     /if \(msg\.nr && presence2On\(S\)\) parkMissing\(S, msg\.players \|\| \{\}\)/.test(ws) && /_lastUpdate = Date\.now\(\);[\s\S]{0,200}S\.others\[pid\]\._away = false;/.test(ws));
   const vs = readFileSync(new URL('../../src/game/visualSystems.js', import.meta.url), 'utf8');

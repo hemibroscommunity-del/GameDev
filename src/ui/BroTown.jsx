@@ -368,6 +368,7 @@ import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2.3.2916: + the roll window, shared with the broadcast */
 import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
+import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
 import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
@@ -7294,7 +7295,12 @@ export var BroTown = function BroTown(_ref0) {
           : _exSkill === 'cooking' ? 'cook'
           : null;
         var _exChanged = _exCode !== (S._lastBroadcastEx || null);
-        var _exHeartbeat = !!_exCode && (now - (S._lastExBroadcast || 0) > 500);
+        /* v2.3.3254: not for the quiet phone (game/quietPhone.js): the
+           worker's own roster carries every near player's `ex` whole every
+           second (tick.js), which is what a watcher arriving mid-harvest needs;
+           the start and the stop still go at once (_exChanged) */
+        var _quietPh = quietOn(S);
+        var _exHeartbeat = !_quietPh && !!_exCode && (now - (S._lastExBroadcast || 0) > 500);
         /* ═══ v2.3.2915: AND WHICH TREE ═══
            Your screen draws the lumberjack at the tree you are chopping
            (effectsRenderer chopStandInSpot), and you chop from wherever the
@@ -7369,11 +7375,38 @@ export var BroTown = function BroTown(_ref0) {
            position; matching cadences means every tick can carry fresh data.
            Delta ticks keep the cost small; revisit if iPhone battery/network
            profiling ever flags it. */
-        if ((now - S.lastBroadcast > 22 && (isMoving || _facingChanged || _exChanged || _exHeartbeat || _justStopped || _blockChanged || _baChanged)) || _idleKeepalive) {
+        /* v2.3.3254: with the quiet phone's keepalive 10 s apart (below), what
+           it used to carry within a second goes at once instead: dying or
+           coming back (ps.dead, which the worker's cook, forge and amulet
+           gates read), and the gear (the worker's copy, as the move carries
+           it; the look relay carries it to the others too) */
+        var _deadNow = !!(S.rpg && S.rpg.hp <= 0);
+        var _deadChanged = _quietPh && _deadNow !== !!S._lastBroadcastDead;
+        var _gearNow = _quietPh ? getEquip('chest') + '|' + getEquip('legs') + '|' + getEquip('shoulders') : null;
+        var _gearChanged = _quietPh && _gearNow !== S._lastBroadcastGear;
+        /* ...and so does a place or zone changed with no thumb on the stick (a
+           snap onto a harvest's stance, a shove, a door's arrival): the
+           keepalive used to tell the worker within a second, this tells it at
+           once.  2 px, the diet's own error (game/moveDiet.js). */
+        var _zoneNowB = S.currentZone || 'town';
+        var _posChanged = _quietPh && typeof S._lastBroadcastX === 'number'
+          && (Math.abs(P.x - S._lastBroadcastX) > 2 || Math.abs(P.y - S._lastBroadcastY) > 2 || _zoneNowB !== S._lastBroadcastZone);
+        if ((now - S.lastBroadcast > 22 && (isMoving || _facingChanged || _exChanged || _exHeartbeat || _justStopped || _blockChanged || _baChanged || _deadChanged || _gearChanged || _posChanged)) || _idleKeepalive) {
           S.lastBroadcast = now;
           S._lastBroadcastFacing = S._renderFacing;
           if (S.channel) {
-            if (S.channel && (!S._lastMoveBroadcast || Date.now() - S._lastMoveBroadcast > 22)) {
+            /* ═══ v2.3.3254: THE QUIET PHONE'S KEEPALIVE (game/quietPhone.js) ═══
+               The 1 s keepalive above still runs this block -- the away
+               logout and the look below ride its slot -- but a standing
+               phone's MOVE now goes once, KEEP_CONFIRM_MS after the last one
+               (it heals a refused last step, as the keepalive did), then
+               every KEEP_QUIET_MS: the worker's roster already gives every
+               near phone each player whole every second (tick.js), the
+               keepalive's other job since v2.3.1112. */
+            var _kaOnly = !(isMoving || _facingChanged || _exChanged || _exHeartbeat || _justStopped || _blockChanged || _baChanged || _deadChanged || _gearChanged || _posChanged);
+            var _kaHeld = _quietPh && _kaOnly && !keepaliveDue(Date.now() - (S._lastMoveBroadcast || 0), !!S._kaConfirmed);
+            if (!_kaHeld && S.channel && (!S._lastMoveBroadcast || Date.now() - S._lastMoveBroadcast > 22)) {
+              S._kaConfirmed = _kaOnly;
               S._lastMoveBroadcast = Date.now();
               /* Calculate effective velocity — use dodge direction during roll */
               var bcastVx = P.vx;
@@ -7411,6 +7444,9 @@ export var BroTown = function BroTown(_ref0) {
               S._restPending = false; /* v2.3.1107: rest packet delivered */
               S._lastBroadcastBlocking = _blockNow; /* v2.3.1110 */
               S._lastBroadcastBa = _baNow; /* v2.3.1726 */
+              S._lastBroadcastDead = _deadNow; /* v2.3.3254 */
+              S._lastBroadcastGear = _gearNow; /* v2.3.3254 */
+              S._lastBroadcastX = P.x; S._lastBroadcastY = P.y; S._lastBroadcastZone = _zoneNowB; /* v2.3.3254 */
             }
             /* ═══ v2.3.1913: LOG OUT AN IDLE CHARACTER ═══
                Owner: "Sometimes I login to the game and see characters I
