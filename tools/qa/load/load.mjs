@@ -14,6 +14,7 @@
  *        [--no-deflate] [--move-ms 33] [--town-move-ms 66] [--diet] [--seen-r 2400]
  *        [--inspector-port 9230] [--worker-log <file>] [--walk-r 400] [--track]
  *        [--keep-bundle <dir>] [--tick-parts]
+ *        [--storm] [--storm-max 90]
  *
  * What it does:
  *   1. copies server/ to a temporary folder and raises MAX_PLAYERS there
@@ -89,6 +90,8 @@ const OPT = {
   workerLog: arg('worker-log', null),      /* v2.3.3203: write the worker's whole log here at the end */
   keepBundle: arg('keep-bundle', null),    /* v2.3.3242: copy the runtime's bundle (index.js + .map) here at the end, so a CPU profile's line numbers can be read (cdpprof.mjs) */
   tickParts: process.argv.includes('--tick-parts'),   /* v2.3.3242: what a tick is made of (bots.mjs countTickParts, from the probes) */
+  storm: process.argv.includes('--storm'), /* v2.3.3244: after the last step, every socket dropped at once and the way back measured */
+  stormMax: +arg('storm-max', 90),           /* seconds the storm is watched at most */
   recoverTo: +arg('recover-to', 0.6),       /* share of the players kept after a break */
   recoverSettle: +arg('recover-settle', 20), /* seconds given to come back before measuring */
 };
@@ -438,6 +441,7 @@ async function main() {
   console.log(HEAD);
 
   const results = [];
+  let stormResult = null;   /* v2.3.3244: --storm */
   await mkdir(join(REPO, 'tools', 'qa', 'out', 'load'), { recursive: true });
   const stamp = startedAt.toISOString().replace(/[:.]/g, '-');
   const base = join(REPO, 'tools', 'qa', 'out', 'load', 'load-' + stamp);
@@ -449,6 +453,7 @@ async function main() {
       machine: { cores: cpus().length, model: cpus()[0].model.trim() },
       serverCap: copy ? { real: copy.realCap, test: OPT.cap } : null,
       steps: results,
+      storm: stormResult,
     };
     await writeFile(base + '.json', JSON.stringify(out, null, 2));
     await writeFile(base + '.md', '```\n' + HEAD + '\n' + results.map(row).join('\n') + '\n```\n');
@@ -531,6 +536,53 @@ async function main() {
     have = Math.max(have, n);
     const s = await measure(n, 'step');
     if (s.broken) { broke = s; break; }
+  }
+
+  /* v2.3.3244: THE RECONNECT STORM (--storm).  A worker deploy, or a blip in
+     the network, drops every phone at once, and each comes back on its own a
+     second or so later: a join each, all at once, and each join is sent a
+     snapshot of the whole room (join.js state_sync, getAllPlayerData).  Drop
+     every bot's socket and watch the way back: how long until they are all
+     in the Wheel again, how long a join takes, how big its snapshot is, and
+     the room's thread each second meanwhile.  The bots' ids have no stored
+     record, so a deploy's cold room (every record read from storage again)
+     is not what this measures: it is the network blip, the room warm. */
+  if (OPT.storm && !broke) {
+    console.log(`\nstorm: every socket dropped at once (${have} players); each comes back after 1-3 s, as a phone does ...`);
+    reports = [];
+    const spids = worker ? await groupPids(worker.proc.pid) : null;
+    let cPrev = worker ? await cpuSnapshot(spids) : null;
+    const t0 = Date.now();
+    for (const g of groups) g.child.send({ cmd: 'drop' });
+    const marks = {}, perSec = [];
+    while (Date.now() - t0 < OPT.stormMax * 1000) {
+      await sleep(1000);
+      const st = liveStates();
+      const back = (st.walking || 0) + (st.dead || 0);
+      const secs = (Date.now() - t0) / 1000;
+      const cNow = worker ? await cpuSnapshot(spids) : null;
+      const cpu = cPrev && cNow ? cpuBetween(cPrev, cNow) : {};
+      cPrev = cNow;
+      perSec.push({ t: Math.round(secs), back, thread: r1(cpu.busiestThreadPct) });
+      for (const f of [0.5, 0.9, 1]) if (marks[f] === undefined && back >= Math.ceil(have * f)) marks[f] = r1(secs);
+      if (marks[1] !== undefined && secs > marks[1] + 3) break;
+    }
+    const all = (k) => reports.flatMap((r) => r[k] || []);
+    const joinsMs = all('joins'), entriesMs = all('entries'), bytes = all('joinBytes');
+    const storm = {
+      players: have, back50: marks[0.5] ?? null, back90: marks[0.9] ?? null, backAll: marks[1] ?? null,
+      joinP50: r1(pct(joinsMs, 50)), joinP95: r1(pct(joinsMs, 95)), joinMax: r1(pct(joinsMs, 100)),
+      enterP50: r1(pct(entriesMs, 50)), enterP95: r1(pct(entriesMs, 95)), enterMax: r1(pct(entriesMs, 100)),
+      syncKbP50: r1((pct(bytes, 50) || 0) / 1024), syncKbMax: r1((pct(bytes, 100) || 0) / 1024),
+      perSec,
+    };
+    stormResult = storm;
+    console.log(`storm: back in the Wheel -- half after ${storm.back50} s, 90% after ${storm.back90} s, all after ${storm.backAll ?? ('not within ' + OPT.stormMax + ' s')}`);
+    console.log(`       a join (socket open -> its snapshot) ${storm.joinP50} ms half the time, ${storm.joinP95} for 95%, ${storm.joinMax} at most; into the Wheel ${storm.enterP50} / ${storm.enterP95} / ${storm.enterMax} ms`);
+    console.log(`       each join's snapshot (state_sync, unzipped) ${storm.syncKbP50} KB half the time, ${storm.syncKbMax} KB at most`);
+    console.log(`       the room's thread each second: ${perSec.map((p) => p.thread).join(' ')}`);
+    console.log(`       players back each second:     ${perSec.map((p) => p.back).join(' ')}`);
+    await save();
   }
 
   /* DOES IT COME BACK?  A live room that tips over is only survivable if it
