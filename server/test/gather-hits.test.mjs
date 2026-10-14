@@ -29,12 +29,16 @@
  *   9. the caps flag, its name, and PRIVILEGED_EVENTS;
  *   10. a COOK's hits (owner: "Make it appear for cooking too"): the fish
  *      has the HP, the cooking level rolls them, the answer names the fish,
- *      no record is kept, and cook_request is held to nothing new.
+ *      no record is kept, and cook_request is held to nothing new;
+ *   11. the HIT LADDER (v2.3.3229, owner: "after the first level you get a
+ *      10% chance of hitting 1 number higher"): a ten-sided die read down
+ *      from the level, every face of it, the shares real dice give, the
+ *      plans and cooks that roll it, its cap and its kill switch.
  * mp-gatherhits covers the other half -- the client actually playing the
  * plan, through the real shim, in a real zone -- which no fixture here can
  * reach (TRAPS #18). */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
-import { GATHER_HITS } from '../src/gathering.js';
+import { GATHER_HITS, gatherHitRoll } from '../src/gathering.js';   /* gatherHitRoll v2.3.3229 */
 
 function makeState(liveflags) {
   const store = new Map();
@@ -118,15 +122,17 @@ async function withRandom(fn, body) {
   check('dice: the LAST hit is the one that breaks the node (no hit after zero)', crossesLast);
   check('dice: level 3 needs 4..10 hits on 10 HP', minLen >= 4 && maxLen <= 10, { minLen, maxLen });
 
-  let oneShots = 0, top = 0;
+  let oneShots = 0, top = 0, low = Infinity;
   for (let i = 0; i < 4000; i++) {
     const h = room._rollGatherHits(50, 10);
     if (h.length === 1) oneShots++;
-    top = Math.max(top, ...h);
+    top = Math.max(top, ...h); low = Math.min(low, ...h);
   }
-  /* P(one roll of 1..50 >= 10) = 41/50 = 0.82 */
-  check('dice: a high level one-shots a first-tier node about 82% of the time', oneShots / 4000 > 0.78 && oneShots / 4000 < 0.86, oneShots / 4000);
-  check('dice: ...and never rolls above its level', top <= 50 && top >= 45, top);
+  /* v2.3.3229: the hit ladder (section 11) rolls 41..50 at level 50, so a
+     first-tier node is always one hit.  v2.3.2956's even 1..50 did it 41
+     times in 50 -- that check moved to the ladder's kill switch below. */
+  check('dice: a high level one-shots a first-tier node every time (the ladder rolls 41-50 at level 50)', oneShots === 4000, oneShots / 4000);
+  check('dice: ...and never rolls above its level, nor more than nine under it', top === 50 && low === 41, { top, low });
 
   const huge = room._rollGatherHits(1, room._gatherNodeHp(96));
   const hugeSum = huge.reduce((a, b) => a + b, 0);
@@ -464,5 +470,155 @@ async function withRandom(fn, body) {
   check('cook: the kill switch answers a cook `off` too, naming its fish', !!p && p.off === true && p.seq === 3 && p.fishKey === 'fish_minnow' && !p.hits, p);
 }
 
+// ── 11. the hit ladder (v2.3.3229) ──
+// Owner, 2026-10-14: "after the first level you get a 10% chance of hitting 1
+// number higher.  The next level you get a 10% chance of hitting 1 number
+// higher than that.  So lvl 2 has a 10% chance of hitting 2 otherwise 1.  Lvl
+// 3 has a 10% chance of hitting 3 otherwise 1.  Etc. the number 1 will
+// eventually get replaced by the 2 as more 10% chances get added with each
+// level."  So every face of a ten-sided die, read down from the level.
+{
+  /* every face of the die once, by a draw in the middle of it */
+  const faces = (lvl, ladder = true) => {
+    const n = ladder ? GATHER_HITS.LADDER : Math.max(1, Math.floor(lvl));
+    const out = {};
+    for (let f = 0; f < n; f++) { const d = gatherHitRoll(lvl, (f + 0.5) / n, ladder); out[d] = (out[d] || 0) + 1; }
+    return out;
+  };
+  /* {n: faces} for "1 on `ones` faces, then one face each from `from` to `to`" */
+  const want = (ones, from, to) => {
+    const out = {};
+    if (ones) out[1] = ones;
+    for (let k = from; k <= to; k++) out[k] = (out[k] || 0) + 1;
+    return out;
+  };
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+  check('ladder: the die has ten faces, a 10% chance each', GATHER_HITS.LADDER === 10, GATHER_HITS.LADDER);
+  check('ladder: level 1 always hits 1', same(faces(1), { 1: 10 }), faces(1));
+  check('ladder: level 2 hits 2 on one face in ten, otherwise 1 (the owner\'s example)', same(faces(2), { 1: 9, 2: 1 }), faces(2));
+  check('ladder: level 3 adds a face of 3 -- 1 on eight faces, 2 on one, 3 on one', same(faces(3), { 1: 8, 2: 1, 3: 1 }), faces(3));
+  check('ladder: level 10 is 1..10, one face each (exactly the old dice\'s level 10)', same(faces(10), want(0, 1, 10)), faces(10));
+  check('ladder: level 11 has no 1 any more -- 2..11, one face each ("replaced by the 2")', same(faces(11), want(0, 2, 11)), faces(11));
+  check('ladder: level 12 is 3..12, level 20 is 11..20', same(faces(12), want(0, 3, 12)) && same(faces(20), want(0, 11, 20)),
+    { 12: faces(12), 20: faces(20) });
+  let badLow = null, badHigh = null;
+  for (let L = 1; L <= 10 && !badLow; L++) if (!same(faces(L), want(11 - L, 2, L))) badLow = { L, got: faces(L) };
+  for (let L = 10; L <= 120 && !badHigh; L++) if (!same(faces(L), want(0, L - 9, L))) badHigh = { L, got: faces(L) };
+  check('ladder: up to level 10, level L hits 1 on 11-L faces and each of 2..L on one', badLow === null, badLow);
+  check('ladder: from level 10 on, level L hits each of L-9..L on one face', badHigh === null, badHigh);
+
+  let notMonotone = null;
+  for (const ladder of [true, false]) {
+    for (const L of [1, 2, 3, 7, 10, 11, 25, 60]) {
+      let prev = 0;
+      for (let i = 0; i < 1000 && !notMonotone; i++) {
+        const d = gatherHitRoll(L, i / 1000, ladder);
+        if (d < prev) notMonotone = { ladder, L, r: i / 1000, d, prev };
+        prev = d;
+      }
+    }
+  }
+  check('ladder: a higher draw is never a lower hit, on either die (the stubbed-dice fixtures rely on it)', notMonotone === null, notMonotone);
+  const edges = [
+    gatherHitRoll(5, 0, true), gatherHitRoll(5, 0.9999999, true), gatherHitRoll(5, 1, true), gatherHitRoll(5, -1, true),
+    gatherHitRoll(5, NaN, true), gatherHitRoll(undefined, 0.99, true), gatherHitRoll('__proto__', 0.99, true), gatherHitRoll(0, 0.99, true),
+    gatherHitRoll(5, 1, false), gatherHitRoll(5, 0, false),
+  ];
+  check('ladder: draws and levels at the edges stay on the die (a draw of 1 is the top face, junk levels are level 1)',
+    same(edges, [1, 5, 5, 1, 1, 1, 1, 1, 5, 1]), edges);
+
+  /* The real dice: each plan on a 1-HP node is exactly one roll. */
+  const { room } = await setup();
+  const share = (lvl, n) => {
+    const c = {}; let sum = 0;
+    for (let i = 0; i < n; i++) { const d = room._rollGatherHits(lvl, 1)[0]; c[d] = (c[d] || 0) + 1; sum += d; }
+    return { c, mean: sum / n };
+  };
+  const l3 = share(3, 20000);
+  check('ladder: real dice at level 3 hit 1 about 80% of the time, 2 and 3 about 10% each',
+    l3.c[1] / 20000 > 0.78 && l3.c[1] / 20000 < 0.82 && l3.c[2] / 20000 > 0.085 && l3.c[2] / 20000 < 0.115
+      && l3.c[3] / 20000 > 0.085 && l3.c[3] / 20000 < 0.115 && Object.keys(l3.c).length === 3, l3.c);
+  const l5 = share(5, 20000), l15 = share(15, 20000);
+  check('ladder: the average hit is 2.0 at level 5 (the old dice: 3.0) and 10.5 at level 15 (the old: 8.0)',
+    Math.abs(l5.mean - 2.0) < 0.05 && Math.abs(l15.mean - 10.5) < 0.1, { l5: l5.mean, l15: l15.mean });
+
+  /* The plan the worker SENDS rolls it: a level-11 miner never hits a 1. */
+  const g = await setup();
+  const ore = g.byType('oreVein');
+  g.stand(ore);
+  g.ps.lifeSkills = { mining: { level: 11, xp: 0 }, cooking: { level: 11, xp: 0 } };
+  let planHits = [], plans = 0;
+  for (let i = 0; i < 40; i++) {
+    delete g.room.extractions.bp_gh;   /* no replay of the last plan (section 8) */
+    g.ws.sent.length = 0;
+    await g.send('extraction_start', { nodeId: ore.id, zone: 'meadow', skill: 'mining', hitSeq: 100 + i });
+    const p = (ofType(g.ws, 'gather_hits')[0] || {}).payload;
+    if (p && Array.isArray(p.hits)) { plans++; planHits = planHits.concat(p.hits); }
+  }
+  check('ladder: every plan a level-11 miner is sent hits 2..11, never 1', plans === 40 && planHits.every((d) => d >= 2 && d <= 11),
+    { plans, low: Math.min(...planHits), high: Math.max(...planHits) });
+  const rec = g.room.extractions.bp_gh;
+  check('ladder: ...and the strike is held to that plan\'s own length (the window is read off it)',
+    !!rec && rec.openDelayBase === (rec.hits.length - 1) * GATHER_HITS.MS.mining, rec && { len: rec.hits.length, win: rec.openDelayBase });
+  let cookHits = [];
+  for (let i = 0; i < 40; i++) {
+    g.ws.sent.length = 0;
+    await g.send('extraction_start', { skill: 'cooking', fishKey: 'fish_trout', hitSeq: 200 + i });
+    const p = (ofType(g.ws, 'gather_hits')[0] || {}).payload;
+    if (p && Array.isArray(p.hits)) cookHits = cookHits.concat(p.hits);
+  }
+  check('ladder: a cook rolls it too (cooking 11 on a trout: 2..11, never 1)', cookHits.length > 40 && cookHits.every((d) => d >= 2 && d <= 11),
+    { n: cookHits.length, low: Math.min(...cookHits), high: Math.max(...cookHits) });
+
+  /* The cap, and its name. */
+  const sync = (await setup()).ws.sent.find((m) => m.type === 'state_sync');
+  check('ladder: a fresh room advertises hitladder', !!sync && !!sync.caps && sync.caps.hitladder === true, sync && sync.caps && sync.caps.hitladder);
+  const { LIVEOPS } = await import('../src/liveops.js');
+  check('ladder: the kill switch\'s name is one the admin flags route accepts (TRAPS §117)', LIVEOPS.FLAG_NAME_RE.test('hitladder'));
+}
+{
+  /* THE KILL SWITCH: hitladder:false -> v2.3.2956's even 1..level again. */
+  const k = await setup({ hitladder: false });
+  const sync = k.ws.sent.find((m) => m.type === 'state_sync');
+  check('ladder kill switch: hitladder:false un-advertises the ladder, and leaves the hits themselves on',
+    !!sync && !!sync.caps && sync.caps.hitladder === false && sync.caps.gatherhits === true, sync && sync.caps && [sync.caps.hitladder, sync.caps.gatherhits]);
+  const c = {};
+  for (let i = 0; i < 9000; i++) { const d = k.room._rollGatherHits(3, 1)[0]; c[d] = (c[d] || 0) + 1; }
+  check('ladder kill switch: level 3 rolls 1, 2 and 3 a third of the time each again', [1, 2, 3].every((d) => c[d] / 9000 > 0.31 && c[d] / 9000 < 0.36)
+    && Object.keys(c).length === 3, c);
+  let oneShots = 0;
+  for (let i = 0; i < 4000; i++) if (k.room._rollGatherHits(50, 10).length === 1) oneShots++;
+  /* P(one roll of 1..50 >= 10) = 41/50 = 0.82 */
+  check('ladder kill switch: level 50 one-shots a first-tier node about 82% of the time, as v2.3.2956 did', oneShots / 4000 > 0.78 && oneShots / 4000 < 0.86, oneShots / 4000);
+  const ore = k.byType('oreVein');
+  k.stand(ore);
+  k.ps.lifeSkills = { mining: { level: 11, xp: 0 } };
+  let ones = 0;
+  for (let i = 0; i < 80; i++) {   /* ~170 hits: no 1 among them at even 1..11 odds is (10/11)^170, never */
+    delete k.room.extractions.bp_gh;
+    k.ws.sent.length = 0;
+    await k.send('extraction_start', { nodeId: ore.id, zone: 'meadow', skill: 'mining', hitSeq: 300 + i });
+    const p = (ofType(k.ws, 'gather_hits')[0] || {}).payload;
+    if (p && Array.isArray(p.hits)) ones += p.hits.filter((d) => d === 1).length;
+  }
+  check('ladder kill switch: ...and the plans it sends roll 1s at level 11 again', ones > 0, ones);
+}
+
+{
+  /* The test lever (devtools.js _devLifeSkill, /dev/lifeskill): a skill at
+     any level, so the ladder can be felt without the grind. */
+  const { room, ps } = await setup();
+  ps.lifeSkills = { mining: { level: 2, xp: 40 }, trapping: { level: 4, xp: 9 } };
+  const r1 = room._devLifeSkill('bp_gh', { skill: 'hits', level: 11 });
+  check('lever: \'hits\' sets the four hit skills to the level, XP 0, and leaves the rest',
+    r1.ok && ['mining', 'woodcutting', 'fishing', 'cooking'].every((k) => ps.lifeSkills[k].level === 11 && ps.lifeSkills[k].xp === 0)
+      && ps.lifeSkills.trapping.level === 4, { r1, ls: ps.lifeSkills });
+  const r2 = room._devLifeSkill('bp_gh', { skill: 'farming', level: 999 });
+  check('lever: one skill by name, the level held to 1-120', r2.ok && ps.lifeSkills.farming.level === 120, r2);
+  const bad = ['__proto__', 'constructor', 'resources', 'gems', '', null, 7, ['mining']].map((k) => room._devLifeSkill('bp_gh', { skill: k, level: 5 }).ok);
+  check('lever: anything but a life skill\'s name is refused', bad.every((ok) => ok === false) && ps.lifeSkills.resources === undefined, bad);
+  check('lever: an unknown player is refused', room._devLifeSkill('bp_nobody', { skill: 'hits', level: 3 }).ok === false);
+}
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

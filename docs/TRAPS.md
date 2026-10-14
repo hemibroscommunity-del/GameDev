@@ -6130,6 +6130,57 @@ work, and one world behind them. Area servers come behind the doors only when
 the one world server itself is full. Measure where a room's time goes, by
 kind of work, before choosing a split.
 
+## 173. "The bots do what a phone does on the wire" (v2.3.3240)
+
+`tools/qa/load/bots.mjs` says it, and for the messages it models it is true:
+the join, the zone change, moves at a phone's rate, pongs, swings. But a phone
+also sends `track` every 2 s: its whole look and stats, about 940 bytes. The
+worker relayed each one to every other player in the room as a message of its
+own. The bots never sent it.
+
+That is N(N-1)/2 sends a second, more messages than all the ticks at 120
+players, and every capacity number before v2.3.3240 left it out. "Smooth to
+about 145" was really about 105, and the cap of 120 went past it.
+
+**The rule.**
+
+- Before trusting a load test, list every message the client sends on a timer
+  (`setInterval`, the game loop's "every N s" slots in BroTown.jsx), not only
+  the ones a player triggers.
+- Check each against the bots. A message the server FANS OUT costs it
+  N times over, so a small one the bots skip can matter more than a big one
+  they model.
+- `--track` (a real phone's payload, `track-sample.json` from
+  `mp-trackcapture`) is the bots' now. `docs/specs/look-relay.md` has the before
+  and after.
+
+## 174. "The join snapshot is the room's state, so spread it" (v2.3.3244)
+
+`getAllPlayerData()` built each player in a joiner's `state_sync` as
+`{...playerState, name, ...session.data}`: the player's WHOLE server state.
+Every joining phone was told every other player's coins, bag, stashes,
+quests, life skills, buffs and the anti-cheat's own histories, and the join's
+`rpg*` claims (the phone's own coins, bag and weapons) went to everyone in
+`player_join` too. Earlier passes cropped what they noticed (gear ids,
+v2.3.2537; the gear stashes kept off the session, v2.3.2523) and left the
+spread "behaviour-frozen".
+
+- No phone read any of it: a peer is drawn from its position, name and look
+  (wsClient.js, `peerCosmetics.js`).
+- It was most of the snapshot: 2.3 KB for a brand-new character, 4.6 KB for a
+  played one with a real look, so ~550 KB a join at 120 players.
+- And it was a leak with a game in it: in No man's land the victim's bag is
+  the killer's (nomansland.js), and anyone reading their own socket could see
+  who was worth hunting.
+
+**The rule.** What other players are told about a player is built from an
+ALLOWLIST of what is public anyway (`PEER_PUBLIC_KEYS`, index.js: the look
+relay's keys, the join's look, a tick's fields), never by spreading a state
+object, and never by cropping the fields someone happened to notice. A field
+added to `playerState` later stays private until it is put on the list on
+purpose. `peer-view.test.mjs` holds every key a phone reads on the snapshot
+road to the list, so the list cannot quietly starve a phone either.
+
 ## 175. "The creator fits a phone, and a phone held sideways is the same phone" (v2.3.3216)
 
 **Plausible:** every creator scenario measures it at 390x844 or 390x664,
