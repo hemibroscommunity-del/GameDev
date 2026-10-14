@@ -36,6 +36,15 @@ on:
         description: 'Paid plan only: the bigger floods (~25,000 billed requests). Never on the free plan, whose daily 100,000 the game shares.'
         type: boolean
         default: false
+      # v2.3.3252: the owner's yes, 2026-10-14 ("Your account, 23:55 UTC"):
+      # does the free plan's daily limit count every socket message?  It sends
+      # messages only between 23:55:00 and 23:58:30 UTC, so a refusal lasts
+      # until the 00:00 UTC reset at most; started at any other time it stops
+      # before sending anything (tools/lab/run.mjs --limit).
+      limit:
+        description: 'The free plan limit test: start it between 23:30 and 23:54 UTC. It may shut the game for the last minutes before 00:00 UTC.'
+        type: boolean
+        default: false
 # one lab at a time: two runs would deploy over each other
 concurrency:
   group: cloudflare-lab
@@ -45,7 +54,9 @@ permissions:
 jobs:
   lab:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # v2.3.3252: the limit test waits for its window and, if refused, past
+    # midnight for the reset (run.mjs LIMIT)
+    timeout-minutes: 55
     env:
       # wrangler-action@v3 still declares node20 (deploy-worker.yml, same note)
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -77,11 +88,14 @@ jobs:
           LAB_URL: ${{ steps.deploy.outputs.deployment-url }}
           ROUNDS: ${{ github.event.inputs.rounds || '5' }}
           BIG: ${{ github.event.inputs.big }}
+          LIMIT: ${{ github.event.inputs.limit }}
         run: |
           BASE="https://brotown-lab.hemibroscommunity.workers.dev"
           case "$LAB_URL" in https://brotown-lab.*.workers.dev*) BASE="${LAB_URL%/}";; esac
           EXTRA=""
           if [ "$BIG" = "true" ]; then EXTRA="--big"; fi
+          # v2.3.3252: the limit test, and the one page of the game it may read
+          if [ "$LIMIT" = "true" ]; then EXTRA="--limit --game-probe https://api.brotown.net/api/store/browse"; fi
           # v2.3.3252: the summary even when the run stops early (the day near
           # the free plan's limit), then the run's own exit code
           set +e

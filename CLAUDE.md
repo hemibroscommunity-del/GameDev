@@ -2617,6 +2617,21 @@ Two protocol versions coexist; both must keep working:
     404 page is tried again (a 5xx means the lab ran); `node
     tools/lab/selftest.mjs` runs run.mjs whole against fakes, before every
     deploy: docs/specs/cloudflare-lab.md.
+    - THE LIMIT TEST (`--limit`, the workflow's "limit" box) -- asked how to
+      find out which, the owner: "Your account, 23:55 UTC". It floods one lab
+      World in 5,000-message steps ONLY between 23:55:00 and 23:58:30 UTC (a
+      refusal lasts until the 00:00 UTC reset), checks a fresh request after
+      each step -- a lab object and the game's auction listing, read only, the
+      one game page it may read (`GAME_PROBE_OK`) -- stops at the first
+      refusal (tried twice more), never sends past 25,000 over the
+      every-message line (150,000 at most: ~7,500 by 20 to 1), watches until
+      23:59:40 for a late count, and if refused waits past midnight to say
+      when the game answered again. Started outside 23:30-23:54 it sends
+      nothing (exit 4). A Community report (2026-10-12) was refused ~36,000
+      short by the 20 to 1 reading. The lab worker answers a refusal in
+      Cloudflare's own words (503 `refused`), not its crash page;
+      selftest.mjs runs it on a fake clock against a fake limit (every
+      message, 20 to 1, counted late, four refusals to run).
 
 ## Conventions
 

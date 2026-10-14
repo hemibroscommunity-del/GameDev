@@ -41,6 +41,26 @@
  *   4. THE GAME'S OWN DAYS: the last 7 days of brotown-server's Durable Objects
  *      from the account's own figures, against the free plan's daily limits.
  *      Read only, and best effort like the bill.
+ *
+ * ═══ v2.3.3252: --limit, THE FREE PLAN'S LIMIT TEST (the owner's yes, 2026-10-14) ═══
+ * Does the free plan's 100,000 a day count every incoming socket message, or
+ * 20 to a request as the bill does?  Cloudflare's docs give the 20 to 1 for
+ * "billing" only, and a Community report (2026-10-12, unresolved) was refused
+ * at about 64,000 by the 20 to 1 reading.  The game's busiest day (Oct 11) was
+ * 76,277 messages and calls: 76% of the day if every message counts, about 4%
+ * if not.  Asked where to find out, the owner: "Your account, 23:55 UTC".
+ *   - it floods ONE lab World in steps of LIMIT.STEP messages, only inside the
+ *     window (default 23:55:00-23:58:30 UTC): a refusal lasts until the daily
+ *     reset at 00:00 UTC, so the game could be shut for minutes at most;
+ *   - after each step a fresh request (a lab Burner object, and with
+ *     --game-probe the game's own auction listing, read only) must still be
+ *     answered; the first refusal is tried twice more, then it stops;
+ *   - it never sends more than takes the day LIMIT.OVER past 100,000 by the
+ *     every-message reading (LIMIT.MAX at most): by the 20 to 1 reading that
+ *     is ~7,500, so if messages are not all counted the game never notices;
+ *   - unrefused, it keeps asking until LIMIT.WATCH_UNTIL, in case Cloudflare
+ *     enforces late; refused, it waits past midnight for the reset and says
+ *     when the game answered again.
  */
 import { spawn } from 'node:child_process';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
@@ -63,6 +83,19 @@ const N = BIG
   : { warm: 10, rtt: 200, ws: 10000, rpc: 900, ws2k: 2000 };
 const POLL_MS = 50;   /* the Door's wait for a flood to land: one call a poll */
 const FREE_DAY = Object.freeze({ requests: 100000, gbs: 13000 });
+/* v2.3.3252: the limit test (header) */
+const LIMIT_RUN = process.argv.includes('--limit');
+const LIMIT = Object.freeze({
+  STEP: 5000,          /* socket messages a step */
+  OVER: 25000,         /* past the every-message line by this much, at most */
+  MAX: 150000,         /* and never more than this in all */
+  POLL: 100,           /* the Door's wait for a step to land: one call a poll */
+  WATCH_UNTIL: '23:59:40',   /* unrefused, keep asking until then (late enforcement) */
+  RESET_WATCH_S: 900,  /* refused, ask after midnight for up to this long */
+});
+/* the only page of the game the test may read: the auction house's listing,
+   read only, what any phone's market window asks */
+const GAME_PROBE_OK = /^https:\/\/api\.brotown\.net\/api\/store\/browse(\?[a-z=&0-9]*)?$/;
 /* a run's billed Durable Object requests, about: every call and web request to
    an object is one, 20 incoming socket messages are one */
 const BUDGET = Math.ceil(
@@ -134,10 +167,28 @@ const out = { started: started.toISOString(), base: LOCAL ? 'local' : BASE, roun
 
 /* ── 0. the day so far (v2.3.3252) ────────────────────────────────────────── */
 out.plan = { big: BIG, budget: BUDGET, sizes: N, freePerDay: FREE_DAY };
+/* v2.3.3252: the limit test runs only inside its window (header): too late,
+   or far too early, and it stops here, before a single request */
+const WIN = LIMIT_RUN ? limitWindow(arg('window', '23:55:00-23:58:30')) : null;
+const GAME_PROBE = LIMIT_RUN ? arg('game-probe', null) : null;
+if (LIMIT_RUN) {
+  out.limit = { window: WIN && WIN.text, step: LIMIT.STEP, over: LIMIT.OVER, max: LIMIT.MAX, steps: [], probes: [] };
+  let why = null;
+  if (!WIN) why = 'the window must be HH:MM[:SS]-HH:MM[:SS] (UTC), start before end, ending at least a minute before midnight';
+  else if (GAME_PROBE && !GAME_PROBE_OK.test(GAME_PROBE)) why = '--game-probe may only be the game\'s auction listing (read only)';
+  else if (secOfDay() > WIN.end) why = `it is past the window's end (${WIN.text} UTC): run it tomorrow before then`;
+  else if (WIN.start - secOfDay() > 25 * 60) why = `it is more than 25 minutes before the window (${WIN.text} UTC): start it between 23:30 and the window's start`;
+  if (why) {
+    out.limit.refused = why;
+    await writeOut(out);
+    process.exit(4);
+  }
+}
 if (!LOCAL && process.env.CLOUDFLARE_API_TOKEN) {
   out.plan.today = await accountToday().catch((e) => ({ error: String(e && e.message || e) }));
   const used = out.plan.today && out.plan.today.billed;
-  if (!BIG && Number.isFinite(used) && used + BUDGET > 0.9 * FREE_DAY.requests) {
+  /* v2.3.3252: the limit test means to cross the line, inside its window */
+  if (!BIG && !LIMIT_RUN && Number.isFinite(used) && used + BUDGET > 0.9 * FREE_DAY.requests) {
     out.plan.refused = `the account has used about ${Math.round(used).toLocaleString('en-US')} of the free plan's ${FREE_DAY.requests.toLocaleString('en-US')} Durable Object requests today; this run's ~${BUDGET.toLocaleString('en-US')} could take it past 90%, and the game shares that limit. Run it after 00:00 UTC.`;
     await writeOut(out);
     process.exit(3);
@@ -168,6 +219,10 @@ try {
   out.httpRttMs = { p50: r1(pct(who.slice(2), 50)), max: r1(Math.max(...who.slice(2))) };
 }
 
+/* v2.3.3252: the limit test is a run of its own (header) */
+if (LIMIT_RUN) {
+  await limitTest();
+} else {
 /* ── 1. side by side ──────────────────────────────────────────────────────── */
 {
   const rtt = out.httpRttMs.p50 || 0;
@@ -237,6 +292,7 @@ out.billing = await billing(floodFrom, floodTo).catch((e) => ({ error: String(e 
 out.game = (LOCAL || !process.env.CLOUDFLARE_API_TOKEN)
   ? { skipped: LOCAL ? 'local run' : 'no CLOUDFLARE_API_TOKEN' }
   : await gameDays(7).catch((e) => ({ error: String(e && e.message || e) }));
+}   /* v2.3.3252: not the limit test */
 
 } catch (e) {
   out.error = String((e && e.stack) || e).slice(0, 2000);
@@ -248,6 +304,164 @@ if (worker) { try { process.kill(-worker.pid, 'SIGKILL'); } catch { /* gone */ }
 process.exit(out.error ? 1 : 0);
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
+
+/* ── v2.3.3252: the limit test (header) ── */
+/* seconds into the UTC day, by Date.now() (the self-test's fake moves it) */
+function secOfDay() {
+  const d = new Date(Date.now());
+  return d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds() + d.getUTCMilliseconds() / 1000;
+}
+function utcDate() { return new Date(Date.now()).toISOString().slice(0, 10); }
+function iso() { return new Date(Date.now()).toISOString(); }
+function hms(text) {
+  const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(text || '').trim());
+  if (!m) return null;
+  const s = (+m[1]) * 3600 + (+m[2]) * 60 + (+(m[3] || 0));
+  return +m[1] < 24 && +m[2] < 60 && +(m[3] || 0) < 60 ? s : null;
+}
+/* 'HH:MM[:SS]-HH:MM[:SS]', UTC; never across midnight, and over at least a
+   minute before it: a refusal lasts until the reset */
+function limitWindow(text) {
+  const [a, b] = String(text || '').split('-');
+  const start = hms(a), end = hms(b);
+  if (start === null || end === null || !(start < end) || end > 86400 - 60) return null;
+  return { start, end, text: `${a}-${b}` };
+}
+/* a request that is allowed to be refused: never throws */
+async function tryGet(path) {
+  const t0 = performance.now();
+  try {
+    const res = await fetch(BASE + path, { headers: H });
+    const text = await res.text();
+    let body = null;
+    try { body = JSON.parse(text); } catch { body = null; }
+    return { ok: res.ok, status: res.status, body, text: text.slice(0, 300), ms: r1(performance.now() - t0) };
+  } catch (e) {
+    return { ok: false, status: 0, body: null, text: String((e && e.message) || e).slice(0, 300), ms: r1(performance.now() - t0) };
+  }
+}
+function refusalText(r) {
+  return (r.body && r.body.refused) || (r.body && r.body.error) || r.text || ('status ' + r.status);
+}
+/* one look: a lab object (a fresh request) and, if allowed, the game's own
+   auction listing (read only) */
+async function limitProbe(label) {
+  const lab = await tryGet('/burn?iters=0&name=probe');
+  const p = { label, at: iso(), lab: { ok: lab.ok, status: lab.status, ms: lab.ms } };
+  if (!lab.ok) p.lab.refused = refusalText(lab);
+  if (GAME_PROBE) {
+    const t0 = performance.now();
+    try {
+      const res = await fetch(GAME_PROBE);
+      const text = await res.text();
+      p.game = { ok: res.ok, status: res.status, ms: r1(performance.now() - t0) };
+      if (!res.ok) p.game.text = text.slice(0, 300);
+    } catch (e) {
+      p.game = { ok: false, status: 0, text: String((e && e.message) || e).slice(0, 300) };
+    }
+  }
+  out.limit.probes.push(p);
+  return p;
+}
+/* refused, or just a bad moment?  Two more looks, a second apart */
+async function limitConfirm() {
+  await sleep(1000);
+  const a = await limitProbe('confirm 1');
+  await sleep(1000);
+  const b = await limitProbe('confirm 2');
+  return !a.lab.ok && !b.lab.ok ? b : null;
+}
+async function limitTest() {
+  const L = out.limit;
+  const t = out.plan.today;
+  /* the day so far by the every-message reading: the account's calls, web
+     requests and socket messages (the figures lag a few minutes) */
+  const U = t && Number.isFinite(t.invocations) ? t.invocations : null;
+  L.todayRaw = U;
+  L.todayBilled = t && Number.isFinite(t.billed) ? t.billed : null;
+  const day = utcDate();
+  /* inside the window, and not a moment before */
+  while (secOfDay() < WIN.start) await sleep(Math.max(200, Math.min(15000, (WIN.start - secOfDay()) * 1000)));
+  if (secOfDay() > WIN.end || utcDate() !== day) { L.refused = 'the window passed while the lab was getting ready'; return; }
+  const p0 = await limitProbe('before');
+  if (!p0.lab.ok) { L.refused = 'the lab was refused before the test began: ' + p0.lab.refused; return; }
+  /* never more than LIMIT.OVER past the every-message line, LIMIT.MAX at most */
+  const target = Math.min(LIMIT.MAX, Math.max(0, FREE_DAY.requests - (U || 0)) + LIMIT.OVER);
+  L.target = target;
+  let sent = 0, calls = 0;
+  while (sent < target) {
+    if (secOfDay() > WIN.end || utcDate() !== day) { L.stoppedBy = 'the window ended'; break; }
+    const n = Math.min(LIMIT.STEP, target - sent);
+    const r = await tryGet(`/door?mode=flood-ws&hib=1&size=40&poll=${LIMIT.POLL}&keep=1&n=${n}&door=limit&world=limit`);
+    const step = { at: iso(), n, ok: r.ok, ms: r.ms };
+    if (r.ok && r.body) {
+      step.got = r.body.worldGot;
+      sent += Number(r.body.worldGot) || 0;
+      /* the Door's own request, the World's "where", its socket and its polls */
+      calls += 3 + Math.ceil((Number(r.body.wallMs) || 0) / LIMIT.POLL);
+    } else {
+      step.status = r.status;
+      step.refused = refusalText(r);
+      calls += 1;
+    }
+    step.sentSoFar = sent;
+    L.steps.push(step);
+    const p = step.ok ? await limitProbe('after step ' + L.steps.length) : null;
+    calls += 1;
+    if (!step.ok || !p.lab.ok) {
+      const c = await limitConfirm();
+      calls += 2;
+      if (c) {
+        L.tripped = { at: c.at, afterStep: L.steps.length, sentMessages: sent, rawAbout: (U || 0) + sent + calls, refused: c.lab.refused, game: c.game || null };
+        break;
+      }
+    }
+  }
+  L.sent = sent;
+  L.calls = calls;
+  /* unrefused: Cloudflare may count a little late -- keep asking */
+  if (!L.tripped) {
+    /* the real window's end + 70 s is 23:59:40; a dry run's own window, its own */
+    const until = Math.min(hms(LIMIT.WATCH_UNTIL), WIN.end + 70);
+    while (secOfDay() < until && utcDate() === day) {
+      await sleep(10000);
+      const p = await limitProbe('watch');
+      calls += 1;
+      if (!p.lab.ok) {
+        const c = await limitConfirm();
+        calls += 2;
+        if (c) { L.tripped = { at: c.at, late: true, sentMessages: sent, rawAbout: (U || 0) + sent + calls, refused: c.lab.refused, game: c.game || null }; break; }
+      }
+    }
+    L.watchedUntil = iso();
+    L.calls = calls;
+    /* what Cloudflare's own figures say the day came to (they lag) */
+    if (!LOCAL && process.env.CLOUDFLARE_API_TOKEN) L.todayAfter = await accountToday().catch((e) => ({ error: String(e && e.message || e) }));
+  }
+  /* refused: past midnight, when do the lab and the game answer again? */
+  if (L.tripped) {
+    while (utcDate() === day) await sleep(5000);
+    await sleep(15000);
+    const t0 = Date.now();
+    while (Date.now() - t0 < LIMIT.RESET_WATCH_S * 1000) {
+      const p = await limitProbe('after midnight');
+      if (p.lab.ok && (!p.game || p.game.ok)) { L.recovered = { at: p.at, secondsPastMidnight: Math.round(secOfDay()) }; break; }
+      await sleep(15000);
+    }
+  }
+  /* the answer */
+  const raw = (U || 0) + sent + calls;
+  L.rawAbout = raw;
+  if (L.tripped) {
+    const at = L.tripped.rawAbout;
+    L.verdict = at >= 85000 && at <= 130000 ? 'every-message' : at < 85000 ? 'refused-early' : 'refused-late';
+  } else if (raw >= FREE_DAY.requests + 5000) {
+    L.verdict = 'not-every-message';
+  } else {
+    L.verdict = 'inconclusive';
+  }
+}
+
 async function writeOut(o) {
   await mkdir(OUT, { recursive: true });
   const stamp = started.toISOString().replace(/[:.]/g, '-');
@@ -441,6 +655,8 @@ function render(o) {
   const fmt = (v) => (v === null || v === undefined ? '-' : Math.round(v).toLocaleString('en-US'));
   const pc = (v, of) => (v === null || v === undefined ? '-' : (100 * v / of).toFixed(1) + '%');
   L.push(`# Cloudflare lab, ${o.started}`, '');
+  /* v2.3.3252: the limit test is a report of its own */
+  if (o.limit) return renderLimit(o, L, fmt);
   /* v2.3.3252: the plan and the day so far */
   if (o.plan) {
     L.push('## 0. The free plan', '');
@@ -496,6 +712,50 @@ function render(o) {
     } else {
       L.push(`Not read: ${o.game.error || o.game.skipped}${o.game.detail ? ' (' + JSON.stringify(o.game.detail).slice(0, 300) + ')' : ''}.  The same figures are in the Cloudflare dashboard: Workers & Pages -> brotown-server -> Durable Objects (metrics), and Manage Account -> Billing (usage).`);
     }
+  }
+  return L.join('\n');
+}
+
+/* v2.3.3252: the limit test's report, in plain words first */
+function renderLimit(o, L, fmt) {
+  const x = o.limit;
+  const t = (s) => (s ? String(s).slice(11, 19) + ' UTC' : '-');
+  L.push('## The free plan\'s daily limit: does every message count?', '');
+  L.push('The free plan allows the account 100,000 Durable Object requests a day, the game\'s included. Cloudflare\'s bill counts 20 incoming socket messages as one request; whether the DAILY LIMIT does is not written anywhere. This test sent socket messages to a lab server in steps, inside a few minutes before the midnight (UTC) reset, until the account was refused or was well past 100,000 by the every-message reading.', '');
+  if (x.refused) { L.push(`**Not run:** ${x.refused}.`, ''); return L.join('\n'); }
+  const v = x.verdict;
+  if (v === 'every-message') {
+    L.push(`**Every message counts.** The account was refused at about ${fmt(x.tripped.rawAbout)} requests counted one per message, against the line of 100,000. So the Oct 11 playtest (76,277) used about 76% of a day, and a bigger or longer one would stop the game until midnight UTC.`, '');
+  } else if (v === 'not-every-message') {
+    L.push(`**Not every message counts.** About ${fmt(x.rawAbout)} requests went through today counted one per message, past the 100,000 line, and nothing was refused (watched until ${t(x.watchedUntil)}). So the daily limit does not count each socket message as a request: the Oct 11 playtest (76,277 messages and calls) was nowhere near 76% of a day.`, '');
+  } else if (v === 'refused-early') {
+    L.push(`**Refused early:** at about ${fmt(x.tripped.rawAbout)} counted one per message, below 100,000 -- so something else counts as well (or the day's earlier use was higher than its figures said). Details below.`, '');
+  } else if (v === 'refused-late') {
+    L.push(`**Refused, but late:** at about ${fmt(x.tripped.rawAbout)} counted one per message, well past 100,000. Details below.`, '');
+  } else {
+    L.push(`**Not settled:** ${x.stoppedBy || 'the test ended before the account was past the line'} (about ${fmt(x.rawAbout)} counted one per message).`, '');
+  }
+  if (x.tripped) {
+    L.push(`Refused at ${t(x.tripped.at)}${x.tripped.late ? ' (a while after the last step: Cloudflare counted late)' : ''}, in Cloudflare's words: "${String(x.tripped.refused).replace(/\.$/, '')}".`);
+    if (x.tripped.game) L.push(`The game's own auction listing at that moment: ${x.tripped.game.ok ? 'answered' : 'refused too (' + x.tripped.game.status + (x.tripped.game.text ? ': ' + x.tripped.game.text.slice(0, 120) : '') + ')'}.`);
+    L.push(x.recovered ? `After the midnight reset everything answered again at ${t(x.recovered.at)}.` : 'After midnight: not answered again while the test watched.', '');
+  }
+  L.push('### The figures', '');
+  L.push(`- The account's day before the test (Cloudflare's figures, a few minutes late): ${fmt(x.todayRaw)} calls, web requests and socket messages (the every-message reading); ${fmt(x.todayBilled)} by the 20-to-1 reading.`);
+  L.push(`- The test's plan: send until about ${fmt(x.target)} messages, ${fmt(o.limit.step)} a step, only between ${x.window} UTC.`);
+  L.push(`- Sent: ${fmt(x.sent)} socket messages, and about ${fmt(x.calls)} other requests (the steps' own, their checks).`);
+  if (x.todayAfter && !x.todayAfter.error) L.push(`- The account's day after it (Cloudflare's figures, a few minutes late): ${fmt(x.todayAfter.invocations)} by the every-message reading.`);
+  L.push('');
+  if (x.steps.length) {
+    L.push('| step | at | messages | arrived | sent so far | answered |', '|---|---|---|---|---|---|');
+    x.steps.forEach((s, i) => L.push(`| ${i + 1} | ${t(s.at)} | ${fmt(s.n)} | ${s.got === undefined ? '-' : fmt(s.got)} | ${fmt(s.sentSoFar)} | ${s.ok ? 'yes' : 'no: ' + String(s.refused || s.status).slice(0, 80)} |`));
+    L.push('');
+  }
+  const bad = x.probes.filter((p) => !p.lab.ok || (p.game && !p.game.ok));
+  L.push(`Checks after each step: ${x.probes.length}, of which ${bad.length} were refused.`);
+  if (bad.length) {
+    L.push('', '| check | at | lab | game |', '|---|---|---|---|');
+    for (const p of bad.slice(0, 30)) L.push(`| ${p.label} | ${t(p.at)} | ${p.lab.ok ? 'ok' : String(p.lab.refused || p.lab.status).slice(0, 80)} | ${!p.game ? '-' : p.game.ok ? 'ok' : p.game.status} |`);
   }
   return L.join('\n');
 }

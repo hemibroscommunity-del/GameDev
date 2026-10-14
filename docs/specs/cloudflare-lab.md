@@ -4,6 +4,49 @@
 > *"Go recommended"*, which said yes to the lab: "The Cloudflare lab: yes,
 > after Phase 0".
 
+## v2.3.3252: the limit test -- does the free plan count every message?
+
+The free plan's daily limit is 100,000 Durable Object requests for the whole
+account. Cloudflare's pricing page says incoming socket messages are counted
+20 to a request **"for billing purposes"**, and says nothing about the free
+plan's daily limit. The game's busiest day (2026-10-11) was 76,277 messages and
+calls by Cloudflare's own figures: about **4%** of the day if the limit counts
+20 to 1, **76%** if it counts every message. A Cloudflare Community report
+(2026-10-12, "Durable Objects Free quota block below 100k after WebSocket 20:1
+adjustment", unresolved) was refused at about 64,000 by the 20 to 1 reading --
+1,283,610 socket messages that day -- which fits "every message counts" if the
+socket already open kept working after the refusal.
+
+Asked where to find out, the owner: **"Your account, 23:55 UTC."**
+
+`run.mjs --limit` (the workflow's "limit" box):
+
+1. **Only in its window.** Started before 23:30 or after the window's end, it
+   stops before sending anything (exit 4). It waits until 23:55:00 UTC and
+   sends nothing after 23:58:30, so a refusal lasts until the 00:00 UTC reset at
+   most: the game could be shut for the last minutes of the day.
+2. **Steps.** 5,000 socket messages to one lab World (the game's own kind of
+   socket), then a fresh request: a lab object, and the game's auction listing
+   (read only -- `GAME_PROBE_OK` allows that one page and no other). A refusal
+   is looked at twice more, a second apart, before it counts.
+3. **A ceiling.** It never sends more than takes the day 25,000 past 100,000 by
+   the every-message reading (150,000 at most). By the 20 to 1 reading that is
+   about 7,500: if the limit counts 20 to 1, nothing is refused and the game
+   never notices.
+4. **Late counting.** Unrefused, it keeps looking every 10 s until 23:59:40.
+5. **The reset.** Refused, it waits past midnight and says when the lab and the
+   game answered again.
+6. **The answer**, in the run's summary: "Every message counts" (refused near
+   100,000 by the every-message reading), "Not every message counts" (past it,
+   never refused), or what else happened, with Cloudflare's own words for the
+   refusal (the lab worker now answers one as a 503 with `refused`, not its
+   crash page).
+
+`node tools/lab/selftest.mjs` runs it on a fake clock against a fake daily
+limit: one that counts every message, one that counts 20 to 1, one that counts
+late, and four starts it must refuse (too late, far too early, a game address
+other than the listing, a window across midnight) without sending anything.
+
 ## v2.3.3252: the account is on the free plan
 
 The first run (2026-10-14) never started. Cloudflare refused the deploy: "In
