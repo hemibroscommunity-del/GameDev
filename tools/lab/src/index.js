@@ -178,6 +178,10 @@ export class Door extends DurableObject {
       out.size = s.length;
       out.wallMs = Date.now() - t0;
       out.usPerMsg = +((1000 * out.wallMs) / n).toFixed(2);
+      /* v2.3.3252: which World took it, so run.mjs can read that object's own
+         CPU from the account's figures (a hibernation message cost 4x a plain
+         one's time on Cloudflare: the World's CPU says whether it is CPU) */
+      out.worldId = world.id.toString();
     } else {
       return new Response('unknown mode', { status: 400 });
     }

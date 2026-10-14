@@ -11,13 +11,14 @@ const types = {
   account: { fields: [{ name: 'durableObjectsPeriodicGroups', type: L('PG') }, { name: 'durableObjectsInvocationsAdaptiveGroups', type: L('IG') }] },
   PG: { fields: [{ name: 'sum', type: T('PGS') }, { name: 'dimensions', type: T('PGD') }] },
   PGS: { fields: ['activeTime', 'cpuTime', 'inboundWebsocketMsgCount', 'outboundWebsocketMsgCount', 'rowsRead', 'rowsWritten'].map(U) },
-  PGD: { fields: [{ name: 'date', type: T('Date', 'SCALAR') }] },
+  PGD: { fields: [{ name: 'date', type: T('Date', 'SCALAR') }, { name: 'objectId', type: T('string', 'SCALAR') }] },
   AccountDurableObjectsPeriodicGroupsFilter_InputObject: { inputFields: ['datetimeMinute_geq', 'datetimeMinute_leq', 'namespaceId_in'].map((name) => ({ name })) },
   IG: { fields: [{ name: 'count', type: T('uint64', 'SCALAR') }, { name: 'sum', type: T('IGS') }] },
   IGS: { fields: ['requests', 'wallTime'].map(U) },
   AccountDurableObjectsInvocationsAdaptiveGroupsFilter_InputObject: { inputFields: ['datetime_geq', 'datetime_leq', 'namespaceId_in'].map((name) => ({ name })) },
 };
 globalThis.__q = [];
+globalThis.__worlds = new Set();
 const MODE = process.env.FAKE_DAY || 'quiet';
 globalThis.fetch = async (url, init) => {
   const u = new URL(String(url));
@@ -30,7 +31,9 @@ globalThis.fetch = async (url, init) => {
       const n = +u.searchParams.get('n'), mode = u.searchParams.get('mode');
       if (mode === 'flood-rpc' && n + 3 > 1000) return { ok: false, status: 500, text: async () => '<!DOCTYPE html><html>error 1101</html>' };
       if (mode.startsWith('rtt')) return json({ mode, n, rttMs: { n, p50: 1, p95: 2, p99: 2, max: 3 }, where: { door: 'A', world: 'B' } });
-      return json({ mode, n, worldGot: n, wallMs: 10, usPerMsg: 1, where: { door: 'A', world: 'B' } });
+      const worldId = 'obj-' + (u.searchParams.get('world') || 'w').replace(/[^a-z0-9]/gi, '');
+      globalThis.__worlds.add(worldId);
+      return json({ mode, n, worldGot: n, wallMs: 10, usPerMsg: 1, where: { door: 'A', world: 'B' }, worldId });
     }
   }
   if (u.hostname === 'api.cloudflare.com') {
@@ -43,6 +46,10 @@ globalThis.fetch = async (url, init) => {
       const inv = body.query.includes('Invocations');
       const busy = MODE === 'busy';
       const row = inv ? { count: busy ? 88000 : 500, sum: { requests: busy ? 88000 : 500, wallTime: 1 } } : { sum: { activeTime: 3600e6, cpuTime: 10e6, inboundWebsocketMsgCount: 20000, outboundWebsocketMsgCount: 90000, rowsRead: 10, rowsWritten: 5 } };
+      if (body.query.includes('dimensions { objectId }')) {
+        const rows = [...globalThis.__worlds].map((objectId, i) => ({ dimensions: { objectId }, sum: { activeTime: 1e6, cpuTime: 1000 * (i + 1), inboundWebsocketMsgCount: 100, outboundWebsocketMsgCount: 0, rowsRead: 0, rowsWritten: 0 } }));
+        return json({ data: { viewer: { accounts: [{ g: rows }] } } });
+      }
       return json({ data: { viewer: { accounts: [{ g: [row] }] } } });
     }
   }

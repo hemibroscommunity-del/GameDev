@@ -51,6 +51,8 @@ function run(day) {
     && r.json.flood.every((f) => f.got === f.n) && r.json.flood.some((f) => f.name.startsWith('call') && f.n + 3 <= 1000)));
   check('quiet day: the bill read', !!(r.json && r.json.billing && r.json.billing.usage && r.json.billing.usage.billed > 0), js(r.json && r.json.billing));
   check('quiet day: the game\'s 7 days', !!(r.json && r.json.game && r.json.game.days && r.json.game.days.length === 7), js(r.json && r.json.game));
+  check('quiet day: each flood\'s World and its own CPU', !!(r.json && r.json.billing && Array.isArray(r.json.billing.perFlood)
+    && r.json.billing.perFlood.length === 4 && r.json.billing.perFlood.every((f) => f.found && f.cpuUsPerMsg > 0)) && /CPU a message/.test(r.md), js(r.json && r.json.billing && r.json.billing.perFlood));
   check('quiet day: no error', !!(r.json && !r.json.error), r.json && r.json.error);
   check('quiet day: the budget under 3% of a day', !!(r.json && r.json.plan && r.json.plan.budget > 0 && r.json.plan.budget < 3000), r.json && r.json.plan && r.json.plan.budget);
 }

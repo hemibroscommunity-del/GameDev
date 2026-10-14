@@ -226,7 +226,7 @@ const floodFrom = new Date();
 for (const [name, q, n] of floods) {
   const t = new Date();
   const r = (await get(`/door?${q}&n=${n}&door=flood&world=${encodeURIComponent(name)}`)).body;
-  out.flood.push({ name, n, got: r.worldGot, wallMs: r.wallMs, usPerMsg: r.usPerMsg, from: t.toISOString(), to: new Date().toISOString(), where: r.where });
+  out.flood.push({ name, n, got: r.worldGot, wallMs: r.wallMs, usPerMsg: r.usPerMsg, from: t.toISOString(), to: new Date().toISOString(), where: r.where, worldId: r.worldId || null });
 }
 const floodTo = new Date();
 
@@ -311,7 +311,7 @@ async function discover(ds) {
 }
 /* one dataset's sums between two times -- for some namespaces (`ids`), or the
    whole account -- added up over its rows */
-async function dsSums(ds, { from, to, ids = null }) {
+async function dsSums(ds, { from, to, ids = null, by = null }) {
   const d = await discover(ds);
   if (d.error) return d;
   if (!d.sums.length) return { error: 'no sum fields found', dims: d.dims };
@@ -322,7 +322,10 @@ async function dsSums(ds, { from, to, ids = null }) {
   const lit = (t) => JSON.stringify(d.timeKey === 'date' ? t.toISOString().slice(0, 10) : t.toISOString().replace(/\.\d{3}Z$/, 'Z'));
   const parts = [`${d.timeKey}_geq: ${lit(from)}`, `${d.timeKey}_leq: ${lit(to)}`];
   if (ids) parts.push(`namespaceId_in: ${JSON.stringify(ids)}`);
-  const q = `query { viewer { accounts(filter: {accountTag: ${JSON.stringify(acct)}}) { g: ${ds}(limit: 10000, filter: {${parts.join(', ')}}) { ${d.count ? 'count ' : ''}sum { ${d.sums.join(' ')} } } } } }`;
+  /* v2.3.3252: `by` a dimension (objectId): one row each, kept in `groups` */
+  const dim = by && d.dims.includes(by) ? by : null;
+  if (by && !dim) return { error: `no ${by} dimension`, dims: d.dims };
+  const q = `query { viewer { accounts(filter: {accountTag: ${JSON.stringify(acct)}}) { g: ${ds}(limit: 10000, filter: {${parts.join(', ')}}) { ${dim ? `dimensions { ${dim} } ` : ''}${d.count ? 'count ' : ''}sum { ${d.sums.join(' ')} } } } } }`;
   const r = await gql(q);
   if (r && r.errors && r.errors.length) return { error: r.errors.map((e) => e.message).slice(0, 3).join('; '), query: q.slice(0, 500) };
   const rows = r && r.data && r.data.viewer && r.data.viewer.accounts && r.data.viewer.accounts[0] && r.data.viewer.accounts[0].g;
@@ -332,7 +335,7 @@ async function dsSums(ds, { from, to, ids = null }) {
     if (d.count) total.count = (total.count || 0) + (Number(row.count) || 0);
     for (const [k, v] of Object.entries(row.sum || {})) total[k] = (total[k] || 0) + (Number(v) || 0);
   }
-  return { total, rows: rows.length };
+  return dim ? { total, rows: rows.length, groups: rows.map((x) => Object.assign({ [dim]: x.dimensions && x.dimensions[dim] }, x.sum || {})) } : { total, rows: rows.length };
 }
 /* what the free plan counts, from the two datasets: a request is a call, a web
    request or an alarm (the invocations), or 20 incoming socket messages; time
@@ -411,6 +414,20 @@ async function billing(from, to) {
     res.datasets[ds] = got || { error: 'no figures after six minutes' };
   }
   res.usage = usageOf(res.datasets.durableObjectsInvocationsAdaptiveGroups, res.datasets.durableObjectsPeriodicGroups);
+  /* v2.3.3252: each flood's World by its own id -- its CPU over the messages
+     it took is the cost of one message on that kind of socket, in CPU */
+  const worlds = (out.flood || []).filter((f) => f.worldId);
+  if (worlds.length) {
+    const per = await dsSums('durableObjectsPeriodicGroups', { from: fromT, to: toT, ids, by: 'objectId' });
+    if (per.error) res.perFlood = { error: per.error };
+    else {
+      res.perFlood = worlds.map((f) => {
+        const g = (per.groups || []).find((x) => x.objectId === f.worldId) || null;
+        const cpuUs = g && num(g.cpuTime);
+        return { name: f.name, n: f.n, cpuMs: cpuUs === null ? null : +(cpuUs / 1000).toFixed(1), cpuUsPerMsg: cpuUs === null ? null : +(cpuUs / f.n).toFixed(1), wsIn: g ? num(g.inboundWebsocketMsgCount) : null, found: !!g };
+      });
+    }
+  }
   return res;
 }
 
@@ -455,6 +472,12 @@ function render(o) {
       const rpc = o.flood.filter((f) => f.name.startsWith('call')).reduce((a, f) => a + f.n, 0);
       L.push(`The lab's objects: ${fmt(u.invocations)} invocations and ${fmt(u.wsIn)} socket messages in, for floods of ${fmt(ws)} socket messages and ${fmt(rpc)} calls (and the other tests' few hundred). If the invocations are near ${fmt(rpc)} plus a few hundred, a socket message is not an invocation, and 20 of them are one billed request; if they are near ${fmt(rpc + ws)}, every message is one.`, '');
     }
+    if (Array.isArray(o.billing.perFlood)) {
+      L.push('Each flood\'s World, its own CPU (the account\'s figures; it also answered the stats calls that watched for the flood\'s end):', '');
+      L.push('| flood | messages | the World\'s CPU | CPU a message | socket messages it counted |', '|---|---|---|---|---|');
+      for (const f of o.billing.perFlood) L.push(`| ${f.name} | ${fmt(f.n)} | ${f.cpuMs === null ? '-' : f.cpuMs + ' ms'} | ${f.cpuUsPerMsg === null ? '-' : f.cpuUsPerMsg + ' µs'} | ${fmt(f.wsIn)} |`);
+      L.push('');
+    } else if (o.billing.perFlood && o.billing.perFlood.error) L.push(`Each flood's World's own CPU: not read (${o.billing.perFlood.error}).`, '');
     L.push('```', JSON.stringify(o.billing, (k, v) => (k === 'raw' ? undefined : v), 2).slice(0, 6000), '```');   /* raw: in the .json */
   }
   if (o.game) {
