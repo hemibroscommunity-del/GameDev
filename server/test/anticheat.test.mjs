@@ -983,7 +983,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   }));
   check('lb throttle: churn in a non-leaderboard field does not report', reports === 3, reports);
 
-  /* v2.3.3222: the clock is read FIRST -- inside the floor nothing is built,
+  /* v2.3.3242: the clock is read FIRST -- inside the floor nothing is built,
      not the Leaderboard stub, not the chain-score series, not the signature
      (every track called it: ~100 us each, 7.6 ms a second at 150 players) */
   let gets = 0, built = 0;
@@ -993,11 +993,11 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   for (let i = 0; i < 10; i++) {
     await room.webSocketMessage(wsL, JSON.stringify({ type: 'track', data: { name: 'Board', color: '#abc', rpgData: { kills: 6 + i } } }));
   }
-  check('lb throttle (v2.3.3222): inside the floor, a changed record builds nothing -- no stub, no score series -- and reports nothing',
+  check('lb throttle (v2.3.3242): inside the floor, a changed record builds nothing -- no stub, no score series -- and reports nothing',
     gets === 0 && built === 0 && reports === 3, { gets, built, reports });
   sess._lbAt = Date.now() - room.LEADERBOARD_MIN_MS - 1;
   await room.webSocketMessage(wsL, JSON.stringify({ type: 'track', data: { name: 'Board', color: '#abc', rpgData: { kills: 99 } } }));
-  check('lb throttle (v2.3.3222): past the floor the changed record reports, built once', gets === 1 && built === 1 && reports === 4, { gets, built, reports });
+  check('lb throttle (v2.3.3242): past the floor the changed record reports, built once', gets === 1 && built === 1 && reports === 4, { gets, built, reports });
   delete room._chainScoreSeries;
 
   globalThis.Request = RealRequest;

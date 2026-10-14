@@ -299,13 +299,13 @@ const LANDS = Object.keys(WHEEL_SPAWNS);
   check('5e a player past the keys\' reach: the full walk\'s answer', ids(a3.list) === ids(b3.list) && a3.list.length === 1, { a: ids(a3.list), b: ids(b3.list) });
 }
 
-/* ── 5f. v2.3.3222: the cheaper interest gives the old answer, exactly ───
-   The code before v2.3.3222, copied (the full walk, which 5a holds the old
+/* ── 5f. v2.3.3242: the cheaper interest gives the old answer, exactly ───
+   The code before v2.3.3242, copied (the full walk, which 5a holds the old
    grid path to): a crowd of players -- most in the same few squares, as the
    town is -- walking among moving monsters, a new grid each tick as tick.js
    builds it and every player asking it in turn, so its kept answers are
    shared; every player's seen, entered and list, in order, every tick. */
-function interestBefore3222(session, ps, monsters) {
+function interestBefore3242(session, ps, monsters) {
   const prev = session._wheelSeen || null;
   const seen = new Set(), entered = new Set(), list = [];
   const rIn2 = WHEEL.INTEREST_R * WHEEL.INTEREST_R, rOut2 = WHEEL.INTEREST_OUT * WHEEL.INTEREST_OUT;
@@ -344,7 +344,7 @@ function interestBefore3222(session, ps, monsters) {
     }
     const g = room._wheelMonsterGrid(monsters);   /* a new grid a tick, as tick.js */
     for (const p of players) {
-      const a = interestBefore3222(p.before, p.ps, monsters);
+      const a = interestBefore3242(p.before, p.ps, monsters);
       const b = room._wheelInterest(p.now, p.ps, monsters, g);
       const pairs = [['seen', ids(a.seen), ids(b.seen)], ['entered', ids(a.entered), ids(b.entered)], ['list', ids(a.list), ids(b.list)],
         ['kept', ids(p.before._wheelSeen), ids(p.now._wheelSeen)]];
@@ -354,7 +354,7 @@ function interestBefore3222(session, ps, monsters) {
     asked += players.length;
     shared += g.near ? players.length - g.near.size : 0;
   }
-  check('5f the cheaper interest (v2.3.3222) gives the old answer for every player, every tick: seen, entered, list, in order', same, firstDiff);
+  check('5f the cheaper interest (v2.3.3242) gives the old answer for every player, every tick: seen, entered, list, in order', same, firstDiff);
   check(`5g ... with monsters in reach (${seen}) and coming into reach (${entered}) on the way, and players sharing the grid's answer (${shared} of ${asked} asks)`,
     seen > 50000 && entered > 500 && shared > asked * 0.5, { seen, entered, shared, asked });
   const r1 = room._wheelInterest({}, { x: 21500, y: 21500 }, monsters, room._wheelMonsterGrid(monsters));

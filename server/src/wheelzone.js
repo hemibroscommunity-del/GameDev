@@ -152,7 +152,7 @@ const GRID_LIM = 2 ** 20 - 2;
 const gridKeyOk = (cx, cy) => cx >= -GRID_LIM && cx <= GRID_LIM && cy >= -GRID_LIM && cy <= GRID_LIM;
 /* the indices found, reused from call to call (read before the next call) */
 let nearIdx = new Int32Array(512);
-/* v2.3.3222: `entered` when nothing entered -- shared, never written to */
+/* v2.3.3242: `entered` when nothing entered -- shared, never written to */
 const NO_ENTERED = new Set();
 
 /* v2.3.3195: the indices of the monsters in the grid squares within `r` of
@@ -184,7 +184,7 @@ function wheelGridNear(grid, x, y, r) {
   return n;
 }
 
-/* v2.3.3222: wheelGridNear's answer for a block of squares, kept on the grid
+/* v2.3.3242: wheelGridNear's answer for a block of squares, kept on the grid
    for the tick it was built in (tick.js builds a new grid every tick), so the
    players standing in the same squares ask once.  A copy, as nearIdx is
    reused; null when the grid cannot answer (the full walk does). */
@@ -414,7 +414,7 @@ export const wheelzoneMethods = {
      all of them a second time per player.  Before, every Wheel player walked
      all 384 monsters every tick, twice (the load test's profile,
      docs/specs/load-test.md). */
-  /* ═══ v2.3.3222: THE SAME ANSWER, A THIRD OF THE WORK ═══
+  /* ═══ v2.3.3242: THE SAME ANSWER, A THIRD OF THE WORK ═══
      The stress test's profile of the real runtime at 120 players: this was
      the room's biggest single cost after building and sending the ticks,
      ~145 ms of every second of its thread (in process: ~110 ms, more than the

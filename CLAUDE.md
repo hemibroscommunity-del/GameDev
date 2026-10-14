@@ -2328,7 +2328,7 @@ Two protocol versions coexist; both must keep working:
     after a full GC, 44 MB at the most in use, against Cloudflare's 128 MB
     (`tools/qa/load/heapprobe.mjs`, the inspector's heap during a load test):
     docs/specs/cap-120.md.
-  - v2.3.3222: THE STRESS TESTS' SERVER FIXES -- the owner's "stress test to
+  - v2.3.3242: THE STRESS TESTS' SERVER FIXES -- the owner's "stress test to
     see what can be optimized" (docs/specs/stress-tests.md, the round's whole
     report, server and phone):
     - `reportToLeaderboard` reads its clock first: every `track` built the

@@ -382,7 +382,7 @@ they were the bottleneck can be spotted. Afterwards check `ps` for stray
 | drops | sockets that closed during the step |
 | probes | how fast the room answers a web request, and how fast a brand-new player gets its first message |
 
-## v2.3.3222: two more options
+## v2.3.3242: two more options
 
 - `--keep-bundle <dir>` keeps the bundle the runtime ran (`index.js` and its
   source map), so a CPU profile's lines (`cdpprof.mjs`) can be read and mapped

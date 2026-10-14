@@ -355,7 +355,7 @@ function probeTick(bot, data) {
   try { d = JSON.parse(data); } catch { return; }
   probeTickObj(bot, d);
 }
-/* v2.3.3222: --tick-parts (load.mjs sets BT_TICK_PARTS): what a tick is made
+/* v2.3.3242: --tick-parts (load.mjs sets BT_TICK_PARTS): what a tick is made
    of, by its top-level parts' JSON length, from the probes -- where the
    phones' download goes (players, events, monsters, nodes) */
 const TICK_PARTS = process.env.BT_TICK_PARTS === '1';
