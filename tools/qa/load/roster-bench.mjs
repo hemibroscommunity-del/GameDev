@@ -1,4 +1,4 @@
-/* ═══ v2.3.3226: WHAT THE PRESENCE ROSTER COSTS, IN-PROCESS ═══
+/* ═══ v2.3.3246: WHAT THE PRESENCE ROSTER COSTS, IN-PROCESS ═══
  *
  * docs/specs/slim-roster.md.  The real GameRoom in Node with fake sockets: N
  * players in the Wheel, a third walking about Brotown and two thirds out at

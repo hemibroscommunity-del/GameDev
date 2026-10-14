@@ -291,7 +291,7 @@ step(room, tickFn, everyone);
   while (room.tickSeq % room.PRESENCE_REFRESH_TICKS !== 0) step(room, tickFn, everyone);
   step(room, tickFn, everyone);
   const roster = playersOf(A) || {};
-  /* v2.3.3226: the near players whole, a far one who changed slim (ROSTER);
+  /* v2.3.3246: the near players whole, a far one who changed slim (ROSTER);
      one standing far off within FAR_STILL_MS (slim-roster.test.mjs) */
   check('8c the presence roster carries the near players and the far one who moved', !!roster.fc && roster.fc.z === 'town' && !!roster.fb, Object.keys(roster));
   let t1At = roster.ft1 ? 0 : null;

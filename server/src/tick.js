@@ -64,7 +64,7 @@ export const FAR_PLAYERS = Object.freeze({
   EVERY_MS: 250,
 });
 
-/* ═══ v2.3.3226: THE ROSTER'S FAR PLAYERS, SLIM (the split plan's Phase 0b) ═══
+/* ═══ v2.3.3246: THE ROSTER'S FAR PLAYERS, SLIM (the split plan's Phase 0b) ═══
    Owner, 2026-10-13: "Go recommended but I want you to stress test to see
    what can be optimized."  About once a second (PRESENCE_REFRESH_TICKS) every
    phone is sent EVERY connected player's whole entry: the presence roster,
@@ -113,7 +113,7 @@ export const tickMethods = {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'farplayers') && !f.farplayers);
   },
-  /* v2.3.3226: `slimroster: false` (ROSTER above) */
+  /* v2.3.3246: `slimroster: false` (ROSTER above) */
   _slimRosterOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'slimroster') && !f.slimroster);
@@ -489,7 +489,7 @@ export const tickMethods = {
         ...(eqg ? { eqg } : {}),
       }; };
 
-      /* v2.3.3226: a far player in a phone's roster (ROSTER): the first six
+      /* v2.3.3246: a far player in a phone's roster (ROSTER): the first six
          fields of their whole entry, in its order */
       const slimWire = (ps) => ({ x: rp(ps.x), y: rp(ps.y), d: ps.d, z: ps.z, vx: rp(ps.vx), vy: rp(ps.vy) });
 
@@ -502,7 +502,7 @@ export const tickMethods = {
       const steadyOn = !this._steadyOff();
       const steady = steadyOn && !presenceTick;
       let held = null;
-      /* v2.3.3226: who changed since the last roster (ROSTER) */
+      /* v2.3.3246: who changed since the last roster (ROSTER) */
       const slimOn = !this._slimRosterOff();
       const rosterMoved = slimOn ? (this._rosterMoved || (this._rosterMoved = new Set())) : null;
       for (const id of this.dirtyPlayers) {
@@ -554,7 +554,7 @@ export const tickMethods = {
          mover is near it, so a crowd in town still shares one string. */
       const NEAR2 = FAR_PLAYERS.NEAR_R * FAR_PLAYERS.NEAR_R;
       const playersPlanFor = (rps) => {
-        if (presenceTick) return rosterPlanFor(rps);   /* v2.3.3226 */
+        if (presenceTick) return rosterPlanFor(rps);   /* v2.3.3246 */
         if (!farOn) return null;
         if (farList) return { list: farList, far: true };
         if (!wheelDirty) return null;
@@ -573,7 +573,7 @@ export const tickMethods = {
       // 1 Hz presence roster -- EVERY connected player, dirty or not
       // (see the ghost-sweep note above; an idle peer is never dirty).
       let roster = null;
-      /* v2.3.3226: the roster's players in its order, and the far ones whose
+      /* v2.3.3246: the roster's players in its order, and the far ones whose
          slim entry is due (ROSTER): changed since the last roster, or not
          sent for FAR_STILL_MS */
       let rosterPairs = null, rosterDue = null;
@@ -597,7 +597,7 @@ export const tickMethods = {
           }
         }
       }
-      /* v2.3.3226: one v2 Wheel phone's roster -- the players near it whole,
+      /* v2.3.3246: one v2 Wheel phone's roster -- the players near it whole,
          the far ones slim and only when due (ROSTER), in the roster's order;
          null (the zone's whole roster) with the slim roster off */
       const rosterPlanFor = (rps) => {
@@ -745,7 +745,7 @@ export const tickMethods = {
         const players = Object.create(null);
         let hasPlayers = false;
         if (plan) {
-          /* v2.3.3226: a roster plan's far player is slim (ROSTER) */
+          /* v2.3.3246: a roster plan's far player is slim (ROSTER) */
           for (const [id, ps, slim] of plan.list) { players[id] = slim ? slimWire(ps) : playerWire(ps); hasPlayers = true; }
         } else {
           if (roster) {
@@ -889,7 +889,7 @@ export const tickMethods = {
         if (j === undefined) { j = JSON.stringify(id) + ':' + JSON.stringify(playerWire(ps)); playerEntryJson.set(id, j); }
         return j;
       };
-      /* v2.3.3226: and a far player's slim roster entry (ROSTER) */
+      /* v2.3.3246: and a far player's slim roster entry (ROSTER) */
       const slimEntryJson = new Map();
       const slimEntryOf = (id, ps) => {
         let j = slimEntryJson.get(id);
@@ -1045,7 +1045,7 @@ export const tickMethods = {
         if (msg) { try { ws.send(msg); } catch {} }
       }
 
-      /* v2.3.3226: the due far players went out (ROSTER); a player gone from
+      /* v2.3.3246: the due far players went out (ROSTER); a player gone from
          the room is forgotten */
       if (rosterDue) {
         const at = this._rosterSlimAt;

@@ -1,4 +1,4 @@
-# The roster's far players, slim (v2.3.3226)
+# The roster's far players, slim (v2.3.3246)
 
 > Owner, 2026-10-13: *"Go recommended but I want you to stress test to see
 > what can be optimized."* This is the first step of Phase 0b of the server
@@ -16,7 +16,7 @@ the presence roster (`server/src/tick.js`). It does four jobs:
   is never "dirty", so without the roster they would vanish.
 - **It counts who is online.** "N online" is counted from what survives the
   sweep.
-- **It puts far players on the world map.** Since v2.3.3223 they come only
+- **It puts far players on the world map.** Since v2.3.3243 they come only
   with the roster.
 - **It heals a missed join.** A join that a suspended tab missed is filled in
   by the next roster.
