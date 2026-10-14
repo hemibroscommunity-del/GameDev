@@ -302,6 +302,18 @@ The fake players' own CPU (about 20% of a core per process, three processes)
 and event-loop delay (13-15 ms at p99) were watched in every step. They were
 not the bottleneck.
 
+## v2.3.3240: `--track`, the phones' 2 s look
+
+The bots never sent `track`: a phone's whole look, every 2 s, which the worker
+relayed to every other player. So every number above it left that out.
+
+- `--track` makes each bot send a real phone's payload
+  (`track-sample.json`, caught by `mp-trackcapture`).
+- Without the look relay's change (`docs/specs/look-relay.md`) the room was
+  smooth only to about 105. With it, about 145, as these pages say.
+- Use `--track` for any capacity number from now on (TRAPS §173).
+- `--walk-r N` packs the walkers into a smaller circle round the square.
+
 ## How to run it
 
 Both tools run here in the sandbox. Neither touches the live game.
@@ -381,3 +393,12 @@ they were the bottleneck can be spotted. Afterwards check `ps` for stray
 | bots CPU | each fake-player process, as a share of one core |
 | drops | sockets that closed during the step |
 | probes | how fast the room answers a web request, and how fast a brand-new player gets its first message |
+
+## v2.3.3242: two more options
+
+- `--keep-bundle <dir>` keeps the bundle the runtime ran (`index.js` and its
+  source map), so a CPU profile's lines (`cdpprof.mjs`) can be read and mapped
+  back to `server/src`. Without it the copy, bundle and all, is deleted at the end.
+- `--tick-parts` counts what the probes' ticks are made of, by their top-level
+  parts (players, events, monsters, nodes), and prints each step's shares and KB
+  a tick. At 120 players: 95% the players' positions (docs/specs/stress-tests.md).

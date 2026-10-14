@@ -27,7 +27,14 @@
  *
  * BT_NO_TRACE=1 (harness.mjs startWorker): without it wrangler's own local
  * tracing makes every message ~5x dearer (TRAPS §168) and the local room stops
- * letting bots in at about 95 players.
+ * letting bots in at about 95 players.  BT_MAX_PLAYERS=N runs a copy of the
+ * server with that cap, for steps past 119 bots (v2.3.3240).  The bots send a
+ * real phone's 2 s look (`track`) unless BT_CROWD_TRACK=0.
+ *
+ * v2.3.3241: BT_CROWD_QUERY adds to the page's address (`nopeercull`: every
+ * other player drawn wherever they stand, as before; `crowd=K`: the crowd cap
+ * at K, `crowd=all` none), and each row says how many players the renderer
+ * left undrawn far off screen (`farHidden`) and past the cap (`crowdHidden`).
  */
 import * as H from './harness.mjs';
 import { fork } from 'node:child_process';
@@ -37,7 +44,10 @@ const ROOM = 'crowdbots';
 const VIEW = { width: 390, height: 844 };
 const STEPS = (process.env.BT_CROWD_STEPS || '0,25,50,80,110').split(',').map(Number).filter((n) => n >= 0);
 const SAMPLE_MS = Number(process.env.BT_CROWD_SAMPLE_MS || 10000);
-const WALK_R = 420;
+/* the bots' circle round the square: 420 keeps them on the phone's screen;
+   BT_CROWD_WALKR=2400 spreads them over the town and commons, most of them
+   off it (v2.3.3240) */
+const WALK_R = Number(process.env.BT_CROWD_WALKR || 420);
 const HOMES = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'];
 
 /* the bots in GROUPS processes (load.mjs's way): one Node process holding
@@ -59,6 +69,9 @@ function startBots(wsPort) {
     child.send({ cmd: 'config', cfg: {
       url: `ws://127.0.0.1:${wsPort}/ws?room=${ROOM}&rf=1`, wireUrl: null, fighters: 0, homes: HOMES, tag: String.fromCharCode(99 + i),
       idle: false, walkR: WALK_R,
+      /* v2.3.3240: each bot sends a real phone's 2 s look, as players do
+         (bots.mjs --track), so the phone hears the worker's relays too */
+      track: process.env.BT_CROWD_TRACK !== '0',
     } });
     groups.push(g);
   }
@@ -90,7 +103,7 @@ const q = (arr, p) => {
 };
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort, world: 'wheel', viewport: VIEW, touch: true, query: 'room=' + ROOM });
+  const P = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort, world: 'wheel', viewport: VIEW, touch: true, query: 'room=' + ROOM + (process.env.BT_CROWD_QUERY ? '&' + process.env.BT_CROWD_QUERY : '') });
   await H.enterWorld(P);
   let inWheel = false;
   for (let i = 0; i < 120 && !inWheel; i++) {
@@ -161,12 +174,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
           if (o && Math.abs(o.x - me.x) < 340 && Math.abs(o.y - me.y) < 700) near++;
         }
         return {
-          known: Object.keys(S.others || {}).length, near,
+          known: Object.keys(S.others || {}).length, near, farHidden: S._peersFarHidden || 0, crowdHidden: S._peersCrowdHidden || 0,
           work: a.map((s) => s.workMs || 0), entity: a.map((s) => s.entityMs || 0),
         };
       });
       const row = {
-        bots: want, known: r.known, onScreen: r.near, frames: r.work.length,
+        bots: want, known: r.known, onScreen: r.near, farHidden: r.farHidden, crowdHidden: r.crowdHidden, frames: r.work.length,
         workP50: q(r.work, 0.5), workP95: q(r.work, 0.95),
         entityP50: q(r.entity, 0.5), entityP95: q(r.entity, 0.95),
         taskMsPerS: +(((m1.TaskDuration - m0.TaskDuration) * 1000) / wall).toFixed(1),

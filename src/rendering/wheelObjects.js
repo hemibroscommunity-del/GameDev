@@ -51,6 +51,7 @@ import { setZoneBlockerHook } from '../data/worldProps.js';
 import { freeWheelNpcArt } from './npcSprites.js';
 import { tickWheelBreak, drainWheelEvents, isWheelBroken, resetWheelBreak, onWheelBreak, wheelObjectKind, isBuilding } from '../game/wheelBreak.js';
 import { WheelShatter, framePx } from './wheelShatter.js';
+import { BuildingFires, buildingFireOn } from './buildingFire.js';   /* v2.3.3230: a building you keep hitting catches fire */
 import { materialInfo, wheelMaterialOf } from '../data/wheelMaterials.js';
 import { playerGroundDy } from './systems/entityRenderer.js';   /* v2.3.2999: where your boots are, for a tree you stand behind */
 import { releaseShadowTextures } from './lightfx/shadows.js';   /* v2.3.3000: a freed sheet leaves no shadow behind */
@@ -416,6 +417,10 @@ export class WheelObjects {
     this._shakes = new Map();       /* object index -> { t0, frac, tree, building, big } */
     this._fadeIn = new Map();       /* object index -> when it began to fade back in */
     this._breakT = null;
+    /* v2.3.3230: ...and a building's fire, from where it is struck to its
+       rubble (buildingFire.js), unless `?nobuildingfire` */
+    this.fires = buildingFireOn() ? new BuildingFires(layer) : null;
+    this._fireView = { x0: 0, y0: 0, x1: 0, y1: 0 };
     this._offBreak = onWheelBreak((type, oi) => {
       /* gone from the walk test and the arrows' path in the same call */
       if (type === 'break') this._blockers = this._blockers.filter((b) => b.oi !== oi);
@@ -434,6 +439,9 @@ export class WheelObjects {
     tickWheelBreak(S, Date.now());
     const evs = drainWheelEvents();
     if (evs) for (const ev of evs) { try { this._event(ev, ix, S, now); } catch (e) { /* one object's trouble is its own */ } }
+    /* v2.3.3230: a building's hits, break, mending and forgotten count, to its
+       fire -- after the break's heap is made above, so its pieces can burn */
+    if (evs && this.fires) for (const ev of evs) { try { this._fireEvent(ev, ix, now); } catch (e) { /* one fire's trouble is its own */ } }
     /* the camera's speed, for loading ahead (wheelGround.js) */
     const jumped = this._lastCx != null && Math.abs(cx - this._lastCx) + Math.abs(cy - this._lastCy) > 400;
     if (this._lastT != null && !jumped) {
@@ -526,6 +534,13 @@ export class WheelObjects {
     if (this._late.size > 2000) this._late.clear();
     /* v2.3.2995: shaking from a hit, fading back in mended, and the shards */
     this._motion(ix, now);
+    /* v2.3.3230: the buildings' fires, on their pictures and their shards as
+       they are now */
+    if (this.fires) {
+      const v = this._fireView;
+      v.x0 = cx; v.y0 = cy; v.x1 = cx + viewW; v.y1 = cy + viewH;
+      try { this.fires.update(this, now, v); } catch (e) { /* the fire's trouble is its own */ }
+    }
     /* v2.3.2999: ...and a tree you stand behind, see-through */
     this._seeThrough(ix, S, now);
     /* v2.3.2983: the buildings' life, for the ones drawn */
@@ -625,6 +640,15 @@ export class WheelObjects {
     }
   }
 
+  /* v2.3.3230: a building's event, for its fire */
+  _fireEvent(ev, ix, now) {
+    const i = ev.oi;
+    if (i == null || i < 0 || i >= ix.n) return;
+    const k = wheelObjectKind(i);
+    if (!k || !isBuilding(k.id)) return;
+    this.fires.event(ev, ix, this, now);
+  }
+
   _motion(ix, now) {
     const o = ix.o;
     for (const [i, sh] of this._shakes) {
@@ -718,6 +742,8 @@ export class WheelObjects {
     /* v2.3.2995: the shards and the count go with the Wheel: everything is
        whole again next time */
     if (this._offBreak) { this._offBreak(); this._offBreak = null; }
+    /* v2.3.3230: the fires first -- the rubble's ride the shards */
+    if (this.fires) { try { this.fires.destroy(); } catch (e) { /* gone */ } this.fires = null; }
     try { this.shatter.destroy(); } catch (e) { /* gone */ }
     this._shakes.clear(); this._fadeIn.clear();
     resetWheelBreak();
@@ -1073,6 +1099,9 @@ if (typeof window !== 'undefined') {
     shards: () => (_live ? _live.shatter.probe() : []),
     shatterStats: () => (_live ? { ..._live.shatter.stats } : null),
     shaking: (i) => !!(_live && _live._shakes.has(i)),
+    /* v2.3.3230: every building's fire: its spots, flames, sparks, smoke and
+       rubble (buildingFire.js) */
+    fires: () => (_live && _live.fires ? _live.fires.probe(_live) : []),
     fading: (i) => (_live && _live._fadeIn.has(i) ? (() => { const s = _live.sprites.get(i); return s ? +s.alpha.toFixed(2) : null; })() : null),
     drawn: (i) => !!(_live && _live.sprites.has(i)),
     /* the footprints the walk test has now, with their object */

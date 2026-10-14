@@ -34,6 +34,23 @@
 import { performance, monitorEventLoopDelay } from 'node:perf_hooks';
 import { PlainWS } from './plainws.mjs';
 import { MOVE_DIET, dietMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3204: --diet, the phone's own rule */
+import { readFileSync } from 'node:fs';
+
+/* ═══ v2.3.3240: --track, THE LOOK EVERY PHONE SENDS EVERY 2 s ═══
+   BroTown.jsx sends `track` every 2 s whatever changed: the whole look (hair,
+   clothes, gear, drawings), level, HP, weapon and the inspect card's stats.
+   The worker relays each one to EVERY other player in the room as a message of
+   its own (index.js case 'track', broadcastExcept).  The bots never sent it,
+   so every capacity number before v2.3.3240 left it out.  The payload is a
+   real phone's (track-sample.json, captured from the game by
+   mp-trackcapture), each bot's own name, place and zone put in. */
+const TRACK_MS = 2000;
+let TRACK_SAMPLE = null;
+function trackSample() {
+  if (TRACK_SAMPLE) return TRACK_SAMPLE;
+  try { TRACK_SAMPLE = JSON.parse(readFileSync(new URL('./track-sample.json', import.meta.url), 'utf8')); } catch { TRACK_SAMPLE = {}; }
+  return TRACK_SAMPLE;
+}
 
 /* v2.3.3199: --no-deflate's WebSocket (plainws.mjs) */
 
@@ -76,7 +93,7 @@ function fresh() {
   return {
     rxBytes: 0, rxMsgs: 0, rxTickBytes: 0, rxTicks: 0, rxZoneStateBytes: 0, rxOtherBytes: 0,
     wireRx: 0,   /* v2.3.3199: what the WIRE bot was sent, unzipped (load.mjs wireProxy) */
-    txMsgs: 0, txBytes: 0, moves: 0, swings: 0,
+    txMsgs: 0, txBytes: 0, moves: 0, swings: 0, tracks: 0, rxUpdates: 0, rxUpdateBytes: 0,
     joins: [], entries: [], deliver: [], seen: [], tickRates: [],
     closes: {}, rejects: {}, errors: 0, deaths: 0, respawns: 0, roomFull: 0,
   };
@@ -139,6 +156,7 @@ function connect(bot) {
     M.closes[ev.code] = (M.closes[ev.code] || 0) + 1;
     clearInterval(bot.timer); bot.timer = null;
     clearInterval(bot.pongTimer); bot.pongTimer = null;
+    clearInterval(bot.trackTimer); bot.trackTimer = null;
     bot.ws = null;
     bot.state = 'off';
     if (!stopping) retry(bot);
@@ -160,6 +178,13 @@ function onMessage(bot, data) {
     M.rxTicks++; M.rxTickBytes += len;
     if (bot.probe) probeTick(bot, data);
     else if (bot.fighter && bot.state === 'walking' && (++bot.tickN % 4) === 0) fighterTick(bot, data);
+    return;
+  }
+  /* v2.3.3240: the worker's relay of another player's 2 s look (--track):
+     counted, not parsed -- a bot has no use for it, and parsing N/2 of them a
+     second each would make the BOTS the bottleneck */
+  if (data.startsWith('{"type":"player_update"')) {
+    M.rxOtherBytes += len; M.rxUpdates++; M.rxUpdateBytes += len;
     return;
   }
   if (data.startsWith('{"type":"ping"')) {
@@ -253,6 +278,27 @@ function startWalking(bot) {
     if (bot.state !== 'walking') return;
     bot.timer = setInterval(() => step(bot), moveGap(bot));
   }, rand(0, moveGap(bot)));
+  /* v2.3.3240: --track, the phone's 2 s look (above) */
+  if (CFG.track && !bot.trackTimer) {
+    setTimeout(() => {
+      if (bot.trackTimer || bot.retired) return;
+      bot.trackTimer = setInterval(() => {
+        if (bot.state !== 'walking' && bot.state !== 'dead') return;
+        const data = Object.assign({}, trackSample(), {
+          x: Math.round(bot.x * 10) / 10, y: Math.round(bot.y * 10) / 10,
+          name: 'Load' + bot.k, zone: 'wheel', dir: 'down',
+        });
+        /* a fighter's HP and kill count move as a real one's do in a fight
+           (the walkers' looks stay as they are, as a real walker's do) */
+        if (bot.fighter && data.rpgMaxHp) {
+          data.rpgHp = 1 + Math.floor(Math.random() * data.rpgMaxHp);
+          bot.kills = (bot.kills || 0) + (Math.random() < 0.3 ? 1 : 0);
+          if (data.rpgData) data.rpgData = Object.assign({}, data.rpgData, { kills: bot.kills });
+        }
+        if (send(bot, { type: 'track', data })) M.tracks++;
+      }, TRACK_MS);
+    }, rand(0, TRACK_MS));
+  }
 }
 
 function newTarget(bot) {
@@ -355,9 +401,24 @@ function probeTick(bot, data) {
   try { d = JSON.parse(data); } catch { return; }
   probeTickObj(bot, d);
 }
+/* v2.3.3242: --tick-parts (load.mjs sets BT_TICK_PARTS): what a tick is made
+   of, by its top-level parts' JSON length, from the probes -- where the
+   phones' download goes (players, events, monsters, nodes) */
+const TICK_PARTS = process.env.BT_TICK_PARTS === '1';
+function countTickParts(d) {
+  const tp = M.tickParts || (M.tickParts = {});
+  for (const k in d) {
+    if (k === 'type' || k === 'seq' || k === 'ts') continue;
+    let n = 0;
+    try { n = JSON.stringify(d[k]).length; } catch { /* not countable */ }
+    tp[k] = (tp[k] || 0) + n;
+  }
+  tp._ticks = (tp._ticks || 0) + 1;
+}
 function probeTickObj(bot, d) {
   const now = performance.now();
   if (!d || typeof d !== 'object') return;
+  if (TICK_PARTS) countTickParts(d);
   if (typeof d.ts === 'number') push(M.deliver, Date.now() - d.ts);
   if (typeof d.seq === 'number' && typeof d.ts === 'number') {
     if (bot.firstSeq === null) bot.firstSeq = [d.seq, d.ts];
@@ -439,7 +500,7 @@ process.on('message', (msg) => {
       const b = bots[i];
       if (b.retired) continue;
       b.retired = true; n--;
-      clearInterval(b.timer); clearInterval(b.pongTimer);
+      clearInterval(b.timer); clearInterval(b.pongTimer); clearInterval(b.trackTimer);
       b.state = 'gone';
       try { if (b.ws) { b.ws.onclose = null; b.ws.close(1000, 'left'); } } catch { /* already gone */ }
       b.ws = null;
@@ -447,7 +508,7 @@ process.on('message', (msg) => {
   } else if (msg.cmd === 'stop') {
     stopping = true;
     for (const b of bots) {
-      clearInterval(b.timer); clearInterval(b.pongTimer);
+      clearInterval(b.timer); clearInterval(b.pongTimer); clearInterval(b.trackTimer);
       try { if (b.ws) b.ws.close(1000, 'load test over'); } catch { /* already gone */ }
     }
     setTimeout(() => process.exit(0), 500);
