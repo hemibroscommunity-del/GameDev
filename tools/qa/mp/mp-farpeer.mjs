@@ -17,7 +17,9 @@
  *      players, and ends where the walker stopped (v2.3.3243: about once a
  *      second, with the presence roster -- no far send of its own any more,
  *      FAR_PLAYERS.EVERY_MS 0; `BT_FARPEER_FAR_MS=250` runs it against a
- *      server whose live flags carry `far_ms: 250`, the old four);
+ *      server whose live flags carry `far_ms: 250`, the old four; v2.3.3250:
+ *      with the watcher's world map open -- presence v2 sends far players
+ *      only then);
  *   3. comes back and walks beside the watcher again: every move again;
  *   4. positions reach the watcher in whole pixels;
  *   5. no page errors.
@@ -171,6 +173,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`positions reach the watcher in whole pixels (${p1 && p1.x}, ${p1 && p1.y})`, !!p1 && Number.isInteger(p1.x) && Number.isInteger(p1.y), p1);
 
   /* ── 2. far ── */
+  /* v2.3.3250: presence v2 -- a phone is sent far players only while its
+     world map is open (server/src/presence2.js; mp-presence2 tests the map
+     shut), so this step watches with the map open, as a player looking for
+     someone far away does */
+  await B.page.evaluate(() => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(true); });
   await W.place(b0.x + 300, b0.y - 2700);
   await B.page.waitForTimeout(1500);
   const far = await watch(3000);
@@ -189,6 +196,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     gap <= 1 && !!p2 && p2.z === 'wheel', { gap, p2, w: [W.x, W.y] });
 
   /* ── 3. near again ── */
+  await B.page.evaluate(() => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(false); });
   await W.place(b0.x - 200, b0.y + 120);
   await B.page.waitForTimeout(1500);
   const near2 = await watch(3000);

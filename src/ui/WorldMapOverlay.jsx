@@ -51,6 +51,7 @@ import { ZONES } from '../data/zones.js';   /* v2.3.3039: the world's name (BroT
 import { questRoutePoint } from '../game/questRoute.js';          /* v2.3.3057: the quest's way, as the minimap's */
 import { wheelTownDoors } from '../game/wheelTownDoors.js';       /* v2.3.3057: the buildings, named */
 import { hasGatherTool } from '../data/lifeSkills.js';            /* v2.3.3057: faint where you have no tool */
+import { sendMapWatch, PRESENCE2_CLIENT } from '../game/presence2.js';   /* v2.3.3250: far players come while the map is open */
 import { peerDotAt } from '../game/peerDot.js';                    /* v2.3.3243: a far player's dot glides between rosters */
 
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
@@ -128,6 +129,16 @@ function WorldMap({ stateRef, onClose }) {
   const dirty = useRef(true);
   const [where, setWhere] = useState(null);
   const [zoomShown, setZoomShown] = useState(1);
+
+  /* v2.3.3250: presence v2 (src/game/presence2.js) -- the worker sends the far
+     players only while this map is open: say so now, keep saying so, and say
+     when it shuts.  A worker without presence2 is told nothing. */
+  useEffect(() => {
+    const S0 = stateRef && stateRef.current;
+    sendMapWatch(S0, true);
+    const id = setInterval(() => sendMapWatch(stateRef && stateRef.current, true), PRESENCE2_CLIENT.MAP_HEARTBEAT_MS);
+    return () => { clearInterval(id); sendMapWatch(stateRef && stateRef.current, false); };
+  }, [stateRef]);
 
   useEffect(() => {
     const cv = cvRef.current;
@@ -412,6 +423,10 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     for (const id in S.others) {
       const o = S.others[id];
       if (!o || (o.zone || o.z) !== S.currentZone || typeof o.x !== 'number') continue;
+      /* v2.3.3250: a parked copy is nowhere real (src/game/presence2.js); the
+         watch this map opened brings them all, where they are, within a
+         roster */
+      if (o._away) continue;
       peerDotAt(o, now, at);
       const x = X(at.x), y = Y(at.y);
       if (!onScreen(x, y)) continue;

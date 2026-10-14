@@ -18,6 +18,7 @@
 import { WHEEL_ZONE } from './wheelzone.js';   /* v2.3.2978: the Wheel's monsters go out by interest */
 import { armourGradeWire } from './gearprov.js';   /* v2.3.3142: the worn armour's grade, seen by others */
 import { eventHeardBy } from './eventplace.js';   /* v2.3.3245: events by place */
+import { PRESENCE2 } from './presence2.js';   /* v2.3.3250: far players only while your world map is open */
 
 /* v2.3.2062: server ticks between regen passes. Exported because the Mana
    Draught sizes its per-tick floor against this cadence (server/src/data.js
@@ -533,6 +534,8 @@ export const tickMethods = {
       let held = null;
       /* v2.3.3246: who changed since the last roster (ROSTER) */
       const slimOn = !this._slimRosterOff();
+      /* v2.3.3250: presence v2 (presence2.js) rides on the slim roster */
+      const pres2On = slimOn && !this._presence2Off();
       const rosterMoved = slimOn ? (this._rosterMoved || (this._rosterMoved = new Set())) : null;
       for (const id of this.dirtyPlayers) {
         const ps = this.playerState[id];
@@ -584,10 +587,13 @@ export const tickMethods = {
          NEAR_R of it -- itself included, as before.  null too when every
          mover is near it, so a crowd in town still shares one string. */
       const NEAR2 = FAR_PLAYERS.NEAR_R * FAR_PLAYERS.NEAR_R;
-      const playersPlanFor = (rps) => {
-        if (presenceTick) return rosterPlanFor(rps);   /* v2.3.3246 */
+      const playersPlanFor = (rps, s) => {
+        if (presenceTick) return rosterPlanFor(rps, s);   /* v2.3.3246 */
         if (!farOn) return null;
-        if (farList) return { list: farList, far: true };
+        /* v2.3.3250: a pres-2 phone whose world map is shut is sent no far
+           player: on a far send it takes this tick's near movers instead */
+        const blind = pres2On && !!(s && s.pres2) && !(s._mapWatchUntil > ts);
+        if (farList && !blind) return { list: farList, far: true };
         if (!wheelDirty) return null;
         const x = rps.x, y = rps.y;
         if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
@@ -631,17 +637,26 @@ export const tickMethods = {
       /* v2.3.3246: one v2 Wheel phone's roster -- the players near it whole,
          the far ones slim and only when due (ROSTER), in the roster's order;
          null (the zone's whole roster) with the slim roster off */
-      const rosterPlanFor = (rps) => {
+      const rosterPlanFor = (rps, s) => {
         if (!rosterDue) return null;
         const x = rps.x, y = rps.y;
         if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        /* v2.3.3250: a pres-2 phone (presence2.js) is told its party whole,
+           wherever they are, and far players only while its world map is
+           open -- every one of them on the first roster of a watch */
+        const p2 = pres2On && !!(s && s.pres2);
+        const watching = p2 && s._mapWatchUntil > ts;
+        const fresh = watching && !!s._mapWatchFresh;
+        const party = p2 ? this._presence2Party(s.id) : null;
         const list = [];
         for (const e of rosterPairs) {
           const q = e[1];
           const dx = q.x - x, dy = q.y - y;
           if (q.z === rps.z && dx * dx + dy * dy <= NEAR2) list.push(e);
-          else if (rosterDue.has(e[0])) list.push([e[0], q, true]);
+          else if (party && party.has(e[0])) list.push(e);
+          else if (!p2 || watching) { if (fresh || rosterDue.has(e[0])) list.push([e[0], q, true]); }
         }
+        if (fresh) s._mapWatchFresh = false;
         return { list, far: false };
       };
 
@@ -1084,6 +1099,10 @@ export const tickMethods = {
       // One serialization per (zone, protocolVersion) group, reused
       // across every socket in that group.
       const groupCache = new Map();
+      /* v2.3.3250: everyone in the room and their zone, for a pres-2
+         phone's `on` (presence2.js), made at most once a tick and only when
+         one is due */
+      let onJson;
       for (const [ws, s] of this.sessions) {
         const ps = s.id ? this.playerState[s.id] : null;
         const zone = ps ? ps.z : null;
@@ -1106,7 +1125,7 @@ export const tickMethods = {
         let plan = null;
         if (near) {
           interest = this._wheelInterest(s, ps, this.monsters[zone] || [], share ? wheelGrid() : null);
-          plan = playersPlanFor(ps);   /* v2.3.3197: far players less often */
+          plan = playersPlanFor(ps, s);   /* v2.3.3197: far players less often; v2.3.3250: + the session (presence v2) */
           key += '|' + s.id;
         } else if (s._wheelSeen) s._wheelSeen = null;
         let msg = groupCache.get(key);
@@ -1120,6 +1139,30 @@ export const tickMethods = {
             if (ref !== msg) { verify.mismatched++; if (!verify.first) verify.first = { zone, pv, ref, got: msg }; }
           }
           groupCache.set(key, msg);
+        }
+        /* v2.3.3250: a pres-2 phone's roster in the Wheel says so (`nr`):
+           every player near it is in it, whole (rosterPlanFor), so one
+           missing from it is far or elsewhere, and the phone parks its copy
+           out of sight (src/game/presence2.js) -- a far player's last copy
+           would otherwise stand frozen where they were last seen, a ghost on
+           the screen of anyone who walked that way.  Never while the map is
+           open: the far players not due this second are missing then too,
+           and the map draws them.  Added to this phone's copy only. */
+        if (presenceTick && plan && msg && pres2On && s.pres2 && !(s._mapWatchUntil > ts)) msg = msg.slice(0, -1) + ',"nr":1}';
+        /* v2.3.3250: a pres-2 phone's online list, every ONLINE_EVERY_MS and
+           on its first tick -- it forgets a player missing from it, in place
+           of the 10 s silence that far players' quiet would now trip -- with
+           each one's zone, which a far player's copy no longer hears of.
+           Added to this phone's copy only: the cached message stays as it
+           was. */
+        if (pres2On && s.pres2 && pv === 2 && !(ts - (s._onlineAt || 0) < PRESENCE2.ONLINE_EVERY_MS)) {
+          if (onJson === undefined) {
+            const zones = Object.create(null);
+            for (const id of Object.keys(this.playerState)) { const q = this.playerState[id]; zones[id] = (q && typeof q.z === 'string') ? q.z : null; }
+            onJson = JSON.stringify(zones);
+          }
+          msg = (msg ? msg.slice(0, -1) : tickHead) + ',"on":' + onJson + '}';
+          s._onlineAt = ts;
         }
         if (msg) { try { ws.send(msg); } catch {} }
       }

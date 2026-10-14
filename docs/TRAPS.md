@@ -6270,3 +6270,30 @@ drifting from a game that had moved on, or tests disturbing each other:
   (`toDisplayDamage`, as `mp-hpscale` does), never the raw number.
 - `run.mjs` closes every page a scenario leaves open (v2.3.3249). A scenario
   that only passes first in a list is measuring the box, not the game.
+
+## 178. "Stop sending a far player, and the phone just keeps their last copy" (v2.3.3250)
+
+It does keep it -- that is the trap. Presence v2 (`docs/specs/presence-v2.md`)
+stops sending a phone the players far from it while its world map is shut,
+and stands the 10 s ghost sweep down so their silence does not delete them.
+Their last copy then stays where they were last seen, frozen, still walking on
+the spot. Nobody sees it while it is far from them, so every server check
+passed. But walk toward where they were, and they are standing there: a ghost.
+About forty places read other players' positions -- bodies, pets, lights,
+dust, sounds, PvP targets, the minimap -- and most of them do not even check
+the zone, so hiding the copy in each one would have missed some.
+
+- **The fix is where the copy's position is made, not where it is read.** The
+  worker marks each roster `nr` (every player near you is in it), the phone
+  marks a player missing from it `_away`, and once a frame (the peers'
+  interpolation loop, visualSystems.js) keeps an `_away` copy at least 2,400 px
+  from you along the line from you through it. Nothing that reads positions
+  had to change.
+- **Found by the phone test, written before shipping** (`mp-presence2`: the
+  watcher walks toward where the walker was last seen). A test that only asks
+  "was the far player sent?" passes a ghost.
+
+**The rule.** When a phone stops hearing about something on purpose, decide
+what its last copy does from then on -- a stale copy is not "nothing", it is
+wrong data at a real place. And TRAPS #18 again: the page's channel lets out
+only the message types it names (`map_watch` was dropped until it had a line).

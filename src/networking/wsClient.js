@@ -148,6 +148,7 @@ import { applyNmlSkull, applyNmlLoss, nmlPeerSkull } from '@/game/noMansLand.js'
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
 import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's death heard by distance */
+import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
@@ -430,6 +431,9 @@ export function setupWebSocket(ctx) {
              keep sending full v1 payloads, which this client still
              handles (the v1 cases below stay in place). */
           protocolVersion: 2,
+          /* v2.3.3250: presence v2 -- far players in the Wheel only while the
+             world map is open (src/game/presence2.js).  Old workers ignore it. */
+          pres: 2,
           /* v2.3.1178: declare we attach the per-session state_sync
              token (x-bt-auth header) to mutating economy POSTs, so the
              worker ENFORCES it for this session. Old workers ignore
@@ -728,6 +732,9 @@ export function setupWebSocket(ctx) {
                     S.others[pid]._vx = (data.vx || 0) / 100;
                     S.others[pid]._vy = (data.vy || 0) / 100;
                     S.others[pid]._lastUpdate = Date.now();
+                    /* v2.3.3250: any update is where they really are -- a
+                       parked copy (src/game/presence2.js) is back */
+                    S.others[pid]._away = false;
                     /* v2.3.1092: current harvest activity (mine|chop|fish|cook|
                        fire, or null). Drives the remote body pose / skill
                        stand-in in the renderer. Absent (old server) => leave
@@ -783,7 +790,31 @@ export function setupWebSocket(ctx) {
                  With the 1 Hz idle keepalive every live player refreshes
                  _lastUpdate at least once a second, so an entry silent for
                  10s is gone from the room.  Swept at most once per second. */
-              {
+              /* v2.3.3250: presence v2 -- the worker's list of everyone in the
+                 room forgets whoever left, and while it keeps coming the
+                 silence below means nothing: a far player is quiet because
+                 nobody needs their position (src/game/presence2.js). */
+              /* v2.3.3250: and a roster marked `nr` holds every player near
+                 you, so one missing from it is far or elsewhere: its copy is
+                 parked out of sight rather than left frozen where they were
+                 last seen, a ghost for anyone who walks that way */
+              if (msg.nr && presence2On(S)) parkMissing(S, msg.players || {});
+              if (msg.on && typeof msg.on === 'object') {
+                var _p2Make = function (id, zone) {
+                  var _mx = S.player ? S.player.x : 0, _my = S.player ? S.player.y : 0;
+                  return Object.assign({
+                    x: _mx, y: _my, _serverX: _mx, _serverY: _my,
+                    renderX: _mx, renderY: _my,
+                    name: 'Anon', color: '#888', avatar: null,
+                    dir: 'down', bt: '#2563eb', bl: '#1e3a5f',
+                    equip: { chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' },
+                    rpgLv: 1, rpgHp: 50, rpgMaxHp: 50,
+                    zone: zone || 'town',
+                  }, peerCosmeticsFromWire({}));
+                };
+                if (applyOnlineList(S, msg.on, Date.now(), _p2Make) > 0) setPlayerCount(Object.keys(S.others).length + 1);
+              }
+              if (!onlineListFresh(S, Date.now())) {
                 var _gsNow = Date.now();
                 if (!S._lastGhostSweep || _gsNow - S._lastGhostSweep > 1000) {
                   S._lastGhostSweep = _gsNow;
@@ -3048,6 +3079,9 @@ export function setupWebSocket(ctx) {
           case 'player_join':
             {
               var _msg$data, _msg$data2, _msg$data3, _msg$data4, _msg$data5, _msg$data6, _msg$data7, _msg$data8, _msg$data9, _msg$data0, _msg$data1, _msg$data10, _msg$data12;
+              /* v2.3.3250: already listed (presence v2's online list adds a
+                 player it never heard join, parked) -- counted once */
+              var _pjHad = Object.prototype.hasOwnProperty.call(S.others, msg.id);
               S.others[msg.id] = {
                 x: ((_msg$data = msg.data) === null || _msg$data === void 0 ? void 0 : _msg$data.x) || 0,
                 y: ((_msg$data2 = msg.data) === null || _msg$data2 === void 0 ? void 0 : _msg$data2.y) || 0,
@@ -3077,7 +3111,7 @@ export function setupWebSocket(ctx) {
                 setTimeout(function () {
                   return setJoinFlash(false);
                 }, 1500);
-                return prev + 1;
+                return _pjHad ? prev : prev + 1;
               });
               break;
             }
@@ -4435,6 +4469,14 @@ export function setupWebSocket(ctx) {
         /* v2.3.3187: a gem into the shield (game/shieldGem.js) -> shieldgem.js.
            TRAPS #18: without this line the ask never leaves the browser. */
         if (msg.type === 'shield_gem') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.3250: the open world map's watch (game/presence2.js
+           sendMapWatch: open, every 4 s, shut) -> presence2.js.  TRAPS #18:
+           without this line the watch never left the browser and the open map
+           was sent no far player at all -- mp-presence2's first run. */
+        if (msg.type === 'map_watch') {
           ws.send(JSON.stringify(msg));
           return;
         }

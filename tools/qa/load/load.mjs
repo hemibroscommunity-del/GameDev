@@ -11,7 +11,7 @@
  *   node tools/qa/load/load.mjs [--steps 10,25,50] [--hold 20] [--settle 20]
  *        [--procs 3] [--fighters 0.3] [--cap 400] [--idle] [--pong N]
  *        [--server <a server/ folder>] [--observability] [--url ws://127.0.0.1:PORT]
- *        [--no-deflate] [--move-ms 33] [--town-move-ms 66] [--diet] [--seen-r 2400]
+ *        [--no-deflate] [--move-ms 33] [--town-move-ms 66] [--diet] [--seen-r 2400] [--pres]
  *        [--inspector-port 9230] [--worker-log <file>] [--walk-r 400] [--track]
  *        [--keep-bundle <dir>] [--tick-parts]
  *        [--storm] [--storm-max 90] [--relays] [--events]
@@ -85,6 +85,7 @@ const OPT = {
   track: process.argv.includes('--track'),   /* v2.3.3240: every bot sends a phone's 2 s look (bots.mjs TRACK_MS), relayed by the worker to everyone */
   relays: process.argv.includes('--relays'), /* v2.3.3245: the fighters send a phone's swing / arrow relay with each blow (bots.mjs) */
   events: process.argv.includes('--events'), /* v2.3.3245: what the probes' ticks carry in `events`, by type (bots.mjs countEvents) */
+  pres: process.argv.includes('--pres'),     /* v2.3.3250: every bot joins with pres: 2 and never opens its world map (presence v2, docs/specs/presence-v2.md) */
   seenR: +arg('seen-r', 0),               /* v2.3.3199: "others' moves seen" counts senders this near (0: 2,400) */
   walkR: +arg('walk-r', 0),               /* v2.3.3240: the town walkers' circle (0: bots.mjs WALK_R, 1,400); smaller packs them in */
   inspectorPort: +arg('inspector-port', 0),   /* v2.3.3203: the runtime's debugger port, for a CPU profile (cdpprof.mjs) */
@@ -255,7 +256,7 @@ function startBots(url, wireUrl) {
       env: OPT.tickParts ? Object.assign({}, process.env, { BT_TICK_PARTS: '1' }) : process.env });
     const g = { child, last: null, n: 0 };
     child.on('message', (m) => { if (m && m.type === 'report') { g.last = m.data; reports.push(m.data); } });
-    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, diet: OPT.diet, noDeflate: OPT.noDeflate, seenR: OPT.seenR, walkR: OPT.walkR, track: OPT.track, relays: OPT.relays, events: OPT.events } });
+    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, diet: OPT.diet, pres: OPT.pres, noDeflate: OPT.noDeflate, seenR: OPT.seenR, walkR: OPT.walkR, track: OPT.track, relays: OPT.relays, events: OPT.events } });
     groups.push(g);
   }
 }

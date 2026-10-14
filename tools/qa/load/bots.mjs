@@ -151,6 +151,8 @@ function connect(bot) {
     bot.state = 'joining';
     send(bot, {
       type: 'join', id: bot.id, name: 'Load' + bot.k, protocolVersion: 2, httpAuth: true,
+      /* v2.3.3250: --pres -- a phone of presence v2 whose world map stays shut */
+      ...(CFG.pres ? { pres: 2 } : {}),
       data: { x: 1000, y: 1000, d: 'south', z: 'town', name: 'Load' + bot.k },
     });
   };

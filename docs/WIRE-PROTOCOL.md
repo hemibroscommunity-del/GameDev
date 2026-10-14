@@ -238,6 +238,21 @@ false`. `docs/specs/steady-movers.md`.
 - **Deploy order.** No caps flag. The kill switch is `slimroster: false`.
 - `docs/specs/slim-roster.md`.
 
+**v2.3.3250: far players only while your world map is open (presence v2).**
+- **join `pres: 2`** (v2 only) and **`caps.presence2`**: a phone that opts in,
+  in the Wheel, is sent the players near it and its party (whole, wherever
+  they are), and far players only while its world map is open.
+- **client -> server `map_watch {on: true|false}`**: the world map opening, its
+  4 s heartbeat, its closing. One `true` lasts 8 s. Sent only to a worker that
+  advertises `presence2`; the page's channel names it (TRAPS #18).
+- **tick `nr: 1`**: on a pres-2 phone's roster while its map is shut -- every
+  player near it is in this roster. The phone parks the rest out of sight.
+- **tick `on: {id: zone}`**: everyone in the room, on a pres-2 phone's first
+  tick and every 30 s. It replaces the 10 s ghost sweep while it keeps coming.
+- **Deploy order.** An old phone keeps the v2.3.3246 roster; a new phone
+  against an old worker never sends `map_watch`. Kill switch `presence2:
+  false`. `docs/specs/presence-v2.md`.
+
 **v2.3.3204: a steady walk on the safe ground is sent half as often.** The
 client's `move` cadence: on the Wheel's safe ground, not in a fight, against a
 worker advertising `caps.movediet`, a move on the line the last one drew waits

@@ -512,11 +512,13 @@ export class WheelMinimap {
        past 2,400 px, at the Wheel's edge where the box stops centring on you,
        is sent about once a second: src/game/peerDot.js) */
     const others = S.others;
+    /* v2.3.3250: never a parked copy (src/game/presence2.js) -- it is kept
+       past the box's corner anyway, so this only spares it a sprite */
     if (others) {
       const now = Date.now(), at = _peerAt;
       for (const id in others) {
         const o = others[id];
-        if (o && (o.zone || o.z) === S.currentZone) { peerDotAt(o, now, at); this._mark(at.x, at.y, 'player', C_OTHER, 13); }
+        if (o && !o._away && (o.zone || o.z) === S.currentZone) { peerDotAt(o, now, at); this._mark(at.x, at.y, 'player', C_OTHER, 13); }
       }
     }
     const mons = S.monsters || [];

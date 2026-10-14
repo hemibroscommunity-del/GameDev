@@ -190,6 +190,7 @@ const CAP_GATES = [
   'codex' /* v2.3.3209: the monster codex's kill counts (server/src/codex.js) -- lower case, a kill switch */,
   'killroll' /* v2.3.3209: one roll a kill, each drop its own numbers, shown over the monster (server/src/killroll.js) -- lower case, a kill switch */,
   'hitladder' /* v2.3.3229: the hit ladder -- each life-skill level adds a 10% chance of one more (server/src/gathering.js gatherHitRoll) -- lower case, a kill switch */,
+  'presence2' /* v2.3.3250: far players only while the world map is open, the online list, far copies parked (server/src/presence2.js) -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported

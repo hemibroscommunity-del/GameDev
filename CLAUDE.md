@@ -2560,6 +2560,28 @@ Two protocol versions coexist; both must keep working:
     run.mjs --local` is the same run on wrangler dev (one thread: side by side
     1 at every K, which is what the test tells apart). The game's room on
     Cloudflare with the bots is the next lab: docs/specs/cloudflare-lab.md.
+  - v2.3.3250: FAR PLAYERS ONLY WHILE YOUR WORLD MAP IS OPEN (presence v2) --
+    the rest of Phase 0b, from the owner's "Go recommended" (open decision
+    24): a phone that joins with `pres: 2` (wsClient.js; `caps.presence2`) is
+    sent, in the Wheel, the players near it whole, its party whole wherever
+    they are (server/src/presence2.js `_presence2Party`), and far players only
+    while its WORLD MAP is open -- WorldMapOverlay.jsx sends `map_watch` on
+    opening, every 4 s and on closing (src/game/presence2.js `sendMapWatch`;
+    the channel's allowlist names it, TRAPS #18), one `true` lasting 8 s, the
+    first roster of a watch carrying every far player; every 30 s `on`
+    (everyone's id -> zone), which forgets whoever left in place of the 10 s
+    ghost sweep (stood down while it is fresh, 75 s). A FAR PLAYER'S COPY IS
+    PARKED: the roster is marked `nr` while the map is shut (every near player
+    is in it), a player missing from it is `_away` and stopped, and every frame
+    (visualSystems.js) an `_away` copy is kept PARK_R 2,400 px from you -- their
+    frozen copy was a ghost for anyone who walked to where they were last seen
+    (TRAPS §178); the world map and minimap skip parked copies. In-process
+    72-74 KB a second a phone at 120 (slim 90-98) and 144-149 at 500 (218-250),
+    the room's time the same; merged with #898's roster-only far players the
+    extra cut is small (120: 74 against 75-82; 1,000: 235-242 against
+    261-311) -- groundwork: a phone's download stops growing with far players. Old phones keep the v2.3.3246 roster; kill switch
+    `presence2: false`; `presence2` suite (55, twenty bugs caught), `mp-presence2`
+    (15), mp-farpeer opens the map for its far step: docs/specs/presence-v2.md.
 
 ## Conventions
 
