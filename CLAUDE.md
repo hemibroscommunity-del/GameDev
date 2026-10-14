@@ -2328,7 +2328,7 @@ Two protocol versions coexist; both must keep working:
     after a full GC, 44 MB at the most in use, against Cloudflare's 128 MB
     (`tools/qa/load/heapprobe.mjs`, the inspector's heap during a load test):
     docs/specs/cap-120.md.
-  - v2.3.3219: THE CLOUDFLARE LAB -- the split plan's lab, which the owner
+  - v2.3.3227: THE CLOUDFLARE LAB -- the split plan's lab, which the owner
     said yes to ("Go recommended": the lab after Phase 0). Started BY HAND:
     Actions tab -> "Cloudflare lab" -> Run workflow (`.github/workflows/
     lab.yml`). It deploys a tiny worker of its own, `brotown-lab`
