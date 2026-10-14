@@ -47,6 +47,8 @@
  */
 import { QUEST_ZONE_GATE } from './movement.js';
 import { AMULET_GEMS } from './data.js'; /* v2.3.3187: the kit's polished gems */
+import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
+import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -395,6 +397,31 @@ export const devToolsMethods = {
     return { ok: true, ripened };
   },
 
+  /* ═══ v2.3.3229: A LIFE SKILL AT ANY LEVEL, TO FEEL THE HIT LADDER ═══
+     The hit ladder (gathering.js gatherHitRoll) is felt by the level: Mining
+     3 hits 1 eight times in ten, Mining 11 never does.  Levels come slowly
+     (half as fast since v2.3.3090), so the owner's test panel and the QA
+     scenario (mp-hitladder) set one at once: `skill` a life skill's name, or
+     'hits' for the four whose harvests and cooks are hits (mining,
+     woodcutting, fishing, cooking -- GATHER_HITS.MS); `level` 1-120, its XP
+     0.  The next plan rolled reads it.  The admin key's, like every lever
+     here: no new socket message. */
+  _devLifeSkill(playerId, body) {
+    const t = this._devTarget(playerId);
+    if (!t) return { ok: false, error: 'player not online' };
+    const ps = t.ps;
+    const b = body || {};
+    const names = b.skill === 'hits' ? Object.keys(GATHER_HITS.MS) : [b.skill];
+    if (!names.every((k) => typeof k === 'string' && LIFE_SKILL_KEYS.includes(k))) {
+      return { ok: false, error: 'skill: one of ' + LIFE_SKILL_KEYS.join(', ') + ', or hits' };
+    }
+    const level = Math.max(1, Math.min(120, Math.floor(Number(b.level) || 1)));
+    if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
+    for (const k of names) ps.lifeSkills[k] = { level, xp: 0 };
+    this._devPush(playerId, ps);
+    return { ok: true, skills: names, level };
+  },
+
   /* ═══ v2.3.3120: PET TRAPPING'S TEST LEVERS (trapping.js) ═══
      At 1% at best, looking at a catch means a hundred kills -- so, for the
      owner's test kit and the QA scenario (mp-trapping), the levers a catch
@@ -507,6 +534,7 @@ export const devToolsMethods = {
     else if (path === '/dev/trapping') result = this._devTrapping(playerId, body);   /* v2.3.3120 */
     else if (path === '/dev/codex') result = this._codexDevSet(playerId, body);   /* v2.3.3209: {kind | all, n, n2} (codex.js) */
     else if (path === '/dev/killroll') result = this._killRollDev(playerId, body);   /* v2.3.3209: {next, kill} -- the next kill's roll (killroll.js) */
+    else if (path === '/dev/lifeskill') result = this._devLifeSkill(playerId, body);   /* v2.3.3229: {skill | 'hits', level} -- the hit ladder at any level */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see
