@@ -244,6 +244,11 @@ These are needed by ANY split. Several help at today's 120.
   - Instead, send only what changed: joins, leaves, names, levels.
   - Positions go only for players within the minimap's reach.
   - The world map asks for a snapshot when it is opened.
+  - *v2.3.3246, the first step (the worker alone).* A far player is sent
+    slim: position, facing, zone and speed. A far player standing still is
+    sent every 4 s instead of every second (`docs/specs/slim-roster.md`). The
+    rest needs a phone change: the phone has to stop sweeping away the far
+    players it no longer hears from.
 - **0c. Far players at scale.** Four times a second, every phone is sent every
   player who moved anywhere in the Wheel (`FAR_PLAYERS`, #886). At 1,000 this
   becomes "the players on your minimap", as positions only.

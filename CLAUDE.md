@@ -2508,6 +2508,26 @@ Two protocol versions coexist; both must keep working:
     2,800 px. No caps flag; `eventplace: false` the kill switch. `event-place`
     suite (35, ten mutations), `tools/qa/load/events-bench.mjs`:
     docs/specs/events-by-place.md.
+  - v2.3.3246: THE ROSTER'S FAR PLAYERS, SLIM -- the split plan's Phase 0b,
+    its first step (the worker alone), from the owner's "stress test to see
+    what can be optimized": once a second every phone was sent EVERY player's
+    whole entry (the presence roster, ~150 bytes each: 150 KB a second at
+    1,000). Now, on a presence tick, a v2 phone in the Wheel gets its own
+    roster (tick.js `rosterPlanFor`): the players within FAR_PLAYERS.NEAR_R in
+    its zone whole, as before; the far ones slim, `{x, y, d, z, vx, vy}` (the
+    fields wsClient.js's tick merge writes whether or not they are there --
+    slim-roster §8 reads them from the client itself); and a far player who has
+    not changed since the last roster only every `ROSTER.FAR_STILL_MS` 4 s,
+    inside the client's 10 s ghost sweep (§2: at most 4 s and one roster apart,
+    at 45 ticks a second and at 10). Sprint, skull, pet and the armour's grade
+    read as none for a far player the phone does not draw; the first whole
+    entry puts them back long before they are on screen. v1 phones, the other
+    zones and a socket that has not joined still get everyone whole. A phone at
+    120 ~9% less; in-process 12% / 17% / 23% less at 120 / 500 / 1,000 with
+    the room's time unchanged. No caps flag; kill switch `slimroster: false`.
+    `slim-roster` suite (21), far-players §8c, `tools/qa/load/
+    roster-bench.mjs`: docs/specs/slim-roster.md. The rest of 0b (far
+    positions only while the world map asks) needs a phone change.
 
 ## Conventions
 

@@ -223,6 +223,21 @@ far send and the 1 Hz roster count as sent. Same fields, fewer entries: a
 straight walk about 15 a second instead of 30. Kill switch: `steadymovers:
 false`. `docs/specs/steady-movers.md`.
 
+**v2.3.3246: the roster's far players, slim.**
+- **The roster is built for each phone.** On a presence tick (the 1 Hz roster),
+  a v2 phone in the Wheel gets its own roster.
+- **Near players whole.** The players within 2,400 px of it in its zone are sent
+  whole, as before.
+- **Far players slim.** The far ones are sent `{x, y, d, z, vx, vy}`: the
+  fields the client writes whether or not they are present.
+- **A far player standing still waits.** One who has not changed since the last
+  roster is sent again only after 4 s (`ROSTER.FAR_STILL_MS`). That is still
+  inside the client's 10 s ghost sweep.
+- **Everyone else unchanged.** v1 phones, the other zones and a socket that has
+  not joined still get everyone whole.
+- **Deploy order.** No caps flag. The kill switch is `slimroster: false`.
+- `docs/specs/slim-roster.md`.
+
 **v2.3.3204: a steady walk on the safe ground is sent half as often.** The
 client's `move` cadence: on the Wheel's safe ground, not in a fight, against a
 worker advertising `caps.movediet`, a move on the line the last one drew waits
