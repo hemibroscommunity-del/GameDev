@@ -2469,6 +2469,20 @@ Two protocol versions coexist; both must keep working:
     dropped: the crowd cap on the wire (each phone sent only the movers among
     its nearest 65) -- no gain at 120-150, as steady movers keep a tick's
     movers near a phone at ~25-35: docs/specs/far-players.md "Once a second".
+  - v2.3.3244: THE OTHERS ARE TOLD WHAT THEY SEE, NOT YOUR BAG -- found by the
+    owner's "stress test to see what can be optimized" (`load.mjs --storm`:
+    every socket dropped at once, the way back measured): a joiner's
+    `state_sync` gave every other player as `{...playerState, name,
+    ...session.data}` -- coins, bag, every stash, quests, life skills, buffs,
+    the anti-cheat's histories -- and `player_join` told everyone the join's
+    `rpg*` claims; no phone read them, and in No man's land the bag is the
+    killer's prize. Both now carry the PUBLIC keys only (index.js
+    `PEER_PUBLIC_KEYS` / `_peerPublic`: the look relay's keys, the join's look,
+    a tick's fields), an allowlist (TRAPS §174); precedence as before. A played
+    character with a real look: 4,595 -> 948 bytes; the storm at 120: a join's
+    snapshot 142 -> 8 KB, a join's p95 611 -> 240 ms. No caps flag (a phone
+    reads a subset). `peer-view` suite (every key a phone reads on the
+    snapshot road held to the list), gearprov §8: docs/specs/peer-view.md.
   - v2.3.3245: A FIGHT'S EVENTS GO TO THE PHONES NEAR IT -- the split plan's
     Phase 0d, found by the owner's "stress test to see what can be optimized"
     once the bots sent the swings and arrows a phone relays (`load.mjs

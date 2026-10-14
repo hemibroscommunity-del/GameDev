@@ -330,6 +330,7 @@ node tools/qa/load/load.mjs --move-ms 66              # every bot moves every 66
 node tools/qa/load/tickmix.mjs 'ws://127.0.0.1:PORT/ws?room=loadtest&rf=1' 25   # beside a run: what one phone is sent, by part
 node tools/qa/load/load.mjs --town-move-ms 66         # only the town walkers move every 66 ms (v2.3.3203)
 node tools/qa/load/load.mjs --worker-log /tmp/w.log   # keep the worker's whole log (console.log of a copy)
+node tools/qa/load/load.mjs --steps 120 --storm         # then every socket dropped at once: the way back (v2.3.3244)
 
 # where the real runtime's thread goes, during a long hold (v2.3.3203)
 node tools/qa/load/load.mjs --steps 150 --hold 120 --inspector-port 9230 &
@@ -363,6 +364,12 @@ node --cpu-prof --cpu-prof-dir=/tmp/prof tools/qa/load/load-wheel.mjs 100
 - `--move-ms N` (v2.3.3199): a bot's move every N ms instead of a phone's 33;
 - `--seen-r N` (v2.3.3199): "others' moves seen" counts senders within N px
   (2,400 by default, the worker's near circle);
+- `--storm` (v2.3.3244): after the last step, every bot drops its socket at
+  once and comes back after 1-3 s, as a phone does after a blip: how long until
+  everyone is back in the Wheel, each join's time and snapshot size, and the
+  room's thread each second (`--storm-max N`, 90 s, how long it is watched).
+  The bots have no stored record, so this is a warm room, not a deploy's cold
+  one: docs/specs/peer-view.md;
 - `--relays` (v2.3.3245): with each blow, a fighter also sends what a phone
   tells the others about it: its swing (`player_swing`) or, for half of them,
   its arrow (`player_projectile`). The room relays these to every phone
