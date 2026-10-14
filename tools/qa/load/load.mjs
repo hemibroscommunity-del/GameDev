@@ -14,7 +14,7 @@
  *        [--no-deflate] [--move-ms 33] [--town-move-ms 66] [--diet] [--seen-r 2400] [--pres]
  *        [--inspector-port 9230] [--worker-log <file>] [--walk-r 400] [--track]
  *        [--keep-bundle <dir>] [--tick-parts]
- *        [--storm] [--storm-max 90]
+ *        [--storm] [--storm-max 90] [--relays] [--events]
  *
  * What it does:
  *   1. copies server/ to a temporary folder and raises MAX_PLAYERS there
@@ -83,6 +83,8 @@ const OPT = {
   townMoveMs: +arg('town-move-ms', 0),     /* v2.3.3203: the town walkers' (not the fighters') move every N ms */
   diet: process.argv.includes('--diet'),     /* v2.3.3204: the walkers keep a steady walk's moves back as a phone on the safe ground does (src/game/moveDiet.js) */
   track: process.argv.includes('--track'),   /* v2.3.3240: every bot sends a phone's 2 s look (bots.mjs TRACK_MS), relayed by the worker to everyone */
+  relays: process.argv.includes('--relays'), /* v2.3.3245: the fighters send a phone's swing / arrow relay with each blow (bots.mjs) */
+  events: process.argv.includes('--events'), /* v2.3.3245: what the probes' ticks carry in `events`, by type (bots.mjs countEvents) */
   pres: process.argv.includes('--pres'),     /* v2.3.3250: every bot joins with pres: 2 and never opens its world map (presence v2, docs/specs/presence-v2.md) */
   seenR: +arg('seen-r', 0),               /* v2.3.3199: "others' moves seen" counts senders this near (0: 2,400) */
   walkR: +arg('walk-r', 0),               /* v2.3.3240: the town walkers' circle (0: bots.mjs WALK_R, 1,400); smaller packs them in */
@@ -254,7 +256,7 @@ function startBots(url, wireUrl) {
       env: OPT.tickParts ? Object.assign({}, process.env, { BT_TICK_PARTS: '1' }) : process.env });
     const g = { child, last: null, n: 0 };
     child.on('message', (m) => { if (m && m.type === 'report') { g.last = m.data; reports.push(m.data); } });
-    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, diet: OPT.diet, pres: OPT.pres, noDeflate: OPT.noDeflate, seenR: OPT.seenR, walkR: OPT.walkR, track: OPT.track } });
+    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, diet: OPT.diet, pres: OPT.pres, noDeflate: OPT.noDeflate, seenR: OPT.seenR, walkR: OPT.walkR, track: OPT.track, relays: OPT.relays, events: OPT.events } });
     groups.push(g);
   }
 }
@@ -304,6 +306,26 @@ function probeJoin(url) {
     ws.onmessage = (ev) => { if (typeof ev.data === 'string' && ev.data.startsWith('{"type":"state_sync"')) finish(Date.now() - t0); };
     ws.onerror = () => finish(null);
   });
+}
+
+/* v2.3.3245: --events: the events a probe was sent each second, in all and
+   by type (bots.mjs countEvents); a report is a second, so the probes'
+   seconds are the reports' probesIn summed */
+function eventsLine(rs) {
+  const tot = Object.create(null);
+  let probeSecs = 0;
+  for (const r of rs) {
+    probeSecs += r.probesIn || 0;
+    if (r.evTypes) for (const k in r.evTypes) {
+      const c = tot[k] || (tot[k] = [0, 0]);
+      c[0] += r.evTypes[k][0]; c[1] += r.evTypes[k][1];
+    }
+  }
+  if (!probeSecs) return null;
+  const all = Object.values(tot).reduce((a, c) => [a[0] + c[0], a[1] + c[1]], [0, 0]);
+  const types = Object.entries(tot).sort((a, b) => b[1][1] - a[1][1]).slice(0, 8)
+    .map(([k, c]) => `${k} ${r1(c[0] / probeSecs)}/s ${r1(c[1] / probeSecs / 1024)} KB/s`).join(', ');
+  return { perSec: r1(all[0] / probeSecs), kbps: r1(all[1] / probeSecs / 1024), types };
 }
 
 /* ── one step ─────────────────────────────────────────────────────────── */
@@ -375,6 +397,7 @@ function summarise(n, rs, whole, cpu, secs) {
     roomFull: sumStep('roomFull'),
     botCpuPct: r1(botCpu),
     botLoopP99: r1(Math.max(0, ...rs.map((r) => r.loopP99 || 0))),
+    events: OPT.events ? eventsLine(rs) : undefined,   /* v2.3.3245 */
   };
 }
 
@@ -525,6 +548,7 @@ async function main() {
     if (OPT.tickParts && s.tickParts) console.log(`        a tick is made of (--tick-parts, the probes): ${s.tickParts}`);
     console.log(`        each player is sent ${s.msgsPerPlayerPerSec} messages a second, ${s.ticksPerPlayerPerSec} ticks`);
     if (OPT.track) console.log(`        looks (--track): ${s.tracksPerSec} sent a second in all; each player is sent ${s.updatesPerPlayerPerSec} relays a second, ${s.updateKBpsPerPlayer} KB/s unzipped`);
+    if (s.events) console.log(`        a probe's ticks carry ${s.events.perSec} events a second, ${s.events.kbps} KB/s unzipped: ${s.events.types}`);
     await save();
     return s;
   };

@@ -18,7 +18,10 @@
  *     nearest monster every ~0.7 s with the client's own `monster_damage`
  *     (monsterCombat.js: no damage number, the worker rolls it); when it
  *     dies it waits for `player_respawned` and walks back in, as the
- *     client's applyLocalRespawn does.
+ *     client's applyLocalRespawn does;
+ *   - v2.3.3245: with --relays, each swing also sends what a phone tells the
+ *     others about it (`player_swing`, or an archer's `player_projectile`),
+ *     which the room relays to every phone.
  *
  * What it measures, reported to the conductor once a second:
  *   - bytes and messages received, by kind (tick / zone_state / other);
@@ -340,7 +343,19 @@ function step(bot) {
       bot.tx = near.m.x; bot.ty = near.m.y;
       if (near.d <= REACH_PX && now - bot.lastSwing >= SWING_MS) {
         bot.lastSwing = now + rand(0, 100);
-        if (send(bot, { type: 'monster_damage', payload: { monsterId: near.m.id, zone: 'wheel', element: null, slot: 'melee', special: false } })) M.swings++;
+        /* v2.3.3245: --relays: what a phone tells the others about each blow
+           (monsterCombat.js): the swing it draws for them, or the arrow it
+           looses for them -- relayed by the room to every phone (index.js's
+           default branch, the eventBuffer).  Half the fighters are archers. */
+        const archer = !!(CFG && CFG.relays) && (bot.k % 2) === 1;
+        if (CFG && CFG.relays) {
+          const ang = Math.round(Math.atan2(near.m.y - bot.y, near.m.x - bot.x) * 1000) / 1000;
+          const relay = archer
+            ? { type: 'player_projectile', payload: { id: bot.id, x: Math.round(bot.x), y: Math.round(bot.y), ang, isStaff: false, ts: Date.now(), life: 90 } }
+            : { type: 'player_swing', payload: { id: bot.id, ts: Date.now(), wpn: 'sword', ang } };
+          if (send(bot, relay)) M.relays = (M.relays || 0) + 1;
+        }
+        if (send(bot, { type: 'monster_damage', payload: { monsterId: near.m.id, zone: 'wheel', element: null, slot: archer ? 'ranged' : 'melee', special: false } })) M.swings++;
       }
     }
   }
@@ -419,10 +434,22 @@ function countTickParts(d) {
   }
   tp._ticks = (tp._ticks || 0) + 1;
 }
+/* v2.3.3245: --events (load.mjs): what the probes' ticks carry in `events`,
+   by type -- how many, and their bytes as JSON (unzipped) */
+function countEvents(d) {
+  if (!Array.isArray(d.events)) return;
+  const t = M.evTypes || (M.evTypes = Object.create(null));
+  for (const e of d.events) {
+    const k = e && typeof e.type === 'string' ? e.type : '?';
+    const c = t[k] || (t[k] = [0, 0]);
+    c[0]++; c[1] += JSON.stringify(e).length;
+  }
+}
 function probeTickObj(bot, d) {
   const now = performance.now();
   if (!d || typeof d !== 'object') return;
   if (TICK_PARTS) countTickParts(d);
+  if (CFG && CFG.events) countEvents(d);
   if (typeof d.ts === 'number') push(M.deliver, Date.now() - d.ts);
   if (typeof d.seq === 'number' && typeof d.ts === 'number') {
     if (bot.firstSeq === null) bot.firstSeq = [d.seq, d.ts];
@@ -475,6 +502,7 @@ function report() {
   for (const b of bots) states[b.state] = (states[b.state] || 0) + 1;
   const out = Object.assign(M, {
     bots: bots.length, states,
+    probesIn: bots.filter((b) => b.probe && b.state === 'walking').length,   /* v2.3.3245: --events' per-probe rate */
     cpuPct: ((cpu.user + cpu.system) / 1000 / wall) * 100,
     loopP99: loopDelay.percentile(99) / 1e6,
     loopMax: loopDelay.max / 1e6,

@@ -6207,6 +6207,33 @@ breakage. The owner never saw it because they hold the phone upright.
   `100dvh` with `100vh` before it, as the modal's own height falls back. Never
   from `vw`, which says nothing about how tall the screen is.
 
+## 176. "An event that happens at a place can go to the phones near it" (v2.3.3245)
+
+Most of them can: a swing, an arrow, a hit on a monster, a monster's slam.
+A phone far away has nothing to draw them on, and the bytes and the room's
+compressing grow with the square of the crowd (`docs/specs/events-by-place.md`).
+But some events tell a phone something it KEEPS until the next one, and nothing
+else on the wire tells it again. Sending those by place makes a phone that was
+far away draw the world wrong when it walks up:
+
+- `monster_kill` -- a phone in the Wheel keeps a copy of every monster, and
+  the tick tells it only about the ones near it, so a kill is its only news of
+  a far death.  A monster that comes back into reach still dead is read as a
+  kill on the spot (`wsClient.js`, the tick's alive -> dead edge): a remnant
+  pile that never goes away, and a death sound.
+- `player_shield` -- the shield stays up, or down, until the next toggle.
+- `monster_transform` -- the mummy that became a skeleton is on no other wire.
+- `campfire_lit` -- sent once, and the fire lasts 45 s.
+- `loot_drop` / `loot_claimed` / `loot_despawn` -- a pile lies there until it
+  is taken; one a phone missed is invisible, and one whose despawn it missed is
+  drawn forever.
+
+**The rule.** Before placing an event type, read its client handler for state
+that outlives the moment (a flag with no timeout, a list, a field the tick
+does not resend), and keep that type room-wide.  `server/src/eventplace.js` is an
+ALLOWLIST for this reason: a new type goes to everyone until someone has done
+that reading and placed it.
+
 ## 178. "Stop sending a far player, and the phone just keeps their last copy" (v2.3.3250)
 
 It does keep it -- that is the trap. Presence v2 (`docs/specs/presence-v2.md`)

@@ -189,7 +189,9 @@ The tick no longer carries the whole room. Per receiving session:
   the client's ghost-sweep deletes any peer silent for 10 s and counts the
   survivors for "N online".
 - `events` — **unchanged, room-wide.** They are 1% of egress and mix zone-local
-  combat with social relays; do not scope them.
+  combat with social relays; do not scope them. *(Superseded by v2.3.3245,
+  below: the fights' events are placed by an allowlist; the social relays are
+  still room-wide.)*
 
 The v1/v2 split is unchanged *within* a zone. No caps flag — nothing new is
 claimed, so it is deploy-order safe both ways. Full detail and the measurements:
@@ -399,6 +401,33 @@ reads off a peer — `sa` → `shirtArtFront`, `hr` → `hair` — add the pair 
 feeds the `state_sync` snapshot, `player_join`, both self-heal placeholders
 and the `player_update` relay; before it existed the relay wrote the SHORT
 keys onto peers and every renamed cosmetic was frozen at its join value.
+
+**v2.3.3245: a fight's events go to the phones near it.** The events a tick
+carries are now chosen per phone from an ALLOWLIST of the ones that happen at a
+place (`server/src/eventplace.js`): monsters' hits, attacks, special moves,
+thrown balls, fire patches, parries, bow blasts, element bursts, a bash's
+wind-up, and the relays `player_swing`, `player_projectile`, `player_dodge`,
+`player_jump`, `gather_node`, `monster_dmg_at`, `player_hurt_by_monster`.
+
+- **Where it is.** The place comes from the room's own state: the monster
+  where it is now, the fields the room wrote, and for a relay the sender as the
+  room has them (never the payload).
+- **Who gets one:**
+  - the players it is about (attacker, target, sender), wherever they are;
+  - in the Wheel, a v2 phone within 2,800 px of it (`EVENT_PLACE.R`, the
+    monsters' `INTEREST_OUT`);
+  - anywhere else, the phones in its zone (and a v1 phone in the Wheel the
+    whole Wheel).
+- **Still room-wide:** everything else -- chat, emotes, trades, duels, clans,
+  the arena, the jackpot, hits between players, and the events a phone keeps
+  until the next one: kills (a far monster's only news of its death), loot, a
+  raised shield, a mummy's change, a lit campfire. And any new type. A phone with no zone yet still hears everything.
+- **On the wire:** an event's bytes are unchanged, and a phone near all of a
+  tick's events gets the same `events` it got before. No caps flag.
+- **Kill switch:** `eventplace: false`.
+
+At 120 players with real swings and arrows it cut a phone's events from about
+50 to 16 a second. `docs/specs/events-by-place.md`.
 
 ## Peer-relayed broadcast events (client ↔ client)
 

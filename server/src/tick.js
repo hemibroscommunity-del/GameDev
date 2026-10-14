@@ -17,6 +17,7 @@
 
 import { WHEEL_ZONE } from './wheelzone.js';   /* v2.3.2978: the Wheel's monsters go out by interest */
 import { armourGradeWire } from './gearprov.js';   /* v2.3.3142: the worn armour's grade, seen by others */
+import { eventHeardBy } from './eventplace.js';   /* v2.3.3245: events by place */
 import { PRESENCE2 } from './presence2.js';   /* v2.3.3250: far players only while your world map is open */
 
 /* v2.3.2062: server ticks between regen passes. Exported because the Mana
@@ -675,16 +676,24 @@ export const tickMethods = {
          always goes through, so a single oversized entry can never wedge
          the queue behind it. */
       let events = null;
+      /* v2.3.3245: the strings measured here are each event's JSON for the
+         tick's messages too (eventsPart below) */
+      let eventJson = null;
       if (hasEvents) {
         const cap = Math.min(this.eventBuffer.length, this.EVENTS_PER_TICK_CAP);
         let take = 0, bytes = 0;
+        eventJson = [];
         while (take < cap) {
-          const b = JSON.stringify(this.eventBuffer[take]).length;
-          if (take > 0 && bytes + b > this.EVENT_BYTES_PER_TICK) break;
-          bytes += b; take++;
+          const j = JSON.stringify(this.eventBuffer[take]);
+          if (take > 0 && bytes + j.length > this.EVENT_BYTES_PER_TICK) break;
+          bytes += j.length; eventJson.push(j); take++;
         }
         events = this.eventBuffer.splice(0, take);
       }
+      /* v2.3.3245: where each event happened (eventplace.js), or null when
+         none of this tick's has a place -- then every phone is sent every
+         event, exactly as before */
+      const places = events ? this._eventPlaces(events) : null;
 
       /* ═══ v2.3.1981: A MUTED LINE IS NEVER SENT ═══
          Room chat and emotes are the one relay family that is deliberately
@@ -783,7 +792,8 @@ export const tickMethods = {
          everywhere else, which is the unchanged shared path. */
       /* v2.3.3197: `plan` -- playersPlanFor's answer for a v2 session in the
          Wheel (never on a presence tick); null is the zone's list, as before */
-      const buildFor = (zone, pv, muted, interest, plan) => {
+      /* v2.3.3245: `sel` -- the events this phone is sent (eventsFor below) */
+      const buildFor = (zone, pv, muted, interest, plan, sel) => {
         const d = { type: 'tick', seq, ts };
         let any = false;
 
@@ -810,9 +820,10 @@ export const tickMethods = {
              (MUTABLE_RELAY_TYPES, chatmod.js).  An empty result leaves
              `any` alone, so a tick whose only content was a muted line
              produces no frame at all rather than an empty one. */
+          const list = sel.idx ? sel.idx.map((i) => events[i]) : events;
           const ev = muted
-            ? events.filter((e) => { const sp = this._chatModSpeakerOf(e); return !(sp && muted.has(sp)); })
-            : events;
+            ? list.filter((e) => { const sp = this._chatModSpeakerOf(e); return !(sp && muted.has(sp)); })
+            : list;
           if (ev.length) { d.events = ev; any = true; }
         }
 
@@ -965,15 +976,49 @@ export const tickMethods = {
         if (plan.far) farListJson = out;
         return out;
       };
-      const eventsPart = (muteKey, muted) => {
+      /* v2.3.3245: a phone's events put together from each event's JSON,
+         made once a tick where the batch was measured (above) -- the bytes
+         JSON.stringify gives the list (an event is a plain object), whichever
+         events it is sent */
+      const eventsPart = (muteKey, muted, sel) => {
         if (!events) return null;
-        if (eventsByMuteJson.has(muteKey)) return eventsByMuteJson.get(muteKey);
-        const ev = muted
-          ? events.filter((e) => { const sp = this._chatModSpeakerOf(e); return !(sp && muted.has(sp)); })
-          : events;
-        const out = ev.length ? JSON.stringify(ev) : null;
-        eventsByMuteJson.set(muteKey, out);
+        const k = sel.sig + muteKey;
+        if (eventsByMuteJson.has(k)) return eventsByMuteJson.get(k);
+        const parts = [];
+        const n = sel.idx ? sel.idx.length : events.length;
+        for (let a = 0; a < n; a++) {
+          const i = sel.idx ? sel.idx[a] : a;
+          if (muted) { const sp = this._chatModSpeakerOf(events[i]); if (sp && muted.has(sp)) continue; }
+          parts.push(eventJson[i]);
+        }
+        const out = parts.length ? '[' + parts.join(',') + ']' : null;
+        eventsByMuteJson.set(k, out);
         return out;
+      };
+      /* ═══ v2.3.3245: THE EVENTS A PHONE IS SENT (eventplace.js) ═══
+         Every event without a place, and each placed one this phone hears
+         (eventHeardBy: the players it is about, else the phone's zone, and in
+         the Wheel its surroundings when `near`).  The same answer object for
+         every phone that hears the same events, so the shared parts stay
+         shared: `sig` goes into the message's cache key, '' when the phone is
+         sent them all (every tick with no placed event) -- the key it had
+         before.  `sig` is '#' and the indices, so it never runs into the zone
+         before it or the mute key ('|m:...') after it. */
+      const ALL_EVENTS = { sig: '', idx: null };
+      const selByIdx = new Map();
+      const eventsFor = (sid, ps, near) => {
+        if (!places) return ALL_EVENTS;
+        let idx = null;
+        for (let i = 0; i < events.length; i++) {
+          const pl = places[i];
+          if (!pl || eventHeardBy(pl, sid, ps, near)) { if (idx) idx.push(i); }
+          else if (!idx) { idx = []; for (let j = 0; j < i; j++) idx.push(j); }
+        }
+        if (!idx) return ALL_EVENTS;
+        const k = idx.join(',');
+        let sel = selByIdx.get(k);
+        if (!sel) { sel = { sig: '#' + k, idx }; selByIdx.set(k, sel); }
+        return sel;
       };
       const monstersPart = (zone, pv, interest) => {
         if (!(this.dirtyMonsters.has(zone) || (interest && interest.entered.size > 0))) return null;
@@ -1029,9 +1074,9 @@ export const tickMethods = {
         nodesSharedJson.set(k, out);
         return out;
       };
-      const buildShared = (zone, pv, muteKey, muted, interest, plan) => {
+      const buildShared = (zone, pv, muteKey, muted, interest, plan, sel) => {
         const p = plan ? planPart(plan) : playersPart(zone);
-        const e = eventsPart(muteKey, muted);
+        const e = eventsPart(muteKey, muted, sel);
         const mo = zone ? monstersPart(zone, pv, interest) : null;
         const no = zone ? nodesPart(zone, pv) : null;
         if (p === null && e === null && mo === null && no === null) return null;
@@ -1068,13 +1113,17 @@ export const tickMethods = {
            A muter's key names exactly the intersection, so two players who
            mute the same flooder still share ONE serialization. */
         const muteKey = chatSpeakers ? this._chatModMuteKey(s.id, chatSpeakers) : '';
-        let key = pv + '|' + zone + muteKey;
+        /* v2.3.3245: a v2 phone with a place in the Wheel hears the events
+           around it; any other the events of its zone (eventsFor above) */
+        const near = zone === WHEEL_ZONE && pv === 2 && !!ps && typeof ps.x === 'number' && typeof ps.y === 'number';
+        const sel = eventsFor(s.id, ps, near);
+        let key = pv + '|' + zone + sel.sig + muteKey;
         /* v2.3.2978: a v2 session in the Wheel hears its own part of it
            (wheelzone.js INTEREST_R), so it serialises on its own; leaving the
            Wheel forgets what it had heard, so a return re-sends all in reach */
         let interest = null;
         let plan = null;
-        if (zone === WHEEL_ZONE && pv === 2 && ps && typeof ps.x === 'number' && typeof ps.y === 'number') {
+        if (near) {
           interest = this._wheelInterest(s, ps, this.monsters[zone] || [], share ? wheelGrid() : null);
           plan = playersPlanFor(ps, s);   /* v2.3.3197: far players less often; v2.3.3250: + the session (presence v2) */
           key += '|' + s.id;
@@ -1082,10 +1131,10 @@ export const tickMethods = {
         let msg = groupCache.get(key);
         if (msg === undefined) {
           const muted = muteKey ? this._chatModMuteSet(s.id) : null;
-          msg = share ? buildShared(zone, pv, muteKey, muted, interest, plan) : buildFor(zone, pv, muted, interest, plan);
+          msg = share ? buildShared(zone, pv, muteKey, muted, interest, plan, sel) : buildFor(zone, pv, muted, interest, plan, sel);
           if (verify) {
             /* tests only (v2.3.3195): the message the old way, byte for byte */
-            const ref = buildFor(zone, pv, muted, interest, plan);
+            const ref = buildFor(zone, pv, muted, interest, plan, sel);
             verify.checked++;
             if (ref !== msg) { verify.mismatched++; if (!verify.first) verify.first = { zone, pv, ref, got: msg }; }
           }

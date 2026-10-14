@@ -363,13 +363,19 @@ node --cpu-prof --cpu-prof-dir=/tmp/prof tools/qa/load/load-wheel.mjs 100
   sends them plain text: what compressing costs the room;
 - `--move-ms N` (v2.3.3199): a bot's move every N ms instead of a phone's 33;
 - `--seen-r N` (v2.3.3199): "others' moves seen" counts senders within N px
-  (2,400 by default, the worker's near circle).
+  (2,400 by default, the worker's near circle);
 - `--storm` (v2.3.3244): after the last step, every bot drops its socket at
   once and comes back after 1-3 s, as a phone does after a blip: how long until
   everyone is back in the Wheel, each join's time and snapshot size, and the
   room's thread each second (`--storm-max N`, 90 s, how long it is watched).
   The bots have no stored record, so this is a warm room, not a deploy's cold
-  one: docs/specs/peer-view.md.
+  one: docs/specs/peer-view.md;
+- `--relays` (v2.3.3245): with each blow, a fighter also sends what a phone
+  tells the others about it: its swing (`player_swing`) or, for half of them,
+  its arrow (`player_projectile`). The room relays these to every phone
+  (before events by place), and without them the bots never showed it;
+- `--events` (v2.3.3245): what the probes' ticks carry in `events`, a second,
+  in all and by type (docs/specs/events-by-place.md).
 
 A step counts as broken when:
 - the others' moves arrive later than 1.5 s at p95; or

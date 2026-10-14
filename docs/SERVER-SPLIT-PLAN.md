@@ -272,6 +272,12 @@ These are needed by ANY split. Several help at today's 120.
   - Events should carry where they happened, and a phone should get those
     near it.
   - Truly global ones (world chat, clan wars) still go to everyone.
+  - *v2.3.3245, done:* the fights' events are placed by an allowlist
+    (`server/src/eventplace.js`). They go to the players they are about, and
+    to the phones within 2,800 px of them in the Wheel; everything else still
+    goes to everyone. At 120 players with real swings and arrows, each phone
+    gets about 16 events a second instead of 50
+    (`docs/specs/events-by-place.md`).
 - **0e. The join snapshot.** A joining phone is sent every player's full state
   (`getAllPlayerData`, `state_sync`). That is O(N) work for each join and
   about 1-2 MB at 1,000 players (*estimate*). Send only what the joiner's surroundings
