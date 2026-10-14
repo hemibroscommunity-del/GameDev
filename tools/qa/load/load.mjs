@@ -11,7 +11,7 @@
  *   node tools/qa/load/load.mjs [--steps 10,25,50] [--hold 20] [--settle 20]
  *        [--procs 3] [--fighters 0.3] [--cap 400] [--idle] [--pong N]
  *        [--server <a server/ folder>] [--observability] [--url ws://127.0.0.1:PORT]
- *        [--no-deflate] [--move-ms 33] [--town-move-ms 66] [--diet] [--seen-r 2400]
+ *        [--no-deflate] [--move-ms 33] [--town-move-ms 66] [--diet] [--seen-r 2400] [--pres]
  *        [--inspector-port 9230] [--worker-log <file>]
  *
  * What it does:
@@ -80,6 +80,7 @@ const OPT = {
   moveMs: +arg('move-ms', 0),             /* v2.3.3199: a walker's move every N ms (0: the phone's 33) */
   townMoveMs: +arg('town-move-ms', 0),     /* v2.3.3203: the town walkers' (not the fighters') move every N ms */
   diet: process.argv.includes('--diet'),     /* v2.3.3204: the walkers keep a steady walk's moves back as a phone on the safe ground does (src/game/moveDiet.js) */
+  pres: process.argv.includes('--pres'),     /* v2.3.3250: every bot joins with pres: 2 and never opens its world map (presence v2, docs/specs/presence-v2.md) */
   seenR: +arg('seen-r', 0),               /* v2.3.3199: "others' moves seen" counts senders this near (0: 2,400) */
   inspectorPort: +arg('inspector-port', 0),   /* v2.3.3203: the runtime's debugger port, for a CPU profile (cdpprof.mjs) */
   server: arg('server', null),             /* a server/ folder to test instead of this repo's own */
@@ -244,7 +245,7 @@ function startBots(url, wireUrl) {
     const child = fork(join(HERE, 'bots.mjs'), [], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
     const g = { child, last: null, n: 0 };
     child.on('message', (m) => { if (m && m.type === 'report') { g.last = m.data; reports.push(m.data); } });
-    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, diet: OPT.diet, noDeflate: OPT.noDeflate, seenR: OPT.seenR } });
+    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, diet: OPT.diet, pres: OPT.pres, noDeflate: OPT.noDeflate, seenR: OPT.seenR } });
     groups.push(g);
   }
 }

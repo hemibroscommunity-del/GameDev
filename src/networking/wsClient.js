@@ -3072,6 +3072,9 @@ export function setupWebSocket(ctx) {
           case 'player_join':
             {
               var _msg$data, _msg$data2, _msg$data3, _msg$data4, _msg$data5, _msg$data6, _msg$data7, _msg$data8, _msg$data9, _msg$data0, _msg$data1, _msg$data10, _msg$data12;
+              /* v2.3.3250: already listed (presence v2's online list adds a
+                 player it never heard join, parked) -- counted once */
+              var _pjHad = Object.prototype.hasOwnProperty.call(S.others, msg.id);
               S.others[msg.id] = {
                 x: ((_msg$data = msg.data) === null || _msg$data === void 0 ? void 0 : _msg$data.x) || 0,
                 y: ((_msg$data2 = msg.data) === null || _msg$data2 === void 0 ? void 0 : _msg$data2.y) || 0,
@@ -3101,7 +3104,7 @@ export function setupWebSocket(ctx) {
                 setTimeout(function () {
                   return setJoinFlash(false);
                 }, 1500);
-                return prev + 1;
+                return _pjHad ? prev : prev + 1;
               });
               break;
             }

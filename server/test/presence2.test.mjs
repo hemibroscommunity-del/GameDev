@@ -208,9 +208,11 @@ check('0b the session took pres: 2 from its join (v2)', sessionOf(room, A).pres2
     keysOf(rb.pm) === SLIM_KEYS && ('ps' in rb) === ('ps' in rcb), { a: Object.keys(rb), c: Object.keys(rcb) });
   clearSent(A);
   await room.webSocketMessage(A.ws, JSON.stringify({ type: 'map_watch', on: true }));
-  for (let i = 0; i < 30; i++) { if (i % 3 === 0) walk(room, M, 20); step(room, tickFn, everyone); }
+  /* a roster's length and more: the far mover reaches it by the far send
+     (FAR_PLAYERS.EVERY_MS), or with the roster where that is 0 (#898) */
+  for (let i = 0; i < room.PRESENCE_REFRESH_TICKS + 5; i++) { if (i % 3 === 0) walk(room, M, 20); step(room, tickFn, everyone); }
   const aFar = ticksOf(A).filter((t) => t.players && 'pm' in t.players);
-  check('3e ...and the far send reaches it again while it watches', aFar.length > 0, aFar.length);
+  check('3e ...and the far mover reaches it again while it watches', aFar.length > 0, aFar.length);
 }
 
 /* ── 4. the watch ends ───────────────────────────────────────────────── */
@@ -375,7 +377,7 @@ check('0b the session took pres: 2 from its join (v2)', sessionOf(room, A).pres2
     /sendMapWatch\(S0, true\)/.test(wm) && /setInterval\(\(\) => sendMapWatch\(stateRef && stateRef\.current, true\), PRESENCE2_CLIENT\.MAP_HEARTBEAT_MS\)/.test(wm) && /sendMapWatch\(stateRef && stateRef\.current, false\)/.test(wm)
       && /if \(o\._away\) continue;/.test(wm));
   const mm = readFileSync(new URL('../../src/rendering/systems/wheelMinimap.js', import.meta.url), 'utf8');
-  check('9u ...nor does the minimap', /if \(o && !o\._away && \(o\.zone \|\| o\.z\) === S\.currentZone\) this\._mark\(o\.x, o\.y, 'player'/.test(mm));
+  check('9u ...nor does the minimap', /if \(o && !o\._away && \(o\.zone \|\| o\.z\) === S\.currentZone\)/.test(mm));
 }
 
 void ROSTER;

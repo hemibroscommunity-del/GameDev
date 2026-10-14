@@ -249,6 +249,15 @@ These are needed by ANY split. Several help at today's 120.
     sent every 4 s instead of every second (`docs/specs/slim-roster.md`). The
     rest needs a phone change: the phone has to stop sweeping away the far
     players it no longer hears from.
+  - *v2.3.3250, the rest (worker and phone).* A phone that joins with
+    `pres: 2` is sent, in the Wheel, the players near it and its party; far
+    players only while its world map is open (`map_watch`); and everyone's
+    id and zone every 30 s (`on`), which replaces its 10 s ghost sweep. A far
+    player's copy is parked out of sight, so it is never a ghost where they
+    were last seen. In-process, 20-25% less to each phone than the slim roster
+    at 120 players and 34-42% less at 500; merged with 0c's roster-only far
+    players (#898) the extra cut is small at 120 (1-10%) and 8-24% at 1,000
+    (`docs/specs/presence-v2.md`).
 - **0c. Far players at scale.** Four times a second, every phone is sent every
   player who moved anywhere in the Wheel (`FAR_PLAYERS`, #886). At 1,000 this
   becomes "the players on your minimap", as positions only.
