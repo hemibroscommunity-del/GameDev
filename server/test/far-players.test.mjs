@@ -21,7 +21,7 @@
  *   9. the two message builders agree byte for byte with far players about,
  *      ids that are array indexes included (they change JSON's key order).
  *
- * v2.3.3223: EVERY is 0 -- no far send, the far players go
+ * v2.3.3243: EVERY is 0 -- no far send, the far players go
  * with the presence roster (about once a second).  Sections 2-9 run with
  * `far_ms: 250` in the live flags, which brings v2.3.3197's far send back
  * (EVERY below), so they check that lever; section 10 checks the default:
@@ -33,7 +33,7 @@
 import { GameRoom } from '../src/index.js';
 import { FAR_PLAYERS } from '../src/tick.js';
 
-/* v2.3.3223: the far send sections 2-9 check, brought back by `far_ms` */
+/* v2.3.3243: the far send sections 2-9 check, brought back by `far_ms` */
 const EVERY = 250;
 const FLAGS = { steadymovers: false, far_ms: EVERY };
 
@@ -341,7 +341,7 @@ step(room, tickFn, everyone);
   check('9d and ticks carried only the near ones', partial > 50, partial);
 }
 
-/* ── 10. v2.3.3223: by default the far players go with the roster ──────── */
+/* ── 10. v2.3.3243: by default the far players go with the roster ──────── */
 {
   const r2 = await makeRoom({ steadymovers: false });
   const room2 = r2.room, tick2 = r2.tickFn;

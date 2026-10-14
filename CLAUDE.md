@@ -2328,7 +2328,7 @@ Two protocol versions coexist; both must keep working:
     after a full GC, 44 MB at the most in use, against Cloudflare's 128 MB
     (`tools/qa/load/heapprobe.mjs`, the inspector's heap during a load test):
     docs/specs/cap-120.md.
-  - v2.3.3223: FAR PLAYERS ONCE A SECOND, WITH THE ROSTER -- found by the
+  - v2.3.3243: FAR PLAYERS ONCE A SECOND, WITH THE ROSTER -- found by the
     owner's "stress test to see what can be optimized": the far send
     (v2.3.3197) went to every phone in the Wheel four times a second with
     EVERY player who had moved, the near ones it already got each tick

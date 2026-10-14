@@ -51,7 +51,7 @@ import { ZONES } from '../data/zones.js';   /* v2.3.3039: the world's name (BroT
 import { questRoutePoint } from '../game/questRoute.js';          /* v2.3.3057: the quest's way, as the minimap's */
 import { wheelTownDoors } from '../game/wheelTownDoors.js';       /* v2.3.3057: the buildings, named */
 import { hasGatherTool } from '../data/lifeSkills.js';            /* v2.3.3057: faint where you have no tool */
-import { peerDotAt } from '../game/peerDot.js';                    /* v2.3.3223: a far player's dot glides between rosters */
+import { peerDotAt } from '../game/peerDot.js';                    /* v2.3.3243: a far player's dot glides between rosters */
 
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 /* v2.3.3057: 12 -> 28, so the town's buildings can be read by name */
@@ -406,7 +406,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   }
   const othersAt = [];
   if (z >= AT.others && S && S.others) {
-    /* v2.3.3223: where each is now -- a far one is sent about once a second
+    /* v2.3.3243: where each is now -- a far one is sent about once a second
        (src/game/peerDot.js) */
     const now = Date.now(), at = { x: 0, y: 0 };
     for (const id in S.others) {

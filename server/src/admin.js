@@ -144,7 +144,7 @@ export const adminMethods = {
           tickPace: this._tickPaceInfo(),
           /* v2.3.3203: how often a walker's update waited (steadymovers.js) */
           steadyMovers: this._steadyInfo(),
-          /* v2.3.3223: how often the far players go out on their own, ms;
+          /* v2.3.3243: how often the far players go out on their own, ms;
              0 is with the roster only (tick.js FAR_PLAYERS, `far_ms`) */
           farEveryMs: this._farEveryMs ? this._farEveryMs() : null,
           eventBufferLen: this.eventBuffer.length,

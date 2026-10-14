@@ -231,7 +231,7 @@ const E = [1, 0], N = [0, -1], S = [0, 1], W = [-1, 0], NE = [Math.SQRT1_2, -Mat
   check('2k. far_ms 250: a far watcher still gets them, every 250 ms or so', r.got.length >= 2000 / (FAR_MS + STEADY.MAX_MS + 30) && gaps.every((g) => g <= FAR_MS + STEADY.MAX_MS + 2 * 22 + 1), { n: r.got.length, max: Math.max(0, ...gaps) });
 }
 {
-  /* v2.3.3223: and by default with the presence roster alone (FAR_PLAYERS.EVERY_MS 0):
+  /* v2.3.3243: and by default with the presence roster alone (FAR_PLAYERS.EVERY_MS 0):
      the far watcher gets them on the roster's ticks and no others */
   const r = await walkScenario({}, [{ ms: 2000, dir: E }], { far: true });
   check('2m. by default a far watcher gets them with the roster only, about once a second', r.got.length >= 1 && r.got.length <= 2 && r.got.every((g) => g[2]), { n: r.got.length, roster: r.got.map((g) => g[2]) });
