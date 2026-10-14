@@ -1108,6 +1108,35 @@ remnant to migrate server-side, not a mode to preserve.
       to take; `caps.shieldwear`, kill switch `shieldwear: false`; the three
       no-man's-land mirror-audit checks run again (a merge had put them after
       the suite's process.exit): no-mans-land.md "The shield on your arm".
+    - since v2.3.3253 ATTACKING A PLAYER IS A CHOICE -- the owner: "I want
+      attacking other players to be intentional ... if a stray projectile hits
+      a player a one time window pops up ... attack, party, or ignore ...
+      Tapping on the player ... can still have the party and attack (with red
+      skull) options":
+      - a stray shot already hurt nobody (only your aim or duel is ever sent,
+        v2.3.1302/1306); the TAP aimed at once, so a tap meant for the monster
+        beside a player started a fight;
+      - now a small window asks, "Attack <name>?", with the red skull and a
+        tiny (i) (the badge's explainer): Attack aims (the old `nml` lock and
+        "TARGET"), Party sends the party invite, Ignore (or 10 s) lets it go;
+        it closes when they can no longer be fought (src/game/nmlAsk.js,
+        src/ui/mobile/NmlAskCard.jsx);
+      - raised by a tap on a player you could fight and are not aiming at
+        (every time), and by one of YOUR shots passing through one -- once a
+        player, never over an open window (projectiles.js `_nmlStrayShot`, the
+        real hit test's capsule; the shot does them nothing);
+      - HITTING BACK stays one tap: the worker's `nml_skull` now carries `by`
+        (whiteBy), and a tap on the one who attacked you, with no red skull of
+        your own, aims at once;
+      - AT THE TOP, out of the thumbs' way: under the minimap (beside it when
+        there is room), under a party invite card (`data-party-invite`),
+        portalled to the body -- over the badge, its Attack sat where a left
+        thumb steers;
+      - in No man's land a fightable player under the finger beats the
+        self-chat circle (BroTown `nmlPlayerAtClient`): at a sword's reach a tap
+        on them opened your chat;
+      - `?nmlask=0` is the game as it was; `nomansland` §3-4, `mp-nmlask`,
+        `mp-nomansland` step 2: no-mans-land.md "Attacking is a choice".
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":

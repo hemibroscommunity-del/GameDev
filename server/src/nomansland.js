@@ -46,7 +46,8 @@
  *   at all), so logging out does not wait a skull out.  Stored in
  *   `nml_state:<pid>` (rule 2's registry) whenever one starts or ends and
  *   every SAVE_EVERY_MS while it runs, read back on join.  Others see it on
- *   the tick (`sk: 'r' | 'w'`), you on `nml_skull` {red, white} in ms left.
+ *   the tick (`sk: 'r' | 'w'`), you on `nml_skull` {red, white} in ms left
+ *   -- and since v2.3.3253 `by`, who gave you your white skull (_nmlSend).
  *
  * WHAT A DEATH COSTS (_nmlOnDeath, from _handlePlayerDeath):
  *   - killed by a player under No man's land's rule (the killing blow came
@@ -247,8 +248,18 @@ export const noMansLandMethods = {
     const s = ps && ps._nml;
     const ws = this._wsBySessionId && this._wsBySessionId(id);
     if (!ws) return;
+    const payload = { red: s ? Math.round(s.red) : 0, white: s ? Math.round(s.white) : 0 };
+    /* ═══ v2.3.3253: AND WHO GAVE YOU YOUR WHITE SKULL ═══
+       `by`, the whiteBy the retaliation rule above reads (_nmlOnHit), only
+       while a white skull runs.  The game uses it to tell hitting back from
+       attacking (src/game/nmlAsk.js nmlHitBack): a tap on the player who
+       attacked you aims at once, as hitting them back gives you no red skull,
+       while a tap on anyone else asks first ("Attack / Party / Ignore", the
+       owner's "I want attacking other players to be intentional").  An older
+       game ignores it, and a game against an older worker asks every time. */
+    if (s && s.white > 0 && typeof s.whiteBy === 'string') payload.by = s.whiteBy;
     try {
-      ws.send(JSON.stringify({ type: 'nml_skull', payload: { red: s ? Math.round(s.red) : 0, white: s ? Math.round(s.white) : 0 } }));
+      ws.send(JSON.stringify({ type: 'nml_skull', payload }));
     } catch (e) { /* the next send will carry it */ }
   },
 
