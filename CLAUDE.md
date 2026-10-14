@@ -2433,6 +2433,25 @@ Two protocol versions coexist; both must keep working:
     - look-relay.test.mjs (29, a 24,000-track property test against the
       phone's merge), clans.test 9.3c/d, mp-trackcapture (the sample),
       mp-crowdbots (BT_MAX_PLAYERS, the bots' looks): docs/specs/look-relay.md.
+  - v2.3.3242: THE STRESS TESTS' SERVER FIXES -- the owner's "stress test to
+    see what can be optimized" (docs/specs/stress-tests.md, the round's whole
+    report, server and phone):
+    - `reportToLeaderboard` reads its clock first: every `track` built the
+      Leaderboard stub, the whole chain-score series and a signature, to throw
+      them away inside the 5 minute floor (~100 us a track); the same reports
+      go at the same times (`anticheat` §7b);
+    - `_wheelInterest`, the room's biggest single function at 120 players
+      (145 ms a second): the distance first, the session's two sets used in
+      turn, `entered` only when something enters, the grid's answer for a
+      block of squares kept for the tick (`wheelGridNearKept`): 95 ms a
+      second, the same answer exactly (`tick-share` §5f against a copy of the
+      old code, four mutations caught);
+    - `load.mjs --keep-bundle <dir>` (a profile's lines, mapped to source) and
+      `--tick-parts` (a tick at 120 players is 95% the players' positions);
+    - then measured: the crowd cap on the wire (each phone sent only the
+      movers among its nearest 65 every tick) gave nothing at 120-150 --
+      steady movers keep a tick's movers near a phone at ~25-35 -- while far
+      players with the once-a-second roster gave ~5 points at 120 (#898).
   - v2.3.3245: A FIGHT'S EVENTS GO TO THE PHONES NEAR IT -- the split plan's
     Phase 0d, found by the owner's "stress test to see what can be optimized"
     once the bots sent the swings and arrows a phone relays (`load.mjs

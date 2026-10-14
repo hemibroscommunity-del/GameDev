@@ -416,6 +416,20 @@ function probeTick(bot, data) {
   try { d = JSON.parse(data); } catch { return; }
   probeTickObj(bot, d);
 }
+/* v2.3.3242: --tick-parts (load.mjs sets BT_TICK_PARTS): what a tick is made
+   of, by its top-level parts' JSON length, from the probes -- where the
+   phones' download goes (players, events, monsters, nodes) */
+const TICK_PARTS = process.env.BT_TICK_PARTS === '1';
+function countTickParts(d) {
+  const tp = M.tickParts || (M.tickParts = {});
+  for (const k in d) {
+    if (k === 'type' || k === 'seq' || k === 'ts') continue;
+    let n = 0;
+    try { n = JSON.stringify(d[k]).length; } catch { /* not countable */ }
+    tp[k] = (tp[k] || 0) + n;
+  }
+  tp._ticks = (tp._ticks || 0) + 1;
+}
 /* v2.3.3245: --events (load.mjs): what the probes' ticks carry in `events`,
    by type -- how many, and their bytes as JSON (unzipped) */
 function countEvents(d) {
@@ -430,6 +444,7 @@ function countEvents(d) {
 function probeTickObj(bot, d) {
   const now = performance.now();
   if (!d || typeof d !== 'object') return;
+  if (TICK_PARTS) countTickParts(d);
   if (CFG && CFG.events) countEvents(d);
   if (typeof d.ts === 'number') push(M.deliver, Date.now() - d.ts);
   if (typeof d.seq === 'number' && typeof d.ts === 'number') {
