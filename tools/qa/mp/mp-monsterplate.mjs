@@ -17,6 +17,7 @@
  */
 import * as H from './harness.mjs';
 import * as C from './_colour.mjs';
+import { join } from 'node:path';   /* v2.3.3251: the grey plate's picture */
 
 /* One of each shape the plate has to cope with: a sprite-bodied slime whose
    art is 96px tall over an 8px logical size, a plain procedural archetype,
@@ -147,29 +148,86 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the exact thresholds. */
   rec.ok('...and one at or below your level does not',
     !!cold && (cold.band === 'near' || cold.band === 'low'), { cold, playerLvl: seen.playerLvl });
+  /* ═══ v2.3.3251: THE SWEEP MOVES THE LEVEL THE PLATE READS ═══
+     Since v2.3.2680 the plate measures you by the trained skill of the weapon
+     in your hand (prog3SkillLevel of prog3ActiveCat), not the character level,
+     so raising S.rpg.level alone moved nothing and these three checks failed
+     on main -- the test, not the game (TRAPS §177).  Both are set now: the
+     skill for a worker with relative points, the level for one without. */
   const banded = await P.page.evaluate(async () => {
     const S = window._gameState.current;
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const before = (S.rpg || {}).level || 1;
-    /* Level 9 against the fixture's 1 / 7 / 42: -8 Low, -2 Low, +33 Danger.
-       Then 6, which puts the brute at +1 -- High -- so all four bands are
-       exercised against monsters that never moved. */
-    S.rpg.level = 9; await sleep(400);
-    const at9 = ((window.__btMonsterPlates || {}).plates || [])
-      .map((p) => ({ badge: p.badge, band: p.band }));
-    S.rpg.level = 6; await sleep(400);
-    const at6 = ((window.__btMonsterPlates || {}).plates || [])
-      .map((p) => ({ badge: p.badge, band: p.band }));
-    S.rpg.level = before; await sleep(300);
-    return { at9, at6 };
+    const slot = S.rpg && S.rpg.activeSlot;
+    const cat = slot === 'ranged' ? 'bow' : slot === 'staff' ? 'staff' : 'sword';
+    const sk = S.rpg && S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk[cat];
+    const skBefore = sk ? sk.level : null;
+    const setLv = (n) => { S.rpg.level = n; if (sk) sk.level = n; };
+    const read = () => ((window.__btMonsterPlates || {}).plates || [])
+      .map((p) => ({ badge: p.badge, band: p.band,
+        ring: p.soft ? p.soft.borderColor : null, ink: p.soft ? p.soft.levelInk : null,
+        grey: p.soft && p.soft.bands ? p.soft.bands.faded : null }));
+    /* Level 9 against the fixture's 1 / 7 / 42: -8 grey (reduced XP), -2 Low,
+       +33 Danger.  Then 6, which puts the brute at +1 -- High -- and the slime
+       exactly 5 under (grey); then 5, the slime 4 under: still Low, full XP. */
+    setLv(9); await sleep(400);
+    const at9 = read();
+    setLv(6); await sleep(400);
+    const at6 = read();
+    setLv(5); await sleep(400);
+    const at5 = read();
+    setLv(before); if (sk) sk.level = skBefore; await sleep(300);
+    return { at9, at6, at5, xpdecay: !!(S._serverCaps && S._serverCaps.xpdecay), prog3: !!sk };
   });
   const bandOf = (list, badge) => (list.find((x) => x.badge === badge) || {}).band;
-  rec.ok('a monster two or more levels UNDER you reads Low',
-    bandOf(banded.at9, '1') === 'low' && bandOf(banded.at9, '7') === 'low', banded.at9);
+  rec.ok('a monster two to four levels UNDER you reads Low',
+    bandOf(banded.at9, '7') === 'low' && bandOf(banded.at5, '1') === 'low', { at9: banded.at9, at5: banded.at5 });
   rec.ok('...one or two levels over reads High',
     bandOf(banded.at6, '7') === 'high', banded.at6);
   rec.ok('...and the band follows the PLAYER levelling, not only the monster',
     bandOf(banded.at9, '7') !== bandOf(banded.at6, '7'), banded);
+  /* ═══ v2.3.3251: GREY, A MONSTER THAT PAYS REDUCED XP ═══
+     The owner: "I like the idea of gray nameplate for reduced xp add that."
+     Five or more levels under the skill of the weapon in your hand the worker
+     pays a third of the XP and less past that (xpdecay.js), and the plate says
+     so in grey -- exactly from 5 under (Lv 1 at 6), never at 4 (Lv 1 at 5). */
+  rec.ok('the worker fades XP and the character has trained skills (guard)', banded.xpdecay && banded.prog3, banded);
+  rec.ok('a monster five or more levels under your weapon\'s skill reads GREY (reduced XP): 8 under and exactly 5',
+    bandOf(banded.at9, '1') === 'faded' && bandOf(banded.at6, '1') === 'faded', { at9: banded.at9, at6: banded.at6 });
+  const greyPlate = banded.at9.find((x) => x.badge === '1') || {};
+  rec.ok('...and its ring and level are painted in the grey itself',
+    greyPlate.grey != null && greyPlate.ring === greyPlate.grey
+      && parseInt(String(greyPlate.ink || '').replace('#', ''), 16) === greyPlate.grey, greyPlate);
+  /* the picture: Melee 9 against the slime (grey), the brute (Low) and the
+     snowman (Danger) -- tools/qa/mp/out/monsterplate-grey.png */
+  const clip = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const slot = S.rpg && S.rpg.activeSlot;
+    const sk = S.rpg && S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk[slot === 'ranged' ? 'bow' : slot === 'staff' ? 'staff' : 'sword'];
+    /* spread apart and down the screen, clear of the welcome card, for the
+       picture only -- put back below */
+    const was = (S.monsters || []).map((m) => [m, m.x, m.y]);
+    (S.monsters || []).forEach((m, i) => {
+      const x = S.player.x - 130 + i * 130, y = S.player.y + 170;
+      m.x = m.renderX = m.spawnX = m.targetX = x; m.y = m.renderY = m.spawnY = m.targetY = y;
+    });
+    window.__qaPlateSk = { sk, lv: sk ? sk.level : null, rl: S.rpg.level, was };
+    if (sk) sk.level = 9;
+    S.rpg.level = 9;
+    const cv = document.querySelector('canvas'), rc = cv.getBoundingClientRect();
+    const sy = rc.top + (S.player.y + 170 - S.camera.y) * (S._worldScaleY || 1);
+    return { x: 0, y: Math.max(0, Math.round(sy - 120)), width: Math.round(rc.width), height: 150 };
+  });
+  await P.page.waitForTimeout(700);
+  await P.page.screenshot({ path: join(H.REPO, 'tools/qa/mp/out/monsterplate-grey.png'), clip }).catch(() => {});
+  await P.page.evaluate(() => {
+    const S = window._gameState.current, k = window.__qaPlateSk;
+    if (!k) return;
+    if (k.sk) k.sk.level = k.lv;
+    S.rpg.level = k.rl;
+    for (const [m, x, y] of k.was) { m.x = m.renderX = m.spawnX = m.targetX = x; m.y = m.renderY = m.spawnY = m.targetY = y; }
+  });
+  await P.page.waitForTimeout(400);
 
   /* ═══════════════════════════════════════════════════════════════════
      v2.3.2530: THE SOFTENING, AND THE INFORMATION IT WAS NOT ALLOWED TO COST
@@ -300,8 +358,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
        The bands are read from the RENDERER (`soft.bands`), not restated here:
        a fixture that hard-coded the four colours would keep passing after
        someone changed them, which is the failure this is here to prevent. */
-    const bandNames = ['low', 'near', 'high', 'danger'];
-    rec.ok('the renderer reported all four band colours (guard)',
+    const bandNames = ['low', 'near', 'high', 'danger', 'faded'];   /* v2.3.3251: + the grey */
+    rec.ok('the renderer reported all five band colours (guard)',
       !!soft.bands && bandNames.every((b) => soft.bands[b] != null), soft.bands);
     if (soft.bands && bandNames.every((b) => soft.bands[b] != null)) {
       const DE_FLOOR = 12;
@@ -331,14 +389,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`yellow "Near" and orange "High" stay distinct rings `
         + `(worst ΔE00 ${nearHigh.toFixed(1)}, floor ${DE_FLOOR})`,
         nearHigh >= DE_FLOOR, { nearHigh, borderAlpha: soft.borderAlpha });
-      rec.ok(`...and so does every other pair of the four `
+      rec.ok(`...and so does every other pair of the five, the grey included `
         + `(worst ΔE00 ${worstDe.toFixed(1)} at ${worstPair}, floor ${DE_FLOOR})`,
         worstDe >= DE_FLOOR, { worstDe, worstPair, borderAlpha: soft.borderAlpha });
       /* The band colours are still four DIFFERENT values -- the cheap check
          that catches the crudest possible "softening", which is setting them
          all to one muted colour. */
-      rec.ok('...because the four bands are still four different colours',
-        new Set(bandNames.map((b) => soft.bands[b])).size === 4, soft.bands);
+      rec.ok('...because the five bands are still five different colours',
+        new Set(bandNames.map((b) => soft.bands[b])).size === 5, soft.bands);
     }
   }
 

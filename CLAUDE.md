@@ -901,9 +901,17 @@ remnant to migrate server-side, not a mode to preserve.
       - Skills -> the gather trio's "Full XP" / "Less XP" lines
         (skillsModel.js `skillXpFade`); the game's "+N Mining XP" is
         gameSystems.js `harvestXpFor`, held to the worker by mirror-audit;
+      - a monster that pays reduced XP wears a GREY NAME PLATE -- the owner:
+        "I like the idea of gray nameplate for reduced xp add that": a fifth
+        band before green Low (entityRenderer `PLATE_BAND.faded` #A7B0B5,
+        `plateBandFor`'s `fadeLevel`: the fade's own `xpDecayMult` < 1 against
+        the held weapon's skill, against a worker with `caps.xpdecay`); and
+        past the top resources and monsters everything pays less, the owner's
+        call ("I'll add more content");
       - `caps.tierxp` (off with `tierxp: false` or `nodehp: false`) and
         `caps.xpdecay` (kill switch `xpdecay: false`); `xp-decay` suite,
-        gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`:
+        gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
+        `mp-monsterplate` (whose band sweep now raises the weapon's skill):
         docs/specs/xp-decay.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes

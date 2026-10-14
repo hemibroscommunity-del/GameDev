@@ -151,8 +151,36 @@ Skills → Mining, Woodcutting or Fishing has two new lines:
 At Mining 11: "Full XP — Titanium Ore", "Less XP — Black Steel Ore 28% · Iron
 Ore 15% …". A harvest's "+N Mining XP" shows the faded number.
 
-A fight shows nothing new; the weapon's XP bar just fills more slowly against
-low monsters.
+### A grey name plate: this monster pays less (v2.3.3251)
+
+Offered "a grey name plate for monsters that pay less XP", the owner: *"I like
+the idea of gray nameplate for reduced xp add that."*
+
+A monster's plate already wore one of four colours, its level against the
+skill of the weapon in your hand: green Low (2 or more under), yellow Near,
+orange High, red Danger. Now a fifth comes first: **grey** when the monster is
+5 or more levels under that skill, the monsters that pay reduced XP. Its ring
+and its level are grey; green Low is now 2 to 4 under.
+
+| Monster's level against your weapon's skill | Plate |
+|---|---|
+| 5 or more under | **grey** (reduced XP) |
+| 2–4 under | green (Low) |
+| 1 under to even | yellow (Near) |
+| 1–2 over | orange (High) |
+| 3 or more over | red (Danger) |
+
+- The grey is `#A7B0B5` (`PLATE_BAND.faded` in
+  `src/rendering/systems/entityRenderer.js`). It reads at 8.3:1 against the
+  level's outline. Over every ground it is at least 25 colour-difference
+  units (ΔE00) from the other four colours; the floor is 12.
+- `plateBandFor` asks the fade itself (`xpDecayMult` < 1), measured by the
+  skill a hit's XP goes into. So the plate turns grey exactly where the XP
+  drops.
+- It only appears against a worker that fades XP (`caps.xpdecay`).
+- With the kill switch thrown, the grey goes too, at each player's next join.
+
+The weapon's XP bar also fills more slowly against these monsters.
 
 ## 8. Tests
 
@@ -176,6 +204,17 @@ low monsters.
 - `server/test/mirror-audit.test.mjs` "tier xp" / "xp fade": the game's tables,
   its fade bit for bit, and its whole "+N XP" prediction against the worker's
   pay, 16,200 cases under every switch.
+- `tools/qa/mp/mp-monsterplate.mjs` (63 checks):
+  - grey at 8 and at exactly 5 levels under the weapon's skill, and still green
+    Low at 4 under;
+  - the grey plate's ring and level painted in the grey;
+  - all five colours legible on the outline and at least ΔE00 12 apart over
+    every ground.
+
+  Its band sweep now raises the weapon's skill the plate reads. It raised the
+  character level, which the plate has not read since v2.3.2680, so three of
+  its checks failed on main: the test, not the game. Picture:
+  `tools/qa/mp/out/monsterplate-grey.png`.
 - `tools/qa/mp/mp-xpfade.mjs` on a 390 px phone, 31 checks:
   - the caps;
   - the Skills page at Mining 5 and 11;
@@ -188,8 +227,7 @@ low monsters.
 - **The two numbers:** a third at 5 below, then 15% less a level
   (`XP_DECAY.START` and `STEP`). A gentler fade would let the previous tier pay
   more than the new one; `gather-hits` §13 fails if it ever does.
-- **A grey name plate for monsters that pay less.** The plate's four colours
-  are your confirmed difficulty bands (D16), so it is left alone. A fifth, grey
-  "reduced XP" band for 5+ below is a small change if you want it.
-- **Past the top resources and monsters everything fades** (section 4). Higher
-  tiers are the fix, not a gentler fade.
+- ~~**A grey name plate for monsters that pay less.**~~ Answered: "I like the
+  idea of gray nameplate for reduced xp add that" (section 7).
+- ~~**Past the top resources and monsters everything fades.**~~ Answered: "Yes
+  everything should pay less I'll add more content" (section 4 stays as it is).
