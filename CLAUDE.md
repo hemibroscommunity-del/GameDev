@@ -457,6 +457,22 @@ remnant to migrate server-side, not a mode to preserve.
         handed to `sweepBlockPoint` / `attackBlocked`, and the staff, with no
         sight, asks `lowAimAlong`;
       - `mp-bowprops`: docs/specs/bow-at-props.md.
+    - since v2.3.3230 A BUILDING YOU KEEP HITTING CATCHES FIRE -- the owner:
+      "add flame effects on the building after getting hit a while in the
+      location where the building is getting struck and make the flames grow
+      higher the closer it gets to falling apart. Keep the flames going as the
+      building in pieces": `src/rendering/buildingFire.js`, owned by
+      WheelObjects, fed each building's `hit`/`break`/`repair` and the new
+      `heal` (wheelBreak.js: a count forgotten after `HEAL_MS`, `?healms=`,
+      used to say nothing); hits within 40 px are one spot (5 at most), it
+      smoulders from 12% of its hits and catches at 25% there, a cluster of up
+      to ten of the CAMPFIRE'S OWN pixel flames a spot (campfireFx
+      `campfireAtlas()`: nothing loaded or made) climbing the wall as the
+      damage grows, sparks, smoke, coals, glow and soot; it sinks from 12 s
+      and is out at the heal; at the break nine shards fall burning, lie
+      charred (wheelShatter `burnt`) and burn on until the mending; each fire
+      rides what it burns on (depthSort `_ridesOn`), hidden off the screen;
+      `?nobuildingfire`; `mp-buildingfire`: docs/specs/building-fire.md.
   - Since v2.3.2996 a MONSTER'S HIT CARRIES ITS ELEMENT (the owner's snowflake,
     fire and air icons, and "slime for floral damage ... a brief held in place"):
     - a landed hit by a frost/flame/wind/flora monster chills (walk x0.55 for
