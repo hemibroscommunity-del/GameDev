@@ -6129,3 +6129,54 @@ server for Brotown and its commons, one per spoke, one per realm.  Measured
 work, and one world behind them. Area servers come behind the doors only when
 the one world server itself is full. Measure where a room's time goes, by
 kind of work, before choosing a split.
+
+## 173. "The bots do what a phone does on the wire" (v2.3.3240)
+
+`tools/qa/load/bots.mjs` says it, and for the messages it models it is true:
+the join, the zone change, moves at a phone's rate, pongs, swings. But a phone
+also sends `track` every 2 s: its whole look and stats, about 940 bytes. The
+worker relayed each one to every other player in the room as a message of its
+own. The bots never sent it.
+
+That is N(N-1)/2 sends a second, more messages than all the ticks at 120
+players, and every capacity number before v2.3.3240 left it out. "Smooth to
+about 145" was really about 105, and the cap of 120 went past it.
+
+**The rule.**
+
+- Before trusting a load test, list every message the client sends on a timer
+  (`setInterval`, the game loop's "every N s" slots in BroTown.jsx), not only
+  the ones a player triggers.
+- Check each against the bots. A message the server FANS OUT costs it
+  N times over, so a small one the bots skip can matter more than a big one
+  they model.
+- `--track` (a real phone's payload, `track-sample.json` from
+  `mp-trackcapture`) is the bots' now. `docs/specs/look-relay.md` has the before
+  and after.
+
+## 175. "The creator fits a phone, and a phone held sideways is the same phone" (v2.3.3216)
+
+**Plausible:** every creator scenario measures it at 390x844 or 390x664,
+and a control below the bottom of the screen is one scroll away.
+
+**Wrong:** on a touch screen the creator cannot scroll at all. That is
+`overflow:clip` (v2.3.2394), the cure for the focus shove of §64. And held
+sideways a phone is 300-430px tall. ENTER BRO TOWN sat at y 783 of a 390px
+screen, Back and Reset under it, and the trait picker's tile grid was a
+4-65px sliver. A new player holding the phone sideways could not make a
+character at all. iPads held sideways (1024x768, 1180x820) lost ENTER too.
+Two sideways scenarios (`landdash`, the sideways half of `goldrail`) had been
+failing at the creator on main for this reason, which read as their own
+breakage. The owner never saw it because they hold the phone upright.
+
+**The rule:**
+
+- A full-screen screen before the game is checked sideways as well as
+  upright. Every control must be on the screen, and a tap at its centre must
+  land on it (`elementFromPoint`, not a click by selector). Check at least
+  844x390, 667x375 and an iPad's 1024x768. `mp-cclandscape` does this for the
+  creator, on all nine trait tabs.
+- A size that must fit the height is taken from the height: `--cc-avh`,
+  `100dvh` with `100vh` before it, as the modal's own height falls back. Never
+  from `vw`, which says nothing about how tall the screen is.
+

@@ -819,6 +819,20 @@ remnant to migrate server-side, not a mode to preserve.
       one near you (nodeLabels.js `NAME_PLATE_ONLY`); trees and veins as
       before; `mp-nodelabels` samples every drawn spot: wheel-resources.md
       "No rod over the fish".
+    - since v2.3.3229 THE HIT LADDER -- the owner: "after the first level you
+      get a 10% chance of hitting 1 number higher ... the number 1 will
+      eventually get replaced by the 2 as more 10% chances get added with each
+      level": every hit of a harvest or a cook is a ten-sided die read down
+      from the skill level, `max(1, level - 9 + face)` (gathering.js
+      `gatherHitRoll`, `GATHER_HITS.LADDER` 10; it was an even 1..level) --
+      level 3 hits 1 eight times in ten, level 10 is as before, from 11 there
+      are no 1s; slower than before below 10, faster above; Skills -> Mining,
+      Woodcutting, Fishing and Cooking print "Each hit" and "At Lv N+1"
+      (lifeSkills.js `gatherHitOddsText`; the old timer's Benefit line only
+      when the worker rolls no hits); `caps.hitladder`, kill switch
+      `hitladder: false` (1..level again); test lever `/dev/lifeskill`
+      {skill | 'hits', level} and the test panel's level buttons; gather-hits
+      §11, mirror-audit "hit ladder", `mp-hitladder`: docs/specs/hit-ladder.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
@@ -2291,6 +2305,10 @@ Two protocol versions coexist; both must keep working:
   (owner directive, 2026-07-16 — no live players, CI speed wins) and
   run only via workflow_dispatch on demand. Primary platform is
   **iPhone Safari** — test touch controls, not just desktop.
+  And SIDEWAYS too (v2.3.3216): a touch screen cannot scroll the creator
+  (`overflow:clip`), and sideways a phone is 300-430px tall -- ENTER BRO
+  TOWN sat at y 783 of 390 until the creator became three columns there
+  (game.css, the v2.3.3216 block); `mp-cclandscape`, TRAPS §175.
   Two phone scenarios DO run on every PR, each an owner call: `playable`
   (mp-questline, v2.3.1729, client-ci.yml) and `memory-budget`
   (mp-membudget, v2.3.3101, memory.yml -- Conventions, "Memory is
@@ -2374,6 +2392,31 @@ Two protocol versions coexist; both must keep working:
     after a full GC, 44 MB at the most in use, against Cloudflare's 128 MB
     (`tools/qa/load/heapprobe.mjs`, the inspector's heap during a load test):
     docs/specs/cap-120.md.
+  - v2.3.3240: A LOOK IS RELAYED WHEN IT CHANGES -- found by the owner's
+    "stress test to see what can be optimized":
+    - every phone sends `track` (its whole look and stats, ~940 B) every 2 s,
+      and the worker relayed each to every other player as its own message:
+      N(N-1)/2 sends a second, more than all the ticks;
+    - the load test's bots never sent it (TRAPS §173), so "smooth to ~145"
+      was really ~105, and 120 was past it (25.8 ticks a second);
+    - server/src/lookrelay.js now relays only the keys that changed, and only
+      when one did:
+      - x/y/dir, HP (LAZY: rpgHp, rpgMaxHp) and the inspect card's counters
+        (LAZY_IN: rpgData's kills, svKills, goldEarned, playtime) ride along
+        only; any other change to rpgData relays it at once -- the phone draws
+        a peer's slung shield from rpgData.shield (the first cut held all of
+        rpgData back, and a shield could take a minute to show);
+      - hg/fr go in every relay that has them (wsClient sets a peer's build
+        from each one);
+      - a whole copy every minute;
+      - kill switch `lookdelta: false`; /dev/overview `lookRelay`;
+    - the clan clear carries hg/fr too and resets the relay (`_lookForget`);
+      it had been resetting a leaver's build on every screen;
+    - with real looks (`load.mjs --track`): 38.0 ticks at 120, 31.1 at 150 --
+      smooth to ~145 again;
+    - look-relay.test.mjs (29, a 24,000-track property test against the
+      phone's merge), clans.test 9.3c/d, mp-trackcapture (the sample),
+      mp-crowdbots (BT_MAX_PLAYERS, the bots' looks): docs/specs/look-relay.md.
 
 ## Conventions
 
