@@ -42,8 +42,8 @@ import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3
 import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
 import * as SRV_SALVAGE from '../src/salvage.js'; /* v2.3.3141 */
 import * as CLIENT_SALVAGE from '../../src/data/salvage.js'; /* v2.3.3141 */
-import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038 */
-import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl } from '../../src/data/lifeSkills.js'; /* v2.3.3038 */
+import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl, gatherHitRoll as srvGatherHitRoll } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038; gatherHitRoll v2.3.3229 */
+import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl, GATHER_HIT_LADDER as CLIENT_GATHER_HIT_LADDER, gatherHitOdds as clientGatherHitOdds, gatherHitOddsText as clientGatherHitOddsText } from '../../src/data/lifeSkills.js'; /* v2.3.3038; the hit ladder v2.3.3229 */
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
 import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES, ELEM_LOOK as CLIENT_ELEM_LOOK, ELEM_ICON_SRC as CLIENT_ELEM_ICON_SRC } from '../../src/game/elemHits.js'; /* v2.3.2996 */
 import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
@@ -1769,6 +1769,44 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('gather levels: black steel Mining 5, copper and iron 1, clownfish Fishing 5',
     clientGatherReqLvl('oreVein', 11) === 5 && clientGatherReqLvl('oreVein', 1) === 1 && clientGatherReqLvl('oreVein', 6) === 1
     && clientGatherReqLvl('fishSpot', 6) === 5);
+}
+
+// ── THE HIT LADDER: the odds the Skills panel prints are the dice the worker rolls ──
+// v2.3.3229.  Owner: "after the first level you get a 10% chance of hitting 1
+// number higher".  The worker rolls every hit (gathering.js gatherHitRoll); the
+// game plays the plan it is sent, and prints "Each hit: 1 (80%) · 2–3 (10%
+// each)" from its own copy (lifeSkills.js gatherHitOdds).  A drift is a
+// Skills panel promising odds the worker does not roll -- so every face of
+// both dice (the ladder, and the even 1..level the kill switch puts back) is
+// compared at every level 1-120 and at junk ones.
+{
+  check('hit ladder: the same die on both sides (GATHER_HITS.LADDER = GATHER_HIT_LADDER = 10)',
+    SRV_GATHER_HITS.LADDER === CLIENT_GATHER_HIT_LADDER && CLIENT_GATHER_HIT_LADDER === 10,
+    { srv: SRV_GATHER_HITS.LADDER, cli: CLIENT_GATHER_HIT_LADDER });
+  const workerOdds = (level, ladder) => {
+    const top = Math.max(1, Math.floor(Number(level) || 1));
+    const faces = ladder ? SRV_GATHER_HITS.LADDER : top;
+    const c = new Map();
+    for (let f = 0; f < faces; f++) { const d = srvGatherHitRoll(level, (f + 0.5) / faces, ladder); c.set(d, (c.get(d) || 0) + 1); }
+    return JSON.stringify([...c].sort((a, b) => a[0] - b[0]).map(([n, k]) => [n, (100 * k) / faces]));
+  };
+  const clientOdds = (level, ladder) => JSON.stringify(clientGatherHitOdds(level, ladder).map((o) => [o.n, o.pct]));
+  let bad = null;
+  for (const ladder of [true, false]) {
+    for (const level of [...Array.from({ length: 120 }, (_, i) => i + 1), 0, -3, 2.7, '7', null, undefined, 'x', '__proto__']) {
+      if (workerOdds(level, ladder) !== clientOdds(level, ladder)) { bad = { ladder, level, srv: workerOdds(level, ladder), cli: clientOdds(level, ladder) }; break; }
+    }
+    if (bad) break;
+  }
+  check('hit ladder: every face of both dice lands on the same hit, at every level', bad === null, bad);
+  /* the owner's own sentences, so a tidy-up of either side cannot quietly move them */
+  const words = [1, 2, 3, 8, 10, 11, 20].map((l) => clientGatherHitOddsText(l, true));
+  check('hit ladder: the Skills panel says it as the owner did (lvl 2: 10% of 2, else 1; lvl 11: no 1 left)',
+    JSON.stringify(words) === JSON.stringify(['Always 1', '1 (90%) · 2 (10%)', '1 (80%) · 2–3 (10% each)', '1 (30%) · 2–8 (10% each)',
+      '1–10 (10% each)', '2–11 (10% each)', '11–20 (10% each)']), words);
+  check('hit ladder: ...and the old dice as they were (the kill switch)',
+    clientGatherHitOddsText(3, false) === '1–3 (33.3% each)' && clientGatherHitOddsText(1, false) === 'Always 1',
+    [clientGatherHitOddsText(3, false), clientGatherHitOddsText(1, false)]);
 }
 
 // v2.3.3091: this block sat AFTER the process.exit below (a merge put it

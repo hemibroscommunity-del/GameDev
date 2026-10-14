@@ -12,7 +12,8 @@
  *        [--procs 3] [--fighters 0.3] [--cap 400] [--idle] [--pong N]
  *        [--server <a server/ folder>] [--observability] [--url ws://127.0.0.1:PORT]
  *        [--no-deflate] [--move-ms 33] [--town-move-ms 66] [--diet] [--seen-r 2400]
- *        [--inspector-port 9230] [--worker-log <file>] [--storm] [--storm-max 90]
+ *        [--inspector-port 9230] [--worker-log <file>] [--walk-r 400] [--track]
+ *        [--storm] [--storm-max 90]
  *
  * What it does:
  *   1. copies server/ to a temporary folder and raises MAX_PLAYERS there
@@ -80,7 +81,9 @@ const OPT = {
   moveMs: +arg('move-ms', 0),             /* v2.3.3199: a walker's move every N ms (0: the phone's 33) */
   townMoveMs: +arg('town-move-ms', 0),     /* v2.3.3203: the town walkers' (not the fighters') move every N ms */
   diet: process.argv.includes('--diet'),     /* v2.3.3204: the walkers keep a steady walk's moves back as a phone on the safe ground does (src/game/moveDiet.js) */
+  track: process.argv.includes('--track'),   /* v2.3.3240: every bot sends a phone's 2 s look (bots.mjs TRACK_MS), relayed by the worker to everyone */
   seenR: +arg('seen-r', 0),               /* v2.3.3199: "others' moves seen" counts senders this near (0: 2,400) */
+  walkR: +arg('walk-r', 0),               /* v2.3.3240: the town walkers' circle (0: bots.mjs WALK_R, 1,400); smaller packs them in */
   inspectorPort: +arg('inspector-port', 0),   /* v2.3.3203: the runtime's debugger port, for a CPU profile (cdpprof.mjs) */
   server: arg('server', null),             /* a server/ folder to test instead of this repo's own */
   workerLog: arg('worker-log', null),      /* v2.3.3203: write the worker's whole log here at the end */
@@ -246,7 +249,7 @@ function startBots(url, wireUrl) {
     const child = fork(join(HERE, 'bots.mjs'), [], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
     const g = { child, last: null, n: 0 };
     child.on('message', (m) => { if (m && m.type === 'report') { g.last = m.data; reports.push(m.data); } });
-    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, diet: OPT.diet, noDeflate: OPT.noDeflate, seenR: OPT.seenR } });
+    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, diet: OPT.diet, noDeflate: OPT.noDeflate, seenR: OPT.seenR, walkR: OPT.walkR, track: OPT.track } });
     groups.push(g);
   }
 }
@@ -339,6 +342,10 @@ function summarise(n, rs, whole, cpu, secs) {
     downTickKBps: r1(players ? sum('rxTickBytes') / secs / players / 1024 : 0),
     ticksPerPlayerPerSec: r1(players ? sum('rxTicks') / secs / players : 0),
     msgsPerPlayerPerSec: r1(players ? sum('rxMsgs') / secs / players : 0),
+    /* v2.3.3240: --track's relays, as each player receives them */
+    updatesPerPlayerPerSec: r1(players ? sum('rxUpdates') / secs / players : 0),
+    updateKBpsPerPlayer: r1(players ? sum('rxUpdateBytes') / secs / players / 1024 : 0),
+    tracksPerSec: r1(sum('tracks') / secs),
     roomOutMBps: r1(sum('rxBytes') / secs / 1048576),
     joinP50: r1(pct(allStep('joins'), 50)),
     joinP95: r1(pct(allStep('joins'), 95)),
@@ -482,6 +489,7 @@ async function main() {
     console.log(row(s) + (label === 'step' ? '' : '   <- ' + label) + (s.broken ? '   BROKEN: ' + s.broken : ''));
     console.log(`        probes: room answers HTTP in ${s.httpProbeP50} ms (max ${s.httpProbeMax}, unanswered ${s.httpProbeUnanswered}); a new player's first snapshot in ${s.newJoinP50} ms (max ${s.newJoinMax}, none ${s.newJoinUnanswered})`);
     console.log(`        each player is sent ${s.msgsPerPlayerPerSec} messages a second, ${s.ticksPerPlayerPerSec} ticks`);
+    if (OPT.track) console.log(`        looks (--track): ${s.tracksPerSec} sent a second in all; each player is sent ${s.updatesPerPlayerPerSec} relays a second, ${s.updateKBpsPerPlayer} KB/s unzipped`);
     await save();
     return s;
   };

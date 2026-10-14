@@ -241,6 +241,22 @@ Two properties make this safe and worth preserving:
   as a visual hint, **never** merged into player state. Position belongs to
   `move` alone, behind the 500 px/s anti-teleport cap.
 
+**v2.3.3240: the `player_update` relay carries what CHANGED, and only when
+something did** (`server/src/lookrelay.js`, `docs/specs/look-relay.md`).
+The phones merge it, writing only the keys it carries.
+
+- `x`/`y`/`dir`, the LAZY keys (`rpgHp`, `rpgMaxHp`) and the inspect card's
+  counters (LAZY_IN: `rpgData`'s `kills`, `svKills`, `goldEarned`, `playtime`)
+  never send a relay on their own; they ride along in one that goes.  Any
+  other change to `rpgData` relays it, whole, at once: the phone draws a
+  peer's slung shield from `rpgData.shield`.
+- `hg`/`fr` are in every relay that has them: the phone sets the build from
+  each relay unconditionally.
+- A whole copy goes every minute.
+- Any other `player_update` a server sends must carry the player's `hg`/`fr`
+  too (the clan clear does), or it resets their build on every screen.
+- Kill switch: `lookdelta: false`.
+
 Before v2.3.1465 the handler `Object.assign`-ed the raw blob into player state:
 one crafted `track` forged coins/power/level, minted a weapon past
 `_sanitizeWeapon`'s ceiling, and teleported the sender — all persisted by the

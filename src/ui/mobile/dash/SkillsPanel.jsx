@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { skillXpRequired } from '../../../data/items.js';
+import { gatherHitOddsText } from '../../../data/lifeSkills.js'; /* v2.3.3229: the hit ladder's odds */
 import { SKILL_GATHER, SKILL_CRAFT, SKILL_ROSTER, skillUnlocks, markSkillsSeen } from '../sheet/skillsModel.js';
 import { skillDetailBus } from '../sheet/skillDetailBus.js';
 import { panelVw } from '../playViewport.js'; /* v2.3.2173: the sheet's width, not the shell's */
@@ -65,6 +66,15 @@ export const SkillsPanel = () => {
     const xp = Math.floor(sk.xp || 0);
     const pct = Math.min(100, (xp / need) * 100);
     const un = skillUnlocks(sd, lvl);
+    /* v2.3.3229: THE HIT LADDER.  A harvest or a cook is a run of hits the
+       worker rolls (caps.gatherhits), each one a ten-sided die read down from
+       this skill's level -- so print what one hit can be now and at the next
+       level, the owner's "10% chance of hitting 1 number higher" per level.
+       The odds are the ones THIS worker rolls: the ladder's with
+       caps.hitladder, the even 1..level without it (an older worker, or the
+       kill switch). */
+    const hitsOn = !!(sd.hits && S && S._serverCaps && S._serverCaps.gatherhits);
+    const ladder = !!(S && S._serverCaps && S._serverCaps.hitladder);
     const row = (label, value) => (
       <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '4px 0', borderBottom: `1px solid ${COL.divider}`, minWidth: 0 }}>
         <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted }}>{label}</span>
@@ -101,10 +111,15 @@ export const SkillsPanel = () => {
         <div style={{ fontSize: 11, color: COL.text2, fontVariantNumeric: 'tabular-nums', marginBottom: 6 }}>
           {xp} / {need} XP · {Math.max(0, need - xp)} XP to Lv {lvl + 1}
         </div>
+        {hitsOn && <div data-hit-odds={lvl} style={{ display: 'contents' }}>
+          {row('Each hit', gatherHitOddsText(lvl, ladder))}
+          {row(`At Lv ${lvl + 1}`, gatherHitOddsText(lvl + 1, ladder))}
+        </div>}
         {un && un.current.length > 0 && row('Unlocked', un.current.join(', '))}
         {un && un.next && row('Next unlock', `${un.next.name} at Lv ${un.next.lvl}`)}
         {un && un.later && row('Later', `${un.later.name} at Lv ${un.later.lvl}`)}
         {sd.passive && row('Benefit', sd.passive(lvl))}
+        {sd.timerPassive && !hitsOn && row('Benefit', sd.timerPassive(lvl))}
         {sd.where && row('Found at', sd.where)}
         <div style={{ fontSize: 11.5, color: COL.text2, lineHeight: 1.4, paddingTop: 6 }}>
           {sd.earnHint}

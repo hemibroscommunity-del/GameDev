@@ -191,6 +191,7 @@ import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into
 import { aggroGridMethods } from './aggrogrid.js'; /* v2.3.3201: a monster looks for players near it, not through every one */
 import { tickPaceMethods } from './tickpace.js'; /* v2.3.3202: the world keeps its speed in a busy room */
 import { steadyMoversMethods } from './steadymovers.js'; /* v2.3.3203: a player walking steadily is sent less often */
+import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look relayed when it changes, not every 2 s */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
@@ -4987,7 +4988,10 @@ export class GameRoom {
               if (!TRACK_STATE_EXCLUDED.has(k)) _trackPs[k] = clean[k];
             }
           }
-          this.broadcastExcept(ws, { type: 'player_update', id: session.id, data: clean });
+          /* v2.3.3240: only what changed since this player's last relay,
+             and only when something did (lookrelay.js) -- every 2 s whole,
+             to every other player, was more messages than all the ticks */
+          this._lookRelay(ws, session, clean);
           this.reportToLeaderboard(session);
         }
         break;
@@ -6168,3 +6172,4 @@ Object.assign(GameRoom.prototype, shieldGemMethods); /* v2.3.3187 */
 Object.assign(GameRoom.prototype, aggroGridMethods); /* v2.3.3201 */
 Object.assign(GameRoom.prototype, tickPaceMethods); /* v2.3.3202 */
 Object.assign(GameRoom.prototype, steadyMoversMethods); /* v2.3.3203 */
+Object.assign(GameRoom.prototype, lookRelayMethods); /* v2.3.3240 */
