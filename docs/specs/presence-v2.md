@@ -115,6 +115,20 @@ and the room's time a tick the same or a little lower (1,000: 40-41 ms against
 longer grows with the far players at all, only with the crowd around it --
 the shape a 1,000-player world needs.
 
+On a real local worker (`tools/qa/load/load.mjs --steps 60,120,150 --hold 40
+--diet`, this branch's own server; the same build twice, its bots joining as
+old phones and then with `--pres`, alternating, two rounds; 2026-10-14):
+
+| players | bots as old phones | bots as presence-v2 phones, maps shut |
+|---|---|---|
+| 60 | 42.5-42.8% busy, 95-102 KB a second each | 38.8-39.3%, 77-88 |
+| 120 | 75-82%, 39.0-40.7 ticks a second, 165-181 KB, others' moves 58-68 ms at p95 | 76-80%, 40.4-41.3, 141-146 KB, 49-60 ms |
+| 150 | 92-93%, 34.4-34.6 ticks, 177-220 KB, 83-84 ms | 87-90%, 37.5-38.2 ticks, 162-171 KB, 66-72 ms |
+
+This branch still has the four-a-second far send, which presence v2 also
+spares a phone with its map shut; with #898 merged the room's share of the
+gain is smaller, as the in-process table says.
+
 ## What a player sees
 
 - **Near players and your party:** nothing changes.
