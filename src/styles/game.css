@@ -4287,6 +4287,148 @@ body:has(.bt-pcard) [data-coach]{display:none}
      The icon stays hidden here by the v2.3.2359 rule above; that is this
      class's own arithmetic, not the plate's. */
 }
+/* ═══ v2.3.3216: HELD SIDEWAYS, THE CREATOR IS THREE COLUMNS ═══
+   Owner: "yes make the other fix too" -- found while testing the Codex
+   button sideways (#900): on a phone held sideways the new-character screen
+   put ENTER BRO TOWN below the bottom of the screen, and on a touch screen it
+   cannot scroll (`overflow:clip`, v2.3.2394), so a new player holding the
+   phone sideways could not make a character at all.
+
+   MEASURED on main (y of each control's top; the screen ends at its height):
+                 ENTER   Back   Reset   trait tiles shown whole
+     844x390      783     833    706    0 of 9 (the grid 25px tall)
+     667x375      704     754    640    0 of 9 (10px)
+     932x430      783     833    706    0 of 9 (65px)
+     740x360      742     792    672    0 of 9 (4px)
+     1024x768     847     897    ok     all
+     1180x820     847     897    ok     all
+   The upright column -- logo, character, name plate, ENTER, Back -- is about
+   870px tall on a phone and 950 on a tablet, and sideways there are 300-410px
+   (a tablet 750-800).  And in the picker the tabs (146px) and the colour pad
+   (123) left the tile grid a sliver.
+
+   SO SIDEWAYS THE SAME MARKUP IS LAID OUT IN THREE COLUMNS:
+     the character -- the logo, him on his pedestal, ENTER BRO TOWN, Back and
+       the version line: the upright column without the plate;
+     the name plate -- the carved frame with the name, Randomize and Reset,
+       its width taken from the HEIGHT so the whole frame fits;
+     the trait picker -- its tabs a rail two wide down its left side, the
+       tiles, the colours and the drawing card beside it.
+   Nothing is hidden and nothing new is drawn: every control is the upright
+   one, sized to fit.
+
+   WHO GETS IT: a touch screen wider than tall and at most 1000px tall --
+   every phone sideways, and the tablets whose upright column does not fit.
+   A desktop window keeps its layout: with a mouse the modal is not clipped
+   (v2.3.2394), and most test scenarios start in a 1000x780 desktop window.
+   A 1366x1024 tablet fits upright and keeps that too. */
+@media (orientation:landscape) and (pointer:coarse) and (max-height:1000px){
+  .bt-name-modal{
+    /* The screen's height less the modal's padding.  dvh where the browser
+       has it (iOS 15.4+), vh before -- the order the modal's own height
+       falls back in; on iOS 14 vh can be taller than the screen by Safari's
+       bar, so everything below also has a width cap. */
+    --cc-vh:100vh;
+    --cc-avh:calc(var(--cc-vh) - max(10px,env(safe-area-inset-top,0px)) - max(10px,env(safe-area-inset-bottom,0px)));
+    --cc-avw:calc(100vw - max(10px,env(safe-area-inset-left,0px)) - max(10px,env(safe-area-inset-right,0px)));
+    /* the character's column.  150 at least: on the narrowest sideways phone
+       (568x320, the first iPhone SE) a wider floor left the picker's tiles a
+       40px column, under one tile. */
+    --cc-leftw:clamp(150px,calc(var(--cc-avw)*.28),300px);
+    /* The plate is 0.756 of its width in frame (the caps 0.376 + 0.18, the two
+       gaps 0.10 each) plus 178px of controls, so the widest that fits the
+       height is (height - 178) / 0.756, less 4px.  188 AT LEAST, measured:
+       the name well is 0.828 of the plate less its 4px of border, 9px of
+       padding and the reroll button's 54, and "Tap to name" is 86.2px at the
+       16px the field is pinned to (NameModal, iOS's zoom floor) -- whole from
+       a 186px plate.  At 188 "Randomize Bro" also keeps its 34px icon at its
+       full 16px (149px of row in 155.7). */
+    --cc-platew:clamp(188px,min(calc(var(--cc-avw)*.25),calc((var(--cc-avh) - 182px)*1.32)),250px);
+    /* the upright tile is 13vw, ~51px on a 390 phone; the same here, from the
+       height, so a row of three or four fits beside the tabs */
+    --cc-tile:clamp(46px,calc(var(--cc-avh)*.14),58px);
+    --cc-swatch:clamp(26px,calc(var(--cc-avh)*.085),34px);
+  }
+  @supports (height:100dvh){
+    .bt-name-modal{--cc-vh:100dvh}
+  }
+  .bt-cc-shell{max-width:1100px}
+
+  /* ── the character's column and the plate's, one grid ── */
+  .bt-name-box.bt-cc-box.bt-cc-col-left{
+    display:grid;flex:0 0 auto;width:auto;
+    grid-template-columns:var(--cc-leftw) var(--cc-platew);
+    grid-template-rows:auto minmax(0,1fr) auto auto auto;
+    grid-template-areas:"title plate" "stage plate" "play plate" "back plate" "ver plate";
+    column-gap:8px;row-gap:5px;
+  }
+  /* The 0.16 under the title is half the upright stage's slack going above
+     him (see .bt-cc-title); here the stage is in its own row and the logo is
+     a band over it, so the padding is only height taken from him. */
+  .bt-cc-col-left>.bt-cc-title{grid-area:title;padding-bottom:0}
+  .bt-cc-col-left .bt-cc-logo{width:min(calc(var(--cc-leftw)*.56),150px)}
+  .bt-name-box.bt-cc-box.bt-cc-col-left>.bt-cc-stage{
+    grid-area:stage;align-self:center;
+    /* his row, never more: the 2x is paint only (v2.3.1527), so the LAYOUT
+       box is what must fit */
+    max-height:min(var(--cc-leftw),34vh,100%);
+  }
+  .bt-cc-col-left>.bt-cc-cluster{
+    grid-area:plate;align-self:center;
+    --cc-plate:var(--cc-platew);
+    /* no bleed: the upright plate runs past its column into the screen's
+       edge and the 8px before the picker; here it has neighbours both sides */
+    margin:0;
+  }
+  /* While typing the plate sits at the top, so the name stays above the
+     keyboard (v2.3.1307's reservation pads this grid's bottom). */
+  .bt-name-box.bt-cc-box.bt-cc-col-left[data-kb]>.bt-cc-cluster{align-self:start}
+  /* The plate's label, crest and gap are 11.07 x its font, so the font that
+     fits the column is its width / 11.07; 0.085 leaves 6%.  18px from a
+     212px column, as upright. */
+  .bt-cc-col-left>.bt-cc-play{grid-area:play;font-size:clamp(12px,calc(var(--cc-leftw)*.085),18px)}
+  .bt-cc-col-left>.bt-cc-back{grid-area:back}
+  .bt-cc-col-left>div:last-child{grid-area:ver}
+
+  /* ── the picker: tabs down the left, everything else beside them ──
+     The options keep at least one whole row of tiles: an auto row is sized
+     before a flexible one, so on Shirt (a colour pad AND a drawing card) the
+     two of them took the whole height and the shirts themselves were a 3px
+     sliver, measured. */
+  .bt-cc-panel{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    grid-template-rows:auto minmax(calc(var(--cc-tile) + 8px),1fr) auto auto;
+    grid-template-areas:"title title" "tabs items" "tabs colors" "tabs card";
+    column-gap:8px;row-gap:7px;
+  }
+  .bt-cc-panel>.bt-cc-panel-title{grid-area:title}
+  .bt-cc-panel>.bt-cc-tabs{grid-area:tabs;align-self:start;grid-template-columns:repeat(2,52px)}
+  .bt-cc-panel>.bt-cc-scroll{grid-area:items}
+  .bt-cc-panel>.bt-cc-colors{grid-area:colors}
+  /* two rows of swatches showing, the rest a flick away (Skin has 25) */
+  .bt-cc-panel .bt-cc-colors-row{max-height:calc(var(--cc-swatch)*2 + 9px)}
+  /* The drawing card lies on its side, the picture beside its tools: stood
+     up it needs ~163px (a 60px picture over the palette and the brush row)
+     and there is not that much height left under the tiles and colours. */
+  .bt-cc-panel>.bt-cc-ink{grid-area:card;margin-top:0;flex-direction:row;min-height:0;max-height:none}
+  .bt-cc-panel>.bt-cc-ink>.bt-cc-ink-pane{width:auto;flex:1 1 0;min-width:56px;min-height:0}
+  .bt-cc-panel>.bt-cc-ink>.bt-cc-ink-tools{flex:0 0 62%;justify-content:center;border-top:0;border-left:1px solid rgba(20,30,34,.38)}
+}
+/* ...and on a narrower phone (667x375, the SE and the 6/7/8) the character's
+   column gives the picker 20px: at 0.28 the drawing card there was 126px wide
+   and clipped its third brush.  He is sized by the height there anyway (34vh),
+   so only the pedestal's edge goes a little further under the plate. */
+@media (orientation:landscape) and (pointer:coarse) and (max-height:1000px) and (max-width:759px){
+  .bt-name-modal{--cc-leftw:clamp(150px,calc(var(--cc-avw)*.25),300px)}
+}
+/* ...and on the shortest (568x320, or a phone with Safari's bar showing) the
+   five rows of tabs come down from 49px so they fit beside the options. */
+@media (orientation:landscape) and (pointer:coarse) and (max-height:350px){
+  .bt-cc-panel>.bt-cc-tabs{gap:3px}
+  .bt-cc-panel>.bt-cc-tabs>.bt-cc-tab{min-height:38px;gap:1px;padding-block:2px}
+  .bt-cc-panel>.bt-cc-tabs .bt-cc-tab-icon{width:20px;height:20px}
+}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
 .bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}
@@ -6333,6 +6475,12 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
    painted under everything (z-index -1), and nothing in it composited for good
    (no will-change): nothing drawn here can paint outside the frame or over the
    dashboard, on a phone whose compositor clips what this box holds or not. */
+/* v2.3.3215: the codex page's tab bar, pinned to the sheet's top while you
+   scroll (MonsterCodex.jsx Tabs): its own opaque ground, the tray's colour,
+   so the drop table passes UNDER it rather than through its buttons; sideways
+   the side sheet's (BottomDashboard's .bt-land-sheet, .96 of #0D161B) */
+.bt-cx-tabbar{background:var(--ui-dashboard-tray,#2E4754)}
+.bt-land-sheet .bt-cx-tabbar{background:#0D161B}
 .bt-cx-stage{position:relative;width:300px;max-width:100%;height:150px;margin:0 auto;overflow:hidden;border-radius:10px;
   background:linear-gradient(#0C161B,#05090B);border:1px solid rgba(229,237,233,.24);isolation:isolate}
 .bt-cx-stage::before{content:"";position:absolute;z-index:-1;left:0;right:0;bottom:0;height:var(--cx-ground,16px);background:var(--cx-land,#3a4a50);opacity:.3;pointer-events:none}

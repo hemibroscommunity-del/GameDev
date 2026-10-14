@@ -12,7 +12,9 @@
  *        [--procs 3] [--fighters 0.3] [--cap 400] [--idle] [--pong N]
  *        [--server <a server/ folder>] [--observability] [--url ws://127.0.0.1:PORT]
  *        [--no-deflate] [--move-ms 33] [--town-move-ms 66] [--diet] [--seen-r 2400]
- *        [--inspector-port 9230] [--worker-log <file>]
+ *        [--inspector-port 9230] [--worker-log <file>] [--walk-r 400] [--track]
+ *        [--keep-bundle <dir>] [--tick-parts]
+ *        [--storm] [--storm-max 90]
  *
  * What it does:
  *   1. copies server/ to a temporary folder and raises MAX_PLAYERS there
@@ -80,10 +82,16 @@ const OPT = {
   moveMs: +arg('move-ms', 0),             /* v2.3.3199: a walker's move every N ms (0: the phone's 33) */
   townMoveMs: +arg('town-move-ms', 0),     /* v2.3.3203: the town walkers' (not the fighters') move every N ms */
   diet: process.argv.includes('--diet'),     /* v2.3.3204: the walkers keep a steady walk's moves back as a phone on the safe ground does (src/game/moveDiet.js) */
+  track: process.argv.includes('--track'),   /* v2.3.3240: every bot sends a phone's 2 s look (bots.mjs TRACK_MS), relayed by the worker to everyone */
   seenR: +arg('seen-r', 0),               /* v2.3.3199: "others' moves seen" counts senders this near (0: 2,400) */
+  walkR: +arg('walk-r', 0),               /* v2.3.3240: the town walkers' circle (0: bots.mjs WALK_R, 1,400); smaller packs them in */
   inspectorPort: +arg('inspector-port', 0),   /* v2.3.3203: the runtime's debugger port, for a CPU profile (cdpprof.mjs) */
   server: arg('server', null),             /* a server/ folder to test instead of this repo's own */
   workerLog: arg('worker-log', null),      /* v2.3.3203: write the worker's whole log here at the end */
+  keepBundle: arg('keep-bundle', null),    /* v2.3.3242: copy the runtime's bundle (index.js + .map) here at the end, so a CPU profile's line numbers can be read (cdpprof.mjs) */
+  tickParts: process.argv.includes('--tick-parts'),   /* v2.3.3242: what a tick is made of (bots.mjs countTickParts, from the probes) */
+  storm: process.argv.includes('--storm'), /* v2.3.3244: after the last step, every socket dropped at once and the way back measured */
+  stormMax: +arg('storm-max', 90),           /* seconds the storm is watched at most */
   recoverTo: +arg('recover-to', 0.6),       /* share of the players kept after a break */
   recoverSettle: +arg('recover-settle', 20), /* seconds given to come back before measuring */
 };
@@ -241,10 +249,11 @@ const groups = [];
 let reports = [];
 function startBots(url, wireUrl) {
   for (let i = 0; i < OPT.procs; i++) {
-    const child = fork(join(HERE, 'bots.mjs'), [], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
+    const child = fork(join(HERE, 'bots.mjs'), [], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+      env: OPT.tickParts ? Object.assign({}, process.env, { BT_TICK_PARTS: '1' }) : process.env });
     const g = { child, last: null, n: 0 };
     child.on('message', (m) => { if (m && m.type === 'report') { g.last = m.data; reports.push(m.data); } });
-    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, diet: OPT.diet, noDeflate: OPT.noDeflate, seenR: OPT.seenR } });
+    child.send({ cmd: 'config', cfg: { url, wireUrl: i === 0 ? wireUrl : null, fighters: OPT.fighters, homes: HOMES, tag: String.fromCharCode(97 + i), idle: OPT.idle, pongHz: OPT.pongHz, moveGapMs: OPT.moveMs, townMoveMs: OPT.townMoveMs, diet: OPT.diet, noDeflate: OPT.noDeflate, seenR: OPT.seenR, walkR: OPT.walkR, track: OPT.track } });
     groups.push(g);
   }
 }
@@ -299,6 +308,18 @@ function probeJoin(url) {
 /* ── one step ─────────────────────────────────────────────────────────── */
 /* `rs` is the measured window; `whole` the step from its first join, so the
    joins and zone entries the step made are counted with it */
+/* v2.3.3242: --tick-parts: the probes' tick parts, summed, as shares and KB a
+   tick (bots.mjs countTickParts) */
+function tickPartsLine(rs) {
+  const tot = {};
+  for (const r of rs) if (r.tickParts) for (const k in r.tickParts) tot[k] = (tot[k] || 0) + r.tickParts[k];
+  const ticks = tot._ticks || 0;
+  delete tot._ticks;
+  const all = Object.values(tot).reduce((a, b) => a + b, 0);
+  if (!ticks || !all) return null;
+  return Object.entries(tot).sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `${k} ${Math.round((100 * v) / all)}% (${(v / ticks / 1024).toFixed(2)} KB)`).join(', ');
+}
 function summarise(n, rs, whole, cpu, secs) {
   const sum = (k) => rs.reduce((a, r) => a + (r[k] || 0), 0);
   const all = (k) => rs.flatMap((r) => r[k] || []);
@@ -335,8 +356,13 @@ function summarise(n, rs, whole, cpu, secs) {
     seenSamples: seen.length,
     downKBps: r1(players ? sum('rxBytes') / secs / players / 1024 : 0),
     downTickKBps: r1(players ? sum('rxTickBytes') / secs / players / 1024 : 0),
+    tickParts: tickPartsLine(rs),   /* v2.3.3242: --tick-parts */
     ticksPerPlayerPerSec: r1(players ? sum('rxTicks') / secs / players : 0),
     msgsPerPlayerPerSec: r1(players ? sum('rxMsgs') / secs / players : 0),
+    /* v2.3.3240: --track's relays, as each player receives them */
+    updatesPerPlayerPerSec: r1(players ? sum('rxUpdates') / secs / players : 0),
+    updateKBpsPerPlayer: r1(players ? sum('rxUpdateBytes') / secs / players / 1024 : 0),
+    tracksPerSec: r1(sum('tracks') / secs),
     roomOutMBps: r1(sum('rxBytes') / secs / 1048576),
     joinP50: r1(pct(allStep('joins'), 50)),
     joinP95: r1(pct(allStep('joins'), 95)),
@@ -368,7 +394,23 @@ async function cleanup() {
     try { process.kill(-worker.proc.pid, 'SIGKILL'); } catch { /* gone */ }
     try { await rm(worker.state, { recursive: true, force: true }); } catch { /* best effort */ }
   }
+  if (copy && OPT.keepBundle) await keepBundle(copy.dir, OPT.keepBundle);
   if (copy) { try { await rm(copy.dir, { recursive: true, force: true }); } catch { /* best effort */ } }
+}
+/* v2.3.3242: --keep-bundle <dir>.  A CPU profile of the room (cdpprof.mjs)
+   names lines of the BUNDLE wrangler built, which goes with the copy; keep it
+   (and its source map) to read them. */
+async function keepBundle(from, to) {
+  try {
+    const base = join(from, '.wrangler', 'tmp');
+    await mkdir(to, { recursive: true });
+    for (const d of await readdir(base)) {
+      for (const f of ['index.js', 'index.js.map']) {
+        try { await cp(join(base, d, f), join(to, f)); } catch { /* not in this one */ }
+      }
+    }
+    console.log('bundle kept in ' + to);
+  } catch (e) { console.log('--keep-bundle: ' + (e && e.message)); }
 }
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, async () => { await cleanup(); process.exit(130); });
 
@@ -399,6 +441,7 @@ async function main() {
   console.log(HEAD);
 
   const results = [];
+  let stormResult = null;   /* v2.3.3244: --storm */
   await mkdir(join(REPO, 'tools', 'qa', 'out', 'load'), { recursive: true });
   const stamp = startedAt.toISOString().replace(/[:.]/g, '-');
   const base = join(REPO, 'tools', 'qa', 'out', 'load', 'load-' + stamp);
@@ -410,6 +453,7 @@ async function main() {
       machine: { cores: cpus().length, model: cpus()[0].model.trim() },
       serverCap: copy ? { real: copy.realCap, test: OPT.cap } : null,
       steps: results,
+      storm: stormResult,
     };
     await writeFile(base + '.json', JSON.stringify(out, null, 2));
     await writeFile(base + '.md', '```\n' + HEAD + '\n' + results.map(row).join('\n') + '\n```\n');
@@ -477,7 +521,9 @@ async function main() {
     results.push(s);
     console.log(row(s) + (label === 'step' ? '' : '   <- ' + label) + (s.broken ? '   BROKEN: ' + s.broken : ''));
     console.log(`        probes: room answers HTTP in ${s.httpProbeP50} ms (max ${s.httpProbeMax}, unanswered ${s.httpProbeUnanswered}); a new player's first snapshot in ${s.newJoinP50} ms (max ${s.newJoinMax}, none ${s.newJoinUnanswered})`);
+    if (OPT.tickParts && s.tickParts) console.log(`        a tick is made of (--tick-parts, the probes): ${s.tickParts}`);
     console.log(`        each player is sent ${s.msgsPerPlayerPerSec} messages a second, ${s.ticksPerPlayerPerSec} ticks`);
+    if (OPT.track) console.log(`        looks (--track): ${s.tracksPerSec} sent a second in all; each player is sent ${s.updatesPerPlayerPerSec} relays a second, ${s.updateKBpsPerPlayer} KB/s unzipped`);
     await save();
     return s;
   };
@@ -490,6 +536,53 @@ async function main() {
     have = Math.max(have, n);
     const s = await measure(n, 'step');
     if (s.broken) { broke = s; break; }
+  }
+
+  /* v2.3.3244: THE RECONNECT STORM (--storm).  A worker deploy, or a blip in
+     the network, drops every phone at once, and each comes back on its own a
+     second or so later: a join each, all at once, and each join is sent a
+     snapshot of the whole room (join.js state_sync, getAllPlayerData).  Drop
+     every bot's socket and watch the way back: how long until they are all
+     in the Wheel again, how long a join takes, how big its snapshot is, and
+     the room's thread each second meanwhile.  The bots' ids have no stored
+     record, so a deploy's cold room (every record read from storage again)
+     is not what this measures: it is the network blip, the room warm. */
+  if (OPT.storm && !broke) {
+    console.log(`\nstorm: every socket dropped at once (${have} players); each comes back after 1-3 s, as a phone does ...`);
+    reports = [];
+    const spids = worker ? await groupPids(worker.proc.pid) : null;
+    let cPrev = worker ? await cpuSnapshot(spids) : null;
+    const t0 = Date.now();
+    for (const g of groups) g.child.send({ cmd: 'drop' });
+    const marks = {}, perSec = [];
+    while (Date.now() - t0 < OPT.stormMax * 1000) {
+      await sleep(1000);
+      const st = liveStates();
+      const back = (st.walking || 0) + (st.dead || 0);
+      const secs = (Date.now() - t0) / 1000;
+      const cNow = worker ? await cpuSnapshot(spids) : null;
+      const cpu = cPrev && cNow ? cpuBetween(cPrev, cNow) : {};
+      cPrev = cNow;
+      perSec.push({ t: Math.round(secs), back, thread: r1(cpu.busiestThreadPct) });
+      for (const f of [0.5, 0.9, 1]) if (marks[f] === undefined && back >= Math.ceil(have * f)) marks[f] = r1(secs);
+      if (marks[1] !== undefined && secs > marks[1] + 3) break;
+    }
+    const all = (k) => reports.flatMap((r) => r[k] || []);
+    const joinsMs = all('joins'), entriesMs = all('entries'), bytes = all('joinBytes');
+    const storm = {
+      players: have, back50: marks[0.5] ?? null, back90: marks[0.9] ?? null, backAll: marks[1] ?? null,
+      joinP50: r1(pct(joinsMs, 50)), joinP95: r1(pct(joinsMs, 95)), joinMax: r1(pct(joinsMs, 100)),
+      enterP50: r1(pct(entriesMs, 50)), enterP95: r1(pct(entriesMs, 95)), enterMax: r1(pct(entriesMs, 100)),
+      syncKbP50: r1((pct(bytes, 50) || 0) / 1024), syncKbMax: r1((pct(bytes, 100) || 0) / 1024),
+      perSec,
+    };
+    stormResult = storm;
+    console.log(`storm: back in the Wheel -- half after ${storm.back50} s, 90% after ${storm.back90} s, all after ${storm.backAll ?? ('not within ' + OPT.stormMax + ' s')}`);
+    console.log(`       a join (socket open -> its snapshot) ${storm.joinP50} ms half the time, ${storm.joinP95} for 95%, ${storm.joinMax} at most; into the Wheel ${storm.enterP50} / ${storm.enterP95} / ${storm.enterMax} ms`);
+    console.log(`       each join's snapshot (state_sync, unzipped) ${storm.syncKbP50} KB half the time, ${storm.syncKbMax} KB at most`);
+    console.log(`       the room's thread each second: ${perSec.map((p) => p.thread).join(' ')}`);
+    console.log(`       players back each second:     ${perSec.map((p) => p.back).join(' ')}`);
+    await save();
   }
 
   /* DOES IT COME BACK?  A live room that tips over is only survivable if it

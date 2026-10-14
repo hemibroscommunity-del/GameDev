@@ -79,6 +79,46 @@ export function gatherNeed(S, node) {
   return { need, have, skill, ok: have >= need };
 }
 
+/* ═══ v2.3.3229: THE HIT LADDER -- what one hit can be, at a skill level ═══
+   Owner: "after the first level you get a 10% chance of hitting 1 number
+   higher ... So lvl 2 has a 10% chance of hitting 2 otherwise 1. Lvl 3 has a
+   10% chance of hitting 3 otherwise 1. Etc. the number 1 will eventually get
+   replaced by the 2 as more 10% chances get added with each level."
+   The WORKER rolls every hit of a harvest or a cook (server/src/gathering.js
+   gatherHitRoll): a ten-sided die read down from the level, so level 3 hits 3
+   or 2 on 10% each and 1 otherwise, and from level 11 the 1 is gone.  The
+   game plays whatever plan it is sent, so this copy is for the Skills panel's
+   "Each hit" line alone, and mirror-audit.test.mjs holds it to the worker's
+   die face by face.  `ladder` false is the even 1..level a worker rolls
+   without caps.hitladder (one older than this, or the kill switch). */
+export const GATHER_HIT_LADDER = 10;
+
+/** The chance of each number one hit can be, as [{ n, pct }] in rising n. */
+export function gatherHitOdds(level, ladder) {
+  const top = Math.max(1, Math.floor(Number(level) || 1));
+  const faces = ladder ? GATHER_HIT_LADDER : top;
+  const count = new Map();
+  for (let f = 0; f < faces; f++) {
+    const n = ladder ? Math.max(1, top - (GATHER_HIT_LADDER - 1) + f) : 1 + f;
+    count.set(n, (count.get(n) || 0) + 1);
+  }
+  return [...count].sort((a, b) => a[0] - b[0]).map(([n, c]) => ({ n, pct: (100 * c) / faces }));
+}
+
+/** ...in words: "Always 1", "1 (80%) · 2–3 (10% each)", "2–11 (10% each)". */
+export function gatherHitOddsText(level, ladder) {
+  const odds = gatherHitOdds(level, ladder);
+  if (odds.length === 1) return 'Always ' + odds[0].n;
+  const pct = (p) => (Math.round(p * 10) / 10) + '%';
+  const runs = [];
+  for (const o of odds) {
+    const last = runs[runs.length - 1];
+    if (last && last.pct === o.pct && last.to === o.n - 1) last.to = o.n;
+    else runs.push({ from: o.n, to: o.n, pct: o.pct });
+  }
+  return runs.map((r) => (r.from === r.to ? `${r.from} (${pct(r.pct)})` : `${r.from}–${r.to} (${pct(r.pct)} each)`)).join(' · ');
+}
+
 /* ═══ NODE TIER DEFINITIONS ═══ */
 /* lvl drives which depth bucket each tier spawns in via getNodeTierForDepth.
    Shallow range is [1, 10] so Minnow (1) and Clownfish (6) are both

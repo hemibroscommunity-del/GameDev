@@ -147,10 +147,14 @@ const headerGeom = (P) => P.page.evaluate(() => {
    red on both sides of the change, which proves nothing about it -- what the
    change owes every phone is "wider than the 36 it was", and the touch floor
    where the width exists to give. */
+/* v2.3.3215: SIX buttons now (the Codex), and the drill's back chip left the
+   row for the panel's own header (the owner's choice), which pays for most of
+   the sixth: 44 at 390 still, 39 at 360 where five were 40. */
 const PHONES = [
   { width: 390, height: 844, tag: 'iPhone 13/14/15', minW: 44 },
-  { width: 360, height: 780, tag: 'small Android', minW: 40 },
+  { width: 360, height: 780, tag: 'small Android', minW: 39 },
 ];
+const RAIL_N = 6;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   for (const ph of PHONES) await onePhone({ browser, wsPort, webPort, rec }, ph);
@@ -191,7 +195,7 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
     counts.length === 1 && counts[0].where === 'zone-header', counts);
 
   const rail = await railGeom(P);
-  rec.ok(T + 'all five nav buttons are there', rail.length === 5, rail.map((b) => b.id));
+  rec.ok(T + 'all six nav buttons are there', rail.length === RAIL_N, rail.map((b) => b.id));
   /* 44x44 is docs/UI-BIBLE's floor for anything tappable.  The WIDTH is what
      the owner asked for and what this change buys; the height is derived from
      identityRowHeight and is 40 on a <=720-tall phone, which is why only the
@@ -232,7 +236,7 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
   rec.ok(T + 'DRILLED: the row no longer overflows its own width',
     drilled.scrollW !== null && drilled.scrollW <= drilled.clientW + 1, drilled);
   rec.ok(T + 'DRILLED: every nav button is still on screen and hit-testable',
-    railD.length === 5
+    railD.length === RAIL_N
       && railD.every((b) => b.answers === 'self' && b.left >= 0 && b.right <= phone.width),
     railD.map((b) => b.id + ':' + b.answers + ' [' + b.left + '..' + b.right + ']'));
   /* The one the silent failure was actually about. */

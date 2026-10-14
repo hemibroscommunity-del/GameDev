@@ -34,6 +34,23 @@
 import { performance, monitorEventLoopDelay } from 'node:perf_hooks';
 import { PlainWS } from './plainws.mjs';
 import { MOVE_DIET, dietMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3204: --diet, the phone's own rule */
+import { readFileSync } from 'node:fs';
+
+/* ═══ v2.3.3240: --track, THE LOOK EVERY PHONE SENDS EVERY 2 s ═══
+   BroTown.jsx sends `track` every 2 s whatever changed: the whole look (hair,
+   clothes, gear, drawings), level, HP, weapon and the inspect card's stats.
+   The worker relays each one to EVERY other player in the room as a message of
+   its own (index.js case 'track', broadcastExcept).  The bots never sent it,
+   so every capacity number before v2.3.3240 left it out.  The payload is a
+   real phone's (track-sample.json, captured from the game by
+   mp-trackcapture), each bot's own name, place and zone put in. */
+const TRACK_MS = 2000;
+let TRACK_SAMPLE = null;
+function trackSample() {
+  if (TRACK_SAMPLE) return TRACK_SAMPLE;
+  try { TRACK_SAMPLE = JSON.parse(readFileSync(new URL('./track-sample.json', import.meta.url), 'utf8')); } catch { TRACK_SAMPLE = {}; }
+  return TRACK_SAMPLE;
+}
 
 /* v2.3.3199: --no-deflate's WebSocket (plainws.mjs) */
 
@@ -76,8 +93,9 @@ function fresh() {
   return {
     rxBytes: 0, rxMsgs: 0, rxTickBytes: 0, rxTicks: 0, rxZoneStateBytes: 0, rxOtherBytes: 0,
     wireRx: 0,   /* v2.3.3199: what the WIRE bot was sent, unzipped (load.mjs wireProxy) */
-    txMsgs: 0, txBytes: 0, moves: 0, swings: 0,
+    txMsgs: 0, txBytes: 0, moves: 0, swings: 0, tracks: 0, rxUpdates: 0, rxUpdateBytes: 0,
     joins: [], entries: [], deliver: [], seen: [], tickRates: [],
+    joinBytes: [],   /* v2.3.3244: each state_sync's size, unzipped (load.mjs --storm) */
     closes: {}, rejects: {}, errors: 0, deaths: 0, respawns: 0, roomFull: 0,
   };
 }
@@ -139,6 +157,7 @@ function connect(bot) {
     M.closes[ev.code] = (M.closes[ev.code] || 0) + 1;
     clearInterval(bot.timer); bot.timer = null;
     clearInterval(bot.pongTimer); bot.pongTimer = null;
+    clearInterval(bot.trackTimer); bot.trackTimer = null;
     bot.ws = null;
     bot.state = 'off';
     if (!stopping) retry(bot);
@@ -162,6 +181,13 @@ function onMessage(bot, data) {
     else if (bot.fighter && bot.state === 'walking' && (++bot.tickN % 4) === 0) fighterTick(bot, data);
     return;
   }
+  /* v2.3.3240: the worker's relay of another player's 2 s look (--track):
+     counted, not parsed -- a bot has no use for it, and parsing N/2 of them a
+     second each would make the BOTS the bottleneck */
+  if (data.startsWith('{"type":"player_update"')) {
+    M.rxOtherBytes += len; M.rxUpdates++; M.rxUpdateBytes += len;
+    return;
+  }
   if (data.startsWith('{"type":"ping"')) {
     M.rxOtherBytes += len;
     let ts = 0;
@@ -176,6 +202,7 @@ function onMessage(bot, data) {
     case 'state_sync':
       if (bot.state !== 'joining') break;
       push(M.joins, performance.now() - bot.openedAt);
+      push(M.joinBytes, len);
       bot.state = 'synced';
       /* wheelHome.js: "a beat in the world before the trip" */
       setTimeout(() => enterWheel(bot), rand(500, 1500));
@@ -253,6 +280,27 @@ function startWalking(bot) {
     if (bot.state !== 'walking') return;
     bot.timer = setInterval(() => step(bot), moveGap(bot));
   }, rand(0, moveGap(bot)));
+  /* v2.3.3240: --track, the phone's 2 s look (above) */
+  if (CFG.track && !bot.trackTimer) {
+    setTimeout(() => {
+      if (bot.trackTimer || bot.retired) return;
+      bot.trackTimer = setInterval(() => {
+        if (bot.state !== 'walking' && bot.state !== 'dead') return;
+        const data = Object.assign({}, trackSample(), {
+          x: Math.round(bot.x * 10) / 10, y: Math.round(bot.y * 10) / 10,
+          name: 'Load' + bot.k, zone: 'wheel', dir: 'down',
+        });
+        /* a fighter's HP and kill count move as a real one's do in a fight
+           (the walkers' looks stay as they are, as a real walker's do) */
+        if (bot.fighter && data.rpgMaxHp) {
+          data.rpgHp = 1 + Math.floor(Math.random() * data.rpgMaxHp);
+          bot.kills = (bot.kills || 0) + (Math.random() < 0.3 ? 1 : 0);
+          if (data.rpgData) data.rpgData = Object.assign({}, data.rpgData, { kills: bot.kills });
+        }
+        if (send(bot, { type: 'track', data })) M.tracks++;
+      }, TRACK_MS);
+    }, rand(0, TRACK_MS));
+  }
 }
 
 function newTarget(bot) {
@@ -355,9 +403,24 @@ function probeTick(bot, data) {
   try { d = JSON.parse(data); } catch { return; }
   probeTickObj(bot, d);
 }
+/* v2.3.3242: --tick-parts (load.mjs sets BT_TICK_PARTS): what a tick is made
+   of, by its top-level parts' JSON length, from the probes -- where the
+   phones' download goes (players, events, monsters, nodes) */
+const TICK_PARTS = process.env.BT_TICK_PARTS === '1';
+function countTickParts(d) {
+  const tp = M.tickParts || (M.tickParts = {});
+  for (const k in d) {
+    if (k === 'type' || k === 'seq' || k === 'ts') continue;
+    let n = 0;
+    try { n = JSON.stringify(d[k]).length; } catch { /* not countable */ }
+    tp[k] = (tp[k] || 0) + n;
+  }
+  tp._ticks = (tp._ticks || 0) + 1;
+}
 function probeTickObj(bot, d) {
   const now = performance.now();
   if (!d || typeof d !== 'object') return;
+  if (TICK_PARTS) countTickParts(d);
   if (typeof d.ts === 'number') push(M.deliver, Date.now() - d.ts);
   if (typeof d.seq === 'number' && typeof d.ts === 'number') {
     if (bot.firstSeq === null) bot.firstSeq = [d.seq, d.ts];
@@ -439,15 +502,37 @@ process.on('message', (msg) => {
       const b = bots[i];
       if (b.retired) continue;
       b.retired = true; n--;
-      clearInterval(b.timer); clearInterval(b.pongTimer);
+      clearInterval(b.timer); clearInterval(b.pongTimer); clearInterval(b.trackTimer);
       b.state = 'gone';
       try { if (b.ws) { b.ws.onclose = null; b.ws.close(1000, 'left'); } } catch { /* already gone */ }
       b.ws = null;
     }
+  } else if (msg.cmd === 'drop') {
+    /* v2.3.3244: load.mjs --storm -- every socket dropped at once, as a
+       network blip or a deploy does; each bot comes back on its own after
+       retry()'s 1-3 s, as a phone does (wsClient's backoff) */
+    for (const b of bots) {
+      if (b.retired || !b.ws) continue;
+      /* the phone gives the old socket up at once (a closing handshake the
+         network never finishes would keep it "open" for minutes): its
+         handlers off, a close sent for form's sake, and a new one in 1-3 s,
+         which the room takes over from the old (join.js, "superseded by
+         reconnect") */
+      const old = b.ws;
+      old.onopen = old.onmessage = old.onerror = old.onclose = null;
+      try { old.close(4001, 'storm'); } catch { /* already going */ }
+      clearInterval(b.timer); b.timer = null;
+      clearInterval(b.pongTimer); b.pongTimer = null;
+      if (b.trackTimer) { clearInterval(b.trackTimer); b.trackTimer = null; }
+      b.ws = null;
+      b.state = 'off';
+      M.closes.storm = (M.closes.storm || 0) + 1;
+      retry(b);
+    }
   } else if (msg.cmd === 'stop') {
     stopping = true;
     for (const b of bots) {
-      clearInterval(b.timer); clearInterval(b.pongTimer);
+      clearInterval(b.timer); clearInterval(b.pongTimer); clearInterval(b.trackTimer);
       try { if (b.ws) b.ws.close(1000, 'load test over'); } catch { /* already gone */ }
     }
     setTimeout(() => process.exit(0), 500);

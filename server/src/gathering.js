@@ -75,7 +75,58 @@ export const GATHER_HITS = {
   MAX_HITS: 40,
   REUSE_MS: 60000,
   SEQ_MAX: 1e9,
+  LADDER: 10,   /* v2.3.3229: the hit ladder's die -- each level adds a 1-in-10 chance (below) */
 };
+
+/* ═══ v2.3.3229: THE HIT LADDER -- EACH LEVEL ADDS A 10% CHANCE OF ONE MORE ═══
+ *
+ * Owner, 2026-10-14: "I want a different life skill progression system where
+ * after the first level you get a 10% chance of hitting 1 number higher.  The
+ * next level you get a 10% chance of hitting 1 number higher than that.  So
+ * lvl 2 has a 10% chance of hitting 2 otherwise 1.  Lvl 3 has a 10% chance of
+ * hitting 3 otherwise 1.  Etc. the number 1 will eventually get replaced by
+ * the 2 as more 10% chances get added with each level."
+ *
+ * So a hit is a TEN-SIDED DIE read down from your level: its top face hits
+ * for your level, the face under it for one less, ... its bottom face for
+ * nine less, and no face hits for less than 1:
+ *   level 1    always 1
+ *   level 2    2 on 10%, else 1 (90%)
+ *   level 3    3 or 2 on 10% each, else 1 (80%)
+ *   level 10   1..10 on 10% each -- exactly the old dice's level 10
+ *   level 11   2..11 on 10% each: the 1 is gone, "replaced by the 2"
+ *   level L    L-9..L on 10% each, from level 10 on
+ * Its average is (L*L - L + 20) / 20 to level 10 and L - 4.5 after it, where
+ * v2.3.2956's 1..level averaged (L + 1) / 2: lower until level 10, the same
+ * at 10, higher after -- a slow start that pays off (docs/specs/hit-ladder.md
+ * has the table, and the hits each resource takes).
+ *
+ * Every hit skill rolls it -- mining, woodcutting, fishing, and a cook's
+ * grease pops -- because _rollGatherHits is their one die, as it was for
+ * 1..level.  Nothing else moves: the HP, the swing, the strike's window (read
+ * off the plan's own length), the re-roll memory, the honest cycle (a one-hit
+ * plan was always there, 10% of them at level 10; from level 19 a first-tier
+ * node is always one hit).  MAX_HITS is now within reach of a live node -- a
+ * Mining 5 player on black steel's 60 HP averages 30.5 hits and about one
+ * plan in 80 meets the 40th, which takes what is left, as it always did.
+ *
+ * Mirror: src/data/lifeSkills.js gatherHitOdds (the Skills panel's "Each
+ * hit"), pinned to gatherHitRoll below by mirror-audit.test.mjs.
+ *
+ * KILL SWITCH: `hitladder: false` in liveflags (lower case, TRAPS §117) rolls
+ * 1..level again for every plan after it (_hitLadderOff) and un-advertises
+ * caps.hitladder, so the Skills panel shows those odds instead. */
+
+/** v2.3.3229: one hit off the die.  `r` is a Math.random() draw, [0, 1),
+ *  and a higher draw is never a lower hit (the bottom face first, the top
+ *  face last), on either die; `ladder` false is v2.3.2956's even 1..level,
+ *  kept for the kill switch. */
+export function gatherHitRoll(level, r, ladder) {
+  const top = Math.max(1, Math.floor(Number(level) || 1));
+  const u = Math.min(Math.max(Number(r) || 0, 0), 0.999999);
+  if (!ladder) return 1 + Math.floor(u * top);
+  return Math.max(1, top - (GATHER_HITS.LADDER - 1) + Math.floor(u * GATHER_HITS.LADDER));
+}
 
 /* ═══ v2.3.3036: THE FASTEST AN HONEST HARVEST OR COOK CAN COME ROUND ═══
  *
@@ -846,15 +897,24 @@ export const gatheringMethods = {
     return GATHER_HITS.HP_PER_TIER * (t + 1);
   },
 
-  /** v2.3.2956: roll hits of 1..level until the node's HP is gone.  The
-   *  LAST hit is the one that crosses zero, so the plan never carries a hit
-   *  after the node is already broken.  MAX_HITS bounds it (see the config). */
+  /** v2.3.3229: the hit ladder's kill switch (gatherHitRoll above) --
+   *  `hitladder: false` in the liveflags key puts the dice back to 1..level. */
+  _hitLadderOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'hitladder') && !f.hitladder);
+  },
+
+  /** v2.3.2956: roll hits until the node's HP is gone.  The LAST hit is the
+   *  one that crosses zero, so the plan never carries a hit after the node is
+   *  already broken.  MAX_HITS bounds it (see the config).  v2.3.3229: each
+   *  hit is the ladder's (gatherHitRoll), 1..level only with the kill switch
+   *  thrown. */
   _rollGatherHits(level, hp) {
-    const top = Math.max(1, Math.floor(Number(level) || 1));
+    const ladder = !this._hitLadderOff();
     const hits = [];
     let left = Math.max(1, Math.floor(Number(hp) || 1));
     while (left > 0) {
-      let d = 1 + Math.floor(Math.random() * top);
+      let d = gatherHitRoll(level, Math.random(), ladder);
       if (hits.length >= GATHER_HITS.MAX_HITS - 1) d = Math.max(d, left);
       hits.push(d);
       left -= d;
