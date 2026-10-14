@@ -236,12 +236,30 @@ export function heroHitSfx(S, payload, armored) {
   if (vol > 0) { try { BT_AUDIO.monsterHitHero(armored, { vol }); } catch (e) { /* audio is best-effort */ } }
 }
 
+/* ═══ v2.3.3228: A DEATH FAR AWAY IS NOT HEARD ═══
+   OPEN-DECISIONS 21 (the owner, 2026-10-14: "Go recommended"): the Wheel is
+   ONE zone, and the kill handlers asked only "is it in my zone?", so every
+   monster's death sound played on every phone in the Wheel, at one level,
+   wherever it died -- and kills must keep going to every phone (the phone's
+   only news of a far monster's death; TRAPS §175, events by place).
+   How loud a monster's death is where you stand: FULL when you helped kill it
+   (the kill event stamps `_killMine` from the worker's own recipients), so
+   your own arrow's kill is heard however far it flew; otherwise by distance
+   from where it died (`x`/`y`, the worker's kill point when the caller has
+   it), the hits' own curve: full within EAR_NEAR, nothing past EAR_FAR. */
+export function deathVol(S, m, x, y) {
+  if (m && m._killMine) return 1;
+  const p = m ? posOf(m) : null;
+  return earVol(S, Number.isFinite(x) ? x : (p ? p.x : NaN), Number.isFinite(y) ? y : (p ? p.y : NaN));
+}
+
 /* QA probe, house style (mp-hitvoices, mp-hitsound). */
 if (typeof window !== 'undefined') {
   window.__btHitSounds = {
     stats: hitSoundStats,
     soundOf: (arch) => hitSoundOf(arch),
     earVol: (x, y) => { const S = window._gameState && window._gameState.current; return S ? earVol(S, x, y) : null; },
+    deathVol: (m, x, y) => { const S = window._gameState && window._gameState.current; return S ? deathVol(S, m, x, y) : null; },   /* v2.3.3228 */
     shotHitMe: (id) => { const S = window._gameState && window._gameState.current; return S ? shotHitMe(S, id) : null; },
     consts: { EAR_NEAR, EAR_FAR, ECHO_K, ECHO_GAP_MS, ECHO_BURST, ECHO_WINDOW_MS, SHOT_RECENT_MS, SHOT_CLANG_K },
   };

@@ -3790,26 +3790,31 @@ BT_AUDIO.swimSplash = function (how) {
 BT_AUDIO._noteHero = function (armored, ball, vol) {
   this._lastHero = { armored: !!armored, ball: !!ball, vol: vol, at: Date.now() };
 };
-BT_AUDIO.monsterDeath = function (arch, opts) {
+BT_AUDIO.monsterDeath = function (arch, opts, k) {
   /* No-op for slimes (fodder).  The splat SFX is owned by the render-
      loop death-detection in BroTown.jsx — playing the bony-death wav
      here too was layering the "old death sound" on top of the splat. */
   if (arch === 'fodder') return;
+  /* v2.3.3228: `k`, how much of it you hear where you stand (0-1, the kill
+     handlers' hitSounds.deathVol; absent = all of it, as every older caller
+     wants): each sample's own level times k, nothing at 0. */
+  var v = typeof k === 'number' && isFinite(k) ? Math.max(0, Math.min(1, k)) : 1;
+  if (!(v > 0)) return;
   if (arch === 'snowman') {
     /* v2.3.1129: the snow-explosion sample has a ~0.13 s quiet lead-in before
        the bang (measured: global_gain jumps to peak at frame 5).  Trim it via
        offset so the explosion lands the instant the snowman dies. */
-    this.play('snowman-death', opts || { vol: 0.65, offset: 0.13 });
+    this.play('snowman-death', opts || { vol: 0.65 * v, offset: 0.13 });
     return;
   }
   if (arch === 'skeleton') {
     /* Use the SFX bundled with the skeleton death video.  Mummy
        (pre-transform kills) and other archetypes still fall through
        to the generic monster-death. */
-    this.play('skeleton-death', opts || { vol: 0.75 });
+    this.play('skeleton-death', opts || { vol: 0.75 * v });
     return;
   }
-  this.play('monster-death', opts || { vol: 0.5 });
+  this.play('monster-death', opts || { vol: 0.5 * v });
 };
 /* v2.3.1738: RETURNS THE PROMISE.  Every existing caller ignores the return
    value, so this is additive — but a caller that needs to act WHEN the sample
