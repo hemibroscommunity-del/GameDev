@@ -2452,6 +2452,23 @@ Two protocol versions coexist; both must keep working:
       movers among its nearest 65 every tick) gave nothing at 120-150 --
       steady movers keep a tick's movers near a phone at ~25-35 -- while far
       players with the once-a-second roster gave ~5 points at 120 (#898).
+  - v2.3.3243: FAR PLAYERS ONCE A SECOND, WITH THE ROSTER -- found by the
+    owner's "stress test to see what can be optimized": the far send
+    (v2.3.3197) went to every phone in the Wheel four times a second with
+    EVERY player who had moved, the near ones it already got each tick
+    included -- about a third of what a phone in town was sent at 120. A
+    player past 2,400 px is on neither your screen nor your minimap, so they
+    now reach you only in the presence roster, about once a second, where
+    they are now (tick.js `FAR_PLAYERS.EVERY_MS` 0); the world map and the
+    minimap carry a dot along its last speed between updates
+    (src/game/peerDot.js). 120 players: the room 78-80% -> 73-76% busy, each
+    phone 175-182 -> 145-150 KB/s unzipped; 150: 35 -> 37 ticks a second;
+    near players' moves arrive sooner. `far_ms` in the live flags (100-5000)
+    brings a far send of their own back (250: v2.3.3197's); far-players §10,
+    steady-movers 2k/2m, `mp-farpeer` (`BT_FARPEER_FAR_MS`). Tried first and
+    dropped: the crowd cap on the wire (each phone sent only the movers among
+    its nearest 65) -- no gain at 120-150, as steady movers keep a tick's
+    movers near a phone at ~25-35: docs/specs/far-players.md "Once a second".
 
 ## Conventions
 
