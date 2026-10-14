@@ -23,6 +23,7 @@
  */
 import { GameRoom } from '../src/index.js';
 import { WHEEL_SPAWNS, WHEEL_CENTRE, WHEEL_SAFE_R } from '../src/wheelspawns.js';
+import { WHEEL } from '../src/wheelzone.js';
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -296,6 +297,69 @@ const LANDS = Object.keys(WHEEL_SPAWNS);
   const a3 = room._wheelInterest({}, pFar, nearFar);
   const b3 = room._wheelInterest({}, pFar, nearFar, room._wheelMonsterGrid(nearFar));
   check('5e a player past the keys\' reach: the full walk\'s answer', ids(a3.list) === ids(b3.list) && a3.list.length === 1, { a: ids(a3.list), b: ids(b3.list) });
+}
+
+/* ── 5f. v2.3.3242: the cheaper interest gives the old answer, exactly ───
+   The code before v2.3.3242, copied (the full walk, which 5a holds the old
+   grid path to): a crowd of players -- most in the same few squares, as the
+   town is -- walking among moving monsters, a new grid each tick as tick.js
+   builds it and every player asking it in turn, so its kept answers are
+   shared; every player's seen, entered and list, in order, every tick. */
+function interestBefore3242(session, ps, monsters) {
+  const prev = session._wheelSeen || null;
+  const seen = new Set(), entered = new Set(), list = [];
+  const rIn2 = WHEEL.INTEREST_R * WHEEL.INTEREST_R, rOut2 = WHEEL.INTEREST_OUT * WHEEL.INTEREST_OUT;
+  for (const m of monsters) {
+    const dx = m.x - ps.x, dy = m.y - ps.y, d2 = dx * dx + dy * dy;
+    const had = !!(prev && prev.has(m.id));
+    if (d2 <= rIn2 || (had && d2 <= rOut2)) {
+      seen.add(m.id);
+      list.push(m);
+      if (!had) entered.add(m.id);
+    }
+  }
+  session._wheelSeen = seen;
+  return { seen, entered, list };
+}
+{
+  const room = new GameRoom(mockState(), mockEnv);
+  const monsters = [];
+  for (let i = 0; i < 420; i++) monsters.push({ id: 'h' + i, x: 15000 + rnd() * 13000, y: 15000 + rnd() * 13000 });
+  monsters.push({ id: 'hnan', x: NaN, y: 21000 });
+  const players = [];
+  for (let i = 0; i < 40; i++) {
+    const town = i < 28;   /* 70% in a few squares round the square, as the town */
+    players.push({ ps: { x: town ? 21500 + (rnd() - 0.5) * 900 : 15000 + rnd() * 13000, y: town ? 21700 + (rnd() - 0.5) * 900 : 15000 + rnd() * 13000 },
+      before: {}, now: {} });
+  }
+  players.push({ ps: { x: NaN, y: 21000 }, before: {}, now: {} });   /* a player at no place */
+  const ids = (it) => JSON.stringify([...it].map((v) => (typeof v === 'string' ? v : v.id)));
+  let same = true, firstDiff = null, seen = 0, entered = 0, shared = 0, asked = 0;
+  for (let t = 0; t < 300; t++) {
+    for (const m of monsters) if (Number.isFinite(m.x)) { m.x += (rnd() - 0.5) * 90; m.y += (rnd() - 0.5) * 90; }
+    for (const p of players) {
+      if (!Number.isFinite(p.ps.x)) continue;
+      if (rnd() < 0.01) { p.ps.x = 15000 + rnd() * 13000; p.ps.y = 15000 + rnd() * 13000; }   /* a jump */
+      else { p.ps.x += (rnd() - 0.5) * 120; p.ps.y += (rnd() - 0.5) * 120; }
+    }
+    const g = room._wheelMonsterGrid(monsters);   /* a new grid a tick, as tick.js */
+    for (const p of players) {
+      const a = interestBefore3242(p.before, p.ps, monsters);
+      const b = room._wheelInterest(p.now, p.ps, monsters, g);
+      const pairs = [['seen', ids(a.seen), ids(b.seen)], ['entered', ids(a.entered), ids(b.entered)], ['list', ids(a.list), ids(b.list)],
+        ['kept', ids(p.before._wheelSeen), ids(p.now._wheelSeen)]];
+      for (const [what, x, y] of pairs) if (x !== y) { same = false; if (!firstDiff) firstDiff = { t, what, before: x.slice(0, 200), now: y.slice(0, 200) }; }
+      seen += a.seen.size; entered += a.entered.size;
+    }
+    asked += players.length;
+    shared += g.near ? players.length - g.near.size : 0;
+  }
+  check('5f the cheaper interest (v2.3.3242) gives the old answer for every player, every tick: seen, entered, list, in order', same, firstDiff);
+  check(`5g ... with monsters in reach (${seen}) and coming into reach (${entered}) on the way, and players sharing the grid's answer (${shared} of ${asked} asks)`,
+    seen > 50000 && entered > 500 && shared > asked * 0.5, { seen, entered, shared, asked });
+  const r1 = room._wheelInterest({}, { x: 21500, y: 21500 }, monsters, room._wheelMonsterGrid(monsters));
+  const r2 = room._wheelInterest({ _wheelSeen: new Set(r1.seen) }, { x: 21500, y: 21500 }, monsters, room._wheelMonsterGrid(monsters));
+  check('5h nothing new in reach: an empty `entered`, and the shared empty set is still empty after it all', r2.entered.size === 0 && r2.seen.size === r1.seen.size);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
