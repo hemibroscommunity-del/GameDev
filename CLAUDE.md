@@ -2266,6 +2266,10 @@ Two protocol versions coexist; both must keep working:
   (owner directive, 2026-07-16 — no live players, CI speed wins) and
   run only via workflow_dispatch on demand. Primary platform is
   **iPhone Safari** — test touch controls, not just desktop.
+  And SIDEWAYS too (v2.3.3216): a touch screen cannot scroll the creator
+  (`overflow:clip`), and sideways a phone is 300-430px tall -- ENTER BRO
+  TOWN sat at y 783 of 390 until the creator became three columns there
+  (game.css, the v2.3.3216 block); `mp-cclandscape`, TRAPS §175.
   Two phone scenarios DO run on every PR, each an owner call: `playable`
   (mp-questline, v2.3.1729, client-ci.yml) and `memory-budget`
   (mp-membudget, v2.3.3101, memory.yml -- Conventions, "Memory is
