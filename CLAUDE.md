@@ -2409,8 +2409,9 @@ Two protocol versions coexist; both must keep working:
     socket; everything fails closed; kill switch `broCount: false`;
   - `broverify` suite (96), `onchain` (balanceOf), `mp-brobadge`:
     docs/specs/hemi-bro-count.md.  The $2 supporter pass the owner asked about
-    in the same message is NOT built: it waits on their coin, receiving wallet
-    and the free-play cap.
+    in the same message is NOT built: on the backlog as 2 USDC on Hemi, waiting
+    on the owner's own pass address, with no play caps ("Dont ship any caps
+    yet").
 - FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS (v2.3.3197, the owner:
   "Send far away players less often and using shorter position numbers"):
   in the Wheel a v2 session gets the movers within `FAR_PLAYERS.NEAR_R` 2,400
