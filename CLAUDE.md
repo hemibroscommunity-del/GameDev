@@ -2340,6 +2340,11 @@ Two protocol versions coexist; both must keep working:
   (mp-questline, v2.3.1729, client-ci.yml) and `memory-budget`
   (mp-membudget, v2.3.3101, memory.yml -- Conventions, "Memory is
   budgeted").
+- A phone scenario red on `main` is a question about the TEST first (TRAPS
+  §177, v2.3.3249): mp-deathstrip, mp-firetrail, mp-petsmatter, mp-hitvoices
+  and mp-slimeburst were all the test, never the game. `run.mjs` closes every
+  page a scenario leaves open, since one browser serves the whole run and an
+  open world page slows every scenario after it.
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's
