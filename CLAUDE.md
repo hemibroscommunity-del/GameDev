@@ -596,6 +596,17 @@ remnant to migrate server-side, not a mode to preserve.
       there is no limiter on the bus);
     - test-world-core "hits sound like what they hit", `mp-hitsound`,
       `mp-hitvoices`, `mp-wheelbreak`: docs/specs/material-hit-sounds.md.
+    - since v2.3.3248 A FAR DEATH, SLAM OR BLAST IS NOT HEARD OR FELT -- the
+      owner, on the logged loose ends 21/22: "Go recommended": the Wheel is
+      one zone, so every monster's death sound, every landed slam's shake,
+      camera kick and beep, every wind-up's and miss's beep, every bow
+      special's blast and every slime's burst reached every phone in it; each
+      now goes by distance on the hits' curve (`earVol`), a death in full when
+      you helped kill it (`deathVol`, the worker's recipients stamped as
+      `_killMine`), a wind-up by the nearer of its caster and its aim, your
+      own blast in full; `BT_AUDIO.monsterDeath(arch, opts, k)`; kills still
+      go to every phone; `mp-farfeel`: material-hit-sounds.md "A far death,
+      slam or blast".
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
@@ -2329,6 +2340,11 @@ Two protocol versions coexist; both must keep working:
   (mp-questline, v2.3.1729, client-ci.yml) and `memory-budget`
   (mp-membudget, v2.3.3101, memory.yml -- Conventions, "Memory is
   budgeted").
+- A phone scenario red on `main` is a question about the TEST first (TRAPS
+  §177, v2.3.3249): mp-deathstrip, mp-firetrail, mp-petsmatter, mp-hitvoices
+  and mp-slimeburst were all the test, never the game. `run.mjs` closes every
+  page a scenario leaves open, since one browser serves the whole run and an
+  open world page slows every scenario after it.
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's
@@ -2528,6 +2544,22 @@ Two protocol versions coexist; both must keep working:
     `slim-roster` suite (21), far-players §8c, `tools/qa/load/
     roster-bench.mjs`: docs/specs/slim-roster.md. The rest of 0b (far
     positions only while the world map asks) needs a phone change.
+  - v2.3.3247: THE CLOUDFLARE LAB -- the split plan's lab, which the owner
+    said yes to ("Go recommended": the lab after Phase 0). Started BY HAND:
+    Actions tab -> "Cloudflare lab" -> Run workflow (`.github/workflows/
+    lab.yml`). It deploys a tiny worker of its own, `brotown-lab`
+    (tools/lab/: Burner, World and Door objects; NEVER the game, nothing
+    stored, every request but "/" needs the run's own key), times it from the
+    runner (tools/lab/run.mjs): do K objects of one script run side by side
+    (and in how many isolates), the delay between two objects (a call, a
+    plain socket, a hibernated one), floods of known size, and the account's
+    own figures for them (GraphQL, the fields asked of the schema; best
+    effort) -- and deletes it whatever happened. About a cent a run; results
+    on the run's summary and its `lab-results` download. It lives under
+    tools/, so a merge never sets off deploy-worker.yml. `node tools/lab/
+    run.mjs --local` is the same run on wrangler dev (one thread: side by side
+    1 at every K, which is what the test tells apart). The game's room on
+    Cloudflare with the bots is the next lab: docs/specs/cloudflare-lab.md.
   - v2.3.3250: FAR PLAYERS ONLY WHILE YOUR WORLD MAP IS OPEN (presence v2) --
     the rest of Phase 0b, from the owner's "Go recommended" (open decision
     24): a phone that joins with `pres: 2` (wsClient.js; `caps.presence2`) is

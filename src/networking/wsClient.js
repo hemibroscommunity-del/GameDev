@@ -147,6 +147,7 @@ import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the 
 import { applyNmlSkull, applyNmlLoss, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
+import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's death heard by distance */
 import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 /* Tick arrival timestamps — module-level so the buffer survives
@@ -1023,6 +1024,7 @@ export function setupWebSocket(ctx) {
                         localM._snowmanDeathStart = null;
                         localM._lootDropped = false;
                         localM._deathSfxPlayed = false;
+                        localM._killMine = false;   /* v2.3.3248: hitSounds.deathVol */
                         /* Revert any mid-fight variant transform.  A
                            desert mummy that died as a skeleton needs to
                            come back as a mummy so the first 50% HP
@@ -1069,7 +1071,12 @@ export function setupWebSocket(ctx) {
                         }
                         if (!localM._deathSfxPlayed) {
                           localM._deathSfxPlayed = true;
-                          try { BT_AUDIO.monsterDeath(localM.archetype || localM.type); } catch (e) {}
+                          /* v2.3.3248: by how near it died (hitSounds.deathVol;
+                             OPEN-DECISIONS 21).  The kill event, processed
+                             before this tick's monsters, plays it first for a
+                             kill you took part in. */
+                          var _dvK2 = deathVol(S, localM, md.x, md.y);
+                          if (_dvK2 > 0) { try { BT_AUDIO.monsterDeath(localM.archetype || localM.type, null, _dvK2); } catch (e) {} }
                         }
                       }
                     }

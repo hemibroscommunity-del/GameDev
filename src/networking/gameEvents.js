@@ -31,7 +31,7 @@ import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2699: a snowbal
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
 import { applyElemHit, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks */
-import { echoHitSfx, heroHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's */
+import { echoHitSfx, heroHitSfx, earVol, deathVol } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's; v2.3.3248: a far death, slam or blast heard and felt by distance */
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
 import { recordMail } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
@@ -980,7 +980,10 @@ export function processGameEvent(type, payload, S, deps) {
                  a stuck arrow rides a monster that is still walking. */
               S._lastArrowBoom = { x: payload.x, y: payload.y, r: payload.r, at: Date.now(),
                 targets: payload.targets || [] };
-              try { BT_AUDIO.play('tree-fall', { vol: 0.7 }); } catch (e) { /* audio is best-effort */ }
+              /* v2.3.3248: in full for the shooter, by distance for the
+                 rest -- it boomed on every phone in the Wheel. */
+              var _abK = payload.id && payload.id === S.myId ? 1 : earVol(S, payload.x, payload.y);
+              if (_abK > 0) { try { BT_AUDIO.play('tree-fall', { vol: 0.7 * _abK }); } catch (e) { /* audio is best-effort */ } }
             }
             break;
 
@@ -1199,7 +1202,10 @@ export function processGameEvent(type, payload, S, deps) {
                       }
                     }
                   }
-                  BT_AUDIO.beep(90, 0.16, 0.09, 'sawtooth');
+                  /* v2.3.3248: heard by how near it went off (hitSounds.earVol),
+                     not by every phone in the Wheel (OPEN-DECISIONS 22). */
+                  var _sbK = isFinite(_sbX) && isFinite(_sbY) ? earVol(S, _sbX, _sbY) : 1;
+                  if (_sbK > 0) BT_AUDIO.beep(90, 0.16, 0.09 * _sbK, 'sawtooth');
                 }
                 break;
               }
@@ -1354,11 +1360,26 @@ export function processGameEvent(type, payload, S, deps) {
                     }
                   }
                 }
-                BT_AUDIO.beep(400, 0.08, 0.1, 'sine');
+                /* v2.3.3248: the warning beep for whoever is near the caster
+                   or where it aims (its target stands there): the Wheel is one
+                   zone, and every wind-up in it beeped on every phone. */
+                var _tgK = Math.max(earVol(S, _maX, _maY),
+                  (typeof payload.ax === 'number' && typeof payload.ay === 'number') ? earVol(S, payload.ax, payload.ay) : 0);
+                if (_tgK > 0) BT_AUDIO.beep(400, 0.08, 0.1 * _tgK, 'sine');
                 break;
               }
               /* execute — a landed hit shakes, a whiff deliberately does
-                 not, so "I got out of the way" reads as a win on screen. */
+                 not, so "I got out of the way" reads as a win on screen.
+                 v2.3.3248: FELT WHERE IT LANDED (OPEN-DECISIONS 22).  The
+                 Wheel is one zone, so this shook, punched and beeped every
+                 phone in it for every slam anywhere (events by place, #901,
+                 cut that to 2,800 px, still mostly off screen).  The shake,
+                 the camera's kick and the beep now go by how near you are to
+                 where it landed, on the hits' own curve (hitSounds.earVol:
+                 all of it within 220 px -- the one it hit stands inside the
+                 ring -- none past 1,150).  The ring and MISS are drawn where
+                 they happen, as before. */
+              var _exK = earVol(S, _maX, _maY);
               if (payload.hit) {
                 if (!S._impactRings) S._impactRings = [];
                 S._impactRings.push({
@@ -1366,18 +1387,20 @@ export function processGameEvent(type, payload, S, deps) {
                   color: _maColors[payload.ability] || '#f5c542',
                   maxR: payload.radius || 55, duration: 400,
                 });
-                S.screenShake = _maShake[payload.ability] || 5;
-                /* v2.3.2200: a landed telegraph also KICKS the camera
-                   toward the impact — the big attacks should read bigger
-                   than an ordinary hit's shake alone. */
-                var _cpAngT = Math.atan2(_maY - S.player.y, _maX - S.player.x);
-                S._camPunch = { dx: Math.cos(_cpAngT) * 8, dy: Math.sin(_cpAngT) * 8, ts: Date.now() };
-                BT_AUDIO.beep(payload.ability === 'slam' ? 80 : (payload.ability === 'lunge' ? 200 : 150),
-                  0.18, 0.22,
-                  payload.ability === 'slam' ? 'sawtooth' : 'square');
+                if (_exK > 0) {
+                  S.screenShake = Math.max(S.screenShake || 0, Math.round((_maShake[payload.ability] || 5) * _exK));
+                  /* v2.3.2200: a landed telegraph also KICKS the camera
+                     toward the impact — the big attacks should read bigger
+                     than an ordinary hit's shake alone. */
+                  var _cpAngT = Math.atan2(_maY - S.player.y, _maX - S.player.x);
+                  S._camPunch = { dx: Math.cos(_cpAngT) * 8 * _exK, dy: Math.sin(_cpAngT) * 8 * _exK, ts: Date.now() };
+                  BT_AUDIO.beep(payload.ability === 'slam' ? 80 : (payload.ability === 'lunge' ? 200 : 150),
+                    0.18, 0.22 * _exK,
+                    payload.ability === 'slam' ? 'sawtooth' : 'square');
+                }
               } else {
                 pushDmgPopup(S, _maX, _maY - 30, 'MISS', '#8FD6A0');
-                BT_AUDIO.beep(220, 0.06, 0.08, 'sine');
+                if (_exK > 0) BT_AUDIO.beep(220, 0.06, 0.08 * _exK, 'sine');
               }
             }
             break;
@@ -2510,9 +2533,17 @@ export function processGameEvent(type, payload, S, deps) {
                      hook in entityRenderer).  Local hit paths call this
                      too but bail in MP before reaching it -- monster_kill
                      is the only path that knows the kill happened here. */
+                  /* v2.3.3248: heard by how near it died, or in full when you
+                     helped kill it (hitSounds.deathVol; OPEN-DECISIONS 21) --
+                     every death in the Wheel used to play on every phone.
+                     `_killMine` is cleared with the other per-life flags on
+                     respawn (wsClient's tick), and read by the slime's splat
+                     (entityRenderer), which has no kill event of its own. */
+                  deadM._killMine = !!_amRecipient;
                   if (!deadM._deathSfxPlayed) {
                     deadM._deathSfxPlayed = true;
-                    try { BT_AUDIO.monsterDeath(deadM.archetype || deadM.type); } catch (e) {}
+                    var _dvK = deathVol(S, deadM, payload.x, payload.y);
+                    if (_dvK > 0) { try { BT_AUDIO.monsterDeath(deadM.archetype || deadM.type, null, _dvK); } catch (e) {} }
                   }
                   /* Don't clobber deadM.hp — for server monsters it's
                      the spawn-time max-HP reference used by the HP bar

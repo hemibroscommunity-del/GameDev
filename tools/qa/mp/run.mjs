@@ -25,6 +25,7 @@ const WS = await H.freePort(), WEB = await H.freePort();
 const SCENARIOS = {
   peercull: () => import('./mp-peercull.mjs'), /* v2.3.3241: in the Wheel another player far off screen is not drawn (kept, and drawn again when back), and one standing south of you is never re-parented frame after frame (the peer loop used to fight the depth pass) -- two phones */
   trackcapture: () => import('./mp-trackcapture.mjs'), /* v2.3.3240: a real phone's 2 s look (`track`) caught off the wire and written to tools/qa/load/track-sample.json, which the load test's bots send with --track */
+  farfeel: () => import('./mp-farfeel.mjs'), /* v2.3.3248: a far-away death is not heard, a far-away slam not felt (OPEN-DECISIONS 21/22) -- fed through the real handlers for real Wheel monsters at measured distances: a kill 2,000 px off silent, one beside you and one you helped with in full; a slam far off no shake, kick or beep, beside you all of it, at 700 px a part on the hits' curve; a wind-up aimed at you beeps, one far off does not; another's bow blast far off silent, yours in full; a slime's burst by distance; the probe's curve */
   crowdbots: () => import('./mp-crowdbots.mjs'), /* v2.3.3208: what a big crowd costs the phone -- one phone page in the Wheel's BroTown with the load test's bots walking round it in steps (0, 25, 50, 80, 110): the game's frame cost (workMs, entityMs) and the page's whole main-thread time a second at each step; a measurement for docs/SERVER-SPLIT-PLAN.md, read as growth over the empty town */
   movediet: () => import('./mp-movediet.mjs'), /* v2.3.3204: a steady walk on the safe ground, half as often -- a phone in BroTown with a peer beside it: a straight walk about 15 moves a second on the wire, a walk that keeps turning every batch, the peer's copy updated as often as sent, a held attack or a lock stepping the diet aside */
   farpeer: () => import('./mp-farpeer.mjs'), /* v2.3.3197: a far player less often, a near one on every move -- a phone in the Wheel's BroTown watching a walker (a bare socket sending a phone's 30 moves a second): beside it ~30 updates a second; carried past 2,400 px about four a second, never dropping out of the watcher's players and ending exactly where it stopped; back near, every move again; positions in whole pixels */
@@ -588,6 +589,14 @@ for (const name of names) {
      was running, because that is the one that can reproduce it. */
   const _rt = H.takeRenderThrows();
   if (_rt.length) rec.ok('the render loop did not throw', false, { threw: _rt.slice(0, 3) });
+  /* v2.3.3249: EVERY PAGE A SCENARIO LEFT OPEN IS CLOSED HERE.  One browser
+     serves every scenario, and most never close their own pages, so each
+     world page went on drawing (software GL on this box) under every later
+     scenario: mp-hitvoices failed 8 checks run after mp-farfeel and passed
+     alone, and mp-slimeburst's peak-hold checks failed late in a list and
+     passed early.  Scenarios are isolated by their own fresh contexts, so
+     none can need another's page afterwards. */
+  for (const c of browser.contexts()) await c.close().catch(() => {});
   console.log(`   (${((Date.now() - started) / 1000).toFixed(0)}s)\n`);
   all.push(...rec.rows());
 }
