@@ -822,7 +822,8 @@ export const abilityMethods = {
 
     /* Trained XP, same rule as a swing: the weapon that hit earns it.  Both
        abilities are melee, so both train sword/Melee. */
-    if (ps.prog3) this._prog3AwardXp(pid, ps, 'sword', dmg);
+    /* v2.3.3251: faded when the monster is 5+ levels below Melee (xpdecay.js) */
+    if (ps.prog3) this._prog3AwardXp(pid, ps, 'sword', dmg * this._combatXpDecay(ps, 'sword', m.level));
 
 
     /* ═══ DISPLACEMENT: a shove (bash) or a VORTEX (whirl) ═══

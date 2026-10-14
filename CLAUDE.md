@@ -860,6 +860,59 @@ remnant to migrate server-side, not a mode to preserve.
       `hitladder: false` (1..level again); test lever `/dev/lifeskill`
       {skill | 'hits', level} and the test panel's level buttons; gather-hits
       §11, mirror-audit "hit ladder", `mp-hitladder`: docs/specs/hit-ladder.md.
+    - since v2.3.3251 EACH TIER TAKES TWICE AS LONG AS THE ONE BEFORE -- the
+      owner: "each tiers unlocks (lvl 5 required, lvl 10 required, etc) to take
+      about 2x longer on average than the previous tier's lowest level
+      extraction time ... determine all of those hp lvls per resource": a
+      resource's HP by its type and tier (gathering.js `GATHER_NODE_HP`,
+      `gatherNodeHp`; the game's copy in lifeSkills.js, mirror-audit), solved
+      over the ladder's dice so that at the level it opens it takes 10, 20, 40,
+      80, 160 hits -- copper 10, iron 20 (Mining 1 beside copper), black steel
+      80, titanium 440, obsidian 1,680; pine/minnow 10, then 40, 220, 840,
+      2,480 (was 5 x (tier + 1) for all); top tiers ~104 s of swings at their
+      own level; `MAX_HITS` 40 -> 200 (= the game's `GATHER_PLAN_MAX`), a cook
+      unchanged (its own HP and `COOK_MAX_HITS` 40); a planned harvest's
+      monster shield runs from its window's opening; a harvest's running hits
+      count as play for the 2-minute idle logout; `caps.nodehp`, kill switch
+      `nodehp: false`; gather-hits §12, mirror-audit "tier hp", `mp-tierhp`:
+      docs/specs/resource-hp.md.
+    - since v2.3.3251 EACH TIER PAYS TWICE THE XP, AND XP FADES 5 LEVELS BELOW
+      YOU -- the owner: "Yes adjust the xp.  Also make xp decay if you're
+      trying to harvest lower level things.  This also applies to combat.  Xp
+      should begin decaying starting at 5 levels below your current level.  It
+      should always be most efficient to harvest or fight things within your
+      current level":
+      - a harvest's base XP by tier, doubling as its time does: 163, 326, 652,
+        1,304, 2,608 (gathering.js `GATHER_TIER_XP`, `harvestBaseXp`; was 163
+        to 913), so every tier pays ~22-30 XP a second at the level it opens;
+      - the FADE (`server/src/xpdecay.js` `xpDecayMult`): full XP up to 4
+        levels below you, a third at 5 below, 15% less each level past it --
+        a harvest by your skill against the resource's `GATHER_REQ_LVL`
+        (`_harvestXpPaid`), a fight by the trained skill the XP goes INTO
+        (Melee/Bow/Magic) against the monster's level, never the character
+        level (a sum), each damage source per monster (`_combatXpDecay`:
+        swing, lunge/dash/bash/whirlwind, staff splash, burst, arrow blast);
+        quest XP, cooking and the rest unchanged;
+      - the two numbers are the gentlest that keep the rule: at every level
+        1-100 of all three skills what is within your level pays the most XP a
+        second, by 20% at least, and the newest resource most of all
+        (gather-hits §13 checks it over the dice); past the top resources
+        (Mining 20, the others 25) and the monsters (Lv 40) everything fades;
+      - Skills -> the gather trio's "Full XP" / "Less XP" lines
+        (skillsModel.js `skillXpFade`); the game's "+N Mining XP" is
+        gameSystems.js `harvestXpFor`, held to the worker by mirror-audit;
+      - a monster that pays reduced XP wears a GREY NAME PLATE -- the owner:
+        "I like the idea of gray nameplate for reduced xp add that": a fifth
+        band before green Low (entityRenderer `PLATE_BAND.faded` #A7B0B5,
+        `plateBandFor`'s `fadeLevel`: the fade's own `xpDecayMult` < 1 against
+        the held weapon's skill, against a worker with `caps.xpdecay`); and
+        past the top resources and monsters everything pays less, the owner's
+        call ("I'll add more content");
+      - `caps.tierxp` (off with `tierxp: false` or `nodehp: false`) and
+        `caps.xpdecay` (kill switch `xpdecay: false`); `xp-decay` suite,
+        gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
+        `mp-monsterplate` (whose band sweep now raises the weapon's skill):
+        docs/specs/xp-decay.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":

@@ -168,6 +168,7 @@ export const arrowBlastMethods = {
     const r2 = ARROW_BLAST.RADIUS * ARROW_BLAST.RADIUS;
     const targets = [];
     let dealt = 0;
+    let xpDealt = 0;   /* v2.3.3251: the same, each monster's faded by its level (xpdecay.js) */
 
     for (const m of monsters) {
       if (targets.length >= ARROW_BLAST.MAX_TARGETS) break;
@@ -192,13 +193,16 @@ export const arrowBlastMethods = {
       m._aggroOverrideUntil = now + 10000;
 
       targets.push(m.id);
-      dealt += this._applyMonsterDot(zone, m, dmg, session.id, null,
+      const got = this._applyMonsterDot(zone, m, dmg, session.id, null,
         { burst: true, isCrit: rolled.isCrit });
+      dealt += got;
+      xpDealt += got * this._combatXpDecay(ps, 'bow', m.level);
     }
 
     /* Trained XP on the weapon that fired it, priced off CREDITED damage --
-       the rule a swing and a burst both follow. */
-    if (ps.prog3 && dealt > 0) this._prog3AwardXp(session.id, ps, 'bow', dealt);
+       the rule a swing and a burst both follow.
+       v2.3.3251: each monster's share faded by its own level (xpDealt). */
+    if (ps.prog3 && dealt > 0) this._prog3AwardXp(session.id, ps, 'bow', xpDealt);
 
     /* The visual, for EVERYONE in the zone.  Display-only: every point of
        damage already rode monster_hit, so a client that ignores this still

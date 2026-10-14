@@ -56,6 +56,39 @@ export function gatherReqLvl(nodeType, tierLvl) {
   return Math.max(1, Math.floor(Number(need) || 1));
 }
 
+/* ═══ v2.3.3251: EACH TIER TAKES TWICE AS LONG AS THE ONE BEFORE ═══
+   Owner: "I want each tiers unlocks (lvl 5 required, lvl 10 required, etc) to
+   take about 2x longer on average than the previous tier's lowest level
+   extraction time."  A resource's hit points by its type and tier, solved so
+   that at the level it opens (GATHER_REQ_LVL) it takes 10, 20, 40, 80, then
+   160 hits of the hit ladder on average.  Mirror of server/src/gathering.js
+   GATHER_NODE_HP, pinned by mirror-audit.test.mjs.  The worker sends every
+   plan's own hp, so the game reads this only for the HP bar before a plan
+   lands, on the timer and on a locked try (gameSystems.js gatherNodeHp), and
+   only against a worker that advertises caps.nodehp. */
+export const GATHER_NODE_HP = {
+  oreVein:  { 1: 10, 6: 20, 11: 80, 16: 440, 21: 1680 },
+  tree:     { 1: 10, 6: 40, 11: 220, 16: 840, 21: 2480 },
+  fishSpot: { 1: 10, 6: 40, 11: 220, 16: 840, 21: 2480 },
+};
+
+/* ═══ v2.3.3251: ...AND EACH TIER PAYS TWICE THE XP OF THE ONE BEFORE ═══
+   The owner's "Yes adjust the xp": a harvest's base XP (before its accuracy
+   grade) doubles a tier as the time does -- 163, 326, 652, 1304, 2608 (was
+   163, 350, 538, 725, 913) -- so each tier pays about the same XP a second at
+   the level it opens.  A tier not in the table keeps the old
+   (tier x 1.5 + 5) x 25, as does `table` false (a worker without
+   caps.tierxp).  Mirror of server/src/gathering.js GATHER_TIER_XP /
+   harvestBaseXp, pinned by mirror-audit.  What is 5+ levels below you pays
+   less on top (xpDecay.js; gameSystems.js harvestXpFor). */
+export const GATHER_TIER_XP = { 1: 163, 6: 326, 11: 652, 16: 1304, 21: 2608 };
+
+export function harvestBaseXp(tierLvl, table) {
+  const t = Math.max(1, Math.floor(Number(tierLvl) || 1));
+  if (table !== false && Object.prototype.hasOwnProperty.call(GATHER_TIER_XP, t)) return GATHER_TIER_XP[t];
+  return Math.ceil(((t * 1.5) + 5) * 25);
+}
+
 /* v2.3.3038: the level to PRINT for a tier on a ladder (Skills' "next
    unlock", the Encyclopedia): its requirement where one is set, else the tier
    number as before -- the tiers past the third grow nowhere yet, and "Lv 1"
@@ -250,8 +283,11 @@ export function createGatherNode(zoneId, depth, x, y, nodeType, forcedTierLvl) {
 
   /* v2.3.1435 (owner): life-skill XP rate x5. Server mirror:
      gathering.js _harvestXpForTier — keep in lockstep.
-     v2.3.1765 (owner: "Lifeskills xp is far too slow"): x5 again -> 25x. */
-  const xp = Math.ceil((tier.lvl * 1.5 + 5) * 25);
+     v2.3.1765 (owner: "Lifeskills xp is far too slow"): x5 again -> 25x.
+     v2.3.3251: the tier's own XP, doubling a tier (GATHER_TIER_XP) -- what a
+     current worker pays at OK grade.  A harvest's "+N XP" is predicted by
+     gameSystems.js harvestXpFor, which asks the worker's caps and the fade. */
+  const xp = harvestBaseXp(tier.lvl, true);
   const respawnTime = 120000; /* 2 minutes after harvest the node revives in place */
   return {
     x, y, zoneId, depth,

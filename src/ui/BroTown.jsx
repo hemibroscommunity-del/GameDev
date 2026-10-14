@@ -7427,6 +7427,16 @@ export var BroTown = function BroTown(_ref0) {
                Rides the 2 s track slot rather than its own timer: this is
                a 2-minute deadline, 2 s of granularity is free, and a
                frozen page runs neither. */
+            /* v2.3.3251: a harvest's HITS are play, not idleness.  The top
+               tiers take up to ~2 minutes of swings now (gathering.js
+               GATHER_NODE_HP: 104 s on obsidian at Mining 15) with nothing
+               to touch until the gesture, and a logout at 2 minutes would
+               end the very harvest it was waiting on.  Only while the hits
+               run: `ready` waits for the player, and waiting there is idle
+               like anything else. */
+            if (S._extraction && S._extraction.status === 'waiting' && S._extraction.hits && S._extraction.hits.plan && !S._extraction.locked) {
+              S._lastInputAt = Date.now();
+            }
             if (S.channel && S.channel.idleLogout &&
                 Date.now() - (S._lastInputAt || Date.now()) > IDLE_LOGOUT_MS) {
               S.channel.idleLogout();

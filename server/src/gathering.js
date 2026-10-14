@@ -44,6 +44,8 @@
  *   HP     5 x (tier level + 1): the first tier is the owner's 10, and every
  *          tier takes about ten hits at the level that unlocks it (rolls of
  *          1..L average (L+1)/2).  Only tier 1 spawns today (_placeGatherNode).
+ *          v2.3.3251: by RESOURCE now, each tier twice the one before at the
+ *          level it opens (GATHER_NODE_HP, below); a cook's fish keeps this.
  *   MS     one hit per SWING of the art, so the number pops on the blow the
  *          player watches land: the pick's 650 ms loop, the axe's 540 ms
  *          (12 frames x 45 ms), and a 650 ms nibble for the rod, which has no
@@ -54,7 +56,9 @@
  *   MAX_HITS  a bound no live node can reach (tier 1 is at most 10 hits): a
  *          far-under-levelled player on a future high tier would otherwise
  *          get a plan hundreds of hits long.  The last allowed hit takes
- *          whatever HP is left.
+ *          whatever HP is left.  v2.3.3251: 40 -> 200, as the top tiers take
+ *          ~160 hits at the level they open (GATHER_NODE_HP); a cook keeps
+ *          40 (COOK_MAX_HITS).
  *   REUSE_MS  a restart on the SAME node within this window replays the same
  *          rolls instead of re-rolling, so the obvious move -- start, see a
  *          long plan, start again -- buys nothing.  Honest play never
@@ -68,11 +72,17 @@
  *          permissive legacy branch below).  Harden both together, when that
  *          branch is retired. */
 import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3012: the Wheel's baked nodes */
+import { xpDecayMult, xpAfterDecay } from './xpdecay.js'; /* v2.3.3251: XP fades 5+ levels below you */
 
 export const GATHER_HITS = {
   MS: { mining: 650, woodcutting: 540, fishing: 650, cooking: 650 },
   HP_PER_TIER: 5,
-  MAX_HITS: 40,
+  /* v2.3.3251: 40 -> 200.  Obsidian, maple and pike take ~160 hits at the
+     level they open (GATHER_NODE_HP), 182 at the very most; 200 is the most
+     the game accepts in a plan (src/data/gameSystems.js GATHER_PLAN_MAX,
+     mirror-audit), so every plan it is sent is one it plays. */
+  MAX_HITS: 200,
+  COOK_MAX_HITS: 40,   /* v2.3.3251: a cook's own bound, the old 40: cooking has no levels to unlock, so it is as it was (_planCookHits) */
   REUSE_MS: 60000,
   SEQ_MAX: 1e9,
   LADDER: 10,   /* v2.3.3229: the hit ladder's die -- each level adds a 1-in-10 chance (below) */
@@ -109,6 +119,8 @@ export const GATHER_HITS = {
  * node is always one hit).  MAX_HITS is now within reach of a live node -- a
  * Mining 5 player on black steel's 60 HP averages 30.5 hits and about one
  * plan in 80 meets the 40th, which takes what is left, as it always did.
+ * (v2.3.3251: no longer -- black steel is 80 HP and the bound 200, which no
+ * plan at a resource's own level reaches: GATHER_NODE_HP.)
  *
  * Mirror: src/data/lifeSkills.js gatherHitOdds (the Skills panel's "Each
  * hit"), pinned to gatherHitRoll below by mirror-audit.test.mjs.
@@ -213,6 +225,88 @@ export function gatherReqLvl(nodeType, tierLvl) {
   const t = Math.max(1, Math.floor(Number(tierLvl) || 1));
   const need = (row && has.call(row, t)) ? row[t] : 1;
   return Math.max(1, Math.floor(Number(need) || 1));
+}
+
+/* ═══ v2.3.3251: EACH TIER TAKES TWICE AS LONG AS THE ONE BEFORE ═══
+ *
+ * Owner, 2026-10-14: "I want each tiers unlocks (lvl 5 required, lvl 10
+ * required, etc) to take about 2x longer on average than the previous tier's
+ * lowest level extraction time.  You can figure out what "hp" to give the
+ * resources during extraction ... You can change black steel etc to whatever
+ * these values are."
+ *
+ * So each resource's HP is solved so that AT THE LEVEL IT OPENS
+ * (GATHER_REQ_LVL above) it takes, on average, twice the hits the tier before
+ * took at the level THAT one opens: 10, 20, 40, 80, 160 hits -- 6.5, 13, 26,
+ * 52 and 104 s of swinging at a rock or a pond (0.65 s a hit), 5.4 to 87 s at
+ * a tree (0.54 s).  The hits are the hit ladder's (gatherHitRoll), so a tier
+ * that opens later needs more HP for the same hits: iron opens at Mining 1
+ * beside copper (twenty 1s), clownfish and softwood at 5.  Solved exactly over
+ * the ladder's dice and rounded to tens (gather-hits §12 solves it again and
+ * holds every row within 3% of double):
+ *              tier 1     6     11     16     21
+ *   oreVein      10      20     80    440   1680    copper .. obsidian
+ *   tree         10      40    220    840   2480    pine .. maple
+ *   fishSpot     10      40    220    840   2480    minnow .. pike
+ * It was 5 x (tier + 1) for all three -- 10, 35, 60, 85, 110 -- which a
+ * higher level cut through faster tier by tier: obsidian at Mining 15 was 7 s.
+ * A tier or type not in the table (the world grows none past tier 21), and a
+ * cook's fish (cooking has no levels to unlock: _planCookHits), keep that.
+ * Each plan's own length is the strike's window, as ever; a planned harvest's
+ * monster shield now runs from its window's opening (_extractionShielded),
+ * as 104 s of hits ate most of the old 120 s.
+ *
+ * Mirror: src/data/lifeSkills.js GATHER_NODE_HP / gatherNodeHp (the HP bar
+ * before a plan lands, on the timer, and on a locked try), pinned by
+ * mirror-audit.  KILL SWITCH: `nodehp: false` in liveflags (lower case, TRAPS
+ * §117) puts every node back on 5 x (tier + 1) for each plan after it and
+ * un-advertises caps.nodehp (_nodeHpOff). */
+export const GATHER_NODE_HP = {
+  oreVein:  { 1: 10, 6: 20, 11: 80, 16: 440, 21: 1680 },
+  tree:     { 1: 10, 6: 40, 11: 220, 16: 840, 21: 2480 },
+  fishSpot: { 1: 10, 6: 40, 11: 220, 16: 840, 21: 2480 },
+};
+
+/** v2.3.3251: a node's hit points -- its type's row of GATHER_NODE_HP, else
+ *  (a type or tier not in it, or `table` false: the kill switch) v2.3.2956's
+ *  5 x (tier + 1).  Own properties only, so a forged type reads as no row
+ *  (TRAPS #6). */
+export function gatherNodeHp(tierLvl, nodeType, table) {
+  const t = Math.max(1, Math.floor(Number(tierLvl) || 1));
+  const has = Object.prototype.hasOwnProperty;
+  const row = (table !== false && typeof nodeType === 'string' && has.call(GATHER_NODE_HP, nodeType)) ? GATHER_NODE_HP[nodeType] : null;
+  if (row && has.call(row, t)) return row[t];
+  return GATHER_HITS.HP_PER_TIER * (t + 1);
+}
+
+/* ═══ v2.3.3251: ...AND EACH TIER PAYS TWICE THE XP OF THE ONE BEFORE ═══
+ * Owner, asked whether XP should grow with the time now that each tier takes
+ * twice as long: "Yes adjust the xp."  A harvest's base XP (before the
+ * accuracy grade, _harvestXpMult) by its tier, doubling as the time does:
+ *              tier 1    6     11     16     21
+ *              163      326    652   1304   2608   (was 163, 350, 538, 725, 913)
+ * so at the level each one opens every tier pays about the same XP a second
+ * (~22-30 a second with the ~1.5 s gesture; it was 9 on obsidian against 20
+ * on copper).  Every type alike: the hits double per tier for all three.  A
+ * tier not in the table (the world grows none past 21) keeps the old
+ * (tier x 1.5 + 5) x 25.  What is well below you pays less on top
+ * (xpdecay.js, _harvestXpPaid).
+ *
+ * Mirror: src/data/lifeSkills.js GATHER_TIER_XP / harvestBaseXp, pinned by
+ * mirror-audit.  KILL SWITCH: `tierxp: false` in liveflags (lower case) puts
+ * every harvest back on the old XP and un-advertises caps.tierxp -- and so
+ * does `nodehp: false`, as doubled XP for the old, quick HP would level a
+ * player through the top tiers several times faster than before
+ * (_tierXpOff). */
+export const GATHER_TIER_XP = { 1: 163, 6: 326, 11: 652, 16: 1304, 21: 2608 };
+
+/** v2.3.3251: a harvest's base XP for its tier -- the table's, else (a tier
+ *  not in it, or `table` false: the kill switch) the old
+ *  ceil((tier x 1.5 + 5) x 25).  Own properties only (TRAPS #6). */
+export function harvestBaseXp(tierLvl, table) {
+  const t = Math.max(1, Math.floor(Number(tierLvl) || 1));
+  if (table !== false && Object.prototype.hasOwnProperty.call(GATHER_TIER_XP, t)) return GATHER_TIER_XP[t];
+  return Math.ceil(((t * 1.5) + 5) * 25);
 }
 
 /* ═══ v2.3.3090: LIFE SKILLS LEVEL HALF AS FAST, LIKE COMBAT ═══
@@ -515,6 +609,7 @@ export const gatheringMethods = {
   // Base XP per harvest = ceil(tierLvl * 1.5 + 5); the accuracy
   // multiplier (xpMult above) is applied on top.  Mirrors the client
   // formula in createGatherNode (lifeSkills.js).
+  // v2.3.3251: the base is GATHER_TIER_XP's, doubling a tier (harvestBaseXp).
   _harvestXpForTier(tierLvl, accuracy) {
     /* v2.3.1435 (owner): life-skill XP rate x5.  Client mirror:
        createGatherNode in src/data/lifeSkills.js — keep in lockstep.
@@ -522,8 +617,29 @@ export const gatheringMethods = {
        increase it by about 5x"): x5 again, so the rate is 25x the original.
        The LEVEL CURVE is untouched — this multiplies what a swing pays, not
        what a level costs, which is the knob the owner asked for. */
-    const baseXp = Math.ceil((((tierLvl || 1) * 1.5) + 5) * 25);
+    const baseXp = harvestBaseXp(tierLvl, !this._tierXpOff());
     return Math.ceil(baseXp * this._harvestXpMult(accuracy));
+  },
+
+  /** v2.3.3251: what a harvest of node `n` PAYS a player: the tier's XP at
+   *  its grade (_harvestXpForTier), then faded when the resource's level
+   *  (GATHER_REQ_LVL) is 5 or more below the player's skill (xpdecay.js) --
+   *  their level BEFORE this harvest's XP lands.  The game predicts the same
+   *  number for its "+N Mining XP" (gameSystems.js harvestXpFor). */
+  _harvestXpPaid(ps, skill, n, accuracy) {
+    const xp = this._harvestXpForTier(n.tierLvl, accuracy);
+    if (typeof this._xpDecayOff !== 'function' || this._xpDecayOff()) return xp;
+    const s = ps && ps.lifeSkills && Object.prototype.hasOwnProperty.call(ps.lifeSkills, skill) ? ps.lifeSkills[skill] : null;
+    const lvl = (s && typeof s === 'object') ? Math.max(1, Math.floor(Number(s.level) || 1)) : 1;
+    return xpAfterDecay(xp, xpDecayMult(lvl, gatherReqLvl(n.nodeType, n.tierLvl)));
+  },
+
+  /** v2.3.3251: GATHER_TIER_XP's kill switch -- `tierxp: false`, or
+   *  `nodehp: false` (the doubled XP is for the doubled HP). */
+  _tierXpOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'tierxp') && !f.tierxp)
+      || this._nodeHpOff();
   },
 
   // lifeSkill level-up threshold curve.  Mirrors LIFE_SKILL_XP on the
@@ -762,7 +878,14 @@ export const gatheringMethods = {
     }
     const e = this.extractions[playerId];
     if (!e) return false;
-    if (t - e.startedAt >= this.EXTRACT_SHIELD_MS) return false;
+    /* v2.3.3251: a PLANNED harvest's ceiling runs from its window's opening,
+       not its first swing.  The tiers' new HP (GATHER_NODE_HP) put up to ~2
+       minutes of hits before the gesture -- 104 s on obsidian at Mining 15 --
+       and a ceiling counted from the start lapsed under a player still
+       harvesting, the report v2.3.1704 fixed.  The bound is as long past the
+       hits as it always was; the timer's record (no plan) is unchanged. */
+    const ceil = this.EXTRACT_SHIELD_MS + (Array.isArray(e.hits) ? (Number(e.openDelayBase) || 0) : 0);
+    if (t - e.startedAt >= ceil) return false;
     if (ps.z !== e.zone) return false;
     /* The node has to still be there.  Cheap linear scan: node lists are a
        handful of entries per zone and this runs once per player per tick. */
@@ -891,10 +1014,18 @@ export const gatheringMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'gatherhits') && !f.gatherhits);
   },
 
-  /** v2.3.2956: a node's hit points -- see GATHER_HITS.HP_PER_TIER. */
-  _gatherNodeHp(tierLvl) {
-    const t = Math.max(1, Math.floor(Number(tierLvl) || 1));
-    return GATHER_HITS.HP_PER_TIER * (t + 1);
+  /** v2.3.2956: a node's hit points -- see GATHER_HITS.HP_PER_TIER.
+   *  v2.3.3251: by the node's TYPE and tier (gatherNodeHp, GATHER_NODE_HP);
+   *  with no type -- a cook's fish -- the old 5 x (tier + 1). */
+  _gatherNodeHp(tierLvl, nodeType) {
+    return gatherNodeHp(tierLvl, nodeType, !this._nodeHpOff());
+  },
+
+  /** v2.3.3251: the kill switch (GATHER_NODE_HP above) -- `nodehp: false` in
+   *  the liveflags key puts every node back on 5 x (tier + 1). */
+  _nodeHpOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'nodehp') && !f.nodehp);
   },
 
   /** v2.3.3229: the hit ladder's kill switch (gatherHitRoll above) --
@@ -908,14 +1039,16 @@ export const gatheringMethods = {
    *  one that crosses zero, so the plan never carries a hit after the node is
    *  already broken.  MAX_HITS bounds it (see the config).  v2.3.3229: each
    *  hit is the ladder's (gatherHitRoll), 1..level only with the kill switch
-   *  thrown. */
-  _rollGatherHits(level, hp) {
+   *  thrown.  v2.3.3251: `maxHits`, a cook's own bound (COOK_MAX_HITS); a
+   *  node's is MAX_HITS. */
+  _rollGatherHits(level, hp, maxHits) {
     const ladder = !this._hitLadderOff();
+    const cap = Math.max(1, Math.floor(Number(maxHits) || GATHER_HITS.MAX_HITS));
     const hits = [];
     let left = Math.max(1, Math.floor(Number(hp) || 1));
     while (left > 0) {
       let d = gatherHitRoll(level, Math.random(), ladder);
-      if (hits.length >= GATHER_HITS.MAX_HITS - 1) d = Math.max(d, left);
+      if (hits.length >= cap - 1) d = Math.max(d, left);
       hits.push(d);
       left -= d;
     }
@@ -944,7 +1077,7 @@ export const gatheringMethods = {
       this._sendGatherHits(session, { seq, nodeId: rec.nodeId, zone: rec.zone, off: true });
       return;
     }
-    const hp = this._gatherNodeHp(rec.nodeTier);
+    const hp = this._gatherNodeHp(rec.nodeTier, n.nodeType);   /* v2.3.3251: by the node's type too */
     const lvl = (ps.lifeSkills && ps.lifeSkills[hitSkill] && ps.lifeSkills[hitSkill].level) || 1;
     const prev = this.extractions[session.id];
     const reuse = !!(prev && Array.isArray(prev.hits) && prev.nodeId === rec.nodeId && prev.zone === rec.zone
@@ -992,7 +1125,7 @@ export const gatheringMethods = {
     }
     const hp = this._gatherNodeHp(this._fishTierLvl(fishKey));
     const lvl = (ps.lifeSkills && ps.lifeSkills.cooking && ps.lifeSkills.cooking.level) || 1;
-    const hits = this._rollGatherHits(lvl, hp);
+    const hits = this._rollGatherHits(lvl, hp, GATHER_HITS.COOK_MAX_HITS);   /* v2.3.3251: a cook keeps the old 40 */
     /* in memory only, for the operator view: _saveRpg writes a fixed field
        list and player_state echoes a fixed set, so neither carries it */
     ps._cookHits = { fishKey, level: lvl, hp, hits, rolledAt: Date.now() };
@@ -1235,7 +1368,9 @@ export const gatheringMethods = {
        now it predicts the popup locally but the authoritative
        lifeSkills snapshot rides on the player_state event below. */
     const skillName = this._harvestSkillName(n.nodeType);
-    const xpAmt = this._harvestXpForTier(n.tierLvl, ratedAccuracy);
+    /* v2.3.3251: the tier's XP, faded 5+ levels below the player (read
+       before the XP below lands, as the game reads it) */
+    const xpAmt = this._harvestXpPaid(ps, skillName, n, ratedAccuracy);
     const { leveled, newLevel } = this._addLifeSkillXp(ps, skillName, xpAmt);
 
     /* Shard roll -- 33% per successful harvest.  Server-rolled so a

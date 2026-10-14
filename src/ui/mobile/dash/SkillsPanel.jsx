@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { skillXpRequired } from '../../../data/items.js';
 import { gatherHitOddsText } from '../../../data/lifeSkills.js'; /* v2.3.3229: the hit ladder's odds */
-import { SKILL_GATHER, SKILL_CRAFT, SKILL_ROSTER, skillUnlocks, markSkillsSeen } from '../sheet/skillsModel.js';
+import { SKILL_GATHER, SKILL_CRAFT, SKILL_ROSTER, skillUnlocks, markSkillsSeen, skillXpFade, xpShareText } from '../sheet/skillsModel.js';
+import { xpDecayOn } from '../../../data/xpDecay.js'; /* v2.3.3251: the XP fade's lines */
 import { skillDetailBus } from '../sheet/skillDetailBus.js';
 import { panelVw } from '../playViewport.js'; /* v2.3.2173: the sheet's width, not the shell's */
 
@@ -74,6 +75,7 @@ export const SkillsPanel = () => {
        caps.hitladder, the even 1..level without it (an older worker, or the
        kill switch). */
     const hitsOn = !!(sd.hits && S && S._serverCaps && S._serverCaps.gatherhits);
+    const fade = xpDecayOn(S) ? skillXpFade(sd, lvl) : null;   /* v2.3.3251 */
     const ladder = !!(S && S._serverCaps && S._serverCaps.hitladder);
     const row = (label, value) => (
       <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '4px 0', borderBottom: `1px solid ${COL.divider}`, minWidth: 0 }}>
@@ -114,6 +116,13 @@ export const SkillsPanel = () => {
         {hitsOn && <div data-hit-odds={lvl} style={{ display: 'contents' }}>
           {row('Each hit', gatherHitOddsText(lvl, ladder))}
           {row(`At Lv ${lvl + 1}`, gatherHitOddsText(lvl + 1, ladder))}
+        </div>}
+        {/* v2.3.3251: which resources pay full XP at this level, and the
+            nearest that pay less (xpDecay.js) -- only against a worker that
+            fades it (caps.xpdecay) */}
+        {fade && <div data-xp-fade={lvl} style={{ display: 'contents' }}>
+          {row('Full XP', fade.full.length ? fade.full.join(', ') : 'Nothing at your level')}
+          {fade.less.length > 0 && row('Less XP', fade.less.slice(0, 2).map(x => `${x.name} ${xpShareText(x.share)}`).join(' · ') + (fade.less.length > 2 ? ' …' : ''))}
         </div>}
         {un && un.current.length > 0 && row('Unlocked', un.current.join(', '))}
         {un && un.next && row('Next unlock', `${un.next.name} at Lv ${un.next.lvl}`)}

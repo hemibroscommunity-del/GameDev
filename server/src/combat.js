@@ -1291,7 +1291,9 @@ export const combatMethods = {
          'staff'; the slot decides, exactly as it does for a normal hit. */
       const _xpCat = _effSlot === 'ranged' ? 'bow'
         : _effSlot === 'staff' ? 'staff' : 'sword';
-      this._prog3AwardXp(session.id, attackerPs, _xpCat, actualDmg);
+      /* v2.3.3251: faded when the monster is 5+ levels below that skill
+         (xpdecay.js: a third at 5 below, 15% less each level past it) */
+      this._prog3AwardXp(session.id, attackerPs, _xpCat, actualDmg * this._combatXpDecay(attackerPs, _xpCat, m.level));
     }
 
     // v2.3.1114: SERVER-AUTHORITATIVE ELEMENTAL.  The wire already carried
@@ -1548,6 +1550,7 @@ export const combatMethods = {
     const base = Math.max(1, Math.round(primaryDmg * sp.FRAC));
     let hitCount = 0;
     let dealt = 0;
+    let xpDealt = 0;   /* v2.3.3251: the same, each monster's faded by its level (xpdecay.js) */
     for (const m of monsters) {
       if (hitCount >= sp.MAX_TARGETS) break;
       if (!m || m === primary || m.id === primary.id) continue;
@@ -1565,14 +1568,17 @@ export const combatMethods = {
       m._aggroOverrideTarget = attackerId;
       m._aggroOverrideUntil = Date.now() + 10000;
       const dmg = Math.max(1, Math.round(base * this._fractureDmgMult(m)));
-      dealt += this._applyMonsterDot(zone, m, dmg, attackerId, null,
+      const got = this._applyMonsterDot(zone, m, dmg, attackerId, null,
         { splash: true, slot: 'staff' });
+      dealt += got;
+      xpDealt += got * this._combatXpDecay(attackerPs, 'staff', m.level);
     }
     /* Trained XP on the same rule every other damage source follows (§9-A):
        the weapon that dealt it earns it, priced off the CREDITED total, so
-       overkill on a splashed neighbour cannot inflate the rate. */
+       overkill on a splashed neighbour cannot inflate the rate.
+       v2.3.3251: each neighbour's share faded by its own level (xpDealt). */
     if (dealt > 0 && attackerPs && attackerPs.prog3) {
-      this._prog3AwardXp(attackerId, attackerPs, 'staff', dealt);
+      this._prog3AwardXp(attackerId, attackerPs, 'staff', xpDealt);
     }
     return dealt;
   },

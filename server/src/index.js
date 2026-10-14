@@ -194,6 +194,7 @@ import { aggroGridMethods } from './aggrogrid.js'; /* v2.3.3201: a monster looks
 import { tickPaceMethods } from './tickpace.js'; /* v2.3.3202: the world keeps its speed in a busy room */
 import { steadyMoversMethods } from './steadymovers.js'; /* v2.3.3203: a player walking steadily is sent less often */
 import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look relayed when it changes, not every 2 s */
+import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what is 5+ levels below you, harvests and fights */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
@@ -1219,7 +1220,8 @@ export class GameRoom {
        the timeout off `ready` (the window waits for you), v2.3.2761 doubled
        the gesture (~6 s of work, never under 4.8 s), and the gathering hits
        (gathering.js _planCookHits) make the wind-up a run of 650 ms hits --
-       10 on a minnow at level 1, up to MAX_HITS (26 s) on an older catch at a
+       10 on a minnow at level 1, up to MAX_HITS (26 s; COOK_MAX_HITS since
+       v2.3.3251, MAX_HITS being a node's 200) on an older catch at a
        low level.  So the 30 s ceiling expired MID-COOK.  Measured on a
        headless cook: the shield dropped exactly 30 s after the cook began,
        with the pan still being flipped.  In mp-gatherhits' first cooking run
@@ -6197,3 +6199,4 @@ Object.assign(GameRoom.prototype, aggroGridMethods); /* v2.3.3201 */
 Object.assign(GameRoom.prototype, tickPaceMethods); /* v2.3.3202 */
 Object.assign(GameRoom.prototype, steadyMoversMethods); /* v2.3.3203 */
 Object.assign(GameRoom.prototype, lookRelayMethods); /* v2.3.3240 */
+Object.assign(GameRoom.prototype, xpDecayMethods); /* v2.3.3251 */

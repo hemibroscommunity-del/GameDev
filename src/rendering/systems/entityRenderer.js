@@ -13,6 +13,7 @@ import { ZONES, zonePlayerScale, zoneDepthScale, zoneHomes } from '@/data/zones.
 import { ELEMENTS } from '@/data/elements.js';
 import { rpgBlocks } from '@/data/abilities.js'; /* v2.3.2302: the block ladder */
 import { isProg3RelEnabled, prog3Live, prog3SkillLevel, prog3ActiveCat } from '@/data/prog3.js'; /* v2.3.2680: the plate's yardstick */
+import { xpDecayMult, xpDecayOn } from '@/data/xpDecay.js'; /* v2.3.3251: the grey plate -- a monster that pays reduced XP */
 /* v2.3.1183: status-id -> element lookup, built once at import time.
    _updateMonsters used to run Object.values(ELEMENTS).find(...) per
    status per monster per FRAME -- an array + closure allocation and a
@@ -5871,6 +5872,17 @@ const PLATE_BAND = {
   high:   0xF3821F,   /* diff +1..+2 -- sampled (243,130,31) */
   danger: 0xFF3636,   /* diff >= +3  -- sampled (255,54,54)  */
   gold:   0xF5CC4A,   /* the player's own plate -- sampled (253,213,70) */
+  /* ═══ v2.3.3251: A FIFTH BAND, GREY -- THIS ONE PAYS REDUCED XP ═══
+     Offered "a grey name plate for monsters that pay less XP", the owner: "I
+     like the idea of gray nameplate for reduced xp add that."  A monster 5 or
+     more levels under the skill of the weapon in your hand pays a third of
+     the XP and less past that (src/data/xpDecay.js, the worker's
+     server/src/xpdecay.js), so its ring and level are this grey instead of
+     the green Low.  Chosen, not sampled -- the mockup has no fifth band:
+     8.3:1 on the level's stroke (the other bands 5.1-13.2) and at least
+     ΔE00 25 from every other band over every ground the plate sits on
+     (mp-monsterplate holds both, floor 4.5 and 12). */
+  faded:  0xA7B0B5,   /* 5+ under your weapon's skill (xpDecayMult < 1) */
 };
 /* ═══════════════════════════════════════════════════════════════════════
    v2.3.2590: THE LEVEL IS STROKED, SO ITS LEGIBILITY LEFT THE FILL
@@ -6020,8 +6032,13 @@ const PLAYER_BAND_Y = -(HP_RING_OUTER_R + 49);   /* ~-73 */
 
 /* Which band a monster's level falls in, relative to the player's.
    Exported so the QA probe and any future caller ask the same question once
-   rather than each restating the thresholds (the mirror-audit lesson). */
-export function plateBandFor(monsterLevel, playerLevel) {
+   rather than each restating the thresholds (the mirror-audit lesson).
+   v2.3.3251: `fadeLevel`, the level the XP fade measures you by (the skill of
+   the weapon in your hand), or null when this worker fades nothing -- 'faded'
+   (grey) is the fade's own answer, xpDecayMult < 1, never a threshold
+   restated here, so the plate turns grey exactly where the XP drops. */
+export function plateBandFor(monsterLevel, playerLevel, fadeLevel) {
+  if (fadeLevel != null && xpDecayMult(fadeLevel, monsterLevel == null ? 1 : monsterLevel) < 1) return 'faded';
   const d = (monsterLevel == null ? 1 : monsterLevel) - (playerLevel || 1);
   if (d <= -2) return 'low';
   if (d <= 0) return 'near';
@@ -9875,7 +9892,8 @@ export class EntityRenderer {
            `_bandBar` block above, where the value is now made. */
         const _plateShow = !_bandBar;
         /* The band is the monster's level RELATIVE TO YOURS (D16), so it moves
-           when either side levels.  plateBandFor owns the four thresholds.
+           when either side levels.  plateBandFor owns the four thresholds
+           (v2.3.3251: and the grey fifth, a monster that pays reduced XP).
            v2.3.2680: "yours" is the trained skill of the weapon in your hand
            on a relative worker — the level your points' EDGE is measured
            against (prog3.js) — so the colour tells you how much of your
@@ -9885,7 +9903,13 @@ export class EntityRenderer {
         const _plateYou = (isProg3RelEnabled() && S.rpg && prog3Live(S.rpg))
           ? prog3SkillLevel(S.rpg, prog3ActiveCat(S.rpg))
           : ((S.rpg && S.rpg.level) || 1);
-        const _plateBand = plateBandFor(m.level, _plateYou);
+        /* v2.3.3251: and GREY when it pays reduced XP -- measured, as the
+           worker measures it, against the trained skill of the weapon in your
+           hand (the skill a hit's XP goes into), relative points or not; only
+           against a worker that fades XP (caps.xpdecay). */
+        const _fadeYou = (xpDecayOn(S) && S.rpg && prog3Live(S.rpg))
+          ? prog3SkillLevel(S.rpg, prog3ActiveCat(S.rpg)) : null;
+        const _plateBand = plateBandFor(m.level, _plateYou, _fadeYou);
         _updateNamePill(_plateUi, wheelStageName(m, monsterDisplayName(m.archetype || m.type)),   /* v2.3.3093: "Glacier Snowman" past level 20 */
           m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand);
         /* ═══ v2.3.2571: THE PLATE SITS WHERE THE BAR SITS ═══
