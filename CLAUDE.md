@@ -819,6 +819,20 @@ remnant to migrate server-side, not a mode to preserve.
       one near you (nodeLabels.js `NAME_PLATE_ONLY`); trees and veins as
       before; `mp-nodelabels` samples every drawn spot: wheel-resources.md
       "No rod over the fish".
+    - since v2.3.3229 THE HIT LADDER -- the owner: "after the first level you
+      get a 10% chance of hitting 1 number higher ... the number 1 will
+      eventually get replaced by the 2 as more 10% chances get added with each
+      level": every hit of a harvest or a cook is a ten-sided die read down
+      from the skill level, `max(1, level - 9 + face)` (gathering.js
+      `gatherHitRoll`, `GATHER_HITS.LADDER` 10; it was an even 1..level) --
+      level 3 hits 1 eight times in ten, level 10 is as before, from 11 there
+      are no 1s; slower than before below 10, faster above; Skills -> Mining,
+      Woodcutting, Fishing and Cooking print "Each hit" and "At Lv N+1"
+      (lifeSkills.js `gatherHitOddsText`; the old timer's Benefit line only
+      when the worker rolls no hits); `caps.hitladder`, kill switch
+      `hitladder: false` (1..level again); test lever `/dev/lifeskill`
+      {skill | 'hits', level} and the test panel's level buttons; gather-hits
+      §11, mirror-audit "hit ladder", `mp-hitladder`: docs/specs/hit-ladder.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
