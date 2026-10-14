@@ -302,7 +302,7 @@ The fake players' own CPU (about 20% of a core per process, three processes)
 and event-loop delay (13-15 ms at p99) were watched in every step. They were
 not the bottleneck.
 
-## v2.3.3220: `--track`, the phones' 2 s look
+## v2.3.3240: `--track`, the phones' 2 s look
 
 The bots never sent `track`: a phone's whole look, every 2 s, which the worker
 relayed to every other player. So every number above it left that out.

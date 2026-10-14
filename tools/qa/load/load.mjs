@@ -80,9 +80,9 @@ const OPT = {
   moveMs: +arg('move-ms', 0),             /* v2.3.3199: a walker's move every N ms (0: the phone's 33) */
   townMoveMs: +arg('town-move-ms', 0),     /* v2.3.3203: the town walkers' (not the fighters') move every N ms */
   diet: process.argv.includes('--diet'),     /* v2.3.3204: the walkers keep a steady walk's moves back as a phone on the safe ground does (src/game/moveDiet.js) */
-  track: process.argv.includes('--track'),   /* v2.3.3220: every bot sends a phone's 2 s look (bots.mjs TRACK_MS), relayed by the worker to everyone */
+  track: process.argv.includes('--track'),   /* v2.3.3240: every bot sends a phone's 2 s look (bots.mjs TRACK_MS), relayed by the worker to everyone */
   seenR: +arg('seen-r', 0),               /* v2.3.3199: "others' moves seen" counts senders this near (0: 2,400) */
-  walkR: +arg('walk-r', 0),               /* v2.3.3220: the town walkers' circle (0: bots.mjs WALK_R, 1,400); smaller packs them in */
+  walkR: +arg('walk-r', 0),               /* v2.3.3240: the town walkers' circle (0: bots.mjs WALK_R, 1,400); smaller packs them in */
   inspectorPort: +arg('inspector-port', 0),   /* v2.3.3203: the runtime's debugger port, for a CPU profile (cdpprof.mjs) */
   server: arg('server', null),             /* a server/ folder to test instead of this repo's own */
   workerLog: arg('worker-log', null),      /* v2.3.3203: write the worker's whole log here at the end */
@@ -339,7 +339,7 @@ function summarise(n, rs, whole, cpu, secs) {
     downTickKBps: r1(players ? sum('rxTickBytes') / secs / players / 1024 : 0),
     ticksPerPlayerPerSec: r1(players ? sum('rxTicks') / secs / players : 0),
     msgsPerPlayerPerSec: r1(players ? sum('rxMsgs') / secs / players : 0),
-    /* v2.3.3220: --track's relays, as each player receives them */
+    /* v2.3.3240: --track's relays, as each player receives them */
     updatesPerPlayerPerSec: r1(players ? sum('rxUpdates') / secs / players : 0),
     updateKBpsPerPlayer: r1(players ? sum('rxUpdateBytes') / secs / players / 1024 : 0),
     tracksPerSec: r1(sum('tracks') / secs),

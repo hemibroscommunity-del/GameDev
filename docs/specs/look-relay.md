@@ -1,4 +1,4 @@
-# A player's look is relayed when it changes, not every 2 s (v2.3.3220)
+# A player's look is relayed when it changes, not every 2 s (v2.3.3240)
 
 > Owner, 2026-10-13: *"Go recommended but I want you to stress test to see
 > what can be optimized."*

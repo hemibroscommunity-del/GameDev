@@ -6130,7 +6130,7 @@ work, and one world behind them. Area servers come behind the doors only when
 the one world server itself is full. Measure where a room's time goes, by
 kind of work, before choosing a split.
 
-## 173. "The bots do what a phone does on the wire" (v2.3.3220)
+## 173. "The bots do what a phone does on the wire" (v2.3.3240)
 
 `tools/qa/load/bots.mjs` says it, and for the messages it models it is true:
 the join, the zone change, moves at a phone's rate, pongs, swings. But a phone
@@ -6139,7 +6139,7 @@ worker relayed each one to every other player in the room as a message of its
 own. The bots never sent it.
 
 That is N(N-1)/2 sends a second, more messages than all the ticks at 120
-players, and every capacity number before v2.3.3220 left it out. "Smooth to
+players, and every capacity number before v2.3.3240 left it out. "Smooth to
 about 145" was really about 105, and the cap of 120 went past it.
 
 **The rule.**

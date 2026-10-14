@@ -1,4 +1,4 @@
-/* ═══ v2.3.3220: A PLAYER'S LOOK IS RELAYED WHEN IT CHANGES, NOT EVERY 2 s ═══
+/* ═══ v2.3.3240: A PLAYER'S LOOK IS RELAYED WHEN IT CHANGES, NOT EVERY 2 s ═══
  *
  * lookrelay.js relays a player's `track` to the others only when something
  * other than where they stand, their HP or their inspect card's counters
