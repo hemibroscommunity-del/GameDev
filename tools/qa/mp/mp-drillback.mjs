@@ -31,6 +31,14 @@
  *
  * Point 3 is what "raised up to fit the window better" actually means, and it
  * is worth 44px — on the Weapons sheet that is its fifth channel row.
+ *
+ * v2.3.3215: the chip moved again, on purpose this time -- the owner, asked
+ * whether a sixth button (the Codex) should make all six narrower or move the
+ * back arrow down beside the screen's title: "Move back arrow".  It is the
+ * panel's own header now, one button holding the chip and the title
+ * (BottomDashboard `data-dash-back`), INSIDE the body under the toolbar row,
+ * so the three relationships still hold and are still what is asserted: a
+ * real target, nothing drawn over it, the toolbar reserved once.
  */
 import * as H from './harness.mjs';
 
@@ -53,9 +61,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!band) return { err: 'no band' };
     const R = (n) => { const b = n.getBoundingClientRect();
       return { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) }; };
-    const back = [...band.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === '◂');
+    const back = band.querySelector('[data-dash-back]');
     if (!back) return { err: 'no back chip' };
-    const row = back.parentElement;
+    /* the toolbar row: the absolute row that holds the fold chip (the back
+       chip's own parent is the panel body since v2.3.3215) */
+    const fold = band.querySelector('[data-dash-fold]');
+    const row = fold ? fold.parentElement : back.parentElement;
     const br = R(back);
     /* Every LEAF anywhere in the band that shares the chip's horizontal band
        of pixels — the gold coin and its count, the title, each nav button.
