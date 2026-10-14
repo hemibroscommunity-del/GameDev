@@ -213,7 +213,7 @@ far send and the 1 Hz roster count as sent. Same fields, fewer entries: a
 straight walk about 15 a second instead of 30. Kill switch: `steadymovers:
 false`. `docs/specs/steady-movers.md`.
 
-**v2.3.3218: the roster's far players, slim.**
+**v2.3.3226: the roster's far players, slim.**
 - **The roster is built for each phone.** On a presence tick (the 1 Hz roster),
   a v2 phone in the Wheel gets its own roster.
 - **Near players whole.** The players within 2,400 px of it in its zone are sent

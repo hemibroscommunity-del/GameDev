@@ -54,7 +54,7 @@ would collapse the roster to your own zone. The roster is therefore
 **unconditional** — every connected player, dirty or not — because an idle peer
 is never in `dirtyPlayers` and would otherwise age out. `PRESENCE_REFRESH_TICKS
 = 45` (~1 s) gives the 10 s sweep 10× margin; do not raise it past ~7 s without
-revisiting that sweep window.  *(v2.3.3218: in the Wheel a far player standing
+revisiting that sweep window.  *(v2.3.3226: in the Wheel a far player standing
 still is in a phone's roster every `ROSTER.FAR_STILL_MS` (4 s) plus one roster,
 not every one -- still inside the sweep: `docs/specs/slim-roster.md`.)*
 
