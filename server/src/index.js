@@ -5911,6 +5911,19 @@ export class GameRoom {
   async reportToLeaderboard(session, force) {
     try {
       if (!session || !session.id) return;
+      /* ═══ v2.3.3242: THE CLOCK BEFORE THE WORK ═══
+         Every `track` (every player, every 2 s) calls this, and it built the
+         Leaderboard stub, the whole chain-score series (_chainScoreSeries:
+         every combat and life skill level) and a JSON signature of all of it,
+         to return at the throttle below on all but one call in 150 (MIN_MS,
+         5 min): ~100 us a track, 7.6 ms of every second of the room's thread
+         at 150 players in the stress test's profile (docs/specs/stress-tests.md).
+         Inside MIN_MS of the last
+         report the throttle returns whatever the signature says -- it needs
+         `since >= MIN_MS` for a changed record and `since >= HEARTBEAT_MS` for
+         an unchanged one -- so reading the clock first returns on exactly the
+         same calls, and every report that went still goes. */
+      if (!force && Date.now() - (session._lbAt || 0) < Math.min(this.LEADERBOARD_MIN_MS, this.LEADERBOARD_HEARTBEAT_MS)) return;
       const stub = this.env.LEADERBOARD.get(this.env.LEADERBOARD.idFromName('global'));
       /* v2.3.1465: RANK COMES FROM THE SERVER.  This used to post
          `session.data.rpgLv` -- a number the client typed into a track
