@@ -13,7 +13,8 @@
  * A real player in the Wheel, a real worker, real kills (the test kit's
  * `kill`, which kills through _resolveMonsterKill, the path every kill takes):
  *   1. the worker says it counts (caps.codex) and sends the codex at join;
- *      More -> Codex opens on Monsters: nine cards, every one a shape;
+ *      the Codex button (v2.3.3215: its own, on the dashboard's row) opens on
+ *      Monsters: nine cards, every one a shape;
  *   2. a snowman's kill: counted (snowling 1), said over your head, its card
  *      known and NEW;
  *   3. its page, as the mockup lays it out, on the sheet's own short height
@@ -85,18 +86,24 @@ const said = (P, re) => P.page.evaluate((src) => {
   return (S.dmgNumbers || []).map((d) => d && (d.text || d.str || d.label)).filter((t) => typeof t === 'string' && rx.test(t));
 }, re.source);
 const kill = async (wsPort, me, id) => H.devOp(wsPort, 'trapping', me, { kill: id });
+/* v2.3.3215: the Codex's own button on the dashboard's row (More's tile opens
+   the same screen: mp-codexfit) */
 const openCodex = async (P) => {
-  await H.openDest(P, 'More').catch(() => {});
-  await P.page.waitForTimeout(600);
-  await P.page.evaluate(() => { const b = document.querySelector('[data-more-tile="encyclopedia"]'); if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });
+  await H.openDest(P, 'Codex').catch(() => {});
   return P.page.waitForSelector('[data-cx-grid]', { timeout: 6000 }).then(() => true).catch(() => false);
 };
+/* the count on the Codex button: the pages with something new on them */
+const codexBadge = (P) => P.page.evaluate(() => {
+  const b = document.querySelector('.bt-navrail [data-nav="encyclopedia"]');
+  const n = b ? [...b.querySelectorAll('span')].find((x) => /^\d+\+?$/.test((x.textContent || '').trim())) : null;
+  return n ? n.textContent.trim() : null;
+});
 const cards = (P) => P.page.evaluate(() => [...document.querySelectorAll('[data-cx-card]')].map((b) => ({ kind: b.dataset.cxCard, known: b.dataset.cxKnown === '1', fresh: b.dataset.cxFresh === '1', text: b.innerText.replace(/\s+/g, ' ') })));
 const openPage = async (P, kind) => {
   await P.page.evaluate((k) => { const b = document.querySelector(`[data-cx-card="${k}"]`); if (b) b.click(); }, kind);
   return P.page.waitForSelector(`[data-cx-page="${kind}"]`, { timeout: 4000 }).then(() => true).catch(() => false);
 };
-const back = (P) => P.page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /All monsters/.test(x.innerText)); if (b) b.click(); });
+const back = (P) => P.page.evaluate(() => { const b = document.querySelector('[data-cx-back]'); if (b) b.click(); });   /* v2.3.3215: the tab bar's ‹ */
 const facts = (P) => P.page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-cx-fact]')].map((f) => [f.dataset.cxFact, f.dataset.cxOpen === '1'])));
 /* the page's drop table: { id: [its chance as printed, out of its
    parentheses; its type; its roll's range as printed; the chance exactly as
@@ -136,8 +143,13 @@ const boxLook = (P, sel) => P.page.evaluate((sel) => {
   const br = box.getBoundingClientRect();
   const el = sel ? document.querySelector(sel) : null;
   const er = el ? el.getBoundingClientRect() : null;
-  return { top: Math.round(box.scrollTop), h: box.clientHeight, sh: box.scrollHeight,
-    seen: er ? er.top >= br.top - 1 && er.bottom <= br.bottom - 18 + 1 : null,
+  /* v2.3.3215: the page's tab bar stays pinned over the box's top; what
+     stands under it is not in view */
+  const bar = document.querySelector('[data-cx-page] [data-cx-tabbar]');
+  const barR = bar ? bar.getBoundingClientRect() : null;
+  const over = barR && barR.top <= br.top + 1 ? Math.round(barR.bottom - br.top) : 0;
+  return { top: Math.round(box.scrollTop), h: box.clientHeight, sh: box.scrollHeight, bar: over,
+    seen: er ? er.top >= br.top + over - 1 && er.bottom <= br.bottom - 18 + 1 : null,
     at: er ? Math.round(er.top - br.top) : null, end: er ? Math.round(er.bottom - br.top) : null };
 }, sel || null);
 const scrollTo = (P, y) => P.page.evaluate((y) => {
@@ -209,11 +221,16 @@ const watchStage = (P, ms) => P.page.evaluate((ms) => new Promise((resolve) => {
     const st = document.querySelector('[data-cx-stage]');
     if (!st || st.dataset.cxReady !== '1') return;
     const hero = st.querySelector('.bt-cx-hero');
-    /* inside the frame: the stage's box less its border */
+    /* inside the frame: the stage's box less its border.  v2.3.3215: the
+       stage may be drawn smaller to fit under the page's pinned tabs (a CSS
+       scale, MonsterCodex.jsx StageFit), and a rect is on the screen while
+       clientWidth / clientHeight / the ground's px are the layout's: all of it
+       in screen px, by the scale the rect shows */
     const so = st.getBoundingClientRect();
-    const box = { l: so.left + st.clientLeft, t: so.top + st.clientTop };
-    box.r = box.l + st.clientWidth; box.b = box.t + st.clientHeight;
-    const ground = box.b - (parseFloat(st.style.getPropertyValue('--cx-ground')) || 0);
+    const k = st.offsetHeight > 0 ? so.height / st.offsetHeight : 1;
+    const box = { l: so.left + st.clientLeft * k, t: so.top + st.clientTop * k };
+    box.r = box.l + st.clientWidth * k; box.b = box.t + st.clientHeight * k;
+    const ground = box.b - (parseFloat(st.style.getPropertyValue('--cx-ground')) || 0) * k;
     const past = (R) => Math.max(0, box.l - R.l, R.r - box.r, box.t - R.t, R.b - box.b);
     const ph = st.dataset.cxPhase;
     const cv = hero && hero.querySelector('canvas');
@@ -276,7 +293,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const blobs0 = await P.page.evaluate(() => (window.__qaBlobs ? window.__qaBlobs() : null));
     const opened = await openCodex(P);
     const cs0 = await cards(P);
-    rec.ok(`More -> Codex opens on Monsters: nine cards, every one a shape (${cs0.filter((c) => !c.known).length} unknown)`,
+    rec.ok(`the Codex button opens on Monsters: nine cards, every one a shape (${cs0.filter((c) => !c.known).length} unknown)`,
       opened && cs0.length === 9 && cs0.every((c) => !c.known) && KINDS.every((k) => cs0.some((c) => c.kind === k)), cs0);
     await P.page.screenshot({ path: join(OUT, 'codex-0-grid.png') });
 
@@ -291,13 +308,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const cs1 = await cards(P);
     const snowCard = cs1.find((c) => c.kind === 'snowling');
     rec.ok(`...its card is known and NEW ("${snowCard && snowCard.text}")`, !!snowCard && snowCard.known && snowCard.fresh && /Snowman/.test(snowCard.text) && /1 defeated/.test(snowCard.text), snowCard);
+    /* v2.3.3215: and the Codex's own button on the dashboard's row says so */
+    const badge1 = await codexBadge(P);
+    rec.ok(`...and the Codex button on the dashboard counts it (${badge1 || 'no badge'})`, badge1 === '1', badge1);
     /* ── 3 ── */
     const sl0 = await sheetLook(P);
     await scrollTo(P, -1);
     const pg1 = await openPage(P, 'snowling');
     await P.page.waitForTimeout(600);
     const sl = await sheetLook(P);
-    const bx = await boxLook(P, '[data-cx-page] > button');
+    const bx = await boxLook(P, '[data-cx-header]');
     const d1 = await drops(P);
     rec.ok(`...its page keeps the sheet's own height (${sl0.h} px on the list, ${sl.h} on the page) and scrolls in it (${bx && bx.h} px of ${bx && bx.sh}), opened at its top though the list was scrolled down, the Codex's own tabs put away`,
       pg1 && sl0.h > 0 && Math.abs(sl.h - sl0.h) <= 1 && !!bx && bx.sh > bx.h + 100 && bx.top === 0 && bx.seen && !sl.chips, { sl0, sl, bx });
@@ -404,7 +424,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && twoLine.length >= 1 && rollOff.length === 0, { rollOff, lay });
     await P.page.screenshot({ path: join(OUT, 'codex-1-snowman.png') });
     const fr1 = await codex(P);
-    rec.ok('...and opening it clears its NEW', !(fr1.fresh && fr1.fresh.snowling), fr1.fresh);
+    await P.page.waitForTimeout(400);
+    const badge2 = await codexBadge(P);
+    rec.ok(`...and opening it clears its NEW, and the Codex button's count (${badge2 || 'none'})`, !(fr1.fresh && fr1.fresh.snowling) && !badge2, { fresh: fr1.fresh, badge2 });
 
     /* ── 4 ── */
     const deep = await scrollTo(P, -1);
@@ -447,14 +469,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(150);
     await P.page.screenshot({ path: join(OUT, 'codex-1e-table-middle.png') });
     await scrollTo(P, keepTop ? keepTop.top : 0);
-    rec.ok(`a tap on the open Drops tab puts its table at the top of the sheet (${dTop && dTop.at} px down, the box at ${dTop && dTop.top})`,
-      !!dTop && dTop.at >= 0 && dTop.at <= 8 && dTop.top > 0, dTop);
+    rec.ok(`a tap on the open Drops tab puts its table at the top of the sheet, just under the pinned tabs (${dTop && dTop.at} px down, the bar ending at ${dTop && dTop.bar}, the box at ${dTop && dTop.top})`,
+      !!dTop && dTop.bar > 0 && dTop.at >= dTop.bar - 1 && dTop.at <= dTop.bar + 8 && dTop.top > 0, dTop);
 
     /* ── 5 ── */
     await tab(P, 'info');
     const stTop = await boxLook(P, '[data-cx-stage]');
-    rec.ok(`a tap on Info puts its stage at the top of the sheet, all of it in view (${stTop && stTop.at}-${stTop && stTop.end} px of ${stTop && stTop.h})`,
-      !!stTop && stTop.at >= 0 && stTop.at <= 8 && stTop.end <= stTop.h, stTop);
+    rec.ok(`a tap on Info puts its stage at the top of the sheet under the pinned tabs, all of it in view (${stTop && stTop.at}-${stTop && stTop.end} px of ${stTop && stTop.h}, the bar ending at ${stTop && stTop.bar})`,
+      !!stTop && stTop.bar > 0 && stTop.at >= stTop.bar - 1 && stTop.at <= stTop.bar + 8 && stTop.end <= stTop.h, stTop);
     const f1 = await facts(P);
     const w1 = await watchStage(P, 16000);
     rec.ok('Info, from the one kill: what it does, its element, its special attack, its story and its elder form all open', f1.page && f1.element && f1.special && f1.story && f1.elder, f1);
@@ -486,7 +508,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const loc = await locations(P);
     const lTop = await boxLook(P, '[data-cx-locations]');
     rec.ok(`Locations at the top of the sheet (${lTop && lTop.at} px down): its land, both stages, the way there (${loc.road || '?'})`,
-      !!lTop && lTop.at >= 0 && lTop.at <= 8 &&
+      !!lTop && lTop.bar > 0 && lTop.at >= lTop.bar - 1 && lTop.at <= lTop.bar + 8 &&
       /Frost Ridge/.test(loc.land || '') && /Lv 1–20/.test(loc.levels || '') && /Glacier Snowman/.test(loc.elder || '') && /Lv 21–40/.test(loc.elder || '')
         && /north gate/.test(loc.road || '') && /Frost Trail/.test(loc.road || '') && !loc.dungeon, { loc, lTop });
     await P.page.screenshot({ path: join(OUT, 'codex-4-locations.png') });
@@ -496,8 +518,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(300);
     const sl2 = await sheetLook(P);
     const bk = await boxLook(P, '[data-cx-card="snowling"]');
-    rec.ok(`...and back on the list the sheet never grew (${sl2.h} px), the Codex's tabs back and the Snowman's card in view`,
-      Math.abs(sl2.h - sl0.h) <= 1 && sl2.chips && !!bk && bk.seen, { sl2, bk });
+    /* v2.3.3215: the Codex's own tabs (Codex, Materials, Zones) stay aside
+       while nothing in the game fills them -- for everyone, today */
+    rec.ok(`...and back on the list the sheet never grew (${sl2.h} px), the Codex's empty tabs still aside and the Snowman's card in view`,
+      Math.abs(sl2.h - sl0.h) <= 1 && !sl2.chips && !!bk && bk.seen, { sl2, bk });
 
     /* ── 7 ── */
     await H.devOp(wsPort, 'codex', me, { all: true, n: 25, n2: 1 });
