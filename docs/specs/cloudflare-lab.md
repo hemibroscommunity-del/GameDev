@@ -1,4 +1,4 @@
-# The Cloudflare lab (v2.3.3227)
+# The Cloudflare lab (v2.3.3247)
 
 > Owner, 2026-10-13, on the server split plan (`docs/SERVER-SPLIT-PLAN.md`):
 > *"Go recommended"*, which said yes to the lab: "The Cloudflare lab: yes,

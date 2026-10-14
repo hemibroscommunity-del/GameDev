@@ -1,4 +1,4 @@
-/* ═══ v2.3.3227: DRIVE THE CLOUDFLARE LAB (tools/lab/src/index.js) ═══
+/* ═══ v2.3.3247: DRIVE THE CLOUDFLARE LAB (tools/lab/src/index.js) ═══
  *
  * docs/specs/cloudflare-lab.md.  Run by .github/workflows/lab.yml on a GitHub
  * runner against the lab worker it just deployed, or locally for a dry run:

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3227: THE CLOUDFLARE LAB WORKER ("brotown-lab") ═══
+/* ═══ v2.3.3247: THE CLOUDFLARE LAB WORKER ("brotown-lab") ═══
  *
  * docs/specs/cloudflare-lab.md.  The server split plan's lab
  * (docs/SERVER-SPLIT-PLAN.md, "Decided" 2 and "Risks and unknowns" 1-3): what

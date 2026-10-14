@@ -1,4 +1,4 @@
-# ═══ v2.3.3227: THE CLOUDFLARE LAB WORKER ("brotown-lab") ═══
+# ═══ v2.3.3247: THE CLOUDFLARE LAB WORKER ("brotown-lab") ═══
 # docs/specs/cloudflare-lab.md.  A tiny worker, NOT the game: three Durable
 # Object classes that time what the server split plan needs to know and only
 # Cloudflare can tell (docs/SERVER-SPLIT-PLAN.md, "Risks and unknowns" 1-3).

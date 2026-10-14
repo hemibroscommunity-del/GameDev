@@ -1,7 +1,7 @@
 {
   "name": "brotown-lab",
   "private": true,
-  "description": "v2.3.3227: the Cloudflare lab worker (docs/specs/cloudflare-lab.md). NOT the game. Its own package so the lab workflow installs wrangler here, not the game's whole tree at the repo root.",
+  "description": "v2.3.3247: the Cloudflare lab worker (docs/specs/cloudflare-lab.md). NOT the game. Its own package so the lab workflow installs wrangler here, not the game's whole tree at the repo root.",
   "type": "module",
   "devDependencies": {
     "wrangler": "4.96.0"
