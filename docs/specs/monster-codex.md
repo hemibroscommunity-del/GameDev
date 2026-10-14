@@ -19,7 +19,8 @@ each of the Wheel's nine kinds of monster, its shape alone until you kill one;
 The page lives on the dashboard's own sheet, at the one height every
 destination has (v2.3.1638), and SCROLLS in it. It grew tall at first, as the
 mockup draws it; asked, the owner: *"Stay short and scroll."* On a 390 x 844
-phone the sheet shows ~167 px of it at a time, so what a tap brings up is put
+phone the sheet shows ~167 px of it at a time (191 since v2.3.3215, the Codex
+its own destination: "Its own button" below), so what a tap brings up is put
 where it can be seen (`reveal` in MonsterCodex.jsx):
 
 - a page opens at its top, however far the monsters were scrolled;
@@ -122,6 +123,68 @@ render), "‹ All monsters" bringing them back.
   road: `CODEX_ROADS`, the plan's own road names), and its land's dungeon with
   its levels where it has one (`dungeonLevels`, the worker's baked
   `WHEEL_DOORS`).
+
+## Its own button, and more of it on the sheet (v2.3.3215)
+
+The owner, after the codex shipped (#880): *"Are you able to fit the codex as
+another dashboard button? Also is there a way to display more data without
+needing to scroll down so much?"*
+
+**The button.** The dashboard's row is six buttons now -- Dashboard,
+Character, Quests, Life Skills, **Codex**, More -- More's own Codex picture
+(`panel-encyclopedia`), with a count of the monsters whose page has something
+you have not looked at (the cards' NEW, `codexFreshCount`). It opens the codex
+as its own destination; More's Codex tile opens the same screen.
+
+The width came from the drill's back chip. On a screen opened from More
+(Settings, Login Key, Build, a quest...) the row held the CLOSE pill, the
+◂ chip and the buttons, and was full. Asked whether to make all six narrower
+(38 px on a 390 phone) or move the arrow down beside the screen's title, the
+owner: *"Move back arrow"*. So a drilled panel's header is one button,
+"◂ SETTINGS" (BottomDashboard `data-dash-back`, as landscape's side sheet has
+carried it since v2.3.2168), and the row is the CLOSE pill and the six buttons
+in every mode: **44 px each on a 390 phone** (the five were 46), 41 at 375, 39
+at 360, 51 at 430 (sheetGeometry `IDENTITY_MIN_LINE` 122 -> 84,
+`RAIL_COUNT` 6). The buttons no longer step 38 px right when a drill opens.
+Sideways the dock is seven slots (the fold chip and six), `LAND_NAV_BTN_W`
+28 -> 26 so the side column grows 18 px, not 32.
+
+**More on the sheet.** Measured on the QA phone before (mp-codexfit), the
+sheet's box was 167 px and:
+
+| | before | after |
+|---|---|---|
+| the box (the Codex as its own destination: no drill header) | 167 px | 191 px |
+| the monster list: cards whole without scrolling | 0 of 9 | **9 of 9** |
+| ...and its scroll | 331 px | 18 px |
+| a page's first look: where its tab's content begins | 172 px down (none of it seen) | 93 px (80 px of it seen) |
+| Drops: whole rows after a tap on the tab | 2-3, the tabs scrolled away | 3, under the tabs |
+| Drops / Info / Locations scroll | 482 / 907 / 266 px | 301 / 730 / 131 px |
+| the tabs, scrolled to the end | gone off the top | **pinned at the top** |
+
+What changed, all in MonsterCodex.jsx and EncyclopediaPanel.jsx:
+
+- **The list**: a card is its picture beside its name, its land and its count
+  (~45 px, was 122), three across; two across in a narrow sheet (sideways),
+  their words wrapping rather than cut.
+- **The Codex's own tabs** (Monsters / Codex / Materials / Zones) show only
+  once one of the three others has something in it: they read lists nothing
+  in the game writes any more (`_seenCollisions`, `_seenMaterials`,
+  `_visitedZones`), "Nothing discovered" for every player. Kept, not deleted.
+- **The header**: 78 -> ~48 px -- the portrait 44 (was 60), the count on the
+  name's line, the badges a size down.
+- **The tabs stay pinned** to the sheet's top while you scroll (`Tabs`,
+  `position: sticky` on its own opaque ground, game.css `.bt-cx-tabbar`), and
+  "‹ All monsters", a 40 px row of its own above the header, is the bar's
+  first button (`data-cx-back`). `reveal` puts what a tap brings up just
+  under the bar (`barInset`).
+- **Info's stage is drawn as big as fits under the pinned bar** (`StageFit`:
+  one CSS scale of the whole stage, never bigger than it was, never wider
+  than the sheet -- sideways it used to be cut off): 0.93 on the QA phone,
+  278 x 139. Its feet still stand on the ground strip (mp-codex measures it
+  in screen px by the scale the stage's rect shows).
+- **Tighter rows**: drop rows 42 -> 34-36 px (two-line names 36), the facts'
+  and location rows' padding and line heights a step down.
 
 ## When it opens
 
@@ -396,7 +459,10 @@ answer carries that monster's `layout`).
   the page's drop table; and the one roll: the same order, die and chances on
   both sides, and every kind's numbers on the page the worker's own
   (`killRollLayout` for a real Wheel monster of that kind).
-- `mp-codex` (phone, 36 checks): the Monsters tab; a real kill opening the
+- `mp-codex` (phone, 37 checks; v2.3.3215: opened by the Codex's own button,
+  whose count says the first kill's new page and clears when it is looked at;
+  a tab's content just under the pinned tabs; the stage's feet measured in
+  screen px by its scale): the Monsters tab; a real kill opening the
   whole page on the sheet's own height, scrolling in it from its top, its
   header badges (a Humanoid snowman) and tabs; its drop table; scrolled to
   its end, the Iron Great Sword's card opening at its top (Common, 0.2%, the
@@ -431,3 +497,15 @@ answer carries that monster's `layout`).
   bag; 1 "1 Gold Nugget"; drawn as a message (the plain hit's size, its own
   colour) with the dice drawn in front of the number; a kill off your screen
   over you; no page errors -- pictures in tools/qa/mp/out/killroll-*.png.
+- `mp-codexfit` (phones, 36 checks, v2.3.3215): the dashboard's six buttons
+  (the Codex fifth, More last), 44 px at 390 and 39 at 360, on screen, apart,
+  answering at their centres, and in the same places at rest, with the Codex
+  open and on a drilled screen; the Codex button and More's tile opening the
+  codex as its own destination, lit; a drilled screen's way back the panel's
+  "◂ SETTINGS" header, back to More; the list's nine cards whole without
+  scrolling, no name cut, the empty Codex tabs aside; a page's first look
+  showing its table; each tab's content just under the pinned bar, three drop
+  rows whole, Info's whole stage, the bar pinned at the end, every tab
+  scrolling less than before; the bar's ‹; sideways, the six buttons in the
+  side container (238 px), the list two across with no word cut -- numbers in
+  tools/qa/mp/out/codexfit.json, pictures codexfit-*.png.

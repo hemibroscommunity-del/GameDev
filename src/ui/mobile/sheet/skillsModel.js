@@ -45,15 +45,21 @@ const COOK_LADDER = COOKING_RECIPES
      crafting tables; skills without a data ladder (farming/trapping/
      enchanting) show level + XP + earnHint only (no invented unlocks).
    - where / passive (v2.3.1312): real locations (the three node zones
-     + the farm) and real formula-backed benefit lines only. */
+     + the farm) and real formula-backed benefit lines only.
+   - hits (v2.3.3229): the skill's harvest or cook is a run of worker-rolled
+     HITS, so its detail view prints what one hit can be at this level and
+     the next (lifeSkills.js gatherHitOddsText, the hit ladder).  The gather
+     trio's old benefit line described the wind-up TIMER, which runs only
+     when the worker rolls no hits (no caps.gatherhits), so it is their
+     `timerPassive` now and shows only then. */
 
 const META = {
-  woodcutting:   { icon: '🪓', name: 'Woodcutting',  iconSrc: '/icons/ui/skill-woodcutting.webp?v=2.3.1224',  group: 'gather',  accent: '#8FBF6A', iconScale: 1.15, tiers: WOODCUT_LADDER, tierNoun: (t) => t.tree, where: 'Frost Ridge', passive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Chop trees in the wild — higher-level trees give more XP.' },
-  fishing:       { icon: '🎣', name: 'Fishing',      iconSrc: '/icons/ui/skill-fishing.webp?v=2.3.1224',      group: 'gather',  accent: '#5B99DE', iconScale: 1.0,  tiers: FISH_LADDER,     tierNoun: (t) => t.name, where: 'Starting Meadow', passive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Cast at fishing spots and win the reel minigame.' },
-  mining:        { icon: '⛏',  name: 'Mining',       iconSrc: '/icons/ui/skill-mining.webp?v=2.3.1224',       group: 'gather',  accent: '#B0885A', iconScale: 1.15, tiers: MINE_LADDER,      tierNoun: (t) => t.name, where: 'Stone Hollows', passive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Break ore veins — deeper zones hold richer ore.' },
+  woodcutting:   { icon: '🪓', name: 'Woodcutting',  iconSrc: '/icons/ui/skill-woodcutting.webp?v=2.3.1224',  group: 'gather',  accent: '#8FBF6A', iconScale: 1.15, tiers: WOODCUT_LADDER, tierNoun: (t) => t.tree, where: 'Frost Ridge', hits: true, timerPassive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Chop trees in the wild — higher-level trees give more XP.' },
+  fishing:       { icon: '🎣', name: 'Fishing',      iconSrc: '/icons/ui/skill-fishing.webp?v=2.3.1224',      group: 'gather',  accent: '#5B99DE', iconScale: 1.0,  tiers: FISH_LADDER,     tierNoun: (t) => t.name, where: 'Starting Meadow', hits: true, timerPassive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Cast at fishing spots and win the reel minigame.' },
+  mining:        { icon: '⛏',  name: 'Mining',       iconSrc: '/icons/ui/skill-mining.webp?v=2.3.1224',       group: 'gather',  accent: '#B0885A', iconScale: 1.15, tiers: MINE_LADDER,      tierNoun: (t) => t.name, where: 'Stone Hollows', hits: true, timerPassive: (lvl) => 'Node extraction opens 0.25s sooner per level above its tier', earnHint: 'Break ore veins — deeper zones hold richer ore.' },
   farming:       { icon: '🌾', name: 'Farming',      iconSrc: '/icons/ui/skill-farming.webp?v=2.3.1224',      group: 'gather',  accent: '#D8C05A', iconScale: 1.0,  where: 'Your farm plots', earnHint: 'Plant, tend and harvest crops on your plot.' },
   trapping:      { icon: '🪤', name: 'Trapping',     iconSrc: '/icons/ui/skill-trapping.webp?v=2.3.1224',     group: 'gather',  accent: '#C08A5A', iconScale: 1.0,  where: 'Out in the lands', earnHint: 'Make box traps at the Woodworker, tap TRAP on a monster, then kill it. Every try pays XP; your level decides what you can catch.' },   /* v2.3.3120: what Trapping really is now (docs/PET-TRAPPING-PLAN.md) */
-  cooking:       { icon: '🍳', name: 'Cooking',      iconSrc: '/icons/ui/skill-cooking.webp?v=2.3.1224',      group: 'process', accent: '#E0955A', iconScale: 1.0,  tiers: COOK_LADDER, earnHint: 'Cook raw food at a campfire — perfect timing pays.', passive: (lvl) => `Cook timing window +${Math.min(30, lvl * 0.4).toFixed(1)}%` },
+  cooking:       { icon: '🍳', name: 'Cooking',      iconSrc: '/icons/ui/skill-cooking.webp?v=2.3.1224',      group: 'process', accent: '#E0955A', iconScale: 1.0,  tiers: COOK_LADDER, earnHint: 'Cook raw food at a campfire — perfect timing pays.', hits: true, passive: (lvl) => `Cook timing window +${Math.min(30, lvl * 0.4).toFixed(1)}%` },
   blacksmithing: { icon: '🔨', name: 'Smithing',     iconSrc: '/icons/ui/skill-blacksmithing.webp?v=2.3.1224', group: 'process', accent: '#9AA6B0', iconScale: 1.15, tiers: SMITH_LADDER, earnHint: 'Smelt ore and forge gear at the blacksmith.' },
   woodworking:   { icon: '🛠',  name: 'Woodworking',  iconSrc: '/icons/ui/skill-woodworking.webp?v=2.3.1224',  group: 'process', accent: '#B09A6A', iconScale: 1.15, tiers: WOODWORK_LADDER, earnHint: 'Turn lumber into planks, handles and furniture.' },
   gemCutting:    { icon: '💎', name: 'Gem Cutting',  iconSrc: '/icons/ui/skill-gemcutting.webp?v=2.3.1224',   group: 'process', accent: '#7AC0D8', iconScale: 1.0,  tiers: GEMCUT_LADDER, earnHint: 'Cut rough gems at the gem cutter — steady hands.' },

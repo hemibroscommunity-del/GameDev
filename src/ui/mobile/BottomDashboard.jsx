@@ -31,6 +31,7 @@ import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 
 import { friendsSrv } from './sheet/friendsSync.js';               /* v2.3.1324 */
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
 import { rewardsWaiting } from '@/game/dailyRewards.js';          /* v2.3.3140: a season tier to claim lights the Quests dot */
+import { codexFreshCount } from '@/game/monsterCodex.js';        /* v2.3.3215: a page with something new marks the Codex's button */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
 import { bagLife, startBagLife } from './dash/bagLife.js'; /* v2.3.2815: the bag's small motions */
@@ -505,6 +506,10 @@ const DESTINATIONS = [
   { id: 'skills', label: 'Skills',  icon: '/icons/ui/nav-lifeskills.webp?v=2.3.1331' },
   { id: 'social', label: 'Friends', icon: '/icons/ui/nav-friends.webp?v=2.3.1224' },
   { id: 'quests', label: 'Quests',  icon: '/icons/ui/panel-quests.webp?v=2.3.1224' },
+  /* v2.3.3215 (owner: "Are you able to fit the codex as another dashboard
+     button?"): More's own Codex picture, so what you tapped there and what you
+     tap here are the same thing. */
+  { id: 'encyclopedia', label: 'Codex', icon: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224' },
   { id: 'more',   label: 'More',    icon: '/icons/ui/nav-more.webp?v=2.3.1224' },
 ];
 
@@ -560,7 +565,13 @@ const DESTINATIONS = [
    lifeskills"): FIVE — Dashboard, Character, Quests, Skills, More.  Skills
    goes before More for the same reason Quests did at v2.3.1651: More is
    the overflow and has to stay on the end. */
-const RAIL_ORDER = ['hero', 'quests', 'skills', 'more'];
+/* v2.3.3215 (owner: "Are you able to fit the codex as another dashboard
+   button?"): SIX -- the Codex goes before More, which is the overflow and
+   stays on the end (v2.3.1651's reason).  It still has its tile in More too,
+   as Quests and Life Skills do.  The width it needed came from the drill's
+   back chip, which left this row for the panel's own header (the owner's
+   choice: sheetGeometry IDENTITY_MIN_LINE). */
+const RAIL_ORDER = ['hero', 'quests', 'skills', 'encyclopedia', 'more'];
 const RAIL_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '/icons/ui/panel-stats.webp?v=2.3.1637' },
   ...RAIL_ORDER.map(id => DESTINATIONS.find(d => d.id === id)).filter(Boolean),
@@ -949,6 +960,9 @@ export const BottomDashboard = () => {
        light the dot every day for players who never gamble. */
     quests: readyQuestCount(Sb) > 0 || rewardsWaiting(Sb) > 0,
     hero: unspentPointsTotal(Sb && Sb.rpg),
+    /* v2.3.3215: the monsters whose codex page has something you have not
+       looked at yet -- the cards' NEW (game/monsterCodex.js), counted */
+    encyclopedia: codexFreshCount(Sb),
     social: (() => {
       try {
         const actionable = friendsSrv.requestsIn().length + friendsSrv.unreadTotal();
@@ -1386,19 +1400,45 @@ export const BottomDashboard = () => {
                 aim at, it has lived at that spot since v2.3.1922, and moving
                 it would be the thing the one-position rule (v2.3.1637b) exists
                 to prevent. */}
+            {/* ═══ v2.3.3215: AND THE BACK CHIP COMES DOWN WITH IT ═══
+                The owner, given the choice between six narrower buttons and
+                moving this arrow so the Codex's button fits at full width:
+                "Move back arrow".  So the drill's header is ONE button, the
+                chip and the title in it -- "◂ SETTINGS", tap to go back, as
+                landscape's sheet has carried them since v2.3.2168 -- and the
+                toolbar row keeps only the CLOSE pill and the buttons, in the
+                same places in every mode.  The whole row is the target, the
+                chip only its mark; 32 px tall, 8 more than the title line
+                alone, which is what a drilled panel gives for it.
+                The title still renders whole (mp-loginkey), now with the row's
+                full width beside one small chip instead of beside six. */}
             {drill && (
-              <div style={{
-                flex: 'none',
-                padding: '0 2px 6px',
-                fontSize: 13,
-                fontWeight: 700,
-                letterSpacing: '.10em',
-                textTransform: 'uppercase',
-                color: COL.text2,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}>{active ? active.title : ''}</div>
+              <button
+                data-dash-back
+                aria-label={'Back' + (active && active.title ? ' from ' + active.title : '')}
+                onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
+                style={{
+                  flex: 'none',
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  minHeight: 32, margin: 0, padding: '0 2px 2px',
+                  background: 'transparent', border: 'none', textAlign: 'left',
+                  cursor: 'pointer', touchAction: 'manipulation',
+                  fontFamily: 'inherit',
+                }}>
+                <span className="bt-chisel bt-chisel--chip" aria-hidden="true"
+                  style={{ ...chipStyle, width: 30, height: 30, fontSize: 18 }}>◂</span>
+                <span style={{
+                  minWidth: 0,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  letterSpacing: '.10em',
+                  textTransform: 'uppercase',
+                  color: COL.text2,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>{active ? active.title : ''}</span>
+              </button>
             )}
             {Active && <Active />}
           </div>
@@ -1570,13 +1610,12 @@ export const BottomDashboard = () => {
             letterSpacing: '.08em',
           }}
         >{dashMin ? 'OPEN' : 'CLOSE'}</button>
-        {drill && (
-          <button
-            onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
-            className="bt-chisel bt-chisel--chip"
-            style={{ ...chipStyle, flex: 'none' }}
-          >◂</button>
-        )}
+        {/* v2.3.3215: the drill's back chip USED to stand here (v2.3.1922).
+            It is in the panel's own header now, beside the title ("◂
+            SETTINGS", the drill branch above) -- the owner's choice when a
+            sixth button, the Codex, needed the width.  So this row is the
+            CLOSE pill and the six buttons in every mode, and the buttons no
+            longer step right when a drill opens. */}
         {/* v2.3.692: the LOADOUT / BUILD ColHeader treatment (13px, .10em
             tracking, uppercase) so every open panel title reads the same.
             v2.3.1922: the title sat HERE, next to the back chip, taking its

@@ -124,6 +124,13 @@ function atlas() {
   return _atlas;
 }
 
+/* v2.3.3230: the same atlas, for a burning building (buildingFire.js) -- its
+   flames, sparks, smoke and glow are the campfire's own, so a building catches
+   with nothing new to load or make */
+export function campfireAtlas() { return atlas(); }
+export const CAMPFIRE_PIX = PIX;
+export const CAMPFIRE_FLAME_MS = FLAME_MS;
+
 class Fire {
   constructor(body, ground, key, rec, now) {
     const T = atlas();
