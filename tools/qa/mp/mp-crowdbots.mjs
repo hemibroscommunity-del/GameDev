@@ -29,7 +29,7 @@
  * tracing makes every message ~5x dearer (TRAPS §168) and the local room stops
  * letting bots in at about 95 players.
  *
- * v2.3.3211: BT_CROWD_QUERY adds to the page's address (`nopeercull`: every
+ * v2.3.3221: BT_CROWD_QUERY adds to the page's address (`nopeercull`: every
  * other player drawn wherever they stand, as before; `crowd=K`: the crowd cap
  * at K, `crowd=all` none), and each row says how many players the renderer
  * left undrawn far off screen (`farHidden`) and past the cap (`crowdHidden`).

@@ -115,7 +115,7 @@ const _staffTipOut = { x: 0, y: 0 };
 import { SHADE, propShade } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop; v2.3.2893 + snow props */
 import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
 import { standInReady, farmKneelReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made */
-import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   /* v2.3.3211: at most K other players drawn in full */
+import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   /* v2.3.3221: at most K other players drawn in full */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -404,11 +404,11 @@ if (typeof window !== 'undefined') window.__btForeground = () => _fgDrawn.slice(
    only; the rest are unnamed graphics. */
 let _entityLayerRef = null;
 let _frontLayerRef = null;
-/* v2.3.3211: `?nopeercull` is the peer loop as it was, to compare: every other
+/* v2.3.3221: `?nopeercull` is the peer loop as it was, to compare: every other
    player in the Wheel drawn wherever they stand (PEER_FAR_MARGIN in
    _updateOtherPlayers), and moved back into the entity layer every frame */
 const _noPeerCull = typeof location !== 'undefined' && /[?&]nopeercull\b/.test(location.search || '');
-/* v2.3.3211: the crowd cap's K -- the owner's 50, or `?crowd=K` (`?crowd=all`
+/* v2.3.3221: the crowd cap's K -- the owner's 50, or `?crowd=K` (`?crowd=all`
    draws everyone); `?nopeercull` draws everyone too (src/game/crowdCap.js) */
 const _crowdK = (() => {
   if (_noPeerCull) return Infinity;
@@ -10559,7 +10559,7 @@ export class EntityRenderer {
     if (!S._peerShieldHeld) S._peerShieldHeld = new Map();
     else S._peerShieldHeld.clear();
 
-    /* ═══ v2.3.3211: IN THE WHEEL, ANOTHER PLAYER FAR OFF SCREEN IS NOT DRAWN ═══
+    /* ═══ v2.3.3221: IN THE WHEEL, ANOTHER PLAYER FAR OFF SCREEN IS NOT DRAWN ═══
        Owner, 2026-10-13: "stress test to see what can be optimized".  A phone
        in a crowd (mp-crowdbots, the bots walking 2,400 px around BroTown's
        square, 12 of 150 on screen) did as much work a frame as with all 150
@@ -10583,7 +10583,7 @@ export class EntityRenderer {
     const _pFarR = _pFar ? Math.hypot(S._viewW, S._viewH) / 2 + PEER_FAR_MARGIN : 0;
     let _peersFar = 0;
 
-    /* ═══ v2.3.3211: THE CROWD CAP -- AT MOST K DRAWN IN FULL ═══
+    /* ═══ v2.3.3221: THE CROWD CAP -- AT MOST K DRAWN IN FULL ═══
        The owner's Phase 0a (docs/SERVER-SPLIT-PLAN.md): of the players near
        enough to be drawn, the nearest CROWD_K (50) in full, and always your
        party, your target, your duel and whoever is fighting you; the rest are
@@ -10629,7 +10629,7 @@ export class EntityRenderer {
       if (!other || (other.zone || other.z || 'town') !== S.currentZone) continue;
 
       let display = this.otherPlayerDisplays.get(id);
-      if (_pFar) {   /* v2.3.3211: see PEER_FAR_MARGIN above */
+      if (_pFar) {   /* v2.3.3221: see PEER_FAR_MARGIN above */
         const _fox = (other.renderX || other.x || 0) - _pFarCX;
         const _foy = (other.renderY || other.y || 0) - _pFarCY;
         if (_fox * _fox + _foy * _foy > _pFarR * _pFarR) {
@@ -10646,7 +10646,7 @@ export class EntityRenderer {
           continue;
         }
       }
-      if (_crowdKeep && !_crowdKeep.has(id)) {   /* v2.3.3211: the crowd cap, above */
+      if (_crowdKeep && !_crowdKeep.has(id)) {   /* v2.3.3221: the crowd cap, above */
         if (display) {
           activeIds.add(id);
           if (display.visible) display.visible = false;
@@ -10686,7 +10686,7 @@ export class EntityRenderer {
       {
         const _peerLayer = ((_oEx === 'mine' || _oEx === 'fish') && this.gestureLayer)
           ? this.gestureLayer : this.entityLayer;
-        /* ═══ v2.3.3211: ...OR THE DEPTH PASS'S FRONT LAYER ═══
+        /* ═══ v2.3.3221: ...OR THE DEPTH PASS'S FRONT LAYER ═══
            The depth pass (depthSort.js applyDepthBuckets, after this) moves
            everyone standing south of you into propFrontLayer, over your body.
            This line then moved them back into the entity layer the next
@@ -11896,7 +11896,7 @@ export class EntityRenderer {
         this.otherPlayerDisplays.delete(id);
       }
     }
-    S._peersFarHidden = _peersFar;   /* v2.3.3211: QA readout (mp-crowdbots, mp-peercull) */
+    S._peersFarHidden = _peersFar;   /* v2.3.3221: QA readout (mp-crowdbots, mp-peercull) */
     S._peersCrowdHidden = _peersCrowd;
     /* ...and who was not drawn, for their effects (effectsRenderer, after
        this: no stand-in, trail or bubble where nobody is drawn) and pets */
@@ -15275,7 +15275,7 @@ export class EntityRenderer {
       if (!petFrames(art.base, 'front').length) continue;
       seen.add(id);
       let d = this.peerPetDisplays.get(id);
-      /* v2.3.3211: a player not drawn (far off screen in the Wheel, or past
+      /* v2.3.3221: a player not drawn (far off screen in the Wheel, or past
          the crowd cap) has their pet not drawn either -- kept hidden if made,
          not made until drawn (_updateOtherPlayers, just before this) */
       if (this._peerNotDrawn && this._peerNotDrawn.has(id)) {
