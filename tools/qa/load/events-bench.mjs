@@ -1,4 +1,4 @@
-/* ═══ v2.3.3217: WHAT THE TICK'S EVENTS COST THE ROOM, IN-PROCESS ═══
+/* ═══ v2.3.3225: WHAT THE TICK'S EVENTS COST THE ROOM, IN-PROCESS ═══
  *
  * docs/specs/events-by-place.md.  The real GameRoom in Node with fake
  * sockets: N players in the Wheel (a third walking about Brotown, two thirds

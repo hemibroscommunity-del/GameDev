@@ -2328,7 +2328,7 @@ Two protocol versions coexist; both must keep working:
     after a full GC, 44 MB at the most in use, against Cloudflare's 128 MB
     (`tools/qa/load/heapprobe.mjs`, the inspector's heap during a load test):
     docs/specs/cap-120.md.
-  - v2.3.3217: A FIGHT'S EVENTS GO TO THE PHONES NEAR IT -- the split plan's
+  - v2.3.3225: A FIGHT'S EVENTS GO TO THE PHONES NEAR IT -- the split plan's
     Phase 0d, found by the owner's "stress test to see what can be optimized"
     once the bots sent the swings and arrows a phone relays (`load.mjs
     --relays --events`): every event a tick carries went to every phone, so at
