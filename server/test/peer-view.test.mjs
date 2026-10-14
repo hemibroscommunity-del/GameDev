@@ -1,4 +1,4 @@
-/* ═══ v2.3.3214: WHAT THE OTHER PLAYERS ARE TOLD ABOUT YOU ═══
+/* ═══ v2.3.3224: WHAT THE OTHER PLAYERS ARE TOLD ABOUT YOU ═══
  *
  * index.js PEER_PUBLIC_KEYS / _peerPublic: a joining phone's snapshot
  * (state_sync's players) and the player_join every phone gets when someone

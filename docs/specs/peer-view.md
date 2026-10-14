@@ -1,4 +1,4 @@
-# What the other players are told about you (v2.3.3214)
+# What the other players are told about you (v2.3.3224)
 
 > Owner, 2026-10-13: *"Go recommended but I want you to stress test to see
 > what can be optimized."*

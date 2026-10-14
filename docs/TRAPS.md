@@ -6130,7 +6130,7 @@ work, and one world behind them. Area servers come behind the doors only when
 the one world server itself is full. Measure where a room's time goes, by
 kind of work, before choosing a split.
 
-## 174. "The join snapshot is the room's state, so spread it" (v2.3.3214)
+## 174. "The join snapshot is the room's state, so spread it" (v2.3.3224)
 
 `getAllPlayerData()` built each player in a joiner's `state_sync` as
 `{...playerState, name, ...session.data}`: the player's WHOLE server state.

@@ -144,7 +144,7 @@ import { movementMethods } from './movement.js';
 // v2.3.1172 (P4 decomposition): rpg-blob load/save + player_state emit -- see persistence.js.
 import { persistenceMethods } from './persistence.js';
 // v2.3.1173 (P4 decomposition): identity gate + join bootstrap -- see join.js.
-import { joinMethods, cosmeticCap, JOIN_COSMETIC_KEYS } from './join.js';   /* v2.3.1940: ONE cap rule for the drawing keys; v2.3.3214: + the join's look keys, for PEER_PUBLIC_KEYS */
+import { joinMethods, cosmeticCap, JOIN_COSMETIC_KEYS } from './join.js';   /* v2.3.1940: ONE cap rule for the drawing keys; v2.3.3224: + the join's look keys, for PEER_PUBLIC_KEYS */
 // v2.3.1174 (P4 decomposition): the 45Hz tick loop -- see tick.js.
 import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3127: + the regen cadence, for Herb Bread */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
@@ -804,7 +804,7 @@ export const TRACK_COSMETIC_KEYS = new Set([
  * pure redundancy AND the cap bypass above. */
 export const TRACK_STATE_EXCLUDED = new Set(['x', 'y']);
 
-/* ═══ v2.3.3214: WHAT THE OTHER PLAYERS ARE TOLD ABOUT YOU ═══
+/* ═══ v2.3.3224: WHAT THE OTHER PLAYERS ARE TOLD ABOUT YOU ═══
  *
  * Found by the owner's "stress test to see what can be optimized" (the
  * reconnect storm, docs/specs/peer-view.md): a joining phone's snapshot
@@ -6034,7 +6034,7 @@ export class GameRoom {
   /* v2.3.2537: the peer copy is cropped of gear ids before it goes out --
      see _gearProvCropPeer (gearprov.js) for why a gid has no business on a
      room-wide broadcast even though it is not exploitable. */
-  /* v2.3.3214: one player as the others are told about them (PEER_PUBLIC_KEYS
+  /* v2.3.3224: one player as the others are told about them (PEER_PUBLIC_KEYS
      above): `{...ps, name, ...data}` as before -- the look the phone sent
      wins over the state, the session's name over the state's -- but only
      the public keys of it.  `s` may be just `{ data }` (join.js player_join). */
