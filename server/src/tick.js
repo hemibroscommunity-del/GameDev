@@ -312,6 +312,10 @@ export const tickMethods = {
       /* v2.3.2824: windup abilities (whirlwind) strike when their ring ends. */
       guard('abilWindups', () => this._tickAbilityWindups(Date.now()));
 
+      /* v2.3.3265: the test panel's sparring clones move and fight (spar.js),
+         before the player-state flush below sends what their blows did */
+      guard('spar', () => this._tickSpar(Date.now()));
+
       // Gather-node respawn tick (cheap; iterates Object.keys(this.nodes))
       guard('nodes', () => this._tickNodes());
 

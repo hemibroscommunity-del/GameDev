@@ -46,6 +46,17 @@ const RELAY_ECHO_ALLOWLIST = new Map([
   ['duel_decline', 'client-initiated relay (declining a duel); the server also synthesizes both halves when it cancels a duel (duel.js:82). Deny-listing breaks the client decline.'],
   ['trade_reject', 'client-initiated relay (rejecting a trade offer); the server also emits it as its validation-failure answer (trade.js:90).'],
   ['clan_war_declare', 'the server echoes the declare in the exact shape the client relay already renders (clans.js:249); the legacy client->client declare must keep relaying against old workers.'],
+  /* v2.3.3265: a sparring clone of the test panel (spar.js) has no page, so
+     the worker sends what a player's page relays about its own fight -- the
+     same types, the same shapes, drawn by the same code.  Each is a live
+     client->client relay that every player's page sends; deny-listing one
+     would stop every player's swings, shots, rolls, guard or knockout being
+     drawn on anyone else's screen.  Forgery is what it always was: visual. */
+  ['player_swing', 'a sparring clone\'s swing (spar.js); the client relay every player\'s swing rides (monsterCombat.js, abilities.js).'],
+  ['player_projectile', 'a sparring clone\'s arrow or bolt (spar.js); the client relay every player\'s shot rides (monsterCombat.js, playerActions.js).'],
+  ['player_dodge', 'a sparring clone\'s roll or sword dash (spar.js); the client relay every player\'s roll and dash ride (dodge.js, abilities.js).'],
+  ['player_shield', 'a sparring clone\'s raised and lowered guard (spar.js); the client relay every player\'s guard rides.'],
+  ['player_died_to_monster', 'a sparring clone knocked out (spar.js); the client relay a player\'s page sends when it dies, drawn as their knockout.'],
 ]);
 
 const srcDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');

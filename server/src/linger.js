@@ -72,6 +72,9 @@ export const lingerMethods = {
     if (!ps || this._lingerOff()) return false;
     if (ps.dying || ps.dead || ps.disconnected || ps.lingering) return false;
     if (ps.z !== 'wheel') return false;                         /* No man's land is the Wheel's */
+    /* v2.3.3265: a spar with your own clones (spar.js) is not a fight to stay
+       for -- they leave with you */
+    if (this._sparHas && this._sparHas(id)) return false;
     if (this._duelFor && this._duelFor(id)) return false;       /* a duel has its own grace */
     if (!this._lingerFightRecent(id, t)) return false;
     /* the last one in the room: nobody left to fight (the closing session is

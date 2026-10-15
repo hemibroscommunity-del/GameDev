@@ -323,6 +323,29 @@ export function updateVisualSystems(S) {
             var owner = S.others[rp.ownerId];
             var originX = owner ? (owner.renderX || owner.x) : rp.x;
             var originY = owner ? (owner.renderY || owner.y) : rp.y;
+            /* v2.3.3265: a shot that names its target (gameEvents.js `tg`; a
+               sparring clone's, server spar.js) ends where it reaches them --
+               the worker lands it there.  A bolt turns to them every frame, as
+               a staff bolt does on its caster's screen, and is there when it
+               has flown as far as they stand; an arrow keeps its line and is
+               there when that line passes within a body of them (the worker's
+               own test, projectiles.js's PvP radius). */
+            var _tgPt = null;
+            if (rp.tg) {
+              var _tgO = rp.tg === S.myId ? S.player : (S.others ? S.others[rp.tg] : null);
+              if (_tgO) {
+                var _tgX = (rp.tg === S.myId) ? _tgO.x : (typeof _tgO.renderX === 'number' ? _tgO.renderX : _tgO.x);
+                var _tgY = (rp.tg === S.myId) ? _tgO.y : (typeof _tgO.renderY === 'number' ? _tgO.renderY : _tgO.y);
+                if (typeof _tgX === 'number' && typeof _tgY === 'number') {
+                  if (rp.isStaff) {
+                    rp.ang = Math.atan2(_tgY - originY, _tgX - originX);
+                    if (rp.dist >= Math.hypot(_tgX - originX, _tgY - originY) - 18) return false;
+                  } else {
+                    _tgPt = { x: _tgX, y: _tgY };
+                  }
+                }
+              }
+            }
             /* v2.3.2730: where it was last frame, for the prop sweep below.  The
                first step has no last frame, so it starts one step back along the
                same line -- the shape v2.3.2473 gave the local first frame. */
@@ -330,6 +353,12 @@ export function updateVisualSystems(S) {
             var _rpY0 = (typeof rp._renderY === 'number') ? rp._renderY : originY + Math.sin(rp.ang) * (rp.dist - _rpStep);
             rp._renderX = originX + Math.cos(rp.ang) * rp.dist;
             rp._renderY = originY + Math.sin(rp.ang) * rp.dist;
+            /* v2.3.3265: the arrow that named its target, reaching them (above) */
+            if (_tgPt) {
+              var _tgSx = rp._renderX - _rpX0, _tgSy = rp._renderY - _rpY0, _tgL = _tgSx * _tgSx + _tgSy * _tgSy;
+              var _tgT = _tgL > 0 ? Math.max(0, Math.min(1, ((_tgPt.x - _rpX0) * _tgSx + (_tgPt.y - _rpY0) * _tgSy) / _tgL)) : 1;
+              if (Math.hypot(_tgPt.x - (_rpX0 + _tgT * _tgSx), _tgPt.y - (_rpY0 + _tgT * _tgSy)) < (rp.volley ? 33 : 28.6)) return false;
+            }
             /* ═══ v2.3.2730: A PEER'S SHOT MEETS THE PROP ON YOUR SCREEN TOO ═══
                This simulation is cosmetic -- the worker settles a peer's hits
                and this copy touches no monster -- and it never asked about

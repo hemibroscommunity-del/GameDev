@@ -1311,6 +1311,47 @@ remnant to migrate server-side, not a mode to preserve.
         longer cooldown against players);
       - kill switch `pvplunge: false`; `pvp-lunge` suite (38), `mp-pvplunge`
         (18, two phones).
+    - since v2.3.3265 SPARRING CLONES IN THE TEST PANEL -- the owner: "I wish
+      I could test PvP somehow. Can you make a special environment where I can
+      go to attack clones of myself using different weapons and you just have
+      them attack me using AI? ... Maybe this is better to add to the admin
+      window" (docs/specs/sparring.md):
+      - the panel's Sparring section (`/dev/spar` {add | skill | clear},
+        admin key) brings up to three clones beside you in the Wheel -- a
+        sword, a bow, a staff -- each a playerState entry the tick draws on
+        every phone, with your look, level, points, armour, shield and amulet
+        and the weapon you carry for its slot (a copy, gems and all) or the
+        tutorial's; none of your bag, gold, buffs or pet;
+      - an AI on the worker (`server/src/spar.js`, the fight simulator's
+        player: Dummy / Easy / Normal / Hard = sim SKILL low / moderate / high)
+        moves it and fights you through the room's own doors -- every blow
+        either way is `_resolvePvPAttack`, specials and rolls are paid through
+        `_handleAbilityUse`, the sword's lunge is `_handleAbility` naming you;
+        its swings, shots, rolls, dashes and guard reach every phone as the
+        relays a player's page sends (wire-audit's allowlist says why), its
+        shots naming you (`tg`: a bolt chases you, and an arrow or bolt ends
+        where it reaches you on screen -- visualSystems.js);
+      - a clone fights its owner and nobody else (`_sparPair`, first in
+        `_pvpAllowed`; `_pvpEngaged`), never under No man's land
+        (`_nmlAllowed`), never chased or hit by a monster (`_tickMonsters`,
+        `_telegraphHitPlayer`, fire trail, storm arcs, the slime burst), never
+        saved (`_saveRpg`), never sent to town (`_tickPlayerRespawn`);
+      - a KNOCKOUT IS NOT A DEATH (`_sparDeath`, asked first by
+        `_handlePlayerDeath`): a clone is down 3 s and stands up beside you;
+        you, knocked out by your own clone, are healed where you stand and
+        saved healed -- no death screen, no pile, no loss -- the clones heal
+        and stand off 2.5 s, the panel and chat keep the score;
+      - `spar_state` (PRIVILEGED, the owner's only, wsClient's direct switch)
+        names the clones so a tap aims at one (src/game/spar.js `sparAim`,
+        BroTown's tap; its circle beats the self-chat circle); leaving the
+        Wheel or the game, Clear, or `spar: false` (caps.spar) takes them
+        away; no linger for a spar;
+      - found, not changed: a real archer's arrows are drawn at 8 px a frame
+        on everyone else's screen, a third of their speed; a real mage's bolt
+        flies straight there though it chases on the mage's own; and another
+        player's shot never stops at you on your screen;
+      - `spar` suite (110: a live monster chases a real player and ignores a
+        clone, break-the-guard checks), `mp-spar` (the real panel on a phone).
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":

@@ -299,6 +299,7 @@ export const monsterStatusMethods = {
       if (oid === pid) continue;
       const o = this.playerState[oid];
       if (!o || o.z !== zoneId || o.dead || o.dying || o.disconnected || !(o.hp > 0)) continue;
+      if (o._spar) continue;   /* v2.3.3265: a sparring clone (spar.js) */
       if (typeof o.x !== 'number' || typeof o.y !== 'number') continue;
       const dx = o.x - ps.x, dy = o.y - ps.y, d2 = dx * dx + dy * dy;
       if (d2 > r2) continue;

@@ -43,6 +43,7 @@ import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
 import { EmotePanel } from './panels/EmotePanel.jsx';
 import { InspectPlayerPanel } from './panels/InspectPlayerPanel.jsx';
 import { nmlCanAttack, nmlHere } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land; v2.3.3253: + where you stand */
+import { sparCanAttack, sparAim } from '../game/spar.js'; /* v2.3.3265: aim at your sparring clones */
 import { profileRelayFields } from './panels/playerProfile.js'; /* v2.3.2926: the Inspect card's relay fields */
 import { NameModal } from './panels/NameModal.jsx';
 /* v2.3.1814: the login door that now sits in front of the creator.
@@ -9877,9 +9878,14 @@ export var BroTown = function BroTown(_ref0) {
        forwarded to the world, whose player branch raises the window (or aims,
        hitting back).  Only there, and only for a player the rule lets you
        fight: everywhere else your own circle still opens chat. */
+    /* v2.3.3265: ...and one of your sparring clones (game/spar.js), anywhere:
+       at a sword's reach a tap on it aimed nowhere and opened your chat */
     var nmlPlayerAtClient = function (clientX, clientY) {
       var S = stateRef.current;
-      if (!S || !S.others || !S.player || !S.camera || !nmlAskOn(S) || !nmlHere(S)) return false;
+      if (!S || !S.others || !S.player || !S.camera) return false;
+      var _nmlTap = nmlAskOn(S) && nmlHere(S);
+      var _sparTap = !!(S._spar && S._spar.ids && S._spar.ids.size);
+      if (!_nmlTap && !_sparTap) return false;
       var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
       var _p = clientToCanvas(clientX, clientY);
       var cam = S.camera, P = S.player;
@@ -9888,7 +9894,7 @@ export var BroTown = function BroTown(_ref0) {
         var _no = S.others[_nid];
         if (!_no || typeof _no.renderX !== 'number' || typeof _no.renderY !== 'number') continue;
         var _nd = Math.hypot(_p.x - (_no.renderX - cam.x) * sx, _p.y - (_no.renderY - cam.y) * sy);
-        if (_nd < 25 && _nd < selfD && nmlCanAttack(S, _nid)) return true;
+        if (_nd < 25 && _nd < selfD && ((_nmlTap && nmlCanAttack(S, _nid)) || (_sparTap && sparCanAttack(S, _nid)))) return true;
       }
       return false;
     };
@@ -11997,6 +12003,15 @@ export var BroTown = function BroTown(_ref0) {
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
               rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1
             });
+            return;
+          }
+          /* ═══ v2.3.3265: ...OR ONE OF YOUR SPARRING CLONES ═══
+             The test panel's clones (game/spar.js): a tap aims at once, as at
+             a duel's opponent, with no card -- mid-fight it would cover the
+             screen.  Tapping it again keeps the lock (a click IS the attack on
+             a computer); empty ground lets go, as for any lock. */
+          if (sparCanAttack(S, id)) {
+            if (!(S.lockedTarget && S.lockedTarget.id === id)) sparAim(S, id);
             return;
           }
           /* ═══ v2.3.1917: YOU CAN ONLY AIM AT A DUEL OPPONENT ═══

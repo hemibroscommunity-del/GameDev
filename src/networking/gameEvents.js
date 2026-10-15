@@ -1957,6 +1957,14 @@ export function processGameEvent(type, payload, S, deps) {
                    the caster's crystal.  Absent (an older caster) -> their
                    charged orbs, exactly as before. */
                 big: !!(payload.big && payload.isStaff && payload.isSpecial),
+                /* v2.3.3265: a shot that names its target (`tg`): a bolt chases
+                   it, as a staff bolt chases the lock on its caster's own screen
+                   (projectiles.js), and an arrow keeps its line -- and either
+                   ends where it reaches them, where the worker lands it
+                   (visualSystems.js).  Sent by a sparring clone (server
+                   spar.js); a real player's page sends none, so theirs fly as
+                   before.  A player id or nothing. */
+                tg: (typeof payload.tg === 'string' && payload.tg.length < 80) ? payload.tg : null,
                 /* v2.3.2849: an arrow of the bow volley -- it burns out on the
                    volley's 2.5 s where it stands (visualSystems), not the lone
                    arrow's 4.  Absent (an older shooter) -> the lone arrow's. */

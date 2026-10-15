@@ -226,6 +226,7 @@ export const fireTrailMethods = {
   _fireTrailHitPlayer(zoneId, patch, pid) {
     const ps = this.playerState[pid];
     if (!ps || ps.dead || ps.dying || ps.z !== zoneId) return 0;
+    if (ps._spar) return 0;   /* v2.3.3265: no monster's fire burns a sparring clone (spar.js) */
     /* Defensive, not load-bearing: 6 is nowhere near half of anyone's max
        HP.  It is here so a future tuning pass on DMG cannot quietly invent
        the first one-shot in the game (TELEGRAPH.MAX_HIT_PCT, same rail). */
