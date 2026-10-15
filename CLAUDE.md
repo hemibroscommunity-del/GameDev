@@ -1137,6 +1137,46 @@ remnant to migrate server-side, not a mode to preserve.
         on them opened your chat;
       - `?nmlask=0` is the game as it was; `nomansland` §3-4, `mp-nmlask`,
         `mp-nomansland` step 2: no-mans-land.md "Attacking is a choice".
+    - since v2.3.3258 FIGHTS BETWEEN PLAYERS LAST, FISH MATTER IN THEM, AND
+      LEAVING IS NO ESCAPE -- the owner, after the time-to-kill study: "I want
+      you to plan and implement fixes for all of these including how much HP
+      each fish should heal. You're the expert on this not me"
+      (docs/specs/pvp-fights.md, measured on `tools/pvp-sim/`, a fight
+      simulator running the worker's own combat code):
+      - equal Lv 12 players with no points died in 1.5-4.5 s (a staff in one
+        hit, 191% of a bar), specials 70-94% of the damage, a sword hit twice
+        a swing (~24 claims a swing), crits never happened (a fraction read as
+        a percentage), and every hit was the PHONE'S number;
+      - THE WORKER ROLLS EVERY PvP HIT (server/src/pvpbalance.js, called by
+        combat.js `_resolvePvPAttack`): the monster path's own roll, then
+        SCALE 0.4 x KIND (sword 1.3) x the special's SHARE (sword 0.5, bow
+        0.45, staff 0.3) x a bow's or staff's FALLOFF (0.6 past 450 px), then
+        armour, then CAP 0.3 of max HP (`_applyDamage` `capHp`); a special
+        counts only inside the 3.5 s window a swipe the worker charged opened,
+        worth ONE special (`_pvpSpecialCost`); a sword lands ONE hit a swing
+        (`sw`, src/game/pvpSwing.js: at most three claims a swing, in reach;
+        an older page one per 450 ms); `orbs`/`part`/`rs` on the shot; every
+        number a clamped live flag (`pvp_scale`, `pvp_cap`, ...); Lv 12 copper
+        set: sword 7.4 s, bow 14.8, staff 16.6, specials ~40%; `caps.pvpbalance`,
+        kill switch `pvpbalance: false` (the old claim path exactly);
+      - THE FISH LADDER (data.js `FISH_HEAL`, mirror gameSystems.js on
+        `caps.fishheal`): 100/150/225/325/475 (20/30/45/65/95 on screen), each
+        about three quarters of the bar of a player at its zone with a third
+        of their points in health; in a fight with a player a heal eaten at
+        once heals A QUARTER (`PVP_HEAL.SHARE`, cooking.js `_pvpHealSized`,
+        live flag `pvp_heal_share`) -- at a half two players with fish never
+        finished; kill switch `fishheal: false`;
+      - QUICK EAT (src/game/quickEat.js, ui/panels/QuickEatButton.jsx, the left
+        cluster's `LCTL_SLOT.eat`, V on a keyboard): the smallest heal that
+        fills what you miss, else the biggest, through eatBus; shown while you
+        carry one and miss HP, the bite rule's wait as its ring; its pictures
+        warmed on the loading screen (data/foodIcons.js);
+      - LEAVING MID-FIGHT (server/src/linger.js): within 10 s of a hit between
+        players, in the Wheel, the body STAYS 20 s, hittable, no player_leave;
+        a reconnect from where it stands takes it back, any other join gets
+        `linger_wait {ms}` + close 4010 (src/ui/LingerScreen.js counts down);
+        not duels, not the last one in the room; kill switch `linger: false`;
+      - `pvp-balance`, `linger`, `fightfood` §4c/§7, mirror-audit "fish heal".
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":

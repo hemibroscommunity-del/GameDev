@@ -309,7 +309,7 @@ import { wireSlimeAudio } from '@/game/slimeAudio.js';
 import { wireOrientationSync } from '@/game/orientationSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
-import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player */
+import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal, pvpHealSized } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player; v2.3.3258: a quarter of a heal in it */
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822: stuck-dead watchdog */
 /* v2.3.2330: the SFX manifest loads once the loading gate has what it was
    waiting for -- see BT_AUDIO.unlock for why it no longer loads at the login
@@ -9001,8 +9001,10 @@ export var BroTown = function BroTown(_ref0) {
         pushDmgPopup(S, S.player.x, S.player.y - 30, pvpHealWaitText(_wait), '#B9C1BF');
         return;
       }
+      /* v2.3.3258: a quarter of it in a fight with a player, as the worker sizes
+         it (fightFood.js pvpHealSized) -- read BEFORE the bite is noted */
+      var HEAL = _bite ? pvpHealSized(S, calcDisplayHeal(R, key)) : calcDisplayHeal(R, key);
       if (_bite) noteInstantHeal(S);
-      var HEAL = calcDisplayHeal(R, key);
       var before = R.hp || 0;
       R.hp = Math.min(maxHp, before + HEAL);
       var actual = R.hp - before;

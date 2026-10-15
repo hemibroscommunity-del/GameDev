@@ -32,8 +32,9 @@
  * No imports, so the worker's suites can run it (fightfood.test.mjs) and
  * mirror-audit can hold PVP_HEAL to the server's. */
 
-/* Mirror of server/src/data.js PVP_HEAL (mirror-audit). */
-export const PVP_HEAL = Object.freeze({ WINDOW_MS: 10000, GAP_MS: 15000 });
+/* Mirror of server/src/data.js PVP_HEAL (mirror-audit).  v2.3.3258: SHARE,
+   what an instant heal heals in that fight (cooking.js _pvpHealSized). */
+export const PVP_HEAL = Object.freeze({ WINDOW_MS: 10000, GAP_MS: 15000, SHARE: 0.25 });
 
 /* The damage brew's multiplier as the page sees it -- combat.js _brewMul's
    rule on the worker's echo (wsClient: S._dmgBuff is the brew's end, and
@@ -92,10 +93,31 @@ export function noteInstantHeal(S, now) {
 export function pvpHealWaitMs(S, now) {
   if (!S || !(S._serverCaps && S._serverCaps.pvpheal)) return 0;
   var t = typeof now === 'number' ? now : Date.now();
-  var inFight = typeof S._pvpAt === 'number' && t - S._pvpAt < PVP_HEAL.WINDOW_MS;
-  if (!inFight) return 0;
+  if (!pvpFightSeen(S, t)) return 0;
   var last = typeof S._instantHealAt === 'number' ? S._instantHealAt : 0;
   return Math.max(0, PVP_HEAL.GAP_MS - (t - last));
+}
+
+/* v2.3.3258: in a fight with a player, as far as this page has seen -- a
+   pvp_hit for or against it within WINDOW_MS (the worker's own test,
+   cooking.js _pvpInFight, also counts a duel's lull; see the note above on
+   why the page does not read S._inDuel). */
+export function pvpFightSeen(S, now) {
+  if (!S) return false;
+  var t = typeof now === 'number' ? now : Date.now();
+  return typeof S._pvpAt === 'number' && t - S._pvpAt < PVP_HEAL.WINDOW_MS;
+}
+
+/* v2.3.3258: an instant heal of `heal` as the worker will size it -- SHARE of
+   it (a quarter), rounded up, in a fight with a player (cooking.js
+   _pvpHealSized), on a worker that says it does (caps.fishheal).  A
+   prediction: the echo is the truth (and a worker retuned by its live flag
+   `pvp_heal_share` says so in its echo). */
+export function pvpHealSized(S, heal, now) {
+  var h = Number(heal) || 0;
+  if (!(h > 0) || !S || !(S._serverCaps && S._serverCaps.fishheal)) return h;
+  if (!pvpFightSeen(S, now)) return h;
+  return Math.max(1, Math.ceil(h * PVP_HEAL.SHARE));
 }
 
 /* The worker held a bite back (eat_refused {wait}): its clock is the truth.

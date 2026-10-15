@@ -150,12 +150,38 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   // but dmgBase is clamped to the attacker's weapon-aware cap and
   // critChance 99999 clamps to 100 (guaranteed crit, 1.5x+).
   psB.x = 200;
+  /* v2.3.3258: the CLAIM's clamps are the old path's (pvpbalance: false); on
+     the new path the worker rolls the hit itself and the claim's numbers buy
+     nothing -- checked just below. */
+  room._liveFlags = { pvpbalance: false };
   room.eventBuffer.length = 0;
   room._resolvePvPAttack(room.sessions.get(wsA), { range: 99999, arc: 99, angle: 0, dmgBase: 99999, critChance: 99999 });
   const hit = room.eventBuffer.find((e) => e.type === 'pvp_hit');
   check('pvp: hit lands at 200 px with clamped dmgBase', !!hit && hit.payload.dmgBase <= dmgCap,
     hit && { dmgBase: hit.payload.dmgBase, cap: dmgCap });
   check('pvp: critChance clamps to 100 (hit is a crit)', !!hit && hit.payload.isCrit === true, hit && hit.payload);
+  room._liveFlags = {};
+  {
+    /* v2.3.3258: a forged dmgBase and critChance buy nothing -- the worker's
+       own roll decides (pvpbalance.js); at 0 Luck points a crit is the 1% base */
+    let crits = 0, maxForged = 0, maxHonest = 0;
+    for (let i = 0; i < 200; i++) {
+      for (const [claim, crit, keep] of [[99999, 99999, 'f'], [1, 0, 'h']]) {
+        room._pvpHitLanes = new Map();
+        room.eventBuffer.length = 0;
+        room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 3, angle: 0, dmgBase: claim, critChance: crit });
+        const h = room.eventBuffer.find((e) => e.type === 'pvp_hit');
+        if (!h) continue;
+        /* the biggest NON-crit roll each way: a crit is 1.5x, and one landing
+           on one side only made this check flaky (~1 run in 4) */
+        if (keep === 'f') { if (h.payload.isCrit) crits++; else maxForged = Math.max(maxForged, h.payload.dmgBase); }
+        else if (!h.payload.isCrit) maxHonest = Math.max(maxHonest, h.payload.dmgBase);
+      }
+    }
+    check('pvp (worker roll): a forged critChance does not force crits', crits < 20, { crits });
+    check('pvp (worker roll): a forged dmgBase rolls what an honest claim rolls',
+      maxForged > 0 && Math.abs(maxForged - maxHonest) < maxHonest * 0.25, { maxForged, maxHonest });
+  }
   check('pvp: damage taken bounded by cap * 1.5 crit', !!hit && hit.payload.dmgTaken <= Math.ceil(dmgCap * 1.5),
     hit && { dmgTaken: hit.payload.dmgTaken, bound: Math.ceil(dmgCap * 1.5) });
 

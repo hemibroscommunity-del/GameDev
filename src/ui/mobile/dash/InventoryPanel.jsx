@@ -34,6 +34,7 @@ import { FARM_ITEM_NAMES, farmLookFor } from '@/data/farmCrops.js';   /* v2.3.31
 import { HARDENED_WOOD_NAMES, isHardenedWoodKey, hardenedWoodIcon } from '@/data/hardenedWood.js';   /* v2.3.3139: hardened wood */
 import { DISH_NAMES, dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* v2.3.3120: the box trap's picture */
+import { COOKED_FISH_ICONS, COOKED_FISH_ICON_DEFAULT } from '@/data/foodIcons.js';   /* v2.3.3258 */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -105,14 +106,11 @@ const FISH_THUMBS = {
   fish_salmon: `/icons/items/fish-salmon.webp${ITEMS_V}`,
   fish_pike: `/icons/items/fish-pike.webp${ITEMS_V}`,
 };
-const COOKED_FISH_THUMBS = {
-  cooked_fish_clownfish: `/icons/items/cooked-clownfish.webp${ITEMS_V}`,
-  cooked_fish_trout: `/icons/items/cooked-trout.webp${ITEMS_V}`,
-  cooked_fish_salmon: `/icons/items/cooked-salmon.webp${ITEMS_V}`,   /* v2.3.3094 */
-  cooked_fish_pike: `/icons/items/cooked-pike.webp${ITEMS_V}`,
-};
+/* v2.3.3258: the cooked fish's table lives in data/foodIcons.js, which the
+   loading screen reads too (the quick-eat button shows them mid-fight) */
+const COOKED_FISH_THUMBS = COOKED_FISH_ICONS;
 const FISH_THUMB_DEFAULT = `/icons/items/fish-minnow.webp${ITEMS_V}`;
-const COOKED_FISH_THUMB_DEFAULT = `/icons/items/cooked-minnow.webp${ITEMS_V}`;
+const COOKED_FISH_THUMB_DEFAULT = COOKED_FISH_ICON_DEFAULT;
 export const ORE_THUMBS = {  /* v2.3.2822: exported for the Smelting rows */
   ore_copper_ore: `/icons/items/ore-copper.webp${ITEMS_V}`,
   /* v2.3.3012: the Wheel grows iron (levels 1-10) and black steel (11-20);

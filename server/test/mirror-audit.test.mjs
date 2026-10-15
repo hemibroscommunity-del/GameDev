@@ -114,6 +114,8 @@ import {
      lockstep" — which is exactly the obligation this suite exists to stop
      enforcing by memory. */
   getFishHealAmount as clientFishHeal,
+  /* v2.3.3258: the new fish ladder, and the switch that reads it */
+  FISH_HEAL as CLIENT_FISH_HEAL, setFishHealEnabled as clientSetFishHeal,
   /* v2.3.1765: the equip gate.  The two sides reach the same number by
      DIFFERENT roads — the worker by tier index, the client by statReq/2 — so
      they can drift without either looking wrong on its own. */
@@ -260,6 +262,10 @@ const room = Object.create(GameRoom.prototype);
      its own bite back by the worker's numbers (fightFood.js). */
   check('PVP_HEAL mirror: the fight window and the gap between bites',
     CLIENT_PVP_HEAL.WINDOW_MS === SRV.PVP_HEAL.WINDOW_MS && CLIENT_PVP_HEAL.GAP_MS === SRV.PVP_HEAL.GAP_MS,
+    { server: SRV.PVP_HEAL, client: CLIENT_PVP_HEAL });
+  /* v2.3.3258: ...and the share a bite heals in that fight */
+  check('PVP_HEAL mirror: a bite\'s share in a fight with a player',
+    CLIENT_PVP_HEAL.SHARE === SRV.PVP_HEAL.SHARE && SRV.PVP_HEAL.SHARE > 0 && SRV.PVP_HEAL.SHARE <= 1,
     { server: SRV.PVP_HEAL, client: CLIENT_PVP_HEAL });
 }
 
@@ -664,15 +670,35 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { storage: { get: async () => null, put: async () => {}, list: async () => new Map(), delete: async () => {} },
       blockConcurrencyWhile: async (f) => f() },
     { ROOM_NAME: 'mirror-audit' });
+  /* v2.3.3258: every fish both ways -- the new ladder (data.js FISH_HEAL,
+     the page's copy read once the worker says caps.fishheal) and, with the
+     kill switch thrown, the old 92 + 8 x level on both sides. */
+  const fishKeys = FISHING_TIERS.map((t) => 'cooked_fish_' + t.name.toLowerCase().replace(/\s+/g, '_')).concat(['cooked_fish_nonesuch', 'fish_trout']);
   const fishBad = [];
-  for (const key of ['cooked_fish_minnow', 'cooked_fish_trout', 'cooked_fish_nonesuch']) {
-    const srvHeal = room._fishHealAmount(key);
-    const cliHeal = clientFishHeal(key);
-    if (srvHeal !== cliHeal) fishBad.push({ key, server: srvHeal, client: cliHeal });
+  for (const [on, flags] of [[true, {}], [false, { fishheal: false }]]) {
+    clientSetFishHeal(on);
+    room._liveFlags = flags;
+    for (const key of fishKeys) {
+      const srvHeal = room._fishHealAmount(key);
+      const cliHeal = clientFishHeal(key);
+      if (srvHeal !== cliHeal) fishBad.push({ ladder: on ? 'new' : 'old', key, server: srvHeal, client: cliHeal });
+    }
   }
-  check('fish heal mirrors server<->client, unmapped default included', fishBad.length === 0, fishBad);
+  clientSetFishHeal(false);
+  room._liveFlags = {};
+  check('fish heal mirrors server<->client, every fish, both ladders, unmapped default included', fishBad.length === 0, fishBad);
   check('...and tier one lands on the owner\'s number', room._fishHealAmount('cooked_fish_minnow') === 100,
     room._fishHealAmount('cooked_fish_minnow'));
+  check('FISH_HEAL mirror: the same fish, the same heals',
+    JSON.stringify(CLIENT_FISH_HEAL) === JSON.stringify(SRV.FISH_HEAL), { server: SRV.FISH_HEAL, client: CLIENT_FISH_HEAL });
+  /* ...one heal a fish, every fish the table names: a tier missing from it
+     would heal 100 (the unmapped default) on both sides and no check above
+     would notice */
+  const unladdered = SRV.FISH_TIERS.filter((t) => !Object.prototype.hasOwnProperty.call(SRV.FISH_HEAL, t.name)).map((t) => t.name);
+  check('every fish tier has its heal on the ladder', unladdered.length === 0, unladdered);
+  /* ...and the ladder climbs: each fish heals more than the one before */
+  const ladder = SRV.FISH_TIERS.map((t) => SRV.FISH_HEAL[t.name]);
+  check('the fish ladder climbs tier by tier', ladder.every((h, i) => i === 0 || h > ladder[i - 1]), ladder);
 
   /* createGatherNode is the client half of _harvestXpForTier's base.  Driven
      through the real function rather than by re-typing its formula here: a

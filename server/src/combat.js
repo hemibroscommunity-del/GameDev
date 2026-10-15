@@ -481,6 +481,11 @@ export const combatMethods = {
     }
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
+    /* ═══ v2.3.3258: NO HIT BETWEEN PLAYERS KILLS FROM FULL HEALTH ═══
+       The PvP resolver passes `capHp` (pvpbalance.js PVP.CAP x the target's
+       max HP): after every cut above, a hit takes no more than that.  Absent
+       for every other caller. */
+    if (opts && opts.capHp > 0 && dmgTaken > opts.capHp) dmgTaken = Math.max(1, Math.floor(opts.capHp));
     // v2.3.1314: RESILIENCE (HP grid) goes live — big-hit taming only:
     // hits above 20% of max HP are reduced 0.25%/pt (cap 25%), same
     // scale as Iron Skin but spike-selective so the two channels stay
@@ -2013,6 +2018,18 @@ export const combatMethods = {
     const _brew = (payload.nb === 1 && !this._pvpBrewOff()) ? this._brewMul(attackerPs) : 1;
     const dmgBase = Math.max(1, Math.min(dmgCap, payload.dmgBase || 10)) * _brew;
     const critChance = Math.max(0, Math.min(100, payload.critChance || 0));
+    /* ═══ v2.3.3258: THE WORKER'S OWN ROLL, AND THE PvP NUMBERS ═══
+       pvpbalance.js has the whole story.  Here: the worker rolls each hit
+       (the claim's dmgBase/critChance above are the old path's only), a
+       special counts only inside a window a paid swipe opened, a sword lands
+       one hit per swing, and the hit takes the tuned scale, the special's
+       share, its weapon's weight, a bow's or staff's falloff and the cap.
+       `pvpbalance: false` is the old path exactly. */
+    const _bal = typeof this._pvpBalanceOff === 'function' && !this._pvpBalanceOff();
+    const _now0 = Date.now();
+    const _special = _bal ? (!!payload.special && this._pvpSpecialOk(attackerPs, _now0)) : !!payload.special;
+    const _tune = _bal ? this._pvpTune() : null;
+    let _specialLanded = false;
 
     // Check all players in room for hits
     for (const [targetId, targetPs] of Object.entries(this.playerState)) {
@@ -2061,7 +2078,12 @@ export const combatMethods = {
         const now = Date.now();
         let lane = this._pvpHitLanes.get(laneKey);
         if (!lane) { lane = { lastTs: 0, spStart: 0, spCount: 0 }; this._pvpHitLanes.set(laneKey, lane); }
-        if (payload.special) {
+        /* v2.3.3258: a sword lands one hit a swing, its special swing too
+           (pvpbalance.js _pvpMeleeLane); a bow's or staff's special keeps the
+           three-a-1200-ms lane its volley needs */
+        if (_bal && kind === 'melee') {
+          if (!this._pvpMeleeLane(lane, payload, now, _special)) continue;
+        } else if (_bal ? _special : payload.special) {
           if (now - lane.spStart > this.PVP_TUNING.SPECIAL_LANE_MS) { lane.spStart = now; lane.spCount = 0; }
           if (lane.spCount >= this.PVP_TUNING.SPECIAL_LANE_MAX) continue;
           lane.spCount++;
@@ -2112,7 +2134,10 @@ export const combatMethods = {
       }
 
       // Crit roll
-      const isCrit = Math.random() * 100 < critChance;
+      /* v2.3.3258: on the new path the crit is the worker's roll's own
+         (pvpbalance.js): the claim's critChance arrived as a fraction from a
+         sword (0.01 read here as 0.01%) and as 0 from every projectile. */
+      let isCrit = _bal ? false : Math.random() * 100 < critChance;
 
       // Apply HP damage server-side.  Per Phase 2 of the T1/T2 spec,
       // a blocked hit is full invuln (was 0.25× partial), so pass
@@ -2127,13 +2152,29 @@ export const combatMethods = {
          the retired Phase-1 formula, not for use as a damage divisor. */
       const effDef = Math.min(this.PVP_TUNING.DEF_CAP, Math.max(0, targetPs.def || 0));
       const defMit = 100 / (100 + effDef);
-      const rawDmg = dmgBase * (isCrit ? 1.5 : 1) * this.PVP_TUNING.DMG_SCALE * defMit;
+      let rawDmg = dmgBase * (isCrit ? 1.5 : 1) * this.PVP_TUNING.DMG_SCALE * defMit;
+      let _hitBase = dmgBase;
+      let _cap = null;
+      if (_bal) {
+        /* v2.3.3258: the worker's own roll x the PvP numbers (pvpbalance.js);
+           armour then cuts it in _applyDamage and the cap bounds what is
+           left.  `def` (the phone's old equipment number, 0 for everyone
+           since Phase 1) no longer enters: armour is the mitigation. */
+        const _roll = this._pvpRollFor(attackerPs, kind, _special, payload);
+        isCrit = _roll.isCrit;
+        _hitBase = _roll.dmg;
+        rawDmg = _roll.dmg * _tune.scale * (_tune[kind] || 1) * (_special ? this._pvpSpecialShare(kind, _tune) : 1)
+          * this._pvpFalloff(kind, dist, _tune);
+        const _mx = Number(targetPs.maxHp);
+        if (_mx > 0 && _tune.cap < 1) _cap = Math.max(1, Math.round(_mx * _tune.cap));
+      }
       /* v2.3.2680: no attackerLevel on purpose — PvP stays at edge 1 (the
          defender's points at full strength whoever swings).  Pricing it by
          the attacker's level would strip a lower player's Dodge and Defense
          outright; that is a PvP design call of its own, not this change. */
-      const dmgResult = this._applyDamage(targetPs, rawDmg, blocked);
+      const dmgResult = this._applyDamage(targetPs, rawDmg, blocked, _cap ? { capHp: _cap } : undefined);
       const dmgTaken = dmgResult.dmgTaken;
+      if (_bal && _special) _specialLanded = true;
       /* v2.3.1701: the attacker is in combat too (see the twin stamp in
          _handleMonsterDamage) — otherwise a PvP aggressor in a lawless zone
          out-regenerates the fight they are winning. */
@@ -2153,7 +2194,7 @@ export const combatMethods = {
           attacker: attackerId,
           attackerName: attackerSession.name,
           target: targetId,
-          dmgBase: dmgBase,
+          dmgBase: _hitBase,   /* v2.3.3258: the worker's roll on the new path */
           dmgTaken,
           isCrit: isCrit,
           blocked: blocked,
@@ -2203,5 +2244,9 @@ export const combatMethods = {
         this._handlePlayerDeath(targetPs, targetId, 'pvp:' + attackerId);
       }
     }
+    /* v2.3.3258: a special claim that landed spends its share of the
+       window: a sword's swing all of it, the big bolt its orbs, a volley
+       arrow one (pvpbalance.js _pvpSpecialCost) */
+    if (_specialLanded) this._pvpSpecialSpent(attackerPs, this._pvpSpecialCost(kind, payload));
   },
 };

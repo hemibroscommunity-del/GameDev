@@ -59,6 +59,7 @@ import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock mon
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 import { brewMulNow, pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: the brew, read once and claimed right in a duel */
+import { pvpBalanceOn, pvpSwingClaimOk, pvpLockInReach } from '@/game/pvpSwing.js'; /* v2.3.3258: one sword claim a swing */
 
 /* ═══ v2.3.3206: HOW FAR A PLAIN ARROW FLIES BEFORE THE SCREEN'S EDGE ═══
    projectiles.js plants a bow arrow once its drawn point comes within 24 px of
@@ -3056,7 +3057,17 @@ export function updateMonsterCombat(S, deps) {
                  still requires a lawless zone AND a deliberate lock-on.  The
                  server gate remains the authority and still fails closed —
                  this only decides what is worth reporting. */
-              if (S._inDuel || (!inSafeZone && pvpLocked)) {
+              /* v2.3.3258: the reach this swing claims (below), and whether
+                 the player it is locked on is in it on this screen -- against
+                 a worker that lands one hit a swing the claim goes out at
+                 most three times a swing, and only when it can land
+                 (pvpSwing.js). */
+              var _pvpReach = Math.min(250, Math.round((wpnType.range || SWING_RANGE)
+                * (S.rpg && S.rpg.activeSlot === 'ranged' ? bowRangeMult(S.rpg) : meleeRangeMult(S.rpg))
+                * depthK(S.currentZone, P.y)));
+              var _pvpBal = pvpBalanceOn(S);
+              if ((S._inDuel || (!inSafeZone && pvpLocked))
+                  && pvpSwingClaimOk(S, S.swingTimer, Date.now(), pvpLocked ? pvpLockInReach(S.lockedTarget.ref, P.x, P.y, _pvpReach) : null)) {
                 var pvpAngle = pvpLocked ? Math.atan2((S.lockedTarget.ref.y || S.lockedTarget.ref.renderY || P.y) - P.y, (S.lockedTarget.ref.x || S.lockedTarget.ref.renderX || P.x) - P.x) : baseAngle;
                 /* Track threat — attacking a player starts the threat counter */
                 S._pvpThreat = Date.now() + PVP_THREAT_DURATION;
@@ -3074,21 +3085,32 @@ export function updateMonsterCombat(S, deps) {
                        clamp; as before against an older one (fightFood.js). */
                     dmgBase: _pvpClaim.dmgBase,
                     nb: _pvpClaim.nb,
-                    critChance: critChance,
+                    /* v2.3.3258: a PERCENTAGE, which is what the worker has
+                       always read -- the fraction (0.01) it was sent as made
+                       the sword's crit 0.01% in a fight with a player.  A
+                       worker with caps.pvpbalance rolls the crit itself. */
+                    critChance: Math.round(critChance * 1000) / 10,
                     /* v2.3.1135: Longshot stretches PvE flight, but PvP
                        reach is hard-capped at the server's 250px clamp
                        (_resolvePvPAttack) — clamp here too so the claimed
                        range matches what the worker will honor. */
-                    range: Math.min(250, Math.round((wpnType.range || SWING_RANGE)
-                      * (S.rpg && S.rpg.activeSlot === 'ranged' ? bowRangeMult(S.rpg) : meleeRangeMult(S.rpg))
-                      * depthK(S.currentZone, P.y))), /* v2.3.2592: melee reach claims its stat too, still clamped; v2.3.2790: x depth (the worker honours min(claim, 250), so claiming less is always safe) */
+                    range: _pvpReach, /* v2.3.2592: melee reach claims its stat too, still clamped; v2.3.2790: x depth (the worker honours min(claim, 250), so claiming less is always safe) */
                     arc: wpnType.arc || SWING_ARC,
                     ts: Date.now(),
                     inDuel: !!S._inDuel,
+                    /* v2.3.3258: which swing (its own clock) -- the worker
+                       lands one hit a swing (pvpbalance.js); an older one
+                       ignores it */
+                    sw: S.swingTimer,
+                    /* v2.3.3258: the special swing says so, to a worker that
+                       counts it only after the swipe it charged and lands one
+                       hit a swing -- never to an older one (below). */
+                    special: (_pvpBal && S._specialAttack) ? true : undefined,
                     /* v2.3.1302: kind tags the attack for the server's
                        per-kind range clamp.  Old servers ignore it. */
                     kind: 'melee'
-                    /* v2.3.3133 (review): NO `special` here, on purpose.  This
+                    /* v2.3.3133 (review): NO `special` here, on purpose  [v2.3.3258:
+                       against an OLDER worker -- see `special` above].  This
                        send runs on every frame of the 400 ms sweep, and the
                        worker's lanes are what turn that into hits: an ordinary
                        claim gets one hit per 300 ms (two a swing), a special

@@ -525,6 +525,40 @@ export const DISHES = {
 export const PVP_HEAL = Object.freeze({
   WINDOW_MS: 10000,
   GAP_MS: 15000,
+  /* ═══ v2.3.3258: ...AND A BITE HEALS A QUARTER IN THAT FIGHT ═══
+     Without it, two players carrying fish never finished: a fish at your
+     level heals most of your bar, every 15 s, and a fight between players is
+     cut harder than a monster's hit (pvpbalance.js SCALE 0.4) -- measured on
+     the fight simulator (docs/specs/pvp-fights.md "Fish"), two bows at Lv 12
+     with five fish each fought 39 s at a half-size bite and 81 s for two
+     staffs.  In the same fight (a duel, or within WINDOW_MS of a hit between
+     players) an instant heal heals SHARE of itself, rounded up: then equal
+     fish stretch a fight about 1.5x, a fish one tier better wins 70-90% of
+     even fights, and carrying fish against nobody's wins 90-100%.  The live
+     flag `pvp_heal_share` retunes it (cooking.js _pvpHealShare); `fishheal:
+     false` is every bite whole. */
+  SHARE: 0.25,
+});
+
+/* ═══ v2.3.3258: WHAT EACH FISH HEALS (owner: "including how much HP each
+   fish should heal.  You're the expert on this not me") ═══
+   It was 92 + 8 x the fish's tier level -- 100, 140, 180, 220, 260 -- a ladder
+   that flattened (x1.4, x1.29, x1.22, x1.18) just as each tier came to cost
+   twice the fishing of the one before (gathering.js GATHER_NODE_HP: 10, 20,
+   40, 80, 160 hits at the level it opens) and the monsters where it is caught
+   to hit ~1.9x harder (6.5% a level, ten levels a band).  So a bigger fish was
+   barely worth catching, and in a fight with a player a minnow did nearly a
+   pike's job.  Now about x1.5 a tier, on the game's screen (which shows HP
+   divided by DISPLAY_SCALE_K 5): 20, 30, 45, 65, 95.  The minnow keeps the
+   100 the owner asked for (v2.3.1765, "closer to 100").  A fish the table
+   does not know heals 100 as before.  Mirrored in src/data/gameSystems.js
+   (mirror-audit).  `fishheal: false` is the old ladder. */
+export const FISH_HEAL = Object.freeze({
+  minnow: 100,
+  clownfish: 150,
+  trout: 225,
+  salmon: 325,
+  pike: 475,
 });
 
 /* ═══ v2.3.2062: WHAT "CONSTANTLY" IS WORTH, IN NUMBERS ═══

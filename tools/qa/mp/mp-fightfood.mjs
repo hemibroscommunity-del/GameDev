@@ -5,13 +5,13 @@
  *
  * Two players, a real duel in town, the real UI:
  *
- *   1. THE BREW IS THE WORKER'S.  Before a Fury Tonic, A's swings claim
- *      their damage with `nb: 1` and the worker's pvp_hit carries that claim
- *      unchanged; after A drinks one, the claims stay brew-free and every
- *      pvp_hit carries twice the claim -- the worker's own brew, put on once.
- *   2. A SPECIAL SWING STAYS AN ORDINARY CLAIM (review): no `special` flag,
- *      so the worker's ordinary lane still gives it at most two hits -- the
- *      flag put it in the special lane, three hits at the special's ceiling.
+ *   1. THE BREW IS THE WORKER'S.  A's swings claim their damage with
+ *      `nb: 1`; v2.3.3258: the worker rolls the hit itself (pvpbalance.js),
+ *      and after A drinks a Fury Tonic its roll is twice the size -- its own
+ *      brew, put on once -- while the claims stay brew-free.
+ *   2. A SPECIAL SWING (v2.3.3258): it says `special` to a pvpbalance worker
+ *      (which counts it only after the swipe it charged), at most three
+ *      claims a swing, and lands ONE hit a swing.
  *   3. ONE BITE AT A TIME.  B, hurt, eats a Garden Stew from the bag: it
  *      heals.  The second, right after, is held back on B's own screen --
  *      "Eat again in Ns" -- and the worker never hears of it.  And a page that
@@ -70,25 +70,6 @@ async function swingAt(A, times) {
     await A.page.waitForTimeout(420);
   }
   return true;
-}
-
-/* Each pvp_hit A threw, matched to the claim that made it.  A held press can
-   send two swings, and the next can leave before the last one's hit comes
-   back, so "the send just before" is not always its own -- match by VALUE
-   instead: a claim within the last 2 s that the hit is exactly k times.  The
-   claims are floats off a random roll, so an exact match is no coincidence. */
-async function claimsAndHits(A, aId, since, k) {
-  return A.page.evaluate(({ me, t0, k }) => {
-    const sends = (window.__ffSends || []).filter((s) => s.at >= t0);
-    const hits = ((window.__btFightFood && window.__btFightFood.hits) || []).filter((h) => h.attacker === me && h.at >= t0);
-    const pairs = [];
-    for (const h of hits) {
-      const near = sends.filter((s) => s.at <= h.at && h.at - s.at < 2000);
-      const own = near.find((s) => Math.abs(h.dmgBase - s.dmgBase * k) < 1e-6);
-      pairs.push({ hit: h.dmgBase, matched: !!own, nb: own ? own.nb : null, claim: own ? own.dmgBase : null });
-    }
-    return { sends: sends.length, hits: hits.length, pairs };
-  }, { me: aId, t0: since, k });
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -156,17 +137,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const near = await closeIn(A, wsPort, aId, bId);
   rec.ok('A walks into reach (guard)', near.ok, near);
 
-  /* ── 1a. no brew: the claim comes back as it went ── */
+  /* ═══ v2.3.3258: THE WORKER ROLLS THE HIT (server/src/pvpbalance.js) ═══
+     A pvp_hit's dmgBase is the worker's own roll now, not the claim, so a
+     claim no longer comes back as it went (sections 1 and 2 of this file
+     pinned that, the claim path, which is `pvpbalance: false` now).  What the
+     brew must do still holds, read from the worker's numbers: its own roll
+     carries the brew, once -- and the page's claims still say nb:1 and leave
+     the brew out (an older worker, or the kill switch, multiplies them). */
+  const hitsSince = (t0) => A.page.evaluate(({ me, t0 }) => {
+    const hits = ((window.__btFightFood && window.__btFightFood.hits) || []).filter((h) => h.attacker === me && h.at >= t0);
+    const sends = (window.__ffSends || []).filter((s) => s.at >= t0);
+    const mean = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+    return { hits: hits.map((h) => h.dmgBase), sends: sends.length, nb1: sends.every((s) => s.nb === 1),
+      meanHit: mean(hits.map((h) => h.dmgBase)), meanClaim: mean(sends.map((s) => s.dmgBase)) };
+  }, { me: aId, t0 });
+
+  /* ── 1a. no brew ── */
   const t0 = await H.readState(A, () => Date.now());
   await swingAt(A, 6);
   await A.page.waitForTimeout(800);
-  const plain = await claimsAndHits(A, aId, t0, 1);
-  rec.ok('A\'s swings land (guard)', plain.pairs.length >= 2, { sends: plain.sends, hits: plain.hits });
-  rec.ok('with no brew the worker resolves each hit at exactly its claim (x1)',
-    plain.pairs.length > 0 && plain.pairs.every((p) => p.matched), plain.pairs);
-  rec.ok('...and every claim says nb:1 -- "the worker puts my brew on"', plain.pairs.length > 0 && plain.pairs.every((p) => p.nb === 1), plain.pairs);
+  const plain = await hitsSince(t0);
+  rec.ok('A\'s swings land (guard)', plain.hits.length >= 2, plain);
+  rec.ok('...and every claim says nb:1 -- "the worker puts my brew on"', plain.sends > 0 && plain.nb1, plain);
 
-  /* ── 1b. a Fury Tonic: the worker doubles it, once ── */
+  /* ── 1b. a Fury Tonic: the worker's roll doubles, once ── */
   await H.grant(wsPort, aId, 'item', { invKey: 'whetstone', count: 1 });
   await A.page.waitForTimeout(1200);
   await A.page.evaluate(() => { const S = window._gameState.current; S.channel.send({ type: 'potion_drink', payload: { invKey: 'whetstone' } }); });
@@ -178,16 +172,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const t1 = await H.readState(A, () => Date.now());
   await swingAt(A, 6);
   await A.page.waitForTimeout(800);
-  const fury = await claimsAndHits(A, aId, t1, 2);
-  rec.ok('under the tonic the worker resolves every hit at exactly TWICE a claim -- its own brew',
-    fury.pairs.length > 0 && fury.pairs.every((p) => p.matched), fury.pairs);
-  rec.ok('...the claims carry nb:1, WITHOUT the brew (it came back out on the page)', fury.pairs.length > 0 && fury.pairs.every((p) => p.nb === 1), fury.pairs);
-  const avgPlain = plain.pairs.reduce((a, p) => a + (p.claim || 0), 0) / Math.max(1, plain.pairs.length);
-  const avgFury = fury.pairs.reduce((a, p) => a + (p.claim || 0), 0) / Math.max(1, fury.pairs.length);
+  const fury = await hitsSince(t1);
+  /* the roll's band is 0.75-1.25 of the base, so six hits' mean is within
+     about 15% of the base either way: a ratio of means between 1.5 and 2.7
+     is the brew on once (x4 would be ~4, none ~1) */
+  const ratio = plain.meanHit > 0 ? fury.meanHit / plain.meanHit : 0;
+  rec.ok(`under the tonic the worker's own roll is twice the size -- its own brew, once (x${ratio.toFixed(2)})`,
+    fury.hits.length >= 2 && ratio >= 1.5 && ratio <= 2.7, { plain: plain.hits, fury: fury.hits, ratio });
+  rec.ok('...the claims carry nb:1, WITHOUT the brew (it came back out on the page)', fury.sends > 0 && fury.nb1, fury);
   rec.ok('...the claims the same size as before the tonic, so the brew is on ONCE (not x4)',
-    avgFury > 0 && avgFury < avgPlain * 1.5, { avgPlain, avgFury });
+    fury.meanClaim > 0 && fury.meanClaim < plain.meanClaim * 1.5, { plain: plain.meanClaim, fury: fury.meanClaim });
 
-  /* ── 2. a special swing stays an ordinary claim ── */
+  /* ── 2. a special swing: special, and ONE hit ── */
   await H.devOp(wsPort, 'vitals', aId, {}).catch(() => {});   /* a full bar of mana for the specials */
   /* Locked on B, so the swing's claim is aimed at B (monsterCombat's pvpAngle). */
   await A.page.evaluate((bid) => {
@@ -206,14 +202,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const sp = await A.page.evaluate(({ me, ts }) => {
     const hits = ((window.__btFightFood && window.__btFightFood.hits) || []).filter((h) => h.attacker === me);
     const sends = (window.__ffSends || []).filter((s) => s.at >= ts[0]);
-    /* The ordinary lane is one hit per 300 ms: at most two inside 550 ms. */
     return { sends: sends.length, flagged: sends.filter((s) => s.special === true).length,
       perSwing: ts.map((t) => hits.filter((h) => h.at >= t && h.at < t + 550).length) };
   }, { me: aId, ts: swingsAt });
-  rec.ok('a special SWING is claimed as an ordinary one -- no special flag (the special lane gave it three hits)',
-    sp.sends > 0 && sp.flagged === 0, sp);
-  rec.ok(`...and lands at most two hits a swing, as before (${sp.perSwing.join(', ')})`,
-    sp.perSwing.some((n) => n > 0) && sp.perSwing.every((n) => n <= 2), sp);
+  /* v2.3.3258: to a worker that lands one hit a swing and counts a special
+     only after the swipe it charged (caps.pvpbalance), the special swing says
+     so -- the three-a-1200-ms lane v2.3.3133 kept it out of is not this path */
+  rec.ok('a special SWING says special to a pvpbalance worker, at most three claims a swing',
+    sp.sends > 0 && sp.flagged === sp.sends && sp.sends <= 3 * swingsAt.length, sp);
+  rec.ok(`...and lands ONE hit a swing (${sp.perSwing.join(', ')})`,
+    sp.perSwing.some((n) => n > 0) && sp.perSwing.every((n) => n <= 1), sp);
 
   /* ── 3. one bite at a time ── */
   await H.devOp(wsPort, 'vitals', bId, { god: false });

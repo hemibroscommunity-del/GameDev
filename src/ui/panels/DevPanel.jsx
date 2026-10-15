@@ -196,6 +196,8 @@ const CAP_GATES = [
   'presence2' /* v2.3.3250: far players only while the world map is open, the online list, far copies parked (server/src/presence2.js) -- lower case, a kill switch */,
   'bundle' /* v2.3.3254: several messages in one frame (server/src/bundle.js) -- lower case, a kill switch (the worker always takes one) */,
   'quiet' /* v2.3.3254: the quiet phone -- 66 ms moves with nobody near, a steady walk held out of a fight, keepalives and the look only when needed (src/game/quietPhone.js) -- lower case, a kill switch */,
+  'pvpbalance' /* v2.3.3258: hits between players rolled by the worker and tuned, one sword hit a swing, paid specials (server/src/pvpbalance.js) -- lower case, a kill switch */,
+  'fishheal' /* v2.3.3258: the fish ladder and a quarter of a heal in a fight with a player (server/src/data.js FISH_HEAL, PVP_HEAL.SHARE) -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported
@@ -225,6 +227,8 @@ const CAP_NOTES = {
   nodehp: 'each tier of a resource twice as long as the one before at the level it opens (copper 10 HP, iron 20, black steel 80, titanium 440, obsidian 1,680; pine and minnow 10, then 40, 220, 840, 2,480); without it: every tier 5 x (tier + 1), 10 to 110 (v2.3.3251)',
   tierxp: 'each tier of a resource pays twice the XP of the one before (163, 326, 652, 1,304, 2,608 a harvest before its grade); without it (or without nodehp): 163, 350, 538, 725, 913 (v2.3.3251)',
   xpdecay: 'XP fades for what is 5+ levels below you: a third at 5 below, 15% less each level past it -- a harvest by your skill against the resource\'s level, a fight by the weapon\'s skill against the monster\'s, and such a monster\'s name plate is grey; without it: full XP everywhere, no grey plates (v2.3.3251)',
+  pvpbalance: 'fights between players last: the worker rolls each hit (the monster roll x 0.4, the sword x 1.3, a special a share, a bow or staff weaker far off, no hit over 30% of a bar), one sword hit a swing, a special only after a paid swipe; without it: the phone\'s claim x 0.5, two sword hits a swing (v2.3.3258)',
+  fishheal: 'the fish ladder (minnow 20, clownfish 30, trout 45, salmon 65, pike 95 on screen) and a quarter of a heal in a fight with a player; without it: 20, 28, 36, 44, 52 and every bite whole (v2.3.3258)',
   bowvolley: 'the bow special as three white-hot arrows, two-thirds of a special each, a 2.5 s burn, no blast (v2.3.2849; without it: one arrow, its 4 s burn and the blast)',
   wheelmonsters: 'monsters in the Wheel (?trial=wheel): each land\'s own at the inner end of its spoke (v2.3.2978; without it: the Wheel has none)',
   sprint: 'the sprint button right of the movement stick (and Shift): a third faster while your stamina lasts (v2.3.3006; without it: no button, everyone walks)',

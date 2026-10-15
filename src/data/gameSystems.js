@@ -1127,8 +1127,21 @@ export function getFishHealAmount(fishKey) {
      _fishHealAmount, which is authoritative; this copy only drives the
      client's own prediction. */
   if (!tier) return 100;
+  /* v2.3.3258: the worker's new ladder (server data.js FISH_HEAL), once it
+     says it heals by it (caps.fishheal) -- an older worker still heals by the
+     old one, and this copy only predicts what it will do. */
+  if (_fishHealLadder && Object.prototype.hasOwnProperty.call(FISH_HEAL, tier.name.toLowerCase())) return FISH_HEAL[tier.name.toLowerCase()];
   return Math.ceil(92 + tier.lvl * 8);
 }
+/* ═══ v2.3.3258: WHAT EACH FISH HEALS ═══
+   Mirror of server/src/data.js FISH_HEAL (mirror-audit): about x1.5 a tier,
+   20 / 30 / 45 / 65 / 95 on the game's screen (HP shows divided by
+   DISPLAY_SCALE_K 5), where the old 92 + 8 x level flattened just as each
+   tier came to cost twice the fishing.  Read only against a worker with
+   caps.fishheal (wsClient: setFishHealEnabled). */
+export const FISH_HEAL = Object.freeze({ minnow: 100, clownfish: 150, trout: 225, salmon: 325, pike: 475 });
+var _fishHealLadder = false;
+export function setFishHealEnabled(on) { _fishHealLadder = !!on; }
 export function getFishTierLevel(fishKey) {
   var name = fishKey.replace(/^fish_/, '').toLowerCase();
   var tier = FISHING_TIERS.find(function (t) {
