@@ -6297,3 +6297,29 @@ the zone, so hiding the copy in each one would have missed some.
 what its last copy does from then on -- a stale copy is not "nothing", it is
 wrong data at a real place. And TRAPS #18 again: the page's channel lets out
 only the message types it names (`map_watch` was dropped until it had a line).
+
+## 179. "The lab is its own worker, so it cannot touch the game" (v2.3.3257)
+
+Its own name, its own objects, no storage, deleted after every run -- and on
+the Workers FREE plan it would still have spent the game's day. There the
+Durable Object limits are per ACCOUNT, per day (100,000 requests, a web
+request, call or alarm each or 20 incoming socket messages; 13,000 GB-s awake),
+and past one Cloudflare refuses that work until 00:00 UTC for every worker on
+the account. The lab's first design made about 25,000 requests a run: a
+20,000-call flood, and a Door that looked for a flood's end every 5 ms, one
+call a look. Run on a busy day, that is the game down until midnight.
+
+- **Found by its first run, which never started:** the deploy was refused --
+  "In order to use Durable Objects with a free plan, you must create a
+  namespace using a `new_sqlite_classes` migration" (code 10097). The repo
+  knew (server/wrangler.toml: "required for free plan"; ARCHITECTURE-HANDOFF's
+  rows-a-day note); the lab's plan and its cost table assumed the paid plan.
+- **The fix:** SQLite objects; a run sized to ~2,700 requests, under 3% of a
+  day; a look every 50 ms; the account's use today read FIRST, and the run
+  stopped if it could pass 90%; the paid plan's sizes only behind the "big"
+  box.
+
+**The rule.** Before anything runs on the account -- a lab, a load test, a
+second worker -- ask which plan it is on and what it shares. Separate names do
+not make separate limits. Every call between two objects is a billed request,
+and so is every poll.

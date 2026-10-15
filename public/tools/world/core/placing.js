@@ -470,7 +470,6 @@ const DOOR_PROPS = {
   landoffice: [['haybale', 110, 18, 0]],
   guildhall: [['barrel', -110, 16, 2]],
   bank: [['bench', 112, 18, 0]],
-  assay: [['crate', -110, 16, 1]],
   store: [['crate', -112, 18, 1], ['barrel', 112, 16, 0]],
   auction: [['crate', 110, 18, 3]],
 };

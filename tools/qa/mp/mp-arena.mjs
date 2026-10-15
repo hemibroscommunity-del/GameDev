@@ -1,8 +1,11 @@
 /* The arena: queue, entry-fee escrow, shared queue state, and the auth gate.
  *
  * THE UI IS CURRENTLY UNREACHABLE, for the same reason the marketplace is: the
- * arena lives in PartyPanel, which renders under buildingPanel === 'party' (the
- * TAVERN), and no town building can be entered since v2.3.823 force-set
+ * arena lives in PartyPanel, which rendered under buildingPanel === 'party' (the
+ * TAVERN; since v2.3.3258 it is 'arena', opened from the Wheel's Sheriff's
+ * Office, and the TAVERN's door opens the Saloon's parties window -- the
+ * Wheel's arena UI is checked by mp-wheelhalls and mp-buildingrooms), and no
+ * town building can be entered since v2.3.823 force-set
  * S.nearBuilding = null.  So the panel half SKIPS with a reason and the queue
  * machinery — the part that moves real gold — is exercised from inside each
  * player's own browser session, using the same endpoint and `x-bt-auth` token

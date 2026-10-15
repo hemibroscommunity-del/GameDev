@@ -36,7 +36,7 @@ const PHONE = { width: 390, height: 844 };
 const REPAIR_MS = 45000;
 const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 const BOW_H = 30;     /* a shot flies this far above the ground line (the bow grip) */
-const BUILDINGS = ['saloon', 'hotel', 'gambling', 'post', 'store', 'bank', 'auction', 'assay', 'sheriff', 'blacksmith', 'woodworker', 'gemcutter', 'cookhouse', 'feedseed', 'landoffice', 'guildhall'];
+const BUILDINGS = ['saloon', 'hotel', 'gambling', 'post', 'store', 'bank', 'auction', 'sheriff', 'blacksmith', 'woodworker', 'gemcutter', 'cookhouse', 'feedseed', 'landoffice', 'guildhall'];
 
 /* (mp-wheelbreak's) the objects of kind `ids` near the player whose footprint
    is in the walk test now, nearest first */

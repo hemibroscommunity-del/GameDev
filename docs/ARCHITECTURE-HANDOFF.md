@@ -104,7 +104,7 @@ extended.
    | `friend_msg:<pid>` | offline DM backlog, capped 50, cleared on join delivery | friends.md |
    | `chat_mute:<pid>` | `{list: {mutedId: {name, at}}, at}` the muter's own chat-mute list; loaded into a null-proto map + a Set on join and enforced on the FAN-OUT (tick.js), so a muted line never reaches the socket | chat-moderation.md |
    | `chat_report:<id>` | one abuse report: `{at, reason, by, byName, target, targetName, zone, targetOnline, lines}` — `lines` is the SERVER's copy of the recent chat, never the reporter's claim. Pruned past `CHATMOD.RETAIN_MS` on the admin read | chat-moderation.md |
-   | `bro_link:<pid>` | `{tokenId, address, ts}` last verified Hemi Bro ownership link; re-earned after RECHECK_MS | broverify.js |
+   | `bro_link:<pid>` | `{address, ts, count, tokenId?}` last verified Hemi Bro link (v2.3.3255: + `count`, the wallet's balanceOf; `tokenId` only when the worn Bro is theirs); a stale one is READ again in the background at join, never re-signed | broverify.js |
    | `chain_score:<pid>` | `{milestone, nonce, level, series, kills, txHash, at}` last score attestation written to the BroTownScores contract on Hemi. `series` (v2.3.1671) is the `{skillName: level}` map that was written, so the next checkpoint can send only what CHANGED | progression-onchain.md |
 
    Naming convention going forward: **lowercase_snake prefixes**
@@ -574,6 +574,16 @@ handler — not on a caps flag. Consider an explicit `caps.consume` for
 strict deploy-order symmetry (rule 19). Danger: the current gate is
 adequate (local heal is prediction, the echo is the tiebreaker,
 rule 20) — this is symmetry polish, not a hole.
+
+### O. The supporter pass — waits on the owner's pass address (v2.3.3256)
+$2 for 30 days, paid in USDC on Hemi, 30 days from ACTIVATION, one pass
+for a wallet's characters (up to 10).  The design is NO CONTRACT: a plain
+USDC transfer to a dedicated pass address, read by the server like the
+Hemi Bro check (onchain.js), credited once per (tx hash, log index) under
+rule 5; the server never holds a key.  NO PLAY CAPS (owner: "Dont ship any
+caps yet").  Blocked on the owner's dedicated receiving address, and USDC's
+contract address on Hemi needs confirming from outside the sandbox.  Plan,
+checks and build order: `docs/SUPPORTER-PASS-PLAN.md`.
 
 ### Shipped (v1 backlog — letters frozen, cited elsewhere)
 TRAPS.md and the spec docs cite these as "handoff item X"; the full

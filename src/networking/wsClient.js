@@ -30,6 +30,7 @@ import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pet
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
+import { peerEntrySlim, broCountOf } from '@/networking/broWallet.js'; /* v2.3.3255: the Hemi Bro check, theirs and yours */
 import { MOVE_DIET, dietMayWait, steadyMove } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often */
 import { QUIET, quietOn, bundleOn, lookNews, peerNear, quietMoveGap, framesOf } from '@/game/quietPhone.js'; /* v2.3.3254: the quiet phone */
 import { nmlCanAttack } from '@/game/noMansLand.js'; /* v2.3.3254: a steady walk is not held near a player who may fight you */
@@ -780,6 +781,17 @@ export function setupWebSocket(ctx) {
                        `eqg`: 'rn', 'ee', ...), which glint.js draws as the
                        armour's grade look; absent is plain, as for `spr` */
                     S.others[pid]._eqg = typeof data.eqg === 'string' ? data.eqg.slice(0, 2) : '';
+                    /* v2.3.3255: their Hemi Bro check (tick.js `bro`, the worn
+                       Bro's id, and `brn`, how many their wallet holds), both
+                       server-owned.  The worker has sent `bro` since v2.3.1576
+                       and nothing here read it, so nobody ever saw anyone
+                       else's badge.  A far player's slim entry (x y d z vx vy
+                       only, tick.js slimWire) says nothing about them and
+                       leaves both as they were. */
+                    if (!peerEntrySlim(data)) {
+                      S.others[pid].bro = typeof data.bro === 'number' ? data.bro : null;
+                      S.others[pid].brn = broCountOf(data.brn);
+                    }
                     /* v2.3.599: live equip -> the renderer reads other.equip
                        (nested), so rebuild it from the broadcast eqc/eql/eqs
                        whenever present, keeping armour on/off in sync. */
@@ -1278,6 +1290,9 @@ export function setupWebSocket(ctx) {
                  restored from storage if the link is still fresh.  Server-owned
                  — the client never writes it, it only renders from it. */
               if (S.rpg) S.rpg._bro = msg.bro || null;
+              /* v2.3.3255: and how many Hemi Bros the linked wallet holds (0 with
+                 no fresh link, or from a worker before the count) */
+              if (S.rpg) S.rpg._broN = broCountOf(msg.broN);
               /* v2.3.3091: and which shield is on the arm (server/src/
                  shieldwear.js) -- the worker restored its last record, and the
                  bag here is the truth about the arm.  Only against a worker

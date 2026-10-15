@@ -499,6 +499,11 @@ export const tickMethods = {
            (broverify.js is the only writer) and absent from
            TRACK_COSMETIC_KEYS, so a client cannot set it by sending it. */
         bro: ps.bro,
+        /* v2.3.3255: how many Hemi Bros their linked wallet holds
+           (broverify.js, server-owned like `bro`): the checkmark at 1 or
+           more, the number on their profile.  Absent at 0, so everyone
+           else's wire is unchanged. */
+        ...(ps.broN > 0 ? { brn: ps.broN } : {}),
         /* v2.3.3015: sprinting -- a step this worker paid for in the last
            SPRINT.WIRE_MS (sprint.js _sprintWire), so the others draw their
            legs at its pace.  Absent when walking: their wire is unchanged.

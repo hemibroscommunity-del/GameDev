@@ -12,7 +12,7 @@ import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3
    - React setters + the effect-scoped _buildServerPile arrive via `deps`
      (destructured to the original names so the body is untouched).
    S is stateRef.current. */
-import { _onBroNonce, _onBroResult } from './broWallet.js'; /* v2.3.1576 */
+import { _onBroNonce, _onBroResult, broCountOf } from './broWallet.js'; /* v2.3.1576; v2.3.3255: + the count */
 import { shopBus } from '../ui/mobile/shopBus.js';   /* v2.3.2050 */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
@@ -1759,6 +1759,10 @@ export function processGameEvent(type, payload, S, deps) {
             /* The badge itself comes from the authoritative echo, not from
                here — this only unblocks the UI's spinner. */
             if (payload && payload.ok && S.rpg) S.rpg._bro = payload.tokenId;
+            /* v2.3.3255: and the wallet's Hemi Bro count, from a wallet check
+               or a join's background re-read (`refresh`); a worn-Bro answer
+               without one leaves it as it was */
+            if (payload && payload.ok && S.rpg && payload.count !== undefined) S.rpg._broN = broCountOf(payload.count);
             break;
 
           case 'player_swing':

@@ -2275,7 +2275,90 @@ remnant to migrate server-side, not a mode to preserve.
     - measured on the QA box (`mp-crowdbots`): 150 players spread out, the
       frame's work 36 -> 20 ms; 150 on screen, 31 -> 21 with the cap;
     - `?nopeercull` is all three off; `mp-peercull` (two phones),
-      `mp-crowdbots` `BT_CROWD_QUERY`: docs/specs/peer-cull.md.)
+      `mp-crowdbots` `BT_CROWD_QUERY`: docs/specs/peer-cull.md.
+  - Since v2.3.3258 EACH BUILDING'S ROOM IS THE BACKGROUND OF ITS MENU, AND A
+    KEEPER OPENS HIS BUILDING -- the owner sent seventeen pictures of the
+    buildings' insides ("Ok wire these up"), then, asked whether to walk inside,
+    see a still picture or meet the shopkeeper outside: "Yes I like your idea
+    of interacting with the building's NPC instead of having the building
+    interiors. Have it open up as backgrounds behind the different buildings
+    menus instead of literally going into a building":
+    - nobody walks in: the window opens over the street, and its room
+      (`src/ui/panels/buildings/BuildingRoom.jsx`, once, first in the card;
+      `BUILDING_ROOMS` in src/data/buildingRooms.js, the `buildingPanel` -> its
+      plot's `public/world/interiors/<plot id>.webp`, 1152 x 768 lossy WebP from
+      `tools/ui/make-room-pictures.py`) is the card's BACK LAYER (z-index -1,
+      the card isolated): 3:2 at the card's width, the menu a STAGE down it
+      (`--room-stage`, 62% of the room's height = min(148.8px, 41.33vw -
+      9.92px, 22vh), written out from the card's inline width -- change one,
+      change both), the panel's own surface and its title strip's (its first
+      child, in all sixteen) taken away so the title is written on the room, a
+      shade fading the room into the slate 80 px under the stage; it scrolls
+      with the menu; the forge's stage a quarter-width band (its card sits
+      low); sideways (under 460 px tall) none of it applies (a min-height
+      query) and the room steps aside; no panel touched; sixteen windows, the
+      Hotel's (shut) waits in `SPARE_ROOMS`;
+    - THE KEEPERS (`WHEEL_KEEPERS` in wheelBuildingDoors.js, `keeperOf` set by
+      `_spawnWheelNpcs` where the building stands): talking to him -- a tap,
+      E, the right stick's tap, each AFTER his quest -- opens his building
+      through the door's own path (interactions.js `enterWheelDoor`: the same
+      window, the same visit counted): Blacksmith Bro the forge, Mayor Bro the
+      Town Hall once he has no quest; Diego and Ace keep their own windows; the
+      other twelve buildings keep their doors until the owner's keepers are
+      made (docs/ART-WISHLIST.md "The keepers"); every door still opens;
+    - THE SALOON IS THE SALOON -- the owner: "the gladiator arena is showing
+      'saloon' behind it": the Saloon's door (`party`) had opened the arena
+      (PartyPanel) since v2.3.881; the arena is its own window, `arena`, no
+      room behind it, from the Sheriff's Office's "The arena", and the
+      Saloon's window is `SaloonPanel` (WheelHallPanel.jsx): your party and
+      Find a party;
+    - the Land Office's window was a separate z-30 dialog UNDER an empty card
+      and is a panel in the card now (`LandOfficePanel.jsx`); a tall window's
+      ✕ lay under the world map's invisible z-45 "open" button -- any
+      `.bt-inspect` up now lets taps through it (game.css);
+    - NONE ON THE LOADING GATE: the door you stand at decodes its room, a cap
+      of one (game/buildingRooms.js `warmRoom`), and the first shop's or
+      hall's door (not the Town Hall's: `HUB_ROOMS`) starts the others' bytes
+      coming at low priority, never decoded or held; cached a year, asked for
+      at `?v=` `ROOMS_V`;
+    - the Auction House's clerk is drawn into its room (`ROOM_KEEPERS`); THE
+      TOWN HALL IS THE FOURTH HALL (`WHEEL_HALL_DOORS.townhall`: the
+      Leaderboard and the World map, the owner's "a Town Hall window");
+    - QA probe `window.__btBuildingWindow.open(panel)`; test-world-core "the
+      buildings' insides" and "the keepers", `mp-buildingrooms`,
+      `mp-wheelhalls` §7: docs/specs/building-rooms.md, wheel-halls.md.
+  - Since v2.3.3259 ONE GEM BUILDING -- the owner, after the Assay Office's name
+    came up ("what does that even mean"): "I think one gem building is enough
+    and can do both the gem cutting and gem setting maybe with two different
+    NPCs in the same building"; asked what to do with the Assay Office's plot:
+    "Remove it"; the name they chose: "Gem Works" (docs/specs/gem-works.md):
+    - the Assay Office is GONE: its plot (plan.js, both lot lists), catalog
+      entry, manifest row and `buildings-14` sprite page, yard crate, life
+      spots, material row, door and room picture (`assay.webp`); the Bank stands
+      alone on the east street's north side and nothing else in the town moved
+      (the gates stay 1,326 / 1,447);
+    - the Gem Cutter's building is the GEM WORKS (plan, catalog, manifest; its id
+      stays `gemcutter`, its sign GEMS covers both jobs, so nothing was
+      repainted): one door ("Enter GEM WORKS"), one window with two tabs on its
+      one room, Cut gems (GemcutPanel) and Set gems (EnchantPanel), both panels
+      UNTOUCHED, each in a body padded 20 px to take back its own -20 px margin
+      (`GemWorksPanel.jsx`; game.css `.bt-gw-body`, `.bt-gw-tabs`); the tab
+      strip is the window's first row, so it is written on the room where the
+      other windows' titles are (v2.3.3258's background); a tab IS the
+      `buildingPanel` name (`gemcut` / `enchant`) and `BuildingRoom` is keyed by
+      its ROOM, so a tab change never loads the room again; eleven building
+      doors, sixteen windows over fifteen rooms (src/data/buildingRooms.js),
+      mayor_1's "visit 3" counts the eleven;
+    - the re-bake changed ONLY the plan's fingerprint in
+      `server/src/wheelspawns.js` (every monster place, node and door identical):
+      one worker deploy at merge with nothing new in it;
+    - not done: the owner's two NPCs -- with v2.3.3258's keepers, a cutter and a
+      setter outside, each opening his own tab when you talk to him (prompts in
+      docs/ART-WISHLIST.md "The keepers") -- and an optional two-station inside
+      picture;
+    - test-world-core "the Gem Works", `mp-buildingrooms` (the tabs),
+      `mp-wheeldoors`, `mp-shieldgem` (a shield's gem is set on the Set gems
+      tab): docs/specs/gem-works.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
@@ -2312,7 +2395,10 @@ remnant to migrate server-side, not a mode to preserve.
   to 100,000 monthly players, about $5 to $1,100–2,800 a month, and the
   owner's business model: free play capped at 2 h a day, a $2-a-month
   supporter pass for unlimited — the server counts the hours, and logging
-  every room message would cost more than the game),
+  every room message would cost more than the game; since v2.3.3256 the pass
+  is on the backlog as $2 for 30 days in USDC on Hemi, no contract, and NO
+  PLAY CAPS for now -- the owner: "Dont ship any caps yet" --
+  `docs/SUPPORTER-PASS-PLAN.md`, waiting on the owner's pass address),
   `docs/SERVER-SPLIT-PLAN.md` (v2.3.3208, the owner's "Hopefully 1000 while
   just as smooth is possible ... begin planning what the best server split
   would look like": MEASURED, about four fifths of the room's thread at 150
@@ -2454,6 +2540,28 @@ Two protocol versions coexist; both must keep working:
   instead of passing for a new character. The defaults that are not zero
   are `NEW_CHARACTER_COINS` and `freshLifeSkills()`, pinned to the client's
   by mirror-audit: docs/specs/fresh-start.md.
+- THE HEMI BRO CHECKMARK IS "OWNS ONE OR MORE", AND THE PROFILE SAYS HOW MANY
+  (v2.3.3255) -- the owner: "a 'verified' checkmark for people who own 1 hemi
+  bro or more ... list the number of hemi bros owned somewhere on their
+  profile ... small surface area":
+  - NO CONTRACT, NO TRANSACTION, NO KEY: the v2.3.1576 free signature proves
+    the wallet, and the worker READS the collection's `balanceOf` (onchain.js);
+    `bro_verify {count: 1}` against `caps.broCount`, the worn Bro optional;
+  - `ps.broN` server-owned like `ps.bro`, on the tick's player as `brn` (absent
+    at 0) and state_sync's `broN`; the checkmark is `bro` OR a count of 1+
+    (broWallet.js `broBadgeOf`), on the name plate, the profile ("3 Hemi Bros"
+    beside the AP) and the player list;
+  - the phone NEVER READ the tick's `bro` before: nobody saw anyone else's
+    badge. It reads both now, a far player's slim entry leaving them as they
+    were (`peerEntrySlim`);
+  - sign once: a link older than a day is READ again in the background when
+    its player joins (`_broRefresh`), never re-signed; one chain read per 5 s a
+    socket; everything fails closed; kill switch `broCount: false`;
+  - `broverify` suite (96), `onchain` (balanceOf), `mp-brobadge`:
+    docs/specs/hemi-bro-count.md.  The $2 supporter pass the owner asked about
+    in the same message is NOT built: on the backlog as 2 USDC on Hemi, waiting
+    on the owner's own pass address, with no play caps ("Dont ship any caps
+    yet").
 - FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS (v2.3.3197, the owner:
   "Send far away players less often and using shorter position numbers"):
   in the Wheel a v2 session gets the movers within `FAR_PLAYERS.NEAR_R` 2,400
@@ -2765,6 +2873,62 @@ Two protocol versions coexist; both must keep working:
     261-311) -- groundwork: a phone's download stops growing with far players. Old phones keep the v2.3.3246 roster; kill switch
     `presence2: false`; `presence2` suite (55, twenty bugs caught), `mp-presence2`
     (15), mp-farpeer opens the map for its far step: docs/specs/presence-v2.md.
+  - v2.3.3257: THE ACCOUNT IS ON CLOUDFLARE'S FREE PLAN -- found by the
+    lab's first run (the owner's "Push to main. Then resume your
+    recommendations autonomously"): Cloudflare refused its deploy, "In order
+    to use Durable Objects with a free plan, you must create a namespace
+    using a `new_sqlite_classes` migration" (code 10097). The game's
+    brotown-server is on the same free plan, where Durable Objects have DAILY
+    limits for the whole account, reset at 00:00 UTC -- 100,000 requests (a
+    web request, call or alarm, or 20 incoming socket messages) and 13,000
+    GB-s awake -- and past one Cloudflare refuses that work until midnight,
+    the game's too. A playing phone's 10-30 messages a second make that about
+    20-55 player-hours of play a day in all (*estimate*), and Phase 1's
+    always-on doors could not run at all: SERVER-SPLIT-PLAN risk 8 -- the
+    paid plan ($5 a month) comes first, the owner's call. The lab: SQLite
+    objects (tools/lab/wrangler.toml); a run sized for the free plan, ~2,700
+    billed requests (was ~25,000: a 20,000-call flood, and the Door polling a
+    flood's end every 5 ms -- now 50 ms, at most 30 s), `--big` (the
+    workflow's "big" box) the old sizes, paid plan only; "0. the day so far"
+    stops a run that could take the account past 90% of the day; "4. the
+    game's own days" reads brotown-server's last 7 days against the free
+    limits (read only, best effort); the data centre lookup gives up after
+    3 s and is skipped locally (LAB_LOCAL); a local dry run stops at 4
+    objects at once (8 hung on wrangler 4.96.0's local runtime). On Cloudflare
+    (third and fourth runs): objects of one script DO run side by side (8 at
+    once 5.9-6.6x, 16 6.2-8.6x, in their own isolates); two in one city 3-4 ms
+    apart, in two cities (Newark, Chicago) 22 ms -- placement is the whole
+    story; a hibernation socket's message about a plain one's (81 against 75
+    us in one city; the third run's 4x was the two cities), a call 10x a
+    socket message; the game's busiest recent day 76,277 invocations
+    (2026-10-11; every hibernation socket message is one -- "socket messages
+    in" reads 0 -- and whether the free plan's daily limit counts them 20:1 is
+    not documented: 4-5% of it, or 76%). One request
+    may make at most 1,000 calls out (the call flood is 900); only Cloudflare's
+    404 page is tried again (a 5xx means the lab ran); `node
+    tools/lab/selftest.mjs` runs run.mjs whole against fakes, before every
+    deploy: docs/specs/cloudflare-lab.md.
+    - THE LIMIT TEST (`--limit`, the workflow's "limit" box) -- asked how to
+      find out which, the owner: "Your account, 23:55 UTC". It floods one lab
+      World in 5,000-message steps ONLY between 23:55:00 and 23:58:30 UTC (a
+      refusal lasts until the 00:00 UTC reset), checks a fresh request after
+      each step -- a lab object and the game's auction listing, read only, the
+      one game page it may read (`GAME_PROBE_OK`) -- stops at the first
+      refusal (tried twice more), never sends past 25,000 over the
+      every-message line (150,000 at most: ~7,500 by 20 to 1), watches until
+      23:59:40 for a late count, and if refused waits past midnight to say
+      when the game answered again. Started outside 23:30-23:54 it sends
+      nothing (exit 4). A Community report (2026-10-12) was refused ~36,000
+      short by the 20 to 1 reading. The lab worker answers a refusal in
+      Cloudflare's own words (503 `refused`), not its crash page;
+      selftest.mjs runs it on a fake clock against a fake limit (every
+      message, 20 to 1, counted late, four refusals to run).
+      RAN 2026-10-14 23:55 UTC (run 5): NOT EVERY MESSAGE COUNTS -- 124,999
+      socket messages took Cloudflare's every-message count of the day to
+      125,271, past 100,000, and nothing was refused (52 checks, watched to
+      23:59:45); the daily limit counts socket messages 20 to 1 like the bill,
+      so Oct 11's playtest was ~4-5% of a day, not 76%. The game's listing
+      answered throughout (docs/specs/cloudflare-lab.md "The answer").
 
 ## Conventions
 

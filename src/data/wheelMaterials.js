@@ -82,7 +82,6 @@ export const WHEEL_MATERIALS = {
   landoffice: W('wood', BUILDING_HP, { big: true }),
   guildhall:  W('wood', BUILDING_HP, { big: true }),    /* a log hall */
   bank:       W('stone', BUILDING_HP, { big: true }),   /* cut sandstone */
-  assay:      W('brick', BUILDING_HP, { big: true }),   /* sandstone below, brick above */
   store:      W('brick', BUILDING_HP, { big: true }),
   auction:    W('brick', BUILDING_HP, { big: true }),
   /* ── the town's props ── */
