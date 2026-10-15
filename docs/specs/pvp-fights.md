@@ -196,6 +196,10 @@ of a bar; the better player wins 93-100% of same-weapon fights.
   more, so it wins fewer of them than the first cut's numbers gave it; at the
   simulator's top skill it never catches them. The fix is a mechanic: let the
   sword's opening lunge work on players (`docs/specs/one-formula.md`).
+  **Built in v2.3.3262** (`docs/specs/pvp-lunge.md`): at level 12 with the
+  copper set the sword now wins 32 / 39 / 89% against a bow (low / average /
+  top skill) and 12 / 20 / 66% against a staff, and no sword-against-staff
+  fight runs to the 2-minute limit.
 - **Iron armour against a staff makes long fights**, up to the simulator's
   2-minute limit in a share of sword-against-staff fights.
 

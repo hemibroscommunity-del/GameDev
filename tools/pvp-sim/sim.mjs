@@ -22,7 +22,11 @@
  * PLAYER decides (where to stand, when to fire a special, when to roll or
  * eat) is the skill model (SKILL): the study's assumptions.
  *
- * Use it from matrix.mjs, food-one.mjs and food-both.mjs beside it, or:
+ * v2.3.3262: the sword's opening lunge reaches players too (the press, the
+ * dash, the worker's strike and its daze; docs/specs/pvp-lunge.md).  `TUNE.lunge`
+ * false is the game before it; lunge.mjs measures it.
+ *
+ * Use it from matrix.mjs, food-one.mjs, food-both.mjs and lunge.mjs beside it, or:
  *   import { fight, describe, seed, setTune, room } from './sim.mjs';
  *   fight({ style: 'melee', L: 10, tm: 1.25, chest: 1, legs: 1 }, 'moderate',
  *         { style: 'bow', L: 10, tm: 1.25, chest: 1, legs: 1 }, 'moderate');
@@ -35,6 +39,7 @@ import { GameRoom } from '../../server/src/index.js';
 import { WHEEL_ZONE } from '../../server/src/wheelzone.js';
 import { WHEEL_CENTRE } from '../../server/src/wheelspawns.js';
 import { nmlLevelAt } from '../../server/src/nomansland.js';
+import { PVP_LUNGE } from '../../server/src/pvplunge.js';   /* v2.3.3262 */
 
 /* ── determinism: one seeded generator for the sim AND the worker's own rolls ── */
 let _s = 1;
@@ -80,6 +85,14 @@ const R_ARROW = 28.6, R_VOLLEY = 33, R_BOLT = 34, R_BIGBOLT = 51;   /* projectil
 const BIG_BAND = [0.3, 2.5];      /* STAFF_BIG_BOLT_BAND */
 const BIG_ORBS = 3, STAFF_SPECIAL = 2, MELEE_BOW_SPECIAL = 3, VOLLEY_WORTH = 2, VOLLEY_N = 3;
 const REGEN_MS = 680;             /* REGEN_TICKS 30 x the paced tick */
+/* v2.3.3262: the sword's opening lunge (game/abilities.js, BroTown's dash) */
+const DASH_STEP = 26;             /* DASH_STEP_PX, a frame */
+const DASH_STOP = 46;             /* DASH_STOP_PX: contact */
+const DASH_REACH = 900;           /* DASH_MAX_REACH_PX: the travel cap */
+const DASH_SPEED = 26 * 60 / 1000, DASH_SLOW = 3.0, DASH_WIN_MIN = 420;   /* dashWindowMs */
+const DASH_WIN_MAX = Math.round(DASH_REACH / DASH_SPEED * DASH_SLOW) + 90;
+const LUNGE_CD = 2500;            /* STAM_ABILITIES.sworddash.cooldownMs */
+const REPRESS_MS = 120;           /* a press refused in a daze, pressed again after it (a person's second tap) */
 
 /* ── one room, two players, in No man's land ── */
 function makeState() {
@@ -199,7 +212,16 @@ function segGap(px, py, ax, ay, bx, by) {
               shield blocks everything in its 120 degree arc, 10 stamina a
               blocked hit and 5 a regen tick held (index.js BLOCK_* )
    rollSpecial otherwise, chance to try to roll it (250 ms of i-frames)
-   react/rollSigma  reaction time and its spread, ms */
+   react/rollSigma  reaction time and its spread, ms
+   dashAt     v2.3.3262, melee: the sword's opening lunge (sworddash) -- they
+              press attack for it whenever it is ready and the other player
+              is between dashAt[0] and dashAt[1] px: a careless player only
+              when close enough to swing anyway, an average one from across a
+              phone's half-screen, a skilled one on the whole screen and in
+              contact too (a re-press lunges again, and dazes).  The one
+              lunged at answers with the specials' habits (planDefence).
+   lungeWaits v2.3.3262: holds the lunge while the other's big bolt or volley
+              is in the air (no roll in a dash: it would run into it) */
 export const SKILL = {
   low: {
     focus: 0.65, holdAt: 140, sprint: false, lunge: false,
@@ -207,6 +229,7 @@ export const SKILL = {
     special: { melee: 120, bow: 420, staff: 600 }, specialMiss: 0.25,
     shieldSpecial: 0, rollSpecial: 0, rollSigma: 260, react: 450,
     eatBelow: 0.30, bagMs: 3000,
+    dashAt: [60, 140], lungeWaits: false,
   },
   moderate: {
     focus: 0.85, holdAt: 48, sprint: true, lunge: true,
@@ -214,13 +237,18 @@ export const SKILL = {
     special: { melee: 60, bow: 320, staff: 450 }, specialMiss: 0.1,
     shieldSpecial: 0.35, rollSpecial: 0.25, rollSigma: 180, react: 320,
     eatBelow: 0.40, bagMs: 2000,
+    dashAt: [60, 300], lungeWaits: true,
   },
   high: {
     focus: 0.97, holdAt: 45, sprint: true, lunge: true,
     band: { bow: [150, 300], staff: [180, 400] }, kite: 'smart', strafe: 0.7,
-    special: { melee: 40, bow: 320, staff: 450 }, specialMiss: 0.03,
+    /* v2.3.3262: melee 40 -> 50, the special's real reach (MELEE_CLAIM_RANGE):
+       the lunge stops at 46 px, and a skilled sword throws the special from
+       where it stops (40 left every lunge's follow-up to chance) */
+    special: { melee: 50, bow: 320, staff: 450 }, specialMiss: 0.03,
     shieldSpecial: 0.7, rollSpecial: 0.5, rollSigma: 110, react: 250,
     eatBelow: 0.50, bagMs: 1300,
+    dashAt: [0, 450], lungeWaits: true,
   },
 };
 
@@ -230,10 +258,28 @@ export const CLIENT = { mode: 'new' };
 let SWSEQ = 0;
 
 /* ── what-if knobs: all off = the game as it is today ── */
-export const TUNE = { manaStart: 1, noSpecials: false, meleeOneHit: false, specialMult: 1, hitCapFrac: 0, dmgScale: null, slowK: 1, slowMs: 0, holdMs: 0, holdImmuneMs: 2000 };
+/* v2.3.3262: `lunge` false is the game before the sword's lunge reached
+   players; `dazeMs` / `dazeImmuneMs` (null: the worker's PVP_LUNGE) try other
+   lengths for its daze, through the worker's own code (below) */
+const TUNE0 = { manaStart: 1, noSpecials: false, meleeOneHit: false, specialMult: 1, hitCapFrac: 0, dmgScale: null, slowK: 1, slowMs: 0, holdMs: 0, holdImmuneMs: 2000,
+  lunge: true, dazeMs: null, dazeImmuneMs: null, lungeCd: null };
+export const TUNE = Object.assign({}, TUNE0);
 export function setTune(t) {
-  Object.assign(TUNE, { manaStart: 1, noSpecials: false, meleeOneHit: false, specialMult: 1, hitCapFrac: 0, dmgScale: null, slowK: 1, slowMs: 0, holdMs: 0, holdImmuneMs: 2000 }, t || {});
+  Object.assign(TUNE, TUNE0, t || {});
   room.PVP_TUNING = Object.assign({}, Object.getPrototypeOf(room).PVP_TUNING, TUNE.dmgScale != null ? { DMG_SCALE: TUNE.dmgScale } : {});
+}
+/* the daze a lunge puts on a player is the worker's (pvplunge.js
+   _pvpLungeDaze); a tried length replaces only its two numbers */
+{
+  const real = room._pvpLungeDaze;
+  room._pvpLungeDaze = function (tps, now) {
+    if (TUNE.dazeMs == null && TUNE.dazeImmuneMs == null) return real.call(this, tps, now);
+    const ms = TUNE.dazeMs != null ? TUNE.dazeMs : PVP_LUNGE.DAZE_MS;
+    const imm = TUNE.dazeImmuneMs != null ? TUNE.dazeImmuneMs : PVP_LUNGE.IMMUNE_MS;
+    if (!tps || !(ms > 0) || now < (tps._dazeImmuneUntil || 0)) return 0;
+    tps._dazeUntil = now + ms; tps._dazeImmuneUntil = now + ms + imm;
+    return ms;
+  };
 }
 function tuneClaim(claim, special, tgt) {
   let c = claim * (special ? TUNE.specialMult : 1);
@@ -254,7 +300,9 @@ function makeFighter(id, spec, skill, place) {
     swingTimer: -1e9, isSwinging: false, specialSwing: false, lastSwipe: -1e9,
     engaged: true, focusAt: 0, strafeDir: rnd() < 0.5 ? -1 : 1, strafeAt: 0,
     sprinting: false, roll: null, held: false,
-    shots: [], casts: [], stats: { swings: 0, shots: 0, specials: 0, specialsLanded: 0, specialDmg: 0, rolls: 0, rolledOff: 0, shields: 0, blocked: 0 },
+    shots: [], casts: [], stats: { swings: 0, shots: 0, specials: 0, specialsLanded: 0, specialDmg: 0, rolls: 0, rolledOff: 0, shields: 0, blocked: 0,
+      lunges: 0, lungesLanded: 0, lungeDmg: 0, dazed: 0 },   /* v2.3.3262 */
+    dash: null, lungeReadyAt: 0, dazeUntil: 0,               /* v2.3.3262 */
     startDelay: typeof spec.startDelay === "number" ? spec.startDelay : 0,
     pendingRoll: null, shield: null, pendingShield: null,
     hasShield: spec.shield !== false,
@@ -263,9 +311,15 @@ function makeFighter(id, spec, skill, place) {
   };
 }
 
+/* v2.3.3262: dazed by a sword's lunge -- no walk, swing, shot, special,
+   roll, lunge or shield raised (combatHelpers.dazeRefused, the auto-attack
+   loop's isDazed; a swing or a shot already under way goes on) */
+const dazed = (f) => T < (f.dazeUntil || 0);
+
 function startRoll(f, ang, why) {
   if (f.roll || f.shield || f.ps.stamina < f.d.roll) return false;
   if (f.holdUntil && T < f.holdUntil) return false;
+  if (dazed(f) || f.dash) return false;   /* v2.3.3262 */
   { const s0 = f.ps.stamina; room._handleAbilityUse(f.sess, { type: 'dodge' }); if (!(f.ps.stamina < s0)) return false; }
   f.roll = { ang, until: T + ROLL_MS };
   f.sprinting = false;
@@ -288,21 +342,29 @@ function planDefence(o, f, kind) {
     o.pendingShield = { at: T + react, from: f };
     return 'shield';
   }
-  if (kind === 'volley' && sk.rollSpecial > 0 && rnd() < sk.rollSpecial) {
+  /* v2.3.3262: a lunge is seen leaving (its tumble is broadcast on the press)
+     and answered like the rest of a volley -- in time only when the dash is
+     longer than the reaction */
+  if ((kind === 'volley' || kind === 'lunge') && sk.rollSpecial > 0 && rnd() < sk.rollSpecial) {
     o.pendingRoll = { at: T + react, ang: angTo(o, f) + (rnd() < 0.5 ? 1 : -1) * Math.PI / 2 };
     return 'roll';
   }
   return kind === 'big' && sk.rollSpecial > 0 && rnd() < sk.rollSpecial ? 'roll' : 'none';
 }
 function incomingSpecial(f, o) {
+  if (o.dash) return true;   /* v2.3.3262: a lunge on its way */
   for (const s of o.shots) if (s.special && (s.kind === 'big' || s.kind === 'volley')) return true;
   return false;
 }
 function updateShield(f, o) {
   const ps = f.ps;
+  /* v2.3.3262: a press refused in a daze ("Dazed!") is pressed again once
+     it is over */
+  if (f.pendingShield && T >= f.pendingShield.at && dazed(f)) f.pendingShield.at = f.dazeUntil + REPRESS_MS;
   if (f.pendingShield && T >= f.pendingShield.at) {
     f.pendingShield = null;
-    if (!(ps._guardBrokenUntil && Date.now() < ps._guardBrokenUntil) && ps.stamina > 0 && !f.roll) {
+    if (!(ps._guardBrokenUntil && Date.now() < ps._guardBrokenUntil) && ps.stamina > 0 && !f.roll
+        && !dazed(f) && !f.dash /* v2.3.3262: no guard raised in a daze */) {
       f.shield = { since: T, until: T + 400 };
       f.sprinting = false;
       f.stats.shields = (f.stats.shields || 0) + 1;
@@ -322,7 +384,7 @@ function updateShield(f, o) {
    settles with its own one-bite-in-15-s clock (cooking.js _pvpHealWait). */
 function tryEat(f) {
   const food = f.food;
-  if (!food || food.n <= 0 || f.eating || f.roll || f.shield) return;
+  if (!food || food.n <= 0 || f.eating || f.roll || f.shield || f.dash) return;   /* v2.3.3262: + the dash */
   if (f.hp > f.d.maxHp * f.sk.eatBelow) return;
   if (room._pvpHealWait(f.id, f.ps, Date.now()) > 0) return;   /* the page knows the wait too (fightFood.js) */
   f.eating = { until: T + (food.eatMs != null ? food.eatMs : f.sk.bagMs) };
@@ -344,6 +406,9 @@ function finishEat(f) {
 }
 
 function think(f, o) {
+  /* v2.3.3262: a dash runs to its strike; a daze decides nothing */
+  if (f.dash) return;
+  if (dazed(f)) { f.sprinting = false; return; }
   const sk = f.sk, d = dist(f, o), a = angTo(f, o);
   if (T >= f.focusAt) { f.engaged = rnd() < sk.focus; f.focusAt = T + 500; }
   if (T >= f.strafeAt) { f.strafeDir = -f.strafeDir; f.strafeAt = T + 600 + rnd() * 700; }
@@ -363,7 +428,10 @@ function think(f, o) {
       /* stop shooting and get the distance back */
       mv = { ang: a + Math.PI, k: 1 }; hold = false;
       sprint = sk.sprint && o.sprinting && f.ps.stamina > 20;
-      if (d < 70 && f.ps.stamina >= 40) startRoll(f, a + Math.PI, 'escape');
+      /* v2.3.3262: ...not in the instant a lunge arrives -- seen leaving at
+         ~1,560 px/s, it is answered after a reaction (castLunge), as a
+         walking sword's approach is not */
+      if (d < 70 && f.ps.stamina >= 40 && !(T < (f.caughtUntil || 0))) startRoll(f, a + Math.PI, 'escape');
     } else if (d < lo && sk.kite === 'shoot') {
       mv = { ang: a + Math.PI, k: 1 }; hold = f.engaged;
     } else {
@@ -378,9 +446,80 @@ function think(f, o) {
   f.mv = mv;
   /* sprint: SPRINT_START to begin, ends on an attack, at zero, or with a roll */
   if (sprint && !hold && !f.roll && (f.sprinting || f.ps.stamina >= SPRINT_START)) f.sprinting = true; else f.sprinting = false;
+  /* v2.3.3262: the sword's opening lunge, pressed for when it is ready */
+  if (f.style === 'melee' && canLunge(f, d)) castLunge(f, o, d);
 }
 
-function move(f) {
+/* ═══ v2.3.3262: THE SWORD'S OPENING LUNGE AT A PLAYER ═══
+   The phone's half restated from the code: the press (maybeSwordDash ->
+   castAbility) starts a dash at the locked player, 26 px a frame, re-aimed
+   every frame, stopping at contact (BroTown's movement block); the strike
+   goes out on arrival, or when the window or the 900 px of travel runs out.
+   The worker's half is its own: _handleAbility -> pvplunge.js, which puts the
+   swordsman at contact, lands the hit through _resolvePvPAttack and dazes. */
+function lungeOn() { return TUNE.lunge && !room._pvpLungeOff(); }
+function canLunge(f, d) {
+  const at = f.sk.dashAt;
+  return !!at && lungeOn() && f.engaged && !f.dash && !f.roll && !f.shield && !f.eating && !dazed(f)
+    && T >= f.lungeReadyAt && d > at[0] && d <= at[1]
+    /* an average or skilled player does not dash into a big bolt or a volley
+       in the air (no roll mid-dash): they lunge once it has landed or passed */
+    && !(f.sk.lungeWaits && incomingSpecial(f, f.foe));
+}
+function castLunge(f, o, d) {
+  const gap = Math.max(0, d - DASH_STOP);
+  const win = Math.min(DASH_WIN_MAX, Math.max(DASH_WIN_MIN, Math.round(gap / DASH_SPEED * DASH_SLOW) + 90));
+  f.dash = { until: T + win, travelled: 0 };
+  f.lungeReadyAt = T + (TUNE.lungeCd || LUNGE_CD);         /* castAbility stamps the cooldown on the press */
+  f.swingTimer = T;                      /* ...and the swing clock: no ordinary swing on the way */
+  f.sprinting = false; f.held = false;
+  f.stats.lunges++;
+  /* the one lunged at sees the tumble start (broadcast on the press,
+     player_dodge) and can act on it after a reaction: a planned answer
+     (planDefence), and the smart kite's escape roll no sooner */
+  o.caughtUntil = T + Math.max(150, o.sk.react + gauss() * o.sk.rollSigma);
+  planDefence(o, f, 'lunge');
+}
+/* one frame of the dash (BroTown: arrival is checked before the step) */
+function stepDash(f, o) {
+  const d = dist(f, o);
+  if (d <= DASH_STOP || T > f.dash.until || f.dash.travelled >= DASH_REACH) { strikeLunge(f, o); return; }
+  const step = Math.min(d - DASH_STOP, DASH_STEP);
+  const a = angTo(f, o);
+  f.x += Math.cos(a) * step; f.y += Math.sin(a) * step;
+  f.dash.travelled += step;
+}
+function strikeLunge(f, o) {
+  f.dash = null;
+  f.ps.x = f.x; f.ps.y = f.y;            /* "say where you landed, then swing" (the arrival's move) */
+  room.eventBuffer.length = 0;
+  room._handleAbility(f.sess, { kind: 'sworddash', pid: o.id });
+  /* the worker puts the swordsman at contact; the phone is there already */
+  f.x = f.ps.x; f.y = f.ps.y;
+  f.swingTimer = T; f.lungeReadyAt = T + (TUNE.lungeCd || LUNGE_CD);   /* applyAbilityStrike re-stamps both */
+  let hit = null;
+  for (const e of room.eventBuffer) {
+    if (e.type === 'pvp_hit' && e.payload.attacker === f.id && e.payload.target === o.id) { hit = e.payload; break; }
+  }
+  room.eventBuffer.length = 0;
+  if (!hit) return;
+  if (hit.blocked) o.stats.blocked = (o.stats.blocked || 0) + 1;
+  if (hit.dmgTaken > 0) {
+    o.hp -= hit.dmgTaken; o.taken += hit.dmgTaken; f.dealt += hit.dmgTaken;
+    f.stats.lungesLanded++; f.stats.lungeDmg += hit.dmgTaken;
+    if (!F.firstHitAt) F.firstHitAt = T;
+  }
+  /* the daze, carried out as the phone does (elemHits.js applyElemHit) */
+  if (hit.st === 'daze' && hit.stMs > 0) {
+    o.dazeUntil = Math.max(o.dazeUntil || 0, T + hit.stMs);
+    o.stats.dazed++;
+    o.sprinting = false;   /* a planned shield or roll waits for its end (REPRESS_MS) */
+  }
+}
+
+function move(f, o) {
+  if (dazed(f)) { f.sprinting = false; return; }   /* v2.3.3262: no walk */
+  if (f.dash) { stepDash(f, o); return; }           /* v2.3.3262: the dash is the move */
   if (f.holdUntil && T < f.holdUntil) { f.sprinting = false; return; }
   if (f.roll) {
     f.x += Math.cos(f.roll.ang) * ROLL_STEP; f.y += Math.sin(f.roll.ang) * ROLL_STEP;
@@ -436,6 +575,7 @@ function useSpecial(f, o) {
 
 function attack(f, o) {
   if (f.roll || f.shield) return;
+  if (dazed(f) || f.dash) return;   /* v2.3.3262: no swing, shot or special in a daze or a dash */
   const d = dist(f, o);
   if (useSpecial(f, o)) return;
   if (!f.held) return;
@@ -544,6 +684,7 @@ export function fight(specA, skillA, specB, skillB, opts = {}) {
   const pb = { x: pa.x + gap0, y: pa.y };
   room._pvpHitLanes && room._pvpHitLanes.clear();
   const A = makeFighter('bp_a', specA, skillA, pa), B = makeFighter('bp_b', specB, skillB, pb);
+  A.foe = B; B.foe = A;   /* v2.3.3262 */
   F = { firstHitAt: 0, start: T };
   const maxMs = opts.maxMs || 120000;
   let nextRegen = T + rnd() * REGEN_MS;
@@ -557,6 +698,7 @@ export function fight(specA, skillA, specB, skillB, opts = {}) {
     const order = rnd() < 0.5 ? [[A, B], [B, A]] : [[B, A], [A, B]];
     for (const [f, o] of order) {
       if (T - F.start < f.startDelay) continue;
+      if (f.pendingRoll && T >= f.pendingRoll.at && dazed(f)) f.pendingRoll.at = f.dazeUntil + REPRESS_MS;   /* v2.3.3262 */
       if (f.pendingRoll && T >= f.pendingRoll.at) { startRoll(f, f.pendingRoll.ang, 'special'); f.pendingRoll = null; }
       updateShield(f, o);
       finishEat(f);
@@ -571,7 +713,7 @@ export function fight(specA, skillA, specB, skillB, opts = {}) {
         f.ps.x = f.x; f.ps.y = f.y; continue;
       }
       think(f, o);
-      move(f);
+      move(f, o);
       f.ps.x = f.x; f.ps.y = f.y; f.ps.dodging = !!f.roll;
       attack(f, o);
     }

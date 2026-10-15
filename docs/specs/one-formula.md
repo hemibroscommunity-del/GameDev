@@ -146,7 +146,9 @@ time, and carrying fish beats carrying none nearly every time.
   number**: let the sword's opening lunge (the dash that starts a fight with
   a monster, `sworddash`) work on players too. It would be the same move for
   every target, so it fits one formula. Not built here: it needs its own
-  rules for what its stun does to a player.
+  rules for what its stun does to a player. **Built in v2.3.3262**
+  (`docs/specs/pvp-lunge.md`): the same move at a player, and its stun is the
+  rock monsters' half-second daze.
 - **A sword against a staff in iron armour** can hit the simulator's 2-minute
   limit (up to 45% of fights at level 7): the sword cannot catch the staff and
   the staff's bolts barely dent iron.

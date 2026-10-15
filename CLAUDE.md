@@ -1197,10 +1197,36 @@ remnant to migrate server-side, not a mode to preserve.
         (shieldToggle.js `noteShieldThreat`, `shieldThreatPoint`), not the
         nearest monster -- `mp-pvpshield` (two phones);
       - not done, the owner's call: a sword loses to a bow or staff that kites
-        it (a mechanic, not a number: the sword's lunge on players);
+        it (a mechanic, not a number: the sword's lunge on players) -- done
+        since v2.3.3262, below;
       - `pvp-balance`, `one-formula`, `linger`, `fightfood` §4-4c/§7,
         mirror-audit "fish heal"/"ONE_FORMULA", `mp-quickeat`, `mp-linger`,
         `mp-pvpshield`.
+    - since v2.3.3262 THE SWORD'S OPENING LUNGE WORKS ON PLAYERS -- the owner:
+      "Yes make opening lunge work on players too" (docs/specs/pvp-lunge.md):
+      - the same move: a press with a player you may fight locked (a duel, No
+        man's land's aim; `pvpLungeTarget` in src/game/abilities.js, the
+        swing's own PvP gate, on `caps.pvplunge`) dashes to them and strikes
+        on arrival, the `ability` naming them as `pid` (never `targetId`);
+        BroTown's dash follows them by id in S.others;
+      - the worker (`server/src/pvplunge.js`, from abilities.js
+        `_abilityResolve` before the monster scan): `_pvpAllowed`, same zone,
+        alive, within the 900 px reach; puts you at contact (46 px); then the
+        ONE DOOR, `_resolvePvPAttack` (a swing of its own `sw`, the worker's
+        roll, shield, roll, the 30% cap, skulls); no knockback on a player;
+      - a landed lunge DAZES with the rock monsters' DAZE by reference (0.5 s,
+        then 2.5 s before another, shared): `st: 'daze'`, `stMs` on the
+        pvp_hit, carried out by elemHits.js `applyElemHit` on you or the peer;
+      - against players the worker now refuses a dazed player's SWING (not a
+        shot: its claim comes when it lands) and lunge, and a roll in a daze
+        gives no dodge (`_pvpDazed`); a rock monster's daze counts the same;
+      - the simulator (`tools/pvp-sim/lunge.mjs`), Lv 12 copper set: the sword
+        wins v bow 8/19/0% -> 32/39/89% (low/average/top skill), v staff
+        3/26/0% -> 12/20/66%; the daze adds little, the lunge is what catches;
+        top-skill sword v bow at ~90% is the open question (the lever: a
+        longer cooldown against players);
+      - kill switch `pvplunge: false`; `pvp-lunge` suite (38), `mp-pvplunge`
+        (18, two phones).
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":
