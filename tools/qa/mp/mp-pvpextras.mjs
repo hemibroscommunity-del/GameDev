@@ -261,30 +261,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     rec.ok('a wind-gem swing slowed the target (guard: the worker said st slow)', !!slowHit, slowHit || lastDiag);
     if (slowHit) {
+      /* the target walks at the slow: the same key held as long, slowed and
+         not.  The slowed walk goes FIRST, the moment the slow is seen, and
+         reads the page's slow and its chip as it starts: on this box every
+         page round trip waits on a busy page, and the checks it used to follow
+         took ~3 s of the slow's 5 */
+      const walk = async (ms, key) => {
+        const p0 = await B.page.evaluate(() => { const S = window._gameState.current;
+          return { x: S.player.x, y: S.player.y, t: performance.now(), left: (S._slowUntil || 0) - Date.now(), mult: S._slowMult,
+            chip: !!document.querySelector('[data-chip="Slowed"]') }; });
+        await B.page.keyboard.down(key);
+        await B.page.waitForTimeout(ms);
+        await B.page.keyboard.up(key);
+        const p1 = await B.page.evaluate(() => { const S = window._gameState.current;
+          return { x: S.player.x, y: S.player.y, t: performance.now(), left: (S._slowUntil || 0) - Date.now() }; });
+        return { v: Math.hypot(p1.x - p0.x, p1.y - p0.y) / Math.max(1, p1.t - p0.t), p0, p1 };
+      };
+      /* south slowed, then north free: back over the same open ground */
+      const ws = await walk(900, 's');
+      const vSlow = ws.p1.left > 0 ? ws.v : null;   /* slowed from the first step to the last */
       const claims = await sentSince(A, slowHit.t0 - 2000, 'player_attack');
       rec.ok(`1. the page's own swing claim carries its gem (${claims.length} claims, element ${claims.map((c) => c.payload && c.payload.element).join(',')})`,
         claims.length > 0 && claims.every((c) => c.payload && c.payload.element === 'wind'), claims);
       rec.ok(`1. the worker's word: st slow, x${slowHit.got.mult} for ${slowHit.got.stMs} ms`,
         slowHit.got.mult === 0.4 && slowHit.got.stMs >= 1000, slowHit.got);
-      const bState = await B.page.evaluate(() => { const S = window._gameState.current; return { until: S._slowUntil - Date.now(), mult: S._slowMult }; });
-      rec.ok(`1. the target's page carries it out: slowed for ${bState.until} ms more, at x${bState.mult}`, bState.until > 0 && bState.mult === 0.4, bState);
-      rec.ok('1. ...and wears the "Slowed" chip', await waitChip(B, 'Slowed'));
-      /* the target walks at the slow: the same key held as long, slowed and not */
-      const walk = async (ms, key) => {
-        const p0 = await B.page.evaluate(() => { const S = window._gameState.current; return { x: S.player.x, y: S.player.y, t: performance.now() }; });
-        await B.page.keyboard.down(key);
-        await B.page.waitForTimeout(ms);
-        await B.page.keyboard.up(key);
-        const p1 = await B.page.evaluate(() => { const S = window._gameState.current; return { x: S.player.x, y: S.player.y, t: performance.now() }; });
-        return Math.hypot(p1.x - p0.x, p1.y - p0.y) / Math.max(1, p1.t - p0.t);
-      };
-      const left = await B.page.evaluate(() => window._gameState.current._slowUntil - Date.now());
-      /* south slowed, then north free: back over the same open ground */
-      const vSlow = left > 1500 ? await walk(900, 's') : null;
+      rec.ok(`1. the target's page carries it out: slowed for ${ws.p0.left} ms more, at x${ws.p0.mult}`, ws.p0.left > 0 && ws.p0.mult === 0.4, ws.p0);
+      rec.ok('1. ...and wears the "Slowed" chip', ws.p0.chip || await waitChip(B, 'Slowed'));
       await B.page.waitForTimeout(Math.max(0, (await B.page.evaluate(() => window._gameState.current._slowUntil - Date.now())) + 300));
-      const vFree = await walk(900, 'w');
+      const vFree = (await walk(900, 'w')).v;
       rec.ok(`1. the target walks slowed: ${vSlow == null ? '?' : (vSlow * 1000).toFixed(0)} px/s slowed, ${(vFree * 1000).toFixed(0)} px/s free (x0.4 asked)`,
-        vSlow != null && vFree > 0 && vSlow / vFree > 0.2 && vSlow / vFree < 0.65, { vSlow, vFree, ratio: vSlow != null ? vSlow / vFree : null });
+        vSlow != null && vFree > 0 && vSlow / vFree > 0.2 && vSlow / vFree < 0.65, { vSlow, vFree, ratio: vSlow != null ? vSlow / vFree : null, p0: ws.p0, p1: ws.p1 });
       const fx1 = { A: await fxDrawn(A), B: await fxDrawn(B), C: await fxDrawn(C) };
       const drew = (k) => (fx1[k].slow || 0) - (fx0[k].slow || 0);
       rec.ok(`1. the slow is drawn on the target on all three screens (frames: striker ${drew('A')}, target ${drew('B')}, watcher ${drew('C')})`,
