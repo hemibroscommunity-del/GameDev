@@ -678,7 +678,10 @@ export function PartyPanel(props) {
       color: '#D8AA58' /* v2.3.1235: brass token */,
       marginTop: 4
     }
-  }, "+", ARENA_CHAMPION_REWARD.gold, "G +", ARENA_CHAMPION_REWARD.ap, "AP + \"Gladiator\" title")), arenaTournament.recentMatches.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "+", /* v2.3.3178: the prize the worker paid -- it follows the bracket
+     now (250 a gladiator, at most 3,600 from the house an hour); a worker
+     from before it never sends one, and paid the 2,000 */
+  typeof arenaTournament.champion.prize === 'number' ? arenaTournament.champion.prize : ARENA_CHAMPION_REWARD.gold, "G +", ARENA_CHAMPION_REWARD.ap, "AP + \"Gladiator\" title")), arenaTournament.recentMatches.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,

@@ -179,7 +179,12 @@ export const cadenceMethods = {
     this._saveRpg(session.id, ps);
     this._queuePlayerStateFlush(session.id);
     draw.pool += amount;
-    draw.entries[session.id] = (draw.entries[session.id] || 0) + amount / CADENCE.JACKPOT_TICKET;
+    /* v2.3.3167: the player's OWN entry, as a number.  `draw.entries` is a
+       plain object (it round-trips through storage), so for an id like
+       `toString` the inherited function was the "previous" count and the sum
+       became a string -- see _jackpotMaybeResolve and join.js MAGIC_IDS. */
+    const prevTickets = Object.prototype.hasOwnProperty.call(draw.entries, session.id) ? (Number(draw.entries[session.id]) || 0) : 0;
+    draw.entries[session.id] = prevTickets + amount / CADENCE.JACKPOT_TICKET;
     await this.state.storage.put('jackpot:draw', draw);
     this._jackpotSend(session.id, { playerId: session.id, deposited: amount });
   },
@@ -196,7 +201,16 @@ export const cadenceMethods = {
       if (!draw) return;
       const current = this._cadencePeriodWeekly(now);
       if (draw.period === current) return;
-      const entrants = Object.entries(draw.entries || {});
+      /* v2.3.3167: only entries that are a real, positive number of tickets
+         are weighed.  A string or NaN count (an id named after an
+         Object.prototype member, before join.js refused them) made the
+         total a string and the roll NaN, so no entrant was ever reached and
+         the FIRST depositor of the week won the whole pool, whatever the
+         tickets said (reproduced on main: 40 of 40 draws with 1 ticket
+         against 400). */
+      const entrants = Object.entries(draw.entries || {})
+        .map(([pid, t]) => [pid, Number(t)])
+        .filter(([, t]) => Number.isFinite(t) && t > 0);
       if (entrants.length === 0 || !(draw.pool > 0)) {
         await this.state.storage.put('jackpot:draw', { period: current, pool: 0, entries: {} });
         return;

@@ -80,8 +80,10 @@ name plate).
 
 ## How to attack
 
-- **Tap** the other player: the tap **aims** at them, shows "TARGET", and opens
-  no card (a card mid-fight would cover the screen).
+- **Tap** the other player: since v2.3.3253 the tap **asks first** in a small
+  window (see "Attacking is a choice" below). Its **Attack** aims at them,
+  shows "TARGET", and opens no player card. Before v2.3.3253 the tap aimed
+  straight away.
 - Your swings, arrows and bolts at them then reach the worker as attacks on a
   player, and **the worker decides every one**.
 - Tapping them **again keeps** the aim. On a computer the attack *is* a click, and
@@ -89,6 +91,89 @@ name plate).
 - Tap empty ground to let go, as with any target.
 - The aim lets go by itself the moment the rule stops allowing the fight:
   either of you leaves, the levels drift apart, or you join one party.
+
+## Attacking is a choice (v2.3.3253)
+
+> Owner, 2026-10-14: *"I don't necessarily want stray projectiles to hit
+> another player and have a red skull appear above the player just for that.
+> I want attacking other players to be intentional. Maybe if a stray
+> projectile hits a player a one time window pops up asking if you want to
+> attack the player with a red skull appearing on the window and a tiny
+> information icon next to it. I want the window itself to be small. The
+> window can say attack, party, or ignore. The window won't pop up again.
+> Tapping on the player while they're in the no man's land can still have the
+> party and attack (with red skull) options there."*
+
+**A stray shot never hurt anyone.** Since v2.3.1302/v2.3.1306 only the player
+you aim at (or duel) is ever sent to the worker as an attack, by both the shot's
+hit test (`projectiles.js`) and the swing's (`monsterCombat.js`), and the worker
+skips everyone but the declared `target`. What was not a choice was the aim: a
+tap within 25 px of a player aimed at them at once. So a tap meant for the
+monster beside them started a fight, and the first hit gave you a red skull.
+
+**The window.** "Attack <name>?" with their level, the red skull with a tiny (i)
+on its corner, and three buttons:
+
+- **Attack** aims at them: No man's land's lock and "TARGET", exactly what the
+  old tap did. The red skull comes with the first hit that lands, as before.
+- **Party** sends the party invite the player card sends.
+- **Ignore**, or 10 seconds untouched, lets it go.
+
+The (i) opens the badge's explainer, which now also says *"How: tap a player and
+choose Attack. A stray shot never hurts anyone."* The window closes by itself the
+moment they can no longer be fought: either of you leaves, the levels drift
+apart, a party, or they are gone.
+
+**What raises it:**
+
+| Trigger | When |
+|---|---|
+| **A stray shot** | One of *your* arrows, bolts or specials passes through a player you could fight who is not your aim. It uses the real hit test's capsule and radius, and never counts through a rock. The shot flies on and does them nothing. **Once per player** (the owner's "won't pop up again"), never over an open window, never in a duel. |
+| **A tap** | On such a player you are not already aiming at. Every time; it replaces a window about someone else. A tap on the one you aim at keeps the aim. |
+
+**Hitting back stays one tap.** If the player gave you your white skull and you
+carry no red one, a tap on them aims at once, with no window. A stray shot
+through them asks nothing. Hitting them back gives you no red skull, so the
+window's warning would be wrong, and a window while you are being attacked would
+cost you the fight. The worker now says who attacked you: `nml_skull`'s `by`,
+the retaliation rule's own `whiteBy`, sent only while a white skull runs. Against
+an older worker there is no `by`, and every tap asks.
+
+**Where it sits: at the top, out of the thumbs' way.** The first cut sat just
+above the No man's land badge. On a 390 px phone that put Attack exactly where a
+left thumb comes down to steer, and Ignore over the attack disc. Now it sits:
+
+- under the Wheel's minimap, centred, on a phone held upright;
+- beside the minimap, in the strip to its left, when there is room (a phone held
+  sideways, a computer);
+- under the party invite card if one is up (`data-party-invite`), never over it.
+
+It is portalled to the page body at the prompt layer the party invite uses
+(`Z_ABOVE_DASH_PROMPT`), so its numbers are the screen's own. Inside the game's
+wrapper a computer's shell and a sideways phone are their own frames, and on a
+computer it landed on the minimap. It has no scrim: it can come up in the middle
+of a fight with the monsters, and it takes only its own taps.
+
+**A player beside you can be tapped.** On a phone a tap within 52 px of your own
+body opens chat (v2.3.1287), and two players at a sword's reach stand inside that
+circle. In No man's land, a player you could fight under the finger now takes the
+tap, as an NPC and a resource already do: within the world tap's 25 px of them,
+and nearer them than your own body. Everywhere else your own circle still opens
+chat.
+
+**Code:**
+
+- `src/game/nmlAsk.js`: the rules, the store, Attack/Party/Ignore, `nmlHitBack`.
+- `src/ui/mobile/NmlAskCard.jsx`: the window and `cardPlace`.
+- `projectiles.js` `_nmlStrayShot`: the stray shot.
+- `BroTown.jsx`: the tap, `nmlPlayerAtClient`.
+- `server/src/nomansland.js` `_nmlSend`: `by`.
+
+**Switches:**
+
+- `?nmlask=0` is the game as it was: the tap aims at once, and a stray shot asks
+  nothing.
+- `window.__btNmlAsk` is the QA handle: `current`, `asked`, `setMs`.
 
 ## The skulls
 
@@ -215,6 +300,34 @@ tell the shield on your arm from a spare. Now the game tells it:
 
   Before, both read the shield you were first given.
 
+## Nothing leaves the bag in a fight (v2.3.3183)
+
+A death to a player drops the bag in a pile that is the killer's (and a red
+skull's gold). A modified game could empty a losing bag in the fight's last
+seconds -- sell it to Diego, list it on the auction house, put it in a market
+order or a trade to a friend, plant the seeds -- so the pile was empty, and
+cancel the orders afterwards (overnight economy review, decision 7). The
+order board already refused this (`order-fight`, farmorders.js). Now every
+road out of the bag does, on the same test: **in a duel, or a hit between
+players in the last 10 s** (`PVP_HEAL.WINDOW_MS`, cooking.js's clock), in
+`_bagLockedByFight(pid)`:
+
+| Road | Refusal |
+|---|---|
+| Diego buys (`_shopSell`) | "Not while you are fighting a player" |
+| Auction house: list, buy, bid (`_stCreateListing`, `/buy`, `/bid`) | the same, `settled: true` |
+| Market order, buy or sell (`_mktPlaceOrder`) | the same |
+| Trade confirm (`trade2_confirm`, either side in a fight) | the window stays open, `reason: 'fight'` |
+| Farm plant, compost (`farm_act` plant / feed) | `farm_state {err: 'fight'}` |
+
+Honest players never meet it: the shops are in town and a fight is not, and
+the window is ten seconds after the last hit. What only rearranges the bag
+(cooking, smelting, salvage, forging) or brings things in is untouched, and
+cancelling an order or a listing stays open (the escrow is yours). The game
+says "Not while fighting a player" on the farm and "Not while one of you is
+fighting a player. Try again in a few seconds." in the trade window. Kill
+switch: the live flag `fightlock: false`. Tests: `nomansland` suite §10.
+
 ## Wire, storage and switches
 
 - **Client → worker:** attacks are the existing `player_attack`;
@@ -222,9 +335,11 @@ tell the shield on your arm from a spare. Now the game tells it:
   Since v2.3.3091, `shield_wear` `{gid | sig | none}` (server/src/shieldwear.js,
   client src/game/shieldWear.js), sent only against a worker advertising
   `caps.shieldwear`.
-- **Worker → client:** `nml_skull` `{red, white}` (ms left) and `nml_loss`
-  `{by, red, weapons, gear: [{field, gid | sig}], worn, coins, bag}`. Both are in
-  `PRIVILEGED_EVENTS`. The tick's player wire carries `sk`, absent with no skull.
+- **Worker → client:** `nml_skull` `{red, white, by?}` (ms left; since
+  v2.3.3253 `by` is who gave you the white skull, only while it runs) and
+  `nml_loss` `{by, red, weapons, gear: [{field, gid | sig}], worn, coins, bag}`.
+  Both are in `PRIVILEGED_EVENTS`. The tick's player wire carries `sk`, absent
+  with no skull.
 - **Storage:** `nml_state:<pid>` `{red, white, whiteBy, forfeit}`. It is written
   when a skull starts, changes colour or ends, and every 30 s while one runs (not
   on every hit). It is read back on join before the gear stashes are adopted,
@@ -268,11 +383,34 @@ tell the shield on your arm from a spare. Now the game tells it:
     - `shieldwear: false`.
 - `mirror-audit`: the rings and the centre. Since v2.3.3091 they run: a merge
   had left them after the suite's `process.exit`.
+- `nomansland` §3-4 (v2.3.3253): `nml_skull` names who gave the white skull
+  (`by`), the attacker is told who hit them back, no `by` once the white skull
+  is gone, and `by` comes back on join.
+- `mp-nmlask` (v2.3.3253), two real players: the raider on a 390 px touch
+  phone, the wanderer on a computer:
+  - the raider's real staff bolts through the wanderer do nothing (no
+    `player_attack`, the worker's HP unchanged, no skull) and ask once;
+  - the window is small, under the minimap, clear of the attack disc, the
+    sprint button and the badge, and nothing covers its buttons;
+  - Ignore, then more bolts ask nothing;
+  - a tap asks, and the (i) explains;
+  - Party sends the invite, and the wanderer is asked to join;
+  - on the computer a click asks too, beside the minimap and under the party
+    invite card;
+  - at a sword's reach (30 px) a tap asks, and does not open your chat;
+  - Attack aims, the swing lands, the red skull comes with it, and the
+    wanderer is told `by`;
+  - the wanderer taps back: no window, aimed at once, the swing lands, no red
+    skull;
+  - a window left alone goes, and goes when its player walks out;
+  - held sideways it sits beside the minimap, clear of the controls and of you;
+  - pictures: `nmlask-*.png`.
 - `mp-nomansland` (16 checks), two real players against a real worker:
   - the wanderer's game tells the worker its arm is bare, and the worker
     holds the quest's Pine Shield as a spare;
   - both told (banner, chat, the red top-bar line);
-  - the tap aims and opens no card;
+  - the tap asks (since v2.3.3253), and the window's Attack aims; no player
+    card;
   - a hit lands, with the red and white skulls, each seen by the other;
   - the killing blow: the wanderer told, their spare greatsword and spare
     shield in the raider's bag, the minnows in the raider's pile;
@@ -290,3 +428,8 @@ tell the shield on your arm from a spare. Now the game tells it:
   yet (see "What the worker cannot take yet").
 - **Party members** cannot fight each other here, and the safe commons and
   Brotown stay safe.
+- **The window's "once"** (v2.3.3253): a stray shot asks about each player
+  once until the game is reloaded; a tap always asks. Two other choices were
+  made for the owner, each a line to change:
+  - the window closes by itself after 10 seconds (`NML_ASK_MS`);
+  - the player who attacked you is aimed at by a tap, with no window.

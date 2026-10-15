@@ -1397,6 +1397,107 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     room._sessionById = sessionById;
     delete room.playerState[pid];
   }
+
+  /* ── v2.3.3169: THE SHIELD KEEPS ONLY WHAT THE BAG STILL HOLDS ──
+   * The shield above was written back WHOLE by both wipes, never capped at
+   * the bag.  So whatever of a recovered pile left the bag after the pickup
+   * came back at death: sold to Diego before the blow (A), or listed on the
+   * auction house during the five dying seconds (B) -- the listing then held
+   * the bars AND the respawned bag held them too.  Every step is a real
+   * handler (the pickup, Diego's sale, the auction house's listing); only the
+   * blow is the call combat makes.  For every key, kept + dropped must still
+   * equal what the player held. */
+  {
+    const pid = 'shieldseller';
+    room.playerState[pid] = {
+      hp: 100, maxHp: 100, z: 'meadow', x: 3000, y: 3000, coins: 0,
+      dead: false, dying: false, disconnected: false, inventory: {},
+    };
+    const psS = room.playerState[pid];
+    const bySession = room._wsBySessionId;
+    room._wsBySessionId = (id) => (id === pid ? wsA : bySession.call(room, id));
+    const sessS = { id: pid, name: 'Shieldseller' };
+    const sessionById = room._sessionById;
+    room._sessionById = (id) => (id === pid ? sessS : sessionById.call(room, id));
+    let pileN = 0;
+    const dropBag = (qty) => {
+      const bagS = {
+        lootId: 'dd-' + pid + '-bag' + (pileN++), zone: 'meadow', x: 3000, y: 3000,
+        coins: 0, skull: null, shard: null,
+        recipients: [pid], shares: {}, killerName: 'Shieldseller', ts: Date.now(),
+        inventoryClaimed: false, claimedBy: {}, isDeathDrop: true,
+        deathItems: [{ key: 'bar_iron', qty }],
+        ownerOnlyUntil: Date.now() + 60000, expiry: Date.now() + 120000,
+      };
+      if (!room.loot.meadow) room.loot.meadow = [];
+      room.loot.meadow.push(bagS);
+      room._handleLootPickup(sessS, { lootId: bagS.lootId, zone: 'meadow' });
+      return bagS;
+    };
+    const backOnTheField = () => {
+      psS.dying = false; psS.dead = false; psS.hp = 100;
+      psS.z = 'meadow'; psS.x = 3000; psS.y = 3000;
+    };
+
+    /* (A) sold to Diego between the pickup and the blow */
+    dropBag(10);
+    check('shield cap: the pickup puts the 10 bars in the bag', psS.inventory.bar_iron === 10, psS.inventory);
+    const sale = await room._shopSell(psS, 'bar_iron', 10, pid);
+    check('shield cap: ...and Diego buys all 10', sale && sale.ok && !psS.inventory.bar_iron && psS.coins > 0, sale);
+    const coinsAfterSale = psS.coins;
+    psS.hp = 0;
+    const nA = (room.loot.meadow || []).length;
+    room._handlePlayerDeath(psS, pid, 'monster:pack');   // inside the grace second
+    check('a death after selling the recovered bars does NOT give them back',
+      !psS.inventory.bar_iron, psS.inventory);
+    const pileA = (room.loot.meadow || []).slice(nA).find((l) => l.isDeathDrop);
+    check('...and drops none either: there were none to drop',
+      !(pileA && (pileA.deathItems || []).some((i) => i.key === 'bar_iron')), pileA && pileA.deathItems);
+    psS.respawnAt = Date.now() - 1;
+    room._tickPlayerRespawn();
+    check('...nor does the respawn wipe, five seconds later',
+      !psS.inventory.bar_iron && psS.coins === coinsAfterSale, { bag: psS.inventory, coins: psS.coins });
+
+    /* (A2) part of it sold: the rest is kept, exactly, and nothing doubles */
+    backOnTheField();
+    psS.inventory = { bar_iron: 2 };                      // carried in before
+    dropBag(10);                                          // 12 in the bag
+    const sale2 = await room._shopSell(psS, 'bar_iron', 7, pid);
+    check('shield cap: a partial sale leaves 5', sale2 && sale2.ok && psS.inventory.bar_iron === 5, psS.inventory);
+    psS.hp = 0;
+    const nA2 = (room.loot.meadow || []).length;
+    room._handlePlayerDeath(psS, pid, 'monster:pack');
+    const pileA2 = (room.loot.meadow || []).slice(nA2).find((l) => l.isDeathDrop);
+    const droppedA2 = ((pileA2 && pileA2.deathItems) || []).filter((i) => i.key === 'bar_iron').reduce((s, i) => s + i.qty, 0);
+    check('...and kept + dropped is the 5 the player held, not more',
+      (psS.inventory.bar_iron || 0) + droppedA2 === 5, { kept: psS.inventory.bar_iron, dropped: droppedA2 });
+    psS.respawnAt = Date.now() - 1;
+    room._tickPlayerRespawn();
+
+    /* (B) listed on the auction house during the dying window */
+    backOnTheField();
+    psS.inventory = {};
+    dropBag(10);
+    psS.hp = 0;
+    room._handlePlayerDeath(psS, pid, 'monster:pack');
+    check('shield cap: a death inside the grace still keeps the recovered 10 (the shield, as designed)',
+      psS.inventory.bar_iron === 10, psS.inventory);
+    await room._stEnsureIndex();
+    const listed = await room._stCreateListing({ playerId: pid, kind: 'item', invKey: 'bar_iron', qty: 10, price: 5000 });
+    check('...the dying player lists all 10 on the auction house', listed && listed.ok && !psS.inventory.bar_iron, listed);
+    psS.respawnAt = Date.now() - 1;
+    room._tickPlayerRespawn();
+    const escrowed = [...room._stIndex.values()].filter((r) => r.sellerId === pid && r.invKey === 'bar_iron')
+      .reduce((s, r) => s + (r.qty || 0), 0);
+    check('...and after the respawn the bag does NOT hold them again beside the listing',
+      !psS.inventory.bar_iron && escrowed === 10, { bag: psS.inventory.bar_iron || 0, listed: escrowed });
+
+    for (const r of [...room._stIndex.values()]) if (r.sellerId === pid) room._stIndex.delete(r.id);
+    if (room._stCounts) room._stCounts.delete(pid);
+    room._wsBySessionId = bySession;
+    room._sessionById = sessionById;
+    delete room.playerState[pid];
+  }
   delete room.playerState['well'];
 }
 

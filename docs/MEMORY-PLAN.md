@@ -110,6 +110,10 @@ Memory spent on nothing:
 | Freed on close: the world map's canvas (11.3 MB an open at 3x, held until the next GC) | five opens: 3 dead canvases, 31.4 MB -> 0 (`mp-worldmapfree`) | #812, v2.3.3070 |
 | Freed on close: the loading clip's warm-up copy | a hidden `<video>` of `loading-ashore.mp4` (a 0.6 MB file) and its poster, held for the session by BroTown's `_introWarmRef` -- only on a session that shows the welcome; ~1-3 MB on a phone at most; rubble's scratch canvases are locals the GC takes | small; not done on its own |
 | A snowball burst playing when the frost art is handed back (found on the way: app.render threw until the burst ended) | retired before the frame draws (`mp-burstfree`) | #813, v2.3.3071 |
+| The hit effects' pools give back what a big fight made (found by the 2026-10-11 leak hunt: a phone in the Wheel doing each trip four times, the whole scene counted by path after each with `__btSceneCensus`).  The pools grew to the most pieces drawn at once and kept every sprite: a Great Cave wave cleared in one go left 1,436 hidden sprites in the scene at home for the visit | the scene at home after a Great Cave trip 851 -> 2,385 nodes and heap +7 MB, kept; now a pool keeps what it drew in the last 6 s and 16 more (`mp-sceneleak`: a wave of 786 pieces, 1,377 sprites -> 128 once it is over) | v2.3.3152 |
+| A rebuild left its shadow system in shadows.js's module list (its pools, filter and old world container), one more per black screen | one system after two rebuilds, not three (`mp-sceneleak`) | v2.3.3152 |
+| A freed picture still bound in Pixi's pooled mask filter (found on the way: after a cut monster's death, leaving the land made Pixi destroy the pooled filter's bind group, and the next sprite mask threw inside app.render -- a frame not drawn per poisoned filter; TRAPS §143) | no render throw (`mp-sceneleak`'s mask check; `bindGroupFix.js`) | v2.3.3152 |
+| Pixi's TexturePool gives back what it is not using (the scratch textures of every filter pass -- shadows, the armour's shine, sprite masks -- and the texture every canvas Text is drawn on, handed out by size and kept on the GPU for good: the pool held the most of each size ever in use at once, ~30 name plates' worth after a cave wave).  A texture handed back and not taken again for 30 s is destroyed, and a zone change lets go of them all (`texturePoolTrim.js`; only with `bindGroupFix.js` on, as the filter system's own bind group keeps its last input) | render textures at home after a Great Cave trip 2.2 -> 8 MB, kept; with the trim 2.2 MB again ~20 s after you are home (247 textures, 21 MB let go over the trip); `mp-sceneleak` | v2.3.3152 |
 
 **Phase 2 -- stop paying for what nobody sees or hears.**
 
@@ -127,8 +131,9 @@ Memory spent on nothing:
 |---|---|---|
 | Canvas art made purgeable (compressed images the iPhone can drop and re-decode) | up to ~70 MB | |
 | Character art kept on the GPU only, re-baked after a black screen's rebuild (measured 2026-10-06: of 540 canvases, 127 are copies of a texture already uploaded -- 45.6 MB, mostly the gear sheets, the damage font's pages and the skill poses, all module caches a rebuilt renderer re-uploads FROM the canvas; the effects renderer's own big strips are not on the GPU until first drawn).  Pixel-identical by construction (the same bakes run again), but it changes the black-screen recovery path, so it is planned with the owner first.  Named by a probe (unminified main, arrival in the Wheel: 46.8 MB in 139 canvases): the walking gear sheets 18.1 MB (gearSheets packTrimmed), the combat poses' gear strips 13.9 MB (effectsRenderer _gearStrip), the damage font's pages 11 MB, the rest under 4 MB | 25 MB of page memory: the combat strips and the font (`mp-gpuonly`, 118.0 -> 93.1 MB of canvases on arrival) | #824, v2.3.3088 (the owner's yes, a slightly slower recovery after a black screen: the font is installed afresh for a rebuilt renderer, in the face the first install drew).  The walking gear sheets stay: the masked-body bakes read them back (drawGearFrame).  Found on the way: pixi 8.17's GPU collector unloads a texture marked autoGarbageCollect (the font's pages are) after 60 s undrawn and uploads it again from its canvas -- an emptied canvas draws blank -- so a picture kept on the chip only is taken out of the collection |
+| The gathering figures kept on the GPU only (the lumberjack, the cook and the fire-lighter, made the first time each can be wanted since #822, and then held twice for the rest of the visit: the canvas each strip was baked on and its copy on the GPU).  The owner's report of 2026-10-11 ("after completing all the quests up until the point where you need to visit the 3 buildings the games framerate dropped significantly") is the path that makes all three: life_1's axe and rod, its log, its fire and its cook.  The same trade as #824's: only ever drawn, and made again by a rebuilt renderer (`setStandInMaker`).  Not the lumberjack's two source crops (4.8 MB), which every re-bake reads | playing tut_1 to mayor_1's offer on a phone at 3x: 2D canvases after the gathering 102.4 -> 80.4 MB (-22 MB); the GPU +8 MB, as every strip is uploaded when made rather than when first drawn (the legless twins and the raw figure other players' lumberjacks are drawn from included), so -14 MB in all.  What the GPU draws for every strip is the same byte for byte (`mp-gpuonly`), and after a rebuild and a minute undrawn (`mp-gatherposes`, `mp-gpuonly`) | v2.3.3150 |
 | Skill figures baked for what you wear only, the other in the background | 16-19 MB | |
-| Palette textures for the ground and the Wheel's objects | ~55 MB | |
+| Palette textures for the ground and the Wheel's objects: every ground piece and object sheet of 256 colours or fewer kept as one byte a pixel -- its colour's number -- in an R8 texture, its colours a row of one 256 x 256 table, coloured as it is drawn by a second Pixi batcher whose shader does the smooth lookup itself (`paletteTex.js`; a sheet read as its numbers in a worker, `png8Worker.js`).  Up to ~6% of the ground's pieces have more than 256 colours and go as colours, as before.  The same picture: 0.03-0.05% of the pixels one level of 255 apart, the arithmetic of a blend done in a shader rather than by the chip (`mp-palette`, frame for frame against `?nopalette`, after a rebuild too) | on arrival in BroTown (the QA phone): GPU 104.0 -> 71.9 MB, art from files 156.4 -> 125.2, buffers 10.7 -> 18.9 -- ~55 MB less in all; over the budget's trip at most: art 172.4 -> 147.8, GPU 132.5 -> 95.0, buffers 11.3 -> 20.0 (three runs) | v2.3.3190.  The cost: 8 reads a pixel instead of one filtered read, and the objects' batches split where they meet other sprites -- `mp-palette` times the whole frame on its software chip, three runs: BroTown's arrival 20-27% longer, the water among trees 14-21%, 40 / 32 and 76 / 55 draw calls; not measured on an iPhone (`?nopalette` is the comparison there).  The sheets' colour numbers stay on the page (the buffers line raised, above), and each sheet's frames have their shadow bases read off a picture decoded once as the page loads and let go of (TRAPS §166) |
 | The unused depth buffer off: the screen asks for its stencil (the masks) alone | ~11 MB of GPU memory on a 3x iPhone (~20 if Metal pads the packed buffer to 8 bytes a pixel); none on Chrome, which allocates a packed buffer whatever is asked.  Per WebKit's `WebGLDefaultFramebuffer` (depth + stencil: `DEPTH24_STENCIL8`, on Metal 32-bit float + 8; stencil alone: `STENCIL_INDEX8`).  DEPTH_TEST is never turned on, so not a pixel changes (`mp-nodepth`) | #814, v2.3.3072 |
 
 **Phase 4 -- the owner's call** (each trades something a player might notice;
@@ -235,12 +240,12 @@ every session and the tour on a button, *"Yes all 3"*:
 
    | line | what it is | highest of 6 runs | budget |
    |---|---|---|---|
-   | `artCache` | pictures loaded from files, decoded (at the fight, the monsters' looks in) | 169.4 MB | 178 MB |
-   | `gpu` | textures on the graphics chip, with what was drawn in the last minute | 135.4 MB | 145 MB |
+   | `artCache` | pictures loaded from files, decoded (at the fight, the monsters' looks in) | 169.4 MB (147.8 since v2.3.3190) | 178 MB (156 since v2.3.3190) |
+   | `gpu` | textures on the graphics chip, with what was drawn in the last minute | 135.4 MB (95.0 since v2.3.3190) | 145 MB (105 since v2.3.3190) |
    | `canvases` | pictures the game draws itself | 89.9 MB | 96 MB |
    | `sound` | sound decoded into memory | 26.0 MB | 30 MB |
    | `heap` | the page's JavaScript objects | 27.5 MB | 32 MB |
-   | `buffers` | the page's raw data buffers (~2 MB swings at a fight) | 12.8 MB | 16 MB |
+   | `buffers` | the page's raw data buffers (~2 MB swings at a fight) | 12.8 MB (20.0 since v2.3.3190) | 16 MB (24 since v2.3.3190: raised, below) |
    | `workers` | the background workers (the ground builder) | 30.5 MB | 36 MB |
 
    Trip over trip (the third home again against the second) a line may grow
@@ -252,7 +257,13 @@ every session and the tour on a button, *"Yes all 3"*:
 
    A feature that really needs more memory raises its line in the same PR and
    says in the PR, in plain words, how many MB and why; a saving lowers a line
-   and locks itself in.  What it caught, on purpose, on this build:
+   and locks itself in.  The first of each, together (v2.3.3190, the palette
+   textures, three runs): `artCache` and `gpu` lowered to lock the saving in,
+   and `buffers` raised 16 -> 24 MB -- the object sheets' colour numbers, one
+   byte a pixel, which the page keeps (~8 MB) to put a sheet back on the chip
+   after Pixi takes an idle one off it or a rebuild, and for the game's own
+   reads of a picture; the old way kept the same sheets as colours, four bytes
+   a pixel, in `artCache`, so the 8 MB replaced ~31.  What it caught, on purpose, on this build:
    - `?gpucopies` (the canvases v2.3.3088 lets go of, kept): `canvases` 114.7
      MB against 96 -- red;
    - `?musicdecode` (the music decoded, as before v2.3.3073): `sound` 88.8 MB

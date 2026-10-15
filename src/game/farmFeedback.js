@@ -40,6 +40,7 @@ export const FARM_ERR_TEXT = {
   'order-stale': 'New orders are up',
   'order-gone': 'That order is gone',
   'order-fight': 'Not while fighting',   /* v2.3.3134 (review): no deliveries in a fight with a player */
+  fight: 'Not while fighting a player',   /* v2.3.3183: no planting or compost in a fight with a player (server nomansland.js) */
   'timeout-order': 'No answer yet. Checking the board',   /* v2.3.3134 (review): farmBus asks for the board */
   'orders-closed': 'The order board is closed for now',
 };

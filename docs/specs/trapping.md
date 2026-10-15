@@ -160,7 +160,11 @@ of value, and nothing writes a pet into a record but a catch and these:
   accept; then it is checked again and all the pets move, out then in, in one
   synchronous run with the trade's other debits. A pet released, taken out or
   listed meanwhile, or no room on the other side, cancels the whole trade with
-  nothing moved. See `docs/specs/trading.md`, "Pet lane".
+  nothing moved. See `docs/specs/trading.md`, "Pet lane". Since v2.3.3186
+  renaming a staged pet is an edit like any other: both readies and accepts
+  reset and the other side is shown the new name (`_t2PetRenamed`) -- before,
+  only the name changed, so a trade could be accepted showing one name and
+  deliver the pet under another (`pettrade` suite, "rename").
 - **The auction house** (`store.js` `kind: 'pet'`), listed from the Pets page:
   escrowed in the listing record; bought, taken down or expired, it goes on
   through the same paths as every listing. See `docs/specs/auction-house.md`,

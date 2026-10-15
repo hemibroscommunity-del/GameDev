@@ -42,7 +42,7 @@ import { IncomingTradePanel } from './panels/IncomingTradePanel.jsx';
 import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
 import { EmotePanel } from './panels/EmotePanel.jsx';
 import { InspectPlayerPanel } from './panels/InspectPlayerPanel.jsx';
-import { nmlCanAttack } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land */
+import { nmlCanAttack, nmlHere } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land; v2.3.3253: + where you stand */
 import { profileRelayFields } from './panels/playerProfile.js'; /* v2.3.2926: the Inspect card's relay fields */
 import { NameModal } from './panels/NameModal.jsx';
 /* v2.3.1814: the login door that now sits in front of the creator.
@@ -378,6 +378,8 @@ import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settl
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
 import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
+import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
+import { nmlAsk, nmlAskOn, nmlAim, nmlHitBack } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
@@ -7441,6 +7443,16 @@ export var BroTown = function BroTown(_ref0) {
                Rides the 2 s track slot rather than its own timer: this is
                a 2-minute deadline, 2 s of granularity is free, and a
                frozen page runs neither. */
+            /* v2.3.3251: a harvest's HITS are play, not idleness.  The top
+               tiers take up to ~2 minutes of swings now (gathering.js
+               GATHER_NODE_HP: 104 s on obsidian at Mining 15) with nothing
+               to touch until the gesture, and a logout at 2 minutes would
+               end the very harvest it was waiting on.  Only while the hits
+               run: `ready` waits for the player, and waiting there is idle
+               like anything else. */
+            if (S._extraction && S._extraction.status === 'waiting' && S._extraction.hits && S._extraction.hits.plan && !S._extraction.locked) {
+              S._lastInputAt = Date.now();
+            }
             if (S.channel && S.channel.idleLogout &&
                 Date.now() - (S._lastInputAt || Date.now()) > IDLE_LOGOUT_MS) {
               S.channel.idleLogout();
@@ -7789,6 +7801,29 @@ export var BroTown = function BroTown(_ref0) {
       return r + g + b > 30 && Math.abs(r - _BG_R) + Math.abs(g - _BG_G) + Math.abs(b - _BG_B) > 24;
     }
     window.__btLitPx = _wdLitPx;   /* QA (mp-glrestore): the same rule */
+    /* ═══ v2.3.3151: THE WHEEL WITH NO GROUND IS A BLACK SCREEN TOO ═══
+       The owner, 2026-10-11: "the screen went black up until the point I
+       began fighting the fire goblins".  The same iPhone graphics reset as
+       v2.3.3017's, caught part way: the pictures the game made on the GPU
+       gone -- the Wheel's ground above all (its pieces live on the GPU only
+       since v2.3.3076, and so do the small map under them and the water) --
+       and the ones loaded from a file still drawn: the buildings, trees,
+       lamps and townsfolk, standing on the canvas's navy.  To the owner, a
+       black screen.  To this watchdog, 30-39% lit in town (mp-bareground),
+       far past its 1% line: no strike, no rebuild, no reload, until the walk
+       out to the Flame Fields' open ground left so little standing on screen
+       that the line was crossed at last, and the rebuild came.
+       In the Wheel the ground covers the whole screen, and almost none of it
+       is dark: measured in town and out along all eight spokes (51 places,
+       a phone at 3x), a screen with its ground reads 95-100% lit, and the
+       same screens with the ground blanked 9-56% (the Verdant Wilds' woods
+       the most: their trees cover the most of it).  The darkest swatch,
+       thunder-3, is 11% dark pixels, 17% all in shade.  So there a screen
+       under WD_WHEEL_LIT_MIN lit is a ground gone, and counts as dark.
+       Nowhere else: a dungeon's walls, the farm, a zone's own black are
+       drawn on purpose.  A part of the Wheel drawn dark on purpose (a night,
+       the Dark realm) has to lower this first. */
+    var WD_WHEEL_LIT_MIN = 75;
     /* ═══ v2.3.3068: THE GPU MAKES THE THUMBNAIL, AND NOTHING WAITS FOR IT ═══
        The sample is a 32 x 18 thumbnail of the world canvas.  drawImage from a
        WebGL canvas made it by copying the WHOLE drawing buffer out of the GPU
@@ -8129,13 +8164,19 @@ export var BroTown = function BroTown(_ref0) {
             _wdPendingAt = 0;
             /* ...and a veil that went up while it came back is judged as above */
             if (_pctWd < 0 || _wdVeiled()) return;
+            /* v2.3.3151: the Wheel with its ground gone (WD_WHEEL_LIT_MIN) */
+            var _wdBare = _pctWd >= 1 && _pctWd < WD_WHEEL_LIT_MIN && S.currentZone === 'wheel';
             /* v2.3.1721: the world has rendered at least once — from here the
                conservative two-strike rule applies. */
-            if (_pctWd >= 1) { S.__wdDark = 0; S.__wdEverLit = true; return; }
+            if (_pctWd >= 1 && !_wdBare) { S.__wdDark = 0; S.__wdEverLit = true; return; }
+            /* v2.3.3151: a bare Wheel still draws what came from a file, so the
+               renderer works: two strikes, never the first join's one */
+            if (_wdBare) S.__wdEverLit = true;
             S.__wdDark = (S.__wdDark || 0) + 1;
+            var _wdWhy = _wdBare ? "the Wheel's ground gone, " : '';
             try {
               import('../debug/crashTrap.js').then(function (ct) {
-                ct.recordCrash('watchdog-dark', 'screen ' + _pctWd + '% lit, strike ' + S.__wdDark);
+                ct.recordCrash('watchdog-dark', _wdWhy + 'screen ' + _pctWd + '% lit, strike ' + S.__wdDark);
               }).catch(function () {});
             } catch (e) {}
             /* v2.3.1721: one strike before the first lit frame, two after. */
@@ -8143,7 +8184,7 @@ export var BroTown = function BroTown(_ref0) {
             if (S.__wdDark === _strikesNeeded && window._rebuildRenderer) {
               if (!S.__wdEverLit) S.__wdFastRebuiltAt = Date.now();
               window._rebuildRenderer(S.__wdEverLit
-                ? 'watchdog: screen dark 10s'
+                ? (_wdBare ? "watchdog: the Wheel's ground gone 10s" : 'watchdog: screen dark 10s')
                 : 'watchdog: black on first join');
             }
             /* v2.3.1722: a first join still black a beat after its rebuild
@@ -8160,7 +8201,7 @@ export var BroTown = function BroTown(_ref0) {
             }
             if (S.__wdDark >= 4) {
               S.__wdDark = 0;
-              _recoveryReload('world dark 20s despite rebuild -- reloading into game');
+              _recoveryReload(_wdWhy + 'world dark 20s despite rebuild -- reloading into game');
             }
             });
           });
@@ -9745,6 +9786,38 @@ export var BroTown = function BroTown(_ref0) {
       var _p = clientToCanvas(clientX, clientY);
       return tapNpcAtCss(_p.x, _p.y);
     };
+    /* ═══ v2.3.3253: A PLAYER YOU COULD FIGHT BEATS THE SELF-CHAT CIRCLE ═══
+       In No man's land a tap on a player asks "Attack <name>?" (game/nmlAsk.js)
+       -- but isSelfTouch's 52 world px circle round your own body claims a tap
+       before it is forwarded, and two players at a sword's reach (~34 px)
+       stand inside it: a tap on the one beside you opened your chat, every
+       time (found by mp-nmlask).  So, as an NPC and a resource already do,
+       such a player under the finger -- inside the world tap's own 25 px of
+       them, and nearer them than your own body -- takes the tap: it is
+       forwarded to the world, whose player branch raises the window (or aims,
+       hitting back).  Only there, and only for a player the rule lets you
+       fight: everywhere else your own circle still opens chat. */
+    var nmlPlayerAtClient = function (clientX, clientY) {
+      var S = stateRef.current;
+      if (!S || !S.others || !S.player || !S.camera || !nmlAskOn(S) || !nmlHere(S)) return false;
+      var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
+      var _p = clientToCanvas(clientX, clientY);
+      var cam = S.camera, P = S.player;
+      var selfD = Math.hypot(_p.x - (P.x - cam.x) * sx, _p.y - (P.y - 24 - cam.y) * sy);
+      for (var _nid in S.others) {
+        var _no = S.others[_nid];
+        if (!_no || typeof _no.renderX !== 'number' || typeof _no.renderY !== 'number') continue;
+        var _nd = Math.hypot(_p.x - (_no.renderX - cam.x) * sx, _p.y - (_no.renderY - cam.y) * sy);
+        if (_nd < 25 && _nd < selfD && nmlCanAttack(S, _nid)) return true;
+      }
+      return false;
+    };
+    /* ...and the forward itself, as each zone's own tap forward does */
+    var forwardTapToWorld = function (clientX, clientY) {
+      try {
+        if (canvasRef.current) canvasRef.current.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: clientX, clientY: clientY }));
+      } catch (err) { /* the tap is lost, as any forward's would be */ }
+    };
     var openSelfChat = function () {
       /* v2.3.2306: stamp the GESTURE, for the coach's chat lesson. A state
          stamp rather than a callback pushed into this control -- the coach
@@ -9911,6 +9984,13 @@ export var BroTown = function BroTown(_ref0) {
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
             && tapNpcAtClient(t.clientX, t.clientY)) {
           lts.lastEndAt = 0;
+          return;
+        }
+        /* v2.3.3253: a player you could fight in No man's land beats it too */
+        if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
+            && nmlPlayerAtClient(t.clientX, t.clientY)) {
+          lts.lastEndAt = 0;
+          forwardTapToWorld(t.clientX, t.clientY);
           return;
         }
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
@@ -10176,6 +10256,13 @@ export var BroTown = function BroTown(_ref0) {
          where the touchstart used to start a swing at him. */
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
           && tapNpcAtClient(t.clientX, t.clientY)) {
+        return;
+      }
+      /* v2.3.3253: a player you could fight in No man's land beats the
+         self-chat circle too (nmlPlayerAtClient) */
+      if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
+          && nmlPlayerAtClient(t.clientX, t.clientY)) {
+        forwardTapToWorld(t.clientX, t.clientY);
         return;
       }
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
@@ -11864,8 +11951,22 @@ export var BroTown = function BroTown(_ref0) {
                swing a plain one (mp-nomansland).  Tap empty ground to let go,
                as for any lock. */
             if (!(S.lockedTarget && S.lockedTarget.id === id)) {
-              S.lockedTarget = { type: 'player', id: id, ref: o, nml: true };
-              try { pushDmgPopup(S, o.x, o.y - 70, 'TARGET', '#ff6b5e', { ts: Date.now() }); } catch (e) { /* the reticle says it */ }
+              /* ═══ v2.3.3253: ...BUT THE TAP ASKS FIRST ═══
+                 Owner: "I want attacking other players to be intentional ...
+                 Tapping on the player while they're in the no man's land can
+                 still have the party and attack (with red skull) options
+                 there."  A tap within 25 px of a player aimed at them at once,
+                 so a tap meant for the monster beside them started a fight,
+                 and the first hit a red skull.  It now raises the small
+                 window (ui/mobile/NmlAskCard.jsx): Attack aims exactly as
+                 this tap did (nmlAim: the `nml` lock and "TARGET"), Party
+                 invites, Ignore lets it go.  Except the one who attacked you
+                 (nml_skull's `by`, and you carry no red skull): hitting them
+                 back gives no red skull, so the tap aims at once, as before.
+                 ?nmlask=0, or a worker without No man's land, aims as before. */
+              var _nmlAsked = false;
+              try { _nmlAsked = nmlAskOn(S) && !nmlHitBack(S, id) && nmlAsk(S, id, 'tap'); } catch (e) { _nmlAsked = false; }
+              if (!_nmlAsked) nmlAim(S, id);
             }
             return;
           }
@@ -13501,7 +13602,11 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
-  React.createElement(NmlBadge, { stateRef: stateRef }), /* v2.3.2051 (owner: "Yeah replace it"): the building-side town shop is
+  React.createElement(NmlBadge, { stateRef: stateRef }),
+  /* v2.3.3253: the small window a tap or a stray shot raises about a player
+     you could fight there (game/nmlAsk.js), portalled to the top of the
+     screen, under the minimap */
+  React.createElement(NmlAskCard, { stateRef: stateRef }), /* v2.3.2051 (owner: "Yeah replace it"): the building-side town shop is
      RETIRED -- both the "Open Shop" prompt and the ShopPanel it opened.
      Shopkeeper Bro does this job now, and does it server-side: the old
      panel credited coins and edited the bag in the CLIENT and then told

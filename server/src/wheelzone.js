@@ -128,6 +128,9 @@ export const WHEEL = Object.freeze({
      state is fresh before it can be drawn. */
   INTEREST_R: 2400,
   INTEREST_OUT: 2800,
+  /* v2.3.3195: the side of _wheelMonsterGrid's squares: half INTEREST_OUT,
+     so a player's reach covers at most 5 x 5 of them */
+  GRID_CELL: 1400,
   /* v2.3.3012: WHEEL_NODES' kind letters, and the only gathering tiers a baked
      node may carry -- the three gathering.js _harvestNameForTier names */
   NODE_TYPES: Object.freeze({ o: 'oreVein', t: 'tree', f: 'fishSpot' }),
@@ -137,6 +140,72 @@ export const WHEEL = Object.freeze({
   /* v2.3.3094: + 16 and 21, the second stage's (levels 21-30, 31-40) */
   NODE_TIERS: Object.freeze([1, 6, 11, 16, 21]),
 });
+
+/* v2.3.3201: a square's key is a NUMBER, cx * GRID_KEY + cy (unique while
+   |cy| < 2^20), where it was the string 'cx,cy' -- up to 25 strings made and
+   looked up for every Wheel player every tick, and then a sort calling a
+   comparator, were two thirds of this search's cost in the load test's
+   profile.  A square past GRID_LIM (a position no Wheel has) sends the
+   search back to the full walk, so no two squares can ever share a key. */
+const GRID_KEY = 2 ** 21;
+const GRID_LIM = 2 ** 20 - 2;
+const gridKeyOk = (cx, cy) => cx >= -GRID_LIM && cx <= GRID_LIM && cy >= -GRID_LIM && cy <= GRID_LIM;
+/* the indices found, reused from call to call (read before the next call) */
+let nearIdx = new Int32Array(512);
+/* v2.3.3242: `entered` when nothing entered -- shared, never written to */
+const NO_ENTERED = new Set();
+
+/* v2.3.3195: the indices of the monsters in the grid squares within `r` of
+   (x, y) on both axes, in the monsters' own order.  v2.3.3201: written into
+   `nearIdx`, and the count returned -- sorted as numbers by the typed array's
+   own sort (no comparator), the same order; -1 when the grid cannot answer
+   (the full walk does).  A position that is not finite reaches nothing, as
+   the full walk's distance test says. */
+function wheelGridNear(grid, x, y, r) {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return 0;
+  const C = WHEEL.GRID_CELL;
+  const x0 = Math.floor((x - r) / C), x1 = Math.floor((x + r) / C);
+  const y0 = Math.floor((y - r) / C), y1 = Math.floor((y + r) / C);
+  if (!gridKeyOk(x0, y0) || !gridKeyOk(x1, y1)) return -1;
+  let n = 0;
+  for (let cx = x0; cx <= x1; cx++) {
+    for (let cy = y0; cy <= y1; cy++) {
+      const c = grid.cells.get(cx * GRID_KEY + cy);
+      if (c === undefined) continue;
+      if (n + c.length > nearIdx.length) {
+        const bigger = new Int32Array(Math.max(nearIdx.length * 2, n + c.length));
+        bigger.set(nearIdx.subarray(0, n));
+        nearIdx = bigger;
+      }
+      for (let k = 0; k < c.length; k++) nearIdx[n++] = c[k];
+    }
+  }
+  if (n > 1) nearIdx.subarray(0, n).sort();
+  return n;
+}
+
+/* v2.3.3242: wheelGridNear's answer for a block of squares, kept on the grid
+   for the tick it was built in (tick.js builds a new grid every tick), so the
+   players standing in the same squares ask once.  A copy, as nearIdx is
+   reused; null when the grid cannot answer (the full walk does). */
+function wheelGridNearKept(grid, x, y, r) {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return EMPTY_IDX;
+  const C = WHEEL.GRID_CELL;
+  const x0 = Math.floor((x - r) / C), x1 = Math.floor((x + r) / C);
+  const y0 = Math.floor((y - r) / C), y1 = Math.floor((y + r) / C);
+  if (!gridKeyOk(x0, y0) || !gridKeyOk(x1, y1)) return null;
+  const kept = grid.near || (grid.near = new Map());
+  const key = x0 + ',' + y0 + ',' + x1 + ',' + y1;
+  let idx = kept.get(key);
+  if (idx === undefined) {
+    const n = wheelGridNear(grid, x, y, r);
+    if (n < 0) return null;
+    idx = nearIdx.slice(0, n);
+    kept.set(key, idx);
+  }
+  return idx;
+}
+const EMPTY_IDX = new Int32Array(0);
 
 export const wheelzoneMethods = {
   _wheelMonstersOff() {
@@ -336,20 +405,84 @@ export const wheelzoneMethods = {
      none is ever drawn where it stood when it was last in reach.  Kept on the
      session; tick.js drops it when the session is anywhere else, so coming
      back re-sends every one in reach.  Monster ids are server-minted. */
-  _wheelInterest(session, ps, monsters) {
+  /* v2.3.3195: `grid` (optional) is _wheelMonsterGrid's index of the same
+     monsters, built once a tick by tick.js: only the cells within
+     INTEREST_OUT of the player are walked, in the monsters' own order, so the
+     answer is exactly the full walk's -- a monster in any other cell is more
+     than INTEREST_OUT away on one axis, and both tests below refuse it.
+     `list` is the seen monsters in that order, so tick.js no longer filters
+     all of them a second time per player.  Before, every Wheel player walked
+     all 384 monsters every tick, twice (the load test's profile,
+     docs/specs/load-test.md). */
+  /* ═══ v2.3.3242: THE SAME ANSWER, A THIRD OF THE WORK ═══
+     The stress test's profile of the real runtime at 120 players: this was
+     the room's biggest single cost after building and sending the ticks,
+     ~145 ms of every second of its thread (in process: ~110 ms, more than the
+     whole tick's own building).  Every Wheel player, every tick, it made two
+     Sets, an array and a closure, looked every candidate up in last tick's
+     set (by its string id) before knowing whether it was even near, and asked
+     the grid for the same squares as everyone standing near them.  Now:
+       - the distance first: a candidate past INTEREST_OUT (about half of the
+         5 x 5 squares' worth) is dropped before any set is touched;
+       - the session's two sets are used in turn, and its list kept (`seen`
+         and `list` are read only within the tick that made them: tick.js),
+         and `entered` is made only when something enters (one shared empty
+         set otherwise, never written to);
+       - the grid's answer for a block of squares is kept for the tick
+         (`grid.near`), so the players standing in the same squares -- the
+         town -- ask once.
+     The answer is exactly the old one: tick-share.test.mjs §5 holds it to a
+     copy of the code before, tick after tick, monster for monster, in order. */
+  _wheelInterest(session, ps, monsters, grid) {
     const prev = session._wheelSeen || null;
-    const seen = new Set(), entered = new Set();
+    const bufs = session._wheelBufs || (session._wheelBufs = [new Set(), new Set()]);
+    const seen = bufs[0] === prev ? bufs[1] : bufs[0];
+    seen.clear();
+    const list = session._wheelList || (session._wheelList = []);
+    list.length = 0;
+    let entered = NO_ENTERED;
     const rIn2 = WHEEL.INTEREST_R * WHEEL.INTEREST_R, rOut2 = WHEEL.INTEREST_OUT * WHEEL.INTEREST_OUT;
-    for (const m of monsters) {
-      const dx = m.x - ps.x, dy = m.y - ps.y, d2 = dx * dx + dy * dy;
-      const had = !!(prev && prev.has(m.id));
+    const px = ps.x, py = ps.y;
+    /* one pixel past INTEREST_OUT: a monster on a square's edge is never
+       lost to rounding, and the distance test below still decides */
+    const near = (grid && grid.monsters === monsters && grid.cells)
+      ? wheelGridNearKept(grid, px, py, WHEEL.INTEREST_OUT + 1) : null;
+    const n = near ? near.length : monsters.length;
+    for (let k = 0; k < n; k++) {
+      const m = near ? monsters[near[k]] : monsters[k];
+      const dx = m.x - px, dy = m.y - py, d2 = dx * dx + dy * dy;
+      if (d2 > rOut2) continue;   /* in reach of nobody's rule: never a set lookup */
+      const had = prev !== null && prev.has(m.id);
       if (d2 <= rIn2 || (had && d2 <= rOut2)) {
         seen.add(m.id);
-        if (!had) entered.add(m.id);
+        list.push(m);
+        if (!had) {
+          if (entered === NO_ENTERED) entered = new Set();
+          entered.add(m.id);
+        }
       }
     }
     session._wheelSeen = seen;
-    return { seen, entered };
+    return { seen, entered, list };
+  },
+
+  /* v2.3.3195: the Wheel's monsters by GRID_CELL square, as array indices in
+     array order -- built once a tick (tick.js), for _wheelInterest */
+  _wheelMonsterGrid(monsters) {
+    const cells = new Map();
+    for (let i = 0; i < monsters.length; i++) {
+      const m = monsters[i];
+      const cx = Math.floor(m.x / WHEEL.GRID_CELL), cy = Math.floor(m.y / WHEEL.GRID_CELL);
+      if (!Number.isFinite(cx) || !Number.isFinite(cy)) continue;   /* a NaN position is never in reach */
+      /* v2.3.3201: a number for a key (GRID_KEY); a square no Wheel has
+         leaves the grid unusable, and _wheelInterest walks them all */
+      if (!gridKeyOk(cx, cy)) return { monsters, cells: null };
+      const k = cx * GRID_KEY + cy;
+      let c = cells.get(k);
+      if (!c) cells.set(k, c = []);
+      c.push(i);
+    }
+    return { monsters, cells };
   },
 
   /* The zone a kill pays out for: a Wheel monster's home, everywhere else the

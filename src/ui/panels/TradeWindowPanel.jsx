@@ -1417,6 +1417,13 @@ export function TradeWindowPanel(props) {
               onClick={() => send('trade2_ready', { ready: false })}
             >Back</button>
           </div>
+          {/* v2.3.3183: the worker takes no trade while either of you is in a
+              fight with a player (server nomansland.js _bagLockedByFight) */}
+          {trade2.reason === 'fight' && (
+            <div data-t2-fight="1" style={{ fontSize: 12, color: '#D8635D', marginTop: 6, textAlign: 'center' }}>
+              Not while one of you is fighting a player. Try again in a few seconds.
+            </div>
+          )}
           {/* ═══ v2.3.2293: BOTH FOOTERS REMOVED ═══
               Owner: "remove all the tiny info disclaimers and explainers".
               This one stated the anti-switch rule and the live window's stated

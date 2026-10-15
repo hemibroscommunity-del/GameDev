@@ -43,21 +43,25 @@ const GPU_SHIM = () => {
   for (const P of protos) {
     const bind = P.bindTexture;
     P.bindTexture = function (target, t) { let m = bound.get(this); if (!m) { m = {}; bound.set(this, m); } m[target] = t; return bind.apply(this, arguments); };
-    const put = (ctx, target, level, w, h) => {
+    /* v2.3.3190: bytes a pixel by the internal format -- the Wheel's ground
+       and objects are R8 (one byte a pixel: rendering/paletteTex.js) */
+    const bppOf = (f) => (f === 0x8229 || f === 0x8231 || f === 0x8232 || f === 0x1903 || f === 0x1906 || f === 0x1909 ? 1
+      : (f === 0x822B || f === 0x822D || f === 0x8233 || f === 0x8234 || f === 0x190A ? 2 : 4));
+    const put = (ctx, target, level, w, h, bpp = 4) => {
       if (level !== 0) return;
       const t = (bound.get(ctx) || {})[target >= 0x8515 && target <= 0x851A ? 0x8513 : target];
       if (!t) return;
-      const was = sizes.get(t) || 0, now = (w | 0) * (h | 0) * 4;
+      const was = sizes.get(t) || 0, now = (w | 0) * (h | 0) * bpp;
       sizes.set(t, now); tex += now - was; bump();
     };
     const ti = P.texImage2D;
     P.texImage2D = function (target, level) {
       let w, h;
       if (arguments.length >= 9) { w = arguments[3]; h = arguments[4]; } else { [w, h] = dims(arguments[arguments.length - 1]); }
-      put(this, target, level, w, h);
+      put(this, target, level, w, h, bppOf(arguments[2]));
       return ti.apply(this, arguments);
     };
-    if (P.texStorage2D) { const ts = P.texStorage2D; P.texStorage2D = function (target, levels, fmt, w, h) { put(this, target, 0, w, h); return ts.apply(this, arguments); }; }
+    if (P.texStorage2D) { const ts = P.texStorage2D; P.texStorage2D = function (target, levels, fmt, w, h) { put(this, target, 0, w, h, bppOf(fmt)); return ts.apply(this, arguments); }; }
     const del = P.deleteTexture;
     P.deleteTexture = function (t) { const s = sizes.get(t); if (s != null) { tex -= s; sizes.delete(t); } return del.apply(this, arguments); };
     const bindRb = P.bindRenderbuffer;

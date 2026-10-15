@@ -27,7 +27,9 @@ a teammate, a tick of burn or poison, a pet's hit and a gathering hit.
 It leaves alone: every word ("Blocked!", "Dodged", "Swimming!"), pay-outs and
 heals ("+30 XP", "+25 G", "+12"), and a note that merely asks to be big and
 wiggly with the `crit` flag (BroTown's `pushNpcMsg`) -- real crits always carry
-the crit or a weapon mark.
+the crit or a weapon mark. (v2.3.3192: those are all the plain hit's size now --
+see "Messages as big as the numbers" below. The test still decides which is
+which, because a crit and a message are not drawn the same.)
 
 **What follows the size**, so the relations earlier work set still hold:
 
@@ -70,13 +72,97 @@ wiggle), which a 100 px bake enlarged 1.33x. It is baked at 128 now
 6.0 to 6.7 MB, since pixi shrinks the page canvases as the bake grows (TRAPS §137);
 a dedicated digits-only font would hold 1.2-2 MB on top, 160 would hold 11.3 MB.
 
+## Messages as big as the numbers (v2.3.3192)
+
+> *"Make the messages in the game like "no mana" and other things like "quest
+> complete!" the same font size as the combat damage numbers (which don't seem
+> to scale with whether you're zoomed out with the dashboard showing or zoomed
+> in)."* -- the owner, 2026-10-12.
+
+**What it looked like.** Measured on the QA phone (390 x 844) in BroTown, off the
+live Pixi objects: a plain hit 24.9 CSS px tall with the dashboard folded and
+19.0 with it up; "No mana!", "Quest Complete!" and "+30 XP" 14.3 and 10.9 --
+about 57% of the number, at both zooms.
+
+**The zoom.** The numbers DID change with the dashboard: they were drawn in the
+world, and folding the dashboard draws the world 1.31x bigger (scale 0.4625 ->
+0.6061), so a plain hit went 19.0 -> 24.9 CSS px, as everything in the world
+does -- which is why it read as not changing. The messages did exactly the
+same, just smaller. The first cut of this change only made the messages the
+numbers' size in the world; told so, the owner asked for the other way: "Yes do
+fixed size instead".
+
+**One size on the screen.** Every popup -- number and message -- is now drawn
+at the size it has at `POPUP_ZOOM` 0.606, the world's scale on the QA phone with
+the dashboard folded (the bro 64 px tall, where every popup size here was
+tuned): a plain hit's type 22.3 CSS px, a crit's 40.3, whatever the dashboard
+does. Each frame the world's own scale is divided back out, `Z` =
+`POPUP_ZOOM` / `S._worldScaleX` (`popupZoomK`), as the name plates (v2.3.2513)
+and the chat bubble (v2.3.2247) do theirs. With the dashboard up (0.4625) a
+popup is drawn 1.31x the world px it had, so it is the same on the screen; on a
+bigger phone, sideways, or in the desktop shell it is that CSS size too. Z
+scales a popup's size AND everything measured from the spot it was pushed at:
+its lift, its place in a stack (the neighbour scan compares spots plus Z x
+offsets, and keeps the offset in popup px), its climb, its mark and the gap
+before it, the wrap width and the edge margin. Only the spot itself (over a
+monster's bar, over your head) stays the world's. `?popupworld` draws them in
+the world as before, to compare; `_z` on a popup record says what it was drawn
+at (QA).
+
+The wrap width is capped by the screen too (`msgWrapW`): popups being one CSS
+size, a line may take at most `MSG_WRAP_SCREEN` 0.82 of the canvas's CSS width
+(on the QA phone the cap is 528 popup px, so MSG_WRAP_W's 520 holds; a 320 px
+phone gets about 21 characters a line).
+
+**The rule.** Every popup that is not a damage number (`isDamagePopup` false) is a
+message, drawn at `MSG_FONT_PX` = `DMG_FONT_PX` x `DMG_SCALE` (36.75 world px),
+the plain hit's size, and it follows `?dmgscale=` with them. That is every word
+("No mana!", "Quest Complete!", "Return to Mayor Bro", "Blocked!", "Dodged",
+"Swimming!", "Requires Fishing Lv 5"), every reward line ("+12 Woodcutting XP",
+"+ Frost Shard", "+30 XP", "+25 G"), heals ("+12", "+12 HP"), and "-45 Steam
+Burst". A crit is still the one bigger thing (66.5). A note with the bare `crit`
+flag (`pushNpcMsg`, the E key's "Mayor Bro has nothing for you right now", 38 px
+before) is a message: the plain hit's size, still wiggling. A message's outline,
+lift, stacking and climb follow its size exactly as a number's do (`_k` is
+`DMG_SCALE` for both): outline 5.25 on classic Text, climb 70 px a second unless
+the push names its own `rise` (the quest's pair: 12).
+
+**Long ones wrap, never shrink.** At 36.75 px "Element Burst needs an enchanted
+weapon" is ~750 world px and an upright phone sees ~640 across in the Wheel. A
+message wider than `MSG_WRAP_W` (520 world px, about 26 characters; 315 CSS px
+folded on the QA phone) is broken at its spaces into the fewest lines that fit,
+as even as they can be (`msgLines`: the shortest possible longest line), centred,
+at most 4. A wrapped message is lifted by its extra lines' height, so its LAST
+line sits where the one line would have (it grows upward), and the stacking
+counts its lines and its width.
+
+**Kept on the screen.** A message is held `MSG_EDGE_PX` (12 world px) inside the
+view's sides by its resting width (and its mark's; a crit-flagged note by its
+widest wiggle): against a dungeon's wall the camera stops following you, and a
+message centred over you there ran off the screen. Damage numbers are never
+moved.
+
+**Where they spawn is unchanged.** Each push site keeps its own place (most a
+little over your chest or head); the lift keeps a message's bottom edge where the
+smaller one's was, so it grows upward.
+
+| | Before | After |
+|---|---|---|
+| a plain hit, folded / dashboard up (QA phone) | 24.9 / 19.0 CSS px | 24.9 / 24.9 (one size) |
+| a message, folded / dashboard up (QA phone) | 14.3 / 10.9 CSS px | 24.9 / 24.9, the plain hit's |
+| "Element Burst needs an enchanted weapon" | one line, 21 px | two lines, 36.75 px |
+| the E key's crit-flagged note | 38 px, wiggling | 36.75 px, wiggling |
+| a message at the view's edge | half off the screen | 12 px inside it |
+
 ## Not changed
 
-- The words, XP, gold and heals (21 px, rising 40 px a second), the pop (1.6x for
-  120 ms), the life (1.5 s), the colours and the marks themselves.
+- (v2.3.3192: the words, XP, gold and heals are the numbers' size now -- the
+  section above.) The pop (1.6x for 120 ms), the life (1.5 s), the colours and
+  the marks themselves.
 - The server: this is all drawing.
 - Elemental collision bursts with a name ("-45 Steam Burst") are text with a
   label, not a plain number, so they keep 21 px. Say if they should grow too.
+  (v2.3.3192: they are messages, so they grew.)
 
 ## Checked by
 
@@ -90,7 +176,21 @@ a dedicated digits-only font would hold 1.2-2 MB on top, 160 would hold 11.3 MB.
   a special's number (outline and halo in step) and thorns' emoji number; a real
   fire goblin hit through the worker, its number clear of its bar; and "Blocked!",
   "Dodged", "+12", "Swimming!" at 21.
+  v2.3.3192: those words, the kill's XP and gold, "No mana!", "Quest Complete!"
+  and "Return to Mayor Bro" (as the game pushes them) at the plain hit's size and
+  as tall on the screen as it; the quest's two lines a line apart; a crit-flagged
+  note at the plain size; a classic-Text message ("Wave 1/3") with its outline
+  grown; "Element Burst needs an enchanted weapon" in two even lines and a cut
+  announcement wrapped, inside the wrap width, at the same size; a message at
+  each edge of the view held 12 px inside it while a number is left where it is;
+  and with the dashboard up and folded (two zooms) a hit the SAME height on the
+  screen, "No mana!" exactly as tall as it, and two stacked hits the same
+  distance apart (one size on the screen). Measurements are taken at rest (a
+  read on the test box can catch the spawn pop), the popup's screen factor
+  `_z` kept in.
   Run against another build with `QA_DIST` it takes the "before".
 - `mp-elemhits` (the marks on a hit taken, now against the scaled cap the probe
   reports) and `mp-critpreview`.
 - docs/shots/dmgsize.md: before and after, a phone, in the Wheel.
+- docs/shots/msgsize.md (v2.3.3192): the messages before and after, with the
+  dashboard folded and up, and the long ones wrapped.

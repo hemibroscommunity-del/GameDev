@@ -114,7 +114,14 @@ export const duelMethods = {
     const now = Date.now();
 
     if (msg.type === 'duel_request' || msg.type === 'duel_wager_request') {
-      const wager = Math.max(0, Math.min(999999, Math.floor(Number(payload.wager) || 0)));
+      /* v2.3.3168: only a duel_wager_request carries a stake.  The game opens
+         a plain duel_request as a no-stakes duel (gameEvents.js shows it with
+         no gold line, and its Accept echoes 0), so a stake riding on one was
+         a stake the other player never saw -- and the accept below used to
+         escrow it from them all the same. */
+      const wager = msg.type === 'duel_wager_request'
+        ? Math.max(0, Math.min(999999, Math.floor(Number(payload.wager) || 0)))
+        : 0;
       this._duelChallenges.set(fromId + '>' + target, { wager, ts: now });
       payload.wager = wager; // relay the sanitized number
       return msg;
@@ -162,16 +169,26 @@ export const duelMethods = {
     // CHALLENGE's number is authoritative (an edited accept can't
     // inflate the opponent's stake).
     const wager = chal.wager;
+    /* v2.3.3168: ...and never MORE than the accepter was shown.  The map
+       above keeps only a challenger's latest challenge, so one re-sent with
+       a bigger stake between the popup and the press was escrowed from an
+       accepter whose screen (and whose echo) said the smaller number.  A
+       stake at or under the echo is one they agreed to; anything over it is
+       refused before any gold moves, answered to both like every refusal
+       here.  The honest game always echoes the number it relayed. */
+    const shown = Math.max(0, Math.floor(Number(payload.wager) || 0));
+    if (wager > shown) return declineBoth();
     const duelId = crypto.randomUUID();
     if (wager > 0) {
-      const dA = await this._escrowDebitGold(a, wager, 'duel:' + duelId + ':a');
-      if (!dA.ok) return declineBoth();
-      const dB = await this._escrowDebitGold(b, wager, 'duel:' + duelId + ':b');
-      if (!dB.ok) {
-        await this._creditPlayer(a, { opId: 'duelrefund:' + duelId + ':a', source: 'duel', kind: 'gold', payload: { amount: wager }, note: 'duel wager returned' });
-        return declineBoth();
-      }
-      await this.state.storage.put('duelEscrow:' + duelId, { a, b, wager, startedAt: now });
+      /* v2.3.3185: both stakes and the escrow record in ONE write
+         (inbox.js _escrowDebitGoldTogether).  They were three -- a's stake,
+         b's stake, then the record -- and a restart after a stake but before
+         the record lost it: the sweep refunds only what a record names.  Now
+         both purses are checked first and nothing moves unless both pay. */
+      const staked = await this._escrowDebitGoldTogether(
+        [{ id: a, amount: wager, opId: 'duel:' + duelId + ':a' }, { id: b, amount: wager, opId: 'duel:' + duelId + ':b' }],
+        [['duelEscrow:' + duelId, { a, b, wager, startedAt: now }]]);
+      if (!staked.ok) return declineBoth();
     }
     // v2.3.1175: away is a per-player map {pid: forfeitDeadline}.  The
     // old single-slot graceUntil/awayId pair meant a second disconnect

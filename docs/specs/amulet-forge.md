@@ -186,11 +186,33 @@ a drifted label would flip every extracted item's name).
 
 ### Residuals (still client-side, documented)
 
-- **Shield/weapon gem-slot consumption** (EnchantPanel non-amulet
+- **Weapon gem-slot consumption** (the shield's moved to the worker in v2.3.3187, docs/specs/shield-gems.md; EnchantPanel's weapon
   slots): client-local consume, echo restores the gem. Non-flame gem
   bonuses are client-side point-of-use effects (v2.3.1139 posture), so
   the server has nothing to validate yet; migrate alongside the slots'
   stat migration.
+
+## v2.3.3172: a claimed shield's gem, and the join's clamp
+
+Found by the overnight economy review (2026-10-12), both reproduced on main
+in `amulet.test.mjs` §12b and §13b:
+
+- **A shield gem pays only on a shield the server made.** The extract op
+  paid `polished_<gem>` for whatever `gem` sat on `ps.shield`. No server
+  path slots a shield gem (the slot is still the game's own, backlog A),
+  and since v2.3.3091's `shield_wear` a shield adopted from the join's bag
+  claim (shape-checked only, its `gem` kept) can be put on the arm, so a
+  claimed shield paid a gem for one coin (its claimed `tierMult`), about 31
+  a join, any element. `_extractableGems` now pays a shield's gem only when
+  the piece is `prov: 'minted'`. Any other shield keeps its gem; it just
+  can't be cashed in. A shield gem slotted in the game from before the
+  server held gems is in that group too: it stays on the shield.
+- **The 200 clamp is for a claim.** `_gemsAdoptOnJoin` ran the server's own
+  stored map through the claim's 200-per-gem ceiling at every join, so gems
+  cut or dropped past 200 were deleted by the next reconnect. A record
+  stamped `gemsCaptured` now keeps its counts (whitelist and integer checks
+  still apply); one from before the stamp is still held to 200, which is
+  the old bootstrap capture the clamp was written to heal.
 
 ## Trust posture / deliberately still client-side
 

@@ -99,7 +99,7 @@ const baseSession = (id) => ({ id, name: 'T', data: {}, rtt: 80, lastPing: 0, la
    which counts joined players, not raw sockets — reports them. */
 const CAP = room.MAX_PLAYERS;
 for (let i = 0; i < CAP - 1; i++) room.sessions.set(fakeSocket('p' + i), baseSession('bp_seat_' + i));
-check('the cap under test is the shipped one (60)', CAP === 60, CAP);
+check('the cap under test is the shipped one (120, v2.3.3205)', CAP === 120, CAP);
 
 // ── 1. under the cap ──
 {

@@ -46,6 +46,9 @@
  * _applyDamage rather than inventing a second immunity mechanism.
  */
 import { QUEST_ZONE_GATE } from './movement.js';
+import { AMULET_GEMS } from './data.js'; /* v2.3.3187: the kit's polished gems */
+import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
+import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -179,6 +182,27 @@ export const devToolsMethods = {
       for (const piece of over) {
         if (!ws) break;
         try { ws.send(JSON.stringify({ type: 'quest_reward_stashed', payload: { questId: 'devkit', item: piece } })); out.armor++; } catch (e) { /* best effort */ }
+      }
+    }
+    /* ═══ v2.3.3187: A SHIELD, AND POLISHED GEMS ═══
+       For the shield gem slot (shieldgem.js) and mp-shieldgem: the
+       tutorial's own Pine Shield through _grantQuestItem -- minted into the
+       ledger exactly as tut_1 mints it, and only into an empty ps.shield, the
+       quest's own rule -- and polished gems onto the worker's own count, the
+       elements the game has (AMULET_GEMS), `count` each (3; 1-50).  Neither is
+       part of 'all': the owner's kit button gives what it always gave. */
+    if (want === 'shield') {
+      try { out.shield = !!this._grantQuestItem(ps, { kind: 'shield', gearBase: 'wood', tierMult: 1.0, name: 'Pine Shield' }, playerId); } catch (e) { out.shield = false; }
+    }
+    if (want === 'gems') {
+      const n = Math.max(1, Math.min(50, Math.floor(Number(opts && opts.count) || 3)));
+      if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
+      if (!ps.lifeSkills.gems || typeof ps.lifeSkills.gems !== 'object') ps.lifeSkills.gems = {};
+      out.gems = {};
+      for (const g of AMULET_GEMS) {
+        const k = 'polished_' + g;
+        ps.lifeSkills.gems[k] = Math.floor(Number(ps.lifeSkills.gems[k]) || 0) + n;
+        out.gems[k] = ps.lifeSkills.gems[k];
       }
     }
     if (want === 'all' || want === 'levels') {
@@ -373,6 +397,31 @@ export const devToolsMethods = {
     return { ok: true, ripened };
   },
 
+  /* ═══ v2.3.3229: A LIFE SKILL AT ANY LEVEL, TO FEEL THE HIT LADDER ═══
+     The hit ladder (gathering.js gatherHitRoll) is felt by the level: Mining
+     3 hits 1 eight times in ten, Mining 11 never does.  Levels come slowly
+     (half as fast since v2.3.3090), so the owner's test panel and the QA
+     scenario (mp-hitladder) set one at once: `skill` a life skill's name, or
+     'hits' for the four whose harvests and cooks are hits (mining,
+     woodcutting, fishing, cooking -- GATHER_HITS.MS); `level` 1-120, its XP
+     0.  The next plan rolled reads it.  The admin key's, like every lever
+     here: no new socket message. */
+  _devLifeSkill(playerId, body) {
+    const t = this._devTarget(playerId);
+    if (!t) return { ok: false, error: 'player not online' };
+    const ps = t.ps;
+    const b = body || {};
+    const names = b.skill === 'hits' ? Object.keys(GATHER_HITS.MS) : [b.skill];
+    if (!names.every((k) => typeof k === 'string' && LIFE_SKILL_KEYS.includes(k))) {
+      return { ok: false, error: 'skill: one of ' + LIFE_SKILL_KEYS.join(', ') + ', or hits' };
+    }
+    const level = Math.max(1, Math.min(120, Math.floor(Number(b.level) || 1)));
+    if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
+    for (const k of names) ps.lifeSkills[k] = { level, xp: 0 };
+    this._devPush(playerId, ps);
+    return { ok: true, skills: names, level };
+  },
+
   /* ═══ v2.3.3120: PET TRAPPING'S TEST LEVERS (trapping.js) ═══
      At 1% at best, looking at a catch means a hundred kills -- so, for the
      owner's test kit and the QA scenario (mp-trapping), the levers a catch
@@ -483,6 +532,9 @@ export const devToolsMethods = {
     else if (path === '/dev/daily') result = await this._drDev(playerId, body);   /* v2.3.3140: stars, bonus spins, a quest's count */
     else if (path === '/dev/farmripe') result = await this._devFarmRipe(playerId);   /* v2.3.3127 */
     else if (path === '/dev/trapping') result = this._devTrapping(playerId, body);   /* v2.3.3120 */
+    else if (path === '/dev/codex') result = this._codexDevSet(playerId, body);   /* v2.3.3209: {kind | all, n, n2} (codex.js) */
+    else if (path === '/dev/killroll') result = this._killRollDev(playerId, body);   /* v2.3.3209: {next, kill} -- the next kill's roll (killroll.js) */
+    else if (path === '/dev/lifeskill') result = this._devLifeSkill(playerId, body);   /* v2.3.3229: {skill | 'hits', level} -- the hit ladder at any level */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

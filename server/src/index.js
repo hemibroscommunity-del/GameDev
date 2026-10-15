@@ -27,9 +27,10 @@ import { tickElementStatuses, elementMoveMult } from './elemental.js';
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES,
-  MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
+  MONSTER_HP_CURVE, monsterHpFlat, MONSTER_DMG_CURVE /* v2.3.3055 */, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
   MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY,
-  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */, DISHES /* v2.3.3130: the Herb Bread's regen mult */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */, DISHES /* v2.3.3130: the Herb Bread's regen mult */,
+  SHARD_MONSTER_DROP /* v2.3.3209: named for the monster codex's drop table */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -90,6 +91,10 @@ import { petMethods, PETS } from './pets.js';
 import { trappingMethods } from './trapping.js';
 import { hardenedWoodMethods } from './hardenedwood.js'; /* v2.3.3139: logs into hardened wood */
 import { petbookMethods } from './petbook.js';
+/* v2.3.3209: the monster codex -- what each kill teaches you, codex:<pid>
+   (codex.js).  docs/specs/monster-codex.md. */
+import { codexMethods } from './codex.js';
+import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
 // loot layers (effective_base formula, forge quality roll, harden
 // ladder).  See hardening.js for the name-collision warning vs the
@@ -139,9 +144,11 @@ import { movementMethods } from './movement.js';
 // v2.3.1172 (P4 decomposition): rpg-blob load/save + player_state emit -- see persistence.js.
 import { persistenceMethods } from './persistence.js';
 // v2.3.1173 (P4 decomposition): identity gate + join bootstrap -- see join.js.
-import { joinMethods, cosmeticCap } from './join.js';   /* v2.3.1940: ONE cap rule for the drawing keys */
+import { joinMethods, cosmeticCap, JOIN_COSMETIC_KEYS } from './join.js';   /* v2.3.1940: ONE cap rule for the drawing keys; v2.3.3244: + the join's look keys, for PEER_PUBLIC_KEYS */
 // v2.3.1174 (P4 decomposition): the 45Hz tick loop -- see tick.js.
 import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3127: + the regen cadence, for Herb Bread */
+import { eventPlaceMethods } from './eventplace.js'; /* v2.3.3245: events by place */
+import { presence2Methods } from './presence2.js'; /* v2.3.3250: far players only while the world map is open */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -182,6 +189,12 @@ import { spawnScaleMethods } from './spawnscale.js';
 import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.2978 */
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
+import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into a shield on the worker */
+import { aggroGridMethods } from './aggrogrid.js'; /* v2.3.3201: a monster looks for players near it, not through every one */
+import { tickPaceMethods } from './tickpace.js'; /* v2.3.3202: the world keeps its speed in a busy room */
+import { steadyMoversMethods } from './steadymovers.js'; /* v2.3.3203: a player walking steadily is sent less often */
+import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look relayed when it changes, not every 2 s */
+import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what is 5+ levels below you, harvests and fights */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
@@ -232,7 +245,7 @@ async function routeHttp(request, env) {
     // returns the same room.  The ?room=X URL query stays as the escape
     // hatch for testing / private sessions.  Re-introduce sharding (the
     // scan loop is in git history at v2.3.1111) only when concurrent
-    // population approaches MAX_PLAYERS=60, and prefer explicit shard
+    // population approaches MAX_PLAYERS (120 since v2.3.3205), and prefer explicit shard
     // assignment over count-probing when that day comes.
     // Room name 'brotown-1' (not 'brotown') on purpose: the old lobby's
     // first pick was brotown-1, so that DO holds the existing players'
@@ -425,6 +438,10 @@ export const PRIVILEGED_EVENTS = new Set([
      a fake rare piece on another player's screen. */
   'smith_salvage_result',
   'essence_result',
+  /* v2.3.3187: the shield gem's receipt (shieldgem.js) -- it says a gem went
+     into a shield and names the shield.  Forgeable, it would put a gem in
+     another player's shield on their screen that the worker never put there. */
+  'shield_gem_result',
   /* v2.3.2047: the shopkeeper's two answers. Both are SERVER-EMITTED and
      both carry money -- `shop_result` names coins paid and `shop_state` is
      the public pile every client prices against. Forgeable, they would let
@@ -534,6 +551,9 @@ export const PRIVILEGED_EVENTS = new Set([
      pets they do not own on their Pets page, `trap_armed` a mark and odds the
      worker never set, and `make_traps_result` traps that never reached a bag. */
   'make_traps_result', 'trap_armed', 'trap_result', 'pets_state',
+  /* v2.3.3209: the monster codex's counts (codex.js), server-sent and private.
+     Forged, it would paint facts the player never earned on their Codex page. */
+  'codex_state',
   // v2.3.1131: hardening rolls are server-side + private.
   'harden_result',
   // v2.3.1347: character-restart ack (persistence.js) -- the client
@@ -788,6 +808,38 @@ export const TRACK_COSMETIC_KEYS = new Set([
  * pure redundancy AND the cap bypass above. */
 export const TRACK_STATE_EXCLUDED = new Set(['x', 'y']);
 
+/* ═══ v2.3.3244: WHAT THE OTHER PLAYERS ARE TOLD ABOUT YOU ═══
+ *
+ * Found by the owner's "stress test to see what can be optimized" (the
+ * reconnect storm, docs/specs/peer-view.md): a joining phone's snapshot
+ * (state_sync, getAllPlayerData below) gave every other player as
+ * `{...playerState, name, ...session.data}` -- their WHOLE server state.
+ * Their coins, bag, gold, every stash (weapons, armour, gear, shields,
+ * amulets), quests, life skills, buffs, points, and the anti-cheat's own
+ * histories (_cookHistory, _perfectHistory), plus the join's own `rpg*`
+ * claims (the phone's coins, bag and weapons as it saw them).  And
+ * player_join (join.js) told everyone those claims when anyone joined.
+ *   - Nothing on any phone reads them: a peer is drawn from its position,
+ *     name and look (wsClient.js state_sync / player_join, peerCosmetics.js).
+ *   - It is an information leak with a game in it: in No man's land a killer
+ *     takes the victim's bag (nomansland.js), and anyone reading their own
+ *     socket could see who was worth hunting.
+ *   - It is most of the snapshot: 2.3 KB for a brand-new character, far more
+ *     for a played one; at 120 players a join was sent ~140-300 KB.
+ *
+ * So the others are told only what is public anyway: what the look relay
+ * already sends everyone (TRACK_COSMETIC_KEYS), what a join's look is
+ * (JOIN_COSMETIC_KEYS), and what every tick says (tick.js playerWire:
+ * position, facing, zone, speed, armour on show, what they are harvesting,
+ * the Hemi Bro badge).  A key not listed is not sent -- an allowlist, so a
+ * field added to playerState later stays private until someone means it to
+ * be public (TRAPS #13's shape, as the join and track allowlists above). */
+const PEER_PUBLIC_KEYS = new Set([
+  ...TRACK_COSMETIC_KEYS,
+  ...JOIN_COSMETIC_KEYS,
+  'name', 'x', 'y', 'd', 'z', 'vx', 'vy', 'f', 'ex', 'bro',
+]);
+
 export class GameRoom {
   constructor(state, env) {
     this.state = state;
@@ -802,14 +854,19 @@ export class GameRoom {
     this.tickInterval = null;
     this.tickSeq = 0;
     this.TICK_RATE = 22; // 45Hz (22ms)
-    /* The hard ceiling on concurrent sockets in this room.  It is a
-       RECEIVER-side number, not a server one (see the refusal comment in
-       fetch() below): ~4KB/s of download per co-located moving peer is
-       what an iPhone on cellular can carry, so ~20 people in one zone is
-       the real comfort limit and 60 in the room is the ceiling above it.
+    /* The hard ceiling on concurrent sockets in this room.
        v2.3.1982: `_roomCap()` (join.js) is the read path -- the
-       `max_players` live-ops flag can only LOWER this, never raise it. */
-    this.MAX_PLAYERS = 60;
+       `max_players` live-ops flag can only LOWER this, never raise it.
+       v2.3.3205: 60 -> 120, the owner's call ("I think 120 is a good cap
+       limit for now").  The old reasoning -- a phone's download -- was
+       counted UNZIPPED (~4 KB/s a peer); on the wire it is about a
+       thirteenth (v2.3.3199, docs/specs/load-test.md).  What binds is the
+       room's one thread, and with #887-#891 the load test keeps it smooth
+       (33+ ticks a second) to about 145 players: 38.8 ticks at 125, 39 at
+       120.  Its memory at 120 players: about 9 MB kept after a full GC,
+       44 MB at the most in use between GCs, against Cloudflare's 128 MB
+       (tools/qa/load/heapprobe.mjs).  docs/specs/cap-120.md. */
+    this.MAX_PLAYERS = 120;
     this.EVENTS_PER_TICK_CAP = 500;
     /* ═══ v2.3.1618: inbound abuse bounds ═══
        Sized from the real client, not guessed.
@@ -1163,7 +1220,8 @@ export class GameRoom {
        the timeout off `ready` (the window waits for you), v2.3.2761 doubled
        the gesture (~6 s of work, never under 4.8 s), and the gathering hits
        (gathering.js _planCookHits) make the wind-up a run of 650 ms hits --
-       10 on a minnow at level 1, up to MAX_HITS (26 s) on an older catch at a
+       10 on a minnow at level 1, up to MAX_HITS (26 s; COOK_MAX_HITS since
+       v2.3.3251, MAX_HITS being a node's 200) on an older catch at a
        low level.  So the 30 s ceiling expired MID-COOK.  Measured on a
        headless cook: the shield dropped exactly 30 s after the cook began,
        with the pan still being flipped.  In mp-gatherhits' first cooking run
@@ -1239,7 +1297,7 @@ export class GameRoom {
     // 'no-this-mon'.  500 ms is enough to read positions on entry
     // without suppressing the first incoming hit of a normal fight.
     this.ZONE_ENTRY_GRACE_MS = 500;
-    this.SHARD_DROP_RATE = 0.10; // 10% per kill, matches client rollMonsterShard
+    this.SHARD_DROP_RATE = SHARD_MONSTER_DROP; // 10% per kill, matches client rollMonsterShard; v2.3.3209: named in data.js (the codex prints it)
 
     // AFK timeout — drop sessions that haven't sent real input (move /
     // combat / zone change / etc.) for this long.  Pong replies do NOT
@@ -1896,6 +1954,11 @@ export class GameRoom {
       if (!monsters || monsters.length === 0) continue;
 
       const playersInZone = playersByZone.get(zoneId) || [];
+      /* v2.3.3201: the Wheel's players dropped into cells once a tick, so each
+         monster looks only near itself for one to go after (aggrogrid.js);
+         null = the full loop (another zone, a handful of players, the kill
+         switch, a position that is not a plain number) */
+      const _aggroCells = zoneId === WHEEL_ZONE ? this._aggroGridOf(playersInZone) : null;
 
       for (const m of monsters) {
         // Respawn check
@@ -2177,6 +2240,17 @@ export class GameRoom {
         let nearest = null;
         let nearestDist = Infinity;
         const stickyAggroActive = m._aggroOverrideUntil && now < m._aggroOverrideUntil;
+        /* v2.3.3201: an override that has run out is cleared HERE, the tick
+           after it runs out, instead of whenever the leash below next met this
+           monster with a player in hand.  Nothing reads one that has run out
+           (every read is behind stickyAggroActive), so nothing behaves
+           differently -- and it is what lets the grid below leave out the
+           players beyond the aggro range and still leave the monster exactly
+           as the full loop would (aggrogrid.js). */
+        if (!stickyAggroActive && (m._aggroOverrideUntil || m._aggroOverrideTarget != null)) {
+          m._aggroOverrideTarget = null;
+          m._aggroOverrideUntil = 0;
+        }
         if (stickyAggroActive) {
           const _sticky = playersInZone.find(p => p.id === m._aggroOverrideTarget);
           /* v2.3.2978: ...nor is anyone on the Wheel's safe ground, the commons
@@ -2195,17 +2269,68 @@ export class GameRoom {
             m._aggroOverrideUntil = 0;
           }
         }
-        if (!nearest) {
+        /* ═══ v2.3.2790: ...TIMES THE ZONE'S DEPTH AT THIS MONSTER'S FEET ═══
+           Wind Dunes draws a monster at 0.42 of its size on the north edge
+           (zones.js `depth`), so a reach measured in flat pixels hit you from
+           well outside the body on screen.  _dk is 1 on every other zone and
+           the multiply is exact there.  The SAME factor scales the aggro
+           ring, the chase / wander / leash steps and the knockback repay
+           below, and _basicAtkGeom (telegraph.js) re-measures with it, so
+           the tick's stop ring and the wind-up's whiff ring stay paired --
+           the v2.3.2482 "all three move together" rule, per monster. */
+        /* v2.3.3201: _dk and the aggro range are worked out here, before the
+           search, and no longer under "Movement AI" below: the grid needs the
+           range to know where to look.  Nothing in between moves the
+           monster, so they are the same numbers. */
+        const _dk = this._depthK(zoneId, m.y);
+        // Effective aggro range -- bumps to 1200 px when the sticky
+        // override is active, so a bow-snipe from anywhere on screen
+        // pulls the monster.  Without the bump the monster could be
+        // damaged but still wouldn't pass the proximity gate to enter
+        // the chase branch.
+        /* v2.3.1639: per-archetype base range (MONSTER_AGGRO_BY_ARCH),
+           falling back to the 120 default for every archetype not listed.
+           Object.create(null)-safe: `m.arch` is a server-authored spawn
+           field, never client-supplied, but read it defensively anyway so a
+           future client-fed arch can't reach Object.prototype. */
+        const _archAggro = Object.prototype.hasOwnProperty.call(this.MONSTER_AGGRO_BY_ARCH, m.arch)
+          ? this.MONSTER_AGGRO_BY_ARCH[m.arch]
+          : this.MONSTER_AGGRO_RANGE;
+        /* v2.3.2790: a far monster notices you as far off as it LOOKS (x _dk).
+           The 1200 sticky bump is not scaled: it means "whoever shot me,
+           from anywhere on screen", and anywhere on screen is still that. */
+        const effAggroRange = stickyAggroActive ? 1200 : _archAggro * _dk;
+        /* v2.3.3201: in the Wheel, the cells near the monster answer instead
+           of every player in it -- the same player (aggrogrid.js); -2 is "the
+           grid cannot answer", and the full loop does */
+        const _gridPick = (!nearest && _aggroCells)
+          ? this._aggroGridPick(_aggroCells, playersInZone, m, effAggroRange, zoneId, zoneId === WHEEL_ZONE, now)
+          : -2;
+        if (_gridPick >= 0) {
+          nearest = playersInZone[_gridPick];
+          const dxG = nearest.x - m.x;
+          const dyG = nearest.y - m.y;
+          nearestDist = Math.sqrt(dxG * dxG + dyG * dyG);
+        }
+        if (!nearest && _gridPick === -2) {
           for (const p of playersInZone) {
             /* v2.3.1704: harvesters are skipped, not merely spared.  If every
                player in the zone is extracting, `nearest` stays null and the
                monster wanders — which is the whole point. */
             if (p.extracting) continue;
-            if (zoneId === WHEEL_ZONE && this._wheelSheltered(m, p.id, p.x, p.y, now)) continue;   /* v2.3.2978: safe ground; v2.3.3056: unless provoked from it */
             const dx = p.x - m.x;
             const dy = p.y - m.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < nearestDist) {
+              /* v2.3.2978: safe ground; v2.3.3056: unless provoked from it.
+                 v2.3.3195: asked only of a player who would be the nearest so
+                 far, not of every player for every monster -- the same pick
+                 (the nearest player it may target, the first of any tie) with
+                 a fraction of the calls.  _wheelSheltered has no side effects,
+                 and a player it turns away here could not have been picked
+                 anyway.  Before, every Wheel monster asked it of every player
+                 every tick (the load test's profile, docs/specs/load-test.md). */
+              if (zoneId === WHEEL_ZONE && this._wheelSheltered(m, p.id, p.x, p.y, now)) continue;
               nearest = p;
               nearestDist = dist;
             }
@@ -2255,35 +2380,12 @@ export class GameRoom {
            45px default; now that the default is 72 it would be a narrowing,
            so take whichever is larger.  His 1.5 Y-scale still does the work
            the note above describes (the tall collision body). */
-        /* ═══ v2.3.2790: ...TIMES THE ZONE'S DEPTH AT THIS MONSTER'S FEET ═══
-           Wind Dunes draws a monster at 0.42 of its size on the north edge
-           (zones.js `depth`), so a reach measured in flat pixels hit you from
-           well outside the body on screen.  _dk is 1 on every other zone and
-           the multiply is exact there.  The SAME factor scales the aggro
-           ring, the chase / wander / leash steps and the knockback repay
-           below, and _basicAtkGeom (telegraph.js) re-measures with it, so
-           the tick's stop ring and the wind-up's whiff ring stay paired --
-           the v2.3.2482 "all three move together" rule, per monster. */
-        const _dk = this._depthK(zoneId, m.y);
+        /* v2.3.2790: x _dk, the zone's depth at this monster's feet (worked
+           out above the search, v2.3.3201) */
         const _atkRange = (m.arch === 'snowman' ? Math.max(70, ATTACK_RANGE) : ATTACK_RANGE) * _dk;
         const _yScale = m.arch === 'snowman' ? 1.5 : Y_SCALE;
-        // Effective aggro range -- bumps to 1200 px when the sticky
-        // override is active, so a bow-snipe from anywhere on screen
-        // pulls the monster.  Without the bump the monster could be
-        // damaged but still wouldn't pass the proximity gate to enter
-        // the chase branch.
-        /* v2.3.1639: per-archetype base range (MONSTER_AGGRO_BY_ARCH),
-           falling back to the 120 default for every archetype not listed.
-           Object.create(null)-safe: `m.arch` is a server-authored spawn
-           field, never client-supplied, but read it defensively anyway so a
-           future client-fed arch can't reach Object.prototype. */
-        const _archAggro = Object.prototype.hasOwnProperty.call(this.MONSTER_AGGRO_BY_ARCH, m.arch)
-          ? this.MONSTER_AGGRO_BY_ARCH[m.arch]
-          : this.MONSTER_AGGRO_RANGE;
-        /* v2.3.2790: a far monster notices you as far off as it LOOKS (x _dk).
-           The 1200 sticky bump is not scaled: it means "whoever shot me,
-           from anywhere on screen", and anywhere on screen is still that. */
-        const effAggroRange = stickyAggroActive ? 1200 : _archAggro * _dk;
+        /* the aggro range, effAggroRange, is worked out above the search too
+           (v2.3.3201) */
         /* v2.3.2978: on the Wheel a chase ends WHEEL.CHASE_LEASH from home,
            shot or not -- an ordinary zone's edge ends one, and the Wheel's
            commons and town are meant to be safe ground (wheelzone.js).  The
@@ -2297,8 +2399,13 @@ export class GameRoom {
             && (Math.hypot(m.x - m.spawnX, m.y - m.spawnY) > (_pursuing ? WHEEL.PURSUE_LEASH : WHEEL.CHASE_LEASH)
               || (!_pursuing && this._wheelSafeAt(m.x, m.y)))) {   /* ...or it has stepped onto the safe ground */
           nearest = null;
-          m._aggroOverrideTarget = null;
-          m._aggroOverrideUntil = 0;
+          /* v2.3.3201: only over an override that is there -- one that ran out
+             was cleared above the search -- so a monster that never had one
+             is left as it was, as it is when the grid found nobody in range */
+          if (m._aggroOverrideUntil || m._aggroOverrideTarget != null) {
+            m._aggroOverrideTarget = null;
+            m._aggroOverrideUntil = 0;
+          }
         }
         if (nearest && nearestDist < effAggroRange) {
           m.targetId = nearest.id;
@@ -2865,8 +2972,22 @@ export class GameRoom {
     return b === 'fodder' || b === 'snowman';
   }
 
-  _rollShardForKill(zoneId) {
-    if (Math.random() >= this.SHARD_DROP_RATE) return null;
+  /* v2.3.3209: `hit` -- the kill's one roll landed on the shard's numbers
+     (killroll.js), or did not.  Left out (the `killroll: false` switch, and a
+     suite calling this alone), it rolls on its own as it always did. */
+  _rollShardForKill(zoneId, hit) {
+    if (hit === undefined ? Math.random() >= this.SHARD_DROP_RATE : !hit) return null;
+    /* v2.3.3170: only a zone that HAS a shard -- the nine element zones, which
+       are exactly ZONES' keys, each with its shard_<zone> item.  A Workshop
+       dungeon's monsters die in 'dungeon:<instance id>' and carry no `home`
+       (wheelzone.js _rewardZone), so this minted 'shard_dungeon:1a2b3c4d':
+       not an item (the game cannot name or draw it) and a NEW key every run,
+       which Diego's pricer reads as a shard and buys at his empty-pile price
+       every time, never decaying, each sale one more permanent key in his
+       one shop_stock record.  The Wheel met the same thing as 'shard_wheel'
+       and was fixed for itself only (v2.3.2978).  Checked AFTER the roll so
+       the kill draws exactly the random numbers it always did. */
+    if (!Object.prototype.hasOwnProperty.call(ZONES, zoneId)) return null;
     return 'shard_' + zoneId;
   }
 
@@ -3229,11 +3350,18 @@ export class GameRoom {
     const _duelKill = _hook('duel', () => this._duelOnDeath(playerId, cause));
     // v2.3.1125: clan-war scoring rides the same server-resolved death
     // (cause 'pvp:<attacker>'); duel kills are excluded inside the hook.
-    _hook('war', () => this._warOnDeath(playerId, cause));
+    /* v2.3.3168: ...which never worked through this path: the duel hook
+       above has already resolved the duel and taken it out of _duels, so
+       the war and bounty hooks' own "is this a duel between them?" check
+       (_duelFor) found nothing, and a thrown duel scored the clan war and
+       collected the bounty.  The duel hook's own answer -- a clean kill by
+       the duel opponent -- is used here, while it is still known.  Any other
+       death (a third player, a monster) runs both hooks as before. */
+    if (!_duelKill) _hook('war', () => this._warOnDeath(playerId, cause));
     // v2.3.1211 (item C): a killed threatener's guard-fine bounty pays
     // out to their killer here too (same server-observed 'pvp:' cause;
     // self / duel / same-clan / non-PvP excluded inside the hook).
-    _hook('bounty', () => this._bountyOnDeath(playerId, cause).catch(() => {}));
+    if (!_duelKill) _hook('bounty', () => this._bountyOnDeath(playerId, cause).catch(() => {}));
     // v2.3.1116: death ends any remaining threat consent this player
     // was party to -- the survivor can't keep hitting them through the
     // respawn.  (Duel pairs already cleared by the resolution above.)
@@ -3646,71 +3774,19 @@ export class GameRoom {
     }
   }
 
-  // v2.3.1141: SERVER-MINTED WEAPON DROPS (closes the last client-
-  // authored economy input; unlocks drop-time quality §4.6b.ii).
-  // Weapon drops were effectively DORMANT in production: the client
-  // mint paths (monsterCombat.js / projectiles.js) only run inside
-  // kill blocks gated on !S._serverMonsters, and every live zone is
-  // server-managed -- they survived only as the legacy-worker
-  // fallback.  This restores the feature server-side on the §4.6
-  // cubic curve (the canonical one; the projectiles path had drifted
-  // to a far more generous linear table -- deliberately unified down).
-  // Rarity/element gating mirrors monsterCombat.js:2233-2262; the
-  // blob shape mirrors the forge mint (_handleForgeWeapon) exactly,
-  // including quality rolled ONCE here (hidden until pickup -- the
-  // broadcastable pile carries no quality field, see _serializePile).
-  // hardenBonus stays null: that field belongs to the client's legacy
-  // affix system (NAME COLLISION warning in hardening.js).
-  _rollWeaponDropForKill(zoneId, monster) {
-    const lvl = Math.max(1, monster.level || 1);
-    const lvlFactor = Math.pow(lvl / 100, 3); // cubic: L1≈0, L50=0.125, L100=1
-    const dropChance = 0.0005 + lvlFactor * 0.03; // L1: 0.05%, L100: ~3%
-    if (Math.random() >= dropChance) return null;
-    const zone = this._getZoneConfig(zoneId);
-    const zoneElem = (zone && zone.element) || null;
-    const secondaryElem = (zone && zone.secondary) || null;
-    const shiftChance = 0.0000002 + lvlFactor * 0.002;
-    const fusionChance = 0.000002 + lvlFactor * 0.02;
-    const elemChance = 0.0002 + lvlFactor * 0.25;
-    const tierRoll = Math.random();
-    let tier = 'common', e1 = null, e2 = null, isVolatile = false;
-    if (tierRoll < shiftChance && zoneElem) {
-      tier = 'shift'; e1 = zoneElem;
-    } else if (tierRoll < shiftChance + fusionChance && zoneElem) {
-      tier = 'fusion'; e1 = zoneElem;
-      e2 = secondaryElem || ['flame', 'frost', 'water', 'venom', 'storm', 'stone', 'wind']
-        .filter((e) => e !== zoneElem)[Math.floor(Math.random() * 6)];
-      const volPairs = [['flame', 'water'], ['water', 'venom'], ['venom', 'wind'],
-        ['wind', 'stone'], ['stone', 'storm'], ['storm', 'frost'], ['frost', 'flame']];
-      isVolatile = volPairs.some(([a, b]) => (e1 === a && e2 === b) || (e1 === b && e2 === a));
-    } else if (tierRoll < shiftChance + fusionChance + elemChance && zoneElem) {
-      tier = 'elemental'; e1 = zoneElem;
-    }
-    const types = ['greatsword', 'sword', 'bow', 'staff'];
-    const type = types[Math.floor(Math.random() * types.length)];
-    // Labels mirror WEAPON_TYPES[type].label in src/data/gameSystems.js.
-    const label = { greatsword: 'Great Sword', sword: 'Sword', bow: 'Bow', staff: 'Staff' }[type];
-    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-    let name;
-    if (tier === 'common') name = label;
-    else if (tier === 'elemental') name = cap(e1) + ' ' + label;
-    else if (tier === 'fusion') name = cap(e1) + cap(e2) + ' ' + label;
-    else name = 'Prismatic ' + label;
-    return {
-      type,
-      tier,
-      tierMult: RARITY_TIERS[tier].mult,
-      element1: e1,
-      element2: e2,
-      name,
-      isVolatile,
-      reforgeBonus: null,
-      hardenBonus: null,
-      quality: this._rollWeaponQuality(),
-      hardness: 0,
-      temper: 0,
-    };
-  }
+  /* ═══ v2.3.3209: NO RANDOM WEAPON OFF A KILL ═══
+     The owner, reviewing the monster codex's drop table: "Remove 'a random
+     weapon' drop", and asked whether from the table or the game: "Remove it
+     from the game".  So _rollWeaponDropForKill is gone -- v2.3.1141's
+     server-minted random weapon (a sword, great sword, bow or staff, its
+     element and rarity by the land, on a cubic level curve: 0.05% a kill at
+     level 1, ~0.24% at 40, ~3% at 100).  Its curve went with it (data.js
+     monsterWeaponDropOdds), as "all drop chances should be a single value".
+     A kill's one weapon is now the Iron Great Sword's own 1-in-500 roll
+     (_rollIronWeaponForKill, below); a weapon otherwise comes from the forge,
+     the woodworker, a quest or another player.  The client's legacy mint
+     paths (monsterCombat.js / projectiles.js) run only against a worker that
+     does not manage its monsters, which no live zone is. */
 
   /* ═══ v2.3.1924: THE IRON PIECES ═══
      Owner: "monsters now have a 1 in 500 chance to drop an iron chest and 1
@@ -3727,10 +3803,17 @@ export class GameRoom {
      one silently shadowing the other.  The minted record is the same shape a
      quest piece is, so nothing downstream can tell them apart — see the
      constant's note for why that matters. */
-  _rollArmorDropsForKill() {
+  /* v2.3.3182: `scale` (0-1, default 1) -- a Workshop run's share of the
+     chance (dungeon.js _workshopDropScale); the random draws are the same */
+  /* v2.3.3209: `hit` -- the slot the kill's one roll landed on ('armor',
+     'legsArmor'), or false (killroll.js): a roll is one piece at most, and on
+     its numbers it drops at the Workshop's share.  Left out, each piece rolls
+     on its own as before (the `killroll: false` switch). */
+  _rollArmorDropsForKill(scale = 1, hit) {
     const out = [];
     for (const d of MONSTER_ARMOR_DROPS) {
-      if (Math.random() >= d.chance) continue;
+      if (hit === undefined) { if (Math.random() >= d.chance * scale) continue; }
+      else if (hit !== d.slot || (scale < 1 && Math.random() >= scale)) continue;
       /* ═══ v2.3.1925: ARMOUR ROLLS QUALITY TOO ═══
          Owner: "I also want the drop to consider a rarity system."  Quality
          has been weapon-only since v2.3.1131; GDD §4.6b is explicit that the
@@ -3751,12 +3834,15 @@ export class GameRoom {
      above, for the same reason: that one is a cubic level curve because the
      TIER it mints scales with the monster, and this mints one fixed item.
 
-     Built here rather than in _rollWeaponDropForKill because they answer
-     different questions — that function decides what RARITY a random weapon
-     is, and this one is not random. */
-  _rollIronWeaponForKill() {
+     Built apart from the old random weapon's roll (_rollWeaponDropForKill)
+     because they answered different questions -- that decided what RARITY a
+     random weapon was, and this one is not random.  v2.3.3209: that roll is
+     gone (the owner: "Remove it from the game"), so this is a kill's only
+     weapon. */
+  _rollIronWeaponForKill(scale = 1, hit) {   /* v2.3.3182: `scale`, as the armour's; v2.3.3209: `hit`, as theirs */
     const d = MONSTER_IRON_WEAPON_DROP;
-    if (Math.random() >= d.chance) return null;
+    if (hit === undefined) { if (Math.random() >= d.chance * scale) return null; }
+    else if (!hit || (scale < 1 && Math.random() >= scale)) return null;
     return {
       type: d.type,
       tier: 'common',
@@ -3784,8 +3870,9 @@ export class GameRoom {
      stackable that lands in the bag — NOT the elemental raw_<element> the
      Gem Cutter eats (_gemRawOnKill, amulet.js), which is zone-gated and
      lives in lifeSkills.  Two different things on purpose; see RARE_GEM_KEY. */
-  _rollRareGemForKill() {
-    return Math.random() < RARE_GEM_MONSTER_DROP ? RARE_GEM_KEY : null;
+  _rollRareGemForKill(scale = 1, hit) {   /* v2.3.3182: `scale`, as the armour's; v2.3.3209: `hit`, as theirs */
+    if (hit !== undefined) return hit && !(scale < 1 && Math.random() >= scale) ? RARE_GEM_KEY : null;
+    return Math.random() < RARE_GEM_MONSTER_DROP * scale ? RARE_GEM_KEY : null;
   }
 
   /* ═══ v2.3.1925: THE MYSTERY GRADES ═══
@@ -3883,7 +3970,11 @@ export class GameRoom {
   //   { lootId, zone, x, y, coins, skull, shard, gem, weapon, weaponClaimed,
   //     armor, armorClaimed, recipients, shares: {pid: number}, killerName,
   //     ts, inventoryClaimed, claimedBy: {pid: true} }
-  _spawnLootForKill(zone, monster, killerSessionId, recipients, shares) {
+  /* v2.3.3209: `kr`, the kill's one roll (killroll.js _killRollFor) -- which
+     of the pile's drops it landed on, if any; `kr.minted` is set when that drop
+     is made.  Left out (the `killroll: false` switch, and a suite building a
+     pile alone), every drop rolls on its own as before. */
+  _spawnLootForKill(zone, monster, killerSessionId, recipients, shares, kr) {
     /* ═══ v2.3.2613: A PILE IS A DEATH, NOT A SPAWN SLOT ═══
        Owner, more than once: "loot sometimes drops and magnetizes but is
        unable to be picked up."
@@ -3936,7 +4027,8 @@ export class GameRoom {
        'shard_wheel' is not an item (wheelzone.js _rewardZone).  The pile
        itself still lies where it died, in `zone`. */
     const rewardZone = this._rewardZone(zone, monster);
-    const shard = this._rollShardForKill(rewardZone);
+    const hit = kr ? (kr.hit || false) : undefined;   /* v2.3.3209: the roll's drop, or no roll */
+    const shard = this._rollShardForKill(rewardZone, hit === undefined ? undefined : hit === 'shard');
     // v2.3.1141: weapon rides the pile; only rolled when someone can
     // actually claim it (the claim is recipient-gated below).
     // v2.3.1150: disable_weapon_drops kill switch -- caps.weaponDrops
@@ -3944,34 +4036,30 @@ export class GameRoom {
     // drops just stop rolling until the flag clears.
     const anyClaimant = !!(recipients && recipients.length > 0);
     const wpnDropsOn = anyClaimant && !this._flagOn('disable_weapon_drops');
-    /* ═══ v2.3.1924b: THE IRON GREATSWORD TAKES THE WEAPON SLOT ═══
-       A pile carries ONE weapon (its own claim lane, v2.3.1141), so when both
-       rolls land, one of them has to win.  The iron blade wins, which keeps
-       the owner's number EXACT: 1 in 500 kills drop it, full stop.
+    /* ═══ v2.3.1924b: THE IRON GREATSWORD ═══
+       A pile carries ONE weapon (its own claim lane, v2.3.1141).  Until
+       v2.3.3209 two rolls shared it, the iron blade winning over v2.3.1141's
+       random weapon so the owner's 1 in 500 stayed exact; that random weapon
+       is gone (the owner: "Remove it from the game", _rollWeaponDropForKill's
+       tombstone above), so the iron blade is a kill's only weapon roll.
 
-       THE COST, MEASURED RATHER THAN WAVED AT, because it is a real if tiny
-       one: on a kill where both hit, an ordinary weapon that would have
-       dropped is replaced.  The ordinary rate runs 0.05% at level 1 to ~3% at
-       level 100, so the overlap is 1-in-2,000,000 kills at the bottom and
-       1-in-17,000 at the very top — and only at the top can the thing
-       replaced be rarer than iron (an elemental or fusion roll).  The
-       alternative orderings both cost more than that: letting the ordinary
-       roll win makes the owner's 1-in-500 quietly 1-in-515 at level 100, and
-       carrying two weapons means reworking an established claim lane and its
-       client credit on both sides for an event this rare.
-
-       Also gated by disable_weapon_drops (v2.3.1150): that kill switch exists
-       to stop weapons entering the economy, and a drop that ignored it would
-       be a hole in the lever rather than a new feature. */
-    const ironWeapon = wpnDropsOn ? this._rollIronWeaponForKill() : null;
-    const weapon = ironWeapon
-      || (wpnDropsOn ? this._rollWeaponDropForKill(rewardZone, monster) : null);
+       Gated by disable_weapon_drops (v2.3.1150): that kill switch exists to
+       stop weapons entering the economy, and a drop that ignored it would be
+       a hole in the lever rather than a new feature. */
+    /* v2.3.3182: a Workshop run's flat drops at its monster's level over the
+       strongest claimant's (dungeon.js _workshopDropScale); 1 everywhere else */
+    const dropScale = anyClaimant && this._workshopDropScale ? this._workshopDropScale(zone, monster, recipients) : 1;
+    const weapon = wpnDropsOn ? this._rollIronWeaponForKill(dropScale, hit === undefined ? undefined : hit === 'irongreatsword') : null;
     /* v2.3.1924: both gated on there being someone who could claim them, the
        same condition the weapon roll uses — rolling loot for an empty
        recipient list mints an item nobody can ever pick up and then counts it
        against the player's odds. */
-    const armor = anyClaimant ? this._rollArmorDropsForKill() : null;
-    const gem = anyClaimant ? this._rollRareGemForKill() : null;
+    const armor = anyClaimant ? this._rollArmorDropsForKill(dropScale,
+      hit === undefined ? undefined : (hit === 'irontorso' ? 'armor' : hit === 'irongreaves' ? 'legsArmor' : false)) : null;
+    const gem = anyClaimant ? this._rollRareGemForKill(dropScale, hit === undefined ? undefined : hit === 'raregem') : null;
+    /* v2.3.3209: the roll's drop is made -- told to whoever may pick the pile up (combat_credit `rh`) */
+    if (kr && hit && ((hit === 'shard' && shard) || (hit === 'raregem' && gem) || (hit === 'irongreatsword' && weapon)
+      || ((hit === 'irontorso' || hit === 'irongreaves') && armor))) kr.minted = true;
     /* v2.3.1924: !armor && !gem are BELT-AND-BRACES and cannot fire today —
        this early-out is recipient-gated, and both new rolls are themselves
        gated on there being a recipient, so any pile that could carry them has
@@ -4129,8 +4217,21 @@ export class GameRoom {
     const keep = this._keepGatherTools(ps.inventory);
     const shield = ps && ps._deathShield;
     if (shield) {
+      const inv = (ps && ps.inventory) || {};
       for (const k of Object.keys(shield)) {
-        const q = Math.floor(Number(shield[k]) || 0);
+        /* v2.3.3169: never more than the bag still HOLDS.  The shield is what
+           a pickup handed over in the last second, and it was written back
+           whole -- so whatever of it had LEFT the bag since (sold to Diego,
+           listed on the auction house, handed over), before the blow or in
+           the five dying seconds before the respawn wipe, came back as well:
+           pick a pile up, sell it, die inside the second, and the bars were
+           in the bag again beside the coins.  A listing taken down after the
+           respawn doubled the stack every cycle.  Capped at the bag, the
+           pile's (held - shield) and this (min(shield, held)) sum to exactly
+           what the player had, for every key -- the rule this helper exists
+           to keep. */
+        const have = Object.prototype.hasOwnProperty.call(inv, k) ? Math.floor(Number(inv[k]) || 0) : 0;
+        const q = Math.min(Math.floor(Number(shield[k]) || 0), have);
         if (q > 0) keep[k] = Math.max(keep[k] || 0, q);
       }
     }
@@ -4891,7 +4992,10 @@ export class GameRoom {
               if (!TRACK_STATE_EXCLUDED.has(k)) _trackPs[k] = clean[k];
             }
           }
-          this.broadcastExcept(ws, { type: 'player_update', id: session.id, data: clean });
+          /* v2.3.3240: only what changed since this player's last relay,
+             and only when something did (lookrelay.js) -- every 2 s whole,
+             to every other player, was more messages than all the ticks */
+          this._lookRelay(ws, session, clean);
           this.reportToLeaderboard(session);
         }
         break;
@@ -4998,8 +5102,16 @@ export class GameRoom {
           }
           /* Everyone's view of the pile, not just this player's: it is a
              PUBLIC inventory, so a sale has to change what the next player
-             sees without them reopening the panel. */
-          this.broadcastAll({ type: 'shop_state', payload: await this._shopList() });
+             sees without them reopening the panel.
+             v2.3.3163: ...but only a trade that HAPPENED is everyone's news.
+             A refused one changed nothing, and was broadcast all the same: one
+             client sending refused sales as fast as it liked made every player
+             in the room receive the whole pile each time (reproduced: 200
+             refusals, 200 copies to each bystander).  The asker still gets the
+             fresh pile, so a stale panel still refreshes. */
+          const _pile = await this._shopList();
+          if (r && r.ok) this.broadcastAll({ type: 'shop_state', payload: _pile });
+          else this._shopSend(_sid, 'shop_state', _pile);
         }).catch(() => {
           this._shopSend(_sid, 'shop_result', { ok: false, error: 'Shop unavailable' });
         });
@@ -5166,11 +5278,25 @@ export class GameRoom {
         if (session.id) this._handleEssenceApply(session, msg.payload || msg);
         break;
 
+      case 'map_watch':
+        /* v2.3.3250: the world map is open (and still open), or shut --
+           presence v2 sends far players only while it is (presence2.js).
+           Its own case, so it is never rebroadcast by the default branch. */
+        if (session.id) this._presence2Watch(session, msg.payload || msg);
+        break;
+
       case 'shield_wear':
         /* v2.3.3091: the shield on the arm (shieldwear.js) -- one the worker
            already holds for this player, named by id or signature; the arm's
            and the bag's lists move, nothing is described or minted. */
         if (session.id) this._handleShieldWear(session, msg.payload || msg);
+        break;
+
+      case 'shield_gem':
+        /* v2.3.3187: a polished gem into a shield the worker holds for this
+           player (shieldgem.js) -- named by id or signature, the gem taken
+           from the worker's own count; answered by shield_gem_result. */
+        if (session.id) this._handleShieldGem(session, msg.payload || msg);
         break;
 
       case 'cape_redeem':
@@ -5754,6 +5880,7 @@ export class GameRoom {
   async webSocketClose(ws) {
     const session = this.sessions.get(ws);
     let _petsLeft = null;   /* v2.3.3120: see below */
+    let _codexLeft = null;  /* v2.3.3209: the same, for the codex (codex.js) */
     if (session?.id) {
       if (this.playerState[session.id]) this.playerState[session.id].disconnected = true;
       /* v2.3.1619: flush coalesced regen before the in-memory blob is
@@ -5787,6 +5914,10 @@ export class GameRoom {
          player leave at once. */
       _petsLeft = this._petbookDirtyCopy(session.id);
       this._petbookForget(session.id);
+      /* v2.3.3209: and the codex's (codex.js): counting since its last write,
+         copied out now and written at the end with the pets record */
+      _codexLeft = this._codexDirtyCopy(session.id);
+      this._codexForget(session.id);
       delete this.stateHistory[session.id];
       delete this.extractions[session.id];
       this.dirtyPlayers.delete(session.id);
@@ -5810,6 +5941,7 @@ export class GameRoom {
     this.sessions.delete(ws);
     if (this.sessions.size === 0 && this.tickInterval) { clearInterval(this.tickInterval); this.tickInterval = null; }
     if (_petsLeft) await this._petbookPut(session.id, _petsLeft);
+    if (_codexLeft) await this._codexPut(session.id, _codexLeft);
   }
 
   async webSocketError(ws) { this.webSocketClose(ws); }
@@ -5822,6 +5954,19 @@ export class GameRoom {
   async reportToLeaderboard(session, force) {
     try {
       if (!session || !session.id) return;
+      /* ═══ v2.3.3242: THE CLOCK BEFORE THE WORK ═══
+         Every `track` (every player, every 2 s) calls this, and it built the
+         Leaderboard stub, the whole chain-score series (_chainScoreSeries:
+         every combat and life skill level) and a JSON signature of all of it,
+         to return at the throttle below on all but one call in 150 (MIN_MS,
+         5 min): ~100 us a track, 7.6 ms of every second of the room's thread
+         at 150 players in the stress test's profile (docs/specs/stress-tests.md).
+         Inside MIN_MS of the last
+         report the throttle returns whatever the signature says -- it needs
+         `since >= MIN_MS` for a changed record and `since >= HEARTBEAT_MS` for
+         an unchanged one -- so reading the clock first returns on exactly the
+         same calls, and every report that went still goes. */
+      if (!force && Date.now() - (session._lbAt || 0) < Math.min(this.LEADERBOARD_MIN_MS, this.LEADERBOARD_HEARTBEAT_MS)) return;
       const stub = this.env.LEADERBOARD.get(this.env.LEADERBOARD.idFromName('global'));
       /* v2.3.1465: RANK COMES FROM THE SERVER.  This used to post
          `session.data.rpgLv` -- a number the client typed into a track
@@ -5917,7 +6062,24 @@ export class GameRoom {
   /* v2.3.2537: the peer copy is cropped of gear ids before it goes out --
      see _gearProvCropPeer (gearprov.js) for why a gid has no business on a
      room-wide broadcast even though it is not exploitable. */
-  getAllPlayerData() { const r = {}; for (const [, s] of this.sessions) { if (s.id) r[s.id] = this._gearProvCropPeer({ ...this.playerState[s.id], name: s.name, ...s.data }); } return r; }
+  /* v2.3.3244: one player as the others are told about them (PEER_PUBLIC_KEYS
+     above): `{...ps, name, ...data}` as before -- the look the phone sent
+     wins over the state, the session's name over the state's -- but only
+     the public keys of it.  `s` may be just `{ data }` (join.js player_join). */
+  _peerPublic(ps, s) {
+    const out = {};
+    const data = s && s.data && typeof s.data === 'object' ? s.data : null;
+    for (const k of PEER_PUBLIC_KEYS) {
+      let v;
+      if (data && Object.prototype.hasOwnProperty.call(data, k)) v = data[k];
+      else if (k === 'name' && s && s.name !== undefined) v = s.name;
+      else if (ps && Object.prototype.hasOwnProperty.call(ps, k)) v = ps[k];
+      else continue;
+      if (v !== undefined) out[k] = v;
+    }
+    return out;
+  }
+  getAllPlayerData() { const r = {}; for (const [, s] of this.sessions) { if (s.id) r[s.id] = this._gearProvCropPeer(this._peerPublic(this.playerState[s.id], s)); } return r; }
   getPlayerCount() { let c = 0; for (const [, s] of this.sessions) { if (s.id) c++; } return c; }
 }
 
@@ -5968,6 +6130,8 @@ Object.assign(GameRoom.prototype, petMethods);
 Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, hardenedWoodMethods); /* v2.3.3139 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
+Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
+Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
 Object.assign(GameRoom.prototype, hardeningMethods);
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.
@@ -6009,6 +6173,8 @@ Object.assign(GameRoom.prototype, httpAuthMethods);
 Object.assign(GameRoom.prototype, joinMethods);
 // v2.3.1174 (P4 decomposition): tick loop -- see tick.js.
 Object.assign(GameRoom.prototype, tickMethods);
+Object.assign(GameRoom.prototype, eventPlaceMethods); /* v2.3.3245 */
+Object.assign(GameRoom.prototype, presence2Methods); /* v2.3.3250 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
 // v2.3.1191 (P4 decomposition): combat/damage core -- see combat.js.
@@ -6028,3 +6194,9 @@ Object.assign(GameRoom.prototype, spawnScaleMethods);
 Object.assign(GameRoom.prototype, wheelzoneMethods); /* v2.3.2978 */
 Object.assign(GameRoom.prototype, noMansLandMethods); /* v2.3.3058 */
 Object.assign(GameRoom.prototype, shieldWearMethods); /* v2.3.3091 */
+Object.assign(GameRoom.prototype, shieldGemMethods); /* v2.3.3187 */
+Object.assign(GameRoom.prototype, aggroGridMethods); /* v2.3.3201 */
+Object.assign(GameRoom.prototype, tickPaceMethods); /* v2.3.3202 */
+Object.assign(GameRoom.prototype, steadyMoversMethods); /* v2.3.3203 */
+Object.assign(GameRoom.prototype, lookRelayMethods); /* v2.3.3240 */
+Object.assign(GameRoom.prototype, xpDecayMethods); /* v2.3.3251 */

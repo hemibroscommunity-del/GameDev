@@ -60,3 +60,24 @@ With the saves taken out, all four checks fail.
 The suite's mock storage now **copies** on put, as Durable Object storage does
 (a structured clone). By reference, a saved record went on changing with the
 live player, so a check of what storage held could not fail.
+
+## v2.3.3163: not with the dead, and a refusal is nobody else's news
+
+Found by the overnight economy review, both reproduced on main:
+
+- **Diego traded with a dead player.** `_shopSell` and `_shopBuy` skipped the
+  `ps.dying || ps.dead || ps.disconnected` check that every other counter
+  makes (salvage, the forges, smelting, traps, the farm, the weapon vendor).
+  A player in the 5-second death window could still buy: 5 bars for 1,200
+  gold, which the respawn then wiped, gold spent. It lost value rather than
+  making it, and nobody honest is at his counter then (he stands in town,
+  where no one dies). Both now answer "Not now" and move nothing.
+- **Every refused trade was broadcast.** After every `shop_sell` /
+  `shop_buy` the router sent the whole pile to every player in the room,
+  refusals included, with no rate limit. 200 refused sales from one client
+  sent 200 copies of the pile to each bystander. Now only a trade that
+  happened goes to everyone; a refused one sends the fresh pile to the asker
+  alone, so a stale panel still refreshes.
+
+No price, odd or rule changed. Tests: `shop.test.mjs`, the last section (5
+checks, 4 fail on main).

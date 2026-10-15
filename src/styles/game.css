@@ -4351,6 +4351,148 @@ body:has(.bt-pcard) [data-coach]{display:none}
      The icon stays hidden here by the v2.3.2359 rule above; that is this
      class's own arithmetic, not the plate's. */
 }
+/* ═══ v2.3.3216: HELD SIDEWAYS, THE CREATOR IS THREE COLUMNS ═══
+   Owner: "yes make the other fix too" -- found while testing the Codex
+   button sideways (#900): on a phone held sideways the new-character screen
+   put ENTER BRO TOWN below the bottom of the screen, and on a touch screen it
+   cannot scroll (`overflow:clip`, v2.3.2394), so a new player holding the
+   phone sideways could not make a character at all.
+
+   MEASURED on main (y of each control's top; the screen ends at its height):
+                 ENTER   Back   Reset   trait tiles shown whole
+     844x390      783     833    706    0 of 9 (the grid 25px tall)
+     667x375      704     754    640    0 of 9 (10px)
+     932x430      783     833    706    0 of 9 (65px)
+     740x360      742     792    672    0 of 9 (4px)
+     1024x768     847     897    ok     all
+     1180x820     847     897    ok     all
+   The upright column -- logo, character, name plate, ENTER, Back -- is about
+   870px tall on a phone and 950 on a tablet, and sideways there are 300-410px
+   (a tablet 750-800).  And in the picker the tabs (146px) and the colour pad
+   (123) left the tile grid a sliver.
+
+   SO SIDEWAYS THE SAME MARKUP IS LAID OUT IN THREE COLUMNS:
+     the character -- the logo, him on his pedestal, ENTER BRO TOWN, Back and
+       the version line: the upright column without the plate;
+     the name plate -- the carved frame with the name, Randomize and Reset,
+       its width taken from the HEIGHT so the whole frame fits;
+     the trait picker -- its tabs a rail two wide down its left side, the
+       tiles, the colours and the drawing card beside it.
+   Nothing is hidden and nothing new is drawn: every control is the upright
+   one, sized to fit.
+
+   WHO GETS IT: a touch screen wider than tall and at most 1000px tall --
+   every phone sideways, and the tablets whose upright column does not fit.
+   A desktop window keeps its layout: with a mouse the modal is not clipped
+   (v2.3.2394), and most test scenarios start in a 1000x780 desktop window.
+   A 1366x1024 tablet fits upright and keeps that too. */
+@media (orientation:landscape) and (pointer:coarse) and (max-height:1000px){
+  .bt-name-modal{
+    /* The screen's height less the modal's padding.  dvh where the browser
+       has it (iOS 15.4+), vh before -- the order the modal's own height
+       falls back in; on iOS 14 vh can be taller than the screen by Safari's
+       bar, so everything below also has a width cap. */
+    --cc-vh:100vh;
+    --cc-avh:calc(var(--cc-vh) - max(10px,env(safe-area-inset-top,0px)) - max(10px,env(safe-area-inset-bottom,0px)));
+    --cc-avw:calc(100vw - max(10px,env(safe-area-inset-left,0px)) - max(10px,env(safe-area-inset-right,0px)));
+    /* the character's column.  150 at least: on the narrowest sideways phone
+       (568x320, the first iPhone SE) a wider floor left the picker's tiles a
+       40px column, under one tile. */
+    --cc-leftw:clamp(150px,calc(var(--cc-avw)*.28),300px);
+    /* The plate is 0.756 of its width in frame (the caps 0.376 + 0.18, the two
+       gaps 0.10 each) plus 178px of controls, so the widest that fits the
+       height is (height - 178) / 0.756, less 4px.  188 AT LEAST, measured:
+       the name well is 0.828 of the plate less its 4px of border, 9px of
+       padding and the reroll button's 54, and "Tap to name" is 86.2px at the
+       16px the field is pinned to (NameModal, iOS's zoom floor) -- whole from
+       a 186px plate.  At 188 "Randomize Bro" also keeps its 34px icon at its
+       full 16px (149px of row in 155.7). */
+    --cc-platew:clamp(188px,min(calc(var(--cc-avw)*.25),calc((var(--cc-avh) - 182px)*1.32)),250px);
+    /* the upright tile is 13vw, ~51px on a 390 phone; the same here, from the
+       height, so a row of three or four fits beside the tabs */
+    --cc-tile:clamp(46px,calc(var(--cc-avh)*.14),58px);
+    --cc-swatch:clamp(26px,calc(var(--cc-avh)*.085),34px);
+  }
+  @supports (height:100dvh){
+    .bt-name-modal{--cc-vh:100dvh}
+  }
+  .bt-cc-shell{max-width:1100px}
+
+  /* ── the character's column and the plate's, one grid ── */
+  .bt-name-box.bt-cc-box.bt-cc-col-left{
+    display:grid;flex:0 0 auto;width:auto;
+    grid-template-columns:var(--cc-leftw) var(--cc-platew);
+    grid-template-rows:auto minmax(0,1fr) auto auto auto;
+    grid-template-areas:"title plate" "stage plate" "play plate" "back plate" "ver plate";
+    column-gap:8px;row-gap:5px;
+  }
+  /* The 0.16 under the title is half the upright stage's slack going above
+     him (see .bt-cc-title); here the stage is in its own row and the logo is
+     a band over it, so the padding is only height taken from him. */
+  .bt-cc-col-left>.bt-cc-title{grid-area:title;padding-bottom:0}
+  .bt-cc-col-left .bt-cc-logo{width:min(calc(var(--cc-leftw)*.56),150px)}
+  .bt-name-box.bt-cc-box.bt-cc-col-left>.bt-cc-stage{
+    grid-area:stage;align-self:center;
+    /* his row, never more: the 2x is paint only (v2.3.1527), so the LAYOUT
+       box is what must fit */
+    max-height:min(var(--cc-leftw),34vh,100%);
+  }
+  .bt-cc-col-left>.bt-cc-cluster{
+    grid-area:plate;align-self:center;
+    --cc-plate:var(--cc-platew);
+    /* no bleed: the upright plate runs past its column into the screen's
+       edge and the 8px before the picker; here it has neighbours both sides */
+    margin:0;
+  }
+  /* While typing the plate sits at the top, so the name stays above the
+     keyboard (v2.3.1307's reservation pads this grid's bottom). */
+  .bt-name-box.bt-cc-box.bt-cc-col-left[data-kb]>.bt-cc-cluster{align-self:start}
+  /* The plate's label, crest and gap are 11.07 x its font, so the font that
+     fits the column is its width / 11.07; 0.085 leaves 6%.  18px from a
+     212px column, as upright. */
+  .bt-cc-col-left>.bt-cc-play{grid-area:play;font-size:clamp(12px,calc(var(--cc-leftw)*.085),18px)}
+  .bt-cc-col-left>.bt-cc-back{grid-area:back}
+  .bt-cc-col-left>div:last-child{grid-area:ver}
+
+  /* ── the picker: tabs down the left, everything else beside them ──
+     The options keep at least one whole row of tiles: an auto row is sized
+     before a flexible one, so on Shirt (a colour pad AND a drawing card) the
+     two of them took the whole height and the shirts themselves were a 3px
+     sliver, measured. */
+  .bt-cc-panel{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    grid-template-rows:auto minmax(calc(var(--cc-tile) + 8px),1fr) auto auto;
+    grid-template-areas:"title title" "tabs items" "tabs colors" "tabs card";
+    column-gap:8px;row-gap:7px;
+  }
+  .bt-cc-panel>.bt-cc-panel-title{grid-area:title}
+  .bt-cc-panel>.bt-cc-tabs{grid-area:tabs;align-self:start;grid-template-columns:repeat(2,52px)}
+  .bt-cc-panel>.bt-cc-scroll{grid-area:items}
+  .bt-cc-panel>.bt-cc-colors{grid-area:colors}
+  /* two rows of swatches showing, the rest a flick away (Skin has 25) */
+  .bt-cc-panel .bt-cc-colors-row{max-height:calc(var(--cc-swatch)*2 + 9px)}
+  /* The drawing card lies on its side, the picture beside its tools: stood
+     up it needs ~163px (a 60px picture over the palette and the brush row)
+     and there is not that much height left under the tiles and colours. */
+  .bt-cc-panel>.bt-cc-ink{grid-area:card;margin-top:0;flex-direction:row;min-height:0;max-height:none}
+  .bt-cc-panel>.bt-cc-ink>.bt-cc-ink-pane{width:auto;flex:1 1 0;min-width:56px;min-height:0}
+  .bt-cc-panel>.bt-cc-ink>.bt-cc-ink-tools{flex:0 0 62%;justify-content:center;border-top:0;border-left:1px solid rgba(20,30,34,.38)}
+}
+/* ...and on a narrower phone (667x375, the SE and the 6/7/8) the character's
+   column gives the picker 20px: at 0.28 the drawing card there was 126px wide
+   and clipped its third brush.  He is sized by the height there anyway (34vh),
+   so only the pedestal's edge goes a little further under the plate. */
+@media (orientation:landscape) and (pointer:coarse) and (max-height:1000px) and (max-width:759px){
+  .bt-name-modal{--cc-leftw:clamp(150px,calc(var(--cc-avw)*.25),300px)}
+}
+/* ...and on the shortest (568x320, or a phone with Safari's bar showing) the
+   five rows of tabs come down from 49px so they fit beside the options. */
+@media (orientation:landscape) and (pointer:coarse) and (max-height:350px){
+  .bt-cc-panel>.bt-cc-tabs{gap:3px}
+  .bt-cc-panel>.bt-cc-tabs>.bt-cc-tab{min-height:38px;gap:1px;padding-block:2px}
+  .bt-cc-panel>.bt-cc-tabs .bt-cc-tab-icon{width:20px;height:20px}
+}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
 .bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}
@@ -6344,3 +6486,87 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
   .bt-pet-shine{opacity:0}
   .bt-pet-glow{animation:none;opacity:.8}
 }
+
+/* ═══ v2.3.3209: THE MONSTER CODEX'S STAGE (src/ui/mobile/dash/CodexStage.jsx) ═══
+   The Points window preview's make (bt-sd-*): one ground line 9px up the
+   stage, your character on the left, the monster on the right in its own
+   strips (stepped by bt-sd-strip, the preview's keyframes), every motion
+   CSS.  The monster is two layers: .bt-cx-mon walks (an inline transform and
+   its transition), .bt-cx-body moves on the spot (one transform each). */
+/* v2.3.3209: ONE BOX, AND EVERYONE STANDS INSIDE IT -- the owner, of the first
+   look: "the animation shows the player and monster in a layer above the
+   container they're supposed to be in and the bottom of the characters are
+   visible on the dashboard container".  Its bottom 40 px were the land's tint
+   over the stage at .2 -- the dashboard's own slate -- with the feet on a line
+   9 px up and your boots on the box's very edge, so the two stood half out of
+   a dark box onto the dashboard.  Now: a near-black scene in a frame you can
+   see, a GROUND STRIP of the land's colour exactly --cx-ground tall
+   (CodexStage.jsx GROUND) with a bright top edge, and every foot on that edge
+   (yours placed by the figure's own feet).  Isolated, its strip and edge
+   painted under everything (z-index -1), and nothing in it composited for good
+   (no will-change): nothing drawn here can paint outside the frame or over the
+   dashboard, on a phone whose compositor clips what this box holds or not. */
+/* v2.3.3215: the codex page's tab bar, pinned to the sheet's top while you
+   scroll (MonsterCodex.jsx Tabs): its own opaque ground, the tray's colour,
+   so the drop table passes UNDER it rather than through its buttons; sideways
+   the side sheet's (BottomDashboard's .bt-land-sheet, .96 of #0D161B) */
+.bt-cx-tabbar{background:var(--ui-dashboard-tray,#2E4754)}
+.bt-land-sheet .bt-cx-tabbar{background:#0D161B}
+.bt-cx-stage{position:relative;width:300px;max-width:100%;height:150px;margin:0 auto;overflow:hidden;border-radius:10px;
+  background:linear-gradient(#0C161B,#05090B);border:1px solid rgba(229,237,233,.24);isolation:isolate}
+.bt-cx-stage::before{content:"";position:absolute;z-index:-1;left:0;right:0;bottom:0;height:var(--cx-ground,16px);background:var(--cx-land,#3a4a50);opacity:.3;pointer-events:none}
+.bt-cx-stage::after{content:"";position:absolute;z-index:-1;left:0;right:0;bottom:calc(var(--cx-ground,16px) - 1px);height:1px;background:var(--cx-land,#3a4a50);opacity:.75;pointer-events:none}
+.bt-cx-hero{position:absolute;line-height:0}
+.bt-cx-hero--hit{animation:bt-cx-flinch .38s ease-out 1}
+.bt-cx-hero--shove{animation:bt-cx-shove .6s ease-out 1}
+.bt-cx-hero--swing{animation:bt-sd-lunge .34s ease-out 1}
+@keyframes bt-cx-flinch{0%{transform:translateX(0);filter:none}25%{transform:translateX(-6px);filter:brightness(1.7)}100%{transform:translateX(0);filter:none}}
+@keyframes bt-cx-shove{0%{transform:translateX(0)}30%{transform:translateX(-18px)}100%{transform:translateX(0)}}
+.bt-cx-mon{position:absolute;bottom:0;width:0;height:0}
+/* v2.3.3209: the body stands ON the ground strip, so every scale of it (a
+   swell, the burst, a throb) grows from the feet -- from the stage's bottom
+   edge the blue slime's 2.4x burst came out 10 px past the frame's top */
+.bt-cx-body{position:absolute;left:0;bottom:var(--cx-ground,0px);width:0;height:0;transform-origin:0 100%}
+.bt-cx-strip{position:absolute;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;pointer-events:none}
+.bt-cx-portrait{position:absolute;opacity:.92;pointer-events:none}
+.bt-cx-body--breathe{animation:bt-cx-breathe 1.8s ease-in-out infinite}
+.bt-cx-body--throb{animation:bt-cx-throb 1.2s ease-in 1 forwards}
+.bt-cx-body--rise{animation:bt-cx-rise .9s ease-out 1 forwards}
+.bt-cx-body--slam{animation:bt-cx-slam .26s ease-in 1}
+.bt-cx-body--swell{animation:bt-cx-swell 1.6s ease-in 1 forwards}
+.bt-cx-body--burst{transform:scale(2.4)}
+.bt-cx-body--swing{animation:bt-cx-swing .26s ease-out 1}
+.bt-cx-body--fadein{animation:bt-cx-fadein .5s ease-out 1 both}
+.bt-cx-body--struck{animation:bt-cx-struck .34s ease-out 1}
+@keyframes bt-cx-breathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.025)}}
+@keyframes bt-cx-throb{0%{transform:scale(1)}60%{transform:scale(1.08,.92)}100%{transform:scale(1.12,.86)}}
+@keyframes bt-cx-rise{0%{transform:translateY(0)}100%{transform:translateY(-12px) scale(1.04)}}
+@keyframes bt-cx-slam{0%{transform:translateY(-12px)}40%{transform:translateY(2px) scale(1.06,.94)}70%{transform:translateX(-3px)}85%{transform:translateX(3px)}100%{transform:none}}
+@keyframes bt-cx-swell{0%{transform:scale(1)}100%{transform:scale(2.4)}}
+@keyframes bt-cx-swing{0%{transform:translateX(0)}40%{transform:translateX(-12px)}100%{transform:translateX(0)}}
+@keyframes bt-cx-fadein{0%{opacity:0}100%{opacity:1}}
+@keyframes bt-cx-struck{0%{transform:none;filter:none}30%{transform:translateX(5px);filter:brightness(2)}100%{transform:none;filter:none}}
+/* the special's word over it, as the world says SLAM! and LUNGE! */
+.bt-cx-label{position:absolute;width:88px;text-align:center;font-size:15px;font-weight:900;letter-spacing:.04em;text-shadow:0 2px 0 rgba(0,0,0,.65),0 0 6px rgba(0,0,0,.5);pointer-events:none;animation:bt-cx-label .9s ease-out 1 both}
+@keyframes bt-cx-label{0%{transform:translateY(6px) scale(.8);opacity:0}25%{transform:translateY(0) scale(1.05);opacity:1}100%{transform:translateY(-4px) scale(1);opacity:1}}
+/* a slam's (or a burst's) ring at its feet, flat on the ground */
+/* the world's warning circle (effectsRenderer _telegraphZones), under you,
+   filling as the wind-up runs; and the world's kick as a slam or a burst lands */
+.bt-cx-zone{position:absolute;width:80px;height:22px;margin-left:-40px;border:2px solid var(--cx-zone,#f5c542);border-radius:50%;box-sizing:border-box;pointer-events:none;animation:bt-cx-zone var(--cx-zone-ms,.9s) linear 1 both}
+.bt-cx-zone::before{content:"";position:absolute;inset:0;border-radius:50%;background:var(--cx-zone,#f5c542);animation:bt-cx-zonefill var(--cx-zone-ms,.9s) linear 1 both}
+@keyframes bt-cx-zone{0%{opacity:.45}100%{opacity:.95}}
+@keyframes bt-cx-zonefill{0%{opacity:.1}100%{opacity:.34}}
+.bt-cx-world{position:absolute;inset:0}
+.bt-cx-world--shake{animation:bt-cx-shake .32s linear 1}
+@keyframes bt-cx-shake{0%,100%{transform:none}20%{transform:translate(-4px,1px)}40%{transform:translate(4px,-1px)}60%{transform:translate(-3px,1px)}80%{transform:translate(2px,0)}}
+/* a ball crossing the gap: its hand, over the top, your chest */
+.bt-cx-shot{position:absolute;left:0;top:0;pointer-events:none;animation-name:bt-cx-fly;animation-duration:.65s;animation-timing-function:linear;animation-iteration-count:1;animation-fill-mode:both}
+.bt-cx-shot--ball{border-radius:50%;box-shadow:inset -2px -3px 0 rgba(0,0,0,.28),inset 2px 2px 0 rgba(255,255,255,.35)}
+@keyframes bt-cx-fly{0%{transform:translate(var(--cx-sx),var(--cx-sy))}50%{transform:translate(var(--cx-mx),var(--cx-my))}100%{transform:translate(var(--cx-ex),var(--cx-ey))}}
+.bt-cx-burst{position:absolute;width:44px;height:44px;background-repeat:no-repeat;pointer-events:none;animation:bt-sd-strip .42s steps(8,jump-none) 1 forwards,bt-cx-fadeout .42s linear 1 forwards}
+@keyframes bt-cx-fadeout{0%,70%{opacity:1}100%{opacity:0}}
+/* what its element did, over your head */
+.bt-cx-pop{position:absolute;display:flex;align-items:center;gap:4px;padding:2px 8px 2px 3px;border-radius:999px;background:rgba(11,22,27,.75);color:#F4F0E7;font-size:12px;font-weight:900;white-space:nowrap;pointer-events:none;animation:bt-cx-pop 1s ease-out 1 both}
+.bt-cx-pop img{width:20px;height:20px;object-fit:contain}
+@keyframes bt-cx-pop{0%{transform:translateY(6px);opacity:0}20%{transform:translateY(0);opacity:1}75%{opacity:1}100%{transform:translateY(-10px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.bt-cx-body,.bt-cx-hero,.bt-cx-label,.bt-cx-zone,.bt-cx-world,.bt-cx-pop{animation:none!important}}

@@ -43,7 +43,13 @@ const COACH_OFF = `try {
     'blockRanged', 'attack', 'special', 'chatTap', 'passkey'];
   const d = {}; for (const k of l) d[k] = true;
   localStorage.setItem('bt_coach_v1', JSON.stringify(d));
-} catch (e) {}`;
+} catch (e) {}
+/* v2.3.3150: this scenario reads the figures' pictures back off their
+   canvases, which are let go of once on the GPU now (effectsRenderer
+   _gpuOnly); this keeps them, as ?gpucopies does -- set here, not in the
+   address, because the guest's page reloads into '?guest=1' on the way in
+   and an init script runs again on every load */
+window.__btTrimVerify = true;`;
 const SEED = COACH_OFF + `
 try {
   localStorage.setItem('bt-facetattoo', ${JSON.stringify(LEFT_BLUE)});

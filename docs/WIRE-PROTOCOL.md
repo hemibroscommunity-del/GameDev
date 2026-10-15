@@ -118,7 +118,7 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 | Type | Purpose / payload | Client handler (BroTown.jsx) |
 |---|---|---|
 | `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields; v2.3.3015: `spr: 1` while that player sprints -- a step the worker paid for in the last 600 ms, absent when walking, and deliberately not `sp`, which in a player's data is the shirt pattern; docs/specs/sprint.md "Seen and heard"; v2.3.3123: `pw`, the pet out with that player as the worker keeps it, `'kind.stage.gold.size.lv'`, absent with none -- deliberately not `pt`, which in a player's data is the pants, nor `pet`, the old client-relayed one; docs/specs/trapping.md "Pets that matter"; v2.3.3142: `eqg`, the grades of the torso and greaves that player wears as the worker counts them, two letters `n`/`r`/`e`/`g` (`'rn'`, `'ee'`; godly only on a piece the worker minted, else `e`, combat.js's rule), absent in plain armour; docs/specs/armor-grade-look.md), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only). **Zone-scoped since v2.3.1575** — see below | ~2048 |
-| `state_sync` | Full room snapshot on join: players, zone monsters, etc. | ~2223 |
+| `state_sync` | Full room snapshot on join: players, zone monsters, etc. v2.3.3244: each other player as the public keys only (`PEER_PUBLIC_KEYS`, index.js: position, name, look, gear on show) -- see "What the others are told about you" below | ~2223 |
 | `zone_state` | v2 zone change: `{ zone, monsters, nodes, loot }` merged. **v2.3.1983: also sent MID-SESSION**, unprompted, when population-scaled spawns change a zone's roster — the client already replaces its lists wholesale on it, and a per-entity `tick` delta cannot introduce an entity, so this resend is how a new monster becomes real on any client (`docs/specs/spawn-scaling.md`) | ~2352 |
 | `zone_monsters` / `zone_nodes` / `zone_loot` | v1 legacy zone-change trio (kept as fallback). v2.3.1983: `zone_monsters` + `zone_nodes` are the v1 half of the mid-session roster push above (no `zone_loot` — piles are unaffected) | ~2732 / ~2727 / ~2347 |
 | `player_state` | Authoritative pool/progression mirror (hp, coins, xp, inventory…); v2 sends field deltas | ~2421 |
@@ -189,11 +189,78 @@ The tick no longer carries the whole room. Per receiving session:
   the client's ghost-sweep deletes any peer silent for 10 s and counts the
   survivors for "N online".
 - `events` — **unchanged, room-wide.** They are 1% of egress and mix zone-local
-  combat with social relays; do not scope them.
+  combat with social relays; do not scope them. *(Superseded by v2.3.3245,
+  below: the fights' events are placed by an allowlist; the social relays are
+  still room-wide.)*
 
 The v1/v2 split is unchanged *within* a zone. No caps flag — nothing new is
 claimed, so it is deploy-order safe both ways. Full detail and the measurements:
 `docs/specs/interest-management.md`.
+
+**v2.3.3197: far players less often, positions in whole pixels.** In the Wheel
+a v2 session's `players` carries the movers within 2,400 px of it on every tick
+(`FAR_PLAYERS.NEAR_R` in `server/src/tick.js`, the monsters' own reach) and
+the ones further off at most every 250 ms, each time where they are now; v1
+sessions and every other zone are as above. Every player entry's `x`, `y`, `vx`
+and `vy` are whole numbers. Kill switches (live flags): `farplayers: false`,
+`roundpos: false`. No caps flag: an old client already handles a peer updated
+less often (the 1 Hz roster). `docs/specs/far-players.md`.
+
+**v2.3.3243: far players once a second, with the roster.** The far send above
+is gone by default (`FAR_PLAYERS.EVERY_MS` 0): a player more than 2,400 px from
+a v2 session in the Wheel reaches it only in the presence roster, every
+`PRESENCE_REFRESH_TICKS` (about once a second), where they are now. Near players
+are unchanged. `far_ms` in the live flags (a number, 100-5000) brings back a far
+send that often (250 is v2.3.3197's). Same fields; no caps flag, for the same
+reason. `docs/specs/far-players.md` "Once a second".
+
+**v2.3.3203: a player walking steadily is sent less often.** A Wheel player's
+entry is held for the next tick while they stay on the line their last entry
+drew them along (its `x`, `y`, `vx`, `vy`; within 2 px), with every other field
+unchanged and still moving (or still standing), for at most 66 ms; a turn, a
+stop, a start, new gear, a shove or any other change goes out at once, and the
+far send and the 1 Hz roster count as sent. Same fields, fewer entries: a
+straight walk about 15 a second instead of 30. Kill switch: `steadymovers:
+false`. `docs/specs/steady-movers.md`.
+
+**v2.3.3246: the roster's far players, slim.**
+- **The roster is built for each phone.** On a presence tick (the 1 Hz roster),
+  a v2 phone in the Wheel gets its own roster.
+- **Near players whole.** The players within 2,400 px of it in its zone are sent
+  whole, as before.
+- **Far players slim.** The far ones are sent `{x, y, d, z, vx, vy}`: the
+  fields the client writes whether or not they are present.
+- **A far player standing still waits.** One who has not changed since the last
+  roster is sent again only after 4 s (`ROSTER.FAR_STILL_MS`). That is still
+  inside the client's 10 s ghost sweep.
+- **Everyone else unchanged.** v1 phones, the other zones and a socket that has
+  not joined still get everyone whole.
+- **Deploy order.** No caps flag. The kill switch is `slimroster: false`.
+- `docs/specs/slim-roster.md`.
+
+**v2.3.3250: far players only while your world map is open (presence v2).**
+- **join `pres: 2`** (v2 only) and **`caps.presence2`**: a phone that opts in,
+  in the Wheel, is sent the players near it and its party (whole, wherever
+  they are), and far players only while its world map is open.
+- **client -> server `map_watch {on: true|false}`**: the world map opening, its
+  4 s heartbeat, its closing. One `true` lasts 8 s. Sent only to a worker that
+  advertises `presence2`; the page's channel names it (TRAPS #18).
+- **tick `nr: 1`**: on a pres-2 phone's roster while its map is shut -- every
+  player near it is in this roster. The phone parks the rest out of sight.
+- **tick `on: {id: zone}`**: everyone in the room, on a pres-2 phone's first
+  tick and every 30 s. It replaces the 10 s ghost sweep while it keeps coming.
+- **Deploy order.** An old phone keeps the v2.3.3246 roster; a new phone
+  against an old worker never sends `map_watch`. Kill switch `presence2:
+  false`. `docs/specs/presence-v2.md`.
+
+**v2.3.3204: a steady walk on the safe ground is sent half as often.** The
+client's `move` cadence: on the Wheel's safe ground, not in a fight, against a
+worker advertising `caps.movediet`, a move on the line the last one drew waits
+until 66 ms after it (`src/game/moveDiet.js`, the worker's own steady rule); a
+turn, stop, start or any other change goes on the next 33 ms batch. The worker
+passes such a move on at its next tick (`STEADY.SPACED_MS`). Same message, sent
+less often; an old worker gets every move, an old client sends every move. Kill
+switch: `movediet: false` (un-advertises the cap). `docs/specs/move-diet.md`.
 
 ### `track` is cosmetics-only (v2.3.1465)
 
@@ -213,6 +280,22 @@ Two properties make this safe and worth preserving:
 - `x`/`y` are in the allowlist but in `TRACK_STATE_EXCLUDED`: relayed to peers
   as a visual hint, **never** merged into player state. Position belongs to
   `move` alone, behind the 500 px/s anti-teleport cap.
+
+**v2.3.3240: the `player_update` relay carries what CHANGED, and only when
+something did** (`server/src/lookrelay.js`, `docs/specs/look-relay.md`).
+The phones merge it, writing only the keys it carries.
+
+- `x`/`y`/`dir`, the LAZY keys (`rpgHp`, `rpgMaxHp`) and the inspect card's
+  counters (LAZY_IN: `rpgData`'s `kills`, `svKills`, `goldEarned`, `playtime`)
+  never send a relay on their own; they ride along in one that goes.  Any
+  other change to `rpgData` relays it, whole, at once: the phone draws a
+  peer's slung shield from `rpgData.shield`.
+- `hg`/`fr` are in every relay that has them: the phone sets the build from
+  each relay unconditionally.
+- A whole copy goes every minute.
+- Any other `player_update` a server sends must carry the player's `hg`/`fr`
+  too (the clan clear does), or it resets their build on every screen.
+- Kill switch: `lookdelta: false`.
 
 Before v2.3.1465 the handler `Object.assign`-ed the raw blob into player state:
 one crafted `track` forged coins/power/level, minted a weapon past
@@ -236,6 +319,24 @@ A forged `_zoneEntryGraceUntil` bought permanent immunity to all damage
 (`_applyDamage` short-circuits on it) on an id that needs no passphrase.
 It was the same primitive as `track`, one message earlier, and the
 v2.3.1465 pass did not reach it.
+
+### What the others are told about you (v2.3.3244)
+
+A joining phone's `state_sync.players` and the `player_join` every phone gets
+when someone joins describe each player by the **public** keys alone
+(`PEER_PUBLIC_KEYS` / `_peerPublic` in `server/src/index.js`): what the look
+relay already sends everyone (`TRACK_COSMETIC_KEYS`), the join's look
+(`JOIN_COSMETIC_KEYS`), and what every tick says (`playerWire`: position,
+facing, zone, speed, the armour on show, what they are harvesting, the Hemi
+Bro badge). Until v2.3.3244 they spread the player's whole `playerState` --
+coins, bag, every stash, quests, life skills, buffs, the anti-cheat's own
+histories -- and the join's `rpg*` claims (`player_join` too); no phone read
+them, and in No man's land the bag is the killer's prize. Precedence is
+unchanged (the phone's look over the state, the session's name over the
+state's). A field added to `playerState` later stays private unless it is
+added to the list on purpose. `server/test/peer-view.test.mjs` holds every key
+a phone reads on the snapshot road (wsClient.js, `peerCosmetics.js`) to the
+list. No caps flag: a phone reads a subset of these keys, from any worker.
 
 `_sanitizeJoinData` (`server/src/join.js`) now admits exactly:
 
@@ -300,6 +401,33 @@ reads off a peer — `sa` → `shirtArtFront`, `hr` → `hair` — add the pair 
 feeds the `state_sync` snapshot, `player_join`, both self-heal placeholders
 and the `player_update` relay; before it existed the relay wrote the SHORT
 keys onto peers and every renamed cosmetic was frozen at its join value.
+
+**v2.3.3245: a fight's events go to the phones near it.** The events a tick
+carries are now chosen per phone from an ALLOWLIST of the ones that happen at a
+place (`server/src/eventplace.js`): monsters' hits, attacks, special moves,
+thrown balls, fire patches, parries, bow blasts, element bursts, a bash's
+wind-up, and the relays `player_swing`, `player_projectile`, `player_dodge`,
+`player_jump`, `gather_node`, `monster_dmg_at`, `player_hurt_by_monster`.
+
+- **Where it is.** The place comes from the room's own state: the monster
+  where it is now, the fields the room wrote, and for a relay the sender as the
+  room has them (never the payload).
+- **Who gets one:**
+  - the players it is about (attacker, target, sender), wherever they are;
+  - in the Wheel, a v2 phone within 2,800 px of it (`EVENT_PLACE.R`, the
+    monsters' `INTEREST_OUT`);
+  - anywhere else, the phones in its zone (and a v1 phone in the Wheel the
+    whole Wheel).
+- **Still room-wide:** everything else -- chat, emotes, trades, duels, clans,
+  the arena, the jackpot, hits between players, and the events a phone keeps
+  until the next one: kills (a far monster's only news of its death), loot, a
+  raised shield, a mummy's change, a lit campfire. And any new type. A phone with no zone yet still hears everything.
+- **On the wire:** an event's bytes are unchanged, and a phone near all of a
+  tick's events gets the same `events` it got before. No caps flag.
+- **Kill switch:** `eventplace: false`.
+
+At 120 players with real swings and arrows it cut a phone's events from about
+50 to 16 a second. `docs/specs/events-by-place.md`.
 
 ## Peer-relayed broadcast events (client ↔ client)
 
@@ -495,6 +623,14 @@ field, gid|idx, essence, grade, metal, piece}`, or `{ok: false, reason}`
 (worn, in_mail, legacy, not_held, wrong_slot, gone, changed, not_metal,
 no_essence, wrong_metal, not_lower, bad); a player_state follows each paid
 act. Full table: docs/specs/salvage.md.
+
+**Shield gems (v2.3.3187, caps.shieldgem):** new c→s case `shield_gem {gem,
+gid}` or `{gem, sig}` (a polished gem into the shield the worker holds for
+you, named by its ledger id or, with no id, by its signature
+name|gearBase|tierMult|tier); new s→c type (PRIVILEGED, private)
+`shield_gem_result {ok, gem, name, gid, was, worn}` or `{ok: false, reason,
+gem}` (off, down, bad_gem, locked, bad, not_held, no_gem); a player_state
+follows a slotted gem. Full table: docs/specs/shield-gems.md.
 
 **Server-minted weapon drops (v2.3.1141, caps.weaponDrops):** no new
 message types. The loot pile broadcast (`loot_drop`/`zone_loot`/

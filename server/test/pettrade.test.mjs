@@ -228,6 +228,32 @@ const confirmBoth = async () => { await bothReady(); await cmd(ws.a, 'trade2_con
   check('disconnect: cancelled, and the staged pet never left A', !room._t2SessionFor(P('a')) && ids('a').length === before && ids('a').includes(giveA3));
 }
 
+{
+  /* v2.3.3186: renaming a pet that is in the window is a change to the offer.
+     Every other edit resets both readies and accepts (the anti-switch rule);
+     a rename only changed the name, so the other side could accept a trade
+     showing one name and receive the pet under another. */
+  const giveR = ids('a').find((id) => id !== book('a').rec.active);
+  const other = ids('a').find((id) => id !== book('a').rec.active && id !== giveR);
+  await openTrade();
+  await cmd(ws.a, 'trade2_pets', { ids: [giveR] });
+  await cmd(ws.b, 'trade2_set', { offer: { _gold: 5 } });
+  await bothReady();
+  await cmd(ws.a, 'trade2_confirm');
+  check('rename: setup -- both ready, A has accepted', lastT2('b').ready[P('a')] === true && lastT2('b').confirmed[P('a')] === true, lastT2('b'));
+  book('a').acts = [];
+  await cmd(ws.a, 'pet_name', { id: other, name: 'Bystander' });
+  check('rename: a pet NOT in the window renamed changes nothing in it', lastT2('b').confirmed[P('a')] === true && lastT2('b').ready[P('b')] === true, lastT2('b'));
+  ws.b.sent.length = 0;
+  await cmd(ws.a, 'pet_name', { id: giveR, name: 'Rover' });
+  const st = lastT2('b');
+  check('rename: the pet in the window renamed resets BOTH readies and accepts, back to the offer', !!st && st.confirmed[P('a')] === false && st.confirmed[P('b')] === false
+    && st.ready[P('a')] === false && st.ready[P('b')] === false && st.stage === 'offer', st && { ready: st.ready, confirmed: st.confirmed, stage: st.stage });
+  check('rename: ...and the other side is shown the new name', !!st && st.pets[P('a')].length === 1 && st.pets[P('a')][0].name === 'Rover', st && st.pets);
+  const s2 = room._t2SessionFor(P('a'));
+  if (s2) room._t2Cancel(s2, 'test');
+}
+
 // ── 4. THE AUCTION HOUSE ──────────────────────────────────────────────────────
 await room._stEnsureIndex();
 {

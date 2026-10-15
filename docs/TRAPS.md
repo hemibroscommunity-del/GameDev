@@ -5481,3 +5481,819 @@ tap, the E key's proximity) and give each the filter. The Wheel's objects keep
 the rule by construction -- their footprints come only from pages that are drawn
 (wheelObjects.js) -- and `mp-unseenwall` walks through a hidden vein and into a
 drawn one.
+
+## 141. "The shadows flicker, so draw them at full resolution" (v2.3.3149)
+
+**The plausible move.** The shadow layer's filter runs at CSS resolution
+(shadows.js, one texel a CSS px: three device px on a 3x iPhone), the owner says
+the shadows flicker as you walk past props, so set the filter's resolution to
+`'inherit'` and draw them as sharp as everything else. It works: measured, the
+shadows then follow the world to 0.3% of their darkness a step instead of ~2%.
+
+**Why it is wrong.** A filter draws into a texture from Pixi's TexturePool, and
+the pool rounds every texture up to a power of two. The shadow layer's bounds
+are most of the screen, so at device resolution that is a 2048 x 4096 texture,
+~32 MB of graphics memory on a 3x phone -- for one soft, translucent layer, in a
+game whose black screens are iPhone Safari running out of memory
+(docs/MEMORY-PLAN.md). The flicker was never the resolution: it was the coarse
+grid MOVING. The camera slides in fractions of a pixel, so each frame every
+shadow was rasterised at a new fraction of the CSS grid (its vertices snapped
+to the nearest texel by roundPixels, its edges sampled at a new phase) while
+its prop moved smoothly a device pixel at a time.
+
+**The rule.** A layer drawn at a lower resolution than the screen is drawn on a
+grid locked to the world: offset it by minus the camera's fraction of a texel,
+so it is rasterised at the same phase every frame, and slide the finished
+picture back by that fraction in the filter (shadows.js `lockToWorldGrid`,
+`uShift`). Same texture, same cost, ~5x steadier (mp-shadowlock). And when you
+MEASURE motion on the screen, check in the pictures that the world moved: a
+screenshot of the world under the Mayor's welcome scrim does not move when the
+camera does, and every first measurement of this read "the shadows never move"
+because his greeting was open.
+
+## 142. "Dark is a share of black pixels" (v2.3.3151)
+
+The black-screen watchdog (BroTown.jsx) judged a 32 x 18 thumbnail of the
+world by how much of it was lit, and called the screen dark under 1%.  That
+catches a screen gone wholly black or wholly to the canvas's navy (§130).  It
+does not catch a screen gone PART way, and an iPhone graphics reset leaves
+exactly that: it blanks what the game made on the GPU and keeps what was
+loaded from a file.  In the Wheel the biggest thing the game makes is its
+ground -- every piece lives on the GPU only (v2.3.3076), and the small map
+under them and the water too -- while the buildings, trees, lamps and
+townsfolk are pictures from files.  So the screen it leaves is those things
+standing on the navy: black to anyone looking at it, and 30-39% lit in town
+to the watchdog.  No strike, no rebuild, no reload, until the owner walked
+far enough out over open ground that the share fell under 1% at last
+("the screen went black up until the point I began fighting the fire
+goblins").
+
+Measured at 51 places (town and all eight spokes, a phone at 3x): with its
+ground the Wheel reads 95-100% lit, with the ground hidden 9-56%.  The rule
+since: where something is MEANT to cover the screen, a screen far short of
+that is the failure, whatever else is drawn -- in the Wheel, under 75% lit
+is a strike.
+
+And make the failure itself in a test, not only the total blackout:
+mp-glrestore hides the whole stage, which no partial reset looks like.
+mp-bareground hides just the ground (the `wheelGround` container, found
+through `window._pixiRenderer`), and on main the watchdog sits through it.
+
+## 143. "Nothing draws that picture any more, so freeing it is safe" (v2.3.3152)
+
+A land's monster art is freed when you leave it (the zone-asset exception,
+CLAUDE.md), after the game has pointed every sprite of its own away from it.
+That is not everything that holds a picture.  Pixi keeps SHARED shaders that
+remember the last picture they drew: the mesh pipe's default shader, and the
+mask filter it draws every sprite mask through, which lives in a global pool
+(AlphaMaskPipe: `BigPool.get(AlphaMaskEffect)` ... `BigPool.return`) and is
+handed back with the last mask's picture still bound.  When a picture is
+destroyed, every bind group holding it hears it, and pixi 8.17's
+`BindGroup.onResourceChange` answers by destroying the WHOLE GROUP -- inside a
+pooled filter nobody destroyed.  The next sprite mask anywhere that takes that
+filter from the pool sets `inverse`, reads the dead group, and app.render
+throws ("Cannot read properties of null (reading '0')" at
+BindGroup.getResource <- MaskFilter set inverse <- AlphaMaskPipe.execute):
+a frame not drawn for every poisoned filter after a big fight, each time you
+leave a land or a dungeon -- and when the sprite mask sat inside a polygon
+mask, as a cut monster's does, a screen left BLACK until the watchdog's
+rebuild (§144).  Found by the leak
+hunt on its second Great Cave trip: a cut monster's death (monsterDeathFx.js)
+masks its keyline with a sprite of the monster's own picture, and leaving the
+cave freed the rock monsters' art.
+
+The stack never says who destroyed the group.  Patching BindGroup's
+`destroy` in the page to keep its caller's stack, and `getResource` to print
+it, named the chain in one run (the leak hunt's bgtrace).
+
+**The rule.**  Since v2.3.3152 a bind group whose picture or sampler is
+destroyed swaps that entry for Pixi's empty picture and stays alive
+(`src/rendering/bindGroupFix.js`, installed with the app; `?bindfix=0` is
+Pixi as it ships).  If you upgrade Pixi, keep mp-sceneleak's mask check: it
+draws a sprite mask with a picture of its own, frees the picture, and draws
+another.  And when a picture "nobody draws" is freed and something breaks,
+look in Pixi's pools and shared shaders, not only at your own sprites.
+
+The pools themselves hold memory the same way.  Pixi's TexturePool hands out
+the scratch textures of every filter pass and the texture of every canvas
+Text, by size, and keeps every one handed back -- on the GPU, for good: the
+most of each size ever in use at once (~30 name plates after a cave wave,
+6 MB of render textures nobody draws).  `texturePoolTrim.js` destroys one
+unused for 30 s and empties the pool on a zone change.  Two things it must
+do, and that a "just call TexturePool.clear()" would not: it never touches a
+texture that is out of the pool (clear() also drops the pool's arrays, and a
+texture handed back later then throws in returnTexture), and it unhooks the
+POOL'S OWN sampler from a text's texture before destroying it (a text is
+handed back wearing `TexturePool.textureStyle`, shared by every pooled text,
+and destroying a source destroys its sampler).  And it only runs with the
+bind-group fix on: the filter system's own bind group keeps its last input
+texture.
+
+## 144. "One frame threw, so one frame was lost" (v2.3.3152)
+
+app.render throwing is caught (pixiRenderer.js), logged, and the next frame
+runs -- so a throw reads as one dropped frame, and a run of them as a few.
+It is not, when the frame threw between a push and its pop.  Pixi keeps some
+of its drawing state from one frame to the next: the stencil masks' depth per
+render target (StencilMaskPipe `_maskStackHash`), the stencil mode each
+target puts back when it is drawn to again (GlStencilSystem
+`_renderTargetStencilState`), the colour mask, the filter stack's depth
+(FilterSystem `_filterStackIndex`) and the sprite masks in flight
+(AlphaMaskPipe `_activeMaskStage`).  A throw inside a polygon mask -- a cut
+monster's death nests a sprite mask inside one -- left the screen's stencil
+test on, at a reference nothing on the freshly cleared stencil matches, so
+every frame after drew nothing at all.  Made on main by the leak hunt: 0% lit
+for 22 s, until the watchdog's rebuild (v2.3.3017, v2.3.3151) -- the owner's
+"the screen went black".  The rebuild is the only thing that ended it.
+
+**The rule.**  Since v2.3.3152 every app.render throw is followed by
+`healAfterRenderThrow` (`src/rendering/renderHeal.js`), which puts those back
+to "nothing open"; the next frame draws whatever threw or not.  The watchdog
+stays the floor for a screen that goes dark any other way.  A new Pixi with
+other state carried across frames needs adding there -- mp-renderheal makes a
+throw inside a mask (with `bindfix=0`) and fails if the screen does not come
+back lit, and with `noheal` shows the black screen it prevents.
+
+_§145–§164 come from the economy review of 2026-10-12 (added v2.3.3188); each is tagged with the version of the fix it came from._
+
+## 145. "A swap is just a swap" (v2.3.3160)
+
+**The plausible move.** `equip_request {stashIdx, slot}` swapped a weapon-bag
+entry with whatever slot `_isValidEquipSlot` knew, armour, shield and amulet
+included. The client says which two places, the server exchanges what is
+there.
+
+**Why it is wrong.** The two containers hold different things under
+different trust. The armour slot can hold a DESCRIBED piece (stats_update's
+legacy lane: anything armour-shaped, tierMult clamped and nothing else). The
+weapon bag is where salvage, the vendor, the market, the auction house, the
+trade window and the hand all take entries as server-made. So a description
+of a "Godly Iron Greatsword" went into the armour slot, across into the bag,
+and out of salvage as 2 iron bars and a Godly essence that Diego buys for
+125,000, once per 8-gold wooden sword. Equipped, it was a tierMult-8 Godly
+weapon. The honest client never sends either swap, which is how it survived
+review after review.
+
+**The rule.** A verb that moves an item between two containers checks that
+the item belongs in BOTH, and that the slot fits the item (a bow in the bow
+slot), whatever the client names. Where a container's entries are trusted
+downstream, every way IN is a gate: grep every writer of the container
+(gear.js `_isWeaponSlot`, `_weaponSlotFor`, `_isGearNotWeapon`). And let
+marks speak: the gear ledger's `gid` / `prov` are never on a weapon, so a
+"weapon" carrying one is gear.
+
+## 146. "The oplog makes it idempotent" (v2.3.3162)
+
+**The plausible move.** A payout carries a deterministic opId (rule 5), so a
+second payout is a "dup". The record that says it was paid can be saved
+whenever.
+
+**Why it is wrong.** oplog stamps are pruned after 48 hours
+(`_opPruneMaybe`). The daily rewards' turn-over paid yesterday's open spin pot
+and a finished season's tiers. Three acts (a refused double or collect, an
+empty reroll, an empty season claim) then returned without saving the
+turned-over record. Nothing marked it dirty, the close forgot the cached
+copy, and the next join turned the STORED day over again. That was a "dup"
+for two days, and then it paid again: a 40,000 pot paid 80,000, and a
+season's track paid twice. Its freezes had no stamp at all.
+
+**The rule.** The oplog stops a retry inside 48 hours; it is not the record.
+The state that says "paid" is saved in the same run as the payment, by every
+caller. A function that pays marks its own record dirty
+(dailyrewards.js `_drRollover`), so a caller that forgets is caught by the
+tick or the close.
+
+## 147. "Stamp first, then debit" (v2.3.3165)
+
+**The plausible move.** `_escrowDebitGold` / `_escrowTakeItem` stamped the
+opId (awaited) and then debited and saved. With the stamp first, a retry can
+never charge twice.
+
+**Why it is wrong.** That is two batches. A restart between them (every
+server merge restarts the room) left "paid" with nothing taken, and the
+auction house's wake-time rebuild takes that stamp as proof of payment. In a
+simulated restart a 900-gold buy settled while the buyer kept his 1,000, and
+an outbid refund paid back 500 that had never been taken.
+
+**The rule.** A debit and its stamp are one write: mutate, `_saveRpg`,
+`_opStamp`, all issued before any await (rule 8's single mutation), then
+await. Both land or neither does, and a stamp can never stand for a payment
+that did not happen. inbox.test's crash storage (it drops every put after a
+named key) is the way to test it.
+
+## 148. "The row exists, so the player can sell it" (v2.3.3164)
+
+**The plausible move.** The gear ledger's row is the proof a piece is yours
+(`_gearSellable`), so a row is enough to list it.
+
+**Why it is wrong.** A row proves where a piece CAME FROM, not where it IS.
+The worn amulet listed and sold while it stayed on the neck, its gem still in
+the server's damage roll. An amulet the forge had replaced kept its row and
+sold. The shield that shield_wear had put on the arm sold and stayed on it.
+In each case one piece ended up in two places.
+
+**The rule.** For every slot where the server can know, a sell gate asks two
+questions: is the piece WORN (refuse), and is it HELD (refuse if not). A
+ledger row answers neither. Where the server cannot know (a shield before
+the game has reported the arm), it says so rather than guessing (§ the a2
+test in gearprov.test).
+
+## 149. "The slot tells you what the weapon is" (v2.3.3161)
+
+**The plausible move.** Hardening a bow or staff takes hardened wood and a
+sword takes bars. What sits in the bow or staff slot is a bow or staff, so
+decide by the slot.
+
+**Why it is wrong.** The slot is whatever the client named, and a sword could
+be put there. It was then hardened with cheap wood instead of its bars.
+
+**The rule.** Decide by the item's own fields, never by the container the
+client named. hardening.js `hardenIsWood` checks for a `ww_` gearBase or a
+bow or staff TYPE, and uses the slot only for a legacy weapon with no type.
+
+## 150. "The dead are never at his counter, so his counter needs no check" (v2.3.3163)
+
+**The plausible move.** A new counter (Diego's buy and sell) is written from
+its own needs. A dying player is in the wilds, nowhere near the shop.
+
+**Why it is wrong.** The server does not check where a player stands, so
+"nowhere near" is not a guard. A dying player bought, and the respawn wiped
+the purchase. And every refused trade was broadcast to the whole room with
+no rate limit: 200 refusals sent 200 copies of the pile to each bystander.
+
+**The rule.** A new value-moving handler copies the full preamble its
+siblings have (`ps.dying || ps.dead || ps.disconnected`, the gear lock, a
+cooldown). Only a change that happened is news to everyone; a refusal
+answers the asker.
+
+## 151. "The hook already excludes duel kills" (v2.3.3168)
+
+**The plausible move.** Clan-war scoring and bounties must not count a
+consensual duel, and both hooks say so: each asks `_duelFor(killer)` and
+returns if the victim is the duel partner. The suites test exactly that.
+
+**Why it is wrong.** `_handlePlayerDeath` runs the duel hook FIRST, and
+`_resolveDuel` deletes the duel from the map. By the time the war and bounty
+hooks ask, there is no duel, so every thrown duel scored the war and paid the
+bounty. The suites called the hooks directly with a live duel in the map,
+the one state the real path never has.
+
+**The rule.** Decide "was this X" before the step that removes X, and pass
+the answer along (`_duelKill`). Test a hook through the call site that runs
+it, never by calling it alone with state the call site would already have
+changed.
+
+## 152. "The challenge's number is authoritative" (v2.3.3168)
+
+**The plausible move.** A duel's stake comes from the server's own record of
+the challenge, not from the accept, so an edited accept cannot raise it.
+
+**Why it is wrong.** Authoritative is not agreed. The record kept the
+challenger's LATEST challenge, a plain `duel_request` (shown as no-stakes)
+could carry a stake, and the accept took whatever was on file from a player
+whose screen said 0 or a smaller number.
+
+**The rule.** Money taken from a player needs that player's own number: the
+accept echoes what it showed, and the server refuses a stake above it. The
+other side's record decides only what is at or under the consent.
+
+## 153. "The shield keeps what the pickup gave" (v2.3.3169)
+
+**The plausible move.** A death inside a second of a pickup keeps what the
+pickup handed over; the pile drops `held - shield`, the bag keeps `shield`.
+
+**Why it is wrong.** The shield is a memory of a quantity, not proof of
+possession. Anything sold, listed or traded after the pickup was written
+back by both wipes, and a listing taken down after the respawn doubled the
+stack.
+
+**The rule.** A carve-out that writes a quantity back is capped at what is
+still held: keep `min(shield, held)`. Kept plus dropped must equal held for
+every key, checked against the bag at the moment of the wipe.
+
+## 154. "Every zone's kills drop that zone's shard" (v2.3.3170)
+
+**The plausible move.** A shard is `'shard_' + zoneId`, so any zone a monster
+dies in names its own shard.
+
+**Why it is wrong.** Some zone ids are runtime ids. A Workshop instance is
+`dungeon:<uuid>`, so each run minted a new item key that the game could not
+draw and that Diego's substring pricer bought at full price forever, one more
+permanent key in his pile each time.
+
+**The rule.** Item keys come from a fixed table (`ZONES`, a catalog), never
+from an id the server invents at runtime. Gate a built key on the table.
+
+## 155. "Refuse the bad state" (v2.3.3171)
+
+**The plausible move.** An arena join must not land in a tournament that is
+running, so refuse `status === 'running'`.
+
+**Why it is wrong.** There was a third state. A finished tournament is kept
+60 s for the completion poll, and a join in that minute paid 100 g into a
+queue nothing would start, with no refund.
+
+**The rule.** Gate on the one state that is allowed (`status === 'gathering'`),
+not on the states you thought of that are not.
+
+## 156. "The op id makes the debit idempotent" (v2.3.3171)
+
+**The plausible move.** Key the entry fee's debit on (tournament, player);
+a retry is answered "already paid", which is the point.
+
+**Why it is wrong.** Leaving refunds under its own id but the debit's stamp
+stays, so a second entry into the same tournament was "already paid" and
+free. An op id names one operation; a refund ends it, and a new entry is a
+new operation.
+
+**The rule.** An id may be reused only by a retry of the same act. After a
+refund or cancel, the next act carries a new id (`:n`), and so does its
+refund.
+
+## 157. "Activate each match as it is built" (v2.3.3171)
+
+**The plausible move.** Build round 2's matches in a loop and start each one
+as it is pushed.
+
+**Why it is wrong.** A walkover resolves synchronously, back into the bracket
+code, which read "this round" as the matches pushed so far. One match, one
+winner: it crowned (and paid) the champion before the other semifinal
+existed.
+
+**The rule.** Build the whole collection, then act on it. Code that can call
+back into itself must never see a half-built list.
+
+## 158. "Only the server writes that slot" (v2.3.3172)
+
+**The plausible move.** Gem extraction trusts `ps.shield.gem`, because only
+server code writes `ps.shield`.
+
+**Why it is wrong.** A later feature (`shield_wear`, v2.3.3091) let a shield
+adopted from the join's bag claim, shape-checked only, become `ps.shield`.
+Every reader that trusted the slot now read client data: about 31 free
+polished gems a join.
+
+**The rule.** When a new path moves claimed or adopted data into a slot the
+server trusted, audit every reader of that slot. Pay out only for what the
+server can prove it put there (`prov: 'minted'`).
+
+## 159. "Clamp the gems on the way in" (v2.3.3172)
+
+**The plausible move.** Every join runs the gem map through a whitelist and a
+200-per-key clamp, so tampered numbers never land.
+
+**Why it is wrong.** The clamp was written for a CLAIM, but it also ran over
+the server's own stored map, which kills and cuts raise with no ceiling.
+Every reconnect deleted what the server itself had paid past 200.
+
+**The rule.** A limit for untrusted input applies to that input. The
+server's own record is healed only once, when it may still hold an old
+unclamped capture, and is otherwise left alone.
+
+## 160. "A stack is just a stack" (v2.3.3173)
+
+**The plausible move.** Ace's item wager works on any stack in the bag;
+doubling a stack mints nothing unique.
+
+**Why it is wrong.** A golden ticket is a stack in the bag, and the contest's
+"only N capes" cap is checked only when a ticket drops. A won wager made one
+ticket two, and the second was redeemed by whoever it was traded to.
+
+**The rule.** A generic operation on the bag (wager, double, dupe-shaped
+rewards) must exclude every capped or one-of item. A cap checked at the
+source holds only if nothing downstream can multiply what it issued.
+
+## 161. "The writes are in the same handler" (v2.3.3173)
+
+**The plausible move.** The redeem consumes the ticket and grants the cape in
+one synchronous block, so they cannot disagree.
+
+**Why it is wrong.** Memory agreed; storage did not. The ledger was put before
+the op stamp's `await`, the bag after it: two batches. A restart at the await
+kept "redeemed" and the stored ticket, which was traded and redeemed again.
+(§147 is the same shape for a debit.)
+
+**The rule.** Writes that must land together are issued in one synchronous
+run with no `await` between them. An await is a batch boundary.
+
+## 162. "A second login is a reconnect" (v2.3.3174)
+
+**The plausible move.** The second-login eviction drops the old socket, and
+the join hydrates the anti-bot record from storage, as on any reconnect.
+
+**Why it is wrong.** A clean close flushes the record first; this eviction
+skips `webSocketClose`, so storage was up to 30 s stale and the join
+overwrote the live hour count with it. A login every ~29 s kept the
+harvest and cook caps from ever binding.
+
+**The rule.** Every way a session ends does the close's duties (flushes,
+forfeits, cancels), or the reconnect path must merge rather than overwrite
+live state with stored state.
+
+## 163. "Leaving is refused mid-war, so the roster is safe" (v2.3.3175)
+
+**The plausible move.** v2.3.2301 refuses leaving a clan mid-war because a
+leaver kept the payout; the hole is closed.
+
+**Why it is wrong.** A kick (kept on purpose, for griefers) has the same
+effect: the kicked member stays on the frozen roster, clanless, free to join
+another clan and be frozen onto a second war's roster.
+
+**The rule.** When a rule guards one exit, list every exit with the same
+effect (leave, kick, dissolve, a reset). Here the guard went on the far side:
+nobody on an active war's roster joins another clan until it ends.
+
+## 164. "Refusing three names covers the prototype" (v2.3.3167)
+
+**The plausible move.** The join refuses the ids `__proto__`, `constructor`
+and `prototype`, so a player id can never collide with `Object.prototype`.
+
+**Why it is wrong.** `Object.prototype` has a dozen more names. With the id
+`toString`, the jackpot's `entries[id] || 0` read the inherited function,
+the entry became a string, the weighted roll was NaN, and the first
+depositor of the week won the whole pool every time.
+
+**The rule.** Refuse every `Object.getOwnPropertyNames(Object.prototype)`
+name at the gate, and still count by own property (`hasOwnProperty`, or an
+`Object.create(null)` map) and as numbers wherever an id is a key.
+
+## 165. "A buffer texture is uploaded at its size" (v2.3.3190)
+
+Pixi's buffer uploader (glUploadBufferImageResource) calls texImage2D with the
+source's `width` and `height` -- its size in POINTS, its pixels over its
+resolution -- not `pixelWidth` / `pixelHeight`.  At resolution 1 they are the
+same, which is every buffer the game made before.  The Wheel's object sheets
+are resolution 2 (their sheet's `meta.scale`, which Pixi's Spritesheet sets on
+the source), so the first sheet kept as colour numbers went up as a quarter of
+itself read with half its rows' length: every row sheared, every building on
+the first phone picture a smear of diagonal streaks -- and nothing threw.
+
+**The rule.**  A buffer source at any resolution but 1 is uploaded at its
+pixels.  paletteTex.js wraps the uploader for its own sources (every other
+buffer exactly as Pixi does it); a new buffer source at resolution 2 needs the
+same, or Pixi fixed.  mp-palette's pictures and its frame-for-frame compare
+are what show it; a probe of the texture's size does not (pixelWidth is right).
+
+## 166. "A canvas of the same pixels scales like the picture" (v2.3.3190)
+
+A shadow's base is read by drawing a frame of a sheet scaled down onto a
+128-column canvas and finding each column's lowest solid pixel
+(propGround.readArtBottoms).  For a sheet kept as colour numbers the obvious
+move is a canvas built from its pixels, drawn the same way.  Chromium scales
+an `<img>` and a canvas holding the very same pixels differently: of the 183
+frames on the game's 41 sheets, 25 of a fence sheet's columns and 98 of the
+Verdant Wilds' first sheet's came out a row or more apart -- a margin round the
+region, or the whole sheet as one canvas, the same.  On screen that was the
+low things' shadows a CSS pixel off along their far edge.
+
+**The rule.**  A read that SCALES a picture reads it off the same kind of
+source the old way did: the sheet's own `<img>`, decoded once as its page loads
+and let go of (wheelObjects.js readPageBottoms; all 183 frames the same, and a
+second `<img>` from the same bytes always reads the same).  A read at the
+picture's own size (a hit's chips, a burn mark, a shatter's shards) may use the
+canvas: 1:1, every frame of every sheet came out identical.
+
+## 167. "Two pages at the same spot draw the same frame" (v2.3.3190)
+
+Comparing a picture drawn two ways means two pages drawing the same frame.
+Holding the water's clock and standing both players on the same pixel is not
+enough.  The camera eases for seconds after a player stops; the shadow layer
+locks itself to whole CSS pixels of the camera's LAST frame (shadows.js
+lockToWorldGrid, v2.3.3149), so two pages read a moment apart drew their
+shadows a whole CSS pixel apart (1.5% of the screen differing by up to 75 of
+255) while every picture under them matched; where two ground pieces overlap,
+the one on top is the one that happened to load later; and a ground worker
+that never heard the water moves keeps the pictures' frozen web of light.
+
+**The rule.**  mp-palette renders the world with the camera set and the
+shadow lock worked out for it, the pieces in one order, and refuses to compare
+until both pages have every piece and page in and both workers calmed the
+water.  Then it measures 0.03-0.05% of pixels one level of 255 apart, nothing
+more -- the arithmetic of a blend done in a shader rather than by the chip.
+
+## 168. "The room's CPU is nowhere near the wall, so raise the cap" (v2.3.3194)
+
+`docs/specs/room-full.md` and the comment at the room's admission gate
+(`server/src/index.js`, the 61st player) say the worker spends 0.16 ms of its
+22 ms tick on 60 players, so CPU is "nowhere near the wall" and sixty is only a
+phone's number.  That was measured in the meadow, in a simulated room, before
+the whole world became one zone.  In the Wheel each player's tick is built on
+its own and lists every moving player, so the room's own work grows with the
+square of the crowd.  The bot load test (`tools/qa/load/`,
+`docs/specs/load-test.md`) puts the room's thread at 55% with 50 busy players
+in the sandbox and 73% with 75: smooth to about 70, past that a slower world
+(a tick starts 22 ms after the last one ends, and the world moves a fixed step
+a tick), at half speed from about 125.
+
+**And its twin: a local number that is the dev tool's.**  `wrangler dev` 4.x
+traces and logs EVERY event for its local explorer page, on by default
+(`X_LOCAL_OBSERVABILITY`, `X_LOCAL_EXPLORER`), and every incoming WebSocket
+message is an event.  With it on, the first run of the load test read each
+message at 0.3-0.5 ms of the room's thread (0.06-0.09 off), the room full at
+60, and FROZEN at about 95-100 players -- nothing reaching anyone, memory
+climbing 0.6 -> 1.9 GB in two minutes, no recovery when players left -- a
+finding that went into four documents before a run with the tracing off showed
+no freeze up to 150.  The live runtime traces nothing of the kind.
+
+**The rule.**  Never raise `MAX_PLAYERS` (or read a capacity figure) without
+re-running `node tools/qa/load/load.mjs` on the code as it is.  A number
+measured before the world changed shape describes a different game.  And any
+local measurement of a Durable Object's message handling runs with the local
+tracing off (`load.mjs` does; `--observability` compares): a cost or a freeze
+seen only with it on is wrangler's, not the room's.
+
+## 169. "A bot's byte count is what the phone downloads" (v2.3.3199)
+
+The room's messages are compressed on the way out.  The worker's
+`compatibility_date` (2024-12-01) is past 2023-08-15, which turns on the
+runtime's `web_socket_compression`; every browser offers `permessage-deflate`
+when it connects, so does Node's own WebSocket, and the room accepts.  Anything
+that counts a message's `ev.data.length` -- the load test's bots, a page's own
+counter, `mp-crowd`'s 4 KB/s per peer -- counts it UNZIPPED, about thirteen
+times what crossed the wire (50 players in BroTown: 177 KB/s unzipped, 13.4 on
+the wire).  The figures "205 KB/s, 740 MB an hour at 60 players" went into four
+documents that way before a byte-counting proxy measured the wire.
+
+**And its twin: the bytes are the server's cost, not only the phone's.**
+Deflate runs once per message per socket over the message's whole length, on
+the room's one thread.  Bots that do not ask for compression (`load.mjs
+--no-deflate`) take the room from 79.6% to 44.6% of its thread at 100 players.
+So "compression makes the size free" is wrong in the direction that matters --
+but so is "every byte costs the same": REPEATED text is nearly free to
+compress.  Leaving the unchanged gear keys out of every player entry cut 29% of
+the bytes and saved the room nothing measurable (79.5% -> 82.9%, noise); half
+the MESSAGES (every other tick, each carrying both ticks' changes) took it from
+79.5% to 61.5%.  What costs is the number of messages and what changes inside
+them.
+
+**The rule.**  Quote a phone's download from the load test's `wire` column
+(one bot through `startWireProxy`), and say "unzipped" for anything counted off
+`ev.data`.  Do not turn compression off to save the server: each phone would
+download thirteen times as much.  Send fewer messages, and less of what
+changes in them, instead -- not merely fewer repeated bytes.  And do not trust
+`no_web_socket_compression` in a copy's `wrangler.toml` to turn it off for a
+measurement: the local runtime negotiated it anyway (tried 2026-10-13); the
+bots' `PlainWS` does it from the client side.
+
+## 170. "setInterval(tick, 22) runs the tick 45 times a second" (v2.3.3202)
+
+Not in the Workers runtime.  Its `setInterval` waits the whole interval AFTER
+the callback has finished: measured with a one-line Durable Object on the local
+runtime, a callback of nothing ran 43.2 times a second, one of 5 ms 35.0, one
+of 10 ms 29.5, one of 20 ms 22.6 -- 23.1 ms PLUS the callback.  The room's tick
+is that callback, and the world moves a fixed step a tick, so every millisecond
+a busy room spends ticking slowed the whole world, with the thread still
+partly idle (100 players: 37 ticks a second, a quarter of the thread unused).
+Cutting the tick's own work is therefore worth more than its share of the CPU:
+#888's grids took 3-4 ms off the tick and gave 3-4 more ticks a second.
+
+**And its twin: `Date.now()` inside a tick.**  Production freezes the clock
+while code runs (it moves on I/O), so a tick cannot time itself there; the
+local runtime does not freeze it, so a measurement that works under `wrangler
+dev` can read 0 in production.  What both can measure is how far apart ticks
+START, which is what `tickpace.js` uses.
+
+**The rule.**  Do not read `TICK_RATE` as the real period: the real one is
+`/dev/overview`'s `tickPace.periodMs`.  Anything that converts ticks to time
+(`REGEN_TICKS * TICK_RATE`, `rewindTicks`, a DoT's `TICK_RATE / 1000`) was
+off by that difference under load; with the pacer it is off by about 2 ms
+until the thread is full.  And a Node test that captures the tick from
+`setInterval` must never see the interval set again (`WebSocketPair` is the
+runtime check, `tickpace.js`).
+
+## 171. "mp-wheelbreak's arrows stick, so the bow shoots props" (v2.3.3206)
+
+**Plausible:** the Wheel's objects take arrows. `mp-wheelbreak` sends 28
+arrows at a barrel, a lamp, a tree and a building and every check passes, so a
+player with a bow can do the same.
+
+**Wrong:** the scenario puts its own arrows in `S.arrows`, so they never meet
+the bow's fire gate. That gate (v2.3.2473) fires only while the sight line is
+on a target, and it asked about monsters alone. Held on the Town Hall, the bow
+drew its line straight through the wall and fired nothing, from 70 px or from
+point blank. The owner found it by playing: "Make the bow able to shoot at any
+props including buildings".
+
+**And its twin: the arrow's ground was the shooter's chest.** "Subtract the
+grip offset and at dist 0 you get exactly P.x/P.y" (v2.3.2652) was taken as
+proof that the arrow was on the ground. But P is the body's centre, 52 px above
+the boots (v2.3.2748). Walking, the swing (v2.3.3105) and the water had all
+moved down to the boots; the arrow had not:
+
+- point blank, its track started INSIDE the hall's footprint, and a step that
+  starts inside a box never stops at it;
+- a level shot at a trunk ran 52 px behind it.
+
+**The rule:**
+
+- A test that launches its own projectiles proves the flight, not the shot:
+  add one that holds the real attack (`mp-bowprops`).
+- Every ground question about what a player does is asked at the boots:
+  `_gdy` on the shot (combatHelpers `shotGroundDy`), and the other player's
+  boots for anything aimed at them.
+
+**And a third, once the owner said "I want arrows to fly over low things":
+"so skip the low footprints".** Skipped outright, a bench alone in front of you
+can no longer be shot at all -- the bow's gate finds nothing on its line and
+waits -- and the ask that started this was "any props". A low thing is flown
+over unless it is what the shot is AIMED at: nothing else on the line within
+reach (firstSightHit's `low`). The shot carries which (`_lp`), and so does its
+relay (`lp`), or another screen would draw the arrow sailing over the barrel it
+broke on yours.
+
+- Low is the jump's list, `JUMP_OVER`, asked by footprint id -- never a height
+  line: `fence-down` is drawn 170 px tall and is as low as `fence`.
+- The prop stop, the rock-between test and a peer's copy all take the same
+  skip (projectiles.js `shotSkip`); one left on "every footprint" catches the
+  arrow the other two let through.
+
+## 172. "Area servers are how one world grows past one room" (v2.3.3208)
+
+It is the natural first cut, and WORLD-ARCHITECTURE §11 planned it: one
+server for Brotown and its commons, one per spoke, one per realm.  Measured
+(`docs/SERVER-SPLIT-PLAN.md`), it splits the wrong thing first:
+
+- **The room's work is per PHONE, not per place.** On the real runtime at
+  150 players about four fifths of the thread went on each phone's own
+  messages: receiving, building, compressing. At 600 players the world itself
+  (monsters, fights, the other systems) was 6% of the room's own JavaScript,
+  against 69% building the phones' messages, which grows with the square of
+  the crowd. A scratch copy that did only the world's part ran 1,000 players
+  in 6 ms of a 22 ms tick (in Node).
+- **The crowd is in one place.** Everyone starts, respawns, shops, banks and
+  takes quests in Brotown, so an area split leaves the biggest crowd on one
+  area server, which is where the limit was in the first place. Cutting the
+  town itself puts a border down its busiest street.
+
+**The rule.** Split by connection first: front doors that do each phone's
+work, and one world behind them. Area servers come behind the doors only when
+the one world server itself is full. Measure where a room's time goes, by
+kind of work, before choosing a split.
+
+## 173. "The bots do what a phone does on the wire" (v2.3.3240)
+
+`tools/qa/load/bots.mjs` says it, and for the messages it models it is true:
+the join, the zone change, moves at a phone's rate, pongs, swings. But a phone
+also sends `track` every 2 s: its whole look and stats, about 940 bytes. The
+worker relayed each one to every other player in the room as a message of its
+own. The bots never sent it.
+
+That is N(N-1)/2 sends a second, more messages than all the ticks at 120
+players, and every capacity number before v2.3.3240 left it out. "Smooth to
+about 145" was really about 105, and the cap of 120 went past it.
+
+**The rule.**
+
+- Before trusting a load test, list every message the client sends on a timer
+  (`setInterval`, the game loop's "every N s" slots in BroTown.jsx), not only
+  the ones a player triggers.
+- Check each against the bots. A message the server FANS OUT costs it
+  N times over, so a small one the bots skip can matter more than a big one
+  they model.
+- `--track` (a real phone's payload, `track-sample.json` from
+  `mp-trackcapture`) is the bots' now. `docs/specs/look-relay.md` has the before
+  and after.
+
+## 174. "The join snapshot is the room's state, so spread it" (v2.3.3244)
+
+`getAllPlayerData()` built each player in a joiner's `state_sync` as
+`{...playerState, name, ...session.data}`: the player's WHOLE server state.
+Every joining phone was told every other player's coins, bag, stashes,
+quests, life skills, buffs and the anti-cheat's own histories, and the join's
+`rpg*` claims (the phone's own coins, bag and weapons) went to everyone in
+`player_join` too. Earlier passes cropped what they noticed (gear ids,
+v2.3.2537; the gear stashes kept off the session, v2.3.2523) and left the
+spread "behaviour-frozen".
+
+- No phone read any of it: a peer is drawn from its position, name and look
+  (wsClient.js, `peerCosmetics.js`).
+- It was most of the snapshot: 2.3 KB for a brand-new character, 4.6 KB for a
+  played one with a real look, so ~550 KB a join at 120 players.
+- And it was a leak with a game in it: in No man's land the victim's bag is
+  the killer's (nomansland.js), and anyone reading their own socket could see
+  who was worth hunting.
+
+**The rule.** What other players are told about a player is built from an
+ALLOWLIST of what is public anyway (`PEER_PUBLIC_KEYS`, index.js: the look
+relay's keys, the join's look, a tick's fields), never by spreading a state
+object, and never by cropping the fields someone happened to notice. A field
+added to `playerState` later stays private until it is put on the list on
+purpose. `peer-view.test.mjs` holds every key a phone reads on the snapshot
+road to the list, so the list cannot quietly starve a phone either.
+
+## 175. "The creator fits a phone, and a phone held sideways is the same phone" (v2.3.3216)
+
+**Plausible:** every creator scenario measures it at 390x844 or 390x664,
+and a control below the bottom of the screen is one scroll away.
+
+**Wrong:** on a touch screen the creator cannot scroll at all. That is
+`overflow:clip` (v2.3.2394), the cure for the focus shove of §64. And held
+sideways a phone is 300-430px tall. ENTER BRO TOWN sat at y 783 of a 390px
+screen, Back and Reset under it, and the trait picker's tile grid was a
+4-65px sliver. A new player holding the phone sideways could not make a
+character at all. iPads held sideways (1024x768, 1180x820) lost ENTER too.
+Two sideways scenarios (`landdash`, the sideways half of `goldrail`) had been
+failing at the creator on main for this reason, which read as their own
+breakage. The owner never saw it because they hold the phone upright.
+
+**The rule:**
+
+- A full-screen screen before the game is checked sideways as well as
+  upright. Every control must be on the screen, and a tap at its centre must
+  land on it (`elementFromPoint`, not a click by selector). Check at least
+  844x390, 667x375 and an iPad's 1024x768. `mp-cclandscape` does this for the
+  creator, on all nine trait tabs.
+- A size that must fit the height is taken from the height: `--cc-avh`,
+  `100dvh` with `100vh` before it, as the modal's own height falls back. Never
+  from `vw`, which says nothing about how tall the screen is.
+
+
+
+## 176. "An event that happens at a place can go to the phones near it" (v2.3.3245)
+
+Most of them can: a swing, an arrow, a hit on a monster, a monster's slam.
+A phone far away has nothing to draw them on, and the bytes and the room's
+compressing grow with the square of the crowd (`docs/specs/events-by-place.md`).
+But some events tell a phone something it KEEPS until the next one, and nothing
+else on the wire tells it again. Sending those by place makes a phone that was
+far away draw the world wrong when it walks up:
+
+- `monster_kill` -- a phone in the Wheel keeps a copy of every monster, and
+  the tick tells it only about the ones near it, so a kill is its only news of
+  a far death.  A monster that comes back into reach still dead is read as a
+  kill on the spot (`wsClient.js`, the tick's alive -> dead edge): a remnant
+  pile that never goes away, and a death sound.
+- `player_shield` -- the shield stays up, or down, until the next toggle.
+- `monster_transform` -- the mummy that became a skeleton is on no other wire.
+- `campfire_lit` -- sent once, and the fire lasts 45 s.
+- `loot_drop` / `loot_claimed` / `loot_despawn` -- a pile lies there until it
+  is taken; one a phone missed is invisible, and one whose despawn it missed is
+  drawn forever.
+
+**The rule.** Before placing an event type, read its client handler for state
+that outlives the moment (a flag with no timeout, a list, a field the tick
+does not resend), and keep that type room-wide.  `server/src/eventplace.js` is an
+ALLOWLIST for this reason: a new type goes to everyone until someone has done
+that reading and placed it.
+
+## 177. "A phone scenario that fails on main is a broken feature" (v2.3.3249)
+
+Four phone scenarios failed on `main` for days, and each was logged as "broken
+on main" while other work went round them. None was the game. Each was the test
+drifting from a game that had moved on, or tests disturbing each other:
+
+- **`mp-deathstrip`** read the forge's swinging sign (a building's moving part,
+  `worldLife.js` `life_<prop>`) and a few dust particles as gear left on a
+  corpse. The player dies a few steps from the forge. Its watcher also stood on
+  the corpse's own tile, so its OWN shadow lay on the body.
+- **`mp-firetrail`** told the worker it stood at (500, 500) in the meadow, but
+  left the player at today's town spawn, (1014, 944). That is the meadow's
+  south-east corner, so the camera stopped at the map's edge, and every fire the
+  test dropped 90-130 px east of him was off screen. It also looked for a burn's
+  number as "-37", which no build has drawn since the display scale (k 5: "-7").
+- **`mp-petsmatter`** let Frost Ridge's snowmen kill the player in its ward
+  fight about half the time. The death dropped the next section's target lock
+  (`player_died`), so that section reported the golden catch's reveal as broken.
+- **`mp-hitvoices`** and **`mp-slimeburst`** passed alone and failed in a list.
+  76 of the 469 scenarios never closed their pages, and one browser serves the
+  whole run, so every world they left behind went on drawing (software GL here)
+  under the scenarios after it.
+
+**The rule.**
+
+- A scenario red on `main` is a question about the TEST first: read what it
+  measured (positions, texts, the screen) against what the game does today,
+  before reading it as a broken feature or quietly living with it.
+- A test sets the player where it says it does. Telling the worker is not
+  moving the player on his own screen.
+- Look for a number as the game draws it: import the game's own conversion
+  (`toDisplayDamage`, as `mp-hpscale` does), never the raw number.
+- `run.mjs` closes every page a scenario leaves open (v2.3.3249). A scenario
+  that only passes first in a list is measuring the box, not the game.
+
+## 178. "Stop sending a far player, and the phone just keeps their last copy" (v2.3.3250)
+
+It does keep it -- that is the trap. Presence v2 (`docs/specs/presence-v2.md`)
+stops sending a phone the players far from it while its world map is shut,
+and stands the 10 s ghost sweep down so their silence does not delete them.
+Their last copy then stays where they were last seen, frozen, still walking on
+the spot. Nobody sees it while it is far from them, so every server check
+passed. But walk toward where they were, and they are standing there: a ghost.
+About forty places read other players' positions -- bodies, pets, lights,
+dust, sounds, PvP targets, the minimap -- and most of them do not even check
+the zone, so hiding the copy in each one would have missed some.
+
+- **The fix is where the copy's position is made, not where it is read.** The
+  worker marks each roster `nr` (every player near you is in it), the phone
+  marks a player missing from it `_away`, and once a frame (the peers'
+  interpolation loop, visualSystems.js) keeps an `_away` copy at least 2,400 px
+  from you along the line from you through it. Nothing that reads positions
+  had to change.
+- **Found by the phone test, written before shipping** (`mp-presence2`: the
+  watcher walks toward where the walker was last seen). A test that only asks
+  "was the far player sent?" passes a ghost.
+
+**The rule.** When a phone stops hearing about something on purpose, decide
+what its last copy does from then on -- a stale copy is not "nothing", it is
+wrong data at a real place. And TRAPS #18 again: the page's channel lets out
+only the message types it names (`map_watch` was dropped until it had a line).

@@ -423,6 +423,56 @@ remnant to migrate server-side, not a mode to preserve.
       `REPAIR_MS` 3 min (`src/game/wheelBreak.js`, `?repairms=`), never over
       you. A footprint's `oi` says which object.
     - `mp-wheelbreak` tests it: WORLD-MAP-PIPELINE "The objects take hits".
+    - since v2.3.3206 THE BOW SHOOTS THEM, buildings included -- the owner:
+      "Make the bow able to shoot at any props including buildings":
+      - the bow's sight gate (v2.3.2473) asked about monsters alone, so held on
+        a prop the bow never loosed. `firstSightHit`'s `ground` (your boots)
+        now finds the prop on the arrow's own ground track: the gate opens,
+        the line stops at its face (`id` `prop:<oi>`), a monster in front of
+        it or standing in its box still wins, the farm's edge never counts,
+        nor a prop past the screen's edge, where a plain arrow comes down
+        (`ground.len`, monsterCombat `_viewEdgeDist`);
+      - EVERY SHOT IS JUDGED AT THE SHOOTER'S BOOTS: the game's shots carry
+        `_gdy` (combatHelpers `shotGroundDy`) and projectiles.js asks the
+        ground at the drawn point minus (`_ox`, `_goy`). At the chest, point
+        blank started inside the Town Hall's footprint and flew through, and a
+        level shot ran 52 px behind a trunk. A hand-made arrow without `_gdy`
+        keeps the old meaning, so the prop scenarios still mean what they say.
+        Peers' shots are judged at THEIR boots (visualSystems), and a duel
+        target's rock test at theirs;
+      - a hit is SHOWN on the picture, lifted the height it flew but never above
+        0.7 of it (`propHitHeight`; footprints carry `h`, the farm's none);
+      - a new arrow takes the grip as its offset from you (`_bowGripDX/DY`):
+        the absolute was where you last shot, and on a slow frame the first
+        arrow after a walk left from there;
+      - SHOTS FLY OVER LOW THINGS -- asked whether a bench right in front of
+        you should catch your arrow, the owner: "I want arrows to fly over low
+        things": low is what you can jump (jump.js `JUMP_OVER`, by footprint
+        id, the jump's own test), and every game shot -- arrows, bolts, both
+        specials, the retreat shot, a peer's -- flies over one unless it is
+        what the shot is AIMED at: nothing else (monster, duel target,
+        anything tall) on the line within reach, the sight's `low` answer.
+        The shot carries it as `_lp` (a ground point in that footprint; the
+        relay's `lp`, so other screens agree), `shotSkip(lp)` is the skip
+        handed to `sweepBlockPoint` / `attackBlocked`, and the staff, with no
+        sight, asks `lowAimAlong`;
+      - `mp-bowprops`: docs/specs/bow-at-props.md.
+    - since v2.3.3230 A BUILDING YOU KEEP HITTING CATCHES FIRE -- the owner:
+      "add flame effects on the building after getting hit a while in the
+      location where the building is getting struck and make the flames grow
+      higher the closer it gets to falling apart. Keep the flames going as the
+      building in pieces": `src/rendering/buildingFire.js`, owned by
+      WheelObjects, fed each building's `hit`/`break`/`repair` and the new
+      `heal` (wheelBreak.js: a count forgotten after `HEAL_MS`, `?healms=`,
+      used to say nothing); hits within 40 px are one spot (5 at most), it
+      smoulders from 12% of its hits and catches at 25% there, a cluster of up
+      to ten of the CAMPFIRE'S OWN pixel flames a spot (campfireFx
+      `campfireAtlas()`: nothing loaded or made) climbing the wall as the
+      damage grows, sparks, smoke, coals, glow and soot; it sinks from 12 s
+      and is out at the heal; at the break nine shards fall burning, lie
+      charred (wheelShatter `burnt`) and burn on until the mending; each fire
+      rides what it burns on (depthSort `_ridesOn`), hidden off the screen;
+      `?nobuildingfire`; `mp-buildingfire`: docs/specs/building-fire.md.
   - Since v2.3.2996 a MONSTER'S HIT CARRIES ITS ELEMENT (the owner's snowflake,
     fire and air icons, and "slime for floral damage ... a brief held in place"):
     - a landed hit by a frost/flame/wind/flora monster chills (walk x0.55 for
@@ -506,6 +556,16 @@ remnant to migrate server-side, not a mode to preserve.
       `color`), snow prints on the Wheel's snow (footprintSprites `printsAt`)
       and every print drawn at the boots (`fdy`);
     - WORLD-MAP-PIPELINE "The old map's shadows and air", `mp-wheelshadows`.
+    - since v2.3.3149 the shadows GLIDE WITH THE WORLD -- the owner: "the
+      shadows look a bit flickery when you move on some of the props": the
+      layer's filter draws at CSS resolution (three device px a texel on an
+      iPhone) and each frame redrew every shadow at a new fraction of that grid
+      as the camera slid, so a shadow crawled against its prop; it is now drawn
+      on a grid locked to the world and slid back by the camera's fraction in
+      the filter (shadows.js `lockToWorldGrid`, `uShift`), same texture and
+      cost, ~5x steadier; a full-resolution pass would be ~32 MB of graphics
+      memory (TRAPS §141); `?shadowlock=0` is the layer as it was;
+      `mp-shadowlock`.
   - Since v2.3.3001 HITS SOUND LIKE THEIR MATERIAL -- the owner: "modify hit
     sound effects based on material type so hitting wood vs plants etc for
     props and also against monsters (arrow, melee, magic hit sound for
@@ -536,6 +596,17 @@ remnant to migrate server-side, not a mode to preserve.
       there is no limiter on the bus);
     - test-world-core "hits sound like what they hit", `mp-hitsound`,
       `mp-hitvoices`, `mp-wheelbreak`: docs/specs/material-hit-sounds.md.
+    - since v2.3.3248 A FAR DEATH, SLAM OR BLAST IS NOT HEARD OR FELT -- the
+      owner, on the logged loose ends 21/22: "Go recommended": the Wheel is
+      one zone, so every monster's death sound, every landed slam's shake,
+      camera kick and beep, every wind-up's and miss's beep, every bow
+      special's blast and every slime's burst reached every phone in it; each
+      now goes by distance on the hits' curve (`earVol`), a death in full when
+      you helped kill it (`deathVol`, the worker's recipients stamped as
+      `_killMine`), a wind-up by the nearer of its caster and its aim, your
+      own blast in full; `BT_AUDIO.monsterDeath(arch, opts, k)`; kills still
+      go to every phone; `mp-farfeel`: material-hit-sounds.md "A far death,
+      slam or blast".
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
@@ -775,6 +846,73 @@ remnant to migrate server-side, not a mode to preserve.
       one near you (nodeLabels.js `NAME_PLATE_ONLY`); trees and veins as
       before; `mp-nodelabels` samples every drawn spot: wheel-resources.md
       "No rod over the fish".
+    - since v2.3.3229 THE HIT LADDER -- the owner: "after the first level you
+      get a 10% chance of hitting 1 number higher ... the number 1 will
+      eventually get replaced by the 2 as more 10% chances get added with each
+      level": every hit of a harvest or a cook is a ten-sided die read down
+      from the skill level, `max(1, level - 9 + face)` (gathering.js
+      `gatherHitRoll`, `GATHER_HITS.LADDER` 10; it was an even 1..level) --
+      level 3 hits 1 eight times in ten, level 10 is as before, from 11 there
+      are no 1s; slower than before below 10, faster above; Skills -> Mining,
+      Woodcutting, Fishing and Cooking print "Each hit" and "At Lv N+1"
+      (lifeSkills.js `gatherHitOddsText`; the old timer's Benefit line only
+      when the worker rolls no hits); `caps.hitladder`, kill switch
+      `hitladder: false` (1..level again); test lever `/dev/lifeskill`
+      {skill | 'hits', level} and the test panel's level buttons; gather-hits
+      §11, mirror-audit "hit ladder", `mp-hitladder`: docs/specs/hit-ladder.md.
+    - since v2.3.3251 EACH TIER TAKES TWICE AS LONG AS THE ONE BEFORE -- the
+      owner: "each tiers unlocks (lvl 5 required, lvl 10 required, etc) to take
+      about 2x longer on average than the previous tier's lowest level
+      extraction time ... determine all of those hp lvls per resource": a
+      resource's HP by its type and tier (gathering.js `GATHER_NODE_HP`,
+      `gatherNodeHp`; the game's copy in lifeSkills.js, mirror-audit), solved
+      over the ladder's dice so that at the level it opens it takes 10, 20, 40,
+      80, 160 hits -- copper 10, iron 20 (Mining 1 beside copper), black steel
+      80, titanium 440, obsidian 1,680; pine/minnow 10, then 40, 220, 840,
+      2,480 (was 5 x (tier + 1) for all); top tiers ~104 s of swings at their
+      own level; `MAX_HITS` 40 -> 200 (= the game's `GATHER_PLAN_MAX`), a cook
+      unchanged (its own HP and `COOK_MAX_HITS` 40); a planned harvest's
+      monster shield runs from its window's opening; a harvest's running hits
+      count as play for the 2-minute idle logout; `caps.nodehp`, kill switch
+      `nodehp: false`; gather-hits §12, mirror-audit "tier hp", `mp-tierhp`:
+      docs/specs/resource-hp.md.
+    - since v2.3.3251 EACH TIER PAYS TWICE THE XP, AND XP FADES 5 LEVELS BELOW
+      YOU -- the owner: "Yes adjust the xp.  Also make xp decay if you're
+      trying to harvest lower level things.  This also applies to combat.  Xp
+      should begin decaying starting at 5 levels below your current level.  It
+      should always be most efficient to harvest or fight things within your
+      current level":
+      - a harvest's base XP by tier, doubling as its time does: 163, 326, 652,
+        1,304, 2,608 (gathering.js `GATHER_TIER_XP`, `harvestBaseXp`; was 163
+        to 913), so every tier pays ~22-30 XP a second at the level it opens;
+      - the FADE (`server/src/xpdecay.js` `xpDecayMult`): full XP up to 4
+        levels below you, a third at 5 below, 15% less each level past it --
+        a harvest by your skill against the resource's `GATHER_REQ_LVL`
+        (`_harvestXpPaid`), a fight by the trained skill the XP goes INTO
+        (Melee/Bow/Magic) against the monster's level, never the character
+        level (a sum), each damage source per monster (`_combatXpDecay`:
+        swing, lunge/dash/bash/whirlwind, staff splash, burst, arrow blast);
+        quest XP, cooking and the rest unchanged;
+      - the two numbers are the gentlest that keep the rule: at every level
+        1-100 of all three skills what is within your level pays the most XP a
+        second, by 20% at least, and the newest resource most of all
+        (gather-hits §13 checks it over the dice); past the top resources
+        (Mining 20, the others 25) and the monsters (Lv 40) everything fades;
+      - Skills -> the gather trio's "Full XP" / "Less XP" lines
+        (skillsModel.js `skillXpFade`); the game's "+N Mining XP" is
+        gameSystems.js `harvestXpFor`, held to the worker by mirror-audit;
+      - a monster that pays reduced XP wears a GREY NAME PLATE -- the owner:
+        "I like the idea of gray nameplate for reduced xp add that": a fifth
+        band before green Low (entityRenderer `PLATE_BAND.faded` #A7B0B5,
+        `plateBandFor`'s `fadeLevel`: the fade's own `xpDecayMult` < 1 against
+        the held weapon's skill, against a worker with `caps.xpdecay`); and
+        past the top resources and monsters everything pays less, the owner's
+        call ("I'll add more content");
+      - `caps.tierxp` (off with `tierxp: false` or `nodehp: false`) and
+        `caps.xpdecay` (kill switch `xpdecay: false`); `xp-decay` suite,
+        gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
+        `mp-monsterplate` (whose band sweep now raises the weapon's skill):
+        docs/specs/xp-decay.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
@@ -970,6 +1108,35 @@ remnant to migrate server-side, not a mode to preserve.
       to take; `caps.shieldwear`, kill switch `shieldwear: false`; the three
       no-man's-land mirror-audit checks run again (a merge had put them after
       the suite's process.exit): no-mans-land.md "The shield on your arm".
+    - since v2.3.3253 ATTACKING A PLAYER IS A CHOICE -- the owner: "I want
+      attacking other players to be intentional ... if a stray projectile hits
+      a player a one time window pops up ... attack, party, or ignore ...
+      Tapping on the player ... can still have the party and attack (with red
+      skull) options":
+      - a stray shot already hurt nobody (only your aim or duel is ever sent,
+        v2.3.1302/1306); the TAP aimed at once, so a tap meant for the monster
+        beside a player started a fight;
+      - now a small window asks, "Attack <name>?", with the red skull and a
+        tiny (i) (the badge's explainer): Attack aims (the old `nml` lock and
+        "TARGET"), Party sends the party invite, Ignore (or 10 s) lets it go;
+        it closes when they can no longer be fought (src/game/nmlAsk.js,
+        src/ui/mobile/NmlAskCard.jsx);
+      - raised by a tap on a player you could fight and are not aiming at
+        (every time), and by one of YOUR shots passing through one -- once a
+        player, never over an open window (projectiles.js `_nmlStrayShot`, the
+        real hit test's capsule; the shot does them nothing);
+      - HITTING BACK stays one tap: the worker's `nml_skull` now carries `by`
+        (whiteBy), and a tap on the one who attacked you, with no red skull of
+        your own, aims at once;
+      - AT THE TOP, out of the thumbs' way: under the minimap (beside it when
+        there is room), under a party invite card (`data-party-invite`),
+        portalled to the body -- over the badge, its Attack sat where a left
+        thumb steers;
+      - in No man's land a fightable player under the finger beats the
+        self-chat circle (BroTown `nmlPlayerAtClient`): at a sword's reach a tap
+        on them opened your chat;
+      - `?nmlask=0` is the game as it was; `nomansland` §3-4, `mp-nmlask`,
+        `mp-nomansland` step 2: no-mans-land.md "Attacking is a choice".
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":
@@ -1071,6 +1238,28 @@ remnant to migrate server-side, not a mode to preserve.
       a WebGL canvas reads black -- and screenshots measured), `mp-wheelmem`
       measures the walk out (the cache, and every texture WebGL allocates, by
       a shim on its calls).
+    - since v2.3.3151 THE WHEEL WITH ITS GROUND GONE IS DARK TOO -- the owner:
+      "the screen went black up until the point I began fighting the fire
+      goblins": the same reset caught part way, the ground blank (GPU only
+      since v2.3.3076) and the buildings, trees and townsfolk (files) still
+      standing on the navy -- 30-39% lit in town, never under the 1% line. In
+      the Wheel a sample under `WD_WHEEL_LIT_MIN` 75% is a strike
+      (BroTown.jsx): two rebuild, four reload, never the first join's one.
+      Measured at 51 places, town and all eight spokes: 95-100% lit with the
+      ground, 9-56% without. A part of the Wheel drawn dark on purpose (a
+      night, the Dark realm) lowers it first. TRAPS §142, `mp-bareground`
+      (the `wheelGround` container hidden through `window._pixiRenderer`).
+    - since v2.3.3152 A FRAME THAT THROWS DOES NOT LEAVE THE SCREEN BLACK --
+      found by a leak hunt, which made the owner's black screen on main: after
+      a Great Cave trip one frame threw (Pixi's pooled mask filter; TRAPS
+      §143, `bindGroupFix.js`) inside a polygon mask, and Pixi KEPT that
+      mask's stencil test on for every frame after -- 0% lit for 22 s, until
+      the watchdog's rebuild. Pixi carries its stencil-mask depth, each render
+      target's stencil mode, the colour mask and the filter stack from frame
+      to frame, so whenever app.render throws, pixiRenderer now puts them
+      back to "nothing open" (`src/rendering/renderHeal.js`; `?noheal` to
+      compare) and the next frame draws. TRAPS §144, `mp-renderheal` (the
+      throw made as it happened, with `bindfix=0`; `noheal` shows the black).
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:
@@ -1299,7 +1488,8 @@ remnant to migrate server-side, not a mode to preserve.
       start with "+", and is a hit taken, carries a weapon / crit / heart /
       element mark, or is a plain number); "Blocked!", "Dodged", "+30 XP",
       "+25 G", a heal's "+12" and every word keep 21 px, so a kill's number is
-      the biggest thing over the monster and its XP and gold read under it;
+      the biggest thing over the monster and its XP and gold read under it
+      (no longer since v2.3.3192, below);
     - what depends on the size follows it: the crit still 1.8x the plain one,
       the 22 px mark cap and the gap after the digits x the scale, the stroke
       and halo of classic Text, the stacking (26 px at two 21 px numbers is
@@ -1314,6 +1504,27 @@ remnant to migrate server-side, not a mode to preserve.
       stacks, a kill's XP and gold, the words), mp-elemhits and mp-critpreview
       read the scaled cap; TRAPS §136 (emptying `S.dmgNumbers` leaves its Texts
       drawn): docs/specs/damage-number-size.md.
+    - since v2.3.3192 EVERY MESSAGE IS THE PLAIN HIT'S SIZE -- the owner: "Make
+      the messages in the game like "no mana" and other things like "quest
+      complete!" the same font size as the combat damage numbers": every popup
+      `isDamagePopup` calls no number (words, reward lines, heals, a
+      crit-flagged note) is `MSG_FONT_PX` = 21 x `DMG_SCALE`, its outline,
+      lift, stacking and climb with it (`_k` is DMG_SCALE for all; a crit
+      stays bigger); a long one WRAPS into even lines no wider than
+      `MSG_WRAP_W` 520 world px (`msgLines`, `wrapMessage`), never smaller
+      type, and grows upward; a message is held `MSG_EDGE_PX` 12 inside the
+      view (a number never moves); and ONE SIZE ON THE SCREEN for numbers and
+      messages alike (the owner had read the numbers as fixed -- they grew
+      1.31x with the dashboard folded -- and chose "Yes do fixed size
+      instead"): every popup size and every offset from its spot (lift,
+      stack, climb, mark, gap, wrap, edge) is popup px drawn x `Z` =
+      `POPUP_ZOOM` 0.606 / `S._worldScaleX` (`popupZoomK`; the QA phone's
+      folded scale, where they were tuned: a plain hit 22.3 CSS px), like the
+      name plates; the spot stays the world's; a line no wider than 0.82 of
+      the screen (`msgWrapW`); `?popupworld` the world-px way; the stacking
+      runs after the Text is made now (a wrapped one's height); `mp-dmgsize`
+      reads sizes AT REST (this box's slow frames catch the spawn pop; `_z`
+      kept in): damage-number-size.md "Messages as big as the numbers".
   - Since v2.3.3034 A LOST CONNECTION IS NOTICED, AND NOTHING THE WORKER
     SETTLES IS LOST TO IT -- the owner: "Logs aren't going to the inventory
     after getting chopped, and points in point stat allocation menu weren't
@@ -1871,6 +2082,136 @@ remnant to migrate server-side, not a mode to preserve.
     ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
     town's white square only without them; `__btMinimap.buildings`,
     `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
+  - Since v2.3.3209 THE MONSTER CODEX -- the owner: "After you kill a monster
+    you learn more about it, what it does, where it's from, elemental type,
+    special attack, (make up a backstory) etc.", "Also include drop tables
+    for all items that monster can drop", and with a mockup: "I want all the
+    facts revealed after just 1 kill ... change the structure of each monster
+    entry to look like this" (docs/specs/monster-codex.md):
+    - More -> Codex -> Monsters (was the always-empty Bestiary): a card per
+      kind, the pets' nine; its WHOLE page opens at the first kill the WORKER
+      counts (`server/src/codex.js`, `codex:<pid>`; `codex_state` at join,
+      `cx` on the kill's combat_credit; `CODEX_OPEN_AT`, `CODEX.TIERS` [1]);
+    - the page is the owner's mockup: a header (portrait, name, Lv / element
+      / creature-type badges), Drops (ITEM / TYPE / CHANCE with bars; a tap
+      opens the item's card: FOUND FROM, BASE DROP CHANCE, the four grades it
+      rolls), Info (the stage and every fact) and Locations (land, stages, the
+      road from BroTown, its dungeon); on the sheet's ONE height, scrolling
+      (the owner: "Stay short and scroll"), a tap's result put in view
+      (MonsterCodex.jsx `reveal`: a page or card from its top, a tab's content
+      at the sheet's top, the row or card you came from); the type badge is
+      the creature's BODY, the owner's "humanoid, beast, ..." (`CODEX_TYPES`:
+      Humanoid, Beast, Winged, Insectoid, Aquatic, Ooze);
+    - its STAGE plays it beside your character, the Points preview's make
+      (`CodexStage.jsx`, `data/codexStage.js`): its own strips, loaded when
+      the Info tab opens and freed when it closes (the owner's call, against
+      ~20 MB for all nine up front: "I think loading only when you open the
+      info tab"), the world's wind-ups and
+      warning circles; a near-black scene in a frame, everyone standing ON
+      its land-coloured ground strip and nothing ever past the frame (the
+      owner saw them "in a layer above the container", feet "visible on the
+      dashboard container"; `GROUND`, `onDrawn` feet, strips cut at their
+      feet, isolated, no `will-change`); the Drops table on near-black too,
+      readable on it (the owner: "more readable with the background"):
+      striped rows, a heading band, names that wrap, bars by how common
+      over powers of ten (`barWidth`); and the bar gets the room (the owner:
+      "Wrap text for the item name and increase the usable area for the bar
+      size. Looks like the chance column reserves too much space"): the
+      chance column one number wide (`PCT_W` 40), the bar 1.2x the name's
+      share, 117 px on the QA phone where it was 44; and then (the owner:
+      "All drop chances should be a single value. Also make the percentage
+      bars out of 100%") every chance one number and the bar its share of
+      100% (`barWidth`, a 2 px nub for the rarest), with the owner's DICE
+      ("a 'roll-based system' where you see dice and number", their pick
+      "Each drop's own roll"), shown as the owner then asked ("'roll' column
+      with a number range and drop chance percentage in parentheses"): a ROLL
+      column (the dice in its heading), each row the numbers of a kill's roll
+      of 1 to 10,000 that drop it over its chance, "Always (100%)" for gold
+      and remnants;
+    - ONE ROLL A KILL, EACH DROP ITS OWN NUMBERS (the owner: "Shouldn't these
+      numbers not overlap each other? Getting a roll of 1 implies you'd get
+      all the loot with 1 ... That way a player hunting for something can
+      also be looking for a roll number within that range"):
+      `server/src/killroll.js` rolls once, 1 to 10,000, and each drop that is
+      not on every kill owns its chance x 10,000 numbers from 1 up, the
+      rarest first (`KILL_ROLL.ORDER`, `killRollLayout`): a snowman's nugget
+      1, Iron Great Sword 2–21, Greaves 22–41, Torso 42–61, Rare Gem 62–111,
+      raw gem 112–611, shard 612–1,611, nothing more past it (the blue slime,
+      no raw gem: its shard 112–1,111); each chance unchanged, a kill drops
+      ONE of them at most (each had its own roll: ~1 kill in 170 dropped two);
+      who gets each is as before; a Workshop run's share is one more draw on
+      its numbers; `disable_weapon_drops` leaves the blade's numbers dropping
+      nothing; the roll functions called with no roll roll on their own (the
+      kill switch's path, and the old suites');
+    - THE ROLL IS SHOWN: combat_credit `roll` to everyone credited and `rh`
+      (the drop's codex row id) to whom it is theirs (`_killRollTheirs`); the
+      game shows it over the monster (`src/game/killRoll.js`), the Gambling
+      Den's dice in FRONT (`/icons/popups/dice.webp`, the popup's `dice` mark,
+      `iconLead`), "7,431" grey (gone in 2.4 s) or "640 Frost Shard" gold
+      (3.2 s), a message not a damage number (`roll: true`), over you when
+      the monster is off your screen; the codex's ROLL column the same numbers
+      (`codexRollLayout`, `ROLL_W` 64; an older worker's 1 to each drop's own
+      number, `shared: false`), mirror-audit holding it to `killRollLayout`
+      for every kind; `caps.killroll`, kill switch `killroll: false`, dev
+      lever `/dev/killroll {next, kill}`; `killroll` suite, `mp-killroll`;
+    - NO RANDOM WEAPON OFF A KILL (the owner: "Remove 'a random weapon'
+      drop", then "Remove it from the game"): `_rollWeaponDropForKill` and
+      its level curve are gone, a kill's one weapon the Iron Great Sword's 1
+      in 500 (`_rollIronWeaponForKill`); `caps.weaponDrops` stays true for it,
+      `disable_weapon_drops` still stops it; `drops` suite §6b;
+    - the drop table (`data/codexDrops.js`) prints the worker's own rolls --
+      `SHARD_MONSTER_DROP` (data.js), `WEAPON_QUALITY_ODDS` (hardening.js) --
+      and mirror-audit holds it to them and to the Wheel's real monsters
+      (gold, remnants), every chance a whole number of the die's faces:
+      change a drop rate and the page changes with it, or the audit fails;
+    - `caps.codex`, kill switch `codex: false`, dev lever `/dev/codex`;
+      `codex` suite, mirror-audit, `mp-codex`.
+    - since v2.3.3215 THE CODEX HAS ITS OWN BUTTON, AND MORE OF IT FITS -- the
+      owner: "Are you able to fit the codex as another dashboard button? Also
+      is there a way to display more data without needing to scroll down so
+      much?":
+      - SIX buttons on the dashboard's row (Dashboard, Character, Quests, Life
+        Skills, Codex, More), the Codex's counting its NEW pages
+        (`codexFreshCount`); More's Codex tile opens the same destination.
+        Asked whether to narrow all six or move the drill's back arrow, the
+        owner: "Move back arrow": a drilled panel's header is one button,
+        "◂ SETTINGS" (BottomDashboard `data-dash-back`), the row the CLOSE
+        pill and the buttons in every mode -- 44 px at 390 (five were 46), 39
+        at 360 (sheetGeometry `IDENTITY_MIN_LINE` 84, `RAIL_COUNT` 6), and the
+        buttons no longer step right when a drill opens; sideways
+        `LAND_NAV_BTN_W` 26, the side column 238 px;
+      - the codex on the 191 px sheet: all nine cards at once (compact, two
+        across sideways), the Codex's three always-empty tabs aside, a 48 px
+        header, the tabs PINNED to the sheet's top with "‹ All monsters" their
+        first button, Info's stage scaled to fit under them (`StageFit`), and
+        tighter rows -- a page's first look shows its table (was all header),
+        Drops/Info/Locations scroll 301/730/131 px (were 482/907/266);
+      - `mp-codexfit`: docs/specs/monster-codex.md "Its own button".
+  - Since v2.3.3241 A CROWD COSTS THE PHONE LESS -- found by the owner's
+    "stress test to see what can be optimized" (`mp-crowdbots` with the bots
+    spread out: 12 of 150 on screen cost a phone's frame as much as all 150):
+    - in the Wheel, a player past the view's half-diagonal plus
+      `PEER_FAR_MARGIN` 400 from its middle is not drawn, the monsters' rule
+      (entityRenderer `_updateOtherPlayers`): hidden, nothing else done that
+      frame, no figure MADE until near (a join into a full Wheel built every
+      player's figure in one frame), kept once made; nothing of theirs
+      either -- pet, glint, gathering/swing/shot stand-ins, trails, status
+      looks, bubbles (`S._peersNotDrawn`, effectsRenderer `_peerNotDrawn`);
+      `S._peersFarHidden`;
+    - the peer loop no longer fights the depth pass: it moved every player
+      south of you back into the entity layer each frame and the pass moved
+      them out again -- two re-parentings a frame each, and Pixi rebuilt the
+      world's draw list for them; the front layer is now an accepted place;
+    - THE CROWD CAP, Phase 0a of docs/SERVER-SPLIT-PLAN.md as the owner chose
+      it: of the players near enough to draw, the nearest `CROWD_K` 50 in
+      full and always your party, target, duel and whoever is fighting you;
+      the rest not drawn (the minimap still shows them), the edge held
+      `CROWD_HOLD` 8 places so it does not flicker (src/game/crowdCap.js,
+      `crowd-cap` suite); `S._peersCrowdHidden`; `?crowd=K`, `?crowd=all`;
+    - measured on the QA box (`mp-crowdbots`): 150 players spread out, the
+      frame's work 36 -> 20 ms; 150 on screen, 31 -> 21 with the cap;
+    - `?nopeercull` is all three off; `mp-peercull` (two phones),
+      `mp-crowdbots` `BT_CROWD_QUERY`: docs/specs/peer-cull.md.
   - Since v2.3.3147 THE BUILDINGS HAVE INSIDES -- the owner sent seventeen
     pictures of them (made from docs/ART-WISHLIST.md's prompts) and said "Ok
     wire these up":
@@ -1954,6 +2295,20 @@ remnant to migrate server-side, not a mode to preserve.
   owner's business model: free play capped at 2 h a day, a $2-a-month
   supporter pass for unlimited — the server counts the hours, and logging
   every room message would cost more than the game),
+  `docs/SERVER-SPLIT-PLAN.md` (v2.3.3208, the owner's "Hopefully 1000 while
+  just as smooth is possible ... begin planning what the best server split
+  would look like": MEASURED, about four fifths of the room's thread at 150
+  players is each phone's own messages, growing with the square of a crowd,
+  and the world itself little -- a copy doing only the world's part ran 1,000
+  players in 6 ms of a 22 ms tick -- so the split is by CONNECTION first,
+  front doors doing each phone's work with one world behind them over
+  batched sockets, and WORLD-ARCHITECTURE §11's area servers only behind the
+  doors once that world fills (TRAPS §172); a phone drawing ~100 players on
+  one screen does ~4x an empty town's frame work, so a crowd cap per phone
+  (`mp-crowdbots`); phases 0-4, ~$245 a month at 1,000 around the clock;
+  the owner: "Go recommended but I want you to stress test to see what can be
+  optimized" -- a crowd cap of 50 drawn in full, the Cloudflare lab after
+  Phase 0, stress tests first; nothing of the split built yet),
   `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
   `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
   decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates
@@ -2081,6 +2436,15 @@ Two protocol versions coexist; both must keep working:
   instead of passing for a new character. The defaults that are not zero
   are `NEW_CHARACTER_COINS` and `freshLifeSkills()`, pinned to the client's
   by mirror-audit: docs/specs/fresh-start.md.
+- FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS (v2.3.3197, the owner:
+  "Send far away players less often and using shorter position numbers"):
+  in the Wheel a v2 session gets the movers within `FAR_PLAYERS.NEAR_R` 2,400
+  px of it on every tick and the rest at most every `EVERY_MS` 250 ms, at
+  where they are now (tick.js `_farPending`, `playersPlanFor`); every player
+  entry's x/y/vx/vy go out whole (`rp`; the phones already send a tenth of a
+  pixel, so that part is ~2.4%). Kill switches `farplayers: false`,
+  `roundpos: false`. Both tick builders carry it (tick-share.test.mjs compares
+  them); `far-players` suite, `mp-farpeer`: docs/specs/far-players.md.
 
 ## Testing
 
@@ -2096,10 +2460,256 @@ Two protocol versions coexist; both must keep working:
   (owner directive, 2026-07-16 — no live players, CI speed wins) and
   run only via workflow_dispatch on demand. Primary platform is
   **iPhone Safari** — test touch controls, not just desktop.
+  And SIDEWAYS too (v2.3.3216): a touch screen cannot scroll the creator
+  (`overflow:clip`), and sideways a phone is 300-430px tall -- ENTER BRO
+  TOWN sat at y 783 of 390 until the creator became three columns there
+  (game.css, the v2.3.3216 block); `mp-cclandscape`, TRAPS §175.
   Two phone scenarios DO run on every PR, each an owner call: `playable`
   (mp-questline, v2.3.1729, client-ci.yml) and `memory-budget`
   (mp-membudget, v2.3.3101, memory.yml -- Conventions, "Memory is
   budgeted").
+- A phone scenario red on `main` is a question about the TEST first (TRAPS
+  §177, v2.3.3249): mp-deathstrip, mp-firetrail, mp-petsmatter, mp-hitvoices
+  and mp-slimeburst were all the test, never the game. `run.mjs` closes every
+  page a scenario leaves open, since one browser serves the whole run and an
+  open world page slows every scenario after it.
+- Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
+  fills a private copy of the server (local only) with fake players in the
+  Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's
+  own code. Measured: smooth to about 70 busy players (the cap was 60), a
+  slower world past that (fewer ticks a second), half speed from about 125, no
+  freeze up to 150; since #885 (docs/specs/room-capacity.md) smooth to about
+  110. Wrangler's own local tracing (on by default) made every
+  message ~5x dearer and froze the room at ~95: the tool turns it off (TRAPS
+  §168). Re-run it after any change to the tick, the move path or the Wheel's
+  monsters.
+  - v2.3.3199: THE ROOM COMPRESSES EVERY MESSAGE (permessage-deflate: the
+    worker's compatibility date turns it on, every browser asks for it), and
+    the compressing is about 40% of its thread (79.6% at 100 players, 44.6%
+    with `--no-deflate`), so every message sent, and what changes in it,
+    costs the server CPU -- repeated text is nearly free (leaving the unchanged
+    gear keys out saved 29% of the bytes and no CPU; TRAPS §169). A phone's
+    download on the wire is about a thirteenth of what it unzips (~17 KB/s at
+    100 players): the load test's `wire` column, the bots' own byte counts
+    being unzipped (TRAPS §169). In BroTown 98% of the bytes are other
+    players' entries. `--move-ms`, `--seen-r` and `--no-deflate` are the
+    tool's levers: docs/specs/load-test.md "What a phone really downloads".
+  - v2.3.3201: WHO IS NEAR WHOM, BY SQUARES -- each Wheel monster looks for a
+    player to chase only in the 256 px squares its aggro range reaches
+    (server/src/aggrogrid.js; it measured every player, a quarter of the
+    room's work at 150), and the monsters a phone hears about are found by
+    number-keyed squares (wheelzone.js `GRID_KEY`). The same picks and the
+    same bytes: aggro-grid.test.mjs runs two rooms side by side, the old
+    search and the new, and compares every monster and message every tick.
+    A sticky aggro that has run out is now cleared up front (nothing read
+    one). 3-4 more ticks a second at every size; kill switch `aggrogrid:
+    false`: docs/specs/near-searches.md.
+  - v2.3.3202: THE TICK IS PACED -- the runtime's setInterval waits the whole
+    22 ms AFTER each tick (measured: period = 23.1 ms + the tick, TRAPS §170),
+    so a busy room was a slower world with its thread partly idle.
+    server/src/tickpace.js shortens the interval when ticks start more than
+    24 ms apart (a quiet room's period) and puts it back when they come
+    sooner; never under 6 ms, never over TICK_RATE, never faster than a quiet
+    room; the Workers runtime only (`WebSocketPair`), so the Node harnesses
+    that call the tick by hand are untouched. 100 players 37 -> 40.4 ticks a
+    second, 150: 29.2 -> ~30-32; 41-42 ticks to ~100 players, then a drop as
+    the thread fills: smooth to ~130 (main ~105). Kill switch `tickpace: false`;
+    /dev/overview's `tickPace` reads the real tick rate: docs/specs/tick-pace.md.
+  - v2.3.3203: A PLAYER WALKING STEADILY IS SENT LESS OFTEN -- a Wheel player's
+    tick entry is held (server/src/steadymovers.js) while every other field is
+    unchanged, they keep moving (or standing) at the speed last sent (4%),
+    within 2 px of the line it drew them on and about as far along it (50 ms
+    of a busy room's lateness allowed), for at most 66 ms; a turn, stop,
+    start, new gear or shove goes out at once; the far send and the roster
+    count as sent. Phones draw peers from the speed, so the drawn place is
+    unchanged (steady-movers.test.mjs runs the phone's dead reckoning both
+    ways: identical). 50-100 players: the room 13-18% less busy, phones
+    download 30-39% less; 150: -6 points, no more ticks; on the night's ramp
+    68% of the thread at 100 against 78%, the smooth line where it was
+    (~120-130); a shaky thumb (2 degrees a move) still 100 -> 58 updates,
+    drawn the same. Positions arrive 2-5 ms later on average. Kill switch
+    `steadymovers: false`; /dev/overview's `steadyMovers` shows the real
+    saving: docs/specs/steady-movers.md.
+  - v2.3.3204: A STEADY WALK ON THE SAFE GROUND IS SENT HALF AS OFTEN -- on
+    the Wheel's safe ground and not in a fight (no lock, attack, duel or arena:
+    wsClient.js `moveDietOn`), the PHONE keeps a move back while it is on the
+    line its last one drew, until 66 ms after it (src/game/moveDiet.js
+    `dietMayWait`: the worker's own steady rule, its numbers pinned to STEADY by
+    move-diet.test.mjs); a turn, stop, start, gear or any other change goes on
+    the next 33 ms batch. The worker never re-holds such a spaced move
+    (STEADY.SPACED_MS 44: held by its ticks' times, half came a tick late).
+    Incoming moves about halved (Cloudflare bills incoming messages); smooth
+    (33+ ticks) to ~145 with all five (125: 32.0 -> 37.7-38.8, 150: 30.5 ->
+    32.2-33.8);
+    others' moves 4-6 ms sooner at 50-100, 4-15 ms later at 125-150. Kill
+    switch `movediet: false` (caps.movediet: each phone at its next join);
+    `mp-movediet` (slows the page's drawing while it walks: this box's software
+    GL starves page timers): docs/specs/move-diet.md.
+  - v2.3.3205: THE CAP IS 120 -- the owner: "I think 120 is a good cap limit
+    for now" (index.js `MAX_PLAYERS`; `max_players` can still only lower it;
+    chatmod `SEEN_MAX` 240, twice the cap). With #887-#891 the room is smooth
+    to ~145; at 120 players 39 ticks a second, and its memory about 9 MB kept
+    after a full GC, 44 MB at the most in use, against Cloudflare's 128 MB
+    (`tools/qa/load/heapprobe.mjs`, the inspector's heap during a load test):
+    docs/specs/cap-120.md.
+  - v2.3.3240: A LOOK IS RELAYED WHEN IT CHANGES -- found by the owner's
+    "stress test to see what can be optimized":
+    - every phone sends `track` (its whole look and stats, ~940 B) every 2 s,
+      and the worker relayed each to every other player as its own message:
+      N(N-1)/2 sends a second, more than all the ticks;
+    - the load test's bots never sent it (TRAPS §173), so "smooth to ~145"
+      was really ~105, and 120 was past it (25.8 ticks a second);
+    - server/src/lookrelay.js now relays only the keys that changed, and only
+      when one did:
+      - x/y/dir, HP (LAZY: rpgHp, rpgMaxHp) and the inspect card's counters
+        (LAZY_IN: rpgData's kills, svKills, goldEarned, playtime) ride along
+        only; any other change to rpgData relays it at once -- the phone draws
+        a peer's slung shield from rpgData.shield (the first cut held all of
+        rpgData back, and a shield could take a minute to show);
+      - hg/fr go in every relay that has them (wsClient sets a peer's build
+        from each one);
+      - a whole copy every minute;
+      - kill switch `lookdelta: false`; /dev/overview `lookRelay`;
+    - the clan clear carries hg/fr too and resets the relay (`_lookForget`);
+      it had been resetting a leaver's build on every screen;
+    - with real looks (`load.mjs --track`): 38.0 ticks at 120, 31.1 at 150 --
+      smooth to ~145 again;
+    - look-relay.test.mjs (29, a 24,000-track property test against the
+      phone's merge), clans.test 9.3c/d, mp-trackcapture (the sample),
+      mp-crowdbots (BT_MAX_PLAYERS, the bots' looks): docs/specs/look-relay.md.
+  - v2.3.3242: THE STRESS TESTS' SERVER FIXES -- the owner's "stress test to
+    see what can be optimized" (docs/specs/stress-tests.md, the round's whole
+    report, server and phone):
+    - `reportToLeaderboard` reads its clock first: every `track` built the
+      Leaderboard stub, the whole chain-score series and a signature, to throw
+      them away inside the 5 minute floor (~100 us a track); the same reports
+      go at the same times (`anticheat` §7b);
+    - `_wheelInterest`, the room's biggest single function at 120 players
+      (145 ms a second): the distance first, the session's two sets used in
+      turn, `entered` only when something enters, the grid's answer for a
+      block of squares kept for the tick (`wheelGridNearKept`): 95 ms a
+      second, the same answer exactly (`tick-share` §5f against a copy of the
+      old code, four mutations caught);
+    - `load.mjs --keep-bundle <dir>` (a profile's lines, mapped to source) and
+      `--tick-parts` (a tick at 120 players is 95% the players' positions);
+    - then measured: the crowd cap on the wire (each phone sent only the
+      movers among its nearest 65 every tick) gave nothing at 120-150 --
+      steady movers keep a tick's movers near a phone at ~25-35 -- while far
+      players with the once-a-second roster gave ~5 points at 120 (#898).
+  - v2.3.3243: FAR PLAYERS ONCE A SECOND, WITH THE ROSTER -- found by the
+    owner's "stress test to see what can be optimized": the far send
+    (v2.3.3197) went to every phone in the Wheel four times a second with
+    EVERY player who had moved, the near ones it already got each tick
+    included -- about a third of what a phone in town was sent at 120. A
+    player past 2,400 px is on neither your screen nor your minimap, so they
+    now reach you only in the presence roster, about once a second, where
+    they are now (tick.js `FAR_PLAYERS.EVERY_MS` 0); the world map and the
+    minimap carry a dot along its last speed between updates
+    (src/game/peerDot.js). 120 players: the room 78-80% -> 73-76% busy, each
+    phone 175-182 -> 145-150 KB/s unzipped; 150: 35 -> 37 ticks a second;
+    near players' moves arrive sooner. `far_ms` in the live flags (100-5000)
+    brings a far send of their own back (250: v2.3.3197's); far-players §10,
+    steady-movers 2k/2m, `mp-farpeer` (`BT_FARPEER_FAR_MS`). Tried first and
+    dropped: the crowd cap on the wire (each phone sent only the movers among
+    its nearest 65) -- no gain at 120-150, as steady movers keep a tick's
+    movers near a phone at ~25-35: docs/specs/far-players.md "Once a second".
+  - v2.3.3244: THE OTHERS ARE TOLD WHAT THEY SEE, NOT YOUR BAG -- found by the
+    owner's "stress test to see what can be optimized" (`load.mjs --storm`:
+    every socket dropped at once, the way back measured): a joiner's
+    `state_sync` gave every other player as `{...playerState, name,
+    ...session.data}` -- coins, bag, every stash, quests, life skills, buffs,
+    the anti-cheat's histories -- and `player_join` told everyone the join's
+    `rpg*` claims; no phone read them, and in No man's land the bag is the
+    killer's prize. Both now carry the PUBLIC keys only (index.js
+    `PEER_PUBLIC_KEYS` / `_peerPublic`: the look relay's keys, the join's look,
+    a tick's fields), an allowlist (TRAPS §174); precedence as before. A played
+    character with a real look: 4,595 -> 948 bytes; the storm at 120: a join's
+    snapshot 142 -> 8 KB, a join's p95 611 -> 240 ms. No caps flag (a phone
+    reads a subset). `peer-view` suite (every key a phone reads on the
+    snapshot road held to the list), gearprov §8: docs/specs/peer-view.md.
+  - v2.3.3245: A FIGHT'S EVENTS GO TO THE PHONES NEAR IT -- the split plan's
+    Phase 0d, found by the owner's "stress test to see what can be optimized"
+    once the bots sent the swings and arrows a phone relays (`load.mjs
+    --relays --events`): every event a tick carries went to every phone, so at
+    120 players each phone got 50-66 a second, nearly all from fights it could
+    not see, growing with the square of the crowd. Now an ALLOWLIST of the ones
+    that happen at a place (server/src/eventplace.js `placeOf`: monsters' hits,
+    attacks, special moves, balls, fire patches, parries, bow blasts, bursts, a
+    bash's wind-up, and the relays player_swing/projectile/dodge/jump,
+    gather_node and two legacy ones) goes to the players it is about (attacker,
+    target, sender) anywhere, to v2 phones within 2,800 px of it in the Wheel
+    (`EVENT_PLACE.R` = INTEREST_OUT), and to the zone elsewhere (tick.js
+    `eventsFor`, the selection in the cache key, each event's JSON made once).
+    Everything else stays room-wide: chat, emotes, trades, duels, clans, the
+    arena, hits between players, and what a phone KEEPS until the next one --
+    kills (a far monster's only news of its death; missed, its return in reach
+    reads as a fresh kill, a phantom remnant pile: TRAPS §176), loot, a raised
+    shield, a mummy's change, a lit campfire -- found by an audit of every
+    client handler. 120 players: 17 events a second a phone (3.4 KB/s), the
+    download ~4% less, the room no busier; a phone near every event gets the
+    same bytes. Also fixed by it: a monster's slam shook every screen in the
+    Wheel (gameEvents.js monster_ability, a zone check only), now within
+    2,800 px. No caps flag; `eventplace: false` the kill switch. `event-place`
+    suite (35, ten mutations), `tools/qa/load/events-bench.mjs`:
+    docs/specs/events-by-place.md.
+  - v2.3.3246: THE ROSTER'S FAR PLAYERS, SLIM -- the split plan's Phase 0b,
+    its first step (the worker alone), from the owner's "stress test to see
+    what can be optimized": once a second every phone was sent EVERY player's
+    whole entry (the presence roster, ~150 bytes each: 150 KB a second at
+    1,000). Now, on a presence tick, a v2 phone in the Wheel gets its own
+    roster (tick.js `rosterPlanFor`): the players within FAR_PLAYERS.NEAR_R in
+    its zone whole, as before; the far ones slim, `{x, y, d, z, vx, vy}` (the
+    fields wsClient.js's tick merge writes whether or not they are there --
+    slim-roster §8 reads them from the client itself); and a far player who has
+    not changed since the last roster only every `ROSTER.FAR_STILL_MS` 4 s,
+    inside the client's 10 s ghost sweep (§2: at most 4 s and one roster apart,
+    at 45 ticks a second and at 10). Sprint, skull, pet and the armour's grade
+    read as none for a far player the phone does not draw; the first whole
+    entry puts them back long before they are on screen. v1 phones, the other
+    zones and a socket that has not joined still get everyone whole. A phone at
+    120 ~9% less; in-process 12% / 17% / 23% less at 120 / 500 / 1,000 with
+    the room's time unchanged. No caps flag; kill switch `slimroster: false`.
+    `slim-roster` suite (21), far-players §8c, `tools/qa/load/
+    roster-bench.mjs`: docs/specs/slim-roster.md. The rest of 0b (far
+    positions only while the world map asks) needs a phone change.
+  - v2.3.3247: THE CLOUDFLARE LAB -- the split plan's lab, which the owner
+    said yes to ("Go recommended": the lab after Phase 0). Started BY HAND:
+    Actions tab -> "Cloudflare lab" -> Run workflow (`.github/workflows/
+    lab.yml`). It deploys a tiny worker of its own, `brotown-lab`
+    (tools/lab/: Burner, World and Door objects; NEVER the game, nothing
+    stored, every request but "/" needs the run's own key), times it from the
+    runner (tools/lab/run.mjs): do K objects of one script run side by side
+    (and in how many isolates), the delay between two objects (a call, a
+    plain socket, a hibernated one), floods of known size, and the account's
+    own figures for them (GraphQL, the fields asked of the schema; best
+    effort) -- and deletes it whatever happened. About a cent a run; results
+    on the run's summary and its `lab-results` download. It lives under
+    tools/, so a merge never sets off deploy-worker.yml. `node tools/lab/
+    run.mjs --local` is the same run on wrangler dev (one thread: side by side
+    1 at every K, which is what the test tells apart). The game's room on
+    Cloudflare with the bots is the next lab: docs/specs/cloudflare-lab.md.
+  - v2.3.3250: FAR PLAYERS ONLY WHILE YOUR WORLD MAP IS OPEN (presence v2) --
+    the rest of Phase 0b, from the owner's "Go recommended" (open decision
+    24): a phone that joins with `pres: 2` (wsClient.js; `caps.presence2`) is
+    sent, in the Wheel, the players near it whole, its party whole wherever
+    they are (server/src/presence2.js `_presence2Party`), and far players only
+    while its WORLD MAP is open -- WorldMapOverlay.jsx sends `map_watch` on
+    opening, every 4 s and on closing (src/game/presence2.js `sendMapWatch`;
+    the channel's allowlist names it, TRAPS #18), one `true` lasting 8 s, the
+    first roster of a watch carrying every far player; every 30 s `on`
+    (everyone's id -> zone), which forgets whoever left in place of the 10 s
+    ghost sweep (stood down while it is fresh, 75 s). A FAR PLAYER'S COPY IS
+    PARKED: the roster is marked `nr` while the map is shut (every near player
+    is in it), a player missing from it is `_away` and stopped, and every frame
+    (visualSystems.js) an `_away` copy is kept PARK_R 2,400 px from you -- their
+    frozen copy was a ghost for anyone who walked to where they were last seen
+    (TRAPS §178); the world map and minimap skip parked copies. In-process
+    72-74 KB a second a phone at 120 (slim 90-98) and 144-149 at 500 (218-250),
+    the room's time the same; merged with #898's roster-only far players the
+    extra cut is small (120: 74 against 75-82; 1,000: 235-242 against
+    261-311) -- groundwork: a phone's download stops growing with far players. Old phones keep the v2.3.3246 roster; kill switch
+    `presence2: false`; `presence2` suite (55, twenty bugs caught), `mp-presence2`
+    (15), mp-farpeer opens the map for its far step: docs/specs/presence-v2.md.
 
 ## Conventions
 
@@ -2174,7 +2784,16 @@ Two protocol versions coexist; both must keep working:
     nothing reads the canvas back and a rebuilt renderer makes it again for
     itself, empty it once uploaded with `keepOnGpuOnly`
     (src/rendering/gpuOnly.js; its header says when that is safe -- the
-    walking gear sheets are not: drawGearFrame reads them).
+    walking gear sheets are not: drawGearFrame reads them). Kept that way:
+    the combat gear strips and the damage font (v2.3.3088), and since
+    v2.3.3150 the gathering figures -- the lumberjack, cook and fire-lighter,
+    ~30 MB of canvases a player who gathers held for the rest of the visit
+    (effectsRenderer `_gpuOnly`, called after each bake's last read; not the
+    lumberjack's source crops, which every re-bake reads; `mp-gatherposes`,
+    `mp-gpuonly`). A test that reads such a picture's pixels off its canvas
+    sets `window.__btTrimVerify` in its init script (mp-chopink, mp-cookink,
+    mp-fireink) -- not `?gpucopies`, which a guest's page loses when it
+    reloads into `?guest=1` on the way in.
   - MUSIC, and any sound longer than a few seconds, plays through the music
     deck (BT_AUDIO's zone and global music, streamed from its file since
     v2.3.3073) -- never SFX_MANIFEST, which decodes the whole file into memory
@@ -2182,6 +2801,49 @@ Two protocol versions coexist; both must keep working:
   - Anything made per zone change, per land, per fight, per dungeon or per
     renderer rebuild is DESTROYED when it goes; a cache has a cap (an LRU),
     never "until the page closes".
+  - A POOL GIVES BACK WHAT A SPIKE MADE (v2.3.3152, found by a leak hunt): the
+    hit effects' pools kept every sprite a big fight drew (1,436 hidden after
+    one Great Cave wave) -- a pool trims to what it drew in its last few
+    seconds (hitMaterialFx.js `TRIM_MS`) and empties on a zone change. And a
+    picture freed is not only your sprites' business: Pixi's pooled mask
+    filter and shared shaders keep the last picture they drew, and pixi 8.17
+    destroyed their bind group with it, so the next sprite mask broke the
+    frame (TRAPS §143, `src/rendering/bindGroupFix.js`). Pixi's own
+    TexturePool (every filter pass's scratch, every canvas Text's texture)
+    kept on the GPU the most of each size ever used at once; one unused for
+    30 s is destroyed now, and a zone change empties it
+    (`src/rendering/texturePoolTrim.js`, only with the bind-group fix on;
+    `?poolkeep` to compare; `window.__btTexPool()`). The census is
+    `window.__btSceneCensus(depth)` (the scene counted by path); `mp-sceneleak`
+    checks all four, a rebuild's shadow system included.
+  - A PICTURE ON 256 COLOURS OR FEWER IS KEPT AS COLOUR NUMBERS (v2.3.3190 --
+    the owner asked whether the art could be "recreated byte for byte using
+    pure code"; not that, a drawn picture costs the GPU what a loaded one does,
+    but "Yes" to this): the Wheel's ground pieces and object sheets are R8
+    textures, one byte a pixel, and their colours a row each of one 256 x 256
+    atlas, drawn by a second Pixi batcher whose shader does the smooth lookup
+    itself (`src/rendering/paletteTex.js`; the worker sends a piece as numbers,
+    `public/tools/world/core/piecePalette.js`; a sheet is read as its numbers
+    in `src/rendering/png8Worker.js`). The rules that come with it:
+    - which batcher draws a sprite or mesh is decided by its TEXTURE where Pixi
+      hands it to its batcher (BatcherPipe.addToBatch, inside sharpPixels' own
+      wrapper) -- anything drawing an object's picture (its shadow pool too)
+      needs nothing;
+    - NEVER read such a picture's `source.resource` on the CPU (it is numbers):
+      `drawSourceRect` (paletteDraw.js) for a read at its own size, and a read
+      that SCALES it reads the sheet's own `<img>` (TRAPS §166);
+    - a buffer at resolution 2 must be uploaded at its pixels (TRAPS §165);
+    - `?nopalette` is the old way, all of it; `mp-palette` compares the two
+      frame for frame (0.03-0.05% of pixels one level of 255 apart) and times
+      the frame both ways, `server/test/palette.test.mjs` the decoders,
+      `__btPalette()` the probe;
+    - measured, BroTown's arrival on the QA phone: GPU 104 -> 72 MB, art from
+      files 156 -> 125, buffers +8 (the sheets' numbers, kept to upload again
+      and for the CPU readers; mp-membudget's `buffers` line raised to 24 for
+      it); the cost, eight reads a pixel where the chip did one, on the QA
+      box's software chip a frame 20-27% longer in BroTown and 14-21% among
+      trees and water -- not measured on a phone:
+      docs/specs/palette-textures.md.
   - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
     the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
     home again, three times. Each kind of memory's highest reading must stay

@@ -24,11 +24,21 @@
  * there.  NEVER raise a line silently, or to turn a red check green without
  * saying so: that is the creep this file exists to stop.  LOWERING a line
  * after a saving is welcome -- it locks the saving in.
+ *
+ * v2.3.3190, the Wheel's ground and objects kept as colour numbers
+ * (rendering/paletteTex.js), three runs: `artCache` 178 -> 156 and `gpu` 145
+ * -> 105 (the saving: at most 172.4 -> 147.8 and 132.5 -> 95.0 MB on the
+ * trip), and `buffers` 16 -> 24 -- RAISED, by the object sheets' colour
+ * numbers, one byte a pixel, which the page keeps (~8 MB at the fight's
+ * end): they are what puts a sheet back on the chip after Pixi takes an idle
+ * one off it or a black screen's rebuild, and what the game's own reads of a
+ * picture use.  The old way kept the same sheets as their colours, four
+ * bytes a pixel, in `artCache`, so the 8 MB replaces ~31.
  */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 178, measured: 169.4,
+  artCache: { name: 'art loaded from files', mb: 156, measured: 147.8,
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
-  gpu: { name: 'textures on the graphics chip', mb: 145, measured: 135.4,
+  gpu: { name: 'textures on the graphics chip', mb: 105, measured: 95.0,
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
   canvases: { name: 'pictures the game draws itself', mb: 96, measured: 89.9,
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
@@ -36,7 +46,7 @@ export const MEMORY_BUDGET = {
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
   heap: { name: 'the page\'s JavaScript objects', mb: 32, measured: 27.5,
     what: 'the page\'s JavaScript objects' },
-  buffers: { name: 'the page\'s raw data buffers', mb: 16, measured: 12.8,
+  buffers: { name: 'the page\'s raw data buffers', mb: 24, measured: 20.0,
     what: 'the page\'s raw data buffers (ArrayBuffers)' },
   workers: { name: 'the background workers', mb: 36, measured: 30.5,
     what: 'the background workers (the ground builder): their objects and buffers' },

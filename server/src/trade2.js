@@ -225,6 +225,12 @@ export const trade2Methods = {
     if (Date.now() - (s.changedAt || 0) < TRADE2.ACCEPT_COOLDOWN_MS) {
       return this._t2Broadcast(s, { reason: 'cooling' });
     }
+    /* v2.3.3183: no trade while either side is in a fight with a player --
+       a trade to a friend emptied a losing bag before the killer's pile
+       (nomansland.js _bagLockedByFight).  The window stays open. */
+    if (this._bagLockedByFight && (this._bagLockedByFight(s.a) || this._bagLockedByFight(s.b))) {
+      return this._t2Broadcast(s, { reason: 'fight' });
+    }
     s.confirmed[session.id] = true;
     s.ts = Date.now();
     if (!(s.confirmed[s.a] && s.confirmed[s.b])) {
@@ -469,6 +475,25 @@ export const trade2Methods = {
     if (s.ready) { s.ready[s.a] = false; s.ready[s.b] = false; }
     s.changedAt = now;
     s.changedBy = session.id;
+    s.ts = now;
+    this._t2Broadcast(s);
+  },
+
+  /* v2.3.3186: a pet staged in `pid`'s open window was renamed (petbook.js
+     _handlePetName).  The window shows each pet by its name, and every other
+     change to an offer resets both readies and accepts -- a rename did not,
+     so the other side could accept a trade showing one name and get the pet
+     under another.  Now it is an edit like any: both back to the offer, and
+     the accept cooldown starts again. */
+  _t2PetRenamed(pid, petId) {
+    const s = this._t2SessionFor(pid);
+    if (!s || s.state !== 'open' || !s.pets || !Array.isArray(s.pets[pid]) || s.pets[pid].indexOf(petId) < 0) return;
+    const now = Date.now();
+    s.confirmed[s.a] = false;
+    s.confirmed[s.b] = false;
+    if (s.ready) { s.ready[s.a] = false; s.ready[s.b] = false; }
+    s.changedAt = now;
+    s.changedBy = pid;
     s.ts = now;
     this._t2Broadcast(s);
   },

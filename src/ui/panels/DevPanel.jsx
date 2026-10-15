@@ -160,6 +160,7 @@ const CAP_GATES = [
   'sprint' /* v2.3.3006: lower case, a kill switch */,
   'wheelnodes' /* v2.3.3012: lower case, a kill switch */,
   'shieldwear' /* v2.3.3091: the shield on the arm -- lower case, a kill switch */,
+  'shieldgem' /* v2.3.3187: a gem goes into a shield on the worker -- lower case, a kill switch */,
   'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,
@@ -185,6 +186,14 @@ const CAP_GATES = [
   'pethouse' /* v2.3.3123: more room in the Pet House for gold -- lower case, a kill switch */,
   'hardenmats' /* v2.3.3139: hardening takes a material (bars, or a bow's hardened wood) and a doubling gold ladder -- lower case, a kill switch */,
   'hardenedwood' /* v2.3.3139: five logs into one hardened wood at the Woodworker -- lower case, a kill switch */,
+  'movediet' /* v2.3.3204: a steady walk on the Wheel's safe ground sent every 66 ms -- lower case, a kill switch */,
+  'codex' /* v2.3.3209: the monster codex's kill counts (server/src/codex.js) -- lower case, a kill switch */,
+  'killroll' /* v2.3.3209: one roll a kill, each drop its own numbers, shown over the monster (server/src/killroll.js) -- lower case, a kill switch */,
+  'hitladder' /* v2.3.3229: the hit ladder -- each life-skill level adds a 10% chance of one more (server/src/gathering.js gatherHitRoll) -- lower case, a kill switch */,
+  'nodehp' /* v2.3.3251: each tier's HP twice as long as the one before (server/src/gathering.js GATHER_NODE_HP) -- lower case, a kill switch */,
+  'tierxp' /* v2.3.3251: each tier's harvest XP twice the one before (server/src/gathering.js GATHER_TIER_XP) -- lower case, a kill switch; off with nodehp too */,
+  'xpdecay' /* v2.3.3251: XP fades 5+ levels below you, harvests and fights (server/src/xpdecay.js) -- lower case, a kill switch */,
+  'presence2' /* v2.3.3250: far players only while the world map is open, the online list, far copies parked (server/src/presence2.js) -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported
@@ -209,7 +218,11 @@ const CAP_NOTES = {
   bigorb: 'the staff special as one big, swingy bolt that explodes (v2.3.2849; without it: the three-orb volley, no blast)',
   blockScale: 'the shield block count',
   zoneDepth: 'Wind Dunes perspective — things shrink and slow toward the north edge',
-  gatherhits: 'gathering hits — a rock, tree or pond has HP that your swings knock off (1 to your skill level each) before the gesture; without it: the old timer (v2.3.2956)',
+  gatherhits: 'gathering hits — a rock, tree or pond has HP that your swings knock off (each hit rolled off your skill level: see hitladder) before the gesture; without it: the old timer (v2.3.2956)',
+  hitladder: 'the hit ladder — each life-skill level adds a 10% chance of hitting one more (level 3: 1 eight times in ten, 2 or 3 once each; from level 11 no more 1s); without it: every hit 1 to your level, evenly (v2.3.3229)',
+  nodehp: 'each tier of a resource twice as long as the one before at the level it opens (copper 10 HP, iron 20, black steel 80, titanium 440, obsidian 1,680; pine and minnow 10, then 40, 220, 840, 2,480); without it: every tier 5 x (tier + 1), 10 to 110 (v2.3.3251)',
+  tierxp: 'each tier of a resource pays twice the XP of the one before (163, 326, 652, 1,304, 2,608 a harvest before its grade); without it (or without nodehp): 163, 350, 538, 725, 913 (v2.3.3251)',
+  xpdecay: 'XP fades for what is 5+ levels below you: a third at 5 below, 15% less each level past it -- a harvest by your skill against the resource\'s level, a fight by the weapon\'s skill against the monster\'s, and such a monster\'s name plate is grey; without it: full XP everywhere, no grey plates (v2.3.3251)',
   bowvolley: 'the bow special as three white-hot arrows, two-thirds of a special each, a 2.5 s burn, no blast (v2.3.2849; without it: one arrow, its 4 s burn and the blast)',
   wheelmonsters: 'monsters in the Wheel (?trial=wheel): each land\'s own at the inner end of its spoke (v2.3.2978; without it: the Wheel has none)',
   sprint: 'the sprint button right of the movement stick (and Shift): a third faster while your stamina lasts (v2.3.3006; without it: no button, everyone walks)',
@@ -518,6 +531,21 @@ export const DevPanel = ({ onClose }) => {
               onClick={async () => { const j = await call('/dev/farmripe', { playerId: myId }); if (j) { setMsg(j.ripened ? 'Ripened ' + j.ripened + ' bed' + (j.ripened === 1 ? '' : 's') + ' — open the Feed & Seed to harvest.' : 'Nothing growing to ripen.'); } }}>
               Ripen my farm now
             </button>
+            {/* v2.3.3229: the hit ladder is felt by level (Mining 3 hits 1 eight
+                times in ten, Mining 11 never does) -- set the four hit skills
+                (mining, woodcutting, fishing, cooking) to one level at once
+                (server devtools.js _devLifeSkill); the next harvest rolls it. */}
+            <div style={{ color: COL.muted, fontSize: 12, margin: '6px 0 4px' }}>
+              Gathering + cooking level (the hit ladder)
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginBottom: 4 }}>
+              {[1, 3, 5, 10, 11, 20].map((lv) => (
+                <button key={lv} type="button" style={{ ...chip, minHeight: 34 }} disabled={busy || !myId} data-dev-hit-level={lv}
+                  onClick={async () => { const j = await call('/dev/lifeskill', { playerId: myId, skill: 'hits', level: lv }); if (j) { setMsg('Mining, Woodcutting, Fishing and Cooking are level ' + j.level + ' -- open Skills to see each hit\'s odds.'); refresh(); } }}>
+                  {lv}
+                </button>
+              ))}
+            </div>
 
             <div style={label}>Key</div>
             {/* ═══ v2.3.2277: RESOURCES FOR TESTING ═══

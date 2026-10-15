@@ -54,13 +54,21 @@ would collapse the roster to your own zone. The roster is therefore
 **unconditional** — every connected player, dirty or not — because an idle peer
 is never in `dirtyPlayers` and would otherwise age out. `PRESENCE_REFRESH_TICKS
 = 45` (~1 s) gives the 10 s sweep 10× margin; do not raise it past ~7 s without
-revisiting that sweep window.
+revisiting that sweep window.  *(v2.3.3246: in the Wheel a far player standing
+still is in a phone's roster every `ROSTER.FAR_STILL_MS` (4 s) plus one roster,
+not every one -- still inside the sweep: `docs/specs/slim-roster.md`.)*
 
 **Events are deliberately NOT scoped.** They measured at 1% of egress, and the
 buffer mixes zone-local combat (`monster_hit`, `loot_drop`) with room-wide
 social relays (`chat`, `emote`, clan/trade/duel handshakes). Filtering would buy
 approximately nothing and risks silently dropping social traffic. Left exactly
 as it was.
+
+*(v2.3.3245: no longer. In the Wheel, with the swings and arrows real phones
+relay, events were 6-7% of a phone's download at 120 players and grow with the
+square of the crowd. The fights' events are now placed by an ALLOWLIST and the
+social relays stay room-wide, which keeps this paragraph's concern:
+`docs/specs/events-by-place.md`.)*
 
 **Serialization stays "build once, send many"** — now once per
 `(zone, protocolVersion)` group rather than once per protocol version, cached in

@@ -184,7 +184,6 @@ let questShieldGid = null;
 
   /* ── the armour DROP, through the real pickup handler ── */
   room._rollShardForKill = () => null;
-  room._rollWeaponDropForKill = () => null;
   room._rollIronWeaponForKill = () => null;
   room.loot = {};
   room.eventBuffer = [];
@@ -963,11 +962,15 @@ let amuletGid = null;
     !/"gid"/.test(blob) && blob.indexOf(wornGid) === -1, blob.slice(0, 300));
   check('...nor the provenance mark, which is nobody else\'s business',
     !/"prov"/.test(blob));
-  check('the WORN slots are what got cropped, and they are still there',
-    !!all[PID8].armor && all[PID8].armor.name === 'Copper Torso' && !all[PID8].armor.gid,
-    all[PID8].armor);
-  check('...the stash lists too', Array.isArray(all[PID8].armorStash)
-    && all[PID8].armorStash.length === 1 && !all[PID8].armorStash[0].gid, all[PID8].armorStash);
+  /* v2.3.3244: the snapshot carries only what the others are drawn with
+     (index.js PEER_PUBLIC_KEYS): the worn objects and the stashes are not on
+     it at all any more -- the armour on show goes as eqc/eql/eqs, the
+     weapon's look as wpnType/wpnMat.  These two checks used to say the crop
+     had kept them; now they say they are not sent. */
+  check('the WORN slots are not on it at all (only what is drawn: v2.3.3244)',
+    !!all[PID8] && all[PID8].armor === undefined && all[PID8].shield === undefined,
+    all[PID8] && { armor: all[PID8].armor, shield: all[PID8].shield });
+  check('...nor the stash lists', !!all[PID8] && all[PID8].armorStash === undefined, all[PID8] && all[PID8].armorStash);
   /* The scratch field a field-name crop missed.  Named explicitly so a
      future refactor back to an allowlist fails right here. */
   check('...and the quest-reward scratch, which a field-name crop missed',
@@ -1310,6 +1313,55 @@ let amuletGid = null;
     check('`_sv`: a delivered piece is marked from the ledger, and carries no dead flag',
       !!landed && landed.gid === delGid && landed.prov === PROV_MINTED && landed._sv === undefined, landed);
   }
+}
+
+/* ── v2.3.3164: THE AMULET ON YOUR NECK AND THE SHIELD ON YOUR ARM DO NOT SELL ──
+   Reproduced on main, through the listing path: the worn amulet listed and
+   sold and stayed worn; an amulet the forge had replaced listed by its row;
+   and the shield shield_wear had put on the arm listed and stayed on it. */
+{
+  const PIDN = 'bp_prov_neck';
+  const wsN = fakeWs('N');
+  await join(room, wsN, PIDN);
+  const psN = room.playerState[PIDN];
+  psN.goldBars = 99; psN.coins = 9999999;
+  psN.lifeSkills = psN.lifeSkills || {};
+  psN.lifeSkills.blacksmithing = { level: 99, xp: 0 };
+  await send(room, wsN, { type: 'amulet_forge_request', payload: { op: 'craft', tierKey: 'simple' } });
+  const firstGid = psN.amulet && psN.amulet.gid;
+  check('(setup) a forged amulet is on the neck, minted', typeof firstGid === 'string' && psN.amulet.prov === PROV_MINTED, psN.amulet);
+  const worn = room._gearSellable(PIDN, 'amulet', firstGid);
+  check('the amulet you wear is refused as worn', worn.ok === false && worn.reason === 'worn', worn);
+  await send(room, wsN, { type: 'amulet_forge_request', payload: { op: 'craft', tierKey: 'simple' } });
+  const secondGid = psN.amulet && psN.amulet.gid;
+  check('(setup) a second forge REPLACES the first, whose row the forge keeps',
+    typeof secondGid === 'string' && secondGid !== firstGid && !!findProvRow(room._gearProvOf(PIDN), firstGid), { firstGid, secondGid });
+  const ghost = room._gearSellable(PIDN, 'amulet', firstGid);
+  check('an amulet the forge replaced is not held, so it cannot be sold', ghost.ok === false && ghost.reason === 'not_held', ghost);
+  check('...and the one that replaced it is refused as worn', room._gearSellable(PIDN, 'amulet', secondGid).reason === 'worn',
+    room._gearSellable(PIDN, 'amulet', secondGid));
+  const wornList = room._stGearEscrow(PIDN, psN, { field: 'amuletStash', gid: secondGid });
+  check('...and the listing path takes nothing: the row stays, the amulet stays on',
+    wornList.ok === false && !!findProvRow(room._gearProvOf(PIDN), secondGid) && psN.amulet.gid === secondGid, { ok: wornList.ok, reason: wornList.reason });
+  /* one held but not worn: in amuletStash, as the auction house and the mail deliver it */
+  psN.amuletStash = [psN.amulet];
+  psN.amulet = null;
+  const held = room._gearSellable(PIDN, 'amulet', secondGid);
+  check('...while an amulet held in the bag and not worn still sells', held.ok === true, held);
+  psN.amulet = psN.amuletStash.pop();
+
+  /* the shield: unknown arm -> the tutorial rule; known arm -> worn */
+  psN.shield = null;
+  room._grantQuestItem(psN, { kind: 'shield', gearBase: 'wood', tierMult: 1, name: 'Pine Shield' }, PIDN);
+  const shGid = psN.shield && psN.shield.gid;
+  check('a shield before the game has said what is on the arm still sells (the starter shield\'s rule)',
+    room._gearSellable(PIDN, 'shield', shGid).ok === true, room._gearSellable(PIDN, 'shield', shGid));
+  await send(room, wsN, { type: 'shield_wear', payload: { gid: shGid } });
+  check('(setup) shield_wear says it is on the arm', psN._shieldKnown === true && psN.shield && psN.shield.gid === shGid, { known: psN._shieldKnown, shield: psN.shield });
+  const onArm = room._gearSellable(PIDN, 'shield', shGid);
+  check('once the game says the shield is on the arm, it is refused as worn', onArm.ok === false && onArm.reason === 'worn', onArm);
+  await send(room, wsN, { type: 'shield_wear', payload: { none: true } });
+  check('...and taken off into the bag it sells again', room._gearSellable(PIDN, 'shield', shGid).ok === true, room._gearSellable(PIDN, 'shield', shGid));
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL PASS');

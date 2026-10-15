@@ -36,6 +36,7 @@ trader_2: {gold:75,  xp:50, next:'trader_3', objective:{type:'gather', count:3}}
   (building visits, dungeon clears, collision discoveries, crafting
   flags, pet counts, crit/block tallies) only exist client-side today.
   Verification arrives per-quest as those signals move server-side.
+  Since v2.3.3179 they are bounded by three rules (below).
 
 `_handleQuestTurnIn` refuses to pay when a present objective is unmet
 (quest stays active, nothing changes).
@@ -56,6 +57,42 @@ with the same kill-credit flush, so progress still updates in
 real time). Old workers keep the legacy client counting. Either side
 deploys first, safely.
 
+## What the worker can't check is not paid for nothing (v2.3.3179)
+
+Characters are free to make and gold moves by trade, so a quest paid on the
+game's word was a faucet: a brand-new character sent `quest_accept` +
+`quest_turn_in` for the 23 quests with no `objective` and was paid **5,025
+coins + 115 AP** in 46 messages. Three rules close it, in
+`_questBarred(ps, questId, reward, accepting)` (quests.js), checked at the
+accept AND the hand-in (an old save may hold a quest active from before):
+
+- **`gone` — the giver is not in the world.** 22 quests belong to Trader
+  Tix, the Enchantress, the Scout, Blacksmith Bron, Healer Luna,
+  Beastmaster Kai and Veteran Ash, none of whom is in the game's
+  `NPC_DATA`; the game has hidden their quests since v2.3.1681. They are
+  `QUEST_DORMANT` in data.js, and can be neither taken nor handed in.
+  `mirror-audit` §5b2 holds the list to `NPC_DATA` both ways: bring a giver
+  back and their chain must come off the list in the same change.
+- **`first` — an unchecked quest waits for the first quest.** A quest with
+  no `objective` (today only the Mayor's `mayor_1` and `mayor_3`) is taken
+  and handed in only once `QUEST_FIRST` (`tut_1`, checked) is handed in —
+  the same gate as the daily quests. The Mayor never offers them before it
+  (the game's `getNpcQuest` goes down his line in order), so nobody playing
+  the game meets this rule.
+- **`order` — a later step waits for the checked step before it.**
+  Accepting from nothing is for a chain's first step; it also let `mayor_3`
+  (300 g, behind `mayor_2`'s five kills), `tut_4` and others be taken
+  first. Now a step whose previous step (the quest naming it as `next`) HAS
+  an objective is taken from nothing only once that step is handed in. A
+  step behind an UNCHECKED step is still taken from nothing (the Mayor
+  offers `mayor_2` while `mayor_1` is hidden, v2.3.3029), and a step the
+  worker opened itself (`available`) is never refused.
+
+A refusal changes nothing and sends `_quests` and `coins` back to the game
+(`_questRefusedEcho`), which drew the quest taken (and paid) before the
+worker answered. What a new character can still be paid without the worker
+checking: nothing until `tut_1` is in, then `mayor_1`'s 50 coins.
+
 ## Wire surface
 
 | Surface | Change |
@@ -69,7 +106,11 @@ deploys first, safely.
 `server/test/quests.test.mjs` (10 assertions, in `npm test`): caps
 advertisement, kill increments (and NOT gather/objective-less), harvest
 increments, unmet turn-in refusal, met turn-in pays once + unlocks next,
-replay refusal, objective-less quests unchanged.
+replay refusal, and since v2.3.3179 (§5) the three rules above: a new
+character asking for all 23 unchecked quests is paid nothing, a giver who
+is gone closes their quests at the accept and the hand-in, `mayor_1` waits
+for `tut_1` and then pays as before, `mayor_3` and `tut_4` wait for the
+checked step before them, `mayor_2` is still taken with `mayor_1` undone.
 
 ## Quest objectives survive death (v2.3.1701)
 

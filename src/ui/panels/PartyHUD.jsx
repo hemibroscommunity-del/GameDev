@@ -75,6 +75,9 @@ export function PartyHUD(props) {
        Found by qa-party-smoke, which had been failing on exactly this click,
        unwatched, since the smoke job left the PR path on 2026-07-16. */
     return createPortal(/*#__PURE__*/React.createElement("div", {
+      /* v2.3.3253: found by No man's land's "Attack <name>?" window, which
+         stacks under it rather than over it (NmlAskCard.jsx cardPlace) */
+      'data-party-invite': '',
       style: {
         position: 'fixed', top: 90, left: '50%', transform: 'translateX(-50%)',
         zIndex: Z_ABOVE_DASH_PROMPT,

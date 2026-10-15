@@ -24,7 +24,7 @@
  * (this.QUEST_AP_REWARD stays in the GameRoom constructor; mirrors
  * QUEST_AP_REWARD in src/data/items.js -- 5 AP per quest.) */
 
-import { QUEST_REWARDS } from './data.js';
+import { QUEST_REWARDS, QUEST_DORMANT, QUEST_FIRST } from './data.js';
 import { PROG3 } from './prog3.js';
 
 export const questMethods = {
@@ -139,6 +139,9 @@ export const questMethods = {
     // from missing (first quest in chain).  Reject if already
     // active / turnedIn.
     if (cur === 'active' || cur === 'turnedIn') return;
+    /* v2.3.3179: a quest nobody can give, an unchecked one before the first
+       quest, or a step taken ahead of the checked step before it */
+    if (this._questBarred(ps, questId, reward, true)) { this._questRefusedEcho(session.id); return; }
     ps._quests[questId] = 'active';
     /* v2.3.1676 (owner: "He'll give you the sword and shield (with
        instructions on how to use)").  A reward paid on ACCEPT, not turn-in —
@@ -197,6 +200,53 @@ export const questMethods = {
     if (changed) this._queuePlayerStateFlush(playerId);
   },
 
+  /* ═══ v2.3.3179: MAY THIS QUEST BE TAKEN OR HANDED IN AT ALL? ═══
+     Three rules, each closing a way a new character was paid for nothing:
+       'gone'   -- its giver is not in the world (data.js QUEST_DORMANT):
+                   the game shows these to nobody, and the worker took them
+                   from anybody;
+       'first'  -- it has no objective the worker can check, and the first
+                   quest (QUEST_FIRST, which it can) is not handed in yet;
+       'order'  -- (accepting only) it is a later step of a chain, the step
+                   before it HAS an objective, and that step is not handed
+                   in.  Accepting from nothing was meant for a chain's first
+                   step, and let mayor_3 (300 g, behind mayor_2's five kills)
+                   and tut_4 be taken first.  A step behind an UNCHECKED step
+                   is still taken from nothing: since v2.3.3029 the Mayor
+                   offers mayor_2 while mayor_1 is hidden.  A step the worker
+                   itself opened ('available') is never refused here.
+     Returns null when it may, else the rule's name. */
+  _questBarred(ps, questId, reward, accepting) {
+    if (!this.__questOrder) {
+      const table = this._QUEST_REWARDS_DATA();
+      const prev = new Map();
+      for (const qid of Object.keys(table)) {
+        const nx = table[qid] && table[qid].next;
+        if (typeof nx === 'string' && nx && !prev.has(nx)) prev.set(nx, qid);
+      }
+      this.__questOrder = { prev, dormant: new Set(QUEST_DORMANT) };
+    }
+    const o = this.__questOrder;
+    if (o.dormant.has(questId)) return 'gone';
+    const q = ps._quests || {};
+    if (!(reward && reward.objective) && questId !== QUEST_FIRST && q[QUEST_FIRST] !== 'turnedIn') return 'first';
+    if (accepting && q[questId] !== 'available') {
+      const prev = o.prev.get(questId);
+      const table = this._QUEST_REWARDS_DATA();
+      const before = prev && Object.prototype.hasOwnProperty.call(table, prev) ? table[prev] : null;
+      if (before && before.objective && q[prev] !== 'turnedIn') return 'order';
+    }
+    return null;
+  },
+
+  /* v2.3.3179: the game marks a quest taken or handed in (and the gold paid)
+     before the worker answers; a refusal changes nothing here, so the v2
+     delta would send nothing back.  Resend what the game drew. */
+  _questRefusedEcho(pid) {
+    const ws = this._wsBySessionId(pid);
+    if (ws && this._resendPlayerState) this._resendPlayerState(ws, pid, ['_quests', 'coins']);
+  },
+
   /* ═══ v2.3.3121: IS THIS QUEST'S OBJECTIVE MET? ═══
      The turn-in's check, one place: the counted kinds (a kill, a gather, and
      trapping's traps made, traps sprung and catches -- data.js beast_1..4)
@@ -249,6 +299,9 @@ export const questMethods = {
     // a cheater can't reclaim the reward by spamming the event,
     // and can't claim a quest they never accepted.
     if (ps._quests[questId] !== 'active') return;
+    /* v2.3.3179: the accept's rules hold at the hand-in too, for a quest
+       accepted before they did (_questBarred) */
+    if (this._questBarred(ps, questId, reward, false)) { this._questRefusedEcho(session.id); return; }
     // v2.3.1120: verify the declarative objective before paying.  The
     // old handler validated only the state transition and trusted the
     // completion claim (free gold/XP/AP on request).  Quests without

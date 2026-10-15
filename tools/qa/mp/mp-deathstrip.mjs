@@ -64,7 +64,16 @@ const _allowed = (label) => ALLOWED.some((re) => re.test(label));
    about is drawn into the effects renderer's nodeLayer / gestureLayer. */
 const _isNpc = (n) => (n.path || []).some((p) => /^npc_/.test(p))
   || /\/sprites\/npc\//.test(n.label);
-const _leftovers = (list) => (list || []).filter((n) => !_isNpc(n) && !_allowed(n.label));
+/* v2.3.3249: NOR IS A BUILDING'S MOVING PART, OR A SPARK IN THE AIR.  The
+   town's buildings carry their moving parts in a labelled container each
+   (worldLife.js `life_<prop>`, v2.3.2812: the forge's swinging sign, flags,
+   smoke), and the player dies a few steps from the forge, whose sign hangs
+   inside the 70 px box -- it failed every run on main.  And the world's
+   particles (the `particles` layer: dust, sparks, chips) are thrown and fade
+   on their own, like the woodchips above.  Excluded by ANCESTRY, so a worn
+   layer -- drawn into the effects renderer's own layers -- still fails. */
+const _isWorld = (n) => (n.path || []).some((p) => /^life_/.test(p) || p === 'particles');
+const _leftovers = (list) => (list || []).filter((n) => !_isNpc(n) && !_isWorld(n) && !_allowed(n.label));
 
 /* On the WATCHER's screen `localPlayer` is a bystander -- their own living,
    correctly dressed character, standing where the corpse is because both
@@ -265,6 +274,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await W.page.waitForTimeout(2500);
   await revive(P);
   await P.page.waitForTimeout(1500);
+  /* v2.3.3249: the watcher steps 220 px west, off the tile both players
+     joined on.  Standing on the corpse, its OWN shadow (the shadows layer, a
+     squashed copy of its shirt) lay inside the 70 px box and read as a worn
+     layer left on the body; the swing goes east, so the box is clear. */
+  {
+    const at = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+    await H.hopTo(W, at.x - 220, at.y);
+    await W.page.waitForTimeout(800);
+  }
 
   const pidSeen = await W.page.evaluate((id) => {
     const S = window._gameState.current;

@@ -106,11 +106,16 @@ export const amuletMethods = {
   // which ran on the killing player's machine).  Caller's _saveRpg +
   // player_state flush carry the credit; no popup event (the client
   // detects the goldNuggets increase in its player_state handler).
-  _amuletNuggetOnKill(ps) {
-    if (!ps) return;
-    if (Math.random() < GOLD_NUGGET_MONSTER_DROP) {
+  /* v2.3.3209: `hit` -- the kill's one roll landed on the nugget's number
+     (killroll.js), or did not; left out (the `killroll: false` switch), it
+     rolls on its own as before.  True when it paid one. */
+  _amuletNuggetOnKill(ps, hit) {
+    if (!ps) return false;
+    if (hit === undefined ? Math.random() < GOLD_NUGGET_MONSTER_DROP : hit) {
       ps.goldNuggets = (ps.goldNuggets || 0) + 1;
+      return true;
     }
+    return false;
   },
 
   _handleAmuletForge(session, payload) {
@@ -281,7 +286,16 @@ export const amuletMethods = {
   _extractableGems(item, kind) {
     const out = [];
     if (kind === 'shield') {
-      if (item.gem && AMULET_GEMS.has(item.gem)) out.push('polished_' + item.gem);
+      /* v2.3.3172: only a shield this server MADE (gearprov.js `prov:
+         'minted'`, rebuilt from its own ledger copy).  No server path ever
+         slots a shield gem -- the shield's gem slot is still the game's own
+         (ARCHITECTURE-HANDOFF backlog A) -- so a gem on any other shield is
+         one the server never took.  Since v2.3.3091's shield_wear, a shield
+         adopted from the join's bag claim (shape-checked only, `gem` kept)
+         can be put on the arm, and this paid a polished gem for each one,
+         for a coin (its claimed tierMult): ~31 a join, any element.  Such a
+         shield keeps its gem; it just cannot be cashed in. */
+      if (item.prov === 'minted' && item.gem && AMULET_GEMS.has(item.gem)) out.push('polished_' + item.gem);
     } else {
       if (item.element1 && AMULET_GEMS.has(item.element1)) out.push('polished_' + item.element1);
       if (item.element2 && AMULET_GEMS.has(item.element2)) out.push('polished_' + item.element2);
@@ -332,7 +346,12 @@ export const amuletMethods = {
   // junk keys into the rpg blob, the _questKills bloat posture).
   // Values floor to integers in [1, GEM_BOOTSTRAP_PER_KEY_CAP]; zero /
   // negative / NaN entries are dropped (the live maps delete-at-zero).
-  _sanitizeGems(raw) {
+  /* v2.3.3172: `cap` -- the 200 ceiling is for a CLAIM (and for a record
+     that may still hold an old unclamped bootstrap capture).  A map the
+     server has been keeping since its capture stamp is its own: kills and
+     cuts add to it with no ceiling, so clamping it at every join deleted
+     what the server itself had paid. */
+  _sanitizeGems(raw, cap = GEM_BOOTSTRAP_PER_KEY_CAP) {
     const out = {};
     if (!raw || typeof raw !== 'object') return out;
     for (const k of Object.keys(raw)) {
@@ -342,7 +361,7 @@ export const amuletMethods = {
       if (!gem || !AMULET_GEMS.has(gem)) continue;
       const n = Math.floor(Number(raw[k]));
       if (!Number.isFinite(n) || n <= 0) continue;
-      out[k] = Math.min(GEM_BOOTSTRAP_PER_KEY_CAP, n);
+      out[k] = Math.min(cap, n);
     }
     return out;
   },
@@ -365,7 +384,13 @@ export const amuletMethods = {
   _gemsAdoptOnJoin(ps, stored, claimedLifeSkills) {
     if (!ps) return;
     if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
-    ps.lifeSkills.gems = this._sanitizeGems(ps.lifeSkills.gems);
+    /* v2.3.3172: whitelisted always, but clamped only when the record
+       predates its capture stamp (the old unclamped bootstrap capture is
+       what the clamp heals).  A stamped record's counts are the server's
+       own: a long cutting session past 200 of one gem lost the excess to
+       the next join. */
+    ps.lifeSkills.gems = this._sanitizeGems(ps.lifeSkills.gems,
+      stored && stored.gemsCaptured ? Infinity : GEM_BOOTSTRAP_PER_KEY_CAP);
     if (!(stored && stored.gemsCaptured)) {
       const claim = this._sanitizeGems(claimedLifeSkills && claimedLifeSkills.gems);
       for (const k of Object.keys(claim)) {
@@ -385,16 +410,20 @@ export const amuletMethods = {
   // handler (the v2.3.1192 goldNuggets-popup pattern).  Dungeon zones
   // have no _getZoneConfig entry -> no roll, matching the reward
   // posture of dungeon.js (instances pay via their own tables).
-  _gemRawOnKill(ps, zone) {
-    if (!ps) return;
+  /* v2.3.3209: `hit`, as the nugget's -- the kill's one roll on the raw gem's
+     numbers, which a monster of a zone with no such element has none of
+     (killroll.js _killRollCan reads the same element).  True when it paid. */
+  _gemRawOnKill(ps, zone, hit) {
+    if (!ps) return false;
     const cfg = this._getZoneConfig(zone);
     const elem = (cfg && cfg.element) || null;
-    if (!elem || !AMULET_GEMS.has(elem)) return;
-    if (Math.random() >= GEM_RAW_MONSTER_DROP) return;
+    if (!elem || !AMULET_GEMS.has(elem)) return false;
+    if (hit === undefined ? Math.random() >= GEM_RAW_MONSTER_DROP : !hit) return false;
     if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
     if (!ps.lifeSkills.gems || typeof ps.lifeSkills.gems !== 'object') ps.lifeSkills.gems = {};
     const k = 'raw_' + elem;
     ps.lifeSkills.gems[k] = (ps.lifeSkills.gems[k] || 0) + 1;
+    return true;
   },
 
   // Gem Cutter settle: gem_cut_request { gem }.  Validates the raw gem

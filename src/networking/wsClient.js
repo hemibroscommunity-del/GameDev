@@ -24,10 +24,14 @@ import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3139: ha
 import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the worker's */
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
+import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
+import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
+import { MOVE_DIET, dietMayWait } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often */
+import { NML_CENTRE } from '@/data/noMansLandRings.js'; /* v2.3.3204: the Wheel's middle, the safe ground's centre */
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
 /* v2.3.1961: the ONE wire-key -> peer-field rename table, read by the join
@@ -142,6 +146,9 @@ import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
 import { applyNmlSkull, applyNmlLoss, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
+import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
+import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's death heard by distance */
+import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
@@ -424,6 +431,9 @@ export function setupWebSocket(ctx) {
              keep sending full v1 payloads, which this client still
              handles (the v1 cases below stay in place). */
           protocolVersion: 2,
+          /* v2.3.3250: presence v2 -- far players in the Wheel only while the
+             world map is open (src/game/presence2.js).  Old workers ignore it. */
+          pres: 2,
           /* v2.3.1178: declare we attach the per-session state_sync
              token (x-bt-auth header) to mutating economy POSTs, so the
              worker ENFORCES it for this session. Old workers ignore
@@ -722,6 +732,9 @@ export function setupWebSocket(ctx) {
                     S.others[pid]._vx = (data.vx || 0) / 100;
                     S.others[pid]._vy = (data.vy || 0) / 100;
                     S.others[pid]._lastUpdate = Date.now();
+                    /* v2.3.3250: any update is where they really are -- a
+                       parked copy (src/game/presence2.js) is back */
+                    S.others[pid]._away = false;
                     /* v2.3.1092: current harvest activity (mine|chop|fish|cook|
                        fire, or null). Drives the remote body pose / skill
                        stand-in in the renderer. Absent (old server) => leave
@@ -777,7 +790,31 @@ export function setupWebSocket(ctx) {
                  With the 1 Hz idle keepalive every live player refreshes
                  _lastUpdate at least once a second, so an entry silent for
                  10s is gone from the room.  Swept at most once per second. */
-              {
+              /* v2.3.3250: presence v2 -- the worker's list of everyone in the
+                 room forgets whoever left, and while it keeps coming the
+                 silence below means nothing: a far player is quiet because
+                 nobody needs their position (src/game/presence2.js). */
+              /* v2.3.3250: and a roster marked `nr` holds every player near
+                 you, so one missing from it is far or elsewhere: its copy is
+                 parked out of sight rather than left frozen where they were
+                 last seen, a ghost for anyone who walks that way */
+              if (msg.nr && presence2On(S)) parkMissing(S, msg.players || {});
+              if (msg.on && typeof msg.on === 'object') {
+                var _p2Make = function (id, zone) {
+                  var _mx = S.player ? S.player.x : 0, _my = S.player ? S.player.y : 0;
+                  return Object.assign({
+                    x: _mx, y: _my, _serverX: _mx, _serverY: _my,
+                    renderX: _mx, renderY: _my,
+                    name: 'Anon', color: '#888', avatar: null,
+                    dir: 'down', bt: '#2563eb', bl: '#1e3a5f',
+                    equip: { chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' },
+                    rpgLv: 1, rpgHp: 50, rpgMaxHp: 50,
+                    zone: zone || 'town',
+                  }, peerCosmeticsFromWire({}));
+                };
+                if (applyOnlineList(S, msg.on, Date.now(), _p2Make) > 0) setPlayerCount(Object.keys(S.others).length + 1);
+              }
+              if (!onlineListFresh(S, Date.now())) {
                 var _gsNow = Date.now();
                 if (!S._lastGhostSweep || _gsNow - S._lastGhostSweep > 1000) {
                   S._lastGhostSweep = _gsNow;
@@ -987,6 +1024,7 @@ export function setupWebSocket(ctx) {
                         localM._snowmanDeathStart = null;
                         localM._lootDropped = false;
                         localM._deathSfxPlayed = false;
+                        localM._killMine = false;   /* v2.3.3248: hitSounds.deathVol */
                         /* Revert any mid-fight variant transform.  A
                            desert mummy that died as a skeleton needs to
                            come back as a mummy so the first 50% HP
@@ -1033,7 +1071,12 @@ export function setupWebSocket(ctx) {
                         }
                         if (!localM._deathSfxPlayed) {
                           localM._deathSfxPlayed = true;
-                          try { BT_AUDIO.monsterDeath(localM.archetype || localM.type); } catch (e) {}
+                          /* v2.3.3248: by how near it died (hitSounds.deathVol;
+                             OPEN-DECISIONS 21).  The kill event, processed
+                             before this tick's monsters, plays it first for a
+                             kill you took part in. */
+                          var _dvK2 = deathVol(S, localM, md.x, md.y);
+                          if (_dvK2 > 0) { try { BT_AUDIO.monsterDeath(localM.archetype || localM.type, null, _dvK2); } catch (e) {} }
                         }
                       }
                     }
@@ -1576,6 +1619,15 @@ export function setupWebSocket(ctx) {
               applyEssenceResult(S, msg.payload, saveRpgSoon);
               break;
             }
+          case 'shield_gem_result':
+            {
+              /* v2.3.3187: the worker put a gem into a shield, or says why not
+                 (shieldgem.js).  The shield it names takes the gem and the
+                 worker's name for it here; the gem count and the Enchanting
+                 XP ride the player_state that follows. */
+              applyShieldGemResult(S, msg.payload, saveRpgSoon);
+              break;
+            }
           /* ═══ v2.3.3120: PET TRAPPING (game/trapping.js) ═══
              The worker's four answers: the mark set (or why not), the trap
              sprung at a kill (the shakes, a catch), the pets record, and the
@@ -1588,6 +1640,12 @@ export function setupWebSocket(ctx) {
             { try { onTrapResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
           case 'pets_state':
             { try { onPetsState(S, msg.payload); } catch (_te) { /* display only */ } break; }
+          /* v2.3.3209: the monster codex's counts at join (codex.js).  Here, not
+             the default branch: that hands everything to gameEvents as a room
+             event, which is where a forged one would come from (it is in
+             PRIVILEGED_EVENTS, so the worker never relays one). */
+          case 'codex_state':
+            { try { onCodexState(S, msg.payload); } catch (_ce) { /* display only */ } break; }
           case 'make_traps_result':
             { try { onMakeTrapsResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
           case 'hardened_wood_result':
@@ -2151,6 +2209,7 @@ export function setupWebSocket(ctx) {
                 S.rpg.activeSlot = msg.payload.activeSlot;
               }
               var _armorChanged = false;
+              var _shieldGemChanged = false; /* v2.3.3187: the shield's gem adopted from the worker */
               if ('armor' in msg.payload) {
                 _rescueDisplacedArmor(S, 'armor', 'armorStash', msg.payload.armor);
                 S.rpg.armor = msg.payload.armor;
@@ -2204,6 +2263,17 @@ export function setupWebSocket(ctx) {
                   /* v2.3.3091: a new one is in the BAG here, so say what the
                      arm really holds -- the worker has it on the arm */
                   try { syncShieldWorn(S); } catch (e) { /* the next change reports it */ }
+                } else if (S._serverCaps && S._serverCaps.shieldgem) {
+                  /* v2.3.3187: a worker that puts shield gems in (shieldgem.js)
+                     holds the truth of what is IN a shield: its copy's gem onto
+                     ours -- by id (and the name) for a shield it made, by
+                     signature for one from before the ledger, whose name the
+                     worker never changes (game/shieldGem.js).  After the
+                     Blacksmith's Take out (which never reached this copy
+                     before), after an answer lost to a reconnect, and over a
+                     gem this browser once put into a shield the worker made,
+                     alone, that the worker never took. */
+                  try { if (adoptShieldGem(S.rpg, _svShield)) _shieldGemChanged = true; } catch (e) { /* the next echo carries it */ }
                 }
               }
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
@@ -2252,6 +2322,7 @@ export function setupWebSocket(ctx) {
                  one re-derive after a server-echoed equipment change and
                  also refreshes the amulet/shield bonus caches. */
               if (_armorChanged) recalcDerived(S.rpg);
+              if (_shieldGemChanged && !_armorChanged) recalcDerived(S.rpg); /* v2.3.3187: the shield's bonus follows its gem */
               if (Array.isArray(msg.payload.weaponStash)) S.rpg.weaponStash = msg.payload.weaponStash;
               /* Quest state mirror (slice 17).  Worker is authoritative
                  for chain progression + reward grants.  Quest completion
@@ -2617,6 +2688,10 @@ export function setupWebSocket(ctx) {
               /* v2.3.3121: the pet out with you earned a tenth of it (the
                  worker's numbers, game/trapping.js onPetXp) */
               if (cc.pet) { try { onPetXp(S, cc.pet); } catch (_pe) { /* display only */ } }
+              /* v2.3.3209: ...and the monster codex counted the kill (codex.js) */
+              if (cc.cx) { try { onCodexKill(S, cc.cx); } catch (_ce) { /* display only */ } }
+              /* v2.3.3209: ...and its one roll, 1 to 10,000, with the drop it landed on (killroll.js) */
+              if (cc.roll) { try { onKillRoll(S, cc); } catch (_kr) { /* display only */ } }
               if (cc.leveled) {
                 /* v2.3.2615: 'char', not 'combat'.  This is the legacy
                    build-point path and the level it raises is the CHARACTER
@@ -3004,6 +3079,9 @@ export function setupWebSocket(ctx) {
           case 'player_join':
             {
               var _msg$data, _msg$data2, _msg$data3, _msg$data4, _msg$data5, _msg$data6, _msg$data7, _msg$data8, _msg$data9, _msg$data0, _msg$data1, _msg$data10, _msg$data12;
+              /* v2.3.3250: already listed (presence v2's online list adds a
+                 player it never heard join, parked) -- counted once */
+              var _pjHad = Object.prototype.hasOwnProperty.call(S.others, msg.id);
               S.others[msg.id] = {
                 x: ((_msg$data = msg.data) === null || _msg$data === void 0 ? void 0 : _msg$data.x) || 0,
                 y: ((_msg$data2 = msg.data) === null || _msg$data2 === void 0 ? void 0 : _msg$data2.y) || 0,
@@ -3033,7 +3111,7 @@ export function setupWebSocket(ctx) {
                 setTimeout(function () {
                   return setJoinFlash(false);
                 }, 1500);
-                return prev + 1;
+                return _pjHad ? prev : prev + 1;
               });
               break;
             }
@@ -4156,15 +4234,61 @@ export function setupWebSocket(ctx) {
     var _inputBuffer = [];
     var _pendingMove = null;
     var _batchTimer = null;
+    /* ═══ v2.3.3204: A STEADY WALK ON THE SAFE GROUND IS SENT HALF AS OFTEN ═══
+       The worker passes a steady walker on to the other phones at most every
+       66 ms (server/src/steadymovers.js, v2.3.3203), so on the Wheel's safe
+       ground a move on the line the last one drew waits here until then
+       instead (game/moveDiet.js has the rule and why).  _pendingMoveAt is
+       when the frame wrote the pending move; _moveSent / _moveSentMadeAt the
+       last move that went out and when IT was written. */
+    var _pendingMoveAt = 0;
+    var _moveSent = null;
+    var _moveSentMadeAt = 0;
+    var _dietStats = { sent: 0, waited: 0 };
+    /* the phone's say: the worker advertises it, you are in the Wheel, and
+       not in a fight -- a lock (a monster near), an attack held, a duel or an
+       arena match, which the worker judges against where you are */
+    function moveDietOn() {
+      try {
+        var _S = stateRef.current;
+        if (!_S || !_S._serverCaps || !_S._serverCaps.movediet) return false;
+        if (_S.currentZone !== 'wheel') return false;
+        return !(_S.autoAttack || _S.lockedTarget || _S._inDuel || _S._activeDuel || _S._arenaMatch);
+      } catch (e) {
+        return false;
+      }
+    }
+    function moveMayWait() {
+      try {
+        return dietMayWait(moveDietOn(), _pendingMove, _pendingMoveAt, _moveSent, _moveSentMadeAt,
+          NML_CENTRE, ZONES && ZONES.wheel && ZONES.wheel.safeR);
+      } catch (e) {
+        return false;
+      }
+    }
+    /* QA: what the diet did (mp-movediet) */
+    try { if (typeof window !== 'undefined') window.__btMoveDiet = function () { return { on: moveDietOn(), sent: _dietStats.sent, waited: _dietStats.waited }; }; } catch (e) { /* QA only */ }
+    function noteMoveSent(at) {
+      _moveSent = _pendingMove;
+      _moveSentMadeAt = _pendingMoveAt;
+      _pendingMove = null;
+      _lastMoveSentAt = at;
+      _dietStats.sent++;
+    }
     function flushInputBuffer() {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
       // Send pending move if any, subject to the adaptive rate above.
       if (_pendingMove) {
         var _nowMv = Date.now();
-        if (_nowMv - _lastMoveSentAt >= moveGapMs()) {
+        var _gapMv = moveGapMs();
+        /* v2.3.3204: ...and a steady walk on the safe ground waits longer */
+        if (_gapMv < MOVE_DIET.GAP_MS && _nowMv - _lastMoveSentAt >= _gapMv && moveMayWait()) {
+          _gapMv = MOVE_DIET.GAP_MS;
+          if (_nowMv - _lastMoveSentAt < _gapMv) _dietStats.waited++;
+        }
+        if (_nowMv - _lastMoveSentAt >= _gapMv) {
           ws.send(JSON.stringify(_pendingMove));
-          _pendingMove = null;
-          _lastMoveSentAt = _nowMv;
+          noteMoveSent(_nowMv);
         }
         /* else: hold it.  The next frame overwrites it with a fresher
            position and the timer re-checks in INPUT_BATCH_WINDOW ms. */
@@ -4210,8 +4334,7 @@ export function setupWebSocket(ctx) {
       if (!_pendingMove) return false;
       if (!ws || ws.readyState !== WebSocket.OPEN) return false;
       ws.send(JSON.stringify(_pendingMove));
-      _pendingMove = null;
-      _lastMoveSentAt = Date.now();
+      noteMoveSent(Date.now());
       return true;
     }
     function startBatchTimer() {
@@ -4340,6 +4463,20 @@ export function setupWebSocket(ctx) {
         /* v2.3.3091: the shield on the arm (game/shieldWear.js) -> shieldwear.js.
            TRAPS #18: without this line the report never leaves the browser. */
         if (msg.type === 'shield_wear') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.3187: a gem into the shield (game/shieldGem.js) -> shieldgem.js.
+           TRAPS #18: without this line the ask never leaves the browser. */
+        if (msg.type === 'shield_gem') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.3250: the open world map's watch (game/presence2.js
+           sendMapWatch: open, every 4 s, shut) -> presence2.js.  TRAPS #18:
+           without this line the watch never left the browser and the open map
+           was sent no far player at all -- mp-presence2's first run. */
+        if (msg.type === 'map_watch') {
           ws.send(JSON.stringify(msg));
           return;
         }
@@ -4634,6 +4771,7 @@ export function setupWebSocket(ctx) {
                  caps.sprint does the client sprint at all (game/sprint.js). */
               sp: sprintStepFlag(_S4) ? 1 : undefined
             };
+            _pendingMoveAt = Date.now();   /* v2.3.3204: when this frame wrote it */
             startBatchTimer();
           } else if (msg.event === 'player_attack') {
             // §16.12 — PvP attacks go directly to server for lag-compensated resolution

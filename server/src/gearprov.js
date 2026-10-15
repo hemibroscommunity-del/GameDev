@@ -777,6 +777,34 @@ export const gearProvMethods = {
        in their bag.  A gate that cannot know must not pretend to: an
        answer a player cannot act on is worse than no answer. */
     if (gearWornKnown(slot) && ps && ps[slot] && ps[slot].gid === row.id) return { ok: false, reason: 'worn' };
+    /* ═══ v2.3.3164: THE AMULET ON YOUR NECK, AND THE SHIELD THE GAME SAYS
+       IS ON YOUR ARM ═══
+       Reproduced on main, each through a hand-built listing (the game has no
+       amulet sell card): the forged amulet you WEAR listed and sold, and you
+       kept wearing it -- `legacy` after the next join, its gem still counted
+       by the worker's own damage roll -- while the buyer held a provable
+       copy; an amulet the forge had already REPLACED (amulet.js keeps its
+       row) sold too; and the shield `shield_wear` had put on your arm sold
+       and stayed on it.  One piece in two places.
+       - An amulet is never an ownership record: the forge makes it onto the
+         neck and nothing takes it off into a bag, so `ps.amulet` IS what is
+         worn.  And an amulet you hold but do not wear can only be in
+         `amuletStash` (the auction house and the mail deliver it there), so
+         one that is in neither is not held -- the replaced one.
+       - A shield is what the game SAID is on the arm since v2.3.3091
+         (shieldwear.js), and only then: before the first report this
+         session `ps.shield` is still the ownership record that the starter
+         shield sits in, and the tutorial's "sell it the session it is given"
+         stands (see the a2 test).  No man's land reads the arm the same way. */
+    if (slot === 'amulet' && ps) {
+      if (ps.amulet && typeof ps.amulet === 'object' && ps.amulet.gid === row.id) return { ok: false, reason: 'worn' };
+      const held = Array.isArray(ps.amuletStash) && ps.amuletStash.some((p) => p && typeof p === 'object' && p.gid === row.id);
+      if (!held) return { ok: false, reason: 'not_held' };
+    }
+    if (slot === 'shield' && ps && ps._shieldKnown === true && !(this._shieldWearOff && this._shieldWearOff())
+        && ps.shield && typeof ps.shield === 'object' && ps.shield.gid === row.id) {
+      return { ok: false, reason: 'worn' };
+    }
     return { ok: true, reason: 'ok', gid: row.id };
   },
 

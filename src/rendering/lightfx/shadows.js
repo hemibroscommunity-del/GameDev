@@ -32,9 +32,39 @@
  * also softens the edge by a pixel, and it runs at CSS resolution (the Pixi
  * default), so on a 3x iPhone it touches a ninth of the pixels a full-res
  * pass would.  No shadows on screen -> no filter -> no pass at all.
+ *
+ * ═══ v2.3.3149: THE SHADOWS ARE DRAWN ON THE WORLD'S GRID, THEN SLID ═══
+ * Owner: "the shadows look a bit flickery when you move on some of the props".
+ * That CSS-resolution pass is a grid of its own: one texel a CSS px, three
+ * device px on an iPhone.  The camera slides in fractions of a pixel, so every
+ * frame each shadow was drawn again at a new fraction of that coarse grid --
+ * its vertices snapped to the nearest texel (roundPixels), its edges sampled
+ * at a new phase -- while the prop casting it moved smoothly a device pixel at
+ * a time.  The shadow crawled against its own prop, worst on the thin ones (a
+ * lamp post, a fence rail, a sign).  Measured on a phone-sized page, the
+ * camera stepped one device pixel at a time and each frame lined up with the
+ * world: the shadows moved off the world by ~2% of their darkness a step, a
+ * full-resolution pass by 0.3% (mp-shadowlock; TRAPS §141) -- but that pass costs
+ * a 2048 x 4096 texture from Pixi's pool, ~32 MB of graphics memory on a 3x
+ * phone, which the black screens cannot afford.
+ *   So the layer is drawn on a grid that does not move with the camera's
+ * fraction: it is offset by minus that fraction (`lockToWorldGrid`), so the
+ * shadows are rasterised at the same phase every frame -- only ever shifted by
+ * whole texels -- and the filter slides the finished picture back by the
+ * fraction (`uShift`, a linear sample between two texels), which is smooth.
+ * Same texture, same pass, same cost.  `?shadowlock=0` is the layer as it was.
  */
 import { Filter, Matrix, MeshSimple, Sprite, Texture } from 'pixi.js';
 import { profileAtU } from '../propGround.js';
+
+/* v2.3.3149: on unless `?shadowlock=0` (see the header) -- read once */
+let _lockOn = null;
+function lockOn() {
+  if (_lockOn !== null) return _lockOn;
+  _lockOn = true;
+  try { if (typeof location !== 'undefined' && /[?&]shadowlock=0\b/.test(location.search || '')) _lockOn = false; } catch (e) { /* on */ }
+  return _lockOn;
+}
 
 const FRAG = `
 in vec2 vTextureCoord;
@@ -48,15 +78,19 @@ uniform highp vec4 uInputSize;
 uniform float uAlpha;
 uniform vec3 uColor;
 uniform float uSoft;
+/* v2.3.3149: the camera's fraction of a pixel the layer was drawn without,
+   in CSS px (lockToWorldGrid): the picture is read that far back */
+uniform vec2 uShift;
 
 void main()
 {
     vec2 d = uInputSize.zw * uSoft;
-    float a = texture(uTexture, vTextureCoord).a * 0.36;
-    a += texture(uTexture, vTextureCoord + vec2(d.x, 0.0)).a * 0.16;
-    a += texture(uTexture, vTextureCoord - vec2(d.x, 0.0)).a * 0.16;
-    a += texture(uTexture, vTextureCoord + vec2(0.0, d.y)).a * 0.16;
-    a += texture(uTexture, vTextureCoord - vec2(0.0, d.y)).a * 0.16;
+    vec2 uv = vTextureCoord - uShift * uInputSize.zw;
+    float a = texture(uTexture, uv).a * 0.36;
+    a += texture(uTexture, uv + vec2(d.x, 0.0)).a * 0.16;
+    a += texture(uTexture, uv - vec2(d.x, 0.0)).a * 0.16;
+    a += texture(uTexture, uv + vec2(0.0, d.y)).a * 0.16;
+    a += texture(uTexture, uv - vec2(0.0, d.y)).a * 0.16;
     a = min(a, 1.0) * uAlpha;
     finalColor = vec4(uColor * a, a);
 }
@@ -92,6 +126,7 @@ function makeShadowFilter() {
         uAlpha: { value: 0.3, type: 'f32' },
         uColor: { value: new Float32Array([0, 0, 0]), type: 'vec3<f32>' },
         uSoft: { value: 0.5, type: 'f32' },
+        uShift: { value: new Float32Array([0, 0]), type: 'vec2<f32>' },   /* v2.3.3149 */
       },
     },
     /* The blur reaches one texel past the covered area, so the filter needs
@@ -174,6 +209,8 @@ const _systems = new Set();
 export function releaseShadowTextures() {
   for (const sys of _systems) { try { sys.clear(); } catch (e) { /* one pool's trouble */ } }
 }
+/* v2.3.3152: QA -- how many shadow systems the module holds (one a renderer) */
+export function shadowSystemCount() { return _systems.size; }
 
 export class ShadowSystem {
   constructor(layer, root) {
@@ -197,7 +234,7 @@ export class ShadowSystem {
        can ask "does each monster on screen cast" without the 16-entry cap on
        `list`.  One array, cleared and refilled in place: the keys are strings
        the casters already carry, so this allocates nothing per frame. */
-    this.stats = { casters: 0, pieces: 0, held: 0, self: null, list: [], keys: [], lifePieces: 0 };
+    this.stats = { casters: 0, pieces: 0, held: 0, self: null, list: [], keys: [], lifePieces: 0, lock: null };   /* v2.3.3149: + lock, the fraction the layer is drawn back by */
   }
 
   _piece() {
@@ -368,6 +405,24 @@ export class ShadowSystem {
     return n;
   }
 
+  /* ═══ v2.3.3152: A RENDERER'S SHADOWS GO WITH IT ═══
+     Every ShadowSystem joins the module's list (releaseShadowTextures) and
+     nothing took one out: a black screen's rebuild made a new one and the old
+     one stayed for the visit -- its pools, its held casters' textures, its
+     filter and its old world container -- and every sheet the Wheel freed
+     cleared them all again.  Found by the leak hunt (mp-sceneleak: one
+     system after two rebuilds, not three). */
+  destroy() {
+    _systems.delete(this);
+    try { this.clear(); } catch (e) { /* its layer may be gone already */ }
+    this._held.clear();
+    this.pool = [];
+    this.meshPool = [];
+    this._pieceMeshes.clear();
+    this._pieceList = [];
+    if (this.filter) { try { this.filter.destroy(); } catch (e) { /* gone */ } this.filter = null; }
+  }
+
   clear() {
     /* Hidden is not enough: drop the texture too.  clear() runs on every zone
        change, and a zone's monster art is FREED on exit (preloadZoneAssets /
@@ -504,9 +559,38 @@ export class ShadowSystem {
     u.uColor[1] = ((col >> 8) & 255) / 255;
     u.uColor[2] = (col & 255) / 255;
     if (!this.layer.filters || this.layer.filters[0] !== this.filter) this.layer.filters = [this.filter];
+    this.lockToWorldGrid(u);
     /* forget figures that have been gone longer than the hold */
     if (this._held.size > casters.length + 8) {
       for (const [k, h] of this._held) if (now - h.t > HOLD_MS) this._held.delete(k);
     }
+  }
+
+  /* ═══ v2.3.3149: DRAWN AT A WHOLE PIXEL OF ITS OWN GRID (the header) ═══
+     The world's container sits at the camera's position, a fraction of a CSS
+     px off the filter's grid (one texel a CSS px at its resolution of 1).  The
+     layer is moved back by that fraction, so the pieces land at the same
+     phase of the grid every frame and only ever move by whole texels; the
+     filter reads its picture the same fraction back (uShift), a linear sample
+     between two texels -- so on screen the shadows are exactly where the
+     world is, gliding with it.  Called every frame the layer is drawn: the
+     camera has set the world's place for this frame before the light runs
+     (pixiRenderer). */
+  lockToWorldGrid(u) {
+    const sh = u.uShift;
+    const root = this.root;
+    if (!lockOn() || !root) {
+      if (this.layer.x !== 0 || this.layer.y !== 0) this.layer.position.set(0, 0);
+      sh[0] = 0; sh[1] = 0;
+      this.stats.lock = null;
+      return;
+    }
+    const res = typeof this.filter.resolution === 'number' && this.filter.resolution > 0 ? this.filter.resolution : 1;
+    const fx = root.x - Math.floor(root.x * res) / res, fy = root.y - Math.floor(root.y * res) / res;
+    const kx = root.scale.x || 1, ky = root.scale.y || 1;
+    this.layer.position.set(-fx / kx, -fy / ky);
+    sh[0] = fx; sh[1] = fy;
+    const L = this.stats.lock || (this.stats.lock = { fx: 0, fy: 0 });
+    L.fx = fx; L.fy = fy;
   }
 }

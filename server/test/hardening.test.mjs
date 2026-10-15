@@ -265,6 +265,33 @@ check('reaching H5 appends the INV-27 global log', ps.weapon.hardness === 5 && A
     barOf({ gearBase: 'ww_ironbark' }) === 'hardened_maple' && barOf({ gearBase: 'ww_worldbreaker' }) === 'hardened_maple'
       && barOf({ type: 'bow', gearBase: 'wood', tierMult: 1 }, 'rangedWeapon') === 'hardened_pine' && barOf({ type: 'staff', tierMult: 1 }, 'staffWeapon') === 'hardened_pine'
       && hardenIsWood({ gearBase: 'ww_pine' }, 'weapon') === true && hardenIsWood({ gearBase: 'iron' }, 'weapon') === false);
+  /* v2.3.3161: by the WEAPON, not the slot the client names.  Reproduced on
+     main: an iron sword equipped into the staff slot (equip_request asked
+     nothing of the slot until v2.3.3160) was hardened with Hardened Hardwood
+     and never paid an iron bar. */
+  check('v2.3.3161: by the weapon -- a sword or greatsword in the staff or bow slot takes its own bars, a bow in the melee slot its wood',
+    barOf({ type: 'sword', gearBase: 'iron', tierMult: 1.25 }, 'staffWeapon') === 'bar_iron'
+      && barOf({ type: 'greatsword', gearBase: 'steel' }, 'rangedWeapon') === 'bar_black_steel'
+      && barOf({ type: 'bow', gearBase: 'wood', tierMult: 1 }, 'weapon') === 'hardened_pine',
+    [barOf({ type: 'sword', gearBase: 'iron', tierMult: 1.25 }, 'staffWeapon'), barOf({ type: 'greatsword', gearBase: 'steel' }, 'rangedWeapon')]);
+  check('...and a weapon with no type at all still goes by its slot, as before',
+    barOf({ tierMult: 1 }, 'staffWeapon') === 'hardened_pine' && barOf({ tierMult: 1 }, 'weapon') === 'bar_copper');
+  {
+    const keep = { staff: ps.staffWeapon, inv: ps.inventory, coins: ps.coins, lvl: ps.lifeSkills.blacksmithing.level };
+    ps.staffWeapon = { type: 'sword', gearBase: 'iron', tierMult: 1.25, name: 'Iron Sword', quality: 'normal', hardness: 0, temper: 0 };
+    ps.lifeSkills.blacksmithing.level = 15;
+    ps.inventory = { hardened_hardwood: 5 };
+    ps.coins = 5000;
+    ws.sent.length = 0;
+    Math.random = () => 0.0;   // it would succeed -- but it must never roll
+    await harden(ws, 'staffWeapon');
+    Math.random = realRandom;
+    const rs = lastHR(ws);
+    check('...at the real handler: an iron sword sitting in the staff slot asks for an Iron Bar, takes no hardened wood and stays H0',
+      !!rs && rs.error === 'no-materials' && /Iron Bar/.test(rs.message) && ps.inventory.hardened_hardwood === 5 && ps.coins === 5000 && ps.staffWeapon.hardness === 0,
+      { rs, inv: ps.inventory, w: ps.staffWeapon });
+    ps.staffWeapon = keep.staff; ps.inventory = keep.inv; ps.coins = keep.coins; ps.lifeSkills.blacksmithing.level = keep.lvl;
+  }
   check('materials: junk tiers clamp (0, NaN, 99) and the tables are the four bars and five woods they say', hardenMaterialFor(0, false) === 'bar_copper' && hardenMaterialFor(NaN, false) === 'bar_copper'
     && hardenMaterialFor(99, false) === 'bar_black_steel' && HARDEN_BAR_BY_TIER.length === 4
     && hardenMaterialFor(0, true) === 'hardened_pine' && hardenMaterialFor(99, true) === 'hardened_maple' && HARDEN_WOOD_BY_TIER.join() === 'hardened_pine,hardened_softwood,hardened_hardwood,hardened_cedar,hardened_maple',
@@ -429,34 +456,25 @@ check('forged harden_result dropped by deny-list', room.eventBuffer.filter((e) =
 
 // ── 10. v2.3.1141: server-minted weapon drops ──
 // This suite owns the drop tests because the drop mint is the second
-// server quality-roll site (after the forge).  Math.random = () => 0
-// forces the FULL rare chain: drop passes, tier roll 0 -> shift (zone
-// has an element), type -> greatsword, quality roll 0 -> godly.
+// server quality-roll site (after the forge).  v2.3.3209: the random weapon
+// whose rarity chain (shift/fusion/elemental) these tests forced is out of
+// the game (the owner: "Remove it from the game"), so the drop under test is
+// a kill's one weapon now, the Iron Great Sword: Math.random = () => 0 lands
+// its 1-in-500 roll and its quality roll 0 -> godly.
 check('caps.weaponDrops advertised', sync && sync.caps && sync.caps.weaponDrops === true, sync && sync.caps);
 
 const wdMon = { id: 'wd-1', arch: 'fodder', level: 25, x: 100, y: 100, gold: 5, xp: 5 };
-/* v2.3.1924b: a SECOND weapon roll now runs in _spawnLootForKill and runs
-   FIRST — the flat 1-in-500 iron greatsword — and a pile carries one weapon,
-   so with Math.random forced to 0 the iron blade wins the slot and the shift/
-   godly chain below never reaches the pile.  That is the intended behaviour
-   (drops.test.mjs pins which weapon wins, in both directions); what THIS
-   suite owns is the ORDINARY drop's rarity + quality chain, so the new roll
-   is silenced here rather than the assertions being loosened to accept
-   either blade — an "or" here would have stopped testing the chain at all. */
-const realIronRoll = room._rollIronWeaponForKill;
-room._rollIronWeaponForKill = () => null;
 Math.random = () => 0;
 const wdPile = room._spawnLootForKill('frost', wdMon, 'bp_hd_p', ['bp_hd_p'], { bp_hd_p: 1 });
 Math.random = realRandom;
-room._rollIronWeaponForKill = realIronRoll;
-check('forced roll mints a weapon on the pile (shift/godly chain)',
-  !!wdPile && !!wdPile.weapon && wdPile.weapon.tier === 'shift' && wdPile.weapon.quality === 'godly'
+check('forced roll mints a weapon on the pile (the iron blade, its quality rolled: godly)',
+  !!wdPile && !!wdPile.weapon && wdPile.weapon.gearBase === 'iron' && wdPile.weapon.quality === 'godly'
   && wdPile.weapon.hardness === 0 && wdPile.weapon.temper === 0 && wdPile.weapon.hardenBonus === null
   && wdPile.weaponClaimed === false,
   wdPile && wdPile.weapon);
-check('shift drop takes the zone element, name matches client convention',
-  wdPile.weapon.element1 === 'frost' && wdPile.weapon.element2 === null
-  && wdPile.weapon.name === 'Prismatic Great Sword' && wdPile.weapon.tierMult === 3.0,
+check('the dropped blade is the forge\'s own object: a common iron greatsword, no element',
+  wdPile.weapon.tier === 'common' && wdPile.weapon.type === 'greatsword' && wdPile.weapon.element1 === null && wdPile.weapon.element2 === null
+  && wdPile.weapon.name === 'iron greatsword' && wdPile.weapon.tierMult === 1.25,
   wdPile.weapon);
 
 // Mystery reveal: the broadcastable serialization must carry presence
@@ -464,12 +482,12 @@ check('shift drop takes the zone element, name matches client convention',
 const wdWire = room._serializePile(wdPile);
 check('wire pile: hasWeapon/tier/type/name, NO quality, NO raw blob',
   wdWire.hasWeapon === true && wdWire.weaponClaimed === false
-  && wdWire.weaponTier === 'shift' && wdWire.weaponType === 'greatsword'
-  && wdWire.weaponName === 'Prismatic Great Sword'
+  && wdWire.weaponTier === 'common' && wdWire.weaponType === 'greatsword'
+  && wdWire.weaponName === 'iron greatsword'
   && wdWire.weapon === undefined && !JSON.stringify(wdWire).includes('godly'),
   wdWire);
 
-// No-drop path: random 0.999 fails the cubic chance at L25; the pile
+// No-drop path: random 0.999 misses the iron blade's 1 in 500; the pile
 // still spawns for its coins, weapon stays null.
 Math.random = () => 0.999;
 const wdNone = room._spawnLootForKill('frost', { id: 'wd-2', arch: 'fodder', level: 25, x: 0, y: 0, gold: 5 }, 'bp_hd_p', ['bp_hd_p'], { bp_hd_p: 1 });

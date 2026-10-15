@@ -2480,6 +2480,34 @@ arrow flying through, standing where it stood; the mending, its fade, never
 over you; a lamp ringing as metal, the well as stone, a tree's leaves; a
 building's 24 arrows and its collapse; no errors.
 
+### The bow can aim at them (v2.3.3206)
+
+Owner: *"Make the bow able to shoot at any props including buildings"*.
+
+`mp-wheelbreak` puts its own arrows in the air. A player could not: the bow
+looses only when its line is on something (v2.3.2473), and that gate asked about
+monsters alone. Held on the Town Hall, the bow drew its line through the wall
+and waited. The arrow also judged props 52 px north of your feet, at your
+body's centre: point blank it started inside the Town Hall's footprint and flew
+through, and a level shot at a trunk ran behind it.
+
+Now:
+
+- The gate and the drawn line read the prop on the line (`firstSightHit`'s
+  `ground`): any object with a footprint, from a bench to a building.
+- Every shot is judged at your boots (`_gdy`). Another player's shots on your
+  screen are judged at their boots.
+- A hit is shown on the picture: where the shot flew, but never above 0.7 of a
+  low thing's height (`propHitHeight`, the footprints' `h`).
+- Shots fly OVER low things (the owner: *"I want arrows to fly over low
+  things"*). Low is what you can jump (`JUMP_OVER` in game/jump.js): fences,
+  walls, benches, barrels, crates, rocks, bushes, stumps, troughs, hay bales. A
+  low thing is hit only when it is what the shot is aimed at, with nothing
+  else on the line (`shotSkip`, `_lp` in projectiles.js).
+
+Things you walk through (flowers, ferns, shells...) are still not targets.
+`mp-bowprops`; docs/specs/bow-at-props.md.
+
 ### Still to come (asked for, not in this round)
 
 Elemental damage by monster (a snowman's snowball slowing you with a snowflake
@@ -2487,6 +2515,36 @@ on the hit, a fire goblin's burn ticking with a flame, a dune mummy's wind
 knocking you back) is the worker's work -- it owns damage -- and monster
 voices and projectile sounds need recordings the game does not have. Both are
 planned in the PR that shipped this.
+
+## A building catches fire (v2.3.3230)
+
+Owner, 2026-10-14: *"When attacking buildings add flame effects on the
+building after getting hit a while in the location where the building is
+getting struck and make the flames grow higher the closer it gets to falling
+apart. Keep the flames going as the building in pieces."*
+
+On your screen only, like the hits it follows, and only BroTown's buildings
+(`src/rendering/buildingFire.js`, owned by `WheelObjects`):
+
+- **Where it was struck**: hits within 40 px of each other are one fire, up to
+  five on a building. Its 3rd hit (of 24) makes it smoulder there, its 6th sets
+  it alight there.
+- **Higher the nearer it is to falling**: each fire is a cluster of the
+  campfire's own pixel flames, up to ten, the later ones climbing the wall above
+  it -- on the Hotel the top of the fire 55 px above its foot at the 6th hit,
+  201 at the 23rd -- with sparks, smoke darker as it grows, its light on the
+  wall and soot darkening the building. The spot hit most burns hottest.
+- **Left alone** it sinks from 12 s and is out when the count is forgotten at
+  30 s: `wheelBreak.js`'s new `heal` event.
+- **In pieces**: at the break nine shards fall burning (the nearest each fire,
+  then the biggest), lie charred where they land and burn on, settling from the
+  collapse's flare to a steady fire, until the mending.
+- **Nothing new to load**: every sprite draws from the campfire's atlas, minted
+  with the renderer. Each fire rides what it burns on (depthSort `_ridesOn`, a
+  quarter step after it), is hidden off the screen, and goes with the Wheel.
+  `?nobuildingfire` turns it off.
+
+`mp-buildingfire` (18): docs/specs/building-fire.md.
 
 ## The buildings' life (v2.3.2983)
 

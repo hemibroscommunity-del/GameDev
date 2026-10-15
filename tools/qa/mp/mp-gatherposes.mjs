@@ -19,7 +19,9 @@
  *      bag starts a cook drawn by him, the body put away;
  *   5. what the three hold once made: what the loading screen no longer pays
  *      for a player who never gathers (and the 2D canvases alive before and
- *      after, from an init script that keeps every canvas the page makes);
+ *      after, from an init script that keeps every canvas the page makes) --
+ *      since v2.3.3150 on the GPU only, no second copy in the page's canvases
+ *      but the lumberjack's source crops;
  *   6. no page errors.
  */
 import * as H from './harness.mjs';
@@ -338,10 +340,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* 5 */
     const p1 = await poses(P), pic1 = await pictures(P), cv1 = await canvases(P);
     const held1 = pic1 ? +(pic1.chop.mb + pic1.cook.mb + pic1.fire.mb).toFixed(1) : 0;
+    const gpu1 = pic1 ? +((pic1.chop.gpu || 0) + (pic1.cook.gpu || 0) + (pic1.fire.gpu || 0)).toFixed(1) : 0;
     console.log(`    all three made: ${JSON.stringify(p1)} ${JSON.stringify(pic1)} canvases ${JSON.stringify(cv1)}`);
-    rec.ok(`made, the three hold ${held1} MB (lumberjack ${pic1 && pic1.chop.mb}, cook ${pic1 && pic1.cook.mb}, fire-lighter ${pic1 && pic1.fire.mb}) -- `
-      + `what the loading screen no longer makes for a player who never gathers; 2D canvases alive ${cv0.mb} -> ${cv1.mb} MB`,
-      !!pic1 && held1 >= 15 && pic1.chop.n > 0 && pic1.cook.n > 0 && pic1.fire.n > 0, { pic1, cv0, cv1 });
+    /* v2.3.3150: their strips live on the GPU only (effectsRenderer _gpuOnly):
+       what they draw from is counted there, and the only canvases left are
+       the lumberjack's two source crops, which every re-bake reads */
+    rec.ok(`made, the three draw from ${gpu1} MB on the GPU (lumberjack ${pic1 && pic1.chop.gpu}, cook ${pic1 && pic1.cook.gpu}, fire-lighter ${pic1 && pic1.fire.gpu}) -- `
+      + `what the loading screen no longer makes for a player who never gathers`,
+      !!pic1 && gpu1 >= 15 && pic1.chop.frames > 0 && pic1.cook.frames > 0 && pic1.fire.frames > 0, { pic1 });
+    rec.ok(`...and hold no second copy of it in the page: ${held1} MB of canvases (the cook ${pic1 && pic1.cook.mb}, the fire-lighter ${pic1 && pic1.fire.mb}, `
+      + `the lumberjack ${pic1 && pic1.chop.mb}, his source crops); 2D canvases alive ${cv0.mb} -> ${cv1.mb} MB`,
+      !!pic1 && pic1.cook.mb === 0 && pic1.fire.mb === 0 && pic1.chop.mb <= 6, { pic1, cv0, cv1 });
 
     /* 6 */
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));

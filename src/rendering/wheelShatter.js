@@ -32,6 +32,7 @@
  * heap fading early past that.  Everything goes on leaving the Wheel.
  */
 import { Container, Sprite, Texture, Rectangle, CanvasSource } from 'pixi.js';
+import { drawSourceRect } from './paletteDraw.js';   /* v2.3.3190 */
 
 const G = 0.42;              /* gravity, world px per frame^2 at 60 Hz */
 const HEAP_PX = 6e6;         /* every heap's canvases together, pixels */
@@ -39,6 +40,7 @@ const FADE_MS = 1200;        /* a heap fading at its mending */
 const PAD = 2;               /* px between shards in the canvas */
 const DEPTH = 0.55;          /* ground-plane foreshortening, as hitMaterialFx */
 const DUST_FRONT = 40;       /* the dust sorts this far in front of the heap */
+const BURNT_TINT = 0x9a8e86; /* v2.3.3230: a piece that fell burning lies charred (buildingFire.js sets `burnt`) */
 
 let _puff = null;
 function puffTex() {
@@ -119,7 +121,8 @@ function cutPicture(tex, n, hu, hv) {
   const FW = fp.w, FH = fp.h;
   const pic = document.createElement('canvas'); pic.width = FW; pic.height = FH;
   const pg = pic.getContext('2d');
-  try { pg.drawImage(src, fp.x, fp.y, FW, FH, 0, 0, FW, FH); } catch (e) { freeCanvas(pic); return null; }
+  /* v2.3.3190: drawSourceRect, so a page kept as colour numbers cuts the same */
+  try { drawSourceRect(pg, tex.source, fp.x, fp.y, FW, FH, 0, 0, FW, FH); } catch (e) { freeCanvas(pic); return null; }
   /* where the picture is solid, at a quarter size (seeds and empty cells) */
   const Q = 4, qw = Math.max(1, Math.ceil(FW / Q)), qh = Math.max(1, Math.ceil(FH / Q));
   let alpha;
@@ -356,7 +359,8 @@ export class WheelShatter {
         spr.x = s.x; spr.y = s.gy - s.z; spr._groundDy = s.z;
         spr.rotation = s.rot;
         spr.scale.y = Math.abs(spr.scale.x) * s.sy;
-        if (s.landed && spr.tint !== 0xd9d4cc) spr.tint = 0xd9d4cc;
+        const lt = s.burnt ? BURNT_TINT : 0xd9d4cc;
+        if (s.landed && spr.tint !== lt) spr.tint = lt;
         spr.alpha = fade;
       }
       for (let i = h.dust.length - 1; i >= 0; i--) {
@@ -397,14 +401,15 @@ export class WheelShatter {
   probe() {
     const out = [];
     for (const [oi, h] of this.heaps) {
-      let landed = 0, minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity, layers = new Set();
+      let landed = 0, burnt = 0, minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity, layers = new Set();
       for (const s of h.shards) {
         if (s.landed) landed++;
+        if (s.burnt) burnt++;
         if (s.gy < minY) minY = s.gy; if (s.gy > maxY) maxY = s.gy;
         if (s.x < minX) minX = s.x; if (s.x > maxX) maxX = s.x;
         if (s.spr.parent) layers.add(s.spr.parent.label || '?');
       }
-      out.push({ oi, shards: h.shards.length, landed, dust: h.dust.length, fading: !!h.fadeAt, px: h.px,
+      out.push({ oi, shards: h.shards.length, landed, burnt, dust: h.dust.length, fading: !!h.fadeAt, px: h.px,
         x: h.x, y: h.y, spanX: [Math.round(minX), Math.round(maxX)], spanY: [Math.round(minY), Math.round(maxY)], layers: [...layers] });
     }
     return out;

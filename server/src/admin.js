@@ -139,6 +139,17 @@ export const adminMethods = {
           playerStateCount: Object.keys(this.playerState).length,
           zones: [...this._activeZones()],
           tickRunning: !!this.tickInterval,
+          /* v2.3.3202: the tick's pacer -- the interval it uses now, and how
+             far apart the ticks really start (tickpace.js) */
+          tickPace: this._tickPaceInfo(),
+          /* v2.3.3203: how often a walker's update waited (steadymovers.js) */
+          steadyMovers: this._steadyInfo(),
+          /* v2.3.3240: the 2 s look relay -- tracks in, and how many went out
+             whole, as only what changed, or not at all (lookrelay.js) */
+          lookRelay: this._lookInfo(),
+          /* v2.3.3243: how often the far players go out on their own, ms;
+             0 is with the roster only (tick.js FAR_PLAYERS, `far_ms`) */
+          farEveryMs: this._farEveryMs ? this._farEveryMs() : null,
           eventBufferLen: this.eventBuffer.length,
           protocolVersions: v,
           ts: Date.now(),

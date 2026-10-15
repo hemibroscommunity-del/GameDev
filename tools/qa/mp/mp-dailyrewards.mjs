@@ -66,8 +66,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 1. caps and the state ── */
     const caps = await H.readState(P, (S) => S._serverCaps || {});
     const st0 = await waitFor(state, 15000);
-    rec.ok('the worker advertises the free spin and the daily quests, and sends their state on join',
-      caps.dailyspin === true && caps.dailyquests === true && !!st0 && st0.spin.ready === 1 && st0.spin.open === 0
+    rec.ok('the worker advertises the free spin and the daily quests, and sends their state on join (v2.3.3181: the spin locked until the first quest)',
+      caps.dailyspin === true && caps.dailyquests === true && !!st0 && st0.spin.ready === 1 && st0.spin.locked === 1 && st0.spin.open === 0
         && Array.isArray(st0.spin.prizes) && st0.spin.prizes.length === DAILY.SPIN.PRIZES.length,
       { caps: { dailyspin: caps.dailyspin, dailyquests: caps.dailyquests }, spin: st0 && st0.spin });
 
@@ -109,6 +109,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
         opened = await panelKey();
       }
     }
+    /* v2.3.3181: the spin opens with the Mayor's first quest -- shown locked,
+       then the tutorial handed in (the dev op), then the fresh state */
+    const lockedBox = await waitFor(() => P.page.evaluate(() => {
+      const el = document.querySelector('[data-daily-spin]');
+      const b = document.querySelector('[data-spin-btn]');
+      return el && b ? { state: el.getAttribute('data-daily-spin'), btn: b.textContent || '', disabled: !!b.disabled,
+        line: (document.querySelector('[data-spin-line]') || {}).textContent || '' } : null;
+    }), 6000);
+    await shot(P, 'den-locked');
+    rec.ok('before the first quest the Den\'s spin is locked: says so, and its button does nothing',
+      !!lockedBox && lockedBox.state === 'locked' && lockedBox.disabled && /first quest/i.test(lockedBox.btn) && /first quest/i.test(lockedBox.line), lockedBox);
+    await H.devOp(wsPort, 'quests', id);   /* the tutorial handed in */
+    await P.page.evaluate(() => window.__btDailyRewards && window.__btDailyRewards.ask && window.__btDailyRewards.ask());
+    await waitFor(() => state().then((s) => (s && s.spin && s.spin.locked === 0 ? s : null)), 8000);
     const spinBox = await waitFor(() => P.page.evaluate(() => {
       const el = document.querySelector('[data-daily-spin]');
       const wh = document.querySelector('[data-spin-wheel]');

@@ -39,14 +39,17 @@ const qnum = (k, d) => { const v = qs && qs.get(k); const n = v != null ? Number
 /* How long a broken object stays broken: a few minutes (owner).  `?repairms=`
    for the tests, which cannot wait three. */
 export const REPAIR_MS = qnum('repairms', 180000);
-const HEAL_MS = 30000;          /* hits forgotten after this long without one */
+/* hits forgotten after this long without one.  v2.3.3230: exported, and
+   `?healms=` for the tests -- a burning building's fire dies down toward it
+   and is out when it comes (rendering/buildingFire.js) */
+export const HEAL_MS = qnum('healms', 30000);
 const MAX_BROKEN = 24;          /* past this many at once, the oldest mends now */
 const CLEAR_PX = 16;            /* the mending waits until you are this far out of its footprint */
 const FEET_DY = 52;             /* your boots, below your position (BroTown propFeetBlocked) */
 
 const _dmg = new Map();         /* object index -> { d, last } */
 const _broken = new Map();      /* object index -> { at, until, id, mat, x, y } */
-const _events = [];             /* { type: 'hit'|'break'|'repair', oi, ... } for the renderer */
+const _events = [];             /* { type: 'hit'|'break'|'repair'|'heal', oi, ... } for the renderer */
 let _src = null;                /* the worker answer the indices belong to */
 let _catKind = null;            /* catalog id -> 'building' | 'prop' | 'nature', from its manifest */
 
@@ -187,8 +190,21 @@ function repair(oi, now) {
 /** Once a frame from the renderer: mend what is due, if you are clear of it. */
 export function tickWheelBreak(S, now) {
   const o = sameWorld();
-  if (!o || !_broken.size) return;
+  if (!o) return;
   const t = now || Date.now();
+  /* ═══ v2.3.3230: A COUNT FORGOTTEN IS SAID SO ═══
+     A count left alone for HEAL_MS was only ever reset by the next hit, so
+     nothing could tell it was gone.  A burning building's fire must go out
+     when it is (rendering/buildingFire.js): its 'heal' says so.  The next
+     hit's own reset stays, for a page that sleeps through this. */
+  if (_dmg.size) {
+    for (const [oi, d] of _dmg) {
+      if (t - d.last <= HEAL_MS) continue;
+      _dmg.delete(oi);
+      push({ type: 'heal', oi, at: t });
+    }
+  }
+  if (!_broken.size) return;
   const P = S && S.player;
   for (const [oi, b] of _broken) {
     if (t < b.until) continue;
@@ -220,6 +236,7 @@ if (typeof window !== 'undefined') {
     repairMs: REPAIR_MS,
     broken: () => [..._broken.entries()].map(([oi, b]) => ({ oi, id: b.id, mat: b.mat, left: Math.max(0, b.until - Date.now()), waited: !!b.waited })),
     damage: (oi) => { const d = _dmg.get(oi); return d ? d.d : 0; },
+    healMs: HEAL_MS,   /* v2.3.3230 */
     kind: (oi) => wheelObjectKind(oi),
   };
 }

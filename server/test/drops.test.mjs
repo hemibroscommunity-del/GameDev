@@ -15,6 +15,11 @@
  *      is one roll that picks a side, which halves each rate while still
  *      dropping iron often enough to look right in play.  So a run where
  *      both pass their own roll must produce BOTH pieces.
+ *      v2.3.3209: a live kill rolls ONCE now, each drop owning its own
+ *      numbers (killroll.js -- the owner: "Shouldn't these numbers not
+ *      overlap each other?"), so a kill gives one piece at most, each still
+ *      at its 1 in 500 (killroll.test.mjs).  These rolls called alone, as
+ *      this suite calls them, are the `killroll: false` switch's path.
  *   3. THE CLAIMS DO NOT EAT EACH OTHER.  The pile already had two claim
  *      lanes (the one-of inventory slot, and the weapon's own flag,
  *      v2.3.1141); the armour adds a third and the gem joins the first.
@@ -31,9 +36,10 @@
  *   6. THE IRON GREATSWORD IS THE FORGE'S OWN OBJECT.  It has to be
  *      indistinguishable from a crafted one — same fields, `gearBase` set
  *      (which is what the client rebuilds the name and the tint from) — or it
- *      arrives as a nameless grey blade.  And because a pile carries ONE
- *      weapon, the ordering when both weapon rolls land is a real decision
- *      with a real cost; it is pinned so it cannot drift silently.
+ *      arrives as a nameless grey blade.  A pile carries ONE weapon; until
+ *      v2.3.3209 the iron blade won it over v2.3.1141's random weapon, and
+ *      since then (the owner: "Remove it from the game") the iron blade is a
+ *      kill's only weapon -- pinned so the random one cannot quietly return.
  *   7. A PILE THAT WOULD OTHERWISE BE EMPTY still spawns for these.  The
  *      early-out in _spawnLootForKill lists what counts as "nothing of
  *      value", and a new drop not added to it is a drop that vanishes on
@@ -163,8 +169,8 @@ check('the second piece can drop without the first',
   !!onlyLegs && onlyLegs.length === 1 && onlyLegs[0].slot === 'legsArmor', onlyLegs);
 
 /* ── 3/4/5/6. the pile, and who gets what on pickup ───────────────────── */
-/* The other two rolls in _spawnLootForKill — the shard and the weapon — run
-   BEFORE these and draw from the same Math.random.  A fixed sequence of
+/* The other rolls in _spawnLootForKill — the shard (and, until v2.3.3209,
+   a random weapon) — run BEFORE these and draw from the same Math.random.  A fixed sequence of
    stubbed values therefore pins this suite to the ORDER of rolls it does not
    care about: the first cut of this test fed its zeros to the shard roll and
    reported the armour missing.  Stub the two neighbours to "no drop" instead,
@@ -173,7 +179,6 @@ check('the second piece can drop without the first',
    rolls `shard_town`.  Not this change's business, but it is why the pile
    below is built with those two silenced rather than with a longer array.) */
 room._rollShardForKill = () => null;
-room._rollWeaponDropForKill = () => null;
 /* v2.3.1924b: the iron blade rolls in this function too, and BEFORE the
    armour — silenced here for the same reason, so the sequence below belongs
    to the lanes under test.  Its own behaviour, including which weapon wins
@@ -265,31 +270,30 @@ check('...and the broadcast advertises neither',
   !!wireMiss && wireMiss.armor === null && wireMiss.gem === null,
   wireMiss && { armor: wireMiss.armor, gem: wireMiss.gem });
 
-/* ── 6b. WHICH WEAPON WINS ────────────────────────────────────────────────
-   A pile carries ONE weapon.  When both weapon rolls land the iron blade
-   takes the slot, which is what keeps the owner's 1-in-500 exact — and it
-   costs an ordinary drop that would have happened on the same corpse.  That
-   is a deliberate trade with a measured price (see the note at the roll
-   site), so it is pinned in BOTH directions: silently flipping it would make
-   the owner's number 1-in-515 at level 100, and silently dropping the
-   ordinary roll entirely would gut weapon drops. */
+/* ── 6b. THE IRON BLADE IS A KILL'S ONE WEAPON ───────────────────────────
+   A pile carries ONE weapon.  Until v2.3.3209 two rolls shared it, the iron
+   blade winning over v2.3.1141's random weapon; the owner then took the
+   random weapon out of the game ("Remove it from the game", asked whether
+   from the codex's table or the game), so it is pinned gone: no roll of it
+   on the room, and a level-40 kill whose every roll is 0.0021 -- over the
+   iron blade's 1 in 500 and under the old random weapon's 0.24% at that
+   level -- drops no weapon. */
 room.loot = {};
 room._rollIronWeaponForKill = GameRoom.prototype._rollIronWeaponForKill;
-room._rollWeaponDropForKill = () => ({ type: 'sword', tier: 'elemental', tierMult: 2, name: 'Flame Sword' });
+check('the random weapon\'s roll is gone from the room (v2.3.3209)',
+  typeof GameRoom.prototype._rollWeaponDropForKill === 'undefined' && typeof room._rollWeaponDropForKill === 'undefined');
 const D = mkPlayer('pD');
-const bothWeapons = withRandom([0], () =>
+const ironOnly = withRandom([0], () =>
   room._spawnLootForKill('town', { ...monster, id: 'm4' }, 'pD', ['pD'], { pD: 1 }));
-check('when both weapon rolls land, the IRON blade takes the slot',
-  !!bothWeapons && bothWeapons.weapon && bothWeapons.weapon.gearBase === 'iron',
-  bothWeapons && bothWeapons.weapon);
+check('the iron roll landing drops the IRON blade',
+  !!ironOnly && ironOnly.weapon && ironOnly.weapon.gearBase === 'iron',
+  ironOnly && ironOnly.weapon);
 
-/* ...and the ordinary drop is untouched when the iron roll misses. */
 room.loot = {};
-const ordinaryOnly = withRandom([1], () =>
-  room._spawnLootForKill('town', { ...monster, id: 'm5' }, 'pD', ['pD'], { pD: 1 }));
-check('when the iron roll misses, the ordinary weapon drop still lands',
-  !!ordinaryOnly && ordinaryOnly.weapon && ordinaryOnly.weapon.name === 'Flame Sword',
-  ordinaryOnly && ordinaryOnly.weapon);
+const noWeapon = withRandom([0.0021], () =>
+  room._spawnLootForKill('town', { ...monster, id: 'm5', level: 40 }, 'pD', ['pD'], { pD: 1 }));
+check('...and when it misses, no weapon drops at all, even where the old random weapon would have',
+  !!noWeapon && !noWeapon.weapon, noWeapon && noWeapon.weapon);
 
 /* The kill switch covers it.  disable_weapon_drops exists to stop weapons
    entering the economy (v2.3.1150); a drop that ignored the lever would be a
@@ -300,7 +304,7 @@ room._flagOn = (f) => f === 'disable_weapon_drops';
 const flagged = withRandom([0], () =>
   room._spawnLootForKill('town', { ...monster, id: 'm6' }, 'pD', ['pD'], { pD: 1 }));
 room._flagOn = realFlag;
-check('disable_weapon_drops stops the iron blade too, not just the ordinary roll',
+check('disable_weapon_drops stops the iron blade',
   !!flagged && !flagged.weapon, flagged && flagged.weapon);
 
 /* ── 8. v2.3.1925: THE RARITY LADDER ─────────────────────────────────────
@@ -313,7 +317,6 @@ check('disable_weapon_drops stops the iron blade too, not just the ordinary roll
    in someone else's mystery, and a client that can compute the ladder itself
    holds the answer before the animation reaches it. */
 room._rollShardForKill = () => null;
-room._rollWeaponDropForKill = () => null;
 room._rollIronWeaponForKill = () => null;
 room.loot = {};
 const E = mkPlayer('pE');
