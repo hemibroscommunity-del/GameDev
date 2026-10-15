@@ -128,6 +128,9 @@ check('both players joined (guard)', !!A && !!B);
      so the bearing from defender to attacker is pi.  Getting this backwards
      produces `blocked:false` and looks exactly like a broken block. */
   B._guardBrokenUntil = 0; B.blocking = true; B.ba = Math.PI;
+  /* v2.3.3264: raised a second ago, past the parry window -- a block in its
+     first PARRY_WINDOW_MS is a PARRY against a player's blow too (§5) */
+  B.blockStartT = Date.now() - 1000; A._staggerUntil = 0;
   room.stateHistory['bp_bc_b'] = [];
   room.eventBuffer.length = 0;
   const before = B.stamina;
@@ -145,6 +148,7 @@ check('both players joined (guard)', !!A && !!B);
 {
   room._pvpHitLanes = new Map();
   B.stamina = 3; B.blocking = true; B.ba = Math.PI; B._guardBrokenUntil = 0; B.hp = 5000;
+  B.blockStartT = Date.now() - 1000; A._staggerUntil = 0;   /* v2.3.3264: past the parry window */
   room.eventBuffer.length = 0;
   room._resolvePvPAttack(room.sessions.get(wsA), { range: 200, arc: 3, angle: 0, dmgBase: 20, critChance: 0 });
   check('a hit that empties the bar breaks the guard', B.blocking === false, { stamina: B.stamina, blocking: B.blocking });
@@ -158,6 +162,56 @@ check('both players joined (guard)', !!A && !!B);
   const h2 = room.eventBuffer.find((e) => e.type === 'pvp_hit');
   check('...so the follow-up swing lands for real damage',
     !!h2 && h2.payload.blocked === false && B.hp < hpBefore, { blocked: h2 && h2.payload.blocked, hpBefore, hp: B.hp });
+}
+
+/* ── 5. v2.3.3264: a block on time is a PARRY, against a player as against a monster ──
+   Owner: "Yes the monster only extras should work on players too".  A block
+   in the first PARRY_WINDOW_MS of raising the shield costs nothing, pays
+   PARRY_STAMINA_REWARD and staggers whoever swung for PARRY_STAGGER_MS
+   (pvpextras.js _pvpParry) -- their next blow is refused. */
+{
+  room._pvpHitLanes = new Map();
+  A._staggerUntil = 0; A.dying = false; A.dead = false;
+  B.stamina = 50; B.blocking = true; B.ba = Math.PI; B._guardBrokenUntil = 0; B.hp = 5000;
+  B.blockStartT = Date.now() - 100;   /* raised 100 ms ago: inside the 250 ms window */
+  room.eventBuffer.length = 0;
+  room._resolvePvPAttack(room.sessions.get(wsA), { range: 200, arc: 3, angle: 0, dmgBase: 20, critChance: 0 });
+  const hit = room.eventBuffer.find((e) => e.type === 'pvp_hit');
+  const parry = room.eventBuffer.find((e) => e.type === 'parry');
+  check('a block on time is a parry: blocked, marked parried, no damage',
+    !!hit && hit.payload.blocked === true && hit.payload.parried === true && B.hp === 5000, hit && hit.payload);
+  check('...free, and it pays the parry\'s stamina back',
+    B.stamina === 50 + room.PARRY_STAMINA_REWARD && !(hit && hit.payload.staminaDrain), { stamina: B.stamina, drain: hit && hit.payload.staminaDrain });
+  check('...the parry event names the player who swung, and how long they are staggered',
+    !!parry && parry.payload.attackerId === 'bp_bc_a' && parry.payload.targetId === 'bp_bc_b'
+      && parry.payload.ms === room.PARRY_STAGGER_MS, parry && parry.payload);
+  check('...who is staggered for PARRY_STAGGER_MS', A._staggerUntil === Date.now() + room.PARRY_STAGGER_MS || A._staggerUntil > Date.now(), A._staggerUntil);
+  /* the staggered swing is refused: no event, no damage, even unblocked */
+  room._pvpHitLanes = new Map();
+  B.blocking = false; room.eventBuffer.length = 0;
+  room._resolvePvPAttack(room.sessions.get(wsA), { range: 200, arc: 3, angle: 0, dmgBase: 20, critChance: 0 });
+  check('...and their next blow is refused while they are', !room.eventBuffer.some((e) => e.type === 'pvp_hit') && B.hp === 5000,
+    room.eventBuffer.map((e) => e.type));
+  /* ...and an ability too */
+  const wsA_sent = [];
+  A.stamina = 100; A.shield = { name: 'Shield' };
+  const origWs = room._wsBySessionId.bind(room);
+  room._wsBySessionId = (id) => (id === 'bp_bc_a' ? { send: (m) => wsA_sent.push(JSON.parse(m)) } : origWs(id));
+  room._handleAbility({ id: 'bp_bc_a' }, { kind: 'bash' });
+  room._wsBySessionId = origWs;
+  const rej = wsA_sent.find((m) => m.type === 'ability_rejected');
+  check('...and their abilities, said so ("staggered"), nothing spent', !!rej && rej.payload.reason === 'staggered' && A.stamina === 100, { rej, stamina: A.stamina });
+  /* with the extras off there is no parry against a player: the old block */
+  A._staggerUntil = 0; room._pvpHitLanes = new Map();
+  room._liveFlags = { pvpextras: false };
+  B.stamina = 50; B.blocking = true; B.blockStartT = Date.now() - 100;
+  room.eventBuffer.length = 0;
+  room._resolvePvPAttack(room.sessions.get(wsA), { range: 200, arc: 3, angle: 0, dmgBase: 20, critChance: 0 });
+  const h3 = room.eventBuffer.find((e) => e.type === 'pvp_hit');
+  check('with pvpextras: false a block on time is an ordinary block (it costs stamina, nobody is staggered)',
+    !!h3 && h3.payload.blocked === true && !h3.payload.parried && B.stamina < 50 && !(A._staggerUntil > Date.now()),
+    { p: h3 && h3.payload, stamina: B.stamina, stag: A._staggerUntil });
+  room._liveFlags = null;
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

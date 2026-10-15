@@ -696,7 +696,7 @@ export async function buildingReachable(P, buildingIndex) {
  * the dash Friends views already use to open the same card the world-tap flow
  * opens.  Driving it keeps the test on the shipped path while avoiding
  * pixel-accurate canvas taps, which would be testing the camera, not the UI. */
-export async function openInspect(P, peerId, { timeout = 15000 } = {}) {
+export async function openInspect(P, peerId, { timeout = 30000 } = {}) {
   const t0 = Date.now();
   let lastOk = null;
   while (Date.now() - t0 < timeout) {
@@ -706,8 +706,12 @@ export async function openInspect(P, peerId, { timeout = 15000 } = {}) {
     }, peerId);
     if (lastOk === 'ok') {
       /* The card can take a beat to mount, and another panel may be sitting on
-         top; retry the whole thing rather than failing on the first miss. */
-      const shown = await P.page.waitForSelector('.bt-inspect-card', { timeout: 3000 })
+         top; retry the whole thing rather than failing on the first miss.
+         v2.3.3264: 8 s, not 3: the selector is polled on the page's frames,
+         and a box drawing three phones in software runs ~2-4 of them a second
+         (one check took 2 s with two pages) -- the card was up, the wait was
+         not long enough to see it (mp-pvpnumbers, mp-pvpextras). */
+      const shown = await P.page.waitForSelector('.bt-inspect-card', { timeout: 8000 })
         .then(() => true).catch(() => false);
       if (shown) return true;
     }

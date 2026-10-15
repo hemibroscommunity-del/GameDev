@@ -11260,7 +11260,13 @@ export class EffectsRenderer {
       const shock = R._shockUntil > now ? R._shockUntil - now : 0;
       const soak = R._soakUntil > now ? R._soakUntil - now : 0;
       const poison = R._poisonUntil > now ? R._poisonUntil - now : 0;
-      if (!chill && !stuck && !burn && !(gustAge >= 0 && gustAge < GUST_FX_MS) && !daze && !shock && !soak && !poison) return;
+      /* v2.3.3264: a player's gem -- a wind gem's slow, a stone gem's
+         fracture, a flora gem's thorns (server pvpextras.js) */
+      const slow = R._slowUntil > now ? R._slowUntil - now : 0;
+      const fracture = R._fractureUntil > now ? R._fractureUntil - now : 0;
+      const thorn = R._thornUntil > now ? R._thornUntil - now : 0;
+      if (!chill && !stuck && !burn && !(gustAge >= 0 && gustAge < GUST_FX_MS) && !daze && !shock && !soak && !poison
+        && !slow && !fracture && !thorn) return;
       const k = zonePlayerScale(zone, x, y, TILE) || 1;
       const fy = y + playerGroundDy(zone, x, y);
       /* QA (mp-elemhits), armed by the harness only: frames each look was drawn */
@@ -11275,6 +11281,9 @@ export class EffectsRenderer {
         if (soak) d.soak = (d.soak || 0) + 1;
         if (poison) d.poison = (d.poison || 0) + 1;
         if (shock && R._shockFrom) d.arc = (d.arc || 0) + 1;
+        if (slow) d.slow = (d.slow || 0) + 1;   /* v2.3.3264 (mp-pvpextras) */
+        if (fracture) d.fracture = (d.fracture || 0) + 1;
+        if (thorn) d.thorn = (d.thorn || 0) + 1;
       }
       if (burn) {
         const a = Math.min(1, burn / 250);
@@ -11516,6 +11525,109 @@ export class EffectsRenderer {
           stroke(zig(from.x, sy0, x, ty, Math.max(4, Math.round(L / (14 * k))), 8 * k), 2.8 * k);
         }
       }
+      /* ═══ v2.3.3264: THE THREE A PLAYER'S GEM PUTS ON YOU ═══
+         Owner: "Yes the monster only extras should work on players too" --
+         a wind, stone or flora gem's status on a player (server
+         pvpextras.js), drawn as the eight above are: in code, round whoever
+         carries it, the figure ~100 tall with its boots at fy, each a dark
+         line under a pale one so it reads on snow, sand and grass. */
+      if (slow) {
+        /* WIND: slow eddies wound round the legs -- the wind's own curl from
+           its icon, turning lazily and dragging -- with dust kicked low */
+        const a = Math.min(1, slow / 250);
+        for (const pass of [0, 1]) {
+          const col = pass ? 0xe6edf3 : 0x41586a, w = pass ? 2.6 * k : 4.6 * k, al = pass ? 0.9 : 0.4;
+          for (let i = 0; i < 3; i++) {
+            const ph = now / 900 + i * (Math.PI * 2 / 3);
+            const cy = fy - (10 + i * 13) * k;
+            const rx = (22 - i * 3) * k, ry = (6.5 - i) * k;
+            /* an open arc of the ellipse, a third of the way round, and a curl
+               at its head */
+            const a0 = ph, a1 = ph + 2.1;
+            for (let q = 0; q <= 10; q++) {
+              const t = a0 + (a1 - a0) * q / 10;
+              const px = x + Math.cos(t) * rx, py = cy + Math.sin(t) * ry;
+              if (q === 0) f.moveTo(px, py); else f.lineTo(px, py);
+            }
+            f.stroke({ color: col, width: w, alpha: al * a, cap: 'round', join: 'round' });
+            const hx = x + Math.cos(a1) * rx, hy = cy + Math.sin(a1) * ry;
+            f.moveTo(hx, hy);
+            f.arc(hx - Math.sin(a1) * 4 * k, hy + Math.cos(a1) * 4 * k, 4 * k, a1 - Math.PI / 2, a1 + Math.PI);
+            f.stroke({ color: col, width: w * 0.85, alpha: al * a, cap: 'round' });
+          }
+        }
+        g.ellipse(x, fy, 25 * k, 8.5 * k); g.fill({ color: 0xcfd8de, alpha: 0.28 * a });
+        if (parts && Math.random() < 0.35 * dts) {
+          parts.push({ x: x + (Math.random() - 0.5) * 34 * k, y: fy - Math.random() * 6 * k,
+            vx: (Math.random() - 0.5) * 0.9, vy: -0.25 - Math.random() * 0.3, life: 0.6,
+            color: Math.random() < 0.5 ? '#d9cbb0' : '#eef2f5', size: 2 });
+        }
+      }
+      if (fracture) {
+        /* STONE: the ground cracked open under you -- more cracks a stack --
+           and chips of stone circling at the chest, one a stack, the half
+           behind the body drawn under it */
+        const a = Math.min(1, fracture / 250);
+        const n = Math.max(1, Math.min(5, Math.floor(R._fractureStacks) || 1));
+        g.ellipse(x, fy, 26 * k, 9 * k); g.fill({ color: 0x6b5a3a, alpha: 0.32 * a });
+        for (let i = 0; i < n + 2; i++) {
+          const ang = i / (n + 2) * Math.PI * 2 + 0.6;
+          let px = x + Math.cos(ang) * 4 * k, py = fy + Math.sin(ang) * 1.4 * k;
+          g.moveTo(px, py);
+          for (let q = 1; q <= 3; q++) {
+            const jit = ((i * 7 + q * 3) % 5 - 2) * 0.16;
+            px = x + Math.cos(ang + jit) * (4 + q * 7.5) * k;
+            py = fy + Math.sin(ang + jit) * (1.4 + q * 2.6) * k;
+            g.lineTo(px, py);
+          }
+          g.stroke({ color: 0x2e2416, width: 2.2 * k, alpha: 0.9 * a, cap: 'round', join: 'round' });
+        }
+        const cy = fy - 52 * k;
+        for (let i = 0; i < n; i++) {
+          const ang = now / 520 + i * (Math.PI * 2 / n);
+          const sx = x + Math.cos(ang) * 22 * k, sy = cy + Math.sin(ang) * 7 * k;
+          const gg = Math.sin(ang) < 0 ? g : f;
+          const r = 4.2 * k;
+          gg.moveTo(sx - r, sy + r * 0.3); gg.lineTo(sx - r * 0.2, sy - r); gg.lineTo(sx + r, sy - r * 0.2);
+          gg.lineTo(sx + r * 0.5, sy + r); gg.closePath();
+          gg.fill({ color: 0xc9b48a, alpha: 0.97 * a });
+          gg.stroke({ color: 0x4a3a20, width: 1.3 * k, alpha: 0.9 * a });
+        }
+      }
+      if (thorn) {
+        /* FLORA: a thorny bramble wound round the waist, its thorns out --
+           the back of it under the figure, the front over it */
+        const a = Math.min(1, thorn / 250);
+        const cy = fy - 38 * k, rx = 21 * k, ry = 6.5 * k;
+        const sway = Math.sin(now / 420) * 0.15;
+        for (const half of [0, 1]) {
+          const gg = half ? f : g;
+          const a0 = half ? 0 : Math.PI, a1 = a0 + Math.PI;
+          for (const pass of [0, 1]) {
+            for (let q = 0; q <= 14; q++) {
+              const t = a0 + (a1 - a0) * q / 14;
+              const px = x + Math.cos(t) * rx, py = cy + Math.sin(t) * ry + Math.sin(t * 3 + sway) * 2 * k;
+              if (q === 0) gg.moveTo(px, py); else gg.lineTo(px, py);
+            }
+            gg.stroke({ color: pass ? 0x6f9a2e : 0x2a3a12, width: pass ? 2.6 * k : 4.6 * k, alpha: (pass ? 0.95 : 0.55) * a, cap: 'round', join: 'round' });
+          }
+          for (let q = 0; q < 5; q++) {
+            const t = a0 + (a1 - a0) * (q + 0.5) / 5;
+            const px = x + Math.cos(t) * rx, py = cy + Math.sin(t) * ry;
+            const ox = Math.cos(t), oy = Math.sin(t) * 0.45 - 0.35;
+            const L = Math.hypot(ox, oy) || 1;
+            const tx = px + ox / L * 6 * k, ty = py + oy / L * 6 * k;
+            gg.moveTo(px - oy / L * 2 * k, py + ox / L * 2 * k); gg.lineTo(tx, ty); gg.lineTo(px + oy / L * 2 * k, py - ox / L * 2 * k); gg.closePath();
+            gg.fill({ color: 0xd8e8a8, alpha: 0.95 * a });
+            gg.stroke({ color: 0x2a3a12, width: 1 * k, alpha: 0.8 * a });
+          }
+        }
+        if (parts && Math.random() < 0.12 * dts) {
+          parts.push({ x: x + (Math.random() - 0.5) * 36 * k, y: cy - Math.random() * 6 * k,
+            vx: (Math.random() - 0.5) * 0.5, vy: 0.4 + Math.random() * 0.4, life: 0.7,
+            color: Math.random() < 0.5 ? '#8be36a' : '#5a8a2a', size: 2 });
+        }
+      }
     };
     if (!isPlayerDead(S)) draw(S, S.player.x, S.player.y);
     const others = S.others;
@@ -11525,7 +11637,8 @@ export class EffectsRenderer {
         if (!o || o._isDead || (o.zone || o.z || 'town') !== zone) continue;
         if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241 */
         if (!(o._chillUntil > now || o._stuckUntil > now || o._burnUntil > now || (o._gustAt && now - o._gustAt < GUST_FX_MS)
-          || o._dazeUntil > now || o._shockUntil > now || o._soakUntil > now || o._poisonUntil > now)) continue;   /* v2.3.3014: + the other four */
+          || o._dazeUntil > now || o._shockUntil > now || o._soakUntil > now || o._poisonUntil > now   /* v2.3.3014: + the other four */
+          || o._slowUntil > now || o._fractureUntil > now || o._thornUntil > now)) continue;   /* v2.3.3264: + a player's gem's three */
         const ox = typeof o.renderX === 'number' ? o.renderX : o.x;
         const oy = typeof o.renderY === 'number' ? o.renderY : o.y;
         if (typeof ox === 'number' && typeof oy === 'number') draw(o, ox, oy);

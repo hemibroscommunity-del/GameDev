@@ -63,7 +63,23 @@ const CRIT_ANCHOR_MULT = 2;
    FRAC 0.5 is the "50%" and is taken off the PRIMARY's already-capped roll,
    so the splash is bounded by _maxDmgForAttacker by arithmetic rather than
    by a second clamp, and it visibly reads as half the number beside it. */
-const STAFF_SPLASH = { RADIUS_PX: 60, FRAC: 0.5, MAX_TARGETS: 3 };
+export const STAFF_SPLASH = { RADIUS_PX: 60, FRAC: 0.5, MAX_TARGETS: 3 };   /* v2.3.3264: exported -- a bolt that hits a player splashes by it too (pvpextras.js) */
+
+/* ═══ v2.3.3264: THE KNOCKBACK AND THE LIFESTEAL, NAMED ═══
+   Owner: "Yes the monster only extras should work on players too" -- a melee
+   kill pays lifesteal whether the target is a monster or a player
+   (pvpextras.js _pvpKillHeal), by LIFESTEAL_REFUND on both: the share of what
+   the victim dealt you that a melee killing blow gives back
+   (_applyMeleeLifesteal, unchanged).
+   HIT_KNOCKBACK: px an ordinary hit shoves a MONSTER, x the zone's depth
+   (_handleMonsterDamage's v2.3.222 numbers, unchanged), named so the fight
+   simulator (tools/pvp-sim) can try it on players.  An ordinary hit on a
+   player shoves nothing: not in what the owner said yes to, and measured it
+   turns fights toward whoever keeps their distance (a monster walks a shove
+   back, a kiting player keeps it) -- docs/specs/one-formula.md "Not on
+   players yet". */
+export const HIT_KNOCKBACK = Object.freeze({ normal: 30, crit: 45, special: 60 });
+export const LIFESTEAL_REFUND = 0.9;
 
 /* ═══ v2.3.2849: THE SPECIALS, REBALANCED ═══
    Owner, on the three specials: "the specials probably need rebalanced" --
@@ -576,7 +592,7 @@ export const combatMethods = {
     if (!ps.dmgFromMonster) return { refund: 0, reason: 'no-damage' };
     const taken = ps.dmgFromMonster[monsterId] || 0;
     if (taken <= 0) return { refund: 0, reason: 'no-this-mon' };
-    const refund = Math.ceil(taken * 0.9);
+    const refund = Math.ceil(taken * LIFESTEAL_REFUND);   /* v2.3.3264: the constant a player kill pays by too */
     const maxHp = ps.maxHp || 100;
     ps.hp = Math.min(maxHp, (ps.hp || 0) + refund);
     delete ps.dmgFromMonster[monsterId];
@@ -1124,6 +1140,15 @@ export const combatMethods = {
        including inside another player's live dungeon instance, draining
        its waves out from under them. */
     if (attackerPs.z !== zone) return;
+    /* ═══ v2.3.3264: A PARRIED PLAYER IS STAGGERED, AND THORNS BITE ═══
+       A player another player parried loses their attacks for
+       PARRY_STAGGER_MS, as a parried monster loses its swing -- on anything
+       (pvpextras.js _pvpStaggered).  And a player carrying a flora gem's
+       thorn status takes its recoil when they attack, as a monster carrying
+       it does when it attacks (_pvpThornRecoil).  Neither is ever set
+       without the extras on, so both are inert with them off. */
+    if (this._pvpStaggered && this._pvpStaggered(attackerPs)) return;
+    if (this._pvpThornRecoil) this._pvpThornRecoil(session.id, attackerPs, Date.now());
     /* v2.3.1704: swinging ENDS your extraction, and with it the harvest
        shield.  A real client cannot get here mid-extraction (playerActions.js
        refuses both attack() and specialAttack() while S._extraction is set),
@@ -1378,35 +1403,10 @@ export const combatMethods = {
             hpPct: Math.max(0, m.hp / m.maxHp),
           },
         });
-        // v2.3.1139 (item I): resonance-streak mana restore, finally
-        // REAL -- the client has always computed this locally
-        // (gameSystems.js §3.5/§5.7) but mana is server-authoritative,
-        // so the echo stomped it every flush.  Constants verbatim:
-        // 10s streak window, +10%/step capped +50%, restore
-        // 4% maxMana × restoration mult, throttled to once per 3s.
-        if (attackerPs) {
-          if (col.resonating) {
-            const streak = attackerPs._resonanceStreak || { count: 0, lastTs: 0 };
-            streak.count = (_now - streak.lastTs <= 10000) ? Math.min(streak.count + 1, 5) : 1;
-            streak.lastTs = _now;
-            attackerPs._resonanceStreak = streak;
-            if (!attackerPs._lastCollisionMana || _now - attackerPs._lastCollisionMana >= 3000) {
-              attackerPs._lastCollisionMana = _now;
-              const streakMult = 1 + Math.min(streak.count * 0.10, 0.50);
-              // v2.3.1155: restoration mult deleted with the stat (×1.0
-              // for every live player; client mirror deleted in lockstep).
-              const restore = Math.round(0.04 * (attackerPs.maxMana || 100) * streakMult);
-              if (restore > 0) {
-                attackerPs.mana = Math.min(attackerPs.maxMana || 100, (attackerPs.mana || 0) + restore);
-                // v2.3.1619b: mana only -> coalesced (see _saveRpgPools).
-                this._saveRpgPools(session.id, attackerPs);
-                this._queuePlayerStateFlush(session.id);
-              }
-            }
-          } else if (attackerPs._resonanceStreak) {
-            attackerPs._resonanceStreak.count = 0; // non-resonating collision breaks the streak
-          }
-        }
+        /* v2.3.1139: the resonance streak's mana -- moved verbatim into
+           _collisionResonance at v2.3.3264, which a collision on a player
+           calls too (pvpextras.js): the mana is the attacker's either way. */
+        if (attackerPs) this._collisionResonance(session.id, attackerPs, col, _now);
       }
     }
 
@@ -1468,7 +1468,7 @@ export const combatMethods = {
          debt cap below takes the same factor so the repay (index.js, also
          depth-scaled) still undoes exactly one swing. */
       const _kbK = this._depthK(zone, m.y);
-      const kbForce = (payload.special ? 60 : (rolled.isCrit ? 45 : 30)) * _kbK;
+      const kbForce = (payload.special ? HIT_KNOCKBACK.special : (rolled.isCrit ? HIT_KNOCKBACK.crit : HIT_KNOCKBACK.normal)) * _kbK;   /* v2.3.3264: the numbers, named (above) */
       const kbAng = Math.atan2(m.y - attackerPs.y, m.x - attackerPs.x);
       m.x += Math.cos(kbAng) * kbForce;
       m.y += Math.sin(kbAng) * kbForce;
@@ -1581,11 +1581,53 @@ export const combatMethods = {
   /* v2.3.2849: `spec` -- the big bolt's blast is this same scan with its own
      radius, share and target bound (STAFF_BOLT.BLAST); omitted, the basic
      bolt's STAFF_SPLASH, exactly as before. */
-  _staffSplash(zone, primary, ox, oy, attackerId, attackerPs, primaryDmg, spec) {
+  /* ═══ v2.3.3264: v2.3.1139's resonance-streak mana, for any collision ═══
+     Moved verbatim out of _handleMonsterDamage so a collision on a player
+     (pvpextras.js _pvpCollision) pays its attacker the same way.  Constants
+     verbatim: 10s streak window, +10%/step capped +50%, restore 4% maxMana,
+     throttled to once per 3s.  The client has always computed this locally
+     (gameSystems.js §3.5/§5.7) but mana is server-authoritative, so the echo
+     stomped it every flush -- this is the real one. */
+  _collisionResonance(attackerId, attackerPs, col, _now) {
+    if (!attackerPs || !col) return;
+    if (col.resonating) {
+      const streak = attackerPs._resonanceStreak || { count: 0, lastTs: 0 };
+      streak.count = (_now - streak.lastTs <= 10000) ? Math.min(streak.count + 1, 5) : 1;
+      streak.lastTs = _now;
+      attackerPs._resonanceStreak = streak;
+      if (!attackerPs._lastCollisionMana || _now - attackerPs._lastCollisionMana >= 3000) {
+        attackerPs._lastCollisionMana = _now;
+        const streakMult = 1 + Math.min(streak.count * 0.10, 0.50);
+        // v2.3.1155: restoration mult deleted with the stat (×1.0
+        // for every live player; client mirror deleted in lockstep).
+        const restore = Math.round(0.04 * (attackerPs.maxMana || 100) * streakMult);
+        if (restore > 0) {
+          attackerPs.mana = Math.min(attackerPs.maxMana || 100, (attackerPs.mana || 0) + restore);
+          // v2.3.1619b: mana only -> coalesced (see _saveRpgPools).
+          this._saveRpgPools(attackerId, attackerPs);
+          this._queuePlayerStateFlush(attackerId);
+        }
+      }
+    } else if (attackerPs._resonanceStreak) {
+      attackerPs._resonanceStreak.count = 0; // non-resonating collision breaks the streak
+    }
+  },
+
+  /* v2.3.3264: `opts.exclude` -- a bolt that hit a PLAYER splashes from them
+     (pvpextras.js _pvpSplashFromPlayer): `primary` is null then, every monster
+     round the impact is a neighbour, and the struck player is the one the
+     players' half leaves out.  After the monsters, the players the caster is
+     already fighting get theirs, from what is left of MAX_TARGETS
+     (_pvpSplashPlayers) -- one scan, one cap, whoever is in it. */
+  _staffSplash(zone, primary, ox, oy, attackerId, attackerPs, primaryDmg, spec, opts) {
     const sp = spec || STAFF_SPLASH;
     if (typeof ox !== 'number' || typeof oy !== 'number') return 0;
     const monsters = this.monsters[zone] || [];
-    if (monsters.length < 2) return 0;
+    /* v2.3.3264: the players' half, after the monsters' (see above) */
+    const _players = (n) => (this._pvpSplashPlayers
+      ? this._pvpSplashPlayers(attackerId, attackerPs, ox, oy, primaryDmg, sp, n,
+        opts && opts.exclude, sp === STAFF_BOLT.BLAST ? 'blast' : 'splash') : 0);
+    if (monsters.length < (primary ? 2 : 1)) { _players(0); return 0; }
     const r = sp.RADIUS_PX * this._staffSplashMult(attackerPs);
     const r2 = r * r;
     const base = Math.max(1, Math.round(primaryDmg * sp.FRAC));
@@ -1594,7 +1636,7 @@ export const combatMethods = {
     let xpDealt = 0;   /* v2.3.3251: the same, each monster's faded by its level (xpdecay.js) */
     for (const m of monsters) {
       if (hitCount >= sp.MAX_TARGETS) break;
-      if (!m || m === primary || m.id === primary.id) continue;
+      if (!m || (primary && (m === primary || m.id === primary.id))) continue;
       if (!m.alive || m.hp <= 0) continue;
       if (typeof m.x !== 'number' || typeof m.y !== 'number') continue;
       const dx = m.x - ox;
@@ -1621,6 +1663,7 @@ export const combatMethods = {
     if (dealt > 0 && attackerPs && attackerPs.prog3) {
       this._prog3AwardXp(attackerId, attackerPs, 'staff', xpDealt);
     }
+    _players(hitCount);
     return dealt;
   },
 
@@ -1988,6 +2031,11 @@ export const combatMethods = {
     // PvP hits.  Other handlers (ability_use, eat_request, etc.) all
     // gate on these flags; PvP was missing the check.
     if (attackerPs.dying || attackerPs.dead || attackerPs.disconnected) return;
+    /* v2.3.3264: a parried player's blows are refused, and a thorned one's
+       attack bites back -- the same two lines _handleMonsterDamage has
+       (pvpextras.js), so a blow at a player and at a monster agree. */
+    if (this._pvpStaggered && this._pvpStaggered(attackerPs)) return;
+    if (this._pvpThornRecoil) this._pvpThornRecoil(attackerId, attackerPs, Date.now());
     /* v2.3.1704: swinging ends your extraction — same rule and same reason as
        the PvE path in _handleMonsterDamage.  A harvest shield that survived a
        PvP swing would be a duel/arena exploit rather than a quality-of-life
@@ -2079,6 +2127,9 @@ export const combatMethods = {
     const _now0 = Date.now();
     const _special = _bal ? (!!payload.special && this._pvpSpecialOk(attackerPs, _now0)) : !!payload.special;
     let _specialLanded = false;
+    /* v2.3.3264: the monster-only extras on players (pvpextras.js) -- only on
+       the one formula's path, and off with `pvpextras: false` */
+    const _xtra = _bal && typeof this._pvpExtrasOn === 'function' && this._pvpExtrasOn();
 
     // Check all players in room for hits
     for (const [targetId, targetPs] of Object.entries(this.playerState)) {
@@ -2175,7 +2226,13 @@ export const combatMethods = {
          Charged on the ABSORB, which is what the drain in _tickPlayerRegen
          cannot see: a defender who is actually being attacked runs the bar
          down far faster than one merely holding it up. */
-      if (blocked && BLOCK_COSTS_STAMINA && typeof targetPs.stamina === 'number') {
+      /* ═══ v2.3.3264: A PARRY WORKS ON A PLAYER'S BLOW TOO ═══
+         A block in the first PARRY_WINDOW_MS of raising the shield is free,
+         pays PARRY_STAMINA_REWARD and staggers whoever swung -- a monster's
+         swing since v2.3.1731, a player's now (pvpextras.js _pvpParry). */
+      const _parried = !!(blocked && _xtra && this._parryOpen(targetPs, Date.now()));
+      if (_parried) this._pvpParry(attackerId, attackerPs, targetId, targetPs, Date.now());
+      if (blocked && !_parried && BLOCK_COSTS_STAMINA && typeof targetPs.stamina === 'number') {
         const _cost = Math.max(1, Math.round(BLOCK_STAMINA_COST * this._blockStaminaMult(targetPs)));
         targetPs.stamina = Math.max(0, targetPs.stamina - _cost);
         _blockDrain = _cost;
@@ -2223,6 +2280,9 @@ export const combatMethods = {
         isCrit = _roll.isCrit;
         _hitBase = _roll.dmg;
         rawDmg = _roll.dmg;
+        /* v2.3.3264: a stone gem's fracture on the target amplifies this blow
+           as it amplifies a weapon hit on a monster (pvpextras.js) */
+        if (_xtra) rawDmg = rawDmg * this._pvpFractureMult(targetPs);
       }
       /* v2.3.2680 left PvP at edge 1 here on purpose -- "a PvP design call of
          its own".  v2.3.3263: the owner's call, "Everything is 1 version":
@@ -2233,6 +2293,25 @@ export const combatMethods = {
         _bal ? { attackerLevel: this._prog3OpponentLevel(attackerPs) } : undefined);
       const dmgTaken = dmgResult.dmgTaken;
       if (_bal && _special) _specialLanded = true;
+      /* ═══ v2.3.3264: WHAT THE BLOW CARRIES, AS ON A MONSTER ═══
+         The weapon's element (the claim's, read where a monster hit reads it:
+         pvpextras.js _pvpClaimElement) and its collision, by pvpextras.js's
+         shared back half.  A blocked or dodged blow carries none of it.
+         NOT the knockback a monster takes from the same hit (HIT_KNOCKBACK):
+         measured on the fight simulator it hands whoever keeps their
+         distance the room every hit makes -- a monster walks its shove back,
+         a kiting player keeps it -- and it was not in what the owner said
+         yes to.  Their call: docs/specs/one-formula.md "Not on players yet". */
+      let _xw = null, _xcol = null;
+      if (_xtra) {
+        const _el = this._pvpClaimElement(attackerPs, kind, payload);
+        const _ab = this._pvpAfterBlow(attackerId, attackerPs, targetId, targetPs, dmgResult, {
+          slot: kind, cat: kind === 'ranged' ? 'bow' : kind === 'staff' ? 'staff' : 'sword',
+          ...(_el ? { element: _el.element, volatile: !!_el.w.isVolatile } : null),
+        }, Date.now());
+        _xw = _ab.wire; _xcol = _ab.col;
+        this._notePvpEngage(attackerId, targetId, Date.now());
+      }
       /* v2.3.1701: the attacker is in combat too (see the twin stamp in
          _handleMonsterDamage) — otherwise a PvP aggressor in a lawless zone
          out-regenerates the fight they are winning. */
@@ -2258,6 +2337,8 @@ export const combatMethods = {
           slot: kind === 'ranged' ? 'ranged' : kind === 'staff' ? 'staff' : 'melee',
           /* v2.3.3263: what the block cost, as monster_attack says it */
           staminaDrain: _blockDrain > 0 ? _blockDrain : undefined,
+          /* v2.3.3264: a parried blow (pvpextras.js) */
+          ...(_parried ? { parried: true } : null),
           dmgBase: _hitBase,   /* v2.3.3260: the worker's roll on the new path */
           dmgTaken,
           isCrit: isCrit,
@@ -2291,6 +2372,9 @@ export const combatMethods = {
           maxHp: Math.max(1, Math.round(targetPs.maxHp || 1)),
           ts: Date.now(),
           rewindTicks: rewindTicks,
+          /* v2.3.3264: what it did beyond its number -- the element's status,
+             the shove (pvpextras.js), in monster_attack's own words */
+          ...(_xw || null),
         }
       };
       this.eventBuffer.push(hitEvent);
@@ -2304,7 +2388,32 @@ export const combatMethods = {
       // Echo authoritative hp + death check.
       this._saveRpgVitals(targetId, targetPs); // v2.3.1623: coalesced unless near death
       this._queuePlayerStateFlush(targetId);
+      if (_xtra) {
+        /* v2.3.3264: the collision the blow set off, its own blow (as its own
+           monster_hit is on a monster) */
+        if (_xcol && targetPs.hp > 0 && !targetPs.dying) {
+          this._strikePlayer(attackerId, attackerPs, targetId, targetPs, _xcol.dmg, {
+            slot: kind, ability: 'collision', collision: _xcol.id, elemental: true, noBlock: true, dot: true,
+            killSlot: kind,
+          });
+        }
+        /* v2.3.3264: a staff's bolt splashes (a basic one) or blasts (the big
+           one) where it struck -- the monsters round them and the players the
+           caster is fighting -- as it does off a monster, unless it went
+           through them (dodged) */
+        if (kind === 'staff' && !dmgResult.dodged) {
+          const _big = !!(_special && Math.floor(Number(payload.orbs)) > 1);
+          if (!_special || _big) this._pvpSplashFromPlayer(attackerId, attackerPs, targetId, targetPs, _hitBase, _big);
+        }
+        /* v2.3.3264: NOT the bow volley's burn: its arrows stuck in a monster
+           burn it four more ordinary hits (projectiles.js), but against a
+           player a kiting archer gets all four free -- measured, it turns a
+           skilled sword's fight with a skilled bow from 91% won to 6%.  The
+           owner's call: docs/specs/one-formula.md "Not on players yet". */
+      }
       if (targetPs.hp <= 0 && !targetPs.dying) {
+        /* v2.3.3264: the kill pays its heal, as a monster's does (pvpextras.js) */
+        if (_xtra) this._pvpKillHeal(attackerId, attackerPs, targetId, kind);
         this._handlePlayerDeath(targetPs, targetId, 'pvp:' + attackerId);
       }
     }

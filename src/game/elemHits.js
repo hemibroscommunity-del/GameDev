@@ -40,6 +40,23 @@
  * The daze is carried out like the hold: elemMoveMult() is 0, and
  * combatHelpers.dazeRefused() turns down a swing, a special, an ability, a
  * roll and the shield, saying "Dazed!".
+ *
+ * ═══ v2.3.3264: AND WHAT A PLAYER'S GEM DOES TO YOU ═══
+ * Owner: "Yes the monster only extras should work on players too" -- a hit
+ * from a player's enchanted weapon puts the gem's status on you, in the same
+ * words on the same fields (server/src/pvpextras.js), on a pvp_hit:
+ *   burn (flame), stuck (venom's root, a slime's hold), daze (frost's freeze,
+ *   a rock's daze), soak (water), shock (storm: the crackle) -- the words above
+ *   -- and three a monster never puts on a player:
+ *   slow      (wind)   you walk at the hit's `mult` (SLOW_MULT)  S._slowUntil
+ *   fracture  (stone)  you take +6% a stack, `stacks`            S._fractureUntil
+ *   thorn     (flora)  attacking bites you back                  S._thornUntil
+ * An ability's SHOVE (a bash's, a whirlwind's pull) rides as `kb` without a
+ * gust's `st` (applyHitShove: the gust's shove, no wind drawn) -- an ordinary
+ * hit on a player shoves nothing (docs/specs/one-formula.md "Not on players
+ * yet") -- and a parry STAGGERS whoever it caught --
+ * no swing, special, ability or burst for the parry's `ms` (isStaggered,
+ * combatHelpers.staggerRefused).
  */
 
 /* The walk while chilled.  MIRROR: server/src/monsterstatus.js CHILL.MULT
@@ -80,12 +97,24 @@ export const ELEM_ICON_SRC = {
 };
 
 /* The statuses this client carries out.  MIRROR: the values of
-   server/src/monsterstatus.js ELEM_HITS (mirror-audit.test.mjs). */
-export const ELEM_STATUSES = ['chill', 'burn', 'gust', 'stuck', 'daze', 'shock', 'soak', 'poison'];
+   server/src/monsterstatus.js ELEM_HITS, and since v2.3.3264 pvpextras.js
+   PVP_STATUSES (mirror-audit.test.mjs). */
+export const ELEM_STATUSES = ['chill', 'burn', 'gust', 'stuck', 'daze', 'shock', 'soak', 'poison', 'slow', 'fracture', 'thorn'];
 
-/* Nothing the wire says lasts longer than this, or shoves further. */
+/* v2.3.3264: a wind gem's slow, when the wire says no `mult`.  MIRROR:
+   server/src/pvpextras.js PVP_EXTRAS.SLOW_MULT (mirror-audit.test.mjs) --
+   a monster's slow (elemental.js elementMoveMult). */
+export const SLOW_MULT = 0.4;
+
+/* v2.3.3264: how long a blow's shove takes to carry out (the gust's own
+   shove is GUST.MS, on the wire as stMs). */
+const KB_MS = 180;
+
+/* Nothing the wire says lasts longer than this, or shoves further.
+   MAX_KB_PX MIRROR: server/src/pvpextras.js PVP_EXTRAS.SHOVE_MAX (v2.3.3264,
+   mirror-audit.test.mjs) -- the longest shove the worker grants a player. */
 const MAX_ST_MS = 5000;
-const MAX_KB_PX = 200;
+export const MAX_KB_PX = 200;
 
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -103,13 +132,19 @@ export function isBurnTick(p) {
  * v2.3.3014: damage the worker resolved that is NOT a blow -- a burn's tick,
  * the fire trail's, a poison's, or a storm's arc from someone near you.  No
  * flinch, no camera kick, no blood, no armour clang: 'burn', 'poison' or
- * 'shock' (what it sounds and sparkles like), else null.
+ * 'shock' (what it sounds and sparkles like), else null.  v2.3.3264: and on
+ * a pvp_hit a venom root's tick ('poison') and a thorn's prick ('thorn').
  */
 export function tickKind(p) {
   if (!p) return null;
   if (isBurnTick(p)) return 'burn';
   if (p.ability === 'poison') return 'poison';
   if (p.ability === 'shock') return 'shock';
+  /* v2.3.3264: a player's gem on you (a pvp_hit, server pvpextras.js): a
+     venom gem's root ticks like a poison, a flora gem's thorns prick back
+     when you attack */
+  if (p.ability === 'root') return 'poison';
+  if (p.ability === 'thorn') return 'thorn';
   return null;
 }
 
@@ -135,6 +170,15 @@ export function applyElemHit(S, p, now, who) {
   else if (p.st === 'daze') R._dazeUntil = Math.max(R._dazeUntil || 0, t + ms);
   else if (p.st === 'soak') R._soakUntil = Math.max(R._soakUntil || 0, t + ms);
   else if (p.st === 'poison') R._poisonUntil = Math.max(R._poisonUntil || 0, t + ms);
+  /* v2.3.3264: a player's gem (server pvpextras.js) */
+  else if (p.st === 'slow') {
+    const m = Number(p.mult);
+    R._slowMult = isFinite(m) && m >= 0.2 && m <= 1 ? m : SLOW_MULT;
+    R._slowUntil = t + ms;
+  } else if (p.st === 'fracture') {
+    R._fractureUntil = t + ms;
+    R._fractureStacks = Math.max(1, Math.min(5, Math.floor(Number(p.stacks)) || 1));
+  } else if (p.st === 'thorn') R._thornUntil = t + ms;
   else if (p.st === 'shock') {
     R._shockUntil = Math.max(R._shockUntil || 0, t + ms);
     R._shockAt = t;
@@ -158,13 +202,40 @@ export function applyElemHit(S, p, now, who) {
   return p.st;
 }
 
-/** The walk's multiplier right now: 0 held or dazed, CHILL_MULT chilled, else 1. */
+/** The walk's multiplier right now: 0 held or dazed, CHILL_MULT chilled,
+    a slow's own (v2.3.3264) -- the stronger of the two -- else 1. */
 export function elemMoveMult(S, now) {
   if (!S) return 1;
   if (S._stuckUntil && now < S._stuckUntil) return 0;
   if (S._dazeUntil && now < S._dazeUntil) return 0;   /* v2.3.3014 */
-  if (S._chillUntil && now < S._chillUntil) return CHILL_MULT;
-  return 1;
+  let k = 1;
+  if (S._chillUntil && now < S._chillUntil) k = CHILL_MULT;
+  if (S._slowUntil && now < S._slowUntil) k = Math.min(k, S._slowMult || SLOW_MULT);   /* v2.3.3264 */
+  return k;
+}
+
+/**
+ * v2.3.3264: a player's ability SHOVING you (a bash, a whirlwind's pull:
+ * server pvpextras.js): `kb` with no gust's `st`.  Carried out by the gust's own machinery
+ * (gustStep, BroTown's movement block) over KB_MS, with no wind drawn -- the
+ * worker granted the room for it.  Yours only: a peer's shove arrives in
+ * their moves.  Returns true when it took.
+ */
+export function applyHitShove(S, p, now) {
+  if (!S || !p || p.st === 'gust') return false;
+  const kb = p.kb;
+  if (!Array.isArray(kb) || kb.length !== 2) return false;
+  const dx = Number(kb[0]), dy = Number(kb[1]);
+  if (!isFinite(dx) || !isFinite(dy)) return false;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1 || len > MAX_KB_PX) return false;
+  S._gust = { dx, dy, t0: typeof now === 'number' ? now : Date.now(), ms: KB_MS, done: 0 };
+  return true;
+}
+
+/** v2.3.3264: staggered by a parry right now (no swing, special, ability or burst)? */
+export function isStaggered(S, now) {
+  return !!(S && S._staggerUntil && (typeof now === 'number' ? now : Date.now()) < S._staggerUntil);
 }
 
 /** Held in place by a slime right now? */
@@ -198,4 +269,5 @@ export function clearElemStatuses(S) {
   if (!S) return;
   S._chillUntil = 0; S._stuckUntil = 0; S._burnUntil = 0; S._gust = null;
   S._dazeUntil = 0; S._shockUntil = 0; S._shockFrom = null; S._soakUntil = 0; S._poisonUntil = 0;   /* v2.3.3014 */
+  S._slowUntil = 0; S._fractureUntil = 0; S._fractureStacks = 0; S._thornUntil = 0; S._staggerUntil = 0;   /* v2.3.3264 */
 }

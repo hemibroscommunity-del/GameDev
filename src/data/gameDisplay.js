@@ -3636,6 +3636,16 @@ BT_AUDIO.ELEM_SOUNDS = {
   soak: ['catch-splash', 0.1, 0.55, 0.5, 1],
   poison: ['slime-death', 0, 0.3, 0.26, 1.2],
   poisonTick: ['lure-drop', 0, 0.13, 3.2, 0.8],
+  /* v2.3.3264: what a PLAYER'S gem puts on you that no monster's hit does
+     (server pvpextras.js): a wind gem's slow, the gust's whirl slowed and
+     deeper; a stone gem's fracture, the vein's own crack; a flora gem's
+     thorns, the bamboo's whip sped up, and each prick they give back a
+     clipped arrow strike.  Measured like the rest: 0.66-0.76 of sword-hit3,
+     peaks 0.36-0.54. */
+  slow: ['whirlwind', 0.1, 0.5, 0.45, 0.8],
+  fracture: ['ore-crack', 0.02, 0.32, 0.55, 1],
+  thorn: ['bamboo-swing', 0.34, 0.2, 1.5, 1.3],
+  thornTick: ['arrow-hit', 0.04, 0.1, 1.1, 1.3],
 };
 /* ═══ v2.3.3015: A SPRINT'S PUSH-OFF ═══
    Asked of the sprint "no sprint sound or dust at the feet", the owner: "Yes

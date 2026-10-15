@@ -3106,6 +3106,11 @@ export function updateMonsterCombat(S, deps) {
                        counts it only after the swipe it charged and lands one
                        hit a swing -- never to an older one (below). */
                     special: (_pvpBal && S._specialAttack) ? true : undefined,
+                    /* v2.3.3264: the gem in the sword, as a monster is told
+                       (monster_damage's `element`): a worker with
+                       caps.pvpextras puts its status on the player it hit,
+                       the same as on a monster.  An older one ignores it. */
+                    element: _activeWpn.element1 || undefined,
                     /* v2.3.1302: kind tags the attack for the server's
                        per-kind range clamp.  Old servers ignore it. */
                     kind: 'melee'

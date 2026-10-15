@@ -1233,6 +1233,58 @@ remnant to migrate server-side, not a mode to preserve.
       - `pvp-balance`, `one-formula`, `linger`, `fightfood` §4-4c/§7,
         mirror-audit "fish heal"/"ONE_FORMULA", `grids` §6, `mp-quickeat`,
         `mp-linger`, `mp-pvpshield`, `mp-pvpnumbers`.
+      - since v2.3.3264 THE MONSTER-ONLY EXTRAS WORK ON PLAYERS -- asked about
+        "gem burn and root, the staff's splash, whirlwind, lunge and shield
+        bash, and the sword's heal on a kill", the owner: "Yes the monster only
+        extras should work on players too" (server/src/pvpextras.js,
+        docs/specs/one-formula.md "The extras"):
+        - a gem's status (burn, freeze, root, slow, soak, crackle, fracture,
+          thorns), a second element's collision, the staff's splash and the
+          big bolt's blast (a bolt on a player splashes too), the Element
+          Burst, the shield bash (its 90 px shove), the whirlwind (its pull)
+          and the dodge's lunge, a kill's Lifeblood and melee lifesteal
+          (`lifesteal_credit` `victimId`), and a parry's STAGGER (1.5 s, every
+          blow refused; `parry` `attackerId`) -- the same code and numbers as
+          on a monster, every one through ONE door (`_strikePlayer`:
+          `_pvpAllowed`, the shield, a roll, the kill);
+        - NOT ON PLAYERS YET, the owner's call: an ordinary hit's KNOCKBACK and
+          the bow volley's BURN. On the fight simulator (tools/pvp-sim
+          `whatIfs`: `shove`, `burnTicks`) both turn fights toward whoever
+          keeps their distance -- a monster walks a shove back
+          (KB_RECOVER_PX_PER_TICK) and a kiting player keeps it; a kiting
+          archer gets the burn's four ticks free, which against a monster the
+          210 ms lane mostly swallows -- a skilled sword against a skilled bow
+          91% won -> 27% with both, while the shipped set moves win rates 3
+          points on average (one-formula.md "Not on players yet");
+        - an AREA move (whirlwind, burst, splash, blast) hits only players
+          you are already fighting (a duel/arena pair, or a hit either way
+          in the last 10 s: `_pvpEngaged`); a NAMED move (bash, lunge, a
+          locked swing; a player named as `pid`, the dash's way below) only
+          needs the fight to be allowed;
+        - a player CANNOT BE LOCKED DOWN: a freeze or an ability's stun holds
+          as a rock's daze (0.5 s, then 2.5 s immune), a root as a slime's
+          hold (0.7 s, then 2 s); the status itself runs its full length;
+        - the gem is the CLAIM'S `element`, read where a monster hit reads it
+          (`_pvpClaimElement`): gem setting is the page's alone (EnchantPanel),
+          so the worker's copy of a weapon has none once a record exists --
+          the same trust a monster hit has (a server-owned gem setting would
+          close it for both; not built);
+        - the page: pvp_hit's `st`/`stMs`/`kb`/`mult`/`stacks`/`ability`/
+          `collision` carried out and drawn as a monster's (applyElemHit,
+          applyHitShove, tickKind -- a tick is no blow and sends no
+          pvp_confirmed), three new statuses `slow`/`fracture`/`thorn` (their
+          chips, looks and sounds), "Staggered!" (staggerRefused; a staggered
+          swipe is a plain roll), a player lock named by the bash and the
+          dodge's lunge and counted as a fight for the whirlwind
+          (`pvpExtrasTarget`, the dash's own rule) only against
+          `caps.pvpextras`; kill switch `pvpextras: false` (also off with
+          `oneformula`/`pvpbalance` false);
+        - merged with v2.3.3262 (the sword's dash at a player, below): the dash
+          keeps its own rules -- its daze, no shove -- and its daze rules hold
+          for the extras too (a dazed player's bash, whirlwind or lunge lands
+          nothing on a player, a dazed roll dodges nothing);
+        - `pvp-extras` suite, `blockcost` §5, `event-place` 1h2, mirror-audit
+          (statuses, SLOW_MULT, SHOVE_MAX), `mp-pvpextras` (three phones).
     - since v2.3.3262 THE SWORD'S OPENING LUNGE WORKS ON PLAYERS -- the owner:
       "Yes make opening lunge work on players too" (docs/specs/pvp-lunge.md):
       - the same move: a press with a player you may fight locked (a duel, No

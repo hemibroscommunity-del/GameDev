@@ -233,6 +233,7 @@ export function abilityRejectText(payload) {
     case 'no-shield': return 'No shield equipped!';
     case 'no-weapon': return 'No weapon equipped!';
     case 'whiff':    return 'Missed!';
+    case 'staggered': return 'Staggered!';   /* v2.3.3264: a player parried you (server pvpextras.js) */
     default:         return name + ' failed';
   }
 }

@@ -227,6 +227,191 @@ time, and carrying fish beats carrying none nearly every time. The staff is
 the low end of each range: its big bolts make a fight swingier than a meal
 can fix.
 
+## The extras: what a hit does besides its number (v2.3.3264)
+
+Asked whether the effects that still landed on monsters only should reach
+players too -- "gem burn and root, the staff's splash, whirlwind, lunge and
+shield bash, and the sword's heal on a kill" -- the owner: "Yes the monster
+only extras should work on players too". Those now do on a player what they
+do on a monster (`server/src/pvpextras.js`), and so do three of the same kind
+the question did not name: the Element Burst, a second element's collision
+and the parry's stagger. Two other monster-only effects are NOT on players:
+the fight simulator finds they turn fights between players toward whoever
+keeps their distance, and they were not in the question, so they are the
+owner's call (below, "Not on players yet").
+
+| What | On a monster (unchanged) | On a player, before | On a player, now |
+| --- | --- | --- | --- |
+| A gem in your weapon | its status: a burn, a freeze, a root, a slow, a soak, a crackle, a fracture, thorns | nothing | **the same status, the same numbers** |
+| A second element | it sets off the first (a collision: Steam, Wildfire, ...) | nothing | **the same collision** |
+| The staff's splash, the big bolt's blast | half (a third) of the bolt to the nearest 3 (6) | monsters only, and a bolt that hit a player splashed nothing | **players you are fighting too, and a bolt on a player splashes** |
+| Element Burst | 1.5x and its status on everything within 70 px | monsters only | **players you are fighting too** |
+| Shield bash, whirlwind, the dodge's lunge | strike, shove or pull, and stun | monsters only | **the player you name, or the players you are fighting in the whirlwind's circle** |
+| A kill's heal | Lifeblood, and on a melee kill 90% of what it dealt you | none | **the same** |
+| A parry | a free block, +10 stamina, the monster loses its swing | a free block and the stamina | **the player who swung is staggered 1.5 s** |
+| An ordinary hit's knockback | 30 px, a crit 45, a special 60 | none | **none: not yet** |
+| The bow special's burn | four bow hits, half a second apart | none | **none: not yet** |
+
+The sword's opening dash at a player came just before this, in v2.3.3262
+(`docs/specs/pvp-lunge.md`), with two rules of its own that stay: it shoves
+nobody (a shove would push the target out of the reach the dash closed) and
+its stun is the lunge's daze. A player is named the way it named one: as
+`pid`, never `targetId`, which stays a monster's.
+
+### The rules
+
+- **One door.** Every one of them reaches a player through the same check as
+  an ordinary hit: a duel, an arena match, or No man's land's rule. The
+  shield, a roll and the arrival grace protect against them as always.
+- **The same numbers.** Each is the very code the monster side runs: the
+  ability's share of the same roll, the splash's share, each status's own
+  length and ticks (a burn 5 + 0.3 x power every half second for 4 s, a root
+  3 + 0.15 x power every second for 5 s, a fracture +6% damage taken a stack
+  up to 5, a slow x0.4 for 5 s), the collision table, the bash's 90 px shove
+  and the whirlwind's pull, 90%.
+- **Attacking is still a choice** (v2.3.3253). A move that names its target
+  (the dash, the bash, the lunge, a locked swing) may hit the player it
+  names. A move that hits an area (the whirlwind, the burst, a splash or a
+  blast) hits only players you are already fighting: a duel or arena partner,
+  or someone you traded a hit with in the last 10 s. Your whirlwind in No
+  man's land never starts a fight with a bystander.
+- **A player cannot be locked down.** A frozen monster stays frozen 3 s, and
+  a fast frost sword keeps it there. On a player, a freeze or an ability's
+  stun holds the way a rock monster's daze holds a player: 0.5 s, then 2.5 s
+  before another (the very daze the sword's dash puts on a player, and they
+  share the 2.5 s). A root holds the way a slime's hold does: 0.7 s, then 2 s.
+  The status itself (its damage, its slow, its part in a collision) runs its
+  full length, as on a monster. And the dash's daze rules hold for these too:
+  a dazed player's bash, whirlwind or lunge lands nothing on a player, and a
+  dazed player's roll does not dodge one.
+- **The gem comes from the hit's report**, exactly where a hit on a monster
+  reads it. Setting a gem in a weapon is still done on the phone alone (the
+  Enchant window), so the server's copy of a weapon has no gem once a
+  character exists: the phone's report is the only place the gem is. That is
+  the same trust a hit on a monster has. Making gem setting the server's
+  would close it for both; it is not in this change. (The burst and the
+  lunge read the server's copy, on a monster and a player alike.)
+
+### What each screen shows
+
+- **The one hit**: the gem's icon on the number in the heart's place; its
+  chip under the bars, three of them new (Slowed; Fractured, with its stacks;
+  Thorned); its look drawn round them (wind eddies round the legs, cracked
+  ground with stone chips circling, a thorny bramble at the waist, or a
+  monster's own looks for the rest); its sound. A tick (a burn, a root, a
+  thorn's prick when you attack) is not a blow: no shake, no clang, the tick's
+  own sound, and no pvp_confirmed sent for it (a burn ticks eight times; the
+  bookkeeping is the blow's). A bash's shove or a whirlwind's pull moves
+  them, a hold stops them.
+- **The one who hit**: a tick's number in the element's colour with its icon,
+  a collision's with its name, a splash's violet, the burst's purple: the
+  colours the same hit wears on a monster.
+- **Everyone watching**: the status drawn on the player, its icon on their
+  number, no blood for a tick.
+- **A parry**: the one who parried sees "PARRY!" as before. The one who swung
+  sees "Staggered!", and for 1.5 s their page sends no swing, special,
+  ability or burst (the worker would refuse them); a swipe toward the enemy
+  is a plain roll meanwhile. Their feet and their shield are theirs.
+  - *Found while testing:* a swing (or a shot) between players is judged on
+    the shield as the attacker last saw it -- the lag compensation rewinds
+    the target by half the attacker's ping -- while a parry must land within
+    250 ms of the raise. So a swing from someone with a ping over about half
+    a second can be blocked but never parried. That was already true before
+    this change (a parry then only saved stamina); a bash, a whirlwind or a
+    lunge is judged on the shield as it is, and is parried normally.
+
+### Switches and deploy order
+
+- `caps.pvpextras`: the page names a player (as `pid`) as a bash's or the
+  dodge lunge's target, and counts a duel's lock as a fight for the
+  whirlwind's button, only against a worker that advertises it (the sword
+  dash's own cap is `caps.pvplunge`).
+- `pvpextras: false` (live flag) takes every extra off players at once, and
+  so does `oneformula: false` or `pvpbalance: false` (the extras ride the one
+  formula's numbers).
+- An **older page against this worker** draws a pvp_hit's new fields as a
+  plain hit and does not carry out a slow or a shove (the worker's room for a
+  shove goes unused); it never names a player for an ability, and its claims
+  carry no gem, so the worker reads its own copy (none).
+- A **newer page against an older worker** sees no `caps.pvpextras` and names
+  no player; the claim's `element` is ignored.
+
+### Tests
+
+- `server/test/pvp-extras.test.mjs`: who an area move may hit, every
+  element's status on a player and its ticks against a monster's, the holds'
+  immunity, a claimed element only from the status table, no shove from an
+  ordinary hit (and a monster still shoved), the splash and blast, the burst,
+  the abilities and their shoves, no volley burn, the kill's heal, the
+  stagger, the kill switches.
+- `blockcost` §5 (a parry against a player staggers them), `event-place` 1h2
+  (the stagger is told to the one it staggers), `mirror-audit` (the statuses,
+  the slow and the longest shove agree on both sides).
+- `mp-pvpextras` (three phones): a wind gem from the page's own swing slows
+  the target (their walk, their chip, the look on all three screens); a flame
+  gem's ticks drawn as ticks; a shield bash dazes and shoves, a whirlwind
+  pulls; a parry staggers the striker, whose next swing is refused on their
+  own page.
+
+### Not on players yet: the knockback and the volley's burn
+
+Both are monster-only today, and both were tried on players in the fight
+simulator (`tools/pvp-sim`, through the worker's own code: `shove` and
+`burnTicks` in sim.mjs `whatIfs`). Neither works on a player the way it works
+on a monster, because a monster always comes back at you and a player who
+wants distance does not:
+
+- **The knockback.** Every hit shoves a monster 30 px (a crit 45, a special
+  60), and the monster walks the shove back at extra pace while it chases you
+  (v2.3.1639, `KB_RECOVER_PX_PER_TICK`). On a player it is a gift to whoever
+  wants room: your sword's hit pushes the archer or the caster you just
+  reached out of reach, and they keep the room. Even with the monster's
+  catch-up given to players (the simulator's `kbDebt`, which the game would
+  still need building) it changes fights in both directions.
+- **The volley's burn.** The bow special's arrows stick in a monster and burn
+  it four more ordinary hits, half a second apart. Against monsters it is
+  worth almost nothing to an archer who keeps shooting: the worker lets one
+  ordinary hit per target through every 210 ms, so a tick mostly takes the
+  place of the next arrow (modelled: a bow's kills a minute at levels 7, 12
+  and 22 come out the same, to 0.1, with 0, 1, 2 or 4 ticks). Against a player
+  the archer who backs off without shooting gets all four free.
+
+Win rates, 200 fights a cell, level 12 (skill 10), copper set; careless /
+average / skilled are the simulator's low / moderate / high players:
+
+| | Sword v bow | Sword v staff | Bow v staff (bow wins) |
+| --- | --- | --- | --- |
+| No extras on players | 33% / 41% / 91% | 14% / 24% / 71% | 67% |
+| **As shipped** | 33% / 44% / 96% | 14% / 22% / 70% | 62% |
+| + the knockback, with the monster's catch-up | 24% / 72% / 99% | 8% / 18% / 52% | 48% |
+| + the knockback, without it | 6% / 23% / 100% | 3% / 10% / 44% | 36% |
+| + the volley's burn (four ticks, as on a monster) | 11% / 26% / 6% | 14% / 22% / 70% | 77% |
+| + both, as on a monster | 6% / 33% / 27% | 8% / 18% / 52% | 73% |
+| + a one-tick burn | 23% / 33% / 73% | 14% / 22% / 70% | 73% |
+
+Over all nine cells of levels 7, 12 and 22 with no armour, the copper set
+and the iron set, the average change in a win rate from "no extras":
+**as shipped 3 points** (the largest 12; a cell's noise is about 3.5), with
+the knockback 11.5 (the largest 38), with the burn 19.5 (88), with both 18
+(70), with a one-tick burn 6 (37). Re-run with
+`LUNGE_SETTINGS='[{"label":"shipped","tune":{}},{"label":"+burn 4","tune":{"burnTicks":4}}]' node tools/pvp-sim/lunge.mjs 200 5,10,20 none,both,iron`.
+
+The owner's options: leave both monster-only (today); add the knockback with
+a catch-up built for players (a pushed player walks it back at the monster's
+extra pace toward whoever pushed them); add the burn shorter for everyone --
+one tick a volley leaves monster fights as they are and moves player fights
+by about 6 points on average, but the arrows would stop burning a monster
+after about a second.
+
+Found while measuring, and not changed: the worker's lane for a player's
+ordinary hits on another player lets one through every 300 ms
+(`PVP_TUNING.CADENCE_MS`), a monster's every 210 ms (the monster's was sized
+with room to spare, v2.3.1343; the player one never moved). A bow with its
+Speed near the top fires about every 302 ms (495 x (1 - 0.39)), right at the
+player line, so arrows that land closer together than they left -- at a
+target walking toward the archer -- can be dropped against a player and not
+against a monster. Making it 210 would be one more "one version" step.
+
 ## What one formula cannot do
 
 - **A sword against a bow or a staff in the open.** A monster walks up to

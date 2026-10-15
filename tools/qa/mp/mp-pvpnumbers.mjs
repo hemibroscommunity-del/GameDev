@@ -37,20 +37,21 @@ const AMBER = '#ffd08a';
 const TAKEN = '#ff5e6c';
 
 async function closeIn(A, wsPort, aId, bId, want = 40) {
-  for (let i = 0; i < 20; i++) {
+  /* v2.3.3264: by the harness's hop (H.hopTo: the striker's own position
+     moved in steps the worker's move check accepts), not by held keys -- a box
+     drawing three phones runs each at 2-4 frames a second, where a held key
+     walks ~15 px and twenty tries stopped 164 px short */
+  for (let i = 0; i < 8; i++) {
     const [pa, pb] = await Promise.all([H.serverPlayer(wsPort, aId), H.serverPlayer(wsPort, bId)]);
     if (!pa || !pb) return { ok: false };
-    const dx = pb.x - pa.x, dy = pb.y - pa.y;
+    const dx = pa.x - pb.x, dy = pa.y - pb.y;
     const d = Math.hypot(dx, dy);
     const tol = Math.max(8, want * 0.25);
     if (Math.abs(d - want) <= tol) return { ok: true, d: Math.round(d) };
-    const away = d < want;
-    const sx = away ? -dx : dx, sy = away ? -dy : dy;
-    const key = Math.abs(dx) > Math.abs(dy) ? (sx > 0 ? 'd' : 'a') : (sy > 0 ? 's' : 'w');
-    await A.page.keyboard.down(key);
-    await A.page.waitForTimeout(Math.min(500, Math.max(90, Math.abs(d - want) * 2.2)));
-    await A.page.keyboard.up(key);
-    await A.page.waitForTimeout(320);
+    /* `want` px from them, on the side the striker stands (east if on top) */
+    const ux = d > 1 ? dx / d : 1, uy = d > 1 ? dy / d : 0;
+    await H.hopTo(A, pb.x + ux * want, pb.y + uy * want, { step: 60, gap: 300, tries: 30 });
+    await A.page.waitForTimeout(500);
   }
   const [pa, pb] = await Promise.all([H.serverPlayer(wsPort, aId), H.serverPlayer(wsPort, bId)]);
   return { ok: false, d: pa && pb ? Math.round(Math.hypot(pb.x - pa.x, pb.y - pa.y)) : null };

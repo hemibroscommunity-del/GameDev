@@ -17,7 +17,8 @@ import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 import { monsterHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: the lunge's hit in its monster's voice (was hitMaterialOf, v2.3.2452) */
-import { isStuck } from '@/game/elemHits.js'; /* v2.3.2996: a slime's goo holds you */
+import { isStuck, isStaggered } from '@/game/elemHits.js'; /* v2.3.2996: a slime's goo holds you; v2.3.3264: a parry staggers you */
+import { pvpExtrasTarget } from '@/game/abilities.js'; /* v2.3.3264: the player a lunge may take */
 import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: the retreat shot carries the damage brew */
 
 /* ═══ v2.3.2916: HOW LONG A ROLL LASTS -- ONE ANSWER, SENT WITH IT ═══
@@ -82,6 +83,10 @@ export var triggerContextualDodge = function (S, R, ang) {
        and dropped regardless of which of the three it turns out to be. */
     dropShield(S, 'dodge');
     var ctx = resolveDodgeContext(S, ang);
+    /* v2.3.3264: staggered by a player's parry, the lunge and the retreat
+       shot are blows the worker refuses (pvpextras.js) -- the swipe is a
+       plain roll meanwhile: your feet are yours (combatHelpers.staggerRefused) */
+    if ((ctx === 'lunge' || ctx === 'retreat_shot') && isStaggered(S, Date.now())) return doStandardDodge(S, R, ang);
     if (ctx === 'lunge') return doLunge(S, R, ang);
     if (ctx === 'retreat_shot') return doRetreatShot(S, R, ang);
     return doStandardDodge(S, R, ang);
@@ -141,7 +146,17 @@ export var doLunge = function (S, R, ang) {
     var lungeCost = rpgBlockSize(R, 'stamina');   /* v2.3.2302: one block -- was 0.25, a block and a quarter on a bar you count */
     if ((R.stamina || 0) < lungeCost) return doStandardDodge(S, R, ang);
     var lt = S.lockedTarget && S.lockedTarget.ref;
-    if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
+    /* ═══ v2.3.3264: A LUNGE AT THE PLAYER YOU ARE FIGHTING ═══
+       Owner: "Yes the monster only extras should work on players too".  A
+       player lock (a duel's, No man's land's aim) is a lunge's target too, by
+       the sword's own lunge's rule, against a worker that strikes players with
+       it (abilities.js pvpExtrasTarget, caps.pvpextras; server abilities.js
+       _lungeStrike, through pvpextras.js's one door).  A peer record has no
+       `alive`: the rule is its own test. */
+    var _ltPlayerRef = (S.lockedTarget && S.lockedTarget.type === 'player') ? pvpExtrasTarget(S) : null;
+    var _ltPlayer = !!_ltPlayerRef;
+    if (_ltPlayer) lt = _ltPlayerRef;
+    if (!lt || (!lt.alive && !_ltPlayer)) return doStandardDodge(S, R, ang);
     /* Server-authoritative stamina in MP — see doStandardDodge note. */
     R.stamina -= lungeCost;
     /* v2.3.1702: see the note in playerActions.js — `_serverMonsters` is
@@ -163,7 +178,13 @@ export var doLunge = function (S, R, ang) {
     if (S.channel) {
       var _lockIsMonster = !!(S.lockedTarget && S.lockedTarget.type === 'monster');
       var _lungeTargetId = (_lockIsMonster && lt.id != null) ? String(lt.id) : null;
-      try { S.channel.send({ type: 'ability_use', payload: { type: 'lunge', targetId: _lungeTargetId } }); } catch (e) {}
+      /* v2.3.3264: ...or the player you are fighting, named as `pid` (never
+         `targetId`, which is a monster's: the sword lunge's way, v2.3.3262) */
+      try {
+        S.channel.send({ type: 'ability_use', payload: _ltPlayer
+          ? { type: 'lunge', pid: String(S.lockedTarget.id) }
+          : { type: 'lunge', targetId: _lungeTargetId } });
+      } catch (e) {}
     }
     addBuildUse(R, 'endurance', lungeCost);
     addBuildUse(R, 'agility', lungeCost);

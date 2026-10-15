@@ -600,6 +600,10 @@ export const abilityMethods = {
        loadout is a prediction. */
     if (cfg.needs === 'shield' && !ps.shield) return reject('no-shield');
     if (cfg.needs === 'weapon' && !ps.weapon) return reject('no-weapon');
+    /* v2.3.3264: a player another player parried is staggered -- no attacks
+       of any kind for PARRY_STAGGER_MS (pvpextras.js), refused before the
+       stamina or the cooldown is spent, as the swing is. */
+    if (this._pvpStaggered && this._pvpStaggered(ps)) return reject('staggered');
 
     const now = Date.now();
     if (!ps._abilCd) ps._abilCd = Object.create(null); /* proto-safe; keys are OUR constants */
@@ -792,9 +796,51 @@ export const abilityMethods = {
       }
     }
 
+    /* ═══ v2.3.3264: THE SAME MOVE ON A PLAYER ═══
+       Owner: "Yes the monster only extras should work on players too".  A
+       bash that NAMES a player as `pid` (the page's lock: a duel opponent, or
+       someone No man's land let you aim at -- `targetId` stays a monster's,
+       the sword lunge's way, v2.3.3262) strikes that player; with nothing
+       named and no monster in reach, the nearest player the caster is
+       already fighting in the circle; a whirlwind every such player in its
+       circle besides the monsters, up to maxTargets in all (pvpextras.js
+       _pvpNamedPlayer / _pvpAreaPlayers -- a bystander is never hit).  Each
+       through _abilityStrikePlayer: the same roll x dmgMult, the shove or
+       the pull, and the stun as a player takes one (the daze's rule).  The
+       sword's dash at a player is pvplunge.js's, above (its own rules: no
+       shove, the lunge's daze), and never reaches here. */
+    const pTargets = [];
+    if (typeof this._pvpExtrasOn === 'function' && this._pvpExtrasOn()) {
+      const _now = Date.now();
+      const namedPid = kind === 'bash' && payload && typeof payload.pid === 'string';
+      /* the name was the choice: a bash at a player never lands on a monster
+         beside them (the lunge's rule, pvplunge.js) */
+      if (namedPid) targets = [];
+      const named = namedPid ? this._pvpNamedPlayer(session.id, ps, payload.pid) : null;
+      if (named) {
+        const dx = named.ps.x - (ps.x || 0), dy = named.ps.y - (ps.y || 0);
+        const reach = cfg.reach || cfg.radius;
+        /* the named player, not a monster that happens to be closer: the
+           name was the choice */
+        if (dx * dx + dy * dy <= reach * reach) pTargets.push(named);
+      } else if (kind === 'whirl') {
+        const room = Math.max(0, (cfg.maxTargets || 8) - targets.length);
+        for (const p of this._pvpAreaPlayers(session.id, ps, ps.x || 0, ps.y || 0, _castR, _now).slice(0, room)) pTargets.push(p);
+      } else if (kind === 'bash' && !targets.length && !namedPid) {
+        const p = this._pvpAreaPlayers(session.id, ps, ps.x || 0, ps.y || 0, _castR, _now)[0];
+        if (p) pTargets.push(p);
+      }
+      /* thorns bite the one who strikes, once a strike (pvpextras.js) */
+      if (this._pvpThornRecoil && (targets.length || pTargets.length)) this._pvpThornRecoil(session.id, ps, _now);
+    }
+
     let hits = 0;
     for (const t of targets) {
       hits += this._abilityStrikeMonster(zone, t.m, session.id, ps, kind, cfg) ? 1 : 0;
+    }
+    for (const p of pTargets) {
+      if (ps.dying || !(ps.hp > 0)) break;
+      hits += this._abilityStrikePlayer(session.id, ps, p.pid, p.ps, kind, cfg) ? 1 : 0;
     }
 
     /* The pool is the only durable change, so it coalesces (v2.3.1619b);
@@ -940,6 +986,39 @@ export const abilityMethods = {
     return true;
   },
 
+  /* ═══ v2.3.3264: ONE ABILITY HIT VS ONE PLAYER ═══
+     _abilityStrikeMonster's twin, the same numbers: the ordinary melee roll
+     (the edge by the target's level as an opponent) x the ability's dmgMult,
+     under the ordinary melee ceiling; the shove (knockback) or the pull
+     (pullTo) from where the caster stands, x the depth; the stun as a player
+     takes one -- a daze, DAZE.MS, then DAZE.IMMUNE_MS before another (a
+     player cannot be locked down: pvpextras.js header); and for the lunge the
+     weapon's element, as _lungeStrike gives a monster.  No fracture: a
+     monster's ability strike never reads it either.  Through the one door
+     (_strikePlayer): the shield, a parry, the i-frames, the kill.
+     Returns true when the move connected (a blocked blow connected). */
+  _abilityStrikePlayer(sid, ps, pid, tps, kind, cfg) {
+    /* a dazed player's blow lands nothing on a player (the lunge's rule,
+       pvplunge.js _pvpDazed: off with `pvplunge: false`) -- the page refuses
+       the cast while dazed, so an honest one never sends it */
+    if (this._pvpDazed && this._pvpDazed(ps)) return false;
+    const rolled = this._computeAttackDamage(ps, 'melee', false, { targetLevel: this._prog3OpponentLevel(tps) });
+    const cap = this._maxDmgForAttacker(ps, false);
+    const raw = Math.max(1, Math.min(cap, Math.round(rolled.dmg * cfg.dmgMult)));
+    const kb = cfg.pullTo > 0 ? { pullTo: cfg.pullTo } : cfg.knockback > 0 ? { away: cfg.knockback } : null;
+    const el = kind === 'lunge' && this._pvpSlotElement ? this._pvpSlotElement(ps, 'melee') : null;
+    const r = this._strikePlayer(sid, ps, pid, tps, raw, {
+      slot: 'melee', ability: kind, isCrit: !!rolled.isCrit,
+      fromX: ps.x || 0, fromY: ps.y || 0,
+      ...(kb ? { kb } : null),
+      ...(cfg.stunMs > 0 ? { hold: 'daze' } : null),
+      /* the lunge's element is its status only (_applyWeaponElementStatus,
+         which never resolves a collision): the same here */
+      ...(el ? { element: el.element, cat: 'sword', noCollision: true } : null),
+    });
+    return !!r;
+  },
+
   /* ═══ v2.3.2361: THE CONTEXTUAL LUNGE'S DAMAGE LEG ═══
      Called from _handleAbilityUse (index.js) AFTER the pool has been charged,
      so a spammer with an empty bar is short-circuited before any monster work.
@@ -1022,9 +1101,12 @@ export const abilityMethods = {
                  module header's ANTICHEAT LOCKSTEP argument, and combat.js's
                  comboBoost comment has named "lunge mult" since before this
                  was true. */
-  _lungeStrike(session, ps, targetId) {
+  /* v2.3.3264: `pid` -- a player the lunge names instead (the sword lunge's
+     way, v2.3.3262: `targetId` stays a monster's) */
+  _lungeStrike(session, ps, targetId, pid) {
     if (!session || !session.id || !ps) return false;
-    if (targetId === undefined || targetId === null || targetId === '') return false;
+    const _byPid = typeof pid === 'string' && pid.length > 0;
+    if (!_byPid && (targetId === undefined || targetId === null || targetId === '')) return false;
     if (!ps.weapon) return false;
     /* ═══ v2.3.2372: A HARVEST REFUSES THE LUNGE, NOT THE OTHER WAY ROUND ═══
        An earlier draft called _endExtraction on the strike instead, on the
@@ -1094,6 +1176,27 @@ export const abilityMethods = {
     if (ps.ex && ps.ex !== 'fire') return false;
     const now = Date.now();
     if (now < (ps._lungeAt || 0)) return false;
+    /* v2.3.3264: staggered by a parry, no lunge either (pvpextras.js) */
+    if (this._pvpStaggered && this._pvpStaggered(ps, now)) return false;
+    /* ═══ v2.3.3264: A LUNGE AT A PLAYER ═══
+       The paragraph above called a player lock "structurally impossible ...
+       fails closed" -- the owner's "Yes the monster only extras should work
+       on players too" opens it, through the one door it named
+       (_pvpAllowed, inside _pvpNamedPlayer and _strikePlayer): the same reach
+       floored under PVE_MELEE_RANGE, the same cadence stamp, 0.6 of the same
+       roll and the weapon's element (_abilityStrikePlayer).  Named as `pid`,
+       and only that player: a lunge at a player never lands on a monster. */
+    if (_byPid) {
+      const _named = this._pvpNamedPlayer ? this._pvpNamedPlayer(session.id, ps, pid) : null;
+      if (!_named) return false;
+      const pdx = _named.ps.x - (ps.x || 0), pdy = _named.ps.y - (ps.y || 0);
+      const preach = Math.min(this.PVE_MELEE_RANGE, LUNGE.reach);
+      if (pdx * pdx + pdy * pdy > preach * preach) return false;
+      ps._lungeAt = now + LUNGE.cooldownMs;
+      if (this._pvpThornRecoil) this._pvpThornRecoil(session.id, ps, now);
+      return this._abilityStrikePlayer(session.id, ps, _named.pid, _named.ps, 'lunge', LUNGE);
+    }
+    if (targetId === undefined || targetId === null || targetId === '') return false;
     const zone = ps.z;
     const monsters = (zone && this.monsters[zone]) || [];
     const want = String(targetId);

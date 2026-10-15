@@ -2300,6 +2300,11 @@ export function updateArrows(S, deps) {
                       orbs: a.orbs > 1 ? a.orbs : undefined,
                       part: a.part > 1 ? a.part : undefined,
                       rs: a.retreatShot ? 1 : undefined,
+                      /* v2.3.3264: the gem in the bow or staff, as a monster is
+                         told (monster_damage's `element`): a worker with
+                         caps.pvpextras puts its status on the player it hit,
+                         the same as on a monster.  An older one ignores it. */
+                      element: projElem || undefined,
                       kind: isStaffProj ? 'staff' : 'ranged',
                       /* v2.3.1306: declare the single intended target so
                          the server skips everyone else in the cone — the
