@@ -1,19 +1,21 @@
-/* ═══ v2.3.3147: THE INSIDE OF EACH BUILDING ═══
+/* ═══ v2.3.3258: THE INSIDE OF EACH BUILDING ═══
  *
  * Owner, 2026-10-06: sent seventeen pictures of the inside of BroTown's
  * buildings (the prompts are docs/ART-WISHLIST.md "Inside the buildings"; the
  * pictures were made from them in ChatGPT) and said "Ok wire these up".
- * Each is shown at the top of its building's window when you walk in, the way
- * the Auction House's painting always was (v2.3.2627, now replaced by this
- * set so all seventeen rooms are one family).
+ * Each is the BACKGROUND of its building's window, the menu written on it (the
+ * owner, choosing the shopkeeper outside over walking in: "Have it open up as
+ * backgrounds behind the different buildings menus instead of literally going
+ * into a building"); the Auction House's painting (v2.3.2627) is replaced by
+ * this set so all seventeen rooms are one family.
  *
  * Which window shows which room is this table: the `buildingPanel` value a
  * door opens (src/game/interactions.js enterBuilding -> setBuildingPanel) ->
  * the plot id of the building (public/tools/world/plan.js town.lots), which
  * is also the picture's name, public/world/interiors/<plot id>.webp.  The
- * panels themselves are untouched: BroTown.jsx draws ONE <BuildingRoom/> at
- * the top of the window card for whichever panel is open
- * (src/ui/panels/buildings/BuildingRoom.jsx).
+ * panels themselves are untouched: BroTown.jsx draws ONE <BuildingRoom/>
+ * behind everything in the window card for whichever panel is open
+ * (src/ui/panels/buildings/BuildingRoom.jsx, game.css ".bt-room").
  *
  * No imports, so tools/world/test-world-core.mjs can read it: it checks every
  * door of the Wheel's Brotown (WHEEL_BUILDING_DOORS, WHEEL_HALL_DOORS) lands
@@ -31,11 +33,11 @@ export const ROOM_W = 1152;
 export const ROOM_H = 768;
 
 /* buildingPanel value -> plot id.  Sixteen windows, fifteen rooms: the Gem Works'
-   two tabs ('gemcut' and 'enchant', v2.3.3148) are one room, and the Assay Office
+   two tabs ('gemcut' and 'enchant', v2.3.3259) are one room, and the Assay Office
    that had its own is gone.  (The Feed & Seed, the Land
    Office's trip to your farm, the Saloon and the rest open today's own
    panels; the Guild Hall, Post Office and Sheriff's Office are the Wheel's
-   halls, v2.3.3066, and so is the Town Hall, v2.3.3147).  'store' (the Market,
+   halls, v2.3.3066, and so is the Town Hall, v2.3.3258).  'store' (the Market,
    reached by a button inside the Auction House's and the General Store's
    windows) has none: it is a screen of its own, not a building. */
 export const BUILDING_ROOMS = {
@@ -46,14 +48,14 @@ export const BUILDING_ROOMS = {
   woodwork: 'woodworker',
   gemcut: 'gemcutter',
   cook: 'cookhouse',
-  enchant: 'gemcutter',       /* v2.3.3148: the Enchanter is the Gem Works' second tab -- the same room as 'gemcut' (the Assay Office is gone) */
+  enchant: 'gemcutter',       /* v2.3.3259: the Enchanter is the Gem Works' second tab -- the same room as 'gemcut' (the Assay Office is gone) */
   gamble: 'gambling',
   farm: 'feedseed',
   farmhome: 'landoffice',     /* the trip to your own farm */
   post: 'post',
   sheriff: 'sheriff',
   guildhall: 'guildhall',
-  townhall: 'townhall',       /* v2.3.3147: a hall of the Wheel's own, the leaderboard and the world map */
+  townhall: 'townhall',       /* v2.3.3258: a hall of the Wheel's own, the leaderboard and the world map */
   auctionhouse: 'auction',
 };
 
@@ -61,14 +63,15 @@ export const BUILDING_ROOMS = {
    is shut (its rest is the farm bed's, on this device only --
    WHEEL_SHUT_DOORS).  It costs nothing until a window asks for it;
    test-world-core checks the file is there, so the day it opens it is one line
-   in BUILDING_ROOMS.  (The Town Hall's was held here until v2.3.3147 made it a
+   in BUILDING_ROOMS.  (The Town Hall's was held here until v2.3.3258 made it a
    hall.) */
 export const SPARE_ROOMS = ['hotel'];
 
 /* Windows whose card sits LOW so something above stays in view: the forge's
    (BroTown.jsx: the smith is seen working above it, game/smithing.js).  A
-   full 3:2 picture would fill the whole card, so these show a slim band of
-   the room instead -- its sign, the forge and the anvil. */
+   full stage would fill the whole card, so its stage is a slim band of the
+   room instead -- its sign, the forge and the anvil (game.css keys the band's
+   stage on the forge's room, `[data-room="blacksmith"]`: one band). */
 export const BAND_ROOMS = ['forge'];
 
 /* ═══ THE PEOPLE THE GAME DRAWS INTO A ROOM ═══

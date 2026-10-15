@@ -42,8 +42,8 @@ import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3
 import { ARMOR_FORGE_RECIPES as CLIENT_ARMOR_FORGE } from '../../src/data/items.js'; /* v2.3.3092 */
 import * as SRV_SALVAGE from '../src/salvage.js'; /* v2.3.3141 */
 import * as CLIENT_SALVAGE from '../../src/data/salvage.js'; /* v2.3.3141 */
-import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038 */
-import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl } from '../../src/data/lifeSkills.js'; /* v2.3.3038 */
+import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl, gatherHitRoll as srvGatherHitRoll, GATHER_NODE_HP as SRV_GATHER_NODE_HP, gatherNodeHp as srvGatherNodeHp } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038; gatherHitRoll v2.3.3229 */
+import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl, GATHER_HIT_LADDER as CLIENT_GATHER_HIT_LADDER, gatherHitOdds as clientGatherHitOdds, gatherHitOddsText as clientGatherHitOddsText, GATHER_NODE_HP as CLIENT_GATHER_NODE_HP } from '../../src/data/lifeSkills.js'; /* v2.3.3038; the hit ladder v2.3.3229 */
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
 import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES, ELEM_LOOK as CLIENT_ELEM_LOOK, ELEM_ICON_SRC as CLIENT_ELEM_ICON_SRC } from '../../src/game/elemHits.js'; /* v2.3.2996 */
 import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
@@ -53,8 +53,13 @@ import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wh
 import { PVP_HEAL as CLIENT_PVP_HEAL } from '../../src/game/fightFood.js'; /* v2.3.3133 */
 import { WHEEL_SPAWNS as SRV_WHEEL_SPAWNS } from '../src/wheelspawns.js'; /* v2.3.3089 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
-import { GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */, createDefaultRpg as clientDefaultRpg /* v2.3.3138 */ } from '../../src/data/gameSystems.js';
+import { GATHER_PLAN_MAX as CLIENT_GATHER_PLAN_MAX /* v2.3.3251 */, GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */, createDefaultRpg as clientDefaultRpg /* v2.3.3138 */ } from '../../src/data/gameSystems.js';
 import { NEW_CHARACTER_COINS as SRV_NEW_CHARACTER_COINS } from '../src/join.js';   /* v2.3.3138 */
+import { GATHER_TIER_XP as SRV_GATHER_TIER_XP, harvestBaseXp as srvHarvestBaseXp } from '../src/gathering.js';   /* v2.3.3251 */
+import { XP_DECAY as SRV_XP_DECAY, xpDecayMult as srvXpDecayMult, xpAfterDecay as srvXpAfterDecay } from '../src/xpdecay.js';   /* v2.3.3251 */
+import { GATHER_TIER_XP as CLIENT_GATHER_TIER_XP, harvestBaseXp as clientHarvestBaseXp } from '../../src/data/lifeSkills.js';   /* v2.3.3251 */
+import { XP_DECAY as CLIENT_XP_DECAY, xpDecayMult as clientXpDecayMult, xpAfterDecay as clientXpAfterDecay } from '../../src/data/xpDecay.js';   /* v2.3.3251 */
+import { harvestXpFor as clientHarvestXpFor } from '../../src/data/gameSystems.js';   /* v2.3.3251 */
 import { freshLifeSkills as srvFreshLifeSkills } from '../src/migrations.js';       /* v2.3.3138 */ /* v2.3.2956; the lead and settle v2.3.3036 */
 import { GESTURE_FLOOR_MS as CLIENT_GESTURE_FLOOR_MS } from '../../src/game/gesturePose.js'; /* v2.3.3036 */
 import { LIFE_SKILL_XP_BASE as SRV_LIFE_SKILL_XP_BASE } from '../src/gathering.js'; /* v2.3.3090 */
@@ -65,6 +70,19 @@ import { NML as CLIENT_NML, NML_CENTRE as CLIENT_NML_CENTRE, nmlLevelAt as clien
 import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.js';
 /* v2.3.3120: pet trapping -- the button's odds, the Traps tab, the kinds, the name rule */
 import { TRAPPING as SRV_TRAPPING, trapChance as srvTrapChance, trapRollXp as srvTrapRollXp, trapCatchXp as srvTrapCatchXp } from '../src/trapping.js';
+import { CODEX as SRV_CODEX } from '../src/codex.js'; /* v2.3.3209 */
+import { CODEX_TIERS as CLIENT_CODEX_TIERS, CODEX_KINDS as CLIENT_CODEX_KINDS, CODEX_STAGE2_AT as CLIENT_CODEX_STAGE2_AT, CODEX_ENTRIES as CLIENT_CODEX_ENTRIES } from '../../src/data/monsterCodex.js'; /* v2.3.3209 */
+/* v2.3.3209: the codex's drop tables, and what they are held to */
+import { CODEX_DROP_RATES as CLIENT_CODEX_DROP_RATES, CODEX_GRADE_ODDS as CLIENT_CODEX_GRADE_ODDS, CODEX_RAW_GEM_ELEMENTS as CLIENT_CODEX_RAW_GEMS,
+  CODEX_REMNANTS as CLIENT_CODEX_REMNANTS, codexGoldAt as clientCodexGoldAt, codexDropsFor as clientCodexDropsFor,
+  CODEX_ROLL_SIDES as CLIENT_CODEX_ROLL_SIDES, codexRoll as clientCodexRoll,
+  CODEX_ROLL_ORDER as CLIENT_CODEX_ROLL_ORDER, codexRollLayout as clientCodexRollLayout } from '../../src/data/codexDrops.js';
+import { KILL_ROLL as SRV_KILL_ROLL, KILL_ROLL_CHANCES as SRV_KILL_ROLL_CHANCES, killRollLayout as srvKillRollLayout } from '../src/killroll.js'; /* v2.3.3209: one roll a kill */
+import { WEAPON_QUALITY_ODDS as SRV_WEAPON_QUALITY_ODDS } from '../src/hardening.js';
+import { WHEEL_ZONE as SRV_WHEEL_ZONE } from '../src/wheelzone.js';
+import { WHEEL_DOORS as SRV_WHEEL_DOORS } from '../src/wheelspawns.js';   /* v2.3.3209: a codex page's dungeon */
+import { CODEX_ROADS as CLIENT_CODEX_ROADS } from '../../src/data/monsterCodex.js';   /* v2.3.3209: ...and its way there */
+import { PLAN as WORLD_PLAN } from '../../public/tools/world/plan.js';
 import { PET_KINDS as SRV_PET_KINDS, PET_NAME as SRV_PET_NAME, cleanPetName as srvCleanPetName, petKindOf as srvPetKindOf, PETBOOK as SRV_PETBOOK,
   petXpToNext as srvPetXpToNext, petGainXp as srvPetGainXp,
   petWardOf as srvPetWardOf, petHousePrice as srvPetHousePrice, petWireOf as srvPetWireOf } from '../src/petbook.js';
@@ -78,6 +96,7 @@ import { TRAPPING as CLIENT_TRAPPING, trapChance as clientTrapChance, trapRollXp
 import { WHEEL_CENTRE as SRV_WHEEL_CENTRE } from '../src/wheelspawns.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
+  NPC_DATA as CLIENT_NPC_DATA, /* v2.3.3179: who gives quests in the world */
   DISHES as CLIENT_DISHES, /* v2.3.3130: what a Cookhouse dish does */
   MONSTER_DMG_CURVE, monsterHpFlat as clientMonsterHpFlat, /* v2.3.3055 */
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
@@ -286,6 +305,26 @@ const room = Object.create(GameRoom.prototype);
     }
   }
   check('QUEST_CHAINS.gives thumbnails match a real server payout moment', bad.length === 0, bad);
+}
+
+// ── 5b2. v2.3.3179: the quests the worker closes are exactly the quests whose
+// giver is not in the world (data.js QUEST_DORMANT vs the game's NPC_DATA).
+// A giver brought back with their chain still closed could hand out quests
+// the worker refuses; a giver taken away with their chain still open lets a
+// new character be paid for quests nobody can see.
+{
+  const live = new Set((CLIENT_NPC_DATA || []).map((n) => n && n.name).filter(Boolean));
+  const dormant = new Set(SRV.QUEST_DORMANT || []);
+  const bad = [];
+  for (const [k, c] of Object.entries(QUEST_CHAINS)) {
+    const gone = !live.has(c.npc);
+    if (gone !== dormant.has(k)) bad.push({ quest: k, npc: c.npc, giverInWorld: !gone, closedByWorker: dormant.has(k) });
+  }
+  for (const k of dormant) if (!QUEST_CHAINS[k]) bad.push({ quest: k, reason: 'closed by the worker but not a quest' });
+  check('QUEST_DORMANT is exactly the quests whose giver is not in NPC_DATA', bad.length === 0 && dormant.size > 0, bad);
+  check('the first quest (QUEST_FIRST) is a checked quest a live giver offers',
+    !!SRV.QUEST_REWARDS[SRV.QUEST_FIRST] && !!SRV.QUEST_REWARDS[SRV.QUEST_FIRST].objective
+      && !dormant.has(SRV.QUEST_FIRST) && live.has(QUEST_CHAINS[SRV.QUEST_FIRST] && QUEST_CHAINS[SRV.QUEST_FIRST].npc), SRV.QUEST_FIRST);
 }
 
 // ── 5c. Every icon named by `gives` is a file that exists.  A 404 here is a
@@ -1737,6 +1776,134 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     && clientGatherReqLvl('fishSpot', 6) === 5);
 }
 
+// ── THE HIT LADDER: the odds the Skills panel prints are the dice the worker rolls ──
+// v2.3.3229.  Owner: "after the first level you get a 10% chance of hitting 1
+// number higher".  The worker rolls every hit (gathering.js gatherHitRoll); the
+// game plays the plan it is sent, and prints "Each hit: 1 (80%) · 2–3 (10%
+// each)" from its own copy (lifeSkills.js gatherHitOdds).  A drift is a
+// Skills panel promising odds the worker does not roll -- so every face of
+// both dice (the ladder, and the even 1..level the kill switch puts back) is
+// compared at every level 1-120 and at junk ones.
+{
+  check('hit ladder: the same die on both sides (GATHER_HITS.LADDER = GATHER_HIT_LADDER = 10)',
+    SRV_GATHER_HITS.LADDER === CLIENT_GATHER_HIT_LADDER && CLIENT_GATHER_HIT_LADDER === 10,
+    { srv: SRV_GATHER_HITS.LADDER, cli: CLIENT_GATHER_HIT_LADDER });
+  const workerOdds = (level, ladder) => {
+    const top = Math.max(1, Math.floor(Number(level) || 1));
+    const faces = ladder ? SRV_GATHER_HITS.LADDER : top;
+    const c = new Map();
+    for (let f = 0; f < faces; f++) { const d = srvGatherHitRoll(level, (f + 0.5) / faces, ladder); c.set(d, (c.get(d) || 0) + 1); }
+    return JSON.stringify([...c].sort((a, b) => a[0] - b[0]).map(([n, k]) => [n, (100 * k) / faces]));
+  };
+  const clientOdds = (level, ladder) => JSON.stringify(clientGatherHitOdds(level, ladder).map((o) => [o.n, o.pct]));
+  let bad = null;
+  for (const ladder of [true, false]) {
+    for (const level of [...Array.from({ length: 120 }, (_, i) => i + 1), 0, -3, 2.7, '7', null, undefined, 'x', '__proto__']) {
+      if (workerOdds(level, ladder) !== clientOdds(level, ladder)) { bad = { ladder, level, srv: workerOdds(level, ladder), cli: clientOdds(level, ladder) }; break; }
+    }
+    if (bad) break;
+  }
+  check('hit ladder: every face of both dice lands on the same hit, at every level', bad === null, bad);
+  /* the owner's own sentences, so a tidy-up of either side cannot quietly move them */
+  const words = [1, 2, 3, 8, 10, 11, 20].map((l) => clientGatherHitOddsText(l, true));
+  check('hit ladder: the Skills panel says it as the owner did (lvl 2: 10% of 2, else 1; lvl 11: no 1 left)',
+    JSON.stringify(words) === JSON.stringify(['Always 1', '1 (90%) · 2 (10%)', '1 (80%) · 2–3 (10% each)', '1 (30%) · 2–8 (10% each)',
+      '1–10 (10% each)', '2–11 (10% each)', '11–20 (10% each)']), words);
+  /* v2.3.3251: each tier twice as long as the one before -- the HP table the
+     bar shows before a plan lands is the one the worker rolls against, and
+     the longest plan the worker can send is one the game plays. */
+  const flatHp = (t) => JSON.stringify(Object.keys(t).sort().map((k) => [k, Object.keys(t[k]).sort().map((l) => [l, t[k][l]])]));
+  check('tier hp: the same table on both sides (GATHER_NODE_HP)', flatHp(SRV_GATHER_NODE_HP) === flatHp(CLIENT_GATHER_NODE_HP),
+    { srv: SRV_GATHER_NODE_HP, cli: CLIENT_GATHER_NODE_HP });
+  let hpBad = null;
+  for (const type of ['oreVein', 'tree', 'fishSpot', 'campfire', '__proto__', 'constructor', undefined, null, 7]) {
+    for (const t of [0, 1, 2, 6, 11, 16, 21, 26, 96, '11', 11.5, null, '__proto__']) {
+      for (const on of [true, false]) {
+        if (srvGatherNodeHp(t, type, on) !== clientGatherNodeHp(t, type, on)) { hpBad = { type, t, on, srv: srvGatherNodeHp(t, type, on), cli: clientGatherNodeHp(t, type, on) }; break; }
+      }
+      if (hpBad) break;
+    }
+    if (hpBad) break;
+  }
+  check('tier hp: and the same answer for every type and tier, table on and off, forged ones included', hpBad === null, hpBad);
+  check('tier hp: the game plays every plan the worker can send (GATHER_PLAN_MAX >= GATHER_HITS.MAX_HITS)',
+    CLIENT_GATHER_PLAN_MAX >= SRV_GATHER_HITS.MAX_HITS, { cli: CLIENT_GATHER_PLAN_MAX, srv: SRV_GATHER_HITS.MAX_HITS });
+  /* v2.3.3251: each tier pays twice the XP of the one before, and XP fades
+     5+ levels below you.  The game predicts a harvest's "+N Mining XP" from
+     its own copies; every piece of that prediction is held to the worker's. */
+  check('tier xp: the same table on both sides (GATHER_TIER_XP)',
+    JSON.stringify(SRV_GATHER_TIER_XP) === JSON.stringify(CLIENT_GATHER_TIER_XP), { srv: SRV_GATHER_TIER_XP, cli: CLIENT_GATHER_TIER_XP });
+  let txBad = null;
+  for (const t of [0, 1, 2, 6, 11, 16, 21, 26, 96, '11', 11.5, null, '__proto__', -3]) {
+    for (const on of [true, false, undefined]) {
+      if (srvHarvestBaseXp(t, on) !== clientHarvestBaseXp(t, on)) { txBad = { t, on, srv: srvHarvestBaseXp(t, on), cli: clientHarvestBaseXp(t, on) }; break; }
+    }
+    if (txBad) break;
+  }
+  check('tier xp: and the same base for every tier, table on and off, junk included', txBad === null, txBad);
+  check('xp fade: the same constants on both sides (XP_DECAY)',
+    JSON.stringify(SRV_XP_DECAY) === JSON.stringify(CLIENT_XP_DECAY), { srv: SRV_XP_DECAY, cli: CLIENT_XP_DECAY });
+  let fadeBad = null;
+  const lv = [];
+  for (let i = -5; i <= 125; i++) lv.push(i);
+  lv.push(null, undefined, NaN, '12', 7.9, Infinity, 'x');
+  outer: for (const you of lv) {
+    for (const it of lv) {
+      const a2 = srvXpDecayMult(you, it), b2 = clientXpDecayMult(you, it);
+      if (!(a2 === b2 || (Number.isNaN(a2) && Number.isNaN(b2)))) { fadeBad = { you, it, srv: a2, cli: b2 }; break outer; }
+    }
+  }
+  check('xp fade: the same share, bit for bit, for every pair of levels -5..125 and junk', fadeBad === null, fadeBad);
+  let roundBad = null;
+  for (const x of [1, 2, 54, 163, 245, 326, 489, 652, 978, 1304, 2608, 3912, 5216]) {
+    for (let g = 0; g <= 40; g++) {
+      const m = srvXpDecayMult(50, 50 - g);
+      if (srvXpAfterDecay(x, m) !== clientXpAfterDecay(x, m)) { roundBad = { x, g, srv: srvXpAfterDecay(x, m), cli: clientXpAfterDecay(x, m) }; break; }
+    }
+    if (roundBad) break;
+  }
+  check('xp fade: the same whole number after the fade', roundBad === null, roundBad);
+  /* the whole prediction: the worker's _harvestXpPaid against the game's
+     harvestXpFor, at every type, tier, level and grade, under each switch the
+     worker can be in -- and the caps that worker would advertise */
+  const payRoom = new GameRoom({ storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+    getWebSockets: () => [], acceptWebSocket: () => {} }, { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  const GRADE = { ok: 1, good: 1.5, perfect: 2 };
+  const SKILL_OF = { oreVein: 'mining', tree: 'woodcutting', fishSpot: 'fishing' };
+  let payBad = null, payN = 0;
+  for (const flags of [{}, { xpdecay: false }, { tierxp: false }, { nodehp: false }, { tierxp: false, xpdecay: false }]) {
+    payRoom._liveFlags = flags;
+    const S = { _serverCaps: { tierxp: !payRoom._tierXpOff(), xpdecay: !payRoom._xpDecayOff() } };
+    for (const type of ['oreVein', 'tree', 'fishSpot']) {
+      for (const t of [1, 6, 11, 16, 21, 26]) {
+        const node = { nodeType: type, gatherLvl: t, reqLvl: clientGatherReqLvl(type, t) };
+        for (let level = 1; level <= 60; level++) {
+          for (const g of Object.keys(GRADE)) {
+            const srv = payRoom._harvestXpPaid({ lifeSkills: { [SKILL_OF[type]]: { level, xp: 0 } } }, SKILL_OF[type], { nodeType: type, tierLvl: t }, g);
+            const cli = clientHarvestXpFor(S, node, level, GRADE[g]);
+            payN++;
+            if (srv !== cli) { payBad = { flags, type, t, level, g, srv, cli }; break; }
+          }
+          if (payBad) break;
+        }
+        if (payBad) break;
+      }
+      if (payBad) break;
+    }
+    if (payBad) break;
+  }
+  check('xp fade: the game\'s "+N XP" is the worker\'s pay at every type, tier, level and grade, under every switch (' + payN + ' cases)',
+    payBad === null && payN > 10000, payBad);
+  payRoom._liveFlags = {};
+  check('xp fade: ...including a faded one (black steel, Mining 11, good: 277) and a full one (Mining 9: 978)',
+    clientHarvestXpFor({ _serverCaps: { tierxp: true, xpdecay: true } }, { nodeType: 'oreVein', gatherLvl: 11 }, 11, 1.5) === 277
+      && clientHarvestXpFor({ _serverCaps: { tierxp: true, xpdecay: true } }, { nodeType: 'oreVein', gatherLvl: 11 }, 9, 1.5) === 978
+      && clientHarvestXpFor({}, { nodeType: 'oreVein', gatherLvl: 11 }, 11, 1.5) === 807);
+  check('hit ladder: ...and the old dice as they were (the kill switch)',
+    clientGatherHitOddsText(3, false) === '1–3 (33.3% each)' && clientGatherHitOddsText(1, false) === 'Always 1',
+    [clientGatherHitOddsText(3, false), clientGatherHitOddsText(1, false)]);
+}
+
 // v2.3.3091: this block sat AFTER the process.exit below (a merge put it
 // there), so its three checks never ran -- moved back above it.
 // ── v2.3.3058: No man's land's rings (server nomansland.js, client
@@ -1909,6 +2076,155 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     hOff.length === 0 && CLIENT_HW_MAX === SRV_HARDENED_WOOD.MAX_PER_REQUEST && Object.keys(RC).length === 5, hOff);
   check('hardened wood: the woods by tier read off the same table on both sides',
     JSON.stringify(CLIENT_HARDEN_WOOD_BY_TIER) === JSON.stringify(SRV_HARDEN_WOOD_BY_TIER), { client: CLIENT_HARDEN_WOOD_BY_TIER, server: SRV_HARDEN_WOOD_BY_TIER });
+}
+
+/* ═══ v2.3.3209: THE MONSTER CODEX (server/src/codex.js, src/data/monsterCodex.js) ═══
+   The worker writes a kill to storage at once when it crosses a threshold,
+   because that kill opens a fact on the phone's page: the two lists must be
+   the same, or a fact could open on a count the worker only kept in memory
+   (and a deploy could take it back).  And the nine kinds are the worker's,
+   in its order, each with a page. */
+{
+  check('codex: the facts open at the kills the worker writes at once (' + SRV_CODEX.TIERS.join(', ') + ')',
+    JSON.stringify(Object.values(CLIENT_CODEX_TIERS)) === JSON.stringify(SRV_CODEX.TIERS), { client: CLIENT_CODEX_TIERS, server: SRV_CODEX.TIERS });
+  check('codex: the elder form opens at the second-stage kill the worker writes at once',
+    CLIENT_CODEX_STAGE2_AT === SRV_CODEX.STAGE2_AT, { client: CLIENT_CODEX_STAGE2_AT, server: SRV_CODEX.STAGE2_AT });
+  const missing = CLIENT_CODEX_KINDS.filter((k) => !Object.prototype.hasOwnProperty.call(CLIENT_CODEX_ENTRIES, k));
+  check('codex: the nine kinds, in the worker\'s order, each with a page',
+    JSON.stringify(CLIENT_CODEX_KINDS) === JSON.stringify(SRV_CODEX.KINDS) && missing.length === 0, { client: CLIENT_CODEX_KINDS, server: SRV_CODEX.KINDS, missing });
+  /* a page's Locations tab names its land's dungeon and its levels there: the
+     ones the worker baked (WHEEL_DOORS), and none for a land without one */
+  const dOff = [];
+  for (const kind of CLIENT_CODEX_KINDS) {
+    const e = CLIENT_CODEX_ENTRIES[kind];
+    const d = Object.prototype.hasOwnProperty.call(SRV_WHEEL_DOORS, e.home) ? SRV_WHEEL_DOORS[e.home] : null;
+    if (!d) { if (e.dungeon || e.dungeonLevels) dOff.push([kind, 'no dungeon in its land', e.dungeon]); continue; }
+    if (e.dungeon !== d.name || JSON.stringify(e.dungeonLevels) !== JSON.stringify(d.levels)) dOff.push([kind, e.dungeon, e.dungeonLevels, d.name, d.levels]);
+  }
+  check('codex: each page\'s dungeon and its levels are the ones the worker baked (the Great Cave, the Foundry Dome, the Buried City)', dOff.length === 0, dOff);
+  /* ...and the road its Locations tab says leads there is the plan's */
+  const rOff = [];
+  for (const kind of CLIENT_CODEX_KINDS) {
+    const home = CLIENT_CODEX_ENTRIES[kind].home;
+    const reg = WORLD_PLAN.regions && WORLD_PLAN.regions[home];
+    const want = reg && reg.road && reg.road.name;
+    if (!want || CLIENT_CODEX_ROADS[home] !== want) rOff.push([home, CLIENT_CODEX_ROADS[home], want]);
+  }
+  check('codex: the road each page says leads to its land is the plan\'s own (the North Road, the Frost Trail ...)', rOff.length === 0, rOff);
+}
+
+/* ═══ v2.3.3209: EACH MONSTER'S DROP TABLE (src/data/codexDrops.js) ═══
+   Owner: "Also include drop tables for all items that monster can drop."  The
+   page prints chances the worker rolls; every one is held to the roll's own
+   number here, and the per-monster facts (its gold at each level, its
+   remnants, its shard and gem) to the worker's real Wheel monsters -- a rate
+   changed on the worker and not on the page fails this. */
+{
+  const R = CLIENT_CODEX_DROP_RATES;
+  const armour = (slot) => (SRV.MONSTER_ARMOR_DROPS.find((d) => d.slot === slot) || {});
+  check('codex drops: the shard, rare gem, iron torso, iron greaves and iron great sword chances are the worker\'s',
+    R.shard === SRV.SHARD_MONSTER_DROP && R.rareGem === SRV.RARE_GEM_MONSTER_DROP
+    && R.ironTorso === armour('armor').chance && R.ironGreaves === armour('legsArmor').chance
+    && R.ironGreatsword === SRV.MONSTER_IRON_WEAPON_DROP.chance && SRV.MONSTER_ARMOR_DROPS.length === 2
+    && armour('armor').name === 'Iron Torso' && armour('legsArmor').name === 'Iron Greaves' && SRV.MONSTER_IRON_WEAPON_DROP.gearBase === 'iron'
+    && SRV.MONSTER_IRON_WEAPON_DROP.type === 'greatsword',
+    { client: R, server: { shard: SRV.SHARD_MONSTER_DROP, rareGem: SRV.RARE_GEM_MONSTER_DROP, armour: SRV.MONSTER_ARMOR_DROPS, iron: SRV.MONSTER_IRON_WEAPON_DROP } });
+  check('codex drops: the grades a dropped piece rolls are the worker\'s',
+    JSON.stringify(CLIENT_CODEX_GRADE_ODDS) === JSON.stringify(SRV_WEAPON_QUALITY_ODDS), { client: CLIENT_CODEX_GRADE_ODDS, server: SRV_WEAPON_QUALITY_ODDS });
+  /* v2.3.3209: "a random weapon" is out of the game (the owner: "Remove it
+     from the game"): the worker has no curve for it and the page no row */
+  check('codex drops: no random weapon -- the worker has no curve for it any more',
+    typeof SRV.monsterWeaponDropOdds === 'undefined' && typeof GameRoom.prototype._rollWeaponDropForKill === 'undefined');
+  check('codex drops: the raw gems are the Gem Cutter\'s elements', JSON.stringify([...CLIENT_CODEX_RAW_GEMS].sort()) === JSON.stringify([...SRV.AMULET_GEMS].sort()),
+    { client: CLIENT_CODEX_RAW_GEMS, server: [...SRV.AMULET_GEMS] });
+
+  /* the real Wheel, as the worker spawns it: every monster's kind, gold and
+     remnants, against the page's */
+  const room = new GameRoom({ storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+    getWebSockets: () => [], acceptWebSocket: () => {} }, { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  check('codex drops: the page\'s shard rate is the one the room rolls', room.SHARD_DROP_RATE === R.shard, { room: room.SHARD_DROP_RATE, client: R.shard });
+  const wheel = room._ensureZoneMonsters(SRV_WHEEL_ZONE) || [];
+  const gOff = [], rOff = [], seen = new Set();
+  for (const m of wheel) {
+    const kind = srvPetKindOf(m);
+    if (!kind) continue;
+    seen.add(kind);
+    if (m.gold !== clientCodexGoldAt(m.level)) gOff.push({ id: m.id, level: m.level, server: m.gold, client: clientCodexGoldAt(m.level) });
+    const sk = m.variant || m.arch;
+    const srvRem = room._isRemnantSkullArch(sk, m.arch) ? room._invKeyForSkull(sk, m.arch) : null;
+    const cliRem = Object.prototype.hasOwnProperty.call(CLIENT_CODEX_REMNANTS, kind) ? CLIENT_CODEX_REMNANTS[kind] : null;
+    if (srvRem !== cliRem) rOff.push({ id: m.id, kind, server: srvRem, client: cliRem });
+  }
+  check(`codex drops: every one of the Wheel's ${wheel.length} monsters carries the gold the page says for its level`, wheel.length > 300 && gOff.length === 0, gOff.slice(0, 5));
+  check('codex drops: each kind leaves the remnants the page says (the rock monster, fishman and bog lurker none)',
+    rOff.length === 0 && CLIENT_CODEX_KINDS.every((k) => seen.has(k)), { off: rOff.slice(0, 5), seen: [...seen] });
+  /* the mummy's bones, after its first hit, leave the same */
+  check('codex drops: a mummy torn down to its skeleton still leaves Skeleton Remnants',
+    room._isRemnantSkullArch('skeleton', 'stalker') && room._invKeyForSkull('skeleton', 'stalker') === CLIENT_CODEX_REMNANTS.mumling);
+  const eOff = [];
+  for (const kind of CLIENT_CODEX_KINDS) {
+    const e = CLIENT_CODEX_ENTRIES[kind], z = SRV.ZONES[e.home];
+    const rows = clientCodexDropsFor(kind) || [];
+    const ids = rows.map((r) => r.id);
+    const gem = rows.find((r) => r.id === 'rawgem');
+    const shard = rows.find((r) => r.id === 'shard');
+    if (!z || e.element !== z.element) eOff.push([kind, 'element', e.element, z && z.element]);
+    if (!!gem !== SRV.AMULET_GEMS.has(z && z.element)) eOff.push([kind, 'raw gem', !!gem]);
+    if (gem && gem.key !== 'raw_' + z.element) eOff.push([kind, 'raw gem key', gem.key]);
+    if (!shard || shard.key !== 'shard_' + e.home) eOff.push([kind, 'shard', shard && shard.key]);
+    for (const id of ['gold', 'shard', 'raregem', 'irontorso', 'irongreaves', 'irongreatsword', 'nugget']) if (!ids.includes(id)) eOff.push([kind, 'missing', id]);
+    if (ids.includes('weapon')) eOff.push([kind, 'a random weapon row']);
+    /* v2.3.3209: the owner's dice -- a whole number of the 1-to-10,000 roll's
+       faces for each drop, so the page never rounds one, and none for an
+       every-kill drop.  Under the one roll (the default) each drop owns its
+       own run of them; on its own roll (an older worker), 1 to its number. */
+    const own = clientCodexDropsFor(kind, { shared: false }) || [];
+    for (const r of rows) {
+      const faces = r.chance * CLIENT_CODEX_ROLL_SIDES;
+      const o = own.find((x) => x.id === r.id);
+      if (r.chance < 1 && (Math.abs(faces - Math.round(faces)) > 1e-9 || !(r.from >= 1) || r.to - r.from + 1 !== Math.round(faces))) eOff.push([kind, 'roll', r.id, r.chance, r.from, r.to]);
+      if (r.chance < 1 && (!o || o.from !== 1 || o.to !== Math.round(faces))) eOff.push([kind, 'its own roll', r.id, o && o.from, o && o.to]);
+      if (r.chance >= 1 && (r.from !== null || r.to !== null)) eOff.push([kind, 'roll on an every-kill drop', r.id, r.from, r.to]);
+      if (/[–-]/.test(r.pct)) eOff.push([kind, 'a chance that is not one number', r.id, r.pct]);
+    }
+    if (ids.includes('remnant') !== Object.prototype.hasOwnProperty.call(CLIENT_CODEX_REMNANTS, kind)) eOff.push([kind, 'remnant row']);
+  }
+  check('codex drops: each page\'s table is its land\'s -- the shard the worker rolls ("shard_" + its home), a raw gem only when its element is a Gem Cutter one (not Flora), every pile drop listed and no random weapon; every chance one number, and its dice a whole number of the 1-10,000 roll (nugget 1, an iron piece 20, shard 1,000)',
+    eOff.length === 0 && CLIENT_CODEX_ROLL_SIDES === 10000 && clientCodexRoll(SRV.GOLD_NUGGET_MONSTER_DROP) === 1
+      && clientCodexRoll(SRV.MONSTER_IRON_WEAPON_DROP.chance) === 20 && clientCodexRoll(SRV.SHARD_MONSTER_DROP) === 1000 && clientCodexRoll(1) === null, eOff);
+
+  /* ═══ v2.3.3209: ONE ROLL A KILL -- THE PAGE'S NUMBERS ARE THE WORKER'S ═══
+     The owner: "Shouldn't these numbers not overlap each other?"  The worker
+     lays each monster's drops on one roll's numbers (killroll.js
+     killRollLayout); the page lays its own copy (codexDropsFor's from-to,
+     codexRollLayout).  Held here, kind by kind, against a real Wheel monster
+     of that kind as the worker sees it (_killRollCan): a drop moved, added or
+     re-rated on one side and not the other fails. */
+  const chanceOff = [];
+  const rowRate = { nugget: SRV.GOLD_NUGGET_MONSTER_DROP, irongreatsword: R.ironGreatsword, irongreaves: R.ironGreaves, irontorso: R.ironTorso,
+    raregem: R.rareGem, rawgem: SRV.GEM_RAW_MONSTER_DROP, shard: R.shard };
+  for (const id of SRV_KILL_ROLL.ORDER) if (SRV_KILL_ROLL_CHANCES[id] !== rowRate[id]) chanceOff.push([id, SRV_KILL_ROLL_CHANCES[id], rowRate[id]]);
+  check('kill roll: one order, one die and the same chances on both sides (the rarest from 1: nugget, iron great sword, greaves, torso, rare gem, raw gem, shard)',
+    JSON.stringify(SRV_KILL_ROLL.ORDER) === JSON.stringify(CLIENT_CODEX_ROLL_ORDER) && SRV_KILL_ROLL.SIDES === CLIENT_CODEX_ROLL_SIDES
+      && chanceOff.length === 0 && SRV_KILL_ROLL.ORDER[0] === 'nugget' && SRV_KILL_ROLL.ORDER[SRV_KILL_ROLL.ORDER.length - 1] === 'shard',
+    { server: SRV_KILL_ROLL.ORDER, client: CLIENT_CODEX_ROLL_ORDER, chanceOff });
+  const layOff = [];
+  for (const kind of CLIENT_CODEX_KINDS) {
+    const m = wheel.find((x) => srvPetKindOf(x) === kind);
+    if (!m) { layOff.push([kind, 'no Wheel monster']); continue; }
+    const srv = srvKillRollLayout(room._killRollCan(SRV_WHEEL_ZONE, m));
+    const cli = (clientCodexDropsFor(kind) || []).filter((r) => r.from).map((r) => ({ id: r.id, from: r.from, to: r.to }))
+      .sort((a, b) => a.from - b.from);
+    if (JSON.stringify(srv) !== JSON.stringify(cli)) layOff.push([kind, srv, cli]);
+    /* never two drops on one number, none past the die, from 1 with no gap */
+    let at = 1;
+    for (const l of srv) { if (l.from !== at || l.to < l.from || l.to > SRV_KILL_ROLL.SIDES) layOff.push([kind, 'run', l]); at = l.to + 1; }
+  }
+  const snow = srvKillRollLayout({ shard: true, rawgem: true });
+  check('kill roll: every kind\'s numbers on the page are the worker\'s own, laid from 1 with no gap and no overlap (a snowman: nugget 1, iron great sword 2-21, greaves 22-41, torso 42-61, rare gem 62-111, raw gem 112-611, shard 612-1,611; the blue slime, with no raw gem, its shard 112-1,111)',
+    layOff.length === 0 && JSON.stringify(snow) === JSON.stringify(clientCodexRollLayout(rowRate))
+      && JSON.stringify(snow.map((l) => [l.from, l.to])) === JSON.stringify([[1, 1], [2, 21], [22, 41], [42, 61], [62, 111], [112, 611], [612, 1611]]),
+    { layOff: layOff.slice(0, 3), snow });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

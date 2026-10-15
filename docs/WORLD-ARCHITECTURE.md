@@ -87,16 +87,21 @@ old and new ways side by side.
 - **Nearby players update at full rate; players further off update less
   often.** That keeps each phone's download flat however crowded the island
   gets. Download is the real limit today: about 4 KB/s per moving player near
-  you.
+  you. (v2.3.3199: as the phone unzips it. The room compresses every message,
+  about 13 to 1, so on the wire it is about 0.3 KB/s a player -- and the
+  compressing is about 40% of the room's thread, so the bytes are the
+  SERVER's limit more than the phone's: `docs/specs/load-test.md`.)
 - **The server knows the walls.** Every move is checked against the walk mask
   and blocking objects, not only against speed (today: speed only).
 - **Every message type has a rate cap.** `move` has none today. With
   Cloudflare billing for incoming messages, a tampered client flooding moves
   would cost money as well as fairness.
-- **The room cap is set by messages, not by the tick** (§11). Today's
-  `MAX_PLAYERS` 60 is a receiver number (what one phone can hear); what one
-  room can *take in* is lower than it looks, and splitting a world into area
-  servers is how it grows.
+- **The room cap is set by messages, not by the tick** (§11). `MAX_PLAYERS`
+  was 60, thought a receiver number (what one phone can hear); it is 120 since
+  v2.3.3205 (the owner's call, `docs/specs/cap-120.md`), the room smooth to
+  about 145 after #887-#891. It grows past that by splitting the room by
+  connection first -- front doors doing each phone's work, one world behind
+  them -- and only later by area (v2.3.3208, `docs/SERVER-SPLIT-PLAN.md`).
 
 ---
 
@@ -338,9 +343,37 @@ requests a second**. Their own example is a game with 50,000 players sending
 - **Today's cap of 60 may already be above that** at the full send rate. A
   bot load test (build order, step 4) should settle it before any launch
   push.
-- **200 in one room will not work** as the game stands. The processor is not
-  the limit: 60 players cost 0.16 ms of each 22 ms tick
-  (`docs/specs/room-full.md`). Taking the messages in is.
+  - **Measured, v2.3.3194** (`docs/specs/load-test.md`, the bot load test in
+    `tools/qa/load/`): in the sandbox, against the real runtime, the room is
+    smooth up to about **70 busy players** (its one thread 55% busy at 50,
+    73% at 75). Past that it does not fall over, it slows: fewer ticks a
+    second, so the world runs slower, at about half speed from 125. No freeze
+    up to 150, and it recovers when players leave. Cloudflare's own machines
+    are not measured.
+  - **#885** (`docs/specs/room-capacity.md`) makes the room's own
+    work cheaper with the same bytes to every player: smooth to about **110**,
+    and not yet at half speed with 150.
+- **200 in one room will not work** as the game stands:
+  - **the processor.** The old figure, 60 players at 0.16 ms of each 22 ms
+    tick (`docs/specs/room-full.md`), was the meadow, before the Wheel. In the
+    Wheel each player's tick is built on its own and lists every moving
+    player, so the room's own work grew with the square of the crowd: 32% of a
+    core at 50 players, 116% at 150 (after #885: 17% and 26%);
+  - **the messages.** Taking one in costs the runtime about 0.06-0.09 ms of
+    the room's thread (a tenth of it at 60 moving players), and sending every
+    player's update every tick grows with the square of the crowd. That is
+    the limit left once the room's own code is cheap;
+  - **the phones.** Each is sent about 3.5 KB a second for every moving
+    player in the Wheel, about 205 KB/s at 60, as it unzips it (#886 sends far
+    players less often: `docs/specs/far-players.md`). On the wire that is
+    about a thirteenth, ~15 KB/s at 60 (v2.3.3199);
+  - **the compressing.** The room compresses every message for every phone
+    (`permessage-deflate`), and that is about 40% of its thread: 79.6% busy
+    at 100 players compressed, 44.6% sending the same plain (v2.3.3199,
+    `docs/specs/load-test.md`). So every message sent, and what changes in
+    it, costs the server CPU (repeated text is nearly free to compress), and
+    the message diet below saves twice: fewer messages in, and fewer player
+    entries to build and compress for every phone.
 
 ### The fix: fewer messages, and a world of area servers
 
@@ -353,7 +386,14 @@ requests a second**. Their own example is a game with 50,000 players sending
      server's copy of you, which then moved in 40 px jumps. v2.3.1767 put
      the floor back to 15 Hz. With direction and speed, the server moves
      your copy between messages, and monsters chase that.
-2. **Area servers.** Each world is split along the Wheel: **Brotown and its
+2. **Area servers.** *(v2.3.3208: measured, this is NOT the first cut. The
+   room's work turned out to be mostly per PHONE (about four fifths of its
+   thread at 150 players, growing with the square of a crowd) and the world
+   itself little, and Brotown holds the crowd that an area split would leave
+   on one server. So the plan is now front doors that do each phone's work, with one
+   world behind them, and area servers only behind the doors once that world
+   fills: `docs/SERVER-SPLIT-PLAN.md`. What follows is the area plan as first
+   written.)* Each world is split along the Wheel: **Brotown and its
    commons, each of the eight spokes, and the two realms: 11 servers per
    world.**
    - Each comfortably holds about 100 players, so **one world holds 1,000 or
@@ -370,7 +410,10 @@ requests a second**. Their own example is a game with 50,000 players sending
 
 **The order:** distance-based updates and the message diet first (needed
 anyway, and they cut the bill); the Wheel's area borders at the gates and
-passes; one world until it fills, then a second.
+passes; one world until it fills, then a second.  *(v2.3.3208: the order is
+now `docs/SERVER-SPLIT-PLAN.md`'s: crowd-proof the wire and the phone, then
+front doors, then the doors building each phone's messages; area servers
+last, only if the one world server fills.)*
 
 ### What it costs at 100 to 100,000 players, and the supporter pass (v2.3.2938)
 
@@ -379,6 +422,13 @@ passes; one world until it fills, then a second.
 > any players (less than 20). But I'd like to know. My cost model would be
 > free players capped at let's say 2 hours a day then usage goes to a $2 a
 > month supporter pass where they can play as long as they want."*
+
+**Since v2.3.3256 (owner, 2026-10-14):** the pass is $2 for 30 days in USDC
+on Hemi, its days starting when the player activates it, one pass for a
+wallet's characters (up to 10), with no contract (a plain transfer the
+server reads), and NO PLAY CAPS for now ("Dont ship any caps yet"). It waits
+on the owner's dedicated pass address: `docs/SUPPORTER-PASS-PLAN.md`. The
+card-payment arithmetic below stays as the comparison it was.
 
 **The business model (the owner's intent; not built yet):** free play up to
 2 hours a day, and a $2-a-month supporter pass for unlimited play. The server

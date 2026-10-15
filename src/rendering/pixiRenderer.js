@@ -16,12 +16,15 @@ import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
 import { SwimFx } from './swimFx.js';                 /* v2.3.3003: a swimmer is a head in the water */
 import { setWheelWaterRenderer } from './wheelWater.js'; /* v2.3.3019: the Wheel's water moves */
+import { setPaletteRenderer } from './paletteTex.js';      /* v2.3.3190: pictures as colour numbers */
 import { JumpFx } from './jumpFx.js';                 /* v2.3.3017: a jumper is drawn in the air */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { setFighterEffects } from './fighterCapture.js';   /* v2.3.2986; v2.3.2987 + the player renderer */
 import { setMonsterDeathRenderer } from './monsterDeathFx.js';   /* v2.3.2913 */
 import { setArrowWoundRenderer } from './arrowWound.js';   /* v2.3.2923 */
 import { LightFx, setLightFx, lightFxOn } from './lightfx/lightFx.js'; /* v2.3.2710: map-lit shadows + metal glint, behind ?lightfx=1; v2.3.2904: + lightFxOn for the loading-screen warm */
+import { sweepTexturePool } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool lets go of what it does not use */
+import { healAfterRenderThrow } from './renderHeal.js'; /* v2.3.3152: a frame that throws does not leave the screen black */
 import { setSheen, prewarmGlintPipe } from './lightfx/glint.js'; /* v2.3.2864: the permanent soft metal shine, behind ?sheen=1; v2.3.2887: on for everyone, ?sheen=0 turns it off; v2.3.2904: its shader built behind the loading screen */
 import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
 import { setWorldCasts } from './lightfx/casters.js'; /* v2.3.2749: QA before/after of the world's shadows */
@@ -214,6 +217,10 @@ export async function initPixiRenderer(canvas) {
   setMonsterDeathRenderer(app.renderer);   /* v2.3.2913: measures each body once for the cuts */
   setArrowWoundRenderer(app.renderer);     /* v2.3.2923: bakes a stuck shaft at its monster's resolution */
   setWheelWaterRenderer(app.renderer);     /* v2.3.3019: builds the moving water's program behind the Wheel's loading screen */
+  /* v2.3.3190: the Wheel's ground and objects kept as colour numbers, one byte
+     a pixel, coloured on the GPU -- its programs built here, behind the
+     loading screen (rendering/paletteTex.js) */
+  try { setPaletteRenderer(app.renderer); } catch (e) { /* colours, as before */ }
   /* v2.3.2710: shadows cast by each map's own sun, and metal that catches the
      light (rendering/lightfx).  Off unless the switch is on -- see lightFx.js. */
   const lightFx = new LightFx(layers, worldContainer);
@@ -315,6 +322,10 @@ export async function initPixiRenderer(canvas) {
     entityRenderer.clear();
     effectsRenderer.clear();
     lightFx.clear();   /* v2.3.2710: last zone's shadows and glints go with its figures */
+    /* v2.3.3152: and every texture in Pixi's pool -- the last zone's name
+       plates and filter scratch, handed back by the clears above
+       (texturePoolTrim.js); behind the zone's loading screen */
+    try { sweepTexturePool(performance.now(), 0); } catch (e) { /* the pool as it was */ }
     ambientFx.setZone(zoneId);   /* v2.3.2762 */
     /* ═══ v2.3.2596: THE ZONE-ENTRY BANNER'S ONE TRIGGER ═══
        This function is the single place in the client that observes every zone
@@ -547,6 +558,10 @@ export async function initPixiRenderer(canvas) {
     try { app.render(); update._renderStreak = 0; }
     catch (e) {
       update._renderStreak = (update._renderStreak || 0) + 1;
+      /* v2.3.3152: Pixi's masks and filters put back to "nothing open", or the
+         stencil test the throw left on draws nothing every frame after it --
+         a black screen until the watchdog's rebuild (renderHeal.js) */
+      try { healAfterRenderThrow(app.renderer); } catch (eh) { /* never */ }
       if (!update._renderErr) {
         update._renderErr = true;
         /* v2.3.2975: and WHAT it tripped on -- "reading 'alphaMode'" is a
@@ -587,6 +602,9 @@ export async function initPixiRenderer(canvas) {
     }
     const _t5 = performance.now();
     update._lastStages.appMs = _t5 - _t4;
+    /* v2.3.3152: every few seconds, Pixi's texture pool lets go of what has
+       sat unused for 30 s (texturePoolTrim.js) */
+    if (!(_t5 - (update._poolSweepAt || 0) < 5000)) { update._poolSweepAt = _t5; try { sweepTexturePool(_t5); } catch (e) { /* the pool as it was */ } }
 
     const _renderTotal = _t5 - _t0;
     if (!update._pp) update._pp = { lastT: 0, worst: 0, tile: 0, entity: 0, effects: 0, fps: 0, render: 0, monsters: 0 };
@@ -627,7 +645,9 @@ export async function initPixiRenderer(canvas) {
        listeners and the WebGL renderer it held, or every rebuild left ~90 MB
        behind (TRAPS §139, mp-bakeleak) */
     try { effectsRenderer.destroy(); } catch (e) { /* ignore */ }
-    lightFx.clear();   /* v2.3.2710 */
+    /* v2.3.2710; v2.3.3152: destroy, not clear -- the shadow system stayed in
+       shadows.js's module list after every rebuild, its old world with it */
+    try { lightFx.destroy(); } catch (e) { /* ignore */ }
     try { minimap.destroy(); } catch (e) {}
     if (fpsOverlay) fpsOverlay.destroy();
     /* ═══ v2.3.3074: CUT THE OLD RENDERER LOOSE FROM TEXTURES THAT OUTLIVE IT ═══
@@ -1343,6 +1363,18 @@ export async function initPixiRenderer(canvas) {
       for (const k in g) { if (Array.isArray(g[k]) && g[k].length) out[k] = g[k]; }
       return out;
     },
+    /* v2.3.3150 QA (mp-gpuonly): THIS renderer's gathering strips, by name --
+       the lumberjack's (yours, its legless twin, and the raw pair other
+       players' lumberjacks are drawn from), the cook's and the fire-lighter's */
+    standInStrips: () => {
+      const e = effectsRenderer;
+      const out = {};
+      for (const k of ['_chopSkinFrames', '_chopLeglessSkinFrames', '_chopFrames', '_chopLeglessFrames',
+        '_cookFrames', '_cookLeglessFrames', '_fireFrames']) {
+        if (Array.isArray(e[k]) && e[k].length) out[k] = e[k];
+      }
+      return out;
+    },
     /* ...and a texture as the screen draws it: a Sprite of it drawn into a
        fresh target and read back.  (extract.pixels on the texture itself
        attaches its picture to a framebuffer instead, and that changes what
@@ -1362,21 +1394,34 @@ export async function initPixiRenderer(canvas) {
     /* v2.3.3077: what each gathering pose holds right now -- the pictures
        behind its frames, each counted once (w x h x 4).  Nothing until the
        pose is first wanted (rendering/standIns.js); mp-gatherposes. */
+    /* v2.3.3150: + `gpu`, the MB of those pictures on the GPU, and `frames`,
+       how many strips have frames: a strip kept on the GPU only (effects
+       renderer _gpuOnly) holds no canvas, so `mb` alone reads it as gone */
     standInPictures: () => {
       const e = effectsRenderer;
       const seen = new Set();
-      const grab = (v, out, depth) => {
+      const seenSrc = new Set();
+      const uid = app.renderer && app.renderer.uid;
+      const grab = (v, out, depth, srcs) => {
         if (!v || depth > 3) return;
-        if (v.source && v.source.resource) { out.add(v.source.resource); return; }
+        if (v.source && typeof v.source === 'object' && 'resource' in v.source) {
+          if (srcs) srcs.add(v.source);
+          if (v.source.resource) out.add(v.source.resource);
+          return;
+        }
         if (typeof v.width === 'number' && typeof v.height === 'number' && v.width && !Array.isArray(v)) { out.add(v); return; }
-        if (Array.isArray(v)) { for (const x of v) grab(x, out, depth + 1); return; }
-        if (v instanceof Map) { for (const x of v.values()) grab(x, out, depth + 1); return; }
-        if (typeof v === 'object') for (const k in v) grab(v[k], out, depth + 1);
+        if (Array.isArray(v)) { for (const x of v) grab(x, out, depth + 1, srcs); return; }
+        if (v instanceof Map) { for (const x of v.values()) grab(x, out, depth + 1, srcs); return; }
+        if (typeof v === 'object') for (const k in v) grab(v[k], out, depth + 1, srcs);
       };
       const tally = (names) => {
-        const all = new Set();
-        for (const k of names) grab(e[k], all, 0);
-        let b = 0, n = 0;
+        const all = new Set(), srcs = new Set();
+        let frames = 0;
+        for (const k of names) {
+          if (Array.isArray(e[k]) && e[k].length) frames++;
+          grab(e[k], all, 0, srcs);
+        }
+        let b = 0, n = 0, g = 0;
         for (const r of all) {
           if (seen.has(r)) continue;
           seen.add(r);
@@ -1384,7 +1429,12 @@ export async function initPixiRenderer(canvas) {
           if (!w || !h) continue;
           b += w * h * 4; n++;
         }
-        return { mb: +(b / 1048576).toFixed(1), n };
+        for (const s of srcs) {
+          if (seenSrc.has(s) || s.destroyed) continue;
+          seenSrc.add(s);
+          if (uid != null && s._gpuData && s._gpuData[uid]) g += (s.pixelWidth | 0) * (s.pixelHeight | 0) * 4;
+        }
+        return { mb: +(b / 1048576).toFixed(1), n, gpu: +(g / 1048576).toFixed(1), frames };
       };
       return {
         chop: tally(['_chopSrc', '_chopFrames', '_chopLeglessFrames', '_chopSkinFrames', '_chopLeglessSkinFrames',

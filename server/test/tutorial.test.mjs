@@ -236,6 +236,10 @@ const sess = { id: 'bp_t' };
 // ── 3. Turn-in gating and item grants ──
 {
   ps._quests = Object.create(null);
+  /* v2.3.3179: tut_4 is a later step behind tut_3's checked one, and a later
+     step is taken only once the checked step before it is in (quests.js
+     _questBarred 'order') -- the chain this section skips to its end */
+  ps._quests.tut_3 = 'turnedIn';
   ps._questKills = Object.create(null);
   ps.coins = 0; ps.armor = null; ps.weapon = null; ps.weaponStash = [];
 
@@ -696,7 +700,7 @@ const sess = { id: 'bp_t' };
     { bare, now: [C.questReachable(m1), C.questReachable(m3)], offered: withWheel && withWheel.quest && withWheel.quest.id });
   const doorTable = (await import('../../src/data/wheelBuildingDoors.js')).WHEEL_BUILDING_DOORS;
   const opened = Object.values(doorTable);
-  /* v2.3.3148: the Assay Office is gone -- the owner, "one gem building is enough
+  /* v2.3.3259: the Assay Office is gone -- the owner, "one gem building is enough
      and can do both the gem cutting and gem setting" -- so the Enchanter has no
      door of its own: it is the Gem Works' second tab, behind the Gem Cutter's
      door.  Eleven doors, and `enchanting` is the one of the old town's twelve

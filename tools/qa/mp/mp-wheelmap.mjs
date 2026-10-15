@@ -190,7 +190,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* the sizes, smallest to biggest (by area) */
     const bySize = bl.slice().sort((a, b) => a.w * a.h - b.w * b.h);
     const sz = (b) => (b ? `${Math.round(b.w)} x ${Math.round(b.h)}` : '0 x 0');
-    /* v2.3.3148: sixteen standing, not seventeen -- the Assay Office is gone (the
+    /* v2.3.3259: sixteen standing, not seventeen -- the Assay Office is gone (the
        Gem Cutter's building is the Gem Works, which cuts and sets), so the town
        has one plot fewer and the minimap one roof fewer; every one still drawn */
     rec.ok(`the town's buildings are on the minimap: all ${bl.length} of the ${doors.length} standing, each over the ground it stands on with its door on its front edge (${bl.filter((b) => b.closed).length} shut, grey), from ${sz(bySize[0])} px to ${sz(bySize[bySize.length - 1])} (${bySize.length ? bySize[bySize.length - 1].id : '-'}) -- and the town's square no longer drawn`,

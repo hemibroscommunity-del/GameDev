@@ -42,6 +42,11 @@
  *                                   v2.3.2955: and blends only when it says
  *                                   `blends` -- ground.js, BLENDS)
  *   { type: 'chunk', id, i, j }  -> { type: 'chunk', id, i, j, w, h, data, ms, under, wf }
+ *                                   (v2.3.3190: with `palette` on init, a piece on
+ *                                   256 colours or fewer comes as `idx`, one colour
+ *                                   number a pixel in rows of `stride` bytes, and
+ *                                   `pal`, its colours, 4 bytes each -- no `data`;
+ *                                   the game draws it so, rendering/paletteTex.js)
  *                                   (v2.3.2967: `under`, the swatch DRAWN at every
  *                                   UNDER art px of the piece, for the footsteps;
  *                                   v2.3.3019: `wf`, the piece's WATER FIELD -- how
@@ -58,6 +63,7 @@ import { buildBlueprint } from './layout.js';
 import { gridInfo } from './grid.js';
 import { materialMap, composeGround, swatchesUnder, walkBits, swimBits, overviewPixels, overviewLands, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder, waterRivers, wavesOn, calmWater, WATER_SWATCHES } from './ground.js';
 import { PIXEL } from '../../style/bible.js';
+import { piecePalette } from './piecePalette.js';   /* v2.3.3190: a piece as colour numbers */
 import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process.js';
 import { wheelMap, whereWords } from './wheelmap.js';
 import { stepOf, cleanSteps } from './footsteps.js';
@@ -277,7 +283,10 @@ async function init(m) {
     /* v2.3.3021: and whether to take the light's frozen web out of the water
        pictures (ground.js CALM WATER) -- only where the game says it draws
        the water moving (WebGL2, not `?nowaves`), whose web of light moves */
-    calm: wavesOn(m && m.search) && !!(m && m.moving) };
+    calm: wavesOn(m && m.search) && !!(m && m.moving),
+    /* v2.3.3190: and whether to send each piece as colour numbers (the game
+       draws pictures so where it can: rendering/paletteTex.js) */
+    palette: !!(m && m.palette) };
   const t1 = performance.now();
   const objMan = objectsManifest();
   await findSwatches(mm, edgePiecesOn(m && m.search), blendsOn(m && m.search));
@@ -304,6 +313,8 @@ async function init(m) {
   }
   post({
     type: 'ready',
+    /* v2.3.3190: pieces come as colour numbers (piecePalette) */
+    palette: !!W.palette,
     worldW: bp.w * bp.scale * WPA, worldH: bp.h * bp.scale * WPA,
     walk: { cols: bp.w, rows: bp.h, bits, swim },
     overview: ov,
@@ -599,9 +610,13 @@ async function chunk(m) {
   const under = underOf(out.mat, out.w);
   trim(keep);
   const wf = out.waterField || null;
-  const moved = [out.data.buffer, under.buffer];
+  /* v2.3.3190: as colour numbers, where the game draws them so and the piece
+     has 256 colours or fewer (every one measured has far fewer) */
+  const np = W.palette ? piecePalette(out.data, out.w, out.h) : null;
+  const moved = np ? [np.idx.buffer, np.pal.buffer, under.buffer] : [out.data.buffer, under.buffer];
   if (wf && wf.data) moved.push(wf.data.buffer);
-  post({ type: 'chunk', id: m.id, i: m.i, j: m.j, w: out.w, h: out.h, data: out.data, under, wf,
+  post({ type: 'chunk', id: m.id, i: m.i, j: m.j, w: out.w, h: out.h, under, wf,
+    ...(np ? { idx: np.idx, pal: np.pal, stride: np.stride, colours: np.n } : { data: out.data, overPalette: !!W.palette }),
     ms: Math.round(performance.now() - t0), unpacked: decoded.size, unreadable: failed.size,
     /* v2.3.2959: laid without some of its pictures (lay it again later), and
        how the downloads stand */

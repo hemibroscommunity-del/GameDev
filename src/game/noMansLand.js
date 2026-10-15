@@ -15,7 +15,10 @@
  *     out.  `nmlHere` feeds the top bar.
  *   - WHO YOU CAN HIT: `nmlCanAttack`, the worker's rule from your side -- the
  *     world tap aims at such a player (BroTown.jsx), so your swings and shots
- *     become player_attack; the worker decides every one of them.
+ *     become player_attack; the worker decides every one of them.  Since
+ *     v2.3.3253 the tap ASKS first, in a small window, and so does a stray
+ *     shot through them, once (game/nmlAsk.js): Attack aims, Party invites,
+ *     Ignore lets it go; the one who attacked you is still aimed at by a tap.
  *   - THE SKULLS: others' from the tick (`sk`), yours from `nml_skull`, both
  *     into the anchors the threat skull already draws from (entityRenderer).
  *   - A DEATH THERE: `nml_loss` -- clear from your own bag what the worker
@@ -135,7 +138,10 @@ export function applyNmlSkull(S, payload) {
   const red = Math.max(0, Number(payload.red) || 0), white = Math.max(0, Number(payload.white) || 0);
   const now = Date.now();
   const wasRed = S._pvpSkullType === 'red';
-  S._nmlSelf = { red, white, at: now };
+  /* v2.3.3253: `by`, who gave you the white skull -- a tap on them is hitting
+     back, and aims at once (nmlAsk.js nmlHitBack) */
+  const by = white > 0 && typeof payload.by === 'string' && payload.by.length <= 64 ? payload.by : null;
+  S._nmlSelf = { red, white, by, at: now };
   if (red > 0) { S._pvpSkullType = 'red'; S._pvpSkullUntil = now + red; }
   else if (white > 0) { S._pvpSkullType = 'white'; S._pvpSkullUntil = now + white; }
   else { S._pvpSkullType = null; S._pvpSkullUntil = 0; }

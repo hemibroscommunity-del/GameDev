@@ -42,7 +42,7 @@ import { IncomingTradePanel } from './panels/IncomingTradePanel.jsx';
 import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
 import { EmotePanel } from './panels/EmotePanel.jsx';
 import { InspectPlayerPanel } from './panels/InspectPlayerPanel.jsx';
-import { nmlCanAttack } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land */
+import { nmlCanAttack, nmlHere } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land; v2.3.3253: + where you stand */
 import { profileRelayFields } from './panels/playerProfile.js'; /* v2.3.2926: the Inspect card's relay fields */
 import { NameModal } from './panels/NameModal.jsx';
 /* v2.3.1814: the login door that now sits in front of the creator.
@@ -125,7 +125,7 @@ import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
 import { SmithyPanel } from './panels/buildings/SmithyPanel.jsx'; /* v2.3.2826: the Blacksmith, rebuilt (ForgePanel deleted) */
 import { WoodworkPanel } from './panels/buildings/WoodworkPanel.jsx';
-import { GemWorksPanel } from './panels/buildings/GemWorksPanel.jsx';   /* v2.3.3148: the Gem Cutter and the Enchanter are one building, one window, two tabs (it draws GemcutPanel and EnchantPanel) */
+import { GemWorksPanel } from './panels/buildings/GemWorksPanel.jsx';   /* v2.3.3259: the Gem Cutter and the Enchanter are one building, one window, two tabs (it draws GemcutPanel and EnchantPanel) */
 import { ExchangePanel } from './panels/buildings/ExchangePanel.jsx';
 import { FarmPanel } from './panels/buildings/FarmPanel.jsx';
 import { BankPanel } from './panels/buildings/BankPanel.jsx';
@@ -133,11 +133,11 @@ import { CookPanel } from './panels/buildings/CookPanel.jsx';
 import { GamblePanel } from './panels/buildings/GamblePanel.jsx';
 import { PartyPanel } from './panels/buildings/PartyPanel.jsx';
 import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
-import { WheelHallPanel } from './panels/buildings/WheelHallPanel.jsx';   /* v2.3.3066: the Wheel's halls */
-import { LandOfficePanel } from './panels/buildings/LandOfficePanel.jsx';   /* v2.3.3147: the Land Office's window, in the card like the others */
-import { BuildingRoom } from './panels/buildings/BuildingRoom.jsx';   /* v2.3.3147: the inside of each building, at the top of its window */
-import { warmRoom } from '@/game/buildingRooms.js';   /* v2.3.3147 */
-import { roomIdFor } from '@/data/buildingRooms.js';   /* v2.3.3147 */
+import { WheelHallPanel, SaloonPanel } from './panels/buildings/WheelHallPanel.jsx';   /* v2.3.3066: the Wheel's halls; v2.3.3258: + the Saloon's own window (parties) */
+import { LandOfficePanel } from './panels/buildings/LandOfficePanel.jsx';   /* v2.3.3258: the Land Office's window, in the card like the others */
+import { BuildingRoom } from './panels/buildings/BuildingRoom.jsx';   /* v2.3.3258: the inside of each building, behind its window's menu */
+import { warmRoom } from '@/game/buildingRooms.js';   /* v2.3.3258 */
+import { roomIdFor } from '@/data/buildingRooms.js';   /* v2.3.3258 */
 import { ClanInviteCard } from './panels/ClanInviteCard.jsx';            /* v2.3.3066: a clan invite you can take up */
 import { StorePanel } from './panels/buildings/StorePanel.jsx';   /* v2.3.2476: the auction house */
 import { StoreToast } from './mobile/StoreToast.jsx';   /* v2.3.2476: "your thing sold" */
@@ -371,12 +371,15 @@ import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2.3.2916: + the roll window, shared with the broadcast */
 import { elemMoveMult, gustStep } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
+import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust */
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
 import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
 import { jumpAirborne, overLow } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land over the band's middle */
+import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
+import { nmlAsk, nmlAskOn, nmlAim, nmlHitBack } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
@@ -392,7 +395,7 @@ import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordD
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits } from '@/game/lifeSkillRewards.js'; /* tickGatherHits v2.3.2956 */
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
-import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl } from '@/game/interactions.js';
+import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
@@ -495,7 +498,7 @@ import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
 import { bedAt } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
-import { WHEEL_TOWNSFOLK, WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls */
+import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
 
@@ -848,6 +851,17 @@ function _spawnWheelNpcs(S) {
       out.push(_objectSpread(_objectSpread({}, npc), { x: nx, y: ny, spawnX: nx, spawnY: ny,
         renderX: nx, renderY: ny, targetX: nx, targetY: ny, pathRadius: 0 }));
     });
+  });
+  /* ═══ v2.3.3258: THE KEEPERS ═══
+     A townsperson who keeps a building opens its window when you talk to him
+     (data/wheelBuildingDoors.js WHEEL_KEEPERS: Blacksmith Bro the forge, Mayor
+     Bro the Town Hall) -- `keeperOf`, the plot, only where that building
+     stands with something to open.  This copy is the Wheel's own, so today's
+     town's townsfolk (_spawnTownNpcs) never carry it. */
+  out.forEach(function (n) {
+    var plot = Object.prototype.hasOwnProperty.call(WHEEL_KEEPERS, n.name) ? WHEEL_KEEPERS[n.name] : null;
+    var kd = plot ? doors.filter(function (d) { return d.id === plot && (d.index >= 0 || d.hall); })[0] : null;
+    if (kd) n.keeperOf = plot;
   });
   return out;
 }
@@ -1662,7 +1676,7 @@ export var BroTown = function BroTown(_ref0) {
   var _useStateWH = useState(null),
     nearHall = _useStateWH[0],
     setNearHall = _useStateWH[1];
-  /* v2.3.3147: the picture of the room behind the door you stand at is decoded
+  /* v2.3.3258: the picture of the room behind the door you stand at is decoded
      while you stand there (game/buildingRooms.js), so the window opens with it
      and not a beat after; the first shop or hall door you reach (not the Town
      Hall's, where everyone starts) also starts the other rooms' bytes coming in
@@ -3134,8 +3148,9 @@ export var BroTown = function BroTown(_ref0) {
      setters nothing called either. Removed. If you are looking for those
      names: chat renders off `chatOpen`, the war banners off
      stateRef.current._activeClanWar, and the arena UI is PartyPanel under
-     buildingPanel === 'party'. Wire new panels to those, not to a fresh
-     boolean that nothing reads. */
+     buildingPanel === 'arena' (v2.3.3258; it was 'party', the Saloon's door,
+     which opens the Saloon's own window now). Wire new panels to those, not
+     to a fresh boolean that nothing reads. */
   useEffect(function () {
     return setupWebSocket({
       stateRef: stateRef,
@@ -7307,7 +7322,12 @@ export var BroTown = function BroTown(_ref0) {
           : _exSkill === 'cooking' ? 'cook'
           : null;
         var _exChanged = _exCode !== (S._lastBroadcastEx || null);
-        var _exHeartbeat = !!_exCode && (now - (S._lastExBroadcast || 0) > 500);
+        /* v2.3.3254: not for the quiet phone (game/quietPhone.js): the
+           worker's own roster carries every near player's `ex` whole every
+           second (tick.js), which is what a watcher arriving mid-harvest needs;
+           the start and the stop still go at once (_exChanged) */
+        var _quietPh = quietOn(S);
+        var _exHeartbeat = !_quietPh && !!_exCode && (now - (S._lastExBroadcast || 0) > 500);
         /* ═══ v2.3.2915: AND WHICH TREE ═══
            Your screen draws the lumberjack at the tree you are chopping
            (effectsRenderer chopStandInSpot), and you chop from wherever the
@@ -7382,11 +7402,38 @@ export var BroTown = function BroTown(_ref0) {
            position; matching cadences means every tick can carry fresh data.
            Delta ticks keep the cost small; revisit if iPhone battery/network
            profiling ever flags it. */
-        if ((now - S.lastBroadcast > 22 && (isMoving || _facingChanged || _exChanged || _exHeartbeat || _justStopped || _blockChanged || _baChanged)) || _idleKeepalive) {
+        /* v2.3.3254: with the quiet phone's keepalive 10 s apart (below), what
+           it used to carry within a second goes at once instead: dying or
+           coming back (ps.dead, which the worker's cook, forge and amulet
+           gates read), and the gear (the worker's copy, as the move carries
+           it; the look relay carries it to the others too) */
+        var _deadNow = !!(S.rpg && S.rpg.hp <= 0);
+        var _deadChanged = _quietPh && _deadNow !== !!S._lastBroadcastDead;
+        var _gearNow = _quietPh ? getEquip('chest') + '|' + getEquip('legs') + '|' + getEquip('shoulders') : null;
+        var _gearChanged = _quietPh && _gearNow !== S._lastBroadcastGear;
+        /* ...and so does a place or zone changed with no thumb on the stick (a
+           snap onto a harvest's stance, a shove, a door's arrival): the
+           keepalive used to tell the worker within a second, this tells it at
+           once.  2 px, the diet's own error (game/moveDiet.js). */
+        var _zoneNowB = S.currentZone || 'town';
+        var _posChanged = _quietPh && typeof S._lastBroadcastX === 'number'
+          && (Math.abs(P.x - S._lastBroadcastX) > 2 || Math.abs(P.y - S._lastBroadcastY) > 2 || _zoneNowB !== S._lastBroadcastZone);
+        if ((now - S.lastBroadcast > 22 && (isMoving || _facingChanged || _exChanged || _exHeartbeat || _justStopped || _blockChanged || _baChanged || _deadChanged || _gearChanged || _posChanged)) || _idleKeepalive) {
           S.lastBroadcast = now;
           S._lastBroadcastFacing = S._renderFacing;
           if (S.channel) {
-            if (S.channel && (!S._lastMoveBroadcast || Date.now() - S._lastMoveBroadcast > 22)) {
+            /* ═══ v2.3.3254: THE QUIET PHONE'S KEEPALIVE (game/quietPhone.js) ═══
+               The 1 s keepalive above still runs this block -- the away
+               logout and the look below ride its slot -- but a standing
+               phone's MOVE now goes once, KEEP_CONFIRM_MS after the last one
+               (it heals a refused last step, as the keepalive did), then
+               every KEEP_QUIET_MS: the worker's roster already gives every
+               near phone each player whole every second (tick.js), the
+               keepalive's other job since v2.3.1112. */
+            var _kaOnly = !(isMoving || _facingChanged || _exChanged || _exHeartbeat || _justStopped || _blockChanged || _baChanged || _deadChanged || _gearChanged || _posChanged);
+            var _kaHeld = _quietPh && _kaOnly && !keepaliveDue(Date.now() - (S._lastMoveBroadcast || 0), !!S._kaConfirmed);
+            if (!_kaHeld && S.channel && (!S._lastMoveBroadcast || Date.now() - S._lastMoveBroadcast > 22)) {
+              S._kaConfirmed = _kaOnly;
               S._lastMoveBroadcast = Date.now();
               /* Calculate effective velocity — use dodge direction during roll */
               var bcastVx = P.vx;
@@ -7424,6 +7471,9 @@ export var BroTown = function BroTown(_ref0) {
               S._restPending = false; /* v2.3.1107: rest packet delivered */
               S._lastBroadcastBlocking = _blockNow; /* v2.3.1110 */
               S._lastBroadcastBa = _baNow; /* v2.3.1726 */
+              S._lastBroadcastDead = _deadNow; /* v2.3.3254 */
+              S._lastBroadcastGear = _gearNow; /* v2.3.3254 */
+              S._lastBroadcastX = P.x; S._lastBroadcastY = P.y; S._lastBroadcastZone = _zoneNowB; /* v2.3.3254 */
             }
             /* ═══ v2.3.1913: LOG OUT AN IDLE CHARACTER ═══
                Owner: "Sometimes I login to the game and see characters I
@@ -7440,6 +7490,16 @@ export var BroTown = function BroTown(_ref0) {
                Rides the 2 s track slot rather than its own timer: this is
                a 2-minute deadline, 2 s of granularity is free, and a
                frozen page runs neither. */
+            /* v2.3.3251: a harvest's HITS are play, not idleness.  The top
+               tiers take up to ~2 minutes of swings now (gathering.js
+               GATHER_NODE_HP: 104 s on obsidian at Mining 15) with nothing
+               to touch until the gesture, and a logout at 2 minutes would
+               end the very harvest it was waiting on.  Only while the hits
+               run: `ready` waits for the player, and waiting there is idle
+               like anything else. */
+            if (S._extraction && S._extraction.status === 'waiting' && S._extraction.hits && S._extraction.hits.plan && !S._extraction.locked) {
+              S._lastInputAt = Date.now();
+            }
             if (S.channel && S.channel.idleLogout &&
                 Date.now() - (S._lastInputAt || Date.now()) > IDLE_LOGOUT_MS) {
               S.channel.idleLogout();
@@ -7718,6 +7778,7 @@ export var BroTown = function BroTown(_ref0) {
       _desktopOpenWorkshop: _desktopOpenWorkshop,
       _desktopGather: _desktopGather,
       _desktopNpcQuest: _desktopNpcQuest,
+      _desktopOpenKeeper: openKeeper,   /* v2.3.3258: E beside a keeper opens his building */
       _desktopShieldOn: _desktopShieldOn,
       _desktopShieldOff: _desktopShieldOff,
       _desktopCycleWeapon: _desktopCycleWeapon,
@@ -7788,6 +7849,29 @@ export var BroTown = function BroTown(_ref0) {
       return r + g + b > 30 && Math.abs(r - _BG_R) + Math.abs(g - _BG_G) + Math.abs(b - _BG_B) > 24;
     }
     window.__btLitPx = _wdLitPx;   /* QA (mp-glrestore): the same rule */
+    /* ═══ v2.3.3151: THE WHEEL WITH NO GROUND IS A BLACK SCREEN TOO ═══
+       The owner, 2026-10-11: "the screen went black up until the point I
+       began fighting the fire goblins".  The same iPhone graphics reset as
+       v2.3.3017's, caught part way: the pictures the game made on the GPU
+       gone -- the Wheel's ground above all (its pieces live on the GPU only
+       since v2.3.3076, and so do the small map under them and the water) --
+       and the ones loaded from a file still drawn: the buildings, trees,
+       lamps and townsfolk, standing on the canvas's navy.  To the owner, a
+       black screen.  To this watchdog, 30-39% lit in town (mp-bareground),
+       far past its 1% line: no strike, no rebuild, no reload, until the walk
+       out to the Flame Fields' open ground left so little standing on screen
+       that the line was crossed at last, and the rebuild came.
+       In the Wheel the ground covers the whole screen, and almost none of it
+       is dark: measured in town and out along all eight spokes (51 places,
+       a phone at 3x), a screen with its ground reads 95-100% lit, and the
+       same screens with the ground blanked 9-56% (the Verdant Wilds' woods
+       the most: their trees cover the most of it).  The darkest swatch,
+       thunder-3, is 11% dark pixels, 17% all in shade.  So there a screen
+       under WD_WHEEL_LIT_MIN lit is a ground gone, and counts as dark.
+       Nowhere else: a dungeon's walls, the farm, a zone's own black are
+       drawn on purpose.  A part of the Wheel drawn dark on purpose (a night,
+       the Dark realm) has to lower this first. */
+    var WD_WHEEL_LIT_MIN = 75;
     /* ═══ v2.3.3068: THE GPU MAKES THE THUMBNAIL, AND NOTHING WAITS FOR IT ═══
        The sample is a 32 x 18 thumbnail of the world canvas.  drawImage from a
        WebGL canvas made it by copying the WHOLE drawing buffer out of the GPU
@@ -8128,13 +8212,19 @@ export var BroTown = function BroTown(_ref0) {
             _wdPendingAt = 0;
             /* ...and a veil that went up while it came back is judged as above */
             if (_pctWd < 0 || _wdVeiled()) return;
+            /* v2.3.3151: the Wheel with its ground gone (WD_WHEEL_LIT_MIN) */
+            var _wdBare = _pctWd >= 1 && _pctWd < WD_WHEEL_LIT_MIN && S.currentZone === 'wheel';
             /* v2.3.1721: the world has rendered at least once — from here the
                conservative two-strike rule applies. */
-            if (_pctWd >= 1) { S.__wdDark = 0; S.__wdEverLit = true; return; }
+            if (_pctWd >= 1 && !_wdBare) { S.__wdDark = 0; S.__wdEverLit = true; return; }
+            /* v2.3.3151: a bare Wheel still draws what came from a file, so the
+               renderer works: two strikes, never the first join's one */
+            if (_wdBare) S.__wdEverLit = true;
             S.__wdDark = (S.__wdDark || 0) + 1;
+            var _wdWhy = _wdBare ? "the Wheel's ground gone, " : '';
             try {
               import('../debug/crashTrap.js').then(function (ct) {
-                ct.recordCrash('watchdog-dark', 'screen ' + _pctWd + '% lit, strike ' + S.__wdDark);
+                ct.recordCrash('watchdog-dark', _wdWhy + 'screen ' + _pctWd + '% lit, strike ' + S.__wdDark);
               }).catch(function () {});
             } catch (e) {}
             /* v2.3.1721: one strike before the first lit frame, two after. */
@@ -8142,7 +8232,7 @@ export var BroTown = function BroTown(_ref0) {
             if (S.__wdDark === _strikesNeeded && window._rebuildRenderer) {
               if (!S.__wdEverLit) S.__wdFastRebuiltAt = Date.now();
               window._rebuildRenderer(S.__wdEverLit
-                ? 'watchdog: screen dark 10s'
+                ? (_wdBare ? "watchdog: the Wheel's ground gone 10s" : 'watchdog: screen dark 10s')
                 : 'watchdog: black on first join');
             }
             /* v2.3.1722: a first join still black a beat after its rebuild
@@ -8159,7 +8249,7 @@ export var BroTown = function BroTown(_ref0) {
             }
             if (S.__wdDark >= 4) {
               S.__wdDark = 0;
-              _recoveryReload('world dark 20s despite rebuild -- reloading into game');
+              _recoveryReload(_wdWhy + 'world dark 20s despite rebuild -- reloading into game');
             }
             });
           });
@@ -8204,7 +8294,7 @@ export var BroTown = function BroTown(_ref0) {
           name: o.name,
           color: o.color,
           avatar: o.avatar,
-          bro: o.bro,
+          bro: o.bro, brn: o.brn,
           x: o.x,
           y: o.y,
           badges: o.badges,
@@ -8580,6 +8670,23 @@ export var BroTown = function BroTown(_ref0) {
   /* Enter building */
   var enterBuilding = useCallback(function () {
     enterBuildingImpl(stateRef.current, { setBuildingPanel: setBuildingPanel });
+  }, []);
+  /* v2.3.3258: a keeper opens his building -- Blacksmith Bro the forge, Mayor
+     Bro the Town Hall (data/wheelBuildingDoors.js WHEEL_KEEPERS, `keeperOf` set
+     by _spawnWheelNpcs) -- the window his door opens, wherever you talk to him
+     from (a tap, E, the right stick).  False when there is nothing to open. */
+  var openKeeper = useCallback(function (npc) {
+    if (!npc || !npc.keeperOf) return false;
+    var door = wheelTownDoors().filter(function (d) { return d.id === npc.keeperOf; })[0];
+    return enterWheelDoor(stateRef.current, door, { setBuildingPanel: setBuildingPanel });
+  }, []);
+  /* v2.3.3258: a QA probe -- open any building's window without walking to
+     its door, so mp-buildingrooms can look at all sixteen rooms behind their
+     menus quickly (the doors themselves are walked to in mp-wheeldoors) */
+  useEffect(function () {
+    if (typeof window === 'undefined') return undefined;
+    window.__btBuildingWindow = { open: function (p) { setBuildingPanel(p || null); } };
+    return function () { try { delete window.__btBuildingWindow; } catch (e) { /* probe only */ } };
   }, []);
 
   /* ═══ DESKTOP CONTROL HELPERS — called from keyboard handler ═══ */
@@ -9615,6 +9722,11 @@ export var BroTown = function BroTown(_ref0) {
       setQuestPanel({ npc: npc.name, quest: npcQ.quest, status: npcQ.status, npcRef: npc });
       return _mark('quest');
     }
+    /* v2.3.3258: a keeper with no quest to talk about opens his building (the
+       owner: "interacting with the building's NPC instead of having the
+       building interiors") -- after the quest, so the Mayor's chain is
+       untouched */
+    if (npc.keeperOf && openKeeper(npc)) return _mark('opens');
     if (npc.flip) {
       /* v2.3.2620: Ace's ONLY door (the proximity opener was removed -- see the
          note in the frame loop).  And with no loop opener left to suppress, the
@@ -9744,6 +9856,38 @@ export var BroTown = function BroTown(_ref0) {
       var _p = clientToCanvas(clientX, clientY);
       return tapNpcAtCss(_p.x, _p.y);
     };
+    /* ═══ v2.3.3253: A PLAYER YOU COULD FIGHT BEATS THE SELF-CHAT CIRCLE ═══
+       In No man's land a tap on a player asks "Attack <name>?" (game/nmlAsk.js)
+       -- but isSelfTouch's 52 world px circle round your own body claims a tap
+       before it is forwarded, and two players at a sword's reach (~34 px)
+       stand inside it: a tap on the one beside you opened your chat, every
+       time (found by mp-nmlask).  So, as an NPC and a resource already do,
+       such a player under the finger -- inside the world tap's own 25 px of
+       them, and nearer them than your own body -- takes the tap: it is
+       forwarded to the world, whose player branch raises the window (or aims,
+       hitting back).  Only there, and only for a player the rule lets you
+       fight: everywhere else your own circle still opens chat. */
+    var nmlPlayerAtClient = function (clientX, clientY) {
+      var S = stateRef.current;
+      if (!S || !S.others || !S.player || !S.camera || !nmlAskOn(S) || !nmlHere(S)) return false;
+      var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
+      var _p = clientToCanvas(clientX, clientY);
+      var cam = S.camera, P = S.player;
+      var selfD = Math.hypot(_p.x - (P.x - cam.x) * sx, _p.y - (P.y - 24 - cam.y) * sy);
+      for (var _nid in S.others) {
+        var _no = S.others[_nid];
+        if (!_no || typeof _no.renderX !== 'number' || typeof _no.renderY !== 'number') continue;
+        var _nd = Math.hypot(_p.x - (_no.renderX - cam.x) * sx, _p.y - (_no.renderY - cam.y) * sy);
+        if (_nd < 25 && _nd < selfD && nmlCanAttack(S, _nid)) return true;
+      }
+      return false;
+    };
+    /* ...and the forward itself, as each zone's own tap forward does */
+    var forwardTapToWorld = function (clientX, clientY) {
+      try {
+        if (canvasRef.current) canvasRef.current.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: clientX, clientY: clientY }));
+      } catch (err) { /* the tap is lost, as any forward's would be */ }
+    };
     var openSelfChat = function () {
       /* v2.3.2306: stamp the GESTURE, for the coach's chat lesson. A state
          stamp rather than a callback pushed into this control -- the coach
@@ -9784,7 +9928,7 @@ export var BroTown = function BroTown(_ref0) {
       var o = S2 && S2.others && S2.others[fid];
       if (!o) return false;
       setInspectPlayer({
-        id: fid, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro,
+        id: fid, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
         x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
         rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1,
       });
@@ -9910,6 +10054,13 @@ export var BroTown = function BroTown(_ref0) {
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
             && tapNpcAtClient(t.clientX, t.clientY)) {
           lts.lastEndAt = 0;
+          return;
+        }
+        /* v2.3.3253: a player you could fight in No man's land beats it too */
+        if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
+            && nmlPlayerAtClient(t.clientX, t.clientY)) {
+          lts.lastEndAt = 0;
+          forwardTapToWorld(t.clientX, t.clientY);
           return;
         }
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
@@ -10175,6 +10326,13 @@ export var BroTown = function BroTown(_ref0) {
          where the touchstart used to start a swing at him. */
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
           && tapNpcAtClient(t.clientX, t.clientY)) {
+        return;
+      }
+      /* v2.3.3253: a player you could fight in No man's land beats the
+         self-chat circle too (nmlPlayerAtClient) */
+      if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
+          && nmlPlayerAtClient(t.clientX, t.clientY)) {
+        forwardTapToWorld(t.clientX, t.clientY);
         return;
       }
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
@@ -11825,7 +11983,7 @@ export var BroTown = function BroTown(_ref0) {
           if (_isPartyMate) {
             if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
             setInspectPlayer({
-              id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro,
+              id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
               rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1
             });
@@ -11863,8 +12021,22 @@ export var BroTown = function BroTown(_ref0) {
                swing a plain one (mp-nomansland).  Tap empty ground to let go,
                as for any lock. */
             if (!(S.lockedTarget && S.lockedTarget.id === id)) {
-              S.lockedTarget = { type: 'player', id: id, ref: o, nml: true };
-              try { pushDmgPopup(S, o.x, o.y - 70, 'TARGET', '#ff6b5e', { ts: Date.now() }); } catch (e) { /* the reticle says it */ }
+              /* ═══ v2.3.3253: ...BUT THE TAP ASKS FIRST ═══
+                 Owner: "I want attacking other players to be intentional ...
+                 Tapping on the player while they're in the no man's land can
+                 still have the party and attack (with red skull) options
+                 there."  A tap within 25 px of a player aimed at them at once,
+                 so a tap meant for the monster beside them started a fight,
+                 and the first hit a red skull.  It now raises the small
+                 window (ui/mobile/NmlAskCard.jsx): Attack aims exactly as
+                 this tap did (nmlAim: the `nml` lock and "TARGET"), Party
+                 invites, Ignore lets it go.  Except the one who attacked you
+                 (nml_skull's `by`, and you carry no red skull): hitting them
+                 back gives no red skull, so the tap aims at once, as before.
+                 ?nmlask=0, or a worker without No man's land, aims as before. */
+              var _nmlAsked = false;
+              try { _nmlAsked = nmlAskOn(S) && !nmlHitBack(S, id) && nmlAsk(S, id, 'tap'); } catch (e) { _nmlAsked = false; }
+              if (!_nmlAsked) nmlAim(S, id);
             }
             return;
           }
@@ -11873,7 +12045,7 @@ export var BroTown = function BroTown(_ref0) {
           } else if (!_isDuelOpponent) {
             if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
             setInspectPlayer({
-              id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro,
+              id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
               rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1
             });
@@ -11889,7 +12061,7 @@ export var BroTown = function BroTown(_ref0) {
               name: o.name,
               color: o.color,
               avatar: o.avatar,
-              bro: o.bro,
+              bro: o.bro, brn: o.brn,
               x: o.x,
               y: o.y,
               rpgLv: o.rpgLv,
@@ -12010,7 +12182,7 @@ export var BroTown = function BroTown(_ref0) {
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect-card",
     "data-building-panel": buildingPanel /* v2.3.3032: which building's panel is open (mp-wheeldoors) */,
-    "data-room": roomIdFor(buildingPanel) || undefined /* v2.3.3147: the room pictured at its top (game.css .bt-room) */,
+    "data-room": roomIdFor(buildingPanel) || undefined /* v2.3.3258: the room pictured at its top (game.css .bt-room) */,
     onClick: function onClick(e) {
       return e.stopPropagation();
     },
@@ -12043,20 +12215,21 @@ export var BroTown = function BroTown(_ref0) {
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement(BuildingRoom, { key: roomIdFor(buildingPanel) || buildingPanel, panel: buildingPanel }) /* v2.3.3147: the inside of the building, first in its window */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
+  }, "\u2715"), /*#__PURE__*/React.createElement(BuildingRoom, { key: roomIdFor(buildingPanel) || buildingPanel, panel: buildingPanel }) /* v2.3.3258: the inside of the building, behind its window's menu; v2.3.3259: keyed by its ROOM, so the Gem Works' two tabs (one room) never load it again */, /* v2.3.3066: the Wheel's halls (data/wheelBuildingDoors.js WHEEL_HALL_DOORS) -- each row
        opens the panel that does the work and closes the hall */
-  Object.prototype.hasOwnProperty.call(WHEEL_HALLS, buildingPanel) && /*#__PURE__*/React.createElement(WheelHallPanel, {   /* v2.3.3147: every hall in the table, the Town Hall's too */
+  Object.prototype.hasOwnProperty.call(WHEEL_HALLS, buildingPanel) && /*#__PURE__*/React.createElement(WheelHallPanel, {   /* v2.3.3258: every hall in the table, the Town Hall's too */
     hall: buildingPanel,
     stateRef: stateRef,
     onClan: function onClan() { setBuildingPanel(null); setShowClanPanel(true); },
     onGuild: function onGuild() { setBuildingPanel(null); setShowGuildPanel(true); },
     onMessages: function onMessages() { setBuildingPanel(null); dashboardPanelBus.open('social'); },
     onPlayers: function onPlayers() { setBuildingPanel(null); setShowPlayerList(true); },
-    onArena: function onArena() { setBuildingPanel('party'); },
-    /* v2.3.3147: the Town Hall's rows -- the dashboard's Ranks page (More -> Leaderboard, as its tile opens it), and the Wheel's world map */
+    onArena: function onArena() { setBuildingPanel('arena'); },   /* v2.3.3258: the arena's own window (it was the Saloon's) */
+    /* v2.3.3258: the Town Hall's rows -- the dashboard's Ranks page (More -> Leaderboard, as its tile opens it), and the Wheel's world map */
     onLeaderboard: function onLeaderboard() { setBuildingPanel(null); dashboardPanelBus.open('more'); dashboardPanelBus.push('leaderboard'); },
     onMap: function onMap() { setBuildingPanel(null); openWorldMap(); }
-  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'party' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), (buildingPanel === 'gemcut' || buildingPanel === 'enchant') && /*#__PURE__*/React.createElement(GemWorksPanel, { tab: buildingPanel, onTab: setBuildingPanel, rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }) /* v2.3.3148: cut gems / set gems, one building */, /* v2.3.3147: the Land Office's window is a panel in the card now (it was a separate dialog under an empty card, panels/buildings/LandOfficePanel.jsx) */
+  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, cookMinigame: cookMinigame, setCookMinigame: setCookMinigame }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), /* v2.3.3258: the Saloon's door opens the Saloon -- where a party is formed (WheelHallPanel.jsx SaloonPanel) -- and the Gladiator Arena is its own window, 'arena', from the Sheriff's Office (the owner: "the gladiator arena is showing 'saloon' behind it") */
+  buildingPanel === 'party' && /*#__PURE__*/React.createElement(SaloonPanel, { stateRef: stateRef, onPlayers: function onPlayers() { setBuildingPanel(null); setShowPlayerList(true); } }), buildingPanel === 'arena' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), (buildingPanel === 'gemcut' || buildingPanel === 'enchant') && /*#__PURE__*/React.createElement(GemWorksPanel, { tab: buildingPanel, onTab: setBuildingPanel, rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }) /* v2.3.3259: cut gems / set gems, one building */, /* v2.3.3258: the Land Office's window is a panel in the card now (it was a separate dialog under an empty card, panels/buildings/LandOfficePanel.jsx) */
   buildingPanel === 'farmhome' && /*#__PURE__*/React.createElement(LandOfficePanel, {
     onCancel: function onCancel() { return setBuildingPanel(null); },
     onTravel: function onTravel() {
@@ -13500,7 +13673,11 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
-  React.createElement(NmlBadge, { stateRef: stateRef }), /* v2.3.2051 (owner: "Yeah replace it"): the building-side town shop is
+  React.createElement(NmlBadge, { stateRef: stateRef }),
+  /* v2.3.3253: the small window a tap or a stray shot raises about a player
+     you could fight there (game/nmlAsk.js), portalled to the top of the
+     screen, under the minimap */
+  React.createElement(NmlAskCard, { stateRef: stateRef }), /* v2.3.2051 (owner: "Yeah replace it"): the building-side town shop is
      RETIRED -- both the "Open Shop" prompt and the ShopPanel it opened.
      Shopkeeper Bro does this job now, and does it server-side: the old
      panel credited coins and edited the bag in the CLIENT and then told

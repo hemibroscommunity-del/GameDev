@@ -1,7 +1,8 @@
 # Arena Sponsorship (server-settled stakes) — v2.3.1128
 
-GDD §44: spectators stake gold on arena gladiators and get paid 3× if
-their pick wins the match. Before this, "betting" was three different
+GDD §44: spectators stake gold on arena gladiators and get paid if
+their pick wins the match. (Since v2.3.3177 the winners share the losers'
+stakes -- a pool -- instead of 3× from the house; see Settlement.) Before this, "betting" was three different
 client-minted payout paths in PartyPanel (tournament pot-split,
 champion 2×, per-match 1.8×) — all phantom (the player_state echo
 stomps the coins) but a live exploit the moment anything trusted them.
@@ -21,7 +22,7 @@ Server code: `server/src/gladiator.js` (`_handleArenaSponsor`,
 |---|---|---|---|
 | c→s | `arena_sponsor` | `{targetId, amount, matchId?}` | Explicit case. `matchId` optional — the open current-round match containing `targetId` is resolved server-side (the round-bet UI picks a player, not a match). |
 | s→c | `arena_stake_placed` | `{matchId, targetId, targetName, amount}` | Private ack; gold already escrowed. |
-| s→c | `arena_stake_result` | `{matchId, targetId, won, amount, payout}` | Private, on match resolution. `payout` = 3×amount on win, 0 on loss. |
+| s→c | `arena_stake_result` | `{matchId, targetId, won, amount, payout}` | Private, on match resolution. `payout` = the stake back plus its share of the losing stakes on a win (v2.3.3177; was 3×amount), 0 on loss. |
 | s→c | `arena_stake_error` | `{code, message}` | Codes: `no-tournament`, `no-match`, `bad-target`, `own-match`, `bad-amount`, `already-staked`, `no-gold`. |
 
 All three server-emitted types are in `PRIVILEGED_EVENTS`. Capability:
@@ -46,17 +47,41 @@ round-bet form to send `arena_sponsor`.
 forfeits, walkovers, shot-clock timeouts) fire-and-forgets
 `_arenaSettleStakes(tid, matchId, winnerId)`:
 
-- Backed the winner → sponsor credited `3× amount` via `_creditPlayer`
-  (opId `arenastakewin:<tid>:<mid>:<pid>`, offline-safe mail).
-- Backed the loser → the stake amount is credited to the **winning
-  competitor** (opId `arenastakeloss:<tid>:<mid>:<pid>`), not the house.
-- Records deleted after the opId stamp; a crash in between cannot
-  double-pay (the sweep checks both stamps before refunding).
+- **v2.3.3177: a pool.** Every stake on the match is counted once:
+  `W` = the stakes on the winner, `L` = the stakes on the loser.
+- Backed the winner → the stake back **plus a share of the losing
+  stakes**, pro rata to the stake: `stake + floor((L - cut) × stake / W)`,
+  credited via `_creditPlayer` (opId `arenastakewin:<tid>:<mid>:<pid>`,
+  offline-safe mail).
+- The winning competitor gets `cut = floor(L × ARENA.FIGHTER_CUT)` (10%)
+  plus the coins the rounding left over (opId `arenastakecut:<tid>:<mid>`),
+  so exactly `W + L` is paid out.
+- Backed the loser → nothing back. Each losing stake is **stamped**
+  `arenastakeloss:<tid>:<mid>:<pid>` (`_opStamp`) before any winner is paid,
+  so the sweep can never refund a stake a winner was paid from.
+- Nobody backed the winner (`W = 0`) → every losing stake goes to the
+  winning competitor whole (opId `arenastakeloss:<tid>:<mid>:<pid>`), as
+  before v2.3.3177.
+- Records deleted after the stamps; a crash in between cannot double-pay
+  (every credit is opId-idempotent and the sweep checks both stamps before
+  refunding). A crash part-way costs a payout, never makes one twice.
 
-**Economics (flagged deliberately):** a won stake mints 2× the stake
-from the house on top of returning it (GDD §44 number). Combined with
-the 2000g champion pot this keeps the arena a net gold faucet at
-prototype scale — tune `ARENA.STAKE_MULT` to change it.
+Examples (FIGHTER_CUT 10%): 1,000 on the winner, 1,000 on the loser → the
+winning backer gets 1,900, the fighter 100. Two backers of the winner at
+500 each, 3,000 on the loser → 1,850 each, the fighter 300. Everyone on
+the winner → each gets their stake back, nothing more.
+
+**Economics:** no gold is minted. Before v2.3.3177 a won stake paid 3×
+from the house and a lost one went to the winning fighter, so betting the
+same amount on both sides of any match made the backers +stake and the
+winner +stake whoever won (about +10,000 a match with four accounts), and
+backing the winner of a match your own accounts fought made 2× per
+backer. A pool moves gold only between the people who staked: a hedge
+gets back what it put in less the fighter's cut, and a fixed match only
+returns the stakes (a fixer can still win honest backers' stakes, as in
+any pool, but can no longer make gold). The only faucet left in the arena is the
+champion prize. The bet panel already said "Payout: pot split among
+winners"; the result toast shows the server's `payout`.
 
 ## Sweep
 

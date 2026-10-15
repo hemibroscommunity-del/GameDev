@@ -50,6 +50,12 @@
  *       denies on insufficient coins (no partial spend), nothing
  *       socketed, unknown/OOB target, dead; gear lock blocks equipped
  *       extraction but not stash; caps.gemExtract advertised.
+ *
+ * v2.3.3172:
+ *   12b. the join's 200 clamp is for a claim: a stamped record keeps every
+ *        gem the server paid past 200; a pre-stamp record is still healed.
+ *   13b. a shield gem pays only on a shield this server made: a claimed
+ *        shield, worn through shield_wear, pays and charges nothing.
  */
 import { GameRoom } from '../src/index.js';
 import { AMULET_FORGE_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_MONSTER_DROP, GEM_RAW_MONSTER_DROP, GEM_CUT_TIERS } from '../src/data.js';
@@ -414,6 +420,38 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   check('state_sync advertises caps.gems', sync && sync.caps && sync.caps.gems === true, sync && sync.caps);
 }
 
+// ── 12b. v2.3.3172: the join's 200 clamp is for a CLAIM, not the server's own count ──
+// Kills and cuts add to the stored map with no ceiling, and every join ran
+// the stored map through the claim's 200 clamp: a cutting session past 200
+// of one gem lost the excess at the next reconnect.  A record from before
+// the capture stamp is still healed (the clamp's real job).
+{
+  const wsq = fakeWs('q1');
+  await join(wsq, 'bp_gem_q', {});
+  const psq = room.playerState['bp_gem_q'];
+  psq.lifeSkills.gems = { raw_flame: 10, polished_flame: 199 };
+  psq.lifeSkills.gemCutting = { level: 60, xp: 0 };
+  const realRandom12b = Math.random;
+  Math.random = () => 0.5;                       // every cut succeeds
+  try { for (let i = 0; i < 3; i++) await cut(wsq, { gem: 'flame' }); } finally { Math.random = realRandom12b; }
+  check('setup: three server cuts take polished flame past 200',
+    psq.lifeSkills.gems.polished_flame === 202 && state._store.get('rpg:bp_gem_q').lifeSkills.gems.polished_flame === 202,
+    { live: psq.lifeSkills.gems, stored: state._store.get('rpg:bp_gem_q').lifeSkills.gems });
+  const wsq2 = fakeWs('q2');
+  await join(wsq2, 'bp_gem_q', { rpgLifeSkills: { gems: { polished_flame: 5 } } });
+  const psq2 = room.playerState['bp_gem_q'];
+  check('a reconnect keeps every gem the server paid (202, not clamped to 200)',
+    psq2.lifeSkills.gems.polished_flame === 202, psq2.lifeSkills.gems);
+  // a record from before the capture stamp is still healed by the clamp
+  const recq = state._store.get('rpg:bp_gem_q');
+  delete recq.gemsCaptured;
+  recq.lifeSkills.gems = { polished_frost: 999999 };
+  const wsq3 = fakeWs('q3');
+  await join(wsq3, 'bp_gem_q', {});
+  check('...while a record from before the capture stamp is still held to 200',
+    room.playerState['bp_gem_q'].lifeSkills.gems.polished_frost === 200, room.playerState['bp_gem_q'].lifeSkills.gems);
+}
+
 // ── 13. v2.3.1209 gem EXTRACTION (op:'extract'): server-settled strip
 // of the gear blob + polished-gem credit, mirroring ForgePanel's two
 // Extract buttons.  Fresh identity so the earlier sections' churn on
@@ -477,7 +515,11 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
 
   // --- shield extraction: single gem, blacksmith label, flat 25g (no tierMult) ---
   px.coins = 100;
-  px.shield = { gearBase: 'steel', gem: 'venom', name: 'Venom Shield' };
+  /* v2.3.3172: a shield gem pays only on a shield this server made (`prov:
+     'minted'`, amulet.js _extractableGems).  No server path slots a shield
+     gem yet, so this state is a stand-in for one -- marked as what it stands
+     for; §13b drives the claimed-shield path that must NOT pay. */
+  px.shield = { gearBase: 'steel', gem: 'venom', name: 'Venom Shield', prov: 'minted' };
   await forge(wsx, { op: 'extract', target: 'shield' });
   /* v2.3.3012: the steel tier is called Black Steel now (data.js
      BLACKSMITH_TIER_LABELS -- the owner's ore after iron), so the rebuilt
@@ -488,7 +530,7 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
 
   // --- insufficient coins: no partial spend (gear + gems untouched) ---
   px.coins = 10;
-  px.shield = { gearBase: 'steel', gem: 'water', name: 'Water Shield' };
+  px.shield = { gearBase: 'steel', gem: 'water', name: 'Water Shield', prov: 'minted' };
   const gemsBefore = JSON.stringify(px.lifeSkills.gems);
   await forge(wsx, { op: 'extract', target: 'shield' }); // 25 > 10
   check('extract denied on insufficient coins leaves gear + gems untouched',
@@ -523,7 +565,7 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
 
   // --- gear lock blocks EQUIPPED extraction but not stash (stash isn't worn) ---
   px.coins = 100;
-  px.shield = { gearBase: 'steel', gem: 'light', name: 'Light Shield' };
+  px.shield = { gearBase: 'steel', gem: 'light', name: 'Light Shield', prov: 'minted' };
   px.weaponStash = [{ type: 'staff', gearBase: 'iron', tier: 'elemental', tierMult: 1, element1: 'stone', element2: null, isVolatile: false, name: 'Stone Staff' }];
   px._gearLockUntil = Date.now() + 60000;
   await forge(wsx, { op: 'extract', target: 'shield' });
@@ -536,11 +578,38 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
 
   // --- dead players cannot extract ---
   px.coins = 100;
-  px.shield = { gearBase: 'steel', gem: 'wind', name: 'Wind Shield' };
+  px.shield = { gearBase: 'steel', gem: 'wind', name: 'Wind Shield', prov: 'minted' };
   px.dead = true;
   await forge(wsx, { op: 'extract', target: 'shield' });
   check('dead player cannot extract', px.shield.gem === 'wind' && px.coins === 100, { shield: px.shield, coins: px.coins });
   px.dead = false;
+}
+
+// ── 13b. v2.3.3172: a CLAIMED shield's gem is not paid out ──
+// The join adopts the bag's shield claim (shape-checked only, `gem` kept),
+// shield_wear (v2.3.3091) puts a bag shield on the arm, and the extract op
+// paid a polished gem for it -- for one coin at a claimed tierMult of 0.001.
+// No server path ever slots a shield gem, so that gem was never taken.
+// Driven through the real messages: join with the claim, wear it, extract.
+{
+  const PIDC = 'bp_ext_claim';
+  const wsc1 = fakeWs('c1');
+  await join(wsc1, PIDC, {});                    // a character on file
+  const claimed = { name: 'Wood Shield flame', gearBase: 'wood', tierMult: 0.001, tier: 'common', gem: 'flame' };
+  const wsc2 = fakeWs('c2');
+  await join(wsc2, PIDC, { rpgShieldStash: [claimed] });
+  const pc = room.playerState[PIDC];
+  pc.coins = 100;
+  pc.lifeSkills = pc.lifeSkills || {};
+  pc.lifeSkills.gems = {};
+  await room.webSocketMessage(wsc2, JSON.stringify({ type: 'shield_wear', payload: { sig: 'Wood Shield flame|wood|0.001|common' } }));
+  check('setup: the claimed shield, gem and all, is on the arm',
+    pc.shield && pc.shield.gem === 'flame' && pc.shield.prov !== 'minted', pc.shield);
+  await forge(wsc2, { op: 'extract', target: 'shield' });
+  check('extracting a claimed shield\'s gem pays no polished gem',
+    !pc.lifeSkills.gems.polished_flame, pc.lifeSkills.gems);
+  check('...and charges nothing, the gem staying where it is',
+    pc.coins === 100 && pc.shield.gem === 'flame', { coins: pc.coins, shield: pc.shield });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

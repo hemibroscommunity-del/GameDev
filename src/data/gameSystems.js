@@ -20,7 +20,8 @@ import { TOWN_EXITS } from './effects.js';
    Now imported from where they live; the eslint LEGACY DEBT block for
    this file is gone. */
 import { AMULET_TIERS, SALVAGE_RETURN_RATE, DEPTH_TIERS, ZONE_RESOURCES, getAmuletBonus, getShieldBonus, getShieldStats, skillXpRequired } from './items.js';
-import { FISHING_TIERS } from './lifeSkills.js';
+import { FISHING_TIERS, GATHER_NODE_HP, harvestBaseXp, gatherReqLvl } from './lifeSkills.js';   /* GATHER_NODE_HP, harvestBaseXp v2.3.3251 */
+import { xpDecayMult, xpAfterDecay, xpDecayOn } from './xpDecay.js';   /* v2.3.3251 */
 import { applyZoneVariant, hitShapeOf, variantForArchetype } from './monsterVariants.js';
 /* v2.3.1660: the trained-skill combat rebuild's client mirror — every
    prog3Live(rpg) branch below keeps its legacy body for old workers
@@ -2250,11 +2251,42 @@ export const GATHER_HIT_SETTLE_MS = 220;
 
 /* The worker's own HP per tier (GATHER_HITS.HP_PER_TIER x (tier + 1)), for
    the HP bar's denominator before a plan has said so.  Display only: the
-   plan's `hp` is what is drawn the moment it arrives. */
-export function gatherNodeHp(tierLvl) {
+   plan's `hp` is what is drawn the moment it arrives.
+   v2.3.3251: by the node's TYPE and tier too -- each tier twice as long as
+   the one before at the level it opens (lifeSkills.js GATHER_NODE_HP, the
+   worker's gatherNodeHp, mirror-audit holding the two together); a type or
+   tier not in the table, a cook's campfire, or `table` false (a worker
+   without caps.nodehp: gatherNodeHpFor) keep 5 x (tier + 1). */
+export function gatherNodeHp(tierLvl, nodeType, table) {
   var t = Math.max(1, Math.floor(Number(tierLvl) || 1));
+  var has = Object.prototype.hasOwnProperty;
+  var row = (table !== false && typeof nodeType === 'string' && has.call(GATHER_NODE_HP, nodeType)) ? GATHER_NODE_HP[nodeType] : null;
+  if (row && has.call(row, t)) return row[t];
   return 5 * (t + 1);
 }
+/* ...as THIS worker rolls it: the table only against one that says so
+   (caps.nodehp, v2.3.3251) -- an older worker's plans are 5 x (tier + 1). */
+export function gatherNodeHpFor(S, tierLvl, nodeType) {
+  return gatherNodeHp(tierLvl, nodeType, !!(S && S._serverCaps && S._serverCaps.nodehp));
+}
+/* v2.3.3251: what a harvest of `node` PAYS, as THIS worker pays it -- the
+   game's "+N Mining XP".  The tier's XP (GATHER_TIER_XP with caps.tierxp, the
+   old formula without), times the accuracy grade's `xpMult`, then faded when
+   the resource's level is 5 or more below `level`, the skill's level BEFORE
+   this harvest's XP lands (with caps.xpdecay).  The worker's
+   gathering.js _harvestXpPaid; mirror-audit holds the two to each other. */
+export function harvestXpFor(S, node, level, xpMult) {
+  var caps = (S && S._serverCaps) || {};
+  var tier = node && (node.gatherLvl || node.tierLvl);
+  var xp = Math.ceil(harvestBaseXp(tier, !!caps.tierxp) * (Number(xpMult) || 1));
+  if (!xpDecayOn(S)) return xp;
+  var need = (node && node.reqLvl) || gatherReqLvl(node && node.nodeType, tier);
+  return xpAfterDecay(xp, xpDecayMult(Math.max(1, Math.floor(Number(level) || 1)), need));
+}
+/* v2.3.3251: the longest plan the game plays (applyGatherHits); a longer one
+   drops to the timer.  At least the worker's GATHER_HITS.MAX_HITS, which
+   mirror-audit holds it to, so no plan the worker sends is refused. */
+export var GATHER_PLAN_MAX = 200;
 
 /* When each of `n` hits lands, on the blow instants of `skill`'s free-running
    swing, starting no sooner than GATHER_HIT_LEAD_MS after `fromMs`.  Pure, so

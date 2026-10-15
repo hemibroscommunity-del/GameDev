@@ -729,13 +729,18 @@ export const petbookMethods = {
 
   /* pet_name {id, name} */
   _handlePetName(session, payload) {
+    let renamed = null;
     this._petbookAct(session, 'name', payload, (rec, pet) => {
       if (!pet) return 'no-pet';
       const name = cleanPetName(payload && payload.name);
       if (!name) return 'bad-name';
+      if (pet.name !== name) renamed = pet.id;
       pet.name = name;
       return null;
     });
+    /* v2.3.3186: a pet in an open trade window renamed is a change to the
+       offer (trade2.js _t2PetRenamed) */
+    if (renamed && this._t2PetRenamed) this._t2PetRenamed(session.id, renamed);
   },
 
   /* ═══ v2.3.3123: MORE ROOM IN THE PET HOUSE (Phase 4) ═══

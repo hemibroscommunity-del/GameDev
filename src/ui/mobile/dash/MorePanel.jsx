@@ -10,6 +10,8 @@ import { friendsSrv } from '../sheet/friendsSync.js';
 import { hasUnseenLevelUps } from '../sheet/skillsModel.js';
 /* v2.3.2038: the Login Key tile's status line reads the real credential. */
 import { getBtPassphrase } from '@/networking/index.js';
+import { CODEX_KINDS, CODEX_TIERS } from '@/data/monsterCodex.js';   /* v2.3.3209 */
+import { codexCounts, codexFreshCount } from '@/game/monsterCodex.js';   /* v2.3.3209 */
 
 // v2.3.1224: swapped to the UI Bible icon set (docs/UI-BIBLE.md Part 4,
 // sliced by tools/process_icon_sheets.py); every tile has a real icon.
@@ -78,9 +80,13 @@ function statusFor(id, S) {
       return n > 0 ? `Travel log · ${n} entr${n === 1 ? 'y' : 'ies'}` : 'Your travels, logged live';
     }
     case 'encyclopedia': {
-      const n = Object.keys(R._seenMonsters || R.killedMonsters || {}).length
-        + Object.keys(R._seenMaterials || {}).length;
-      return n > 0 ? `${n} discovered` : 'Discover monsters & materials';
+      /* v2.3.3209: the monster codex -- the monsters met and the pages with
+         something new on them (game/monsterCodex.js; the old count read a
+         list nothing wrote) */
+      const met = CODEX_KINDS.filter((k) => codexCounts(S, k)[0] >= CODEX_TIERS.page).length;
+      const fresh = codexFreshCount(S);
+      if (fresh > 0) return `${fresh} new in the codex`;
+      return met > 0 ? `${met} of ${CODEX_KINDS.length} monsters met` : 'Learn about the monsters you defeat';
     }
     case 'leaderboard': return 'View the leaderboards';
     /* v2.3.1641: same rule as every line above — real state only. */
@@ -163,7 +169,13 @@ const Icon = ({ t, px }) => t.src ? (
     }} />
 ) : <span style={{ fontSize: px - 6, flex: 'none' }}>{t.glyph}</span>;
 
-const open = (id) => dashboardPanelBus.push(id);
+/* v2.3.3215: the Codex has its own button on the dashboard's row now, and its
+   tile here opens that same screen, lighting that button -- not a drill under
+   More.  Its page is laid out for a destination's own height (all nine cards
+   at once, the tabs pinned over a stage that fits under them), and a drill's
+   "◂ CODEX" header would take 32 px of it. */
+const OWN_BUTTON = new Set(['encyclopedia']);
+const open = (id) => (OWN_BUTTON.has(id) ? dashboardPanelBus.open(id) : dashboardPanelBus.push(id));
 const tile = (id) => TILES.find(t => t.id === id);
 
 /* v2.3.1299 (ChatGPT round-6, owner-approved): expanded More = a

@@ -1,7 +1,7 @@
 import React from 'react';
 import { BUILD_INFO } from '../BuildBadge.jsx'; /* v2.3.1903 */
 import { BT_AUDIO } from '@/data/index.js';
-import { verifyBro, hasWallet, broVerifySupported, onBroState, getBroState, BRO_PENDING, BRO_OK } from '@/networking/broWallet.js';
+import { verifyBro, hasWallet, broVerifySupported, broCountSupported, broCountOf, onBroState, getBroState, BRO_PENDING, BRO_OK } from '@/networking/broWallet.js';
 
 /* ═══ InfoPanel — online-count + mute/close utility popup ═══ */
 /* v2.3.855: moved verbatim from BroTown.jsx's JSX tree (first UI-panel
@@ -26,21 +26,40 @@ function BroVerifyRow(props) {
   React.useEffect(function () { return onBroState(setBro); }, []);
 
   var wornId = S && S.myBroData && S.myBroData.ID;
-  if (!broVerifySupported(S) || !wornId) return null;
+  /* v2.3.3255: against a worker with caps.broCount the row is the WALLET
+     check -- "a 'verified' checkmark for people who own 1 hemi bro or more"
+     (the owner) -- so it no longer needs a worn Bro to appear, and it says how
+     many the wallet holds.  It stays pressable once verified: a player who
+     buys another Bro checks again rather than waiting a day. */
+  var countMode = broCountSupported(S);
+  if (!broVerifySupported(S) || (!countMode && !wornId)) return null;
 
-  var verified = !!(S && S.rpg && S.rpg._bro) || bro.status === BRO_OK;
+  var count = broCountOf(bro.status === BRO_OK && bro.count != null ? bro.count : (S && S.rpg && S.rpg._broN));
+  var verified = countMode
+    ? count > 0
+    : (!!(S && S.rpg && S.rpg._bro) || bro.status === BRO_OK);
   var busy = bro.status === BRO_PENDING;
+  /* a wallet checked and found holding none: said, not hidden */
+  var none = countMode && bro.status === BRO_OK && !count;
 
-  var label = verified ? '\u2713 Hemi Bro #' + wornId + ' verified'
-    : busy ? 'Check your wallet\u2026'
-      : hasWallet() ? 'Verify Hemi Bro #' + wornId
-        : 'No wallet in this browser';
+  var label = countMode
+    ? (busy ? 'Check your wallet\u2026'
+      : verified ? '\u2713 ' + count + ' Hemi Bro' + (count === 1 ? '' : 's') + ' \u00b7 check again'
+        : hasWallet() ? 'Verify my Hemi Bros'
+          /* every player sees this row now, and a phone's own browser has no
+             wallet: say how, not just "no" */
+          : 'Hemi Bro holder? Open BroTown in your wallet app to verify')
+    : (verified ? '\u2713 Hemi Bro #' + wornId + ' verified'
+      : busy ? 'Check your wallet\u2026'
+        : hasWallet() ? 'Verify Hemi Bro #' + wornId
+          : 'No wallet in this browser');
+  var locked = busy || !hasWallet() || (!countMode && verified);
 
   return React.createElement('div', {
     style: { marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(238,242,235,.10)' },
   },
   React.createElement('button', {
-    disabled: busy || verified || !hasWallet(),
+    disabled: locked,
     onClick: function () { verifyBro(S, wornId); },
     style: {
       minHeight: 44, padding: '8px 12px', borderRadius: 11,
@@ -48,7 +67,7 @@ function BroVerifyRow(props) {
       border: '1px solid ' + (verified ? 'rgba(216,170,88,.55)' : 'rgba(238,242,235,.14)'),
       color: verified ? '#D8AA58' : '#F7F2E7',
       fontSize: 12, fontWeight: 700,
-      cursor: (busy || verified || !hasWallet()) ? 'default' : 'pointer',
+      cursor: locked ? 'default' : 'pointer',
       width: '100%', opacity: hasWallet() ? 1 : 0.6,
     },
   }, label),
@@ -56,7 +75,9 @@ function BroVerifyRow(props) {
      "chain unreachable" mean very different things to the player. */
   bro.error ? React.createElement('div', {
     style: { marginTop: 6, fontSize: 11, lineHeight: 1.35, color: '#D95C54' },
-  }, bro.error) : null);
+  }, bro.error) : none ? React.createElement('div', {
+    style: { marginTop: 6, fontSize: 11, lineHeight: 1.35, color: '#C9C2B4' },
+  }, 'This wallet holds no Hemi Bros.') : null);
 }
 
 export function InfoPanel(props) {

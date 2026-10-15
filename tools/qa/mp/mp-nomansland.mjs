@@ -14,7 +14,8 @@
  *      (v2.3.3108) the minimap's name plate showing the level band, the badge
  *      carrying No man's land;
  *   2. the raider taps the wanderer: the tap AIMS (S.lockedTarget, `nml`) and
- *      opens no card;
+ *      opens no card -- since v2.3.3253 through the small window the tap
+ *      raises ("Attack Wanderer?", game/nmlAsk.js), whose Attack aims;
  *   3. a swing lands (the worker's HP for the wanderer drops): the raider wears
  *      a RED skull, the wanderer a WHITE one, each sees the other's (the tick's
  *      `sk`), and the raider is told what the red skull means;
@@ -258,21 +259,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   await shot(A, '1-told');
 
-  /* ── 2. the tap aims ── */
+  /* ── 2. the tap asks, and Attack aims ── */
   await closeIn(A, wsPort, idA, idB, 60);
   await A.page.waitForTimeout(600);
-  let lock = null;
-  for (let i = 0; i < 4 && !(lock && lock.id === idB); i++) {
+  /* v2.3.3253: the tap raises "Attack Wanderer?" (game/nmlAsk.js); its window
+     waits 30 s here, as the walk to it can be slow on this box */
+  await A.page.evaluate(() => { if (window.__btNmlAsk) window.__btNmlAsk.setMs(30000); });
+  let asked = null;
+  for (let i = 0; i < 4 && !asked; i++) {
     const at = await peerOnScreen(A, idB);
     if (at) await A.page.mouse.click(at.x, at.y - 4);
     await A.page.waitForTimeout(500);
-    lock = await A.page.evaluate(() => {
-      const S = window._gameState.current, lt = S.lockedTarget;
-      return lt ? { type: lt.type, id: lt.id, nml: !!lt.nml, card: !!document.querySelector('.bt-inspect-card') } : null;
+    asked = await A.page.evaluate(() => {
+      const c = window.__btNmlAsk && window.__btNmlAsk.current(), el = document.querySelector('[data-nml-ask-attack]');
+      if (!c || !el) return null;
+      const q = el.getBoundingClientRect();
+      return { why: c.why, id: c.id, x: q.left + q.width / 2, y: q.top + q.height / 2 };
     });
   }
-  rec.ok('2. the raider taps the wanderer: the tap AIMS at them (No man\'s land\'s lock) and opens no card',
-    !!lock && lock.type === 'player' && lock.id === idB && lock.nml && !lock.card, lock);
+  /* its Attack, a real click at the button's middle */
+  if (asked) await A.page.mouse.click(asked.x, asked.y);
+  await A.page.waitForTimeout(500);
+  const lock = await A.page.evaluate(() => {
+    const S = window._gameState.current, lt = S.lockedTarget;
+    return lt ? { type: lt.type, id: lt.id, nml: !!lt.nml, card: !!document.querySelector('.bt-inspect-card'), ask: !!document.querySelector('[data-nml-ask]') } : null;
+  });
+  rec.ok('2. the raider taps the wanderer: the small window asks, and its Attack AIMS at them (No man\'s land\'s lock), no player card',
+    !!asked && asked.why === 'tap' && asked.id === idB && !!lock && lock.type === 'player' && lock.id === idB && lock.nml && !lock.card && !lock.ask, { asked, lock });
 
   await H.instrumentWire(A);
   /* ── 3. a hit, and the skulls ── */

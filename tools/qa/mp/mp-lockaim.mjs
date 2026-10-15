@@ -65,6 +65,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the archer is holding a bow (guard)', !!armed && armed.bow && armed.slot === 'ranged', armed);
   if (!armed || !armed.bow) return;
 
+  /* ═══ v2.3.3206: STAND WHERE NO PROP IS ON A LINE ═══
+     A shot is judged at the archer's BOOTS now (projectiles.js `_goy`), 52 px
+     below the position this scenario offsets its slimes from, and from the
+     plaza spawn the lamp post west of the fountain and the fountain itself
+     stand on that ground line for four of the five headings: the arrow stops
+     in the prop, which is cover working, and the slime is never touched.  This
+     scenario is about AIM, so it shoots from a spot every heading's line is
+     clear from, asked of the game's own sweep -- and says so if it finds none,
+     rather than failing an aim claim for a prop's sake. */
+  const spot = await P.page.evaluate((shots) => {
+    const S = window._gameState.current, g = window.__btPlayerGround ? window.__btPlayerGround() : null;
+    if (!g || !window.__btSweepBlockPoint) return null;
+    const gdy = g.y - S.player.y;
+    const clearFrom = (x, y) => shots.every((s) => {
+      const ang = Math.atan2((y + s.dy - 23) - (y - 28), s.dx);   /* grip to torso, near enough */
+      const L = Math.hypot(s.dx, s.dy) + 60;
+      return !window.__btSweepBlockPoint(S.currentZone, x, y + gdy, x + Math.cos(ang) * L, y + gdy + Math.sin(ang) * L);
+    });
+    const cands = [[S.player.x, S.player.y]];
+    for (let r = 0; r <= 600; r += 100) for (let k = 0; k < 8; k++) {
+      cands.push([1350 + Math.cos(k * Math.PI / 4) * r, 1350 + Math.sin(k * Math.PI / 4) * r]);
+    }
+    for (const [x, y] of cands) if (clearFrom(x, y)) return { x, y };
+    return null;
+  }, SHOTS);
+  rec.ok('a spot where every heading\'s ground line is clear of props (guard)', !!spot, spot);
+  if (!spot) return;
+  await H.hopTo(P, spot.x, spot.y, { tries: 80 });
+  await P.page.waitForTimeout(600);
+
   /* ── THE MEASUREMENT ──
      Not "closest approach": an arrow that connects is REMOVED by the hit-test
      the moment it comes within the radius, so the closest position anyone can

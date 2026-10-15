@@ -136,6 +136,16 @@ wager is confined to the stackable bag and refuses anything else.
 | Caps | 24 distinct stacks per wager, 10000 per stack |
 | Cooldown | shares `_lastAceFlipAt` with the coin flip |
 
+### Never a golden ticket (v2.3.3173)
+
+A golden ticket (`goldticket_*`, eventcapes.js) is a stackable in the bag,
+tradeable by owner decision, and the contest's cap ("only N capes exist") is
+checked only when a ticket drops. A won wager turned one ticket into two:
+redeem one, trade the other, and the contest had more capes than winners.
+Found by the overnight economy review (2026-10-12). The wager now skips a
+ticket key the way it skips a key the bag lacks: a ticket alone is no wager,
+and in a mixed stake the rest still flips. `gamble.test.mjs` §17b.
+
 ### The stake is the server's bag, not the request
 
 Rule 16. The request only *names* stacks and asks for quantities; what is

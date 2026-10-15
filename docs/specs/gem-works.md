@@ -1,4 +1,4 @@
-# The Gem Works (v2.3.3148)
+# The Gem Works (v2.3.3259)
 
 > Owner, 2026-10-07, after the Assay Office's name came up ("what does that even
 > mean"): *"I think one gem building is enough and can do both the gem cutting
@@ -16,10 +16,13 @@ building now.
 
 - **One door, "Enter GEM WORKS".** The Gem Cutter's building, with the sign it
   always had (GEMS, which covers both jobs, so nothing was repainted).
-- **One window, two tabs** under the owner's picture of the room: **Cut gems**
+- **One window, two tabs**, on the owner's picture of the room: **Cut gems**
   (raw to polished: the Gem Cutter's panel) and **Set gems** (polished into gear:
-  the Enchanter's panel). A tap on a tab switches in place; the picture does not
-  flash, because it is the same room.
+  the Enchanter's panel). The room is the window's background (v2.3.3258,
+  docs/specs/building-rooms.md) and the tab strip is the window's first row, so
+  the tabs are written on the room where the other windows' titles are; each
+  panel's own title strip is under them. A tap on a tab switches in place; the
+  picture is not loaded again and does not flash, because it is the same room.
 - The **Assay Office is gone from the east street.** The Bank now stands alone on
   its north side; the Gem Works and the Auction House face it. Nothing else in
   the town moved: the gates, the square and every other plot are where they were.
@@ -36,6 +39,7 @@ building now.
 | `src/data/buildingRooms.js` | `enchant` shows the `gemcutter` room: sixteen windows, fifteen rooms; `public/world/interiors/assay.webp` (313 KB) is out |
 | `src/ui/panels/buildings/GemWorksPanel.jsx` (new) | the two tabs, drawing `GemcutPanel` and `EnchantPanel` **untouched** |
 | `src/ui/BroTown.jsx` | draws `GemWorksPanel` for `buildingPanel` `gemcut` or `enchant`; `BuildingRoom` is keyed by its room, not its panel |
+| `src/styles/game.css` | `.bt-gw-body` squares the panel's corners; `.bt-gw-tabs` keeps the strip clear of the close button where it lies over it (no room behind the window: a sideways phone, a picture that failed) |
 | `server/src/wheelspawns.js` | re-baked: **only the plan's fingerprint changed** (see below) |
 
 ### Why the panels are not touched
@@ -74,19 +78,23 @@ mayor_1's "Visit 3 buildings in town" counts the Wheel's building doors: eleven 
 
 ## Not done, and why
 
-- **The two NPCs.** The owner's idea is a cutter and a setter behind the same
-  workbench, each with a visitor. The prompts for all four are on the NPC page
-  (docs/ART-WISHLIST.md has the room's); the art is the owner's to make. When it
-  exists, `ROOM_KEEPERS` (src/data/buildingRooms.js, one keeper per room today)
-  becomes a list for this room and each tab a counter.
+- **The two NPCs.** The owner's idea is a cutter and a setter in the same
+  building. Since v2.3.3258 a building's people stand OUTSIDE it and open its
+  window when you talk to them (the owner chose that over walking in:
+  docs/specs/building-rooms.md, "keepers"), so the two are keepers: the cutter
+  opens the Cut gems tab and the setter the Set gems tab. Their prompts are rows
+  of docs/ART-WISHLIST.md "The keepers" (Gem Cutter Bro, Gem Setter Bro); the
+  art is the owner's to make. With it, each is a `WHEEL_TOWNSFOLK` row and a
+  `WHEEL_KEEPERS` entry (src/data/wheelBuildingDoors.js), and opening his tab
+  rather than the door's first is one more field there.
 - **A new inside picture with two stations.** The Gem Cutter's picture has one
   workbench with a lathe and a grinding wheel, which is what the cutter needs; a
-  picture with a setting counter beside it would let the two keepers stand apart.
+  picture with a setting counter beside it would give each tab its own station.
   Optional: a prompt for it is in docs/ART-WISHLIST.md ("Gem Works: inside").
 - **The Assay Office's pictures** (its outside on the sprite sheets, its inside)
   are out of the game; git history has them.
-- **Walking inside.** Not built; this is the building the owner's walkable
-  interiors would start from, with its two counters.
+- **Walking inside.** Not built, and not wanted: the owner chose the keepers
+  outside and the room behind the menu (v2.3.3258).
 
 ## Tests
 
@@ -97,9 +105,22 @@ mayor_1's "Visit 3 buildings in town" counts the Wheel's building doors: eleven 
   east street's three plots. The older counts moved with it (sixteen buildings,
   eleven doors, fifteen rooms, sixteen pictures).
 - `node tools/qa/mp/run.mjs buildingrooms`: a phone walks to the Gem Works' door,
-  taps each tab (each at least 44 px tall and reachable by a finger), checks the
-  picture is the same element after a tab change, each panel flush with its body,
-  and the tabs clear of the close button on a sideways phone. Pictures:
+  sees the window laid on its room like every other (a stage down, the tab strip
+  its first row with its colour taken away), taps each tab (each at least 44 px
+  tall and reachable by a finger), checks the picture is the same element after
+  a tab change, each panel flush with its body, and the tabs clear of the close
+  button on a sideways phone. Pictures:
   `tools/qa/mp/out/buildingrooms-gemworks-*.png`.
-- `mp-wheeldoors` (sixteen doors, eleven that open a building), `mp-wheelbreak`
-  (the Assay Office is no longer a target).
+- `mp-wheeldoors` (sixteen doors, eleven that open a building), `mp-shieldgem`
+  (a shield's gem is set on the Set gems tab), `mp-wheelbreak` and
+  `mp-buildingfire` (the Assay Office is no longer a target).
+
+## Brought up to date (v2.3.3259)
+
+This was v2.3.3148, built on the first version of the room pictures (the room
+in a box at the top of each window). The owner then chose the room as the
+window's BACKGROUND and the keepers outside (v2.3.3258, merged first), so it was
+redone on top of that: the tabs are the window's first row, laid on the room;
+the keepers' prompts have the Gem Works' two people instead of an assayer; and
+the two phone tests that came to main since (`mp-shieldgem`, `mp-buildingfire`)
+go to the Gem Works.

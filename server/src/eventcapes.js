@@ -568,8 +568,16 @@ export const eventCapeMethods = {
     ps.inventory[_capeKey] = (Math.floor(Number(ps.inventory[_capeKey]) || 0)) + 1;
     /* ── end ── */
     this._capeLedgerSave(capeId);
-    if (opId && typeof opId === 'string') await this._opStamp('capered:' + opId);
+    /* v2.3.3173: the bag is saved HERE, in the same synchronous run as the
+       ledger, not after the stamp's await.  The comment above says "consume
+       and grant together, or not at all" -- the memory did, the storage did
+       not: a restart at that await kept the ledger (cape redeemed) and lost
+       the bag's write, so the stored bag still held the ticket, which is
+       tradeable and was redeemed again by its next holder -- two capes from
+       one issued ticket.  Ledger and bag now land together; the stamp after
+       them only guards a retry, and a retry finds the ticket gone. */
     this._saveRpg(session.id, ps);
+    if (opId && typeof opId === 'string') await this._opStamp('capered:' + opId);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);
   },

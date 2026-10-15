@@ -4,6 +4,8 @@
  */
 import { watchContextLoss } from '../debug/crashTrap.js';
 import { installSharpPixels } from './sharpPixels.js'; /* v2.3.2770 */
+import { installBindGroupFix } from './bindGroupFix.js'; /* v2.3.3152: a freed picture no longer breaks Pixi's pooled mask */
+import { installTexturePoolTrim } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool gives back what it does not use */
 import { SHADE } from './formShade.js';
 import { Application, Cache, Container, TextureSource } from 'pixi.js';
 
@@ -245,6 +247,30 @@ function buildScene(app) {
       try { total = count(app.stage); } catch (e) { total = null; }
       return { total, byLayer };
     };
+    /* v2.3.3152: the same count by PATH and by class, so a node count that
+       climbs says which container holds what climbs (the leak hunt that found
+       the hit effects' pools, mp-sceneleak).  A path is the labels down to
+       `maxDepth` (3), a deeper node counted on its ancestor's path; class
+       names read true only on an unminified build.  Probe only: nothing in
+       the game calls it. */
+    window.__btSceneCensus = function (maxDepth) {
+      const depthCap = typeof maxDepth === 'number' ? maxDepth : 3;
+      const byPath = Object.create(null), byClass = Object.create(null);
+      let total = 0, visible = 0;
+      const walk = (n, path, depth, shown) => {
+        total++;
+        const on = shown && n.visible !== false && n.renderable !== false;
+        if (on) visible++;
+        const cls = (n && n.constructor && n.constructor.name) || '?';
+        byClass[cls] = (byClass[cls] || 0) + 1;
+        const p = depth <= depthCap ? (path ? path + '/' : '') + ((n && n.label) ? String(n.label) : cls) : path;
+        byPath[p] = (byPath[p] || 0) + 1;
+        const k = (n && n.children) || [];
+        for (let i = 0; i < k.length; i++) walk(k[i], p, depth + 1, on);
+      };
+      try { walk(app.stage, '', 0, true); } catch (e) { return null; }
+      return { total, visible, byPath, byClass };
+    };
   }
 
   /* ═══ v2.3.2281: WHAT IS ACTUALLY DRAWN ON TOP OF THE CORPSE ═══
@@ -438,15 +464,21 @@ function buildScene(app) {
         const rows = [];
         const byKind = {};
         let bytes = 0;
+        /* v2.3.3190: bytes a pixel by the texture's format -- the Wheel's
+           ground and objects are one byte a pixel, colour numbers
+           (paletteTex.js) -- not four for every texture */
+        const bpp = (f) => (f === 'r8unorm' || f === 'r8snorm' || f === 'r8uint' || f === 'r8sint' ? 1
+          : (f === 'rg8unorm' || f === 'r16float' || f === 'r16uint' || f === 'rg8uint' ? 2
+            : (f === 'rgba16float' || f === 'rg32float' ? 8 : (f === 'rgba32float' ? 16 : 4))));
         for (const s of list) {
           if (!s || s.destroyed) continue;
           const w = s.pixelWidth || 0, h = s.pixelHeight || 0;
           const mip = !!(s.autoGenerateMipmaps || s.mipLevelCount > 1);
-          const b = w * h * 4 * (mip ? 4 / 3 : 1);
+          const b = w * h * bpp(s.format) * (mip ? 4 / 3 : 1);
           const kind = kindOf(s);
           bytes += b;
           byKind[kind] = (byKind[kind] || 0) + b;
-          rows.push({ label: String(s.label || '').replace(/^https?:\/\/[^/]+/, '').split('?')[0], kind, w, h, mip,
+          rows.push({ label: String(s.label || '').replace(/^https?:\/\/[^/]+/, '').split('?')[0], kind, w, h, mip, format: s.format,
             mb: +(b / 1048576).toFixed(2), idleS: s._gcLastUsed >= 0 ? Math.round((now - s._gcLastUsed) / 1000) : null });
         }
         rows.sort((a, b) => b.mb - a.mb);
@@ -600,6 +632,10 @@ export async function createPixiApp(canvas) {
   // handler: crash-log entry + fresh-canvas retry with backoff, with the
   // black-screen watchdog as the floor.  Strictly better than a broken
   // canvas renderer even on first boot.
+  /* v2.3.3152: bindGroupFix.js -- on BindGroup's prototype, so the groups
+     made before this (module-level filters) are covered too; once a page */
+  try { installBindGroupFix(); } catch (e) { /* Pixi as it ships */ }
+  try { installTexturePoolTrim(); } catch (e) { /* the pool as Pixi ships it */ }
   try {
     const app = new Application();
     const putBack = withoutDepthBuffer(canvas);   /* v2.3.3072 */

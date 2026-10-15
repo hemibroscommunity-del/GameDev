@@ -44,8 +44,31 @@ export function enterBuilding(S, deps) {
       }
       return;
     }
+    _openBuilding(S, nb, setBuildingPanel);
+}
+
+/* ═══ v2.3.3258: A KEEPER OPENS HIS BUILDING ═══
+   The owner, choosing the shopkeeper outside over walking in: "interacting
+   with the building's NPC instead of having the building interiors".  A
+   townsperson who keeps a building (data/wheelBuildingDoors.js WHEEL_KEEPERS:
+   Blacksmith Bro the forge, Mayor Bro the Town Hall) opens its window when you
+   talk to him -- the same window, the same visit counted, as its door.
+   `door` is one of game/wheelTownDoors.js wheelTownDoors(): `index` the
+   BUILDINGS entry, or `hall` the Wheel's own hall.  True when it opened. */
+export function enterWheelDoor(S, door, deps) {
+  if (!door) return false;
+  if (door.index >= 0) return _openBuilding(S, door.index, deps.setBuildingPanel);
+  if (door.hall) {
+    BT_AUDIO.enterBuilding();
+    deps.setBuildingPanel(door.hall);
+    return true;
+  }
+  return false;
+}
+
+function _openBuilding(S, nb, setBuildingPanel) {
     var b = BUILDINGS[nb];
-    if (!b.action && !b.id) return;
+    if (!b || (!b.action && !b.id)) return false;
     BT_AUDIO.enterBuilding();
     var S2 = S;
     if (S2.stats) {
@@ -79,4 +102,5 @@ export function enterBuilding(S, deps) {
     */
     var actionKey = b.action || b.id;
     setBuildingPanel(actionKey);
+    return true;
 }

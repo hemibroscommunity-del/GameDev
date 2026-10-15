@@ -2,7 +2,7 @@ import React from 'react';
 import { GemcutPanel } from './GemcutPanel.jsx';
 import { EnchantPanel } from './EnchantPanel.jsx';
 
-/* ═══ v2.3.3148: THE GEM WORKS -- CUTTING AND SETTING, ONE WINDOW ═══
+/* ═══ v2.3.3259: THE GEM WORKS -- CUTTING AND SETTING, ONE WINDOW ═══
  *
  * Owner, 2026-10-07, after the Assay Office's name came up ("what does that
  * even mean"): "I think one gem building is enough and can do both the gem
@@ -23,9 +23,11 @@ import { EnchantPanel } from './EnchantPanel.jsx';
  * 'gemcut' or 'enchant', as before -- so anything that opens either one still
  * does, on its own tab.
  *
- * When the rooms can be walked in, each tab is a counter with its own
- * keeper (the cutter, the setter) and this strip is the shortcut between
- * them.
+ * The strip is the window's first row, so it is written on the room behind
+ * the window (game.css ".bt-room", v2.3.3258) where the other windows' titles
+ * are, and each panel keeps its own title strip under it.  When the owner's
+ * two keepers come -- a cutter and a setter outside the Gem Works, v2.3.3258's
+ * keepers -- each opens his own tab, and this strip is the way between them.
  */
 var LS = {
   txt1: '#F4F0E7', txt2: '#B6C1BE', txt3: '#8D9B98',
@@ -56,7 +58,9 @@ export function GemWorksPanel(props) {
         style: {
           flex: 1, minWidth: 0, minHeight: 44, padding: '6px 10px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
           fontSize: 13, fontWeight: 700, WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-          background: on ? LS.brassFill : LS.raised,
+          /* v2.3.3259: the brass tint laid over the raised slate, not on its own -- the strip is see-through on the room now
+             (game.css .bt-room), and a tint alone let the room's floor show through the chosen tab */
+          background: on ? 'linear-gradient(' + LS.brassFill + ', ' + LS.brassFill + '), ' + LS.raised : LS.raised,
           border: '1px solid ' + (on ? LS.brass : LS.border),
           color: on ? LS.brass : LS.txt2
         }

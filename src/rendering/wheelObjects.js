@@ -44,19 +44,22 @@
  * the arrows and marks left in an object are drawn where it stands
  * (wheelPropRec, for effectsRenderer's prop marks).
  */
-import { Sprite, Assets, Container, Texture, Rectangle, CanvasSource } from 'pixi.js';
+import { Sprite, Assets, Container, Texture, Rectangle, CanvasSource, Spritesheet } from 'pixi.js';
 import { wheelInfo, wheelObjectStats, wheelOnStop, wheelLifeOn } from '../game/wheelTrial.js';
 import { BuildingLife, hasLife, wheelLifeWarm, wheelLifeFree, wheelLifeReady } from './wheelLife.js';
 import { setZoneBlockerHook } from '../data/worldProps.js';
 import { freeWheelNpcArt } from './npcSprites.js';
 import { tickWheelBreak, drainWheelEvents, isWheelBroken, resetWheelBreak, onWheelBreak, wheelObjectKind, isBuilding } from '../game/wheelBreak.js';
 import { WheelShatter, framePx } from './wheelShatter.js';
+import { BuildingFires, buildingFireOn } from './buildingFire.js';   /* v2.3.3230: a building you keep hitting catches fire */
 import { materialInfo, wheelMaterialOf } from '../data/wheelMaterials.js';
 import { playerGroundDy } from './systems/entityRenderer.js';   /* v2.3.2999: where your boots are, for a tree you stand behind */
 import { releaseShadowTextures } from './lightfx/shadows.js';   /* v2.3.3000: a freed sheet leaves no shadow behind */
 import { WHEEL_SUN } from './lightfx/zoneLight.js';             /* v2.3.3000: how far a shadow reaches */
 import { SHADE } from './formShade.js';                         /* v2.3.3000: shaded toward the ground, as the old props */
 import { readArtBottoms } from './propGround.js';               /* v2.3.3028: where each column of a picture meets the ground */
+import { drawSourceRect } from './paletteDraw.js';              /* v2.3.3190: a page kept as colour numbers, read on the CPU */
+import { paletteOn, makePaletteSource, paletteStats } from './paletteTex.js';   /* v2.3.3190: ...and drawn so */
 
 const BASE = '/world/objects/';
 const CACHE_PREFIX = 'wheel-object/';
@@ -145,13 +148,15 @@ function index() {
   const items = new Uint32Array(placed);
   for (let i = 0; i < n; i++) if (page[i] >= 0) items[fill[cellOf(o.x[i], o.y[i], cols, rows)]++] = i;
   const pageMB = man.atlases.map((a) => (a.w * a.h * 4) / 1048576);
+  /* v2.3.3190: which pages are palette PNGs (all of them: the manifest says) */
+  const palette = man.atlases.map((a) => a.palette !== false);
   wheelObjectStats.placed = placed;
   wheelObjectStats.pagesOf = pageNames.length;
   wheelObjectStats.placeMs = o.placeMs != null ? o.placeMs : null;
   /* v2.3.2999: which placing made them (placing.js PLACING, or PLACING_V2
      with `?placing=2`) */
   wheelObjectStats.version = o.version || null;
-  _idx = { src: o, o, n, cols, rows, start: count, items, page, w, h, ax, reach, scl, frame, maxH, maxHalfW, pageNames, pageMB,
+  _idx = { src: o, o, n, cols, rows, start: count, items, page, w, h, ax, reach, scl, frame, maxH, maxHalfW, pageNames, pageMB, palette,
     sheets: man.atlases.map((a) => BASE + a.sheet) };
   return _idx;
 }
@@ -173,33 +178,167 @@ function each(ix, x0, y0, x1, y1, fn) {
   }
 }
 
+/* ═══ v2.3.3190: A PAGE KEPT AS ITS COLOUR NUMBERS ═══
+   Every page is a palette PNG -- one byte a pixel, its colours listed once
+   (tools/world/repack-objects.mjs) -- that a browser loading it as a picture
+   unpacks to four bytes a pixel, twice: in the page (the asset cache) and on
+   the graphics chip.  Where the game draws pictures as colour numbers
+   (rendering/paletteTex.js), the page is fetched and read as the numbers
+   themselves (png8Worker.js, png8Decode.js), and kept so on the chip -- one
+   byte a pixel there, and the same one byte in the page for what reads a
+   picture on the CPU at its own size (a hit's chips, a burn mark, a shatter:
+   paletteDraw.js; a shadow's base is read as the page loads, below).  Its
+   colours are premultiplied, as Pixi premultiplies a
+   picture it uploads, and its frames are Pixi's own Spritesheet's, from the
+   same sheet, at the same size (meta.scale 2).  Anything that is not a
+   palette PNG, or does not read, is loaded as a picture, as before. */
+/* the sheets are read on a core of their own (png8Worker.js): unpacked on a
+   busy main thread, a sheet took 17-35 s to come in */
+let _pw = null, _pwSeq = 0;
+const _pwWait = new Map();
+function pngWorker() {
+  if (_pw) return _pw;
+  if (typeof Worker === 'undefined') return null;
+  try { _pw = new Worker(new URL('./png8Worker.js', import.meta.url), { type: 'module' }); } catch (e) { _pw = null; return null; }
+  _pw.onmessage = (ev) => {
+    const m = ev.data || {};
+    const done = _pwWait.get(m.id);
+    if (!done) return;
+    _pwWait.delete(m.id);
+    done(m);
+  };
+  _pw.onerror = () => { stopPngWorker(); };
+  return _pw;
+}
+/* leaving the Wheel (and a black screen's rebuild): the worker goes, and
+   whatever it was reading is let go (the pages are dropped anyway) */
+function stopPngWorker() {
+  if (_pw) { try { _pw.terminate(); } catch (e) { /* gone */ } _pw = null; }
+  for (const done of _pwWait.values()) done({ ok: false, error: 'stopped' });
+  _pwWait.clear();
+}
+function readSheet(url) {
+  const w = pngWorker();
+  if (!w) return Promise.resolve(null);
+  const id = ++_pwSeq;
+  return new Promise((resolve) => {
+    _pwWait.set(id, resolve);
+    try { w.postMessage({ id, url }); } catch (e) { _pwWait.delete(id); resolve(null); }
+  });
+}
+async function loadPalettePage(url) {
+  const m = await readSheet(url);
+  if (!m || !m.ok) return null;
+  const rgba = new Uint8Array(1024);
+  for (let c = 0; c < m.n; c++) {
+    const a = m.alpha[c];
+    rgba[c * 4] = Math.round(m.rgb[c * 3] * a / 255);
+    rgba[c * 4 + 1] = Math.round(m.rgb[c * 3 + 1] * a / 255);
+    rgba[c * 4 + 2] = Math.round(m.rgb[c * 3 + 2] * a / 255);
+    rgba[c * 4 + 3] = a;
+  }
+  let label = m.image;
+  try { const u = new URL(m.image); label = u.pathname + u.search; } catch (e) { /* as it came */ }
+  /* (a picture from a file is collected off the chip when idle, and comes
+     back from its numbers, which this keeps) */
+  const src = makePaletteSource({ idx: m.idx, w: m.w, h: m.h, stride: m.stride, rgba,
+    alphaMode: 'premultiplied-alpha', label, autoGarbageCollect: true });
+  if (!src) return null;
+  const sheet = new Spritesheet({ texture: new Texture({ source: src }), data: m.data, cachePrefix: CACHE_PREFIX });
+  sheet.parseSync();
+  await readPageBottoms(sheet, m.bytes);
+  return sheet;
+}
+
+/* ═══ EACH FRAME'S BASE, READ OFF THE PICTURE AS IT ALWAYS WAS ═══
+   A low thing casts column by column from where each column of its picture
+   meets the ground (wheelObjectCasters, v2.3.3028), read by scaling the frame
+   down onto a 128-column canvas (propGround.readArtBottoms).  A browser
+   scales an <img> and a canvas of the same pixels differently (measured in
+   Chromium: 25 of a fence sheet's 640 columns, and 98 of the Verdant Wilds'
+   first sheet's, came out on another row), so the colour numbers cannot be
+   read that way and give the same shadows.  So the page's picture is decoded
+   ONCE, as it loads, as the <img> it always was, every frame's base read off
+   it exactly as before (the same call), and the picture let go of --
+   where the old way kept it for as long as the page was loaded.  Measured:
+   all 183 frames of the 41 sheets read the same as from the old way's own
+   picture.  (A picture that will not decode leaves its frames to
+   readArtBottoms on the numbers, a near match.) */
+async function readPageBottoms(sheet, bytes) {
+  if (typeof Image === 'undefined' || typeof URL === 'undefined' || !URL.createObjectURL) return;
+  let url = null;
+  const img = new Image();
+  try {
+    url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
+    img.src = url;
+    await img.decode();
+    const res = sheet.textureSource.resolution || 1;
+    const pic = { source: { resource: img, pixelWidth: img.naturalWidth, width: img.naturalWidth / res } };
+    for (const t of Object.values(sheet.textures)) {
+      pic.frame = t.frame;
+      _bottoms.set(t, readArtBottoms(pic) || null);
+    }
+  } catch (e) { /* the numbers, then (above) */ }
+  try { img.src = ''; } catch (e) { /* gone */ }
+  if (url) { try { URL.revokeObjectURL(url); } catch (e) { /* gone */ } }
+}
+
 /* ── the pages ── */
-const _pages = new Map();     /* page index -> { state: 'loading'|'ready'|'failed', sheet, wanted, p } */
+const _pages = new Map();     /* page index -> { state: 'loading'|'ready'|'failed', sheet, wanted, p, palette } */
 let _loading = 0;
 function loadPage(ix, k) {
   let rec = _pages.get(k);
   if (rec) return rec.p;
-  rec = { state: 'loading', sheet: null, wanted: performance.now(), p: null, gen: _gen };
+  rec = { state: 'loading', sheet: null, wanted: performance.now(), p: null, gen: _gen, palette: false, picture: false, t0: performance.now() };
   _pages.set(k, rec);
   _loading++;
   const url = ix.sheets[k];
   /* a prefix of their own for the frames Pixi files in its cache: bare, a
      frame called 'stone-1' or 'barrel-2' would take (and, unloaded, take
      away) any other sheet's frame of that name */
-  rec.p = Assets.load({ src: url, data: { cachePrefix: CACHE_PREFIX } }).then((sheet) => {
+  const asPicture = () => { rec.picture = true; return Assets.load({ src: url, data: { cachePrefix: CACHE_PREFIX } }); };
+  /* v2.3.3190: as colour numbers where the game draws them so (above) */
+  const st = paletteStats();
+  const load = paletteOn() && ix.palette[k]
+    ? loadPalettePage(url).catch(() => null).then((sheet) => {
+      if (sheet) { rec.palette = true; st.pages++; return sheet; }
+      /* (let go while it was read -- the Wheel left, a rebuild: nothing to load) */
+      if (_pages.get(k) !== rec || rec.gen !== _gen) return null;
+      st.pagesRgba++;
+      return asPicture();
+    })
+    : asPicture();
+  rec.p = load.then((sheet) => {
     _loading--;
+    notePageLoad(ix.pageNames[k], rec, !!sheet);
     /* let go while it was loading (the Wheel left behind): drop it again */
-    if (_pages.get(k) !== rec || rec.gen !== _gen) { Assets.unload(url).catch(() => {}); return null; }
+    if (_pages.get(k) !== rec || rec.gen !== _gen) { freeSheet(url, rec, sheet); return null; }
     rec.state = 'ready';
     rec.sheet = sheet;
     wheelObjectStats.loads++;
     return sheet;
   }, () => {
     _loading--;
+    notePageLoad(ix.pageNames[k], rec, false);
     if (_pages.get(k) === rec) { rec.state = 'failed'; wheelObjectStats.failed++; }
     return null;
   });
   return rec.p;
+}
+/* v2.3.3190: QA -- the last pages loaded, how they came and how long they took */
+const _pageLog = [];
+function notePageLoad(name, rec, ok) {
+  _pageLog.push({ name, ok, palette: !!rec.palette, ms: Math.round(performance.now() - rec.t0), gen: rec.gen });
+  if (_pageLog.length > 24) _pageLog.shift();
+}
+/* v2.3.3190: a page as colour numbers is this module's own (destroyed with
+   its frames, which lets go of its row of colours); a picture is the asset
+   cache's, unloaded only by the page that loaded it -- one let go while its
+   numbers were read (and never loaded as a picture) must not unload the
+   picture a later wish for the same page is loading */
+function freeSheet(url, rec, sheet) {
+  if (rec.palette) { try { if (sheet) sheet.destroy(true); } catch (e) { /* gone */ } return; }
+  if (rec.picture) Assets.unload(url).catch(() => {});
 }
 function dropPage(ix, k) {
   const rec = _pages.get(k);
@@ -210,7 +349,7 @@ function dropPage(ix, k) {
      releaseShadowTextures).  Before the objects' own update and the
      shadows' in the same frame, so the ones still wanted are placed again
      before anything is drawn. */
-  if (rec.state === 'ready') { releaseShadowTextures(); Assets.unload(ix.sheets[k]).catch(() => {}); }
+  if (rec.state === 'ready') { releaseShadowTextures(); freeSheet(ix.sheets[k], rec, rec.sheet); }
 }
 let _gen = 0;
 
@@ -233,6 +372,7 @@ export async function wheelObjectsWarm(x, y, rx, ry) {
 /* Every page let go, and the index with it: leaving the Wheel. */
 export function wheelObjectsFree() {
   _gen++;
+  stopPngWorker();   /* v2.3.3190 */
   const ix = _idx;
   for (const k of [..._pages.keys()]) {
     if (ix) dropPage(ix, k);
@@ -277,6 +417,10 @@ export class WheelObjects {
     this._shakes = new Map();       /* object index -> { t0, frac, tree, building, big } */
     this._fadeIn = new Map();       /* object index -> when it began to fade back in */
     this._breakT = null;
+    /* v2.3.3230: ...and a building's fire, from where it is struck to its
+       rubble (buildingFire.js), unless `?nobuildingfire` */
+    this.fires = buildingFireOn() ? new BuildingFires(layer) : null;
+    this._fireView = { x0: 0, y0: 0, x1: 0, y1: 0 };
     this._offBreak = onWheelBreak((type, oi) => {
       /* gone from the walk test and the arrows' path in the same call */
       if (type === 'break') this._blockers = this._blockers.filter((b) => b.oi !== oi);
@@ -295,6 +439,9 @@ export class WheelObjects {
     tickWheelBreak(S, Date.now());
     const evs = drainWheelEvents();
     if (evs) for (const ev of evs) { try { this._event(ev, ix, S, now); } catch (e) { /* one object's trouble is its own */ } }
+    /* v2.3.3230: a building's hits, break, mending and forgotten count, to its
+       fire -- after the break's heap is made above, so its pieces can burn */
+    if (evs && this.fires) for (const ev of evs) { try { this._fireEvent(ev, ix, now); } catch (e) { /* one fire's trouble is its own */ } }
     /* the camera's speed, for loading ahead (wheelGround.js) */
     const jumped = this._lastCx != null && Math.abs(cx - this._lastCx) + Math.abs(cy - this._lastCy) > 400;
     if (this._lastT != null && !jumped) {
@@ -387,6 +534,13 @@ export class WheelObjects {
     if (this._late.size > 2000) this._late.clear();
     /* v2.3.2995: shaking from a hit, fading back in mended, and the shards */
     this._motion(ix, now);
+    /* v2.3.3230: the buildings' fires, on their pictures and their shards as
+       they are now */
+    if (this.fires) {
+      const v = this._fireView;
+      v.x0 = cx; v.y0 = cy; v.x1 = cx + viewW; v.y1 = cy + viewH;
+      try { this.fires.update(this, now, v); } catch (e) { /* the fire's trouble is its own */ }
+    }
     /* v2.3.2999: ...and a tree you stand behind, see-through */
     this._seeThrough(ix, S, now);
     /* v2.3.2983: the buildings' life, for the ones drawn */
@@ -421,7 +575,10 @@ export class WheelObjects {
         for (let b = o.boxOf[i]; b < o.boxOf[i + 1]; b++) {
           /* v2.3.2995: + `oi`, which object: a hit on it is that object's
              (wheelBreak.js), not every one of its kind's */
-          out.push({ x0: o.boxes[b * 4], y0: o.boxes[b * 4 + 1], x1: o.boxes[b * 4 + 2], y1: o.boxes[b * 4 + 3], id: o.kinds[o.kind[i]], oi: i });
+          /* v2.3.3206: + `h`, its picture's height, so a hit at the boots is
+             shown on the picture, not in the air over a bench
+             (combatHelpers.propHitHeight) */
+          out.push({ x0: o.boxes[b * 4], y0: o.boxes[b * 4 + 1], x1: o.boxes[b * 4 + 2], y1: o.boxes[b * 4 + 3], id: o.kinds[o.kind[i]], oi: i, h: ix.h[i] });
         }
       });
       this._blockers = out;
@@ -429,7 +586,8 @@ export class WheelObjects {
 
     /* 4. the numbers */
     let mb = 0;
-    for (const [k, rec] of _pages) if (rec.state === 'ready') mb += ix.pageMB[k];
+    /* (v2.3.3190: a page kept as colour numbers is a quarter of its colours) */
+    for (const [k, rec] of _pages) if (rec.state === 'ready') mb += rec.palette ? ix.pageMB[k] / 4 : ix.pageMB[k];
     wheelObjectStats.drawn = this.sprites.size;
     wheelObjectStats.pages = ready;
     wheelObjectStats.mb = Math.round(mb * 10) / 10;
@@ -480,6 +638,15 @@ export class WheelObjects {
       this._fadeIn.set(i, now);
       this._blockAt = null;
     }
+  }
+
+  /* v2.3.3230: a building's event, for its fire */
+  _fireEvent(ev, ix, now) {
+    const i = ev.oi;
+    if (i == null || i < 0 || i >= ix.n) return;
+    const k = wheelObjectKind(i);
+    if (!k || !isBuilding(k.id)) return;
+    this.fires.event(ev, ix, this, now);
   }
 
   _motion(ix, now) {
@@ -575,6 +742,8 @@ export class WheelObjects {
     /* v2.3.2995: the shards and the count go with the Wheel: everything is
        whole again next time */
     if (this._offBreak) { this._offBreak(); this._offBreak = null; }
+    /* v2.3.3230: the fires first -- the rubble's ride the shards */
+    if (this.fires) { try { this.fires.destroy(); } catch (e) { /* gone */ } this.fires = null; }
     try { this.shatter.destroy(); } catch (e) { /* gone */ }
     this._shakes.clear(); this._fadeIn.clear();
     resetWheelBreak();
@@ -821,7 +990,6 @@ export function wheelScorch(oi, x, y, r, style) {
   if (!tex) return null;
   const p = toPic(ix, oi, tex, x, y);
   if (!p) return null;
-  const src = tex.source.resource;
   const W = p.fp.w, H = p.fp.h;
   const R = Math.max(4, Math.round(r / p.cs));
   const S = 2 * R + 1;
@@ -830,7 +998,8 @@ export function wheelScorch(oi, x, y, r, style) {
   if (cu1 - cu0 < 2 || cv1 - cv0 < 2) return null;
   const c = document.createElement('canvas'); c.width = S * 2; c.height = S;
   const g = c.getContext('2d', { willReadFrequently: true });
-  try { g.drawImage(src, p.fp.x + cu0, p.fp.y + cv0, cu1 - cu0, cv1 - cv0, cu0 - u0, cv0 - v0, cu1 - cu0, cv1 - cv0); } catch (e) { return null; }
+  /* v2.3.3190: drawSourceRect, so a page kept as colour numbers burns the same */
+  try { drawSourceRect(g, tex.source, p.fp.x + cu0, p.fp.y + cv0, cu1 - cu0, cv1 - cv0, cu0 - u0, cv0 - v0, cu1 - cu0, cv1 - cv0); } catch (e) { return null; }
   let img;
   try { img = g.getImageData(0, 0, S, S); } catch (e) { return null; }
   const d = img.data;
@@ -921,16 +1090,24 @@ if (typeof window !== 'undefined') {
       let low = -Infinity, n = 0;
       if (b) for (let k = 0; k < b.length; k++) if (b[k] >= 0) { n++; low = Math.max(low, d.g.base - (1 - b[k]) * d.g.fh * d.g.sy); }
       return { model: c.depth ? 'cols' : 'waiting', foot: +d.g.base.toFixed(1), lowest: n ? +low.toFixed(1) : null,
-        floor: +d.floor.toFixed(1), columns: b ? b.length : 0, solid: n };
+        floor: +d.floor.toFixed(1), columns: b ? b.length : 0, solid: n,
+        /* v2.3.3190: every column's base, for mp-palette (a page kept as
+           colour numbers reads them as the picture did) */
+        bottoms: b ? Array.from(b, (v) => +v.toFixed(5)) : null };
     },
     /* v2.3.2995: the broken objects' shards, and an object's shake */
     shards: () => (_live ? _live.shatter.probe() : []),
     shatterStats: () => (_live ? { ..._live.shatter.stats } : null),
     shaking: (i) => !!(_live && _live._shakes.has(i)),
+    /* v2.3.3230: every building's fire: its spots, flames, sparks, smoke and
+       rubble (buildingFire.js) */
+    fires: () => (_live && _live.fires ? _live.fires.probe(_live) : []),
     fading: (i) => (_live && _live._fadeIn.has(i) ? (() => { const s = _live.sprites.get(i); return s ? +s.alpha.toFixed(2) : null; })() : null),
     drawn: (i) => !!(_live && _live.sprites.has(i)),
     /* the footprints the walk test has now, with their object */
     blockers: () => (_live ? _live._blockers.map((b) => ({ ...b })) : []),
+    /* v2.3.3190: the last pages loaded: { name, ok, palette, ms, gen } */
+    pageLog: () => _pageLog.slice(),
     /* the sprite sheets in memory now, by name */
     pagesLoaded: () => {
       const ix = _idx;

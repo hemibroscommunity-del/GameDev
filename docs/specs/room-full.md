@@ -24,12 +24,36 @@ player the game is simply broken, with no idea whether waiting helps.
 
 ## The cap is not the bug
 
+> **v2.3.3205: the cap is now 120** (the owner's call, `docs/specs/cap-120.md`).
+> The reasoning below -- a phone's download -- counted it unzipped; on the
+> wire it is about a thirteenth (v2.3.3199), and what binds is the room's one
+> thread, smooth to about 145 players since #887-#891. Kept as history.
+
 Do **not** raise it. The same campaign measured the worker at **0.16 ms of
 its 22 ms tick** with 60 players (`server/test/load-crowd.mjs`) — CPU is
 nowhere near the wall. What binds is per-client **download bandwidth**:
 roughly **4 KB/s per co-located moving peer**, so about 20 people in one
 zone before an iPhone on cellular suffers (`tools/qa/mp/mp-crowd.mjs`).
 Sixty is a receiver-side number. The fix is a message.
+
+**v2.3.3194: the CPU half of that is no longer true.** It was measured in the
+meadow, before the whole world became one zone, the Wheel. The bot load test
+(`docs/specs/load-test.md`) puts the Wheel's room at 55% of its one thread with
+50 busy players in the sandbox and 73% with 75: smooth to about 70, a slower
+world past that. Sixty is now near the edge for the server as well as for the
+phones. Still do not raise it without re-running the test, and without
+weighing each phone's download (about 3.5 KB a second per moving player).
+
+**v2.3.3199: and the download half was the unzipped bytes.** The room
+compresses every message it sends (`permessage-deflate`, on since the
+worker's compatibility date passed 2023-08-15, and every browser asks for it),
+about 13 to 1. The 4 KB/s per moving peer above, and the 3.5 KB a second, are
+what a phone reads after unzipping; on the wire a phone in a room of 60 busy
+players downloads about 15 KB a second, and in a room of 150 about 20. So the
+download is not what binds a phone at sixty. What a crowd still costs a phone
+is drawing it (`tools/qa/mp/mp-crowd.mjs`), and what it costs the room is the
+compressing: about 40% of its thread (`docs/specs/load-test.md`, "What a phone
+really downloads"). Since #885 the room is smooth to about 110 in the sandbox.
 
 ## Wire surface
 

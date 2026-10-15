@@ -46,6 +46,11 @@ const _fxPreload = [];
  * Multiplying again there would square the build. */
 const _localBuild = () => buildScale(getBuildHeight(), getBuildFrame());
 const _peerBuild = (o) => buildScale(o && o.buildHeight, o && o.buildFrame);
+/* v2.3.3241: a player the renderer did not draw this frame -- far off screen
+   in the Wheel, or past the crowd cap (entityRenderer _updateOtherPlayers,
+   which runs first) -- gets none of their effects either: no stand-in figure,
+   trail, status look or bubble where nobody is drawn */
+const _peerNotDrawn = (S, id) => !!(S && S._peersNotDrawn && S._peersNotDrawn.has(id));
 
 /* v2.3.1800: which of the three bow frames a HELD block sits on.  0 is still
    raising and 2 is the release recoil; 1 is drawn and steady, which is the one
@@ -272,7 +277,7 @@ const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
                               feet; 32 is ~43% and still reads at phone size. */
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHp /* v2.3.3035: a timer harvest's bar reads the node's HP */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHpFor /* v2.3.3035: a timer harvest's bar reads the node's HP; v2.3.3251: by its type */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
 import { farmWorkFrame } from '@/game/farmWork.js';   /* v2.3.3136: the farmer's frames of the cook's strip */
 import { FARM_COVERS, FARM_STEP_COVER, FARM_COVER_FRAME, FARM_FIGURE_X, FARM_PAN_BOX } from '@/data/farmCovers.js';   /* v2.3.3136: what stands where the cook's pan is */
 import { farmArtUrl } from '@/data/farmArtUrl.js';   /* v2.3.3136: the compost bin's address */
@@ -989,6 +994,8 @@ const DMG_CRIT_FONT_PX = 38;
    damage number keeps its size: "Blocked!", "Dodged", "+30 XP", "+25 G", a
    heal's "+12" and every word are DMG_FONT_PX as ever, so a kill's number is
    the biggest thing over the monster and its XP and gold read under it.
+   (v2.3.3192: no longer -- every one of those is now the plain hit's size, the
+   owner's ask; see MSG_FONT_PX below.)
 
    `?dmgscale=1.5` .. `?dmgscale=2` (1 .. 3) tries another size in a tab, the way
    `?zoom=` does, so nobody waits for a build to see 1.5 or 2.  Where it is
@@ -1020,17 +1027,141 @@ const DMG_MARK_ICONS = new Set(['sword', 'arrow', 'spell', 'crit', 'heart'].conc
    trailing symbol, as in "-12 🌵" (thorns). */
 const DMG_PLAIN_RE = /^[^A-Za-z+]*-?\d+[^A-Za-z\d]*$/;
 /* Is this popup a damage number (drawn DMG_SCALE x) or a notice (drawn as it
-   was)?  Needs a digit, so "Dodged" and "Blocked!" -- which carry `taken` -- are
+   was; v2.3.3192: drawn at MSG_FONT_PX)?  Needs a digit, so "Dodged" and "Blocked!" -- which carry `taken` -- are
    words; never a pay-out or a heal, which start with "+".  Then: a hit on
    someone, a number carrying a weapon, crit or element mark (every real crit
    does -- the bare `crit` flag is also how BroTown's pushNpcMsg makes a NOTE big
    and wiggly, and a note stays a note), or a plain number. */
 function isDamagePopup(dmg, t) {
+  /* v2.3.3209: a kill's roll ("7,431") is a number that is no hit: a message */
+  if (dmg && dmg.roll) return false;
   if (typeof t !== 'string') t = String(t == null ? '' : t);   /* a site may push a bare number */
   if (!/\d/.test(t) || t.charAt(0) === '+') return false;
   if (dmg.taken) return true;
   if (dmg.iconKey && DMG_MARK_ICONS.has(dmg.iconKey)) return true;
   return DMG_PLAIN_RE.test(t);
+}
+/* ═══ v2.3.3192: A MESSAGE IS AS BIG AS A DAMAGE NUMBER ═══
+   Owner, 2026-10-12: "Make the messages in the game like "no mana" and other
+   things like "quest complete!" the same font size as the combat damage
+   numbers".
+
+   v2.3.3033 grew the numbers and left everything else at DMG_FONT_PX, and
+   measured on the QA phone (390 x 844) in BroTown that is what it drew: a plain
+   hit 24.9 CSS px tall and "No mana!", "Quest Complete!" and "+30 XP" 14.3
+   beside it, folded; 19.0 against 10.9 with the dashboard up.
+
+   So every popup that is not a damage number -- a word ("No mana!",
+   "Blocked!", "Swimming!", "Requires Fishing Lv 5"), a reward line ("+12
+   Woodcutting XP", "+ Frost Shard"), a heal's "+12" -- is drawn at the PLAIN
+   hit's size: DMG_FONT_PX x DMG_SCALE, so it follows `?dmgscale=` with them.
+   A crit stays the one bigger thing.  A crit-flagged NOTE (BroTown's
+   pushNpcMsg, 38 px before this) is a message too: the plain hit's size, and
+   it still wiggles.  What follows a number's size -- its outline, the lift
+   off whatever is under it, the stacking, the climb -- follows a message's
+   the same way (`_k`, DMG_SCALE, for both).
+
+   The owner read the numbers as not changing with the zoom; they did -- they
+   were drawn in the world, and the dashboard folded draws it 1.31x, the plain
+   hit above 19.0 -> 24.9 CSS px.  So, asked, the owner chose ONE SIZE ON THE
+   SCREEN for both: POPUP_ZOOM below. */
+const MSG_FONT_PX = DMG_FONT_PX * DMG_SCALE;
+/* ═══ v2.3.3192: ...AND ONE SIZE ON THE SCREEN, WHATEVER THE ZOOM ═══
+   Owner, offered numbers and messages pinned to one size on the screen like
+   the name plates: "Yes do fixed size instead".
+
+   Every size and distance in this popup code is in world px AS DRAWN AT
+   POPUP_ZOOM: the world's scale on the 390 x 844 phone with the dashboard
+   folded (VIEW_OUT 0.77 x its 806 px canvas / 1024 -- the bro 64 px tall,
+   v2.3.3020), the zoom every one of them was tuned at (v2.3.3033): a plain
+   hit's type 22.3 CSS px, a crit's 40.3.  Each frame the world's own scale is
+   divided back out -- `Z` = POPUP_ZOOM / S._worldScaleX, as the name plates
+   (v2.3.2513) and the chat bubble (v2.3.2247) do theirs -- so with the
+   dashboard up (scale 0.4625) a popup is drawn 1.31x the world px and is the
+   same on the screen, and on a bigger phone, sideways or in the desktop shell
+   it is that CSS size too.  Z scales a popup's size AND everything measured
+   from where it was pushed -- its lift, its place in a stack, its climb, its
+   mark and the gap before it, its wrap and its margin from the screen's edge
+   -- so it looks at every zoom as it does at POPUP_ZOOM; only the spot it was
+   pushed at (over a bar, over your head) stays the world's.  `?popupworld`
+   draws them in the world as before, to compare. */
+const POPUP_ZOOM = 0.606;
+const POPUP_Z_MIN = 0.25, POPUP_Z_MAX = 3;   /* a sanity bound (a near-zero scale from a mid-rebuild frame), never a design term */
+const POPUP_WORLD = (() => {
+  try { return typeof location !== 'undefined' && /[?&]popupworld\b/.test(location.search || ''); }
+  catch (e) { return false; }
+})();
+function popupZoomK(S) {
+  const w = S && S._worldScaleX;
+  if (POPUP_WORLD || !(w > 0.01)) return 1;
+  return Math.min(POPUP_Z_MAX, Math.max(POPUP_Z_MIN, POPUP_ZOOM / w));
+}
+/* ═══ v2.3.3192: ...AND A LONG ONE WRAPS, NEVER SHRINKS ═══
+   At that size a long message is wider than a phone: "Element Burst needs an
+   enchanted weapon" is ~750 world px, a "📢" announcement (60 characters)
+   ~1,000, and an upright phone sees ~640 world px across in the Wheel (the
+   bro 64 px tall, worldViewport).  So a message wider than MSG_WRAP_W is
+   broken at its spaces into as few lines as fit, as even as they can be,
+   centred (msgLines) -- the type stays the numbers' size.  520 is about 26
+   characters a line, so the common ones keep one ("Return to Mayor Bro",
+   "Requires Woodcutting Lv 10"), and at most MSG_MAX_LINES; on a narrower
+   screen no wider than MSG_WRAP_SCREEN of it (popups being one CSS size, a
+   320 px phone gets ~21 characters a line).  And it is kept inside the view,
+   MSG_EDGE_PX clear of its sides (_updateDamageNumbers): over you against a
+   dungeon's wall the camera stops following, and half of a centred message
+   would be off the screen. */
+const MSG_WRAP_W = 520;
+const MSG_WRAP_SCREEN = 0.82;
+const MSG_MAX_LINES = 4;
+const MSG_EDGE_PX = 12;
+if (typeof window !== 'undefined') window.__btMsgFont = { px: MSG_FONT_PX, wrap: MSG_WRAP_W, edge: MSG_EDGE_PX, zoom: POPUP_ZOOM, world: POPUP_WORLD };   /* QA: mp-dmgsize */
+/* The widest a message may be laid out, in popup px: MSG_WRAP_W, or less where
+   the screen (its CSS width = the view x the world's scale) is narrower. */
+function msgWrapW(S) {
+  const cssW = S && S._viewW > 0 && S._worldScaleX > 0.01 ? S._viewW * S._worldScaleX : 0;
+  return cssW > 0 && !POPUP_WORLD ? Math.min(MSG_WRAP_W, MSG_WRAP_SCREEN * cssW / POPUP_ZOOM) : MSG_WRAP_W;
+}
+/* `words` laid in `n` lines whose longest is as short as it can be, by
+   characters (within one message its letters are near enough one width), each
+   line at least one word.  A message is a dozen words at most, so every way of
+   cutting it is tried. */
+function msgLines(words, n) {
+  const m = words.length;
+  n = Math.min(n, m);
+  if (n <= 1) return [words.join(' ')];
+  const pre = [0];
+  for (let i = 0; i < m; i++) pre.push(pre[i] + words[i].length);
+  const len = (i, j) => pre[j] - pre[i] + (j - i - 1);   /* words[i..j-1] with a space between each */
+  /* best[l][j]: the shortest possible longest line, laying the first j words in l lines; cut[l][j]: where that l-th line starts */
+  const best = [], cut = [];
+  for (let l = 0; l <= n; l++) { best.push(new Array(m + 1).fill(Infinity)); cut.push(new Array(m + 1).fill(0)); }
+  best[0][0] = 0;
+  for (let l = 1; l <= n; l++) {
+    for (let j = l; j <= m; j++) {
+      for (let i = l - 1; i < j; i++) {
+        const v = Math.max(best[l - 1][i], len(i, j));
+        if (v < best[l][j]) { best[l][j] = v; cut[l][j] = i; }
+      }
+    }
+  }
+  const lines = [];
+  for (let l = n, j = m; l > 0; l--) { const i = cut[l][j]; lines.unshift(words.slice(i, j).join(' ')); j = i; }
+  return lines;
+}
+/* Wrap a message's freshly made Text / BitmapText (at its resting scale, so
+   `width` is popup px) if it is wider than `maxW` (msgWrapW).  Returns its lines. */
+function wrapMessage(text, plain, maxW) {
+  if (!(text.width > maxW) || plain.indexOf('\n') >= 0) return 1;
+  const words = plain.split(' ').filter(Boolean);
+  const most = Math.min(MSG_MAX_LINES, words.length);
+  if (most < 2) return 1;   /* one long word: nowhere to break it */
+  /* centred lines -- the glyph atlas's text is made left-aligned; one line is the same either way */
+  if (text.style && text.style.align !== 'center') text.style.align = 'center';
+  let n = Math.max(2, Math.min(most, Math.ceil(text.width / maxW)));
+  for (;; n++) {
+    text.text = msgLines(words, n).join('\n');
+    if (n >= most || text.width <= maxW) return n;
+  }
 }
 /* v2.3.2212 (owner: "change the damage color to a light yellow when it's a
    crit").  Was the gold #f5c542 / amber #fbbf24 pair -- two shades for one
@@ -1043,7 +1174,9 @@ const POPUP_ICONS = {};
 /* v2.3.2996: + the four elements a monster's hit carries (game/elemHits.js):
    the snowflake, the flame, the wind and the slime, in the heart's place on
    the number.  Loaded here with the rest, at start -- never on first hit. */
-const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit'].concat(Object.keys(ELEM_ICON_SRC));
+/* v2.3.3209: + the dice a kill's roll wears in front of it (game/killRoll.js):
+   the Gambling Den's two, cut to their own edge (/icons/popups/dice.webp) */
+const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit', 'dice'].concat(Object.keys(ELEM_ICON_SRC));
 /* v2.3.2211: 'crit' is the one key whose art does not live in /icons/popups.
    Reusing the Hero screen's own crit icon rather than copying it to a second
    path -- one asset, one meaning, and no chance of the two drifting apart
@@ -3022,7 +3155,7 @@ export class EffectsRenderer {
       /* v2.3.2775: the peer copy is cropped like every stand-in bake
          (_sliceStandIn); the 24-slot aliasing below is unchanged.  _chopSrc
          stays whole -- it is what a skin change re-bakes from. */
-      const played = this._own(_sliceStandIn(peer, FW, FH, COUNT, 'chopPeer|' + key));   /* v2.3.3074: owned */
+      const played = this._gpuOnly(this._own(_sliceStandIn(peer, FW, FH, COUNT, 'chopPeer|' + key)));   /* v2.3.3074: owned; v2.3.3150: on the GPU only (_gpuOnly) */
       for (let i = 0; i < n; i++) arr.push(played[Math.max(0, i - FROM)]);
       try { Assets.unload(url); } catch (e) { /* the crops are what draw now */ }
     };
@@ -4128,11 +4261,12 @@ export class EffectsRenderer {
         { ..._clothes, probe: key === '_chopSkinFrames' ? 'chop' : 'chop-legless' });   /* v2.3.3146: the probe's name (QA) */
       this[key] = this._own(_plain.arr);   /* v2.3.3074: owned */
       this[key + 'Flip'] = _twin
-        ? this._own(_bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false, _clothes).arr) : null;   /* v2.3.2855: see above */
+        ? this._gpuOnly(this._own(_bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false, _clothes).arr)) : null;   /* v2.3.2855: see above; v2.3.3150: _gpuOnly */
       /* v2.3.2500: the mp-standinskin probe, the same reading the sword and
          bow bakes publish -- see _probeStandInSkin. */
       _probeStandInSkin('/sprites/skills/chop' + (key === '_chopSkinFrames' ? '' : '-legless') + '-strip.webp', _plain.cv);
       if (_plain.arr.cropped) { _plain.cv.width = 0; _plain.cv.height = 0; }   /* v2.3.2775 */
+      this._gpuOnly(this[key]);   /* v2.3.3150: read by nothing from here (_gpuOnly) */
     }
     const sp = this.chopSprite;
     for (const arr of _old) {
@@ -4198,7 +4332,7 @@ export class EffectsRenderer {
       try {
         const baked = _bakeChopStrip(img, _chopKeyMask(img), skinT, { ...art, mirror: m }, null, false,
           { pantsT: pantsTarget(o.pants), shoesT: shoesTarget(o.shoes) });   /* v2.3.3146: their trousers and boots */
-        cache.set(key, { arr: this._own(baked.arr), used: now });   /* v2.3.3074: owned */
+        cache.set(key, { arr: this._gpuOnly(this._own(baked.arr)), used: now });   /* v2.3.3074: owned; v2.3.3150: _gpuOnly */
       } catch (e) { /* the shared figure keeps drawing */ }
     }, 0);
     return null;
@@ -4343,11 +4477,12 @@ export class EffectsRenderer {
         this[key] = arr;
         _probeStandInSkin('/sprites/skills/cook' + (key === '_cookFrames' ? '' : '-legless') + '-strip.webp', cv);   /* v2.3.2500 */
         if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
+        this._gpuOnly(arr);   /* v2.3.3150: read by nothing from here (_gpuOnly) */
       } else {
         cv.width = 0; cv.height = 0;
       }
       _old.push(this[key + 'Ink']);
-      this[key + 'Ink'] = ink ? this._own(_sliceStandIn(ink, FW, FH, n, key + 'Ink', false)) : null;   /* v2.3.3074: owned */
+      this[key + 'Ink'] = ink ? this._gpuOnly(this._own(_sliceStandIn(ink, FW, FH, n, key + 'Ink', false))) : null;   /* v2.3.3074: owned; v2.3.3150: _gpuOnly */
     }
     /* v2.3.2856: the textures these replace, released once nothing draws them
        -- a rebake follows every pause while you draw, so leaving each old pair
@@ -4412,7 +4547,7 @@ export class EffectsRenderer {
       const { cv, ink } = spec.bake(img, skinT, { ...art, mirror: false });
       const n = Math.max(1, Math.round(cv.width / spec.fw));
       cv.width = 0; cv.height = 0;   /* the figure is the shared one; only the layer is kept */
-      cache.set(key, { arr: ink ? this._own(_sliceStandIn(ink, spec.fw, spec.fh, n, null, false)) : [], used: now });   /* v2.3.3074: owned */
+      cache.set(key, { arr: ink ? this._gpuOnly(this._own(_sliceStandIn(ink, spec.fw, spec.fh, n, null, false))) : [], used: now });   /* v2.3.3074: owned; v2.3.3150: _gpuOnly */
     }).catch(() => { /* the shared figure keeps drawing, bare */ })
       .then(() => { pending[kind] = false; });
     return null;
@@ -4524,11 +4659,12 @@ export class EffectsRenderer {
         this._fireFrames = arr;
         _probeStandInSkin('/sprites/skills/firemaking-strip.webp', cv, FIRE_SKIN_OPTS);   /* v2.3.2500: measured through the bake's own window -- see _probeStandInSkin */
         if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
+        this._gpuOnly(arr);   /* v2.3.3150: read by nothing from here (_gpuOnly) */
       } else {
         cv.width = 0; cv.height = 0;
       }
       _old.push(this._fireFramesInk);
-      this._fireFramesInk = ink ? this._own(_sliceStandIn(ink, FIRE_FW, FIRE_FH, n, '_fireFramesInk', false)) : null;   /* v2.3.3074: owned */
+      this._fireFramesInk = ink ? this._gpuOnly(this._own(_sliceStandIn(ink, FIRE_FW, FIRE_FH, n, '_fireFramesInk', false))) : null;   /* v2.3.3074: owned; v2.3.3150: _gpuOnly */
       /* v2.3.2858: the replaced textures, released as the cook's are (see
          _bakeCookStrips) -- a skin change used to leave the old strip to
          Pixi's idle collector, and a drawing change now rebakes too.  Other
@@ -4939,6 +5075,7 @@ export class EffectsRenderer {
       for (const oid in S.others) {
         const o = S.others[oid];
         if (!o || (!o._dodgeRoll && !(o._dodgeTrail && o._dodgeTrail.length))) continue;
+        if (_peerNotDrawn(S, oid)) { if (o._dodgeTrail) o._dodgeTrail.length = 0; continue; }   /* v2.3.3241 */
         if (o._dodgeRoll) {
           const dage = now - (o._dodgeRoll.startTime || 0);
           /* v2.3.2916: the roll ends when THEIR window does (player_dodge
@@ -5026,6 +5163,9 @@ export class EffectsRenderer {
        Text).  Age-based cleanup below (1.5 s TTL) handles bounding by
        itself; with reasonable spawn rates we never hold more than a few
        dozen dmg numbers concurrently. */
+    /* v2.3.3192: one size on the screen (POPUP_ZOOM): every size and distance
+       below is in popup px, drawn x Z in the world. */
+    const Z = popupZoomK(S);
     for (let i = numbers.length - 1; i >= 0; i--) {
       const dmg = numbers[i];
       const age = (now - dmg.ts) / 1000;
@@ -5086,7 +5226,7 @@ export class EffectsRenderer {
            The override still owns every non-crit number -- v2.3.103's
            reason (uniform white reads best against zone art) is untouched
            for the bulk of fight popups it was written for. */
-        if (!dmg.crit && /^[^A-Za-z+]*-?\d+$/.test(t)) {
+        if (!dmg.crit && !dmg.roll && /^[^A-Za-z+]*-?\d+$/.test(t)) {   /* v2.3.3209: a kill's roll keeps its own grey or gold */
           /* v2.3.103 user request: combat damage in white reads more
              clearly than the previous orange (#ff8c1a) against most
              zone backgrounds. */
@@ -5101,73 +5241,23 @@ export class EffectsRenderer {
            notice keeps DMG_FONT_PX.  Its centre is lifted by DMG_LIFT of the
            extra height, so the bigger glyph keeps the air under it that the
            old one had over the bar.  Both are stamped on the record: the
-           stacking below, the icon's cap and gap and the QA probe read them. */
-        const k = isDamagePopup(dmg, t) ? DMG_SCALE : 1;
-        const baseFontSize = dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX;
+           stacking below, the icon's cap and gap and the QA probe read them.
+           v2.3.3192: a notice is the plain number's size now (MSG_FONT_PX):
+           its design size is DMG_FONT_PX whatever its `crit` flag says, so
+           everything scales by DMG_SCALE, and the lift is measured from the
+           size it USED to be drawn at (a 38 px crit note needs none). */
+        const isDmg = isDamagePopup(dmg, t);
+        const oldFontSize = dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX;
+        const baseFontSize = isDmg ? oldFontSize : DMG_FONT_PX;
+        const k = DMG_SCALE;
         const fontSize = baseFontSize * k;
         dmg._k = k;
         dmg._fs = fontSize;
-        dmg._lift = (fontSize - baseFontSize) * DMG_LIFT;
-        /* Anti-overlap: separate a new popup from nearby live ones so
-           kill-shot popups (damage, XP, gold spawned in one frame at
-           slightly different Y) don't visually overlap. We compute a
-           target Y rather than adding a fixed offset, because the spawn
-           Ys differ.
-
-           v2.3.1638 — STACK UPWARD, AND NEVER BELOW SPAWN.  This is the
-           real fix for "damage numbers appear over the monster HP
-           number", reported three times.  The previous two fixes both
-           raised the SPAWN clearance in entityRenderer
-           (_popupTopOff: 24 -> 40 in v2.3.1402, 40 -> 62 in v2.3.1403)
-           and the owner kept seeing it, because the spawn was never the
-           mechanism — THIS loop was.  It placed each new popup
-           SPACING px BELOW the lowest live neighbour, i.e. walking the
-           stack back DOWN toward the bar it had just been raised above.
-           A neighbour qualifies while it is within 50 px of the spawn Y,
-           so the worst-case placement was spawn + 50 + 26 = spawn + 76 —
-           and with only 62 px of clearance that lands 14 px past the bar's
-           top edge, right on the centred HP number (bar is 44x13).  That
-           is why sustained fights overlapped and single hits didn't, and
-           why each clearance bump reduced the overlap (52 -> 36 -> 14 px
-           past the bar) without ever removing it.
-           Stacking AWAY from the monster fixes it structurally: the
-           Math.min(0, ...) clamp makes _stackOffset provably <= 0, and
-           since the float only ever subtracts (age * 40), a popup can now
-           never render below its spawn Y.  The clearance in
-           entityRenderer.js is therefore a true floor rather than a
-           starting point, and no future clearance bump can be eaten. */
-        const SPACING = 26;
-        let highestY = Infinity;
-        let highestSp = SPACING;
-        let hasNeighbor = false;
-        /* v2.3.3033: where THIS popup spawns once lifted, and (below) how far
-           apart two popups must be for their sizes: 26 px was a 21 px number's
-           line (26/21 of its font), so two of any size keep that same share of
-           their average font -- 26 at 21 + 21, 46 at 37 + 37, 64 at a crit over
-           a plain hit -- and the window that finds a neighbour grows with it
-           (50 px at 26, so a stack is still three deep in one frame). */
-        const myY = dmg.y - dmg._lift;
-        /* v2.3.1347: the neighbor scan is O(n) per NEW popup (O(n²) in a
-           burst). Past ~40 live popups the field is dense chaos where
-           stacking placement is unreadable anyway — skip the scan and
-           take the raw spawn position. */
-        for (let j = 0; numbers.length <= 40 && j < numbers.length; j++) {
-          if (j === i) continue;
-          const o = numbers[j];
-          if (!o._pixiText || o._pixiText.destroyed) continue;
-          const pairSp = Math.max(SPACING, (fontSize + (o._fs || DMG_FONT_PX)) / 2 * (SPACING / DMG_FONT_PX));
-          if (Math.abs(o.x - dmg.x) > 60 * Math.max(1, pairSp / SPACING)) continue;
-          const oAge = (now - o.ts) / 1000;
-          if (oAge > 0.6) continue;
-          const oY = o.y + (o._stackOffset || 0) - (o._lift || 0) - oAge * (typeof o.rise === 'number' ? o.rise : 40 * (o._k || 1));
-          if (Math.abs(oY - myY) > 50 * Math.max(1, pairSp / SPACING)) continue;
-          hasNeighbor = true;
-          if (oY < highestY) { highestY = oY; highestSp = pairSp; }
-        }
-        /* Clamp to <= 0: a neighbour sitting BELOW this popup's spawn
-           would otherwise push the offset positive and re-open the exact
-           hole this fix closes. */
-        dmg._stackOffset = hasNeighbor ? Math.min(0, (highestY - highestSp) - myY) : 0;
+        dmg._base = baseFontSize;
+        dmg._msg = !isDmg;
+        dmg._lift = Math.max(0, fontSize - oldFontSize) * DMG_LIFT;
+        /* (v2.3.3192: the stacking that was here comes after the Text is made
+           now -- a wrapped message's height is known only then.) */
         /* Special-attack hits used to render at 2x to read as "heavy", but
            that crowded the screen and hid the normal-hit cadence. They now
            match normal size and instead get a bright outer glow (see
@@ -5235,6 +5325,89 @@ export class EffectsRenderer {
           }
         }
         text.anchor.set(0.5, 0.5);
+        /* ═══ v2.3.3192: A LONG MESSAGE WRAPS (MSG_WRAP_W) ═══
+           Before the stacking below, which has to know how tall it came out
+           and how far it reaches to the side (`_lines`, `_w`: a number's
+           are never read, so it is never measured).  Lifted by its extra
+           lines' height so its LAST line sits where the one line would have:
+           it grows upward, off whatever it was pushed over. */
+        dmg._lines = 1;
+        if (dmg._msg) {
+          const _h1 = text.height;
+          const _n = wrapMessage(text, String(dmg.text == null ? '' : dmg.text), msgWrapW(S));
+          if (_n > 1) {
+            dmg._lines = _n;
+            dmg._lift += Math.max(0, text.height - _h1) / 2;
+          }
+          dmg._w = text.width;
+        }
+        /* Anti-overlap: separate a new popup from nearby live ones so
+           kill-shot popups (damage, XP, gold spawned in one frame at
+           slightly different Y) don't visually overlap. We compute a
+           target Y rather than adding a fixed offset, because the spawn
+           Ys differ.
+
+           v2.3.1638 — STACK UPWARD, AND NEVER BELOW SPAWN.  This is the
+           real fix for "damage numbers appear over the monster HP
+           number", reported three times.  The previous two fixes both
+           raised the SPAWN clearance in entityRenderer
+           (_popupTopOff: 24 -> 40 in v2.3.1402, 40 -> 62 in v2.3.1403)
+           and the owner kept seeing it, because the spawn was never the
+           mechanism — THIS loop was.  It placed each new popup
+           SPACING px BELOW the lowest live neighbour, i.e. walking the
+           stack back DOWN toward the bar it had just been raised above.
+           A neighbour qualifies while it is within 50 px of the spawn Y,
+           so the worst-case placement was spawn + 50 + 26 = spawn + 76 —
+           and with only 62 px of clearance that lands 14 px past the bar's
+           top edge, right on the centred HP number (bar is 44x13).  That
+           is why sustained fights overlapped and single hits didn't, and
+           why each clearance bump reduced the overlap (52 -> 36 -> 14 px
+           past the bar) without ever removing it.
+           Stacking AWAY from the monster fixes it structurally: the
+           Math.min(0, ...) clamp makes _stackOffset provably <= 0, and
+           since the float only ever subtracts (age * 40), a popup can now
+           never render below its spawn Y.  The clearance in
+           entityRenderer.js is therefore a true floor rather than a
+           starting point, and no future clearance bump can be eaten. */
+        const SPACING = 26;
+        let highestY = Infinity;
+        let highestSp = SPACING;
+        let hasNeighbor = false;
+        /* v2.3.3033: where THIS popup spawns once lifted, and (below) how far
+           apart two popups must be for their sizes: 26 px was a 21 px number's
+           line (26/21 of its font), so two of any size keep that same share of
+           their average font -- 26 at 21 + 21, 46 at 37 + 37, 64 at a crit over
+           a plain hit -- and the window that finds a neighbour grows with it
+           (50 px at 26, so a stack is still three deep in one frame).
+           v2.3.3192: a popup stands as tall as its font times its lines, and a
+           wide message reaches half its width to each side, so a neighbour
+           under either end of it counts.  And all of it is popup px: where
+           two popups stand in the WORLD is their spots plus Z x their offsets
+           (as they are drawn, below), every distance compared Z x, and the
+           offset kept in popup px again. */
+        const myY = dmg.y - Z * dmg._lift;
+        const myH = fontSize * dmg._lines;
+        /* v2.3.1347: the neighbor scan is O(n) per NEW popup (O(n²) in a
+           burst). Past ~40 live popups the field is dense chaos where
+           stacking placement is unreadable anyway — skip the scan and
+           take the raw spawn position. */
+        for (let j = 0; numbers.length <= 40 && j < numbers.length; j++) {
+          if (j === i) continue;
+          const o = numbers[j];
+          if (!o._pixiText || o._pixiText.destroyed) continue;
+          const pairSp = Math.max(SPACING, (myH + (o._fs || DMG_FONT_PX) * (o._lines || 1)) / 2 * (SPACING / DMG_FONT_PX));
+          if (Math.abs(o.x - dmg.x) > Z * Math.max(60 * Math.max(1, pairSp / SPACING), ((dmg._w || 0) + (o._w || 0)) / 2)) continue;
+          const oAge = (now - o.ts) / 1000;
+          if (oAge > 0.6) continue;
+          const oY = o.y + Z * ((o._stackOffset || 0) - (o._lift || 0) - oAge * (typeof o.rise === 'number' ? o.rise : 40 * (o._k || 1)));
+          if (Math.abs(oY - myY) > Z * 50 * Math.max(1, pairSp / SPACING)) continue;
+          hasNeighbor = true;
+          if (oY < highestY) { highestY = oY; highestSp = pairSp; }
+        }
+        /* Clamp to <= 0: a neighbour sitting BELOW this popup's spawn
+           would otherwise push the offset positive and re-open the exact
+           hole this fix closes. */
+        dmg._stackOffset = hasNeighbor ? Math.min(0, ((highestY - Z * highestSp) - myY) / Z) : 0;
         this.dmgLayer.addChild(text);
         this.dmgTexts.push(text);
         dmg._pixiText = text;
@@ -5265,6 +5438,8 @@ export class EffectsRenderer {
              the height, which the round badges never reach */
           const _wide = TIGHT_POPUP_ICONS.has(iconKey) ? (targetH * 1.5) / tex.width : Infinity;
           icon.scale.set(Math.min(targetH / tex.height, _wide));
+          /* v2.3.3192: its popup-px scale, drawn x Z each frame (below) */
+          icon._popupScale = icon.scale.x;
           this.dmgLayer.addChild(icon);
           dmg._pixiIcon = icon;
           /* v2.3.2996: QA -- which icons the numbers were actually drawn with
@@ -5300,7 +5475,33 @@ export class EffectsRenderer {
         }
       }
       const text = dmg._pixiText;
-      text.x = dmg.x;
+      /* v2.3.3192: the gap after the text, before its mark: a number's own
+         (below); a message's is the plain number's, crit-flagged or not */
+      const _icon = dmg._pixiIcon && !dmg._pixiIcon.destroyed ? dmg._pixiIcon : null;
+      const _iconGap = Math.max(10, (dmg._base || (dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX)) * 0.35) * (dmg._k || 1);   /* v2.3.3033: x the number's scale */
+      /* v2.3.3192: one size on the screen -- the mark x Z (POPUP_ZOOM), before
+         its width is read for the edge below; `_z` for QA (mp-dmgsize) */
+      dmg._z = Z;
+      if (_icon && _icon._popupScale) _icon.scale.set(_icon._popupScale * Z);
+      /* ═══ v2.3.3192: A MESSAGE STAYS ON THE SCREEN ═══
+         Kept MSG_EDGE_PX inside the view's sides by its resting width (`_w`,
+         so the spawn pop does not shove it about) and its mark's: against a
+         dungeon's wall the camera stops following you, and a message centred
+         over you there ran off the screen.  Numbers are where they are.  A
+         crit-flagged note wiggles 10% wider at most, so it is held in by that.
+         Wider than the view (one word longer than it, never in this game),
+         it is centred on it. */
+      let _x = dmg.x;
+      if (dmg._msg && dmg._w > 0 && S.camera && S._viewW > 0) {
+        const _half = Z * (dmg._w / 2 * (dmg.crit ? 1.1 : 1) + MSG_EDGE_PX);
+        const _mark = _icon ? Z * _iconGap + _icon.width : 0;
+        /* v2.3.3209: a mark in FRONT (`iconLead`, a kill's roll) on the left */
+        const _left = _half + (dmg.iconLead ? _mark : 0);
+        const _right = _half + (dmg.iconLead ? 0 : _mark);
+        const _lo = S.camera.x + _left, _hi = S.camera.x + S._viewW - _right;
+        _x = _lo <= _hi ? Math.min(_hi, Math.max(_lo, _x)) : (_lo + _hi) / 2;
+      }
+      text.x = _x;
       /* v2.3.1985: the climb rate is per-popup now.  40 px/s is right for a
          damage number, which exists to be glanced at and get out of the way,
          and wrong for anything you are meant to READ: at 40 px/s a popup held
@@ -5312,7 +5513,8 @@ export class EffectsRenderer {
          apart were 28 px apart for a 14 px digit, and at 1.75x the size would have
          been 28 px for a 26 px one -- touching.  Scaled, they keep their gap. */
       const rise = (typeof dmg.rise === 'number') ? dmg.rise : 40 * (dmg._k || 1);
-      text.y = dmg.y + (dmg._stackOffset || 0) - (dmg._lift || 0) - age * rise;   /* v2.3.3033: lifted by the bigger glyph's extra half height */
+      /* v2.3.3033: lifted by the bigger glyph's extra half height; v2.3.3192: every offset from the spot it was pushed at x Z */
+      text.y = dmg.y + Z * ((dmg._stackOffset || 0) - (dmg._lift || 0) - age * rise);
       /* Fade over 80% of ttl so longer-lived popups (kill messages with
          ttl=2.5) actually stay visible, not invisible most of their life.
          v2.3.3059: `hold` (s) -- full strength that long, then the fade over
@@ -5335,16 +5537,20 @@ export class EffectsRenderer {
       const critWiggle = dmg.crit ? Math.sin(age * 8) * 0.1 : 0;
       /* v2.3.1357: BitmapText popups render at a 2x bake scaled down —
          the pop/wiggle multiplies AROUND that base scale, not around 1. */
-      text.scale.set((text._bmpBaseScale || 1) * (1 + popBoost + critWiggle));
-      if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
+      text.scale.set((text._bmpBaseScale || 1) * (1 + popBoost + critWiggle) * Z);   /* v2.3.3192: x Z, one size on the screen */
+      if (_icon) {
         /* Place icon flush to the right of the text. Text anchor is
            (0.5, 0.5), so the right edge sits at text.x + text.width/2.
            Gap scales with fontSize.  Min 10 px because the prior 4 px
            floor still let the magic icon clip the last digit on
            fire-goblin hits ("32" reading as "3[magic]").  Stroked text
-           extends a few px past text.width on iOS canvas rendering. */
-        const _iconGap = Math.max(10, (dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX) * 0.35) * (dmg._k || 1);   /* v2.3.3033: x the number's scale */
-        dmg._pixiIcon.x = text.x + text.width / 2 + _iconGap;
+           extends a few px past text.width on iOS canvas rendering.
+           (v2.3.3192: `_iconGap` is worked out above, for the edge too.) */
+        /* v2.3.3209: `iconLead` puts it in FRONT of the text instead -- a
+           kill's roll wears its dice before the number (game/killRoll.js) */
+        dmg._pixiIcon.x = dmg.iconLead
+          ? text.x - text.width / 2 - Z * _iconGap - dmg._pixiIcon.width
+          : text.x + text.width / 2 + Z * _iconGap;
         dmg._pixiIcon.y = text.y;
         dmg._pixiIcon.alpha = text.alpha;
       }
@@ -5352,7 +5558,10 @@ export class EffectsRenderer {
         /* Sub text sits after the icon if there is one, otherwise flush
            to the right edge of the main text.  Anchor is (0, 0.5) so
            setting .x places its left edge. */
-        const _subGap = Math.max(10, (text.style.fontSize || 21) * 0.35);
+        /* v2.3.3192: in popup px x Z, its own pop and wiggle -- it is classic
+           Text at its own size, so never the glyph atlas text's bake scale
+           (text.scale.x drew it a third of its size beside a BitmapText) */
+        const _subGap = Z * Math.max(10, (dmg._fs || DMG_FONT_PX) * 0.35);
         let subX = text.x + text.width / 2 + _subGap;
         if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
           subX = dmg._pixiIcon.x + (dmg._pixiIcon.width || 0) + _subGap;
@@ -5360,7 +5569,7 @@ export class EffectsRenderer {
         dmg._pixiSub.x = subX;
         dmg._pixiSub.y = text.y;
         dmg._pixiSub.alpha = text.alpha;
-        dmg._pixiSub.scale.set(text.scale.x);
+        dmg._pixiSub.scale.set((1 + popBoost + critWiggle) * Z);
       }
     }
     /* Compact dmgTexts: drop refs to destroyed Text instances
@@ -8216,6 +8425,7 @@ export class EffectsRenderer {
     /* Player + others' bubbles. */
     const allSources = { [S.myId]: S.player };
     for (const [id, o] of Object.entries(S.others || {})) {
+      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241: no bubble over nobody */
       allSources[id] = o;
     }
     for (const [pid, bubble] of Object.entries(bubbles)) {
@@ -10246,7 +10456,7 @@ export class EffectsRenderer {
       at = node ? this._nodeHpBarAt(S, node) : null;
       m = at ? extractionMeter01(ex, Date.now()) : null;
       if (m) {
-        const timerMax = gatherNodeHp((node && node.gatherLvl) || 1);
+        const timerMax = gatherNodeHpFor(S, (node && node.gatherLvl) || 1, node && node.nodeType);
         bar = h
           ? { show: true, hp: h.hp, maxHp: h.maxHp }
           : { show: true, hp: Math.ceil((1 - m.windup) * timerMax - 1e-9), maxHp: timerMax, frac: 1 - m.windup, smooth: true };
@@ -11313,6 +11523,7 @@ export class EffectsRenderer {
       for (const id of Object.keys(others)) {
         const o = others[id];
         if (!o || o._isDead || (o.zone || o.z || 'town') !== zone) continue;
+        if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241 */
         if (!(o._chillUntil > now || o._stuckUntil > now || o._burnUntil > now || (o._gustAt && now - o._gustAt < GUST_FX_MS)
           || o._dazeUntil > now || o._shockUntil > now || o._soakUntil > now || o._poisonUntil > now)) continue;   /* v2.3.3014: + the other four */
         const ox = typeof o.renderX === 'number' ? o.renderX : o.x;
@@ -11372,6 +11583,7 @@ export class EffectsRenderer {
         const e = pw[id];
         const o = S.others && S.others[id];
         if (!o || now >= e.until) { delete pw[id]; continue; }
+        if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241 */
         const ox = typeof o.renderX === 'number' ? o.renderX : o.x;
         const oy = typeof o.renderY === 'number' ? o.renderY : o.y;
         if (typeof ox === 'number' && typeof oy === 'number') draw(ox, oy, e);
@@ -11786,6 +11998,7 @@ export class EffectsRenderer {
       const code = o._ex;
       if (code !== 'chop' && code !== 'cook' && code !== 'fire') continue;
       if ((o.zone || o.z || 'town') !== zone) continue;
+      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241: not drawn, nor is their stand-in */
       const spec = SPEC[code];
       if (!spec.frames || !spec.frames.length || !standInReady(code)) continue;   /* v2.3.3077: drawn once made whole, as the body is hidden (entityRenderer _rexStandIn) */
       let ent = pool.get(id);
@@ -12752,6 +12965,7 @@ export class EffectsRenderer {
          and a swing shirt hanging on it, on everybody else's screen. Your own
          screen is fixed in the same version, one file over. */
       if (!o || o._isDead) continue;
+      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241: not drawn, nor is their swing */
       /* ═══ v2.3.2920: A BASH IS NOT A SWING, HERE EITHER ═══
          v2.3.1735 took the sword stand-in off YOUR Shield Bash (owner: "just
          display the shield being held during the course of the animation in
@@ -13036,6 +13250,7 @@ export class EffectsRenderer {
     for (const id in others) {
       const o = others[id];
       if (!o || o._isDead) continue;   /* v2.3.2281: see the swing */
+      if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241: not drawn, nor is their shot */
       /* ═══ v2.3.2920: ...AND THEIR BLOCK, DRAWN AS YOURS IS ═══
          Owner: "check all other broadcasted player animations to make sure
          they match what your character does client side."
@@ -14421,6 +14636,36 @@ export class EffectsRenderer {
     if (src) this._bakes.add(src);
     return arr;
   }
+  /* ═══ v2.3.3150: THE GATHERING FIGURES ON THE GRAPHICS CHIP ONLY ═══
+     The owner, 2026-10-11: "there's a memory leak somewhere because after
+     completing all the quests up until the point where you need to visit the 3
+     buildings the games framerate dropped significantly towards the end".
+     Measured on a phone-sized page, playing that line: the lumberjack, the
+     cook and the fire-lighter are made on the way (life_1 hands you the axe,
+     a log in the bag and the first fire do the rest -- rendering/standIns.js),
+     and every one of their strips was then held TWICE for the rest of the
+     visit, the canvas it was baked on and its copy on the GPU: ~30 MB of 2D
+     canvases that nothing ever read again.
+     They are the combat gear strips' kind (gpuOnly.js, the owner's yes to
+     "character art kept only on the graphics chip", v2.3.3088): only ever
+     drawn, and made again by a rebuilt renderer for itself (setStandInMaker
+     starts every pose over).  So each strip's canvas is let go of the moment
+     it is on the GPU -- called after the last read of the bake (the skin
+     probe), as each bake's own code passes it.  NOT the lumberjack's source
+     crops (_chopSrc): every re-bake reads them.  `?gpucopies` keeps it all,
+     as before; mp-gatherposes, mp-gpuonly. */
+  _gpuOnly(arr) {
+    const src = arr && arr[0] && arr[0].source;
+    if (!src) return arr;
+    /* not on a lost context, where an upload would not count (wheelGround's
+       _toGpu): the canvas stays, and the rebuild 2.5 s on makes it again */
+    try {
+      const gl = this._captureRenderer && this._captureRenderer.gl;
+      if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return arr;
+    } catch (e) { return arr; }
+    keepOnGpuOnly(this._captureRenderer, src);
+    return arr;
+  }
   _release(src) {
     if (!src) return;
     this._bakes.delete(src);
@@ -15315,7 +15560,8 @@ export class EffectsRenderer {
       }
       this._splatPool = [];
     }
-    /* v2.3.2843: the material hit reaction's pieces (pooled; hidden, not destroyed) */
+    /* v2.3.2843: the material hit reaction's pieces (pooled; since v2.3.3152
+       the pools' sprites are destroyed here too, not only hidden) */
     if (this._hitFx) this._hitFx.clear();
     /* v2.3.2760: and the cook's smoke puffs. */
     if (this._cookSmoke) {

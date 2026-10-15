@@ -274,6 +274,24 @@ const protoClean = ips.inventory.wood_oak === 2
 check('proto keys refused and the prototype is unpolluted', protoClean, { inv: ips.inventory });
 Math.random = realRandom;
 
+// ── 17b. v2.3.3173: a golden ticket is never a stake ──
+// The contest caps how many tickets drop ("only N capes exist") and checks
+// the cap only at the drop; a won wager made one ticket two, and the second
+// was redeemed by whoever it was traded to.
+ips.inventory = { goldticket_crimson: 1, wood_oak: 2 };
+ips._lastAceFlipAt = 0;
+Math.random = () => 0.0;   // the player would win
+iws.sent.length = 0;
+await iflip(iws, { goldticket_crimson: 1 });
+check('a wager of only a golden ticket is refused, not doubled',
+  ips.inventory.goldticket_crimson === 1 && msgsOfType(iws, 'ace_item_flip_result').length === 0,
+  { inv: ips.inventory, res: msgsOfType(iws, 'ace_item_flip_result').map((r) => r.payload) });
+ips._lastAceFlipAt = 0;
+await iflip(iws, { goldticket_crimson: 1, wood_oak: 2 });
+check('...and in a mixed stake the ticket is left out while the rest flips',
+  ips.inventory.goldticket_crimson === 1 && ips.inventory.wood_oak === 4, ips.inventory);
+Math.random = realRandom;
+
 // ── 18. the hall of fame ──
 const bps = room.playerState['bp_ace_p'];
 await room.state.storage.put('char:bp_ace_p', { name: 'Acey', look: { skin: 'tan', hair: 'mop' } });

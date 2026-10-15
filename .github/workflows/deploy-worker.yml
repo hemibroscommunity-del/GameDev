@@ -24,6 +24,18 @@ on:
   push:
     branches: [main]
     paths: ['server/**']
+# v2.3.3176: ONE DEPLOY AT A TIME, THE NEWEST LAST.  Each run deploys the
+# commit that started it, and whichever `wrangler deploy` finishes LAST is
+# what players get.  Two server merges a minute apart used to run side by
+# side, so if the older one finished second, production quietly ran the
+# older code (missing the newer merge) until the next server merge.  In a
+# concurrency group a new run waits for the running one, and a newer run
+# replaces any run still waiting -- so the last to deploy is always the
+# newest main.  cancel-in-progress stays false: a deploy is never cut off
+# half-way.
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-latest

@@ -123,7 +123,7 @@ closes the hall.
 - `mp-wheeldoors`: now 12 open, 3 halls, 1 shut and the Town Hall. Its 11 checks
   pass.
 
-## v2.3.3147: the Town Hall is the fourth hall
+## v2.3.3258: the Town Hall is the fourth hall
 
 The Town Hall had no window: Mayor Bro stands on its steps, and its plot is the
 plan's `mayor (NPC)`, not one of the "(new: …)" four. When the owner sent the
@@ -138,7 +138,15 @@ behind Mayor Bro's dialogue or leaving it waiting.
   and the painted map on the wall is the **World map** (`openWorldMap()`, which
   `WorldMapOverlay.jsx` now exports).
 - BroTown draws the hall for any `buildingPanel` in `WHEEL_HALLS`, not three
-  names; the room's picture comes from `BUILDING_ROOMS.townhall`.
+  names; the room's picture comes from `BUILDING_ROOMS.townhall`, behind the
+  hall's rows like every building's (`docs/specs/building-rooms.md`).
+- The Sheriff's Office's "The arena" opens the Gladiator Arena's own window
+  (`arena`) since v2.3.3258. It was the Saloon's window, which is now the
+  Saloon's own (parties): docs/specs/building-rooms.md "The Saloon, and the
+  arena's own window".
+- Mayor Bro is its keeper: once he has no quest to offer, ask about or pay for,
+  talking to him (a tap, E, the right stick) opens it too
+  (`WHEEL_KEEPERS['Mayor Bro']`).
 - Only the Hotel is shut. `wheelTownDoorAt` now returns every door of the town:
   each opens a building, opens a hall, or says it is shut.
 - The Enter button does not show at arrival: a new character stands 108 px south

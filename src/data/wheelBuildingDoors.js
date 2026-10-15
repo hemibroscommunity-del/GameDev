@@ -18,7 +18,7 @@
  * Bro on its steps.  The other four are the plan's "(new: ...)" buildings:
  * since v2.3.3066 three of them open halls of their own (WHEEL_HALL_DOORS),
  * and the Hotel stands shut, saying so (WHEEL_SHUT_DOORS) instead of leaving
- * a player to wonder whether the door is broken.  Since v2.3.3147 the Town
+ * a player to wonder whether the door is broken.  Since v2.3.3258 the Town
  * Hall is a fourth hall (Mayor Bro still stands on its steps), so only the
  * Hotel is shut.
  */
@@ -35,7 +35,7 @@ export const WHEEL_DOOR_REACH = 140;
 export const WHEEL_BUILDING_DOORS = {
   blacksmith: 'blacksmith',     /* the forge */
   woodworker: 'woodworker',
-  gemcutter: 'gemcutter',       /* v2.3.3148: the Gem Works -- its window has the Enchanter on a second tab (GemWorksPanel) */
+  gemcutter: 'gemcutter',       /* v2.3.3259: the Gem Works -- its window has the Enchanter on a second tab (GemWorksPanel) */
   saloon: 'party',              /* the tavern's party panel */
   gambling: 'gambler',
   cookhouse: 'cooking',
@@ -70,7 +70,7 @@ export const WHEEL_HALL_DOORS = {
   guildhall: 'guildhall',
   post: 'post',
   sheriff: 'sheriff',
-  townhall: 'townhall',     /* v2.3.3147, below */
+  townhall: 'townhall',     /* v2.3.3258, below */
 };
 
 /* What each hall is called and wears: its window's header and the Enter
@@ -79,7 +79,7 @@ export const WHEEL_HALLS = {
   guildhall: { title: 'Guild Hall', sub: 'Clans and guilds', icon: '/icons/ui/panel-guild.webp', emoji: '🏰' },
   post: { title: 'Post Office', sub: 'Your mail and messages', icon: '/icons/ui/evt-mail.webp', emoji: '📫' },
   sheriff: { title: "Sheriff's Office", sub: 'Duels and the arena', icon: '/icons/ui/evt-duel.webp', emoji: '⚔️' },
-  /* ═══ v2.3.3147: THE TOWN HALL IS A HALL TOO ═══
+  /* ═══ v2.3.3258: THE TOWN HALL IS A HALL TOO ═══
      The owner sent the picture of its inside (data/buildingRooms.js) and, asked
      what the Town Hall should do, chose "a Town Hall window": your picture on
      top, then two things the game already has, set where the room's own props
@@ -99,7 +99,7 @@ export const WHEEL_HALLS = {
    worker settles: the HP it restores is the worker's to give), so it stays
    shut until the worker can pay it.  Stood at, it shows its name and "Shut
    for now" (BroTown.jsx) instead of leaving a player to wonder whether the
-   door is broken.  (The Town Hall was in no list until v2.3.3147: Mayor Bro
+   door is broken.  (The Town Hall was in no list until v2.3.3258: Mayor Bro
    stands on its steps; it is a hall now.)  MIRROR: plan.js's own `today`
    words -- test-world-core checks the shut one and the three halls beside
    it are the four "(new: ...)" plots. */
@@ -128,7 +128,8 @@ export const WHEEL_TOWNSFOLK = [
      Ace: beside the Gambling Den, WEST of its steps, where Diego stands at
           the store -- the den's barrel and trough are on its east;
      Blacksmith Bro: EAST of the forge's steps (a barrel west, a crate east,
-          each 193 px out) -- scenery with a hammer, as in today's town;
+          each 193 px out) -- scenery with a hammer, as in today's town
+          (since v2.3.3258 he opens the forge: WHEEL_KEEPERS, below);
      Lil Bro: on the square, 260 px WEST of where you arrive (the Town Hall's
           door + (0, 108)), on the side away from Mayor Bro, so a new player
           meets him, as in today's town: 282 px from the hall's door (the
@@ -152,3 +153,24 @@ export const WHEEL_TOWNSFOLK = [
      _spawnWheelNpcs). */
   { name: 'Beastmaster Bro', door: 'woodworker', dx: 105, dy: 34, cap: 'beastmaster' },
 ];
+
+/* ═══ v2.3.3258: THE KEEPERS -- TALK TO HIM, AND HIS BUILDING OPENS ═══
+   The owner, asked whether players should walk into the buildings, see a
+   still picture of a shopkeeper or meet the shopkeeper outside: "Yes I like
+   your idea of interacting with the building's NPC instead of having the
+   building interiors.  Have it open up as backgrounds behind the different
+   buildings menus instead of literally going into a building".
+   Townsperson NAME -> the plot whose window he opens when you talk to him (a
+   tap, E or the right stick's tap): the same window, the same visit counted,
+   as its door (game/interactions.js enterWheelDoor), with the room's picture
+   behind its menu (BuildingRoom.jsx).  A quest of his comes first: Mayor Bro
+   opens the Town Hall only when he has nothing to offer, ask about or pay
+   for.  Only the keepers whose picture exists: the other buildings keep their
+   door until the owner's keeper is made (docs/ART-WISHLIST.md "The keepers"),
+   and then a keeper is a row here and in WHEEL_TOWNSFOLK.  Diego (his shop)
+   and Ace (his coin flip) keep their own windows.  Each door still opens too.
+   MIRROR: every value is a plot of the town -- test-world-core checks it. */
+export const WHEEL_KEEPERS = {
+  'Blacksmith Bro': 'blacksmith',   /* the forge, at whose steps he stands */
+  'Mayor Bro': 'townhall',          /* the Town Hall: its leaderboard and the world map */
+};

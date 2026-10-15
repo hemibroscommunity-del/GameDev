@@ -48,6 +48,7 @@
  * LEAF MODULE (the staffCastFx / fxStrips precedent): effectsRenderer owns the
  * instance; nothing here imports a renderer. */
 import { Container, Rectangle, Sprite, Texture } from 'pixi.js';
+import { drawSourceRect } from './paletteDraw.js';   /* v2.3.3190 */
 import { zonePlayerScale } from '@/data/zones.js';
 import { TILE } from '@/data/constants.js';
 
@@ -531,7 +532,8 @@ function propChips(art, fx) {
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
     const g = cv.getContext('2d', { willReadFrequently: true });
     try {
-      g.drawImage(src, FX + x0, FY + y0, w, h, 0, 0, w, h);
+      /* v2.3.3190: drawSourceRect, so a page kept as colour numbers cuts the same */
+      drawSourceRect(g, tex.source, FX + x0, FY + y0, w, h, 0, 0, w, h);
       out = bakeChipsFrom(cv, g, w, h, fx, radiiW.map((r) => Math.max(1.5, r / art.cs)), 0.6);
     } catch (e) { out = null; }
     /* v2.3.3046: the window's scratch canvas goes now (the chips are their own
@@ -619,9 +621,22 @@ function towardCamera(a) {
 /* the kick back toward the attacker (an arrow's entry puff) */
 const backAng = (P) => P.dir + Math.PI + gauss() * 0.7;
 
+/* ═══ v2.3.3152: A POOL GIVES BACK WHAT A BIG FIGHT MADE ═══
+   A pool grows to the most pieces drawn at once, and it kept every sprite
+   after: a dungeon wave cleared in one go drew ~1,400, and those 1,400 hidden
+   sprites stayed in the scene for the rest of the visit -- ~3 MB of heap, and
+   every frame's end() walked them.  Found by the leak hunt's scene census at
+   home after a Great Cave trip (mp-sceneleak).  So each pool keeps only what
+   it has drawn at once in the last TRIM_MS, and TRIM_SPARE more; the rest are
+   destroyed, and a zone change (clear) lets go of them all.  A sprite is
+   only ever made again when a bigger fight needs it, which is what the first
+   fight did anyway. */
+const TRIM_MS = 6000;
+const TRIM_SPARE = 16;
+
 /* Index-pooled sprites, refilled from zero every frame (staffCastFx's pool). */
 class Pool {
-  constructor(parent) { this.parent = parent; this.list = []; this.n = 0; }
+  constructor(parent) { this.parent = parent; this.list = []; this.n = 0; this.hw = 0; this.hwAt = 0; }
   take(tex) {
     let sp = this.list[this.n];
     if (!sp || sp.destroyed) {
@@ -636,11 +651,29 @@ class Pool {
     return sp;
   }
   begin() { this.n = 0; }
-  end() {
+  end(now) {
     for (let i = this.n; i < this.list.length; i++) {
       const sp = this.list[i];
       if (sp && !sp.destroyed && sp.visible) sp.visible = false;
     }
+    /* v2.3.3152: the most drawn at once this window; past it, a trim */
+    if (this.n > this.hw) this.hw = this.n;
+    if (now != null && now - this.hwAt >= TRIM_MS) {
+      this.trim(this.hw + TRIM_SPARE);
+      this.hw = this.n;
+      this.hwAt = now;
+    }
+  }
+  /* destroy every sprite from `keep` on -- hidden ones only: a frame's
+     drawing takes from 0 up, so all of them are past this frame's n */
+  trim(keep) {
+    const L = this.list;
+    if (L.length <= keep) return;
+    for (let i = Math.max(keep, this.n); i < L.length; i++) {
+      const sp = L[i];
+      if (sp && !sp.destroyed) { if (sp.parent) sp.parent.removeChild(sp); sp.destroy(); }
+    }
+    L.length = Math.max(keep, this.n);
   }
 }
 
@@ -656,7 +689,11 @@ class Side {
     this.shadow = new Pool(s); this.dust = new Pool(d); this.body = new Pool(b); this.top = new Pool(t);
   }
   begin() { this.shadow.begin(); this.dust.begin(); this.body.begin(); this.top.begin(); }
-  end() { this.shadow.end(); this.dust.end(); this.body.end(); this.top.end(); }
+  end(now) { this.shadow.end(now); this.dust.end(now); this.body.end(now); this.top.end(now); }
+  /* v2.3.3152: every pooled sprite let go (a zone change) */
+  trim(keep) { this.shadow.trim(keep); this.dust.trim(keep); this.body.trim(keep); this.top.trim(keep); }
+  /* QA: the sprites the four pools hold */
+  held() { return this.shadow.list.length + this.dust.list.length + this.body.list.length + this.top.list.length; }
 }
 
 export class HitMaterialFx {
@@ -699,6 +736,8 @@ export class HitMaterialFx {
     this._last.clear();
     this.front.begin(); this.back.begin();
     this.front.end(); this.back.end();
+    /* v2.3.3152: and the pools' sprites go too -- hidden is not given back */
+    this.front.trim(0); this.back.trim(0);
   }
 
   /* A free record, or -- when a busy fight has them all -- the next one round
@@ -1562,7 +1601,7 @@ export class HitMaterialFx {
         hl.alpha = 0.9 * fade;
       }
     }
-    F.end(); B.end();
+    F.end(now); B.end(now);
   }
 
   _splatTex(p) {
@@ -1643,6 +1682,8 @@ export class HitMaterialFx {
       /* the atlas must sample NEAREST -- linear would blur every piece, the complaint itself */
       nearest: !!(src && (src.scaleMode === 'nearest' || (src.style && src.style.scaleMode === 'nearest'))),
       pieceScale: +PIX.toFixed(4),
-      drawn: { front: this.front.body.n + this.front.dust.n + this.front.top.n, back: this.back.body.n + this.back.dust.n + this.back.top.n } };
+      drawn: { front: this.front.body.n + this.front.dust.n + this.front.top.n, back: this.back.body.n + this.back.dust.n + this.back.top.n },
+      /* v2.3.3152: the sprites the pools hold, drawn or not (mp-sceneleak) */
+      held: { front: this.front.held(), back: this.back.held() } };
   }
 }

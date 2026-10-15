@@ -22,7 +22,10 @@ in every phase (below).
 - You tap a rock, tree, fishing spot or your campfire and your character
   starts working, as before.
 - Each swing that lands knocks a **number** off the node: your roll for that
-  hit, between 1 and your level in that skill. Level 1 always hits for 1.
+  hit. ~~Between 1 and your level in that skill.~~ Since v2.3.3229 it is the
+  **hit ladder** (`docs/specs/hit-ladder.md`): each level adds a 10% chance of
+  one more, so level 3 hits 1 eight times in ten and 2 or 3 once each, and
+  from level 11 the 1 is gone. Level 1 always hits for 1.
 - The node wears **the monster's health bar** (same art, white ghost trail,
   damage flash, the HP number in the middle), and it drops with every hit. It
   appears the moment the worker's plan does (one round trip, well inside the
@@ -104,13 +107,13 @@ in every phase (below).
 
 | | |
 |---|---|
-| Node HP | `5 × (tier level + 1)`: 10 on the first tier (the owner's 10), 35 on a tier unlocked at 6. Every tier takes about ten hits at the level that unlocks it. Only tier 1 spawns today (`_placeGatherNode`). |
+| Node HP | ~~`5 × (tier level + 1)`: 10 on the first tier (the owner's 10), 35 on a tier unlocked at 6. Every tier takes about ten hits at the level that unlocks it. Only tier 1 spawns today (`_placeGatherNode`).~~ Since v2.3.3251 by resource: each tier twice the hits of the one before at the level it opens, copper 10 … obsidian 1,680, pine and minnow 10 … maple and pike 2,480 (`GATHER_NODE_HP`, `docs/specs/resource-hp.md`). |
 | A cook's HP | the same formula off the FISH's tier (`_fishTierLvl`): a minnow 10, a clownfish 35, a trout 60. Fishing spots are tier 1, so a minnow is all a player catches today; the others are older catches or trades. A level-1 cook on a trout meets `MAX_HITS` (26 s of hits). |
-| A hit | 1..skill level, uniform. The last hit is the one that empties the node, so no hit lands on a broken node. |
+| A hit | ~~1..skill level, uniform.~~ Since v2.3.3229 the hit ladder: a ten-sided die read down from the level, `max(1, level − 9 + face)` (`docs/specs/hit-ladder.md`). The last hit is the one that empties the node, so no hit lands on a broken node. |
 | Pace | one hit per **swing of the art**: the pick's 650 ms loop, the axe's 540 ms, a 650 ms nibble for the rod, and the pan's 650 ms grease beat. The owner's "1 per second" was a placeholder ("or whatever interval makes the most sense"); a hit that lands on the blow you can see is the sense. |
 | Level 1, first tier | 10 hits: ~6.5 s on a rock (the old timer was 4 s), ~5.4 s on a tree |
-| Average hits on 10 HP | level 1: 10 · 2: 6.9 · 3: 5.3 · 5: 3.8 · 10: 2.4 (10% one-shot) · 20: 1.6 (55% one-shot) |
-| `MAX_HITS` | 40: a bound no live node can reach. A far-under-levelled player on a future high tier would otherwise get a plan hundreds of hits long; the 40th hit takes whatever is left. |
+| Average hits on 10 HP | ~~level 1: 10 · 2: 6.9 · 3: 5.3 · 5: 3.8 · 10: 2.4 (10% one-shot) · 20: 1.6 (55% one-shot)~~ With the ladder (v2.3.3229): level 1: 10 · 2: 9.2 · 3: 7.9 · 5: 5.5 · 10: 2.4 (10% one-shot) · 15: 1.4 · 19 and up: 1 |
+| `MAX_HITS` | 40: a bound no live node can reach. A far-under-levelled player on a future high tier would otherwise get a plan hundreds of hits long; the 40th hit takes whatever is left. Since v2.3.3251 a node's is 200 (the top tiers take ~160 hits at their opening level) and a cook keeps 40 (`COOK_MAX_HITS`). |
 | Resources per hour | unchanged in kind: one node per skill per zone and a 20 s respawn still set the ceiling, so the anti-bot hour cap (`HARVEST_HOUR_CAP`) needs no change. (v2.3.3036: in the Wheel the gesture, not supply, is the bound; with it a quarter of what it was the cap is 2,400, `docs/specs/gesture-cue.md`.) |
 
 All of it lives in `GATHER_HITS` (`server/src/gathering.js`) and its client

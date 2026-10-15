@@ -537,6 +537,11 @@ export const storeMethods = {
         if (!this._httpAuthCheck(pid, request)) return deny();
         let result;
         if (path.startsWith('/list')) result = await this._stCreateListing(body);
+        /* v2.3.3183: a purchase or a bid moves gold to another player or into
+           an escrow a seller can hand back -- not in a fight with a player */
+        else if ((path.startsWith('/buy') || path.startsWith('/bid')) && this._bagLockedByFight && this._bagLockedByFight(pid)) {
+          result = { ok: false, settled: true, error: 'Not while you are fighting a player' };
+        }
         else if (path.startsWith('/buy')) result = await this._stBuyNow(body.listingId, pid);
         else if (path.startsWith('/bid')) result = await this._stPlaceBid(body.listingId, pid, body.amount);
         else if (path.startsWith('/accept')) result = await this._stAcceptBid(body.listingId, pid);
@@ -615,6 +620,8 @@ export const storeMethods = {
 
     const ps = this.playerState[playerId];
     if (!ps) return { ok: false, settled: true, error: 'Not in game' };
+    /* v2.3.3183: not in a fight with a player (nomansland.js _bagLockedByFight) */
+    if (this._bagLockedByFight && this._bagLockedByFight(playerId)) return { ok: false, settled: true, error: 'Not while you are fighting a player' };
     if ((this._stCounts.get(playerId) || 0) >= STORE.MAX_PER_PLAYER) {
       return { ok: false, settled: true, error: 'Max ' + STORE.MAX_PER_PLAYER + ' listings' };
     }

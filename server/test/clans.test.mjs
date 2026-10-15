@@ -168,13 +168,127 @@ room._tickClanWars(Date.now());
 await new Promise((r) => setTimeout(r, 20)); // fire-and-forget payouts settle
 const ended = room.eventBuffer.find((e) => e.type === 'clan_war_end');
 check('war resolves by endsAt with the winning tag', ended && ended.payload.winner === 'RED' && room._clanWars.size === 0, ended && ended.payload);
-check('winning members paid flat gold', psA.coins === 500 + 500 && psC.coins === 1000 + 500, { a: psA.coins, c: psC.coins });
+/* v2.3.3180: only the members who FOUGHT are paid -- alice made the kill,
+   carol never fought (she was paid 500 for nothing before) */
+check('the winner who fought is paid flat gold', psA.coins === 500 + 500, { a: psA.coins });
+check('v2.3.3180: a winning member who never fought is paid nothing (was 500)', psC.coins === 1000, { c: psC.coins });
 const bobInbox = state._store.get('inbox:bp_cl_bob');
 check('offline loser paid via inbox', bobInbox && bobInbox.length === 1 && bobInbox[0].payload.amount === 50, bobInbox);
 const coinsA7 = psA.coins;
 room._resolveClanWar(war);
 await new Promise((r) => setTimeout(r, 10));
 check('double resolution is a no-op', psA.coins === coinsA7);
+
+// ── 7b. v2.3.3180: a war pays only who fought, and a clan rests an hour ──
+// It paid every member of the roster frozen at declare: 50 each on a 0-0
+// war (2,000 gold every 30 minutes for two 20-member clans doing nothing)
+// and 500 to every winner after one staged kill; and a new war could be
+// declared the moment one ended.  Self-contained: its own players and clans,
+// its war snapshots removed at the end (section 5 counts them).
+{
+  const ids = ['w1', 'w2', 'w3', 'w4', 'w5', 'w6'].map((n) => 'bp_cl_' + n);
+  const wsW = {};
+  for (const id of ids) { wsW[id] = fakeWs(id); await join(wsW[id], id, id); room.playerState[id].coins = 1000; }
+  const [l1, m1, m2, l2, n1, n2] = ids;   // WAA: l1 (leader), m1, m2   WBB: l2 (leader), n1, n2
+  await room._handleClanCreate(sessionOf(l1), { name: 'War Alpha', tag: 'WAA' });
+  await room._handleClanCreate(sessionOf(l2), { name: 'War Beta', tag: 'WBB' });
+  const cA = room._clanOf(l1), cB = room._clanOf(l2);
+  for (const [lead, pid] of [[l1, m1], [l1, m2], [l2, n1], [l2, n2]]) {
+    await room._observeClanInvite(lead, { payload: { target: pid } });
+    await room._handleClanJoinAccept(sessionOf(pid), { inviter: lead });
+  }
+  check('setup: two clans of three', cA && cB && cA.members.length === 3 && cB.members.length === 3, { a: cA && cA.members, b: cB && cB.members });
+  const coinsOf = () => Object.fromEntries(ids.map((id) => [id, room.playerState[id].coins]));
+  const declare = async () => {
+    room.eventBuffer.length = 0;
+    await room._handleClanWarDeclare(sessionOf(l1), { defenderTag: 'WBB', zone: 'meadow' });
+    return [...room._clanWars.values()].find((w) => w.challenger.clanId === cA.id && w.status === 'active');
+  };
+  const finish = async (w) => {
+    w.endTime = Date.now() - 1;
+    room.eventBuffer.length = 0;
+    room._tickClanWars(Date.now());
+    await new Promise((r) => setTimeout(r, 20));
+    return room.eventBuffer.find((e) => e.type === 'clan_war_end');
+  };
+  const rest = () => { cA.lastWarEnd = 0; cB.lastWarEnd = 0; };
+  const snaps = [];
+
+  // (a) 0-0: nobody fought, nobody is paid
+  const w0 = await declare();
+  if (w0) snaps.push(w0.id);
+  const before0 = coinsOf();
+  const end0 = await finish(w0);
+  const after0 = coinsOf();
+  check('a 0-0 war pays nobody (was 50 to every member of both clans)', ids.every((id) => after0[id] === before0[id]), { before0, after0 });
+  check('...and says so: nobody on its paid list', end0 && Array.isArray(end0.payload.paid) && end0.payload.paid.length === 0, end0 && end0.payload);
+
+  // (b) the hour's rest, counted from the war's end
+  room.eventBuffer.length = 0;
+  wsW[l1].sent.length = 0;
+  await room._handleClanWarDeclare(sessionOf(l1), { defenderTag: 'WBB', zone: 'meadow' });
+  const refused = msgsOfType(wsW[l1], 'clan_error').map((m) => m.payload.text || m.payload.message || '');
+  check('a new war within the hour after one ends is refused', ![...room._clanWars.values()].some((w) => w.challenger.clanId === cA.id) && refused.length === 1, refused);
+  check('...the end is kept on both clans\' records', cA.lastWarEnd > 0 && cB.lastWarEnd > 0
+    && state._store.get('clan:' + cA.id).lastWarEnd === cA.lastWarEnd && state._store.get('clan:' + cB.id).lastWarEnd === cB.lastWarEnd, { a: cA.lastWarEnd, b: cB.lastWarEnd });
+  cA.lastWarEnd = Date.now() - CLANS.WAR_COOLDOWN - 1; cB.lastWarEnd = Date.now() - 5 * 60000;
+  wsW[l1].sent.length = 0;
+  await room._handleClanWarDeclare(sessionOf(l1), { defenderTag: 'WBB', zone: 'meadow' });
+  check('...for the defender too (55 minutes ago is too soon)', ![...room._clanWars.values()].some((w) => w.challenger.clanId === cA.id) && msgsOfType(wsW[l1], 'clan_error').length === 1);
+  cB.lastWarEnd = Date.now() - CLANS.WAR_COOLDOWN - 1;
+
+  // (c) one staged kill: only its killer and its victim are paid
+  const w1 = await declare();
+  check('...and an hour on, a war can be declared again', !!w1, room._clanWars.size);
+  if (w1) snaps.push(w1.id);
+  for (const id of ids) room.playerState[id].z = 'meadow';
+  room._warOnDeath(n1, 'pvp:' + m1);               // m1 (WAA) kills n1 (WBB)
+  const foughtOf = (w, sd) => (w && w[sd] && Array.isArray(w[sd].fought) ? w[sd].fought : []);
+  check('the kill marks its killer and its victim as having fought', foughtOf(w1, 'challenger').includes(m1) && foughtOf(w1, 'defender').includes(n1)
+    && foughtOf(w1, 'challenger').length === 1 && foughtOf(w1, 'defender').length === 1, { c: foughtOf(w1, 'challenger'), d: foughtOf(w1, 'defender') });
+  const before1 = coinsOf();
+  const end1 = await finish(w1);
+  const got1 = Object.fromEntries(ids.map((id) => [id, room.playerState[id].coins - before1[id]]));
+  check('a 1-0 war pays the winner who fought 500 and the loser who fought 50', got1[m1] === 500 && got1[n1] === 50, got1);
+  check('...and nobody else on either side (was 500 to every winner, 50 to every loser)', got1[l1] === 0 && got1[m2] === 0 && got1[l2] === 0 && got1[n2] === 0, got1);
+  check('...the war\'s end names who was paid', end1 && end1.payload.winner === 'WAA' && JSON.stringify([...(end1.payload.paid || [])].sort()) === JSON.stringify([m1, n1].sort()), end1 && end1.payload);
+
+  // (d) kicked mid-war: fought, but not in the clan at the end -> not paid
+  rest();
+  const w2 = await declare();
+  if (w2) snaps.push(w2.id);
+  room._warOnDeath(n2, 'pvp:' + m2);               // m2 kills n2
+  room._warOnDeath(m1, 'pvp:' + n1);               // n1 kills m1
+  await room._handleClanKick(sessionOf(l1), { target: m2 });
+  check('setup: m2 fought and was then kicked', foughtOf(w2, 'challenger').includes(m2) && !room._clanOf(m2));
+  const before2 = coinsOf();
+  await finish(w2);
+  const got2 = Object.fromEntries(ids.map((id) => [id, room.playerState[id].coins - before2[id]]));
+  check('a member kicked mid-war is not paid by it, though they fought', got2[m2] === 0, got2);
+  check('...the others who fought are (a 1-1 draw pays the loser rate to both)', got2[m1] === 50 && got2[n1] === 50 && got2[n2] === 50 && got2[l1] === 0 && got2[l2] === 0, got2);
+
+  // (e) a war declared before this version (no `fought` lists) pays its
+  //     roster as it did -- once, unless it is 0-0
+  rest();
+  const w3 = await declare();
+  if (w3) snaps.push(w3.id);
+  delete w3.challenger.fought; delete w3.defender.fought;
+  w3.challenger.score = 1;
+  const before3 = coinsOf();
+  await finish(w3);
+  const got3 = Object.fromEntries(ids.map((id) => [id, room.playerState[id].coins - before3[id]]));
+  check('a war declared before the change still pays its roster (one last time)', got3[l1] === 500 && got3[m1] === 500 && got3[l2] === 50 && got3[n1] === 50 && got3[n2] === 50, got3);
+  rest();
+  const w4 = await declare();
+  if (w4) snaps.push(w4.id);
+  delete w4.challenger.fought; delete w4.defender.fought;
+  const before4 = coinsOf();
+  await finish(w4);
+  check('...but not for a 0-0', ids.every((id) => room.playerState[id].coins === before4[id]), coinsOf());
+
+  for (const id of snaps) { state._store.delete('clan_war:' + id); }
+  for (const id of ids) room.playerState[id].z = 'town';
+}
 
 // ── 4. leave/kick (after the war so membership was stable above) ──
 await room._handleClanKick(sessionOf('bp_cl_carol'), { target: 'bp_cl_alice' });
@@ -285,9 +399,21 @@ check('last leave dissolves the clan', !room._clans.has(redClan.id) && !state._s
   check('9.2a positive control: a reconnected member HAS the tag on playerState',
     room.playerState['bp_cl_hana'].clanTag === 'GRN', room.playerState['bp_cl_hana'].clanTag);
 
+  /* v2.3.3240: a tall, broad leaver -- the clear must keep the build */
+  sessionOf('bp_cl_hana').data.hg = 'tall';
+  sessionOf('bp_cl_hana').data.fr = 'broad';
+  sessionOf('bp_cl_hana')._look = { sigs: Object.create(null), fullAt: Date.now() };
   wsH.sent.length = 0; wsI.sent.length = 0;
   await cmd(wsH, 'clan_leave');
   check('9.1 clan_leave routes through the message switch', !room._clanOf('bp_cl_hana'));
+  {
+    const upd = msgsOfType(wsI, 'player_update').filter((m) => m.id === 'bp_cl_hana');
+    const last = upd[upd.length - 1];
+    check('9.3c v2.3.3240: the tag clear carries the leaver\'s build (hg/fr) -- a phone sets a peer\'s build from every relay',
+      last && last.data.hg === 'tall' && last.data.fr === 'broad', last && last.data);
+    check('9.3d v2.3.3240: and the leaver\'s next look relay goes whole (lookrelay.js _lookForget)',
+      sessionOf('bp_cl_hana')._look === null);
+  }
   check('9.2 leaving strips the tag from playerState',
     !room.playerState['bp_cl_hana'].clanTag && !room.playerState['bp_cl_hana'].clanColor1,
     { ps: room.playerState['bp_cl_hana'].clanTag });
@@ -362,6 +488,30 @@ check('last leave dissolves the clan', !room._clans.has(redClan.id) && !state._s
     { stillIn: !!room._clanOf('bp_cl_hana'), errs: msgsOfType(wsH, 'clan_error').map((m) => m.payload.text) });
   check('9.7b ...and a kick is still allowed mid-war (a leader ejecting a griefer)',
     await (async () => { await cmd(wsG, 'clan_kick', { target: 'bp_cl_hana' }); return !room._clanOf('bp_cl_hana'); })());
+
+  /* 9.7c v2.3.3175: ...but the kicked member is still on that war's roster
+     (it pays the roster frozen at declare), so joining another clan put her
+     on a SECOND war's roster -- paid twice, or on both sides of one. */
+  const war97 = [...room._clanWars.values()].find((w) => w.status === 'active' && (w.challenger.clanId === grt.id || w.defender.clanId === grt.id));
+  check('9.7c fixture: the kicked member is still on the war\'s roster',
+    !!war97 && (war97.challenger.members.includes('bp_cl_hana') || war97.defender.members.includes('bp_cl_hana')));
+  const wsJ = fakeWs('jo');
+  await join(wsJ, 'bp_cl_jo', 'Jo');
+  room.playerState['bp_cl_jo'].coins = 5000;
+  await room._handleClanCreate(sessionOf('bp_cl_jo'), { name: 'Jo Crew', tag: 'JOC' });
+  wsH.sent.length = 0;
+  await enlist('bp_cl_jo', wsH, 'bp_cl_hana');
+  check('9.7c a member kicked mid-war cannot join another clan while that war is on',
+    !room._clanOf('bp_cl_hana') && msgsOfType(wsH, 'clan_error').some((m) => m.payload.text === 'Cannot join during a clan war'),
+    { clan: room._clanOf('bp_cl_hana') && room._clanOf('bp_cl_hana').tag, errs: msgsOfType(wsH, 'clan_error').map((m) => m.payload.text) });
+  await enlist('bp_cl_ivan', wsH, 'bp_cl_hana');
+  check('...nor the clan on the other side of it', !room._clanOf('bp_cl_hana'), room._clanOf('bp_cl_hana') && room._clanOf('bp_cl_hana').tag);
+  war97.endTime = Date.now() - 1;
+  room._tickClanWars(Date.now());
+  await new Promise((r) => setTimeout(r, 20));
+  await enlist('bp_cl_jo', wsH, 'bp_cl_hana');
+  check('9.7d ...and once the war is over she can join', !!room._clanOf('bp_cl_hana') && room._clanOf('bp_cl_hana').tag === 'JOC',
+    room._clanOf('bp_cl_hana') && room._clanOf('bp_cl_hana').tag);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
