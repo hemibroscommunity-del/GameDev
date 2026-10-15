@@ -47,6 +47,33 @@ limit: one that counts every message, one that counts 20 to 1, one that counts
 late, and four starts it must refuse (too late, far too early, a game address
 other than the listing, a window across midnight) without sending anything.
 
+### The answer (the fifth run, 2026-10-14 23:55 UTC): NOT every message counts
+
+[Run 5](https://github.com/hemibroscommunity-del/GameDev/actions/runs/38655964310),
+started at 23:44 UTC as the owner approved:
+
+- **Sent** 124,999 socket messages to one lab World in 25 steps of 5,000,
+  23:55:02-23:55:20 UTC, plus about 274 other requests (the steps' own and
+  their checks).
+- **Cloudflare's own figures** put the day at 1 before the test (they lag a
+  few minutes) and **125,271** after it, by the every-message reading. That is
+  past the 100,000 line by 25,000.
+- **Nothing was refused.** There were 52 checks after the steps, each a fresh
+  lab request plus the game's auction listing (read only), and none failed.
+  The lab watched until 23:59:45 UTC for a late count, and none came.
+- **What it means.** The free plan's daily limit does not count each socket
+  message as a request. It counts them the way the bill does, 20 to one.
+  - The Oct 11 playtest (76,277 messages and calls) was about **4-5%** of a
+    day, not 76%.
+  - Its 433 GB-s of servers awake was 3.3% of the other daily limit (13,000).
+  - At that level, the free plan's limits allow about 20 such playtests a day.
+- **What it doesn't rule out.** A limit checked more slowly than 4.5 minutes
+  after crossing 100,000. The midnight reset came before that could matter.
+  The Community report's block (2026-10-12) is still unexplained; it fits a
+  different counting, or a different limit.
+- **The game was never touched.** Its listing answered every check, and the
+  lab worker was deleted at 23:59:49.
+
 ## v2.3.3252: the account is on the free plan
 
 The first run (2026-10-14) never started. Cloudflare refused the deploy: "In

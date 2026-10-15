@@ -2632,6 +2632,12 @@ Two protocol versions coexist; both must keep working:
       Cloudflare's own words (503 `refused`), not its crash page;
       selftest.mjs runs it on a fake clock against a fake limit (every
       message, 20 to 1, counted late, four refusals to run).
+      RAN 2026-10-14 23:55 UTC (run 5): NOT EVERY MESSAGE COUNTS -- 124,999
+      socket messages took Cloudflare's every-message count of the day to
+      125,271, past 100,000, and nothing was refused (52 checks, watched to
+      23:59:45); the daily limit counts socket messages 20 to 1 like the bill,
+      so Oct 11's playtest was ~4-5% of a day, not 76%. The game's listing
+      answered throughout (docs/specs/cloudflare-lab.md "The answer").
 
 ## Conventions
 

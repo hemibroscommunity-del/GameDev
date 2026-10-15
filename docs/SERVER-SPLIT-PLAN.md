@@ -425,8 +425,11 @@ These are needed by ANY split. Several help at today's 120.
      requests: **about 20-55 player-hours of play a day in all** (*estimate*).
      That is a handful of players for an evening, or 120 players for 10-30
      minutes. Whether the free plan's daily LIMIT counts phone messages 20 to
-     one as well is not documented; if it counts each one, it is about 1-3
-     player-hours. Measured (the lab's part 4): the game's objects counted
+     one as well was not documented; **measured 2026-10-14 (the lab's limit
+     test, run 5): it does** -- 124,999 socket messages took Cloudflare's
+     every-message count of the day to 125,271 and nothing was refused, so
+     the 20-55 player-hours stand (and the quiet phone, #913, stretches them).
+     Measured (the lab's part 4): the game's objects counted
      76,277 on 2026-10-11, an hour of the room awake with a few players, and
      1,983-3,613 on the days round it. Cloudflare counts every hibernation
      socket message among the invocations (socket messages in read 0).
