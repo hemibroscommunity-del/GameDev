@@ -118,6 +118,7 @@ import { SHADE, propShade } from '../formShade.js'; /* v2.3.2767: light from abo
 import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
 import { standInReady, farmKneelReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made */
 import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full */
+import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -11861,7 +11862,7 @@ export class EntityRenderer {
          every peer since, and a swap that happened over your head but not
          over theirs would be the same inconsistency pointing the other way. */
       _updateNamePill(display, nextName, other.rpgLv || 1,
-        !other._isDead && !display._peerBarUp, other.bro, false, 'gold');
+        !other._isDead && !display._peerBarUp, broBadgeOf(other.bro, other.brn), false, 'gold');   /* v2.3.3255: + a wallet's count */
       if (display._namePill) {
         const _pH = (display._pillCss || 14) * PLATE_H_RATIO;
         const _pS = display._pillZoom || 1;
@@ -11891,7 +11892,7 @@ export class EntityRenderer {
           if (!window.__btPeerBadge) window.__btPeerBadge = Object.create(null);
           const _bb = display._broBadge;
           window.__btPeerBadge[id] = {
-            bro: !!other.bro,
+            bro: broBadgeOf(other.bro, other.brn),   /* v2.3.3255: the badge's own rule */
             visible: !!(_bb && _bb.visible),
             empty: !_bb || !_bb.texture || _bb.texture === Texture.EMPTY,
             texW: _bb && _bb.texture ? _bb.texture.width : 0,
@@ -14854,7 +14855,7 @@ export class EntityRenderer {
        to fix it would move the HUD pass ahead of the body placement it reads
        positions from — a real risk to buy an invisible one. */
     _updateNamePill(display, S.myName || 'Anon', (S.rpg && S.rpg.level) || 1,
-      !S._dying, S.rpg && S.rpg._bro, false, 'gold');   /* v2.3.2513: the gold border (§5.2) */
+      !S._dying, !!(S.rpg && broBadgeOf(S.rpg._bro, S.rpg._broN)), false, 'gold');   /* v2.3.2513: the gold border (§5.2) */
     if (display._namePill) {
       const _pH = (display._pillCss || 15) * PLATE_H_RATIO;
       const _pS = display._pillZoom || 1;

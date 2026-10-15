@@ -456,6 +456,25 @@ wind-up, and the relays `player_swing`, `player_projectile`, `player_dodge`,
 At 120 players with real swings and arrows it cut a phone's events from about
 50 to 16 a second. `docs/specs/events-by-place.md`.
 
+**v2.3.3255: the Hemi Bro checkmark and count.** No new message types.
+- **`bro_verify {count: 1, signature, tokenId?}`** (only against
+  `caps.broCount`) is the WALLET check: the worker recovers the signer of its
+  own nonce and reads the collection's `balanceOf(signer)`; `tokenId` (the
+  worn Bro) is optional and checked by `ownerOf` as before, its failure no
+  longer fatal. The old shape (`tokenId` required, no `count`) is unchanged.
+  One chain read per 5 s a socket (`slow_down`).
+- **`bro_verify_result`** gains `count` (and `tokenId: null` when the worn Bro
+  is not theirs); with `refresh: true` it is a join's background re-read of a
+  stale link, sent to that player only (PRIVILEGED, as before).
+- **The tick's player entry** gains `brn` (the count, 1..6666), absent at 0;
+  `bro` (the verified worn Bro's id) is unchanged -- and the phone reads both
+  now: it never read `bro` before, so nobody saw anyone else's badge. A far
+  player's slim entry carries neither and leaves them as they were.
+- **`state_sync`** gains `broN` (the count, 0 with no fresh link).
+- Server-owned, never client-settable (not in TRACK_COSMETIC_KEYS or
+  JOIN_COSMETIC_KEYS). Kill switch `broCount: false`.
+  `docs/specs/hemi-bro-count.md`.
+
 ## Peer-relayed broadcast events (client ↔ client)
 
 Sent via `channelShim.send({...})`, hit the server's default branch, pass the
