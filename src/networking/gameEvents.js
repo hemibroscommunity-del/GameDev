@@ -3598,11 +3598,14 @@ export function processGameEvent(type, payload, S, deps) {
                      everyone watching, the way a player hit by a monster does
                      (the monster_attack peer branch) -- the flash, the blood,
                      and their number in the taken red over their head.  It
-                     drew nothing at all.  pvp_hit goes to the whole room, so
-                     only a fight within PVP_ONLOOK_R -- the reach a monster's
-                     hit on them has (server eventplace.js EVENT_PLACE.R) -- is
-                     drawn. */
-                  var _pvOn = S.others && S.others[payload.target];
+                     drew nothing at all.  pvp_hit goes to the whole room --
+                     every zone, a duel in the arena too -- so only a fight in
+                     OUR zone (_peerInZone, the gate every relayed effect here
+                     has) within PVP_ONLOOK_R, the reach a monster's hit on
+                     them has (server eventplace.js EVENT_PLACE.R), is drawn:
+                     without the zone, two players fighting elsewhere bled and
+                     took numbers over our own ground (mp-pvpnumbers 5). */
+                  var _pvOn = _peerInZone(S, payload.target) ? S.others[payload.target] : null;
                   if (_pvOn && !_pvOn._isDead && S.player) {
                     var _pvOx = _pvOn.x != null ? _pvOn.x : _pvOn.renderX;
                     var _pvOy = _pvOn.y != null ? _pvOn.y : _pvOn.renderY;

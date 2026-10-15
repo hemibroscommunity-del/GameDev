@@ -118,7 +118,11 @@ the HP a blow left (`hp`) on `monster_attack`, as `pvp_hit` always has. It
 also names the weapon on `pvp_hit` (`slot`) and what a block cost
 (`staminaDrain`), as it does on `monster_hit` and `monster_attack`. A blocked hit from a player counts
 toward the "block 10 hits" quest, as a monster's does. Onlookers draw a fight
-within 2,800 px of them, the reach a monster's hit on that player has.
+in their own zone within 2,800 px of them, the reach a monster's hit on that
+player has. `pvp_hit` goes to every zone, so without the zone check (the
+`_peerInZone` gate every relayed effect has) a duel in town bled and took
+numbers over the ground of a watcher in Frost Ridge -- found by re-reading
+this change, caught by the scenario's step 5 before the fix.
 `mp-pvpnumbers` checks all of it on three phones.
 
 ### Health
@@ -290,7 +294,8 @@ whole game at once, not a second version anyone plays.
   `mirror-audit` (the two copies of the formula agree, on and off), `statsim`
   (the stat window's scene), `combat-lifecycle`, `dungeon`, `burrow`, `prog3`.
 - Phone tests: `mp-pvpnumbers` (three phones: the striker's, the target's
-  and an onlooker's view of one hit, and a block), `mp-quickeat`,
+  and an onlooker's view of one hit, a block, and nothing drawn for a fight in
+  another zone), `mp-quickeat`,
   `mp-fightfood`, `mp-prog3`, `mp-linger`, `mp-questline`, `mp-statdemo`, and
   `mp-pvpshield` (the shield against a player, below).
 - `tools/pvp-sim/` plays the fights on the worker's own code:

@@ -1198,7 +1198,8 @@ remnant to migrate server-side, not a mode to preserve.
         - DRAWN ONE WAY (gameEvents.js `pvp_hit`): your hit on a player in
           amber with the weapon's mark, a player's hit on you red with the
           heart, a block "Blocked!" and its ⚡ (counted for the block quest),
-          onlookers the taken red within 2,800 px (`PVP_ONLOOK_R`); ONE FIGURE
+          onlookers in its zone the taken red within 2,800 px
+          (`PVP_ONLOOK_R`; pvp_hit goes to every zone); ONE FIGURE
           on every screen for every hit on a player, a monster's too -- the
           change in their bar (`takenFigure` -> `toDisplayHitDamage`, the
           monster_hit rule), from the worker's `hp` (monster_attack carries it

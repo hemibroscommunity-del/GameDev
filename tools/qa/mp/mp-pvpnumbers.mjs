@@ -23,7 +23,9 @@
  *   4. a blocked blow reads as a blocked monster's: "Blocked!" and the stamina
  *      it cost (the worker's new `staminaDrain`) -- it was a grey "-0" and
  *      "BLOCKED";
- *   5. no page errors.
+ *   5. a fight in another zone draws nothing on the watcher's screen (pvp_hit
+ *      goes to every zone; the onlooker's branch draws only its own zone's);
+ *   6. no page errors.
  * Three phones, a real duel in town (the consent that lets the hits land; the
  * rule is the same as No man's land's), the attacker's blows the page's own
  * shape on the wire.
@@ -194,6 +196,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`4. a blocked player's blow says "Blocked!" and the stamina it cost (${st && st.text}), as a monster's does`, !!said && !!st && !old, blk.pb);
   }
 
-  rec.ok('5. no page errors', errors.length === 0, errors);
+  /* ── 5. a fight in ANOTHER zone draws nothing on the watcher's screen ──
+     pvp_hit goes to the whole room, every zone; the onlooker's number is drawn
+     only for a target in the watcher's OWN zone (gameEvents.js _peerInZone).
+     The watcher goes to Frost Ridge and still holds the target's copy (in
+     town) within PVP_ONLOOK_R of where it stands by the numbers, so only the
+     zone can stop it -- without it, the fight in town bled and took numbers
+     over the watcher's snow. */
+  await B.page.evaluate(() => { const S = window._gameState.current; S._shieldUp = false; S.shieldActive = 0; });
+  await B.page.keyboard.press('Control');   /* the lowered guard reaches the worker */
+  await H.warpToZone(C, { wsPort, label: 'Frost Ridge', zoneId: 'frost' }).catch(() => null);
+  const cView = await C.page.evaluate((id) => {
+    const S = window._gameState.current;
+    const o = S.others && S.others[id];
+    if (!o) return { zone: S.currentZone, has: false };
+    const ox = o.x != null ? o.x : o.renderX, oy = o.y != null ? o.y : o.renderY;
+    return { zone: S.currentZone, has: true, theirs: o.zone || o.z || 'town', d: Math.round(Math.hypot(ox - S.player.x, oy - S.player.y)) };
+  }, bId);
+  rec.ok(`the watcher is in another zone, still holds the target, in reach by the numbers (guard: ${JSON.stringify(cView)})`,
+    cView.zone === 'frost' && cView.has && cView.theirs !== 'frost' && cView.d <= 2800, cView);
+  let far = null;
+  for (let tries = 0; tries < 6 && !far; tries++) {
+    await B.page.evaluate(() => { const S = window._gameState.current; S._shieldUp = false; });
+    const t0 = Date.now();
+    const hp0 = (await H.serverPlayer(wsPort, bId) || {}).hp;
+    await swingAt(A, bId, ++sw);
+    await A.page.waitForTimeout(900);
+    const hp1 = (await H.serverPlayer(wsPort, bId) || {}).hp;
+    if (typeof hp0 === 'number' && typeof hp1 === 'number' && hp1 < hp0) {
+      const flash = await C.page.evaluate((id) => { const S = window._gameState.current; const o = S.others && S.others[id]; return o ? (o._hitFlash || 0) : 0; }, bId);
+      far = { t0, hp0, hp1, flash, pc: await popsSince(C, t0) };
+    }
+    await A.page.waitForTimeout(500);
+  }
+  rec.ok('a blow landed in town (guard)', !!far, far);
+  if (far) {
+    const drawn = far.pc.filter((p) => /^-\d+$/.test(p.text));
+    rec.ok(`5. the watcher in another zone draws nothing for the fight in town (${drawn.length} numbers, flash ${far.flash >= far.t0 ? 'yes' : 'no'})`,
+      drawn.length === 0 && !(far.flash >= far.t0), far);
+  }
+
+  rec.ok('6. no page errors', errors.length === 0, errors);
   await done();
 }
