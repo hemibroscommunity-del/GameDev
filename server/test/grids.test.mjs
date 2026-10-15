@@ -183,10 +183,10 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   ps.hp = 1;
   const rawHeal = room._fishHealAmount('cooked_fish_minnow');
   room._handleEatRequest(session, { invKey: 'cooked_fish_minnow' });
-  /* v2.3.3261: the owner, "A fish heals the same fixed amount always" -- the
+  /* v2.3.3263: the owner, "A fish heals the same fixed amount always" -- the
      fish's own number and nothing on top (cooking.js); Recovery's flat rides
      a fish only with the fish ladder switched off, as it did before */
-  check('recovery: a fish heals its fixed number, no per-heal flat on top (v2.3.3261)',
+  check('recovery: a fish heals its fixed number, no per-heal flat on top (v2.3.3263)',
     _recFlat > 0 && ps.hp === Math.min(ps.maxHp, 1 + Math.ceil(rawHeal)), { hp: ps.hp, rawHeal, maxHp: ps.maxHp, _recFlat });
   room._liveFlags = Object.assign({}, room._liveFlags || {}, { fishheal: false });
   ps.inventory = { cooked_fish_minnow: 1 };

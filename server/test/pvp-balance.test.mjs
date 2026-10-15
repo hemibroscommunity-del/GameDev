@@ -215,7 +215,7 @@ room._liveFlags = {};
   check('the big staff bolt (orbs 3) spends the whole window', A._pvpSpecLeft === 0, A._pvpSpecLeft);
   fresh(); room._pvpSpecialPaid(A, T); room._pvpSpecialSpent(A, 2);
   const short = attack({ kind: 'staff', special: true, orbs: 3 });
-  /* v2.3.3261: worth ONE orb (never three) -- the bolt's band x 1 x
+  /* v2.3.3263: worth ONE orb (never three) -- the bolt's band x 1 x
      STAFF_BOLT_K, as on a monster whose lane has one slot left (combat.js
      _rollHit, one function for both) */
   check('...and with one claim left it is worth ONE orb (never three), as on a monster',
@@ -258,7 +258,7 @@ room._liveFlags = {};
   room._liveFlags = {};
 }
 
-// ── 5. no cap of its own (v2.3.3261, one version) ──
+// ── 5. no cap of its own (v2.3.3263, one version) ──
 {
   /* the first cut stopped a blow on a player at 30% of their bar; a monster
      had no such cap, so the same hit read two numbers.  Gone. */

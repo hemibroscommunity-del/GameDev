@@ -82,7 +82,7 @@ this change" at the end.
     from anything** -- a monster's too (`cooking.js _anyFightAt`, the page's
     `fightFood.js fightSeen`; `docs/specs/one-formula.md`). With
     `oneformula: false` a fight with monsters is not limited, as before.
-  - **and a heal is its own fixed number** (v2.3.3261, the owner: "A fish
+  - **and a heal is its own fixed number** (v2.3.3263, the owner: "A fish
     heals the same fixed amount always"): a fish its rung of the ladder
     (`data.js FISH_HEAL`), the Garden Stew 150, the same in town, against a
     monster and against a player. The old HP grid's Recovery bonus no longer

@@ -24,7 +24,7 @@
  *
  * WHAT THIS FILE DOES (the resolver, combat.js _resolvePvPAttack, calls it):
  *   1. THE WORKER ROLLS EVERY PvP HIT ITSELF, with the very roll it makes
- *      for a monster (v2.3.3261: combat.js _rollHit -- the weapon, the trained level,
+ *      for a monster (v2.3.3263: combat.js _rollHit -- the weapon, the trained level,
  *      the points, the grade, the brew, the crit, the ceiling -- and the
  *      level edge by the target's level as an opponent, as a monster's).  The phone's dmgBase is ignored here, so
  *      a forged claim buys nothing and the crit chance is the real one.
@@ -46,7 +46,7 @@
  *   off with distance and capped it at a share of the target's bar -- every
  *   one a number for fights between players only.  The owner asked for none,
  *   and each is now either gone or the same for every fight (oneformula.js:
- *   the health, the two specials, and since v2.3.3261 the level edge both
+ *   the health, the two specials, and since v2.3.3263 the level edge both
  *   ways and no cap of a player's own).
  *
  * KILL SWITCH: `pvpbalance: false` in liveflags is the resolver exactly as
@@ -108,7 +108,7 @@ export const pvpBalanceMethods = {
   },
 
   /* The worker's own roll for this claim -- the hit, whole: the one roll a
-     monster takes (combat.js _rollHit -- v2.3.3261: the same function, so the
+     monster takes (combat.js _rollHit -- v2.3.3263: the same function, so the
      edge, the bolt, the volley and the ceiling cannot drift apart), with the
      special's shape the wire says (each honoured only on its own weapon and
      only where it can make the hit no bigger than three separate claims

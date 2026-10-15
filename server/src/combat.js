@@ -482,7 +482,7 @@ export const combatMethods = {
     }
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-    /* v2.3.3261: v2.3.3260's one formula stopped every blow here at
+    /* v2.3.3263: v2.3.3260's one formula stopped every blow here at
        30% of this player's max HP.  A monster had no such cap, so one hit read
        two numbers; gone (oneformula.js, "No cap of its own"). */
     // v2.3.1314: RESILIENCE (HP grid) goes live — big-hit taming only:
@@ -1038,7 +1038,7 @@ export const combatMethods = {
     return { dmg: Math.max(1, Math.round(base)), isCrit };
   },
 
-  /* ═══ v2.3.3261: ONE HIT, WHOEVER TAKES IT ═══
+  /* ═══ v2.3.3263: ONE HIT, WHOEVER TAKES IT ═══
      Owner, 2026-10-15: "change it so that the numbers for damage between PVP
      and PVE can be exactly the same for each combat skill type (melee, bow,
      staff) ... Everything is 1 version".  The monster path (_handleMonsterDamage)
@@ -1273,7 +1273,7 @@ export const combatMethods = {
        v2.3.2849: WORTH / part of it (BOW_VOLLEY_WORTH), never more than a
        plain special.  `part` can only make a hit SMALLER, so it needs no bound
        beyond its shape; honoured on a ranged special only, 2..3.
-       ═══ v2.3.3261: ALL OF IT IS _rollHit NOW ═══
+       ═══ v2.3.3263: ALL OF IT IS _rollHit NOW ═══
        The same roll a hit on a player takes (pvpbalance.js _pvpRollFor): the
        edge by this monster's level, the bolt, the volley, the ceiling.  One
        hit, whoever takes it -- see _rollHit above. */
@@ -1539,7 +1539,7 @@ export const combatMethods = {
        inside the same event. */
     if (_effSlot === 'staff' && !isSpecial) {
       this._staffSplash(zone, m, _impactX, _impactY, session.id, attackerPs,
-        _cappedDmg);   /* v2.3.3261: the capped roll, as before (_rollHit caps it) */
+        _cappedDmg);   /* v2.3.3263: the capped roll, as before (_rollHit caps it) */
     } else if (_bigBolt) {
       /* v2.3.2849: THE BIG BOLT EXPLODES -- the same scan, off the same impact
          point, with the bolt's own radius and share (STAFF_BOLT.BLAST): a
@@ -2010,6 +2010,17 @@ export const combatMethods = {
     const kind = (payload.kind === 'ranged' && attackerPs.rangedWeapon) ? 'ranged'
       : (payload.kind === 'staff' && attackerPs.staffWeapon) ? 'staff'
       : 'melee';
+    /* v2.3.3262: a dazed player's SWING lands nothing on a player -- "no
+       swing" was the phone's alone (combatHelpers.dazeRefused); against a
+       player it is the worker's too now, as the sword's lunge dazes players
+       (pvplunge.js).  A swing's claims go out in its first 180 ms, so one sent
+       in a daze is a swing started in it.  NOT a shot: an arrow's or a bolt's
+       claim is sent when it LANDS (projectiles.js), so one loosed before the
+       daze arrives inside it, and the worker cannot tell it from one loosed
+       after -- it lands, as it does on the screen that drew it.  An unknown
+       kind is a swing here too (fail closed, as the range cap above).  Off
+       with `pvplunge: false`. */
+    if (kind === 'melee' && this._pvpDazed && this._pvpDazed(attackerPs)) return;
     const rangeCap = this.PVP_TUNING.RANGE_CAP[kind];
     const range = Math.max(10, Math.min(rangeCap, payload.range || 40));
     /* v2.3.1306: optional single-target hint.  The new-client projectile
@@ -2132,7 +2143,10 @@ export const combatMethods = {
       }
 
       // §16.12 — Resolve dodge/block against historical state
-      if (checkState.dodging) continue; // was in i-frames from attacker's perspective
+      /* v2.3.3262: ...unless the worker has them dazed -- a dazed player cannot
+         roll (the phone's combatHelpers.dazeRefused), so a roll claimed in a
+         daze buys no i-frames against a player (pvplunge.js) */
+      if (checkState.dodging && !(this._pvpDazed && this._pvpDazed(targetPs))) continue; // was in i-frames from attacker's perspective
 
       /* v2.3.1726: PvP block goes through the SAME directional arc as
          monster attacks (_blockArcCovers, ±BLOCK_ARC_HALF).  Until now this
@@ -2144,7 +2158,7 @@ export const combatMethods = {
          before this deploy have no `ba` and keep the omni fail-open, same
          as an old client — the pinned compatibility behavior. */
       const blocked = this._blockArcCovers(checkState, attackerPs.x, attackerPs.y);
-      /* v2.3.3261: what the block cost, for the hit's message -- a blocked
+      /* v2.3.3263: what the block cost, for the hit's message -- a blocked
          player's hit reads as a blocked monster's ("Blocked!" and the ⚡ it
          cost), which carries `staminaDrain` the same way */
       let _blockDrain = 0;
@@ -2203,7 +2217,7 @@ export const combatMethods = {
            _applyDamage and the one cap bounds what is left.  `def` (the
            phone's old equipment number, 0 for everyone since Phase 1) no
            longer enters: armour is the mitigation. */
-        /* v2.3.3261: the edge by the target's level as an opponent, as a
+        /* v2.3.3263: the edge by the target's level as an opponent, as a
            monster's level is (prog3.js _prog3OpponentLevel) */
         const _roll = this._pvpRollFor(attackerPs, kind, _special, payload, this._prog3OpponentLevel(targetPs));
         isCrit = _roll.isCrit;
@@ -2211,7 +2225,7 @@ export const combatMethods = {
         rawDmg = _roll.dmg;
       }
       /* v2.3.2680 left PvP at edge 1 here on purpose -- "a PvP design call of
-         its own".  v2.3.3261: the owner's call, "Everything is 1 version":
+         its own".  v2.3.3263: the owner's call, "Everything is 1 version":
          the target's Dodge, Defense and Resist read the edge against the
          attacker's level as an opponent, as they read a monster's
          (oneformula.js "the level edge both ways").  The old path keeps 1. */
@@ -2238,11 +2252,11 @@ export const combatMethods = {
           attacker: attackerId,
           attackerName: attackerSession.name,
           target: targetId,
-          /* v2.3.3261: the weapon that landed it, as monster_hit names it
+          /* v2.3.3263: the weapon that landed it, as monster_hit names it
              (`slot`): the attacker's popup wears that weapon's mark, as a hit
              on a monster does */
           slot: kind === 'ranged' ? 'ranged' : kind === 'staff' ? 'staff' : 'melee',
-          /* v2.3.3261: what the block cost, as monster_attack says it */
+          /* v2.3.3263: what the block cost, as monster_attack says it */
           staminaDrain: _blockDrain > 0 ? _blockDrain : undefined,
           dmgBase: _hitBase,   /* v2.3.3260: the worker's roll on the new path */
           dmgTaken,

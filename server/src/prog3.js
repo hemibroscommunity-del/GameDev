@@ -1116,7 +1116,7 @@ export const prog3Methods = {
     return 1 - PROG3.BODY.def.max * prog3StatValue(ps, 'def', null, mlvl);  /* v2.3.2680: the curve + edge */
   },
 
-  /* ═══ v2.3.3261: A PLAYER'S LEVEL AS AN OPPONENT ═══
+  /* ═══ v2.3.3263: A PLAYER'S LEVEL AS AN OPPONENT ═══
      The edge reads a monster's level; a player has three.  As someone else's
      opponent -- the target of their hit, or the one hitting them -- a player
      stands at their HIGHEST trained skill, the level a shared stat's own edge

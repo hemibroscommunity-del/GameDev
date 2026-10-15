@@ -659,7 +659,7 @@ export const cookingMethods = {
   _applyDish(ps, dish, pid) {
     if (!ps || !dish) return false;
     /* v2.3.3131: a dish eaten at once (slot 'now', the Garden Stew) is a
-       heal, the cooked fish's way: its own number (v2.3.3261: nothing on top),
+       heal, the cooked fish's way: its own number (v2.3.3263: nothing on top),
        capped at max HP, refused in an arena match (GDD §43) -- and it touches
        no slot. */
     if (dish.slot === 'now') {
@@ -667,7 +667,7 @@ export const cookingMethods = {
       if (ps._arenaMatch) return false;
       if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
       if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-      /* v2.3.3261: a fixed heal, like a fish's -- no Recovery on top unless
+      /* v2.3.3263: a fixed heal, like a fish's -- no Recovery on top unless
          the fish ladder is switched off (_handleEatRequest) */
       ps.hp = Math.min(ps.maxHp, ps.hp + Math.ceil(Number(dish.power)) + (this._fishHealOff() ? this._recoveryFlat(ps) : 0));
       return true;

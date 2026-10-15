@@ -28,7 +28,7 @@
  *      too.  Burns, poisons and storm arcs are shares of the hit, so they
  *      follow.
  *
- *   3. NO CAP OF ITS OWN (v2.3.3261).  v2.3.3260 stopped any blow at 30% of
+ *   3. NO CAP OF ITS OWN (v2.3.3263).  v2.3.3260 stopped any blow at 30% of
  *      a PLAYER's max HP, whoever landed it.  A monster had no such
  *      cap, so the same big hit read 300 on a monster and 210 on a player --
  *      and the owner, 2026-10-15: "change it so that the numbers for damage
@@ -42,7 +42,7 @@
  *      word for it.  The monsters' own rails (half the bar for a telegraphed
  *      hit or a boss's ability, the fire trail) are what they were.
  *
- *      AND THE LEVEL EDGE BOTH WAYS (v2.3.3261, prog3.js _prog3OpponentLevel): a stronger
+ *      AND THE LEVEL EDGE BOTH WAYS (v2.3.3263, prog3.js _prog3OpponentLevel): a stronger
  *      target blunts your Power, Luck and Special, and a stronger attacker
  *      your Dodge, Defense and Resist, the same way whether it is a monster or
  *      a player -- a player's level as an opponent is their highest trained
@@ -50,7 +50,7 @@
  *      monsters only (v2.3.2680 left PvP at edge 1, "a PvP design call of its
  *      own"); the owner made the call.
  *
- *      So a player's hit is ONE roll (v2.3.3261, combat.js _rollHit) whoever takes it,
+ *      So a player's hit is ONE roll (v2.3.3263, combat.js _rollHit) whoever takes it,
  *      and whatever guards the one who takes it -- Dodge, Defense, armour, the
  *      Root Stew, the shield -- guards them from every attacker the same way.
  *      Monsters wear none of it, so a hit on a player with none shows the very
@@ -67,7 +67,7 @@
  *
  *   5. FOOD (cooking.js): a fish heals its own fixed number, always -- the
  *      same in town, against a monster and against a player (data.js
- *      FISH_HEAL; v2.3.3261: the old HP-grid Recovery bonus no longer adds to
+ *      FISH_HEAL; v2.3.3263: the old HP-grid Recovery bonus no longer adds to
  *      it) -- and
  *      one healing bite every 15 s while you are fighting ANYTHING (PVP_HEAL).
  *

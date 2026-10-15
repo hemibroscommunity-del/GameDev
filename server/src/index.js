@@ -190,6 +190,7 @@ import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.29
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { pvpBalanceMethods } from './pvpbalance.js'; /* v2.3.3260: PvP hits rolled by the worker, and tuned */
 import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle of a fight -- the body stays */
+import { pvpLungeMethods } from './pvplunge.js'; /* v2.3.3262: the sword's opening lunge, at a player too */
 import { oneFormulaMethods } from './oneformula.js'; /* v2.3.3260: one formula for every fight -- health, monsters' hits, the hit cap, two specials */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into a shield on the worker */
@@ -1883,7 +1884,7 @@ export class GameRoom {
         dmg: m.dmg,
         dmgTaken,
         dodged: dmgResult.dodged,
-        hp: Math.max(0, Math.round(targetPs.hp || 0)),   /* v2.3.3261: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
+        hp: Math.max(0, Math.round(targetPs.hp || 0)),   /* v2.3.3263: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
         /* v2.3.1686: tells the client to show "Blocked!" + the stamina cost
            instead of an HP number.  undefined when not blocking, so
            JSON.stringify drops both and the wire is unchanged for every
@@ -6265,4 +6266,5 @@ Object.assign(GameRoom.prototype, lookRelayMethods); /* v2.3.3240 */
 Object.assign(GameRoom.prototype, xpDecayMethods); /* v2.3.3251 */
 Object.assign(GameRoom.prototype, pvpBalanceMethods); /* v2.3.3260 */
 Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-fight, the body stays */
+Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */
 Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */

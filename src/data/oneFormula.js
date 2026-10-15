@@ -7,7 +7,7 @@
  *   - every monster hits harder by its matching player's new health over
  *     their old (monsterHitK), so a monster takes the share of your bar it
  *     always took;
- *   - no cap of a player's own (v2.3.3261): a blow is taken whole, whoever
+ *   - no cap of a player's own (v2.3.3263): a blow is taken whole, whoever
  *     lands it, so a hit reads the same number on a monster and on a player
  *     (v2.3.3260's 30% cap is gone -- the owner's "Everything is 1 version");
  *   - a sword's special is 4.5x a plain hit (was 3x), the staff's big bolt

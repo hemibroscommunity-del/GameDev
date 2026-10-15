@@ -77,7 +77,7 @@ import { noteWard } from '@/game/trapping.js';   /* v2.3.3123: a hit the pet out
  * but a weapon swap inside the round trip, and for a peer it declines to
  * guess rather than marking their arrow with our sword. */
 const SLOT_ICON = { melee: 'sword', ranged: 'arrow', staff: 'spell' };
-/* v2.3.3261: how far off an onlooker still draws a hit between two other
+/* v2.3.3263: how far off an onlooker still draws a hit between two other
    players -- the reach a monster's hit on them has (server eventplace.js
    EVENT_PLACE.R = INTEREST_OUT); pvp_hit itself goes to the whole room. */
 const PVP_ONLOOK_R = 2800;
@@ -100,7 +100,7 @@ const PVP_ONLOOK_R = 2800;
  * If the burst is wanted back, the fix is per-weapon crit art (a burst with
  * an arrow, a burst with a bolt) rather than one blade for all three; that
  * is an art call, not a code one. */
-/* ═══ v2.3.3261: ONE FIGURE FOR A HIT ON A PLAYER, ON EVERY SCREEN ═══
+/* ═══ v2.3.3263: ONE FIGURE FOR A HIT ON A PLAYER, ON EVERY SCREEN ═══
    Owner: "Same with damage dealt it stays consistent.  Everything is 1
    version".  A hit on a monster prints the change in its bar
    (toDisplayHitDamage, the monster_hit branch -- v2.3.2520's consistency
@@ -2703,7 +2703,7 @@ export function processGameEvent(type, payload, S, deps) {
                     var _rx = rOther.renderX != null ? rOther.renderX : rOther.x, _ry = rOther.renderY != null ? rOther.renderY : rOther.y;
                     queueBlood(S, _rx || 0, _ry || 0, _bx, _by, _bdmg / Math.max(1, rOther.rpgMaxHp || 100));
                   }
-                  /* v2.3.3261: with the worker's `hp` the figure is what they TOOK, the
+                  /* v2.3.3263: with the worker's `hp` the figure is what they TOOK, the
                      change in their bar (takenFigure) -- as a player's hit on them
                      reads -- and a blow that took nothing says nothing; an older
                      worker's keeps its old raw number */
@@ -3072,7 +3072,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.dodged && !(Math.ceil(dmgTaken2) > 0)) {
                 pushDmgPopup(S, S.player.x, heroPopupY(S), 'Dodged', '#9ca3af', { taken: true });
               } else if (Math.ceil(dmgTaken2) > 0 || _elSt) {
-                pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + takenFigure(payload, dmgTaken2), '#ff5e6c', { iconKey: _elLook ? _elLook.icon : 'heart', taken: true });   /* v2.3.2520: display scale; v2.3.3261: the change in your bar, as a player's hit on you (takenFigure) */
+                pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + takenFigure(payload, dmgTaken2), '#ff5e6c', { iconKey: _elLook ? _elLook.icon : 'heart', taken: true });   /* v2.3.2520: display scale; v2.3.3263: the change in your bar, as a player's hit on you (takenFigure) */
               }
               /* v2.3.1137: Second Wind — the worker healed us right after
                  this hit (defense channel, 10s cooldown); green popup.
@@ -3491,7 +3491,8 @@ export function processGameEvent(type, payload, S, deps) {
                    the worker's resolved dmgBase -- the brew it put on. */
                 var _ffq = window.__btFightFood || (window.__btFightFood = { hits: [] });
                 _ffq.hits.push({ attacker: payload.attacker, target: payload.target, dmgBase: payload.dmgBase,
-                  dmgTaken: payload.dmgTaken, blocked: !!payload.blocked, at: Date.now() });   /* v2.3.3260: + blocked (mp-pvpshield) */
+                  dmgTaken: payload.dmgTaken, blocked: !!payload.blocked, at: Date.now(),   /* v2.3.3260: + blocked (mp-pvpshield) */
+                  dodged: !!payload.dodged, ability: payload.ability || null, st: payload.st || null, stMs: payload.stMs || null });   /* v2.3.3262: + the lunge and its daze (mp-pvplunge) */
                 if (_ffq.hits.length > 60) _ffq.hits.shift();
               }
               // §16.12 — Server-authoritative PvP hit (lag-compensated)
@@ -3508,6 +3509,24 @@ export function processGameEvent(type, payload, S, deps) {
                 _pvB.rpgHp = payload.hp;
                 if (payload.maxHp) _pvB.rpgMaxHp = payload.maxHp;
                 _pvB._hpSeenAt = Date.now();
+              }
+              /* ═══ v2.3.3262: THE SWORD'S LUNGE DAZES WHO IT LANDS ON ═══
+                 A sword's opening lunge at a player that landed (server
+                 pvplunge.js) carries `st: 'daze'` and `stMs` -- the fields a
+                 rock monster's hit carries, carried out by the same code: on
+                 you, no walk, swing, roll or shield for stMs (elemHits.js,
+                 combatHelpers.dazeRefused) and the daze's sound; on anyone
+                 else, the stars round their head (their walk is their own
+                 phone's).  Before the branches below, so a watcher sees it
+                 too.  Only the daze: no other status rides a pvp_hit. */
+              if (payload.st === 'daze') {
+                if (payload.target === S.myId) {
+                  var _lzSt = applyElemHit(S, payload, Date.now());
+                  if (_lzSt) { try { BT_AUDIO.elemHit(_lzSt); } catch (e) { /* sound only */ } }
+                } else if (_peerInZone(S, payload.target)) {   /* v2.3.3263: pvp_hit goes to every zone (the onlooker's rule, below) */
+                  var _lzO = S.others[payload.target];
+                  if (!_lzO._isDead) applyElemHit(S, payload, Date.now(), _lzO);
+                }
               }
               if (payload.target !== S.myId) {
                 // Not targeted at us — if we're the attacker, show hit confirmation
@@ -3572,7 +3591,7 @@ export function processGameEvent(type, payload, S, deps) {
                   } else if (payload.blocked) {
                     pushDmgPopup(S, _pvX, _pvY, 'Blocked', '#607D8B');
                   } else if (typeof payload.dmgTaken === 'number' && payload.dmgTaken > 0) {
-                    /* ═══ v2.3.3261: YOUR HIT ON A PLAYER READS AS YOUR HIT ON A MONSTER ═══
+                    /* ═══ v2.3.3263: YOUR HIT ON A PLAYER READS AS YOUR HIT ON A MONSTER ═══
                        Owner: "the numbers for damage between PVP and PVE can be
                        exactly the same for each combat skill type ... Everything
                        is 1 version".  The worker rolls one hit for both
@@ -3593,7 +3612,7 @@ export function processGameEvent(type, payload, S, deps) {
                      feedback a monster gets. */
                   if (_pvTgt && !_pvTgt._isDead) _pvTgt._hitFlash = Date.now();
                 } else {
-                  /* ═══ v2.3.3261: AN ONLOOKER SEES IT AS A MONSTER'S HIT ON THEM ═══
+                  /* ═══ v2.3.3263: AN ONLOOKER SEES IT AS A MONSTER'S HIT ON THEM ═══
                      One version (above): a player hit by a player reads, to
                      everyone watching, the way a player hit by a monster does
                      (the monster_attack peer branch) -- the flash, the blood,
@@ -3648,7 +3667,7 @@ export function processGameEvent(type, payload, S, deps) {
                  new authoritative value.  Death is driven by the server's
                  player_died event. */
               if (window.__dmgLog) try { console.log('[dmg] net-pvp_hit', { amt: Math.ceil(dmgTaken), attacker: payload.attacker, blocked: payload.blocked }); } catch (e) {}
-              /* ═══ v2.3.3261: A PLAYER'S HIT ON YOU READS AS A MONSTER'S ═══
+              /* ═══ v2.3.3263: A PLAYER'S HIT ON YOU READS AS A MONSTER'S ═══
                  One version (the attacker's branch above): the monster_attack
                  branch's own words for the same three outcomes -- "Dodged", a
                  block's "Blocked!" and the ⚡ it cost (the worker now sends
@@ -3666,7 +3685,7 @@ export function processGameEvent(type, payload, S, deps) {
                   pushDmgPopup(S, S.player.x + 18, S.player.y - 4, '-' + payload.staminaDrain + '⚡', '#facc15', { ts: Date.now() + 1 });
                 }
               } else if (Math.ceil(dmgTaken) > 0) {
-                pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + takenFigure(payload, dmgTaken), '#ff5e6c', { iconKey: 'heart', taken: true });   /* v2.3.2520: display scale; v2.3.3026: over your head (heroPopupY); v2.3.3261: the change in your bar (takenFigure) */
+                pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + takenFigure(payload, dmgTaken), '#ff5e6c', { iconKey: 'heart', taken: true });   /* v2.3.2520: display scale; v2.3.3026: over your head (heroPopupY); v2.3.3263: the change in your bar (takenFigure) */
               }
               /* v2.3.1137: Second Wind fires in PvP too (see server
                  _applyDamage); mirror the green heal popup here. */
@@ -3677,7 +3696,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.secondWind > 0) {
                 pushDmgPopup(S, S.player.x + 16, S.player.y - 38, '+' + payload.secondWind + ' Second Wind', '#4ade80', { ts: Date.now() + 2 });
               }
-              /* (v2.3.3261: the block's own popup is "Blocked!" above, as a monster's) */
+              /* (v2.3.3263: the block's own popup is "Blocked!" above, as a monster's) */
               for (var hp2 = 0; hp2 < 6; hp2++) S.hitParticles.push({
                 x: S.player.x,
                 y: S.player.y,

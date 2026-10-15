@@ -248,7 +248,7 @@ export const fireTrailMethods = {
       payload: {
         monsterId: patch.mid, targetId: pid, dmg: raw, dmgTaken: res.dmgTaken,
         dodged: res.dodged, secondWind: res.secondWind || undefined,
-        hp: Math.max(0, Math.round(ps.hp || 0)),   /* v2.3.3261: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
+        hp: Math.max(0, Math.round(ps.hp || 0)),   /* v2.3.3263: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
         zone: zoneId,
         /* The PATCH is the attacker, not the goblin: the client points its
            feedback at attackerX/Y and drops anything further than 160px

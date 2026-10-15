@@ -502,7 +502,7 @@ export const telegraphMethods = {
       payload: {
         monsterId: m.id, targetId: pid, dmg: raw, dmgTaken: res.dmgTaken,
         dodged: res.dodged, secondWind: res.secondWind || undefined,
-        hp: Math.max(0, Math.round(ps.hp || 0)),   /* v2.3.3261: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
+        hp: Math.max(0, Math.round(ps.hp || 0)),   /* v2.3.3263: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
         zone: zoneId, attackerX: m.x, attackerY: m.y,
         /* ═══ v2.3.2235: SAY THAT THIS ONE WAS RESOLVED HERE ═══
            Owner, on the exploding slime: "I don't think I saw damage

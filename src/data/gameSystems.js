@@ -5790,7 +5790,7 @@ export function calcDisplayDps(rpg, wpn) {
    both key shapes resolve the same tier).  The player_state echo
    after eat_request is the truth; this is prediction/labeling only. */
 export function calcDisplayHeal(rpg, invKey) {
-  /* v2.3.3261: a FIXED heal -- the owner, "A fish heals the same fixed amount
+  /* v2.3.3263: a FIXED heal -- the owner, "A fish heals the same fixed amount
      always": against a worker that heals by the new ladder (caps.fishheal) a
      fish or the stew heals its own number and nothing on top (cooking.js);
      an older worker still adds the old HP grid's Recovery. */

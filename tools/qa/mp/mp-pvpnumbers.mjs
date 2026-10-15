@@ -1,4 +1,4 @@
-/* ═══ A HIT ON A PLAYER READS AS A HIT ON A MONSTER, ON THREE PHONES (v2.3.3261) ═══
+/* ═══ A HIT ON A PLAYER READS AS A HIT ON A MONSTER, ON THREE PHONES (v2.3.3263) ═══
  *
  * Owner, 2026-10-15: "change it so that the numbers for damage between PVP and
  * PVE can be exactly the same for each combat skill type (melee, bow, staff)

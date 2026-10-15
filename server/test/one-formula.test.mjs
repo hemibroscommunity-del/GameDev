@@ -147,7 +147,7 @@ room._liveFlags = {};
 }
 
 // ── 3b. a monster's hit says the HP it left, as a player's does ──
-/* v2.3.3261: every screen draws a hit on a player as the change in their bar
+/* v2.3.3263: every screen draws a hit on a player as the change in their bar
    (gameEvents.js takenFigure), from the worker's `hp` -- pvp_hit carried it
    since v2.3.1917, monster_attack now too */
 {

@@ -310,7 +310,7 @@ export function takenOf(R, slime) {
   }
   const armor = 1 - getArmorDrPct(R);
   if (armor < 1) dmg = Math.max(1, Math.round(dmg * armor));
-  /* (v2.3.3261: v2.3.3261 capped a blow at 30% of the bar here; the one
+  /* (v2.3.3263: v2.3.3263 capped a blow at 30% of the bar here; the one
      formula has no cap of a player's own now -- combat.js _applyDamage) */
   return { dmg, dodge };
 }

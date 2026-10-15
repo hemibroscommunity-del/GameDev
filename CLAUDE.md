@@ -1168,13 +1168,13 @@ remnant to migrate server-side, not a mode to preserve.
         level + 2) at creation (`_monsterHitStamp`, `_hk`; index.js and
         dungeon.js), the slime burst's and fire trail's flat amounts too -- a
         monster takes the same share of a matching bar as before; no blow over
-        30% of a player's max HP (gone since v2.3.3261, below); the sword's
+        30% of a player's max HP (gone since v2.3.3263, below); the sword's
         special 4.5x (was 3; the ceiling with it), the staff's big bolt x0.6
         (`STAFF_BOLT_K`); a bar that changed size keeps its fullness at the
         join (`_keepBarFullness`); Lv 12 copper set: sword 9.9 s, bow 12.2,
-        staff 13.3 (12.4 since v2.3.3261); kill switch `oneformula: false`
+        staff 13.3 (12.4 since v2.3.3263); kill switch `oneformula: false`
         (re-sizes every bar and live monster at once, liveops.js);
-      - since v2.3.3261 ONE VERSION -- the owner, after #916 merged: "the numbers for damage
+      - since v2.3.3263 ONE VERSION -- the owner, after #916 merged: "the numbers for damage
         between PVP and PVE can be exactly the same for each combat skill type
         ... A fish heals the same fixed amount always ... Everything is 1
         version" (docs/specs/one-formula.md "One version"):
@@ -1228,10 +1228,37 @@ remnant to migrate server-side, not a mode to preserve.
         (shieldToggle.js `noteShieldThreat`, `shieldThreatPoint`), not the
         nearest monster -- `mp-pvpshield` (two phones);
       - not done, the owner's call: a sword loses to a bow or staff that kites
-        it (a mechanic, not a number: the sword's lunge on players);
+        it (a mechanic, not a number: the sword's lunge on players) -- done
+        since v2.3.3262, below;
       - `pvp-balance`, `one-formula`, `linger`, `fightfood` §4-4c/§7,
         mirror-audit "fish heal"/"ONE_FORMULA", `grids` §6, `mp-quickeat`,
         `mp-linger`, `mp-pvpshield`, `mp-pvpnumbers`.
+    - since v2.3.3262 THE SWORD'S OPENING LUNGE WORKS ON PLAYERS -- the owner:
+      "Yes make opening lunge work on players too" (docs/specs/pvp-lunge.md):
+      - the same move: a press with a player you may fight locked (a duel, No
+        man's land's aim; `pvpLungeTarget` in src/game/abilities.js, the
+        swing's own PvP gate, on `caps.pvplunge`) dashes to them and strikes
+        on arrival, the `ability` naming them as `pid` (never `targetId`);
+        BroTown's dash follows them by id in S.others;
+      - the worker (`server/src/pvplunge.js`, from abilities.js
+        `_abilityResolve` before the monster scan): `_pvpAllowed`, same zone,
+        alive, within the 900 px reach; puts you at contact (46 px); then the
+        ONE DOOR, `_resolvePvPAttack` (a swing of its own `sw`, the worker's
+        roll, shield, roll, skulls; no cap since v2.3.3263); no knockback on a player;
+      - a landed lunge DAZES with the rock monsters' DAZE by reference (0.5 s,
+        then 2.5 s before another, shared): `st: 'daze'`, `stMs` on the
+        pvp_hit, carried out by elemHits.js `applyElemHit` on you or the peer;
+      - against players the worker now refuses a dazed player's SWING (not a
+        shot: its claim comes when it lands) and lunge, and a roll in a daze
+        gives no dodge (`_pvpDazed`); a rock monster's daze counts the same;
+      - the simulator (`tools/pvp-sim/lunge.mjs`), Lv 12 copper set: the sword
+        wins v bow 8/19/0% -> 32/39/89% (low/average/top skill), v staff
+        3/24/0% -> 12/21/66% (re-measured with v2.3.3263's one version); the daze
+        adds little, the lunge is what catches;
+        top-skill sword v bow at ~90% is the open question (the lever: a
+        longer cooldown against players);
+      - kill switch `pvplunge: false`; `pvp-lunge` suite (38), `mp-pvplunge`
+        (18, two phones).
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":

@@ -366,7 +366,7 @@ room._tickDungeons(tExec);
 const execEvt = msgsOfType(wsA, 'dungeon_boss_ability');
 check('execute event carries phase+range', execEvt.length === 1 && execEvt[0].payload.phase === 'execute' && execEvt[0].payload.ability === 'slam' && execEvt[0].payload.range === BOSS_ABILITIES.SLAM.RANGE, execEvt.map((e) => e.payload));
 const slamAtk = room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.monsterId === bossB.id);
-/* v2.3.3261: the ability's own 50% rail is the only one (the one formula's
+/* v2.3.3263: the ability's own 50% rail is the only one (the one formula's
    first cut added a 30% cap on every blow on a player; gone -- "Everything
    is 1 version", oneformula.js) */
 check('slam damage rides monster_attack, clamped to 50% maxHp', slamAtk.length === 1 && slamAtk[0].payload.dmgTaken === 250 && psA.hp === 250, { hp: psA.hp, atk: slamAtk.map((a) => a.payload) });
