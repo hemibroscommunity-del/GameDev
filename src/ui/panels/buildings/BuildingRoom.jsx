@@ -12,14 +12,16 @@ import { roomIdFor, isBandRoom, roomUrl, ROOM_W, ROOM_H, keeperFor, keeperBox } 
  * this folder are not touched, so nothing here can collide with a panel's own
  * rework.
  *
- * HOW IT SITS (game.css ".bt-room").  A zero-height sticky box at the top of
- * the card, behind everything in it (z-index -1), holding the whole room at
- * the card's width.  The panel after it -- whichever building -- starts a
- * STAGE down the picture (its sign and the middle of the room) and covers the
- * rest like a sheet laid on it; scrolled, the sheet slides up over the room,
- * which stays where it is.  The card's 20 px padding is load-bearing (every
- * panel bleeds into it with `margin: -20`), so the stage is the sheet's own
- * margin-top, set by one rule for every panel.
+ * HOW IT SITS (game.css ".bt-room").  A box over the whole card, behind
+ * everything in it (z-index -1), holding the whole room at the card's width.
+ * The panel after it -- whichever building -- starts a STAGE down the picture
+ * (its sign and the middle of the room) with its own surface taken away, so
+ * its title and first rows are written on the room, which fades into the
+ * card's slate under them; it scrolls with the menu.  (v2.3.3259: this said
+ * the room stayed put while the menu slid over it -- the first look tried,
+ * docs/specs/building-rooms.md.)  The card's 20 px padding is load-bearing
+ * (every panel bleeds into it with `margin: -20`), so the stage is the
+ * panel's own margin-top, set by one rule for every panel.
  *
  * THE SCENE.  The picture and anyone drawn into it (the Auction House's
  * clerk) live in one box that is always the whole room, 3:2, so a keeper's

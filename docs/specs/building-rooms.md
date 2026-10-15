@@ -15,8 +15,9 @@ Nobody walks into a building. Its window opens over the street, and **the
 owner's picture of the room is the window's background**: the sign and the
 middle of the room at the top, the room fading into the window's slate under
 the menu, the menu's title and first rows written on it. Sixteen windows show
-one. The seventeenth picture, the Hotel's, has no window yet and is shipped,
-waiting.
+one (the Gem Works' two tabs, v2.3.3259, share the Gem Cutter's). The Hotel's
+picture has no window yet and is shipped, waiting; the Assay Office's went with
+that building (docs/specs/gem-works.md).
 
 **A keeper opens his building when you talk to him.** Blacksmith Bro, who
 stands at the forge's steps, opens the forge; Mayor Bro opens the Town Hall
@@ -34,9 +35,9 @@ keepers"). Every door still opens too.
 | Saloon | `party`: the Saloon's own window, your party and Find a party (below) | `saloon` | the door |
 | (the arena) | `arena`: the Gladiator Arena, opened from the Sheriff's Office | none: a window of its own | the Sheriff's Office's "The arena" |
 | Woodworker | `woodwork` | `woodworker` | the door (Beastmaster Bro, beside it, is the trapper) |
-| Gem Cutter | `gemcut` | `gemcutter` | the door |
+| Gem Works (the Gem Cutter's building, v2.3.3259), its tab "Cut gems" | `gemcut` | `gemcutter` | the door |
 | Cookhouse | `cook` | `cookhouse` | the door |
-| Assay Office | `enchant` | `assay` | the door |
+| Gem Works, its tab "Set gems" (the Assay Office's window until v2.3.3259, when that building went) | `enchant` | `gemcutter`, the same room | the Gem Works' door, then the tab |
 | Gambling Den | `gamble` | `gambling` | the door (Ace, beside it, keeps his coin flip) |
 | Feed & Seed | `farm` | `feedseed` | the door |
 | Land Office | `farmhome` (the trip to your farm) | `landoffice` | the door |
@@ -220,9 +221,10 @@ loading screen**:
 
 ## Not done, and why
 
-- **Keepers for twelve buildings.** The Bank, Saloon, Woodworker, Gem Cutter,
-  Cookhouse, Assay Office, Feed & Seed, Land Office, Post Office, Sheriff's
-  Office, Guild Hall and Auction House have nobody outside to talk to. Each needs
+- **Keepers for eleven buildings.** The Bank, Saloon, Woodworker, Gem Works
+  (two keepers since v2.3.3259: a cutter and a setter, each opening his tab),
+  Cookhouse, Feed & Seed, Land Office, Post Office, Sheriff's Office, Guild Hall
+  and Auction House have nobody outside to talk to. Each needs
   a picture of the person; every townsperson's picture so far is the owner's.
   The prompts are in `docs/ART-WISHLIST.md`, "The keepers". The Auction House's
   clerk already exists as art (`storekeeper-bro.webp`, the man behind its
@@ -241,19 +243,22 @@ loading screen**:
 
 - `tools/world/test-world-core.mjs`, "the buildings' insides" and "the keepers":
   - every door opens its own room;
-  - sixteen windows, sixteen rooms;
-  - all seventeen files on disk at 1152 x 768, under 450 KB;
+  - sixteen windows, fifteen rooms (the Gem Works' two tabs share one,
+    v2.3.3259);
+  - all sixteen files on disk at 1152 x 768, under 450 KB;
   - the clerk's strip and cell, and the Town Hall's rows;
   - the background's rules, and the stage's numbers against the card's width;
   - each keeper stands at the building he opens, which has a window;
   - a tap, E and the stick open it after his quest, through the door's own
     path.
 - `node tools/qa/mp/run.mjs buildingrooms`, a phone against a real worker:
-  - it walks to each of the sixteen doors, and each door decodes its room;
+  - it walks to each of the fifteen doors, and each door decodes its room;
   - each window opens on its room as its background: the room behind the card,
     3:2, the menu a stage down it, the panel's and title's surfaces gone, the
     title and the close button on top;
   - the clerk, the Land Office, and no room on the Market;
+  - the Gem Works' two tabs (v2.3.3259): one window, its room behind both and
+    not loaded again on a tab change, each tab reachable by a finger;
   - a shorter phone (the stage held to 22vh), a sideways one (the panel as it
     was), and a picture that fails;
   - a tap on Blacksmith Bro, and E beside him, open the forge; a tap on Mayor

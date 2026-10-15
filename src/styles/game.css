@@ -1234,8 +1234,9 @@ input{font-family:inherit}
   .bt-inspect-card[data-room="blacksmith"]{--room-stage:min(90px, calc(25vw - 6px))}
   .bt-inspect-card > .bt-room + *{margin-top:calc(var(--room-stage) - 20px)!important;background:transparent!important}
   /* ...and so is its header: every building panel's first child is its title --
-     a strip on its own slate (#27393F, the Enchanter's #182227) in eleven of
-     them, bare text in five (measured on all sixteen, mp-buildingrooms) -- so
+     a strip on its own slate (#27393F; in the Gem Works' two windows its tab
+     strip, v2.3.3259) in eleven of them, bare text in five (measured on all
+     sixteen, mp-buildingrooms) -- so
      taking that colour away puts the title on the room as well, its divider
      line kept, and changes nothing where there was none */
   .bt-inspect-card > .bt-room + * > :first-child{background-color:transparent!important}
@@ -1245,6 +1246,21 @@ input{font-family:inherit}
 }
 @media (max-height:460px){.bt-room{display:none}}
 @media (prefers-reduced-motion:reduce){.bt-room-img{transition:none}}
+/* ═══ v2.3.3259: THE GEM WORKS (panels/buildings/GemWorksPanel.jsx) ═══
+   The Cut and Set tabs sit on a strip, the window's first row -- so, like the
+   other windows' titles, it is written on the room (the rules above take its
+   colour away) -- and the panel they show (GemcutPanel or EnchantPanel, neither
+   touched, each with its own title strip) fills a body padded 20px to take
+   back its own -20px margin.  Each panel rounds its own corners with an inline
+   radius, which under a strip of its own would cut four small notches in the body's
+   edge; the strip and the window's own edge do the rounding here. */
+.bt-gw-body > div{border-radius:0!important}
+/* the tab strip keeps 44px clear on its right for the card's close button, which lies over
+   it when there is no picture above (a sideways phone, a picture that cannot load); under a
+   picture the button is on the picture and the tabs take the whole width */
+.bt-gw-tabs{padding:12px 44px 12px 14px}
+.bt-room + [data-gem-works] .bt-gw-tabs{padding-right:14px}
+@media (max-height:460px){.bt-room + [data-gem-works] .bt-gw-tabs{padding-right:44px}}
 /* A window open over the minimap is not a tap on the minimap.  The world map's
    invisible "open" button (WorldMapOverlay.jsx) is a fixed, z-index 45 portal in
    the page body -- above everything inside the game's wrapper, the windows

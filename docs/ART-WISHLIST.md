@@ -9,11 +9,11 @@ What the game could use from the owner next, each with a prompt ready to paste.
 
 ## Inside the buildings
 
-**All seventeen are in the game (v2.3.3258)**, from the pictures you sent: sixteen at the top of their windows, the Hotel's held until it has a window (docs/specs/building-rooms.md). The prompts stay here for redoing one: send the new picture in chat and a session replaces it (`tools/ui/make-room-pictures.py`). Rooms are empty of people on purpose: the game draws its own characters in. The Auction House's clerk is the first; the spec says what each other room would need.
+**All seventeen were in the game (v2.3.3258)**, from the pictures you sent: sixteen behind their windows' menus, the Hotel's held until it has a window (docs/specs/building-rooms.md). **Since v2.3.3259 it is sixteen** (the Assay Office is gone; the Gem Works, the Gem Cutter's building, does both gem jobs, docs/specs/gem-works.md): fifteen behind their sixteen windows, the Hotel's held. The prompts stay here for redoing one: send the new picture in chat and a session replaces it (`tools/ui/make-room-pictures.py`). Rooms are empty of people on purpose: the game draws its own characters in. The Auction House's clerk is the first; the spec says what each other room would need.
 
 ### Blacksmith: inside
 
-- **In the game:** Done (v2.3.3258): at the top of its window (the forge).
+- **In the game:** Done (v2.3.3258): behind its window's menu (the forge).
 - **Attach:** your style key + the outside of the Blacksmith (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -35,7 +35,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### General Store: inside
 
-- **In the game:** Done (v2.3.3258): at the top of its window (the market).
+- **In the game:** Done (v2.3.3258): behind its window's menu (the market).
 - **Attach:** your style key + the outside of the General Store (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -57,7 +57,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Bank: inside
 
-- **In the game:** Done (v2.3.3258): at the top of its window (the bank).
+- **In the game:** Done (v2.3.3258): behind its window's menu (the bank).
 - **Attach:** your style key + the outside of the Bank (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -79,7 +79,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Cookhouse: inside
 
-- **In the game:** Done (v2.3.3258): at the top of its window (cooking).
+- **In the game:** Done (v2.3.3258): behind its window's menu (cooking).
 - **Attach:** your style key + the outside of the Cookhouse (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -101,7 +101,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Saloon: inside
 
-- **In the game:** Done (v2.3.3258): at the top of its window (the party panel).
+- **In the game:** Done (v2.3.3258): behind its window's menu (your party, and finding one).
 - **Attach:** your style key + the outside of the Saloon (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -123,7 +123,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Woodworker: inside
 
-- **In the game:** Done (v2.3.3258): at the top of its window (the woodworker's bench).
+- **In the game:** Done (v2.3.3258): behind its window's menu (the woodworker's bench).
 - **Attach:** your style key + the outside of the Woodworker (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -145,7 +145,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Gem Cutter: inside
 
-- **In the game:** Done (v2.3.3258): at the top of its window (gem cutting).
+- **In the game:** Done (v2.3.3258): behind its window's menu (gem cutting). Since v2.3.3259 this building is the **Gem Works** and this picture is the room behind both of its tabs, "Cut gems" and "Set gems".
 - **Attach:** your style key + the outside of the Gem Cutter (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -165,22 +165,22 @@ Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clea
 Attached are the game's style key and the outside of this building. Match the style key's pixel size, colours, shading and the way it draws each material exactly, and make this room the inside of that building, in the same materials, colours and character. Do not copy either picture's layout.
 ```
 
-### Assay Office: inside
+### Gem Works: inside (optional: a new picture with two stations)
 
-- **In the game:** Done (v2.3.3258): at the top of its window (the enchanter).
-- **Attach:** your style key + the outside of the Assay Office (your Object Studio picture)
-- **How:** Ask ChatGPT for a wide 3:2 picture.
+- **In the game:** Not made yet, and nothing needs it: the Gem Works shows the Gem Cutter's picture (the one above) behind both tabs (v2.3.3259). This would give the cutter and the setter a station each in the picture. It replaces the Assay Office's prompt, which went with that building.
+- **Attach:** your style key + the outside of the Gem Works (the Gem Cutter's Object Studio picture, sign GEMS)
+- **How:** Ask ChatGPT for a wide 3:2 picture. Send it in chat as the Gem Works' and a session replaces `gemcutter.webp` (`tools/ui/make-room-pictures.py`).
 
 ```text
-A wide picture (3:2, landscape) of the INSIDE of one building in BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros: the Assay Office, where players set gems into their gear. It is at the money end of town, toward the mines: red brick, pale cut sandstone, brass fittings and iron bars.
+A wide picture (3:2, landscape) of the INSIDE of one building in BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros: the Gem Works, where players cut raw gems and have them set into their gear. It is at the workshop end of town, where buildings are sturdy: fieldstone, heavy timber blackened by soot, iron straps and bolts.
 
-A narrow office of red brick and cut sandstone, half shop and half laboratory. Shelves of glass bottles with coloured liquids; a brass balance scale and a magnifying lamp on the counter; a small anvil and fine tools for setting stones; a sword, a helmet and a ring laid on dark velvet with empty gem sockets; a little furnace with a crucible. The bro touches, big and easy to read: a giant brass balance scale with a gold nugget in one pan and a dumbbell in the other, and a sword with gems in its hilt stuck in a rock in the corner. On the back wall hangs one big, simple sign that reads "ASSAY" in chunky capital letters, easy to read at a glance.
+A tidy workshop of fieldstone and dark timber, lit by one big bay window of small glass panes, with one long workbench across the room and two work stations on it, side by side. The left station is for CUTTING: a spinning grinding wheel and a gem-cutting lathe, a jeweller's loupe on a brass stand, trays of cut gems sparkling in many colours on velvet cloth, and baskets of rough, cloudy crystals on the floor beside it. The right station is for SETTING: a small anvil and a row of fine setting tools, a sword, a helmet and a ring laid on dark velvet with empty round gem sockets, glass vials of coloured liquid on a shelf above, and a little furnace with a crucible. The bro touches, big and easy to read: a cut amethyst the size of a barrel on a velvet cushion inside a glass case, like a trophy, and a sword with a huge gem in its hilt stuck in a rock in a corner. On the back wall hangs one big, simple sign that reads "GEMS" in chunky capital letters, easy to read at a glance.
 
-The view: we stand just inside the front door at a grown man's eye height, looking straight across the room at its back wall, square-on like a stage set, with no tilted or fish-eye perspective. A counter (or the room's main workbench) runs across the room about a third of the way up from the bottom of the picture, waist-high on a person, with clear space behind it in the middle for the keeper to stand, and open floor in front of it where visitors stand. A person standing here would be about half as tall as the picture. The picture is wide (landscape, 3:2) and the room fills it edge to edge: no border, frame, vignette or caption.
+The view: we stand just inside the front door at a grown man's eye height, looking straight across the room at its back wall, square-on like a stage set, with no tilted or fish-eye perspective. A counter (or the room's main workbench) runs across the room about a third of the way up from the bottom of the picture, waist-high on a person, with clear space behind it in two places, a little left and a little right of the middle, one at each station, for the two keepers to stand, and open floor in front of it where visitors stand. A person standing here would be about half as tall as the picture. The picture is wide (landscape, 3:2) and the room fills it edge to edge: no border, frame, vignette or caption.
 
 Built by Bros: a solid, well-made frontier room underneath, with the personality in what was added later -- things bolted on, bragged about, or patched after an adventure went wrong. Nothing is new: proud repairs and adventure dents everywhere. One or two big jokes, big enough to read on a phone, rather than many small ones. Clutter only at the sides and in the corners, never in the middle of the floor where visitors stand.
 
-No people or animals anywhere: the game draws its own characters into the room. The only writing in the picture is the sign that reads "ASSAY": every other poster, label, map, ledger and price tag has drawings only, with no letters or numbers.
+No people or animals anywhere: the game draws its own characters into the room. The only writing in the picture is the sign that reads "GEMS": every other poster, label, map, ledger and price tag has drawings only, with no letters or numbers.
 
 Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, cloth in soft folds, and glass with one or two crisp reflections. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Everything has a one-pixel outline in a darker shade of its own colour, never black. Moderate saturation. Warm, even light from the windows and lamps, with no glow, bloom, haze or light rays.
 
@@ -189,7 +189,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Gambling Den: inside
 
-- **In the game:** Done (v2.3.3258): at the top of its window (the gambling panel).
+- **In the game:** Done (v2.3.3258): behind its window's menu (the gambling panel).
 - **Attach:** your style key + the outside of the Gambling Den (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -211,7 +211,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Feed & Seed: inside
 
-- **In the game:** Done (v2.3.3258): at the top of its window (the farm panel).
+- **In the game:** Done (v2.3.3258): behind its window's menu (the farm panel).
 - **Attach:** your style key + the outside of the Feed & Seed (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -233,7 +233,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Land Office: inside
 
-- **In the game:** Done (v2.3.3258): at the top of its window (the trip to your farm).
+- **In the game:** Done (v2.3.3258): behind its window's menu (the trip to your farm).
 - **Attach:** your style key + the outside of the Land Office (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -255,7 +255,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Post Office & Telegraph: inside
 
-- **In the game:** Done (v2.3.3258): at the top of its window (mail and your inbox).
+- **In the game:** Done (v2.3.3258): behind its window's menu (mail and your inbox).
 - **Attach:** your style key + the outside of the Post Office & Telegraph (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -277,7 +277,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Guild Hall: inside
 
-- **In the game:** Done (v2.3.3258): at the top of its window (clans and guilds).
+- **In the game:** Done (v2.3.3258): behind its window's menu (clans and guilds).
 - **Attach:** your style key + the outside of the Guild Hall (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -299,7 +299,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ### Sheriff's Office: inside
 
-- **In the game:** Done (v2.3.3258): at the top of its window (duels, the arena and bounties).
+- **In the game:** Done (v2.3.3258): behind its window's menu (duels, the arena and bounties).
 - **Attach:** your style key + the outside of the Sheriff's Office (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -369,7 +369,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 *For later: nothing opens at the Town Hall yet.*
 
-- **In the game:** Done (v2.3.3258): at the top of the Town Hall's window (the leaderboard, its trophy case, and the world map, the map on its wall); Mayor Bro still stands on its steps.
+- **In the game:** Done (v2.3.3258): behind the Town Hall's window (the leaderboard, its trophy case, and the world map, the map on its wall); Mayor Bro still stands on its steps.
 - **Attach:** your style key + the outside of the Town Hall (your Object Studio picture)
 - **How:** Ask ChatGPT for a wide 3:2 picture.
 
@@ -391,7 +391,7 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ## The keepers
 
-Since v2.3.3258 you talk to a building's keeper, who stands outside it, and its window opens with your picture of the room behind the menu. Blacksmith Bro opens the forge and Mayor Bro the Town Hall. These twelve buildings have nobody outside yet, so they open from their door.
+Since v2.3.3258 you talk to a building's keeper, who stands outside it, and its window opens with your picture of the room behind the menu. Blacksmith Bro opens the forge and Mayor Bro the Town Hall. These eleven buildings have nobody outside yet, so they open from their door. The Gem Works gets two keepers, the owner's "two different NPCs in the same building" (v2.3.3259): the cutter opens its Cut gems tab and the setter its Set gems tab.
 
 - **In the game:** standing beside his building's steps in BroTown. A tap on him, E or the right stick opens the building. His head shows in the dialogue window (a crop of the same picture).
 - **Attach:** Diego's or Blacksmith Bro's picture (`public/sprites/npc/shopkeeper-bro-walk-south.webp`, first frame, or `blacksmith-bro.png`), so he comes out the same style and size as the other townsfolk.
@@ -410,9 +410,9 @@ Style: crisp pixel art like the attached townsperson: hard-edged square pixels, 
 | Bank | Banker Bro, the town's banker: a portly, well-groomed man in his fifties with a neat grey mustache and round gold spectacles, a black bowler hat, a dark green waistcoat with a gold watch chain over a white shirt with sleeve garters, a ledger under one arm and a big brass key on a ring at his belt. |
 | Saloon | Barkeep Bro, the saloon's barkeep: a big, friendly man with a handlebar mustache and slicked-back hair, a white shirt with rolled sleeves and red sleeve garters, a black vest, a bar towel over one shoulder and a glass mug in one hand. |
 | Woodworker | Woodworker Bro, the town's carpenter and bowyer: a lean man with a short beard and sawdust in his hair, a canvas apron full of chisels, a pencil behind his ear and a half-finished longbow in one hand. |
-| Gem Cutter | Gem Cutter Bro, the gem cutter: a careful, quiet man with a jeweler's loupe over one eye, fingerless leather gloves and a deep blue vest, holding a small velvet tray of glittering cut gems in front of him. |
+| Gem Works (Cut gems) | Gem Cutter Bro, the gem cutter: a careful, quiet man with a jeweler's loupe over one eye, fingerless leather gloves and a deep blue vest, holding a small velvet tray of glittering cut gems in front of him. |
 | Cookhouse | Cook Bro, the cookhouse cook: a round, jolly man in a tall white chef's hat and a stained white apron over a checkered shirt, a wooden ladle in one hand and a towel tucked in his belt. |
-| Assay Office | Assayer Bro, the assayer and enchanter: a thin, curious man with brass goggles pushed up on his forehead, a long brown work coat with pockets full of little vials, a small brass scale in one hand and a faint blue glow on his fingertips. |
+| Gem Works (Set gems) | Gem Setter Bro, who sets polished gems into gear: a thin, curious man with brass goggles pushed up on his forehead, a long brown work coat with pockets full of little vials, a small setting hammer in one hand and a sword with an empty gem socket in its hilt in the other, a faint blue glow on his fingertips. |
 | Feed & Seed | Farmer Bro, the feed-and-seed man: a sunburnt farmer with a wide straw hat, blue denim overalls over a red plaid shirt, a sack of seed on one shoulder and a stalk of wheat between his teeth. |
 | Land Office | Land Agent Bro, the land agent: a neat clerk with a green eyeshade visor and spectacles, a brown suit with arm garters, a rolled-up deed tied with ribbon in one hand and a fountain pen behind his ear. |
 | Post Office | Postmaster Bro, the postmaster and telegraph man: a cheerful man in a blue postal cap and a blue jacket with brass buttons, a leather mailbag across his chest full of letters, and a stamped letter in one hand. |

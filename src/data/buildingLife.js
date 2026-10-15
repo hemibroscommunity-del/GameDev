@@ -108,12 +108,6 @@ export const BUILDING_LIFE = {
     { fx: 'glow', u: 0.334, v: 0.598, s: 0.035 },    /* the lantern left of the door */
     { fx: 'glow', u: 0.553, v: 0.598, s: 0.035 },    /* the lantern right of it */
   ],
-  assay: [
-    { fx: 'smoke', u: 0.215, v: 0.003 },             /* the brick chimney */
-    { fx: 'smoke', u: 0.791, v: 0, s: 0.6 },         /* the stovepipe */
-    { fx: 'glint', u: 0.39, v: 0.46 },               /* the gold on the scales */
-    { fx: 'glint', u: 0.89, v: 0.64 },               /* the sword's gem */
-  ],
   store: [
     { fx: 'smoke', u: 0.793, v: 0, s: 0.6 },         /* the chimney */
     { fx: 'glow', u: 0.312, v: 0.304, s: 0.035 },    /* the lamp over the D */

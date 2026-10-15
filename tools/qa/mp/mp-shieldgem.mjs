@@ -7,7 +7,8 @@
  * remove the gem").
  *
  * A real client against a real worker, in the Wheel's BroTown, through the
- * Assay Office's (the Enchanter) and the Blacksmith's real doors, on a phone:
+ * Gem Works' (its Set gems tab is the Enchanter; v2.3.3259, the Assay Office's
+ * until then) and the Blacksmith's real doors, on a phone:
  *   1. caps.shieldgem; the tutorial's Pine Shield (the dev kit mints it as
  *      tut_1 does) worn, and two polished gems of each element;
  *   2. the Enchanter's flame button ASKS: the shield takes the gem and the
@@ -118,6 +119,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       for (let i = 0; i < 16 && opened !== want; i++) { await P.page.waitForTimeout(250); opened = await panelKey(); }
       return opened;
     };
+    /* v2.3.3259: the Enchanter is the Gem Works' "Set gems" tab -- the Assay Office is gone (the owner: "one gem building is
+       enough") -- so its door opens the cutter's tab, and a tap on the other brings the Enchanter */
+    const enterSetGems = async () => {
+      const cut = await enter('gemcutter', 'gemcut');
+      if (cut !== 'gemcut') return cut;
+      await P.page.evaluate(() => { const b = document.querySelector('[data-gem-works] button[data-gem-tab="enchant"]'); if (b) b.click(); });
+      let opened = null;
+      for (let i = 0; i < 16 && opened !== 'enchant'; i++) { await P.page.waitForTimeout(250); opened = await panelKey(); }
+      return opened;
+    };
 
     /* ── 1. a Pine Shield on the arm, two gems of each element ── */
     await H.devOp(wsPort, 'kit', me, { what: 'shield' });
@@ -140,11 +151,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('worn, with two polished gems of each element (the worker\'s count, on the screen)', !!s1.shield && s1.shield.gid === pine.gid && s1.flame === 2, s1);
 
     /* ── 2. the Enchanter's flame button ── */
-    const ench = await enter('assay', 'enchant');
+    const ench = await enterSetGems();
     const pill = ench === 'enchant' && await P.page.waitForSelector('[data-shield-gem="flame"]', { timeout: 6000 }).then(() => true).catch(() => false);
     await P.page.evaluate(() => { const e = document.querySelector('[data-shield-gem]'); if (e) e.scrollIntoView({ block: 'center' }); });
     await shot(P, 'enchanter');
-    rec.ok('the Assay Office\'s Enchanter offers the shield a flame gem', !!pill, { ench });
+    rec.ok('the Gem Works\' Set gems tab (the Enchanter) offers the shield a flame gem', !!pill, { ench });
     if (!pill) return;
     await P.page.click('[data-shield-gem="flame"]', { force: true });
     const s2 = await until(P, (s) => s.shield && s.shield.gem === 'flame' && s.flame === 1);
@@ -249,7 +260,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       S.channel.send({ type: 'shield_wear', payload: { sig } });
     }, oldSig);
     await P.page.waitForTimeout(800);
-    const ench2 = await enter('assay', 'enchant');
+    const ench2 = await enterSetGems();
     const pill2 = ench2 === 'enchant' && await P.page.waitForSelector('[data-shield-gem="frost"]', { timeout: 6000 }).then(() => true).catch(() => false);
     if (pill2) await P.page.click('[data-shield-gem="frost"]', { force: true });
     const s6 = await until(P, (s) => s.shield && s.shield.gem === 'frost');
