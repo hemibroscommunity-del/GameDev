@@ -673,6 +673,20 @@ export const abilityMethods = {
       } catch (e) {}
     };
     ps._abilFrom = { x: ps.x || 0, y: ps.y || 0, at: Date.now(), kind };
+    /* ═══ v2.3.3262: A LUNGE THAT NAMES A PLAYER ═══
+       The owner: "Yes make opening lunge work on players too".  `pid` (never
+       `targetId`, which is a monster's) is a player the phone locked; the whole
+       rule is pvplunge.js -- the consent gate, the reach, the contact, the hit
+       through _resolvePvPAttack (the one door, handoff rule 17), the daze.
+       Before the monster scan on purpose: a lunge at a player must not land on
+       a monster that happens to stand within 70 px of the swordsman. */
+    if (kind === 'sworddash' && payload && typeof payload.pid === 'string' && this._swordDashPlayer) {
+      const connected = this._swordDashPlayer(sid, ps, cfg, payload.pid);
+      this._saveRpgPools(sid, ps);
+      if (ws) this._sendPlayerState(ws, sid);
+      if (!connected) reject('whiff', { spent: cost });
+      return;
+    }
     const zone = ps.z;
     const monsters = (zone && this.monsters[zone]) || [];
     const inRange = [];

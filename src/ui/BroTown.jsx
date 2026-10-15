@@ -4822,6 +4822,15 @@ export var BroTown = function BroTown(_ref0) {
               if (_cand && _cand.id != null && String(_cand.id) === String(_bd.targetId)) { _bd.ref = _cand; break; }
             }
           }
+          /* v2.3.3262: a lunge at a PLAYER re-binds the same way, by their id
+             in S.others (a roster REPLACES that map -- wsClient -- and leaves
+             the old object frozen where it was).  A player who died or left
+             the zone is no longer there to reach: the dash ends without the
+             swing, as it does for a monster that died. */
+          if (_bd.pid != null) {
+            var _bpo = S.others ? S.others[_bd.pid] : null;
+            _bd.ref = (_bpo && !_bpo._isDead && (_bpo.zone || _bpo.z || 'town') === S.currentZone) ? _bpo : null;
+          }
           var _bt = _bd.ref;
           var _btLive = _bt && _bt.alive !== false && !(typeof _bt.curHp === 'number' && _bt.curHp <= 0);
           var _endDash = function (strike) {
@@ -4843,7 +4852,7 @@ export var BroTown = function BroTown(_ref0) {
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'move',
                   payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
               } catch (e) {}
-              try { applyAbilityStrike(S, _ds.kind, _ds.targetId); } catch (e) { /* a failed strike must not stop the frame */ }
+              try { applyAbilityStrike(S, _ds.kind, _ds.targetId, _ds.pid != null ? { pid: _ds.pid } : undefined /* v2.3.3262: a lunge at a player names them */); } catch (e) { /* a failed strike must not stop the frame */ }
             } else if (!strike) {
               S._dashStrike = null;
             }

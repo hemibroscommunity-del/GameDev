@@ -1989,6 +1989,17 @@ export const combatMethods = {
     const kind = (payload.kind === 'ranged' && attackerPs.rangedWeapon) ? 'ranged'
       : (payload.kind === 'staff' && attackerPs.staffWeapon) ? 'staff'
       : 'melee';
+    /* v2.3.3262: a dazed player's SWING lands nothing on a player -- "no
+       swing" was the phone's alone (combatHelpers.dazeRefused); against a
+       player it is the worker's too now, as the sword's lunge dazes players
+       (pvplunge.js).  A swing's claims go out in its first 180 ms, so one sent
+       in a daze is a swing started in it.  NOT a shot: an arrow's or a bolt's
+       claim is sent when it LANDS (projectiles.js), so one loosed before the
+       daze arrives inside it, and the worker cannot tell it from one loosed
+       after -- it lands, as it does on the screen that drew it.  An unknown
+       kind is a swing here too (fail closed, as the range cap above).  Off
+       with `pvplunge: false`. */
+    if (kind === 'melee' && this._pvpDazed && this._pvpDazed(attackerPs)) return;
     const rangeCap = this.PVP_TUNING.RANGE_CAP[kind];
     const range = Math.max(10, Math.min(rangeCap, payload.range || 40));
     /* v2.3.1306: optional single-target hint.  The new-client projectile
@@ -2111,7 +2122,10 @@ export const combatMethods = {
       }
 
       // §16.12 — Resolve dodge/block against historical state
-      if (checkState.dodging) continue; // was in i-frames from attacker's perspective
+      /* v2.3.3262: ...unless the worker has them dazed -- a dazed player cannot
+         roll (the phone's combatHelpers.dazeRefused), so a roll claimed in a
+         daze buys no i-frames against a player (pvplunge.js) */
+      if (checkState.dodging && !(this._pvpDazed && this._pvpDazed(targetPs))) continue; // was in i-frames from attacker's perspective
 
       /* v2.3.1726: PvP block goes through the SAME directional arc as
          monster attacks (_blockArcCovers, ±BLOCK_ARC_HALF).  Until now this

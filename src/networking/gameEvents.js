@@ -3457,7 +3457,8 @@ export function processGameEvent(type, payload, S, deps) {
                    the worker's resolved dmgBase -- the brew it put on. */
                 var _ffq = window.__btFightFood || (window.__btFightFood = { hits: [] });
                 _ffq.hits.push({ attacker: payload.attacker, target: payload.target, dmgBase: payload.dmgBase,
-                  dmgTaken: payload.dmgTaken, blocked: !!payload.blocked, at: Date.now() });   /* v2.3.3260: + blocked (mp-pvpshield) */
+                  dmgTaken: payload.dmgTaken, blocked: !!payload.blocked, at: Date.now(),   /* v2.3.3260: + blocked (mp-pvpshield) */
+                  dodged: !!payload.dodged, ability: payload.ability || null, st: payload.st || null, stMs: payload.stMs || null });   /* v2.3.3262: + the lunge and its daze (mp-pvplunge) */
                 if (_ffq.hits.length > 60) _ffq.hits.shift();
               }
               // §16.12 — Server-authoritative PvP hit (lag-compensated)
@@ -3474,6 +3475,24 @@ export function processGameEvent(type, payload, S, deps) {
                 _pvB.rpgHp = payload.hp;
                 if (payload.maxHp) _pvB.rpgMaxHp = payload.maxHp;
                 _pvB._hpSeenAt = Date.now();
+              }
+              /* ═══ v2.3.3262: THE SWORD'S LUNGE DAZES WHO IT LANDS ON ═══
+                 A sword's opening lunge at a player that landed (server
+                 pvplunge.js) carries `st: 'daze'` and `stMs` -- the fields a
+                 rock monster's hit carries, carried out by the same code: on
+                 you, no walk, swing, roll or shield for stMs (elemHits.js,
+                 combatHelpers.dazeRefused) and the daze's sound; on anyone
+                 else, the stars round their head (their walk is their own
+                 phone's).  Before the branches below, so a watcher sees it
+                 too.  Only the daze: no other status rides a pvp_hit. */
+              if (payload.st === 'daze') {
+                if (payload.target === S.myId) {
+                  var _lzSt = applyElemHit(S, payload, Date.now());
+                  if (_lzSt) { try { BT_AUDIO.elemHit(_lzSt); } catch (e) { /* sound only */ } }
+                } else {
+                  var _lzO = S.others && S.others[payload.target];
+                  if (_lzO && !_lzO._isDead) applyElemHit(S, payload, Date.now(), _lzO);
+                }
               }
               if (payload.target !== S.myId) {
                 // Not targeted at us — if we're the attacker, show hit confirmation

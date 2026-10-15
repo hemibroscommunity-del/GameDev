@@ -26,7 +26,7 @@
 import { BT_AUDIO, abilityCfg, abilityStaminaCost, abilityUnlocked, isAbilitiesEnabled,
   prog3CharLevel, getActiveWeapon,
   meleeSwingSfx /* v2.3.2260: the lunge borrows the swing's own per-weapon sound */ } from '@/data/index.js';
-import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
+import { depthK, ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3262: + ZONES (a lunge at a player follows the swing's PvP gate) */
 import { isPlayerDead, pushDmgPopup, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */ } from '@/game/combatHelpers.js';
 import { prog3ActiveCat } from '@/data/prog3.js';   /* v2.3.2327: whirlwind is the sword's */
 import { monsterLock } from '@/game/targeting.js';  /* v2.3.2542: whirlwind wants a fight under way */
@@ -463,6 +463,17 @@ export function castAbility(S, kind) {
   var _bashLt = (_dashKind && S.lockedTarget && S.lockedTarget.type === 'monster')
     ? S.lockedTarget.ref : null;
   var _bashId = _bashLt && _bashLt.id != null ? _bashLt.id : null;
+  /* ═══ v2.3.3262: ...OR THE PLAYER THE LUNGE MAY TAKE ═══
+     The owner: "Yes make opening lunge work on players too".  The same dash
+     and the same strike on arrival; the strike names the player as `pid`
+     (never `targetId`, which is a monster's), and the worker does the rest
+     (server/src/pvplunge.js).  Only sworddash: a bash still shoves monsters
+     only. */
+  var _bashPid = null;
+  if (kind === 'sworddash' && !_bashLt) {
+    var _pvpLt = pvpLungeTarget(S);
+    if (_pvpLt) { _bashLt = _pvpLt; _bashPid = String(S.lockedTarget.id); }
+  }
   /* THE DASH.  Integrated per frame by BroTown's movement block (never a
      position jump), because the worker's anti-teleport rejects a step over
      ~80px and a rejected correction would guarantee the miss it is meant to
@@ -516,7 +527,7 @@ export function castAbility(S, kind) {
        chases a target that moves. */
     var _dashAng = Math.atan2((_bashLt.y || 0) - (S.player ? S.player.y : 0),
                               (_bashLt.x || 0) - (S.player ? S.player.x : 0));
-    S._bashDash = { targetId: _bashId, ref: _bashLt, startTime: now, until: now + _dashWin,
+    S._bashDash = { targetId: _bashId, pid: _bashPid /* v2.3.3262 */, ref: _bashLt, startTime: now, until: now + _dashWin,
       travelled: 0, maxTravel: DASH_MAX_REACH_PX,
       kind: kind, angle: isFinite(_dashAng) ? _dashAng : 0 };
     /* ═══ v2.3.2916: ...ON EVERYBODY ELSE'S SCREEN TOO ═══
@@ -572,7 +583,7 @@ export function castAbility(S, kind) {
      both when it lands. */
   var _defer = (kind === 'sworddash' && !!_bashLt);
   if (_defer) {
-    S._dashStrike = { kind: kind, targetId: _bashId, at: now };
+    S._dashStrike = { kind: kind, targetId: _bashId, pid: _bashPid /* v2.3.3262 */, at: now };
     S.swingTimer = now;
     /* v2.3.2263: the SAME window the dash got.  These were both
        DASH_WINDOW_MS, and leaving this one a literal while the dash grew would
@@ -658,9 +669,12 @@ export function applyAbilityStrike(S, kind, targetId, opts) {
   var _armed = !!(opts && opts.armed);
   if (!_armed) {
     cdMap(S)[kind] = now + cfg.cooldownMs;
+    /* v2.3.3262: a lunge at a player names them as `pid` (pvplunge.js) */
+    var _pid = (opts && opts.pid != null) ? String(opts.pid) : null;
     try {
       S.channel && S.channel.send({ type: 'ability',
-        payload: targetId != null ? { kind: kind, targetId: targetId } : { kind: kind } });
+        payload: _pid ? { kind: kind, pid: _pid }
+          : targetId != null ? { kind: kind, targetId: targetId } : { kind: kind } });
     } catch (e) {}
   }
 
@@ -800,6 +814,31 @@ export function applyAbilityStrike(S, kind, targetId, opts) {
   return true;
 }
 
+/* ═══ v2.3.3262: THE LUNGE AT A PLAYER ═══
+ * Owner, on v2.3.3260's honest limit (a sword cannot catch a bow or a staff
+ * that keeps its distance): "Yes make opening lunge work on players too".
+ *
+ * The locked player the sword's opening lunge may take, or null.  The same
+ * rule the sword's own swing is sent at a player by (monsterCombat's PvP
+ * gate): a duel anywhere, or a deliberate lock outside a safe zone -- in the
+ * Wheel that is No man's land's lock, which noteNoMansLand drops the very
+ * frame the rule stops allowing the fight.  The player must be drawn and not
+ * dead, and the worker must say it lands a lunge on a player (caps.pvplunge:
+ * an older worker would scan for a monster instead, server/src/pvplunge.js).
+ * Everything else -- consent, reach, the hit, the daze -- is the worker's.
+ */
+export function pvpLungeTarget(S) {
+  if (!S || !S._serverCaps || S._serverCaps.pvplunge !== true) return null;
+  var lt = S.lockedTarget;
+  if (!lt || lt.type !== 'player' || lt.id == null) return null;
+  var o = S.others ? S.others[lt.id] : null;
+  if (!o || o._isDead) return null;
+  if ((o.zone || o.z || 'town') !== S.currentZone) return null;   /* the renderer's own test */
+  var z = ZONES[S.currentZone];
+  if (!S._inDuel && z && z.safe) return null;
+  return o;
+}
+
 /* ═══ v2.3.2258: THE FIRST ATTACK OF AN ENGAGEMENT IS A LUNGE ═══
  * Owner: "For ONLY melee (sword) ... the default first attack will be very
  * similar to 'shield bash' (you can even re-use the mechanic but for sword)
@@ -831,9 +870,15 @@ export function maybeSwordDash(S) {
   if (slot === 'ranged' || slot === 'staff') return false;
   if (S._shieldUp) return false;
   var lt = S.lockedTarget;
-  if (!lt || lt.type !== 'monster' || !lt.ref) return false;
-  var m = lt.ref;
-  if (m.alive === false || (m.curHp != null && m.curHp <= 0)) return false;
+  if (!lt || !lt.ref) return false;
+  if (lt.type === 'player') {
+    /* v2.3.3262: a player the lunge may take (pvpLungeTarget, below) */
+    if (!pvpLungeTarget(S)) return false;
+  } else {
+    if (lt.type !== 'monster') return false;
+    var m = lt.ref;
+    if (m.alive === false || (m.curHp != null && m.curHp <= 0)) return false;
+  }
   var st = abilityStatus(S, 'sworddash');
   if (!st.visible || !st.equipped || st.cdLeft > 0 || !st.afford) return false;
   return castAbility(S, 'sworddash') === true;

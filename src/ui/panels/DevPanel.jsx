@@ -199,6 +199,7 @@ const CAP_GATES = [
   'pvpbalance' /* v2.3.3260: hits between players rolled by the worker, whole (the roll a monster takes), one sword hit a swing, paid specials (server/src/pvpbalance.js) -- lower case, a kill switch */,
   'oneformula' /* v2.3.3260: one formula for every fight -- health 100 + 50 a level + 40 a point, monsters' hits scaled with it, no blow over 30% of a player's bar, the sword's special 4.5x, the staff's big bolt x0.6, one bite every 15 s in any fight (server/src/oneformula.js) -- lower case, a kill switch */,
   'fishheal' /* v2.3.3260: the fish ladder (server/src/data.js FISH_HEAL) -- lower case, a kill switch */,
+  'pvplunge' /* v2.3.3262: the sword's opening lunge lands on a player too, and dazes them (server/src/pvplunge.js) -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported
