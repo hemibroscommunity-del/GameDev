@@ -3590,13 +3590,50 @@ console.log("the buildings' insides (v2.3.3258)");
       && !fs.existsSync(new URL('../../public/sprites/props/auction-house-interior.png', import.meta.url))
       && !/auctionInterior/.test(fs.readFileSync(new URL('../../src/rendering/preloadAnimations.js', import.meta.url), 'utf8'))
       && !/roomScene|auction-house-interior/.test(fs.readFileSync(new URL('../../src/ui/panels/buildings/VendorPanel.jsx', import.meta.url), 'utf8')), {});
-  ok('the card\'s load-bearing 20 px padding is kept: the room bleeds -20 px on its top and sides with +20 px under it, squares the panel\'s top corners, hides on a sideways phone, and the forge\'s slim band is 4:1',
-    /\.bt-room\{[^}]*margin:-20px -20px 20px/.test(css) && /\.bt-room \+ \*\{border-top-left-radius:0!important/.test(css)
-      && /@media \(max-height:460px\)\{\.bt-room\{display:none\}\}/.test(css) && /\.bt-room\[data-shape="band"\]\{[^}]*aspect-ratio:4\/1/.test(css)
+  /* v2.3.3258: the room is the window's BACKGROUND (the owner: "Have it open up as backgrounds behind the different buildings menus") */
+  ok('the room is the BACKGROUND of its window and the menu is written on it: the room absolutely behind everything in the card (z-index -1, the card isolated), the panel a stage down it with its own surface and its header strip\'s taken away (its first child, the title, in all sixteen), the shade fading the room into the slate under the menu; the forge\'s stage a slim band; on a sideways phone the room steps aside and none of it applies; the card\'s 20 px padding kept',
+    /\.bt-room\{position:absolute;left:0;top:0;right:0;bottom:0;z-index:-1;overflow:hidden;pointer-events:none\}/.test(css)
+      && /\.bt-room::after\{[^}]*linear-gradient\(180deg, rgba\(30,46,52,0\) calc\(var\(--room-stage\) - 40px\)/.test(css)
+      && /@media \(min-height:461px\)\{\s*\.bt-inspect-card\[data-room\]\{isolation:isolate;background:#1E2E34;/.test(css)
+      && /\.bt-inspect-card > \.bt-room \+ \*\{margin-top:calc\(var\(--room-stage\) - 20px\)!important;background:transparent!important\}/.test(css)
+      && /\.bt-inspect-card > \.bt-room \+ \* > :first-child\{background-color:transparent!important\}/.test(css)
+      && /@media \(max-height:460px\)\{\.bt-room\{display:none\}\}/.test(css)
       && /\.bt-inspect-card\{[^}]*padding:20px/.test(css), {});
+  /* the stage is a LENGTH (the shade's stops need it too), so it is the card's own width written out: 62% of a 3:2 room is 41.33% of
+     min(360px, 100vw - 24px), the forge's band a quarter of it -- if the card's width changes, these must */
+  const stageOk = /--room-stage:min\(148\.8px, calc\(41\.33vw - 9\.92px\), 22vh\)/.test(css)
+    && /\.bt-inspect-card\[data-room="blacksmith"\]\{--room-stage:min\(90px, calc\(25vw - 6px\)\)\}/.test(css)
+    && /width: 'min\(360px, calc\(100vw - 24px\)\)'/.test(bt)
+    && Math.abs(360 * (2 / 3) * 0.62 - 148.8) < 0.1 && Math.abs(24 * 0.4133 - 9.92) < 0.01
+    && R.BAND_ROOMS.length === 1 && R.roomIdFor(R.BAND_ROOMS[0]) === 'blacksmith' && R.isBandRoom('forge');
+  ok('...its stage is 62% of the room\'s height at the card\'s own width (148.8 px of 240 at 360 wide, 41.33vw - 9.92 px below it, at most 22vh), the forge\'s band a quarter of the width -- keyed on the forge\'s room, the one band', stageOk, {});
   const hd = fs.readFileSync(new URL('../../public/_headers', import.meta.url), 'utf8');
   ok(`the pictures are asked for at ?v=${R.ROOMS_V} and cached for a year (public/_headers)`,
     R.roomUrl('bank') === `/world/interiors/bank.webp?v=${R.ROOMS_V}` && /\/world\/interiors\/\*\s*\n\s*Cache-Control: public, max-age=31536000, immutable/.test(hd), {});
+}
+
+console.log("the keepers (v2.3.3258)");
+{
+  /* The owner: "interacting with the building's NPC instead of having the building interiors".  A keeper opens the window of the
+     building he stands at -- after his quests, through the door's own path -- and the doors still open too. */
+  const fs = await import('node:fs');
+  const { WHEEL_KEEPERS, WHEEL_TOWNSFOLK, WHEEL_BUILDING_DOORS, WHEEL_HALL_DOORS } = await import('../../src/data/wheelBuildingDoors.js');
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  const bad = Object.entries(WHEEL_KEEPERS).filter(([name, plot]) => !((name === 'Mayor Bro' || WHEEL_TOWNSFOLK.some((f) => f.name === name && f.door === plot))
+    && (own(WHEEL_BUILDING_DOORS, plot) || own(WHEEL_HALL_DOORS, plot))));
+  ok('each keeper stands at the very building he opens (Mayor Bro on the Town Hall\'s steps, the rest a WHEEL_TOWNSFOLK row at that door), and it is one with a window -- a building or a hall: Blacksmith Bro the forge, Mayor Bro the Town Hall',
+    Object.keys(WHEEL_KEEPERS).length === 2 && WHEEL_KEEPERS['Blacksmith Bro'] === 'blacksmith' && WHEEL_KEEPERS['Mayor Bro'] === 'townhall' && bad.length === 0, bad);
+  const bt = fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
+  const dc = fs.readFileSync(new URL('../../src/game/desktopControls.js', import.meta.url), 'utf8');
+  const it = fs.readFileSync(new URL('../../src/game/interactions.js', import.meta.url), 'utf8');
+  const tapAt = bt.indexOf("if (npc.keeperOf && openKeeper(npc)) return _mark('opens');"), questAt = bt.indexOf("return _mark('quest');"), flipAt = bt.indexOf("if (npc.flip) {\n      /* v2.3.2620: Ace's ONLY door");
+  const eAt = dc.indexOf('if (npc.keeperOf && deps._desktopOpenKeeper && deps._desktopOpenKeeper(npc)) return true;'), eQuest = dc.indexOf('_desktopNpcQuest(npc, npcQ);');
+  ok('...a tap, E and the right stick\'s tap all open it, each AFTER his quest (the Mayor\'s chain untouched) and before anything else he answers; it is the door\'s own path (enterWheelDoor: the same window, the same visit counted), and `keeperOf` is set only in the Wheel, only where that building stands with something to open',
+    tapAt > questAt && questAt > 0 && (flipAt < 0 || tapAt < flipAt) && eAt > eQuest && eQuest > 0
+      && /_desktopOpenKeeper: openKeeper,/.test(bt)
+      && /return enterWheelDoor\(stateRef\.current, door, \{ setBuildingPanel: setBuildingPanel \}\);/.test(bt)
+      && /export function enterWheelDoor\(S, door, deps\)/.test(it) && /if \(door\.index >= 0\) return _openBuilding\(S, door\.index, deps\.setBuildingPanel\);/.test(it)
+      && /if \(kd\) n\.keeperOf = plot;/.test(bt) && /d\.id === plot && \(d\.index >= 0 \|\| d\.hall\)/.test(bt), { tapAt, questAt, flipAt, eAt, eQuest });
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

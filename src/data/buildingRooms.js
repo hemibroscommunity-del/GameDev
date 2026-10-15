@@ -3,17 +3,19 @@
  * Owner, 2026-10-06: sent seventeen pictures of the inside of BroTown's
  * buildings (the prompts are docs/ART-WISHLIST.md "Inside the buildings"; the
  * pictures were made from them in ChatGPT) and said "Ok wire these up".
- * Each is shown at the top of its building's window when you walk in, the way
- * the Auction House's painting always was (v2.3.2627, now replaced by this
- * set so all seventeen rooms are one family).
+ * Each is the BACKGROUND of its building's window, the menu written on it (the
+ * owner, choosing the shopkeeper outside over walking in: "Have it open up as
+ * backgrounds behind the different buildings menus instead of literally going
+ * into a building"); the Auction House's painting (v2.3.2627) is replaced by
+ * this set so all seventeen rooms are one family.
  *
  * Which window shows which room is this table: the `buildingPanel` value a
  * door opens (src/game/interactions.js enterBuilding -> setBuildingPanel) ->
  * the plot id of the building (public/tools/world/plan.js town.lots), which
  * is also the picture's name, public/world/interiors/<plot id>.webp.  The
- * panels themselves are untouched: BroTown.jsx draws ONE <BuildingRoom/> at
- * the top of the window card for whichever panel is open
- * (src/ui/panels/buildings/BuildingRoom.jsx).
+ * panels themselves are untouched: BroTown.jsx draws ONE <BuildingRoom/>
+ * behind everything in the window card for whichever panel is open
+ * (src/ui/panels/buildings/BuildingRoom.jsx, game.css ".bt-room").
  *
  * No imports, so tools/world/test-world-core.mjs can read it: it checks every
  * door of the Wheel's Brotown (WHEEL_BUILDING_DOORS, WHEEL_HALL_DOORS) lands
@@ -65,8 +67,9 @@ export const SPARE_ROOMS = ['hotel'];
 
 /* Windows whose card sits LOW so something above stays in view: the forge's
    (BroTown.jsx: the smith is seen working above it, game/smithing.js).  A
-   full 3:2 picture would fill the whole card, so these show a slim band of
-   the room instead -- its sign, the forge and the anvil. */
+   full stage would fill the whole card, so its stage is a slim band of the
+   room instead -- its sign, the forge and the anvil (game.css keys the band's
+   stage on the forge's room, `[data-room="blacksmith"]`: one band). */
 export const BAND_ROOMS = ['forge'];
 
 /* ═══ THE PEOPLE THE GAME DRAWS INTO A ROOM ═══

@@ -395,7 +395,7 @@ import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordD
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits } from '@/game/lifeSkillRewards.js'; /* tickGatherHits v2.3.2956 */
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
-import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl } from '@/game/interactions.js';
+import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
@@ -498,7 +498,7 @@ import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
 import { bedAt } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
-import { WHEEL_TOWNSFOLK, WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls */
+import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
 
@@ -851,6 +851,17 @@ function _spawnWheelNpcs(S) {
       out.push(_objectSpread(_objectSpread({}, npc), { x: nx, y: ny, spawnX: nx, spawnY: ny,
         renderX: nx, renderY: ny, targetX: nx, targetY: ny, pathRadius: 0 }));
     });
+  });
+  /* ═══ v2.3.3258: THE KEEPERS ═══
+     A townsperson who keeps a building opens its window when you talk to him
+     (data/wheelBuildingDoors.js WHEEL_KEEPERS: Blacksmith Bro the forge, Mayor
+     Bro the Town Hall) -- `keeperOf`, the plot, only where that building
+     stands with something to open.  This copy is the Wheel's own, so today's
+     town's townsfolk (_spawnTownNpcs) never carry it. */
+  out.forEach(function (n) {
+    var plot = Object.prototype.hasOwnProperty.call(WHEEL_KEEPERS, n.name) ? WHEEL_KEEPERS[n.name] : null;
+    var kd = plot ? doors.filter(function (d) { return d.id === plot && (d.index >= 0 || d.hall); })[0] : null;
+    if (kd) n.keeperOf = plot;
   });
   return out;
 }
@@ -7731,6 +7742,7 @@ export var BroTown = function BroTown(_ref0) {
       _desktopOpenWorkshop: _desktopOpenWorkshop,
       _desktopGather: _desktopGather,
       _desktopNpcQuest: _desktopNpcQuest,
+      _desktopOpenKeeper: openKeeper,   /* v2.3.3258: E beside a keeper opens his building */
       _desktopShieldOn: _desktopShieldOn,
       _desktopShieldOff: _desktopShieldOff,
       _desktopCycleWeapon: _desktopCycleWeapon,
@@ -8622,6 +8634,23 @@ export var BroTown = function BroTown(_ref0) {
   /* Enter building */
   var enterBuilding = useCallback(function () {
     enterBuildingImpl(stateRef.current, { setBuildingPanel: setBuildingPanel });
+  }, []);
+  /* v2.3.3258: a keeper opens his building -- Blacksmith Bro the forge, Mayor
+     Bro the Town Hall (data/wheelBuildingDoors.js WHEEL_KEEPERS, `keeperOf` set
+     by _spawnWheelNpcs) -- the window his door opens, wherever you talk to him
+     from (a tap, E, the right stick).  False when there is nothing to open. */
+  var openKeeper = useCallback(function (npc) {
+    if (!npc || !npc.keeperOf) return false;
+    var door = wheelTownDoors().filter(function (d) { return d.id === npc.keeperOf; })[0];
+    return enterWheelDoor(stateRef.current, door, { setBuildingPanel: setBuildingPanel });
+  }, []);
+  /* v2.3.3258: a QA probe -- open any building's window without walking to
+     its door, so mp-buildingrooms can look at all sixteen rooms behind their
+     menus quickly (the doors themselves are walked to in mp-wheeldoors) */
+  useEffect(function () {
+    if (typeof window === 'undefined') return undefined;
+    window.__btBuildingWindow = { open: function (p) { setBuildingPanel(p || null); } };
+    return function () { try { delete window.__btBuildingWindow; } catch (e) { /* probe only */ } };
   }, []);
 
   /* ═══ DESKTOP CONTROL HELPERS — called from keyboard handler ═══ */
@@ -9657,6 +9686,11 @@ export var BroTown = function BroTown(_ref0) {
       setQuestPanel({ npc: npc.name, quest: npcQ.quest, status: npcQ.status, npcRef: npc });
       return _mark('quest');
     }
+    /* v2.3.3258: a keeper with no quest to talk about opens his building (the
+       owner: "interacting with the building's NPC instead of having the
+       building interiors") -- after the quest, so the Mayor's chain is
+       untouched */
+    if (npc.keeperOf && openKeeper(npc)) return _mark('opens');
     if (npc.flip) {
       /* v2.3.2620: Ace's ONLY door (the proximity opener was removed -- see the
          note in the frame loop).  And with no loop opener left to suppress, the

@@ -1,33 +1,38 @@
 import React from 'react';
 import { roomIdFor, isBandRoom, roomUrl, ROOM_W, ROOM_H, keeperFor, keeperBox } from '@/data/buildingRooms.js';
 
-/* ═══ v2.3.3258: THE ROOM YOU WALKED INTO ═══
+/* ═══ v2.3.3258: THE ROOM BEHIND THE MENU ═══
  *
- * The owner's picture of the inside of a building (data/buildingRooms.js), at
- * the top of that building's window.  BroTown.jsx draws it once, first inside
+ * The owner's picture of the inside of a building (data/buildingRooms.js) is
+ * the BACKGROUND of that building's window, and the menu is a sheet laid over
+ * it -- the owner, choosing the shopkeeper outside over walking in: "Have it
+ * open up as backgrounds behind the different buildings menus instead of
+ * literally going into a building".  BroTown.jsx draws it once, first inside
  * the window card, for whichever building panel is open -- the panels under
  * this folder are not touched, so nothing here can collide with a panel's own
  * rework.
  *
- * HOW IT SITS.  The card has 20 px of padding and every panel bleeds its own
- * surface into it with `margin: -20` (game.css, ".bt-inspect-card ... LOAD-
- * BEARING padding").  The room does the same on its top and sides, with a
- * +20 px margin under it that cancels the panel's own -20 on top, so the
- * panel starts exactly where the picture ends.  game.css ".bt-room" has the
- * numbers and the one rule that squares the panel's top corners under it.
+ * HOW IT SITS (game.css ".bt-room").  A zero-height sticky box at the top of
+ * the card, behind everything in it (z-index -1), holding the whole room at
+ * the card's width.  The panel after it -- whichever building -- starts a
+ * STAGE down the picture (its sign and the middle of the room) and covers the
+ * rest like a sheet laid on it; scrolled, the sheet slides up over the room,
+ * which stays where it is.  The card's 20 px padding is load-bearing (every
+ * panel bleeds into it with `margin: -20`), so the stage is the sheet's own
+ * margin-top, set by one rule for every panel.
  *
  * THE SCENE.  The picture and anyone drawn into it (the Auction House's
- * clerk) live in one box that is always the whole room, 3:2.  The outer box
- * only CLIPS it: held to 30vh on a short phone (the floor is cut, never the
- * sign), and for the forge, whose window sits low so the smith is seen working
- * above it, a slim band (`data-shape="band"`) scrolled to the sign, the forge
- * and the anvil.  So a keeper's percentages are the room's, whatever is shown.
+ * clerk) live in one box that is always the whole room, 3:2, so a keeper's
+ * percentages are the room's, whatever the sheet covers.  The forge's window
+ * sits low so the smith is seen working above it: its stage is a slim band
+ * (`data-shape="band"`), the scene pulled up to its sign, fire and anvil.
  *
  * ITS BOX IS RESERVED before the picture arrives (the dark of the panels' own
  * wells), so the window does not jump when it lands, and the picture fades in.
- * If it cannot be loaded the box goes away and the window reads exactly as it
- * did before the pictures: a missing room must never leave a tall empty slab
- * above the goods (the Auction House's v2.3.2627 rule, kept).
+ * If it cannot be loaded the box goes away -- and with it the stage -- and the
+ * window reads exactly as it did before the pictures: a missing room must
+ * never leave an empty slab above the goods (the Auction House's v2.3.2627
+ * rule, kept).
  */
 export function BuildingRoom({ panel }) {
   const id = roomIdFor(panel);

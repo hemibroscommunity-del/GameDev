@@ -389,6 +389,37 @@ Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clea
 Attached are the game's style key and the outside of this building. Match the style key's pixel size, colours, shading and the way it draws each material exactly, and make this room the inside of that building, in the same materials, colours and character. Do not copy either picture's layout.
 ```
 
+## The keepers
+
+Since v2.3.3258 you talk to a building's keeper, who stands outside it, and its window opens with your picture of the room behind the menu. Blacksmith Bro opens the forge and Mayor Bro the Town Hall. These twelve buildings have nobody outside yet, so they open from their door.
+
+- **In the game:** standing beside his building's steps in BroTown. A tap on him, E or the right stick opens the building. His head shows in the dialogue window (a crop of the same picture).
+- **Attach:** Diego's or Blacksmith Bro's picture (`public/sprites/npc/shopkeeper-bro-walk-south.webp`, first frame, or `blacksmith-bro.png`), so he comes out the same style and size as the other townsfolk.
+- **How:** paste the prompt below and replace `[WHO]` with one line from the list. Each comes on one flat magenta background (#FF00FF). A session cuts him out, stands his feet on the townsfolk's line (256 × 256, feet 223 px down), crops his head for the dialogue and puts him at his steps.
+
+```text
+A full-body picture of one character for BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros, drawn in exactly the same style, size and proportions as the attached townsperson: [WHO] He stands facing the viewer, relaxed and welcoming, his arms at his sides or holding what he works with.
+
+The picture is square. He stands in the middle, his whole body in the picture with his feet near the bottom and a little space above his head. The background is ONE flat magenta colour (#FF00FF) with nothing else on it: no floor, no shadow, no border, no text.
+
+Style: crisp pixel art like the attached townsperson: hard-edged square pixels, no blur, no anti-aliasing, no soft gradients; each colour shaded with a few flat tones; a one-pixel outline in a darker shade of its own colour, never black. Cloth, leather, metal and wood each drawn as themselves.
+```
+
+| Building | Replace `[WHO]` with |
+|---|---|
+| Bank | Banker Bro, the town's banker: a portly, well-groomed man in his fifties with a neat grey mustache and round gold spectacles, a black bowler hat, a dark green waistcoat with a gold watch chain over a white shirt with sleeve garters, a ledger under one arm and a big brass key on a ring at his belt. |
+| Saloon | Barkeep Bro, the saloon's barkeep: a big, friendly man with a handlebar mustache and slicked-back hair, a white shirt with rolled sleeves and red sleeve garters, a black vest, a bar towel over one shoulder and a glass mug in one hand. |
+| Woodworker | Woodworker Bro, the town's carpenter and bowyer: a lean man with a short beard and sawdust in his hair, a canvas apron full of chisels, a pencil behind his ear and a half-finished longbow in one hand. |
+| Gem Cutter | Gem Cutter Bro, the gem cutter: a careful, quiet man with a jeweler's loupe over one eye, fingerless leather gloves and a deep blue vest, holding a small velvet tray of glittering cut gems in front of him. |
+| Cookhouse | Cook Bro, the cookhouse cook: a round, jolly man in a tall white chef's hat and a stained white apron over a checkered shirt, a wooden ladle in one hand and a towel tucked in his belt. |
+| Assay Office | Assayer Bro, the assayer and enchanter: a thin, curious man with brass goggles pushed up on his forehead, a long brown work coat with pockets full of little vials, a small brass scale in one hand and a faint blue glow on his fingertips. |
+| Feed & Seed | Farmer Bro, the feed-and-seed man: a sunburnt farmer with a wide straw hat, blue denim overalls over a red plaid shirt, a sack of seed on one shoulder and a stalk of wheat between his teeth. |
+| Land Office | Land Agent Bro, the land agent: a neat clerk with a green eyeshade visor and spectacles, a brown suit with arm garters, a rolled-up deed tied with ribbon in one hand and a fountain pen behind his ear. |
+| Post Office | Postmaster Bro, the postmaster and telegraph man: a cheerful man in a blue postal cap and a blue jacket with brass buttons, a leather mailbag across his chest full of letters, and a stamped letter in one hand. |
+| Sheriff's Office | Sheriff Bro, the town sheriff: a tall, steady man with a thick mustache, a wide brown cowboy hat, a long tan duster over a vest with a shiny gold star badge, a coiled lasso on his belt and his thumbs hooked in his belt. |
+| Guild Hall | Guildmaster Bro, the guildmaster: a broad-shouldered veteran with a grey beard and a small scar over one eyebrow, a heavy red cloak with a round brass emblem clasp over worn leather armour, a guild banner on a pole in one hand. |
+| Auction House | Auctioneer Bro, the auctioneer: a sharp-dressed man with slicked hair and a thin mustache, a burgundy suit with a bow tie, a wooden gavel in one hand. (Or no new picture: the clerk behind the counter in your Auction House picture already exists as a figure, `storekeeper-bro.webp`, and could stand outside. Say which.) |
+
 ## Pet trapping
 
 Beastmaster Bro stands beside the Woodworker and gives the trapping quests (v2.3.3121). Until your picture comes he wears Diego's coat in green with a Snowling at his side, made by `tools/make_beastmaster.py` from art the game already has.

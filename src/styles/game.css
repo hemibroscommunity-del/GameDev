@@ -1190,32 +1190,59 @@ input{font-family:inherit}
    28px is under the 44pt touch floor; an invisible inset:-8px pseudo
    grows the TAP target to 44px with zero visual change. */
 .bt-inspect-close::after{content:'';position:absolute;inset:-8px}
-/* ═══ v2.3.3258: THE ROOM YOU WALKED INTO (BuildingRoom.jsx, data/buildingRooms.js) ═══
-   The owner's picture of the inside of a building, first thing in its window.
-   The card's 20px padding is load-bearing (every panel bleeds into it with a
-   -20px margin, above), so the room bleeds the same way on its top and sides,
-   and its +20px bottom margin cancels the panel's own -20px top margin: the
-   panel starts exactly where the picture ends.
-   The scene inside is always the whole room, 3:2 (239px at a phone's window
-   width); the outer box only clips it.  On a shorter screen it is held to 30vh
-   and the FLOOR is cut, never the sign; on a sideways phone (under 460px tall,
-   where the whole window is ~190px) there is no room for it at all and it
-   steps aside.  The forge's window sits low so the smith shows above it: its
-   room is a slim band (the sign, the forge, the anvil) -- 4:1, the scene pulled
-   up 7.33% of the width = 11% of the picture's height. */
-.bt-room{position:relative;margin:-20px -20px 20px;max-height:30vh;overflow:hidden;background:#111E23}
-.bt-room-scene{position:relative;width:100%;aspect-ratio:3/2}
+/* ═══ v2.3.3258: THE ROOM BEHIND THE MENU (BuildingRoom.jsx, data/buildingRooms.js) ═══
+   The owner's picture of the inside of a building is the BACKGROUND of its
+   window, and the menu is written over it -- the owner: "Have it open up as
+   backgrounds behind the different buildings menus instead of literally going
+   into a building".
+   - The room is the card's back layer: absolutely placed over the whole card
+     (z-index -1 in the card's own stacking context -- `isolation`, and the
+     card's mask makes one anyway), its scene the whole room at the card's
+     width, 3:2 (240px on a phone), clipped to the card's height so a short
+     window never scrolls to show more picture.
+   - The menu (the panel, whatever building it is) starts a STAGE down the
+     room, `--room-stage`: 62% of the picture's height -- the sign and the
+     middle of the room -- and at most 22vh on a short phone.  Its own surface
+     is taken away, so it is written on the room, and the room fades into the
+     card's slate under it (the ::after shade: clear above the stage, half
+     shaded at its line, all slate 80px below), so its words always read.
+   - It scrolls WITH the menu: a background that stayed while the words
+     scrolled up over the picture would put them on its bright sign.
+   - The stage is a length, not a percentage, because the shade's stops need
+     the same number: 62% of 3:2 is 41.33% of the card's width, and the card
+     is min(360px, 100vw - 24px) wide (BroTown.jsx, the card's inline width:
+     change one, change both).  The card's 20px padding is load-bearing
+     (every panel bleeds into it with margin:-20, above), so the panel's
+     margin-top is the stage less 20.
+   - The forge's window sits low so the smith shows above it (v2.3.2826): its
+     stage is a slim band (the sign, the fire, the anvil), a quarter of the
+     width, the scene pulled up 7.33% of the width = 11% of the picture.
+   - A sideways phone (under 460px tall, the whole window ~190px) has no room
+     for a stage: the room steps aside and every rule that lays the menu on it
+     is off (they sit in a min-height query), so the panel is as it always was. */
+.bt-room{position:absolute;left:0;top:0;right:0;bottom:0;z-index:-1;overflow:hidden;pointer-events:none}
+.bt-room::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg, rgba(30,46,52,0) calc(var(--room-stage) - 40px), rgba(30,46,52,.55) calc(var(--room-stage) - 2px),
+    rgba(30,46,52,.88) calc(var(--room-stage) + 36px), #1E2E34 calc(var(--room-stage) + 80px))}
+.bt-room-scene{position:relative;width:100%;aspect-ratio:3/2;background:#111E23}
 .bt-room-img{position:absolute;left:0;top:0;display:block;width:100%;height:100%;opacity:0;transition:opacity .18s ease-out}
 .bt-room[data-room-state="ready"] .bt-room-img{opacity:1}
-.bt-room[data-shape="band"]{max-height:none;aspect-ratio:4/1}
 .bt-room[data-shape="band"] .bt-room-scene{margin-top:-7.33%}
-/* the panel under the picture meets it square: every panel rounds its own top
-   corners with an inline radius, and the card behind shows through them */
-.bt-room + *{border-top-left-radius:0!important;border-top-right-radius:0!important}
-/* the close button sits on the picture now, not on a plain header strip: above it
-   (the room is positioned and later in the card, so it would paint over the button),
-   and dark enough to read on any of the rooms */
-.bt-inspect-card[data-room] .bt-inspect-close{z-index:2;background:rgba(17,30,35,.78);color:#fff}
+@media (min-height:461px){
+  .bt-inspect-card[data-room]{isolation:isolate;background:#1E2E34;
+    --room-stage:min(148.8px, calc(41.33vw - 9.92px), 22vh)}
+  .bt-inspect-card[data-room="blacksmith"]{--room-stage:min(90px, calc(25vw - 6px))}
+  .bt-inspect-card > .bt-room + *{margin-top:calc(var(--room-stage) - 20px)!important;background:transparent!important}
+  /* ...and so is its header: every building panel's first child is its title --
+     a strip on its own slate (#27393F, the Enchanter's #182227) in eleven of
+     them, bare text in five (measured on all sixteen, mp-buildingrooms) -- so
+     taking that colour away puts the title on the room as well, its divider
+     line kept, and changes nothing where there was none */
+  .bt-inspect-card > .bt-room + * > :first-child{background-color:transparent!important}
+  /* the close button sits on the picture, not on a plain header strip, so it
+     wears a dark disc that reads on any of the rooms */
+  .bt-inspect-card[data-room] > .bt-inspect-close{z-index:2;background:rgba(17,30,35,.78);color:#fff}
+}
 @media (max-height:460px){.bt-room{display:none}}
 @media (prefers-reduced-motion:reduce){.bt-room-img{transition:none}}
 /* A window open over the minimap is not a tap on the minimap.  The world map's

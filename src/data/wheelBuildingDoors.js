@@ -129,7 +129,8 @@ export const WHEEL_TOWNSFOLK = [
      Ace: beside the Gambling Den, WEST of its steps, where Diego stands at
           the store -- the den's barrel and trough are on its east;
      Blacksmith Bro: EAST of the forge's steps (a barrel west, a crate east,
-          each 193 px out) -- scenery with a hammer, as in today's town;
+          each 193 px out) -- scenery with a hammer, as in today's town
+          (since v2.3.3258 he opens the forge: WHEEL_KEEPERS, below);
      Lil Bro: on the square, 260 px WEST of where you arrive (the Town Hall's
           door + (0, 108)), on the side away from Mayor Bro, so a new player
           meets him, as in today's town: 282 px from the hall's door (the
@@ -153,3 +154,24 @@ export const WHEEL_TOWNSFOLK = [
      _spawnWheelNpcs). */
   { name: 'Beastmaster Bro', door: 'woodworker', dx: 105, dy: 34, cap: 'beastmaster' },
 ];
+
+/* ═══ v2.3.3258: THE KEEPERS -- TALK TO HIM, AND HIS BUILDING OPENS ═══
+   The owner, asked whether players should walk into the buildings, see a
+   still picture of a shopkeeper or meet the shopkeeper outside: "Yes I like
+   your idea of interacting with the building's NPC instead of having the
+   building interiors.  Have it open up as backgrounds behind the different
+   buildings menus instead of literally going into a building".
+   Townsperson NAME -> the plot whose window he opens when you talk to him (a
+   tap, E or the right stick's tap): the same window, the same visit counted,
+   as its door (game/interactions.js enterWheelDoor), with the room's picture
+   behind its menu (BuildingRoom.jsx).  A quest of his comes first: Mayor Bro
+   opens the Town Hall only when he has nothing to offer, ask about or pay
+   for.  Only the keepers whose picture exists: the other buildings keep their
+   door until the owner's keeper is made (docs/ART-WISHLIST.md "The keepers"),
+   and then a keeper is a row here and in WHEEL_TOWNSFOLK.  Diego (his shop)
+   and Ace (his coin flip) keep their own windows.  Each door still opens too.
+   MIRROR: every value is a plot of the town -- test-world-core checks it. */
+export const WHEEL_KEEPERS = {
+  'Blacksmith Bro': 'blacksmith',   /* the forge, at whose steps he stands */
+  'Mayor Bro': 'townhall',          /* the Town Hall: its leaderboard and the world map */
+};
