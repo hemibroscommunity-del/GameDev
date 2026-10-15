@@ -193,6 +193,7 @@ import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into
 import { aggroGridMethods } from './aggrogrid.js'; /* v2.3.3201: a monster looks for players near it, not through every one */
 import { tickPaceMethods } from './tickpace.js'; /* v2.3.3202: the world keeps its speed in a busy room */
 import { steadyMoversMethods } from './steadymovers.js'; /* v2.3.3203: a player walking steadily is sent less often */
+import { bundleParts } from './bundle.js'; /* v2.3.3254: several messages in one frame (the quiet phone) */
 import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look relayed when it changes, not every 2 s */
 import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what is 5+ levels below you, harvests and fights */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
@@ -4813,6 +4814,23 @@ export class GameRoom {
     }
     let msg;
     try { msg = JSON.parse(message); } catch { return; }
+    /* v2.3.3254: a BUNDLE -- several messages in one frame, each taken in
+       order as if it had come alone (bundle.js) */
+    if (Array.isArray(msg)) {
+      for (const m of bundleParts(msg)) {
+        const _s = this.sessions.get(ws);
+        if (!_s) return;   /* an earlier one in the bundle closed the socket */
+        /* one that throws does not stop the rest: frames of their own never did */
+        try { await this._onMessage(ws, _s, m); }
+        catch (e) { try { console.error('[bundle] ' + (m && m.type) + ' threw:', e && e.message); } catch {} }
+      }
+      return;
+    }
+    return this._onMessage(ws, session, msg);
+  }
+
+  /* v2.3.3254: one message, out of a frame of its own or a bundle (above) */
+  async _onMessage(ws, session, msg) {
     /* Reset the AFK clock on real input only.  Pong replies are
        keepalive heartbeats, not player activity -- counting them would
        mean the timeout fires only on TCP death, not on AFK players
@@ -4898,7 +4916,15 @@ export class GameRoom {
 
       case 'pong':
         if (session.lastPing > 0) {
-          const sample = Date.now() - session.lastPing;
+          /* v2.3.3254: the quiet phone (bundle.js) answers a ping on the next
+             frame it sends anyway, and says how long it held the answer
+             (`hd`, ms), so the round trip is measured without the wait; and
+             only the latest ping's answer is a sample -- an older one's,
+             measured against the newer ping, read as a round trip of a few
+             ms.  `ts` is the ping's own stamp, which every phone echoes. */
+          if (typeof msg.ts === 'number' && msg.ts !== session.lastPing) break;
+          let sample = Date.now() - session.lastPing;
+          if (typeof msg.hd === 'number' && msg.hd > 0) sample -= Math.min(msg.hd, sample);
           session.rtt = session.rtt * (1 - this.LAGCOMP_RTT_ALPHA) + sample * this.LAGCOMP_RTT_ALPHA;
           session.rtt = Math.min(session.rtt, this.LAGCOMP_RTT_CAP);
         }

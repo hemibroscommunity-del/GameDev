@@ -109,9 +109,13 @@ function wire() {
     ws.send = (data) => {
       try {
         if (typeof data === 'string' && data.indexOf('map_watch') >= 0) {
-          const m = JSON.parse(data);
-          const on = m.on !== undefined ? m.on : (m.payload && m.payload.on);
-          window.__p2w.sent.push({ at: Date.now(), on });
+          /* v2.3.3254: a frame may be a bundle (a JSON array of messages) */
+          const v = JSON.parse(data);
+          for (const m of Array.isArray(v) ? v : [v]) {
+            if (!m || m.type !== 'map_watch') continue;
+            const on = m.on !== undefined ? m.on : (m.payload && m.payload.on);
+            window.__p2w.sent.push({ at: Date.now(), on });
+          }
         }
       } catch (e) { /* not ours */ }
       return send(data);

@@ -23,7 +23,14 @@ function catchTrack() {
   window.__btTrackSeen = [];
   const send = WebSocket.prototype.send;
   WebSocket.prototype.send = function (d) {
-    if (typeof d === 'string' && d.startsWith('{"type":"track"') && window.__btTrackSeen.length < 4) window.__btTrackSeen.push(d);
+    /* v2.3.3254: a frame may be a bundle (a JSON array of messages): the
+       track is caught out of it, as it would have gone alone */
+    if (typeof d === 'string' && d.indexOf('"type":"track"') >= 0 && window.__btTrackSeen.length < 4) {
+      try {
+        const v = JSON.parse(d);
+        for (const m of Array.isArray(v) ? v : [v]) if (m && m.type === 'track' && window.__btTrackSeen.length < 4) window.__btTrackSeen.push(JSON.stringify(m));
+      } catch (e) { /* not ours */ }
+    }
     return send.call(this, d);
   };
 }
