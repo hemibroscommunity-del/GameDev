@@ -176,17 +176,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const o = S.others[aid];
     S._shieldUp = true; S.shieldActive = Date.now();
     S._shieldAngle = Math.atan2((o.y != null ? o.y : o.renderY) - S.player.y, (o.x != null ? o.x : o.renderX) - S.player.x);
+    /* v2.3.3264: ...and on the worker NOW.  Since a player's blow can be
+       parried (server pvpextras.js), a block within 250 ms of the raise is a
+       PARRY -- free, no stamina -- and this box's page timers can hold the
+       move that carries the raise (the move batch) for most of a second, so
+       the swing below could land inside the window.  The move, then an
+       ability of no kind the worker has, which puts the held move first
+       (wsClient.js flushPendingMoveNow) and is dropped unread. */
+    S.channel.send({ type: 'broadcast', event: 'move', payload: { i: S.myId, x: S.player.x, y: S.player.y, d: S.player.dir,
+      f: S._renderFacing || null, z: S.currentZone || 'town', vx: 0, vy: 0 } });
+    S.channel.send({ type: 'ability', payload: { kind: 'qa-flush' } });
   }, aId);
   await B.page.keyboard.press('Control');   /* the guard and its facing reach the worker on the next move */
   await B.page.waitForTimeout(700);
   let blk = null;
-  for (let tries = 0; tries < 4 && !blk; tries++) {
+  for (let tries = 0; tries < 5 && !blk; tries++) {
     const t0 = Date.now();
     await swingAt(A, bId, ++sw);
     await A.page.waitForTimeout(900);
     const pb = await popsSince(B, t0);
     const q = await H.readState(B, () => { const f = window.__btFightFood; return f && f.hits.length ? f.hits[f.hits.length - 1] : null; });
-    if (q && q.blocked && q.at >= t0 - 200) blk = { pb, q };
+    /* a parry is not the plain block this step reads (no stamina cost): one
+       that slipped in staggers the striker 1.5 s, so the next tries wait it out */
+    if (q && q.blocked && q.at >= t0 - 200 && !pb.some((p) => p.text === 'PARRY!')) blk = { pb, q };
     await A.page.waitForTimeout(400);
   }
   rec.ok('a blow was blocked by the worker (guard)', !!blk, blk);

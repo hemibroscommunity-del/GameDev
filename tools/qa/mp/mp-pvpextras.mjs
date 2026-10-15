@@ -246,7 +246,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await heal();
     rec.ok('the striker\'s sword takes a wind gem on the page (guard)', await gem('wind'));
     const fx0 = { A: await fxDrawn(A), B: await fxDrawn(B), C: await fxDrawn(C) };
-    const slowHit = await swingFor('slow');
+    /* a FRESH slow to walk in: on this box a swing's pvp_hit can reach the
+       target's page after swingFor has moved on, and the hit it then finds is
+       a later swing's, which adds a second to a slow nearly spent (the
+       monster table's refresh, elemental.js) -- 1.2 s left, under the walk's
+       1.5 s.  Let that run out and land one of its own. */
+    let slowHit = null;
+    for (let k = 0; k < 3; k++) {
+      slowHit = await swingFor('slow');
+      if (!slowHit) break;
+      const left = await B.page.evaluate(() => (window._gameState.current._slowUntil || 0) - Date.now());
+      if (slowHit.got.stMs >= 4000 && left > 2500) break;
+      await B.page.waitForTimeout(Math.max(0, left) + 800);
+    }
     rec.ok('a wind-gem swing slowed the target (guard: the worker said st slow)', !!slowHit, slowHit || lastDiag);
     if (slowHit) {
       const claims = await sentSince(A, slowHit.t0 - 2000, 'player_attack');
@@ -405,16 +417,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
          to the worker goes NOW (the connection layer adds `blocking` and the
          guard's facing to every move) -- the page's own next frame, which
          sends it otherwise (BroTown's _blockChanged), is up to half a second
-         away on this box, and the bash must land within 250 ms of it */
+         away on this box, and the bash must land within 250 ms of it.
+         ...and not after the move batch's timer: a page timer, which this
+         box's software GL starves to several hundred ms (the old 90 ms wait
+         here was often past the whole window before the bash was even
+         asked for).  An `ability` the worker has no such kind of is the one
+         send that puts the held move first (wsClient.js flushPendingMoveNow)
+         and is dropped unread (abilities.js _handleAbility: not an own key of
+         STAM_ABILITIES, no answer).  The bash follows at once. */
       const t0 = Date.now();
-      const raised = await B.page.evaluate((aid) => new Promise((res) => {
+      const raised = await B.page.evaluate((aid) => {
         const S = window._gameState.current; const o = S.others[aid];
         S._shieldAngle = Math.atan2((o.y != null ? o.y : o.renderY) - S.player.y, (o.x != null ? o.x : o.renderX) - S.player.x);
         S._shieldUp = true; S.shieldActive = Date.now();
         S.channel.send({ type: 'broadcast', event: 'move', payload: { i: S.myId, x: S.player.x, y: S.player.y, d: S.player.dir,
           f: S._renderFacing || null, z: S.currentZone || 'town', vx: 0, vy: 0 } });
-        setTimeout(() => res(true), 90);   /* the move batch: 33-66 ms */
-      }), aId);
+        S.channel.send({ type: 'ability', payload: { kind: 'qa-flush' } });
+        return true;
+      }, aId);
       /* the bash, at once: the lock, a raised shield of the basher's own */
       const cast = await A.page.evaluate((bId) => {
         const S = window._gameState.current; const o = S.others && S.others[bId];
@@ -461,7 +481,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       } else {
         lastDiag = { raised, cast, ...(await diag(t0)), pops: await popsSince(A, t0) };
       }
-      await B.page.evaluate(() => { const S = window._gameState.current; S._shieldUp = false; S.shieldActive = 0; });
+      await B.page.evaluate(() => {
+        const S = window._gameState.current; S._shieldUp = false; S.shieldActive = 0;
+        /* lowered on the worker at once too, so the next try's raise is a
+           fresh one (movement.js stamps blockStartT on the way up only) */
+        S.channel.send({ type: 'broadcast', event: 'move', payload: { i: S.myId, x: S.player.x, y: S.player.y, d: S.player.dir,
+          f: S._renderFacing || null, z: S.currentZone || 'town', vx: 0, vy: 0 } });
+        S.channel.send({ type: 'ability', payload: { kind: 'qa-flush' } });
+      });
       await B.page.waitForTimeout(4300);   /* the bash's cooldown, and the guard's next raise a fresh one */
     }
     rec.ok('a bash on a guard just raised: a parry (guard)', !!parry, parry || lastDiag);
