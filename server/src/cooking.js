@@ -13,7 +13,7 @@
  * only consumers (mirror-audit still pins them against the client
  * tables).  Original section comments preserved on each method. */
 
-import { FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS, DISHES, DIEGO_SHELF, PVP_HEAL, manaSurgePerTick } from './data.js';
+import { FISH_TIERS, FISH_HEAL, COOKING_RECIPES, SHOP_ITEMS, DISHES, DIEGO_SHELF, PVP_HEAL, manaSurgePerTick } from './data.js';
 
 /* v2.3.3133: the most players the one-bite clocks keep before a prune drops
    the ones that can no longer hold anyone back (_pvpHealPrune). */
@@ -68,11 +68,20 @@ export const cookingMethods = {
 
     const tier = FISH_TIERS.find((t) => species.includes(t.name));
     if (!tier) return 100; // default for unmapped cooked fish (v2.3.1765)
+    /* v2.3.3260: the new ladder (data.js FISH_HEAL), unless switched off */
+    if (!this._fishHealOff() && Object.prototype.hasOwnProperty.call(FISH_HEAL, tier.name)) return FISH_HEAL[tier.name];
 /* v2.3.1765 (owner: "Fish heal needs to be closer to 100").  The base was 15,
    so the first cooked fish healed 23 against a ~106 HP character — a bite, not
    a meal, which is why nobody ate.  Base lifted so tier one lands on 100; the
    PER-TIER slope (+8) is untouched, so the ladder above it keeps its shape. */
     return Math.ceil(92 + tier.lvl * 8);
+  },
+
+  /* v2.3.3260: the kill switch for the fish ladder, read the lower-case way
+     (TRAPS §117) */
+  _fishHealOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'fishheal') && !f.fishheal);
   },
 
   // v2.3.1167: fish tier level for the cook physics floor -- same
@@ -107,7 +116,7 @@ export const cookingMethods = {
       /* v2.3.3133: a heal eaten at once is one bite at a time in a fight
          with a player (data.js PVP_HEAL); a half-hour meal never is. */
       if (meal.slot === 'now' && this._pvpHealHeld(session.id, ps)) { refuse(); return; }
-      if (!this._applyDish(ps, meal)) { refuse(); return; }
+      if (!this._applyDish(ps, meal, session.id)) { refuse(); return; }
       if (meal.slot === 'now') this._noteInstantHeal(session.id);   /* v2.3.3133 */
       ps.inventory[invKey] -= 1;
       if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
@@ -131,8 +140,10 @@ export const cookingMethods = {
     if (ps._arenaMatch) { refuseEat(); return; } // v2.3.1126: no healing during an arena match (GDD §43)
     if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith cooked_fish_ above
     if ((ps.inventory[invKey] || 0) <= 0) { refuseEat(); return; }
-    if (this._pvpHealHeld(session.id, ps)) { refuseEat(); return; }   /* v2.3.3133: one bite at a time in a fight with a player */
+    if (this._pvpHealHeld(session.id, ps)) { refuseEat(); return; }   /* v2.3.3133: one bite at a time in a fight (v2.3.3260: any fight, _pvpHealWait) */
     // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap +50%).
+    /* v2.3.3260: the same heal in any fight -- ONE FORMULA (oneformula.js): the
+       first cut of this version healed a quarter in a fight with a player */
     const heal = Math.ceil(this._fishHealAmount(invKey)) + this._recoveryFlat(ps); // v2.3.1345: flat recovery bonus
     if (heal <= 0) { refuseEat(); return; }
     this._noteInstantHeal(session.id);   /* v2.3.3133: counted wherever it is eaten (_pvpHealWait) */
@@ -266,7 +277,7 @@ export const cookingMethods = {
     const _bite = !!(item && item.effect === 'healFish');
     if (_bite && this._pvpHealHeld(session.id, ps)) { refuse(); return; }
     /* Before the decrement -- see REFUSAL DOES NOT CONSUME above. */
-    if (!(dish ? this._applyDish(ps, dish) : this._applyShopItem(ps, item))) { refuse(); return; }
+    if (!(dish ? this._applyDish(ps, dish, session.id) : this._applyShopItem(ps, item, session.id))) { refuse(); return; }
     if (_bite) this._noteInstantHeal(session.id);
     ps.inventory[invKey] -= 1;
     if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
@@ -436,7 +447,7 @@ export const cookingMethods = {
          bag like any dish that cannot be applied. */
       const bite = !!((dish && dish.slot === 'now') || (item && item.effect === 'healFish'));
       const held = bite && this._pvpHealHeld(session.id, ps);
-      const applied = held ? false : (dish ? this._applyDish(ps, dish) : (item ? this._applyShopItem(ps, item) : false));
+      const applied = held ? false : (dish ? this._applyDish(ps, dish, session.id) : (item ? this._applyShopItem(ps, item, session.id) : false));
       if (applied && bite) this._noteInstantHeal(session.id);
       if (!applied) addToBag();
     }
@@ -542,13 +553,37 @@ export const cookingMethods = {
    * could next eat.  A Map on the room survives a rejoin and is sent to
    * nobody.  Memory only (rule 11): a deploy lets one more bite through,
    * which costs nothing.  Pruned once it passes PVP_HEAL_CLOCKS_MAX. */
+  /* v2.3.3260: in a fight with a player -- a duel, or a hit between players
+     within PVP_HEAL.WINDOW_MS (the order board's farmorders.js twin reads the
+     same clock; the bite rule widens it to any fight, _anyFightAt below) */
+  _pvpInFight(id, ps, now) {
+    if (!id || !ps) return false;
+    const t = typeof now === 'number' ? now : Date.now();
+    const c = this._pvpHealClocks ? this._pvpHealClocks.get(id) : null;
+    return !!(this._duelFor && this._duelFor(id)) || (!!c && t - c.pvpAt < PVP_HEAL.WINDOW_MS);
+  },
+
+  /* ═══ v2.3.3260: ...IN ANY FIGHT (oneformula.js) ═══
+     With the one formula on, "in a fight" is a fight with ANYTHING: the PvP
+     test above, or a blow dealt or taken within WINDOW_MS -- `lastDamageAt`
+     (stamped by _applyDamage on every blow that reaches you, blocked and
+     dodged ones too) and `_lastDealtAt` (every hit you land on a monster or a
+     player).  Those two live on playerState, so a rejoin forgets a fight with
+     a monster; the PvP clock is the room's and does not (the review's
+     reason, above).  Off: the fight with a player alone, as before. */
+  _anyFightAt(id, ps, now) {
+    if (this._pvpInFight(id, ps, now)) return true;
+    if (!ps || typeof this._oneFormulaOn !== 'function' || !this._oneFormulaOn()) return false;
+    const t = typeof now === 'number' ? now : Date.now();
+    const last = Math.max(Number(ps.lastDamageAt) || 0, Number(ps._lastDealtAt) || 0);
+    return last > 0 && t - last < PVP_HEAL.WINDOW_MS;
+  },
+
   _pvpHealWait(id, ps, now) {
     if (!ps || this._pvpHealOff()) return 0;
     const t = typeof now === 'number' ? now : Date.now();
     const c = this._pvpHealClocks ? this._pvpHealClocks.get(id) : null;
-    const inFight = !!(this._duelFor && this._duelFor(id))
-      || (!!c && t - c.pvpAt < PVP_HEAL.WINDOW_MS);
-    if (!inFight) return 0;
+    if (!this._anyFightAt(id, ps, t)) return 0;
     const last = c ? c.healAt : 0;
     return Math.max(0, PVP_HEAL.GAP_MS - (t - last));
   },
@@ -617,7 +652,7 @@ export const cookingMethods = {
      other slot is left alone.  Extends from NOW, never stacks -- a second Herb
      Bread restarts the half hour, it does not make an hour.  Returns false for
      a dish it cannot apply (nothing is used up then). */
-  _applyDish(ps, dish) {
+  _applyDish(ps, dish, pid) {
     if (!ps || !dish) return false;
     /* v2.3.3131: a dish eaten at once (slot 'now', the Garden Stew) is a
        heal, the cooked fish's way: plus the HP grid's Recovery, capped at max
@@ -656,7 +691,7 @@ export const cookingMethods = {
    * shop ends up with a potion the other one does not, or applies it
    * differently -- and the owner has now asked for these to be sold in both
    * places. Returns false when the purchase must be refunded. */
-  _applyShopItem(ps, item) {
+  _applyShopItem(ps, item, pid) {
     if (!ps || !item) return false;
     if (item.effect === 'healFish') {
       /* v2.3.1126: no healing during an arena match (GDD §43). Reported as

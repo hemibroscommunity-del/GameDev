@@ -51,6 +51,10 @@ import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* 
 import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA } from '../../src/data/wheelDungeons.js'; /* v2.3.3016 */
 import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wheelSignposts.js'; /* v2.3.3089 */
 import { PVP_HEAL as CLIENT_PVP_HEAL } from '../../src/game/fightFood.js'; /* v2.3.3133 */
+import * as SRV_ONE from '../src/oneformula.js'; /* v2.3.3260: one formula for every fight */
+import * as CLIENT_ONE from '../../src/data/oneFormula.js';
+import { setOneFormulaEnabled as clientSetOneFormula } from '../../src/data/oneFormula.js';
+import { recalcDerived as clientRecalcDerived } from '../../src/data/gameSystems.js';
 import { WHEEL_SPAWNS as SRV_WHEEL_SPAWNS } from '../src/wheelspawns.js'; /* v2.3.3089 */
 import { SPRINT_MULT as CLIENT_SPRINT_MULT, SPRINT_DRAIN_PER_S as CLIENT_SPRINT_DRAIN, SPRINT_MIN_START as CLIENT_SPRINT_MIN_START, REGEN_PAUSE_MS as CLIENT_SPRINT_REGEN_PAUSE } from '../../src/game/sprint.js'; /* v2.3.3006 */
 import { GATHER_PLAN_MAX as CLIENT_GATHER_PLAN_MAX /* v2.3.3251 */, GATHER_SWING as CLIENT_GATHER_SWING, gatherNodeHp as clientGatherNodeHp, gatherHitTimes as clientGatherHitTimes, GATHER_HIT_LEAD_MS as CLIENT_GATHER_HIT_LEAD_MS, GATHER_HIT_SETTLE_MS as CLIENT_GATHER_HIT_SETTLE_MS, awardSkillXp as clientAwardSkillXp /* v2.3.3041 */, createDefaultLifeSkills as clientDefaultLifeSkills /* v2.3.3041 */, migrateLifeSkills as clientMigrateLifeSkills /* v2.3.3041 */, createDefaultRpg as clientDefaultRpg /* v2.3.3138 */ } from '../../src/data/gameSystems.js';
@@ -114,6 +118,8 @@ import {
      lockstep" — which is exactly the obligation this suite exists to stop
      enforcing by memory. */
   getFishHealAmount as clientFishHeal,
+  /* v2.3.3260: the new fish ladder, and the switch that reads it */
+  FISH_HEAL as CLIENT_FISH_HEAL, setFishHealEnabled as clientSetFishHeal,
   /* v2.3.1765: the equip gate.  The two sides reach the same number by
      DIFFERENT roads — the worker by tier index, the client by statReq/2 — so
      they can drift without either looking wrong on its own. */
@@ -261,6 +267,60 @@ const room = Object.create(GameRoom.prototype);
   check('PVP_HEAL mirror: the fight window and the gap between bites',
     CLIENT_PVP_HEAL.WINDOW_MS === SRV.PVP_HEAL.WINDOW_MS && CLIENT_PVP_HEAL.GAP_MS === SRV.PVP_HEAL.GAP_MS,
     { server: SRV.PVP_HEAL, client: CLIENT_PVP_HEAL });
+  /* v2.3.3260: ...and nothing else on either side -- the quarter-size bite of
+     this version's first cut (SHARE) is gone with the one formula, a heal the
+     same in any fight */
+  check('PVP_HEAL mirror: the same keys both sides, no PvP-only share',
+    JSON.stringify(Object.keys(CLIENT_PVP_HEAL).sort()) === JSON.stringify(Object.keys(SRV.PVP_HEAL).sort())
+      && !('SHARE' in SRV.PVP_HEAL) && !('SHARE' in CLIENT_PVP_HEAL),
+    { server: SRV.PVP_HEAL, client: CLIENT_PVP_HEAL });
+}
+
+// ── 4b. v2.3.3260: ONE FORMULA FOR EVERY FIGHT (oneformula.js) ──
+// The page predicts its bar, a scene's monster, its specials and the big
+// bolt with its own copy (src/data/oneFormula.js); every number and every
+// helper's answer must be the worker's, the formula on AND off.
+{
+  check('ONE_FORMULA mirror: the same numbers',
+    JSON.stringify(CLIENT_ONE.ONE_FORMULA) === JSON.stringify(SRV_ONE.ONE_FORMULA),
+    { server: SRV_ONE.ONE_FORMULA, client: CLIENT_ONE.ONE_FORMULA });
+  check('ONE_FORMULA mirror: the old health is the old worker\'s (prog3.js HP_PER_LEVEL, BODY.hp.per, both sides)',
+    SRV_ONE.ONE_FORMULA.OLD_HEALTH.PER_LEVEL === SRV_PROG3.HP_PER_LEVEL && SRV_ONE.ONE_FORMULA.OLD_HEALTH.PER_POINT === SRV_PROG3.BODY.hp.per
+      && CLIENT_PROG3.HP_PER_LEVEL === SRV_PROG3.HP_PER_LEVEL && CLIENT_PROG3.BODY.hp.per === SRV_PROG3.BODY.hp.per,
+    { old: SRV_ONE.ONE_FORMULA.OLD_HEALTH, prog3: [SRV_PROG3.HP_PER_LEVEL, SRV_PROG3.BODY.hp.per] });
+  let bad = [];
+  for (const on of [true, false]) {
+    for (let lvl = 0; lvl <= 300; lvl += 7) for (const pts of [0, 1, 6, 37, 100]) {
+      if (CLIENT_ONE.healthAt(lvl, pts, on) !== SRV_ONE.healthAt(lvl, pts, on)) bad.push(['health', on, lvl, pts]);
+    }
+    for (let lvl = 1; lvl <= 100; lvl++) {
+      if (CLIENT_ONE.monsterHitK(lvl, on) !== SRV_ONE.monsterHitK(lvl, on)) bad.push(['hitK', on, lvl]);
+    }
+    for (const t of ['greatsword', 'sword', 'bow', 'staff', 'axe', undefined]) {
+      if (CLIENT_ONE.specialMultFor(t, on) !== SRV_ONE.specialMultFor(t, on)) bad.push(['special', on, t]);
+    }
+  }
+  check('ONE_FORMULA mirror: health, a monster\'s hit and every special agree, on and off', bad.length === 0, bad.slice(0, 8));
+  /* the page's whole bar (recalcDerived) is the worker's _prog3Recompute, both
+     ways, for characters across the levels and points */
+  const room1 = Object.create(GameRoom.prototype);
+  bad = [];
+  setProg3Enabled(true);
+  for (const on of [true, false]) {
+    room1._liveFlags = on ? {} : { oneformula: false };
+    clientSetOneFormula(on);
+    for (const [sw, bw, st, hp] of [[1, 1, 1, 0], [5, 1, 1, 3], [10, 1, 1, 0], [20, 7, 3, 12], [40, 40, 40, 100]]) {
+      const prog3 = { sk: { sword: { level: sw, xp: 0 }, bow: { level: bw, xp: 0 }, staff: { level: st, xp: 0 } }, atk: {}, alloc: { hp }, pool: 0 };
+      const ps = { prog3: JSON.parse(JSON.stringify(prog3)) };
+      room1._prog3Recompute(ps);
+      const rpg = { prog3: JSON.parse(JSON.stringify(prog3)), hp: 1, maxHp: 1 };
+      clientRecalcDerived(rpg);
+      if (ps.maxHp !== rpg.maxHp) bad.push({ on, sw, bw, st, hp, worker: ps.maxHp, page: rpg.maxHp });
+    }
+  }
+  clientSetOneFormula(false);
+  setProg3Enabled(false);
+  check('ONE_FORMULA mirror: the page\'s bar is the worker\'s, the formula on and off', bad.length === 0, bad.slice(0, 4));
 }
 
 // ── 5. QUEST_REWARDS vs QUEST_CHAINS: payouts + chain links, BOTH
@@ -664,15 +724,35 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { storage: { get: async () => null, put: async () => {}, list: async () => new Map(), delete: async () => {} },
       blockConcurrencyWhile: async (f) => f() },
     { ROOM_NAME: 'mirror-audit' });
+  /* v2.3.3260: every fish both ways -- the new ladder (data.js FISH_HEAL,
+     the page's copy read once the worker says caps.fishheal) and, with the
+     kill switch thrown, the old 92 + 8 x level on both sides. */
+  const fishKeys = FISHING_TIERS.map((t) => 'cooked_fish_' + t.name.toLowerCase().replace(/\s+/g, '_')).concat(['cooked_fish_nonesuch', 'fish_trout']);
   const fishBad = [];
-  for (const key of ['cooked_fish_minnow', 'cooked_fish_trout', 'cooked_fish_nonesuch']) {
-    const srvHeal = room._fishHealAmount(key);
-    const cliHeal = clientFishHeal(key);
-    if (srvHeal !== cliHeal) fishBad.push({ key, server: srvHeal, client: cliHeal });
+  for (const [on, flags] of [[true, {}], [false, { fishheal: false }]]) {
+    clientSetFishHeal(on);
+    room._liveFlags = flags;
+    for (const key of fishKeys) {
+      const srvHeal = room._fishHealAmount(key);
+      const cliHeal = clientFishHeal(key);
+      if (srvHeal !== cliHeal) fishBad.push({ ladder: on ? 'new' : 'old', key, server: srvHeal, client: cliHeal });
+    }
   }
-  check('fish heal mirrors server<->client, unmapped default included', fishBad.length === 0, fishBad);
+  clientSetFishHeal(false);
+  room._liveFlags = {};
+  check('fish heal mirrors server<->client, every fish, both ladders, unmapped default included', fishBad.length === 0, fishBad);
   check('...and tier one lands on the owner\'s number', room._fishHealAmount('cooked_fish_minnow') === 100,
     room._fishHealAmount('cooked_fish_minnow'));
+  check('FISH_HEAL mirror: the same fish, the same heals',
+    JSON.stringify(CLIENT_FISH_HEAL) === JSON.stringify(SRV.FISH_HEAL), { server: SRV.FISH_HEAL, client: CLIENT_FISH_HEAL });
+  /* ...one heal a fish, every fish the table names: a tier missing from it
+     would heal 100 (the unmapped default) on both sides and no check above
+     would notice */
+  const unladdered = SRV.FISH_TIERS.filter((t) => !Object.prototype.hasOwnProperty.call(SRV.FISH_HEAL, t.name)).map((t) => t.name);
+  check('every fish tier has its heal on the ladder', unladdered.length === 0, unladdered);
+  /* ...and the ladder climbs: each fish heals more than the one before */
+  const ladder = SRV.FISH_TIERS.map((t) => SRV.FISH_HEAL[t.name]);
+  check('the fish ladder climbs tier by tier', ladder.every((h, i) => i === 0 || h > ladder[i - 1]), ladder);
 
   /* createGatherNode is the client half of _harvestXpForTier's base.  Driven
      through the real function rather than by re-typing its formula here: a

@@ -303,7 +303,10 @@ export const LCTL_THUMB_FRAC = 0.5;
  * change makes deliberately and it is the first thing to revisit if the owner
  * finds it awkward -- the remedy would be to shrink the right-hand controls
  * rather than to put two buttons back within 8px of each other. */
-export const LCTL_SLOT = { burst: 0 };
+/* v2.3.3260: slot 1 is QUICK EAT (QuickEatButton.jsx) -- up and to the
+   right of Burst, half a button clear of it by the cluster's own step, for
+   the left thumb while the right one keeps attacking. */
+export const LCTL_SLOT = { burst: 0, eat: 1 };
 
 export function leftCluster(isLandscape) {
   var size = Math.max(CTL_MIN_SIZE, isLandscape ? 54 : 48);
@@ -551,6 +554,7 @@ export function combatBandTopPx(isLandscape) {
     r.bottomPx(RCTL_SLOT.whirl) + r.size,      /* the right cluster's upper slot */
     r.bottomPx(RCTL_SLOT.special) + r.size,
     l.bottomPx(LCTL_SLOT.burst) + l.size,      /* Element Burst, over the movement disc */
+    l.bottomPx(LCTL_SLOT.eat) + l.size,        /* Quick eat, beside it (v2.3.3260) */
     c.bottomPx(CTL_SLOT.bash) + c.size,        /* Shield Bash */
     blk.bottomPx + blk.size,                   /* Block */
     spr.bottomPx + spr.size,                   /* Sprint, over the attack disc (v2.3.3006; v2.3.3106 moved it) */

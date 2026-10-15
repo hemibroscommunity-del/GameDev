@@ -40,6 +40,8 @@ const KEYS = [
      an enchanted weapon) floats the reason — a key that only appears once
      you already own the ability is a key nobody discovers. */
   ['G', 'Burst'],
+  /* v2.3.3260: V -- quick eat (game/quickEat.js), the touch button's twin */
+  ['V', 'Eat'],
   ['C', 'Chat'], ['H', 'Hide'], ['Esc', 'Close'],
 ];
 

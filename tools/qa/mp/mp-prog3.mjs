@@ -18,6 +18,9 @@ import * as H from './harness.mjs';
 /* v2.3.1727: the retune moved HP_PER_LEVEL — read the constant rather than
    re-typing its value into an assertion (see the maxHp check below). */
 import { PROG3 } from '../../../src/data/prog3.js';
+/* v2.3.3260: the bar is the one formula's (100 + 50 a level), against the
+   local worker, which advertises caps.oneformula */
+import { healthAt, ONE_FORMULA } from '../../../src/data/oneFormula.js';
 
 /* v2.3.2199: the open lane's control count, derived from the constant
    tables the UI itself maps (4 ATK + 5 BODY = 9 against a prog3x worker;
@@ -55,8 +58,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      recalcDerived agrees with the worker's _prog3Recompute — a hand-typed
      total silently stops testing that the moment either side is retuned,
      and re-typing the new number would just re-arm the same trap. */
-  const expectHp = 100 + 3 * PROG3.HP_PER_LEVEL;
-  rec.ok(`maxHp re-derives to the prog3 formula (100 + level×${PROG3.HP_PER_LEVEL})`,
+  const expectHp = healthAt(3, 0, true);
+  rec.ok(`maxHp re-derives to the one formula (100 + level×${ONE_FORMULA.HEALTH.PER_LEVEL})`,
     adopted && adopted.maxHp === expectHp, { ...adopted, expectHp });
   rec.ok('the allocation pool starts empty', adopted && adopted.pool === 0 && adopted.sword === 1, adopted);
 

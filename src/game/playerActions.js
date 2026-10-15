@@ -8,6 +8,7 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
+import { staffBoltK } from '@/data/oneFormula.js'; /* v2.3.3260: the big bolt's worth under the one formula */
 import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult, STAFF_BIG_BOLT_ORBS, STAFF_BIG_BOLT_BAND } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat; v2.3.2842: the one-bolt special; v2.3.2849: its band */
 import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
 import { ARROW_SPEED_PX, lowAimAlong } from '@/game/projectiles.js';   /* v2.3.2848: the volley's stagger is sized from it; v2.3.3206: + the low thing a shot is aimed at */
@@ -509,7 +510,7 @@ export function specialAttack(S) {
           dist: 14,
           speedPx: _ORB_SPEED,
           /* v2.3.2849: one draw from the bolt's own band, the worker's shape */
-          dmg: Math.round(calcSpecialDmg('staff', R || {}, activeWpn.tierMult, activeWpn, STAFF_BIG_BOLT_BAND) * specialAtkMultFor('staff', R || {}) * STAFF_BIG_BOLT_ORBS * _sBrew),   /* v2.3.3133: × the brew */
+          dmg: Math.round(calcSpecialDmg('staff', R || {}, activeWpn.tierMult, activeWpn, STAFF_BIG_BOLT_BAND) * specialAtkMultFor('staff', R || {}) * STAFF_BIG_BOLT_ORBS * staffBoltK() * _sBrew),   /* v2.3.3133: × the brew; v2.3.3260: × the one formula's bolt worth */
           brew: _sBrew,   /* v2.3.3133 */
           life: _bigLife,
           maxLife: _bigLife,

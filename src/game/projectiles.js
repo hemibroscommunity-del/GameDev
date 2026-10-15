@@ -2291,6 +2291,15 @@ export function updateArrows(S, deps) {
                       ts: Date.now(),
                       inDuel: !!S._inDuel,
                       special: !!a.isSpecial,
+                      /* v2.3.3260: what the shot is, as a monster is told
+                         (monster_damage above), for a worker that rolls the
+                         hit between players itself (caps.pvpbalance,
+                         pvpbalance.js): the big staff bolt's orbs, a volley
+                         arrow's share, the retreat shot.  An older worker
+                         takes the claim and ignores all three. */
+                      orbs: a.orbs > 1 ? a.orbs : undefined,
+                      part: a.part > 1 ? a.part : undefined,
+                      rs: a.retreatShot ? 1 : undefined,
                       kind: isStaffProj ? 'staff' : 'ranged',
                       /* v2.3.1306: declare the single intended target so
                          the server skips everyone else in the cone — the

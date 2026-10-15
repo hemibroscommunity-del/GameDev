@@ -69,6 +69,7 @@
  *       (a real zone's and a Wheel monster's kills still drop theirs).
  */
 import { GameRoom } from '../src/index.js';
+import { ONE_FORMULA } from '../src/oneformula.js'; /* v2.3.3260 */
 import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
 import { DUNGEONS, BOSS_ABILITIES } from '../src/dungeon.js';
 import { MONSTER_HP_CURVE, MONSTER_DMG_CURVE, monsterHpFlat } from '../src/data.js'; /* v2.3.3055: the dmg curve, the growing flat */
@@ -214,7 +215,10 @@ const baseDmg = Math.ceil(room._monsterStat(MONSTER_DMG_CURVE.base, cfg.monsterL
 // v2.3.1346: the flat is added AFTER boss/party multipliers (exact, like all monsters); v2.3.3055: the level's own flat.
 const bossFlat = monsterHpFlat(cfg.monsterLevel + 5);
 check('boss hp = base x mult x party scale 1.6 + flat', boss.hp === Math.ceil(baseHp * 8 * 1.6) + bossFlat, { hp: boss.hp, expected: Math.ceil(baseHp * 8 * 1.6) + bossFlat });
-check('boss dmg = base x 1.5', boss.dmg === Math.ceil(baseDmg * 1.5), { dmg: boss.dmg, expected: Math.ceil(baseDmg * 1.5) });
+/* v2.3.3260: x the one formula's hit multiplier at its level first, as every
+   monster is built (oneformula.js _monsterHitStamp) */
+const _bossBase = Math.ceil(baseDmg * room._monsterHitK(cfg.monsterLevel + 5));
+check('boss dmg = base x 1.5', boss.dmg === Math.ceil(_bossBase * 1.5), { dmg: boss.dmg, expected: Math.ceil(_bossBase * 1.5) });
 check('dungeon_boss emitted to both players', msgsOfType(wsA, 'dungeon_boss').length === 1 && msgsOfType(wsB, 'dungeon_boss').length === 1);
 
 // ── 9. completion pays only players inside ──
@@ -363,7 +367,10 @@ room._tickDungeons(tExec);
 const execEvt = msgsOfType(wsA, 'dungeon_boss_ability');
 check('execute event carries phase+range', execEvt.length === 1 && execEvt[0].payload.phase === 'execute' && execEvt[0].payload.ability === 'slam' && execEvt[0].payload.range === BOSS_ABILITIES.SLAM.RANGE, execEvt.map((e) => e.payload));
 const slamAtk = room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.monsterId === bossB.id);
-check('slam damage rides monster_attack, clamped to 50% maxHp', slamAtk.length === 1 && slamAtk[0].payload.dmgTaken === 250 && psA.hp === 250, { hp: psA.hp, atk: slamAtk.map((a) => a.payload) });
+/* v2.3.3260: the ability's own 50% rail, then the one formula's cap on every
+   blow -- 30% of 500 = 150 (oneformula.js HIT_CAP) */
+const _cap500 = Math.floor(500 * ONE_FORMULA.HIT_CAP);
+check('slam damage rides monster_attack, clamped to 50% maxHp (then the one cap, 30%)', slamAtk.length === 1 && slamAtk[0].payload.dmgTaken === _cap500 && psA.hp === 500 - _cap500, { hp: psA.hp, atk: slamAtk.map((a) => a.payload) });
 check('out-of-range player untouched by the AoE', psV1.hp === 500, psV1.hp);
 check('cooldown re-armed after execute', bossB._abilityPhase === null && bossB._nextAbilityAt >= tExec + BOSS_ABILITIES.COOLDOWN_MS - 5, bossB._nextAbilityAt - tExec);
 
@@ -603,8 +610,8 @@ room._tickDungeons(tCl); // telegraph slam
 room.eventBuffer.length = 0;
 room._tickDungeons(tCl + BOSS_ABILITIES.TELEGRAPH_MS + 10); // execute
 const clampAtk = room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.monsterId === bossE.id);
-check('MAX_HIT_PCT clamp still authoritative under enrage (250 = 50% of 500)',
-  clampAtk.length === 1 && clampAtk[0].payload.dmgTaken === 250 && psA.hp === 250,
+check('MAX_HIT_PCT clamp still authoritative under enrage (250 = 50% of 500; the one cap then 150)',
+  clampAtk.length === 1 && clampAtk[0].payload.dmgTaken === _cap500 && psA.hp === 500 - _cap500,
   { hp: psA.hp, atk: clampAtk.map((a) => a.payload) });
 
 // ── 23. owner kill switch ──
@@ -673,7 +680,7 @@ wsA.sent.length = 0;
 room._tickDungeons(tS0 + BOSS_ABILITIES.TELEGRAPH_MS + 10); // execute
 const sipExec = msgsOfType(wsA, 'dungeon_boss_ability').filter((e) => e.payload.ability === 'siphon' && e.payload.phase === 'execute');
 check('siphon hits (clamped) and heals the boss on a landed hit',
-  sipExec.length === 1 && psA.hp === 250 && sipExec[0].payload.heal === expHeal && bossS.hp === hpBossBefore + expHeal,
+  sipExec.length === 1 && psA.hp === 500 - _cap500 && sipExec[0].payload.heal === expHeal && bossS.hp === hpBossBefore + expHeal,
   { hp: psA.hp, heal: sipExec[0] && sipExec[0].payload.heal, bossHp: bossS.hp, before: hpBossBefore, expHeal });
 // Block denies BOTH the hit and the heal.
 psA.blocking = true; psA.stamina = 100; psA.hp = 500;

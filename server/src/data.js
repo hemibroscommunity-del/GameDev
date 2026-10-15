@@ -525,6 +525,35 @@ export const DISHES = {
 export const PVP_HEAL = Object.freeze({
   WINDOW_MS: 10000,
   GAP_MS: 15000,
+  /* ═══ v2.3.3260: ...IN ANY FIGHT ═══
+     ONE FORMULA (oneformula.js, owner: "I just want one formula that works the
+     same across everything"): with the formula on, the rule holds in a fight
+     with ANYTHING -- a duel, or a hit dealt or taken (a monster's, a player's)
+     within WINDOW_MS (cooking.js _anyFightAt) -- and a bite heals what it
+     heals anywhere.  The bars are bigger, so a fish is a third or so of one;
+     the first cut of this version healed a quarter of a bite in a fight with
+     a player instead, a number for those fights alone. */
+});
+
+/* ═══ v2.3.3260: WHAT EACH FISH HEALS (owner: "including how much HP each
+   fish should heal.  You're the expert on this not me") ═══
+   It was 92 + 8 x the fish's tier level -- 100, 140, 180, 220, 260 -- a ladder
+   that flattened (x1.4, x1.29, x1.22, x1.18) just as each tier came to cost
+   twice the fishing of the one before (gathering.js GATHER_NODE_HP: 10, 20,
+   40, 80, 160 hits at the level it opens) and the monsters where it is caught
+   to hit ~1.9x harder (6.5% a level, ten levels a band).  So a bigger fish was
+   barely worth catching, and in a fight with a player a minnow did nearly a
+   pike's job.  Now about x1.5 a tier, on the game's screen (which shows HP
+   divided by DISPLAY_SCALE_K 5): 20, 30, 45, 65, 95.  The minnow keeps the
+   100 the owner asked for (v2.3.1765, "closer to 100").  A fish the table
+   does not know heals 100 as before.  Mirrored in src/data/gameSystems.js
+   (mirror-audit).  `fishheal: false` is the old ladder. */
+export const FISH_HEAL = Object.freeze({
+  minnow: 100,
+  clownfish: 150,
+  trout: 225,
+  salmon: 325,
+  pike: 475,
 });
 
 /* ═══ v2.3.2062: WHAT "CONSTANTLY" IS WORTH, IN NUMBERS ═══

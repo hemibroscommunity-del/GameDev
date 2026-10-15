@@ -558,6 +558,8 @@ export function prog3StatValue(ps, stat, cat, monsterLevel) {
 /* v2.3.2662: the milestone ladder (staminaMilestoneMult, MILESTONES) that
    used to be imported here is gone -- see the tombstone in abilities.js. */
 import { blocksAt, blockSize } from './abilities.js';
+/* v2.3.3260: the max-HP formula (no imports of its own, so no cycle) */
+import { healthAt } from './oneformula.js';
 
 /* XP to go from trained level L to L+1.  The legacy weaponXpRequired
  * curve (280 × 1.16^L, gameSystems.js) reused verbatim (§3-A), shifted
@@ -1023,8 +1025,14 @@ export const prog3Methods = {
   _prog3Recompute(ps) {
     if (!ps || !ps.prog3) return;
     ps.level = this._prog3CharLevel(ps);
-    ps.maxHp = Math.floor(100 + ps.level * PROG3.HP_PER_LEVEL
-      + this._prog3Pts(ps, 'hp') * PROG3.BODY.hp.per);
+    /* v2.3.3260: ONE FORMULA (oneformula.js) -- 100 + 50 a level + 40 a
+       point, so a fight between two players lasts long enough without a
+       PvP-only cut on their hits; `oneformula: false` is the old
+       100 + level x HP_PER_LEVEL + points x BODY.hp.per below, frozen. */
+    ps.maxHp = (typeof this._oneFormulaOn === 'function')
+      ? healthAt(ps.level, this._prog3Pts(ps, 'hp'), this._oneFormulaOn())
+      : Math.floor(100 + ps.level * PROG3.HP_PER_LEVEL
+        + this._prog3Pts(ps, 'hp') * PROG3.BODY.hp.per);
     /* v2.3.2662: no level multiplier.  v2.3.1733's char-10 "Second Wind"
        milestone (x1.25 on the whole pool) went with the ladder -- the owner
        never made it.  Mirrored by recalcDerived's prog3 branch

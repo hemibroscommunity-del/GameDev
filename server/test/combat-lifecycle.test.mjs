@@ -262,7 +262,10 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 
 // ── 3. _applyDamage: block, grace, resist ──
 {
-  const ps = { hp: 100, maxHp: 100, agility: 0, z: 'meadow' };
+  /* v2.3.3260: a bar of 1000 -- the one formula's cap (no blow over 30% of
+     max HP, oneformula.js) would otherwise clip the 100-point hits these
+     checks are about; the cap has its own suite (one-formula.test.mjs) */
+  const ps = { hp: 100, maxHp: 1000, agility: 0, z: 'meadow' };
   check('applyDamage: blocked hit deals 0', room._applyDamage(ps, 50, true).dmgTaken === 0 && ps.hp === 100);
 
   ps._zoneEntryGraceUntil = Date.now() + 5000;
@@ -764,6 +767,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 //       CAP_K moves with BAND.
 {
   const { STAFF_BOLT } = await import('../src/combat.js');
+  const { ONE_FORMULA } = await import('../src/oneformula.js');   /* v2.3.3260 */
   psA.z = 'meadow'; psA.dead = false; psA.dying = false;
   psA.weapon = null;
   psA.staffWeapon = { type: 'staff', tierMult: 1 };
@@ -798,6 +802,10 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     const one = room._computeAttackDamage(psA, 'staff', true, { targetLevel: bb.level }).dmg;
     const bandOne = room._computeAttackDamage(psA, 'staff', true, { targetLevel: bb.level, band: STAFF_BOLT.BAND }).dmg;
     const bow = room._computeAttackDamage(psA, 'ranged', true, { targetLevel: bb.level }).dmg;
+    /* v2.3.3260: the one formula's bolt is worth STAFF_BOLT_K of its orbs
+       (oneformula.js), rounded once where the worker credits it */
+    const BK = ONE_FORMULA.STAFF_BOLT_K;
+    const W = (orbs) => Math.round(bandOne * orbs * BK);
 
     // (a) one send, one number, one draw worth three orbs.
     reset();
@@ -806,11 +814,11 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     check('big bolt: one orbs:3 send lands as ONE monster_hit',
       a.length === 1, a.length);
     check('big bolt: that hit is ONE draw from its own band, worth three orbs',
-      a.length === 1 && a[0].payload.dmg === bandOne * 3, { got: a[0] && a[0].payload.dmg, bandOne });
-    check('big bolt: ...which at mid-band is worth more than three basic-band orbs (the band sits higher)',
-      bandOne * 3 > one * 3, { bolt: bandOne * 3, orbs: one * 3 });
+      a.length === 1 && a[0].payload.dmg === W(3), { got: a[0] && a[0].payload.dmg, bandOne, want: W(3) });
+    check('big bolt: ...which at mid-band draws higher than a basic-band orb (the band sits higher)',
+      bandOne > one, { bolt: bandOne, orb: one });
     check('big bolt: the credited contribution matches the hit',
-      bb.dmgByPlayer[psA.id || Object.keys(bb.dmgByPlayer)[0]] === bandOne * 3, bb.dmgByPlayer);
+      bb.dmgByPlayer[psA.id || Object.keys(bb.dmgByPlayer)[0]] === W(3), bb.dmgByPlayer);
 
     // (b) it filled the special lane: the next special on this monster is dropped.
     await send({ slot: 'staff', special: true });
@@ -821,7 +829,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     reset();
     await send({ slot: 'staff', special: true, orbs: 99 });
     check('big bolt: orbs is clamped to 3',
-      hitsOn().length === 1 && hitsOn()[0].payload.dmg === bandOne * 3, hitsOn().map((e) => e.payload.dmg));
+      hitsOn().length === 1 && hitsOn()[0].payload.dmg === W(3), hitsOn().map((e) => e.payload.dmg));
     // ...and with only one lane slot left it is worth one orb.
     reset();
     await send({ slot: 'staff', special: true });
@@ -829,7 +837,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     room.eventBuffer.length = 0;
     await send({ slot: 'staff', special: true, orbs: 3 });
     check('big bolt: with one lane slot left it is worth one orb, not three',
-      hitsOn().length === 1 && hitsOn()[0].payload.dmg === bandOne, { got: hitsOn().map((e) => e.payload.dmg), bandOne });
+      hitsOn().length === 1 && hitsOn()[0].payload.dmg === W(1), { got: hitsOn().map((e) => e.payload.dmg), bandOne, want: W(1) });
 
     // (d) ignored off the staff and off specials; junk -> one roll.
     reset();
@@ -845,7 +853,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
       reset();
       await send({ slot: 'staff', special: true, orbs: junk });
       const d = hitsOn().map((e) => e.payload.dmg);
-      const want = junk === '3' ? bandOne * 3 : (junk === 2.9 ? bandOne * 2 : one);
+      const want = junk === '3' ? W(3) : (junk === 2.9 ? W(2) : one);
       check('big bolt: junk orbs ' + JSON.stringify(junk) + ' is read safely',
         d.length === 1 && d[0] === want, { got: d, want });
     }
@@ -865,7 +873,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     // (f) the blast.
     reset();
     await send({ slot: 'staff', special: true, orbs: 3 });
-    const blastEach = Math.max(1, Math.round(bandOne * 3 * STAFF_BOLT.BLAST.FRAC));
+    const blastEach = Math.max(1, Math.round(bandOne * 3 * BK * STAFF_BOLT.BLAST.FRAC));
     const n1 = hitsOn(near1), n2 = hitsOn(near2), nf = hitsOn(far);
     check('big bolt blast: a monster 50 px away takes a third of the bolt, as a splash',
       n1.length === 1 && n1[0].payload.dmg === blastEach && n1[0].payload.splash === true, { got: n1.map((e) => e.payload), blastEach });
@@ -1088,7 +1096,9 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('resilience: small hit untouched', small.dmgTaken === 30 && ps.hp === _hpAfterBig - 30, small);
 
   // Last Stand: a killing blow leaves exactly 1 HP, once per cooldown.
-  const ps2 = { hp: 50, maxHp: 100, agility: 0, z: 'meadow', hpSpec: { laststand: 100 } };
+  /* v2.3.3260: at 10 of 100 -- under the one formula a blow takes at most 30
+     of a 100 bar (oneformula.js HIT_CAP), so a killing blow needs a low bar */
+  const ps2 = { hp: 10, maxHp: 100, agility: 0, z: 'meadow', hpSpec: { laststand: 100 } };
   const saved = room._applyDamage(ps2, 500, false);
   check('last stand: lethal hit leaves 1 HP', saved.lastStand === true && ps2.hp === 1, { hp: ps2.hp, saved });
   check('last stand: cooldown armed (20s floor at 100 pts, v2.3.1343)',
@@ -1642,7 +1652,10 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     // Crossing INTO the band on one big hit must also write at once —
     // the check runs after damage, so there is no way to slip past it.
     psA._regenSaveAt = Date.now(); psA._regenDirty = false;
-    psA.hp = 1000;
+    /* v2.3.3260: from 45% -- one blow takes at most 30% of the bar under the
+       one formula (oneformula.js HIT_CAP), so "one big hit into the band" is
+       a 25% one */
+    psA.hp = Math.round(psA.maxHp * 0.45);
     puts.length = 0;
     /* v2.3.1625: DEFLAKE.  psA carries agility 200 by this point, so
        _applyDamage rolls a 16% passive dodge (Math.random) -- a dodged
@@ -1657,7 +1670,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
        the stats it expects. */
     const _agiSave = psA.agility, _especSave = psA.enduranceSpec, _evAccSave = psA._evadeAcc;
     psA.agility = 0; psA.enduranceSpec = {}; psA._evadeAcc = 0;
-    room._applyDamage(psA, 800, false); // 1000 -> 200, straight into the band
+    room._applyDamage(psA, Math.round(psA.maxHp * 0.25), false); // 45% -> 20%, straight into the band
     psA.agility = _agiSave; psA.enduranceSpec = _especSave; psA._evadeAcc = _evAccSave;
     room._saveRpgVitals('pa', psA);
     check('hp coalesce: a hit that crosses into the band writes immediately',

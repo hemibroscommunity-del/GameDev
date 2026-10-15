@@ -58,6 +58,7 @@
  * Pure: no React, no DOM, no window.  StatDemo turns the beats into its
  * timeline; the server suite imports this file under plain node.
  */
+import { specialMultFor, staffBoltK, monsterHitK, hitCapHp } from '../../../data/oneFormula.js'; /* v2.3.3260: one formula for every fight */
 import {
   WEAPON_TYPES, SWING_COOLDOWN, SPEED, swingCooldownMultFor, weaponSwingMult,
   combatHitBase, weaponVarBand, CRIT_ANCHOR_MULT, STAFF_BIG_BOLT_BAND,
@@ -235,7 +236,7 @@ export function offenseOf(R, wpn, slime) {
        big bolt drawing from a wider one (combat.js v2.3.2849) */
     rangeTop: hb.base * band[1] + hb.flat,
     crit: critOf(R, wpn, mlvl),
-    specMult: (wpn.type === 'staff' ? 2.0 : 3.0) * prog3SpecialMult(R, cat, mlvl),
+    specMult: specialMultFor(wpn.type) * prog3SpecialMult(R, cat, mlvl),   /* v2.3.3260: a sword's 4.5 under the one formula */
     volatile: !!wpn.isVolatile,
     /* the flame-gem amulet, on an elemental weapon only (combat.js v2.3.1139) */
     amulet: (ab && ab.stat === 'elemDmg' && el) ? 1 + ab.value / 100 : 1,
@@ -265,7 +266,7 @@ export function rollHit(off, uVar, uCrit, special, band) {
  *  credited figure is rounded once more (x the fracture mult, 1 on a slime). */
 export function landedDmg(rolled, orbs, part) {
   let dmg = rolled.dmg;
-  if (orbs > 1) dmg *= orbs;
+  if (orbs > 1) dmg *= orbs * staffBoltK();   /* v2.3.3260: the one formula's bolt worth */
   if (part > 1) dmg = dmg * Math.min(1, BOW_VOLLEY.WORTH / part);
   return Math.max(1, Math.round(Math.max(1, dmg)));
 }
@@ -309,6 +310,8 @@ export function takenOf(R, slime) {
   }
   const armor = 1 - getArmorDrPct(R);
   if (armor < 1) dmg = Math.max(1, Math.round(dmg * armor));
+  /* v2.3.3260: no blow over 30% of the bar (combat.js _applyDamage) */
+  dmg = Math.min(dmg, hitCapHp(R && R.maxHp));
   return { dmg, dodge };
 }
 /** The blue slime's burst: flat, ELEMENTAL -- so Dodge and Defense never meet
@@ -316,7 +319,9 @@ export function takenOf(R, slime) {
  *  half your max HP (telegraph.js MAX_HIT_PCT). */
 export function burstOf(R) {
   const maxHp = (R && R.maxHp) || 100;
-  const raw = Math.min(Math.ceil(BLUE_BURST.DMG), Math.max(1, Math.floor(maxHp * BLUE_BURST.MAX_HIT_PCT)));
+  /* v2.3.3260: the flat amount scaled with the bars as the worker scales it
+     (telegraph.js, oneformula.js monsterHitK at the blue slime's level) */
+  const raw = Math.min(Math.ceil(BLUE_BURST.DMG * monsterHitK(blueSlimeLevel())), Math.max(1, Math.floor(maxHp * BLUE_BURST.MAX_HIT_PCT)));
   let dmg = Math.max(1, Math.round(raw));
   if (R && R.prog3) {
     const mult = 1 - prog3EresPct(R, blueSlimeLevel());
@@ -324,7 +329,7 @@ export function burstOf(R) {
   }
   const armor = 1 - getArmorDrPct(R);
   if (armor < 1) dmg = Math.max(1, Math.round(dmg * armor));
-  return dmg;
+  return Math.min(dmg, hitCapHp(maxHp));   /* v2.3.3260: the one cap */
 }
 
 /* The derived pools a point changes (max HP, max stamina, the stamina block

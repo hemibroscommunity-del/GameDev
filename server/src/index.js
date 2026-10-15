@@ -188,6 +188,9 @@ import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow speci
 import { spawnScaleMethods } from './spawnscale.js';
 import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.2978 */
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
+import { pvpBalanceMethods } from './pvpbalance.js'; /* v2.3.3260: PvP hits rolled by the worker, and tuned */
+import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle of a fight -- the body stays */
+import { oneFormulaMethods } from './oneformula.js'; /* v2.3.3260: one formula for every fight -- health, monsters' hits, the hit cap, two specials */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into a shield on the worker */
 import { aggroGridMethods } from './aggrogrid.js'; /* v2.3.3201: a monster looks for players near it, not through every one */
@@ -500,6 +503,10 @@ export const PRIVILEGED_EVENTS = new Set([
      immediately after, so it never reaches the rebroadcast branch from the
      server side; the deny-list is what stops a CLIENT sending it. */
   'room_full',
+  /* v2.3.3260: the refusal of a join while your body lingers in a fight
+     (linger.js) -- server-emitted only; a forged one would tell every phone
+     in the room to wait out a countdown it never earned. */
+  'linger_wait',
   /* v2.3.2101: the contest's public state (is it running, how many of the
      three are left, the rate the worker will actually roll). Server-EMITTED,
      so it MUST be here or a client could forge it -- and a forged "0 left"
@@ -1644,7 +1651,10 @@ export class GameRoom {
     const variantHpMult = variantKey ? this._variantHpMult(variantKey) : null;
     const hpMult = a.hpMult * ((variantHpMult != null) ? variantHpMult : 1);
     const spawnHp = Math.max(1, Math.ceil(baseHp * hpMult) + monsterHpFlat(lvl));
-    return {
+    /* v2.3.3260: ONE FORMULA (oneformula.js) -- built with its hit scaled to
+       the players' bigger bars, so it takes the same share of a matching
+       player's health as before; stamped (`_hk`) so the switch can undo it */
+    return this._monsterHitStamp({
       id,
       arch: spawn.arch,
       // Variant tag used at kill time for skull / inventory key
@@ -1674,7 +1684,7 @@ export class GameRoom {
       targetId: null, // player being chased
       atkCd: 0,
       respawnAt: 0,
-    };
+    });
   }
 
   // Mark a single monster / node as changed this tick.  Adds the zone
@@ -3250,6 +3260,9 @@ export class GameRoom {
        the monster list.  It costs the pool nothing extra -- the price is
        unchanged at one block (_abilityCost) and is charged exactly once. */
     if (type === 'lunge') this._lungeStrike(session, ps, payload && payload.targetId);
+    /* v2.3.3260: a special the worker charged for opens the short window in
+       which a player hit may count as a special (pvpbalance.js) */
+    if (type === 'swipe' && this._pvpSpecialPaid) this._pvpSpecialPaid(ps, Date.now());
     /* v2.3.1619b: the ONLY durable change here is a pool number, so it
        coalesces (see _saveRpgPools).  Ability use is one of the highest-
        frequency events in the game -- dodge, lunge, retreat and swipe
@@ -5908,7 +5921,15 @@ export class GameRoom {
     let _petsLeft = null;   /* v2.3.3120: see below */
     let _codexLeft = null;  /* v2.3.3209: the same, for the codex (codex.js) */
     if (session?.id) {
-      if (this.playerState[session.id]) this.playerState[session.id].disconnected = true;
+      /* ═══ v2.3.3260: LEAVING IN THE MIDDLE OF A FIGHT, THE BODY STAYS ═══
+         A player who leaves within 10 s of a hit between them and another
+         player, in the Wheel, leaves their body behind for LINGER.MS,
+         hittable (linger.js).  This close then does only what does not touch
+         the body -- the flushes, the duel/trade/party/consent bookkeeping --
+         and the rest (the body out of the world, its caches, player_leave)
+         waits for _lingerEnd. */
+      const _linger = this._lingerOnClose(session, Date.now());
+      if (this.playerState[session.id] && !_linger) this.playerState[session.id].disconnected = true;
       /* v2.3.1619: flush coalesced regen before the in-memory blob is
          dropped.  The regen tick only writes durably every
          REGEN_SAVE_MS, so a player who regenerated inside that window
@@ -5927,6 +5948,7 @@ export class GameRoom {
          stays synchronous for the AFK sweep (afk.test.mjs). */
       const _drClose = this._drOnClose(session.id);
       if (_drClose) await _drClose;
+      if (!_linger) {   /* v2.3.3260: a lingering body keeps all of this until _lingerEnd */
       delete this.playerState[session.id];
       /* v2.3.2534: drop the in-memory provenance ledger with the session.
          The record itself is durable in gear_prov:<pid> and reloads on the
@@ -5945,8 +5967,9 @@ export class GameRoom {
       _codexLeft = this._codexDirtyCopy(session.id);
       this._codexForget(session.id);
       delete this.stateHistory[session.id];
+      }
       delete this.extractions[session.id];
-      this.dirtyPlayers.delete(session.id);
+      if (!_linger) this.dirtyPlayers.delete(session.id);   /* v2.3.3260: the body's stop goes out first */
       // v2.3.1121: an active duel gets a 15s reconnect grace (iOS tab
       // suspends and deploy bounces are routine) before _tickDuels
       // forfeits it -- so this runs BEFORE the consent clear, which
@@ -5961,10 +5984,15 @@ export class GameRoom {
          join -- this only releases the fan-out lookup copy, so a room
          that has seen a thousand players does not hold a thousand Sets. */
       this._chatModOnClose(session.id);
-      this.broadcastAll({ type: 'player_leave', id: session.id });
+      if (!_linger) this.broadcastAll({ type: 'player_leave', id: session.id });   /* v2.3.3260: a lingering body is still there */
       this.broadcastAll({ type: 'player_count', count: this.getPlayerCount() - 1 });
     }
     this.sessions.delete(ws);
+    /* v2.3.3260: the last one out ends every linger (linger.js): nobody is
+       left to fight, and the tick that sweeps them stops just below */
+    if (this.sessions.size === 0 && this._lingerBodies && this._lingerBodies.size) {
+      for (const id of [...this._lingerBodies.keys()]) { const _le = this._lingerEnd(id); if (_le && _le.catch) _le.catch(() => {}); }
+    }
     if (this.sessions.size === 0 && this.tickInterval) { clearInterval(this.tickInterval); this.tickInterval = null; }
     if (_petsLeft) await this._petbookPut(session.id, _petsLeft);
     if (_codexLeft) await this._codexPut(session.id, _codexLeft);
@@ -6105,7 +6133,15 @@ export class GameRoom {
     }
     return out;
   }
-  getAllPlayerData() { const r = {}; for (const [, s] of this.sessions) { if (s.id) r[s.id] = this._gearProvCropPeer(this._peerPublic(this.playerState[s.id], s)); } return r; }
+  getAllPlayerData() {
+    const r = Object.create(null);   /* v2.3.3260: keyed by player id (TRAPS: '__proto__') */
+    for (const [, s] of this.sessions) { if (s.id) r[s.id] = this._gearProvCropPeer(this._peerPublic(this.playerState[s.id], s)); }
+    /* v2.3.3260: and a body left lingering in a fight (linger.js), with the
+       look and name it left with -- a joiner sees the body it can still hit */
+    const lb = this._lingerSessions ? this._lingerSessions() : null;
+    if (lb) for (const [id, b] of lb) { if (!(id in r) && this.playerState[id] && b && b.session) r[id] = this._gearProvCropPeer(this._peerPublic(this.playerState[id], b.session)); }
+    return r;
+  }
   getPlayerCount() { let c = 0; for (const [, s] of this.sessions) { if (s.id) c++; } return c; }
 }
 
@@ -6226,3 +6262,6 @@ Object.assign(GameRoom.prototype, tickPaceMethods); /* v2.3.3202 */
 Object.assign(GameRoom.prototype, steadyMoversMethods); /* v2.3.3203 */
 Object.assign(GameRoom.prototype, lookRelayMethods); /* v2.3.3240 */
 Object.assign(GameRoom.prototype, xpDecayMethods); /* v2.3.3251 */
+Object.assign(GameRoom.prototype, pvpBalanceMethods); /* v2.3.3260 */
+Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-fight, the body stays */
+Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */

@@ -45,6 +45,8 @@ import {
 /* v2.3.2662: staminaMilestoneMult left this import with the milestone
    ladder; the old-worker prediction is legacyStaminaMult (imported above). */
 import { blocksAt } from './abilities.js';
+/* v2.3.3260: one formula for every fight -- the bar, a monster's hit, the specials */
+import { healthAt, monsterHitK, specialMultFor, isOneFormulaEnabled } from './oneFormula.js';
 
 /* v2.3.1186: pure-display exports (BT_AUDIO, BT_ACHIEVEMENTS, MASKS,
    tile colors, generateZoneMap, emote/NPC tables) moved to
@@ -1127,8 +1129,21 @@ export function getFishHealAmount(fishKey) {
      _fishHealAmount, which is authoritative; this copy only drives the
      client's own prediction. */
   if (!tier) return 100;
+  /* v2.3.3260: the worker's new ladder (server data.js FISH_HEAL), once it
+     says it heals by it (caps.fishheal) -- an older worker still heals by the
+     old one, and this copy only predicts what it will do. */
+  if (_fishHealLadder && Object.prototype.hasOwnProperty.call(FISH_HEAL, tier.name.toLowerCase())) return FISH_HEAL[tier.name.toLowerCase()];
   return Math.ceil(92 + tier.lvl * 8);
 }
+/* ═══ v2.3.3260: WHAT EACH FISH HEALS ═══
+   Mirror of server/src/data.js FISH_HEAL (mirror-audit): about x1.5 a tier,
+   20 / 30 / 45 / 65 / 95 on the game's screen (HP shows divided by
+   DISPLAY_SCALE_K 5), where the old 92 + 8 x level flattened just as each
+   tier came to cost twice the fishing.  Read only against a worker with
+   caps.fishheal (wsClient: setFishHealEnabled). */
+export const FISH_HEAL = Object.freeze({ minnow: 100, clownfish: 150, trout: 225, salmon: 325, pike: 475 });
+var _fishHealLadder = false;
+export function setFishHealEnabled(on) { _fishHealLadder = !!on; }
 export function getFishTierLevel(fishKey) {
   var name = fishKey.replace(/^fish_/, '').toLowerCase();
   var tier = FISHING_TIERS.find(function (t) {
@@ -5180,7 +5195,9 @@ export function createMonster(id, archetype, level, x, y, element) {
     element: element || null,
     hp: Math.ceil(baseHp * a.hpMult) + monsterHpFlat(level), /* v2.3.1364: Lv1-2 -> flatLow */
     maxHp: Math.ceil(baseHp * a.hpMult) + monsterHpFlat(level),
-    dmg: Math.ceil(baseDmg * a.dmgMult),
+    /* v2.3.3260: ONE FORMULA -- its hit scaled with the players' bigger bars,
+       as the worker builds it (oneformula.js _monsterHitStamp) */
+    dmg: Math.max(1, Math.ceil(Math.ceil(baseDmg * a.dmgMult) * monsterHitK(level))),
     xp: Math.ceil(baseXp),
     gold: Math.ceil(baseGold),
     spd: 0.5 * a.spdMult,
@@ -5906,7 +5923,9 @@ export const SPECIAL_ATK_MULT = 2.0;
    specialMult — change all three together or the anticheat cap rejects
    legit specials. */
 export function specialAtkMultFor(weaponType, rpg) {
-  var base = weaponType === 'staff' ? 2.0 : 3.0;
+  /* v2.3.3260: a sword's 4.5 under the one formula (oneFormula.js
+     specialMultFor; the worker's _computeAttackDamage and its ceiling) */
+  var base = specialMultFor(weaponType, isOneFormulaEnabled());
   return rpg ? base * prog3SpecialMult(rpg, prog3CatFor(weaponType)) : base;
 }
 
@@ -6032,7 +6051,10 @@ export function recalcDerived(rpg) {
        (getArmorDrPct / _armorDrMult), and it should not ALSO be a bigger
        health bar.  There are two maxHp formulas on each side; both lost the
        term together, or a respecced player would keep the old fold. */
-    rpg.maxHp = Math.floor(100 + p3lvl * PROG3.HP_PER_LEVEL + prog3Pts(rpg, 'hp') * PROG3.BODY.hp.per);
+    /* v2.3.3260: ONE FORMULA (oneFormula.js) -- 100 + 50 a level + 40 a point
+       against a worker advertising caps.oneformula, the old 100 + 6 + 8 against
+       any other: the worker's _prog3Recompute either way. */
+    rpg.maxHp = healthAt(p3lvl, prog3Pts(rpg, 'hp'), isOneFormulaEnabled());
     /* v2.3.1733: × the milestone multiplier (Second Wind, char 10, +25%) —
        exact mirror of the server's _prog3Recompute line.  Without it the
        bar would read 100 while the worker spent from 125 and every echo

@@ -1137,6 +1137,70 @@ remnant to migrate server-side, not a mode to preserve.
         on them opened your chat;
       - `?nmlask=0` is the game as it was; `nomansland` §3-4, `mp-nmlask`,
         `mp-nomansland` step 2: no-mans-land.md "Attacking is a choice".
+    - since v2.3.3260 FIGHTS BETWEEN PLAYERS LAST, FISH MATTER IN THEM, AND
+      LEAVING IS NO ESCAPE -- the owner, after the time-to-kill study: "I want
+      you to plan and implement fixes for all of these including how much HP
+      each fish should heal. You're the expert on this not me"
+      (docs/specs/pvp-fights.md, measured on `tools/pvp-sim/`, a fight
+      simulator running the worker's own combat code); then, of the first
+      cut's numbers for player fights only: "I just want one formula that
+      works the same across everything" (docs/specs/one-formula.md):
+      - equal Lv 12 players with no points died in 1.5-4.5 s (a staff in one
+        hit, 191% of a bar), specials 70-94% of the damage, a sword hit twice
+        a swing (~24 claims a swing), crits never happened (a fraction read as
+        a percentage), and every hit was the PHONE'S number;
+      - THE WORKER ROLLS EVERY PvP HIT (server/src/pvpbalance.js, called by
+        combat.js `_resolvePvPAttack`): the monster path's own roll, WHOLE --
+        no PvP number of any kind; a special counts only inside the 3.5 s
+        window a swipe the worker charged opened, worth ONE special
+        (`_pvpSpecialCost`); a sword lands ONE hit a swing (`sw`,
+        src/game/pvpSwing.js: at most three claims a swing, in reach; an older
+        page one per 450 ms); `orbs`/`part` on the shot (a retreat shot is a
+        whole hit, as on a monster); `caps.pvpbalance` (read beside
+        `caps.oneformula`), kill switch `pvpbalance: false` (the old claim
+        path exactly);
+      - ONE FORMULA FOR EVERY FIGHT (server/src/oneformula.js, the page's copy
+        src/data/oneFormula.js on `caps.oneformula`, mirror-audit): max HP
+        100 + 50 a level + 40 a Max HP point (was 6 and 8; prog3.js
+        `_prog3Recompute` via `healthAt`; PROG3.HP_PER_LEVEL / BODY.hp.per stay
+        the old worker's); every monster's `dmg` x `monsterHitK(level)` (its
+        matching player's new bar over the old, character level = monster
+        level + 2) at creation (`_monsterHitStamp`, `_hk`; index.js and
+        dungeon.js), the slime burst's and fire trail's flat amounts too -- a
+        monster takes the same share of a matching bar as before; NO BLOW OVER
+        30% OF A PLAYER'S MAX HP, whoever lands it (`_applyDamage`,
+        `_hitCapHp`); the sword's special 4.5x (was 3; the ceiling with it),
+        the staff's big bolt x0.6 (`STAFF_BOLT_K`); a bar that changed size
+        keeps its fullness at the join (`_keepBarFullness`); Lv 12 copper set:
+        sword 9.9 s, bow 12.2, staff 13.3; kill switch `oneformula: false`
+        (re-sizes every bar and live monster at once, liveops.js);
+      - THE FISH LADDER (data.js `FISH_HEAL`, mirror gameSystems.js on
+        `caps.fishheal`): 100/150/225/325/475 (20/30/45/65/95 on screen), a
+        fifth to two fifths of the one formula's bar where each is caught,
+        the same heal in any fight; ONE BITE EVERY 15 s IN ANY FIGHT (cooking.js
+        `_anyFightAt`: a duel, a hit between players, or a blow dealt or taken
+        by anything within 10 s; the page's fightFood.js `fightSeen`,
+        `noteDealt`); kill switch `fishheal: false`;
+      - QUICK EAT (src/game/quickEat.js, ui/panels/QuickEatButton.jsx, the left
+        cluster's `LCTL_SLOT.eat`, V on a keyboard): the smallest heal that
+        fills what you miss, else the biggest, through eatBus; shown while you
+        carry one and miss HP, the bite rule's wait as its ring; its pictures
+        warmed on the loading screen (data/foodIcons.js);
+      - LEAVING MID-FIGHT (server/src/linger.js): within 10 s of a hit between
+        players, in the Wheel, the body STAYS 20 s, hittable, no player_leave;
+        a reconnect from where it stands takes it back, any other join gets
+        `linger_wait {ms}` + close 4010 (src/ui/LingerScreen.js counts down);
+        not duels, not the last one in the room; kill switch `linger: false`;
+      - THE SHIELD AGAINST A PLAYER: the button already shows for every weapon
+        (a lock, a blow in the last 5 s, a monster in reach); a guard raised
+        with no lock now faces the player who hit you in the last 3 s
+        (shieldToggle.js `noteShieldThreat`, `shieldThreatPoint`), not the
+        nearest monster -- `mp-pvpshield` (two phones);
+      - not done, the owner's call: a sword loses to a bow or staff that kites
+        it (a mechanic, not a number: the sword's lunge on players);
+      - `pvp-balance`, `one-formula`, `linger`, `fightfood` §4-4c/§7,
+        mirror-audit "fish heal"/"ONE_FORMULA", `mp-quickeat`, `mp-linger`,
+        `mp-pvpshield`.
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":

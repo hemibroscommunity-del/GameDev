@@ -36,6 +36,7 @@ import {
 } from '../../src/data/prog3.js';
 import { setGearQEnabled, recalcDerived, STAFF_BIG_BOLT_BAND } from '../../src/data/gameSystems.js';
 import { setBlockScaleEnabled } from '../../src/data/abilities.js';
+import { setOneFormulaEnabled } from '../../src/data/oneFormula.js'; /* v2.3.3260 */
 import { BOW_VOLLEY } from '../../src/game/bowVolley.js';
 import {
   sceneSlime, offenseOf, rollHit, landedDmg, takenOf, burstOf, simulateStatScene, prepareStatScene,
@@ -64,6 +65,9 @@ function check(name, cond, detail) {
 setProg3Enabled(true); setProg3XEnabled(true); setProg3ElemEnabled(true);
 setProg3SharedEnabled(true); setProg3RelEnabled(true); setMilestonesRetired(true);
 setGearQEnabled(true); setBlockScaleEnabled(true);
+/* v2.3.3260: the worker below runs the one formula (oneformula.js), so the
+   page's copy predicts with it, as wsClient sets it from caps.oneformula */
+setOneFormulaEnabled(true);
 
 const room = new GameRoom(mockState, mockEnv);
 const origRandom = Math.random;
@@ -234,7 +238,9 @@ for (const b of BUILDS) {
   /* the blue slime's burst: elemental, so Resist alone cuts it */
   for (const eres of [0, 3, 15]) {
     const ch = makeChar({ prog3: { sk: { sword: { level: 8, xp: 0 }, bow: { level: 6, xp: 0 }, staff: { level: 4, xp: 0 } }, atk: {}, alloc: { eres, def: 10, dodge: 10 }, pool: 0 } });
-    const raw = Math.min(Math.ceil(SLIME_BURST.DMG), Math.max(1, Math.floor(ch.maxHp * TELEGRAPH.MAX_HIT_PCT)));
+    /* v2.3.3260: the flat amount x the one formula's hit multiplier at the
+       blue slime's level, as telegraph.js lands it */
+    const raw = Math.min(Math.ceil(SLIME_BURST.DMG * room._monsterHitK(SERVER_ZONES.verdant.level[0])), Math.max(1, Math.floor(ch.maxHp * TELEGRAPH.MAX_HIT_PCT)));
     ch.hp = ch.maxHp;
     rig([0]);   /* a would-be dodge -- an elemental hit cannot be dodged */
     const res = room._applyDamage(ch, raw, false, { elemental: true, attackerLevel: SERVER_ZONES.verdant.level[0] });
@@ -667,11 +673,15 @@ for (const b of BUILDS) {
     }
   }
   /* the owner's own case: six points, "37" -- a character whose level puts
-     it there (100 + 6 x 6 = 136 raw, 28 shown; + 48 = 184 raw, 37 shown) */
+     it there (then 100 + 6 x 6 = 136 raw, 28 shown; + 48 = 184 raw, 37 shown;
+     v2.3.3260's one formula: 100 + 50 x 6 = 400 raw, 80 shown; + 6 x 40 =
+     640 raw, 128 shown).  The window reads the POOL'S total, never the points'
+     own bonus (6 x 40 = 240 raw, 48 shown -- by coincidence the old raw 48). */
   const C6 = makeChar({ prog3: { sk: { sword: { level: 4, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } }, atk: {}, alloc: {}, pool: 0, shared: 20 } });
   const pv6 = previewStatPoint(C6, 'hp', 'sword', 6);
   check(`the owner's six points: the window reads ${pv6 && pv6.statNow} -> ${pv6 && pv6.statAfter} (was "0.0 -> 48.0")`,
-    !!pv6 && pv6.statNow === poolShown('hp', pooled(C6)) && pv6.statAfter > pv6.statNow && pv6.statAfter < 48, pv6);
+    !!pv6 && pv6.statNow === poolShown('hp', pooled(C6)) && pv6.statAfter === poolShown('hp', pooled(withPoints(C6, 'hp', 'sword', 6)))
+      && pv6.statNow === 80 && pv6.statAfter === 128, pv6);
   /* stamina and mana read their pools too, and a non-pool stat is untouched */
   const pvS = previewStatPoint(C6, 'stam', 'sword', 3), pvM = previewStatPoint(C6, 'mana', 'sword', 3), pvD = previewStatPoint(C6, 'def', 'sword', 3);
   check('Stamina and Max Mana read their pools, Defense is still its own percentage',

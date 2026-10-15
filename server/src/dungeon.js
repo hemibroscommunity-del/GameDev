@@ -342,7 +342,9 @@ export const dungeonMethods = {
     const x = (3 + Math.random() * (inst.cfg.width - 6)) * this.TILE;
     const y = (2 + Math.random() * (inst.cfg.height / 2 - 2)) * this.TILE;
     const spd = 0.5 * a.spdMult;
-    return {
+    /* v2.3.3260: ONE FORMULA -- the hit scaled to the players' bigger bars, as
+       index.js _makeZoneMonster does (oneformula.js _monsterHitStamp) */
+    return this._monsterHitStamp({
       id: 'dm-' + inst.id + '-' + idSuffix,
       arch: archKey,
       variant: null, spawnVariant: null, spawnSpd: spd,
@@ -359,7 +361,7 @@ export const dungeonMethods = {
       alive: true, targetId: null, atkCd: 0,
       respawnAt: 0,
       noRespawn: true,
-    };
+    });
   },
 
   _dungeonSpawnWave(inst) {

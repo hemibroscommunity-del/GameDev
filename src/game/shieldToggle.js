@@ -29,10 +29,45 @@ import { targetCandidates } from '@/game/targeting.js'; /* v2.3.2472: the neares
    whole meaning of a lock), else wherever the body is facing.  Called on the
    raise AND every frame while up (BroTown's loop), so a block always faces
    the thing you are fighting as it moves. */
+/* ═══ v2.3.3260: ...OR THE PLAYER WHO JUST HIT YOU ═══
+   Owner, on No man's land: "confirm that the shield button does become
+   available the moment you're in combat for any weapon type".  It does -- a
+   lock, a blow taken in the last 5 s, or a monster in reach lights it for a
+   sword, a bow or a staff alike (shieldButtonLive below) -- but with no lock
+   a guard raised against a PLAYER pointed at the nearest MONSTER, or at
+   whatever angle the last gesture left, and the worker measures the block's
+   arc (+/-60 degrees) at impact, so the arrow that lit the button walked past
+   the shield it lit.  A pvp_hit on this page (gameEvents.js) remembers who
+   threw it; for SHIELD_THREAT_MS the guard faces them -- below a lock (that
+   is still what a lock is for), above the nearest monster (a player hitting
+   you is a live threat, the monster only the closest thing). */
+export const SHIELD_THREAT_MS = 3000;
+export function noteShieldThreat(S, payload, now) {
+  if (!S || !payload || !S.myId || payload.target !== S.myId) return false;
+  if (!payload.attacker || payload.attacker === S.myId) return false;
+  S._shieldThreat = { id: payload.attacker, at: typeof now === 'number' ? now : Date.now() };
+  return true;
+}
+/* Where the last player to hit this page stands, while it is fresh and they
+   are drawn here (a parked far copy -- presence v2 -- or a dead one is no
+   threat to face). */
+export function shieldThreatPoint(S, now) {
+  const th = S && S._shieldThreat;
+  if (!th) return null;
+  const t = typeof now === 'number' ? now : Date.now();
+  if (!(t - th.at < SHIELD_THREAT_MS)) return null;
+  const o = S.others && Object.prototype.hasOwnProperty.call(S.others, th.id) ? S.others[th.id] : null;
+  if (!o || o._isDead || o.dead || o._away) return null;
+  return lockAimPoint(o);
+}
+
 export function shieldAimAngle(S) {
   if (!S || !S.player) return 0;
   const pt = lockAimPoint(S.lockedTarget && S.lockedTarget.ref);
   if (pt) return Math.atan2(pt.y - S.player.y, pt.x - S.player.x);
+  /* v2.3.3260: the player who just hit you (the note above) */
+  const tp = shieldThreatPoint(S);
+  if (tp) return Math.atan2(tp.y - S.player.y, tp.x - S.player.x);
   /* ═══ v2.3.2472: NO LOCK? POINT IT AT THE NEAREST MONSTER ═══
      Owner (D8): the shield button comes back for bow and staff and "auto-aims
      at the nearest monster".  Those two weapons acquire NOTHING automatically

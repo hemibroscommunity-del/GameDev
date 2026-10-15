@@ -305,6 +305,12 @@ room._handlePlayerDeath(psB, 'bp_duel_b', 'pvp:bp_duel_a');
 check('zero-wager duel resolves cleanly on kill', room._duelFor('bp_duel_a') === null);
 
 // ── 9. PvP attack resolution: kind-aware range + scaled/mitigated damage (v2.3.1302) ──
+/* v2.3.3260: §9-10 pin the CLAIM's arithmetic (the phone's dmgBase x 0.5 x
+   def, the claim's crit, the special lane by the phone's word), which is the
+   old path's -- `pvpbalance: false`.  The new path (the worker's own roll,
+   the paid special, one sword hit a swing, the cap) is pvp-balance.test.mjs;
+   the geometry below (range, kind, single target, died) is shared code. */
+room._liveFlags = { pvpbalance: false };
 // Fresh zero-wager duel to re-arm the consent pair after section 8 resolved it.
 psB.dying = false; psB.dead = false; psB.hp = 100; psB.maxHp = 100;
 await room._interceptDuel('bp_duel_a', { type: 'duel_request', payload: { target: 'bp_duel_b', fromName: 'A' } });
@@ -413,6 +419,7 @@ room._resolvePvPAttack(sessA, pvpAtk({ kind: 'ranged', range: 360 }));
 const hit10f = room.eventBuffer.find((e) => e.type === 'pvp_hit');
 check('lethal hit carries died:true', hit10f && hit10f.payload.died === true && psB.hp === 0, hit10f && hit10f.payload);
 psB.hp = 100; psB.dying = false; psB.dead = false;
+room._liveFlags = {};   /* v2.3.3260: back to the game as it is */
 
 // ── 11. town HP regen is gated DURING a duel (v2.3.1613) ──
 // Hub regen restores 10% of maxHp every ~670 ms, roughly 15 hp/s at maxHp
