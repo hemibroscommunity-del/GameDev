@@ -478,8 +478,11 @@ export const telegraphMethods = {
        small enough that a multiplier big enough to reach 60 would swing
        wildly with monster level.  It still passes through MAX_HIT_PCT below,
        so a flat number can never become a one-shot on a fresh character. */
+    /* v2.3.3258: ONE FORMULA -- a flat amount is scaled with the players' bars
+       as every monster's own `dmg` is (oneformula.js), or the slime's burst
+       would shrink to a fifth of what it was against them */
     const raw = Math.min(
-      kit.flat ? Math.ceil(kit.flat) : Math.ceil(m.dmg * kit.dmgMult),
+      kit.flat ? Math.ceil(kit.flat * this._monsterHitK(m.level)) : Math.ceil(m.dmg * kit.dmgMult),
       Math.max(1, Math.floor((ps.maxHp || 100) * TELEGRAPH.MAX_HIT_PCT)),
     );
     /* v2.3.2512: the blue slime's death burst is an ELEMENTAL blast and the

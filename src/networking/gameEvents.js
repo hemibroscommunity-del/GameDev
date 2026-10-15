@@ -45,7 +45,7 @@ import { holdFarmUntilReady } from '@/game/farmTrip.js';
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, heroPopupY, peerPopupY /* v2.3.3026: a hit on you pops over your head */, isAttackInShieldArc, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
-import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield */
+import { dropShield, noteShieldThreat } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield; v2.3.3258: and faces who hit you */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
 import { pushAbilityRings, BASH_POSE_MS } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave; v2.3.2920 + its pose window */
@@ -104,7 +104,7 @@ export function dmgIconForSlot(S, payload, isOwn) {
   return SLOT_ICON[(R && R.activeSlot) || 'melee'] || 'sword';
 }
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
-import { notePvpHit } from '@/game/fightFood.js'; /* v2.3.3133: a pvp_hit starts a fight with a player (the one-bite rule) */
+import { notePvpHit, noteDealt } from '@/game/fightFood.js'; /* v2.3.3133: a pvp_hit starts a fight with a player (the one-bite rule); v2.3.3258: so does a hit you land on a monster */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -2173,6 +2173,10 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'monster_hit':
             {
+              /* v2.3.3258: a blow this page landed puts it in a fight for the
+                 one-bite rule (fightFood.js noteDealt; the worker's
+                 _lastDealtAt) -- before anything below decides what to draw */
+              noteDealt(S, payload);
               /* A monster was hit — show damage number and hit effects for everyone */
               if (S.monsters) {
                 var hitM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
@@ -3449,7 +3453,7 @@ export function processGameEvent(type, payload, S, deps) {
                    the worker's resolved dmgBase -- the brew it put on. */
                 var _ffq = window.__btFightFood || (window.__btFightFood = { hits: [] });
                 _ffq.hits.push({ attacker: payload.attacker, target: payload.target, dmgBase: payload.dmgBase,
-                  dmgTaken: payload.dmgTaken, at: Date.now() });
+                  dmgTaken: payload.dmgTaken, blocked: !!payload.blocked, at: Date.now() });   /* v2.3.3258: + blocked (mp-pvpshield) */
                 if (_ffq.hits.length > 60) _ffq.hits.shift();
               }
               // §16.12 — Server-authoritative PvP hit (lag-compensated)
@@ -3555,6 +3559,7 @@ export function processGameEvent(type, payload, S, deps) {
                  A duel is where a shield that survives its first block matters
                  most, so the two branches must not drift apart. */
               S.lastDamageTaken = Date.now();   /* v2.3.2242 (post-review): a duel hit is combat too */
+              noteShieldThreat(S, payload);      /* v2.3.3258: a guard raised now faces whoever threw it (shieldToggle.js) */
               if (payload.isCrit) dmgTaken = Math.ceil(dmgTaken * 1.5);
               /* Prefer the server's resolved dmgTaken when present
                  (worker now applies HP damage and the value rides on

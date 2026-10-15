@@ -20,8 +20,8 @@
  *     BIGGEST -- so a scratch never costs your pike and a deep wound gets
  *     the most you carry; a tie goes to the one you carry more of;
  *   - each heal as this page predicts it (calcDisplayHeal, the worker's own
- *     arithmetic: Recovery included) and a quarter of it in a fight with a player
- *     (fightFood.js pvpHealSized, as the worker sizes it).
+ *     arithmetic: Recovery included) -- the same in any fight (v2.3.3258's one
+ *     formula; the first cut sized it to a quarter in a fight with a player).
  *
  * The tap goes through eatBus, the bag's own Eat (BroTown's handler: the
  * one-bite rule's wait, the prediction, `eat_request`), so the worker decides
@@ -34,11 +34,10 @@
  *
  * Imports only the light rules files, so the worker's suites can run it; the
  * heal function is handed in (the button passes calcDisplayHeal). */
-import { isInstantHeal, pvpHealSized, pvpHealWaitMs, PVP_HEAL } from './fightFood.js';
+import { isInstantHeal, pvpHealWaitMs, PVP_HEAL } from './fightFood.js';
 import { dishFor } from '../data/dishes.js';
 
-/* The heals you could eat now: [{ key, count, heal }], heal as it would land
-   (half in a fight with a player). */
+/* The heals you could eat now: [{ key, count, heal }], heal as it would land. */
 export function quickEatChoices(S, healOf, now) {
   var R = S && S.rpg;
   var inv = R && R.inventory;
@@ -52,7 +51,7 @@ export function quickEatChoices(S, healOf, now) {
     if (!isInstantHeal(key, dish)) continue;
     var h = Number(healOf(R, key)) || 0;
     if (!(h > 0)) continue;
-    out.push({ key: key, count: n, heal: pvpHealSized(S, h, now) });
+    out.push({ key: key, count: n, heal: h });
   }
   return out;
 }

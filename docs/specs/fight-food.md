@@ -78,8 +78,11 @@ this change" at the end.
   - within 10 s (`PVP_HEAL.WINDOW_MS`) of a hit between you and another
     player, either way.
 - The 15 s count from your last such heal, wherever you ate it.
+  - **since v2.3.3258's one formula, within 10 s of a blow you dealt or took
+    from anything** -- a monster's too (`cooking.js _anyFightAt`, the page's
+    `fightFood.js fightSeen`; `docs/specs/one-formula.md`). With
+    `oneformula: false` a fight with monsters is not limited, as before.
 - Never limited:
-  - fighting monsters;
   - the half-hour meals and brews, which are not heals.
 - **The worker decides** (`cooking.js _pvpHealWait`). Every road to a heal
   eaten at once is held:

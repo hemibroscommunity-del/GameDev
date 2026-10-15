@@ -6,15 +6,16 @@
  * worker's own code, called in-process on a real GameRoom:
  *   - every landed attack goes through GameRoom._resolvePvPAttack exactly as a
  *     `player_attack` would (range, arc, the lanes, the shield arc, the roll's
- *     i-frames, the PvP numbers of pvpbalance.js, _applyDamage: armour, the
- *     cap, rounding);
+ *     i-frames, the worker's own roll of pvpbalance.js, _applyDamage: armour,
+ *     the one cap, rounding);
  *   - stamina and mana refill through GameRoom._tickPlayerRegen every regen
  *     tick; specials and rolls are priced and paid by GameRoom._abilityCost /
  *     _handleAbilityUse (which opens the PvP special window);
- *   - HP, mana pools and block counts come from GameRoom._prog3Recompute, and
- *     each weapon's base hit from GameRoom._maxWeaponDmg;
- *   - a bite of food is the worker's (cooking.js _fishHealAmount,
- *     _pvpHealSized, the one-bite clock _pvpHealWait).
+ *   - HP, mana pools and block counts come from GameRoom._prog3Recompute (the
+ *     one formula's health, oneformula.js), and each weapon's base hit from
+ *     GameRoom._maxWeaponDmg;
+ *   - a bite of food is the worker's (cooking.js _fishHealAmount, the
+ *     one-bite clock _pvpHealWait).
  * What the PAGE decides is restated here from the game's code (cited per
  * line): what each attack claims, how often, how projectiles fly and hit
  * (CLIENT.mode 'new' is v2.3.3258's page, 'old' the page before it).  What a
@@ -25,7 +26,7 @@
  *   import { fight, describe, seed, setTune, room } from './sim.mjs';
  *   fight({ style: 'melee', L: 10, tm: 1.25, chest: 1, legs: 1 }, 'moderate',
  *         { style: 'bow', L: 10, tm: 1.25, chest: 1, legs: 1 }, 'moderate');
- * Live flags go on room._liveFlags (pvp_scale, pvp_cap, pvp_heal_share, ...).
+ * Live flags go on room._liveFlags (`oneformula: false` is the old world).
  * Deterministic: seed(n) seeds the sim's dice AND the worker's (Math.random),
  * and the worker's clock is the sim's (Date.now).  Node only; nothing here
  * runs in the game or the worker.
@@ -332,8 +333,8 @@ function finishEat(f) {
   if (!f.eating || T < f.eating.until) return;
   f.eating = null;
   if (room._pvpHealWait(f.id, f.ps, Date.now()) > 0) { f.stats.eatRefused = (f.stats.eatRefused || 0) + 1; return; }
-  /* the worker's own sizing: half in a fight with a player (cooking.js _pvpHealSized, v2.3.3258) */
-  const heal = room._pvpHealSized(f.id, f.ps, Math.ceil(room._fishHealAmount(f.food.key)) + room._recoveryFlat(f.ps));
+  /* the worker's own heal, the same in any fight (cooking.js, the one formula) */
+  const heal = Math.ceil(room._fishHealAmount(f.food.key)) + room._recoveryFlat(f.ps);
   room._noteInstantHeal(f.id);
   f.food.n -= 1;
   const before = f.hp;

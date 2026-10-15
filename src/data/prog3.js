@@ -20,6 +20,7 @@
    is the same direction the server uses (server/src/prog3.js imports
    abilities.js, never the reverse). */
 import { rpgBlockSize } from './abilities.js';
+import { healthPerPoint } from './oneFormula.js'; /* v2.3.3258: a Max HP point's worth */
 
 export const PROG3 = {
   SKILLS: ['sword', 'bow', 'staff'], // storage keys; displayed Melee / Bow / Magic
@@ -320,6 +321,8 @@ export const PROG3_BODY_META = [
      glossary is a global map and does not care what is on screen.
      If the two ever DO read as confusable to a player, "Haste" is the
      pre-agreed fallback for `move`. */
+  /* v2.3.3258: '+8' is now ON SCREEN -- the one formula's 40 a point, shown
+     divided by DISPLAY_SCALE_K 5 like every bar (it was the old worker's raw 8) */
   { key: 'hp',    label: 'Max HP', short: 'HP',      perText: '+8 max HP',                    unit: ' HP',             hook: 'Take more hits before going down.', iconSrc: '/icons/ui/stat/hp.png?v=2.3.2642' , tint: '#592C32', edge: '#FC311D' } /* v2.3.1922: plain heart */,
   { key: 'def',   label: 'Defense', short: 'DEF',     perText: '−0.4% damage taken', perTextRel: 'take less damage — the first points count most',           pct: true, unit: '% less damage', hook: 'Every hit on you hurts less.', iconSrc: '/icons/ui/stat/def.png?v=2.3.2642' , tint: '#485A7A', edge: '#BAC5CD' },
   { key: 'mana',  label: 'Max Mana', short: 'MP',    perText: '+2.5 max mana',                unit: ' mana',           hook: 'More specials and bursts per fight.', iconSrc: '/icons/ui/stat/mana.png?v=2.3.2642',             capsProg3Elem: true , tint: '#182D6D', edge: '#01A3FD' },
@@ -486,6 +489,9 @@ export function prog3StatFrac(stat, pts) {
 export function prog3StatAmount(stat, pts) {
   var d = PROG3.ATK[stat] || PROG3.BODY[stat];
   if (!d) return 0;
+  /* v2.3.3258: ONE FORMULA -- a Max HP point is 40 against a worker that says
+     so (oneFormula.js; BODY.hp.per below stays the old worker's 8) */
+  if (stat === 'hp') return Math.min(d.cap, Math.max(0, Number(pts) || 0)) * healthPerPoint();
   if (_prog3rel && d.k > 0) {
     var v = prog3Curve(pts, d.k);
     return (d.base || 0) + d.max * v;

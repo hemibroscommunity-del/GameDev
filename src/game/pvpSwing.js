@@ -28,9 +28,12 @@ export var PVP_SWING = Object.freeze({
   SLACK_PX: 24,  /* a player a stride past the reach on this screen may be in it on the worker's */
 });
 
-/* Does the worker land one hit a swing (and roll it itself)? */
+/* Does the worker land one hit a swing (and roll it itself)?  v2.3.3258: only
+   with its one formula on too (caps.oneformula) -- `oneformula: false` puts the
+   worker's resolver back on its old path while caps.pvpbalance still reads
+   true (oneformula.js). */
 export function pvpBalanceOn(S) {
-  return !!(S && S._serverCaps && S._serverCaps.pvpbalance);
+  return !!(S && S._serverCaps && S._serverCaps.pvpbalance && S._serverCaps.oneformula);
 }
 
 /* May this frame of the sweep send the swing's claim?  `sw` is the swing's

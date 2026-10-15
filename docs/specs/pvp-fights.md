@@ -9,23 +9,35 @@ and finally: *"I want you to plan and implement fixes for all of these
 including how much HP each fish should heal. You're the expert on this not
 me."*
 
-This change does five things:
+Then, on this change's first cut: *"Is there a way you can adjust like
+starting hp, damage, special attack damage, etc so that there's no special
+"PvP" versus "PVE" formulas? I just want one formula that works the same
+across everything"*.  The first cut's numbers for player fights only (a 0.4
+scale, weapon weights, special shares, a distance falloff, a quarter-size
+bite) are gone; **one formula for every fight** replaces them
+(`docs/specs/one-formula.md`).
 
-1. The worker rolls every hit between players itself, and the numbers are
-   tuned so a fight lasts seconds, not a blink.
+This change does six things:
+
+1. The worker rolls every hit between players itself, the same roll a
+   monster takes, and **one formula** makes a fight last seconds, not a
+   blink: players have the health for it, and monsters hit harder by as much
+   (`docs/specs/one-formula.md`).
 2. A sword hits once per swing (it hit twice), and a special counts only
    after the worker has charged for it.
-3. Each fish heals more than the one below it (a real ladder), and in a fight
-   with another player a bite heals a quarter of itself.
+3. Each fish heals more than the one below it (a real ladder).
 4. A **quick-eat button** eats the right fish in one tap.
 5. Closing the game in the middle of a fight is no escape: your body stays
    in the world for 20 seconds.
+6. A shield raised against a player with no lock faces the player who just
+   hit you.
 
 Everything was measured on a fight simulator that runs the worker's own
 combat code (`tools/pvp-sim/`, see "How it was measured" at the end).
 
 All HP and damage numbers below are the worker's. The game shows them
-divided by 5 (`DISPLAY_SCALE_K`): a level 12 character's 172 HP shows as 34.
+divided by 5 (`DISPLAY_SCALE_K`): a level 12 character's 700 HP shows as 140
+(it was 172, 34, before the one formula).
 
 ## What was wrong
 
@@ -75,19 +87,12 @@ And from the other two questions:
   makes against a monster** (`_computeAttackDamage`: the weapon, the trained
   level, the points, the grade, the brew, the crit). The phone's number is
   ignored, so a forged claim buys nothing and the crit chance is the real one.
-- Then the PvP numbers, each a live flag:
-
-| Number | Value | Flag | What it does |
-| --- | --- | --- | --- |
-| `SCALE` | 0.4 | `pvp_scale` | the whole hit (was 0.5 of a claim) |
-| `KIND` | sword 1.3, bow 1, staff 1 | `pvp_melee`, `pvp_ranged`, `pvp_staff` | the sword weighs more: it has to cross the ground the others hit it over |
-| `SPECIAL` | sword 0.5, bow 0.45, staff 0.3 | `pvp_sp_melee`, `pvp_sp_ranged`, `pvp_sp_staff` | a special's share against a player: the staff's big bolt is 8.4x its base where a sword special is 3x and the bow's volley 4.2x |
-| `FALLOFF` | whole to 150 px, 0.6 at 450 px and past | `pvp_near`, `pvp_far`, `pvp_min_ranged`, `pvp_min_staff` | a bow's or staff's hit loses force with distance: closing in is how a sword wins |
-| `CAP` | 0.3 | `pvp_cap` | no hit takes more than 30% of the target's max HP (after armour): nothing kills from full health |
-
-- The flags are clamped when read, so a typo cannot break the game.
-- A special still feels like one: it is the biggest hit in the fight, just not
-  the whole fight.
+- And nothing else. The first cut multiplied it by numbers for player fights
+  only (a 0.4 scale, a sword weight of 1.3, special shares of 0.5/0.45/0.3, a
+  bow's and staff's falloff with distance, a 30% cap on hits between
+  players); the owner asked for one formula, so they are gone. The fight
+  lasts because players have more health, and the 30% cap is now every
+  blow's on a player, a monster's too (`docs/specs/one-formula.md`).
 
 ### 2. One sword hit a swing, and a special only after paying for it
 
@@ -101,7 +106,9 @@ And from the other two questions:
   The worker lands the first that reaches and refuses the rest. An older game
   that sends no `sw` gets one hit per 450 ms, longer than its swing.
 - The specials say what they are, as they always did to monsters: the big
-  bolt's `orbs`, a volley arrow's `part`, the retreat shot's `rs`.
+  bolt's `orbs` and a volley arrow's `part`. (A retreat shot is a whole
+  plain hit against a player, as the worker has always rolled it against a
+  monster.)
 - The sword's crit chance is sent as a percentage (it was a fraction).
 
 ### 3. The fish ladder (`server/src/data.js FISH_HEAL`)
@@ -114,57 +121,31 @@ And from the other two questions:
 | Salmon | levels 21-30 (15) | 325 | 65 | 220 |
 | Pike | levels 31-40 (20) | 475 | 95 | 260 |
 
-Why these numbers: a character's max HP is 100 + 6 per level + 8 per point in
-health. A player who puts a third of their shared points into health has
-about 92 + 14 x level HP, and **each fish heals about three quarters of that
-player's bar in the middle of the zone it comes from** (the minnow 75% at
-level 3, the trout 75% at level 15, the pike 82% at level 35). So every tier
-is worth catching where you fight, and the next tier is worth the trip.
+Each tier heals about 1.5x the one below, as each tier takes twice the
+fishing and the monsters where it is caught hit about twice as hard. Under
+the one formula's bigger bars a fish heals about a fifth to two fifths of
+the bar where it is caught (`docs/specs/one-formula.md` "Food"), so every
+tier is worth catching where you fight, and the next tier is worth the trip.
 
 The minnow keeps the owner's 100.
 
-### 4. A quarter of a heal in a fight with a player (`PVP_HEAL.SHARE`)
+### 4. One bite every 15 s in any fight (`PVP_HEAL`)
 
-- In a fight with another player (a duel, or within 10 s of a hit between
-  you and another player), a heal eaten at once (a cooked fish, the Garden
-  Stew, the old minnow bottle) heals **a quarter of itself**, rounded up.
-- On screen: a minnow +5, clownfish +8, trout +11, salmon +16, pike +24.
-- The old rule stays: one bite per 15 s in such a fight.
-- The fish's card says both: "+45 HP when eaten · +11 in a fight with a
-  player".
-
-Why a quarter, measured (both players average skill, copper set, both
-eating with the quick-eat button, five fish each):
-
-| Share | Lv 12 bows, same fish | Lv 12 staffs, same fish | Lv 7 staffs, same fish |
-| --- | --- | --- | --- |
-| a half | 39 s | 81 s | 115 s (most never finish) |
-| a third | 24 s | 35 s | 84 s |
-| **a quarter** | **21 s** | **26 s** | 55 s |
-| no food | 15 s | 17 s | 33 s |
-
-At a half, two players carrying fish could not finish each other. At a
-quarter, equal food makes a fight about 1.5x longer, and the fish still
-decides it:
-
-| Lv 12, B's win rate | same fish | B a tier better | B two tiers better | A has none |
-| --- | --- | --- | --- | --- |
-| swords | 43% | 79% | 93% | 97% |
-| bows | 53% | 78% | 97% | 99% |
-| staffs | 48% | 70% | 95% | 90% |
-
-That is the owner's "need for higher and higher levels": the fish caught
-where you fight beats the tier below most of the time, and carrying fish
-beats carrying none nearly every time.
-
-The live flag `pvp_heal_share` retunes it without a deploy.
+- A heal eaten at once (a cooked fish, the Garden Stew, the old minnow
+  bottle) is one bite per 15 s while you are in a fight: a duel, a hit
+  between you and another player in the last 10 s, or (one formula) a blow
+  you dealt or took from anything in the last 10 s.
+- It heals the same in any fight. (The first cut healed a quarter of a bite
+  in a fight with a player; with the one formula's bigger bars a fish is that
+  size anyway.)
+- With food, equal fish make a fight longer, and the better fish wins most
+  of the time (`docs/specs/one-formula.md` "Fights between players").
 
 ### 5. The quick-eat button
 
 - One tap eats the right food: of the heals eaten at once in your bag, **the
   smallest that fills what you are missing, else the biggest** (a scratch
-  never costs your pike). In a fight with a player it picks by the quarter
-  heal.
+  never costs your pike).
 - It sits over the movement stick, up and to the right of the Element Burst
   button (the left cluster's second place, `LCTL_SLOT.eat`), for the left
   thumb while the right one keeps attacking.
@@ -192,47 +173,40 @@ The live flag `pvp_heal_share` retunes it without a deploy.
   fight, or the last player in the room.
 - Kill switch: `linger: false`.
 
+### 7. The shield against a player
+
+- With no lock, a shield raised in a fight with a player pointed at the
+  nearest monster (or a stale direction), and the worker judges a block by
+  the way the shield faces at impact. Now the player who hit you in the last
+  3 s is who a guard raised with no lock faces (`src/game/shieldToggle.js`).
+- The button itself already appears for every weapon: a lock, a blow taken
+  in the last 5 s, or a monster in reach.
+
 ## After: the same fights
 
-Level 12, iron-tier weapons, average skill, no food:
-
-| Fight | Median, no armour | Median, copper set | Biggest single hit |
-| --- | --- | --- | --- |
-| sword v sword | 3.8 s | 7.4 s | 30% |
-| bow v bow | 6.9 s | 14.8 s | 12% |
-| staff v staff | 8.1 s | 16.6 s | 30% |
-| sword v bow | 4.8 s (sword wins 44%) | 9.3 s (78%) | |
-| sword v staff | 4.4 s (30%) | 7.9 s (44%) | |
-| bow v staff | 6.9 s (52%) | 14.2 s (42%) | |
-
-- Specials are now about 40% of the damage (they were 70-94%).
-- The better player still wins 94-100% of same-weapon fights.
+The tables are in `docs/specs/one-formula.md` ("Fights between players").
+At level 12 with the copper set and no food: sword v sword 9.9 s, bow v bow
+12.2 s, staff v staff 13.3 s (they were 2.7, 4.5 and 2.1 s); no blow over 30%
+of a bar; the better player wins 93-100% of same-weapon fights.
 
 ## Honest limits
 
-- **A very good bow or staff player can kite a sword forever.** Everyone
-  runs at the same speed, and the ranged weapons fire specials while backing
-  off. At the simulator's top skill a sword never catches them. Fixing it
-  would mean slowing ranged weapons while they shoot, or a gap-closer for the
-  sword; that is a design choice for the owner, not a number.
-- **Fights get shorter as levels rise if nobody spends points on health.**
-  Damage grows faster with level than the base HP does. With no points spent,
-  a level 22 sword fight is about 5 s with the copper set. The game expects
-  points in health and armour.
-- **Iron armour against a staff makes long fights.** About a third to a half
-  of sword-against-staff fights in iron armour hit the simulator's 2-minute
-  limit.
+- **A sword against a kiting bow or staff.** Everyone runs at the same speed.
+  With one formula there is no weight for the sword in player fights any
+  more, so it wins fewer of them than the first cut's numbers gave it; at the
+  simulator's top skill it never catches them. The fix is a mechanic: let the
+  sword's opening lunge work on players (`docs/specs/one-formula.md`).
+- **Iron armour against a staff makes long fights**, up to the simulator's
+  2-minute limit in a share of sword-against-staff fights.
 
 ## Switches and numbers
 
 | Switch (live flag) | Turns off |
 | --- | --- |
-| `pvpbalance: false` | the worker's roll and the PvP numbers: the old claim x 0.5 path, exactly (also un-advertises `caps.pvpbalance`) |
-| `fishheal: false` | the fish ladder and the quarter bite: the old 92 + 8 x level, every bite whole (also un-advertises `caps.fishheal`) |
+| `oneformula: false` | the one formula (health, monsters' hits, the 30% cap, the two specials, the bite rule in any fight) and with it the worker's roll in player fights: the old claim x 0.5 path (also un-advertises `caps.oneformula`) |
+| `pvpbalance: false` | the worker's roll in player fights: the old claim x 0.5 path, exactly (also un-advertises `caps.pvpbalance`) |
+| `fishheal: false` | the fish ladder: the old 92 + 8 x level (also un-advertises `caps.fishheal`) |
 | `linger: false` | the body staying: every leaver leaves at once again |
-
-Every PvP number above is a live flag too (`pvp_scale`, `pvp_cap`, ...,
-`pvp_heal_share`), clamped when read.
 
 ## Deploy order
 
@@ -242,8 +216,8 @@ Every PvP number above is a live flag too (`pvp_scale`, `pvp_cap`, ...,
   swipe, and a refused join just retries until the body has gone.
 - A **new game** against an older worker: it sends `sw`, `orbs`, `part` and
   `rs`, which that worker ignores, claims every frame as before
-  (`caps.pvpbalance` absent), and predicts the old fish ladder
-  (`caps.fishheal` absent).
+  (`caps.pvpbalance` absent), and predicts the old fish ladder, the old bar
+  and the old specials (`caps.fishheal`, `caps.oneformula` absent).
 
 ## How it was measured
 
@@ -258,11 +232,13 @@ three skill levels. It is deterministic (seeded).
 node tools/pvp-sim/matrix.mjs '{}' 300 10 none,both,iron   # time to kill, every pairing
 node tools/pvp-sim/food-one.mjs 300                         # one side eats
 node tools/pvp-sim/food-both.mjs 300                        # both eat
-FLAGS='{"pvp_heal_share":0.5}' node tools/pvp-sim/food-both.mjs
+FLAGS='{"oneformula":false}' node tools/pvp-sim/food-both.mjs # the world before
 ```
 
-Tests: `pvp-balance` (the worker's roll, the paid special, one hit a swing,
-the numbers, the cap, the shapes, the flags, the kill switch, the page's
-half), `linger` (41 checks), `fightfood` §4c and §7 (the quarter bite, the
-quick-eat choice), `mirror-audit` (the fish ladder and the share on both
-sides), `anticheat`, `duel`.
+Tests: `pvp-balance` (the worker's roll whole, the paid special, one hit a
+swing, the one cap, the shapes, the kill switches, the page's half),
+`one-formula` (33 checks, `docs/specs/one-formula.md`), `linger` (41 checks),
+`fightfood` §4-4c and §7 (the bite rule in any fight, the same heal, the
+quick-eat choice), `mirror-audit` (the fish ladder and the one formula on
+both sides), `anticheat`, `duel`; phone tests `mp-quickeat`, `mp-fightfood`,
+`mp-linger`, `mp-pvpshield`.

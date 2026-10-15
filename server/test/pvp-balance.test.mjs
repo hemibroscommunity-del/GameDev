@@ -10,16 +10,21 @@
  *      (SPECIAL_CLAIMS claims, SPECIAL_WINDOW_MS); a missed claim spends none.
  *   3. One sword hit per swing (`sw`), MELEE_MIN_MS apart; an older page's
  *      sword one per NOSW_LANE_MS.
- *   4. The PvP numbers: SCALE x KIND x the special's SHARE x the falloff of a
- *      bow or staff, then armour, then the CAP (a share of max HP).
- *   5. The shapes a special says (orbs, part, rs), each bounded.
- *   6. The live flags (clamped) and the kill switch (`pvpbalance: false`:
- *      the resolver exactly as before, caps un-advertised).
+ *   4. ONE FORMULA (owner, 2026-10-15: "I just want one formula that works
+ *      the same across everything", server/src/oneformula.js): the hit is the
+ *      roll, whole -- no PvP scale, weight, share or falloff -- then armour,
+ *      then the one cap every blow on a player meets (30% of max HP).
+ *   5. The shapes a special says (orbs, part), each bounded; the big bolt
+ *      worth STAFF_BOLT_K of its orbs and a sword's special SWORD_SPECIAL, as
+ *      against a monster; a retreat shot whole, as against a monster.
+ *   6. The kill switches (`pvpbalance: false`, `oneformula: false`: the
+ *      resolver exactly as before).
  *   7. The page's half (src/game/pvpSwing.js): a swing's claim at most three
  *      times, only while in reach, every frame against an older worker.
  */
 import { GameRoom } from '../src/index.js';
 import { PVP } from '../src/pvpbalance.js';
+import { ONE_FORMULA } from '../src/oneformula.js'; /* v2.3.3258: one formula for every fight */
 import { STAFF_BOLT, BOW_VOLLEY_WORTH } from '../src/combat.js';
 import * as PS from '../../src/game/pvpSwing.js';   /* the page's half */
 
@@ -113,7 +118,7 @@ function attack(payload) {
   room.eventBuffer.length = 0; raws = [];
   room._resolvePvPAttack(sessA, Object.assign({ range: 900, arc: 3, angle: 0, target: 'bp_pb_b' }, payload));
   const h = room.eventBuffer.find((e) => e.type === 'pvp_hit');
-  return h ? Object.assign({ raw: raws.length ? raws[0].raw : null, cap: raws.length && raws[0].opts ? raws[0].opts.capHp : null }, h.payload) : null;
+  return h ? Object.assign({ raw: raws.length ? raws[0].raw : null }, h.payload) : null;
 }
 const fresh = () => { room._pvpHitLanes = new Map(); T += 5000; };
 room._liveFlags = {};
@@ -136,26 +141,22 @@ room._liveFlags = {};
   check('...and the crit is in the hit', !!crit && crit.dmgBase > honest.dmgBase, { crit: crit && crit.dmgBase, plain: honest.dmgBase });
 }
 
-// ── 2. the numbers: scale x kind (x share) x falloff, exactly ──
+// ── 2. ONE FORMULA: the hit is the roll, whole ──
 {
-  const t = room._pvpTune();
-  check('the numbers in force are the constants (no flags)',
-    t.scale === PVP.SCALE && t.melee === PVP.KIND.melee && t.ranged === PVP.KIND.ranged && t.staff === PVP.KIND.staff && t.cap === PVP.CAP, t);
+  check('no PvP number is left (PVP holds only the lanes and the window)',
+    !('SCALE' in PVP) && !('KIND' in PVP) && !('SPECIAL' in PVP) && !('FALLOFF' in PVP) && !('CAP' in PVP) && !('RETREAT_K' in PVP)
+      && typeof room._pvpTune !== 'function' && typeof room._pvpFalloff !== 'function' && typeof room._pvpSpecialShare !== 'function', Object.keys(PVP));
   arm('melee'); target();
   fresh(); const m = attack({ kind: 'melee', sw: 10 });
-  check('a sword hit: roll x SCALE x KIND.melee', !!m && near(m.raw, m.dmgBase * PVP.SCALE * PVP.KIND.melee), m && { raw: m.raw, roll: m.dmgBase });
+  check('a sword hit: the roll, whole', !!m && near(m.raw, m.dmgBase), m && { raw: m.raw, roll: m.dmgBase });
   arm('ranged'); target({ x: 100 });
   fresh(); const r = attack({ kind: 'ranged' });
-  check('an arrow at 100 px: roll x SCALE x KIND.ranged, no falloff', !!r && near(r.raw, r.dmgBase * PVP.SCALE * PVP.KIND.ranged), r && { raw: r.raw, roll: r.dmgBase });
-  const at = (x) => { target({ x }); fresh(); const h = attack({ kind: 'ranged' }); return h ? h.raw / (h.dmgBase * PVP.SCALE * PVP.KIND.ranged) : null; };
-  const f150 = at(PVP.FALLOFF.NEAR), fMid = at((PVP.FALLOFF.NEAR + PVP.FALLOFF.FAR) / 2), fFar = at(PVP.FALLOFF.FAR), fBeyond = at(800);
-  check('the falloff: whole to NEAR', near(f150, 1), f150);
-  check('...halfway to MIN halfway to FAR', near(fMid, 1 - (1 - PVP.FALLOFF.MIN.ranged) / 2), fMid);
-  check('...MIN at FAR and past it', near(fFar, PVP.FALLOFF.MIN.ranged) && near(fBeyond, PVP.FALLOFF.MIN.ranged), { fFar, fBeyond });
+  check('an arrow at 100 px: the roll, whole', !!r && near(r.raw, r.dmgBase), r && { raw: r.raw, roll: r.dmgBase });
+  target({ x: 800 }); fresh(); const rFar = attack({ kind: 'ranged' });
+  check('...and at 800 px: no falloff (an arrow hits a monster as hard far off)', !!rFar && near(rFar.raw, rFar.dmgBase) && near(rFar.dmgBase, r.dmgBase), rFar && { raw: rFar.raw, roll: rFar.dmgBase });
   arm('staff'); target({ x: 800 });
-  fresh(); const s = attack({ kind: 'staff' });
-  check('a staff bolt far off: x KIND.staff x MIN.staff', !!s && near(s.raw, s.dmgBase * PVP.SCALE * PVP.KIND.staff * PVP.FALLOFF.MIN.staff), s && { raw: s.raw, roll: s.dmgBase });
-  check('a sword is never far (_pvpFalloff melee 1 at any distance)', room._pvpFalloff('melee', 5000) === 1);
+  fresh(); const st = attack({ kind: 'staff' });
+  check('a staff bolt far off: the roll, whole', !!st && near(st.raw, st.dmgBase) && near(st.dmgBase, room._computeAttackDamage(A, 'staff', false).dmg), st && { raw: st.raw, roll: st.dmgBase });
 }
 
 // ── 3. a special only after a paid swipe ──
@@ -178,8 +179,12 @@ room._liveFlags = {};
   B.x = 40; T += 300;
   const paid = attack({ kind: 'melee', sw: 23, special: true });
   const spRoll = room._computeAttackDamage(A, 'melee', true).dmg;
-  check('inside it the special rolls the special and takes its share',
-    !!paid && near(paid.dmgBase, spRoll) && near(paid.raw, spRoll * PVP.SCALE * PVP.KIND.melee * PVP.SPECIAL.melee), paid && { raw: paid.raw, roll: paid.dmgBase, spRoll });
+  check('inside it the special rolls the special, whole (a sword\'s 4.5x, as on a monster)',
+    !!paid && near(paid.dmgBase, spRoll) && near(paid.raw, spRoll), paid && { raw: paid.raw, roll: paid.dmgBase, spRoll });
+  R = 0.5;
+  const _pl = room._computeAttackDamage(A, 'melee', false).dmg, _sp = room._computeAttackDamage(A, 'melee', true).dmg;
+  check('...the sword\'s special is SWORD_SPECIAL x the plain hit (one formula, for every target)',
+    Math.abs(_sp / _pl - ONE_FORMULA.SWORD_SPECIAL * room._prog3SpecialMult(A, 'sword')) < 0.05, { plain: _pl, special: _sp });
   check('...and a sword\'s special swing spends the whole window (one swipe, one special)', A._pvpSpecLeft === 0, A._pvpSpecLeft);
   T += 300; const next = attack({ kind: 'melee', sw: 24, special: true });
   check('so the next swing marked special is an ordinary hit', !!next && next.dmgBase === plain.dmgBase, { next: next && next.dmgBase, plain: plain.dmgBase });
@@ -206,11 +211,8 @@ room._liveFlags = {};
   check('the big staff bolt (orbs 3) spends the whole window', A._pvpSpecLeft === 0, A._pvpSpecLeft);
   fresh(); room._pvpSpecialPaid(A, T); room._pvpSpecialSpent(A, 2);
   const short = attack({ kind: 'staff', special: true, orbs: 3 });
-  check('...and with one claim left it is ONE special roll, never three',
+  check('...and with one claim left it is ONE special roll (never three)',
     !!short && near(short.dmgBase, room._computeAttackDamage(A, 'staff', true).dmg), short && short.dmgBase);
-  /* a bow's and a staff's special shares */
-  check('the shares per weapon', room._pvpSpecialShare('melee') === PVP.SPECIAL.melee && room._pvpSpecialShare('ranged') === PVP.SPECIAL.ranged
-    && room._pvpSpecialShare('staff') === PVP.SPECIAL.staff);
 }
 
 // ── 4. one sword hit per swing ──
@@ -249,24 +251,26 @@ room._liveFlags = {};
   room._liveFlags = {};
 }
 
-// ── 5. the cap ──
+// ── 5. the one cap ──
 {
   arm('melee', { level: 40, tm: 3 }); target({ maxHp: 200 });
-  room._liveFlags = { pvp_scale: 1, pvp_melee: 3 };
   R = 0.999;   /* the top of the band, no crit */
-  fresh(); const big = attack({ kind: 'melee', sw: 200 });
+  room._pvpSpecialPaid(A, T);
+  fresh(); room._pvpSpecialPaid(A, T); const big = attack({ kind: 'melee', sw: 200, special: true });
   R = 0.5;
-  check('a hit as big as the flags allow is capped at CAP of max HP', !!big && big.raw > 200 && big.dmgTaken <= Math.round(200 * PVP.CAP) && big.cap === Math.round(200 * PVP.CAP),
-    big && { raw: big.raw, taken: big.dmgTaken, cap: big.cap });
+  const cap = Math.floor(200 * ONE_FORMULA.HIT_CAP);
+  check('a hit far past the bar is capped at HIT_CAP of max HP (the one cap, every blow)', !!big && big.raw > 200 && big.dmgTaken === cap,
+    big && { raw: big.raw, taken: big.dmgTaken, cap });
   check('...so nothing kills from full health', B.hp > 0, B.hp);
-  room._liveFlags = { pvp_scale: 1, pvp_melee: 3, pvp_cap: 1 };
-  B.hp = 200; fresh(); const uncapped = attack({ kind: 'melee', sw: 201 });
-  check('pvp_cap 1 lifts it (no capHp handed down)', !!uncapped && uncapped.cap == null, uncapped && uncapped.cap);
-  room._liveFlags = {};
-  /* _applyDamage's cap sits after armour, before Resilience */
+  /* the same cap for a monster's blow: the target's bar, not who swung */
   const ps = { hp: 1000, maxHp: 1000, armor: null, legsArmor: null };
-  const r1 = room._applyDamage(ps, 900, false, { capHp: 300 });
-  check('_applyDamage honours capHp', r1.dmgTaken <= 300, r1);
+  const r1 = room._applyDamage(ps, 900, false);
+  check('_applyDamage caps any blow at 30% (a monster\'s too)', r1.dmgTaken === 300, r1);
+  room._liveFlags = { oneformula: false };
+  const ps2 = { hp: 1000, maxHp: 1000, armor: null, legsArmor: null };
+  const r2 = room._applyDamage(ps2, 900, false);
+  check('...none with `oneformula: false`', r2.dmgTaken === 900, r2);
+  room._liveFlags = {};
 }
 
 // ── 6. what a special says it is ──
@@ -274,8 +278,8 @@ room._liveFlags = {};
   arm('staff'); target({ x: 100 });
   fresh(); room._pvpSpecialPaid(A, T); const one = attack({ kind: 'staff', special: true });
   fresh(); room._pvpSpecialPaid(A, T); const big = attack({ kind: 'staff', special: true, orbs: 3 });
-  const bigRoll = room._computeAttackDamage(A, 'staff', true, { band: STAFF_BOLT.BAND }).dmg * 3;
-  check('the big staff bolt (orbs 3) rolls the big bolt\'s band x 3', !!big && near(big.dmgBase, bigRoll), big && { got: big.dmgBase, bigRoll });
+  const bigRoll = room._computeAttackDamage(A, 'staff', true, { band: STAFF_BOLT.BAND }).dmg * 3 * ONE_FORMULA.STAFF_BOLT_K;
+  check('the big staff bolt (orbs 3) rolls the big bolt\'s band x 3 x STAFF_BOLT_K, as on a monster', !!big && near(big.dmgBase, bigRoll), big && { got: big.dmgBase, bigRoll });
   check('...bigger than a plain special bolt', !!one && !!big && big.dmgBase > one.dmgBase);
   fresh(); room._pvpSpecialPaid(A, T); const forged = attack({ kind: 'staff', special: true, orbs: 99 });
   check('orbs past 3 count as 3', !!forged && near(forged.dmgBase, bigRoll), forged && forged.dmgBase);
@@ -296,23 +300,7 @@ room._liveFlags = {};
   check('...part past 3 counts as 3 (never smaller and never bigger)', !!part9 && near(part9.dmgBase, part.dmgBase), part9 && part9.dmgBase);
   fresh(); const arrow = attack({ kind: 'ranged' });
   fresh(); const retreat = attack({ kind: 'ranged', rs: 1 });
-  check('the retreat shot (rs 1) is RETREAT_K of an arrow', !!arrow && !!retreat && near(retreat.dmgBase, arrow.dmgBase * PVP.RETREAT_K), { arrow: arrow && arrow.dmgBase, rs: retreat && retreat.dmgBase });
-  fresh(); const rsJunk = attack({ kind: 'ranged', rs: 'yes' });
-  check('...only rs exactly 1', !!rsJunk && near(rsJunk.dmgBase, arrow.dmgBase));
-}
-
-// ── 7. the live flags, clamped ──
-{
-  room._liveFlags = { pvp_scale: 50, pvp_cap: 0.001, pvp_melee: -3, pvp_near: 'x', pvp_sp_staff: 9 };
-  const t = room._pvpTune();
-  check('pvp_scale is clamped to 1', t.scale === 1, t.scale);
-  check('pvp_cap is clamped to 0.1', t.cap === 0.1, t.cap);
-  check('pvp_melee is clamped to 0.25', t.melee === 0.25, t.melee);
-  check('a flag that is no number is the constant', t.near === PVP.FALLOFF.NEAR, t.near);
-  check('pvp_sp_staff is clamped to 2', t.spStaff === 2, t.spStaff);
-  room._liveFlags = { pvp_far: 100, pvp_near: 200 };
-  check('a FAR not past NEAR switches the falloff off (never divides by nothing)', room._pvpFalloff('ranged', 1000) === 1);
-  room._liveFlags = {};
+  check('the retreat shot (rs 1) is a whole arrow, as the worker rolls it on a monster', !!arrow && !!retreat && near(retreat.dmgBase, arrow.dmgBase), { arrow: arrow && arrow.dmgBase, rs: retreat && retreat.dmgBase });
 }
 
 // ── 8. the kill switch ──
@@ -331,6 +319,19 @@ room._liveFlags = {};
   await join(wsD, 'bp_pb_d');
   const sync2 = wsD.sent.find((m) => m.type === 'state_sync' && m.caps);
   check('caps.pvpbalance is advertised by default', !!sync2 && sync2.caps.pvpbalance === true, sync2 && sync2.caps && sync2.caps.pvpbalance);
+  check('...and caps.oneformula beside it', !!sync2 && sync2.caps.oneformula === true, sync2 && sync2.caps && sync2.caps.oneformula);
+  /* the one formula's switch puts the old resolver back too (its roll needs
+     the formula's health), whatever caps.pvpbalance says */
+  room._liveFlags = { oneformula: false };
+  arm('melee'); target();
+  fresh(); const old2 = attack({ kind: 'melee', dmgBase: 7, critChance: 0 });
+  check('oneformula:false: the claim is the hit again, at the old 0.5', !!old2 && old2.dmgBase === 7 && near(old2.raw, 7 * 0.5), old2 && { roll: old2.dmgBase, raw: old2.raw });
+  const wsE = fakeWs();
+  await join(wsE, 'bp_pb_e');
+  const sync3 = wsE.sent.find((m) => m.type === 'state_sync' && m.caps);
+  check('oneformula:false un-advertises caps.oneformula (the page then reads pvpbalance as off: pvpSwing.js)',
+    !!sync3 && sync3.caps.oneformula === false && PS.pvpBalanceOn({ _serverCaps: sync3.caps }) === false, sync3 && sync3.caps && { one: sync3.caps.oneformula, bal: sync3.caps.pvpbalance });
+  room._liveFlags = {};
 }
 
 // ── 9. a duel runs through the same rules ──
@@ -341,19 +342,19 @@ room._liveFlags = {};
   check('(guard) with no consent and in town nothing lands', !none);
   consent();
   fresh(); const duel = attack({ kind: 'melee', sw: 401 });
-  check('a consented pair (a duel) takes the worker\'s roll and the PvP numbers', !!duel && near(duel.raw, duel.dmgBase * PVP.SCALE * PVP.KIND.melee));
+  check('a consented pair (a duel) takes the worker\'s roll, whole', !!duel && near(duel.raw, duel.dmgBase));
 }
 
 // ── 10. the page's half (src/game/pvpSwing.js) ──
 {
-  const S = { _serverCaps: { pvpbalance: true } };
+  const S = { _serverCaps: { pvpbalance: true, oneformula: true } };
   const t = 5000000;
   let sent = 0;
   for (let f = 0; f < 24; f++) if (PS.pvpSwingClaimOk(S, 111, t + f * 16.7, true)) sent++;
   check('page: a 400 ms sweep sends its claim at most TRIES times', sent === PS.PVP_SWING.TRIES, sent);
   check('page: ...GAP_MS apart (0, 90, 180)', S._pvpSwSent.n === 3 && S._pvpSwSent.at >= t + 2 * PS.PVP_SWING.GAP_MS, S._pvpSwSent);
   check('page: a new swing starts again', PS.pvpSwingClaimOk(S, 112, t + 600, true) === true);
-  const S2 = { _serverCaps: { pvpbalance: true } };
+  const S2 = { _serverCaps: { pvpbalance: true, oneformula: true } };
   let sentOut = 0;
   for (let f = 0; f < 24; f++) if (PS.pvpSwingClaimOk(S2, 7, t + f * 16.7, false)) sentOut++;
   check('page: a swing whose target is out of reach on this screen sends nothing', sentOut === 0, sentOut);
@@ -364,13 +365,17 @@ room._liveFlags = {};
   let sentOld = 0;
   for (let f = 0; f < 24; f++) if (PS.pvpSwingClaimOk(old, 9, t + f * 16.7, false)) sentOld++;
   check('page: against an older worker every frame claims, as before', sentOld === 24, sentOld);
+  const half = { _serverCaps: { pvpbalance: true } };
+  let sentHalf = 0;
+  for (let f = 0; f < 24; f++) if (PS.pvpSwingClaimOk(half, 10, t + f * 16.7, false)) sentHalf++;
+  check('page: ...and against a worker with its one formula switched off (pvpbalance without oneformula)', sentHalf === 24, sentHalf);
   check('page: in reach by the lock\'s drawn position', PS.pvpLockInReach({ renderX: 60, renderY: 0, x: 999, y: 999 }, 0, 0, 50) === true);
   check('page: out of reach past range + slack', PS.pvpLockInReach({ x: 50 + PS.PVP_SWING.SLACK_PX + 1, y: 0 }, 0, 0, 50) === false);
   check('page: no position -> no opinion (the worker decides)', PS.pvpLockInReach({}, 0, 0, 50) === null && PS.pvpLockInReach(null, 0, 0, 50) === null);
   /* the page's tries and the worker's lane, together: one hit a swing */
   arm('melee'); target();
   fresh();
-  const P = { _serverCaps: { pvpbalance: true } };
+  const P = { _serverCaps: { pvpbalance: true, oneformula: true } };
   let hits = 0;
   const sw = T;
   for (let f = 0; f < 24; f++) {

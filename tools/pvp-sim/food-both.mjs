@@ -1,10 +1,10 @@
 /* ═══ v2.3.3258: WHEN BOTH EAT (docs/specs/pvp-fights.md "Fish") ═══
    Both players carry five fish and eat with the quick-eat button: B's win
    rate when its fish is the same as A's, one or two tiers better, or A has
-   none -- and the fight's median length from the first hit, which is what
-   the in-fight share (PVP_HEAL.SHARE) is tuned against: too big a bite and
-   two players with fish never finish.  Live flags in FLAGS:
-     FLAGS='{"pvp_heal_share":0.5}' node tools/pvp-sim/food-both.mjs [N] */
+   none -- and the fight's median length from the first hit: too big a bite
+   against the bar and two players with fish never finish (the one formula's
+   bigger bars make a fish a third or so of one).  Live flags in FLAGS:
+     FLAGS='{"oneformula":false}' node tools/pvp-sim/food-both.mjs [N] */
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 const HERE = new URL('.', import.meta.url).pathname;
 const LEVELS = [

@@ -3,9 +3,9 @@
    moderate, the copper set), eating from the bag (open it, find the fish,
    Eat) or with the quick-eat button (one tap), by tier -- the minnow, the
    tier below where they fight, the fish caught there, the tier above.  On the
-   worker's own rules: the fish ladder, a quarter of a heal in a fight with a
-   player, one bite every 15 s.  Live flags in FLAGS:
-     FLAGS='{"pvp_heal_share":0.25}' node tools/pvp-sim/food-one.mjs [N] */
+   worker's own rules: the fish ladder, the same heal in any fight, one bite
+   every 15 s (the one formula).  Live flags in FLAGS:
+     FLAGS='{"oneformula":false}' node tools/pvp-sim/food-one.mjs [N] */
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 const HERE = new URL('.', import.meta.url).pathname;
 const LEVELS = [

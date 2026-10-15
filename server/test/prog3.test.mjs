@@ -17,6 +17,7 @@
  *   7. _sanitizeProg3 bounds corrupt stored shapes.
  */
 import { GameRoom } from '../src/index.js';
+import { ONE_FORMULA, healthAt } from '../src/oneformula.js'; /* v2.3.3258 */
 import { runRpgMigrations, RPG_SCHEMA_VERSION } from '../src/migrations.js';
 import { PROG3, prog3XpRequired, prog3FromLegacy, prog3SplitAtk,
   prog3StatDef, prog3FreshAtk /* v2.3.2512 */ } from '../src/prog3.js';
@@ -128,8 +129,11 @@ const psA = room.playerState.pa;
   /* v2.3.1727: derived from PROG3, not the literal 106 that was here — the
      retune moved HP_PER_LEVEL and a hand-typed expectation just re-asserts
      whatever the constant happened to be on the day. */
+  /* v2.3.3258: the one formula (oneformula.js): 100 + 50 a level -- PROG3's
+     HP_PER_LEVEL is the old worker's 6, kept for `oneformula: false` */
   check('maxHp = 100 + level×HP_PER_LEVEL (no armor, no hp pts)',
-    psA.maxHp === 100 + 3 * PROG3.HP_PER_LEVEL, { maxHp: psA.maxHp, per: PROG3.HP_PER_LEVEL });
+    psA.maxHp === healthAt(3, 0) && psA.maxHp === ONE_FORMULA.HEALTH.BASE + 3 * ONE_FORMULA.HEALTH.PER_LEVEL,
+    { maxHp: psA.maxHp, per: ONE_FORMULA.HEALTH.PER_LEVEL });
   check('maxStamina = 100 flat', psA.maxStamina === 100, psA.maxStamina);
   /* v2.3.1734: derived from PROG3, same reasoning as the maxHp line above
      — the mana rework moved MANA_PER_MAGIC_LEVEL and a hand-typed 101 just
@@ -246,8 +250,8 @@ const psA = room.playerState.pa;
   check('per-stat cap = min(100, char level)', p3.alloc.hp === 4 && p3.shared === 6,
     { hp: p3.alloc.hp, shared: p3.shared, level: psA.level });
   check('...and a shared spend leaves the LANE pool alone (v2.3.2592)', p3.pool === 10, p3.pool);
-  check('hp points land in maxHp (+8/pt)',
-    psA.maxHp === 100 + psA.level * PROG3.HP_PER_LEVEL + 4 * PROG3.BODY.hp.per, psA.maxHp);
+  check('hp points land in maxHp (+40/pt under the one formula, v2.3.3258)',
+    psA.maxHp === healthAt(psA.level, 4) && psA.maxHp === 100 + psA.level * ONE_FORMULA.HEALTH.PER_LEVEL + 4 * ONE_FORMULA.HEALTH.PER_POINT, psA.maxHp);
   const acks = msgsOfType(wsA, 'prog3_allocated');
   check('prog3_allocated acks each landed point, carrying both pools', acks.length === 4
     && acks[3].payload.stat === 'hp' && acks[3].payload.pts === 4
@@ -349,7 +353,12 @@ const psA = room.playerState.pa;
        Dodge 82 % and Defense 84 %, the cut is held at 0.10 / (1 − dodge). */
     const _r = Math.random;
     Math.random = () => 0.999;   /* the dodge roll misses, so the cut is visible */
+    /* v2.3.3258: a big bar for the one call -- the one formula's cap (no blow
+       over 30% of max HP) would otherwise clip the 1000 this is about */
+    const _mx0 = psA.maxHp, _hp0 = psA.hp;
+    psA.maxHp = 1e6; psA.hp = 1e6;
     const fl = room._applyDamage(psA, 1000, false);
+    psA.maxHp = _mx0; psA.hp = _hp0;
     Math.random = _r;
     const dodge = 0.9 * 75 / 82;
     check('the combined floor holds a base hit at 10 % through (expected, over the dodge roll)',

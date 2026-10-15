@@ -4,7 +4,7 @@ import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
 import { essenceInfo } from '@/data/salvage.js';   /* v2.3.3141: what an essence does */
 import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_BY_LOG } from '@/data/hardenedWood.js';   /* v2.3.3139 */
 import { dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
-import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal, PVP_HEAL } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player; v2.3.3258: a quarter of a heal in it */
+import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player (v2.3.3258: in any fight) */
 import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.3133: ...and say how long */
 import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
@@ -156,15 +156,9 @@ function resolveTarget(target) {
     const isBurnt = /^burnt_/.test(key);
     const isLog = /^wood_/.test(key);
     let info = null;
-    /* v2.3.3258: a heal eaten at once heals a quarter in a fight with a player
-       (cooking.js _pvpHealSized) -- said on the card, on a worker that does
-       it (caps.fishheal), so the number in a fight is never a surprise. */
-    const healLine = (heal) => {
-      const S0 = getState();
-      const half = !!(S0 && S0._serverCaps && S0._serverCaps.fishheal);
-      return '+' + toDisplayDamage(heal) + ' HP when eaten'
-        + (half ? ' · +' + toDisplayDamage(Math.max(1, Math.ceil(heal * PVP_HEAL.SHARE))) + ' in a fight with a player' : '');
-    };
+    /* v2.3.3258: the same heal in any fight (one formula; the first cut of this
+       version printed a quarter-size bite for a fight with a player here) */
+    const healLine = (heal) => '+' + toDisplayDamage(heal) + ' HP when eaten';
     /* v2.3.1207: calcDisplayHeal (getFishHealAmount × HP-grid Recovery,
        ceil'd) — the server's _handleEatRequest math, so the promised
        number matches the heal the player_state echo delivers. */

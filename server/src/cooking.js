@@ -77,25 +77,11 @@ export const cookingMethods = {
     return Math.ceil(92 + tier.lvl * 8);
   },
 
-  /* v2.3.3258: the kill switch for the fish ladder AND the half-size bite in a
-     fight with a player, read the lower-case way (TRAPS §117) */
+  /* v2.3.3258: the kill switch for the fish ladder, read the lower-case way
+     (TRAPS §117) */
   _fishHealOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'fishheal') && !f.fishheal);
-  },
-
-  /* v2.3.3258: an instant heal in a fight with a player heals PVP_HEAL.SHARE
-     of itself (data.js); `heal` is the whole heal, Recovery included. */
-  _pvpHealSized(id, ps, heal) {
-    if (this._fishHealOff() || !(heal > 0)) return heal;
-    if (!this._pvpInFight(id, ps)) return heal;
-    return Math.max(1, Math.ceil(heal * this._pvpHealShare()));
-  },
-  /* v2.3.3258: the share in force: PVP_HEAL.SHARE, or the live flag
-     `pvp_heal_share` clamped on read (liveops.js _flagNum) -- retuned without
-     a deploy; the game's own copy (fightFood.js) only predicts it */
-  _pvpHealShare() {
-    return typeof this._flagNum === 'function' ? this._flagNum('pvp_heal_share', PVP_HEAL.SHARE, 0.05, 1) : PVP_HEAL.SHARE;
   },
 
   // v2.3.1167: fish tier level for the cook physics floor -- same
@@ -154,10 +140,11 @@ export const cookingMethods = {
     if (ps._arenaMatch) { refuseEat(); return; } // v2.3.1126: no healing during an arena match (GDD §43)
     if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith cooked_fish_ above
     if ((ps.inventory[invKey] || 0) <= 0) { refuseEat(); return; }
-    if (this._pvpHealHeld(session.id, ps)) { refuseEat(); return; }   /* v2.3.3133: one bite at a time in a fight with a player */
+    if (this._pvpHealHeld(session.id, ps)) { refuseEat(); return; }   /* v2.3.3133: one bite at a time in a fight (v2.3.3258: any fight, _pvpHealWait) */
     // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap +50%).
-    /* v2.3.3258: a quarter of it in a fight with a player (data.js PVP_HEAL.SHARE) */
-    const heal = this._pvpHealSized(session.id, ps, Math.ceil(this._fishHealAmount(invKey)) + this._recoveryFlat(ps)); // v2.3.1345: flat recovery bonus
+    /* v2.3.3258: the same heal in any fight -- ONE FORMULA (oneformula.js): the
+       first cut of this version healed a quarter in a fight with a player */
+    const heal = Math.ceil(this._fishHealAmount(invKey)) + this._recoveryFlat(ps); // v2.3.1345: flat recovery bonus
     if (heal <= 0) { refuseEat(); return; }
     this._noteInstantHeal(session.id);   /* v2.3.3133: counted wherever it is eaten (_pvpHealWait) */
     // Decrement inventory + apply heal.  Heal is "wasted" if at max;
@@ -567,8 +554,8 @@ export const cookingMethods = {
    * nobody.  Memory only (rule 11): a deploy lets one more bite through,
    * which costs nothing.  Pruned once it passes PVP_HEAL_CLOCKS_MAX. */
   /* v2.3.3258: in a fight with a player -- a duel, or a hit between players
-     within PVP_HEAL.WINDOW_MS -- the one test the bite rule and the bite's
-     size share (and the bag lock's farmorders.js twin reads the same clock) */
+     within PVP_HEAL.WINDOW_MS (the order board's farmorders.js twin reads the
+     same clock; the bite rule widens it to any fight, _anyFightAt below) */
   _pvpInFight(id, ps, now) {
     if (!id || !ps) return false;
     const t = typeof now === 'number' ? now : Date.now();
@@ -576,11 +563,27 @@ export const cookingMethods = {
     return !!(this._duelFor && this._duelFor(id)) || (!!c && t - c.pvpAt < PVP_HEAL.WINDOW_MS);
   },
 
+  /* ═══ v2.3.3258: ...IN ANY FIGHT (oneformula.js) ═══
+     With the one formula on, "in a fight" is a fight with ANYTHING: the PvP
+     test above, or a blow dealt or taken within WINDOW_MS -- `lastDamageAt`
+     (stamped by _applyDamage on every blow that reaches you, blocked and
+     dodged ones too) and `_lastDealtAt` (every hit you land on a monster or a
+     player).  Those two live on playerState, so a rejoin forgets a fight with
+     a monster; the PvP clock is the room's and does not (the review's
+     reason, above).  Off: the fight with a player alone, as before. */
+  _anyFightAt(id, ps, now) {
+    if (this._pvpInFight(id, ps, now)) return true;
+    if (!ps || typeof this._oneFormulaOn !== 'function' || !this._oneFormulaOn()) return false;
+    const t = typeof now === 'number' ? now : Date.now();
+    const last = Math.max(Number(ps.lastDamageAt) || 0, Number(ps._lastDealtAt) || 0);
+    return last > 0 && t - last < PVP_HEAL.WINDOW_MS;
+  },
+
   _pvpHealWait(id, ps, now) {
     if (!ps || this._pvpHealOff()) return 0;
     const t = typeof now === 'number' ? now : Date.now();
     const c = this._pvpHealClocks ? this._pvpHealClocks.get(id) : null;
-    if (!this._pvpInFight(id, ps, t)) return 0;
+    if (!this._anyFightAt(id, ps, t)) return 0;
     const last = c ? c.healAt : 0;
     return Math.max(0, PVP_HEAL.GAP_MS - (t - last));
   },
@@ -659,8 +662,7 @@ export const cookingMethods = {
       if (ps._arenaMatch) return false;
       if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
       if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-      /* v2.3.3258: a quarter of it in a fight with a player (data.js PVP_HEAL.SHARE) */
-      ps.hp = Math.min(ps.maxHp, ps.hp + this._pvpHealSized(pid, ps, Math.ceil(Number(dish.power)) + this._recoveryFlat(ps)));
+      ps.hp = Math.min(ps.maxHp, ps.hp + Math.ceil(Number(dish.power)) + this._recoveryFlat(ps));
       return true;
     }
     if (dish.slot !== 'meal' && dish.slot !== 'brew') return false;
@@ -699,9 +701,7 @@ export const cookingMethods = {
       if (ps._arenaMatch) return false;
       if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
       if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-      /* v2.3.3258: a quarter of it in a fight with a player (data.js PVP_HEAL.SHARE),
-         as every heal eaten at once */
-      ps.hp = Math.min(ps.maxHp, ps.hp + this._pvpHealSized(pid, ps, item.power || 23));
+      ps.hp = Math.min(ps.maxHp, ps.hp + (item.power || 23));
     } else if (item.effect === 'stamina') {
       if (typeof ps.maxStamina !== 'number') ps.maxStamina = 100;
       if (typeof ps.stamina !== 'number') ps.stamina = ps.maxStamina;

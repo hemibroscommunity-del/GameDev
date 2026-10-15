@@ -15,9 +15,10 @@
  *      button goes;
  *   4. hurt to 1 HP: the minnow cannot fill it, so the TROUT;
  *   5. in a fight with a player (the page's own record of a hit, as a pvp_hit
- *      writes it), hurt by 50: a bite heals a quarter, so the trout (57), not
- *      the minnow (25); after a bite the one-bite rule's wait rides on it as
- *      its ring;
+ *      writes it), hurt by 50: a bite heals what it always heals (v2.3.3258's
+ *      one formula: no quarter-size bite), so still the minnow; after a bite
+ *      the one-bite rule's wait rides on it as its ring -- and (one formula)
+ *      after a monster's blow too;
  *   6. V on a keyboard eats too;
  *   7. no page errors.
  * Pictures: tools/qa/mp/out/quickeat-*.png.
@@ -119,7 +120,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`4. at 1 HP of ${s4.max} the minnow (100) cannot fill it: the TROUT -- ${b4}`, b4 === 'cooked_fish_trout', { b4, s4 });
   await P.page.screenshot({ path: join(OUT, 'quickeat-4-trout.png') });
 
-  /* ── 5. in a fight with a player: a quarter heal ── */
+  /* ── 5. in a fight with a player: the same heal (one formula) ── */
   await H.devOp(wsPort, 'vitals', id, { heal: false, hp: s4.max - 50 });
   await P.page.waitForTimeout(1200);
   const pick5 = await P.page.evaluate(() => {
@@ -129,15 +130,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(400);
   const B5 = await btn(P);
-  rec.ok(`5. in a fight with a player, hurt by 50: a bite heals a quarter, so the TROUT (${pick5 && pick5.heal}), not the minnow (25) -- ${B5 && B5.key}`,
-    !!pick5 && pick5.key === 'cooked_fish_trout' && pick5.heal === 57 && !!B5 && B5.key === 'cooked_fish_trout', { pick5, B5 });
+  rec.ok(`5. in a fight with a player, hurt by 50: a bite heals what it always heals, so still the MINNOW (${pick5 && pick5.heal}) -- ${B5 && B5.key}`,
+    !!pick5 && pick5.key === 'cooked_fish_minnow' && pick5.heal === 100 && !!B5 && B5.key === 'cooked_fish_minnow', { pick5, B5 });
   await P.page.evaluate(() => { const S = window._gameState.current; S._pvpAt = Date.now(); S._instantHealAt = Date.now(); });
   await P.page.waitForTimeout(500);
   const B5w = await btn(P);
   rec.ok(`5. ...after a bite the one-bite rule's wait rides on it: its ring, ${B5w && B5w.wait} s`,
     !!B5w && B5w.wait >= 13 && B5w.wait <= 15 && B5w.state === 'cooldown', B5w);
   await P.page.screenshot({ path: join(OUT, 'quickeat-5-wait.png') });
-  await P.page.evaluate(() => { const S = window._gameState.current; S._pvpAt = 0; S._instantHealAt = 0; });
+  /* one formula: a MONSTER's blow holds the next bite too */
+  await P.page.evaluate(() => { const S = window._gameState.current; S._pvpAt = 0; S.lastDamageTaken = Date.now(); S._instantHealAt = Date.now(); });
+  await P.page.waitForTimeout(500);
+  const B5m = await btn(P);
+  rec.ok(`5. ...and after a MONSTER's blow (one formula: any fight): its ring, ${B5m && B5m.wait} s`,
+    !!B5m && B5m.wait >= 13 && B5m.wait <= 15 && B5m.state === 'cooldown', B5m);
+  await P.page.evaluate(() => { const S = window._gameState.current; S._pvpAt = 0; S.lastDamageTaken = 0; S._instantHealAt = 0; });
 
   /* ── 6. V on a keyboard ── */
   await P.page.waitForTimeout(600);

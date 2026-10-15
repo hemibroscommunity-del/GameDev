@@ -190,6 +190,7 @@ import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.29
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { pvpBalanceMethods } from './pvpbalance.js'; /* v2.3.3258: PvP hits rolled by the worker, and tuned */
 import { lingerMethods } from './linger.js'; /* v2.3.3258: leaving in the middle of a fight -- the body stays */
+import { oneFormulaMethods } from './oneformula.js'; /* v2.3.3258: one formula for every fight -- health, monsters' hits, the hit cap, two specials */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into a shield on the worker */
 import { aggroGridMethods } from './aggrogrid.js'; /* v2.3.3201: a monster looks for players near it, not through every one */
@@ -1650,7 +1651,10 @@ export class GameRoom {
     const variantHpMult = variantKey ? this._variantHpMult(variantKey) : null;
     const hpMult = a.hpMult * ((variantHpMult != null) ? variantHpMult : 1);
     const spawnHp = Math.max(1, Math.ceil(baseHp * hpMult) + monsterHpFlat(lvl));
-    return {
+    /* v2.3.3258: ONE FORMULA (oneformula.js) -- built with its hit scaled to
+       the players' bigger bars, so it takes the same share of a matching
+       player's health as before; stamped (`_hk`) so the switch can undo it */
+    return this._monsterHitStamp({
       id,
       arch: spawn.arch,
       // Variant tag used at kill time for skull / inventory key
@@ -1680,7 +1684,7 @@ export class GameRoom {
       targetId: null, // player being chased
       atkCd: 0,
       respawnAt: 0,
-    };
+    });
   }
 
   // Mark a single monster / node as changed this tick.  Adds the zone
@@ -6260,3 +6264,4 @@ Object.assign(GameRoom.prototype, lookRelayMethods); /* v2.3.3240 */
 Object.assign(GameRoom.prototype, xpDecayMethods); /* v2.3.3251 */
 Object.assign(GameRoom.prototype, pvpBalanceMethods); /* v2.3.3258 */
 Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3258: leaving mid-fight, the body stays */
+Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3258: one formula for every fight */

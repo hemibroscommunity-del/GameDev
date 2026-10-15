@@ -19,7 +19,8 @@
  *   2. ONE BITE AT A TIME.  A heal eaten at once (Garden Stew, cooked fish,
  *      the minnow bottle) is once per GAP_MS while in a duel or within
  *      WINDOW_MS of a hit between you and another player (cooking.js
- *      _pvpHealWait).  The page holds its own bite back -- and says how long
+ *      _pvpHealWait) -- since v2.3.3258's one formula, within WINDOW_MS of a
+ *      blow dealt or taken by anything (fightSeen).  The page holds its own bite back -- and says how long
  *      -- only against a worker with caps.pvpheal, so it never refuses what an
  *      older worker would allow; the worker refuses anything early with the
  *      usual resend either way, and says why (`eat_refused {wait}`), which
@@ -32,9 +33,8 @@
  * No imports, so the worker's suites can run it (fightfood.test.mjs) and
  * mirror-audit can hold PVP_HEAL to the server's. */
 
-/* Mirror of server/src/data.js PVP_HEAL (mirror-audit).  v2.3.3258: SHARE,
-   what an instant heal heals in that fight (cooking.js _pvpHealSized). */
-export const PVP_HEAL = Object.freeze({ WINDOW_MS: 10000, GAP_MS: 15000, SHARE: 0.25 });
+/* Mirror of server/src/data.js PVP_HEAL (mirror-audit). */
+export const PVP_HEAL = Object.freeze({ WINDOW_MS: 10000, GAP_MS: 15000 });
 
 /* The damage brew's multiplier as the page sees it -- combat.js _brewMul's
    rule on the worker's echo (wsClient: S._dmgBuff is the brew's end, and
@@ -93,7 +93,7 @@ export function noteInstantHeal(S, now) {
 export function pvpHealWaitMs(S, now) {
   if (!S || !(S._serverCaps && S._serverCaps.pvpheal)) return 0;
   var t = typeof now === 'number' ? now : Date.now();
-  if (!pvpFightSeen(S, t)) return 0;
+  if (!fightSeen(S, t)) return 0;
   var last = typeof S._instantHealAt === 'number' ? S._instantHealAt : 0;
   return Math.max(0, PVP_HEAL.GAP_MS - (t - last));
 }
@@ -108,16 +108,29 @@ export function pvpFightSeen(S, now) {
   return typeof S._pvpAt === 'number' && t - S._pvpAt < PVP_HEAL.WINDOW_MS;
 }
 
-/* v2.3.3258: an instant heal of `heal` as the worker will size it -- SHARE of
-   it (a quarter), rounded up, in a fight with a player (cooking.js
-   _pvpHealSized), on a worker that says it does (caps.fishheal).  A
-   prediction: the echo is the truth (and a worker retuned by its live flag
-   `pvp_heal_share` says so in its echo). */
-export function pvpHealSized(S, heal, now) {
-  var h = Number(heal) || 0;
-  if (!(h > 0) || !S || !(S._serverCaps && S._serverCaps.fishheal)) return h;
-  if (!pvpFightSeen(S, now)) return h;
-  return Math.max(1, Math.ceil(h * PVP_HEAL.SHARE));
+/* ═══ v2.3.3258: ...OR WITH ANYTHING (ONE FORMULA) ═══
+   Against a worker with caps.oneformula the one-bite rule holds in a fight
+   with ANYTHING (cooking.js _anyFightAt): a pvp_hit as above, or a blow this
+   page took (S.lastDamageTaken, stamped by every monster_attack and pvp_hit
+   for it) or landed (S._dealtAt, noteDealt below) within WINDOW_MS.  And a
+   heal is the same size in any fight -- the first cut of this version cut it
+   to a quarter in a fight with a player (pvpHealSized, gone). */
+export function fightSeen(S, now) {
+  if (pvpFightSeen(S, now)) return true;
+  if (!S || !(S._serverCaps && S._serverCaps.oneformula)) return false;
+  var t = typeof now === 'number' ? now : Date.now();
+  var last = Math.max(Number(S.lastDamageTaken) || 0, Number(S._dealtAt) || 0);
+  return last > 0 && t - last < PVP_HEAL.WINDOW_MS;
+}
+
+/* A monster_hit (or pvp_hit) the worker credited to this page: it landed a
+   blow, so it is in a fight (the worker's `_lastDealtAt`). */
+export function noteDealt(S, payload, now) {
+  if (!S || !payload || !S.myId) return false;
+  var by = payload.attackerId != null ? payload.attackerId : payload.attacker;
+  if (by !== S.myId) return false;
+  S._dealtAt = typeof now === 'number' ? now : Date.now();
+  return true;
 }
 
 /* The worker held a bite back (eat_refused {wait}): its clock is the truth.

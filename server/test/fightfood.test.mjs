@@ -11,10 +11,13 @@
  *      claim without it is honoured as before; `pvpbrew: false` stops it.
  *   3. The Root Stew cuts small hits too: 5% of every hit on average, at any
  *      size (it was a ceil, which gave the whole cut back under 20).
- *   4. ONE BITE AT A TIME in a fight with a player: a heal eaten at once (the
- *      Garden Stew, a cooked fish, the minnow bottle) once per GAP_MS while in
- *      a duel or within WINDOW_MS of a hit between players; meals and brews
- *      never held back; fighting monsters untouched; `pvpheal: false`.
+ *   4. ONE BITE AT A TIME in a fight: a heal eaten at once (the Garden Stew,
+ *      a cooked fish, the minnow bottle) once per GAP_MS while in a duel or
+ *      within WINDOW_MS of a hit between players -- and, since v2.3.3258's one
+ *      formula (oneformula.js), of a blow dealt or taken by anything; meals
+ *      and brews never held back; `pvpheal: false`.  A heal is the same size
+ *      in any fight (the quarter-size bite of this version's first cut is
+ *      gone with the one formula).
  *   5. The caps say both, and the kill switches un-advertise them.
  *
  * (The Element Burst's room for a brew is pinned in burst.test.mjs, beside
@@ -330,16 +333,34 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   check('...and lets go when the duel is over (derived, nothing to clear)', C.inventory.cooked_fish_minnow === 8, C.inventory);
   room._duels.delete('ff-duel');
 
-  /* A monster fight is no fight with a player. */
-  hurt(); clk('bp_ff_c').pvpAt = 0; clk('bp_ff_c').healAt = now(); C.lastDamageAt = now();
+  /* ═══ v2.3.3258: ONE FORMULA -- a fight with MONSTERS holds the bite too ═══
+     (cooking.js _anyFightAt: a blow taken -- lastDamageAt -- or landed --
+     _lastDealtAt -- within WINDOW_MS) */
+  hurt(); clk('bp_ff_c').pvpAt = 0; clk('bp_ff_c').healAt = now(); C.lastDamageAt = now(); C._lastDealtAt = 0;
+  let n0 = C.inventory.cooked_fish_minnow;
   await eat('cooked_fish_minnow');
-  check('a fight with MONSTERS is untouched: eat as you always could', C.inventory.cooked_fish_minnow === 7, C.inventory);
+  check('a fight with MONSTERS holds the bite too (one formula: any fight)', C.inventory.cooked_fish_minnow === n0 && C.hp === 100, { left: C.inventory.cooked_fish_minnow, n0, hp: C.hp });
+  check('...and says why, as a fight with a player does', wsC.sent.some((m) => m.type === 'eat_refused'));
+  C.lastDamageAt = 0; C._lastDealtAt = now();
+  await eat('cooked_fish_minnow');
+  check('...a blow you LANDED on one counts too', C.inventory.cooked_fish_minnow === n0 && C.hp === 100, { left: C.inventory.cooked_fish_minnow });
+  C.lastDamageAt = now() - PVP_HEAL.WINDOW_MS - 1; C._lastDealtAt = now() - PVP_HEAL.WINDOW_MS - 1;
+  await eat('cooked_fish_minnow');
+  check('...and 10 s after the last blow either way it lets go', C.inventory.cooked_fish_minnow === n0 - 1 && C.hp > 100, { left: C.inventory.cooked_fish_minnow, hp: C.hp });
+  hurt(); clk('bp_ff_c').healAt = now(); C.lastDamageAt = now();
+  room._liveFlags = Object.assign({}, room._liveFlags || {}, { oneformula: false });
+  n0 = C.inventory.cooked_fish_minnow;
+  await eat('cooked_fish_minnow');
+  check('oneformula:false: a monster fight is untouched, as before', C.inventory.cooked_fish_minnow === n0 - 1, C.inventory);
+  delete room._liveFlags.oneformula;
+  C.lastDamageAt = 0; C._lastDealtAt = 0;
 
   /* The kill switch. */
   hurt(); clk('bp_ff_c').pvpAt = now(); clk('bp_ff_c').healAt = now();
   room._liveFlags = Object.assign({}, room._liveFlags || {}, { pvpheal: false });
+  n0 = C.inventory.cooked_fish_minnow;
   await eat('cooked_fish_minnow');
-  check('pvpheal:false lifts the rule', C.inventory.cooked_fish_minnow === 6, C.inventory);
+  check('pvpheal:false lifts the rule', C.inventory.cooked_fish_minnow === n0 - 1, C.inventory);
   delete room._liveFlags.pvpheal;
 
   /* An exchange really does start it: C hit by A (the stamp from combat.js). */
@@ -351,9 +372,10 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   C._zoneEntryGraceUntil = 0; room.stateHistory.bp_ff_c = [];
   room._resolvePvPAttack(room.sessions.get(wsA), { range: 200, arc: 3, angle: 0, critChance: 0, dmgBase: 5, target: 'bp_ff_c' });
   const hpAfterHit = C.hp;
+  n0 = C.inventory.cooked_fish_minnow;
   await eat('cooked_fish_minnow');
   check('a real pvp hit puts the target in the fight: the bite right after waits',
-    C.inventory.cooked_fish_minnow === 6 && C.hp === hpAfterHit, { left: C.inventory.cooked_fish_minnow, hp: C.hp });
+    C.inventory.cooked_fish_minnow === n0 && C.hp === hpAfterHit, { left: C.inventory.cooked_fish_minnow, n0, hp: C.hp });
   check('...and _pvpHealWait says how long (just under 15 s)',
     room._pvpHealWait('bp_ff_c', C) > PVP_HEAL.GAP_MS - 2000, room._pvpHealWait('bp_ff_c', C));
 }
@@ -371,6 +393,7 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   check('a bite held back by the rule is told why: eat_refused with the wait (~12 s)',
     !!reply && reply.payload.wait > 11000 && reply.payload.wait <= 12000, reply && reply.payload);
   clk('bp_ff_c').pvpAt = 0;
+  C.lastDamageAt = 0; C._lastDealtAt = 0;   /* v2.3.3258: no fight with anything either (_anyFightAt) */
   C._arenaMatch = { id: 'x' };
   await eat('meal_garden_stew');
   check('...and only by the rule: an arena refusal says nothing of the kind', !wsC.sent.some((m) => m.type === 'eat_refused'));
@@ -387,6 +410,7 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
     C.hp === 100, { hp: C.hp });
   check('...the stews it makes land in the bag instead, never lost', (C.inventory.meal_garden_stew || 0) === stews0 + 3, C.inventory.meal_garden_stew);
   clk('bp_ff_c').pvpAt = 0; clk('bp_ff_c').healAt = 0;
+  C.lastDamageAt = 0; C._lastDealtAt = 0;   /* v2.3.3258: out of every fight */
   await send(wsC, 'cook_recipe', { recipeIdx: COOK_IDX });
   check('...out of a fight it is eaten at once, as an old client expects', C.hp > 100 && (C.inventory.meal_garden_stew || 0) === stews0 + 3, { hp: C.hp });
   check('...and starts the clock like every bite', now() - clk('bp_ff_c').healAt < 1000, clk('bp_ff_c').healAt);
@@ -410,9 +434,9 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   check('...never the live ones', room._pvpHealClocks.has('bp_ff_c'));
 }
 
-// ── 4c. v2.3.3258: a bite heals A QUARTER in a fight with a player ──
+// ── 4c. v2.3.3258: a bite heals THE SAME in any fight (one formula) ──
 {
-  check('the share (guard): a quarter', PVP_HEAL.SHARE === 0.25, PVP_HEAL);
+  check('no PvP-only share is left (guard)', !('SHARE' in PVP_HEAL) && typeof room._pvpHealSized !== 'function' && typeof room._pvpHealShare !== 'function', PVP_HEAL);
   check('the fish ladder (guard): minnow 100 .. pike 475',
     FISH_HEAL.minnow === 100 && FISH_HEAL.clownfish === 150 && FISH_HEAL.trout === 225 && FISH_HEAL.salmon === 325 && FISH_HEAL.pike === 475, FISH_HEAL);
   check('each fish heals what the ladder says',
@@ -432,60 +456,51 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   };
   clk('bp_ff_h').pvpAt = 0;
   const fullTrout = await gained('cooked_fish_trout');
-  check('out of a fight with a player a trout heals all of it', fullTrout === FISH_HEAL.trout + rf(), { got: fullTrout, rf: rf() });
+  check('out of a fight a trout heals all of it', fullTrout === FISH_HEAL.trout + rf(), { got: fullTrout, rf: rf() });
   clk('bp_ff_h').pvpAt = now();
-  const halfTrout = await gained('cooked_fish_trout');
-  check('in one (a hit 0 s ago) it heals a quarter, rounded up', halfTrout === Math.ceil((FISH_HEAL.trout + rf()) * PVP_HEAL.SHARE), { got: halfTrout });
+  const pvpTrout = await gained('cooked_fish_trout');
+  check('in a fight with a player (a hit 0 s ago) it heals ALL of it too -- the first bite of the fight', pvpTrout === FISH_HEAL.trout + rf(), { got: pvpTrout });
   clk('bp_ff_h').pvpAt = now();
-  const halfStew = await gained('meal_garden_stew');
-  check('...and so does the Garden Stew', halfStew === Math.ceil((DISHES.meal_garden_stew.power + rf()) * PVP_HEAL.SHARE), { got: halfStew, power: DISHES.meal_garden_stew.power });
+  const pvpStew = await gained('meal_garden_stew');
+  check('...and so does the Garden Stew', pvpStew === DISHES.meal_garden_stew.power + rf(), { got: pvpStew, power: DISHES.meal_garden_stew.power });
   clk('bp_ff_h').pvpAt = now();
-  const halfBottle = await gained('cookedMinnow', 'drink');
-  check('...and the old minnow bottle (23 -> 6)', halfBottle === Math.ceil(23 * PVP_HEAL.SHARE), { got: halfBottle });
-  clk('bp_ff_h').pvpAt = now() - PVP_HEAL.WINDOW_MS - 1;
-  const after = await gained('cooked_fish_trout');
-  check('10 s after the last hit between players a bite is whole again', after === FISH_HEAL.trout + rf(), { got: after });
+  const pvpBottle = await gained('cookedMinnow', 'drink');
+  check('...and the old minnow bottle (23)', pvpBottle === 23, { got: pvpBottle });
   /* a duel is a fight with no hit at all */
   clk('bp_ff_h').pvpAt = 0;
   if (!room._duels) room._duels = new Map();
   room._duels.set('ff-duel-2', { id: 'ff-duel-2', status: 'active', a: 'bp_ff_h', b: 'bp_ff_a', away: Object.create(null) });
   const duelBite = await gained('cooked_fish_pike');
-  check('in an active duel a pike heals a quarter', duelBite === Math.ceil((FISH_HEAL.pike + rf()) * PVP_HEAL.SHARE), { got: duelBite });
+  check('in an active duel a pike heals all of it', duelBite === FISH_HEAL.pike + rf(), { got: duelBite });
   room._duels.delete('ff-duel-2');
-  /* a fight with monsters is untouched */
+  /* a fight with monsters: the same */
   H.lastDamageAt = now();
   const monsterBite = await gained('cooked_fish_pike');
   check('a fight with MONSTERS: a pike heals all of it', monsterBite === FISH_HEAL.pike + rf(), { got: monsterBite });
-  /* the live flag retunes the share, clamped */
-  room._liveFlags = Object.assign({}, room._liveFlags || {}, { pvp_heal_share: 0.5 });
-  clk('bp_ff_h').pvpAt = now();
-  const flagged = await gained('cooked_fish_trout');
-  check('pvp_heal_share 0.5 makes it half', flagged === Math.ceil((FISH_HEAL.trout + rf()) * 0.5), { got: flagged });
-  room._liveFlags.pvp_heal_share = 7;
-  check('...clamped to 1 at most', room._pvpHealShare() === 1, room._pvpHealShare());
-  room._liveFlags.pvp_heal_share = 0;
-  check('...and 0.05 at least', room._pvpHealShare() === 0.05, room._pvpHealShare());
-  delete room._liveFlags.pvp_heal_share;
-  /* the kill switch: the old ladder, and every bite whole */
+  H.lastDamageAt = 0;
+  /* the kill switch: the old ladder */
   room._liveFlags = Object.assign({}, room._liveFlags || {}, { fishheal: false });
   clk('bp_ff_h').pvpAt = now();
   const oldTrout = await gained('cooked_fish_trout');
-  check('fishheal:false: the old ladder (92 + 8 x 11 = 180) and the whole bite in a fight', oldTrout === 180 + rf(), { got: oldTrout });
+  check('fishheal:false: the old ladder (92 + 8 x 11 = 180)', oldTrout === 180 + rf(), { got: oldTrout });
   delete room._liveFlags.fishheal;
   clk('bp_ff_h').pvpAt = 0;
 
-  /* The page's half (src/game/fightFood.js): the same rule, read off its own
-     record of hits, only against a worker that says it heals so. */
+  /* The page's half (src/game/fightFood.js): the bite rule read off its own
+     record of blows, any fight against a worker with caps.oneformula. */
   const t = 2000000;
-  const on = { myId: 'me', _serverCaps: { fishheal: true } };
-  check('page: out of a fight a heal is whole', FF.pvpHealSized(on, 245, t) === 245);
-  FF.notePvpHit(on, { attacker: 'x', target: 'me' }, t);
-  check('page: in one it is a quarter, rounded up', FF.pvpHealSized(on, 245, t + 1) === 62, FF.pvpHealSized(on, 245, t + 1));
-  check('page: ...never under 1', FF.pvpHealSized(on, 1, t + 1) === 1);
-  check('page: 10 s on it is whole again', FF.pvpHealSized(on, 245, t + PVP_HEAL.WINDOW_MS) === 245);
-  const old = { myId: 'me', _serverCaps: {}, _pvpAt: t };
-  check('page: against a worker without caps.fishheal it predicts the whole heal', FF.pvpHealSized(old, 245, t + 1) === 245);
-  check('page: the share is the worker\'s', FF.PVP_HEAL.SHARE === PVP_HEAL.SHARE);
+  check('page: no quarter-size bite left', typeof FF.pvpHealSized !== 'function' && !('SHARE' in FF.PVP_HEAL));
+  const on = { myId: 'me', _serverCaps: { pvpheal: true, oneformula: true }, _instantHealAt: t };
+  check('page: out of any fight no wait', FF.pvpHealWaitMs(on, t + 1) === 0);
+  on.lastDamageTaken = t;
+  check('page: a monster\'s blow just now: the bite waits (one formula)', FF.pvpHealWaitMs(on, t + 1) > 0, FF.pvpHealWaitMs(on, t + 1));
+  on.lastDamageTaken = 0;
+  FF.noteDealt(on, { attackerId: 'me', monsterId: 'm1' }, t);
+  check('page: a blow it LANDED (monster_hit attackerId) waits too', FF.pvpHealWaitMs(on, t + 1) > 0);
+  check('page: ...someone else\'s hit is not this page\'s fight', FF.noteDealt({ myId: 'me' }, { attackerId: 'x' }, t) === false);
+  check('page: 10 s on it lets go', FF.pvpHealWaitMs(on, t + PVP_HEAL.WINDOW_MS) === 0);
+  const half = { myId: 'me', _serverCaps: { pvpheal: true }, _instantHealAt: t, lastDamageTaken: t };
+  check('page: against a worker without caps.oneformula a monster fight holds nothing back', FF.pvpHealWaitMs(half, t + 1) === 0);
 }
 
 // ── 5. the kill switches un-advertise ──
@@ -608,15 +623,15 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   S.rpg.hp = 10;
   v = QE.quickEatView(S, heal, t);
   check('quick eat: a deep wound nothing fills gets the biggest (pike)', !!v && v.key === 'cooked_fish_pike', v);
-  /* in a fight with a player every heal is a quarter: missing 50 is a minnow
-     out of one (100) but a trout in one (57; the minnow's 25 falls short) */
+  /* v2.3.3258: a heal is the same in any fight (one formula): missing 50 is a
+     minnow out of a fight and in one */
   S.rpg.hp = 450;
   v = QE.quickEatView(S, heal, t);
   check('quick eat: out of a fight, missing 50 gets the minnow', !!v && v.key === 'cooked_fish_minnow', v);
   FF.notePvpHit(S, { attacker: 'x', target: 'me' }, t);
   v = QE.quickEatView(S, heal, t + 1);
-  check('quick eat: in a fight with a player it picks by the quarter heal (missing 50: trout 57, not minnow 25)',
-    !!v && v.key === 'cooked_fish_trout' && v.heal === Math.ceil(FISH_HEAL.trout * PVP_HEAL.SHARE), v);
+  check('quick eat: in a fight with a player too (the same heal in any fight)',
+    !!v && v.key === 'cooked_fish_minnow' && v.heal === FISH_HEAL.minnow, v);
   /* ...and the one-bite rule's wait shows on it */
   FF.noteInstantHeal(S, t + 1);
   v = QE.quickEatView(S, heal, t + 5001);

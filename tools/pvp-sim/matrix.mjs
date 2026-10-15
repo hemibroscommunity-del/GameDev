@@ -1,6 +1,7 @@
 /* ═══ v2.3.3258: THE TIME-TO-KILL MATRIX (docs/specs/pvp-fights.md) ═══
    Every weapon pairing at each skill, on the fight simulator (sim.mjs), split
-   over four worker threads.  The PvP numbers can be tried as live flags:
+   over four worker threads.  Live flags can be tried (`{"oneformula":false}`
+   is the world before the one formula):
      node tools/pvp-sim/matrix.mjs '<json liveflags>' [N] [levels csv] [armours csv]
      node tools/pvp-sim/matrix.mjs '{}' 300 10 none,both,iron
    Levels: 5 (character Lv 7, the tutorial kit), 10 (Lv 12, iron/hardwood

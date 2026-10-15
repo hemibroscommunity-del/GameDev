@@ -139,6 +139,7 @@ import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from './data.js'; // v2.3.191
 import { LIVEOPS } from './liveops.js';
 import { PROG3 } from './prog3.js'; // v2.3.1659: the trained-skill combat rebuild config
 import { WHEEL_ZONE, WHEEL } from './wheelzone.js'; /* v2.3.2978 */
+import { ONE_FORMULA, specialMultFor } from './oneformula.js'; /* v2.3.3258: one formula for every fight */
 
 export const combatMethods = {
   /* ═══ v2.3.2221: THE ONE DAMAGE-DENIAL GATE ═══
@@ -481,11 +482,14 @@ export const combatMethods = {
     }
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-    /* ═══ v2.3.3258: NO HIT BETWEEN PLAYERS KILLS FROM FULL HEALTH ═══
-       The PvP resolver passes `capHp` (pvpbalance.js PVP.CAP x the target's
-       max HP): after every cut above, a hit takes no more than that.  Absent
-       for every other caller. */
-    if (opts && opts.capHp > 0 && dmgTaken > opts.capHp) dmgTaken = Math.max(1, Math.floor(opts.capHp));
+    /* ═══ v2.3.3258: NO HIT TAKES MORE THAN 30% OF A PLAYER'S HEALTH ═══
+       ONE FORMULA (oneformula.js): after every cut above, one blow takes no
+       more than HIT_CAP of this player's max HP, whoever lands it -- a
+       monster, a burn, a player.  The monsters' own rails (half the bar for a
+       telegraphed hit or a boss's ability) sit inside it.  None with the
+       formula off. */
+    const _capHp = typeof this._hitCapHp === 'function' ? this._hitCapHp(ps) : 0;
+    if (_capHp > 0 && dmgTaken > _capHp) dmgTaken = _capHp;
     // v2.3.1314: RESILIENCE (HP grid) goes live — big-hit taming only:
     // hits above 20% of max HP are reduced 0.25%/pt (cap 25%), same
     // scale as Iron Skin but spike-selective so the two channels stay
@@ -774,8 +778,10 @@ export const combatMethods = {
        LARGEST lane — lockstep with _computeAttackDamage's `_prog3SpecialMult`
        term, same commit.  Explicit here rather than eaten out of comboBoost's
        headroom, so the 5× stays what it says it covers. */
+    /* v2.3.3258: the LARGEST special multiplier there is -- a sword's 4.5 under
+       the one formula (oneformula.js) -- lockstep with _computeAttackDamage */
     const specialMult = isSpecial
-      ? 3.0 * (ps.prog3
+      ? Math.max(3.0, specialMultFor('greatsword', typeof this._oneFormulaOn === 'function' ? this._oneFormulaOn() : false)) * (ps.prog3
         ? Math.max(...PROG3.SKILLS.map((c) => this._prog3SpecialMult(ps, c)))  /* v2.3.2680: the curve at edge 1 */
         : 1)
       : 1.0;
@@ -944,7 +950,12 @@ export const combatMethods = {
     // v2.3.1397 (owner): per-weapon special multiplier — melee (sword/
     // greatsword) and bow specials hit 3x, each staff orb 2x.  Mirrors
     // client specialAtkMultFor (src/data/gameSystems.js).
-    if (isSpecial) base *= (type === 'staff' ? 2.0 : 3.0);
+    /* v2.3.3258: ONE FORMULA -- every sword's special SWORD_SPECIAL (4.5x,
+       was 3x) for everyone: one on one it was the weakest of the three, its
+       reach being a ring of monsters a lone target does not have
+       (oneformula.js specialMultFor; _maxDmgForAttacker below and the
+       client's specialAtkMultFor move with it) */
+    if (isSpecial) base *= specialMultFor(type, typeof this._oneFormulaOn === 'function' ? this._oneFormulaOn() : false);
     /* v2.3.2592: the allocated SPECIAL stat scales the special multiplier
        for the weapon's own lane (+1%/pt, +75% at cap).  Applied HERE, before
        the crit branch, so a special crit anchors off the scaled value the
@@ -1214,7 +1225,11 @@ export const combatMethods = {
     const rolled = this._computeAttackDamage(attackerPs, slot, isSpecial,
       _bigBolt ? { targetLevel: m.level, band: STAFF_BOLT.BAND } : { targetLevel: m.level });  /* v2.3.2680: the edge */
     const dmgCap = this._maxDmgForAttacker(attackerPs, isSpecial) * (_bigBolt ? _orbs * STAFF_BOLT.CAP_K : 1);
-    if (_bigBolt) rolled.dmg *= _orbs;
+    /* v2.3.3258: ONE FORMULA -- the big bolt worth STAFF_BOLT_K of its orbs, for
+       everyone (oneformula.js): still the hardest special on average and as
+       wide a spread, no longer a kill of a monster of your level outright.
+       Under its ceiling (a smaller roll), and its blast takes a third of it. */
+    if (_bigBolt) rolled.dmg *= _orbs * (this._oneFormulaOn() ? ONE_FORMULA.STAFF_BOLT_K : 1);
     /* ═══ v2.3.2848: THE BOW SPECIAL IS THREE ARROWS, A THIRD EACH ═══
        Owner: "the bow special should be 3 white hot arrows that follow each
        other closely.  One shot for all 3 arrows.  I think the archetype for
@@ -2018,17 +2033,19 @@ export const combatMethods = {
     const _brew = (payload.nb === 1 && !this._pvpBrewOff()) ? this._brewMul(attackerPs) : 1;
     const dmgBase = Math.max(1, Math.min(dmgCap, payload.dmgBase || 10)) * _brew;
     const critChance = Math.max(0, Math.min(100, payload.critChance || 0));
-    /* ═══ v2.3.3258: THE WORKER'S OWN ROLL, AND THE PvP NUMBERS ═══
+    /* ═══ v2.3.3258: THE WORKER'S OWN ROLL -- THE SAME AS A MONSTER TAKES ═══
        pvpbalance.js has the whole story.  Here: the worker rolls each hit
        (the claim's dmgBase/critChance above are the old path's only), a
        special counts only inside a window a paid swipe opened, a sword lands
-       one hit per swing, and the hit takes the tuned scale, the special's
-       share, its weapon's weight, a bow's or staff's falloff and the cap.
-       `pvpbalance: false` is the old path exactly. */
-    const _bal = typeof this._pvpBalanceOff === 'function' && !this._pvpBalanceOff();
+       one hit per swing -- and nothing else: ONE FORMULA (oneformula.js), no
+       number of its own for a fight between players.  The fight lasts because
+       players have the health for it; the cap is _applyDamage's, for every
+       hit.  Needs the one formula: with `oneformula: false` (old health) or
+       `pvpbalance: false` this is the old path exactly. */
+    const _bal = typeof this._pvpBalanceOff === 'function' && !this._pvpBalanceOff()
+      && typeof this._oneFormulaOn === 'function' && this._oneFormulaOn();
     const _now0 = Date.now();
     const _special = _bal ? (!!payload.special && this._pvpSpecialOk(attackerPs, _now0)) : !!payload.special;
-    const _tune = _bal ? this._pvpTune() : null;
     let _specialLanded = false;
 
     // Check all players in room for hits
@@ -2154,25 +2171,22 @@ export const combatMethods = {
       const defMit = 100 / (100 + effDef);
       let rawDmg = dmgBase * (isCrit ? 1.5 : 1) * this.PVP_TUNING.DMG_SCALE * defMit;
       let _hitBase = dmgBase;
-      let _cap = null;
       if (_bal) {
-        /* v2.3.3258: the worker's own roll x the PvP numbers (pvpbalance.js);
-           armour then cuts it in _applyDamage and the cap bounds what is
-           left.  `def` (the phone's old equipment number, 0 for everyone
-           since Phase 1) no longer enters: armour is the mitigation. */
+        /* v2.3.3258: the worker's own roll, whole -- the hit a monster would
+           take (pvpbalance.js _pvpRollFor); armour then cuts it in
+           _applyDamage and the one cap bounds what is left.  `def` (the
+           phone's old equipment number, 0 for everyone since Phase 1) no
+           longer enters: armour is the mitigation. */
         const _roll = this._pvpRollFor(attackerPs, kind, _special, payload);
         isCrit = _roll.isCrit;
         _hitBase = _roll.dmg;
-        rawDmg = _roll.dmg * _tune.scale * (_tune[kind] || 1) * (_special ? this._pvpSpecialShare(kind, _tune) : 1)
-          * this._pvpFalloff(kind, dist, _tune);
-        const _mx = Number(targetPs.maxHp);
-        if (_mx > 0 && _tune.cap < 1) _cap = Math.max(1, Math.round(_mx * _tune.cap));
+        rawDmg = _roll.dmg;
       }
       /* v2.3.2680: no attackerLevel on purpose — PvP stays at edge 1 (the
          defender's points at full strength whoever swings).  Pricing it by
          the attacker's level would strip a lower player's Dodge and Defense
          outright; that is a PvP design call of its own, not this change. */
-      const dmgResult = this._applyDamage(targetPs, rawDmg, blocked, _cap ? { capHp: _cap } : undefined);
+      const dmgResult = this._applyDamage(targetPs, rawDmg, blocked);
       const dmgTaken = dmgResult.dmgTaken;
       if (_bal && _special) _specialLanded = true;
       /* v2.3.1701: the attacker is in combat too (see the twin stamp in

@@ -42,6 +42,7 @@ import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } fr
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
+import { setOneFormulaEnabled } from '@/data/oneFormula.js'; /* v2.3.3258: one formula for every fight */
 import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setProg3RelEnabled /* v2.3.2680 */, setGearQEnabled /* v2.3.2664 */, setFishHealEnabled /* v2.3.3258 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2662 */, PROG3_SKILL_META, setZoneDepthLive /* v2.3.2790 */ } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
@@ -1360,6 +1361,11 @@ export function setupWebSocket(ctx) {
                    Display only: against an older worker, or with its kill
                    switch thrown, the readouts keep its 92 + 8 x level. */
                 setFishHealEnabled(!!(S._serverCaps && S._serverCaps.fishheal));
+                /* v2.3.3258: ONE FORMULA (data/oneFormula.js) -- the bar, a
+                   scene's monster and the specials predicted the worker's way
+                   only against a worker that says so: an older one (or its
+                   switch thrown) settles the old numbers. */
+                setOneFormulaEnabled(!!(S._serverCaps && S._serverCaps.oneformula));
                 /* v2.3.2662: the milestone ladder is gone on a worker that
                    says so.  Display only: against an older worker the client
                    keeps predicting its level-6 Burst gate and its x1.25

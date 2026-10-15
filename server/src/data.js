@@ -525,19 +525,14 @@ export const DISHES = {
 export const PVP_HEAL = Object.freeze({
   WINDOW_MS: 10000,
   GAP_MS: 15000,
-  /* ═══ v2.3.3258: ...AND A BITE HEALS A QUARTER IN THAT FIGHT ═══
-     Without it, two players carrying fish never finished: a fish at your
-     level heals most of your bar, every 15 s, and a fight between players is
-     cut harder than a monster's hit (pvpbalance.js SCALE 0.4) -- measured on
-     the fight simulator (docs/specs/pvp-fights.md "Fish"), two bows at Lv 12
-     with five fish each fought 39 s at a half-size bite and 81 s for two
-     staffs.  In the same fight (a duel, or within WINDOW_MS of a hit between
-     players) an instant heal heals SHARE of itself, rounded up: then equal
-     fish stretch a fight about 1.5x, a fish one tier better wins 70-90% of
-     even fights, and carrying fish against nobody's wins 90-100%.  The live
-     flag `pvp_heal_share` retunes it (cooking.js _pvpHealShare); `fishheal:
-     false` is every bite whole. */
-  SHARE: 0.25,
+  /* ═══ v2.3.3258: ...IN ANY FIGHT ═══
+     ONE FORMULA (oneformula.js, owner: "I just want one formula that works the
+     same across everything"): with the formula on, the rule holds in a fight
+     with ANYTHING -- a duel, or a hit dealt or taken (a monster's, a player's)
+     within WINDOW_MS (cooking.js _anyFightAt) -- and a bite heals what it
+     heals anywhere.  The bars are bigger, so a fish is a third or so of one;
+     the first cut of this version healed a quarter of a bite in a fight with
+     a player instead, a number for those fights alone. */
 });
 
 /* ═══ v2.3.3258: WHAT EACH FISH HEALS (owner: "including how much HP each

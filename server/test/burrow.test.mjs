@@ -430,9 +430,13 @@ const burstPhases = () => room.eventBuffer
   room._tickMonsters();
   const dealt = before - ps.hp;
   const cap = Math.max(1, Math.floor((ps.maxHp || 100) * TELEGRAPH.MAX_HIT_PCT));
+  /* v2.3.3258: the flat 60 x the one formula's hit multiplier at the slime's
+     level (oneformula.js), under its 50% rail and the one cap's 30% */
+  const flatK = Math.ceil(SLIME_BURST.DMG * room._monsterHitK(slime.level));
+  const cap30 = room._hitCapHp(ps);
   check('burst: deals the flat 60 (or the no-one-shot cap, whichever is lower)',
-    dealt > 0 && dealt <= Math.min(SLIME_BURST.DMG, cap) + 1,
-    { dealt, flat: SLIME_BURST.DMG, cap, maxHp: ps.maxHp });
+    dealt > 0 && dealt <= Math.min(flatK, cap, cap30) + 1,
+    { dealt, flat: SLIME_BURST.DMG, flatK, cap, cap30, maxHp: ps.maxHp });
 }
 
 // ── B6. A respawned slime is not still holding a lit fuse ──

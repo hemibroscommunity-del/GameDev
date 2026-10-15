@@ -1,8 +1,11 @@
-/* ═══ v2.3.3258: A FIGHT BETWEEN PLAYERS LASTS LONG ENOUGH TO MATTER ═══
+/* ═══ v2.3.3258: A HIT BETWEEN PLAYERS IS THE WORKER'S OWN ROLL ═══
  *
  * Owner, 2026-10-14, after the time-to-kill study (docs/specs/pvp-fights.md):
  * "I want you to plan and implement fixes for all of these ... You're the
- * expert on this not me."
+ * expert on this not me."  Then, 2026-10-15: "I just want one formula that
+ * works the same across everything" -- so the hit a player takes is the hit
+ * a monster takes, and the fight lasts because players have the health for
+ * it (oneformula.js), not because of a number of its own.
  *
  * WHAT THE STUDY FOUND.  Two equal players with no points spent finished
  * each other in 1-5 seconds of fighting -- under a second when a staff
@@ -25,8 +28,9 @@
  *      the points, the grade, the brew, the crit -- at edge 1, as PvP has
  *      always read the points).  The phone's dmgBase is ignored here, so
  *      a forged claim buys nothing and the crit chance is the real one.
- *      The big staff bolt (`orbs`), a volley arrow (`part`) and the retreat
- *      shot (`rs`) say what they are, as they do against a monster.
+ *      The big staff bolt (`orbs`) and a volley arrow (`part`) say what they
+ *      are, as they do against a monster (a retreat shot's `rs` is read by
+ *      neither: it is a whole plain hit on both).
  *   2. A SPECIAL IS A SPECIAL ONLY AFTER ONE WAS PAID FOR: a `swipe` the
  *      worker charged (index.js _handleAbilityUse) opens a short window worth
  *      ONE special -- the sword's swing, the big staff bolt, or the bow
@@ -37,48 +41,24 @@
  *      to (`sw`) lands one hit per swing; an older page, which says nothing,
  *      gets one per NOSW_LANE_MS -- longer than its 400 ms sweep, so one a
  *      swing too.
- *   4. THE PvP NUMBERS (tuned on the fight simulator, tools/pvp-sim/):
- *        SCALE     the whole hit (was 0.5 of a claim)
- *        SPECIAL   a special's share in a fight with a player, per weapon --
- *                  the staff's big bolt is 8.4x its base where the sword's
- *                  swing is 3x and the bow's volley 4.2x, so one share for
- *                  all would leave one cast of the staff's worth 2.5 of the
- *                  sword's
- *        KIND      per weapon, so the three are even at equal skill
- *        FALLOFF   a bow's or staff's hit loses force past NEAR, down to
- *                  MIN at FAR -- closing in is how a sword wins
- *        CAP       no hit takes more than this share of the target's max HP
- *                  (after armour): nothing kills from full health
- *      Each is a live flag (pvp_scale, pvp_sp_melee, pvp_sp_ranged,
- *      pvp_sp_staff, pvp_melee, pvp_ranged,
- *      pvp_staff, pvp_cap, pvp_near, pvp_far, pvp_min_ranged, pvp_min_staff),
- *      clamped on read, so
- *      it can be retuned without a deploy.
+ *   That is all.  The first cut of this PR also scaled the hit (0.4), weighted
+ *   each weapon, cut each special to a share, let a bow's or staff's hit fall
+ *   off with distance and capped it at a share of the target's bar -- every
+ *   one a number for fights between players only.  The owner asked for none,
+ *   and each is now either gone or the same for every fight (oneformula.js:
+ *   the health, the 30% cap, the two specials).
  *
  * KILL SWITCH: `pvpbalance: false` in liveflags is the resolver exactly as
- * before (the phone's claim x 0.5, the 300 ms lane, no cap), and
- * un-advertises caps.pvpbalance.
+ * before (the phone's claim x 0.5, the 300 ms lane), and un-advertises
+ * caps.pvpbalance; so is `oneformula: false` (this roll needs its health).
  *
  * Duels and the arena go through the same resolver, so they take the same
- * numbers: the study's TTK applied to them too.
+ * numbers.
  */
 import { STAFF_BOLT, BOW_VOLLEY_WORTH } from './combat.js';
+import { ONE_FORMULA } from './oneformula.js';
 
 export const PVP = Object.freeze({
-  /* Tuned on the fight simulator (tools/pvp-sim/, docs/specs/pvp-fights.md
-     has the tables): equal players with no points, level 12, the copper set,
-     average skill -- a sword fight 7.4 s from the first hit (was 2.7), a bow
-     fight 14.8 (4.5), a staff fight 16.6 (2.1); specials ~40% of the damage
-     (68-90%); a sword beats a bow 78% of the time in the open (35%) and a
-     staff 44% (8%), a bow a staff 42% (26%); the biggest hit 30% of a bar
-     (107%); the better player still wins 94-100% of same-weapon fights. */
-  SCALE: 0.4,
-  SPECIAL: Object.freeze({ melee: 0.5, ranged: 0.45, staff: 0.3 }),
-  /* the sword weighs more: it fights in contact, after crossing the ground a
-     bow or staff hits it over */
-  KIND: Object.freeze({ melee: 1.3, ranged: 1, staff: 1 }),
-  FALLOFF: Object.freeze({ NEAR: 150, FAR: 450, MIN: Object.freeze({ ranged: 0.6, staff: 0.6 }) }),
-  CAP: 0.3,
   /* a paid swipe's window: long enough for a big bolt to fly its 675 px at
      300 px/s (2.25 s) with the network on top; three claims for the volley's
      three arrows (a sword's special swing spends all three, the big bolt its
@@ -90,8 +70,9 @@ export const PVP = Object.freeze({
   MELEE_MIN_MS: 250,
   /* an older page's sword (no `sw`): longer than its 400 ms sweep */
   NOSW_LANE_MS: 450,
-  /* the retreat shot's share of an arrow (client RETREAT_SHOT_DAMAGE_MULT) */
-  RETREAT_K: 0.5,
+  /* (the first cut halved the retreat shot here, RETREAT_K 0.5; the worker
+     rolls it whole against a monster -- monster_damage carries no `rs` -- so
+     against a player it is whole too: one formula) */
 });
 
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -101,44 +82,6 @@ export const pvpBalanceMethods = {
   _pvpBalanceOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && own(f, 'pvpbalance') && !f.pvpbalance);
-  },
-
-  /* The numbers in force: the constants, or a live flag's value clamped to a
-     sane range (liveops.js _flagNum clamps on read). */
-  _pvpTune() {
-    const num = (name, dflt, lo, hi) => (typeof this._flagNum === 'function' ? this._flagNum(name, dflt, lo, hi) : dflt);
-    return {
-      scale: num('pvp_scale', PVP.SCALE, 0.05, 1),
-      spMelee: num('pvp_sp_melee', PVP.SPECIAL.melee, 0.05, 2),
-      spRanged: num('pvp_sp_ranged', PVP.SPECIAL.ranged, 0.05, 2),
-      spStaff: num('pvp_sp_staff', PVP.SPECIAL.staff, 0.05, 2),
-      melee: num('pvp_melee', PVP.KIND.melee, 0.25, 3),
-      ranged: num('pvp_ranged', PVP.KIND.ranged, 0.25, 3),
-      staff: num('pvp_staff', PVP.KIND.staff, 0.25, 3),
-      near: num('pvp_near', PVP.FALLOFF.NEAR, 50, 100000),
-      far: num('pvp_far', PVP.FALLOFF.FAR, 60, 100000),
-      minRanged: num('pvp_min_ranged', PVP.FALLOFF.MIN.ranged, 0.1, 1),
-      minStaff: num('pvp_min_staff', PVP.FALLOFF.MIN.staff, 0.1, 1),
-      cap: num('pvp_cap', PVP.CAP, 0.1, 1),
-    };
-  },
-
-  /* A bow's or a staff's hit at `dist` px: full up to NEAR, then straight
-     down to MIN at FAR and beyond.  A sword is never far. */
-  /* a special's share for this weapon */
-  _pvpSpecialShare(kind, tune) {
-    const t = tune || this._pvpTune();
-    return kind === 'staff' ? t.spStaff : kind === 'ranged' ? t.spRanged : t.spMelee;
-  },
-
-  _pvpFalloff(kind, dist, tune) {
-    if (kind === 'melee') return 1;
-    const t = tune || this._pvpTune();
-    const d = Number(dist) || 0;
-    const min = kind === 'staff' ? t.minStaff : t.minRanged;
-    if (!(t.far > t.near) || d <= t.near) return 1;
-    if (d >= t.far) return min;
-    return 1 - (1 - min) * ((d - t.near) / (t.far - t.near));
   },
 
   /* A swipe the worker charged (index.js _handleAbilityUse) opens the window. */
@@ -165,8 +108,8 @@ export const pvpBalanceMethods = {
     return 1;
   },
 
-  /* The worker's own roll for this claim, before the PvP numbers: the
-     monster path's roll at edge 1, with the special's shape the wire says
+  /* The worker's own roll for this claim -- the hit, whole: the monster
+     path's roll at edge 1, with the special's shape the wire says
      (each honoured only on its own weapon and only where it can make the hit
      no bigger than three separate claims could). */
   _pvpRollFor(ps, kind, special, payload) {
@@ -178,10 +121,12 @@ export const pvpBalanceMethods = {
     const big = special && slot === 'staff' && orbs > 1;
     const r = this._computeAttackDamage(ps, slot, special, big ? { band: STAFF_BOLT.BAND } : undefined);
     let dmg = Number(r && r.dmg) || 0;
-    if (big) dmg *= orbs;
+    /* v2.3.3258: worth STAFF_BOLT_K of its orbs, as against a monster
+       (combat.js _handleMonsterDamage; this path runs only with the one
+       formula on) */
+    if (big) dmg *= orbs * ONE_FORMULA.STAFF_BOLT_K;
     const partWire = Math.floor(Number(payload && payload.part));
     if (special && slot === 'ranged' && partWire >= 2) dmg *= Math.min(1, BOW_VOLLEY_WORTH / Math.min(3, partWire));
-    if (!special && slot !== 'melee' && payload && payload.rs === 1) dmg *= PVP.RETREAT_K;
     return { dmg: Math.max(0, dmg), isCrit: !!(r && r.isCrit) };
   },
 
