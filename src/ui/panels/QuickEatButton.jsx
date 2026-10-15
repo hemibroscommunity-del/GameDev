@@ -6,7 +6,7 @@ import { calcDisplayHeal } from '@/data/gameSystems.js';
 import { eatBus } from '@/ui/mobile/eatBus.js';
 import { thumbFor, iconFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 
-/* ═══ v2.3.3258: QUICK EAT, OVER THE MOVEMENT STICK ═══
+/* ═══ v2.3.3260: QUICK EAT, OVER THE MOVEMENT STICK ═══
  * (game/quickEat.js has the why and the rules; docs/specs/pvp-fights.md)
  *
  * One tap eats the right food: the heal eaten at once that fills what you are

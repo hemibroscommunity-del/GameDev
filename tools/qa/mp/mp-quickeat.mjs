@@ -1,4 +1,4 @@
-/* ═══ QUICK EAT, ON A PHONE (v2.3.3258, docs/specs/pvp-fights.md "Quick eat") ═══
+/* ═══ QUICK EAT, ON A PHONE (v2.3.3260, docs/specs/pvp-fights.md "Quick eat") ═══
  *
  * Owner: "The idea is that fishing becomes a valuable skill because they can
  * use it during "no man's land" combat ..." -- eating from the bag took four
@@ -15,7 +15,7 @@
  *      button goes;
  *   4. hurt to 1 HP: the minnow cannot fill it, so the TROUT;
  *   5. in a fight with a player (the page's own record of a hit, as a pvp_hit
- *      writes it), hurt by 50: a bite heals what it always heals (v2.3.3258's
+ *      writes it), hurt by 50: a bite heals what it always heals (v2.3.3260's
  *      one formula: no quarter-size bite), so still the minnow; after a bite
  *      the one-bite rule's wait rides on it as its ring -- and (one formula)
  *      after a monster's blow too;

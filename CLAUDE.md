@@ -1137,7 +1137,7 @@ remnant to migrate server-side, not a mode to preserve.
         on them opened your chat;
       - `?nmlask=0` is the game as it was; `nomansland` §3-4, `mp-nmlask`,
         `mp-nomansland` step 2: no-mans-land.md "Attacking is a choice".
-    - since v2.3.3258 FIGHTS BETWEEN PLAYERS LAST, FISH MATTER IN THEM, AND
+    - since v2.3.3260 FIGHTS BETWEEN PLAYERS LAST, FISH MATTER IN THEM, AND
       LEAVING IS NO ESCAPE -- the owner, after the time-to-kill study: "I want
       you to plan and implement fixes for all of these including how much HP
       each fish should heal. You're the expert on this not me"

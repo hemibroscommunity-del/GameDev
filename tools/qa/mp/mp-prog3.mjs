@@ -18,7 +18,7 @@ import * as H from './harness.mjs';
 /* v2.3.1727: the retune moved HP_PER_LEVEL — read the constant rather than
    re-typing its value into an assertion (see the maxHp check below). */
 import { PROG3 } from '../../../src/data/prog3.js';
-/* v2.3.3258: the bar is the one formula's (100 + 50 a level), against the
+/* v2.3.3260: the bar is the one formula's (100 + 50 a level), against the
    local worker, which advertises caps.oneformula */
 import { healthAt, ONE_FORMULA } from '../../../src/data/oneFormula.js';
 

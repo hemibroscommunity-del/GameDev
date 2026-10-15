@@ -1,4 +1,4 @@
-/* ═══ v2.3.3258: ONE FORMULA FOR EVERY FIGHT ═══
+/* ═══ v2.3.3260: ONE FORMULA FOR EVERY FIGHT ═══
  *
  * Owner, 2026-10-15, on the PvP numbers this PR first shipped: "Is there a
  * way you can adjust like starting hp, damage, special attack damage, etc so

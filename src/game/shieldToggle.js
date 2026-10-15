@@ -29,7 +29,7 @@ import { targetCandidates } from '@/game/targeting.js'; /* v2.3.2472: the neares
    whole meaning of a lock), else wherever the body is facing.  Called on the
    raise AND every frame while up (BroTown's loop), so a block always faces
    the thing you are fighting as it moves. */
-/* ═══ v2.3.3258: ...OR THE PLAYER WHO JUST HIT YOU ═══
+/* ═══ v2.3.3260: ...OR THE PLAYER WHO JUST HIT YOU ═══
    Owner, on No man's land: "confirm that the shield button does become
    available the moment you're in combat for any weapon type".  It does -- a
    lock, a blow taken in the last 5 s, or a monster in reach lights it for a
@@ -65,7 +65,7 @@ export function shieldAimAngle(S) {
   if (!S || !S.player) return 0;
   const pt = lockAimPoint(S.lockedTarget && S.lockedTarget.ref);
   if (pt) return Math.atan2(pt.y - S.player.y, pt.x - S.player.x);
-  /* v2.3.3258: the player who just hit you (the note above) */
+  /* v2.3.3260: the player who just hit you (the note above) */
   const tp = shieldThreatPoint(S);
   if (tp) return Math.atan2(tp.y - S.player.y, tp.x - S.player.x);
   /* ═══ v2.3.2472: NO LOCK? POINT IT AT THE NEAREST MONSTER ═══

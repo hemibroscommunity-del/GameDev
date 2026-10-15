@@ -51,7 +51,7 @@ import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* 
 import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA } from '../../src/data/wheelDungeons.js'; /* v2.3.3016 */
 import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wheelSignposts.js'; /* v2.3.3089 */
 import { PVP_HEAL as CLIENT_PVP_HEAL } from '../../src/game/fightFood.js'; /* v2.3.3133 */
-import * as SRV_ONE from '../src/oneformula.js'; /* v2.3.3258: one formula for every fight */
+import * as SRV_ONE from '../src/oneformula.js'; /* v2.3.3260: one formula for every fight */
 import * as CLIENT_ONE from '../../src/data/oneFormula.js';
 import { setOneFormulaEnabled as clientSetOneFormula } from '../../src/data/oneFormula.js';
 import { recalcDerived as clientRecalcDerived } from '../../src/data/gameSystems.js';
@@ -118,7 +118,7 @@ import {
      lockstep" — which is exactly the obligation this suite exists to stop
      enforcing by memory. */
   getFishHealAmount as clientFishHeal,
-  /* v2.3.3258: the new fish ladder, and the switch that reads it */
+  /* v2.3.3260: the new fish ladder, and the switch that reads it */
   FISH_HEAL as CLIENT_FISH_HEAL, setFishHealEnabled as clientSetFishHeal,
   /* v2.3.1765: the equip gate.  The two sides reach the same number by
      DIFFERENT roads — the worker by tier index, the client by statReq/2 — so
@@ -267,7 +267,7 @@ const room = Object.create(GameRoom.prototype);
   check('PVP_HEAL mirror: the fight window and the gap between bites',
     CLIENT_PVP_HEAL.WINDOW_MS === SRV.PVP_HEAL.WINDOW_MS && CLIENT_PVP_HEAL.GAP_MS === SRV.PVP_HEAL.GAP_MS,
     { server: SRV.PVP_HEAL, client: CLIENT_PVP_HEAL });
-  /* v2.3.3258: ...and nothing else on either side -- the quarter-size bite of
+  /* v2.3.3260: ...and nothing else on either side -- the quarter-size bite of
      this version's first cut (SHARE) is gone with the one formula, a heal the
      same in any fight */
   check('PVP_HEAL mirror: the same keys both sides, no PvP-only share',
@@ -276,7 +276,7 @@ const room = Object.create(GameRoom.prototype);
     { server: SRV.PVP_HEAL, client: CLIENT_PVP_HEAL });
 }
 
-// ── 4b. v2.3.3258: ONE FORMULA FOR EVERY FIGHT (oneformula.js) ──
+// ── 4b. v2.3.3260: ONE FORMULA FOR EVERY FIGHT (oneformula.js) ──
 // The page predicts its bar, a scene's monster, its specials and the big
 // bolt with its own copy (src/data/oneFormula.js); every number and every
 // helper's answer must be the worker's, the formula on AND off.
@@ -724,7 +724,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { storage: { get: async () => null, put: async () => {}, list: async () => new Map(), delete: async () => {} },
       blockConcurrencyWhile: async (f) => f() },
     { ROOM_NAME: 'mirror-audit' });
-  /* v2.3.3258: every fish both ways -- the new ladder (data.js FISH_HEAL,
+  /* v2.3.3260: every fish both ways -- the new ladder (data.js FISH_HEAL,
      the page's copy read once the worker says caps.fishheal) and, with the
      kill switch thrown, the old 92 + 8 x level on both sides. */
   const fishKeys = FISHING_TIERS.map((t) => 'cooked_fish_' + t.name.toLowerCase().replace(/\s+/g, '_')).concat(['cooked_fish_nonesuch', 'fish_trout']);

@@ -1,4 +1,4 @@
-/* A FIGHT BETWEEN PLAYERS LASTS LONG ENOUGH TO MATTER -- v2.3.3258
+/* A FIGHT BETWEEN PLAYERS LASTS LONG ENOUGH TO MATTER -- v2.3.3260
  * (server/src/pvpbalance.js, docs/specs/pvp-fights.md).
  *
  * Owner, after the time-to-kill study: "I want you to plan and implement
@@ -24,7 +24,7 @@
  */
 import { GameRoom } from '../src/index.js';
 import { PVP } from '../src/pvpbalance.js';
-import { ONE_FORMULA } from '../src/oneformula.js'; /* v2.3.3258: one formula for every fight */
+import { ONE_FORMULA } from '../src/oneformula.js'; /* v2.3.3260: one formula for every fight */
 import { STAFF_BOLT, BOW_VOLLEY_WORTH } from '../src/combat.js';
 import * as PS from '../../src/game/pvpSwing.js';   /* the page's half */
 

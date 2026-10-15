@@ -13,8 +13,8 @@
    S is stateRef.current; S.keys feeds the movement code that stayed in
    the game loop. */
 import { BT_AUDIO, getNpcQuest, calcDisplayHeal } from '@/data/index.js';
-import { quickEatView } from '@/game/quickEat.js';   /* v2.3.3258: V eats */
-import { eatBus } from '@/ui/mobile/eatBus.js';   /* v2.3.3258: ...through the bag's own Eat */
+import { quickEatView } from '@/game/quickEat.js';   /* v2.3.3260: V eats */
+import { eatBus } from '@/ui/mobile/eatBus.js';   /* v2.3.3260: ...through the bag's own Eat */
 import { triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: X jumps */
 import { trapButtonView, armTrap } from '@/game/trapping.js';   /* v2.3.3120: T arms a trap */
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.3120: the Pet House opens the Pets page */
@@ -216,7 +216,7 @@ export function setupDesktopControls(S, deps) {
         }
       }
 
-      /* ═══ v2.3.3258: V — QUICK EAT ═══
+      /* ═══ v2.3.3260: V — QUICK EAT ═══
          The touch button's twin (ui/panels/QuickEatButton.jsx): the heal
          that fills what you are missing, else the biggest you carry
          (game/quickEat.js), eaten through the bag's own Eat.  A free key

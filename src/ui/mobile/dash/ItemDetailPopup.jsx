@@ -4,7 +4,7 @@ import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
 import { essenceInfo } from '@/data/salvage.js';   /* v2.3.3141: what an essence does */
 import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_BY_LOG } from '@/data/hardenedWood.js';   /* v2.3.3139 */
 import { dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
-import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player (v2.3.3258: in any fight) */
+import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player (v2.3.3260: in any fight) */
 import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.3133: ...and say how long */
 import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
@@ -156,7 +156,7 @@ function resolveTarget(target) {
     const isBurnt = /^burnt_/.test(key);
     const isLog = /^wood_/.test(key);
     let info = null;
-    /* v2.3.3258: the same heal in any fight (one formula; the first cut of this
+    /* v2.3.3260: the same heal in any fight (one formula; the first cut of this
        version printed a quarter-size bite for a fight with a player here) */
     const healLine = (heal) => '+' + toDisplayDamage(heal) + ' HP when eaten';
     /* v2.3.1207: calcDisplayHeal (getFishHealAmount × HP-grid Recovery,
@@ -193,7 +193,7 @@ function resolveTarget(target) {
     else if (isCapeItemKey(key)) {
       info = capeIsWorn() ? 'Worn — a contest prize' : 'A contest prize, in your bag';
     }
-    else if (isCookedFish) info = healLine(calcDisplayHeal(SR && SR.rpg, key));   /* v2.3.2520: display scale; v2.3.3258: and in a fight with a player */
+    else if (isCookedFish) info = healLine(calcDisplayHeal(SR && SR.rpg, key));   /* v2.3.2520: display scale; v2.3.3260: and in a fight with a player */
     /* v2.3.3130: what eating or drinking it does, and the one-of-each rule.
        v2.3.3131: a dish eaten at once (the Garden Stew) is a heal, said the
        cooked fish's way. */

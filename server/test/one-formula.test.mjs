@@ -1,4 +1,4 @@
-/* ONE FORMULA FOR EVERY FIGHT -- v2.3.3258 (server/src/oneformula.js,
+/* ONE FORMULA FOR EVERY FIGHT -- v2.3.3260 (server/src/oneformula.js,
  * docs/specs/one-formula.md).
  *
  * Owner, 2026-10-15: "Is there a way you can adjust like starting hp, damage,

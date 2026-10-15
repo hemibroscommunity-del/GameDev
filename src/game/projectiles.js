@@ -2291,7 +2291,7 @@ export function updateArrows(S, deps) {
                       ts: Date.now(),
                       inDuel: !!S._inDuel,
                       special: !!a.isSpecial,
-                      /* v2.3.3258: what the shot is, as a monster is told
+                      /* v2.3.3260: what the shot is, as a monster is told
                          (monster_damage above), for a worker that rolls the
                          hit between players itself (caps.pvpbalance,
                          pvpbalance.js): the big staff bolt's orbs, a volley

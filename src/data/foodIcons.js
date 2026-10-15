@@ -1,4 +1,4 @@
-/* ═══ v2.3.3258: THE COOKED FOOD'S PICTURES, IN ONE PLACE ═══
+/* ═══ v2.3.3260: THE COOKED FOOD'S PICTURES, IN ONE PLACE ═══
  * The bag (InventoryPanel.jsx thumbFor) draws them, and since the QUICK EAT
  * button (ui/panels/QuickEatButton.jsx) shows them in the middle of a fight,
  * the loading screen warms them too (rendering/controlsPreload.js) -- which

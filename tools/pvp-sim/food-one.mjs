@@ -1,4 +1,4 @@
-/* ═══ v2.3.3258: WHAT A FISH IS WORTH (docs/specs/pvp-fights.md "Fish") ═══
+/* ═══ v2.3.3260: WHAT A FISH IS WORTH (docs/specs/pvp-fights.md "Fish") ═══
    B carries five fish, A none: B's win rate between equal players (both
    moderate, the copper set), eating from the bag (open it, find the fish,
    Eat) or with the quick-eat button (one tap), by tier -- the minnow, the

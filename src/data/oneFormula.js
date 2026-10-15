@@ -1,4 +1,4 @@
-/* ═══ v2.3.3258: ONE FORMULA FOR EVERY FIGHT -- the page's copy ═══
+/* ═══ v2.3.3260: ONE FORMULA FOR EVERY FIGHT -- the page's copy ═══
  *
  * Owner: "I just want one formula that works the same across everything".
  * Mirror of server/src/oneformula.js (mirror-audit holds the two together;

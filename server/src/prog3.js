@@ -558,7 +558,7 @@ export function prog3StatValue(ps, stat, cat, monsterLevel) {
 /* v2.3.2662: the milestone ladder (staminaMilestoneMult, MILESTONES) that
    used to be imported here is gone -- see the tombstone in abilities.js. */
 import { blocksAt, blockSize } from './abilities.js';
-/* v2.3.3258: the max-HP formula (no imports of its own, so no cycle) */
+/* v2.3.3260: the max-HP formula (no imports of its own, so no cycle) */
 import { healthAt } from './oneformula.js';
 
 /* XP to go from trained level L to L+1.  The legacy weaponXpRequired
@@ -1025,7 +1025,7 @@ export const prog3Methods = {
   _prog3Recompute(ps) {
     if (!ps || !ps.prog3) return;
     ps.level = this._prog3CharLevel(ps);
-    /* v2.3.3258: ONE FORMULA (oneformula.js) -- 100 + 50 a level + 40 a
+    /* v2.3.3260: ONE FORMULA (oneformula.js) -- 100 + 50 a level + 40 a
        point, so a fight between two players lasts long enough without a
        PvP-only cut on their hits; `oneformula: false` is the old
        100 + level x HP_PER_LEVEL + points x BODY.hp.per below, frozen. */

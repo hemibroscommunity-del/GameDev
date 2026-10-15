@@ -242,7 +242,7 @@ export const liveopsMethods = {
       flags[name] = value; // write-through: cache IS the stored object
       await this.state.storage.put('liveflags', flags);
       await this._adminLog({ op: 'flag_set', name, value });
-      /* v2.3.3258: the one formula's switch re-sizes every bar and every live
+      /* v2.3.3260: the one formula's switch re-sizes every bar and every live
          monster's hit at once (oneformula.js _oneFormulaFlagChanged) */
       if (name === 'oneformula' && typeof this._oneFormulaFlagChanged === 'function') this._oneFormulaFlagChanged();
       return json({ ok: true, flags });
@@ -254,7 +254,7 @@ export const liveopsMethods = {
         delete flags[name];
         await this.state.storage.put('liveflags', flags);
         await this._adminLog({ op: 'flag_clear', name });
-        if (name === 'oneformula' && typeof this._oneFormulaFlagChanged === 'function') this._oneFormulaFlagChanged();   /* v2.3.3258 */
+        if (name === 'oneformula' && typeof this._oneFormulaFlagChanged === 'function') this._oneFormulaFlagChanged();   /* v2.3.3260 */
       }
       return json({ ok: true, flags });
     }

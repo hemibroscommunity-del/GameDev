@@ -525,7 +525,7 @@ export const DISHES = {
 export const PVP_HEAL = Object.freeze({
   WINDOW_MS: 10000,
   GAP_MS: 15000,
-  /* ═══ v2.3.3258: ...IN ANY FIGHT ═══
+  /* ═══ v2.3.3260: ...IN ANY FIGHT ═══
      ONE FORMULA (oneformula.js, owner: "I just want one formula that works the
      same across everything"): with the formula on, the rule holds in a fight
      with ANYTHING -- a duel, or a hit dealt or taken (a monster's, a player's)
@@ -535,7 +535,7 @@ export const PVP_HEAL = Object.freeze({
      a player instead, a number for those fights alone. */
 });
 
-/* ═══ v2.3.3258: WHAT EACH FISH HEALS (owner: "including how much HP each
+/* ═══ v2.3.3260: WHAT EACH FISH HEALS (owner: "including how much HP each
    fish should heal.  You're the expert on this not me") ═══
    It was 92 + 8 x the fish's tier level -- 100, 140, 180, 220, 260 -- a ladder
    that flattened (x1.4, x1.29, x1.22, x1.18) just as each tier came to cost

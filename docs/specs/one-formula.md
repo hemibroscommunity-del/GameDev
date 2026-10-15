@@ -1,4 +1,4 @@
-# One formula for every fight (v2.3.3258)
+# One formula for every fight (v2.3.3260)
 
 The owner, on the first cut of this version (which tuned fights between
 players with numbers of their own): *"I understand you're tuning this for good

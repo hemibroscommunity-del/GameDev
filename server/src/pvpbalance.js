@@ -1,4 +1,4 @@
-/* ═══ v2.3.3258: A HIT BETWEEN PLAYERS IS THE WORKER'S OWN ROLL ═══
+/* ═══ v2.3.3260: A HIT BETWEEN PLAYERS IS THE WORKER'S OWN ROLL ═══
  *
  * Owner, 2026-10-14, after the time-to-kill study (docs/specs/pvp-fights.md):
  * "I want you to plan and implement fixes for all of these ... You're the
@@ -121,7 +121,7 @@ export const pvpBalanceMethods = {
     const big = special && slot === 'staff' && orbs > 1;
     const r = this._computeAttackDamage(ps, slot, special, big ? { band: STAFF_BOLT.BAND } : undefined);
     let dmg = Number(r && r.dmg) || 0;
-    /* v2.3.3258: worth STAFF_BOLT_K of its orbs, as against a monster
+    /* v2.3.3260: worth STAFF_BOLT_K of its orbs, as against a monster
        (combat.js _handleMonsterDamage; this path runs only with the one
        formula on) */
     if (big) dmg *= orbs * ONE_FORMULA.STAFF_BOLT_K;

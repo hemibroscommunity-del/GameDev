@@ -430,7 +430,7 @@ const burstPhases = () => room.eventBuffer
   room._tickMonsters();
   const dealt = before - ps.hp;
   const cap = Math.max(1, Math.floor((ps.maxHp || 100) * TELEGRAPH.MAX_HIT_PCT));
-  /* v2.3.3258: the flat 60 x the one formula's hit multiplier at the slime's
+  /* v2.3.3260: the flat 60 x the one formula's hit multiplier at the slime's
      level (oneformula.js), under its 50% rail and the one cap's 30% */
   const flatK = Math.ceil(SLIME_BURST.DMG * room._monsterHitK(slime.level));
   const cap30 = room._hitCapHp(ps);

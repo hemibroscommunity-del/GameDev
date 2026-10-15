@@ -42,8 +42,8 @@ import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } fr
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
-import { setOneFormulaEnabled } from '@/data/oneFormula.js'; /* v2.3.3258: one formula for every fight */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setProg3RelEnabled /* v2.3.2680 */, setGearQEnabled /* v2.3.2664 */, setFishHealEnabled /* v2.3.3258 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2662 */, PROG3_SKILL_META, setZoneDepthLive /* v2.3.2790 */ } from '@/data/index.js';
+import { setOneFormulaEnabled } from '@/data/oneFormula.js'; /* v2.3.3260: one formula for every fight */
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setProg3RelEnabled /* v2.3.2680 */, setGearQEnabled /* v2.3.2664 */, setFishHealEnabled /* v2.3.3260 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2662 */, PROG3_SKILL_META, setZoneDepthLive /* v2.3.2790 */ } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -69,7 +69,7 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 /* v2.3.1982: the "the world is full" screen — plain DOM, see its header
    for why it is not a React boot phase. */
 import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
-import { showLingerWait, hideLingerWait } from '@/ui/LingerScreen.js';   /* v2.3.3258: your bro is still in that fight */
+import { showLingerWait, hideLingerWait } from '@/ui/LingerScreen.js';   /* v2.3.3260: your bro is still in that fight */
 import { markServerReady, resetServerReady, serverReadyReason } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -241,7 +241,7 @@ export function setupWebSocket(ctx) {
        something is actually happening. */
     var _rfPending = null;
     var _rfAttempts = 0;
-    /* ═══ v2.3.3258: YOUR BODY IS STILL IN A FIGHT ═══
+    /* ═══ v2.3.3260: YOUR BODY IS STILL IN A FIGHT ═══
        `_lgPending` is set by linger_wait (the worker refuses a join while the
        body you left in a fight with a player still stands there,
        server/src/linger.js) and consumed by the close that follows (4010):
@@ -1106,7 +1106,7 @@ export function setupWebSocket(ctx) {
             }
           case 'linger_wait':
             {
-              /* v2.3.3258: the worker will not let this join in while the
+              /* v2.3.3260: the worker will not let this join in while the
                  body we left in a fight still stands (linger.js); it closes
                  4010 right after, and onclose does the waiting */
               var _lgMs = msg.payload && +msg.payload.ms;
@@ -1246,7 +1246,7 @@ export function setupWebSocket(ctx) {
                  exact moment the "world is full" screen stops being true.
                  Idempotent — a no-op on every ordinary join. */
               _roomFullCleared();
-              /* v2.3.3258: ...and so is "your bro is still in that fight" */
+              /* v2.3.3260: ...and so is "your bro is still in that fight" */
               _lgPending = null;
               hideLingerWait();
               /* v2.3.3034: we are in again -- an idle or superseded banner is
@@ -1357,11 +1357,11 @@ export function setupWebSocket(ctx) {
                    only: against an old worker the readouts keep predicting its
                    math (QUALITY_MULTS_LEGACY / ARMOR_DR_LEGACY). */
                 setGearQEnabled(!!(S._serverCaps && S._serverCaps.gearq));
-                /* v2.3.3258: what each fish heals (server data.js FISH_HEAL).
+                /* v2.3.3260: what each fish heals (server data.js FISH_HEAL).
                    Display only: against an older worker, or with its kill
                    switch thrown, the readouts keep its 92 + 8 x level. */
                 setFishHealEnabled(!!(S._serverCaps && S._serverCaps.fishheal));
-                /* v2.3.3258: ONE FORMULA (data/oneFormula.js) -- the bar, a
+                /* v2.3.3260: ONE FORMULA (data/oneFormula.js) -- the bar, a
                    scene's monster and the specials predicted the worker's way
                    only against a worker that says so: an older one (or its
                    switch thrown) settles the old numbers. */
@@ -3812,7 +3812,7 @@ export function setupWebSocket(ctx) {
           _roomFullRetry(_rf);
           return;
         }
-        /* v2.3.3258: our body is still in a fight (linger_wait / 4010): wait
+        /* v2.3.3260: our body is still in a fight (linger_wait / 4010): wait
            it out on its own screen, then come back -- not the ordinary
            drop's backoff, which could wait longer than the body does */
         if (_lgPending || (event && event.code === 4010)) {

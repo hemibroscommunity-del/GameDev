@@ -1,4 +1,4 @@
-/* ═══ LEAVING IN THE MIDDLE OF A FIGHT, ON TWO SCREENS (v2.3.3258) ═══
+/* ═══ LEAVING IN THE MIDDLE OF A FIGHT, ON TWO SCREENS (v2.3.3260) ═══
  * (server/src/linger.js, docs/specs/pvp-fights.md "Leaving in the middle of
  * a fight")
  *

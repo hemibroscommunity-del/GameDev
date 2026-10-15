@@ -6,10 +6,10 @@
  * Two players, a real duel in town, the real UI:
  *
  *   1. THE BREW IS THE WORKER'S.  A's swings claim their damage with
- *      `nb: 1`; v2.3.3258: the worker rolls the hit itself (pvpbalance.js),
+ *      `nb: 1`; v2.3.3260: the worker rolls the hit itself (pvpbalance.js),
  *      and after A drinks a Fury Tonic its roll is twice the size -- its own
  *      brew, put on once -- while the claims stay brew-free.
- *   2. A SPECIAL SWING (v2.3.3258): it says `special` to a pvpbalance worker
+ *   2. A SPECIAL SWING (v2.3.3260): it says `special` to a pvpbalance worker
  *      (which counts it only after the swipe it charged), at most three
  *      claims a swing, and lands ONE hit a swing.
  *   3. ONE BITE AT A TIME.  B, hurt, eats a Garden Stew from the bag: it
@@ -137,7 +137,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const near = await closeIn(A, wsPort, aId, bId);
   rec.ok('A walks into reach (guard)', near.ok, near);
 
-  /* ═══ v2.3.3258: THE WORKER ROLLS THE HIT (server/src/pvpbalance.js) ═══
+  /* ═══ v2.3.3260: THE WORKER ROLLS THE HIT (server/src/pvpbalance.js) ═══
      A pvp_hit's dmgBase is the worker's own roll now, not the claim, so a
      claim no longer comes back as it went (sections 1 and 2 of this file
      pinned that, the claim path, which is `pvpbalance: false` now).  What the
@@ -205,7 +205,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { sends: sends.length, flagged: sends.filter((s) => s.special === true).length,
       perSwing: ts.map((t) => hits.filter((h) => h.at >= t && h.at < t + 550).length) };
   }, { me: aId, ts: swingsAt });
-  /* v2.3.3258: to a worker that lands one hit a swing and counts a special
+  /* v2.3.3260: to a worker that lands one hit a swing and counts a special
      only after the swipe it charged (caps.pvpbalance), the special swing says
      so -- the three-a-1200-ms lane v2.3.3133 kept it out of is not this path */
   rec.ok('a special SWING says special to a pvpbalance worker, at most three claims a swing',

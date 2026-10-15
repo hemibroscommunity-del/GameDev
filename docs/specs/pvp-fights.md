@@ -1,4 +1,4 @@
-# Fights between players that last long enough to matter (v2.3.3258)
+# Fights between players that last long enough to matter (v2.3.3260)
 
 The owner, after asking whether fights between players are reasonable for
 characters with no points spent: *"This might take a while to plan out"*;

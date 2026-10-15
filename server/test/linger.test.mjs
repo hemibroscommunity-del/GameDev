@@ -1,4 +1,4 @@
-/* LEAVING IN THE MIDDLE OF A FIGHT -- THE BODY STAYS (v2.3.3258,
+/* LEAVING IN THE MIDDLE OF A FIGHT -- THE BODY STAYS (v2.3.3260,
  * server/src/linger.js, docs/specs/pvp-fights.md "Leaving mid-fight").
  *
  *   1. A player who leaves within 10 s of a hit between players, in the

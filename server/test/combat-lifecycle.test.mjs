@@ -262,7 +262,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 
 // ── 3. _applyDamage: block, grace, resist ──
 {
-  /* v2.3.3258: a bar of 1000 -- the one formula's cap (no blow over 30% of
+  /* v2.3.3260: a bar of 1000 -- the one formula's cap (no blow over 30% of
      max HP, oneformula.js) would otherwise clip the 100-point hits these
      checks are about; the cap has its own suite (one-formula.test.mjs) */
   const ps = { hp: 100, maxHp: 1000, agility: 0, z: 'meadow' };
@@ -767,7 +767,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 //       CAP_K moves with BAND.
 {
   const { STAFF_BOLT } = await import('../src/combat.js');
-  const { ONE_FORMULA } = await import('../src/oneformula.js');   /* v2.3.3258 */
+  const { ONE_FORMULA } = await import('../src/oneformula.js');   /* v2.3.3260 */
   psA.z = 'meadow'; psA.dead = false; psA.dying = false;
   psA.weapon = null;
   psA.staffWeapon = { type: 'staff', tierMult: 1 };
@@ -802,7 +802,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     const one = room._computeAttackDamage(psA, 'staff', true, { targetLevel: bb.level }).dmg;
     const bandOne = room._computeAttackDamage(psA, 'staff', true, { targetLevel: bb.level, band: STAFF_BOLT.BAND }).dmg;
     const bow = room._computeAttackDamage(psA, 'ranged', true, { targetLevel: bb.level }).dmg;
-    /* v2.3.3258: the one formula's bolt is worth STAFF_BOLT_K of its orbs
+    /* v2.3.3260: the one formula's bolt is worth STAFF_BOLT_K of its orbs
        (oneformula.js), rounded once where the worker credits it */
     const BK = ONE_FORMULA.STAFF_BOLT_K;
     const W = (orbs) => Math.round(bandOne * orbs * BK);
@@ -1096,7 +1096,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('resilience: small hit untouched', small.dmgTaken === 30 && ps.hp === _hpAfterBig - 30, small);
 
   // Last Stand: a killing blow leaves exactly 1 HP, once per cooldown.
-  /* v2.3.3258: at 10 of 100 -- under the one formula a blow takes at most 30
+  /* v2.3.3260: at 10 of 100 -- under the one formula a blow takes at most 30
      of a 100 bar (oneformula.js HIT_CAP), so a killing blow needs a low bar */
   const ps2 = { hp: 10, maxHp: 100, agility: 0, z: 'meadow', hpSpec: { laststand: 100 } };
   const saved = room._applyDamage(ps2, 500, false);
@@ -1652,7 +1652,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     // Crossing INTO the band on one big hit must also write at once —
     // the check runs after damage, so there is no way to slip past it.
     psA._regenSaveAt = Date.now(); psA._regenDirty = false;
-    /* v2.3.3258: from 45% -- one blow takes at most 30% of the bar under the
+    /* v2.3.3260: from 45% -- one blow takes at most 30% of the bar under the
        one formula (oneformula.js HIT_CAP), so "one big hit into the band" is
        a 25% one */
     psA.hp = Math.round(psA.maxHp * 0.45);

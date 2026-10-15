@@ -1,4 +1,4 @@
-/* ═══ v2.3.3258: WHEN BOTH EAT (docs/specs/pvp-fights.md "Fish") ═══
+/* ═══ v2.3.3260: WHEN BOTH EAT (docs/specs/pvp-fights.md "Fish") ═══
    Both players carry five fish and eat with the quick-eat button: B's win
    rate when its fish is the same as A's, one or two tiers better, or A has
    none -- and the fight's median length from the first hit: too big a bite

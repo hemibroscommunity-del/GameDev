@@ -13,7 +13,7 @@
  *      size (it was a ceil, which gave the whole cut back under 20).
  *   4. ONE BITE AT A TIME in a fight: a heal eaten at once (the Garden Stew,
  *      a cooked fish, the minnow bottle) once per GAP_MS while in a duel or
- *      within WINDOW_MS of a hit between players -- and, since v2.3.3258's one
+ *      within WINDOW_MS of a hit between players -- and, since v2.3.3260's one
  *      formula (oneformula.js), of a blow dealt or taken by anything; meals
  *      and brews never held back; `pvpheal: false`.  A heal is the same size
  *      in any fight (the quarter-size bite of this version's first cut is
@@ -27,7 +27,7 @@ import { GameRoom } from '../src/index.js';
 import { PVP_HEAL, DISHES, FISH_HEAL } from '../src/data.js';
 import * as FF from '../../src/game/fightFood.js';   /* the page's half */
 import { dishFor as clientDishFor } from '../../src/data/dishes.js';
-import * as QE from '../../src/game/quickEat.js';   /* v2.3.3258: the quick-eat button's choice */
+import * as QE from '../../src/game/quickEat.js';   /* v2.3.3260: the quick-eat button's choice */
 import { calcDisplayHeal as clientCalcDisplayHeal, setFishHealEnabled } from '../../src/data/gameSystems.js';
 
 function makeState() {
@@ -122,7 +122,7 @@ function hit(payload) {
   return room.eventBuffer.find((e) => e.type === 'pvp_hit') || null;
 }
 const taken = (ev) => ev && ev.payload ? ev.payload.dmgTaken : -1;
-/* v2.3.3258: this section pins the CLAIM path (the phone's dmgBase, `nb`),
+/* v2.3.3260: this section pins the CLAIM path (the phone's dmgBase, `nb`),
    which is `pvpbalance: false` now; on the new path the worker rolls the hit
    and its roll carries the brew itself -- §2b below. */
 room._liveFlags = { pvpbalance: false };
@@ -185,7 +185,7 @@ room._liveFlags = { pvpbalance: false };
 }
 room._liveFlags = {};
 
-// ── 2b. v2.3.3258: on the new path the brew is the worker's own roll's ──
+// ── 2b. v2.3.3260: on the new path the brew is the worker's own roll's ──
 {
   /* The worker rolls each hit (pvpbalance.js), and its roll multiplies by the
      brew it holds (_computeAttackDamage -> _brewMul) -- so a brew counts in a
@@ -333,7 +333,7 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   check('...and lets go when the duel is over (derived, nothing to clear)', C.inventory.cooked_fish_minnow === 8, C.inventory);
   room._duels.delete('ff-duel');
 
-  /* ═══ v2.3.3258: ONE FORMULA -- a fight with MONSTERS holds the bite too ═══
+  /* ═══ v2.3.3260: ONE FORMULA -- a fight with MONSTERS holds the bite too ═══
      (cooking.js _anyFightAt: a blow taken -- lastDamageAt -- or landed --
      _lastDealtAt -- within WINDOW_MS) */
   hurt(); clk('bp_ff_c').pvpAt = 0; clk('bp_ff_c').healAt = now(); C.lastDamageAt = now(); C._lastDealtAt = 0;
@@ -393,7 +393,7 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   check('a bite held back by the rule is told why: eat_refused with the wait (~12 s)',
     !!reply && reply.payload.wait > 11000 && reply.payload.wait <= 12000, reply && reply.payload);
   clk('bp_ff_c').pvpAt = 0;
-  C.lastDamageAt = 0; C._lastDealtAt = 0;   /* v2.3.3258: no fight with anything either (_anyFightAt) */
+  C.lastDamageAt = 0; C._lastDealtAt = 0;   /* v2.3.3260: no fight with anything either (_anyFightAt) */
   C._arenaMatch = { id: 'x' };
   await eat('meal_garden_stew');
   check('...and only by the rule: an arena refusal says nothing of the kind', !wsC.sent.some((m) => m.type === 'eat_refused'));
@@ -410,7 +410,7 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
     C.hp === 100, { hp: C.hp });
   check('...the stews it makes land in the bag instead, never lost', (C.inventory.meal_garden_stew || 0) === stews0 + 3, C.inventory.meal_garden_stew);
   clk('bp_ff_c').pvpAt = 0; clk('bp_ff_c').healAt = 0;
-  C.lastDamageAt = 0; C._lastDealtAt = 0;   /* v2.3.3258: out of every fight */
+  C.lastDamageAt = 0; C._lastDealtAt = 0;   /* v2.3.3260: out of every fight */
   await send(wsC, 'cook_recipe', { recipeIdx: COOK_IDX });
   check('...out of a fight it is eaten at once, as an old client expects', C.hp > 100 && (C.inventory.meal_garden_stew || 0) === stews0 + 3, { hp: C.hp });
   check('...and starts the clock like every bite', now() - clk('bp_ff_c').healAt < 1000, clk('bp_ff_c').healAt);
@@ -434,7 +434,7 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   check('...never the live ones', room._pvpHealClocks.has('bp_ff_c'));
 }
 
-// ── 4c. v2.3.3258: a bite heals THE SAME in any fight (one formula) ──
+// ── 4c. v2.3.3260: a bite heals THE SAME in any fight (one formula) ──
 {
   check('no PvP-only share is left (guard)', !('SHARE' in PVP_HEAL) && typeof room._pvpHealSized !== 'function' && typeof room._pvpHealShare !== 'function', PVP_HEAL);
   check('the fish ladder (guard): minnow 100 .. pike 475',
@@ -519,7 +519,7 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   const wsE = fakeWs();
   await join(wsE, 'bp_ff_e');
   const sync2 = wsE.sent.find((m) => m.type === 'state_sync' && m.caps);
-  check('caps.fishheal is advertised by default (v2.3.3258)', !!sync2 && sync2.caps.fishheal === true, sync2 && sync2.caps && sync2.caps.fishheal);
+  check('caps.fishheal is advertised by default (v2.3.3260)', !!sync2 && sync2.caps.fishheal === true, sync2 && sync2.caps && sync2.caps.fishheal);
 }
 
 // ── 6. the page's half (src/game/fightFood.js) ──
@@ -556,7 +556,7 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   const c4 = FF.pvpClaim(newW, 80, 99);
   check('page: a tag past the bound is ignored, not divided by', c4.dmgBase === 80, c4);
   /* And end to end: the page's claim, the worker's multiply = the brewed hit
-     (the claim path, `pvpbalance: false` since v2.3.3258). */
+     (the claim path, `pvpbalance: false` since v2.3.3260). */
   room._liveFlags = { pvpbalance: false };
   A._buffs = { damage: now() + 60000, damageMul: 2 };
   const ev = hit({ dmgBase: FF.pvpClaim(newW, CLAIM * 2, 2).dmgBase, nb: FF.pvpClaim(newW, CLAIM * 2, 2).nb });
@@ -602,7 +602,7 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
     nowDishes.length > 0 && nowDishes.every((k) => FF.isInstantHeal(k, clientDishFor(k))), nowDishes);
 }
 
-// ── 7. v2.3.3258: QUICK EAT -- one tap, the right food (src/game/quickEat.js) ──
+// ── 7. v2.3.3260: QUICK EAT -- one tap, the right food (src/game/quickEat.js) ──
 {
   const fishHealOn = true;
   setFishHealEnabled(fishHealOn);
@@ -623,7 +623,7 @@ const drink = (key) => send(wsC, 'potion_drink', { invKey: key });
   S.rpg.hp = 10;
   v = QE.quickEatView(S, heal, t);
   check('quick eat: a deep wound nothing fills gets the biggest (pike)', !!v && v.key === 'cooked_fish_pike', v);
-  /* v2.3.3258: a heal is the same in any fight (one formula): missing 50 is a
+  /* v2.3.3260: a heal is the same in any fight (one formula): missing 50 is a
      minnow out of a fight and in one */
   S.rpg.hp = 450;
   v = QE.quickEatView(S, heal, t);

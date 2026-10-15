@@ -150,7 +150,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   // but dmgBase is clamped to the attacker's weapon-aware cap and
   // critChance 99999 clamps to 100 (guaranteed crit, 1.5x+).
   psB.x = 200;
-  /* v2.3.3258: the CLAIM's clamps are the old path's (pvpbalance: false); on
+  /* v2.3.3260: the CLAIM's clamps are the old path's (pvpbalance: false); on
      the new path the worker rolls the hit itself and the claim's numbers buy
      nothing -- checked just below. */
   room._liveFlags = { pvpbalance: false };
@@ -162,7 +162,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   check('pvp: critChance clamps to 100 (hit is a crit)', !!hit && hit.payload.isCrit === true, hit && hit.payload);
   room._liveFlags = {};
   {
-    /* v2.3.3258: a forged dmgBase and critChance buy nothing -- the worker's
+    /* v2.3.3260: a forged dmgBase and critChance buy nothing -- the worker's
        own roll decides (pvpbalance.js); at 0 Luck points a crit is the 1% base */
     let crits = 0, maxForged = 0, maxHonest = 0;
     for (let i = 0; i < 200; i++) {

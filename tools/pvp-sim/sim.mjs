@@ -1,4 +1,4 @@
-/* ═══ v2.3.3258: THE FIGHT SIMULATOR -- TWO PLAYERS IN NO MAN'S LAND ═══
+/* ═══ v2.3.3260: THE FIGHT SIMULATOR -- TWO PLAYERS IN NO MAN'S LAND ═══
  * (docs/specs/pvp-fights.md has the study, the tables and the decisions)
  *
  * Two fighters on open ground in No man's land, stepped at 60 frames a second
@@ -18,7 +18,7 @@
  *     one-bite clock _pvpHealWait).
  * What the PAGE decides is restated here from the game's code (cited per
  * line): what each attack claims, how often, how projectiles fly and hit
- * (CLIENT.mode 'new' is v2.3.3258's page, 'old' the page before it).  What a
+ * (CLIENT.mode 'new' is v2.3.3260's page, 'old' the page before it).  What a
  * PLAYER decides (where to stand, when to fire a special, when to roll or
  * eat) is the skill model (SKILL): the study's assumptions.
  *
@@ -462,7 +462,7 @@ function sweep(f, o) {
   if (age >= SWEEP_MS) return;
   let r;
   if (CLIENT.mode === 'new') {
-    /* v2.3.3258 page: a claim only while its own view has the target in
+    /* v2.3.3260 page: a claim only while its own view has the target in
        reach, at most at 0 / 90 / 180 ms of the sweep, each saying its swing */
     if (f.swingLanded === f.swingAt) return;
     if (!(f.claimsAt && f.claimsAt.sw === f.swingSw)) f.claimsAt = { sw: f.swingSw, n: 0, next: f.swingAt };

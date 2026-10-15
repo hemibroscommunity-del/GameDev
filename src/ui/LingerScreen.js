@@ -1,4 +1,4 @@
-/* ═══ v2.3.3258: "YOUR BRO IS STILL IN THAT FIGHT" ═══
+/* ═══ v2.3.3260: "YOUR BRO IS STILL IN THAT FIGHT" ═══
  *
  * The worker keeps the body of a player who left in the middle of a fight
  * with another player in the world for a few seconds, still hittable

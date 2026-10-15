@@ -229,7 +229,7 @@ export const fireTrailMethods = {
     /* Defensive, not load-bearing: 6 is nowhere near half of anyone's max
        HP.  It is here so a future tuning pass on DMG cannot quietly invent
        the first one-shot in the game (TELEGRAPH.MAX_HIT_PCT, same rail). */
-    /* v2.3.3258: ONE FORMULA -- the patch's flat amount scaled with the
+    /* v2.3.3260: ONE FORMULA -- the patch's flat amount scaled with the
        players' bars by the goblin's level, as its own hit is (oneformula.js) */
     const raw = Math.min(Math.ceil(FIRE_TRAIL.DMG * this._monsterHitK(patch.lvl)),
       Math.max(1, Math.floor((ps.maxHp || 100) * 0.5)));

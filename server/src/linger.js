@@ -1,4 +1,4 @@
-/* ═══ v2.3.3258: LEAVING IN THE MIDDLE OF A FIGHT -- THE BODY STAYS ═══
+/* ═══ v2.3.3260: LEAVING IN THE MIDDLE OF A FIGHT -- THE BODY STAYS ═══
  *
  * Owner, 2026-10-14: "Also what happens if a player leaves mid-game while
  * they are attacked? The idea is that fishing becomes a valuable skill

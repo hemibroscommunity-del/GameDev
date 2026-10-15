@@ -69,7 +69,7 @@
  *       (a real zone's and a Wheel monster's kills still drop theirs).
  */
 import { GameRoom } from '../src/index.js';
-import { ONE_FORMULA } from '../src/oneformula.js'; /* v2.3.3258 */
+import { ONE_FORMULA } from '../src/oneformula.js'; /* v2.3.3260 */
 import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
 import { DUNGEONS, BOSS_ABILITIES } from '../src/dungeon.js';
 import { MONSTER_HP_CURVE, MONSTER_DMG_CURVE, monsterHpFlat } from '../src/data.js'; /* v2.3.3055: the dmg curve, the growing flat */
@@ -215,7 +215,7 @@ const baseDmg = Math.ceil(room._monsterStat(MONSTER_DMG_CURVE.base, cfg.monsterL
 // v2.3.1346: the flat is added AFTER boss/party multipliers (exact, like all monsters); v2.3.3055: the level's own flat.
 const bossFlat = monsterHpFlat(cfg.monsterLevel + 5);
 check('boss hp = base x mult x party scale 1.6 + flat', boss.hp === Math.ceil(baseHp * 8 * 1.6) + bossFlat, { hp: boss.hp, expected: Math.ceil(baseHp * 8 * 1.6) + bossFlat });
-/* v2.3.3258: x the one formula's hit multiplier at its level first, as every
+/* v2.3.3260: x the one formula's hit multiplier at its level first, as every
    monster is built (oneformula.js _monsterHitStamp) */
 const _bossBase = Math.ceil(baseDmg * room._monsterHitK(cfg.monsterLevel + 5));
 check('boss dmg = base x 1.5', boss.dmg === Math.ceil(_bossBase * 1.5), { dmg: boss.dmg, expected: Math.ceil(_bossBase * 1.5) });
@@ -367,7 +367,7 @@ room._tickDungeons(tExec);
 const execEvt = msgsOfType(wsA, 'dungeon_boss_ability');
 check('execute event carries phase+range', execEvt.length === 1 && execEvt[0].payload.phase === 'execute' && execEvt[0].payload.ability === 'slam' && execEvt[0].payload.range === BOSS_ABILITIES.SLAM.RANGE, execEvt.map((e) => e.payload));
 const slamAtk = room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.monsterId === bossB.id);
-/* v2.3.3258: the ability's own 50% rail, then the one formula's cap on every
+/* v2.3.3260: the ability's own 50% rail, then the one formula's cap on every
    blow -- 30% of 500 = 150 (oneformula.js HIT_CAP) */
 const _cap500 = Math.floor(500 * ONE_FORMULA.HIT_CAP);
 check('slam damage rides monster_attack, clamped to 50% maxHp (then the one cap, 30%)', slamAtk.length === 1 && slamAtk[0].payload.dmgTaken === _cap500 && psA.hp === 500 - _cap500, { hp: psA.hp, atk: slamAtk.map((a) => a.payload) });

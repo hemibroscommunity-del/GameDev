@@ -1,4 +1,4 @@
-/* ═══ THE SHIELD AGAINST A PLAYER, ON TWO PHONES (v2.3.3258) ═══
+/* ═══ THE SHIELD AGAINST A PLAYER, ON TWO PHONES (v2.3.3260) ═══
  *
  * Owner, on No man's land: "Also just wanted to confirm that the shield button
  * does become available the moment you're in combat for any weapon type
@@ -9,7 +9,7 @@
  * but with no lock a guard raised against a PLAYER pointed at the nearest
  * MONSTER (or a stale angle), and the worker measures a block's arc (+/-60
  * degrees) at impact.  So the arrow that lit the button walked past the shield
- * it lit.  v2.3.3258: a pvp_hit remembers who threw it, and for 3 s the guard
+ * it lit.  v2.3.3260: a pvp_hit remembers who threw it, and for 3 s the guard
  * faces them (shieldAimAngle, noteShieldThreat).
  *
  * Two phones, a real duel in town (the consent that lets the hits land; the

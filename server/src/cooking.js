@@ -68,7 +68,7 @@ export const cookingMethods = {
 
     const tier = FISH_TIERS.find((t) => species.includes(t.name));
     if (!tier) return 100; // default for unmapped cooked fish (v2.3.1765)
-    /* v2.3.3258: the new ladder (data.js FISH_HEAL), unless switched off */
+    /* v2.3.3260: the new ladder (data.js FISH_HEAL), unless switched off */
     if (!this._fishHealOff() && Object.prototype.hasOwnProperty.call(FISH_HEAL, tier.name)) return FISH_HEAL[tier.name];
 /* v2.3.1765 (owner: "Fish heal needs to be closer to 100").  The base was 15,
    so the first cooked fish healed 23 against a ~106 HP character — a bite, not
@@ -77,7 +77,7 @@ export const cookingMethods = {
     return Math.ceil(92 + tier.lvl * 8);
   },
 
-  /* v2.3.3258: the kill switch for the fish ladder, read the lower-case way
+  /* v2.3.3260: the kill switch for the fish ladder, read the lower-case way
      (TRAPS §117) */
   _fishHealOff() {
     const f = this._liveFlags;
@@ -140,9 +140,9 @@ export const cookingMethods = {
     if (ps._arenaMatch) { refuseEat(); return; } // v2.3.1126: no healing during an arena match (GDD §43)
     if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith cooked_fish_ above
     if ((ps.inventory[invKey] || 0) <= 0) { refuseEat(); return; }
-    if (this._pvpHealHeld(session.id, ps)) { refuseEat(); return; }   /* v2.3.3133: one bite at a time in a fight (v2.3.3258: any fight, _pvpHealWait) */
+    if (this._pvpHealHeld(session.id, ps)) { refuseEat(); return; }   /* v2.3.3133: one bite at a time in a fight (v2.3.3260: any fight, _pvpHealWait) */
     // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap +50%).
-    /* v2.3.3258: the same heal in any fight -- ONE FORMULA (oneformula.js): the
+    /* v2.3.3260: the same heal in any fight -- ONE FORMULA (oneformula.js): the
        first cut of this version healed a quarter in a fight with a player */
     const heal = Math.ceil(this._fishHealAmount(invKey)) + this._recoveryFlat(ps); // v2.3.1345: flat recovery bonus
     if (heal <= 0) { refuseEat(); return; }
@@ -553,7 +553,7 @@ export const cookingMethods = {
    * could next eat.  A Map on the room survives a rejoin and is sent to
    * nobody.  Memory only (rule 11): a deploy lets one more bite through,
    * which costs nothing.  Pruned once it passes PVP_HEAL_CLOCKS_MAX. */
-  /* v2.3.3258: in a fight with a player -- a duel, or a hit between players
+  /* v2.3.3260: in a fight with a player -- a duel, or a hit between players
      within PVP_HEAL.WINDOW_MS (the order board's farmorders.js twin reads the
      same clock; the bite rule widens it to any fight, _anyFightAt below) */
   _pvpInFight(id, ps, now) {
@@ -563,7 +563,7 @@ export const cookingMethods = {
     return !!(this._duelFor && this._duelFor(id)) || (!!c && t - c.pvpAt < PVP_HEAL.WINDOW_MS);
   },
 
-  /* ═══ v2.3.3258: ...IN ANY FIGHT (oneformula.js) ═══
+  /* ═══ v2.3.3260: ...IN ANY FIGHT (oneformula.js) ═══
      With the one formula on, "in a fight" is a fight with ANYTHING: the PvP
      test above, or a blow dealt or taken within WINDOW_MS -- `lastDamageAt`
      (stamped by _applyDamage on every blow that reaches you, blocked and

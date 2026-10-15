@@ -59,7 +59,7 @@ import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock mon
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 import { brewMulNow, pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: the brew, read once and claimed right in a duel */
-import { pvpBalanceOn, pvpSwingClaimOk, pvpLockInReach } from '@/game/pvpSwing.js'; /* v2.3.3258: one sword claim a swing */
+import { pvpBalanceOn, pvpSwingClaimOk, pvpLockInReach } from '@/game/pvpSwing.js'; /* v2.3.3260: one sword claim a swing */
 
 /* ═══ v2.3.3206: HOW FAR A PLAIN ARROW FLIES BEFORE THE SCREEN'S EDGE ═══
    projectiles.js plants a bow arrow once its drawn point comes within 24 px of
@@ -3057,7 +3057,7 @@ export function updateMonsterCombat(S, deps) {
                  still requires a lawless zone AND a deliberate lock-on.  The
                  server gate remains the authority and still fails closed —
                  this only decides what is worth reporting. */
-              /* v2.3.3258: the reach this swing claims (below), and whether
+              /* v2.3.3260: the reach this swing claims (below), and whether
                  the player it is locked on is in it on this screen -- against
                  a worker that lands one hit a swing the claim goes out at
                  most three times a swing, and only when it can land
@@ -3085,7 +3085,7 @@ export function updateMonsterCombat(S, deps) {
                        clamp; as before against an older one (fightFood.js). */
                     dmgBase: _pvpClaim.dmgBase,
                     nb: _pvpClaim.nb,
-                    /* v2.3.3258: a PERCENTAGE, which is what the worker has
+                    /* v2.3.3260: a PERCENTAGE, which is what the worker has
                        always read -- the fraction (0.01) it was sent as made
                        the sword's crit 0.01% in a fight with a player.  A
                        worker with caps.pvpbalance rolls the crit itself. */
@@ -3098,18 +3098,18 @@ export function updateMonsterCombat(S, deps) {
                     arc: wpnType.arc || SWING_ARC,
                     ts: Date.now(),
                     inDuel: !!S._inDuel,
-                    /* v2.3.3258: which swing (its own clock) -- the worker
+                    /* v2.3.3260: which swing (its own clock) -- the worker
                        lands one hit a swing (pvpbalance.js); an older one
                        ignores it */
                     sw: S.swingTimer,
-                    /* v2.3.3258: the special swing says so, to a worker that
+                    /* v2.3.3260: the special swing says so, to a worker that
                        counts it only after the swipe it charged and lands one
                        hit a swing -- never to an older one (below). */
                     special: (_pvpBal && S._specialAttack) ? true : undefined,
                     /* v2.3.1302: kind tags the attack for the server's
                        per-kind range clamp.  Old servers ignore it. */
                     kind: 'melee'
-                    /* v2.3.3133 (review): NO `special` here, on purpose  [v2.3.3258:
+                    /* v2.3.3133 (review): NO `special` here, on purpose  [v2.3.3260:
                        against an OLDER worker -- see `special` above].  This
                        send runs on every frame of the 400 ms sweep, and the
                        worker's lanes are what turn that into hits: an ordinary

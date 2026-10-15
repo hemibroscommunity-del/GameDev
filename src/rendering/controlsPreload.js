@@ -28,7 +28,7 @@
  * nothing to fetch.)
  */
 import { ICON_URL, RDISC_ICONS } from '../ui/panels/controlSkin.jsx';
-import { quickEatIconUrls } from '../data/foodIcons.js';   /* v2.3.3258: the quick-eat button's food */
+import { quickEatIconUrls } from '../data/foodIcons.js';   /* v2.3.3260: the quick-eat button's food */
 /* v2.3.3120: the TRAP pop-up's picture (TrapButton.jsx uses the same string) */
 export const TRAP_ICON_URL = '/icons/ui/skill-trapping.webp?v=2.3.1224';
 
@@ -57,7 +57,7 @@ export function controlsPreloadUrls() {
   /* v2.3.3120: the TRAP pop-up's box trap (ui/panels/TrapButton.jsx) -- it
      pops up the moment a monster is targeted, the same moment as the rest */
   urls.push(TRAP_ICON_URL);
-  /* v2.3.3258: the QUICK EAT button's pictures (ui/panels/QuickEatButton.jsx)
+  /* v2.3.3260: the QUICK EAT button's pictures (ui/panels/QuickEatButton.jsx)
      -- the bag pictures of every heal eaten at once; it appears the moment a
      hit takes HP off you, the middle of a fight */
   urls.push(...quickEatIconUrls());

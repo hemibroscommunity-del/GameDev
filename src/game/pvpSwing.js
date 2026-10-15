@@ -1,4 +1,4 @@
-/* ═══ v2.3.3258: ONE SWORD CLAIM A SWING, NOT TWENTY-FOUR ═══
+/* ═══ v2.3.3260: ONE SWORD CLAIM A SWING, NOT TWENTY-FOUR ═══
  * (docs/specs/pvp-fights.md, server/src/pvpbalance.js)
  *
  * The sword's hit on a player went out as a `player_attack` on EVERY frame of
@@ -28,7 +28,7 @@ export var PVP_SWING = Object.freeze({
   SLACK_PX: 24,  /* a player a stride past the reach on this screen may be in it on the worker's */
 });
 
-/* Does the worker land one hit a swing (and roll it itself)?  v2.3.3258: only
+/* Does the worker land one hit a swing (and roll it itself)?  v2.3.3260: only
    with its one formula on too (caps.oneformula) -- `oneformula: false` puts the
    worker's resolver back on its old path while caps.pvpbalance still reads
    true (oneformula.js). */

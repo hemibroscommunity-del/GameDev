@@ -1,4 +1,4 @@
-/* ═══ v2.3.3258: QUICK EAT -- ONE TAP, THE RIGHT FOOD ═══
+/* ═══ v2.3.3260: QUICK EAT -- ONE TAP, THE RIGHT FOOD ═══
  * (docs/specs/pvp-fights.md "Fish", ui/panels/QuickEatButton.jsx)
  *
  * Owner: "The idea is that fishing becomes a valuable skill because they can
@@ -20,7 +20,7 @@
  *     BIGGEST -- so a scratch never costs your pike and a deep wound gets
  *     the most you carry; a tie goes to the one you carry more of;
  *   - each heal as this page predicts it (calcDisplayHeal, the worker's own
- *     arithmetic: Recovery included) -- the same in any fight (v2.3.3258's one
+ *     arithmetic: Recovery included) -- the same in any fight (v2.3.3260's one
  *     formula; the first cut sized it to a quarter in a fight with a player).
  *
  * The tap goes through eatBus, the bag's own Eat (BroTown's handler: the

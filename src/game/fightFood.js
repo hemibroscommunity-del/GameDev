@@ -19,7 +19,7 @@
  *   2. ONE BITE AT A TIME.  A heal eaten at once (Garden Stew, cooked fish,
  *      the minnow bottle) is once per GAP_MS while in a duel or within
  *      WINDOW_MS of a hit between you and another player (cooking.js
- *      _pvpHealWait) -- since v2.3.3258's one formula, within WINDOW_MS of a
+ *      _pvpHealWait) -- since v2.3.3260's one formula, within WINDOW_MS of a
  *      blow dealt or taken by anything (fightSeen).  The page holds its own bite back -- and says how long
  *      -- only against a worker with caps.pvpheal, so it never refuses what an
  *      older worker would allow; the worker refuses anything early with the
@@ -98,7 +98,7 @@ export function pvpHealWaitMs(S, now) {
   return Math.max(0, PVP_HEAL.GAP_MS - (t - last));
 }
 
-/* v2.3.3258: in a fight with a player, as far as this page has seen -- a
+/* v2.3.3260: in a fight with a player, as far as this page has seen -- a
    pvp_hit for or against it within WINDOW_MS (the worker's own test,
    cooking.js _pvpInFight, also counts a duel's lull; see the note above on
    why the page does not read S._inDuel). */
@@ -108,7 +108,7 @@ export function pvpFightSeen(S, now) {
   return typeof S._pvpAt === 'number' && t - S._pvpAt < PVP_HEAL.WINDOW_MS;
 }
 
-/* ═══ v2.3.3258: ...OR WITH ANYTHING (ONE FORMULA) ═══
+/* ═══ v2.3.3260: ...OR WITH ANYTHING (ONE FORMULA) ═══
    Against a worker with caps.oneformula the one-bite rule holds in a fight
    with ANYTHING (cooking.js _anyFightAt): a pvp_hit as above, or a blow this
    page took (S.lastDamageTaken, stamped by every monster_attack and pvp_hit
