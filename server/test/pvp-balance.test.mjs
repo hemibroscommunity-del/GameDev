@@ -12,8 +12,12 @@
  *      sword one per NOSW_LANE_MS.
  *   4. ONE FORMULA (owner, 2026-10-15: "I just want one formula that works
  *      the same across everything", server/src/oneformula.js): the hit is the
- *      roll, whole -- no PvP scale, weight, share or falloff -- then armour,
- *      then the one cap every blow on a player meets (30% of max HP).
+ *      roll, whole -- no PvP scale, weight, share or falloff -- then armour.
+ *      ONE VERSION (owner, the same day: "the numbers for damage between PVP
+ *      and PVE can be exactly the same for each combat skill type ...
+ *      Everything is 1 version"): no cap of a player's own, and §8 lands the
+ *      same swing, arrow and bolt on a monster and on a player and reads the
+ *      same number off both -- the level edge included, both ways.
  *   5. The shapes a special says (orbs, part), each bounded; the big bolt
  *      worth STAFF_BOLT_K of its orbs and a sword's special SWORD_SPECIAL, as
  *      against a monster; a retreat shot whole, as against a monster.
@@ -211,8 +215,11 @@ room._liveFlags = {};
   check('the big staff bolt (orbs 3) spends the whole window', A._pvpSpecLeft === 0, A._pvpSpecLeft);
   fresh(); room._pvpSpecialPaid(A, T); room._pvpSpecialSpent(A, 2);
   const short = attack({ kind: 'staff', special: true, orbs: 3 });
-  check('...and with one claim left it is ONE special roll (never three)',
-    !!short && near(short.dmgBase, room._computeAttackDamage(A, 'staff', true).dmg), short && short.dmgBase);
+  /* v2.3.3261: worth ONE orb (never three) -- the bolt's band x 1 x
+     STAFF_BOLT_K, as on a monster whose lane has one slot left (combat.js
+     _rollHit, one function for both) */
+  check('...and with one claim left it is worth ONE orb (never three), as on a monster',
+    !!short && near(short.dmgBase, room._computeAttackDamage(A, 'staff', true, { band: STAFF_BOLT.BAND }).dmg * ONE_FORMULA.STAFF_BOLT_K), short && short.dmgBase);
 }
 
 // ── 4. one sword hit per swing ──
@@ -251,26 +258,22 @@ room._liveFlags = {};
   room._liveFlags = {};
 }
 
-// ── 5. the one cap ──
+// ── 5. no cap of its own (v2.3.3261, one version) ──
 {
+  /* the first cut stopped a blow on a player at 30% of their bar; a monster
+     had no such cap, so the same hit read two numbers.  Gone. */
   arm('melee', { level: 40, tm: 3 }); target({ maxHp: 200 });
   R = 0.999;   /* the top of the band, no crit */
   room._pvpSpecialPaid(A, T);
   fresh(); room._pvpSpecialPaid(A, T); const big = attack({ kind: 'melee', sw: 200, special: true });
   R = 0.5;
-  const cap = Math.floor(200 * ONE_FORMULA.HIT_CAP);
-  check('a hit far past the bar is capped at HIT_CAP of max HP (the one cap, every blow)', !!big && big.raw > 200 && big.dmgTaken === cap,
-    big && { raw: big.raw, taken: big.dmgTaken, cap });
-  check('...so nothing kills from full health', B.hp > 0, B.hp);
-  /* the same cap for a monster's blow: the target's bar, not who swung */
+  check('a hit far past the bar is taken whole (no cap of a player\'s own)', !!big && big.raw > 200 && big.dmgTaken === Math.round(big.raw),
+    big && { raw: big.raw, taken: big.dmgTaken });
+  check('the one formula has no HIT_CAP and no _hitCapHp', !('HIT_CAP' in ONE_FORMULA) && typeof room._hitCapHp !== 'function');
+  /* a monster's blow the same: the target's bar does not change a blow */
   const ps = { hp: 1000, maxHp: 1000, armor: null, legsArmor: null };
   const r1 = room._applyDamage(ps, 900, false);
-  check('_applyDamage caps any blow at 30% (a monster\'s too)', r1.dmgTaken === 300, r1);
-  room._liveFlags = { oneformula: false };
-  const ps2 = { hp: 1000, maxHp: 1000, armor: null, legsArmor: null };
-  const r2 = room._applyDamage(ps2, 900, false);
-  check('...none with `oneformula: false`', r2.dmgTaken === 900, r2);
-  room._liveFlags = {};
+  check('_applyDamage takes a monster\'s 900 whole too', r1.dmgTaken === 900, r1);
 }
 
 // ── 6. what a special says it is ──
@@ -383,6 +386,121 @@ room._liveFlags = {};
     T += 16.7;
   }
   check('page + worker: one swing, one hit', hits === 1, hits);
+}
+
+// ── 11. ONE VERSION: the same number on a monster and on a player ──
+/* Owner, 2026-10-15: "change it so that the numbers for damage between PVP
+   and PVE can be exactly the same for each combat skill type (melee, bow,
+   staff) ... Everything is 1 version".  Each check lands one hit on a
+   monster (the real _handleMonsterDamage) and the same hit on a player of
+   the same level with nothing on (the real _resolvePvPAttack), on the same
+   dice, and reads the number off both.  combat.js _rollHit is the one roll;
+   the edge reads a monster's level or a player's level as an opponent. */
+{
+  const savedXp = room._prog3AwardXp;
+  room._prog3AwardXp = () => {};   /* no level-ups between the two hits */
+  const ZONE = 'meadow';
+  const zcfg = room._getZoneConfig(ZONE);
+  const spawn = (zcfg && zcfg.spawns && zcfg.spawns[0]) || { arch: 'fodder' };
+  let mid = 0;
+  const monsterAt = (level) => {
+    const m = room._makeZoneMonster(ZONE, zcfg, spawn, 'pb-one-' + (++mid), 40, 0, level);
+    m.hp = m.maxHp = 1e7; m.alive = true;
+    if (!room.monsters) room.monsters = {};
+    room.monsters[ZONE] = [m];
+    return m;
+  };
+  const onMonster = (m, payload) => {
+    room.eventBuffer.length = 0;
+    m.x = 40; m.y = 0;
+    const hp0 = m.hp;
+    room._handleMonsterDamage(sessA, Object.assign({ monsterId: m.id, zone: ZONE }, payload));
+    return hp0 - m.hp;
+  };
+  /* the target: a player at `level` in every skill's best, nothing worn, no
+     Dodge or Defense, a deep pool */
+  const playerAt = (level) => {
+    for (const c of ['sword', 'bow', 'staff']) B.prog3.sk[c].level = 1;
+    B.prog3.sk.sword.level = level;
+    B.prog3.alloc = {};
+    target();
+    B.z = ZONE;
+  };
+  const both = (kind, level, payloadM, payloadP, setup) => {
+    arm(kind);
+    A.z = ZONE;
+    if (setup) setup();
+    room._prog3Recompute(A);
+    const m = monsterAt(level);
+    playerAt(level);
+    if (payloadM.special) { fresh(); }
+    const onM = onMonster(m, payloadM);
+    if (payloadP.special) { fresh(); room._pvpSpecialPaid(A, T); } else fresh();
+    const h = attack(payloadP);
+    return { onM, onP: h ? h.dmgTaken : null, slot: h && h.slot };
+  };
+  R = 0.5;
+  for (const [kind, slot] of [['melee', 'melee'], ['ranged', 'ranged'], ['staff', 'staff']]) {
+    const r = both(kind, 12, { slot }, { kind, sw: 4000 + mid });
+    check(`a plain ${kind} hit: the same number on a level-12 monster and a level-12 player (${r.onM})`, r.onM > 0 && r.onM === r.onP, r);
+    check(`...and the player's hit names its weapon (${slot})`, r.slot === slot, r.slot);
+  }
+  {
+    const r = both('melee', 12, { slot: 'melee', special: true }, { kind: 'melee', special: true, sw: 5000 });
+    check(`the sword's special: the same number on both (${r.onM})`, r.onM > 0 && r.onM === r.onP, r);
+  }
+  {
+    const r = both('staff', 12, { slot: 'staff', special: true, orbs: 3 }, { kind: 'staff', special: true, orbs: 3 });
+    check(`the staff's big bolt: the same number on both (${r.onM})`, r.onM > 0 && r.onM === r.onP, r);
+  }
+  {
+    const r = both('ranged', 12, { slot: 'ranged', special: true, part: 3 }, { kind: 'ranged', special: true, part: 3 });
+    check(`a bow volley arrow: the same number on both (${r.onM})`, r.onM > 0 && r.onM === r.onP, r);
+  }
+  {
+    R = 0.001;   /* a crit on both */
+    const r = both('melee', 12, { slot: 'melee' }, { kind: 'melee', sw: 6000 });
+    R = 0.5;
+    check(`a crit: the same number on both (${r.onM})`, r.onM > 0 && r.onM === r.onP, r);
+  }
+  /* THE EDGE, BOTH WAYS.  A has Power, Luck and Special points; a target three
+     levels above blunts them the same whoever it is. */
+  const pts = () => { A.prog3.atk = A.prog3.atk || {}; A.prog3.atk.sword = Object.assign({}, A.prog3.atk.sword || {}, { dmg: 40, luck: 20, special: 20 }); };
+  {
+    const even = both('melee', 12, { slot: 'melee' }, { kind: 'melee', sw: 7000 }, pts);
+    const up = both('melee', 15, { slot: 'melee' }, { kind: 'melee', sw: 7001 }, pts);
+    check(`a level-15 target blunts a level-12 player's Power on a monster AND on a player, by the same (${up.onM} vs ${even.onM} at 12)`,
+      up.onM < even.onM && up.onM === up.onP && even.onM === even.onP, { even, up });
+    const sp = both('melee', 15, { slot: 'melee', special: true }, { kind: 'melee', special: true, sw: 7002 }, pts);
+    check(`...and the special's Special points, the same (${sp.onM})`, sp.onM > 0 && sp.onM === sp.onP, sp);
+  }
+  /* and the guard side: a player's Defense reads the edge against a player
+     attacker's level, as against a monster's (_applyDamage's attackerLevel) */
+  {
+    arm('melee', { level: 12 }); A.z = ZONE;
+    playerAt(9);
+    fresh(); attack({ kind: 'melee', sw: 8000 });
+    const o = raws.length ? raws[0].opts : null;
+    check('a player\'s blow tells the target\'s guard its level as an opponent (12), as a monster\'s does',
+      !!o && o.attackerLevel === 12, o);
+    const g = { hp: 1e6, maxHp: 1e6, prog3: { sk: { sword: { level: 9 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: { def: 60 } } };
+    const fromMonster12 = room._applyDamage(Object.assign({}, g), 1000, false, { attackerLevel: 12 }).dmgTaken;
+    const fromPlayer12 = room._applyDamage(Object.assign({}, g), 1000, false, { attackerLevel: room._prog3OpponentLevel(A) }).dmgTaken;
+    const fromEqual = room._applyDamage(Object.assign({}, g), 1000, false, { attackerLevel: 9 }).dmgTaken;
+    check(`...so a level-9 player's Defense cuts a level-12 player's blow as it cuts a level-12 monster's (${fromPlayer12}), less than an equal's (${fromEqual})`,
+      fromPlayer12 === fromMonster12 && fromPlayer12 > fromEqual, { fromMonster12, fromPlayer12, fromEqual });
+  }
+  check('a player\'s level as an opponent is their highest trained skill', room._prog3OpponentLevel({ prog3: { sk: { sword: { level: 3 }, bow: { level: 17 }, staff: { level: 9 } } } }) === 17
+    && room._prog3OpponentLevel({}) === 1);
+  /* the old path (pvpbalance off) keeps PvP at edge 1, as it was */
+  room._liveFlags = { pvpbalance: false };
+  arm('melee'); A.z = ZONE; playerAt(15);
+  fresh(); attack({ kind: 'melee', dmgBase: 10, sw: 9000 });
+  check('...the old path (pvpbalance: false) still reads edge 1 (no attackerLevel)', raws.length > 0 && !(raws[0].opts && raws[0].opts.attackerLevel), raws[0] && raws[0].opts);
+  room._liveFlags = {};
+  room._prog3AwardXp = savedXp;
+  A.z = B.z = 'town';
+  room.monsters[ZONE] = [];
 }
 
 Date.now = realNow;

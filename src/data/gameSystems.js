@@ -5790,12 +5790,17 @@ export function calcDisplayDps(rpg, wpn) {
    both key shapes resolve the same tier).  The player_state echo
    after eat_request is the truth; this is prediction/labeling only. */
 export function calcDisplayHeal(rpg, invKey) {
+  /* v2.3.3261: a FIXED heal -- the owner, "A fish heals the same fixed amount
+     always": against a worker that heals by the new ladder (caps.fishheal) a
+     fish or the stew heals its own number and nothing on top (cooking.js);
+     an older worker still adds the old HP grid's Recovery. */
+  var _rec = _fishHealLadder ? 0 : getRecoveryFlat(rpg);
   /* v2.3.3131: a dish eaten at once (the Garden Stew) heals its own amount,
      the worker's cooking.js _applyDish -- plus the same Recovery. */
   var _dish = _dishFor(invKey);
-  if (_dish && _dish.buff === 'heal') return Math.ceil(_dish.power) + getRecoveryFlat(rpg);
+  if (_dish && _dish.buff === 'heal') return Math.ceil(_dish.power) + _rec;
   /* v2.3.1345: Recovery is a flat bonus on every heal. */
-  return Math.ceil(getFishHealAmount(invKey)) + getRecoveryFlat(rpg);
+  return Math.ceil(getFishHealAmount(invKey)) + _rec;
 }
 
 /* v2.3.1207: display twin of the server maxHp pool line

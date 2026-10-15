@@ -7,7 +7,9 @@
  *   - every monster hits harder by its matching player's new health over
  *     their old (monsterHitK), so a monster takes the share of your bar it
  *     always took;
- *   - no single blow takes more than 30% of a player's max HP (HIT_CAP);
+ *   - no cap of a player's own (v2.3.3261): a blow is taken whole, whoever
+ *     lands it, so a hit reads the same number on a monster and on a player
+ *     (v2.3.3260's 30% cap is gone -- the owner's "Everything is 1 version");
  *   - a sword's special is 4.5x a plain hit (was 3x), the staff's big bolt
  *     worth 0.6 of its orbs.
  * The page predicts with these -- its own bar between echoes, a scene's
@@ -21,7 +23,6 @@ export var ONE_FORMULA = Object.freeze({
   HEALTH: Object.freeze({ BASE: 100, PER_LEVEL: 50, PER_POINT: 40 }),
   OLD_HEALTH: Object.freeze({ BASE: 100, PER_LEVEL: 6, PER_POINT: 8 }),
   MATCH_LEVEL: 2,
-  HIT_CAP: 0.3,
   SWORD_SPECIAL: 4.5,
   OLD_SWORD_SPECIAL: 3,
   STAFF_BOLT_K: 0.6,
@@ -67,12 +68,4 @@ export function specialMultFor(type, on) {
 /** What the big staff bolt is worth, per orb it stands for. */
 export function staffBoltK(on) {
   return onNow(on) ? ONE_FORMULA.STAFF_BOLT_K : 1;
-}
-
-/** The most one blow takes from a bar of `maxHp` (Infinity with the formula
- *  off). */
-export function hitCapHp(maxHp, on) {
-  var mx = Number(maxHp) || 0;
-  if (!onNow(on) || !(mx > 0)) return Infinity;
-  return Math.max(1, Math.floor(mx * ONE_FORMULA.HIT_CAP));
 }

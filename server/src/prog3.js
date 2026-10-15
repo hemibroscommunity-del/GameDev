@@ -1116,6 +1116,18 @@ export const prog3Methods = {
     return 1 - PROG3.BODY.def.max * prog3StatValue(ps, 'def', null, mlvl);  /* v2.3.2680: the curve + edge */
   },
 
+  /* ═══ v2.3.3261: A PLAYER'S LEVEL AS AN OPPONENT ═══
+     The edge reads a monster's level; a player has three.  As someone else's
+     opponent -- the target of their hit, or the one hitting them -- a player
+     stands at their HIGHEST trained skill, the level a shared stat's own edge
+     already measures them at (prog3Yardstick with no lane): one number, as a
+     monster has one.  A player with no prog3 block stands at 1, where no edge
+     ever bites.  Read by combat.js on a hit between players (oneformula.js,
+     "the level edge both ways"). */
+  _prog3OpponentLevel(ps) {
+    return prog3Yardstick(ps, null);
+  },
+
   // ═══ Trained XP accrual (§9-A: server-authoritative) ═══
   //
   // Called from _handleMonsterDamage with the CREDITED damage

@@ -83,16 +83,19 @@ And from the other two questions:
 
 ### 1. The worker rolls the hit (`server/src/pvpbalance.js`)
 
-- A hit between players is rolled by the worker, with the **same roll it
-  makes against a monster** (`_computeAttackDamage`: the weapon, the trained
-  level, the points, the grade, the brew, the crit). The phone's number is
-  ignored, so a forged claim buys nothing and the crit chance is the real one.
+- A hit between players is rolled by the worker, with the **very roll it
+  makes against a monster** (`_rollHit`: the weapon, the trained level, the
+  points, the grade, the brew, the crit, the ceiling, and the level edge by
+  the target's level as an opponent). The phone's number is ignored, so a
+  forged claim buys nothing and the crit chance is the real one.
 - And nothing else. The first cut multiplied it by numbers for player fights
   only (a 0.4 scale, a sword weight of 1.3, special shares of 0.5/0.45/0.3, a
   bow's and staff's falloff with distance, a 30% cap on hits between
-  players); the owner asked for one formula, so they are gone. The fight
-  lasts because players have more health, and the 30% cap is now every
-  blow's on a player, a monster's too (`docs/specs/one-formula.md`).
+  players); the owner asked for one formula, and then for "Everything is 1
+  version", so they are all gone, the cap too. The fight lasts because
+  players have more health, and the same swing reads the same number on a
+  monster and on a player of that level, drawn the same way
+  (`docs/specs/one-formula.md`, "One version").
 
 ### 2. One sword hit a swing, and a special only after paying for it
 
@@ -186,8 +189,10 @@ The minnow keeps the owner's 100.
 
 The tables are in `docs/specs/one-formula.md` ("Fights between players").
 At level 12 with the copper set and no food: sword v sword 9.9 s, bow v bow
-12.2 s, staff v staff 13.3 s (they were 2.7, 4.5 and 2.1 s); no blow over 30%
-of a bar; the better player wins 93-100% of same-weapon fights.
+12.2 s, staff v staff 12.4 s (they were 2.7, 4.5 and 2.1 s); no blow on an
+armoured player over about half a bar; the better player wins 93-100% of
+same-weapon fights. An unarmoured player can lose most of a bar to one big
+staff bolt.
 
 ## Honest limits
 
@@ -203,9 +208,9 @@ of a bar; the better player wins 93-100% of same-weapon fights.
 
 | Switch (live flag) | Turns off |
 | --- | --- |
-| `oneformula: false` | the one formula (health, monsters' hits, the 30% cap, the two specials, the bite rule in any fight) and with it the worker's roll in player fights: the old claim x 0.5 path (also un-advertises `caps.oneformula`) |
+| `oneformula: false` | the one formula (health, monsters' hits, the two specials, the bite rule in any fight, the level edge in player fights) and with it the worker's roll in player fights: the old claim x 0.5 path (also un-advertises `caps.oneformula`) |
 | `pvpbalance: false` | the worker's roll in player fights: the old claim x 0.5 path, exactly (also un-advertises `caps.pvpbalance`) |
-| `fishheal: false` | the fish ladder: the old 92 + 8 x level (also un-advertises `caps.fishheal`) |
+| `fishheal: false` | the fish ladder: the old 92 + 8 x level, with the old Recovery bonus on top (also un-advertises `caps.fishheal`) |
 | `linger: false` | the body staying: every leaver leaves at once again |
 
 ## Deploy order
@@ -236,9 +241,10 @@ FLAGS='{"oneformula":false}' node tools/pvp-sim/food-both.mjs # the world before
 ```
 
 Tests: `pvp-balance` (the worker's roll whole, the paid special, one hit a
-swing, the one cap, the shapes, the kill switches, the page's half),
-`one-formula` (33 checks, `docs/specs/one-formula.md`), `linger` (41 checks),
+swing, no cap of a player's own, the shapes, the kill switches, the page's
+half, and §11: the same number on a monster and a player),
+`one-formula` (`docs/specs/one-formula.md`), `linger` (41 checks),
 `fightfood` §4-4c and §7 (the bite rule in any fight, the same heal, the
 quick-eat choice), `mirror-audit` (the fish ladder and the one formula on
 both sides), `anticheat`, `duel`; phone tests `mp-quickeat`, `mp-fightfood`,
-`mp-linger`, `mp-pvpshield`.
+`mp-linger`, `mp-pvpshield`, `mp-pvpnumbers`.

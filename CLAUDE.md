@@ -1167,13 +1167,43 @@ remnant to migrate server-side, not a mode to preserve.
         matching player's new bar over the old, character level = monster
         level + 2) at creation (`_monsterHitStamp`, `_hk`; index.js and
         dungeon.js), the slime burst's and fire trail's flat amounts too -- a
-        monster takes the same share of a matching bar as before; NO BLOW OVER
-        30% OF A PLAYER'S MAX HP, whoever lands it (`_applyDamage`,
-        `_hitCapHp`); the sword's special 4.5x (was 3; the ceiling with it),
-        the staff's big bolt x0.6 (`STAFF_BOLT_K`); a bar that changed size
-        keeps its fullness at the join (`_keepBarFullness`); Lv 12 copper set:
-        sword 9.9 s, bow 12.2, staff 13.3; kill switch `oneformula: false`
+        monster takes the same share of a matching bar as before; no blow over
+        30% of a player's max HP (gone since v2.3.3261, below); the sword's
+        special 4.5x (was 3; the ceiling with it), the staff's big bolt x0.6
+        (`STAFF_BOLT_K`); a bar that changed size keeps its fullness at the
+        join (`_keepBarFullness`); Lv 12 copper set: sword 9.9 s, bow 12.2,
+        staff 13.3 (12.4 since v2.3.3261); kill switch `oneformula: false`
         (re-sizes every bar and live monster at once, liveops.js);
+      - since v2.3.3261 ONE VERSION -- the owner, after #916 merged: "the numbers for damage
+        between PVP and PVE can be exactly the same for each combat skill type
+        ... A fish heals the same fixed amount always ... Everything is 1
+        version" (docs/specs/one-formula.md "One version"):
+        - ONE ROLL, whoever takes it: combat.js `_rollHit` (the edge, the
+          bolt, the volley, the ceiling), called by `_handleMonsterDamage` and
+          pvpbalance.js `_pvpRollFor` alike; pvp-balance §11 lands the same
+          swing, arrow, bolt, special and crit on a monster and a player and
+          reads one number;
+        - THE LEVEL EDGE BOTH WAYS: a player's level as an opponent is their
+          highest trained skill (prog3.js `_prog3OpponentLevel`), the target's
+          for the attacker's Power/Luck/Special, the attacker's for the
+          target's Dodge/Defense/Resist (`_applyDamage` attackerLevel) -- PvP
+          was edge 1 ("a PvP design call of its own", v2.3.2680);
+        - NO CAP OF A PLAYER'S OWN: the first cut's 30%-of-the-bar cap (a
+          monster had none, so one hit read two numbers) is gone; armoured
+          fights unchanged, an unarmoured player can lose most of a bar to one
+          big staff bolt (up to 92% in the sim); the monsters' half-bar rails
+          stay;
+        - A FISH HEALS ITS FIXED NUMBER: no HP-grid Recovery on top (0 for
+          prog3 anyway; back with `fishheal: false`), the stew too;
+        - DRAWN ONE WAY (gameEvents.js `pvp_hit`): your hit on a player in
+          amber with the weapon's mark, a player's hit on you red with the
+          heart, a block "Blocked!" and its ⚡ (counted for the block quest),
+          onlookers the taken red within 2,800 px (`PVP_ONLOOK_R`); ONE FIGURE
+          on every screen for every hit on a player, a monster's too -- the
+          change in their bar (`takenFigure` -> `toDisplayHitDamage`, the
+          monster_hit rule), from the worker's `hp` (monster_attack carries it
+          now, as pvp_hit did); `pvp_hit` carries `slot` and `staminaDrain`;
+          `mp-pvpnumbers` (three phones: one blow read "-2" and "-3" before);
       - THE FISH LADDER (data.js `FISH_HEAL`, mirror gameSystems.js on
         `caps.fishheal`): 100/150/225/325/475 (20/30/45/65/95 on screen), a
         fifth to two fifths of the one formula's bar where each is caught,
@@ -1199,8 +1229,8 @@ remnant to migrate server-side, not a mode to preserve.
       - not done, the owner's call: a sword loses to a bow or staff that kites
         it (a mechanic, not a number: the sword's lunge on players);
       - `pvp-balance`, `one-formula`, `linger`, `fightfood` §4-4c/§7,
-        mirror-audit "fish heal"/"ONE_FORMULA", `mp-quickeat`, `mp-linger`,
-        `mp-pvpshield`.
+        mirror-audit "fish heal"/"ONE_FORMULA", `grids` §6, `mp-quickeat`,
+        `mp-linger`, `mp-pvpshield`, `mp-pvpnumbers`.
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":
