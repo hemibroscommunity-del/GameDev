@@ -2726,6 +2726,62 @@ Two protocol versions coexist; both must keep working:
     261-311) -- groundwork: a phone's download stops growing with far players. Old phones keep the v2.3.3246 roster; kill switch
     `presence2: false`; `presence2` suite (55, twenty bugs caught), `mp-presence2`
     (15), mp-farpeer opens the map for its far step: docs/specs/presence-v2.md.
+  - v2.3.3257: THE ACCOUNT IS ON CLOUDFLARE'S FREE PLAN -- found by the
+    lab's first run (the owner's "Push to main. Then resume your
+    recommendations autonomously"): Cloudflare refused its deploy, "In order
+    to use Durable Objects with a free plan, you must create a namespace
+    using a `new_sqlite_classes` migration" (code 10097). The game's
+    brotown-server is on the same free plan, where Durable Objects have DAILY
+    limits for the whole account, reset at 00:00 UTC -- 100,000 requests (a
+    web request, call or alarm, or 20 incoming socket messages) and 13,000
+    GB-s awake -- and past one Cloudflare refuses that work until midnight,
+    the game's too. A playing phone's 10-30 messages a second make that about
+    20-55 player-hours of play a day in all (*estimate*), and Phase 1's
+    always-on doors could not run at all: SERVER-SPLIT-PLAN risk 8 -- the
+    paid plan ($5 a month) comes first, the owner's call. The lab: SQLite
+    objects (tools/lab/wrangler.toml); a run sized for the free plan, ~2,700
+    billed requests (was ~25,000: a 20,000-call flood, and the Door polling a
+    flood's end every 5 ms -- now 50 ms, at most 30 s), `--big` (the
+    workflow's "big" box) the old sizes, paid plan only; "0. the day so far"
+    stops a run that could take the account past 90% of the day; "4. the
+    game's own days" reads brotown-server's last 7 days against the free
+    limits (read only, best effort); the data centre lookup gives up after
+    3 s and is skipped locally (LAB_LOCAL); a local dry run stops at 4
+    objects at once (8 hung on wrangler 4.96.0's local runtime). On Cloudflare
+    (third and fourth runs): objects of one script DO run side by side (8 at
+    once 5.9-6.6x, 16 6.2-8.6x, in their own isolates); two in one city 3-4 ms
+    apart, in two cities (Newark, Chicago) 22 ms -- placement is the whole
+    story; a hibernation socket's message about a plain one's (81 against 75
+    us in one city; the third run's 4x was the two cities), a call 10x a
+    socket message; the game's busiest recent day 76,277 invocations
+    (2026-10-11; every hibernation socket message is one -- "socket messages
+    in" reads 0 -- and whether the free plan's daily limit counts them 20:1 is
+    not documented: 4-5% of it, or 76%). One request
+    may make at most 1,000 calls out (the call flood is 900); only Cloudflare's
+    404 page is tried again (a 5xx means the lab ran); `node
+    tools/lab/selftest.mjs` runs run.mjs whole against fakes, before every
+    deploy: docs/specs/cloudflare-lab.md.
+    - THE LIMIT TEST (`--limit`, the workflow's "limit" box) -- asked how to
+      find out which, the owner: "Your account, 23:55 UTC". It floods one lab
+      World in 5,000-message steps ONLY between 23:55:00 and 23:58:30 UTC (a
+      refusal lasts until the 00:00 UTC reset), checks a fresh request after
+      each step -- a lab object and the game's auction listing, read only, the
+      one game page it may read (`GAME_PROBE_OK`) -- stops at the first
+      refusal (tried twice more), never sends past 25,000 over the
+      every-message line (150,000 at most: ~7,500 by 20 to 1), watches until
+      23:59:40 for a late count, and if refused waits past midnight to say
+      when the game answered again. Started outside 23:30-23:54 it sends
+      nothing (exit 4). A Community report (2026-10-12) was refused ~36,000
+      short by the 20 to 1 reading. The lab worker answers a refusal in
+      Cloudflare's own words (503 `refused`), not its crash page;
+      selftest.mjs runs it on a fake clock against a fake limit (every
+      message, 20 to 1, counted late, four refusals to run).
+      RAN 2026-10-14 23:55 UTC (run 5): NOT EVERY MESSAGE COUNTS -- 124,999
+      socket messages took Cloudflare's every-message count of the day to
+      125,271, past 100,000, and nothing was refused (52 checks, watched to
+      23:59:45); the daily limit counts socket messages 20 to 1 like the bill,
+      so Oct 11's playtest was ~4-5% of a day, not 76%. The game's listing
+      answered throughout (docs/specs/cloudflare-lab.md "The answer").
 
 ## Conventions
 
