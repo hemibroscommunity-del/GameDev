@@ -6298,7 +6298,7 @@ what its last copy does from then on -- a stale copy is not "nothing", it is
 wrong data at a real place. And TRAPS #18 again: the page's channel lets out
 only the message types it names (`map_watch` was dropped until it had a line).
 
-## 179. "The lab is its own worker, so it cannot touch the game" (v2.3.3252)
+## 179. "The lab is its own worker, so it cannot touch the game" (v2.3.3257)
 
 Its own name, its own objects, no storage, deleted after every run -- and on
 the Workers FREE plan it would still have spent the game's day. There the

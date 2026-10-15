@@ -1,4 +1,4 @@
-/* ═══ v2.3.3252: THE LAB'S OWN CHECK, WITH NO CLOUDFLARE ═══
+/* ═══ v2.3.3257: THE LAB'S OWN CHECK, WITH NO CLOUDFLARE ═══
  *
  * run.mjs runs whole against a fake lab worker and a fake Cloudflare API
  * (selftest-fake.mjs, preloaded), twice:
@@ -71,7 +71,7 @@ function run(day, extra = [], env = {}) {
   check('busy day: ran nothing', !!(r.json && !r.json.burn && !r.json.flood));
 }
 
-/* v2.3.3252: the limit test */
+/* v2.3.3257: the limit test */
 const LIMIT_ARGS = ['--limit', '--game-probe', 'https://api.brotown.net/api/store/browse'];
 {
   const r = run('quiet', LIMIT_ARGS, { FAKE_CLOCK: '23:54:30', FAKE_COUNT: 'raw' });

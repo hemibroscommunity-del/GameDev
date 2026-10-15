@@ -1,4 +1,4 @@
-/* ═══ v2.3.3252: THE LAB SELF-TEST'S FAKES (tools/lab/selftest.mjs preloads this) ═══
+/* ═══ v2.3.3257: THE LAB SELF-TEST'S FAKES (tools/lab/selftest.mjs preloads this) ═══
    A fake lab worker at https://brotown-lab.test.workers.dev and a fake
    Cloudflare API, and quick timers, so run.mjs runs whole with no Cloudflare.
    FAKE_DAY=busy makes the account's day 89% used.

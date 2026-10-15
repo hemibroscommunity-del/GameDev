@@ -44,7 +44,7 @@ function burn(iters) {
 async function coloOf(self) {
   if (self._colo !== undefined) return self._colo;
   self._colo = null;
-  /* v2.3.3252: never more than 3 s, and not at all on `wrangler dev --local`
+  /* v2.3.3257: never more than 3 s, and not at all on `wrangler dev --local`
      (run.mjs --local passes LAB_LOCAL): with no way out to the internet the
      lookup hung there until the runner gave up on the request (300 s) */
   if (self.env && self.env.LAB_LOCAL) return self._colo;
@@ -149,7 +149,7 @@ export class Door extends DurableObject {
       out.rttMs = summary(rtt);
     } else if (mode === 'flood-ws' || mode === 'flood-rpc') {
       const s = JSON.stringify({ t: 'b', d: 'x'.repeat(Math.max(0, size - 18)) });
-      /* v2.3.3252: the limit test (run.mjs --limit) floods one World in
+      /* v2.3.3257: the limit test (run.mjs --limit) floods one World in
          steps: `keep` leaves its count as it was, so it counts them all */
       const keep = url.searchParams.get('keep') === '1';
       const base = keep ? (await world.stats()).n : 0;
@@ -159,7 +159,7 @@ export class Door extends DurableObject {
         const ws = await this._open(world, hib);
         for (let i = 0; i < n; i++) ws.send(s);
         let st = { n: base };
-        /* v2.3.3252: every look is a call, and every call a billed request --
+        /* v2.3.3257: every look is a call, and every call a billed request --
            on the free plan from a daily 100,000 the game shares -- so look
            every `poll` ms (50 from run.mjs; it was 5, hundreds of calls a
            flood), and give up after 30 s */
@@ -183,7 +183,7 @@ export class Door extends DurableObject {
       out.size = s.length;
       out.wallMs = Date.now() - t0;
       out.usPerMsg = +((1000 * out.wallMs) / n).toFixed(2);
-      /* v2.3.3252: which World took it, so run.mjs can read that object's own
+      /* v2.3.3257: which World took it, so run.mjs can read that object's own
          CPU from the account's figures (a hibernation message cost 4x a plain
          one's time on Cloudflare: the World's CPU says whether it is CPU) */
       out.worldId = world.id.toString();
@@ -201,7 +201,7 @@ export default {
     if (!env.LAB_KEY || req.headers.get('x-lab-key') !== env.LAB_KEY) return new Response('forbidden', { status: 403 });
     const colo = (req.cf && req.cf.colo) || null;
     if (url.pathname === '/whoami') return Response.json({ isolate: isolateId(), colo });
-    /* v2.3.3252: an object that refuses (the free plan's daily limit: the
+    /* v2.3.3257: an object that refuses (the free plan's daily limit: the
        limit test, run.mjs --limit) answers in Cloudflare's own words rather
        than the worker's crash page, so the run can say what was refused */
     try {

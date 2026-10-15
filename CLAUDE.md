@@ -2582,7 +2582,7 @@ Two protocol versions coexist; both must keep working:
     261-311) -- groundwork: a phone's download stops growing with far players. Old phones keep the v2.3.3246 roster; kill switch
     `presence2: false`; `presence2` suite (55, twenty bugs caught), `mp-presence2`
     (15), mp-farpeer opens the map for its far step: docs/specs/presence-v2.md.
-  - v2.3.3252: THE ACCOUNT IS ON CLOUDFLARE'S FREE PLAN -- found by the
+  - v2.3.3257: THE ACCOUNT IS ON CLOUDFLARE'S FREE PLAN -- found by the
     lab's first run (the owner's "Push to main. Then resume your
     recommendations autonomously"): Cloudflare refused its deploy, "In order
     to use Durable Objects with a free plan, you must create a namespace

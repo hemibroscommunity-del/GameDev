@@ -306,7 +306,7 @@ These are needed by ANY split. Several help at today's 120.
   - the local load test with the doors in their own process, which is how
     wrangler runs a second script;
   - then the Cloudflare lab.
-- **What the lab says (v2.3.3252, runs 3 and 4, docs/specs/cloudflare-lab.md):**
+- **What the lab says (v2.3.3257, runs 3 and 4, docs/specs/cloudflare-lab.md):**
   - **One script of doors works.** Objects of one script run side by side:
     8 at once did the work of 5.9-6.6, 16 of 6.2-8.6. Plan for about 6
     doors' worth of parallel work per 8, not 8.
@@ -375,7 +375,7 @@ These are needed by ANY split. Several help at today's 120.
 - **A real 1,000-player game peaks at 1,000** and averages far less, so the
   real bill would be a fraction of this.
 - **These are the paid plan's prices.** The account is on the FREE plan today
-  (v2.3.3252, found by the lab's first run), where Durable Objects have daily
+  (v2.3.3257, found by the lab's first run), where Durable Objects have daily
   limits instead of a bill: risk 8.
 
 ## Risks and unknowns
@@ -411,7 +411,7 @@ These are needed by ANY split. Several help at today's 120.
 7. **Every local test is only half the story.** Wrangler runs all objects of a
    script on one thread and enforces no Cloudflare limits. The lab is the
    only real answer for 1-4.
-8. **The free plan (v2.3.3252).** The lab's first run was refused at its
+8. **The free plan (v2.3.3257).** The lab's first run was refused at its
    deploy: "In order to use Durable Objects with a free plan, you must create
    a namespace using a `new_sqlite_classes` migration" (code 10097). So this
    account, and the game's `brotown-server` with it, is on the Workers FREE

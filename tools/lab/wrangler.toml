@@ -26,7 +26,7 @@ class_name = "World"
 name = "DOOR"
 class_name = "Door"
 
-# v2.3.3252: SQLite objects, the only kind the Workers FREE plan takes -- the
+# v2.3.3257: SQLite objects, the only kind the Workers FREE plan takes -- the
 # first run's deploy was refused: "In order to use Durable Objects with a free
 # plan, you must create a namespace using a `new_sqlite_classes` migration"
 # (code 10097).  The lab stores nothing, so the kind changes nothing it measures.

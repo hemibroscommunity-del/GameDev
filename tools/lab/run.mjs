@@ -21,7 +21,7 @@
  *      may not read them, the run says so and the rest still stands.
  * Writes <out>/lab-<time>.json and .md, and prints the .md.
  *
- * ═══ v2.3.3252: THE FREE PLAN ═══
+ * ═══ v2.3.3257: THE FREE PLAN ═══
  * The first run (2026-10-14) never started: Cloudflare refused the deploy, "In
  * order to use Durable Objects with a free plan, you must create a namespace
  * using a `new_sqlite_classes` migration" (code 10097).  This account is on the
@@ -42,7 +42,7 @@
  *      from the account's own figures, against the free plan's daily limits.
  *      Read only, and best effort like the bill.
  *
- * ═══ v2.3.3252: --limit, THE FREE PLAN'S LIMIT TEST (the owner's yes, 2026-10-14) ═══
+ * ═══ v2.3.3257: --limit, THE FREE PLAN'S LIMIT TEST (the owner's yes, 2026-10-14) ═══
  * Does the free plan's 100,000 a day count every incoming socket message, or
  * 20 to a request as the bill does?  Cloudflare's docs give the 20 to 1 for
  * "billing" only, and a Community report (2026-10-12, unresolved) was refused
@@ -73,7 +73,7 @@ const arg = (name, d) => { const i = process.argv.indexOf('--' + name); return i
 const LOCAL = process.argv.includes('--local');
 const ROUNDS = (() => { const v = Math.floor(+arg('rounds', LOCAL ? 3 : 5)); return Number.isFinite(v) ? Math.min(20, Math.max(2, v)) : 5; })();
 const OUT = arg('out', join(here, '..', 'qa', 'out', 'lab'));
-/* v2.3.3252: the free plan (header) */
+/* v2.3.3257: the free plan (header) */
 const BIG = process.argv.includes('--big');
 /* rpc: Cloudflare allows one request at most 1,000 calls out (its
    "subrequests"), and the Door's call flood makes n + 3 in one: the third run's
@@ -83,7 +83,7 @@ const N = BIG
   : { warm: 10, rtt: 200, ws: 10000, rpc: 900, ws2k: 2000 };
 const POLL_MS = 50;   /* the Door's wait for a flood to land: one call a poll */
 const FREE_DAY = Object.freeze({ requests: 100000, gbs: 13000 });
-/* v2.3.3252: the limit test (header) */
+/* v2.3.3257: the limit test (header) */
 const LIMIT_RUN = process.argv.includes('--limit');
 const LIMIT = Object.freeze({
   STEP: 5000,          /* socket messages a step */
@@ -133,7 +133,7 @@ if (!LOCAL && !/^https:\/\/brotown-lab\.[a-z0-9-]+\.workers\.dev\/?$/.test(BASE)
 }
 BASE = BASE.replace(/\/$/, '');
 const H = { 'x-lab-key': KEY };
-/* v2.3.3252: a brand-new workers.dev address is not on every Cloudflare
+/* v2.3.3257: a brand-new workers.dev address is not on every Cloudflare
    machine at once -- the second run died on Cloudflare's own "not found" page
    (HTML, a 404) seconds after the address had answered.  Such a request never
    reached the lab, so it is tried again, up to 5 times 2 s apart; so is a lost
@@ -165,9 +165,9 @@ async function get(path) {
 const started = new Date();
 const out = { started: started.toISOString(), base: LOCAL ? 'local' : BASE, rounds: ROUNDS, runner: process.env.RUNNER_NAME || null };
 
-/* ── 0. the day so far (v2.3.3252) ────────────────────────────────────────── */
+/* ── 0. the day so far (v2.3.3257) ────────────────────────────────────────── */
 out.plan = { big: BIG, budget: BUDGET, sizes: N, freePerDay: FREE_DAY };
-/* v2.3.3252: the limit test runs only inside its window (header): too late,
+/* v2.3.3257: the limit test runs only inside its window (header): too late,
    or far too early, and it stops here, before a single request */
 const WIN = LIMIT_RUN ? limitWindow(arg('window', '23:55:00-23:58:30')) : null;
 const GAME_PROBE = LIMIT_RUN ? arg('game-probe', null) : null;
@@ -187,7 +187,7 @@ if (LIMIT_RUN) {
 if (!LOCAL && process.env.CLOUDFLARE_API_TOKEN) {
   out.plan.today = await accountToday().catch((e) => ({ error: String(e && e.message || e) }));
   const used = out.plan.today && out.plan.today.billed;
-  /* v2.3.3252: the limit test means to cross the line, inside its window */
+  /* v2.3.3257: the limit test means to cross the line, inside its window */
   if (!BIG && !LIMIT_RUN && Number.isFinite(used) && used + BUDGET > 0.9 * FREE_DAY.requests) {
     out.plan.refused = `the account has used about ${Math.round(used).toLocaleString('en-US')} of the free plan's ${FREE_DAY.requests.toLocaleString('en-US')} Durable Object requests today; this run's ~${BUDGET.toLocaleString('en-US')} could take it past 90%, and the game shares that limit. Run it after 00:00 UTC.`;
     await writeOut(out);
@@ -195,14 +195,14 @@ if (!LOCAL && process.env.CLOUDFLARE_API_TOKEN) {
   }
 }
 
-/* v2.3.3252: whatever goes wrong from here, what was measured is written
+/* v2.3.3257: whatever goes wrong from here, what was measured is written
    (the second run lost everything to one failed request) */
 try {
 /* ── up? ──────────────────────────────────────────────────────────────────── */
 {
   /* a brand-new worker's workers.dev address can take a minute or more to
      answer after its first deploy: wait up to 5 minutes (locally, wrangler's
-     start-up) before calling it a failure -- and, v2.3.3252, until it has
+     start-up) before calling it a failure -- and, v2.3.3257, until it has
      answered 20 times running, half a second apart: one answer did not mean
      every Cloudflare machine had it (get above) */
   let run = 0;
@@ -219,7 +219,7 @@ try {
   out.httpRttMs = { p50: r1(pct(who.slice(2), 50)), max: r1(Math.max(...who.slice(2))) };
 }
 
-/* v2.3.3252: the limit test is a run of its own (header) */
+/* v2.3.3257: the limit test is a run of its own (header) */
 if (LIMIT_RUN) {
   await limitTest();
 } else {
@@ -236,7 +236,7 @@ if (LIMIT_RUN) {
   for (let i = 0; i < ROUNDS; i++) one.push((await get(`/burn?name=cal&iters=${iters}`)).ms - rtt);
   const work = pct(one, 50);
   out.burn = { iters, workMs: r1(work), rows: [] };
-  /* v2.3.3252: on `wrangler dev --local` 8 at once never all came back (the
+  /* v2.3.3257: on `wrangler dev --local` 8 at once never all came back (the
      third waited out the runner's 300 s): the local runtime's own limit, so a
      local dry run stops at 4 */
   for (const K of LOCAL ? [1, 2, 4] : [1, 2, 4, 8, 16]) {
@@ -263,13 +263,13 @@ if (LIMIT_RUN) {
 out.rtt = {};
 for (const [name, q] of [['call (JS RPC)', 'mode=rtt-rpc'], ['socket, plain', 'mode=rtt-ws&hib=0'], ['socket, hibernation', 'mode=rtt-ws&hib=1']]) {
   await get(`/door?${q}&n=${N.warm}&door=warm`);
-  const r = (await get(`/door?${q}&n=${N.rtt}&door=rtt`)).body;   /* v2.3.3252: N, the free plan's sizes */
+  const r = (await get(`/door?${q}&n=${N.rtt}&door=rtt`)).body;   /* v2.3.3257: N, the free plan's sizes */
   out.rtt[name] = { ...r.rttMs, where: r.where };
 }
 
 /* ── 3. floods, for the speed and the bill ───────────────────────────────── */
 out.flood = [];
-/* v2.3.3252: sized for the free plan (N); a call is a billed request each, 20
+/* v2.3.3257: sized for the free plan (N); a call is a billed request each, 20
    socket messages one, and the Door's wait polls every POLL_MS */
 const floods = [
   ['socket, plain, 100 B', `mode=flood-ws&hib=0&size=100&poll=${POLL_MS}`, N.ws],
@@ -288,11 +288,11 @@ const floodTo = new Date();
 /* ── the bill (best effort) ───────────────────────────────────────────────── */
 out.billing = await billing(floodFrom, floodTo).catch((e) => ({ error: String(e && e.message || e) }));
 
-/* ── 4. the game's own days (v2.3.3252; read only) ────────────────────────── */
+/* ── 4. the game's own days (v2.3.3257; read only) ────────────────────────── */
 out.game = (LOCAL || !process.env.CLOUDFLARE_API_TOKEN)
   ? { skipped: LOCAL ? 'local run' : 'no CLOUDFLARE_API_TOKEN' }
   : await gameDays(7).catch((e) => ({ error: String(e && e.message || e) }));
-}   /* v2.3.3252: not the limit test */
+}   /* v2.3.3257: not the limit test */
 
 } catch (e) {
   out.error = String((e && e.stack) || e).slice(0, 2000);
@@ -305,7 +305,7 @@ process.exit(out.error ? 1 : 0);
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 
-/* ── v2.3.3252: the limit test (header) ── */
+/* ── v2.3.3257: the limit test (header) ── */
 /* seconds into the UTC day, by Date.now() (the self-test's fake moves it) */
 function secOfDay() {
   const d = new Date(Date.now());
@@ -492,7 +492,7 @@ async function fieldsOf(typeName) {
 function baseType(t) { while (t && !t.name && t.ofType) t = t.ofType; return t ? t.name : null; }
 function num(v) { return v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v); }
 
-/* v2.3.3252: the account, read once (CACHE is made at the top: these run
+/* v2.3.3257: the account, read once (CACHE is made at the top: these run
    before the line that would declare it here) */
 async function accountId() {
   if (CACHE.account !== undefined) return CACHE.account;
@@ -536,7 +536,7 @@ async function dsSums(ds, { from, to, ids = null, by = null }) {
   const lit = (t) => JSON.stringify(d.timeKey === 'date' ? t.toISOString().slice(0, 10) : t.toISOString().replace(/\.\d{3}Z$/, 'Z'));
   const parts = [`${d.timeKey}_geq: ${lit(from)}`, `${d.timeKey}_leq: ${lit(to)}`];
   if (ids) parts.push(`namespaceId_in: ${JSON.stringify(ids)}`);
-  /* v2.3.3252: `by` a dimension (objectId): one row each, kept in `groups` */
+  /* v2.3.3257: `by` a dimension (objectId): one row each, kept in `groups` */
   const dim = by && d.dims.includes(by) ? by : null;
   if (by && !dim) return { error: `no ${by} dimension`, dims: d.dims };
   const q = `query { viewer { accounts(filter: {accountTag: ${JSON.stringify(acct)}}) { g: ${ds}(limit: 10000, filter: {${parts.join(', ')}}) { ${dim ? `dimensions { ${dim} } ` : ''}${d.count ? 'count ' : ''}sum { ${d.sums.join(' ')} } } } } }`;
@@ -617,7 +617,7 @@ async function billing(from, to) {
   const res = { account: account.slice(0, 6) + '...', namespaces: byId, datasets: {} };
   /* the figures arrive a few minutes late: wait for them, up to six */
   const fromT = new Date(from.getTime() - 60000), toT = new Date(to.getTime() + 120000);
-  /* v2.3.3252: the fourth run waited the whole six minutes for each dataset
+  /* v2.3.3257: the fourth run waited the whole six minutes for each dataset
      and got nothing (that day's figures had not come in at all, the game's
      too): once one dataset has come up empty, the other is asked once */
   let late = false;
@@ -633,7 +633,7 @@ async function billing(from, to) {
     res.datasets[ds] = got || { error: late && ds === 'durableObjectsInvocationsAdaptiveGroups' ? 'no figures yet (asked once: the other dataset had none after six minutes)' : 'no figures after six minutes' };
   }
   res.usage = usageOf(res.datasets.durableObjectsInvocationsAdaptiveGroups, res.datasets.durableObjectsPeriodicGroups);
-  /* v2.3.3252: each flood's World by its own id -- its CPU over the messages
+  /* v2.3.3257: each flood's World by its own id -- its CPU over the messages
      it took is the cost of one message on that kind of socket, in CPU */
   const worlds = (out.flood || []).filter((f) => f.worldId);
   if (worlds.length) {
@@ -655,9 +655,9 @@ function render(o) {
   const fmt = (v) => (v === null || v === undefined ? '-' : Math.round(v).toLocaleString('en-US'));
   const pc = (v, of) => (v === null || v === undefined ? '-' : (100 * v / of).toFixed(1) + '%');
   L.push(`# Cloudflare lab, ${o.started}`, '');
-  /* v2.3.3252: the limit test is a report of its own */
+  /* v2.3.3257: the limit test is a report of its own */
   if (o.limit) return renderLimit(o, L, fmt);
-  /* v2.3.3252: the plan and the day so far */
+  /* v2.3.3257: the plan and the day so far */
   if (o.plan) {
     L.push('## 0. The free plan', '');
     L.push(`This run's size: ${o.plan.big ? 'BIG (the paid plan\'s sizes)' : 'sized for the free plan'}, about ${fmt(o.plan.budget)} billed Durable Object requests of the free plan's ${fmt(o.plan.freePerDay.requests)} a day, which the game shares.`, '');
@@ -716,7 +716,7 @@ function render(o) {
   return L.join('\n');
 }
 
-/* v2.3.3252: the limit test's report, in plain words first */
+/* v2.3.3257: the limit test's report, in plain words first */
 function renderLimit(o, L, fmt) {
   const x = o.limit;
   const t = (s) => (s ? String(s).slice(11, 19) + ' UTC' : '-');

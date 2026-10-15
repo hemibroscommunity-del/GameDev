@@ -4,7 +4,7 @@
 > *"Go recommended"*, which said yes to the lab: "The Cloudflare lab: yes,
 > after Phase 0".
 
-## v2.3.3252: the limit test -- does the free plan count every message?
+## v2.3.3257: the limit test -- does the free plan count every message?
 
 The free plan's daily limit is 100,000 Durable Object requests for the whole
 account. Cloudflare's pricing page says incoming socket messages are counted
@@ -74,7 +74,7 @@ started at 23:44 UTC as the owner approved:
 - **The game was never touched.** Its listing answered every check, and the
   lab worker was deleted at 23:59:49.
 
-## v2.3.3252: the account is on the free plan
+## v2.3.3257: the account is on the free plan
 
 The first run (2026-10-14) never started. Cloudflare refused the deploy: "In
 order to use Durable Objects with a free plan, you must create a namespace
@@ -392,7 +392,7 @@ The floods locally:
 
 Round trips were 0-1 ms.
 
-Again on 2026-10-14 with the free plan's sizes (v2.3.3252), the lab's own
+Again on 2026-10-14 with the free plan's sizes (v2.3.3257), the lab's own
 wrangler (4.96.0, its package.json): 1, 2 and 4 objects as before (306, 605,
 1,263 ms), and the floods 7.3 µs, 10.2 µs, 39 µs and 27 µs a message. But 8
 objects at once never all came back: the third waited out the runner's 300 s.
@@ -411,7 +411,7 @@ on Cloudflare still does 8 and 16.
   deploy and delete, and for reading the account's figures (accounts, the
   lab's object namespaces, GraphQL).
 - **One run at a time** (the workflow's concurrency group).
-- **Never more than a sliver of the day** (v2.3.3252): about 2,700 billed
+- **Never more than a sliver of the day** (v2.3.3257): about 2,700 billed
   requests on the free plan, and none at all if the day is already near its
   limit.
 
