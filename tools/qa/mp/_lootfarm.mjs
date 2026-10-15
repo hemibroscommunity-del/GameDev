@@ -64,9 +64,12 @@ const INIT = `
     const origSend = ws.send.bind(ws);
     ws.send = (d) => {
       try {
-        const m = typeof d === 'string' ? JSON.parse(d) : null;
-        const t = m && (m.type || m.event);
-        if (t === 'loot_pickup') note({ dir: 'out', t: Date.now(), type: t, payload: m.payload, state: snap() });
+        /* v2.3.3254: a frame may be a bundle (a JSON array of messages) */
+        const v = typeof d === 'string' ? JSON.parse(d) : null;
+        for (const m of Array.isArray(v) ? v : [v]) {
+          const t = m && (m.type || m.event);
+          if (t === 'loot_pickup') note({ dir: 'out', t: Date.now(), type: t, payload: m.payload, state: snap() });
+        }
       } catch (err) {}
       return origSend(d);
     };

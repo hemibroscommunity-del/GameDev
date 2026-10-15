@@ -186,7 +186,8 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
               {p.isHemiBroVerified && (
                 <img className="bt-pin-bro" src={BRO_BADGE} draggable={false}
                   alt="Verified Hemi Bro"
-                  title={'Verified Hemi Bro' + (p.broTokenId != null ? ' #' + p.broTokenId : '')} />
+                  title={'Verified Hemi Bro' + (p.broTokenId != null ? ' #' + p.broTokenId : '')
+                    + (p.hemiBroCount > 0 ? ' \u00b7 ' + p.hemiBroCount + ' held' : '')} />
               )}
             </div>
             <div className="bt-pin-meta">
@@ -201,6 +202,17 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
               <span className="bt-pin-ap" title="Achievement points" data-stat="ap">
                 <Star />{p.achievementPoints == null ? '–' : compactCount(p.achievementPoints)} AP
               </span>
+              {/* v2.3.3255: how many Hemi Bros their verified wallet holds -- the
+                  owner: "It would be cool to list the number of hemi bros owned
+                  somewhere on their profile".  The worker's count only
+                  (broverify.js balanceOf); nothing with none. */}
+              {p.hemiBroCount > 0 && (
+                <span className="bt-pin-bros" data-stat="hemibros"
+                  title="Hemi Bros held by their verified wallet">
+                  <img src={BRO_BADGE} alt="" draggable={false} />
+                  {compactCount(p.hemiBroCount)} Hemi Bro{p.hemiBroCount === 1 ? '' : 's'}
+                </span>
+              )}
             </div>
             <div className="bt-pin-row">
               <span className="bt-pin-quests" data-stat="quests">

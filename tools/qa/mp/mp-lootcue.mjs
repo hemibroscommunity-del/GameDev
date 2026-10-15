@@ -108,7 +108,9 @@ const WIRE_INIT = () => {
   WebSocket.prototype.send = function (data) {
     try {
       if (typeof data === 'string' && data.indexOf('"type"') >= 0) {
-        const m = JSON.parse(data);
+        /* v2.3.3254: a frame may be a bundle (a JSON array of messages) */
+        const v = JSON.parse(data);
+        for (const m of Array.isArray(v) ? v : [v]) {
         if (m && m.type === 'move' && typeof m.x === 'number') {
           window.__btWire.moves++;
           window.__btWire.last = { x: m.x, y: m.y, t: Date.now() };
@@ -124,6 +126,7 @@ const WIRE_INIT = () => {
             staleMs: L ? Date.now() - L.t : null,
             moving: !!(S && S.player && (S.player.vx || S.player.vy)),
           });
+        }
         }
       }
     } catch (e) { /* never let the observer break a send */ }

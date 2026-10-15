@@ -262,6 +262,33 @@ passes such a move on at its next tick (`STEADY.SPACED_MS`). Same message, sent
 less often; an old worker gets every move, an old client sends every move. Kill
 switch: `movediet: false` (un-advertises the cap). `docs/specs/move-diet.md`.
 
+**v2.3.3254: the quiet phone -- several messages in one frame, and fewer.**
+- **A bundle.** Against a worker advertising `caps.bundle`, a frame may be a
+  JSON ARRAY of client messages: everything the phone sent in one turn of its
+  loop. The worker takes each in order exactly as if it had come alone
+  (`server/src/bundle.js`; index.js `webSocketMessage` -> `_onMessage`): the
+  same handlers, AFK clock, cadence lanes and caps. Never a `join`, nothing but
+  plain objects, at most `BUNDLE.MAX` 24; the 16 KB frame gate is the whole
+  frame's. One message still goes as itself. A worker always TAKES a bundle;
+  `bundle: false` only stops advertising it. The phone bundles only once the
+  socket's OWN `state_sync` advertised it (a reconnect keeps the last worker's
+  caps until then, and an older worker would relay an array to the room).
+- **`pong` may ride.** `{type: 'pong', ts, hd}`: `hd` is how long the phone
+  held the answer to ride on a frame going anyway; the worker subtracts it, and
+  takes a sample only for the latest ping (`ts` must be `session.lastPing`).
+  An old phone's pong (no `hd`) is measured as before.
+- **Sent less often** against a worker advertising `caps.quiet`
+  (`src/game/quietPhone.js`): moves every 66 ms with no player within 2,400 px
+  (33 with one, or in an arena match); a steady walk held to 66 ms anywhere in
+  the Wheel out of a fight, unless a player near you may fight you there; a
+  standing phone's keepalive move once 1 s after its last move, then every 10
+  s (a death, a gear change or a place changed with no thumb on the stick goes
+  at once); no 500 ms harvest heartbeat (the
+  start and stop still go); `track` at once when its news changes (the worker's
+  own `LOOK_RELAY` rule), else riding, or alone every 30 s; one ping in four
+  answered when nothing else goes; the tree's `gather_node` repeat riding.
+  Kill switch `quiet: false`. `docs/specs/quiet-phone.md`.
+
 ### `track` is cosmetics-only (v2.3.1465)
 
 `track` carries appearance and display values, nothing authoritative. The
@@ -428,6 +455,25 @@ wind-up, and the relays `player_swing`, `player_projectile`, `player_dodge`,
 
 At 120 players with real swings and arrows it cut a phone's events from about
 50 to 16 a second. `docs/specs/events-by-place.md`.
+
+**v2.3.3255: the Hemi Bro checkmark and count.** No new message types.
+- **`bro_verify {count: 1, signature, tokenId?}`** (only against
+  `caps.broCount`) is the WALLET check: the worker recovers the signer of its
+  own nonce and reads the collection's `balanceOf(signer)`; `tokenId` (the
+  worn Bro) is optional and checked by `ownerOf` as before, its failure no
+  longer fatal. The old shape (`tokenId` required, no `count`) is unchanged.
+  One chain read per 5 s a socket (`slow_down`).
+- **`bro_verify_result`** gains `count` (and `tokenId: null` when the worn Bro
+  is not theirs); with `refresh: true` it is a join's background re-read of a
+  stale link, sent to that player only (PRIVILEGED, as before).
+- **The tick's player entry** gains `brn` (the count, 1..6666), absent at 0;
+  `bro` (the verified worn Bro's id) is unchanged -- and the phone reads both
+  now: it never read `bro` before, so nobody saw anyone else's badge. A far
+  player's slim entry carries neither and leaves them as they were.
+- **`state_sync`** gains `broN` (the count, 0 with no fresh link).
+- Server-owned, never client-settable (not in TRACK_COSMETIC_KEYS or
+  JOIN_COSMETIC_KEYS). Kill switch `broCount: false`.
+  `docs/specs/hemi-bro-count.md`.
 
 ## Peer-relayed broadcast events (client ↔ client)
 

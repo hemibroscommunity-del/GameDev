@@ -1,5 +1,6 @@
 import React from 'react';
 import { PlayerIcon } from '@/ui/PlayerIcon.jsx';   /* v2.3.2620 */
+import { broCountOf } from '@/networking/broWallet.js';   /* v2.3.3255 */
 
 /* === PlayerListPanel — the showPlayerList modal === */
 /* v2.3.886: extracted verbatim from the showPlayerList JSX subtree in
@@ -53,8 +54,14 @@ export function PlayerListPanel(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       className: "bt-plist-name"
-    }, p.name), p.bro && /*#__PURE__*/React.createElement("div", {
+    }, p.name), broCountOf(p.brn) > 0 && /*#__PURE__*/React.createElement("div", {
       className: "bt-plist-sub"
-    }, "Bro #", p.bro.ID, " \xB7 Rank #", p.bro.rank)));
+    }, "✓ ", broCountOf(p.brn), " Hemi Bro", broCountOf(p.brn) === 1 ? '' : 's')));
   }));
 }
+/* v2.3.3255: the sub-line was "Bro #<ID> · Rank #<rank>", reading `p.bro` as
+   the Hemi Bro catalogue's object -- which no peer ever had (the join relay
+   drops a client's `bro`: server join.js JOIN_COSMETIC_KEYS), so it never
+   showed.  The worker's `bro` is the verified worn Bro's NUMBER, and with it
+   arriving at last (wsClient.js, the tick's `bro`/`brn`) that line would read
+   "Bro #undefined".  It is now the worker's own count: "✓ 3 Hemi Bros". */

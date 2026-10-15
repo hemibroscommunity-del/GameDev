@@ -306,6 +306,26 @@ These are needed by ANY split. Several help at today's 120.
   - the local load test with the doors in their own process, which is how
     wrangler runs a second script;
   - then the Cloudflare lab.
+- **What the lab says (v2.3.3257, runs 3 and 4, docs/specs/cloudflare-lab.md):**
+  - **One script of doors works.** Objects of one script run side by side:
+    8 at once did the work of 5.9-6.6, 16 of 6.2-8.6. Plan for about 6
+    doors' worth of parallel work per 8, not 8.
+  - **The world makes its doors, and keeps them in its city.** Two objects in
+    one city were 3-4 ms apart a round trip (p95 4-6 ms); in two cities
+    (Newark, Chicago), 22 ms. A door is made near whoever asks for it first,
+    so the world asks first, by names of its own, and a door that finds itself
+    elsewhere (its own trace page says where) should be retired.
+  - **Doors talk over sockets.** In one city a socket message cost 75-81 µs
+    end to end; a call, 852 µs. A call is also billed one for one, against 20
+    socket messages to a request. The game's room keeps its hibernation
+    sockets: one city made them as cheap as plain ones.
+  - **Billing adds, it doesn't save.** Phones' messages to a door are billed
+    as they are to the room today, plus each door's batches to the world. On
+    the paid plan that is cents; on the free plan Phase 1 does not fit at all
+    (risk 8).
+  - **So the gate is now Workers Paid,** then the local load test with doors,
+    then a lab run of a door and a world in one city carrying a load-test
+    crowd.
 
 ### Phase 2: doors build each phone's messages
 
@@ -354,6 +374,9 @@ These are needed by ANY split. Several help at today's 120.
   table still stands.
 - **A real 1,000-player game peaks at 1,000** and averages far less, so the
   real bill would be a fraction of this.
+- **These are the paid plan's prices.** The account is on the FREE plan today
+  (v2.3.3257, found by the lab's first run), where Durable Objects have daily
+  limits instead of a bill: risk 8.
 
 ## Risks and unknowns
 
@@ -388,6 +411,43 @@ These are needed by ANY split. Several help at today's 120.
 7. **Every local test is only half the story.** Wrangler runs all objects of a
    script on one thread and enforces no Cloudflare limits. The lab is the
    only real answer for 1-4.
+8. **The free plan (v2.3.3257).** The lab's first run was refused at its
+   deploy: "In order to use Durable Objects with a free plan, you must create
+   a namespace using a `new_sqlite_classes` migration" (code 10097). So this
+   account, and the game's `brotown-server` with it, is on the Workers FREE
+   plan. There, Durable Objects have limits **per day, for the whole account**,
+   reset at 00:00 UTC, and past one Cloudflare refuses that kind of work until
+   midnight -- the game stops working:
+   - **100,000 requests.** A web request, a call or an alarm is one, and so
+     are 20 incoming socket messages -- for the BILL. A playing phone sends
+     about 10-30 messages a second (the move diet, safe ground and standing
+     still keep it near the low end), so one player-hour is about 1,800-5,400
+     requests: **about 20-55 player-hours of play a day in all** (*estimate*).
+     That is a handful of players for an evening, or 120 players for 10-30
+     minutes. Whether the free plan's daily LIMIT counts phone messages 20 to
+     one as well was not documented; **measured 2026-10-14 (the lab's limit
+     test, run 5): it does** -- 124,999 socket messages took Cloudflare's
+     every-message count of the day to 125,271 and nothing was refused, so
+     the 20-55 player-hours stand (and the quiet phone, #913, stretches them).
+     Measured (the lab's part 4): the game's objects counted
+     76,277 on 2026-10-11, an hour of the room awake with a few players, and
+     1,983-3,613 on the days round it. Cloudflare counts every hibernation
+     socket message among the invocations (socket messages in read 0).
+   - **13,000 GB-s awake.** The room is awake while anyone is connected
+     (`startTickLoop` / the last leave), at 128 MB: about 29 hours of one room
+     a day. Phase 1's doors break this alone -- 9 servers always on are
+     about 97,000 GB-s a day.
+   - Rows written (100,000 a day) bind later: about 340 a player-hour since
+     v2.3.1619 (ARCHITECTURE-HANDOFF).
+
+   **So the paid plan (Workers Paid, $5 a month, then the prices above)
+   comes before anything else in this plan, and is the owner's call.** On it
+   there are no daily limits: the same play costs about $5-6 a month (the $5
+   includes 1 million requests and 400,000 GB-s a month), and more play the
+   prices above. The lab's part 4 now reads the game's own last 7 days
+   against these limits, and the lab itself is sized to under 3% of a day's
+   requests and stops if the day is already near the limit
+   (`docs/specs/cloudflare-lab.md`).
 
 ## Decided (the owner, 2026-10-13)
 

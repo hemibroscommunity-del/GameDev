@@ -2299,7 +2299,10 @@ remnant to migrate server-side, not a mode to preserve.
   to 100,000 monthly players, about $5 to $1,100–2,800 a month, and the
   owner's business model: free play capped at 2 h a day, a $2-a-month
   supporter pass for unlimited — the server counts the hours, and logging
-  every room message would cost more than the game),
+  every room message would cost more than the game; since v2.3.3256 the pass
+  is on the backlog as $2 for 30 days in USDC on Hemi, no contract, and NO
+  PLAY CAPS for now -- the owner: "Dont ship any caps yet" --
+  `docs/SUPPORTER-PASS-PLAN.md`, waiting on the owner's pass address),
   `docs/SERVER-SPLIT-PLAN.md` (v2.3.3208, the owner's "Hopefully 1000 while
   just as smooth is possible ... begin planning what the best server split
   would look like": MEASURED, about four fifths of the room's thread at 150
@@ -2441,6 +2444,28 @@ Two protocol versions coexist; both must keep working:
   instead of passing for a new character. The defaults that are not zero
   are `NEW_CHARACTER_COINS` and `freshLifeSkills()`, pinned to the client's
   by mirror-audit: docs/specs/fresh-start.md.
+- THE HEMI BRO CHECKMARK IS "OWNS ONE OR MORE", AND THE PROFILE SAYS HOW MANY
+  (v2.3.3255) -- the owner: "a 'verified' checkmark for people who own 1 hemi
+  bro or more ... list the number of hemi bros owned somewhere on their
+  profile ... small surface area":
+  - NO CONTRACT, NO TRANSACTION, NO KEY: the v2.3.1576 free signature proves
+    the wallet, and the worker READS the collection's `balanceOf` (onchain.js);
+    `bro_verify {count: 1}` against `caps.broCount`, the worn Bro optional;
+  - `ps.broN` server-owned like `ps.bro`, on the tick's player as `brn` (absent
+    at 0) and state_sync's `broN`; the checkmark is `bro` OR a count of 1+
+    (broWallet.js `broBadgeOf`), on the name plate, the profile ("3 Hemi Bros"
+    beside the AP) and the player list;
+  - the phone NEVER READ the tick's `bro` before: nobody saw anyone else's
+    badge. It reads both now, a far player's slim entry leaving them as they
+    were (`peerEntrySlim`);
+  - sign once: a link older than a day is READ again in the background when
+    its player joins (`_broRefresh`), never re-signed; one chain read per 5 s a
+    socket; everything fails closed; kill switch `broCount: false`;
+  - `broverify` suite (96), `onchain` (balanceOf), `mp-brobadge`:
+    docs/specs/hemi-bro-count.md.  The $2 supporter pass the owner asked about
+    in the same message is NOT built: on the backlog as 2 USDC on Hemi, waiting
+    on the owner's own pass address, with no play caps ("Dont ship any caps
+    yet").
 - FAR PLAYERS LESS OFTEN, POSITIONS IN WHOLE PIXELS (v2.3.3197, the owner:
   "Send far away players less often and using shorter position numbers"):
   in the Wheel a v2 session gets the movers within `FAR_PLAYERS.NEAR_R` 2,400
@@ -2550,6 +2575,43 @@ Two protocol versions coexist; both must keep working:
     switch `movediet: false` (caps.movediet: each phone at its next join);
     `mp-movediet` (slows the page's drawing while it walks: this box's software
     GL starves page timers): docs/specs/move-diet.md.
+  - v2.3.3254: THE QUIET PHONE -- the owner: "I want you to cut as much as you
+    possibly can IF the loss in quality is negligible or unnoticeable" (every
+    message a phone SENDS may count against the free plan's 100,000 a day;
+    what the server sends is free):
+    - ONE FRAME A MOMENT: against `caps.bundle` everything a phone sends in one
+      turn of its loop goes as ONE frame, a JSON array the worker takes message
+      by message as if each came alone (server/src/bundle.js; index.js
+      `webSocketMessage` -> `_onMessage`; never a join, plain objects only, at
+      most 24, the 16 KB gate the frame's) -- wsClient.js `wsOut` (a
+      microtask: nothing later than before) is every game message's way out;
+    - RIDERS (src/game/quietPhone.js): the ping's answer rides on the next
+      frame saying how long it waited (`hd`; the worker subtracts it and takes
+      only the latest ping's), one in four alone with nothing else going; the
+      look (`track`) at once when its NEWS changes (the worker's own
+      LOOK_RELAY rule; 3,000 random looks: never holds back a relay), else
+      riding or alone every 30 s (the 2-minute away clock reads its `aw: 0`);
+      the tree's `gather_node` repeat riding;
+    - STANDING STILL: the keepalive move once 1 s after the last move, then
+      every 10 s (the worker's 1 Hz roster heals the others); a death, a gear
+      change, or a place or zone changed with no thumb on the stick (a harvest's
+      snap, a shove, a door) at once; no 500 ms harvest heartbeat (the worker
+      stamps only a harvest's start);
+    - MOVES: 33 ms only with a player within 2,400 px (the worker sends your
+      moves to no one further) or in an arena match, else 66 ms -- the solo
+      rate the owner set in v2.3.1767; a steady walk held to 66 ms anywhere in
+      the Wheel out of a fight, unless a player near you may fight you there
+      (nmlCanAttack);
+    - measured on a real page (mp-quietphone, main -> this): standing 1.79 ->
+      0.25 frames a second, turning with nobody near 18.2 -> 11.7 (a phone: 30
+      -> 15), a claim and its move 2 -> 1 frame, the look and ping never alone
+      while walking; fights beside others unchanged (33 ms);
+    - kill switches `bundle: false` / `quiet: false` (each phone as before from
+      its next join; the worker always takes a bundle); nothing bundled or
+      riding until THAT socket's state_sync (`_capsHere`: the last worker's
+      caps outlive a reconnect, and a rolled-back worker would relay an array
+      to the room); `quiet-phone` suite (56: two rooms in lockstep, bundled and
+      not, identical), docs/specs/quiet-phone.md.
   - v2.3.3205: THE CAP IS 120 -- the owner: "I think 120 is a good cap limit
     for now" (index.js `MAX_PLAYERS`; `max_players` can still only lower it;
     chatmod `SEEN_MAX` 240, twice the cap). With #887-#891 the room is smooth
@@ -2715,6 +2777,62 @@ Two protocol versions coexist; both must keep working:
     261-311) -- groundwork: a phone's download stops growing with far players. Old phones keep the v2.3.3246 roster; kill switch
     `presence2: false`; `presence2` suite (55, twenty bugs caught), `mp-presence2`
     (15), mp-farpeer opens the map for its far step: docs/specs/presence-v2.md.
+  - v2.3.3257: THE ACCOUNT IS ON CLOUDFLARE'S FREE PLAN -- found by the
+    lab's first run (the owner's "Push to main. Then resume your
+    recommendations autonomously"): Cloudflare refused its deploy, "In order
+    to use Durable Objects with a free plan, you must create a namespace
+    using a `new_sqlite_classes` migration" (code 10097). The game's
+    brotown-server is on the same free plan, where Durable Objects have DAILY
+    limits for the whole account, reset at 00:00 UTC -- 100,000 requests (a
+    web request, call or alarm, or 20 incoming socket messages) and 13,000
+    GB-s awake -- and past one Cloudflare refuses that work until midnight,
+    the game's too. A playing phone's 10-30 messages a second make that about
+    20-55 player-hours of play a day in all (*estimate*), and Phase 1's
+    always-on doors could not run at all: SERVER-SPLIT-PLAN risk 8 -- the
+    paid plan ($5 a month) comes first, the owner's call. The lab: SQLite
+    objects (tools/lab/wrangler.toml); a run sized for the free plan, ~2,700
+    billed requests (was ~25,000: a 20,000-call flood, and the Door polling a
+    flood's end every 5 ms -- now 50 ms, at most 30 s), `--big` (the
+    workflow's "big" box) the old sizes, paid plan only; "0. the day so far"
+    stops a run that could take the account past 90% of the day; "4. the
+    game's own days" reads brotown-server's last 7 days against the free
+    limits (read only, best effort); the data centre lookup gives up after
+    3 s and is skipped locally (LAB_LOCAL); a local dry run stops at 4
+    objects at once (8 hung on wrangler 4.96.0's local runtime). On Cloudflare
+    (third and fourth runs): objects of one script DO run side by side (8 at
+    once 5.9-6.6x, 16 6.2-8.6x, in their own isolates); two in one city 3-4 ms
+    apart, in two cities (Newark, Chicago) 22 ms -- placement is the whole
+    story; a hibernation socket's message about a plain one's (81 against 75
+    us in one city; the third run's 4x was the two cities), a call 10x a
+    socket message; the game's busiest recent day 76,277 invocations
+    (2026-10-11; every hibernation socket message is one -- "socket messages
+    in" reads 0 -- and whether the free plan's daily limit counts them 20:1 is
+    not documented: 4-5% of it, or 76%). One request
+    may make at most 1,000 calls out (the call flood is 900); only Cloudflare's
+    404 page is tried again (a 5xx means the lab ran); `node
+    tools/lab/selftest.mjs` runs run.mjs whole against fakes, before every
+    deploy: docs/specs/cloudflare-lab.md.
+    - THE LIMIT TEST (`--limit`, the workflow's "limit" box) -- asked how to
+      find out which, the owner: "Your account, 23:55 UTC". It floods one lab
+      World in 5,000-message steps ONLY between 23:55:00 and 23:58:30 UTC (a
+      refusal lasts until the 00:00 UTC reset), checks a fresh request after
+      each step -- a lab object and the game's auction listing, read only, the
+      one game page it may read (`GAME_PROBE_OK`) -- stops at the first
+      refusal (tried twice more), never sends past 25,000 over the
+      every-message line (150,000 at most: ~7,500 by 20 to 1), watches until
+      23:59:40 for a late count, and if refused waits past midnight to say
+      when the game answered again. Started outside 23:30-23:54 it sends
+      nothing (exit 4). A Community report (2026-10-12) was refused ~36,000
+      short by the 20 to 1 reading. The lab worker answers a refusal in
+      Cloudflare's own words (503 `refused`), not its crash page;
+      selftest.mjs runs it on a fake clock against a fake limit (every
+      message, 20 to 1, counted late, four refusals to run).
+      RAN 2026-10-14 23:55 UTC (run 5): NOT EVERY MESSAGE COUNTS -- 124,999
+      socket messages took Cloudflare's every-message count of the day to
+      125,271, past 100,000, and nothing was refused (52 checks, watched to
+      23:59:45); the daily limit counts socket messages 20 to 1 like the bill,
+      so Oct 11's playtest was ~4-5% of a day, not 76%. The game's listing
+      answered throughout (docs/specs/cloudflare-lab.md "The answer").
 
 ## Conventions
 

@@ -231,6 +231,54 @@ export async function ownerOf(tokenId, opts = {}) {
   return addr.toLowerCase();
 }
 
+/* ═══ v2.3.3255: HOW MANY HEMI BROS A WALLET HOLDS ═══
+ * Owner, 2026-10-14: "a 'verified' checkmark for people who own 1 hemi bro or
+ * more.  It would be cool to list the number of hemi bros owned somewhere on
+ * their profile ... small surface area".  ERC-721 balanceOf(address): one more
+ * READ of the collection, nothing sent, no key, no contract of ours.  A holder
+ * of more Bros than the collection's ids could hold is an answer to some other
+ * question (an ERC-1155, a proxy gone wrong), so it is no answer: null, and the
+ * caller grants nothing -- the fail-closed posture of ownerOf above. */
+const SEL_BALANCE_OF = '0x70a08231';
+export const MAX_BRO_COUNT = 6666;
+
+/** ERC-721 balanceOf.  Returns a whole number 0..MAX_BRO_COUNT, or null if the
+ *  call reverts, the chain is unreachable, or the answer is not a count. */
+export async function balanceOf(address, opts = {}) {
+  if (typeof address !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(address)) return null;
+  const contract = opts.contract || HEMI_BROS;
+  const data = SEL_BALANCE_OF + address.slice(2).toLowerCase().padStart(64, '0');
+  let out;
+  try {
+    out = await rpcCall('eth_call', [{ to: contract, data }, 'latest'], opts);
+  } catch { return null; }                 /* revert => not an ERC-721 / no code */
+  if (typeof out !== 'string' || !/^0x[0-9a-fA-F]{1,64}$/.test(out)) return null;
+  const n = BigInt(out);
+  if (n > BigInt(MAX_BRO_COUNT)) return null;
+  return Number(n);
+}
+
+/** v2.3.3255: the WALLET check -- recover the signer of OUR nonce, then ask the
+ *  collection how many Bros that wallet holds and, when `tokenId` is given (the
+ *  Bro the player wears), whether it is one of them.  Returns
+ *  { ok, address, count, tokenOk, reason }.  A count the chain would not give
+ *  fails the whole check: no badge on a guess. */
+export async function verifyBroWallet(nonceMessage, signature, tokenId, opts = {}) {
+  let address = null;
+  try {
+    address = await recoverSigner(personalHash(nonceMessage), signature, opts);
+  } catch { return { ok: false, reason: 'recover_failed' }; }
+  if (!address) return { ok: false, reason: 'bad_signature' };
+  const count = await balanceOf(address, opts);
+  if (count === null) return { ok: false, address, reason: 'chain_unreachable' };
+  let tokenOk = false;
+  if (tokenId !== null && tokenId !== undefined) {
+    const owner = await ownerOf(tokenId, opts);
+    tokenOk = !!owner && owner === address;
+  }
+  return { ok: true, address, count, tokenOk };
+}
+
 /** The whole check, in the order that matters: recover the signer of OUR
  *  nonce first, then ask the chain who holds the token, then compare.
  *  Returns { ok, address, owner, reason }.  Fails CLOSED on every error. */

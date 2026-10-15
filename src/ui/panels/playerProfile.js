@@ -42,6 +42,7 @@ import { farmBus } from '@/ui/mobile/farmBus.js';   /* v2.3.3127: the worker's f
 import { activePet } from '@/game/petBook.js';   /* v2.3.3120 */
 import { PET_KINDS, petKindName, petDisplayName, worldSafeText } from '@/data/trapping.js';   /* v2.3.3120 */
 import { getEquippedSlots, peerEquippedSlots } from '../mobile/sheet/equipModel.js';
+import { broBadgeOf, broCountOf } from '@/networking/broWallet.js';   /* v2.3.3255: the checkmark and the count */
 
 /* Pet rarity, from the owner's direction: "White Normal, Blue Rare, Orange
    Elite, Prismatic Godly".  The game has no pet rarity yet, so every real pet
@@ -196,7 +197,12 @@ export function profileFromPeer(ip, live, rel) {
      it is shown only when that blob agrees with the stamped tag. */
   const tag = o.clanTag || snap.clanTag || null;
   const cb = r.combat && typeof r.combat === 'object' ? r.combat : null;
-  const bro = o.bro || snap.bro || null;
+  /* v2.3.3255: the worker's two Hemi Bro fields (tick.js `bro`, `brn`): the
+     worn Bro verified, and how many the wallet holds.  `bro` is a NUMBER here
+     -- the join payload's avatar object never reaches a peer (join.js
+     JOIN_COSMETIC_KEYS) -- so anything else is no badge. */
+  const bro = typeof o.bro === 'number' ? o.bro : (typeof snap.bro === 'number' ? snap.bro : null);
+  const brn = broCountOf(o.brn != null ? o.brn : snap.brn);
   return {
     isSelf: false,
     loaded: has,
@@ -204,8 +210,9 @@ export function profileFromPeer(ip, live, rel) {
     name: o.name || snap.name || 'Player',
     color: o.color || snap.color || null,
     characterLevel: num(o.rpgLv) || num(snap.rpgLv),
-    isHemiBroVerified: !!bro,
+    isHemiBroVerified: broBadgeOf(bro, brn),
     broTokenId: bro,
+    hemiBroCount: brn,
     relationship: { friend: !!(rel && rel.friend), party: !!(rel && rel.party) },
     achievementPoints: has ? num(r.ap) : null,
     questsCompleted: has ? num(r.quests) : null,
@@ -246,8 +253,9 @@ export function profileFromSelf(S) {
     name: (S && S.myName) || 'You',
     color: (S && S.myColor) || null,
     characterLevel: num(R.level),
-    isHemiBroVerified: !!R._bro,
-    broTokenId: R._bro || null,
+    isHemiBroVerified: broBadgeOf(R._bro, R._broN),
+    broTokenId: typeof R._bro === 'number' ? R._bro : null,
+    hemiBroCount: broCountOf(R._broN),
     relationship: null,
     achievementPoints: num(R.achievementPoints) || 0,
     questsCompleted: num(cs.questsCompleted) || 0,

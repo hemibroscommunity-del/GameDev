@@ -4,6 +4,266 @@
 > *"Go recommended"*, which said yes to the lab: "The Cloudflare lab: yes,
 > after Phase 0".
 
+## v2.3.3257: the limit test -- does the free plan count every message?
+
+The free plan's daily limit is 100,000 Durable Object requests for the whole
+account. Cloudflare's pricing page says incoming socket messages are counted
+20 to a request **"for billing purposes"**, and says nothing about the free
+plan's daily limit. The game's busiest day (2026-10-11) was 76,277 messages and
+calls by Cloudflare's own figures: about **4%** of the day if the limit counts
+20 to 1, **76%** if it counts every message. A Cloudflare Community report
+(2026-10-12, "Durable Objects Free quota block below 100k after WebSocket 20:1
+adjustment", unresolved) was refused at about 64,000 by the 20 to 1 reading --
+1,283,610 socket messages that day -- which fits "every message counts" if the
+socket already open kept working after the refusal.
+
+Asked where to find out, the owner: **"Your account, 23:55 UTC."**
+
+`run.mjs --limit` (the workflow's "limit" box):
+
+1. **Only in its window.** Started before 23:30 or after the window's end, it
+   stops before sending anything (exit 4). It waits until 23:55:00 UTC and
+   sends nothing after 23:58:30, so a refusal lasts until the 00:00 UTC reset at
+   most: the game could be shut for the last minutes of the day.
+2. **Steps.** 5,000 socket messages to one lab World (the game's own kind of
+   socket), then a fresh request: a lab object, and the game's auction listing
+   (read only -- `GAME_PROBE_OK` allows that one page and no other). A refusal
+   is looked at twice more, a second apart, before it counts.
+3. **A ceiling.** It never sends more than takes the day 25,000 past 100,000 by
+   the every-message reading (150,000 at most). By the 20 to 1 reading that is
+   about 7,500: if the limit counts 20 to 1, nothing is refused and the game
+   never notices.
+4. **Late counting.** Unrefused, it keeps looking every 10 s until 23:59:40.
+5. **The reset.** Refused, it waits past midnight and says when the lab and the
+   game answered again.
+6. **The answer**, in the run's summary: "Every message counts" (refused near
+   100,000 by the every-message reading), "Not every message counts" (past it,
+   never refused), or what else happened, with Cloudflare's own words for the
+   refusal (the lab worker now answers one as a 503 with `refused`, not its
+   crash page).
+
+`node tools/lab/selftest.mjs` runs it on a fake clock against a fake daily
+limit: one that counts every message, one that counts 20 to 1, one that counts
+late, and four starts it must refuse (too late, far too early, a game address
+other than the listing, a window across midnight) without sending anything.
+
+### The answer (the fifth run, 2026-10-14 23:55 UTC): NOT every message counts
+
+[Run 5](https://github.com/hemibroscommunity-del/GameDev/actions/runs/38655964310),
+started at 23:44 UTC as the owner approved:
+
+- **Sent** 124,999 socket messages to one lab World in 25 steps of 5,000,
+  23:55:02-23:55:20 UTC, plus about 274 other requests (the steps' own and
+  their checks).
+- **Cloudflare's own figures** put the day at 1 before the test (they lag a
+  few minutes) and **125,271** after it, by the every-message reading. That is
+  past the 100,000 line by 25,000.
+- **Nothing was refused.** There were 52 checks after the steps, each a fresh
+  lab request plus the game's auction listing (read only), and none failed.
+  The lab watched until 23:59:45 UTC for a late count, and none came.
+- **What it means.** The free plan's daily limit does not count each socket
+  message as a request. It counts them the way the bill does, 20 to one.
+  - The Oct 11 playtest (76,277 messages and calls) was about **4-5%** of a
+    day, not 76%.
+  - Its 433 GB-s of servers awake was 3.3% of the other daily limit (13,000).
+  - At that level, the free plan's limits allow about 20 such playtests a day.
+- **What it doesn't rule out.** A limit checked more slowly than 4.5 minutes
+  after crossing 100,000. The midnight reset came before that could matter.
+  The Community report's block (2026-10-12) is still unexplained; it fits a
+  different counting, or a different limit.
+- **The game was never touched.** Its listing answered every check, and the
+  lab worker was deleted at 23:59:49.
+
+## v2.3.3257: the account is on the free plan
+
+The first run (2026-10-14) never started. Cloudflare refused the deploy: "In
+order to use Durable Objects with a free plan, you must create a namespace
+using a `new_sqlite_classes` migration" (code 10097). So the account, and the
+game's `brotown-server` on it, is on the Workers **free** plan. Nothing was
+left behind (the delete step found no worker).
+
+That matters for the lab, and much more for the game:
+
+- **The free plan has daily limits for the whole account**, reset at 00:00
+  UTC. Durable Objects get 100,000 requests a day (a web request, a call or
+  an alarm is one, and so are 20 incoming socket messages) and 13,000 GB-s
+  of time awake. Past either, Cloudflare refuses that kind of work until
+  midnight, **the game's included**.
+- **The old lab would have used a quarter of a day.** Its call flood alone
+  was 20,000 calls, each a billed request, and the Door looked for a flood's
+  end every 5 ms, one call a look: about 25,000 requests a run.
+- **The game's own room is the bigger story.** A playing phone sends about
+  10-30 messages a second. If the daily limit counts them 20 to one, as the
+  bill does, 100,000 requests is about 20-55 player-hours of play a day in
+  all; if it counts each one, about 1-3 (*estimates*). The fourth run's
+  figures (below) show the game's busiest recent day at 76,277 of them.
+  SERVER-SPLIT-PLAN risk 8 has the rest.
+
+What changed in the lab:
+
+- **Its objects are SQLite ones** (`tools/lab/wrangler.toml`), the only kind
+  the free plan takes. They store nothing, so the kind changes nothing the lab
+  measures.
+- **A run is sized for the free plan: about 2,700 billed requests**, under 3%
+  of a day. Round trips 200 (were 400). Floods of 10,000 socket messages each
+  way (were 20,000), 1,000 calls (were 20,000) and 2,000 messages of 2 KB
+  (were 4,000). The Door looks for a flood's end every 50 ms, for at most
+  30 s. The workflow's **big** box runs the old sizes, for the paid plan only.
+- **0. The day so far.** Before anything else, the run reads the account's
+  requests so far today. If this run could take them past 90% of the day's
+  100,000, it stops there and says so: run it after 00:00 UTC.
+- **4. The game's own days.** After the bill, the run reads the last 7 days of
+  `brotown-server`'s Durable Objects from the account's own figures, day by
+  day, against the free plan's limits:
+  - requests (calls and web requests, and socket messages in at 20 to one);
+  - time awake (GB-s);
+  - CPU;
+  - rows read and written.
+
+  It is read only, and best effort like the bill. If the token may not read
+  the figures, the report says where they are in the Cloudflare dashboard.
+- **The report is written even when the run stops early**, and its figures are
+  saved before the page is drawn.
+- **The data centre lookup** (each object asks Cloudflare's trace page where
+  it runs) gives up after 3 s, and is skipped on a local dry run.
+- **A brand-new address is not everywhere at once.** The second run deployed
+  and timed 1 and 2 objects. Then one request met Cloudflare's own "not
+  found" page, seconds after the address had answered, and the run ended
+  with nothing written. Now:
+  - the run waits for 20 answers in a row, half a second apart;
+  - a request that meets Cloudflare's own page is tried again, up to 5
+    times. It never reached the lab, so trying again costs nothing;
+  - a lost connection is tried again too, but only for the cheap requests;
+  - whatever goes wrong, what was measured before it is written, with the
+    error.
+- **The third run answered half the questions, then hit three bugs:**
+  - **The day-so-far check never ran.** Two helpers were declared in a way
+    that can't be used before their line runs ("Cannot access 'baseType'
+    before initialization"), and the check runs first. They are function
+    declarations now.
+  - **The call flood failed** with a 500. Cloudflare lets one request make
+    at most 1,000 calls out, and the flood made 1,003. It is 900 calls now,
+    on either plan (the old 20,000 never could have run).
+  - **The retry ran it again.** It treated that 500 page like "not
+    everywhere yet" and repeated the flood 4 more times. Only a 404 page is
+    tried again now: a 5xx means the lab ran and threw.
+
+  That run cost about 6,500 billed requests (6.5% of the day).
+- **`node tools/lab/selftest.mjs`**, the lab's own check with no Cloudflare,
+  runs `run.mjs` whole against a fake lab and a fake Cloudflare API: a quiet
+  day (every part, exit 0) and a day 89% used (stopped before starting,
+  exit 3). Each of the third run's bugs, put back, fails it (6 and 5 checks).
+  The workflow runs it before deploying anything.
+
+### What the third run measured (2026-10-14)
+
+The runner was GitHub's; the objects landed in Chicago (ORD) and Newark (EWR).
+
+**Side by side: yes, mostly.**
+
+| objects at once | time | side by side | isolates | where |
+|---|---|---|---|---|
+| 1 | 232 ms | 1 | 2 | ORD |
+| 2 | 233 ms | 2 | 2 | ORD |
+| 4 | 211 ms | 4.4 | 4 | ORD, EWR |
+| 8 | 278 ms | 6.6 | 10 | EWR, ORD |
+| 16 | 426 ms | 8.6 | 20 | EWR, ORD |
+
+Objects of one script run in separate isolates, so 8 doors are worth about
+6.6, not 1: the split plan's risk 1 is mostly answered, and doors can be one
+script.
+
+**The delay between two servers: about 22 ms**, because these two were in
+DIFFERENT cities (the Door in Newark, the World in Chicago):
+
+| way | p50 | p95 | p99 | max |
+|---|---|---|---|---|
+| call (JS RPC) | 22 ms | 26 ms | 28 ms | 30 ms |
+| socket, plain | 22 ms | 25 ms | 29 ms | 32 ms |
+| socket, hibernation | 22 ms | 25 ms | 26 ms | 26 ms |
+
+No stall in 630 round trips. That is risk 4 (placement) made real: an object
+starts near whoever first asks for it, so the world must make its own doors
+to keep them in its city.
+
+**Floods:** 10,000 messages took 505 ms on a plain socket (51 µs each) and
+2,181 ms on a hibernation one (218 µs each). That looked like a hibernation
+message costing 4x a plain one, but the fourth run (below), with both objects
+in one city, found the two the same. The gap was crossing between cities.
+
+### What the fourth run measured (2026-10-14, every part)
+
+**Side by side: yes again**, a little lower: 8 at once did the work of 5.9,
+16 of 6.2. The objects were in Chicago and Dallas (ORD, DFW).
+
+| objects at once | time | side by side | isolates | where |
+|---|---|---|---|---|
+| 1 | 284 ms | 0.7 | 2 | ORD |
+| 2 | 344 ms | 1.2 | 4 | ORD |
+| 4 | 312 ms | 2.6 | 8 | ORD, DFW |
+| 8 | 279 ms | 5.9 | 11 | ORD, DFW |
+| 16 | 526 ms | 6.2 | 27 | ORD, DFW |
+
+**The delay between two servers in ONE city: 3-4 ms.** The Door and the
+World were both in Chicago this time:
+
+| way | p50 | p95 | p99 | max |
+|---|---|---|---|---|
+| call (JS RPC) | 4 ms | 6 ms | 8 ms | 9 ms |
+| socket, plain | 3 ms | 4 ms | 6 ms | 8 ms |
+| socket, hibernation | 3 ms | 4 ms | 6 ms | 7 ms |
+
+Against 22 ms when they were in different cities (the third run). Placement is
+the whole story: a door in the world's city adds a few ms, one elsewhere 20+.
+
+**Floods, in one city:**
+
+| what | messages | time | each |
+|---|---|---|---|
+| socket, plain, 100 B | 10,000 | 748 ms | 75 µs |
+| socket, hibernation, 100 B | 10,000 | 811 ms | 81 µs |
+| call (JS RPC), 100 B | 900 | 767 ms | 852 µs (64 at a time) |
+| socket, hibernation, 2 KB | 2,000 | 212 ms | 106 µs |
+
+- **A hibernation socket's message is about a plain one's** (81 against 75
+  µs). So the third run's 4x was the two cities, and switching the game's
+  room off the hibernation API is not worth it.
+- **A call is about 10x a socket message,** and each call is a billed
+  request, while 20 socket messages make one. Doors should talk to the world
+  over sockets, as the plan has it.
+
+**The bill:** the account's figures for the lab's objects had not come in
+after six minutes. That whole day's figures were still missing, the game's
+too, so the lab now asks only once more after the first comes up empty.
+
+**The game's own days** (brotown-server, every object), from the account's
+figures:
+
+| day (UTC) | calls and requests | socket msgs in | socket msgs out | awake GB-s | CPU s | rows written |
+|---|---|---|---|---|---|---|
+| 10-08 | 1 | 0 | 0 | 0 | 0 | 0 |
+| 10-09 | 5 | 0 | 0 | 0 | 0 | 0 |
+| 10-10 | 2,290 | 0 | 13,829 | 48 | 27 | 69 |
+| **10-11** | **76,277** | 0 | 262,824 | 433 | 304 | 747 |
+| 10-12 | 1,983 | 0 | 5,382 | 29 | 16 | 56 |
+| 10-13 | 3,613 | 0 | 27,759 | 89 | 45 | 88 |
+| 10-14 | not in yet | | | | | |
+
+- **"Socket messages in" is always 0, and the calls are many.** A
+  hibernation socket's every message is counted among the object's
+  invocations (Cloudflare: "metrics reflect actual usage"; the 20:1 is a
+  billing rule).
+- **So how much of the free plan's daily 100,000 did 10-11 use?** If the
+  limit counts phone messages 20 to one, as the bill does, about 4-5%. If it
+  counts them one for one, 76%: about an hour of the room awake (433 GB-s)
+  with a few players. Cloudflare's docs say the limit "includes WebSocket
+  messages" without saying which. A Cloudflare Community post (community
+  thread 967650) reports a free account refused below 100,000 even after the
+  20:1. Until it is known, a long playtest on the free plan can hit the
+  limit, and the game would stop until 00:00 UTC.
+- **Awake time and rows are far from their limits** (433 GB-s of 13,000; 747
+  rows written of 100,000).
+
 ## What it is for
 
 The plan to hold about 1,000 players in one world puts "front doors" in front
@@ -46,14 +306,15 @@ The lab answers them on Cloudflare itself, without touching the game.
        centre.
      - Workers freeze the clock while code runs, so the work is a fixed loop
        and the timing is the runner's.
-   - **The delay between two servers.** A "Door" object times 400 round trips
-       to a "World" object, one at a time, three ways:
+   - **The delay between two servers.** A "Door" object times 200 round trips
+       (400 with "big") to a "World" object, one at a time, three ways:
      - a call (JS RPC);
      - a socket the World takes the plain way;
      - a socket the World takes with the hibernation API, the way the game's
        room takes phones.
-   - **Floods.** 20,000 messages one way by each of the three ways, then 4,000
-     of 2 KB (a door's batch), to time each message on Cloudflare's machines.
+   - **Floods.** 10,000 socket messages one way each way, 1,000 calls, then
+     2,000 of 2 KB (a door's batch), to time each message on Cloudflare's
+     machines (with "big": 20,000, 20,000 and 4,000).
    - **The bill.** With the deploy token, it reads the account's own figures
      for the lab's objects through Cloudflare's GraphQL API. Cloudflare's docs
      name the two datasets:
@@ -67,14 +328,18 @@ The lab answers them on Cloudflare itself, without touching the game.
 4. **It deletes the worker, whatever happened.** The last step runs even after
    a failure.
 
-**What it costs:** about a cent a run. That is a few seconds of work in 16
-small objects, and about 70,000 messages, which Cloudflare bills at 20 to a
-request.
+**What it costs:** on the free plan, nothing in money, but about 2,700 of the
+account's 100,000 Durable Object requests that day, which the game shares (the
+run stops first if the day is already near the limit). On the paid plan, about
+a cent. That is a few seconds of work in 16 small objects and about 23,000
+messages.
 
 ## How to run it
 
 **Actions** tab, then **Cloudflare lab**, then **Run workflow**. Leave
-"rounds" at 5. It takes about 5-10 minutes. The results are on the run's page
+"rounds" at 5 and "big" unticked (tick it only on the paid plan). It takes
+about 5-10 minutes; soon after 00:00 UTC is the safest time, when the day's
+requests have just reset. The results are on the run's page
 (its summary), and in the `lab-results` download as `.md` and `.json`.
 
 If the delete step ever fails, delete it by hand: Cloudflare dashboard,
@@ -127,6 +392,13 @@ The floods locally:
 
 Round trips were 0-1 ms.
 
+Again on 2026-10-14 with the free plan's sizes (v2.3.3257), the lab's own
+wrangler (4.96.0, its package.json): 1, 2 and 4 objects as before (306, 605,
+1,263 ms), and the floods 7.3 µs, 10.2 µs, 39 µs and 27 µs a message. But 8
+objects at once never all came back: the third waited out the runner's 300 s.
+That is the local runtime's limit, so a local dry run now stops at 4; the run
+on Cloudflare still does 8 and 16.
+
 ## Safety
 
 - **Never the game.** The lab has its own worker name, its own objects and no
@@ -139,6 +411,9 @@ Round trips were 0-1 ms.
   deploy and delete, and for reading the account's figures (accounts, the
   lab's object namespaces, GraphQL).
 - **One run at a time** (the workflow's concurrency group).
+- **Never more than a sliver of the day** (v2.3.3257): about 2,700 billed
+  requests on the free plan, and none at all if the day is already near its
+  limit.
 
 ## Not in this lab yet
 

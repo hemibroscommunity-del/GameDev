@@ -44,8 +44,12 @@ function burn(iters) {
 async function coloOf(self) {
   if (self._colo !== undefined) return self._colo;
   self._colo = null;
+  /* v2.3.3257: never more than 3 s, and not at all on `wrangler dev --local`
+     (run.mjs --local passes LAB_LOCAL): with no way out to the internet the
+     lookup hung there until the runner gave up on the request (300 s) */
+  if (self.env && self.env.LAB_LOCAL) return self._colo;
   try {
-    const t = await (await fetch('https://www.cloudflare.com/cdn-cgi/trace')).text();
+    const t = await (await fetch('https://www.cloudflare.com/cdn-cgi/trace', { signal: AbortSignal.timeout(3000) })).text();
     const m = t.match(/^colo=(\w+)$/m);
     self._colo = m ? m[1] : null;
   } catch { /* unknown */ }
@@ -145,18 +149,28 @@ export class Door extends DurableObject {
       out.rttMs = summary(rtt);
     } else if (mode === 'flood-ws' || mode === 'flood-rpc') {
       const s = JSON.stringify({ t: 'b', d: 'x'.repeat(Math.max(0, size - 18)) });
-      await world.reset(false);
+      /* v2.3.3257: the limit test (run.mjs --limit) floods one World in
+         steps: `keep` leaves its count as it was, so it counts them all */
+      const keep = url.searchParams.get('keep') === '1';
+      const base = keep ? (await world.stats()).n : 0;
+      if (!keep) await world.reset(false);
       const t0 = Date.now();
       if (mode === 'flood-ws') {
         const ws = await this._open(world, hib);
         for (let i = 0; i < n; i++) ws.send(s);
-        let st = { n: 0 };
-        for (let k = 0; k < 6000 && st.n < n; k++) {
+        let st = { n: base };
+        /* v2.3.3257: every look is a call, and every call a billed request --
+           on the free plan from a daily 100,000 the game shares -- so look
+           every `poll` ms (50 from run.mjs; it was 5, hundreds of calls a
+           flood), and give up after 30 s */
+        const poll = clamp(+url.searchParams.get('poll'), 5, 1000, 50);
+        for (let k = 0, most = Math.ceil(30000 / poll); k < most && st.n - base < n; k++) {
           st = await world.stats();
-          if (st.n < n) await new Promise((r) => setTimeout(r, 5));
+          if (st.n - base < n) await new Promise((r) => setTimeout(r, poll));
         }
         try { ws.close(); } catch { /* gone */ }
-        out.worldGot = st.n;
+        out.worldGot = st.n - base;
+        out.worldTotal = st.n;
       } else {
         let inflight = [];
         for (let i = 0; i < n; i++) {
@@ -169,6 +183,10 @@ export class Door extends DurableObject {
       out.size = s.length;
       out.wallMs = Date.now() - t0;
       out.usPerMsg = +((1000 * out.wallMs) / n).toFixed(2);
+      /* v2.3.3257: which World took it, so run.mjs can read that object's own
+         CPU from the account's figures (a hibernation message cost 4x a plain
+         one's time on Cloudflare: the World's CPU says whether it is CPU) */
+      out.worldId = world.id.toString();
     } else {
       return new Response('unknown mode', { status: 400 });
     }
@@ -183,16 +201,23 @@ export default {
     if (!env.LAB_KEY || req.headers.get('x-lab-key') !== env.LAB_KEY) return new Response('forbidden', { status: 403 });
     const colo = (req.cf && req.cf.colo) || null;
     if (url.pathname === '/whoami') return Response.json({ isolate: isolateId(), colo });
-    if (url.pathname === '/burn') {
-      const name = (url.searchParams.get('name') || 'b0').slice(0, 64);
-      const stub = env.BURNER.get(env.BURNER.idFromName(name));
-      const j = await (await stub.fetch('http://b/burn' + url.search)).json();
-      return Response.json(Object.assign(j, { entry: colo, workerIsolate: isolateId() }));
-    }
-    if (url.pathname === '/door') {
-      const name = (url.searchParams.get('door') || 'd0').slice(0, 64);
-      const stub = env.DOOR.get(env.DOOR.idFromName(name));
-      return stub.fetch('http://d/door' + url.search);
+    /* v2.3.3257: an object that refuses (the free plan's daily limit: the
+       limit test, run.mjs --limit) answers in Cloudflare's own words rather
+       than the worker's crash page, so the run can say what was refused */
+    try {
+      if (url.pathname === '/burn') {
+        const name = (url.searchParams.get('name') || 'b0').slice(0, 64);
+        const stub = env.BURNER.get(env.BURNER.idFromName(name));
+        const j = await (await stub.fetch('http://b/burn' + url.search)).json();
+        return Response.json(Object.assign(j, { entry: colo, workerIsolate: isolateId() }));
+      }
+      if (url.pathname === '/door') {
+        const name = (url.searchParams.get('door') || 'd0').slice(0, 64);
+        const stub = env.DOOR.get(env.DOOR.idFromName(name));
+        return await stub.fetch('http://d/door' + url.search);
+      }
+    } catch (e) {
+      return Response.json({ refused: String((e && e.message) || e).slice(0, 500), name: (e && e.name) || null }, { status: 503 });
     }
     return new Response('not found', { status: 404 });
   },

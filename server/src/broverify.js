@@ -42,7 +42,44 @@
  * change in each direction while it was being built.  An old client never
  * sends these types; an old worker never advertises the cap.  Safe either way.
  */
-import { verifyBroOwnership, CHAIN, HEMI_BROS } from './onchain.js';
+/*
+ * ═══ v2.3.3255: THE CHECKMARK IS "OWNS A HEMI BRO", AND THE PROFILE SAYS HOW MANY ═══
+ * Owner, 2026-10-14: "I also want a 'verified' checkmark for people who own 1
+ * hemi bro or more.  It would be cool to list the number of hemi bros owned
+ * somewhere on their profile ... probably a wallet that holds the hemi bros
+ * sending a message to a contract? ... But again, small surface area."
+ *
+ * No contract, no transaction: the same free signature as before proves the
+ * wallet, and the collection is asked one more READ -- how many does that
+ * wallet hold (onchain.js balanceOf).  A `bro_verify` carrying `count: 1`
+ * (caps.broCount) is that WALLET check: the token id is optional (the Bro the
+ * player wears, checked as before when given, its failure no longer fatal),
+ * and the reply says `count`.
+ *
+ *   bro_link:<pid>  {address, ts, count, tokenId?} -- count since v2.3.3255;
+ *                   a link without one (v2.3.1576) reads as no count.
+ *   ps.broN         the count, SERVER-OWNED like ps.bro, on the tick's player
+ *                   as `brn` (absent at 0) and on state_sync as `broN`.
+ *
+ * The badge (name plate, profile) is ps.bro OR ps.broN >= 1, decided on the
+ * client from these two server fields only.
+ *
+ * A LINK IS RE-READ, NOT RE-SIGNED: the address was proven once, and who holds
+ * what is public, so a link older than RECHECK_MS is read again in the
+ * background when its player joins (_broRefresh) -- the badge stays off until
+ * the chain answers, and a sold Bro drops off within a day.  The join never
+ * waits on it.
+ *
+ * One chain read per BRO_VERIFY_GAP_MS a socket: every verify costs the
+ * worker two or three RPC calls, and a nonce is free to ask for.
+ *
+ * Kill switch `broCount: false` (live flags): the phone falls back to the
+ * worn-Bro check; links and counts already stored keep showing.
+ */
+import { verifyBroOwnership, verifyBroWallet, balanceOf, ownerOf, CHAIN, HEMI_BROS, MAX_BRO_COUNT } from './onchain.js';
+
+/* v2.3.3255: one verify's chain reads per this long, per socket */
+export const BRO_VERIFY_GAP_MS = 5000;
 
 /* A nonce is a one-shot proof-of-liveness; it does not need to outlive the
    socket, so it lives on the session rather than in storage. */
@@ -101,14 +138,27 @@ export const broVerifyMethods = {
        would otherwise both pass the check and both spend the same challenge. */
     session._broNonce = null;
 
-    const tokenId = Number(payload && payload.tokenId);
-    if (!Number.isInteger(tokenId) || tokenId < 1 || tokenId > MAX_TOKEN_ID) {
-      return reply(false, 'bad_token_id');
+    /* v2.3.3255: the wallet check (`count: 1`) takes the worn Bro's id only
+       if there is one; the old check needs it */
+    const countMode = !!(payload && payload.count);
+    const rawId = payload ? payload.tokenId : undefined;
+    let tokenId = null;
+    if (!countMode || (rawId !== undefined && rawId !== null)) {
+      tokenId = Number(rawId);
+      if (!Number.isInteger(tokenId) || tokenId < 1 || tokenId > MAX_TOKEN_ID) {
+        return reply(false, 'bad_token_id');
+      }
     }
     const signature = payload && payload.signature;
     if (typeof signature !== 'string' || !/^0x[0-9a-fA-F]{130}$/.test(signature)) {
       return reply(false, 'bad_signature');
     }
+    /* v2.3.3255: a socket's chain reads, one verify per BRO_VERIFY_GAP_MS */
+    const now = Date.now();
+    if (now - (session._broVerifyAt || 0) < BRO_VERIFY_GAP_MS) return reply(false, 'slow_down');
+    session._broVerifyAt = now;
+
+    if (countMode) return this._broVerifyWallet(session, chal, tokenId, signature, reply);
 
     let res;
     try {
@@ -134,18 +184,99 @@ export const broVerifyMethods = {
     reply(true, null, { tokenId, address: res.address });
   },
 
+  /* ── v2.3.3255: the wallet check (`count: 1`) ─────────────────────────
+     The signer's Bro count, and the worn Bro when one was named.  Linked even
+     at 0 (the wallet is proven; it simply holds none, and the reply says so). */
+  async _broVerifyWallet(session, chal, tokenId, signature, reply) {
+    let res;
+    try {
+      res = await verifyBroWallet(_nonceText(session.id, chal.nonce), signature, tokenId, {
+        fetchImpl: this._broFetch,
+      });
+    } catch {
+      return reply(false, 'chain_unreachable');
+    }
+    if (!res.ok) return reply(false, res.reason || 'not_verified');
+    const link = _linkOf(res.address, res.count, res.tokenOk ? tokenId : null);
+    await this.state.storage.put('bro_link:' + session.id, link);
+    this._applyBroLink(session.id, link);
+    reply(true, null, { tokenId: link.tokenId || null, address: link.address, count: link.count });
+  },
+
+  /* v2.3.3255: the server-owned fields from a link (the only writer besides
+     the token check above), and the player marked so the others see it */
+  _applyBroLink(pid, link) {
+    const ps = this.playerState[pid];
+    if (!ps || !link) return;
+    if (Number.isInteger(link.tokenId)) ps.bro = link.tokenId; else delete ps.bro;
+    if (Number.isInteger(link.count) && link.count > 0) ps.broN = link.count; else delete ps.broN;
+    this.dirtyPlayers.add(pid);
+  },
+
   /* ── join ─────────────────────────────────────────────────────────────
      Restore a still-fresh link so the badge survives a reconnect without
-     making the player sign again.  A stale one is dropped rather than
-     re-checked: join is a latency-sensitive path and must not wait on an
-     RPC, so the client simply re-verifies when it next wants the badge. */
+     making the player sign again.  A stale one is not restored: join is a
+     latency-sensitive path and must not wait on an RPC.
+     v2.3.3255: ...but it is READ AGAIN in the background (_broRefresh): the
+     address was proven once and who holds what is public, so nobody signs
+     every day; the badge comes back when the chain answers. */
   async _restoreBroLink(pid) {
     let link = null;
     try { link = await this.state.storage.get('bro_link:' + pid); } catch { return null; }
-    if (!link || typeof link.tokenId !== 'number') return null;
-    if (!link.ts || (Date.now() - link.ts) > RECHECK_MS) return null;
+    if (!link || typeof link.address !== 'string') return null;
+    if (!link.ts || (Date.now() - link.ts) > RECHECK_MS) {
+      this._broRefresh(pid, link).catch(() => { /* fail closed: the badge stays off */ });
+      return null;
+    }
+    if (typeof link.tokenId !== 'number' && !(link.count > 0)) return null;
     const ps = this.playerState[pid];
-    if (ps) ps.bro = link.tokenId;
+    if (ps) {
+      if (typeof link.tokenId === 'number') ps.bro = link.tokenId;
+      if (Number.isInteger(link.count) && link.count > 0) ps.broN = link.count;
+    }
     return link;
   },
+
+  /* v2.3.3255: a stale link, read again -- the count, and the worn Bro if the
+     link named one.  Nothing the chain will not answer is granted: no count,
+     no write (the next join tries again); an owner it cannot name, no token. */
+  async _broRefresh(pid, link) {
+    if (!this._broRefreshing) this._broRefreshing = new Set();
+    if (this._broRefreshing.has(pid)) return null;
+    this._broRefreshing.add(pid);
+    try {
+      const opts = { fetchImpl: this._broFetch };
+      const address = String(link.address).toLowerCase();
+      const count = await balanceOf(address, opts);
+      if (count === null) return null;
+      let tokenId = null;
+      if (Number.isInteger(link.tokenId)) {
+        const owner = await ownerOf(link.tokenId, opts);
+        if (owner && owner === address) tokenId = link.tokenId;
+      }
+      const next = _linkOf(address, count, tokenId);
+      await this.state.storage.put('bro_link:' + pid, next);
+      if (!this.playerState[pid]) return next;   /* left while the chain answered */
+      this._applyBroLink(pid, next);
+      const ws = typeof this._wsBySessionId === 'function' ? this._wsBySessionId(pid) : null;
+      if (ws) {
+        try {
+          ws.send(JSON.stringify({ type: 'bro_verify_result', ok: true, reason: null, refresh: true,
+            tokenId: next.tokenId || null, address: next.address, count: next.count }));
+        } catch { /* gone */ }
+      }
+      return next;
+    } finally {
+      this._broRefreshing.delete(pid);
+    }
+  },
 };
+
+/* v2.3.3255: one shape for a stored link.  A wallet that holds the worn Bro
+   holds at least one, whatever two reads a block apart said. */
+function _linkOf(address, count, tokenId) {
+  const n = Math.min(MAX_BRO_COUNT, Math.max(Number.isInteger(count) ? count : 0, Number.isInteger(tokenId) ? 1 : 0));
+  return Number.isInteger(tokenId)
+    ? { tokenId, address, ts: Date.now(), count: n }
+    : { address, ts: Date.now(), count: n };
+}

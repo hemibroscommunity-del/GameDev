@@ -1446,6 +1446,10 @@ body:has(.bt-pcard) [data-coach]{display:none}
 /* the mockup's "|" between the relationship and the points */
 .bt-pin-ap{display:inline-flex;align-items:center;gap:4px;color:#F2C45A;font-size:14px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
 .bt-pin-ap::before{content:'';align-self:stretch;width:1px;margin:2px 4px 2px 0;background:#436279}
+/* v2.3.3255: the Hemi Bros a player's verified wallet holds, after their AP (PlayerProfilePanel) -- the badge's own gold */
+.bt-pin-bros{display:inline-flex;align-items:center;gap:4px;color:#D8AA58;font-size:14px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.bt-pin-bros::before{content:'';align-self:stretch;width:1px;margin:2px 4px 2px 0;background:#436279}
+.bt-pin-bros img{flex:none;display:block;width:18px;height:18px}
 .bt-pin-star{flex:none;width:15px;height:15px}
 .bt-pin-row{display:flex;align-items:center;gap:8px;min-width:0}
 .bt-pin-quests{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 10px 0 4px;box-sizing:border-box;
