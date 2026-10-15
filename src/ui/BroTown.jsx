@@ -4826,7 +4826,8 @@ export var BroTown = function BroTown(_ref0) {
              in S.others (a roster REPLACES that map -- wsClient -- and leaves
              the old object frozen where it was).  A player who died or left
              the zone is no longer there to reach: the dash ends without the
-             swing, as it does for a monster that died. */
+             swing, as it does for a monster that died.  (v2.3.3264: a bash at
+             a player too, named by `pid` the same way.) */
           if (_bd.pid != null) {
             var _bpo = S.others ? S.others[_bd.pid] : null;
             _bd.ref = (_bpo && !_bpo._isDead && (_bpo.zone || _bpo.z || 'town') === S.currentZone) ? _bpo : null;

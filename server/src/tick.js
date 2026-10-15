@@ -305,6 +305,10 @@ export const tickMethods = {
          monsters' hits of this tick have set it (monsterstatus.js). */
       guard('burns', () => this._tickMonsterBurns(Date.now()));
 
+      /* v2.3.3264: a player's weapon statuses on players tick by the monster
+         table's own clock (pvpextras.js) */
+      guard('pvpStatuses', () => this._tickPvpStatuses(Date.now()));
+
       /* v2.3.2824: windup abilities (whirlwind) strike when their ring ends. */
       guard('abilWindups', () => this._tickAbilityWindups(Date.now()));
 

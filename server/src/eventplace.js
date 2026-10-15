@@ -60,7 +60,9 @@ const ROOM_PLACED = Object.freeze({
   monster_ability: { m: 'monsterId', xy: ['x', 'y'], who: ['targetId'] },
   monster_projectile: { m: 'monsterId', xy: ['x', 'y'] },
   fire_trail: { xy: ['x', 'y'], m: 'monsterId' },
-  parry: { xy: ['x', 'y'], m: 'monsterId', who: ['targetId'] },
+  /* v2.3.3264: a player's parry (pvpextras.js _pvpParry) also names the
+     player it staggers, who must hear it wherever the room has them */
+  parry: { xy: ['x', 'y'], m: 'monsterId', who: ['targetId', 'attackerId'] },
   arrow_boom: { xy: ['x', 'y'], who: ['id'] },
   element_nova: { xy: ['x', 'y'], who: ['id'] },
   ability_windup: { p: 'playerId', who: ['playerId'] },

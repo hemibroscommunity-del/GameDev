@@ -149,6 +149,12 @@ const ARRIVAL = { x: 21504, y: 21792 };
   check('1g an ability wind-up is placed at its player', wind && wind.x === 7000 && wind.y === 8000 && wind.who[0] === 'pa', wind);
   const windAway = P({ type: 'ability_windup', payload: { playerId: 'pb', kind: 'bash', zone: 'wheel' } });
   check('1h ... but not at a player the room has in another zone (the zone, no place)', windAway && windAway.x === null, windAway);
+  /* v2.3.3264: a player's parry names the player it staggers too */
+  const par = P({ type: 'parry', payload: { zone: 'wheel', attackerId: 'pb', targetId: 'pa', x: 41, y: 42, ms: 1500 } });
+  const parM = P({ type: 'parry', payload: { zone: 'wheel', monsterId: 'wm-a', targetId: 'pa', x: 41, y: 42 } });
+  check('1h2 a parry: at the parried blow; the parrier and (a player\'s) the one it staggers always told',
+    par && par.x === 41 && par.y === 42 && JSON.stringify(par.who) === '["pa","pb"]'
+      && parM && parM.x === 5000 && JSON.stringify(parM.who) === '["pa"]', { par, parM });
   const roomWide = ['chat', 'emote', 'loot_drop', 'loot_claimed', 'loot_despawn', 'pvp_hit', 'pvp_confirmed', 'duel_end',
     'clan_war_kill', 'arena_match_result', 'jackpot_result', 'player_died_to_monster', 'stunned', 'some_new_type',
     /* happen at a place, but a phone keeps what they say (eventplace.js) */

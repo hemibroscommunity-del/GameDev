@@ -26,6 +26,12 @@
  * dash, the worker's strike and its daze; docs/specs/pvp-lunge.md).  `TUNE.lunge`
  * false is the game before it; lunge.mjs measures it.
  *
+ * v2.3.3264: the monster-only extras on players (server pvpextras.js) run
+ * here through the worker's own code -- a parry staggers, a gem's ticks tick
+ * -- and two that are NOT on players can be tried (whatIfs below: an ordinary
+ * hit's knockback, the bow volley's burn).  lunge.mjs's LUNGE_SETTINGS takes
+ * them: docs/specs/one-formula.md "Not on players yet" has the tables.
+ *
  * Use it from matrix.mjs, food-one.mjs, food-both.mjs and lunge.mjs beside it, or:
  *   import { fight, describe, seed, setTune, room } from './sim.mjs';
  *   fight({ style: 'melee', L: 10, tm: 1.25, chest: 1, legs: 1 }, 'moderate',
@@ -40,6 +46,7 @@ import { WHEEL_ZONE } from '../../server/src/wheelzone.js';
 import { WHEEL_CENTRE } from '../../server/src/wheelspawns.js';
 import { nmlLevelAt } from '../../server/src/nomansland.js';
 import { PVP_LUNGE } from '../../server/src/pvplunge.js';   /* v2.3.3262 */
+import { HIT_KNOCKBACK } from '../../server/src/combat.js';   /* v2.3.3264: the what-if shove */
 
 /* ── determinism: one seeded generator for the sim AND the worker's own rolls ── */
 let _s = 1;
@@ -93,6 +100,12 @@ const DASH_SPEED = 26 * 60 / 1000, DASH_SLOW = 3.0, DASH_WIN_MIN = 420;   /* das
 const DASH_WIN_MAX = Math.round(DASH_REACH / DASH_SPEED * DASH_SLOW) + 90;
 const LUNGE_CD = 2500;            /* STAM_ABILITIES.sworddash.cooldownMs */
 const REPRESS_MS = 120;           /* a press refused in a daze, pressed again after it (a person's second tap) */
+/* v2.3.3264: the what-ifs' numbers, each the monster's: a shove's catch-up
+   (index.js KB_RECOVER_PX_PER_TICK 1.1 a 22 ms tick, the debt capped at 60:
+   combat.js), the volley's burn (bowVolley.js: a tick every 500 ms, the
+   siblings of one volley within ~400 ms of the first) */
+const KB_REPAY_PER_MS = 1.1 / 22, KB_DEBT_MAX = 60;
+const BURN_EVERY_MS = 500, BURN_SAME_MS = 1000;
 
 /* ── one room, two players, in No man's land ── */
 function makeState() {
@@ -146,6 +159,9 @@ function dress(ps, spec) {
   ps._zoneEntryGraceUntil = 0; ps.blocking = false; ps.dodging = false; ps.def = 0;
   ps.lastDamageAt = 0; ps._lastDealtAt = 0; ps._sprintAt = 0; ps._guardBrokenUntil = 0;
   ps._buffs = {}; ps._nml = null;
+  /* v2.3.3264: nothing of the extras carries over from the fight before */
+  ps._wst = null; ps._staggerUntil = 0; ps._dmgFromPlayer = null; ps._gustLeft = 0; ps._gustUntil = 0;
+  ps._dazeUntil = 0; ps._dazeImmuneUntil = 0; ps._thornRecoilAt = 0;
   return out;
 }
 export function describe(spec) { return dress(room.playerState.bp_a, spec); }
@@ -162,19 +178,102 @@ function plainRoll(style, base) {
 function landClaim(att, tgt, payload) {
   room.eventBuffer.length = 0;
   room._resolvePvPAttack(att.sess, payload);
-  let dmg = 0, hit = false;
+  let dmg = 0, hit = false, main = null;
+  for (const p of takeHits()) {
+    if (p.target === tgt.id && p.attacker === att.id) { hit = true; dmg += p.dmgTaken; if (!main && !p.ability) main = p; }
+  }
+  if (main && main.dmgTaken > 0 && !main.blocked && !main.dodged) whatIfs(att, tgt, payload, main);
+  return { hit, dmg };
+}
+/* v2.3.3264: every pvp_hit the worker just sent, carried out the way each
+   page carries it out -- the target's HP; a shove the hit carries (`kb`: an
+   ability's, src/game/elemHits.js applyHitShove: the target's page moves
+   itself); and a parried blow's stagger on the one who threw it
+   (gameEvents.js: the page refuses their swings, specials and abilities,
+   combatHelpers.staggerRefused, as the worker refuses their claims).  A gem's
+   ticks come the same way, from the worker's own clock (_tickPvpStatuses). */
+function takeHits() {
+  const out = [];
   for (const e of room.eventBuffer) {
-    if (e.type === 'pvp_hit' && e.payload.target === tgt.id) {
-      hit = true; dmg += e.payload.dmgTaken;
-      if (e.payload.blocked) tgt.stats.blocked = (tgt.stats.blocked || 0) + 1;
+    if (e.type !== 'pvp_hit') continue;
+    const p = e.payload, tgt = F.by[p.target], att = F.by[p.attacker];
+    if (!tgt) continue;
+    out.push(p);
+    if (p.blocked) tgt.stats.blocked = (tgt.stats.blocked || 0) + 1;
+    if (p.parried && att) {
+      att.staggerUntil = T + room.PARRY_STAGGER_MS;
+      att.stats.staggered = (att.stats.staggered || 0) + 1;
+    }
+    const kb = p.kb;
+    if (Array.isArray(kb) && kb.length === 2) shoveBy(tgt, kb[0], kb[1], false);
+    if (p.dmgTaken > 0) {
+      tgt.hp -= p.dmgTaken; tgt.taken += p.dmgTaken;
+      if (att) {
+        att.dealt += p.dmgTaken;
+        if (p.ability === 'volley') att.stats.burnDmg = (att.stats.burnDmg || 0) + p.dmgTaken;
+      }
+      if (!F.firstHitAt) F.firstHitAt = T;
     }
   }
   room.eventBuffer.length = 0;
-  if (hit && dmg > 0) {
-    tgt.hp -= dmg; tgt.taken += dmg; att.dealt += dmg;
-    if (!F.firstHitAt) F.firstHitAt = T;
+  return out;
+}
+function shoveBy(tgt, dx, dy, debt) {
+  tgt.x += dx; tgt.y += dy;
+  const len = Math.hypot(dx, dy);
+  tgt.stats.shoved = (tgt.stats.shoved || 0) + len;
+  /* the debt, capped at a special's shove (combat.js m._kbDebt) */
+  if (debt) tgt.kbDebt = Math.min((tgt.kbDebt || 0) + len, KB_DEBT_MAX);
+}
+/* ═══ v2.3.3264: WHAT-IFS -- TWO MONSTER-ONLY EFFECTS, TRIED ON PLAYERS ═══
+   Neither is in the game (docs/specs/one-formula.md "Not on players yet");
+   both are the monster's own rule, carried out here on a claim that landed:
+   - `shove`: the knockback an ordinary hit gives a monster (combat.js
+     HIT_KNOCKBACK x the zone's depth: a special 60, a crit 45, else 30; a
+     volley's first arrow only, as bowVolley.js volleyShoves), the page moving
+     itself, and with `kbDebt` the catch-up a monster has (walked back off at
+     KB_RECOVER_PX_PER_TICK extra while walking at whoever shoved you);
+   - `burnTicks`: the volley's stuck arrows burning that many ordinary bow
+     hits, 500 ms apart (the monster's four: projectiles.js), each the
+     worker's own roll (_rollHit) through the pair's ordinary-hit lane, as a
+     tick on a monster goes through its lane, landed through the one door
+     (_strikePlayer: no shield, no roll -- the arrow is in you), `burnK` of
+     it. */
+function whatIfs(att, tgt, payload, main) {
+  if (TUNE.shove && payload.noKb !== true) {
+    const len = Math.min(200, (payload.special ? HIT_KNOCKBACK.special : main.isCrit ? HIT_KNOCKBACK.crit : HIT_KNOCKBACK.normal)
+      * (room._depthK(WHEEL_ZONE, tgt.y) || 1));
+    const a = angTo(att, tgt);
+    shoveBy(tgt, Math.trunc(Math.cos(a) * len), Math.trunc(Math.sin(a) * len), TUNE.kbDebt);
   }
-  return { hit, dmg };
+  if (TUNE.burnTicks > 0 && payload.kind === 'ranged' && payload.special && Math.floor(Number(payload.part)) >= 2) {
+    const was = F.burns.get(att.id);
+    if (!(was && T - was.t0 < BURN_SAME_MS)) F.burns.set(att.id, { att, tgt, t0: T, left: TUNE.burnTicks, next: T + BURN_EVERY_MS });
+  }
+}
+/* the pair's ordinary-hit lane, as _resolvePvPAttack takes it */
+function laneTake(att, tgt) {
+  if (!room._pvpHitLanes) room._pvpHitLanes = new Map();
+  const key = att.id + '>' + tgt.id;
+  let lane = room._pvpHitLanes.get(key);
+  if (!lane) { lane = { lastTs: 0, spStart: 0, spCount: 0 }; room._pvpHitLanes.set(key, lane); }
+  if (Date.now() - lane.lastTs < room.PVP_TUNING.CADENCE_MS) return false;
+  lane.lastTs = Date.now();
+  return true;
+}
+function tickBurns() {
+  for (const [k, b] of F.burns) {
+    if (T < b.next) continue;
+    b.next = T + BURN_EVERY_MS; b.left--;
+    if (b.tgt.hp > 0 && laneTake(b.att, b.tgt)) {
+      const r = room._rollHit(b.att.ps, 'ranged', false, { targetLevel: room._prog3OpponentLevel(b.tgt.ps) });
+      room.eventBuffer.length = 0;
+      room._strikePlayer(b.att.id, b.att.ps, b.tgt.id, b.tgt.ps, Math.max(1, Math.round(r.dmg * TUNE.burnK)),
+        { slot: 'ranged', ability: 'volley', isCrit: r.isCrit, noBlock: true, fracture: true });
+      takeHits();
+    }
+    if (b.left <= 0) F.burns.delete(k);
+  }
 }
 /* The lane the worker keeps per pair -- read only to skip claims it would
    refuse anyway (the range and arc tests run first and touch nothing). */
@@ -261,12 +360,35 @@ let SWSEQ = 0;
 /* v2.3.3262: `lunge` false is the game before the sword's lunge reached
    players; `dazeMs` / `dazeImmuneMs` (null: the worker's PVP_LUNGE) try other
    lengths for its daze, through the worker's own code (below) */
+/* v2.3.3264: the monster-only extras on players (server pvpextras.js).
+   `extras` false is the game before them -- the worker's own kill switch,
+   `pvpextras: false` in its live flags.  In a fight of two with no gems,
+   points or abilities, what of them can change it is a parry's 1.5 s
+   stagger; `parry` false takes it away, to see its share.
+   The two that are NOT on players (whatIfs above): `shove` true tries an
+   ordinary hit's knockback on them (`kbDebt` false without the catch-up),
+   `burnTicks` N the volley's burn (4 is the monster's; `burnK` its share of
+   an ordinary hit); `cadenceMs` the pair's ordinary-hit lane (the worker's
+   PVP_TUNING.CADENCE_MS, 300; a monster's is 210) */
 const TUNE0 = { manaStart: 1, noSpecials: false, meleeOneHit: false, specialMult: 1, hitCapFrac: 0, dmgScale: null, slowK: 1, slowMs: 0, holdMs: 0, holdImmuneMs: 2000,
-  lunge: true, dazeMs: null, dazeImmuneMs: null, lungeCd: null };
+  lunge: true, dazeMs: null, dazeImmuneMs: null, lungeCd: null, extras: true, parry: true, cadenceMs: null,
+  shove: false, kbDebt: true, burnTicks: 0, burnK: 1 };
 export const TUNE = Object.assign({}, TUNE0);
 export function setTune(t) {
   Object.assign(TUNE, TUNE0, t || {});
-  room.PVP_TUNING = Object.assign({}, Object.getPrototypeOf(room).PVP_TUNING, TUNE.dmgScale != null ? { DMG_SCALE: TUNE.dmgScale } : {});
+  room.PVP_TUNING = Object.assign({}, Object.getPrototypeOf(room).PVP_TUNING, TUNE.dmgScale != null ? { DMG_SCALE: TUNE.dmgScale } : {},
+    TUNE.cadenceMs != null ? { CADENCE_MS: TUNE.cadenceMs } : {});   /* v2.3.3264: the pair's ordinary-hit lane */
+  /* v2.3.3264: the extras' switch is the worker's live flag (only `extras:
+     false` writes it, so a caller's own flags stand) */
+  const lf = Object.assign({}, room._liveFlags || {});
+  if (TUNE.extras === false) lf.pvpextras = false; else delete lf.pvpextras;
+  room._liveFlags = lf;
+}
+/* v2.3.3264: `parry` false: no block is a parry (it costs its stamina as
+   any block does, and staggers nobody) -- the worker's own window, closed */
+{
+  const open = room._parryOpen;
+  room._parryOpen = function (...a) { return TUNE.parry ? open.apply(this, a) : false; };
 }
 /* the daze a lunge puts on a player is the worker's (pvplunge.js
    _pvpLungeDaze); a tried length replaces only its two numbers */
@@ -303,6 +425,7 @@ function makeFighter(id, spec, skill, place) {
     shots: [], casts: [], stats: { swings: 0, shots: 0, specials: 0, specialsLanded: 0, specialDmg: 0, rolls: 0, rolledOff: 0, shields: 0, blocked: 0,
       lunges: 0, lungesLanded: 0, lungeDmg: 0, dazed: 0 },   /* v2.3.3262 */
     dash: null, lungeReadyAt: 0, dazeUntil: 0,               /* v2.3.3262 */
+    staggerUntil: 0, kbDebt: 0,                              /* v2.3.3264 */
     startDelay: typeof spec.startDelay === "number" ? spec.startDelay : 0,
     pendingRoll: null, shield: null, pendingShield: null,
     hasShield: spec.shield !== false,
@@ -315,6 +438,9 @@ function makeFighter(id, spec, skill, place) {
    roll, lunge or shield raised (combatHelpers.dazeRefused, the auto-attack
    loop's isDazed; a swing or a shot already under way goes on) */
 const dazed = (f) => T < (f.dazeUntil || 0);
+/* v2.3.3264: staggered by a parry -- no swing, shot, special or lunge (the
+   page's staggerRefused); the feet, the roll and the shield stay yours */
+const staggered = (f) => T < (f.staggerUntil || 0);
 
 function startRoll(f, ang, why) {
   if (f.roll || f.shield || f.ps.stamina < f.d.roll) return false;
@@ -460,7 +586,7 @@ function think(f, o) {
 function lungeOn() { return TUNE.lunge && !room._pvpLungeOff(); }
 function canLunge(f, d) {
   const at = f.sk.dashAt;
-  return !!at && lungeOn() && f.engaged && !f.dash && !f.roll && !f.shield && !f.eating && !dazed(f)
+  return !!at && lungeOn() && f.engaged && !f.dash && !f.roll && !f.shield && !f.eating && !dazed(f) && !staggered(f)
     && T >= f.lungeReadyAt && d > at[0] && d <= at[1]
     /* an average or skilled player does not dash into a big bolt or a volley
        in the air (no roll mid-dash): they lunge once it has landed or passed */
@@ -498,17 +624,11 @@ function strikeLunge(f, o) {
   f.x = f.ps.x; f.y = f.ps.y;
   f.swingTimer = T; f.lungeReadyAt = T + (TUNE.lungeCd || LUNGE_CD);   /* applyAbilityStrike re-stamps both */
   let hit = null;
-  for (const e of room.eventBuffer) {
-    if (e.type === 'pvp_hit' && e.payload.attacker === f.id && e.payload.target === o.id) { hit = e.payload; break; }
+  for (const p of takeHits()) {   /* v2.3.3264: HP, blocks and a parry carried out there */
+    if (!hit && p.attacker === f.id && p.target === o.id) hit = p;
   }
-  room.eventBuffer.length = 0;
   if (!hit) return;
-  if (hit.blocked) o.stats.blocked = (o.stats.blocked || 0) + 1;
-  if (hit.dmgTaken > 0) {
-    o.hp -= hit.dmgTaken; o.taken += hit.dmgTaken; f.dealt += hit.dmgTaken;
-    f.stats.lungesLanded++; f.stats.lungeDmg += hit.dmgTaken;
-    if (!F.firstHitAt) F.firstHitAt = T;
-  }
+  if (hit.dmgTaken > 0) { f.stats.lungesLanded++; f.stats.lungeDmg += hit.dmgTaken; }
   /* the daze, carried out as the phone does (elemHits.js applyElemHit) */
   if (hit.st === 'daze' && hit.stMs > 0) {
     o.dazeUntil = Math.max(o.dazeUntil || 0, T + hit.stMs);
@@ -534,6 +654,17 @@ function move(f, o) {
     if (f.ps.stamina <= 0) f.sprinting = false;
   }
   if (spd > 0) { f.x += Math.cos(f.mv.ang) * spd; f.y += Math.sin(f.mv.ang) * spd; }
+  /* v2.3.3264: a shove is walked back off at extra pace while walking back
+     toward whoever you fight, as a monster walks its off while it chases */
+  if (spd > 0 && f.kbDebt > 0) {
+    const c = Math.cos(f.mv.ang - angTo(f, o));
+    if (c > 0) {
+      const r = Math.min(f.kbDebt, KB_REPAY_PER_MS * FRAME) * c;
+      f.x += Math.cos(f.mv.ang) * r; f.y += Math.sin(f.mv.ang) * r;
+      f.kbDebt -= r;
+      f.stats.repaid = (f.stats.repaid || 0) + r;
+    }
+  }
 }
 
 function useSpecial(f, o) {
@@ -576,6 +707,7 @@ function useSpecial(f, o) {
 function attack(f, o) {
   if (f.roll || f.shield) return;
   if (dazed(f) || f.dash) return;   /* v2.3.3262: no swing, shot or special in a daze or a dash */
+  if (staggered(f)) return;         /* v2.3.3264: nor in a parry's stagger */
   const d = dist(f, o);
   if (useSpecial(f, o)) return;
   if (!f.held) return;
@@ -629,11 +761,15 @@ function sweep(f, o) {
 
 function claimShot(f, o, s) {
   const d = dist(f, o);
-  const r = landClaim(f, o, { kind: f.style === 'staff' ? 'staff' : 'ranged', x: f.x, y: f.y, angle: angTo(f, o),
+  /* v2.3.3264: a volley shoves once -- its first arrow to hit, the rest
+     noKb (the page's volleyShoves, bowVolley.js), on a player as on a monster */
+  const noKb = s.kind === 'volley' && s.cast && s.cast.shoved ? true : undefined;
+  const r = landClaim(f, o, { kind: f.style === 'staff' ? 'staff' : 'ranged', x: f.x, y: f.y, angle: angTo(f, o), noKb,
     dmgBase: Math.max(1, tuneClaim(s.dmg, !!s.special, o)), critChance: 0, range: Math.min(940, Math.round(d + 60)), arc: 0.9,
     special: !!s.special, target: o.id, ts: Date.now(),
     orbs: s.kind === 'big' ? 3 : undefined, part: s.kind === 'volley' ? 3 : undefined });
   if (s.special && r.dmg > 0) { s.cast.landed = true; s.cast.dmg += r.dmg; f.stats.specialDmg += r.dmg; }
+  if (s.kind === 'volley' && r.hit && s.cast) s.cast.shoved = true;
   return r;
 }
 
@@ -683,9 +819,10 @@ export function fight(specA, skillA, specB, skillB, opts = {}) {
   const pa = { x: cx + R0 * Math.cos(theta), y: cy + R0 * Math.sin(theta) };
   const pb = { x: pa.x + gap0, y: pa.y };
   room._pvpHitLanes && room._pvpHitLanes.clear();
+  room._pvpStPlayers && room._pvpStPlayers.clear();   /* v2.3.3264: no gem's tick from the fight before */
   const A = makeFighter('bp_a', specA, skillA, pa), B = makeFighter('bp_b', specB, skillB, pb);
   A.foe = B; B.foe = A;   /* v2.3.3262 */
-  F = { firstHitAt: 0, start: T };
+  F = { firstHitAt: 0, start: T, by: { [A.id]: A, [B.id]: B }, burns: new Map() };
   const maxMs = opts.maxMs || 120000;
   let nextRegen = T + rnd() * REGEN_MS;
   const both = [A, B];
@@ -718,6 +855,12 @@ export function fight(specA, skillA, specB, skillB, opts = {}) {
       attack(f, o);
     }
     for (const [f, o] of order) { sweep(f, o); flyShots(f, o); }
+    /* v2.3.3264: the worker's own clock on players, as tick.js runs it
+       every tick (a gem's ticks), and the what-if burn's */
+    room.eventBuffer.length = 0;
+    room._tickPvpStatuses(Date.now());
+    takeHits();
+    tickBurns();
     if (T >= nextRegen) {
       nextRegen += REGEN_MS;
       room._tickPlayerRegen();

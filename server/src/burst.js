@@ -136,6 +136,8 @@ export const burstMethods = {
        — a deploy just hands everyone their burst back, which is the right
        failure direction for a 3 s timer). */
     if (ps._burstCdUntil && now < ps._burstCdUntil) return 'cooldown';
+    /* v2.3.3264: a player another player parried is staggered (pvpextras.js) */
+    if (this._pvpStaggered && this._pvpStaggered(ps, now)) return 'staggered';
     return null;
   },
 
@@ -237,6 +239,29 @@ export const burstMethods = {
       const got = this._applyMonsterDot(zone, m, dmg, session.id, null, { burst: true });
       dealt += got;
       xpDealt += got * this._combatXpDecay(ps, slot === 'ranged' ? 'bow' : slot === 'staff' ? 'staff' : 'sword', m.level);
+    }
+
+    /* ═══ v2.3.3264: THE NOVA CATCHES THE PLAYERS YOU ARE FIGHTING ═══
+       Owner: "Yes the monster only extras should work on players too".  The
+       same roll x BURST_DMG_MULT under the same ceiling x the brew, the
+       target's fracture, and the element's status -- for every player in the
+       circle the caster is already fighting (pvpextras.js _pvpAreaPlayers: a
+       duel partner, someone traded blows with), never a bystander.  A setup,
+       not a detonator, on a player as on a monster (noCollision).  Through
+       the one door: a shield facing the caster blocks it, status and all. */
+    if (this._pvpAreaPlayers) {
+      const near = this._pvpAreaPlayers(session.id, ps, ps.x, ps.y, PROG3.BURST_RADIUS, now);
+      if (near.length && this._pvpThornRecoil) this._pvpThornRecoil(session.id, ps, now);
+      for (const p of near) {
+        if (ps.dying || !(ps.hp > 0)) break;
+        const rolled = this._computeAttackDamage(ps, slot, false, { targetLevel: this._prog3OpponentLevel(p.ps) });
+        const cap = this._maxDmgForAttacker(ps, false) * this._brewMul(ps);
+        const dmg = Math.max(1, Math.min(cap, Math.round(rolled.dmg * PROG3.BURST_DMG_MULT)));
+        this._strikePlayer(session.id, ps, p.pid, p.ps, dmg, {
+          slot, ability: 'burst', isCrit: !!rolled.isCrit, fromX: ps.x, fromY: ps.y, fracture: true,
+          element, cat: this._prog3CatFor(slot === 'ranged' ? 'bow' : slot), volatile: !!w.isVolatile, noCollision: true,
+        });
+      }
     }
 
     /* Trained XP, same rule a swing follows: the weapon that fired it earns

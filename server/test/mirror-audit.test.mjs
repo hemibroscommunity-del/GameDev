@@ -45,7 +45,10 @@ import * as CLIENT_SALVAGE from '../../src/data/salvage.js'; /* v2.3.3141 */
 import { GATHER_HITS as SRV_GATHER_HITS, HONEST_CYCLE as SRV_HONEST_CYCLE, GATHER_REQ_LVL as SRV_GATHER_REQ_LVL, gatherReqLvl as srvGatherReqLvl, gatherHitRoll as srvGatherHitRoll, GATHER_NODE_HP as SRV_GATHER_NODE_HP, gatherNodeHp as srvGatherNodeHp } from '../src/gathering.js'; /* v2.3.2956; HONEST_CYCLE v2.3.3036; GATHER_REQ_LVL v2.3.3038; gatherHitRoll v2.3.3229 */
 import { GATHER_REQ_LVL as CLIENT_GATHER_REQ_LVL, gatherReqLvl as clientGatherReqLvl, GATHER_HIT_LADDER as CLIENT_GATHER_HIT_LADDER, gatherHitOdds as clientGatherHitOdds, gatherHitOddsText as clientGatherHitOddsText, GATHER_NODE_HP as CLIENT_GATHER_NODE_HP } from '../../src/data/lifeSkills.js'; /* v2.3.3038; the hit ladder v2.3.3229 */
 import { ELEM_HITS as SRV_ELEM_HITS, CHILL as SRV_CHILL } from '../src/monsterstatus.js'; /* v2.3.2996 */
-import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES, ELEM_LOOK as CLIENT_ELEM_LOOK, ELEM_ICON_SRC as CLIENT_ELEM_ICON_SRC } from '../../src/game/elemHits.js'; /* v2.3.2996 */
+import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES, ELEM_LOOK as CLIENT_ELEM_LOOK, ELEM_ICON_SRC as CLIENT_ELEM_ICON_SRC,
+  SLOW_MULT as CLIENT_SLOW_MULT, MAX_KB_PX as CLIENT_MAX_KB_PX /* v2.3.3264 */ } from '../../src/game/elemHits.js'; /* v2.3.2996 */
+import { PVP_EXTRAS as SRV_PVP_EXTRAS, PVP_STATUSES as SRV_PVP_STATUSES } from '../src/pvpextras.js'; /* v2.3.3264 */
+import { elementMoveMult as SRV_ELEMENT_MOVE_MULT } from '../src/elemental.js'; /* v2.3.3264 */
 import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
 import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* v2.3.3016 */
 import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA } from '../../src/data/wheelDungeons.js'; /* v2.3.3016 */
@@ -1704,8 +1707,16 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
 {
   check('elem hits: the chill walks you at the same pace on both sides (CHILL.MULT = CHILL_MULT)',
     SRV_CHILL.MULT === CLIENT_CHILL_MULT, { srv: SRV_CHILL.MULT, cli: CLIENT_CHILL_MULT });
-  const srvSt = Object.values(SRV_ELEM_HITS).sort().join(','), cliSt = CLIENT_ELEM_STATUSES.slice().sort().join(',');
+  /* v2.3.3264: ...and the three a player's gem puts on a player that no
+     monster's hit does (pvpextras.js PVP_STATUSES; the rest it sends borrow a
+     monster's words) */
+  const srvSt = [...new Set([...Object.values(SRV_ELEM_HITS), ...SRV_PVP_STATUSES])].sort().join(','), cliSt = CLIENT_ELEM_STATUSES.slice().sort().join(',');
   check('elem hits: the client carries out every status the worker sends, and only those', srvSt === cliSt, { srv: srvSt, cli: cliSt });
+  check('pvp extras: a slowed player walks at a slowed monster\'s pace on both sides (elementMoveMult = PVP_EXTRAS.SLOW_MULT = SLOW_MULT)',
+    SRV_ELEMENT_MOVE_MULT({ statuses: { slow: {} } }) === SRV_PVP_EXTRAS.SLOW_MULT && SRV_PVP_EXTRAS.SLOW_MULT === CLIENT_SLOW_MULT,
+    { monster: SRV_ELEMENT_MOVE_MULT({ statuses: { slow: {} } }), srv: SRV_PVP_EXTRAS.SLOW_MULT, cli: CLIENT_SLOW_MULT });
+  check('pvp extras: the longest shove the worker grants is the longest the page carries out (SHOVE_MAX = MAX_KB_PX)',
+    SRV_PVP_EXTRAS.SHOVE_MAX === CLIENT_MAX_KB_PX, { srv: SRV_PVP_EXTRAS.SHOVE_MAX, cli: CLIENT_MAX_KB_PX });
   check('elem hits: every element the worker names has a look on the client',
     Object.keys(SRV_ELEM_HITS).every((e) => Object.prototype.hasOwnProperty.call(CLIENT_ELEM_LOOK, e)
       && Object.prototype.hasOwnProperty.call(CLIENT_ELEM_ICON_SRC, CLIENT_ELEM_LOOK[e].icon)),

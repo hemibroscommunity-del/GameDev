@@ -185,6 +185,15 @@ export function fractureDmgMult(m) {
   return 1 + stacks * FRACTURE_DMG_PER_STACK;
 }
 
+/* ═══ v2.3.3264: THORN'S RECOIL, ONE NUMBER ═══
+ * What a target carrying Flora's thorn takes each time it attacks: 4 +
+ * power x 0.25 off the snapshot the status took.  A monster (index.js, the
+ * moment it commits to an attack) and a player (pvpextras.js
+ * _pvpThornRecoil, the moment they do) read it here, so the two cannot drift. */
+export function thornRecoil(st) {
+  return Math.round(4 + ((st && st.power) || 0) * 0.25);
+}
+
 /* Tick a monster's statuses.  dtSec since the last call; returns DoT
  * damage events [{dmg, sourceId, statusId}] for the caller to apply
  * through the normal damage/credit path.  Mirrors tickStatuses burn/root

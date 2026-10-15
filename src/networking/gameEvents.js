@@ -25,12 +25,12 @@ import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is 
    monster objects (the server owns statuses and never syncs them) — see
    the element_nova case. */
 import { ELEMENTS } from '@/data/elements.js';
-import { STATUS_DEFS, applyStatus, STAFF_LIFE /* v2.3.2387 */ } from '@/data/gameSystems.js';
+import { STATUS_DEFS, applyStatus, STAFF_LIFE /* v2.3.2387 */, COLLISION_TABLE /* v2.3.3264: a collision on a player, by its name */ } from '@/data/gameSystems.js';
 import { rollMonsterShard } from '@/data/shards.js';
 import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2699: a snowball stops where the worker's own line meets a prop */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
-import { applyElemHit, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks */
+import { applyElemHit, applyHitShove, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks; v2.3.3264: + a player's blow's shove */
 import { echoHitSfx, heroHitSfx, earVol, deathVol } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's; v2.3.3248: a far death, slam or blast heard and felt by distance */
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
 import { recordMail } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail */
@@ -128,6 +128,41 @@ export function dmgIconForSlot(S, payload, isOwn) {
   if (!isOwn) return undefined;
   const R = S && S.rpg;
   return SLOT_ICON[(R && R.activeSlot) || 'melee'] || 'sword';
+}
+
+/* ═══ v2.3.3264: A COLLISION'S NAME BY ITS ID ═══
+   An element collision set off on a monster is named from the roll this page
+   ran for it a moment before (S._ownCollisionRecent, monster_hit); one set off
+   on a PLAYER is the worker's alone (server pvpextras.js), so its name comes
+   from the table by the id the worker sends.  A Map built once; null for an id
+   the table does not have (a newer worker's). */
+var _collisionNames = null;
+export function collisionNameOf(id) {
+  if (typeof id !== 'string' || !id) return null;
+  if (!_collisionNames) {
+    _collisionNames = new Map();
+    for (var _ck in COLLISION_TABLE) {
+      var _cv = COLLISION_TABLE[_ck];
+      if (_cv && typeof _cv.id === 'string' && !_collisionNames.has(_cv.id)) _collisionNames.set(_cv.id, _cv.name || null);
+    }
+  }
+  return _collisionNames.has(id) ? _collisionNames.get(id) : null;
+}
+
+/* ═══ v2.3.3264: THE COLOUR OF A NUMBER YOU DEALT A PLAYER ═══
+   The monster_hit branch's own colours for the same blows, so one blow reads
+   one way on a monster and on a player: a crit's, the staff's violet for a
+   splash (and the big bolt's blast), the burst's purple, a collision's pale
+   gold, a status's tick in its element's colour, else the weapon's amber. */
+export function pvpDealtColor(payload) {
+  if (!payload) return '#ffd08a';
+  var tk = tickKind(payload);
+  if (tk) { var lk = elemLook(payload.elem); return lk ? lk.color : '#ffb36b'; }
+  if (payload.collision) return '#fffbb0';
+  if (payload.isCrit) return DMG_CRIT_COLOR;
+  if (payload.ability === 'splash' || payload.ability === 'blast') return '#c4b5fd';
+  if (payload.ability === 'burst') return '#c084fc';
+  return '#ffd08a';
 }
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { notePvpHit, noteDealt } from '@/game/fightFood.js'; /* v2.3.3133: a pvp_hit starts a fight with a player (the one-bite rule); v2.3.3260: so does a hit you land on a monster */
@@ -966,6 +1001,20 @@ export function processGameEvent(type, payload, S, deps) {
                  laggy phone.  The ring's decision function stays dormant;
                  only the celebration is wanted here. */
               if (!payload || !S.player) break;
+              /* ═══ v2.3.3264: A PLAYER PARRIED YOUR BLOW ═══
+                 A parried monster loses its swing; a parried player is
+                 STAGGERED for the parry's `ms`, the worker refusing every blow
+                 they send meanwhile (server pvpextras.js _pvpParry).  This page
+                 sends none (combatHelpers.staggerRefused) and says why. */
+              if (payload.attackerId && S.myId && payload.attackerId === S.myId) {
+                var _stgMs = Math.max(0, Math.min(3000, Number(payload.ms) || 1500));
+                S._staggerUntil = Date.now() + _stgMs;
+                S._staggerNoteAt = Date.now();
+                pushDmgPopup(S, S.player.x, heroPopupY(S), 'Staggered!', '#e9a27a', { taken: true });
+                try { BT_AUDIO.play('shield-block', { vol: 0.5, rate: 0.85 }); } catch (e) { /* sound only */ }
+                if (window.__btProbe) { try { (window.__btPvpExtras || (window.__btPvpExtras = [])).push({ parriedBy: payload.targetId, ms: _stgMs, at: Date.now() }); } catch (e) { /* probe only */ } }
+                break;
+              }
               if (payload.targetId && S.myId && payload.targetId !== S.myId) break;
               var _pX = typeof payload.x === 'number' ? payload.x : S.player.x;
               var _pY = typeof payload.y === 'number' ? payload.y : S.player.y;
@@ -3510,24 +3559,13 @@ export function processGameEvent(type, payload, S, deps) {
                 if (payload.maxHp) _pvB.rpgMaxHp = payload.maxHp;
                 _pvB._hpSeenAt = Date.now();
               }
-              /* ═══ v2.3.3262: THE SWORD'S LUNGE DAZES WHO IT LANDS ON ═══
-                 A sword's opening lunge at a player that landed (server
-                 pvplunge.js) carries `st: 'daze'` and `stMs` -- the fields a
-                 rock monster's hit carries, carried out by the same code: on
-                 you, no walk, swing, roll or shield for stMs (elemHits.js,
-                 combatHelpers.dazeRefused) and the daze's sound; on anyone
-                 else, the stars round their head (their walk is their own
-                 phone's).  Before the branches below, so a watcher sees it
-                 too.  Only the daze: no other status rides a pvp_hit. */
-              if (payload.st === 'daze') {
-                if (payload.target === S.myId) {
-                  var _lzSt = applyElemHit(S, payload, Date.now());
-                  if (_lzSt) { try { BT_AUDIO.elemHit(_lzSt); } catch (e) { /* sound only */ } }
-                } else if (_peerInZone(S, payload.target)) {   /* v2.3.3263: pvp_hit goes to every zone (the onlooker's rule, below) */
-                  var _lzO = S.others[payload.target];
-                  if (!_lzO._isDead) applyElemHit(S, payload, Date.now(), _lzO);
-                }
-              }
+              /* v2.3.3262: a sword's opening lunge at a player that landed
+                 (server pvplunge.js) carries `st: 'daze'` and `stMs` -- the
+                 fields a rock monster's hit carries.  v2.3.3264: every status a
+                 player's blow carries (the daze among them, server
+                 pvpextras.js) is carried out and drawn by the branches below,
+                 by the same code -- on you (applyElemHit, its sound), on the
+                 one you hit, and on a player an onlooker in their zone sees. */
               if (payload.target !== S.myId) {
                 // Not targeted at us — if we're the attacker, show hit confirmation
                 if (payload.attacker === S.myId) {
@@ -3604,13 +3642,32 @@ export function processGameEvent(type, payload, S, deps) {
                        red with a '!' -- the colours of a hit TAKEN -- so one
                        swing read as two different things.  A hit that took
                        nothing (the arrival grace) says nothing, as on you. */
-                    pushDmgPopup(S, _pvX, _pvTgt ? peerPopupY(_pvTgt) : _pvY, '-' + takenFigure(payload, payload.dmgTaken),
-                      payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
-                      { crit: !!payload.isCrit, iconKey: dmgIconForSlot(S, payload, true), special: !!S._ownSpecialRecent });
+                    /* ═══ v2.3.3264: ...AND WHAT ELSE IT DID, AS ON A MONSTER ═══
+                       Owner: "Yes the monster only extras should work on
+                       players too" (server pvpextras.js): your gem's status
+                       ticking on them reads in its element's colour with its
+                       icon, a collision with its name, a splash, a blast or
+                       the burst in the monster_hit branch's colours
+                       (pvpDealtColor) -- the weapon's mark on a blow, the
+                       element's on a tick. */
+                    var _pvDtk = tickKind(payload);
+                    var _pvDlk = elemLook(payload.elem);
+                    var _pvDcn = payload.collision ? collisionNameOf(payload.collision) : null;
+                    pushDmgPopup(S, _pvX, _pvTgt ? peerPopupY(_pvTgt) : _pvY,
+                      '-' + takenFigure(payload, payload.dmgTaken) + (_pvDcn ? ' ' + _pvDcn : ''),
+                      pvpDealtColor(payload),
+                      _pvDtk
+                        ? { iconKey: _pvDlk ? _pvDlk.icon : undefined }
+                        : { crit: !!payload.isCrit && !payload.collision, iconKey: payload.collision ? undefined : dmgIconForSlot(S, payload, true),
+                          special: !payload.ability && !!S._ownSpecialRecent });
                   }
                   /* Flash the opponent so a hit reads even off-centre, the same
-                     feedback a monster gets. */
-                  if (_pvTgt && !_pvTgt._isDead) _pvTgt._hitFlash = Date.now();
+                     feedback a monster gets -- not for a tick (a burn on them
+                     is not a blow; it has its own look). */
+                  if (_pvTgt && !_pvTgt._isDead && !tickKind(payload)) _pvTgt._hitFlash = Date.now();
+                  /* v2.3.3264: the status your blow put on them, drawn on them
+                     (their movement is their own page's) */
+                  if (_pvTgt && !_pvTgt._isDead) applyElemHit(S, payload, Date.now(), _pvTgt);
                 } else {
                   /* ═══ v2.3.3263: AN ONLOOKER SEES IT AS A MONSTER'S HIT ON THEM ═══
                      One version (above): a player hit by a player reads, to
@@ -3630,13 +3687,22 @@ export function processGameEvent(type, payload, S, deps) {
                     var _pvOy = _pvOn.y != null ? _pvOn.y : _pvOn.renderY;
                     var _pvOdx = (_pvOx || 0) - S.player.x, _pvOdy = (_pvOy || 0) - S.player.y;
                     if (_pvOdx * _pvOdx + _pvOdy * _pvOdy <= PVP_ONLOOK_R * PVP_ONLOOK_R) {
-                      _pvOn._hitFlash = Date.now();
+                      /* v2.3.3264: a player's gem on them -- its status drawn on
+                         them and its icon on the number, as a monster's
+                         element on them is; a tick is no blow, so no flinch
+                         and no blood (the monster_attack peer branch's rule) */
+                      var _pvOtk = tickKind(payload);
+                      var _pvOlk = elemLook(payload.elem);
+                      if (!_pvOtk) _pvOn._hitFlash = Date.now();
+                      applyElemHit(S, payload, Date.now(), _pvOn);
                       var _pvOd = typeof payload.dmgTaken === 'number' ? payload.dmgTaken : 0;
                       if (_pvOd > 0 && !payload.blocked && !payload.dodged) {
                         var _pvOa = S.others && S.others[payload.attacker];
-                        queueBlood(S, _pvOn.renderX != null ? _pvOn.renderX : (_pvOx || 0), _pvOn.renderY != null ? _pvOn.renderY : (_pvOy || 0),
-                          _pvOa ? _pvOa.x : null, _pvOa ? _pvOa.y : null, _pvOd / Math.max(1, _pvOn.rpgMaxHp || 100));
-                        pushDmgPopup(S, _pvOx || 0, peerPopupY(_pvOn), '-' + takenFigure(payload, _pvOd), '#ff5e6c', { taken: true });
+                        if (!_pvOtk) {
+                          queueBlood(S, _pvOn.renderX != null ? _pvOn.renderX : (_pvOx || 0), _pvOn.renderY != null ? _pvOn.renderY : (_pvOy || 0),
+                            _pvOa ? _pvOa.x : null, _pvOa ? _pvOa.y : null, _pvOd / Math.max(1, _pvOn.rpgMaxHp || 100));
+                        }
+                        pushDmgPopup(S, _pvOx || 0, peerPopupY(_pvOn), '-' + takenFigure(payload, _pvOd), '#ff5e6c', _pvOlk ? { iconKey: _pvOlk.icon, taken: true } : { taken: true });
                       }
                     }
                   }
@@ -3656,6 +3722,35 @@ export function processGameEvent(type, payload, S, deps) {
                  most, so the two branches must not drift apart. */
               S.lastDamageTaken = Date.now();   /* v2.3.2242 (post-review): a duel hit is combat too */
               noteShieldThreat(S, payload);      /* v2.3.3260: a guard raised now faces whoever threw it (shieldToggle.js) */
+              /* ═══ v2.3.3264: WHAT A PLAYER'S BLOW DOES TO YOU BESIDES ═══
+                 Owner: "Yes the monster only extras should work on players
+                 too".  The worker (server pvpextras.js) puts the attacker's
+                 gem on you in monster_attack's own words -- a burn, a hold, a
+                 daze, a soak, a crackle, and a slow, a fracture or thorns that
+                 no monster gives -- and a blow's knockback (a bash's, a
+                 whirlwind's pull) as `kb`.  Carried out HERE, before the
+                 number is drawn, for the reason the monster branch gives: the
+                 drawing decides what you see, not whether it happened.  A
+                 status's tick (a burn, a root, a thorn's prick when you swing)
+                 is no blow: no flinch, no shake, no clang, the tick's own sound
+                 and sparks (tickKind). */
+              var _pvNow = Date.now();
+              var _pvSt = applyElemHit(S, payload, _pvNow);
+              if (_pvSt) { try { BT_AUDIO.elemHit(_pvSt); } catch (e) { /* sound only */ } }
+              if (_pvSt && payload.wd > 0) { try { noteWard(S, payload); } catch (e) { /* words only */ } }
+              var _pvShoved = applyHitShove(S, payload, _pvNow);
+              var _pvTk = tickKind(payload);
+              var _pvLk = elemLook(payload.elem);
+              if (window.__btProbe && (payload.ability || _pvSt || payload.kb)) {   /* QA (mp-pvpextras), armed by the harness only */
+                try {
+                  var _pxLog = window.__btPvpExtras || (window.__btPvpExtras = []);
+                  _pxLog.push({ attacker: payload.attacker, ability: payload.ability || null, st: _pvSt, stMs: payload.stMs || null,
+                    kb: payload.kb || null, elem: payload.elem || null, mult: payload.mult || null, stacks: payload.stacks || null,
+                    collision: payload.collision || null, dmgTaken: payload.dmgTaken, blocked: !!payload.blocked, at: _pvNow,
+                    shoved: !!_pvShoved });
+                  if (_pxLog.length > 80) _pxLog.splice(0, _pxLog.length - 80);
+                } catch (e) { /* a probe never breaks the game */ }
+              }
               if (payload.isCrit) dmgTaken = Math.ceil(dmgTaken * 1.5);
               /* Prefer the server's resolved dmgTaken when present
                  (worker now applies HP damage and the value rides on
@@ -3685,7 +3780,7 @@ export function processGameEvent(type, payload, S, deps) {
                   pushDmgPopup(S, S.player.x + 18, S.player.y - 4, '-' + payload.staminaDrain + '⚡', '#facc15', { ts: Date.now() + 1 });
                 }
               } else if (Math.ceil(dmgTaken) > 0) {
-                pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + takenFigure(payload, dmgTaken), '#ff5e6c', { iconKey: 'heart', taken: true });   /* v2.3.2520: display scale; v2.3.3026: over your head (heroPopupY); v2.3.3263: the change in your bar (takenFigure) */
+                pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + takenFigure(payload, dmgTaken), '#ff5e6c', { iconKey: _pvLk ? _pvLk.icon : 'heart', taken: true });   /* v2.3.2520: display scale; v2.3.3026: over your head (heroPopupY); v2.3.3263: the change in your bar (takenFigure); v2.3.3264: a player's gem's icon in the heart's place, as a monster's element's */
               }
               /* v2.3.1137: Second Wind fires in PvP too (see server
                  _applyDamage); mirror the green heal popup here. */
@@ -3697,21 +3792,29 @@ export function processGameEvent(type, payload, S, deps) {
                 pushDmgPopup(S, S.player.x + 16, S.player.y - 38, '+' + payload.secondWind + ' Second Wind', '#4ade80', { ts: Date.now() + 2 });
               }
               /* (v2.3.3263: the block's own popup is "Blocked!" above, as a monster's) */
-              for (var hp2 = 0; hp2 < 6; hp2++) S.hitParticles.push({
+              /* v2.3.3264: a tick's sparks are its element's (the monster
+                 branch's colours), a thorn's the leaf's */
+              var _pvTcols = _pvTk === 'poison' ? ['#b6f05a', '#6fbf3a'] : _pvTk === 'thorn' ? ['#8be36a', '#c9e38a'] : ['#ffd27a', '#ff9a3c'];
+              for (var hp2 = 0; hp2 < (_pvTk ? 4 : 6); hp2++) S.hitParticles.push({
                 x: S.player.x,
                 y: S.player.y,
-                vx: (Math.random() - .5) * 4,
+                vx: (Math.random() - .5) * (_pvTk ? 3 : 4),
                 vy: -1 - Math.random() * 2,
-                life: 0.8,
-                color: '#ff5e6c',
+                life: _pvTk ? 0.6 : 0.8,
+                color: _pvTk ? _pvTcols[hp2 & 1] : '#ff5e6c',
                 size: 2
               });
-              S.screenShake = payload.blocked ? 2 : 4;
-              /* v2.3.1605: real hit sound, not the beep() that has been a no-op
-                 since v2.3.1103 — the same dead call the monster hit carried
-                 until v2.3.1598.  Being hit by a PLAYER was silent for the same
-                 reason and is fixed the same way. */
-              try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.85 }); } catch (e) {}
+              if (_pvTk) {
+                /* v2.3.3264: the tick's own sound, not the clang of a blow */
+                try { BT_AUDIO.elemHit(_pvTk + 'Tick'); } catch (e) { /* sound only */ }
+              } else {
+                S.screenShake = payload.blocked ? 2 : 4;
+                /* v2.3.1605: real hit sound, not the beep() that has been a no-op
+                   since v2.3.1103 — the same dead call the monster hit carried
+                   until v2.3.1598.  Being hit by a PLAYER was silent for the same
+                   reason and is fixed the same way. */
+                try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.85 }); } catch (e) {}
+              }
               /* Predict "Killed by X" popup from the (server-resolved
                  or locally-computed) dmgTaken vs current local hp.  HP
                  doesn't mutate locally in MP anymore, so checking
@@ -3731,7 +3834,11 @@ export function processGameEvent(type, payload, S, deps) {
                 BT_AUDIO.deathBoom();
               }
               // Send pvp_confirmed back for kill tracking, clan wars, arena
-              if (S.channel) S.channel.send({
+              /* v2.3.3264: not for a tick that did not kill -- a burn on you
+                 ticks eight times; the bookkeeping is the kill's, and the
+                 attacker's own screen already knows the hit was the worker's
+                 (_pvpSrvHits) */
+              if (S.channel && !(_pvTk && !_wouldDiePvp)) S.channel.send({
                 type: 'broadcast',
                 event: 'pvp_confirmed',
                 payload: {

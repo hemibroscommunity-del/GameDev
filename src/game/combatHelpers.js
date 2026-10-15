@@ -17,7 +17,7 @@ import { prog3Live } from '@/data/prog3.js';          /* v2.3.2615: is the T1 tr
 import { isWheelSwimming, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: no fighting while you swim */
 import { jumpAirborne } from '@/game/jump.js';   /* v2.3.3017: nor in the air */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';   /* v2.3.3105: a swing meets a prop at the swinger's boots */
-import { isDazed } from '@/game/elemHits.js';   /* v2.3.3014: nor while a rock monster has you dazed */
+import { isDazed, isStaggered } from '@/game/elemHits.js';   /* v2.3.3014: nor while a rock monster has you dazed; v2.3.3264: nor while a parry has you staggered */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
    Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
@@ -792,6 +792,23 @@ export function dazeRefused(S) {
   if (S.player && (!S._dazeNoteAt || now - S._dazeNoteAt > 600)) {
     S._dazeNoteAt = now;
     pushDmgPopup(S, S.player.x, S.player.y - 44, DAZE_NOTE, '#e9d27a', { ts: now + 1 });
+  }
+  return true;
+}
+
+/* ═══ v2.3.3264: STAGGERED BY A PARRY ═══
+   A player who parried your blow staggers you, as a parried monster loses its
+   swing (server pvpextras.js _pvpParry): for the parry's `ms` the worker
+   refuses every blow you send -- a swing, a special, an ability, the burst --
+   so this side says so and sends none, rather than playing out a swing that
+   lands nothing.  Your feet, your roll and your shield are yours. */
+export var STAGGER_NOTE = 'Staggered!';
+export function staggerRefused(S) {
+  var now = Date.now();
+  if (!isStaggered(S, now)) return false;
+  if (S.player && (!S._staggerNoteAt || now - S._staggerNoteAt > 600)) {
+    S._staggerNoteAt = now;
+    pushDmgPopup(S, S.player.x, S.player.y - 44, STAGGER_NOTE, '#e9a27a', { ts: now + 1 });
   }
   return true;
 }

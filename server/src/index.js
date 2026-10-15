@@ -22,7 +22,7 @@ export { Feedback } from './feedback.js';
 
 // v2.3.1114: server-authoritative elemental model (statuses / DoT /
 // collisions) -- see elemental.js header for what is and isn't ported.
-import { tickElementStatuses, elementMoveMult } from './elemental.js';
+import { tickElementStatuses, elementMoveMult, thornRecoil } from './elemental.js';
 // v2.3.1115 (P4 slice 2): embedded data tables moved to data.js -- the
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
@@ -192,6 +192,7 @@ import { pvpBalanceMethods } from './pvpbalance.js'; /* v2.3.3260: PvP hits roll
 import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle of a fight -- the body stays */
 import { pvpLungeMethods } from './pvplunge.js'; /* v2.3.3262: the sword's opening lunge, at a player too */
 import { oneFormulaMethods } from './oneformula.js'; /* v2.3.3260: one formula for every fight -- health, monsters' hits, the hit cap, two specials */
+import { pvpExtrasMethods } from './pvpextras.js'; /* v2.3.3264: what a hit does to a monster it does to a player -- the element, the shove, the splash, the burst, the abilities, the bow's burn, the kill's heal, the parry */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into a shield on the worker */
 import { aggroGridMethods } from './aggrogrid.js'; /* v2.3.3201: a monster looks for players near it, not through every one */
@@ -1853,7 +1854,7 @@ export class GameRoom {
        that thorns itself to death still pays out. */
     if (m.statuses && m.statuses.thorn) {
       const _th = m.statuses.thorn;
-      const _recoil = Math.round(4 + (_th.power || 0) * 0.25);
+      const _recoil = thornRecoil(_th);   /* v2.3.3264: elemental.js, the number a thorned player takes too */
       if (_recoil > 0) this._applyMonsterDot(zoneId, m, _recoil, _th.sourceId, 'thorn');
     }
     // v2.3.1139 (item I): a hexer's landed hit curses the
@@ -3261,7 +3262,7 @@ export class GameRoom {
        above short-circuits first, so a spammer with an empty bar never reaches
        the monster list.  It costs the pool nothing extra -- the price is
        unchanged at one block (_abilityCost) and is charged exactly once. */
-    if (type === 'lunge') this._lungeStrike(session, ps, payload && payload.targetId);
+    if (type === 'lunge') this._lungeStrike(session, ps, payload && payload.targetId, payload && payload.pid);   /* v2.3.3264: + a player named as `pid` */
     /* v2.3.3260: a special the worker charged for opens the short window in
        which a player hit may count as a special (pvpbalance.js) */
     if (type === 'swipe' && this._pvpSpecialPaid) this._pvpSpecialPaid(ps, Date.now());
@@ -3344,6 +3345,11 @@ export class GameRoom {
     ps.dead = true;
     ps.respawnAt = Date.now() + 5000;
     ps.dmgFromMonster = {};
+    /* v2.3.3264: the record of what each player dealt them (the melee
+       lifesteal a kill of theirs would pay, pvpextras.js) and a player's
+       statuses on them go with the life, as a monster's do */
+    ps._dmgFromPlayer = null;
+    if (this._pvpClearStatuses) this._pvpClearStatuses(playerId, ps);
     // v2.3.1121: resolve any active duel FIRST -- a clean duel kill
     // (cause 'pvp:<opponent>') pays the pot to the winner and is
     // protected: no death pile, no inventory wipe, per the promise the
@@ -6268,3 +6274,4 @@ Object.assign(GameRoom.prototype, pvpBalanceMethods); /* v2.3.3260 */
 Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-fight, the body stays */
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */
 Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */
+Object.assign(GameRoom.prototype, pvpExtrasMethods); /* v2.3.3264: the monster-only extras on players */

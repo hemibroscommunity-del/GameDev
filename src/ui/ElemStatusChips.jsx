@@ -5,7 +5,8 @@
  * The snowman's chill, the fire goblin's burn and the blue slime's hold
  * (game/elemHits.js), each a chip with its own icon -- the snowflake, the
  * flame, the slime -- and the seconds left; since v2.3.3014 the rock
- * monster's daze, the fishman's soak and the Mire's poison too.  The gust is
+ * monster's daze, the fishman's soak and the Mire's poison too, and since
+ * v2.3.3264 a player's slow, fracture and thorns.  The gust is
  * a shove, over before a chip could say so; its icon rides the hit's number
  * instead.
  *
@@ -29,6 +30,12 @@ const ROWS = [
   { key: '_dazeUntil', img: ELEM_ICON_SRC['elem-stone'], label: 'Dazed', color: '#e9d27a' },
   { key: '_soakUntil', img: ELEM_ICON_SRC['elem-water'], label: 'Soaked', color: '#5fb8ff' },
   { key: '_poisonUntil', img: ELEM_ICON_SRC['elem-venom'], label: 'Poisoned', color: '#a6e24a' },
+  /* v2.3.3264: what a PLAYER'S gem puts on you that no monster's hit does
+     (server pvpextras.js): a wind gem's slow, a stone gem's fracture (its
+     stacks, +6% damage taken each), a flora gem's thorns */
+  { key: '_slowUntil', img: ELEM_ICON_SRC['elem-wind'], label: 'Slowed', color: '#e6edf3' },
+  { key: '_fractureUntil', img: ELEM_ICON_SRC['elem-stone'], label: 'Fractured', color: '#c9b48a', stacks: '_fractureStacks' },
+  { key: '_thornUntil', img: ELEM_ICON_SRC['elem-flora'], label: 'Thorned', color: '#8be36a' },
 ];
 
 function readChips(S, now) {
@@ -36,7 +43,7 @@ function readChips(S, now) {
   if (!S) return out;
   for (const r of ROWS) {
     const u = S[r.key];
-    if (u && now < u) out.push({ r, s: Math.ceil((u - now) / 1000) });
+    if (u && now < u) out.push({ r, s: Math.ceil((u - now) / 1000), n: r.stacks ? Math.max(0, Math.floor(S[r.stacks]) || 0) : 0 });
   }
   return out;
 }
@@ -47,7 +54,7 @@ export default function ElemStatusChips({ stateRef }) {
     let last = '';
     const id = setInterval(() => {
       const c = readChips(stateRef && stateRef.current, Date.now());
-      const sig = c.map((x) => x.r.key + x.s).join();
+      const sig = c.map((x) => x.r.key + x.s + '/' + x.n).join();
       if (sig !== last) { last = sig; setChips(c); }
     }, 150);
     return () => clearInterval(id);
@@ -55,12 +62,12 @@ export default function ElemStatusChips({ stateRef }) {
   if (!chips.length) return null;
   return (
     <div style={{ display: 'flex', gap: 3, marginTop: 3, flexWrap: 'wrap' }} data-elem-chips="">
-      {chips.map(({ r, s }) => (
-        <div key={r.key} title={r.label}
+      {chips.map(({ r, s, n }) => (
+        <div key={r.key} title={r.label} data-chip={r.label}
           style={{ padding: '1px 5px 1px 3px', borderRadius: 4, background: 'rgba(12,16,24,.72)', border: '1px solid ' + r.color + 'aa',
             fontSize: 11, color: r.color, display: 'flex', gap: 3, alignItems: 'center' }}>
           <img src={r.img} alt={r.label} style={{ width: 14, height: 14, display: 'block' }} />
-          <span>{s + 's'}</span>
+          <span>{(n > 1 ? '\u00d7' + n + ' ' : '') + s + 's'}</span>
         </div>
       ))}
     </div>

@@ -27,7 +27,7 @@ import { BT_AUDIO, abilityCfg, abilityStaminaCost, abilityUnlocked, isAbilitiesE
   prog3CharLevel, getActiveWeapon,
   meleeSwingSfx /* v2.3.2260: the lunge borrows the swing's own per-weapon sound */ } from '@/data/index.js';
 import { depthK, ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3262: + ZONES (a lunge at a player follows the swing's PvP gate) */
-import { isPlayerDead, pushDmgPopup, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */ } from '@/game/combatHelpers.js';
+import { isPlayerDead, pushDmgPopup, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, staggerRefused /* v2.3.3264 */, airRefused /* v2.3.3017 */ } from '@/game/combatHelpers.js';
 import { prog3ActiveCat } from '@/data/prog3.js';   /* v2.3.2327: whirlwind is the sword's */
 import { monsterLock } from '@/game/targeting.js';  /* v2.3.2542: whirlwind wants a fight under way */
 
@@ -320,6 +320,7 @@ export function resolveCastAngle(S) {
    resolves abilityCfg(kind) first, and that table IS hasOwnProperty-guarded.) */
 const NEEDS_LOCK = { whirl: true };
 
+
 /* Everything the button needs to draw itself: unlocked, ready, affordable.
    One function so the button and the cast agree by construction. */
 export function abilityStatus(S, kind) {
@@ -361,7 +362,11 @@ export function abilityStatus(S, kind) {
      v2.3.2561: AbilityButtons now HIDES the button on this field instead of
      dimming it.  Still not a `visible` term: `visible` gates the cast, and the
      desktop R key has no button to hide -- only the popup below. */
-  var engaged = !NEEDS_LOCK[kind] || !!monsterLock(S);
+  /* v2.3.3264: ...or the player you are fighting (a duel's lock, No man's
+     land's aim), against a worker whose whirlwind strikes the players you
+     are fighting (pvpExtrasTarget); against an older one it would spin at
+     nothing, so it stays hidden there */
+  var engaged = !NEEDS_LOCK[kind] || !!monsterLock(S) || !!pvpExtrasTarget(S);
   var now = Date.now();
   var readyAt = cdMap(S)[kind] || 0;
   var cost = abilityStaminaCost(R, kind);
@@ -388,7 +393,7 @@ export function castAbility(S, kind) {
   /* Same rule as swingAttack/specialAttack: a life-skill animation owns the
      body, and an ability mid-chop leaves the harvest running underneath. */
   if (S._extraction) return false;
-  if (swimRefused(S) || dazeRefused(S)) return false;   /* v2.3.3003: only your head is out of the water */
+  if (swimRefused(S) || dazeRefused(S) || staggerRefused(S)) return false;   /* v2.3.3003: only your head is out of the water; v2.3.3264: nor while a parry has you staggered */
   if (airRefused(S)) return false;    /* v2.3.3017: nor mid-jump */
   if (S._playerStunUntil && Date.now() < S._playerStunUntil) return false;
 
@@ -467,12 +472,22 @@ export function castAbility(S, kind) {
      The owner: "Yes make opening lunge work on players too".  The same dash
      and the same strike on arrival; the strike names the player as `pid`
      (never `targetId`, which is a monster's), and the worker does the rest
-     (server/src/pvplunge.js).  Only sworddash: a bash still shoves monsters
-     only. */
+     (server/src/pvplunge.js). */
   var _bashPid = null;
   if (kind === 'sworddash' && !_bashLt) {
     var _pvpLt = pvpLungeTarget(S);
     if (_pvpLt) { _bashLt = _pvpLt; _bashPid = String(S.lockedTarget.id); }
+  }
+  /* ═══ v2.3.3264: ...AND THE BASH, AT THE PLAYER YOU ARE FIGHTING ═══
+     Owner: "Yes the monster only extras should work on players too".  The
+     same dash, and the shove struck at the press as at a monster; the player
+     named as `pid` the lunge's way, against a worker whose bash strikes
+     players (caps.pvpextras: server abilities.js through pvpextras.js's one
+     door -- the same roll x0.75, the 90 px shove, the stun as a player's
+     daze).  An older worker never hears a player named. */
+  if (kind === 'bash' && !_bashLt) {
+    var _pvpBt = pvpExtrasTarget(S);
+    if (_pvpBt) { _bashLt = _pvpBt; _bashPid = String(S.lockedTarget.id); }
   }
   /* THE DASH.  Integrated per frame by BroTown's movement block (never a
      position jump), because the worker's anti-teleport rejects a step over
@@ -616,7 +631,8 @@ export function castAbility(S, kind) {
     S._whirlWindup.sfx = !!_wsfx;
     return true;
   }
-  applyAbilityStrike(S, kind, _bashId);
+  /* v2.3.3264: a bash at a player names them as `pid`, the lunge's way */
+  applyAbilityStrike(S, kind, _bashId, _bashPid ? { pid: _bashPid } : undefined);
   return true;
 }
 
@@ -829,6 +845,13 @@ export function applyAbilityStrike(S, kind, targetId, opts) {
  */
 export function pvpLungeTarget(S) {
   if (!S || !S._serverCaps || S._serverCaps.pvplunge !== true) return null;
+  return fightablePlayerLock(S);
+}
+
+/* The rule itself (v2.3.3264: shared with pvpExtrasTarget, below, unchanged):
+   the locked player, drawn, alive, in your zone, and a duel or a zone that is
+   not safe. */
+function fightablePlayerLock(S) {
   var lt = S.lockedTarget;
   if (!lt || lt.type !== 'player' || lt.id == null) return null;
   var o = S.others ? S.others[lt.id] : null;
@@ -837,6 +860,18 @@ export function pvpLungeTarget(S) {
   var z = ZONES[S.currentZone];
   if (!S._inDuel && z && z.safe) return null;
   return o;
+}
+
+/* ═══ v2.3.3264: THE PLAYER A BASH, A WHIRLWIND OR THE DODGE'S LUNGE MAY TAKE ═══
+ * Owner: "Yes the monster only extras should work on players too".  The very
+ * rule the sword's lunge goes by (fightablePlayerLock: a duel anywhere, or a
+ * deliberate lock outside a safe zone), against a worker whose bash,
+ * whirlwind and lunge strike players (caps.pvpextras: server pvpextras.js,
+ * every one through its one door).  The player, or null.
+ */
+export function pvpExtrasTarget(S) {
+  if (!S || !S._serverCaps || S._serverCaps.pvpextras !== true) return null;
+  return fightablePlayerLock(S);
 }
 
 /* ═══ v2.3.2258: THE FIRST ATTACK OF AN ENGAGEMENT IS A LUNGE ═══
