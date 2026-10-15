@@ -2212,7 +2212,7 @@ remnant to migrate server-side, not a mode to preserve.
       frame's work 36 -> 20 ms; 150 on screen, 31 -> 21 with the cap;
     - `?nopeercull` is all three off; `mp-peercull` (two phones),
       `mp-crowdbots` `BT_CROWD_QUERY`: docs/specs/peer-cull.md.
-  - Since v2.3.3147 THE BUILDINGS HAVE INSIDES -- the owner sent seventeen
+  - Since v2.3.3258 THE BUILDINGS HAVE INSIDES -- the owner sent seventeen
     pictures of them (made from docs/ART-WISHLIST.md's prompts) and said "Ok
     wire these up":
     - the top of every building's window is its room, edge to edge
