@@ -140,6 +140,10 @@ behind Mayor Bro's dialogue or leaving it waiting.
 - BroTown draws the hall for any `buildingPanel` in `WHEEL_HALLS`, not three
   names; the room's picture comes from `BUILDING_ROOMS.townhall`, behind the
   hall's rows like every building's (`docs/specs/building-rooms.md`).
+- The Sheriff's Office's "The arena" opens the Gladiator Arena's own window
+  (`arena`) since v2.3.3258. It was the Saloon's window, which is now the
+  Saloon's own (parties): docs/specs/building-rooms.md "The Saloon, and the
+  arena's own window".
 - Mayor Bro is its keeper: once he has no quest to offer, ask about or pay for,
   talking to him (a tap, E, the right stick) opens it too
   (`WHEEL_KEEPERS['Mayor Bro']`).

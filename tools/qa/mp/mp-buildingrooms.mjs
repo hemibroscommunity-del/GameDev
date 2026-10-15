@@ -26,6 +26,8 @@
  *      the window as it was;
  *   7. THE KEEPERS: a tap on Blacksmith Bro opens the forge on its room, E
  *      beside him too, and a tap on Mayor Bro, his quests done, the Town Hall;
+ *      the Saloon's window is the Saloon's own (parties), and the Gladiator
+ *      Arena is a window of its own with no room behind it;
  *   8. walking away lets the held picture go; all sixteen were asked for; no
  *      page errors.
  * Pictures: tools/qa/mp/out/buildingrooms-*.png.
@@ -343,6 +345,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const mayor = await tapKeeper('Mayor Bro', 60, 'mayor');
   rec.ok(`a tap on Mayor Bro, his quests done, opens the Town Hall on its room (${mayor.key || 'NOTHING'}): the leaderboard and the world map`,
     mayor.keeperOf === 'townhall' && !!mayor.tap && mayor.tap.npc === 'Mayor Bro' && mayor.tap.result === 'opens' && mayor.key === 'townhall' && mayor.room === 'townhall' && mayor.sits, mayor);
+
+  /* ── 7b. the Saloon is the Saloon, and the arena is its own window (the owner: "the gladiator arena is showing 'saloon' behind it") ── */
+  const look = async (panel, label) => {
+    await P.page.evaluate((p) => window.__btBuildingWindow.open(p), panel);
+    for (let i = 0; i < 24; i++) {
+      const st = await P.page.evaluate(() => { const r = document.querySelector('.bt-room'); return r ? r.getAttribute('data-room-state') : 'none'; });
+      if (st === 'ready' || st === 'none' || st === 'failed') break;
+      await P.page.waitForTimeout(250);
+    }
+    await P.page.waitForTimeout(300);
+    await shot(label);
+    const r = await P.page.evaluate(() => {
+      const card = document.querySelector('.bt-inspect-card');
+      const text = card ? card.textContent || '' : '';
+      return { key: card && card.getAttribute('data-building-panel'), room: card && card.getAttribute('data-room'), rooms: document.querySelectorAll('.bt-room').length,
+        saloon: !!(card && card.querySelector('[data-saloon]')), arena: /Gladiator Arena/i.test(text), find: !!(card && card.querySelector('[data-hall-row="party"]')) };
+    });
+    await P.page.evaluate(() => window.__btBuildingWindow.open(null));
+    await P.page.waitForTimeout(300);
+    return r;
+  };
+  const saloon = await look('party', 'saloon-own');
+  rec.ok('the Saloon\'s door opens the Saloon -- your party and Find a party -- on its room, and no Gladiator Arena in it',
+    saloon.key === 'party' && saloon.room === 'saloon' && saloon.saloon && saloon.find && !saloon.arena, saloon);
+  const arenaW = await look('arena', 'arena-own');
+  rec.ok('the Gladiator Arena (from the Sheriff\'s Office) is a window of its own with no room behind it -- no Saloon sign over the arena',
+    arenaW.key === 'arena' && !arenaW.room && arenaW.rooms === 0 && arenaW.arena && !arenaW.saloon, arenaW);
 
   /* ── 8. walking away, every room asked for, no errors ── */
   await standAt(byId.townhall.x, byId.townhall.y + 330);   /* the square, 330 px south of the Town Hall's door: clear of every door (the Town Hall is one since v2.3.3258) */

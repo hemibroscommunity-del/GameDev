@@ -3634,6 +3634,15 @@ console.log("the keepers (v2.3.3258)");
       && /return enterWheelDoor\(stateRef\.current, door, \{ setBuildingPanel: setBuildingPanel \}\);/.test(bt)
       && /export function enterWheelDoor\(S, door, deps\)/.test(it) && /if \(door\.index >= 0\) return _openBuilding\(S, door\.index, deps\.setBuildingPanel\);/.test(it)
       && /if \(kd\) n\.keeperOf = plot;/.test(bt) && /d\.id === plot && \(d\.index >= 0 \|\| d\.hall\)/.test(bt), { tapAt, questAt, flipAt, eAt, eQuest });
+  /* the owner: "the gladiator arena is showing 'saloon' behind it" -- the Saloon's door opened the arena (PartyPanel, named for parties) */
+  const R = await import('../../src/data/buildingRooms.js');
+  ok('the Saloon\'s door opens the Saloon (SaloonPanel: your party, Find a party) on its room, and the Gladiator Arena is a window of its own, \'arena\', opened from the Sheriff\'s Office with no room behind it',
+    R.roomIdFor('party') === 'saloon' && R.roomIdFor('arena') === null
+      && /buildingPanel === 'party' && \/\*#__PURE__\*\/React\.createElement\(SaloonPanel, \{/.test(bt)
+      && /buildingPanel === 'arena' && \/\*#__PURE__\*\/React\.createElement\(PartyPanel, \{/.test(bt)
+      && !/buildingPanel === 'party' && \/\*#__PURE__\*\/React\.createElement\(PartyPanel/.test(bt)
+      && /onArena: function onArena\(\) \{ setBuildingPanel\('arena'\); \}/.test(bt)
+      && /export function SaloonPanel\(props\)/.test(fs.readFileSync(new URL('../../src/ui/panels/buildings/WheelHallPanel.jsx', import.meta.url), 'utf8')), {});
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

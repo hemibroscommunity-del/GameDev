@@ -31,7 +31,8 @@ keepers"). Every door still opens too.
 | Blacksmith | `forge` | `blacksmith` (its stage a slim band, below) | **Blacksmith Bro**, or the door |
 | General Store | `exchange` (the market) | `store` | the door (Diego, beside it, keeps his own shop window) |
 | Bank | `bank` | `bank` | the door |
-| Saloon | `party` (the party panel, and the arena sign-up) | `saloon` | the door |
+| Saloon | `party`: the Saloon's own window, your party and Find a party (below) | `saloon` | the door |
+| (the arena) | `arena`: the Gladiator Arena, opened from the Sheriff's Office | none: a window of its own | the Sheriff's Office's "The arena" |
 | Woodworker | `woodwork` | `woodworker` | the door (Beastmaster Bro, beside it, is the trapper) |
 | Gem Cutter | `gemcut` | `gemcutter` | the door |
 | Cookhouse | `cook` | `cookhouse` | the door |
@@ -143,6 +144,23 @@ Ace his coin flip, the windows the owner designed for them, and Beastmaster Bro
 is the trapper, not the Woodworker. A new keeper is his picture, an `NPC_DATA`
 record, a `WHEEL_TOWNSFOLK` row at his door and a `WHEEL_KEEPERS` row. Once a
 building has its keeper, its door's Enter button can go if the owner wants.
+
+## The Saloon, and the arena's own window
+
+The owner, on #841's preview: *"I think the arena window is popping up in the
+wrong place. Well the gladiator arena is showing 'saloon' behind it"*. The
+Saloon's door (`party`, today's town's TAVERN, "Form parties") had opened the
+Gladiator Arena since v2.3.881, when the arena lived in the panel named for
+parties (`PartyPanel`). With the Saloon's picture behind every window, that was
+plain to see.
+
+- **The arena is its own window**, `arena`, opened from the Sheriff's Office
+  ("Duels and the arena", its "The arena" row). It has no room behind it: no
+  picture of the arena exists yet, and it is not the Sheriff's Office either.
+- **The Saloon is the Saloon** (`SaloonPanel` in `WheelHallPanel.jsx`): your
+  party as the worker last said it (you first, each member's level), or how a
+  party works, and **Find a party** (the player list, where a player's card
+  has Invite to Party). Nothing new on the wire.
 
 ## The Town Hall window
 

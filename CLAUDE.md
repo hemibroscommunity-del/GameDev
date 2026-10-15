@@ -2242,6 +2242,12 @@ remnant to migrate server-side, not a mode to preserve.
       Town Hall once he has no quest; Diego and Ace keep their own windows; the
       other twelve buildings keep their doors until the owner's keepers are
       made (docs/ART-WISHLIST.md "The keepers"); every door still opens;
+    - THE SALOON IS THE SALOON -- the owner: "the gladiator arena is showing
+      'saloon' behind it": the Saloon's door (`party`) had opened the arena
+      (PartyPanel) since v2.3.881; the arena is its own window, `arena`, no
+      room behind it, from the Sheriff's Office's "The arena", and the
+      Saloon's window is `SaloonPanel` (WheelHallPanel.jsx): your party and
+      Find a party;
     - the Land Office's window was a separate z-30 dialog UNDER an empty card
       and is a panel in the card now (`LandOfficePanel.jsx`); a tall window's
       ✕ lay under the world map's invisible z-45 "open" button -- any

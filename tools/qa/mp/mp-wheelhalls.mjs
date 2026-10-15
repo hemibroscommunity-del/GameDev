@@ -237,8 +237,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await enterHall(A, sh);
     await tap(A, '[data-hall-row="arena"]');
     let arenaKey = null;
-    for (let i = 0; i < 12 && arenaKey !== 'party'; i++) { await A.page.waitForTimeout(250); arenaKey = await A.page.evaluate(() => { const c = document.querySelector('.bt-inspect-card[data-building-panel]'); return c ? c.getAttribute('data-building-panel') : null; }); }
-    rec.ok('...and The arena opens the arena\'s sign-up (the Saloon\'s panel)', arenaKey === 'party', { arenaKey });
+    for (let i = 0; i < 12 && arenaKey !== 'arena'; i++) { await A.page.waitForTimeout(250); arenaKey = await A.page.evaluate(() => { const c = document.querySelector('.bt-inspect-card[data-building-panel]'); return c ? c.getAttribute('data-building-panel') : null; }); }
+    rec.ok('...and The arena opens the arena\'s sign-up, a window of its own (v2.3.3258: it was the Saloon\'s)', arenaKey === 'arena', { arenaKey });
     await closeCard(A);
 
     /* ── 5. the Hotel ── */
