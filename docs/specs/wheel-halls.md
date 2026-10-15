@@ -122,3 +122,36 @@ closes the hall.
   - Pictures: `wheelhalls-*.png`.
 - `mp-wheeldoors`: now 12 open, 3 halls, 1 shut and the Town Hall. Its 11 checks
   pass.
+
+## v2.3.3258: the Town Hall is the fourth hall
+
+The Town Hall had no window: Mayor Bro stands on its steps, and its plot is the
+plan's `mayor (NPC)`, not one of the "(new: …)" four. When the owner sent the
+picture of its inside (`docs/specs/building-rooms.md`) and was asked what the
+Town Hall should do, they chose **a Town Hall window** over drawing the room
+behind Mayor Bro's dialogue or leaving it waiting.
+
+- `WHEEL_HALL_DOORS.townhall`, `WHEEL_HALLS.townhall` (the bell tower's icon,
+  "Rankings and the world map"), and a `townHall()` in `WheelHallPanel.jsx` with
+  two rows set where the room's own props are: the trophy case is the
+  **Leaderboard** (the dashboard's Ranks page, opened as the More tile opens it)
+  and the painted map on the wall is the **World map** (`openWorldMap()`, which
+  `WorldMapOverlay.jsx` now exports).
+- BroTown draws the hall for any `buildingPanel` in `WHEEL_HALLS`, not three
+  names; the room's picture comes from `BUILDING_ROOMS.townhall`, behind the
+  hall's rows like every building's (`docs/specs/building-rooms.md`).
+- The Sheriff's Office's "The arena" opens the Gladiator Arena's own window
+  (`arena`) since v2.3.3258. It was the Saloon's window, which is now the
+  Saloon's own (parties): docs/specs/building-rooms.md "The Saloon, and the
+  arena's own window".
+- Mayor Bro is its keeper: once he has no quest to offer, ask about or pay for,
+  talking to him (a tap, E, the right stick) opens it too
+  (`WHEEL_KEEPERS['Mayor Bro']`).
+- Only the Hotel is shut. `wheelTownDoorAt` now returns every door of the town:
+  each opens a building, opens a hall, or says it is shut.
+- The Enter button does not show at arrival: a new character stands 108 px south
+  of the door's foot, the button is 140 px from the boots, and the body's middle
+  is ~52 px above them. It comes as they walk up to Mayor Bro, whose dialogue
+  and quest offer are above it (z 44 against 35).
+- `mp-wheelhalls` §7 and `mp-wheeldoors` (now 12 open, 4 halls, 1 shut, none
+  left over) carry it; test-world-core's doors block counts four halls.

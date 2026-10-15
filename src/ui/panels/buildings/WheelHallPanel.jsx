@@ -5,7 +5,8 @@ import { mailList, mailAge } from '@/game/postOffice.js';
 /* ═══ v2.3.3066: THE WHEEL'S HALLS — the Guild Hall, the Post Office, the Sheriff's Office ═══
  *
  * Three of the plan's "(new: ...)" buildings, opened onto systems the game
- * already has (data/wheelBuildingDoors.js WHEEL_HALL_DOORS says why each):
+ * already has (data/wheelBuildingDoors.js WHEEL_HALL_DOORS says why each;
+ * v2.3.3258 added a fourth, the Town Hall, below):
  *
  *   guildhall  your clan (ClanPanel: make one, run it, take up an invite)
  *              and the skill guilds (GuildPanel: ranks and their quests) --
@@ -15,7 +16,8 @@ import { mailList, mailAge } from '@/game/postOffice.js';
  *              what came while you were away included) and messages from
  *              friends (the Social panel);
  *   sheriff    a duel (the player list: pick someone, then Duel on their
- *              card) and the arena's sign-up (the Saloon's panel).
+ *              card) and the arena's sign-up (its own window since
+ *              v2.3.3258, 'arena'; it was the Saloon's panel).
  *
  * A hall is a hallway: each row opens the panel that does the work, and
  * closes this one.  Lantern Slate, as every building panel
@@ -112,6 +114,17 @@ function postOffice(props) {
   ];
 }
 
+/* v2.3.3258: the Town Hall -- asked what it should do, the owner chose a window
+   with the two things its picture shows: the trophy case is the leaderboard (a
+   ranking for every combat and life skill, the dashboard's Ranks page) and the
+   painted map on the wall is the Wheel's world map. */
+function townHall(props) {
+  return [
+    row('leaderboard', '/icons/ui/panel-leaderboard.webp', '🏆', 'Leaderboard', 'A ranking for every combat and life skill, and where you stand', props.onLeaderboard),
+    row('map', '/icons/ui/nav-map.webp', '🗺', 'World map', 'The whole Wheel: its lands and levels, camps, passes and gates, and where you are', props.onMap),
+  ];
+}
+
 function sheriff(props) {
   return [
     row('duel', '/icons/ui/soc-duel.webp', '⚔️', 'Duel a player', 'Pick a player, then tap Duel on their card', props.onPlayers),
@@ -122,11 +135,64 @@ function sheriff(props) {
 export function WheelHallPanel(props) {
   var hall = props.hall;
   if (!WHEEL_HALLS[hall]) return null;
-  var body = hall === 'guildhall' ? guildHall(props) : hall === 'post' ? postOffice(props) : sheriff(props);
+  var body = hall === 'guildhall' ? guildHall(props) : hall === 'post' ? postOffice(props) : hall === 'townhall' ? townHall(props) : sheriff(props);
   return (
     <div style={LS_WRAP} data-wheel-hall={hall}>
       {header(hall)}
       <div style={LS_BODY}>{body}</div>
+    </div>
+  );
+}
+
+/* ═══ v2.3.3258: THE SALOON IS WHERE A PARTY IS FORMED ═══
+   The owner, on the Saloon's door: "I think the arena window is popping up in
+   the wrong place ... the gladiator arena is showing 'saloon' behind it".  The
+   Saloon's door ('party': today's town's TAVERN, "Form parties") had opened
+   the Gladiator Arena since v2.3.881, when the arena lived in the panel named
+   for parties (PartyPanel).  With the Saloon's picture behind every window
+   that was plain to see.  The arena is its own window now ('arena', from the
+   Sheriff's Office: duels and the arena), and the Saloon is what its name
+   always said -- where you team up:
+     - your party as the worker last said it (S._party, party.js _partyWire:
+       you first, each member's level), or how a party works;
+     - Find a party: the player list, where a player's card has Invite to
+       Party (InspectPlayerPanel) -- the same list as the Sheriff's duel row.
+   Nothing new on the wire: invites, the roster, party chat and the HUD are
+   v2.3.1185's (docs/specs/party.md). */
+export function SaloonPanel(props) {
+  var S = props.stateRef.current || {};
+  var party = S._party && S._party.state === 'open' && Array.isArray(S._party.members) && S._party.members.length ? S._party : null;
+  var members = party ? party.members.slice().sort(function (a, b) { return (b.id === S.myId) - (a.id === S.myId); }) : [];
+  return (
+    <div style={LS_WRAP} data-saloon="">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }}>
+        {icon('/icons/ui/bldg-tavern.webp', '🍺', 26)}
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 }}>Saloon</div>
+          <div style={{ fontSize: 11, color: LS.txt3, marginTop: 1 }}>Team up with other bros</div>
+        </div>
+      </div>
+      <div style={LS_BODY}>
+        <div style={LS_MOD}>Your party</div>
+        <div data-saloon-party={members.length}
+          style={{ background: LS.well, border: '1px solid ' + LS.border, borderRadius: 10, padding: members.length ? '4px 0' : '12px' }}>
+          {members.length ? members.map(function (m, i) {
+            return (
+              <div key={m.id || i} data-party-member="" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderTop: i ? '1px solid ' + LS.border : 'none' }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, color: LS.txt1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {m.id === S.myId ? 'You' : (m.name || 'Bro')}{party.leader === m.id ? ' · leader' : ''}
+                </span>
+                <span style={{ fontSize: 12, color: LS.txt2, fontVariantNumeric: 'tabular-nums' }}>Lv {m.level || 1}</span>
+              </div>
+            );
+          }) : (
+            <div style={{ fontSize: 12.5, color: LS.txt2, lineHeight: 1.45 }}>
+              You're not in a party. Up to four bros can team up: you see each other's health, talk on the party chat, and go into dungeons together.
+            </div>
+          )}
+        </div>
+        {row('party', '/icons/ui/soc-party.webp', '🍺', 'Find a party', 'Pick a player, then tap Invite to Party on their card', props.onPlayers)}
+      </div>
     </div>
   );
 }

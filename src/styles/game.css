@@ -1190,6 +1190,97 @@ input{font-family:inherit}
    28px is under the 44pt touch floor; an invisible inset:-8px pseudo
    grows the TAP target to 44px with zero visual change. */
 .bt-inspect-close::after{content:'';position:absolute;inset:-8px}
+/* ═══ v2.3.3258: THE ROOM BEHIND THE MENU (BuildingRoom.jsx, data/buildingRooms.js) ═══
+   The owner's picture of the inside of a building is the BACKGROUND of its
+   window, and the menu is written over it -- the owner: "Have it open up as
+   backgrounds behind the different buildings menus instead of literally going
+   into a building".
+   - The room is the card's back layer: absolutely placed over the whole card
+     (z-index -1 in the card's own stacking context -- `isolation`, and the
+     card's mask makes one anyway), its scene the whole room at the card's
+     width, 3:2 (240px on a phone), clipped to the card's height so a short
+     window never scrolls to show more picture.
+   - The menu (the panel, whatever building it is) starts a STAGE down the
+     room, `--room-stage`: 62% of the picture's height -- the sign and the
+     middle of the room -- and at most 22vh on a short phone.  Its own surface
+     is taken away, so it is written on the room, and the room fades into the
+     card's slate under it (the ::after shade: clear above the stage, half
+     shaded at its line, all slate 80px below), so its words always read.
+   - It scrolls WITH the menu: a background that stayed while the words
+     scrolled up over the picture would put them on its bright sign.
+   - The stage is a length, not a percentage, because the shade's stops need
+     the same number: 62% of 3:2 is 41.33% of the card's width, and the card
+     is min(360px, 100vw - 24px) wide (BroTown.jsx, the card's inline width:
+     change one, change both).  The card's 20px padding is load-bearing
+     (every panel bleeds into it with margin:-20, above), so the panel's
+     margin-top is the stage less 20.
+   - The forge's window sits low so the smith shows above it (v2.3.2826): its
+     stage is a slim band (the sign, the fire, the anvil), a quarter of the
+     width, the scene pulled up 7.33% of the width = 11% of the picture.
+   - A sideways phone (under 460px tall, the whole window ~190px) has no room
+     for a stage: the room steps aside and every rule that lays the menu on it
+     is off (they sit in a min-height query), so the panel is as it always was. */
+.bt-room{position:absolute;left:0;top:0;right:0;bottom:0;z-index:-1;overflow:hidden;pointer-events:none}
+.bt-room::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg, rgba(30,46,52,0) calc(var(--room-stage) - 40px), rgba(30,46,52,.55) calc(var(--room-stage) - 2px),
+    rgba(30,46,52,.88) calc(var(--room-stage) + 36px), #1E2E34 calc(var(--room-stage) + 80px))}
+.bt-room-scene{position:relative;width:100%;aspect-ratio:3/2;background:#111E23}
+.bt-room-img{position:absolute;left:0;top:0;display:block;width:100%;height:100%;opacity:0;transition:opacity .18s ease-out}
+.bt-room[data-room-state="ready"] .bt-room-img{opacity:1}
+.bt-room[data-shape="band"] .bt-room-scene{margin-top:-7.33%}
+@media (min-height:461px){
+  .bt-inspect-card[data-room]{isolation:isolate;background:#1E2E34;
+    --room-stage:min(148.8px, calc(41.33vw - 9.92px), 22vh)}
+  .bt-inspect-card[data-room="blacksmith"]{--room-stage:min(90px, calc(25vw - 6px))}
+  .bt-inspect-card > .bt-room + *{margin-top:calc(var(--room-stage) - 20px)!important;background:transparent!important}
+  /* ...and so is its header: every building panel's first child is its title --
+     a strip on its own slate (#27393F, the Enchanter's #182227) in eleven of
+     them, bare text in five (measured on all sixteen, mp-buildingrooms) -- so
+     taking that colour away puts the title on the room as well, its divider
+     line kept, and changes nothing where there was none */
+  .bt-inspect-card > .bt-room + * > :first-child{background-color:transparent!important}
+  /* the close button sits on the picture, not on a plain header strip, so it
+     wears a dark disc that reads on any of the rooms */
+  .bt-inspect-card[data-room] > .bt-inspect-close{z-index:2;background:rgba(17,30,35,.78);color:#fff}
+}
+@media (max-height:460px){.bt-room{display:none}}
+@media (prefers-reduced-motion:reduce){.bt-room-img{transition:none}}
+/* A window open over the minimap is not a tap on the minimap.  The world map's
+   invisible "open" button (WorldMapOverlay.jsx) is a fixed, z-index 45 portal in
+   the page body -- above everything inside the game's wrapper, the windows
+   included -- laid over the minimap's box.  A tall window's close button sits in
+   that box (its card's top is held 74px down, the minimap runs to ~175px), so a
+   finger on it opened the world map and the window stayed.  It was already so for the
+   Marketplace and the Gambling Den; the room pictures make most windows tall
+   (found by mp-buildingrooms: elementFromPoint at the close button).  While any
+   .bt-inspect (window, card, scrim) is up the button lets taps through. */
+body:has(.bt-inspect) [data-world-map-open]{pointer-events:none}
+/* ═══ v2.3.2627, moved here v2.3.3258: THE AUCTION HOUSE'S CLERK ═══
+   The clerk the game draws into the Auction House's room (data/buildingRooms.js
+   ROOM_KEEPERS; he was on the owner's first painting of it, v2.3.2627, and is
+   on the new one).  Where he stands is data; only the idle cycle needs a
+   stylesheet, because @keyframes cannot be written inline.
+
+   THE IDLE IS NOT A FLIPBOOK.  The six frames are expressions, not a walk
+   cycle, so a constant-rate steps(6) would read as a man vibrating.  He
+   holds the neutral frame for most of the loop and the others punctuate it
+   -- a blink, then a smile and a grin -- on step-end so the frames cut
+   rather than cross-fade.  Six frames of 362px in a 600%-wide background:
+   frame i sits at background-position-x i*20%. */
+@keyframes bt-room-keeper-idle{
+  0%,54%{background-position-x:0%}      /* neutral */
+  55%,58%{background-position-x:80%}    /* blink */
+  59%,72%{background-position-x:0%}
+  73%,78%{background-position-x:20%}    /* small smile */
+  79%,84%{background-position-x:40%}    /* grin */
+  85%,100%{background-position-x:0%}
+}
+.bt-room-keeper{position:absolute;background-repeat:no-repeat;background-position:0% 0%;pointer-events:none;animation:bt-room-keeper-idle 11s step-end infinite}
+/* An expression loop is decoration; a reader who asked for less motion gets
+   the neutral frame and nothing moving. */
+@media (prefers-reduced-motion: reduce){
+  .bt-room-keeper{animation:none;background-position-x:0%}
+}
 .bt-inspect-av{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 8px;
   display:block;border:2.5px solid var(--pop)}
 .bt-inspect-name{font-size:16px;font-weight:800;color:#fff;margin-bottom:2px}
@@ -6021,39 +6112,6 @@ html[data-orient="landscape"] .bt-zone-banner{
   --zb-bar-h:28px;
 }
 html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14px}
-
-/* ═══ v2.3.2627: THE AUCTION HOUSE'S INTERIOR ═══
-   The owner's room painting, with the clerk behind the counter.  Was the
-   general store's room in v2.3.2624, until #686 renamed the building and
-   #678 took the shopkeeper's shelf out of its panel -- see VendorPanel.jsx.
-   Geometry is measured, not eyeballed: the room PNG is 1288x773, opaque,
-   already cropped to the rows the panel shows -- the sign, the shelves and
-   the counter, stopping before the floorboards, because this panel wants a
-   counter you are standing at rather than a room you are looking into.
-   Those numbers live in VendorPanel.jsx beside the element that uses them;
-   only the idle cycle needs a stylesheet, because @keyframes cannot be
-   written inline.
-
-   THE IDLE IS NOT A FLIPBOOK.  The six frames are expressions, not a walk
-   cycle, so a constant-rate steps(6) would read as a man vibrating.  He
-   holds the neutral frame for most of the loop and the others punctuate it
-   -- a blink, then a smile and a grin -- on step-end so the frames cut
-   rather than cross-fade.  Six frames of 362px in a 600%-wide background:
-   frame i sits at background-position-x i*20%. */
-@keyframes bt-auction-keeper-idle{
-  0%,54%{background-position-x:0%}      /* neutral */
-  55%,58%{background-position-x:80%}    /* blink */
-  59%,72%{background-position-x:0%}
-  73%,78%{background-position-x:20%}    /* small smile */
-  79%,84%{background-position-x:40%}    /* grin */
-  85%,100%{background-position-x:0%}
-}
-.bt-auction-keeper{animation:bt-auction-keeper-idle 11s step-end infinite}
-/* An expression loop is decoration; a reader who asked for less motion gets
-   the neutral frame and nothing moving. */
-@media (prefers-reduced-motion: reduce){
-  .bt-auction-keeper{animation:none;background-position-x:0%}
-}
 
 /* ═══ v2.3.3006: THE SPRINT BUTTON'S "NO" ═══
    A tap with too little stamina to start a sprint shakes the button's face

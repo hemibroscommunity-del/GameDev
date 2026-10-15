@@ -2211,7 +2211,58 @@ remnant to migrate server-side, not a mode to preserve.
     - measured on the QA box (`mp-crowdbots`): 150 players spread out, the
       frame's work 36 -> 20 ms; 150 on screen, 31 -> 21 with the cap;
     - `?nopeercull` is all three off; `mp-peercull` (two phones),
-      `mp-crowdbots` `BT_CROWD_QUERY`: docs/specs/peer-cull.md.)
+      `mp-crowdbots` `BT_CROWD_QUERY`: docs/specs/peer-cull.md.
+  - Since v2.3.3258 EACH BUILDING'S ROOM IS THE BACKGROUND OF ITS MENU, AND A
+    KEEPER OPENS HIS BUILDING -- the owner sent seventeen pictures of the
+    buildings' insides ("Ok wire these up"), then, asked whether to walk inside,
+    see a still picture or meet the shopkeeper outside: "Yes I like your idea
+    of interacting with the building's NPC instead of having the building
+    interiors. Have it open up as backgrounds behind the different buildings
+    menus instead of literally going into a building":
+    - nobody walks in: the window opens over the street, and its room
+      (`src/ui/panels/buildings/BuildingRoom.jsx`, once, first in the card;
+      `BUILDING_ROOMS` in src/data/buildingRooms.js, the `buildingPanel` -> its
+      plot's `public/world/interiors/<plot id>.webp`, 1152 x 768 lossy WebP from
+      `tools/ui/make-room-pictures.py`) is the card's BACK LAYER (z-index -1,
+      the card isolated): 3:2 at the card's width, the menu a STAGE down it
+      (`--room-stage`, 62% of the room's height = min(148.8px, 41.33vw -
+      9.92px, 22vh), written out from the card's inline width -- change one,
+      change both), the panel's own surface and its title strip's (its first
+      child, in all sixteen) taken away so the title is written on the room, a
+      shade fading the room into the slate 80 px under the stage; it scrolls
+      with the menu; the forge's stage a quarter-width band (its card sits
+      low); sideways (under 460 px tall) none of it applies (a min-height
+      query) and the room steps aside; no panel touched; sixteen windows, the
+      Hotel's (shut) waits in `SPARE_ROOMS`;
+    - THE KEEPERS (`WHEEL_KEEPERS` in wheelBuildingDoors.js, `keeperOf` set by
+      `_spawnWheelNpcs` where the building stands): talking to him -- a tap,
+      E, the right stick's tap, each AFTER his quest -- opens his building
+      through the door's own path (interactions.js `enterWheelDoor`: the same
+      window, the same visit counted): Blacksmith Bro the forge, Mayor Bro the
+      Town Hall once he has no quest; Diego and Ace keep their own windows; the
+      other twelve buildings keep their doors until the owner's keepers are
+      made (docs/ART-WISHLIST.md "The keepers"); every door still opens;
+    - THE SALOON IS THE SALOON -- the owner: "the gladiator arena is showing
+      'saloon' behind it": the Saloon's door (`party`) had opened the arena
+      (PartyPanel) since v2.3.881; the arena is its own window, `arena`, no
+      room behind it, from the Sheriff's Office's "The arena", and the
+      Saloon's window is `SaloonPanel` (WheelHallPanel.jsx): your party and
+      Find a party;
+    - the Land Office's window was a separate z-30 dialog UNDER an empty card
+      and is a panel in the card now (`LandOfficePanel.jsx`); a tall window's
+      ✕ lay under the world map's invisible z-45 "open" button -- any
+      `.bt-inspect` up now lets taps through it (game.css);
+    - NONE ON THE LOADING GATE: the door you stand at decodes its room, a cap
+      of one (game/buildingRooms.js `warmRoom`), and the first shop's or
+      hall's door (not the Town Hall's: `HUB_ROOMS`) starts the others' bytes
+      coming at low priority, never decoded or held; cached a year, asked for
+      at `?v=` `ROOMS_V`;
+    - the Auction House's clerk is drawn into its room (`ROOM_KEEPERS`); THE
+      TOWN HALL IS THE FOURTH HALL (`WHEEL_HALL_DOORS.townhall`: the
+      Leaderboard and the World map, the owner's "a Town Hall window");
+    - QA probe `window.__btBuildingWindow.open(panel)`; test-world-core "the
+      buildings' insides" and "the keepers", `mp-buildingrooms`,
+      `mp-wheelhalls` §7: docs/specs/building-rooms.md, wheel-halls.md.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
