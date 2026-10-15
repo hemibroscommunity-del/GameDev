@@ -42,7 +42,9 @@ const INIT = `
     const origSend = ws.send.bind(ws);
     ws.send = (d) => {
       try {
-        const m = typeof d === 'string' ? JSON.parse(d) : null;
+        /* v2.3.3254: a frame may be a bundle (a JSON array of messages) */
+        const _v = typeof d === 'string' ? JSON.parse(d) : null;
+        const m = Array.isArray(_v) ? (_v.find((x) => x && (x.type || x.event) === 'loot_pickup') || null) : _v;
         if (m && (m.type || m.event) === 'loot_pickup') {
           const S = window._gameState && window._gameState.current;
           const p = S && (S.groundLoot||[]).find((l) => l && l.lootId === m.payload.lootId);

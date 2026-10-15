@@ -194,6 +194,8 @@ const CAP_GATES = [
   'tierxp' /* v2.3.3251: each tier's harvest XP twice the one before (server/src/gathering.js GATHER_TIER_XP) -- lower case, a kill switch; off with nodehp too */,
   'xpdecay' /* v2.3.3251: XP fades 5+ levels below you, harvests and fights (server/src/xpdecay.js) -- lower case, a kill switch */,
   'presence2' /* v2.3.3250: far players only while the world map is open, the online list, far copies parked (server/src/presence2.js) -- lower case, a kill switch */,
+  'bundle' /* v2.3.3254: several messages in one frame (server/src/bundle.js) -- lower case, a kill switch (the worker always takes one) */,
+  'quiet' /* v2.3.3254: the quiet phone -- 66 ms moves with nobody near, a steady walk held out of a fight, keepalives and the look only when needed (src/game/quietPhone.js) -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported

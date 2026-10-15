@@ -65,7 +65,13 @@ function countMoves() {
   window.__mvWire = [];
   const send = WebSocket.prototype.send;
   WebSocket.prototype.send = function (d) {
-    if (typeof d === 'string' && d.startsWith('{"type":"move"') && window.__mvWire.length < 5000) window.__mvWire.push(performance.now());
+    /* v2.3.3254: a frame may be a bundle (a JSON array of messages) */
+    if (typeof d === 'string' && d.indexOf('"type":"move"') >= 0 && window.__mvWire.length < 5000) {
+      try {
+        const v = JSON.parse(d);
+        for (const m of Array.isArray(v) ? v : [v]) if (m && m.type === 'move') window.__mvWire.push(performance.now());
+      } catch (e) { /* not ours */ }
+    }
     return send.call(this, d);
   };
 }

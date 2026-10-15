@@ -41,9 +41,12 @@ const HOOK = `
   WebSocket.prototype.send = function (data) {
     try {
       if (typeof data === 'string' && data.indexOf('"move"') !== -1) {
-        const m = JSON.parse(data);
-        if (m && m.type === 'broadcast' && m.event === 'move') window.__moveLog.push(performance.now());
-        else if (m && m.type === 'move') window.__moveLog.push(performance.now());
+        /* v2.3.3254: a frame may be a bundle (a JSON array of messages) */
+        const v = JSON.parse(data);
+        for (const m of Array.isArray(v) ? v : [v]) {
+          if (m && m.type === 'broadcast' && m.event === 'move') window.__moveLog.push(performance.now());
+          else if (m && m.type === 'move') window.__moveLog.push(performance.now());
+        }
       }
     } catch (e) {}
     return _send.call(this, data);

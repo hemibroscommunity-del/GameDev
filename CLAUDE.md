@@ -2521,6 +2521,43 @@ Two protocol versions coexist; both must keep working:
     switch `movediet: false` (caps.movediet: each phone at its next join);
     `mp-movediet` (slows the page's drawing while it walks: this box's software
     GL starves page timers): docs/specs/move-diet.md.
+  - v2.3.3254: THE QUIET PHONE -- the owner: "I want you to cut as much as you
+    possibly can IF the loss in quality is negligible or unnoticeable" (every
+    message a phone SENDS may count against the free plan's 100,000 a day;
+    what the server sends is free):
+    - ONE FRAME A MOMENT: against `caps.bundle` everything a phone sends in one
+      turn of its loop goes as ONE frame, a JSON array the worker takes message
+      by message as if each came alone (server/src/bundle.js; index.js
+      `webSocketMessage` -> `_onMessage`; never a join, plain objects only, at
+      most 24, the 16 KB gate the frame's) -- wsClient.js `wsOut` (a
+      microtask: nothing later than before) is every game message's way out;
+    - RIDERS (src/game/quietPhone.js): the ping's answer rides on the next
+      frame saying how long it waited (`hd`; the worker subtracts it and takes
+      only the latest ping's), one in four alone with nothing else going; the
+      look (`track`) at once when its NEWS changes (the worker's own
+      LOOK_RELAY rule; 3,000 random looks: never holds back a relay), else
+      riding or alone every 30 s (the 2-minute away clock reads its `aw: 0`);
+      the tree's `gather_node` repeat riding;
+    - STANDING STILL: the keepalive move once 1 s after the last move, then
+      every 10 s (the worker's 1 Hz roster heals the others); a death, a gear
+      change, or a place or zone changed with no thumb on the stick (a harvest's
+      snap, a shove, a door) at once; no 500 ms harvest heartbeat (the worker
+      stamps only a harvest's start);
+    - MOVES: 33 ms only with a player within 2,400 px (the worker sends your
+      moves to no one further) or in an arena match, else 66 ms -- the solo
+      rate the owner set in v2.3.1767; a steady walk held to 66 ms anywhere in
+      the Wheel out of a fight, unless a player near you may fight you there
+      (nmlCanAttack);
+    - measured on a real page (mp-quietphone, main -> this): standing 1.79 ->
+      0.25 frames a second, turning with nobody near 18.2 -> 11.7 (a phone: 30
+      -> 15), a claim and its move 2 -> 1 frame, the look and ping never alone
+      while walking; fights beside others unchanged (33 ms);
+    - kill switches `bundle: false` / `quiet: false` (each phone as before from
+      its next join; the worker always takes a bundle); nothing bundled or
+      riding until THAT socket's state_sync (`_capsHere`: the last worker's
+      caps outlive a reconnect, and a rolled-back worker would relay an array
+      to the room); `quiet-phone` suite (56: two rooms in lockstep, bundled and
+      not, identical), docs/specs/quiet-phone.md.
   - v2.3.3205: THE CAP IS 120 -- the owner: "I think 120 is a good cap limit
     for now" (index.js `MAX_PLAYERS`; `max_players` can still only lower it;
     chatmod `SEEN_MAX` 240, twice the cap). With #887-#891 the room is smooth
