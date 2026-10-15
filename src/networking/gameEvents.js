@@ -77,6 +77,10 @@ import { noteWard } from '@/game/trapping.js';   /* v2.3.3123: a hit the pet out
  * but a weapon swap inside the round trip, and for a peer it declines to
  * guess rather than marking their arrow with our sword. */
 const SLOT_ICON = { melee: 'sword', ranged: 'arrow', staff: 'spell' };
+/* v2.3.3263: how far off an onlooker still draws a hit between two other
+   players -- the reach a monster's hit on them has (server eventplace.js
+   EVENT_PLACE.R = INTEREST_OUT); pvp_hit itself goes to the whole room. */
+const PVP_ONLOOK_R = 2800;
 
 /* ═══ v2.3.2233: A CRIT IS NOT ALWAYS A SWORD ═══
  *
@@ -96,6 +100,28 @@ const SLOT_ICON = { melee: 'sword', ranged: 'arrow', staff: 'spell' };
  * If the burst is wanted back, the fix is per-weapon crit art (a burst with
  * an arrow, a burst with a bolt) rather than one blade for all three; that
  * is an art call, not a code one. */
+/* ═══ v2.3.3263: ONE FIGURE FOR A HIT ON A PLAYER, ON EVERY SCREEN ═══
+   Owner: "Same with damage dealt it stays consistent.  Everything is 1
+   version".  A hit on a monster prints the change in its bar
+   (toDisplayHitDamage, the monster_hit branch -- v2.3.2520's consistency
+   rule); a hit on a player printed round(dmg / 5), so one blow read "-2" on
+   the striker's screen and "-3" on the target's (mp-pvpnumbers caught it).
+   Now a hit on a player is the change in THEIR bar too, from the worker's own
+   numbers: `hp` (their HP after it -- pvp_hit and, since this version,
+   monster_attack carry it) and `dmgTaken`; a Second Wind that healed them
+   after the blow is taken back off first.  The same figure on the striker's,
+   the target's and every onlooker's screen, and for a monster's hit and a
+   player's alike.  An older worker sends no `hp` on monster_attack: the old
+   round, as before.  `dmg` > 0 only (a hit that took nothing says nothing). */
+function takenFigure(payload, dmg) {
+  var d = Math.ceil(Number(dmg) || 0);
+  if (payload && typeof payload.hp === 'number' && isFinite(payload.hp)) {
+    var after = payload.hp - (payload.secondWind > 0 ? payload.secondWind : 0);
+    return toDisplayHitDamage(after + d, after, d);
+  }
+  return toDisplayDamage(d);
+}
+
 export function dmgIconForSlot(S, payload, isOwn) {
   const fromWire = payload && SLOT_ICON[payload.slot];
   if (fromWire) return fromWire;
@@ -2677,7 +2703,15 @@ export function processGameEvent(type, payload, S, deps) {
                     var _rx = rOther.renderX != null ? rOther.renderX : rOther.x, _ry = rOther.renderY != null ? rOther.renderY : rOther.y;
                     queueBlood(S, _rx || 0, _ry || 0, _bx, _by, _bdmg / Math.max(1, rOther.rpgMaxHp || 100));
                   }
-                  pushDmgPopup(S, rOther.x || 0, peerPopupY(rOther), '-' + toDisplayDamage(payload.dmg || 0), '#ff5e6c', _rLook ? { iconKey: _rLook.icon, taken: true } : { taken: true });   /* v2.3.2520: display scale; v2.3.2996: + the element's icon; v2.3.3026: over their head, not on their face (combatHelpers peerPopupY) */
+                  /* v2.3.3263: with the worker's `hp` the figure is what they TOOK, the
+                     change in their bar (takenFigure) -- as a player's hit on them
+                     reads -- and a blow that took nothing says nothing; an older
+                     worker's keeps its old raw number */
+                  if (typeof payload.hp !== 'number') {
+                    pushDmgPopup(S, rOther.x || 0, peerPopupY(rOther), '-' + toDisplayDamage(payload.dmg || 0), '#ff5e6c', _rLook ? { iconKey: _rLook.icon, taken: true } : { taken: true });   /* v2.3.2520: display scale; v2.3.2996: + the element's icon; v2.3.3026: over their head, not on their face (combatHelpers peerPopupY) */
+                  } else if (_bdmg > 0) {
+                    pushDmgPopup(S, rOther.x || 0, peerPopupY(rOther), '-' + takenFigure(payload, _bdmg), '#ff5e6c', _rLook ? { iconKey: _rLook.icon, taken: true } : { taken: true });
+                  }   /* v2.3.2520: display scale; v2.3.2996: + the element's icon; v2.3.3026: over their head, not on their face (combatHelpers peerPopupY) */
                 }
                 break;
               }
@@ -3038,7 +3072,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.dodged && !(Math.ceil(dmgTaken2) > 0)) {
                 pushDmgPopup(S, S.player.x, heroPopupY(S), 'Dodged', '#9ca3af', { taken: true });
               } else if (Math.ceil(dmgTaken2) > 0 || _elSt) {
-                pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + toDisplayDamage(Math.ceil(dmgTaken2)), '#ff5e6c', { iconKey: _elLook ? _elLook.icon : 'heart', taken: true });   /* v2.3.2520: display scale */
+                pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + takenFigure(payload, dmgTaken2), '#ff5e6c', { iconKey: _elLook ? _elLook.icon : 'heart', taken: true });   /* v2.3.2520: display scale; v2.3.3263: the change in your bar, as a player's hit on you (takenFigure) */
               }
               /* v2.3.1137: Second Wind — the worker healed us right after
                  this hit (defense channel, 10s cooldown); green popup.
@@ -3489,9 +3523,9 @@ export function processGameEvent(type, payload, S, deps) {
                 if (payload.target === S.myId) {
                   var _lzSt = applyElemHit(S, payload, Date.now());
                   if (_lzSt) { try { BT_AUDIO.elemHit(_lzSt); } catch (e) { /* sound only */ } }
-                } else {
-                  var _lzO = S.others && S.others[payload.target];
-                  if (_lzO && !_lzO._isDead) applyElemHit(S, payload, Date.now(), _lzO);
+                } else if (_peerInZone(S, payload.target)) {   /* v2.3.3263: pvp_hit goes to every zone (the onlooker's rule, below) */
+                  var _lzO = S.others[payload.target];
+                  if (!_lzO._isDead) applyElemHit(S, payload, Date.now(), _lzO);
                 }
               }
               if (payload.target !== S.myId) {
@@ -3556,17 +3590,56 @@ export function processGameEvent(type, payload, S, deps) {
                     pushDmgPopup(S, _pvX, _pvY, 'Dodged', '#9ca3af');
                   } else if (payload.blocked) {
                     pushDmgPopup(S, _pvX, _pvY, 'Blocked', '#607D8B');
-                  } else if (typeof payload.dmgTaken === 'number') {
-                    pushDmgPopup(S, _pvX, _pvY,
-                      '-' + toDisplayDamage(Math.ceil(payload.dmgTaken)) + (payload.isCrit ? '!' : ''),   /* v2.3.2520: display scale */
-                      payload.isCrit ? DMG_CRIT_COLOR : '#ff5e6c',
-                      /* v2.3.2211: this one already SAID crit with a '!' and
-                         a colour, and still drew at ordinary size. */
-                      payload.isCrit ? { crit: true, iconKey: 'crit' } : undefined);
+                  } else if (typeof payload.dmgTaken === 'number' && payload.dmgTaken > 0) {
+                    /* ═══ v2.3.3263: YOUR HIT ON A PLAYER READS AS YOUR HIT ON A MONSTER ═══
+                       Owner: "the numbers for damage between PVP and PVE can be
+                       exactly the same for each combat skill type ... Everything
+                       is 1 version".  The worker rolls one hit for both
+                       (combat.js _rollHit); it is drawn one way too -- the
+                       monster_hit branch's own number (toDisplayHitDamage: the
+                       change in the bar, the roll itself on a kill), its amber
+                       and crit colours, its weapon mark (the worker now names
+                       the `slot`) and the special's flourish, over the target's
+                       band as monsterPopupY puts it over a monster's.  It was
+                       red with a '!' -- the colours of a hit TAKEN -- so one
+                       swing read as two different things.  A hit that took
+                       nothing (the arrival grace) says nothing, as on you. */
+                    pushDmgPopup(S, _pvX, _pvTgt ? peerPopupY(_pvTgt) : _pvY, '-' + takenFigure(payload, payload.dmgTaken),
+                      payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
+                      { crit: !!payload.isCrit, iconKey: dmgIconForSlot(S, payload, true), special: !!S._ownSpecialRecent });
                   }
                   /* Flash the opponent so a hit reads even off-centre, the same
                      feedback a monster gets. */
                   if (_pvTgt && !_pvTgt._isDead) _pvTgt._hitFlash = Date.now();
+                } else {
+                  /* ═══ v2.3.3263: AN ONLOOKER SEES IT AS A MONSTER'S HIT ON THEM ═══
+                     One version (above): a player hit by a player reads, to
+                     everyone watching, the way a player hit by a monster does
+                     (the monster_attack peer branch) -- the flash, the blood,
+                     and their number in the taken red over their head.  It
+                     drew nothing at all.  pvp_hit goes to the whole room --
+                     every zone, a duel in the arena too -- so only a fight in
+                     OUR zone (_peerInZone, the gate every relayed effect here
+                     has) within PVP_ONLOOK_R, the reach a monster's hit on
+                     them has (server eventplace.js EVENT_PLACE.R), is drawn:
+                     without the zone, two players fighting elsewhere bled and
+                     took numbers over our own ground (mp-pvpnumbers 5). */
+                  var _pvOn = _peerInZone(S, payload.target) ? S.others[payload.target] : null;
+                  if (_pvOn && !_pvOn._isDead && S.player) {
+                    var _pvOx = _pvOn.x != null ? _pvOn.x : _pvOn.renderX;
+                    var _pvOy = _pvOn.y != null ? _pvOn.y : _pvOn.renderY;
+                    var _pvOdx = (_pvOx || 0) - S.player.x, _pvOdy = (_pvOy || 0) - S.player.y;
+                    if (_pvOdx * _pvOdx + _pvOdy * _pvOdy <= PVP_ONLOOK_R * PVP_ONLOOK_R) {
+                      _pvOn._hitFlash = Date.now();
+                      var _pvOd = typeof payload.dmgTaken === 'number' ? payload.dmgTaken : 0;
+                      if (_pvOd > 0 && !payload.blocked && !payload.dodged) {
+                        var _pvOa = S.others && S.others[payload.attacker];
+                        queueBlood(S, _pvOn.renderX != null ? _pvOn.renderX : (_pvOx || 0), _pvOn.renderY != null ? _pvOn.renderY : (_pvOy || 0),
+                          _pvOa ? _pvOa.x : null, _pvOa ? _pvOa.y : null, _pvOd / Math.max(1, _pvOn.rpgMaxHp || 100));
+                        pushDmgPopup(S, _pvOx || 0, peerPopupY(_pvOn), '-' + takenFigure(payload, _pvOd), '#ff5e6c', { taken: true });
+                      }
+                    }
+                  }
                 }
                 break;
               }
@@ -3594,7 +3667,26 @@ export function processGameEvent(type, payload, S, deps) {
                  new authoritative value.  Death is driven by the server's
                  player_died event. */
               if (window.__dmgLog) try { console.log('[dmg] net-pvp_hit', { amt: Math.ceil(dmgTaken), attacker: payload.attacker, blocked: payload.blocked }); } catch (e) {}
-              pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + toDisplayDamage(Math.ceil(dmgTaken)), payload.blocked ? '#607D8B' : '#ff5e6c', { taken: true });   /* v2.3.2520: display scale; v2.3.3026: over your head (heroPopupY) */
+              /* ═══ v2.3.3263: A PLAYER'S HIT ON YOU READS AS A MONSTER'S ═══
+                 One version (the attacker's branch above): the monster_attack
+                 branch's own words for the same three outcomes -- "Dodged", a
+                 block's "Blocked!" and the ⚡ it cost (the worker now sends
+                 `staminaDrain`, as monster_attack does) and the block counted
+                 for the "block 10 hits" quest, or the number with the heart --
+                 over your head.  It printed a grey "-0" and "BLOCKED" for a
+                 block and a number with no heart for a hit. */
+              if (payload.dodged && !(Math.ceil(dmgTaken) > 0)) {
+                pushDmgPopup(S, S.player.x, heroPopupY(S), 'Dodged', '#9ca3af', { taken: true });
+              } else if (payload.blocked) {
+                if (!_R2._questFlags) _R2._questFlags = {};
+                _R2._questFlags.blocksLanded = (_R2._questFlags.blocksLanded || 0) + 1;
+                pushDmgPopup(S, S.player.x, heroPopupY(S), 'Blocked!', '#60a5fa');
+                if (typeof payload.staminaDrain === 'number' && payload.staminaDrain > 0) {
+                  pushDmgPopup(S, S.player.x + 18, S.player.y - 4, '-' + payload.staminaDrain + '⚡', '#facc15', { ts: Date.now() + 1 });
+                }
+              } else if (Math.ceil(dmgTaken) > 0) {
+                pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + takenFigure(payload, dmgTaken), '#ff5e6c', { iconKey: 'heart', taken: true });   /* v2.3.2520: display scale; v2.3.3026: over your head (heroPopupY); v2.3.3263: the change in your bar (takenFigure) */
+              }
               /* v2.3.1137: Second Wind fires in PvP too (see server
                  _applyDamage); mirror the green heal popup here. */
               /* v2.3.1314: Last Stand — the killing blow left us at 1 HP. */
@@ -3604,7 +3696,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.secondWind > 0) {
                 pushDmgPopup(S, S.player.x + 16, S.player.y - 38, '+' + payload.secondWind + ' Second Wind', '#4ade80', { ts: Date.now() + 2 });
               }
-              if (payload.blocked) pushDmgPopup(S, S.player.x, S.player.y - 35, 'BLOCKED', '#607D8B');
+              /* (v2.3.3263: the block's own popup is "Blocked!" above, as a monster's) */
               for (var hp2 = 0; hp2 < 6; hp2++) S.hitParticles.push({
                 x: S.player.x,
                 y: S.player.y,

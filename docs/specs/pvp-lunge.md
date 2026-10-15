@@ -23,8 +23,10 @@ same cooldown, the same reach, the same hit.
    puts you at contact (46 px from them), as it does at a monster.
 3. **The hit** goes through the one door for every hit between players
    (`_resolvePvPAttack`). That includes the shield's arc, a roll's dodge,
-   armour, the 30% cap, No man's land's skulls, the eating clock and a death.
-   The worker rolls it itself, the same roll a monster takes (one formula).
+   armour, No man's land's skulls, the eating clock and a death. The worker
+   rolls it itself with the one calculation a monster's hit uses too
+   (v2.3.3263's one version: the same number on a monster and on a player of
+   that level, no cap of a player's own).
 4. **The daze.** A lunge that lands (not blocked, not dodged) dazes the player
    hit. This is the **rock monsters' daze**, the very same numbers:
    - 0.5 s of no walking, swinging, rolling or raising the shield;
@@ -61,27 +63,31 @@ A daze from a rock monster counts the same: you are dazed either way.
 Measured on the fight simulator (`tools/pvp-sim/lunge.mjs`), which runs the
 worker's own combat code. The rows are two equal players with no points spent
 and no food. Each figure is how often the **sword wins** at low / average /
-top skill, before and after.
+top skill, before and after. Re-measured on top of v2.3.3263 (one version: no
+cap, the level rule both ways); the sword-against-bow figures did not move,
+and the staff's moved by a point or two.
 
 | | Sword v bow, before | after | Sword v staff, before | after |
 | --- | --- | --- | --- | --- |
-| Level 7, copper set | 74 / 88 / 0 | 94 / 88 / 99 | 13 / 37 / 0 | 19 / 40 / 81 |
-| Level 12, no armour | 8 / 13 / 0 | 31 / 31 / 30 | 7 / 27 / 0 | 19 / 33 / 55 |
-| **Level 12, copper set** | **8 / 19 / 0** | **32 / 39 / 89** | **3 / 26 / 0** | **12 / 20 / 66** |
-| Level 12, iron set | 24 / 38 / 0 | 59 / 46 / 96 | 4 / 25 / 0 | 13 / 30 / 78 |
-| Level 22, copper set | 8 / 54 / 0 | 46 / 63 / 89 | 1 / 8 / 0 | 6 / 11 / 21 |
+| Level 7, copper set | 74 / 88 / 0 | 94 / 88 / 99 | 13 / 37 / 0 | 22 / 34 / 78 |
+| Level 12, no armour | 8 / 12 / 0 | 30 / 31 / 30 | 2 / 12 / 0 | 8 / 17 / 31 |
+| **Level 12, copper set** | **8 / 19 / 0** | **32 / 39 / 89** | **3 / 24 / 0** | **12 / 21 / 66** |
+| Level 12, iron set | 24 / 38 / 0 | 59 / 46 / 96 | 4 / 28 / 0 | 13 / 28 / 80 |
+| Level 22, copper set | 8 / 54 / 0 | 46 / 63 / 89 | 1 / 8 / 0 | 6 / 12 / 19 |
 
 (The level 12 and 22 copper rows are 1,000 fights a cell; the rest 300.)
 
 - **The top-skill sword is no longer helpless.** Before, a skilled bow or
   staff player who backed off at full speed was never caught. Now the sword
   catches them every 2.5 s.
-- **Fights that never ended now end.** Before, 19% of sword-against-staff
+- **Fights that never ended now end.** Before, 18% of sword-against-staff
   fights at level 12 hit the simulator's 2-minute limit; now none do.
 - **Sword v sword** is the same length as before (10 s at level 12 with the
   copper set), and the better player still wins 98-99%.
 - **Bow v staff** is untouched (no lunge in it).
-- No single hit takes more than 30% of a bar, as before.
+- The biggest single hit the simulator saw at level 12 with the copper set
+  was 47% of a bar, with or without the lunge (v2.3.3263 took the 30% cap
+  away: one version for monsters and players).
 
 ### Why the rock monsters' daze
 
@@ -92,11 +98,11 @@ average skill):
 
 | Daze on a player | Sword v bow | Sword v staff |
 | --- | --- | --- |
-| none (the lunge alone) | 82% (35%) | 54% (24%) |
-| 0.3 s, every lunge | 85% (37%) | 59% (21%) |
-| **0.5 s, every other lunge: the rock monsters' (shipped)** | **90% (39%)** | **69% (20%)** |
-| 0.5 s, every lunge | 90% (39%) | 70% (20%) |
-| 1 s, every lunge | 96% (38%) | 79% (26%) |
+| none (the lunge alone) | 83% (35%) | 52% (20%) |
+| 0.3 s, every lunge | 85% (37%) | 56% (21%) |
+| **0.5 s, every other lunge: the rock monsters' (shipped)** | **90% (39%)** | **68% (23%)** |
+| 0.5 s, every lunge | 91% (39%) | 70% (23%) |
+| 1 s, every lunge | 96% (38%) | 78% (24%) |
 
 The monster version's 1.6 s stun, every 2.5 s, would hold a bow or staff
 player still for two thirds of the fight. The rock monsters' half second is
@@ -112,7 +118,7 @@ on every lunge, tips top-skill fights further toward the sword.
   but it also costs the top-skill sword against a staff (66% to about 36% at
   level 12). No single cooldown evens out both.
 - **An average sword against a staff that stands its ground does slightly
-  worse (26% to 20% at level 12).** The lunge goes off on the press whenever
+  worse (24% to 21% at level 12).** The lunge goes off on the press whenever
   it is ready, and it carries the sword into the staff's point-blank big
   bolt. A staff that does not run is better met on foot.
 - **A modified phone can skip the dash's travel.** The worker puts the sword

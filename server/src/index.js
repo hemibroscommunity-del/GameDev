@@ -1884,6 +1884,7 @@ export class GameRoom {
         dmg: m.dmg,
         dmgTaken,
         dodged: dmgResult.dodged,
+        hp: Math.max(0, Math.round(targetPs.hp || 0)),   /* v2.3.3263: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
         /* v2.3.1686: tells the client to show "Blocked!" + the stamina cost
            instead of an HP number.  undefined when not blocking, so
            JSON.stringify drops both and the wire is unchanged for every

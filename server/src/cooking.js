@@ -143,8 +143,12 @@ export const cookingMethods = {
     if (this._pvpHealHeld(session.id, ps)) { refuseEat(); return; }   /* v2.3.3133: one bite at a time in a fight (v2.3.3260: any fight, _pvpHealWait) */
     // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap +50%).
     /* v2.3.3260: the same heal in any fight -- ONE FORMULA (oneformula.js): the
-       first cut of this version healed a quarter in a fight with a player */
-    const heal = Math.ceil(this._fishHealAmount(invKey)) + this._recoveryFlat(ps); // v2.3.1345: flat recovery bonus
+       first cut of this version healed a quarter in a fight with a player.
+       And a FIXED heal: the owner, "A fish heals the same fixed amount
+       always" -- the fish's own number (data.js FISH_HEAL) and nothing on top.
+       The old HP grid's Recovery bonus (v2.3.1345, 0 for every prog3
+       character) is added only with the ladder switched off, as it was. */
+    const heal = Math.ceil(this._fishHealAmount(invKey)) + (this._fishHealOff() ? this._recoveryFlat(ps) : 0); // v2.3.1345: flat recovery bonus
     if (heal <= 0) { refuseEat(); return; }
     this._noteInstantHeal(session.id);   /* v2.3.3133: counted wherever it is eaten (_pvpHealWait) */
     // Decrement inventory + apply heal.  Heal is "wasted" if at max;
@@ -655,14 +659,17 @@ export const cookingMethods = {
   _applyDish(ps, dish, pid) {
     if (!ps || !dish) return false;
     /* v2.3.3131: a dish eaten at once (slot 'now', the Garden Stew) is a
-       heal, the cooked fish's way: plus the HP grid's Recovery, capped at max
-       HP, refused in an arena match (GDD §43) -- and it touches no slot. */
+       heal, the cooked fish's way: its own number (v2.3.3263: nothing on top),
+       capped at max HP, refused in an arena match (GDD §43) -- and it touches
+       no slot. */
     if (dish.slot === 'now') {
       if (dish.buff !== 'heal' || !(Number(dish.power) > 0)) return false;
       if (ps._arenaMatch) return false;
       if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
       if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-      ps.hp = Math.min(ps.maxHp, ps.hp + Math.ceil(Number(dish.power)) + this._recoveryFlat(ps));
+      /* v2.3.3263: a fixed heal, like a fish's -- no Recovery on top unless
+         the fish ladder is switched off (_handleEatRequest) */
+      ps.hp = Math.min(ps.maxHp, ps.hp + Math.ceil(Number(dish.power)) + (this._fishHealOff() ? this._recoveryFlat(ps) : 0));
       return true;
     }
     if (dish.slot !== 'meal' && dish.slot !== 'brew') return false;

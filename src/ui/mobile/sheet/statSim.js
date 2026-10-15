@@ -58,7 +58,7 @@
  * Pure: no React, no DOM, no window.  StatDemo turns the beats into its
  * timeline; the server suite imports this file under plain node.
  */
-import { specialMultFor, staffBoltK, monsterHitK, hitCapHp } from '../../../data/oneFormula.js'; /* v2.3.3260: one formula for every fight */
+import { specialMultFor, staffBoltK, monsterHitK } from '../../../data/oneFormula.js'; /* v2.3.3260: one formula for every fight */
 import {
   WEAPON_TYPES, SWING_COOLDOWN, SPEED, swingCooldownMultFor, weaponSwingMult,
   combatHitBase, weaponVarBand, CRIT_ANCHOR_MULT, STAFF_BIG_BOLT_BAND,
@@ -310,8 +310,8 @@ export function takenOf(R, slime) {
   }
   const armor = 1 - getArmorDrPct(R);
   if (armor < 1) dmg = Math.max(1, Math.round(dmg * armor));
-  /* v2.3.3260: no blow over 30% of the bar (combat.js _applyDamage) */
-  dmg = Math.min(dmg, hitCapHp(R && R.maxHp));
+  /* (v2.3.3263: v2.3.3263 capped a blow at 30% of the bar here; the one
+     formula has no cap of a player's own now -- combat.js _applyDamage) */
   return { dmg, dodge };
 }
 /** The blue slime's burst: flat, ELEMENTAL -- so Dodge and Defense never meet
@@ -329,7 +329,7 @@ export function burstOf(R) {
   }
   const armor = 1 - getArmorDrPct(R);
   if (armor < 1) dmg = Math.max(1, Math.round(dmg * armor));
-  return Math.min(dmg, hitCapHp(maxHp));   /* v2.3.3260: the one cap */
+  return dmg;
 }
 
 /* The derived pools a point changes (max HP, max stamina, the stamina block

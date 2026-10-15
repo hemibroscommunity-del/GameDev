@@ -262,10 +262,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 
 // ── 3. _applyDamage: block, grace, resist ──
 {
-  /* v2.3.3260: a bar of 1000 -- the one formula's cap (no blow over 30% of
-     max HP, oneformula.js) would otherwise clip the 100-point hits these
-     checks are about; the cap has its own suite (one-formula.test.mjs) */
-  const ps = { hp: 100, maxHp: 1000, agility: 0, z: 'meadow' };
+  const ps = { hp: 100, maxHp: 100, agility: 0, z: 'meadow' };
   check('applyDamage: blocked hit deals 0', room._applyDamage(ps, 50, true).dmgTaken === 0 && ps.hp === 100);
 
   ps._zoneEntryGraceUntil = Date.now() + 5000;
@@ -1096,9 +1093,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('resilience: small hit untouched', small.dmgTaken === 30 && ps.hp === _hpAfterBig - 30, small);
 
   // Last Stand: a killing blow leaves exactly 1 HP, once per cooldown.
-  /* v2.3.3260: at 10 of 100 -- under the one formula a blow takes at most 30
-     of a 100 bar (oneformula.js HIT_CAP), so a killing blow needs a low bar */
-  const ps2 = { hp: 10, maxHp: 100, agility: 0, z: 'meadow', hpSpec: { laststand: 100 } };
+  const ps2 = { hp: 50, maxHp: 100, agility: 0, z: 'meadow', hpSpec: { laststand: 100 } };
   const saved = room._applyDamage(ps2, 500, false);
   check('last stand: lethal hit leaves 1 HP', saved.lastStand === true && ps2.hp === 1, { hp: ps2.hp, saved });
   check('last stand: cooldown armed (20s floor at 100 pts, v2.3.1343)',
@@ -1652,10 +1647,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     // Crossing INTO the band on one big hit must also write at once —
     // the check runs after damage, so there is no way to slip past it.
     psA._regenSaveAt = Date.now(); psA._regenDirty = false;
-    /* v2.3.3260: from 45% -- one blow takes at most 30% of the bar under the
-       one formula (oneformula.js HIT_CAP), so "one big hit into the band" is
-       a 25% one */
-    psA.hp = Math.round(psA.maxHp * 0.45);
+    psA.hp = 1000;
     puts.length = 0;
     /* v2.3.1625: DEFLAKE.  psA carries agility 200 by this point, so
        _applyDamage rolls a 16% passive dodge (Math.random) -- a dodged
@@ -1670,7 +1662,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
        the stats it expects. */
     const _agiSave = psA.agility, _especSave = psA.enduranceSpec, _evAccSave = psA._evadeAcc;
     psA.agility = 0; psA.enduranceSpec = {}; psA._evadeAcc = 0;
-    room._applyDamage(psA, Math.round(psA.maxHp * 0.25), false); // 45% -> 20%, straight into the band
+    room._applyDamage(psA, 800, false); // 1000 -> 200, straight into the band
     psA.agility = _agiSave; psA.enduranceSpec = _especSave; psA._evadeAcc = _evAccSave;
     room._saveRpgVitals('pa', psA);
     check('hp coalesce: a hit that crosses into the band writes immediately',

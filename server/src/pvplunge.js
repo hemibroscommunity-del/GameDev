@@ -28,7 +28,7 @@
  *      blocker the block's stamina as any hit does), a roll's i-frames, the
  *      sword's lane (one hit a swing: the lunge is a swing with its own `sw`),
  *      the worker's own roll (one formula: the hit a monster would take, and
- *      sworddash's dmgMult is 1.0), armour, the 30% cap, the eating clock, No
+ *      sworddash's dmgMult is 1.0; v2.3.3263: no cap of a player's own), armour, the eating clock, No
  *      man's land's skulls, a death.  Nothing here rolls or applies damage;
  *   4. a hit that LANDED -- not blocked, not dodged, more than nothing --
  *      DAZES the player (below), and the pvp_hit says so: `st: 'daze'` and

@@ -342,7 +342,10 @@ const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y)
   const hit = strike(m);
   /* as it goes on the wire: an undefined field is dropped by JSON.stringify */
   const keys = Object.keys(JSON.parse(JSON.stringify(hit))).sort().join(',');
-  check('wire: a plain hit is exactly what it was -- no elem, st, stMs, kb or arcs', keys === 'attackerX,attackerY,dmg,dmgTaken,dodged,monsterId,targetId,zone', keys);
+  /* v2.3.3263: + `hp`, the HP the blow left, as pvp_hit carries it (every
+     screen draws a hit on a player as the change in their bar, one version:
+     gameEvents.js takenFigure) -- still no elem, st, stMs, kb or arcs */
+  check('wire: a plain hit is exactly what it was -- no elem, st, stMs, kb or arcs (v2.3.3263: + hp)', keys === 'attackerX,attackerY,dmg,dmgTaken,dodged,hp,monsterId,targetId,zone', keys);
   stage(of('sky'));
   const gh = strike(of('sky'));
   check('wire: a gust carries kb as two whole numbers', Array.isArray(gh.kb) && gh.kb.length === 2 && gh.kb.every(Number.isInteger), gh.kb);

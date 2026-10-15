@@ -28,10 +28,33 @@
  *      too.  Burns, poisons and storm arcs are shares of the hit, so they
  *      follow.
  *
- *   3. ONE CAP FOR EVERY HIT ON A PLAYER: nothing takes more than HIT_CAP of
- *      a player's max HP in one blow, whoever lands it (combat.js
- *      _applyDamage, after every cut).  The monsters' own rails (half the bar
- *      for a telegraphed hit or a boss's ability) sit inside it.
+ *   3. NO CAP OF ITS OWN (v2.3.3263).  v2.3.3260 stopped any blow at 30% of
+ *      a PLAYER's max HP, whoever landed it.  A monster had no such
+ *      cap, so the same big hit read 300 on a monster and 210 on a player --
+ *      and the owner, 2026-10-15: "change it so that the numbers for damage
+ *      between PVP and PVE can be exactly the same for each combat skill type
+ *      ... Same with damage dealt it stays consistent.  Everything is 1
+ *      version".  It is gone.  Measured on tools/pvp-sim (docs/specs/
+ *      one-formula.md "One version"): armoured fights are unchanged (copper
+ *      set, Lv 12: 9.9 / 12.2 / 12.4 s), and the biggest blow on an armoured
+ *      player is about half a bar; an UNARMOURED player can lose most of a
+ *      bar to one big staff bolt -- the staff's high variance, the owner's own
+ *      word for it.  The monsters' own rails (half the bar for a telegraphed
+ *      hit or a boss's ability, the fire trail) are what they were.
+ *
+ *      AND THE LEVEL EDGE BOTH WAYS (v2.3.3263, prog3.js _prog3OpponentLevel): a stronger
+ *      target blunts your Power, Luck and Special, and a stronger attacker
+ *      your Dodge, Defense and Resist, the same way whether it is a monster or
+ *      a player -- a player's level as an opponent is their highest trained
+ *      skill, a monster's its level.  Equal levels: nothing changes.  It was
+ *      monsters only (v2.3.2680 left PvP at edge 1, "a PvP design call of its
+ *      own"); the owner made the call.
+ *
+ *      So a player's hit is ONE roll (v2.3.3263, combat.js _rollHit) whoever takes it,
+ *      and whatever guards the one who takes it -- Dodge, Defense, armour, the
+ *      Root Stew, the shield -- guards them from every attacker the same way.
+ *      Monsters wear none of it, so a hit on a player with none shows the very
+ *      number it shows on a monster of that level.
  *
  *   4. TWO SPECIALS, FOR EVERYONE.  The sword's special swing hits
  *      SWORD_SPECIAL x a plain hit (was 3x): it was the weakest special one
@@ -42,21 +65,24 @@
  *      variance"), but it no longer kills a monster of your level outright,
  *      and the staff no longer out-farms the sword and bow by a fifth.
  *
- *   5. FOOD (cooking.js): a heal is the same size in any fight, and one
- *      healing bite every 15 s while you are fighting ANYTHING (PVP_HEAL), not
- *      only a player.  The bars are bigger, so a fish is a third or so of one.
+ *   5. FOOD (cooking.js): a fish heals its own fixed number, always -- the
+ *      same in town, against a monster and against a player (data.js
+ *      FISH_HEAL; v2.3.3263: the old HP-grid Recovery bonus no longer adds to
+ *      it) -- and
+ *      one healing bite every 15 s while you are fighting ANYTHING (PVP_HEAL).
  *
  * And between players, nothing else: the worker's own roll (pvpbalance.js) at
  * full value, exactly the roll a monster takes.  The PvP-only numbers this PR
  * first shipped (a 0.4 scale, per-weapon weights and special shares, a bow's
- * falloff, a quarter-size bite) are gone.
+ * falloff, a quarter-size bite, then v2.3.3260's 30% cap on a player's bar)
+ * are gone.
  *
  * Mirrored in src/data/oneFormula.js (mirror-audit).  The phone predicts with
  * it only against a worker that advertises caps.oneformula.
  *
  * KILL SWITCH: `oneformula: false` in liveflags is the combat from before
- * this version -- the old health, monsters' old hits, no cap, the old
- * specials, the bite rule only in fights between players, and the PvP
+ * this version -- the old health, monsters' old hits, the old specials, the
+ * bite rule only in fights between players, PvP at edge 1, and the PvP
  * resolver's old path (caps.pvpbalance goes with it).  Throwing it re-sizes
  * every connected player's bar (keeping how full it is) and every live
  * monster's hit (_oneFormulaFlagChanged, called by liveops.js).
@@ -69,7 +95,6 @@ export const ONE_FORMULA = Object.freeze({
   OLD_HEALTH: Object.freeze({ BASE: 100, PER_LEVEL: 6, PER_POINT: 8 }),
   /* a monster of level M is the match for character level M + MATCH_LEVEL */
   MATCH_LEVEL: 2,
-  HIT_CAP: 0.3,
   SWORD_SPECIAL: 4.5,
   OLD_SWORD_SPECIAL: 3,
   STAFF_BOLT_K: 0.6,
@@ -114,14 +139,6 @@ export const oneFormulaMethods = {
 
   /* A monster's hit multiplier at its level, for the formula in force. */
   _monsterHitK(level) { return monsterHitK(level, this._oneFormulaOn()); },
-
-  /* The most one blow may take from this player (after every cut), or 0 for
-     no cap (the formula off). */
-  _hitCapHp(ps) {
-    if (!ps || this._oneFormulaOff()) return 0;
-    const mx = Number(ps.maxHp);
-    return mx > 0 ? Math.max(1, Math.floor(mx * ONE_FORMULA.HIT_CAP)) : 0;
-  },
 
   /* Stamp a freshly built monster with the multiplier its `dmg` carries, so
      a flip of the switch can take it back out (_oneFormulaFlagChanged). */

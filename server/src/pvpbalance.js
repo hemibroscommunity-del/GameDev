@@ -23,10 +23,10 @@
  *     and this worker read it as a percentage; projectiles sent 0.
  *
  * WHAT THIS FILE DOES (the resolver, combat.js _resolvePvPAttack, calls it):
- *   1. THE WORKER ROLLS EVERY PvP HIT ITSELF, with the same roll it makes
- *      for a monster (_computeAttackDamage: the weapon, the trained level,
- *      the points, the grade, the brew, the crit -- at edge 1, as PvP has
- *      always read the points).  The phone's dmgBase is ignored here, so
+ *   1. THE WORKER ROLLS EVERY PvP HIT ITSELF, with the very roll it makes
+ *      for a monster (v2.3.3263: combat.js _rollHit -- the weapon, the trained level,
+ *      the points, the grade, the brew, the crit, the ceiling -- and the
+ *      level edge by the target's level as an opponent, as a monster's).  The phone's dmgBase is ignored here, so
  *      a forged claim buys nothing and the crit chance is the real one.
  *      The big staff bolt (`orbs`) and a volley arrow (`part`) say what they
  *      are, as they do against a monster (a retreat shot's `rs` is read by
@@ -46,7 +46,8 @@
  *   off with distance and capped it at a share of the target's bar -- every
  *   one a number for fights between players only.  The owner asked for none,
  *   and each is now either gone or the same for every fight (oneformula.js:
- *   the health, the 30% cap, the two specials).
+ *   the health, the two specials, and since v2.3.3263 the level edge both
+ *   ways and no cap of a player's own).
  *
  * KILL SWITCH: `pvpbalance: false` in liveflags is the resolver exactly as
  * before (the phone's claim x 0.5, the 300 ms lane), and un-advertises
@@ -55,8 +56,6 @@
  * Duels and the arena go through the same resolver, so they take the same
  * numbers.
  */
-import { STAFF_BOLT, BOW_VOLLEY_WORTH } from './combat.js';
-import { ONE_FORMULA } from './oneformula.js';
 
 export const PVP = Object.freeze({
   /* a paid swipe's window: long enough for a big bolt to fly its 675 px at
@@ -108,26 +107,23 @@ export const pvpBalanceMethods = {
     return 1;
   },
 
-  /* The worker's own roll for this claim -- the hit, whole: the monster
-     path's roll at edge 1, with the special's shape the wire says
-     (each honoured only on its own weapon and only where it can make the hit
-     no bigger than three separate claims could). */
-  _pvpRollFor(ps, kind, special, payload) {
+  /* The worker's own roll for this claim -- the hit, whole: the one roll a
+     monster takes (combat.js _rollHit -- v2.3.3263: the same function, so the
+     edge, the bolt, the volley and the ceiling cannot drift apart), with the
+     special's shape the wire says (each honoured only on its own weapon and
+     only where it can make the hit no bigger than three separate claims
+     could).  `targetLevel` is the target's level as an opponent (prog3.js
+     _prog3OpponentLevel): the edge, as a monster's level is. */
+  _pvpRollFor(ps, kind, special, payload, targetLevel) {
     const slot = kind === 'ranged' ? 'ranged' : kind === 'staff' ? 'staff' : 'melee';
     const orbsWire = Math.floor(Number(payload && payload.orbs));
-    /* the big bolt is as many special rolls as it carries orbs -- never more
-       than three, nor more than the window has claims left to spend */
-    const orbs = Math.min(PVP.SPECIAL_CLAIMS, orbsWire, ps && ps._pvpSpecLeft > 0 ? ps._pvpSpecLeft : 1);
-    const big = special && slot === 'staff' && orbs > 1;
-    const r = this._computeAttackDamage(ps, slot, special, big ? { band: STAFF_BOLT.BAND } : undefined);
-    let dmg = Number(r && r.dmg) || 0;
-    /* v2.3.3260: worth STAFF_BOLT_K of its orbs, as against a monster
-       (combat.js _handleMonsterDamage; this path runs only with the one
-       formula on) */
-    if (big) dmg *= orbs * ONE_FORMULA.STAFF_BOLT_K;
-    const partWire = Math.floor(Number(payload && payload.part));
-    if (special && slot === 'ranged' && partWire >= 2) dmg *= Math.min(1, BOW_VOLLEY_WORTH / Math.min(3, partWire));
-    return { dmg: Math.max(0, dmg), isCrit: !!(r && r.isCrit) };
+    /* the big bolt is worth as many orbs as it carries -- never more than
+       three, nor more than the window has claims left to spend (the monster
+       path's lane does the same with its own budget) */
+    const bigBolt = !!(special && slot === 'staff' && orbsWire > 1);
+    const orbs = bigBolt ? Math.max(1, Math.min(PVP.SPECIAL_CLAIMS, orbsWire, ps && ps._pvpSpecLeft > 0 ? ps._pvpSpecLeft : 1)) : 1;
+    const r = this._rollHit(ps, slot, special, { targetLevel, bigBolt, orbs, part: payload && payload.part });
+    return { dmg: Math.max(0, Number(r && r.dmg) || 0), isCrit: !!(r && r.isCrit) };
   },
 
   /* A sword's claim against one target, on the pair's lane: with `sw`, one

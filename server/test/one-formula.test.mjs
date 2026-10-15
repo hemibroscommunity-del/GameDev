@@ -11,8 +11,11 @@
  *      the SAME SHARE of a matching player's bar as before, at every level;
  *      stamped (`_hk`); the page's createMonster agrees; the two flat amounts
  *      (the slime's burst, the fire trail) scaled too.
- *   3. THE ONE CAP: no blow takes more than 30% of a player's max HP, whoever
- *      lands it -- a monster's swing, a telegraph, a burn, a player.
+ *   3. ONE VERSION (owner, the same day: "the numbers for damage between PVP
+ *      and PVE can be exactly the same ... Everything is 1 version"): no cap
+ *      of a player's own -- a blow is taken whole, whoever lands it, and the
+ *      same hit reads the same on a monster and a player (pvp-balance §11
+ *      lands them both); a fish heals its fixed number.
  *   4. SPECIALS: a sword's 4.5x, the bow's 3x, the staff's orb 2x; the
  *      ceiling covers the sword's; the big bolt worth 0.6 of its orbs.
  *   5. A bar that changed size keeps how full it was: at the join, and when
@@ -128,22 +131,40 @@ room._liveFlags = {};
   check('the fire trail\'s flat amount x monsterHitK at the goblin\'s level', hp0 - F.hp === Math.ceil(FIRE_TRAIL.DMG * monsterHitK(10)), { took: hp0 - F.hp, want: Math.ceil(FIRE_TRAIL.DMG * monsterHitK(10)) });
 }
 
-// ── 3. the one cap: no blow over 30% of a player's bar ──
+// ── 3. one version: no cap of a player's own ──
 {
-  const ps = () => ({ hp: 1000, maxHp: 1000, z: 'meadow' });
+  /* the first cut stopped every blow on a player at 30% of their bar; a
+     monster had none, so one hit read two numbers.  Gone. */
+  const ps = () => ({ hp: 10000, maxHp: 1000, z: 'meadow' });
   const a = ps(); const ra = room._applyDamage(a, 5000, false, { attackerLevel: 5 });
-  check('a monster\'s swing: 300 of 1000', ra.dmgTaken === 300 && a.hp === 700, ra);
+  check('a monster\'s swing of 5000 on a 1000 bar is taken whole', ra.dmgTaken === 5000, ra);
   const b = ps(); const rb = room._applyDamage(b, 5000, false, { elemental: true });
-  check('an elemental blast too', rb.dmgTaken === 300, rb);
-  const c = ps(); const rc = room._applyDamage(c, 200, false);
-  check('a blow under the cap is whole', rc.dmgTaken === 200, rc);
-  const d = ps(); d.hp = 250; const rd = room._applyDamage(d, 5000, false);
-  check('...so a blow (the capped 300) can still finish a player under 30%', d.hp === 0 && rd.dmgTaken === 300, { hp: d.hp, rd });
-  check('_hitCapHp: 30% of the bar, floored, at least 1', room._hitCapHp({ maxHp: 1001 }) === 300 && room._hitCapHp({ maxHp: 2 }) === 1);
-  room._liveFlags = { oneformula: false };
-  const e = ps(); const re = room._applyDamage(e, 900, false);
-  check('oneformula:false: no cap', re.dmgTaken === 900, re);
-  room._liveFlags = {};
+  check('an elemental blast too', rb.dmgTaken === 5000, rb);
+  check('no HIT_CAP, no _hitCapHp, no hitCapHp on the page', !('HIT_CAP' in ONE_FORMULA) && typeof room._hitCapHp !== 'function'
+    && !('HIT_CAP' in PAGE.ONE_FORMULA) && typeof PAGE.hitCapHp !== 'function');
+  /* the monsters' own rails are untouched: half the bar for a telegraphed
+     hit (telegraph.js TELEGRAPH.MAX_HIT_PCT) is the monster's, not the bar's */
+}
+
+// ── 3b. a monster's hit says the HP it left, as a player's does ──
+/* v2.3.3263: every screen draws a hit on a player as the change in their bar
+   (gameEvents.js takenFigure), from the worker's `hp` -- pvp_hit carried it
+   since v2.3.1917, monster_attack now too */
+{
+  const ws = fakeWs();
+  await join(ws, 'bp_of_s');
+  const P = room.playerState.bp_of_s;
+  P.z = 'meadow'; P.x = 100; P.y = 100; P.maxHp = 700; P.hp = 650; P._zoneEntryGraceUntil = 0;
+  P.prog3.alloc = {}; P.blocking = false; P.dodging = false; P.armor = null; P.legsArmor = null;
+  const zone = room._getZoneConfig('meadow');
+  const spawn = (zone && zone.spawns && zone.spawns[0]) || { arch: 'fodder' };
+  const m = room._makeZoneMonster('meadow', zone, spawn, 'of-strike', 120, 100, 12);
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('meadow', m, 'bp_of_s', m.x, m.y);
+  const ev = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.targetId === 'bp_of_s');
+  check('monster_attack carries the HP the blow left (`hp`), as pvp_hit does', !!ev && typeof ev.payload.hp === 'number'
+    && ev.payload.hp === Math.round(P.hp) && (ev.payload.dmgTaken === 0 || ev.payload.hp === 650 - ev.payload.dmgTaken),
+    ev && { hp: ev.payload.hp, taken: ev.payload.dmgTaken, now: P.hp });
 }
 
 // ── 4. the specials ──

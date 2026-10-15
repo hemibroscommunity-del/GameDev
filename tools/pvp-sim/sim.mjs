@@ -7,7 +7,7 @@
  *   - every landed attack goes through GameRoom._resolvePvPAttack exactly as a
  *     `player_attack` would (range, arc, the lanes, the shield arc, the roll's
  *     i-frames, the worker's own roll of pvpbalance.js, _applyDamage: armour,
- *     the one cap, rounding);
+ *     rounding);
  *   - stamina and mana refill through GameRoom._tickPlayerRegen every regen
  *     tick; specials and rolls are priced and paid by GameRoom._abilityCost /
  *     _handleAbilityUse (which opens the PvP special window);

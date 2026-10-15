@@ -482,14 +482,9 @@ export const combatMethods = {
     }
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
-    /* ═══ v2.3.3260: NO HIT TAKES MORE THAN 30% OF A PLAYER'S HEALTH ═══
-       ONE FORMULA (oneformula.js): after every cut above, one blow takes no
-       more than HIT_CAP of this player's max HP, whoever lands it -- a
-       monster, a burn, a player.  The monsters' own rails (half the bar for a
-       telegraphed hit or a boss's ability) sit inside it.  None with the
-       formula off. */
-    const _capHp = typeof this._hitCapHp === 'function' ? this._hitCapHp(ps) : 0;
-    if (_capHp > 0 && dmgTaken > _capHp) dmgTaken = _capHp;
+    /* v2.3.3263: v2.3.3260's one formula stopped every blow here at
+       30% of this player's max HP.  A monster had no such cap, so one hit read
+       two numbers; gone (oneformula.js, "No cap of its own"). */
     // v2.3.1314: RESILIENCE (HP grid) goes live — big-hit taming only:
     // hits above 20% of max HP are reduced 0.25%/pt (cap 25%), same
     // scale as Iron Skin but spike-selective so the two channels stay
@@ -1043,6 +1038,47 @@ export const combatMethods = {
     return { dmg: Math.max(1, Math.round(base)), isCrit };
   },
 
+  /* ═══ v2.3.3263: ONE HIT, WHOEVER TAKES IT ═══
+     Owner, 2026-10-15: "change it so that the numbers for damage between PVP
+     and PVE can be exactly the same for each combat skill type (melee, bow,
+     staff) ... Everything is 1 version".  The monster path (_handleMonsterDamage)
+     and the player path (pvpbalance.js _pvpRollFor) each rolled the hit their
+     own way: the monster's took the level edge and its ceiling, the player's
+     neither, and the volley was split before the ceiling on one and after on
+     the other.  Both call this now, so a swing, an arrow or a bolt is the same
+     number on a monster as on a player of that level -- what guards the one
+     who takes it (a player's Dodge, Defense, armour and shield, in
+     _applyDamage) is theirs, the same against any attacker.
+       opts.targetLevel  the one hit's level: a monster's, or a player's as an
+                         opponent (prog3.js _prog3OpponentLevel) -- the edge;
+       opts.bigBolt      the wire said a staff special of more than one orb:
+                         it draws from the bolt's own band (STAFF_BOLT);
+       opts.orbs         what that bolt may be worth, 1..3 (the caller's lane
+                         or window decides);
+       opts.part         a bow volley arrow's share, 2..3.
+     The ceiling (_maxDmgForAttacker) bounds this worker's own roll the same
+     way on both paths; it only ever binds on a roll no honest build makes.
+     Returns the hit unrounded (each caller rounds once, as before). */
+  _rollHit(ps, slot, special, opts) {
+    const o = opts || {};
+    const eff = (slot === 'melee' || slot === 'ranged' || slot === 'staff')
+      ? slot : ((ps && ps.activeSlot) || 'melee');
+    const big = !!(special && eff === 'staff' && o.bigBolt);
+    const orbs = big ? Math.max(1, Math.min(3, Math.floor(Number(o.orbs)) || 1)) : 1;
+    const partN = Math.floor(Number(o.part));
+    const part = (special && eff === 'ranged' && partN >= 2) ? Math.min(3, partN) : 1;
+    const rolled = this._computeAttackDamage(ps, slot, special,
+      big ? { targetLevel: o.targetLevel, band: STAFF_BOLT.BAND } : { targetLevel: o.targetLevel });
+    const cap = this._maxDmgForAttacker(ps, special) * (big ? orbs * STAFF_BOLT.CAP_K : 1);
+    let dmg = Number(rolled && rolled.dmg) || 0;
+    /* the big bolt worth STAFF_BOLT_K of its orbs (oneformula.js), under that
+       many special ceilings */
+    if (big) dmg *= orbs * (typeof this._oneFormulaOn === 'function' && this._oneFormulaOn() ? ONE_FORMULA.STAFF_BOLT_K : 1);
+    /* a volley arrow: capped first, then its share (BOW_VOLLEY_WORTH) */
+    if (part > 1) dmg = Math.min(cap, dmg) * Math.min(1, BOW_VOLLEY_WORTH / part);
+    return { dmg: Math.max(1, Math.min(cap, dmg)), isCrit: !!(rolled && rolled.isCrit), big, orbs, part };
+  },
+
   _handleMonsterDamage(session, payload) {
     // Client damage number is no longer trusted -- ignore payload.dmg /
     // payload.isCrit; we keep only the intent (slot + special) + element.
@@ -1221,55 +1257,40 @@ export const combatMethods = {
     // 16 / T1-T2): special hits get the 2x cap headroom.
     /* v2.3.2849: the big bolt draws from STAFF_BOLT.BAND and is worth the orbs
        it spent in the lane, under that many special ceilings -- the most three
-       separately-capped orbs could ever sum to -- x CAP_K for its wider band. */
-    const rolled = this._computeAttackDamage(attackerPs, slot, isSpecial,
-      _bigBolt ? { targetLevel: m.level, band: STAFF_BOLT.BAND } : { targetLevel: m.level });  /* v2.3.2680: the edge */
-    const dmgCap = this._maxDmgForAttacker(attackerPs, isSpecial) * (_bigBolt ? _orbs * STAFF_BOLT.CAP_K : 1);
-    /* v2.3.3260: ONE FORMULA -- the big bolt worth STAFF_BOLT_K of its orbs, for
-       everyone (oneformula.js): still the hardest special on average and as
-       wide a spread, no longer a kill of a monster of your level outright.
-       Under its ceiling (a smaller roll), and its blast takes a third of it. */
-    if (_bigBolt) rolled.dmg *= _orbs * (this._oneFormulaOn() ? ONE_FORMULA.STAFF_BOLT_K : 1);
-    /* ═══ v2.3.2848: THE BOW SPECIAL IS THREE ARROWS, A THIRD EACH ═══
+       separately-capped orbs could ever sum to -- x CAP_K for its wider band.
+       v2.3.3260: ONE FORMULA -- worth STAFF_BOLT_K of its orbs, for everyone
+       (oneformula.js): still the hardest special on average and as wide a
+       spread, no longer a kill of a monster of your level outright.
+       ═══ v2.3.2848: THE BOW SPECIAL IS THREE ARROWS, A THIRD EACH ═══
        Owner: "the bow special should be 3 white hot arrows that follow each
        other closely.  One shot for all 3 arrows.  I think the archetype for
        bow will be speed and DPS as opposed to staff which is area damage and
        high damage variance" -- and, asked how hard each arrow should hit,
-       "a third each": the three together deal what the one arrow did.
-       So each arrow of the volley (playerActions.js, behind caps.bowvolley)
-       says `part: 3`, and this worker's own special roll, under this worker's
-       own ceiling, is divided by it.  Each arrow still rolls its own variance
-       and its own crit, so the volley's EXPECTED total is exactly the old
-       arrow's and its spread is narrower -- the steady-DPS weapon beside the
-       staff's big swings.
-       CAPPED FIRST, THEN SPLIT: three thirds of an over-cap roll must not sum
-       past what the one arrow could ever have landed.
-       CHEAT-NEUTRAL, so it needs no bound beyond its shape.  `part` can only
-       make a hit SMALLER; a client that leaves it off sends a full special,
-       and three of those per 1200 ms per monster is what the special lane
-       above has admitted since v2.3.1134.  Honoured on a ranged special
-       only, 2..3; anything else -- every older client, every other hit -- is
-       1, the untouched one-roll path.  `rolled` is this call's own object
-       (_computeAttackDamage returns a fresh one), so nothing else sees it. */
-    const _partWire = Math.floor(Number(payload.part));
-    const _part = (isSpecial && _effSlot === 'ranged' && _partWire >= 2) ? Math.min(3, _partWire) : 1;
-    /* v2.3.2849: WORTH / part of it, not a flat third -- two-thirds an arrow,
-       the volley twice the old hit (BOW_VOLLEY_WORTH at the top of this file).
-       Math.min(1, ...) keeps "never more than a plain special" true of any
-       part a future client might send. */
-    if (_part > 1) rolled.dmg = Math.min(dmgCap, rolled.dmg) * Math.min(1, BOW_VOLLEY_WORTH / _part);
+       "a third each".  Each arrow of the volley (playerActions.js, behind
+       caps.bowvolley) says `part: 3`; this worker's own special roll, under
+       its own ceiling, is split by it: CAPPED FIRST, THEN SPLIT, so three
+       thirds of an over-cap roll never sum past what the one arrow could land.
+       v2.3.2849: WORTH / part of it (BOW_VOLLEY_WORTH), never more than a
+       plain special.  `part` can only make a hit SMALLER, so it needs no bound
+       beyond its shape; honoured on a ranged special only, 2..3.
+       ═══ v2.3.3263: ALL OF IT IS _rollHit NOW ═══
+       The same roll a hit on a player takes (pvpbalance.js _pvpRollFor): the
+       edge by this monster's level, the bolt, the volley, the ceiling.  One
+       hit, whoever takes it -- see _rollHit above. */
+    const rolled = this._rollHit(attackerPs, slot, isSpecial,
+      { targetLevel: m.level, bigBolt: _bigBolt, orbs: _orbs, part: payload.part });  /* v2.3.2680: the edge */
     /* v2.3.1734: FRACTURE applies here, AFTER the attacker ceiling and
-       before the overkill clamp.  The order is the point: dmgCap bounds
+       before the overkill clamp.  The order is the point: the ceiling bounds
        what the ATTACKER's build may produce, and fracture is a property
        the server itself stamped on the TARGET — folding it inside the cap
        would make a stone build's own debuff eat its own damage.  Same
-       posture as collision damage, which has bypassed dmgCap since
+       posture as collision damage, which has bypassed the ceiling since
        v2.3.1114 and carries COLLISION_BURST_CAP instead.  ×1.00 on every
        monster that is not fractured, which is every monster today. */
     /* v2.3.2842 summed a big bolt's orbs here, one roll each.  v2.3.2849: it is
        ONE roll now (above), and summing three draws is exactly what had evened
        the staff's swing out -- see STAFF_BOLT. */
-    const _cappedDmg = Math.max(1, Math.min(dmgCap, rolled.dmg));
+    const _cappedDmg = rolled.dmg;
     const rawDmg = Math.max(1, Math.round(_cappedDmg * this._fractureDmgMult(m)));
     const actualDmg = Math.min(rawDmg, Math.max(0, m.hp));
     // Subtract actualDmg (capped at remaining hp) so m.hp doesn't go
@@ -1518,7 +1539,7 @@ export const combatMethods = {
        inside the same event. */
     if (_effSlot === 'staff' && !isSpecial) {
       this._staffSplash(zone, m, _impactX, _impactY, session.id, attackerPs,
-        Math.max(1, Math.min(dmgCap, rolled.dmg)));
+        _cappedDmg);   /* v2.3.3263: the capped roll, as before (_rollHit caps it) */
     } else if (_bigBolt) {
       /* v2.3.2849: THE BIG BOLT EXPLODES -- the same scan, off the same impact
          point, with the bolt's own radius and share (STAFF_BOLT.BLAST): a
@@ -2137,6 +2158,10 @@ export const combatMethods = {
          before this deploy have no `ba` and keep the omni fail-open, same
          as an old client — the pinned compatibility behavior. */
       const blocked = this._blockArcCovers(checkState, attackerPs.x, attackerPs.y);
+      /* v2.3.3263: what the block cost, for the hit's message -- a blocked
+         player's hit reads as a blocked monster's ("Blocked!" and the ⚡ it
+         cost), which carries `staminaDrain` the same way */
+      let _blockDrain = 0;
 
       /* ═══ v2.3.1919: A BLOCKED PvP HIT COSTS STAMINA ═══
          Owner: "Just make the shield have stamina cost that would prohibit
@@ -2153,6 +2178,7 @@ export const combatMethods = {
       if (blocked && BLOCK_COSTS_STAMINA && typeof targetPs.stamina === 'number') {
         const _cost = Math.max(1, Math.round(BLOCK_STAMINA_COST * this._blockStaminaMult(targetPs)));
         targetPs.stamina = Math.max(0, targetPs.stamina - _cost);
+        _blockDrain = _cost;
         if (targetPs.stamina <= 0) {
           /* Guard broken by the hit itself.  Latched the same way the hold
              drain latches it (movement.js), or the client's next packet
@@ -2191,16 +2217,20 @@ export const combatMethods = {
            _applyDamage and the one cap bounds what is left.  `def` (the
            phone's old equipment number, 0 for everyone since Phase 1) no
            longer enters: armour is the mitigation. */
-        const _roll = this._pvpRollFor(attackerPs, kind, _special, payload);
+        /* v2.3.3263: the edge by the target's level as an opponent, as a
+           monster's level is (prog3.js _prog3OpponentLevel) */
+        const _roll = this._pvpRollFor(attackerPs, kind, _special, payload, this._prog3OpponentLevel(targetPs));
         isCrit = _roll.isCrit;
         _hitBase = _roll.dmg;
         rawDmg = _roll.dmg;
       }
-      /* v2.3.2680: no attackerLevel on purpose — PvP stays at edge 1 (the
-         defender's points at full strength whoever swings).  Pricing it by
-         the attacker's level would strip a lower player's Dodge and Defense
-         outright; that is a PvP design call of its own, not this change. */
-      const dmgResult = this._applyDamage(targetPs, rawDmg, blocked);
+      /* v2.3.2680 left PvP at edge 1 here on purpose -- "a PvP design call of
+         its own".  v2.3.3263: the owner's call, "Everything is 1 version":
+         the target's Dodge, Defense and Resist read the edge against the
+         attacker's level as an opponent, as they read a monster's
+         (oneformula.js "the level edge both ways").  The old path keeps 1. */
+      const dmgResult = this._applyDamage(targetPs, rawDmg, blocked,
+        _bal ? { attackerLevel: this._prog3OpponentLevel(attackerPs) } : undefined);
       const dmgTaken = dmgResult.dmgTaken;
       if (_bal && _special) _specialLanded = true;
       /* v2.3.1701: the attacker is in combat too (see the twin stamp in
@@ -2222,6 +2252,12 @@ export const combatMethods = {
           attacker: attackerId,
           attackerName: attackerSession.name,
           target: targetId,
+          /* v2.3.3263: the weapon that landed it, as monster_hit names it
+             (`slot`): the attacker's popup wears that weapon's mark, as a hit
+             on a monster does */
+          slot: kind === 'ranged' ? 'ranged' : kind === 'staff' ? 'staff' : 'melee',
+          /* v2.3.3263: what the block cost, as monster_attack says it */
+          staminaDrain: _blockDrain > 0 ? _blockDrain : undefined,
           dmgBase: _hitBase,   /* v2.3.3260: the worker's roll on the new path */
           dmgTaken,
           isCrit: isCrit,

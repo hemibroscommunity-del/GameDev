@@ -321,6 +321,7 @@ export const monsterStatusMethods = {
           monsterId: m.id, targetId: oid, dmg: raw, dmgTaken: res.dmgTaken,
           dodged: res.dodged, lastStand: res.lastStand || undefined,
           secondWind: res.secondWind || undefined,
+          hp: Math.max(0, Math.round(o.hp || 0)),   /* v2.3.3263: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
           zone: zoneId,
           /* the arc comes from the player it struck first */
           attackerX: ps.x, attackerY: ps.y,
@@ -448,6 +449,7 @@ export const monsterStatusMethods = {
         monsterId: b.mid, targetId: pid, dmg: raw, dmgTaken: res.dmgTaken,
         dodged: res.dodged, lastStand: res.lastStand || undefined,
         secondWind: res.secondWind || undefined,
+        hp: Math.max(0, Math.round(ps.hp || 0)),   /* v2.3.3263: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
         zone: b.zone,
         /* the fire is on you, not on the goblin: the client points its
            feedback at attackerX/Y */
