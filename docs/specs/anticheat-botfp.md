@@ -95,7 +95,8 @@ the `_extractionMissing` posture — old clients never punished):
   capClamps}, hour window, hRing tail (32), Welford mean/M2 for ent/vc
   (n capped 200 with halving = exponential forgetting), score, flags
   (≤20, each with a counter snapshot). Written fire-and-forget from
-  event handlers only, throttled 30s; flags and first cap-clamp flush
+  event handlers only, throttled 30s (5 min since v2.3.3270, the cost
+  diet: docs/specs/cost-diet.md); flags and first cap-clamp flush
   immediately; final flush on socket close -- and, since v2.3.3174, when a
   second login supersedes the socket (join.js's eviction skips
   `webSocketClose`, and the join re-reads `botstat:` over the live record:

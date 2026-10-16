@@ -155,7 +155,18 @@ export const BOTFP = {
   // sitting on that limit is still clipped past the hour's 2,400th cook.
   COOK_HOUR_CAP: 2400,
   // ── plumbing ──
-  PUT_MIN_MS: 30000,             // botstat: put throttle (flags flush immediately)
+  /* v2.3.3270: 30 s -> 5 min.  The owner: "Build my game so that it's the
+     most cost effective that it can be without losing quality."  Every put
+     is a row written, and a player gathering wrote this one every 30 s --
+     120 rows an hour of evidence no player ever sees, the biggest share of a
+     harvest's rows after the bag itself (tools/qa/load/cost-audit.mjs).  What
+     else writes it at once is unchanged: a flag, the hour's cap reached, the
+     close (_botfpFlush), the map's eviction.  A second login keeps the live
+     hour count over the stored one (v2.3.3174), so the longer wait opens no
+     way round the cap; only a restart of the room (a deploy) could take back
+     up to five minutes of the count -- up to five minutes more of harvests
+     against a 2,400-an-hour cap nobody honest reaches. */
+  PUT_MIN_MS: 300000,            // botstat: put throttle (flags flush immediately)
   MAP_CAP: 128, MAP_EVICT_TO: 96,
   DEVICE_CAP: 256, DEVICE_IDS_CAP: 8,
   DEVICE_ID_MAX: 32, DEVICE_ENV_MAX: 16,
