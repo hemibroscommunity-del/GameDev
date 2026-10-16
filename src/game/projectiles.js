@@ -712,13 +712,19 @@ export function firstSightHit(S, ox, oy, ang, maxLen, opts) {
     if (S._inDuel) pid = S._inDuel.opponent;
     else if (S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id
              && !((ZONES[S.currentZone] || {}).safe)) pid = S.lockedTarget.id;
-    var o = pid != null ? S.others[pid] : null;
-    if (o) {
+    /* v2.3.3267: and every one of your sparring clones, locked or not -- the
+       impact test's own list (sparTargets.js shotPlayerTargets), so the bow
+       looses at a clone on its line as at a monster ("attacks need to hit the
+       clone even when you aren't locked on target") */
+    var pids = shotPlayerTargets(S, pid);
+    for (var pk = 0; pk < pids.length; pk++) {
+      var o = S.others[pids[pk]];
+      if (!o) continue;
       var oxp = (typeof o.renderX === 'number' && isFinite(o.renderX)) ? o.renderX : o.x;
       var oyp = (typeof o.renderY === 'number' && isFinite(o.renderY)) ? o.renderY : o.y;
       var pr = PVP_BODY_R;
       if (opts && opts.isSpecial) pr *= 1.5;
-      consider(oxp, oyp - 24, Math.max(pr, PVP_BODY_R + half), 'p_' + pid, o);
+      consider(oxp, oyp - 24, Math.max(pr, PVP_BODY_R + half), 'p_' + pids[pk], o);
     }
   }
   /* v2.3.3206: the prop, when it comes first and the arrow will not be let
@@ -801,6 +807,7 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: a duel claim without the brew, for a worker that adds its own */
 import { nmlAsk, nmlAskOn, nmlAskCurrent } from '@/game/nmlAsk.js'; /* v2.3.3253: a stray shot through a player asks, once */
 import { nmlHere } from '@/game/noMansLand.js'; /* v2.3.3253: ...only while you stand in No man's land */
+import { shotPlayerTargets } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones are hit like monsters, locked or not */
 
 /* ═══ v2.3.2217: THE SNOWBALL BURSTS WHERE ITS FLIGHT ENDS ═══
    The thrown ball had no impact at all — it simply stopped existing on the
@@ -2202,12 +2209,20 @@ export function updateArrows(S, deps) {
                it: in town nothing worked, and outside town only melee had ever
                been wired before v2.3.1302.  Consent overrides the zone rule;
                free-fire still needs a lawless zone and a deliberate lock-on. */
-            if (!hit && S.others
-                && (S._inDuel
-                    || (!((ZONES[S.currentZone] || {}).safe)
-                        && S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id))) {
-              var _pvpTid = S._inDuel ? S._inDuel.opponent : S.lockedTarget.id;
-              var _pvpO = _pvpTid != null ? S.others[_pvpTid] : null;
+            /* ═══ v2.3.3267: ...AND EVERY ONE OF YOUR SPARRING CLONES ═══
+               The owner, after the first spar: "attacks need to hit the clone
+               even when you aren't locked on target".  The one target above
+               stays exactly as it was (the duel opponent, or the player locked
+               where your PvP test may try them); your live clones are tried
+               after it whether or not anything is locked, as a monster is
+               (game/sparTargets.js) -- each named as its claim's `target`, so
+               no other player is ever touched by it.  A piercing shot may take
+               more than one in a frame, as it does monsters. */
+            var _pvpLockId = S._inDuel ? S._inDuel.opponent
+              : ((!((ZONES[S.currentZone] || {}).safe) && S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id)
+                ? S.lockedTarget.id : null);
+            var _pvpList = (!hit && S.others) ? shotPlayerTargets(S, _pvpLockId) : null;
+            if (_pvpList && _pvpList.length) {
               /* v2.3.1919: QA probe.  Arrows and magic were measured doing
                  ZERO damage in duels (tools/qa/mp/mp-duelfeel.mjs: 64
                  projectiles sent, 0 HP removed) while the wire showed no
@@ -2217,8 +2232,11 @@ export function updateArrows(S, deps) {
               if (typeof window !== 'undefined') {
                 var _pq = window.__btPvpProj || (window.__btPvpProj = { gated: 0, noTarget: 0, tested: 0, hits: 0, closest: 1e9 });
                 _pq.gated++;
-                if (!_pvpO) _pq.noTarget++;
               }
+              for (var _pvpK = 0; _pvpK < _pvpList.length && !(hit && !a.pierce); _pvpK++) {
+              var _pvpTid = _pvpList[_pvpK];
+              var _pvpO = S.others[_pvpTid] || null;
+              if (!_pvpO && typeof window !== 'undefined' && window.__btPvpProj) window.__btPvpProj.noTarget++;
               if (_pvpO && !a.hitIds.has('p_' + _pvpTid)) {
                 var _pvpX = (typeof _pvpO.renderX === 'number') ? _pvpO.renderX : _pvpO.x;
                 var _pvpY = (typeof _pvpO.renderY === 'number') ? _pvpO.renderY : _pvpO.y;
@@ -2341,6 +2359,7 @@ export function updateArrows(S, deps) {
                   hit = true;
                 }
               }
+              }   /* v2.3.3267: each target in turn */
             }
             /* v2.3.3253: no hit, but through a player you could fight in No
                man's land who is not your aim: ask (once) whether to attack

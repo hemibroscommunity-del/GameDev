@@ -22,7 +22,13 @@
  *  10. a hit's shove and slow are carried out on a clone;
  *  11. leaving the Wheel, leaving the game (no linger), the kill switch;
  *  12. a joining phone is told of the clones;
- *  13. mutations: each guard above fails this suite when it is broken.
+ *  13. mutations: each guard above fails this suite when it is broken;
+ *  14. v2.3.3267: Easy is a beginner -- it fights, but throws no special,
+ *      never lunges and waits longer between attacks (the owner: "The bot was
+ *      tough to be beat even on easy");
+ *  15. v2.3.3267: the page's half of "your clones are monsters to your
+ *      weapons" (src/game/sparTargets.js) and a swing's count per clone
+ *      (src/game/pvpSwing.js).
  */
 import { GameRoom } from '../src/index.js';
 import { SPAR, SPAR_SKILLS, SPAR_WEAPONS } from '../src/spar.js';
@@ -30,6 +36,9 @@ import { WHEEL_CENTRE } from '../src/wheelspawns.js';
 /* v2.3.3266: the page's own reading of a peer's shot */
 import { peerShotFlight } from '../../src/game/peerShots.js';
 import { BOW_VOLLEY } from '../../src/game/bowVolley.js';
+/* v2.3.3267: the page's half -- your clones are monsters to your weapons */
+import { isLiveClone, clonesNear, shotPlayerTargets, clonesInSwing, sparFightOn, SPAR_FIGHT_R } from '../../src/game/sparTargets.js';
+import { pvpSwingClaimOk, PVP_SWING } from '../../src/game/pvpSwing.js';
 /* the page's numbers (projectiles.js ARROW_SPEED_PX, gameSystems.js BOW_RANGE_PX;
    peer-shots.test.mjs holds them to the source) */
 const PAGE = { arrowPx: 24, reachPx: 675, volleyK: BOW_VOLLEY.SPEED_K, peerPx: BOW_VOLLEY.PEER_PX_PER_FRAME };
@@ -478,6 +487,99 @@ room._sparDev(OWNER, { skill: 'hard' });
   room._sparTakeHits(T);
   check('10d a shove is held to SPAR.SHOVE_MAX', Math.abs(ps.x - x1 - SPAR.SHOVE_MAX) < 0.01, ps.x - x1);
   room.eventBuffer.length = 0;
+}
+
+/* ── 14. v2.3.3267: Easy is a beginner ── */
+dressOwner();
+room._sparDev(OWNER, { add: 'all' });
+room._sparDev(OWNER, { skill: 'easy' });
+{
+  const E = SPAR_SKILLS.easy;
+  check('14a Easy\'s table: no special, no lunge, a longer wait between attacks, half the focus', E.special === null && E.dashAt === null
+    && E.gapMs >= 600 && E.focus <= 0.5 && !E.lunge && !E.sprint, E);
+  O.maxHp = 100000; O.hp = 100000;   /* a long fight with no knockout in it */
+  for (const c of clonesOf()) room._sparStandBack(c, O, T, true);
+  const uses = [];
+  const realUse = room._handleAbilityUse;
+  room._handleAbilityUse = function (sess, p) { uses.push({ id: sess.id, type: p.type }); return realUse.call(this, sess, p); };
+  const abil = [];
+  const realAb = room._handleAbility;
+  room._handleAbility = function (sess, p) { abil.push({ id: sess.id, kind: p.kind }); return realAb.call(this, sess, p); };
+  /* the sword clone where Normal and Hard would lunge (6d) */
+  const sw = cloneOf('sword');
+  room.playerState[sw.id].x = O.x + 120; room.playerState[sw.id].y = O.y;
+  const evs = run(40000);
+  room._handleAbilityUse = realUse; room._handleAbility = realAb;
+  const ids = clonesOf().map((c) => c.id);
+  const hits = evs.filter((e) => e.type === 'pvp_hit' && e.payload.target === OWNER && ids.includes(e.payload.attacker));
+  check('14b Easy still fights: its blows arrive, from every weapon', hits.length > 0
+    && ['sword', 'bow', 'staff'].every((w) => hits.some((e) => e.payload.attacker === cloneOf(w).id)), { hits: hits.length });
+  const specials = evs.filter((e) => ids.includes(e.from) && ((e.type === 'player_projectile' && e.payload.isSpecial) || (e.type === 'player_swing' && e.payload.special)));
+  check('14c ...and throws no special: no swipe paid, no special shot or swing', !uses.some((u) => u.type === 'swipe' && ids.includes(u.id)) && specials.length === 0,
+    { swipes: uses.filter((u) => u.type === 'swipe').length, specials: specials.length });
+  check('14d ...and never lunges', !abil.some((a) => a.kind === 'sworddash' && ids.includes(a.id))
+    && !evs.some((e) => e.type === 'player_dodge' && e.payload.kind === 'sworddash' && ids.includes(e.from)), abil.slice(0, 3));
+  /* each attack at least the weapon's cooldown + gapMs after the one before
+     (spar.js G: a swing 600, a shot 495, a bolt 900), less a tick */
+  const gapsOf = (w, type) => {
+    const t = evs.filter((e) => e.type === type && e.from === cloneOf(w).id).map((e) => e.payload.ts);
+    return t.slice(1).map((x, i) => x - t[i]);
+  };
+  const minGap = (g) => (g.length ? Math.min(...g) : Infinity);
+  const gS = gapsOf('sword', 'player_swing'), gB = gapsOf('bow', 'player_projectile'), gT = gapsOf('staff', 'player_projectile');
+  check('14e ...a swing at least 1,200 ms after the last (600 + 600)', gS.length > 0 && minGap(gS) >= 600 + E.gapMs - 22, { n: gS.length, min: minGap(gS) });
+  check('14f ...an arrow 1,095 ms (495 + 600), a bolt 1,500 (900 + 600)', gB.length > 0 && gT.length > 0
+    && minGap(gB) >= 495 + E.gapMs - 22 && minGap(gT) >= 900 + E.gapMs - 22, { bow: minGap(gB), staff: minGap(gT) });
+  /* the gap check means something: a Normal sword swings sooner than that */
+  room._sparDev(OWNER, { skill: 'normal' });
+  for (const c of clonesOf()) room._sparStandBack(c, O, T, true);
+  const evN = run(20000);
+  const tN = evN.filter((e) => e.type === 'player_swing' && e.from === cloneOf('sword').id && !e.payload.special).map((e) => e.payload.ts);
+  const gN = tN.slice(1).map((x, i) => x - tN[i]);
+  check('14g (contrast) a Normal sword swings sooner than Easy may (a gap under 1,200 ms)', gN.length > 0 && minGap(gN) < 600 + E.gapMs - 22, { n: gN.length, min: minGap(gN) });
+  room._sparDev(OWNER, { skill: 'dummy' });
+}
+
+/* ── 15. v2.3.3267: the page's half (src/game/sparTargets.js, pvpSwing.js) ── */
+{
+  const S = {
+    currentZone: 'wheel', player: { x: 0, y: 0 },
+    _spar: { ids: new Set(['c1', 'c2', 'c3', 'c4']) },
+    others: {
+      c1: { x: 100, y: 0, zone: 'wheel' },
+      c2: { x: 0, y: 300, zone: 'wheel', renderX: 0, renderY: 310 },
+      c3: { x: 50, y: 0, zone: 'wheel', _isDead: true },
+      c4: { x: 60, y: 0, zone: 'frost' },
+      p9: { x: 10, y: 0, zone: 'wheel' },
+    },
+  };
+  check('15a a live clone of yours in your zone is one; down, elsewhere, parked or not yours is not',
+    isLiveClone(S, 'c1') && isLiveClone(S, 'c2') && !isLiveClone(S, 'c3') && !isLiveClone(S, 'c4') && !isLiveClone(S, 'p9')
+      && !isLiveClone({ ...S, others: { ...S.others, c1: { ...S.others.c1, _away: true } } }, 'c1') && !isLiveClone({}, 'c1'));
+  const n220 = clonesNear(S, 220), n400 = clonesNear(S, 400);
+  check('15b clones near you, nearest first, in the candidates\' shape (where each is drawn)', n220.length === 1 && n220[0].id === 'c1'
+    && n400.map((c) => c.id).join() === 'c1,c2' && n400.every((c) => c.spar && c.m === S.others[c.id]) && n400[1].y === 310 && n400[1].d2 === 310 * 310,
+    n400.map((c) => [c.id, c.d2]));
+  check('15c a shot tries the lock first, then every clone, once each', shotPlayerTargets(S, 'p9').join() === 'p9,c1,c2'
+    && shotPlayerTargets(S, 'c1').join() === 'c1,c2' && shotPlayerTargets(S, null).join() === 'c1,c2' && shotPlayerTargets({}, 'p9').join() === 'p9');
+  const east = clonesInSwing(S, 0, 0, 0, 90, Math.PI * 0.85, 24);
+  check('15d a swing reaches the clones in its arc and reach (+ a stride), with the bearing to each', east.length === 1 && east[0].id === 'c1' && east[0].ang === 0
+    && clonesInSwing(S, 0, 0, Math.PI, 90, Math.PI * 0.85, 24).length === 0 && clonesInSwing(S, 0, 0, 0, 50, Math.PI * 0.85, 24).length === 0
+    && clonesInSwing(S, 0, 0, Math.PI / 2, 400, Math.PI * 0.85, 0).map((c) => c.id).join() === 'c2', east);
+  check('15e a fight is on while a clone is within SPAR_FIGHT_R (about a screen)', SPAR_FIGHT_R >= 600 && sparFightOn(S)
+    && !sparFightOn({ ...S, player: { x: 5000, y: 5000 } }) && !sparFightOn({ ...S, _spar: null }));
+  /* a swing's claims: its own count per clone named (the worker lands one hit
+     a swing on each), the swing's single count without a name, as before */
+  const Q = { _serverCaps: { pvpbalance: true, oneformula: true } };
+  const t0 = 1000;
+  const a = [pvpSwingClaimOk(Q, 7, t0, true, 'c1'), pvpSwingClaimOk(Q, 7, t0 + 10, true, 'c1'), pvpSwingClaimOk(Q, 7, t0 + 95, true, 'c1'),
+    pvpSwingClaimOk(Q, 7, t0 + 190, true, 'c1'), pvpSwingClaimOk(Q, 7, t0 + 290, true, 'c1')];
+  const b = pvpSwingClaimOk(Q, 7, t0 + 10, true, 'c2');
+  const u = pvpSwingClaimOk(Q, 7, t0 + 10, true);
+  const next = pvpSwingClaimOk(Q, 8, t0 + 400, true, 'c1');
+  check('15f a swing claims each clone at most ' + PVP_SWING.TRIES + ' times, ' + PVP_SWING.GAP_MS + ' ms apart, on its own count',
+    a.join() === 'true,false,true,true,false' && b === true && u === true && next === true, { a, b, u, next });
+  check('15g ...an older worker: every frame, as before', pvpSwingClaimOk({}, 7, t0, true, 'c1') && pvpSwingClaimOk({}, 7, t0, true, 'c1'));
 }
 
 /* ── 12. a joining phone is told of the clones ── */

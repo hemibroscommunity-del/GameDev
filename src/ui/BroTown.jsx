@@ -5919,7 +5919,9 @@ export var BroTown = function BroTown(_ref0) {
              autoAttack taken out -- a REAL monster lock rather than "a thumb is
              down somewhere on the right".  It is what decides whether the disc
              takes touches; the deadline above still decides whether it paints. */
-          var _monLock = !!(S.lockedTarget && S.lockedTarget.type === 'monster' && S.lockedTarget.ref);
+          /* v2.3.3267: ...or one of your sparring clones (game/sparTargets.js):
+             to your weapons a clone is a monster */
+          var _monLock = !!(S.lockedTarget && (S.lockedTarget.type === 'monster' || S.lockedTarget.spar) && S.lockedTarget.ref);
           if (_ex || _harvestCtx || _monLock || _cands.length) S._rBtnPressUntil = _now2 + 400;
           /* ═══ v2.3.2260: THE FORCED-LIVE LINE IS GONE, AND THIS REPLACES IT ═══
              v2.3.2258 added `if (!autoAcquires(S)) S._rBtnLiveUntil = _now2 +

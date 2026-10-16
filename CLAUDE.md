@@ -1323,7 +1323,8 @@ remnant to migrate server-side, not a mode to preserve.
         and the weapon you carry for its slot (a copy, gems and all) or the
         tutorial's; none of your bag, gold, buffs or pet;
       - an AI on the worker (`server/src/spar.js`, the fight simulator's
-        player: Dummy / Easy / Normal / Hard = sim SKILL low / moderate / high)
+        player: Dummy / Easy / Normal / Hard = sim SKILL low / moderate / high;
+        Easy a beginner below low since v2.3.3267, below)
         moves it and fights you through the room's own doors -- every blow
         either way is `_resolvePvPAttack`, specials and rolls are paid through
         `_handleAbilityUse`, the sword's lunge is `_handleAbility` naming you;
@@ -1384,6 +1385,41 @@ remnant to migrate server-side, not a mode to preserve.
       - `window.__btPeerShotEnds` says why each copy ended (life, reach,
         target, prop); `peer-shots` suite, spar §5k/§6b, `mp-peershots` (two
         phones).
+    - since v2.3.3267 YOUR CLONES ARE MONSTERS TO YOUR WEAPONS, AND EASY IS A
+      BEGINNER -- the owner, after the first spar: "attacks need to hit the
+      clone even when you aren't locked on target ... the block shield button
+      needs to appear while in combat for any of the 3 combat types ... the
+      enemy Hp bar was too small ... should be the same size as mine ... The
+      bot was tough to be beat even on easy" (docs/specs/sparring.md "After
+      the first playtest"):
+      - the page asked about a player only when one was locked, so with
+        nothing locked the bow never loosed at a clone (firstSightHit), arrows,
+        bolts and swings went through it, and the shield button came only with
+        a blow; `src/game/sparTargets.js` (no imports) is the list of your live
+        clones every weapon now reads;
+      - the sword's auto target takes the nearest clone like the nearest
+        monster, 220 px, held to 275 (targeting.js: a player lock with `spar`
+        and `src: 'auto'`, which the rule owns and drops on a knockout, a bow
+        or staff drawn, or a nearer rival); a bow or staff still locks by a tap;
+      - firstSightHit and the projectile hit test try the lock, then every
+        live clone (`shotPlayerTargets`), each claim naming its clone as
+        `target`; a swing claims each clone in its arc and reach
+        (`clonesInSwing`, its own count per clone: pvpSwing.js `key`), and a
+        lock on a clone never sends the open cone claim;
+      - the shield button and the Special button are up while a clone is within
+        SPAR_FIGHT_R 900 (`sparFightOn`), every weapon; an unlocked guard faces
+        the nearest clone;
+      - ANOTHER PLAYER'S HP BAR IS YOURS: 76 x 22 and an 18 px number
+        (PEER_BAR_W/H, PLAYER_HP_NUM_STYLE; was the monster's 44 x 13 and 9 px),
+        grown upward from the old bar's bottom (PEER_BAR_Y), for every player;
+      - EASY (spar.js SPAR_SKILLS.easy): no special, no lunge, focus 0.5,
+        `gapMs` 600 more between attacks -- on the simulator
+        (tools/pvp-sim/easy.mjs) a careless player throwing no specials lost
+        every fight to the old Easy and wins every one now (Lv 7/12/22, all
+        nine pairings, ~30 s fights); the sim takes `special: null`, `gapMs`,
+        `aimSigma`, `boltsStraight`; Normal and Hard unchanged;
+      - spar §14-15, `mp-sparfight` (nothing tapped; fails 1a-4b on the game
+        before it).
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":

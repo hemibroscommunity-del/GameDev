@@ -2,6 +2,7 @@ import React from 'react';
 import { TARGET_PERIMETER_PX, getActiveWeapon, specialManaCost } from '@/data/index.js';
 import { specialAttack } from '@/game/playerActions.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no special in the water */
+import { sparFightOn } from '@/game/sparTargets.js'; /* v2.3.3267: a spar is a fight, for every weapon */
 import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
 import { ctlBottom, rightCluster, RCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: back to the RIGHT disc, in the shared diagonal cluster above it */
 import { Skin, StarburstIcon, SkinTag, pressOn, pressOff, useReadyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
@@ -153,6 +154,10 @@ export function specialButtonLive(S, perimeterPx) {
   if (isWheelSwimming(S)) return false;   /* v2.3.3003: only your head is out of the water */
   if (S.lockedTarget && S.lockedTarget.ref) return true;
   if (S.lastDamageTaken && Date.now() - S.lastDamageTaken < 5000) return true;
+  /* v2.3.3267: while one of your sparring clones is near, the shield button's
+     own rule (shieldToggle.js shieldButtonLive): with nothing locked a bow or
+     staff clone fights from outside the monster reach below */
+  if (sparFightOn(S)) return true;
   const P = S.player;
   const R = perimeterPx || 220;
   const list = S.monsters;

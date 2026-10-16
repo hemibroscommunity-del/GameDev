@@ -37,6 +37,7 @@
 import { TARGET_PERIMETER_PX, TARGET_HYST } from '@/data/index.js';
 import { isIntangible } from '@/data/monsterVariants.js';
 import { isPlayerDead } from '@/game/combatHelpers.js'; /* v2.3.2251: a corpse acquires nothing */
+import { clonesNear, isLiveClone, clonePos } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones, monsters to your weapons */
 
 function monPos(m) {
   const x = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
@@ -171,6 +172,38 @@ export function targetCandidates(S, radiusPx) {
 export function monsterLock(S) {
   const lt = S && S.lockedTarget;
   return (lt && lt.type === 'monster' && lt.ref) ? lt : null;
+}
+
+/* ═══ v2.3.3267: AND A LOCK THIS RULE MADE ON ONE OF YOUR CLONES ═══
+ * The owner, after the first spar: "attacks need to hit the clone even when
+ * you aren't locked on target".  To your weapons a sparring clone is a monster
+ * now (game/sparTargets.js), so the sword's automatic target takes the nearest
+ * one inside the perimeter as it takes the nearest monster -- the nearest of
+ * the two -- and lets it go by the same rules: down (a knockout), past the
+ * hysteresis ring, a nearer rival, a bow or staff drawn.  The lock is a
+ * PLAYER lock ({type: 'player', spar: true}, the one a tap on a clone writes,
+ * game/spar.js sparAim), because every road a hit on a player takes reads
+ * that shape (monsterCombat's claim, projectiles.js, the lunge and the bash);
+ * `src: 'auto'` is what says this rule owns it.  A clone you TAPPED is yours,
+ * as a tapped monster is, until it goes down. */
+function sparAutoLock(S) {
+  const lt = S && S.lockedTarget;
+  return (lt && lt.type === 'player' && lt.spar && lt.src === 'auto' && lt.ref) ? lt : null;
+}
+/* the auto rule's own lock: a monster's, or a clone's */
+function autoLock(S) { return monsterLock(S) || sparAutoLock(S); }
+/* is the auto lock still a live target -- a monster's monHoldable, a clone up */
+function autoHoldable(S, lt) {
+  return lt.type === 'monster' ? monHoldable(lt.ref) : isLiveClone(S, lt.id);
+}
+/* ...and inside the hysteresis ring (lockHolds' test, for either kind) */
+function autoLockHolds(S, lt) {
+  if (!lt || !autoHoldable(S, lt) || !S.player) return false;
+  const p = lt.type === 'monster' ? monPos(lt.ref) : clonePos(lt.ref);
+  if (!p) return false;
+  const R = TARGET_PERIMETER_PX * TARGET_HYST;
+  const dx = p.x - S.player.x, dy = p.y - S.player.y;
+  return dx * dx + dy * dy <= R * R;
 }
 
 /* Does the locked monster still count?  Inside the hysteresis ring and alive. */
@@ -401,7 +434,12 @@ export function updateTargeting(S) {
   if (!S || !S.player) return;
   /* First, so every early return below still leaves the flag current. */
   _updateEngagement(S);
-  const cands = targetCandidates(S);
+  /* v2.3.3267: your sparring clones are candidates too, for the sword, the
+     nearest first among the monsters (sparTargets.js clonesNear: the same
+     perimeter, the same {m, x, y, d2} shape, `spar: true`) */
+  const monCands = targetCandidates(S);
+  const sparCands = autoAcquires(S) ? clonesNear(S, TARGET_PERIMETER_PX) : [];
+  const cands = sparCands.length ? monCands.concat(sparCands).sort((a, b) => a.d2 - b.d2) : monCands;
   /* THE PERIMETER MARKS GO WITH THE RULE THEY ADVERTISE.  _targetCands is what
      draws the carets and ground rings and what lights the attack button hot
      (BroTown's `_cands`), and every one of those answers the question "who will
@@ -428,7 +466,15 @@ export function updateTargeting(S) {
      wsClient fixed), and a live NPC or player lock is a deliberate thing the
      monster rule must not stamp over. */
   const lt = S.lockedTarget;
-  if (lt && lt.ref && lt.type !== 'monster') return;   /* npc/player: not ours */
+  /* v2.3.3267: a clone you tapped (game/spar.js sparAim) lets go when it goes
+     down, as a tapped monster's death does (the dead-lock clear in
+     monsterCombat), and the rule below may take the next one */
+  if (lt && lt.spar && lt.src !== 'auto' && !isLiveClone(S, lt.id)) {
+    S.lockedTarget = null;
+    S._lockDroppedAt = Date.now();
+    S._lockDroppedWhy = 'dead';
+    clearLockAim(S);
+  } else if (lt && lt.ref && lt.type !== 'monster' && !sparAutoLock(S)) return;   /* npc/player: not ours (v2.3.3267: but a clone's auto lock is) */
   /* ═══ v2.3.2504: EVERY LOCK CARRIES A START TIME, NOT JUST A TAPPED ONE ═══
      `at` existed only because tapStealable needed a pin clock, and it was
      stamped LAZILY inside that function -- which is reached only for melee
@@ -453,7 +499,16 @@ export function updateTargeting(S) {
      new monster arrives here with `at` unset and gets a fresh stamp -- which is
      what makes the chip flash again for the new target.  A lock that merely
      survives the frame keeps the stamp it already had. */
-  if (lt && lt.at == null) lt.at = Date.now();
+  if (S.lockedTarget && S.lockedTarget.at == null) S.lockedTarget.at = Date.now();
+  /* v2.3.3267: a clone's auto lock points at the copy that is drawn (a peer's
+     object can be replaced), or goes when the clone does */
+  {
+    const sl = sparAutoLock(S);
+    if (sl) {
+      if (isLiveClone(S, sl.id)) sl.ref = S.others[sl.id];
+      else { S.lockedTarget = null; S._lockDroppedAt = Date.now(); S._lockDroppedWhy = 'dead'; clearLockAim(S); }
+    }
+  }
   /* v2.3.2261: before ANY branch below reads the lock -- including the tap
      branch, which returns early and is what made the ghost immortal -- make the
      lock point at a monster that is actually in this zone, or drop it.  See
@@ -498,7 +553,7 @@ export function updateTargeting(S) {
      longer applies, and leaving it would let a player keep a free lock simply
      by drawing the bow after walking up. */
   if (!autoAcquires(S)) {
-    if (monsterLock(S)) {
+    if (autoLock(S)) {   /* v2.3.3267: a clone's auto lock too */
       S.lockedTarget = null;
       S._lockDroppedAt = Date.now();
       S._lockDroppedWhy = 'weapon';
@@ -508,7 +563,8 @@ export function updateTargeting(S) {
   }
 
   /* Everything below is the AUTO target. */
-  const cur = monsterLock(S);
+  /* v2.3.3267: a monster's lock or a clone's -- the candidates hold both */
+  const cur = autoLock(S);
   if (!cands.length) {
     /* THE HYSTERESIS SURVIVES THE REWRITE.  An empty candidate list means
        nothing is inside the 220px perimeter -- but the lock is held out to
@@ -518,21 +574,21 @@ export function updateTargeting(S) {
        the reticle, the facing, the shield angle and the next shot's aim.
        So the lock is only cleared once it fails lockHolds -- dead, or truly
        past the ring. */
-    if (cur && !lockHolds(S)) {
+    if (cur && !autoLockHolds(S, cur)) {
       S.lockedTarget = null;
       S._lockDroppedAt = Date.now();
-      S._lockDroppedWhy = monHoldable(cur.ref) ? 'range' : 'dead';
+      S._lockDroppedWhy = autoHoldable(S, cur) ? 'range' : 'dead';
       clearLockAim(S);
     }
     return;
   }
   const best = cands[0];
-  if (cur && monHoldable(cur.ref) && lockHolds(S)) {
+  if (cur && autoLockHolds(S, cur)) {
     /* fall through to the switch test below */
     if (cur.ref === best.m) return;                    /* already on it */
     /* Only switch for a MEANINGFULLY nearer rival -- see AUTO_SWITCH_MARGIN. */
     const curD2 = (() => {
-      const p = monPos(cur.ref);
+      const p = cur.type === 'monster' ? monPos(cur.ref) : clonePos(cur.ref);
       if (!p) return Infinity;
       const dx = p.x - S.player.x, dy = p.y - S.player.y;
       return dx * dx + dy * dy;
@@ -548,7 +604,10 @@ export function updateTargeting(S) {
        frame -- a ~16ms difference that mattered to nothing in the retired
        900ms tap pin (v2.3.2496) but is the zero point the chip's first-second
        flash lerps from. */
-    S.lockedTarget = { type: 'monster', id: best.m.id, ref: best.m, src: 'auto', at: Date.now() };
+    S.lockedTarget = best.spar
+      /* v2.3.3267: a clone, as a player lock (the shape a tap writes) */
+      ? { type: 'player', id: best.id, ref: best.m, spar: true, src: 'auto', at: Date.now() }
+      : { type: 'monster', id: best.m.id, ref: best.m, src: 'auto', at: Date.now() };
   }
 }
 

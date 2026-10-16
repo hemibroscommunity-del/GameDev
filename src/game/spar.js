@@ -21,6 +21,7 @@
  * your own clone (spar.js _sparPair). */
 import { pushDmgPopup, heroPopupY } from '@/game/combatHelpers.js';
 import { chatLogBus } from '@/ui/mobile/chatLogBus.js';
+import { isLiveClone } from '@/game/sparTargets.js'; /* v2.3.3267: one test of "a live clone of yours", for every weapon */
 
 const SPAR_GOLD = '#f5c542';
 const SPAR_RED = '#ff7a7a';
@@ -64,7 +65,8 @@ export function applySparState(S, p) {
   } else if (p.note === 'off') {
     _line(S, 'Sparring is switched off on the server.');
   } else if (p.note === 'spawned' && clones.length) {
-    _line(S, 'Sparring: ' + clones.length + (clones.length === 1 ? ' clone is' : ' clones are') + ' here. Tap one to target it.');
+    /* v2.3.3267: your weapons find them now, locked or not (sparTargets.js) */
+    _line(S, 'Sparring: ' + clones.length + (clones.length === 1 ? ' clone is' : ' clones are') + ' here. Attack away -- a tap picks one to aim at.');
   }
   if (typeof window !== 'undefined') {
     /* QA probe (mp-spar): the last state and every note, in order */
@@ -74,10 +76,10 @@ export function applySparState(S, p) {
   }
 }
 
-/** Is this player one of your sparring clones? */
+/** Is this player one of your sparring clones, up? (v2.3.3267: sparTargets.js's
+ *  test, which every weapon now asks too) */
 export function sparCanAttack(S, id) {
-  const sp = S && S._spar;
-  return !!(sp && sp.ids && id != null && sp.ids.has(String(id)) && S.others && S.others[id] && !S.others[id]._isDead);
+  return isLiveClone(S, id);
 }
 
 /** Aim at a clone, as at a duel's opponent: your swings and shots at it are
