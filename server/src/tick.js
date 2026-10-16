@@ -1120,6 +1120,13 @@ export const tickMethods = {
          phone's `on` (presence2.js), made at most once a tick and only when
          one is due */
       let onJson;
+      /* v2.3.3271: player id -> session, for a near-join phone's `pl`
+         (nearjoin.js), made at most once a tick and only when one is needed */
+      let bySessMap = null;
+      const bySess = () => {
+        if (!bySessMap) { bySessMap = new Map(); for (const [, x] of this.sessions) if (x.id) bySessMap.set(x.id, x); }
+        return bySessMap;
+      };
       for (const [ws, s] of this.sessions) {
         const ps = s.id ? this.playerState[s.id] : null;
         const zone = ps ? ps.z : null;
@@ -1156,6 +1163,19 @@ export const tickMethods = {
             if (ref !== msg) { verify.mismatched++; if (!verify.first) verify.first = { zone, pv, ref, got: msg }; }
           }
           groupCache.set(key, msg);
+        }
+        /* v2.3.3271: a near-join phone (nearjoin.js) is sent, with this tick,
+           the whole look of every player this tick sends it whole who is
+           around it and whose look it does not hold -- and, on the tick after
+           it arrived somewhere, of everyone around it, standing still or not.
+           Added to this phone's copy only: the cached message stays as it was
+           (tick-share.test.mjs compares those). */
+        if (s.nearJoin && s._looks && ps) {
+          if (presenceTick) this._nearJoinPrune(s);   /* once a roster: only the last minute's looks */
+          let extra = null;
+          if (s._nearArrive) { s._nearArrive = false; extra = this._nearJoinArrivalIds(s, ps); }
+          const pl = this._nearJoinLooksJson(s, ps, plan, plan ? null : roster, plan ? null : dirtyByZone.get(zone), extra, bySess);
+          if (pl) msg = (msg ? msg.slice(0, -1) : tickHead) + ',"pl":' + pl + '}';
         }
         /* v2.3.3250: a pres-2 phone's roster in the Wheel says so (`nr`):
            every player near it is in it, whole (rosterPlanFor), so one

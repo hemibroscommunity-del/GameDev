@@ -282,10 +282,31 @@ These are needed by ANY split. Several help at today's 120.
   (`getAllPlayerData`, `state_sync`). That is O(N) work for each join and
   about 1-2 MB at 1,000 players (*estimate*). Send only what the joiner's surroundings
   need.
+  - *v2.3.3271, done.* A phone that joins with `nj: 1` is sent the players
+    around it whole and everyone else as a list entry (what the lists show,
+    about 200 bytes); a player's whole look comes in the tick that first sends
+    them to it, and on the tick after it arrives somewhere (`pl`). Measured at
+    1,000 players: a join's snapshot 1,138 -> 238 KB, a login's bytes in all
+    1,754 -> 1,032 KB; the reconnect storm 1,926 -> 1,485 MB, the room's time on
+    its joins 13.5 -> 7.0 s (`docs/specs/near-join.md`).
+  - **What is left of the storm is the look relay**: each player's whole look
+    to every other phone, 72% of it, and the room's steady N x N cost (every
+    look to every phone at least once a minute). Sending a look only to the
+    phones around its player, with the lists asking for what they show when
+    opened, is the next step. Not built.
 - **0f. Memory with real characters.** The room keeps about 22 KB per bot
   player after a full collection (`heapprobe.mjs`, cap-120.md). Real
   characters carry bags, quests and pets. Measure a real character and the
   world's memory at 1,000, against Cloudflare's 128 MB.
+  - *v2.3.3271, measured* (`tools/qa/load/memprobe.mjs`, each character's
+    records loaded by the room's own join code): 1,000 bots 34 MB; 1,000
+    played characters (weeks of play) **80 MB**; 1,000 at every cap **231 MB,
+    nearly twice the limit**. The gear ledger alone is up to 88 KB a player
+    (86 MB at the caps), the pets record up to 32 KB. A world of 1,000
+    long-time players does not fit one room's memory as it is. The cheapest
+    fixes, not built: keep in memory only the ledger rows of pieces still
+    carried, and only the pet out (`docs/specs/near-join.md`, "The room's
+    memory").
 
 ### Phase 1: doors as relays
 

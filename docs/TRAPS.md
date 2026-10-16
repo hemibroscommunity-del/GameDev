@@ -6323,3 +6323,28 @@ call a look. Run on a busy day, that is the game down until midnight.
 second worker -- ask which plan it is on and what it shares. Separate names do
 not make separate limits. Every call between two objects is a billed request,
 and so is every poll.
+
+## 180. "A reconnect storm is everyone logging in again" (v2.3.3271)
+
+It is not. A phone that drops mid-game (a deploy, a network blip) rejoins
+where it stands: its join carries its zone and its place (wsClient.js,
+`z: S.currentZone`, `x: S.player.x`). Only a fresh login comes in through
+today's town, the veiled stop on the way down to the Wheel.
+
+- **Found by the near-join measurement (tools/qa/load/join-bench.mjs), its
+  first cut**, which modelled the storm as 1,000 logins: everyone sat in
+  today's town at once, so every joiner was "around" every other. The near
+  join's snapshots and player_joins came out exactly as big as before (0%
+  saved), and its joins slower. Rejoining where each player stood, the same
+  code saved 23% of the storm's bytes and 48% of the room's time on the joins
+  at 1,000 players.
+- **And a measurement in one process carries the run before it.** The memory
+  probe's first cut (tools/qa/load/memprobe.mjs) built rooms one after another
+  in one Node process: the previous room was still being collected while the
+  next was measured, and two totals came out NEGATIVE. Each size in a process
+  of its own gave clean numbers that grow as they should (and the bots' 120,
+  8.1 MB, matches the runtime's own 8.3-9.4 MB, docs/specs/cap-120.md).
+
+**The rule.** Model the event as the phones really live it: read what the
+phone sends before you script a bot's version of it. And measure each size
+from a clean start, or prove the last one is gone.

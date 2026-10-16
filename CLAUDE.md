@@ -3185,6 +3185,33 @@ Two protocol versions coexist; both must keep working:
       23:59:45); the daily limit counts socket messages 20 to 1 like the bill,
       so Oct 11's playtest was ~4-5% of a day, not 76%. The game's listing
       answered throughout (docs/specs/cloudflare-lab.md "The answer").
+  - v2.3.3271: A JOIN IS TOLD THE PLAYERS AROUND IT, AND THE ROOM'S MEMORY
+    WITH REAL CHARACTERS -- the split plan's Phase 0e and 0f, the owner's "Yes
+    do suggested" (docs/specs/near-join.md):
+    - a phone that joins with `nj: 1` (beside `pres: 2`; `caps.nearjoin`) gets
+      the players AROUND it whole (its zone, in the Wheel within 2,400 px, its
+      party anywhere, its clones) and everyone else as a LIST ENTRY, `fa: 1`:
+      what the lists show (name, colour, level, clan, the inspect card's
+      counters, the Bro picture and count), ~200 B, parked at once
+      (src/game/nearJoin.js `parkFar`); `player_join` the same;
+    - a player's whole look comes in the tick that first sends them whole to
+      that phone, as `pl`, applied BEFORE the tick's players (wsClient.js,
+      `peerFromSnapshot` shared with state_sync), and on the tick after a zone
+      change for everyone around (movement.js `_nearArrive`);
+    - held = sent whole to this session (`_looks`) or a whole relay newer than
+      its snapshot (`_lookWholeSeq` > `_snapSeq`, lookrelay.js stamps it); a
+      delta never; `_looks` pruned once a roster to the last minute's (unpruned
+      19.5 MB at 1,000); the look relay itself unchanged (room-wide);
+    - at 1,000: a login 1,754 -> 1,032 KB, the reconnect storm 1,926 -> 1,485 MB
+      and its joins' room time 13.5 -> 7.0 s; what is left (72%) is the look
+      relay to everyone, the next step ("looks by interest", needs lists on
+      demand, not built); a reconnect joins where it stands, only a login in
+      today's town (TRAPS §180, `tools/qa/load/join-bench.mjs`);
+    - memory (`tools/qa/load/memprobe.mjs`): 1,000 bots 34 MB, played 80 MB,
+      every cap 231 MB -- over the 128 MB limit; the gear ledger up to 88 KB a
+      player, pets 32 KB; fixes not built;
+    - kill switch `nearjoin: false`; `near-join` suite (56, eleven bugs
+      caught), `mp-nearjoin` (8).
 
 ## Conventions
 
