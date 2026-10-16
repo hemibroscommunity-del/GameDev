@@ -296,7 +296,8 @@ const invKey = room._harvestInvKey(n0.nodeType, n0.tierLvl);
 }
 
 // ── 9b. v2.3.3174: a second login rolls the hour count back by nothing ──
-// botstat: is written at most every 30 s, and a second login (same id, the
+// botstat: is written at most every PUT_MIN_MS (30 s then; 5 min since
+// v2.3.3270), and a second login (same id, the
 // first socket superseded without webSocketClose) re-read it over the LIVE
 // record: the hour count fell back to the last write, so a login every ~29 s
 // kept the harvest and cook caps from ever binding.  Real DO storage keeps a

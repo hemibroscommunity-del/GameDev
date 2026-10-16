@@ -3336,6 +3336,25 @@ Two protocol versions coexist; both must keep working:
   - The preloading law above still stands. Moving a load off the loading
     screen to save memory is the owner's call, as #822's gathering poses were,
     never a quiet "fix".
+- **WHAT PLAY WRITES IS GUARDED (v2.3.3270, the cost diet).** The owner:
+  "Build my game so that it's the most cost effective that it can be without
+  losing quality." Measured, the game already writes and sends about the least
+  it can without a player seeing a difference (docs/specs/cost-diet.md: what a
+  player-hour costs, what was tried and why it was not shipped, and what is
+  left, each with what it would cost in quality -- the owner's call):
+  - every storage put or delete is a ROW WRITTEN ($1 a million on the paid
+    plan); standing and walking write nothing, a kill or a harvest one row, your
+    health at most every `REGEN_SAVE_MS`, the gatherer's bot statistics every 5
+    minutes (`BOTFP.PUT_MIN_MS`, was 30 s);
+  - `server/test/cost-guard.test.mjs` holds those lines (a feature that saves on
+    a timer, a move or twice an event fails there); moving a line is said in the
+    PR body in plain words, as with the memory budget;
+  - `node tools/qa/load/cost-audit.mjs [minutes] [players] --seed=N` measures
+    the rows a player-hour of idling, walking, fighting and gathering writes, by
+    key and by the code that wrote it, the same every run on the same code;
+  - a value a player SEES (loot, XP, gold) is still saved before its message
+    goes (ARCHITECTURE-HANDOFF rule 10): batching it is the owner's call, never
+    a quiet saving.
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.
