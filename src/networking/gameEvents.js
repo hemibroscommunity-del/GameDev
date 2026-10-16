@@ -176,6 +176,7 @@ export function pvpDealtColor(payload) {
 }
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { notePvpHit, noteDealt } from '@/game/fightFood.js'; /* v2.3.3133: a pvp_hit starts a fight with a player (the one-bite rule); v2.3.3260: so does a hit you land on a monster */
+import { notePvpBlow } from '@/game/sparTargets.js'; /* v2.3.3268: a blow between you and a player keeps the fight with them on (the shield; a chosen foe) */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -3586,6 +3587,11 @@ export function processGameEvent(type, payload, S, deps) {
               /* v2.3.3133: a hit to or from me is a fight with a player, for
                  the one-bite rule (fightFood.js) -- stamped off the same event
                  the worker stamps its own copy beside. */
+              /* v2.3.3268: ...and WITH WHOM: the fight with them is on for a
+                 minute past each blow, either way (sparTargets.js
+                 notePvpBlow) -- the shield's button stays up for every
+                 weapon, and a player you chose to attack stays chosen */
+              notePvpBlow(S, payload);
               if (notePvpHit(S, payload) && typeof window !== 'undefined') {
                 /* QA probe (mp-fightfood): the last hits to or from me, with
                    the worker's resolved dmgBase -- the brew it put on. */

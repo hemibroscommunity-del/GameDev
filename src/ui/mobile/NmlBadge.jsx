@@ -15,14 +15,45 @@
  * re-renders only when the level or your skull's minute changes.  While it is
  * up it sets `--nml-lift` on the page, so the interact prompts above the band
  * (a dungeon's mouth stands in No man's land) step up over it.
+ *
+ * ═══ v2.3.3268: JUST LEFT OF THE MIDDLE, CLEAR OF THE SHIELD ═══
+ * The owner: "I also want to be able to use shield for when battles happen
+ * against real players in no mans land".  Centred on the middle, the badge
+ * sat ON the shield button: the shield's left edge is the screen's middle by
+ * construction (ShieldButton.jsx ctlColumn: the button fills the room between
+ * the movement half and the attack disc, so its left edge is 50% of the width
+ * wherever it is squeezed, and right of it where it is not), the badge's 44 px
+ * tap row reached 46 px over the band and the shield's bottom is 21 px over
+ * it, and the badge is drawn on top (z 34 over 31) -- so a tap on the
+ * shield's middle opened the badge's rules, in the one place a fight needs
+ * the shield.  The badge now ends left of the middle and of the shield (a
+ * narrow phone squeezes the shield over the middle -- ctlColumn's 44 px floor:
+ * at 375 its left edge is 6 px past it, at 360 14), 8 px clear where there is
+ * room and never less than 2: still at the bottom, by the middle, never over
+ * the shield, at any width, either way up.  And it is NARROWER, so it fits
+ * between the shield and the notification bell (left of it, 66-110 px) on a
+ * 360 px phone: the skull and the number, your own skull a small mark on its
+ * corner instead of a third thing in the row (it was 81 px wide with one, and
+ * at 360 and 375 the moved badge lay over the bell).  mp-nmlfoe measures it at
+ * 320-430 px and sideways.
  */
 import React, { useEffect, useState } from 'react';
 import { nmlHere, NML_RED } from '@/game/noMansLand.js';
 import { infoPopupBus } from './infoPopupBus.js';
+import { blockAnchor } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.3268: where the shield button stands, to keep clear of it */
 
 /* how far the bottom-band prompts step up while the badge is shown: its 44 px
    tap row, and a little air */
 export const NML_LIFT_PX = 48;
+
+/* v2.3.3268: the badge's width (the button round its pill: skull, number),
+   for placing it between the bell and the shield (mp-nmlfoe reads the real
+   one); how far it keeps from the shield, 2 px at the least; and where the
+   notification bell ends, in the frame's own numbers (WorldChatFeed.jsx: its
+   shell's `left`, and the shut bell 36 px wide) */
+const BADGE_W = 50;
+const SHIELD_AIR = 8;
+const BELL_END = 'var(--world-x, 0px) + var(--land-fold-w, 0px) + var(--bt-wpn-slot, 0px) + 44px';
 
 /* a skull, drawn rather than the emoji (every phone draws 💀 its own way) */
 export function NmlSkull({ size = 18, color = NML_RED }) {
@@ -99,7 +130,7 @@ function setLift(on) {
   } catch (e) { /* the prompts keep their slot */ }
 }
 
-export default function NmlBadge({ stateRef }) {
+export default function NmlBadge({ stateRef, isLandscape }) {
   const [lvl, setLvl] = useState(0);
   const [skull, setSkull] = useState(null);
   useEffect(() => {
@@ -118,7 +149,31 @@ export default function NmlBadge({ stateRef }) {
   useEffect(() => {
     try { window.__btNmlBadge = () => ({ lvl, skull: skull && skull.type }); } catch (e) { /* no window */ }
   }, [lvl, skull]);
+  /* v2.3.3268: drawn again when the screen's width changes (where the shield
+     button stands moves with it, ShieldButton.jsx ctlColumn) -- only while
+     the badge is up */
+  const [, setVw] = useState(0);
+  useEffect(() => {
+    if (!lvl) return undefined;
+    const f = () => setVw(typeof window !== 'undefined' ? window.innerWidth : 0);
+    try { window.addEventListener('resize', f); } catch (e) { /* no window */ }
+    return () => { try { window.removeEventListener('resize', f); } catch (e) { /* gone */ } };
+  }, [lvl]);
   if (!lvl) return null;
+  /* v2.3.3268: the badge's right edge, from the frame's right: left of the
+     middle and of the shield button (blockAnchor: its right and its size),
+     SHIELD_AIR clear of them where the bell to its left leaves room, and 2 px
+     at the least.  In CSS, so every number is the FRAME's: on a computer the
+     game is a phone-shaped frame (#root, contain:paint) narrower than the
+     window, and the shield, the bell and this badge are all placed in it --
+     the first cut worked in the window's numbers and put the badge 300 px
+     left of the frame's middle there (mp-nomansland). */
+  let right = 'calc(50% + 2px)';
+  try {
+    const sh = blockAnchor(!!isLandscape);
+    const lim = `max(50%, ${Math.ceil(sh.right + sh.size)}px)`;
+    right = `max(calc(${lim} + 2px), min(calc(${lim} + ${SHIELD_AIR}px), calc(100% - (${BELL_END}) - ${2 + BADGE_W}px)))`;
+  } catch (e) { /* centred-left, as the first cut */ }
   const open = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -129,14 +184,17 @@ export default function NmlBadge({ stateRef }) {
       aria-label={`No man's land ${lvl}: players can attack you here. Tap for what it means.`}
       onClick={open}
       style={{
-        position: 'fixed', left: '50%', transform: 'translateX(-50%)',
+        /* v2.3.3268: left of the middle and of the shield button (see the
+           header); centred on the middle before */
+        position: 'fixed', right,
         bottom: 'calc(var(--sheet-h, var(--dash-h)) + 2px)', zIndex: 34,
-        minHeight: 44, padding: '0 4px', background: 'transparent', border: 0,
+        minHeight: 44, padding: '0 1px', background: 'transparent', border: 0,
         display: 'flex', alignItems: 'center', cursor: 'pointer',
         touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
       }}>
       <span style={{
-        display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px 4px 7px',
+        /* v2.3.3268: a little tighter (it was 4px 10px 4px 7px, gap 5) */
+        position: 'relative', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px 4px 5px',
         borderRadius: 999, background: 'rgba(22,10,10,.86)',
         border: `1.5px solid ${NML_RED}`, boxShadow: '0 0 0 1px rgba(0,0,0,.5)',
         color: '#FFE3DF', fontSize: 12, fontWeight: 800, letterSpacing: '.02em', whiteSpace: 'nowrap',
@@ -144,11 +202,17 @@ export default function NmlBadge({ stateRef }) {
         {/* the skull and the number only (the owner's "skull level"): the
             words would run under the bell and the jump button beside it on a
             390 px phone; a tap says them */}
-        <NmlSkull size={20} />
+        <NmlSkull size={19} />
         <span data-nml-num="" style={{ fontSize: 16, color: NML_RED, fontWeight: 900, lineHeight: 1 }}>{lvl}</span>
+        {/* v2.3.3268: your own skull on the pill's top corner, as a count sits
+            on a bell, so the badge is no wider for it (see the header) */}
         {skull && (
-          <span data-nml-own-skull={skull.type} title={`${skull.type} skull`} style={{ marginLeft: 1 }}>
-            <NmlSkull size={14} color={skull.type === 'red' ? NML_RED : '#F2F2F2'} />
+          <span data-nml-own-skull={skull.type} title={`${skull.type} skull`} style={{
+            position: 'absolute', top: -8, right: -8, width: 18, height: 18, borderRadius: 999,
+            background: 'rgba(22,10,10,.94)', border: `1px solid ${skull.type === 'red' ? NML_RED : '#F2F2F2'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
+          }}>
+            <NmlSkull size={12} color={skull.type === 'red' ? NML_RED : '#F2F2F2'} />
           </span>
         )}
       </span>

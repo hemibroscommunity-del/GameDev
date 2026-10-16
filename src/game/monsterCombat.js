@@ -61,7 +61,7 @@ import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking bre
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 import { brewMulNow, pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: the brew, read once and claimed right in a duel */
 import { pvpBalanceOn, pvpSwingClaimOk, pvpLockInReach, PVP_SWING } from '@/game/pvpSwing.js'; /* v2.3.3260: one sword claim a swing */
-import { clonesInSwing, isLiveClone } from '@/game/sparTargets.js'; /* v2.3.3267: every swing lands on the sparring clones in its arc, locked or not */
+import { fightersInSwing, isLiveFighter } from '@/game/sparTargets.js'; /* v2.3.3267: every swing lands on the sparring clones in its arc, locked or not; v2.3.3268: and on the players you chose to attack */
 
 /* ═══ v2.3.3206: HOW FAR A PLAIN ARROW FLIES BEFORE THE SCREEN'S EDGE ═══
    projectiles.js plants a bow arrow once its drawn point comes within 24 px of
@@ -3079,8 +3079,11 @@ export function updateMonsterCombat(S, deps) {
               /* v2.3.3267: a lock on one of your sparring clones claims through
                  the clones' own claims below, each naming its clone -- never
                  this cone, which would take anyone else the worker may let you
-                 hit standing in it */
-              var _pvpSparLock = !!(pvpLocked && S.lockedTarget.spar);
+                 hit standing in it.  v2.3.3268: and No man's land's lock (`nml`,
+                 the window's Attack, a foe you chose: game/sparTargets.js) the
+                 same -- this cone named nobody, so a second player in it whom
+                 the worker would let you fight was hit too, without a choice */
+              var _pvpSparLock = !!(pvpLocked && (S.lockedTarget.spar || S.lockedTarget.nml));
               if ((S._inDuel || (!inSafeZone && pvpLocked && !_pvpSparLock))
                   && pvpSwingClaimOk(S, S.swingTimer, Date.now(), pvpLocked ? pvpLockInReach(S.lockedTarget.ref, P.x, P.y, _pvpReach) : null)) {
                 var pvpAngle = pvpLocked ? Math.atan2((S.lockedTarget.ref.y || S.lockedTarget.ref.renderY || P.y) - P.y, (S.lockedTarget.ref.x || S.lockedTarget.ref.renderX || P.x) - P.x) : baseAngle;
@@ -3151,8 +3154,10 @@ export function updateMonsterCombat(S, deps) {
                  at most PVP_SWING.TRIES a swing (its own count, pvpSwing.js
                  `key`), the bearing to it and `target` naming it -- the worker
                  lands one hit a swing on each (pvpbalance.js) and nobody else
-                 is touched by it (game/sparTargets.js). */
-              var _sparSw = clonesInSwing(S, P.x, P.y, baseAngle, _pvpReach, wpnType.arc || SWING_ARC, PVP_SWING.SLACK_PX);
+                 is touched by it (game/sparTargets.js).
+                 v2.3.3268: and on every player you chose to attack (No man's
+                 land's Attack: fightersInSwing), the same way. */
+              var _sparSw = fightersInSwing(S, P.x, P.y, baseAngle, _pvpReach, wpnType.arc || SWING_ARC, PVP_SWING.SLACK_PX);
               for (var _spI = 0; _spI < _sparSw.length; _spI++) {
                 var _spC = _sparSw[_spI];
                 if (!pvpSwingClaimOk(S, S.swingTimer, Date.now(), true, _spC.id)) continue;
@@ -3219,8 +3224,9 @@ export function updateMonsterCombat(S, deps) {
                 pid = _ref18[0],
                 o = _ref18[1];
               /* v2.3.3267: your sparring clones take the swing whatever is
-                 locked (the claims above), so they show it the same way */
-              var _pvpClone = isLiveClone(S, pid);
+                 locked (the claims above), so they show it the same way --
+                 v2.3.3268: and the players you chose to attack */
+              var _pvpClone = isLiveFighter(S, pid);
               if (!_pvpPaintOk && !_pvpClone) return;
               if (_pvpPaintId && String(pid) !== _pvpPaintId && !_pvpClone) return;
               if (o._hitThisSwing) return;

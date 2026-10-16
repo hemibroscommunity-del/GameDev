@@ -32,6 +32,7 @@ import { chatLogBus } from '@/ui/mobile/chatLogBus.js';
 import { playZoneBanner } from '@/ui/zoneBannerOverlay.js';
 
 import { NML, NML_CENTRE, nmlTierAt, nmlLevelAt } from '@/data/noMansLandRings.js';
+import { setFoeRule } from '@/game/sparTargets.js'; /* v2.3.3268: a player you chose to attack is yours to hit while this rule allows it */
 export { NML, NML_CENTRE, nmlTierAt, nmlLevelAt };
 const WHEEL = 'wheel';
 /* how long you must have stood in a new level before it is announced, so a
@@ -74,6 +75,9 @@ export function nmlCanAttack(S, otherId) {
   } catch (e) { /* not a party */ }
   return true;
 }
+
+/* v2.3.3268: the rule a chosen foe lapses by (game/sparTargets.js isLiveFoe) */
+setFoeRule(nmlCanAttack);
 
 /* a line in the chat, from the game (system) */
 export function nmlSay(S, text) {

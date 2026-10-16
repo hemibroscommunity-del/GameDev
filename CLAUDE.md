@@ -1137,6 +1137,42 @@ remnant to migrate server-side, not a mode to preserve.
         on them opened your chat;
       - `?nmlask=0` is the game as it was; `nomansland` §3-4, `mp-nmlask`,
         `mp-nomansland` step 2: no-mans-land.md "Attacking is a choice".
+    - since v2.3.3268 THE CHOICE LASTS, AND THE SHIELD IS THERE -- the owner:
+      "I want attacks against real players to hit them even when not locked on
+      target but only if you select the attack option that pops up on the
+      window. I also want to be able to use shield for when battles happen
+      against real players in no mans land":
+      - the window's Attack, or a tap on the one who attacked you, records a
+        FOE (`src/game/sparTargets.js` `chooseFoe`, from nmlAsk.js `nmlAim`),
+        and to your weapons a foe is what a sparring clone is: the sword's
+        auto target takes the nearest (an `nml` lock with `src: 'auto'`), the
+        bow looses at one on its line, arrows and bolts that reach one hit
+        them, a swing lands on each in its arc, locked or not, every claim
+        naming them as `target` (a lock with `nml` no longer sends the swing's
+        open cone claim); no worker change;
+      - the choice LAPSES (forgotten; a tap asks again) when No man's land's
+        rule no longer allows the fight (`setFoeRule(nmlCanAttack)`, handed in
+        by noMansLand.js), when they leave, or after `FIGHT_QUIET_MS` 60 s with
+        no blow between you either way (every pvp_hit to or from them,
+        gameEvents.js `notePvpBlow`); your own lock on them keeps it, the
+        sword's automatic one does not; a tap on a live foe aims with no
+        second window, and a stray shot never asks about one;
+      - the shield and Special buttons are up for every weapon while a foe, or
+        a player you traded a blow with in the last minute (`fightingNow`), is
+        within `FIGHT_R` 900 and the rule allows -- the defender's button
+        stayed only 5 s past each blow; an unlocked guard faces the nearest;
+      - THE BADGE SAT ON THE SHIELD BUTTON (z 34 over 31, centred where the
+        shield's left edge is): a tap on the shield's middle opened the rules;
+        it now ends left of the middle and of the shield, 8 px clear where the
+        bell leaves room, 2 at the least (NmlBadge.jsx: CSS in the game
+        frame's own numbers -- `blockAnchor`, the bell's `left` -- as on a
+        computer the frame is narrower than the window), and is narrower --
+        your own skull a mark on its corner,
+        not a third thing in the row -- so it fits between the bell (66-110 px)
+        and the shield at 360 px and up; at 320 it lies over the bell's right
+        half, never the shield;
+      - spar §16 (24 checks), `mp-nmlfoe` (three phones): no-mans-land.md "The
+        choice lasts, and the shield is there".
     - since v2.3.3260 FIGHTS BETWEEN PLAYERS LAST, FISH MATTER IN THEM, AND
       LEAVING IS NO ESCAPE -- the owner, after the time-to-kill study: "I want
       you to plan and implement fixes for all of these including how much HP
@@ -1404,11 +1440,12 @@ remnant to migrate server-side, not a mode to preserve.
       - firstSightHit and the projectile hit test try the lock, then every
         live clone (`shotPlayerTargets`), each claim naming its clone as
         `target`; a swing claims each clone in its arc and reach
-        (`clonesInSwing`, its own count per clone: pvpSwing.js `key`), and a
-        lock on a clone never sends the open cone claim;
+        (`fightersInSwing` since v2.3.3268, its own count per clone: pvpSwing.js
+        `key`), and a lock on a clone never sends the open cone claim;
       - the shield button and the Special button are up while a clone is within
-        SPAR_FIGHT_R 900 (`sparFightOn`), every weapon; an unlocked guard faces
-        the nearest clone;
+        `FIGHT_R` 900 (`fightOn`; both renamed in v2.3.3268, which adds the
+        players you fight in No man's land), every weapon; an unlocked guard
+        faces the nearest clone;
       - ANOTHER PLAYER'S HP BAR IS YOURS: 76 x 22 and an 18 px number
         (PEER_BAR_W/H, PLAYER_HP_NUM_STYLE; was the monster's 44 x 13 and 9 px),
         grown upward from the old bar's bottom (PEER_BAR_Y), for every player;

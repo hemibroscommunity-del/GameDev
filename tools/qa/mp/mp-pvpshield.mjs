@@ -145,7 +145,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const inDuel = await H.readState(B, (S) => !!(S._inDuel || S._activeDuel));
   rec.ok('a duel is running (guard)', inDuel);
   if (!inDuel) { await done(); return; }
-  const near = await closeIn(A, wsPort, aId, bId, 40);
+  /* v2.3.3268: PLACED, not walked.  closeIn times key presses against this
+     box's frame rate, and missed its 40 px on every run of late (134, 61,
+     then 15 px -- and 170 px by the time the blows were thrown, out of the
+     sword's 140 px reach, so no blow landed and every check after read
+     nothing).  hopTo moves the page's own player in short steps, as the No
+     man's land scenarios do; closeIn stays for a final nudge. */
+  let near = { ok: false };
+  for (let i = 0; i < 3 && !near.ok; i++) {
+    const pb = await H.serverPlayer(wsPort, bId);
+    if (pb) await H.hopTo(A, pb.x - 40, pb.y, { tries: 30, step: 40 });
+    await A.page.waitForTimeout(900);
+    near = await closeIn(A, wsPort, aId, bId, 40);
+  }
   rec.ok(`the raider stands in a sword's reach (guard: ${near.d} px)`, near.ok, near);
 
   /* ── 1. every weapon: no button before the blow, a button at once after ── */

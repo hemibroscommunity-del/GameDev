@@ -37,7 +37,7 @@
 import { TARGET_PERIMETER_PX, TARGET_HYST } from '@/data/index.js';
 import { isIntangible } from '@/data/monsterVariants.js';
 import { isPlayerDead } from '@/game/combatHelpers.js'; /* v2.3.2251: a corpse acquires nothing */
-import { clonesNear, isLiveClone, clonePos } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones, monsters to your weapons */
+import { chosenNear, isLiveClone, isLiveFighter, clonePos } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones, monsters to your weapons; v2.3.3268: and the players you chose to attack */
 
 function monPos(m) {
   const x = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
@@ -185,16 +185,22 @@ export function monsterLock(S) {
  * game/spar.js sparAim), because every road a hit on a player takes reads
  * that shape (monsterCombat's claim, projectiles.js, the lunge and the bash);
  * `src: 'auto'` is what says this rule owns it.  A clone you TAPPED is yours,
- * as a tapped monster is, until it goes down. */
-function sparAutoLock(S) {
+ * as a tapped monster is, until it goes down.
+ * v2.3.3268: and a player you chose to attack in No man's land (a FOE,
+ * sparTargets.js: the window's Attack), the same way -- the lock No man's
+ * land's window writes ({type: 'player', nml: true}, nmlAsk.js nmlAim), with
+ * `src: 'auto'`, so noteNoMansLand still lets it go the moment the fight is
+ * no longer allowed, and a foe whose choice lapses goes like a dead monster. */
+function fighterAutoLock(S) {
   const lt = S && S.lockedTarget;
-  return (lt && lt.type === 'player' && lt.spar && lt.src === 'auto' && lt.ref) ? lt : null;
+  return (lt && lt.type === 'player' && (lt.spar || lt.nml) && lt.src === 'auto' && lt.ref) ? lt : null;
 }
-/* the auto rule's own lock: a monster's, or a clone's */
-function autoLock(S) { return monsterLock(S) || sparAutoLock(S); }
-/* is the auto lock still a live target -- a monster's monHoldable, a clone up */
+/* the auto rule's own lock: a monster's, a clone's or a foe's */
+function autoLock(S) { return monsterLock(S) || fighterAutoLock(S); }
+/* is the auto lock still a live target -- a monster's monHoldable, a clone
+   up, a foe still chosen and up */
 function autoHoldable(S, lt) {
-  return lt.type === 'monster' ? monHoldable(lt.ref) : isLiveClone(S, lt.id);
+  return lt.type === 'monster' ? monHoldable(lt.ref) : isLiveFighter(S, lt.id);
 }
 /* ...and inside the hysteresis ring (lockHolds' test, for either kind) */
 function autoLockHolds(S, lt) {
@@ -436,9 +442,10 @@ export function updateTargeting(S) {
   _updateEngagement(S);
   /* v2.3.3267: your sparring clones are candidates too, for the sword, the
      nearest first among the monsters (sparTargets.js clonesNear: the same
-     perimeter, the same {m, x, y, d2} shape, `spar: true`) */
+     perimeter, the same {m, x, y, d2} shape, `spar: true`).  v2.3.3268: and
+     the players you chose to attack (chosenNear: `foe: true`) */
   const monCands = targetCandidates(S);
-  const sparCands = autoAcquires(S) ? clonesNear(S, TARGET_PERIMETER_PX) : [];
+  const sparCands = autoAcquires(S) ? chosenNear(S, TARGET_PERIMETER_PX) : [];
   const cands = sparCands.length ? monCands.concat(sparCands).sort((a, b) => a.d2 - b.d2) : monCands;
   /* THE PERIMETER MARKS GO WITH THE RULE THEY ADVERTISE.  _targetCands is what
      draws the carets and ground rings and what lights the attack button hot
@@ -474,7 +481,7 @@ export function updateTargeting(S) {
     S._lockDroppedAt = Date.now();
     S._lockDroppedWhy = 'dead';
     clearLockAim(S);
-  } else if (lt && lt.ref && lt.type !== 'monster' && !sparAutoLock(S)) return;   /* npc/player: not ours (v2.3.3267: but a clone's auto lock is) */
+  } else if (lt && lt.ref && lt.type !== 'monster' && !fighterAutoLock(S)) return;   /* npc/player: not ours (v2.3.3267: but a clone's auto lock is; v2.3.3268: and a foe's) */
   /* ═══ v2.3.2504: EVERY LOCK CARRIES A START TIME, NOT JUST A TAPPED ONE ═══
      `at` existed only because tapStealable needed a pin clock, and it was
      stamped LAZILY inside that function -- which is reached only for melee
@@ -501,11 +508,12 @@ export function updateTargeting(S) {
      survives the frame keeps the stamp it already had. */
   if (S.lockedTarget && S.lockedTarget.at == null) S.lockedTarget.at = Date.now();
   /* v2.3.3267: a clone's auto lock points at the copy that is drawn (a peer's
-     object can be replaced), or goes when the clone does */
+     object can be replaced), or goes when the clone does (v2.3.3268: a foe's
+     the same, when the choice lapses) */
   {
-    const sl = sparAutoLock(S);
+    const sl = fighterAutoLock(S);
     if (sl) {
-      if (isLiveClone(S, sl.id)) sl.ref = S.others[sl.id];
+      if (isLiveFighter(S, sl.id)) sl.ref = S.others[sl.id];
       else { S.lockedTarget = null; S._lockDroppedAt = Date.now(); S._lockDroppedWhy = 'dead'; clearLockAim(S); }
     }
   }
@@ -607,7 +615,10 @@ export function updateTargeting(S) {
     S.lockedTarget = best.spar
       /* v2.3.3267: a clone, as a player lock (the shape a tap writes) */
       ? { type: 'player', id: best.id, ref: best.m, spar: true, src: 'auto', at: Date.now() }
-      : { type: 'monster', id: best.m.id, ref: best.m, src: 'auto', at: Date.now() };
+      : best.foe
+        /* v2.3.3268: a foe, as No man's land's lock (the window's shape) */
+        ? { type: 'player', id: best.id, ref: best.m, nml: true, src: 'auto', at: Date.now() }
+        : { type: 'monster', id: best.m.id, ref: best.m, src: 'auto', at: Date.now() };
   }
 }
 

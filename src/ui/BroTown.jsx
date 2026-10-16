@@ -44,6 +44,7 @@ import { EmotePanel } from './panels/EmotePanel.jsx';
 import { InspectPlayerPanel } from './panels/InspectPlayerPanel.jsx';
 import { nmlCanAttack, nmlHere } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land; v2.3.3253: + where you stand */
 import { sparCanAttack, sparAim } from '../game/spar.js'; /* v2.3.3265: aim at your sparring clones */
+import { isLiveFoe } from '../game/sparTargets.js'; /* v2.3.3268: a player you chose to attack is aimed at by a tap, no second window */
 import { profileRelayFields } from './panels/playerProfile.js'; /* v2.3.2926: the Inspect card's relay fields */
 import { NameModal } from './panels/NameModal.jsx';
 /* v2.3.1814: the login door that now sits in front of the creator.
@@ -12060,9 +12061,13 @@ export var BroTown = function BroTown(_ref0) {
                  invites, Ignore lets it go.  Except the one who attacked you
                  (nml_skull's `by`, and you carry no red skull): hitting them
                  back gives no red skull, so the tap aims at once, as before.
-                 ?nmlask=0, or a worker without No man's land, aims as before. */
+                 ?nmlask=0, or a worker without No man's land, aims as before.
+                 v2.3.3268: and a player you already chose to attack, while the
+                 fight with them lasts (sparTargets.js isLiveFoe): the choice
+                 was made, so the tap aims at once -- a window in the middle
+                 of that fight would cost it. */
               var _nmlAsked = false;
-              try { _nmlAsked = nmlAskOn(S) && !nmlHitBack(S, id) && nmlAsk(S, id, 'tap'); } catch (e) { _nmlAsked = false; }
+              try { _nmlAsked = nmlAskOn(S) && !nmlHitBack(S, id) && !isLiveFoe(S, id) && nmlAsk(S, id, 'tap'); } catch (e) { _nmlAsked = false; }
               if (!_nmlAsked) nmlAim(S, id);
             }
             return;
@@ -13700,7 +13705,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
-  React.createElement(NmlBadge, { stateRef: stateRef }),
+  React.createElement(NmlBadge, { stateRef: stateRef, isLandscape: isLandscape }),   /* v2.3.3268: + the orientation, to keep clear of the shield button */
   /* v2.3.3253: the small window a tap or a stray shot raises about a player
      you could fight there (game/nmlAsk.js), portalled to the top of the
      screen, under the minimap */

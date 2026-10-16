@@ -523,6 +523,9 @@ function _nmlStrayShot(S, a, ox, goy) {
   var notDrawn = S._peersNotDrawn;
   for (var id in S.others) {
     if (id === lt || (notDrawn && notDrawn.has(id))) continue;
+    /* v2.3.3268: a player you chose to attack (or a clone) is no stray: the
+       hit test above tried them, and nothing is asked about them again */
+    if (isLiveFighter(S, id)) continue;
     var o = S.others[id];
     if (!o) continue;
     var x = (typeof o.renderX === 'number') ? o.renderX : o.x;
@@ -807,7 +810,7 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: a duel claim without the brew, for a worker that adds its own */
 import { nmlAsk, nmlAskOn, nmlAskCurrent } from '@/game/nmlAsk.js'; /* v2.3.3253: a stray shot through a player asks, once */
 import { nmlHere } from '@/game/noMansLand.js'; /* v2.3.3253: ...only while you stand in No man's land */
-import { shotPlayerTargets } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones are hit like monsters, locked or not */
+import { shotPlayerTargets, isLiveFighter } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones are hit like monsters, locked or not; v2.3.3268: and the players you chose to attack */
 
 /* ═══ v2.3.2217: THE SNOWBALL BURSTS WHERE ITS FLIGHT ENDS ═══
    The thrown ball had no impact at all — it simply stopped existing on the
