@@ -209,7 +209,7 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"disable_dungeons","value":true}' "https://WORKER/api/admin/flags"
 ```
 
-**Let more players in from one internet address** (v2.3.3273). The game
+**Let more players in from one internet address** (v2.3.3274). The game
 lets one address (one home's Wi-Fi, say) hold 16 places and open 20
 connections a minute, so one script cannot take every place. If a whole
 class or a mobile network ever shares one address, raise the limit or set

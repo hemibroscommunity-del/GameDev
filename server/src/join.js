@@ -351,7 +351,7 @@ export const joinMethods = {
       type: 'room_full',
       /* `reason` mirrors join_rejected's field so the client's refusal
          handling reads the same way for both. */
-      reason: why || 'full',   /* v2.3.3273: 'ip' when it is the address's limit (flood.js) */
+      reason: why || 'full',   /* v2.3.3274: 'ip' when it is the address's limit (flood.js) */
       /* SOCKETS, not getPlayerCount().  The cap counts sockets, and a
          connection that has not sent its `join` yet is a player walking
          through the door — it is holding the seat this joiner wants.

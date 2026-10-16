@@ -174,7 +174,7 @@ check('join sync carries the stored request', !!(lastSync(wsD2) && lastSync(wsD2
 await cmd(wsD2, 'friend_accept', { from: P('a') });
 room.sessions.delete(wsD2);
 delete room.playerState[P('d')];
-/* v2.3.3273: a DM spends the sender's chat allowance (chatlanes.js) and one
+/* v2.3.3274: a DM spends the sender's chat allowance (chatlanes.js) and one
    sender may leave PACE.DM_PER_SENDER_BOX unread lines in a box (flood.js);
    the lane is reset between sends here so the two box caps are what is
    measured, and the lane itself is flood.test.mjs's. */

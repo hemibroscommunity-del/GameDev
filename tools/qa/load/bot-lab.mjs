@@ -167,7 +167,7 @@ async function send(world, p, msg) {
 async function travel(world, p, tx, ty, reach) {
   const { room } = world;
   const ps = room.playerState[p.id];
-  /* v2.3.3273: the room may have closed the socket (flood.js): a bot past
+  /* v2.3.3274: the room may have closed the socket (flood.js): a bot past
      its message budget is logged out, and the scenario says so */
   if (!ps) { p.closed = true; return false; }
   const dx = tx - ps.x, dy = ty - ps.y, d = Math.hypot(dx, dy);
@@ -486,7 +486,7 @@ async function roomFill() {
   for (let i = 0; i < cap; i++) {
     const ws = { send() {}, close() { this.closed = true; } };
     /* as the room's door makes them (index.js fetch): with `openedAt`, so a
-       join window (v2.3.3273, flood.js) can sweep them */
+       join window (v2.3.3274, flood.js) can sweep them */
     room.sessions.set(ws, { ...baseSession(), openedAt: Date.now() });
     (i % 2 ? quiet : talk).push(ws);
   }
@@ -586,7 +586,7 @@ async function writeProbes() {
     await new Promise((r) => setImmediate(r));
     const w0 = W.puts + W.dels;
     /* 100 a second: an honest phone's rate, inside the socket's budget
-       (v2.3.3273), so what is measured is the rows and not the budget */
+       (v2.3.3274), so what is measured is the rows and not the budget */
     for (let i = 0; i < N; i++) { simNow += 10; await room.webSocketMessage(a.ws, JSON.stringify(mk(i))); }
     await new Promise((r) => setImmediate(r));
     out.push({ name, rows: W.puts + W.dels - w0, n: N });
@@ -602,12 +602,12 @@ async function writeProbes() {
   await measure('move, standing (for comparison)', () => moveMsg(room.playerState[a.id].x, room.playerState[a.id].y, 0, 0));
 
   /* a second join on the same socket, under a new id, 200 times (since
-     v2.3.3273 the first closes the socket: the count below is what is left) */
+     v2.3.3274 the first closes the socket: the count below is what is left) */
   const ps0 = Object.keys(room.playerState).length;
   const w0 = W.puts + W.dels;
   for (let i = 0; i < 200; i++) {
     simNow += 50;
-    if (!room.sessions.has(a.ws)) break;   /* v2.3.3273: the first one closes the socket */
+    if (!room.sessions.has(a.ws)) break;   /* v2.3.3274: the first one closes the socket */
     await room.webSocketMessage(a.ws, JSON.stringify({ type: 'join', id: 'ghost' + i + 'x' + hash32(), name: 'G', protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
   }
   await new Promise((r) => setImmediate(r));

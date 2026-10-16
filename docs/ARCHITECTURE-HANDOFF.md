@@ -299,7 +299,7 @@ extended.
     server test suite (zero deps). Lint/build/smoke run in CI. Validate
     new mixins pre-wiring with a "premix" wrapper that
     `Object.assign`s the methods and imports the test file.
-27. **What a player's own taps may write is paced** (v2.3.3273,
+27. **What a player's own taps may write is paced** (v2.3.3274,
     flood.js, docs/specs/one-socket.md). A handler that saves the record
     because the CLIENT asked (equip, unequip, the active slot, a stat
     change, a cape toggle) calls `_saveRpgPaced`, never `_saveRpg`: a

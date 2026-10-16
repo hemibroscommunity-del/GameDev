@@ -169,7 +169,7 @@ export const gridMethods = {
     // via stats_update; this is a best-effort early recompute, and the
     // authoritative new level reaches the client via the player_state flush.
     const prevLevel = ps.level || 1;
-    /* v2.3.3273: saved only when the recompute changed something -- the
+    /* v2.3.3274: saved only when the recompute changed something -- the
        message is the client's word that a stat went up, and sent again and
        again it wrote a row a message (flood.js) -- and then at the player's
        pace */
@@ -1057,7 +1057,7 @@ export const gridMethods = {
     // full player_state echo, so client/server skew can no longer
     // self-amplify into a visible sync storm.
     if (statsChanged || relevantSig() !== preSig) {
-      /* v2.3.3273: at the player's pace (flood.js _saveRpgPaced) -- a defence
+      /* v2.3.3274: at the player's pace (flood.js _saveRpgPaced) -- a defence
          of 10, 11, 10, 11 ... wrote a row a message */
       this._saveRpgPaced(session.id, ps);
       const ws = this._wsBySessionId(session.id);

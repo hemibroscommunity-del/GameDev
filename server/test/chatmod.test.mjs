@@ -121,7 +121,7 @@ for (const n of ['a', 'b', 'c']) {
     const full = {};
     for (let i = 0; i < CHATMOD.MUTE_MAX; i++) full['bp_cm_fill' + i] = { name: 'F', at: 1 };
     await state.storage.put('chat_mute:' + P('a'), { list: full, at: 1 });
-    /* v2.3.3273: the list held in memory is the truth once loaded (its writes
+    /* v2.3.3274: the list held in memory is the truth once loaded (its writes
        are paced, flood.js) -- a copy put behind the room's back is read only
        when the room has none, so drop the one it holds */
     room.chatMuteDocs.delete(P('a'));
