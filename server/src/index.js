@@ -203,6 +203,7 @@ import { bundleParts } from './bundle.js'; /* v2.3.3254: several messages in one
 import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look relayed when it changes, not every 2 s */
 import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what is 5+ levels below you, harvests and fights */
 import { floodMethods, roomNameFor, requestIp, FLOOD } from './flood.js'; /* v2.3.3273: one socket cannot stop the game */
+import { verifyMethods } from './verify.js'; /* v2.3.3275: the account check -- a new character proves a person is there */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
@@ -6348,6 +6349,7 @@ Object.assign(GameRoom.prototype, steadyMoversMethods); /* v2.3.3203 */
 Object.assign(GameRoom.prototype, lookRelayMethods); /* v2.3.3240 */
 Object.assign(GameRoom.prototype, xpDecayMethods); /* v2.3.3251 */
 Object.assign(GameRoom.prototype, floodMethods); /* v2.3.3273: one socket cannot stop the game */
+Object.assign(GameRoom.prototype, verifyMethods); /* v2.3.3275: the account check */
 Object.assign(GameRoom.prototype, pvpBalanceMethods); /* v2.3.3260 */
 Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-fight, the body stays */
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */

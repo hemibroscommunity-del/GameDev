@@ -543,6 +543,13 @@ Summary of the wire-visible changes:
   legacy/guest ids). Rejected auth → server sends `join_rejected
   {reason:'auth'}` then closes with code 4003; the client mints a fresh
   identity once and reconnects.
+- v2.3.3275 (the account check, docs/specs/account-check.md): `join`
+  gains `verify`, a Cloudflare Turnstile token, present only when the
+  room asked for one. A join for an id the room has no record of, with
+  the check on and no good token, is answered `join_rejected
+  {reason:'verify', sitekey}` and closed with 4014; the client shows the
+  widget and joins again with its token. Nothing is written for a
+  refused join. Off until both Turnstile keys are set.
 - v2.3.3273 (one socket cannot stop the game, docs/specs/one-socket.md):
   every message counts against the socket's budget (300 at once, then 120
   a second, a bundle's parts one each); past it a message is dropped, and

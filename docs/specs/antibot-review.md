@@ -295,6 +295,13 @@ fix.
 
 ## What to do, in order
 
+**Done since this review:** the urgent five (1-5 below) in
+docs/specs/one-socket.md (v2.3.3274), and the account check in
+docs/specs/account-check.md (v2.3.3275, off until the owner sets the keys).
+One more finding reached the owner privately: the way a login key becomes a
+player id needs replacing with server-issued random ids and a proper
+credential; it is on the list below the farming holes.
+
 **Urgent: one person can stop the game.** Each item is small and honest play
 never notices it. Items 2 and 4 touch the room's door and the join, where the
 server split is being built, so they are best done with that session.

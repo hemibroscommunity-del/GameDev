@@ -155,6 +155,37 @@ Clear the sticky message:
 curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/announce"
 ```
 
+## The account check (v2.3.3275)
+
+New characters can be asked to pass Cloudflare's Turnstile check (usually a
+tick that appears by itself, no puzzle) before the game makes them. It costs a
+real player one tap, once. It costs anyone running a fleet of free accounts
+one check per account, which is why it exists. Players who already have a
+character are never asked. Full write-up: `docs/specs/account-check.md`.
+
+It is **off until you turn it on**, in this order:
+
+1. Cloudflare dashboard → **Turnstile** → **Add widget**. Name it anything,
+   add the game's hostnames (your domain, and the `pages.dev` site if you
+   test there), widget mode **Managed**. You get a **Site Key** and a
+   **Secret Key**.
+2. Put the Site Key in `server/wrangler.toml` as `TURNSTILE_SITEKEY = "..."`
+   and merge. (This one is public by nature.)
+3. Only after the game has deployed: Cloudflare dashboard → **Workers &
+   Pages** → **brotown-server** → **Settings** → **Variables and Secrets** →
+   **Add** → Type **Secret**, Name `TURNSTILE_SECRET`, Value the Secret Key →
+   **Deploy**. From that moment new characters see the check.
+
+Why that order: a page from before this version does not know the check
+exists and would stop at the door. The secret is the switch, so it goes in
+last.
+
+To turn it off without a deploy:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"disable_verify","value":true}' "https://WORKER/api/admin/flags"
+```
+
 ## Live switches (flags) — change the game without a deploy
 
 Flags take effect immediately for everyone, survive deploys, and are
