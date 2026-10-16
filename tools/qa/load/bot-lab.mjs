@@ -167,6 +167,9 @@ async function send(world, p, msg) {
 async function travel(world, p, tx, ty, reach) {
   const { room } = world;
   const ps = room.playerState[p.id];
+  /* v2.3.3274: the room may have closed the socket (flood.js): a bot past
+     its message budget is logged out, and the scenario says so */
+  if (!ps) { p.closed = true; return false; }
   const dx = tx - ps.x, dy = ty - ps.y, d = Math.hypot(dx, dy);
   if (d <= reach) return true;
   const mode = p.cfg.move;
@@ -221,7 +224,7 @@ const SKILL = { tree: 'woodcutting', oreVein: 'mining', fishSpot: 'fishing' };
 async function stepGatherer(world, p) {
   const { room } = world;
   const ps = room.playerState[p.id];
-  if (!ps) return;
+  if (!ps) { p.closed = true; return; }
   if (ps.dead || ps.dying) { p.deaths = (p.deaths || 0) + 1; return; }
   if (ps.hp < (ps.maxHp || 100)) ps.hp = ps.maxHp || 100;   /* the lab's bots never die: a real one eats or flees */
   const now = Date.now();
@@ -281,6 +284,7 @@ async function stepGatherer(world, p) {
 async function stepCook(world, p) {
   const { room } = world;
   const ps = room.playerState[p.id];
+  if (!ps) { p.closed = true; return; }
   const c = p.cfg;
   const now = Date.now();
   if (p.waitUntil > now) return;
@@ -317,7 +321,7 @@ const MON_LVL_MAX = 5;
 async function stepFighter(world, p) {
   const { room } = world;
   const ps = room.playerState[p.id];
-  if (!ps) return;
+  if (!ps) { p.closed = true; return; }
   if (ps.dead || ps.dying) { p.deaths = (p.deaths || 0) + 1; return; }
   if (ps.hp < (ps.maxHp || 100)) ps.hp = ps.maxHp || 100;
   const now = Date.now();
@@ -425,7 +429,7 @@ async function runScenario(sc) {
   const out = [];
   for (const p of world.players) {
     const ps = world.room.playerState[p.id] || { inventory: p.inv0, lifeSkills: {} };
-    if (!world.room.playerState[p.id]) p.why.set('LOGGED OUT', 1);
+    if (!world.room.playerState[p.id]) p.why.set('LOGGED OUT (the room closed the socket)', 1);
     const rec = world.room._botfp && world.room._botfp.get(p.id);
     if (rec) world.room._botfpDecay(rec, Date.now());
     const gained = {};
@@ -454,8 +458,15 @@ async function speedTest() {
     const ps = world.room.playerState[p.id];
     const x0 = ps.x, y0 = ps.y;
     const tx = x0 + 1e7, ty = y0;        /* a point far off: only the bound stops it */
-    for (let s = 0; s < Math.round(10000 / STEP_MS); s++) { simNow += STEP_MS; await travel(world, p, tx, ty, 1); }
-    res.push({ mode, pxPerS: Math.round(Math.hypot(ps.x - x0, ps.y - y0) / 10), frames: p.frames, moves: p.moves });
+    let lastX = ps.x, lastY = ps.y;
+    for (let s = 0; s < Math.round(10000 / STEP_MS); s++) {
+      simNow += STEP_MS;
+      await travel(world, p, tx, ty, 1);
+      const cur = world.room.playerState[p.id];
+      if (!cur) break;
+      lastX = cur.x; lastY = cur.y;
+    }
+    res.push({ mode, pxPerS: Math.round(Math.hypot(lastX - x0, lastY - y0) / 10), frames: p.frames, moves: p.moves, closed: !!p.closed });
   }
   return res;
 }
@@ -474,7 +485,9 @@ async function roomFill() {
   const talk = [], quiet = [];
   for (let i = 0; i < cap; i++) {
     const ws = { send() {}, close() { this.closed = true; } };
-    room.sessions.set(ws, baseSession());
+    /* as the room's door makes them (index.js fetch): with `openedAt`, so a
+       join window (v2.3.3274, flood.js) can sweep them */
+    room.sessions.set(ws, { ...baseSession(), openedAt: Date.now() });
     (i % 2 ? quiet : talk).push(ws);
   }
   let nextWord = Date.now();
@@ -572,7 +585,9 @@ async function writeProbes() {
   const measure = async (name, mk) => {
     await new Promise((r) => setImmediate(r));
     const w0 = W.puts + W.dels;
-    for (let i = 0; i < N; i++) { simNow += 5; await room.webSocketMessage(a.ws, JSON.stringify(mk(i))); }
+    /* 100 a second: an honest phone's rate, inside the socket's budget
+       (v2.3.3274), so what is measured is the rows and not the budget */
+    for (let i = 0; i < N; i++) { simNow += 10; await room.webSocketMessage(a.ws, JSON.stringify(mk(i))); }
     await new Promise((r) => setImmediate(r));
     out.push({ name, rows: W.puts + W.dels - w0, n: N });
   };
@@ -586,19 +601,22 @@ async function writeProbes() {
   await measure('friend_dm to a friend who is offline', (i) => ({ type: 'friend_dm', payload: { to: b.id, text: 'hi ' + i } }));
   await measure('move, standing (for comparison)', () => moveMsg(room.playerState[a.id].x, room.playerState[a.id].y, 0, 0));
 
-  /* a second join on the same socket, under a new id, 200 times */
+  /* a second join on the same socket, under a new id, 200 times (since
+     v2.3.3274 the first closes the socket: the count below is what is left) */
   const ps0 = Object.keys(room.playerState).length;
   const w0 = W.puts + W.dels;
   for (let i = 0; i < 200; i++) {
     simNow += 50;
+    if (!room.sessions.has(a.ws)) break;   /* v2.3.3274: the first one closes the socket */
     await room.webSocketMessage(a.ws, JSON.stringify({ type: 'join', id: 'ghost' + i + 'x' + hash32(), name: 'G', protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
   }
   await new Promise((r) => setImmediate(r));
-  const rejoin = { joins: 200, players: Object.keys(room.playerState).length - ps0, rows: W.puts + W.dels - w0, sockets: room.sessions.size };
+  const rejoin = { joins: 200, players: Object.keys(room.playerState).length - ps0, rows: W.puts + W.dels - w0, sockets: room.sessions.size, closed: !room.sessions.has(a.ws) };
 
-  /* a frame that is just `null` */
+  /* a frame that is just `null`, on a live socket */
+  const c = await addPlayer(world, { name: 'wc' }, 2);
   let nullThrew = null;
-  try { await room.webSocketMessage(a.ws, 'null'); nullThrew = false; } catch (e) { nullThrew = e && e.message; }
+  try { await room.webSocketMessage(c.ws, 'null'); nullThrew = false; } catch (e) { nullThrew = e && e.message; }
   return { out, rejoin, nullThrew };
 }
 
@@ -624,7 +642,7 @@ if (CENSUS) {
 const results = [];
 console.log(`\nBOT LAB -- ${MINUTES} min of game time a scenario, seed ${SEED}\n`);
 console.log('Speed bound (10 s toward a far point, nothing in the way):');
-for (const r of await speedTest()) console.log(`  ${r.mode.padEnd(7)} ${String(r.pxPerS).padStart(7)} px/s   (${r.frames} frames, ${r.moves} moves)`);
+for (const r of await speedTest()) console.log(`  ${r.mode.padEnd(7)} ${String(r.pxPerS).padStart(7)} px/s   (${r.frames} frames, ${r.moves} moves${r.closed ? '; the room closed the socket: past its message budget' : ''})`);
 console.log(`  -- the fastest honest stack is ~441 px/s (movement.js), a phone walks ~150-250\n`);
 for (const sc of SCENARIOS) {
   if (ONLY && !ONLY.includes(sc.name)) continue;
@@ -651,7 +669,7 @@ if (!ONLY || ONLY.includes('writes')) {
   const r = await writeProbes();
   console.log('writes: rows written by 1,000 messages from one player (no limit on how often any of these may be sent)');
   for (const o of r.out) console.log(`  ${o.name.padEnd(42)} ${String(o.rows).padStart(5)} rows`);
-  console.log(`  join again on the same socket under a new id, ${r.rejoin.joins} times: ${r.rejoin.players} more players held in the room (on ${r.rejoin.sockets} sockets), ${r.rejoin.rows} rows`);
+  console.log(`  join again on the same socket under a new id, ${r.rejoin.joins} times: ${r.rejoin.players} more players held in the room (on ${r.rejoin.sockets} sockets), ${r.rejoin.rows} rows${r.rejoin.closed ? '; the room closed the socket at the first' : ''}`);
   console.log(`  a frame that is just "null": ${r.nullThrew === false ? 'handled' : 'THREW: ' + r.nullThrew}\n`);
 }
 if (!ONLY || ONLY.includes('roomfill')) {

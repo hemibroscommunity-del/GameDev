@@ -25,6 +25,7 @@
  *      client are never rebroadcast (deny-list).
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
+import { PACE } from '../src/flood.js';
 import { FRIENDS } from '../src/friends.js';
 
 function makeState() {
@@ -173,12 +174,30 @@ check('join sync carries the stored request', !!(lastSync(wsD2) && lastSync(wsD2
 await cmd(wsD2, 'friend_accept', { from: P('a') });
 room.sessions.delete(wsD2);
 delete room.playerState[P('d')];
-for (let i = 0; i < FRIENDS.DM_BACKLOG_MAX + 5; i++) {
+/* v2.3.3274: a DM spends the sender's chat allowance (chatlanes.js) and one
+   sender may leave PACE.DM_PER_SENDER_BOX unread lines in a box (flood.js);
+   the lane is reset between sends here so the two box caps are what is
+   measured, and the lane itself is flood.test.mjs's. */
+const freshLane = () => { if (room._laneBuckets) room._laneBuckets.delete(P('a')); };
+for (let i = 0; i < PACE.DM_PER_SENDER_BOX + 5; i++) {
+  freshLane();
+  await cmd(wss.a, 'friend_dm', { to: P('d'), text: 'msg-' + i });
+}
+const box1 = await state.storage.get('friend_msg:' + P('d'));
+check('one sender fills at most DM_PER_SENDER_BOX of an offline box; past that a line is dropped, not written',
+  Array.isArray(box1) && box1.length === PACE.DM_PER_SENDER_BOX && box1[0].text === 'msg-0' && box1[box1.length - 1].text === 'msg-' + (PACE.DM_PER_SENDER_BOX - 1),
+  box1 && { len: box1.length, first: box1[0] && box1[0].text, last: box1[box1.length - 1] && box1[box1.length - 1].text });
+/* the box's own cap, oldest dropped: other senders' lines already in it */
+const seeded = [];
+for (let i = 0; i < FRIENDS.DM_BACKLOG_MAX - 5; i++) seeded.push({ from: 'bp_other' + (i % 3), fromName: 'O', text: 'old-' + i, ts: 1 });
+await state.storage.put('friend_msg:' + P('d'), seeded);
+for (let i = 0; i < 10; i++) {
+  freshLane();
   await cmd(wss.a, 'friend_dm', { to: P('d'), text: 'msg-' + i });
 }
 const box = await state.storage.get('friend_msg:' + P('d'));
 check('offline DMs land in a CAPPED backlog (oldest dropped)',
-  Array.isArray(box) && box.length === FRIENDS.DM_BACKLOG_MAX && box[0].text === 'msg-5' && box[box.length - 1].text === 'msg-' + (FRIENDS.DM_BACKLOG_MAX + 4),
+  Array.isArray(box) && box.length === FRIENDS.DM_BACKLOG_MAX && box[0].text === 'old-5' && box[box.length - 1].text === 'msg-9',
   box && { len: box.length, first: box[0] && box[0].text });
 const wsD3 = fakeWs('d3');
 await join(wsD3, P('d'), 'D');

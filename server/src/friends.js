@@ -32,6 +32,8 @@
  *  which have no handlers for them).
  */
 
+import { PACE } from './flood.js';   /* v2.3.3274: an offline friend's box takes so many lines a sender */
+
 export const FRIENDS = {
   LIST_MAX: 100,        // friendships per player
   REQ_OUT_MAX: 25,      // pending outgoing requests per player
@@ -214,6 +216,10 @@ export const friendsMethods = {
     if (!from || !to || typeof to !== 'string' || typeof text !== 'string') return;
     text = text.slice(0, FRIENDS.DM_MAX).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
     if (!text) return;
+    /* v2.3.3274: a DM is a chat line and spends the sender's chat allowance
+       (chatlanes.js _laneAllow: six, then one every 1.5 s).  There was no
+       limit at all, and each line to an offline friend was a row written. */
+    if (this._laneAllow && !this._laneAllow(from)) return;
     const mine = await this._friendsDoc(from);
     if (!mine.list[to]) {
       return this._friendsSend(from, 'friend_error', { reason: 'not-friends', target: to });
@@ -229,6 +235,11 @@ export const friendsMethods = {
     if (this._chatModMuted(to, from)) return;
     if (!this._friendsSend(to, 'friend_dm', wire)) {
       const box = (await this.state.storage.get('friend_msg:' + to)) || [];
+      /* v2.3.3274: one sender may leave PACE.DM_PER_SENDER_BOX unread lines in
+         a friend's box; past that a line is dropped, not written (flood.js) */
+      let _mine = 0;
+      for (const e of box) if (e && e.from === from) _mine++;
+      if (_mine >= PACE.DM_PER_SENDER_BOX) return;
       box.push(wire);
       if (box.length > FRIENDS.DM_BACKLOG_MAX) box.splice(0, box.length - FRIENDS.DM_BACKLOG_MAX);
       await this.state.storage.put('friend_msg:' + to, box);

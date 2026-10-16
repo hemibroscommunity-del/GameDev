@@ -299,6 +299,19 @@ extended.
     server test suite (zero deps). Lint/build/smoke run in CI. Validate
     new mixins pre-wiring with a "premix" wrapper that
     `Object.assign`s the methods and imports the test file.
+27. **What a player's own taps may write is paced** (v2.3.3274,
+    flood.js, docs/specs/one-socket.md). A handler that saves the record
+    because the CLIENT asked (equip, unequip, the active slot, a stat
+    change, a cape toggle) calls `_saveRpgPaced`, never `_saveRpg`: a
+    burst of 30 at once, then one every 10 s, the rest riding the regen
+    drain (`_regenDirty`) or the close flush. A handler that writes any
+    other key on a client's word writes nothing when nothing changed, and
+    either paces the write (`_paced`, the mute list) or drops it past the
+    lane (`_paceTake`, the offer's mark) -- never holds a copy of a record
+    another path may delete. Rule 10's "no visible rollback" keeps the
+    10 s window the pools already have. Every message a socket sends
+    counts against its budget (`_floodMsgOk`); a new client->server type
+    needs no limit of its own for the flood case, only for what it writes.
 
 ---
 
