@@ -178,6 +178,22 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"disable_dungeons","value":true}' "https://WORKER/api/admin/flags"
 ```
 
+**Let more players in from one internet address** (v2.3.3273). The game
+lets one address (one home's Wi-Fi, say) hold 16 places and open 20
+connections a minute, so one script cannot take every place. If a whole
+class or a mobile network ever shares one address, raise the limit or set
+it to 0 for none:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"ip_sockets","value":0}' "https://WORKER/api/admin/flags"
+```
+(`ip_joins_min` is the other one, the connections a minute.)
+
+**A private room** for a playtest: the game only makes the rooms it is told
+to. Add the name to `ROOMS` in `server/wrangler.toml` (comma separated,
+`"brotown-1, playtest-2"`), merge, and `?room=playtest-2` on the game's
+address reaches it. Any other name answers "no such room".
+
 **Turn any flag back off** (this also ends an XP event):
 ```
 curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/flags?name=xp_mult"

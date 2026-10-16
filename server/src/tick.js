@@ -18,6 +18,7 @@
 import { WHEEL_ZONE } from './wheelzone.js';   /* v2.3.2978: the Wheel's monsters go out by interest */
 import { armourGradeWire } from './gearprov.js';   /* v2.3.3142: the worn armour's grade, seen by others */
 import { eventHeardBy } from './eventplace.js';   /* v2.3.3245: events by place */
+import { FLOOD } from './flood.js';   /* v2.3.3273: a socket that never joined is closed after its window */
 import { PRESENCE2 } from './presence2.js';   /* v2.3.3250: far players only while your world map is open */
 
 /* v2.3.2062: server ticks between regen passes. Exported because the Mana
@@ -158,6 +159,13 @@ export const tickMethods = {
   _tickPingAndAfk(nowMs) {
     const pingMsg = JSON.stringify({ type: 'ping', ts: nowMs });
     for (const [ws, session] of this.sessions) {
+      /* v2.3.3273: a socket that never joined is closed after its window
+         (flood.js FLOOD.JOIN_WINDOW_MS) -- it held a place for as long as it
+         said anything at all, and said nothing the room could use. */
+      if (this._floodNoJoin && this._floodNoJoin(session, nowMs)) {
+        this._floodClose(ws, FLOOD.CLOSE_JOIN, 'no join');
+        continue;
+      }
       if (nowMs - session.lastRecv > this.IDLE_TIMEOUT_MS) {
         /* v2.3.1621: EVICTING MEANS REMOVING IT.  This used to call
            ws.close() and nothing else, delegating all cleanup to

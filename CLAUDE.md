@@ -3372,6 +3372,21 @@ Two protocol versions coexist; both must keep working:
   - a value a player SEES (loot, XP, gold) is still saved before its message
     goes (ARCHITECTURE-HANDOFF rule 10): batching it is the owner's call, never
     a quiet saving.
+- **ONE SOCKET CANNOT STOP THE GAME (v2.3.3273, docs/specs/one-socket.md).**
+  The anti-bot review's urgent five, closed in `server/src/flood.js`: a row
+  written per message (mute no-ops, a stat flood, offline DMs) -- nothing
+  written when nothing changed, a player's own saves PACED (`_saveRpgPaced`,
+  handoff rule 27); `?room=<anything>` made a room awake and billed -- only
+  the main room and `ROOMS` in wrangler.toml, anything on a local host; no
+  limit on messages a socket -- a budget (300 then 120/s, drops, close 4012);
+  the room's places held by sockets that never joined, a second join adding
+  a player, one address holding every place -- nothing but join/pong before
+  the join, a 15 s join window and one join a socket (close 4011), 16 places
+  and 20 opens a minute an address (live flags `ip_sockets`, `ip_joins_min`,
+  0 = off; CF-Connecting-IP, so local tests are never counted); a `null`
+  frame threw -- dropped. `flood` suite (46); the bot lab's `writes` and
+  `roomfill` probes show the before and after. Still open: the farming holes
+  (the review's 6-9) and the account check.
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.

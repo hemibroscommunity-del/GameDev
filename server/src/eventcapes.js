@@ -454,7 +454,7 @@ export const eventCapeMethods = {
     const next = !want;
     if (ps.capeOff === next) return;            /* already there; no echo storm */
     ps.capeOff = next;
-    this._saveRpg(session.id, ps);
+    this._saveRpgPaced(session.id, ps);   /* v2.3.3273: at the player's pace (flood.js) */
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);
   },
