@@ -1,5 +1,11 @@
 # Behavioral Anti-Bot for Life Skills (v2.3.1146)
 
+> **v2.3.3271: what this does NOT catch**, measured with scripted players
+> against the real server (docs/specs/antibot-review.md):
+> - a strike with no fingerprint is never scored;
+> - a fresh made-up fingerprint each time passes;
+> - only a repeated one is flagged, and a flag changes nothing.
+
 Server half of `docs/ANTICHEAT-SPEC.md`, shipped **FLAG-ONLY** per owner
 decision (2026-07-03): behavioral signals record evidence and shadow-flag
 accounts for the owner's review — nothing behavioral changes gameplay

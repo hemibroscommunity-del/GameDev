@@ -3185,6 +3185,23 @@ Two protocol versions coexist; both must keep working:
       23:59:45); the daily limit counts socket messages 20 to 1 like the bill,
       so Oct 11's playtest was ~4-5% of a day, not 76%. The game's listing
       answered throughout (docs/specs/cloudflare-lab.md "The answer").
+- Bots (v2.3.3271, docs/specs/antibot-review.md): `node tools/qa/load/bot-lab.mjs
+  [minutes] [--only=a,b]` runs scripted players against the real room code (in
+  memory, simulated clock) and reports what each took home and what botfp made
+  of it, plus one-socket probes (rows written a message, the room filled by
+  sockets that never join, a second join on one socket, the speed bound).
+  The review's findings, measured 2026-10-16:
+  - a harvest with no `extraction_start` is paid untimed (obsidian 48x);
+  - fingerprints are the phone's word: a strike with none is never scored;
+  - flags change nothing, and no screen shows them;
+  - the speed slack is per message: 2,909 px/s, and 58,661 with bundles;
+  - combat lanes are per monster, and a "ranged" hit reaches 3,600 px with no
+    bow (7x the kills);
+  - one socket can spend the free plan's rows (`chat_mute`, `stats_update` and
+    `friend_dm` write a row a message) or keep rooms awake (`?room=<any>`).
+
+  The fix order is in the review. Re-run the lab after any change to a
+  harvest, cook, move or hit path.
 
 ## Conventions
 
