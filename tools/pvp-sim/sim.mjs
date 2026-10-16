@@ -320,7 +320,17 @@ function segGap(px, py, ax, ay, bx, by) {
               contact too (a re-press lunges again, and dazes).  The one
               lunged at answers with the specials' habits (planDefence).
    lungeWaits v2.3.3262: holds the lunge while the other's big bolt or volley
-              is in the air (no roll in a dash: it would run into it) */
+              is in the air (no roll in a dash: it would run into it)
+   v2.3.3267, a beginner's habits (the sparring clones' Easy, server/src/spar.js;
+   absent on the three players below, so they fight exactly as before):
+   special    null: never throws a special
+   gapMs      waits this much longer than the weapon's cooldown between two
+              swings or shots (slow to press again)
+   aimSigma   aims each arrow and plain bolt this far off, radians (a normal
+              spread): a shot off its line misses
+   boltsStraight  a plain bolt keeps the line it left on, as a bolt does with
+              no lock (projectiles.js: only a lock turns a bolt), riding the
+              caster: a target that moves off the line is missed */
 export const SKILL = {
   low: {
     focus: 0.65, holdAt: 140, sprint: false, lunge: false,
@@ -673,6 +683,7 @@ function useSpecial(f, o) {
   if (T - f.lastSwipe < SPECIAL_CD) return false;
   if (f.ps.mana < f.d.swipe) return false;
   if (TUNE.noSpecials) return false;
+  if (!sk.special) return false;   /* v2.3.3267: a beginner throws none */
   const reach = sk.special[f.style];
   /* a careless player fires now and then from too far (specialMiss) */
   if (d > reach && !(rnd() < sk.specialMiss / 30)) return false;
@@ -711,17 +722,21 @@ function attack(f, o) {
   const d = dist(f, o);
   if (useSpecial(f, o)) return;
   if (!f.held) return;
+  const gap = f.sk.gapMs || 0;   /* v2.3.3267: a beginner's slow re-press */
   if (f.style === 'melee') {
-    if (!f.isSwinging && T - f.swingTimer >= SWING_CD) {
+    if (!f.isSwinging && T - f.swingTimer >= SWING_CD + gap) {
       f.swingTimer = T; f.isSwinging = true; f.specialSwing = false; f.swingAt = T; f.swingSw = ++SWSEQ; f.stats.swings++;
     }
   } else {
-    const cd = f.style === 'bow' ? BOW_CD : STAFF_CD;
+    const cd = (f.style === 'bow' ? BOW_CD : STAFF_CD) + gap;
     if (T - f.swingTimer < cd) return;
     if (f.style === 'bow' && d > ARROW_RANGE) return;   /* the sight gate: no line, no arrow */
     f.swingTimer = T; f.stats.shots++;
     const dmg = Math.round(plainRoll(f.style, f.d.base));   /* monsterCombat: dmg: Math.round(pDmg) */
-    if (f.style === 'bow') f.shots.push({ kind: 'arrow', at: T, line: { x: f.x, y: f.y, ang: angTo(f, o) }, x: null, y: null, travelled: 0, dmg, special: false, R: R_ARROW });
+    /* v2.3.3267: a beginner's aim is off by a normal spread */
+    const off = f.sk.aimSigma ? gauss() * f.sk.aimSigma : 0;
+    if (f.style === 'bow') f.shots.push({ kind: 'arrow', at: T, line: { x: f.x, y: f.y, ang: angTo(f, o) + off }, x: null, y: null, travelled: 0, dmg, special: false, R: R_ARROW });
+    else if (f.sk.boltsStraight) f.shots.push({ kind: 'bolt', straight: true, ang: angTo(f, o) + off, at: T, dist: 14, dmg, special: false, R: R_BOLT });
     else f.shots.push({ kind: 'bolt', at: T, dist: 14, dmg, special: false, R: R_BOLT });
   }
 }
@@ -789,6 +804,15 @@ function flyShots(f, o) {
         continue;
       }
       if (s.travelled > ARROW_RANGE) continue;
+      keep.push(s);
+    } else if (s.straight) {
+      /* v2.3.3267: a bolt with no lock keeps its line, riding the caster (the
+         page's rule for every bolt: origin the caster, `dist` along `ang`) */
+      const ax = f.x + Math.cos(s.ang) * s.dist, ay = f.y + Math.sin(s.ang) * s.dist;
+      s.dist += BOLT_PX;
+      const bx = f.x + Math.cos(s.ang) * s.dist, by = f.y + Math.sin(s.ang) * s.dist;
+      if (segGap(o.x, o.y, ax, ay, bx, by) < s.R) { claimShot(f, o, s); continue; }
+      if (s.dist > BOLT_RANGE) continue;
       keep.push(s);
     } else {
       /* a staff bolt rides the caster and turns to the locked target every

@@ -264,7 +264,8 @@ const SPAR_WEAPON_ROWS = [
 ];
 const SPAR_SKILL_ROWS = [
   { k: 'dummy', label: 'Dummy', note: 'stands still and never attacks -- read your own numbers on it' },
-  { k: 'easy', label: 'Easy', note: 'a careless player: slow to react, no rolls, no shield' },
+  /* v2.3.3267: a beginner (server spar.js SPAR_SKILLS.easy) -- the careless player it was beat the owner */
+  { k: 'easy', label: 'Easy', note: 'a beginner: slow to attack, no specials, no lunge, no rolls, no shield' },
   { k: 'normal', label: 'Normal', note: 'an average player: keeps a distance, rolls and shields now and then, lunges' },
   { k: 'hard', label: 'Hard', note: 'a skilled player: kites, strafes, answers your specials, lunges from across the screen' },
 ];
@@ -592,8 +593,9 @@ export const DevPanel = ({ onClose }) => {
               <>
                 <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
                   Clones of you -- your look, level, points and armour -- that fight only you,
-                  through the real player-vs-player rules. Tap one to target it. If they knock
-                  you out you are healed on the spot: nothing is lost. Stand anywhere in the world.
+                  through the real player-vs-player rules. Your attacks hit them like monsters
+                  (a tap picks one to aim at). If they knock you out you are healed on the spot:
+                  nothing is lost. Stand anywhere in the world.
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7, marginBottom: 7 }}>
                   {SPAR_WEAPON_ROWS.map((r) => (

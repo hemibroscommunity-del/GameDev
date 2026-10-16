@@ -241,6 +241,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
           chat: (S.chatLog || []).filter((l) => /No man's land 1/.test(l.text || '')).map((l) => l.text),
           bar: sub ? sub.textContent : null,
           badge: b ? { n: b.getAttribute('data-nml-badge'), text: b.textContent, mid: Math.round(r.left + r.width / 2 - innerWidth / 2),
+            /* v2.3.3268: how far its right edge stops short of the middle (2 px:
+               it sat on the shield button, whose left edge is the middle) */
+            short: Math.round(innerWidth / 2 - r.right),
+            shield: (() => { const sh = document.querySelector('[data-shield]'); const q = sh && sh.getBoundingClientRect();
+              return q && q.width > 0 ? { l: Math.round(q.left), t: Math.round(q.top), b: Math.round(q.bottom) } : null; })(),
+            l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), bt: Math.round(r.bottom),
             gap: Math.round((innerHeight - band) - r.bottom), h: Math.round(r.height), w: Math.round(r.width) } : null,
         };
       });
@@ -253,8 +259,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const [who, t] of [['the raider', tA], ['the wanderer', tB]]) {
     rec.ok(`1. ${who} is told: the banner, the chat ("${t && t.chat[0]}") and the badge (skull ${t && t.badge && t.badge.text}, ${t && t.badge && t.badge.w} px wide)`,
       !!t && t.lvl === 1 && t.banner > 0 && t.chat.some((c) => /can attack you here/.test(c)) && !!t.badge && t.badge.n === '1' && /^\s*1\s*$/.test(t.badge.text) && t.badge.w <= 90, t);
-    rec.ok(`1. ...the badge centred on the play area's bottom edge (${t && t.badge && t.badge.mid} px off centre, ${t && t.badge && t.badge.gap} px above the dashboard), a 44 px target`,
-      !!t && !!t.badge && Math.abs(t.badge.mid) <= 2 && t.badge.gap >= 0 && t.badge.gap <= 6 && t.badge.h >= 44, t && t.badge);
+    /* v2.3.3268: just LEFT of the middle -- centred, it sat on the shield
+       button (the shield's left edge is the middle, ShieldButton.jsx
+       ctlColumn) and a tap on the shield's middle opened the badge; it stops
+       2 px short of the middle, or of the shield where a narrow phone puts the
+       shield over the middle (mp-nmlfoe measures every width) */
+    rec.ok(`1. ...the badge at the play area's bottom edge, just left of the middle (its right edge ${t && t.badge && t.badge.short} px short of it, ${t && t.badge && t.badge.gap} px above the dashboard), a 44 px target, clear of the shield`,
+      !!t && !!t.badge && t.badge.short >= 2 && t.badge.short <= 16 && t.badge.gap >= 0 && t.badge.gap <= 6 && t.badge.h >= 44
+        && (!t.badge.shield || t.badge.r <= t.badge.shield.l || t.badge.bt <= t.badge.shield.t), t && t.badge);
     rec.ok(`1. ...and the minimap's name plate shows the level band, the badge saying No man's land ("${t && t.bar}")`, !!t && t.bar === 'Lv 6–10', t && t.bar);
   }
   await shot(A, '1-told');

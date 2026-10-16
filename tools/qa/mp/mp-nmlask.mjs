@@ -561,7 +561,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     typeof hp7a === 'number' && hp7b < hp7a && sk7B.mine === 'white' && !sk7B.red, { hp7a, hp7b, sk7B });
 
   /* ── 8. a window goes by itself ── */
-  await A.page.evaluate(() => { const S = window._gameState.current; S.lockedTarget = null; window.__btNmlAsk.setMs(1500); });
+  /* v2.3.3268: the raider CHOSE the wanderer in step 6, and while that fight
+     lasts a tap on them aims at once with no second window (mp-nmlfoe step
+     6).  This step is about the window, so the fight is let end the real way:
+     a minute with no blow between them (sparTargets.js FIGHT_QUIET_MS), the
+     two clocks aged past it */
+  await A.page.evaluate((bid) => {
+    const S = window._gameState.current;
+    S.lockedTarget = null;
+    window.__btNmlAsk.setMs(1500);
+    const old = Date.now() - 61000;
+    if (S._nmlFoes instanceof Map && S._nmlFoes.has(bid)) S._nmlFoes.set(bid, old);
+    if (S._pvpBlows instanceof Map && S._pvpBlows.has(bid)) S._pvpBlows.set(bid, old);
+  }, idB);
   let a8 = null;
   for (let i = 0; i < 4 && !(a8 && a8.dom); i++) {
     await tapPeer(A, idB);

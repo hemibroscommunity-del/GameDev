@@ -1137,6 +1137,42 @@ remnant to migrate server-side, not a mode to preserve.
         on them opened your chat;
       - `?nmlask=0` is the game as it was; `nomansland` §3-4, `mp-nmlask`,
         `mp-nomansland` step 2: no-mans-land.md "Attacking is a choice".
+    - since v2.3.3268 THE CHOICE LASTS, AND THE SHIELD IS THERE -- the owner:
+      "I want attacks against real players to hit them even when not locked on
+      target but only if you select the attack option that pops up on the
+      window. I also want to be able to use shield for when battles happen
+      against real players in no mans land":
+      - the window's Attack, or a tap on the one who attacked you, records a
+        FOE (`src/game/sparTargets.js` `chooseFoe`, from nmlAsk.js `nmlAim`),
+        and to your weapons a foe is what a sparring clone is: the sword's
+        auto target takes the nearest (an `nml` lock with `src: 'auto'`), the
+        bow looses at one on its line, arrows and bolts that reach one hit
+        them, a swing lands on each in its arc, locked or not, every claim
+        naming them as `target` (a lock with `nml` no longer sends the swing's
+        open cone claim); no worker change;
+      - the choice LAPSES (forgotten; a tap asks again) when No man's land's
+        rule no longer allows the fight (`setFoeRule(nmlCanAttack)`, handed in
+        by noMansLand.js), when they leave, or after `FIGHT_QUIET_MS` 60 s with
+        no blow between you either way (every pvp_hit to or from them,
+        gameEvents.js `notePvpBlow`); your own lock on them keeps it, the
+        sword's automatic one does not; a tap on a live foe aims with no
+        second window, and a stray shot never asks about one;
+      - the shield and Special buttons are up for every weapon while a foe, or
+        a player you traded a blow with in the last minute (`fightingNow`), is
+        within `FIGHT_R` 900 and the rule allows -- the defender's button
+        stayed only 5 s past each blow; an unlocked guard faces the nearest;
+      - THE BADGE SAT ON THE SHIELD BUTTON (z 34 over 31, centred where the
+        shield's left edge is): a tap on the shield's middle opened the rules;
+        it now ends left of the middle and of the shield, 8 px clear where the
+        bell leaves room, 2 at the least (NmlBadge.jsx: CSS in the game
+        frame's own numbers -- `blockAnchor`, the bell's `left` -- as on a
+        computer the frame is narrower than the window), and is narrower --
+        your own skull a mark on its corner,
+        not a third thing in the row -- so it fits between the bell (66-110 px)
+        and the shield at 360 px and up; at 320 it lies over the bell's right
+        half, never the shield;
+      - spar §16 (24 checks), `mp-nmlfoe` (three phones): no-mans-land.md "The
+        choice lasts, and the shield is there".
     - since v2.3.3260 FIGHTS BETWEEN PLAYERS LAST, FISH MATTER IN THEM, AND
       LEAVING IS NO ESCAPE -- the owner, after the time-to-kill study: "I want
       you to plan and implement fixes for all of these including how much HP
@@ -1323,7 +1359,8 @@ remnant to migrate server-side, not a mode to preserve.
         and the weapon you carry for its slot (a copy, gems and all) or the
         tutorial's; none of your bag, gold, buffs or pet;
       - an AI on the worker (`server/src/spar.js`, the fight simulator's
-        player: Dummy / Easy / Normal / Hard = sim SKILL low / moderate / high)
+        player: Dummy / Easy / Normal / Hard = sim SKILL low / moderate / high;
+        Easy a beginner below low since v2.3.3267, below)
         moves it and fights you through the room's own doors -- every blow
         either way is `_resolvePvPAttack`, specials and rolls are paid through
         `_handleAbilityUse`, the sword's lunge is `_handleAbility` naming you;
@@ -1384,6 +1421,42 @@ remnant to migrate server-side, not a mode to preserve.
       - `window.__btPeerShotEnds` says why each copy ended (life, reach,
         target, prop); `peer-shots` suite, spar §5k/§6b, `mp-peershots` (two
         phones).
+    - since v2.3.3267 YOUR CLONES ARE MONSTERS TO YOUR WEAPONS, AND EASY IS A
+      BEGINNER -- the owner, after the first spar: "attacks need to hit the
+      clone even when you aren't locked on target ... the block shield button
+      needs to appear while in combat for any of the 3 combat types ... the
+      enemy Hp bar was too small ... should be the same size as mine ... The
+      bot was tough to be beat even on easy" (docs/specs/sparring.md "After
+      the first playtest"):
+      - the page asked about a player only when one was locked, so with
+        nothing locked the bow never loosed at a clone (firstSightHit), arrows,
+        bolts and swings went through it, and the shield button came only with
+        a blow; `src/game/sparTargets.js` (no imports) is the list of your live
+        clones every weapon now reads;
+      - the sword's auto target takes the nearest clone like the nearest
+        monster, 220 px, held to 275 (targeting.js: a player lock with `spar`
+        and `src: 'auto'`, which the rule owns and drops on a knockout, a bow
+        or staff drawn, or a nearer rival); a bow or staff still locks by a tap;
+      - firstSightHit and the projectile hit test try the lock, then every
+        live clone (`shotPlayerTargets`), each claim naming its clone as
+        `target`; a swing claims each clone in its arc and reach
+        (`fightersInSwing` since v2.3.3268, its own count per clone: pvpSwing.js
+        `key`), and a lock on a clone never sends the open cone claim;
+      - the shield button and the Special button are up while a clone is within
+        `FIGHT_R` 900 (`fightOn`; both renamed in v2.3.3268, which adds the
+        players you fight in No man's land), every weapon; an unlocked guard
+        faces the nearest clone;
+      - ANOTHER PLAYER'S HP BAR IS YOURS: 76 x 22 and an 18 px number
+        (PEER_BAR_W/H, PLAYER_HP_NUM_STYLE; was the monster's 44 x 13 and 9 px),
+        grown upward from the old bar's bottom (PEER_BAR_Y), for every player;
+      - EASY (spar.js SPAR_SKILLS.easy): no special, no lunge, focus 0.5,
+        `gapMs` 600 more between attacks -- on the simulator
+        (tools/pvp-sim/easy.mjs) a careless player throwing no specials lost
+        every fight to the old Easy and wins every one now (Lv 7/12/22, all
+        nine pairings, ~30 s fights); the sim takes `special: null`, `gapMs`,
+        `aimSigma`, `boltsStraight`; Normal and Hard unchanged;
+      - spar §14-15, `mp-sparfight` (nothing tapped; fails 1a-4b on the game
+        before it).
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":

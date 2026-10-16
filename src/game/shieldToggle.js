@@ -24,6 +24,7 @@ import { blockRingBus } from '@/ui/mobile/blockRingBus.js';
 import { lockAimPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */ } from '@/game/combatHelpers.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no button in the water */
 import { targetCandidates } from '@/game/targeting.js'; /* v2.3.2472: the nearest-monster fallback below */
+import { fightersNear, fightOn, FIGHT_R } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones are a fight too; v2.3.3268: and a foe you chose, or the one who attacked you */
 
 /* Where the shield should point: at the locked target if there is one (the
    whole meaning of a lock), else wherever the body is facing.  Called on the
@@ -90,7 +91,13 @@ export function shieldAimAngle(S) {
      tapped still outranks whatever is merely closest (that is what a lock is
      for), and a remembered angle must not outrank a live threat or the guard
      would stick to the first direction it was ever raised in. */
-  const near = targetCandidates(S)[0];
+  /* v2.3.3267: ...or the nearest of your sparring clones, out as far as one
+     fights you from (a bow or staff clone keeps 280-400 px off), whichever of
+     the two is nearer.  v2.3.3268: a player you chose to attack, and the one
+     who attacked you, are in that list too (sparTargets.js fightersNear) */
+  let near = targetCandidates(S)[0];
+  const nearClone = fightersNear(S, FIGHT_R)[0];
+  if (nearClone && (!near || nearClone.d2 < near.d2)) near = nearClone;
   if (near) {
     const np = lockAimPoint(near.m);
     if (np) return Math.atan2(np.y - S.player.y, np.x - S.player.x);
@@ -218,6 +225,21 @@ export function shieldButtonLive(S, perimeterPx) {
   if (S._shieldUp) return true;
   if (S.lockedTarget && S.lockedTarget.ref) return true;
   if (S.lastDamageTaken && Date.now() - S.lastDamageTaken < 5000) return true;
+  /* ═══ v2.3.3267: A SPAR IS A FIGHT, FOR EVERY WEAPON ═══
+     The owner, after the first spar: "the block shield button needs to appear
+     while in combat for any of the 3 combat types. It was not there."  With
+     nothing locked it came only with a clone's blow and went five seconds
+     later, and a bow or staff clone fights from 280-400 px, outside the
+     monster's reach below -- so it came and went with each blow, and never
+     came at all against a dummy.  While one of your clones is within
+     FIGHT_R (about a screen) the fight is on (game/sparTargets.js).
+     ═══ v2.3.3268: AND A FIGHT WITH A REAL PLAYER ═══
+     The owner: "I also want to be able to use shield for when battles happen
+     against real players in no mans land".  The same while a player you
+     chose to attack (the window's Attack) or the one who gave you your white
+     skull is that near and No man's land still lets the two of you fight:
+     between their blows, and before the first. */
+  if (fightOn(S)) return true;
   const P = S.player;
   const R = perimeterPx || 220;
   const list = S.monsters;

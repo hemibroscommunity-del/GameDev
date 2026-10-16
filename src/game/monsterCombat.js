@@ -60,7 +60,8 @@ import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock mon
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 import { brewMulNow, pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: the brew, read once and claimed right in a duel */
-import { pvpBalanceOn, pvpSwingClaimOk, pvpLockInReach } from '@/game/pvpSwing.js'; /* v2.3.3260: one sword claim a swing */
+import { pvpBalanceOn, pvpSwingClaimOk, pvpLockInReach, PVP_SWING } from '@/game/pvpSwing.js'; /* v2.3.3260: one sword claim a swing */
+import { fightersInSwing, isLiveFighter } from '@/game/sparTargets.js'; /* v2.3.3267: every swing lands on the sparring clones in its arc, locked or not; v2.3.3268: and on the players you chose to attack */
 
 /* ═══ v2.3.3206: HOW FAR A PLAIN ARROW FLIES BEFORE THE SCREEN'S EDGE ═══
    projectiles.js plants a bow arrow once its drawn point comes within 24 px of
@@ -3075,7 +3076,15 @@ export function updateMonsterCombat(S, deps) {
                 * (S.rpg && S.rpg.activeSlot === 'ranged' ? bowRangeMult(S.rpg) : meleeRangeMult(S.rpg))
                 * depthK(S.currentZone, P.y)));
               var _pvpBal = pvpBalanceOn(S);
-              if ((S._inDuel || (!inSafeZone && pvpLocked))
+              /* v2.3.3267: a lock on one of your sparring clones claims through
+                 the clones' own claims below, each naming its clone -- never
+                 this cone, which would take anyone else the worker may let you
+                 hit standing in it.  v2.3.3268: and No man's land's lock (`nml`,
+                 the window's Attack, a foe you chose: game/sparTargets.js) the
+                 same -- this cone named nobody, so a second player in it whom
+                 the worker would let you fight was hit too, without a choice */
+              var _pvpSparLock = !!(pvpLocked && (S.lockedTarget.spar || S.lockedTarget.nml));
+              if ((S._inDuel || (!inSafeZone && pvpLocked && !_pvpSparLock))
                   && pvpSwingClaimOk(S, S.swingTimer, Date.now(), pvpLocked ? pvpLockInReach(S.lockedTarget.ref, P.x, P.y, _pvpReach) : null)) {
                 var pvpAngle = pvpLocked ? Math.atan2((S.lockedTarget.ref.y || S.lockedTarget.ref.renderY || P.y) - P.y, (S.lockedTarget.ref.x || S.lockedTarget.ref.renderX || P.x) - P.x) : baseAngle;
                 /* Track threat — attacking a player starts the threat counter */
@@ -3137,6 +3146,47 @@ export function updateMonsterCombat(S, deps) {
                   }
                 });
               }
+              /* ═══ v2.3.3267: AND EVERY ONE OF YOUR CLONES IN THE ARC ═══
+                 The owner, after the first spar: "attacks need to hit the clone
+                 even when you aren't locked on target".  A swing lands on each
+                 of your sparring clones it reaches on this screen, as it lands
+                 on each monster in its arc, locked or not: one claim a clone,
+                 at most PVP_SWING.TRIES a swing (its own count, pvpSwing.js
+                 `key`), the bearing to it and `target` naming it -- the worker
+                 lands one hit a swing on each (pvpbalance.js) and nobody else
+                 is touched by it (game/sparTargets.js).
+                 v2.3.3268: and on every player you chose to attack (No man's
+                 land's Attack: fightersInSwing), the same way. */
+              var _sparSw = fightersInSwing(S, P.x, P.y, baseAngle, _pvpReach, wpnType.arc || SWING_ARC, PVP_SWING.SLACK_PX);
+              for (var _spI = 0; _spI < _sparSw.length; _spI++) {
+                var _spC = _sparSw[_spI];
+                if (!pvpSwingClaimOk(S, S.swingTimer, Date.now(), true, _spC.id)) continue;
+                S._pvpThreat = Date.now() + PVP_THREAT_DURATION;
+                var _spClaim = pvpClaim(S, pDmg * specialMult2, _brewK);
+                S.channel.send({
+                  type: 'broadcast',
+                  event: 'player_attack',
+                  payload: {
+                    id: S.myId, x: P.x, y: P.y,
+                    angle: _spC.ang,
+                    dmgBase: _spClaim.dmgBase, nb: _spClaim.nb,
+                    critChance: Math.round(critChance * 1000) / 10,
+                    range: _pvpReach, arc: wpnType.arc || SWING_ARC,
+                    ts: Date.now(), inDuel: !!S._inDuel,
+                    sw: S.swingTimer,
+                    special: (_pvpBal && S._specialAttack) ? true : undefined,
+                    element: _activeWpn.element1 || undefined,
+                    kind: 'melee',
+                    target: String(_spC.id)
+                  }
+                });
+                if (typeof window !== 'undefined') {
+                  /* QA probe (mp-sparfight): the claims a swing sent at clones */
+                  var _spq = window.__btSparClaims || (window.__btSparClaims = []);
+                  _spq.push({ at: Date.now(), id: String(_spC.id), sw: S.swingTimer, locked: !!(S.lockedTarget && String(S.lockedTarget.id) === String(_spC.id)) });
+                  if (_spq.length > 60) _spq.shift();
+                }
+              }
             }
             /* ═══ v2.3.1742: ONLY PAINT A HIT WE ACTUALLY THREW ═══
                Owner: "it looked like my attacks were damaging them."
@@ -3173,8 +3223,12 @@ export function updateMonsterCombat(S, deps) {
               var _ref18 = _slicedToArray(_ref17, 2),
                 pid = _ref18[0],
                 o = _ref18[1];
-              if (!_pvpPaintOk) return;
-              if (_pvpPaintId && String(pid) !== _pvpPaintId) return;
+              /* v2.3.3267: your sparring clones take the swing whatever is
+                 locked (the claims above), so they show it the same way --
+                 v2.3.3268: and the players you chose to attack */
+              var _pvpClone = isLiveFighter(S, pid);
+              if (!_pvpPaintOk && !_pvpClone) return;
+              if (_pvpPaintId && String(pid) !== _pvpPaintId && !_pvpClone) return;
               if (o._hitThisSwing) return;
               var oDist = Math.sqrt(Math.pow(o.x - P.x, 2) + Math.pow(o.y - P.y, 2));
               if (oDist > SWING_RANGE * meleeRangeMult(S.rpg) * depthK(S.currentZone, P.y)) return; /* v2.3.2592; v2.3.2790 x depth */

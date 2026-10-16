@@ -52,6 +52,8 @@ Each land's rings of five levels, from Lv 6–10 outward:
   - It rides the dashboard's height (`--sheet-h`) like the controls, and is a
     44 px tap target. It is the skull and the number only: on a 390 px phone
     the words ran toward the bell and the jump button beside it.
+  - Since v2.3.3268 it sits just LEFT of the middle: centred, it covered the
+    shield button. See "The choice lasts, and the shield is there".
   - A tap opens the game's explainer (InfoPopup): who can attack you, what a
     death here costs, the red and white skulls, and how to leave. If you carry
     a skull, its minutes of play left; the badge wears a small one too.
@@ -174,6 +176,85 @@ chat.
 - `?nmlask=0` is the game as it was: the tap aims at once, and a stray shot asks
   nothing.
 - `window.__btNmlAsk` is the QA handle: `current`, `asked`, `setMs`.
+
+## The choice lasts, and the shield is there (v2.3.3268)
+
+> Owner, 2026-10-16: *"I want attacks against real players to hit them even
+> when not locked on target but only if you select the attack option that pops
+> up on the window. I also want to be able to use shield for when battles
+> happen against real players in no mans land"*
+
+**What was wrong.** Your weapons tried a real player only while you were
+*locked* on them. The window's Attack locks, but tap a monster, or the ground,
+and the lock went, and with it every hit on them: the bow would not fire at
+them, and arrows, bolts and swings went straight through. And the No man's land
+badge, centred on the screen, sat on top of the shield button (the badge is
+drawn over it). A tap on the middle of the shield opened the badge's rules
+instead.
+
+**Attack is a choice that lasts.** Choosing Attack in the window, or tapping
+the player who attacked you (hitting back needs no window), records them as a
+**foe** (`src/game/sparTargets.js` `chooseFoe`, called by `nmlAsk.js` `nmlAim`).
+To your weapons a foe is what a sparring clone is (v2.3.3267):
+
+- the **sword's automatic target** takes the nearest foe as it takes the
+  nearest monster (No man's land's lock, `src: 'auto'`);
+- the **bow** fires when a foe is on its line;
+- an **arrow or a bolt** that reaches a foe hits them;
+- a **swing** lands on every foe in its arc.
+
+Every blow still names the foe as its `target`, so nobody else is touched by
+it. The worker is unchanged: it judged these hits by No man's land's rule all
+along; only the page never sent them.
+
+**For as long as the fight lasts.** The choice lapses (the foe is forgotten,
+and a tap asks again) when:
+
+- No man's land's rule no longer lets you fight them (either of you out of it,
+  the levels drift apart, a party);
+- they leave or are no longer drawn;
+- **a minute passes with no blow between you, either way** (`FIGHT_QUIET_MS`,
+  each `pvp_hit` to or from them restarting it: `notePvpBlow`). A stray shot an
+  hour later is not the choice you made, the reason for the window in the
+  first place. Being locked on them by your own hand keeps the choice; the
+  sword's automatic lock does not.
+
+**A player you have not chosen is untouched**, as before: a stray shot through
+them does nothing, and asks once. A tap on a foe you already chose aims at
+once, with no second window (a window in the middle of that fight would cost
+it).
+
+**The shield.** The shield button (and the Special button) now stays up for
+every weapon while a fight with a player is on:
+
+- a foe you chose is within about a screen (`FIGHT_R` 900 px), before the first
+  blow;
+- a player who hit you, or whom you hit, in the last minute is within that
+  reach and No man's land still lets you fight (`fightingNow`): between their
+  blows, and long after the old five-second rule let it go.
+
+With nothing locked, a raised guard faces the nearest of them.
+
+**The badge moved off the shield.** It now sits just left of the middle and of
+the shield button, whichever is further left (`NmlBadge.jsx`, from
+`blockAnchor`), 8 px clear of the shield where there is room and never less
+than 2. It is also narrower, so it fits between the shield and the notification
+bell on a 360 px phone. It still shows the skull and the number, and your own
+skull is now a small mark on its top corner, the way a count sits on the bell,
+instead of a third thing in the row. Measured at 360, 375, 390 and 430 px and
+sideways: clear of the shield, the bell, the weapon button and the attack disc.
+At 320 px (a 2016 iPhone SE) there is no room between the bell and the shield;
+the badge keeps clear of the shield and lies over the bell's right half.
+
+**Code:** `src/game/sparTargets.js` (foes, blows, `fightingNow`, `chosenNear`,
+`fightersNear`), `nmlAsk.js` `nmlAim`, `noMansLand.js` (hands its rule in:
+`setFoeRule`), `targeting.js` (the sword's automatic target), `projectiles.js`
+(the hit test and `_nmlStrayShot`), `monsterCombat.js` (the swing's claims),
+`gameEvents.js` `pvp_hit` (`notePvpBlow`), `shieldToggle.js`,
+`SpecialButton.jsx`, `NmlBadge.jsx`, `BroTown.jsx` (the tap).
+
+**Tests:** `spar` suite §16 (the rules: choose, lapse, a minute's quiet, a lock,
+blows, the fight round you), `mp-nmlfoe` (three phones).
 
 ## The skulls
 
@@ -359,6 +440,11 @@ switch: the live flag `fightlock: false`. Tests: `nomansland` suite §10.
 
 ## Tests
 
+- v2.3.3268: `server/test/spar.test.mjs` §16 (the page's foe rules) and
+  `tools/qa/mp/mp-nmlfoe.mjs` (three phones: the choice, every weapon with
+  nothing locked, a bystander untouched, the defender's shield up and
+  blocking, hitting back, the quiet minute, the badge at five widths and
+  sideways, leaving).
 - `server/test/nomansland.test.mjs` (68 checks; 51 before v2.3.3091):
   - the rings against the plan;
   - the level rule from both sides, the party rule, and the master switch

@@ -38,14 +38,32 @@ export function pvpBalanceOn(S) {
 
 /* May this frame of the sweep send the swing's claim?  `sw` is the swing's
    own clock; `inReach` false keeps the try for a later frame.  Records the
-   try when it says yes. */
-export function pvpSwingClaimOk(S, sw, now, inReach) {
+   try when it says yes.
+   v2.3.3267: `key`, the player a claim names (a sparring clone's id: one swing
+   claims each clone in its arc, game/sparTargets.js), keeps a count of its own
+   per player -- the worker lands one hit a swing on each (pvpbalance.js, its
+   lane is the attacker's and the target's).  Without one, the swing's single
+   count, as before. */
+export function pvpSwingClaimOk(S, sw, now, inReach, key) {
   if (!S) return false;
   if (!pvpBalanceOn(S)) return true;   /* an older worker: every frame, as before */
   if (inReach === false) return false;
   var t = typeof now === 'number' ? now : Date.now();
-  var st = S._pvpSwSent;
-  if (!st || st.sw !== sw) { S._pvpSwSent = { sw: sw, n: 1, at: t }; return true; }
+  var st;
+  if (key != null) {
+    /* a Map: the key is a player id off the wire (CLAUDE.md rule 4) */
+    if (!(S._pvpSwSentBy instanceof Map)) S._pvpSwSentBy = new Map();
+    var by = S._pvpSwSentBy;
+    st = by.get(String(key));
+    if (!st || st.sw !== sw) {
+      if (by.size > 16) by.clear();
+      by.set(String(key), { sw: sw, n: 1, at: t });
+      return true;
+    }
+  } else {
+    st = S._pvpSwSent;
+    if (!st || st.sw !== sw) { S._pvpSwSent = { sw: sw, n: 1, at: t }; return true; }
+  }
   if (st.n >= PVP_SWING.TRIES || t - st.at < PVP_SWING.GAP_MS) return false;
   st.n += 1;
   st.at = t;

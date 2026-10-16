@@ -156,23 +156,35 @@ const G = Object.freeze({
   CHILL_MULT: 0.55,           /* a monster's chill (monsterstatus.js CHILL) */
 });
 
-/* The sim's players (tools/pvp-sim/sim.mjs SKILL: low / moderate / high),
-   under the panel's names; `dummy` stands still and never attacks.  Each
-   field is the sim's own meaning: focus (a share of half-seconds spent
-   attacking when able), holdAt (a sword holds the attack from this far),
-   sprint, lunge (rolls in from 80-150 px), band (where a bow or staff tries to
-   stand), kite, strafe, special (the farthest a special is thrown from),
-   specialMiss, shieldSpecial / rollSpecial (the answer to your special),
-   react / rollSigma (ms), dashAt (the sword's opening lunge, from this far),
-   lungeWaits (no lunge into your special). */
+/* The sim's players (tools/pvp-sim/sim.mjs SKILL: moderate / high, and since
+   v2.3.3267 a beginner below its low), under the panel's names; `dummy`
+   stands still and never attacks.  Each field is the sim's own meaning: focus
+   (a share of half-seconds spent attacking when able), holdAt (a sword holds
+   the attack from this far), sprint, lunge (rolls in from 80-150 px), band
+   (where a bow or staff tries to stand), kite, strafe, special (the farthest a
+   special is thrown from; null, none), specialMiss, shieldSpecial /
+   rollSpecial (the answer to your special), react / rollSigma (ms), dashAt
+   (the sword's opening lunge, from this far; null, none), lungeWaits (no lunge
+   into your special), gapMs (v2.3.3267: longer between two attacks). */
+/* ═══ v2.3.3267: EASY IS A BEGINNER ═══
+   The owner, after a playtest: "The bot was tough to be beat even on easy".
+   Easy was the sim's careless player (SKILL.low) -- a coin flip for a
+   careless player, and on the fight simulator a careless player who throws
+   no specials lost EVERY fight to it, at every weapon (tools/pvp-sim/easy.mjs:
+   0% in all nine pairings at Lv 12).  The specials and the lunge are most of a
+   careless player's damage.  So Easy throws no special (`special: null`),
+   never lunges (`dashAt: null`), attacks half the half-seconds it could
+   (`focus` 0.5) and waits `gapMs` 600 longer between two swings or shots: the
+   same player loses to it in every pairing at Lv 7, 12 and 22 (100%), a fight
+   about half a minute long.  Every number the worker rolls is still yours. */
 export const SPAR_SKILLS = Object.freeze({
   dummy: null,
   easy: Object.freeze({
-    focus: 0.65, holdAt: 140, sprint: false, lunge: false,
+    focus: 0.5, holdAt: 140, sprint: false, lunge: false,
     band: { bow: [0, 280], staff: [0, 380] }, kite: 'none', strafe: 0,
-    special: { melee: 120, bow: 420, staff: 600 }, specialMiss: 0.25,
+    special: null, specialMiss: 0,
     shieldSpecial: 0, rollSpecial: 0, rollSigma: 260, react: 450,
-    dashAt: [60, 140], lungeWaits: false,
+    dashAt: null, lungeWaits: false, gapMs: 600,
   }),
   normal: Object.freeze({
     focus: 0.85, holdAt: 48, sprint: true, lunge: true,
@@ -897,14 +909,15 @@ export const sparMethods = {
     if (this._sparSpecial(c, ps, o, sk, d, now)) return;
     if (!c.held) return;
     const a = angTo(ps.x, ps.y, o.x, o.y);
+    const gap = sk.gapMs || 0;   /* v2.3.3267: Easy's slow re-press */
     if (c.style === 'melee') {
-      if (!c.isSwinging && now - c.swingTimer >= G.SWING_CD) {
+      if (!c.isSwinging && now - c.swingTimer >= G.SWING_CD + gap) {
         c.swingTimer = now; c.isSwinging = true; c.specialSwing = false; c.swingAt = now; c.swingSw = now; c.claims = null; c.swingLanded = 0;
         this._sparRelay(c, { type: 'player_swing', wpn: (ps.weapon && ps.weapon.type) || 'greatsword', ang: a });
       }
       return;
     }
-    const cd = c.style === 'bow' ? G.BOW_CD : G.STAFF_CD;
+    const cd = (c.style === 'bow' ? G.BOW_CD : G.STAFF_CD) + gap;
     if (now - c.swingTimer < cd) return;
     if (c.style === 'bow' && d > G.ARROW_RANGE) return;
     c.swingTimer = now;
@@ -927,6 +940,7 @@ export const sparMethods = {
     if (now - c.lastSwipe < G.SPECIAL_CD) return false;
     const cost = typeof this._abilityCost === 'function' ? this._abilityCost(ps, 'swipe') : 0;
     if ((ps.mana || 0) < cost) return false;
+    if (!sk.special) return false;   /* v2.3.3267: Easy throws none */
     const reach = sk.special[c.style];
     if (d > reach && !(rnd() < sk.specialMiss / 30)) return false;
     if (c.style !== 'melee' && d > (c.style === 'bow' ? G.ARROW_RANGE : G.BOLT_RANGE)) return false;

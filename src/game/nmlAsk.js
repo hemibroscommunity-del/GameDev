@@ -50,6 +50,7 @@
  */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { nmlLive, nmlCanAttack } from '@/game/noMansLand.js';
+import { chooseFoe } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts */
 
 /* how long an unanswered window stays (it is an Ignore after this) */
 export const NML_ASK_MS = 10000;
@@ -110,10 +111,19 @@ export function nmlHitBack(S, id, now) {
   return white > 0 && !(red > 0);
 }
 
-/** Aim at them: No man's land's lock -- what a tap did before v2.3.3253. */
+/** Aim at them: No man's land's lock -- what a tap did before v2.3.3253.
+ *  ═══ v2.3.3268: AND THE CHOICE LASTS ═══
+ *  The owner: "I want attacks against real players to hit them even when not
+ *  locked on target but only if you select the attack option that pops up on
+ *  the window".  Every road here is that choice -- the window's Attack, or a
+ *  tap on the one who attacked you (hitting back needs no window) -- so it is
+ *  recorded (game/sparTargets.js chooseFoe): your swings, arrows and bolts hit
+ *  them whatever you have locked, while No man's land still lets you fight
+ *  them. */
 export function nmlAim(S, id) {
   const o = S && S.others && id != null ? S.others[id] : null;
   if (!o) return false;
+  chooseFoe(S, id);
   S.lockedTarget = { type: 'player', id, ref: o, nml: true };
   try { pushDmgPopup(S, o.x, o.y - 70, 'TARGET', '#ff6b5e', { ts: Date.now() }); } catch (e) { /* the reticle says it */ }
   return true;

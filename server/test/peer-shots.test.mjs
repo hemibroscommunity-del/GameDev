@@ -119,8 +119,10 @@ const C = { arrowPx, reachPx, volleyK: BOW_VOLLEY.SPEED_K, peerPx: BOW_VOLLEY.PE
   check('5f in a duel, somebody else locked: nobody (the hit test tries only the opponent)', shotTargetId(Object.assign(lock('bp_x'), { _inDuel: { opponent: 'bp_foe' } }), false) === null);
   check('5g an id is sent as a string, and a silly one not at all', shotTargetId(lock(42), false) === '42' && shotTargetId(lock('x'.repeat(200)), false) === null);
   /* the same gate as projectiles.js's PvP hit test */
+  /* v2.3.3267: the hit test tries that player first (`_pvpLockId`), then your
+     sparring clones (sparTargets.js), which a shot names only when locked */
   check('5h ...the gate the shooter\'s PvP hit test uses (projectiles.js)',
-    /S\._inDuel\s*\|\|\s*\(!\(\(ZONES\[S\.currentZone\] \|\| \{\}\)\.safe\)\s*&& S\.lockedTarget && S\.lockedTarget\.type === 'player' && S\.lockedTarget\.id\)/.test(projSrc.replace(/\n\s*/g, ' ')));
+    /var _pvpLockId = S\._inDuel \? S\._inDuel\.opponent\s*:\s*\(\(!\(\(ZONES\[S\.currentZone\] \|\| \{\}\)\.safe\) && S\.lockedTarget && S\.lockedTarget\.type === 'player' && S\.lockedTarget\.id\)/.test(projSrc.replace(/\n\s*/g, ' ')));
 }
 
 /* ── 6. reaching, fading, where they are drawn ─────────────────────────── */

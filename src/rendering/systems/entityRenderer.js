@@ -201,6 +201,13 @@ const MONSTER_HPBAR_H = Math.round(MONSTER_HPBAR_W * HPBAR_ASPECT); /* 13 */
 const NOTICE_MS = 1100;
 const PLAYER_HPBAR_W = 76;
 const PLAYER_HPBAR_H = Math.round(PLAYER_HPBAR_W * HPBAR_ASPECT);   /* 22 */
+/* v2.3.3267: another player's bar is yours (the owner: "should be the same
+   size as mine"), _drawPeerHpBar -- the monster's 44 x 13 until then */
+const PEER_BAR_W = PLAYER_HPBAR_W;
+const PEER_BAR_H = PLAYER_HPBAR_H;
+/* ...grown UPWARD from the old bar's bottom edge, so it keeps the air it left
+   over their head (centred on PEER_HPBAR_Y, 22 tall, it sat on the hair) */
+const PEER_BAR_Y = PEER_HPBAR_Y - (PEER_BAR_H - MONSTER_HPBAR_H) / 2;
 /* v2.3.3035: the harvest's bar is drawn at this size over the resource, and
    effectsRenderer hangs it by its half height (_nodeHpBarAt) */
 export const HPBAR_BIG_H = PLAYER_HPBAR_H;
@@ -7873,7 +7880,9 @@ function createOtherPlayerDisplay() {
   const duelBarFx = new Graphics();
   duelBarFx.alpha = 0;
   uiLayer.addChild(duelBarFx);
-  const duelBarText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
+  /* v2.3.3267: your own bar's number (PLAYER_HP_NUM_STYLE), as the bar is
+     your own bar's size now (_drawPeerHpBar) */
+  const duelBarText = new Text({ text: '', style: PLAYER_HP_NUM_STYLE });
   duelBarText.anchor.set(0.5, 0.5);
   duelBarText.alpha = 0;
   uiLayer.addChild(duelBarText);
@@ -10457,7 +10466,16 @@ export class EntityRenderer {
      The rest is the monster's bar, deliberately: same art, same 44x13
      box, same ghost trail and damage flash, same hide-at-full rule.  A
      second bar style for players would be a second thing to keep in sync
-     for no reason the owner asked for. */
+     for no reason the owner asked for.
+     ═══ v2.3.3267: A PLAYER'S BAR IS YOUR BAR'S SIZE ═══
+     The owner, after the first spar: "the enemy Hp bar was too small (the
+     numbers were tiny in their hp bar) should be the same size as mine
+     though".  So the reason above came: a player you fight carries the bar
+     over your own head -- PLAYER_HPBAR_W x PLAYER_HPBAR_H (76 x 22, the
+     monster's 44 x 13) and its number in PLAYER_HP_NUM_STYLE (18 px bold,
+     the monster bar's was 9) -- in their figure's band, where their plate is.
+     The art, the ghost trail, the flash and the hide-at-full rule stay the
+     monster's, as they are yours. */
   _drawPeerHpBar(display, other, now) {
     const bar = display._duelBar;
     if (!bar) return;
@@ -10484,7 +10502,10 @@ export class EntityRenderer {
         /* v2.3.2572: the number this bar DRAWS, so mp-hpscale can hold it
            against the player's own and the monster's. */
         drawn: display._duelBarText ? String(display._duelBarText.text || '') : null,
-        expect: String(toDisplayHp(hp)) };
+        expect: String(toDisplayHp(hp)),
+        /* v2.3.3267: its size and its number's, beside yours (mp-sparfight) */
+        size: { w: bar.width, h: bar.height, font: display._duelBarText && display._duelBarText.style ? display._duelBarText.style.fontSize : null },
+        mine: { w: PLAYER_HPBAR_W, h: PLAYER_HPBAR_H, font: PLAYER_HP_NUM_STYLE.fontSize } };
     }
     if (!show) {
       if (bar.alpha !== 0) {
@@ -10501,20 +10522,21 @@ export class EntityRenderer {
     const frameTex = _hudBarTex.barFrame;
     if (!frameTex) return;           /* art not in yet — no bar beats a broken one */
     if (bar.texture !== frameTex) { bar.texture = frameTex; bar.tint = 0xffffff; }
-    bar.width = MONSTER_HPBAR_W;
-    bar.height = MONSTER_HPBAR_H;
+    /* v2.3.3267: your bar's size (see the header) */
+    bar.width = PEER_BAR_W;
+    bar.height = PEER_BAR_H;
     bar.x = 0;
-    bar.y = PEER_HPBAR_Y;
+    bar.y = PEER_BAR_Y;
     bar.alpha = 1;
 
     const fill = display._duelBarFill;
     const fillTex = _hpFillTexFor(display, frac);
     if (fill && fillTex) {
       if (fill.texture !== fillTex) fill.texture = fillTex;
-      fill.width = Math.max(1, MONSTER_HPBAR_W * frac);
-      fill.height = MONSTER_HPBAR_H;
-      fill.x = -MONSTER_HPBAR_W / 2;
-      fill.y = PEER_HPBAR_Y;
+      fill.width = Math.max(1, PEER_BAR_W * frac);
+      fill.height = PEER_BAR_H;
+      fill.x = -PEER_BAR_W / 2;
+      fill.y = PEER_BAR_Y;
       fill.alpha = 1;
     }
 
@@ -10536,10 +10558,10 @@ export class EntityRenderer {
     if (fx) {
       fx.clear();
       fx.alpha = 1;
-      const inL = -MONSTER_HPBAR_W / 2 + MONSTER_HPBAR_W * HPBAR_IN_X;
-      const inW = MONSTER_HPBAR_W * HPBAR_IN_W;
-      const inT = PEER_HPBAR_Y - MONSTER_HPBAR_H / 2 + MONSTER_HPBAR_H * HPBAR_IN_Y;
-      const inH = MONSTER_HPBAR_H * HPBAR_IN_H;
+      const inL = -PEER_BAR_W / 2 + PEER_BAR_W * HPBAR_IN_X;
+      const inW = PEER_BAR_W * HPBAR_IN_W;
+      const inT = PEER_BAR_Y - PEER_BAR_H / 2 + PEER_BAR_H * HPBAR_IN_Y;
+      const inH = PEER_BAR_H * HPBAR_IN_H;
       if (display._peerGhost > frac + 0.001) {
         fx.rect(inL + inW * frac, inT, inW * (display._peerGhost - frac), inH);
         fx.fill({ color: HP_GHOST_WHITE, alpha: 0.92 });
@@ -10561,7 +10583,7 @@ export class EntityRenderer {
       const str = String(toDisplayHp(hp));
       if (txt.text !== str) txt.text = str;
       txt.x = 0;
-      txt.y = PEER_HPBAR_Y;
+      txt.y = PEER_BAR_Y;
       txt.alpha = 1;
     }
   }
@@ -11877,10 +11899,13 @@ export class EntityRenderer {
          covering the face and the name.  Same formula as the local one, on
          the peer's own band line (PEER_HPBAR_Y) and plate size. */
       {
+        /* v2.3.3267: the bar, when it is up, is as tall as yours (PEER_BAR_H):
+           a number or a bubble over them clears its top, not the plate's */
         const _bandHalf = Math.max(8, display._namePill
           ? ((display._pillCss || 14) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+        const _bandTop = Math.min(PEER_HPBAR_Y - _bandHalf, display._peerBarUp ? PEER_BAR_Y - PEER_BAR_H / 2 : Infinity);
         other._bandTopY = display.visible
-          ? display.y + (PEER_HPBAR_Y - _bandHalf) * Math.abs(display.scale.y || 1) : null;
+          ? display.y + _bandTop * Math.abs(display.scale.y || 1) : null;
       }
       /* v2.3.2345: QA probe (mp-brobadge) -- did the badge sprite actually get
          ART, not merely a `visible` flag.  Reads the texture off the sprite
