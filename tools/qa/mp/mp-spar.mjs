@@ -168,9 +168,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 4. a tap aims at one, and your sword lands ── */
   const swId = idOf('sword');
+  /* v2.3.3266: the clones stand on a ring at a random angle, so the sword
+     clone can stand at the screen's edge, under a control or a card (found:
+     x 62 of 390, where the tap never reached the world).  A thumb taps a
+     player out in the open: step so it stands above you, mid-screen, first */
+  const under = (q) => P.page.evaluate((q) => {
+    const el = document.elementFromPoint(q.x, q.y - 4);
+    return el ? (el.tagName === 'CANVAS' ? 'canvas' : (el.className && String(el.className).slice(0, 60)) || el.tagName) : null;
+  }, q);
+  {
+    const q0 = swId ? await peerOnScreen(P, swId) : null;
+    const vw = PHONE.width;
+    if (q0 && (q0.x < 90 || q0.x > vw - 90 || (await under(q0)) !== 'canvas')) {
+      const at = await P.page.evaluate((id) => { const o = window._gameState.current.others[id]; return o ? { x: o.x, y: o.y } : null; }, swId);
+      if (at) { await H.hopTo(P, at.x, at.y + 160); await P.page.waitForTimeout(1500); }
+    }
+  }
   const sp = await H.adminPlayer(wsPort, myId);
   const me = sp && sp.live;
   let pt = swId ? await peerOnScreen(P, swId) : null;
+  const ptUnder = pt ? await under(pt) : null;
   if (pt) {
     await P.page.touchscreen.tap(pt.x, pt.y - 4);
     await P.page.waitForTimeout(700);
@@ -183,7 +200,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     lock = await H.readState(P, (S) => (S.lockedTarget ? { type: S.lockedTarget.type, id: S.lockedTarget.id, spar: !!S.lockedTarget.spar } : null));
   }
   const card = await P.page.evaluate(() => !!document.querySelector('.bt-inspect'));
-  rec.ok('4a a tap on a clone aims at it (no card)', !!lock && lock.id === swId && lock.spar && !card, { lock, card, pt, me: me && { x: me.x, y: me.y } });
+  rec.ok('4a a tap on a clone aims at it (no card)', !!lock && lock.id === swId && lock.spar && !card, { lock, card, pt, under: ptUnder, me: me && { x: me.x, y: me.y } });
   /* stand beside it, then swing */
   const cl = await P.page.evaluate((id) => { const o = window._gameState.current.others[id]; return o ? { x: o.x, y: o.y } : null; }, swId);
   if (cl) await H.hopTo(P, cl.x - 30, cl.y, { step: 60, gap: 300, tries: 30 });

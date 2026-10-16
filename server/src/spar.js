@@ -56,12 +56,18 @@
  *   - it swings, shoots and walks at the base speeds (the sim's): your Speed,
  *     Move Speed and Range points do not change how fast it acts (every number
  *     the worker rolls -- Power, Crit, Defense, Dodge, armour -- does);
- *   - it eats nothing and never sprints away to heal;
- *   - its arrows are drawn at 20 px a frame, the most another player's arrow
- *     can be drawn at (gameEvents.js player_projectile `speedPx`), and fly at
- *     the bow's 24 here; a real archer's arrows are drawn at 8 on your screen
- *     (visualSystems.js), a third of their speed -- a finding of this build,
- *     not changed here (docs/specs/sparring.md).
+ *   - it eats nothing and never sprints away to heal.
+ *
+ * ITS SHOTS ARE A PAGE'S.  Each arrow, volley and bolt goes out as the very
+ * relay a player's page sends for it (monsterCombat.js, playerActions.js), so
+ * your screen draws a clone's shots through the code that draws everyone
+ * else's: an arrow's `life` of 90 says the bow's own speed and reach (the page
+ * reads them back, game/peerShots.js), a volley's `delayMs` is sized for
+ * BOW_VOLLEY.PEER_PX_PER_FRAME as a page sizes it, and `tg` names you, as a
+ * page names the player it has locked.  v2.3.3266: until then a clone's arrows
+ * were drawn at 20 px a frame (the most a `speedPx` may say) and a real
+ * archer's at 8, a third of their speed -- the finding this build reported,
+ * fixed for everyone in v2.3.3266 (docs/specs/peer-shots.md).
  *
  * THE WIRE.  Nothing new from the page: the panel is admin HTTP (devtools.js
  * `/dev/spar`).  To the owner only, `spar_state` (PRIVILEGED_EVENTS; handled
@@ -121,12 +127,18 @@ const G = Object.freeze({
   MELEE_RANGE: 50,            /* greatsword reach, what a swing claims */
   MELEE_ARC: Math.PI * 0.85,
   ARROW_SPEED: 24 * F60,      /* projectiles.js ARROW_SPEED_PX */
-  ARROW_DRAWN_PX: 20,         /* the most a peer's arrow is drawn at (gameEvents.js speedPx) */
+  /* v2.3.3266: the life a page sends a plain arrow with (90 frames x its
+     `_rangeMult`, 1 here): what a watcher reads the bow's speed and reach back
+     off (src/game/peerShots.js PEER_SHOT.LIFE_PER_K) */
+  ARROW_LIFE: 90,
+  /* v2.3.3266: the speed a page sizes a volley's delays for
+     (BOW_VOLLEY.PEER_PX_PER_FRAME, playerActions.js volleyDelayMs) */
+  PEER_PX: 8,
   ARROW_FLIGHT: 675,          /* where an arrow comes down */
   ARROW_RANGE: 450,           /* the sight gate: no shot past about half a phone's view */
   VOLLEY_SPEED: 24 * 0.7 * F60,   /* BOW_VOLLEY.SPEED_K */
-  VOLLEY_DRAWN_PX: 24 * 0.7,
-  VOLLEY_GAP_MS: 200 / (24 * 0.7 * F60),   /* GAP_PX 200 between the three */
+  VOLLEY_GAP_PX: 200,         /* BOW_VOLLEY.GAP_PX between the three */
+  VOLLEY_GAP_MS: 200 / (24 * 0.7 * F60),   /* ...in this speed's ms */
   VOLLEY_N: 3,
   BOLT_SPEED: 5 * F60,        /* a staff bolt, 5 px a frame */
   BOLT_DRAWN_PX: 5,
@@ -900,8 +912,9 @@ export const sparMethods = {
     if (c.style === 'bow') {
       c.shots.push({ kind: 'arrow', ox: ps.x, oy: ps.y, ang: a, x: ps.x, y: ps.y, travelled: 0, at: now,
         dmg: Math.round(plainRoll('bow', base)), special: false, R: G.R_ARROW, speed: G.ARROW_SPEED, flight: G.ARROW_FLIGHT });
+      /* v2.3.3266: a page's arrow relay, exactly (see the header) */
       this._sparRelay(c, { type: 'player_projectile', x: Math.round(ps.x), y: Math.round(ps.y), ang: a, isStaff: false,
-        el: this._sparElem(ps) || undefined, tg: c.owner, speedPx: G.ARROW_DRAWN_PX, life: Math.round(G.ARROW_FLIGHT / G.ARROW_DRAWN_PX) });
+        el: this._sparElem(ps) || undefined, tg: c.owner, life: G.ARROW_LIFE });
     } else {
       c.shots.push({ kind: 'bolt', dist: 14, at: now, dmg: Math.round(plainRoll('staff', base)), special: false, R: G.R_BOLT });
       this._sparRelay(c, { type: 'player_projectile', x: Math.round(ps.x), y: Math.round(ps.y), ang: a, isStaff: true,
@@ -937,8 +950,12 @@ export const sparMethods = {
       for (let i = 0; i < G.VOLLEY_N; i++) {
         c.shots.push({ kind: 'volley', ox: ps.x, oy: ps.y, ang: a, x: ps.x, y: ps.y, travelled: 0, at: now + i * G.VOLLEY_GAP_MS,
           dmg: each, special: true, R: G.R_VOLLEY, speed: G.VOLLEY_SPEED, flight: G.ARROW_FLIGHT });
+        /* v2.3.3266: a page's volley relay, exactly: one `ts` for the three,
+           each one's wait sized for PEER_PX as a page sizes it -- the watcher
+           counts it in the volley's own speed, so it leaves VOLLEY_GAP_MS
+           after the one before, as here */
         this._sparRelay(c, { type: 'player_projectile', x: Math.round(ps.x), y: Math.round(ps.y), ang: a, isStaff: false, isSpecial: true,
-          el, volley: 1, tg: c.owner, delayMs: Math.round(i * G.VOLLEY_GAP_MS), speedPx: G.VOLLEY_DRAWN_PX, life: Math.round(G.ARROW_FLIGHT / G.VOLLEY_DRAWN_PX) });
+          el, volley: 1, tg: c.owner, ts: now, delayMs: Math.round(i * G.VOLLEY_GAP_PX * (1000 / 60) / G.PEER_PX), life: G.ARROW_LIFE });
       }
     } else {
       /* the big bolt: three orbs' worth, one bolt (playerActions.js) */

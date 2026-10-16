@@ -27,6 +27,12 @@
 import { GameRoom } from '../src/index.js';
 import { SPAR, SPAR_SKILLS, SPAR_WEAPONS } from '../src/spar.js';
 import { WHEEL_CENTRE } from '../src/wheelspawns.js';
+/* v2.3.3266: the page's own reading of a peer's shot */
+import { peerShotFlight } from '../../src/game/peerShots.js';
+import { BOW_VOLLEY } from '../../src/game/bowVolley.js';
+/* the page's numbers (projectiles.js ARROW_SPEED_PX, gameSystems.js BOW_RANGE_PX;
+   peer-shots.test.mjs holds them to the source) */
+const PAGE = { arrowPx: 24, reachPx: 675, volleyK: BOW_VOLLEY.SPEED_K, peerPx: BOW_VOLLEY.PEER_PX_PER_FRAME };
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -272,7 +278,16 @@ room._sparDev(OWNER, { skill: 'normal' });
   check('5h a sword swing is drawn on your screen (player_swing)', rel('player_swing', 'sword').length > 0);
   check('5i an arrow and a bolt are drawn (player_projectile)', rel('player_projectile', 'bow').length > 0 && rel('player_projectile', 'staff').length > 0);
   check('5j a bolt names you, so it chases you on screen (tg)', rel('player_projectile', 'staff').every((e) => e.payload.tg === OWNER && e.payload.isStaff));
-  check('5k an arrow is drawn at the speed it flies (speedPx)', rel('player_projectile', 'bow').filter((e) => !e.payload.isSpecial).every((e) => e.payload.speedPx === 20));
+  /* v2.3.3266: a clone's arrow goes out as a page's does -- no speedPx, the
+     life of 90 that says the bow's own speed and reach -- and the page's own
+     rule (src/game/peerShots.js) draws it at the speed and to the reach the
+     worker flies it at here (spar.js G.ARROW_SPEED, G.ARROW_FLIGHT) */
+  const plainArrows = rel('player_projectile', 'bow').filter((e) => !e.payload.isSpecial);
+  const drawnAs = plainArrows.map((e) => peerShotFlight(e.payload, e.payload.life, PAGE));
+  check('5k an arrow goes out as a page\'s does (no speedPx, life 90)', plainArrows.length > 0
+    && plainArrows.every((e) => e.payload.speedPx === undefined && e.payload.life === 90), plainArrows.slice(0, 1).map((e) => e.payload));
+  check('5k1 ...so it is drawn at the bow\'s 24 px a frame, to 675 px, as the worker flies it', drawnAs.length > 0
+    && drawnAs.every((f) => Math.abs(f.speedPx - 24) < 1e-9 && Math.abs(f.reach - 675) < 1e-9 && !f.pierce), drawnAs[0]);
   check('5k2 ...and names you, so it ends where it reaches you on screen (tg)', rel('player_projectile', 'bow').length > 0
     && rel('player_projectile', 'bow').every((e) => e.payload.tg === OWNER));
   check('5l the clones move (the tick is told)', clonesOf().some((c) => room.playerState[c.id].vx !== 0 || room.playerState[c.id].vy !== 0)
@@ -310,6 +325,17 @@ room._sparDev(OWNER, { skill: 'hard' });
   check('6a specials are paid at the worker (a swipe\'s mana)', swipes.length > 0, uses.length);
   const specialHits = evs.filter((e) => e.type === 'pvp_hit' && e.payload.target === OWNER && e.payload.dmgTaken > 0 && evs.some((s) => s.type === 'player_projectile' && s.payload.isSpecial && s.from === e.payload.attacker));
   check('6b a bow volley or big bolt is drawn as one (isSpecial)', evs.some((e) => e.type === 'player_projectile' && e.payload.isSpecial), null);
+  /* v2.3.3266: a volley goes out as a page's does: three relays of one shot
+     (one ts), each one's wait sized for PEER_PX_PER_FRAME, and the page's rule
+     lets each go VOLLEY_GAP_MS after the one before, at the volley's speed,
+     flying on through you (it pierces, as a page's volley does) */
+  const volleys = evs.filter((e) => e.type === 'player_projectile' && e.payload.volley && e.from === cloneOf('bow').id);
+  const v3 = volleys.slice(0, 3).map((e) => ({ p: e.payload, f: peerShotFlight(e.payload, e.payload.life, PAGE) }));
+  check('6b1 a volley is three relays of one shot, no speedPx', v3.length === 3 && v3.every((v) => v.p.ts === v3[0].p.ts && v.p.speedPx === undefined && v.p.tg === OWNER),
+    v3.map((v) => ({ ts: v.p.ts, d: v.p.delayMs })));
+  check('6b2 ...drawn at the volley\'s 16.8 px a frame, leaving 198 ms apart, as the worker flies them', v3.length === 3
+    && v3.every((v, i) => Math.abs(v.f.speedPx - 24 * 0.7) < 1e-9 && Math.abs(v.f.holdFrames * (1000 / 60) - i * 200 / (24 * 0.7 * 60 / 1000)) < 2 && v.f.pierce),
+    v3.map((v) => ({ speed: v.f.speedPx, hold: v.f.holdFrames, pierce: v.f.pierce })));
   check('6c ...and lands', specialHits.length > 0 || evs.some((e) => e.type === 'pvp_hit' && e.payload.target === OWNER), specialHits.length);
   const lunges = abil.filter((a) => a.kind === 'sworddash' && a.id === sw.id);
   check('6d the sword clone lunges at you through abilities.js (sworddash naming you)', lunges.length > 0 && lunges.every((a) => a.pid === OWNER), abil.slice(0, 3));

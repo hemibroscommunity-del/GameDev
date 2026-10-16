@@ -83,25 +83,26 @@ it.
   Every number the server rolls (Power, Crit, Defense, Dodge, armour) does
   count.
 - **Food.** A clone never eats.
-- **Arrows and bolts on your screen.** A clone's arrows are drawn at 20 px a
-  frame, the fastest another player's arrow can be drawn, and fly at the
-  bow's real 24 px a frame on the server. A clone's shots name you (`tg`), so
-  on your screen an arrow stops where it reaches you and a bolt chases you
-  and stops there, as the server lands them.
+- **Arrows and bolts on your screen.** A clone's shots go out as the very
+  relays a player's page sends (v2.3.3266), so your screen draws them through
+  the same code as anyone's: an arrow at the bow's 24 px a frame, a volley at
+  its own speed 200 px apart, and, since a clone's shots name you (`tg`), an
+  arrow stops where it reaches you and a bolt chases you and stops there, as
+  the server lands them.
 
-## Found while building it (not changed)
+## Found while building it (fixed in v2.3.3266)
 
-- **A real archer's arrows look three times slower on the target's screen.**
-  The archer's own arrow flies 24 px a frame, but everyone else draws it at
-  8 px a frame (`visualSystems.js`). So the damage lands well before the
-  drawn arrow arrives. A clone sends its speed with the shot, so its arrows
-  look right. Real players' pages could do the same.
-- **A real mage's bolt flies straight on the target's screen** but chases its
+- **A real archer's arrows looked three times slower on the target's screen.**
+  The archer's own arrow flies 24 px a frame, but everyone else drew it at
+  8 px a frame (`visualSystems.js`), so the damage landed well before the
+  drawn arrow arrived.
+- **A real mage's bolt flew straight on the target's screen** but chases its
   target on the mage's own screen (where the hit is decided). And another
-  player's arrow or bolt never stops at you on your screen: it flies on
-  through you to the end of its range. A clone's shots name their target
-  (`tg`), so they are drawn chasing you (a bolt) and stopping at you (both).
-  Real players' pages could send the same.
+  player's arrow or bolt never stopped at you on your screen: it flew on
+  through you to the end of its range.
+
+The owner: "Yes do the follow up fixes". Both are fixed for every player in
+v2.3.3266: `docs/specs/peer-shots.md`.
 
 ## How it works (for the code)
 
@@ -125,6 +126,6 @@ it.
   it (`sparAim`), the knockout messages.
 - `caps.spar` shows the panel's section; `spar: false` in liveflags hides it
   and takes every clone away on the next tick.
-- Tests: `server/test/spar.test.mjs` (110 checks, including a live monster
+- Tests: `server/test/spar.test.mjs` (115 checks, including a live monster
   that chases a real player and ignores a clone, and break-the-guard checks);
   `tools/qa/mp/mp-spar.mjs` on a phone through the real panel.

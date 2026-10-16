@@ -45,6 +45,7 @@ import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */, shotGroundDy /* v2.3.3206: a shot's ground is under the boots */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
 import { firstSightHit, shotLowAim, lowAimAlong } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at */
+import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player a shot is aimed at, for the others' screens */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
@@ -1785,6 +1786,14 @@ export function updateMonsterCombat(S, deps) {
                      while it flew 1012 on the caster's screen (the v2.3.2387
                      lesson).  Additive: an old client ignores it. */
                   life: Math.round((isStaff ? staffOrbLife(S.rpg) : 90 * (bowRangeMult(S.rpg) || 1)) * depthK(S.currentZone, P.y)),   /* v2.3.2790: x your depth -- the orb's range is its life */
+                  /* v2.3.3266: the player you have locked, when this shot may
+                     hit them (game/peerShots.js shotTargetId): on every screen
+                     it leaves aimed at them and ends where it reaches them, a
+                     bolt chasing them -- and `pc`, an arrow that pierces, flies
+                     on through as yours does.  Additive: an older client
+                     ignores both. */
+                  tg: shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined,
+                  pc: (!isStaff && bowPierceCount(S.rpg) > 0) ? 1 : undefined,
                 }});
                 S.swingTimer = Date.now(); /* Staff cooldown penalty applied at the gate above, not here */
                 if (isStaff) {

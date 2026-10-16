@@ -10,7 +10,8 @@
    setter). All other references are module imports below. */
 import { staffBoltK } from '@/data/oneFormula.js'; /* v2.3.3260: the big bolt's worth under the one formula */
 import { STAFF_RANGE_PX, staffRangeMult, bowRangeMult, STAFF_BIG_BOLT_ORBS, STAFF_BIG_BOLT_BAND } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: the RANGE stat; v2.3.2842: the one-bolt special; v2.3.2849: its band */
-import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
+import { depthK, ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3266: + whether the zone is safe (peerShots.js) */
+import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player a special is aimed at, for the others' screens */
 import { ARROW_SPEED_PX, lowAimAlong } from '@/game/projectiles.js';   /* v2.3.2848: the volley's stagger is sized from it; v2.3.3206: + the low thing a shot is aimed at */
 import { BOW_VOLLEY, newVolley, volleyDelayMs } from '@/game/bowVolley.js';   /* v2.3.2848 */
 import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS, LEGACY_BURST_MIN_CHAR_LEVEL } from '@/data/index.js';
@@ -389,6 +390,8 @@ export function specialAttack(S) {
          arrow speed (BOW_VOLLEY.PEER_PX_PER_FRAME) so the gap they see is the
          gap you see -- the staff volley's `delayMs` (v2.3.2259), which a peer
          already honours for any projectile. */
+      /* v2.3.3266: the player the volley is aimed at (game/peerShots.js) */
+      var _shotTg = shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined;
       if (S.channel) {
         for (var bvj = 0; bvj < _bowN; bvj++) {
           S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
@@ -397,6 +400,7 @@ export function specialAttack(S) {
             volley: _bowVolley ? 1 : undefined,   /* v2.3.2849: additive -- a peer burns it out on the volley's 2.5 s, not the lone arrow's 4 */
             lp: _bowLp ? [Math.round(_bowLp.x), Math.round(_bowLp.y)] : undefined,   /* v2.3.3206: additive */
             life: Math.round(90 * _bowStat * depthK(S.currentZone, S.player.y)), /* v2.3.2592: peers see the stat's reach too; v2.3.2790 x depth */
+            tg: _shotTg,   /* v2.3.3266: the player it is aimed at (monsterCombat's shot); it pierces, so it flies on through */
           }});
         }
       }
@@ -537,6 +541,7 @@ export function specialAttack(S) {
             speedPx: _ORB_SPEED,
             life: _bigLife,
             lp: _orbLp ? [Math.round(_orbLp.x), Math.round(_orbLp.y)] : undefined,   /* v2.3.3206: additive */
+            tg: shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined,   /* v2.3.3266: it chases them on every screen, as on yours */
             ts: now
           }});
         }
@@ -581,6 +586,7 @@ export function specialAttack(S) {
               speedPx: _ORB_SPEEDS[_bcj],   /* v2.3.2262: peers see the same fast/medium/slow spread */
               life: Math.round(_ORB_RANGE_PX / _ORB_SPEEDS[_bcj]), /* v2.3.2592: ...and the same reach */
               lp: _orbLp ? [Math.round(_orbLp.x), Math.round(_orbLp.y)] : undefined,   /* v2.3.3206: additive */
+              tg: shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined,   /* v2.3.3266 */
               ts: now
             }});
           }
