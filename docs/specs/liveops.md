@@ -50,7 +50,7 @@ room for a demo — or, in a headless test, to 1, which is how the
 retrying, so RAISING the flag again lets the waiting queue in with no
 action from them. See room-full.md.
 
-`ip_sockets` / `ip_joins_min` (v2.3.3273) — the places one internet
+`ip_sockets` / `ip_joins_min` (v2.3.3274) — the places one internet
 address may hold (default 16, clamped to [0, 1000]) and the sockets it may
 open a minute (default 20, [0, 10000]), read in the DO's `fetch()` through
 `_floodIpOk` (flood.js); **0 switches one off**. Set one to 0 (or higher)

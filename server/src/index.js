@@ -202,7 +202,7 @@ import { steadyMoversMethods } from './steadymovers.js'; /* v2.3.3203: a player 
 import { bundleParts } from './bundle.js'; /* v2.3.3254: several messages in one frame (the quiet phone) */
 import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look relayed when it changes, not every 2 s */
 import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what is 5+ levels below you, harvests and fights */
-import { floodMethods, roomNameFor, requestIp, FLOOD } from './flood.js'; /* v2.3.3273: one socket cannot stop the game */
+import { floodMethods, roomNameFor, requestIp, FLOOD } from './flood.js'; /* v2.3.3274: one socket cannot stop the game */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
@@ -238,7 +238,7 @@ async function routeHttp(request, env) {
       return new Response(null, { headers: { ...corsHeaders, 'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS', 'Access-Control-Allow-Headers': '*' } });
     }
 
-    /* v2.3.3273: only the rooms the worker is told to make (flood.js
+    /* v2.3.3274: only the rooms the worker is told to make (flood.js
        roomNameFor): `?room=<anything>` used to make a room on EVERY route
        below, awake and billed from its first socket.  A name it does not
        make is a 404 with a word, so a mistyped private room reads as that
@@ -4775,7 +4775,7 @@ export class GameRoom {
     if (this.sessions.size >= this._roomCap()) {
       return this._roomFullRefusal(url);
     }
-    /* v2.3.3273: one address holds at most `ip_sockets` places and opens at
+    /* v2.3.3274: one address holds at most `ip_sockets` places and opens at
        most `ip_joins_min` sockets a minute (flood.js): the room's places were
        one script's for the taking.  Refused the way a full room is, with its
        own word (`reason: 'ip'`). */
@@ -4785,7 +4785,7 @@ export class GameRoom {
     }
     const [client, server] = Object.values(new WebSocketPair());
     this.state.acceptWebSocket(server);
-    /* v2.3.3273: `ip` for the address limits, `openedAt` for the join window
+    /* v2.3.3274: `ip` for the address limits, `openedAt` for the join window
        (tick.js _tickPingAndAfk) */
     this.sessions.set(server, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '', ip: _ip, openedAt: Date.now() });
     if (!this.tickInterval && this.sessions.size === 1) this.startTickLoop();
@@ -4872,7 +4872,7 @@ export class GameRoom {
     }
     let msg;
     try { msg = JSON.parse(message); } catch { return; }
-    /* v2.3.3273: a frame that parses to anything but an object -- `null`, a
+    /* v2.3.3274: a frame that parses to anything but an object -- `null`, a
        number, a string -- is junk too; `null.type` threw below (flood.js). */
     if (!msg || typeof msg !== 'object') return;
     /* v2.3.3254: a BUNDLE -- several messages in one frame, each taken in
@@ -4892,7 +4892,7 @@ export class GameRoom {
 
   /* v2.3.3254: one message, out of a frame of its own or a bundle (above) */
   async _onMessage(ws, session, msg) {
-    /* ═══ v2.3.3273: THE BUDGET PER SOCKET, AND NOTHING BEFORE THE JOIN ═══
+    /* ═══ v2.3.3274: THE BUDGET PER SOCKET, AND NOTHING BEFORE THE JOIN ═══
        Every message counts against the socket's bucket (flood.js FLOOD.MSG_*),
        a bundle's parts one each; past it the message is dropped, and a socket
        that keeps flooding is closed.  And a socket that has not joined is
@@ -4958,7 +4958,7 @@ export class GameRoom {
 
     switch (msg.type) {
       case 'join':
-        /* v2.3.3273: ONE JOIN A SOCKET.  A second one under another id left
+        /* v2.3.3274: ONE JOIN A SOCKET.  A second one under another id left
            the first player in the room for good (every tick walked it, the
            roster sent it to everyone); the game's client never sends two --
            a resync closes the socket and opens a new one (wsClient.js
@@ -6347,7 +6347,7 @@ Object.assign(GameRoom.prototype, tickPaceMethods); /* v2.3.3202 */
 Object.assign(GameRoom.prototype, steadyMoversMethods); /* v2.3.3203 */
 Object.assign(GameRoom.prototype, lookRelayMethods); /* v2.3.3240 */
 Object.assign(GameRoom.prototype, xpDecayMethods); /* v2.3.3251 */
-Object.assign(GameRoom.prototype, floodMethods); /* v2.3.3273: one socket cannot stop the game */
+Object.assign(GameRoom.prototype, floodMethods); /* v2.3.3274: one socket cannot stop the game */
 Object.assign(GameRoom.prototype, pvpBalanceMethods); /* v2.3.3260 */
 Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-fight, the body stays */
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */

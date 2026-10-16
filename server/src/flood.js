@@ -1,4 +1,4 @@
-/* ═══ v2.3.3273: ONE SOCKET CANNOT STOP THE GAME ═══
+/* ═══ v2.3.3274: ONE SOCKET CANNOT STOP THE GAME ═══
  *
  * The owner, 2026-10-16, after the anti-bot review (docs/specs/antibot-review.md,
  * "Part 2: bots that attack the game itself"): "start on the urgent five".

@@ -1,4 +1,4 @@
-# One socket cannot stop the game (v2.3.3273)
+# One socket cannot stop the game (v2.3.3274)
 
 > The owner, 2026-10-16, after the anti-bot review: *"Yes start on the urgent
 > five and the account check."*

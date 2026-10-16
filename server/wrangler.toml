@@ -45,7 +45,7 @@ routes = [
 #
 # Operator runbook: docs/specs/progression-onchain.md
 [vars]
-# v2.3.3273: the rooms the worker makes besides the main one (brotown-1),
+# v2.3.3274: the rooms the worker makes besides the main one (brotown-1),
 # comma separated -- a private room for a playtest, say.  Any other
 # `?room=` is answered "no such room" (server/src/flood.js roomNameFor):
 # every name used to make a room, awake and billed.  A local `wrangler dev`

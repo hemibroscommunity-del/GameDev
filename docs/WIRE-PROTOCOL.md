@@ -543,7 +543,7 @@ Summary of the wire-visible changes:
   legacy/guest ids). Rejected auth → server sends `join_rejected
   {reason:'auth'}` then closes with code 4003; the client mints a fresh
   identity once and reconnects.
-- v2.3.3273 (one socket cannot stop the game, docs/specs/one-socket.md):
+- v2.3.3274 (one socket cannot stop the game, docs/specs/one-socket.md):
   every message counts against the socket's budget (300 at once, then 120
   a second, a bundle's parts one each); past it a message is dropped, and
   a socket that keeps flooding is closed with code 4012. Nothing but

@@ -593,7 +593,7 @@ export const gearMethods = {
     // mutation, and dropping it would leave a stale maxHp behind the day
     // some future armor piece does carry a pool stat.
     if (slot === 'armor') this._recomputeMaxes(ps);
-    this._saveRpgPaced(session.id, ps);   /* v2.3.3273: at the player's pace (flood.js) */
+    this._saveRpgPaced(session.id, ps);   /* v2.3.3274: at the player's pace (flood.js) */
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);
   },
@@ -656,7 +656,7 @@ export const gearMethods = {
     // above and grids.js _recomputeMaxes) — the recompute stays as the
     // single post-equipment re-derive of the pools.
     if (slot === 'armor') this._recomputeMaxes(ps);
-    this._saveRpgPaced(session.id, ps);   /* v2.3.3273: at the player's pace (flood.js) */
+    this._saveRpgPaced(session.id, ps);   /* v2.3.3274: at the player's pace (flood.js) */
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);
   },
@@ -674,7 +674,7 @@ export const gearMethods = {
     if (!ps) return;
     const slot = payload && payload.slot;
     if (slot === 'melee' || slot === 'ranged' || slot === 'staff') {
-      /* v2.3.3273: the same slot again is nothing to write, and a change is
+      /* v2.3.3274: the same slot again is nothing to write, and a change is
          saved at the player's pace (flood.js) -- it wrote a row a message */
       if (ps.activeSlot === slot) return;
       ps.activeSlot = slot;

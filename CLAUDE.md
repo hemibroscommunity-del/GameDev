@@ -3372,7 +3372,7 @@ Two protocol versions coexist; both must keep working:
   - a value a player SEES (loot, XP, gold) is still saved before its message
     goes (ARCHITECTURE-HANDOFF rule 10): batching it is the owner's call, never
     a quiet saving.
-- **ONE SOCKET CANNOT STOP THE GAME (v2.3.3273, docs/specs/one-socket.md).**
+- **ONE SOCKET CANNOT STOP THE GAME (v2.3.3274, docs/specs/one-socket.md).**
   The anti-bot review's urgent five, closed in `server/src/flood.js`: a row
   written per message (mute no-ops, a stat flood, offline DMs) -- nothing
   written when nothing changed, a player's own saves PACED (`_saveRpgPaced`,

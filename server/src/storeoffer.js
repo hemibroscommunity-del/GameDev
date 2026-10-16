@@ -74,7 +74,7 @@ export const STORE_OFFER = {
 
 /* The seller's answers. Enumerated, never free text: the client renders the
    words from the id, so a reply cannot carry anything a player typed. */
-import { PACE } from './flood.js';   /* v2.3.3273: the "let me think" mark is written at a pace */
+import { PACE } from './flood.js';   /* v2.3.3274: the "let me think" mark is written at a pace */
 
 export const OFFER_REPLIES = ['yes', 'think', 'no'];
 
@@ -241,7 +241,7 @@ export const storeOfferMethods = {
     if (reply === 'think') {
       offers[buyerId] = { ...o, reply: 'think' };
       rec.offers = { ...offers };
-      /* v2.3.3273: a mark, and all the reply changes -- written only while
+      /* v2.3.3274: a mark, and all the reply changes -- written only while
          the seller's lane has a token (flood.js PACE.THINK), never held: a
          held copy of this record written later could put back a listing a
          sale had deleted.  It wrote a row a message. */
