@@ -163,6 +163,8 @@ export const persistenceMethods = {
 
   async _saveRpg(playerId, ps) {
     if (!playerId || !ps) return;
+    /* v2.3.3265: a sparring clone has no record and never gets one (spar.js) */
+    if (ps._spar) return;
     /* v2.3.1619: regen-write bookkeeping, owned centrally HERE rather
        than at the regen tick's call site, because ANY durable write
        persists the pools too (this function rewrites the whole blob

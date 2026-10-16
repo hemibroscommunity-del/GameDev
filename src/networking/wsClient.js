@@ -23,6 +23,7 @@ import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display
 import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3139: hardened wood's names */
 import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the worker's */
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
+import { applySparState } from '@/game/spar.js'; /* v2.3.3265: the test panel's sparring clones */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
@@ -1789,6 +1790,16 @@ export function setupWebSocket(ctx) {
                  the login answer comes before state_sync. */
               farmBus.apply(msg.payload);
               farmFeedback(S, msg.payload, { setChatLog: setChatLog });
+              break;
+            }
+          case 'spar_state':
+            {
+              /* v2.3.3265: your sparring clones (server spar.js) -- which
+                 players they are, so a tap aims at them, the score, and a
+                 knockout either way.  The direct switch, as farm_state above:
+                 a worker from before them does not list spar_state as
+                 privileged and would relay a forged one. */
+              applySparState(S, msg.payload);
               break;
             }
           case 'lifesteal_credit':

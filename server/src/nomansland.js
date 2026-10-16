@@ -171,6 +171,9 @@ export const noMansLandMethods = {
     if (this._nmlOff() || !attackerId || !targetId || attackerId === targetId) return false;
     const a = this.playerState[attackerId], t = this.playerState[targetId];
     if (!a || !t || a.disconnected || t.disconnected) return false;
+    /* v2.3.3265: a sparring clone is never under the rule -- no skull, no
+       loss, either way (spar.js) */
+    if (a._spar || t._spar) return false;
     const la = this._nmlLevelOf(a), lt = this._nmlLevelOf(t);
     if (la < 1 || lt < 1) return false;
     const ca = Number(a.level) || 1, ct = Number(t.level) || 1;

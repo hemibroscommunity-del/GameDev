@@ -10,7 +10,8 @@
    was `var X = function...` in the component; `export var` here keeps the
    bodies byte-identical and the cross-calls resolve within the module. */
 import { staffOrbLife, bowRangeMult } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: × the RANGE stat */
-import { depthK } from '@/data/zones.js';   /* v2.3.2790 */
+import { depthK, ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3266: + whether the zone is safe (peerShots.js) */
+import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player the retreat shot is aimed at, for the others' screens */
 import { BT_AUDIO, ELEMENTS, LUNGE_DAMAGE_MULT, LUNGE_DIRECTION_THRESHOLD, LUNGE_IFRAMES_MS, LUNGE_STAMINA_FRACTION, RETREAT_SHOT_DAMAGE_MULT, RETREAT_SHOT_STAMINA_FRACTION, RETREAT_STAFF_CONE_RAD, applyStatus, calcWeaponDmg, getActiveWeapon, rpgBlockSize } from '@/data/index.js';
 import { addBuildUse, pushDmgPopup, lockAimPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */, shotGroundDy /* v2.3.3206 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -348,6 +349,9 @@ export var doRetreatShot = function (S, R, ang) {
             el: activeWpn.element1 || undefined,
             life: Math.round((isStaff ? staffOrbLife(R) : 90 * (bowRangeMult(R) || 1)) * _dk),
             retreat: 1,
+            /* v2.3.3266: the player it is aimed at, as monsterCombat's shot
+               says (game/peerShots.js).  Additive. */
+            tg: shotTargetId(S, (ZONES[S.currentZone] || {}).safe) || undefined,
           } });
         } catch (e) {}
       }

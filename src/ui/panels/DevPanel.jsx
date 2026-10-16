@@ -201,6 +201,7 @@ const CAP_GATES = [
   'fishheal' /* v2.3.3260: the fish ladder (server/src/data.js FISH_HEAL) -- lower case, a kill switch */,
   'pvplunge' /* v2.3.3262: the sword's opening lunge lands on a player too, and dazes them (server/src/pvplunge.js) -- lower case, a kill switch */,
   'pvpextras' /* v2.3.3264: what a hit does to a monster it does to a player -- a gem's status, a collision, the splash, the burst, the bash, whirlwind and lunge, a kill's heal, a parry's stagger (server/src/pvpextras.js) -- lower case, a kill switch */,
+  'spar' /* v2.3.3265: the Sparring section below -- clones of you that fight you through the real PvP code (server/src/spar.js) -- lower case, a kill switch */,
 ];
 
 /* Plain language for the ones whose absence the owner has actually reported
@@ -245,7 +246,28 @@ const CAP_NOTES = {
   pvpbrew: 'damage brews in duels and player fights: every hit (swings, shots, the bow volley, the staff special) gets the Fury Tonic or Firebloom Tea the worker says you drank (v2.3.3133; off: pages that join afterwards claim the old way, where the volley and the staff special had no brew; pages already playing get no brew in a duel until they reload)',
   pvpheal: 'one bite at a time in a duel or a fight with a player: a Garden Stew, cooked fish or minnow bottle every 15 s (v2.3.3133; off: eat as fast as you can tap)',
   farmorders: 'the Feed & Seed order board: three orders a day for crops and dishes, each paid in gold and Farming XP (v2.3.3134; off: no Orders tab, and a delivery is refused)',
+  spar: 'the Sparring section of this panel: clones of you with a sword, a bow or a staff that fight you through the real player-vs-player code (v2.3.3265; off: no section, and any clones out go away)',
 };
+
+/* ═══ v2.3.3265: SPARRING ═══
+   Owner: "I wish I could test PvP somehow. Can you make a special environment
+   where I can go to attack clones of myself using different weapons and you
+   just have them attack me using AI? Purely for testing purposes. Maybe this
+   is better to add to the admin window".  The clones are the worker's
+   (server/src/spar.js): players to the room with your look, level, points and
+   armour and their own weapon, an AI fighting you through the room's own PvP
+   code.  These are its labels; the tap that aims at one is game/spar.js. */
+const SPAR_WEAPON_ROWS = [
+  { w: 'sword', label: 'Sword clone' },
+  { w: 'bow', label: 'Bow clone' },
+  { w: 'staff', label: 'Staff clone' },
+];
+const SPAR_SKILL_ROWS = [
+  { k: 'dummy', label: 'Dummy', note: 'stands still and never attacks -- read your own numbers on it' },
+  { k: 'easy', label: 'Easy', note: 'a careless player: slow to react, no rolls, no shield' },
+  { k: 'normal', label: 'Normal', note: 'an average player: keeps a distance, rolls and shields now and then, lunges' },
+  { k: 'hard', label: 'Hard', note: 'a skilled player: kites, strafes, answers your specials, lunges from across the screen' },
+];
 
 export const DevPanel = ({ onClose }) => {
   const [key, setKey] = useState(() => { try { return localStorage.getItem(KEY_LS) || ''; } catch (e) { return ''; } });
@@ -556,6 +578,76 @@ export const DevPanel = ({ onClose }) => {
                 </button>
               ))}
             </div>
+
+            {/* ═══ v2.3.3265: SPARRING ═══
+                Clones of you to fight (server/src/spar.js through /dev/spar).
+                Adding one closes the panel so you can fight it; the game says
+                in the chat that they arrived and how to target one. */}
+            <div style={label}>Sparring (PvP practice)</div>
+            {!(S && S._serverCaps && S._serverCaps.spar) ? (
+              <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }} data-spar-off="1">
+                This server does not have sparring yet -- it needs the deploy that ships it.
+              </div>
+            ) : (
+              <>
+                <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
+                  Clones of you -- your look, level, points and armour -- that fight only you,
+                  through the real player-vs-player rules. Tap one to target it. If they knock
+                  you out you are healed on the spot: nothing is lost. Stand anywhere in the world.
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7, marginBottom: 7 }}>
+                  {SPAR_WEAPON_ROWS.map((r) => (
+                    <button key={r.w} type="button" style={chip} disabled={busy || !myId} data-dev-spar-add={r.w}
+                      onClick={async () => {
+                        const j = await call('/dev/spar', { playerId: myId, add: r.w });
+                        if (j) { setState((st) => Object.assign({}, st || {}, { spar: j })); if (onClose) onClose(); }
+                      }}>
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" style={btn(false)} disabled={busy || !myId} data-dev-spar-add="all"
+                  onClick={async () => {
+                    const j = await call('/dev/spar', { playerId: myId, add: 'all' });
+                    if (j) { setState((st) => Object.assign({}, st || {}, { spar: j })); if (onClose) onClose(); }
+                  }}>
+                  All three (sword, bow and staff)
+                </button>
+                <div style={{ color: COL.muted, fontSize: 12, margin: '2px 0 5px' }}>How they fight</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 4 }}>
+                  {SPAR_SKILL_ROWS.map((r) => {
+                    const on = !!(state && state.spar && state.spar.skill === r.k);
+                    return (
+                      <button key={r.k} type="button" disabled={busy || !myId} data-dev-spar-skill={r.k}
+                        style={Object.assign({}, chip, { minHeight: 34, background: on ? COL.accentFill : COL.raised, borderColor: on ? COL.accent : COL.border })}
+                        onClick={async () => {
+                          const j = await call('/dev/spar', { playerId: myId, skill: r.k });
+                          if (j) { setState((st) => Object.assign({}, st || {}, { spar: j })); setMsg(r.label + ': ' + r.note + '.'); }
+                        }}>
+                        {r.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {state && state.spar && (
+                  <div style={{ color: COL.text2, fontSize: 12, margin: '4px 0 8px' }} data-dev-spar-status="1">
+                    {state.spar.clones && state.spar.clones.length
+                      ? state.spar.clones.map((c) => c.name + (c.down ? ' (down)' : ' ' + c.hp + '/' + c.maxHp)).join(' · ')
+                      : 'No clones out.'}
+                    {state.spar.rounds && (state.spar.rounds.you || state.spar.rounds.clones)
+                      ? ' -- knockouts: you ' + state.spar.rounds.you + ', clones ' + state.spar.rounds.clones
+                      : ''}
+                  </div>
+                )}
+                <button type="button" style={btn(false)} disabled={busy || !myId} data-dev-spar-clear="1"
+                  onClick={async () => {
+                    const j = await call('/dev/spar', { playerId: myId, clear: true });
+                    if (j) { setState((st) => Object.assign({}, st || {}, { spar: j })); setMsg('Clones sent home.'); }
+                  }}>
+                  Clear clones
+                </button>
+              </>
+            )}
 
             <div style={label}>Key</div>
             {/* ═══ v2.3.2277: RESOURCES FOR TESTING ═══

@@ -1311,6 +1311,79 @@ remnant to migrate server-side, not a mode to preserve.
         longer cooldown against players);
       - kill switch `pvplunge: false`; `pvp-lunge` suite (38), `mp-pvplunge`
         (18, two phones).
+    - since v2.3.3265 SPARRING CLONES IN THE TEST PANEL -- the owner: "I wish
+      I could test PvP somehow. Can you make a special environment where I can
+      go to attack clones of myself using different weapons and you just have
+      them attack me using AI? ... Maybe this is better to add to the admin
+      window" (docs/specs/sparring.md):
+      - the panel's Sparring section (`/dev/spar` {add | skill | clear},
+        admin key) brings up to three clones beside you in the Wheel -- a
+        sword, a bow, a staff -- each a playerState entry the tick draws on
+        every phone, with your look, level, points, armour, shield and amulet
+        and the weapon you carry for its slot (a copy, gems and all) or the
+        tutorial's; none of your bag, gold, buffs or pet;
+      - an AI on the worker (`server/src/spar.js`, the fight simulator's
+        player: Dummy / Easy / Normal / Hard = sim SKILL low / moderate / high)
+        moves it and fights you through the room's own doors -- every blow
+        either way is `_resolvePvPAttack`, specials and rolls are paid through
+        `_handleAbilityUse`, the sword's lunge is `_handleAbility` naming you;
+        its swings, shots, rolls, dashes and guard reach every phone as the
+        relays a player's page sends (wire-audit's allowlist says why), its
+        shots naming you (`tg`: a bolt chases you, and an arrow or bolt ends
+        where it reaches you on screen -- visualSystems.js);
+      - a clone fights its owner and nobody else (`_sparPair`, first in
+        `_pvpAllowed`; `_pvpEngaged`), never under No man's land
+        (`_nmlAllowed`), never chased or hit by a monster (`_tickMonsters`,
+        `_telegraphHitPlayer`, fire trail, storm arcs, the slime burst), never
+        saved (`_saveRpg`), never sent to town (`_tickPlayerRespawn`);
+      - a KNOCKOUT IS NOT A DEATH (`_sparDeath`, asked first by
+        `_handlePlayerDeath`): a clone is down 3 s and stands up beside you;
+        you, knocked out by your own clone, are healed where you stand and
+        saved healed -- no death screen, no pile, no loss -- the clones heal
+        and stand off 2.5 s, the panel and chat keep the score;
+      - `spar_state` (PRIVILEGED, the owner's only, wsClient's direct switch)
+        names the clones so a tap aims at one (src/game/spar.js `sparAim`,
+        BroTown's tap; its circle beats the self-chat circle); leaving the
+        Wheel or the game, Clear, or `spar: false` (caps.spar) takes them
+        away; no linger for a spar;
+      - found: a real archer's arrows were drawn at 8 px a frame on everyone
+        else's screen, a third of their speed; a real mage's bolt flew
+        straight there though it chases on the mage's own; and another
+        player's shot never stopped at you on your screen -- all fixed in
+        v2.3.3266, below;
+      - `spar` suite (115: a live monster chases a real player and ignores a
+        clone, break-the-guard checks), `mp-spar` (the real panel on a phone).
+    - since v2.3.3266 ANOTHER PLAYER'S SHOT FLIES AS IT DOES ON THEIR SCREEN --
+      the owner, on what #920 found: "Yes do the follow up fixes"
+      (src/game/peerShots.js, docs/specs/peer-shots.md):
+      - SPEED AND REACH: a relay's `life` is 90 frames x the arrow's
+        `_rangeMult` (since v2.3.2592), so the watcher reads the multiplier
+        back off it and flies the copy at ARROW_SPEED_PX (24) x it, to
+        BOW_RANGE_PX (675) x it, solid all the way as the shooter's own
+        (visualSystems.js `reach`; was 8 px a frame to 720; the life/20 fade
+        never bites in 28 frames, mp-projlook) -- for an older page's shots
+        too, nothing new on the wire; the volley at
+        BOW_VOLLEY.SPEED_K, its waits (sized for PEER_PX_PER_FRAME 8 by the
+        shooter, unchanged) counted in that speed's frames, still 200 px apart;
+        bolts and any shot naming its own `speedPx` exactly as before;
+      - THE LINE: an arrow's copy stamps its origin and angle as it leaves (it
+        was drawn from where the shooter IS, sliding as they walked), a
+        volley's later arrows taking the first one's (gameEvents.js `_sib`:
+        same shooter, same `ts`); a bolt still sweeps round its caster;
+      - THE TARGET: a shot at the player you have locked, where your PvP hit
+        test tries them (`shotTargetId`: the duel opponent, or a player locked
+        outside a safe zone), names them as `tg` -- every road: monsterCombat's
+        shot, the retreat shot, the volley, the big bolt, the three orbs; on
+        every other screen the arrow leaves aimed at them as THAT screen draws
+        them and ends where it reaches them (the PvP test's room, 28.6), a
+        bolt chases them; a shot that PIERCES flies on through
+        (every bow special, and `pc: 1`, the Piercing stat); the worker reads
+        neither;
+      - the clones' shots are a page's relays now (spar.js: life 90, no
+        speedPx, the volley's `ts` and waits);
+      - `window.__btPeerShotEnds` says why each copy ended (life, reach,
+        target, prop); `peer-shots` suite, spar §5k/§6b, `mp-peershots` (two
+        phones).
   - Since v2.3.3017 you can JUMP -- the owner: "start working on real
     jumping. Might be able to just use the jog directions instead of a custom
     jump animation", its button "beneath the right joystick":

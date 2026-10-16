@@ -193,6 +193,7 @@ import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle
 import { pvpLungeMethods } from './pvplunge.js'; /* v2.3.3262: the sword's opening lunge, at a player too */
 import { oneFormulaMethods } from './oneformula.js'; /* v2.3.3260: one formula for every fight -- health, monsters' hits, the hit cap, two specials */
 import { pvpExtrasMethods } from './pvpextras.js'; /* v2.3.3264: what a hit does to a monster it does to a player -- the element, the shove, the splash, the burst, the abilities, the bow's burn, the kill's heal, the parry */
+import { sparMethods } from './spar.js'; /* v2.3.3265: sparring clones of yourself, from the test panel */
 import { shieldWearMethods } from './shieldwear.js'; /* v2.3.3091: which shield is on the arm */
 import { shieldGemMethods } from './shieldgem.js'; /* v2.3.3187: a gem goes into a shield on the worker */
 import { aggroGridMethods } from './aggrogrid.js'; /* v2.3.3201: a monster looks for players near it, not through every one */
@@ -564,6 +565,11 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.3209: the monster codex's counts (codex.js), server-sent and private.
      Forged, it would paint facts the player never earned on their Codex page. */
   'codex_state',
+  /* v2.3.3265: the sparring clones of the test panel (spar.js), to their
+     owner only.  Forged, it would make a phone take any player for a clone
+     it may aim at -- the worker still refuses every such hit (_sparPair) --
+     and paint a knockout that never happened. */
+  'spar_state',
   // v2.3.1131: hardening rolls are server-side + private.
   'harden_result',
   // v2.3.1347: character-restart ack (persistence.js) -- the client
@@ -1948,6 +1954,7 @@ export class GameRoom {
     const playersByZone = new Map();
     for (const [id, ps] of Object.entries(this.playerState)) {
       if (ps.dead || ps.disconnected || !ps.z) continue;
+      if (ps._spar) continue;   /* v2.3.3265: no monster sees a sparring clone (spar.js) */
       let arr = playersByZone.get(ps.z);
       if (!arr) playersByZone.set(ps.z, arr = []);
       /* v2.3.1690: `extracting` rides along so the AI can leave a harvester
@@ -3093,6 +3100,12 @@ export class GameRoom {
      which is where this class keeps them. */
   _pvpAllowed(attackerId, targetId, zone) {
     const zc = ZONES[zone];
+    /* v2.3.3265: a sparring clone of the test panel fights its owner and
+       nobody else, either way (spar.js) */
+    if (this._sparById && this._sparById.size) {
+      if (this._sparPair(attackerId, targetId)) return true;
+      if (this._sparIsClone(attackerId) || this._sparIsClone(targetId)) return false;
+    }
     /* Explicit consent (duel / arena) wins over everything. */
     if (this._pvpConsent) {
       const until = this._pvpConsent.get(this._pvpPairKey(attackerId, targetId));
@@ -3341,6 +3354,9 @@ export class GameRoom {
   // _tickPlayerRespawn flips them back when respawnAt elapses.
   _handlePlayerDeath(ps, playerId, cause) {
     if (!ps || ps.dying) return;
+    /* v2.3.3265: a sparring clone's knockout, and yours by your own clone,
+       are the spar's and never a death (spar.js _sparDeath) */
+    if (this._sparById && this._sparById.size && this._sparDeath(ps, playerId, cause)) return;
     ps.dying = true;
     ps.dead = true;
     ps.respawnAt = Date.now() + 5000;
@@ -3443,6 +3459,9 @@ export class GameRoom {
   _tickPlayerRespawn() {
     const now = Date.now();
     for (const [id, ps] of Object.entries(this.playerState)) {
+      /* v2.3.3265: a sparring clone is down and up by the spar's own clock
+         (spar.js), never sent to town */
+      if (ps && ps._spar) continue;
       /* v2.3.1562: STUCK-AT-ZERO SWEEP.  The death flow only ever starts
          at the instant damage is applied (the two _applyDamage callers).
          Any other way a live player's hp reaches 0 — a path that writes
@@ -5914,6 +5933,8 @@ export class GameRoom {
             if (!msg) break;
           }
           msg.from = session.id;
+          /* v2.3.3265: your sparring clones see your specials coming (spar.js) */
+          if (this._spars && this._spars.size) this._sparSeen(session.id, msg);
           this.eventBuffer.push(msg);
         }
         break;
@@ -5937,6 +5958,9 @@ export class GameRoom {
          and the rest (the body out of the world, its caches, player_leave)
          waits for _lingerEnd. */
       const _linger = this._lingerOnClose(session, Date.now());
+      /* v2.3.3265: your sparring clones go with you (spar.js) -- after the
+         linger's decision, which a spar keeps from happening */
+      if (this._sparOnLeave) this._sparOnLeave(session.id);
       if (this.playerState[session.id] && !_linger) this.playerState[session.id].disconnected = true;
       /* v2.3.1619: flush coalesced regen before the in-memory blob is
          dropped.  The regen tick only writes durably every
@@ -6148,6 +6172,14 @@ export class GameRoom {
        look and name it left with -- a joiner sees the body it can still hit */
     const lb = this._lingerSessions ? this._lingerSessions() : null;
     if (lb) for (const [id, b] of lb) { if (!(id in r) && this.playerState[id] && b && b.session) r[id] = this._gearProvCropPeer(this._peerPublic(this.playerState[id], b.session)); }
+    /* v2.3.3265: and the sparring clones (spar.js), with the look they
+       arrived with and where they stand now -- a phone that joins or comes
+       back draws them whole, not as a bare body from the tick */
+    if (this._sparById) for (const [id, c] of this._sparById) {
+      const cps = this.playerState[id];
+      if (!(id in r) && cps) r[id] = { ...c.look, x: cps.x, y: cps.y, z: cps.z, d: cps.d, f: cps.f, vx: 0, vy: 0,
+        rpgHp: Math.round(cps.hp || 0), rpgMaxHp: Math.round(cps.maxHp || 1) };
+    }
     return r;
   }
   getPlayerCount() { let c = 0; for (const [, s] of this.sessions) { if (s.id) c++; } return c; }
@@ -6275,3 +6307,4 @@ Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-figh
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */
 Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */
 Object.assign(GameRoom.prototype, pvpExtrasMethods); /* v2.3.3264: the monster-only extras on players */
+Object.assign(GameRoom.prototype, sparMethods); /* v2.3.3265: sparring clones (spar.js) */

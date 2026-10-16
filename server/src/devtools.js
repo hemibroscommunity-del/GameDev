@@ -344,6 +344,8 @@ export const devToolsMethods = {
       charLevel: (ps.prog3 && ps.prog3.sk)
         ? ['sword', 'bow', 'staff'].reduce((s, k) => s + ((ps.prog3.sk[k] && ps.prog3.sk[k].level) || 0), 0)
         : null,
+      /* v2.3.3265: your sparring clones, their skill and the score (spar.js) */
+      spar: this._sparSummary ? this._sparSummary(playerId) : null,
     };
   },
 
@@ -535,6 +537,7 @@ export const devToolsMethods = {
     else if (path === '/dev/codex') result = this._codexDevSet(playerId, body);   /* v2.3.3209: {kind | all, n, n2} (codex.js) */
     else if (path === '/dev/killroll') result = this._killRollDev(playerId, body);   /* v2.3.3209: {next, kill} -- the next kill's roll (killroll.js) */
     else if (path === '/dev/lifeskill') result = this._devLifeSkill(playerId, body);   /* v2.3.3229: {skill | 'hits', level} -- the hit ladder at any level */
+    else if (path === '/dev/spar') result = this._sparDev(playerId, body);   /* v2.3.3265: {add | skill | clear} -- sparring clones of yourself (spar.js) */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

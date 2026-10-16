@@ -33,6 +33,16 @@ import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown 
 import { applyElemHit, applyHitShove, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks; v2.3.3264: + a player's blow's shove */
 import { echoHitSfx, heroHitSfx, earVol, deathVol } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's; v2.3.3248: a far death, slam or blast heard and felt by distance */
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
+import { peerShotFlight } from '@/game/peerShots.js'; /* v2.3.3266: another player's shot at their speed and reach */
+import { ARROW_SPEED_PX } from '@/game/projectiles.js'; /* v2.3.3266: ...the bow's own speed */
+import { BOW_VOLLEY } from '@/game/bowVolley.js'; /* v2.3.3266: ...and the volley's */
+import { BOW_RANGE_PX } from '@/data/gameSystems.js'; /* v2.3.3266: ...and where an arrow comes down */
+/* v2.3.3266: the game's numbers peerShots.js works with, one copy of each --
+   read on first use, never while the modules are still being loaded */
+var _peerShotGame = null;
+function peerShotGame() {
+  return _peerShotGame || (_peerShotGame = Object.freeze({ arrowPx: ARROW_SPEED_PX, reachPx: BOW_RANGE_PX, volleyK: BOW_VOLLEY.SPEED_K, peerPx: BOW_VOLLEY.PEER_PX_PER_FRAME }));
+}
 import { recordMail } from '@/game/postOffice.js'; /* v2.3.3066: the Post Office keeps the mail */
 import { keepDungeonBack, leaveWheelDungeon, wheelArenaMap, loadDungeonFloor, freeDungeonFloor, WHEEL_DUNGEON_FLOOR } from '@/game/wheelDungeons.js'; /* v2.3.3016: the Wheel's dungeons -- their arena, its floor, and the way back out to their mouths */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
@@ -1913,6 +1923,28 @@ export function processGameEvent(type, payload, S, deps) {
                  body renderer's own filter. */
               if (!_peerInZone(S, payload.id)) break;
               if (!S._remoteProjectiles) S._remoteProjectiles = [];
+              /* ═══ v2.3.3266: AT THE SHOOTER'S SPEED, TO THE SHOOTER'S REACH ═══
+                 (game/peerShots.js has the whole story.)  An arrow's copy flew
+                 8 px a frame, a third of the real 24, and ran its life out
+                 well past where the real one came down.  Its life says the
+                 multiplier both are scaled by, so the copy flies the shooter's
+                 speed to the shooter's reach -- for any shooter, nothing new
+                 on the wire for it -- and a volley's wait is counted in that
+                 speed's frames.  A bolt, and any shot that names its own
+                 speed, is exactly as before. */
+              var _rpLife = (Number(payload.life) > 0)
+                ? Math.min(600, Math.round(Number(payload.life)))
+                : (payload.isStaff ? STAFF_LIFE : 90);
+              var _rpFl = peerShotFlight(payload, _rpLife, peerShotGame());
+              /* a volley's later arrows take the first one's line (visualSystems):
+                 the first already here, same shooter, same shot */
+              var _rpSib = null;
+              if (payload.volley && payload.isSpecial && !payload.isStaff && Number(payload.delayMs) > 0) {
+                for (var _rsi = S._remoteProjectiles.length - 1; _rsi >= 0; _rsi--) {
+                  var _rsq = S._remoteProjectiles[_rsi];
+                  if (_rsq && _rsq.volley && _rsq.ownerId === payload.id && _rsq.shotTs != null && _rsq.shotTs === Number(payload.ts) && !_rsq._sib) { _rpSib = _rsq; break; }
+                }
+              }
               S._remoteProjectiles.push({
                 x: payload.x, y: payload.y, ang: payload.ang,
                 isStaff: payload.isStaff, isSpecial: !!payload.isSpecial, dist: 14,
@@ -1928,9 +1960,7 @@ export function processGameEvent(type, payload, S, deps) {
                    the caster says how long (playerActions / monsterCombat put
                    `life` on the payload).  Bounded; absent (an old client) ->
                    the type's own life, exactly as before. */
-                life: (Number(payload.life) > 0)
-                  ? Math.min(600, Math.round(Number(payload.life)))
-                  : (payload.isStaff ? STAFF_LIFE : 90),
+                life: _rpLife,   /* v2.3.3266: worked out above, the same rule */
                 /* v2.3.2259: the staff special's three orbs share one ray and
                    are spaced in TIME (playerActions.js), so a peer needs the
                    same stagger or all three draw on top of each other and read
@@ -1944,19 +1974,40 @@ export function processGameEvent(type, payload, S, deps) {
                    -- measured 14-22 px apart on a busy tab where the archer's
                    screen shows 80.  Counted in the same frames it flies in,
                    the gap is 80 at any rate.  Arrows only: the orbs keep their
-                   clock, and nothing else sends a delay. */
-                holdFrames: (!payload.isStaff && Number(payload.delayMs) > 0) ? Math.min(60, Math.round(Number(payload.delayMs) / (1000 / 60))) : 0,
+                   clock, and nothing else sends a delay.
+                   v2.3.3266: in the frames of the speed it really flies at
+                   (peerShots.js), so the gap is still the shooter's 200 px. */
+                holdFrames: _rpFl.holdFrames,
                 /* v2.3.2262: the magic special's orbs fly fast / medium / slow,
                    so a peer needs the speed too or all three drift together and
                    the spread the caster sees is not the spread anyone else does.
                    Clamped, and absent on every other projectile -> the type's
                    own speed, exactly as before. */
-                speedPx: (Number(payload.speedPx) > 0 ? Math.min(20, Number(payload.speedPx)) : null),
+                /* v2.3.3266: ...and an arrow's own speed and reach, read off
+                   its life (peerShots.js); null reach = its life ends it */
+                speedPx: _rpFl.speedPx,
+                reach: _rpFl.reach,
                 /* v2.3.2842: the staff special as ONE big bolt (playerActions,
                    caps.bigorb) -- drawn as the basic bolt's art, bigger, from
                    the caster's crystal.  Absent (an older caster) -> their
                    charged orbs, exactly as before. */
                 big: !!(payload.big && payload.isStaff && payload.isSpecial),
+                /* v2.3.3265: a shot that names its target (`tg`): a bolt chases
+                   it, as a staff bolt chases the lock on its caster's own screen
+                   (projectiles.js), and an arrow keeps its line -- and either
+                   ends where it reaches them, where the worker lands it
+                   (visualSystems.js).  Sent by a sparring clone (server
+                   spar.js).  A player id or nothing.
+                   v2.3.3266: and by every page, for a shot at the player it has
+                   locked (peerShots.js shotTargetId) -- an arrow now LEAVES
+                   aimed at them as this screen draws them, as it left aimed at
+                   the lock on the shooter's -- unless it pierces (`pierce`: a
+                   bow special, or `pc`, the Piercing stat), which flies on
+                   through them as it does on the shooter's screen. */
+                tg: (typeof payload.tg === 'string' && payload.tg.length < 80) ? payload.tg : null,
+                pierce: _rpFl.pierce,
+                /* v2.3.3266: the volley's first arrow, whose line this one takes */
+                _sib: _rpSib,
                 /* v2.3.2849: an arrow of the bow volley -- it burns out on the
                    volley's 2.5 s where it stands (visualSystems), not the lone
                    arrow's 4.  Absent (an older shooter) -> the lone arrow's. */

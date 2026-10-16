@@ -18,6 +18,7 @@ import { arrowSnaps } from '@/data/arrowSnap.js';   /* v2.3.2731 */
 import { shotSkip } from '@/game/projectiles.js';   /* v2.3.3206: a peer's shot flies over low things as yours does */
 import { BOW_VOLLEY, LONE_BURN_MS } from '@/game/bowVolley.js';   /* v2.3.2849: how long a peer's special stands burning */
 import { parkAway } from '@/game/presence2.js';   /* v2.3.3250: a far player's copy stays out of sight */
+import { PEER_SHOT, peerShotTargetAt, stepReaches } from '@/game/peerShots.js';   /* v2.3.3266: a peer's shot as it flies on their screen */
 /* (v2.3.2730's REMOTE_SHOT_H, how far up a prop's face a peer's shot marked
    it, went in v2.3.3206: the shot is now judged at its owner's boots and shown
    where it flew -- see the remote projectile sweep below.) */
@@ -316,13 +317,78 @@ export function updateVisualSystems(S) {
             rp._held = false;
             /* v2.3.2848: MIRROR-PINNED -- the 8 below is bowVolley.js
                PEER_PX_PER_FRAME; the bow volley staggers a peer's copies by it */
+            /* v2.3.3266: an arrow's speedPx is always set now (gameEvents.js,
+               peerShots.js: the shooter's own speed, read off its life), so the
+               8 is only what a hand-made copy with none would fly at */
             var _rpStep = (rp.speedPx != null ? rp.speedPx : (rp.isStaff ? 5 : 8)) * _rpDt;   /* v2.3.2919: x the frame-rate term */
             rp.dist += _rpStep;
             rp.life -= _rpDt;
-            if (rp.life <= 0) return false;
+            if (rp.life <= 0) return peerShotEnd(rp, 'life');
+            /* ═══ v2.3.3266: AN ARROW ENDS WHERE THE SHOOTER'S CAME DOWN ═══
+               at its reach (peerShots.js) -- the shooter's own plants in the
+               ground there.  Its life used to end it, at 8 px a frame, 720 px
+               out; at the real speed that life would carry it 2,160.  Drawn
+               solid to the end, as the shooter's own is (effectsRenderer's
+               life/20 fade, which a 90-frame life never reaches in the 28
+               frames an arrow flies: mp-projlook holds the copy to the
+               shooter's rule). */
+            if (rp.reach != null && rp.dist >= rp.reach) return peerShotEnd(rp, 'reach');
             var owner = S.others[rp.ownerId];
-            var originX = owner ? (owner.renderX || owner.x) : rp.x;
-            var originY = owner ? (owner.renderY || owner.y) : rp.y;
+            var originX, originY;
+            /* ═══ v2.3.3266: A LOOSED ARROW KEEPS ITS LINE HERE TOO ═══
+               The shooter's own arrow keeps the line it was shot on, origin and
+               angle stamped as it leaves (projectiles.js, v2.3.2258); its copy
+               here was drawn from where the shooter IS each frame, so it slid
+               sideways as they walked on.  Stamped as it leaves now; a volley's
+               later arrows take the first one's line (gameEvents.js `_sib`), as
+               the shooter's do.  An arrow at a player the shooter had locked
+               (`tg`) leaves aimed at them as THIS screen draws them -- the
+               shooter's left aimed at the lock -- so what happens to it here is
+               what happened there: they are still in its way, or they have
+               stepped out of it.  A bolt still sweeps round its caster (below),
+               as it does on the caster's screen (v2.3.2261). */
+            if (!rp.isStaff) {
+              if (rp._x0 == null) {
+                var _sib = rp._sib;
+                if (_sib && _sib._x0 != null) {
+                  rp._x0 = _sib._x0; rp._y0 = _sib._y0; rp.ang = _sib.ang;
+                } else {
+                  rp._x0 = owner ? (owner.renderX || owner.x) : rp.x;
+                  rp._y0 = owner ? (owner.renderY || owner.y) : rp.y;
+                  var _tgAim = rp.tg ? peerShotTargetAt(S, rp.tg) : null;
+                  if (_tgAim && (_tgAim.x !== rp._x0 || _tgAim.y !== rp._y0)) rp.ang = Math.atan2(_tgAim.y - rp._y0, _tgAim.x - rp._x0);
+                }
+                rp._sib = null;   /* its line is its own now; let the first one go */
+              }
+              originX = rp._x0;
+              originY = rp._y0;
+            } else {
+              originX = owner ? (owner.renderX || owner.x) : rp.x;
+              originY = owner ? (owner.renderY || owner.y) : rp.y;
+            }
+            /* v2.3.3265: a shot that names its target (gameEvents.js `tg`; a
+               sparring clone's, server spar.js) ends where it reaches them --
+               the worker lands it there.  A bolt turns to them every frame, as
+               a staff bolt does on its caster's screen, and is there when it
+               has flown as far as they stand; an arrow keeps its line and is
+               there when that line passes within a body of them (the worker's
+               own test, projectiles.js's PvP radius).
+               v2.3.3266: every page's locked shot names its target now, not a
+               clone's alone; and a shot that pierces (`pierce`: a bow special,
+               the Piercing stat) flies on through, as it does on the shooter's
+               screen -- only its line was aimed at them (above). */
+            var _tgPt = null;
+            if (rp.tg) {
+              var _tgO = peerShotTargetAt(S, rp.tg);
+              if (_tgO) {
+                if (rp.isStaff) {
+                  rp.ang = Math.atan2(_tgO.y - originY, _tgO.x - originX);
+                  if (rp.dist >= Math.hypot(_tgO.x - originX, _tgO.y - originY) - PEER_SHOT.BOLT_STOP) return peerShotEnd(rp, 'target', _tgO);
+                } else if (!rp.pierce) {
+                  _tgPt = _tgO;
+                }
+              }
+            }
             /* v2.3.2730: where it was last frame, for the prop sweep below.  The
                first step has no last frame, so it starts one step back along the
                same line -- the shape v2.3.2473 gave the local first frame. */
@@ -330,6 +396,11 @@ export function updateVisualSystems(S) {
             var _rpY0 = (typeof rp._renderY === 'number') ? rp._renderY : originY + Math.sin(rp.ang) * (rp.dist - _rpStep);
             rp._renderX = originX + Math.cos(rp.ang) * rp.dist;
             rp._renderY = originY + Math.sin(rp.ang) * rp.dist;
+            /* v2.3.3265: the arrow that named its target, reaching them (above).
+               v2.3.3266: the room it has is the shooter's own test's
+               (peerShots.js): a bow special's wider. */
+            if (_tgPt && stepReaches(_rpX0, _rpY0, rp._renderX, rp._renderY, _tgPt.x, _tgPt.y,
+              rp.isSpecial ? PEER_SHOT.SPECIAL_R : PEER_SHOT.ARROW_R)) return peerShotEnd(rp, 'target', _tgPt);
             /* ═══ v2.3.2730: A PEER'S SHOT MEETS THE PROP ON YOUR SCREEN TOO ═══
                This simulation is cosmetic -- the worker settles a peer's hits
                and this copy touches no monster -- and it never asked about
@@ -400,9 +471,23 @@ export function updateVisualSystems(S) {
                     ttl: rp.isSpecial ? (rp.volley ? BOW_VOLLEY.BURN_MS : LONE_BURN_MS) : (_rpOi != null ? STUCK_ARROW_MS : 2000), special: !!rp.isSpecial });   /* v2.3.2849: a volley's 2.5 s */
                 }
               }
-              return false;
+              return peerShotEnd(rp, 'prop', _rpHit);
             }
             return true;
           });
         }
+}
+
+/* v2.3.3266: why another player's shot left your screen, the last few (QA
+   probe `window.__btPeerShotEnds`, mp-peershots): its life, its reach, its
+   target, or a prop.  Returns false, the filter's "gone". */
+function peerShotEnd(rp, why, at) {
+  if (typeof window !== 'undefined') {
+    var q = window.__btPeerShotEnds || (window.__btPeerShotEnds = []);
+    q.push({ why: why, owner: rp.ownerId != null ? String(rp.ownerId) : null, staff: !!rp.isStaff, special: !!rp.isSpecial,
+      tg: rp.tg || null, dist: Math.round(rp.dist), x: Math.round(rp._renderX || 0), y: Math.round(rp._renderY || 0),
+      at: at ? { x: Math.round(at.x), y: Math.round(at.y) } : null, t: Date.now() });
+    if (q.length > 30) q.shift();
+  }
+  return false;
 }

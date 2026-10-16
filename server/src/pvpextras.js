@@ -147,6 +147,8 @@ export const pvpExtrasMethods = {
   /* A duel or arena partner (a live consent pair), or a hit between the two
      within ENGAGE_MS. */
   _pvpEngaged(a, b, now) {
+    /* v2.3.3265: a sparring clone and its owner are always fighting (spar.js) */
+    if (this._sparById && this._sparById.size && this._sparPair(a, b)) return true;
     const k = this._pvpPairKey(a, b);
     if (this._pvpConsent) {
       const until = this._pvpConsent.get(k);

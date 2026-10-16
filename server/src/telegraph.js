@@ -430,6 +430,7 @@ export const telegraphMethods = {
   _telegraphHitPlayer(zoneId, m, pid, kit) {
     const ps = this.playerState[pid];
     if (!ps || ps.dead || ps.dying) return 0;
+    if (ps._spar) return 0;   /* v2.3.3265: no monster sees a sparring clone (spar.js) */
     /* v2.3.3056: the Wheel's safe ground shelters here too, ABOVE the block
        branch (a parry or a turtle's stamina cost is a hit landing): a lunge,
        a slam or a blue slime's burst wound up before you stepped on it
@@ -699,6 +700,7 @@ export const telegraphMethods = {
     for (const pid of Object.keys(this.playerState)) {
       const ps = this.playerState[pid];
       if (!ps || ps.dead || ps.dying || ps.z !== zoneId) continue;
+      if (ps._spar) continue;   /* v2.3.3265: a sparring clone (spar.js) */
       const dx = (ps.x || 0) - m.x, dy = (ps.y || 0) - m.y;
       if (dx * dx + dy * dy > r2) continue;
       this._telegraphHitPlayer(zoneId, m, pid, kit);
