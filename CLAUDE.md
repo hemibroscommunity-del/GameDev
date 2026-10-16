@@ -3386,7 +3386,19 @@ Two protocol versions coexist; both must keep working:
   0 = off; CF-Connecting-IP, so local tests are never counted); a `null`
   frame threw -- dropped. `flood` suite (46); the bot lab's `writes` and
   `roomfill` probes show the before and after. Still open: the farming holes
-  (the review's 6-9) and the account check.
+  (the review's 6-9).
+- **THE ACCOUNT CHECK (v2.3.3275, docs/specs/account-check.md).** A character
+  that does not exist yet (an id with no `auth:` record: a first join, every
+  guest) is asked for a Cloudflare Turnstile token before the identity is
+  made (`server/src/verify.js`, inside join.js `_verifyJoinAuth`'s no-record
+  branch, BEFORE the record is stamped: a refused join writes nothing); the
+  phone shows the gate (wsClient.js `showVerifyGate`) on `join_rejected
+  {reason:'verify', sitekey}` / close 4014 and joins again with the token as
+  `verify`. OFF until both `TURNSTILE_SITEKEY` (wrangler.toml) and
+  `TURNSTILE_SECRET` (a dashboard secret, set LAST: an old page reads the
+  refusal as fatal) exist; `disable_verify` live flag; fail closed;
+  `TURNSTILE_VERIFY_URL` is the test seam. `verify` suite (24), `mp-verify`
+  (its own worker, `BT_WRANGLER_VARS`, a stand-in verifier and widget).
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.
