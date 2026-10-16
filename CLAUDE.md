@@ -2402,6 +2402,17 @@ remnant to migrate server-side, not a mode to preserve.
     ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
     town's white square only without them; `__btMinimap.buildings`,
     `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
+  - Since v2.3.3272 YOUR PARTY IS ON THE MAPS -- the owner's "Yes do
+    suggested", the party's map-markers follow-up (ARCHITECTURE-HANDOFF D):
+    each member in the party's blue (the UI's Info blue `#5D93D2`, ringed
+    light then dark), never also a green bro: on the Wheel's minimap 15 px,
+    and OFF the box riding its edge toward them at 11 px (the quest star's
+    clamp, `clampToBox`); on the world map at every zoom, named, the key
+    saying "party"; on the dungeons' and farm's 52 px box blue and ringed (its
+    townsfolk are a blue of their own); `src/game/partyMarks.js`; nothing new
+    sent -- presence v2's roster already carries the party whole wherever they
+    are; `__btMinimap.party`, `__btWorldMap.more.party`; `party-marks` suite,
+    `mp-partymap`: docs/specs/party-on-maps.md.
   - Since v2.3.3209 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
     special attack, (make up a backstory) etc.", "Also include drop tables
