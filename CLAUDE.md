@@ -2685,7 +2685,35 @@ remnant to migrate server-side, not a mode to preserve.
       picture;
     - test-world-core "the Gem Works", `mp-buildingrooms` (the tabs),
       `mp-wheeldoors`, `mp-shieldgem` (a shield's gem is set on the Set gems
-      tab): docs/specs/gem-works.md.)
+      tab): docs/specs/gem-works.md.
+  - Since v2.3.3298 THE WHEEL IS BUILT IN BLOCKS ROUND YOU -- the owner: "the
+    game map needs to be larger. It goes from lvl 1 monsters to lvl 20+ way too
+    quickly. Maybe 5x larger map is needed", choosing "Rebuild for 5x". Step 1,
+    nothing on screen changes (docs/specs/wheel-in-blocks.md):
+    - the ground worker no longer builds the whole Wheel on the way in (~50 MB
+      at its peak today; ~600 MB five times longer, past the ~250 MB a tab dies
+      at): BLOCKS of 128 x 128 cells (`core/worldblocks.js`), built round the
+      pieces asked for and next to yours when idle, the 48 nearest kept;
+    - `layout.js buildBlueprint(plan, rect)` builds any rectangle exactly as the
+      whole map: `planFeatures` (roads, rivers, bridges, routes, plots, once a
+      plan), pass 2's order-dependent features through `stands` (a feature is
+      left out where an EARLIER one covers its middle -- worked out at its
+      middle, remembered), everything measured from the whole map's corner;
+      ground.js `materialMap` takes `ox`/`oy` (its noise and stage grid on the
+      whole map's cells, `LAND_STAGE_MARGIN` 28), `PIECE_MARGIN` 24 round a piece;
+    - walls go to the game a block at a time (the worker's `block`); a cell of a
+      block not built yet reads OPEN; `wheelBlocksAround` / `__btWheelBlocks`
+      asks for blocks far from any ground laid;
+    - the OBJECTS and the OVERVIEW are BAKED (`tools/world/bake-wheel-world.mjs`
+      -> `public/world/placed/`, `core/placed.js`, `core/placedfile.js`):
+      placing is order-dependent over the whole map; the worker uses the bake
+      only when `planFingerprint` matches, and the previews (`?bigtown=`,
+      `?plaintown`, `?placing=2`) build the whole map for them as before. A plan,
+      catalog or placing change must re-bake in the same PR (test-world-core
+      checks);
+    - the ground worker at the memory trip's peak 24.8 MB (main 28.7);
+    - test-world-core "the Wheel in blocks" (every block and piece against the
+      whole map, cell for cell); step 2 is the 5x lands.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
@@ -2913,12 +2941,21 @@ Two protocol versions coexist; both must keep working:
 
 ## Testing
 
-- Server: `cd server && npm test` — twenty zero-dependency suites
-  (protocol-v2, anticheat, combat-lifecycle, identity, inbox, market,
-  trade, quests, duel, gamble, clans, arena, dungeon, sponsorship,
-  guilds, threat, pets, hardening, trade2, elemental2; 450+
-  assertions) against a mocked DO storage. Every new system adds a
-  suite; extend the nearest one when touching its wire format.
+- Server: `cd server && npm test` — 133 zero-dependency suites against a
+  mocked DO storage. Every new system adds a suite; extend the nearest one
+  when touching its wire format.
+  - Since v2.3.3302 `npm test` is `test/run.mjs`. It runs every
+    `test/*.test.mjs`, four at a time, in ~30 s (the one-by-one `&&` chain
+    took ~69 s). It reports EVERY failing suite with its FAIL lines; the
+    chain stopped at the first and hid the rest.
+  - A new suite needs no line anywhere. `eventcapes.test.mjs` was never in
+    the chain, and so ran nowhere.
+  - `npm test -- relay hit-door` runs only those; `--jobs=1` runs one at a
+    time; `--verbose` shows every line.
+  - Server CI runs on EVERY PR (its path list missed 61 files the suites
+    read), and the worker's deploy waits for the suite on the same commit: a
+    red suite deploys nothing. The deploy job itself is unchanged
+    (wrangler-action's own wrangler, 3.90.0).
 - Client: no unit suite; CI runs lint + build on every PR, and the
   Pages bot posts a preview URL. The Playwright smoke harnesses
   (`tools/qa/qa-smoke.mjs`, `qa-facing.mjs`, …) are OFF the PR path
@@ -3557,11 +3594,18 @@ Two protocol versions coexist; both must keep working:
   rail, the dice, the monster's after-effects and the event/save/death in one
   order, and `MONSTER_HITS` says what each way of being hit does at each step
   (`swing`, `snowball`, `pile`, `kit`, `burst`, `boss`, `fire`, `shock`,
-  `burn`, `poison`). The seven old copies are wrappers. The table is TODAY'S
-  behaviour cell for cell, including the cells hit-door.md puts to the owner
-  (the two 15s, the wrong-way snowball, the harvest shield the kits and fire
-  miss, rolls, parry, rails, rocks). `hit-door.test` (205) pinned them before
-  the door existed; §10d fails a new caller of `_applyDamage`.
+  `burn`, `poison`). The seven old copies are wrappers. The table was the old
+  behaviour cell for cell; `hit-door.test` pinned it before the door existed,
+  and §10d fails a new caller of `_applyDamage`. Since v2.3.3300 the owner's
+  nine decisions on it ("keep going on recommended", hit-door.md "Decided"):
+  every block costs the one 10 (the snowball's free), a snowball from behind
+  lands, every blow leaves a harvester alone, a paid dodge or lunge slips the
+  swing, ball, casts, burst and a boss (not the pile, fire, arcs or ticks, nor
+  the retreat shot's roll: movement.js `_rollIFrames`, kill switch
+  `monsterroll: false`; a rolled or covered slam is a MISS, and the phone
+  shows a hit that lands mid-roll), the pile and a boss parry, a rock is asked
+  first of every blow that travels, a boss's block saves the pools, and no
+  block counts as a hit; `hit-door.test` (218).
 - `package.json` version tracks the client version loosely; comment
   tags in code are the finer-grained record.
 - The repo owner is new to coding: PRs should be self-contained,

@@ -1,5 +1,9 @@
 # One door for every monster hit on a player (v2.3.3296)
 
+v2.3.3296 built the door with the old behaviour, cell for cell. v2.3.3300
+applied the owner's nine decisions ("keep going on recommended"): see
+[Decided](#decided-v233300).
+
 ## Why
 
 The GDD's damage pipeline (README.md §8, "Damage Pipeline (Interceptor
@@ -25,11 +29,11 @@ had to be copied into each place by hand, and some copies missed some rules.
 The door (`server/src/hits.js`) puts the steps in one place, in one order, with
 a table saying what each way of being hit does at each step.
 
-## Today's table
+## The table before the decisions (v2.3.3296)
 
-`server/test/hit-door.test.mjs` measures this through the real entry points the
+`server/test/hit-door.test.mjs` measured this through the real entry points the
 monster loop calls (193 checks). Every row passed on the worker before the
-door existed, and the door keeps every one.
+door existed, and the door kept every one until the decisions below.
 
 **Bold** marks a cell that disagrees with the rest of its column.
 
@@ -68,7 +72,8 @@ Smaller differences the test also pins:
 ## What the table shows (the owner's decisions)
 
 Each of these is one cell in the door's table (`MONSTER_HITS` in hits.js), so
-each decision is a one-line change and a test row.
+each decision is a one-line change and a test row. All nine were decided in
+v2.3.3300, as recommended ([Decided](#decided-v233300)).
 
 1. **The two 15s.** v2.3.1731 named the block cost `BLOCK_STAMINA_COST` (10)
    "so the cost has ONE home", replacing the melee site's inline 15. The snow
@@ -112,6 +117,70 @@ each decision is a one-line change and a test row.
 9. **A blocked hit that counts as being hit.** The pile and the wrong-way ball
    pause regen; the other blocks do not.
 
+## Decided (v2.3.3300)
+
+The owner: "keep going on recommended". The table now (**bold** is a changed
+cell):
+
+| How you're hit | A roll | Shield cost | Parry | Shield facing away | Harvesting | Safe ground | Rock between | One-hit rail |
+|---|---|---|---|---|---|---|---|---|
+| Swing | **slips it** | 10 | yes | lands | left alone | left alone | stops it, **asked first** | none |
+| Snowball | **slips it** | free | no | **lands** | left alone | left alone | stops it (its flight line) | none |
+| Snow pile touch | lands | **10** | **yes** | lands | left alone | left alone | (too short to reach past one) | none |
+| Slam, lunge | **slips it** | 10 | yes | lands | **left alone** | left alone | **stops it** | 50% |
+| Slime burst | **slips it** | 10 | yes | lands | **left alone** | left alone | **stops it** | 50% |
+| Boss ability | **slips it** | **10** | **yes** | lands | **left alone** | (no safe ground in a dungeon) | **stops it** | 50% |
+| Fire on the ground | lands | can't block | – | – | **left alone** | left alone | – | 50% |
+| Storm arc | lands | can't block | – | – | left alone | left alone | – | 15% |
+| Burn, poison tick | lands | can't block | – | – | left alone | put out | – | 10%, 8% |
+
+1. **The two 15s are 10**, the one `BLOCK_STAMINA_COST`.
+2. **A snowball the shield does not face lands.** Its second shield test,
+   measured from where it landed, is gone: blocking is directional for the
+   ball as for everything else. A ball the shield faces is still free.
+3. **Every monster blow leaves a harvester alone**, v2.3.1704's rule. A slam or
+   lunge is asked again when it lands, as the swing is.
+4. **A roll slips the blows you can see coming**: the swing, the snowball, the
+   slam and lunge, the slime burst and a boss's ability. The snow pile still
+   lands (it grinds after you for as long as you stand in it), and so do fire
+   on the ground, a storm's arc and the burn and poison ticks: none of them is
+   a blow to slip.
+   - A roll is a **dodge or a lunge the worker charged for**, inside its
+     window (`ROLL.MAX_MS`, 1 s) while the phone says it is rolling
+     (`movement.js` `_rollIFrames`). The worker now remembers which roll it
+     charged for (`_rollStamp`'s `kind`).
+   - The **retreat shot's roll has no i-frames** (§5.8.3, `dodge.js`
+     `noIFrames`), so it does not slip a monster's blow. Against a player it
+     still does, as it always has: that is still the owner's call
+     (roll-window.md).
+   - **A bare claim never slips a monster's blow**, not even with
+     `rollwindow: false` (that switch is the players' way back to trusting the
+     claim; for a monster, the way back is no roll at all).
+   - A slipped blow is silent, like the other gates. A slam or lunge you rolled
+     through, or that a rock stopped, is drawn as the **MISS** a whiff is: its
+     execute says `hit: false` (`telegraph.js`, through hits.js `_hitMissed`,
+     the door's own steps 3-4).
+   - **The phone shows what lands.** It hid every monster hit's number while
+     you rolled, though the worker took the HP. In a server zone a hit that
+     reaches a rolling phone landed, so its number shows now (`gameEvents.js`).
+   - **Kill switch:** `monsterroll: false` in the live flags, and no roll
+     slips a monster's blow, as before.
+5. **The snow pile and a boss can be parried**, as the swing and the casts are.
+   A snowball still cannot.
+6. **The rails are unchanged.** The swing, the snowball and the pile have none.
+7. **A rock is asked first**, before the shield, of every blow that travels:
+   the swing (a raised shield no longer pays 10 for a swing a rock stopped),
+   the slam and lunge, the slime burst and a boss.
+8. **A blocked boss ability saves the pools, coalesced**, like every other
+   block.
+9. **A block is a block.** The pile's no longer counts as a hit of 0, so it no
+   longer makes the out-of-combat regen wait.
+
+Thorn answers what lands: a swing or a ball, now a ball from behind too, and
+never a blow the shield stopped. The door lost the four cells nothing used any
+more (the wrong-way block, a block that counts, the whole save, the rock after
+the shield).
+
 ## The door (`server/src/hits.js`)
 
 `_monsterHit(h)` takes:
@@ -130,7 +199,8 @@ It then runs the steps in one order:
 2. the safe ground;
 3. a roll;
 4. a rock in the way;
-5. the shield: its cost and its parry, or a hit of 0;
+5. the shield: its cost and its parry (v2.3.3296: or a hit of 0, the pile's
+   and the wrong-way ball's, gone with decisions 2 and 9);
 6. the dice (`_applyDamage`), after the one-hit rail;
 7. what the monster's own blow does after (thorn's answer, the hexer's curse,
    the element's status);
@@ -170,17 +240,21 @@ blow's size before the rail; that part is each source's own:
 
 ### What it does not change
 
-Everything §1-§9 of the test measures stays the same: the HP and stamina, the
-parry, the gates, the rails, deaths and their causes, the saves, thorns, the
-curse, the element, and the events' numbers and tags. Each cell the decisions
-above name is still today's value.
+At v2.3.3296, everything §1-§9 of the test measured stayed the same: the HP
+and stamina, the parry, the gates, the rails, deaths and their causes, the
+saves, thorns, the curse, the element, and the events' numbers and tags. The
+cells the decisions named changed only in v2.3.3300.
 
 ### Tests
 
-`server/test/hit-door.test.mjs`, 205 checks:
+`server/test/hit-door.test.mjs`, 218 checks since v2.3.3300 (205 before):
 
 - §1-§9 (193 checks) were written and passed before the door existed, and
-  pass unchanged with it.
+  passed unchanged with it. v2.3.3300 changed the rows its decisions name,
+  each saying so, and added to §2 (a paid dodge and lunge slip, a retreat
+  shot's roll, a bare claim, a closed window and a finished roll do not, both
+  switches, and the window and kind paid through a real `ability_use`) and §8
+  (a covered or rolled slam's execute says `hit: false`).
 - §10 checks the door itself:
   - every source is a row of the table, and back;
   - every cell comes from its closed set;
@@ -188,10 +262,13 @@ above name is still today's value.
   - only hits.js, combat.js and pvpextras.js call `_applyDamage`;
   - an unknown row hits nobody.
 - Flipping single cells (a cost, a gate, a rail, a save, `counts`, `own`) fails
-  the matching rows. Two cells are not caught: the roll cell, which does
-  nothing until the worker has its own roll window (#929), and the `hp` field,
-  which only §10c reads.
+  the matching rows. At v2.3.3296 two were not caught: the roll cell, which did
+  nothing until the worker had its own roll window (#929), and the `hp` field,
+  which only §10c reads. Since v2.3.3300 the roll cell is caught too, and so
+  are the roll's kind, the MISS and the kill switch.
 
 Every other server suite that calls the old entry points (combat-lifecycle,
 props, wheelzone, monsterstatus, one-formula, petsmatter, spar, statsim,
-cost-guard, burrow, firetrail, dungeon, blockcost) passes unchanged.
+cost-guard, burrow, firetrail, dungeon, blockcost) passed unchanged with the
+door. With the decisions, only `dungeon` changed: its blocked boss slam costs
+10.

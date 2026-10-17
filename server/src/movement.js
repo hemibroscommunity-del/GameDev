@@ -63,9 +63,12 @@ export const ROLL = Object.freeze({
 });
 
 export const movementMethods = {
-  /* v2.3.3292: the window a paid roll opens (see ROLL above) */
-  _rollStamp(ps, now) {
-    if (ps) ps._rollUntil = (now || Date.now()) + ROLL.MAX_MS;
+  /* v2.3.3292: the window a paid roll opens (see ROLL above).
+     v2.3.3300: ...and which of the three it was (`kind`), for _rollIFrames */
+  _rollStamp(ps, now, kind) {
+    if (!ps) return;
+    ps._rollUntil = (now || Date.now()) + ROLL.MAX_MS;
+    ps._rollKind = typeof kind === 'string' ? kind : null;
   },
 
   /* v2.3.3292: is this player rolling, as far as a blow from a player is
@@ -73,6 +76,27 @@ export const movementMethods = {
   _rollOn(ps, now) {
     if (!ps || !ps.dodging) return false;
     if (this._rollWindowOff()) return true;
+    return (now || Date.now()) < (ps._rollUntil || 0);
+  },
+
+  /* ═══ v2.3.3300: A ROLL SLIPS A MONSTER'S BLOW ═══
+     The owner, on the hit door's table (docs/specs/hit-door.md decision 4):
+     a roll dodges the monster blows you can see coming.  The same window as
+     a player's blow (_rollOn) -- the phone says so and it paid for it --
+     but only for a roll that HAS i-frames: the dodge, and the lunge, which
+     reuses the dodge's (game/dodge.js).  The retreat shot has none by its
+     own design, "the shot is the tradeoff for safety" (§5.8.3, dodge.js
+     `noIFrames`), though the phone reports it as `dodging` too.  Whether it
+     keeps the i-frames a PLAYER's blow has always given it is still the
+     owner's call (roll-window.md).
+     Always the paid window, never the bare claim: `rollwindow: false` is the
+     players' way back to trusting the claim, and for a monster the way back
+     is no roll at all -- `monsterroll: false` in the live flags, as before
+     v2.3.3300. */
+  _rollIFrames(ps, now) {
+    if (!ps || !ps.dodging || ps._rollKind === 'retreat') return false;
+    const f = this._liveFlags;
+    if (f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'monsterroll') && !f.monsterroll) return false;
     return (now || Date.now()) < (ps._rollUntil || 0);
   },
 
