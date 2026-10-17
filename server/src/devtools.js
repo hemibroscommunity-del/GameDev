@@ -50,6 +50,7 @@ import { AMULET_GEMS } from './data.js'; /* v2.3.3187: the kit's polished gems *
 import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
 import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
 import { PROG3 } from './prog3.js'; /* v2.3.3313: the combat skills a level can be set on */
+import { BOTFP } from './botfp.js'; /* v2.3.3323: the score a flag is raised at, for the Bot flags list */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -565,6 +566,11 @@ export const devToolsMethods = {
       const r = this._devState(playerId);
       return json(r, r.ok ? 200 : 404);
     }
+    /* v2.3.3323: every flagged player, for the Test panel's Bot flags
+       section (botfp.js _botfpFlaggedList) -- the anti-bot review's fix 9 */
+    if (request.method === 'GET' && path === '/dev/botflags') {
+      return json({ ok: true, flagged: await this._botfpFlaggedList(50), flagAt: BOTFP.FLAG_AT });
+    }
     if (request.method !== 'POST') return null;
 
     const body = await request.json().catch(() => ({}));
@@ -584,6 +590,7 @@ export const devToolsMethods = {
     else if (path === '/dev/killroll') result = this._killRollDev(playerId, body);   /* v2.3.3209: {next, kill} -- the next kill's roll (killroll.js) */
     else if (path === '/dev/lifeskill') result = this._devLifeSkill(playerId, body);   /* v2.3.3229: {skill | 'hits', level} -- the hit ladder at any level */
     else if (path === '/dev/combat') result = this._devCombatLevel(playerId, body);   /* v2.3.3313: {skill | 'all', level} -- a combat level (the alliance counts level 5+) */
+    else if (path === '/dev/botflag') result = this._botfpTestFlag(playerId);   /* v2.3.3323: a TEST flag on a player who is here (botfp.js) */
     else if (path === '/dev/spar') result = this._sparDev(playerId, body);   /* v2.3.3265: {add | skill | clear} -- sparring clones of yourself (spar.js) */
     else return null;
 

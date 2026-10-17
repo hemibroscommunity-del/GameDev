@@ -108,6 +108,47 @@ const sheet = {
   font: '14px system-ui, -apple-system, sans-serif',
   boxShadow: '0 18px 48px rgba(0,0,0,0.55)',
 };
+/* v2.3.3323: a bot flag in words (botfp.js `_botfpFlag` kinds; the Bot flags
+   section).  Each says what was SEEN, never what it means for the player. */
+const BOT_FLAG_WORDS = {
+  'suspicion-threshold': 'Harvest gestures look scripted',
+  'variance-collapse': 'Every harvest gesture nearly the same',
+  'device-fleet': 'Many accounts harvesting on one device',
+  'strikes-without-start': 'Harvests sent without starting them',
+  test: 'A test flag, planted from this panel (not evidence)',
+};
+function botFlagWords(kind, detail) {
+  const words = (kind && BOT_FLAG_WORDS[kind]) || (kind ? 'Flag: ' + kind : 'Flagged');
+  const score = detail && typeof detail.score === 'number' ? ' (score ' + detail.score + ')' : '';
+  const n = detail && typeof detail.count === 'number' ? ' (' + detail.count.toLocaleString() + ')' : '';
+  const ids = detail && Array.isArray(detail.activeIds) ? ' (' + detail.activeIds.length + ' accounts)' : '';
+  return words + score + n + ids;
+}
+/* the counters worth reading, in words, the ones that are not zero */
+const BOT_COUNTER_WORDS = [
+  ['strikes', 'harvests'], ['noFpStrikes', 'with no gesture fingerprint'], ['replayHits', 'replayed gestures'],
+  ['syntheticStrikes', 'scripted-looking gestures'], ['startless', 'refused, no start'], ['noFpPerfect', 'perfect claims with no fingerprint'],
+  ['capClamps', 'stopped by the hour cap'], ['cooks', 'cooks'], ['taplessCooks', 'cooks with no tap'],
+];
+function botCountersWords(c) {
+  if (!c || typeof c !== 'object') return '';
+  const parts = [];
+  for (const [k, w] of BOT_COUNTER_WORDS) {
+    const v = Number(c[k]) || 0;
+    if (v > 0) parts.push(v.toLocaleString() + ' ' + w);
+  }
+  return parts.join(' · ');
+}
+function agoWords(at) {
+  const s = Math.max(0, Math.round((Date.now() - at) / 1000));
+  if (s < 90) return 'just now';
+  const m = Math.round(s / 60);
+  if (m < 90) return m + ' min ago';
+  const h = Math.round(m / 60);
+  if (h < 36) return h + ' h ago';
+  return Math.round(h / 24) + ' days ago';
+}
+
 const btn = (on) => ({
   appearance: 'none', width: '100%', textAlign: 'left',
   background: on ? COL.accentFill : COL.raised,
@@ -392,6 +433,19 @@ export const DevPanel = ({ onClose }) => {
   const clearFlag = useCallback(async (name) => {
     const j = await call('/flags?name=' + encodeURIComponent(name), null, 'DELETE');
     if (j) { setFlags(j.flags || {}); setMsg('Cleared "' + name + '". Reload the game to pick it up.'); }
+  }, [call]);
+
+  /* ═══ v2.3.3323: BOT FLAGS, WHERE THE OWNER CAN SEE THEM ═══
+     The anti-bot review (docs/specs/antibot-review.md §3): botfp.js has written
+     flags since v2.3.1146 and nobody could read them -- one curl command, with
+     the key in a header no other admin command used, in no guide.  This lists
+     every flagged player (devtools.js /dev/botflags), newest flag first, each
+     flag said in words.  On demand, like the live flags: most opens are not
+     about bots.  A flag still changes nothing in the game. */
+  const [botFlags, setBotFlags] = useState(null);
+  const loadBotFlags = useCallback(async () => {
+    const j = await call('/dev/botflags');
+    if (j) { setBotFlags(Array.isArray(j.flagged) ? j.flagged : []); setMsg(''); }
   }, [call]);
 
   const saveKey = () => {
@@ -783,6 +837,55 @@ export const DevPanel = ({ onClose }) => {
                 </>
               );
             })()}
+
+            {/* ═══ v2.3.3323: BOT FLAGS ═══  See the note by loadBotFlags. */}
+            <div style={label}>Bot flags</div>
+            <button type="button" style={btn(false)} disabled={busy}
+              onClick={loadBotFlags}>
+              {botFlags ? 'Reload flagged players' : 'Show flagged players'}
+            </button>
+            {botFlags && botFlags.length === 0 && (
+              <div data-botflags-empty="1" style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }}>
+                No player is flagged. A flag is evidence only: it changes nothing in the game.
+              </div>
+            )}
+            {botFlags && botFlags.length > 0 && (
+              <>
+                <div style={{ color: COL.muted, fontSize: 12, marginBottom: 6, lineHeight: 1.4 }}>
+                  Newest first. A flag is evidence only: it changes nothing in the game
+                  (docs/OPERATIONS.md, "Bot flags").
+                </div>
+                {botFlags.map((f) => (
+                  <div key={f.id} data-botflag={f.id} style={{
+                    marginBottom: 6, background: COL.raised, borderRadius: 8, padding: '8px 9px',
+                    border: '1px solid ' + COL.border,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      <span data-botflag-name="1" style={{ flex: 1, minWidth: 0, font: '600 13px system-ui, sans-serif',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {f.name || f.id}
+                      </span>
+                      <span style={{ font: '600 11px system-ui, sans-serif', color: f.online ? COL.accent : COL.muted }}>
+                        {f.online ? 'online' : 'offline'}
+                      </span>
+                    </div>
+                    <div data-botflag-why="1" style={{ fontSize: 12.5, lineHeight: 1.4, marginTop: 3, color: COL.text2 }}>
+                      {botFlagWords(f.last && f.last.kind, f.last && f.last.detail)}
+                      {f.last && f.last.at ? ' · ' + agoWords(f.last.at) : ''}
+                      {f.flags > 1 ? ' · ' + f.flags + ' flags' : ''}
+                    </div>
+                    {botCountersWords(f.counters) && (
+                      <div style={{ fontSize: 11.5, lineHeight: 1.4, marginTop: 2, color: COL.muted }}>
+                        {botCountersWords(f.counters)}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 11, marginTop: 2, color: COL.muted, wordBreak: 'break-all', userSelect: 'all' }}>
+                      {f.id}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
 
             <button type="button" style={{ ...btn(false), borderColor: COL.danger, color: COL.danger }} onClick={forgetKey}>
               Forget key on this device
