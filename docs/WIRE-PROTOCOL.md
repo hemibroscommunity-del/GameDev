@@ -694,7 +694,7 @@ name|gearBase|tierMult|tier); new s→c type (PRIVILEGED, private)
 gem}` (off, down, bad_gem, locked, bad, not_held, no_gem); a player_state
 follows a slotted gem. Full table: docs/specs/shield-gems.md.
 
-**No man's land's losses, and Diego's tools (v2.3.3301, caps.nomansland):**
+**No man's land's losses, and Diego's tools (v2.3.3316, caps.nomansland):**
 no new c→s case. `nml_loss` gains `named: true` (its `gear` list names
 every piece taken, a red skull's too, and the game takes out exactly those)
 and `keepWorn` (a red skull no player killed keeps its worn slots); `coins`

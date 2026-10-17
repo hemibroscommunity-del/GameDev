@@ -228,7 +228,7 @@ export function ShopkeeperPanel() {
   /* v2.3.2063: staples have no count (qty null) and must NOT be filtered out
      by `qty > 0` -- they are the things he always has. The pile keeps its
      filter: an item he holds none of is not on the shelf.
-     v2.3.3301: nor his TOOLS -- the axe, rod and pickaxe he sells back to a
+     v2.3.3316: nor his TOOLS -- the axe, rod and pickaxe he sells back to a
      player the quest gave one (server shop.js TOOL_SHELF), since a death in
      No man's land takes them. */
   const shelf = shopBus.stock.filter((i) => i.staple || i.tool || i.qty > 0);
@@ -237,7 +237,7 @@ export function ShopkeeperPanel() {
 
   const selEntry = selKey ? shopBus.quoteFor(selKey) : null;
   const selStaple = !!(selEntry && selEntry.staple && selSide === 'bro');
-  /* v2.3.3301: a tool is one at a time too: a replacement, never a second */
+  /* v2.3.3316: a tool is one at a time too: a replacement, never a second */
   const selTool = !!(selEntry && selEntry.tool && selSide === 'bro');
   /* A staple is always exactly one: what you buy is an effect, and only one
      effect runs at a time. */
@@ -253,7 +253,7 @@ export function ShopkeeperPanel() {
      a pile already full -- and the button says so instead of a "…" that
      looks like it is still loading. */
   const wontBuy = selSide === 'bag' && !!quote && quote.key === selKey && quote.mode === 'sell' && quote.qty === 0;
-  /* v2.3.3301: and why he will not sell YOU this tool -- the quote is yours
+  /* v2.3.3316: and why he will not sell YOU this tool -- the quote is yours
      alone ('have' one already, or no 'quest' gave you one yet) */
   const toolWhy = selTool && !!quote && quote.key === selKey && quote.mode === 'buy' && quote.qty === 0
     ? (quote.why || 'off') : null;

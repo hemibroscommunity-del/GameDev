@@ -27,7 +27,7 @@
  *      that is the raider's;
  *   3b. (v2.3.3107) the raider's badge wears their red skull, and a tap on it
  *      opens what No man's land means, with the skull's minutes left;
- *   4b. (v2.3.3301) the owner: "Opponents do not drop all of their items
+ *   4b. (v2.3.3316) the owner: "Opponents do not drop all of their items
  *      except what they have equipped" -- the wanderer also carries ores,
  *      cooked fish, all three gathering tools and gold, which a death used to
  *      keep: after the kill their bag is EMPTY and their purse too, the
@@ -153,7 +153,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.devOp(wsPort, 'quests', idA);
   await H.devOp(wsPort, 'quests', idB);
   await H.grant(wsPort, idB, 'item', { invKey: 'fish_minnow', count: 3 }).catch(() => {});
-  /* v2.3.3301: what a death used to keep -- every ore and cooked fish (the
+  /* v2.3.3316: what a death used to keep -- every ore and cooked fish (the
      first quests' objectives) and the gathering tools -- and gold */
   for (const [invKey, count] of [['ore_iron', 4], ['cooked_fish_minnow', 2], ['woodcutting_axe', 1], ['fishing_pole', 1], ['mining_pickaxe', 1]]) {
     await H.grant(wsPort, idB, 'item', { invKey, count }).catch(() => {});
@@ -176,7 +176,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const R = (window._gameState.current.rpg) || {};
     return { weapon: R.weapon ? R.weapon.type : null, swords: (R.weaponStash || []).filter((w) => w && w.type === 'greatsword').length,
       minnows: (R.inventory || {}).fish_minnow || 0, shields: (R.shieldStash || []).length,
-      /* v2.3.3301: the whole bag and the purse */
+      /* v2.3.3316: the whole bag and the purse */
       inv: Object.fromEntries(Object.entries(R.inventory || {}).filter(([, n]) => n > 0)), coins: R.coins || 0 };
   });
   const bagA0 = await bag(A), bagB0 = await bag(B);
@@ -195,7 +195,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!armB && !!armB.said && armB.said.none === true && !armB.worn && armB.spares.length >= 1 && bagB0.shields >= 1, { armB, bagB0 });
   rec.ok(`setup: the raider holds a greatsword, the wanderer a SPARE one in the bag (${bagB0.swords}) and ${bagB0.minnows} minnows`,
     bagA0.weapon === 'greatsword' && bagB0.swords >= 1 && bagB0.minnows >= 3, { bagA0, bagB0 });
-  rec.ok(`setup (v2.3.3301): the wanderer also carries iron ore, cooked fish, the axe, the rod and the pickaxe, and ${bagB0.coins} gold -- and holds a ${bagB0.weapon} in hand`,
+  rec.ok(`setup (v2.3.3316): the wanderer also carries iron ore, cooked fish, the axe, the rod and the pickaxe, and ${bagB0.coins} gold -- and holds a ${bagB0.weapon} in hand`,
     bagB0.inv.ore_iron === 4 && bagB0.inv.cooked_fish_minnow === 2 && bagB0.inv.woodcutting_axe === 1 && bagB0.inv.fishing_pole === 1
       && bagB0.inv.mining_pickaxe === 1 && bagB0.coins >= 120 && bagB0.weapon === 'greatsword', bagB0);
 
@@ -407,7 +407,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     lossB = await B.page.evaluate(() => {
       const S = window._gameState.current, R = S.rpg || {};
       return {
-        /* v2.3.3301: "took everything you carried" (it was "took your bag") */
+        /* v2.3.3316: "took everything you carried" (it was "took your bag") */
         told: (S.chatLog || []).filter((l) => /took everything you carried in No man's land/.test(l.text || '')).map((l) => l.text),
         swords: (R.weaponStash || []).filter((w) => w && w.type === 'greatsword').length,
         shields: (R.shield ? 1 : 0) + (R.shieldStash || []).length,
@@ -429,7 +429,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const pile = await A.page.evaluate((bid) => {
     const S = window._gameState.current;
     const p = (S.groundLoot || []).find((l) => l && String(l.lootId || '').startsWith('dd-' + bid));
-    /* v2.3.3301: what is in it, read now -- the raider stands on it and picks it up */
+    /* v2.3.3316: what is in it, read now -- the raider stands on it and picks it up */
     return p ? { recipients: p.recipients, killerName: p.killerName, zone: p.zone,
       items: Object.fromEntries((p.deathItems || []).map((it) => [it.key, it.qty])) } : null;
   }, idB);
@@ -437,7 +437,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!pile && Array.isArray(pile.recipients) && pile.recipients.length === 1 && pile.recipients[0] === idA && pile.killerName === 'Raider', pile);
   await shot(A, '4-after');
 
-  /* ── 4b. v2.3.3301: everything carried, nothing worn ── */
+  /* ── 4b. v2.3.3316: everything carried, nothing worn ── */
   let bagB1 = null;
   for (let i = 0; i < 16; i++) {
     bagB1 = await bag(B);

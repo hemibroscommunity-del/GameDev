@@ -41,7 +41,7 @@ Each land's rings of five levels, from Lv 6–10 outward:
   in the chat. The first time it says what the place means: *"☠ No man's land
   1: players within 1 level of yours can attack you here. Killed by one, you
   lose everything you carry (not what you wear); attack one and you carry a
-  red skull for 20 minutes."* (v2.3.3301; it said "you lose your bag" before.)
+  red skull for 20 minutes."* (v2.3.3316; it said "you lose your bag" before.)
   After that the line is shorter.
 - **A new ring:** a line in the chat with the new number.
 - **Leaving:** *"You left No man's land. Players can no longer attack you."*
@@ -124,7 +124,7 @@ on its corner, and three buttons:
 
 The (i) opens the badge's explainer, which now also says *"How: tap a player, or
 swing or shoot at them, and choose Attack. Until you do, your blows never hurt
-them."* (v2.3.3301's words; v2.3.3253 said "tap a player and choose Attack. A
+them."* (v2.3.3316's words; v2.3.3253 said "tap a player and choose Attack. A
 stray shot never hurts anyone.") The window closes by itself the
 moment they can no longer be fought: either of you leaves, the levels drift
 apart, a party, or they are gone.
@@ -134,10 +134,10 @@ apart, a party, or they are gone.
 | Trigger | When |
 |---|---|
 | **A stray shot** | One of *your* arrows, bolts or specials passes through a player you could fight who is not your aim. It uses the real hit test's capsule and radius, and never counts through a rock. The shot flies on and does them nothing. **Once per player** (the owner's "won't pop up again"), never over an open window, never in a duel. |
-| **A swing** (v2.3.3301) | Your sword's (or greatsword's) swing reaches such a player, by the reach and arc the swing's own claims use. The swing does them nothing. The same rules as a shot. Before v2.3.3301 a swing asked nothing at all, which is what the owner found: "Attacks without locking on target did not pop up the window". |
+| **A swing** (v2.3.3316) | Your sword's (or greatsword's) swing reaches such a player, by the reach and arc the swing's own claims use. The swing does them nothing. The same rules as a shot. Before v2.3.3316 a swing asked nothing at all, which is what the owner found: "Attacks without locking on target did not pop up the window". |
 | **A tap** | On such a player you are not already aiming at. Every time; it replaces a window about someone else. A tap on the one you aim at keeps the aim. |
 
-**"Once" means once per answer (v2.3.3301).** Attack, Party and Ignore are
+**"Once" means once per answer (v2.3.3316).** Attack, Party and Ignore are
 answers, and after one a shot or a swing never asks about that player again.
 A window that goes with no answer (its 10 seconds ran out, or they stopped
 being someone you could fight) is not an answer: a shot or swing may ask about
@@ -290,19 +290,19 @@ blows, the fight round you), `mp-nmlfoe` (three phones).
 
 ## What a death costs
 
-**Killed by a player under the rule** (the killing blow, or since v2.3.3301 a
+**Killed by a player under the rule** (the killing blow, or since v2.3.3316 a
 tick of a burn or poison that player set, came through it in the last 5
-seconds). Since v2.3.3301 that is **everything you carry** (see "Everything but
+seconds). Since v2.3.3316 that is **everything you carry** (see "Everything but
 what you wear" below):
 
 | What | Where it goes |
 |---|---|
-| the **whole bag**: every item, the gathering tools, every ore, every cooked fish and the quest's remains too (since v2.3.3301) | the usual death pile, but the **killer's** for its owner window ("Raider's loot" to everyone else), then anyone's |
-| your **gold** (since v2.3.3301) | to the killer |
+| the **whole bag**: every item, the gathering tools, every ore, every cooked fish and the quest's remains too (since v2.3.3316) | the usual death pile, but the **killer's** for its owner window ("Raider's loot" to everyone else), then anyone's |
+| your **gold** (since v2.3.3316) | to the killer |
 | spare weapons | to the killer (mail if they are offline or full) |
 | spare **armour and legs** | to the killer, each with its provenance row, so it stays a provable piece in their hands |
 | spare **shields** (since v2.3.3091) | to the killer the same way, once your game has told the worker which shield is on your arm (see below) |
-| spare **amulets** (since v2.3.3301) | to the killer the same way |
+| spare **amulets** (since v2.3.3316) | to the killer the same way |
 | everything worn | **kept** |
 | outfit pieces | kept (see below) |
 
@@ -313,7 +313,7 @@ that player. Outfit pieces still stay.
 **A red-skulled player killed by anything else** (a monster, a fall) loses
 everything carried, to nobody: the bag falls in a pile anyone may take at once,
 and the gold and the spares are gone. **What they wear stays** (since
-v2.3.3301; before, that went too).
+v2.3.3316; before, that went too).
 
 The dead player's game is told exactly what went (`nml_loss`) and removes just
 those pieces from its own copy of the bag. The gear lists are also kept by the
@@ -342,7 +342,7 @@ The worker only takes what it can tell apart from what you wear.
 
   An outfit that can be *earned* would join the spares the same way, with its
   own wear report.
-- **Amulets** were a red skull's only until v2.3.3301; the spare ones (the
+- **Amulets** were a red skull's only until v2.3.3316; the spare ones (the
   amulet stash) go in every loss now. The amulet you wear stays unless a player
   killed you with a red skull.
 - **Armour granted during this session.** A quest's armour reward goes to your
@@ -354,7 +354,7 @@ The worker only takes what it can tell apart from what you wear.
 Each of these closes when the worker learns the slot. Shields have closed
 (v2.3.3091).
 
-## Everything but what you wear (v2.3.3301)
+## Everything but what you wear (v2.3.3316)
 
 > Owner, 2026-10-17: *"Opponents do not drop all of their items except what
 > they have equipped if they die in no mans land. This should also be fixed.
@@ -505,12 +505,12 @@ switch: the live flag `fightlock: false`. Tests: `nomansland` suite §10.
 - **Worker → client:** `nml_skull` `{red, white, by?}` (ms left; since
   v2.3.3253 `by` is who gave you the white skull, only while it runs) and
   `nml_loss` `{by, red, weapons, gear: [{field, gid | sig}], worn, coins, bag}`
-  -- since v2.3.3301 also `named: true` (the gear list names every piece
+  -- since v2.3.3316 also `named: true` (the gear list names every piece
   taken, a red skull's too: the game takes out exactly those) and `keepWorn`
   (a red skull no player killed keeps its worn slots); `coins` is every loss's
-  now. And since v2.3.3301 `nml_take` `{from, items, lootId, coins, weapons,
+  now. And since v2.3.3316 `nml_take` `{from, items, lootId, coins, weapons,
   gear, worn}` to the killer. All three are in `PRIVILEGED_EVENTS`.
-- **Diego's shelf** (v2.3.3301): `shop_state`'s items gain the three tools,
+- **Diego's shelf** (v2.3.3316): `shop_state`'s items gain the three tools,
   `{key, qty: null, tool: true, sell: 100}`; `shop_quoted` for one carries
   `tool: true` and, when he will not sell it to you, `qty: 0` and `why`
   (`'have'`, `'quest'`, `'off'`); `shop_buy` of one buys one. The tick's player wire carries `sk`, absent
@@ -526,7 +526,7 @@ switch: the live flag `fightlock: false`. Tests: `nomansland` suite §10.
 - **Kill switch:** `nomansland: false` (lower case) un-advertises it, refuses
   every hit, starts no skull and takes nothing on a death. That is the safe
   Wheel exactly.
-- **The tool shelf's switch:** `toolshop: false` (v2.3.3301) takes the tools
+- **The tool shelf's switch:** `toolshop: false` (v2.3.3316) takes the tools
   off Diego's shelf and refuses every buy of one. (The death still takes the
   tools; set `nomansland: false` to stop that.)
 - **The shield's switch:** `shieldwear: false` (v2.3.3091) un-advertises
@@ -537,7 +537,7 @@ switch: the live flag `fightlock: false`. Tests: `nomansland` suite §10.
 
 ## Tests
 
-- v2.3.3301:
+- v2.3.3316:
   - `server/test/nomansland.test.mjs` (100 checks; 68 before): §5 a kill
     takes the whole bag (the pickaxe, the remains, the ore, the cooked fish)
     into the killer's pile, the gold to the killer, `nml_loss`'s `coins`,
@@ -632,7 +632,7 @@ switch: the live flag `fightlock: false`. Tests: `nomansland` suite §10.
 
 ## Decisions for the owner
 
-- **v2.3.3301, decided:** the tools drop and Diego sells them back; a player
+- **v2.3.3316, decided:** the tools drop and Diego sells them back; a player
   with no skull loses their gold to the killer too. Two numbers chosen for
   the owner, each one line to change: a tool costs **100 gold**
   (`TOOL_SHELF`), and an unanswered window may come back after **15 seconds**

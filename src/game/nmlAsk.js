@@ -48,7 +48,7 @@
  * nothing).  Only against a worker with caps.nomansland, like everything of
  * No man's land's.
  *
- * ═══ v2.3.3301: A SWING ASKS TOO, AND AN UNANSWERED WINDOW CAN COME BACK ═══
+ * ═══ v2.3.3316: A SWING ASKS TOO, AND AN UNANSWERED WINDOW CAN COME BACK ═══
  * The owner, 2026-10-17: "Attacks without locking on target did not pop up
  * the window for attack ignore etc."  Only a SHOT asked: an arrow, a bolt or
  * a special through a player (projectiles.js _nmlStrayShot).  A sword's swing
@@ -66,11 +66,11 @@
  */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { nmlLive, nmlCanAttack, nmlHere } from '@/game/noMansLand.js';
-import { chooseFoe, isLiveFighter } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts; v2.3.3301: + who a swing already hits */
+import { chooseFoe, isLiveFighter } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts; v2.3.3316: + who a swing already hits */
 
 /* how long an unanswered window stays */
 export const NML_ASK_MS = 10000;
-/* v2.3.3301: and how long after one goes with no answer the same player may
+/* v2.3.3316: and how long after one goes with no answer the same player may
    be asked about again by a shot or a swing (a tap asks every time) */
 export const NML_ASK_AGAIN_MS = 15000;
 
@@ -157,7 +157,7 @@ export function nmlPartyInvite(S, id) {
 }
 
 /** Raise the window about `id`.  why 'shot': a stray shot passed through
- *  them; why 'swing' (v2.3.3301): your swing reached them -- each once per
+ *  them; why 'swing' (v2.3.3316): your swing reached them -- each once per
  *  player until it is answered (an unanswered window may ask again
  *  NML_ASK_AGAIN_MS after it went), never over an open window, never your
  *  attacker.  why 'tap': you tapped them -- every time, replacing a window
@@ -181,7 +181,7 @@ export function nmlAsk(S, id, why) {
 }
 
 /** Let the window go WITHOUT an answer: its time up, or they can no longer be
- *  fought.  v2.3.3301: so it is not "asked" -- a later shot or swing may ask
+ *  fought.  v2.3.3316: so it is not "asked" -- a later shot or swing may ask
  *  again, NML_ASK_AGAIN_MS from now (Ignore is an answer: nmlAskAnswer). */
 export function nmlAskClose(S) {
   if (!_ask) return;
@@ -196,7 +196,7 @@ export function nmlAskClose(S) {
   emit();
 }
 
-/** ═══ v2.3.3301: YOUR SWING REACHED A PLAYER YOU HAVE NOT CHOSEN ═══
+/** ═══ v2.3.3316: YOUR SWING REACHED A PLAYER YOU HAVE NOT CHOSEN ═══
  *  The swing's own reach and arc from (px, py) toward `ang` (monsterCombat.js
  *  hands in what its claims use, `slack` a stride as theirs): the first player
  *  in it you could fight here -- not your lock, not one you chose or your

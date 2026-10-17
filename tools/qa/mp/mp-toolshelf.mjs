@@ -1,4 +1,4 @@
-/* ═══ A LOST TOOL, BOUGHT BACK FROM DIEGO (v2.3.3301) ═══
+/* ═══ A LOST TOOL, BOUGHT BACK FROM DIEGO (v2.3.3316) ═══
  *
  * A death in No man's land takes the whole bag now, the axe, the rod and the
  * pickaxe with it (server/src/nomansland.js).  Asked whether they should

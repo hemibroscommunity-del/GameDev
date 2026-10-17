@@ -46,7 +46,7 @@
  * player_state echo is the tiebreaker (handoff rule 20).
  */
 
-import { SHOP_ITEMS, DIEGO_SHELF, DISHES, QUEST_REWARDS } from './data.js';   /* v2.3.2063: his staple shelf; v2.3.3130: his shelf is DIEGO_SHELF, and no dish; v2.3.3301: the quests that give the tools */
+import { SHOP_ITEMS, DIEGO_SHELF, DISHES, QUEST_REWARDS } from './data.js';   /* v2.3.2063: his staple shelf; v2.3.3130: his shelf is DIEGO_SHELF, and no dish; v2.3.3316: the quests that give the tools */
 import { FARM_SHOP_BASE } from './farm.js';   /* v2.3.3127: seeds, crops and compost */
 
 /* ═══ v2.3.2063: THE THINGS HE ALWAYS HAS ═══
@@ -119,7 +119,7 @@ function heWontTrade(key) {
   return isShopPotion(key) || isCookhouseDish(key) || isCookedFood(key);
 }
 
-/* ═══ v2.3.3301: A LOST TOOL, BOUGHT BACK ═══
+/* ═══ v2.3.3316: A LOST TOOL, BOUGHT BACK ═══
  *
  * A death in No man's land takes the whole bag now, the axe, the rod and the
  * pickaxe with it (nomansland.js).  Asked whether they should go, the owner
@@ -338,13 +338,13 @@ export const shopMethods = {
   /** One event to one player, by session id. Mirrors _sendInboxDelivered:
    *  a dead socket is not an error here -- the stock and the coins are
    *  already committed, and the next shop_list rebuilds the view. */
-  /* v2.3.3301: the tool shelf's kill switch (live flag `toolshop: false`) */
+  /* v2.3.3316: the tool shelf's kill switch (live flag `toolshop: false`) */
   _toolShopOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'toolshop') && !f.toolshop);
   },
 
-  /* v2.3.3301: why he will not sell this player that tool, or null if he
+  /* v2.3.3316: why he will not sell this player that tool, or null if he
      will: 'off' (not on his shelf), 'have' (one is in the bag), 'quest' (no
      quest gave them one yet) */
   _toolWhyNot(ps, key) {
@@ -453,7 +453,7 @@ export const shopMethods = {
         base: 0,
         sell: st.cost, full: false });
     }
-    /* v2.3.3301: the tools he sells back (TOOL_SHELF) -- the same row for
+    /* v2.3.3316: the tools he sells back (TOOL_SHELF) -- the same row for
        everyone; whether you may buy one is your quote's to say */
     if (!this._toolShopOff()) {
       for (const k of Object.keys(TOOL_SHELF)) {
@@ -504,7 +504,7 @@ export const shopMethods = {
        every staple, which is not "sorts last", it is an inconsistent
        comparator and the order it produces is undefined. They lead by intent
        anyway: they are the shelf that is always there. */
-    /* v2.3.3301: ...then his tools, then the pile -- by rank, so a row with
+    /* v2.3.3316: ...then his tools, then the pile -- by rank, so a row with
        no count is never compared by count */
     const rank = (i) => (i.staple ? 0 : i.tool ? 1 : 2);
     items.sort((a, b) => {
@@ -528,7 +528,7 @@ export const shopMethods = {
    *  so the quote and the settlement cannot drift apart: if one is wrong they
    *  are both wrong in the same direction, and the test that compares them
    *  catches it. */
-  /* v2.3.3301: `ps`, the asking player, for a tool's quote (whether he will
+  /* v2.3.3316: `ps`, the asking player, for a tool's quote (whether he will
      sell you one is yours alone: _toolWhyNot) */
   async _shopQuote(key, qty, mode, ps) {
     if (typeof key !== 'string' || !key) return { ok: false, error: 'Bad request' };
@@ -661,7 +661,7 @@ export const shopMethods = {
     const want = Math.floor(Number(qty) || 0);
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
 
-    /* v2.3.3301: a lost tool, bought back (TOOL_SHELF): one, to a player a
+    /* v2.3.3316: a lost tool, bought back (TOOL_SHELF): one, to a player a
        quest gave one, who holds none */
     if (isToolKey(key)) {
       const why = this._toolWhyNot(ps, key);

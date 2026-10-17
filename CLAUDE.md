@@ -1093,7 +1093,7 @@ remnant to migrate server-side, not a mode to preserve.
       shields, outfits and gold kept -- a stash copy of WORN armour, shields and
       outfits cannot be told from spares by the worker (storegear.js §2);
       a RED skull's death takes everything worn too, every shield, and the
-      gold; `nml_loss` tells the game exactly what went (since v2.3.3301
+      gold; `nml_loss` tells the game exactly what went (since v2.3.3316
       everything CARRIED goes, tools, ores and gold too -- below);
     - `caps.nomansland`, kill switch `nomansland: false`; dev vitals take
       `hp`; `nomansland` suite (51), `mp-nomansland` (15, two screens);
@@ -1174,7 +1174,7 @@ remnant to migrate server-side, not a mode to preserve.
         half, never the shield;
       - spar §16 (24 checks), `mp-nmlfoe` (three phones): no-mans-land.md "The
         choice lasts, and the shield is there".
-    - since v2.3.3301 A SWING ASKS, AND A DEATH TAKES EVERYTHING CARRIED -- the
+    - since v2.3.3316 A SWING ASKS, AND A DEATH TAKES EVERYTHING CARRIED -- the
       owner: "Attacks without locking on target did not pop up the window for
       attack ignore etc.", "Opponents do not drop all of their items except
       what they have equipped", "make sure red skulls ... lose all their stuff
