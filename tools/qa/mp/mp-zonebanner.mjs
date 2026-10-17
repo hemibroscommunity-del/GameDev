@@ -162,6 +162,31 @@ const arm = (P) => P.page.evaluate(() => {
   window.__zbSamples = [];
   window.__zbDone = false;
   window.__zbPaints = 0;
+  /* v2.3.3306: the header's handoff is a class on for 520 ms
+     (zoneBannerOverlay pulseTitle), and this box's timers can stall longer
+     than that -- the 8 ms sampler missed it on one view a run, a different
+     one each time (the sweep of main, 2026-10-17).  An observer sees the
+     class go on whenever it does, sampler or not. */
+  window.__zbArrived = false;
+  /* ...and the same for the name: the banner's `is-named` (its name faded to
+     full by CSS), with the words it carried -- the 0.9 opacity the sampler
+     looks for can come and go between two stalled samples */
+  window.__zbNamed = null;
+  try {
+    const mo = new MutationObserver((list) => {
+      for (const m of list) {
+        const c = m.target && m.target.classList;
+        if (!c) continue;
+        if (c.contains('is-arriving')) window.__zbArrived = true;
+        if (c.contains('bt-zone-banner') && c.contains('is-named')) {
+          const nm = m.target.querySelector('.bt-zone-banner__name');
+          if (nm) window.__zbNamed = nm.textContent;
+        }
+      }
+    });
+    mo.observe(document.body, { attributes: true, attributeFilter: ['class'], subtree: true });
+    setTimeout(() => mo.disconnect(), 9500);
+  } catch (e) { /* the sampler still looks */ }
   /* The beat log is a module-level ring the overlay owns, so it is not cleared
      from here — the length at arming time is remembered and the run's beats are
      read from that offset. */
@@ -286,13 +311,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(2500);
 
     /* The tutorial quests open the gate out of town. */
-    await P.page.evaluate(() => {
-      const S = window._gameState.current;
-      if (S && S.channel) for (const q of ['tut_1', 'tut_2', 'tut_3', 'tut_4']) {
-        S.channel.send({ type: 'quest_accept', payload: { questId: q } });
-      }
-    });
-    await P.page.waitForTimeout(1500);
+    /* v2.3.3306: tut_1, then the test lever opens the rest (H.openLands) --
+       since v2.3.3179 the worker refuses tut_2..tut_4 out of order, so this
+       loop opened frost alone and every ember leg read "got: worldview" (the
+       sweep of main, 2026-10-17) */
+    await H.openLands(P, wsPort);
 
     const hub = await goto(P, 'town', 'worldview');
     if (hub !== 'worldview') {
@@ -349,8 +372,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
          and this box paints at ~10fps, so a higher bar measures the harness.
          The nine-beat claim is carried by the timeline assertion below, which
          does not depend on the frame rate at all. */
-      rec.ok(`${tag}: the ornaments step through several distinct beats`,
-        b.length >= 3, { distinct: b.length, offsets: b });
+      /* v2.3.3306: ...and on a box painting under 5 frames a second (this one
+         now: 2-3) two distinct paints is all a 1.4 s banner can show the
+         sampler -- the timeline check below still holds all nine */
+      const zbFps = (await P.page.evaluate(() => window.__zbPaints || 0)) / 9;
+      const minBeats = zbFps < 5 ? 2 : 3;
+      rec.ok(`${tag}: the ornaments step through several distinct beats (${minBeats}+ at ${zbFps.toFixed(1)} painted frames a second)`,
+        b.length >= minBeats, { distinct: b.length, offsets: b, fps: +zbFps.toFixed(1) });
       rec.ok(`${tag}: ...and reach the LAST beat, not just the first few`,
         idx.includes(8), { distinct: b.length, beatIndices: idx, ornW });
       /* The log opens with a duplicate 0: setBeat(0) is called once while the
@@ -361,13 +389,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const seq = log.filter((v, i2) => i2 === 0 || v !== log[i2 - 1]);
       rec.ok(`${tag}: the timeline runs all nine beats, in order`,
         seq.length === 9 && seq.every((v, i2) => v === i2), { beatLog: log, seq });
+      const zbNamed = await P.page.evaluate(() => window.__zbNamed);
       rec.ok(`${tag}: the zone name is shown, and it is the header's own string`,
-        samples.some((s) => parseFloat(s.nameO) > 0.9 && /\w/.test(s.name || '')),
-        { names: [...new Set(samples.map((s) => s.name))] });
+        samples.some((s) => parseFloat(s.nameO) > 0.9 && /\w/.test(s.name || '')) || (typeof zbNamed === 'string' && /\w/.test(zbNamed)),
+        { names: [...new Set(samples.map((s) => s.name))], named: zbNamed, maxO: Math.max(0, ...samples.map((s) => parseFloat(s.nameO) || 0)) });
       rec.ok(`${tag}: the plaque MOVES on the dock (not just fades)`,
         plaqueTs.length >= 2, { transforms: plaqueTs.slice(0, 4) });
+      const zbArrived = await P.page.evaluate(() => !!window.__zbArrived);
       rec.ok(`${tag}: the header title takes the handoff`,
-        samples.some((s) => s.arriving), {});
+        samples.some((s) => s.arriving) || zbArrived, { sampled: samples.some((s) => s.arriving), observed: zbArrived });
       rec.ok(`${tag}: exactly one banner exists at any moment`,
         samples.every((s) => s.n === 1), { max: Math.max(...samples.map((s) => s.n)) });
       rec.ok(`${tag}: it never takes a pointer`,
