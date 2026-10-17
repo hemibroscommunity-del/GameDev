@@ -2855,7 +2855,7 @@ Two protocol versions coexist; both must keep working:
   client→server events must be denied by default unless added
   deliberately, and every server-EMITTED event type must be added to
   `PRIVILEGED_EVENTS` in `server/src/index.js` or clients can forge it.
-- THE RELAY IS AN ALLOWLIST, IN THE SENDER'S NAME (v2.3.3301,
+- THE RELAY IS AN ALLOWLIST, IN THE SENDER'S NAME (v2.3.3304,
   docs/specs/relay.md). A phone's broadcast that the router has no case
   for is relayed to the others only if its type is in `RELAY.TYPES`
   (`server/src/relay.js`): a new relay goes on that list or it reaches no

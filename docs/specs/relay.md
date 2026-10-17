@@ -1,4 +1,4 @@
-# The relay is an allowlist, in the sender's name (v2.3.3301)
+# The relay is an allowlist, in the sender's name (v2.3.3304)
 
 Found by the architecture review (2026-10-17). Server and phone; deploy in
 either order.
@@ -104,4 +104,4 @@ and the phone scenarios socialgrief, chat, peershots, duel, trade and clan show
 no failure that `main` does not also show (duel 1, trade 6 and clan 1 fail on
 both).
 
-A new relay goes in `RELAY.TYPES` or it reaches no one (TRAPS §188).
+A new relay goes in `RELAY.TYPES` or it reaches no one (TRAPS §190).

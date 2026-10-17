@@ -933,7 +933,7 @@ export function setupWebSocket(ctx) {
                 for (var ei = 0; ei < msg.events.length; ei++) {
                   var _evt = msg.events[ei];
                   var payload = _evt.payload || _evt;
-                  /* ═══ v2.3.3301: A RELAY IS IN ITS SENDER'S NAME ═══
+                  /* ═══ v2.3.3304: A RELAY IS IN ITS SENDER'S NAME ═══
                      `from` is the worker's stamp of who relayed it; the
                      payload's `id` is whatever that phone wrote.  The payload
                      won, so a script could relay "Bob died" by writing Bob's
@@ -3360,7 +3360,7 @@ export function setupWebSocket(ctx) {
             {
               /* All game events: chat, pvp, trade, emote, duel, etc. */
               var _payload = msg.payload || msg;
-              _payload.id = msg.from || _payload.id;   /* v2.3.3301: the worker's stamp first (see the tick's events) */
+              _payload.id = msg.from || _payload.id;   /* v2.3.3304: the worker's stamp first (see the tick's events) */
               processGameEvent(msg.type, _payload, S, _gameEventDeps);
             }
         }

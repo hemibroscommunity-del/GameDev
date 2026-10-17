@@ -6486,14 +6486,14 @@ is hit and for how much before the rail; the door does every step after that.
 **Receipt:** the seven copies are wrappers now, the 193 checks that measured
 them passing unchanged.
 
-## 188. "A new effect for the others is just a broadcast" (v2.3.3301)
+## 190. "A new effect for the others is just a broadcast" (v2.3.3304)
 
 **Tempting:** to show the others something new your phone does -- a wave, a
 spark, a new kind of shot -- send `S.channel.send({type: 'broadcast', event:
 'my_new_thing', payload})`. The router has no case for it, so its default
 branch relays it to the room, as it relays a swing or an emote.
 
-**Wrong since v2.3.3301.** The default branch relays only `RELAY.TYPES`
+**Wrong since v2.3.3304.** The default branch relays only `RELAY.TYPES`
 (server/src/relay.js). A type that is not on it is dropped without a word, so
 the new effect works on the phone that sends it and on nobody else's -- the
 kind of break that looks fine in a one-phone test. And reading the payload's

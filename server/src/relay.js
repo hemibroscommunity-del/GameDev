@@ -1,4 +1,4 @@
-/* ═══ v2.3.3301: THE RELAY IS AN ALLOWLIST, AND IT SAYS WHO SENT IT ═══
+/* ═══ v2.3.3304: THE RELAY IS AN ALLOWLIST, AND IT SAYS WHO SENT IT ═══
  *
  * Found by the architecture review (2026-10-17).  The router's default
  * branch (index.js _onMessage) relays a phone's message to the others in the

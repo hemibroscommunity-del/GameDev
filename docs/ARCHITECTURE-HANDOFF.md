@@ -218,7 +218,7 @@ extended.
     live in its allowlist — see docs/specs/conformance-audit.md).
     Mirror-table drift (server/src/data.js vs client tables) is
     likewise pinned by `test/mirror-audit.test.mjs`.
-    v2.3.3301: and the default branch relays only `RELAY.TYPES`
+    v2.3.3304: and the default branch relays only `RELAY.TYPES`
     (server/src/relay.js), each rebuilt in the sender's name (the
     payload's `id`, `from`, `fromName`... are the worker's). A new
     client->client relay goes on that list or it reaches no one;

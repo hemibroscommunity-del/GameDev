@@ -109,7 +109,7 @@ risk is cosmetic only (see the comment block at server:91 for the full
 rationale). **New client→server events are denied by default** unless a case
 is added deliberately.
 
-**v2.3.3301: and the default branch is an ALLOWLIST.** Only the types an
+**v2.3.3304: and the default branch is an ALLOWLIST.** Only the types an
 honest phone relays (`RELAY.TYPES`, server/src/relay.js) are rebroadcast; any
 other type is dropped, silently, as a privileged one always was, and costs no
 relay budget. Every relay goes out REBUILT: `{type, from, payload}` and nothing
@@ -495,7 +495,7 @@ Sent via `channelShim.send({...})`, hit the server's default branch, pass the
 `_processGameEvent`. These are **cosmetic/social by design** — anything with
 gameplay authority must instead get a real server case.
 
-**v2.3.3301:** each one must be in `RELAY.TYPES` (server/src/relay.js), and
+**v2.3.3304:** each one must be in `RELAY.TYPES` (server/src/relay.js), and
 each goes out in its sender's name -- see the Security model above and
 docs/specs/relay.md. The table below is that list.
 
