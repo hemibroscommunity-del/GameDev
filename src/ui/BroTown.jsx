@@ -4354,7 +4354,8 @@ export var BroTown = function BroTown(_ref0) {
           /* boots past the world's last row: the sea's edge, read as its last row */
           if (_gfd && _gy >= _gh) _gy = _gh - 1;
           if (_gy >= 0 && _gy < _gh && _gx >= 0 && _gx < _gw) {
-            var _cellSolid = _wgrid[_gy][_gx] === false;
+            /* v2.3.3300: the Wheel's rows are bytes, 0 a wall (wheelTrial.js lazyGrid) */
+            var _cv = _wgrid[_gy][_gx], _cellSolid = _cv === false || _cv === 0;
             /* ═══ v2.3.2075: NEVER TRAP SOMEONE ALREADY INSIDE ═══
                The same rule the NPC branch above states and for the same
                reason, applied to the grid: if the player is ALREADY standing
@@ -4379,7 +4380,7 @@ export var BroTown = function BroTown(_ref0) {
               var _pgy = Math.floor((_me.y + (_gfd ? playerGroundDy(S.currentZone, _me.x, _me.y) : 0)) * _gh / _mh);
               if (_gfd && _pgy >= _gh) _pgy = _gh - 1;
               if (_pgy >= 0 && _pgy < _gh && _pgx >= 0 && _pgx < _gw
-                  && _wgrid[_pgy][_pgx] === false) return false;
+                  && (_wgrid[_pgy][_pgx] === false || _wgrid[_pgy][_pgx] === 0)) return false;
             }
             return _cellSolid;
           }

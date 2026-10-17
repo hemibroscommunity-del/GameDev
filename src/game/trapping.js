@@ -35,7 +35,8 @@ import {
   PET_BIG_AT,
 } from '@/data/trapping.js';
 import { ZONES } from '@/data/zones.js';
-import { NML_CENTRE } from '@/data/noMansLandRings.js';
+import { NML_CENTRE, NML_CENTRES } from '@/data/noMansLandRings.js';
+import { wheelLong } from '@/game/wheelSize.js';   /* v2.3.3300: the middle of the Wheel the room plays */
 import { BT_AUDIO } from '@/data/index.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
@@ -83,7 +84,7 @@ export function trapsHeld(S) {
 function onSafeGround(x, y) {
   const z = ZONES && ZONES.wheel;
   if (!z || !z.safeR || typeof x !== 'number' || typeof y !== 'number') return false;
-  const dx = x - NML_CENTRE[0], dy = y - NML_CENTRE[1];
+  const C = NML_CENTRES[wheelLong()] || NML_CENTRE, dx = x - C[0], dy = y - C[1];
   return dx * dx + dy * dy < z.safeR * z.safeR;
 }
 

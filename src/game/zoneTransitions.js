@@ -152,7 +152,8 @@ function nudgeSpawnToWalkable(S, zoneId, zone) {
   var fdy = grid.atFeet ? playerGroundDy(zoneId, P.x, P.y) : 0;
   var gx = Math.max(0, Math.min(gw - 1, Math.floor(P.x * gw / mw)));
   var gy = Math.max(0, Math.min(gh - 1, Math.floor((P.y + fdy) * gh / mh)));
-  var open = function (x, y) { return y >= 0 && y < gh && x >= 0 && x < gw && grid[y][x] !== false; };
+  /* v2.3.3300: false, or 0 in the Wheel's byte rows (wheelTrial.js lazyGrid), is a wall */
+  var open = function (x, y) { if (!(y >= 0 && y < gh && x >= 0 && x < gw)) return false; var v = grid[y][x]; return v !== false && v !== 0; };
   /* The block that has to be open around the landing cell — the movement
      hitbox (20x20, hs=10 in BroTown.jsx) spans several grid cells including
      diagonals, so a lone walkable cell still wedges the player.

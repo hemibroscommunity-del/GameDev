@@ -31,9 +31,12 @@
 import { chatLogBus } from '@/ui/mobile/chatLogBus.js';
 import { playZoneBanner } from '@/ui/zoneBannerOverlay.js';
 
-import { NML, NML_CENTRE, nmlTierAt, nmlLevelAt } from '@/data/noMansLandRings.js';
+import { NML, NML_CENTRE, NML_CENTRES, nmlTierAt, nmlLevelAt } from '@/data/noMansLandRings.js';
+import { wheelLong } from '@/game/wheelSize.js';   /* v2.3.3300: the rings of the Wheel the room plays */
 import { setFoeRule } from '@/game/sparTargets.js'; /* v2.3.3268: a player you chose to attack is yours to hit while this rule allows it */
 export { NML, NML_CENTRE, nmlTierAt, nmlLevelAt };
+/* v2.3.3300: the middle of the Wheel the room plays (game px) */
+export function nmlCentre() { return NML_CENTRES[wheelLong()] || NML_CENTRE; }
 const WHEEL = 'wheel';
 /* how long you must have stood in a new level before it is announced, so a
    walk along a ring's line does not flicker banners (the land banner's own) */
@@ -47,7 +50,7 @@ export function nmlLive(S) {
 /** Your No man's land level right now (0: not in it, or not live). */
 export function nmlHere(S) {
   if (!nmlLive(S) || !S.player || S.currentZone !== WHEEL) return 0;
-  return nmlLevelAt(WHEEL, S.player.x, S.player.y);
+  return nmlLevelAt(WHEEL, S.player.x, S.player.y, wheelLong());
 }
 
 /* your level as the worker has it (player_state's `level`, wsClient) -- the
@@ -64,8 +67,8 @@ export function nmlCanAttack(S, otherId) {
   if (!nmlLive(S) || !S.player || S.currentZone !== WHEEL || !S.others) return false;
   const o = S.others[otherId];
   if (!o || (o.zone || o.z) !== WHEEL) return false;
-  const la = nmlLevelAt(WHEEL, S.player.x, S.player.y);
-  const lt = nmlLevelAt(WHEEL, typeof o.x === 'number' ? o.x : o.renderX, typeof o.y === 'number' ? o.y : o.renderY);
+  const la = nmlLevelAt(WHEEL, S.player.x, S.player.y, wheelLong());
+  const lt = nmlLevelAt(WHEEL, typeof o.x === 'number' ? o.x : o.renderX, typeof o.y === 'number' ? o.y : o.renderY, wheelLong());
   if (la < 1 || lt < 1) return false;
   const theirs = Number(o.rpgLv) || 1;
   if (Math.abs(myLevel(S) - theirs) > Math.min(la, lt)) return false;

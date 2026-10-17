@@ -1100,10 +1100,16 @@ export function bigTownScale(search) {
    v2.3.3031: `plaintown` the standard size without the designed town (PLAIN):
    the town's one tan clearing, plain square and plots in their rows, to look
    at it beside the designed one */
-export function planFor(search) {
+export function planFor(search, size = 1) {
   const k = bigTownScale(search);
   if (k == null && /(?:^|[?&])plaintown(?:&|$)/.test(search || '')) return PLAIN;
-  return k == null ? PLAN : bigTownPlan(k);
+  if (k != null) return bigTownPlan(k);
+  /* v2.3.3300: the Wheel the room plays (caps.wheelsize) -- but the previews,
+     the town sizes above and `?placing=2`, are the short Wheel's: their
+     objects are worked out from the whole map, which the long one is far too
+     big for on a phone */
+  if (/(?:^|[?&])placing=2(?:&|$)/.test(search || '')) return PLAN;
+  return wheelSized(size);
 }
 
 /* The plan with the town laid for buildings `k` times the size, or the plan
