@@ -2413,6 +2413,29 @@ remnant to migrate server-side, not a mode to preserve.
     sent -- presence v2's roster already carries the party whole wherever they
     are; `__btMinimap.party`, `__btWorldMap.more.party`; `party-marks` suite,
     `mp-partymap`: docs/specs/party-on-maps.md.
+  - Since v2.3.3284 A PARTY LASTS -- the owner: "skip clans altogether and just
+    go from party to alliances ... 'party' that stays persistent until you
+    remove yourself from the party and it becomes 'alliance' at 20+ people",
+    then "Go recommended" to the plan's five recommendations; this is step 1 of
+    3 (2: the alliance at 20+ ACTIVE members, back below 15; 3: clans retire
+    into it) -- docs/specs/party.md "A party that lasts":
+    - STORED (`party:<id>`, `party_by_player:<pid>`, the index the truth): it
+      outlives a logout, a reconnect and a deploy; offline members stay
+      (`off`, `seen`), up to `PARTY.KEEP_MAX` 50; written only on roster
+      changes (and a member's `seen` at a join, every 6 h at most), read at a
+      member's join (awaited in join.js, after state_sync); a failed read
+      fails closed (`not-loaded`), a newer `v` untouched; a leader not seen for
+      7 days hands it on at a member's join; a character restart leaves it;
+      the roster echo skips a party with nobody online;
+    - dungeons stay FOUR: the leader pulls the three members nearest them
+      (`_dungeonPullPartyMembers`; the boss table is sized for four);
+    - the strip shows SIX rows (src/game/partyRows.js: you, the online members
+      nearest you, the rest online, the offline most recently seen first),
+      "+N more · M online", "n/50", offline rows without a bar, leaving in two
+      taps; the Saloon lists everyone;
+    - `caps.partykeep`, kill switch `partykeep: false` (the party of four in
+      memory, nothing read or written -- party.test.mjs runs under it);
+      `party-keep` suite, `mp-partykeep`.
   - Since v2.3.3279 THE OWNER'S SMALL ICONS -- asked what ChatGPT could draw to
     replace the emoji and code-drawn pictures, the owner sent four sheets
     ("Here's the art assets for the 'small icons'"), cut by

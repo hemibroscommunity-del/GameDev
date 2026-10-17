@@ -72,6 +72,7 @@ extended.
    | `store_thread:<listingId>` | `{t: {<buyerId>: [{f,n,x,ts}, ...]}, at}` — the message threads on ONE auction-house listing (v2.3.2621). Keyed by the LISTING, not by the pair: a listing has one seller and N interested buyers, so `t` holds one conversation per buyer. One key rather than `store_thread:<listingId>:<buyerId>` because the seller's own view wants every conversation at once (one read, not THREADS_MAX — rule 9's second edge) and cleanup is one delete. Bounded on both axes (THREADS_MAX 5, MSGS_MAX 20, TEXT_MAX 200). DELETED with the listing, before the listing record, at all three ends | store-chat.md |
    | `duelEscrow:<duelId>` | `{a, b, wager, startedAt}` | duels.md |
    | `clan:<clanId>` / `clan_by_player:<pid>` / `clan_war:<warId>` | clan registry + war snapshots | clans.md |
+   | `party:<partyId>` / `party_by_player:<pid>` | the PARTY THAT LASTS (v2.3.3284, party.js): `{v, id, leader, members: [pid, oldest first], meta: {pid: {name, level, at, seen}}, ts}`, and each member's own word for which party they are in -- the index is the truth, a record that lists someone whose index names another party loses them at its next load. Written only when the roster changes (and a member's `seen` at a join at most every 6 h), fire-and-forget; read at a member's join; a newer `v` is left whole and its reader unknown (no invite either way). Deleted with the character (`_partyOnReset`) and when the party is down to one. Not read or written with `partykeep: false` | party.md |
    | `arena_entry:<tid>:<pid>` | escrowed 100g tournament entry | arena.md |
    | `arena_stake:<tid>:<mid>:<pid>` | escrowed sponsorship stake | sponsorship.md |
    | `arena_house` | `{hour, used}` — the gold the house has added to arena champions' prizes in the current UTC clock hour (`hour` = ms / 3,600,000), at most `ARENA.HOUSE_GOLD_PER_HOUR` (v2.3.3178). Read once at the first join after a start; written BEFORE the prize is paid. A single bounded key, never a prefix | arena.md |
@@ -413,6 +414,8 @@ off the box, on its edge toward them; the world map at every zoom, named;
 the dungeons' and farm's small box blue and ringed (`src/game/partyMarks.js`).
 Still open: an in-world arrow at the screen's edge. Danger: do not touch the
 §7 share math (TRAPS #3; party.md's danger note stands).
+
+**A party that lasts SHIPPED v2.3.3284** (party.md "A party that lasts"): stored (`party:` / `party_by_player:`), offline members kept, up to 50, dungeons still four (the leader pulls the three nearest), the strip six rows -- step 1 of the owner's party -> alliance plan (2: the alliance at 20+ active members; 3: clans retire into it).
 
 ### E. Trade2 weapon lane — SHIPPED v2.3.1213
 Weapons trade in the two-sided window now (trading.md addendum "Weapon
