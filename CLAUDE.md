@@ -1743,6 +1743,19 @@ remnant to migrate server-side, not a mode to preserve.
     in town every building named at its door (`wheelTownDoors`, a shut one
     dim); `__btWorldMap.more` counts them: WORLD-MAP-PIPELINE "Zoom in, and
     there is more to see", `mp-wheelmap`.
+    - since v2.3.3319 UP CLOSE FAR FROM YOU AS SHARP AS ROUND YOU -- the five-
+      times Wheel's "not in this step", the owner: "Push all these to main
+      then keep going": the long Wheel's whole picture is a pixel every 16
+      cells (a coast far off was big soft squares zoomed in), so its lands are
+      baked a pixel every 4 cells too, in 256-px tiles in their flat colours
+      (bake-wheel-world.mjs `detailTiles`, public/world/placed5/detail/; a
+      one-colour tile is no file, placed.js `fill`), and the map
+      (src/ui/worldMapDetail.js) loads the ones it shows once a coarse pixel
+      would be 6 CSS px (`COARSE_PX`), at most 16 held, all let go on close;
+      not on the loading screen (a map's detail coming in over the picture it
+      sharpens); `?nomapdetail`; `/world/placed5/*` now kept a year in
+      public/_headers like `placed/` (TRAPS §199); `mp-mapdetail`:
+      WORLD-MAP-PIPELINE "Up close far from you, as sharp as round you".
   - Since v2.3.3025 ONE LOADING SCREEN AND NO WAY BACK -- the owner: "players
     are starting in the old town and getting routed to the wheel on the
     loading screen. Also there still a portal to the old town. Disable that.

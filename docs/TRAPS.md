@@ -6806,3 +6806,22 @@ phone's reach comes whole, in the snapshot's own wire (`mw`, spawnscale.js
 **Receipt:** server/src/wheelnear.js, `wheelnear` suite (the town square's
 way in 580 -> 140 KB, the 29 around you among Frost Ridge's first stretch,
 each once, the kill switch, a cold room's first join); `mp-wheelnear`.
+
+## 199. "A new folder of baked files is cached like the old one" (v2.3.3319)
+
+**Tempting:** to put a new set of baked files beside an old one -- the long
+Wheel's `public/world/placed5/` beside the short one's `placed/` -- fetch them
+at the same kind of `?v=<fingerprint>` address, and take the caching to be
+the same: a new bake is a new address, so a phone can keep each file forever.
+
+**Wrong.** The address only makes keeping them SAFE. What makes a phone keep
+them is `public/_headers`, and its rules are by path: `/world/placed/*` names
+the old folder and nothing else. `placed5/` (v2.3.3315) went out with no rule,
+so the default caching asked about its 700 KB of objects and pictures again on
+every visit, on the very Wheel every player plays -- and nothing failed, so
+nothing said so.
+
+**The rule:** a new folder under `public/` that the game fetches at a
+fingerprinted address gets its own `_headers` rule in the same PR, beside its
+sibling's. **Receipt:** `/world/placed5/*` in public/_headers (with the world
+map's detail tiles under it, src/ui/worldMapDetail.js).

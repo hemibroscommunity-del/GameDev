@@ -4,10 +4,12 @@
  * them only when its plan's fingerprint is one of these (core/worldblocks.js
  * planFingerprint).  v2.3.3315: one set a Wheel -- PLACED5 the long one
  * (plan.js PLAN5), PLACED the short one (PLAN); `cells` blueprint cells an
- * overview pixel. */
+ * overview pixel.  v2.3.3319: `detail` the long one's lands up close, in
+ * tiles (<dir>/detail/i-j.png; `fill` a one-colour tile's colour, null
+ * where there is a file). */
 export const PLACED5 = Object.freeze({
   dir: 'placed5',
-  v: 'c3ed19ee',
+  v: 'e1deb038',
   plan: '5e245279',
   objects: 'objects.bin',
   n: 63486,
@@ -16,6 +18,16 @@ export const PLACED5 = Object.freeze({
   w: 454,
   h: 454,
   cells: 16,
+  detail: Object.freeze({
+    dir: 'detail',
+    cells: 4,
+    tile: 256,
+    w: 1816,
+    h: 1816,
+    cols: 8,
+    rows: 8,
+    fill: Object.freeze(["#1c467e","#1c467e","#1c467e",null,"#1c467e","#1c467e","#1c467e","#1c467e","#1c467e",null,null,null,null,null,null,"#1c467e","#1c467e",null,null,null,null,null,null,"#1c467e",null,null,null,null,null,null,null,null,"#1c467e",null,null,null,null,null,null,"#1c467e","#1c467e",null,null,null,null,null,null,"#1c467e","#1c467e",null,null,null,null,null,null,"#1c467e","#1c467e","#1c467e","#1c467e",null,"#1c467e","#1c467e","#1c467e","#1c467e"]),
+  }),
 });
 export const PLACED = Object.freeze({
   dir: 'placed',
@@ -28,5 +40,6 @@ export const PLACED = Object.freeze({
   w: 448,
   h: 448,
   cells: 4,
+  detail: null,
 });
 export const PLACED_SETS = Object.freeze([PLACED5, PLACED]);
