@@ -222,9 +222,10 @@ look three times dearer; it now times only the room.
   monsters around it, the list marked so an empty one still means the
   worker's, and each other monster whole (`mw`) the first time it comes into
   reach -- the town square's way in ~580 KB -> ~140 KB, the nodes and loot.
-- The first stretch's monsters are levels 1-2 as before, now over 5,120 px.
-  A slope from 1 to 5 across it is one line in `wheelzone.js` if the owner
-  wants it.
+- **The first stretch's monsters climbing 1 to 5.** Done since v2.3.3320
+  (the owner: "Yes do smooth 1 to 5"; `docs/specs/wheel-monsters.md` "The
+  first stretch climbs 1 to 5"): they were levels 1-2 for all 5,120 px, then
+  6; each one's level is now where it stands, as a deeper stretch's.
 - The world map far from you draws the coarse picture (a pixel every 16
   cells); only the blocks round you are fine. Done since v2.3.3319
   (WORLD-MAP-PIPELINE "Up close far from you, as sharp as round you"): the

@@ -458,7 +458,13 @@ export function zoneHomes(zoneId) {
    safe ground and its lands' middles -- MIRROR of server/src/wheelspawns1.js
    (1) and wheelspawns.js (5): WHEEL_WORLD / TILE, WHEEL_SAFE_R and
    WHEEL_SPAWNS[home].anchor (test-world-core).  setWheelGeom puts one on
-   ZONES.wheel; it starts as the short one, as every worker before said. */
+   ZONES.wheel; it starts as the short one, as every worker before said.
+   v2.3.3320: and on the long one `firstR`, how far from the middle each
+   land's monsters begin -- its first stretch's inner edge, MIRROR of
+   WHEEL_SPAWNS[home].band[0] (test-world-core) -- where a quest's road ends
+   there (src/game/questRoute.js): a land's monsters reach ~2,400 px either
+   side of its middle, and since the first stretch climbs 1 to 5
+   (server/src/wheelzone.js) its middle is level 3. */
 export const WHEEL_GEOM = Object.freeze({
   1: Object.freeze({ w: 1344, h: 1344, safeR: 2937, lands: Object.freeze({
     frost: [18985, 18985], ember: [21504, 18050], sky: [23946, 19062], hollows: [24946, 21504],
@@ -467,11 +473,14 @@ export const WHEEL_GEOM = Object.freeze({
   5: Object.freeze({ w: 5448, h: 5448, safeR: 2937, lands: Object.freeze({
     frost: [83198, 83198], ember: [87168, 81686], sky: [91087, 83249], hollows: [92698, 87168],
     thunder: [91087, 91087], tidal: [87168, 92674], mist: [83275, 91061], verdant: [81650, 87168],
+  }), firstR: Object.freeze({
+    frost: 3245, ember: 3089, sky: 3137, hollows: 3089, thunder: 3137, tidal: 3137, mist: 3101, verdant: 3209,
   }) }),
 });
 export function setWheelGeom(size) {
   const g = WHEEL_GEOM[size] || WHEEL_GEOM[1], z = ZONES.wheel;
   z.w = g.w; z.h = g.h; z.safeR = g.safeR; z.lands = g.lands;
+  z.firstR = g.firstR || null;   /* v2.3.3320: the long Wheel's only */
   return g;
 }
 

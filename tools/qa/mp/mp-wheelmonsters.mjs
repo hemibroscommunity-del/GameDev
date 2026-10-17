@@ -16,7 +16,8 @@
  *      load as you walk towards it") the Wheel arrives with NONE of their
  *      looks, and a land's loads on the way toward it, before any of its
  *      monsters is on screen (wheelMonsterArt.js);
- *   5. one of them fights back and dies to you, and the kill pays (XP);
+ *   5. one of them fights back and dies to you, and the kill pays (XP)
+ *      (v2.3.3320: at the land's town end, its level 1s);
  *   6. back in town the Wheel's monster art is let go;
  *   7. no page errors, and no render errors.
  * Pictures in tools/qa/mp/out/wheelmonsters-*.png.
@@ -126,6 +127,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await tap(P, 'Close');
   await P.page.waitForTimeout(600);
   const myId = await H.readState(P, (S) => S.myId);
+  /* v2.3.3320: real input on a loop, as mp-wheelnear and mp-wheeldeep do: a
+     page logs itself out after two minutes without any (wsClient idleLogout;
+     Control does nothing in the game).  The walk to the Flame Fields' town
+     end for the fight took this past it, and every swing then went to a
+     worker that had let the player go ("player not online"). */
+  let stopAlive = false;
+  (async () => {
+    while (!stopAlive) {
+      await P.page.keyboard.press('Control').catch(() => {});
+      for (let i = 0; i < 40 && !stopAlive; i++) await P.page.waitForTimeout(500).catch(() => {});
+    }
+  })();
 
   /* ── 1. the way in ── */
   phase = 'the way in';
@@ -245,6 +258,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!art2 && !art2.looks.mummy && !art2.looks.skeleton && !!art2.near && art2.near[0] >= 1000 && art2.near[1] >= 1000, art2);
   /* ── 5. a fight ── */
   phase = 'the fight';
+  /* v2.3.3320: at the land's town end, among its level 1s -- the first
+     stretch climbs 1 to 5 now (server/src/wheelzone.js), and a new player's
+     road ends there (questRoute.js).  In the middle, among level 2-4 goblins,
+     this character died before its level-3 goblin did.  Walked there still
+     untouchable. */
+  const inner = WHEEL_SPAWNS.ember.points.slice(0, 6 * LONG).reduce((a, p) => (!a || p[2] < a[2] ? p : a), null);
+  if (inner) await H.hopTo(P, inner[0], inner[1] + 20, { tries: 60 });
   /* v2.3.2996: and mortal again, at full health, for a fight that answers back */
   await H.devOp(wsPort, 'vitals', myId, { heal: true, god: false });
   /* The swing is the same `monster_damage` the game sends (mp-capekill), stood
@@ -330,5 +350,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const pageErrors = P.logs.filter((l) => /pageerror/.test(l));
   rec.ok('no page errors, and no render errors', pageErrors.length === 0 && !firstThrow, { errors: pageErrors.slice(0, 5), firstThrow: firstThrow && firstThrow.slice(0, 600) });
+  stopAlive = true;
   void myId;
 }

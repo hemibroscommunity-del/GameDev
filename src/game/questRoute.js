@@ -24,7 +24,7 @@ import { QUEST_CHAINS, QUEST_STATUS, questSteps /* v2.3.3012: which node a gathe
 import { hasGatherTool, gatherNeed /* v2.3.3038 */ } from '@/data/lifeSkills.js';   /* v2.3.3012: never lead to a node that is not drawn */
 import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { TILE } from '@/data/constants.js';
-import { ZONES, isWorldViewZone, zoneHomes } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel'; v2.3.2990: its lands */
+import { ZONES, isWorldViewZone, zoneHomes, wheelLandAt /* v2.3.3320 */ } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel'; v2.3.2990: its lands */
 
 /* v2.3.1906: where the quest givers stand.  Every live NPC is spawned by
    BroTown's _spawnTownNpcs, which is town-only, so a finished objective always
@@ -364,6 +364,17 @@ function _npcHere(S, name) {
  * Anywhere else this is what it was -- null -- as no other zone but town has
  * a live npc list or a `lands` table. */
 const LAND_HERE_R = 600;   /* game px: each land's monsters all stand within ~550 of its middle */
+/* ═══ v2.3.3320: ON THE LONG WHEEL, WHERE THE LAND'S MONSTERS BEGIN ═══
+   The owner: "Yes do smooth 1 to 5" -- a land's first stretch climbs from
+   level 1 at the town end to 5 at the far end (server/src/wheelzone.js).  On
+   the five-times Wheel its monsters reach ~2,400 px either side of its
+   middle, so the road above led a new player past the level 1s and 2s to the
+   middle, level 3, and LAND_HERE_R no longer meant "among them".  There
+   (ZONES.wheel.firstR, the long Wheel's only) the road leads to where the
+   land's monsters begin -- its star LAND_IN_PX past their edge, among the
+   level 1s -- and stops once you stand on that land's spoke at least that far
+   out, wherever on it you go.  The short Wheel is as it was. */
+const LAND_IN_PX = 300;
 
 function _wheelPoint(currentZone, rpg, S) {
   const target = questTargetZone(rpg, S);
@@ -374,6 +385,12 @@ function _wheelPoint(currentZone, rpg, S) {
     const spot = z && z.lands && z.lands[target];
     if (!spot) return null;
     const P = (S && S.player) || null;
+    const r0 = z.firstR ? Number(z.firstR[target]) : 0;
+    if (r0 > 0) {
+      const c = (z.w * TILE) / 2, dx = spot[0] - c, dy = spot[1] - c, d = Math.hypot(dx, dy) || 1;
+      if (P && Math.hypot(P.x - c, P.y - c) >= r0 && wheelLandAt(currentZone, P.x, P.y) === target) return null;
+      return { x: Math.round(c + (dx / d) * (r0 + LAND_IN_PX)), y: Math.round(c + (dy / d) * (r0 + LAND_IN_PX)), zoneId: target, land: true };
+    }
     if (P && Math.hypot(P.x - spot[0], P.y - spot[1]) < LAND_HERE_R) return null;
     return { x: spot[0], y: spot[1], zoneId: target, land: true };
   }
