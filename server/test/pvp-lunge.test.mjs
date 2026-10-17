@@ -60,7 +60,7 @@ function fakeWs() { return { sent: [], send(s) { this.sent.push(JSON.parse(s)); 
 const room = new GameRoom(makeState(), mockEnv);
 async function join(ws, id) {
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 0, lastPing: 0, lastRecv: T });
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, phrase: 'p-' + id, protocolVersion: 2, data: { x: 0, y: 0, z: 'town' } }));
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, phrase: 'p-' + id, protocolVersion: 2, ws: [1, 5], data: { x: 0, y: 0, z: 'town' } }));
   await new Promise((r) => setTimeout(r, 5));
 }
 const wsA = fakeWs(), wsB = fakeWs();

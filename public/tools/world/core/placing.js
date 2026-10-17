@@ -540,6 +540,8 @@ const GROUNDS = {
 };
 function townGrounds(X) {
   const { plan, bp, T, surf, g, WPA, cellOf, cellPx, BW, BH, N, townR, byId, nearFoot, put, seed, counts } = X;
+  /* v2.3.3315: the named corner, in cells and game px (placeObjects) */
+  const NC = X.NC || 0, NX = X.NX || 0;
   const gx = (ax) => (g.cx + ax - bp.x0) * WPA, gy = (ay) => (g.cy + ay - bp.y0) * WPA;
   const sizeOf = (id) => { const e = byId[id]; return e ? (e.fit === 'w' ? { w: e.size, h: e.size / (e.ar || 1) } : { w: e.size * (e.ar || 1), h: e.size }) : { w: 40, h: 40 }; };
   const note = (id) => { counts[id] = (counts[id] || 0) + 1; };
@@ -596,9 +598,9 @@ function townGrounds(X) {
 
   /* ── gardens: a tree here and there, bushes, flowers, a stone ── */
   const ext = Math.max(G.ns, G.ew) + T.yard + 60, st = GROUNDS.step, gs = seed + 5171;
-  const i0 = Math.floor(gx(-ext) / st), i1 = Math.ceil(gx(ext) / st), j0 = Math.floor(gy(-ext) / st), j1 = Math.ceil(gy(ext) / st);
+  const i0 = Math.floor((gx(-ext) - NX) / st), i1 = Math.ceil((gx(ext) - NX) / st), j0 = Math.floor((gy(-ext) - NX) / st), j1 = Math.ceil((gy(ext) - NX) / st);
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-    const x = Math.round((i + 0.15 + 0.7 * hash2(i, j, gs)) * st * 2) / 2, y = Math.round((j + 0.15 + 0.7 * hash2(i, j, gs + 1)) * st * 2) / 2;
+    const x = NX + Math.round((i + 0.15 + 0.7 * hash2(i, j, gs)) * st * 2) / 2, y = NX + Math.round((j + 0.15 + 0.7 * hash2(i, j, gs + 1)) * st * 2) / 2;
     const c = cellOf(x, y);
     if (c < 0 || bp.reg[c] !== townR || D[c] < 2) continue;
     const pick = hash2(i, j, gs + 2);
@@ -626,15 +628,16 @@ function townGrounds(X) {
   const fenceH = byId['fence-down'] ? byId['fence-down'].size : 170;
   const bx0 = Math.floor(gx(-ext) / cellPx), bx1 = Math.ceil(gx(ext) / cellPx), by0 = Math.floor(gy(-ext) / cellPx), by1 = Math.ceil(gy(ext) / cellPx);
   const K = Rm.cells;
-  for (let lj = Math.floor(by0 / K); lj <= Math.floor(by1 / K); lj++) for (let li = Math.floor(bx0 / K); li <= Math.floor(bx1 / K); li++) {
+  /* v2.3.3315: lattice squares and hashes counted from the named corner (NC) */
+  for (let lj = Math.floor((by0 - NC) / K); lj <= Math.floor((by1 - NC) / K); lj++) for (let li = Math.floor((bx0 - NC) / K); li <= Math.floor((bx1 - NC) / K); li++) {
     let best = -1, bestH = 2;
     for (let dy = 0; dy < K; dy++) for (let dx = 0; dx < K; dx++) {
-      const bx = li * K + dx, by = lj * K + dy;
+      const bx = NC + li * K + dx, by = NC + lj * K + dy;
       if (bx < 1 || by < 1 || bx >= BW - 1 || by >= BH - 1) continue;
       const i = by * BW + bx;
       if (bp.reg[i] !== townR || D[i] < 1 || RD[i] < Rm.clearRoad) continue;
       if (!(outside(i - 1) || outside(i + 1) || outside(i - BW) || outside(i + BW))) continue;
-      const h = hash2(bx, by, rs);
+      const h = hash2(bx - NC, by - NC, rs);
       if (h < bestH) { bestH = h; best = i; }
     }
     if (best < 0) continue;
@@ -648,12 +651,12 @@ function townGrounds(X) {
     }
     if (!nx && !ny) continue;
     const x = Math.round((bx + 0.5) * cellPx * 2) / 2, y = Math.round((by + 0.5) * cellPx * 2) / 2;
-    const m = hash2(bx, by, rs + 1);
-    const flip = hash2(bx, by, rs + 2) < 0.5;
+    const m = hash2(bx - NC, by - NC, rs + 1);
+    const flip = hash2(bx - NC, by - NC, rs + 2) < 0.5;
     /* the run it is in, from slow noise along the edge: a stretch of fence, a stretch of hedge
        (bushes close together), or the open edge with a stone or a haystack now and then --
        so the boundary is made of RUNS with gaps between them, not scattered pieces */
-    const run = fbm(x / 800, y / 800, rs + 9, 2);
+    const run = fbm((x - NX) / 800, (y - NX) / 800, rs + 9, 2);
     const nl = Math.sqrt(nx * nx + ny * ny), ux = Math.abs(nx) / nl, uy = Math.abs(ny) / nl;
     const diagonal = Math.min(ux, uy) > 0.5;
     if (run > Rm.fenceRun && !diagonal && m < Rm.fenceFill) {
@@ -662,12 +665,12 @@ function townGrounds(X) {
       const fx = x, fy = vertical ? y + fenceH * 0.4 : y;
       if (!lawn(fx, fy, 1) || !lawn(fx, vertical ? fy - fenceH * 0.8 : fy, 1)) continue;
       if (nearFoot(fx, fy, 14)) continue;
-      put(vertical ? 'fence-down' : 'fence', fx, fy, Math.floor(hash2(bx, by, rs + 3) * 3), false, 20);
+      put(vertical ? 'fence-down' : 'fence', fx, fy, Math.floor(hash2(bx - NC, by - NC, rs + 3) * 3), false, 20);
       note(vertical ? 'fence-down' : 'fence');
     } else {
       const id = run < Rm.hedgeRun ? (m < Rm.hedgeFill ? 'bush' : null) : m < Rm.stone ? 'stone' : m < Rm.stone + Rm.hay ? 'haystack' : m < Rm.stone + Rm.hay + Rm.bush ? 'bush' : null;
       if (!id || !byId[id] || D[best] < 2 || nearFoot(x, y, id === 'bush' && run < Rm.hedgeRun ? 14 : 30)) continue;
-      put(id, x, y, Math.floor(hash2(bx, by, rs + 4) * (byId[id].count || 1)), !NO_FLIP.has(id) && flip, id === 'haystack' ? 22 : 12);
+      put(id, x, y, Math.floor(hash2(bx - NC, by - NC, rs + 4) * (byId[id].count || 1)), !NO_FLIP.has(id) && flip, id === 'haystack' ? 22 : 12);
       note(id);
     }
   }
@@ -698,6 +701,12 @@ export function placeObjects(plan, bp, opts = {}) {
   const townR = regIdx.town, commonsR = regIdx.commons;
   /* art px from the centre -> game px from the Wheel's corner */
   const gx = (ax) => (g.cx + ax - bp.x0) * WPA, gy = (ay) => (g.cy + ay - bp.y0) * WPA;
+  /* v2.3.3315: game px (and cells) from that corner to the active area's NAMED
+     corner (bp.nox, layout.js planFeatures): every lattice and noise below is
+     laid from there, so a Wheel grown past it (plan.js wheelSized) places the
+     town's and the commons' things where the short one does -- 0 unless the
+     plan grows */
+  const NC = bp.nox || 0, NX = NC * cellPx;
   const cellOf = (x, y) => {
     const bx = Math.floor(x / cellPx), by = Math.floor(y / cellPx);
     return bx >= 0 && by >= 0 && bx < BW && by < BH ? by * BW + bx : -1;
@@ -850,7 +859,7 @@ export function placeObjects(plan, bp, opts = {}) {
     }
   }
   /* ── 2b. v2.3.3031: the town's gardens, its two yards, the old grove and its edge ── */
-  if (T && surf) townGrounds({ plan, bp, T, tp: townPlan(T), surf, g, WPA, cellOf, cellPx, BW, BH, N, townR, byId, nearFoot, put, seed, counts });
+  if (T && surf) townGrounds({ plan, bp, T, tp: townPlan(T), surf, g, WPA, cellOf, cellPx, BW, BH, N, townR, byId, nearFoot, put, seed, counts, NC, NX });
   const placedTown = out.kind.length;
 
   /* ── 3. the commons' fences and fields, along the four Old Roads ── */
@@ -952,7 +961,7 @@ export function placeObjects(plan, bp, opts = {}) {
       const count = Math.max(OASIS.min, Math.min(OASIS.max, Math.round(ring / OASIS.step)));
       /* everything about the ring from where the pool is, never from how
          many pools came before it */
-      const ps = seed + 6011, pi = Math.floor(mx / 8), pj = Math.floor(my / 8);
+      const ps = seed + 6011, pi = Math.floor((mx - NX) / 8), pj = Math.floor((my - NX) / 8);
       const a0 = hash2(pi, pj, ps) * 2 * Math.PI;
       const e = byId[land.oasis];
       for (let k = 0; k < count; k++) {
@@ -1016,12 +1025,14 @@ export function placeObjects(plan, bp, opts = {}) {
   /* v2.3.2999: `?placing=2`, the woods, groups and undergrowth of PLACING v2 */
   if (opts.v === 2) natureV2({ plan, bp, seed, cellOf, cellPx, BW, BH, N, worldW, worldH, clear, wet, byId, landOf, townR, commonsR, coversTown, nearOasis, nearFoot, put, counts });
   else for (const L of LAYERS) {
-    const st = L.step, cols = Math.ceil(worldW / st), rows = Math.ceil(worldH / st);
+    const st = L.step;
+    /* v2.3.3315: the lattice from the named corner (NX), over the whole map */
+    const i0 = Math.floor(-NX / st), j0 = i0, cols = Math.ceil((worldW - NX) / st), rows = Math.ceil((worldH - NX) / st);
     const ls = seed + Math.imul(L.id.length + 3, 1013);
-    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    for (let j = j0; j < rows; j++) for (let i = i0; i < cols; i++) {
       /* rounded first (to the half px every foot is kept at), so the cell
          checked is the cell it stands in */
-      const x = Math.round((i + 0.15 + 0.7 * hash2(i, j, ls)) * st * 2) / 2, y = Math.round((j + 0.15 + 0.7 * hash2(i, j, ls + 1)) * st * 2) / 2;
+      const x = NX + Math.round((i + 0.15 + 0.7 * hash2(i, j, ls)) * st * 2) / 2, y = NX + Math.round((j + 0.15 + 0.7 * hash2(i, j, ls + 1)) * st * 2) / 2;
       const c = cellOf(x, y);
       if (c < 0) continue;
       const r = bp.reg[c];
@@ -1038,7 +1049,7 @@ export function placeObjects(plan, bp, opts = {}) {
          field had hoodoos standing at the water's edge) */
       if (land.oasis && wet[c] < (L.id === 'big' ? OASIS.shoreBig : OASIS.shore)) continue;
       /* open ground in drifts and clearings */
-      const drift = 0.5 + 0.5 * fbm(x * DRIFT, y * DRIFT, ls + DRIFT_SEED, 2);
+      const drift = 0.5 + 0.5 * fbm((x - NX) * DRIFT, (y - NX) * DRIFT, ls + DRIFT_SEED, 2);
       const dense = (land.dense && land.dense[L.id]) || 1;
       const chance = (clump ? Math.min(1, L.inClump * Math.sqrt(dense)) : L.open * dense * (0.25 + 1.5 * drift * drift)) * (land === LANDS.commons ? haloK(c) : 1);
       if (hash2(i, j, ls + 2) >= chance) continue;

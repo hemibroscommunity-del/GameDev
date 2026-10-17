@@ -56,23 +56,26 @@ function meanLum(img, box) {
 }
 /* a land's spot a stage in, beside its road on dry ground (as mp-placing2) */
 const SPOT = async (land, tier) => {
-  const { PLAN } = await import(H.REPO + '/public/tools/world/plan.js');
-  const { buildBlueprint, C } = await import(H.REPO + '/public/tools/world/core/layout.js');
-  const { wheelInfo, spokePoint } = await import(H.REPO + '/public/tools/world/core/wheel.js');
+  /* v2.3.3315: at the Wheel the worker plays, from a blueprint of the few
+     cells looked at -- never the whole map, which the long Wheel is far too
+     big for (H.wheelGeom) */
+  const G = await H.wheelGeom();
+  const { spokePoint } = await import(H.REPO + '/public/tools/world/core/wheel.js');
   const { gridInfo } = await import(H.REPO + '/public/tools/world/core/grid.js');
-  const bp = buildBlueprint(PLAN), W = wheelInfo(PLAN), g = gridInfo(PLAN), WPA = PLAN.worldPxPerArtPx;
-  const cellG = bp.scale * WPA;
+  const C = G.C, W = G.W, g = gridInfo(G.plan), WPA = G.WPA, cellG = G.cellG;
   const dry = (x, y) => {
-    for (let v = -4; v <= 4; v++) for (let u = -4; u <= 4; u++) {
-      const c = bp.cls[Math.floor(y / cellG + v) * bp.w + Math.floor(x / cellG + u)];
+    const bx = Math.floor(x / cellG), by = Math.floor(y / cellG);
+    const bp = G.buildBlueprint(G.plan, { x: bx - 4, y: by - 4, w: 9, h: 9 });
+    for (let i = 0; i < 81; i++) {
+      const c = bp.cls[i];
       if (c === C.water || c === C.river || c === C.ocean) return false;
     }
-    const c = bp.cls[Math.floor(y / cellG) * bp.w + Math.floor(x / cellG)];
+    const c = bp.cls[4 * 9 + 4];
     return c === C.ground || c === C.obstacle;
   };
   for (const side of [0.7, -0.7, 0.45, -0.45, 1, -1]) for (const dt of [0, 0.15, -0.15, 0.3]) {
     const [sx, sy] = spokePoint(W.byId[land], W.tierMid(tier + dt), side);
-    const p = { x: Math.round((g.cx + sx * g.P - bp.x0) * WPA), y: Math.round((g.cy + sy * g.P - bp.y0) * WPA) };
+    const p = { x: Math.round((g.cx + sx * g.P - G.F.x0) * WPA), y: Math.round((g.cy + sy * g.P - G.F.y0) * WPA) };
     if (dry(p.x, p.y)) return p;
   }
   return null;

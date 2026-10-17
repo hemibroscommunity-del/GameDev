@@ -38,6 +38,9 @@ import { performance, monitorEventLoopDelay } from 'node:perf_hooks';
 import { PlainWS } from './plainws.mjs';
 import { MOVE_DIET, dietMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3204: --diet, the phone's own rule */
 import { readFileSync } from 'node:fs';
+/* v2.3.3315: the Wheel the server plays -- the live spawn table's (five times
+   longer since v2.3.3315; wheelspawns1.js the short one) */
+import { WHEEL_CENTRE, WHEEL_SAFE_R } from '../../../server/src/wheelspawns.js';
 
 /* ═══ v2.3.3240: --track, THE LOOK EVERY PHONE SENDS EVERY 2 s ═══
    BroTown.jsx sends `track` every 2 s whatever changed: the whole look (hair,
@@ -57,8 +60,9 @@ function trackSample() {
 
 /* v2.3.3199: --no-deflate's WebSocket (plainws.mjs) */
 
-/* worldTrial.js WHEEL.arrival -- the Wheel's town square */
-const ARRIVAL = { x: 21504, y: 21792 };
+/* worldTrial.js WHEEL.arrival -- the Wheel's town square (v2.3.3315: the
+   Wheel the server plays) */
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };
 const MOVE_GAP_MS = 33;          /* wsClient.js MOVE_GAP_SEEN_MS */
 const IDLE_KEEPALIVE_MS = 1000;  /* the client's standing-still keepalive */
 /* v2.3.3199: --move-ms N (load.mjs): a walker's move every N ms instead of
@@ -67,7 +71,7 @@ const IDLE_KEEPALIVE_MS = 1000;  /* the client's standing-still keepalive */
 const moveGap = (bot) => (bot && !bot.fighter && CFG && CFG.townMoveMs > 0 ? CFG.townMoveMs
   : (CFG && CFG.moveGapMs > 0 ? CFG.moveGapMs : MOVE_GAP_MS));
 const WALK_R = 1400;             /* walkers stay in the town and its commons (WHEEL_SAFE_R 2937) */
-const DIET_CENTRE = [21504, 21504], DIET_SAFE_R = 2937;   /* v2.3.3204: the safe ground (wheelspawns.js) */
+const DIET_CENTRE = WHEEL_CENTRE, DIET_SAFE_R = WHEEL_SAFE_R;   /* v2.3.3204: the safe ground (wheelspawns.js) */
 const FIGHT_R = 350;
 const SWING_MS = 700;
 const REACH_PX = 70;
@@ -151,6 +155,9 @@ function connect(bot) {
     bot.state = 'joining';
     send(bot, {
       type: 'join', id: bot.id, name: 'Load' + bot.k, protocolVersion: 2, httpAuth: true,
+      /* v2.3.3315: the Wheels a phone of today draws (wheelSize.js): a bot
+         that said nothing would be kept out of harm on the long one */
+      ws: [1, 5],
       /* v2.3.3250: --pres -- a phone of presence v2 whose world map stays shut */
       ...(CFG.pres ? { pres: 2 } : {}),
       data: { x: 1000, y: 1000, d: 'south', z: 'town', name: 'Load' + bot.k },

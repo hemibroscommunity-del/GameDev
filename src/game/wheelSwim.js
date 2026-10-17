@@ -107,7 +107,13 @@ export function updateWheelSwim(S, now, inWheel, feetDy, waterAt) {
   sw.fx = fx;
   sw.fy = fy;
   const wet = wetProbes(waterAt || wheelWaterAt, sw.fx, sw.fy);
-  const next = swimNext(sw.on, wet);
+  /* v2.3.3315: seated at a fishing spot or a vein, the seat is the bank for
+     as long as you sit there, not only as you sit down (climbOut, below): the
+     drawn shore can lie a few px into a seat, and on the Wheel five times
+     longer one seat of its 250 has four of the five looks wet as drawn
+     (wn-thunder-39) -- SWIM_IN, so the next look put the angler back in the
+     water.  Up from the seat, the looks decide again as ever. */
+  const next = !sw.on && seatedOnBank(S) ? false : swimNext(sw.on, wet);
   if (jumped && next !== sw.on) {
     sw.on = next;
     sw.at = now;
@@ -135,6 +141,13 @@ export function updateWheelSwim(S, now, inWheel, feetDy, waterAt) {
   sw.ph = ph - Math.floor(ph);
   if (ph >= 1) { sw.strokes++; return 'stroke'; }
   return null;
+}
+
+/** v2.3.3315: seated by a harvest that seats you -- fishing or mining
+    (lifeSkillRewards.startExtraction puts you on its baked-dry seat) */
+export function seatedOnBank(S) {
+  const ex = S && S._extraction;
+  return !!(ex && (ex.skill === 'fishing' || ex.skill === 'mining'));
 }
 
 /** Swimming right now? */

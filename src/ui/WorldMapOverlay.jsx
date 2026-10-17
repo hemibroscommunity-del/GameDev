@@ -45,8 +45,8 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { isWheelTrialZone } from '../game/worldTrial.js';
-import { wheelMapInfo, wheelOverviewLands, wheelHere } from '../game/wheelTrial.js';
+import { isWheelTrialZone, WHEELS } from '../game/worldTrial.js';
+import { wheelMapInfo, wheelOverviewLands, wheelHere, wheelLocalLands } from '../game/wheelTrial.js';
 import { ZONES } from '../data/zones.js';   /* v2.3.3039: the world's name (BroTown) */
 import { questRoutePoint } from '../game/questRoute.js';          /* v2.3.3057: the quest's way, as the minimap's */
 import { wheelTownDoors } from '../game/wheelTownDoors.js';       /* v2.3.3057: the buildings, named */
@@ -58,7 +58,20 @@ import { PARTY_MARK, partyIdsOf } from '../game/partyMarks.js';    /* v2.3.3277:
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 /* v2.3.3057: 12 -> 28, so the town's buildings can be read by name */
 const ZOOM_MAX = 28;
-/* what is labelled from which zoom (1 = the whole Wheel on screen) */
+/* v2.3.3315: zoom 1 is still the whole Wheel on screen, but the long Wheel
+   (src/game/wheelSize.js) is ~4x as wide, so the zoom goes ~4x as far.  `rel`
+   is the zoom the short Wheel would need to draw the world this big. */
+function spanK(map) { return Math.max(1, Math.max(map.worldW, map.worldH) / WHEELS[1].worldW); }
+/* what is labelled from which zoom (1 = the whole Wheel on screen).
+   v2.3.3315: what lies ALONG the lands -- their names, stages, level bands,
+   camps, passes, gates, landmarks and roads -- is as far apart as the lands
+   are long, so it comes in at the map's own zoom, as it did; what is the
+   size it is whichever Wheel it is -- the commons, the town's buildings, a
+   bridge or a pond, a resource, a monster, a bro's name (commons, town,
+   bridge, node, monster, otherName) -- at the short Wheel's (`rel`), so the
+   town's buildings still come in at the same size on screen.  (All at `rel`
+   left the long Wheel nine zoom-ins of the eight lands' names and nothing
+   else.) */
 const AT = { landSub: 1.5, stage: 2.2, commons: 1.8, gateName: 1.6, camp: 3, pass: 3, site: 3.6, road: 4.6,
   /* v2.3.3057: the details that come in as you zoom */
   others: 1.5, tier: 2.6, node: 3, monster: 3, bridge: 3.6, tierLv: 4.2, town: 6, otherName: 6 };
@@ -144,7 +157,8 @@ function WorldMap({ stateRef, onClose }) {
   const pinch = useRef(null);
   const dirty = useRef(true);
   const [where, setWhere] = useState(null);
-  const [zoomShown, setZoomShown] = useState(1);
+  /* v2.3.3315: the map's zoom and the short Wheel's (`rel`), for the key */
+  const [zoomShown, setZoomShown] = useState([1, 1]);
   /* v2.3.3277: the key says "party" while one of yours is on the map */
   const [partyShown, setPartyShown] = useState(false);
 
@@ -191,7 +205,7 @@ function WorldMap({ stateRef, onClose }) {
       setWhere((o) => (o === words ? o : words));
       const ps = !!(out && out.more && out.more.party > 0);
       setPartyShown((o) => (o === ps ? o : ps));
-      try { window.__btWorldMap = { open: true, zoom: V.zoom, cx: Math.round(V.cx), cy: Math.round(V.cy), ...out }; } catch (e) { /* no page */ }
+      try { window.__btWorldMap = { open: true, zoom: V.zoom, rel: V.zoom / spanK(map), cx: Math.round(V.cx), cy: Math.round(V.cy), ...out }; } catch (e) { /* no page */ }
     };
     raf = requestAnimationFrame(loop);
     const onResize = () => { dirty.current = true; };
@@ -221,7 +235,7 @@ function WorldMap({ stateRef, onClose }) {
     const cv = cvRef.current, map = wheelMapInfo();
     if (!cv || !map) return;
     const V = view.current, k0 = baseScale(cv.clientWidth, cv.clientHeight, map) * V.zoom;
-    const z = Math.max(1, Math.min(ZOOM_MAX, V.zoom * f));
+    const z = Math.max(1, Math.min(ZOOM_MAX * spanK(map), V.zoom * f));
     const k1 = baseScale(cv.clientWidth, cv.clientHeight, map) * z;
     /* the world point under (sx, sy) stays under it */
     const wx = V.cx + (sx - cv.clientWidth / 2) / k0, wy = V.cy + (sy - cv.clientHeight / 2) / k0;
@@ -229,7 +243,7 @@ function WorldMap({ stateRef, onClose }) {
     V.cx = wx - (sx - cv.clientWidth / 2) / k1;
     V.cy = wy - (sy - cv.clientHeight / 2) / k1;
     clampView(V, map);
-    setZoomShown(z);
+    setZoomShown((o) => (o[0] === z ? o : [z, z / spanK(map)]));
     dirty.current = true;
   };
   const onDown = (e) => {
@@ -268,9 +282,9 @@ function WorldMap({ stateRef, onClose }) {
     if (!S || !S.player || !map) return;
     const V = view.current;
     V.cx = S.player.x; V.cy = S.player.y;
-    V.zoom = Math.max(V.zoom, 4);
+    V.zoom = Math.max(V.zoom, 4 * spanK(map));
     clampView(V, map);
-    setZoomShown(V.zoom);
+    setZoomShown([V.zoom, V.zoom / spanK(map)]);
     dirty.current = true;
   };
   const zoomBtn = (f) => { const cv = cvRef.current; if (cv) zoomAt(f, cv.clientWidth / 2, cv.clientHeight / 2); };
@@ -322,12 +336,12 @@ function WorldMap({ stateRef, onClose }) {
           <Key shape="line" color="#5AAEE8">river</Key>
           <Key shape="star" color={C_STAR}>quest</Key>
           {partyShown ? <Key shape="dot" color={PARTY_MARK.CSS}>party</Key> : null}
-          {zoomShown >= AT.others ? <Key shape="dot" color={C_OTHER}>bro</Key> : null}
-          {zoomShown >= AT.monster ? <Key shape="dot" color={C_MONSTER}>monster</Key> : null}
-          {zoomShown >= AT.node ? <Key shape="dot" color="#E08A45">ore</Key> : null}
-          {zoomShown >= AT.node ? <Key shape="dot" color="#58B85A">tree</Key> : null}
-          {zoomShown >= AT.node ? <Key shape="dot" color="#D6E8F5">fish</Key> : null}
-          {zoomShown < AT.camp ? <span style={{ color: '#B6C1BE' }}>Zoom in for more</span> : null}
+          {zoomShown[0] >= AT.others ? <Key shape="dot" color={C_OTHER}>bro</Key> : null}
+          {zoomShown[1] >= AT.monster ? <Key shape="dot" color={C_MONSTER}>monster</Key> : null}
+          {zoomShown[1] >= AT.node ? <Key shape="dot" color="#E08A45">ore</Key> : null}
+          {zoomShown[1] >= AT.node ? <Key shape="dot" color="#58B85A">tree</Key> : null}
+          {zoomShown[1] >= AT.node ? <Key shape="dot" color="#D6E8F5">fish</Key> : null}
+          {zoomShown[0] < AT.camp ? <span style={{ color: '#B6C1BE' }}>Zoom in for more</span> : null}
         </div>
       </div>
     </div>
@@ -353,7 +367,9 @@ function clampView(V, map) {
 
 /* ── drawing ── */
 function draw(g, w, h, dpr, map, V, P, facing, t, S) {
-  const k = baseScale(w, h, map) * V.zoom, z = V.zoom;
+  /* v2.3.3315: `z` the map's own zoom, for what lies along the lands; `zr`
+     the short Wheel's, for what is the same size on either (AT_REL) */
+  const k = baseScale(w, h, map) * V.zoom, z = V.zoom, zr = V.zoom / spanK(map);
   const X = (x) => (x - V.cx) * k + w / 2, Y = (y) => (y - V.cy) * k + h / 2;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.fillStyle = '#16324A';
@@ -364,6 +380,11 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   if (ov && ov.width) {
     g.imageSmoothingEnabled = true;
     g.drawImage(ov, X(0), Y(0), map.worldW * k, map.worldH * k);
+    /* v2.3.3315: the long Wheel's whole-map picture is a pixel every 16
+       cells; round you the blocks' lands are four times finer, as the
+       short Wheel's whole picture is (wheelTrial.js wheelLocalLands) */
+    const L = P ? wheelLocalLands(P.x, P.y) : null;
+    if (L && L.canvas && L.canvas.width) g.drawImage(L.canvas, X(L.x), Y(L.y), L.w * k, L.h * k);
     g.fillStyle = 'rgba(8, 14, 20, 0.16)';
     g.fillRect(0, 0, w, h);
   }
@@ -405,8 +426,8 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.lineWidth = 1; g.strokeStyle = 'rgba(244,240,231,0.32)'; g.setLineDash([5, 4]); g.stroke(); g.setLineDash([]);
   }
   /* the resources, where they grow: tinted by tier, faint without the tool */
-  if (z >= AT.node && S && Array.isArray(S.gatherNodes)) {
-    const r = Math.max(3, Math.min(7, 2 + z * 0.25));
+  if (zr >= AT.node && S && Array.isArray(S.gatherNodes)) {
+    const r = Math.max(3, Math.min(7, 2 + zr * 0.25));
     for (const n of S.gatherNodes) {
       if (!n || !n.alive || !NODE_TINT[n.nodeType]) continue;
       const x = X(n.x), y = Y(n.y);
@@ -426,7 +447,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     }
   }
   /* the monsters near you (the only ones you are told about), then the bros */
-  if (z >= AT.monster && S && Array.isArray(S.monsters)) {
+  if (zr >= AT.monster && S && Array.isArray(S.monsters)) {
     for (const m of S.monsters) {
       if (!m || m.alive === false || m.dead || (m.hp != null && m.hp <= 0)) continue;
       const x = X(m.x), y = Y(m.y);
@@ -563,7 +584,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     if (o.name && label(o.x, o.y + 12, [o.name], { size: 11, below: true, weight: 700, color: '#CFE0F7' })) more.partyNames++;
   }
   /* v2.3.3057: in town, every building at its door, named (a shut one dim) */
-  if (z >= AT.town) {
+  if (zr >= AT.town) {
     let doors = [];
     try { doors = wheelTownDoors(); } catch (e) { doors = []; }
     for (const d of doors) {
@@ -594,7 +615,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     icon('gate', X(p.x), Y(p.y));
     if (z >= AT.gateName && label(X(p.x), Y(p.y) + 8, [p.name, p.to ? `to ${p.to} · Lv 80–100` : ''].filter(Boolean), { size: 11.5, below: true, subColor: '#D9B8FF' })) counts.gates++;
   }
-  if (z >= AT.commons) label(X(map.hub.commons.x), Y(map.hub.commons.y), [map.hub.commons.name, 'safe, no monsters'], { size: 11.5, weight: 600 });
+  if (zr >= AT.commons) label(X(map.hub.commons.x), Y(map.hub.commons.y), [map.hub.commons.name, 'safe, no monsters'], { size: 11.5, weight: 600 });
   /* each land's stages */
   if (z >= AT.stage) {
     for (const st of map.stages) {
@@ -619,7 +640,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     }
   }
   /* v2.3.3057: the bridges and the ponds, named */
-  if (z >= AT.bridge) {
+  if (zr >= AT.bridge) {
     for (const p of map.places) {
       if (p.kind !== 'bridge' && p.kind !== 'pond') continue;
       const x = X(p.x), y = Y(p.y);
@@ -632,7 +653,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     }
   }
   /* v2.3.3057: the bros' names, close in */
-  if (z >= AT.otherName) for (const o of othersAt) if (o.name) label(o.x, o.y + 7, [o.name], { size: 10.5, below: true, weight: 600, color: '#BFF0C8' });
+  if (zr >= AT.otherName) for (const o of othersAt) if (o.name) label(o.x, o.y + 7, [o.name], { size: 10.5, below: true, weight: 600, color: '#BFF0C8' });
   /* v2.3.3057: "Lv 6–10" in each band, the last thing placed (any label
      above wins its room) */
   if (z >= AT.tierLv) {

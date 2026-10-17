@@ -3087,6 +3087,38 @@ see: the ground worker stops building the whole Wheel on the way in.
 
 docs/specs/wheel-in-blocks.md has the numbers and the tests.
 
+## The Wheel five times longer (v2.3.3315)
+
+Step 2 of the owner's "Rebuild for 5x": **every land's stretches are five
+times as long** -- a five-level stretch 5,120 game px (~34 s of walking), not
+1,024 -- with five times the monsters a stretch (1,920), 1,222 resources and
+63,486 things standing. BroTown and the commons are the same ground.
+
+- **Two plans, one picked at runtime.** `plan.js PLAN5` (`tierZones` x5, the
+  active area grown `wheelGrow` squares past the frame, `grid.js
+  active.grow`) and `PLAN`; `wheelSized(size)`, `planFor(search, size)`. The
+  previews (`?bigtown`, `?plaintown`, `?placing=2`) stay the short Wheel's
+  (`wheelPreview`): their objects need the whole map.
+- **The hub's noise counted from the plan's own corner** (`nox`/`noy`,
+  `layout.js planFeatures`): ground.js `materialMap` and the planks,
+  placing.js's lattices and noise (`NC`/`NX`). Without it, growing the frame
+  re-rolled every swatch and tree in town.
+- **Baked per size.** `bake-wheel-world.mjs` writes `public/world/placed5/`
+  (the overview a pixel every 16 cells, `overviewCells`) and
+  `public/world/placed/`; `bake-wheel-spawns.mjs` writes
+  `server/src/wheelspawns.js` (long, live) and `wheelspawns1.js` (short), 60
+  places a stretch on the long one. Re-bake both on any plan, catalog,
+  placing or spawn-rule change; test-world-core checks both.
+- **The worker picks** (`server/src/wheeltables.js`): the long Wheel unless
+  `wheel5x: false`, said in `caps.wheelsize`; a phone joining says which it
+  draws (`ws`), and one that says nothing is kept out of harm.
+- **The phone** builds the size it is told (`src/game/wheelSize.js`); its
+  minimap and world map draw the blocks round you at the short Wheel's detail
+  over the coarse picture (`wheelLocalLands`), the world map zooming ~4x
+  further with every step at the short Wheel's scale.
+
+docs/specs/wheel-5x.md has the numbers, the tests and what is not done yet.
+
 ## The Wheel is the world (v2.3.2990)
 
 > Owner, 2026-10-02: *"I'm ready to have this replace the old game map. Just

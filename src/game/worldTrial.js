@@ -59,6 +59,7 @@ import { swimFeet } from './wheelSwim.js';   /* v2.3.3003: the footstep's ground
 import { setAlwaysDay } from './timeOfDay.js';
 import { setClosedDoorZones, setWheelDoorsOpen } from '../data/gameSystems.js';   /* v2.3.3029: today's town's doors, out of reach with no way back; v2.3.3032: and the Wheel's own */
 import { wheelArtStats } from '../rendering/wheelMonsterArt.js';   /* v2.3.2989: the monsters' looks, loaded as you walk toward them */
+import { wheelLong, onWheelLong, wheelSizeTold } from './wheelSize.js';   /* v2.3.3315: which Wheel the room plays */
 
 export const WORLD_TRIAL_ZONE = 'worldview';
 /* v2.3.2978: the Wheel's own zone, where the server stands each element
@@ -79,11 +80,16 @@ const BAKED = {
   townExit: { tx: 204, ty: 245 },
 };
 /* v2.3.2943: the Wheel's, as the plan puts them today (the ground worker's
-   'ready' reports them from the plan itself, and they are corrected then). */
-const WHEEL = {
-  worldW: 43008, worldH: 43008,
-  arrival: { x: 21504, y: 21792 },       /* the town square */
+   'ready' reports them from the plan itself, and they are corrected then).
+   v2.3.3315: one a Wheel the room may play (src/game/wheelSize.js): the
+   short one, and the one five times longer (plan.js PLAN5) -- its size the
+   whole blueprint's (7,264 cells of 24 game px) and its town square at the
+   middle as ever.  MIRROR of the plan (test-world-core). */
+export const WHEELS = {
+  1: { worldW: 43008, worldH: 43008, arrival: { x: 21504, y: 21792 } },
+  5: { worldW: 174336, worldH: 174336, arrival: { x: 87168, y: 87456 } },
 };
+let WHEEL = WHEELS[1];
 /* How long the Wheel's worker outlives your leaving: a quick look back into
    town does not cost the plan build again. */
 const WHEEL_LINGER_MS = 5000;
@@ -173,6 +179,20 @@ function readFlag() {
   }
 }
 
+/* v2.3.3315: the room plays the Wheel five times longer (caps.wheelsize,
+   src/game/wheelSize.js): its size and its way in, before the way in --
+   applyWorldTrial runs before the game mounts, when only the short one is
+   known.  (A room that changes size under a Wheel already built reloads the
+   page instead: wheelSize.js.) */
+onWheelLong((n) => {
+  if (!_on || _mode !== 'wheel') return;
+  WHEEL = WHEELS[n] || WHEELS[1];
+  const z = ZONES[WORLD_TRIAL_ZONE];
+  z.w = Math.round(WHEEL.worldW / TILE);
+  z.h = Math.round(WHEEL.worldH / TILE);
+  setExits(wheelWayBack() ? exitBeside(WHEEL.arrival) : null, WHEEL.arrival, 'west');
+});
+
 /* Called once from main.jsx, before the game mounts. */
 export function applyWorldTrial() {
   if (_on) return false;
@@ -187,6 +207,7 @@ export function applyWorldTrial() {
   _on = true;
   _mode = mode;
   const z = ZONES[WORLD_TRIAL_ZONE];
+  if (mode === 'wheel') WHEEL = WHEELS[wheelLong()] || WHEELS[1];   /* v2.3.3315 */
   const size = mode === 'wheel' ? WHEEL : BAKED;
   z.name = mode === 'wheel' ? 'BroTown' /* v2.3.3039: the name players see (zones.js) */ : 'World Trial';
   z.w = Math.round(size.worldW / TILE);
@@ -364,6 +385,10 @@ async function preloadWheel() {
   /* v2.3.2967: the grounds' footsteps, behind the same overlay -- but never
      holding it up past STEPS_WAIT_MS: a step whose clip is late plays dirt */
   const steps = loadGroundSteps();
+  /* v2.3.3315: which Wheel the room plays (caps.wheelsize) before it is
+     built -- one built at the wrong size reloads the page.  The way in waits
+     for the caps already (wheelHome.js); a road that did not, 8 s at most */
+  await wheelSizeTold(8000);
   const info = await wheelStart();
   if (info.arrival) setExits(wheelWayBack() ? exitBeside(info.arrival) : null, info.arrival, 'west');   /* v2.3.3025: no way back */
   /* v2.3.3011: as much round the arrival as the view will really show.  The

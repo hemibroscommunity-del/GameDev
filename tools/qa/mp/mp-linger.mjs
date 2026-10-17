@@ -123,7 +123,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── out to a quiet spot on a Lv 6-10 ring, untouchable on the way ── */
   for (const id of [idA, idB]) await H.devOp(wsPort, 'vitals', id, { heal: true, god: true, godMinutes: 6 });
+  /* v2.3.3315: the Wheel the worker plays, and No man's land's rings as wide
+     as its stretches (TRAPS §196; mp-nomansland's) */
+  const LONG = (await H.wheelGeom()).long;
   const { WHEEL_SPAWNS, WHEEL_CENTRE } = await import(H.REPO + '/server/src/wheelspawns.js');
+  const { NML } = await import(H.REPO + '/src/data/noMansLandRings.js');
+  const T = NML.TIER * LONG;
   const monsterPts = [];
   for (const k of Object.keys(WHEEL_SPAWNS)) {
     for (const p of WHEEL_SPAWNS[k].points) monsterPts.push(p);
@@ -134,7 +139,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const a = WHEEL_SPAWNS[land].anchor;
     const L = Math.hypot(a[0] - WHEEL_CENTRE[0], a[1] - WHEEL_CENTRE[1]);
     const ux = (a[0] - WHEEL_CENTRE[0]) / L, uy = (a[1] - WHEEL_CENTRE[1]) / L;
-    for (let r = 3950; r <= 4650; r += 50) {
+    for (let r = NML.HUB + T + 160; r <= NML.HUB + 2 * T - 160; r += 50 * LONG) {
       for (let lat = -600; lat <= 600; lat += 50) {
         const x = WHEEL_CENTRE[0] + ux * r - uy * lat, y = WHEEL_CENTRE[1] + uy * r + ux * lat;
         let md = Infinity;

@@ -72,7 +72,9 @@ const room = new GameRoom(mockState(), mockEnv);
 for (const pid of ['p0', 'p1']) {
   const ws = fakeWs(pid);
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id: pid, name: 'Player ' + pid, protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
+  /* v2.3.3315: the Wheels a phone of today draws -- one that says none is out
+     of step with the long Wheel and no monster's hit reaches it (TRAPS §196) */
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id: pid, name: 'Player ' + pid, protocolVersion: 2, ws: [1, 5], data: { x: 1000, y: 1000, z: 'town' } }));
 }
 const P = room.playerState.p1;          /* the one being hit */
 const Q = room.playerState.p0;          /* the storm's first target, and a bystander */

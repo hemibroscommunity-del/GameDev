@@ -1100,10 +1100,24 @@ export function bigTownScale(search) {
    v2.3.3031: `plaintown` the standard size without the designed town (PLAIN):
    the town's one tan clearing, plain square and plots in their rows, to look
    at it beside the designed one */
-export function planFor(search) {
+export function planFor(search, size = 1) {
   const k = bigTownScale(search);
   if (k == null && /(?:^|[?&])plaintown(?:&|$)/.test(search || '')) return PLAIN;
-  return k == null ? PLAN : bigTownPlan(k);
+  if (k != null) return bigTownPlan(k);
+  /* v2.3.3315: the Wheel the room plays (caps.wheelsize) -- but the previews,
+     the town sizes above and `?placing=2`, are the short Wheel's: their
+     objects are worked out from the whole map, which the long one is far too
+     big for on a phone */
+  if (wheelPreview(search)) return PLAN;
+  return wheelSized(size);
+}
+/* v2.3.3315: whether the address asks for a preview (a town size, the plain
+   town, placing v2), which is the short Wheel's whatever the room plays --
+   so the page tells the worker it draws the short one only (its join's `ws`).
+   MIRROR: src/game/wheelSize.js wheelPreviewAddress (test-world-core). */
+export function wheelPreview(search) {
+  const s = search || '';
+  return bigTownScale(s) != null || /(?:^|[?&])plaintown(?:&|$)/.test(s) || /(?:^|[?&])placing=2(?:&|$)/.test(s);
 }
 
 /* The plan with the town laid for buildings `k` times the size, or the plan
@@ -1116,9 +1130,9 @@ export function planFor(search) {
    water and the objects' own footprints), so a plot bigger than its
    building is more yard round it.  The standard: laid TOWN, drawn
    BUILDINGS. */
-export function bigTownPlan(k, pictures = k, design = true) {
-  if (!(k > 1)) return BASE_PLAN;
-  if (k === TOWN && pictures === BUILDINGS && design && _standard) return _standard;
+export function bigTownPlan(k, pictures = k, design = true, long = 1) {
+  if (!(k > 1) && !(long > 1)) return BASE_PLAN;
+  if (k === TOWN && pictures === BUILDINGS && design && long === 1 && _standard) return _standard;
   const T = BASE_PLAN.town, L = T.lot;
   const grow = (v) => Math.round(v * k), half = (v) => Math.round((v * (1 + k)) / 2);
   const lot = { ...L, w: grow(L.w), d: grow(L.d), tall: grow(L.tall), walk: half(L.walk), gap: half(L.gap), perSideRow: k > TWO_A_SIDE_MAX ? 1 : L.perSide };
@@ -1160,8 +1174,42 @@ export function bigTownPlan(k, pictures = k, design = true) {
   const places = BASE_ROUTES.places.map((pl) => (pl.id === 'mill' ? millAt(pl) : pl.id === 'depot' ? out(pl, 0, town.gateEW) : pl));
   const P = { ...BASE_PLAN, town, bigTown: k, wheel: { ...BASE_PLAN.wheel },
     roads: BASE_ROUTES.roads.slice(), rivers: BASE_ROUTES.rivers.slice(), rails: BASE_ROUTES.rails.slice(), places };
+  /* v2.3.3315: every land `long` times longer (wheelSized, below) */
+  if (long > 1) {
+    P.wheel.tierZones = BASE_PLAN.wheel.tierZones * long;
+    P.active = { ...BASE_PLAN.active, grow: wheelGrow(P) };
+  }
   layWheel(P);
   return P;
+}
+
+/* ═══ v2.3.3315: THE WHEEL FIVE TIMES LONGER ═══
+ *
+ * The owner, 2026-10-17: "the game map needs to be larger. It goes from lvl 1
+ * monsters to lvl 20+ way too quickly. Maybe 5x larger map is needed" -- and,
+ * offered the ways to get there, "Rebuild for 5x".  So every land's tiers are
+ * WHEEL_LONG times longer: five zones of walking per five levels, not one
+ * (`wheel.tierZones`), the town, the commons and every land's width as they
+ * were.  Everything laid in tiers follows (wheel.js, layWheel above): the
+ * roads, the passes, the camps, the landmarks, the river, the railway, each
+ * land's woods, ponds and cliffs (by area), and the monsters and resources
+ * baked from the plan (tools/world/bake-wheel-spawns.mjs).
+ *
+ * The active area grows round the centre by as much as the tips moved out
+ * (wheelGrow: 57 squares each way, past the frame -- grid.js `grow`), so the
+ * frame, its names and every position measured from it stay put.
+ *
+ * Which size the game plays is the server's (caps.wheelsize, worldTrial.js):
+ * PLAN5 when it says 5, PLAN otherwise -- the monsters stand where its own
+ * table puts them, and a worker that does not know the longer Wheel keeps
+ * the short one.  The previews (`?bigtown=`, `?plaintown`, `?placing=2`)
+ * are the short Wheel's.
+ */
+export const WHEEL_LONG = 5;
+/* squares the active area must grow each way for P's Wheel: as far as its
+   tips reach past the plan's own (a whole number of squares) */
+function wheelGrow(P) {
+  return Math.max(0, Math.ceil(wheelInfo(P).tipR - wheelInfo(BASE_PLAN).tipR));
 }
 
 /* ═══ v2.3.2994: 1.5x IS THE STANDARD SIZE ═══
@@ -1217,3 +1265,9 @@ export const PLAN = bigTownPlan(TOWN, BUILDINGS);
 _standard = PLAN;
 /* v2.3.3031: ...the same, without the designed town (`?plaintown`) */
 export const PLAIN = bigTownPlan(TOWN, BUILDINGS, false);
+/* v2.3.3315: the standard plan with every land WHEEL_LONG times longer */
+export const PLAN5 = bigTownPlan(TOWN, BUILDINGS, true, WHEEL_LONG);
+/* The standard plan at `size` (1 or WHEEL_LONG; anything else is 1) */
+export function wheelSized(size) {
+  return size === WHEEL_LONG ? PLAN5 : PLAN;
+}

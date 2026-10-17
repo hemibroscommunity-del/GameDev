@@ -52,7 +52,8 @@ const FIND = (P, what) => P.page.evaluate(async ({ what }) => {
   if (window.__btWheelBlocks) await window.__btWheelBlocks(S.player.x, S.player.y, (R0 + 12) * cell);
   const held = new Map();
   const rowOf = (r) => { let a = held.get(r); if (!a) { a = g[r]; held.set(r, a); } return a; };
-  const open = (r, c) => r >= 0 && r < rows && c >= 0 && c < cols && rowOf(r)[c] !== false;
+  /* v2.3.3315: a wall is false, or 0 in the Wheel's byte rows (wheelTrial.js lazyGrid) */
+  const open = (r, c) => r >= 0 && r < rows && c >= 0 && c < cols && rowOf(r)[c] !== false && rowOf(r)[c] !== 0;
   const swim = (r, c) => at((c + 0.5) * cell, (r + 0.5) * cell).swim;
   const kind = (r, c) => (!open(r, c) ? 'shut' : swim(r, c) ? 'swim' : 'land');
   const px = S.player.x, py = S.player.y;

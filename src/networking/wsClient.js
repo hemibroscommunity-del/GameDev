@@ -36,7 +36,8 @@ import { peerEntrySlim, broCountOf } from '@/networking/broWallet.js'; /* v2.3.3
 import { MOVE_DIET, dietMayWait, steadyMove } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often */
 import { QUIET, quietOn, bundleOn, lookNews, peerNear, quietMoveGap, framesOf } from '@/game/quietPhone.js'; /* v2.3.3254: the quiet phone */
 import { nmlCanAttack } from '@/game/noMansLand.js'; /* v2.3.3254: a steady walk is not held near a player who may fight you */
-import { NML_CENTRE } from '@/data/noMansLandRings.js'; /* v2.3.3204: the Wheel's middle, the safe ground's centre */
+import { NML_CENTRE, NML_CENTRES } from '@/data/noMansLandRings.js'; /* v2.3.3204: the Wheel's middle, the safe ground's centre */
+import { wheelLong, setWheelLong, wheelSizesDrawn } from '@/game/wheelSize.js'; /* v2.3.3315: which Wheel the room plays */
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
 /* v2.3.1961: the ONE wire-key -> peer-field rename table, read by the join
@@ -526,6 +527,10 @@ export function setupWebSocket(ctx) {
              player's look sent when they come around (src/game/nearJoin.js,
              server/src/nearjoin.js).  Old workers ignore it. */
           nj: 1,
+          /* v2.3.3315: the Wheels this phone draws (src/game/wheelSize.js):
+             the worker keeps a phone that does not draw the one it plays out
+             of harm.  Old workers ignore it. */
+          ws: wheelSizesDrawn(),
           /* v2.3.1178: declare we attach the per-session state_sync
              token (x-bt-auth header) to mutating economy POSTs, so the
              worker ENFORCES it for this session. Old workers ignore
@@ -1343,6 +1348,9 @@ export function setupWebSocket(ctx) {
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
               _capsHere = true;   /* v2.3.3254: this socket's caps (the quiet phone's bundles) */
+              /* v2.3.3315: the Wheel the room plays -- 5 times longer, or the
+                 short one (no word: an older worker, the short one) */
+              try { setWheelLong(S._serverCaps.wheelsize); } catch (e) { /* the short one stays */ }
               /* v2.3.2439: is this a server the game can be shown on?  The
                  loading screen and the in-world veil both key off this
                  (serverReady.js).  Not ready -> the world stays covered and
@@ -4555,7 +4563,7 @@ export function setupWebSocket(ctx) {
           return steadyMove(_moveSent, _pendingMove, _moveSentMadeAt, _pendingMoveAt);
         }
         return dietMayWait(moveDietOn(), _pendingMove, _pendingMoveAt, _moveSent, _moveSentMadeAt,
-          NML_CENTRE, ZONES && ZONES.wheel && ZONES.wheel.safeR);
+          NML_CENTRES[wheelLong()] || NML_CENTRE, ZONES && ZONES.wheel && ZONES.wheel.safeR);
       } catch (e) {
         return false;
       }
