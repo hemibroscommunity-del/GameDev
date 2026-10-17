@@ -6486,7 +6486,7 @@ is hit and for how much before the rail; the door does every step after that.
 **Receipt:** the seven copies are wrappers now, the 193 checks that measured
 them passing unchanged.
 
-## 189. "A blob written by current code is current-shape" (v2.3.3303)
+## 191. "A blob written by current code is current-shape" (v2.3.3303)
 
 **Tempting:** `_saveRpg` writes from the code's own fixed field list, so stamp
 the save with the constant `RPG_SCHEMA_VERSION`: whatever it writes is the
