@@ -5970,7 +5970,14 @@ export class GameRoom {
       this._codexForget(session.id);
       delete this.stateHistory[session.id];
       }
-      delete this.extractions[session.id];
+      /* v2.3.3322: the extraction record is NOT deleted here any more.  A
+         harvest's strike is paid only against its own start now
+         (gathering.js HARVEST_PROOF), and the phone replays a strike its
+         dropped socket ate after it rejoins (wsClient.js _holdForRejoin): the
+         record must outlive the socket for the replay to be timed against it.
+         _sweepStaleExtractions collects it at EXTRACTION_TIMEOUT_MS as ever,
+         and nothing reads it for a player who is not here (_extractionShielded
+         asks for the player first). */
       if (!_linger) this.dirtyPlayers.delete(session.id);   /* v2.3.3260: the body's stop goes out first */
       // v2.3.1121: an active duel gets a 15s reconnect grace (iOS tab
       // suspends and deploy bounces are routine) before _tickDuels

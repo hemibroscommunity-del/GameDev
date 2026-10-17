@@ -135,7 +135,8 @@ export const lingerMethods = {
     const codex = this._codexDirtyCopy(id);
     this._codexForget(id);
     delete this.stateHistory[id];
-    delete this.extractions[id];
+    /* v2.3.3322: the extraction record outlives the body, as it outlives a
+       socket (index.js webSocketClose; gathering.js HARVEST_PROOF) */
     this.dirtyPlayers.delete(id);
     if (!quiet) this.broadcastAll({ type: 'player_leave', id });
     /* the body's last word: its HP, bag and all, as it stands now (a hit
