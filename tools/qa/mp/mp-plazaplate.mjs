@@ -147,7 +147,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     const grid = S._tiledWalkable.town;
     const gh = grid.length, gw = grid[0].length;
-    const W = 52 * 32, H = 55 * 32;
+    /* v2.3.3324: read, not repeated -- town is 68x72 since v2.3.2628; at 52x55
+       every prop was looked up in the wrong cell, and three "passed" only on
+       the rock ring (the sweep of 2026-10-17) */
+    const z = (window.__btZones || {}).town;
+    const W = z.w * 32, H = z.h * 32;
     const at = (x, y) => {
       const gx = Math.floor(x * gw / W), gy = Math.floor(y * gh / H);
       return !(grid[gy] && grid[gy][gx]);          /* false in the grid = solid */
@@ -165,7 +169,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const soft = blocked.filter((b) => !b.solidAtBase).map((b) => b.id);
   rec.ok(`every prop in town is solid, with no exceptions left `
        + `(${blocked.length - soft.length} of ${blocked.length})`,
-    blocked.length >= 10 && soft.length === 0, { soft });
+    blocked.length >= 9 && soft.length === 0, { soft });   /* v2.3.3324: nine props since v2.3.2631 */
   rec.ok('...and no gate banner remains to stand on the stairs',
     !blocked.some((b) => String(b.id).startsWith('banner-gate')),
     blocked.map((b) => b.id));
