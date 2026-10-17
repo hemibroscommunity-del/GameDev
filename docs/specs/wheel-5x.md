@@ -98,9 +98,30 @@ block the worker builds brings its lands a pixel every 4 cells (the short
 Wheel's own detail, `ground-worker.js blockLands`), and the minimap and the
 world map draw the blocks round you over the coarse picture
 (`wheelTrial.js wheelLocalLands`). The world map's zoom 1 is still the whole
-Wheel; it zooms ~4x further on the long one, and every "what is shown from
-which zoom" step is taken at the short Wheel's scale (`spanK`), so the
-town's buildings come in at the same size on screen whichever Wheel it is.
+Wheel, and it zooms ~4x further on the long one. What lies ALONG the lands
+(their names, stages, level bands, camps, passes, gates, landmarks and
+roads) is as far apart as the lands are long, so it still comes in at the
+map's own zoom. What is the same size on either Wheel (the commons, the
+town's buildings, a bridge or a pond, a resource, a monster, a bro's name)
+comes in at the short Wheel's scale (`spanK`, `rel`), so the town's
+buildings still come in at the same size on screen. The first cut took
+every step at the short Wheel's scale, which left the long Wheel nine
+zoom-ins of the eight lands' names and nothing else.
+
+**A seat stays the bank while you sit on it.** The resources are placed by
+the plan's cells, and the ground is drawn with edges that wander a few px
+past them. A survey of every fishing spot against the ground as drawn (the
+game's own pictures through `composeGround`, as the worker lays a piece)
+found, on the short Wheel, 1 of 55 with the school's edge over a sliver of
+bank (wn-commons-15: a fish there dives, `wheelNodes.js`). On the long
+Wheel it found the same one, and 14 of 250 seats with 2 to 4 of the
+swimmer's five looks round the boots drawn wet. Seating already ends a
+swim (`climbOut`, v2.3.3012) and only four wet looks start one, so 13 of
+those were fine. One, wn-thunder-39, had four, and the angler was put back
+in the water the moment he sat. Now a fishing or mining seat stays the
+bank for as long as you sit on it (`wheelSwim.js seatedOnBank`). That fixes
+every such seat, whatever the pictures are, and the server's tables still
+never depend on the pictures.
 
 **The way in** still carries every monster (~580 KB of `zone_state` for the
 1,920, against ~103 KB on the short Wheel), once. Sending only the ones in
