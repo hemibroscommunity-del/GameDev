@@ -6638,7 +6638,7 @@ two runs each: home after three trips 83.2-85.2 MB of the chip on main,
 (+4.1/+4.2 in CI), -1.6 and -1.5 with this. mp-chatbubble and mp-chatfont,
 25 of 25.
 
-## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3309)
+## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3312)
 
 **Tempting:** a pose that swaps the body for a painted figure (the cook, the
 fire-lighter, the lumberjack) is baked once with your colours, and every other

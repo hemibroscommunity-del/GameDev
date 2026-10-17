@@ -272,7 +272,7 @@ const _shoesStore = makeStore('bt-shoes', 'default');
 export const getSkin = _skinStore.get,  setSkin = _skinStore.set,  onSkinChange = _skinStore.on;
 export const getPants = _pantsStore.get, setPants = _pantsStore.set, onPantsChange = _pantsStore.on;
 export const getShoes = _shoesStore.get, setShoes = _shoesStore.set, onShoesChange = _shoesStore.on;
-/* v2.3.3309: the stores' setters for QA, the trait catalogs' window.__btSet*
+/* v2.3.3312: the stores' setters for QA, the trait catalogs' window.__btSet*
    seam (mp-peercolours dresses a player in another's colours mid-run, as the
    character menu would). */
 if (typeof window !== 'undefined') {
