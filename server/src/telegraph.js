@@ -79,8 +79,8 @@
  * enough shape to deserve its own change.
  */
 
-import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from './data.js';
-import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3056: the safe ground's shelter, above the block branches */
+/* v2.3.3296: the block costs and the safe ground moved to the one door with
+   the hits that read them (hits.js) */
 
 /* Per-archetype kits.  `radius` is the execute-time hit radius, and it is
    deliberately WIDER than MONSTER_ATTACK_RANGE: a telegraphed attack you
@@ -420,117 +420,41 @@ export const telegraphMethods = {
     this._markMonsterDirty(zoneId, m.id);
   },
 
-  /* One telegraphed hit vs one player.  Mirrors _dungeonBossHitPlayer's
-     rails — directional block, no-oneshot clamp before _applyDamage, damage
-     tracking, monster_attack emission, save/flush, death check — so these
-     abilities are authoritative in exactly the same way the basic swing is.
-     No thorns reflect, for the boss kit's reason: the reflect surface stays
-     pinned to one per basic swing, and an AoE that also triggered it would
-     multiply thorns output per cast. */
+  /* One telegraphed hit vs one player.
+     v2.3.3296: through the one door (hits.js): the kit's row for a slam or a
+     lunge, the burst's for a blue slime going off -- the directional shield
+     and its parry and cost (v2.3.1731/1812: turtling through a cast costs on
+     the same terms as a swing), the no-one-shot rail before the dice, and
+     everything after.  What stays here is who can be hit and the blow before
+     its rail.  No old-thorns reflect, for the boss kit's reason: the reflect
+     surface stays pinned to one per basic swing, and an AoE that also
+     triggered it would multiply thorns output per cast. */
   _telegraphHitPlayer(zoneId, m, pid, kit) {
     const ps = this.playerState[pid];
     if (!ps || ps.dead || ps.dying) return 0;
     if (ps._spar) return 0;   /* v2.3.3265: no monster sees a sparring clone (spar.js) */
-    /* v2.3.3056: the Wheel's safe ground shelters here too, ABOVE the block
-       branch (a parry or a turtle's stamina cost is a hit landing): a lunge,
-       a slam or a blue slime's burst wound up before you stepped on it
-       reached you there, which _monsterStrikePlayer's gate never saw -- and
-       a monster you provoked from it still reaches you (wheelzone.js). */
-    if (zoneId === WHEEL_ZONE && this._wheelSheltered && this._wheelSheltered(m, pid, ps.x, ps.y, Date.now())) return 0;
-    if (this._blockArcCovers(ps, m.x, m.y)) {
-      /* v2.3.1731: parrying a TELEGRAPHED hit is the marquee case — the
-         wind-up is exactly the readable cue a timed block wants, so a
-         player who waits for the swing instead of turtling through it gets
-         the stagger and the stamina back. */
-      const nowB = Date.now();
-      const parried = this._parryOpen(ps, nowB);
-      if (parried) this._applyParry(zoneId, m, pid, ps, nowB);
-      /* v2.3.1812: ...and turtling through one COSTS, on the same terms as
-         turtling through a basic swing (index.js's block branch).  This was
-         missing, and it only stopped mattering because the two archetypes
-         that could telegraph were ones a beginner meets late.  Handing
-         fodder a kit would have made every early block free — the exact
-         infinite turtle BLOCK_COSTS_STAMINA exists to end — so the cost
-         moves here rather than the kit being held back.  Same constant,
-         same Bulwark discount, same Math.max(1) floor that hardening.test
-         pins, same staminaDrain on the wire so the client's "-N⚡" pop
-         matches what the server actually charged. */
-      const staminaCost = (BLOCK_COSTS_STAMINA && !parried)
-        ? Math.max(1, Math.round(BLOCK_STAMINA_COST * this._blockStaminaMult(ps)))
-        : 0;
-      if (staminaCost > 0 && typeof ps.stamina === 'number') {
-        ps.stamina = Math.max(0, ps.stamina - staminaCost);
-        this._saveRpgPools(pid, ps);          /* coalesced — see v2.3.1619b */
-        this._queuePlayerStateFlush(pid);
-      }
-      this.eventBuffer.push({
-        type: 'monster_attack',
-        payload: {
-          monsterId: m.id, targetId: pid, dmg: m.dmg, dmgTaken: 0, blocked: true,
-          parried: parried || undefined,
-          staminaDrain: staminaCost > 0 ? staminaCost : undefined,
-          zone: zoneId, attackerX: m.x, attackerY: m.y,
-        },
-      });
-      return 0;
-    }
     /* v2.3.2224: `kit.flat` is a FIXED amount (the slime burst's 60) rather
        than a multiple of the monster's own damage -- a fodder slime's dmg is
        small enough that a multiplier big enough to reach 60 would swing
-       wildly with monster level.  It still passes through MAX_HIT_PCT below,
-       so a flat number can never become a one-shot on a fresh character. */
-    /* v2.3.3260: ONE FORMULA -- a flat amount is scaled with the players' bars
+       wildly with monster level.  It still meets the rail (MAX_HIT_PCT), so a
+       flat number can never become a one-shot on a fresh character.
+       v2.3.3260: ONE FORMULA -- a flat amount is scaled with the players' bars
        as every monster's own `dmg` is (oneformula.js), or the slime's burst
-       would shrink to a fifth of what it was against them */
-    const raw = Math.min(
-      kit.flat ? Math.ceil(kit.flat * this._monsterHitK(m.level)) : Math.ceil(m.dmg * kit.dmgMult),
-      Math.max(1, Math.floor((ps.maxHp || 100) * TELEGRAPH.MAX_HIT_PCT)),
-    );
-    /* v2.3.2512: the blue slime's death burst is an ELEMENTAL blast and the
-       new ELEM RESIST stat reads it; a brute's slam and a fodder's lunge are
-       ordinary untyped hits and are not resisted (PROG3.BODY.eres carries
-       the closed list and why it is closed). */
-    const res = this._applyDamage(ps, raw, false, { elemental: kit.kind === 'burst', attackerLevel: m.level });  /* v2.3.2680: + the edge */
-    if (!res.dodged) {
-      this._trackMonsterDamage(ps, m.id, res.graced ? (res.dmgIntent || 0) : res.dmgTaken);
-    }
-    /* v2.3.2996: a telegraphed hit carries its monster's element too -- a
-       blue slime's burst holds you, a fire goblin's lunge sets you burning
-       (monsterstatus.js) */
-    const _elemHit = this._elemOnHit ? this._elemOnHit(zoneId, m, pid, ps, res, Date.now()) : null;
-    this.eventBuffer.push({
-      type: 'monster_attack',
-      payload: {
-        monsterId: m.id, targetId: pid, dmg: raw, dmgTaken: res.dmgTaken,
-        dodged: res.dodged, secondWind: res.secondWind || undefined,
-        hp: Math.max(0, Math.round(ps.hp || 0)),   /* v2.3.3263: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
-        zone: zoneId, attackerX: m.x, attackerY: m.y,
-        /* ═══ v2.3.2235: SAY THAT THIS ONE WAS RESOLVED HERE ═══
-           Owner, on the exploding slime: "I don't think I saw damage
-           numbers on my own health bar ... once slime exploded."
-
-           The client's monster_attack handler drops an event when the
-           attacker is not in its local monster snapshot, or when the
-           attacker is more than 160px from where the player is NOW.  Both
-           filters were written against melee "ghost hits" and both are
-           the wrong question for a telegraph hit: this damage was resolved
-           against where the player stood at DETONATION, by a monster that
-           is in the act of dying, and the sane response to a swelling
-           slime is to run.  Measured -- each filter swallows the number on
-           its own (tools/qa/mp/mp-burstdmg.mjs).
-
-           The client cannot tell the two apart without being told, so this
-           tells it: the kit's kind, display-only, nothing server-side
-           reads it back.  Deploy-order (rule 19): an older worker omits
-           it and the client keeps its current filtering exactly. */
-        ability: (kit && kit.kind) || undefined,
-        ...(_elemHit || null),   /* v2.3.2996: elem / st / stMs / kb */
-      },
+       would shrink to a fifth of what it was against them.
+       v2.3.2512: the burst is an ELEMENTAL blast (its row says so) and ELEM
+       RESIST reads it; a slam and a lunge are ordinary untyped hits. */
+    const raw = kit.flat ? Math.ceil(kit.flat * this._monsterHitK(m.level)) : Math.ceil(m.dmg * kit.dmgMult);
+    return this._monsterHit({
+      src: kit.kind === 'burst' ? 'burst' : 'kit', zoneId, pid, m, mid: m.id, lvl: m.level, raw,
+      at: { x: m.x, y: m.y },
+      /* ═══ v2.3.2235: SAY THAT THIS ONE WAS RESOLVED HERE ═══
+         The phone drops a monster_attack whose attacker is not in its monster
+         snapshot, or is more than 160 px from where the player is NOW -- both
+         written against melee "ghost hits", and both the wrong question for a
+         hit resolved where you stood at DETONATION by a slime that is dying
+         (measured: tools/qa/mp/mp-burstdmg.mjs).  The kit's kind tells it. */
+      ability: (kit && kit.kind) || undefined,
     });
-    this._saveRpgVitals(pid, ps);
-    this._queuePlayerStateFlush(pid);
-    if (ps.hp <= 0 && !ps.dying) this._handlePlayerDeath(ps, pid, 'monster:' + m.id);
-    return res.dmgTaken;
   },
   /* ═══ v2.3.2215: basic-attack wind-up ═══ */
 
@@ -791,7 +715,9 @@ export const telegraphMethods = {
            path to keep honest.  The client needs nothing new: the pile
            stays intangible to the PLAYER's attacks (isIntangible), and the
            hit it deals arrives as an ordinary monster_attack from within
-           the 160px guard. */
+           the 160px guard.  (v2.3.3296: _monsterStrikePlayer is the pile's
+           row of the one door now, hits.js -- every monster hit goes
+           through that door, each with its own row.) */
         const _cdx = dx, _cdy = dy * BURROW.CONTACT_Y_SCALE;
         const touching = Math.sqrt(_cdx * _cdx + _cdy * _cdy) <= BURROW.CONTACT_PX;
         /* ═══ v2.3.2700: THE BONK ═══
@@ -938,56 +864,13 @@ export const telegraphMethods = {
      decided, which is what makes a shield raised during the tell work —
      and it matches how the kits and the snowball impact already resolved.
      atkCd/_attackingUntil are NOT stamped here: the wind-up already paid
-     them (see the header on why the cycle must not grow). */
+     them (see the header on why the cycle must not grow).
+     v2.3.3296: through the one door (hits.js, the swing's row): the safe
+     ground (v2.3.3056: ahead of the shield, which charged a sheltered blocker
+     for a swing wound up before they stepped on it), the shield and its parry
+     and cost and the old thorns, a rock -- asked only of a blow the shield
+     let past -- and everything after. */
   _resolveBasicSwingHit(zoneId, m, targetId, now) {
-    const blockerPs = this.playerState[targetId];
-    /* v2.3.3056: sheltered on the safe ground (wheelzone.js) -- checked before
-       the block branch, which charged a sheltered blocker stamina for a swing
-       wound up before they stepped on it */
-    if (zoneId === WHEEL_ZONE && blockerPs && this._wheelSheltered && this._wheelSheltered(m, targetId, blockerPs.x, blockerPs.y, now)) return;
-    if (this._blockArcCovers(blockerPs, m.x, m.y)) {
-      const _parried = this._parryOpen(blockerPs, now);
-      if (_parried) this._applyParry(zoneId, m, targetId, blockerPs, now);
-      const staminaCost = (BLOCK_COSTS_STAMINA && !_parried)
-        ? Math.max(1, Math.round(BLOCK_STAMINA_COST * this._blockStaminaMult(blockerPs)))
-        : 0;
-      if (staminaCost > 0 && blockerPs && typeof blockerPs.stamina === 'number') {
-        blockerPs.stamina = Math.max(0, blockerPs.stamina - staminaCost);
-        this._saveRpgPools(targetId, blockerPs);
-        this._queuePlayerStateFlush(targetId);
-      }
-      const _thornsPts = (blockerPs && !blockerPs.prog3 && blockerPs.defenseSpec && blockerPs.defenseSpec.thorns) || 0;
-      /* v2.3.2221: thorns reflect is a monster hp write like any other --
-         a pile that cannot be swung at must not be hurt by being blocked. */
-      if (_thornsPts > 0 && this._monsterDamageable(m)) {
-        const reflect = Math.min(Math.max(0, m.hp),
-          Math.max(1, this._t2Flat(blockerPs, 'defense', 'thorns')));
-        m.hp -= reflect;
-        if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null);
-        m.dmgByPlayer[targetId] = (m.dmgByPlayer[targetId] || 0) + reflect;
-        this.eventBuffer.push({
-          type: 'monster_hit',
-          payload: {
-            monsterId: m.id, zone: zoneId, dmg: reflect, isCrit: false,
-            attackerId: targetId, thorns: true,
-            hpPct: Math.max(0, m.hp / m.maxHp),
-          },
-        });
-        this._markMonsterDirty(zoneId, m.id);
-        if (m.hp <= 0) this._resolveMonsterKill(zoneId, m, targetId, blockerPs, 'thorns');
-      }
-      this.eventBuffer.push({
-        type: 'monster_attack',
-        payload: {
-          monsterId: m.id, targetId, dmg: m.dmg, dmgTaken: 0,
-          blocked: true,
-          parried: _parried || undefined,
-          staminaDrain: staminaCost > 0 ? staminaCost : undefined,
-          zone: zoneId, attackerX: m.x, attackerY: m.y,
-        },
-      });
-      return;
-    }
-    this._monsterStrikePlayer(zoneId, m, targetId, m.x, m.y);
+    this._monsterHit({ src: 'swing', zoneId, pid: targetId, m, mid: m.id, lvl: m.level, raw: m.dmg, at: { x: m.x, y: m.y }, now });
   },
 };

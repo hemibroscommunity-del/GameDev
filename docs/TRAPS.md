@@ -6323,3 +6323,28 @@ call a look. Run on a busy day, that is the game down until midnight.
 second worker -- ask which plan it is on and what it shares. Separate names do
 not make separate limits. Every call between two objects is a billed request,
 and so is every poll.
+
+## 185. "A new monster attack needs its own copy of the hit" (v2.3.3296)
+
+**Tempting:** a new kind of monster blow -- a cast, a patch on the ground, a
+status that ticks -- gets its own `_xxxHitPlayer`: check the target, call
+`_applyDamage`, push a `monster_attack`, save, check for death. Seven of them
+were written that way, each copied from the one before.
+
+**Wrong.** Every rule added after a copy is missed by it. Measured
+(hit-door.test, v2.3.3296):
+
+- the slam, the lunge, the slime burst, the boss and ground fire hit a
+  harvester, against v2.3.1704's "A HARVESTER TAKES NO MONSTER DAMAGE, FULL
+  STOP";
+- the snow pile and the boss kept the block cost of 15 that v2.3.1731 renamed
+  to the one constant of 10;
+- a snowball's second shield test, measured from where it landed, blocks it
+  through a shield facing away.
+
+**The rule:** a new way for a monster to hurt a player is a row in
+`MONSTER_HITS` (hits.js) and a call to `_monsterHit`. The wrapper decides who
+is hit and for how much before the rail; the door does every step after that.
+`hit-door.test` §10d fails any other file that calls `_applyDamage`.
+**Receipt:** the seven copies are wrappers now, the 193 checks that measured
+them passing unchanged.

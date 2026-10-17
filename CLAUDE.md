@@ -3402,6 +3402,18 @@ Two protocol versions coexist; both must keep working:
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.
+- **EVERY MONSTER HIT ON A PLAYER GOES THROUGH ONE DOOR (v2.3.3296,
+  docs/specs/hit-door.md, handoff rule 28).** The GDD's "interceptor chain",
+  built for real: `hits.js` `_monsterHit` runs the harvest shield, the safe
+  ground, a roll, a rock, the shield (cost, parry, a hit of 0), the one-hit
+  rail, the dice, the monster's after-effects and the event/save/death in one
+  order, and `MONSTER_HITS` says what each way of being hit does at each step
+  (`swing`, `snowball`, `pile`, `kit`, `burst`, `boss`, `fire`, `shock`,
+  `burn`, `poison`). The seven old copies are wrappers. The table is TODAY'S
+  behaviour cell for cell, including the cells hit-door.md puts to the owner
+  (the two 15s, the wrong-way snowball, the harvest shield the kits and fire
+  miss, rolls, parry, rails, rocks). `hit-door.test` (205) pinned them before
+  the door existed; §10d fails a new caller of `_applyDamage`.
 - `package.json` version tracks the client version loosely; comment
   tags in code are the finer-grained record.
 - The repo owner is new to coding: PRs should be self-contained,

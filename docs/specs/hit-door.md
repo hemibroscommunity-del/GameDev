@@ -111,3 +111,87 @@ each decision is a one-line change and a test row.
    ability. Every other block saves the pools, coalesced.
 9. **A blocked hit that counts as being hit.** The pile and the wrong-way ball
    pause regen; the other blocks do not.
+
+## The door (`server/src/hits.js`)
+
+`_monsterHit(h)` takes:
+
+- the row's name;
+- who is hit and by which monster (its id and level, for kill credit, the
+  death's cause and the level edge);
+- the blow before its rail;
+- `at`: where the event says it came from;
+- `from`: where the shield is measured from, if that is somewhere else (the
+  snowball's thrower).
+
+It then runs the steps in one order:
+
+1. the harvest shield;
+2. the safe ground;
+3. a roll;
+4. a rock in the way;
+5. the shield: its cost and its parry, or a hit of 0;
+6. the dice (`_applyDamage`), after the one-hit rail;
+7. what the monster's own blow does after (thorn's answer, the hexer's curse,
+   the element's status);
+8. the event, the save and the death.
+
+`MONSTER_HITS` has one frozen row per way of being hit: `swing`, `snowball`,
+`pile`, `kit` (slam, lunge), `burst`, `boss`, `fire`, `shock`, `burn`,
+`poison`. Each row says what happens at each step; the header of hits.js
+explains every cell. A cell marked `'tick'` is a step its caller's loop takes
+first: the storm picks its arcs among the players the gates allow, and the safe
+ground puts a burn out rather than skipping one tick.
+
+The old entry points are wrappers now. Each decides who can be hit and the
+blow's size before the rail; that part is each source's own:
+
+- `_resolveBasicSwingHit`
+- the snowball's impact in `_tickMonsters`
+- `_monsterStrikePlayer`, the pile's row, which is what it did for every caller
+- `_telegraphHitPlayer`
+- `_dungeonBossHitPlayer`
+- `_fireTrailHitPlayer`
+- `_shockArcs`' loop
+- `_dotTick`
+
+### What it evens out (display only)
+
+- **Every blocked event says the target's HP** (`hp`, unchanged). The blocks
+  the shield stops did not carry it. The phone reads an event without `hp` as
+  an older worker's, so another player watching you block a swing, cast, boss
+  ability or snowball saw the blow's whole number float over you.
+- **Every landed blow carries `lastStand`.** It only fires for a character from
+  before the trained skills, which no joined player is.
+- **The snowball's shield step now comes after the safe ground and the harvest
+  shield.** A ball you blocked facing it, while on the safe ground or cooking,
+  used to show "Blocked!". It now shows nothing, as every other source does
+  there. Either way it took nothing and cost nothing.
+
+### What it does not change
+
+Everything §1-§9 of the test measures stays the same: the HP and stamina, the
+parry, the gates, the rails, deaths and their causes, the saves, thorns, the
+curse, the element, and the events' numbers and tags. Each cell the decisions
+above name is still today's value.
+
+### Tests
+
+`server/test/hit-door.test.mjs`, 205 checks:
+
+- §1-§9 (193 checks) were written and passed before the door existed, and
+  pass unchanged with it.
+- §10 checks the door itself:
+  - every source is a row of the table, and back;
+  - every cell comes from its closed set;
+  - a stopped block's event says the bar;
+  - only hits.js, combat.js and pvpextras.js call `_applyDamage`;
+  - an unknown row hits nobody.
+- Flipping single cells (a cost, a gate, a rail, a save, `counts`, `own`) fails
+  the matching rows. Two cells are not caught: the roll cell, which does
+  nothing until the worker has its own roll window (#929), and the `hp` field,
+  which only §10c reads.
+
+Every other server suite that calls the old entry points (combat-lifecycle,
+props, wheelzone, monsterstatus, one-formula, petsmatter, spar, statsim,
+cost-guard, burrow, firetrail, dungeon, blockcost) passes unchanged.

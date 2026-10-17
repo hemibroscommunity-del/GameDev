@@ -33,6 +33,10 @@
  *      raised shield pays for through it.
  *   9. THE ONE-HIT RAIL and DEATH, a blocked hit that still counts as a hit,
  *      thorns, the hexer's curse, the element's status.
+ *  10. THE DOOR (added with src/hits.js): every row measured above is a row
+ *      of MONSTER_HITS and back, every cell from its closed set, a stopped
+ *      block's event says the bar, only three files price a hit on a player,
+ *      and an unknown row hits nobody.
  */
 import { GameRoom } from '../src/index.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
@@ -451,6 +455,59 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
   for (const src of Object.keys(CHILLS)) {
     const r = play(src, 'out', ({ m }) => { m.element = 'frost'; });
     check('9. ' + src + ': a frost monster\'s blow ' + (CHILLS[src] ? 'chills you' : 'does not chill (today)'), r.chilled === CHILLS[src] && (CHILLS[src] ? !!r.ev && r.ev.st === 'chill' && r.ev.elem === 'frost' : !r.ev.st), { chilled: r.chilled, ev: r.ev });
+  }
+}
+
+// ── 10. v2.3.3296: the door itself (src/hits.js) ──
+/* Added with the door; §1-§9 above are the table it had to keep, unchanged. */
+{
+  const { MONSTER_HITS } = await import('../src/hits.js');
+  const { readdirSync, readFileSync } = await import('node:fs');
+  /* 10a. every way of being hit measured above is one row of the door's
+     table, and every row of the table is measured above */
+  const ROW_OF = { swing: 'swing', snowball: 'snowball', burrow: 'pile', slam: 'kit', lunge: 'kit', burst: 'burst', boss: 'boss', fire: 'fire', shock: 'shock', burn: 'burn', poison: 'poison' };
+  const rows = Object.keys(MONSTER_HITS);
+  check('10a. each source above has its row in MONSTER_HITS', ALL.every((src) => rows.includes(ROW_OF[src])), { rows });
+  check('10a. ...and each row of MONSTER_HITS is measured above', rows.every((r) => Object.values(ROW_OF).includes(r)), { rows });
+  /* 10b. every cell from its closed set, so a typo cannot silently mean "no" */
+  const oneOf = (v, set) => set.includes(v);
+  const okBlock = (b) => b === null || (typeof b === 'object' && Object.isFrozen(b) && typeof b.cost === 'number' && b.cost >= 0
+    && typeof b.parry === 'boolean' && typeof b.counts === 'boolean' && oneOf(b.save, [null, 'whole']) && typeof b.thorns === 'boolean'
+    && Object.keys(b).every((k) => ['cost', 'parry', 'counts', 'save', 'thorns'].includes(k)));
+  const bad = rows.filter((r) => {
+    const R = MONSTER_HITS[r];
+    return !(Object.isFrozen(R) && oneOf(R.shield, [null, 'door', 'tick']) && oneOf(R.shelter, [null, 'door', 'tick'])
+      && typeof R.roll === 'boolean' && oneOf(R.sight, [null, 'door', 'after-shield', 'flight'])
+      && okBlock(R.block) && okBlock(R.wrongWay) && (R.wrongWay === null || R.block !== null)
+      && typeof R.rail === 'number' && R.rail >= 0 && R.rail < 1 && typeof R.elemental === 'boolean'
+      && oneOf(R.own, [null, 'contact', 'elem'])
+      && Object.keys(R).every((k) => ['shield', 'shelter', 'roll', 'sight', 'block', 'wrongWay', 'rail', 'elemental', 'own'].includes(k)));
+  });
+  check('10b. every cell of every row is one the door reads', bad.length === 0, bad);
+  check('10b. the table cannot be changed at run time', Object.isFrozen(MONSTER_HITS));
+  /* 10c. a blow the shield STOPPED says the bar it left (unchanged): the phone
+     reads an event without `hp` as an older worker's and floated the hit's
+     whole number over another player who had blocked it */
+  for (const src of BLOCKABLE.filter((x) => x !== 'burrow')) {
+    const r = play(src, 'out', face(true));
+    check('10c. ' + src + ': a stopped block\'s event carries the bar (' + MAX_HP + ')', !!r.ev && r.ev.blocked === true && r.ev.hp === MAX_HP, r.ev);
+  }
+  /* 10d. ONE DOOR: in server/src only three files price a hit on a player --
+     hits.js every monster's, combat.js a player's claim, pvpextras.js a
+     player's extras.  A new way for a monster to hurt you goes through
+     _monsterHit with its own row, or it fails here. */
+  const dir = new URL('../src/', import.meta.url);
+  const callers = readdirSync(dir).filter((f) => f.endsWith('.js'))
+    .filter((f) => /this\._applyDamage\(/.test(readFileSync(new URL(f, dir), 'utf8')));
+  check('10d. only hits.js, combat.js and pvpextras.js call _applyDamage', callers.sort().join(',') === 'combat.js,hits.js,pvpextras.js', callers);
+  /* 10e. a row the table does not have hits nobody */
+  {
+    const now = Date.now();
+    play('swing', 'out');   /* a fresh stage */
+    room.eventBuffer.length = 0;
+    const hp0 = P.hp;
+    const got = room._monsterHit({ src: 'constructor', zoneId: WHEEL_ZONE, pid: 'p1', m: M, mid: M.id, lvl: 5, raw: 30, at: { x: M.x, y: M.y }, now });
+    check('10e. an unknown row (even an Object.prototype name) takes nothing and sends nothing', got === 0 && P.hp === hp0 && room.eventBuffer.length === 0, { got, hp: P.hp });
   }
 }
 
