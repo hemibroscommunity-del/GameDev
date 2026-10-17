@@ -1803,6 +1803,44 @@ export const combatMethods = {
         });
       }
 
+      /* ═══ v2.3.3305: THE KILL'S HEALS COME FIRST, SO ONE SAVE CARRIES THEM ═══
+         Lifeblood and melee lifesteal used to run AFTER the recipients loop
+         below, so a melee kill that healed the killer saved their whole
+         character twice -- the loop's save, then this one "to persist the
+         post-heal hp" (the loop had already written the pre-heal one).
+         Found by the architecture review (2026-10-17): in the cost audit
+         every one of a fighter's melee kills healed, ~270 of their 1,030
+         rows an hour.  The heals touch nothing the loop reads, and the loop
+         touches nothing they read (a level-up there fills the bar either
+         way), so they run first now and the loop's one save carries them;
+         a killer the loop does not save (no XP of their own) is saved after
+         it, as before.  Same HP, same events in the same order. */
+      // v2.3.1154: LIFEBLOOD (HP grid) -- on-kill heal, 0.5%/pt of maxHp
+      // (cap 25% at 50 pts), killing-blow attribution like lifesteal
+      // below.  Applied BEFORE lifesteal so both heals ride the same
+      // _saveRpg/player_state flush; deliberately NOT multiplied by
+      // Recovery (a %-maxHp heal scaling with another %-heal channel
+      // would double-dip the same grid's budget).  Skips dead killers.
+      if (killerPs && killerPs.hp > 0) {
+        // v2.3.1345: flat accelerating on-kill heal (+15,150 at cap).
+        const _lbFlat = this._lifebloodFlat(killerPs);
+        if (_lbFlat > 0) {
+          const _lbMax = killerPs.maxHp || 100;
+          killerPs.hp = Math.min(_lbMax, killerPs.hp + _lbFlat);
+        }
+      }
+      // Melee lifesteal -- refund 90% of net damage the killer took
+      // from this monster, if the kill was struck with melee.  Heals
+      // the killer (last-hit attribution); party members who tagged
+      // but didn't land the kill get nothing.  Mirrors the client's
+      // existing applyMeleeLifesteal (slated for removal once this
+      // server path is the source of truth).
+      // Pass the wire-sent slot through so a desktop slot-select user
+      // whose server-side activeSlot didn't get the set_active_slot
+      // update still gets the heal on a real melee swing.
+      // (v2.3.1154: the 90% refund is deliberately NOT Recovery-boosted
+      // -- see _recoveryMult's comment; >100% refunds mint sustain.)
+      const { refund, reason } = this._applyMeleeLifesteal(killerPs, m.id, slot);
       // Server-authoritative combat XP.  For every contribution-weighted
       // recipient (xpRecipients above), apply their share of m.xp to
       // playerState[id].xp + run the level-up loop.  Emit a private
@@ -1810,6 +1848,7 @@ export const combatMethods = {
       // SFX fire on receive; player_state then carries the new
       // authoritative totals so the client overwrites R.xp / R.level /
       // R.unspentT2.
+      let killerSaved = false;
       for (const rid of xpRecipients) {
         const recipPs = this.playerState[rid];
         if (!recipPs) continue;
@@ -1885,6 +1924,7 @@ export const combatMethods = {
         // same _saveRpg + player_state flush as the nugget roll above.
         if (rid === killerId && this._gemRawOnKill(recipPs, this._rewardZone(zone, m), kr ? kr.hit === 'rawgem' : undefined) && kr) kr.minted = true;   /* v2.3.2978: its home's element; v2.3.3209: the kill's roll */
         this._saveRpg(rid, recipPs);
+        if (rid === killerId) killerSaved = true;   /* v2.3.3305: the heals above ride this save */
         const recipWs = this._wsBySessionId(rid);
         if (recipWs) {
           try {
@@ -1910,32 +1950,6 @@ export const combatMethods = {
         this._queuePlayerStateFlush(rid);
       }
 
-      // v2.3.1154: LIFEBLOOD (HP grid) -- on-kill heal, 0.5%/pt of maxHp
-      // (cap 25% at 50 pts), killing-blow attribution like lifesteal
-      // below.  Applied BEFORE lifesteal so both heals ride the same
-      // _saveRpg/player_state flush; deliberately NOT multiplied by
-      // Recovery (a %-maxHp heal scaling with another %-heal channel
-      // would double-dip the same grid's budget).  Skips dead killers.
-      if (killerPs && killerPs.hp > 0) {
-        // v2.3.1345: flat accelerating on-kill heal (+15,150 at cap).
-        const _lbFlat = this._lifebloodFlat(killerPs);
-        if (_lbFlat > 0) {
-          const _lbMax = killerPs.maxHp || 100;
-          killerPs.hp = Math.min(_lbMax, killerPs.hp + _lbFlat);
-        }
-      }
-      // Melee lifesteal -- refund 90% of net damage the killer took
-      // from this monster, if the kill was struck with melee.  Heals
-      // the killer (last-hit attribution); party members who tagged
-      // but didn't land the kill get nothing.  Mirrors the client's
-      // existing applyMeleeLifesteal (slated for removal once this
-      // server path is the source of truth).
-      // Pass the wire-sent slot through so a desktop slot-select user
-      // whose server-side activeSlot didn't get the set_active_slot
-      // update still gets the heal on a real melee swing.
-      // (v2.3.1154: the 90% refund is deliberately NOT Recovery-boosted
-      // -- see _recoveryMult's comment; >100% refunds mint sustain.)
-      const { refund, reason } = this._applyMeleeLifesteal(killerPs, m.id, slot);
       // Emit lifesteal_credit even when refund is 0 so the client can
       // log the reason and the user can tell whether the gate failed
       // (vs. the heal landing silently because they were already at
@@ -1958,10 +1972,10 @@ export const combatMethods = {
           }));
         } catch (e) {}
         if (refund > 0) {
-          // Persist the post-heal hp.  Without a fresh _saveRpg the
-          // xpRecipients loop above already wrote the pre-heal hp to
-          // storage, so a reconnect would reload the lower value.
-          this._saveRpg(killerId, killerPs);
+          // Persist the post-heal hp.  v2.3.3305: the heal ran before the
+          // recipients loop, so the loop's save already holds it; only a
+          // killer the loop did not save needs one here.
+          if (!killerSaved) this._saveRpg(killerId, killerPs);
           // Push player_state synchronously so the bumped hp lands the
           // same tick instead of waiting for _flushPendingPlayerStates.
           this._sendPlayerState(killerWs, killerId);

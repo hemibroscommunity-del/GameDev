@@ -56,6 +56,15 @@ before and after this change (the same seeds, so the same harvests):
 | Fighting | 955-1,145 | the same | one save of your record a kill (~570); a hit near death saves at once by design (your health at or under a quarter); your health otherwise at most every 10 s; the codex at most every minute |
 | Gathering | 367-592 | 311-513 | one save of your record a harvest; the bot statistics: 65-91 an hour before, 9-12 after |
 
+**v2.3.3305: a melee kill that heals you was TWO saves of your record**, not
+one. The kill's lifesteal (and Lifeblood) ran after the kill's save and saved
+the whole record again for the healed health. In the audit every one of a
+fighter's melee kills healed, so "one save a kill (~570)" above was really
+~285 kills saving twice. The heals now run first and the kill's one save
+carries them (combat.js `_resolveMonsterKill`; same health, same events).
+`cost-audit.mjs 6 1 --seed=1`, the fighter: **1,030 -> 760 rows a
+player-hour** (the kills' saves 550 -> 280). `cost-guard` §5c holds it.
+
 **The simulated fighters are reckless.** They eat at half health and spend a
 lot of the fight near death, where every hit saves at once. A real player's
 hour is mostly walking, standing and menus, with fights and harvests in

@@ -3490,6 +3490,9 @@ Two protocol versions coexist; both must keep working:
     plan); standing and walking write nothing, a kill or a harvest one row, your
     health at most every `REGEN_SAVE_MS`, the gatherer's bot statistics every 5
     minutes (`BOTFP.PUT_MIN_MS`, was 30 s);
+  - since v2.3.3305 a melee kill that heals you is one row too: its lifesteal
+    ran after the kill's save and saved the record again, a fighter's 1,030
+    rows an hour 760 now (cost-guard §5c, cost-diet.md);
   - `server/test/cost-guard.test.mjs` holds those lines (a feature that saves on
     a timer, a move or twice an event fails there); moving a line is said in the
     PR body in plain words, as with the memory budget;
