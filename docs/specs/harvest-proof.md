@@ -111,6 +111,7 @@ because the six commons pines are its limit, not the clock.
   - a script hammering refused strikes: the node sent again once, every
     strike counted, one flag.
 - Eleven deliberate bugs, each caught by the suite.
+- TRAPS §202: a lenient branch for old phones is only ever used by old phones.
 - All 138 server suites pass.
 - `mp-recoverpay` (28 of 28, a phone against a real worker): every way a
   session comes back still pays its chop -- the renderer rebuilt, the

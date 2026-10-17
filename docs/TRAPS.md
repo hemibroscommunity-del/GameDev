@@ -6909,3 +6909,35 @@ older scenario.
 `mp-lockrings`, `mp-moncue`, `mp-perfdrift`, `mp-tapswing`, `mp-texdrift`,
 `tex-attrib`) call it now; `mp-monstertrim`, `mp-townscenery`, `mp-exitmark`
 and `mp-zonebanner` already did.
+
+## 202. "A lenient branch for old phones is only ever used by old phones" (v2.3.3322)
+
+**Tempting:** keep a forgiving path for clients older than a message, count
+its uses "for visibility", and move on. Here it was a harvest strike with no
+`extraction_start` behind it ("Permissive on missing extraction state (DO
+restart mid-attempt, legacy clients)"), paid with no timing check.
+
+**What happened:** every phone has sent the start since v2.3.1704. For the
+next 1,600 versions the branch's users were scripts, plus two honest moments
+nobody had written down:
+- a strike replayed after a dropped socket, whose record the close handler
+  had just deleted;
+- a harvest that spanned a deploy.
+
+The count sat on a session nobody read. A record for ANOTHER node wasn't even
+counted. In the bot lab the branch paid obsidian 48 times an honest miner's
+rate (docs/specs/antibot-review.md §1).
+
+**The rule:** when the last client that needed a lenient branch is gone,
+retire it. First list every HONEST way a request can still arrive without
+what the branch forgives, then give each its own narrow allowance:
+- the record outlives the socket, so the replay is timed against it;
+- a room restart gets one recovery strike in ten minutes.
+
+Anything that is none of those is refused, and refused visibly (the node shown
+standing again, the refusal counted as bot evidence). A lenient branch nobody
+needs is an open door. One whose honest users nobody has listed can't be
+closed safely.
+
+**Receipt:** harvest-proof.test (43 checks, 11 mutations caught),
+mp-recoverpay. The lab's obsidian script went from 2,400 harvests an hour to 6.

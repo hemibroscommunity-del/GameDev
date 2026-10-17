@@ -3647,7 +3647,7 @@ Two protocol versions coexist; both must keep working:
       `noFpPerfect`);
     - the lab's obsidian script 2,400 harvests an hour -> 6, honest play
       unchanged; kill switch `harvestproof: false`; `harvest-proof` suite (43),
-      `mp-recoverpay`.
+      `mp-recoverpay`; TRAPS §202.
   - since v2.3.3292 (the architecture review): a phone's `dodging` stops a
     player's blow only within 1 s of a roll the worker CHARGED for
     (movement.js `ROLL`, `_rollOn`; it was unbounded, one move made a player
