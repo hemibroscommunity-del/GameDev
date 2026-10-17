@@ -2964,6 +2964,15 @@ Two protocol versions coexist; both must keep working:
       caps outlive a reconnect, and a rolled-back worker would relay an array
       to the room); `quiet-phone` suite (56: two rooms in lockstep, bundled and
       not, identical), docs/specs/quiet-phone.md.
+    - since v2.3.3291 EACH PART FINISHES BEFORE THE NEXT -- found by the
+      architecture review: a bundle is ONE event, so the input gate keeps its
+      parts apart only if the router waits for each handler, and twenty cases
+      did not (farm, shop, daily chest and rewards, capes, the auction house's
+      offers and threads); 24 harvests of one bed in one bundle paid 48
+      carrots, one stack sold 24 times paid 24 times. Every case in
+      `_onMessage` awaits its handler where it calls it; `quiet-phone` §8
+      (late, copying storage) and §9 (a scan of the router) hold it; handoff
+      rule 9's third edge, TRAPS #182.
   - v2.3.3205: THE CAP IS 120 -- the owner: "I think 120 is a good cap limit
     for now" (index.js `MAX_PLAYERS`; `max_players` can still only lower it;
     chatmod `SEEN_MAX` 240, twice the cap). With #887-#891 the room is smooth

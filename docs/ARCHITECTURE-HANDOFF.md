@@ -178,6 +178,14 @@ extended.
    page per tick slot, a cursor in memory, batched deletes, never on the
    join path (`_opPruneMaybe`, `_metricsMaybe`). A single `list()` with no
    `limit` over a prefix that grows without bound is a bug on any hot path.
+   **And a third edge (v2.3.3291): the gate keeps EVENTS apart, not
+   messages.** A bundle (v2.3.3254) is up to 24 messages in ONE event. A
+   handler the router starts without awaiting runs beside the bundle's next
+   part, and both read the same record before either writes it back: 24
+   harvests of one ripe bed in one bundle paid 48 carrots, and one stack of
+   ore sold 24 times paid 24 times. Every case in `_onMessage` awaits (or
+   returns) its handler in the statement that calls it; `quiet-phone.test`
+   §9 scans for any that does not (TRAPS #182).
 10. **Fire-and-forget `_saveRpg` is correct** — output gates hold
     outbound messages until prior writes durably commit, so clients can
     never observe state that later rolls back.
