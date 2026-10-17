@@ -182,8 +182,10 @@ merged. `server/src/clanparty.js`; the phone's side in `src/game/alliance.js`
   converted party lost its tag to itself). One-way, and what a party has no
   place for goes with the clan's record: its two colours (the tag's colour on
   a player's card, `clanColor1`) and its logo (drawn in the clan window only);
-  its leader's 500 gold founding fee is not given back. A clan holds no gold,
-  and its wars need the old lands, which are closed.
+  its leader's 500 gold founding fee is not given back -- asked whether to
+  mail each founder their 500 gold, the owner: "No I think the gold should be
+  gone" (2026-10-17). A clan holds no gold, and its wars need the old lands,
+  which are closed.
 - **Whoever is online is told at once**: the clan's tag comes off every screen
   (clans.js `_clanUntag`, the tail of `_clanRemoveMember`), the party's tag
   goes on (`_allySetTag`, forced), and the members get `party_state` with
