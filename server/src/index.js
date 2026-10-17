@@ -61,6 +61,7 @@ import { arenaMethods } from './gladiator.js';
 // dungeon.js header for why that makes the whole combat stack free).
 import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
+import { hitMethods } from './hits.js'; /* v2.3.3296: one door for every monster hit on a player */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
 import { dailyRewardsMethods } from './dailyrewards.js'; /* v2.3.3140: the free daily spin, daily quests, the season */
@@ -1739,209 +1740,28 @@ export class GameRoom {
   }
 
   // Tick monster AI and respawns
-  /* v2.3.1640: the damage half of a monster attack, shared by the melee
-     swing in _tickMonsters and the ranged snowball impact.  Extracted
-     rather than copied: a second copy of the thorn/hexer/lifesteal/death
-     sequence would drift, and this repo has been bitten by exactly that
-     (the client/server zone tables, which now need a lockstep test).
+  /* v2.3.1640: the damage half of a monster attack, once shared by the melee
+     swing and the ranged snowball impact, extracted rather than copied so the
+     thorn/hexer/lifesteal/death sequence could not drift.
 
-     atkX/atkY become the event's attackerX/attackerY.  For melee that is
-     the monster's own position.  For a snowball it is the IMPACT POINT,
-     and that distinction is load-bearing: the client drops any
-     monster_attack whose attacker is more than 160px away
-     (src/networking/gameEvents.js) — a deliberate guard against "mystery
-     damage with no visible attacker".  A ranged hit reported from the
-     thrower's position would trip that guard and the player would lose HP
-     with no popup, no flash, and no defense XP.  Reported from the impact
-     point it passes cleanly, and every visible effect the client draws
-     (popup, hit flash, particles, shake, defense XP) is anchored on the
-     PLAYER anyway — so this renders correctly on clients that are already
-     deployed, with no client change and no caps flag. */
+     ═══ v2.3.3296: NOW THE SNOW PILE'S ROW OF THE ONE DOOR (hits.js) ═══
+     This was "the ONE choke point every monster->player hit funnels through"
+     -- for the swing, the ball and the pile, while the kits, the boss, the
+     ground fire, the storm and the burns each kept their own copy beside it.
+     Every one of them now goes through _monsterHit with its own row in
+     MONSTER_HITS.  The pile's row IS what this did for every caller (the
+     harvest shield, the safe ground, a rock measured from (atkX, atkY), a
+     shield measured from there too and taken as a hit of 0 at 15, then the
+     thorn, the hexer, the element, the event and the death), so it keeps its
+     name for the pile and for the suites that call it.  Its history notes
+     (v2.3.1704's harvester, v2.3.2652/2657's rocks, v2.3.1686/1705's shield)
+     moved with the code, to hits.js.
+
+     atkX/atkY become the event's attackerX/attackerY.  The phone drops any
+     monster_attack whose attacker is more than 160 px away
+     (src/networking/gameEvents.js), so a ball reports where it LANDED. */
   _monsterStrikePlayer(zoneId, m, targetId, atkX, atkY) {
-    const now = Date.now();
-    // Apply HP damage server-side BEFORE emitting the event so
-    // dmgTaken rides on the wire and the client renders the
-    // exact number the server applied.
-    const targetPs = this.playerState[targetId];
-    /* ═══ v2.3.1704: A HARVESTER TAKES NO MONSTER DAMAGE, FULL STOP ═══
-       Owner: "the monsters keep attacking you while harvesting resources."
-       The aggro filter in _tickMonsters is the primary fix (the monster never
-       comes over), but this method is the ONE choke point every monster→player
-       hit funnels through, and one caller sits deliberately outside the aggro
-       branch: the in-flight snowball resolved at the top of the monster loop,
-       which lands even on a target the monster has since lost interest in
-       (v2.3.1640, and rightly so — a ball in the air is committed).  Without
-       this line, tapping a tree while a snowball was airborne still knocked
-       the swipe out from under you, which is the exact interruption being
-       fixed.  Silent, like a dodge: no monster_attack event, so the client
-       draws nothing rather than a "0" it would have to explain. */
-    if (this._extractionShielded(targetId, now)) return;
-    /* v2.3.2978: ...and nobody on the Wheel's safe ground, the commons and the
-       town, takes a monster's hit at all -- a swing wound up, or a ball thrown,
-       before you stepped onto it included.  Here for the reason the line above
-       is: one choke point.  Silent, like the harvester shield (wheelzone.js). */
-    /* v2.3.3056: ...unless they provoked this monster from there (wheelzone.js
-       _wheelSheltered: hurt it, and still fighting) */
-    if (zoneId === WHEEL_ZONE && targetPs && this._wheelSheltered(m, targetId, targetPs.x, targetPs.y, now)) return;
-    /* ═══ v2.3.2652: A ROCK IN THE WAY STOPS IT ═══
-       Owner: "I would like it if these props could block my and enemy
-       attacks."
-
-       HERE for the same reason the harvester shield above is here: this is the
-       ONE choke point every monster->player hit funnels through, so one test
-       covers the swing, the thrown snowball, the burrow surface and every
-       telegraphed ability at once.  Gating each caller instead would be four
-       places to keep in step and a fifth that gets forgotten.
-
-       `atkX/atkY` is where the attack came FROM for the CONTACT attacks --
-       telegraph.js passes m.x/m.y for both the swing and the burrow surface --
-       which is exactly the endpoint the line has to be measured from, and it is
-       already computed for the block arc below.
-
-       v2.3.2657 -- READ THIS BEFORE TRUSTING THE LINE ABOVE.  The original
-       version of this comment claimed atkX/atkY was "the thrower for a ball,
-       the monster for a swing", and that the snowball case measured from the
-       RELEASE point.  That was wrong, and wrong in the direction that hides
-       itself: the ranged caller (the in-flight snowball at the top of the
-       monster loop) passes the PLAYER's position, because the event's
-       attackerX/attackerY must be the impact point to clear the client's 160px
-       guard -- as the header above this method says in as many words.  So for
-       a thrown ball this test measured a zero-length segment from the player to
-       themselves and blocked nothing, while the comment asserted otherwise.
-       Snowballs sailed through rocks for four commits.
-
-       So this is NOT the one choke point for line-of-sight, whatever it is for
-       damage: the ranged path tests its own flight line (release -> aim point)
-       at the impact tick, where both ends are actually known.  Two tests,
-       because there are genuinely two geometries -- a contact attack comes from
-       the attacker, a thrown one comes from wherever it was released, and no
-       single pair of coordinates is honestly both.  If you add a third attack
-       shape, ask which of those it is before assuming this line covers it.
-
-       SILENT, like the dodge and the harvester shield: no monster_attack
-       event, so the client draws nothing rather than a "0" it would have to
-       explain.  The player sees the swing animation stop at the rock, which is
-       the feedback -- the number would be noise. */
-    if (targetPs && attackBlocked(zoneId, atkX, atkY, targetPs.x, targetPs.y)) return;
-    /* ═══ v2.3.1686: THE BLOCK IS RESOLVED HERE, AT IMPACT ═══
-       Owner: "it seems like snowman don't launch projectiles while the
-       character is blocking, which isn't the correct behavior. It should
-       still launch projectiles."
-       The throw used to be gated on `!nearest.blocking`, so raising a shield
-       stopped snowballs being created at all — a block that deleted the
-       attack rather than stopping it, and it read as the monster freezing.
-       That gate is gone; the ball now flies whatever the player is doing.
-       Which moves the question to WHEN the block counts, and impact is the
-       only correct answer: the ball is ~900ms in the air, so a shield raised
-       (or dropped) mid-flight has to matter.  Reading `targetPs.blocking`
-       here rather than trusting the caller is what makes that true, and it
-       matches what the client has always done for slime orbs ("Block/shield
-       is recomputed at impact since the player can raise shield mid-flight",
-       monsterCombat.js).
-       The melee path still short-circuits on its own blocking branch before
-       reaching this method, so nothing is handled twice. */
-    /* v2.3.1705: …and facing the right way.  atkX/atkY is where the attack came
-       FROM (the thrower for a snowball, the monster for a swing), which is
-       exactly what the arc has to be measured against. */
-    const _blocking = this._blockArcCovers(targetPs, atkX, atkY);
-    const dmgResult = this._applyDamage(targetPs, m.dmg, _blocking, { attackerLevel: m.level });  /* v2.3.2680: the edge on Dodge/Defense */
-    const dmgTaken = dmgResult.dmgTaken;
-    /* Same block cost the melee branch charges (15 × Bulwark efficiency),
-       so blocking a snowball and blocking a swing cost the same stamina. */
-    let _blockStamina = 0;
-    /* v2.3.1704: … unless blocking is free for the demo (see
-       BLOCK_COSTS_STAMINA in data.js).  Left as a guard on the
-       whole branch rather than a zeroed cost so no pool write, no coalesced
-       save and no wire field happens at all. */
-    if (BLOCK_COSTS_STAMINA && _blocking && targetPs && typeof targetPs.stamina === 'number') {
-      _blockStamina = Math.max(1, Math.round(15 * this._blockStaminaMult(targetPs)));
-      targetPs.stamina = Math.max(0, targetPs.stamina - _blockStamina);
-      this._saveRpgPools(targetId, targetPs);
-    }
-    /* v2.3.1569: THORN retaliation (Flora's status).  Every other
-       status is something that happens TO the monster over time;
-       thorn is the one that answers the monster's own aggression,
-       so it lands here — the moment the monster commits to an
-       attack — rather than on a passive timer.  A timer would just
-       make it a weaker Burn and lose the identity the GDD gives
-       Flora ("the only status that punishes enemies for
-       attacking").  Same power-snapshot pricing as burn/root, and
-       it routes through the normal kill-credit path so a monster
-       that thorns itself to death still pays out. */
-    if (m.statuses && m.statuses.thorn) {
-      const _th = m.statuses.thorn;
-      const _recoil = thornRecoil(_th);   /* v2.3.3264: elemental.js, the number a thorned player takes too */
-      if (_recoil > 0) this._applyMonsterDot(zoneId, m, _recoil, _th.sourceId, 'thorn');
-    }
-    // v2.3.1139 (item I): a hexer's landed hit curses the
-    // victim -- -30% outgoing damage for 4s, consumed by
-    // _computeAttackDamage (mirrors the client's
-    // S._cursedUntil, which only ever dimmed the DISPLAY
-    // number while the server rolled full damage).
-    if (targetPs && m.arch === 'hexer' && !dmgResult.dodged) {
-      targetPs._cursedUntil = now + 4000;
-    }
-    // Don't credit lifesteal damage on a dodge -- nothing to
-    // refund since no HP was taken.  But DO track during the
-    // zone-entry grace window so the next kill produces a
-    // refund instead of silently failing with 'no-this-mon'.
-    if (!dmgResult.dodged) {
-      const trackAmt = dmgResult.graced ? (dmgResult.dmgIntent || 0) : dmgTaken;
-      this._trackMonsterDamage(targetPs, m.id, trackAmt);
-    }
-    /* v2.3.2996: ...and what its element does -- a snowman's chill, a fire
-       goblin's burn, a mummy's gust, a blue slime's hold (monsterstatus.js).
-       A blocked hit takes 0 and carries nothing but the element's name. */
-    const _elemHit = this._elemOnHit(zoneId, m, targetId, targetPs, dmgResult, now);
-    this.eventBuffer.push({
-      type: 'monster_attack',
-      payload: {
-        monsterId: m.id,
-        targetId,
-        dmg: m.dmg,
-        dmgTaken,
-        dodged: dmgResult.dodged,
-        hp: Math.max(0, Math.round(targetPs.hp || 0)),   /* v2.3.3263: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
-        /* v2.3.1686: tells the client to show "Blocked!" + the stamina cost
-           instead of an HP number.  undefined when not blocking, so
-           JSON.stringify drops both and the wire is unchanged for every
-           existing hit — an old client simply sees dmgTaken 0. */
-        blocked: _blocking || undefined,
-        /* v2.3.1704: `> 0`, not just `_blocking` — with the free-block flag
-           on this would otherwise send 0 and the client's v2.3.1686 popup
-           would float a "-0⚡" next to every Blocked!. */
-        staminaDrain: (_blocking && _blockStamina > 0) ? _blockStamina : undefined,
-        // v2.3.1137: Second Wind heal rides the attack event so the
-        // client pops the green number without a round-trip (the
-        // authoritative hp echo arrives via player_state anyway).
-        // v2.3.1314: Last Stand survival flag rides the same way.
-        lastStand: dmgResult.lastStand || undefined,
-        // undefined when 0 -- JSON.stringify drops it from the wire.
-        secondWind: dmgResult.secondWind || undefined,
-        zone: zoneId,
-        attackerX: atkX,
-        attackerY: atkY,
-        /* v2.3.2996: elem / st / stMs / kb, each absent when it does not
-           apply, so the wire is unchanged for every other monster */
-        ...(_elemHit || null),
-      }
-    });
-    // Echo authoritative hp to the victim + persist.  Death
-    // check feeds the player_died event below.
-    if (targetPs) {
-      this._saveRpgVitals(targetId, targetPs); // v2.3.1623: coalesced unless near death
-      this._queuePlayerStateFlush(targetId);
-      if (targetPs.hp <= 0 && !targetPs.dying) {
-        this._handlePlayerDeath(targetPs, targetId, 'monster:' + m.id);
-      }
-    }
-    // Mark zone dirty so the monster's position is included in the
-    // outgoing tick delta. Without this, a stationary monster that
-    // attacks a stationary player produces attack events but no
-    // position broadcast, so any client that missed the initial sync
-    // never registers the monster locally — leading to "ghost hit"
-    // damage reports with no visible attacker.
-    this._markMonsterDirty(zoneId, m.id);
+    this._monsterHit({ src: 'pile', zoneId, pid: targetId, m, mid: m.id, lvl: m.level, raw: m.dmg, at: { x: atkX, y: atkY } });
   }
 
   _tickMonsters() {
@@ -2227,35 +2047,19 @@ export class GameRoom {
             typeof _pty === 'number' ? _pty : (_tps.y || 0));
           /* Still in the same zone, alive, and not mid-respawn. */
           if (!_lineBlocked && _hit && _tps.z === zoneId && !_tps.dying && (_tps.hp || 0) > 0) {
-            /* v2.3.1705: …and facing it.  The direction is taken from the
-               THROWER (m), not from the ball's landing point: the ball lands on
-               the player, so its own position carries no direction, and a
-               snowball you never turned to face should get through exactly like
-               a swing from behind does. */
-            if (this._blockArcCovers(_tps, m.x, m.y)) {
-              /* Blocked. Evaluated at IMPACT, not at throw — raising the
-                 shield while the ball is in the air has to work, or the
-                 telegraph is decoration.  Emits a blocked monster_attack
-                 so the client shows the same BLOCK feedback a blocked
-                 swing gives; no stamina drain, since that cost is tied to
-                 the melee cadence and adding a second drain source would
-                 be a balance change smuggled in with a feature. */
-              this.eventBuffer.push({
-                type: 'monster_attack',
-                payload: {
-                  monsterId: m.id,
-                  targetId: _pt,
-                  dmg: m.dmg,
-                  dmgTaken: 0,
-                  blocked: true,
-                  zone: zoneId,
-                  attackerX: _tps.x,
-                  attackerY: _tps.y,
-                }
-              });
-            } else {
-              this._monsterStrikePlayer(zoneId, m, _pt, _tps.x, _tps.y);
-            }
+            /* v2.3.3296: through the one door (hits.js, the snowball's row).
+               The shield is asked at IMPACT, not at the throw (v2.3.1686:
+               raising it while the ball is in the air has to work), facing
+               the THROWER (v2.3.1705: the ball lands on the player, so its
+               own position carries no direction) -- `from` -- and a ball it
+               meets is blocked free: "that cost is tied to the melee cadence
+               and adding a second drain source would be a balance change
+               smuggled in with a feature".  The event reports where it
+               landed (`at`), for the phone's 160 px guard. */
+            this._monsterHit({
+              src: 'snowball', zoneId, pid: _pt, m, mid: m.id, lvl: m.level, raw: m.dmg,
+              from: { x: m.x, y: m.y }, at: { x: _tps.x, y: _tps.y },
+            });
           }
         }
 
@@ -6311,6 +6115,7 @@ Object.assign(GameRoom.prototype, arenaMethods);
 Object.assign(GameRoom.prototype, dungeonMethods);
 // v2.3.1730: telegraphed standard-zone attacks -- see telegraph.js.
 Object.assign(GameRoom.prototype, telegraphMethods);
+Object.assign(GameRoom.prototype, hitMethods); /* v2.3.3296 */
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, dailyRewardsMethods); /* v2.3.3140 */

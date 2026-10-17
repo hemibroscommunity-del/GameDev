@@ -2318,5 +2318,19 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { layOff: layOff.slice(0, 3), snow });
 }
 
+/* ═══ v2.3.3297: A BLOCK'S COST ON THE PHONE IS THE WORKER'S ═══
+   The worker names a blocked hit's cost (staminaDrain) whenever it charges
+   one, and leaves it off on purpose when it charges nothing: a parry pays
+   stamina BACK, and a snowball is free to block.  The phone's monster_attack
+   read a missing cost as 15, the cost before v2.3.1731, and drew "-15⚡" for
+   both.  Read as text (gameEvents.js cannot be imported here): no blocked
+   branch may guess a cost the worker did not name. */
+{
+  const ge = readFileSync(new URL('../../src/networking/gameEvents.js', import.meta.url), 'utf8');
+  const guesses = ge.match(/typeof payload\.staminaDrain === 'number' \? payload\.staminaDrain : (\d+)/g) || [];
+  check('block cost: the phone takes the worker\'s staminaDrain or nothing -- a parry or a free block draws no "-15⚡"',
+    guesses.length >= 1 && guesses.every((g) => /: 0$/.test(g)), guesses);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

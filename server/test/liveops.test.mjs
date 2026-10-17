@@ -22,9 +22,20 @@
  *       next join with motd:true; DELETE clears it; a client-forged
  *       server_announce is dropped by the deny-list.
  *   6.  Metrics: once-daily key-existence idempotency; /economy
- *       history/delta/alert math; ring prunes to METRICS_KEEP.       */
+ *       history/delta/alert math; ring prunes to METRICS_KEEP.
+ *   8.  v2.3.3295: every kill switch can be THROWN through the real
+ *       route -- the five camelCase ones (storeGear, dailyChest,
+ *       zoneDepth, whirlWindup, broCount) answered 400 before; each now
+ *       stores, does what its comment says, reaches a join's caps and
+ *       clears; any other camelCase name (weaponDrops first) is still
+ *       refused; and two scans of server/src hold every flag the worker
+ *       READS and every `<name>: false` a comment PROMISES to a name the
+ *       route takes.                                                  */
+import { readdirSync, readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
-import { LIVEOPS, METRICS } from '../src/liveops.js';
+import { LIVEOPS, METRICS, flagNameOk } from '../src/liveops.js';
+import { ZONES } from '../src/data.js';
+import { zoneDepthK } from '../src/depth.js';
 
 function makeState() {
   const store = new Map();
@@ -283,6 +294,83 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   check('...and is not retried within RETRY_MS (no further list calls)', calls === c1, { c1, calls });
   s8.storage.list = realList;
   check('...but runs again after RETRY_MS', (await r8._metricsMaybe(T7 + METRICS.RETRY_MS + 1)) === false && s8._store.has('metrics:' + r8._cadencePeriodDaily(T7)));
+}
+
+// ── 8. v2.3.3295: every kill switch can be thrown ──
+{
+  // 8a. the five camelCase switches are stored by the route an operator uses
+  for (const name of LIVEOPS.CAMEL_SWITCHES) {
+    const r = await jbody(await setFlag(name, false));
+    check('8a. POST /flags stores ' + name + ': false (was a 400)', r.status === 200 && r.body.flags[name] === false, r);
+  }
+  // 8b. ...and each one does what its comment says, on the worker
+  const dunes = Object.keys(ZONES).find((z) => ZONES[z] && ZONES[z].depth && ZONES[z].depth.axis === 'y');
+  check('8b. storeGear: the gear listings read off (_stGearOff)', room._stGearOff() === true);
+  check('8b. dailyChest: the chest reads off (_chestOff)', room._chestOff() === true);
+  check('8b. whirlWindup: the windup reads off (_abilWindupOff)', room._abilWindupOff() === true);
+  check('8b. zoneDepth: a zone with depth scales 1 (_depthK)', !!dunes && zoneDepthK(dunes, 0) !== 1 && room._depthK(dunes, 0) === 1, { dunes, k: dunes && zoneDepthK(dunes, 0) });
+  // 8c. ...and the phone is told: a join's caps say all five are off
+  {
+    const ws8 = fakeWs('s8');
+    await join(ws8, 'bp_lo_s8');
+    const caps = (msgsOfType(ws8, 'state_sync')[0] || {}).caps || {};
+    check('8c. a join is told all five are off (broCount too: it is read by the phone only)', LIVEOPS.CAMEL_SWITCHES.every((n) => caps[n] === false), LIVEOPS.CAMEL_SWITCHES.map((n) => n + '=' + caps[n]));
+    check('8c. ...and the caps around them are untouched', caps.trade === true && caps.weaponDrops === true && caps.jackpot === true);
+  }
+  // 8d. cleared, each is back on
+  for (const name of LIVEOPS.CAMEL_SWITCHES) await req('DELETE', '/api/admin/flags?name=' + name);
+  const left = (await jbody(await req('GET', '/api/admin/flags'))).body.flags;
+  check('8d. DELETE clears all five', LIVEOPS.CAMEL_SWITCHES.every((n) => !(n in left)), left);
+  check('8d. ...and the worker reads them on again', !room._stGearOff() && !room._chestOff() && !room._abilWindupOff() && room._depthK(dunes, 0) === zoneDepthK(dunes, 0));
+  // 8e. no other camelCase name: weaponDrops' false brings back weapons the
+  //     phone mints itself (liveops.md "Caps override"), and a near miss of
+  //     a listed name is not that name
+  for (const bad of ['weaponDrops', 'settledX', 'StoreGear', 'storegear ', 'broCount2', '', 'a'.repeat(33)]) {
+    check('8e. ' + JSON.stringify(bad) + ' is refused', (await setFlag(bad, false)).status === 400 && !flagNameOk(bad));
+  }
+  check('8e. the lower-case rule is unchanged', flagNameOk('disable_dungeons') && flagNameOk('xp_mult') && flagNameOk('bowvolley') && !flagNameOk(null) && !flagNameOk(7));
+  check('8e. the list is frozen', Object.isFrozen(LIVEOPS.CAMEL_SWITCHES));
+
+  // 8f. every flag the WORKER READS is a name the route takes.  The reads
+  //     come in three shapes: _flagOn/_flagNum('<name>'), and a cache held
+  //     in a local (`const f = this._liveFlags;`) then read as f.<name>,
+  //     f['<name>'] or hasOwnProperty.call(f, '<name>') a few lines on.
+  const dir = new URL('../src/', import.meta.url);
+  const files = readdirSync(dir).filter((f) => f.endsWith('.js'));
+  const reads = new Map();
+  const note = (n, where) => { if (!reads.has(n)) reads.set(n, where); };
+  for (const file of files) {
+    const lines = readFileSync(new URL(file, dir), 'utf8').split('\n');
+    lines.forEach((line, i) => {
+      for (const m of line.matchAll(/_flag(?:On|Num)\(\s*'([^']+)'/g)) note(m[1], file + ':' + (i + 1));
+      const decl = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*this\._liveFlags\b/.exec(line);
+      if (!decl) return;
+      const v = decl[1].replace(/\$/g, '\\$');
+      for (let j = i; j < Math.min(lines.length, i + 8); j++) {
+        for (const m of lines[j].matchAll(new RegExp('hasOwnProperty\\.call\\(\\s*' + v + "\\s*,\\s*'([^']+)'", 'g'))) note(m[1], file + ':' + (j + 1));
+        for (const m of lines[j].matchAll(new RegExp('(?<![\\w$.])' + v + '\\.([A-Za-z_]\\w*)', 'g'))) note(m[1], file + ':' + (j + 1));
+        for (const m of lines[j].matchAll(new RegExp('(?<![\\w$.])' + v + "\\[\\s*'([^']+)'\\s*\\]", 'g'))) note(m[1], file + ':' + (j + 1));
+      }
+    });
+  }
+  const unthrowable = [...reads].filter(([n]) => !flagNameOk(n)).map(([n, w]) => n + ' @ ' + w);
+  check('8f. the scan sees the worker\'s flag reads (60 or more, the camelCase ones among them)', reads.size >= 60 && ['storeGear', 'dailyChest', 'zoneDepth', 'whirlWindup', 'disable_dungeons', 'xp_mult'].every((n) => reads.has(n)), reads.size);
+  check('8f. every flag the worker reads can be set through POST /flags', unthrowable.length === 0, unthrowable);
+
+  // 8g. every kill switch a COMMENT promises -- `<name>: false` beside
+  //     "live flags" / "liveflags" / "kill switch" -- is a name the route takes
+  const promised = new Map();
+  for (const file of files) {
+    const s = readFileSync(new URL(file, dir), 'utf8');
+    for (const m of s.matchAll(/`([A-Za-z_$][\w$]*): ?false`/g)) {
+      const ctx = s.slice(Math.max(0, m.index - 160), m.index + m[0].length + 160);
+      if (/live ?flags|liveflags|kill[ -]?switch/i.test(ctx) && !promised.has(m[1])) promised.set(m[1], file);
+    }
+  }
+  const broken = [...promised].filter(([n]) => !flagNameOk(n)).map(([n, f]) => n + ' @ ' + f);
+  check('8g. the scan sees the promised switches (60 or more, broCount among them)', promised.size >= 60 && promised.has('broCount') && promised.has('storeGear'), promised.size);
+  check('8g. every promised kill switch can be set through POST /flags', broken.length === 0, broken);
+  check('8g. ...and each camelCase exception is still promised somewhere (drop it from the list when its switch goes)', LIVEOPS.CAMEL_SWITCHES.every((n) => promised.has(n)), LIVEOPS.CAMEL_SWITCHES.filter((n) => !promised.has(n)));
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
