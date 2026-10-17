@@ -49,36 +49,47 @@
  *   the tick (`sk: 'r' | 'w'`), you on `nml_skull` {red, white} in ms left
  *   -- and since v2.3.3253 `by`, who gave you your white skull (_nmlSend).
  *
- * WHAT A DEATH COSTS (_nmlOnDeath, from _handlePlayerDeath):
- *   - killed by a player under No man's land's rule (the killing blow came
- *     through it in the last few seconds): THE BAG -- its items, its spare
- *     weapons and its spare armour and legs -- and nothing worn.
- *       items        -> the usual death pile, but the KILLER's for its
- *                       owner window (then anyone's, as every death pile);
- *       spare weapons -> credited to the killer (_creditPlayer: inbox if
- *                       they are offline or full), opIds `nmlloot:`;
- *       spare armour -> credited to the killer with its provenance row, so
- *                       it stays a provable piece in their hands.
- *     The death's usual carve-outs still hold: the gathering tools and the
- *     quest's own items stay (_keptThroughDeath) -- losing a pickaxe to a
- *     fight would end mining, and a quest's remnants would end the quest.
- *     And what this worker cannot tell from what you WEAR stays too: a
- *     stash copy of the armour on your body (adopted at join, worn since)
- *     and every cosmetic OUTFIT piece.  Taking either would risk the killer
- *     a second copy of something you still wear (storegear.js §2 has the
- *     long version).  SHIELDS joined the spares in v2.3.3091: the game now
- *     says which one is on your arm (shieldwear.js), and until it has said
- *     so this session every shield stays, as before.
- *   - a RED-skulled player who dies, however: all of that AND everything
- *     worn, every shield, the armour stashes whole, and the gold (outfit
- *     pieces still stay).  Killed by a player, the killer gets it; killed by
- *     anything else, the items go to a death pile anyone may take at once,
- *     and the rest is gone.  A piece is taken once: the one you wear and its
+ * WHAT A DEATH COSTS (_nmlOnDeath, from _handlePlayerDeath).  Since
+ * v2.3.3290 (the owner: "Opponents do not drop all of their items except what
+ * they have equipped ... make sure red skulls ... lose all their stuff if
+ * killed by another player.  If they're killed by a monster ... everything
+ * except their equipped items"):
+ *   - killed by a player under No man's land's rule (the killing blow, or a
+ *     tick of a status that player set, came through it in the last few
+ *     seconds): EVERYTHING CARRIED, nothing worn --
+ *       the bag        -> the death pile, but the KILLER's for its owner
+ *                         window (then anyone's, as every death pile), and
+ *                         ALL of it: none of the death's carve-outs stays
+ *                         (_keptThroughDeath -- the gathering tools, and every
+ *                         ore, cooked fish and quest remains: life_1/life_2's
+ *                         objectives), `all` on the pile.  Diego sells a lost
+ *                         tool back to anyone the quest gave one (shop.js);
+ *       the gold       -> credited to the killer (_creditPlayer: inbox if
+ *                         they are offline or full), opIds `nmlloot:`;
+ *       spare weapons  -> credited to the killer;
+ *       spare armour, legs, shields (once the arm is known) and amulets ->
+ *                         credited to the killer with each piece's provenance
+ *                         row, so it stays a provable piece in their hands.
+ *     What this worker cannot tell from what you WEAR stays: a stash copy of
+ *     the armour on your body (adopted at join, worn since) and every
+ *     cosmetic OUTFIT piece.  Taking either would risk the killer a second
+ *     copy of something you still wear (storegear.js §2 has the long
+ *     version).  SHIELDS joined the spares in v2.3.3091: the game says which
+ *     one is on your arm (shieldwear.js), and until it has said so this
+ *     session every shield stays.
+ *   - a RED-skulled player killed by a player: all of that AND everything
+ *     worn, every shield, the armour stashes whole -- to the killer.  (Outfit
+ *     pieces still stay.)  A piece is taken once: the one you wear and its
  *     stale stash copy are one piece.
+ *   - a RED-skulled player killed by anything else (a monster, a fall): all
+ *     that a player kill takes, to nobody -- the bag in a death pile anyone
+ *     may take at once, the gold and the spares gone -- and what they WEAR
+ *     stays (before v2.3.3290 that went too).
  *   The victim's own game is told exactly what went (`nml_loss`) so it can
  *   clear its bag -- the gear stashes are also a CLIENT's list, re-offered
  *   on every join (gearstash.js); every forfeited piece's id is kept in
- *   `nml_state:<pid>`'s `forfeit` and refused if it is offered again.
+ *   `nml_state:<pid>`'s `forfeit` and refused if it is offered again.  The
+ *   killer is told what they took (`nml_take`, v2.3.3290).
  *
  * KILL SWITCH (lower case, TRAPS §117): `nomansland: false` in liveflags
  * un-advertises caps.nomansland, refuses every No man's land hit, starts no
@@ -339,8 +350,44 @@ export const noMansLandMethods = {
 
   /* The death (index.js _handlePlayerDeath, after the duel hook): what No
      man's land takes.  Returns null when it takes nothing, else
-     { pile: {recipients, ownerName, ownerOnlyUntil}, lost } -- the pile
-     options are for _spawnDeathPile; everything else is already done. */
+     { to, lost, pile: {recipients, ownerName, ownerOnlyUntil, all} } -- the
+     pile options are for _spawnDeathPile (`all`: no carve-out stays, below),
+     `to` and `lost` for _nmlTellKiller; everything else is already done.
+
+     ═══ v2.3.3290: EVERYTHING BUT WHAT YOU WEAR ═══
+     The owner, 2026-10-17: "Opponents do not drop all of their items except
+     what they have equipped if they die in no mans land.  This should also be
+     fixed.  Additionally make sure red skulls (players who attack another
+     person) lose all their stuff if killed by another player.  If they're
+     killed by a monster then make it so they just lose everything except their
+     equipped items."  Then, asked, "Drop them, sell replacements" of the axe,
+     rod and pickaxe, and "Lose their gold too" of a victim with no skull.
+
+     What a death here kept that it should not have:
+       - the death's CARVE-OUTS (_keptThroughDeath): the gathering tools, and
+         every quest objective's family -- which is EVERY ORE (`ore_`) and
+         EVERY COOKED FISH (`cooked_fish_`), life_1/life_2's objectives, and
+         four monsters' remains.  A gatherer killed with a bag of iron ore
+         dropped nothing, and a bag of only ore and tools no pile at all.  A
+         loss here takes the whole bag now (`all`), the tools with it -- Diego
+         sells a replacement to anyone the quest gave one (shop.js TOOL_SHELF);
+       - the GOLD of a victim with no skull: the killer's now, as a red
+         skull's always was;
+       - the spare AMULETS (the amulet stash) of a victim with no skull.
+     And a red skull killed by anything but a player kept nothing at all: the
+     owner's rule is everything except what they wear.
+
+       killed by a player   everything carried: the bag (the killer's pile),
+       under the rule       the gold, every spare weapon, armour, legs, shield
+                            (once the arm is known) and amulet -- to the
+                            killer.  A RED skull everything worn as well.
+       a red skull, killed  everything carried, the same, to nobody: the bag
+       by anything else     in a pile anyone may take at once, the rest gone.
+                            What they WEAR stays.
+     What you wear is the three weapons in your hands' slots, the armour, the
+     legs, the shield on your arm and the amulet -- and the outfit pieces,
+     which are never taken (nothing says which you wear, and nothing is in
+     them to take: see below). */
   _nmlOnDeath(ps, playerId, cause) {
     if (!ps || this._nmlOff()) return null;
     const now = Date.now();
@@ -349,6 +396,8 @@ export const noMansLandMethods = {
     const red = !!(ps._nml && ps._nml.red > 0);
     if (!nmlKill && !red) return null;
     const to = nmlKill ? killerId : null;
+    /* v2.3.3290: what is WORN goes only with a red skull a player killed */
+    const takeWorn = red && nmlKill;
     const killerSession = to && this._sessionById ? this._sessionById(to) : null;
     const lost = { weapons: 0, gear: [], worn: [], coins: 0 };
     let n = 0;
@@ -362,10 +411,10 @@ export const noMansLandMethods = {
         if (p && typeof p.catch === 'function') p.catch(() => {});
       } catch (e) { /* the piece is gone either way: a loss, never a duplicate */ }
     };
-    /* spare weapons; a red skull's worn ones too */
+    /* spare weapons; a red skull's worn ones too, when a player killed them */
     const weapons = Array.isArray(ps.weaponStash) ? ps.weaponStash.filter(Boolean) : [];
     ps.weaponStash = [];
-    if (red) {
+    if (takeWorn) {
       for (const f of WORN_WEAPONS) {
         if (ps[f]) { weapons.push(ps[f]); lost.worn.push(f); }
         ps[f] = null;
@@ -382,20 +431,23 @@ export const noMansLandMethods = {
          you; giving a stale copy is a second piece for the killer);
        - shields: since v2.3.3091 the game says which shield is on the arm
          (shieldwear.js, shield_wear), so `ps.shield` is the one WORN and
-         `ps.shieldStash` the spares, exactly as for armour -- a bag loss
-         takes the spares, with the same stale-copy rule.  Only once the game
-         has said so this session (`ps._shieldKnown`): a game too old to
-         report, or a report the worker could not place, leaves every shield
+         `ps.shieldStash` the spares, exactly as for armour -- a loss takes
+         the spares, with the same stale-copy rule.  Only once the game has
+         said so this session (`ps._shieldKnown`): a game too old to report,
+         or a report the worker could not place, leaves every shield
          (`ps.shield` may still be the old ownership record, quests.js); and
-         `shieldwear: false` puts that back too.  A red skull loses them all;
+         `shieldwear: false` puts that back too.  A red skull a player killed
+         loses them all, worn or not, so it needs no report;
+       - the amulet stash: the spares, taken in every loss (v2.3.3290; it was
+         a red skull's only).  The amulet worn stays unless a player killed
+         a red skull;
        - cosmetic outfit pieces (gearStash): never -- nothing says which you
          wear, and (v2.3.3091, asked about shields AND outfits) there is
          nothing in them to take: the wardrobe is the T-shirt every player
          may pick (gearCatalog.js GEAR_CATALOG) and the plate's look, which
          follows the armour piece itself -- taken above, as armour.  An
          outfit that can be EARNED joins the spares the same way, with its
-         own wear report;
-       - the amulet stash: always empty (no unequip flow), a red skull's.
+         own wear report.
        A piece is taken once (`takenGids`): the worn piece and its stale stash
        copy are one piece. */
     const sigOf = (p) => (p && typeof p === 'object' ? [p.name, p.gearBase, p.tierMult, p.tier].join('|') : '');
@@ -415,7 +467,7 @@ export const noMansLandMethods = {
     };
     const worn = Object.create(null);
     for (const f of WORN_GEAR) worn[f] = ps[f] && typeof ps[f] === 'object' ? ps[f] : null;
-    if (red) {
+    if (takeWorn) {
       /* everything worn first, so its stale stash copies below are the same
          piece already taken */
       for (const f of WORN_GEAR) {
@@ -427,7 +479,8 @@ export const noMansLandMethods = {
     }
     /* v2.3.3091: + the spare shields, once the arm is known (shieldwear.js) */
     const shieldsKnown = ps._shieldKnown === true && !(this._shieldWearOff && this._shieldWearOff());
-    for (const slot of red ? ['armor', 'legsArmor', 'shield', 'amulet'] : (shieldsKnown ? ['armor', 'legsArmor', 'shield'] : ['armor', 'legsArmor'])) {
+    const slots = (takeWorn || shieldsKnown) ? ['armor', 'legsArmor', 'shield', 'amulet'] : ['armor', 'legsArmor', 'amulet'];
+    for (const slot of slots) {
       const field = GEAR_PROV_FIELD[slot];
       const list = Array.isArray(ps[field]) ? ps[field] : [];
       const keep = [];
@@ -439,38 +492,82 @@ export const noMansLandMethods = {
         const stale = !!w && (gid ? gid === wGid : sigOf(piece) === sigOf(w));
         if (stale) {
           /* the piece you wear (or wore, a red skull's, already taken) */
-          if (!red) keep.push(piece);
+          if (!takeWorn) keep.push(piece);
           continue;
         }
         take(slot, piece);
       }
       ps[field] = keep;
     }
-    if (red) {
-      /* the gold.  (The amulet forge's gold NUGGETS and BARS are ingredient
-         counters of their own with no credit kind to carry them, so they
-         stay -- written down in docs/specs/no-mans-land.md.) */
-      lost.coins = Math.max(0, Math.floor(Number(ps.coins) || 0));
-      ps.coins = 0;
-      if (lost.coins) credit('gold', { amount: lost.coins }, 'No man\'s land');
-    }
+    /* the gold -- every loss's since v2.3.3290 (a red skull's only before).
+       (The amulet forge's gold NUGGETS and BARS are ingredient counters of
+       their own with no credit kind to carry them, so they stay -- written
+       down in docs/specs/no-mans-land.md.) */
+    lost.coins = Math.max(0, Math.floor(Number(ps.coins) || 0));
+    ps.coins = 0;
+    if (lost.coins) credit('gold', { amount: lost.coins }, 'No man\'s land');
     this._nmlSave(playerId, ps);
-    /* tell the victim's game what went, so it clears its own copies */
+    /* tell the victim's game what went, so it clears its own copies.
+       v2.3.3290: `named` -- the gear list names every piece taken, a red
+       skull's too, and the game takes out exactly those (an older worker
+       took a red skull's lists whole, and said nothing of it); `keepWorn` --
+       a red skull no player killed keeps what it wears. */
     const ws = this._wsBySessionId && this._wsBySessionId(playerId);
     if (ws) {
       try {
         ws.send(JSON.stringify({ type: 'nml_loss', payload: {
           by: to ? ((killerSession && killerSession.name) || 'a player') : null,
           red, weapons: lost.weapons, gear: lost.gear, worn: lost.worn,
-          coins: lost.coins, bag: true,
+          coins: lost.coins, bag: true, named: true, keepWorn: red && !takeWorn,
         } }));
       } catch (e) { /* the echo still carries the worker's own state */ }
     }
     return {
+      to,
       lost,
       pile: to
-        ? { recipients: [to], ownerName: (killerSession && killerSession.name) || 'Player' }
-        : { recipients: [], ownerOnlyUntil: now },   /* the pile wears the dead player's name */
+        ? { recipients: [to], ownerName: (killerSession && killerSession.name) || 'Player', all: true }
+        : { recipients: [], ownerOnlyUntil: now, all: true },   /* the pile wears the dead player's name */
     };
+  },
+
+  /* ═══ v2.3.3290: A STATUS'S TICK KEEPS THE KILL ITS SETTER'S ═══
+     A tick of a burn, a poison or the like, a thorn's recoil and a blow's
+     collision (pvpextras.js _strikePlayer, `dot`) is part of the blow that
+     set it: it starts no skull (_nmlOnHit is the blow's) -- but a kill by it
+     is that player's.  Before, only a blow refreshed the kill's 5 s
+     (KILL_BLOW_MS), so a poison's last tick a little after its blow killed
+     with nothing taken, as if a monster had. */
+  _nmlTouch(attackerId, targetId, now) {
+    const t = this.playerState[targetId];
+    if (!t || !attackerId) return;
+    t._nmlLastHitBy = attackerId;
+    t._nmlLastHitAt = typeof now === 'number' ? now : Date.now();
+  },
+
+  /* ═══ v2.3.3290: AND THE KILLER IS TOLD WHAT THEY TOOK ═══
+     One line (`nml_take`) after the pile is down (index.js, the death's
+     hooks): who, how many things lie where they fell -- the killer's for its
+     owner window -- and the gold and spare gear already theirs (each piece
+     also has its own "You received" line, inbox.js).  The pile is what the
+     killer has to walk to, and nothing pointed at it. */
+  _nmlTellKiller(res, victimId, pile) {
+    if (!res || !res.to) return;
+    const ws = this._wsBySessionId && this._wsBySessionId(res.to);
+    if (!ws) return;
+    const vs = this._sessionById ? this._sessionById(victimId) : null;
+    let items = 0;
+    for (const it of (pile && Array.isArray(pile.deathItems) ? pile.deathItems : [])) items += Math.max(0, Math.floor(Number(it && it.qty) || 0));
+    const lost = res.lost || {};
+    try {
+      ws.send(JSON.stringify({ type: 'nml_take', payload: {
+        from: (vs && vs.name) || 'a player',
+        items, lootId: pile && pile.lootId ? pile.lootId : null,
+        coins: Math.max(0, Math.floor(Number(lost.coins) || 0)),
+        weapons: Math.max(0, Math.floor(Number(lost.weapons) || 0)),
+        gear: Array.isArray(lost.gear) ? lost.gear.length : 0,
+        worn: Array.isArray(lost.worn) ? lost.worn.length : 0,
+      } }));
+    } catch (e) { /* the pile and the mail say it anyway */ }
   },
 };

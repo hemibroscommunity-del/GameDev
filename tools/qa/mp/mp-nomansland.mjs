@@ -27,6 +27,13 @@
  *      that is the raider's;
  *   3b. (v2.3.3107) the raider's badge wears their red skull, and a tap on it
  *      opens what No man's land means, with the skull's minutes left;
+ *   4b. (v2.3.3290) the owner: "Opponents do not drop all of their items
+ *      except what they have equipped" -- the wanderer also carries ores,
+ *      cooked fish, all three gathering tools and gold, which a death used to
+ *      keep: after the kill their bag is EMPTY and their purse too, the
+ *      greatsword in their hand still theirs; the ore, the fish and the tools
+ *      lie in the raider's pile, the gold is the raider's, and the raider is
+ *      told what they took;
  *   5. no page errors.
  * Pictures: tools/qa/mp/out/nomansland-*.png.
  *
@@ -146,13 +153,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.devOp(wsPort, 'quests', idA);
   await H.devOp(wsPort, 'quests', idB);
   await H.grant(wsPort, idB, 'item', { invKey: 'fish_minnow', count: 3 }).catch(() => {});
+  /* v2.3.3290: what a death used to keep -- every ore and cooked fish (the
+     first quests' objectives) and the gathering tools -- and gold */
+  for (const [invKey, count] of [['ore_iron', 4], ['cooked_fish_minnow', 2], ['woodcutting_axe', 1], ['fishing_pole', 1], ['mining_pickaxe', 1]]) {
+    await H.grant(wsPort, idB, 'item', { invKey, count }).catch(() => {});
+  }
+  await H.grant(wsPort, idB, 'gold', { amount: 120 }).catch(() => {});
+  /* ...and something WORN, which a death here never takes: the dev kit's
+     greatsword, bow and staff, a greatsword strapped on (one stays a spare,
+     with the kit's bow and staff) */
+  await H.devOp(wsPort, 'kit', idB, { what: 'weapons' });
+  for (let i = 0; i < 20; i++) {
+    await B.page.waitForTimeout(500);
+    const held = await B.page.evaluate(() => { const R = window._gameState.current.rpg || {}; return R.weapon ? R.weapon.type : null; });
+    if (held === 'greatsword') break;
+    await H.equipWeapon(B, 'greatsword', 'weapon', 'melee');
+  }
   await A.page.waitForTimeout(1200);
   /* the bags as the worker last sent them (player_state's echo: weapons are
      the worker's; the admin view's `rpg` is the SAVED copy, which lags) */
   const bag = (P) => P.page.evaluate(() => {
     const R = (window._gameState.current.rpg) || {};
     return { weapon: R.weapon ? R.weapon.type : null, swords: (R.weaponStash || []).filter((w) => w && w.type === 'greatsword').length,
-      minnows: (R.inventory || {}).fish_minnow || 0, shields: (R.shieldStash || []).length };
+      minnows: (R.inventory || {}).fish_minnow || 0, shields: (R.shieldStash || []).length,
+      /* v2.3.3290: the whole bag and the purse */
+      inv: Object.fromEntries(Object.entries(R.inventory || {}).filter(([, n]) => n > 0)), coins: R.coins || 0 };
   });
   const bagA0 = await bag(A), bagB0 = await bag(B);
   const aSwords0 = bagA0.swords, aShields0 = bagA0.shields;
@@ -170,6 +195,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!armB && !!armB.said && armB.said.none === true && !armB.worn && armB.spares.length >= 1 && bagB0.shields >= 1, { armB, bagB0 });
   rec.ok(`setup: the raider holds a greatsword, the wanderer a SPARE one in the bag (${bagB0.swords}) and ${bagB0.minnows} minnows`,
     bagA0.weapon === 'greatsword' && bagB0.swords >= 1 && bagB0.minnows >= 3, { bagA0, bagB0 });
+  rec.ok(`setup (v2.3.3290): the wanderer also carries iron ore, cooked fish, the axe, the rod and the pickaxe, and ${bagB0.coins} gold -- and holds a ${bagB0.weapon} in hand`,
+    bagB0.inv.ore_iron === 4 && bagB0.inv.cooked_fish_minnow === 2 && bagB0.inv.woodcutting_axe === 1 && bagB0.inv.fishing_pole === 1
+      && bagB0.inv.mining_pickaxe === 1 && bagB0.coins >= 120 && bagB0.weapon === 'greatsword', bagB0);
 
   /* ── the walk out, untouchable ── */
   for (const id of [idA, idB]) await H.devOp(wsPort, 'vitals', id, { heal: true, god: true, godMinutes: 6 });
@@ -379,7 +407,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     lossB = await B.page.evaluate(() => {
       const S = window._gameState.current, R = S.rpg || {};
       return {
-        told: (S.chatLog || []).filter((l) => /took your bag in No man's land/.test(l.text || '')).map((l) => l.text),
+        /* v2.3.3290: "took everything you carried" (it was "took your bag") */
+        told: (S.chatLog || []).filter((l) => /took everything you carried in No man's land/.test(l.text || '')).map((l) => l.text),
         swords: (R.weaponStash || []).filter((w) => w && w.type === 'greatsword').length,
         shields: (R.shield ? 1 : 0) + (R.shieldStash || []).length,
       };
@@ -400,11 +429,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const pile = await A.page.evaluate((bid) => {
     const S = window._gameState.current;
     const p = (S.groundLoot || []).find((l) => l && String(l.lootId || '').startsWith('dd-' + bid));
-    return p ? { recipients: p.recipients, killerName: p.killerName, zone: p.zone } : null;
+    /* v2.3.3290: what is in it, read now -- the raider stands on it and picks it up */
+    return p ? { recipients: p.recipients, killerName: p.killerName, zone: p.zone,
+      items: Object.fromEntries((p.deathItems || []).map((it) => [it.key, it.qty])) } : null;
   }, idB);
   rec.ok(`4. the wanderer's minnows lie in a pile that is the raider's (${pile && pile.killerName}'s loot)`,
     !!pile && Array.isArray(pile.recipients) && pile.recipients.length === 1 && pile.recipients[0] === idA && pile.killerName === 'Raider', pile);
   await shot(A, '4-after');
+
+  /* ── 4b. v2.3.3290: everything carried, nothing worn ── */
+  let bagB1 = null;
+  for (let i = 0; i < 16; i++) {
+    bagB1 = await bag(B);
+    if (!Object.keys(bagB1.inv).length && !bagB1.coins) break;
+    await B.page.waitForTimeout(500);
+  }
+  rec.ok(`4b. the wanderer's bag is EMPTY -- the ore, the cooked fish and the three tools gone with the minnows (${JSON.stringify(bagB1 && bagB1.inv)}) -- and their purse (${bagB1 && bagB1.coins} gold)`,
+    !!bagB1 && Object.keys(bagB1.inv).length === 0 && bagB1.coins === 0, { before: bagB0, after: bagB1 });
+  rec.ok(`4b. ...and what they WEAR is still theirs: the ${bagB1 && bagB1.weapon} in their hands`,
+    !!bagB1 && bagB1.weapon === 'greatsword', { before: bagB0.weapon, after: bagB1 && bagB1.weapon });
+  const pileItems = pile && pile.items;
+  rec.ok(`4b. the raider's pile holds it all: ${JSON.stringify(pileItems)}`,
+    !!pileItems && pileItems.ore_iron === 4 && pileItems.cooked_fish_minnow === 2 && pileItems.woodcutting_axe === 1
+      && pileItems.fishing_pole === 1 && pileItems.mining_pickaxe === 1 && pileItems.fish_minnow >= 3, pileItems);
+  let bagA2 = null, taken = null;
+  for (let i = 0; i < 16; i++) {
+    bagA2 = await bag(A);
+    taken = await A.page.evaluate(() => (window._gameState.current.chatLog || []).filter((l) => /You took Wanderer's things/.test(l.text || '')).map((l) => l.text));
+    if (bagA2.coins >= bagA0.coins + bagB0.coins && taken.length) break;
+    await A.page.waitForTimeout(500);
+  }
+  rec.ok(`4b. the wanderer's gold is the raider's (${bagA0.coins} -> ${bagA2 && bagA2.coins}, +${bagB0.coins})`,
+    !!bagA2 && bagA2.coins === bagA0.coins + bagB0.coins, { a0: bagA0.coins, b0: bagB0.coins, a2: bagA2 && bagA2.coins });
+  rec.ok(`4b. ...and the raider is told what they took: "${taken && taken[0]}"`,
+    !!taken && taken.length >= 1 && /lie where they fell/.test(taken[0]) && /gold/.test(taken[0]), taken);
 
   stopAlive = true;
   const errs = [...A.logs, ...B.logs].filter((l) => /pageerror/.test(l));

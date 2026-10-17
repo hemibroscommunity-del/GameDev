@@ -227,17 +227,22 @@ export function ShopkeeperPanel() {
 
   /* v2.3.2063: staples have no count (qty null) and must NOT be filtered out
      by `qty > 0` -- they are the things he always has. The pile keeps its
-     filter: an item he holds none of is not on the shelf. */
-  const shelf = shopBus.stock.filter((i) => i.staple || i.qty > 0);
+     filter: an item he holds none of is not on the shelf.
+     v2.3.3290: nor his TOOLS -- the axe, rod and pickaxe he sells back to a
+     player the quest gave one (server shop.js TOOL_SHELF), since a death in
+     No man's land takes them. */
+  const shelf = shopBus.stock.filter((i) => i.staple || i.tool || i.qty > 0);
   const broHas = (k) => (shopBus.quoteFor(k) || {}).qty || 0;
   const youHave = (k) => Math.floor(inv[k] || 0);
 
   const selEntry = selKey ? shopBus.quoteFor(selKey) : null;
   const selStaple = !!(selEntry && selEntry.staple && selSide === 'bro');
+  /* v2.3.3290: a tool is one at a time too: a replacement, never a second */
+  const selTool = !!(selEntry && selEntry.tool && selSide === 'bro');
   /* A staple is always exactly one: what you buy is an effect, and only one
      effect runs at a time. */
   const selMax = selKey
-    ? (selSide === 'bro' ? (selStaple ? 1 : broHas(selKey)) : youHave(selKey))
+    ? (selSide === 'bro' ? ((selStaple || selTool) ? 1 : broHas(selKey)) : youHave(selKey))
     : 0;
   const clamped = Math.max(1, Math.min(qty, Math.max(1, selMax)));
   const liveQuote = (quote && selKey && quote.key === selKey && quote.qty === clamped
@@ -248,7 +253,11 @@ export function ShopkeeperPanel() {
      a pile already full -- and the button says so instead of a "…" that
      looks like it is still loading. */
   const wontBuy = selSide === 'bag' && !!quote && quote.key === selKey && quote.mode === 'sell' && quote.qty === 0;
-  const canAct = !!liveQuote && selMax >= 1 && !tooPoor && !wontBuy && !shopBus.busy;
+  /* v2.3.3290: and why he will not sell YOU this tool -- the quote is yours
+     alone ('have' one already, or no 'quest' gave you one yet) */
+  const toolWhy = selTool && !!quote && quote.key === selKey && quote.mode === 'buy' && quote.qty === 0
+    ? (quote.why || 'off') : null;
+  const canAct = !!liveQuote && selMax >= 1 && !tooPoor && !wontBuy && !toolWhy && !shopBus.busy;
 
   const act = () => {
     if (!canAct) return;
@@ -416,6 +425,10 @@ export function ShopkeeperPanel() {
                     running effect -- the line said they did. */}
                 {selStaple
                   ? <span data-shop-staple="">Always in stock</span>
+                  : selTool
+                  ? <span data-shop-tool={toolWhy || 'ok'}>{toolWhy === 'have' ? 'You have one'
+                      : toolWhy === 'quest' ? "Mayor Bro's quest gives the first"
+                      : 'A replacement, if yours was lost'}</span>
                   : <>
                       <span data-shop-brohas={broHas(selKey)}>Bro has {broHas(selKey)}</span>
                       {' · '}
@@ -428,7 +441,7 @@ export function ShopkeeperPanel() {
                 mean "charge me five times and give me one effect", since
                 effects do not stack -- so the control is removed rather than
                 disabled, and the row gets its width back for the name. */}
-            {selStaple ? null : (
+            {(selStaple || selTool) ? null : (
               <>
                 <button type="button" style={stepBtn} aria-label="One fewer"
                   data-shop-minus="" onClick={() => setQty((n) => Math.max(1, n - 1))}>−</button>
@@ -460,6 +473,9 @@ export function ShopkeeperPanel() {
                   for the decay across the units -- it is not qty x unit. */}
               {tooPoor ? 'Not enough gold'
                 : wontBuy ? 'He won\'t buy'
+                : toolWhy === 'have' ? 'You have one'
+                : toolWhy === 'quest' ? 'Not yet'
+                : toolWhy ? 'Not for sale'
                 : (selSide === 'bro' ? 'BUY ' : 'SELL ')
                   + (liveQuote ? liveQuote.total + 'g' : '…')}
             </button>

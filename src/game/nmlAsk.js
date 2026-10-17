@@ -47,15 +47,34 @@
  * `?nmlask=0` is the game as it was (the tap aims, a stray shot asks
  * nothing).  Only against a worker with caps.nomansland, like everything of
  * No man's land's.
+ *
+ * ═══ v2.3.3290: A SWING ASKS TOO, AND AN UNANSWERED WINDOW CAN COME BACK ═══
+ * The owner, 2026-10-17: "Attacks without locking on target did not pop up
+ * the window for attack ignore etc."  Only a SHOT asked: an arrow, a bolt or
+ * a special through a player (projectiles.js _nmlStrayShot).  A sword's swing
+ * at a player you had not chosen -- the game's first weapon, and the one the
+ * owner swung -- did nothing to them and asked nothing (monsterCombat.js sends
+ * a swing's claim only for a lock, a duel or a chosen foe).  Now a swing whose
+ * arc reaches such a player asks too (`nmlSwingAsk`), by the same rules as a
+ * shot and the same reach and arc the swing's own claims use.
+ *   And "once per player" now means once per ANSWER: a window that went with
+ * no answer -- its 10 s ran out, or they stopped being someone you could
+ * fight -- may ask again, a quiet NML_ASK_AGAIN_MS after it went
+ * (`nmlAskClose`).  Before, a window that timed out unseen in the middle of a
+ * fight was the only one that player would ever raise, until the page was
+ * reloaded; Ignore still means never again.
  */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { nmlLive, nmlCanAttack } from '@/game/noMansLand.js';
-import { chooseFoe } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts */
+import { nmlLive, nmlCanAttack, nmlHere } from '@/game/noMansLand.js';
+import { chooseFoe, isLiveFighter } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts; v2.3.3290: + who a swing already hits */
 
-/* how long an unanswered window stays (it is an Ignore after this) */
+/* how long an unanswered window stays */
 export const NML_ASK_MS = 10000;
+/* v2.3.3290: and how long after one goes with no answer the same player may
+   be asked about again by a shot or a swing (a tap asks every time) */
+export const NML_ASK_AGAIN_MS = 15000;
 
-let _ask = null;   /* { id, name, lv, why: 'shot' | 'tap', at } | null */
+let _ask = null;   /* { id, name, lv, why: 'shot' | 'swing' | 'tap', at } | null */
 const _subs = new Set();
 function emit() {
   for (const fn of _subs) {
@@ -138,31 +157,76 @@ export function nmlPartyInvite(S, id) {
 }
 
 /** Raise the window about `id`.  why 'shot': a stray shot passed through
- *  them -- once per player, never over an open window, never your attacker.
- *  why 'tap': you tapped them -- every time, replacing a window about
- *  someone else.  True when the window is up about them. */
+ *  them; why 'swing' (v2.3.3290): your swing reached them -- each once per
+ *  player until it is answered (an unanswered window may ask again
+ *  NML_ASK_AGAIN_MS after it went), never over an open window, never your
+ *  attacker.  why 'tap': you tapped them -- every time, replacing a window
+ *  about someone else.  True when the window is up about them. */
 export function nmlAsk(S, id, why) {
   if (!S || id == null || !nmlAskOn(S) || S._inDuel) return false;
   const key = String(id);
   if (!S.others || !S.others[key] || !nmlCanAttack(S, key)) return false;
-  if (why === 'shot') {
+  if (why === 'shot' || why === 'swing') {
     if (_ask || nmlAsked(S, key) || nmlHitBack(S, key)) return false;
+    const again = S._nmlAskAgain instanceof Map ? (S._nmlAskAgain.get(key) || 0) : 0;
+    if (again && Date.now() < again) return false;
   } else if (_ask && _ask.id === key) {
     return true;
   }
   const o = S.others[key];
   askedSet(S).add(key);
-  _ask = { id: key, name: (o && o.name) || 'Player', lv: Number(o && o.rpgLv) || 1, why: why === 'shot' ? 'shot' : 'tap', at: Date.now() };
+  _ask = { id: key, name: (o && o.name) || 'Player', lv: Number(o && o.rpgLv) || 1, why: why === 'shot' || why === 'swing' ? why : 'tap', at: Date.now() };
   emit();
   return true;
 }
 
-/** Let the window go without an answer (Ignore, its time up, or they can no
- *  longer be fought). */
-export function nmlAskClose() {
+/** Let the window go WITHOUT an answer: its time up, or they can no longer be
+ *  fought.  v2.3.3290: so it is not "asked" -- a later shot or swing may ask
+ *  again, NML_ASK_AGAIN_MS from now (Ignore is an answer: nmlAskAnswer). */
+export function nmlAskClose(S) {
   if (!_ask) return;
+  const a = _ask;
   _ask = null;
+  if (S && a && a.id != null) {
+    if (S._nmlAsked instanceof Set) S._nmlAsked.delete(String(a.id));
+    if (!(S._nmlAskAgain instanceof Map)) S._nmlAskAgain = new Map();
+    if (S._nmlAskAgain.size >= 32) S._nmlAskAgain.clear();
+    S._nmlAskAgain.set(String(a.id), Date.now() + NML_ASK_AGAIN_MS);
+  }
   emit();
+}
+
+/** ═══ v2.3.3290: YOUR SWING REACHED A PLAYER YOU HAVE NOT CHOSEN ═══
+ *  The swing's own reach and arc from (px, py) toward `ang` (monsterCombat.js
+ *  hands in what its claims use, `slack` a stride as theirs): the first player
+ *  in it you could fight here -- not your lock, not one you chose or your
+ *  sparring clone (the swing already lands on those), not drawn-away -- is
+ *  asked about, as a stray shot's is.  The swing does them nothing.  Called on
+ *  every frame of a swing's sweep: a window up, or none of this in No man's
+ *  land, and it is gone at once.  True when it raised the window. */
+export function nmlSwingAsk(S, px, py, ang, reach, arc, slack) {
+  if (!S || !S.others || S._inDuel || _ask || !nmlAskOn(S) || !nmlHere(S)) return false;
+  if (typeof px !== 'number' || typeof py !== 'number' || !isFinite(ang)) return false;
+  const lt = S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id != null ? String(S.lockedTarget.id) : null;
+  const R = (Number(reach) || 0) + (Number(slack) || 0);
+  const half = (Number(arc) || 0) / 2;
+  if (!(R > 0) || !(half > 0)) return false;
+  const notDrawn = S._peersNotDrawn;
+  for (const id of Object.keys(S.others)) {
+    if (id === lt || (notDrawn && notDrawn.has(id))) continue;
+    if (isLiveFighter(S, id)) continue;
+    const o = S.others[id];
+    if (!o) continue;
+    const x = typeof o.renderX === 'number' ? o.renderX : o.x;
+    const y = typeof o.renderY === 'number' ? o.renderY : o.y;
+    if (typeof x !== 'number' || typeof y !== 'number') continue;
+    const dx = x - px, dy = y - py;
+    if (dx * dx + dy * dy > R * R) continue;
+    const a = Math.atan2(dy, dx);
+    if (Math.abs(Math.atan2(Math.sin(a - ang), Math.cos(a - ang))) > half) continue;
+    if (nmlAsk(S, id, 'swing')) return true;
+  }
+  return false;
 }
 
 /** The window's three buttons: 'attack' | 'party' | 'ignore'. */

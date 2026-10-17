@@ -1093,7 +1093,8 @@ remnant to migrate server-side, not a mode to preserve.
       shields, outfits and gold kept -- a stash copy of WORN armour, shields and
       outfits cannot be told from spares by the worker (storegear.js §2);
       a RED skull's death takes everything worn too, every shield, and the
-      gold; `nml_loss` tells the game exactly what went;
+      gold; `nml_loss` tells the game exactly what went (since v2.3.3290
+      everything CARRIED goes, tools, ores and gold too -- below);
     - `caps.nomansland`, kill switch `nomansland: false`; dev vitals take
       `hp`; `nomansland` suite (51), `mp-nomansland` (15, two screens);
     - since v2.3.3091 SPARE SHIELDS GO TOO -- asked "Shields and outfits in no
@@ -1173,6 +1174,40 @@ remnant to migrate server-side, not a mode to preserve.
         half, never the shield;
       - spar §16 (24 checks), `mp-nmlfoe` (three phones): no-mans-land.md "The
         choice lasts, and the shield is there".
+    - since v2.3.3290 A SWING ASKS, AND A DEATH TAKES EVERYTHING CARRIED -- the
+      owner: "Attacks without locking on target did not pop up the window for
+      attack ignore etc.", "Opponents do not drop all of their items except
+      what they have equipped", "make sure red skulls ... lose all their stuff
+      if killed by another player. If they're killed by a monster ...
+      everything except their equipped items"; then, asked, "Drop them, sell
+      replacements" (the tools) and "Lose their gold too":
+      - a SWORD swing whose arc reaches a player you could fight and have not
+        chosen asks "Attack <name>?" as a stray shot did (nmlAsk.js
+        `nmlSwingAsk`, called from monsterCombat.js with the swing's own reach
+        and arc); reproduced on main: 5 s of swings, no window. A window that
+        goes UNANSWERED (its time up, or they cannot be fought) is not
+        "asked": a shot or swing may ask again `NML_ASK_AGAIN_MS` 15 s after
+        (`nmlAskClose(S)`); Ignore still means never again;
+      - a death under the rule takes EVERYTHING CARRIED: the whole bag with
+        none of the death's carve-outs (`_keptThroughDeath`: the three tools
+        and every quest objective's family, which is EVERY `ore_` and
+        `cooked_fish_` and four remains -- a gatherer dropped nothing) into
+        the killer's pile (`pile.all`, `_wipeInventoryOnDeath(ps, all)`), the
+        gold and the spare amulets to the killer too; a red skull a PLAYER
+        killed loses what it wears as well, a red skull anything else killed
+        keeps what it wears (`keepWorn`) and loses the rest to nobody; a
+        status's tick keeps the kill its setter's (`_nmlTouch`); `nml_loss`
+        gains `named`/`keepWorn`, and the killer is told (`nml_take`,
+        PRIVILEGED); ordinary deaths unchanged;
+      - Diego sells the axe, rod and pickaxe back, 100 gold each
+        (server/src/shop.js `TOOL_SHELF`), one at a time, only to a player a
+        quest gave that tool (`toolEarned`: life_1's accept for the axe and
+        rod, its turn-in for the pickaxe) who holds none, never bought back;
+        shelf rows `tool: true` (an older game hides them), the quote's `why`
+        ('have' / 'quest'); kill switch `toolshop: false`;
+      - `nomansland` §5-6 and §11 (100 checks), `shop` suite "a lost tool",
+        `mp-nmlask` step 0, `mp-nomansland` 4b, `mp-toolshelf`:
+        no-mans-land.md "Everything but what you wear".
     - since v2.3.3260 FIGHTS BETWEEN PLAYERS LAST, FISH MATTER IN THEM, AND
       LEAVING IS NO ESCAPE -- the owner, after the time-to-kill study: "I want
       you to plan and implement fixes for all of these including how much HP

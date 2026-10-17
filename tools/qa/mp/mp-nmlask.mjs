@@ -38,6 +38,11 @@
  *   9. held SIDEWAYS (844 x 390) the window sits beside the minimap, inside
  *      the world's own window, clear of the thumbs' controls and of you;
  *  10. no page errors.
+ *   0. (v2.3.3290, first) the owner: "Attacks without locking on target did
+ *      not pop up the window for attack ignore etc."  A SWORD swing at the
+ *      wanderer with nothing locked asks ("swing"), and does them nothing; left
+ *      alone it goes, unanswered, and swings in the next 15 s ask nothing --
+ *      then one asks again; Ignore is an answer, and no swing asks after it.
  * Pictures: tools/qa/mp/out/nmlask-*.png.
  */
 import * as H from './harness.mjs';
@@ -382,6 +387,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const hpB = async () => ((await H.serverPlayer(wsPort, idB)) || {}).hp;
   const hpA = async () => ((await H.serverPlayer(wsPort, idA)) || {}).hp;
 
+  /* ── 0. v2.3.3290: a SWORD swing with nothing locked asks ── */
+  const eqG0 = await H.equipWeapon(A, 'greatsword', 'weapon', 'melee');
+  await A.page.waitForTimeout(1500);
+  await standBeside(A, wsPort, idB, 30);
+  /* this window waits 4 s, so it can be read and then go by itself */
+  await A.page.evaluate(() => window.__btNmlAsk.setMs(4000));
+  const hp00 = await hpB();
+  const h0 = await holdAt(A, idB, 5000, true);
+  const a0 = await waitAsk(A, (v) => !!v.dom, 3000);
+  const hp01 = await hpB();
+  const sk0 = await H.readState(A, (S) => ({ mine: S._pvpSkullType || null, red: (S._nmlSelf && S._nmlSelf.red) || 0 }));
+  console.log('    swing: ' + JSON.stringify({ eqG0, h0, a0: a0 && a0.dom }));
+  rec.ok(`0. a SWORD swing at the wanderer with nothing locked asks: "${a0 && a0.dom && a0.dom.name}" (why: ${a0 && a0.dom && a0.dom.why})`,
+    eqG0.ok && !!a0 && !!a0.dom && a0.dom.why === 'swing' && a0.dom.id === idB && a0.dom.name === 'Attack Wanderer?', { eqG0, h0, a0: a0 && a0.dom });
+  rec.ok('0. ...and the swing does them nothing: no player_attack sent, the worker\'s HP unchanged, no skull',
+    h0.attacks === 0 && typeof hp00 === 'number' && hp01 === hp00 && !sk0.mine && !sk0.red, { h0, hp00, hp01, sk0 });
+  await shot(A, '0-swing');
+  const a0b = await waitAsk(A, (v) => !v.dom, 9000);
+  const re0 = await A.page.evaluate((bid) => {
+    const S = window._gameState.current;
+    return { asked: S._nmlAsked instanceof Set && S._nmlAsked.has(bid),
+      again: S._nmlAskAgain instanceof Map && S._nmlAskAgain.has(bid) ? S._nmlAskAgain.get(bid) - Date.now() : null };
+  }, idB);
+  rec.ok(`0. left alone it goes by itself, UNANSWERED: not counted as asked, so a later blow may ask again (in ${re0.again} ms)`,
+    !!a0b && !a0b.dom && !re0.asked && typeof re0.again === 'number' && re0.again > 5000 && re0.again <= 15000, { a0b: a0b && !!a0b.dom, re0 });
+  const h0b = await holdAt(A, idB, 2500, true);
+  rec.ok('0. ...but not straight away: swings in the quiet that follows ask nothing, and do nothing',
+    !h0b.asked && h0b.attacks === 0 && (await hpB()) === hp00, h0b);
+  /* the quiet aged past (15 s of waiting is the only difference) */
+  await A.page.evaluate((bid) => { const S = window._gameState.current; if (S._nmlAskAgain instanceof Map) S._nmlAskAgain.set(bid, Date.now() - 1); }, idB);
+  await A.page.evaluate(() => window.__btNmlAsk.setMs(30000));
+  const h0c = await holdAt(A, idB, 5000, true);
+  const a0c = await waitAsk(A, (v) => !!v.dom, 3000);
+  rec.ok(`0. ...after it a swing asks again (why: ${a0c && a0c.dom && a0c.dom.why})`, !!a0c && !!a0c.dom && a0c.dom.why === 'swing' && a0c.dom.id === idB && h0c.attacks === 0, { h0c, a0c: a0c && a0c.dom });
+  await tapAsk(A, 'ignore');
+  const a0d = await waitAsk(A, (v) => !v.dom, 6000);
+  const h0d = await holdAt(A, idB, 2500, true);
+  rec.ok('0. Ignore is an answer: the window goes, and more swings at the wanderer ask nothing and do nothing',
+    !!a0d && !a0d.dom && !h0d.asked && h0d.attacks === 0 && (await hpB()) === hp00, { a0d: a0d && !!a0d.dom, h0d });
+  /* the rest of this scenario starts from a wanderer never asked about (a
+     test's reset, as step 8 ages the fight's clocks) */
+  await A.page.evaluate(() => {
+    const S = window._gameState.current;
+    if (S._nmlAsked instanceof Set) S._nmlAsked.clear();
+    if (S._nmlAskAgain instanceof Map) S._nmlAskAgain.clear();
+    S.autoAttack = false; S._aiming = false;
+  });
+  await A.page.waitForTimeout(600);
+
   /* ── 1. stray bolts ask, and do nothing ── */
   const eqS = await H.equipWeapon(A, 'staff', 'staffWeapon', 'staff');
   await A.page.waitForTimeout(1500);
@@ -449,7 +503,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { title: cur && cur.title, body: body ? body.textContent : null, card: !!document.querySelector('[data-nml-ask]') };
   });
   rec.ok(`4. ...its (i) opens what No man's land means ("${info.title}"), saying how to attack, the window kept under it`,
-    /No man's land 1/.test(info.title || '') && /tap a player and choose Attack/.test(info.body || '') && /red skull/.test(info.body || '') && info.card, info);
+    /No man's land 1/.test(info.title || '') && /tap a player.*choose Attack/.test(info.body || '') && /red skull/.test(info.body || '') && info.card, info);
   await A.page.evaluate(() => { if (window.__btInfoPopup) window.__btInfoPopup.close(); });
   await A.page.waitForTimeout(400);
 

@@ -19,15 +19,19 @@
  *      yourself; hitting back the one who attacked you is no new red skull;
  *   4. the skulls count down only while connected, are stored, and come back
  *      on join;
- *   5. a death under the rule: the bag's items in a pile that is the KILLER's
- *      for its owner window, the spare weapons and gear credited to the
- *      killer (gear with its provenance row), nothing worn and no gold taken,
- *      the tools kept, `nml_loss` told;
- *   6. a red skull's death: the worn weapons, the worn gear and the gold too
- *      -- to the killer, or (killed by a monster) to nobody, the items in a
- *      pile anyone may take at once;
+ *   5. a death under the rule: EVERYTHING CARRIED (v2.3.3290) -- the whole
+ *      bag, the tools, ores, cooked fish and quest remains with it, in a pile
+ *      that is the KILLER's for its owner window; the gold, the spare
+ *      weapons and gear credited to the killer (gear with its provenance
+ *      row); nothing worn; `nml_loss` told, and the killer told (`nml_take`);
+ *   6. a red skull's death: killed by a player, the worn weapons and gear too
+ *      -- to the killer; killed by a monster (v2.3.3290) everything carried
+ *      to nobody (the items in a pile anyone may take at once) and what they
+ *      WEAR kept;
  *   7. a forfeited piece offered again on the next join is refused;
- *   8. the kill switch: no hit, no skull, nothing taken; caps advertise it.
+ *   8. the kill switch: no hit, no skull, nothing taken; caps advertise it;
+ *  11. v2.3.3290: the spare amulets, a status tick's kill, the respawn wipe,
+ *      a red skull a monster killed with the arm known and unknown.
  */
 import { GameRoom } from '../src/index.js';
 import { NML, nmlTierAt, nmlLevelAt, NML_KEY } from '../src/nomansland.js';
@@ -211,7 +215,9 @@ const ps = (k) => room.playerState[ids[k]];
   const A = ps('a'), B = ps('b');
   place(A, at(RING(2)), 7); place(B, at(RING(2) + 60), 7);
   B._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 };
-  B.inventory = { snowman: 3, fish_minnow: 5, mining_pickaxe: 1 };
+  /* v2.3.3290: every carve-out the death had -- a tool, a quest's remains
+     (snowman), an ore and a cooked fish (life_1/life_2's objective families) */
+  B.inventory = { snowman: 3, fish_minnow: 5, mining_pickaxe: 1, ore_iron: 7, cooked_fish_trout: 2 };
   B.coins = 250;
   B.weapon = { type: 'greatsword', gearBase: 'copper', tierMult: 1.12, quality: 'normal', name: 'Copper Greatsword' };
   B.weaponStash = [{ type: 'bow', gearBase: 'wood', tierMult: 1, quality: 'normal', name: 'Pine Bow' }];
@@ -229,6 +235,7 @@ const ps = (k) => room.playerState[ids[k]];
   B.shieldStash = [room._gearProvRecord(ids.b, 'shield', { name: 'Copper Shield', gearBase: 'copper', tierMult: 2, tier: 'common' }, 'test')];
   B.gearStash = [{ slot: 'hat', gearId: 'cowboy_hat', name: 'Cowboy Hat' }];
   const aStash0 = (A.weaponStash || []).length, aArmor0 = (A.armorStash || []).length, aCoins0 = A.coins || 0;
+  ws.a.sent.length = 0;
   const aShield0 = (A.shieldStash || []).length, aGear0 = (A.gearStash || []).length;
   B.hp = 1;
   ws.b.sent.length = 0; room.eventBuffer.length = 0;
@@ -239,12 +246,18 @@ const ps = (k) => room.playerState[ids[k]];
   const pile = (room.loot[WHEEL_ZONE] || []).find((p) => p.isDeathDrop && p.lootId.startsWith('dd-' + ids.b));
   check('...the bag\'s items fall in a pile that is the KILLER\'s for its owner window', !!pile && pile.recipients.length === 1 && pile.recipients[0] === ids.a
     && pile.deathItems.some((i) => i.key === 'fish_minnow' && i.qty === 5) && pile.ownerOnlyUntil > Date.now(), pile && { recipients: pile.recipients, items: pile.deathItems });
-  check('...the tools and the quest\'s own items stay in the bag (the death\'s carve-outs)', (B.inventory.mining_pickaxe || 0) === 1 && (B.inventory.snowman || 0) === 3 && !(B.inventory.fish_minnow > 0), B.inventory);
+  /* v2.3.3290: "Opponents do not drop all of their items except what they
+     have equipped" -- the death's carve-outs went with them */
+  const pileHas = (k, q) => !!pile && pile.deathItems.some((i) => i.key === k && i.qty === q);
+  check('...ALL of it: the tool, the quest\'s remains, the ore and the cooked fish too (v2.3.3290: no carve-out in No man\'s land)',
+    pileHas('mining_pickaxe', 1) && pileHas('snowman', 3) && pileHas('ore_iron', 7) && pileHas('cooked_fish_trout', 2), pile && pile.deathItems);
+  check('...and the bag is empty', Object.keys(B.inventory || {}).length === 0, B.inventory);
   check('...the spare weapon goes to the killer', (B.weaponStash || []).length === 0 && (A.weaponStash || []).length === aStash0 + 1 && A.weaponStash.some((w) => w && w.type === 'bow'), { b: B.weaponStash, a: A.weaponStash });
   check('...the spare armour too, with its provenance row', !(B.armorStash || []).some((g) => g && g.gid === minted.gid) && (A.armorStash || []).length === aArmor0 + 1
     && (A.armorStash || []).some((g) => g && g.gid === minted.gid)
     && (room._gearProvOf(ids.a) || { list: [] }).list.some((r) => r.id === minted.gid), { a: A.armorStash, b: B.armorStash });
-  check('...nothing worn is taken, and no gold', !!B.weapon && B.weapon.type === 'greatsword' && !!B.armor && B.armor.gid === wornPlate.gid && !!B.legsArmor && !!B.shield && B.coins === 250 && (A.coins || 0) === aCoins0);
+  check('...nothing worn is taken', !!B.weapon && B.weapon.type === 'greatsword' && !!B.armor && B.armor.gid === wornPlate.gid && !!B.legsArmor && !!B.shield);
+  check('...the gold goes to the killer (v2.3.3290, the owner: "Lose their gold too")', B.coins === 0 && (A.coins || 0) === aCoins0 + 250, { b: B.coins, a: A.coins, a0: aCoins0 });
   check('...the stash copy of the plate B WEARS (same id) is not taken, and its id not forfeited -- the killer gets no second plate',
     (B.armorStash || []).length === 1 && B.armorStash[0].gid === wornPlate.gid && B._nml.forfeit.indexOf(wornPlate.gid) < 0
     && !(A.armorStash || []).some((g) => g && g.gid === wornPlate.gid)
@@ -254,8 +267,12 @@ const ps = (k) => room.playerState[ids[k]];
     (B.shieldStash || []).length === 1 && (A.shieldStash || []).length === aShield0 && (B.gearStash || []).length === 1 && (A.gearStash || []).length === aGear0,
     { bShields: B.shieldStash, aShields: (A.shieldStash || []).length, bGear: B.gearStash });
   const loss = msgs(ws.b, 'nml_loss').pop();
-  check('...and the dead player\'s game is told exactly what went (nml_loss: the spare weapon, the one plate by its id)', !!loss && loss.payload.by === 'NmlA' && loss.payload.weapons === 1
-    && loss.payload.gear.length === 1 && loss.payload.gear[0].field === 'armorStash' && loss.payload.gear[0].gid === minted.gid && loss.payload.red === false, loss && loss.payload);
+  check('...and the dead player\'s game is told exactly what went (nml_loss: the spare weapon, the one plate by its id, the gold)', !!loss && loss.payload.by === 'NmlA' && loss.payload.weapons === 1
+    && loss.payload.gear.length === 1 && loss.payload.gear[0].field === 'armorStash' && loss.payload.gear[0].gid === minted.gid && loss.payload.red === false
+    && loss.payload.coins === 250 && loss.payload.named === true && loss.payload.keepWorn === false, loss && loss.payload);
+  const take = msgs(ws.a, 'nml_take').pop();
+  check('...and the killer is told what they took (nml_take: who, the 18 things in the pile, the gold, the spare weapon and plate)', !!take && take.payload.from === 'NmlB'
+    && take.payload.items === 18 && take.payload.coins === 250 && take.payload.weapons === 1 && take.payload.gear === 1 && take.payload.lootId === pile.lootId, take && take.payload);
   check('...the forfeited piece\'s id is remembered', B._nml.forfeit.indexOf(minted.gid) >= 0 && (state._store.get(NML_KEY(ids.b)) || { forfeit: [] }).forfeit.indexOf(minted.gid) >= 0);
   /* 7. offered again on the next join: refused */
   B.dying = false; B.dead = false;
@@ -286,7 +303,7 @@ const ps = (k) => room.playerState[ids[k]];
   C.shield = room._gearProvRecord(ids.c, 'shield', { name: 'Pine Shield', gearBase: 'wood', tierMult: 1, tier: 'common' }, 'test');
   C.shieldStash = [room._gearProvRecord(ids.c, 'shield', { name: 'Copper Shield', gearBase: 'copper', tierMult: 2, tier: 'common' }, 'test')];
   C.gearStash = [{ slot: 'hat', gearId: 'cowboy_hat', name: 'Cowboy Hat' }];
-  C.inventory = { fish_minnow: 2 };
+  C.inventory = { fish_minnow: 2, woodcutting_axe: 1, ore_copper: 4 };
   const aCoins0 = A.coins || 0, aW0 = (A.weaponStash || []).length;
   const aArmor0 = (A.armorStash || []).length, aShield0 = (A.shieldStash || []).length;
   const wornGid = C.armor.gid;
@@ -304,32 +321,59 @@ const ps = (k) => room.playerState[ids[k]];
   check('...and every shield (a red skull loses them all), but no outfit piece',
     !C.shield && (C.shieldStash || []).length === 0 && (A.shieldStash || []).length === aShield0 + 2 && (C.gearStash || []).length === 1,
     { cShield: C.shield, cShields: C.shieldStash, aShields: (A.shieldStash || []).length, cGear: C.gearStash });
+  const pileC = (room.loot[WHEEL_ZONE] || []).find((p) => p.isDeathDrop && p.lootId.startsWith('dd-' + ids.c));
+  check('...and the whole bag, the axe and the ore too, in the killer\'s pile (v2.3.3290)', !!pileC && pileC.recipients[0] === ids.a
+    && pileC.deathItems.some((i) => i.key === 'woodcutting_axe') && pileC.deathItems.some((i) => i.key === 'ore_copper' && i.qty === 4)
+    && Object.keys(C.inventory || {}).length === 0, { pile: pileC && pileC.deathItems, inv: C.inventory });
   const lossC = msgs(ws.c, 'nml_loss').pop();
-  check('...and is told so (red, the worn fields, the gold)', !!lossC && lossC.payload.red === true && lossC.payload.coins === 400
-    && ['weapon', 'staffWeapon', 'armor'].every((f) => lossC.payload.worn.includes(f)), lossC && lossC.payload);
-  /* a red skull killed by a monster: to nobody */
+  check('...and is told so (red, the worn fields, the gold, nothing worn kept)', !!lossC && lossC.payload.red === true && lossC.payload.coins === 400
+    && ['weapon', 'staffWeapon', 'armor'].every((f) => lossC.payload.worn.includes(f)) && lossC.payload.keepWorn === false, lossC && lossC.payload);
+  /* a red skull killed by a monster: everything CARRIED to nobody, and --
+     v2.3.3290, the owner: "If they're killed by a monster then make it so
+     they just lose everything except their equipped items" -- what it WEARS
+     kept */
   const D = ps('d');
   place(D, at(RING(2) + 300), 7);
   room._nmlState(D).red = 60000;
   D.coins = 90;
   D.weapon = { type: 'greatsword', gearBase: 'copper', tierMult: 1.12, quality: 'normal', name: 'Copper Greatsword' };
-  D.inventory = { fish_minnow: 4 };
+  D.rangedWeapon = { type: 'bow', gearBase: 'wood', tierMult: 1, quality: 'normal', name: 'Pine Bow' };
+  D.weaponStash = [{ type: 'staff', gearBase: 'wood', tierMult: 1, quality: 'normal', name: 'Spare Staff' }];
+  D.armor = room._gearProvRecord(ids.d, 'armor', { name: 'Copper Plate', gearBase: 'copper', tierMult: 2, tier: 't2', def: 7 }, 'test');
+  const spareD = room._gearProvRecord(ids.d, 'armor', { name: 'Iron Plate', gearBase: 'iron', tierMult: 3, tier: 't3', def: 11 }, 'test');
+  D.armorStash = [{ ...D.armor }, spareD];
+  D.inventory = { fish_minnow: 4, fishing_pole: 1, cooked_fish_minnow: 3 };
   D._nmlLastHitBy = null;
+  const wsD = ws.d; wsD.sent.length = 0;
   room._handlePlayerDeath(D, ids.d, 'monster:wm-frost-1');
   await settle();
   const pileD = (room.loot[WHEEL_ZONE] || []).find((p) => p.isDeathDrop && p.lootId.startsWith('dd-' + ids.d));
-  check('a red skull killed by a monster loses it all to nobody: the gold and the weapon gone, the items in a pile anyone may take at once',
-    D.coins === 0 && !D.weapon && !!pileD && pileD.recipients.length === 0 && pileD.ownerOnlyUntil <= Date.now() + 5, { coins: D.coins, weapon: D.weapon, pile: pileD && { r: pileD.recipients, until: pileD.ownerOnlyUntil } });
+  check('a red skull killed by a monster loses everything it CARRIES to nobody: the gold, the spare weapon and the spare plate gone, the whole bag (the rod, the cooked fish) in a pile anyone may take at once',
+    D.coins === 0 && (D.weaponStash || []).length === 0 && !(D.armorStash || []).some((g) => g && g.gid === spareD.gid) && D._nml.forfeit.indexOf(spareD.gid) >= 0
+    && !!pileD && pileD.recipients.length === 0 && pileD.ownerOnlyUntil <= Date.now() + 5
+    && pileD.deathItems.some((i) => i.key === 'fishing_pole') && pileD.deathItems.some((i) => i.key === 'cooked_fish_minnow' && i.qty === 3),
+    { coins: D.coins, stash: D.weaponStash, armor: D.armorStash, pile: pileD && { r: pileD.recipients, until: pileD.ownerOnlyUntil, items: pileD.deathItems } });
+  check('...and KEEPS what it wears (v2.3.3290): both weapons in hand, the plate and its stale stash copy',
+    !!D.weapon && D.weapon.name === 'Copper Greatsword' && !!D.rangedWeapon && D.rangedWeapon.name === 'Pine Bow'
+    && !!D.armor && (D.armorStash || []).length === 1 && D.armorStash[0].gid === D.armor.gid && D._nml.forfeit.indexOf(D.armor.gid) < 0,
+    { weapon: D.weapon, ranged: D.rangedWeapon, armor: D.armor, stash: D.armorStash });
+  const lossD = msgs(wsD, 'nml_loss').pop();
+  check('...and its game is told to keep what it wears (keepWorn, nothing worn listed), by no player', !!lossD && lossD.payload.red === true && lossD.payload.keepWorn === true
+    && lossD.payload.worn.length === 0 && lossD.payload.by === null && lossD.payload.coins === 90 && lossD.payload.weapons === 1
+    && lossD.payload.gear.length === 1 && lossD.payload.gear[0].gid === spareD.gid, lossD && lossD.payload);
   /* an ordinary death (no skull, a monster) is unchanged */
   const B = ps('b');
   place(B, at(RING(2) + 400), 7);
   B._nml = { red: 0, white: 0, whiteBy: null, forfeit: B._nml ? B._nml.forfeit : [], savedAt: 0 };
   B.weaponStash = [{ type: 'bow', gearBase: 'wood', tierMult: 1, quality: 'normal', name: 'Pine Bow' }];
   B.coins = 70;
-  B.inventory = { fish_minnow: 1 };
+  B.inventory = { fish_minnow: 1, mining_pickaxe: 1, ore_iron: 2 };
   room._handlePlayerDeath(B, ids.b, 'monster:wm-frost-1');
   const pileB = (room.loot[WHEEL_ZONE] || []).find((p) => p.isDeathDrop && p.lootId.startsWith('dd-' + ids.b) && p.recipients[0] === ids.b);
   check('an ordinary death keeps its old rules: the spare weapon and the gold stay, the pile is the dead player\'s', B.weaponStash.length === 1 && B.coins === 70 && !!pileB);
+  check('...and its carve-outs: the pickaxe and the ore stay in the bag, only the minnow falls (only No man\'s land takes them)',
+    B.inventory.mining_pickaxe === 1 && B.inventory.ore_iron === 2 && !B.inventory.fish_minnow
+    && pileB.deathItems.length === 1 && pileB.deathItems[0].key === 'fish_minnow', { inv: B.inventory, pile: pileB.deathItems });
 }
 
 // ── 8. the kill switch, and the caps ─────────────────────────────────────────
@@ -538,6 +582,81 @@ const ps = (k) => room.playerState[ids[k]];
   check('...Diego buying as before', !!sell3 && sell3.ok === true, sell3);
   room._liveFlags = keep;
   for (const s2 of (room._trades2 || new Map()).values()) room._t2Cancel && room._t2Cancel(s2, 'test');
+}
+
+// ── 11. v2.3.3290: the rest of "everything but what you wear" ──────────────
+{
+  const idK = 'bp_nml_k', idL = 'bp_nml_l';
+  const wsK = fakeWs('k'), wsL = fakeWs('l');
+  await join(wsK, idK, 'NmlK'); await join(wsL, idL, 'NmlL');
+  const K = room.playerState[idK], L = room.playerState[idL];
+  const fresh = (P) => { P._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 }; P.dying = false; P.dead = false; };
+  /* the spare amulets go to the killer; the one worn stays */
+  place(K, at(RING(2)), 7); place(L, at(RING(2) + 60), 7);
+  fresh(K); fresh(L);
+  L.amulet = room._gearProvRecord(idL, 'amulet', { name: 'Simple Amulet', tier: 'simple', gem: null }, 'test');
+  const spareAm = room._gearProvRecord(idL, 'amulet', { name: 'Ornate Amulet', tier: 'ornate', gem: 'frost' }, 'test');
+  L.amuletStash = [spareAm];
+  L.inventory = { fish_minnow: 1 };
+  L.coins = 0;
+  const kAm0 = (K.amuletStash || []).length;
+  L.hp = 1;
+  room._pvpHitLanes && room._pvpHitLanes.clear();
+  await attack(wsK, K, idL, L);
+  await settle();
+  check('a spare amulet goes to the killer with its row (v2.3.3290: a red skull\'s only before); the one worn stays',
+    L.dying === true && (L.amuletStash || []).length === 0 && (K.amuletStash || []).length === kAm0 + 1
+    && K.amuletStash.some((a) => a && a.gid === spareAm.gid) && !!L.amulet && L.amulet.gid !== spareAm.gid,
+    { l: L.amuletStash, k: (K.amuletStash || []).map((a) => a && a.gid), worn: L.amulet });
+  /* the respawn wipe keeps nothing the death took (it re-reads the carve-outs) */
+  L.inventory = {};
+  L.respawnAt = Date.now() - 1;
+  room._tickPlayerRespawn();
+  check('...and the respawn five seconds later gives nothing back (no carve-out reappears)', !L.dying && Object.keys(L.inventory || {}).length === 0, L.inventory);
+
+  /* a status's tick kills after the blow's 5 s: still the setter's kill */
+  place(K, at(RING(2)), 7); place(L, at(RING(2) + 60), 7);
+  fresh(K); fresh(L);
+  L.inventory = { ore_iron: 3, woodcutting_axe: 1 };
+  L.coins = 40;
+  L.hp = 1000;
+  room._pvpHitLanes && room._pvpHitLanes.clear();
+  await attack(wsK, K, idL, L);
+  L._nmlLastHitAt = Date.now() - NML.KILL_BLOW_MS - 1500;   /* the blow was 6.5 s ago */
+  L.hp = 2;
+  const kCoins0 = K.coins || 0;
+  const r = room._strikePlayer(idK, K, idL, L, 50, { ability: 'poison', elemental: true, noBlock: true, dot: true, elem: 'venom' });
+  await settle();
+  const pileL = (room.loot[WHEEL_ZONE] || []).filter((p) => p.isDeathDrop && p.lootId.startsWith('dd-' + idL)).pop();
+  check('a poison\'s tick that kills after the blow\'s 5 s is still the poisoner\'s kill (v2.3.3290): the whole bag in their pile, the gold theirs',
+    !!r && L.dying === true && !!pileL && pileL.recipients[0] === idK && pileL.deathItems.some((i) => i.key === 'woodcutting_axe')
+    && (K.coins || 0) === kCoins0 + 40 && L.coins === 0, { r: !!r, dying: L.dying, pile: pileL && { r: pileL.recipients, items: pileL.deathItems }, k: K.coins });
+  check('...and the tick started no skull of its own (the poisoner\'s red is the blow\'s)', room._nmlSkullOf(K) === 'r' && room._nmlSkullOf(L) === 'w');
+
+  /* a red skull a monster kills: its shields -- the arm known, the spares go
+     and the one worn stays; the arm unknown, every shield stays (which is
+     worn cannot be told) */
+  for (const known of [true, false]) {
+    place(L, at(RING(2) + 200), 7);
+    fresh(L);
+    room._nmlState(L).red = 60000;
+    L.inventory = {};
+    L.coins = 0;
+    const worn = room._gearProvRecord(idL, 'shield', { name: 'Pine Shield', gearBase: 'wood', tierMult: 1, tier: 'common' }, 'test');
+    const spare = room._gearProvRecord(idL, 'shield', { name: 'Copper Shield', gearBase: 'copper', tierMult: 2, tier: 'common' }, 'test');
+    L.shield = worn;
+    L.shieldStash = [spare, { ...worn }];
+    L._shieldKnown = known ? true : undefined;
+    L._nmlLastHitBy = null;
+    room._handlePlayerDeath(L, idL, 'monster:wm-frost-1');
+    const left = (L.shieldStash || []).map((p) => p.gid);
+    check(known
+      ? 'a red skull a monster kills, the arm known: the spare shield goes, the one on the arm and its stale copy stay'
+      : '...the arm unknown: every shield stays (a worn one cannot be told from a spare)',
+      !!L.shield && L.shield.gid === worn.gid && (known ? JSON.stringify(left) === JSON.stringify([worn.gid]) : left.length === 2),
+      { shield: L.shield && L.shield.gid, left });
+    L.dying = false; L.dead = false; L.hp = L.maxHp;
+  }
 }
 
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }

@@ -694,6 +694,19 @@ name|gearBase|tierMult|tier); new s→c type (PRIVILEGED, private)
 gem}` (off, down, bad_gem, locked, bad, not_held, no_gem); a player_state
 follows a slotted gem. Full table: docs/specs/shield-gems.md.
 
+**No man's land's losses, and Diego's tools (v2.3.3290, caps.nomansland):**
+no new c→s case. `nml_loss` gains `named: true` (its `gear` list names
+every piece taken, a red skull's too, and the game takes out exactly those)
+and `keepWorn` (a red skull no player killed keeps its worn slots); `coins`
+is every loss's now (a player's kill takes the gold). New s→c type
+(PRIVILEGED, private) `nml_take {from, items, lootId, coins, weapons, gear,
+worn}` to the killer. Diego's `shop_state` items gain the three gathering
+tools `{key, qty: null, tool: true, sell}`; a `shop_quoted` for one carries
+`tool: true` and, when he will not sell it to you, `qty: 0` and `why`
+('have', 'quest', 'off'); `shop_buy` of one buys one. An older game shows no
+tool row (it lists staples and stock). Full rules: docs/specs/no-mans-land.md
+"Everything but what you wear".
+
 **Server-minted weapon drops (v2.3.1141, caps.weaponDrops):** no new
 message types. The loot pile broadcast (`loot_drop`/`zone_loot`/
 `state_sync.loot` via `_serializePile`) gains `hasWeapon`,

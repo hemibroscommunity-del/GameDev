@@ -46,7 +46,7 @@
  * player_state echo is the tiebreaker (handoff rule 20).
  */
 
-import { SHOP_ITEMS, DIEGO_SHELF, DISHES } from './data.js';   /* v2.3.2063: his staple shelf; v2.3.3130: his shelf is DIEGO_SHELF, and no dish */
+import { SHOP_ITEMS, DIEGO_SHELF, DISHES, QUEST_REWARDS } from './data.js';   /* v2.3.2063: his staple shelf; v2.3.3130: his shelf is DIEGO_SHELF, and no dish; v2.3.3290: the quests that give the tools */
 import { FARM_SHOP_BASE } from './farm.js';   /* v2.3.3127: seeds, crops and compost */
 
 /* ═══ v2.3.2063: THE THINGS HE ALWAYS HAS ═══
@@ -117,6 +117,58 @@ export function isCookedFood(key) {
    cooked food -- since v2.3.3132, everything you eat or drink. */
 function heWontTrade(key) {
   return isShopPotion(key) || isCookhouseDish(key) || isCookedFood(key);
+}
+
+/* ═══ v2.3.3290: A LOST TOOL, BOUGHT BACK ═══
+ *
+ * A death in No man's land takes the whole bag now, the axe, the rod and the
+ * pickaxe with it (nomansland.js).  Asked whether they should go, the owner
+ * chose "Drop them, sell replacements": "the General Store sells a
+ * replacement to anyone who already earned that tool from the quest".  Diego
+ * keeps the General Store's counter, and his window opens as you walk up to
+ * its door, so they are on his shelf.
+ *
+ * WHO MAY BUY ONE: a player the quest GAVE that tool -- read off the shipped
+ * quest table the way the quests pay it: a tool in a quest's `grantOnAccept`
+ * once the quest is accepted (life_1's axe and rod), its turn-in `item` once
+ * it is turned in (life_1's pickaxe) -- who holds NONE in the bag: a
+ * replacement, never a second.  So gathering stays behind the Mayor's quest
+ * (v2.3.1680, the owner's "gate ... behind a mayor bro quest"), and a quest
+ * skipped buys nothing.
+ *
+ * ONE AT A TIME, at a flat price (TOOL_SHELF, one number a tool), and he
+ * never buys one back: the tools stay out of SHOP.BASE (v2.3.3184 found "a
+ * quest's pickaxe skipped the quest" at the old default price), so a tool
+ * taken from a dead player is no gold at his counter.
+ *
+ * On his shelf as `tool: true` with no count -- not as a staple, which an
+ * older game would sell as "Always in stock" -- so only a game that knows the
+ * row shows it; the LIST is everyone's (it is broadcast after every sale), so
+ * whether YOU may buy is the quote's to say (_shopQuote's `ps`: `why`).
+ * Kill switch: the live flag `toolshop: false` takes them off the shelf and
+ * refuses every buy.
+ */
+export const TOOL_SHELF = Object.freeze({
+  woodcutting_axe: 100,
+  fishing_pole: 100,
+  mining_pickaxe: 100,
+});
+export function isToolKey(key) {
+  return typeof key === 'string' && Object.prototype.hasOwnProperty.call(TOOL_SHELF, key);
+}
+/* Did a quest give the player with quest states `quests` the tool `key`? */
+export function toolEarned(quests, key) {
+  if (!quests || typeof quests !== 'object' || !isToolKey(key)) return false;
+  for (const qid of Object.keys(QUEST_REWARDS)) {
+    const r = QUEST_REWARDS[qid];
+    if (!r) continue;
+    const st = Object.prototype.hasOwnProperty.call(quests, qid) ? quests[qid] : null;
+    const onAccept = Array.isArray(r.grantOnAccept) && r.grantOnAccept.some((it) => it && it.kind === 'inv' && it.key === key);
+    if (onAccept && (st === 'active' || st === 'turnedIn')) return true;
+    const onTurnIn = !!(r.item && r.item.kind === 'inv' && r.item.key === key);
+    if (onTurnIn && st === 'turnedIn') return true;
+  }
+  return false;
 }
 
 export const SHOP = {
@@ -286,6 +338,24 @@ export const shopMethods = {
   /** One event to one player, by session id. Mirrors _sendInboxDelivered:
    *  a dead socket is not an error here -- the stock and the coins are
    *  already committed, and the next shop_list rebuilds the view. */
+  /* v2.3.3290: the tool shelf's kill switch (live flag `toolshop: false`) */
+  _toolShopOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'toolshop') && !f.toolshop);
+  },
+
+  /* v2.3.3290: why he will not sell this player that tool, or null if he
+     will: 'off' (not on his shelf), 'have' (one is in the bag), 'quest' (no
+     quest gave them one yet) */
+  _toolWhyNot(ps, key) {
+    if (!isToolKey(key) || this._toolShopOff() || !ps) return 'off';
+    const inv = ps.inventory;
+    const have = inv && Object.prototype.hasOwnProperty.call(inv, key) ? Math.floor(Number(inv[key]) || 0) : 0;
+    if (have > 0) return 'have';
+    if (!toolEarned(ps._quests, key)) return 'quest';
+    return null;
+  },
+
   _shopSend(playerId, type, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
@@ -383,6 +453,13 @@ export const shopMethods = {
         base: 0,
         sell: st.cost, full: false });
     }
+    /* v2.3.3290: the tools he sells back (TOOL_SHELF) -- the same row for
+       everyone; whether you may buy one is your quote's to say */
+    if (!this._toolShopOff()) {
+      for (const k of Object.keys(TOOL_SHELF)) {
+        items.push({ key: k, qty: null, tool: true, buy: 0, base: 0, sell: TOOL_SHELF[k], full: false });
+      }
+    }
     if (Array.isArray(keys)) {
       /* Bounded and type-checked: this list arrives from a client. 60 is well
          past a full bag and far short of anything worth flooding us with. */
@@ -427,9 +504,12 @@ export const shopMethods = {
        every staple, which is not "sorts last", it is an inconsistent
        comparator and the order it produces is undefined. They lead by intent
        anyway: they are the shelf that is always there. */
+    /* v2.3.3290: ...then his tools, then the pile -- by rank, so a row with
+       no count is never compared by count */
+    const rank = (i) => (i.staple ? 0 : i.tool ? 1 : 2);
     items.sort((a, b) => {
-      if (!!a.staple !== !!b.staple) return a.staple ? -1 : 1;
-      if (a.staple) return a.key.localeCompare(b.key);
+      if (rank(a) !== rank(b)) return rank(a) - rank(b);
+      if (rank(a) < 2) return a.key.localeCompare(b.key);
       return b.qty - a.qty || a.key.localeCompare(b.key);
     });
     return { ok: true, items, settled: true };
@@ -448,10 +528,18 @@ export const shopMethods = {
    *  so the quote and the settlement cannot drift apart: if one is wrong they
    *  are both wrong in the same direction, and the test that compares them
    *  catches it. */
-  async _shopQuote(key, qty, mode) {
+  /* v2.3.3290: `ps`, the asking player, for a tool's quote (whether he will
+     sell you one is yours alone: _toolWhyNot) */
+  async _shopQuote(key, qty, mode, ps) {
     if (typeof key !== 'string' || !key) return { ok: false, error: 'Bad request' };
     const want = Math.floor(Number(qty) || 0);
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
+    /* a tool is one at a time; `why` says what stands in the way */
+    if (mode === 'buy' && isToolKey(key)) {
+      const why = this._toolWhyNot(ps, key);
+      return { ok: true, key, qty: why ? 0 : 1, mode, tool: true,
+        total: why ? 0 : TOOL_SHELF[key], ...(why ? { why } : null), settled: true };
+    }
     const stock = await this._shopStock();
     if (mode === 'buy') {
       /* v2.3.2063: a staple has no pile to be limited by and is always one --
@@ -572,6 +660,26 @@ export const shopMethods = {
     if (ps.dying || ps.dead || ps.disconnected) return { ok: false, error: 'Not now' };   /* v2.3.3163: see _shopSell */
     const want = Math.floor(Number(qty) || 0);
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
+
+    /* v2.3.3290: a lost tool, bought back (TOOL_SHELF): one, to a player a
+       quest gave one, who holds none */
+    if (isToolKey(key)) {
+      const why = this._toolWhyNot(ps, key);
+      if (why === 'have') return { ok: false, error: 'You already have one' };
+      if (why === 'quest') return { ok: false, error: "Mayor Bro's quest gives you your first one" };
+      if (why) return { ok: false, error: "He hasn't got any" };
+      const cost = TOOL_SHELF[key];
+      const purse = Math.floor(Number(ps.coins) || 0);
+      if (purse < cost) return { ok: false, error: 'Not enough coins' };
+      ps.coins = purse - cost;
+      if (!ps.inventory) ps.inventory = {};
+      /* `key` passed isToolKey, an own-property test on our own table, so it
+         cannot be '__proto__' (rule 4) */
+      ps.inventory[key] = 1;
+      /* saved, or the purchase came undone on the next reconnect (v2.3.3137) */
+      if (pid) this._saveRpg(pid, ps);
+      return { ok: true, bought: 1, cost, coins: ps.coins, tool: true, settled: true };
+    }
 
     /* ═══ v2.3.2127: A STAPLE IS CARRIED NOW, AND DRUNK LATER ═══
        Owner: "Also work on putting a potions to inventory after buying."
