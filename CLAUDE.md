@@ -2895,7 +2895,10 @@ remnant to migrate server-side, not a mode to preserve.
       tick's monsters update it; once a visit (`session._wheelWhole`); the
       arrival seeds the tick's `_wheelSeen`, so it is not sent twice;
     - a phone holds only what it came near: a far kill, roll or death names
-      an id it does not hold, which every handler already guarded;
+      an id it does not hold, which every handler already guarded; and the
+      world map, zoomed in, shows no monster dots in a land you have not been
+      to this visit (the whole list had put one at each far monster's
+      starting place);
     - `?wheelwhole` asks for every monster as before (six QA scenarios that
       read the whole list off the arrival use it); kill switch `wheelnear:
       false`; `wheelnear` suite, `mp-wheelnear`.)

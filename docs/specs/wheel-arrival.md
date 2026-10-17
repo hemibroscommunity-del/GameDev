@@ -63,11 +63,20 @@ A phone that says it can take it sends `wn: 1` in its join, beside
 
 ## What a player sees
 
-Nothing new.
+Nothing new on the screen or the minimap. One thing on the world map.
 
 - Every monster the screen or the minimap can show is within `INTEREST_R`
   (wheelzone.js: wider than any view's half-diagonal plus `FAR_MARGIN`).
-- The world map shows only "the monsters near you".
+- **The world map**, zoomed in, draws every monster the phone holds
+  (WorldMapOverlay.jsx, "the monsters near you", v2.3.3057). With the whole
+  list that was every monster in the Wheel, a far one where it stood when you
+  came in (a far monster's moves are never sent). Now it is the monsters
+  around you and the ones you came near this visit: zoomed in on a land you
+  have not been to, there are no monster dots. Its level bands ("Lv 21-25")
+  still say what lives there. That is what the map was written to show; the
+  far dots came with the whole list. If they should come back, a layer drawn
+  from the baked spawn places (server/src/wheelspawns.js) would do it without
+  the phone holding the monsters.
 - A far monster's death is still told to every phone in the Wheel
   (`monster_kill`, eventplace.js). A phone that does not hold it ignores it,
   as every handler already did for an id it does not hold (gameEvents.js:

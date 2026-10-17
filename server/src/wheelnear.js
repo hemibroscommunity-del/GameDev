@@ -34,12 +34,16 @@
  * (`_wheelSeen`, seeded here), so the first tick after it sends none of them
  * again -- the old way in sent them twice, the list and then the first tick.
  *
- * WHAT A PLAYER SEES: nothing new.  Every monster the screen or the minimap
- * can show is within INTEREST_R (wheelzone.js: wider than any view's
- * half-diagonal plus FAR_MARGIN), and the world map shows only "the monsters
- * near you".  A far one's death is still told to every phone in the Wheel
- * (monster_kill, eventplace.js): a phone that does not hold it ignores it, as
- * every handler already did for an id it did not hold (gameEvents.js).
+ * WHAT A PLAYER SEES: nothing new on the screen or the minimap.  Every
+ * monster they can show is within INTEREST_R (wheelzone.js: wider than any
+ * view's half-diagonal plus FAR_MARGIN).  The world map, zoomed in, draws the
+ * monsters the phone holds -- "the monsters near you", as it was written to
+ * (v2.3.3057) -- so a land you have not been to this visit shows no monster
+ * dots there, where the whole list put one at every far monster's starting
+ * place (docs/specs/wheel-arrival.md).  A far one's death is still told to
+ * every phone in the Wheel (monster_kill, eventplace.js): a phone that does
+ * not hold it ignores it, as every handler already did for an id it did not
+ * hold (gameEvents.js).
  *
  * Deploy-order safe both ways: an old phone sends no `wn` and gets every list
  * and tick byte for byte as before; a new phone against an old worker gets the
