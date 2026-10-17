@@ -31,8 +31,11 @@
 import { ICON_URL, RDISC_ICONS, ABILITY_ART_URLS } from '../ui/panels/controlSkin.jsx';
 import { smallIconDomUrls } from '../data/smallIcons.js';   /* v2.3.3279: the owner's small icons */
 import { quickEatIconUrls } from '../data/foodIcons.js';   /* v2.3.3260: the quick-eat button's food */
-/* v2.3.3120: the TRAP pop-up's picture (TrapButton.jsx uses the same string) */
-export const TRAP_ICON_URL = '/icons/ui/skill-trapping.webp?v=2.3.1224';
+/* v2.3.3120: the TRAP pop-up's picture (TrapButton.jsx uses the same string)
+   v2.3.3281: the owner's box trap (tools/ui/cut-bag-icons.py), no longer the
+   Trapping skill's icon -- the same picture in the bag, on the Woodworker's
+   Traps tab and on the TRAP pop-up (docs/ART-WISHLIST.md "Box trap") */
+export const TRAP_ICON_URL = '/icons/items/trap-box.webp?v=2.3.3281';
 
 const _held = [];
 

@@ -4,7 +4,7 @@ Everything the farm needs drawn, as sprite sheets you can make in ChatGPT and se
 
 There are two kinds, in two styles:
 
-- **Bag icons (the crop sheet, then sheets 1 and 2), needed now.** The bag, the Feed & Seed window and the Cookhouse show emoji where these go. They match the painted icons the bag already uses.
+- **Bag icons (the crop sheet, then sheets 1 and 2): in the game since v2.3.3281.** Your three sheets are the bag's, the Feed & Seed window's and the Cookhouse's pictures, cut by `tools/ui/cut-bag-icons.py` (docs/specs/bag-icons.md). The prompts stay below for a redo: send the new sheet in chat.
 - **The farm you walk on (sheets 4-6, the Barn, the Farmhouse and the Dungeon Workshop).** They are for the farm you walk around on (in the game since v2.3.3136: docs/specs/farm-walk.md). They follow the world's HD pixel-art rules (docs/WORLD-BIBLE.md §6), like every Object Studio picture.
 
 ## How
@@ -20,6 +20,7 @@ There are two kinds, in two styles:
 The owner: *"The main focus is just getting a good variety of crops to grow."*
 One square sheet of all sixteen crops, as bag icons: the six the farm grew
 before and the ten added in v2.3.3135. Attach your bag-icon reference picture.
+**In the game since v2.3.3281** (kept as `assets/icons-source/sheet-bag-crops.png`).
 
 ```text
 Square image: a sprite sheet of 16 crop icons for a 2D action RPG, in a 4×4 grid read like a page (each row left to right, rows top to bottom). Each icon sits centered in its own equal square cell, fills about three quarters of it, and touches nothing else. Every crop is shown freshly harvested.
@@ -48,7 +49,7 @@ No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) e
 
 ### Sheet 1: the sixteen seed packets (v2.3.3279)
 
-- **In the game:** every seed in the bag and the Feed & Seed window. Today all sixteen wear one 🌱.
+- **In the game (v2.3.3281):** every seed in the bag and on the Feed & Seed window's Seeds tab (kept as `assets/icons-source/sheet-bag-seeds.png`). All sixteen wore one 🌱 in the bag until then.
 - **Attach:** `docs/art/bag-icon-style-key.png`.
 - Everyday seeds in brown paper, magic seeds in navy and gold, so the two kinds tell apart at a glance; the crops in the order of the crop sheet above.
 
@@ -69,7 +70,7 @@ No text, letters or numbers anywhere, not even on the packets. No frames, cell l
 
 ### Sheet 2: the five dishes and compost (v2.3.3279)
 
-- **In the game:** the five Cookhouse dishes in the bag, the Cookhouse window and the Quick Eat button; compost in the bag and the Feed & Seed window. Today they wear emoji.
+- **In the game (v2.3.3281):** the five Cookhouse dishes in the bag, the Cookhouse window and the Quick Eat button; compost in the bag and the Feed & Seed window (kept as `assets/icons-source/sheet-bag-dishes.png`). They wore emoji until then.
 - **Attach:** `docs/art/bag-icon-style-key.png`.
 
 ```text

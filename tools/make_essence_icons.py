@@ -18,6 +18,7 @@ writes public/icons/items/essence-<grade>-<metal>.webp at 256x256, the size of
 every other item icon.  Needs Pillow with WebP (tools/webp_icons.py).
 """
 import colorsys
+import sys
 import math
 
 from PIL import Image, ImageDraw, ImageFilter
@@ -104,6 +105,13 @@ def with_bar(im, metal):
 
 
 def main():
+    # v2.3.3281: the owner's painted essences are the game's now
+    # (tools/ui/cut-bag-icons.py, from assets/icons-source/sheet-bag-essences.png);
+    # these drawn orbs would write over them.  A new grade or metal the sheet
+    # does not have yet can still be drawn: --standins.
+    if '--standins' not in sys.argv:
+        raise SystemExit('the essences are the owner\'s art now (tools/ui/cut-bag-icons.py); '
+                         'pass --standins to draw these over them')
     for grade, (core, rim, glow) in GRADES.items():
         base = orb(core, rim, glow, grade == 'godly')
         for metal in METALS:

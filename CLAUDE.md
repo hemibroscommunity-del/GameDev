@@ -2436,6 +2436,20 @@ remnant to migrate server-side, not a mode to preserve.
       canvas's three loaded by `preloadSmallIconTextures`; `__btNpcMarks`, the
       peer badge probe's `party`/`skull`; `small-icons` suite, `mp-smallicons`:
       docs/specs/small-icons.md.
+  - Since v2.3.3281 THE OWNER'S BAG ICONS -- the five sheets of the bag-item
+    prompts ("Here are the art assets from the 5 other prompts"), cut by
+    `tools/ui/cut-bag-icons.py` from `assets/icons-source/sheet-bag-*.png`
+    (the Object Studio's magenta key, plus see-through steam; every piece in
+    its grid cell; the item set's 256 px frame), 53 in all:
+    - the sixteen seed packets and crops and the compost sack (`farmIconFor`,
+      data/farmCrops.js), the five dishes (data/dishes.js `icon`), the box trap
+      (`TRAP_ICON_URL`: the TRAP pop-up, the Traps tab, the bag), and the
+      hardened woods and essences under their old file names (the generators
+      that drew those refuse without `--standins`);
+    - the bag's `thumbFor` draws them wherever it is read; the Feed & Seed
+      Seeds tab sells packets and the sack; the Cookhouse's rows lead with what
+      they make; the quick-eat Garden Stew is warmed on the loading screen;
+    - `bag-icons` suite, `mp-bagicons`, `mp-farm`: docs/specs/bag-icons.md.
   - Since v2.3.3209 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
     special attack, (make up a backstory) etc.", "Also include drop tables

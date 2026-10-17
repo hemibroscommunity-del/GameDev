@@ -440,8 +440,8 @@ Style: crisp pixel art like the attached townsperson: hard-edged square pixels, 
 
 ### Box trap: item icon
 
-- **In the game:** The Box Trap in your bag, and the picture on the TRAP button. Today both borrow the Trapping skill's icon.
-- **Now on the hardened wood sheet below** (v2.3.3279): one sheet for the five hardened woods and the trap, so they match.
+- **In the game (v2.3.3281):** your box trap, in the bag, on the Woodworker's Traps tab and on the TRAP button (they borrowed the Trapping skill's icon until then).
+- **Made on the hardened wood sheet below** (v2.3.3279): one sheet for the five hardened woods and the trap, so they match.
 
 ## Hardened wood
 
@@ -449,7 +449,7 @@ Five logs make one hardened wood at the Woodworker (v2.3.3139, docs/specs/harden
 
 ### Hardened wood and the box trap: one sheet of six (v2.3.3279)
 
-- **In the game:** The bag and the Woodworker's Harden tab (Hardened Pine Wood, Hardened Softwood, Hardened Hardwood, Hardened Cedar Wood, Hardened Maple Wood), and the Box Trap in the bag and on the TRAP button.
+- **In the game (v2.3.3281):** your sheet, cut by `tools/ui/cut-bag-icons.py` (it keeps the sheet in `assets/icons-source/sheet-bag-wood.png`): the bag and the Woodworker's Harden tab (Hardened Pine Wood, Hardened Softwood, Hardened Hardwood, Hardened Cedar Wood, Hardened Maple Wood), and the Box Trap in the bag, the Traps tab and on the TRAP button. The prompt stays for a redo: send the new sheet in chat.
 - **Attach:** `docs/art/log-icons-key.png`, the game's five log icons in a row (pine, softwood, hardwood, cedar, maple), so each hardened wood keeps its log's colour and the style matches the bag.
 - **How:** One landscape picture; send it in chat and a session cuts it into the game's icons. It replaces the white-background prompt that was here: a white ground cuts out badly round pale wood, and the trap's old prompt asked for pixel art, which the bag is not.
 
@@ -637,7 +637,7 @@ Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh
 
 ### Essences (v2.3.3141; one sheet of nine since v2.3.3279)
 
-- **In the game:** The nine essences salvage leaves (Rare, Elite and Godly, each in copper, iron and black steel), in the bag and on the Blacksmith's Salvage tab. Today they are glowing orbs drawn by `tools/make_essence_icons.py`, the metal's bar tucked in the corner.
+- **In the game (v2.3.3281):** your sheet, cut by `tools/ui/cut-bag-icons.py` (kept as `assets/icons-source/sheet-bag-essences.png`): the nine essences salvage leaves (Rare, Elite and Godly, each in copper, iron and black steel), in the bag and on the Blacksmith's Salvage tab. They were glowing orbs drawn by `tools/make_essence_icons.py`, which now refuses to draw over yours.
 - **Attach:** `docs/art/bag-icon-style-key.png` (the game's own bag icons). The earlier prompt asked for HD pixel art against the world's style key; the bag's icons are painted, so this one matches them.
 - **How:** One square picture of all nine: the light's colour says the grade, the little bar at its heart says the metal. They become `public/icons/items/essence-<grade>-<metal>.webp`.
 
@@ -660,6 +660,7 @@ The Feed & Seed's farm (v2.3.3127, docs/specs/farm.md) draws its crops, seeds an
 ### Farm goods: bag icons
 
 - **Moved to `docs/art/FARM-ART-PROMPTS.md`** (v2.3.3279): the sixteen crops, the sixteen seed packets, and the five dishes with compost, three sheets on the bag's own style key. The white-background prompt that was here is retired: a white ground cuts out badly round the cloudpetal's and frostberry's pale colours.
+- **In the game (v2.3.3281):** all three sheets, cut by `tools/ui/cut-bag-icons.py` (docs/specs/bag-icons.md).
 
 ## Sounds
 

@@ -261,6 +261,14 @@ def make(wood, src):
 
 
 def main(argv):
+    # v2.3.3281: the owner's painted hardened woods are the game's now
+    # (tools/ui/cut-bag-icons.py, from assets/icons-source/sheet-bag-wood.png);
+    # these drawn ones would write over them.  A wood the sheet does not have
+    # yet can still be drawn: --standins <wood>.
+    if '--standins' not in argv:
+        raise SystemExit('the hardened woods are the owner\'s art now (tools/ui/cut-bag-icons.py); '
+                         'pass --standins to draw these over them')
+    argv = [a for a in argv if a != '--standins']
     names = argv or list(WOODS)
     for n in names:
         if n not in WOODS:

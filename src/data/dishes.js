@@ -9,31 +9,39 @@
  * The Herb Bread's timer is `rest`, not the old 60 s `regen` (server data.js
  * DISHES says why); the HUD's Regen chip reads either (wsClient.js).
  * `name`, `look` and `desc` are the client's own words for it -- the bag, the
- * Cookhouse, the HUD.  The three tonics are brews too, described by their
- * bottles (SHOP_ITEMS); they are not in this table.
+ * Cookhouse, the HUD.  v2.3.3281: `icon` is its picture, the owner's
+ * (docs/art/FARM-ART-PROMPTS.md Sheet 2, cut by tools/ui/cut-bag-icons.py);
+ * `look`, the glyph, stays the fallback.  The three tonics are brews too,
+ * described by their bottles (SHOP_ITEMS); they are not in this table.
  *
  * Dependency-free on purpose, like farmCrops.js: the bag imports it. */
+const DISH_ICON = (name) => '/icons/items/' + name + '.webp?v=2.3.3281';
 export const DISHES = {
   meal_herb_bread: {
     slot: 'meal', buff: 'rest', power: 2, duration: 1800,
+    icon: DISH_ICON('herb-bread'),
     name: 'Herb Bread', look: '\uD83C\uDF5E', desc: 'Heal twice as fast out of a fight, 30 min'
   },
   meal_root_stew: {
     slot: 'meal', buff: 'resist', power: 0.05, duration: 1800,
+    icon: DISH_ICON('root-stew'),
     name: 'Root Stew', look: '\uD83C\uDF72', desc: 'Take 5% less damage, 30 min'
   },
   brew_firebloom_tea: {
     slot: 'brew', buff: 'damage', power: 0.20, duration: 1800,
+    icon: DISH_ICON('firebloom-tea'),
     name: 'Firebloom Tea', look: '\uD83C\uDF75', desc: '+20% damage, 30 min'
   },
   /* v2.3.3131: the potato and the pumpkin's dishes.  The stew is eaten at once
      (slot 'now': a heal, like a cooked fish); the pie is a meal. */
   meal_garden_stew: {
     slot: 'now', buff: 'heal', power: 150,
+    icon: DISH_ICON('garden-stew'),
     name: 'Garden Stew', look: '\uD83E\uDD58', desc: 'Heals 150 HP at once'
   },
   meal_pumpkin_pie: {
     slot: 'meal', buff: 'xp', power: 0.10, duration: 1800,
+    icon: DISH_ICON('pumpkin-pie'),
     name: 'Pumpkin Pie', look: '\uD83E\uDD67', desc: '+10% combat XP, 30 min'
   }
 };
