@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7b88e3be1feca83e05f450ea25423ba81f864be0",
+  "tree": "93f6efc56a2bb8d693363d3680b9d2207e84ab8c",
+  "committedAt": "2026-10-17T16:46:40-07:00",
+  "subject": "A script moves no faster than the fastest honest player, and three ways round the speed check are closed (v2.3.3325) (#955)",
+  "files": 5770,
+  "bytes": 636577703,
+  "listingSha256": "42980e1aee40d8446f6d9ed55e88debb3a6ac38ba0b4aff59252837bdbb8186e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
