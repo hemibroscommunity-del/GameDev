@@ -152,11 +152,36 @@ The test lever `/dev/combat {skill | 'all', level}` (devtools.js) sets a combat
 level -- the alliance counts level 5 and up, and its phone check raises 39 bots
 there.
 
+## Step 3, the plan: clans become parties
+
+Not built here; the owner's plan, approved with the rest ("Go recommended"),
+and built after this step merges. Written down now so it is reviewed with the
+alliance it leans on.
+
+- **No new clans.** `clan_create` is answered "Clans are parties now: form one
+  in the Saloon", and the clan windows (ClanPanel, the dashboard's Clan page,
+  the Guild Hall's Clans row, a player card's Invite to Clan) point to the
+  Saloon instead, against a `caps.clanparty`.
+- **Every clan becomes a stored party, once** -- at the first `_clansEnsure`
+  of a worker with it on: the clan's members who are in no party yet form one
+  (the clan's leader leading it if they are among them, else its oldest
+  member; a clan has at most 20, a party 50), each member's name read from
+  their `char:` record, level and `seen` unknown until they next join (so
+  they count toward 20 from their next visit). The party carries the clan's
+  name and tag in `ally` with `clan: 1`, and the clan's records
+  (`clan:`, `clan_by_player:`) are deleted in the same run. A member already
+  in a party keeps theirs; a clan left with one member is not a party, and
+  its name and tag are free. One-way, as a clan has nothing the party lacks:
+  its wars need the old lands, which are closed, and it holds no gold.
+- **A former clan wears its tag below 20** (decision 3): `_allyTagOf` gives
+  the tag when `ally.clan`, an alliance or not, so its members keep showing
+  it; it can be RENAMED only as an alliance (20 active), like any other.
+- The `clanTag` key retires with the clans (nothing sets it); `allyTag` is
+  the one tag on plates and lists.
+
 ## Not in this step
 
-- Step 3: clans retire into parties (a clan's members become a party, keeping
-  its tag; the clan wars' old lands are closed, so those wars cannot happen
-  anyway).
+- Step 3 (above): clans become parties.
 - An alliance chat apart from party chat (the party chat already reaches every
   member), shared storage, territory.
 - War kills drawn on the map, a war's own banner art.

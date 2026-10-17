@@ -88,9 +88,14 @@ async function playRow(page, name, wantId) {
     page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null),
     row.click(),
   ]);
+  /* v2.3.3306: and IN -- the worker's state_sync applied (its caps, the net
+     hold lifted).  myId and currentZone are the page's own before the socket
+     joins, so on this box the checks below ran on a page still waiting for
+     its sync: no caps, the stored record never applied, Inky's species still
+     on (the sweep of main, 2026-10-17: "monkey", caps 0, netHold true). */
   const live = await page.waitForFunction((id) => {
     const S = window._gameState && window._gameState.current;
-    return !!(S && S.myId === id && S.currentZone);
+    return !!(S && S.myId === id && S.currentZone && S._serverCaps && Object.keys(S._serverCaps).length > 0 && !S._netHold);
   }, wantId, { timeout: 90000, polling: 500 }).then(() => true).catch(() => false);
   await page.waitForFunction(() => document.querySelectorAll('video').length === 0,
     null, { timeout: 15000, polling: 200 }).catch(() => {});
@@ -191,16 +196,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('tapping Plainy\'s row walks into the world as Plainy (guard)', toPlain.ok, toPlain);
   if (toPlain.ok) {
     await D.page.waitForTimeout(4000);
-    const asPlain = await D.page.evaluate(() => ({
-      id: window._gameState.current.myId,
-      face: localStorage.getItem('bt-facetattoo') || '',
-      species: localStorage.getItem('bt-species') || 'none',
-    }));
+    const asPlain = await D.page.evaluate(() => {
+      const S = window._gameState.current;
+      const rec = typeof window.__btCharRecord === 'function' ? window.__btCharRecord() : null;
+      return {
+        id: S.myId,
+        face: localStorage.getItem('bt-facetattoo') || '',
+        species: localStorage.getItem('bt-species') || 'none',
+        /* v2.3.3306: what the stored record says, so a failure says why */
+        rec: rec ? { name: rec.name, sc: rec.look ? (rec.look.sc === undefined ? 'absent' : rec.look.sc) : 'no look' } : null,
+        charLock: !!(S._serverCaps && S._serverCaps.charLock),
+        caps: Object.keys(S._serverCaps || {}).length,
+        netHold: !!S._netHold, zone: S.currentZone, ws: !!(S.channel),
+        mySc: S.myLook && S.myLook.sc,
+      };
+    });
     rec.ok('2. the device is now playing Plainy (guard)', asPlain.id === plain.id, asPlain.id);
     rec.ok('2. Plainy does not wear Inky\'s face tattoo on this device',
       asPlain.face !== FACE, { faceLen: asPlain.face.length, isInkys: asPlain.face === FACE });
     rec.ok('2. ...and is not a monkey on this device (a record older than species)',
-      asPlain.species === 'none', asPlain.species);
+      asPlain.species === 'none', { species: asPlain.species, rec: asPlain.rec, charLock: asPlain.charLock, caps: asPlain.caps, netHold: asPlain.netHold, zone: asPlain.zone });
     /* Seen, and then given two relay rounds to settle, so a look that
        arrives only on the relay (not in the join frame) is caught too. */
     await peerLook(O, plain.id);
