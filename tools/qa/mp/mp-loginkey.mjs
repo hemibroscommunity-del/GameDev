@@ -71,8 +71,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     more.label === 'Login Key', more);
   rec.ok('...fully on screen without scrolling (it is the last cell)',
     more.onScreen, more);
+  /* v2.3.3326: Pets came in after the key (v2.3.3120), on purpose beside Life
+     Skills, whose Trapping it belongs to, and the grid went six across
+     (MorePanel.jsx).  What this asks is still whether the KEY pushed any of
+     the nine about, so Pets is left out of the count. */
   rec.ok('...and it did not displace the nine tiles that were already there',
-    more.order.slice(0, 9).join(',')
+    more.order.filter((id) => id !== 'pets').slice(0, 9).join(',')
       === 'quests,skills,social,clan,guild,journey,encyclopedia,leaderboard,settings',
     more.order);
 
