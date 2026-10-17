@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6b1813480f486b0f5f683a31a054943041e30166",
+  "tree": "35f49a91cc1a13f39fc4848b1b45793671be7dbd",
+  "committedAt": "2026-10-17T08:43:02-07:00",
+  "subject": "Only the game's own site can play on its server: a copy on another site is sent to brotown.net (v2.3.3312) (#947)",
+  "files": 5696,
+  "bytes": 634909549,
+  "listingSha256": "a72ddee32440e96f15f262152f0edf304efeaed7b900ca86941ba8fdf56e36a7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
