@@ -138,9 +138,19 @@ const dist = () => Math.hypot(B.x - A.x, B.y - A.y);
   check('a sworddash that names a player 600 px away LANDS: a pvp_hit, marked ability sworddash', !!r.hit && r.hit.ability === 'sworddash' && r.hit.attacker === 'bp_lu_a' && r.hit.target === 'bp_lu_b', r);
   check('...the hit is the worker\'s own roll (one formula: the hit a monster would take, dmgMult 1)', !!r.hit && Math.abs(r.hit.dmgBase - expect) < 1e-9, { got: r.hit && r.hit.dmgBase, expect });
   check('...and B lost what the pvp_hit says', !!r.hit && Math.abs((hp0 - B.hp) - r.hit.dmgTaken) < 1e-6 && r.hit.dmgTaken > 0, { lost: hp0 - B.hp, said: r.hit && r.hit.dmgTaken });
-  check(`...the worker put A at contact (${Math.round(dist())} px, STOP_PX ${PVP_LUNGE.STOP_PX}) and the next move is a first move`,
-    Math.abs(dist() - PVP_LUNGE.STOP_PX) < 0.5 && A.lastMoveAt === undefined, { d: dist(), lastMoveAt: A.lastMoveAt });
+  check(`...the worker put A at contact (${Math.round(dist())} px, STOP_PX ${PVP_LUNGE.STOP_PX})`,
+    Math.abs(dist() - PVP_LUNGE.STOP_PX) < 0.5, { d: dist() });
   check('...and no "whiff" went back', !r.rej, r.rej);
+  /* v2.3.3325: ...and the next move is judged from there like any other
+     (movement.js _moveServerPlaced, MOVE_BUDGET).  It was a first move,
+     compared against nothing: a lunge, then anywhere at all. */
+  const cx = A.x, cy = A.y;
+  const move = (x, y) => room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x, y, z: 'town' }));
+  await move(cx + 10, cy);
+  check('...the next move is judged from the contact: a step of 10 px is taken', Math.abs(A.x - (cx + 10)) < 1e-9 && A.y === cy, { x: A.x, want: cx + 10 });
+  await move(cx + 5000, cy);
+  check('...and a jump after it is followed only as far as the budget reaches (what is left of 1,580), not taken',
+    Math.abs(A.x - (cx + 10 + 1570)) < 1e-6, { x: A.x, want: cx + 10 + 1570 });
 }
 
 // ── 2. the daze ──

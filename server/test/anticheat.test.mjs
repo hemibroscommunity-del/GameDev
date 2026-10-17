@@ -87,17 +87,26 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 1000, y: 1000, z: 'meadow' }));
   check('first move accepted', psA.x === 1000 && psA.y === 1000, { x: psA.x, y: psA.y });
 
-  // Immediate 5000 px jump: far beyond 500 px/s * dt + 80 px burst.
-  // The cheat move also tries to flip blocking/dead — on reject the
-  // server must drop EVERYTHING, not just the position.
-  await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 6000, y: 1000, z: 'meadow', blocking: true, dead: true }));
-  check('teleport move rejected (position kept)', psA.x === 1000 && psA.y === 1000, { x: psA.x, y: psA.y });
-  check('teleport move rejected (flags not flipped)', !psA.blocking && !psA.dead,
-    { blocking: psA.blocking, dead: psA.dead });
+  // Immediate 5000 px jump: far beyond the bound.
+  /* v2.3.3325: the bound is a BUDGET now (movement.js MOVE_BUDGET), and a
+     move it cannot cover is FOLLOWED as far as it reaches, never refused --
+     a refusal judged the next move from the old place too, which pinned an
+     honest phone whose gap had grown.  So the cheat lands one full budget
+     along (3 s of 500 px/s + 80 = 1,580 px), never at its claim; its shield
+     comes with it as any move's would; and the same claim straight after
+     moves next to nothing, the budget spent.  The old refusal is the kill
+     switch's (move-budget.test.mjs). */
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 6000, y: 1000, z: 'meadow', blocking: true }));
+  check('teleport move not taken: followed only one full budget along (1,580 px), not to its claim', psA.x === 2580 && psA.y === 1000, { x: psA.x, y: psA.y });
+  check('...its shield taken as any move\'s (a followed move is not a refused one)', psA.blocking === true, { blocking: psA.blocking });
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 6000, y: 1000, z: 'meadow', blocking: false }));
+  check('...and the same claim at once moves next to nothing: the budget is spent', psA.x >= 2580 && psA.x < 2585, { x: psA.x });
 
-  // Small step within the burst allowance is accepted even back-to-back.
-  await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 1050, y: 1000, z: 'meadow' }));
-  check('legit small move accepted', psA.x === 1050, { x: psA.x });
+  // A phone's step a second later is taken exactly.
+  psA._mvBudgetAt -= 1000;   /* the last judged move, a second ago */
+  const _x0 = psA.x;
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: _x0 + 50, y: 1000, z: 'meadow' }));
+  check('legit small move accepted', Math.abs(psA.x - (_x0 + 50)) < 1e-9, { x: psA.x, want: _x0 + 50 });
 
   // Zone change bypasses the delta gate (players legitimately jump to
   // the new zone's spawn coords).

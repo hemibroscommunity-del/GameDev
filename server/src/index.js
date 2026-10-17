@@ -3351,6 +3351,9 @@ export class GameRoom {
       ps.dead = false;
       ps.respawnAt = 0;
       ps.z = 'town';
+      /* v2.3.3325: no place in town to judge the next move from, and no way
+         back into the Wheel but its arrival (movement.js _moveRespawned) */
+      this._moveRespawned(ps);
       ps.lastDamageAt = 0;
       ps._lastDealtAt = 0; /* v2.3.3056: a respawned player is out of the fight (wheelzone.js _wheelProvokedBy) */
       // Defense-in-depth: wipe again on respawn in case anything

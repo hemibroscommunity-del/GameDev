@@ -3626,7 +3626,8 @@ Two protocol versions coexist; both must keep working:
   - fingerprints are the phone's word: a strike with none is never scored;
   - flags change nothing, and no screen shows them -- shown since v2.3.3323,
     below;
-  - the speed slack is per message: 2,909 px/s, and 58,661 with bundles;
+  - the speed slack is per message: 2,909 px/s, and 58,661 with bundles --
+    a budget since v2.3.3325, below;
   - combat lanes are per monster, and a "ranged" hit reaches 3,600 px with no
     bow (7x the kills);
   - one socket can spend the free plan's rows (`chat_mute`, `stats_update` and
@@ -3659,6 +3660,28 @@ Two protocol versions coexist; both must keep working:
     `/dev/botflag` plants a `test` flag on a player who is here (never moving
     a real flag's hour gap); OPERATIONS.md "Bot flags"; a flag still changes
     nothing; `bot-flags` suite (29), `mp-botflags` (14).
+  - since v2.3.3325 A SCRIPT MOVES NO FASTER THAN THE FASTEST HONEST PLAYER
+    (fix 7, two of its three parts; docs/specs/move-budget.md):
+    - the speed check's 80 px was given again with every message; it is a
+      BUDGET now (movement.js `MOVE_BUDGET`): it refills at the check's own
+      500 px/s (x the potion, the move stat, a billed sprint), holds 3 s of it
+      + 80, and each move spends what it covers -- the lab's script 2,909 ->
+      656 px/s, a bundle buys nothing, an honest walk unchanged;
+    - a move past it is FOLLOWED as far as it reaches, never refused, and the
+      tick follows on until the server's copy is there (`_tickMoveFollow`,
+      before the monsters): the old refusal pinned a gap until a pause, and
+      under a capped budget it would never close (TRAPS §203);
+    - the three ways to skip the check are closed: a refused zone no longer
+      frees the next move, a server-placed move (`_moveServerPlaced`: the
+      sword's dash, the lunge at a player) is judged from where the server put
+      you, and back INTO THE WHEEL you are judged from where you left it
+      (`ps._wheelBack`; every honest way out comes back there; a death forgets
+      it, `_moveRespawned`); a zone change never refills the budget;
+    - STILL OPEN: a join lands where it says (every join is a fresh state), so
+      a reconnect is a teleport, 20 sockets a minute an address;
+    - the overview's `moveBudget`; kill switch `movebudget: false`;
+      `move-budget` suite (62, fourteen bugs caught); seven suites adapted;
+      the lab's `allow()` reads the budget, and `--flags=` sets live flags.
   - since v2.3.3292 (the architecture review): a phone's `dodging` stops a
     player's blow only within 1 s of a roll the worker CHARGED for
     (movement.js `ROLL`, `_rollOn`; it was unbounded, one move made a player
@@ -3881,7 +3904,9 @@ Two protocol versions coexist; both must keep working:
   0 = off; CF-Connecting-IP, so local tests are never counted); a `null`
   frame threw -- dropped. `flood` suite (46); the bot lab's `writes` and
   `roomfill` probes show the before and after. Still open: the farming holes
-  (the review's 6-9; 6, the harvest, closed in v2.3.3322: harvest-proof.md).
+  (the review's 6-9; 6, the harvest, closed in v2.3.3322: harvest-proof.md;
+  9, the flags shown, v2.3.3323: bot-flags.md; 7, movement, but for the
+  reconnect, v2.3.3325: move-budget.md).
 - **THE ACCOUNT CHECK (v2.3.3275, docs/specs/account-check.md).** A character
   that does not exist yet (an id with no `auth:` record: a first join, every
   guest) is asked for a Cloudflare Turnstile token before the identity is
