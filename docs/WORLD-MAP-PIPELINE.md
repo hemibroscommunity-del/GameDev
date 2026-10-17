@@ -3047,6 +3047,46 @@ old map's far corner, and it slid in over ~15 frames.
 - keep `chunkGround.js` if the real world is going to stream the same way,
   which is the plan.
 
+## The Wheel built in blocks round you (v2.3.3298)
+
+The owner, 2026-10-17: *"the game map needs to be larger. It goes from lvl 1
+monsters to lvl 20+ way too quickly. Maybe 5x larger map is needed"* -- and,
+offered the ways, **"Rebuild for 5x"**. The first step changes nothing you can
+see: the ground worker stops building the whole Wheel on the way in.
+
+- **Why.** The whole map (blueprint, swatch map, walls, objects) took ~2.3 s
+  and ~47 MB at its peak; five times longer it is ~23.5 s and ~594 MB, where an
+  iPhone tab dies at ~250 MB. Even twice as long (~163 MB) does not fit.
+- **Blocks.** `core/worldblocks.js`: 128 x 128 cells (3,072 game px) a block,
+  built from `buildBlueprint(plan, rect)` with a margin, its swatch map
+  (`materialMap`), walls (`walkBits`, `swimBits`), region and tier; built under
+  the pieces of ground asked for and, when the worker is idle, next to yours;
+  the 48 nearest kept. A piece of ground is laid from a window stitched from
+  the blocks under it (`PIECE_MARGIN` 24 cells round it).
+- **Exactly the whole map.** Some steps look past a rectangle: the scattered
+  features are order-dependent (a feature is left out where an earlier one
+  covers its middle -- `planFeatures` works that out at its middle,
+  `stands`), the bridges need the river round a crossing (worked out once a
+  plan), the stages are averaged over 28 cells (`LAND_STAGE_MARGIN`), the walls
+  look 11 cells out (`WALL_MARGIN`). Every block and piece is compared with
+  the whole map, cell for cell, by test-world-core ("the Wheel in blocks").
+- **Walls by block.** The worker sends each block's walls as it builds it
+  (`block`); the game's walk grid reads them, a block not built yet reading as
+  open. `wheelBlocksAround(x, y, r)` asks for blocks far from any ground laid.
+- **Baked.** Where the objects stand is placed in one order over the whole
+  map, so `tools/world/bake-wheel-world.mjs` works it out once, with the
+  overview and the land colours: `public/world/placed/objects.bin`,
+  `overview.png`, `lands.png`, named by `core/placed.js` at their fingerprint.
+  The worker uses them when `planFingerprint(PLAN)` matches; the previews
+  (`?bigtown=`, `?plaintown`, `?placing=2`) and an un-baked plan build the whole
+  map for them as before. **A change to the plan, the object catalog or the
+  placing must re-bake** (`node tools/world/bake-wheel-world.mjs`), as it must
+  re-bake the monsters (`bake-wheel-spawns.mjs`).
+- **Memory.** The ground worker at the memory budget trip's peak: 24.8 MB
+  (main 28.7); on arrival 15.7 MB (main 20.6).
+
+docs/specs/wheel-in-blocks.md has the numbers and the tests.
+
 ## The Wheel is the world (v2.3.2990)
 
 > Owner, 2026-10-02: *"I'm ready to have this replace the old game map. Just

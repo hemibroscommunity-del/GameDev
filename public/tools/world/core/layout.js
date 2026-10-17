@@ -436,45 +436,106 @@ export function townSurfaces(plan, bp) {
   return out;
 }
 
-export function buildBlueprint(plan) {
+/* ═══ v2.3.3298: THE BLUEPRINT IN PIECES ═══
+ *
+ * The owner, 2026-10-17: "the game map needs to be larger. It goes from lvl 1
+ * monsters to lvl 20+ way too quickly. Maybe 5x larger map is needed" -- and,
+ * offered the ways to get there, "Rebuild for 5x".  The game's ground worker
+ * built this blueprint for the WHOLE Wheel on the way in (~2 s on a desktop,
+ * ~50 MB at its peak), and a Wheel five times longer is 25 times the cells:
+ * ~600 MB, which no phone holds.  So the blueprint can now be built for any
+ * RECTANGLE of cells (`rect`, in cells from the whole blueprint's corner), and
+ * every cell of it comes out exactly as the whole-world build makes it: the
+ * worker builds only the pieces round you (core/worldblocks.js).
+ *
+ * What that took, beyond clipping each pass to the rectangle:
+ *   - everything that is not a stamp on cells is worked out ONCE for a plan
+ *     (planFeatures): the rivers' and roads' lines, where each river reaches
+ *     the sea, the bridges' decks and the roads joined to them, the places,
+ *     the routes and the plots;
+ *   - pass 2 (each region's scattered features) depends on ORDER: a feature
+ *     is left out where an earlier one already covers its middle.  A
+ *     rectangle cannot see what covers a middle outside it, so whether a
+ *     feature stands is worked out at its middle, through the earlier
+ *     features that can reach it, and remembered (`stands`) -- the answer the
+ *     whole-world pass gives, by construction;
+ *   - every position is reckoned from the WHOLE blueprint's corner, exactly as
+ *     the whole-world build reckons it, and only the arrays are the
+ *     rectangle's: the same arithmetic, so the same bits.
+ * tools/world/test-world-core.mjs ("the blueprint in pieces") builds pieces
+ * all over the Wheel and compares them with the whole, cell for cell.
+ */
+const FEATS = new WeakMap();
+/* how many features' answers a plan keeps before starting again (a long walk
+   over a big Wheel would otherwise keep every one it passed) */
+const STANDS_KEEP = 30000;
+
+export function planFeatures(plan) {
+  const hit = FEATS.get(plan);
+  if (hit) return hit;
   const g = gridInfo(plan);
   const S = plan.blueprintScale, P = g.P;
   const gx0 = Math.floor(g.ax / S), gy0 = Math.floor(g.ay / S);
   const x0 = gx0 * S, y0 = gy0 * S;
   const bw = Math.ceil((g.ax + g.AW - x0) / S), bh = Math.ceil((g.ay + g.AH - y0) / S);
-  const n = bw * bh;
-  const cls = new Uint8Array(n), reg = new Uint8Array(n), band = new Uint8Array(n);
   const regionIds = Object.keys(plan.regions);
   const R = Object.create(null);
   regionIds.forEach((k, i) => { R[k] = i; });
   const seed = plan.seed | 0;
-  const townId = R.town;
+  const townId = R.town, commonsId = R.commons;
 
   /* coordinates: a cell's centre in art px, an art position in (float) cells
-     where cell b's centre is b + 0.5, and plan squares -> art px */
+     where cell b's centre is b + 0.5, and plan squares -> art px -- always
+     from the WHOLE blueprint's corner, whatever rectangle is being built */
   const artX = (bx) => x0 + (bx + 0.5) * S, artY = (by) => y0 + (by + 0.5) * S;
   const cellX = (ax) => (ax - x0) / S, cellY = (ay) => (ay - y0) / S;
   const toArt = (p) => [g.cx + p[0] * P, g.cy + p[1] * P];
   const sqx = (gx) => ((gx + 0.5) * S - g.cx) / P, sqy = (gy) => ((gy + 0.5) * S - g.cy) / P;
-  const cellIndex = (ax, ay) => {
-    const bx = Math.floor(cellX(ax)), by = Math.floor(cellY(ay));
-    return bx >= 0 && by >= 0 && bx < bw && by < bh ? by * bw + bx : -1;
-  };
+  const inside = (bx, by) => bx >= 0 && by >= 0 && bx < bw && by < bh;
 
   const anchors = placeAnchors(plan);
   const W = wheelInfo(plan);
   const coast = plan.coast, cmn = plan.commons, warp = plan.regionWarp, tw = plan.tierWarp;
   const passWob = plan.wheel.passWobble || 0;
-  const tier = new Uint8Array(n);
 
+  /* the low-frequency fields, as functions of ABSOLUTE cells (coarseField) */
   const STEP = 8;
-  const field = (f) => coarseField(gx0, gy0, bw, bh, STEP, f);
-  const coastN = field((gx, gy) => fbm(sqx(gx) * coast.freq, sqy(gy) * coast.freq, seed + 11, 4));
-  const warpX = field((gx, gy) => fbm(sqx(gx) * warp.freq, sqy(gy) * warp.freq, seed + 23, 3));
-  const warpY = field((gx, gy) => fbm(sqx(gx) * warp.freq + 17.3, sqy(gy) * warp.freq + 5.1, seed + 37, 3));
-  const ringN = field((gx, gy) => fbm(sqx(gx) * cmn.freq, sqy(gy) * cmn.freq, seed + 41, 3));
-  /* (v2.3.2977: the town's edge, read per cell near it: edgeWobble) */
-  const tierN = field((gx, gy) => fbm(sqx(gx) * tw.freq, sqy(gy) * tw.freq, seed + 61, 2));
+  const fieldFns = {
+    coastN: (gx, gy) => fbm(sqx(gx) * coast.freq, sqy(gy) * coast.freq, seed + 11, 4),
+    warpX: (gx, gy) => fbm(sqx(gx) * warp.freq, sqy(gy) * warp.freq, seed + 23, 3),
+    warpY: (gx, gy) => fbm(sqx(gx) * warp.freq + 17.3, sqy(gy) * warp.freq + 5.1, seed + 37, 3),
+    ringN: (gx, gy) => fbm(sqx(gx) * cmn.freq, sqy(gy) * cmn.freq, seed + 41, 3),
+    /* (v2.3.2977: the town's edge, read per cell near it: edgeWobble) */
+    tierN: (gx, gy) => fbm(sqx(gx) * tw.freq, sqy(gy) * tw.freq, seed + 61, 2),
+  };
+  /* ...on the lattice over a rectangle, as the whole-world build lays them */
+  const windowFields = (bx0, by0, w, h) => {
+    const out = {};
+    for (const k of Object.keys(fieldFns)) out[k] = coarseField(gx0 + bx0, gy0 + by0, w, h, STEP, fieldFns[k]);
+    return out;
+  };
+  /* ...and at any one cell, the same numbers: the lattice is aligned to
+     absolute cells, so a point's four corners and its fractions are exactly
+     the ones coarseField's sampler reads for it (lattice values kept) */
+  const latticeAt = (f) => {
+    const memo = new Map();
+    const at = (i, j) => {
+      const k = i * 1048576 + j;
+      let v = memo.get(k);
+      if (v === undefined) { v = f(i * STEP, j * STEP); memo.set(k, v); }
+      return v;
+    };
+    return (gx, gy) => {
+      const x = gx / STEP, y = gy / STEP;
+      const i = Math.floor(x), j = Math.floor(y);
+      const fx = x - i, fy = y - j;
+      const a = at(i, j), b = at(i + 1, j), c = at(i, j + 1), d = at(i + 1, j + 1);
+      const top = a + (b - a) * fx, bot = c + (d - c) * fx;
+      return top + (bot - top) * fy;
+    };
+  };
+  const pointFields = {};
+  for (const k of Object.keys(fieldFns)) pointFields[k] = latticeAt(fieldFns[k]);
 
   const spokes = W.spokes.map((sp) => ({ ...sp, rid: R[sp.id] }));
   const passes = [];
@@ -490,132 +551,129 @@ export function buildBlueprint(plan) {
     return { x0: Math.min(...TS.rects.map((r) => r.x0)) - m, x1: Math.max(...TS.rects.map((r) => r.x1)) + m,
       y0: Math.min(...TS.rects.map((r) => r.y0)) - m, y1: Math.max(...TS.rects.map((r) => r.y1)) + m };
   })() : null;
-  const commonsId = R.commons;
 
-  /* ── pass 1: sea, anchors, the town, the commons, the spokes and passes,
-     each cell's stage and tier ──
+  /* ── pass 1, one cell: sea, anchors, the town, the commons, the spokes and
+     passes, its stage and tier ──
      Land is the commons, the union of the spoke capsules, and the pass
      arcs.  A land cell belongs to the spoke whose axis is nearest a
      slightly warped copy of it -- so the border between two neighbours
      wanders round the line halfway between them, at their bases and across
-     their passes alike.  Its tier comes from its distance from the town. */
-  for (let by = 0; by < bh; by++) {
-    const gy = gy0 + by, y = sqy(gy), ay = artY(by);
-    for (let bx = 0; bx < bw; bx++) {
-      const gx = gx0 + bx, x = sqx(gx), ax = artX(bx);
-      const i = by * bw + bx;
-      const r = Math.sqrt(x * x + y * y);
-      let k1 = 0, k2 = 0, d1 = Infinity, d2 = Infinity;
-      for (let k = 0; k < spokes.length; k++) {
-        const d = axisDist(W, spokes[k], x, y);
-        if (d < d1) { d2 = d1; k2 = k1; d1 = d; k1 = k; } else if (d < d2) { d2 = d; k2 = k; }
+     their passes alike.  Its tier comes from its distance from the town.
+     Packed: class | region << 5 | tier << 10 | stage << 15. */
+  const pass1At = (bx, by, F) => {
+    const gx = gx0 + bx, gy = gy0 + by, y = sqy(gy), ay = artY(by);
+    const x = sqx(gx), ax = artX(bx);
+    const r = Math.sqrt(x * x + y * y);
+    let k1 = 0, k2 = 0, d1 = Infinity, d2 = Infinity;
+    for (let k = 0; k < spokes.length; k++) {
+      const d = axisDist(W, spokes[k], x, y);
+      if (d < d1) { d2 = d1; k2 = k1; d1 = d; k1 = k; } else if (d < d2) { d2 = d; k2 = k; }
+    }
+    const cn = F.coastN(gx, gy);
+    const inCommons = r < W.hub + cmn.wobble * F.ringN(gx, gy);
+    let land = inCommons || d1 < W.half + coast.wobble * cn;
+    if (!land) {
+      for (const p of passes) {
+        if (Math.abs(r - p.r) < p.half + passWob * cn && between(p.a, p.b, x, y)) { land = true; break; }
       }
-      const cn = coastN(gx, gy);
-      const inCommons = r < W.hub + cmn.wobble * ringN(gx, gy);
-      let land = inCommons || d1 < W.half + coast.wobble * cn;
-      if (!land) {
-        for (const p of passes) {
-          if (Math.abs(r - p.r) < p.half + passWob * cn && between(p.a, p.b, x, y)) { land = true; break; }
+    }
+    /* the region: of the two nearest axes, the one nearer the warped point */
+    const wx = x + warp.amount * F.warpX(gx, gy), wy = y + warp.amount * F.warpY(gx, gy);
+    const best = spokes.length > 1 && axisDist(W, spokes[k2], wx, wy) < axisDist(W, spokes[k1], wx, wy) ? spokes[k2].rid : spokes.length ? spokes[k1].rid : 0;
+    if (!land) return C.ocean | (best << 5);
+    for (const an of anchors) {
+      if (ax >= an.core.x0 && ax < an.core.x1 && ay >= an.core.y0 && ay < an.core.y1) return C.anchor | ((townId != null ? townId : best) << 5);
+    }
+    if (T && townId != null) {
+      const tx = ax - g.cx, ty = ay - g.cy;
+      if (tx >= townBox.x0 && tx <= townBox.x1 && ty >= townBox.y0 && ty <= townBox.y1 && TS.rects.some((r) => inWobblyRect(tx, ty, r, TE, seed + 53 + (TE.seed | 0), g.cx, g.cy, townReach))) return C.ground | (townId << 5);
+    }
+    if (inCommons && commonsId != null) return C.ground | (commonsId << 5);
+    const t = Math.max(1, tierAt(W, r + tw.amount * F.tierN(gx, gy)));
+    return C.ground | (best << 5) | (t << 10) | (stageOf(W, t) << 15);
+  };
+  /* (at one cell, outside any rectangle: the features and the rivers ask) */
+  const p1memo = new Map();
+  const pass1Point = (bx, by) => {
+    const k = by * bw + bx;
+    let v = p1memo.get(k);
+    if (v === undefined) {
+      v = pass1At(bx, by, pointFields);
+      if (p1memo.size > STANDS_KEEP) p1memo.clear();
+      p1memo.set(k, v);
+    }
+    return v;
+  };
+  const landAt = (c) => c !== C.ocean && c !== C.anchor;
+  /* ...and over a rectangle, into its arrays (row `bw` wide from rx0, ry0):
+     the SAME arithmetic as pass1At's, written out in the loop.  Called once a
+     cell, pass1At made the whole blueprint take 5.8 s on the test box, where
+     the whole-world build before v2.3.3298 took 1.0 and this loop's build
+     takes 1.4-1.6 (measured): the call is not inlined, and by the time the
+     rectangle's cells run the features have already called it with their
+     own samplers.  The suite checks the two cell by cell (test-world-core,
+     "the Wheel in blocks"). */
+  const pass1Rect = (rx0, ry0, rx1, ry1, Fd, cls, reg, tier, band, bw) => {
+    const coastN = Fd.coastN, ringN = Fd.ringN, warpX = Fd.warpX, warpY = Fd.warpY, tierN = Fd.tierN;
+    for (let by = ry0; by < ry1; by++) {
+      const gy = gy0 + by, y = sqy(gy), ay = artY(by);
+      for (let bx = rx0; bx < rx1; bx++) {
+        const gx = gx0 + bx, x = sqx(gx), ax = artX(bx);
+        const i = (by - ry0) * bw + (bx - rx0);
+        const r = Math.sqrt(x * x + y * y);
+        let k1 = 0, k2 = 0, d1 = Infinity, d2 = Infinity;
+        for (let k = 0; k < spokes.length; k++) {
+          const d = axisDist(W, spokes[k], x, y);
+          if (d < d1) { d2 = d1; k2 = k1; d1 = d; k1 = k; } else if (d < d2) { d2 = d; k2 = k; }
         }
+        const cn = coastN(gx, gy);
+        const inCommons = r < W.hub + cmn.wobble * ringN(gx, gy);
+        let land = inCommons || d1 < W.half + coast.wobble * cn;
+        if (!land) {
+          for (const p of passes) {
+            if (Math.abs(r - p.r) < p.half + passWob * cn && between(p.a, p.b, x, y)) { land = true; break; }
+          }
+        }
+        const wx = x + warp.amount * warpX(gx, gy), wy = y + warp.amount * warpY(gx, gy);
+        const best = spokes.length > 1 && axisDist(W, spokes[k2], wx, wy) < axisDist(W, spokes[k1], wx, wy) ? spokes[k2].rid : spokes.length ? spokes[k1].rid : 0;
+        tier[i] = 0; band[i] = 0;
+        if (!land) { cls[i] = C.ocean; reg[i] = best; continue; }
+        cls[i] = C.ground;
+        let inAnchor = false;
+        for (const an of anchors) {
+          if (ax >= an.core.x0 && ax < an.core.x1 && ay >= an.core.y0 && ay < an.core.y1) { inAnchor = true; break; }
+        }
+        if (inAnchor) { cls[i] = C.anchor; reg[i] = townId != null ? townId : best; continue; }
+        if (T && townId != null) {
+          const tx = ax - g.cx, ty = ay - g.cy;
+          if (tx >= townBox.x0 && tx <= townBox.x1 && ty >= townBox.y0 && ty <= townBox.y1 && TS.rects.some((rr) => inWobblyRect(tx, ty, rr, TE, seed + 53 + (TE.seed | 0), g.cx, g.cy, townReach))) { reg[i] = townId; continue; }
+        }
+        if (inCommons && commonsId != null) { reg[i] = commonsId; continue; }
+        reg[i] = best;
+        const t = Math.max(1, tierAt(W, r + tw.amount * tierN(gx, gy)));
+        tier[i] = t;
+        band[i] = stageOf(W, t);
       }
-      /* the region: of the two nearest axes, the one nearer the warped point */
-      const wx = x + warp.amount * warpX(gx, gy), wy = y + warp.amount * warpY(gx, gy);
-      const best = spokes.length > 1 && axisDist(W, spokes[k2], wx, wy) < axisDist(W, spokes[k1], wx, wy) ? spokes[k2].rid : spokes.length ? spokes[k1].rid : 0;
-      if (!land) { cls[i] = C.ocean; reg[i] = best; continue; }
-      cls[i] = C.ground;
-      let inAnchor = false;
-      for (const an of anchors) {
-        if (ax >= an.core.x0 && ax < an.core.x1 && ay >= an.core.y0 && ay < an.core.y1) { inAnchor = true; break; }
-      }
-      if (inAnchor) { cls[i] = C.anchor; reg[i] = townId != null ? townId : best; continue; }
-      if (T && townId != null) {
-        const tx = ax - g.cx, ty = ay - g.cy;
-        if (tx >= townBox.x0 && tx <= townBox.x1 && ty >= townBox.y0 && ty <= townBox.y1 && TS.rects.some((r) => inWobblyRect(tx, ty, r, TE, seed + 53 + (TE.seed | 0), g.cx, g.cy, townReach))) { reg[i] = townId; continue; }
-      }
-      if (inCommons && commonsId != null) { reg[i] = commonsId; continue; }
-      reg[i] = best;
-      const t = Math.max(1, tierAt(W, r + tw.amount * tierN(gx, gy)));
-      tier[i] = t;
-      band[i] = stageOf(W, t);
     }
-  }
+  };
 
-  /* ── stamping helpers (positions in float cells) ── */
-  const any = () => true;
-  function stampDisc(fx, fy, r, k, can, rid) {
-    const xa = Math.max(0, Math.floor(fx - r - 1)), xb = Math.min(bw - 1, Math.ceil(fx + r + 1));
-    const ya = Math.max(0, Math.floor(fy - r - 1)), yb = Math.min(bh - 1, Math.ceil(fy + r + 1));
-    const r2 = r * r;
-    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
-      const dx = x + 0.5 - fx, dy = y + 0.5 - fy;
-      if (dx * dx + dy * dy > r2) continue;
-      const i = y * bw + x;
-      if (!can(cls[i], i)) continue;
-      cls[i] = k;
-      if (rid != null) reg[i] = rid;
-    }
-  }
-  function stampBlob(fx, fy, r, k, can, nseed) {
-    const xa = Math.max(0, Math.floor(fx - r * 1.45)), xb = Math.min(bw - 1, Math.ceil(fx + r * 1.45));
-    const ya = Math.max(0, Math.floor(fy - r * 1.45)), yb = Math.min(bh - 1, Math.ceil(fy + r * 1.45));
-    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
-      const i = y * bw + x;
-      if (!can(cls[i], i)) continue;
-      const dx = x + 0.5 - fx, dy = y + 0.5 - fy;
-      const d = Math.sqrt(dx * dx + dy * dy) / r;
-      if (d + 0.32 * valueNoise((gx0 + x) * 0.12, (gy0 + y) * 0.12, nseed) < 1) cls[i] = k;
-    }
-  }
-  function stampRidge(pts, r, k, can, nseed) {
-    let xa = Infinity, ya = Infinity, xb = -Infinity, yb = -Infinity;
-    for (const p of pts) { xa = Math.min(xa, p[0]); ya = Math.min(ya, p[1]); xb = Math.max(xb, p[0]); yb = Math.max(yb, p[1]); }
-    xa = Math.max(0, Math.floor(xa - r * 1.5)); ya = Math.max(0, Math.floor(ya - r * 1.5));
-    xb = Math.min(bw - 1, Math.ceil(xb + r * 1.5)); yb = Math.min(bh - 1, Math.ceil(yb + r * 1.5));
-    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
-      const i = y * bw + x;
-      if (!can(cls[i], i)) continue;
-      let d = Infinity;
-      for (let s = 0; s < pts.length - 1; s++) d = Math.min(d, segDist(x + 0.5, y + 0.5, pts[s][0], pts[s][1], pts[s + 1][0], pts[s + 1][1]));
-      if (d / r + 0.3 * valueNoise((gx0 + x) * 0.14, (gy0 + y) * 0.14, nseed) < 1) cls[i] = k;
-    }
-  }
-  /* v2.3.2977: a rectangle whose sides wander (`E` as TOWN_EDGE): a cell is
-     in when it is inside the rectangle grown, or shrunk, by edgeWobble where
-     it stands */
-  function stampRectEdge(rx0, ry0, rx1, ry1, k, can, rid, E, nseed) {
-    const reach = edgeReach(E), m = reach + S, r = { x0: rx0, y0: ry0, x1: rx1, y1: ry1 };
-    const xa = Math.max(0, Math.floor(cellX(g.cx + rx0 - m) - 1)), xb = Math.min(bw - 1, Math.ceil(cellX(g.cx + rx1 + m) + 1));
-    const ya = Math.max(0, Math.floor(cellY(g.cy + ry0 - m) - 1)), yb = Math.min(bh - 1, Math.ceil(cellY(g.cy + ry1 + m) + 1));
-    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
-      if (!inWobblyRect(artX(x) - g.cx, artY(y) - g.cy, r, E, nseed, g.cx, g.cy, reach)) continue;
-      const i = y * bw + x;
-      if (!can(cls[i], i)) continue;
-      cls[i] = k;
-      if (rid != null) reg[i] = rid;
-    }
-  }
-  /* art-px rectangle relative to the world centre, by cell centres */
-  function stampRect(rx0, ry0, rx1, ry1, k, can, rid) {
-    const xa = Math.max(0, Math.floor(cellX(g.cx + rx0) - 1)), xb = Math.min(bw - 1, Math.ceil(cellX(g.cx + rx1) + 1));
-    const ya = Math.max(0, Math.floor(cellY(g.cy + ry0) - 1)), yb = Math.min(bh - 1, Math.ceil(cellY(g.cy + ry1) + 1));
-    for (let y = ya; y <= yb; y++) {
-      const ay = artY(y) - g.cy;
-      if (ay < ry0 || ay >= ry1) continue;
-      for (let x = xa; x <= xb; x++) {
-        const ax = artX(x) - g.cx;
-        if (ax < rx0 || ax >= rx1) continue;
-        const i = y * bw + x;
-        if (!can(cls[i], i)) continue;
-        cls[i] = k;
-        if (rid != null) reg[i] = rid;
-      }
-    }
-  }
-
-  /* ── pass 2: scatter each region's features on a hashed lattice ──
+  /* ── pass 2's features, and whether each one stands ──
      One candidate per L x L lattice cell (L from the density), jittered
      inside it by a hash of the cell -- so a feature's place, size and shape
-     depend only on WHERE it is, never on how many came before it. */
+     depend only on WHERE it is, never on how many came before it.
+     `reach`: art px from its point to the farthest cell it can stamp. */
+  const feats = [];
+  for (const rk of regionIds) {
+    const rd = plan.regions[rk];
+    if (!rd.features) continue;
+    rd.features.forEach((f, fi) => {
+      const ridge = f.shape === 'ridge';
+      feats.push({ order: feats.length, rk, rid: R[rk], f, k: C[f.class], L: Math.sqrt(1e6 / f.density),
+        fs: (strSeed(rk) ^ seed) + Math.imul(fi + 1, 7919), bandOk: f.in ? new Set(f.in.map((k) => k - 1)) : null,   /* stages 1-4 in the plan, 0-3 in `band` */
+        ridge, reach: (ridge ? f.len[1] / 2 + f.r[1] * 1.5 : f.r[1] * 1.45) + 2 * S, memo: new Map() });
+    });
+  }
+  const featsOf = regionIds.map((_, rid) => feats.filter((F) => F.rid === rid));
   /* v2.3.2981: a feature with `clear` (art px) stands that far, past its own
      reach, from every road and the railway (their wobble allowed for) and
      every place: they are laid after it, and a road through a pool is a
@@ -639,52 +697,108 @@ export function buildBlueprint(plan) {
     for (const q of avoid.discs) if (Math.hypot(x - q[0], y - q[1]) < m + q[2]) return true;
     return false;
   };
-  for (const rk of regionIds) {
-    const rd = plan.regions[rk];
-    if (!rd.features) continue;
-    const rid = R[rk];
-    rd.features.forEach((f, fi) => {
-      const k = C[f.class];
-      const L = Math.sqrt(1e6 / f.density);
-      const fs = (strSeed(rk) ^ seed) + Math.imul(fi + 1, 7919);
-      const bandOk = f.in ? new Set(f.in.map((k) => k - 1)) : null;   /* stages 1-4 in the plan, 0-3 in `band` */
-      const i0 = Math.floor((x0 - g.cx) / L) - 1, i1 = Math.floor((x0 + bw * S - g.cx) / L) + 1;
-      const j0 = Math.floor((y0 - g.cy) / L) - 1, j1 = Math.floor((y0 + bh * S - g.cy) / L) + 1;
-      const can = (c, i) => reg[i] === rid && (c === C.ground || c === C.obstacle);
-      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-        const px = g.cx + (i + hash2(i, j, fs)) * L, py = g.cy + (j + hash2(i, j, fs + 1)) * L;
-        const ci = cellIndex(px, py);
-        if (ci < 0 || reg[ci] !== rid || cls[ci] !== C.ground) continue;
-        if (bandOk && !bandOk.has(band[ci])) continue;
-        const r = (f.r[0] + hash2(i, j, fs + 2) * (f.r[1] - f.r[0])) / S;
-        if (f.clear && tooNear(px, py, r * S * 1.35 + f.clear)) continue;
-        const fx = cellX(px), fy = cellY(py), ns = fs + Math.imul(i, 31) + Math.imul(j, 17);
-        if (f.shape === 'ridge') {
-          let ux = hash2(i, j, fs + 3) * 2 - 1, uy = hash2(i, j, fs + 4) * 2 - 1;
-          const ul = Math.sqrt(ux * ux + uy * uy) || 1; ux /= ul; uy /= ul;
-          const len = (f.len[0] + hash2(i, j, fs + 5) * (f.len[1] - f.len[0])) / S;
-          const q1 = (hash2(i, j, fs + 6) - 0.5) * len * 0.35, q2 = (hash2(i, j, fs + 7) - 0.5) * len * 0.35;
-          stampRidge([
-            [fx - ux * len / 2, fy - uy * len / 2],
-            [fx - ux * len / 6 - uy * q1, fy - uy * len / 6 + ux * q1],
-            [fx + ux * len / 6 - uy * q2, fy + uy * len / 6 + ux * q2],
-            [fx + ux * len / 2, fy + uy * len / 2],
-          ], r, k, can, ns);
-        } else {
-          stampBlob(fx, fy, r, k, can, ns);
+  /* the candidate in lattice cell (i, j) of feature F: where it would go and
+     what it would stamp (null where its middle is off the blueprint).  Worked
+     out each time it is asked (a few hashes); only whether it stands is
+     remembered (F.memo), so a long walk keeps a bit a feature, not its shape */
+  const candidate = (F, i, j) => {
+    const { f, L, fs } = F;
+    const px = g.cx + (i + hash2(i, j, fs)) * L, py = g.cy + (j + hash2(i, j, fs + 1)) * L;
+    const cbx = Math.floor(cellX(px)), cby = Math.floor(cellY(py));
+    if (!inside(cbx, cby)) return null;
+    const r = (f.r[0] + hash2(i, j, fs + 2) * (f.r[1] - f.r[0])) / S;
+    const fx = cellX(px), fy = cellY(py), ns = fs + Math.imul(i, 31) + Math.imul(j, 17);
+    const c = { F, i, j, px, py, cbx, cby, r, fx, fy, ns, pts: null, xa: 0, ya: 0, xb: 0, yb: 0 };
+    if (F.ridge) {
+      let ux = hash2(i, j, fs + 3) * 2 - 1, uy = hash2(i, j, fs + 4) * 2 - 1;
+      const ul = Math.sqrt(ux * ux + uy * uy) || 1; ux /= ul; uy /= ul;
+      const len = (f.len[0] + hash2(i, j, fs + 5) * (f.len[1] - f.len[0])) / S;
+      const q1 = (hash2(i, j, fs + 6) - 0.5) * len * 0.35, q2 = (hash2(i, j, fs + 7) - 0.5) * len * 0.35;
+      c.pts = [
+        [fx - ux * len / 2, fy - uy * len / 2],
+        [fx - ux * len / 6 - uy * q1, fy - uy * len / 6 + ux * q1],
+        [fx + ux * len / 6 - uy * q2, fy + uy * len / 6 + ux * q2],
+        [fx + ux * len / 2, fy + uy * len / 2],
+      ];
+      let xa = Infinity, ya = Infinity, xb = -Infinity, yb = -Infinity;
+      for (const p of c.pts) { xa = Math.min(xa, p[0]); ya = Math.min(ya, p[1]); xb = Math.max(xb, p[0]); yb = Math.max(yb, p[1]); }
+      c.xa = Math.max(0, Math.floor(xa - r * 1.5)); c.ya = Math.max(0, Math.floor(ya - r * 1.5));
+      c.xb = Math.min(bw - 1, Math.ceil(xb + r * 1.5)); c.yb = Math.min(bh - 1, Math.ceil(yb + r * 1.5));
+    } else {
+      c.xa = Math.max(0, Math.floor(fx - r * 1.45)); c.xb = Math.min(bw - 1, Math.ceil(fx + r * 1.45));
+      c.ya = Math.max(0, Math.floor(fy - r * 1.45)); c.yb = Math.min(bh - 1, Math.ceil(fy + r * 1.45));
+    }
+    return c;
+  };
+  /* does candidate c's shape take cell (bx, by), inside its box -- given the
+     cell may be stamped at all (the stamp's `can`)?  The stampBlob and
+     stampRidge arithmetic, cell by cell */
+  const shapeHits = (c, bx, by) => {
+    if (c.pts) {
+      let d = Infinity;
+      const p = c.pts;
+      for (let s = 0; s < p.length - 1; s++) d = Math.min(d, segDist(bx + 0.5, by + 0.5, p[s][0], p[s][1], p[s + 1][0], p[s + 1][1]));
+      return d / c.r + 0.3 * valueNoise((gx0 + bx) * 0.14, (gy0 + by) * 0.14, c.ns) < 1;
+    }
+    const dx = bx + 0.5 - c.fx, dy = by + 0.5 - c.fy;
+    const d = Math.sqrt(dx * dx + dy * dy) / c.r;
+    return d + 0.32 * valueNoise((gx0 + bx) * 0.12, (gy0 + by) * 0.12, c.ns) < 1;
+  };
+  /* a feature's lattice cells whose stamp can reach art box [ax0, ax1] x [ay0, ay1] */
+  const latticeRange = (F, ax0, ay0, ax1, ay1) => ({
+    i0: Math.floor((ax0 - F.reach - g.cx) / F.L) - 1, i1: Math.floor((ax1 + F.reach - g.cx) / F.L) + 1,
+    j0: Math.floor((ay0 - F.reach - g.cy) / F.L) - 1, j1: Math.floor((ay1 + F.reach - g.cy) / F.L) + 1,
+  });
+  /* The class of cell (bx, by) once every feature BEFORE (F, j, i) has been
+     stamped -- pass 2 as the whole-world build runs it, at one cell: only its
+     own region's features can stamp it (`can` asks for the region), each in
+     order, each over ground or a wood */
+  const classBefore = (bx, by, F, j, i) => {
+    const v = pass1Point(bx, by);
+    let cl = v & 31;
+    if (cl !== C.ground) return cl;
+    const ax = artX(bx), ay = artY(by);
+    for (const G of featsOf[(v >> 5) & 31]) {
+      if (G.order > F.order) break;
+      const q = latticeRange(G, ax, ay, ax, ay);
+      for (let jj = q.j0; jj <= q.j1; jj++) {
+        if (G === F && jj > j) break;
+        for (let ii = q.i0; ii <= q.i1; ii++) {
+          if (G === F && jj === j && ii >= i) break;
+          const c = candidate(G, ii, jj);
+          if (!c || bx < c.xa || bx > c.xb || by < c.ya || by > c.yb) continue;
+          if ((cl === C.ground || cl === C.obstacle) && stands(c) && shapeHits(c, bx, by)) cl = G.k;
         }
       }
-    });
+    }
+    return cl;
+  };
+  /* Does candidate c stand?  Its middle must be ground of its own region, in
+     a stage it grows in, clear of the roads if it asks to be, and not covered
+     by an earlier feature -- the whole-world pass's own test, worked out
+     here at its middle and remembered */
+  function stands(c) {
+    const { F } = c, key = (c.j + 32768) * 65536 + (c.i + 32768);
+    const was = F.memo.get(key);
+    if (was !== undefined) return was;
+    let ok = false;
+    const v = pass1Point(c.cbx, c.cby);
+    if (((v >> 5) & 31) === F.rid && (v & 31) === C.ground && (!F.bandOk || F.bandOk.has((v >> 15) & 7))) {
+      ok = !(F.f.clear && tooNear(c.px, c.py, c.r * S * 1.35 + F.f.clear)) && classBefore(c.cbx, c.cby, F, c.j, c.i) === C.ground;
+    }
+    F.memo.set(key, ok);
+    return ok;
   }
 
-  const pois = [], routes = [], lots = [];
-  const landAt = (c) => c !== C.ocean && c !== C.anchor;
+  const pois = [], routes = [], lots = [], decks = [];
 
   /* ── pass 3: the rivers, and the falls they cut through ── */
+  const rivers = [];
   for (const rv of plan.rivers || []) {
     const rs = seed + strSeed(rv.id);
-    let pts = wobbleCurve(smoothCurve(rv.pts.map(toArt), 4), rv.wobble || 0, rs, 520, 300);
+    const pts = wobbleCurve(smoothCurve(rv.pts.map(toArt), 4), rv.wobble || 0, rs, 520, 300);
     /* the falls: a rock ledge across the river, stamped first so the river cuts it */
+    const falls = [];
     for (const fl of rv.falls || []) {
       const [fx, fy] = toArt(fl.at);
       let bestK = 0, bestD = Infinity;
@@ -693,35 +807,64 @@ export function buildBlueprint(plan) {
       let tx = b[0] - a[0], ty = b[1] - a[1];
       const tl = Math.sqrt(tx * tx + ty * ty) || 1; tx /= tl; ty /= tl;
       const half = (fl.len * P) / 2, cfx = cellX(pts[bestK][0]), cfy = cellY(pts[bestK][1]);
-      stampRidge([[cfx + ty * half / S, cfy - tx * half / S], [cfx - ty * half / S, cfy + tx * half / S]], 34 / S, C.cliff,
-        (c) => c === C.ground || c === C.obstacle || c === C.water, rs + 5);
+      falls.push({ pts: [[cfx + ty * half / S, cfy - tx * half / S], [cfx - ty * half / S, cfy + tx * half / S]], r: 34 / S, ns: rs + 5 });
       pois.push({ kind: 'falls', id: rv.id + '-falls', name: fl.name, paint: fl.paint, x: pts[bestK][0], y: pts[bestK][1], r: 120 });
     }
-    /* the river ends where it reaches the sea */
+    /* the river ends where it reaches the sea (pass 1's sea: nothing after
+       it makes sea or unmakes it) */
     let end = pts.length;
     for (let k = 0; k < pts.length; k++) {
-      const ci = cellIndex(pts[k][0], pts[k][1]);
-      if (ci >= 0 && cls[ci] === C.ocean) { end = k; break; }
+      const bx = Math.floor(cellX(pts[k][0])), by = Math.floor(cellY(pts[k][1]));
+      if (inside(bx, by) && (pass1Point(bx, by) & 31) === C.ocean) { end = k; break; }
     }
     const total = pts.length - 1 || 1;
+    const discs = new Float64Array(pts.length * 3);
     pts.forEach((p, k) => {
       const t = k / total;
       const half = (rv.width[0] + (rv.width[1] - rv.width[0]) * t) / 2;
-      stampDisc(cellX(p[0]), cellY(p[1]), half / S, C.river, landAt, null);
+      discs[k * 3] = cellX(p[0]); discs[k * 3 + 1] = cellY(p[1]); discs[k * 3 + 2] = half / S;
     });
+    rivers.push({ falls, discs });
     routes.push({ kind: 'river', id: rv.id, name: rv.name, pts: thin(pts.slice(0, end), 4) });
   }
+  /* which cells a river took (before any bridge): a disc of it covers the
+     cell's middle -- stampDisc's own test -- on land.  Found through a coarse
+     index of the discs, for the bridges below */
+  const RB = 16;
+  const riverIndex = new Map();
+  rivers.forEach((rv, ri) => {
+    for (let k = 0; k < rv.discs.length; k += 3) {
+      const key = Math.floor(rv.discs[k + 1] / RB) * 65536 + Math.floor(rv.discs[k] / RB);
+      let a = riverIndex.get(key);
+      if (!a) riverIndex.set(key, (a = []));
+      a.push(ri, k);
+    }
+  });
+  const riverTook = (bx, by) => {
+    if (!inside(bx, by) || !landAt(pass1Point(bx, by) & 31)) return false;
+    const qi = Math.floor(bx / RB), qj = Math.floor(by / RB);
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      const a = riverIndex.get((qj + dj) * 65536 + qi + di);
+      if (!a) continue;
+      for (let q = 0; q < a.length; q += 2) {
+        const d = rivers[a[q]].discs, k = a[q + 1];
+        const dx = bx + 0.5 - d[k], dy = by + 0.5 - d[k + 1], r = d[k + 2];
+        if (dx * dx + dy * dy <= r * r) return true;
+      }
+    }
+    return false;
+  };
 
   /* ── pass 3b: v2.3.3031: the ponds the plan puts where it wants them
      (plan.ponds), before the roads, which keep clear of them ── */
+  const ponds = [];
   for (const pd of plan.ponds || []) {
     const [px, py] = toArt(pd.at);
-    stampBlob(cellX(px), cellY(py), pd.r / S, C.water, (c) => c === C.ground || c === C.obstacle, seed + strSeed(pd.id));
+    ponds.push({ fx: cellX(px), fy: cellY(py), r: pd.r / S, ns: seed + strSeed(pd.id) });
     pois.push({ kind: 'pond', id: pd.id, name: pd.name, paint: pd.paint || '', x: px, y: py, r: pd.r });
   }
 
   /* ── pass 4: the roads, and a bridge wherever one meets a river ── */
-  const roadDense = [];
   /* ═══ v2.3.2949: PLANK DECKS ═══
      Owner, on the Mill Bridge in the Ground Studio: "The bridge needs to
      take shrink the tiles and maybe make them line up using your coding I
@@ -736,29 +879,32 @@ export function buildBlueprint(plan) {
      (along x or y, whichever crosses less water at the road's crossing),
      reaching BRIDGE_PAD cells onto both banks, as wide as the road's old
      bridge; and where the road reached the bank off the deck's end (a
-     diagonal crossing), a short stretch of road joins it on (joinRoad). */
-  const decks = [];
+     diagonal crossing), a short stretch of road joins it on (joinRoad).
+     v2.3.3298: worked out once for the plan, the river under it read
+     through riverTook less the decks laid before it (a deck makes its
+     river cells bridge) -- what the whole-world pass saw there. */
   const BRIDGE_PAD = 2;
-  const wetAt = (x, y) => x >= 0 && y >= 0 && x < bw && y < bh && cls[y * bw + x] === C.river;
+  const inDeck = (d, x, y) => x >= d.x0 && x < d.x1 && y >= d.y0 && y < d.y1;
+  const wetAt = (x, y) => riverTook(x, y) && !decks.some((d) => d.kind === 'bridge' && inDeck(d, x, y));
   const bridgeDeck = (mid, half) => {
     const fx = cellX(mid[0]), fy = cellY(mid[1]);
     const mx = Math.min(bw - 1, Math.max(0, Math.floor(fx))), my = Math.min(bh - 1, Math.max(0, Math.floor(fy)));
     const run = (dx, dy) => { let k = 0; while (k < 96 && wetAt(mx + dx * (k + 1), my + dy * (k + 1))) k++; return k; };
     const alongX = run(1, 0) + run(-1, 0) <= run(0, 1) + run(0, -1);
-    const W = Math.max(3, Math.round((2 * (half + 6)) / S));
+    const W2 = Math.max(3, Math.round((2 * (half + 6)) / S));
     /* the river's reach across every row (or column) of the deck, so a
        river running aslant is crossed bank to bank on all of them */
     let lo = Infinity, hi = -Infinity;
-    const c0 = Math.round((alongX ? fy : fx) - W / 2);
-    for (let c = c0; c < c0 + W; c++) {
+    const c0 = Math.round((alongX ? fy : fx) - W2 / 2);
+    for (let c = c0; c < c0 + W2; c++) {
       const at = (a) => (alongX ? wetAt(a, c) : wetAt(c, a));
       const m = alongX ? mx : my;
       /* from the middle out, over the few land cells a slanting bank puts
          there, to the water's far side in each direction */
       for (const dir of [-1, 1]) {
         let a = m, dry = 0, last = null;
-        for (let k = 0; k < 96 && dry <= W; k++, a += dir) {
-          if (at(a)) { last = a; dry = 0; } else if (last != null || k > W) dry++;
+        for (let k = 0; k < 96 && dry <= W2; k++, a += dir) {
+          if (at(a)) { last = a; dry = 0; } else if (last != null || k > W2) dry++;
         }
         if (last != null) { lo = Math.min(lo, last); hi = Math.max(hi, last); }
       }
@@ -766,34 +912,43 @@ export function buildBlueprint(plan) {
     if (!(lo <= hi)) { lo = alongX ? mx : my; hi = lo; }
     const n = alongX ? bw : bh, m2 = alongX ? bh : bw;
     const a0 = Math.max(0, lo - BRIDGE_PAD), a1 = Math.min(n, hi + 1 + BRIDGE_PAD);
-    const b0 = Math.max(0, c0), b1 = Math.min(m2, c0 + W);
+    const b0 = Math.max(0, c0), b1 = Math.min(m2, c0 + W2);
     return alongX ? { along: 'x', x0: a0, x1: a1, y0: b0, y1: b1 } : { along: 'y', x0: b0, x1: b1, y0: a0, y1: a1 };
   };
   /* the road to each end of a deck: from the middle of the end to the
-     nearest point of the road on that bank, only over land */
+     nearest point of the road on that bank, only over land -- the stretches
+     of road to stamp, [ex, ey, qx, qy, half, steps] in art px */
   const joinRoad = (deck, samples, rr, half) => {
+    const out = [];
     const ax = (x) => x0 + x * S, ay = (y) => y0 + y * S;
     const ends = deck.along === 'x'
       ? [[ax(deck.x0) + S / 2, (ay(deck.y0) + ay(deck.y1)) / 2], [ax(deck.x1) - S / 2, (ay(deck.y0) + ay(deck.y1)) / 2]]
       : [[(ax(deck.x0) + ax(deck.x1)) / 2, ay(deck.y0) + S / 2], [(ax(deck.x0) + ax(deck.x1)) / 2, ay(deck.y1) - S / 2]];
-    const before = samples.slice(0, rr.a), after = samples.slice(rr.b + 1);
+    /* the road's points before the crossing and after it (samples is flat: x, y, x, y ...) */
+    const n = samples.length >> 1;
+    const before = [0, rr.a], after = [rr.b + 1, n];
     const d2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
-    const nearest = (list, p) => { let best = null, bd = Infinity; for (const q of list) { const d = d2(p, q); if (d < bd) { bd = d; best = q; } } return best; };
+    const nearest = (span, p) => {
+      let best = null, bd = Infinity;
+      for (let k = span[0]; k < span[1]; k++) { const q = [samples[2 * k], samples[2 * k + 1]]; const d = d2(p, q); if (d < bd) { bd = d; best = q; } }
+      return best;
+    };
     /* which bank's road goes to which end: the pairing with less road to lay */
-    const pair = (e, list) => { const q = list.length ? nearest(list, e) : null; return { e, q, d: q ? d2(e, q) : Infinity }; };
+    const pair = (e, span) => { const q = span[1] > span[0] ? nearest(span, e) : null; return { e, q, d: q ? d2(e, q) : Infinity }; };
     const A = [pair(ends[0], before), pair(ends[1], after)], B = [pair(ends[0], after), pair(ends[1], before)];
-    const cost = (P) => P.reduce((s, p) => s + Math.sqrt(p.d), 0);
-    const can = (c) => landAt(c) && c !== C.river && c !== C.bridge;
+    const cost = (Pp) => Pp.reduce((s, p) => s + Math.sqrt(p.d), 0);
     for (const { e, q } of cost(A) <= cost(B) ? A : B) {
       if (!q) continue;
       const L = Math.sqrt(d2(e, q)), steps = Math.max(1, Math.ceil(L / 4));
-      for (let k = 0; k <= steps; k++) stampDisc(cellX(e[0] + (q[0] - e[0]) * k / steps), cellY(e[1] + (q[1] - e[1]) * k / steps), half / S, C.path, can, null);
+      out.push([e[0], e[1], q[0], q[1], half, steps]);
     }
+    return out;
   };
+  const roads = [];
   for (const rd of plan.roads || []) {
     const ctrl = rd.pts.map(toArt);
     const rs = seed + strSeed(rd.id);
-    const samples = [];
+    const pts = [];
     for (let s = 0; s < ctrl.length - 1; s++) {
       const a = ctrl[s], b = ctrl[s + 1];
       const dx = b[0] - a[0], dy = b[1] - a[1];
@@ -807,31 +962,33 @@ export function buildBlueprint(plan) {
         const t = k / steps;
         const bump = Math.min(1, 6 * t * (1 - t));
         const w = amp * bump * fbm((t * L) / 270, 0.5, rs + s * 101, 3);
-        samples.push([a[0] + dx * t - ty * w, a[1] + dy * t + tx * w]);
+        pts.push([a[0] + dx * t - ty * w, a[1] + dy * t + tx * w]);
       }
     }
-    const half = rd.half / S;
-    for (const p of samples) stampDisc(cellX(p[0]), cellY(p[1]), half, C.path, (c) => landAt(c) && c !== C.river, null);
-    roadDense.push({ rd, samples });
-    routes.push({ kind: 'road', id: rd.id, name: rd.name, to: rd.to || null, pts: thin(samples, 4) });
+    /* (kept flat, x, y, x, y ...: a Wheel five times longer has five times
+       the points, ~80 bytes each as little arrays) */
+    const samples = new Float64Array(pts.length * 2);
+    pts.forEach((p, k) => { samples[2 * k] = p[0]; samples[2 * k + 1] = p[1]; });
+    roads.push({ rd, samples, half: rd.half / S, crossings: [] });
+    routes.push({ kind: 'road', id: rd.id, name: rd.name, to: rd.to || null, pts: thin(pts, 4) });
   }
-  for (const { rd, samples } of roadDense) {
+  for (const road of roads) {
+    const { rd, samples } = road;
     let run = null;
     const runs = [];
-    samples.forEach((p, k) => {
-      const ci = cellIndex(p[0], p[1]);
-      if (ci >= 0 && cls[ci] === C.river) { if (!run) run = { a: k, b: k }; else run.b = k; } else if (run) { runs.push(run); run = null; }
-    });
+    for (let k = 0; k < samples.length >> 1; k++) {
+      const wet = wetAt(Math.floor(cellX(samples[2 * k])), Math.floor(cellY(samples[2 * k + 1])));
+      if (wet) { if (!run) run = { a: k, b: k }; else run.b = k; } else if (run) { runs.push(run); run = null; }
+    }
     if (run) runs.push(run);
     const named = (plan.bridges || {})[rd.id] || {};
     for (const rr of runs) {
-      const mid = samples[(rr.a + rr.b) >> 1];
+      const mk = (rr.a + rr.b) >> 1, mid = [samples[2 * mk], samples[2 * mk + 1]];
       /* v2.3.2949: a straight deck, square at both ends, with the road
-         joined to each end (bridgeDeck, joinRoad below) */
+         joined to each end (bridgeDeck, joinRoad above) */
       const deck = bridgeDeck(mid, rd.half);
-      for (let y = deck.y0; y < deck.y1; y++) for (let x = deck.x0; x < deck.x1; x++) if (landAt(cls[y * bw + x])) cls[y * bw + x] = C.bridge;
       decks.push({ kind: 'bridge', road: rd.id, ...deck });
-      joinRoad(deck, samples, rr, rd.half);
+      road.crossings.push({ deck, joins: joinRoad(deck, samples, rr, rd.half) });
       pois.push({ kind: 'bridge', id: rd.id + '-bridge-' + rr.a, name: named.name || 'a bridge', road: rd.name,
         paint: named.paint || null, x: mid[0], y: mid[1], r: 60 });
     }
@@ -839,19 +996,10 @@ export function buildBlueprint(plan) {
 
   /* ── pass 5: Brotown -- streets, the square, boardwalks and empty plots ── */
   if (T && townId != null) {
-    const G = townGates(T);
-    stampRect(-T.main, -G.ns, T.main, G.ns, C.street, landAt, townId);
-    stampRect(-G.ew, -T.row, G.ew, T.row, C.street, landAt, townId);
-    /* v2.3.2975: the front walks and the Back Lane, so every door opens
-       onto a street (townPlan) */
-    for (const f of TS.fronts) stampRect(f.x0, f.y0, f.x1, f.y1, C.street, landAt, townId);
-    stampRect(-T.square, -T.square, T.square, T.square, C.plaza, landAt, townId);
     for (const lot of TS.lots) {
-      stampRect(lot.x0, lot.y0, lot.x1, lot.y1, C.lot, landAt, townId);
       /* v2.3.2960: only when the plan lays them (plan.js `boardwalks`:
          put away until the buildings, whose porches they become) */
       if (lot.walk && T.boardwalks) {
-        stampRect(lot.walk.x0, lot.walk.y0, lot.walk.x1, lot.walk.y1, C.boardwalk, landAt, townId);
         /* v2.3.2949: a deck along its street -- the cells stampRect took */
         const cx = (rx) => Math.ceil((g.cx + rx - x0) / S - 0.5), cy = (ry) => Math.ceil((g.cy + ry - y0) / S - 0.5);
         /* v2.3.2975: along each plot's door, its south side: boards run east-west */
@@ -866,25 +1014,22 @@ export function buildBlueprint(plan) {
   }
 
   /* ── pass 6: the railway -- after the roads, so it crosses them ── */
+  const rails = [];
   for (const rl of plan.rails || []) {
     const pts = smoothCurve(rl.pts.map(toArt), 4);
-    const can = (c) => landAt(c) && c !== C.river && !TOWN_CLASSES.has(c) && c !== C.lot && c !== C.bridge;
-    for (const p of pts) stampDisc(cellX(p[0]), cellY(p[1]), (plan.classes.rail.half || 14) / S, C.rail, can, null);
+    const flat = new Float64Array(pts.length * 2);
+    pts.forEach((p, k) => { flat[2 * k] = p[0]; flat[2 * k + 1] = p[1]; });
+    rails.push(flat);
     routes.push({ kind: 'rail', id: rl.id, name: rl.name, abandoned: !!rl.abandoned, paint: rl.paint || null, pts: thin(pts, 4) });
   }
 
   /* ── pass 7: empty plots outside town, for sprites added later ── */
   for (const pl of plan.places || []) {
     const [px, py] = toArt(pl.at);
-    const can = (c) => landAt(c) && c !== C.river && c !== C.path && c !== C.rail && c !== C.bridge && !TOWN_CLASSES.has(c);
     let box;
-    if (pl.r) {
-      stampDisc(cellX(px), cellY(py), pl.r / S, C.lot, can, null);
-      box = { x0: px - pl.r, y0: py - pl.r, x1: px + pl.r, y1: py + pl.r };
-    } else {
+    if (pl.r) box = { x0: px - pl.r, y0: py - pl.r, x1: px + pl.r, y1: py + pl.r };
+    else {
       const w = pl.size[0], h = pl.size[1];
-      /* v2.3.2977: its sides wander, as the town's edge does */
-      stampRectEdge(px - g.cx - w / 2, py - g.cy - h / 2, px - g.cx + w / 2, py - g.cy + h / 2, C.lot, can, null, PLACE_EDGE, strSeed(pl.id) + 71);
       box = { x0: px - w / 2, y0: py - h / 2, x1: px + w / 2, y1: py + h / 2 };
     }
     lots.push({ id: pl.id, name: pl.name, round: !!pl.r, ...box, town: false });
@@ -895,19 +1040,7 @@ export function buildBlueprint(plan) {
      A landmark sits at `at` (squares), or at the middle of `tier` on its
      spoke, `side` squares right of the road; a gate at the spoke's tip,
      where its road ends. */
-  const stampMark = (rk, px, py, rad, k, nseed) => {
-    const cx = cellX(px), cy = cellY(py), r = rad / S;
-    const xa = Math.max(0, Math.floor(cx - r * 1.45)), xb = Math.min(bw - 1, Math.ceil(cx + r * 1.45));
-    const ya = Math.max(0, Math.floor(cy - r * 1.45)), yb = Math.min(bh - 1, Math.ceil(cy + r * 1.45));
-    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
-      const i = y * bw + x;
-      if (!landAt(cls[i]) || TOWN_CLASSES.has(cls[i]) || cls[i] === C.lot || cls[i] === C.river) continue;
-      const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
-      if (Math.sqrt(dx * dx + dy * dy) / r + 0.22 * valueNoise((gx0 + x) * 0.09, (gy0 + y) * 0.09, nseed) < 1) {
-        cls[i] = k; reg[i] = R[rk];
-      }
-    }
-  };
+  const marks = [];
   for (const rk of regionIds) {
     const rd = plan.regions[rk];
     const sp = W.byId[rk];
@@ -915,12 +1048,12 @@ export function buildBlueprint(plan) {
     const at = lm && (lm.at || (sp && lm.tier ? spokePoint(sp, W.tierMid(lm.tier), lm.side || 0) : null));
     if (lm && at) {
       const [lx, ly] = toArt(at);
-      stampMark(rk, lx, ly, lm.r, C.landmark, seed + 500 + strSeed(rk));
+      marks.push({ rk, x: lx, y: ly, r: lm.r, k: C.landmark, ns: seed + 500 + strSeed(rk) });
       pois.push({ kind: 'landmark', id: rk, region: rk, name: lm.name, x: lx, y: ly, r: lm.r });
     }
     if (rd.gate && sp) {
       const [gx, gy] = toArt(spokePoint(sp, W.gateR));
-      stampMark(rk, gx, gy, rd.gate.r, C.gate, seed + 700 + strSeed(rk));
+      marks.push({ rk, x: gx, y: gy, r: rd.gate.r, k: C.gate, ns: seed + 700 + strSeed(rk) });
       pois.push({ kind: 'gate', id: rk + '-gate', region: rk, realm: rd.realm, name: rd.gate.name, x: gx, y: gy, r: rd.gate.r });
     }
   }
@@ -934,11 +1067,232 @@ export function buildBlueprint(plan) {
       x: mx, y: my, r: (plan.wheel.passZones * W.Z * P) / 2 });
   }
 
+  const out = {
+    plan, g, S, P, gx0, gy0, x0, y0, bw, bh, W, regionIds, R, seed, townId, commonsId, anchors,
+    artX, artY, cellX, cellY, sqx, sqy, toArt, windowFields, pass1At, pass1Point, pass1Rect, landAt,
+    T, TS, feats, candidate, stands, shapeHits, latticeRange, rivers, ponds, roads, rails, marks,
+    pois, routes, lots, decks,
+    /* start the remembered answers again when they have grown past STANDS_KEEP */
+    trim() {
+      let n = 0;
+      for (const F of feats) n += F.memo.size;
+      if (n > STANDS_KEEP) for (const F of feats) F.memo.clear();
+    },
+  };
+  FEATS.set(plan, out);
+  return out;
+}
+
+/* The blueprint of `rect` -- { x, y, w, h } in cells from the whole
+   blueprint's corner -- or of the whole active area when there is none.
+   Every cell of a rectangle is exactly the whole-world build's (planFeatures
+   above).  A rectangle's `x0`, `y0` are its own corner in art px and `ox`,
+   `oy` its corner in cells; `decks` stay in the whole blueprint's cells
+   (ground.js reads them through ox/oy), and `pois`, `lots` and `routes` are
+   the whole plan's.  `full` is the whole blueprint's size and corner. */
+export function buildBlueprint(plan, rect) {
+  const F = planFeatures(plan);
+  F.trim();
+  const { g, S, P, gx0, gy0, x0, y0, regionIds, R, W, anchors, landAt } = F;
+  const rx0 = rect ? Math.max(0, Math.floor(rect.x)) : 0, ry0 = rect ? Math.max(0, Math.floor(rect.y)) : 0;
+  const rx1 = rect ? Math.min(F.bw, Math.floor(rect.x + rect.w)) : F.bw, ry1 = rect ? Math.min(F.bh, Math.floor(rect.y + rect.h)) : F.bh;
+  const bw = Math.max(0, rx1 - rx0), bh = Math.max(0, ry1 - ry0);
+  const n = bw * bh;
+  const cls = new Uint8Array(n), reg = new Uint8Array(n), band = new Uint8Array(n), tier = new Uint8Array(n);
+  const townId = F.townId;
+  const { artX, artY, cellX, cellY } = F;
+
+  /* ── pass 1: every cell on its own (planFeatures pass1Rect) ── */
+  F.pass1Rect(rx0, ry0, rx1, ry1, F.windowFields(rx0, ry0, bw, bh), cls, reg, tier, band, bw);
+
+  /* ── stamping helpers (positions in float cells from the whole blueprint's
+     corner; only cells of this rectangle are written) ── */
+  function stampDisc(fx, fy, r, k, can, rid) {
+    const xa = Math.max(rx0, Math.floor(fx - r - 1)), xb = Math.min(rx1 - 1, Math.ceil(fx + r + 1));
+    const ya = Math.max(ry0, Math.floor(fy - r - 1)), yb = Math.min(ry1 - 1, Math.ceil(fy + r + 1));
+    const r2 = r * r;
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
+      const dx = x + 0.5 - fx, dy = y + 0.5 - fy;
+      if (dx * dx + dy * dy > r2) continue;
+      const i = (y - ry0) * bw + (x - rx0);
+      if (!can(cls[i], i)) continue;
+      cls[i] = k;
+      if (rid != null) reg[i] = rid;
+    }
+  }
+  function stampBlob(fx, fy, r, k, can, nseed) {
+    const xa = Math.max(rx0, Math.floor(fx - r * 1.45)), xb = Math.min(rx1 - 1, Math.ceil(fx + r * 1.45));
+    const ya = Math.max(ry0, Math.floor(fy - r * 1.45)), yb = Math.min(ry1 - 1, Math.ceil(fy + r * 1.45));
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
+      const i = (y - ry0) * bw + (x - rx0);
+      if (!can(cls[i], i)) continue;
+      const dx = x + 0.5 - fx, dy = y + 0.5 - fy;
+      const d = Math.sqrt(dx * dx + dy * dy) / r;
+      if (d + 0.32 * valueNoise((gx0 + x) * 0.12, (gy0 + y) * 0.12, nseed) < 1) cls[i] = k;
+    }
+  }
+  function stampRidge(pts, r, k, can, nseed) {
+    let xa = Infinity, ya = Infinity, xb = -Infinity, yb = -Infinity;
+    for (const p of pts) { xa = Math.min(xa, p[0]); ya = Math.min(ya, p[1]); xb = Math.max(xb, p[0]); yb = Math.max(yb, p[1]); }
+    xa = Math.max(rx0, Math.floor(xa - r * 1.5)); ya = Math.max(ry0, Math.floor(ya - r * 1.5));
+    xb = Math.min(rx1 - 1, Math.ceil(xb + r * 1.5)); yb = Math.min(ry1 - 1, Math.ceil(yb + r * 1.5));
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
+      const i = (y - ry0) * bw + (x - rx0);
+      if (!can(cls[i], i)) continue;
+      let d = Infinity;
+      for (let s = 0; s < pts.length - 1; s++) d = Math.min(d, segDist(x + 0.5, y + 0.5, pts[s][0], pts[s][1], pts[s + 1][0], pts[s + 1][1]));
+      if (d / r + 0.3 * valueNoise((gx0 + x) * 0.14, (gy0 + y) * 0.14, nseed) < 1) cls[i] = k;
+    }
+  }
+  /* v2.3.2977: a rectangle whose sides wander (`E` as TOWN_EDGE): a cell is
+     in when it is inside the rectangle grown, or shrunk, by edgeWobble where
+     it stands */
+  function stampRectEdge(sx0, sy0, sx1, sy1, k, can, rid, E, nseed) {
+    const reach = edgeReach(E), m = reach + S, r = { x0: sx0, y0: sy0, x1: sx1, y1: sy1 };
+    const xa = Math.max(rx0, Math.floor(cellX(g.cx + sx0 - m) - 1)), xb = Math.min(rx1 - 1, Math.ceil(cellX(g.cx + sx1 + m) + 1));
+    const ya = Math.max(ry0, Math.floor(cellY(g.cy + sy0 - m) - 1)), yb = Math.min(ry1 - 1, Math.ceil(cellY(g.cy + sy1 + m) + 1));
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
+      if (!inWobblyRect(artX(x) - g.cx, artY(y) - g.cy, r, E, nseed, g.cx, g.cy, reach)) continue;
+      const i = (y - ry0) * bw + (x - rx0);
+      if (!can(cls[i], i)) continue;
+      cls[i] = k;
+      if (rid != null) reg[i] = rid;
+    }
+  }
+  /* art-px rectangle relative to the world centre, by cell centres */
+  function stampRect(sx0, sy0, sx1, sy1, k, can, rid) {
+    const xa = Math.max(rx0, Math.floor(cellX(g.cx + sx0) - 1)), xb = Math.min(rx1 - 1, Math.ceil(cellX(g.cx + sx1) + 1));
+    const ya = Math.max(ry0, Math.floor(cellY(g.cy + sy0) - 1)), yb = Math.min(ry1 - 1, Math.ceil(cellY(g.cy + sy1) + 1));
+    for (let y = ya; y <= yb; y++) {
+      const ay = artY(y) - g.cy;
+      if (ay < sy0 || ay >= sy1) continue;
+      for (let x = xa; x <= xb; x++) {
+        const ax = artX(x) - g.cx;
+        if (ax < sx0 || ax >= sx1) continue;
+        const i = (y - ry0) * bw + (x - rx0);
+        if (!can(cls[i], i)) continue;
+        cls[i] = k;
+        if (rid != null) reg[i] = rid;
+      }
+    }
+  }
+  /* is the box [xa, xb] x [ya, yb] (cells) off this rectangle? */
+  const off = (xa, ya, xb, yb) => xb < rx0 || xa >= rx1 || yb < ry0 || ya >= ry1;
+
+  /* ── pass 2: scatter each region's features on a hashed lattice ──
+     Every feature whose stamp can reach this rectangle, in the whole-world
+     pass's order; whether each stands is planFeatures' `stands`. */
+  const ax0 = x0 + rx0 * S, ay0 = y0 + ry0 * S, ax1 = x0 + rx1 * S, ay1 = y0 + ry1 * S;
+  for (const Fe of F.feats) {
+    const rid = Fe.rid, k = Fe.k;
+    const can = (c, i) => reg[i] === rid && (c === C.ground || c === C.obstacle);
+    const q = F.latticeRange(Fe, ax0, ay0, ax1, ay1);
+    for (let j = q.j0; j <= q.j1; j++) for (let i = q.i0; i <= q.i1; i++) {
+      const c = F.candidate(Fe, i, j);
+      if (!c || off(c.xa, c.ya, c.xb, c.yb) || !F.stands(c)) continue;
+      if (c.pts) stampRidge(c.pts, c.r, k, can, c.ns);
+      else stampBlob(c.fx, c.fy, c.r, k, can, c.ns);
+    }
+  }
+
+  /* ── pass 3: the rivers, and the falls they cut through ── */
+  for (const rv of F.rivers) {
+    for (const fl of rv.falls) stampRidge(fl.pts, fl.r, C.cliff, (c) => c === C.ground || c === C.obstacle || c === C.water, fl.ns);
+    const d = rv.discs;
+    for (let k = 0; k < d.length; k += 3) {
+      const fx = d[k], fy = d[k + 1], r = d[k + 2];
+      if (fx + r + 1 < rx0 || fx - r - 1 >= rx1 || fy + r + 1 < ry0 || fy - r - 1 >= ry1) continue;
+      stampDisc(fx, fy, r, C.river, landAt, null);
+    }
+  }
+
+  /* ── pass 3b: v2.3.3031: the ponds ── */
+  for (const pd of F.ponds) stampBlob(pd.fx, pd.fy, pd.r, C.water, (c) => c === C.ground || c === C.obstacle, pd.ns);
+
+  /* ── pass 4: the roads, then each bridge's deck and the road joined to it ── */
+  const notRiver = (c) => landAt(c) && c !== C.river;
+  for (const road of F.roads) {
+    const r = road.half, sm = road.samples;
+    for (let k = 0; k < sm.length; k += 2) {
+      const fx = cellX(sm[k]), fy = cellY(sm[k + 1]);
+      if (fx + r + 1 < rx0 || fx - r - 1 >= rx1 || fy + r + 1 < ry0 || fy - r - 1 >= ry1) continue;
+      stampDisc(fx, fy, r, C.path, notRiver, null);
+    }
+  }
+  const joinCan = (c) => landAt(c) && c !== C.river && c !== C.bridge;
+  for (const road of F.roads) {
+    for (const { deck, joins } of road.crossings) {
+      for (let y = Math.max(ry0, deck.y0); y < Math.min(ry1, deck.y1); y++) for (let x = Math.max(rx0, deck.x0); x < Math.min(rx1, deck.x1); x++) {
+        const i = (y - ry0) * bw + (x - rx0);
+        if (landAt(cls[i])) cls[i] = C.bridge;
+      }
+      for (const [ex, ey, qx, qy, half, steps] of joins) {
+        for (let k = 0; k <= steps; k++) stampDisc(cellX(ex + (qx - ex) * k / steps), cellY(ey + (qy - ey) * k / steps), half / S, C.path, joinCan, null);
+      }
+    }
+  }
+
+  /* ── pass 5: Brotown -- streets, the square, boardwalks and empty plots ── */
+  const T = F.T, TS = F.TS;
+  if (T && townId != null) {
+    const G = townGates(T);
+    stampRect(-T.main, -G.ns, T.main, G.ns, C.street, landAt, townId);
+    stampRect(-G.ew, -T.row, G.ew, T.row, C.street, landAt, townId);
+    /* v2.3.2975: the front walks and the Back Lane, so every door opens
+       onto a street (townPlan) */
+    for (const f of TS.fronts) stampRect(f.x0, f.y0, f.x1, f.y1, C.street, landAt, townId);
+    stampRect(-T.square, -T.square, T.square, T.square, C.plaza, landAt, townId);
+    for (const lot of TS.lots) {
+      stampRect(lot.x0, lot.y0, lot.x1, lot.y1, C.lot, landAt, townId);
+      if (lot.walk && T.boardwalks) stampRect(lot.walk.x0, lot.walk.y0, lot.walk.x1, lot.walk.y1, C.boardwalk, landAt, townId);
+    }
+  }
+
+  /* ── pass 6: the railway -- after the roads, so it crosses them ── */
+  const railHalf = (plan.classes.rail.half || 14) / S;
+  const railCan = (c) => landAt(c) && c !== C.river && !TOWN_CLASSES.has(c) && c !== C.lot && c !== C.bridge;
+  for (const pts of F.rails) {
+    for (let k = 0; k < pts.length; k += 2) {
+      const fx = cellX(pts[k]), fy = cellY(pts[k + 1]);
+      if (fx + railHalf + 1 < rx0 || fx - railHalf - 1 >= rx1 || fy + railHalf + 1 < ry0 || fy - railHalf - 1 >= ry1) continue;
+      stampDisc(fx, fy, railHalf, C.rail, railCan, null);
+    }
+  }
+
+  /* ── pass 7: empty plots outside town, for sprites added later ── */
+  const placeCan = (c) => landAt(c) && c !== C.river && c !== C.path && c !== C.rail && c !== C.bridge && !TOWN_CLASSES.has(c);
+  for (const pl of plan.places || []) {
+    const [px, py] = F.toArt(pl.at);
+    if (pl.r) stampDisc(cellX(px), cellY(py), pl.r / S, C.lot, placeCan, null);
+    else {
+      const w = pl.size[0], h = pl.size[1];
+      /* v2.3.2977: its sides wander, as the town's edge does */
+      stampRectEdge(px - g.cx - w / 2, py - g.cy - h / 2, px - g.cx + w / 2, py - g.cy + h / 2, C.lot, placeCan, null, PLACE_EDGE, strSeed(pl.id) + 71);
+    }
+  }
+
+  /* ── pass 8: the landmarks, and a keystone gate at every spoke's tip ── */
+  for (const mk of F.marks) {
+    const cx = cellX(mk.x), cy = cellY(mk.y), r = mk.r / S;
+    const xa = Math.max(rx0, Math.floor(cx - r * 1.45)), xb = Math.min(rx1 - 1, Math.ceil(cx + r * 1.45));
+    const ya = Math.max(ry0, Math.floor(cy - r * 1.45)), yb = Math.min(ry1 - 1, Math.ceil(cy + r * 1.45));
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
+      const i = (y - ry0) * bw + (x - rx0);
+      if (!landAt(cls[i]) || TOWN_CLASSES.has(cls[i]) || cls[i] === C.lot || cls[i] === C.river) continue;
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+      if (Math.sqrt(dx * dx + dy * dy) / r + 0.22 * valueNoise((gx0 + x) * 0.09, (gy0 + y) * 0.09, mk.ns) < 1) {
+        cls[i] = mk.k; reg[i] = R[mk.rk];
+      }
+    }
+  }
+
   const counts = { classes: new Array(CLASS_IDS.length).fill(0), regions: new Array(regionIds.length).fill(0) };
   for (let i = 0; i < n; i++) { counts.classes[cls[i]]++; counts.regions[reg[i]]++; }
-
+  const pois = F.pois, lots = F.lots, routes = F.routes, decks = F.decks;
   return {
-    w: bw, h: bh, scale: S, x0, y0, W: g.W, H: g.H,
+    w: bw, h: bh, scale: S, x0: x0 + rx0 * S, y0: y0 + ry0 * S, W: g.W, H: g.H,
+    /* v2.3.3298: this rectangle's corner in cells, and the whole blueprint */
+    ox: rx0, oy: ry0, full: { w: F.bw, h: F.bh, x0, y0 },
     cls, reg, band, tier, regionIds, classIds: CLASS_IDS, wheel: W,
     anchors, pois, lots, routes, counts,
     /* v2.3.2949: every boardwalk and bridge, in cells, with the way along it */
@@ -947,7 +1301,6 @@ export function buildBlueprint(plan) {
     gates: pois.filter((p) => p.kind === 'gate'),
     hash: fnv1a(cls, reg, band, tier),
   };
-
 }
 
 /* The fingerprint of the plan under one rectangle (a square): what a

@@ -20,6 +20,13 @@
 /world/ground/*
   Cache-Control: public, max-age=31536000, immutable
 
+# v2.3.3298: the Wheel's baked objects and map pictures (public/world/placed/,
+# tools/world/bake-wheel-world.mjs).  The ground worker asks for each at
+# ?v=<the bake's fingerprint> (public/tools/world/core/placed.js), so a new
+# bake is a new address and keeping the old one for a year is safe.
+/world/placed/*
+  Cache-Control: public, max-age=31536000, immutable
+
 # v2.3.3258: the pictures of the inside of each building (public/world/
 # interiors/, ~300 KB each).  Asked for at ?v=<ROOMS_V> (src/data/
 # buildingRooms.js), so replacing one is a new address and a year of immutable

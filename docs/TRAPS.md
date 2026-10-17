@@ -6489,6 +6489,38 @@ decide, and v2.3.3300 decided them (hit-door.md "Decided"): every blow leaves
 a harvester alone, every block costs the one 10, and the wrong-way ball lands
 (§187).
 
+## 186. "Build the map a piece at a time by clipping each pass to the piece" (v2.3.3298)
+
+The Wheel's blueprint is a list of passes that stamp shapes on cells, and it is
+tempting to build a piece of it by running the same passes on a smaller array:
+every stamp already clips to the array's edges. The owner's "Rebuild for 5x"
+needed exactly that (docs/specs/wheel-in-blocks.md), and three passes read
+past the piece they stamp:
+
+- **The scattered features depend on order.** A clump is left out where an
+  EARLIER clump already covers its middle (layout.js pass 2). Clipped, a piece
+  cannot see a middle outside it, nor what covered it -- and that cover may
+  itself have been left out by an earlier one. Two pieces then disagree about
+  one clump, and the seam is a tree clump cut in half. The fix is not a wider
+  margin (the chain has no fixed length) but working out whether a feature
+  stands at its own middle, through the earlier ones that can reach it
+  (`planFeatures` `stands`, remembered).
+- **The bridges scan the river** up to 96 cells either way of a crossing.
+  They are worked out once for the plan, from the river's own discs and the
+  decks before them.
+- **The ground's stages are averaged** over 28 cells, the walls over 11: the
+  piece's blueprint needs those margins, on the WHOLE map's coarse grid and
+  noise (ground.js `materialMap`'s `ox`/`oy`).
+- And **where objects stand** (`placeObjects`) is decided one after another
+  over the whole map, each clear of the ones before it: not cut into pieces at
+  all, but baked (tools/world/bake-wheel-world.mjs).
+
+**The rule.** A pass can be built a piece at a time only if every decision it
+makes for a cell reads nothing past a fixed margin round it. Check by building
+every piece and comparing it with the whole, cell for cell
+(test-world-core "the Wheel in blocks") -- a piece that only looks right will
+show its seam the day someone walks along it.
+
 ## 187. "Measure the shield from where the blow arrived" (v2.3.3300)
 
 **Tempting:** a blow lands at a point -- a ball where it falls, a patch under
