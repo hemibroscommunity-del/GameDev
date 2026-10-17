@@ -42,6 +42,11 @@
  * (iOS tab suspends and deploy bounces are routine — the duel grace
  * lesson) shown as 'away' before the sweep removes them. */
 
+/* v2.3.3313: alliance.js imports this file too; nothing of it is read at load
+   time on either side (a cycle ES modules allow only so), so ALLIANCE is used
+   inside the methods alone */
+import { ALLIANCE, allyRowOf, cleanAlly } from './alliance.js';
+
 export const PARTY = {
   MAX_SIZE: 4,             // matches dungeon.js PARTY_HP_SCALE's 4-slot table (v2.3.3284: the cap with `partykeep: false`)
   INVITE_TTL: 60000,       // 1 min to accept an invite
@@ -56,7 +61,10 @@ export const PARTY = {
      a logout, a reconnect and a deploy, and it grows past four.  Dungeons
      stay four (dungeon.js _dungeonPullPartyMembers). */
   KEEP_MAX: 50,            // members, online or not
-  V: 1,                    // the stored record's shape; a newer one is left whole
+  /* the stored record's shape; a newer one is left whole.  v2.3.3313: 2 is a
+     record with `ally` (alliance.js) -- one without stays 1, so a rollback to
+     v2.3.3284 still reads every party that never became an alliance */
+  V: 2,
   SEEN_WRITE_MS: 6 * 3600 * 1000,      // a member's `seen` is written at a join at most this often
   LEADER_IDLE_MS: 7 * 24 * 3600 * 1000, // a leader not seen this long hands the party on
   NAME_MAX: 24,            // a stored name, clamped on the way in
@@ -88,7 +96,9 @@ export const partyMethods = {
   _partyWire(p) {
     const keep = this._partyKeepOn();
     const now = Date.now();
-    return {
+    /* v2.3.3313: who counts toward the alliance (alliance.js) */
+    const ally = keep && typeof this._allyOn === 'function' && this._allyOn() ? this._allyCount(p, now) : null;
+    const out = {
       id: p.id,
       leader: p.leader,
       state: 'open',
@@ -114,9 +124,31 @@ export const partyMethods = {
           m.off = 1;
           if (meta.seen > 0) m.seen = Math.max(0, Math.round((now - meta.seen) / 1000));
         }
+        if (ally && ally.ids.has(pid)) m.act = 1;
         return m;
       }),
     };
+    /* ═══ v2.3.3313: THE ALLIANCE (alliance.js, docs/specs/alliance.md) ═══
+       Always while the alliance is on, so the window can say how far off 20
+       the party is: whether it is one, its name and tag, its active members
+       against AT (to become one) and DROP (to stay one), how long until the
+       leader may rename it or fight again, and its war. */
+    if (ally) {
+      const a = p.ally || null;
+      const w = this._allyWarOf(p.id);
+      out.ally = {
+        on: !!(a && a.on),
+        name: (a && a.name) || null,
+        tag: (a && a.tag) || null,
+        since: a && a.on ? a.since || 0 : 0,
+        active: ally.active,
+        at: ALLIANCE.AT, drop: ALLIANCE.DROP,
+        renameIn: a && a.name && a.renamedAt ? Math.max(0, a.renamedAt + ALLIANCE.RENAME_MS - now) : 0,
+        warIn: this._allyWarWait(p.id, now),
+        war: w ? this._allyWarWire(w, p.id, now) : null,
+      };
+    }
+    return out;
   },
 
   /* ═══ v2.3.3284: THE STORED PARTY (docs/specs/party.md "A party that lasts") ═══
@@ -151,13 +183,22 @@ export const partyMethods = {
     const meta = Object.create(null);   /* keyed by player ids: a '__proto__' must store (the party meta lesson, v2.3.1185) */
     for (const pid of p.members) {
       const m = p.meta[pid] || (p.meta[pid] = {});
+      /* v2.3.3313: an online member's level as it is now -- the alliance's
+         row counts levels from what is stored (alliance.js allyRowOf) */
+      const ps = this.playerState[pid];
+      if (ps && ps.level) m.level = ps.level | 0;
       meta[pid] = { name: String(m.name || 'Bro').slice(0, PARTY.NAME_MAX), level: m.level | 0 || 1, at: +m.at || p.ts || 0, seen: +m.seen || 0 };
       /* what storage holds now: a join compares against THIS, not the
          in-memory `seen` a disconnect moves, or a member who comes and goes
          with the party in memory would never have their `seen` written */
       m.ss = meta[pid].seen;
     }
-    this._partyStorageDo('put', 'party:' + p.id, { v: PARTY.V, id: p.id, leader: p.leader, members: p.members.slice(), meta, ts: p.ts || 0 });
+    /* v2.3.3313: a party that has been an alliance carries it, as shape 2,
+       and its board row goes in the same run (one write batch) */
+    const rec = { v: p.ally ? PARTY.V : 1, id: p.id, leader: p.leader, members: p.members.slice(), meta, ts: p.ts || 0 };
+    if (p.ally) rec.ally = { on: !!p.ally.on, since: +p.ally.since || 0, name: p.ally.name || null, tag: p.ally.tag || null, renamedAt: +p.ally.renamedAt || 0 };
+    this._partyStorageDo('put', 'party:' + p.id, rec);
+    if (p.ally && typeof this._allyRowPut === 'function') this._allyRowPut(p, meta);
   },
 
   _partyIndexPut(pid, partyId) { this._partyStorageDo('put', 'party_by_player:' + pid, partyId); },
@@ -203,6 +244,8 @@ export const partyMethods = {
     catch (e) { idx = null; }
     const healed = idx instanceof Map ? members.filter((m) => m === playerId || idx.get('party_by_player:' + m) === id) : members;
     const p = { id, leader: rec.leader, members: healed, meta: Object.create(null), ts: +rec.ts || Date.now(), lastVitals: 0 };
+    /* v2.3.3313: its alliance, as this worker reads one */
+    if (rec.ally) p.ally = cleanAlly(rec.ally) || undefined;
     const rm = rec.meta && typeof rec.meta === 'object' ? rec.meta : {};
     for (const m of healed) {
       const x = own(rm, m) && rm[m] && typeof rm[m] === 'object' ? rm[m] : {};
@@ -212,6 +255,7 @@ export const partyMethods = {
     if (p.members.length <= 1) {
       /* everyone else has gone: a party of one is just a player */
       this._partyStorageDo('delete', 'party:' + id);
+      if (rec.ally && typeof this._allyRowDrop === 'function') this._allyRowDrop(id);
       this._partyIndexDrop(playerId);
       return null;
     }
@@ -243,12 +287,19 @@ export const partyMethods = {
       const members = rec.members.filter((m) => m !== playerId);
       if (members.length <= 1) {
         await st.delete('party:' + id);
+        /* v2.3.3313: and its alliance's row (alliance.js) */
+        if (rec.ally) { if (this._allyIndex) this._allyIndex.delete(id); await st.delete('ally:' + id); }
         for (const m of members) await st.delete('party_by_player:' + m);
         return;
       }
       const meta = Object.assign(Object.create(null), rec.meta || {});   /* keyed by player ids */
       delete meta[playerId];
       await st.put('party:' + id, Object.assign({}, rec, { members, meta, leader: rec.leader === playerId ? members[0] : rec.leader }));
+      if (rec.ally) {
+        const row = allyRowOf(id, cleanAlly(rec.ally), members, meta);
+        if (this._allyIndex) this._allyIndex.set(id, row);
+        await st.put('ally:' + id, row);
+      }
     } catch (e) { /* best-effort, as the rest of the reset */ }
   },
 
@@ -420,7 +471,11 @@ export const partyMethods = {
     if (fresh) this._partyIndexPut(inviter, p.id);
     this._partyIndexPut(accepterId, p.id);
     this._partyStore(p);
-    this._partyBroadcast(p, { joined: accepterId });
+    /* v2.3.3313: the 20th active member makes it an alliance, and an
+       alliance's newcomer wears its tag (alliance.js) */
+    const became = this._allyOn && this._allyOn() ? this._allyCheck(p, Date.now()) : null;
+    if (this._allySetTag) this._allySetTag(accepterId);
+    this._partyBroadcast(p, became ? { joined: accepterId, became } : { joined: accepterId });
   },
 
   _handlePartyDecline(session, payload) {
@@ -455,19 +510,25 @@ export const partyMethods = {
     if (this._partyByPlayer) this._partyByPlayer.delete(pid);
     this._partyIndexDrop(pid);   /* v2.3.3284: the index first, as at a join */
     this._partySend(pid, 'party_state', { state: 'none', reason });
+    /* v2.3.3313: out of the party, out of its alliance's tag */
+    if (this._allySetTag) this._allySetTag(pid);
     if (p.members.length <= 1) {
       this._parties.delete(p.id);
       for (const rest of p.members) {
         if (this._partyByPlayer) this._partyByPlayer.delete(rest);
         this._partyIndexDrop(rest);
         this._partySend(rest, 'party_state', { state: 'none', reason: 'disbanded' });
+        if (this._allySetTag) this._allySetTag(rest);
       }
       this._partyStorageDo('delete', 'party:' + p.id);
+      /* ...and a party that ends takes its alliance's row and name */
+      if (p.ally && this._allyRowDrop) this._allyRowDrop(p.id);
       return;
     }
     if (p.leader === pid) p.leader = p.members[0]; // oldest member inherits
     this._partyStore(p);
-    this._partyBroadcast(p, { removed: pid, reason });
+    const became = this._allyOn && this._allyOn() ? this._allyCheck(p, Date.now()) : null;
+    this._partyBroadcast(p, became ? { removed: pid, reason, became } : { removed: pid, reason });
   },
 
   // webSocketClose hook: mark away (grace), don't remove — iOS tab
@@ -521,7 +582,21 @@ export const partyMethods = {
       }
       if (dirty) this._partyStore(p);
     }
-    this._partyBroadcast(p);
+    /* ═══ v2.3.3313: THE ALLIANCE (alliance.js) ═══
+       The index and the wars are loaded at an alliance member's join (once a
+       worker's life: a war's kills are scored only once they are), the count
+       is taken, and the joiner's tag goes to everyone -- forced, as every
+       phone has just made a fresh copy of them without it. */
+    let became = null;
+    if (this._allyOn && this._allyOn()) {
+      if (p.ally && !this._allyIndex) {
+        try { await this._allyEnsure(); } catch (e) { /* the next join tries again */ }
+        if (!this.playerState[playerId] || this._partyOf(playerId) !== p) return;
+      }
+      became = this._allyCheck(p, Date.now());
+    }
+    if (this._allySetTag) this._allySetTag(playerId, true);
+    this._partyBroadcast(p, became ? { became } : undefined);
   },
 
   // Tick housekeeping: expire invites, sweep away-members past grace,
@@ -547,7 +622,13 @@ export const partyMethods = {
       if (!p.members.some((m) => !!this.playerState[m])) continue;
       if (now - p.lastVitals >= PARTY.VITALS_MS) {
         p.lastVitals = now;
-        this._partyBroadcast(p);
+        /* v2.3.3313: a member reaching level 5 mid-visit, or one going stale,
+           moves the count (a flip is the only write); and every online
+           member's tag is checked against the truth -- one string compare
+           each, and how the tags come off when the switch is thrown */
+        const became = this._allyOn && this._allyOn() ? this._allyCheck(p, now) : null;
+        if (this._allySetTag) for (const m of p.members) if (this.playerState[m]) this._allySetTag(m);
+        this._partyBroadcast(p, became ? { became } : undefined);
       }
     }
   },

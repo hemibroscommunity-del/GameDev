@@ -1591,6 +1591,24 @@ remnant to migrate server-side, not a mode to preserve.
       back to "nothing open" (`src/rendering/renderHeal.js`; `?noheal` to
       compare) and the next frame draws. TRAPS §144, `mp-renderheal` (the
       throw made as it happened, with `bindfix=0`; `noheal` shows the black).
+    - since v2.3.3313 THE MINIMAP NEVER COVERS THE SCREEN -- the owner:
+      "often loading from a saved character will show the game as an enlarged
+      minimap. You're forced to log back out and back in to fix it": a canvas's
+      WebGL context is made by whoever asks FIRST, and the crash report's GPU
+      line (crashTrap.js) and the black-screen watchdog asked the game's canvas
+      bare, with WebGL's defaults -- no stencil buffer, so every mask drew
+      unclipped and the Wheel's minimap covered the screen. The report goes
+      1.5 s after any boot with something in the crash log (or any error), and
+      the canvas is up a moment before Pixi takes it as a character is played
+      from the list (and on a rebuild's fresh canvas): a race. Both now read the renderer's own
+      context (`_wdGl(cv)`, `window._pixiRenderer.app.renderer.gl`), never a
+      canvas's getContext; a context that ever comes up without a stencil
+      buffer is said in the crash log (`gl-no-stencil`) and the canvas swapped
+      for a fresh one, once a page, its context asked for as Pixi asks by
+      default (depth buffer too: pixiApp.js `withoutDepthBuffer` stands aside).
+      TRAPS §194, `mp-savedload` (the race made
+      certain: Pixi's file held back while a page error sends a report; and the
+      context taken bare by the test).
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:
@@ -2382,7 +2400,8 @@ remnant to migrate server-side, not a mode to preserve.
       (playerSkins `_standInClothes`: the trousers' big pieces, boot pieces
       mostly below their hem -- the pan held at the waist goes whole;
       `pantsWide` for the fire's glow); a peer's cook/fire-lighter is your
-      bake (the v2.3.1713 trade), a drawn peer's lumberjack theirs;
+      bake (the v2.3.1713 trade), a drawn peer's lumberjack theirs (every
+      peer's is theirs since v2.3.3314, below);
     - the cook's head traits 1.16 -> 1.65 (`_skillTraitMul`: his head 85 px
       against stand's 51);
     - then, offered what was left, the owner: "Yes fix all":
@@ -2406,6 +2425,38 @@ remnant to migrate server-side, not a mode to preserve.
         3 s (`_oreSplit`);
     - QA `display._bodyScale`, `window.__btStandInClothes`,
       `window.__btDressedShirt`; `mp-gatherlook`.
+    - since v2.3.3314 ANOTHER PLAYER GATHERS IN THEIR OWN COLOURS -- the
+      owner: "Other players cooking showed wrong skin color and maybe other
+      stuff too. Needs fixed":
+      - a peer's cook and fire-lighter were YOUR figure (the v2.3.1713 trade:
+        your skin, and since v2.3.3146 your trousers and boots), an undrawn
+        peer's lumberjack the unpainted art;
+      - now effectsRenderer `_peerFigure` picks the figure: yours only when it
+        is made and they wear your colours (`_cookLook`/`_fireLook`/
+        `_chopLook`, the last only with no drawings on either of you), else one
+        baked for THEIR colours by the same recipe (`_peerFigFrames`,
+        `_peerChopFrames` now for every peer), keyed by the colours, not the
+        player (`_standInColourKey`);
+      - until it is made their walking body stays drawn: entityRenderer asks
+        `peerStandInReady` (standIns.js, the effects renderer's answer, a look)
+        before it hides the body, in the same frame -- never neither, never
+        both; in greaves the strip with legs stands in while the legless one
+        bakes, never a legless one without greaves;
+      - ONE ALLOWANCE for all of them, `PEER_FIG_BUDGET` 16 MB (`_peerFigRoom`:
+        a cook 4.5 MB, a fire-lighter 6.3, a lumberjack 2.0 -- about eight
+        lumberjacks, three cooks or two fire-lighters), GPU only, released 15 s
+        after nobody drew one; past it, a figure nobody drew in the last second
+        gives way, else the next peer stays in their walking body; a failed
+        bake waits 15 s, a strip that never answers gives up after 15 s, and a
+        peer's greaves are waited for at most 3 s;
+      - a peer's cook or fire-lighter no longer makes YOURS (`_standInTriggers`;
+        it was 9 MB for the cook, kept for the visit); a peer's lumberjack
+        still does (every peer's is cut from its crops);
+      - QA `remoteSkillProbe(id).shared`/`.legless`, `peerFigBakes()` (with
+        `bytes`), `peerFigTry`, `window.__btSetSkin/Pants/Shoes`;
+        `mp-peercolours` (fails on the old
+        code: every recoloured pixel of a peer's cook and fire-lighter the
+        watcher's): docs/specs/peer-gather-colours.md.
   - Since v2.3.3146 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
     "Also all the buildings in town should show on the minimap": each
     standing building's footprint where it stands (wheelMinimap.js
@@ -2447,6 +2498,43 @@ remnant to migrate server-side, not a mode to preserve.
     - `caps.partykeep`, kill switch `partykeep: false` (the party of four in
       memory, nothing read or written -- party.test.mjs runs under it);
       `party-keep` suite, `mp-partykeep`.
+    - since v2.3.3313 STEP 2, THE ALLIANCE -- the owner: "Push to main, then
+      keep going on recommended", to the four decisions it waited on
+      (docs/specs/alliance.md, server/src/alliance.js):
+      - a party whose ACTIVE members (online, or `seen` in the last 7 days,
+        AND level 5+: ps.level, a new character is 3) reach `ALLIANCE.AT` 20
+        is an alliance until they fall below `DROP` 15; counted at a member's
+        join, accept, leave, a rename, a war and the 2 s vitals echo, never an
+        alarm; a flip is the only write; `became` on party_state;
+      - the leader's NAME and TAG (`alliance_name`, once a day, 3-16 chars and
+        1-4 letters/numbers, unique across every alliance -- kept while its
+        party lasts -- and every clan, both ways: clans.js checks the
+        alliances); the tag on every member's plate as `[TAG] Name`
+        (`allyTag`, worker-set only, on no track/join list: PEER_PUBLIC_KEYS,
+        nearjoin LIST_KEYS, a `player_update` with hg/fr on a change, forced
+        at a member's join), the strip's head `[TAG] 22/50`;
+      - WARS (`alliance_war {tag}`, the leader of a named alliance): 30 min,
+        rosters frozen at the declaration, a kill scores only under No man's
+        land's rule (the victim's last blow the killer's, within
+        `NML.KILL_BLOW_MS`; `_allyWarOnDeath` beside the clans' hook, never a
+        duel's), pays roster members who fought and are still in the party
+        500 / 50 (0-0 nobody; opIds `allywar:`), an hour's rest after, read
+        back from the ended wars after a deploy;
+      - the BOARD (`alliance_board`, any player, one answer a 5 s): by active
+        members, then levels added up; an alliance nobody is on counted from
+        its `ally:<partyId>` row, written WITH the party record (one batch:
+        `_partyStore` -> `_allyRowPut`) and deleted with it, its `act` each
+        member's [seen + 7 days, level];
+      - a record that has been an alliance is shape `v: 2` (PARTY.V), one that
+        never was stays 1 (a rollback reads it); `ally_war:<id>` kept 48 h;
+      - the phone: the Saloon's Alliance part (AlliancePart.jsx: n/20, the name
+        form, the war and Declare war, the board), the answers in wsClient's
+        direct switch (`alliance_rows` / `alliance_error` /
+        `alliance_war_end`, PRIVILEGED), moments over you and in the chat;
+      - test lever `/dev/combat {skill | 'all', level}`; `caps.alliance`, kill
+        switch `alliance: false` (off with `partykeep: false` too; tags off at
+        the next echo); `alliance` suite (96), `mp-alliance` (a phone, 39
+        bots, a second phone watching the plate).
   - Since v2.3.3279 THE OWNER'S SMALL ICONS -- asked what ChatGPT could draw to
     replace the emoji and code-drawn pictures, the owner sent four sheets
     ("Here's the art assets for the 'small icons'"), cut by
@@ -3653,6 +3741,23 @@ Two protocol versions coexist; both must keep working:
   refusal as fatal) exist; `disable_verify` live flag; fail closed;
   `TURNSTILE_VERIFY_URL` is the test seam. `verify` suite (24), `mp-verify`
   (its own worker, `BT_WRANGLER_VARS`, a stand-in verifier and widget).
+- **ONLY THE GAME'S OWN SITES OPEN A GAME SOCKET (v2.3.3312,
+  docs/specs/origin-lock.md).** The owner: "I only use Brotown.net for this
+  game and that's the only domain I plan to keep using." The worker's `/ws`
+  route reads the browser's `Origin` before any room (`server/src/origin.js`):
+  brotown.net and gamedev-aix.pages.dev with every address under them,
+  `ORIGINS` (wrangler.toml) more, a machine's own pages (localhost, 127/8, the
+  private ranges) and NO Origin (a program -- our tools; TRAPS §195) are let
+  in; any other site, `null` or a look-alike gets `join_rejected
+  {reason:'origin', home}` and close 4015, the page `ui/OriginScreen.js`
+  ("This isn't the official BroTown", a button to brotown.net, no retry; an
+  old page reads it as fatal), a plain request a 403; each refused site
+  logged once. A NEW DOMAIN GOES IN `ORIGINS` BEFORE PLAYERS USE IT.
+  `ORIGIN_LOCK = "off"` is the lever (an env var: the check runs before the
+  room's live flags). The HTTP routes are not locked. `origin` suite (33),
+  `mp-originlock` (a second browser with `--host-resolver-rules`, so the
+  copy's Origin is the browser's own; `H.newPlayer`'s `host`,
+  `H.launch(args)`).
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,

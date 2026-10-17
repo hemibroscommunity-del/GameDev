@@ -3822,6 +3822,28 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
         window.__btPixiInitFails = 0;
+        /* ═══ v2.3.3313: A CONTEXT WITHOUT A STENCIL BUFFER IS MADE AGAIN ═══
+           Every mask the game draws (the Wheel's minimap, the swimmer cut at
+           the neck) needs the stencil buffer Pixi asks for.  A context someone
+           else made first on this canvas has none (TRAPS §194: the crash
+           report and the black-screen watchdog did, until this version), and
+           the minimap then covers the whole screen until the page is left --
+           the owner's "enlarged minimap".  Nothing in the game makes one now;
+           should anything ever again, it is said in the crash log and the
+           canvas is swapped for a fresh one, whose context Pixi makes -- once a
+           page, so a device that truly cannot give one plays on as before. */
+        try {
+          var _ctxA = renderer.app.renderer.gl.getContextAttributes();
+          if (_ctxA && _ctxA.stencil === false) {
+            window.__btNoStencil = (window.__btNoStencil || 0) + 1;
+            var _remake = window.__btNoStencil === 1;
+            import('../debug/crashTrap.js').then(function (ct) {
+              ct.recordCrash('gl-no-stencil', 'the canvas context has no stencil buffer: masks draw unclipped'
+                + (_remake ? ' -- a fresh canvas' : ' -- again, played as it is'));
+            }).catch(function () {});
+            if (_remake) { setGlEpoch(function (n) { return n + 1; }); return; }
+          }
+        } catch (eSt) { /* no attributes to read: as before */ }
         /* v2.3.774: confirm recovery in the crash log -- but only after
            a rebuild, so normal boots stay quiet. */
         if (window.__btLastGlRebuild && Date.now() - window.__btLastGlRebuild < 60000) {
@@ -7913,6 +7935,26 @@ export var BroTown = function BroTown(_ref0) {
     var _wdPendingAt = 0;   /* a sample asked for and not yet back (Date.now()) */
     var _wdThumb = null;   /* { gl, fb, rb, pbo, px } -- this context's */
     var _wdOffGl = null;   /* the context the GPU's way failed on once: the old way on it from then on (a rebuilt renderer's new context tries again) */
+    /* ═══ v2.3.3313: THE RENDERER'S CONTEXT, NEVER THE CANVAS'S getContext ═══
+       Owner: "often loading from a saved character will show the game as an
+       enlarged minimap. You're forced to log back out and back in to fix it."
+       A getContext on a canvas nothing has drawn on yet MAKES its context,
+       with WebGL's defaults -- no stencil buffer -- and Pixi, asking a moment
+       later, is handed that one: every mask draws unclipped for the life of
+       the canvas, and the Wheel's minimap (wheelMinimap.js, a stencil mask)
+       covers the whole screen.  A rebuild mounts a fresh canvas and loads
+       Pixi onto it a moment later, and this watchdog samples on its own
+       clock -- so it reads only the context Pixi made for THIS canvas, and
+       a canvas with none is read the old way (a canvas with no context draws
+       as nothing: dark, a strike, as before).  TRAPS §194; the crash
+       report's GPU line had the same hole (crashTrap.js). */
+    function _wdGl(cv) {
+      try {
+        var r = pixiRef.current && pixiRef.current.app && pixiRef.current.app.renderer;
+        var g = r && r.gl;
+        return g && g.canvas === cv ? g : null;
+      } catch (eR) { return null; }
+    }
     function _wdThumbSetUp(gl) {
       if (_wdThumb && _wdThumb.gl === gl) return _wdThumb;
       var rbWas = gl.getParameter(gl.RENDERBUFFER_BINDING);
@@ -7941,8 +7983,7 @@ export var BroTown = function BroTown(_ref0) {
     /* Ask the GPU for the thumbnail: { T, sync } to collect, or null (do it
        the old way).  Call it in the animation frame the world was drawn in. */
     function _wdThumbAsk(cv) {
-      var gl = null;
-      try { gl = cv.getContext('webgl2'); } catch (eG) { gl = null; }
+      var gl = _wdGl(cv);   /* v2.3.3313: never cv.getContext (above) */
       if (!gl || gl === _wdOffGl || typeof gl.fenceSync !== 'function' || gl.isContextLost()) return null;
       var T = _wdThumbSetUp(gl);
       if (!T) { _wdOffGl = gl; return null; }
@@ -8011,7 +8052,7 @@ export var BroTown = function BroTown(_ref0) {
          never struck, so an iOS memory-pressure context kill left the
          screen blank forever with no rebuild and no reload. */
       try {
-        var _glWd = cv.getContext('webgl2') || cv.getContext('webgl');
+        var _glWd = _wdGl(cv);   /* v2.3.3313: never cv.getContext (_wdGl) */
         if (_glWd && _glWd.isContextLost && _glWd.isContextLost()) { done(0); return; }
       } catch (eWd) { /* fall through to the pixel sample */ }
       var oldWay = function () {
@@ -8020,7 +8061,7 @@ export var BroTown = function BroTown(_ref0) {
         done(p);
       };
       var job = null;
-      try { job = _wdThumbAsk(cv); } catch (eA) { job = null; try { _wdOffGl = cv.getContext('webgl2'); } catch (eO) { /* none */ } }
+      try { job = _wdThumbAsk(cv); } catch (eA) { job = null; _wdOffGl = _wdGl(cv); }
       if (!job) { oldWay(); return; }
       var frames = 0;
       var poll = function () {
@@ -8045,7 +8086,7 @@ export var BroTown = function BroTown(_ref0) {
           if (!cv) { res(null); return; }
           var tw = performance.now();
           try {
-            var glw = cv.getContext('webgl2') || cv.getContext('webgl');
+            var glw = _wdGl(cv);
             if (glw) glw.readPixels(0, 0, 1, 1, glw.RGBA, glw.UNSIGNED_BYTE, new Uint8Array(4));
           } catch (eW) { /* timed as it comes */ }
           var waitMs = performance.now() - tw;

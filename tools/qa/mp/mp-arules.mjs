@@ -315,7 +315,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const faceAndRead = async (ang, tag) => {
     await P.page.evaluate((a) => { window.__pinFace = { a }; }, ang);
     await P.page.waitForTimeout(600);
-    const st = await capeState(P);
+    /* v2.3.3313: until the facing arrives (a slow frame can land between the
+       pin and the draw), at most 5 s more */
+    const want = tag.replace(/^carry-/, '');
+    let st = await capeState(P);
+    for (let w = 0; w < 25 && !(st && st.weapon && st.weapon.facing === want); w++) {
+      await P.page.waitForTimeout(200);
+      st = await capeState(P);
+    }
     await shot(P, `greatsword-${tag}`, rec, { pad: 26 });
     return st;
   };
@@ -342,10 +349,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     && gsE && gsE.weapon && gsE.weapon.facing === 'east',
     { sw: gsSW && gsSW.weapon && gsSW.weapon.facing, se: gsSE && gsSE.weapon && gsSE.weapon.facing,
       east: gsE && gsE.weapon && gsE.weapon.facing });
-  rec.ok('D7a: THE CARRIED GREATSWORD IS BEHIND THE BODY AT SOUTHWEST — it is '
-    + 'in the far hand there, so the character occludes it instead of the blade '
-    + 'passing through him (this retires the SW half of v2.3.1787)',
-    zOf(gsSW) === 'behind', { sw: zOf(gsSW), probe: gsSW && gsSW.weapon });
+  /* v2.3.3313: the CARRIED half of D7 was turned round by the owner since:
+     v2.3.2911 ("East, Southwest, northeast the characters hand should be over
+     the handle") brought the carried greatsword at SW back in FRONT, with a
+     hole cut at the grip so the fist shows over the handle (entityRenderer
+     GRIP_HOLE_FACINGS: "SW: the carried pose comes back in front for this --
+     the blade hangs away from the body there, so the fist is the only
+     overlap.  The SWING keeps the v2.3.2516 behind-the-body order").  This
+     asserted the older rule and failed on main (the sweep, 2026-10-17); the
+     swing's half, D7c, is unchanged. */
+  rec.ok('D7a: THE CARRIED GREATSWORD AT SOUTHWEST IS IN FRONT, the hand over its '
+    + 'handle (v2.3.2911, which turned round the carried half of v2.3.2516)',
+    zOf(gsSW) === 'front', { sw: zOf(gsSW), probe: gsSW && gsSW.weapon });
   rec.ok('D7b: ...and SOUTHEAST AND EAST ARE UNCHANGED, in front, exactly as '
     + 'the owner\'s answer says — the blade is on the camera side on those two',
     zOf(gsSE) === 'front' && zOf(gsE) === 'front',
@@ -364,7 +379,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const p = window.__pinAtk;
       if (S && p && p.on) {
         const a = p.i * Math.PI / 4;
-        S._facingAngle = a; S._aimAngle = a; S._mouseAimAngle = a;
+        /* v2.3.3313: and the TARGET, as the carry pin above does --
+           visualSystems turns _facingAngle toward _targetFacingAngle every
+           frame by 1 - 0.92^dtScale, which on this box's 400 ms frames is
+           ~86% of the way at once: the swing at SW was pulled back to the
+           old target and drawn facing south (the sweep of main, 2026-10-17) */
+        S._facingAngle = a; S._targetFacingAngle = a; S._aimAngle = a; S._mouseAimAngle = a;
         S._shieldKb = false; S.lockedTarget = null;
         if (S.player) { S.player.vx = 0; S.player.vy = 0; }
         if (p.kind === 'sword') { S.isSwinging = true; S.swingTimer = Date.now(); S._swingAng = a; }
@@ -379,6 +399,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const [tag, i] of [['southwest', 3], ['southeast', 1], ['east', 0]]) {
     await P.page.evaluate((v) => { window.__pinAtk = { i: v, kind: 'sword', on: true }; }, i);
     await P.page.waitForTimeout(700);
+    /* v2.3.3313: and until the stand-in FACES it, up to 5 s more (a slow
+       frame can land between the pin and the draw) */
+    for (let w = 0; w < 25; w++) {
+      const f = await P.page.evaluate(() => (window.__btSwingZ ? window.__btSwingZ.facing : null));
+      if (f === tag) break;
+      await P.page.waitForTimeout(200);
+    }
     swings[tag] = await P.page.evaluate(() => window.__btSwingZ || null);
     await shot(P, `greatsword-swing-${tag}`, rec, { pad: 26 });
     await P.page.evaluate(() => { window.__pinAtk.on = false; });

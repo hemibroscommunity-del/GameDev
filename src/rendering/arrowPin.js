@@ -131,8 +131,16 @@ export function pinEntry(fd, u, v, du, dv) {
   let hit = null;
   const reach = Math.max(12, Math.round(fd.h * 0.35));
   for (let s = 0; s <= reach && !hit; s++) {
-    const x = u + du * s, y = v + dv * s;
-    if (solid(fd, x, y)) hit = [Math.round(x), Math.round(y)];
+    /* v2.3.3313: the texel TESTED is the texel KEPT.  This tested the step's
+       fractional point (solid() truncates it) and kept the ROUNDED one, so a
+       point past a texel's middle tested one texel and pinned its neighbour --
+       harmless on a slime or a rock, but a skeleton's bones are 1-3 texels
+       wide and the neighbour is air: an arrow pinned beside the bone, which
+       mp-arrowwound caught about one run in two (the sweep of main).  (u, v)
+       are texel CENTRES (pinnedArrow's -0.5), so the rounded texel is the one
+       the point is in. */
+    const x = Math.round(u + du * s), y = Math.round(v + dv * s);
+    if (solid(fd, x, y)) hit = [x, y];
   }
   if (!hit) hit = nearestSolid(fd, u, v, Math.max(10, Math.round(fd.h * 0.3)));
   if (!hit) return null;

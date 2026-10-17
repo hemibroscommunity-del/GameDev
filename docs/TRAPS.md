@@ -6543,6 +6543,33 @@ blockable at all: its row's `block` is null.
 **Receipt:** hit-door.test §5, every blockable row, a ball from behind
 included, lands through a shield facing away (v2.3.3300).
 
+## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3314)
+
+**Tempting:** a pose that swaps the body for a painted figure (the cook, the
+fire-lighter, the lumberjack) is baked once with your colours, and every other
+player in that pose is drawn from the same picture. Their own shirt, armour
+and head go on top, so they look like themselves. A bake per player looks like
+memory thrown away.
+
+**Wrong.** What the bake carries is colour, so a shared figure gives everyone
+the colours of whoever it was baked for. v2.3.1713 wrote the trade down (your
+skin on every peer's cook). Then v2.3.3146 baked your trousers and boots in
+too, and every peer at a campfire wore them. The owner saw it: "Other players
+cooking showed wrong skin color". The figure for nobody's colours is no better:
+the unpainted lumberjack was the artist's orange, olive and grey. Measured
+(mp-peercolours): every recoloured pixel of a peer's cook (~14,300 a frame)
+and fire-lighter (~28,000) was the watcher's, and the lumberjack had none at
+all. Each test's own screen, and every single-client scenario, looked right.
+
+**The rule:** a baked figure belongs to the colours it was baked in. Key it by
+them (`_standInColourKey`), hand it only to a player wearing them, and bake one
+for anyone else, capped and let go (effectsRenderer `_peerFigure`). Until a
+player's own figure exists, draw their walking body, never another figure.
+Check it from a second screen, off the drawn texture against the shipped strip
+(mp-peercolours), as no screenshot or own-screen test can show it.
+**Receipt:** 57/57 with the fix; against the old build the cook's and the
+fire-lighter's colour checks fail with every recoloured pixel the watcher's.
+
 ## 191. "A blob written by current code is current-shape" (v2.3.3303)
 
 **Tempting:** `_saveRpg` writes from the code's own fixed field list, so stamp
@@ -6637,6 +6664,69 @@ two runs each: home after three trips 83.2-85.2 MB of the chip on main,
 78.1-80.2 with this; the third trip against the second +2.1 and +0 on main
 (+4.1/+4.2 in CI), -1.6 and -1.5 with this. mp-chatbubble and mp-chatfont,
 25 of 25.
+
+## 194. "Reading the canvas's context only looks at it" (v2.3.3313)
+
+**Tempting:** to learn something about the GPU -- its biggest texture, whether
+its context is lost, a thumbnail of the screen -- call
+`canvas.getContext('webgl2')` on the game's canvas. It hands back the context
+Pixi is drawing with, so it reads like a getter.
+
+**Wrong.** A canvas's context is made by whoever asks FIRST, with what THEY
+ask for, and every later ask gets that one. A bare `getContext('webgl2')` on a
+canvas Pixi has not taken yet makes the context with WebGL's own defaults --
+no stencil buffer (and the depth buffer and multisampled drawing buffer the
+game turned down, tens of MB on a 3x iPhone) -- and Pixi, asking a moment
+later with `stencil: true`, is handed it
+and only warns. With no stencil buffer every mask draws unclipped: the Wheel's
+minimap (a stencil mask, wheelMinimap.js) covers the whole screen with its map,
+the owner's "loading from a saved character will show the game as an enlarged
+minimap", until the page is left. Two things asked bare: the crash report's GPU
+line (crashTrap.js `_doFlush`, `document.querySelector('canvas')`), sent 1.5 s
+after any boot with something in the crash log or after any error, and the
+black-screen watchdog's sample (BroTown.jsx, on its own clock). The game's
+canvas is up a moment before Pixi takes it -- Pixi's first renderer loads its
+library file first -- as a character is played from the list at the login,
+and on the fresh canvas of every rebuild: a report or a sample in that moment
+took the canvas. A race, so "often", and gone after logging out and in.
+
+**The rule:** the game's WebGL context is read from the renderer
+(`window._pixiRenderer.app.renderer.gl`, BroTown's `_wdGl(cv)` -- the
+renderer's, and only for the canvas it draws on), never by asking a canvas.
+A canvas no context was made for is read as an image (drawImage), which makes
+none. And should a context ever come up without a stencil buffer again, the
+game says so in the crash log (`gl-no-stencil`) and swaps in a fresh canvas,
+once a page, whose context asks for what Pixi asks by default (the depth
+buffer too, in case a device gives no stencil buffer without one).
+**Receipt:** mp-savedload -- a saved character played from the list with a
+crash log on the phone, the race made certain (Pixi's file held back while an
+error in the page sends a report) and the safety net (the test takes the
+context bare first): on main without it the report took the canvas and the minimap
+covered the screen; now the renderer's context every time, the minimap in its
+box.
+
+## 195. "A socket with no Origin is a forger's: refuse it" (v2.3.3312)
+
+**Tempting:** the server now lets only the game's own sites open a socket
+(server/src/origin.js), by the address a browser writes on every connection
+(`Origin`). A browser ALWAYS writes one, so a connection without it cannot be
+a player -- refuse it too, and the lock looks airtight.
+
+**Wrong.** A connection without an Origin is a PROGRAM, and most of them are
+ours: Node's WebSocket sends none (measured, Node 22), nor does the `ws`
+package or curl -- so the load test, the bot lab, the crowd bots, the
+Cloudflare lab and every tool under tools/qa/load would be refused, and
+nothing would be stopped, since a program can write `Origin:
+https://brotown.net` as easily as leave it out. The Origin is a browser's
+word about the PAGE: unforgeable by a web page, worthless against a program.
+
+**The rule:** an Origin check refuses what a web page cannot fake (another
+site's address, `null`, a look-alike) and lets a missing one through; it is a
+lock against other WEBSITES -- copies -- never against bots. Anything that
+must stop programs needs a check a program cannot pass by typing a header
+(the message limits, the account check).
+**Receipt:** origin.test.mjs §1 ("no Origin is a program") and the mutation
+that refuses it.
 
 ## 196. "The Wheel is 43,008 px, its middle 21,504" (v2.3.3315)
 

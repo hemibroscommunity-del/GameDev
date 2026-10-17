@@ -116,10 +116,11 @@ import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /
 const _staffTipOut = { x: 0, y: 0 };
 import { SHADE, propShade } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop; v2.3.2893 + snow props */
 import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
-import { standInReady, farmKneelReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made */
+import { standInReady, farmKneelReady, peerStandInReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made; v2.3.3314: a peer's, once made in their colours */
 import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full */
 import { SMALL_TEX } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
+import { plateNameWithTag, myAllyTag } from '../../game/alliance.js';   /* v2.3.3313: an alliance member's plate says [TAG] before the name */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -11176,7 +11177,13 @@ export class EntityRenderer {
       /* v2.3.3077: once the stand-in is made (rendering/standIns.js) -- until
          then the peer is drawn as they stand, never hidden for a figure that
          is not there yet */
-      const _rexStandIn = (_rex === 'chop' || _rex === 'cook' || _rex === 'fire') && standInReady(_rex);
+      /* v2.3.3314: THEIR figure, in their colours -- yours when they share
+         them, else one baked for them (effectsRenderer _peerFigure).  It was
+         your figure's readiness alone, and your figure was what a peer's cook
+         and fire-lighter were drawn from: your skin, trousers and boots on
+         somebody else.  Asked here, just before the effects pass draws the
+         stand-in from the same answer in the same frame. */
+      const _rexStandIn = (_rex === 'chop' || _rex === 'cook' || _rex === 'fire') && peerStandInReady(id, other, _rex);
       const _rexBodyPose = _rex === 'mine' ? 'mine' : _rex === 'fish' ? 'fish' : null;
       if (display.visible === _rexStandIn) display.visible = !_rexStandIn;
       /* v2.3.1534: remote dodge roll.  other._dodgeRoll is already set from
@@ -11952,7 +11959,9 @@ export class EntityRenderer {
          too") -- the plate has been one implementation for the player and
          every peer since, and a swap that happened over your head but not
          over theirs would be the same inconsistency pointing the other way. */
-      _updateNamePill(display, nextName, other.rpgLv || 1,
+      /* v2.3.3313: "[TAG] Name" while they are in an alliance -- the worker's
+         allyTag (alliance.js), on their snapshot and every change */
+      _updateNamePill(display, plateNameWithTag(nextName, other.allyTag), other.rpgLv || 1,
         !other._isDead && !display._peerBarUp, broBadgeOf(other.bro, other.brn), false, 'gold', !!_inParty);   /* v2.3.3255: + a wallet's count; v2.3.3279: + the party badge */
       if (_inParty && display._partyBadge && display._partyBadge.visible) _bindSmallTex(display._partyBadge, 'partyMember');
       if (display._namePill) {
@@ -14957,8 +14966,11 @@ export class EntityRenderer {
        previous frame's.  16 ms against a 300 ms fade, and reordering update()
        to fix it would move the HUD pass ahead of the body placement it reads
        positions from — a real risk to buy an invisible one. */
-    _updateNamePill(display, S.myName || 'Anon', (S.rpg && S.rpg.level) || 1,
+    /* v2.3.3313: your alliance's tag, from your party's roster */
+    _updateNamePill(display, plateNameWithTag(S.myName || 'Anon', myAllyTag(S)), (S.rpg && S.rpg.level) || 1,
       !S._dying, !!(S.rpg && broBadgeOf(S.rpg._bro, S.rpg._broN)), false, 'gold');   /* v2.3.2513: the gold border (§5.2) */
+    /* v2.3.3313: QA probe (mp-alliance) -- your plate's words as drawn */
+    if (window.__btProbe && display._pillName) window.__btSelfPlate = display._pillName.text;
     if (display._namePill) {
       const _pH = (display._pillCss || 15) * PLATE_H_RATIO;
       const _pS = display._pillZoom || 1;

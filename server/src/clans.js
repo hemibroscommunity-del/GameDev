@@ -130,6 +130,13 @@ export const clanMethods = {
   async _handleClanCreate(session, payload) {
     if (!session || !session.id) return;
     await this._clansEnsure();
+    /* v2.3.3313: a clan's name and tag are unique among the alliances' too
+       (alliance.js, the owner's "unique across alliances and clans") -- the
+       alliances' index loaded first, so the checks below and the claim run
+       with no await between them */
+    if (typeof this._allyEnsure === 'function') {
+      try { await this._allyEnsure(); } catch (e) { return this._clanError(session.id, 'Try again in a moment'); }
+    }
     const ps = this.playerState[session.id];
     if (!ps || ps.dying || ps.dead || ps.disconnected) return;
     if (this._clanOf(session.id)) return this._clanError(session.id, 'Already in a clan');
@@ -141,6 +148,9 @@ export const clanMethods = {
       if (c.tag === tag) return this._clanError(session.id, 'Tag [' + tag + '] is taken');
       if (c.name.toLowerCase() === name.toLowerCase()) return this._clanError(session.id, 'Name is taken');
     }
+    const _allyHas = this._allyIndex && typeof this._allyTaken === 'function' ? this._allyTaken(name, tag, null) : null;
+    if (_allyHas === 'tag') return this._clanError(session.id, 'Tag [' + tag + '] is taken');
+    if (_allyHas === 'name') return this._clanError(session.id, 'Name is taken');
     if ((ps.coins || 0) < CLANS.CREATE_COST) return this._clanError(session.id, 'Need ' + CLANS.CREATE_COST + 'g');
     ps.coins -= CLANS.CREATE_COST;
     this._saveRpg(session.id, ps);

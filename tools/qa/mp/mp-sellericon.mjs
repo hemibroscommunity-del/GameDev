@@ -138,7 +138,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...carrying none of the nine drawing fields', drawn.length === 0, drawn);
 
   /* Marvin STAYS in the room: the player-list half below needs a peer to
-     draw, and closing him would have left it with nothing to check. */
+     draw, and closing him would have left it with nothing to check.
+     v2.3.3313: and he is KEPT AWAKE -- two minutes with no input is the idle
+     logout (v2.3.3034), and the second phone's list was reached ~3 minutes
+     after his last tap on this box: "No other players nearby" (the sweep on
+     main, 2026-10-17). */
+  const stopMarvin = H.keepAlive(S);
 
   for (const phone of PHONES) {
     const P = await H.newPlayer(browser, { name: 'Looker', wsPort, webPort, touch: true, viewport: phone.portrait, init: COACH_OFF });
@@ -240,5 +245,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   }
 
+  stopMarvin();
   await S.ctx.close().catch(() => {});
 }

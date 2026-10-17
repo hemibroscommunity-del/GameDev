@@ -358,7 +358,7 @@ export async function stopWorker(w) {
    "passed" three assertions about marks that were never drawn.)  isMobile
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '', world = null }) {
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '', world = null, host = 'localhost' }) {
   const ctx = await browser.newContext(Object.assign(
     { viewport: viewport || { width: 1000, height: 780 } },
     touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
@@ -435,7 +435,10 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      game exactly as a player gets it. */
   const _world = world === 'wheel' ? '' : /(?:^|&)trial=/.test(query) ? 'nospawn' : 'trial=off&nospawn';
   const _q = [guest ? 'guest=1' : '', query, _world].filter(Boolean).join('&');
-  await page.goto(`http://localhost:${webPort}/${_q ? '?' + _q : ''}`, { waitUntil: 'domcontentloaded' });
+  /* v2.3.3312: `host` -- the page's own address, for a scenario that needs a
+     page somewhere else (mp-originlock: a copy of the game on another site,
+     its browser launched to find that name at 127.0.0.1) */
+  await page.goto(`http://${host}:${webPort}/${_q ? '?' + _q : ''}`, { waitUntil: 'domcontentloaded' });
   return { ctx, page, logs, name, seeded: !!phrase };
 }
 
@@ -1858,7 +1861,7 @@ export function recorder(suite) {
   };
 }
 
-export async function launch() {
+export async function launch(extraArgs = []) {
   /* v2.3.1729: the sandbox's pinned Chromium is used WHEN IT EXISTS, and
      Playwright resolves its own managed browser otherwise.  The hardcoded
      executablePath threw ENOENT on any other machine, so this harness could
@@ -1866,7 +1869,9 @@ export async function launch() {
      BT_CHROMIUM overrides for a non-standard install. */
   const pinned = process.env.BT_CHROMIUM || '/opt/pw-browsers/chromium';
   const opts = {
-    args: ['--autoplay-policy=no-user-gesture-required', '--disable-gpu', '--no-sandbox'],
+    /* v2.3.3312: `extraArgs` for a scenario's own second browser (mp-originlock's
+       --host-resolver-rules) */
+    args: ['--autoplay-policy=no-user-gesture-required', '--disable-gpu', '--no-sandbox', ...extraArgs],
   };
   if (existsSync(pinned)) opts.executablePath = pinned;
   return chromium.launch(opts);

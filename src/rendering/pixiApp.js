@@ -577,6 +577,11 @@ export const CANVAS_BG = 0x0d0b18;
 function withoutDepthBuffer(canvas) {
   try {
     if (/(^|[?&])depthbuf(=|&|$)/.test(window.location.search || '')) return () => {};
+    /* v2.3.3313: a canvas whose context came up with no stencil buffer is
+       made again once (BroTown, TRAPS §194), and that one asks for exactly
+       what Pixi asks by default, depth buffer and all -- in case a device
+       cannot give a stencil buffer without one */
+    if (window.__btNoStencil) return () => {};
     if (!canvas || typeof canvas.getContext !== 'function' || Object.prototype.hasOwnProperty.call(canvas, 'getContext')) return () => {};
     const own = canvas.getContext;
     canvas.getContext = function (type, attrs) {

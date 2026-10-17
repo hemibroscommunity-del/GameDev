@@ -24,6 +24,7 @@ import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3139: ha
 import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the worker's */
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
 import { applySparState } from '@/game/spar.js'; /* v2.3.3265: the test panel's sparring clones */
+import { allyBus } from '@/game/alliance.js'; /* v2.3.3313: the alliance's answers (server alliance.js) */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
@@ -74,6 +75,7 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
    for why it is not a React boot phase. */
 import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
 import { showLingerWait, hideLingerWait } from '@/ui/LingerScreen.js';   /* v2.3.3260: your bro is still in that fight */
+import { showOriginScreen } from '@/ui/OriginScreen.js';   /* v2.3.3312: a copy on another site is sent to the real game */
 import { markServerReady, resetServerReady, serverReadyReason } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -299,6 +301,13 @@ export function setupWebSocket(ctx) {
        account-check.md).  showVerifyGate renders the widget; its token rides
        the next join as `verify` and is spent there. */
     var _vfPending = null;
+    /* ═══ v2.3.3312: NOT THE GAME'S OWN SITE ═══
+       `_ogPending` is set by join_rejected {reason:'origin'} and consumed by
+       the close that follows it (4015): the worker lets only the game's own
+       sites open a socket (server/src/origin.js), so this page is a copy on
+       another address.  showOriginScreen (ui/OriginScreen.js) says where the
+       real game is; nothing reconnects. */
+    var _ogPending = null;
     /* ═══ v2.3.3260: YOUR BODY IS STILL IN A FIGHT ═══
        `_lgPending` is set by linger_wait (the worker refuses a join while the
        body you left in a fight with a player still stands there,
@@ -1250,6 +1259,13 @@ export function setupWebSocket(ctx) {
                 _vfPending = { sitekey: typeof msg.sitekey === 'string' ? msg.sitekey : '' };
                 break;
               }
+              /* v2.3.3312: this page is not on one of the game's own sites
+                 (server/src/origin.js).  No new identity, no retry: the gate
+                 opens on the close that follows. */
+              if (_rejReason === 'origin') {
+                _ogPending = { home: msg.home };
+                break;
+              }
               if (_rejReason === 'frozen') {
                 S._frozenByAdmin = true; /* suppress reconnect churn */
                 pushDmgPopup(S, S.player.x, S.player.y - 30, '🧊 Account frozen — contact the game owner', '#60a5fa', { ttl: 6 });
@@ -1847,6 +1863,27 @@ export function setupWebSocket(ctx) {
                  the login answer comes before state_sync. */
               farmBus.apply(msg.payload);
               farmFeedback(S, msg.payload, { setChatLog: setChatLog });
+              break;
+            }
+          case 'alliance_rows':
+          case 'alliance_error':
+          case 'alliance_war_end':
+            {
+              /* v2.3.3313: the alliance's answers (server alliance.js) -- the
+                 board, a refusal, a war's end and what it paid you.  Into the
+                 bus the Saloon draws; a refusal and a war's end are said over
+                 you too.  Here in the direct switch, as farm_state: a worker
+                 from before the alliance does not list these as privileged and
+                 would relay a forged one ("Victory! +500G" from anyone). */
+              allyBus.apply(msg.type, msg.payload);
+              try {
+                if (S.player && msg.type === 'alliance_error' && allyBus.error) pushDmgPopup(S, S.player.x, S.player.y - 40, allyBus.error.text, '#ff5e6c');
+                if (S.player && msg.type === 'alliance_war_end' && allyBus.warEnd) {
+                  pushDmgPopup(S, S.player.x, S.player.y - 48, allyBus.warEnd.text, allyBus.warEnd.won === false ? '#ff5e6c' : '#f5c542');
+                  S.chatLog = (S.chatLog || []).slice(-50).concat([{ id: 'ally-' + Date.now(), name: '', text: '⚔️ ' + allyBus.warEnd.text, ts: Date.now(), system: true }]);
+                  if (setChatLog) setChatLog(S.chatLog.slice());
+                }
+              } catch (_ae) { /* words only */ }
               break;
             }
           case 'spar_state':
@@ -3873,6 +3910,15 @@ export function setupWebSocket(ctx) {
           S._realtimeStatus = 'frozen';
           return;
         }
+        /* v2.3.3312: not the game's own site (join_rejected 'origin' / 4015):
+           every try would be refused the same, so none is made */
+        if (_ogPending || (event && event.code === 4015)) {
+          var _og = _ogPending;
+          _ogPending = null;
+          S._realtimeStatus = 'origin';
+          showOriginScreen(_og && _og.home);
+          return;
+        }
         /* v2.3.3275: the account check (join_rejected 'verify' / 4014): show
            Cloudflare's widget and connect again with its token -- never the
            ordinary backoff, which would knock on the same door token-less
@@ -4840,6 +4886,13 @@ export function setupWebSocket(ctx) {
            without this line the watch never left the browser and the open map
            was sent no far player at all -- mp-presence2's first run. */
         if (msg.type === 'map_watch') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3313: the alliance (game/alliance.js, the Saloon's Alliance
+           part) -> alliance.js: the leader's Name and Declare war, and anyone's
+           board.  TRAPS #18: without this line all three would send nothing. */
+        if (msg.type === 'alliance_name' || msg.type === 'alliance_war' || msg.type === 'alliance_board') {
           wsOut(msg);
           return;
         }

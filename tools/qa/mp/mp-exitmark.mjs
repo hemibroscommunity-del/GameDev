@@ -155,13 +155,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
        `got: "town"` for both zones -- because a refused transition looks
        exactly like a slow one from here.  Accepting the tutorial quests opens
        it, the same way mp-zonebanner does. */
-    await P.page.evaluate(() => {
-      const S = window._gameState.current;
-      if (S && S.channel) for (const q of ['tut_1', 'tut_2', 'tut_3', 'tut_4']) {
-        S.channel.send({ type: 'quest_accept', payload: { questId: q } });
-      }
-    });
-    await P.page.waitForTimeout(1500);
+    /* v2.3.3313: tut_1, then the test lever opens the rest (H.openLands) --
+       since v2.3.3179 the worker refuses tut_2..tut_4 out of order, so this
+       loop opened frost alone and every ember leg read "got: worldview" (the
+       sweep of main, 2026-10-17) */
+    await H.openLands(P, wsPort);
 
     const hub = await toWorldview(P);
     rec.ok(`${label}: reached the worldview hub (guard)`, hub === 'worldview', { hub });
