@@ -70,7 +70,9 @@ const advertised = new Map(); // flag -> [file:line]
        COOKING_RECIPES.length`): a capability that is a number -- how many
        recipes this worker cooks.  Only an UPPER_CASE table's .length, so
        prose in the literal's comments ("part: 2") is never read as a flag. */
-    const RE = /([A-Za-z0-9_$]+):\s*(?:true\b|[A-Z][A-Z0-9_]*\.length\b)/g;
+    /* v2.3.3300: or a number the ROOM decides with one of its own methods
+       (`wheelsize: this._wheelLongNow()`: which Wheel it plays, wheeltables.js) */
+    const RE = /([A-Za-z0-9_$]+):\s*(?:true\b|[A-Z][A-Z0-9_]*\.length\b|this\._[A-Za-z0-9_$]+\(\))/g;
     let m;
     while ((m = RE.exec(m0[1]))) {
       if (!advertised.has(m[1])) advertised.set(m[1], []);

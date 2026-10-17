@@ -558,7 +558,10 @@ export function wheelLocalLands(x, y, R = 2) {
     if (!b || !b.lands || b.lands.k !== k) continue;
     const L = b.lands;
     for (let ty = 0; ty < L.h; ty++) for (let tx = 0; tx < L.w; tx++) {
-      const v = L.data[ty * L.w + tx], rgb = v === 255 ? SEA_RGB : (rgbOf[v] || SEA_RGB);
+      const v = L.data[ty * L.w + tx], rgb = v === 255 ? SEA_RGB : rgbOf[v];
+      /* (ground in no land -- a realm past a gate -- is left clear: the whole
+         map's picture draws it in its ground's colour, as landsCanvas does) */
+      if (!rgb) continue;
       const o = ((dj * side + ty) * side * n + (di * side + tx)) * 4;
       out[o] = rgb[0]; out[o + 1] = rgb[1]; out[o + 2] = rgb[2]; out[o + 3] = 255;
     }

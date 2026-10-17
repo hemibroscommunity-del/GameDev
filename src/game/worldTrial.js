@@ -59,7 +59,7 @@ import { swimFeet } from './wheelSwim.js';   /* v2.3.3003: the footstep's ground
 import { setAlwaysDay } from './timeOfDay.js';
 import { setClosedDoorZones, setWheelDoorsOpen } from '../data/gameSystems.js';   /* v2.3.3029: today's town's doors, out of reach with no way back; v2.3.3032: and the Wheel's own */
 import { wheelArtStats } from '../rendering/wheelMonsterArt.js';   /* v2.3.2989: the monsters' looks, loaded as you walk toward them */
-import { wheelLong, onWheelLong } from './wheelSize.js';   /* v2.3.3300: which Wheel the room plays */
+import { wheelLong, onWheelLong, wheelSizeTold } from './wheelSize.js';   /* v2.3.3300: which Wheel the room plays */
 
 export const WORLD_TRIAL_ZONE = 'worldview';
 /* v2.3.2978: the Wheel's own zone, where the server stands each element
@@ -85,7 +85,7 @@ const BAKED = {
    short one, and the one five times longer (plan.js PLAN5) -- its size the
    whole blueprint's (7,264 cells of 24 game px) and its town square at the
    middle as ever.  MIRROR of the plan (test-world-core). */
-const WHEELS = {
+export const WHEELS = {
   1: { worldW: 43008, worldH: 43008, arrival: { x: 21504, y: 21792 } },
   5: { worldW: 174336, worldH: 174336, arrival: { x: 87168, y: 87456 } },
 };
@@ -385,6 +385,10 @@ async function preloadWheel() {
   /* v2.3.2967: the grounds' footsteps, behind the same overlay -- but never
      holding it up past STEPS_WAIT_MS: a step whose clip is late plays dirt */
   const steps = loadGroundSteps();
+  /* v2.3.3300: which Wheel the room plays (caps.wheelsize) before it is
+     built -- one built at the wrong size reloads the page.  The way in waits
+     for the caps already (wheelHome.js); a road that did not, 8 s at most */
+  await wheelSizeTold(8000);
   const info = await wheelStart();
   if (info.arrival) setExits(wheelWayBack() ? exitBeside(info.arrival) : null, info.arrival, 'west');   /* v2.3.3025: no way back */
   /* v2.3.3011: as much round the arrival as the view will really show.  The

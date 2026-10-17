@@ -942,7 +942,10 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   const nodes = r5._ensureZoneNodes(WHEEL_ZONE);
   const baked = Object.values(LONG.WHEEL_NODES).reduce((a, l) => a + l.length, 0);
   check(`long: the long Wheel's resources (${nodes.length} of ${baked} baked)`, nodes.length === baked && baked > 1000, { nodes: nodes.length, baked });
-  /* the way in: every monster once, in one zone_state */
+  /* the way in: every monster once, in one zone_state.  (Sending only the
+     ones in reach needs a message that carries a monster coming into reach
+     whole -- a tick carries its place and HP, not what it is -- docs/specs/
+     wheel-5x.md "Not in this step".) */
   const zs = r5._zoneSnapshotWire ? JSON.stringify(r5._zoneSnapshotWire(WHEEL_ZONE)) : '';
   check(`long: the way in carries all ${ms.length} in ${(zs.length / 1024).toFixed(0)} KB (under 650)`, zs.length > 0 && zs.length < 650 * 1024, zs.length);
   /* the room keeps the Wheel it spawned, whatever the flag says later */

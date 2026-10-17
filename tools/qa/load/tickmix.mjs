@@ -23,8 +23,10 @@ if (!URL_ARG || !/^wss?:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(URL_ARG)
   process.exit(2);
 }
 
-/* worldTrial.js WHEEL.arrival -- the Wheel's town square */
-const ARRIVAL = { x: 21504, y: 21792 };
+/* worldTrial.js WHEEL.arrival -- the Wheel's town square (v2.3.3300: the
+   Wheel the room plays, the live spawn table's) */
+const { WHEEL_CENTRE } = await import('../../../server/src/wheelspawns.js');
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };
 const SPEED = 165;   /* px a second, a phone's walk */
 const STEP_MS = 33;  /* wsClient.js MOVE_GAP_SEEN_MS */
 
@@ -42,7 +44,7 @@ const move = (z, dir = 0) => send({
   vx: Math.round(dir * SPEED / 60 * 100), vy: 0, dodging: false, blocking: false, ba: null, dead: false,
 });
 
-ws.onopen = () => send({ type: 'join', id, name: 'Mix', protocolVersion: 2, httpAuth: true,
+ws.onopen = () => send({ type: 'join', id, name: 'Mix', protocolVersion: 2, ws: [1, 5], httpAuth: true,
   data: { x: 1000, y: 1000, d: 'down', z: 'town', name: 'Mix' } });
 ws.onerror = () => { console.error('tickmix.mjs: socket error'); process.exit(1); };
 ws.onmessage = (e) => {

@@ -19,7 +19,7 @@
  * their land's first stretch with the client's `monster_damage`, one swing
  * per ~0.7 s.  The rest walk the town and its commons.
  *
- *   node tools/qa/load/load-wheel.mjs [1,10,25,50,100]
+ *   node tools/qa/load/load-wheel.mjs [1,10,25,50,100] [--short]
  *   node --cpu-prof --cpu-prof-dir=/tmp/prof tools/qa/load/load-wheel.mjs 100
  *
  * "% of a core" is the CPU one second of game time costs: past 100% the room
@@ -32,7 +32,10 @@
  */
 import { performance } from 'node:perf_hooks';
 import { GameRoom } from '../../../server/src/index.js';
-import { WHEEL_SPAWNS } from '../../../server/src/wheelspawns.js';
+/* v2.3.3300: the Wheel the room plays -- the long one, or with `--short` the
+   short one (its kill switch, `wheel5x: false`), each its own table */
+const SHORT = process.argv.includes('--short');
+const { WHEEL_SPAWNS, WHEEL_CENTRE } = await import(SHORT ? '../../../server/src/wheelspawns1.js' : '../../../server/src/wheelspawns.js');
 
 const TICK_MS = 22;
 const MEASURE_TICKS = 450;   // ~10 s of game time
@@ -40,11 +43,11 @@ const WARMUP_TICKS = 90;
 const MOVE_EVERY_MS = 33;
 const SWING_EVERY_MS = 700;
 const FIGHTERS = 0.3;
-const ARRIVAL = { x: 21504, y: 21792 };
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3300: the Wheel the room plays */
 const WALK_R = 1400;
 const HOMES = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'];
 
-const COUNTS = (process.argv[2] || '1,10,25,50,75,100,150,200').split(',').map(Number).filter((n) => n > 0);
+const COUNTS = (process.argv.slice(2).find((a) => !a.startsWith('--')) || '1,10,25,50,75,100,150,200').split(',').map(Number).filter((n) => n > 0);
 
 /* ── the simulated clock ─────────────────────────────────────────────── */
 const realDateNow = Date.now;
@@ -73,6 +76,7 @@ const rand = (a, b) => a + Math.random() * (b - a);
 
 async function loadRoom(n) {
   const room = new GameRoom(mockState(), mockEnv);
+  if (SHORT) room._liveFlags = { wheel5x: false };
   let tickFn = null;
   const realSetInterval = globalThis.setInterval;
   globalThis.setInterval = (fn, ms) => {
@@ -86,6 +90,7 @@ async function loadRoom(n) {
     const id = 'w' + i;
     await room.webSocketMessage(ws, JSON.stringify({
       type: 'join', id, name: 'W' + i, protocolVersion: 2,
+      ws: [1, 5],   /* v2.3.3300: the Wheels a phone of today draws */
       data: { x: 1000, y: 1000, z: 'town' },
     }));
     const fighter = i % 10 < FIGHTERS * 10;

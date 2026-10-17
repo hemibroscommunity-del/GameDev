@@ -60,11 +60,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   /* open ground in the town square: the runner west of it, the watcher a
      little south of the line the runner will run along */
-  const spot = await A.page.evaluate(() => {
+  const spot = await A.page.evaluate((C0) => {
     const S = window._gameState.current, W = window.__btWheelObjects;
     for (let r = 300; r <= 1600; r += 50) {
       for (let a = 0; a < 360; a += 10) {
-        const x = 21504 + Math.cos(a * Math.PI / 180) * r, y = 21504 + Math.sin(a * Math.PI / 180) * r;
+        const x = C0 + Math.cos(a * Math.PI / 180) * r, y = C0 + Math.sin(a * Math.PI / 180) * r;
         let clear = true;
         for (let dx = -200; dx <= 520 && clear; dx += 40) {
           if (window.__btIsSolid && (window.__btIsSolid(x + dx, y) || window.__btIsSolid(x + dx, y + 60))) clear = false;
@@ -74,7 +74,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     }
     return { x: S.player.x, y: S.player.y };
-  });
+  }, (await H.wheelGeom()).cx);   /* v2.3.3300: the Wheel the worker plays */
   await H.hopTo(A, spot.x, spot.y, { step: 100, gap: 260, tries: 60 });
   await H.hopTo(B, spot.x + 160, spot.y + 70, { step: 100, gap: 260, tries: 60 });
   await A.page.waitForTimeout(1500);

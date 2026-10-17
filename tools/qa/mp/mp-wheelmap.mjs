@@ -48,7 +48,7 @@ import { join } from 'node:path';
 const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 
 const PHONE = { width: 390, height: 844 };
-const ARRIVAL = { x: 21504, y: 21792 };
+const ARRIVAL = (await H.wheelGeom()).arrival;   /* v2.3.3300: the Wheel the worker plays */
 
 const holdTitle = (P, ms) => P.page.evaluate(async (hold) => {
   const el = document.querySelector('.bt-zone-header__title');
@@ -311,7 +311,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const myId = await H.readState(P, (S) => S.myId);
     await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 5 });
   } catch (e) { /* a dev op missing on this worker: the walk as before */ }
-  const frost = { x: 18464, y: 18464 };   /* the north-west spoke, its second tier: levels 6-10 */
+  const frost = (await H.wheelGeom()).along('frost', 2);   /* the north-west spoke, its second tier: levels 6-10 (v2.3.3300: at either size) */
   await H.hopTo(P, frost.x, frost.y, { tries: 80 });
   let fw = null;
   for (let i = 0; i < 20; i++) {

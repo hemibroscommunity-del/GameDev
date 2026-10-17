@@ -2653,7 +2653,33 @@ remnant to migrate server-side, not a mode to preserve.
       checks);
     - the ground worker at the memory trip's peak 24.8 MB (main 28.7);
     - test-world-core "the Wheel in blocks" (every block and piece against the
-      whole map, cell for cell); step 2 is the 5x lands.)
+      whole map, cell for cell); step 2 is the 5x lands.
+  - Since v2.3.3300 EVERY LAND IS FIVE TIMES LONGER -- step 2 of the owner's
+    "Rebuild for 5x" (docs/specs/wheel-5x.md):
+    - a five-level stretch is 5,120 game px, not 1,024 (`plan.js PLAN5`,
+      `wheelSized`; the active area grown past the frame, `grid.js
+      active.grow`); 1,920 monsters (30 a stretch), 1,222 resources, 63,486
+      objects; BroTown and the commons the same ground -- the noise counted
+      from the plan's own corner (`nox`, ground.js, placing.js `NC`);
+    - TWO WHEELS: the worker plays the long one unless `wheel5x: false`
+      (server/src/wheeltables.js, picked once when the room starts), says
+      which in `caps.wheelsize`; tables `server/src/wheelspawns.js` (long,
+      live) and `wheelspawns1.js` (short), bakes `public/world/placed5/` and
+      `placed/` -- re-bake BOTH (`bake-wheel-spawns.mjs`,
+      `bake-wheel-world.mjs`); the previews (`?bigtown`, `?plaintown`,
+      `?placing=2`) are always the short one;
+    - the join says which Wheels the phone draws (`ws`,
+      src/game/wheelSize.js); a phone that says nothing is OUT OF STEP: no
+      monster targets it, no No man's land -- a test or bot must send `ws:
+      [1, 5]` (TRAPS §187); the phone's per-size copies (`WHEEL_GEOM`,
+      `WHEELS`, `NML_CENTRES`) follow `setWheelLong`, held to the tables by
+      test-world-core;
+    - never a Wheel coordinate in code or a test: QA reads `H.wheelGeom()`;
+    - the minimap and world map draw the blocks round you at the short
+      Wheel's detail (`wheelLocalLands`); the world map zooms ~4x further;
+    - the way in still carries all 1,920 monsters (~580 KB): sending only
+      those in reach needs a message bringing a monster whole (a tick does
+      not say what it is) -- the next step.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

@@ -356,20 +356,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* 7. the looks, on open ground: the commons, nothing standing within
      220 px (no roof over you, no trunk in front), each status held long
      enough for a picture */
-  const open = await P.page.evaluate(() => {
+  const open = await P.page.evaluate((C0) => {
     const W = window.__btWheelObjects;
     /* nothing within 110 px, and nothing tall in front of you (south, where
        a crown would hide you) within 260 */
     for (let r = 1700; r <= 2850; r += 75) {
       for (let a = 0; a < 360; a += 6) {
-        const x = 21504 + Math.cos(a * Math.PI / 180) * r, y = 21504 + Math.sin(a * Math.PI / 180) * r;
+        const x = C0 + Math.cos(a * Math.PI / 180) * r, y = C0 + Math.sin(a * Math.PI / 180) * r;
         if (W.near(x, y, 110).length) continue;
         if (W.near(x, y + 130, 130).some((o) => o.h > 60)) continue;
         return { x, y, a, r };
       }
     }
     return null;
-  });
+  }, (await H.wheelGeom()).cx);   /* v2.3.3300: the Wheel the worker plays */
   rec.ok('looks: a clear patch of the commons to stand on', !!open, open);
   if (open) {
     await H.hopTo(P, open.x, open.y, { step: 100, gap: 260, tries: 40 });
@@ -423,7 +423,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { home: 'thunder', st: 'shock', name: 'a Storm Peaks slime' },
     { home: 'hollows', st: 'daze', name: 'a rock monster' },
   ];
-  const CENTRE = [21504, 21504];
+  const CENTRE = [(await H.wheelGeom()).cx, (await H.wheelGeom()).cy];   /* v2.3.3300 */
   const settle = async () => {
     let sv = null, cz = null;
     for (let i = 0; i < 60; i++) {

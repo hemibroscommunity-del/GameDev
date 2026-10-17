@@ -36,7 +36,7 @@ import { MOVE_DIET, dietMayWait, steadyMove } from '@/game/moveDiet.js'; /* v2.3
 import { QUIET, quietOn, bundleOn, lookNews, peerNear, quietMoveGap, framesOf } from '@/game/quietPhone.js'; /* v2.3.3254: the quiet phone */
 import { nmlCanAttack } from '@/game/noMansLand.js'; /* v2.3.3254: a steady walk is not held near a player who may fight you */
 import { NML_CENTRE, NML_CENTRES } from '@/data/noMansLandRings.js'; /* v2.3.3204: the Wheel's middle, the safe ground's centre */
-import { wheelLong, setWheelLong, WHEEL_SIZES_DRAWN } from '@/game/wheelSize.js'; /* v2.3.3300: which Wheel the room plays */
+import { wheelLong, setWheelLong, wheelSizesDrawn } from '@/game/wheelSize.js'; /* v2.3.3300: which Wheel the room plays */
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
 /* v2.3.1961: the ONE wire-key -> peer-field rename table, read by the join
@@ -469,7 +469,7 @@ export function setupWebSocket(ctx) {
           /* v2.3.3300: the Wheels this phone draws (src/game/wheelSize.js):
              the worker keeps a phone that does not draw the one it plays out
              of harm.  Old workers ignore it. */
-          ws: WHEEL_SIZES_DRAWN,
+          ws: wheelSizesDrawn(),
           /* v2.3.1178: declare we attach the per-session state_sync
              token (x-bt-auth header) to mutating economy POSTs, so the
              worker ENFORCES it for this session. Old workers ignore

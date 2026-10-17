@@ -29,7 +29,7 @@
  * merges.  Read with docs/specs/cost-diet.md.
  */
 import { GameRoom } from '../../../server/src/index.js';
-import { WHEEL_SPAWNS } from '../../../server/src/wheelspawns.js';
+import { WHEEL_SPAWNS, WHEEL_CENTRE } from '../../../server/src/wheelspawns.js';
 
 const ARGS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const FLAG = (name, d) => { const a = process.argv.find((x) => x.startsWith('--' + name + '=')); return a ? a.split('=')[1] : d; };
@@ -50,7 +50,7 @@ const SEED = Number(FLAG('seed', 1));
   };
 }
 const TICK_MS = 22;
-const ARRIVAL = { x: 21504, y: 21792 };
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3300: the Wheel the room plays */
 const HOMES = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'];
 const SPEED = 165 / 1000;   /* px a ms */
 
@@ -177,7 +177,7 @@ async function addPlayer(kind, i) {
   pidOf.set(id, kind);
   const w0 = W.writes;
   const p = { ws, id, kind, sent: 0, x: ARRIVAL.x + rand(-80, 80), y: ARRIVAL.y + rand(-50, 50), tx: 0, ty: 0, acc: rand(0, 66), swingAcc: rand(0, 700), standAcc: 0, strikeAcc: rand(0, 2000) };
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'Cost ' + kind + ' ' + i, protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'Cost ' + kind + ' ' + i, protocolVersion: 2, ws: [1, 5], data: { x: 1000, y: 1000, z: 'town' } }));
   await room.webSocketMessage(ws, JSON.stringify(moveMsg(p, 0, 0)));   /* down the stairs: the trip into the Wheel */
   JOIN.writes += W.writes - w0; JOIN.players++;
   const ps = room.playerState[id];

@@ -6355,3 +6355,36 @@ makes for a cell reads nothing past a fixed margin round it. Check by building
 every piece and comparing it with the whole, cell for cell
 (test-world-core "the Wheel in blocks") -- a piece that only looks right will
 show its seam the day someone walks along it.
+
+## 187. "The Wheel is 43,008 px, its middle 21,504" (v2.3.3300)
+
+Since the owner's "Rebuild for 5x" (docs/specs/wheel-5x.md) there are two
+Wheels, and the worker plays the long one unless its kill switch says the
+short one. Every number copied from the short one now names the wrong place:
+21,504 is a corner of the sea on the long Wheel, the Frost Ridge spot a test
+hopped to (18,464) is levels 1-5 instead of 6-10, and a test that counts 384
+monsters finds 1,920. Three ways it bit while the long Wheel was built:
+
+- **A hard-copied spot.** Twenty phone scenarios and load tools stood at
+  short-Wheel numbers. They now read the live Wheel from the live spawn table
+  (`H.wheelGeom()` in tools/qa/mp/harness.mjs: its middle, the way in,
+  `along(land, tier)`, a blueprint of a few cells; `WHEEL_CENTRE` in the load
+  tools). A spot that is "the hub moved to the middle" may be shifted
+  (`shift`); a spot that is "a land's second stretch" must be worked out.
+- **A join that says nothing about the Wheel it draws.** A phone that does not
+  send `ws` (the sizes it draws, src/game/wheelSize.js) is OUT OF STEP with
+  the long Wheel: no monster targets it, no hit lands on it and No man's land
+  holds no rule for it (wheeltables.js `_wheelInStep`). That is right for a
+  tab left open across a deploy; for a test it means every combat check runs
+  against a player nothing can touch. Server suites and load bots join with
+  `ws: [1, 5]`.
+- **A whole-map build in a tool.** `buildBlueprint(PLAN)` was cheap; the long
+  plan's whole blueprint is ~600 MB and ~25 s. Tools and tests ask
+  `layout.js buildBlueprint(plan, rect)` for the few cells they read, and read
+  the objects from the bake (`public/world/placed5/`), never `placeObjects` on
+  the whole long map.
+
+**The rule.** Never write a Wheel coordinate, size or count into code or a
+test. Read it from the table the worker plays (`server/src/wheelspawns.js`,
+`WHEEL_LONG`), or from the game's per-size copies (`WHEEL_GEOM`, `WHEELS`,
+`NML_CENTRES`), which test-world-core holds to the tables.

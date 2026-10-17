@@ -45,8 +45,8 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { isWheelTrialZone } from '../game/worldTrial.js';
-import { wheelMapInfo, wheelOverviewLands, wheelHere } from '../game/wheelTrial.js';
+import { isWheelTrialZone, WHEELS } from '../game/worldTrial.js';
+import { wheelMapInfo, wheelOverviewLands, wheelHere, wheelLocalLands } from '../game/wheelTrial.js';
 import { ZONES } from '../data/zones.js';   /* v2.3.3039: the world's name (BroTown) */
 import { questRoutePoint } from '../game/questRoute.js';          /* v2.3.3057: the quest's way, as the minimap's */
 import { wheelTownDoors } from '../game/wheelTownDoors.js';       /* v2.3.3057: the buildings, named */
@@ -57,7 +57,14 @@ import { peerDotAt } from '../game/peerDot.js';                    /* v2.3.3243:
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 /* v2.3.3057: 12 -> 28, so the town's buildings can be read by name */
 const ZOOM_MAX = 28;
-/* what is labelled from which zoom (1 = the whole Wheel on screen) */
+/* v2.3.3300: zoom 1 is still the whole Wheel on screen, but the long Wheel
+   (src/game/wheelSize.js) is ~4x as wide, so the zoom goes ~4x as far and
+   every step below is taken at the SHORT Wheel's scale: `rel` is the zoom
+   the short one would need to draw the world this big.  The town's
+   buildings come in at the same size on screen whichever Wheel it is. */
+function spanK(map) { return Math.max(1, Math.max(map.worldW, map.worldH) / WHEELS[1].worldW); }
+/* what is labelled from which zoom (1 = the whole Wheel on screen; v2.3.3300:
+   the short Wheel's zoom, `rel`) */
 const AT = { landSub: 1.5, stage: 2.2, commons: 1.8, gateName: 1.6, camp: 3, pass: 3, site: 3.6, road: 4.6,
   /* v2.3.3057: the details that come in as you zoom */
   others: 1.5, tier: 2.6, node: 3, monster: 3, bridge: 3.6, tierLv: 4.2, town: 6, otherName: 6 };
@@ -186,7 +193,7 @@ function WorldMap({ stateRef, onClose }) {
       const here = P ? wheelHere(P.x, P.y) : null;
       const words = here && here.words ? `${here.words.title}${here.words.sub ? ` · ${here.words.sub}` : ''}` : '';
       setWhere((o) => (o === words ? o : words));
-      try { window.__btWorldMap = { open: true, zoom: V.zoom, cx: Math.round(V.cx), cy: Math.round(V.cy), ...out }; } catch (e) { /* no page */ }
+      try { window.__btWorldMap = { open: true, zoom: V.zoom, rel: V.zoom / spanK(map), cx: Math.round(V.cx), cy: Math.round(V.cy), ...out }; } catch (e) { /* no page */ }
     };
     raf = requestAnimationFrame(loop);
     const onResize = () => { dirty.current = true; };
@@ -216,7 +223,7 @@ function WorldMap({ stateRef, onClose }) {
     const cv = cvRef.current, map = wheelMapInfo();
     if (!cv || !map) return;
     const V = view.current, k0 = baseScale(cv.clientWidth, cv.clientHeight, map) * V.zoom;
-    const z = Math.max(1, Math.min(ZOOM_MAX, V.zoom * f));
+    const z = Math.max(1, Math.min(ZOOM_MAX * spanK(map), V.zoom * f));
     const k1 = baseScale(cv.clientWidth, cv.clientHeight, map) * z;
     /* the world point under (sx, sy) stays under it */
     const wx = V.cx + (sx - cv.clientWidth / 2) / k0, wy = V.cy + (sy - cv.clientHeight / 2) / k0;
@@ -224,7 +231,7 @@ function WorldMap({ stateRef, onClose }) {
     V.cx = wx - (sx - cv.clientWidth / 2) / k1;
     V.cy = wy - (sy - cv.clientHeight / 2) / k1;
     clampView(V, map);
-    setZoomShown(z);
+    setZoomShown(z / spanK(map));   /* v2.3.3300: the legend's steps are the short Wheel's */
     dirty.current = true;
   };
   const onDown = (e) => {
@@ -263,9 +270,9 @@ function WorldMap({ stateRef, onClose }) {
     if (!S || !S.player || !map) return;
     const V = view.current;
     V.cx = S.player.x; V.cy = S.player.y;
-    V.zoom = Math.max(V.zoom, 4);
+    V.zoom = Math.max(V.zoom, 4 * spanK(map));
     clampView(V, map);
-    setZoomShown(V.zoom);
+    setZoomShown(V.zoom / spanK(map));
     dirty.current = true;
   };
   const zoomBtn = (f) => { const cv = cvRef.current; if (cv) zoomAt(f, cv.clientWidth / 2, cv.clientHeight / 2); };
@@ -347,7 +354,9 @@ function clampView(V, map) {
 
 /* ── drawing ── */
 function draw(g, w, h, dpr, map, V, P, facing, t, S) {
-  const k = baseScale(w, h, map) * V.zoom, z = V.zoom;
+  /* v2.3.3300: `z`, the zoom every step and size below is read at, is the
+     short Wheel's (spanK) */
+  const k = baseScale(w, h, map) * V.zoom, z = V.zoom / spanK(map);
   const X = (x) => (x - V.cx) * k + w / 2, Y = (y) => (y - V.cy) * k + h / 2;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.fillStyle = '#16324A';
@@ -358,6 +367,11 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   if (ov && ov.width) {
     g.imageSmoothingEnabled = true;
     g.drawImage(ov, X(0), Y(0), map.worldW * k, map.worldH * k);
+    /* v2.3.3300: the long Wheel's whole-map picture is a pixel every 16
+       cells; round you the blocks' lands are four times finer, as the
+       short Wheel's whole picture is (wheelTrial.js wheelLocalLands) */
+    const L = P ? wheelLocalLands(P.x, P.y) : null;
+    if (L && L.canvas && L.canvas.width) g.drawImage(L.canvas, X(L.x), Y(L.y), L.w * k, L.h * k);
     g.fillStyle = 'rgba(8, 14, 20, 0.16)';
     g.fillRect(0, 0, w, h);
   }

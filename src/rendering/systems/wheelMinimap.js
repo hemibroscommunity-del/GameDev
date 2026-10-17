@@ -72,7 +72,7 @@
  * are drawn once from numbers.
  */
 import { Container, Graphics, Sprite, Texture, CanvasSource, Text } from 'pixi.js';
-import { wheelOverviewLands, wheelMapInfo, wheelHere, wheelObjectsInfo } from '@/game/wheelTrial.js';
+import { wheelOverviewLands, wheelMapInfo, wheelHere, wheelObjectsInfo, wheelLocalLands } from '@/game/wheelTrial.js';
 import { wheelTownDoors } from '@/game/wheelTownDoors.js';   /* v2.3.3146: the town's buildings */
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
@@ -294,6 +294,9 @@ export class WheelMinimap {
     this._bld = [];         /* ...and what was drawn, for the probe */
     this.built = null;      /* the map the lines were drawn from */
     this.under = null;      /* the overview sprite */
+    this.local = null;      /* v2.3.3300: the lands round you, finer (_placeLocal) */
+    this._localCanvas = null;
+    this._localKey = '';
     this._rectFor = '';
   }
 
@@ -455,6 +458,41 @@ export class WheelMinimap {
     try { s.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
   }
 
+  /* v2.3.3300: THE LONG WHEEL'S LANDS ROUND YOU.  Its whole-map picture is a
+     pixel every 16 cells (worldblocks.js overviewCells), ~16 px of this box
+     a pixel, so a land's edge was a blur of steps; the blocks round you
+     bring their lands a pixel every 4 cells, the short Wheel's own detail
+     (wheelTrial.js wheelLocalLands), laid over it here.  The short Wheel has
+     no such picture (null): its whole map is that fine already. */
+  _placeLocal(P) {
+    const L = wheelLocalLands(P.x, P.y);
+    if (!L) { if (this.local) this.local.visible = false; return; }
+    const c = L.canvas;
+    if (!this.local || this._localCanvas !== c || this.local.texture.source.width !== c.width) {
+      this._dropLocal();
+      /* a fresh source, as _placeUnder's */
+      const tex = new Texture({ source: new CanvasSource({ resource: c, width: c.width, height: c.height, resolution: 1, scaleMode: 'linear' }) });
+      const s = new Sprite(tex);
+      s.tint = 0xdadada;   /* the overview's touch darker */
+      this.pan.addChildAt(s, this.under ? 1 : 0);
+      this.local = s; this._localCanvas = c; this._localKey = '';
+    }
+    const s = this.local;
+    /* the canvas is drawn again when a block comes or you cross into another */
+    if (this._localKey !== L.key) { this._localKey = L.key; s.texture.source.update(); }
+    s.x = L.x * SCALE; s.y = L.y * SCALE;
+    s.width = L.w * SCALE; s.height = L.h * SCALE;
+    s.visible = true;
+  }
+
+  _dropLocal() {
+    if (!this.local) return;
+    const s = this.local;
+    this.local = null; this._localCanvas = null; this._localKey = '';
+    /* the canvas is wheelTrial.js's: only our texture and its source go */
+    try { s.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
+  }
+
   _mark(x, y, icon, color, px) {
     let s = this.pool[this.used];
     if (!s) { s = new Sprite(this.dotTex); s.anchor.set(0.5); this.marks.addChild(s); this.pool.push(s); }
@@ -472,8 +510,9 @@ export class WheelMinimap {
     if (!P || !map) { this.hide(); return; }
     /* a new map is a new Wheel (left and come back): its overview is a new
        canvas too */
-    if (this.built !== map) { this._build(map); this._dropUnder(); }
+    if (this.built !== map) { this._build(map); this._dropUnder(); this._dropLocal(); }
     this._placeUnder(map);
+    this._placeLocal(P);
     /* v2.3.3146: the town's buildings, once their doors are known (the same
        array until the worker posts new objects) */
     let doors = [];
@@ -511,6 +550,15 @@ export class WheelMinimap {
     /* other bros and monsters (v2.3.3243: each where they are now -- one
        past 2,400 px, at the Wheel's edge where the box stops centring on you,
        is sent about once a second: src/game/peerDot.js) */
+    /* v2.3.3300: only those in the box (half a mark past its edges).  Every
+       live monster was marked every frame, wherever it stood, and the pool
+       keeps a sprite for the most ever marked at once: 1,920 sprites on the
+       Wheel five times longer (~2 MB of the page's heap, mp-membudget), all
+       but a few far past the box's edge. */
+    const pad = 14 / SCALE;
+    const bx0 = -this.pan.x / SCALE - pad, bx1 = (WHEEL_BOX - this.pan.x) / SCALE + pad;
+    const by0 = -this.pan.y / SCALE - pad, by1 = (MAP_BOT - this.pan.y) / SCALE + pad;
+    const inBox = (x, y) => x >= bx0 && x <= bx1 && y >= by0 && y <= by1;
     const others = S.others;
     /* v2.3.3250: never a parked copy (src/game/presence2.js) -- it is kept
        past the box's corner anyway, so this only spares it a sprite */
@@ -518,13 +566,17 @@ export class WheelMinimap {
       const now = Date.now(), at = _peerAt;
       for (const id in others) {
         const o = others[id];
-        if (o && !o._away && (o.zone || o.z) === S.currentZone) { peerDotAt(o, now, at); this._mark(at.x, at.y, 'player', C_OTHER, 13); }
+        if (o && !o._away && (o.zone || o.z) === S.currentZone) {
+          peerDotAt(o, now, at);
+          if (inBox(at.x, at.y)) this._mark(at.x, at.y, 'player', C_OTHER, 13);
+        }
       }
     }
     const mons = S.monsters || [];
     for (let i = 0; i < mons.length; i++) {
       const m = mons[i];
       if (!m || m.alive === false || m.dead || (m.hp != null && m.hp <= 0)) continue;
+      if (!inBox(m.x, m.y)) continue;
       this._mark(m.x, m.y, 'monster', C_MONSTER, 12);
     }
     /* v2.3.2990: the quest's way (above the bros and monsters: drawn last) */
@@ -625,6 +677,8 @@ export class WheelMinimap {
         rootX: this.root.x, topInset: this.root.y, panX: this.pan.x, panY: this.pan.y,
         playerBoxX: P.x * SCALE + this.pan.x, playerBoxY: P.y * SCALE + this.pan.y,
         facingRot: this.player.rotation, markers: this.used, under: !!this.under,
+        /* v2.3.3300: the long Wheel's finer lands round you, where they lie (game px) */
+        local: this.local && this.local.visible ? { x: Math.round(this.local.x / SCALE), y: Math.round(this.local.y / SCALE), w: Math.round(this.local.width / SCALE), key: this._localKey } : null,
         routes: map.routes.length, places: map.places.length, words: w ? { ...w } : null,
         nodes: nodeMarks,   /* v2.3.3012: the resources marked */
         frame: FRAME, label: false,   /* v2.3.3009: the frame's width; nothing printed under the box */
@@ -649,6 +703,7 @@ export class WheelMinimap {
     releaseLandIcons(this._iconHold);
     try { if (window.__btWheelPlate) window.__btWheelPlate = null; } catch (e) { /* no page */ }
     this._dropUnder();
+    this._dropLocal();
     try { this.root.destroy({ children: true }); } catch (e) { /* gone */ }
     this.pool = [];
   }

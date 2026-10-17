@@ -1108,8 +1108,16 @@ export function planFor(search, size = 1) {
      the town sizes above and `?placing=2`, are the short Wheel's: their
      objects are worked out from the whole map, which the long one is far too
      big for on a phone */
-  if (/(?:^|[?&])placing=2(?:&|$)/.test(search || '')) return PLAN;
+  if (wheelPreview(search)) return PLAN;
   return wheelSized(size);
+}
+/* v2.3.3300: whether the address asks for a preview (a town size, the plain
+   town, placing v2), which is the short Wheel's whatever the room plays --
+   so the page tells the worker it draws the short one only (its join's `ws`).
+   MIRROR: src/game/wheelSize.js wheelPreviewAddress (test-world-core). */
+export function wheelPreview(search) {
+  const s = search || '';
+  return bigTownScale(s) != null || /(?:^|[?&])plaintown(?:&|$)/.test(s) || /(?:^|[?&])placing=2(?:&|$)/.test(s);
 }
 
 /* The plan with the town laid for buildings `k` times the size, or the plan
