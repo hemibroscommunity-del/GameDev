@@ -66,3 +66,16 @@ with no price, the families still pricing their own, a golden ticket and a
 pickaxe neither bought nor quoted nor listed nor sold out of his pile, and a
 rare gem still selling for 10. Two older checks used made-up keys the old
 rule happened to price (`ok_key`, `bat-wing`); they use real ones now.
+
+## v2.3.3316: the three tools he sells back
+
+A death in No man's land takes the gathering tools now (no-mans-land.md
+"Everything but what you wear"), and the owner chose "Drop them, sell
+replacements". So Diego sells the axe, the rod and the pickaxe at a flat 100
+gold each (`TOOL_SHELF`, server/src/shop.js), outside his pile and his price
+families: one at a time, only to a player a quest gave that tool who holds
+none. They stay **unpriced** for selling: he never buys one back, so a tool
+taken from the dead is no gold at his counter, and the v2.3.3184 rule above (a
+pickaxe neither bought nor sold out of his pile) still holds for the pile.
+Tested in `server/test/shop.test.mjs` "a lost tool, bought back" and
+`tools/qa/mp/mp-toolshelf.mjs`.

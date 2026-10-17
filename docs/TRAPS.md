@@ -6543,6 +6543,27 @@ blockable at all: its row's `block` is null.
 **Receipt:** hit-door.test §5, every blockable row, a ball from behind
 included, lands through a shield facing away (v2.3.3300).
 
+## 188. "A death keeps the tools and the quest's items -- that is a short list" (v2.3.3316)
+
+`_keptThroughDeath` (gathering.js) keeps two things through every death: the
+three gathering tools, and every **quest objective's** item. The second reads
+like a handful of quest remnants. It is read off the quest table, and an
+objective can name a FAMILY (`invPrefix`): the first quests ask for cooked fish
+and for ore, so the carve-out was **every `ore_` and every `cooked_fish_`** in
+the game, plus four monsters' remains. No man's land's loss ran through the same
+carve-out, so a gatherer killed with a bag of iron and black steel ore dropped
+nothing -- and a bag holding only ore and tools made no pile at all. The owner
+saw it as "Opponents do not drop all of their items".
+
+- **The fix (v2.3.3316):** a loss in No man's land takes the bag with no
+  carve-out (`_spawnDeathPile`'s `all`, and the wipe beside it the same); the
+  tools come back from Diego (`TOOL_SHELF`). An ordinary death keeps both.
+
+**The rule.** Before reasoning about what a rule "keeps", list it: print the
+set it actually computes (here `_QUEST_KEEP_SPEC()` and `_GATHER_TOOL_KEYS()`)
+rather than reading its name. A family match grows with every quest that names
+a family.
+
 ## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3314)
 
 **Tempting:** a pose that swaps the body for a painted figure (the cook, the

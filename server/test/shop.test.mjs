@@ -10,7 +10,7 @@
  * pile one player fills is the pile another player sees.
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
-import { SHOP, isShopPotion, isCookhouseDish, isCookedFood } from '../src/shop.js';
+import { SHOP, isShopPotion, isCookhouseDish, isCookedFood, TOOL_SHELF, isToolKey, toolEarned } from '../src/shop.js';
 import { SHOP_ITEMS } from '../src/data.js';   /* v2.3.2063: his staple shelf */
 /* v2.3.3184: every key the game mints, read out of the tables that mint them */
 import * as DATA from '../src/data.js';
@@ -167,8 +167,11 @@ check('shop_result cannot be forged by a client', PRIVILEGED_EVENTS.has('shop_re
 const fresh = makeState();
 const room3 = new GameRoom(fresh, mockEnv);
 const seeded = await room3._shopList();
-check('a brand-new world finds nothing on him: no seeded fish and no staples (v2.3.3132)',
-  seeded.items.length === 0 && Object.keys(SHOP.SEED).length === 0, seeded.items);
+/* v2.3.3316: ...but the three gathering tools he sells back (TOOL_SHELF), no
+   count, never a staple */
+check('a brand-new world finds nothing on him but the tools he sells back: no seeded fish and no staples (v2.3.3132; the tools v2.3.3316)',
+  seeded.items.every((i) => i.tool === true && !i.staple && i.qty === null && isToolKey(i.key))
+    && seeded.items.map((i) => i.key).join(',') === 'fishing_pole,mining_pickaxe,woodcutting_axe' && Object.keys(SHOP.SEED).length === 0, seeded.items);
 /* A world whose pile took its six trout before v2.3.3132 still has them
    stored: they must neither show nor sell. */
 const oldPile = await room3._shopStock();
@@ -295,7 +298,9 @@ check('...and a huge one is capped', many.items.length < 100, many.items.length)
   st[tk] = 2; st.mining_pickaxe = 1;
   await room._shopSaveStock(st);
   const shelf = await room._shopList([tk]);
-  check('...lists none from his pile (two tickets and a pickaxe bought at the old default)', !shelf.items.some((i) => i.key === tk || i.key === 'mining_pickaxe'), shelf.items.map((i) => i.key));
+  /* v2.3.3316: the pickaxe is on his shelf now as a TOOL he sells back, a row
+     with no count -- never as pile stock */
+  check('...lists none from his pile (two tickets and a pickaxe bought at the old default)', !shelf.items.some((i) => i.key === tk || (i.key === 'mining_pickaxe' && !i.tool)), shelf.items.map((i) => i.key + (i.tool ? '(tool)' : '')));
   const buyer = { coins: 1000, inventory: {} };
   const r3 = await room._shopBuy(buyer, tk, 1);
   const r4 = await room._shopBuy(buyer, 'mining_pickaxe', 1);
@@ -586,6 +591,80 @@ check('a refused drink keeps the bottle and heals nothing',
   await send(D, 'shop_sell', { key: 'slime-remnants', qty: 1 });
   check('...while a sale that changed the pile still reaches every player',
     W.sent.filter((m) => m.type === 'shop_state').length === 1 && results().pop().ok === true);
+}
+
+/* ═══ v2.3.3316: A LOST TOOL, BOUGHT BACK ═══
+   A death in No man's land takes the axe, the rod and the pickaxe now; the
+   owner: "Drop them, sell replacements" -- "the General Store sells a
+   replacement to anyone who already earned that tool from the quest". */
+{
+  const tick = () => new Promise((r) => setTimeout(r, 10));
+  const send = async (ws, type, payload) => { await room.webSocketMessage(ws, JSON.stringify({ type, payload })); await tick(); };
+  const T = fakeWs('tools');
+  await join(T, 'toolbro');
+  const t = room.playerState.toolbro;
+  const result = () => T.sent.filter((m) => m.type === 'shop_result').map((m) => m.payload).pop();
+  const quote = () => T.sent.filter((m) => m.type === 'shop_quoted').map((m) => m.payload).pop();
+  check('the tool shelf: an axe, a rod and a pickaxe, a flat price each', Object.keys(TOOL_SHELF).length === 3
+    && ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe'].every((k) => isToolKey(k) && TOOL_SHELF[k] > 0) && !isToolKey('__proto__') && !isToolKey('ore_iron'));
+  /* earned: read off the quest table the way the quests pay */
+  check('...earned the way the quest pays it: the axe and the rod once life_1 is accepted, the pickaxe once it is turned in',
+    toolEarned({ life_1: 'active' }, 'woodcutting_axe') && toolEarned({ life_1: 'active' }, 'fishing_pole') && !toolEarned({ life_1: 'active' }, 'mining_pickaxe')
+    && toolEarned({ life_1: 'turnedIn' }, 'mining_pickaxe') && !toolEarned({}, 'woodcutting_axe') && !toolEarned({ life_1: 'available' }, 'fishing_pole')
+    && !toolEarned(null, 'fishing_pole') && !toolEarned({ life_1: 'turnedIn' }, 'ore_iron'));
+  /* a player no quest gave one */
+  t._quests = Object.create(null);
+  t.inventory = {};
+  t.coins = 1000;
+  T.sent.length = 0;
+  await send(T, 'shop_quote', { key: 'woodcutting_axe', qty: 1, mode: 'buy' });
+  await send(T, 'shop_buy', { key: 'woodcutting_axe', qty: 1 });
+  check('a player the quest never gave one: the quote says why (quest), the buy is refused, nothing moves',
+    quote().tool === true && quote().qty === 0 && quote().why === 'quest' && result().ok === false && /Mayor Bro/.test(result().error)
+      && t.coins === 1000 && !t.inventory.woodcutting_axe, { q: quote(), r: result(), coins: t.coins });
+  /* one who has one */
+  t._quests.life_1 = 'active';
+  t.inventory = { woodcutting_axe: 1 };
+  await send(T, 'shop_quote', { key: 'woodcutting_axe', qty: 1, mode: 'buy' });
+  await send(T, 'shop_buy', { key: 'woodcutting_axe', qty: 1 });
+  check('...one who holds one: "have", refused -- a replacement, never a second', quote().why === 'have' && result().ok === false
+    && /already/.test(result().error) && t.inventory.woodcutting_axe === 1 && t.coins === 1000, { q: quote(), r: result() });
+  /* lost it */
+  t.inventory = {};
+  await send(T, 'shop_quote', { key: 'woodcutting_axe', qty: 5, mode: 'buy' });
+  check('...one who lost it: quoted ONE at the shelf\'s price, whatever the quantity asked', quote().qty === 1 && quote().total === TOOL_SHELF.woodcutting_axe && !quote().why, quote());
+  await send(T, 'shop_buy', { key: 'woodcutting_axe', qty: 5 });
+  const st = state._store.get('rpg:toolbro');
+  check('...bought: one axe in the bag, the price off the purse, and SAVED', result().ok === true && result().bought === 1 && t.inventory.woodcutting_axe === 1
+    && t.coins === 1000 - TOOL_SHELF.woodcutting_axe && !!st && st.inventory.woodcutting_axe === 1 && st.coins === t.coins, { r: result(), coins: t.coins, st: st && { inv: st.inventory, coins: st.coins } });
+  await send(T, 'shop_buy', { key: 'woodcutting_axe', qty: 1 });
+  check('...and not a second one straight after', result().ok === false && t.inventory.woodcutting_axe === 1);
+  /* the pickaxe waits for the turn-in */
+  await send(T, 'shop_buy', { key: 'mining_pickaxe', qty: 1 });
+  check('the pickaxe waits for life_1\'s turn-in', result().ok === false && !t.inventory.mining_pickaxe);
+  t._quests.life_1 = 'turnedIn';
+  t.coins = 50;
+  await send(T, 'shop_buy', { key: 'mining_pickaxe', qty: 1 });
+  check('...and for the gold', result().ok === false && /coins/i.test(result().error) && !t.inventory.mining_pickaxe && t.coins === 50, result());
+  t.coins = 500;
+  await send(T, 'shop_buy', { key: 'mining_pickaxe', qty: 1 });
+  check('...turned in and paid: the pickaxe', result().ok === true && t.inventory.mining_pickaxe === 1 && t.coins === 500 - TOOL_SHELF.mining_pickaxe);
+  /* he never buys one back */
+  await send(T, 'shop_sell', { key: 'mining_pickaxe', qty: 1 });
+  check('he never buys a tool back (no gold for a tool taken off the dead)', result().ok === false && t.inventory.mining_pickaxe === 1, result());
+  /* the dead buy nothing */
+  t.inventory = {};
+  t.dying = true;
+  await send(T, 'shop_buy', { key: 'mining_pickaxe', qty: 1 });
+  check('the dying buy no tool', result().ok === false && !t.inventory.mining_pickaxe);
+  t.dying = false;
+  /* the kill switch */
+  const keep = room._liveFlags;
+  room._liveFlags = { ...(keep || {}), toolshop: false };
+  const offList = await room._shopList();
+  await send(T, 'shop_buy', { key: 'mining_pickaxe', qty: 1 });
+  check('kill switch: toolshop:false takes them off his shelf and refuses a buy', !offList.items.some((i) => i.tool) && result().ok === false && !t.inventory.mining_pickaxe);
+  room._liveFlags = keep;
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
