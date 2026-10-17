@@ -40,9 +40,10 @@
  * larger than the old 20 px trigger.
  *
  * BLOCK 3 -- THE SILENT REFUSAL.  A pile the worker has never heard of is
- * refused `no-pile`.  The coin sample must not play and the gold must not
- * move.  This is the assertion that stops a future "just play it on the
- * prediction" from shipping.
+ * refused `no-pile` (or `no-loot-zone` while no pile has dropped in the zone
+ * yet -- v2.3.3320, the note at the block).  The coin sample must not play and
+ * the gold must not move.  This is the assertion that stops a future "just
+ * play it on the prediction" from shipping.
  *
  * BLOCK 4 -- THE POSITION THE PICKUP IS MEASURED FROM.  _handleLootPickup
  * range-checks against ps.x/ps.y -- the worker's copy of the player -- 160 px
@@ -103,9 +104,29 @@ const OLD_TRIGGER = 20;           /* groundLoot.js, the sprite-arrival gate */
    travelled past the last position this socket actually SENT -- which is the
    error in the worker's copy at the moment the pickup is judged. */
 const WIRE_INIT = () => {
-  window.__btWire = { asks: [], moves: 0, last: null };
+  window.__btWire = { asks: [], moves: 0, last: null, rejects: [] };
   const orig = WebSocket.prototype.send;
   WebSocket.prototype.send = function (data) {
+    /* v2.3.3320: ...and the worker's refusals, with their reason, off the
+       same socket (listened to from its first send, the join).  BLOCK 3's
+       answer depends on it: see the note there. */
+    if (!this.__btRx) {
+      this.__btRx = true;
+      try {
+        this.addEventListener('message', (ev) => {
+          try {
+            const v = JSON.parse(ev.data);
+            const look = (e) => {
+              if (e && e.type === 'loot_pickup_rejected' && e.payload) {
+                window.__btWire.rejects.push({ lootId: e.payload.lootId, reason: e.payload.reason, t: Date.now() });
+              }
+            };
+            look(v);
+            if (v && Array.isArray(v.events)) v.events.forEach(look);
+          } catch (e) { /* not JSON */ }
+        });
+      } catch (e) { /* never let the observer break a send */ }
+    }
     try {
       if (typeof data === 'string' && data.indexOf('"type"') >= 0) {
         /* v2.3.3254: a frame may be a bundle (a JSON array of messages) */
@@ -117,14 +138,20 @@ const WIRE_INIT = () => {
         } else if (m && m.type === 'loot_pickup') {
           const S = window._gameState && window._gameState.current;
           const L = window.__btWire.last;
+          /* v2.3.3320: the newest position the game had QUEUED when it asked
+             (BLOCK 4 hooks the channel), and whether that position is the
+             last one on the wire ahead of the ask -- see the note there. */
+          const lootId = m.payload && m.payload.lootId;
+          const q = window.__btWire.askQ ? window.__btWire.askQ[lootId] : undefined;
           window.__btWire.asks.push({
             t: Date.now(),
-            lootId: m.payload && m.payload.lootId,
+            lootId,
             viaPet: !!(m.payload && m.payload.viaPet),
             /* >= 0 means "the worker's copy is this far behind us right now". */
             stale: (S && S.player && L) ? Math.round(Math.hypot(S.player.x - L.x, S.player.y - L.y)) : null,
             staleMs: L ? Date.now() - L.t : null,
             moving: !!(S && S.player && (S.player.vx || S.player.vy)),
+            heldBack: q === undefined || q === null ? null : !(L && L.x === q.x && L.y === q.y),
           });
         }
         }
@@ -460,18 +487,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.keyboard.down('a');
     const rows = await P.page.evaluate(async () => {
       const S = window._gameState.current;
+      const W = window.__btWire;
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-      await sleep(400);              /* up to walking speed before we start */
-      for (let i = 0; i < 10; i++) {
-        S.groundLoot.push({
-          lootId: 'lc-probe-' + Date.now() + '-' + i, zone: S.currentZone, _serverLoot: true,
-          x: S.player.x, y: S.player.y - 15, coins: 1, xp: 0,
-          skull: null, shard: null, recipients: null, ts: Date.now() - 1000,
-        });
-        await sleep(300);
+      /* v2.3.3320: what the game QUEUES, through its own channel -- observed
+         and passed on untouched.  A walking frame queues its position (at
+         most every 22 ms, BroTown's move broadcast) and the shim holds it
+         for the batch timer; an ask snapshots the newest queued position,
+         and the wire observer above says whether that one went out first. */
+      const ch = S.channel;
+      const origSend = ch.send;
+      W.askQ = Object.create(null);
+      W.queued = null;
+      ch.send = function (msg) {
+        try {
+          if (msg && msg.type === 'broadcast' && msg.event === 'move' && msg.payload) {
+            W.queued = { x: msg.payload.x, y: msg.payload.y };
+          } else if (msg && msg.type === 'loot_pickup' && msg.payload) {
+            W.askQ[msg.payload.lootId] = W.queued ? { x: W.queued.x, y: W.queued.y } : null;
+          }
+        } catch (e) { /* never let the observer break a send */ }
+        return origSend.apply(this, arguments);
+      };
+      try {
+        await sleep(400);              /* up to walking speed before we start */
+        for (let i = 0; i < 10; i++) {
+          S.groundLoot.push({
+            lootId: 'lc-probe-' + Date.now() + '-' + i, zone: S.currentZone, _serverLoot: true,
+            x: S.player.x, y: S.player.y - 15, coins: 1, xp: 0,
+            skull: null, shard: null, recipients: null, ts: Date.now() - 1000,
+          });
+          await sleep(300);
+        }
+        await sleep(400);
+      } finally {
+        ch.send = origSend;
       }
-      await sleep(400);
-      return window.__btWire.asks.slice();
+      return W.asks.slice();
     });
     await P.page.keyboard.up('a');
     return rows;
@@ -479,12 +530,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const moved = flush.filter((a) => a.moving && a.stale !== null);
   const worstPx = moved.length ? Math.max(...moved.map((a) => a.stale)) : null;
   const worstMs = moved.length ? Math.max(...moved.map((a) => a.staleMs)) : null;
-  console.log('    flush: ' + JSON.stringify({ asks: flush.length, moving: moved.length, worstPx, worstMs }));
+  const held = moved.filter((a) => a.heldBack !== false);
+  console.log('    flush: ' + JSON.stringify({ asks: flush.length, moving: moved.length, worstPx, worstMs,
+    heldBack: held.length }));
   rec.ok(`ten pickup asks were sent while walking (guard -- ${moved.length})`, moved.length >= 6,
     { asks: flush.length, moving: moved.length });
-  rec.ok(`...and every one of them put the bro's position on the wire first `
-    + `(worst wait between that position and the ask: ${worstMs}ms, want <= 8)`,
-    moved.length >= 6 && worstMs !== null && worstMs <= 8, { worstMs, worstPx, rows: moved.slice(0, 10) });
+  /* ═══ v2.3.3320: THE NEWEST QUEUED POSITION, NOT "WITHIN 8 ms" ═══
+     The check was "the last position on the wire went out at most 8 ms
+     before the ask" (the flush's ~0 against 43-48 without it).  But when
+     the batch timer has JUST sent the held move, nothing is held at the ask
+     and the flush rightly sends nothing: the wait is then the time from that
+     send to this frame's ask -- under a frame, and this frame's own position
+     is not queued yet -- which on a box drawing ~30 frames a second is 9-10
+     ms with nothing wrong (the sweep of 2026-10-17; main passed at 8 by
+     luck).  What the flush promises is that the worker has the NEWEST
+     position the phone had queued when it asked: so each ask is held to
+     exactly that, whatever the frame rate.  Without the flush, the held
+     move -- the newest queued -- goes out a batch later, after the ask. */
+  rec.ok(`...and every one of them put the newest position the phone had queued on the wire first `
+    + `(${moved.length - held.length}/${moved.length}; worst wait ${worstMs}ms, ${worstPx}px)`,
+    moved.length >= 6 && held.length === 0, { worstMs, worstPx, rows: moved.slice(0, 10) });
 
   /* ═══ BLOCK 3 — A REFUSED PICKUP MAKES NO SOUND ═══ */
   const ghost = await P.page.evaluate(async () => {
@@ -503,11 +568,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await sleep(80);
     }
     await sleep(700);
+    const W = window.__btWire;
     return { before, after: { sfx: window.__btCoinSfx || 0, coins: S.rpg.coins },
-      stillThere: !!(S.groundLoot || []).find((l) => l && l.lootId === id) };
+      stillThere: !!(S.groundLoot || []).find((l) => l && l.lootId === id),
+      asks: W.asks.filter((a) => a.lootId === id).length,
+      reasons: [...new Set(W.rejects.filter((r) => r.lootId === id).map((r) => r.reason))] };
   });
   console.log('    ghost: ' + JSON.stringify(ghost));
-  rec.ok('a pile the worker refuses is dropped from the ground (guard)', ghost.stillThere === false, ghost);
+  /* ═══ v2.3.3320: WHAT THE CLIENT DOES DEPENDS ON THE WORKER'S REASON ═══
+     The worker makes a zone's loot list at its first pile (index.js
+     `this.loot[zone] = []`), and until then a pile nobody has heard of is
+     refused `no-loot-zone`, not `no-pile`.  The client files that one as a
+     no that clears -- re-asked a second later (wsClient's v2.3.2545 third
+     bucket: a room still rebuilding its zones) -- and keeps the pile.  So
+     this block only sees `no-pile`, and the pile dropped, after BLOCK 1 or 2
+     has killed something in the meadow; on the sweep of 2026-10-17 both
+     skipped (the bro out of the worker's 400 px melee reach, see kill()),
+     and the guard failed on a client doing what it was written to do.  The
+     two assertions under it hold either way. */
+  const PERMANENT = ['no-pile', 'already-claimed', 'not-recipient', 'wrong-zone'];
+  rec.ok('the worker answered the ghost\'s pickup with a refusal (guard)', ghost.reasons.length > 0, ghost);
+  if (ghost.reasons.some((r) => PERMANENT.includes(r))) {
+    rec.ok('a pile the worker refuses for good is dropped from the ground (guard)', ghost.stillThere === false, ghost);
+  } else if (ghost.reasons.length && ghost.reasons.every((r) => r === 'no-loot-zone')) {
+    rec.ok('a pile refused while the zone has no loot list yet is kept and asked for again (guard)',
+      ghost.stillThere === true && ghost.asks >= 2, ghost);
+  }
   rec.ok('...and a refused pickup makes NO coin sound', ghost.after.sfx === ghost.before.sfx, ghost);
   rec.ok('...and credits no gold', ghost.after.coins === ghost.before.coins, ghost);
 

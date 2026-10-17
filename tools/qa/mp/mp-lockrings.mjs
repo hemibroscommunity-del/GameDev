@@ -63,13 +63,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      cobble is the same brass the marks are drawn in (TRAPS #21) and the zoom is
      the town zoom -- neither is what the owner is looking at.  Walk out to a
      spoke zone, exactly as mp-dashhit does, then take the scene over. */
-  await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    if (S && S.channel) for (const q of ['tut_1', 'tut_2', 'tut_3', 'tut_4']) {
-      S.channel.send({ type: 'quest_accept', payload: { questId: q } });
-    }
-  });
-  await P.page.waitForTimeout(1800);
+  /* v2.3.3320: the lands opened by the harness (openLands): since v2.3.3179
+     the worker refuses tut_2..tut_4 taken at once, so only Frost Ridge
+     opened and this never reached its land (the sweep of 2026-10-17) */
+  await H.openLands(P, wsPort);
   const marks = await P.page.evaluate(() => {
     const f = window._gameFns || {};
     return {
@@ -169,10 +166,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { id: lt && lt.id, src: lt && lt.src, dLocked: d('locked'), dPlain: d('plain') };
   });
   console.log('    after the pin: ' + JSON.stringify(stolen));
-  rec.ok(`...and once the pin lapses the NEARER monster takes the lock (${stolen.dPlain}px vs ${stolen.dLocked}px)`,
-    stolen.id === 'plain', stolen);
-  rec.ok('...as an automatic lock, so the nearest rule owns it from here',
-    stolen.src === 'auto', stolen);
+  /* ═══ v2.3.3320: THE STEAL WAS RETIRED, BY THE OWNER, IN v2.3.2513 ═══
+     These two asserted v2.3.2263's steal ("once the pin lapses the NEARER
+     monster takes the lock") long after targeting.js's D3 replaced it: "a tap
+     lock is absolute until the monster dies or leaves the 220px perimeter"
+     -- nothing TAKES your target off you; it can only LEAVE (tapReleased).
+     They went unnoticed because since v2.3.3179 this check never reached the
+     Verdant Wilds (TRAPS §201).  The tapped monster here stands at 200px,
+     inside the perimeter, so D3's answer is that it stays the lock, a tap's,
+     with the nearer one standing beside it. */
+  rec.ok(`...and a NEARER monster does not take it while the tapped one is still in the fight `
+    + `(${stolen.dPlain}px vs ${stolen.dLocked}px; v2.3.2513 D3)`,
+    stolen.id === 'locked' && stolen.dLocked != null && stolen.dLocked <= 220, stolen);
+  rec.ok('...and it is still the TAP\'s lock, not the automatic rule\'s',
+    stolen.src === 'tap', stolen);
 
   /* ═══ AND A BOW'S TAP IS STILL ABSOLUTE ═══
      v2.3.2251 made the tap the ONLY way a ranged weapon acquires anything and

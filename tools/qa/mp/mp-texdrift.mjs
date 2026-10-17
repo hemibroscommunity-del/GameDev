@@ -105,13 +105,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (!t0) { await P.ctx.close().catch(() => {}); return; }
 
   /* The quests open the gate out of town. */
-  await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    if (S && S.channel) for (const q of ['tut_1', 'tut_2', 'tut_3', 'tut_4']) {
-      S.channel.send({ type: 'quest_accept', payload: { questId: q } });
-    }
-  });
-  await P.page.waitForTimeout(1500);
+  /* v2.3.3320: the lands opened by the harness (openLands): since v2.3.3179
+     the worker refuses tut_2..tut_4 taken at once, so only Frost Ridge
+     opened and this never reached its land (the sweep of 2026-10-17) */
+  await H.openLands(P, wsPort);
 
   const hub = await goto(P, 'town', 'worldview', rec);
   rec.ok('reached the worldview hub (guard)', hub === 'worldview', { hub });

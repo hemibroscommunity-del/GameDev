@@ -49,9 +49,53 @@ const stand = (P, x, y) => P.page.evaluate(({ px, py }) => {
   return true;
 }, { px: x, py: y }).catch(() => false);
 
+/* v2.3.3320: every health figure the WORKER reports for one monster, read
+   off the socket itself.  Since v2.3.2361 the worker rolls a named lunge's
+   damage (server/src/abilities.js _lungeStrike, inside its 220 px reach), so
+   a lunge from the 180 px this test stands at can legitimately lower the
+   monster's HP and print the worker's number a round trip later: the sweep
+   of 2026-10-17 caught exactly that and called it fiction.  The client
+   inventing damage is the HP going BELOW what the worker said, or a number
+   over the monster the worker never sent.  Watching the frames, as
+   mp-whirlwind does, observes the platform's socket; the game's own handler
+   runs untouched. */
+const watchMonster = () => {
+  const Orig = window.WebSocket;
+  window.WebSocket = function (...a) {
+    const ws = new Orig(...a);
+    ws.addEventListener('message', (ev) => {
+      const w = window.__fnWatch;
+      if (!w || !w.id) return;
+      let m;
+      try { m = JSON.parse(ev.data); } catch (e) { return; }
+      const look = (e) => {
+        if (!e || e.type !== 'monster_hit') return;
+        const p = e.payload || e;
+        if (p && String(p.monsterId) === w.id) {
+          w.hits.push({ hpPct: p.hpPct, ability: p.ability || null, at: Date.now() });
+        }
+      };
+      look(m);
+      if (m && Array.isArray(m.events)) m.events.forEach(look);
+      if (m && m.type === 'tick' && m.monsters && typeof m.monsters === 'object') {
+        for (const z of Object.keys(m.monsters)) {
+          const list = m.monsters[z];
+          if (!Array.isArray(list)) continue;
+          for (const md of list) {
+            if (md && String(md.id) === w.id && typeof md.hp === 'number') w.hps.push(md.hp);
+          }
+        }
+      }
+    });
+    return ws;
+  };
+  window.WebSocket.prototype = Orig.prototype;
+  Object.assign(window.WebSocket, { OPEN: Orig.OPEN, CLOSED: Orig.CLOSED, CONNECTING: Orig.CONNECTING, CLOSING: Orig.CLOSING });
+};
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Honest', wsPort, webPort,
-    viewport: { width: 390, height: 844 }, touch: true });
+    viewport: { width: 390, height: 844 }, touch: true, init: watchMonster });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2000);
 
@@ -208,32 +252,53 @@ export async function run({ browser, wsPort, webPort, rec }) {
        cleared when the roll ends, well inside the 600ms this then waits for
        the arrival timer, so sampling it afterwards would say 'null' for a
        lunge that certainly happened. */
-    const lFired = await P.page.evaluate(async (ang) => {
+    const lFired = await P.page.evaluate(async (a) => {
       const S = window._gameState.current;
       const f = window._gameFns || {};
-      if (f.contextualDodge) f.contextualDodge(ang);
+      window.__fnWatch = { id: a.id, hits: [], hps: [] };
+      if (f.contextualDodge) f.contextualDodge(a.toward);
       return { kind: S._dodgeRoll && S._dodgeRoll.kind, target: S._dodgeRoll && S._dodgeRoll.targetId };
-    }, lArmed.toward);
-    /* doLunge lands its hit on a 160ms timer; wait well past it, but not so
-       long that a worker tick could legitimately move the HP. */
+    }, { id: lArmed.id, toward: lArmed.toward });
+    /* doLunge lands its local hit on a 160ms timer; wait well past it.
+       v2.3.3320: the worker's own lunge (v2.3.2361) may land in this time
+       too -- it is the worker's to deal, and the checks below hold the page
+       to what the worker REPORTED, not to "nothing changed". */
     await P.page.waitForTimeout(600);
     const lAfter = await P.page.evaluate((a) => {
       const S = window._gameState.current;
       const m = (S.monsters || []).find((x) => String(x.id) === a.id) || {};
-      /* Only numbers over the MONSTER count: the player is standing next to
-         a live worker monster, so a hit taken in the same second would
-         otherwise read as a lunge popup. */
-      const near = (S.dmgNumbers || []).filter((d) =>
-        Math.abs(d.x - (m.x || 0)) < 60 && Math.abs(d.y - (m.y || 0)) < 90);
+      const w = window.__fnWatch || { hits: [], hps: [] };
+      window.__fnWatch = null;
+      const maxHp = m.maxHp || m.hp || 0;
+      const reported = w.hits.map((h) => Math.round(h.hpPct * maxHp)).concat(w.hps)
+        .filter((v) => typeof v === 'number' && isFinite(v));
+      /* Only numbers over the MONSTER count, and never one marked `taken`:
+         the lunge carries the player to the monster, so a hit taken in the
+         same second would otherwise read as a lunge popup.  v2.3.3320: a
+         monster's number spawns over its HP bar (combatHelpers
+         monsterPopupY: its _popupTopOff, -102 to -189), and the old 90 px
+         window round its feet no longer saw any number at all -- the worker's
+         included -- so it passed whatever was printed. */
+      const top = m._popupTopOff != null ? m._popupTopOff : -120;
+      const near = (S.dmgNumbers || []).filter((d) => !d.taken
+        && Math.abs(d.x - (m.x || 0)) < 70
+        && d.y - (m.y || 0) > top - 80 && d.y - (m.y || 0) < 40);
       return { hp: m.curHp, pops: near.map((d) => String(d.text)),
-        allPops: (S.dmgNumbers || []).length };
+        allPops: (S.dmgNumbers || []).length, workerHits: w.hits.length,
+        lunges: w.hits.filter((h) => h.ability === 'lunge').length,
+        workerLow: reported.length ? Math.min(...reported) : null, top };
     }, { id: lArmed.id });
-    console.log('    lunge: fired ' + JSON.stringify(lFired) + ' -> ' + JSON.stringify(lAfter));
+    console.log('    lunge: fired ' + JSON.stringify(lFired) + ' at hp ' + lArmed.hp + ' -> ' + JSON.stringify(lAfter));
     rec.ok('the lunge actually fired (guard)', lFired.kind === 'lunge', lFired);
+    if (lAfter.workerHits > 0) {
+      rec.ok('the worker\'s own hit prints its number over the monster (guard: the window sees numbers)',
+        (lAfter.pops || []).length >= 1, lAfter);
+    }
     rec.ok('THE REGRESSION: it does not print a number over the monster for damage the worker never dealt',
-      (lAfter.pops || []).length === 0, lAfter);
-    rec.ok('...and it does not write the monster\'s HP behind the worker\'s back',
-      lAfter.hp == null || lAfter.hp >= lArmed.hp, lAfter);
+      (lAfter.pops || []).length <= lAfter.workerHits, lAfter);
+    const floor = lAfter.workerLow != null ? Math.min(lArmed.hp, lAfter.workerLow) : lArmed.hp;
+    rec.ok('...and it does not write the monster\'s HP behind the worker\'s back (never below what the worker said)',
+      lAfter.hp == null || lArmed.hp == null || lAfter.hp >= floor, { ...lAfter, before: lArmed.hp, floor });
   }
 
   /* ── 3. the dash cooldown starts when the WORKER's does ────────────────

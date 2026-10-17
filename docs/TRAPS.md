@@ -6885,3 +6885,27 @@ and its empty ember turned out to be the player walked out through the zone's
 door into the World View (the phone and the worker both said so, once the
 check asked them).  Still open: about one bow arrow a run, at 190-240 px,
 flies its full length past a target that barely moved, before and after.
+
+## 201. "Accept tut_1 to tut_4 and every land is open" (v2.3.3320)
+
+**Wrong since v2.3.3179.** Each tutorial step opens one of the old lands
+(tut_1 Frost Ridge, tut_2 the Verdant Wilds, tut_3 the Wind Dunes, tut_4 the
+Flame Fields: movement.js `QUEST_ZONE_GATE`), and the checks opened them all by
+sending the four `quest_accept`s at once. The worker now refuses a step taken
+ahead of the step before it (quests.js `_questBarred` 'order'), so only tut_1
+is taken: Frost Ridge opens, and the other three say "not on your map yet" and
+nudge you off the trail-head. Fourteen checks still copied the old loop on
+main, and every one that walks to the Verdant Wilds, the Dunes or the Flame
+Fields stood at a shut door (`mp-deathtex` "reached ember" on the sweep of
+2026-10-17).
+
+**The rule:** open the lands with `H.openLands(P, wsPort)` (harness.mjs,
+v2.3.3283): tut_1 the player's way, then the test lever `/dev/unlock`, waiting
+until the page has heard tut_4 is open. Never copy the four-quest loop from an
+older scenario.
+
+**Receipt:** the fourteen (`mp-dashhit`, `mp-dashreal`, `mp-deaddoor`,
+`mp-deathgold`, `mp-deathtex`, `mp-dunes`, `mp-fightsoak`, `mp-figscale`,
+`mp-lockrings`, `mp-moncue`, `mp-perfdrift`, `mp-tapswing`, `mp-texdrift`,
+`tex-attrib`) call it now; `mp-monstertrim`, `mp-townscenery`, `mp-exitmark`
+and `mp-zonebanner` already did.

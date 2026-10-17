@@ -52,13 +52,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
 
-  await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    if (S && S.channel) for (const q of ['tut_1', 'tut_2', 'tut_3', 'tut_4']) {
-      S.channel.send({ type: 'quest_accept', payload: { questId: q } });
-    }
-  });
-  await P.page.waitForTimeout(1800);
+  /* v2.3.3320: the lands opened by the harness (openLands): since v2.3.3179
+     the worker refuses tut_2..tut_4 taken at once, so only Frost Ridge
+     opened and this never reached its land (the sweep of 2026-10-17) */
+  await H.openLands(P, wsPort);
 
   const marks = await P.page.evaluate(() => {
     const f = window._gameFns || {};
@@ -129,12 +126,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   await P.page.waitForTimeout(1200);   /* let the game's own targeting run */
 
-  const lock = await P.page.evaluate(() => {
+  const lock = await P.page.evaluate((pid) => {
     const S = window._gameState.current, lt = S.lockedTarget;
+    /* v2.3.3320: where things stand when the lock is read -- the placed
+       monster's distance now, and how many live monsters are inside the
+       sword's 220 px perimeter (targeting.js targetCandidates) */
+    const m = (S.monsters || []).find((x) => String(x.id) === pid);
+    const live = (S.monsters || []).filter((x) => x && x.alive !== false && (x.curHp == null || x.curHp > 0));
+    const near = live.filter((x) => Math.hypot(x.x - S.player.x, x.y - S.player.y) <= 220).length;
     return { has: !!lt, type: lt && lt.type, src: lt && lt.src, id: lt && String(lt.id),
       hasRef: !!(lt && lt.ref),
+      placedGap: m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null,
+      placedAlive: m ? m.alive !== false : null, near, dropped: S._lockDroppedWhy || null,
+      slot: S.rpg && S.rpg.activeSlot, zone: S.currentZone,
       status: window.__btAbilityStatus ? window.__btAbilityStatus('sworddash') : null };
-  });
+  }, placed.id);
   console.log('    lock (the game\'s own, nothing injected): ' + JSON.stringify(lock));
   rec.ok('the game locks the nearest monster on its own, with no tap and no injection',
     lock.has === true && lock.type === 'monster' && lock.hasRef === true, lock);
@@ -162,8 +168,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const el = document.elementFromPoint(x, y);
     if (!el) return { none: true };
     const disc = document.querySelector('.bt-rjoy-base');
+    /* v2.3.3320: WHICH control, when it is not the disc -- the combat buttons
+       all wear the bare 'bt-desktop-hide' class, so the class alone cannot
+       say; their data-* attributes and box can */
+    const ds = el.dataset ? Object.assign({}, el.dataset) : {};
+    const r = el.getBoundingClientRect();
     return { cls: el.className && String(el.className).slice(0, 80),
-      tag: el.tagName, isDiscOrInside: !!(disc && (el === disc || disc.contains(el))) };
+      tag: el.tagName, isDiscOrInside: !!(disc && (el === disc || disc.contains(el))),
+      data: ds, box: { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) },
+      vw: innerWidth, vh: innerHeight };
   }, disc);
   console.log('    elementFromPoint at the disc centre: ' + JSON.stringify(onTop));
   rec.ok('...and a finger landing on its centre actually reaches it',
@@ -237,13 +250,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     } });
   await H.enterWorld(P2);
   await P2.page.waitForTimeout(2500);
-  await P2.page.evaluate(() => {
-    const S = window._gameState.current;
-    if (S && S.channel) for (const q of ['tut_1', 'tut_2', 'tut_3', 'tut_4']) {
-      S.channel.send({ type: 'quest_accept', payload: { questId: q } });
-    }
-  });
-  await P2.page.waitForTimeout(1800);
+  /* v2.3.3320: the lands opened by the harness (openLands): since v2.3.3179
+     the worker refuses tut_2..tut_4 taken at once, so only Frost Ridge
+     opened and this never reached its land (the sweep of 2026-10-17) */
+  await H.openLands(P2, wsPort);
   /* The hop is RETRIED here, unlike round 1: a zone change is a server round
      trip and standing on the exit tile once can land while the client is still
      mid-handshake, which leaves the bro in town with nothing to fight and a
