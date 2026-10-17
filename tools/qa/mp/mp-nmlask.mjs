@@ -38,7 +38,7 @@
  *   9. held SIDEWAYS (844 x 390) the window sits beside the minimap, inside
  *      the world's own window, clear of the thumbs' controls and of you;
  *  10. no page errors.
- *   0. (v2.3.3290, first) the owner: "Attacks without locking on target did
+ *   0. (v2.3.3301, first) the owner: "Attacks without locking on target did
  *      not pop up the window for attack ignore etc."  A SWORD swing at the
  *      wanderer with nothing locked asks ("swing"), and does them nothing; left
  *      alone it goes, unanswered, and swings in the next 15 s ask nothing --
@@ -387,7 +387,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const hpB = async () => ((await H.serverPlayer(wsPort, idB)) || {}).hp;
   const hpA = async () => ((await H.serverPlayer(wsPort, idA)) || {}).hp;
 
-  /* ── 0. v2.3.3290: a SWORD swing with nothing locked asks ── */
+  /* ── 0. v2.3.3301: a SWORD swing with nothing locked asks ── */
   const eqG0 = await H.equipWeapon(A, 'greatsword', 'weapon', 'melee');
   await A.page.waitForTimeout(1500);
   await standBeside(A, wsPort, idB, 30);

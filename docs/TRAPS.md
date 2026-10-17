@@ -6486,7 +6486,7 @@ is hit and for how much before the rail; the door does every step after that.
 **Receipt:** the seven copies are wrappers now, the 193 checks that measured
 them passing unchanged.
 
-## 188. "A death keeps the tools and the quest's items -- that is a short list" (v2.3.3290)
+## 188. "A death keeps the tools and the quest's items -- that is a short list" (v2.3.3301)
 
 `_keptThroughDeath` (gathering.js) keeps two things through every death: the
 three gathering tools, and every **quest objective's** item. The second reads
@@ -6498,7 +6498,7 @@ carve-out, so a gatherer killed with a bag of iron and black steel ore dropped
 nothing -- and a bag holding only ore and tools made no pile at all. The owner
 saw it as "Opponents do not drop all of their items".
 
-- **The fix (v2.3.3290):** a loss in No man's land takes the bag with no
+- **The fix (v2.3.3301):** a loss in No man's land takes the bag with no
   carve-out (`_spawnDeathPile`'s `all`, and the wipe beside it the same); the
   tools come back from Diego (`TOOL_SHELF`). An ordinary death keeps both.
 

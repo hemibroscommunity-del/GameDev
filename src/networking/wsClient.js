@@ -151,7 +151,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
 }
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
-import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3290: + what your kill took */
+import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3301: + what your kill took */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
 import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's death heard by distance */
@@ -1641,7 +1641,7 @@ export function setupWebSocket(ctx) {
               if (msg.payload) applyNmlLoss(S, msg.payload, saveRpgSoon);
               break;
             }
-          /* v2.3.3290: and what a kill of yours there took (the pile, the gold) */
+          /* v2.3.3301: and what a kill of yours there took (the pile, the gold) */
           case 'nml_take':
             {
               if (msg.payload) applyNmlTake(S, msg.payload);

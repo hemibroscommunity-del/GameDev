@@ -167,9 +167,9 @@ check('shop_result cannot be forged by a client', PRIVILEGED_EVENTS.has('shop_re
 const fresh = makeState();
 const room3 = new GameRoom(fresh, mockEnv);
 const seeded = await room3._shopList();
-/* v2.3.3290: ...but the three gathering tools he sells back (TOOL_SHELF), no
+/* v2.3.3301: ...but the three gathering tools he sells back (TOOL_SHELF), no
    count, never a staple */
-check('a brand-new world finds nothing on him but the tools he sells back: no seeded fish and no staples (v2.3.3132; the tools v2.3.3290)',
+check('a brand-new world finds nothing on him but the tools he sells back: no seeded fish and no staples (v2.3.3132; the tools v2.3.3301)',
   seeded.items.every((i) => i.tool === true && !i.staple && i.qty === null && isToolKey(i.key))
     && seeded.items.map((i) => i.key).join(',') === 'fishing_pole,mining_pickaxe,woodcutting_axe' && Object.keys(SHOP.SEED).length === 0, seeded.items);
 /* A world whose pile took its six trout before v2.3.3132 still has them
@@ -298,7 +298,7 @@ check('...and a huge one is capped', many.items.length < 100, many.items.length)
   st[tk] = 2; st.mining_pickaxe = 1;
   await room._shopSaveStock(st);
   const shelf = await room._shopList([tk]);
-  /* v2.3.3290: the pickaxe is on his shelf now as a TOOL he sells back, a row
+  /* v2.3.3301: the pickaxe is on his shelf now as a TOOL he sells back, a row
      with no count -- never as pile stock */
   check('...lists none from his pile (two tickets and a pickaxe bought at the old default)', !shelf.items.some((i) => i.key === tk || (i.key === 'mining_pickaxe' && !i.tool)), shelf.items.map((i) => i.key + (i.tool ? '(tool)' : '')));
   const buyer = { coins: 1000, inventory: {} };
@@ -593,7 +593,7 @@ check('a refused drink keeps the bottle and heals nothing',
     W.sent.filter((m) => m.type === 'shop_state').length === 1 && results().pop().ok === true);
 }
 
-/* ═══ v2.3.3290: A LOST TOOL, BOUGHT BACK ═══
+/* ═══ v2.3.3301: A LOST TOOL, BOUGHT BACK ═══
    A death in No man's land takes the axe, the rod and the pickaxe now; the
    owner: "Drop them, sell replacements" -- "the General Store sells a
    replacement to anyone who already earned that tool from the quest". */

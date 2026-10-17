@@ -62,7 +62,7 @@ import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 import { brewMulNow, pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: the brew, read once and claimed right in a duel */
 import { pvpBalanceOn, pvpSwingClaimOk, pvpLockInReach, PVP_SWING } from '@/game/pvpSwing.js'; /* v2.3.3260: one sword claim a swing */
 import { fightersInSwing, isLiveFighter } from '@/game/sparTargets.js'; /* v2.3.3267: every swing lands on the sparring clones in its arc, locked or not; v2.3.3268: and on the players you chose to attack */
-import { nmlSwingAsk } from '@/game/nmlAsk.js'; /* v2.3.3290: a swing at a player you have not chosen asks "Attack <name>?" */
+import { nmlSwingAsk } from '@/game/nmlAsk.js'; /* v2.3.3301: a swing at a player you have not chosen asks "Attack <name>?" */
 
 /* ═══ v2.3.3206: HOW FAR A PLAIN ARROW FLIES BEFORE THE SCREEN'S EDGE ═══
    projectiles.js plants a bow arrow once its drawn point comes within 24 px of
@@ -3196,7 +3196,7 @@ export function updateMonsterCombat(S, deps) {
                   if (_spq.length > 60) _spq.shift();
                 }
               }
-              /* ═══ v2.3.3290: ...AND A PLAYER IT REACHES WHOM YOU HAVE NOT CHOSEN ASKS ═══
+              /* ═══ v2.3.3301: ...AND A PLAYER IT REACHES WHOM YOU HAVE NOT CHOSEN ASKS ═══
                  The owner: "Attacks without locking on target did not pop up the
                  window for attack ignore etc."  A stray SHOT through such a player
                  asked "Attack <name>?" (projectiles.js _nmlStrayShot); a swing at

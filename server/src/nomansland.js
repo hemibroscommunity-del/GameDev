@@ -50,7 +50,7 @@
  *   -- and since v2.3.3253 `by`, who gave you your white skull (_nmlSend).
  *
  * WHAT A DEATH COSTS (_nmlOnDeath, from _handlePlayerDeath).  Since
- * v2.3.3290 (the owner: "Opponents do not drop all of their items except what
+ * v2.3.3301 (the owner: "Opponents do not drop all of their items except what
  * they have equipped ... make sure red skulls ... lose all their stuff if
  * killed by another player.  If they're killed by a monster ... everything
  * except their equipped items"):
@@ -84,12 +84,12 @@
  *   - a RED-skulled player killed by anything else (a monster, a fall): all
  *     that a player kill takes, to nobody -- the bag in a death pile anyone
  *     may take at once, the gold and the spares gone -- and what they WEAR
- *     stays (before v2.3.3290 that went too).
+ *     stays (before v2.3.3301 that went too).
  *   The victim's own game is told exactly what went (`nml_loss`) so it can
  *   clear its bag -- the gear stashes are also a CLIENT's list, re-offered
  *   on every join (gearstash.js); every forfeited piece's id is kept in
  *   `nml_state:<pid>`'s `forfeit` and refused if it is offered again.  The
- *   killer is told what they took (`nml_take`, v2.3.3290).
+ *   killer is told what they took (`nml_take`, v2.3.3301).
  *
  * KILL SWITCH (lower case, TRAPS §117): `nomansland: false` in liveflags
  * un-advertises caps.nomansland, refuses every No man's land hit, starts no
@@ -354,7 +354,7 @@ export const noMansLandMethods = {
      pile options are for _spawnDeathPile (`all`: no carve-out stays, below),
      `to` and `lost` for _nmlTellKiller; everything else is already done.
 
-     ═══ v2.3.3290: EVERYTHING BUT WHAT YOU WEAR ═══
+     ═══ v2.3.3301: EVERYTHING BUT WHAT YOU WEAR ═══
      The owner, 2026-10-17: "Opponents do not drop all of their items except
      what they have equipped if they die in no mans land.  This should also be
      fixed.  Additionally make sure red skulls (players who attack another
@@ -396,7 +396,7 @@ export const noMansLandMethods = {
     const red = !!(ps._nml && ps._nml.red > 0);
     if (!nmlKill && !red) return null;
     const to = nmlKill ? killerId : null;
-    /* v2.3.3290: what is WORN goes only with a red skull a player killed */
+    /* v2.3.3301: what is WORN goes only with a red skull a player killed */
     const takeWorn = red && nmlKill;
     const killerSession = to && this._sessionById ? this._sessionById(to) : null;
     const lost = { weapons: 0, gear: [], worn: [], coins: 0 };
@@ -438,7 +438,7 @@ export const noMansLandMethods = {
          (`ps.shield` may still be the old ownership record, quests.js); and
          `shieldwear: false` puts that back too.  A red skull a player killed
          loses them all, worn or not, so it needs no report;
-       - the amulet stash: the spares, taken in every loss (v2.3.3290; it was
+       - the amulet stash: the spares, taken in every loss (v2.3.3301; it was
          a red skull's only).  The amulet worn stays unless a player killed
          a red skull;
        - cosmetic outfit pieces (gearStash): never -- nothing says which you
@@ -499,7 +499,7 @@ export const noMansLandMethods = {
       }
       ps[field] = keep;
     }
-    /* the gold -- every loss's since v2.3.3290 (a red skull's only before).
+    /* the gold -- every loss's since v2.3.3301 (a red skull's only before).
        (The amulet forge's gold NUGGETS and BARS are ingredient counters of
        their own with no credit kind to carry them, so they stay -- written
        down in docs/specs/no-mans-land.md.) */
@@ -508,7 +508,7 @@ export const noMansLandMethods = {
     if (lost.coins) credit('gold', { amount: lost.coins }, 'No man\'s land');
     this._nmlSave(playerId, ps);
     /* tell the victim's game what went, so it clears its own copies.
-       v2.3.3290: `named` -- the gear list names every piece taken, a red
+       v2.3.3301: `named` -- the gear list names every piece taken, a red
        skull's too, and the game takes out exactly those (an older worker
        took a red skull's lists whole, and said nothing of it); `keepWorn` --
        a red skull no player killed keeps what it wears. */
@@ -531,7 +531,7 @@ export const noMansLandMethods = {
     };
   },
 
-  /* ═══ v2.3.3290: A STATUS'S TICK KEEPS THE KILL ITS SETTER'S ═══
+  /* ═══ v2.3.3301: A STATUS'S TICK KEEPS THE KILL ITS SETTER'S ═══
      A tick of a burn, a poison or the like, a thorn's recoil and a blow's
      collision (pvpextras.js _strikePlayer, `dot`) is part of the blow that
      set it: it starts no skull (_nmlOnHit is the blow's) -- but a kill by it
@@ -545,7 +545,7 @@ export const noMansLandMethods = {
     t._nmlLastHitAt = typeof now === 'number' ? now : Date.now();
   },
 
-  /* ═══ v2.3.3290: AND THE KILLER IS TOLD WHAT THEY TOOK ═══
+  /* ═══ v2.3.3301: AND THE KILLER IS TOLD WHAT THEY TOOK ═══
      One line (`nml_take`) after the pile is down (index.js, the death's
      hooks): who, how many things lie where they fell -- the killer's for its
      owner window -- and the gold and spare gear already theirs (each piece

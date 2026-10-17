@@ -67,7 +67,7 @@ pickaxe neither bought nor quoted nor listed nor sold out of his pile, and a
 rare gem still selling for 10. Two older checks used made-up keys the old
 rule happened to price (`ok_key`, `bat-wing`); they use real ones now.
 
-## v2.3.3290: the three tools he sells back
+## v2.3.3301: the three tools he sells back
 
 A death in No man's land takes the gathering tools now (no-mans-land.md
 "Everything but what you wear"), and the owner chose "Drop them, sell

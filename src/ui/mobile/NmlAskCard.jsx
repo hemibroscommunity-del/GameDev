@@ -138,7 +138,7 @@ export default function NmlAskCard({ stateRef }) {
       if (infoPopupBus.isOpen()) until = Math.max(until, now + 4000);
       let ok = false;
       try { ok = nmlCanAttack(S, ask.id); } catch (e) { ok = false; }
-      /* v2.3.3290: with the game's state, so an unanswered window may ask again later */
+      /* v2.3.3301: with the game's state, so an unanswered window may ask again later */
       if (!ok || now >= until) { nmlAskClose(S); return; }
       /* the minimap or the screen moved (a turn of the phone, the band) */
       const nx = cardPlace();

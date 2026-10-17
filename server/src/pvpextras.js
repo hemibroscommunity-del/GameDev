@@ -490,7 +490,7 @@ export const pvpExtrasMethods = {
     });
     /* a blow under No man's land's rule skulls both, as the claim path's does
        (a tick rides the blow that set it) */
-    /* v2.3.3290: ...and a tick keeps the kill that player's without a skull
+    /* v2.3.3301: ...and a tick keeps the kill that player's without a skull
        of its own (nomansland.js _nmlTouch): a poison's last tick a little
        after its blow killed with nothing taken, as if a monster had */
     if (this._nmlAllowed && attackerPs.z === 'wheel' && this._nmlAllowed(attackerId, targetId)
