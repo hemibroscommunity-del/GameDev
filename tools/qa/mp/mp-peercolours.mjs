@@ -1,4 +1,4 @@
-/* ═══ ANOTHER PLAYER GATHERS IN THEIR OWN COLOURS (v2.3.3302) ═══
+/* ═══ ANOTHER PLAYER GATHERS IN THEIR OWN COLOURS (v2.3.3309) ═══
  *
  * Owner: "Other players cooking showed wrong skin color and maybe other stuff
  * too. Needs fixed."

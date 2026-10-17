@@ -6486,7 +6486,7 @@ is hit and for how much before the rail; the door does every step after that.
 **Receipt:** the seven copies are wrappers now, the 193 checks that measured
 them passing unchanged.
 
-## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3302)
+## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3309)
 
 **Tempting:** a pose that swaps the body for a painted figure (the cook, the
 fire-lighter, the lumberjack) is baked once with your colours, and every other

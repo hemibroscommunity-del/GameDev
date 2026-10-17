@@ -1309,13 +1309,13 @@ export async function initPixiRenderer(canvas) {
           ? (ent[ent._exCode].scale.x < 0 ? -1 : 1) : null,
         /* v2.3.2855: is this peer's lumberjack drawn from a bake that carries
            their drawings (true), or from the shared figure (false)?
-           v2.3.3302: false too for a bake in their colours with no drawings */
+           v2.3.3309: false too for a bake in their colours with no drawings */
         chopInk: !!ent._chopInk,
         /* v2.3.2856: is this peer's cook drawn with their drawings' layer? */
         cookInk: !!ent._cookInk,
         /* v2.3.2858: ...and their fire-lighter? */
         fireInk: !!ent._fireInk,
-        /* v2.3.3302: is the figure YOURS (they wear your colours) or the one
+        /* v2.3.3309: is the figure YOURS (they wear your colours) or the one
            baked for theirs -- and which strip, the legless one under greaves */
         shared: !!ent._figShared,
         legless: !!ent._figLegless,
@@ -1331,9 +1331,9 @@ export async function initPixiRenderer(canvas) {
       return (ent && ent.chop) || null;
     },
     /* v2.3.2855: how many drawn peers' lumberjacks are baked right now.
-       v2.3.3302: every peer's not in your colours, drawings or not. */
+       v2.3.3309: every peer's not in your colours, drawings or not. */
     peerChopBakes: () => (effectsRenderer._peerChopBakes ? effectsRenderer._peerChopBakes.size : 0),
-    /* v2.3.3302: the gathering figures held in other players' colours right
+    /* v2.3.3309: the gathering figures held in other players' colours right
        now, per figure (the lumberjack's are peerChopBakes' entries) */
     peerFigBakes: () => {
       const e = effectsRenderer;
@@ -1342,7 +1342,7 @@ export async function initPixiRenderer(canvas) {
         chop: e._peerChopBakes ? e._peerChopBakes.size : 0,
         bytes: typeof e._peerFigBytes === 'function' ? e._peerFigBytes() : 0 };   /* the allowance in use */
     },
-    /* v2.3.3302: the allowance driven straight, for mp-peercolours to fill it
+    /* v2.3.3309: the allowance driven straight, for mp-peercolours to fill it
        without a crowd: bake a cook or fire-lighter for a made-up skin
        [n, n, n] (no trousers or boots of its own), after stamping every peer
        figure held as last drawn `ageMs` ago (null leaves them be; no `kind`

@@ -116,7 +116,7 @@ import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /
 const _staffTipOut = { x: 0, y: 0 };
 import { SHADE, propShade } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop; v2.3.2893 + snow props */
 import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
-import { standInReady, farmKneelReady, peerStandInReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made; v2.3.3302: a peer's, once made in their colours */
+import { standInReady, farmKneelReady, peerStandInReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made; v2.3.3309: a peer's, once made in their colours */
 import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full */
 import { SMALL_TEX } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
@@ -11176,7 +11176,7 @@ export class EntityRenderer {
       /* v2.3.3077: once the stand-in is made (rendering/standIns.js) -- until
          then the peer is drawn as they stand, never hidden for a figure that
          is not there yet */
-      /* v2.3.3302: THEIR figure, in their colours -- yours when they share
+      /* v2.3.3309: THEIR figure, in their colours -- yours when they share
          them, else one baked for them (effectsRenderer _peerFigure).  It was
          your figure's readiness alone, and your figure was what a peer's cook
          and fire-lighter were drawn from: your skin, trousers and boots on
