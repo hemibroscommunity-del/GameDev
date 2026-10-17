@@ -6485,3 +6485,27 @@ is hit and for how much before the rail; the door does every step after that.
 `hit-door.test` §10d fails any other file that calls `_applyDamage`.
 **Receipt:** the seven copies are wrappers now, the 193 checks that measured
 them passing unchanged.
+
+## 192. "A workflow can push a side branch, and nothing else notices" (v2.3.3306)
+
+**Tempting:** a workflow keeps its output on a branch of its own
+(`provenance`, the proofs), pushes with the workflow's token, and finds that
+branch with `git ls-remote --heads origin provenance`. GitHub starts no
+workflow for a push by that token, so it seems nothing else happens.
+
+**Wrong, twice.**
+
+- Cloudflare Pages is a GitHub App, not a workflow: it builds a preview of
+  EVERY branch pushed, by anyone. A branch with no site is a failed build on
+  every push, on a free plan's monthly count of builds.
+- `git ls-remote <remote> <name>` matches the END of a ref's name.
+  `provenance` matched `refs/heads/claude/provenance`, this very PR's branch,
+  so a first run would have taken the branch for there and failed fetching it
+  (found by tools/provenance's simulated runs).
+
+**The rule:** a workflow's commits to a side branch START with
+`[CF-Pages-Skip]` (Cloudflare's own marker; it must be the prefix). The
+opposite holds for a commit that must reach the site: optimize-assets.yml
+leaves the marker out on purpose. And a ref is named whole:
+`git ls-remote --exit-code origin refs/heads/provenance`.
+**Receipt:** provenance.yml and proofs.mjs `message` (the selftest's 7a).
