@@ -59,8 +59,18 @@ function _doFlush() {
       zone: (window._gameState && window._gameState.current && window._gameState.current.currentZone) || '',
       /* v2.3.1384: GPU caps + context state ride along — an invisible
          character from a failed big-texture upload is only diagnosable
-         with MAX_TEXTURE_SIZE and lost/ok in hand. */
-      gl: (function () { try { var cv = document.querySelector('canvas'); var g = cv && (cv.getContext('webgl2') || cv.getContext('webgl')); return g ? (g.getParameter(g.MAX_TEXTURE_SIZE) + '/' + (g.isContextLost() ? 'lost' : 'ok')) : ''; } catch (e) { return ''; } })(),
+         with MAX_TEXTURE_SIZE and lost/ok in hand.
+         v2.3.3306: the RENDERER's context, never a canvas's getContext.  A
+         getContext on a canvas nothing has drawn on yet MAKES its context,
+         with WebGL's defaults -- no stencil buffer -- and Pixi, asking a
+         moment later, is handed that one: every mask then draws unclipped,
+         the Wheel's minimap over the whole screen.  This report goes 1.5 s
+         after a boot with anything in the log, or after any error, and the
+         game's canvas is up a moment before Pixi takes it (it loads its
+         library file first) -- at the login, as the character is played
+         from the list: the owner's "loading from a saved character will
+         show the game as an enlarged minimap" (TRAPS §194). */
+      gl: (function () { try { var R = window._pixiRenderer; var r = R && R.app && R.app.renderer; var g = r && r.gl; return g ? (g.getParameter(g.MAX_TEXTURE_SIZE) + '/' + (g.isContextLost() ? 'lost' : 'ok')) : ''; } catch (e) { return ''; } })(),
       log: log.slice(-16),
     });
     const url = _apiBase() + '/api/feedback/crash';

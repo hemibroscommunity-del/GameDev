@@ -1580,6 +1580,24 @@ remnant to migrate server-side, not a mode to preserve.
       back to "nothing open" (`src/rendering/renderHeal.js`; `?noheal` to
       compare) and the next frame draws. TRAPS §144, `mp-renderheal` (the
       throw made as it happened, with `bindfix=0`; `noheal` shows the black).
+    - since v2.3.3306 THE MINIMAP NEVER COVERS THE SCREEN -- the owner:
+      "often loading from a saved character will show the game as an enlarged
+      minimap. You're forced to log back out and back in to fix it": a canvas's
+      WebGL context is made by whoever asks FIRST, and the crash report's GPU
+      line (crashTrap.js) and the black-screen watchdog asked the game's canvas
+      bare, with WebGL's defaults -- no stencil buffer, so every mask drew
+      unclipped and the Wheel's minimap covered the screen. The report goes
+      1.5 s after any boot with something in the crash log (or any error), and
+      the canvas is up a moment before Pixi takes it as a character is played
+      from the list (and on a rebuild's fresh canvas): a race. Both now read the renderer's own
+      context (`_wdGl(cv)`, `window._pixiRenderer.app.renderer.gl`), never a
+      canvas's getContext; a context that ever comes up without a stencil
+      buffer is said in the crash log (`gl-no-stencil`) and the canvas swapped
+      for a fresh one, once a page, its context asked for as Pixi asks by
+      default (depth buffer too: pixiApp.js `withoutDepthBuffer` stands aside).
+      TRAPS §194, `mp-savedload` (the race made
+      certain: Pixi's file held back while a page error sends a report; and the
+      context taken bare by the test).
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:
