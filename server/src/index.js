@@ -157,7 +157,7 @@ import { httpAuthMethods } from './httpauth.js';
 // v2.3.1185: party roster (handoff item D) -- invite/accept handshake +
 // cross-zone vitals HUD; memory-only, no combat/XP changes -- see party.js.
 import { partyMethods } from './party.js';
-/* v2.3.3311: the alliance -- a party of 20 active members gets a name, a tag,
+/* v2.3.3313: the alliance -- a party of 20 active members gets a name, a tag,
    wars in No man's land and a leaderboard (alliance.js, docs/specs/alliance.md) */
 import { allianceMethods } from './alliance.js';
 import { friendsMethods } from './friends.js';
@@ -209,6 +209,7 @@ import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look
 import { nearJoinMethods } from './nearjoin.js'; /* v2.3.3276: a join is told the players around it; a look comes when its player does */
 import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what is 5+ levels below you, harvests and fights */
 import { floodMethods, roomNameFor, requestIp, FLOOD } from './flood.js'; /* v2.3.3274: one socket cannot stop the game */
+import { originAllowed, refuseOrigin } from './origin.js'; /* v2.3.3312: only the game's own sites open a socket */
 import { verifyMethods } from './verify.js'; /* v2.3.3275: the account check -- a new character proves a person is there */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
@@ -254,6 +255,12 @@ async function routeHttp(request, env) {
     const noSuchRoom = () => new Response(JSON.stringify({ ok: false, error: 'no such room' }), { status: 404, headers: corsHeaders });
     if (url.pathname === '/ws') {
       if (!roomName) return noSuchRoom();
+      /* v2.3.3312: only the game's own sites (and a machine's own pages) may
+         open a game socket -- a copy on another site is told where the real
+         game is and never reaches a room (origin.js) */
+      const origin = request.headers.get('Origin');
+      const og = originAllowed(origin, env);
+      if (!og.ok) return refuseOrigin(request, origin, og.why);
       return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
     }
 
@@ -609,7 +616,7 @@ export const PRIVILEGED_EVENTS = new Set([
   // rosters; forging party_invited is popup-spam surface.
   'party_state', 'party_invited', 'party_error',
   'party_chat', // v2.3.1212: server-relayed party-only chat (party.js)
-  /* v2.3.3311: the alliance's answers (alliance.js) -- the board, a refusal,
+  /* v2.3.3313: the alliance's answers (alliance.js) -- the board, a refusal,
      and a war's end with what it paid you; forged, each would tell a player
      something untrue about their alliance or their gold */
   'alliance_rows', 'alliance_error', 'alliance_war_end',
@@ -873,7 +880,7 @@ const PEER_PUBLIC_KEYS = new Set([
   ...TRACK_COSMETIC_KEYS,
   ...JOIN_COSMETIC_KEYS,
   'name', 'x', 'y', 'd', 'z', 'vx', 'vy', 'f', 'ex', 'bro',
-  /* v2.3.3311: the alliance's tag -- set by the worker alone
+  /* v2.3.3313: the alliance's tag -- set by the worker alone
      (alliance.js _allySetTag), on no track or join list, so no phone can
      send one; public as a name plate is */
   'allyTag',
@@ -3226,7 +3233,7 @@ export class GameRoom {
        the duel opponent -- is used here, while it is still known.  Any other
        death (a third player, a monster) runs both hooks as before. */
     if (!_duelKill) _hook('war', () => this._warOnDeath(playerId, cause));
-    /* v2.3.3311: an alliance war's kill -- a kill under No man's land's rule
+    /* v2.3.3313: an alliance war's kill -- a kill under No man's land's rule
        by one roster on the other (alliance.js); a duel's never counts */
     if (!_duelKill) _hook('allywar', () => this._allyWarOnDeath(ps, playerId, cause));
     // v2.3.1211 (item C): a killed threatener's guard-fine bounty pays
@@ -5410,7 +5417,7 @@ export class GameRoom {
         // the sender + relays only to party members (party.js).
         if (session.id) this._handlePartyChat(session, msg.payload || msg);
         break;
-      /* v2.3.3311: the alliance (alliance.js): the leader names it or
+      /* v2.3.3313: the alliance (alliance.js): the leader names it or
          declares a war; anyone asks for the board.  Explicit cases, so
          nothing of them ever reaches the rebroadcast branch; the phone sends
          them only against caps.alliance. */
@@ -6209,7 +6216,7 @@ Object.assign(GameRoom.prototype, eventPlaceMethods); /* v2.3.3245 */
 Object.assign(GameRoom.prototype, presence2Methods); /* v2.3.3250 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
-Object.assign(GameRoom.prototype, allianceMethods); /* v2.3.3311 */
+Object.assign(GameRoom.prototype, allianceMethods); /* v2.3.3313 */
 // v2.3.1191 (P4 decomposition): combat/damage core -- see combat.js.
 Object.assign(GameRoom.prototype, combatMethods);
 // v2.3.1192: server amulet forge (handoff item I follow-up) -- see amulet.js.

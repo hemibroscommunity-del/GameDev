@@ -131,7 +131,7 @@ export function pinEntry(fd, u, v, du, dv) {
   let hit = null;
   const reach = Math.max(12, Math.round(fd.h * 0.35));
   for (let s = 0; s <= reach && !hit; s++) {
-    /* v2.3.3311: the texel TESTED is the texel KEPT.  This tested the step's
+    /* v2.3.3313: the texel TESTED is the texel KEPT.  This tested the step's
        fractional point (solid() truncates it) and kept the ROUNDED one, so a
        point past a texel's middle tested one texel and pinned its neighbour --
        harmless on a slime or a rock, but a skeleton's bones are 1-3 texels

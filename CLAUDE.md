@@ -1580,7 +1580,7 @@ remnant to migrate server-side, not a mode to preserve.
       back to "nothing open" (`src/rendering/renderHeal.js`; `?noheal` to
       compare) and the next frame draws. TRAPS §144, `mp-renderheal` (the
       throw made as it happened, with `bindfix=0`; `noheal` shows the black).
-    - since v2.3.3311 THE MINIMAP NEVER COVERS THE SCREEN -- the owner:
+    - since v2.3.3313 THE MINIMAP NEVER COVERS THE SCREEN -- the owner:
       "often loading from a saved character will show the game as an enlarged
       minimap. You're forced to log back out and back in to fix it": a canvas's
       WebGL context is made by whoever asks FIRST, and the crash report's GPU
@@ -2454,7 +2454,7 @@ remnant to migrate server-side, not a mode to preserve.
     - `caps.partykeep`, kill switch `partykeep: false` (the party of four in
       memory, nothing read or written -- party.test.mjs runs under it);
       `party-keep` suite, `mp-partykeep`.
-    - since v2.3.3311 STEP 2, THE ALLIANCE -- the owner: "Push to main, then
+    - since v2.3.3313 STEP 2, THE ALLIANCE -- the owner: "Push to main, then
       keep going on recommended", to the four decisions it waited on
       (docs/specs/alliance.md, server/src/alliance.js):
       - a party whose ACTIVE members (online, or `seen` in the last 7 days,
@@ -3664,6 +3664,23 @@ Two protocol versions coexist; both must keep working:
   refusal as fatal) exist; `disable_verify` live flag; fail closed;
   `TURNSTILE_VERIFY_URL` is the test seam. `verify` suite (24), `mp-verify`
   (its own worker, `BT_WRANGLER_VARS`, a stand-in verifier and widget).
+- **ONLY THE GAME'S OWN SITES OPEN A GAME SOCKET (v2.3.3312,
+  docs/specs/origin-lock.md).** The owner: "I only use Brotown.net for this
+  game and that's the only domain I plan to keep using." The worker's `/ws`
+  route reads the browser's `Origin` before any room (`server/src/origin.js`):
+  brotown.net and gamedev-aix.pages.dev with every address under them,
+  `ORIGINS` (wrangler.toml) more, a machine's own pages (localhost, 127/8, the
+  private ranges) and NO Origin (a program -- our tools; TRAPS §195) are let
+  in; any other site, `null` or a look-alike gets `join_rejected
+  {reason:'origin', home}` and close 4015, the page `ui/OriginScreen.js`
+  ("This isn't the official BroTown", a button to brotown.net, no retry; an
+  old page reads it as fatal), a plain request a 403; each refused site
+  logged once. A NEW DOMAIN GOES IN `ORIGINS` BEFORE PLAYERS USE IT.
+  `ORIGIN_LOCK = "off"` is the lever (an env var: the check runs before the
+  room's live flags). The HTTP routes are not locked. `origin` suite (33),
+  `mp-originlock` (a second browser with `--host-resolver-rules`, so the
+  copy's Origin is the browser's own; `H.newPlayer`'s `host`,
+  `H.launch(args)`).
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,

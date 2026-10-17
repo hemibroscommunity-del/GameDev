@@ -78,7 +78,7 @@ export const NEAR_JOIN = Object.freeze({
      LeaderboardPanel, ClanPanel), under the names the snapshot uses.  And
      their zone, from their state (the friends list says where they are). */
   LIST_KEYS: Object.freeze(['name', 'color', 'avatar', 'rpgLv', 'clanTag', 'clanColor1', 'bro',
-    /* v2.3.3311: the alliance's tag (alliance.js), shown in the lists too */
+    /* v2.3.3313: the alliance's tag (alliance.js), shown in the lists too */
     'allyTag']),
   /* ...and of their inspect card (`rpgData`), the parts the lists read: the
      clan window's other clans, the leaderboard's online tab */

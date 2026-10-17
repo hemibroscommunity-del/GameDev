@@ -238,7 +238,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   await P.page.evaluate(() => { for (const el of document.querySelectorAll('button[aria-label="Close"], button[aria-label="Dismiss"]')) try { el.click(); } catch (e) {} });
   await P.page.waitForTimeout(600);
-  /* v2.3.3311: the landing is SEEN a frame at a time -- the cap ends the
+  /* v2.3.3313: the landing is SEEN a frame at a time -- the cap ends the
      flight on the frame after LAND_MAX_MS, and on a page drawing a frame
      every 300-450 ms (this box's software GL) that frame comes up to one
      frame later than the 120 ms slack, written at 60 fps, allowed: on main

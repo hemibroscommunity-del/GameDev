@@ -503,7 +503,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.hopTo(P, ore.x + 90, ore.y + 30);
     await P.page.waitForTimeout(1200);
     let og = 0;
-    /* v2.3.3311: up to three looks of 6 s, until one glint: a vein flashes
+    /* v2.3.3313: up to three looks of 6 s, until one glint: a vein flashes
        0.55 s in every 3.2-5.4 s, and on this box a frame lands every 300-600
        ms -- one 6 s look caught none on main once and caught one on its rerun */
     const oreSamples = [];
@@ -512,7 +512,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       oreSamples.push(...got);
       for (const pr of got) og = Math.max(og, pr.oreGlints);
     }
-    /* v2.3.3311: and, when none, what the page saw -- the vein, where you stood,
+    /* v2.3.3313: and, when none, what the page saw -- the vein, where you stood,
        and whether the life pass ran at all (the sweep of main, 2026-10-17: og 0) */
     const oreSeen = og > 0 ? null : await P.page.evaluate((o) => {
       const S = window._gameState.current;
