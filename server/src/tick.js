@@ -20,6 +20,7 @@ import { armourGradeWire } from './gearprov.js';   /* v2.3.3142: the worn armour
 import { eventHeardBy } from './eventplace.js';   /* v2.3.3245: events by place */
 import { FLOOD } from './flood.js';   /* v2.3.3274: a socket that never joined is closed after its window */
 import { PRESENCE2 } from './presence2.js';   /* v2.3.3250: far players only while your world map is open */
+import { monsterSnapWire } from './spawnscale.js';   /* v2.3.3318: a monster whole, for a phone that first meets it (wheelnear.js) */
 
 /* v2.3.2062: server ticks between regen passes. Exported because the Mana
    Draught sizes its per-tick floor against this cadence (server/src/data.js
@@ -950,6 +951,14 @@ export const tickMethods = {
         return j;
       };
       const zoneListJson = (zone, list) => '{' + JSON.stringify(zone) + ':[' + list.map(monsterJsonOf).join(',') + ']}';
+      /* v2.3.3318: a monster as the zone snapshot says it, for a phone that
+         first meets it in this tick (wheelnear.js `mw`), made once a tick */
+      const wholeJson = new Map();
+      const wholeJsonOf = (m) => {
+        let j = wholeJson.get(m);
+        if (j === undefined) { j = JSON.stringify(monsterSnapWire(m)); wholeJson.set(m, j); }
+        return j;
+      };
       const playersPart = (zone) => {
         if (playersByZoneJson.has(zone)) return playersByZoneJson.get(zone);
         const players = Object.create(null);
@@ -1166,6 +1175,9 @@ export const tickMethods = {
           plan = playersPlanFor(ps, s);   /* v2.3.3197: far players less often; v2.3.3250: + the session (presence v2) */
           key += '|' + s.id;
         } else if (s._wheelSeen) s._wheelSeen = null;
+        /* v2.3.3318: out of the Wheel, the monsters it was sent whole are
+           forgotten with its copies (wheelnear.js); a way back in sends its own */
+        if (zone !== WHEEL_ZONE && s._wheelWhole) s._wheelWhole = null;
         let msg = groupCache.get(key);
         if (msg === undefined) {
           const muted = muteKey ? this._chatModMuteSet(s.id) : null;
@@ -1177,6 +1189,15 @@ export const tickMethods = {
             if (ref !== msg) { verify.mismatched++; if (!verify.first) verify.first = { zone, pv, ref, got: msg }; }
           }
           groupCache.set(key, msg);
+        }
+        /* v2.3.3318: a phone that came into the Wheel with only the monsters
+           around it (wheelnear.js) is sent, with this tick, each monster this
+           tick brings into its reach whole, the first time (`mw`, read before
+           the tick's monsters).  Added to this phone's copy only: the cached
+           message stays as it was (tick-share.test.mjs compares those). */
+        if (interest && s._wheelWhole) {
+          const mw = this._wheelNearWholeJson(s, zone, interest, wholeJsonOf);
+          if (mw) msg = (msg ? msg.slice(0, -1) : tickHead) + ',"mw":' + mw + '}';
         }
         /* v2.3.3276: a near-join phone (nearjoin.js) is sent, with this tick,
            the whole look of every player this tick sends it whole who is

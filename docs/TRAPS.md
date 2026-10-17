@@ -6760,3 +6760,28 @@ monsters finds 1,920. Three ways it bit while the long Wheel was built:
 test. Read it from the table the worker plays (`server/src/wheelspawns.js`,
 `WHEEL_LONG`), or from the game's per-size copies (`WHEEL_GEOM`, `WHEELS`,
 `NML_CENTRES`), which test-world-core holds to the tables.
+
+## 198. "An empty monster list means the worker runs none here" (v2.3.3318)
+
+**Tempting:** to send a phone fewer monsters on its way into a zone, just send
+fewer: the tick will tell it about the rest as it walks up to them.
+
+**Wrong, twice over.** A tick's monster says where it is and how it is doing
+(tick.js `monsterWire`: id, place, HP, alive), never what it is -- its kind,
+level, land and skin -- and the phone updates only the monsters it already
+holds (wsClient.js, the tick's monsters): a monster the arrival left out is
+never drawn at all. And an EMPTY arrival list was the phone's sign that the
+worker runs no monsters in this zone (`_applyZoneMonstersMsg`, state_sync):
+it turns the server's monsters off and makes its own. BroTown's square, where
+every login lands, has no monster within reach, so the obvious trim sent an
+empty list there -- tried in the five-times Wheel (v2.3.3315) and taken out
+for exactly this.
+
+**The rule:** a list that is not every monster says so -- `mnear: 1` on the
+zone_state, `monstersNear: 1` on a join's state_sync -- and goes only to a
+phone that asked for it (`wn: 1`); and a monster first coming into such a
+phone's reach comes whole, in the snapshot's own wire (`mw`, spawnscale.js
+`monsterSnapWire`), before the tick that first moves it.
+**Receipt:** server/src/wheelnear.js, `wheelnear` suite (the town square's
+way in 580 -> 140 KB, the 29 around you among Frost Ridge's first stretch,
+each once, the kill switch, a cold room's first join); `mp-wheelnear`.

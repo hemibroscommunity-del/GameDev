@@ -266,6 +266,21 @@ false`. `docs/specs/steady-movers.md`.
   against an old worker never sends `map_watch`. Kill switch `presence2:
   false`. `docs/specs/presence-v2.md`.
 
+**v2.3.3318: into the Wheel with only the monsters around you.**
+- **join `wn: 1`** (v2 only): this phone takes a near list.
+- **`zone_state` `mnear: 1`** and a join's **`state_sync` `monstersNear: 1`**:
+  in the Wheel, the monster list holds only those within 2,400 px of the phone
+  (`WHEEL_NEAR.R`, the tick's own reach). An empty list marked so still means
+  the worker runs the monsters there.
+- **tick `mw: {zone: [...]}`**: on that phone's tick only, each monster coming
+  into its reach for the first time this visit, in the snapshot's wire
+  (`monsterSnapWire`). The phone makes it before the tick's monsters update
+  it, and gets it once until it leaves the Wheel.
+- **Deploy order.** An old phone (no `wn`) and a new phone against an old
+  worker get the whole list, as before. Kill switch `wheelnear: false`
+  (`caps.wheelnear` false; the phone reads the marks, not the cap).
+  `docs/specs/wheel-arrival.md`.
+
 **v2.3.3204: a steady walk on the safe ground is sent half as often.** The
 client's `move` cadence: on the Wheel's safe ground, not in a fight, against a
 worker advertising `caps.movediet`, a move on the line the last one drew waits
@@ -603,7 +618,10 @@ Summary of the wire-visible changes:
   only the monsters within 2,400 px of the player** (kept until 2,800), and a
   monster coming into that reach is sent whole that tick, moving or not
   (tick.js, wheelzone.js `_wheelInterest`); such a session's tick is
-  serialised for it alone. Every other zone's tick is unchanged.
+  serialised for it alone. Every other zone's tick is unchanged.  (Whole
+  here means the tick's own entry, where it is and how it is doing; since
+  v2.3.3318 a `wn` phone also gets what it IS, in `mw`, the first time:
+  docs/specs/wheel-arrival.md.)
 - v2.3.2956 (gathering-hits.md): **`caps.gatherhits`** — mining,
   woodcutting, fishing and cooking wind up as worker-rolled hits on the
   node's (or the fish's) HP

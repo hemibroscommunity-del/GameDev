@@ -527,6 +527,11 @@ export function setupWebSocket(ctx) {
              player's look sent when they come around (src/game/nearJoin.js,
              server/src/nearjoin.js).  Old workers ignore it. */
           nj: 1,
+          /* v2.3.3318: and the Wheel's monsters around us on the way in, each
+             other one whole as it comes into reach (server/src/wheelnear.js,
+             `mw` below); `?wheelwhole` asks for every one, as before.  Old
+             workers ignore it. */
+          wn: (function () { try { return /[?&]wheelwhole(?:[=&]|$)/.test(location.search) ? undefined : 1; } catch (e) { return 1; } })(),
           /* v2.3.3315: the Wheels this phone draws (src/game/wheelSize.js):
              the worker keeps a phone that does not draw the one it plays out
              of harm.  Old workers ignore it. */
@@ -995,6 +1000,27 @@ export function setupWebSocket(ctx) {
                       localN.respawnAt = nnd.respawnAt || 0;
                       if (nnd.alive) localN.hp = localN.maxHp;
                     }
+                  }
+                }
+              }
+
+              /* v2.3.3318: in the Wheel, a monster coming into our reach for
+                 the first time this visit comes WHOLE (server/src/wheelnear.js
+                 `mw`, keyed by zone like the monsters below) -- made here,
+                 before the tick's monsters update it, so the tick that first
+                 shows it shows it whole.  Only one we do not hold: a copy we
+                 have is the tick's to update. */
+              if (msg.mw && S._serverMonsters && S.monsters) {
+                var _mwList = msg.mw[S.currentZone || 'town'];
+                if (Array.isArray(_mwList)) {
+                  for (var _mwi = 0; _mwi < _mwList.length; _mwi++) {
+                    var _mwd = _mwList[_mwi];
+                    if (!_mwd || typeof _mwd.id !== 'string') continue;
+                    var _mwHave = false;
+                    for (var _mwj = 0; _mwj < S.monsters.length; _mwj++) {
+                      if (S.monsters[_mwj] && S.monsters[_mwj].id === _mwd.id) { _mwHave = true; break; }
+                    }
+                    if (!_mwHave) S.monsters.push(_monsterFromWire(_mwd, S));
                   }
                 }
               }
@@ -1549,38 +1575,12 @@ export function setupWebSocket(ctx) {
                  active.  Empty list means the server has no monsters
                  for this zone (town, or a dungeon the server doesn't
                  model); fall back to client-local. */
-              if (msg.monsters && msg.monsters.length > 0) {
+              /* v2.3.3318: `monstersNear` -- the Wheel's monsters around us
+                 only (server/src/wheelnear.js), so an empty list is still the
+                 worker's monsters, never "make your own" */
+              if (msg.monsters && (msg.monsters.length > 0 || msg.monstersNear === 1)) {
                 S._serverMonsters = true;
-                S.monsters = msg.monsters.map(function(m) {
-                  var local = _objectSpread(_objectSpread({}, m), {}, {
-                    archetype: m.arch, type: m.arch,
-                    curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
-                    alive: m.alive, statuses: {}, _hitThisSwing: false,
-                    _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
-                    _stuckArrows: [],
-                    /* v2.3.2295: the notice cue's baseline. The spread above
-                       already copies `tg` itself; this is the SEPARATE "what
-                       did we last know" slot the edge test compares against,
-                       and seeding it here is what makes a first sighting not
-                       an edge. */
-                    _tgPrev: m.tg !== undefined ? m.tg : null,
-                  });
-                  /* Apply per-zone variant skin (see monsterVariants.js).
-                     Maps ember fodder -> fireGoblin so the renderer + AI
-                     route to the variant sheets without any inline
-                     zone/archetype check elsewhere in the codebase. */
-                  /* v2.3.2978: a Wheel monster wears its HOME zone's skin
-                     (server/src/wheelzone.js); every other one its zone's */
-                  applyZoneVariant(local, local.home || S.currentZone);
-                  /* Remember the post-variant archetype so the respawn
-                     branch in the tick handler can revert a transformed
-                     monster (mummy -> skeleton) back to its spawn form.
-                     Server resets m.variant on respawn but doesn't
-                     broadcast that field per tick, so the client needs
-                     its own source of truth here. */
-                  local._spawnArchetype = local.archetype;
-                  return local;
-                });
+                S.monsters = msg.monsters.map(function(m) { return _monsterFromWire(m, S); });
               } else {
                 S._serverMonsters = false;
               }
@@ -3719,6 +3719,41 @@ export function setupWebSocket(ctx) {
          workers) and the protocol-v2 merged zone_state message, which
          carries all three lists in one frame.  Bodies are the original
          case implementations, factored so both paths stay identical. */
+      /* A server monster as the game keeps it, from the snapshot's wire (a
+         join's state_sync, a zone_state, and since v2.3.3318 a tick's `mw`:
+         server/src/spawnscale.js monsterSnapWire).  One copy, so a monster
+         first met in a tick is the same object a zone snapshot would make. */
+      function _monsterFromWire(m, S) {
+        var local = _objectSpread(_objectSpread({}, m), {}, {
+          archetype: m.arch, type: m.arch,
+          curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
+          alive: m.alive, statuses: {}, _hitThisSwing: false,
+          _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
+          _stuckArrows: [],
+          /* v2.3.2295: the notice cue's baseline. The spread above
+             already copies `tg` itself; this is the SEPARATE "what
+             did we last know" slot the edge test compares against,
+             and seeding it here is what makes a first sighting not
+             an edge. */
+          _tgPrev: m.tg !== undefined ? m.tg : null,
+        });
+        /* Apply per-zone variant skin (see monsterVariants.js).
+           Maps ember fodder -> fireGoblin so the renderer + AI
+           route to the variant sheets without any inline
+           zone/archetype check elsewhere in the codebase. */
+        /* v2.3.2978: a Wheel monster wears its HOME zone's skin
+           (server/src/wheelzone.js); every other one its zone's */
+        applyZoneVariant(local, local.home || S.currentZone);
+        /* Remember the post-variant archetype so the respawn
+           branch in the tick handler can revert a transformed
+           monster (mummy -> skeleton) back to its spawn form.
+           Server resets m.variant on respawn but doesn't
+           broadcast that field per tick, so the client needs
+           its own source of truth here. */
+        local._spawnArchetype = local.archetype;
+        return local;
+      }
+
       function _applyZoneMonstersMsg(msg, S) {
         /* Server sent the full monster list for a zone (sent on
            zone change).  Non-empty → server-authoritative,
@@ -3735,25 +3770,12 @@ export function setupWebSocket(ctx) {
            combat zone) flipped _serverMonsters off and spawned client-local
            duplicates.  No-zone payloads (old workers) still apply. */
         if (msg.zone && msg.zone !== S.currentZone) return;
-        if (msg.monsters.length > 0) {
+        /* v2.3.3318: `mnear` -- the Wheel's monsters around us only
+           (server/src/wheelnear.js): an empty list there is the worker's
+           monsters still, never a zone it does not model */
+        if (msg.monsters.length > 0 || msg.mnear === 1) {
           S._serverMonsters = true;
-          S.monsters = msg.monsters.map(function(m) {
-            var local = _objectSpread(_objectSpread({}, m), {}, {
-              archetype: m.arch, type: m.arch,
-              curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
-              alive: m.alive, statuses: {}, _hitThisSwing: false,
-              _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
-              _stuckArrows: [],
-              /* v2.3.2295: see the state_sync copy of this map. */
-              _tgPrev: m.tg !== undefined ? m.tg : null,
-            });
-            applyZoneVariant(local, local.home || S.currentZone);   /* v2.3.2978: see state_sync */
-            /* See state_sync handler -- mirror the same spawn
-               archetype stash so respawn can revert a transformed
-               monster back to the zone's spawn variant. */
-            local._spawnArchetype = local.archetype;
-            return local;
-          });
+          S.monsters = msg.monsters.map(function(m) { return _monsterFromWire(m, S); });
         } else {
           var _prevSrvFlag = S._serverMonsters;
           S._serverMonsters = false;
