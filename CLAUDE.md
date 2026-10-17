@@ -2897,6 +2897,16 @@ Two protocol versions coexist; both must keep working:
   instead of passing for a new character. The defaults that are not zero
   are `NEW_CHARACTER_COINS` and `freshLifeSkills()`, pinned to the client's
   by mirror-audit: docs/specs/fresh-start.md.
+- A SAVE-FORMAT UPGRADE THAT FAILS STAYS UNFINISHED, AND A NEWER SAVE IS NOT
+  REWRITTEN (v2.3.3303, docs/specs/migrations.md):
+  - a migration that throws on a load is no longer stamped done by the
+    join's own save: `_saveRpg` stamps the version the load reached
+    (persistence.js `_rpgSaveVFor`) until a load gets further, so it runs
+    again once mended, and the log says `[migrations] rpg:<pid> stopped at`;
+  - a character saved by a NEWER worker (`_v` above `RPG_SCHEMA_VERSION`, a
+    rollback) is refused at the join as a failed read is (close 1011, the
+    phone retries until the newer worker is back), never rewritten with the
+    older field list; kill switch `newersave: false`.
 - THE HEMI BRO CHECKMARK IS "OWNS ONE OR MORE", AND THE PROFILE SAYS HOW MANY
   (v2.3.3255) -- the owner: "a 'verified' checkmark for people who own 1 hemi
   bro or more ... list the number of hemi bros owned somewhere on their

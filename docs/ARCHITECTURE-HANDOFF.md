@@ -52,7 +52,11 @@ extended.
    schema stamp — `_saveRpg` writes the `RPG_SCHEMA_VERSION` constant and
    `_loadRpg` runs `runRpgMigrations` against it (server/src/migrations.js,
    spec docs/specs/migrations.md). Shape changes to the blob now ship as
-   registry migrations, not ad-hoc heal-on-load branches.
+   registry migrations, not ad-hoc heal-on-load branches. v2.3.3303: a
+   migration that fails really retries (the join's save stamps the
+   version the load reached, not the constant), and a blob a newer worker
+   saved is refused at the join (close 1011) rather than rewritten by an
+   older one; `newersave: false` lets it in.
 2. **Storage-key registry** (all GameRoom DO storage; prefix + `:` + id,
    enumerable via `storage.list({prefix})`):
 
