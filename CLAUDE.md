@@ -2861,6 +2861,15 @@ registry of plausible-but-wrong moves (v2.3.1204).
   auto-reconnect) and cold-starts the room: the first join after a
   deploy may retry its loading screen a few times. One-time per
   deploy; not a bug. Prefer merging server changes at quiet hours.
+- **The `provenance` branch (v2.3.3308) is the owner's proof of
+  ownership against copies.** `.github/workflows/provenance.yml`
+  fingerprints every commit of main (each file's SHA-256, then one of the
+  list: `tools/provenance/listing.mjs`), timestamps it in Bitcoin
+  (OpenTimestamps) and has GitHub sign it as this repository's (an artifact
+  attestation), three files a commit on that branch. NEVER delete, rewrite
+  or force-push it, or put anything else on it: a proof is only worth its
+  date. Its commits start with `[CF-Pages-Skip]` (TRAPS §193); how anyone
+  checks one, and what to do about a copy: docs/specs/provenance.md.
 
 ## Wire protocol
 
@@ -2883,6 +2892,15 @@ Two protocol versions coexist; both must keep working:
   client→server events must be denied by default unless added
   deliberately, and every server-EMITTED event type must be added to
   `PRIVILEGED_EVENTS` in `server/src/index.js` or clients can forge it.
+- THE RELAY IS AN ALLOWLIST, IN THE SENDER'S NAME (v2.3.3304,
+  docs/specs/relay.md). A phone's broadcast that the router has no case
+  for is relayed to the others only if its type is in `RELAY.TYPES`
+  (`server/src/relay.js`): a new relay goes on that list or it reaches no
+  one (`relay.test` scans every broadcast in src/). Each relay is rebuilt
+  `{type, from, payload}`, the payload's `id`, `from`, `playerId`,
+  `fromName`, `playerName`, `name` the worker's -- a script could relay
+  "Bob died" in Bob's name, as the phone read the payload's `id` before
+  `from` (it reads `from` first now). Kill switch `relaylist: false`.
 - Deploy-order safety: servers advertise capabilities in
   `state_sync.caps` (WS) / `settled: true` (HTTP); clients gate their
   legacy paths on them. Preserve this on both sides.
@@ -3550,6 +3568,9 @@ Two protocol versions coexist; both must keep working:
     plan); standing and walking write nothing, a kill or a harvest one row, your
     health at most every `REGEN_SAVE_MS`, the gatherer's bot statistics every 5
     minutes (`BOTFP.PUT_MIN_MS`, was 30 s);
+  - since v2.3.3305 a melee kill that heals you is one row too: its lifesteal
+    ran after the kill's save and saved the record again, a fighter's 1,030
+    rows an hour 760 now (cost-guard §5c, cost-diet.md);
   - `server/test/cost-guard.test.mjs` holds those lines (a feature that saves on
     a timer, a move or twice an event fails there); moving a line is said in the
     PR body in plain words, as with the memory budget;

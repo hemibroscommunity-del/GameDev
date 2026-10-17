@@ -6564,6 +6564,51 @@ field list.
 migration throws stays one short through the real join, runs again once
 mended, and a newer blob closes the join with nothing written.
 
+## 190. "A new effect for the others is just a broadcast" (v2.3.3304)
+
+**Tempting:** to show the others something new your phone does -- a wave, a
+spark, a new kind of shot -- send `S.channel.send({type: 'broadcast', event:
+'my_new_thing', payload})`. The router has no case for it, so its default
+branch relays it to the room, as it relays a swing or an emote.
+
+**Wrong since v2.3.3304.** The default branch relays only `RELAY.TYPES`
+(server/src/relay.js). A type that is not on it is dropped without a word, so
+the new effect works on the phone that sends it and on nobody else's -- the
+kind of break that looks fine in a one-phone test. And reading the payload's
+own `id`, `from` or `fromName` as the sender was the other half of the old
+relay's trouble: a script relayed "Bob died" in Bob's name.
+
+**The rule:** a new relay is a line in `RELAY.TYPES`, with a word on who sends
+it, in the same PR as the phone's send. The worker rebuilds every relay in its
+sender's name, so a handler reads the sender from `from` (or the payload's
+`id`, which the worker now writes). **Receipt:** `relay.test` §6 fails a
+broadcast in src/ that is not a router case or a relay.
+
+
+## 193. "A workflow can push a side branch, and nothing else notices" (v2.3.3308)
+
+**Tempting:** a workflow keeps its output on a branch of its own
+(`provenance`, the proofs), pushes with the workflow's token, and finds that
+branch with `git ls-remote --heads origin provenance`. GitHub starts no
+workflow for a push by that token, so it seems nothing else happens.
+
+**Wrong, twice.**
+
+- Cloudflare Pages is a GitHub App, not a workflow: it builds a preview of
+  EVERY branch pushed, by anyone. A branch with no site is a failed build on
+  every push, on a free plan's monthly count of builds.
+- `git ls-remote <remote> <name>` matches the END of a ref's name.
+  `provenance` matched `refs/heads/claude/provenance`, this very PR's branch,
+  so a first run would have taken the branch for there and failed fetching it
+  (found by tools/provenance's simulated runs).
+
+**The rule:** a workflow's commits to a side branch START with
+`[CF-Pages-Skip]` (Cloudflare's own marker; it must be the prefix). The
+opposite holds for a commit that must reach the site: optimize-assets.yml
+leaves the marker out on purpose. And a ref is named whole:
+`git ls-remote --exit-code origin refs/heads/provenance`.
+**Receipt:** provenance.yml and proofs.mjs `message` (the selftest's 7a).
+
 ## 192. "A hidden Text has let go of its picture" (v2.3.3310)
 
 **Tempting:** a speech bubble, a name, a "+25 G" is done with, so set its
