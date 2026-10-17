@@ -1314,6 +1314,10 @@ export async function initPixiRenderer(canvas) {
         cookInk: !!ent._cookInk,
         /* v2.3.2858: ...and their fire-lighter? */
         fireInk: !!ent._fireInk,
+        /* v2.3.3302: is the figure YOURS (they wear your colours) or the one
+           baked for theirs -- and which strip, the legless one under greaves */
+        shared: !!ent._figShared,
+        legless: !!ent._figLegless,
       };
     },
     /* v2.3.2855: the lumberjack SPRITES -- yours (no id) or a peer's -- for
@@ -1327,6 +1331,14 @@ export async function initPixiRenderer(canvas) {
     },
     /* v2.3.2855: how many drawn peers' lumberjacks are baked right now. */
     peerChopBakes: () => (effectsRenderer._peerChopBakes ? effectsRenderer._peerChopBakes.size : 0),
+    /* v2.3.3302: the gathering figures held in other players' colours right
+       now, per figure (the lumberjack's are peerChopBakes' entries) */
+    peerFigBakes: () => {
+      const e = effectsRenderer;
+      const f = e._peerFigs || {};
+      return { cook: f.cook ? f.cook.size : 0, fire: f.fire ? f.fire.size : 0,
+        chop: e._peerChopBakes ? e._peerChopBakes.size : 0 };
+    },
     /* v2.3.2856: the cook's two SPRITES -- the figure and the drawings' layer
        over it -- yours (no id) or a peer's, for mp-cookink to read the frame
        the renderer actually draws. */

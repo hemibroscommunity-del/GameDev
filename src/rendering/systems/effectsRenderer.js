@@ -188,7 +188,7 @@ function _probeStandInSkin(key, cv, opts) {
    carries -- it keeps its painted trousers, so the trouser drawings have no
    garment of the player's to sit on. */
 const CHOP_INK_KEYS = ['tattooFace', 'tattoo', 'tattooArm'];
-const PEER_CHOP_CAP = 2;            /* drawn peers' figures held at once */
+const PEER_CHOP_CAP = 3;            /* peers' figures held at once (v2.3.3302: every peer not in your colours, not only drawn ones: 2 -> 3) */
 const PEER_CHOP_IDLE_MS = 15000;    /* released this long after the last frame that drew one */
 /** Would the pre-flipped bake differ from the plain one?  Only when a drawing
  *  that gets stamped is not its own mirror image -- see _bakeChopStrips. */
@@ -604,7 +604,7 @@ import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask */
-import { setStandInMaker, ensureStandIn, standInStarted, standInReady } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted */
+import { setStandInMaker, ensureStandIn, standInStarted, standInReady, standInMaking, setPeerStandInCheck } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted; v2.3.3302: + a peer's, in their colours */
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
@@ -702,6 +702,58 @@ const STANDIN_INK = Object.freeze({
   cook: { fw: COOK_FW, fh: COOK_FH, url: (v) => (v ? COOK_URL.legless : COOK_URL.body), bake: _bakeCookSplit },
   fire: { fw: FIRE_FW, fh: FIRE_FH, url: () => FIRE_URL, bake: _bakeFireSplit },
 });
+
+/* ═══ v2.3.3302: ANOTHER PLAYER'S GATHERING FIGURE, IN THEIR COLOURS ═══
+   The owner: "Other players cooking showed wrong skin color and maybe other
+   stuff too.  Needs fixed."  Every other player's cook and fire-lighter on
+   your screen was drawn from YOUR figure -- the memory trade the SPEC table's
+   v2.3.1713 note wrote down: your skin, and since v2.3.3146 your trousers and
+   boots too, under their own shirt, armour and head.  A peer's lumberjack,
+   unless they had drawings, was the unpainted art: the artist's orange skin,
+   olive trousers and grey boots, nobody's.  Fishing and mining were already
+   theirs (entityRenderer's body poses).
+
+   Now each of the three is drawn from the figure made for THEIR colours
+   (_peerFigure): your own figure when they share your colours, else one baked
+   for theirs by the same recipe their own screen uses (skin, trousers and
+   boots) -- per colours, not per player, so peers dressed alike share one.
+   Until it is made their walking body stays drawn (standIns.js
+   peerStandInReady), never somebody else's colours.  Their drawings ride as
+   before: the cook's and the fire-lighter's on their own layer
+   (_peerStandInInk), the lumberjack's in his bake.
+
+   WHAT IT COSTS -- the sword and bow stand-ins already bake every peer's
+   colours (_remoteBodyFramesFor); these follow them with a tighter rule: a
+   figure exists only while a peer in those colours is gathering in view, at
+   most PEER_FIG_CAP (PEER_CHOP_CAP for the lumberjack) per figure at once, and
+   it is released PEER_FIG_IDLE_MS after nobody drew it.  Measured as
+   _sliceStandIn keeps them, on the graphics chip only (_gpuOnly): the cook
+   4.5 MB (either strip -- he fills his frames, so nothing is cropped), the
+   fire-lighter 6.3 MB (its glow fills the frame), the lumberjack 2.0 MB.  So
+   a peer cooking near you in other colours costs one cook while they cook and
+   15 s after; every cap full at once, ~21 MB.  And your own figures are no
+   longer made for a peer in other colours (_standInTriggers): a peer cooking
+   near you made YOUR cook, both strips (9 MB), and kept it for the visit. */
+const PEER_FIG_CAP = Object.freeze({ cook: 2, fire: 1 });
+const PEER_FIG_IDLE_MS = 15000;
+/** The colours a gathering figure is baked in, as one key: the skin (the
+ *  'default' pick is the explicit tan, as every stand-in bake has it), the
+ *  trousers and the boots ('-': the art's own). */
+function _standInColourKey(skinT, pantsT, shoesT) {
+  return (skinT || DEFAULT_SKIN_TARGET).join(',') + '|' + (pantsT ? pantsT.join(',') : '-')
+    + '|' + (shoesT ? shoesT.join(',') : '-');
+}
+/** A peer's colours as their own screen bakes them -- through the gates every
+ *  recolour passes (skinTarget & co.), from the ids relayed on the wire. */
+function _peerStandInColours(o) {
+  const skinT = skinTarget(o && o.skin) || DEFAULT_SKIN_TARGET;
+  const pantsT = pantsTarget(o && o.pants), shoesT = shoesTarget(o && o.shoes);
+  return { skinT, pantsT, shoesT, key: _standInColourKey(skinT, pantsT, shoesT) };
+}
+/** Yours as you wear them now -- the stores, not the last bake. */
+function _localStandInColourKey() {
+  return _standInColourKey(skinTarget(getSkin()) || DEFAULT_SKIN_TARGET, pantsTarget(getPants()), shoesTarget(getShoes()));
+}
 
 /* ═══ v2.3.1723: PER-FRAME GEAR REGISTRATION for the firemaking pose ═══
    Owner playtest, on being shown the composited figure: the shirt and the
@@ -3343,6 +3395,9 @@ export class EffectsRenderer {
        a new renderer (a black screen's rebuild) starts every pose over */
     setStandInMaker((kind) => (kind === 'chop' ? this._makeChop() : kind === 'cook' ? this._makeCook()
       : kind === 'fire' ? this._makeFire() : Promise.resolve(false)));
+    /* v2.3.3302: and whether a PEER's figure is made, in their colours --
+       entityRenderer asks before it hides their body (_peerFigure) */
+    setPeerStandInCheck((id, o, kind) => !this._destroyed && this._peerFigureReady(id, o, kind));
 
     /* v2.3.910: sword-swing stand-in — the owner-supplied swing animation plays
        at the player during a melee swing (same self-contained stand-in pattern
@@ -4170,10 +4225,14 @@ export class EffectsRenderer {
       const inv = S.rpg && S.rpg.inventory;
       if (inv) for (const k in inv) { if (k.indexOf('wood_') === 0 && inv[k] > 0) { ensureStandIn('fire', 'a log in the bag'); break; } }
     }
+    /* v2.3.3302: another player's lumberjack still makes yours -- every
+       peer's is cut from its crops -- but their cook and fire-lighter no
+       longer do: theirs is baked in their colours (_peerFigure), and yours is
+       theirs only when it is already made and they wear your colours.  Made
+       for them, it was both strips, ~9 MB for the cook, kept for the visit. */
     const others = S.others;
     if (others) for (const id in others) {
-      const x = others[id] && others[id]._ex;
-      if (x === 'chop' || x === 'cook' || x === 'fire') ensureStandIn(x, 'another player');
+      if (others[id] && others[id]._ex === 'chop') { ensureStandIn('chop', 'another player'); break; }
     }
   }
 
@@ -4270,13 +4329,20 @@ export class EffectsRenderer {
       if (_plain.arr.cropped) { _plain.cv.width = 0; _plain.cv.height = 0; }   /* v2.3.2775 */
       this._gpuOnly(this[key]);   /* v2.3.3150: read by nothing from here (_gpuOnly) */
     }
-    const sp = this.chopSprite;
+    /* v2.3.3302: the colours this figure wears, for a peer in the same ones
+       (_peerFigure) -- only while it carries no drawings of yours, which no
+       peer's figure may wear; null otherwise. */
+    const _inked = !!_art && CHOP_INK_KEYS.some((k) => artHasInk(_art[k]));
+    this._chopLook = _inked ? null : _standInColourKey(skinT, _clothes.pantsT, _clothes.shoesT);
+    /* v2.3.3302: ...and so a peer's lumberjack may be drawn from these too */
+    const _sprites = [this.chopSprite];
+    if (this._remoteSkillSprites) for (const ent of this._remoteSkillSprites.values()) if (ent.chop) _sprites.push(ent.chop);
     for (const arr of _old) {
       const src = arr && arr[0] && arr[0].source;
       if (!src) continue;
       /* Nothing may keep holding it: a hidden sprite with a destroyed source
          crashes the frame it is next shown (CLAUDE.md, v2.3.2651). */
-      if (sp && sp.texture && sp.texture.source === src) sp.texture = Texture.EMPTY;
+      for (const sp of _sprites) if (sp && sp.texture && sp.texture.source === src) sp.texture = Texture.EMPTY;
       this._release(src);   /* v2.3.3074: the whole release (TRAPS §139) */
     }
   }
@@ -4301,25 +4367,34 @@ export class EffectsRenderer {
    * Their drawings cannot be known at load, which is the exception CLAUDE.md's
    * preload law names (a remote player's arbitrary look), and it is how the
    * walking body treats them too: the shared figure draws until the bake lands,
-   * one bake per turn of the event loop. */
-  _peerChopFrames(o, legless, flip, now) {
+   * one bake per turn of the event loop.
+   *
+   * v2.3.3302: FOR EVERY PEER NOT IN YOUR COLOURS, drawings or not.  "The
+   * shared figure" above was the unpainted art -- the artist's orange skin,
+   * olive trousers and grey boots, which is nobody's -- and it was every
+   * undrawn peer's lumberjack.  Now a peer with no drawings is baked in their
+   * colours too (keyed by the colours, so peers dressed alike share it), the
+   * cap is PEER_CHOP_CAP 3, and until the bake lands their walking body is
+   * drawn instead (_peerFigure, which also hands a peer in your colours and
+   * undrawn your own figure).  `peek` looks without starting a bake. */
+  _peerChopFrames(o, legless, flip, now, peek) {
     const art = _peerChopArt(o);
-    if (!art) return null;
     const img = this._chopSrc && this._chopSrc[legless ? 'legless' : 'body'];
     if (!img) return null;
     /* A symmetric drawing reads the same flipped, so both sides share a bake. */
     const m = !!flip && _chopArtAsymmetric(art);
-    /* v2.3.3146: + their trousers and boots, which the bake now carries */
-    const key = (legless ? 'L' : 'B') + (m ? 'm' : 'n') + '|' + String(o.skin || '') + '|'
-      + String(o.pants || '') + '|' + String(o.shoes || '') + '|'
-      + CHOP_INK_KEYS.map((k) => (artHasInk(art[k]) ? artHash(art[k]) : '')).join('.');
+    /* v2.3.3146: + their trousers and boots, which the bake now carries.
+       v2.3.3302: the colours as baked, not the ids -- see _peerStandInColours */
+    const c = _peerStandInColours(o);
+    const key = (legless ? 'L' : 'B') + (m ? 'm' : 'n') + '|' + c.key + '|'
+      + (art ? CHOP_INK_KEYS.map((k) => (artHasInk(art[k]) ? artHash(art[k]) : '')).join('.') : '');
     const cache = this._peerChopBakes || (this._peerChopBakes = new Map());
     const hit = cache.get(key);
     if (hit) { hit.used = now; return hit.arr; }
-    if (this._peerChopPending) return null;
+    if (peek || this._peerChopPending) return null;
     if (cache.size >= PEER_CHOP_CAP) {
       /* Full: make room only from a figure nobody drew in the last second, so
-         a third drawn peer waits in the shared figure rather than two of them
+         a fourth peer waits in their walking body rather than two of them
          taking turns being rebaked. */
       let lruKey = null, lruUsed = Infinity;
       for (const [k2, e] of cache) if (e.used < lruUsed) { lruUsed = e.used; lruKey = k2; }
@@ -4327,15 +4402,14 @@ export class EffectsRenderer {
       this._dropPeerChop(lruKey);
     }
     this._peerChopPending = true;
-    const skinT = skinTarget(o.skin) || DEFAULT_SKIN_TARGET;
     setTimeout(() => {
       this._peerChopPending = false;
       if (this._destroyed) return;   /* v2.3.3074 */
       try {
-        const baked = _bakeChopStrip(img, _chopKeyMask(img), skinT, { ...art, mirror: m }, null, false,
-          { pantsT: pantsTarget(o.pants), shoesT: shoesTarget(o.shoes) });   /* v2.3.3146: their trousers and boots */
-        cache.set(key, { arr: this._gpuOnly(this._own(baked.arr)), used: now });   /* v2.3.3074: owned; v2.3.3150: _gpuOnly */
-      } catch (e) { /* the shared figure keeps drawing */ }
+        const baked = _bakeChopStrip(img, _chopKeyMask(img), c.skinT, art ? { ...art, mirror: m } : null, null, false,
+          { pantsT: c.pantsT, shoesT: c.shoesT });   /* v2.3.3146: their trousers and boots */
+        cache.set(key, { arr: this._gpuOnly(this._own(baked.arr)), used: Date.now() });   /* v2.3.3074: owned; v2.3.3150: _gpuOnly */
+      } catch (e) { /* their walking body keeps drawing */ }
     }, 0);
     return null;
   }
@@ -4457,11 +4531,11 @@ export class EffectsRenderer {
        painting, so default falls back to the explicit tan — that is the whole
        point of the fix for anyone who never opened the skin picker. */
     const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
-    /* v2.3.3146: your trousers and boots, as the lumberjack's.  This figure is
-       the one every OTHER player's cook is drawn from on your screen (the
-       SPEC table: a peer's cook already wears your skin, the memory trade of
-       v2.3.1713), so they wear your trousers and boots too -- the same trade,
-       and the same figure the farm's kneel is cut from. */
+    /* v2.3.3146: your trousers and boots, as the lumberjack's -- and the same
+       figure the farm's kneel is cut from.
+       v2.3.3302: and a peer's cook is drawn from it only when they wear your
+       colours (_peerFigure, against _cookLook below); it was every peer's
+       cook, in your skin, trousers and boots (the SPEC note's old trade). */
     const _clothes = { pantsT: pantsTarget(getPants()), shoesT: shoesTarget(getShoes()) };
     const FW = COOK_FW, FH = COOK_FH;
     /* v2.3.2856: the cook faces the camera and is never drawn flipped, so his
@@ -4486,6 +4560,9 @@ export class EffectsRenderer {
       _old.push(this[key + 'Ink']);
       this[key + 'Ink'] = ink ? this._gpuOnly(this._own(_sliceStandIn(ink, FW, FH, n, key + 'Ink', false))) : null;   /* v2.3.3074: owned; v2.3.3150: _gpuOnly */
     }
+    /* v2.3.3302: the colours the figure now wears -- a peer in the same ones
+       is drawn from it (_peerFigure).  A drawing's re-bake leaves it alone. */
+    if (!inkOnly) this._cookLook = _standInColourKey(skinT, _clothes.pantsT, _clothes.shoesT);
     /* v2.3.2856: the textures these replace, released once nothing draws them
        -- a rebake follows every pause while you draw, so leaving each old pair
        to Pixi's idle collector would stack them up.  Other players' cooks draw
@@ -4512,6 +4589,8 @@ export class EffectsRenderer {
    * half a figure instead of a whole one.  Their skin is still yours underneath
    * -- that trade is the SPEC note's, unchanged -- but the drawings are shaded
    * by THEIR skin, as they see them.
+   * (v2.3.3302: and the figure under them is theirs now too -- _peerFigure --
+   * so the layer lies on the skin it was shaded for.)
    *
    * Their drawings cannot be known at load (CLAUDE.md's named exception), and
    * the cook keeps no source image resident (see _fetchAndBakeCook's note), so
@@ -4570,6 +4649,151 @@ export class EffectsRenderer {
       }
     }
     this._release(src);   /* v2.3.3074: the whole release (TRAPS §139) */
+  }
+
+  /* ═══ v2.3.3302: A PEER'S COOK AND FIRE-LIGHTER, BAKED IN THEIR COLOURS ═══
+     The figure for colours your own does not wear (PEER_FIG_CAP has the why
+     and the cost): the strip fetched again -- the HTTP cache serves it; the
+     cook keeps no source resident (_fetchAndBakeCook's note) -- and baked with
+     their skin, trousers and boots by the recipe their own screen uses, with
+     no drawings (those ride their layer, _peerStandInInk), cropped and kept on
+     the graphics chip only.  `legless` is the cook's greaves strip.  null
+     while it bakes; `peek` looks without starting a bake. */
+  _peerFigFrames(kind, c, legless, now, peek) {
+    const spec = STANDIN_INK[kind];
+    if (!spec) return null;
+    const key = (legless ? 'L' : 'B') + '|' + c.key;
+    const caches = this._peerFigs || (this._peerFigs = Object.create(null));
+    const cache = caches[kind] || (caches[kind] = new Map());
+    const hit = cache.get(key);
+    if (hit) { hit.used = now; return hit.arr; }
+    const pending = this._peerFigPending || (this._peerFigPending = Object.create(null));
+    if (peek || pending[kind]) return null;
+    if (cache.size >= (PEER_FIG_CAP[kind] || 1)) {
+      /* Full: make room only from a figure nobody drew in the last second --
+         _peerChopFrames's rule, so a crowd waits in their walking bodies
+         rather than taking turns being rebaked. */
+      let lruKey = null, lruUsed = Infinity;
+      for (const [k2, e] of cache) if (e.used < lruUsed) { lruUsed = e.used; lruKey = k2; }
+      if (lruKey == null || now - lruUsed < 1000) return null;
+      this._dropPeerFig(kind, lruKey);
+    }
+    pending[kind] = true;
+    _loadStandInImg(spec.url(legless)).then((img) => {
+      if (this._destroyed) return;
+      const { cv } = spec.bake(img, c.skinT, null, { pantsT: c.pantsT, shoesT: c.shoesT });
+      const n = Math.max(1, Math.round(cv.width / spec.fw));
+      cache.set(key, { arr: this._gpuOnly(this._own(_sliceStandIn(cv, spec.fw, spec.fh, n, null, false))), used: Date.now() });
+    }).catch(() => { /* their walking body keeps drawing */ })
+      .then(() => { pending[kind] = false; });
+    return null;
+  }
+
+  _dropPeerFig(kind, key) {
+    const cache = this._peerFigs && this._peerFigs[kind];
+    const e = cache && cache.get(key);
+    if (!e) return;
+    cache.delete(key);
+    const src = e.arr && e.arr[0] && e.arr[0].source;
+    if (!src) return;
+    /* See _bakeCookStrips: nothing may hold a destroyed source. */
+    if (this._remoteSkillSprites) {
+      for (const ent of this._remoteSkillSprites.values()) {
+        const sp = ent[kind];   /* ent.cook / ent.fire */
+        if (sp && sp.texture && sp.texture.source === src) sp.texture = Texture.EMPTY;
+      }
+    }
+    this._release(src);   /* the whole release (TRAPS §139) */
+  }
+
+  /* v2.3.3302: is that gear strip still on its way?  _gearStripFrame's null
+     means "loading" and "none" alike, and a figure that waits for the greaves
+     has to tell them apart. */
+  _gearStripPending(slot, item, pose, dir) {
+    if (!item || item === 'none') return false;
+    const it = gearArtSafe(slot, item);
+    if (!it) return false;
+    const e = this._gearStrips[slot + '/' + it + '/' + pose + '/' + dir];
+    return e === undefined || e === 'loading';
+  }
+
+  /* ═══ v2.3.3302: WHICH FIGURE A PEER'S STAND-IN IS DRAWN FROM ═══
+     One answer for both renderers: entityRenderer hides a gathering peer's
+     body only when this finds a figure (_peerFigureReady, a `peek`), and
+     _updateRemoteExtraction draws that figure in the same frame, starting the
+     bake when there is none.  In THEIR colours, always:
+       - your own figure when they wear your colours (_cookLook, _fireLook; the
+         lumberjack's _chopLook only while neither of you has drawings on him,
+         as his are in his bake);
+       - else the one baked for their colours (_peerFigFrames, _peerChopFrames);
+       - while that bakes, the lumberjack's other side (a drawing reads the
+         wrong way round for a moment), or in greaves the figure with legs
+         under them (the look before v2.3.1468, for a moment) -- never a
+         legless figure where no greaves are drawn;
+       - else null, and their walking body stays drawn.
+     `flip` is the lumberjack's side.  Whether greaves are drawn is the gear
+     placer's own lookup; while their strip is still loading this waits rather
+     than bake the bare-legged figure first.  Returns { arr, legless, ink,
+     shared }: `arr` indexed by the 0..11 swing frame for the lumberjack and by
+     the strip's frame for the other two, `ink` whether it carries their
+     drawings (the lumberjack's do), `shared` whether it is your figure. */
+  _peerFigure(kind, o, now, flip, peek) {
+    if (!o) return null;
+    const eq = o.equip || {};
+    const c = _peerStandInColours(o);
+    if (kind === 'chop') {
+      if (!standInReady('chop')) return null;   /* the crops his bake is cut from come with yours */
+      const legsTex = this._gearStripFrame('legs', eq.legs, 'chop', 'west', CHOP_GEAR_FW, 0);
+      if (!legsTex && this._gearStripPending('legs', eq.legs, 'chop', 'west')) return null;
+      const wantL = !!legsTex && !!(this._chopSrc && this._chopSrc.legless);
+      const art = _peerChopArt(o);
+      if (!art && this._chopLook && c.key === this._chopLook) {
+        const arr = wantL ? this._chopLeglessSkinFrames : this._chopSkinFrames;
+        if (arr && arr.length === 12) return { arr, legless: wantL, ink: false, shared: true };
+      }
+      let arr = this._peerChopFrames(o, wantL, flip, now, peek)
+        || this._peerChopFrames(o, wantL, !flip, now, true);
+      if (arr) return { arr, legless: wantL, ink: !!art, shared: false };
+      if (wantL) {
+        arr = this._peerChopFrames(o, false, flip, now, true) || this._peerChopFrames(o, false, !flip, now, true);
+        if (arr) return { arr, legless: false, ink: !!art, shared: false };
+      }
+      return null;
+    }
+    if (kind !== 'cook' && kind !== 'fire') return null;
+    let wantL = false;
+    if (kind === 'cook') {
+      const legsTex = this._gearStripFrame('legs', eq.legs, 'cook', 'south', COOK_FW, 0);
+      if (!legsTex && this._gearStripPending('legs', eq.legs, 'cook', 'south')) return null;
+      wantL = !!legsTex;
+    }
+    /* their drawings' layer, started beside the figure rather than after it */
+    if (!peek) this._peerStandInInk(kind, o, wantL, now);
+    if (standInReady(kind) && c.key === (kind === 'cook' ? this._cookLook : this._fireLook)) {
+      const body = kind === 'cook' ? this._cookFrames : this._fireFrames;
+      const ll = kind === 'cook' ? this._cookLeglessFrames : null;
+      const useL = wantL && !!ll && ll.length === body.length;
+      const arr = useL ? ll : body;
+      if (arr && arr.length) return { arr, legless: useL, ink: false, shared: true };
+    }
+    /* yours is on its way, in these very colours: wait for it rather than
+       bake its twin -- one already baked still draws.  (Yours is never made
+       FOR them: theirs is one strip, let go of after they stop; yours is
+       two, kept.) */
+    const _yoursComing = standInMaking(kind) && c.key === _localStandInColourKey();
+    let arr = this._peerFigFrames(kind, c, wantL, now, peek || _yoursComing);
+    if (arr) return { arr, legless: wantL, ink: false, shared: false };
+    if (wantL) {
+      arr = this._peerFigFrames(kind, c, false, now, true);
+      if (arr) return { arr, legless: false, ink: false, shared: false };
+    }
+    return null;
+  }
+  /* entityRenderer's question (standIns.js peerStandInReady): a look, never a
+     bake -- the effects pass after it in the same frame starts one. */
+  _peerFigureReady(id, o, kind) {
+    const ent = this._remoteSkillSprites && this._remoteSkillSprites.get(id);
+    return !!this._peerFigure(kind, o, Date.now(), !!(ent && ent._flip), true);
   }
 
   /* ═══ v2.3.1713: THE FIRE-LIGHTER WEARS THE PLAYER'S SKIN ═══
@@ -4650,15 +4874,19 @@ export class EffectsRenderer {
          the camera and is never flipped: the FRONT drawings, as painted. */
       const _base = localBodyArt(false);
       const _art = _base ? artForFacing(_base, 'south') : null;
-      /* v2.3.3146: and your trousers and boots (the cook's trade, above) */
+      /* v2.3.3146: and your trousers and boots (the cook's, above) */
+      const _pantsT = pantsTarget(getPants()), _shoesT = shoesTarget(getShoes());
       const { cv, ink } = _bakeFireSplit(img, skinT, _art ? { ..._art, mirror: false } : null,
-        { pantsT: pantsTarget(getPants()), shoesT: shoesTarget(getShoes()), probe: 'fire' });
+        { pantsT: _pantsT, shoesT: _shoesT, probe: 'fire' });
       const n = Math.max(1, Math.round(cv.width / FIRE_FW));
       const _old = [];
       if (!inkOnly) {
         _old.push(this._fireFrames);
         const arr = this._own(_sliceStandIn(cv, FIRE_FW, FIRE_FH, n, '_fireFrames', true));   /* v2.3.2775: cropped; released after the probe; v2.3.3074: owned */
         this._fireFrames = arr;
+        /* v2.3.3302: the colours it wears -- a peer in the same ones is drawn
+           from it (_peerFigure), as the cook's _cookLook */
+        this._fireLook = _standInColourKey(skinT, _pantsT, _shoesT);
         _probeStandInSkin('/sprites/skills/firemaking-strip.webp', cv, FIRE_SKIN_OPTS);   /* v2.3.2500: measured through the bake's own window -- see _probeStandInSkin */
         if (arr.cropped) { cv.width = 0; cv.height = 0; }   /* v2.3.2775 */
         this._gpuOnly(arr);   /* v2.3.3150: read by nothing from here (_gpuOnly) */
@@ -12077,12 +12305,16 @@ export class EffectsRenderer {
          armour; the remote twin drew the solid body unconditionally, which
          reproduces the exact artefact those two versions exist to prevent.
          `gear` is the strip geometry for this pose -- pose/dir/frame-width --
-         so the placer below reads one table instead of three literals. */
-      chop: { frames: this._chopFrames, legless: this._chopLeglessFrames, h: CHOP_STANDIN_H, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12, gear: { pose: 'chop', dir: 'west', fw: CHOP_GEAR_FW } },
+         so the placer below reads one table instead of three literals.
+         v2.3.3302: `frames` and `legless` left the rows -- they were YOUR
+         figure (the raw art, for the lumberjack), which is the bug the NOTE
+         below describes; _peerFigure hands each peer the figure for their
+         colours and says which strip it is. */
+      chop: { h: CHOP_STANDIN_H, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12, gear: { pose: 'chop', dir: 'west', fw: CHOP_GEAR_FW } },
       /* v2.3.2607: `h` is COOK_STANDIN_H now, not a literal 62.  This row is the
          copy the warning above is about -- it is the one that did not move when
          chop did, and the cook would have repeated it. */
-      cook: { frames: this._cookFrames, legless: this._cookLeglessFrames, h: COOK_STANDIN_H, fh: 220, ms: 60, traitDir: 'south', gear: { pose: 'cook', dir: 'south', fw: 213 } },
+      cook: { h: COOK_STANDIN_H, fh: 220, ms: 60, traitDir: 'south', gear: { pose: 'cook', dir: 'south', fw: 213 } },
       /* v2.3.1749: `once` marks a strip that tells a STORY rather than
          cycling.  The firemaking frames run stand -> crouch -> spark -> flame
          -> stand-with-fire-lit, so the free-running `% frames.length` this
@@ -12090,7 +12322,7 @@ export class EffectsRenderer {
          itself out and relighting, on a loop, starting from whatever frame the
          wall clock happened to land on.  `from`/`count` restrict chop to the
          12 downswing frames the LOCAL chopper plays. */
-      fire: { frames: this._fireFrames, h: FIRE_STANDIN_H /* v2.3.3146: was a literal 154 */, fh: FIRE_FH, ms: FIRE_FRAME_MS, traitDir: 'south', once: true, gear: { pose: 'fire', dir: 'south', fw: FIRE_FW } },
+      fire: { h: FIRE_STANDIN_H /* v2.3.3146: was a literal 154 */, fh: FIRE_FH, ms: FIRE_FRAME_MS, traitDir: 'south', once: true, gear: { pose: 'fire', dir: 'south', fw: FIRE_FW } },
       /* v2.3.1713: NOTE — cook and fire now hand a peer's stand-in the LOCAL
          player's baked skin, because these arrays are the local bake (cook
          since v2.3.1710, fire since this change).  A peer's cook has quietly
@@ -12105,7 +12337,17 @@ export class EffectsRenderer {
          and still deliberate -- per-peer skin is the ~4MB-per-skin bake this
          note refuses, on a platform that has lost its WebGL context to this
          subsystem twice -- but it is now something the owner can actually see,
-         so it is written here rather than left to be discovered. */
+         so it is written here rather than left to be discovered.
+         v2.3.3302: SEEN, AND UNDONE.  The owner: "Other players cooking showed
+         wrong skin color and maybe other stuff too.  Needs fixed."  (By then
+         it was your trousers and boots too, v2.3.3146, and a peer's
+         lumberjack wore the unpainted art.)  Each peer is drawn from the
+         figure for THEIR colours -- yours when they share them, else one
+         baked for theirs -- and the memory is held to what the sword and bow
+         stand-ins' per-peer bakes never were: a figure only while a peer in
+         those colours gathers in view, a few per figure at most, on the
+         graphics chip only, released 15 s after; see PEER_FIG_CAP for the
+         numbers and _peerFigure for the rules. */
     };
     for (const id in others) {
       const o = others[id];
@@ -12115,9 +12357,64 @@ export class EffectsRenderer {
       if ((o.zone || o.z || 'town') !== zone) continue;
       if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241: not drawn, nor is their stand-in */
       const spec = SPEC[code];
-      if (!spec.frames || !spec.frames.length || !standInReady(code)) continue;   /* v2.3.3077: drawn once made whole, as the body is hidden (entityRenderer _rexStandIn) */
+      const ox = (o.renderX != null ? o.renderX : o.x) || 0;
+      const oy = (o.renderY != null ? o.renderY : o.y) || 0;
+      /* ═══ v2.3.2915: AT THE TREE, AND AT THE FIRE ═══
+         Where their own screen draws them (chopStandInSpot / cookStandInSpot,
+         shared with the local placers -- see the note there), off the same
+         node on this side: the tree they told us they are chopping
+         (_peerChopTree, from their gather_node relay) and their own campfire
+         (campfire_lit, which is the only fire a player can cook at: the tap
+         list holds S._campfire alone).  Without one -- a relay not yet in, an
+         older client that does not send it -- the figure stays where it was
+         always drawn, at their position, so nothing can vanish.
+         (v2.3.3302: worked out before the figure is chosen -- the side of the
+         trunk picks the lumberjack's bake.) */
+      let _spot = null, _tree = null;
+      if (code === 'chop') {
+        _tree = this._peerChopTree(S, id, ox, oy, now);
+        if (_tree) _spot = chopStandInSpot(zone, _tree, _tree.x >= ox ? 1 : -1);
+      } else if (code === 'cook') {
+        const _cf = S._peerCampfires && S._peerCampfires.get(String(id));
+        if (_cf && (_cf.zone || 'town') === zone && Number.isFinite(_cf.x) && Number.isFinite(_cf.y)
+            && Math.hypot(_cf.x - ox, _cf.y - oy) <= PEER_COOK_REACH) {
+          _spot = cookStandInSpot(zone, _cf);
+        }
+      }
+      /* ═══ v2.3.2303: WHICH SIDE OF THE TRUNK ═══
+         The local chopper flips to face the tree it is working (chopSign, off
+         the node in _updateExtractionCue). A watcher has no node -- so this
+         path never flipped, and a peer chopping a tree on their LEFT has been
+         drawn chopping away from it. The watcher does have the same
+         S.gatherNodes list, so the nearest live tree is the same answer.
+         Falls back to +1, the sheet's native facing, which is what shipped.
+         v2.3.2915: the relayed tree decides it when there is one -- the
+         nearest-tree guess only looks 96 px out, and a chopper stands 120-240
+         px from the trunk's base, so from the canopy it found nothing and
+         faced away from the tree.  The guess is now only the fallback. */
+      let _sign = _tree ? (_tree.x >= ox ? 1 : -1) : 1;
+      if (code === 'chop' && !_tree) {
+        let _best = null, _bestD = 96 * 96;
+        const _nodes = (S && S.gatherNodes) || [];
+        for (let _i = 0; _i < _nodes.length; _i++) {
+          const _n = _nodes[_i];
+          if (!_n || _n.nodeType !== 'tree' || _n.depleted) continue;
+          const _dx = (_n.x || 0) - ox, _dy = (_n.y || 0) - oy;
+          const _d2 = _dx * _dx + _dy * _dy;
+          if (_d2 < _bestD) { _bestD = _d2; _best = _n; }
+        }
+        if (_best) _sign = _best.x >= ox ? 1 : -1;
+      }
+      /* ═══ v2.3.3302: THEIR FIGURE, IN THEIR COLOURS ═══
+         Your own figure when they wear your colours, else the one baked for
+         theirs (_peerFigure).  None yet: their walking body is drawn instead --
+         entityRenderer asked this same question a moment ago and left it up.
+         (v2.3.3077 drew once YOUR pose was made, from your figure.) */
+      const _fig = this._peerFigure(code, o, now, _sign < 0, false);
+      if (!_fig) continue;
       let ent = pool.get(id);
       if (!ent) { ent = {}; pool.set(id, ent); }
+      ent._flip = _sign < 0;   /* v2.3.3302: the side, for entityRenderer's look next frame */
       let sp = ent[code];
       if (!sp) {
         sp = new Sprite();
@@ -12143,14 +12440,17 @@ export class EffectsRenderer {
       if (ent._exCode !== code || !ent._wasOn) { ent._exCode = code; ent._exStart = now; }
       ent._onNow = true;
       const _base = spec.from || 0;
-      const _count = spec.count || (spec.frames.length - _base);
+      /* v2.3.3302: the frames of the figure drawn -- the lumberjack's are the
+         twelve played (from 12, count 12) of his 24 slots */
+      const _len = spec.count ? _base + spec.count : _fig.arr.length;
+      const _count = spec.count || (_len - _base);
       let fi;
       if (spec.once) {
         fi = _base + Math.min(_count - 1, Math.floor((now - (ent._exStart || now)) / spec.ms));
       } else {
         fi = _base + (Math.floor(now / spec.ms) % _count);
       }
-      const _fiClamped = Math.min(spec.frames.length - 1, fi);
+      const _fiClamped = Math.min(_len - 1, fi);
       /* ═══ v2.3.2303: THE GEAR INDEX IS NOT THE BODY INDEX ═══
          chop's row carries `from: 12`, so _fiClamped is a BODY index of 12..23
          into a 24-frame sheet while the gear strips are 12-frame. Handing the
@@ -12162,18 +12462,19 @@ export class EffectsRenderer {
       ent._gearIx = _gearIx;   /* v2.3.2303: published for the QA probe -- see below */
       const _eq = o.equip || {};
       const _gg = spec.gear;
-      /* Resolved BEFORE the body texture, because whether the greaves land
-         decides which body strip is drawn (see the legless swap below). */
+      /* The greaves over the figure, when their strip resolves. */
       const _legsTex = _gg ? this._gearStripFrame('legs', _eq.legs, _gg.pose, _gg.dir, _gg.fw,
         _gg.pose === 'fire' ? _fiClamped : _gearIx) : null;
       /* v2.3.2303: the legs-erased body, gated on the greaves frame RESOLVING
          rather than merely on legs being equipped -- chop's gate shape, which
          is the safer of the two: a legs item with no art for this pose, or a
          sheet still loading, would otherwise render a legless peer with
-         nothing drawn over the gap. */
-      const _leglessOn = !!_legsTex && !!spec.legless
-        && spec.legless.length === spec.frames.length;
-      sp.texture = (_leglessOn ? spec.legless : spec.frames)[_fiClamped];
+         nothing drawn over the gap.
+         v2.3.3302: _peerFigure made that choice by the same lookup, and says
+         which strip it handed over (it may be the one with legs for a moment
+         while the legless one bakes). */
+      const _leglessOn = !!_fig.legless;
+      sp.texture = _fig.arr[code === 'chop' ? _gearIx : _fiClamped] || Texture.EMPTY;
       /* v2.3.1749: recorded for remoteSkillProbe (pixiRenderer facade).  A
          frame INDEX is the fact under test — whether the peer's fire plays
          once in order or wraps — and neither window._gameState nor a
@@ -12181,28 +12482,8 @@ export class EffectsRenderer {
       ent._fi = _fiClamped;
       ent._specLen = _count;
       ent._base = _base;
-      const ox = (o.renderX != null ? o.renderX : o.x) || 0;
-      const oy = (o.renderY != null ? o.renderY : o.y) || 0;
-      /* ═══ v2.3.2915: AT THE TREE, AND AT THE FIRE ═══
-         Where their own screen draws them (chopStandInSpot / cookStandInSpot,
-         shared with the local placers -- see the note there), off the same
-         node on this side: the tree they told us they are chopping
-         (_peerChopTree, from their gather_node relay) and their own campfire
-         (campfire_lit, which is the only fire a player can cook at: the tap
-         list holds S._campfire alone).  Without one -- a relay not yet in, an
-         older client that does not send it -- the figure stays where it was
-         always drawn, at their position, so nothing can vanish. */
-      let _spot = null, _tree = null;
-      if (code === 'chop') {
-        _tree = this._peerChopTree(S, id, ox, oy, now);
-        if (_tree) _spot = chopStandInSpot(zone, _tree, _tree.x >= ox ? 1 : -1);
-      } else if (code === 'cook') {
-        const _cf = S._peerCampfires && S._peerCampfires.get(String(id));
-        if (_cf && (_cf.zone || 'town') === zone && Number.isFinite(_cf.x) && Number.isFinite(_cf.y)
-            && Math.hypot(_cf.x - ox, _cf.y - oy) <= PEER_COOK_REACH) {
-          _spot = cookStandInSpot(zone, _cf);
-        }
-      }
+      ent._figShared = !!_fig.shared;   /* v2.3.3302: your figure (their colours are yours) or theirs */
+      ent._figLegless = _leglessOn;
       /* v2.3.1574 (owner: "the scale looks off for other players cooking and
          starting fires - way too big").  The stand-in was sized in absolute
          pixels while the peer's BODY is scaled by the zone's perspective
@@ -12216,38 +12497,13 @@ export class EffectsRenderer {
       /* v2.3.2500: and THEIR build, relayed as hg/fr (peerCosmetics) and read
          here exactly as entityRenderer reads it for their walking body. */
       const _bR = _peerBuild(o);
-      /* ═══ v2.3.2303: WHICH SIDE OF THE TRUNK ═══
-         The local chopper flips to face the tree it is working (chopSign, off
-         the node in _updateExtractionCue). A watcher has no node -- so this
-         path never flipped, and a peer chopping a tree on their LEFT has been
-         drawn chopping away from it. The watcher does have the same
-         S.gatherNodes list, so the nearest live tree is the same answer.
-         Falls back to +1, the sheet's native facing, which is what shipped.
-         v2.3.2915: the relayed tree decides it when there is one -- the
-         nearest-tree guess only looks 96 px out, and a chopper stands 120-240
-         px from the trunk's base, so from the canopy it found nothing and
-         faced away from the tree.  The guess is now only the fallback. */
-      let _sign = _tree ? (_tree.x >= ox ? 1 : -1) : 1;
-      if (code === 'chop' && !_tree) {
-        let _best = null, _bestD = 96 * 96;
-        const _nodes = (S && S.gatherNodes) || [];
-        for (let _i = 0; _i < _nodes.length; _i++) {
-          const _n = _nodes[_i];
-          if (!_n || _n.nodeType !== 'tree' || _n.depleted) continue;
-          const _dx = (_n.x || 0) - ox, _dy = (_n.y || 0) - oy;
-          const _d2 = _dx * _dx + _dy * _dy;
-          if (_d2 < _bestD) { _bestD = _d2; _best = _n; }
-        }
-        if (_best) _sign = _best.x >= ox ? 1 : -1;
-      }
       /* v2.3.2855: a peer with drawings chops in a figure baked with them (and
-         the pre-flipped one when a drawing would read backwards flipped); the
-         shared figure assigned above draws until it lands, or when they have
-         none.  Indexed by the 0..11 swing frame, like the local bake. */
+         the pre-flipped one when a drawing would read backwards flipped).
+         Indexed by the 0..11 swing frame, like the local bake.
+         v2.3.3302: every peer's lumberjack is a figure in their colours now
+         (_peerFigure, above); `ink` says whether it carries their drawings. */
       if (code === 'chop') {
-        const _pa = this._peerChopFrames(o, _leglessOn, _sign < 0, now);
-        if (_pa && _pa[_gearIx]) sp.texture = _pa[_gearIx];
-        ent._chopInk = !!_pa;   /* for remoteSkillProbe */
+        ent._chopInk = !!_fig.ink;   /* for remoteSkillProbe */
         sp._chopK = _gearIx;   /* for mp-chopink, as on the local figure */
       }
       const _sxR = s * _bR.sx, _syR = s * _bR.sy;   /* v2.3.2500 */
@@ -12265,7 +12521,8 @@ export class EffectsRenderer {
       /* v2.3.2856: a drawn peer's cook gets their drawings' layer over the
          shared figure, on the same frame of the matching strip (_peerCookInk).
          Its sprite goes straight above the body in the layer -- their clothes
-         and hat, drawn after, cover it as they cover the body. */
+         and hat, drawn after, cover it as they cover the body.
+         v2.3.3302: over THEIR figure (_peerFigure), on the strip it is. */
       if (code === 'cook') {
         const _ci = this._peerStandInInk('cook', o, _leglessOn, now);
         const _cit = _ci && _ci[_fiClamped];
@@ -12288,7 +12545,7 @@ export class EffectsRenderer {
       }
       /* v2.3.2858: and a drawn peer's fire-lighter, the same way -- their layer
          over the shared figure, on its frame, straight above it in the layer so
-         their clothes cover it (_peerStandInInk). */
+         their clothes cover it (_peerStandInInk).  v2.3.3302: their figure. */
       if (code === 'fire') {
         const _fk = this._peerStandInInk('fire', o, false, now);
         const _fkt = _fk && _fk[_fiClamped];
@@ -12455,9 +12712,19 @@ export class EffectsRenderer {
       }
     }
     /* v2.3.2855: release the drawn peers' lumberjacks nobody has drawn for a
-       while -- they left, stopped chopping, or changed zone (see _peerChopFrames). */
+       while -- they left, stopped chopping, or changed zone (see _peerChopFrames).
+       v2.3.3302: every peer's now, drawn or not. */
     if (this._peerChopBakes && this._peerChopBakes.size) {
       for (const [k, e] of this._peerChopBakes) if (now - e.used > PEER_CHOP_IDLE_MS) this._dropPeerChop(k);
+    }
+    /* v2.3.3302: and the cooks and fire-lighters baked in peers' colours
+       (_peerFigFrames) */
+    if (this._peerFigs) {
+      for (const kind in this._peerFigs) {
+        const cache = this._peerFigs[kind];
+        if (!cache.size) continue;
+        for (const [k, e] of cache) if (now - e.used > PEER_FIG_IDLE_MS) this._dropPeerFig(kind, k);
+      }
     }
     /* v2.3.2856: the same for drawn peers' cooks -- v2.3.2858: and their
        fire-lighters (see _peerStandInInk). */
@@ -14843,6 +15110,7 @@ export class EffectsRenderer {
     if (this._remoteSheetCache) this._remoteSheetCache.clear();
     if (this._peerChopBakes) this._peerChopBakes.clear();
     for (const k in (this._peerInks || {})) { const c = this._peerInks[k]; if (c && c.clear) c.clear(); }
+    for (const k in (this._peerFigs || {})) { const c = this._peerFigs[k]; if (c && c.clear) c.clear(); }   /* v2.3.3302 (their sources are in _bakes, released above) */
     if (this._remoteSkillSprites) this._remoteSkillSprites.clear();
     this._captureRenderer = null;
     this._layers = null;
