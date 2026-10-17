@@ -86,6 +86,13 @@ export const PACE = Object.freeze({
   MUTE: { BURST: 10, REFILL_MS: 10000 },
   /* an offer's "let me think" mark */
   THINK: { BURST: 10, REFILL_MS: 10000 },
+  /* v2.3.3293: putting a weapon into a trade window, or taking it back out.
+     Each is value at rest and stays a durable write (its escrow record, the
+     stash, the refund's stamp: ~2.5 rows a message), so it is the messages
+     that are paced, not the writes: past the burst a stage or unstage is
+     refused.  A trade holds at most TRADE2.WEAPON_MAX (4) a side, so twelve
+     covers any real one with room to change your mind (trade2.js). */
+  T2WPN: { BURST: 12, REFILL_MS: 20000 },
   /* unread messages one sender may leave in an offline friend's box; past
      that a line is dropped, not written (the box keeps the last
      FRIENDS.DM_BACKLOG_MAX in all) */

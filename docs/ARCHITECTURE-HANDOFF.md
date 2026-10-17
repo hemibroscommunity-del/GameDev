@@ -302,9 +302,13 @@ extended.
 27. **What a player's own taps may write is paced** (v2.3.3274,
     flood.js, docs/specs/one-socket.md). A handler that saves the record
     because the CLIENT asked (equip, unequip, the active slot, a stat
-    change, a cape toggle) calls `_saveRpgPaced`, never `_saveRpg`: a
-    burst of 30 at once, then one every 10 s, the rest riding the regen
-    drain (`_regenDirty`) or the close flush. A handler that writes any
+    change, a cape toggle -- v2.3.3293: and which shield is on the arm,
+    `shield_wear`, the one left on the full save) calls `_saveRpgPaced`,
+    never `_saveRpg`: a burst of 30 at once, then one every 10 s, the rest
+    riding the regen drain (`_regenDirty`) or the close flush. A tap whose
+    writes must stay durable (v2.3.3293: a trade window's weapon, value at
+    rest) has its MESSAGES paced instead, past the lane refused
+    (`PACE.T2WPN`). A handler that writes any
     other key on a client's word writes nothing when nothing changed, and
     either paces the write (`_paced`, the mute list) or drops it past the
     lane (`_paceTake`, the offer's mark) -- never holds a copy of a record

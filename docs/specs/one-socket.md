@@ -53,6 +53,25 @@ Measured by the bot lab, 1,000 messages from one player:
 | `stats_update`, defence 10, 11, 10 ... | 1,000 | 30, then one every 10 s |
 | `friend_dm` to an offline friend | 1,000 | 12 (six at once, then one every 1.5 s), and at most 20 in the box |
 
+**v2.3.3293, two this pass missed** (the architecture review, 2026-10-17;
+measured in `cost-guard.test` §9):
+- **`shield_wear`**, the phone's report of which shield is on its arm. It was
+  the one equip tap still on the full save: 200 reports switching between
+  "no shield" and the starter shield in 2 s wrote 200 rows. That is the free
+  plan's 100,000 rows a day in about 15 minutes, from one player with the
+  shield every new character is given. It now goes through `_saveRpgPaced`
+  like every other equip tap. Both of the shield lists are fields of the one
+  record, so a late write never splits a shield between the arm and the bag,
+  and the phone reports the arm again on every join.
+- **The trade window's weapon lane** (`trade2_stage_weapon`,
+  `trade2_unstage_weapon`). Each move is value at rest: its escrow record, the
+  stash and the refund's stamp, about 2.5 rows a message. Those writes must
+  stay durable, so the **messages** are paced instead (`PACE.T2WPN`: twelve
+  at once, then one every 20 s, shared by both). Past that a stage or unstage
+  is refused: the weapon stays where it is, and a cancel still refunds every
+  staged one. A trade holds at most four a side, so twelve covers any real
+  one. 100 messages wrote about 250 rows, and now write 30.
+
 ### 2. Any room name made a room
 
 **Before:** `/ws?room=<anything>`, and the same on every API route, made a new
