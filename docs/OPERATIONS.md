@@ -45,6 +45,8 @@ From there you can:
 - **Heal / refill** and **God mode** — top your bars up, or stop taking damage
   while you watch a mechanic play out. God mode switches itself off after 20
   minutes, so you can't leave it on by accident.
+- **Bot flags** — who the game has flagged as a possible script, and why
+  (v2.3.3323; "Bot flags" below).
 
 Nobody else can use any of this: every button asks the worker for permission
 with your key, and without the key the buttons do nothing at all. "Forget key
@@ -97,6 +99,44 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
 If a grant command times out and you're not sure it went through: the
 response includes an `opId` — run the exact command again with
 `"opId":"<that value>"` added and the server guarantees it pays at most once.
+
+## Bot flags: who looks like a script (v2.3.3323)
+
+The game watches how each player harvests, and raises a **flag** when
+something looks scripted. A flag is **evidence only**: it changes nothing in
+the game. What to do about a flagged player is your call (kick or freeze,
+below).
+
+**On your phone:** open the Test panel (hold the zone name at the top of the
+screen for about a second), then under **Bot flags** tap **Show flagged
+players**. Each row shows:
+- who it is, and whether they're online;
+- what was seen, in words, and when;
+- the counts behind it;
+- their player id (`bp_...`), which is what kick and freeze take.
+
+What each flag means:
+- **Harvest gestures look scripted:** the harvest gestures added up to a high
+  score: paths replayed exactly, or too straight and too even to be a thumb.
+- **Every harvest gesture nearly the same:** dozens of gestures in a row with
+  almost no variation.
+- **Many accounts harvesting on one device:** four or more accounts from one
+  phone, harvesting hard in the same hour.
+- **Harvests sent without starting them:** 20 or more harvests sent without
+  the "started" message a real phone always sends first. These are refused,
+  and this flag means someone is trying (v2.3.3322).
+- **A test flag:** planted by the Test panel's own check, not evidence.
+
+The same list from a computer, most recent first (both commands take the same
+key):
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/dev/botflags"
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/botstat?flagged=1"
+```
+Everything recorded for one player:
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/botstat?id=bp_XXXX"
+```
 
 ## Dealing with a griefer or cheater
 

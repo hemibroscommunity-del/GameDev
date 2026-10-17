@@ -516,7 +516,14 @@ export const botfpMethods = {
   async _botfpAdminFetch(request) {
     const notFound = () => new Response('Not found', { status: 404 });
     const key = this.env && this.env.ADMIN_KEY;
-    if (!key || request.headers.get('x-admin-key') !== key) return notFound();
+    /* v2.3.3323: the admin key in either header -- `x-admin-key`, as since
+       v2.3.1146, or `Authorization: Bearer`, the header every other admin
+       command takes (admin.js _adminAuth), which is the one OPERATIONS.md
+       teaches.  The anti-bot review found the odd header out was why nobody
+       could read these. */
+    if (!key) return notFound();
+    const viaHeader = request.headers.get('x-admin-key') === key;
+    if (!viaHeader && !(typeof this._adminAuth === 'function' && (await this._adminAuth(request)) === 'ok')) return notFound();
     const url = new URL(request.url);
     const headers = { 'Content-Type': 'application/json' };
     const id = url.searchParams.get('id');
@@ -545,5 +552,78 @@ export const botfpMethods = {
       return new Response(JSON.stringify({ flagged: out }), { headers });
     }
     return new Response(JSON.stringify({ usage: '/api/botstat?id=<playerId> | /api/botstat?flagged=1' }), { headers });
+  },
+
+  /* ═══ v2.3.3323: THE FLAGS ON THE OWNER'S PHONE ═══
+     The anti-bot review's fix 9 (docs/specs/antibot-review.md §3: "Nobody
+     sees the flags, and a flag changes nothing"; the owner: "Yes" to the bot
+     farming holes).  Every flagged player, newest flag first, for the Test
+     panel's Bot flags section (DevPanel.jsx, through admin.js /dev/botflags):
+     the stored records (`botstat:`) and the ones in memory, a live record
+     winning (its counters and score are newer than its last write).  A name
+     only for a player who is here: botstat keeps none, and the character
+     record has none to read.  Read-only; a flag still changes nothing in the
+     game (the owner's 2026-07-03 "flag, never act"). */
+  async _botfpFlaggedList(limit) {
+    const cap = Math.max(1, Math.min(100, Math.floor(Number(limit)) || 50));
+    const byId = new Map();
+    let listing = null;
+    try { listing = await this.state.storage.list({ prefix: 'botstat:' }); } catch (e) { listing = null; }
+    if (listing) {
+      for (const [k, v] of listing) {
+        if (v && Array.isArray(v.flags) && v.flags.length) byId.set(k.slice('botstat:'.length), { stored: v });
+      }
+    }
+    if (this._botfp) {
+      for (const [id, rec] of this._botfp) {
+        if (!rec || !Array.isArray(rec.flags) || !rec.flags.length) continue;
+        const e = byId.get(id) || {};
+        e.live = rec;
+        byId.set(id, e);
+      }
+    }
+    const names = new Map();
+    if (this.sessions) for (const sess of this.sessions.values()) if (sess && sess.id) names.set(sess.id, sess.name);
+    const out = [];
+    for (const [id, e] of byId) {
+      const src = e.live || e.stored;
+      const flags = src.flags;
+      const last = flags[flags.length - 1] || null;
+      const ps = this.playerState ? this.playerState[id] : null;
+      out.push({
+        id,
+        name: (ps && ps.name) || names.get(id) || null,
+        online: !!(ps && !ps.disconnected),
+        score: Math.round((Number(src.score) || 0) * 10) / 10,
+        flags: flags.length,
+        kinds: [...new Set(flags.map((f) => f && f.kind).filter(Boolean))],
+        last: last ? { at: last.at || 0, kind: last.kind || null, detail: last.detail || null } : null,
+        counters: src.counters || {},
+        updatedAt: (e.stored && e.stored.updatedAt) || null,
+      });
+    }
+    out.sort((a, b) => ((b.last && b.last.at) || 0) - ((a.last && a.last.at) || 0));
+    return out.slice(0, cap);
+  },
+
+  /* v2.3.3323: a TEST flag on a player who is here, for the Test panel's
+     phone check (mp-botflags) and for seeing what a flag looks like: kind
+     'test', its detail saying where it came from, past the hour's gap (a
+     test flag is not evidence).  Only for a player in the room: their record
+     was read at their join (_botfpOnJoin), so writing it loses nothing --
+     for one who is not here, a fresh record would be written over the
+     stored one. */
+  _botfpTestFlag(playerId) {
+    const ps = this.playerState ? this.playerState[playerId] : null;
+    if (!ps || ps.disconnected) return { ok: false, error: 'not online' };
+    const now = now_();
+    const rec = this._botfpRecord(playerId, now);
+    /* past the hour's gap, and leaving it where a real flag set it: a test
+       flag must never hold back the next real one */
+    const gap = rec.lastFlagAt;
+    rec.lastFlagAt = 0;
+    this._botfpFlag(playerId, rec, 'test', { note: 'planted from the Test panel, not evidence' }, now);
+    rec.lastFlagAt = gap;
+    return { ok: true, flags: rec.flags.length };
   },
 };
