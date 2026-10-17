@@ -37,7 +37,35 @@ concurrency:
   group: deploy-worker
   cancel-in-progress: false
 jobs:
+  # v2.3.3302: THE SUITE BEFORE THE DEPLOY.  This workflow deployed whatever
+  # main held without running a test (the architecture review, 2026-10-17):
+  # two PRs green on their own and red together, or one merged before its CI
+  # finished, went straight to the players.  Now `deploy` waits for the whole
+  # server suite on the same commit, and a red suite deploys nothing --
+  # production stays on the last good version.  A failed run is re-run from
+  # the Actions tab once the cause is fixed (a flaky check: just re-run).
+  #
+  # Its own job, so the deploy job is exactly what it was: a fresh checkout
+  # with no node_modules, where wrangler-action installs the wrangler it has
+  # always deployed with (3.90.0 today).  `npm ci` in the deploy job would
+  # hand it the project's own wrangler (4.x) instead -- a change of deploy
+  # tool nobody asked for, and one this repo cannot test.
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npm test
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     env:
       # wrangler-action@v3 still declares node20, which GitHub retires

@@ -69,7 +69,7 @@
  *       (a real zone's and a Wheel monster's kills still drop theirs).
  */
 import { GameRoom } from '../src/index.js';
-import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
+import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
 import { DUNGEONS, BOSS_ABILITIES } from '../src/dungeon.js';
 import { MONSTER_HP_CURVE, MONSTER_DMG_CURVE, monsterHpFlat } from '../src/data.js'; /* v2.3.3055: the dmg curve, the growing flat */
 
@@ -390,7 +390,9 @@ check(BLOCK_COSTS_STAMINA
   ? 'blocked slam: zero damage + standard stamina drain'
   : 'blocked slam: zero damage, and free to block (v2.3.1704 demo flag)',
   blk.length === 1 && blk[0].payload.blocked === true && blk[0].payload.dmgTaken === 0 && psA.hp === 500
-  && (BLOCK_COSTS_STAMINA ? psA.stamina === 85 : psA.stamina === 100),
+  /* v2.3.3300: the one block cost, BLOCK_STAMINA_COST (10) -- the boss kept
+     a literal 15 that v2.3.1731 missed (hit-door.md decision 1) */
+  && (BLOCK_COSTS_STAMINA ? psA.stamina === 100 - BLOCK_STAMINA_COST : psA.stamina === 100),
   { stamina: psA.stamina, blk: blk.map((b) => b.payload) });
 psA.blocking = false;
 

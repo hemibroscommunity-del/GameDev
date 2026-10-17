@@ -29,6 +29,13 @@
  *     blessed extra field — _saveRpg stamps `_v: RPG_SCHEMA_VERSION`
  *     (the constant, never ps._v) because a blob written by current
  *     code IS current-shape by construction.
+ *     v2.3.3303: except when a migration FAILED on that player's load
+ *     -- then it is not, and the join's own save stamped it done, so
+ *     the "retries next load" below never happened.  _loadRpg now notes
+ *     the version the load reached and _saveRpg stamps that until a load
+ *     gets further (persistence.js _rpgSaveVFor); a blob above
+ *     RPG_SCHEMA_VERSION (a newer worker's, on a rollback) is refused at
+ *     the join.  docs/specs/migrations.md.
  *
  * Adding migration N+1 (the recipe, also in the spec):
  *   1. bump RPG_SCHEMA_VERSION to N+1;

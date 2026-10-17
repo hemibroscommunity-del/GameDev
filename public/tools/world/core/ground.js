@@ -500,6 +500,12 @@ export function materialMap(plan, bp) {
      commons -1, then 0..3), averaged over a wide neighbourhood, is the
      smooth coordinate the patches are cut from (landStage below). */
   const stageAt = landStage(bp, isWater, reg);
+  /* v2.3.3298: a rectangle of the blueprint (layout.js buildBlueprint's
+     `rect`) is `ox`, `oy` cells from the whole one's corner: the noise here
+     is read where the cell is in the WHOLE blueprint, so a rectangle's cells
+     come out as the whole map's -- at least LAND_STAGE_MARGIN cells in from
+     its edges, where the stage's averaging can see all it needs */
+  const ox = bp.ox || 0, oy = bp.oy || 0;
   /* v2.3.3031: the town's grass between its blocks and its paved cross */
   const surf = townSurfaces(plan, bp);
   for (let by = 0; by < bp.h; by++) {
@@ -529,7 +535,7 @@ export function materialMap(plan, bp) {
         let st = Math.floor(v);
         const f = v - st;
         if (f > 0.001) {
-          const nz = fbm(bx / 10, by / 10, seed, 2);
+          const nz = fbm((ox + bx) / 10, (oy + by) / 10, seed, 2);
           if (f + 2.2 * (1 - Math.abs(2 * f - 1)) * nz > 0.5) st++;
         }
         const own = stageId[rid] ? rid : spokes[k1] && stageId[spokes[k1].id] ? spokes[k1].id : null;
@@ -540,7 +546,7 @@ export function materialMap(plan, bp) {
              halfway between two spokes at their bases -- that line's band
              wobbles, so the border land comes and goes in patches too */
           const dd = d2 - d1;
-          if (d1 > W.half || dd < BORDER_BAND - 0.2 || (dd < BORDER_BAND + 0.2 && dd < BORDER_BAND + 0.2 * fbm(bx / 5 + 31.7, by / 5 - 17.3, seed + 5, 3))) {
+          if (d1 > W.half || dd < BORDER_BAND - 0.2 || (dd < BORDER_BAND + 0.2 && dd < BORDER_BAND + 0.2 * fbm((ox + bx) / 5 + 31.7, (oy + by) / 5 - 17.3, seed + 5, 3))) {
             const b = borderOf[k1 * NS + k2];
             if (b >= 0) m = b;
           }
@@ -554,12 +560,15 @@ export function materialMap(plan, bp) {
   for (const id of BUILT) if (index[id] != null) built[index[id]] = 1;
   /* v2.3.2949: the plank decks (layout.js), and which deck each of their
      cells is -- a few hundred cells, so a Map, not a layer over the Wheel */
+  /* (v2.3.3298: the decks stay in the whole blueprint's cells -- a board's
+     pattern is hashed from its deck's own corner -- and each is found here
+     at its cells in this rectangle) */
   const decks = (bp.decks || []).map((d) => ({ ...d }));
   const deckAt = new Map();
   decks.forEach((d, k) => {
     for (let y = d.y0; y < d.y1; y++) for (let x = d.x0; x < d.x1; x++) {
-      const i = y * bp.w + x;
-      if (x >= 0 && y >= 0 && x < bp.w && y < bp.h && !deckAt.has(i) && cat[mat[i]] && cat[mat[i]].laid === 'planks') deckAt.set(i, k);
+      const wx = x - ox, wy = y - oy, i = wy * bp.w + wx;
+      if (wx >= 0 && wy >= 0 && wx < bp.w && wy < bp.h && !deckAt.has(i) && cat[mat[i]] && cat[mat[i]].laid === 'planks') deckAt.set(i, k);
     }
   });
   /* v2.3.2984: which water cells are FRESH -- a river, a pond or a lake --
@@ -694,14 +703,22 @@ function shoreSampler(bp, mm, X0, Y0, RW, RH) {
    how far toward the next one the cell sits.  Worked out on cells four at
    a time, so the whole Wheel costs a few MB for a moment, not 26. */
 const STAGE_COARSE = 4, STAGE_BLUR = 3;
+/* v2.3.3298: how far in from a rectangle's edge (cells) its stages are the
+   whole map's: two blurs of STAGE_BLUR coarse cells, and one more for the
+   sampler's step between them */
+export const LAND_STAGE_MARGIN = STAGE_COARSE * (2 * STAGE_BLUR + 1);
 function landStage(bp, isWater, reg) {
-  const F = STAGE_COARSE, cw = Math.ceil(bp.w / F), ch = Math.ceil(bp.h / F);
+  /* (v2.3.3298: the coarse cells are the WHOLE blueprint's -- four of its
+     cells each, counted from its corner -- whatever rectangle this is) */
+  const F = STAGE_COARSE, ox = bp.ox || 0, oy = bp.oy || 0;
+  const cx0 = Math.floor(ox / F), cy0 = Math.floor(oy / F);
+  const cw = Math.floor((ox + bp.w - 1) / F) - cx0 + 1, ch = Math.floor((oy + bp.h - 1) / F) - cy0 + 1;
   const sv = new Float32Array(cw * ch), sw = new Float32Array(cw * ch);
   const spoke = reg.map((id) => id !== 'commons' && id !== 'town');
   for (let by = 0; by < bp.h; by++) for (let bx = 0; bx < bp.w; bx++) {
     const i = by * bp.w + bx;
     if (isWater[bp.cls[i]]) continue;
-    const c = ((by / F) | 0) * cw + ((bx / F) | 0);
+    const c = ((((oy + by) / F) | 0) - cy0) * cw + ((((ox + bx) / F) | 0) - cx0);
     sv[c] += spoke[bp.reg[i]] ? bp.band[i] : -1;
     sw[c] += 1;
   }
@@ -709,7 +726,7 @@ function landStage(bp, isWater, reg) {
   const v = new Float32Array(cw * ch);
   for (let c = 0; c < cw * ch; c++) v[c] = sw[c] > 1e-6 ? sv[c] / sw[c] : 0;
   return (bx, by) => {
-    const fx = Math.min(cw - 1.001, Math.max(0, (bx + 0.5) / F - 0.5)), fy = Math.min(ch - 1.001, Math.max(0, (by + 0.5) / F - 0.5));
+    const fx = Math.min(cw - 1.001, Math.max(0, (ox + bx + 0.5) / F - 0.5 - cx0)), fy = Math.min(ch - 1.001, Math.max(0, (oy + by + 0.5) / F - 0.5 - cy0));
     const i0 = Math.floor(fx), j0 = Math.floor(fy), ux = fx - i0, uy = fy - j0, q = j0 * cw + i0;
     const a = v[q] * (1 - ux) + v[q + 1] * ux, b = v[q + cw] * (1 - ux) + v[q + cw + 1] * ux;
     /* a cell whose own stage the average has not moved keeps it exactly */

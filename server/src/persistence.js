@@ -52,12 +52,48 @@ export const persistenceMethods = {
   async _loadRpg(playerId, opts) {
     try {
       const stored = await this.state.storage.get('rpg:' + playerId);
+      /* ═══ v2.3.3303: A SAVE FROM A NEWER WORKER IS NOT REWRITTEN ═══
+         `_v` above RPG_SCHEMA_VERSION means a NEWER worker migrated this
+         blob -- this one is a rollback.  Joined here, the character would be
+         read by code that does not know its shape, and _saveRpg would write
+         it back with this worker's field list and `_v`, so the newer worker
+         would migrate it a second time once it returned.  The farm, the
+         pets, the codex, the order board and the daily rewards all refuse a
+         newer record (farm.js `FARM.V`); the character did not.  Now the
+         JOIN refuses it, as it refuses a read that failed (join.js): the
+         socket closes 1011 and the phone keeps trying, so the player is
+         back the moment the newer worker is.  Every other reader (the
+         offline mail's escrow) puts the blob back whole, so it may read it.
+         `newersave: false` in the live flags lets the join through, saves
+         keeping the newer `_v` (_rpgSaveV below). */
+      const newer = !!stored && typeof stored._v === 'number' && stored._v > RPG_SCHEMA_VERSION;
+      if (newer && opts && opts.throwOnError && !this._newerSaveOff()) {
+        const err = new Error('rpg:' + playerId + ' was saved by a newer worker (_v ' + stored._v + ' > ' + RPG_SCHEMA_VERSION + ')');
+        err.code = 'newer';
+        throw err;
+      }
       // v2.3.1152: run-once migration registry replaces the every-load
       // _healLifeSkills branch.  Migrate-and-reput: a clean current
       // blob (_v === RPG_SCHEMA_VERSION) costs zero writes; a legacy
       // or restored-snapshot blob converges in ONE re-put and never
       // migrates again.  runRpgMigrations never throws (fail-open).
-      if (stored && runRpgMigrations(stored).changed) {
+      const mig = stored ? runRpgMigrations(stored) : null;
+      /* ═══ v2.3.3303: A MIGRATION THAT FAILED STAYS UNFINISHED ═══
+         runRpgMigrations fails open -- a migration that throws stops there,
+         stamps nothing past it and "retries on the next load" -- but this
+         read the answer for `changed` alone, and the join that follows every
+         load saves through _saveRpg, which stamped the CONSTANT
+         RPG_SCHEMA_VERSION.  So a failed migration was marked done on the
+         very join that failed it, silently, and never ran again (found by
+         the architecture review: a blob at _v 16 whose v17 threw was stored
+         as _v 17 after one join).  That is why every shape fix since
+         v2.3.2592 has been a heal at the join instead of a migration
+         (prog3.js: "a fail-open blob healed at join is stranded ... with no
+         migration left to fix it").  Now the version a load really reached
+         is what this player's saves stamp until a load gets further, and
+         the failure is said in the log. */
+      this._rpgSaveVNote(playerId, stored, mig, newer);
+      if (mig && mig.changed) {
         try { await this.state.storage.put('rpg:' + playerId, stored); } catch (e) { /* best-effort */ }
       }
       return stored || null;
@@ -65,6 +101,33 @@ export const persistenceMethods = {
       if (opts && opts.throwOnError) throw e;
       return null;
     }
+  },
+
+  /* v2.3.3303: the `_v` this player's saves stamp, when it is not the
+     constant: the version a failed migration left the blob at, or a newer
+     worker's (let through by `newersave: false`).  Kept per player, in
+     memory, from each load to the next; a load that completes forgets it. */
+  _rpgSaveVNote(playerId, stored, mig, newer) {
+    if (!this._rpgSaveV) this._rpgSaveV = new Map();
+    if (newer) {
+      this._rpgSaveV.set(playerId, stored._v);
+    } else if (mig && mig.failed) {
+      this._rpgSaveV.set(playerId, mig.version);
+      console.error('[migrations] rpg:' + playerId + ' stopped at "' + mig.failed + '"; its saves keep _v ' + mig.version + ' so it runs again on the next load');
+    } else {
+      this._rpgSaveV.delete(playerId);
+    }
+  },
+
+  _rpgSaveVFor(playerId) {
+    const v = this._rpgSaveV && this._rpgSaveV.get(playerId);
+    return typeof v === 'number' ? v : RPG_SCHEMA_VERSION;
+  },
+
+  /* v2.3.3303: `newersave: false` in the live flags (liveops) */
+  _newerSaveOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'newersave') && !f.newersave);
   },
 
   // v2.3.769: records bootstrapped from pre-fix clients carry lifeSkills
@@ -313,7 +376,12 @@ export const persistenceMethods = {
         // CONSTANT, never ps._v: a blob written by current code is
         // current-shape by construction, so _loadRpg's migration pass
         // skips it entirely.
-        _v: RPG_SCHEMA_VERSION,
+        // v2.3.3303: ...except where a migration FAILED on this player's
+        // load: then it is not current-shape, and the version the load
+        // really reached is stamped so the migration runs again
+        // (_rpgSaveVFor; a newer worker's blob, let in by `newersave:
+        // false`, keeps its own).
+        _v: this._rpgSaveVFor(playerId),
       });
     } catch (e) {}
   },

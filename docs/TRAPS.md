@@ -6484,7 +6484,107 @@ were written that way, each copied from the one before.
 is hit and for how much before the rail; the door does every step after that.
 `hit-door.test` §10d fails any other file that calls `_applyDamage`.
 **Receipt:** the seven copies are wrappers now, the 193 checks that measured
-them passing unchanged.
+them passing unchanged. All three missed rules above were the owner's to
+decide, and v2.3.3300 decided them (hit-door.md "Decided"): every blow leaves
+a harvester alone, every block costs the one 10, and the wrong-way ball lands
+(§187).
+
+## 186. "Build the map a piece at a time by clipping each pass to the piece" (v2.3.3298)
+
+The Wheel's blueprint is a list of passes that stamp shapes on cells, and it is
+tempting to build a piece of it by running the same passes on a smaller array:
+every stamp already clips to the array's edges. The owner's "Rebuild for 5x"
+needed exactly that (docs/specs/wheel-in-blocks.md), and three passes read
+past the piece they stamp:
+
+- **The scattered features depend on order.** A clump is left out where an
+  EARLIER clump already covers its middle (layout.js pass 2). Clipped, a piece
+  cannot see a middle outside it, nor what covered it -- and that cover may
+  itself have been left out by an earlier one. Two pieces then disagree about
+  one clump, and the seam is a tree clump cut in half. The fix is not a wider
+  margin (the chain has no fixed length) but working out whether a feature
+  stands at its own middle, through the earlier ones that can reach it
+  (`planFeatures` `stands`, remembered).
+- **The bridges scan the river** up to 96 cells either way of a crossing.
+  They are worked out once for the plan, from the river's own discs and the
+  decks before them.
+- **The ground's stages are averaged** over 28 cells, the walls over 11: the
+  piece's blueprint needs those margins, on the WHOLE map's coarse grid and
+  noise (ground.js `materialMap`'s `ox`/`oy`).
+- And **where objects stand** (`placeObjects`) is decided one after another
+  over the whole map, each clear of the ones before it: not cut into pieces at
+  all, but baked (tools/world/bake-wheel-world.mjs).
+
+**The rule.** A pass can be built a piece at a time only if every decision it
+makes for a cell reads nothing past a fixed margin round it. Check by building
+every piece and comparing it with the whole, cell for cell
+(test-world-core "the Wheel in blocks") -- a piece that only looks right will
+show its seam the day someone walks along it.
+
+## 187. "Measure the shield from where the blow arrived" (v2.3.3300)
+
+**Tempting:** a blow lands at a point -- a ball where it falls, a patch under
+your feet, a blast at its centre -- so test the shield against that point:
+`_blockArcCovers(ps, landedX, landedY)`.
+
+**Wrong.** Where a blow lands on you is where you stand. `_blockArcCovers`
+reads a direction under 1 px long as "covered" on purpose (a monster standing
+inside your own body is not a flanking move), so a shield test measured from
+your own feet passes for a shield facing ANY way. The snowball's second test
+was exactly that (`_monsterStrikePlayer` from `atkX/atkY`, which for a ball
+was where it landed): a shield turned away still blocked every ball, and
+charged 15 for it, against v2.3.1705's own "a snowball you never turned to
+face should get through exactly like a swing from behind does".
+
+**The rule:** the shield is measured from where the blow came FROM -- the
+monster, or for a ball its thrower (the door's `from`) -- never from where it
+arrived. A blow with no direction (fire under your feet, a tick) is not
+blockable at all: its row's `block` is null.
+**Receipt:** hit-door.test §5, every blockable row, a ball from behind
+included, lands through a shield facing away (v2.3.3300).
+
+## 191. "A blob written by current code is current-shape" (v2.3.3303)
+
+**Tempting:** `_saveRpg` writes from the code's own fixed field list, so stamp
+the save with the constant `RPG_SCHEMA_VERSION`: whatever it writes is the
+current shape by construction, and the next load skips every migration.
+
+**Wrong.** It is the current LIST of fields, not the current SHAPE of what is
+in them. When a migration throws on a load, the registry fails open: it stops
+there and leaves the blob in its old shape to retry next time. The join that
+follows every load saves, and the constant marked the failed migration done
+on that very join, silently -- it never ran again. Every shape fix after
+v2.3.2592 went into a join-time heal for that reason. The same constant on a
+rolled-back worker writes a NEWER worker's blob back with an older `_v` and
+field list.
+
+**The rule:** a save stamps the version the load really reached
+(`_rpgSaveVFor`), and a blob above `RPG_SCHEMA_VERSION` is refused at the join.
+**Receipt:** migrations.test, the v2.3.3303 section: a blob one short whose last
+migration throws stays one short through the real join, runs again once
+mended, and a newer blob closes the join with nothing written.
+
+
+## 190. "A new effect for the others is just a broadcast" (v2.3.3304)
+
+**Tempting:** to show the others something new your phone does -- a wave, a
+spark, a new kind of shot -- send `S.channel.send({type: 'broadcast', event:
+'my_new_thing', payload})`. The router has no case for it, so its default
+branch relays it to the room, as it relays a swing or an emote.
+
+**Wrong since v2.3.3304.** The default branch relays only `RELAY.TYPES`
+(server/src/relay.js). A type that is not on it is dropped without a word, so
+the new effect works on the phone that sends it and on nobody else's -- the
+kind of break that looks fine in a one-phone test. And reading the payload's
+own `id`, `from` or `fromName` as the sender was the other half of the old
+relay's trouble: a script relayed "Bob died" in Bob's name.
+
+**The rule:** a new relay is a line in `RELAY.TYPES`, with a word on who sends
+it, in the same PR as the phone's send. The worker rebuilds every relay in its
+sender's name, so a handler reads the sender from `from` (or the payload's
+`id`, which the worker now writes). **Receipt:** `relay.test` §6 fails a
+broadcast in src/ that is not a router case or a relay.
+
 
 ## 193. "A workflow can push a side branch, and nothing else notices" (v2.3.3308)
 
