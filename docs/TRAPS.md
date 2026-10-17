@@ -6510,5 +6510,5 @@ for anyone else, capped and let go (effectsRenderer `_peerFigure`). Until a
 player's own figure exists, draw their walking body, never another figure.
 Check it from a second screen, off the drawn texture against the shipped strip
 (mp-peercolours), as no screenshot or own-screen test can show it.
-**Receipt:** 45/45 with the fix; against the old build the cook's and the
+**Receipt:** 57/57 with the fix; against the old build the cook's and the
 fire-lighter's colour checks fail with every recoloured pixel the watcher's.

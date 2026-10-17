@@ -170,14 +170,22 @@ apart.
 | Every baked figure let go 15 s after they stop | yes | no probe |
 | All of them within 16 MB; a figure drawn in the last second never pushed out; a cook and a fire-lighter share the allowance | yes | no probe |
 
-On the fixed game all 45 checks pass. Against the current game's build
+On the fixed game all 57 checks pass. Against the current game's build
 (`QA_DIST`), the colour checks fail as the table above says.
 
 The existing scenarios for these figures still pass: `mp-cookink`,
 `mp-fireink`, `mp-chopink` (tattoos), `mp-cookpeer`, `mp-firepeer` (armour and
 size), `mp-remoteanim` (the fire plays once, from its first frame),
 `mp-gatherspot` (where the figure stands), `mp-gatherlook`, `mp-standinskin`,
-`mp-gatherposes` and `mp-gpuonly`.
+`mp-gatherposes` and `mp-gpuonly` -- all but two checks, which fail the same
+way on the current game (run against its build with `QA_DIST`):
+
+- `mp-cookpeer`'s "a peer already in the room arrives WITH their rpgData on
+  the very first frame" (a newcomer's join snapshot, the worker's join);
+- `mp-gpuonly`'s damage number after a renderer rebuild: its outline drawn
+  and its white fill missing, on one phone or the other, from run to run.
+
+Neither code path passes through these figures.
 
 QA probes: `remoteSkillProbe(id).shared` (your figure or theirs) and `.legless`;
 `peerFigBakes()` (figures held per kind, and `bytes`, the allowance in use);
