@@ -282,6 +282,205 @@ check('second drain reports queued === 0', inbD3.length === 1 && inbD3[0].payloa
   check('a restart at any of a join\'s ' + joinBatches + ' writes delivers the mail exactly once after the next join (600)', wrong.length === 0, wrong);
 }
 
+// ── 8c. v2.3.3294: the stamp goes out with the payment ──
+// The architecture review (2026-10-17): _creditPlayer stamped "paid" in a
+// write of its own and paid in the next, so a restart between them left the
+// stamp and no payment, and the retry every sweep and rebuild makes read the
+// stamp as proof.  The trades debited, saved, and credited after; the trade
+// window escrowed a weapon before saving the stash it left; and two credits to
+// one player at once each rewrote the mailbox over the other.  The same
+// storage as 8b: every write of one synchronous run commits as one batch, and
+// the room dies before batch `crashAt`.
+{
+  const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
+  const mkCrashState = (seed) => {
+    const store = new Map(seed ? [...seed].map(([k, v]) => [k, clone(v)]) : []);
+    let pending = null, batches = 0, crashAt = Infinity, dead = false;
+    const commit = () => {
+      const w = pending; pending = null;
+      const n = batches++;
+      if (dead || n >= crashAt) { dead = true; return; }
+      for (const [op, k, v] of w) { if (op === 'put') store.set(k, v); else store.delete(k); }
+    };
+    const write = (op, k, v) => {
+      if (!pending) { pending = []; queueMicrotask(commit); }
+      pending.push([op, k, clone(v)]);
+    };
+    const view = (k) => {
+      if (pending) for (let i = pending.length - 1; i >= 0; i--) if (pending[i][1] === k) return pending[i][0] === 'put' ? clone(pending[i][2]) : undefined;
+      return clone(store.get(k));
+    };
+    return {
+      _store: store,
+      batches: () => batches,
+      crashAt(n) { crashAt = n; },
+      storage: {
+        get: async (k) => view(k),
+        put: async (k, v) => {
+          if (k && typeof k === 'object') { for (const [kk, vv] of Object.entries(k)) write('put', kk, vv); return; }
+          write('put', k, v);
+        },
+        delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) write('del', x); return true; },
+        list: async (opts) => { const out = new Map(); for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, clone(v)); return out; },
+      },
+      getWebSockets: () => [],
+      acceptWebSocket: () => {},
+    };
+  };
+  const settleIo = () => new Promise((r) => setTimeout(r, 5));
+  const joinOn = async (rm, ws, pid) => {
+    rm.sessions.set(ws, baseSession());
+    await rm.state.storage.put('cadence:login:' + pid, { period: rm._cadencePeriodDaily(), streak: 1, ts: Date.now() });
+    await rm.webSocketMessage(ws, JSON.stringify({ type: 'join', id: pid, name: 'T', phrase: 'p-' + pid, data: { x: 100, y: 100, z: 'town' } }));
+    await settleIo();
+  };
+  /* a world of saved players, each with `coins` */
+  const world = async (pids, coins) => {
+    const s = mkCrashState();
+    const r = new GameRoom(s, mockEnv);
+    for (const pid of pids) {
+      await joinOn(r, fakeWs('w-' + pid), pid);
+      r.playerState[pid].coins = coins;
+      r._saveRpg(pid, r.playerState[pid]);
+    }
+    await settleIo();
+    return s._store;
+  };
+  /* run `act` on a fresh room over `store`, crashing at its k-th write; then a
+     second room on what was written, where `after` runs; returns its result */
+  async function crashRun(store, k, before, act, after) {
+    const s1 = mkCrashState(store);
+    const r1 = new GameRoom(s1, mockEnv);
+    const ctx = before ? await before(r1) : {};
+    s1.crashAt(k === Infinity ? Infinity : s1.batches() + k);
+    await act(r1, ctx);
+    await settleIo();
+    const r2 = new GameRoom(mkCrashState(s1._store), mockEnv);
+    return after(r2, ctx);
+  }
+
+  /* 1. one credit, online and offline: at every write, then the same credit
+        again (what a sweep or a rebuild does), then the player joins */
+  {
+    const P1 = 'bp_once_p';
+    const store = await world([P1], 100);
+    const credit = () => ({ opId: 'test:once:gold', source: 'test', kind: 'gold', payload: { amount: 500 }, note: 'once' });
+    for (const online of [true, false]) {
+      const before = online ? (r) => joinOn(r, fakeWs('on'), P1) : null;
+      const s = mkCrashState(store), r = new GameRoom(s, mockEnv);
+      if (before) await before(r);
+      const b0 = s.batches();
+      await r._creditPlayer(P1, credit());
+      await settleIo();
+      const n = s.batches() - b0;
+      const wrong = [];
+      for (let k = 0; k <= n; k++) {
+        const coins = await crashRun(store, k, before, (r1) => r1._creditPlayer(P1, credit()), async (r2) => {
+          await r2._creditPlayer(P1, credit());
+          await settleIo();
+          await joinOn(r2, fakeWs('again'), P1);
+          return r2.playerState[P1].coins;
+        });
+        if (coins !== 600) wrong.push({ crashAt: k, coins });
+      }
+      check(`8c: a restart at any of a${online ? 'n online' : 'n offline'} credit's ${n} writes, then the same credit again, pays it exactly once (600)`, wrong.length === 0, wrong);
+    }
+  }
+
+  /* 2. credits at the same moment, to one player */
+  {
+    const P2 = 'bp_once_race';
+    const store = await world([P2], 100);
+    const r = new GameRoom(mkCrashState(store), mockEnv);
+    await Promise.all([0, 1, 2, 3, 4].map((i) => r._creditPlayer(P2, { opId: 'test:race:' + i, source: 'test', kind: 'gold', payload: { amount: 10 }, note: 'race' })));
+    await settleIo();
+    await joinOn(r, fakeWs('race'), P2);
+    check('8c: five credits at once to an offline player all reach the mailbox (150; it kept one: 110)', r.playerState[P2].coins === 150, r.playerState[P2].coins);
+    const twice = { opId: 'test:race:same', source: 'test', kind: 'gold', payload: { amount: 7 }, note: 'same' };
+    const got = await Promise.all([r._creditPlayer(P2, { ...twice }), r._creditPlayer(P2, { ...twice })]);
+    await settleIo();
+    check('8c: ...and one opId credited twice at once pays ONCE (157), the second "dup"', r.playerState[P2].coins === 157 && got.filter((x) => x === 'dup').length === 1, { coins: r.playerState[P2].coins, got });
+  }
+
+  /* 3. a gift trade: at every write of the accept, the gold is in one place */
+  {
+    const A = 'bp_once_ta', B = 'bp_once_tb';
+    const store = await world([A, B], 200);
+    const before = async (r) => {
+      await joinOn(r, fakeWs('a'), A);
+      await joinOn(r, fakeWs('b'), B);
+      await r._interceptTrade(A, { type: 'trade_offer', payload: { target: B, fromName: 'A', offer: { _gold: 50 } } });
+      return {};
+    };
+    const wrong = [];
+    for (let k = 0; k <= 4; k++) {
+      const res = await crashRun(store, k, before, (r1) => r1._interceptTrade(B, { type: 'trade_accept', payload: { target: A } }), async (r2) => {
+        await joinOn(r2, fakeWs('a2'), A);
+        await joinOn(r2, fakeWs('b2'), B);
+        return [r2.playerState[A].coins, r2.playerState[B].coins];
+      });
+      const ok = (res[0] === 200 && res[1] === 200) || (res[0] === 150 && res[1] === 250);
+      if (!ok) wrong.push({ crashAt: k, a: res[0], b: res[1] });
+    }
+    check('8c: a gift trade -- a restart at any write of the accept leaves the 50 gold with one of them, never neither', wrong.length === 0, wrong);
+  }
+
+  /* 4. the trade window: a commit, and a weapon staged */
+  {
+    const A = 'bp_once_wa', B = 'bp_once_wb';
+    const store = await world([A, B], 300);
+    const cmd = (r, ws, type, payload) => r.webSocketMessage(ws, JSON.stringify({ type, payload: payload || {} }));
+    const openWindow = async (r) => {
+      const wa = fakeWs('wa'), wb = fakeWs('wb');
+      await joinOn(r, wa, A);
+      await joinOn(r, wb, B);
+      await cmd(r, wa, 'trade2_open', { target: B });
+      await cmd(r, wb, 'trade2_open', { target: A });
+      return { wa, wb };
+    };
+    const commitWrong = [];
+    for (let k = 0; k <= 6; k++) {
+      const res = await crashRun(store, k, async (r) => {
+        const ctx = await openWindow(r);
+        await cmd(r, ctx.wa, 'trade2_set', { offer: { _gold: 40 } });
+        await cmd(r, ctx.wb, 'trade2_set', { offer: { _gold: 70 } });
+        await cmd(r, ctx.wa, 'trade2_ready', { ready: true });
+        await cmd(r, ctx.wb, 'trade2_ready', { ready: true });
+        for (const s2 of r._trades2.values()) s2.changedAt = Date.now() - 999999;
+        await cmd(r, ctx.wa, 'trade2_confirm');
+        return ctx;
+      }, (r1, ctx) => cmd(r1, ctx.wb, 'trade2_confirm'), async (r2) => {
+        await joinOn(r2, fakeWs('a3'), A);
+        await joinOn(r2, fakeWs('b3'), B);
+        return [r2.playerState[A].coins, r2.playerState[B].coins];
+      });
+      const ok = (res[0] === 300 && res[1] === 300) || (res[0] === 330 && res[1] === 270);
+      if (!ok) commitWrong.push({ crashAt: k, a: res[0], b: res[1] });
+    }
+    check('8c: the trade window -- a restart at any write of the commit leaves both trades whole or neither', commitWrong.length === 0, commitWrong);
+
+    const blade = { type: 'sword', gearBase: 'iron', tier: 'common', tierMult: 1, name: 'Once-blade' };
+    const stageWrong = [];
+    for (let k = 0; k <= 4; k++) {
+      const count = await crashRun(store, k, async (r) => {
+        const ctx = await openWindow(r);
+        r.playerState[A].weaponStash = [{ ...blade }];
+        r._saveRpg(A, r.playerState[A]);
+        await settleIo();
+        return ctx;
+      }, (r1, ctx) => cmd(r1, ctx.wa, 'trade2_stage_weapon', { stashIdx: 0 }), async (r2) => {
+        await joinOn(r2, fakeWs('a4'), A);
+        r2._lastT2WpnSweep = 0;
+        await r2._trade2WpnSweep();
+        await settleIo();
+        return (r2.playerState[A].weaponStash || []).filter((w) => w && w.name === 'Once-blade').length;
+      });
+      if (count !== 1) stageWrong.push({ crashAt: k, blades: count });
+    }
+    check('8c: a weapon staged into the window -- a restart at any write leaves exactly one (it could come back twice)', stageWrong.length === 0, stageWrong);
+  }
+}
+
 // ── 9. v2.3.1182: _opPruneMaybe (48h expiry + junk cleanup + hourly rate limit) ──
 // Both failure directions are silent (best-effort catch), so assert
 // each explicitly: expired and junk-valued keys go, fresh keys stay,
