@@ -123,20 +123,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
     const bag = () => H.readState(A, (S) => ({ inv: Object.assign({}, S.rpg && S.rpg.inventory), coins: S.rpg && S.rpg.coins, farming: S.rpg && S.rpg.lifeSkills && S.rpg.lifeSkills.farming }));
     const tap = (sel) => A.page.evaluate((s) => { const e = document.querySelector(s); if (e && !e.disabled) { e.click(); return true; } return false; }, sel);
-    /* v2.3.3136: every farm picture in the window has come in (complete, with
-       a size) -- a broken address would show nothing where a crop should be */
-    const artIn = async () => {
-      let v = null;
-      for (let t0 = Date.now(); Date.now() - t0 < 6000;) {
-        v = await A.page.evaluate(() => {
-          const imgs = Array.from(document.querySelectorAll('[data-farm] img[data-farm-pic]'));
-          return { n: imgs.length, bad: imgs.filter((i) => !(i.complete && i.naturalWidth > 0)).map((i) => i.getAttribute('data-farm-pic')) };
-        });
-        if (v.n && !v.bad.length) return v;
-        await A.page.waitForTimeout(200);
-      }
-      return v;
-    };
     const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
     /* ── 1. the window: Seeds first, no beds, the way to your farm ── */
@@ -182,17 +168,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ];
     rec.ok(`...at Farming 1 it sells carrot, wheat, firebloom and strawberry seeds and compost (${shop.rows.join(', ')}), and lists the other twelve crops under the level they open at`,
       JSON.stringify(shop.rows) === JSON.stringify(want1) && JSON.stringify(shop.locked) === JSON.stringify(wantLocked), shop);
-    /* v2.3.3136: each row shows its crop grown (the compost its bin), and so
-       does each crop still to open */
-    const a3 = await artIn();
+    /* v2.3.3281: each row shows what it SELLS as the bag draws it -- a seed
+       its packet, compost its sack -- and each crop still to open as the crop
+       (the owner's bag icons; v2.3.3136 drew the grown crop, the best picture
+       there was then).  Every picture has come in (complete, with a size): a
+       broken address would show nothing where a crop should be. */
+    const iconsIn = async () => {
+      let v = null;
+      for (let t0 = Date.now(); Date.now() - t0 < 6000;) {
+        v = await A.page.evaluate(() => {
+          const imgs = Array.from(document.querySelectorAll('[data-farm] img[data-farm-icon]'));
+          return { n: imgs.length, bad: imgs.filter((i) => !(i.complete && i.naturalWidth > 0)).map((i) => i.getAttribute('data-farm-icon')) };
+        });
+        if (v.n && !v.bad.length) return v;
+        await A.page.waitForTimeout(200);
+      }
+      return v;
+    };
+    const a3 = await iconsIn();
     const pics3 = await A.page.evaluate(() => ({
-      rows: Array.from(document.querySelectorAll('[data-farm-row]')).map((r) => { const i = r.querySelector('img[data-farm-pic]'); return i ? i.getAttribute('data-farm-pic') : null; }),
-      locked: Array.from(document.querySelectorAll('[data-farm-locked-crop]')).map((c) => { const i = c.querySelector('img[data-farm-pic]'); return i ? i.getAttribute('data-farm-pic') : null; }),
+      rows: Array.from(document.querySelectorAll('[data-farm-row]')).map((r) => { const i = r.querySelector('img[data-farm-icon]'); return i ? i.getAttribute('data-farm-icon') : null; }),
+      locked: Array.from(document.querySelectorAll('[data-farm-locked-crop]')).map((c) => { const i = c.querySelector('img[data-farm-icon]'); return i ? i.getAttribute('data-farm-icon') : null; }),
+      srcs: Array.from(document.querySelectorAll('[data-farm-row] img[data-farm-icon]')).map((i) => i.getAttribute('src')),
     }));
-    const wantRowPics = ['carrot-ripe', 'wheat-ripe', 'firebloom-ripe', 'strawberry-ripe', 'compost-bin'];
-    const wantLockedPics = wantLocked.flatMap((l) => l.crops.map((c) => c + '-ripe'));
-    rec.ok(`v2.3.3136: the Seeds tab draws each crop as the owner drew it grown (${pics3.rows.join(', ')}), the twelve still to open too, every picture in (${a3 && a3.n})`,
-      same(pics3.rows, wantRowPics) && same(pics3.locked, wantLockedPics) && a3 && a3.n === 17 && !a3.bad.length, { pics3, a3 });
+    const cropItem = (c) => (['frostberry', 'rock_vine', 'cloudpetal', 'dewmelon', 'thunder_pepper', 'gloomcap', 'heartroot', 'firebloom'].includes(c) ? 'herb_' : 'crop_') + c;
+    const wantLockedPics = wantLocked.flatMap((l) => l.crops.map(cropItem));
+    rec.ok(`v2.3.3281: the Seeds tab draws what it sells as the bag does (${pics3.rows.join(', ')}: the owner's seed packets and compost sack), the twelve still to open as their crops, every picture in (${a3 && a3.n})`,
+      same(pics3.rows, want1) && same(pics3.locked, wantLockedPics) && a3 && a3.n === 17 && !a3.bad.length
+        && pics3.srcs.every((u) => /^\/icons\/items\/(seed-[a-z-]+|compost)\.webp\?v=/.test(u)), { pics3, a3 });
 
     /* ── 3. the summary follows the worker's farm.  The beds' own steps on
        the farm send exactly these farm_act messages (game/farmWalk.js); here

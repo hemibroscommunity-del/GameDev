@@ -43,6 +43,7 @@
  * the marketplace's escrowed listings -- deliberate; see spec). */
 
 import { PETBOOK, petPublic } from './petbook.js';   /* v2.3.3122: the pet lane */
+import { PACE } from './flood.js';   /* v2.3.3293: the weapon lane's pace */
 
 export const TRADE2 = {
   INVITE_TTL: 60000,    // open-toward-you offer lifetime
@@ -517,6 +518,14 @@ export const trade2Methods = {
   async _handleTrade2StageWeapon(session, payload) {
     const s = this._t2SessionFor(session.id);
     if (!s) return;
+    /* ═══ v2.3.3293: PACED (flood.js PACE.T2WPN) ═══
+       Staging and unstaging are durable writes -- the escrow record, the
+       stash, the refund's stamp -- and must stay so (value at rest, rule 7).
+       Unpaced, a window held open by a second account (a free guest) let one
+       socket write ~2.5 rows a message: 100 messages, 250 rows, at up to the
+       flood budget's 120 a second (the architecture review, 2026-10-17).  So
+       the MESSAGES are paced, shared by both: past the burst, refused. */
+    if (this._paceTake && !this._paceTake('t2wpn', session.id, PACE.T2WPN)) return;
     const ps = this.playerState[session.id];
     if (!ps || ps.dying || ps.dead) return;
     if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
@@ -564,6 +573,9 @@ export const trade2Methods = {
     const mine = s.weapons[session.id] || [];
     const at = mine.findIndex((w) => w.seq === seq);
     if (at < 0) return;
+    /* v2.3.3293: the same pace as staging (above); refused here, the weapon
+       simply stays staged -- a cancel still refunds every one */
+    if (this._paceTake && !this._paceTake('t2wpn', session.id, PACE.T2WPN)) return;
     const [entry] = mine.splice(at, 1);
     await this._creditPlayer(session.id, {
       opId: 'trade2:' + s.id + ':wpnrefund:' + session.id + ':' + entry.seq,

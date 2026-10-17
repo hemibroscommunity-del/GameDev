@@ -97,6 +97,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const P = await H.newPlayer(browser, {
     name: 'Swapper', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2, world: 'wheel',
+    /* v2.3.3283: the button takes a tap only under 0.6 s, and on this box the
+       browser saw every 60 ms tap as 0.75-1.2 s (the next touch waits behind a
+       ~400 ms frame): on main no tap swapped.  The right stick's QA knob
+       stretches its window too (WeaponSwapButton.jsx tapMaxMs). */
+    query: 'tapms=4000',
   });
   const errs = [];
   P.page.on('pageerror', (e) => errs.push(String(e && e.message || e)));

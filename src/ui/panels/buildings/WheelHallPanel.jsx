@@ -163,6 +163,9 @@ export function SaloonPanel(props) {
   var S = props.stateRef.current || {};
   var party = S._party && S._party.state === 'open' && Array.isArray(S._party.members) && S._party.members.length ? S._party : null;
   var members = party ? party.members.slice().sort(function (a, b) { return (b.id === S.myId) - (a.id === S.myId); }) : [];
+  /* v2.3.3284: a party lasts and holds 50 against a worker that says so
+     (party.js PARTY.KEEP_MAX); the strip shows six, this list everyone */
+  var keeps = !!(S._serverCaps && S._serverCaps.partykeep);
   return (
     <div style={LS_WRAP} data-saloon="">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }}>
@@ -182,12 +185,15 @@ export function SaloonPanel(props) {
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, color: LS.txt1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {m.id === S.myId ? 'You' : (m.name || 'Bro')}{party.leader === m.id ? ' · leader' : ''}
                 </span>
+                {(m.off || m.away) ? <span data-party-offline="" style={{ fontSize: 11.5, color: LS.txt3 }}>offline</span> : null}
                 <span style={{ fontSize: 12, color: LS.txt2, fontVariantNumeric: 'tabular-nums' }}>Lv {m.level || 1}</span>
               </div>
             );
           }) : (
             <div style={{ fontSize: 12.5, color: LS.txt2, lineHeight: 1.45 }}>
-              You're not in a party. Up to four bros can team up: you see each other's health, talk on the party chat, and go into dungeons together.
+              {keeps
+                ? "You're not in a party. Up to 50 bros can team up and stay together until they leave: you see each other's health, talk on the party chat, and go into dungeons four at a time."
+                : "You're not in a party. Up to four bros can team up: you see each other's health, talk on the party chat, and go into dungeons together."}
             </div>
           )}
         </div>

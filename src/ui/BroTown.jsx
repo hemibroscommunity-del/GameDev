@@ -269,6 +269,7 @@ import { blockRingBus } from './mobile/blockRingBus.js';
 import { chatBubbleBus } from './mobile/chatBubbleBus.js'; /* v2.3.1287: self-tap opens chat */
 import { tapDismiss, TAP_DISMISS_STYLE } from './tapDismiss.js'; /* v2.3.2284 */
 import { chatLogBus } from './mobile/chatLogBus.js'; /* v2.3.1980: the world-chat feed listens here */
+import { BUFF_ICON } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's buff pictures */
 import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 /* v2.3.1796: the questline teaches the controls by flashing the real one
    (owner).  Sibling of, not replacement for, ControlsTutorial above — see
@@ -12828,7 +12829,7 @@ export var BroTown = function BroTown(_ref0) {
     if (S._cursedUntil && Date.now() < S._cursedUntil) {
       var rem = Math.ceil((S._cursedUntil - Date.now()) / 1000);
       effects.push({
-        icon: '🔮',
+        icon: BUFF_ICON.cursed,
         label: 'Cursed',
         color: '#8E44AD',
         time: rem + 's',
@@ -12838,7 +12839,7 @@ export var BroTown = function BroTown(_ref0) {
     if (S._bleedUntil && Date.now() < S._bleedUntil) {
       var _rem = Math.ceil((S._bleedUntil - Date.now()) / 1000);
       effects.push({
-        icon: '🩸',
+        icon: BUFF_ICON.bleed,
         label: 'Bleed',
         color: '#cc3333',
         time: _rem + 's',
@@ -12854,7 +12855,7 @@ export var BroTown = function BroTown(_ref0) {
       var _dbm2 = Number(S._dmgBuffMul);
       var _dmul2 = (_dbm2 >= 1 && _dbm2 <= 4) ? _dbm2 : 1.20;
       effects.push({
-        icon: '⚔️',
+        icon: BUFF_ICON.damage,
         label: 'Dmg+',
         color: '#ea580c',
         time: _btime(_rem2),
@@ -12867,7 +12868,7 @@ export var BroTown = function BroTown(_ref0) {
     if (S._manaBuff && Date.now() < S._manaBuff) {
       var _rem6 = Math.ceil((S._manaBuff - Date.now()) / 1000);
       effects.push({
-        icon: '\u{1F4A0}',
+        icon: BUFF_ICON.mana,
         label: 'Mana',
         color: '#4F8FDE',
         time: _btime(_rem6),
@@ -12877,7 +12878,7 @@ export var BroTown = function BroTown(_ref0) {
     if (S._regenBuff && Date.now() < S._regenBuff) {
       var _rem3 = Math.ceil((S._regenBuff - Date.now()) / 1000);
       effects.push({
-        icon: '💚',
+        icon: BUFF_ICON.regen,
         label: 'Regen',
         color: '#59BF91',
         time: _btime(_rem3),
@@ -12887,7 +12888,7 @@ export var BroTown = function BroTown(_ref0) {
     if (S._resistBuff && Date.now() < S._resistBuff) {
       var _rem4 = Math.ceil((S._resistBuff - Date.now()) / 1000);
       effects.push({
-        icon: '🛡️',
+        icon: BUFF_ICON.resist,
         label: 'Resist',
         color: '#60a5fa',
         time: _btime(_rem4),
@@ -12902,7 +12903,7 @@ export var BroTown = function BroTown(_ref0) {
     if (S._xpBuff && Date.now() < S._xpBuff && _xm > 1 && _xm <= 2) {
       var _remXp = Math.ceil((S._xpBuff - Date.now()) / 1000);
       effects.push({
-        icon: '\uD83E\uDD67',
+        icon: BUFF_ICON.xp,
         label: 'XP+',
         color: '#C99A3C',
         time: _btime(_remXp),
@@ -12918,7 +12919,7 @@ export var BroTown = function BroTown(_ref0) {
       var _sbm5 = Number(S._spdBuffMul);
       var _smul5 = (_sbm5 >= 1 && _sbm5 <= 2) ? _sbm5 : 1.15;
       effects.push({
-        icon: '💨',
+        icon: BUFF_ICON.speed,
         label: 'Speed',
         color: '#D8A94D',
         time: _btime(_rem5),
@@ -12948,7 +12949,12 @@ export var BroTown = function BroTown(_ref0) {
           gap: 2,
           alignItems: 'center'
         }
-      }, React.createElement('span', null, e.icon), React.createElement('span', null, e.time));
+      }, /* v2.3.3279: the owner's picture for each (data/smallIcons.js BUFF_ICON); they were emoji */
+      React.createElement('img', {
+        src: e.icon, alt: e.label, title: e.label + ' ' + e.desc, draggable: false, width: 15, height: 15,
+        'data-buff-chip': e.label,
+        style: { width: 15, height: 15, display: 'block', pointerEvents: 'none' },
+      }), React.createElement('span', null, e.time));
     }));
   }(), ((_stateRef$current30 = stateRef.current) === null || _stateRef$current30 === void 0 ? void 0 : _stateRef$current30._pvpReputation) && stateRef.current._pvpReputation !== 'neutral' && /*#__PURE__*/React.createElement("span", {
     style: {

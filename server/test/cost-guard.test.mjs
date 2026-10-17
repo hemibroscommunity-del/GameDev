@@ -23,6 +23,10 @@
  *   7. a new character's join and arrival in the Wheel, and a returning
  *      one's, in a handful of rows;
  *   8. the room's own writes with one player in it for 10 minutes.
+ *   9. v2.3.3293 (the architecture review): a tap a script can send as fast
+ *      as it likes writes a bounded number of rows -- a shield on and off
+ *      200 times in 2 s, a weapon in and out of a trade window 100 times
+ *      (they wrote 200 and ~250);
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -30,6 +34,8 @@ import { GameRoom } from '../src/index.js';
 import { BOTFP } from '../src/botfp.js';
 import { CODEX } from '../src/codex.js';
 import { WHEEL_SPAWNS } from '../src/wheelspawns.js';
+import { PACE } from '../src/flood.js';
+import { shieldSig } from '../src/shieldwear.js';
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -314,6 +320,59 @@ const FAST = 110;
   const theirs = state.writes.slice(w0).filter((k) => k.indexOf('cg_room') < 0);
   check(`8. the room's own writes in 10 minutes with one player in it: ${theirs.length} (${Object.entries(byPrefix(theirs)).map((e) => e.join(' ')).join(', ') || 'none'}), at most 5`,
     theirs.length <= 5, byPrefix(theirs));
+}
+
+/* ── 9. a tap a script can repeat ─────────────────────────────────────── */
+/* v2.3.3293.  At the flood budget's ~110 messages a second, under its close
+   line; the free plan's 100,000 rows a day are ~15 minutes of one of these. */
+{
+  const { room, state } = await makeRoom();
+  const p = await join(room, 'cg_shield');
+  const ps = room.playerState.cg_shield;
+  ps.shield = { name: 'Training Shield', gearBase: 'shield_wood', tierMult: 1, tier: 'common' };
+  ps.shieldStash = [];
+  const sig = shieldSig(ps.shield);
+  const w0 = state.writes.length;
+  for (let i = 0; i < 200; i++) {
+    NOW += 9;
+    await send(room, p, { type: 'shield_wear', payload: i % 2 ? { sig } : { none: true } });
+  }
+  const rows = mine(state, 'cg_shield', w0).filter((k) => k.startsWith('rpg:')).length;
+  check(`9a. a shield on and off 200 times in 2 s writes the record ${rows} times, at most PACE.RPG's burst (${PACE.RPG.BURST}) -- it wrote 200`,
+    rows <= PACE.RPG.BURST, byPrefix(mine(state, 'cg_shield', w0)));
+  check('9a. ...and the arm is still what the last report said (the starter shield)', !!ps.shield && shieldSig(ps.shield) === sig && ps.shieldStash.length === 0, { shield: ps.shield, bag: ps.shieldStash });
+  check('9a. ...and the record is marked to be written (the regen drain or the close flush)', ps._regenDirty === true);
+}
+{
+  const { room, state } = await makeRoom();
+  const a = await join(room, 'cg_ta');
+  const b = await join(room, 'cg_tb');
+  await send(room, a, { type: 'trade2_open', payload: { target: 'cg_tb' } });
+  await send(room, b, { type: 'trade2_open', payload: { target: 'cg_ta' } });
+  const psA = room.playerState.cg_ta;
+  psA.weaponStash = [{ type: 'sword', gearBase: 'iron', tier: 'common', tierMult: 1, name: 'A-blade' }];
+  const staged = () => { const s = room._t2SessionFor('cg_ta'); return (s && s.weapons && s.weapons.cg_ta) || []; };
+  const w0 = state.writes.length;
+  let moved = 0;
+  for (let i = 0; i < 50; i++) {
+    NOW += 9;
+    const before = staged().length;
+    await send(room, a, { type: 'trade2_stage_weapon', payload: { stashIdx: 0 } });
+    if (staged().length > before) moved++;
+    NOW += 9;
+    const w = staged()[0];
+    if (w) {
+      await send(room, a, { type: 'trade2_unstage_weapon', payload: { seq: w.seq } });
+      if (!staged().length) moved++;
+    }
+  }
+  const rows = mine(state, 'cg_ta', w0).length;
+  check('9b. the trade window took a weapon in and out (guard: the lane works)', moved >= 2, moved);
+  check(`9b. 100 stage / unstage messages in ~1 s move it ${moved} times, at most PACE.T2WPN's burst (${PACE.T2WPN.BURST})`, moved <= PACE.T2WPN.BURST, moved);
+  check(`9b. ...and write ${rows} rows (${Object.entries(byPrefix(mine(state, 'cg_ta', w0))).map((e) => e.join(' ')).join(', ')}), at most 3 a move -- it wrote ~250`,
+    rows <= 3 * PACE.T2WPN.BURST, byPrefix(mine(state, 'cg_ta', w0)));
+  const inStash = (psA.weaponStash || []).length, inTrade = staged().length;
+  check('9b. ...and the weapon is in exactly one place, the stash or the window', inStash + inTrade === 1, { inStash, inTrade });
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

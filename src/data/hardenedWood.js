@@ -39,5 +39,7 @@ export const HARDENED_WOOD_BY_LOG = Object.freeze(Object.fromEntries(
 export const isHardenedWoodKey = (k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(HARDENED_WOOD_RECIPES, k);
 
 /* The bag's picture: public/icons/items/hardened-<tier>.webp, made from the
-   tree's own log picture by tools/make_hardened_wood_icons.py. */
+   tree's own log picture by tools/make_hardened_wood_icons.py.  v2.3.3281:
+   the owner's painted ones now, each in its log's colours with two riveted
+   iron bands (tools/ui/cut-bag-icons.py; the same file names). */
 export const hardenedWoodIcon = (k, v) => (isHardenedWoodKey(k) ? '/icons/items/hardened-' + HARDENED_WOOD_RECIPES[k].tier + '.webp' + (v || '') : null);

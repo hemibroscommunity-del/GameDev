@@ -43,13 +43,26 @@
  * lesson) shown as 'away' before the sweep removes them. */
 
 export const PARTY = {
-  MAX_SIZE: 4,             // matches dungeon.js PARTY_HP_SCALE's 4-slot table
+  MAX_SIZE: 4,             // matches dungeon.js PARTY_HP_SCALE's 4-slot table (v2.3.3284: the cap with `partykeep: false`)
   INVITE_TTL: 60000,       // 1 min to accept an invite
   VITALS_MS: 2000,         // roster re-echo cadence (live HP/zone)
-  OFFLINE_GRACE_MS: 120000,// 'away' window before a dropped member is removed
+  OFFLINE_GRACE_MS: 120000,// 'away' window before a dropped member is removed (v2.3.3284: only with `partykeep: false`)
   CHAT_MAX: 200,           // v2.3.1212: party-chat line length clamp
-  INVITE_REPEAT_MS: 5000   // v2.3.1970: min gap between two invite cards from the same inviter
+  INVITE_REPEAT_MS: 5000,  // v2.3.1970: min gap between two invite cards from the same inviter
+  /* ═══ v2.3.3284: A PARTY THAT LASTS (docs/specs/party.md) ═══
+     The owner: a party "that stays persistent until you remove yourself from
+     the party and it becomes 'alliance' at 20+ people", then "Go recommended"
+     to the plan.  This is its first step: the party is STORED, so it outlives
+     a logout, a reconnect and a deploy, and it grows past four.  Dungeons
+     stay four (dungeon.js _dungeonPullPartyMembers). */
+  KEEP_MAX: 50,            // members, online or not
+  V: 1,                    // the stored record's shape; a newer one is left whole
+  SEEN_WRITE_MS: 6 * 3600 * 1000,      // a member's `seen` is written at a join at most this often
+  LEADER_IDLE_MS: 7 * 24 * 3600 * 1000, // a leader not seen this long hands the party on
+  NAME_MAX: 24,            // a stored name, clamped on the way in
 };
+
+const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 export const partyMethods = {
   _partySend(playerId, type, payload) {
@@ -73,14 +86,18 @@ export const partyMethods = {
   },
 
   _partyWire(p) {
+    const keep = this._partyKeepOn();
+    const now = Date.now();
     return {
       id: p.id,
       leader: p.leader,
       state: 'open',
+      /* v2.3.3284: how many it can hold, so the game says "7/50" */
+      max: this._partyMax(),
       members: p.members.map((pid) => {
         const ps = this.playerState[pid];
         const meta = p.meta[pid] || {};
-        return {
+        const m = {
           id: pid,
           name: meta.name || 'Bro',
           level: ps ? (ps.level || 1) : (meta.level || 1),
@@ -90,8 +107,149 @@ export const partyMethods = {
           away: !ps,
           dead: !!(ps && (ps.dying || ps.dead)),
         };
+        /* v2.3.3284: an offline member of a party that lasts is OFFLINE, not
+           reconnecting -- and when they were last on, in seconds (an older
+           game reads `away` and greys them as before) */
+        if (keep && !ps) {
+          m.off = 1;
+          if (meta.seen > 0) m.seen = Math.max(0, Math.round((now - meta.seen) / 1000));
+        }
+        return m;
       }),
     };
+  },
+
+  /* ═══ v2.3.3284: THE STORED PARTY (docs/specs/party.md "A party that lasts") ═══
+     `party:<id>` is the roster, `party_by_player:<pid>` each member's own
+     word for which party they are in -- the index is the truth: a record
+     that lists someone whose index names another party (a crash between two
+     writes, a kill-switch flip) loses them when it is next loaded.  Written
+     only when the roster changes, fire-and-forget (handoff rule 10: the
+     output gate holds every message until the write is durable); read at a
+     member's join.  `partykeep: false` in the live flags reads and writes
+     nothing and puts the old in-memory party back for everything after it. */
+  _partyKeepOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'partykeep') && !f.partykeep);
+  },
+
+  _partyMax() {
+    return this._partyKeepOn() ? PARTY.KEEP_MAX : PARTY.MAX_SIZE;
+  },
+
+  _partyStorageDo(op, key, val) {
+    if (!this._partyKeepOn() || !this.state || !this.state.storage) return;
+    try {
+      const pr = op === 'put' ? this.state.storage.put(key, val) : this.state.storage.delete(key);
+      if (pr && typeof pr.catch === 'function') pr.catch(() => {});
+    } catch (e) { /* the next roster change writes it again */ }
+  },
+
+  /* the whole record, as stored: the members oldest first, and for each the
+     name and level the list shows while they are offline */
+  _partyStore(p) {
+    const meta = Object.create(null);   /* keyed by player ids: a '__proto__' must store (the party meta lesson, v2.3.1185) */
+    for (const pid of p.members) {
+      const m = p.meta[pid] || (p.meta[pid] = {});
+      meta[pid] = { name: String(m.name || 'Bro').slice(0, PARTY.NAME_MAX), level: m.level | 0 || 1, at: +m.at || p.ts || 0, seen: +m.seen || 0 };
+      /* what storage holds now: a join compares against THIS, not the
+         in-memory `seen` a disconnect moves, or a member who comes and goes
+         with the party in memory would never have their `seen` written */
+      m.ss = meta[pid].seen;
+    }
+    this._partyStorageDo('put', 'party:' + p.id, { v: PARTY.V, id: p.id, leader: p.leader, members: p.members.slice(), meta, ts: p.ts || 0 });
+  },
+
+  _partyIndexPut(pid, partyId) { this._partyStorageDo('put', 'party_by_player:' + pid, partyId); },
+  _partyIndexDrop(pid) { this._partyStorageDo('delete', 'party_by_player:' + pid); },
+
+  /* A member's stored party, loaded at their join.  Returns the party (in
+     memory from now on, every member indexed), or null.  A read that throws
+     marks the player UNKNOWN (`_partyUnknownIds`): they can neither invite
+     nor accept until a join reads it, so a lost read can never put them in
+     two parties.  Storage awaits only, so nothing else runs in between
+     (handoff rule 9). */
+  async _partyLoad(playerId) {
+    const st = this.state && this.state.storage;
+    if (!st) return null;
+    if (!this._parties) this._parties = new Map();
+    if (!this._partyByPlayer) this._partyByPlayer = new Map();
+    if (!this._partyUnknownIds) this._partyUnknownIds = new Set();
+    let id;
+    try { id = await st.get('party_by_player:' + playerId); }
+    catch (e) { this._partyUnknownIds.add(playerId); return null; }
+    this._partyUnknownIds.delete(playerId);
+    if (!id || typeof id !== 'string') return null;
+    const live = this._parties.get(id);
+    if (live) {
+      if (live.members.includes(playerId)) { this._partyByPlayer.set(playerId, live); return live; }
+      this._partyIndexDrop(playerId);
+      return null;
+    }
+    let rec;
+    try { rec = await st.get('party:' + id); }
+    catch (e) { this._partyUnknownIds.add(playerId); return null; }
+    if (!rec || typeof rec !== 'object' || rec.id !== id || !Array.isArray(rec.members)) { this._partyIndexDrop(playerId); return null; }
+    /* a newer shape (a rollback): left whole and untouched, and the player
+       unknown, never a partyless one free to join another */
+    if ((rec.v | 0) > PARTY.V) { this._partyUnknownIds.add(playerId); return null; }
+    let members = [];
+    for (const m of rec.members) if (typeof m === 'string' && m && !members.includes(m)) members.push(m);
+    if (!members.includes(playerId)) { this._partyIndexDrop(playerId); return null; }
+    /* the index is the truth: keep only the members whose own index names
+       this party (one batched read, once a party a worker's life) */
+    let idx = null;
+    try { idx = await st.get(members.map((m) => 'party_by_player:' + m)); }
+    catch (e) { idx = null; }
+    const healed = idx instanceof Map ? members.filter((m) => m === playerId || idx.get('party_by_player:' + m) === id) : members;
+    const p = { id, leader: rec.leader, members: healed, meta: Object.create(null), ts: +rec.ts || Date.now(), lastVitals: 0 };
+    const rm = rec.meta && typeof rec.meta === 'object' ? rec.meta : {};
+    for (const m of healed) {
+      const x = own(rm, m) && rm[m] && typeof rm[m] === 'object' ? rm[m] : {};
+      p.meta[m] = { name: String(x.name || 'Bro').slice(0, PARTY.NAME_MAX), level: x.level | 0 || 1, at: +x.at || 0, seen: +x.seen || 0 };
+      p.meta[m].ss = p.meta[m].seen;
+    }
+    if (p.members.length <= 1) {
+      /* everyone else has gone: a party of one is just a player */
+      this._partyStorageDo('delete', 'party:' + id);
+      this._partyIndexDrop(playerId);
+      return null;
+    }
+    if (!p.members.includes(p.leader)) p.leader = p.members[0];
+    this._parties.set(id, p);
+    for (const m of p.members) {
+      /* a member already in another live party keeps it (a flip of the
+         switch); their own index decides at their next join */
+      if (!this._partyByPlayer.has(m)) this._partyByPlayer.set(m, p);
+    }
+    if (healed.length !== members.length || p.leader !== rec.leader) this._partyStore(p);
+    return p;
+  },
+
+  /* v2.3.3284: a character restart leaves its party (persistence.js
+     _resetCharacterData): a fresh character has joined nothing */
+  async _partyOnReset(playerId) {
+    const p = this._partyOf(playerId);
+    if (p) { this._partyRemoveMember(p, playerId, 'left'); return; }
+    if (!this._partyKeepOn()) return;
+    const st = this.state && this.state.storage;
+    if (!st) return;
+    try {
+      const id = await st.get('party_by_player:' + playerId);
+      if (typeof id !== 'string' || !id) return;
+      const rec = await st.get('party:' + id);
+      await st.delete('party_by_player:' + playerId);
+      if (!rec || typeof rec !== 'object' || !Array.isArray(rec.members) || (rec.v | 0) > PARTY.V) return;
+      const members = rec.members.filter((m) => m !== playerId);
+      if (members.length <= 1) {
+        await st.delete('party:' + id);
+        for (const m of members) await st.delete('party_by_player:' + m);
+        return;
+      }
+      const meta = Object.assign(Object.create(null), rec.meta || {});   /* keyed by player ids */
+      delete meta[playerId];
+      await st.put('party:' + id, Object.assign({}, rec, { members, meta, leader: rec.leader === playerId ? members[0] : rec.leader }));
+    } catch (e) { /* best-effort, as the rest of the reset */ }
   },
 
   _partyBroadcast(p, extra) {
@@ -155,11 +313,16 @@ export const partyMethods = {
     if (!targetPs) {
       return this._partySend(fromId, 'party_error', { reason: 'target-gone' });
     }
-    if (this._partyOf(target)) {
+    /* v2.3.3284: a player whose stored party could not be read is in an
+       unknown party, so neither side of an invite (party.md) */
+    if (this._partyUnknownIds && this._partyUnknownIds.has(fromId)) {
+      return this._partySend(fromId, 'party_error', { reason: 'not-loaded' });
+    }
+    if (this._partyOf(target) || (this._partyUnknownIds && this._partyUnknownIds.has(target))) {
       return this._partySend(fromId, 'party_error', { reason: 'target-busy', name: this._partyNameOf(target) });
     }
     const mine = this._partyOf(fromId);
-    if (mine && mine.members.length >= PARTY.MAX_SIZE) {
+    if (mine && mine.members.length >= this._partyMax()) {
       return this._partySend(fromId, 'party_error', { reason: 'full' });
     }
     /* ═══ v2.3.1970: ONE CARD PER INVITER PER INVITE_REPEAT_MS ═══
@@ -218,13 +381,18 @@ export const partyMethods = {
     if (this._partyOf(accepterId)) {
       return this._partySend(accepterId, 'party_error', { reason: 'busy' });
     }
+    /* v2.3.3284: an unknown stored party (a read that failed) on either side */
+    if (this._partyUnknownIds && (this._partyUnknownIds.has(accepterId) || this._partyUnknownIds.has(inviter))) {
+      return this._partySend(accepterId, 'party_error', { reason: 'not-loaded' });
+    }
     if (!this._parties) this._parties = new Map();
     if (!this._partyByPlayer) this._partyByPlayer = new Map();
     let p = this._partyOf(inviter);
+    const fresh = !p;
     if (p) {
       // Capacity re-check at accept: the party may have filled since
       // the invite went out (the invite's snapshot is NOT authoritative).
-      if (p.members.length >= PARTY.MAX_SIZE) {
+      if (p.members.length >= this._partyMax()) {
         return this._partySend(accepterId, 'party_error', { reason: 'full' });
       }
     } else {
@@ -240,13 +408,18 @@ export const partyMethods = {
         ts: Date.now(),
         lastVitals: 0,
       };
-      p.meta[inviter] = { name: this._partyNameOf(inviter), level: inviterPs.level || 1, maxHp: inviterPs.maxHp || 100 };
+      p.meta[inviter] = { name: this._partyNameOf(inviter), level: inviterPs.level || 1, maxHp: inviterPs.maxHp || 100, at: Date.now(), seen: Date.now() };
       this._parties.set(p.id, p);
       this._partyByPlayer.set(inviter, p);
     }
     p.members.push(accepterId);
-    p.meta[accepterId] = { name: this._partyNameOf(accepterId), level: ps.level || 1, maxHp: ps.maxHp || 100 };
+    p.meta[accepterId] = { name: this._partyNameOf(accepterId), level: ps.level || 1, maxHp: ps.maxHp || 100, at: Date.now(), seen: Date.now() };
     this._partyByPlayer.set(accepterId, p);
+    /* v2.3.3284: stored -- the indexes first, so a crash between the writes
+       leaves an index the next read drops, never a member nobody can see */
+    if (fresh) this._partyIndexPut(inviter, p.id);
+    this._partyIndexPut(accepterId, p.id);
+    this._partyStore(p);
     this._partyBroadcast(p, { joined: accepterId });
   },
 
@@ -280,16 +453,20 @@ export const partyMethods = {
     p.members = p.members.filter((m) => m !== pid);
     delete p.meta[pid];
     if (this._partyByPlayer) this._partyByPlayer.delete(pid);
+    this._partyIndexDrop(pid);   /* v2.3.3284: the index first, as at a join */
     this._partySend(pid, 'party_state', { state: 'none', reason });
     if (p.members.length <= 1) {
       this._parties.delete(p.id);
       for (const rest of p.members) {
         if (this._partyByPlayer) this._partyByPlayer.delete(rest);
+        this._partyIndexDrop(rest);
         this._partySend(rest, 'party_state', { state: 'none', reason: 'disbanded' });
       }
+      this._partyStorageDo('delete', 'party:' + p.id);
       return;
     }
     if (p.leader === pid) p.leader = p.members[0]; // oldest member inherits
+    this._partyStore(p);
     this._partyBroadcast(p, { removed: pid, reason });
   },
 
@@ -299,6 +476,9 @@ export const partyMethods = {
     const p = this._partyOf(playerId);
     if (!p || !p.meta[playerId]) return;
     p.meta[playerId].awaySince = Date.now();
+    /* v2.3.3284: when they were last on, for the list (in memory: written
+       with the next roster change, or at their next join) */
+    p.meta[playerId].seen = Date.now();
     this._partyBroadcast(p);
   },
 
@@ -306,10 +486,41 @@ export const partyMethods = {
    * clear their party HUD on every state_sync (a deploy wipes rosters,
    * so stale client state must not survive a reconnect), and this
    * re-send is what restores the HUD when the roster DID survive. */
-  _partyOnRejoin(playerId) {
-    const p = this._partyOf(playerId);
+  async _partyOnRejoin(playerId) {
+    let p = this._partyOf(playerId);
+    /* v2.3.3284: a party that lasts is read from storage at the join of
+       any member who has none in memory (a logout, a deploy) */
+    if (!p && this._partyKeepOn()) {
+      try { p = await this._partyLoad(playerId); } catch (e) { p = null; }
+      /* the socket may have gone while it was read */
+      if (!this.playerState[playerId]) return;
+    }
     if (!p) return;
-    if (p.meta[playerId]) delete p.meta[playerId].awaySince;
+    const meta = p.meta[playerId] || (p.meta[playerId] = {});
+    delete meta.awaySince;
+    if (this._partyKeepOn()) {
+      /* name and level for the list, and `seen` for the alliance's count of
+         active members (the next step) -- written only when they changed,
+         or `seen` is older than SEEN_WRITE_MS: a reconnect storm writes
+         nothing */
+      const ps = this.playerState[playerId];
+      const now = Date.now();
+      const name = String(this._partyNameOf(playerId)).slice(0, PARTY.NAME_MAX);
+      const level = (ps && ps.level) | 0 || 1;
+      let dirty = meta.name !== name || (meta.level | 0) !== level || !(now - (+meta.ss || 0) < PARTY.SEEN_WRITE_MS);
+      meta.name = name; meta.level = level; meta.seen = now;
+      if (ps && ps.maxHp) meta.maxHp = ps.maxHp;
+      /* a leader not seen for LEADER_IDLE_MS hands the party on to the
+         longest-standing member online now (lazy: handoff rule 12) */
+      if (p.leader !== playerId && !this.playerState[p.leader]) {
+        const lm = p.meta[p.leader] || {};
+        if (+lm.seen > 0 && now - lm.seen > PARTY.LEADER_IDLE_MS) {
+          const next = p.members.find((m) => !!this.playerState[m]);
+          if (next && next !== p.leader) { p.leader = next; dirty = true; }
+        }
+      }
+      if (dirty) this._partyStore(p);
+    }
     this._partyBroadcast(p);
   },
 
@@ -323,13 +534,17 @@ export const partyMethods = {
     }
     if (!this._parties) return;
     for (const p of [...this._parties.values()]) {
-      for (const pid of [...p.members]) {
+      /* v2.3.3284: a party that lasts keeps its offline members */
+      if (!this._partyKeepOn()) for (const pid of [...p.members]) {
         const meta = p.meta[pid];
         if (meta && meta.awaySince && now - meta.awaySince > PARTY.OFFLINE_GRACE_MS) {
           this._partyRemoveMember(p, pid, 'offline');
         }
       }
       if (!this._parties.has(p.id)) continue; // removal disbanded it
+      /* v2.3.3284: a party that lasts stays in memory with nobody on; its
+         roster is built for nobody, so it is not built */
+      if (!p.members.some((m) => !!this.playerState[m])) continue;
       if (now - p.lastVitals >= PARTY.VITALS_MS) {
         p.lastVitals = now;
         this._partyBroadcast(p);
