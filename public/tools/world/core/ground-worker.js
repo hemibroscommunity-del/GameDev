@@ -425,6 +425,16 @@ async function init(m) {
     /* v2.3.3024: the land under each overview pixel (index into `regionIds`,
        255 water), for the minimap's and world map's flat land colours */
     overviewLands: { w: ovLands.w, h: ovLands.h, data: ovLands.data, ids: F.regionIds.slice() },
+    /* v2.3.3319: the long Wheel's lands up close, in tiles the world map
+       loads as it shows them (worldblocks.js DETAIL_TILE, src/ui/
+       worldMapDetail.js): where they are, their address, how many game px a
+       tile's pixel covers, and each one-colour tile's colour -- only beside
+       the baked set read here (a plan without one has no tiles) */
+    detail: baked && !baked.error && set && set.detail ? {
+      at: `${PLACED_BASE}${set.dir}/${set.detail.dir}/`, v: set.v,
+      px: set.detail.cells * F.S * WPA, tile: set.detail.tile,
+      cols: set.detail.cols, rows: set.detail.rows, w: set.detail.w, h: set.detail.h, fill: set.detail.fill.slice(),
+    } : null,
     chunk: { artPx: CHUNK, gamePx: CHUNK * WPA, px: CHUNK * K, apronPx: APRON * K, cols: Math.ceil(F.bw * F.S / CHUNK), rows: Math.ceil(F.bh * F.S / CHUNK),
       under: CHUNK / UNDER },
     arrival: { x: Math.round((ax - F.x0) * WPA), y: Math.round((ay - F.y0) * WPA) },

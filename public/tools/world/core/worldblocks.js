@@ -42,6 +42,16 @@ export const OVERVIEW_CELLS = 4;
 export function overviewCells(plan) {
   return plan && plan.wheel && plan.wheel.tierZones > 1 ? OVERVIEW_CELLS * 4 : OVERVIEW_CELLS;
 }
+/* v2.3.3319: ...and that coarser picture, zoomed in on the world map far from
+   you, was a few big soft squares where a coast or a lake should be (round
+   you the blocks' own lands are drawn over it, a pixel every OVERVIEW_CELLS
+   cells).  So the long Wheel's lands are baked at the blocks' detail too, in
+   DETAIL_TILE-pixel tiles (tools/world/bake-wheel-world.mjs, public/world/
+   <dir>/detail/), and the world map loads only the ones it shows, only while
+   it shows them (src/ui/worldMapDetail.js).  The short Wheel's whole picture
+   is already that fine: no tiles. */
+export const DETAIL_TILE = 256;
+export function detailOn(plan) { return overviewCells(plan) > OVERVIEW_CELLS; }
 /* What the baked objects and overview (tools/world/bake-wheel-world.mjs) were
    worked out from: the plan, the objects' catalog and the placing's version.
    The worker trusts the baked files only when its own plan says the same --
