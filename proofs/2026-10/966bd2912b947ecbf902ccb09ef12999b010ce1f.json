@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "966bd2912b947ecbf902ccb09ef12999b010ce1f",
+  "tree": "67ad33706d98c40f00831e999449e17a2a899359",
+  "committedAt": "2026-10-17T16:32:11-07:00",
+  "subject": "Sideways, stat names on the Points tab are no longer cut off; twelve phone checks fixed; the clans' founding gold stays gone (v2.3.3324) (#952)",
+  "files": 5768,
+  "bytes": 636520913,
+  "listingSha256": "598bc619b5a91feed9aa2a8cf051c25a05f0fe8df67f7663b3b689e590a5206a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
