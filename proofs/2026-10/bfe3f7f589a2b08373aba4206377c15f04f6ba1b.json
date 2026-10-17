@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "bfe3f7f589a2b08373aba4206377c15f04f6ba1b",
+  "tree": "87d2263ce5188882b05d2b5123a761799c85f1d4",
+  "committedAt": "2026-10-17T09:11:22-07:00",
+  "subject": "Every land five times longer, and far-off monsters rest (v2.3.3299, v2.3.3315) (#942)",
+  "files": 5712,
+  "bytes": 636086284,
+  "listingSha256": "35de754bf854e65bc222333b79b42118dc9f645c2f5cb4bf177b0f7017712a05",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
