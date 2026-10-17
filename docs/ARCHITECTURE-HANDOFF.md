@@ -52,7 +52,11 @@ extended.
    schema stamp — `_saveRpg` writes the `RPG_SCHEMA_VERSION` constant and
    `_loadRpg` runs `runRpgMigrations` against it (server/src/migrations.js,
    spec docs/specs/migrations.md). Shape changes to the blob now ship as
-   registry migrations, not ad-hoc heal-on-load branches.
+   registry migrations, not ad-hoc heal-on-load branches. v2.3.3303: a
+   migration that fails really retries (the join's save stamps the
+   version the load reached, not the constant), and a blob a newer worker
+   saved is refused at the join (close 1011) rather than rewritten by an
+   older one; `newersave: false` lets it in.
 2. **Storage-key registry** (all GameRoom DO storage; prefix + `:` + id,
    enumerable via `storage.list({prefix})`):
 
@@ -219,6 +223,11 @@ extended.
     live in its allowlist — see docs/specs/conformance-audit.md).
     Mirror-table drift (server/src/data.js vs client tables) is
     likewise pinned by `test/mirror-audit.test.mjs`.
+    v2.3.3304: and the default branch relays only `RELAY.TYPES`
+    (server/src/relay.js), each rebuilt in the sender's name (the
+    payload's `id`, `from`, `fromName`... are the worker's). A new
+    client->client relay goes on that list or it reaches no one;
+    `test/relay.test.mjs` holds the list to every broadcast in src/.
 14. **Handshake halves are validated per-sender-session.** An accept is
     honored only against a live challenge/offer recorded from the OTHER
     side's own connection (trades, duels, threat, clan invites). The
@@ -305,8 +314,9 @@ extended.
     (see any `server/test/*.test.mjs`): stateful Map-backed storage mock
     with prefix `list`, `fakeWs` collecting sent JSON, `check()`
     counters, a real `webSocketMessage` join helper, exit 1 on failure,
-    registered in `server/package.json` `npm test`. Spec docs go in
-    `docs/specs/<system>.md` with the wire surface tabled.
+    named `server/test/<name>.test.mjs` -- since v2.3.3302 `npm test`
+    (test/run.mjs) runs every such file, so nothing else registers it.
+    Spec docs go in `docs/specs/<system>.md` with the wire surface tabled.
 25. **Comment discipline**: every change carries a `v2.3.NNNN:` tag
     explaining WHY, often with incident history; constants live in
     ALL-CAPS config objects (`MARKET`, `DUEL`). This is the project's

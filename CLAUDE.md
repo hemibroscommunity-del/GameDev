@@ -2916,6 +2916,15 @@ registry of plausible-but-wrong moves (v2.3.1204).
   auto-reconnect) and cold-starts the room: the first join after a
   deploy may retry its loading screen a few times. One-time per
   deploy; not a bug. Prefer merging server changes at quiet hours.
+- **The `provenance` branch (v2.3.3308) is the owner's proof of
+  ownership against copies.** `.github/workflows/provenance.yml`
+  fingerprints every commit of main (each file's SHA-256, then one of the
+  list: `tools/provenance/listing.mjs`), timestamps it in Bitcoin
+  (OpenTimestamps) and has GitHub sign it as this repository's (an artifact
+  attestation), three files a commit on that branch. NEVER delete, rewrite
+  or force-push it, or put anything else on it: a proof is only worth its
+  date. Its commits start with `[CF-Pages-Skip]` (TRAPS §193); how anyone
+  checks one, and what to do about a copy: docs/specs/provenance.md.
 
 ## Wire protocol
 
@@ -2938,6 +2947,15 @@ Two protocol versions coexist; both must keep working:
   client→server events must be denied by default unless added
   deliberately, and every server-EMITTED event type must be added to
   `PRIVILEGED_EVENTS` in `server/src/index.js` or clients can forge it.
+- THE RELAY IS AN ALLOWLIST, IN THE SENDER'S NAME (v2.3.3304,
+  docs/specs/relay.md). A phone's broadcast that the router has no case
+  for is relayed to the others only if its type is in `RELAY.TYPES`
+  (`server/src/relay.js`): a new relay goes on that list or it reaches no
+  one (`relay.test` scans every broadcast in src/). Each relay is rebuilt
+  `{type, from, payload}`, the payload's `id`, `from`, `playerId`,
+  `fromName`, `playerName`, `name` the worker's -- a script could relay
+  "Bob died" in Bob's name, as the phone read the payload's `id` before
+  `from` (it reads `from` first now). Kill switch `relaylist: false`.
 - Deploy-order safety: servers advertise capabilities in
   `state_sync.caps` (WS) / `settled: true` (HTTP); clients gate their
   legacy paths on them. Preserve this on both sides.
@@ -2952,6 +2970,16 @@ Two protocol versions coexist; both must keep working:
   instead of passing for a new character. The defaults that are not zero
   are `NEW_CHARACTER_COINS` and `freshLifeSkills()`, pinned to the client's
   by mirror-audit: docs/specs/fresh-start.md.
+- A SAVE-FORMAT UPGRADE THAT FAILS STAYS UNFINISHED, AND A NEWER SAVE IS NOT
+  REWRITTEN (v2.3.3303, docs/specs/migrations.md):
+  - a migration that throws on a load is no longer stamped done by the
+    join's own save: `_saveRpg` stamps the version the load reached
+    (persistence.js `_rpgSaveVFor`) until a load gets further, so it runs
+    again once mended, and the log says `[migrations] rpg:<pid> stopped at`;
+  - a character saved by a NEWER worker (`_v` above `RPG_SCHEMA_VERSION`, a
+    rollback) is refused at the join as a failed read is (close 1011, the
+    phone retries until the newer worker is back), never rewritten with the
+    older field list; kill switch `newersave: false`.
 - THE HEMI BRO CHECKMARK IS "OWNS ONE OR MORE", AND THE PROFILE SAYS HOW MANY
   (v2.3.3255) -- the owner: "a 'verified' checkmark for people who own 1 hemi
   bro or more ... list the number of hemi bros owned somewhere on their
@@ -2986,12 +3014,21 @@ Two protocol versions coexist; both must keep working:
 
 ## Testing
 
-- Server: `cd server && npm test` — twenty zero-dependency suites
-  (protocol-v2, anticheat, combat-lifecycle, identity, inbox, market,
-  trade, quests, duel, gamble, clans, arena, dungeon, sponsorship,
-  guilds, threat, pets, hardening, trade2, elemental2; 450+
-  assertions) against a mocked DO storage. Every new system adds a
-  suite; extend the nearest one when touching its wire format.
+- Server: `cd server && npm test` — 133 zero-dependency suites against a
+  mocked DO storage. Every new system adds a suite; extend the nearest one
+  when touching its wire format.
+  - Since v2.3.3302 `npm test` is `test/run.mjs`. It runs every
+    `test/*.test.mjs`, four at a time, in ~30 s (the one-by-one `&&` chain
+    took ~69 s). It reports EVERY failing suite with its FAIL lines; the
+    chain stopped at the first and hid the rest.
+  - A new suite needs no line anywhere. `eventcapes.test.mjs` was never in
+    the chain, and so ran nowhere.
+  - `npm test -- relay hit-door` runs only those; `--jobs=1` runs one at a
+    time; `--verbose` shows every line.
+  - Server CI runs on EVERY PR (its path list missed 61 files the suites
+    read), and the worker's deploy waits for the suite on the same commit: a
+    red suite deploys nothing. The deploy job itself is unchanged
+    (wrangler-action's own wrangler, 3.90.0).
 - Client: no unit suite; CI runs lint + build on every PR, and the
   Pages bot posts a preview URL. The Playwright smoke harnesses
   (`tools/qa/qa-smoke.mjs`, `qa-facing.mjs`, …) are OFF the PR path
@@ -3573,6 +3610,9 @@ Two protocol versions coexist; both must keep working:
     plan); standing and walking write nothing, a kill or a harvest one row, your
     health at most every `REGEN_SAVE_MS`, the gatherer's bot statistics every 5
     minutes (`BOTFP.PUT_MIN_MS`, was 30 s);
+  - since v2.3.3305 a melee kill that heals you is one row too: its lifesteal
+    ran after the kill's save and saved the record again, a fighter's 1,030
+    rows an hour 760 now (cost-guard §5c, cost-diet.md);
   - `server/test/cost-guard.test.mjs` holds those lines (a feature that saves on
     a timer, a move or twice an event fails there); moving a line is said in the
     PR body in plain words, as with the memory budget;

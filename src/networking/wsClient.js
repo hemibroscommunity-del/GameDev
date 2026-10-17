@@ -934,7 +934,16 @@ export function setupWebSocket(ctx) {
                 for (var ei = 0; ei < msg.events.length; ei++) {
                   var _evt = msg.events[ei];
                   var payload = _evt.payload || _evt;
-                  payload.id = payload.id || _evt.from;
+                  /* ═══ v2.3.3304: A RELAY IS IN ITS SENDER'S NAME ═══
+                     `from` is the worker's stamp of who relayed it; the
+                     payload's `id` is whatever that phone wrote.  The payload
+                     won, so a script could relay "Bob died" by writing Bob's
+                     id.  `from` first now (an event the worker made itself
+                     carries none, or one that agrees with its payload: a
+                     sparring clone's, a duel's or trade's own decline), and
+                     a newer worker writes the sender into the payload too
+                     (server/src/relay.js). */
+                  payload.id = _evt.from || payload.id;
                   /* v2.3.2330: one throwing handler used to abandon the rest of
                      this tick's batch AND the monster/node deltas below it --
                      up to EVENTS_PER_TICK_CAP events plus a 22ms tick of world
@@ -3373,7 +3382,7 @@ export function setupWebSocket(ctx) {
             {
               /* All game events: chat, pvp, trade, emote, duel, etc. */
               var _payload = msg.payload || msg;
-              _payload.id = _payload.id || msg.from;
+              _payload.id = msg.from || _payload.id;   /* v2.3.3304: the worker's stamp first (see the tick's events) */
               processGameEvent(msg.type, _payload, S, _gameEventDeps);
             }
         }

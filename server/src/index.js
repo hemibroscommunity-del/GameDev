@@ -62,6 +62,7 @@ import { arenaMethods } from './gladiator.js';
 import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { hitMethods } from './hits.js'; /* v2.3.3296: one door for every monster hit on a player */
+import { relayMethods } from './relay.js'; /* v2.3.3304: the relay is an allowlist, in the sender's name */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
 import { dailyRewardsMethods } from './dailyrewards.js'; /* v2.3.3140: the free daily spin, daily quests, the season */
@@ -5775,8 +5776,12 @@ export class GameRoom {
         // client.  Legitimate client→client broadcasts (chat, emote,
         // pvp_confirmed, player_shield, player_died_to_monster, etc.)
         // still flow through here -- they hit the deny-list miss and
-        // get rebroadcast normally.
+        // get rebroadcast normally.  (v2.3.3304: and only those -- the
+        // allowlist below, relay.js RELAY.TYPES.)
         if (PRIVILEGED_EVENTS.has(msg.type)) break;
+        /* v2.3.3304: ...and only a type a phone relays: an ALLOWLIST now, the
+           deny-list above its last line (relay.js RELAY.TYPES) */
+        if (!this._relayAllowed(msg.type)) break;
         /* ═══ v2.3.1618: RELAY BUDGET ═══
          *
          * The size gate at the top of this method bounds ONE message; this
@@ -5809,6 +5814,11 @@ export class GameRoom {
           session.relayTokens -= 1;
         }
         if (session.id) {
+          /* v2.3.3304: rebuilt -- {type, payload} and nothing else, the
+             payload a copy in the worker's name for the sender (relay.js):
+             a phone relayed "Bob died" by putting Bob's id in the payload,
+             which the others' pages read before `from` */
+          msg = this._relayBuild(session, msg);
           /* v2.3.1970: room chat is a relay, but not a blank cheque --
              clamp the line, strip control chars and stamp the sender
              before it is fanned out.  False means there is nothing left
@@ -6127,6 +6137,7 @@ Object.assign(GameRoom.prototype, dungeonMethods);
 // v2.3.1730: telegraphed standard-zone attacks -- see telegraph.js.
 Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, hitMethods); /* v2.3.3296 */
+Object.assign(GameRoom.prototype, relayMethods); /* v2.3.3304 */
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, dailyRewardsMethods); /* v2.3.3140 */

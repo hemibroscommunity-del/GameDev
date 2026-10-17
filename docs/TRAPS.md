@@ -6543,6 +6543,73 @@ blockable at all: its row's `block` is null.
 **Receipt:** hit-door.test §5, every blockable row, a ball from behind
 included, lands through a shield facing away (v2.3.3300).
 
+## 191. "A blob written by current code is current-shape" (v2.3.3303)
+
+**Tempting:** `_saveRpg` writes from the code's own fixed field list, so stamp
+the save with the constant `RPG_SCHEMA_VERSION`: whatever it writes is the
+current shape by construction, and the next load skips every migration.
+
+**Wrong.** It is the current LIST of fields, not the current SHAPE of what is
+in them. When a migration throws on a load, the registry fails open: it stops
+there and leaves the blob in its old shape to retry next time. The join that
+follows every load saves, and the constant marked the failed migration done
+on that very join, silently -- it never ran again. Every shape fix after
+v2.3.2592 went into a join-time heal for that reason. The same constant on a
+rolled-back worker writes a NEWER worker's blob back with an older `_v` and
+field list.
+
+**The rule:** a save stamps the version the load really reached
+(`_rpgSaveVFor`), and a blob above `RPG_SCHEMA_VERSION` is refused at the join.
+**Receipt:** migrations.test, the v2.3.3303 section: a blob one short whose last
+migration throws stays one short through the real join, runs again once
+mended, and a newer blob closes the join with nothing written.
+
+
+## 190. "A new effect for the others is just a broadcast" (v2.3.3304)
+
+**Tempting:** to show the others something new your phone does -- a wave, a
+spark, a new kind of shot -- send `S.channel.send({type: 'broadcast', event:
+'my_new_thing', payload})`. The router has no case for it, so its default
+branch relays it to the room, as it relays a swing or an emote.
+
+**Wrong since v2.3.3304.** The default branch relays only `RELAY.TYPES`
+(server/src/relay.js). A type that is not on it is dropped without a word, so
+the new effect works on the phone that sends it and on nobody else's -- the
+kind of break that looks fine in a one-phone test. And reading the payload's
+own `id`, `from` or `fromName` as the sender was the other half of the old
+relay's trouble: a script relayed "Bob died" in Bob's name.
+
+**The rule:** a new relay is a line in `RELAY.TYPES`, with a word on who sends
+it, in the same PR as the phone's send. The worker rebuilds every relay in its
+sender's name, so a handler reads the sender from `from` (or the payload's
+`id`, which the worker now writes). **Receipt:** `relay.test` §6 fails a
+broadcast in src/ that is not a router case or a relay.
+
+
+## 193. "A workflow can push a side branch, and nothing else notices" (v2.3.3308)
+
+**Tempting:** a workflow keeps its output on a branch of its own
+(`provenance`, the proofs), pushes with the workflow's token, and finds that
+branch with `git ls-remote --heads origin provenance`. GitHub starts no
+workflow for a push by that token, so it seems nothing else happens.
+
+**Wrong, twice.**
+
+- Cloudflare Pages is a GitHub App, not a workflow: it builds a preview of
+  EVERY branch pushed, by anyone. A branch with no site is a failed build on
+  every push, on a free plan's monthly count of builds.
+- `git ls-remote <remote> <name>` matches the END of a ref's name.
+  `provenance` matched `refs/heads/claude/provenance`, this very PR's branch,
+  so a first run would have taken the branch for there and failed fetching it
+  (found by tools/provenance's simulated runs).
+
+**The rule:** a workflow's commits to a side branch START with
+`[CF-Pages-Skip]` (Cloudflare's own marker; it must be the prefix). The
+opposite holds for a commit that must reach the site: optimize-assets.yml
+leaves the marker out on purpose. And a ref is named whole:
+`git ls-remote --exit-code origin refs/heads/provenance`.
+**Receipt:** provenance.yml and proofs.mjs `message` (the selftest's 7a).
+
 them passing unchanged.
 
 ## 194. "Reading the canvas's context only looks at it" (v2.3.3306)
@@ -6581,6 +6648,6 @@ buffer too, in case a device gives no stencil buffer without one).
 **Receipt:** mp-savedload -- a saved character played from the list with a
 crash log on the phone, the race made certain (Pixi's file held back while an
 error in the page sends a report) and the safety net (the test takes the
-context bare first): on v2.3.3305 the report took the canvas and the minimap
+context bare first): on main without it the report took the canvas and the minimap
 covered the screen; now the renderer's context every time, the minimap in its
 box.
