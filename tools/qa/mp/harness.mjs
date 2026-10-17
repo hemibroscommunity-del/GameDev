@@ -257,8 +257,15 @@ export async function startWorker(port) {
      worker sets it just before and clears it after. */
   const extraVars = String(process.env.BT_WRANGLER_VARS || '').split(',').map((s) => s.trim()).filter(Boolean)
     .flatMap((kv) => { const i = kv.indexOf('='); return i > 0 ? ['--var', kv.slice(0, i) + ':' + kv.slice(i + 1)] : []; });
+  /* v2.3.3280: --local-upstream keeps the worker's request.url on 127.0.0.1.
+     wrangler.toml's custom-domain route (api.brotown.net, v2.3.3142) is
+     otherwise what local mode puts in request.url, and since v2.3.3274 the
+     worker makes a room of any name only on a local host (flood.js
+     roomNameFor): every scenario with its own `?room=` was "no such room"
+     and its first socket an error (TRAPS §181). */
   const proc = spawn('npx', ['wrangler', 'dev', '--port', String(port), '--local',
-    '--ip', '127.0.0.1', '--persist-to', state, '--var', `ADMIN_KEY:${ADMIN_KEY}`, ...extraVars], {
+    '--ip', '127.0.0.1', '--local-upstream', `127.0.0.1:${port}`,
+    '--persist-to', state, '--var', `ADMIN_KEY:${ADMIN_KEY}`, ...extraVars], {
     cwd, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   });
   let log = '';

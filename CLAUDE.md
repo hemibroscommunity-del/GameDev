@@ -2763,7 +2763,9 @@ unbuildable and unverifiable, and shipped on reasoning alone. They are
 not. `npm install && npm run build && npx vite preview --port 4173` all
 run, `playwright-core` drives the Chromium at `/opt/pw-browsers`, and
 `cd server && npx wrangler dev --port 8787 --local` gives you a real
-worker on localhost. That means a client change CAN be smoke-tested here
+worker on localhost (add `--local-upstream 127.0.0.1:8787` for a `?room=`
+of your own: the route in wrangler.toml otherwise renames the host, TRAPS
+§181). That means a client change CAN be smoke-tested here
 before it ships — see `tools/qa/qa-ui-shots.mjs` (captures every menu)
 and `tools/qa/qa-move-rate.mjs` (drives two real clients against a real
 worker). Do not re-add the "blocked" claim without re-testing it.

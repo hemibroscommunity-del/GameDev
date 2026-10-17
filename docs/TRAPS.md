@@ -1035,7 +1035,7 @@ would have silently removed the third from the run.
 **The rule:** the pass/fail state of a report-only step lives ONLY in its
 output. Read the log (or the uploaded `qa-*.json` artifacts), or run the
 harness locally against a real worker — `cd server && npx wrangler dev --port
-8787 --local`, `npm run build`, `npx vite preview --port 4173`, then
+8787 --local --local-upstream 127.0.0.1:8787` (§181), `npm run build`, `npx vite preview --port 4173`, then
 `QA_WS_URL=ws://127.0.0.1:8787 node tools/qa/<harness>.mjs`. All three of the
 trio reproduce their CI result locally, line for line.
 
@@ -6348,3 +6348,30 @@ today's town, the veiled stop on the way down to the Wheel.
 **The rule.** Model the event as the phones really live it: read what the
 phone sends before you script a bot's version of it. And measure each size
 from a clean start, or prove the last one is gone.
+
+## 181. "A local worker sees the address you gave it" (v2.3.3280)
+
+It does not, here. `server/wrangler.toml` has had a custom-domain route since
+v2.3.3142 (`api.brotown.net`), and in local mode wrangler puts the route's
+host in `request.url` -- `--local-upstream` "defaults to dev.host or route".
+Nothing read the host until v2.3.3274 (#925), whose room rule makes a room of
+any name only on a local host (flood.js `roomNameFor`). Every local worker the
+QA tools started then saw `api.brotown.net`: a scenario with its own `?room=`
+(15 of them -- mp-nearjoin, mp-partymap, mp-smallicons, mp-presence2,
+mp-farpeer, mp-movediet, mp-quietphone, the market's, ...) got "no such room"
+and its first socket an error at 0 s, and `load.mjs`'s `loadtest` room the
+same. The default room still worked, so CI's two phone checks stayed green.
+
+- **Found by** re-running PR #923's checks after merging #925: four
+  scenarios failed at once with "<name> socket error"; a curl of
+  `/ws?room=x` on the same worker answered 404 `no such room`, and the
+  default room "Expected WebSocket".
+- **The fix is the tools'**, not the worker's: harness.mjs and load.mjs start
+  wrangler with `--local-upstream 127.0.0.1:<port>`, so `request.url` is what
+  it was before the route. Starting one by hand for a private room, do the
+  same: `cd server && npx wrangler dev --port 8787 --local --local-upstream
+  127.0.0.1:8787`.
+
+**The rule.** A rule that reads `request.url`'s host is tested against a worker
+started the way the tools start it, and a tool that starts a worker says what
+host it wants rather than taking wrangler's default.
