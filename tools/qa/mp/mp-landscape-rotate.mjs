@@ -43,6 +43,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(3000);
+  /* v2.3.3324: the band OPEN at rest, the state these numbers were written
+     for (v2.3.2157).  Since v2.3.2495 a new bro's first join arrives with it
+     FOLDED (harness unfoldBand), so p0 read the 52 px fold, canvas 390x806.
+     The flip back came home open only because the Bag opened sideways
+     unfolds it (v2.3.2119) -- why just this first check was red. */
+  const band = await H.unfoldBand(P);
+  rec.ok('the band is open at rest, the state these checks measure (guard)', band.now === 'open', band);
 
   const p0 = await geom(P);
   console.log('    portrait: ' + JSON.stringify(p0));
