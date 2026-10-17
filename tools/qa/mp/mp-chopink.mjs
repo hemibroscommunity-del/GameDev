@@ -276,7 +276,10 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   rec.ok('the watcher sees him chopping (guard)', peer.length >= 4, peerR.slice(0, 6));
   /* A peer's look cannot be baked at load; the bake runs the first time he is
      seen chopping.  One swing is 12 x 45 ms; the bound is generous for this
-     box, which renders several times slower than a phone. */
+     box, which renders several times slower than a phone.
+     v2.3.3302: since then his walking body stands in until his bake is made
+     (no figure is drawn without his colours), so this reads 0; how soon his
+     figure is up is held by mp-peercolours. */
   rec.ok(`ON THE WATCHER'S SCREEN his tattoos are on too, from his first swings (bare for ${bareMs} ms here while it bakes)`,
     firstInked >= 0 && bareMs <= 2500, { firstInked, frames: peer.slice(0, 12).map((s) => [s.t, s.ink]) });
   rec.ok('...and stay on for every frame after that, pink ones included, drawn from his own bake',

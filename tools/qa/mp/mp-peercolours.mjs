@@ -26,7 +26,9 @@
  *   - in greaves the cook is the legless strip, in the Gatherer's skin;
  *   - dressed in the Gatherer's colours, the Watcher's own figure is the one
  *     the Gatherer is drawn from (`shared`), with no second one baked;
- *   - every figure is let go of 15 s after the Gatherer stops.
+ *   - every figure is let go of 15 s after the Gatherer stops;
+ *   - all of them together stay within one 16 MB allowance, which a figure
+ *     drawn in the last second is never pushed out of.
  *
  * WHY THE TEXTURE AND NOT A SCREENSHOT: the ground and the fire are under a
  * screenshot, and the town's warm stones pass a skin test.  The canvas a frame
@@ -257,16 +259,17 @@ const shot = async (P, kind, pid, name) => {
   }
 };
 
+const FIG_WITHIN_MS = 6000;
 const ok = (rows) => rows.filter((s) => !s.err);
 const sum = (rows, f) => rows.reduce((a, s) => a + f(s), 0);
 const fmt = (rows) => rows.map((s) => (s.err ? `ERR:${s.err}` : `${s.k}:${s.theirs}/${s.mine}/${s.other}/${s.decisive}`)).join(' ');
 /* One figure's frames, judged: every frame the Gatherer's colours (97% of the
    pixels the two outfits can be told apart on, none of them the Watcher's),
    and over the frames each part of the outfit seen. */
-function judge(rec, label, res, parts) {
+function judge(rec, label, res, parts, min = 3) {
   const rows = ok(res.frames);
   console.log(`    ${label}, per frame k:theirs/mine/other/decisive: ${fmt(res.frames)}`);
-  rec.ok(`${label}: drawn (guard)`, rows.length >= 3, res.frames.slice(0, 4));
+  rec.ok(`${label}: drawn (guard, ${rows.length} frames)`, rows.length >= min, res.frames.slice(0, 4));
   rec.ok(`${label}: EVERY frame wears the Gatherer's colours and none of the Watcher's`,
     rows.length > 0 && rows.every((s) => s.decisive >= 300 && s.mine === 0 && s.theirs >= 0.97 * s.decisive),
     rows.map((s) => [s.k, s.theirs, s.mine, s.decisive]));
@@ -284,6 +287,13 @@ function judgeVis(rec, label, vis) {
   const firstFig = vis.findIndex((v) => v.fig);
   rec.ok(`${label}: on every frame either his walking body or his figure is drawn, never neither (${neither}) or both (${both}); the figure from ${firstFig >= 0 ? vis[firstFig].t : '?'} ms`,
     vis.length > 10 && neither === 0 && both === 0 && firstFig >= 0, { neither, both, frames: vis.length, firstFig: firstFig >= 0 ? vis[firstFig] : null });
+  /* ...and not long after he starts: the bake is one per colours, off the
+     frame.  Measured on this box (which draws several times slower than a
+     phone) 0.7-3.0 s from the moment he starts, the relay included -- the old
+     shared figure's first cook 3.2 s -- so a bake that starves (a stuck flag, a
+     cap that never frees) fails here instead of passing as "drawn, later". */
+  rec.ok(`${label}: ...and his figure is up within ${FIG_WITHIN_MS / 1000} s of him starting (${firstFig >= 0 ? vis[firstFig].t : '?'} ms)`,
+    firstFig >= 0 && vis[firstFig].t <= FIG_WITHIN_MS, firstFig >= 0 ? vis[firstFig] : null);
 }
 
 export async function run(ctx) {
@@ -370,7 +380,12 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   ]);
   await shot(A, 'fire', bId, 'fire-watcher');
   judge(rec, 'fire-lighter, his own screen (the yardstick)', ownFire, ['skin', 'pants', 'shoes']);
-  const pf = judge(rec, 'fire-lighter, ON THE WATCHER\'S SCREEN', peerFire, ['skin', 'pants', 'shoes']);
+  /* two frames, not three: the light plays ONCE, eight frames in 536 ms from
+     when his figure is first drawn, and nothing can sweep a peer's strip as
+     SWEEP does your own -- with two pages open this box draws a few frames a
+     second, so it caught 3 of the 8 on one run and 2 on the next.  Every frame
+     it catches is still read whole (25,000-28,000 pixels each). */
+  const pf = judge(rec, 'fire-lighter, ON THE WATCHER\'S SCREEN', peerFire, ['skin', 'pants', 'shoes'], 2);
   rec.ok('...drawn from the figure baked for his colours',
     pf.length > 0 && pf.every((s) => s.shared === false), pf.map((s) => [s.k, s.shared]));
   judgeVis(rec, 'fire-lighter', peerFire.vis);
@@ -427,6 +442,46 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   const left = await A.page.evaluate(() => (window._pixiRenderer.peerFigBakes ? window._pixiRenderer.peerFigBakes() : { cook: -1, fire: -1, chop: -1 }));
   rec.ok(`every figure baked in his colours is let go of 15 s after he stops (${JSON.stringify(left)})`,
     left.cook === 0 && left.fire === 0 && left.chop === 0, left);
+
+  /* ── 7. ONE ALLOWANCE FOR THEM ALL, 16 MB ──
+     Filled straight (peerFigTry: a made-up skin a figure), as a crowd at the
+     campfires would fill it.  Two fire-lighters (6.3 MB each) fit; a third
+     does not while both were drawn this second, and takes the place of one
+     once neither was; a cook is held to the same allowance, and takes a
+     fire-lighter's place the same way.  Never past 16 MB. */
+  const hasTry = await A.page.evaluate(() => typeof window._pixiRenderer.peerFigTry === 'function');
+  rec.ok('the allowance can be driven (guard)', hasTry);
+  if (hasTry) {
+    const BUDGET = 16e6;
+    const tryFig = (kind, n, age) => A.page.evaluate(([k, m, a]) => window._pixiRenderer.peerFigTry(k, m, a), [kind, n, age]);
+    const figs = () => A.page.evaluate(() => ({ ...window._pixiRenderer.peerFigBakes(), baking: window._pixiRenderer.peerFigBaking() }));
+    const settle = (label) => H.waitFor(A, () => window._pixiRenderer.peerFigBaking(), (v) => v === false, { timeout: 30000, label });
+    const mb = (f) => (f.bytes / 1e6).toFixed(1);
+    await tryFig('fire', 11, null); await settle('fire-lighter 1');
+    await tryFig('fire', 12, 2000); await settle('fire-lighter 2');
+    const two = await figs();
+    rec.ok(`two fire-lighters fit (${two.fire}, ${mb(two)} MB)`, two.fire === 2 && two.bytes <= BUDGET, two);
+    const third = await tryFig('fire', 13, 0);
+    const wait3 = await figs();
+    rec.ok(`a third, with both drawn this second, waits: nothing baked, nothing let go (${wait3.fire}, ${mb(wait3)} MB)`,
+      third === false && !wait3.baking && wait3.fire === 2, wait3);
+    await tryFig('fire', 13, 5000); await settle('fire-lighter 3');
+    const swap = await figs();
+    rec.ok(`...and once neither was drawn for a second, it takes the place of one (${swap.fire}, ${mb(swap)} MB)`,
+      swap.fire === 2 && swap.bytes <= BUDGET, swap);
+    const cook = await tryFig('cook', 14, 0);
+    const waitC = await figs();
+    rec.ok(`a cook is held to the same allowance: with both fire-lighters drawn this second it waits (${waitC.cook} cook, ${mb(waitC)} MB)`,
+      cook === false && !waitC.baking && waitC.cook === 0 && waitC.fire === 2, waitC);
+    await tryFig('cook', 14, 5000); await settle('cook');
+    const mixed = await figs();
+    rec.ok(`...and takes a fire-lighter's place once they were not (${mixed.cook} cook, ${mixed.fire} fire-lighter, ${mb(mixed)} MB)`,
+      mixed.cook === 1 && mixed.fire === 1 && mixed.bytes <= BUDGET, mixed);
+    await tryFig(null, 0, 20000);
+    const gone = await H.waitFor(A, () => window._pixiRenderer.peerFigBakes(), (v) => v.cook === 0 && v.fire === 0,
+      { timeout: 5000, label: 'the allowance let go of' }).catch((e) => ({ err: String(e) }));
+    rec.ok('...and they are let go of like the rest once nobody draws them', gone.cook === 0 && gone.fire === 0 && gone.bytes === 0, gone);
+  }
 
   for (const P of [A, B]) {
     const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));

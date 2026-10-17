@@ -1308,7 +1308,8 @@ export async function initPixiRenderer(canvas) {
         signX: (ent[ent._exCode] && ent[ent._exCode].scale)
           ? (ent[ent._exCode].scale.x < 0 ? -1 : 1) : null,
         /* v2.3.2855: is this peer's lumberjack drawn from a bake that carries
-           their drawings (true), or from the shared figure (false)? */
+           their drawings (true), or from the shared figure (false)?
+           v2.3.3302: false too for a bake in their colours with no drawings */
         chopInk: !!ent._chopInk,
         /* v2.3.2856: is this peer's cook drawn with their drawings' layer? */
         cookInk: !!ent._cookInk,
@@ -1329,7 +1330,8 @@ export async function initPixiRenderer(canvas) {
       const ent = e._remoteSkillSprites && e._remoteSkillSprites.get(id);
       return (ent && ent.chop) || null;
     },
-    /* v2.3.2855: how many drawn peers' lumberjacks are baked right now. */
+    /* v2.3.2855: how many drawn peers' lumberjacks are baked right now.
+       v2.3.3302: every peer's not in your colours, drawings or not. */
     peerChopBakes: () => (effectsRenderer._peerChopBakes ? effectsRenderer._peerChopBakes.size : 0),
     /* v2.3.3302: the gathering figures held in other players' colours right
        now, per figure (the lumberjack's are peerChopBakes' entries) */
@@ -1337,7 +1339,30 @@ export async function initPixiRenderer(canvas) {
       const e = effectsRenderer;
       const f = e._peerFigs || {};
       return { cook: f.cook ? f.cook.size : 0, fire: f.fire ? f.fire.size : 0,
-        chop: e._peerChopBakes ? e._peerChopBakes.size : 0 };
+        chop: e._peerChopBakes ? e._peerChopBakes.size : 0,
+        bytes: typeof e._peerFigBytes === 'function' ? e._peerFigBytes() : 0 };   /* the allowance in use */
+    },
+    /* v2.3.3302: the allowance driven straight, for mp-peercolours to fill it
+       without a crowd: bake a cook or fire-lighter for a made-up skin
+       [n, n, n] (no trousers or boots of its own), after stamping every peer
+       figure held as last drawn `ageMs` ago (null leaves them be; no `kind`
+       only stamps).  True when it was already made, false when it is baking
+       or there was no room. */
+    peerFigTry: (kind, n, ageMs) => {
+      const e = effectsRenderer;
+      if (typeof e._peerFigFrames !== 'function') return null;
+      const now = Date.now();
+      if (ageMs != null) {
+        for (const kd in (e._peerFigs || {})) for (const v of e._peerFigs[kd].values()) v.used = now - ageMs;
+        if (e._peerChopBakes) for (const v of e._peerChopBakes.values()) v.used = now - ageMs;
+      }
+      if (!kind) return null;
+      const skinT = [n, n, n];
+      return !!e._peerFigFrames(kind, { skinT, pantsT: null, shoesT: null, key: 'qa' + n }, false, now, false);
+    },
+    peerFigBaking: () => {
+      const p = effectsRenderer._peerFigPending || {};
+      return !!(p.cook || p.fire || effectsRenderer._peerChopPending);
     },
     /* v2.3.2856: the cook's two SPRITES -- the figure and the drawings' layer
        over it -- yours (no id) or a peer's, for mp-cookink to read the frame

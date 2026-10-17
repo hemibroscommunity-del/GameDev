@@ -2413,14 +2413,19 @@ remnant to migrate server-side, not a mode to preserve.
         before it hides the body, in the same frame -- never neither, never
         both; in greaves the strip with legs stands in while the legless one
         bakes, never a legless one without greaves;
-      - capped and let go: `PEER_FIG_CAP` cook 2 (4.5 MB each), fire 1 (6.3
-        MB), `PEER_CHOP_CAP` 3 (2.0 MB), GPU only, released 15 s after nobody
-        drew one; ~21 MB with every cap full;
+      - ONE ALLOWANCE for all of them, `PEER_FIG_BUDGET` 16 MB (`_peerFigRoom`:
+        a cook 4.5 MB, a fire-lighter 6.3, a lumberjack 2.0 -- about eight
+        lumberjacks, three cooks or two fire-lighters), GPU only, released 15 s
+        after nobody drew one; past it, a figure nobody drew in the last second
+        gives way, else the next peer stays in their walking body; a failed
+        bake waits 15 s, a strip that never answers gives up after 15 s, and a
+        peer's greaves are waited for at most 3 s;
       - a peer's cook or fire-lighter no longer makes YOURS (`_standInTriggers`;
         it was 9 MB for the cook, kept for the visit); a peer's lumberjack
         still does (every peer's is cut from its crops);
-      - QA `remoteSkillProbe(id).shared`/`.legless`, `peerFigBakes()`,
-        `window.__btSetSkin/Pants/Shoes`; `mp-peercolours` (fails on the old
+      - QA `remoteSkillProbe(id).shared`/`.legless`, `peerFigBakes()` (with
+        `bytes`), `peerFigTry`, `window.__btSetSkin/Pants/Shoes`;
+        `mp-peercolours` (fails on the old
         code: every recoloured pixel of a peer's cook and fire-lighter the
         watcher's): docs/specs/peer-gather-colours.md.
   - Since v2.3.3146 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:

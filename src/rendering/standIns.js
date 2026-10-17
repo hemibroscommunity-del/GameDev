@@ -21,8 +21,9 @@
  * figure's crops.)
  *
  * A pose not made yet never hides a body: the walking figure stays where the
- * stand-in would have stood until it is ready (entityRenderer _chopHide and
- * the peers' _rexStandIn ask standInReady), never an empty spot.
+ * stand-in would have stood until it is ready (entityRenderer _chopHide asks
+ * standInReady; the peers' _rexStandIn asks peerStandInReady, below, since
+ * v2.3.3302), never an empty spot.
  *
  * This registry is the one place both renderers read; the effects renderer
  * hands in how to make each (setStandInMaker).  QA: window.__btStandIns,
