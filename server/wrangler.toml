@@ -45,6 +45,20 @@ routes = [
 #
 # Operator runbook: docs/specs/progression-onchain.md
 [vars]
+# v2.3.3274: the rooms the worker makes besides the main one (brotown-1),
+# comma separated -- a private room for a playtest, say.  Any other
+# `?room=` is answered "no such room" (server/src/flood.js roomNameFor):
+# every name used to make a room, awake and billed.  A local `wrangler dev`
+# makes any room regardless, so the QA tools need nothing here.
+ROOMS = "brotown-1"
+# v2.3.3275: THE ACCOUNT CHECK (server/src/verify.js, docs/OPERATIONS.md "The
+# account check").  Cloudflare Turnstile's SITE key, public by nature, from
+# the widget the owner makes in the dashboard (Turnstile -> Add widget, the
+# game's domain).  The SECRET key is a dashboard secret, never here:
+#                       npx wrangler secret put TURNSTILE_SECRET
+# Empty = the check is off (every new character is let in as before).  Set the
+# secret only AFTER the client that renders the widget is live.
+TURNSTILE_SITEKEY = ""
 SCORES_CONTRACT = "0x98581239b4e35dc4c4f354ecbffa45f120e44a6d"   # v2.3.1702: BroTownScores on Hemi mainnet (43111), deployed 2026-08-13 by the owner via /deploy-scores.html
 CHAIN_ID = "43111"
 CHAIN_RPC = ""

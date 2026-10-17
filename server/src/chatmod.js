@@ -61,6 +61,8 @@
  * deploy to get it).
  */
 
+import { PACE } from './flood.js';   /* v2.3.3274: the mute list is written at a pace */
+
 export const CHATMOD = {
   MUTE_MAX: 200,             // muted ids one player may hold
   NAME_MAX: 24,              // stored display-name clamp (matches FRIENDS)
@@ -102,6 +104,7 @@ export const chatModMethods = {
      rebuilds them empty (which is correct — join reloads the mutes). */
   _chatModMaps() {
     if (!this.chatMutes) this.chatMutes = new Map();   // pid -> Set(mutedId)
+    if (!this.chatMuteDocs) this.chatMuteDocs = new Map();   // v2.3.3274: pid -> the doc itself (see _chatMuteDoc)
     if (!this.chatSeen) this.chatSeen = new Map();     // pid -> [{text, ts, zone, lane}]
     if (!this._chatReportLog) this._chatReportLog = new Map(); // pid -> [{ts, target}]
   },
@@ -109,6 +112,10 @@ export const chatModMethods = {
   /* The muter's stored doc as a NULL-PROTO id-keyed map (rule H — a
      player who muted '__proto__' must not write through the prototype). */
   async _chatMuteDoc(pid) {
+    /* v2.3.3274: once loaded, the doc held in memory is the truth -- its
+       writes are paced (flood.js PACE.MUTE), so a copy read back from storage
+       could be behind a change not written yet. */
+    if (this.chatMuteDocs && this.chatMuteDocs.has(pid)) return this.chatMuteDocs.get(pid);
     const stored = await this.state.storage.get('chat_mute:' + pid);
     const doc = Object.create(null);
     const src = stored && stored.list;
@@ -124,6 +131,7 @@ export const chatModMethods = {
   _chatModCache(pid, doc) {
     this._chatModMaps();
     this.chatMutes.set(pid, new Set(Object.keys(doc)));
+    this.chatMuteDocs.set(pid, doc);   /* v2.3.3274 */
   },
 
   /* SYNCHRONOUS by design — the tick fan-out and the party/DM send loops
@@ -248,7 +256,11 @@ export const chatModMethods = {
      filed seconds after the offender logs off still needs its evidence,
      and the ring is LRU-bounded above. */
   _chatModOnClose(pid) {
-    if (pid && this.chatMutes) this.chatMutes.delete(pid);
+    if (!pid) return;
+    /* v2.3.3274: a change held for the lane's next token is written now */
+    if (this._paceFlush) this._paceFlush(pid);
+    if (this.chatMutes) this.chatMutes.delete(pid);
+    if (this.chatMuteDocs) this.chatMuteDocs.delete(pid);
   },
 
   async _handleChatMute(session, payload) {
@@ -258,21 +270,27 @@ export const chatModMethods = {
     if (!validId(target, me)) return;
     const on = !!(payload && payload.on);
     const doc = await this._chatMuteDoc(me);
+    /* v2.3.3274: nothing changed, nothing written -- un-muting someone never
+       muted wrote a row a message (flood.js).  The list is answered all the
+       same, as the window waits for it. */
+    if (on === !!doc[target]) return this._chatModSendList(me, doc);
     if (on) {
-      if (!doc[target]) {
-        if (Object.keys(doc).length >= CHATMOD.MUTE_MAX) {
-          return this._chatModSendList(me, doc, { error: 'list-full' });
-        }
-        doc[target] = { name: this._chatModNameOf(target, payload && payload.name), at: Date.now() };
+      if (Object.keys(doc).length >= CHATMOD.MUTE_MAX) {
+        return this._chatModSendList(me, doc, { error: 'list-full' });
       }
-    } else if (doc[target]) {
+      doc[target] = { name: this._chatModNameOf(target, payload && payload.name), at: Date.now() };
+    } else {
       delete doc[target];
     }
+    this._chatModCache(me, doc);
     /* Spread into a plain object for structured-clone storage; the
        null-proto guarantee matters in MEMORY (lookups), not at rest —
-       the friends.js _friendsPut precedent. */
-    await this.state.storage.put('chat_mute:' + me, { list: { ...doc }, at: Date.now() });
-    this._chatModCache(me, doc);
+       the friends.js _friendsPut precedent.
+       v2.3.3274: at the lane's pace (PACE.MUTE): a change past the burst is
+       held, the doc above being the truth, and written when the next token
+       comes or when the player leaves (_chatModOnClose). */
+    const _write = () => this.state.storage.put('chat_mute:' + me, { list: { ...doc }, at: Date.now() }).catch(() => {});
+    if (this._paced) this._paced('mute', me, PACE.MUTE, _write); else await _write();
     this._chatModSendList(me, doc);
   },
 

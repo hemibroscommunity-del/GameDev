@@ -291,6 +291,13 @@ export function setupWebSocket(ctx) {
        something is actually happening. */
     var _rfPending = null;
     var _rfAttempts = 0;
+    /* ═══ v2.3.3275: THE ACCOUNT CHECK ═══
+       `_vfPending` is set by join_rejected {reason:'verify'} and consumed by
+       the close that follows it (4014): the room wants Cloudflare Turnstile's
+       token before it makes this character (server/src/verify.js, docs/specs/
+       account-check.md).  showVerifyGate renders the widget; its token rides
+       the next join as `verify` and is spent there. */
+    var _vfPending = null;
     /* ═══ v2.3.3260: YOUR BODY IS STILL IN A FIGHT ═══
        `_lgPending` is set by linger_wait (the worker refuses a join while the
        body you left in a fight with a player still stands there,
@@ -490,6 +497,9 @@ export function setupWebSocket(ctx) {
             } catch (e) { return undefined; }
           })(),
           name: S.myName,
+          /* v2.3.3275: the account check's token, when the room asked for one
+             (showVerifyGate) -- spent here, a token is good once */
+          verify: (function () { var _t = S._verifyToken || undefined; S._verifyToken = null; return _t; })(),
           /* v2.3.694: device correlation nonce {id, env} for the server's
              multi-account / bot-fleet anomaly tracker.  Old workers ignore it. */
           device: getDeviceNonce(),
@@ -1218,6 +1228,14 @@ export function setupWebSocket(ctx) {
                  freeze-evasion by accident.  Unknown future reasons
                  fail safe (no mint, no reconnect churn). */
               var _rejReason = msg.reason || 'auth';
+              /* v2.3.3275: the room wants the account check before it makes
+                 this character (server/src/verify.js).  Not an auth failure:
+                 no new identity, not fatal -- the gate opens on the close that
+                 follows, and the token rides the next join. */
+              if (_rejReason === 'verify') {
+                _vfPending = { sitekey: typeof msg.sitekey === 'string' ? msg.sitekey : '' };
+                break;
+              }
               if (_rejReason === 'frozen') {
                 S._frozenByAdmin = true; /* suppress reconnect churn */
                 pushDmgPopup(S, S.player.x, S.player.y - 30, '🧊 Account frozen — contact the game owner', '#60a5fa', { ttl: 6 });
@@ -3838,6 +3856,17 @@ export function setupWebSocket(ctx) {
           S._realtimeStatus = 'frozen';
           return;
         }
+        /* v2.3.3275: the account check (join_rejected 'verify' / 4014): show
+           Cloudflare's widget and connect again with its token -- never the
+           ordinary backoff, which would knock on the same door token-less
+           every second. */
+        if (_vfPending || (event && event.code === 4014)) {
+          var _vf = _vfPending;
+          _vfPending = null;
+          S._realtimeStatus = 'verify';
+          showVerifyGate(_vf && _vf.sitekey);
+          return;
+        }
         /* v2.3.1982: the world is full.  BOTH signals are accepted — the
            room_full message we just received, and the 4009 close code —
            because either one alone is enough to know, and a lost message
@@ -3955,6 +3984,91 @@ export function setupWebSocket(ctx) {
         _btn.onclick = function () { _comeBack(); };
         _el.appendChild(_btn);
         document.body.appendChild(_el);
+      } catch (e) { /* DOM unavailable */ }
+    }
+    /* ═══ v2.3.3275: THE ACCOUNT CHECK'S GATE ═══
+       Plain DOM like the resume banner (onclose can fire after the game view
+       is gone).  Cloudflare Turnstile's widget renders in the card -- most
+       people see a tick and no puzzle -- and its token goes out on the next
+       join (S._verifyToken), which the room verifies (server/src/verify.js).
+       `window.turnstile` is Cloudflare's own global, defined by its api.js;
+       the QA scenario mp-verify defines a stand-in before the page runs, so
+       the gate uses whatever is there before loading anything.  The site key
+       comes from the room's refusal, so the page carries no config. */
+    var VERIFY_API = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    function showVerifyGate(sitekey) {
+      try {
+        var _g = window.__btVerifyGate = window.__btVerifyGate || { shown: 0, tokens: 0, errors: 0 };
+        _g.shown++;
+        var _old = document.getElementById('bt-verify-gate');
+        if (_old) _old.remove();
+        var _el = document.createElement('div');
+        _el.id = 'bt-verify-gate';
+        _el.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(8,11,20,.84);display:flex;align-items:center;justify-content:center;'
+          + 'padding:calc(16px + var(--sat, 0px)) 16px calc(16px + var(--sab, 0px));';
+        var _card = document.createElement('div');
+        _card.style.cssText = 'background:#1b2536;color:#fff;border-radius:12px;padding:18px 16px;max-width:340px;width:100%;text-align:center;font:14px/1.5 sans-serif;box-shadow:0 8px 32px rgba(0,0,0,.6);';
+        var _title = document.createElement('div');
+        _title.style.cssText = 'font-weight:700;font-size:16px;margin-bottom:6px;';
+        _title.textContent = 'One quick check';
+        var _text = document.createElement('div');
+        _text.id = 'bt-verify-text';
+        _text.style.cssText = 'opacity:.85;margin-bottom:12px;';
+        _text.textContent = _g.shown > 1
+          ? "That didn't go through. One more try:"
+          : 'Before your character is made, Bro Town checks that a person is here.';
+        var _box = document.createElement('div');
+        _box.id = 'bt-verify-box';
+        _box.style.cssText = 'display:flex;justify-content:center;min-height:65px;';
+        var _retry = document.createElement('button');
+        _retry.id = 'bt-verify-retry';
+        _retry.textContent = 'Try again';
+        _retry.style.cssText = 'display:none;margin-top:10px;padding:6px 14px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:#3dd497;color:#08231a;font-weight:700;cursor:pointer;';
+        _card.appendChild(_title); _card.appendChild(_text); _card.appendChild(_box); _card.appendChild(_retry);
+        _el.appendChild(_card);
+        document.body.appendChild(_el);
+        var _widget = null;
+        var _failed = function (why) {
+          _g.errors++;
+          _text.textContent = why;
+          _retry.style.display = 'inline-block';
+        };
+        var _render = function () {
+          try {
+            if (!window.turnstile || typeof window.turnstile.render !== 'function') return _failed("The check couldn't load. Check your connection and try again.");
+            _retry.style.display = 'none';
+            _box.innerHTML = '';
+            _widget = window.turnstile.render(_box, {
+              sitekey: sitekey || '',
+              theme: 'dark',
+              callback: function (token) {
+                _g.tokens++;
+                S._verifyToken = token;
+                try { _el.remove(); } catch (e) {}
+                S._realtimeStatus = 'connecting';
+                if (reconnectTimer) clearTimeout(reconnectTimer);
+                reconnectDelay = 1000;
+                connect();
+              },
+              'error-callback': function () { _failed("The check didn't go through. Try again."); },
+              'expired-callback': function () { try { window.turnstile.reset(_widget); } catch (e) {} },
+            });
+          } catch (e) { _failed("The check couldn't start. Try again."); }
+        };
+        var _load = function () {
+          if (window.turnstile) return _render();
+          var _s = document.getElementById('bt-turnstile-api');
+          if (_s) _s.remove();
+          _s = document.createElement('script');
+          _s.id = 'bt-turnstile-api';
+          _s.src = VERIFY_API;
+          _s.async = true;
+          _s.onload = function () { _render(); };
+          _s.onerror = function () { _failed("The check couldn't load. Check your connection and try again."); };
+          document.head.appendChild(_s);
+        };
+        _retry.onclick = function () { _load(); };
+        _load();
       } catch (e) { /* DOM unavailable */ }
     }
     function scheduleReconnect() {

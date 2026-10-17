@@ -340,7 +340,7 @@ export const joinMethods = {
      (webSocketMessage/Close) are never wired to it -- `accept()` rather
      than `state.acceptWebSocket()` keeps this socket outside the room's
      bookkeeping entirely. */
-  _roomFullRefusal(url) {
+  _roomFullRefusal(url, why) {
     const cap = this._roomCap();
     /* Old clients (and anything that isn't our client) keep the exact
        refusal they have always had. */
@@ -351,7 +351,7 @@ export const joinMethods = {
       type: 'room_full',
       /* `reason` mirrors join_rejected's field so the client's refusal
          handling reads the same way for both. */
-      reason: 'full',
+      reason: why || 'full',   /* v2.3.3274: 'ip' when it is the address's limit (flood.js) */
       /* SOCKETS, not getPlayerCount().  The cap counts sockets, and a
          connection that has not sent its `join` yet is a player walking
          through the door — it is holding the seat this joiner wants.
@@ -469,7 +469,7 @@ export const joinMethods = {
     return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
   },
 
-  async _verifyJoinAuth(id, phrase) {
+  async _verifyJoinAuth(id, phrase, opts) {
     const now = Date.now();
     if (!this._authFails) this._authFails = new Map(); // in-memory: a deploy reset just clears lockouts
     const rec = this._authFails.get(id);
@@ -482,6 +482,11 @@ export const joinMethods = {
       // valueless, so grandfathering them unauthenticated is safe --
       // and every post-slice client sends a phrase, so real characters
       // get locked at their first join.
+      /* v2.3.3275: a character that does not exist yet -- this id's first
+         join, or a guest id, which never has a record -- proves a person is
+         there first, when the room is configured to ask (verify.js).  Here,
+         BEFORE the record is stamped, so a refused join writes nothing. */
+      if (opts && typeof opts.needVerify === 'function' && !(await opts.needVerify())) return 'verify';
       if (phrase) {
         await this.state.storage.put('auth:' + id, { pfHash: await this._phraseHash(phrase), createdAt: now });
       }
@@ -602,7 +607,11 @@ export const joinMethods = {
     //     auth record is stamped when a phrase IS provided, locking
     //     the id from then on.
     if (msg.id) {
-      const _authOk = await this._verifyJoinAuth(msg.id, typeof msg.phrase === 'string' ? msg.phrase : null);
+      /* v2.3.3275: the account check (verify.js) -- asked only of a character
+         that does not exist yet, and only when the owner has turned it on. */
+      const _authOk = await this._verifyJoinAuth(msg.id, typeof msg.phrase === 'string' ? msg.phrase : null,
+        (this._verifyConfigured && this._verifyConfigured()) ? { needVerify: () => this._verifyToken(msg.verify, session.ip) } : null);
+      if (_authOk === 'verify') { this._verifyRefuse(ws); return; }
       if (!_authOk) {
         try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'auth' })); } catch {}
         try { ws.close(4003, 'auth'); } catch {}

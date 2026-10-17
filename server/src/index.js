@@ -203,6 +203,8 @@ import { bundleParts } from './bundle.js'; /* v2.3.3254: several messages in one
 import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look relayed when it changes, not every 2 s */
 import { nearJoinMethods } from './nearjoin.js'; /* v2.3.3276: a join is told the players around it; a look comes when its player does */
 import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what is 5+ levels below you, harvests and fights */
+import { floodMethods, roomNameFor, requestIp, FLOOD } from './flood.js'; /* v2.3.3274: one socket cannot stop the game */
+import { verifyMethods } from './verify.js'; /* v2.3.3275: the account check -- a new character proves a person is there */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
@@ -238,9 +240,16 @@ async function routeHttp(request, env) {
       return new Response(null, { headers: { ...corsHeaders, 'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS', 'Access-Control-Allow-Headers': '*' } });
     }
 
+    /* v2.3.3274: only the rooms the worker is told to make (flood.js
+       roomNameFor): `?room=<anything>` used to make a room on EVERY route
+       below, awake and billed from its first socket.  A name it does not
+       make is a 404 with a word, so a mistyped private room reads as that
+       and never as "the game is down". */
+    const roomName = roomNameFor(url, env);
+    const noSuchRoom = () => new Response(JSON.stringify({ ok: false, error: 'no such room' }), { status: 404, headers: corsHeaders });
     if (url.pathname === '/ws') {
-      const room = url.searchParams.get('room') || 'brotown';
-      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room)).fetch(request);
+      if (!roomName) return noSuchRoom();
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
     }
 
     // v2.3.1112 (owner directive): ONE SHARED ROOM for everyone.  The old
@@ -270,8 +279,8 @@ async function routeHttp(request, env) {
     // exported for the wrangler binding; its stale orders were
     // prototype throwaways).
     if (url.pathname.startsWith('/api/market')) {
-      const mktRoom = url.searchParams.get('room') || 'brotown-1';
-      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(mktRoom)).fetch(request);
+      if (!roomName) return noSuchRoom();
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
     }
 
     /* v2.3.2475: the auction house rides the same route shape as the order
@@ -280,8 +289,8 @@ async function routeHttp(request, env) {
        Separate path so the two surfaces can be reasoned about (and rate-
        limited, and retired) independently. */
     if (url.pathname.startsWith('/api/store')) {
-      const stRoom = url.searchParams.get('room') || 'brotown-1';
-      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(stRoom)).fetch(request);
+      if (!roomName) return noSuchRoom();
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
     }
 
     if (url.pathname.startsWith('/api/leaderboard')) {
@@ -300,8 +309,8 @@ async function routeHttp(request, env) {
     // botstat:/device: records are in its storage).  ?room= escape hatch
     // honored, same as /api/market.
     if (url.pathname.startsWith('/api/botstat')) {
-      const botRoom = url.searchParams.get('room') || 'brotown-1';
-      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(botRoom)).fetch(request);
+      if (!roomName) return noSuchRoom();
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
     }
 
     // v2.3.1126: the arena lives in the GameRoom now (matches are
@@ -310,8 +319,8 @@ async function routeHttp(request, env) {
     // class kept exported for the wrangler binding (the marketplace.js
     // precedent).  Honor ?room= like /ws and /api/market.
     if (url.pathname.startsWith('/api/arena')) {
-      const arenaRoom = url.searchParams.get('room') || 'brotown-1';
-      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(arenaRoom)).fetch(request);
+      if (!roomName) return noSuchRoom();
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
     }
 
     // v2.3.1143: account-login pre-flight (Login Key check).  Lives in
@@ -319,8 +328,8 @@ async function routeHttp(request, env) {
     // storage.  Read-only endpoint -- see account.js header for why the
     // client must pre-flight instead of blind write+reload.
     if (url.pathname.startsWith('/api/account')) {
-      const acctRoom = url.searchParams.get('room') || 'brotown-1';
-      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(acctRoom)).fetch(request);
+      if (!roomName) return noSuchRoom();
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
     }
 
     if (url.pathname.startsWith('/api/feedback')) {
@@ -332,8 +341,8 @@ async function routeHttp(request, env) {
     // happens INSIDE the DO against env.ADMIN_KEY; with no secret
     // configured the surface 404s (fail closed).
     if (url.pathname.startsWith('/api/admin')) {
-      const admRoom = url.searchParams.get('room') || 'brotown-1';
-      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(admRoom)).fetch(request);
+      if (!roomName) return noSuchRoom();
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
     }
 
     if (url.pathname === '/health') {
@@ -4768,9 +4777,19 @@ export class GameRoom {
     if (this.sessions.size >= this._roomCap()) {
       return this._roomFullRefusal(url);
     }
+    /* v2.3.3274: one address holds at most `ip_sockets` places and opens at
+       most `ip_joins_min` sockets a minute (flood.js): the room's places were
+       one script's for the taking.  Refused the way a full room is, with its
+       own word (`reason: 'ip'`). */
+    const _ip = requestIp(request);
+    if (!this._floodIpOk(_ip, Date.now())) {
+      return this._roomFullRefusal(url, 'ip');
+    }
     const [client, server] = Object.values(new WebSocketPair());
     this.state.acceptWebSocket(server);
-    this.sessions.set(server, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '' });
+    /* v2.3.3274: `ip` for the address limits, `openedAt` for the join window
+       (tick.js _tickPingAndAfk) */
+    this.sessions.set(server, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '', ip: _ip, openedAt: Date.now() });
     if (!this.tickInterval && this.sessions.size === 1) this.startTickLoop();
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -4855,6 +4874,9 @@ export class GameRoom {
     }
     let msg;
     try { msg = JSON.parse(message); } catch { return; }
+    /* v2.3.3274: a frame that parses to anything but an object -- `null`, a
+       number, a string -- is junk too; `null.type` threw below (flood.js). */
+    if (!msg || typeof msg !== 'object') return;
     /* v2.3.3254: a BUNDLE -- several messages in one frame, each taken in
        order as if it had come alone (bundle.js) */
     if (Array.isArray(msg)) {
@@ -4872,6 +4894,20 @@ export class GameRoom {
 
   /* v2.3.3254: one message, out of a frame of its own or a bundle (above) */
   async _onMessage(ws, session, msg) {
+    /* ═══ v2.3.3274: THE BUDGET PER SOCKET, AND NOTHING BEFORE THE JOIN ═══
+       Every message counts against the socket's bucket (flood.js FLOOD.MSG_*),
+       a bundle's parts one each; past it the message is dropped, and a socket
+       that keeps flooding is closed.  And a socket that has not joined is
+       taken for nothing but its `join` (and a pong): anything else used to
+       stamp the AFK clock and hold one of the room's places for good. */
+    {
+      const _v = this._floodMsgOk(session, Date.now());
+      if (_v !== 'ok') {
+        if (_v === 'close') this._floodClose(ws, FLOOD.CLOSE_FLOOD, 'too many messages');
+        return;
+      }
+    }
+    if (!session.id && msg.type !== 'join' && msg.type !== 'pong') return;
     /* Reset the AFK clock on real input only.  Pong replies are
        keepalive heartbeats, not player activity -- counting them would
        mean the timeout fires only on TCP death, not on AFK players
@@ -4924,6 +4960,16 @@ export class GameRoom {
 
     switch (msg.type) {
       case 'join':
+        /* v2.3.3274: ONE JOIN A SOCKET.  A second one under another id left
+           the first player in the room for good (every tick walked it, the
+           roster sent it to everyone); the game's client never sends two --
+           a resync closes the socket and opens a new one (wsClient.js
+           _forceRejoin).  Closed, not dropped: nothing honest is on the
+           other end. */
+        if (session.id) {
+          this._floodClose(ws, FLOOD.CLOSE_JOIN, 'already joined');
+          break;
+        }
         // Identity gate + eviction + rpg load/bootstrap + state_sync.
         // Hoisted to join.js _handleJoin (v2.3.1173, byte-identical
         // body; the awaits keep the input gate closed exactly as
@@ -6308,6 +6354,8 @@ Object.assign(GameRoom.prototype, steadyMoversMethods); /* v2.3.3203 */
 Object.assign(GameRoom.prototype, lookRelayMethods); /* v2.3.3240 */
 Object.assign(GameRoom.prototype, nearJoinMethods); /* v2.3.3276 */
 Object.assign(GameRoom.prototype, xpDecayMethods); /* v2.3.3251 */
+Object.assign(GameRoom.prototype, floodMethods); /* v2.3.3274: one socket cannot stop the game */
+Object.assign(GameRoom.prototype, verifyMethods); /* v2.3.3275: the account check */
 Object.assign(GameRoom.prototype, pvpBalanceMethods); /* v2.3.3260 */
 Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-fight, the body stays */
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */

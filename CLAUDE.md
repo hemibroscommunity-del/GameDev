@@ -3246,6 +3246,23 @@ Two protocol versions coexist; both must keep working:
       player, pets 32 KB; fixes not built;
     - kill switch `nearjoin: false`; `near-join` suite (56, eleven bugs
       caught), `mp-nearjoin` (8).
+- Bots (v2.3.3271, docs/specs/antibot-review.md): `node tools/qa/load/bot-lab.mjs
+  [minutes] [--only=a,b]` runs scripted players against the real room code (in
+  memory, simulated clock) and reports what each took home and what botfp made
+  of it, plus one-socket probes (rows written a message, the room filled by
+  sockets that never join, a second join on one socket, the speed bound).
+  The review's findings, measured 2026-10-16:
+  - a harvest with no `extraction_start` is paid untimed (obsidian 48x);
+  - fingerprints are the phone's word: a strike with none is never scored;
+  - flags change nothing, and no screen shows them;
+  - the speed slack is per message: 2,909 px/s, and 58,661 with bundles;
+  - combat lanes are per monster, and a "ranged" hit reaches 3,600 px with no
+    bow (7x the kills);
+  - one socket can spend the free plan's rows (`chat_mute`, `stats_update` and
+    `friend_dm` write a row a message) or keep rooms awake (`?room=<any>`).
+
+  The fix order is in the review. Re-run the lab after any change to a
+  harvest, cook, move or hit path.
 
 ## Conventions
 
@@ -3416,6 +3433,33 @@ Two protocol versions coexist; both must keep working:
   - a value a player SEES (loot, XP, gold) is still saved before its message
     goes (ARCHITECTURE-HANDOFF rule 10): batching it is the owner's call, never
     a quiet saving.
+- **ONE SOCKET CANNOT STOP THE GAME (v2.3.3274, docs/specs/one-socket.md).**
+  The anti-bot review's urgent five, closed in `server/src/flood.js`: a row
+  written per message (mute no-ops, a stat flood, offline DMs) -- nothing
+  written when nothing changed, a player's own saves PACED (`_saveRpgPaced`,
+  handoff rule 27); `?room=<anything>` made a room awake and billed -- only
+  the main room and `ROOMS` in wrangler.toml, anything on a local host; no
+  limit on messages a socket -- a budget (300 then 120/s, drops, close 4012);
+  the room's places held by sockets that never joined, a second join adding
+  a player, one address holding every place -- nothing but join/pong before
+  the join, a 15 s join window and one join a socket (close 4011), 16 places
+  and 20 opens a minute an address (live flags `ip_sockets`, `ip_joins_min`,
+  0 = off; CF-Connecting-IP, so local tests are never counted); a `null`
+  frame threw -- dropped. `flood` suite (46); the bot lab's `writes` and
+  `roomfill` probes show the before and after. Still open: the farming holes
+  (the review's 6-9).
+- **THE ACCOUNT CHECK (v2.3.3275, docs/specs/account-check.md).** A character
+  that does not exist yet (an id with no `auth:` record: a first join, every
+  guest) is asked for a Cloudflare Turnstile token before the identity is
+  made (`server/src/verify.js`, inside join.js `_verifyJoinAuth`'s no-record
+  branch, BEFORE the record is stamped: a refused join writes nothing); the
+  phone shows the gate (wsClient.js `showVerifyGate`) on `join_rejected
+  {reason:'verify', sitekey}` / close 4014 and joins again with the token as
+  `verify`. OFF until both `TURNSTILE_SITEKEY` (wrangler.toml) and
+  `TURNSTILE_SECRET` (a dashboard secret, set LAST: an old page reads the
+  refusal as fatal) exist; `disable_verify` live flag; fail closed;
+  `TURNSTILE_VERIFY_URL` is the test seam. `verify` suite (24), `mp-verify`
+  (its own worker, `BT_WRANGLER_VARS`, a stand-in verifier and widget).
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.

@@ -543,6 +543,22 @@ Summary of the wire-visible changes:
   legacy/guest ids). Rejected auth → server sends `join_rejected
   {reason:'auth'}` then closes with code 4003; the client mints a fresh
   identity once and reconnects.
+- v2.3.3275 (the account check, docs/specs/account-check.md): `join`
+  gains `verify`, a Cloudflare Turnstile token, present only when the
+  room asked for one. A join for an id the room has no record of, with
+  the check on and no good token, is answered `join_rejected
+  {reason:'verify', sitekey}` and closed with 4014; the client shows the
+  widget and joins again with its token. Nothing is written for a
+  refused join. Off until both Turnstile keys are set.
+- v2.3.3274 (one socket cannot stop the game, docs/specs/one-socket.md):
+  every message counts against the socket's budget (300 at once, then 120
+  a second, a bundle's parts one each); past it a message is dropped, and
+  a socket that keeps flooding is closed with code 4012. Nothing but
+  `join` and `pong` is taken before the join; a socket that has not
+  joined within 15 s, or sends a second `join`, is closed with 4011. An
+  address past `ip_sockets` places or `ip_joins_min` opens a minute gets
+  `room_full` with `reason: 'ip'` and the full room's 4009. The client
+  treats 4011 and 4012 as an ordinary drop (reconnect on its backoff).
 - v2.3.1913 (AFK): a session with no PLAYER INPUT for
   `IDLE_TIMEOUT_MS` (2 min) is evicted and closed with code 4006,
   reason `idle timeout`; the client shows a resume banner and must NOT

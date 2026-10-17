@@ -251,8 +251,14 @@ export async function startWorker(port) {
     await writeFile(f, src.replace(/this\.MAX_PLAYERS = \d+;/, `this.MAX_PLAYERS = ${+process.env.BT_MAX_PLAYERS};`));
     cwd = dir;
   }
+  /* v2.3.3275: BT_WRANGLER_VARS="K=V,K=V" passes more --var pairs to the
+     worker (mp-verify starts one with the account check's keys and a stand-in
+     verifier's address).  Read at spawn, so a scenario that starts its own
+     worker sets it just before and clears it after. */
+  const extraVars = String(process.env.BT_WRANGLER_VARS || '').split(',').map((s) => s.trim()).filter(Boolean)
+    .flatMap((kv) => { const i = kv.indexOf('='); return i > 0 ? ['--var', kv.slice(0, i) + ':' + kv.slice(i + 1)] : []; });
   const proc = spawn('npx', ['wrangler', 'dev', '--port', String(port), '--local',
-    '--ip', '127.0.0.1', '--persist-to', state, '--var', `ADMIN_KEY:${ADMIN_KEY}`], {
+    '--ip', '127.0.0.1', '--persist-to', state, '--var', `ADMIN_KEY:${ADMIN_KEY}`, ...extraVars], {
     cwd, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   });
   let log = '';

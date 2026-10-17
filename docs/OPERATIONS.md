@@ -155,6 +155,37 @@ Clear the sticky message:
 curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/announce"
 ```
 
+## The account check (v2.3.3275)
+
+New characters can be asked to pass Cloudflare's Turnstile check (usually a
+tick that appears by itself, no puzzle) before the game makes them. It costs a
+real player one tap, once. It costs anyone running a fleet of free accounts
+one check per account, which is why it exists. Players who already have a
+character are never asked. Full write-up: `docs/specs/account-check.md`.
+
+It is **off until you turn it on**, in this order:
+
+1. Cloudflare dashboard → **Turnstile** → **Add widget**. Name it anything,
+   add the game's hostnames (your domain, and the `pages.dev` site if you
+   test there), widget mode **Managed**. You get a **Site Key** and a
+   **Secret Key**.
+2. Put the Site Key in `server/wrangler.toml` as `TURNSTILE_SITEKEY = "..."`
+   and merge. (This one is public by nature.)
+3. Only after the game has deployed: Cloudflare dashboard → **Workers &
+   Pages** → **brotown-server** → **Settings** → **Variables and Secrets** →
+   **Add** → Type **Secret**, Name `TURNSTILE_SECRET`, Value the Secret Key →
+   **Deploy**. From that moment new characters see the check.
+
+Why that order: a page from before this version does not know the check
+exists and would stop at the door. The secret is the switch, so it goes in
+last.
+
+To turn it off without a deploy:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"disable_verify","value":true}' "https://WORKER/api/admin/flags"
+```
+
 ## Live switches (flags) — change the game without a deploy
 
 Flags take effect immediately for everyone, survive deploys, and are
@@ -177,6 +208,22 @@ connected; only that feature stops). The switches that exist today:
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"disable_dungeons","value":true}' "https://WORKER/api/admin/flags"
 ```
+
+**Let more players in from one internet address** (v2.3.3274). The game
+lets one address (one home's Wi-Fi, say) hold 16 places and open 20
+connections a minute, so one script cannot take every place. If a whole
+class or a mobile network ever shares one address, raise the limit or set
+it to 0 for none:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"ip_sockets","value":0}' "https://WORKER/api/admin/flags"
+```
+(`ip_joins_min` is the other one, the connections a minute.)
+
+**A private room** for a playtest: the game only makes the rooms it is told
+to. Add the name to `ROOMS` in `server/wrangler.toml` (comma separated,
+`"brotown-1, playtest-2"`), merge, and `?room=playtest-2` on the game's
+address reaches it. Any other name answers "no such room".
 
 **Turn any flag back off** (this also ends an XP event):
 ```

@@ -169,13 +169,18 @@ export const gridMethods = {
     // via stats_update; this is a best-effort early recompute, and the
     // authoritative new level reaches the client via the player_state flush.
     const prevLevel = ps.level || 1;
+    /* v2.3.3274: saved only when the recompute changed something -- the
+       message is the client's word that a stat went up, and sent again and
+       again it wrote a row a message (flood.js) -- and then at the player's
+       pace */
+    const _was = JSON.stringify([ps.level, ps.maxHp, ps.maxStamina, ps.maxMana]);
     this._recomputeMaxes(ps);
     if ((ps.level || 1) > prevLevel) {
       if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
     }
-    this._saveRpg(session.id, ps);
+    if (JSON.stringify([ps.level, ps.maxHp, ps.maxStamina, ps.maxMana]) !== _was) this._saveRpgPaced(session.id, ps);
     this._queuePlayerStateFlush(session.id);
   },
 
@@ -1052,7 +1057,9 @@ export const gridMethods = {
     // full player_state echo, so client/server skew can no longer
     // self-amplify into a visible sync storm.
     if (statsChanged || relevantSig() !== preSig) {
-      this._saveRpg(session.id, ps);
+      /* v2.3.3274: at the player's pace (flood.js _saveRpgPaced) -- a defence
+         of 10, 11, 10, 11 ... wrote a row a message */
+      this._saveRpgPaced(session.id, ps);
       const ws = this._wsBySessionId(session.id);
       if (ws) this._sendPlayerState(ws, session.id);
     }
