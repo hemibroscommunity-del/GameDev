@@ -1,0 +1,220 @@
+name: Provenance
+# v2.3.3308: A TIMESTAMPED, SIGNED PROOF OF EVERY VERSION OF MAIN.  The owner:
+# "make something that can prove ownership of my game because I suspect others
+# will clone my game engine or game entirely and try to pass it off as their
+# own.  They'll use AI to remove any kind of detection for this (one pass)."
+#
+# A mark hidden inside the code is the first thing such a pass removes, so the
+# proof lives OUTSIDE every copy.  For each commit on main this workflow
+#   1. fingerprints every file in it (tools/provenance/listing.mjs: a SHA-256
+#      a file, and one SHA-256 of the whole list -- the art, sounds and data
+#      as much as the code),
+#   2. timestamps the fingerprint in Bitcoin with OpenTimestamps: free, and it
+#      proves the files existed no later than that block -- nobody, the owner
+#      included, can make one dated earlier, and
+#   3. has GitHub sign it as made by THIS repository's own workflow (an
+#      artifact attestation, in Sigstore's public log; free for a public
+#      repository) -- the timestamp says WHEN, this says WHOSE,
+# and keeps the three files on the `provenance` branch, a folder a month.
+# docs/specs/provenance.md says how anyone checks one, with or without our code.
+#
+# Every run CATCHES UP rather than doing only its own commit: a run can fail
+# half-way, or be replaced in the queue by a newer one, so each fingerprints
+# whichever of main's last commits have none, stamps whatever has no timestamp,
+# finishes the timestamps Bitcoin has confirmed since (a new one is "pending"
+# for a few hours) and signs what was not signed (tools/provenance/proofs.mjs).
+# Its commits START with [CF-Pages-Skip]: Cloudflare Pages builds a preview of
+# every branch pushed, and this branch has no site (TRAPS §193).  A push by the
+# workflow's own token starts no workflow, so it never loops.
+#
+# A pull request that changes this file or tools/provenance/ gets a DRY RUN: the
+# tools' own checks, then a real stamp and signature of its own commit into a
+# folder that is never pushed -- the only place the calendars and the signing
+# can be tried before main runs them.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 */6 * * *'    # finish the timestamps Bitcoin has confirmed since
+  workflow_dispatch:
+    inputs:
+      depth:
+        description: "How many of main's latest commits to look at (1-500)"
+        default: '30'
+      commit:
+        description: 'Or one older commit of main to stamp (blank for none)'
+        default: ''
+  pull_request:
+    paths:
+      - '.github/workflows/provenance.yml'
+      - 'tools/provenance/**'
+
+permissions:
+  contents: read
+
+env:
+  # setup-python, attest-build-provenance and upload-artifact declare node20,
+  # which GitHub retired in Sept 2026 (deploy-worker.yml does the same)
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  OTS_CLIENT: opentimestamps-client==0.7.2
+
+jobs:
+  stamp:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    # one at a time: the branch has one writer.  A newer run replaces one still
+    # waiting, which is safe because every run catches up.
+    concurrency:
+      group: provenance
+      cancel-in-progress: false
+    permissions:
+      contents: write       # the provenance branch
+      id-token: write       # the signature's identity: this repository's workflow
+      attestations: write   # the signature itself
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: ${{ inputs.depth || 30 }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the OpenTimestamps client
+        run: pip install "$OTS_CLIENT"
+
+      - name: Open the provenance branch
+        run: |
+          set -euo pipefail
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git ls-remote --exit-code origin refs/heads/provenance >/dev/null; then
+            git fetch --no-tags --depth=1 origin +refs/heads/provenance:refs/remotes/origin/provenance
+            git worktree add -B provenance "$RUNNER_TEMP/prov" origin/provenance
+          else
+            # the first run: a branch that shares no history with main
+            git worktree add --orphan -b provenance "$RUNNER_TEMP/prov"
+          fi
+
+      - name: Fingerprint the commits that have none
+        id: plan
+        env:
+          DEPTH: ${{ inputs.depth || 30 }}
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          if [ -n "$COMMIT" ]; then
+            [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::'$COMMIT' is not a whole commit id (40 hex)"; exit 1; }
+            git fetch --no-tags --depth=1 origin "$COMMIT"
+          fi
+          node tools/provenance/proofs.mjs plan --prov "$RUNNER_TEMP/prov" --out "$RUNNER_TEMP/plan" \
+            --depth "$DEPTH" ${COMMIT:+--commit "$COMMIT"}
+
+      - name: Timestamp them in Bitcoin, and finish what it has confirmed
+        working-directory: ${{ runner.temp }}/prov
+        run: |
+          set -uo pipefail
+          plan="$RUNNER_TEMP/plan"
+          if [ -s "$plan/stamp.txt" ]; then
+            for try in 1 2 3; do
+              if xargs -d '\n' -a "$plan/stamp.txt" ots stamp --timeout 20; then break; fi
+              # nothing is lost: the fingerprints are kept, and the next run stamps them
+              echo "::warning::OpenTimestamps' calendars did not answer (try $try of 3)"
+              sleep $((try * 20))
+            done
+          fi
+          while IFS= read -r f; do
+            ots upgrade "$f" || echo "still pending: $f"
+            rm -f "$f.bak"
+          done < "$plan/upgrade.txt"
+
+      - name: Have GitHub sign them as this repository's
+        id: attest
+        if: steps.plan.outputs.attest != '0'
+        # a failed signature is tried again by the next run, as a missing stamp is
+        continue-on-error: true
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: ${{ runner.temp }}/plan/attest/*.json
+
+      - name: Keep each signature beside its fingerprint
+        if: steps.attest.outcome == 'success'
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: node tools/provenance/proofs.mjs keep --prov "$RUNNER_TEMP/prov" --plan "$RUNNER_TEMP/plan" --bundle "$BUNDLE"
+
+      - name: Commit and push the proofs
+        working-directory: ${{ runner.temp }}/prov
+        run: |
+          set -euo pipefail
+          cp "$GITHUB_WORKSPACE/tools/provenance/BRANCH-README.md" README.md
+          git add -A
+          if git diff --cached --quiet; then echo 'Nothing new.'; exit 0; fi
+          msg="$(node "$GITHUB_WORKSPACE/tools/provenance/proofs.mjs" message --prov .)"
+          git commit -q -m "$msg"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+          for try in 1 2 3 4; do
+            if git push origin HEAD:refs/heads/provenance; then exit 0; fi
+            sleep $((2 ** try))
+            git fetch --no-tags --depth=1 origin +refs/heads/provenance:refs/remotes/origin/provenance || true
+            git rebase -q origin/provenance || { git rebase --abort || true; }
+          done
+          exit 1
+
+  dry-run:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the OpenTimestamps client
+        run: pip install "$OTS_CLIENT"
+      - name: The tools' own checks
+        run: node tools/provenance/selftest.mjs
+      - name: Fingerprint this pull request's commit, into a folder that is never pushed
+        id: plan
+        run: node tools/provenance/proofs.mjs plan --prov "$RUNNER_TEMP/prov" --out "$RUNNER_TEMP/plan" --depth 1
+      - name: Timestamp it (the calendars must answer from here)
+        working-directory: ${{ runner.temp }}/prov
+        run: |
+          set -euo pipefail
+          xargs -d '\n' -a "$RUNNER_TEMP/plan/stamp.txt" ots stamp --timeout 20
+          while IFS= read -r f; do
+            ots info "$f.ots"
+            (cd "$GITHUB_WORKSPACE" && node tools/provenance/listing.mjs --verify "$RUNNER_TEMP/prov/$f")
+          done < "$RUNNER_TEMP/plan/stamp.txt"
+      - name: Sign it
+        id: attest
+        # a fork's pull request gets no signing identity
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: ${{ runner.temp }}/plan/attest/*.json
+      - name: Keep the signature, and check it as a stranger would
+        if: steps.attest.outcome == 'success'
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node tools/provenance/proofs.mjs keep --prov "$RUNNER_TEMP/prov" --plan "$RUNNER_TEMP/plan" --bundle "$BUNDLE"
+          while IFS= read -r f; do
+            gh attestation verify "$RUNNER_TEMP/prov/$f" --repo "$GITHUB_REPOSITORY" \
+              --bundle "$RUNNER_TEMP/prov/${f%.json}.sigstore.json"
+          done < "$RUNNER_TEMP/plan/attest.txt"
+      - name: What a run on main would have pushed, and that the next finds it done
+        run: |
+          (cd "$RUNNER_TEMP/prov" && find . -type f | sort)
+          git log -1 --format='%H %s'
+          node tools/provenance/proofs.mjs plan --prov "$RUNNER_TEMP/prov" --out "$RUNNER_TEMP/plan2" --depth 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: provenance-dry-run
+          path: ${{ runner.temp }}/prov
+          retention-days: 14
