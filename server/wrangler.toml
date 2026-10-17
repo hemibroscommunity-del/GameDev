@@ -59,6 +59,17 @@ ROOMS = "brotown-1"
 # Empty = the check is off (every new character is let in as before).  Set the
 # secret only AFTER the client that renders the widget is live.
 TURNSTILE_SITEKEY = ""
+# v2.3.3312: ONLY THE GAME'S OWN SITES MAY OPEN A GAME SOCKET
+# (server/src/origin.js, docs/specs/origin-lock.md).  brotown.net and
+# gamedev-aix.pages.dev (every preview), with every address under them, and
+# a machine's own pages (localhost, the wifi) are let in; a page on any other
+# site is told to play at brotown.net and never reaches a room.
+#   ORIGIN_LOCK -- "off" lets every site in again (the emergency lever).
+#   ORIGINS     -- more sites to let in, comma separated ("brotown.com,
+#                  play.example.org"), each with every address under it: the
+#                  place to add a new domain BEFORE players use it.
+ORIGIN_LOCK = "on"
+ORIGINS = ""
 SCORES_CONTRACT = "0x98581239b4e35dc4c4f354ecbffa45f120e44a6d"   # v2.3.1702: BroTownScores on Hemi mainnet (43111), deployed 2026-08-13 by the owner via /deploy-scores.html
 CHAIN_ID = "43111"
 CHAIN_RPC = ""

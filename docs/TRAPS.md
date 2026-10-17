@@ -6637,3 +6637,26 @@ two runs each: home after three trips 83.2-85.2 MB of the chip on main,
 78.1-80.2 with this; the third trip against the second +2.1 and +0 on main
 (+4.1/+4.2 in CI), -1.6 and -1.5 with this. mp-chatbubble and mp-chatfont,
 25 of 25.
+
+## 195. "A socket with no Origin is a forger's: refuse it" (v2.3.3312)
+
+**Tempting:** the server now lets only the game's own sites open a socket
+(server/src/origin.js), by the address a browser writes on every connection
+(`Origin`). A browser ALWAYS writes one, so a connection without it cannot be
+a player -- refuse it too, and the lock looks airtight.
+
+**Wrong.** A connection without an Origin is a PROGRAM, and most of them are
+ours: Node's WebSocket sends none (measured, Node 22), nor does the `ws`
+package or curl -- so the load test, the bot lab, the crowd bots, the
+Cloudflare lab and every tool under tools/qa/load would be refused, and
+nothing would be stopped, since a program can write `Origin:
+https://brotown.net` as easily as leave it out. The Origin is a browser's
+word about the PAGE: unforgeable by a web page, worthless against a program.
+
+**The rule:** an Origin check refuses what a web page cannot fake (another
+site's address, `null`, a look-alike) and lets a missing one through; it is a
+lock against other WEBSITES -- copies -- never against bots. Anything that
+must stop programs needs a check a program cannot pass by typing a header
+(the message limits, the account check).
+**Receipt:** origin.test.mjs §1 ("no Origin is a program") and the mutation
+that refuses it.
