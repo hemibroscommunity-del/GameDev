@@ -31,6 +31,7 @@ import { itemDetailBus } from '../dash/itemDetailBus.js';                       
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
 import { playIsLandscape, panelVw } from '../playViewport.js';                    /* v2.3.2171: the sideways pane stacks; panelVw v2.3.2382 */
+import { StatCaption, STAT_CAPTION_SHORT } from './StatCaption.jsx';            /* v2.3.3324: a stat's name whole or short, never cut */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -2245,11 +2246,13 @@ export const HeroExpanded = () => {
                       caption is one short word in caps, and dropping a further
                       half-pixel of size would start costing legibility on the
                       stat NAME, which is the thing the cell is for. */}
-                  <span style={{
+                  {/* v2.3.3324: whole where it fits, short where it would
+                      be cut (sideways) -- StatCaption.jsx */}
+                  <StatCaption full={st.short || st.label} short={STAT_CAPTION_SHORT[st.key]} style={{
                     fontSize: CAP_FS, fontWeight: 800, lineHeight: 1,
                     textTransform: 'uppercase', color: COL.text2,
                     maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>{st.short || st.label}</span>
+                  }} />
                   <img src={st.iconSrc} alt="" draggable={false} style={{
                     width: GLYPH, height: GLYPH, flex: 'none', objectFit: 'contain',
                     pointerEvents: 'none',
