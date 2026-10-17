@@ -1,4 +1,4 @@
-/* ═══ v2.3.3271: A JOIN IS TOLD THE PLAYERS AROUND IT (the phone's half) ═══
+/* ═══ v2.3.3276: A JOIN IS TOLD THE PLAYERS AROUND IT (the phone's half) ═══
  *
  * server/src/nearjoin.js has the whole story.  This phone joins with `nj: 1`
  * (beside presence v2's `pres: 2`), and against a worker that advertises

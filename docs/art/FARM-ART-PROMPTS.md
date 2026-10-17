@@ -37,7 +37,7 @@ No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) e
 - **Why these colours:** no purple or beet-red anywhere. The cut-out treats
   magenta's hue as background, so the gloomcap is teal, not purple, and the
   heartroot is a radish red, not a beet's.
-- **The two bag sheets below** (v2.3.3274) finish the bag: all sixteen seed
+- **The two bag sheets below** (v2.3.3279) finish the bag: all sixteen seed
   packets, and the five dishes with compost. They replace the first three
   sheets, which covered only the first six crops and asked for things the game
   no longer needs (the hoe and watering can are the right stick's own pictures
@@ -46,7 +46,7 @@ No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) e
 
 ## Bag icons
 
-### Sheet 1: the sixteen seed packets (v2.3.3274)
+### Sheet 1: the sixteen seed packets (v2.3.3279)
 
 - **In the game:** every seed in the bag and the Feed & Seed window. Today all sixteen wear one 🌱.
 - **Attach:** `docs/art/bag-icon-style-key.png`.
@@ -67,7 +67,7 @@ Style: exactly the attached reference: glossy hand-painted item icons, clean dar
 No text, letters or numbers anywhere, not even on the packets. No frames, cell lines or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the icons is magenta or pink. Do not copy the reference's items or background.
 ```
 
-### Sheet 2: the five dishes and compost (v2.3.3274)
+### Sheet 2: the five dishes and compost (v2.3.3279)
 
 - **In the game:** the five Cookhouse dishes in the bag, the Cookhouse window and the Quick Eat button; compost in the bag and the Feed & Seed window. Today they wear emoji.
 - **Attach:** `docs/art/bag-icon-style-key.png`.

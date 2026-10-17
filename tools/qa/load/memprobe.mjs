@@ -1,4 +1,4 @@
-/* ═══ v2.3.3271: THE ROOM'S MEMORY WITH REAL CHARACTERS (the split plan's Phase 0f) ═══
+/* ═══ v2.3.3276: THE ROOM'S MEMORY WITH REAL CHARACTERS (the split plan's Phase 0f) ═══
  *
  * docs/SERVER-SPLIT-PLAN.md 0f: "The room keeps about 22 KB per bot player
  * after a full collection (heapprobe.mjs, cap-120.md).  Real characters carry

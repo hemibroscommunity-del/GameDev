@@ -1,4 +1,4 @@
-/* ═══ v2.3.3274: THE OWNER'S SMALL ICONS ═══
+/* ═══ v2.3.3279: THE OWNER'S SMALL ICONS ═══
  *
  * The owner, 2026-10-16, on the list of emoji and code-drawn pictures the game
  * still wore: "I want chatGPT to draw custom art for that stuff", and then four
@@ -20,7 +20,7 @@
  *
  * No imports: node-tested (server/test/small-icons.test.mjs).
  */
-const V = '?v=2.3.3274';
+const V = '?v=2.3.3279';
 const ui = (name) => '/icons/ui/' + name + '.webp' + V;
 
 export const SMALL_ICON = Object.freeze({

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3271: A JOIN IS TOLD THE PLAYERS AROUND IT (server/src/nearjoin.js) ═══
+/* ═══ v2.3.3276: A JOIN IS TOLD THE PLAYERS AROUND IT (server/src/nearjoin.js) ═══
  *
  * The owner, 2026-10-16: "Yes do suggested" -- the server split plan's Phase 0e.
  * The arriver is a real phone joining with `nj: 1` (src/game/nearJoin.js); the

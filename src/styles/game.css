@@ -6260,7 +6260,7 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
    "a semi transparent overlay on the existing disc" (controlSkin RDISC_ICONS) */
 .bt-rjoy-base[data-ricon="jump"] .bt-rjoy-icon[data-ricon-img="jump"]{display:block;opacity:.7}
 /* v2.3.3105: ...and the tap's other acts, the same way (talk, door, the bed).
-   v2.3.3274: the owner's painted pictures now, drawn whole like the weapon's
+   v2.3.3279: the owner's painted pictures now, drawn whole like the weapon's
    (the see-through .7 was for the white glyphs they replace) */
 .bt-rjoy-base[data-ricon="talk"] .bt-rjoy-icon[data-ricon-img="talk"],
 .bt-rjoy-base[data-ricon="door"] .bt-rjoy-icon[data-ricon-img="door"],

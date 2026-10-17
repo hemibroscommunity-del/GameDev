@@ -441,13 +441,13 @@ Style: crisp pixel art like the attached townsperson: hard-edged square pixels, 
 ### Box trap: item icon
 
 - **In the game:** The Box Trap in your bag, and the picture on the TRAP button. Today both borrow the Trapping skill's icon.
-- **Now on the hardened wood sheet below** (v2.3.3274): one sheet for the five hardened woods and the trap, so they match.
+- **Now on the hardened wood sheet below** (v2.3.3279): one sheet for the five hardened woods and the trap, so they match.
 
 ## Hardened wood
 
 Five logs make one hardened wood at the Woodworker (v2.3.3139, docs/specs/hardened-wood.md). Today each icon is its tree's log picture with the sprigs taken off, the wood darkened and two iron bands drawn round it by `tools/make_hardened_wood_icons.py`.
 
-### Hardened wood and the box trap: one sheet of six (v2.3.3274)
+### Hardened wood and the box trap: one sheet of six (v2.3.3279)
 
 - **In the game:** The bag and the Woodworker's Harden tab (Hardened Pine Wood, Hardened Softwood, Hardened Hardwood, Hardened Cedar Wood, Hardened Maple Wood), and the Box Trap in the bag and on the TRAP button.
 - **Attach:** `docs/art/log-icons-key.png`, the game's five log icons in a row (pine, softwood, hardwood, cedar, maple), so each hardened wood keeps its log's colour and the style matches the bag.
@@ -635,7 +635,7 @@ Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh
 
 ## Item icons
 
-### Essences (v2.3.3141; one sheet of nine since v2.3.3274)
+### Essences (v2.3.3141; one sheet of nine since v2.3.3279)
 
 - **In the game:** The nine essences salvage leaves (Rare, Elite and Godly, each in copper, iron and black steel), in the bag and on the Blacksmith's Salvage tab. Today they are glowing orbs drawn by `tools/make_essence_icons.py`, the metal's bar tucked in the corner.
 - **Attach:** `docs/art/bag-icon-style-key.png` (the game's own bag icons). The earlier prompt asked for HD pixel art against the world's style key; the bag's icons are painted, so this one matches them.
@@ -659,7 +659,7 @@ The Feed & Seed's farm (v2.3.3127, docs/specs/farm.md) draws its crops, seeds an
 
 ### Farm goods: bag icons
 
-- **Moved to `docs/art/FARM-ART-PROMPTS.md`** (v2.3.3274): the sixteen crops, the sixteen seed packets, and the five dishes with compost, three sheets on the bag's own style key. The white-background prompt that was here is retired: a white ground cuts out badly round the cloudpetal's and frostberry's pale colours.
+- **Moved to `docs/art/FARM-ART-PROMPTS.md`** (v2.3.3279): the sixteen crops, the sixteen seed packets, and the five dishes with compost, three sheets on the bag's own style key. The white-background prompt that was here is retired: a white ground cuts out badly round the cloudpetal's and frostberry's pale colours.
 
 ## Sounds
 

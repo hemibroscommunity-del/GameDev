@@ -150,7 +150,7 @@ export const lookRelayMethods = {
       session._look = null;
       st.full++;
       this.broadcastExcept(ws, { type: 'player_update', id: session.id, data: clean });
-      /* v2.3.3271: every phone now holds this look whole (nearjoin.js) */
+      /* v2.3.3276: every phone now holds this look whole (nearjoin.js) */
       if (this._nearJoinWholeSent) this._nearJoinWholeSent(session.id);
       return 'full';
     }
@@ -159,7 +159,7 @@ export const lookRelayMethods = {
     if (!r.data) { st.none++; return 'none'; }
     if (r.full) st.full++; else st.delta++;
     this.broadcastExcept(ws, { type: 'player_update', id: session.id, data: r.data });
-    /* v2.3.3271: a whole one: every phone now holds this look (nearjoin.js) */
+    /* v2.3.3276: a whole one: every phone now holds this look (nearjoin.js) */
     if (r.full && this._nearJoinWholeSent) this._nearJoinWholeSent(session.id);
     return r.full ? 'full' : 'delta';
   },

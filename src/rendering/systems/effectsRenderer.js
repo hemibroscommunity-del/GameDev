@@ -616,7 +616,7 @@ import { TrapFx } from '../trapFx.js';   /* v2.3.3120: the trap's mark, shakes, 
 import { wheelObjectsInfo, wheelMapInfo } from '@/game/wheelTrial.js';      /* v2.3.3062: where they stand, and the lands */
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
-import { DEFENSE_POPUP_KEY, DEFENSE_POPUP_SRC } from '@/data/smallIcons.js';   /* v2.3.3274: the owner's shield on "Defense Lv N" */
+import { DEFENSE_POPUP_KEY, DEFENSE_POPUP_SRC } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's shield on "Defense Lv N" */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -1177,7 +1177,7 @@ const POPUP_ICONS = {};
    the number.  Loaded here with the rest, at start -- never on first hit. */
 /* v2.3.3209: + the dice a kill's roll wears in front of it (game/killRoll.js):
    the Gambling Den's two, cut to their own edge (/icons/popups/dice.webp) */
-/* v2.3.3274: + the owner's shield, in front of "Defense Lv N" (it wore 🛡️) */
+/* v2.3.3279: + the owner's shield, in front of "Defense Lv N" (it wore 🛡️) */
 const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit', 'dice', DEFENSE_POPUP_KEY].concat(Object.keys(ELEM_ICON_SRC));
 /* v2.3.2211: 'crit' is the one key whose art does not live in /icons/popups.
    Reusing the Hero screen's own crit icon rather than copying it to a second

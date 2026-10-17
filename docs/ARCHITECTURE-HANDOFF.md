@@ -392,7 +392,7 @@ deploy-order safe both ways). Members in another zone (or their own
 dungeon) are left where they are; a non-leader start pulls nobody.
 Instances were already shared by design (rewards + boss HP scale to
 everyone present), so this just gives parties an entry path. **Map
-markers SHIPPED v2.3.3272** (docs/specs/party-on-maps.md): no new channel
+markers SHIPPED v2.3.3277** (docs/specs/party-on-maps.md): no new channel
 was needed after all -- presence v2 (v2.3.3250) sends a v2 phone its party
 WHOLE wherever they are in the Wheel on every roster, so the minimap draws
 each member in the party's blue (the UI's Info blue, ringed light) and,

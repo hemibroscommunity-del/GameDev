@@ -270,7 +270,7 @@ export function SkinTag(props) {
  * The whirlwind and the starburst had no picture in the game -- Whirl wore the
  * 🌀 emoji, which every phone draws differently, and Spec a ✶ character -- so
  * they were drawn here in SVG, flat colour bands under a dark outline like the
- * painted icons, with a grey palette for the greyed states.  v2.3.3274: the
+ * painted icons, with a grey palette for the greyed states.  v2.3.3279: the
  * owner drew all five ability pictures (abilityArt, below). */
 export const ICON_URL = {
   melee: '/icons/ui/hero/melee.webp?v=2.3.1311',
@@ -327,21 +327,21 @@ export const RDISC_ICONS = [
      at the farm's bed (desktopControls interactKind) -- the owner: "chat
      bubble for speaking [to NPCs], door for entering door"; drawn in the
      JUMP arrow's white-and-outline style */
-  ['talk', '/ui/controls/talk.webp?v=2.3.3274'],
-  ['door', '/ui/controls/door.webp?v=2.3.3274'],
-  ['sleep', '/ui/controls/sleep.webp?v=2.3.3274'],
+  ['talk', '/ui/controls/talk.webp?v=2.3.3279'],
+  ['door', '/ui/controls/door.webp?v=2.3.3279'],
+  ['sleep', '/ui/controls/sleep.webp?v=2.3.3279'],
   /* v2.3.3136: and at a bed on your farm, its next step (game/farmWalk.js;
      desktopControls interactKind 'farm-<step>') -- the owner: "You dig, you
      water, you fertilize, etc." -- a spade, a sprout, a watering can, a sack
      of compost and a basket, in the same white-and-outline style.
-     v2.3.3274: talk, door, sleep and the five farm steps are the owner's own
+     v2.3.3279: talk, door, sleep and the five farm steps are the owner's own
      painted pictures now (tools/ui/cut-small-icons.py), drawn whole over the
      disc like the weapon's, not see-through (game.css) */
-  ['farm-dig', '/ui/controls/farm-dig.webp?v=2.3.3274'],
-  ['farm-plant', '/ui/controls/farm-plant.webp?v=2.3.3274'],
-  ['farm-water', '/ui/controls/farm-water.webp?v=2.3.3274'],
-  ['farm-feed', '/ui/controls/farm-feed.webp?v=2.3.3274'],
-  ['farm-harvest', '/ui/controls/farm-harvest.webp?v=2.3.3274'],
+  ['farm-dig', '/ui/controls/farm-dig.webp?v=2.3.3279'],
+  ['farm-plant', '/ui/controls/farm-plant.webp?v=2.3.3279'],
+  ['farm-water', '/ui/controls/farm-water.webp?v=2.3.3279'],
+  ['farm-feed', '/ui/controls/farm-feed.webp?v=2.3.3279'],
+  ['farm-harvest', '/ui/controls/farm-harvest.webp?v=2.3.3279'],
   /* v2.3.3105: while the tap ATTACKS, the weapon in your hand -- the owner:
      "when attacking it should show the weapon type depending on what weapon
      is used".  The bag's own pictures (InventoryPanel's thumb: a sword or a
@@ -351,7 +351,7 @@ export const RDISC_ICONS = [
   ...WEAPON_ART.map(function (f) { return ['w-' + f, '/icons/items/' + f + '.webp?v=2.3.1774']; }),
 ];
 
-/* ═══ v2.3.3274: THE OWNER'S OWN ABILITY PICTURES ═══
+/* ═══ v2.3.3279: THE OWNER'S OWN ABILITY PICTURES ═══
  * The owner, 2026-10-16, handed over a sheet of the five ability icons
  * (assets/icons-source/sheet-small-2-abilities.png, cut by
  * tools/ui/cut-small-icons.py): a whirlwind, a winged star, a shield striking,
@@ -366,7 +366,7 @@ export const RDISC_ICONS = [
  *
  * The art sits in the icon set's 256 frame with a 12% margin; ABILITY_ART_K
  * draws it that much larger so it fills the button as the SVGs did. */
-const ABILITY_ART_V = '2.3.3274';
+const ABILITY_ART_V = '2.3.3279';
 export const ABILITY_ART_K = 1.18;
 export function abilityArtUrl(name, grey) {
   return '/ui/controls/abil-' + name + (grey ? '-grey' : '') + '.webp?v=' + ABILITY_ART_V;

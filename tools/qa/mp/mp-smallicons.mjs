@@ -1,4 +1,4 @@
-/* ═══ v2.3.3274: THE OWNER'S SMALL ICONS, IN THE GAME (data/smallIcons.js) ═══
+/* ═══ v2.3.3279: THE OWNER'S SMALL ICONS, IN THE GAME (data/smallIcons.js) ═══
  *
  * The owner, 2026-10-16: "Here's the art assets for the 'small icons'" -- four
  * sheets cut by tools/ui/cut-small-icons.py.  The ability buttons and the right

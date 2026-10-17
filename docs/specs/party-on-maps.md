@@ -1,4 +1,4 @@
-# Your party on the maps (v2.3.3272)
+# Your party on the maps (v2.3.3277)
 
 The owner, 2026-10-16, on the list of what could be built next: "Yes do
 suggested" -- the second item, the party's long-standing follow-up

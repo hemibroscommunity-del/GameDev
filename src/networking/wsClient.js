@@ -41,7 +41,7 @@ import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking
 /* v2.3.1961: the ONE wire-key -> peer-field rename table, read by the join
    snapshot, both self-heal placeholders and the 2s track relay below. */
 import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
-import { nearJoinOn, parkFar, applyPeerLooks } from '@/game/nearJoin.js'; /* v2.3.3271: a join is told the players around it (server/src/nearjoin.js) */
+import { nearJoinOn, parkFar, applyPeerLooks } from '@/game/nearJoin.js'; /* v2.3.3276: a join is told the players around it (server/src/nearjoin.js) */
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
@@ -174,7 +174,7 @@ export function getTickTimes() { return tickTimes; }
 /** Returns the live tick-size ring buffer (do not mutate from outside). */
 export function getTickSizes() { return tickSizes; }
 
-/* v2.3.3271: the peer object the SNAPSHOT road makes (state_sync's
+/* v2.3.3276: the peer object the SNAPSHOT road makes (state_sync's
    players), as one function: a tick's `pl` (server/src/nearjoin.js) brings
    a player's whole entry, the one the snapshot would have given, and it is
    built exactly the same way (src/game/nearJoin.js applyPeerLooks). */
@@ -503,7 +503,7 @@ export function setupWebSocket(ctx) {
           /* v2.3.3250: presence v2 -- far players in the Wheel only while the
              world map is open (src/game/presence2.js).  Old workers ignore it. */
           pres: 2,
-          /* v2.3.3271: and a snapshot of just the players around us, a far
+          /* v2.3.3276: and a snapshot of just the players around us, a far
              player's look sent when they come around (src/game/nearJoin.js,
              server/src/nearjoin.js).  Old workers ignore it. */
           nj: 1,
@@ -748,7 +748,7 @@ export function setupWebSocket(ctx) {
         switch (msg.type) {
           case 'tick':
             {
-              /* v2.3.3271: the whole look (and place) of each player this tick
+              /* v2.3.3276: the whole look (and place) of each player this tick
                  first sends us around us (server/src/nearjoin.js) -- before the
                  players below, so the tick that shows them shows their look */
               if (msg.pl && nearJoinOn(S)) {
@@ -1487,7 +1487,7 @@ export function setupWebSocket(ctx) {
                    the relay -- three lists to remember, which is why keys kept
                    shipping into some of them and not the others. */
                 others[_pid] = peerFromSnapshot(_data);
-                /* v2.3.3271: a far player's list entry (`fa`) has no look:
+                /* v2.3.3276: a far player's list entry (`fa`) has no look:
                    parked out of sight at once (src/game/nearJoin.js) */
                 if (_data.fa && nearJoinOn(S)) parkFar(S, others[_pid]);
               }
@@ -3196,7 +3196,7 @@ export function setupWebSocket(ctx) {
                  from twenty more `msg.data.xx || null` lines that have to stay
                  in step with the state_sync loop above and the relay below. */
               Object.assign(S.others[msg.id], peerCosmeticsFromWire(msg.data));
-              /* v2.3.3271: a joiner who is not around us comes as a list
+              /* v2.3.3276: a joiner who is not around us comes as a list
                  entry (`fa`, no look): parked out of sight (src/game/nearJoin.js) */
               if (msg.data && msg.data.fa && nearJoinOn(S)) parkFar(S, S.others[msg.id]);
               setPlayerCount(function (prev) {

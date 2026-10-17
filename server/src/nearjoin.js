@@ -1,4 +1,4 @@
-/* ═══ v2.3.3271: A JOIN IS TOLD THE PLAYERS AROUND IT, AND A LOOK COMES WHEN ITS PLAYER DOES ═══
+/* ═══ v2.3.3276: A JOIN IS TOLD THE PLAYERS AROUND IT, AND A LOOK COMES WHEN ITS PLAYER DOES ═══
  * (the server split plan's Phase 0e, docs/SERVER-SPLIT-PLAN.md; the owner,
  * 2026-10-16: "Yes do suggested")
  *

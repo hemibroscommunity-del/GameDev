@@ -20,7 +20,7 @@ import { farmArtUrl } from '@/data/farmArtUrl.js';
 import { startFarmStep, farmSeedToPlant, farmSeedsInHand, pickFarmSeed } from '@/game/farmWalk.js';
 
 const WORDS = { dig: 'Dig', plant: 'Plant', water: 'Water', feed: 'Fertilize', harvest: 'Harvest' };
-const ICON = (step) => '/ui/controls/farm-' + step + '.webp?v=2.3.3274';   /* v2.3.3274: the owner's pictures (were SVG) */
+const ICON = (step) => '/ui/controls/farm-' + step + '.webp?v=2.3.3279';   /* v2.3.3279: the owner's pictures (were SVG) */
 const POLL_MS = 150;
 
 function read(S) {

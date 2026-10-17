@@ -59,7 +59,7 @@ import { TILE } from '@/data/constants.js';
 import { questRouteExits, questRoutePoint } from '@/game/questRoute.js'; /* v2.3.1817: which portal the active quest wants; v2.3.2128: plural; v2.3.2992: the road's end */
 import { isWheelTrialZone } from '@/game/worldTrial.js';
 import { WheelMinimap } from './wheelMinimap.js';   /* v2.3.2966: the Wheel's own, bigger box */
-import { PARTY_MARK, partyIdsOf } from '@/game/partyMarks.js';   /* v2.3.3272: your party, in its blue */
+import { PARTY_MARK, partyIdsOf } from '@/game/partyMarks.js';   /* v2.3.3277: your party, in its blue */
 
 /* Box size in CSS px.
    v2.3.1781: 104, ~27% of a 390px phone's width.
@@ -325,7 +325,7 @@ export class MinimapRenderer {
     this.pan.addChild(this.road);
     this.markers = new Container();
     this.pan.addChild(this.markers);
-    /* v2.3.3272: your party's marks' rims, over theirs (the Wheel's box's own
+    /* v2.3.3277: your party's marks' rims, over theirs (the Wheel's box's own
        ring, so a party member never reads as one of town's blue townsfolk) */
     this.partyRims = new Graphics();
     this.pan.addChild(this.partyRims);
@@ -847,7 +847,7 @@ export class MinimapRenderer {
     }
 
     const others = S.others;
-    /* v2.3.3272: your party is drawn after the monsters, in its blue (below) */
+    /* v2.3.3277: your party is drawn after the monsters, in its blue (below) */
     const party = partyIdsOf(S);
     if (others) {
       for (const id in others) {
@@ -877,7 +877,7 @@ export class MinimapRenderer {
       if (!m || m.alive === false || m.dead || (m.hp != null && m.hp <= 0)) continue;
       this._mark(m.x, m.y, 'monster', C_MONSTER, ICON_PX, 0);
     }
-    /* ═══ v2.3.3272: YOUR PARTY (src/game/partyMarks.js) ═══
+    /* ═══ v2.3.3277: YOUR PARTY (src/game/partyMarks.js) ═══
        The Wheel's minimap draws your party in the party's blue, and so does
        this box (a dungeon, the farm): over the monsters, the same size as a
        bro, with the same light rim -- the townsfolk here are a blue of their

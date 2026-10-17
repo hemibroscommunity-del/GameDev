@@ -2,8 +2,8 @@ import React from 'react';
 import { createPortal } from 'react-dom';   /* v2.3.1966 */
 import { ZONES } from '@/data/index.js';
 import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';   /* v2.3.1966 */
-import { SMALL_ICON } from '../../data/smallIcons.js';   /* v2.3.3274: the owner's party pictures */
-/* v2.3.3274: the window's marks were emoji (🎟️ 👑 💀 📍), drawn differently on
+import { SMALL_ICON } from '../../data/smallIcons.js';   /* v2.3.3279: the owner's party pictures */
+/* v2.3.3279: the window's marks were emoji (🎟️ 👑 💀 📍), drawn differently on
    every phone; the owner drew them (tools/ui/cut-small-icons.py). */
 function partyMark(src, size, title) {
   return React.createElement('img', {

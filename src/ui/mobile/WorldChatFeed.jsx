@@ -3,7 +3,7 @@ import { chromeSilenced, guardActive, onGuardChange } from './modalGuardBus.js';
 import { chatLogBus } from './chatLogBus.js';
 import { uiBusyBus } from './uiBusyBus.js';   /* v2.3.2085 */
 import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
-import { chatLaneOf, CHAT_LANE_ICON } from '../../data/smallIcons.js';   /* v2.3.3274: the owner's chat-lane pictures */
+import { chatLaneOf, CHAT_LANE_ICON } from '../../data/smallIcons.js';   /* v2.3.3279: the owner's chat-lane pictures */
 
 /* ═══ v2.3.2037: WORLD CHAT, AS ITS OWN SECTION ═══
  *
@@ -687,7 +687,7 @@ export function WorldChatFeed() {
              over from the composer's copy of this list. */
           <div key={(m.ts || 0) + '-' + i} style={{ marginBottom: 3, wordBreak: 'break-word' }}>
             {m.name ? (() => {
-              /* v2.3.3274: a party, area or whisper line's mark (🛡 📍 ✉ at
+              /* v2.3.3279: a party, area or whisper line's mark (🛡 📍 ✉ at
                  the front of its name, game/chat.js) is the owner's picture */
               const lane = chatLaneOf(m.name);
               return (

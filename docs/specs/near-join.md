@@ -1,4 +1,4 @@
-# A join is told the players around it (v2.3.3271)
+# A join is told the players around it (v2.3.3276)
 
 > Owner, 2026-10-16: *"Yes do suggested"*: the server split plan's Phase 0e
 > (`docs/SERVER-SPLIT-PLAN.md`, "The join snapshot"), with Phase 0f, the room's

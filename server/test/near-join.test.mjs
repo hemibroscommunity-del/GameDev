@@ -1,4 +1,4 @@
-/* ═══ v2.3.3271: A JOIN IS TOLD THE PLAYERS AROUND IT (nearjoin.js) ═══
+/* ═══ v2.3.3276: A JOIN IS TOLD THE PLAYERS AROUND IT (nearjoin.js) ═══
  *
  * A phone that joins with `nj: 1` (beside `pres: 2`) is sent the players
  * around it whole and everyone else as a list entry (`fa`); a player's whole

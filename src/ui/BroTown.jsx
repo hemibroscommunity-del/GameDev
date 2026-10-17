@@ -269,7 +269,7 @@ import { blockRingBus } from './mobile/blockRingBus.js';
 import { chatBubbleBus } from './mobile/chatBubbleBus.js'; /* v2.3.1287: self-tap opens chat */
 import { tapDismiss, TAP_DISMISS_STYLE } from './tapDismiss.js'; /* v2.3.2284 */
 import { chatLogBus } from './mobile/chatLogBus.js'; /* v2.3.1980: the world-chat feed listens here */
-import { BUFF_ICON } from '@/data/smallIcons.js';   /* v2.3.3274: the owner's buff pictures */
+import { BUFF_ICON } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's buff pictures */
 import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 /* v2.3.1796: the questline teaches the controls by flashing the real one
    (owner).  Sibling of, not replacement for, ControlsTutorial above — see
@@ -12949,7 +12949,7 @@ export var BroTown = function BroTown(_ref0) {
           gap: 2,
           alignItems: 'center'
         }
-      }, /* v2.3.3274: the owner's picture for each (data/smallIcons.js BUFF_ICON); they were emoji */
+      }, /* v2.3.3279: the owner's picture for each (data/smallIcons.js BUFF_ICON); they were emoji */
       React.createElement('img', {
         src: e.icon, alt: e.label, title: e.label + ' ' + e.desc, draggable: false, width: 15, height: 15,
         'data-buff-chip': e.label,

@@ -118,7 +118,7 @@ import { SHADE, propShade } from '../formShade.js'; /* v2.3.2767: light from abo
 import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
 import { standInReady, farmKneelReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made */
 import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full */
-import { SMALL_TEX } from '@/data/smallIcons.js';   /* v2.3.3274: the owner's party badge, threat skull and talk bubble */
+import { SMALL_TEX } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
@@ -142,7 +142,7 @@ function threatSkullPhase(type, until, now) {
    near-white in every platform emoji set, so a multiplicative tint
    yields the red variant without a second texture. */
 const SKULL_RED_TINT = 0xff5e6c;
-/* v2.3.3274: the owner's skull and talk bubble (data/smallIcons.js), in world
+/* v2.3.3279: the owner's skull and talk bubble (data/smallIcons.js), in world
    px: the skull a little over the 💀 emoji's 18 px font, as its picture keeps a
    margin; the bubble smaller than the quest badge (QUEST_BADGE_R x 2) whose
    place it takes while the townsperson has no quest for you */
@@ -6143,7 +6143,7 @@ function _attachNamePill(container, nameSize, sizeMult, host) {
   broBadge.visible = false;
   pill.addChild(broBadge);
   container._broBadge = broBadge;
-  /* v2.3.3274: the owner's party badge, at the plate's left end, before the
+  /* v2.3.3279: the owner's party badge, at the plate's left end, before the
      Bro badge: one of your party.  It was a 🎉 written into the name. */
   const partyBadge = new Sprite();
   partyBadge.anchor.set(0.5, 0.5);
@@ -6209,7 +6209,7 @@ function _broBadgeTexture() {
   return _broBadgeTex || Texture.EMPTY;
 }
 
-/* ═══ v2.3.3274: THE OWNER'S SMALL ICONS ON THE CANVAS ═══
+/* ═══ v2.3.3279: THE OWNER'S SMALL ICONS ON THE CANVAS ═══
    The party badge on a party member's plate (was a 🎉 in the name), the
    threat skull over a head (a 💀 Text) and the talk bubble over a townsperson
    (a tiny ★ Text): data/smallIcons.js SMALL_TEX, 64 px copies, loaded behind
@@ -6409,7 +6409,7 @@ function _fitPlateToZoom(display) {
 function _updateNamePill(display, name, level, visible, broId, alarm, band, party) {
   if (!display || !display._namePill) return;
   _fitPlateToZoom(display);
-  /* v2.3.3274: + `party`, the owner's party badge (a party member's plate) */
+  /* v2.3.3279: + `party`, the owner's party badge (a party member's plate) */
   const key = name + '|' + level + '|' + (broId ? 'v' : '') + (alarm ? '|!' : '')
     + (band ? '|' + band : '') + (party ? '|p' : '');
   if (display._pillKey !== key) {
@@ -6531,7 +6531,7 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party) {
   nameT.anchor.set(0.5, 0.5);
   const broD = broId ? Math.max(11, Math.round(h * 0.62)) : 0;
   const broPad = broId ? broD + Math.round(gap * 0.6) : 0;
-  /* v2.3.3274: the party badge first, a little bigger than the Bro badge --
+  /* v2.3.3279: the party badge first, a little bigger than the Bro badge --
      three figures and their "!" do not read at the checkmark's size */
   const partyD = party ? Math.max(12, Math.round(h * 0.86)) : 0;
   const partyPad = party ? partyD + Math.round(gap * 0.5) : 0;
@@ -7490,7 +7490,7 @@ function createPlayerDisplay() {
      local nameplate is hidden: this is the "am I flagged?" indicator
      the ThreatIncomingPanel copy promises. */
   /* v2.3.3058: 13 -> 18 px, over the band now (see the per-frame placing) */
-  /* v2.3.3274: the owner's skull, not the 💀 emoji (a Sprite: `_skullText`
+  /* v2.3.3279: the owner's skull, not the 💀 emoji (a Sprite: `_skullText`
      keeps its name for its readers -- visible, tint, y) */
   const skullText = new Sprite(_smallTex('threatSkull'));
   skullText._smallW = THREAT_SKULL_PX;
@@ -7880,7 +7880,7 @@ function createOtherPlayerDisplay() {
      driven by a change-cache in _updateOtherPlayers; never rebuilt per
      frame (the v2.3.1185 party-marker budget). */
   /* v2.3.3058: 13 -> 18 px, over the band now (see the per-frame placing) */
-  /* v2.3.3274: the owner's skull (as the local player's, above) */
+  /* v2.3.3279: the owner's skull (as the local player's, above) */
   const skullText = new Sprite(_smallTex('threatSkull'));
   skullText._smallW = THREAT_SKULL_PX;
   skullText.width = skullText.height = THREAT_SKULL_PX;
@@ -11933,7 +11933,7 @@ export class EntityRenderer {
         display._lastRawName = _rawName;
         display._safeName = _rawName.replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 48).trim() || 'Anon';
       }
-      /* v2.3.3274: the party is the owner's badge on the plate now
+      /* v2.3.3279: the party is the owner's badge on the plate now
          (_drawPlateCapsule), not a 🎉 written into the name */
       const nextName = display._safeName;
       if (display._lastName !== nextName) {
@@ -11953,7 +11953,7 @@ export class EntityRenderer {
          every peer since, and a swap that happened over your head but not
          over theirs would be the same inconsistency pointing the other way. */
       _updateNamePill(display, nextName, other.rpgLv || 1,
-        !other._isDead && !display._peerBarUp, broBadgeOf(other.bro, other.brn), false, 'gold', !!_inParty);   /* v2.3.3255: + a wallet's count; v2.3.3274: + the party badge */
+        !other._isDead && !display._peerBarUp, broBadgeOf(other.bro, other.brn), false, 'gold', !!_inParty);   /* v2.3.3255: + a wallet's count; v2.3.3279: + the party badge */
       if (_inParty && display._partyBadge && display._partyBadge.visible) _bindSmallTex(display._partyBadge, 'partyMember');
       if (display._namePill) {
         const _pH = (display._pillCss || 14) * PLATE_H_RATIO;
@@ -11992,7 +11992,7 @@ export class EntityRenderer {
             visible: !!(_bb && _bb.visible),
             empty: !_bb || !_bb.texture || _bb.texture === Texture.EMPTY,
             texW: _bb && _bb.texture ? _bb.texture.width : 0,
-            /* v2.3.3274: the party badge, and that the name no longer wears 🎉 */
+            /* v2.3.3279: the party badge, and that the name no longer wears 🎉 */
             party: !!(_pb && _pb.visible),
             partyArt: !!(_pb && _pb.texture && _pb.texture !== Texture.EMPTY && _pb.texture.width > 1),
             partyW: _pb ? Math.round(_pb.width) : 0,
@@ -15731,7 +15731,7 @@ export class EntityRenderer {
         display.addChild(hpBar);
         display._hpBar = hpBar;
 
-        /* v2.3.3274: the marker that this is someone to talk to is the
+        /* v2.3.3279: the marker that this is someone to talk to is the
            owner's talk bubble, over his head where the quest badge goes, while
            he has no quest for you (placed every frame, below).  It was an 8 px
            gold ★ Text, lifted with the rest of the above-head furniture. */
@@ -15962,7 +15962,7 @@ export class EntityRenderer {
         display._nameText.y = -(top + GAP + MARK_PX + GAP);
         for (const c of display.children) {
           if (c === display._fig || c === display._nameText || c === display._questMarker) continue;
-          if (c === display._talkMark) continue;   /* v2.3.3274: placed with the quest badge, per frame */
+          if (c === display._talkMark) continue;   /* v2.3.3279: placed with the quest badge, per frame */
           /* v2.3.2048: the name plate is anchored BELOW the feet on purpose,
              so it must not be swept up with the above-head furniture. Without
              this exclusion the "below him" plate lands over his hat, which is
@@ -16105,7 +16105,7 @@ export class EntityRenderer {
       } else if (qm.visible) {
         qm.visible = false;
       }
-      /* v2.3.3274: the talk bubble takes the badge's place while there is no
+      /* v2.3.3279: the talk bubble takes the badge's place while there is no
          badge -- one mark over a head, never two */
       const tm = display._talkMark;
       if (tm) {
@@ -16134,7 +16134,7 @@ export class EntityRenderer {
          itself is placed against.  effectsRenderer hangs the bubble from it. */
       if (display._figTop != null) {
         const _sy = Math.abs(display.scale.y || 1);
-        /* v2.3.3274: or the talk bubble while it stands there instead */
+        /* v2.3.3279: or the talk bubble while it stands there instead */
         npc._headTopY = display.y - (display._figTop + (qm.visible ? 3 + QUEST_BADGE_R * 2
           : (tm && tm.visible ? 3 + NPC_TALK_PX : 0))) * _sy;
       }

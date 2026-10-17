@@ -53,7 +53,7 @@ import { wheelTownDoors } from '../game/wheelTownDoors.js';       /* v2.3.3057: 
 import { hasGatherTool } from '../data/lifeSkills.js';            /* v2.3.3057: faint where you have no tool */
 import { sendMapWatch, PRESENCE2_CLIENT } from '../game/presence2.js';   /* v2.3.3250: far players come while the map is open */
 import { peerDotAt } from '../game/peerDot.js';                    /* v2.3.3243: a far player's dot glides between rosters */
-import { PARTY_MARK, partyIdsOf } from '../game/partyMarks.js';    /* v2.3.3272: your party, blue, at every zoom */
+import { PARTY_MARK, partyIdsOf } from '../game/partyMarks.js';    /* v2.3.3277: your party, blue, at every zoom */
 
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 /* v2.3.3057: 12 -> 28, so the town's buildings can be read by name */
@@ -145,7 +145,7 @@ function WorldMap({ stateRef, onClose }) {
   const dirty = useRef(true);
   const [where, setWhere] = useState(null);
   const [zoomShown, setZoomShown] = useState(1);
-  /* v2.3.3272: the key says "party" while one of yours is on the map */
+  /* v2.3.3277: the key says "party" while one of yours is on the map */
   const [partyShown, setPartyShown] = useState(false);
 
   /* v2.3.3250: presence v2 (src/game/presence2.js) -- the worker sends the far
@@ -437,7 +437,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     }
   }
   const othersAt = [];
-  /* v2.3.3272: your party is drawn on its own, below, at every zoom */
+  /* v2.3.3277: your party is drawn on its own, below, at every zoom */
   const party = partyIdsOf(S);
   if (z >= AT.others && S && S.others) {
     /* v2.3.3243: where each is now -- a far one is sent about once a second
@@ -460,7 +460,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       more.others++;
     }
   }
-  /* ═══ v2.3.3272: YOUR PARTY (src/game/partyMarks.js) ═══
+  /* ═══ v2.3.3277: YOUR PARTY (src/game/partyMarks.js) ═══
      In the party's blue with a light rim, bigger than a bro and at every
      zoom (the bros only from AT.others), and named -- the worker sends your
      party wherever they are in the Wheel (presence2.js), so this is where
@@ -556,7 +556,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   }
   /* v2.3.3057: the quest's star keeps its own room */
   if (more.quest) { const qx = X(more.quest.x), qy = Y(more.quest.y); placed.push([qx - 11, qy - 11, qx + 11, qy + 11]); }
-  /* v2.3.3272: your party's names, next after yours (each under its mark,
+  /* v2.3.3277: your party's names, next after yours (each under its mark,
      clear of the mark's own room: a label's box starts 2 px above its top) */
   for (const o of partyAt) {
     placed.push([o.x - 9, o.y - 9, o.x + 9, o.y + 9]);

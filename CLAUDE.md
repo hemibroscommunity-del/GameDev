@@ -2402,7 +2402,7 @@ remnant to migrate server-side, not a mode to preserve.
     ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
     town's white square only without them; `__btMinimap.buildings`,
     `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
-  - Since v2.3.3272 YOUR PARTY IS ON THE MAPS -- the owner's "Yes do
+  - Since v2.3.3277 YOUR PARTY IS ON THE MAPS -- the owner's "Yes do
     suggested", the party's map-markers follow-up (ARCHITECTURE-HANDOFF D):
     each member in the party's blue (the UI's Info blue `#5D93D2`, ringed
     light then dark), never also a green bro: on the Wheel's minimap 15 px,
@@ -2413,7 +2413,7 @@ remnant to migrate server-side, not a mode to preserve.
     sent -- presence v2's roster already carries the party whole wherever they
     are; `__btMinimap.party`, `__btWorldMap.more.party`; `party-marks` suite,
     `mp-partymap`: docs/specs/party-on-maps.md.
-  - Since v2.3.3274 THE OWNER'S SMALL ICONS -- asked what ChatGPT could draw to
+  - Since v2.3.3279 THE OWNER'S SMALL ICONS -- asked what ChatGPT could draw to
     replace the emoji and code-drawn pictures, the owner sent four sheets
     ("Here's the art assets for the 'small icons'"), cut by
     `tools/ui/cut-small-icons.py` from `assets/icons-source/sheet-small-*.png`
@@ -3219,7 +3219,7 @@ Two protocol versions coexist; both must keep working:
       23:59:45); the daily limit counts socket messages 20 to 1 like the bill,
       so Oct 11's playtest was ~4-5% of a day, not 76%. The game's listing
       answered throughout (docs/specs/cloudflare-lab.md "The answer").
-  - v2.3.3271: A JOIN IS TOLD THE PLAYERS AROUND IT, AND THE ROOM'S MEMORY
+  - v2.3.3276: A JOIN IS TOLD THE PLAYERS AROUND IT, AND THE ROOM'S MEMORY
     WITH REAL CHARACTERS -- the split plan's Phase 0e and 0f, the owner's "Yes
     do suggested" (docs/specs/near-join.md):
     - a phone that joins with `nj: 1` (beside `pres: 2`; `caps.nearjoin`) gets

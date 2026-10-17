@@ -248,7 +248,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        is marked if and only if it is placed on the map that ships.  Naming all
        four rather than counting them, so a prop that quietly loses its mark
        fails here by name instead of hiding inside a total. */
-    /* v2.3.3273: THREE SHOPFRONTS, NOT FOUR.  v2.3.2630 took the enchanter's
+    /* v2.3.3278: THREE SHOPFRONTS, NOT FOUR.  v2.3.2630 took the enchanter's
        building out of town at the owner's word ("Remove the enchanter building
        and put the bank in its place", worldProps.js), and this list kept
        asking for its mark -- red on main from that day.  The claim stands as
@@ -382,7 +382,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!(fromTown && fromTown.zoneId === 'worldview'), fromTown);
   /* And it is a real tile of this zone, not an off-map coordinate — the same
      failure two town reshapes have already caused for the exit tables. */
-  /* v2.3.3273: town's size from the game's own zone table, not 52 x 55 tiles
+  /* v2.3.3278: town's size from the game's own zone table, not 52 x 55 tiles
      written here: town grew (v2.3.2628's bigger plateau), its way out stands
      at y 2,032, and this check failed on a real tile of a real town. */
   const townPx = await P.page.evaluate(() => {

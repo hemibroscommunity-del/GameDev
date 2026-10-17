@@ -1,4 +1,4 @@
-/* ═══ v2.3.3272: YOUR PARTY ON THE MINIMAP AND THE WORLD MAP (src/game/partyMarks.js) ═══
+/* ═══ v2.3.3277: YOUR PARTY ON THE MINIMAP AND THE WORLD MAP (src/game/partyMarks.js) ═══
  *
  *   1. partyIdsOf: your party's OTHER members from the worker's party_state,
  *      none when not in one (or the party is not open), never yourself, ids as

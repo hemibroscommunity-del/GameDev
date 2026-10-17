@@ -1,4 +1,4 @@
-/* ═══ v2.3.3271: WHAT A JOIN COSTS, IN-PROCESS (server/src/nearjoin.js) ═══
+/* ═══ v2.3.3276: WHAT A JOIN COSTS, IN-PROCESS (server/src/nearjoin.js) ═══
  *
  * docs/specs/near-join.md.  The real GameRoom in Node with fake sockets that
  * count what they are sent: N players in the Wheel (a third about BroTown, two

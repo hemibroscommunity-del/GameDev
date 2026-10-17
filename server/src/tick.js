@@ -1120,7 +1120,7 @@ export const tickMethods = {
          phone's `on` (presence2.js), made at most once a tick and only when
          one is due */
       let onJson;
-      /* v2.3.3271: player id -> session, for a near-join phone's `pl`
+      /* v2.3.3276: player id -> session, for a near-join phone's `pl`
          (nearjoin.js), made at most once a tick and only when one is needed */
       let bySessMap = null;
       const bySess = () => {
@@ -1164,7 +1164,7 @@ export const tickMethods = {
           }
           groupCache.set(key, msg);
         }
-        /* v2.3.3271: a near-join phone (nearjoin.js) is sent, with this tick,
+        /* v2.3.3276: a near-join phone (nearjoin.js) is sent, with this tick,
            the whole look of every player this tick sends it whole who is
            around it and whose look it does not hold -- and, on the tick after
            it arrived somewhere, of everyone around it, standing still or not.

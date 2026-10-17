@@ -1,4 +1,4 @@
-/* ═══ v2.3.3272: YOUR PARTY ON THE MINIMAP AND THE WORLD MAP (src/game/partyMarks.js) ═══
+/* ═══ v2.3.3277: YOUR PARTY ON THE MINIMAP AND THE WORLD MAP (src/game/partyMarks.js) ═══
  *
  * The owner, 2026-10-16: "Yes do suggested" -- the backlog's party follow-up
  * (ARCHITECTURE-HANDOFF item D).  The leader is a real phone in the Wheel's

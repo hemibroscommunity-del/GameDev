@@ -1,4 +1,4 @@
-/* ═══ v2.3.3274: THE OWNER'S SMALL ICONS (src/data/smallIcons.js) ═══
+/* ═══ v2.3.3279: THE OWNER'S SMALL ICONS (src/data/smallIcons.js) ═══
  *
  *   1. chatLaneOf: a party, area or whisper line's leading mark (game/chat.js)
  *      is read as its lane, with or without a variation selector, the rest of

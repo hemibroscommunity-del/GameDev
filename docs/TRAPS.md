@@ -6324,7 +6324,7 @@ second worker -- ask which plan it is on and what it shares. Separate names do
 not make separate limits. Every call between two objects is a billed request,
 and so is every poll.
 
-## 180. "A reconnect storm is everyone logging in again" (v2.3.3271)
+## 180. "A reconnect storm is everyone logging in again" (v2.3.3276)
 
 It is not. A phone that drops mid-game (a deploy, a network blip) rejoins
 where it stands: its join carries its zone and its place (wsClient.js,

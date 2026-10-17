@@ -1,4 +1,4 @@
-/* ═══ v2.3.3272: YOUR PARTY ON THE MINIMAP AND THE WORLD MAP ═══
+/* ═══ v2.3.3277: YOUR PARTY ON THE MINIMAP AND THE WORLD MAP ═══
  *
  * The owner, 2026-10-16: "Yes do suggested" -- the backlog's party follow-up
  * (docs/ARCHITECTURE-HANDOFF.md item D: "same-zone member arrows / map

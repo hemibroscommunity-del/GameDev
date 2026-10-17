@@ -2643,7 +2643,7 @@ export function updateSlimeProjectiles(S) {
                taken hit.  v2.3.1140: ±5 gate live via proj.srcLevel. */
             var _projDmg = applyResilience(_R6P, applyIronSkin(_R6P, proj.rawDmg)); /* v2.3.1314 */
             var _defUpPj = trainDefense(_R6P, 0, _projDmg, proj.srcLevel || null, false);
-            if (_defUpPj) pushDmgPopup(S, P.x, P.y - 34, 'Defense Lv ' + _defUpPj.level, '#60a5fa', { ts: Date.now() + 2, iconKey: 'defense', iconLead: true });   /* v2.3.3274: the owner's shield (it wore 🛡️) */
+            if (_defUpPj) pushDmgPopup(S, P.x, P.y - 34, 'Defense Lv ' + _defUpPj.level, '#60a5fa', { ts: Date.now() + 2, iconKey: 'defense', iconLead: true });   /* v2.3.3279: the owner's shield (it wore 🛡️) */
             /* v2.3.1702: the local slime orb is spawned by the local AI, so in a
                server zone the worker fired its own and will bill us for it. */
             hurtPlayerLocal(S, _R6P, _projDmg);
