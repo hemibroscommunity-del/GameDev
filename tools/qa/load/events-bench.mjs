@@ -18,6 +18,7 @@
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
 import zlib from 'node:zlib';
+import { WHEEL_CENTRE } from '../../../server/src/wheelspawns.js';   /* v2.3.3315: the Wheel the room plays */
 
 const N = +(process.argv[2] || 120), E = +(process.argv[3] || 2), T = +(process.argv[4] || 150);
 const dir = process.argv[5] ? pathToFileURL(process.argv[5] + '/').href : new URL('../../../server/', import.meta.url).href;
@@ -43,7 +44,7 @@ globalThis.setInterval = (fn, ms) => { if (ms === room.TICK_RATE && !tickFn) { t
 room.startTickLoop();
 globalThis.setInterval = realSetInterval;
 
-const ARRIVAL = { x: 21504, y: 21792 };
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3315: the Wheel the room plays */
 const ps = [];
 for (let i = 0; i < N; i++) {
   const ws = {
@@ -57,7 +58,7 @@ for (let i = 0; i < N; i++) {
   };
   room.sessions.set(ws, { id: null, name: 'B', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '' });
   const id = 'eb' + i;
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, protocolVersion: 2, ws: [1, 5], data: { x: 1000, y: 1000, z: 'town' } }));
   await room.webSocketMessage(ws, JSON.stringify({ type: 'move', x: ARRIVAL.x, y: ARRIVAL.y, d: 'south', f: 'south', z: 'wheel', vx: 0, vy: 0, dodging: false, blocking: false, ba: null, dead: false, ex: null }));
   ps.push({ ws, id });
 }

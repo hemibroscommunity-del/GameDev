@@ -29,7 +29,7 @@ const PHONE = { width: 390, height: 844 };
 const DELAY_MS = 450;
 const HANG = 'street-A.png';
 const FLAKY = 'plaza-B.png';
-const ARRIVAL = { x: 21504, y: 21792 };
+const ARRIVAL = (await H.wheelGeom()).arrival;   /* v2.3.3315: the Wheel the worker plays */
 
 const holdTitle = (P, ms) => P.page.evaluate(async (hold) => {
   const el = document.querySelector('.bt-zone-header__title');

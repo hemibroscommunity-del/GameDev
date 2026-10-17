@@ -1868,9 +1868,12 @@ console.log('monsters on the Wheel (v2.3.2978)');
   const { bakeWheelSpawns, wheelSpawnsSource, SPAWN_RULES } = await import('./bake-wheel-spawns.mjs');
   const { placeObjects, objectFootprints } = await import('../../public/tools/world/core/placing.js');
   const fs = await import('node:fs');
+  /* v2.3.3315: the short Wheel's table (the worker plays it under
+     `wheel5x: false`); the long one's, the live one, is checked in "the
+     Wheel five times longer" below -- everything here is the short Wheel */
   const b = bakeWheelSpawns();
-  const onDisk = fs.readFileSync(new URL('../../server/src/wheelspawns.js', import.meta.url), 'utf8');
-  ok('the worker\'s copy of where they stand is the plan\'s (if not: node tools/world/bake-wheel-spawns.mjs)', onDisk === wheelSpawnsSource(b));
+  const onDisk = fs.readFileSync(new URL('../../server/src/wheelspawns1.js', import.meta.url), 'utf8');
+  ok('the worker\'s copy of where they stand is the plan\'s (if not: node tools/world/bake-wheel-spawns.mjs)', onDisk === wheelSpawnsSource(b, PLAN));
   const HOMES = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'];
   const cellG = bp.scale * PLAN.worldPxPerArtPx;
   const ri = Object.create(null);
@@ -2291,7 +2294,7 @@ console.log('the designed town (v2.3.3031)');
   const { townPlan, townGates, townSurfaces, TOWN_SURF } = await import('../../public/tools/world/core/layout.js');
   const { placeObjects, objectFootprints, mayorSpot, TOWN_GARDEN } = await import('../../public/tools/world/core/placing.js');
   const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
-  const { WHEEL_NODES } = await import('../../server/src/wheelspawns.js');
+  const { WHEEL_NODES } = await import('../../server/src/wheelspawns1.js');   /* v2.3.3315: the short Wheel's, as PLAN */
   const fs = await import('node:fs');
   const T = PLAN.town, tp = townPlan(T), G = townGates(T), WPA = PLAN.worldPxPerArtPx, g0 = gridInfo(PLAN), S = bp.scale;
   const townR = bp.regionIds.indexOf('town'), commonsR = bp.regionIds.indexOf('commons');
@@ -2644,7 +2647,7 @@ console.log('placing v2, the ?placing=2 preview (v2.3.2999)');
 {
   const { placeObjects, footprintOf, campBands, placingOpts, PLACING, PLACING_V2 } = await import('../../public/tools/world/core/placing.js');
   const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
-  const { WHEEL_SPAWNS } = await import('../../server/src/wheelspawns.js');
+  const { WHEEL_SPAWNS } = await import('../../server/src/wheelspawns1.js');   /* v2.3.3315: the short Wheel's, as PLAN */
   const WPA = PLAN.worldPxPerArtPx, cellG = bp.scale * WPA;
   ok('the switch: `placing=2` is v2, anything else the placing as it is',
     placingOpts('?trial=wheel&placing=2').v === 2 && placingOpts('?placing=2').v === 2 && !placingOpts('?placing=3').v && !placingOpts('?placing=20').v
@@ -2823,6 +2826,22 @@ console.log('swimming (v2.3.3003)');
   for (let i = 0; i < 30; i++) evs3.push(W8.updateWheelSwim(S, t += 16, true, 52, shore));
   ok('seated on a bank whose drawn shore reaches the boots: climbOut ends the swim, and it stays ended (back in only at four wet)',
     stillIn && was === true && !W8.isWheelSwimming(S) && evs3.every((e) => e === null) && W8.climbOut(S, t) === false, { stillIn, was, evs3: evs3.filter(Boolean) });
+  /* v2.3.3315: ...and a seat the drawn shore reaches FOUR of the looks of
+     (one of the long Wheel's 250, wn-thunder-39): while you fish or mine
+     there the seat stays the bank; up from it, the looks decide again */
+  const deep = (x, y) => y >= 997 && !(x > 4 && y < 1006);
+  const wet4 = W8.wetProbes(deep, 0, 1003);
+  S._extraction = { skill: 'fishing' };
+  const evs4 = [];
+  for (let i = 0; i < 30; i++) evs4.push(W8.updateWheelSwim(S, t += 16, true, 52, deep));
+  const heldDry = !W8.isWheelSwimming(S) && evs4.every((e) => e === null);
+  S._extraction = { skill: 'woodcutting' };
+  const notSeated = W8.updateWheelSwim(S, t += 300, true, 52, deep);
+  S._extraction = null;
+  ok(`seated at a spot whose drawn shore wets four of the looks (${wet4}): no swim while you fish there; a harvest that does not seat you, or none, and the looks decide`,
+    wet4 === 4 && W8.seatedOnBank({ _extraction: { skill: 'mining' } }) && !W8.seatedOnBank({}) && heldDry && notSeated === 'in' && W8.isWheelSwimming(S),
+    { wet4, heldDry, evs4: evs4.filter(Boolean), notSeated });
+  W8.climbOut(S, t);
   /* leaving the Wheel lets it all go */
   W8.updateWheelSwim(S, t += 16, false, 52, waterAt);
   ok('outside the Wheel there is no swimming at all', S._wheelSwim === null && !W8.isWheelSwimming(S));
@@ -3009,7 +3028,7 @@ console.log('the tap that jumps (v2.3.3105)');
     out('ember', 2.5, 0) === 'ember' && out('ember', 1, 0.38) === 'ember' && out('ember', 1, -0.38) === 'ember'
     && out('ember', 1, 0.41) === 'sky' && out('ember', 1, -0.41) === 'frost', [out('ember', 1, 0.41), out('ember', 1, -0.41)]);
   /* the fire goblins and their nearest neighbours across the water */
-  const { WHEEL_SPAWNS } = await import('../../server/src/wheelspawns.js');
+  const { WHEEL_SPAWNS } = await import('../../server/src/wheelspawns1.js');   /* v2.3.3315: the short Wheel's, as ZONES.wheel here */
   const lands = (h) => WHEEL_SPAWNS[h].points.map((p) => wheelLandAt('wheel', p[0], p[1]));
   ok('...and every land\'s first monsters stand on it', Object.keys(WHEEL_SPAWNS).every((h) => lands(h).every((l) => l === h)),
     Object.keys(WHEEL_SPAWNS).map((h) => [h, [...new Set(lands(h))]]));
@@ -3246,9 +3265,10 @@ console.log("the water's frozen web of light taken out (v2.3.3021)");
   const waterSrc = readFileSync(new URL('../../src/rendering/wheelWater.js', import.meta.url), 'utf8');
   ok("only where the game draws the water moving: the worker calms a water picture when told `moving` (and not `?nowaves`), the game tells it so from WebGL2 and the address",
     /* (v2.3.3298: the worker reads the address once, `search`; and the game's
-       init has carried `palette` since v2.3.3190) */
+       init has carried `palette` since v2.3.3190, and `size`, the Wheel the
+       room plays, since v2.3.3315) */
     /calm: wavesOn\(search\) && !!\(m && m\.moving\)/.test(workerSrc) && /W && W\.calm && WATER_SWATCHES\.includes\(id\)/.test(workerSrc)
-    && /postMessage\(\{ type: 'init', search, moving: _waterMoves(, palette: _palette)? \}\)/.test(trialSrc) && /setWheelWaterMoves\(wavesOn\(\) && webgl2\(\)\)/.test(waterSrc), {});
+    && /postMessage\(\{ type: 'init', search, moving: _waterMoves(, palette: _palette)?(, size)? \}\)/.test(trialSrc) && /setWheelWaterMoves\(wavesOn\(\) && webgl2\(\)\)/.test(waterSrc), {});
   ok("and the game draws its own web of light, moving: round cells (the nearest point's distance over the next's), on every water but a running river, `?caustics=k` its brightness",
     /float cellEdge\(vec2 p, float t\)/.test(waterSrc) && /return f1 \/ max\(f2, 1e-4\);/.test(waterSrc) && /uniform float uCaustics;/.test(waterSrc)
     && /\(1\.0 - smoothstep\(0\.02, 0\.10, sp\)\)/.test(waterSrc) && /caustics=\(\[0-9\.\]\+\)/.test(waterSrc), {});
@@ -3834,6 +3854,120 @@ console.log('the Wheel in blocks (v2.3.3298)');
   ok('...and read back, the objects are exactly where placing puts them (kind, piece, flip, x, y, the kinds and their scales)',
     !!back && ['kind', 'piece', 'flip', 'x', 'y'].every(sameArr) && JSON.stringify(placed.kinds) === JSON.stringify(back.kinds)
       && Array.from(placed.kindScale).join() === Array.from(back.kindScale).join() && placed.version === back.version, {});
+}
+
+/* ── v2.3.3315: the Wheel five times longer ──
+   Owner, 2026-10-17: "the game map needs to be larger. It goes from lvl 1
+   monsters to lvl 20+ way too quickly. Maybe 5x larger map is needed" -- and,
+   offered the ways, "Rebuild for 5x".  Every land's tiers are five times as
+   long (plan.js PLAN5), the town and the commons the same ground, the worker
+   playing it unless its kill switch says the short one (caps.wheelsize).
+   Its tables are baked like the short one's, and every copy the game keeps
+   of them is checked here: built in blocks, never the whole map (~600 MB),
+   but the two bakes do build it, once each (~1.5 min in all). */
+console.log('the Wheel five times longer (v2.3.3315)');
+{
+  const fs = await import('node:fs');
+  const { PLAN5, WHEEL_LONG, wheelSized, planFor, wheelPreview } = await import('../../public/tools/world/plan.js');
+  const { wheelBlocks, BLOCK, overviewCells, planFingerprint } = await import('../../public/tools/world/core/worldblocks.js');
+  const { planFeatures } = await import('../../public/tools/world/core/layout.js');
+  const { decodePlaced } = await import('../../public/tools/world/core/placedfile.js');
+  const { PLACED, PLACED5, PLACED_SETS } = await import('../../public/tools/world/core/placed.js');
+  const { bakeWheelSpawnsFor, wheelSpawnsSource } = await import('./bake-wheel-spawns.mjs');
+  const { bakeWheelWorld } = await import('./bake-wheel-world.mjs');
+  const live = await import('../../server/src/wheelspawns.js');
+  const short = await import('../../server/src/wheelspawns1.js');
+  const { WHEEL_GEOM } = await import('../../src/data/zones.js');
+  const { NML_CENTRES } = await import('../../src/data/noMansLandRings.js');
+  const { wheelPreviewAddress } = await import('../../src/game/wheelSize.js');
+  const W1 = wheelInfo(PLAN), W5 = wheelInfo(PLAN5);
+  /* 1. the plan */
+  ok(`every tier ${WHEEL_LONG} times as long, the hub, the spokes' width and the tiers' count as they were`,
+    WHEEL_LONG === 5 && Math.abs(W5.tierLen - 5 * W1.tierLen) < 1e-9 && W5.hub === W1.hub && W5.half === W1.half && W5.tiers === W1.tiers
+      && wheelSized(5) === PLAN5 && wheelSized(1) === PLAN && planFor('', 5) === PLAN5 && planFor('', 1) === PLAN,
+    { tier: [W1.tierLen, W5.tierLen], hub: [W1.hub, W5.hub] });
+  const F1 = planFeatures(PLAN), F5 = planFeatures(PLAN5);
+  const g5 = gridInfo(PLAN5), D = (F5.bw - F1.bw) / 2;
+  ok(`the frame grown ${g5.grow} squares a side to hold the tips (${F5.bw} cells across, ${F5.bw * F5.S * PLAN.worldPxPerArtPx} game px), the town at its middle`,
+    g5.grow > 0 && F5.bw === F5.bh && Number.isInteger(D) && F5.nox === D && F5.noy === D, { bw: F5.bw, D, nox: F5.nox });
+  /* 2. the previews stay the short Wheel's, and the page says so to the worker */
+  const ADDR = ['', '?trial=wheel', '?bigtown', '?bigtown=1.5', '?x=1&bigtown=2', '?plaintown', '?placing=2', '?placing=3', '?bigtownx', '?placing=20', '?plaintownx', '?a=1&placing=2&b'];
+  ok('the previews (?bigtown, ?plaintown, ?placing=2) are the short Wheel\'s at either size, and the page\'s copy of that rule is the plan\'s (src/game/wheelSize.js)',
+    ADDR.every((a) => wheelPreview(a) === wheelPreviewAddress(a)) && ADDR.filter((a) => wheelPreview(a)).every((a) => planFor(a, 5).wheel.tierZones === 1)
+      && ADDR.filter((a) => !wheelPreview(a)).every((a) => planFor(a, 5) === PLAN5),
+    ADDR.map((a) => [a, wheelPreview(a), wheelPreviewAddress(a)]));
+  /* 3. the town and the commons are the same ground, moved to the middle */
+  const A = wheelBlocks(PLAN, {}), B = wheelBlocks(PLAN5, {});
+  const at = (Wb, x, y) => { const b = Wb.ground(Math.floor(x / BLOCK), Math.floor(y / BLOCK)); const c = (y - b.y) * b.w + (x - b.x); return [b.mat[c], b.reg[c]]; };
+  const townA = F1.regionIds.indexOf('town'), townB = F5.regionIds.indexOf('town');
+  let tn = 0, tSw = 0, tReg = 0;
+  const mid = F1.bw / 2, R = 140;
+  for (let y = mid - R; y < mid + R; y++) for (let x = mid - R; x < mid + R; x++) {
+    const [ma, ra] = at(A, x, y);
+    if (ra !== townA) continue;
+    const [mb, rb] = at(B, x + D, y + D);
+    tn++;
+    if (A.catalog().ids[ma] !== B.catalog().ids[mb]) tSw++;
+    if (rb !== townB) tReg++;
+  }
+  ok(`the town is the same ground: all ${tn} of its cells the town, ${tn - tSw} the same picture (a river or a road bending a little sooner past it: ${tSw})`,
+    tn > 15000 && tReg === 0 && tSw <= tn * 0.002, { tn, tSw, tReg });
+  /* 4. the objects and the overview are baked for both, each its own files */
+  const bk5 = bakeWheelWorld(PLAN5);
+  const disk5 = (f) => fs.readFileSync(new URL(`../../public/world/placed5/${f}`, import.meta.url));
+  ok(`the long Wheel's baked objects and map pictures are its plan's (if not: node tools/world/bake-wheel-world.mjs) -- ${bk5.n} objects, an overview pixel every ${bk5.cells} cells`,
+    disk5('objects.bin').equals(bk5.bin) && disk5('overview.png').equals(bk5.ovPng) && disk5('lands.png').equals(bk5.landsPng)
+      && PLACED5.v === bk5.v && PLACED5.n === bk5.n && PLACED5.cells === overviewCells(PLAN5) && overviewCells(PLAN5) === 16 && PLACED.cells === 4,
+    { v: bk5.v, placed: PLACED5.v, n: bk5.n });
+  ok('...each set read for its own plan only (the worker matches by fingerprint)',
+    PLACED5.plan === planFingerprint(PLAN5) && PLACED.plan === planFingerprint(PLAN) && PLACED5.plan !== PLACED.plan
+      && PLACED_SETS.length === 2 && PLACED_SETS.includes(PLACED5) && PLACED_SETS.includes(PLACED), {});
+  const oa = decodePlaced(fs.readFileSync(new URL('../../public/world/placed/objects.bin', import.meta.url)));
+  const ob = decodePlaced(disk5('objects.bin'));
+  const S1 = F1.S * PLAN.worldPxPerArtPx, DG = D * S1, C1 = mid * S1;
+  const key = (o, i, sh) => `${o.kinds[o.kind[i]]}|${o.piece[i]}|${o.flip[i]}|${Math.round(o.x[i] - sh)}|${Math.round(o.y[i] - sh)}`;
+  const near = (o, sh) => { const out = new Set(); for (let i = 0; i < o.n; i++) if (Math.hypot(o.x[i] - sh - C1, o.y[i] - sh - C1) < 1800) out.add(key(o, i, sh)); return out; };
+  const ka = near(oa, 0), kb = near(ob, DG);
+  ok(`...and everything standing in BroTown stands where it stood, moved to the middle: ${ka.size} things within 1,800 px of the square, every building, lamp and barrel`,
+    ka.size > 100 && ka.size === kb.size && [...ka].every((k) => kb.has(k)), { short: ka.size, long: kb.size });
+  ok(`...and the long Wheel has its lands' worth: ${ob.n} things to the short one's ${oa.n}`, ob.n > 4 * oa.n, { long: ob.n, short: oa.n });
+  /* 5. both spawn tables are their plans' (the long one the live one) */
+  const b5 = bakeWheelSpawnsFor(PLAN5, WHEEL_LONG);
+  const live5 = fs.readFileSync(new URL('../../server/src/wheelspawns.js', import.meta.url), 'utf8');
+  ok('the worker\'s live table is the long Wheel\'s plan\'s (if not: node tools/world/bake-wheel-spawns.mjs)', live5 === wheelSpawnsSource(b5, PLAN5) && live.WHEEL_LONG === 5 && short.WHEEL_LONG === 1);
+  const HOMES = Object.keys(live.WHEEL_SPAWNS);
+  ok('every stretch of every land has places for five times its six, spread out (the worker stands 30 a stretch)',
+    HOMES.length === 8 && HOMES.every((h) => live.WHEEL_SPAWNS[h].points.length >= 30 && (live.WHEEL_SPAWNS[h].deeper || []).length === 7
+      && live.WHEEL_SPAWNS[h].deeper.every((d) => d.points.length >= 30)),
+    HOMES.map((h) => [h, live.WHEEL_SPAWNS[h].points.length, (live.WHEEL_SPAWNS[h].deeper || []).map((d) => d.points.length).join(',')]));
+  /* every place on its own land and its own stretch, in the long Wheel's blocks */
+  const cellG5 = F5.S * PLAN.worldPxPerArtPx, offL = [];
+  const tierAt = (x, y) => { const bx = Math.floor(x / cellG5), by = Math.floor(y / cellG5); const b = B.ground(Math.floor(bx / BLOCK), Math.floor(by / BLOCK)); const c = (by - b.y) * b.w + (bx - b.x); return [F5.regionIds[b.reg[c]], b.tier[c]]; };
+  for (const h of HOMES) {
+    for (const p of live.WHEEL_SPAWNS[h].points.slice(0, 30)) { const [r, t] = tierAt(p[0], p[1]); if (r !== h || t !== 1) offL.push({ h, t: 1, r, tier: t }); }
+    for (const d of live.WHEEL_SPAWNS[h].deeper) for (const p of d.points.slice(0, 30)) { const [r, t] = tierAt(p[0], p[1]); if (r !== h || t !== d.tier) offL.push({ h, t: d.tier, r, tier: t }); }
+  }
+  ok('...each of the 1,920 places the worker uses on its own land, on the very stretch it is for', offL.length === 0, offL.slice(0, 4));
+  const nodes5 = Object.values(live.WHEEL_NODES).reduce((a, l) => a + l.length, 0), nodes1 = Object.values(short.WHEEL_NODES).reduce((a, l) => a + l.length, 0);
+  ok(`...and the resources grow over the longer lands as thick as before (${nodes5} to the short Wheel's ${nodes1}; the commons the same)`,
+    nodes5 > 4 * nodes1 && live.WHEEL_NODES.commons.length === short.WHEEL_NODES.commons.length, { nodes5, nodes1 });
+  ok('...and the three dungeons\' mouths are on their lands at their own levels, further out',
+    ['sky', 'hollows', 'thunder'].every((h) => live.WHEEL_DOORS[h] && short.WHEEL_DOORS[h] && live.WHEEL_DOORS[h].tier === short.WHEEL_DOORS[h].tier
+      && live.WHEEL_DOORS[h].levels.join() === short.WHEEL_DOORS[h].levels.join() && tierAt(live.WHEEL_DOORS[h].at[0], live.WHEEL_DOORS[h].at[1])[0] === h), live.WHEEL_DOORS);
+  /* 6. every copy the game keeps of either Wheel */
+  const { WHEELS } = await import('../../src/game/worldTrial.js');
+  const geomOk = (G, T) => G.w * 32 === T.WHEEL_WORLD[0] && G.h * 32 === T.WHEEL_WORLD[1] && G.safeR === T.WHEEL_SAFE_R
+    && Object.keys(T.WHEEL_SPAWNS).every((h) => G.lands[h] && G.lands[h][0] === T.WHEEL_SPAWNS[h].anchor[0] && G.lands[h][1] === T.WHEEL_SPAWNS[h].anchor[1]);
+  ok('the game\'s copies of each Wheel are its table\'s: its size, its safe ground and its lands\' middles (src/data/zones.js WHEEL_GEOM)',
+    geomOk(WHEEL_GEOM[1], short) && geomOk(WHEEL_GEOM[5], live), { 1: WHEEL_GEOM[1], 5: WHEEL_GEOM[5] });
+  const arrivalOf = (P, F) => { const g0 = gridInfo(P); return { x: Math.round((g0.cx - F.x0) * P.worldPxPerArtPx), y: Math.round((g0.cy + 0.25 * g0.P - F.y0) * P.worldPxPerArtPx) }; };
+  const a1 = arrivalOf(PLAN, F1), a5 = arrivalOf(PLAN5, F5);
+  ok('...its size and the way in by the town square (src/game/worldTrial.js WHEELS, as the ground worker reports them)',
+    WHEELS[1].worldW === F1.bw * S1 && WHEELS[5].worldW === F5.bw * S1 && WHEELS[1].worldH === F1.bh * S1 && WHEELS[5].worldH === F5.bh * S1
+      && WHEELS[1].arrival.x === a1.x && WHEELS[1].arrival.y === a1.y && WHEELS[5].arrival.x === a5.x && WHEELS[5].arrival.y === a5.y,
+    { WHEELS, a1, a5 });
+  ok('...and No man\'s land\'s middle (src/data/noMansLandRings.js NML_CENTRES)',
+    NML_CENTRES[1].join() === short.WHEEL_CENTRE.join() && NML_CENTRES[5].join() === live.WHEEL_CENTRE.join(), NML_CENTRES);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -218,14 +218,14 @@ function baseSession() { return { id: null, name: 'Anon', data: {}, rtt: 80, las
     ps.x = x; ps.y = y; ps.lastMoveAt = undefined;
   };
 
-  const ARRIVAL = { x: 21504, y: 21792 };
+  const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3315: the live Wheel's */
   const IDS = [];
   for (let i = 0; i < 44; i++) IDS.push('ag' + i);
   await both(async (w) => {
     for (const id of IDS) {
       const ws = fakeWs();
       w.room.sessions.set(ws, baseSession());
-      await w.room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
+      await w.room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, protocolVersion: 2, ws: [1, 5], data: { x: 1000, y: 1000, z: 'town' } }));
       await w.room.webSocketMessage(ws, JSON.stringify({ type: 'move', x: ARRIVAL.x, y: ARRIVAL.y, d: 'south', z: 'wheel', vx: 0, vy: 0 }));
       w.ws.set(id, ws);
     }

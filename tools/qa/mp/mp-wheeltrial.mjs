@@ -36,7 +36,7 @@ const MAGENTA = [230, 60, 200], CYAN = [40, 200, 220];
 /* v2.3.2951: the yards' swatch, and the blend between the square and the
    yards, each in two more such colours */
 const ORANGE = [240, 140, 20], PURPLE = [120, 50, 170], YELLOW = [250, 230, 40], GREEN = [60, 200, 60];
-const ARRIVAL = { x: 21504, y: 21792 };
+const ARRIVAL = (await H.wheelGeom()).arrival;   /* v2.3.3315: the Wheel the worker plays */
 
 const holdTitle = (P, ms) => P.page.evaluate(async (hold) => {
   const el = document.querySelector('.bt-zone-header__title');

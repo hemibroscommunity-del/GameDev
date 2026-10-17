@@ -36,6 +36,12 @@ import { fnv1a } from './rng.js';
 
 /* blueprint cells an overview pixel (the minimap's and world map's picture) */
 export const OVERVIEW_CELLS = 4;
+/* v2.3.3315: ...on a plan's Wheel: four times that on the Wheel five times
+   longer (plan.js PLAN5), so its whole-map picture is the size it was
+   (~450 px a side, not ~1,800: 13 MB the page would keep twice) */
+export function overviewCells(plan) {
+  return plan && plan.wheel && plan.wheel.tierZones > 1 ? OVERVIEW_CELLS * 4 : OVERVIEW_CELLS;
+}
 /* What the baked objects and overview (tools/world/bake-wheel-world.mjs) were
    worked out from: the plan, the objects' catalog and the placing's version.
    The worker trusts the baked files only when its own plan says the same --
@@ -147,7 +153,7 @@ export function wheelBlocks(plan, opts = {}) {
       }
     }
     const cat = catalogOf;
-    const bp = { w, h, scale: S, x0: F.x0 + x0 * S, y0: F.y0 + y0 * S, ox: x0, oy: y0, decks: F.decks,
+    const bp = { w, h, scale: S, x0: F.x0 + x0 * S, y0: F.y0 + y0 * S, ox: x0, oy: y0, nox: F.nox, noy: F.noy, decks: F.decks,
       wheel: F.W, regionIds: F.regionIds, full: { w: BW, h: BH, x0: F.x0, y0: F.y0 } };
     /* the plank decks' cells in this window (materialMap's deckAt) */
     const deckAt = new Map();

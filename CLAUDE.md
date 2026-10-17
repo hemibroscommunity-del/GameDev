@@ -1020,6 +1020,17 @@ remnant to migrate server-side, not a mode to preserve.
     bystanders who never hurt it take nothing; kill switch `wheelpursue:
     false`; server only: docs/specs/wheel-monsters.md "Provoked from the safe
     ground", `wheelzone` §5d.
+  - Since v2.3.3299 A MONSTER NOBODY IS NEAR RESTS -- for the owner's "Maybe 5x
+    larger map is needed" ("Rebuild for 5x"): five times the land is five times
+    the monsters. A live Wheel monster outside the squares of `WHEEL.REST_CELL`
+    1,600 px within `REST_REACH` 2 of every live player's (at least 3,200 px),
+    with no target, wind-up, telegraph, snowball, burrow or fuse in flight,
+    does nothing in a tick (wheelzone.js `_wheelRestTest`, index.js
+    `_tickMonsters`); it still comes back to life on time and its statuses
+    tick; only awake ones are swept apart. 384 with one player in town 335 ->
+    116 µs a tick, 1,920 2.9 -> 0.5 ms; kill switch `wheelrest: false`;
+    `wheelzone` §10: docs/specs/wheel-monsters.md "A monster nobody is near
+    rests".
   - Since v2.3.3016 DUNGEONS IN THE WHEEL -- offered "Dungeons in the Wheel
     ... the other big missing piece", the owner: "Yes continue working on
     those items":
@@ -2801,7 +2812,40 @@ remnant to migrate server-side, not a mode to preserve.
       checks);
     - the ground worker at the memory trip's peak 24.8 MB (main 28.7);
     - test-world-core "the Wheel in blocks" (every block and piece against the
-      whole map, cell for cell); step 2 is the 5x lands.)
+      whole map, cell for cell); step 2 is the 5x lands.
+  - Since v2.3.3315 EVERY LAND IS FIVE TIMES LONGER -- step 2 of the owner's
+    "Rebuild for 5x" (docs/specs/wheel-5x.md):
+    - a five-level stretch is 5,120 game px, not 1,024 (`plan.js PLAN5`,
+      `wheelSized`; the active area grown past the frame, `grid.js
+      active.grow`); 1,920 monsters (30 a stretch), 1,222 resources, 63,486
+      objects; BroTown and the commons the same ground -- the noise counted
+      from the plan's own corner (`nox`, ground.js, placing.js `NC`);
+    - TWO WHEELS: the worker plays the long one unless `wheel5x: false`
+      (server/src/wheeltables.js, picked once when the room starts), says
+      which in `caps.wheelsize`; tables `server/src/wheelspawns.js` (long,
+      live) and `wheelspawns1.js` (short), bakes `public/world/placed5/` and
+      `placed/` -- re-bake BOTH (`bake-wheel-spawns.mjs`,
+      `bake-wheel-world.mjs`); the previews (`?bigtown`, `?plaintown`,
+      `?placing=2`) are always the short one;
+    - the join says which Wheels the phone draws (`ws`,
+      src/game/wheelSize.js); a phone that says nothing is OUT OF STEP: no
+      monster targets it, no No man's land -- a test or bot must send `ws:
+      [1, 5]` (TRAPS §196); the phone's per-size copies (`WHEEL_GEOM`,
+      `WHEELS`, `NML_CENTRES`) follow `setWheelLong`, held to the tables by
+      test-world-core;
+    - never a Wheel coordinate in code or a test: QA reads `H.wheelGeom()`;
+    - the minimap and world map draw the blocks round you at the short
+      Wheel's detail (`wheelLocalLands`); the world map zooms ~4x further,
+      what lies along the lands (stages, camps, passes, bands, roads) at the
+      map's own zoom and what is one size on either Wheel (buildings,
+      resources, monsters, bridges) at the short Wheel's (`spanK`, `zr`);
+    - a fishing or mining seat stays the bank while you sit on it
+      (wheelSwim.js `seatedOnBank`): the drawn shore wanders past the plan's
+      cells, and one long-Wheel seat of 250 was four looks wet; the bake
+      places by the plan and never by the pictures;
+    - the way in still carries all 1,920 monsters (~580 KB): sending only
+      those in reach needs a message bringing a monster whole (a tick does
+      not say what it is) -- the next step.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

@@ -124,29 +124,48 @@ function index() {
   });
   const n = o.n, worldW = o.worldW, worldH = o.worldH;
   const cols = Math.ceil(worldW / BUCKET), rows = Math.ceil(worldH / BUCKET);
-  const page = new Int16Array(n).fill(-1), w = new Float32Array(n), h = new Float32Array(n);
+  /* ═══ v2.3.3315: WHAT EACH OBJECT IS DRAWN AS, KEPT ONCE A PIECE ═══
+     Its page, frame, size, anchor, reach and scale depend only on its kind
+     and piece, so they are kept once for each piece -- `page`, `w`, `h`,
+     `ax`, `reach`, `scl` and `frame`, read at the piece's number -- and an
+     object keeps only that number (`pk`, 0: none, so no page).  They were
+     kept for every object, 22 bytes each and a slot of `frame`: ~1.4 MB on
+     the page for the Wheel five times longer's 63,486 (mp-membudget's
+     buffers line).  Read as ix.w[ix.pk[i]]. */
+  const PK = [null];
+  const pkOf = kinds.map((ks) => (ks ? ks.map((pc) => { if (pc.page < 0) return 0; PK.push(pc); return PK.length - 1; }) : null));
+  const np = PK.length;
+  const page = new Int16Array(np).fill(-1), w = new Float32Array(np), h = new Float32Array(np);
   /* the anchor across each picture, and how far it reaches either side of
      its foot (half its width, more for a palm stood on its trunk) */
-  const ax = new Float32Array(n), reach = new Float32Array(n), scl = new Float32Array(n);
-  const frame = new Array(n);
-  const count = new Uint32Array(cols * rows + 1);
+  const ax = new Float32Array(np), reach = new Float32Array(np), scl = new Float32Array(np);
+  const frame = new Array(np).fill(null);
+  for (let p = 1; p < np; p++) {
+    const pc = PK[p];
+    page[p] = pc.page; w[p] = pc.w; h[p] = pc.h; frame[p] = pc.frame;
+    ax[p] = pc.ax; reach[p] = Math.max(pc.ax, 1 - pc.ax) * pc.w; scl[p] = pc.ks;
+  }
+  if (np > 65535) throw new Error('wheelObjects: more pieces than a Uint16Array holds');
+  const pk = new Uint16Array(n);
+  /* (and the index's numbers in 16 bits while every object's number fits) */
+  const Ix = n < 65536 ? Uint16Array : Uint32Array;
+  const count = new Ix(cols * rows + 1);
   let maxH = 0, maxHalfW = 0, placed = 0;
   for (let i = 0; i < n; i++) {
     const ks = kinds[o.kind[i]];
     if (!ks || !o.present[o.kind[i]]) continue;
-    const pc = ks[o.piece[i] % ks.length];
-    if (pc.page < 0) continue;
-    page[i] = pc.page; w[i] = pc.w; h[i] = pc.h; frame[i] = pc.frame;
-    ax[i] = pc.ax; reach[i] = Math.max(pc.ax, 1 - pc.ax) * pc.w; scl[i] = pc.ks;
-    if (pc.h > maxH) maxH = pc.h;
-    if (reach[i] > maxHalfW) maxHalfW = reach[i];
+    const p = pkOf[o.kind[i]][o.piece[i] % ks.length];
+    if (!p) continue;
+    pk[i] = p;
+    if (h[p] > maxH) maxH = h[p];
+    if (reach[p] > maxHalfW) maxHalfW = reach[p];
     placed++;
     count[cellOf(o.x[i], o.y[i], cols, rows) + 1]++;
   }
   for (let c = 1; c < count.length; c++) count[c] += count[c - 1];
   const fill = count.slice(0, cols * rows);
-  const items = new Uint32Array(placed);
-  for (let i = 0; i < n; i++) if (page[i] >= 0) items[fill[cellOf(o.x[i], o.y[i], cols, rows)]++] = i;
+  const items = new Ix(placed);
+  for (let i = 0; i < n; i++) if (pk[i]) items[fill[cellOf(o.x[i], o.y[i], cols, rows)]++] = i;
   const pageMB = man.atlases.map((a) => (a.w * a.h * 4) / 1048576);
   /* v2.3.3190: which pages are palette PNGs (all of them: the manifest says) */
   const palette = man.atlases.map((a) => a.palette !== false);
@@ -156,7 +175,7 @@ function index() {
   /* v2.3.2999: which placing made them (placing.js PLACING, or PLACING_V2
      with `?placing=2`) */
   wheelObjectStats.version = o.version || null;
-  _idx = { src: o, o, n, cols, rows, start: count, items, page, w, h, ax, reach, scl, frame, maxH, maxHalfW, pageNames, pageMB, palette,
+  _idx = { src: o, o, n, cols, rows, start: count, items, pk, page, w, h, ax, reach, scl, frame, maxH, maxHalfW, pageNames, pageMB, palette,
     sheets: man.atlases.map((a) => BASE + a.sheet) };
   return _idx;
 }
@@ -363,7 +382,7 @@ export async function wheelObjectsWarm(x, y, rx, ry) {
   /* v2.3.2983: the buildings' life -- its textures, made in code (wheelLife.js) */
   if (wheelLifeOn()) wheelLifeWarm();
   const want = new Set();
-  each(ix, x - rx - ix.maxHalfW, y - ry, x + rx + ix.maxHalfW, y + ry + ix.maxH, (i) => want.add(ix.page[i]));
+  each(ix, x - rx - ix.maxHalfW, y - ry, x + rx + ix.maxHalfW, y + ry + ix.maxH, (i) => want.add(ix.page[ix.pk[i]]));
   const all = Promise.all([...want].map((k) => loadPage(ix, k)));
   await Promise.race([all, new Promise((r) => setTimeout(r, PAGE_WAIT_MS))]);
   wheelObjectStats.warmMs = Math.round(performance.now() - t0);
@@ -458,8 +477,8 @@ export class WheelObjects {
       const ay = Math.max(-AHEAD_MAX, Math.min(AHEAD_MAX, this._vy * AHEAD_MS));
       const want = new Set(), keep = new Set();
       each(ix, cx - LOAD_MARGIN + Math.min(0, ax) - ix.maxHalfW, cy - LOAD_MARGIN + Math.min(0, ay),
-        cx + viewW + LOAD_MARGIN + Math.max(0, ax) + ix.maxHalfW, cy + viewH + LOAD_MARGIN + ix.maxH + Math.max(0, ay), (i) => want.add(ix.page[i]));
-      each(ix, cx - DROP_MARGIN - ix.maxHalfW, cy - DROP_MARGIN, cx + viewW + DROP_MARGIN + ix.maxHalfW, cy + viewH + DROP_MARGIN + ix.maxH, (i) => keep.add(ix.page[i]));
+        cx + viewW + LOAD_MARGIN + Math.max(0, ax) + ix.maxHalfW, cy + viewH + LOAD_MARGIN + ix.maxH + Math.max(0, ay), (i) => want.add(ix.page[ix.pk[i]]));
+      each(ix, cx - DROP_MARGIN - ix.maxHalfW, cy - DROP_MARGIN, cx + viewW + DROP_MARGIN + ix.maxHalfW, cy + viewH + DROP_MARGIN + ix.maxH, (i) => keep.add(ix.page[ix.pk[i]]));
       for (const k of want) {
         const rec = _pages.get(k);
         if (rec) { rec.wanted = now; continue; }
@@ -483,24 +502,24 @@ export class WheelObjects {
        would pop in at the edge. */
     const SLX = WHEEL_SUN.lx, SLY = WHEEL_SUN.ly;
     each(ix, vx0 - ix.maxHalfW - SLX * ix.maxH, vy0 - SLY * ix.maxH, vx1 + ix.maxHalfW, vy1 + ix.maxH, (i) => {
-      const x = ix.o.x[i], y = ix.o.y[i], hw = ix.reach[i], h = ix.h[i];
+      const x = ix.o.x[i], y = ix.o.y[i], hw = ix.reach[ix.pk[i]], h = ix.h[ix.pk[i]];
       if (x + hw + SLX * h < vx0 || x - hw > vx1 || y + SLY * h < vy0 || y - h > vy1) return;
       /* v2.3.2995: broken, it is its shards (wheelShatter.js) until mended */
       if (isWheelBroken(i)) return;
       seen.add(i);
       if (this.sprites.has(i)) return;
-      const rec = _pages.get(ix.page[i]);
+      const rec = _pages.get(ix.page[ix.pk[i]]);
       if (!rec || rec.state !== 'ready') {
         /* (late only if its PICTURE was due on screen, not just its shadow) */
         const pictureIn = !(x + hw < vx0 || y < vy0);
         if (pictureIn && !jumped && !this._late.has(i)) { this._late.add(i); wheelObjectStats.lateDraws++; }
         return;
       }
-      const tex = rec.sheet && rec.sheet.textures && rec.sheet.textures[ix.frame[i]];
+      const tex = rec.sheet && rec.sheet.textures && rec.sheet.textures[ix.frame[ix.pk[i]]];
       if (!tex) return;
       const pic = new Sprite(tex);
-      pic.anchor.set(ix.ax[i], 1);
-      pic.scale.set(ix.o.flip[i] ? -ix.scl[i] : ix.scl[i], ix.scl[i]);
+      pic.anchor.set(ix.ax[ix.pk[i]], 1);
+      pic.scale.set(ix.o.flip[i] ? -ix.scl[ix.pk[i]] : ix.scl[ix.pk[i]], ix.scl[ix.pk[i]]);
       /* v2.3.2983: a building with life is its picture and its life over it,
          one Container at its foot, so the depth pass moves them together */
       const id = ix.o.kinds[ix.o.kind[i]];
@@ -517,7 +536,7 @@ export class WheelObjects {
         s = new Container();
         s.addChild(pic);
         s._pic = pic;
-        s._life = new BuildingLife(id, ix.w[i], ix.h[i], ix.ax[i], ix.scl[i]);
+        s._life = new BuildingLife(id, ix.w[ix.pk[i]], ix.h[ix.pk[i]], ix.ax[ix.pk[i]], ix.scl[ix.pk[i]]);
         s.addChild(s._life.view);
       }
       s.x = x; s.y = y;
@@ -569,7 +588,7 @@ export class WheelObjects {
       this._pagesSeen = ready;
       const out = [], o = ix.o;
       each(ix, P.x - BLOCK_R - ix.maxHalfW, P.y - BLOCK_R, P.x + BLOCK_R + ix.maxHalfW, P.y + BLOCK_R + ix.maxH, (i) => {
-        const rec = _pages.get(ix.page[i]);
+        const rec = _pages.get(ix.page[ix.pk[i]]);
         if (!rec || rec.state !== 'ready') return;
         if (isWheelBroken(i)) return;      /* v2.3.2995: rubble stops nobody */
         for (let b = o.boxOf[i]; b < o.boxOf[i + 1]; b++) {
@@ -578,7 +597,7 @@ export class WheelObjects {
           /* v2.3.3206: + `h`, its picture's height, so a hit at the boots is
              shown on the picture, not in the air over a bench
              (combatHelpers.propHitHeight) */
-          out.push({ x0: o.boxes[b * 4], y0: o.boxes[b * 4 + 1], x1: o.boxes[b * 4 + 2], y1: o.boxes[b * 4 + 3], id: o.kinds[o.kind[i]], oi: i, h: ix.h[i] });
+          out.push({ x0: o.boxes[b * 4], y0: o.boxes[b * 4 + 1], x1: o.boxes[b * 4 + 2], y1: o.boxes[b * 4 + 3], id: o.kinds[o.kind[i]], oi: i, h: ix.h[ix.pk[i]] });
         }
       });
       this._blockers = out;
@@ -619,13 +638,13 @@ export class WheelObjects {
       if (o.boxOf) for (let b = o.boxOf[i]; b < o.boxOf[i + 1]; b++) depth = Math.max(depth, o.boxes[b * 4 + 3] - o.boxes[b * 4 + 1]);
       const info = materialInfo(k && k.mat);
       if (tex) {
-        this.shatter.add(i, tex, { x: o.x[i], y: o.y[i], ax: ix.ax[i], ks: ix.scl[i], flip: !!o.flip[i],
+        this.shatter.add(i, tex, { x: o.x[i], y: o.y[i], ax: ix.ax[ix.pk[i]], ks: ix.scl[ix.pk[i]], flip: !!o.flip[i],
           hitX: ev.x, hitY: ev.y, ang: ev.ang, weapon: ev.weapon, as: ev.as, depth, dust: dustTint(info.tint) });
       }
       /* ...and a burst of what it is made of, thrown all round its foot */
       if (S) {
         if (!S._debrisBursts) S._debrisBursts = [];
-        const h = Math.min(ix.h[i] * 0.4, 70);
+        const h = Math.min(ix.h[ix.pk[i]] * 0.4, 70);
         S._debrisBursts.push({ monsterId: 'wobj:' + i + ':b', kind: info.fx, tint: info.tint,
           x: o.x[i], y: o.y[i] - h, gy: o.y[i], h, ang: Number.isFinite(ev.ang) ? ev.ang : -Math.PI / 2,
           t0: Date.now(), weapon: 'bolt', big: true, hitX: o.x[i], hitY: o.y[i] - h, prop: true, oi: i, mat: k && k.mat });
@@ -703,7 +722,7 @@ export class WheelObjects {
       if (fy != null) {
         if (s._crown == null) { const m = wheelMaterialOf(ix.o.kinds[ix.o.kind[i]]); s._crown = !!(m && m.canopy); }
         if (s._crown) {
-          const x = ix.o.x[i], y = ix.o.y[i], h = ix.h[i], hw = ix.reach[i] * 0.8;
+          const x = ix.o.x[i], y = ix.o.y[i], h = ix.h[ix.pk[i]], hw = ix.reach[ix.pk[i]] * 0.8;
           /* behind its foot, under its crown, and the crown over your body */
           if (fy < y - 4 && fy > y - h + 20 && Math.abs(px - x) < hw + 14 && fy - bodyH < y - h * 0.35) want = SEE_ALPHA;
         }
@@ -721,7 +740,7 @@ export class WheelObjects {
   _dropPage(ix, k) {
     /* its sprites first: drop the reference, then the texture (CLAUDE.md) */
     for (const [i, s] of this.sprites) {
-      if (ix.page[i] !== k) continue;
+      if (ix.page[ix.pk[i]] !== k) continue;
       this.sprites.delete(i);
       try { s.destroy({ children: true }); } catch (e) { /* gone */ }
     }
@@ -826,7 +845,7 @@ export function wheelObjectCasters(out) {
         let back = Infinity;
         for (let b = o.boxOf[i]; b < o.boxOf[i + 1]; b++) back = Math.min(back, o.boxes[b * 4 + 1]);
         c = s._caster = { key: 'w:' + i, depth: { spr: { texture: null, x: 0, y: 0, scale: { x: 1, y: 1 } }, g: { base: 0, bottoms: null },
-          back: Number.isFinite(back) ? back : o.y[i] - ix.h[i] * 0.5, pieces: null }, alive: true };
+          back: Number.isFinite(back) ? back : o.y[i] - ix.h[ix.pk[i]] * 0.5, pieces: null }, alive: true };
       }
       const d = c.depth, sp = d.spr, sx = pic.scale.x, sy = pic.scale.y;
       /* (a building with life: its picture sits inside the Container) */
@@ -909,9 +928,9 @@ export function forEachWheelSwayer(fn) {
 /* ═══ v2.3.2995: AN OBJECT'S PICTURE, FOR WHAT A HIT DOES TO IT ═══ */
 /* object i's picture, if its page is in */
 function texOf(ix, i) {
-  const rec = _pages.get(ix.page[i]);
+  const rec = _pages.get(ix.page[ix.pk[i]]);
   if (!rec || rec.state !== 'ready' || !rec.sheet || !rec.sheet.textures) return null;
-  const t = rec.sheet.textures[ix.frame[i]];
+  const t = rec.sheet.textures[ix.frame[ix.pk[i]]];
   return t && t.source && !t.destroyed ? t : null;
 }
 /* the material's colour, paled for the dust it raises */
@@ -924,9 +943,9 @@ function dustTint(c) {
 function toPic(ix, i, tex, x, y) {
   const fp = framePx(tex);
   if (!fp) return null;
-  const ks = ix.scl[i], flip = !!ix.o.flip[i];
+  const ks = ix.scl[ix.pk[i]], flip = !!ix.o.flip[i];
   const cs = ks / fp.res, sx = flip ? -cs : cs;
-  return { fp, cs, sx, flip, u: (x - ix.o.x[i]) / sx + ix.ax[i] * fp.w, v: (y - ix.o.y[i]) / cs + fp.h };
+  return { fp, cs, sx, flip, u: (x - ix.o.x[i]) / sx + ix.ax[ix.pk[i]] * fp.w, v: (y - ix.o.y[i]) / cs + fp.h };
 }
 
 /** Where object `oi` stands, for the marks drawn on it (effectsRenderer):
@@ -959,7 +978,7 @@ export function wheelPropArt(oi, x, y, crown) {
   if (crown) {
     /* a crown is the top of the picture: its middle across, a third down */
     const cu = W * 0.5, cv = H * 0.3;
-    const cx = ix.o.x[oi] + (cu - ix.ax[oi] * W) * p.sx;
+    const cx = ix.o.x[oi] + (cu - ix.ax[ix.pk[oi]] * W) * p.sx;
     return { tex, u: cu, v: cv, cs: p.cs, R: Math.min(W, H) * 0.22,
       crown: { cx, z0: H * 0.42 * p.cs, z1: H * 0.9 * p.cs, hw: W * 0.34 * p.cs } };
   }
@@ -1041,7 +1060,7 @@ export function wheelScorch(oi, x, y, r, style) {
   const mk = { source,
     tex: new Texture({ source, frame: new Rectangle(0, 0, S, S) }),
     glow: new Texture({ source, frame: new Rectangle(S, 0, S, S) }),
-    x: ix.o.x[oi] + (u0 + S / 2 - ix.ax[oi] * W) * p.sx,
+    x: ix.o.x[oi] + (u0 + S / 2 - ix.ax[ix.pk[oi]] * W) * p.sx,
     y: ix.o.y[oi] + (v0 + S / 2 - H) * p.cs,
     sx: p.sx, sy: p.cs };
   return mk;
@@ -1057,8 +1076,8 @@ if (typeof window !== 'undefined') {
       if (!ix) return [];
       const out = [];
       each(ix, x - r, y - r, x + r, y + r, (i) => {
-        const rec = _pages.get(ix.page[i]);
-        out.push({ i, id: ix.o.kinds[ix.o.kind[i]], x: ix.o.x[i], y: ix.o.y[i], w: ix.w[i], h: ix.h[i], ready: !!(rec && rec.state === 'ready') });
+        const rec = _pages.get(ix.page[ix.pk[i]]);
+        out.push({ i, id: ix.o.kinds[ix.o.kind[i]], x: ix.o.x[i], y: ix.o.y[i], w: ix.w[ix.pk[i]], h: ix.h[ix.pk[i]], ready: !!(rec && rec.state === 'ready') });
       });
       return out;
     },

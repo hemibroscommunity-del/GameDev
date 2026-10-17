@@ -42,7 +42,7 @@
  * The clear pays as any dungeon's (dungeon.js _dungeonComplete).
  */
 import { ZONES, ARCHETYPES } from './data.js';
-import { WHEEL_DOORS } from './wheelspawns.js';
+/* v2.3.3315: the doors of the Wheel this room plays (this._wheelT()) */
 
 export const WHEEL_DUNGEON = {
   /* the lands whose landmark is a dungeon today, and each arena's look (a
@@ -83,6 +83,7 @@ export const wheelDungeonMethods = {
 
   /* The mouth of land `id`, baked, or null. */
   _wheelDoor(id) {
+    const WHEEL_DOORS = this._wheelT().WHEEL_DOORS;
     if (!own(WHEEL_DUNGEON.LANDS, id) || !WHEEL_DOORS || !own(WHEEL_DOORS, id)) return null;
     const d = WHEEL_DOORS[id];
     return d && Array.isArray(d.at) && Array.isArray(d.back) && Array.isArray(d.levels) ? d : null;

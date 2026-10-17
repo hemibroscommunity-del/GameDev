@@ -43,7 +43,7 @@
 import { GameRoom } from '../../../server/src/index.js';
 import { BOTFP } from '../../../server/src/botfp.js';
 import { GATHER_HITS, HONEST_CYCLE, gatherReqLvl } from '../../../server/src/gathering.js';
-import { WHEEL_SPAWNS } from '../../../server/src/wheelspawns.js';
+import { WHEEL_SPAWNS, WHEEL_CENTRE } from '../../../server/src/wheelspawns.js';
 
 const ARGS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const FLAG = (name, d) => { const a = process.argv.find((x) => x === '--' + name || x.startsWith('--' + name + '=')); return a ? (a.split('=')[1] ?? true) : d; };
@@ -70,7 +70,7 @@ Date.now = () => simNow;
 
 const STEP_MS = 33;          /* a phone's frame of input */
 const TICK_EVERY = 110;      /* the room's tick, in strides (nodes respawn by their clock) */
-const ARRIVAL = { x: 21504, y: 21792 };
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3315: the Wheel the room plays */
 const BUNDLE_MAX = 24;
 
 /* every row written, for the probes that ask what one message costs */
@@ -130,7 +130,7 @@ async function addPlayer(world, cfg, i) {
   const ws = { plans: [], send(s) { if (typeof s === 'string' && s.startsWith('{"type":"gather_hits"')) this.plans.push(JSON.parse(s).payload); }, close() {} };
   room.sessions.set(ws, baseSession());
   const id = 'lab' + cfg.name.replace(/[^a-z0-9]/gi, '').slice(0, 10) + i + Math.random().toString(36).slice(2, 6);
-  const join = { type: 'join', id, name: 'Lab ' + i, protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } };
+  const join = { type: 'join', id, name: 'Lab ' + i, protocolVersion: 2, ws: [1, 5], data: { x: 1000, y: 1000, z: 'town' } };
   if (cfg.device) join.device = { id: typeof cfg.device === 'function' ? cfg.device(i) : cfg.device, env: 'lab' };
   await room.webSocketMessage(ws, JSON.stringify(join));
   await room.webSocketMessage(ws, JSON.stringify(moveMsg(ARRIVAL.x + u(-40, 40), ARRIVAL.y + u(-30, 30), 0, 0)));
@@ -608,7 +608,7 @@ async function writeProbes() {
   for (let i = 0; i < 200; i++) {
     simNow += 50;
     if (!room.sessions.has(a.ws)) break;   /* v2.3.3274: the first one closes the socket */
-    await room.webSocketMessage(a.ws, JSON.stringify({ type: 'join', id: 'ghost' + i + 'x' + hash32(), name: 'G', protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
+    await room.webSocketMessage(a.ws, JSON.stringify({ type: 'join', id: 'ghost' + i + 'x' + hash32(), name: 'G', protocolVersion: 2, ws: [1, 5], data: { x: 1000, y: 1000, z: 'town' } }));
   }
   await new Promise((r) => setImmediate(r));
   const rejoin = { joins: 200, players: Object.keys(room.playerState).length - ps0, rows: W.puts + W.dels - w0, sockets: room.sessions.size, closed: !room.sessions.has(a.ws) };

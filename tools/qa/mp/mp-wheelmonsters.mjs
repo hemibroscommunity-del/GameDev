@@ -140,12 +140,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 2. every land's own ── */
   phase = 'the list';
   await P.page.waitForTimeout(1500);
-  const every = await monsters(P);
+  let every = await monsters(P);
+  /* v2.3.3315: they come in the way in's one zone_state, ~580 KB on the
+     Wheel five times longer.  The worker sends it 35 ms after the step in;
+     the local worker's socket then took ~2.7 s to carry it to the page
+     (measured, the worker's send against the page's receipt, tracing on or
+     off) -- 1.5 s was enough for the short Wheel's ~117 KB.  So wait for it,
+     up to 15 s more, and say how long it took. */
+  const tList = Date.now();
+  for (let i = 0; i < 60 && !every.length; i++) { await P.page.waitForTimeout(250); every = await monsters(P); }
+  const listS = +(1.5 + (Date.now() - tList) / 1000).toFixed(1);
+  /* (a frame drawn with them, for the renderer's count of the far ones below) */
+  if (listS > 1.5) { await P.page.waitForTimeout(1000); every = await monsters(P); }
   const all = every.filter(isFirst);   /* v2.3.3013: the inner end's */
+  /* v2.3.3315: five times as many on the Wheel five times longer, its
+     stretches as crowded as the short one's (the live spawn table's size) */
+  const LONG = (await H.wheelGeom()).long;
   const byHome = {};
   for (const m of all) (byHome[m.home] = byHome[m.home] || []).push(m);
-  rec.ok(`every element zone's monsters are there, each saying its home (${all.length} at the inner ends: ${Object.entries(byHome).map(([h, a]) => `${h} ${a.length}`).join(', ')}; ${every.length} in all with the deeper stretches)`,
-    all.length === 48 && every.length === 384 && Object.keys(SKIN).every((h) => (byHome[h] || []).length === 6), Object.keys(byHome));
+  rec.ok(`every element zone's monsters are there, each saying its home (${all.length} at the inner ends: ${Object.entries(byHome).map(([h, a]) => `${h} ${a.length}`).join(', ')}; ${every.length} in all with the deeper stretches, ${listS} s after the arrival)`,
+    all.length === 48 * LONG && every.length === 384 * LONG && Object.keys(SKIN).every((h) => (byHome[h] || []).length === 6 * LONG), { listS, homes: Object.keys(byHome) });
   const wrongSkin = every.filter((m) => !(SKIN[m.home] || []).includes(m.arch));
   rec.ok('...each skinned as at home: fire goblins, snowmen, fishmen, rock monsters, mummies, wisps and lurkers, blue slimes, slimes',
     wrongSkin.length === 0, wrongSkin.slice(0, 6).map((m) => ({ id: m.id, home: m.home, arch: m.arch })));
@@ -160,9 +174,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      undrawn in the Wheel (entityRenderer, FAR_MARGIN) */
   const farHidden = await H.readState(P, (S) => S._monstersFarHidden);
   rec.ok(`...and from Brotown's square, far off screen, none of them is drawn (${farHidden} of ${every.length} left undrawn)`,
-    farHidden === every.length && every.length === 384, farHidden);
+    farHidden === every.length && every.length === 384 * LONG, farHidden);
   /* ── 3. at the inner end of their own spoke ── */
-  const C = 21504;
+  const C = (await H.wheelGeom()).cx;   /* v2.3.3315: the Wheel the worker plays */
   const misplaced = all.filter((m) => {
     const at = WHEEL_SPAWNS[m.home];
     if (!at) return true;
@@ -207,12 +221,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const artFrost = await P.page.evaluate(() => (window.__btWheelArt ? window.__btWheelArt() : null));
   const snowDrawn = snow.filter((m) => m.sprite && m.sprite.visible && m.sprite.texAlive);
   rec.ok(`on Frost Ridge's inner end the snowmen are drawn from live art (${snowDrawn.length} of ${snow.length} bodies)`,
-    snow.length === 6 && snowDrawn.length >= 1 && snow.filter((m) => m.sprite).every((m) => m.sprite.texAlive), snow.map((m) => m.sprite));
+    snow.length === 6 * LONG && snowDrawn.length >= 1 && snow.filter((m) => m.sprite).every((m) => m.sprite.texAlive), snow.map((m) => m.sprite));
   const gob = await drawnNear('ember');
   await shot(P, 'ember');
   const gobDrawn = gob.filter((m) => m.sprite && m.sprite.visible && m.sprite.texAlive);
   rec.ok(`...and on the Flame Fields' the fire goblins (${gobDrawn.length} of ${gob.length})`,
-    gob.length === 6 && gobDrawn.length >= 1 && gob.filter((m) => m.sprite).every((m) => m.sprite.texAlive), gob.map((m) => m.sprite));
+    gob.length === 6 * LONG && gobDrawn.length >= 1 && gob.filter((m) => m.sprite).every((m) => m.sprite.texAlive), gob.map((m) => m.sprite));
 
   const memWalk = await monsterMb(P);   /* after two lands' objects and ground came in too */
   /* v2.3.2989: their looks came on the way, before any of their monsters was

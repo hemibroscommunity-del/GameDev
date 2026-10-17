@@ -1844,7 +1844,8 @@ export class TileRenderer {
 
     const open = (gx, gy) => {
       const row = grid[gy];
-      return !!row && gx >= 0 && gx < gw && row[gx] !== false;
+      /* v2.3.3315: false, or 0 in the Wheel's byte rows (wheelTrial.js lazyGrid), is a wall */
+      return !!row && gx >= 0 && gx < gw && row[gx] !== false && row[gx] !== 0;
     };
     /* R covers the heading plus a little slack, so a road that has to detour
        sideways round a wide building still has room to come back. */

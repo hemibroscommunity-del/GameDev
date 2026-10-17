@@ -192,6 +192,7 @@ import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow speci
 // how many players are standing in THAT zone -- see spawnscale.js.
 import { spawnScaleMethods } from './spawnscale.js';
 import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.2978 */
+import { wheelTableMethods } from './wheeltables.js'; /* v2.3.3315: which Wheel the room plays */
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { pvpBalanceMethods } from './pvpbalance.js'; /* v2.3.3260: PvP hits rolled by the worker, and tuned */
 import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle of a fight -- the body stays */
@@ -1829,6 +1830,12 @@ export class GameRoom {
          null = the full loop (another zone, a handful of players, the kill
          switch, a position that is not a plain number) */
       const _aggroCells = zoneId === WHEEL_ZONE ? this._aggroGridOf(playersInZone) : null;
+      /* v2.3.3299: and which of them rest this tick -- no player near and
+         nothing in flight (wheelzone.js WHEEL.REST_CELL); the rest are the
+         ones swept apart below */
+      const _rests = zoneId === WHEEL_ZONE ? this._wheelRestTest(playersInZone) : null;
+      const _awake = _rests ? [] : null;
+      let _resting = 0;
 
       for (const m of monsters) {
         // Respawn check
@@ -1905,6 +1912,12 @@ export class GameRoom {
             this._markMonsterDirty(zoneId, m.id);
           }
           continue;
+        }
+        /* v2.3.3299: a live monster nobody is near does nothing this tick
+           (its respawn, above, stays on time) */
+        if (_rests) {
+          if (_rests(m)) { _resting++; continue; }
+          _awake.push(m);
         }
 
         // Mid-fight variant transform (currently just mummy -> skeleton
@@ -2538,7 +2551,11 @@ export class GameRoom {
          there (measured).  It keeps them apart by a sweep along x instead
          (wheelzone.js _wheelSeparate), the same rule for every pair close
          enough to matter; every other zone runs the loop below, unchanged. */
-      if (zoneId === WHEEL_ZONE) this._wheelSeparate(zoneId, monsters, 22);
+      /* v2.3.3299: the awake ones -- a resting monster has not moved */
+      if (zoneId === WHEEL_ZONE) {
+        this._wheelSeparate(zoneId, _awake || monsters, 22);
+        this._wheelResting = _resting;
+      }
       else {
         const MIN_SEP = 22;
         for (let i = 0; i < monsters.length; i++) {
@@ -6232,6 +6249,7 @@ Object.assign(GameRoom.prototype, arrowBlastMethods); /* v2.3.2279 */
 // v2.3.1983: population-scaled spawns -- see spawnscale.js.
 Object.assign(GameRoom.prototype, spawnScaleMethods);
 Object.assign(GameRoom.prototype, wheelzoneMethods); /* v2.3.2978 */
+Object.assign(GameRoom.prototype, wheelTableMethods); /* v2.3.3315 */
 Object.assign(GameRoom.prototype, noMansLandMethods); /* v2.3.3058 */
 Object.assign(GameRoom.prototype, shieldWearMethods); /* v2.3.3091 */
 Object.assign(GameRoom.prototype, shieldGemMethods); /* v2.3.3187 */

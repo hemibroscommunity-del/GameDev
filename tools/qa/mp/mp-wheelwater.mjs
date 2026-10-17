@@ -24,9 +24,13 @@ const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 
 const PHONE = { width: 390, height: 844 };
 /* sand above the Wind Dunes' first coast, the shallows and the sea north of it */
-const COAST = { x: 25199, y: 15874 };
+/* (v2.3.3315: the short Wheel's spots, moved to the Wheel the worker plays --
+   the hub's ground is the same at either size, and this coast too: the
+   sand, then the water north of it) */
+const SHIFT = (await H.wheelGeom()).shift;
+const COAST = { x: 25199 + SHIFT, y: 15874 + SHIFT };
 /* the Sweetwater River, by the Mill Bridge (test-world-core's art([-2.02, 0])) */
-const RIVER = { x: 19177, y: 21504 };
+const RIVER = { x: 19177 + SHIFT, y: 21504 + SHIFT };
 
 const holdTitle = (P, ms) => P.page.evaluate(async (hold) => {
   const el = document.querySelector('.bt-zone-header__title');

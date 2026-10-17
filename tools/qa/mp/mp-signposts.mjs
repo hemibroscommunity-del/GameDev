@@ -25,8 +25,6 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { PLAN, SPOKES } from '../../../public/tools/world/plan.js';
-import { buildBlueprint } from '../../../public/tools/world/core/layout.js';
-import { wheelMap } from '../../../public/tools/world/core/wheelmap.js';
 import { landLevelsText, SIGNPOST_SHOW_R } from '../../../src/data/wheelSignposts.js';
 
 const PHONE = { width: 390, height: 844 };
@@ -98,7 +96,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3146: the street's middle a little over a screen-half short of each
        post, town-side -- Main Street runs north-south through the town's
        middle, Market Row east-west -- ~450 px from it */
-    const town = wheelMap(PLAN, buildBlueprint(PLAN)).hub.town;
+    const town = (await (await H.wheelGeom()).map()).hub.town;   /* v2.3.3315: the Wheel the worker plays */
     const SHORT = 430;
     const shortOf = (p) => (p.gate === 'north' ? { x: town.x, y: p.y + SHORT } : p.gate === 'south' ? { x: town.x, y: p.y - SHORT }
       : p.gate === 'east' ? { x: p.x - SHORT, y: town.y } : { x: p.x + SHORT, y: town.y });

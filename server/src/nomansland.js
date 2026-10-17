@@ -85,12 +85,14 @@
  * skull and takes nothing on a death -- the safe Wheel of v2.3.3057 exactly.
  */
 import { WHEEL_ZONE } from './wheelzone.js';
-import { WHEEL_CENTRE } from './wheelspawns.js';
+import { wheelTable } from './wheeltables.js';   /* v2.3.3315 */
 import { GEAR_PROV_FIELD, GEAR_PROV_SLOTS } from './gearprov.js';
 
 export const NML = Object.freeze({
   /* the Wheel's rings, game px (plan.js wheel: hub 2.7 zones, tierZones 1,
-     zonePx 1024; 16 tiers of 5 levels) */
+     zonePx 1024; 16 tiers of 5 levels).  v2.3.3315: TIER is the short
+     Wheel's; a Wheel `long` times longer has tiers `long` times as long
+     (nmlTierAt), round its own centre (its table's WHEEL_CENTRE) */
   HUB: 2764.8,
   TIER: 1024,
   TIERS: 16,
@@ -113,17 +115,19 @@ export const NML_KEY = (pid) => 'nml_state:' + pid;
 
 /* The tier at (x, y): 0 inside the hub, else 1..16 -- wheel.js tierAt's
    arithmetic on the plan's rings, without the blueprint's wobble. */
-export function nmlTierAt(x, y) {
+export function nmlTierAt(x, y, long = 1) {
   if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y)) return 0;
-  const r = Math.hypot(x - WHEEL_CENTRE[0], y - WHEEL_CENTRE[1]);
+  const C = wheelTable(long).WHEEL_CENTRE, tier = NML.TIER * (wheelTable(long).WHEEL_LONG || 1);
+  const r = Math.hypot(x - C[0], y - C[1]);
   if (r < NML.HUB) return 0;
-  return Math.max(1, Math.min(NML.TIERS, Math.ceil((r - NML.HUB) / NML.TIER)));
+  return Math.max(1, Math.min(NML.TIERS, Math.ceil((r - NML.HUB) / tier)));
 }
 
-/* No man's land's level at a spot: 0 outside it, 1 from the Lv 6-10 tier. */
-export function nmlLevelAt(zone, x, y) {
+/* No man's land's level at a spot: 0 outside it, 1 from the Lv 6-10 tier --
+   in the Wheel `long` times longer (v2.3.3315: the room's, _wheelLongNow) */
+export function nmlLevelAt(zone, x, y, long = 1) {
   if (zone !== WHEEL_ZONE) return 0;
-  const t = nmlTierAt(x, y);
+  const t = nmlTierAt(x, y, long);
   return t >= NML.FIRST_TIER ? t - NML.FIRST_TIER + 1 : 0;
 }
 
@@ -163,7 +167,10 @@ export const noMansLandMethods = {
   /* the No man's land level a live player stands in */
   _nmlLevelOf(ps) {
     if (!ps || ps.dead || ps.dying) return 0;
-    return nmlLevelAt(ps.z, ps.x, ps.y);
+    /* v2.3.3315: a phone that does not draw this room's Wheel stands somewhere
+       else on its own map: no rule holds for it (wheeltables.js _wheelInStep) */
+    if (this._wheelInStep && !this._wheelInStep(ps)) return 0;
+    return nmlLevelAt(ps.z, ps.x, ps.y, this._wheelLongNow());
   },
 
   /* May `attackerId` hit `targetId` under No man's land's rule? */
