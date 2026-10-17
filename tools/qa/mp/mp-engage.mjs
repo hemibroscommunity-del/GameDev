@@ -160,17 +160,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     const m = S.monsters[0];
     const mk = (window.__btAtkMark() || [])[0] || null;
-    return { my: m.y, mx: m.x, mark: mk };
+    return { my: m.y, mx: m.x, mark: mk, scale: S._worldScaleX || 1 };
   });
   /* v2.3.2253: the target is caret-ed again (the owner asked for the arrow
      back on it), so its mark is ABOVE the head, not at the feet as it was for
      one version.  Asserted as the property rather than a pixel count: on the
      monster's own column, above it, and close enough to be its mark and not
      the next monster's -- a slime's caret sits ~91px up (body offset 23 x2,
-     plus the 42 that clears the name pill, plus the bob). */
+     plus the 42 that clears the name pill, plus the bob).
+     v2.3.3324: the 150 is SCREEN px now.  The caret hangs from the monster's
+     HP band (`_bandTopOff`, entityRenderer: barY x `_uiScale`) and is sized
+     by the same screen-fixed scale, so in WORLD px it rises as the view
+     zooms out -- 163 world px on the QA phone at its 0.6-0.8 scale (VIEW_OUT
+     0.77 since v2.3.3020), ~100-130 CSS px: right above the head, and read
+     as "adrift" by a band written when the world was drawn ~1:1 (the sweep
+     of 2026-10-17). */
   rec.ok('...on the monster’s own column and above its head, not adrift on the map',
     !!geo.mark && Math.abs(geo.mark.x - geo.mx) < 1
-      && geo.mark.y < geo.my && (geo.my - geo.mark.y) < 150, geo);
+      && geo.mark.y < geo.my && (geo.my - geo.mark.y) * geo.scale < 150, geo);
 
   /* The crop: tight on the caret so nothing else in frame can differ. */
   const caretBox = async () => P.page.evaluate(() => {
@@ -345,8 +352,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the instant the last candidate leaves, the button is still up (no strobe)',
     justAfter.R.shown === true && justAfter.R.cands === 0, justAfter.R);
   await P.page.waitForTimeout(900);
-  const settled = await P.page.evaluate(() => window.__btDiscVis());
-  rec.ok('...and it is gone once the linger runs out', settled.R.shown === false, settled.R);
+  const settled = await P.page.evaluate(() => {
+    const d = document.querySelector('.bt-rjoy-base');
+    return Object.assign(window.__btDiscVis(), { ricon: d && d.dataset.ricon, rstate: d && d.dataset.rstate });
+  });
+  /* v2.3.3324: GONE AS THE ATTACK BUTTON, not gone.  Since v2.3.3105 the
+     disc stays painted at rest whenever a tap would jump (BroTown's `_rOn`
+     ... || _tapJumps), wearing the tap's own picture -- the jump, or talk /
+     door / sleep / a farm step (tapJump.js tapActIcon) -- so `shown` is true
+     with nothing to fight, by design (the sweep of 2026-10-17).  What the
+     linger hands back is that: the attack context over (liveMs 0), the disc
+     unlit ('idle') and not wearing the weapon. */
+  const TAP_ICONS = /^(jump|talk|door|sleep|farm-)/;
+  rec.ok('...and once the linger runs out it is no longer the ATTACK button (unlit, the tap\'s own picture)',
+    settled.R.liveMs === 0 && (settled.R.shown === false
+      || (settled.rstate === 'idle' && TAP_ICONS.test(settled.ricon || ''))), settled);
 
   /* ═══ 5. THE MELEE REACH RING (v2.3.2504) ═══
      Owner (F1): a light-red ring on the aggroed or locked monster, ONE ring,

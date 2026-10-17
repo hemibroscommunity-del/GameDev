@@ -70,6 +70,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(1200);
+  /* v2.3.3324: the band OPEN at rest, the state this file was written to
+     measure (v2.3.2178, v2.3.2198).  Since v2.3.2495 a brand-new bro's first
+     join arrives with the band FOLDED (harness unfoldBand), so `tab` read the
+     52 px fold: the "sheet never shorter than the band it grew from" check
+     compared an opened sheet with the fold and could not fail, and the last
+     check failed instead -- toBar() closes a sheet and leaves the band open,
+     243 px against the 52 it began at (the sweep of 2026-10-17). */
+  const band = await H.unfoldBand(P);
+  rec.ok('the band is open at rest, the state these checks measure (guard)', band.now === 'open', band);
 
   const tab = await portraitGeom(P);
   rec.ok('in a browser tab the band reports no home-indicator inset',

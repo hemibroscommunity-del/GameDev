@@ -98,8 +98,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (!there) { await P.ctx.close().catch(() => {}); return; }
   await P.page.waitForTimeout(2500);   /* past the per-zone overlay; snowman art resident */
 
-  /* ── fresh piles: the bob ── */
-  const fresh = await drop(P, 0);
+  /* ── fresh piles: the bob ──
+     v2.3.3324: dropped 1.5 s OLD, not brand new.  Since v2.3.2771 every item
+     on a pile LANDS in the pile's first second (effectsRenderer `lootHop`,
+     LAND_S 1.0): it falls from 14-24 px and takes two hops, each item's
+     height, delay and rhythm from a random per-pile seed.  Dropped at age 0
+     and sampled from 0.4 s, the first 0.6 s of the sample caught those hops'
+     tails -- a different random amount on each item -- so the wreck read 3.7
+     px of swing and the coins 6.0 and 6.6 (the sweep of 2026-10-17), and
+     "within 1px" was a coin toss.  At 1.5 s the landing is over and every
+     item rides the one `bob`, at one phase (the piles share their ts), which
+     is what this compares; the last call is still 18 s away. */
+  const fresh = await drop(P, 1.5);
   rec.ok('two piles are on the ground beside us (guard)', !!fresh, fresh);
   if (!fresh) { await P.ctx.close().catch(() => {}); return; }
   await P.page.waitForTimeout(400);

@@ -191,16 +191,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* THE THING THAT MUST NOT HAVE MOVED. A size change that also changed how
      close you must stand to collect would be a gameplay change nobody asked
-     for: the pickup radius is a hard-coded 20 world px in groundLoot.js and
-     has no relationship to these constants. Proven by USE -- the art is now
-     wider than the radius, so a build that had tied collection to the sprite
-     would sweep this up. */
+     for: the pickup radius is a hard-coded 20 world px in groundLoot.js, the
+     magnet that pulls a pile into it 50 (v2.3.2490), and neither has any
+     relationship to these constants. Proven by USE -- the art is now wider
+     than the magnet's reach, so a build that had tied collection to the
+     sprite would sweep this up. */
   const stillThere = await P.page.evaluate(async () => {
     const S = window._gameState.current;
     S.groundLoot = [];
-    const px = S.player.x + 46, py = S.player.y;
-    /* 46 px: outside the 20px pickup, and well inside the doubled art's own
-       span -- so a build that had tied collection to the sprite sweeps it up. */
+    const px = S.player.x + 60, py = S.player.y;
+    /* 60 px: outside the coin MAGNET's 50 and inside the doubled art's 96 --
+       so a build that had tied collection to the sprite sweeps it up.
+       v2.3.3324: it was 46, outside the 20 px pickup; but since v2.3.2490 the
+       magnet (groundLoot.js `magnetRange` 50) pulls a pile in from 46 on
+       purpose -- DASH_STOP_PX, where a sword dash kill parks you -- so the
+       pile was collected by design and this read as the art widening the
+       pickup (the sweep of 2026-10-17). */
     const hold = setInterval(() => {
       if (!S.groundLoot.some((l) => l && l.x === px)) {
         S.groundLoot.push({ x: px, y: py, coins: 5, ts: Date.now(), recipients: [S.myId] });
@@ -211,8 +217,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* _collected is what pickup stamps; the entry lingers 0.75s after. */
     return (S.groundLoot || []).filter((l) => l && l._collected).length;
   });
-  rec.ok('a pile 46px away is still NOT collected -- the bigger art did not '
-    + 'widen the pickup radius', stillThere === 0, { collected: stillThere });
+  rec.ok('a pile 60px away is still NOT collected -- the bigger art did not '
+    + 'widen the pickup (the magnet reaches 50)', stillThere === 0, { collected: stillThere });
 
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/lootsize.png` }).catch(() => {});
   await P.ctx.close().catch(() => {});
