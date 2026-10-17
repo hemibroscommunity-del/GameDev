@@ -87,6 +87,16 @@ const layout = (P) => P.page.evaluate(() => {
   const pb = panel && panel.getBoundingClientRect();
   const cb = card && card.getBoundingClientRect();
   const sb = strip && strip.getBoundingClientRect();
+  /* v2.3.3321: since v2.3.2682 the Skin tab is "Species & Skin": its strip is
+     the SPECIES (Human, Monkey) and the skin tones are the colour row under it,
+     a LIVE block (`colors: SKIN_CATALOG`), not the ghost this file was written
+     against.  So "the swatch grid" the card sits under is that row when it is
+     live, and the skin catalogue is counted there. */
+  const colorsEl = document.querySelector('.bt-cc-colors');
+  const colorsLive = !!colorsEl && !colorsEl.classList.contains('bt-cc-ghost');
+  const colB = colorsLive ? colorsEl.getBoundingClientRect() : null;
+  const colRow = document.querySelector('.bt-cc-colors-row');
+  const aboveBottom = sb ? Math.max(sb.bottom, colB ? colB.bottom : -Infinity) : null;
   const padB = panel ? parseFloat(getComputedStyle(panel).paddingBottom) : 0;
   return {
     panel: R('.bt-cc-panel'), strip: R('.bt-cc-strip'), card: R('.bt-cc-ink'),
@@ -106,8 +116,11 @@ const layout = (P) => P.page.evaluate(() => {
     /* a button inside a button is markup the browser un-nests unpredictably */
     nestedButtons: document.querySelectorAll('button button').length,
     tiles: document.querySelectorAll('.bt-cc-strip > *').length,
+    colorsLive,   /* v2.3.3321 */
+    colorTiles: colorsLive ? document.querySelectorAll('.bt-cc-colors-row > *').length : 0,
+    colorsHidden: (colorsLive && colRow) ? Math.max(0, colRow.scrollHeight - colRow.clientHeight) : null,
     /* the two halves of the dead height the old button sat between */
-    gapAbove: (cb && sb) ? +(cb.top - sb.bottom).toFixed(1) : null,
+    gapAbove: (cb && aboveBottom != null) ? +(cb.top - aboveBottom).toFixed(1) : null,
     freeBelow: (cb && pb) ? +(pb.bottom - padB - cb.bottom).toFixed(1) : null,
     emptyChip: !!document.querySelector('.bt-cc-ink-empty'),
     /* the retired button must be GONE, not merely re-dressed */
@@ -290,8 +303,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${tag}: the Skin tab opened again (guard)`, await pickTab(P, 'Skin'), null);
     await P.page.waitForTimeout(900);
     const L2 = await layout(P);
-    rec.ok(`${tag}: the whole skin catalogue is rendered (guard: ${L2.tiles} tiles)`,
-      L2.tiles >= 12, L2);
+    /* v2.3.3321: in the colour row under the species, since v2.3.2682 */
+    const skinTiles = L2.colorsLive ? L2.colorTiles : L2.tiles;
+    rec.ok(`${tag}: the whole skin catalogue is rendered (guard: ${skinTiles} tiles`
+      + `${L2.colorsLive ? `, in the colour row under ${L2.tiles} species` : ''})`,
+      skinTiles >= 12, L2);
     rec.ok(`${tag}: ...and none of it is hidden behind a scroll -- the card took `
       + `the dead band's room, not the catalogue's (${L2.strip && L2.strip.hidden}px hidden; `
       + `it was 16px at 390x664 before the card)`,

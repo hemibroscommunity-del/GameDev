@@ -100,6 +100,8 @@ export function cleanAlly(a) {
     name: allyName(a.name),
     tag: allyTagOk(a.tag),
     renamedAt: +a.renamedAt || 0,
+    /* v2.3.3321: a former clan (clanparty.js) -- its tag is worn below 20 */
+    ...(a.clan ? { clan: 1 } : {}),
   };
 }
 
@@ -197,12 +199,14 @@ export const allianceMethods = {
     this._partyStorageDo('delete', 'ally:' + partyId);
   },
 
-  /* the tag a player wears: their party's, while it is an alliance */
+  /* the tag a player wears: their party's, while it is an alliance -- or,
+     v2.3.3321, while it is a former clan, an alliance or not (the owner's
+     third decision: "former clans keep theirs below 20", clanparty.js) */
   _allyTagOf(pid) {
     if (!this._allyOn()) return null;
     const p = this._partyOf(pid);
     const a = p && p.ally;
-    return a && a.on && a.tag ? a.tag : null;
+    return a && (a.on || a.clan) && a.tag ? a.tag : null;
   },
 
   /* Put the right tag on a player (their state and session's look) and tell

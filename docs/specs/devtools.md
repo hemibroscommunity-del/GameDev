@@ -166,3 +166,10 @@ The admin `/player` summary carries **no `z` field**. An earlier version of
 the scenario asserted on it and reported a working warp as broken. Every zone
 assertion now reads `/api/admin/dev/state`, which returns the server's own
 `zone`.
+
+Since v2.3.3321 `/dev/state` also carries `monsters`: the monsters the worker
+holds in that player's zone, `{n, alive, nextMs}` (how many, how many alive,
+and the milliseconds until the next one comes back; `null` with no list).
+`mp-hitreal` reads it when it finds nothing to fight, beside the phone's own
+count, so "the zone was empty" says whose list was empty -- one run found no
+live monster in ember for ten minutes and could not say.

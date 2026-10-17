@@ -269,6 +269,24 @@ async function newRoom(key) {
   await room._adminFetch(authed('/dev/vitals', { playerId: 'p1', god: true }));
   const god = await (await room._adminFetch(authed('/dev/state?id=p1'))).json();
   check('state: ...and again once it is on', god.god === true && god.godMsLeft > 0, god);
+
+  /* v2.3.3321: the worker's own count of the zone's monsters (mp-hitreal
+     reads it when it finds nothing to fight) -- read off this.monsters, not
+     made up: two of three dead, one coming back in about 5 s */
+  const z = ps.z;
+  const t = Date.now();
+  room.monsters[z] = [
+    { id: 'dm-1', alive: true },
+    { id: 'dm-2', alive: false, respawnAt: t + 5000 },
+    { id: 'dm-3', alive: false, respawnAt: 0 },
+  ];
+  const mon = await (await room._adminFetch(authed('/dev/state?id=p1'))).json();
+  check('state: it counts the monsters the worker holds in your zone',
+    !!mon.monsters && mon.monsters.n === 3 && mon.monsters.alive === 1
+      && mon.monsters.nextMs > 4000 && mon.monsters.nextMs <= 5000, mon.monsters);
+  delete room.monsters[z];
+  const none = await (await room._adminFetch(authed('/dev/state?id=p1'))).json();
+  check('state: ...and says null for a zone with no list', none.monsters === null, none.monsters);
 }
 
 // ── 9b. FINISH ALL QUESTS (v2.3.2277) ──

@@ -152,36 +152,75 @@ The test lever `/dev/combat {skill | 'all', level}` (devtools.js) sets a combat
 level -- the alliance counts level 5 and up, and its phone check raises 39 bots
 there.
 
-## Step 3, the plan: clans become parties
+## Step 3: clans become parties (v2.3.3321)
 
-Not built here; the owner's plan, approved with the rest ("Go recommended"),
-and built after this step merges. Written down now so it is reviewed with the
-alliance it leans on.
+The owner's plan, approved with the rest ("Go recommended"), built after step 2
+merged. `server/src/clanparty.js`; the phone's side in `src/game/alliance.js`
+(`clanPartyOn`) and the clan windows.
 
-- **No new clans.** `clan_create` is answered "Clans are parties now: form one
-  in the Saloon", and the clan windows (ClanPanel, the dashboard's Clan page,
-  the Guild Hall's Clans row, a player card's Invite to Clan) point to the
-  Saloon instead, against a `caps.clanparty`.
-- **Every clan becomes a stored party, once** -- at the first `_clansEnsure`
-  of a worker with it on: the clan's members who are in no party yet form one
-  (the clan's leader leading it if they are among them, else its oldest
-  member; a clan has at most 20, a party 50), each member's name read from
-  their `char:` record, level and `seen` unknown until they next join (so
-  they count toward 20 from their next visit). The party carries the clan's
-  name and tag in `ally` with `clan: 1`, and the clan's records
-  (`clan:`, `clan_by_player:`) are deleted in the same run. A member already
-  in a party keeps theirs; a clan left with one member is not a party, and
-  its name and tag are free. One-way, as a clan has nothing the party lacks:
-  its wars need the old lands, which are closed, and it holds no gold.
+- **No new clans.** `clan_create`, `clan_join_accept` and `clan_war_declare`
+  are answered `clan_error` "Clans are parties now: make a party in the
+  Saloon" (before anything is checked or charged), and a `clan_invite` is no
+  longer relayed (index.js) -- an old phone's card would invite to a clan that
+  can no longer be joined.
+- **Every clan becomes a stored party, once** (`_clanPartyConvertAll`, from
+  `_clansEnsure`, which every join awaits -- so at the first join after the
+  deploy): the clan's members in no party yet (in memory, by their stored
+  `party_by_player:` index, or unknown after a failed read) form one; the
+  clan's leader leads if they are among them, else its oldest such member. A
+  member's name is the room's for someone online, else their `char:` record's,
+  else "Bro"; an online member counts toward 20 from now, the rest from their
+  next join (`seen` 0, level 1, as the worker cannot know). The party carries
+  the clan's name and tag as its `ally` with `clan: 1` (`on: false`). The
+  clan's records (`clan:`, `clan_by_player:`) are deleted in the SAME
+  synchronous run as the party's writes (`party:`, `party_by_player:`,
+  `ally:`), so storage holds one or the other, never both and never neither.
+  A member already in a party keeps theirs; a clan left with fewer than two
+  free members is no party, its records simply go and its name and tag are
+  free. The clan is taken out of the registry before its own name and tag are
+  checked against the alliances' (found by the suite: left in, every
+  converted party lost its tag to itself). One-way, and what a party has no
+  place for goes with the clan's record: its two colours (the tag's colour on
+  a player's card, `clanColor1`) and its logo (drawn in the clan window only);
+  its leader's 500 gold founding fee is not given back. A clan holds no gold,
+  and its wars need the old lands, which are closed.
+- **Whoever is online is told at once**: the clan's tag comes off every screen
+  (clans.js `_clanUntag`, the tail of `_clanRemoveMember`), the party's tag
+  goes on (`_allySetTag`, forced), and the members get `party_state` with
+  `fromClan: 1` -- "Your clan [TAG] is a party now: 20 active members make it
+  an alliance" over them and in the chat.
+- **A clan at war waits for its war's end**: `_resolveClanWar` marks the two
+  clans (`_clanRestPending`) until its own writes -- their rest, the payments
+  -- are done, then converts them (`_clanPartyAfterWar`); converting first
+  would let the war's `clan:` put bring a deleted clan back.
 - **A former clan wears its tag below 20** (decision 3): `_allyTagOf` gives
-  the tag when `ally.clan`, an alliance or not, so its members keep showing
-  it; it can be RENAMED only as an alliance (20 active), like any other.
-- The `clanTag` key retires with the clans (nothing sets it); `allyTag` is
-  the one tag on plates and lists.
+  the tag while `ally.clan`, an alliance or not; the strip's head reads
+  `[TAG]` (`data-party-head="clan"`); the record keeps `clan` through becoming
+  an alliance and back; it can be RENAMED only as an alliance (20 active),
+  like any other, and its name and tag stay reserved while the party lasts.
+- **The phone** (against `caps.clanparty`, beside `caps.partykeep`): the clan
+  window (wherever it is opened), the dashboard's Clan page and the Guild
+  Hall's clan row say "Clans are parties now" and their Find a party opens the
+  player list (`__broLegacyUI.playersOpen`, where a party starts: a player's
+  card, Invite to Party); a player card's Invite to Clan is gone; the Saloon's
+  Alliance part names a former clan ("Your clan is this party now"); the
+  inspect card, profile and leaderboard show the worker's `allyTag` first,
+  a clan tag only after it.
+- **The kill switch** `clanparty: false` (also off with `partykeep: false`, as
+  a party could not be stored): no conversion, clans as they were (create,
+  join, wars), no `caps.clanparty`. A clan already turned into a party stays
+  one. The live flags are loaded before the conversion looks at them (found
+  by the suite: a join reaches the clan registry before it loads the flags,
+  so a room's first join converted under the switch -- on a real worker the
+  socket's way in loads them first, so it never happened there).
+- `clan-party.test.mjs` (54 checks; 13 broken rules each caught),
+  `mp-clanparty` (a real phone: a clan founded under the switch, turned into a
+  party when it comes off, every window). `clans.test`,
+  `duel.test` §16, `alliance.test` §5/§10, `mp-clan` and `mp-wheelhalls` run
+  under `clanparty: false`, proving the switch keeps clans as they were.
 
 ## Not in this step
 
-- Step 3 (above): clans become parties.
 - An alliance chat apart from party chat (the party chat already reaches every
   member), shared storage, territory.
 - War kills drawn on the map, a war's own banner art.

@@ -40,7 +40,18 @@ import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
 
-export async function run({ browser, wsPort, webPort, rec }) {
+/* v2.3.3321: clans are parties now (server clanparty.js) -- the Guild Hall's
+   clan steps below found a clan and take up an invite, which only the switch
+   that keeps clans allows, `clanparty: false`: set before anyone joins (the
+   phones read it in their caps) and cleared at the end.  The Guild Hall under
+   the new rule is mp-clanparty's. */
+export async function run(ctx) {
+  const set = await H.liveFlag(ctx.wsPort, 'clanparty', false);
+  ctx.rec.ok('the room keeps clans for this scenario (clanparty: false, guard)', !!(set && set.ok), set);
+  try { await runHalls(ctx); } finally { await H.liveFlag(ctx.wsPort, 'clanparty', null).catch(() => {}); }
+}
+
+async function runHalls({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `wheelhalls-${name}.png`) }).catch(() => {});

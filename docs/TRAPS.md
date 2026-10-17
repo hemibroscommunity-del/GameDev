@@ -6782,6 +6782,29 @@ test. Read it from the table the worker plays (`server/src/wheelspawns.js`,
 `WHEEL_LONG`), or from the game's per-size copies (`WHEEL_GEOM`, `WHEELS`,
 `NML_CENTRES`), which test-world-core holds to the tables.
 
+## 197. "A filter's area is the piece, so lay the piece's light across it" (v2.3.3321)
+
+**Tempting:** a per-sprite filter that lights one side of a piece -- the metal
+sheen's sun side (lightfx/glint.js) -- is written against `p`, the fragment's
+place in the filter's own area, 0 to 1 across the sprite's frame. On the body
+and its armour it looks right, and mp-sheen's sun check passed on them.
+
+**Wrong.** The filter's area is the SPRITE's frame (its whole `orig`, placed by
+its anchor), and only the body and its armour share one. A held weapon is a
+picture of its own, a big frame turned and flipped in the hand with the blade
+at one end of it: across that frame "the side facing the sun" was wherever the
+frame's own left lay, and a greatsword's highlight sat on the side AWAY from
+the sun -- the figure's left third 0.35 brighter under a left sun, where the
+armour alone reads 1.0.
+
+**The rule:** what belongs to the FIGURE -- the sun on it, a gradient over it --
+is laid across the figure's frame, handed to each piece in its own frame's
+0-1 units (glint.js `uFig`, `frameBoxNow`: both boxes from the transforms as
+they are this frame, the way Pixi's filter area is made); `p` alone is right
+only for what belongs to the piece itself (its outline, its own rainbow).
+**Receipt:** mp-sheen "it follows the sun" with a steel greatsword in hand: the
+left third 0.35 -> 1.0, the right third 1.0.
+
 ## 198. "An empty monster list means the worker runs none here" (v2.3.3318)
 
 **Tempting:** to send a phone fewer monsters on its way into a zone, just send
@@ -6825,3 +6848,64 @@ nothing said so.
 fingerprinted address gets its own `_headers` rule in the same PR, beside its
 sibling's. **Receipt:** `/world/placed5/*` in public/_headers (with the world
 map's detail tiles under it, src/ui/worldMapDetail.js).
+
+## 200. "The test watched for 1.4 s, so the shot had its chance" (v2.3.3321)
+
+**Tempting:** a phone scenario gives a shot, a cast or a pose a fixed window
+on its own clock -- "settled 1.4 s after the shot", "the kick in the 20-200 ms
+after the cast", "born within 40 ms" -- sized by what a phone at 60 fps does,
+and reads a miss in that window as the game's.
+
+**Wrong.** The game moves by FRAMES: a staff bolt flies 5 px a frame times
+`_dtScale`, which stops at 3, so on the QA box drawing a few frames a second it
+flies 40-75 px a second of wall time, not 300. And a sampler in
+requestAnimationFrame runs after the frame's whole work, a few hundred ms after
+the renderer worked the pose out. On `main` that read as broken weapons and
+casts: `mp-hitreal`'s "dropped by the worker" was a bolt still in the air (or
+its claim just sent) when its 1.4 s shut -- every one a staff shot at 153-239
+px, the bow's 24 px arrows landing -- and `mp-staffcast` filed the frame drawn
+at the kick's peak past its window, saw no bolt "born", and closed the big
+bolt's watch at 1.6 s with the crash one frame away.
+
+**The rule:** time what is drawn by the clock it was drawn at -- the renderer's
+`now` on the probe (`__btWeapon.at`, `__btStaffFx().at`) -- and wait for a shot
+until it is over (gone from `S.arrows`, its claim answered), up to a cap, never
+a window sized for 60 fps. Where a page simply cannot do what a check needs
+(two frames inside a 200 ms grace at 130 ms a frame), say so as a skip with the
+frame time, never as a red guard.
+A quiet box can hide it: main's `mp-staffcast` passes alone and failed in the
+sweep. `BT_QA_CPU_THROTTLE=<rate>` (harness.mjs, Chromium's own throttle) runs
+every page that much slower, so a check can be tried as a slow phone sees it.
+**Receipt:** at `BT_QA_CPU_THROTTLE=6` on the same build, main's
+`mp-staffcast` read 4 staff behaviours as broken (charge 0.8 at release, one
+bolt "born", no crash, no blast ring) and this one none of the 30 it measures;
+`mp-hitreal`'s staff rows went from 10 of 16 red in the sweep's two runs
+("dropped by the worker", every one at 153-239 px) to 1 of 24 in three runs,
+and its empty ember turned out to be the player walked out through the zone's
+door into the World View (the phone and the worker both said so, once the
+check asked them).  Still open: about one bow arrow a run, at 190-240 px,
+flies its full length past a target that barely moved, before and after.
+
+## 201. "Accept tut_1 to tut_4 and every land is open" (v2.3.3321)
+
+**Wrong since v2.3.3179.** Each tutorial step opens one of the old lands
+(tut_1 Frost Ridge, tut_2 the Verdant Wilds, tut_3 the Wind Dunes, tut_4 the
+Flame Fields: movement.js `QUEST_ZONE_GATE`), and the checks opened them all by
+sending the four `quest_accept`s at once. The worker now refuses a step taken
+ahead of the step before it (quests.js `_questBarred` 'order'), so only tut_1
+is taken: Frost Ridge opens, and the other three say "not on your map yet" and
+nudge you off the trail-head. Fourteen checks still copied the old loop on
+main, and every one that walks to the Verdant Wilds, the Dunes or the Flame
+Fields stood at a shut door (`mp-deathtex` "reached ember" on the sweep of
+2026-10-17).
+
+**The rule:** open the lands with `H.openLands(P, wsPort)` (harness.mjs,
+v2.3.3283): tut_1 the player's way, then the test lever `/dev/unlock`, waiting
+until the page has heard tut_4 is open. Never copy the four-quest loop from an
+older scenario.
+
+**Receipt:** the fourteen (`mp-dashhit`, `mp-dashreal`, `mp-deaddoor`,
+`mp-deathgold`, `mp-deathtex`, `mp-dunes`, `mp-fightsoak`, `mp-figscale`,
+`mp-lockrings`, `mp-moncue`, `mp-perfdrift`, `mp-tapswing`, `mp-texdrift`,
+`tex-attrib`) call it now; `mp-monstertrim`, `mp-townscenery`, `mp-exitmark`
+and `mp-zonebanner` already did.

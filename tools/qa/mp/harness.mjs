@@ -370,6 +370,16 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
     dpr ? { deviceScaleFactor: dpr } : null,
   ));
   const page = await ctx.newPage();
+  /* v2.3.3321: BT_QA_CPU_THROTTLE=<rate> runs every page that much slower
+     (Chromium's own CPU throttle), to see a check as a slow phone -- or this
+     box on a busy day -- sees it: mp-staffcast's timing checks passed on a
+     quiet box and failed in the sweep, and only a slowed page tells a check
+     that measures the game from one that measures the frame rate. */
+  const _thr = Number(process.env.BT_QA_CPU_THROTTLE);
+  if (_thr > 1) {
+    const _cdp = await ctx.newCDPSession(page).catch(() => null);
+    if (_cdp) await _cdp.send('Emulation.setCPUThrottlingRate', { rate: _thr }).catch(() => {});
+  }
   const logs = [];
   page.on('console', (m) => { if (m.type() === 'error') { logs.push(`console ${m.text().slice(0, 200)}`); _noteRenderThrow(name, m.text()); } });
   page.on('pageerror', (e) => logs.push(`pageerror ${String(e).slice(0, 200)}`));
@@ -1263,6 +1273,21 @@ export async function devOp(wsPort, op, playerId, body) {
     body: JSON.stringify(Object.assign({ playerId }, body || {})),
   });
   return res.json();
+}
+
+/* v2.3.3321: a room's live flag set (a boolean or a number) or, with null,
+   cleared -- POST / DELETE /api/admin/flags (liveops.js).  The main room
+   unless `room` is named.  A scenario that sets one clears it before it ends:
+   one worker serves the whole run. */
+export async function liveFlag(wsPort, name, value, room) {
+  const qs = new URLSearchParams();
+  if (room) qs.set('room', room);
+  if (value === null) qs.set('name', name);
+  const q = qs.toString() ? '?' + qs.toString() : '';
+  const res = await fetch(`http://127.0.0.1:${wsPort}/api/admin/flags${q}`, value === null
+    ? { method: 'DELETE', headers: { Authorization: `Bearer ${ADMIN_KEY}` } }
+    : { method: 'POST', headers: { Authorization: `Bearer ${ADMIN_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ name, value }) });
+  return res.json().catch(() => ({ ok: false, status: res.status }));
 }
 
 /* ═══ v2.3.3283: A WALK PACED BY THE PAGE'S FRAMES ═══

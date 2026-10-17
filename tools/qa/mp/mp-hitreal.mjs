@@ -81,6 +81,20 @@ import * as H from './harness.mjs';
 const PHONE = { width: 390, height: 844 };
 const TRIES = 5;                /* attempts per row */
 const SETTLE_MS = 1400;         /* flight across the standoff + the round trip that settles it */
+/* ═══ v2.3.3321: ...ON A PHONE.  THE SHOT IS OVER WHEN THE SHOT IS OVER ═══
+   1400 ms is a phone's number: a staff bolt flies 5 px a FRAME (x _dtScale,
+   clamped to 3), 300 px a second at 60 fps, so this file's farthest standoff
+   (240 px) is 0.8 s in the air.  On a box drawing a few frames a second the
+   same bolt flies 40-75 px a second of wall time, and the window shut with it
+   still in the air (said 0) or its claim just sent (said 1, health unmoved:
+   "dropped by the worker").  In both runs of the sweep (2026-10-16/17) every
+   such miss was a staff shot at 153-239 px, and the bow's 24 px arrows landed.
+   So after SETTLE_MS the wait goes on while one of this attempt's shots is
+   still flying, and for ANSWER_MS after the last claim it sent for the target
+   (the worker answers at once; the page reads the answer between its own slow
+   frames), up to SETTLE_MAX_MS. */
+const ANSWER_MS = 1500;
+const SETTLE_MAX_MS = 8000;
 /* ═══ EVERY ROW IS FOUGHT AT ITS OWN WEAPON'S RANGE, AND THAT IS NOT OPTIONAL ═══
    The first working run of this file did not control the distance at all: it
    only ever backed AWAY from a target that had closed, and never walked toward
@@ -515,9 +529,46 @@ async function settle(P, id, before, ms) {
     if (a.burrow === 'pile' || a.invuln) dug = true;
     if (a.gone || !a.alive) return Object.assign(a, { dug });
     if (before != null && a.hp != null && a.hp < before) return Object.assign(a, { dug });
-    if (Date.now() - t0 > ms) return Object.assign(a, { dug });
+    const el = Date.now() - t0;
+    if (el > SETTLE_MAX_MS) return Object.assign(a, { dug, cut: true });
+    if (el > ms) {
+      /* v2.3.3321: past the phone's window -- over only once nothing of this
+         attempt is still flying and the last claim has had its answer */
+      const s = await shotState(P, id);
+      if (!s.flying && !(s.sinceLast != null && s.sinceLast < ANSWER_MS)) return Object.assign(a, { dug, waited: el });
+    }
     await P.page.waitForTimeout(120);
   }
+}
+
+/* v2.3.3321: is a shot of ours still in the air, and how long ago did the last
+   claim for this monster go?  aimAt empties S.arrows before every attempt, so
+   whatever is in it is this attempt's; an arrow stuck in a monster (the bow
+   special's chip) is not flying. */
+const shotState = (P, mid) => P.page.evaluate((id) => {
+  const S = window._gameState.current;
+  const flying = (S.arrows || []).some((a) => a && !a.stuckIn && !(typeof a.life === 'number' && a.life <= 0));
+  let last = 0;
+  for (const r of (window.__hitReal || [])) if (r.id === id && r.at > last) last = r.at;
+  return { flying, sinceLast: last ? Date.now() - last : null };
+}, mid);
+
+/* v2.3.3321: NOTHING TO FIGHT, AND WHOSE LIST SAYS SO.  One run found no live
+   monster in ember for ten minutes on end (four rows of voids), and nothing
+   said whether the worker had stopped bringing them back or the phone had
+   lost its copy of the zone.  Both halves, for the row's guard to print. */
+async function emptyWhy(P, wsPort, id) {
+  const cli = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const ms = S.monsters || [];
+    return { zone: S.currentZone, srvMonsters: !!S._serverMonsters, n: ms.length,
+      alive: ms.filter((m) => m && m.alive).length,
+      hp0: ms.filter((m) => m && m.alive && typeof m.curHp === 'number' && m.curHp <= 0).length,
+      link: S._realtimeStatus || null };
+  }).catch(() => null);
+  const srv = await fetch(`http://127.0.0.1:${wsPort}/api/admin/dev/state?id=${encodeURIComponent(id)}`,
+    { headers: { Authorization: `Bearer ${H.ADMIN_KEY}` } }).then((r) => r.json()).catch(() => null);
+  return { cli, srv: srv && srv.ok ? { zone: srv.zone, monsters: srv.monsters || null } : srv };
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -597,6 +648,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const sentFor = (mid, since) => P.page.evaluate(({ mid, since }) => ({
     dmg: (window.__hitReal || []).filter((r) => r.id === mid && r.at >= since).length,
     blast: (window.__hitBlast || []).filter((r) => r.at >= since).length,
+    /* v2.3.3321: how long after the shot each claim went, so a hit the worker
+       "dropped" says whether its answer had time to come back */
+    at: (window.__hitReal || []).filter((r) => r.id === mid && r.at >= since).map((r) => r.at - since),
   }), { mid, since });
 
   const rows = [];
@@ -689,7 +743,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const link = await H.readState(P, (S) => S._realtimeStatus || 'unknown');
       const row = { zone: stop.zone, key: atk.key, slot: atk.slot, eq: !!(eq && eq.ok), link, body: stop.body,
         fired: 0, fairs: 0, landed: 0, sent: 0, blast: 0, void: 0, neverFired: 0, dug: 0, covered: 0,
-        gaps: [], skipGaps: [], missed: [], desync: [], kills: 0, arch: null };
+        gaps: [], skipGaps: [], missed: [], desync: [], kills: 0, arch: null, empty: [], left: 0 };
       const reach = REACH[atk.slot];
       /* Attempts that could not be PLACED (out of the weapon's reach, nothing
          alive to shoot at) or that the monster burrowed under are void, and a
@@ -698,9 +752,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
          zone that will not cooperate ends rather than hangs. */
       const rowUntil = Date.now() + ROW_BUDGET_MS;
       for (let i = 0; i < TRIES * 3 && row.fairs < TRIES && Date.now() < rowUntil; i++) {
+        /* ═══ v2.3.3321: STILL IN THE ZONE? ═══
+           placeAt walks toward the monster it picked, and a monster standing
+           by the zone's way out takes the walk through it: the game does what
+           a door does and the player is in the World View, where nothing
+           lives.  One run spent ember's last two rows there, every attempt a
+           void ("nothing to fight" -- emptyWhy found both the phone and the
+           worker standing in worldview).  Walked back in through the doors,
+           as the zone was reached the first time, and the attempt is void. */
+        const zNow = await H.readState(P, (S) => S.currentZone).catch(() => null);
+        if (zNow !== stop.zone) {
+          row.void++; row.left++;
+          await warp();
+          await H.waitFor(P, (S) => S.currentZone, (z) => z === stop.zone,
+            { timeout: 70000, label: `${stop.zone} again` }).catch(() => {});
+          await populated(20000);
+          await P.page.waitForTimeout(800);
+          continue;
+        }
         await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; });
         const pick = await waitForTarget(P, TARGET_WAIT_MS);
-        if (!pick) { row.void++; continue; }
+        if (!pick) {
+          row.void++;
+          if (row.empty.length < 3) row.empty.push(await emptyWhy(P, wsPort, id));   /* v2.3.3321 */
+          continue;
+        }
         /* Walk to this weapon's range of the monster we picked, then re-read
            it: the placer walks for real and both of us move while it does. */
         await placeAt(P, pick.id, reach);
@@ -745,6 +821,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
           continue;
         }
         row.arch = row.arch || g.arch;
+        await aimAt(P, g);
+        /* ═══ v2.3.3321: ...AND AGAIN, FROM WHERE THE BOW IS HELD NOW ═══
+           aimAt measures the angle from the grip the sight cast from on its
+           LAST frame, and turning to face the target moves the grip (the bow
+           is held on the side you face): an angle taken from the old grip and
+           flown from the new one passes beside the target by the grip's move,
+           up to ~30 px -- with the monster stepping aside as well, a verdant
+           row lost 2 of 5 arrows that way, flown their full length past it.
+           Two frames for the renderer to place the bow and the sight to cast
+           from it, then the same aim from there. */
+        await P.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+        /* ...at where the target is NOW: two frames on this box are a few
+           hundred ms, and a fire goblin is 20-40 px on by then (aimed at where
+           it was, ember's bow row could not fire 8 times in 15).  The shot is
+           measured from here too: `g` becomes the point it was fired at. */
+        {
+          const cur = await targetById(P, g.id);
+          if (cur && !cur.gone && cur.alive && cur.x != null) {
+            const lift = g.aimY - g.y;
+            g.x = cur.x; g.y = cur.y; g.aimY = cur.y + lift;
+          }
+        }
         await aimAt(P, g);
         const since = Date.now();
         const f = await fire(P, atk);
@@ -792,7 +890,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
             across: Math.round(Math.abs(-mdx * Math.sin(ang) + mdy * Math.cos(ang))),
             along: Math.round(mdx * Math.cos(ang) + mdy * Math.sin(ang)),
             srv: sp ? { zone: sp.zone, x: Math.round(sp.x), y: Math.round(sp.y) } : null,
-            cli: { x: g.px, y: g.py } });
+            cli: { x: g.px, y: g.py },
+            /* v2.3.3321: how long the settle waited, and whether it gave up
+               at SETTLE_MAX_MS with a shot still in the air */
+            waited: after.waited || null, cut: !!after.cut });
         }
       }
       await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; S._aiming = false; });
@@ -813,7 +914,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       + `${(Math.round((r.landed / Math.max(1, r.fairs)) * 100) + '%').padStart(5)}  `
       + `${String(r.kills).padStart(6)}  ${gaps}  ${r.secs}s`
       + `${r.blast ? `   (+${r.blast} blast)` : ''}`
-      + `${r.void ? `   (${r.void} void: ${r.dug} burrowed, ${r.covered} behind a prop, ${r.neverFired} never fired, gaps ${JSON.stringify(r.skipGaps)})` : ''}`);
+      + `${r.void ? `   (${r.void} void: ${r.dug} burrowed, ${r.covered} behind a prop, ${r.neverFired} never fired, `
+        + `${r.left ? `${r.left} walked out of the zone, ` : ''}gaps ${JSON.stringify(r.skipGaps)})` : ''}`);
     if (r.missed.length) console.log(`      missed: ${JSON.stringify(r.missed)}`);
     if (r.desync.length) console.log(`      the worker did not follow the walk ${r.desync.length}x: ${JSON.stringify(r.desync)}`);
   }

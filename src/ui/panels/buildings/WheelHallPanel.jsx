@@ -2,6 +2,7 @@ import React from 'react';
 import { WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';
 import { mailList, mailAge } from '@/game/postOffice.js';
 import { AlliancePart } from './AlliancePart.jsx';   /* v2.3.3313: the alliance, at the top of the Saloon */
+import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3321: clans are parties now */
 
 /* ═══ v2.3.3066: THE WHEEL'S HALLS — the Guild Hall, the Post Office, the Sheriff's Office ═══
  *
@@ -74,6 +75,14 @@ function row(key, src, emoji, title, sub, onClick, badge) {
 
 function guildHall(props) {
   var S = props.stateRef.current || {};
+  /* v2.3.3321: clans are parties now (server clanparty.js) -- the row says
+     so and opens the clan window's pointer to the Saloon */
+  if (clanPartyOn(S)) {
+    return [
+      row('clan', '/icons/ui/panel-clan.webp', '🏰', 'Clans are parties now', 'Make a party in the Saloon; at 20 active members it is an alliance', props.onClan, false),
+      row('guild', '/icons/ui/panel-guild.webp', '🏛', 'Skill guilds', 'Your rank in each life skill’s guild, and its quests', props.onGuild),
+    ];
+  }
   var clan = S._clanData || null;
   var inv = S._pendingClanInvite;
   var invLive = !clan && inv && Date.now() - inv.ts < 120000;

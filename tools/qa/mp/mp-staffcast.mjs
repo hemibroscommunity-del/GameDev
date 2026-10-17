@@ -50,12 +50,15 @@ const armTarget = (P, dx, dy, id = 'staffcast-1') => P.page.evaluate(({ dx, dy, 
 
 /* A rAF sampler that runs AFTER the game's own frame (it is requested later),
    so it reads exactly what this frame drew.  Returns a digest, not raw frames. */
-const sample = (P, ms, retreat = 0) => P.page.evaluate(({ ms, retreat }) => new Promise((resolve) => {
+/* v2.3.3321: `minBorn` -- go on past `ms` (up to `maxMs`) until that many
+   bolts seen leaving the crystal have ended: on a slow page a bolt takes two
+   seconds or more to cross 200 px, and a 4.2 s look ended one of them */
+const sample = (P, ms, retreat = 0, minBorn = 0, maxMs = ms) => P.page.evaluate(({ ms, retreat, minBorn, maxMs }) => new Promise((resolve) => {
   const S0 = window._gameState.current;
   const out = { casts: [], frames: [], bolts: [], flat: 0, crashesLeft: 0, maxRotDev: 0, behind: [] };
   const angDiff = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
   const live = new Map();
-  let lastCast = S0._staffCastAt || 0, lastCharge = null;
+  let lastCast = S0._staffCastAt || 0, lastCharge = null, lastChargeAt = null;
   const t0 = Date.now();
   const tick = () => {
     const S = window._gameState.current;
@@ -66,17 +69,21 @@ const sample = (P, ms, retreat = 0) => P.page.evaluate(({ ms, retreat }) => new 
     const w = window.__btWeapon || null;
     const fx = window.__btStaffFx ? window.__btStaffFx() : null;
     if (S._staffCastAt && S._staffCastAt !== lastCast) {
-      out.casts.push({ at: S._staffCastAt, ang: S._staffCastAng, cad: S._staffCadenceMs, chargeBefore: lastCharge });
+      out.casts.push({ at: S._staffCastAt, ang: S._staffCastAng, cad: S._staffCadenceMs, chargeBefore: lastCharge,
+        /* v2.3.3321: the frame clock that charge was read at (staffCastFx probe) */
+        chargeAt: lastChargeAt });
       lastCast = S._staffCastAt;
     }
     out.frames.push({
       t: now, rot: w ? w.rotation : null, sy: w ? w.scaleY : null,
+      /* v2.3.3321: the clock the renderer worked the pose out at */
+      wAt: w && typeof w.at === 'number' ? w.at : null,
       tipX: S._staffTipX, tipY: S._staffTipY, tipAge: S._staffTipAt ? now - S._staffTipAt : null,
       px: S.player.x, py: S.player.y, lastCast,
       charge: fx ? fx.charge : null, rhythm: fx ? fx.rhythm : null,
       orbit: fx ? fx.sparks.orbit : null,
     });
-    if (fx) lastCharge = fx.charge;
+    if (fx) { lastCharge = fx.charge; lastChargeAt = typeof fx.at === 'number' && fx.at > 0 ? fx.at : null; }
     for (const a of (S.arrows || [])) {
       if (!a || !a.isStaff || a.isSpecial) continue;
       let r = live.get(a);
@@ -84,7 +91,13 @@ const sample = (P, ms, retreat = 0) => P.page.evaluate(({ ms, retreat }) => new 
          check: one already in flight when sampling began has no first frame
          here, and would be measured mid-air against the crystal. */
       if (!r && a._fxPx != null) {
-        r = { born: now - a._fxSeen < 40, firstDx: a._fxPx, firstDy: a._fxPy, tipX: S._staffTipX, tipY: S._staffTipY,
+        /* v2.3.3321: first drawn on THIS frame -- its stamp is this frame's
+           clock -- rather than "within 40 ms of the sampler's clock": on a
+           page drawing a few frames a second the sampler runs a few hundred ms
+           after the frame it reads, and no bolt was ever "born" */
+        const fxAt = fx && typeof fx.at === 'number' && fx.at > 0 ? fx.at : null;
+        r = { born: fxAt != null ? a._fxSeen >= fxAt - 1 : now - a._fxSeen < 40,
+              firstDx: a._fxPx, firstDy: a._fxPy, tipX: S._staffTipX, tipY: S._staffTipY,
               off: Math.hypot(a._fxOx || 0, a._fxOy || 0) };
         live.set(a, r);
       }
@@ -108,13 +121,15 @@ const sample = (P, ms, retreat = 0) => P.page.evaluate(({ ms, retreat }) => new 
     }
     for (const p of (S.hitParticles || [])) if (p && (p.type === 'magic' || p.color === '#a78bfa')) out.flat++;
     out.behind.push(!!S._staffTipBehind);
-    if (now - t0 < ms) { requestAnimationFrame(tick); return; }
+    if (now - t0 < ms || (minBorn && out.bolts.filter((b) => b.born).length < minBorn && now - t0 < maxMs)) {
+      requestAnimationFrame(tick); return;
+    }
     out.crashesLeft = (S._staffCrashes || []).length;
     out.probe = fx;
     resolve(out);
   };
   requestAnimationFrame(tick);
-}), { ms, retreat });
+}), { ms, retreat, minBorn, maxMs });
 
 const r1 = (v) => (typeof v === 'number' ? Math.round(v * 10) / 10 : v);
 
@@ -138,7 +153,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a pinned slime is locked 200px east and the staff is out (guard)', !armed.err, armed);
 
   await P.page.waitForTimeout(1200);
-  const s = await sample(P, 4200);
+  const s = await sample(P, 4200, 0, 2, 14000);
   const casts = s.casts, bolts = s.bolts;
   console.log('    casts: ' + JSON.stringify(casts.map((c) => ({ cad: c.cad, before: r1(c.chargeBefore) }))));
   rec.ok(`the staff kept casting while we watched (guard: ${casts.length} casts, ${bolts.length} bolts ended)`,
@@ -149,11 +164,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the crystal fills against the gate's own cooldown (${kit.cdMs} ms)`,
     kit.cdMs > 0 && casts.every((c) => c.cad === kit.cdMs), { card: kit.cdMs, stamped: casts.map((c) => c.cad) });
   const gaps = casts.slice(1).map((c, i) => c.at - casts[i].at);
+  /* v2.3.3321: a bolt leaves on the first frame after the cooldown, so one
+     cooldown plus up to one FRAME apart -- 260 ms covered a phone's frames,
+     and a slowed page's frame alone can be longer (1187 ms at 6x throttle) */
+  const frameGaps = s.frames.slice(1).map((f, i) => f.t - s.frames[i].t);
+  const slack = Math.max(260, (frameGaps.length ? Math.max(...frameGaps) : 0) + 40);
   rec.ok(`...and adds no wind-up: bolts still leave one cooldown apart (${gaps.join(', ')} ms)`,
-    gaps.length >= 2 && gaps.every((g) => g >= kit.cdMs - 5 && g <= kit.cdMs + 260), { gaps, cd: kit.cdMs });
+    gaps.length >= 2 && gaps.every((g) => g >= kit.cdMs - 5 && g <= kit.cdMs + slack), { gaps, cd: kit.cdMs, slack });
+  /* v2.3.3321: "the frame the bolt leaves" is the frame drawn before it, and
+     on a page drawing a few frames a second that frame was drawn a fifth of the
+     cooldown or more before the bolt.  The charge IS the cooldown, so there it
+     reads 1 - (that gap / the cooldown) and no less: the bar is the phone's
+     0.85, or that, whichever is lower.  A wind-up in front of the cooldown
+     would read lower still. */
   const withBefore = casts.filter((c) => typeof c.chargeBefore === 'number');
+  const fullBar = (c) => Math.min(0.85, c.chargeAt != null && c.cad > 0 ? 1 - (c.at - c.chargeAt) / c.cad - 0.05 : 0.85);
   rec.ok('...and reads full on the frame the bolt leaves',
-    withBefore.length >= 2 && withBefore.every((c) => c.chargeBefore >= 0.85), withBefore.map((c) => r1(c.chargeBefore)));
+    withBefore.length >= 2 && withBefore.every((c) => c.chargeBefore >= fullBar(c)),
+    withBefore.map((c) => ({ charge: r1(c.chargeBefore), bar: r1(fullBar(c)), drawnMsBefore: c.chargeAt != null ? c.at - c.chargeAt : null })));
   const mid = s.frames.filter((f) => f.rhythm === 1 && f.charge > 0.3 && f.charge < 0.8);
   rec.ok('...and charges visibly in between: the crystal gathers sparks mid-cooldown',
     mid.length > 0 && s.frames.some((f) => f.orbit > 0), { midFrames: mid.length, maxOrbit: Math.max(0, ...s.frames.map((f) => f.orbit || 0)) });
@@ -171,8 +199,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* THE KICK.  The target is east, so the crystal turns clockwise toward it:
      positive rotation, 14 degrees at the first 12 fps step, settled within
      ~350 ms. */
-  const after = (lo, hi) => s.frames.filter((f) => f.lastCast && f.t - f.lastCast >= lo && f.t - f.lastCast <= hi && f.rot != null);
-  const kickRot = after(20, 200).map((f) => f.rot);
+  /* v2.3.3321: by the clock the RENDERER drew each pose at (__btWeapon.at),
+     not the sampler's: on a page drawing a few frames a second the sampler
+     reads a frame a few hundred ms after it was drawn, so the frame drawn at
+     the kick's peak was filed past the window and the only frame left in it
+     was the next one, the kick nearly settled.  The cast's own frame counts
+     (drawn after the cast, `since` >= 0). */
+  const sinceOf = (f) => (f.wAt != null ? f.wAt : f.t) - f.lastCast;
+  const after = (lo, hi) => s.frames.filter((f) => f.lastCast && sinceOf(f) >= lo && sinceOf(f) <= hi && f.rot != null);
+  const kickRot = after(0, 200).map((f) => f.rot);
   const settleRot = after(420, 620).map((f) => f.rot);
   rec.ok(`the staff kicks toward the target on release (peak ${r1(Math.max(0, ...kickRot) * 180 / Math.PI)} deg)`,
     kickRot.length > 0 && Math.max(...kickRot) > 0.15, kickRot.map(r1));
@@ -255,10 +290,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* QUIET.  Stop casting: one cooldown and the grace later, no glow. */
+  /* v2.3.3321: ...and once the last bolt has landed: a bolt still flying
+     draws its own halo in front, and on a slow page the one cast as we
+     stopped was still in the air one cooldown and the grace later */
   const quiet = await P.page.evaluate(() => new Promise((resolve) => {
     const S = window._gameState.current;
     S.autoAttack = false; S.lockedTarget = null;
-    setTimeout(() => resolve(window.__btStaffFx ? window.__btStaffFx() : null), (S._staffCadenceMs || 900) + 700);
+    const t0 = Date.now(), wait = (S._staffCadenceMs || 900) + 700;
+    const tick = () => {
+      const flying = (S.arrows || []).some((a) => a && a.isStaff);
+      if (Date.now() - t0 < wait || (flying && Date.now() - t0 < 9000)) { setTimeout(tick, 100); return; }
+      /* one more frame, so the probe is of a frame drawn with nothing in the air */
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve(window.__btStaffFx ? window.__btStaffFx() : null)));
+    };
+    setTimeout(tick, 100);
   }));
   rec.ok('stop casting and the crystal goes dark', !!quiet && quiet.rhythm === 0 && quiet.drawn.glowFront === 0, quiet);
 
@@ -283,6 +328,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const out = { caps, n: fired.length, big: !!(b && b.big), orbs: b ? b.orbs : null, dmg: b ? b.dmg : null,
       hp0, kick: 0, scale: null, crash: null, mx: m ? m.x : null, blastR: null };
     const t0 = Date.now();
+    let after = 0;   /* v2.3.3321: frames since the bolt left the sky */
     const tick = () => {
       const w = window.__btWeapon;
       if (w && Date.now() - t0 < 400) out.kick = Math.max(out.kick, Math.abs(w.rotation || 0));
@@ -292,7 +338,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* v2.3.2849: the blast ring the crash opens out to the worker's reach */
       const br = (S._impactRings || []).find((r) => r && r.blast && r.ts >= t0);
       if (br) out.blastR = br.maxR;
-      if (Date.now() - t0 < 1600) { requestAnimationFrame(tick); return; }
+      /* v2.3.3321: until the bolt is over -- gone from the sky and the crash
+         and its ring drawn (three frames after) -- not 1600 ms: it flies 5 px
+         a frame, and on a page drawing a few frames a second it had not
+         reached the slime when the window shut (its hit landing on the last
+         frame, the crash on the next) */
+      const flying = !!(b && (S.arrows || []).includes(b));
+      if (!flying) after++;
+      const el = Date.now() - t0;
+      const seen = !!out.crash && out.blastR != null;
+      /* ...or 30 frames after it went with no crash: settled, and failing */
+      if (el < 9000 && (el < 1600 || flying || after < 3 || (!seen && after <= 30))) { requestAnimationFrame(tick); return; }
+      out.ms = el;
       out.hp1 = m ? m.curHp : null;
       resolve(out);
     };

@@ -2,6 +2,7 @@ import React from 'react';
 import { LIFE_SKILLS } from '@/data/index.js';
 import { BT_API_BASE } from '@/networking/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
+import { myAllyTag } from '@/game/alliance.js';   /* v2.3.3321: the tag a player wears is their alliance's or former clan's */
 
 /* ═══ LeaderboardPanel — top-50 rankings per category ═══ */
 /* v2.3.856: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -206,7 +207,7 @@ export function LeaderboardPanel(props) {
           dungeons: cs.dungeonsCleared || 0,
           gold: cs.totalGoldEarned || 0,
           playtime: Math.floor((cs.playtimeSeconds || 0) / 60),
-          clanTag: ((_S$_clanData5 = S._clanData) === null || _S$_clanData5 === void 0 ? void 0 : _S$_clanData5.tag) || null
+          clanTag: myAllyTag(S) || ((_S$_clanData5 = S._clanData) === null || _S$_clanData5 === void 0 ? void 0 : _S$_clanData5.tag) || null
         });
       }
     } else {
@@ -229,7 +230,7 @@ export function LeaderboardPanel(props) {
         dungeons: _cs.dungeonsCleared || 0,
         gold: _cs.totalGoldEarned || 0,
         playtime: Math.floor((_cs.playtimeSeconds || 0) / 60),
-        clanTag: ((_S$_clanData6 = S._clanData) === null || _S$_clanData6 === void 0 ? void 0 : _S$_clanData6.tag) || null
+        clanTag: myAllyTag(S) || ((_S$_clanData6 = S._clanData) === null || _S$_clanData6 === void 0 ? void 0 : _S$_clanData6.tag) || null
       });
       Object.entries(S.others).forEach(function (_ref42) {
         var _ref43 = _slicedToArray(_ref42, 2),
@@ -248,7 +249,7 @@ export function LeaderboardPanel(props) {
           dungeons: d.dungeons || 0,
           gold: d.goldEarned || 0,
           playtime: d.playtime || 0,
-          clanTag: d.clanTag || null
+          clanTag: o.allyTag || d.clanTag || null   /* v2.3.3321: the worker's stamp (allyTag) first */
         });
       });
     }

@@ -144,13 +144,10 @@ try {
   if (town.zone !== 'town') caveats.push('town snapshot taken in zone ' + town.zone);
 
   /* The tutorial quests open the gate out of town (as mp-deathtex does). */
-  await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    if (S && S.channel) for (const q of ['tut_1', 'tut_2', 'tut_3', 'tut_4']) {
-      S.channel.send({ type: 'quest_accept', payload: { questId: q } });
-    }
-  });
-  await P.page.waitForTimeout(1500);
+  /* v2.3.3321: the lands opened by the harness (openLands): since v2.3.3179
+     the worker refuses tut_2..tut_4 taken at once, so only Frost Ridge
+     opened and this never reached its land (the sweep of 2026-10-17) */
+  await H.openLands(P, WS);
 
   let route = 'walk';
   let hub = await goto(P, 'town', 'worldview');

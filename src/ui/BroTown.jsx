@@ -8648,6 +8648,9 @@ export var BroTown = function BroTown(_ref0) {
          and a toggle pressed while the window is already up would shut it */
       clanOpen:     function () { setShowClanPanel(true); },
       guildOpen:    function () { setShowGuildPanel(true); },
+      /* v2.3.3321: the player list, where a party starts -- the dashboard's
+         Clan page opens it now that clans are parties (dash/ClanPanel.jsx) */
+      playersOpen:  function () { setShowPlayerList(true); },
     };
     return function () { delete window.__broLegacyUI; };
   }, []);
@@ -9992,7 +9995,7 @@ export var BroTown = function BroTown(_ref0) {
       setInspectPlayer({
         id: fid, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
         x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
-        rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1,
+        rep: o.rep, clanTag: o.allyTag || o.clanTag /* v2.3.3321: an alliance's or former clan's tag first */, clanColor1: o.clanColor1,
       });
       return true;
     };
@@ -12047,7 +12050,7 @@ export var BroTown = function BroTown(_ref0) {
             setInspectPlayer({
               id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
-              rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1
+              rep: o.rep, clanTag: o.allyTag || o.clanTag /* v2.3.3321: an alliance's or former clan's tag first */, clanColor1: o.clanColor1
             });
             return;
           }
@@ -12122,7 +12125,7 @@ export var BroTown = function BroTown(_ref0) {
             setInspectPlayer({
               id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
-              rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1
+              rep: o.rep, clanTag: o.allyTag || o.clanTag /* v2.3.3321: an alliance's or former clan's tag first */, clanColor1: o.clanColor1
             });
             return;
           } else {
@@ -12143,7 +12146,7 @@ export var BroTown = function BroTown(_ref0) {
               rpgData: o.rpgData,
               pet: o.pet,
               rep: o.rep,
-              clanTag: o.clanTag,
+              clanTag: o.allyTag || o.clanTag,   /* v2.3.3321 */
               clanColor1: o.clanColor1
             });
           }

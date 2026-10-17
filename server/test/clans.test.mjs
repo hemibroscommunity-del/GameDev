@@ -62,6 +62,11 @@ function check(name, cond, detail) {
 }
 
 const state = makeState();
+/* v2.3.3321: clans are parties now (clanparty.js) -- this suite is the clan
+   registry the kill switch keeps, `clanparty: false` in the live flags, so it
+   runs under the switch and keeps proving clans work as they did with it off
+   (the conversion has its own suite, clan-party.test.mjs). */
+state._store.set('liveflags', { clanparty: false });
 const room = new GameRoom(state, mockEnv);
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 async function join(ws, id, name) {
