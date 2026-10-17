@@ -3468,6 +3468,18 @@ Two protocol versions coexist; both must keep working:
   - The preloading law above still stands. Moving a load off the loading
     screen to save memory is the owner's call, as #822's gathering poses were,
     never a quiet "fix".
+- **A PAYMENT, ITS STAMP AND A SWAP'S BOTH SIDES ARE ONE WRITE (v2.3.3294,
+  docs/specs/inbox-escrow.md).** "Atomic" means one synchronous run of writes
+  with no await between them; the input gate keeps other events out of the
+  middle but does not make writes one, and every merge restarts the room
+  between two awaits. Found by the architecture review: `_creditPlayer`
+  stamped, awaited, then paid; both trade lanes saved the debits and awaited
+  each credit; staging a weapon wrote escrow before the stash; two credits to
+  one player rewrote the mailbox over each other. Now the stamp goes out with
+  the payment, a running opId answers 'dup', the mailbox is taken one at a
+  time (`_inboxSerial`), and a swap with both sides online credits in the
+  debit's run (`_creditLiveTogether`). `inbox.test` §8c crashes at every write
+  (all seven failed on main); handoff rules 5 and 7, TRAPS #184.
 - **WHAT PLAY WRITES IS GUARDED (v2.3.3270, the cost diet).** The owner:
   "Build my game so that it's the most cost effective that it can be without
   losing quality." Measured, the game already writes and sends about the least

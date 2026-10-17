@@ -143,6 +143,10 @@ extended.
    `refund:<orderId>`, `duelpot:<id>`, `clanwar:<warId>:<pid>`), stamped
    in `oplog:`. A crash-retry finds the stamp and converges instead of
    double-paying; duplicate debits return `{ok:true, dup:true}`.
+   **A stamp is issued in the same synchronous run as the write it stands
+   for** (v2.3.3165 for debits, v2.3.3294 for `_creditPlayer`'s credits):
+   stamped and awaited first, a restart in between leaves "paid" with
+   nothing paid, and every retry believes the stamp (TRAPS #147, #184).
 6. **Sweeps never refund over a stamped payout.** Any orphan-escrow sweep
    must check the payout's oplog stamp first (`_duelEscrowSweep` is the
    reference implementation) — a crash between pot-credit and
@@ -153,7 +157,11 @@ extended.
      placement, record in storage, sweep-refund orphans.
    - **Instantaneous** two-party swaps (trades) or single-event mutations
      (gambling): validate-at-commit inside one input-gated event; nothing
-     escrowed, a deploy loses nothing.
+     escrowed, a deploy loses nothing -- **only if every debit, credit and
+     stamp of the swap goes out in ONE synchronous run** (v2.3.3294,
+     `_creditLiveTogether`). The input gate keeps other events out of the
+     middle; it does not make the writes one. Each await between two writes
+     is a place a restart can land (TRAPS #184).
 8. **Single-mutation over two-phase where possible.** If an operation can
    settle in one event on live state (gamble: roll, then one coins
    delta), do that — a debit…credit sequence creates a crash window that
