@@ -33,7 +33,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(600);
   let anyLive = false;
   const pinLog = [];
-  /* v2.3.3310: EVERY MONSTER FROM THE SAME SPOT.  The walking step below moves
+  /* v2.3.3311: EVERY MONSTER FROM THE SAME SPOT.  The walking step below moves
      the archer 90 px west to let the monster come on, and nothing moved him
      back, so each material was shot from 90 px further west than the one
      before it.  By the skeleton, the third, the line from him to it crossed a

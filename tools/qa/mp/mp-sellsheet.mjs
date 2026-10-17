@@ -80,7 +80,7 @@ const sellButton = (P) => P.page.evaluate(() => {
 
 /* The price sheet, found by the heading the card actually renders. */
 const sheet = (P) => P.page.evaluate(() => {
-  /* v2.3.3310: in any case -- the label reads "Sell in the Auction House"
+  /* v2.3.3311: in any case -- the label reads "Sell in the Auction House"
      since the auction house got its capitals (ItemDetailPopup.jsx), and this
      exact-case match found nothing: "open: false" under a sheet the screenshot
      shows open (the sweep of main, 2026-10-17) */
@@ -139,7 +139,7 @@ const confirmBtn = (P) => P.page.evaluate(() => {
 /* The card's own scroller, for the §68 drag. */
 const cardScroll = (P) => P.page.evaluate(() => {
   const lab = [...document.querySelectorAll('div')]
-    .find((d) => (d.textContent || '').trim().toLowerCase() === 'sell in the auction house');   /* v2.3.3310: any case, as sheet() */
+    .find((d) => (d.textContent || '').trim().toLowerCase() === 'sell in the auction house');   /* v2.3.3311: any case, as sheet() */
   if (!lab) return null;
   for (let e = lab.parentElement; e && e !== document.body; e = e.parentElement) {
     const st = getComputedStyle(e);
@@ -270,7 +270,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.touchscreen.tap(before.cx, before.cy);
     await P.page.waitForTimeout(700);
 
-    /* v2.3.3310: polled, not one look at 700 ms -- on a page drawing a frame
+    /* v2.3.3311: polled, not one look at 700 ms -- on a page drawing a frame
        every 300-450 ms (this box) the sheet's first frame can land after it;
        both portrait runs read "open: false" on main (the sweep, 2026-10-17).
        A tap that did nothing still reads false after 4 s. */

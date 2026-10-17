@@ -147,7 +147,7 @@ export function peerCosmeticsFromWire(wire) {
  * join snapshot; the client was throwing them away. */
 export const PEER_PASSTHROUGH_FIELDS = Object.freeze([
   'cape', 'rpgData', 'wpnType', 'wpnMat', 'rep', 'mask', 'pet',
-  /* v2.3.3310: the alliance's tag (server alliance.js `allyTag`) -- set by
+  /* v2.3.3311: the alliance's tag (server alliance.js `allyTag`) -- set by
      the worker alone and never on a relay, so a peer met in a snapshot or a
      near-join look (`pl`) had none until its tag next CHANGED: mp-alliance's
      second phone drew "Leader" where the leader's own drew "[IRN] Leader" */

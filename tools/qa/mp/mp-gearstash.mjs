@@ -126,7 +126,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      here -- what is asserted is the converse: nothing arrives as the
      bare `[]` that used to make "I own none" and "this browser does not
      know" the same sentence, and the worker close the capture on it. */
-  /* v2.3.3310: the FOUR gear-stash seeds, by name.  /^rpg.*Stash$/ also took
+  /* v2.3.3311: the FOUR gear-stash seeds, by name.  /^rpg.*Stash$/ also took
      in rpgWeaponStash, which is not one of them (the weapon list has always
      gone as `[]` when empty -- wsClient's join, beside the nugget ledger) and
      passed only while this character carried a spare weapon; a new character

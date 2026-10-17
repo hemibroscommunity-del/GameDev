@@ -23,6 +23,17 @@
  *     two trips fill caches that then hold (measured: the GPU's canvases +2.3
  *     MB on the first, +5.1 on the second -- text and hit-chip pages, 1024 x
  *     256 and the like -- and nothing on the third).
+ *     v2.3.3310: and the GPU's growth on the third trip leaves out pictures
+ *     made BEFORE the second trip ended and drawn for the first time since
+ *     (each texture's uid says when its picture was made: __btGpuTex) -- a
+ *     body strip loaded behind the loading screen goes up to the graphics chip
+ *     the first time it is drawn, a jog to the north-east the fight first
+ *     needed on the third trip, and it stays there by design.  That is not
+ *     something the trip made, and which trip first draws it is luck: #936
+ *     and #937 went red at +4.1/+4.2 on main's own code that way.  The line
+ *     says how much was such first draws.  (The other part of those reds was
+ *     a real waste, fixed in effectsRenderer: every townsperson's last speech
+ *     bubble kept its picture, 1 MB on a 3x phone, while hidden.)
  * The GPU is read twice at every stop: as it is (the budget -- a phone holds
  * what it drew in the last minute too), and as Pixi's own collector leaves it
  * a minute later (`settled`: every texture not drawn in the last 2 s aged 61 s
@@ -71,7 +82,9 @@ const READ = {
     ? +s.workers.reduce((a, w) => a + (w.heapMB || 0) + (w.buffersMB || 0), 0).toFixed(1) : null),
 };
 
-/* the GPU a minute later, as Pixi's collector would leave it (see the header) */
+/* the GPU a minute later, as Pixi's collector would leave it (see the header):
+   { mb, uidNow, held: [[uid, MB], ...] } -- v2.3.3310: with every texture
+   still held and the uid the next picture made would get */
 const settledGpu = (P) => P.page.evaluate(() => {
   const R = window._pixiRenderer && window._pixiRenderer.app && window._pixiRenderer.app.renderer;
   if (!R || !R.texture || !R.gc || !R.gc.run || !window.__btGpuTex) return null;
@@ -80,9 +93,22 @@ const settledGpu = (P) => P.page.evaluate(() => {
     if (src && !src.destroyed && src._gcLastUsed >= 0 && now - src._gcLastUsed > 2000) src._gcLastUsed = now - 61000;
   }
   R.gc.run();
-  const g = window.__btGpuTex(1);
-  return g && typeof g.mb === 'number' ? g.mb : null;
+  const g = window.__btGpuTex(100000);
+  if (!g || typeof g.mb !== 'number') return null;
+  return { mb: g.mb, uidNow: typeof g.uidNow === 'number' ? g.uidNow : null,
+    held: (g.list || []).filter((r) => typeof r.uid === 'number').map((r) => [r.uid, r.mb]) };
 });
+
+/* v2.3.3310: of what the GPU held at `b` and not at `a`, the MB of pictures
+   made before `a` was read -- drawn for the first time since (the header).
+   null when either reading lacks the uids (an older build's probe). */
+const firstDrawsMB = (a, b) => {
+  if (!a || !b || typeof a.uidNow !== 'number' || !Array.isArray(a.held) || !Array.isArray(b.held)) return null;
+  const before = new Set(a.held.map(([u]) => u));
+  let mb = 0;
+  for (const [u, m] of b.held) if (u < a.uidNow && !before.has(u)) mb += m;
+  return +mb.toFixed(1);
+};
 
 const WHAT_TO_DO = 'Find what the change holds first: tools/qa/mp/out/membudget.json lists every stop and the biggest canvases by size, '
   + 'mp-gpuaudit names the textures, mp-memledger tours all eight lands.  If the feature really needs the memory, raise THIS line in '
@@ -167,7 +193,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const take = async (label) => {
       const s = await sample(label);
       s.workers = await workers();
-      s.gpuSettled = await settledGpu(P);
+      const sg = await settledGpu(P);
+      s.gpuSettled = sg ? sg.mb : null;
+      s.gpuUidNow = sg ? sg.uidNow : null;   /* v2.3.3310: for the first draws (firstDrawsMB) */
+      s.gpuHeld = sg ? sg.held : null;
       out.stops.push(s);
       const row = Object.fromEntries(Object.keys(READ).map((k) => [k, READ[k](s)]));
       console.log(`    ${label}: ${Object.entries(row).map(([k, v]) => `${k} ${v}`).join(', ')} (gpu settled ${s.gpuSettled})`);
@@ -219,9 +248,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const at2 = (k, s) => (k === 'gpu' ? s.gpuSettled : READ[k](s));
     const grew = Object.keys(READ).map((k) => ({ k, second: at2(k, a), third: at2(k, b),
       d: +((at2(k, b) || 0) - (at2(k, a) || 0)).toFixed(1), may: TRIP_GROWTH[k] }));
+    /* v2.3.3310: the GPU's growth less its first draws of pictures made before
+       (the header) is what the trip made and kept */
+    const gg = grew.find((g) => g.k === 'gpu');
+    const fd = firstDrawsMB({ uidNow: a.gpuUidNow, held: a.gpuHeld }, { held: b.gpuHeld });
+    if (gg && fd != null) { gg.firstDraws = fd; gg.made = +(gg.d - fd).toFixed(1); }
     out.tripGrowth = grew;
-    const leaks = grew.filter((g) => typeof g.second !== 'number' || typeof g.third !== 'number' || !(g.d <= g.may));
-    rec.ok(`the third trip ends where the second did (${grew.map((g) => `${g.k}${g.k === 'gpu' ? ' settled' : ''} ${g.d >= 0 ? '+' : ''}${g.d}`).join(', ')} MB)`,
+    const leaks = grew.filter((g) => typeof g.second !== 'number' || typeof g.third !== 'number' || !((g.made != null ? g.made : g.d) <= g.may));
+    rec.ok(`the third trip ends where the second did (${grew.map((g) => `${g.k}${g.k === 'gpu' ? ' settled' : ''} ${g.d >= 0 ? '+' : ''}${g.d}`
+      + (g.firstDraws != null ? ` -- ${g.firstDraws} of it first draws of pictures made before` : '')).join(', ')} MB)`,
       leaks.length === 0, { leaks, whatToDo: 'Something made on the way out or at the fight is never let go.  mp-memledger tours all eight lands and shows what keeps growing; '
         + 'anything made per zone change, per land or per fight must be destroyed when it goes (CLAUDE.md, "Memory is budgeted").' });
 

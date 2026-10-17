@@ -162,7 +162,7 @@ const arm = (P) => P.page.evaluate(() => {
   window.__zbSamples = [];
   window.__zbDone = false;
   window.__zbPaints = 0;
-  /* v2.3.3310: the header's handoff is a class on for 520 ms
+  /* v2.3.3311: the header's handoff is a class on for 520 ms
      (zoneBannerOverlay pulseTitle), and this box's timers can stall longer
      than that -- the 8 ms sampler missed it on one view a run, a different
      one each time (the sweep of main, 2026-10-17).  An observer sees the
@@ -311,7 +311,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(2500);
 
     /* The tutorial quests open the gate out of town. */
-    /* v2.3.3310: tut_1, then the test lever opens the rest (H.openLands) --
+    /* v2.3.3311: tut_1, then the test lever opens the rest (H.openLands) --
        since v2.3.3179 the worker refuses tut_2..tut_4 out of order, so this
        loop opened frost alone and every ember leg read "got: worldview" (the
        sweep of main, 2026-10-17) */
@@ -372,7 +372,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          and this box paints at ~10fps, so a higher bar measures the harness.
          The nine-beat claim is carried by the timeline assertion below, which
          does not depend on the frame rate at all. */
-      /* v2.3.3310: ...and on a box painting under 5 frames a second (this one
+      /* v2.3.3311: ...and on a box painting under 5 frames a second (this one
          now: 2-3) two distinct paints is all a 1.4 s banner can show the
          sampler -- the timeline check below still holds all nine */
       const zbFps = (await P.page.evaluate(() => window.__zbPaints || 0)) / 9;

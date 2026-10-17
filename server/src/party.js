@@ -42,7 +42,7 @@
  * (iOS tab suspends and deploy bounces are routine — the duel grace
  * lesson) shown as 'away' before the sweep removes them. */
 
-/* v2.3.3310: alliance.js imports this file too; nothing of it is read at load
+/* v2.3.3311: alliance.js imports this file too; nothing of it is read at load
    time on either side (a cycle ES modules allow only so), so ALLIANCE is used
    inside the methods alone */
 import { ALLIANCE, allyRowOf, cleanAlly } from './alliance.js';
@@ -61,7 +61,7 @@ export const PARTY = {
      a logout, a reconnect and a deploy, and it grows past four.  Dungeons
      stay four (dungeon.js _dungeonPullPartyMembers). */
   KEEP_MAX: 50,            // members, online or not
-  /* the stored record's shape; a newer one is left whole.  v2.3.3310: 2 is a
+  /* the stored record's shape; a newer one is left whole.  v2.3.3311: 2 is a
      record with `ally` (alliance.js) -- one without stays 1, so a rollback to
      v2.3.3284 still reads every party that never became an alliance */
   V: 2,
@@ -96,7 +96,7 @@ export const partyMethods = {
   _partyWire(p) {
     const keep = this._partyKeepOn();
     const now = Date.now();
-    /* v2.3.3310: who counts toward the alliance (alliance.js) */
+    /* v2.3.3311: who counts toward the alliance (alliance.js) */
     const ally = keep && typeof this._allyOn === 'function' && this._allyOn() ? this._allyCount(p, now) : null;
     const out = {
       id: p.id,
@@ -128,7 +128,7 @@ export const partyMethods = {
         return m;
       }),
     };
-    /* ═══ v2.3.3310: THE ALLIANCE (alliance.js, docs/specs/alliance.md) ═══
+    /* ═══ v2.3.3311: THE ALLIANCE (alliance.js, docs/specs/alliance.md) ═══
        Always while the alliance is on, so the window can say how far off 20
        the party is: whether it is one, its name and tag, its active members
        against AT (to become one) and DROP (to stay one), how long until the
@@ -183,7 +183,7 @@ export const partyMethods = {
     const meta = Object.create(null);   /* keyed by player ids: a '__proto__' must store (the party meta lesson, v2.3.1185) */
     for (const pid of p.members) {
       const m = p.meta[pid] || (p.meta[pid] = {});
-      /* v2.3.3310: an online member's level as it is now -- the alliance's
+      /* v2.3.3311: an online member's level as it is now -- the alliance's
          row counts levels from what is stored (alliance.js allyRowOf) */
       const ps = this.playerState[pid];
       if (ps && ps.level) m.level = ps.level | 0;
@@ -193,7 +193,7 @@ export const partyMethods = {
          with the party in memory would never have their `seen` written */
       m.ss = meta[pid].seen;
     }
-    /* v2.3.3310: a party that has been an alliance carries it, as shape 2,
+    /* v2.3.3311: a party that has been an alliance carries it, as shape 2,
        and its board row goes in the same run (one write batch) */
     const rec = { v: p.ally ? PARTY.V : 1, id: p.id, leader: p.leader, members: p.members.slice(), meta, ts: p.ts || 0 };
     if (p.ally) rec.ally = { on: !!p.ally.on, since: +p.ally.since || 0, name: p.ally.name || null, tag: p.ally.tag || null, renamedAt: +p.ally.renamedAt || 0 };
@@ -244,7 +244,7 @@ export const partyMethods = {
     catch (e) { idx = null; }
     const healed = idx instanceof Map ? members.filter((m) => m === playerId || idx.get('party_by_player:' + m) === id) : members;
     const p = { id, leader: rec.leader, members: healed, meta: Object.create(null), ts: +rec.ts || Date.now(), lastVitals: 0 };
-    /* v2.3.3310: its alliance, as this worker reads one */
+    /* v2.3.3311: its alliance, as this worker reads one */
     if (rec.ally) p.ally = cleanAlly(rec.ally) || undefined;
     const rm = rec.meta && typeof rec.meta === 'object' ? rec.meta : {};
     for (const m of healed) {
@@ -287,7 +287,7 @@ export const partyMethods = {
       const members = rec.members.filter((m) => m !== playerId);
       if (members.length <= 1) {
         await st.delete('party:' + id);
-        /* v2.3.3310: and its alliance's row (alliance.js) */
+        /* v2.3.3311: and its alliance's row (alliance.js) */
         if (rec.ally) { if (this._allyIndex) this._allyIndex.delete(id); await st.delete('ally:' + id); }
         for (const m of members) await st.delete('party_by_player:' + m);
         return;
@@ -471,7 +471,7 @@ export const partyMethods = {
     if (fresh) this._partyIndexPut(inviter, p.id);
     this._partyIndexPut(accepterId, p.id);
     this._partyStore(p);
-    /* v2.3.3310: the 20th active member makes it an alliance, and an
+    /* v2.3.3311: the 20th active member makes it an alliance, and an
        alliance's newcomer wears its tag (alliance.js) */
     const became = this._allyOn && this._allyOn() ? this._allyCheck(p, Date.now()) : null;
     if (this._allySetTag) this._allySetTag(accepterId);
@@ -510,7 +510,7 @@ export const partyMethods = {
     if (this._partyByPlayer) this._partyByPlayer.delete(pid);
     this._partyIndexDrop(pid);   /* v2.3.3284: the index first, as at a join */
     this._partySend(pid, 'party_state', { state: 'none', reason });
-    /* v2.3.3310: out of the party, out of its alliance's tag */
+    /* v2.3.3311: out of the party, out of its alliance's tag */
     if (this._allySetTag) this._allySetTag(pid);
     if (p.members.length <= 1) {
       this._parties.delete(p.id);
@@ -582,7 +582,7 @@ export const partyMethods = {
       }
       if (dirty) this._partyStore(p);
     }
-    /* ═══ v2.3.3310: THE ALLIANCE (alliance.js) ═══
+    /* ═══ v2.3.3311: THE ALLIANCE (alliance.js) ═══
        The index and the wars are loaded at an alliance member's join (once a
        worker's life: a war's kills are scored only once they are), the count
        is taken, and the joiner's tag goes to everyone -- forced, as every
@@ -622,7 +622,7 @@ export const partyMethods = {
       if (!p.members.some((m) => !!this.playerState[m])) continue;
       if (now - p.lastVitals >= PARTY.VITALS_MS) {
         p.lastVitals = now;
-        /* v2.3.3310: a member reaching level 5 mid-visit, or one going stale,
+        /* v2.3.3311: a member reaching level 5 mid-visit, or one going stale,
            moves the count (a flip is the only write); and every online
            member's tag is checked against the truth -- one string compare
            each, and how the tags come off when the switch is thrown */

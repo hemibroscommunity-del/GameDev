@@ -1580,7 +1580,7 @@ remnant to migrate server-side, not a mode to preserve.
       back to "nothing open" (`src/rendering/renderHeal.js`; `?noheal` to
       compare) and the next frame draws. TRAPS §144, `mp-renderheal` (the
       throw made as it happened, with `bindfix=0`; `noheal` shows the black).
-    - since v2.3.3310 THE MINIMAP NEVER COVERS THE SCREEN -- the owner:
+    - since v2.3.3311 THE MINIMAP NEVER COVERS THE SCREEN -- the owner:
       "often loading from a saved character will show the game as an enlarged
       minimap. You're forced to log back out and back in to fix it": a canvas's
       WebGL context is made by whoever asks FIRST, and the crash report's GPU
@@ -2454,7 +2454,7 @@ remnant to migrate server-side, not a mode to preserve.
     - `caps.partykeep`, kill switch `partykeep: false` (the party of four in
       memory, nothing read or written -- party.test.mjs runs under it);
       `party-keep` suite, `mp-partykeep`.
-    - since v2.3.3310 STEP 2, THE ALLIANCE -- the owner: "Push to main, then
+    - since v2.3.3311 STEP 2, THE ALLIANCE -- the owner: "Push to main, then
       keep going on recommended", to the four decisions it waited on
       (docs/specs/alliance.md, server/src/alliance.js):
       - a party whose ACTIVE members (online, or `seen` in the last 7 days,
@@ -3543,6 +3543,19 @@ Two protocol versions coexist; both must keep working:
     `?poolkeep` to compare; `window.__btTexPool()`). The census is
     `window.__btSceneCensus(depth)` (the scene counted by path); `mp-sceneleak`
     checks all four, a rebuild's shadow system included.
+  - A HIDDEN TEXT STILL HOLDS ITS PICTURE (v2.3.3310, found when the memory
+    check went red at random on main): a speech bubble that went away was
+    hidden and kept, so every townsperson's and player's last line -- 1 MB of
+    the graphics chip for two lines on a 3x phone -- stayed there for the
+    visit, and the townsfolk drew a new one every 8-23 s wherever you were. A
+    bubble is destroyed when it goes now, and a townsperson more than 2,400 px
+    away draws none (effectsRenderer `_updateChatBubbles`); anything else made
+    of words that is gone for good is destroyed, never only hidden (TRAPS
+    §192). And the check's third trip leaves out pictures made before the
+    second ended and drawn for the first time since (each texture's `uid`,
+    `window.__btGpuTex()`'s `uidNow`): a body strip loaded behind the loading
+    screen reaches the graphics chip the first time it is drawn, and which
+    trip first draws it is luck.
   - A PICTURE ON 256 COLOURS OR FEWER IS KEPT AS COLOUR NUMBERS (v2.3.3190 --
     the owner asked whether the art could be "recreated byte for byte using
     pure code"; not that, a drawn picture costs the GPU what a loaded one does,

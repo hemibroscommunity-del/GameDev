@@ -2452,6 +2452,10 @@ const LABEL_STYLE = new TextStyle({
    message.  Built lazily: a FillGradient made at module load would run before
    the renderer exists. */
 let _chatBubbleGrad = null;
+/* v2.3.3310: a townsperson's line is drawn only within this many world px of
+   you -- past any screen's edge at the Wheel's zoom (a 3x phone shows ~650 x
+   1,400 of the world, a desktop about 3,200 across) -- see _updateChatBubbles */
+const NPC_BUBBLE_REACH = 2400;
 function chatBubbleGradient() {
   if (!_chatBubbleGrad) {
     _chatBubbleGrad = new FillGradient({
@@ -8480,10 +8484,16 @@ export class EffectsRenderer {
 
     /* NPC bubbles — entity-bound, lives on npc.chatBubble.
        Keyed with 'npc:' prefix to avoid colliding with player IDs. */
+    const _me = S.player;
     for (const npc of (S.npcs || [])) {
       if (!npc || !npc.chatBubble || !npc.chatBubble.text) continue;
       const age = now - npc.chatBubble.ts;
       if (age > 5000) continue;
+      /* v2.3.3310: only a townsperson near you.  The townsfolk chatter every
+         8-23 s wherever you are (BroTown.jsx), and each line drawn is a new
+         picture on the graphics chip -- 1 MB for a two-line one on a 3x
+         phone -- made for nobody while you are out in the lands. */
+      if (_me && Math.hypot(npc.x - _me.x, npc.y - _me.y) > NPC_BUBBLE_REACH) continue;
       const key = 'npc:' + npc.id;
       /* v2.3.2896: the same rule as a player's, above -- the point just over
          the top of his head (entityRenderer npc._headTopY: the hat, or the
@@ -8496,13 +8506,25 @@ export class EffectsRenderer {
       activeKeys.add(key);
     }
 
-    /* Hide stale; drop references to anything destroyed externally. */
+    /* ═══ v2.3.3310: A BUBBLE THAT IS GONE GIVES BACK ITS PICTURE ═══
+       A stale bubble used to be hidden and kept, for its speaker's next line.
+       Hidden, its Text still held the last line's picture on the graphics
+       chip -- 1 MB for a two-line bubble on a 3x phone -- for every townsperson
+       and every player who ever spoke near you, for the rest of the visit.
+       Found by mp-membudget, whose third trip came home 4 MB above its second
+       as townsfolk spoke their first lines.  Now it is destroyed: its Text
+       hands its picture back to Pixi's pool, which lets it go after 30 s
+       unused (texturePoolTrim.js), and the next line makes a new bubble. */
     for (const [key, entry] of this.chatTexts) {
       if (!entry || !entry.container || entry.container.destroyed) {
         this.chatTexts.delete(key);
         continue;
       }
-      if (!activeKeys.has(key)) entry.container.visible = false;
+      if (!activeKeys.has(key)) {
+        entry.container.destroy({ children: true });
+        this.chatTexts.delete(key);
+        if (typeof window !== 'undefined' && window.__btChatBubbles) window.__btChatBubbles.delete(key);
+      }
     }
   }
 

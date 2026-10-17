@@ -155,7 +155,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        `got: "town"` for both zones -- because a refused transition looks
        exactly like a slow one from here.  Accepting the tutorial quests opens
        it, the same way mp-zonebanner does. */
-    /* v2.3.3310: tut_1, then the test lever opens the rest (H.openLands) --
+    /* v2.3.3311: tut_1, then the test lever opens the rest (H.openLands) --
        since v2.3.3179 the worker refuses tut_2..tut_4 out of order, so this
        loop opened frost alone and every ember leg read "got: worldview" (the
        sweep of main, 2026-10-17) */

@@ -478,8 +478,11 @@ function buildScene(app) {
           const kind = kindOf(s);
           bytes += b;
           byKind[kind] = (byKind[kind] || 0) + b;
+          /* v2.3.3310: + uid, the order its picture was made in (mp-membudget's
+             third trip tells a picture made on the trip from one made before
+             it and only drawn for the first time) */
           rows.push({ label: String(s.label || '').replace(/^https?:\/\/[^/]+/, '').split('?')[0], kind, w, h, mip, format: s.format,
-            mb: +(b / 1048576).toFixed(2), idleS: s._gcLastUsed >= 0 ? Math.round((now - s._gcLastUsed) / 1000) : null });
+            mb: +(b / 1048576).toFixed(2), idleS: s._gcLastUsed >= 0 ? Math.round((now - s._gcLastUsed) / 1000) : null, uid: s.uid });
         }
         rows.sort((a, b) => b.mb - a.mb);
         const mbOf = (o) => { const m = {}; for (const k in o) m[k] = +(o[k] / 1048576).toFixed(1); return m; };
@@ -503,7 +506,11 @@ function buildScene(app) {
           });
         } catch (e) { /* a private map that moved: the rest still stands */ }
         const idleTop = Object.entries(idle).sort((a, b) => b[1] - a[1]).slice(0, 40).map(([k, b]) => [k, +(b / 1048576).toFixed(2)]);
-        return { n: rows.length, mb: +(bytes / 1048576).toFixed(1), byKind: mbOf(byKind),
+        /* v2.3.3310: the uid the next picture made will get -- every picture
+           in `list` with a smaller one was made before this reading */
+        let uidNow = null;
+        try { const t = new TextureSource({ width: 1, height: 1, label: 'uid-probe' }); uidNow = t.uid; t.destroy(); } catch (e) { /* probe only */ }
+        return { n: rows.length, mb: +(bytes / 1048576).toFixed(1), byKind: mbOf(byKind), uidNow,
           canvas: cv ? [cv.width, cv.height, +((cv.width * cv.height * 4) / 1048576).toFixed(1)] : null,
           cacheNotOnGpu: { mb: +(idleBytes / 1048576).toFixed(1), top: idleTop },
           list: rows.slice(0, top || 400) };
@@ -570,7 +577,7 @@ export const CANVAS_BG = 0x0d0b18;
 function withoutDepthBuffer(canvas) {
   try {
     if (/(^|[?&])depthbuf(=|&|$)/.test(window.location.search || '')) return () => {};
-    /* v2.3.3310: a canvas whose context came up with no stencil buffer is
+    /* v2.3.3311: a canvas whose context came up with no stencil buffer is
        made again once (BroTown, TRAPS §194), and that one asks for exactly
        what Pixi asks by default, depth buffer and all -- in case a device
        cannot give a stencil buffer without one */
