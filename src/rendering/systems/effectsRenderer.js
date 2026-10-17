@@ -616,6 +616,7 @@ import { TrapFx } from '../trapFx.js';   /* v2.3.3120: the trap's mark, shakes, 
 import { wheelObjectsInfo, wheelMapInfo } from '@/game/wheelTrial.js';      /* v2.3.3062: where they stand, and the lands */
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
+import { DEFENSE_POPUP_KEY, DEFENSE_POPUP_SRC } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's shield on "Defense Lv N" */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -1176,7 +1177,8 @@ const POPUP_ICONS = {};
    the number.  Loaded here with the rest, at start -- never on first hit. */
 /* v2.3.3209: + the dice a kill's roll wears in front of it (game/killRoll.js):
    the Gambling Den's two, cut to their own edge (/icons/popups/dice.webp) */
-const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit', 'dice'].concat(Object.keys(ELEM_ICON_SRC));
+/* v2.3.3279: + the owner's shield, in front of "Defense Lv N" (it wore 🛡️) */
+const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit', 'dice', DEFENSE_POPUP_KEY].concat(Object.keys(ELEM_ICON_SRC));
 /* v2.3.2211: 'crit' is the one key whose art does not live in /icons/popups.
    Reusing the Hero screen's own crit icon rather than copying it to a second
    path -- one asset, one meaning, and no chance of the two drifting apart
@@ -1190,7 +1192,7 @@ const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit
    in place because StatDemo's DOM <img> (which shares this URL so the
    browser cache is warm) and combatHelpers' BUILD_ICONS name it; a twin
    under its own name changes only the two readers that were measured. */
-const POPUP_ICON_SRC = Object.assign({ crit: '/icons/ui/hero/crit.webp', heart: '/icons/popups/heart-256.webp' }, ELEM_ICON_SRC);
+const POPUP_ICON_SRC = Object.assign({ crit: '/icons/ui/hero/crit.webp', heart: '/icons/popups/heart-256.webp', [DEFENSE_POPUP_KEY]: DEFENSE_POPUP_SRC }, ELEM_ICON_SRC);
 /* v2.3.1403 (owner: "the damage bow icon did not work" while damage
    numbers still showed): the icon load was one-shot — a single flaked
    fetch (common right after a deploy) left that icon undefined for the
@@ -1210,7 +1212,7 @@ const POPUP_ICON_SRC = Object.assign({ crit: '/icons/ui/hero/crit.webp', heart: 
    (alpha > 16) as they load -- measured off the picture, so a redrawn icon
    stays right -- and then drawn at the sword's height, the sword's gap after
    the number.  The DOM chips (ElemStatusChips) keep the whole picture. */
-const TIGHT_POPUP_ICONS = new Set(['heart'].concat(Object.keys(ELEM_ICON_SRC)));
+const TIGHT_POPUP_ICONS = new Set(['heart', DEFENSE_POPUP_KEY].concat(Object.keys(ELEM_ICON_SRC)));
 function _tightPopupIcon(tex) {
   try {
     const src = tex && tex.source;

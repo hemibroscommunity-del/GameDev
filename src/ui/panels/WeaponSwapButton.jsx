@@ -86,6 +86,23 @@ export const WPN_BTN = {
 const TAP_SLOP_PX = 14;
 const TAP_MAX_MS = 600;
 
+/* v2.3.3283: QA, the right stick's `?tapms=` (tapJump.js) stretches this
+   window too (200-10000 ms).  A test page drawing a frame every ~400 ms
+   cannot lift a finger inside TAP_MAX_MS: on main every tap mp-weaponswap
+   made reached this button 0.75-1.2 s long as the browser itself timed it
+   (the next touch waits behind a frame), and nothing swapped.  Only a test
+   sets it; no player's tap is touched.  Read once. */
+let _qaTapMs;
+function tapMaxMs() {
+  if (_qaTapMs !== undefined) return _qaTapMs;
+  _qaTapMs = TAP_MAX_MS;
+  try {
+    const m = /(?:^|[?&])tapms=(\d+)/.exec((typeof window !== 'undefined' && window.location && window.location.search) || '');
+    if (m) _qaTapMs = Math.max(200, Math.min(10000, +m[1]));
+  } catch (e) { /* no window */ }
+  return _qaTapMs;
+}
+
 /** What the button draws, as plain data (and the key it re-renders on). */
 export function weaponChipView(R) {
   if (!R) return null;
@@ -199,7 +216,7 @@ export function WeaponSwapButton(props) {
     if (!t) return;
     var dx = t.clientX - s.x, dy = t.clientY - s.y;
     if (dx * dx + dy * dy > TAP_SLOP_PX * TAP_SLOP_PX) return;
-    if (Date.now() - s.at > TAP_MAX_MS) return;
+    if (Date.now() - s.at > tapMaxMs()) return;
     act();
   };
   /* A click that is NOT the tail of a touch: assistive tech activating the

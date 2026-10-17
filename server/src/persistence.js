@@ -432,6 +432,10 @@ export const persistenceMethods = {
        (a flush would write the old counts straight back). */
     try { await this.state.storage.delete('codex:' + pid); } catch (e) { /* best-effort, as above */ }
     this._codexForget(pid);
+    /* v2.3.3284: and the party, which lasts now (party.js): a restarted
+       character has joined nothing.  Before the socket closes, so the rest
+       of the party is told at once. */
+    try { if (this._partyOnReset) await this._partyOnReset(pid); } catch (e) { /* best-effort, as above */ }
     const ws = this._wsBySessionId(pid);
     if (ws) {
       try { ws.send(JSON.stringify({ type: 'character_reset_done' })); } catch (e) {}

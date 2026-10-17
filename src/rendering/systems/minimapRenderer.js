@@ -59,6 +59,7 @@ import { TILE } from '@/data/constants.js';
 import { questRouteExits, questRoutePoint } from '@/game/questRoute.js'; /* v2.3.1817: which portal the active quest wants; v2.3.2128: plural; v2.3.2992: the road's end */
 import { isWheelTrialZone } from '@/game/worldTrial.js';
 import { WheelMinimap } from './wheelMinimap.js';   /* v2.3.2966: the Wheel's own, bigger box */
+import { PARTY_MARK, partyIdsOf } from '@/game/partyMarks.js';   /* v2.3.3277: your party, in its blue */
 
 /* Box size in CSS px.
    v2.3.1781: 104, ~27% of a 390px phone's width.
@@ -324,6 +325,10 @@ export class MinimapRenderer {
     this.pan.addChild(this.road);
     this.markers = new Container();
     this.pan.addChild(this.markers);
+    /* v2.3.3277: your party's marks' rims, over theirs (the Wheel's box's own
+       ring, so a party member never reads as one of town's blue townsfolk) */
+    this.partyRims = new Graphics();
+    this.pan.addChild(this.partyRims);
 
     this.maskG = new Graphics();
     this.maskG.roundRect(0, 0, MINIMAP_PX, MINIMAP_PX, 6).fill(0xffffff);
@@ -842,10 +847,13 @@ export class MinimapRenderer {
     }
 
     const others = S.others;
+    /* v2.3.3277: your party is drawn after the monsters, in its blue (below) */
+    const party = partyIdsOf(S);
     if (others) {
       for (const id in others) {
         const o = others[id];
         if (!o) continue;
+        if (party && party.has(id)) continue;
         if ((o.zone || o.z || 'town') !== zoneId) continue;
         this._mark(o.x, o.y, 'player', C_OTHER, ICON_PX, 0);
       }
@@ -868,6 +876,34 @@ export class MinimapRenderer {
          before. */
       if (!m || m.alive === false || m.dead || (m.hp != null && m.hp <= 0)) continue;
       this._mark(m.x, m.y, 'monster', C_MONSTER, ICON_PX, 0);
+    }
+    /* ═══ v2.3.3277: YOUR PARTY (src/game/partyMarks.js) ═══
+       The Wheel's minimap draws your party in the party's blue, and so does
+       this box (a dungeon, the farm): over the monsters, the same size as a
+       bro, with the same light rim -- the townsfolk here are a blue of their
+       own (C_NPC).  The Wheel's box also rides its edge toward one off it;
+       this one is 52 px, too small for marks on its edge, and a member off it
+       is off it.  The rims are redrawn only when a mark moved, came or went. */
+    let rimSig = '';
+    const rims = [];
+    if (party && others) {
+      for (const id of party) {
+        const o = Object.prototype.hasOwnProperty.call(others, id) ? others[id] : null;
+        if (!o || o._away || typeof o.x !== 'number') continue;
+        if ((o.zone || o.z || 'town') !== zoneId) continue;
+        this._mark(o.x, o.y, 'player', PARTY_MARK.COLOR, ICON_PX, 0);
+        const rx = o.x * SCALE, ry = o.y * SCALE;
+        rims.push(rx, ry);
+        rimSig += (rx * 4 | 0) + ',' + (ry * 4 | 0) + ';';
+      }
+    }
+    if (rimSig !== (this._partyRimSig || '')) {
+      this.partyRims.clear();
+      for (let i = 0; i < rims.length; i += 2) {
+        this.partyRims.circle(rims[i], rims[i + 1], ICON_PX / 2 + 0.75).stroke({ width: 1.6, color: PARTY_MARK.RIM, alpha: 0.95 });
+        this.partyRims.circle(rims[i], rims[i + 1], ICON_PX / 2 + 1.9).stroke({ width: 1, color: 0x0b161b, alpha: 0.7 });
+      }
+      this._partyRimSig = rimSig;
     }
 
     const exits = this._exits(S);

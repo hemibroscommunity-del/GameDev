@@ -157,9 +157,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3130 review: the caption was the category's id, POTION, on a bread */
     rec.ok('...and its caption is the chip\'s word, Consumable (not Potion)', ate.caption === 'Consumable', ate);
     rec.ok('...and eating it runs the meal for half an hour, the bread used up', fed.bread === 0 && fed.regenMs > 28 * 60000 && fed.regenMs <= 30 * 60000, fed);
-    const hud1 = await A.page.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' '));
-    /* The chip is its icon and its time -- the green heart, then "30m". */
-    rec.ok('...and the HUD counts it in minutes, not "1800s"', /\uD83D\uDC9A\s*(29|30)m/.test(hud1) && !/\b1[0-9]{3}s\b/.test(hud1), hud1.slice(0, 80));
+    const hud1 = await A.page.evaluate(() => {
+      /* v2.3.3281: the chip is its PICTURE and its time -- the owner's regen
+         picture (v2.3.3279, data/smallIcons.js BUFF_ICON; it was the green
+         heart 💚), then "30m" */
+      const img = Array.from(document.querySelectorAll('img[data-buff-chip]')).find((i) => /buff-regen\.webp/.test(i.getAttribute('src') || ''));
+      return { chip: img && img.parentElement ? img.parentElement.innerText.replace(/\s+/g, ' ') : null,
+        all: (document.body.innerText || '').replace(/\s+/g, ' ') };
+    });
+    rec.ok('...and the HUD counts it in minutes, not "1800s" (the regen picture, then the time)', /^(29|30)m$/.test((hud1.chip || '').trim()) && !/\b1[0-9]{3}s\b/.test(hud1.all), { chip: hud1.chip, all: hud1.all.slice(0, 80) });
 
     /* ── 4. a brew beside it ── */
     await H.grant(wsPort, id, 'item', { invKey: 'brew_firebloom_tea', count: 1 });
@@ -233,8 +239,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       regen: !!(S._regenBuff && Date.now() < S._regenBuff), dmg: !!(S._dmgBuff && Date.now() < S._dmgBuff) }));
     rec.ok('a Pumpkin Pie eats from the bag: +10% XP for half an hour', pie.tile && pie.btn && Math.abs(pz.mul - 1.1) < 0.01 && pz.xpMs > 28 * 60000, { pie, pz });
     rec.ok('...replacing the bread (both meals) and leaving the tea (a brew)', !pz.regen && pz.dmg, pz);
-    const hud2 = await A.page.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' '));
-    rec.ok('...its HUD chip counting in minutes', /\uD83E\uDD67\s*(29|30)m/.test(hud2), hud2.slice(0, 80));
+    /* v2.3.3281: the XP chip is the owner's XP picture (v2.3.3279; it was 🥧),
+       then its time */
+    const hud2 = await A.page.evaluate(() => {
+      const img = Array.from(document.querySelectorAll('img[data-buff-chip]')).find((i) => /buff-xp\.webp/.test(i.getAttribute('src') || ''));
+      return img && img.parentElement ? img.parentElement.innerText.replace(/\s+/g, ' ').trim() : null;
+    });
+    rec.ok('...its HUD chip counting in minutes (the XP picture, then the time)', /^(29|30)m$/.test(hud2 || ''), hud2);
     await shot(A, 'pie');
 
     /* ── 7. the kill switch keeps the food in bags edible ──

@@ -118,15 +118,61 @@ phone's; the last column is the same rules at a phone's 30 batches a second.
 - **A frame stays under the 16 KB gate**: at most 24 messages and 15,000
   characters (`framesOf`); a bigger message goes alone, as it always did.
 
+## Each part finishes before the next (v2.3.3291)
+
+Found by the architecture review (2026-10-17). A bundle was meant to be taken
+"as if each message had come alone", and for most messages it was. For twenty
+it was not, and a script could use that to be paid many times for one thing.
+
+- **Why frames were safe and bundles were not.** A frame of its own is one
+  event. While that event waits on storage, the Durable Object holds the next
+  frame back (the input gate, handoff rule 9). So one player's two messages
+  never read the same record at the same moment. A bundle's parts are ONE
+  event, so the gate keeps nothing apart inside it.
+- **What went wrong.** The bundle loop waited for `_onMessage`, but twenty of
+  its cases started their handler and did not wait for it: the farm (open,
+  act, order, buy), the shop (list, quote, sell, buy), the daily chest and
+  daily rewards (5), the capes (2), and the auction house's threads and offers
+  (5). Their parts ran side by side, each reading its record before any had
+  written it back.
+- **Measured on the real room code**, with a storage that answers a little
+  late and hands back copies, as Cloudflare's does:
+
+  | One bundle of 24 | Before | After (and as 24 frames) |
+  |---|---|---|
+  | harvests of one ripe bed | 48 carrots | 2 |
+  | sales of the same 10 copper ore | 24 sales, 4,320 gold | 1 sale, 180 gold |
+  | buys out of a pile of one | 24 ore | 1 |
+
+  Even with a storage that answers at once, a bundle of 4 harvests paid
+  double.
+- **The fix.** Every case in `_onMessage` now awaits (or returns) its handler
+  in the statement that calls it, so a part has finished before the next
+  begins. Errors are caught where they were caught before; the auction house's
+  five, which caught nothing, now log their throw. Nothing on the wire changed,
+  and no phone needs an update.
+- **One call is left running on purpose:** `reportToLeaderboard`, a
+  cross-object fetch that moves no value and has its own 5-minute clock.
+  Awaited, every bundle carrying a `track` would wait out a network round trip
+  before its next part.
+- **The rule for new cases:** call an async handler as
+  `await this._handleX(...)`, in the case itself. Keeping its promise in a
+  variable, or attaching only a `.catch`, starts the race again, and
+  `quiet-phone.test` §9 fails on it.
+
 ## Tests
 
-- `server/test/quiet-phone.test.mjs` (56): two rooms in lockstep (bundled and
+- `server/test/quiet-phone.test.mjs` (64): two rooms in lockstep (bundled and
   not: the same states, AFK clocks, round trips and messages out); what a
   bundle may not carry, and one message that throws not stopping the rest; the
   ping's `hd`; the caps and switches; every number
   pinned to the server's (NEAR_R, BUNDLE_MAX, the frame gate, LOOK_RELAY, the
   move gaps, the map heartbeat); the phone's rules; the game's files calling
-  them.
+  them. v2.3.3291: §8, the three bundles in the table above on a late,
+  copying storage, plus a bundle keeping its order; §9, a scan of
+  `_onMessage` that fails on any async handler not awaited where it is
+  called. Put the farm's `await` back to a bare call and both fail (48
+  carrots; four calls named).
 - `tools/qa/mp/mp-quietphone.mjs` (8): the table above, on a real page.
 - Re-run on this build: mp-movediet, mp-farpeer, mp-presence2, mp-afk,
   mp-sprint, mp-sprintpeer, mp-solorate, mp-recoverpay, mp-elemhits,

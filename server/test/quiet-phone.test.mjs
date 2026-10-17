@@ -23,8 +23,19 @@
  *      anything the worker would relay (lookDelta, 3,000 random looks); who is
  *      near; the move gap; the keepalive; frames;
  *   7. the game's own files call all of it.
+ *
+ * v2.3.3291, found by the architecture review (2026-10-17):
+ *   8. ONE AT A TIME: a bundle's parts each FINISH before the next begins.
+ *      On a storage that answers a little late and hands back copies (as a
+ *      Durable Object does), 24 harvests of one ripe bed in one bundle pay one
+ *      harvest; ten ore sold 24 times in one bundle are paid for once; 24 buys
+ *      out of a pile of one take one.  Before: 48 carrots, 4,320 gold, 24 ore.
+ *   9. THE ROUTER WAITS: every call in _onMessage to a method that is async
+ *      is awaited or returned there and then, and the bundle loop awaits
+ *      _onMessage -- the static half of 8, so a new case cannot start the race
+ *      again.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join as pjoin } from 'node:path';
 import { GameRoom } from '../src/index.js';
@@ -334,6 +345,142 @@ const capsOf = (p) => {
       && /return _capsHere && bundleOn\(/.test(ws)
       && /return _capsHere && quietOn\(_Sq\) && bundleOn\(_Sq\)/.test(ws));
   check('BroTown: the keepalive and the harvest heartbeat ask the quiet rules', /keepaliveDue\(/.test(bt) && /var _exHeartbeat = !_quietPh/.test(bt));
+}
+
+/* ── 8. one at a time: a bundle's parts each finish before the next ─────── */
+/* v2.3.3291.  The storage here answers 2 ms late and hands back copies, as a
+   Durable Object's does: on the suite's instant, same-object mock above two
+   parts barely overlap, which is how the race hid from every suite. */
+{
+  function slowState() {
+    const store = new Map();
+    const copy = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
+    return {
+      storage: {
+        get: async (k) => { const v = copy(store.get(k)); await new Promise((r) => setTimeout(r, 2)); return v; },
+        put: async (k, v) => { store.set(k, copy(v)); },
+        list: async () => new Map(),
+        delete: async (k) => { if (Array.isArray(k)) for (const x of k) store.delete(x); else store.delete(k); },
+      },
+      getWebSockets: () => [],
+      acceptWebSocket: () => {},
+    };
+  }
+  const settle = () => new Promise((r) => setTimeout(r, 40));
+  async function slowRoom(id) {
+    const state = slowState();
+    const room = new GameRoom(state, mockEnv);
+    const p = await join(room, id);
+    await settle();
+    const send = async (obj) => { await room.webSocketMessage(p.ws, JSON.stringify(obj)); await settle(); };
+    const answers = (type) => p.ws.sent.map((s) => JSON.parse(s)).filter((m) => m.type === type);
+    return { room, state, ps: room.playerState[id], send, answers };
+  }
+
+  /* A ripe bed, harvested 24 times: as 24 frames of their own, and as ONE
+     bundle.  The bed is the only replay guard (farm.js), read fresh each time. */
+  async function harvestRipeBed(id, bundled) {
+    const r = await slowRoom(id);
+    await r.send({ type: 'farm_act', payload: { op: 'dig', beds: [0] } });
+    r.ps.inventory.seed_carrot = 1;
+    await r.send({ type: 'farm_act', payload: { op: 'plant', beds: [0], crop: 'carrot' } });
+    NOW += 3 * 24 * 3600 * 1000;   /* well past ripe */
+    r.room._farmRate = new Map();
+    const before = Math.floor(Number(r.ps.inventory.crop_carrot) || 0);
+    const harvest = { type: 'farm_act', payload: { op: 'harvest', beds: [0] } };
+    if (bundled) await r.send(Array.from({ length: 24 }, () => harvest));
+    else for (let i = 0; i < 24; i++) await r.send(harvest);
+    const paid = r.answers('farm_state').filter((m) => m.payload && m.payload.did && m.payload.did.op === 'harvest' && m.payload.did.n > 0).length;
+    return { gained: Math.floor(Number(r.ps.inventory.crop_carrot) || 0) - before, paid };
+  }
+  const frames = await harvestRipeBed('bp_order_f1', false);
+  const bundle = await harvestRipeBed('bp_order_f2', true);
+  check('one at a time: one ripe bed harvested 24 times in separate frames pays one harvest (the guard)', frames.gained === 2 && frames.paid === 1, frames);
+  check('one at a time: ...and 24 times in ONE bundle pays the same one harvest (was 48 carrots)', bundle.gained === frames.gained && bundle.paid === 1, bundle);
+
+  /* Ten ore sold 24 times in one bundle: _shopSell reads the bag's count,
+     awaits Diego's pile, and pays for the count it read. */
+  {
+    const r = await slowRoom('bp_order_s1');
+    r.ps.inventory.ore_copper = 10;
+    const coins0 = Math.floor(Number(r.ps.coins) || 0);
+    await r.send(Array.from({ length: 24 }, () => ({ type: 'shop_sell', payload: { key: 'ore_copper', qty: 10 } })));
+    const ok = r.answers('shop_result').filter((m) => m.payload && m.payload.ok);
+    const gained = Math.floor(Number(r.ps.coins) || 0) - coins0;
+    check('one at a time: ten ore sold 24 times in one bundle are paid for ONCE (was 24 sales, 4,320 gold)',
+      ok.length === 1 && gained === ok[0].payload.paid && gained > 0 && !(r.ps.inventory.ore_copper > 0),
+      { sales: ok.length, gained, left: r.ps.inventory.ore_copper });
+  }
+
+  /* 24 buys out of a pile of ONE: each read the pile before any wrote it back. */
+  {
+    const r = await slowRoom('bp_order_b1');
+    await r.state.storage.put('shop_stock', { ore_copper: 1 });
+    r.ps.coins = 100000;
+    await r.send(Array.from({ length: 24 }, () => ({ type: 'shop_buy', payload: { key: 'ore_copper', qty: 1 } })));
+    const ok = r.answers('shop_result').filter((m) => m.payload && m.payload.ok);
+    const pile = await r.state.storage.get('shop_stock');
+    check('one at a time: 24 buys in one bundle out of a pile of one take ONE (was 24)',
+      ok.length === 1 && r.ps.inventory.ore_copper === 1 && pile && (pile.ore_copper || 0) === 0,
+      { buys: ok.length, got: r.ps.inventory.ore_copper, pile });
+  }
+
+  /* The bundle still keeps its order, and a part after a slow one still runs. */
+  {
+    const r = await slowRoom('bp_order_o1');
+    r.ps.inventory.ore_copper = 2;
+    await r.send([
+      { type: 'shop_sell', payload: { key: 'ore_copper', qty: 1 } },
+      { type: 'shop_sell', payload: { key: 'ore_copper', qty: 1 } },
+      { type: 'shop_sell', payload: { key: 'ore_copper', qty: 1 } },
+    ]);
+    const res = r.answers('shop_result').map((m) => !!(m.payload && m.payload.ok));
+    check('one at a time: three sales of two ore in one bundle: the first two sell, in order, the third is refused',
+      res.join(',') === 'true,true,false' && !(r.ps.inventory.ore_copper > 0), res);
+  }
+}
+
+/* ── 9. the router waits for every handler ────────────────────────────────── */
+/* v2.3.3291: the static half of §8.  A call in _onMessage to a method that is
+   `async` must be awaited (or returned) in the statement that makes it -- a
+   promise kept in a variable and awaited later, or never, is how twenty cases
+   came to run side by side in one bundle.  If a new case is flagged here, write
+   `await this._handleX(...)` (with a .catch, or a try, if it must not throw). */
+{
+  const SRC = pjoin(ROOT, 'server/src');
+  /* comments become spaces, so a word in one is never read as code and every
+     offset stays where it was */
+  const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+    .replace(/(^|[^:'"`\\])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
+  const asyncNames = new Set();
+  for (const f of readdirSync(SRC).filter((n) => n.endsWith('.js'))) {
+    for (const m of strip(readFileSync(pjoin(SRC, f), 'utf8')).matchAll(/^ {2}async\s+([A-Za-z_$][\w$]*)\s*\(/gm)) asyncNames.add(m[1]);
+  }
+  const index = strip(readFileSync(pjoin(SRC, 'index.js'), 'utf8'));
+  const lines = index.split('\n');
+  const at = lines.findIndex((l) => /^ {2}async _onMessage\(/.test(l));
+  let end = at + 1;
+  while (end < lines.length && !/^ {2}\}\s*$/.test(lines[end])) end++;
+  const body = lines.slice(at + 1, end).join('\n');
+  /* The one call left running on purpose: the Leaderboard report is a cross-
+     object fetch that moves no value (rank and the inspect card), throttled
+     on its own clock.  Awaited, every bundle with a `track` in it would wait
+     out a network round trip before its next part -- and the gate opens
+     while it does.  Add a name here only with a reason as good as that. */
+  const LEFT_RUNNING = new Set(['reportToLeaderboard']);
+  const loose = [];
+  let calls = 0;
+  for (const m of body.matchAll(/this\.([A-Za-z_$][\w$]*)\(/g)) {
+    if (!asyncNames.has(m[1]) || LEFT_RUNNING.has(m[1])) continue;
+    calls++;
+    const before = body.slice(0, m.index);
+    const from = Math.max(before.lastIndexOf(';'), before.lastIndexOf('{'), before.lastIndexOf('}'));
+    if (!/\b(await|return)\b/.test(body.slice(from + 1, m.index))) loose.push(m[1] + ' (index.js:' + (at + 1 + before.split('\n').length) + ')');
+  }
+  check('the router: it finds the async handlers it calls (guard: the scan is reading the right method)', at > 0 && end > at + 500 && calls >= 20, { at, end, calls });
+  check('the router: every async handler _onMessage calls is awaited or returned where it is called', loose.length === 0, loose);
+  check('the router: the bundle loop awaits each part, in order',
+    /for \(const m of bundleParts\(msg\)\) \{[\s\S]{0,400}?await this\._onMessage\(ws, _s, m\)/.test(index));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
