@@ -38,13 +38,13 @@ export function allyCapsOn(S) {
   return !!(S && S._serverCaps && S._serverCaps.alliance && S._serverCaps.partykeep);
 }
 
-/* v2.3.3320: clans are parties now (server clanparty.js) -- the clan windows
+/* v2.3.3321: clans are parties now (server clanparty.js) -- the clan windows
    point to the Saloon only against a worker that says so */
 export function clanPartyOn(S) {
   return !!(S && S._serverCaps && S._serverCaps.clanparty && S._serverCaps.partykeep);
 }
 
-/* the tag on your own plate: an alliance's, or (v2.3.3320) a former clan's,
+/* the tag on your own plate: an alliance's, or (v2.3.3321) a former clan's,
    which its members wear below 20 too -- the worker's own rule (_allyTagOf) */
 export function myAllyTag(S) {
   const a = allyOf(S);
@@ -100,7 +100,7 @@ export function allyMomentText(payload) {
   if (!payload || typeof payload !== 'object' || !payload.ally) return null;
   const a = payload.ally;
   const tag = allyTagShown(a.tag);
-  /* v2.3.3320: the moment a clan became this party (clanparty.js) */
+  /* v2.3.3321: the moment a clan became this party (clanparty.js) */
   if (payload.fromClan) return 'Your clan' + (tag ? ' [' + tag + ']' : '') + ' is a party now: ' + (a.at || 20) + ' active members make it an alliance';
   if (payload.became === 'alliance') return 'Your party is an ALLIANCE now!' + (tag ? ' [' + tag + ']' : '');
   if (payload.became === 'party') return 'Your alliance is a party again (under ' + (a.drop || 15) + ' active)';

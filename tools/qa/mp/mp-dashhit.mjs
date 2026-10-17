@@ -44,7 +44,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* Accept the tutorial so the town gate opens, then walk town -> worldview ->
      a spoke zone, exactly as mp-fightsoak does. */
-  /* v2.3.3320: the lands opened by the harness (openLands): since v2.3.3179
+  /* v2.3.3321: the lands opened by the harness (openLands): since v2.3.3179
      the worker refuses tut_2..tut_4 taken at once, so only Frost Ridge
      opened and this never reached its land (the sweep of 2026-10-17) */
   await H.openLands(P, wsPort);
@@ -276,7 +276,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return orig(m);
       };
     }
-    /* v2.3.3320: the press's own state, so a refusal says which of
+    /* v2.3.3321: the press's own state, so a refusal says which of
        maybeSwordDash's gates it was (abilities.js: shield, lock, a dead
        target, the status, the cast) */
     const lt0 = S.lockedTarget;

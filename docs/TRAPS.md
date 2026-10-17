@@ -6782,7 +6782,7 @@ test. Read it from the table the worker plays (`server/src/wheelspawns.js`,
 `WHEEL_LONG`), or from the game's per-size copies (`WHEEL_GEOM`, `WHEELS`,
 `NML_CENTRES`), which test-world-core holds to the tables.
 
-## 197. "A filter's area is the piece, so lay the piece's light across it" (v2.3.3320)
+## 197. "A filter's area is the piece, so lay the piece's light across it" (v2.3.3321)
 
 **Tempting:** a per-sprite filter that lights one side of a piece -- the metal
 sheen's sun side (lightfx/glint.js) -- is written against `p`, the fragment's
@@ -6849,7 +6849,7 @@ fingerprinted address gets its own `_headers` rule in the same PR, beside its
 sibling's. **Receipt:** `/world/placed5/*` in public/_headers (with the world
 map's detail tiles under it, src/ui/worldMapDetail.js).
 
-## 200. "The test watched for 1.4 s, so the shot had its chance" (v2.3.3320)
+## 200. "The test watched for 1.4 s, so the shot had its chance" (v2.3.3321)
 
 **Tempting:** a phone scenario gives a shot, a cast or a pose a fixed window
 on its own clock -- "settled 1.4 s after the shot", "the kick in the 20-200 ms
@@ -6886,7 +6886,7 @@ door into the World View (the phone and the worker both said so, once the
 check asked them).  Still open: about one bow arrow a run, at 190-240 px,
 flies its full length past a target that barely moved, before and after.
 
-## 201. "Accept tut_1 to tut_4 and every land is open" (v2.3.3320)
+## 201. "Accept tut_1 to tut_4 and every land is open" (v2.3.3321)
 
 **Wrong since v2.3.3179.** Each tutorial step opens one of the old lands
 (tut_1 Frost Ridge, tut_2 the Verdant Wilds, tut_3 the Wind Dunes, tut_4 the

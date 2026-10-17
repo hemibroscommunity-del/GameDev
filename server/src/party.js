@@ -147,7 +147,7 @@ export const partyMethods = {
         warIn: this._allyWarWait(p.id, now),
         war: w ? this._allyWarWire(w, p.id, now) : null,
       };
-      /* v2.3.3320: a former clan, whose tag its members wear below 20 too
+      /* v2.3.3321: a former clan, whose tag its members wear below 20 too
          (clanparty.js) */
       if (a && a.clan) out.ally.clan = 1;
     }
@@ -200,7 +200,7 @@ export const partyMethods = {
        and its board row goes in the same run (one write batch) */
     const rec = { v: p.ally ? PARTY.V : 1, id: p.id, leader: p.leader, members: p.members.slice(), meta, ts: p.ts || 0 };
     if (p.ally) rec.ally = { on: !!p.ally.on, since: +p.ally.since || 0, name: p.ally.name || null, tag: p.ally.tag || null, renamedAt: +p.ally.renamedAt || 0 };
-    /* v2.3.3320: and a former clan says so (clanparty.js) */
+    /* v2.3.3321: and a former clan says so (clanparty.js) */
     if (p.ally && p.ally.clan) rec.ally.clan = 1;
     this._partyStorageDo('put', 'party:' + p.id, rec);
     if (p.ally && typeof this._allyRowPut === 'function') this._allyRowPut(p, meta);

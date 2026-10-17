@@ -1,6 +1,6 @@
 # Clan Registry + Server-Scored Wars (v2.3.1125) — spec + attach points
 
-> **v2.3.3320: clans are parties now.** Every clan becomes a stored party at
+> **v2.3.3321: clans are parties now.** Every clan becomes a stored party at
 > the first join after that worker's deploy, keeping its name and tag, and no
 > new clan can be made, joined or taken to war (`server/src/clanparty.js`,
 > docs/specs/alliance.md "Step 3"). What follows is the registry the kill

@@ -2,7 +2,7 @@ import React from 'react';
 import { WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';
 import { mailList, mailAge } from '@/game/postOffice.js';
 import { AlliancePart } from './AlliancePart.jsx';   /* v2.3.3313: the alliance, at the top of the Saloon */
-import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3320: clans are parties now */
+import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3321: clans are parties now */
 
 /* ═══ v2.3.3066: THE WHEEL'S HALLS — the Guild Hall, the Post Office, the Sheriff's Office ═══
  *
@@ -75,7 +75,7 @@ function row(key, src, emoji, title, sub, onClick, badge) {
 
 function guildHall(props) {
   var S = props.stateRef.current || {};
-  /* v2.3.3320: clans are parties now (server clanparty.js) -- the row says
+  /* v2.3.3321: clans are parties now (server clanparty.js) -- the row says
      so and opens the clan window's pointer to the Saloon */
   if (clanPartyOn(S)) {
     return [

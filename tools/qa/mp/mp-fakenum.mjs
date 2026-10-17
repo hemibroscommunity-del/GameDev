@@ -49,7 +49,7 @@ const stand = (P, x, y) => P.page.evaluate(({ px, py }) => {
   return true;
 }, { px: x, py: y }).catch(() => false);
 
-/* v2.3.3320: every health figure the WORKER reports for one monster, read
+/* v2.3.3321: every health figure the WORKER reports for one monster, read
    off the socket itself.  Since v2.3.2361 the worker rolls a named lunge's
    damage (server/src/abilities.js _lungeStrike, inside its 220 px reach), so
    a lunge from the 180 px this test stands at can legitimately lower the
@@ -260,7 +260,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { kind: S._dodgeRoll && S._dodgeRoll.kind, target: S._dodgeRoll && S._dodgeRoll.targetId };
     }, { id: lArmed.id, toward: lArmed.toward });
     /* doLunge lands its local hit on a 160ms timer; wait well past it.
-       v2.3.3320: the worker's own lunge (v2.3.2361) may land in this time
+       v2.3.3321: the worker's own lunge (v2.3.2361) may land in this time
        too -- it is the worker's to deal, and the checks below hold the page
        to what the worker REPORTED, not to "nothing changed". */
     await P.page.waitForTimeout(600);
@@ -274,7 +274,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         .filter((v) => typeof v === 'number' && isFinite(v));
       /* Only numbers over the MONSTER count, and never one marked `taken`:
          the lunge carries the player to the monster, so a hit taken in the
-         same second would otherwise read as a lunge popup.  v2.3.3320: a
+         same second would otherwise read as a lunge popup.  v2.3.3321: a
          monster's number spawns over its HP bar (combatHelpers
          monsterPopupY: its _popupTopOff, -102 to -189), and the old 90 px
          window round its feet no longer saw any number at all -- the worker's

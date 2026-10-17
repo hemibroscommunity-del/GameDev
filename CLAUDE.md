@@ -2583,7 +2583,7 @@ remnant to migrate server-side, not a mode to preserve.
         switch `alliance: false` (off with `partykeep: false` too; tags off at
         the next echo); `alliance` suite (96), `mp-alliance` (a phone, 39
         bots, a second phone watching the plate).
-    - since v2.3.3320 STEP 3, CLANS BECOME PARTIES (server/src/clanparty.js,
+    - since v2.3.3321 STEP 3, CLANS BECOME PARTIES (server/src/clanparty.js,
       docs/specs/alliance.md "Step 3"):
       - no new clans: `clan_create`, `clan_join_accept` and `clan_war_declare`
         answered "Clans are parties now: make a party in the Saloon", and a
@@ -3219,7 +3219,7 @@ Two protocol versions coexist; both must keep working:
   and mp-slimeburst were all the test, never the game. `run.mjs` closes every
   page a scenario leaves open, since one browser serves the whole run and an
   open world page slows every scenario after it.
-  Since v2.3.3320 (TRAPS §200): this box often draws a few frames a second, so
+  Since v2.3.3321 (TRAPS §200): this box often draws a few frames a second, so
   a check times what is drawn by the renderer's own clock and waits a shot out,
   never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
   mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that

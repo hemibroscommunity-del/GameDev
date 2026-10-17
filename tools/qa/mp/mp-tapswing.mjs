@@ -97,7 +97,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await installTouch(P);
 
   /* ── the route into a zone the WORKER drives (mp-dashhit's, verbatim) ── */
-  /* v2.3.3320: the lands opened by the harness (openLands): since v2.3.3179
+  /* v2.3.3321: the lands opened by the harness (openLands): since v2.3.3179
      the worker refuses tut_2..tut_4 taken at once, so only Frost Ridge
      opened and this never reached its land (the sweep of 2026-10-17) */
   await H.openLands(P, wsPort);

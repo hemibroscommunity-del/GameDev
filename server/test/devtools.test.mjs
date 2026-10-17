@@ -270,7 +270,7 @@ async function newRoom(key) {
   const god = await (await room._adminFetch(authed('/dev/state?id=p1'))).json();
   check('state: ...and again once it is on', god.god === true && god.godMsLeft > 0, god);
 
-  /* v2.3.3320: the worker's own count of the zone's monsters (mp-hitreal
+  /* v2.3.3321: the worker's own count of the zone's monsters (mp-hitreal
      reads it when it finds nothing to fight) -- read off this.monsters, not
      made up: two of three dead, one coming back in about 5 s */
   const z = ps.z;

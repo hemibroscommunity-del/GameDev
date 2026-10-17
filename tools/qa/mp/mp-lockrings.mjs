@@ -63,7 +63,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      cobble is the same brass the marks are drawn in (TRAPS #21) and the zoom is
      the town zoom -- neither is what the owner is looking at.  Walk out to a
      spoke zone, exactly as mp-dashhit does, then take the scene over. */
-  /* v2.3.3320: the lands opened by the harness (openLands): since v2.3.3179
+  /* v2.3.3321: the lands opened by the harness (openLands): since v2.3.3179
      the worker refuses tut_2..tut_4 taken at once, so only Frost Ridge
      opened and this never reached its land (the sweep of 2026-10-17) */
   await H.openLands(P, wsPort);
@@ -166,7 +166,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { id: lt && lt.id, src: lt && lt.src, dLocked: d('locked'), dPlain: d('plain') };
   });
   console.log('    after the pin: ' + JSON.stringify(stolen));
-  /* ═══ v2.3.3320: THE STEAL WAS RETIRED, BY THE OWNER, IN v2.3.2513 ═══
+  /* ═══ v2.3.3321: THE STEAL WAS RETIRED, BY THE OWNER, IN v2.3.2513 ═══
      These two asserted v2.3.2263's steal ("once the pin lapses the NEARER
      monster takes the lock") long after targeting.js's D3 replaced it: "a tap
      lock is absolute until the monster dies or leaves the 220px perimeter"

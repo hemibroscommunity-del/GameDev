@@ -164,7 +164,7 @@ export function PartyHUD(props) {
   var maxN = party.max > 0 ? party.max : 4;
   /* v2.3.3313: an alliance says so -- its tag, or ALLIANCE before it has one
      (server alliance.js; party_state's `ally` is the worker's word) */
-  /* v2.3.3320: ...and a former clan wears its tag below 20 too (clanparty.js) */
+  /* v2.3.3321: ...and a former clan wears its tag below 20 too (clanparty.js) */
   var _allyA = party.ally && (party.ally.on || (party.ally.clan && allyTagShown(party.ally.tag))) ? party.ally : null;
   var _allyHead = _allyA ? (allyTagShown(_allyA.tag) ? '[' + allyTagShown(_allyA.tag) + ']' : 'ALLIANCE') : null;
 

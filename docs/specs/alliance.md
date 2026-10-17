@@ -152,7 +152,7 @@ The test lever `/dev/combat {skill | 'all', level}` (devtools.js) sets a combat
 level -- the alliance counts level 5 and up, and its phone check raises 39 bots
 there.
 
-## Step 3: clans become parties (v2.3.3320)
+## Step 3: clans become parties (v2.3.3321)
 
 The owner's plan, approved with the rest ("Go recommended"), built after step 2
 merged. `server/src/clanparty.js`; the phone's side in `src/game/alliance.js`

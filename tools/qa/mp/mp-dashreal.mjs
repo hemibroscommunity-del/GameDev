@@ -52,7 +52,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
 
-  /* v2.3.3320: the lands opened by the harness (openLands): since v2.3.3179
+  /* v2.3.3321: the lands opened by the harness (openLands): since v2.3.3179
      the worker refuses tut_2..tut_4 taken at once, so only Frost Ridge
      opened and this never reached its land (the sweep of 2026-10-17) */
   await H.openLands(P, wsPort);
@@ -128,7 +128,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const lock = await P.page.evaluate((pid) => {
     const S = window._gameState.current, lt = S.lockedTarget;
-    /* v2.3.3320: where things stand when the lock is read -- the placed
+    /* v2.3.3321: where things stand when the lock is read -- the placed
        monster's distance now, and how many live monsters are inside the
        sword's 220 px perimeter (targeting.js targetCandidates) */
     const m = (S.monsters || []).find((x) => String(x.id) === pid);
@@ -168,7 +168,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const el = document.elementFromPoint(x, y);
     if (!el) return { none: true };
     const disc = document.querySelector('.bt-rjoy-base');
-    /* v2.3.3320: WHICH control, when it is not the disc -- the combat buttons
+    /* v2.3.3321: WHICH control, when it is not the disc -- the combat buttons
        all wear the bare 'bt-desktop-hide' class, so the class alone cannot
        say; their data-* attributes and box can */
     const ds = el.dataset ? Object.assign({}, el.dataset) : {};
@@ -250,7 +250,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     } });
   await H.enterWorld(P2);
   await P2.page.waitForTimeout(2500);
-  /* v2.3.3320: the lands opened by the harness (openLands): since v2.3.3179
+  /* v2.3.3321: the lands opened by the harness (openLands): since v2.3.3179
      the worker refuses tut_2..tut_4 taken at once, so only Frost Ridge
      opened and this never reached its land (the sweep of 2026-10-17) */
   await H.openLands(P2, wsPort);

@@ -41,7 +41,7 @@
  *
  * BLOCK 3 -- THE SILENT REFUSAL.  A pile the worker has never heard of is
  * refused `no-pile` (or `no-loot-zone` while no pile has dropped in the zone
- * yet -- v2.3.3320, the note at the block).  The coin sample must not play and
+ * yet -- v2.3.3321, the note at the block).  The coin sample must not play and
  * the gold must not move.  This is the assertion that stops a future "just
  * play it on the prediction" from shipping.
  *
@@ -107,7 +107,7 @@ const WIRE_INIT = () => {
   window.__btWire = { asks: [], moves: 0, last: null, rejects: [] };
   const orig = WebSocket.prototype.send;
   WebSocket.prototype.send = function (data) {
-    /* v2.3.3320: ...and the worker's refusals, with their reason, off the
+    /* v2.3.3321: ...and the worker's refusals, with their reason, off the
        same socket (listened to from its first send, the join).  BLOCK 3's
        answer depends on it: see the note there. */
     if (!this.__btRx) {
@@ -138,7 +138,7 @@ const WIRE_INIT = () => {
         } else if (m && m.type === 'loot_pickup') {
           const S = window._gameState && window._gameState.current;
           const L = window.__btWire.last;
-          /* v2.3.3320: the newest position the game had QUEUED when it asked
+          /* v2.3.3321: the newest position the game had QUEUED when it asked
              (BLOCK 4 hooks the channel), and whether that position is the
              last one on the wire ahead of the ask -- see the note there. */
           const lootId = m.payload && m.payload.lootId;
@@ -489,7 +489,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const S = window._gameState.current;
       const W = window.__btWire;
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-      /* v2.3.3320: what the game QUEUES, through its own channel -- observed
+      /* v2.3.3321: what the game QUEUES, through its own channel -- observed
          and passed on untouched.  A walking frame queues its position (at
          most every 22 ms, BroTown's move broadcast) and the shim holds it
          for the batch timer; an ask snapshots the newest queued position,
@@ -535,7 +535,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     heldBack: held.length }));
   rec.ok(`ten pickup asks were sent while walking (guard -- ${moved.length})`, moved.length >= 6,
     { asks: flush.length, moving: moved.length });
-  /* ═══ v2.3.3320: THE NEWEST QUEUED POSITION, NOT "WITHIN 8 ms" ═══
+  /* ═══ v2.3.3321: THE NEWEST QUEUED POSITION, NOT "WITHIN 8 ms" ═══
      The check was "the last position on the wire went out at most 8 ms
      before the ask" (the flush's ~0 against 43-48 without it).  But when
      the batch timer has JUST sent the held move, nothing is held at the ask
@@ -575,7 +575,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       reasons: [...new Set(W.rejects.filter((r) => r.lootId === id).map((r) => r.reason))] };
   });
   console.log('    ghost: ' + JSON.stringify(ghost));
-  /* ═══ v2.3.3320: WHAT THE CLIENT DOES DEPENDS ON THE WORKER'S REASON ═══
+  /* ═══ v2.3.3321: WHAT THE CLIENT DOES DEPENDS ON THE WORKER'S REASON ═══
      The worker makes a zone's loot list at its first pile (index.js
      `this.loot[zone] = []`), and until then a pile nobody has heard of is
      refused `no-loot-zone`, not `no-pile`.  The client files that one as a

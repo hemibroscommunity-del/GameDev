@@ -1,4 +1,4 @@
-/* ═══ v2.3.3320: STEP 3 -- CLANS BECOME PARTIES (docs/specs/alliance.md
+/* ═══ v2.3.3321: STEP 3 -- CLANS BECOME PARTIES (docs/specs/alliance.md
  * "Step 3: clans become parties") ═══
  *
  * The owner: "skip clans altogether and just go from party to alliances ...

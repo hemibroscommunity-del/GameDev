@@ -406,7 +406,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       window.__touch(el, 'touchstart', x, y, 77);       /* the real press */
       const gStart = Date.now();
       let frames = 0;
-      /* v2.3.3320: at least two frames whatever 70 ms is on this page (a
+      /* v2.3.3321: at least two frames whatever 70 ms is on this page (a
          slow page's first frame can outlast it), never past the grace */
       while ((Date.now() - gStart < 70 || frames < 2) && frames < 12 && Date.now() - gStart < 190) {
         await new Promise((res) => requestAnimationFrame(res));
@@ -446,7 +446,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        too long and the grace could not have covered it; too short and the
        auto-attack loop never had a frame in which to fire, so nothing was
        suppressed (measured: at 1ms the row passed with the grace set to 0). */
-    /* v2.3.3320: on a page drawing a frame every 100 ms or more, two frames
+    /* v2.3.3321: on a page drawing a frame every 100 ms or more, two frames
        cannot fit inside the 200 ms grace at all, and the guard failed every
        run on the QA box (258 ms for 2 frames) though nothing about the game
        was measured.  Said as a skip, with the frame time, rather than as a

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3320: CLANS BECOME PARTIES (server/src/clanparty.js) ═══
+/* ═══ v2.3.3321: CLANS BECOME PARTIES (server/src/clanparty.js) ═══
  *
  * The owner: "skip clans altogether and just go from party to alliances",
  * then "Go recommended" to the plan whose third step this is

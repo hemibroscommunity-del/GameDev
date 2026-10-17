@@ -87,7 +87,7 @@ const layout = (P) => P.page.evaluate(() => {
   const pb = panel && panel.getBoundingClientRect();
   const cb = card && card.getBoundingClientRect();
   const sb = strip && strip.getBoundingClientRect();
-  /* v2.3.3320: since v2.3.2682 the Skin tab is "Species & Skin": its strip is
+  /* v2.3.3321: since v2.3.2682 the Skin tab is "Species & Skin": its strip is
      the SPECIES (Human, Monkey) and the skin tones are the colour row under it,
      a LIVE block (`colors: SKIN_CATALOG`), not the ghost this file was written
      against.  So "the swatch grid" the card sits under is that row when it is
@@ -116,7 +116,7 @@ const layout = (P) => P.page.evaluate(() => {
     /* a button inside a button is markup the browser un-nests unpredictably */
     nestedButtons: document.querySelectorAll('button button').length,
     tiles: document.querySelectorAll('.bt-cc-strip > *').length,
-    colorsLive,   /* v2.3.3320 */
+    colorsLive,   /* v2.3.3321 */
     colorTiles: colorsLive ? document.querySelectorAll('.bt-cc-colors-row > *').length : 0,
     colorsHidden: (colorsLive && colRow) ? Math.max(0, colRow.scrollHeight - colRow.clientHeight) : null,
     /* the two halves of the dead height the old button sat between */
@@ -303,7 +303,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${tag}: the Skin tab opened again (guard)`, await pickTab(P, 'Skin'), null);
     await P.page.waitForTimeout(900);
     const L2 = await layout(P);
-    /* v2.3.3320: in the colour row under the species, since v2.3.2682 */
+    /* v2.3.3321: in the colour row under the species, since v2.3.2682 */
     const skinTiles = L2.colorsLive ? L2.colorTiles : L2.tiles;
     rec.ok(`${tag}: the whole skin catalogue is rendered (guard: ${skinTiles} tiles`
       + `${L2.colorsLive ? `, in the colour row under ${L2.tiles} species` : ''})`,

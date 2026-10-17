@@ -93,7 +93,7 @@ async function form(room, wss, leader, others) {
 const names = (pre, n) => Array.from({ length: n }, (_, i) => pre + i);
 
 // ── 1-3: counting, and becoming an alliance ──
-/* v2.3.3320: §5 and §10 make clans, to prove a name is unique across both --
+/* v2.3.3321: §5 and §10 make clans, to prove a name is unique across both --
    clans are parties now (clanparty.js), so these rooms run with the switch
    that keeps them, `clanparty: false`; the conversion has its own suite */
 const state = makeState([['liveflags', { clanparty: false }]]);
@@ -381,7 +381,7 @@ check('8. after a deploy, an alliance nobody is on is counted from its row (IRN 
 
 // ── 10: a party that ends frees its name ──
 {
-  const st4 = makeState([['liveflags', { clanparty: false }]]);   /* v2.3.3320: a clan is made below */
+  const st4 = makeState([['liveflags', { clanparty: false }]]);   /* v2.3.3321: a clan is made below */
   const r4 = new GameRoom(st4, mockEnv);
   const w4 = {};
   const C = names('d', 20);
