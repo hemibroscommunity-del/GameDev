@@ -36,7 +36,7 @@ import { fnv1a } from './rng.js';
 
 /* blueprint cells an overview pixel (the minimap's and world map's picture) */
 export const OVERVIEW_CELLS = 4;
-/* v2.3.3311: ...on a plan's Wheel: four times that on the Wheel five times
+/* v2.3.3315: ...on a plan's Wheel: four times that on the Wheel five times
    longer (plan.js PLAN5), so its whole-map picture is the size it was
    (~450 px a side, not ~1,800: 13 MB the page would keep twice) */
 export function overviewCells(plan) {

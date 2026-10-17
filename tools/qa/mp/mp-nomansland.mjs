@@ -173,8 +173,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── the walk out, untouchable ── */
   for (const id of [idA, idB]) await H.devOp(wsPort, 'vitals', id, { heal: true, god: true, godMinutes: 6 });
-  /* v2.3.3311: the Wheel the worker plays -- its own spawn table, and No man's
-     land's rings as wide as its stretches (TRAPS §194) */
+  /* v2.3.3315: the Wheel the worker plays -- its own spawn table, and No man's
+     land's rings as wide as its stretches (TRAPS §196) */
   const LONG = (await H.wheelGeom()).long;
   const { WHEEL_SPAWNS, WHEEL_CENTRE } = await import(H.REPO + (LONG === 1 ? '/server/src/wheelspawns1.js' : '/server/src/wheelspawns.js'));
   const { NML } = await import(H.REPO + '/src/data/noMansLandRings.js');

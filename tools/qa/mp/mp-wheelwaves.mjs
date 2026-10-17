@@ -30,7 +30,7 @@ const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 const PHONE = { width: 390, height: 844 };
 /* sand above the Wind Dunes' first coast, the shallows and the sea north of
    it (mp-wheelwater) */
-/* (v2.3.3311: the short Wheel's spots, moved to the Wheel the worker plays --
+/* (v2.3.3315: the short Wheel's spots, moved to the Wheel the worker plays --
    the hub's ground is the same at either size, and this coast too: the
    sand, then the water north of it) */
 const SHIFT = (await H.wheelGeom()).shift;

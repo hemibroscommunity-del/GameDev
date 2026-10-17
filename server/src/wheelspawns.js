@@ -2,7 +2,7 @@
  * (plan brotown-world v3, blueprint 70cda3e4) -- do not edit by hand:
  * run the tool again.  tools/world/test-world-core.mjs fails when this is stale.
  *
- * v2.3.3311: the Wheel 5 times longer (plan.js PLAN5): the live one.
+ * v2.3.3315: the Wheel 5 times longer (plan.js PLAN5): the live one.
  *
  * v2.3.2978: where each element zone's monsters stand on the Wheel (zone
  * 'wheel', server/src/wheelzone.js), in game px of the Wheel (174336 x 174336,
@@ -14,7 +14,7 @@
  * v2.3.3013: and 'deeper', the land's next stretches, each a tier: its levels,
  * its band on the axis and its places, in the same shape. */
 export const WHEEL_SPAWNS_HASH = '70cda3e4';
-/* v2.3.3311: how many times longer than one zone a tier this Wheel's tiers are */
+/* v2.3.3315: how many times longer than one zone a tier this Wheel's tiers are */
 export const WHEEL_LONG = 5;
 export const WHEEL_WORLD = [174336, 174336];
 /* the safe ground: the commons and the town, every land cell of them within

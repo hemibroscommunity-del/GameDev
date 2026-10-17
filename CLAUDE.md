@@ -2725,7 +2725,7 @@ remnant to migrate server-side, not a mode to preserve.
     - the ground worker at the memory trip's peak 24.8 MB (main 28.7);
     - test-world-core "the Wheel in blocks" (every block and piece against the
       whole map, cell for cell); step 2 is the 5x lands.
-  - Since v2.3.3311 EVERY LAND IS FIVE TIMES LONGER -- step 2 of the owner's
+  - Since v2.3.3315 EVERY LAND IS FIVE TIMES LONGER -- step 2 of the owner's
     "Rebuild for 5x" (docs/specs/wheel-5x.md):
     - a five-level stretch is 5,120 game px, not 1,024 (`plan.js PLAN5`,
       `wheelSized`; the active area grown past the frame, `grid.js
@@ -2742,7 +2742,7 @@ remnant to migrate server-side, not a mode to preserve.
     - the join says which Wheels the phone draws (`ws`,
       src/game/wheelSize.js); a phone that says nothing is OUT OF STEP: no
       monster targets it, no No man's land -- a test or bot must send `ws:
-      [1, 5]` (TRAPS §194); the phone's per-size copies (`WHEEL_GEOM`,
+      [1, 5]` (TRAPS §196); the phone's per-size copies (`WHEEL_GEOM`,
       `WHEELS`, `NML_CENTRES`) follow `setWheelLong`, held to the tables by
       test-world-core;
     - never a Wheel coordinate in code or a test: QA reads `H.wheelGeom()`;

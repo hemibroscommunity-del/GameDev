@@ -32,10 +32,10 @@ import { chatLogBus } from '@/ui/mobile/chatLogBus.js';
 import { playZoneBanner } from '@/ui/zoneBannerOverlay.js';
 
 import { NML, NML_CENTRE, NML_CENTRES, nmlTierAt, nmlLevelAt } from '@/data/noMansLandRings.js';
-import { wheelLong } from '@/game/wheelSize.js';   /* v2.3.3311: the rings of the Wheel the room plays */
+import { wheelLong } from '@/game/wheelSize.js';   /* v2.3.3315: the rings of the Wheel the room plays */
 import { setFoeRule } from '@/game/sparTargets.js'; /* v2.3.3268: a player you chose to attack is yours to hit while this rule allows it */
 export { NML, NML_CENTRE, nmlTierAt, nmlLevelAt };
-/* v2.3.3311: the middle of the Wheel the room plays (game px) */
+/* v2.3.3315: the middle of the Wheel the room plays (game px) */
 export function nmlCentre() { return NML_CENTRES[wheelLong()] || NML_CENTRE; }
 const WHEEL = 'wheel';
 /* how long you must have stood in a new level before it is announced, so a

@@ -27,7 +27,7 @@ import * as H from './harness.mjs';
 import { WHEEL_SPAWNS } from '../../../server/src/wheelspawns.js';
 
 const PHONE = { width: 390, height: 844 };
-const C = (await H.wheelGeom()).cx;   /* the Wheel's middle (v2.3.3311: the one the worker plays) */
+const C = (await H.wheelGeom()).cx;   /* the Wheel's middle (v2.3.3315: the one the worker plays) */
 const IN_LAND = 3150;              /* past the safe ground, short of the monsters' middle (~3450) */
 const COMMONS = 2450;              /* the commons, past the town */
 const spot = (land, r) => {

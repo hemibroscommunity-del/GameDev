@@ -190,7 +190,7 @@ async function body({ P, wsPort, rec, OUT, errors }) {
     };
   }, spot);
   console.log(`    water at ${spot.id}: ${JSON.stringify(water)}`);
-  /* v2.3.3311: the school's EDGE may cross the drawn shore at one of its nine
+  /* v2.3.3315: the school's EDGE may cross the drawn shore at one of its nine
      points -- a fish there dives out of sight (wheelNodes.js: "a survey of
      all 32 spots as drawn: one school's edge", wn-commons-15, the pond this
      road leads to on the Wheel five times longer, whose nearer river spots

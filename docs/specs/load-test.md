@@ -124,7 +124,7 @@ download by a quarter. That is the message diet's lever (§11, item 4 below).
 connections and a simulated clock, which measures the game's own code with no
 runtime around it. "% of a core" is what one second of play costs (measured
 with the first bots' moves, whose 16-digit numbers cost the room a little more
-to read and write than a phone's do). Since v2.3.3311 its message clock times
+to read and write than a phone's do). Since v2.3.3315 its message clock times
 only the room's handling of each message: the bots' own choosing (each
 fighter's move walked every monster in the Wheel for the nearest) was inside
 it, and read as the room's -- five times over on the Wheel five times longer

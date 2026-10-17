@@ -85,12 +85,12 @@
  * skull and takes nothing on a death -- the safe Wheel of v2.3.3057 exactly.
  */
 import { WHEEL_ZONE } from './wheelzone.js';
-import { wheelTable } from './wheeltables.js';   /* v2.3.3311 */
+import { wheelTable } from './wheeltables.js';   /* v2.3.3315 */
 import { GEAR_PROV_FIELD, GEAR_PROV_SLOTS } from './gearprov.js';
 
 export const NML = Object.freeze({
   /* the Wheel's rings, game px (plan.js wheel: hub 2.7 zones, tierZones 1,
-     zonePx 1024; 16 tiers of 5 levels).  v2.3.3311: TIER is the short
+     zonePx 1024; 16 tiers of 5 levels).  v2.3.3315: TIER is the short
      Wheel's; a Wheel `long` times longer has tiers `long` times as long
      (nmlTierAt), round its own centre (its table's WHEEL_CENTRE) */
   HUB: 2764.8,
@@ -124,7 +124,7 @@ export function nmlTierAt(x, y, long = 1) {
 }
 
 /* No man's land's level at a spot: 0 outside it, 1 from the Lv 6-10 tier --
-   in the Wheel `long` times longer (v2.3.3311: the room's, _wheelLongNow) */
+   in the Wheel `long` times longer (v2.3.3315: the room's, _wheelLongNow) */
 export function nmlLevelAt(zone, x, y, long = 1) {
   if (zone !== WHEEL_ZONE) return 0;
   const t = nmlTierAt(x, y, long);
@@ -167,7 +167,7 @@ export const noMansLandMethods = {
   /* the No man's land level a live player stands in */
   _nmlLevelOf(ps) {
     if (!ps || ps.dead || ps.dying) return 0;
-    /* v2.3.3311: a phone that does not draw this room's Wheel stands somewhere
+    /* v2.3.3315: a phone that does not draw this room's Wheel stands somewhere
        else on its own map: no rule holds for it (wheeltables.js _wheelInStep) */
     if (this._wheelInStep && !this._wheelInStep(ps)) return 0;
     return nmlLevelAt(ps.z, ps.x, ps.y, this._wheelLongNow());

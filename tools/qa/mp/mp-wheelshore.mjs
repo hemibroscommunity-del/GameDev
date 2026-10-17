@@ -42,7 +42,7 @@ const SHORES = (P) => P.page.evaluate(({ run }) => {
      and keeps only its last 160, and this reads 340 rows a column */
   const held = new Map();
   const rowOf = (r) => { let a = held.get(r); if (!a) { a = g[r]; held.set(r, a); } return a; };
-  /* v2.3.3311: a wall is false, or 0 in the Wheel's byte rows (wheelTrial.js lazyGrid) */
+  /* v2.3.3315: a wall is false, or 0 in the Wheel's byte rows (wheelTrial.js lazyGrid) */
   const open = (r, c) => r >= 0 && r < rows && c >= 0 && c < cols && rowOf(r)[c] !== false && rowOf(r)[c] !== 0;
   const edgeAt = (c, from, to) => {      /* first row in [from, to) whose openness differs from the row above */
     for (let r = from; r < to; r++) if (open(r, c) !== open(r - 1, c)) return r;

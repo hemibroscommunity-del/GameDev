@@ -218,7 +218,7 @@ function baseSession() { return { id: null, name: 'Anon', data: {}, rtt: 80, las
     ps.x = x; ps.y = y; ps.lastMoveAt = undefined;
   };
 
-  const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3311: the live Wheel's */
+  const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3315: the live Wheel's */
   const IDS = [];
   for (let i = 0; i < 44; i++) IDS.push('ag' + i);
   await both(async (w) => {

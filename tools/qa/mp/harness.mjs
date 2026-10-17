@@ -43,7 +43,7 @@ import { tmpdir } from 'node:os';
    there.  harness.mjs lives at tools/qa/mp/, so the repo root is three up. */
 export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
-/* ═══ v2.3.3311: THE WHEEL THE LOCAL WORKER PLAYS ═══
+/* ═══ v2.3.3315: THE WHEEL THE LOCAL WORKER PLAYS ═══
    The owner chose a Wheel five times longer ("Rebuild for 5x"): the worker
    plays it unless its kill switch says the short one, and its size is the
    live spawn table's (server/src/wheelspawns.js WHEEL_LONG; the short one's
@@ -1334,7 +1334,7 @@ export function keepAlive(P, everyMs = 20000) {
 }
 
 export async function hopTo(P, tx, ty, { step = 100, gap = 260, tries = 40 } = {}) {
-  /* v2.3.3311: enough hops for the distance -- the long Wheel's spots are
+  /* v2.3.3315: enough hops for the distance -- the long Wheel's spots are
      five times further out than the `tries` a scenario counted for the short
      one (wheelGeom, above) */
   try {

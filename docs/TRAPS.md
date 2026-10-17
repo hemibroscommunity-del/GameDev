@@ -6638,7 +6638,7 @@ two runs each: home after three trips 83.2-85.2 MB of the chip on main,
 (+4.1/+4.2 in CI), -1.6 and -1.5 with this. mp-chatbubble and mp-chatfont,
 25 of 25.
 
-## 194. "The Wheel is 43,008 px, its middle 21,504" (v2.3.3311)
+## 196. "The Wheel is 43,008 px, its middle 21,504" (v2.3.3315)
 
 Since the owner's "Rebuild for 5x" (docs/specs/wheel-5x.md) there are two
 Wheels, and the worker plays the long one unless its kill switch says the

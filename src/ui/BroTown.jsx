@@ -4355,7 +4355,7 @@ export var BroTown = function BroTown(_ref0) {
           /* boots past the world's last row: the sea's edge, read as its last row */
           if (_gfd && _gy >= _gh) _gy = _gh - 1;
           if (_gy >= 0 && _gy < _gh && _gx >= 0 && _gx < _gw) {
-            /* v2.3.3311: the Wheel's rows are bytes, 0 a wall (wheelTrial.js lazyGrid) */
+            /* v2.3.3315: the Wheel's rows are bytes, 0 a wall (wheelTrial.js lazyGrid) */
             var _cv = _wgrid[_gy][_gx], _cellSolid = _cv === false || _cv === 0;
             /* ═══ v2.3.2075: NEVER TRAP SOMEONE ALREADY INSIDE ═══
                The same rule the NPC branch above states and for the same

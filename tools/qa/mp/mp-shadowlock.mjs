@@ -44,7 +44,7 @@ import { join } from 'node:path';
 const PHONE = { width: 390, height: 844 };
 const DPR = 3;
 const STEPS = 7;
-const SPOT = [23450 + (await H.wheelGeom()).shift, 21750 + (await H.wheelGeom()).shift];   /* v2.3.3311: the hub is the same ground at either size, moved */
+const SPOT = [23450 + (await H.wheelGeom()).shift, 21750 + (await H.wheelGeom()).shift];   /* v2.3.3315: the hub is the same ground at either size, moved */
 /* the part of the screen measured (CSS px): the props' yard, clear of the top
    bar, the minimap, the controls and the bro himself (masked below) */
 const BOX = [40, 260, 350, 600];

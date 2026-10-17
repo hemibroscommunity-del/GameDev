@@ -38,8 +38,8 @@ import { performance, monitorEventLoopDelay } from 'node:perf_hooks';
 import { PlainWS } from './plainws.mjs';
 import { MOVE_DIET, dietMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3204: --diet, the phone's own rule */
 import { readFileSync } from 'node:fs';
-/* v2.3.3311: the Wheel the server plays -- the live spawn table's (five times
-   longer since v2.3.3311; wheelspawns1.js the short one) */
+/* v2.3.3315: the Wheel the server plays -- the live spawn table's (five times
+   longer since v2.3.3315; wheelspawns1.js the short one) */
 import { WHEEL_CENTRE, WHEEL_SAFE_R } from '../../../server/src/wheelspawns.js';
 
 /* ═══ v2.3.3240: --track, THE LOOK EVERY PHONE SENDS EVERY 2 s ═══
@@ -60,7 +60,7 @@ function trackSample() {
 
 /* v2.3.3199: --no-deflate's WebSocket (plainws.mjs) */
 
-/* worldTrial.js WHEEL.arrival -- the Wheel's town square (v2.3.3311: the
+/* worldTrial.js WHEEL.arrival -- the Wheel's town square (v2.3.3315: the
    Wheel the server plays) */
 const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };
 const MOVE_GAP_MS = 33;          /* wsClient.js MOVE_GAP_SEEN_MS */
@@ -155,7 +155,7 @@ function connect(bot) {
     bot.state = 'joining';
     send(bot, {
       type: 'join', id: bot.id, name: 'Load' + bot.k, protocolVersion: 2, httpAuth: true,
-      /* v2.3.3311: the Wheels a phone of today draws (wheelSize.js): a bot
+      /* v2.3.3315: the Wheels a phone of today draws (wheelSize.js): a bot
          that said nothing would be kept out of harm on the long one */
       ws: [1, 5],
       /* v2.3.3250: --pres -- a phone of presence v2 whose world map stays shut */

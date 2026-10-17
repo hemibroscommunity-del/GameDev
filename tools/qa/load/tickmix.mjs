@@ -23,7 +23,7 @@ if (!URL_ARG || !/^wss?:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(URL_ARG)
   process.exit(2);
 }
 
-/* worldTrial.js WHEEL.arrival -- the Wheel's town square (v2.3.3311: the
+/* worldTrial.js WHEEL.arrival -- the Wheel's town square (v2.3.3315: the
    Wheel the room plays, the live spawn table's) */
 const { WHEEL_CENTRE } = await import('../../../server/src/wheelspawns.js');
 const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };

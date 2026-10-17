@@ -124,7 +124,7 @@ function index() {
   });
   const n = o.n, worldW = o.worldW, worldH = o.worldH;
   const cols = Math.ceil(worldW / BUCKET), rows = Math.ceil(worldH / BUCKET);
-  /* ═══ v2.3.3311: WHAT EACH OBJECT IS DRAWN AS, KEPT ONCE A PIECE ═══
+  /* ═══ v2.3.3315: WHAT EACH OBJECT IS DRAWN AS, KEPT ONCE A PIECE ═══
      Its page, frame, size, anchor, reach and scale depend only on its kind
      and piece, so they are kept once for each piece -- `page`, `w`, `h`,
      `ax`, `reach`, `scl` and `frame`, read at the piece's number -- and an

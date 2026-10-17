@@ -31,7 +31,7 @@ import { join } from 'node:path';
 const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 
 const PHONE = { width: 390, height: 844 };
-const FROST = (await H.wheelGeom()).along('frost', 2);   /* the north-west spoke, Frost Ridge's second stretch (v2.3.3311: at either size) */
+const FROST = (await H.wheelGeom()).along('frost', 2);   /* the north-west spoke, Frost Ridge's second stretch (v2.3.3315: at either size) */
 
 const holdTitle = (P, ms) => P.page.evaluate(async (hold) => {
   const el = document.querySelector('.bt-zone-header__title');
@@ -241,7 +241,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      their trunks, leaning in over the water (a palm's trunk is far off its
      picture's middle: the sprite's anchor is its foot, from the manifest) ── */
   {
-    /* v2.3.3311: at the Wheel the worker plays -- its objects as baked
+    /* v2.3.3315: at the Wheel the worker plays -- its objects as baked
        (tools/world/bake-wheel-world.mjs) and a blueprint of the cells round
        each ring of palms, never the whole map, which the long Wheel is far
        too big for (H.wheelGeom) */
@@ -288,7 +288,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       for (let i = 0; i < placed.n; i++) if (placed.kind[i] === palm && Math.hypot(placed.x[i] - pool.x, placed.y[i] - pool.y) < pool.r + 160) palms++;
       if (!best || palms > best.palms) best = { x: pool.x, y: pool.y, r: pool.r, palms };
     }
-    /* v2.3.3311: by way of town -- from Frost Ridge the straight line to the
+    /* v2.3.3315: by way of town -- from Frost Ridge the straight line to the
        dunes crosses the open sea between the spokes, five times as much of it
        on the long Wheel */
     await H.hopTo(P, G.arrival.x, G.arrival.y, { step: 200 });

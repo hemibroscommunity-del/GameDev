@@ -157,7 +157,7 @@ const CAP_GATES = [
   't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',
   'trade2Weapons', 'weaponDrops', 'whisper', 'zoneDepth' /* v2.3.2790 */, 'bowvolley' /* v2.3.2848 */, 'dailyChest' /* v2.3.2820 */, 'smelting' /* v2.3.2822 */, 'whirlWindup' /* v2.3.2824 */, 'gatherhits' /* v2.3.2956 */,
   'wheelmonsters' /* v2.3.2978: lower case, a kill switch */,
-  'wheelsize' /* v2.3.3311: which Wheel the room plays -- a number, 5 the long one, 1 the short (its kill switch, `wheel5x: false`) */,
+  'wheelsize' /* v2.3.3315: which Wheel the room plays -- a number, 5 the long one, 1 the short (its kill switch, `wheel5x: false`) */,
   'sprint' /* v2.3.3006: lower case, a kill switch */,
   'wheelnodes' /* v2.3.3012: lower case, a kill switch */,
   'shieldwear' /* v2.3.3091: the shield on the arm -- lower case, a kill switch */,
