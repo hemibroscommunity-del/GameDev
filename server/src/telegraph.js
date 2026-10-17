@@ -366,7 +366,12 @@ export const telegraphMethods = {
       if (ps && !ps.dead && !ps.dying && ps.z === zoneId) {
         const ddx = ps.x - m.x, ddy = ps.y - m.y;
         hit = (ddx * ddx + ddy * ddy) <= _tgR * _tgR;
-        if (hit) this._telegraphHitPlayer(zoneId, m, targetId, kit);
+        /* v2.3.3300: a roll that slipped it, or a rock in the way, is the
+           MISS a whiff is -- "I got out of the way" reads as a win -- not a
+           shake with no number (the door keeps the blow off you either way:
+           hits.js _hitMissed, hit-door.md decisions 4 and 7) */
+        if (hit && this._hitMissed('kit', zoneId, ps, m, now)) hit = false;
+        else if (hit) this._telegraphHitPlayer(zoneId, m, targetId, kit);
       }
       this._monsterAbilityEvent(zoneId, m, kit.kind, 'execute', { radius: _tgR, hit });
       return true;

@@ -1,5 +1,15 @@
 # Brotown UI Spec Reference — Directional Block Ring + Shield Mechanics
 
+> **v2.3.3300: EVERY MONSTER BLOW IS BLOCKED THE SAME WAY** (the owner's
+> decisions on the hit door, docs/specs/hit-door.md "Decided"). A **snowball
+> from behind lands**: its second shield test, measured from where it landed
+> (always "covered": a zero-length direction), blocked it through a shield
+> facing away, at 15. Every block costs the one `BLOCK_STAMINA_COST` (10) --
+> the snow pile and the boss kept 15 -- except the snowball's, still free. The
+> pile and a boss can be **parried**. A rock between you and a swing is asked
+> **before** the shield, so the shield no longer pays for a blow the rock
+> stopped. And no block counts as being hit (the pile's did).
+
 > **v2.3.3297: THE COST UNDER "Blocked!" IS THE WORKER'S.** The worker names a
 > blocked hit's stamina cost (`staminaDrain` on its `monster_attack`) whenever
 > it charges one, and leaves it off on purpose when it charges nothing: a

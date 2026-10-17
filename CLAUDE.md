@@ -3547,11 +3547,18 @@ Two protocol versions coexist; both must keep working:
   rail, the dice, the monster's after-effects and the event/save/death in one
   order, and `MONSTER_HITS` says what each way of being hit does at each step
   (`swing`, `snowball`, `pile`, `kit`, `burst`, `boss`, `fire`, `shock`,
-  `burn`, `poison`). The seven old copies are wrappers. The table is TODAY'S
-  behaviour cell for cell, including the cells hit-door.md puts to the owner
-  (the two 15s, the wrong-way snowball, the harvest shield the kits and fire
-  miss, rolls, parry, rails, rocks). `hit-door.test` (205) pinned them before
-  the door existed; §10d fails a new caller of `_applyDamage`.
+  `burn`, `poison`). The seven old copies are wrappers. The table was the old
+  behaviour cell for cell; `hit-door.test` pinned it before the door existed,
+  and §10d fails a new caller of `_applyDamage`. Since v2.3.3300 the owner's
+  nine decisions on it ("keep going on recommended", hit-door.md "Decided"):
+  every block costs the one 10 (the snowball's free), a snowball from behind
+  lands, every blow leaves a harvester alone, a paid dodge or lunge slips the
+  swing, ball, casts, burst and a boss (not the pile, fire, arcs or ticks, nor
+  the retreat shot's roll: movement.js `_rollIFrames`, kill switch
+  `monsterroll: false`; a rolled or covered slam is a MISS, and the phone
+  shows a hit that lands mid-roll), the pile and a boss parry, a rock is asked
+  first of every blow that travels, a boss's block saves the pools, and no
+  block counts as a hit; `hit-door.test` (218).
 - `package.json` version tracks the client version loosely; comment
   tags in code are the finer-grained record.
 - The repo owner is new to coding: PRs should be self-contained,
