@@ -6543,6 +6543,33 @@ blockable at all: its row's `block` is null.
 **Receipt:** hit-door.test §5, every blockable row, a ball from behind
 included, lands through a shield facing away (v2.3.3300).
 
+## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3312)
+
+**Tempting:** a pose that swaps the body for a painted figure (the cook, the
+fire-lighter, the lumberjack) is baked once with your colours, and every other
+player in that pose is drawn from the same picture. Their own shirt, armour
+and head go on top, so they look like themselves. A bake per player looks like
+memory thrown away.
+
+**Wrong.** What the bake carries is colour, so a shared figure gives everyone
+the colours of whoever it was baked for. v2.3.1713 wrote the trade down (your
+skin on every peer's cook). Then v2.3.3146 baked your trousers and boots in
+too, and every peer at a campfire wore them. The owner saw it: "Other players
+cooking showed wrong skin color". The figure for nobody's colours is no better:
+the unpainted lumberjack was the artist's orange, olive and grey. Measured
+(mp-peercolours): every recoloured pixel of a peer's cook (~14,300 a frame)
+and fire-lighter (~28,000) was the watcher's, and the lumberjack had none at
+all. Each test's own screen, and every single-client scenario, looked right.
+
+**The rule:** a baked figure belongs to the colours it was baked in. Key it by
+them (`_standInColourKey`), hand it only to a player wearing them, and bake one
+for anyone else, capped and let go (effectsRenderer `_peerFigure`). Until a
+player's own figure exists, draw their walking body, never another figure.
+Check it from a second screen, off the drawn texture against the shipped strip
+(mp-peercolours), as no screenshot or own-screen test can show it.
+**Receipt:** 57/57 with the fix; against the old build the cook's and the
+fire-lighter's colour checks fail with every recoloured pixel the watcher's.
+
 ## 191. "A blob written by current code is current-shape" (v2.3.3303)
 
 **Tempting:** `_saveRpg` writes from the code's own fixed field list, so stamp
@@ -6637,30 +6664,3 @@ two runs each: home after three trips 83.2-85.2 MB of the chip on main,
 78.1-80.2 with this; the third trip against the second +2.1 and +0 on main
 (+4.1/+4.2 in CI), -1.6 and -1.5 with this. mp-chatbubble and mp-chatfont,
 25 of 25.
-
-## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3312)
-
-**Tempting:** a pose that swaps the body for a painted figure (the cook, the
-fire-lighter, the lumberjack) is baked once with your colours, and every other
-player in that pose is drawn from the same picture. Their own shirt, armour
-and head go on top, so they look like themselves. A bake per player looks like
-memory thrown away.
-
-**Wrong.** What the bake carries is colour, so a shared figure gives everyone
-the colours of whoever it was baked for. v2.3.1713 wrote the trade down (your
-skin on every peer's cook). Then v2.3.3146 baked your trousers and boots in
-too, and every peer at a campfire wore them. The owner saw it: "Other players
-cooking showed wrong skin color". The figure for nobody's colours is no better:
-the unpainted lumberjack was the artist's orange, olive and grey. Measured
-(mp-peercolours): every recoloured pixel of a peer's cook (~14,300 a frame)
-and fire-lighter (~28,000) was the watcher's, and the lumberjack had none at
-all. Each test's own screen, and every single-client scenario, looked right.
-
-**The rule:** a baked figure belongs to the colours it was baked in. Key it by
-them (`_standInColourKey`), hand it only to a player wearing them, and bake one
-for anyone else, capped and let go (effectsRenderer `_peerFigure`). Until a
-player's own figure exists, draw their walking body, never another figure.
-Check it from a second screen, off the drawn texture against the shipped strip
-(mp-peercolours), as no screenshot or own-screen test can show it.
-**Receipt:** 57/57 with the fix; against the old build the cook's and the
-fire-lighter's colour checks fail with every recoloured pixel the watcher's.
