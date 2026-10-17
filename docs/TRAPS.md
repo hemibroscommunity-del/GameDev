@@ -6484,7 +6484,10 @@ were written that way, each copied from the one before.
 is hit and for how much before the rail; the door does every step after that.
 `hit-door.test` §10d fails any other file that calls `_applyDamage`.
 **Receipt:** the seven copies are wrappers now, the 193 checks that measured
-them passing unchanged.
+them passing unchanged. All three missed rules above were the owner's to
+decide, and v2.3.3300 decided them (hit-door.md "Decided"): every blow leaves
+a harvester alone, every block costs the one 10, and the wrong-way ball lands
+(§187).
 
 ## 186. "Build the map a piece at a time by clipping each pass to the piece" (v2.3.3298)
 
@@ -6517,3 +6520,25 @@ makes for a cell reads nothing past a fixed margin round it. Check by building
 every piece and comparing it with the whole, cell for cell
 (test-world-core "the Wheel in blocks") -- a piece that only looks right will
 show its seam the day someone walks along it.
+
+## 187. "Measure the shield from where the blow arrived" (v2.3.3300)
+
+**Tempting:** a blow lands at a point -- a ball where it falls, a patch under
+your feet, a blast at its centre -- so test the shield against that point:
+`_blockArcCovers(ps, landedX, landedY)`.
+
+**Wrong.** Where a blow lands on you is where you stand. `_blockArcCovers`
+reads a direction under 1 px long as "covered" on purpose (a monster standing
+inside your own body is not a flanking move), so a shield test measured from
+your own feet passes for a shield facing ANY way. The snowball's second test
+was exactly that (`_monsterStrikePlayer` from `atkX/atkY`, which for a ball
+was where it landed): a shield turned away still blocked every ball, and
+charged 15 for it, against v2.3.1705's own "a snowball you never turned to
+face should get through exactly like a swing from behind does".
+
+**The rule:** the shield is measured from where the blow came FROM -- the
+monster, or for a ball its thrower (the door's `from`) -- never from where it
+arrived. A blow with no direction (fire under your feet, a tick) is not
+blockable at all: its row's `block` is null.
+**Receipt:** hit-door.test §5, every blockable row, a ball from behind
+included, lands through a shield facing away (v2.3.3300).
