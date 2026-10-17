@@ -197,8 +197,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const early = samples.filter((x) => x.t < 7500);
     const town = ((await lm(P)) || {}).log || [];
     const toTown = town.length && town[town.length - 1].key === 'town' ? town[town.length - 1].at - flip : null;
-    rec.ok(`a step back onto the commons (${ca.region}, ${r(ca)} px out) is not coming home: Frost Ridge's music plays on through the first ${early.length ? (early[early.length - 1].t / 1000).toFixed(1) : '?'} s after the line`,
-      ca.region === 'commons' && early.length >= 8 && early[0].t < 3000 && early.every((x) => x.playing === 'frost'), { early: early.filter((x, i) => i % 4 === 0), at: ca });
+    /* v2.3.3283: judged by the land watch's own log of the changes it made
+       (`at` on the page clock, as `since` is), not by how often this box can
+       look: in a sweep on main its first look came 4.4 s after the line (it
+       heard Frost Ridge), where 8 looks from under 3 s were asked for */
+    const madeEarly = flip != null ? town.filter((e) => e.at >= flip && e.at < flip + 7500) : null;
+    rec.ok(`a step back onto the commons (${ca.region}, ${r(ca)} px out) is not coming home: no change of music in the first 7.5 s after the line (${madeEarly ? madeEarly.length : '?'}), and the ${early.length} looks in that time all heard Frost Ridge's`,
+      ca.region === 'commons' && !!madeEarly && madeEarly.length === 0 && early.length >= 1 && early.every((x) => x.playing === 'frost'),
+      { madeEarly, early: early.filter((x, i) => i % 4 === 0), at: ca });
     rec.ok(`...and the town's track comes back once you have stayed: asked for ${toTown != null ? (toTown / 1000).toFixed(1) : '?'} s after the line (MUSIC_HOME_MS 8 s)`,
       toTown != null && toTown >= 7900 && toTown < 10000 && samples.some((x) => x.playing === 'town' && x.source), { toTown, last: samples.slice(-3) });
 

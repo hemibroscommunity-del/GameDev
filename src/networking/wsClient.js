@@ -42,6 +42,7 @@ import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking
 /* v2.3.1961: the ONE wire-key -> peer-field rename table, read by the join
    snapshot, both self-heal placeholders and the 2s track relay below. */
 import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
+import { nearJoinOn, parkFar, applyPeerLooks } from '@/game/nearJoin.js'; /* v2.3.3276: a join is told the players around it (server/src/nearjoin.js) */
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
@@ -173,6 +174,53 @@ const tickSizes = [];
 export function getTickTimes() { return tickTimes; }
 /** Returns the live tick-size ring buffer (do not mutate from outside). */
 export function getTickSizes() { return tickSizes; }
+
+/* v2.3.3276: the peer object the SNAPSHOT road makes (state_sync's
+   players), as one function: a tick's `pl` (server/src/nearjoin.js) brings
+   a player's whole entry, the one the snapshot would have given, and it is
+   built exactly the same way (src/game/nearJoin.js applyPeerLooks). */
+function peerFromSnapshot(_data) {
+  return Object.assign({
+    x: _data.x || 0,
+    y: _data.y || 0,
+    _serverX: _data.x || 0,
+    _serverY: _data.y || 0,
+    renderX: _data.x || 0,
+    renderY: _data.y || 0,
+    name: _data.name || 'Anon',
+    color: _data.color || '#888',
+    avatar: _data.avatar || null,
+    dir: _data.d || 'down',
+    bt: _data.bt || '#2563eb',
+    bl: _data.bl || '#1e3a5f',
+    equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none',
+      /* v2.3.756: layered shirt; old clients send no eqst -> infer from their legacy shirt style */
+      shirt: _data.eqst !== undefined ? (_data.eqst || 'none') : ((_data.st && _data.st !== 'none') ? 'tshirt' : 'none') },
+    rpgLv: _data.rpgLv || 1,
+    rpgHp: _data.rpgHp || 50,
+    rpgMaxHp: _data.rpgMaxHp || 50,
+    zone: _data.z || 'town'
+    /* ═══ v2.3.2304: THE JOIN-FRAME COSMETIC HOLE ═══
+       peerCosmeticsFromWire only maps keys the wire RENAMES.
+       This literal is hand-written and never Object.assigns the
+       raw payload, so every SAME-NAMED cosmetic the worker sent
+       -- cape, rpgData, wpnType, wpnMat, rep, mask, pet -- was
+       thrown away here and did not arrive until the first ~2s
+       relay. Three of those are read by the renderer straight
+       away, so for up to two seconds a peer already in the room
+       had no cape, no shield slung on their back and the wrong
+       weapon in hand.
+       NOTE this is the ONLY one of the three peer literals with
+       the hole: the player_join and player_update paths both
+       Object.assign the raw data on the very next line.
+       NOT fixed server-side by widening JOIN_COSMETIC_KEYS -- the
+       cape is stamped by the worker on the relay road precisely
+       so a client cannot grant itself a prize cape, and adding
+       it to the join road without that stamp would re-open the
+       forgery hole. The worker already sends all of these; the
+       client was discarding them. */
+  }, peerCosmeticsFromWire(_data), peerPassthroughFromWire(_data));
+}
 
 export function setupWebSocket(ctx) {
   var stateRef = ctx.stateRef,
@@ -466,6 +514,10 @@ export function setupWebSocket(ctx) {
           /* v2.3.3250: presence v2 -- far players in the Wheel only while the
              world map is open (src/game/presence2.js).  Old workers ignore it. */
           pres: 2,
+          /* v2.3.3276: and a snapshot of just the players around us, a far
+             player's look sent when they come around (src/game/nearJoin.js,
+             server/src/nearjoin.js).  Old workers ignore it. */
+          nj: 1,
           /* v2.3.3300: the Wheels this phone draws (src/game/wheelSize.js):
              the worker keeps a phone that does not draw the one it plays out
              of harm.  Old workers ignore it. */
@@ -711,6 +763,12 @@ export function setupWebSocket(ctx) {
         switch (msg.type) {
           case 'tick':
             {
+              /* v2.3.3276: the whole look (and place) of each player this tick
+                 first sends us around us (server/src/nearjoin.js) -- before the
+                 players below, so the tick that shows them shows their look */
+              if (msg.pl && nearJoinOn(S)) {
+                if (applyPeerLooks(S, msg.pl, peerFromSnapshot) > 0) setPlayerCount(Object.keys(S.others).length + 1);
+              }
               // §16.9 — Process batched player positions
               if (msg.players) {
                 for (var _i33 = 0, _Object$entries5 = Object.entries(msg.players); _i33 < _Object$entries5.length; _i33++) {
@@ -1454,46 +1512,10 @@ export function setupWebSocket(ctx) {
                    a near-identical set in `player_join`, and nothing at all on
                    the relay -- three lists to remember, which is why keys kept
                    shipping into some of them and not the others. */
-                others[_pid] = Object.assign({
-                  x: _data.x || 0,
-                  y: _data.y || 0,
-                  _serverX: _data.x || 0,
-                  _serverY: _data.y || 0,
-                  renderX: _data.x || 0,
-                  renderY: _data.y || 0,
-                  name: _data.name || 'Anon',
-                  color: _data.color || '#888',
-                  avatar: _data.avatar || null,
-                  dir: _data.d || 'down',
-                  bt: _data.bt || '#2563eb',
-                  bl: _data.bl || '#1e3a5f',
-                  equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none',
-                    /* v2.3.756: layered shirt; old clients send no eqst -> infer from their legacy shirt style */
-                    shirt: _data.eqst !== undefined ? (_data.eqst || 'none') : ((_data.st && _data.st !== 'none') ? 'tshirt' : 'none') },
-                  rpgLv: _data.rpgLv || 1,
-                  rpgHp: _data.rpgHp || 50,
-                  rpgMaxHp: _data.rpgMaxHp || 50,
-                  zone: _data.z || 'town'
-                  /* ═══ v2.3.2304: THE JOIN-FRAME COSMETIC HOLE ═══
-                     peerCosmeticsFromWire only maps keys the wire RENAMES.
-                     This literal is hand-written and never Object.assigns the
-                     raw payload, so every SAME-NAMED cosmetic the worker sent
-                     -- cape, rpgData, wpnType, wpnMat, rep, mask, pet -- was
-                     thrown away here and did not arrive until the first ~2s
-                     relay. Three of those are read by the renderer straight
-                     away, so for up to two seconds a peer already in the room
-                     had no cape, no shield slung on their back and the wrong
-                     weapon in hand.
-                     NOTE this is the ONLY one of the three peer literals with
-                     the hole: the player_join and player_update paths both
-                     Object.assign the raw data on the very next line.
-                     NOT fixed server-side by widening JOIN_COSMETIC_KEYS -- the
-                     cape is stamped by the worker on the relay road precisely
-                     so a client cannot grant itself a prize cape, and adding
-                     it to the join road without that stamp would re-open the
-                     forgery hole. The worker already sends all of these; the
-                     client was discarding them. */
-                }, peerCosmeticsFromWire(_data), peerPassthroughFromWire(_data));
+                others[_pid] = peerFromSnapshot(_data);
+                /* v2.3.3276: a far player's list entry (`fa`) has no look:
+                   parked out of sight at once (src/game/nearJoin.js) */
+                if (_data.fa && nearJoinOn(S)) parkFar(S, others[_pid]);
               }
               S.others = others;
               setPlayerCount(msg.playerCount || Object.keys(others).length + 1);
@@ -3200,6 +3222,9 @@ export function setupWebSocket(ctx) {
                  from twenty more `msg.data.xx || null` lines that have to stay
                  in step with the state_sync loop above and the relay below. */
               Object.assign(S.others[msg.id], peerCosmeticsFromWire(msg.data));
+              /* v2.3.3276: a joiner who is not around us comes as a list
+                 entry (`fa`, no look): parked out of sight (src/game/nearJoin.js) */
+              if (msg.data && msg.data.fa && nearJoinOn(S)) parkFar(S, S.others[msg.id]);
               setPlayerCount(function (prev) {
                 setJoinFlash(true);
                 setTimeout(function () {

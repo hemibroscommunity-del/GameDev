@@ -2413,6 +2413,77 @@ remnant to migrate server-side, not a mode to preserve.
     ~17 x 9 px), terracotta, a shut one grey, a light notch at its door; the
     town's white square only without them; `__btMinimap.buildings`,
     `mp-wheelmap`: WORLD-MAP-PIPELINE "The town's buildings on the minimap".
+  - Since v2.3.3277 YOUR PARTY IS ON THE MAPS -- the owner's "Yes do
+    suggested", the party's map-markers follow-up (ARCHITECTURE-HANDOFF D):
+    each member in the party's blue (the UI's Info blue `#5D93D2`, ringed
+    light then dark), never also a green bro: on the Wheel's minimap 15 px,
+    and OFF the box riding its edge toward them at 11 px (the quest star's
+    clamp, `clampToBox`); on the world map at every zoom, named, the key
+    saying "party"; on the dungeons' and farm's 52 px box blue and ringed (its
+    townsfolk are a blue of their own); `src/game/partyMarks.js`; nothing new
+    sent -- presence v2's roster already carries the party whole wherever they
+    are; `__btMinimap.party`, `__btWorldMap.more.party`; `party-marks` suite,
+    `mp-partymap`: docs/specs/party-on-maps.md.
+  - Since v2.3.3284 A PARTY LASTS -- the owner: "skip clans altogether and just
+    go from party to alliances ... 'party' that stays persistent until you
+    remove yourself from the party and it becomes 'alliance' at 20+ people",
+    then "Go recommended" to the plan's five recommendations; this is step 1 of
+    3 (2: the alliance at 20+ ACTIVE members, back below 15; 3: clans retire
+    into it) -- docs/specs/party.md "A party that lasts":
+    - STORED (`party:<id>`, `party_by_player:<pid>`, the index the truth): it
+      outlives a logout, a reconnect and a deploy; offline members stay
+      (`off`, `seen`), up to `PARTY.KEEP_MAX` 50; written only on roster
+      changes (and a member's `seen` at a join, every 6 h at most), read at a
+      member's join (awaited in join.js, after state_sync); a failed read
+      fails closed (`not-loaded`), a newer `v` untouched; a leader not seen for
+      7 days hands it on at a member's join; a character restart leaves it;
+      the roster echo skips a party with nobody online;
+    - dungeons stay FOUR: the leader pulls the three members nearest them
+      (`_dungeonPullPartyMembers`; the boss table is sized for four);
+    - the strip shows SIX rows (src/game/partyRows.js: you, the online members
+      nearest you, the rest online, the offline most recently seen first),
+      "+N more · M online", "n/50", offline rows without a bar, leaving in two
+      taps; the Saloon lists everyone;
+    - `caps.partykeep`, kill switch `partykeep: false` (the party of four in
+      memory, nothing read or written -- party.test.mjs runs under it);
+      `party-keep` suite, `mp-partykeep`.
+  - Since v2.3.3279 THE OWNER'S SMALL ICONS -- asked what ChatGPT could draw to
+    replace the emoji and code-drawn pictures, the owner sent four sheets
+    ("Here's the art assets for the 'small icons'"), cut by
+    `tools/ui/cut-small-icons.py` from `assets/icons-source/sheet-small-*.png`
+    (found by their own alpha, rows and icon counts asserted, each at the size
+    it is DRAWN -- 64 px marks, 160 px buttons, 128 px popup -- as a shown or
+    warmed picture is held decoded at its own size):
+    - a party member's plate wears the party badge (was 🎉 in the name;
+      `_drawPlateCapsule`'s `party`), the party window its pictures (🎟️ 👑 💀
+      📍), the threat skull is the owner's (a Sprite still called
+      `_skullText`, tinted red as before), each townsperson the talk bubble in
+      the quest badge's place while he has no quest (was an 8 px ★), the chat's
+      party/area/whisper lines their bubbles (`chatLaneOf` reads the 🛡/📍/✉
+      the names still carry), the eight buff badges, and "Defense Lv N" the
+      shield (popup key `defense`, `iconLead`);
+    - the five ability buttons and the right stick's talk, door, sleep and farm
+      steps are the owner's pictures (controlSkin `abilityArt`; a baked `-grey`
+      copy for the greyed states, never a CSS filter; the burst keeps a faint
+      element ring);
+    - `src/data/smallIcons.js`; DOM ones warmed in controlsPreload.js, the
+      canvas's three loaded by `preloadSmallIconTextures`; `__btNpcMarks`, the
+      peer badge probe's `party`/`skull`; `small-icons` suite, `mp-smallicons`:
+      docs/specs/small-icons.md.
+  - Since v2.3.3281 THE OWNER'S BAG ICONS -- the five sheets of the bag-item
+    prompts ("Here are the art assets from the 5 other prompts"), cut by
+    `tools/ui/cut-bag-icons.py` from `assets/icons-source/sheet-bag-*.png`
+    (the Object Studio's magenta key, plus see-through steam; every piece in
+    its grid cell; the item set's 256 px frame), 53 in all:
+    - the sixteen seed packets and crops and the compost sack (`farmIconFor`,
+      data/farmCrops.js), the five dishes (data/dishes.js `icon`), the box trap
+      (`TRAP_ICON_URL`: the TRAP pop-up, the Traps tab, the bag), and the
+      hardened woods and essences under their old file names (the generators
+      that drew those refuse without `--standins`);
+    - the bag's `thumbFor` draws them wherever it is read; the Feed & Seed
+      Seeds tab sells packets and the sack; the Cookhouse's rows lead with what
+      they make; the quick-eat Garden Stew is warmed on the loading screen;
+    - `bag-icons` suite, `mp-bagicons`, `mp-farm`: docs/specs/bag-icons.md.
   - Since v2.3.3209 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
     special attack, (make up a backstory) etc.", "Also include drop tables
@@ -2794,7 +2865,9 @@ unbuildable and unverifiable, and shipped on reasoning alone. They are
 not. `npm install && npm run build && npx vite preview --port 4173` all
 run, `playwright-core` drives the Chromium at `/opt/pw-browsers`, and
 `cd server && npx wrangler dev --port 8787 --local` gives you a real
-worker on localhost. That means a client change CAN be smoke-tested here
+worker on localhost (add `--local-upstream 127.0.0.1:8787` for a `?room=`
+of your own: the route in wrangler.toml otherwise renames the host, TRAPS
+§181). That means a client change CAN be smoke-tested here
 before it ships — see `tools/qa/qa-ui-shots.mjs` (captures every menu)
 and `tools/qa/qa-move-rate.mjs` (drives two real clients against a real
 worker). Do not re-add the "blocked" claim without re-testing it.
@@ -3029,6 +3102,15 @@ Two protocol versions coexist; both must keep working:
       caps outlive a reconnect, and a rolled-back worker would relay an array
       to the room); `quiet-phone` suite (56: two rooms in lockstep, bundled and
       not, identical), docs/specs/quiet-phone.md.
+    - since v2.3.3291 EACH PART FINISHES BEFORE THE NEXT -- found by the
+      architecture review: a bundle is ONE event, so the input gate keeps its
+      parts apart only if the router waits for each handler, and twenty cases
+      did not (farm, shop, daily chest and rewards, capes, the auction house's
+      offers and threads); 24 harvests of one bed in one bundle paid 48
+      carrots, one stack sold 24 times paid 24 times. Every case in
+      `_onMessage` awaits its handler where it calls it; `quiet-phone` §8
+      (late, copying storage) and §9 (a scan of the router) hold it; handoff
+      rule 9's third edge, TRAPS #182.
   - v2.3.3205: THE CAP IS 120 -- the owner: "I think 120 is a good cap limit
     for now" (index.js `MAX_PLAYERS`; `max_players` can still only lower it;
     chatmod `SEEN_MAX` 240, twice the cap). With #887-#891 the room is smooth
@@ -3250,6 +3332,33 @@ Two protocol versions coexist; both must keep working:
       23:59:45); the daily limit counts socket messages 20 to 1 like the bill,
       so Oct 11's playtest was ~4-5% of a day, not 76%. The game's listing
       answered throughout (docs/specs/cloudflare-lab.md "The answer").
+  - v2.3.3276: A JOIN IS TOLD THE PLAYERS AROUND IT, AND THE ROOM'S MEMORY
+    WITH REAL CHARACTERS -- the split plan's Phase 0e and 0f, the owner's "Yes
+    do suggested" (docs/specs/near-join.md):
+    - a phone that joins with `nj: 1` (beside `pres: 2`; `caps.nearjoin`) gets
+      the players AROUND it whole (its zone, in the Wheel within 2,400 px, its
+      party anywhere, its clones) and everyone else as a LIST ENTRY, `fa: 1`:
+      what the lists show (name, colour, level, clan, the inspect card's
+      counters, the Bro picture and count), ~200 B, parked at once
+      (src/game/nearJoin.js `parkFar`); `player_join` the same;
+    - a player's whole look comes in the tick that first sends them whole to
+      that phone, as `pl`, applied BEFORE the tick's players (wsClient.js,
+      `peerFromSnapshot` shared with state_sync), and on the tick after a zone
+      change for everyone around (movement.js `_nearArrive`);
+    - held = sent whole to this session (`_looks`) or a whole relay newer than
+      its snapshot (`_lookWholeSeq` > `_snapSeq`, lookrelay.js stamps it); a
+      delta never; `_looks` pruned once a roster to the last minute's (unpruned
+      19.5 MB at 1,000); the look relay itself unchanged (room-wide);
+    - at 1,000: a login 1,754 -> 1,032 KB, the reconnect storm 1,926 -> 1,485 MB
+      and its joins' room time 13.5 -> 7.0 s; what is left (72%) is the look
+      relay to everyone, the next step ("looks by interest", needs lists on
+      demand, not built); a reconnect joins where it stands, only a login in
+      today's town (TRAPS §180, `tools/qa/load/join-bench.mjs`);
+    - memory (`tools/qa/load/memprobe.mjs`): 1,000 bots 34 MB, played 80 MB,
+      every cap 231 MB -- over the 128 MB limit; the gear ledger up to 88 KB a
+      player, pets 32 KB; fixes not built;
+    - kill switch `nearjoin: false`; `near-join` suite (56, eleven bugs
+      caught), `mp-nearjoin` (8).
 - Bots (v2.3.3271, docs/specs/antibot-review.md): `node tools/qa/load/bot-lab.mjs
   [minutes] [--only=a,b]` runs scripted players against the real room code (in
   memory, simulated clock) and reports what each took home and what botfp made
@@ -3264,6 +3373,12 @@ Two protocol versions coexist; both must keep working:
     bow (7x the kills);
   - one socket can spend the free plan's rows (`chat_mute`, `stats_update` and
     `friend_dm` write a row a message) or keep rooms awake (`?room=<any>`).
+
+  - since v2.3.3292 (the architecture review): a phone's `dodging` stops a
+    player's blow only within 1 s of a roll the worker CHARGED for
+    (movement.js `ROLL`, `_rollOn`; it was unbounded, one move made a player
+    immune to every player) -- docs/specs/roll-window.md, anticheat §10,
+    TRAPS #183; kill switch `rollwindow: false`.
 
   The fix order is in the review. Re-run the lab after any change to a
   harvest, cook, move or hit path.
@@ -3441,7 +3556,9 @@ Two protocol versions coexist; both must keep working:
   The anti-bot review's urgent five, closed in `server/src/flood.js`: a row
   written per message (mute no-ops, a stat flood, offline DMs) -- nothing
   written when nothing changed, a player's own saves PACED (`_saveRpgPaced`,
-  handoff rule 27); `?room=<anything>` made a room awake and billed -- only
+  handoff rule 27; v2.3.3293: `shield_wear` too, and the trade window's
+  weapon lane by its messages, `PACE.T2WPN` -- the architecture review found
+  both writing a row a message, `cost-guard` §9); `?room=<anything>` made a room awake and billed -- only
   the main room and `ROOMS` in wrangler.toml, anything on a local host; no
   limit on messages a socket -- a budget (300 then 120/s, drops, close 4012);
   the room's places held by sockets that never joined, a second join adding

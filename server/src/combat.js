@@ -2197,7 +2197,12 @@ export const combatMethods = {
       /* v2.3.3262: ...unless the worker has them dazed -- a dazed player cannot
          roll (the phone's combatHelpers.dazeRefused), so a roll claimed in a
          daze buys no i-frames against a player (pvplunge.js) */
-      if (checkState.dodging && !(this._pvpDazed && this._pvpDazed(targetPs))) continue; // was in i-frames from attacker's perspective
+      /* v2.3.3292: a history entry holds the roll as the worker allowed it
+         (tick.js); the live state, the fallback, is asked the same question
+         -- the phone's `dodging` alone, with no paid roll behind it, made a
+         player immune to every blow (movement.js ROLL) */
+      const _rolling = checkState === targetPs ? this._rollOn(targetPs, Date.now()) : !!checkState.dodging;
+      if (_rolling && !(this._pvpDazed && this._pvpDazed(targetPs))) continue; // was in i-frames from attacker's perspective
 
       /* v2.3.1726: PvP block goes through the SAME directional arc as
          monster attacks (_blockArcCovers, ±BLOCK_ARC_HALF).  Until now this

@@ -93,6 +93,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(2000);
   await tap(P, 'Close');
   await P.page.waitForTimeout(600);
+  /* v2.3.3283: a real keystroke every 20 s (harness keepAlive): the page logs
+     itself out after two minutes without REAL input, and every walk here is
+     page.evaluate -- on main the oasis's picture showed "You were away, so
+     your character logged out" */
+  const stopAlive = H.keepAlive(P);
 
   phase = 'the way in';
   /* ── 1. the way in ── */
@@ -128,10 +133,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { spot, m: m ? { x: m.x, y: m.y } : null, others: (S.npcs || []).map((n) => n.name) };
   });
   /* (v2.3.3032: and Diego keeps the General Store now that it has a door --
-     mp-wheeldoors looks at him; here only that the town holds the two) */
-  rec.ok('Mayor Bro stands beside the Town Hall\'s steps (with Diego at the General Store, the only townsfolk in the Wheel)',
+     mp-wheeldoors looks at him; here only that the town holds its cast.
+     v2.3.3283: the cast is the table's, not "the two" -- Ace, Blacksmith Bro
+     and Lil Bro came in v2.3.3067 and Beastmaster Bro in v2.3.3121
+     (WHEEL_TOWNSFOLK); "exactly Mayor Bro and Diego" failed on main.  Still
+     none of today's town's own) */
+  const { WHEEL_TOWNSFOLK } = await import(H.REPO + '/src/data/wheelBuildingDoors.js');
+  const cast = ['Mayor Bro', ...WHEEL_TOWNSFOLK.map((t) => t.name)];
+  rec.ok(`Mayor Bro stands beside the Town Hall's steps (with the Wheel's own cast round town: ${cast.slice(1).join(', ')}, and nobody else)`,
     !!mayor.spot && !!mayor.m && Math.hypot(mayor.m.x - mayor.spot.x, mayor.m.y - mayor.spot.y) < 4
-      && mayor.others.length === 2 && mayor.others.includes('Mayor Bro') && mayor.others.includes('Diego'), mayor);
+      && mayor.others.length === cast.length && cast.every((n) => mayor.others.includes(n)), { ...mayor, cast });
   if (mayor.m) {
     await H.hopTo(P, mayor.m.x + 10, mayor.m.y + 30, { tries: 30 });
     await P.page.waitForTimeout(1200);
@@ -203,6 +214,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   phase = 'frost';
   /* ── 6. Frost Ridge ── */
+  /* v2.3.3283: the WORKER keeps the bro alive out there.  FROST is Frost
+     Ridge's second stage, where monsters stand since v2.3.3013 (levels
+     6-10), and the worker decides HP: on main they killed him on arrival
+     (its picture: "Entering Town", the death's trip), and the walk to the
+     oasis set off from today's town and never reached the dunes -- "its 0
+     palms are drawn". */
+  const me = await H.readState(P, (S) => S.myId);
+  const god = await H.devOp(wsPort, 'vitals', me, { god: true, godMinutes: 10 }).catch(() => null);
+  rec.ok('the worker keeps the bro alive out among the monsters (guard: /dev/vitals god)', !!god && god.ok && !!god.god, god);
   await H.hopTo(P, FROST.x, FROST.y, { tries: 140 });
   await P.page.waitForTimeout(6500);   /* DROP_MS (4 s) and a little */
   const frost = await P.page.evaluate(() => {
@@ -270,12 +290,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     /* v2.3.3300: by way of town -- from Frost Ridge the straight line to the
        dunes crosses the open sea between the spokes, five times as much of it
-       on the long Wheel -- and where the walk ended goes in the record */
+       on the long Wheel */
     await H.hopTo(P, G.arrival.x, G.arrival.y, { step: 200 });
-    const reached = await H.hopTo(P, best.x, best.y + best.r + 110, { step: 200 });
+    const arrived = await H.hopTo(P, best.x, best.y + best.r + 110, { step: 200 });
     await P.page.waitForTimeout(4000);
-    const at = await H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y) }));
-    console.log(`    oasis walk: ${JSON.stringify({ reached, at, to: [Math.round(best.x), Math.round(best.y + best.r + 110)] })}`);
+    /* v2.3.3283: where the walk ended, so a miss says why */
+    const at = await H.readState(P, (S) => ({ zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y) }));
+    rec.ok('the walk reaches the oasis, still in the Wheel (guard)',
+      arrived && at.zone === 'wheel' && Math.hypot(at.x - best.x, at.y - (best.y + best.r + 110)) < 60, { arrived, at, pool: best });
     const oasis = await P.page.evaluate(({ px, py }) => {
       const W = window.__btWheelObjects;
       return W.near(px, py, 700).filter((o) => o.id === 'palm').map((o) => ({ i: o.i, x: o.x, y: o.y, s: W.sprite(o.i) }));
@@ -343,4 +365,5 @@ export async function run({ browser, wsPort, webPort, rec }) {
     back === 'town' && after.pages.length === 0 && after.stats.drawn === 0 && after.stats.pages === 0, { back, exit, walkEnd, after });
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));
   if (renderThrew()) console.log('   first render throw:', renderThrew().slice(0, 1500));
+  stopAlive();
 }

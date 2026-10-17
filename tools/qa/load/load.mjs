@@ -168,7 +168,12 @@ async function startWorker(dir, port) {
      WebSocket message is an event, so it is off unless --observability asks
      for it: the cost being measured is the room's, not the dev tooling's. */
   const env = Object.assign({}, process.env, OPT.observability ? {} : { X_LOCAL_OBSERVABILITY: 'false', X_LOCAL_EXPLORER: 'false' });
+  /* v2.3.3280: --local-upstream keeps request.url on 127.0.0.1, so the
+     worker makes the `loadtest` room: wrangler.toml's custom-domain route is
+     otherwise the host local mode reports, and a room of any name is made only
+     on a local host (flood.js roomNameFor, v2.3.3274; TRAPS §181) */
   const proc = spawn('npx', ['wrangler', 'dev', '--port', String(port), '--local', '--ip', '127.0.0.1',
+    '--local-upstream', `127.0.0.1:${port}`,
     '--persist-to', state, '--var', 'ADMIN_KEY:load-test-' + process.pid,
     /* v2.3.3203: --inspector-port N: the runtime's own debugger on N, so a
        CPU profile of the real room can be taken while it runs (cdpprof.mjs) */

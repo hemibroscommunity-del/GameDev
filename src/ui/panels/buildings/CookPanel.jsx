@@ -5,6 +5,7 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
+import { thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx'; /* v2.3.3281: a recipe row's picture is the bag's */
 /* === CookPanel — buildingPanel === 'cook' sub-panel === */
 /* v2.3.879: extracted verbatim from the buildingPanel === 'cook'
    clause in BroTown.jsx (the cooking station: pick a fish, hit the
@@ -596,7 +597,24 @@ export function CookPanel(props) {
            token, requirement line, button treatment), never by dimming
            the whole row. Recipe names must never look absent. */
       }
-    }, /*#__PURE__*/React.createElement("span", {
+    }, mealsOn && recipe.makes && thumbFor(recipe.makes) ? /*#__PURE__*/React.createElement("img", {
+      /* v2.3.3281: what the row makes, as the bag draws it -- the owner's
+         dish pictures (data/dishes.js `icon`), the tonics' bottles -- where a
+         glyph stood; the glyph stays for a recipe with no picture */
+      src: thumbFor(recipe.makes),
+      alt: "",
+      draggable: false,
+      "data-cook-pic": recipe.makes,
+      style: {
+        width: 30,
+        height: 30,
+        objectFit: 'contain',
+        flex: 'none'
+      },
+      onError: function (e) {
+        e.currentTarget.style.visibility = 'hidden';
+      }
+    }) : /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 18
       }

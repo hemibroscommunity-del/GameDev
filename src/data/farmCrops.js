@@ -8,7 +8,10 @@
  *
  * `look` is the window's and the bag's picture for each thing, a glyph until
  * crop art is made (the daily chest and the golden ticket shipped the same
- * way); docs/ART-WISHLIST.md "The farm" has the prompts for the real ones. */
+ * way); docs/ART-WISHLIST.md "The farm" has the prompts for the real ones.
+ * v2.3.3281: made -- the owner's seed packets, crops and compost sack
+ * (farmIconFor below); the glyph stays the fallback (the trade window's, and
+ * an <img> that fails). */
 
 export const FARM = {
   FREE_BEDS: 6,
@@ -98,6 +101,26 @@ export const FARM_ITEM_NAMES = FARM_CROP_ORDER.reduce((m, id) => {
   m[c.item] = c.name;
   return m;
 }, { [FARM.COMPOST]: 'Compost' });
+
+/* ═══ v2.3.3281: THE OWNER'S BAG ICONS ═══
+   The owner's sheets (docs/art/FARM-ART-PROMPTS.md, cut by
+   tools/ui/cut-bag-icons.py): every seed its packet (brown paper for the
+   everyday crops, navy and gold for the magic ones), every crop as harvested,
+   compost its sack.  public/icons/items/seed-<crop>.webp, crop-<crop>.webp
+   (the crop's id with '-' for '_'), compost.webp.  A crop a newer worker grows
+   with no picture yet falls to its glyph where the <img> fails. */
+export const FARM_ICON_V = '?v=2.3.3281';
+const farmIcon = (name) => '/icons/items/' + name + '.webp' + FARM_ICON_V;
+export const farmSeedIcon = (id) => farmIcon('seed-' + String(id).replace(/_/g, '-'));
+export const farmCropIcon = (id) => farmIcon('crop-' + String(id).replace(/_/g, '-'));
+export const FARM_COMPOST_ICON = farmIcon('compost');
+export function farmIconFor(key) {
+  if (key === FARM.COMPOST) return FARM_COMPOST_ICON;
+  const s = farmCropOfSeed(key);
+  if (s) return farmSeedIcon(s);
+  const c = farmCropOfItem(key);
+  return c ? farmCropIcon(c) : null;
+}
 
 export function farmLookFor(key) {
   if (key === FARM.COMPOST) return FARM_LOOK.compost;

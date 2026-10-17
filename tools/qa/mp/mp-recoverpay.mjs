@@ -260,9 +260,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   let stopAlive = false;
+  /* v2.3.3283: held while the page is logged out on purpose (step D): since
+     v2.3.3034 the next key or touch after an idle logout IS "I'm back", so a
+     keep-alive press landing in step D's 2.5 s took the banner down and
+     reconnected before it was read (on main: status idle, banner gone), and
+     then the tree's tap found the session already coming back */
+  let aliveHold = false;
   (async () => {
     while (!stopAlive) {
-      await P.page.keyboard.press('Control').catch(() => {});
+      if (!aliveHold) await P.page.keyboard.press('Control').catch(() => {});
       for (let i = 0; i < 40 && !stopAlive; i++) await P.page.waitForTimeout(500).catch(() => {});
     }
   })();
@@ -356,6 +362,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (want('D')) {
     /* D. the page's own idle logout (two minutes with no touch: a black
        screen waited out) */
+    aliveHold = true;
     await P.page.evaluate(() => { const S = window._gameState.current; if (S.channel && S.channel.idleLogout) S.channel.idleLogout(); });
     await P.page.waitForTimeout(2500);
     const out = await netState(P);
@@ -387,6 +394,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     } else {
       rec.ok('a tree near you (guard)', false, {});
     }
+    aliveHold = false;
     const back = await H.waitFor(P, (S) => ({ status: S._realtimeStatus, live: !!(S.channel && S.channel.isLive()), hold: !!S._netHold,
       banner: !!document.getElementById('bt-resume-banner') }),
       (v) => v.status === 'connected' && v.live && !v.hold && !v.banner, { timeout: 20000, label: 'back in' }).catch(() => null);

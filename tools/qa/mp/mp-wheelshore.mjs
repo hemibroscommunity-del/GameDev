@@ -141,8 +141,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
          meeting the bank */
       const edge = await P.page.evaluate(({ x, y, fdy }) => [window.__btIsSolid(x, y - fdy - 2), window.__btIsSolid(x, y - fdy + 2)], { x: s.x, y: s.shoreY, fdy: feetDy });
       const s0 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+      /* v2.3.3283: walk until he STOPS, not for a fixed 2.4 s.  This box draws
+         a frame every ~400 ms and a frame moves at most three 60 fps steps
+         (S._dtScale's cap), so 2.4 s carried him 120-128 px of the RUN (150) to
+         the bank, and on main he was measured 22-30 px "short" of it while
+         still walking.  Stopped = no movement for 1.5 s, after the old 2.4 s,
+         15 s at the most. */
       await P.page.keyboard.down(key);
-      await P.page.waitForTimeout(2400);
+      {
+        const t0 = Date.now();
+        let last = null, movedAt = Date.now();
+        while (Date.now() - t0 < 15000) {
+          await P.page.waitForTimeout(500);
+          const p = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+          if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 0.5) movedAt = Date.now();
+          last = p;
+          if (Date.now() - t0 >= 2400 && Date.now() - movedAt >= 1500) break;
+        }
+      }
       await P.page.keyboard.up(key);
       await P.page.waitForTimeout(300);
       const s1 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y, zone: S.currentZone }));

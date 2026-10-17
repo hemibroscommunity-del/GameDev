@@ -151,7 +151,7 @@ const CAP_GATES = [
   'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'broVerify', 'broCount' /* v2.3.3255: the wallet's Hemi Bro count */,
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
-  'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'petLoot', 'potionBag', 'prog3',   /* v2.3.3120: 'pets' gone with the 20% capture */
+  'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'partykeep' /* v2.3.3284: a party that lasts (party.js) */, 'petLoot', 'potionBag', 'prog3',   /* v2.3.3120: 'pets' gone with the 20% capture */
   'prog3Chan', 'prog3elem' /* v2.3.2512 */, 'prog3shared' /* v2.3.2592 */, 'prog3rel' /* v2.3.2680 */, 'gearq' /* v2.3.2664 */, 'prog3x', 'questTrack', 'sponsor', 'store',
   'storeGear' /* v2.3.2531 */, 'storeGearRef' /* v2.3.2551 */, 'storeChat' /* v2.3.2621 */, 'storeOffer' /* v2.3.2623 */,
   't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',
@@ -195,6 +195,7 @@ const CAP_GATES = [
   'tierxp' /* v2.3.3251: each tier's harvest XP twice the one before (server/src/gathering.js GATHER_TIER_XP) -- lower case, a kill switch; off with nodehp too */,
   'xpdecay' /* v2.3.3251: XP fades 5+ levels below you, harvests and fights (server/src/xpdecay.js) -- lower case, a kill switch */,
   'presence2' /* v2.3.3250: far players only while the world map is open, the online list, far copies parked (server/src/presence2.js) -- lower case, a kill switch */,
+  'nearjoin' /* v2.3.3276: a join is told the players around it whole and the rest as list entries, a look sent when its player comes around (server/src/nearjoin.js) -- lower case, a kill switch */,
   'bundle' /* v2.3.3254: several messages in one frame (server/src/bundle.js) -- lower case, a kill switch (the worker always takes one) */,
   'quiet' /* v2.3.3254: the quiet phone -- 66 ms moves with nobody near, a steady walk held out of a fight, keepalives and the look only when needed (src/game/quietPhone.js) -- lower case, a kill switch */,
   'pvpbalance' /* v2.3.3260: hits between players rolled by the worker, whole (the roll a monster takes), one sword hit a swing, paid specials (server/src/pvpbalance.js) -- lower case, a kill switch */,

@@ -38,7 +38,49 @@ export const QUEST_ZONE_GATE = (() => {
   return m;
 })();
 
+/* ═══ v2.3.3292: A ROLL IS ONLY AS LONG AS THE ONE YOU PAID FOR ═══
+   `dodging` on a move is the phone's word that it is mid-roll, and the two
+   player-hit paths skip a blow while it is true (combat.js
+   _resolvePvPAttack's rewind, pvpextras.js _strikePlayer).  It had no limit:
+   one move saying `dodging: true` left the flag up until a later move said
+   otherwise, so a phone that never said otherwise took no damage from any
+   player -- No man's land loot, wagered duels, the arena.  Found by the
+   architecture review (2026-10-17); measured on the real room code, five
+   sword hits on a "rolling" player did nothing.
+
+   The roll's stamina is already the worker's to charge (_handleAbilityUse:
+   'dodge', 'lunge', 'retreat' -- the three moves the phone plays as a roll,
+   game/dodge.js).  So the charge opens the window, and the claim counts
+   only inside it.  MAX_MS: the longest roll a phone plays is 700 ms
+   (dodgeWindowMs: 250 + up to 250 Endurance + up to 200 Reflexes); the rest
+   is the lag-comp history's 300 ms, so a blow judged against a moment late
+   in a real roll still finds it.  An honest roll is unchanged; a claim with
+   no paid roll behind it buys nothing.  `rollwindow: false` in the live flags
+   trusts the claim as before (liveops). */
+export const ROLL = Object.freeze({
+  MAX_MS: 1000,
+  PAID: Object.freeze(['dodge', 'lunge', 'retreat']),
+});
+
 export const movementMethods = {
+  /* v2.3.3292: the window a paid roll opens (see ROLL above) */
+  _rollStamp(ps, now) {
+    if (ps) ps._rollUntil = (now || Date.now()) + ROLL.MAX_MS;
+  },
+
+  /* v2.3.3292: is this player rolling, as far as a blow from a player is
+     concerned -- the phone says so AND it paid for a roll that is not over */
+  _rollOn(ps, now) {
+    if (!ps || !ps.dodging) return false;
+    if (this._rollWindowOff()) return true;
+    return (now || Date.now()) < (ps._rollUntil || 0);
+  },
+
+  _rollWindowOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'rollwindow') && !f.rollwindow);
+  },
+
   /* v2.3.1625: the ONE zone gate.  Every path that lets a client choose
    * ps.z must run this -- `move` and `join` today.  Membership, not
    * shape: an unlisted string never reaches the zone-keyed maps
@@ -439,6 +481,9 @@ export const movementMethods = {
       // Lifesteal damage tracking is per-zone; clear so a kill
       // in the new zone can't refund off old-zone monster IDs.
       ps.dmgFromMonster = {};
+      /* v2.3.3276: a near-join phone is sent, on its next tick, the look and
+         place of everyone around where it arrived (nearjoin.js) */
+      if (session.nearJoin) session._nearArrive = true;
       if (ps.z !== 'town' && ps.z !== 'farm_home') {
         // Combat zone -- send the new zone's monster + gather +
         // loot state so the client can render them.

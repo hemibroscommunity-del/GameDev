@@ -235,7 +235,7 @@ const dist = () => Math.hypot(B.x - A.x, B.y - A.y);
   const r = await lunge('bp_lu_b');
   check('a shield raised AT the lunge blocks it: blocked, no daze -- and it connected (no whiff)', !!r.hit && r.hit.blocked === true && r.hit.st === undefined && !r.rej && !(B._dazeUntil > T), r);
   setup();
-  B.dodging = true;
+  B.dodging = true; room._rollStamp(B, T);   /* v2.3.3292: a PAID roll -- the claim alone buys nothing (anticheat §10) */
   const r2 = await lunge('bp_lu_b');
   check('a roll\'s i-frames make the lunge a miss (a whiff, no daze)', !r2.hit && !!r2.rej && r2.rej.reason === 'whiff' && !(B._dazeUntil > T), r2);
   setup();

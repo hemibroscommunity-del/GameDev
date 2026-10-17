@@ -141,6 +141,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(2000);
   await tap(P, 'Close');
   await P.page.waitForTimeout(600);
+  /* v2.3.3283: a real keystroke every 20 s (harness keepAlive), against the
+     page's two-minute idle logout: the frame-paced walk below takes ~2 minutes on a slow box,
+     and on its first run the worker had dropped him by "the worker followed
+     you" ("server": null, the picture "You were away") */
+  const stopAlive = H.keepAlive(P);
 
   /* ── 0. a swatch made in the Ground Studio, on this site ── */
   const bytes = await plant(P);
@@ -227,8 +232,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`...and it is on screen, laid in its own colours (${(100 * (nMag + nCyan) / all).toFixed(0)}% of the screen)`,
     nMag > all * 0.03 && nCyan > all * 0.03, { nMag, nCyan, all });
   const nYard = px.count(near(ORANGE)) + px.count(near(PURPLE)), nBlend = px.count(near(YELLOW)) + px.count(near(GREEN));
-  rec.ok(`...with the yards beyond it, and no blend laid where the square meets them, the pair mixing on its two pictures (${(100 * nBlend / all).toFixed(2)}% of the screen in the blend's colours)`,
-    nYard > all * 0.03 && nBlend < all * 0.002, { nYard, nBlend, all });
+  /* v2.3.3283: the yards need 1% of the screen, not 3%.  Since the designed
+     town (v2.3.3031: the square 28% bigger, the town's open ground grass but
+     for aprons and verges) the yards begin at the bottom of the arrival's
+     screen, half under the trial's readout -- 2.87% on main, in their own
+     colours; a yard not laid in them would be ~0 (no plan colour is near). */
+  rec.ok(`...with the yards beyond it (${(100 * nYard / all).toFixed(1)}% of the screen), and no blend laid where the square meets them, the pair mixing on its two pictures (${(100 * nBlend / all).toFixed(2)}% of the screen in the blend's colours)`,
+    nYard > all * 0.01 && nBlend < all * 0.002, { nYard, nBlend, all });
   /* v2.3.2963: daylight only in the Wheel, for now -- the owner: "Yeah make it
      daylight only for now".  The game clock set to night: the Wheel stays at
      midday, its ground in its own colours to the pixel, the sun in the bar */
@@ -252,9 +262,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ['04-back', ARRIVAL.x + 200, ARRIVAL.y + 96],
   ];
   let maxResident = 0;
+  /* v2.3.3283: hops paced by this page's frames (harness hopGap): on a box
+     drawing a frame every 400 ms a 260 ms hop outran any loader */
+  const pace = await H.hopGap(P);
+  console.log(`    the walk: a 100 px hop every ${pace.gap} ms (a frame every ${pace.frameMs} ms here)`);
   for (const [name, x, y] of legs) {
     const t0 = Date.now();
-    const arrived = await H.hopTo(P, x, y, { tries: 60 });
+    const arrived = await H.hopTo(P, x, y, { tries: 60, gap: pace.gap });
     const s = await stats(P);
     maxResident = Math.max(maxResident, s.resident);
     console.log(`    ${name} -> ${arrived ? 'there' : 'NOT there'} in ${((Date.now() - t0) / 1000).toFixed(0)} s: ${JSON.stringify(s)}`);
@@ -263,7 +277,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   const walked = await stats(P);
   rec.ok('walking lays new pieces', walked.loads > 30, walked);
-  rec.ok('...ahead of you: at a brisk walk few pieces are on screen before they are laid', walked.popIns <= 6, walked);
+  rec.ok(`...ahead of you: at a brisk walk (100 px every ${pace.gap} ms) few pieces are on screen before they are laid`, walked.popIns <= 6, { ...walked, pace });
   rec.ok('...and frees them behind: memory stays bounded however far you go', maxResident <= 70 && walked.resident <= 70, { maxResident, now: walked.resident });
   rec.ok('...every piece laid, and every swatch picture unpacked', walked.failures === 0 && walked.unreadable === 0, walked);
   rec.ok(`...each piece laid in the worker in ${Math.round(walked.sumMs / Math.max(1, walked.loads))} ms on average`, walked.loads > 0 && walked.maxMs < 2000, walked);
@@ -317,4 +331,5 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const running = await P.page.evaluate(() => window.__btWorldTrial.running());
   rec.ok('...and the worker is stopped a few seconds later, freeing the plan and the swatches', running === false, { running });
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));
+  stopAlive();
 }

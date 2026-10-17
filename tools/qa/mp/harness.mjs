@@ -305,8 +305,15 @@ export async function startWorker(port) {
      worker sets it just before and clears it after. */
   const extraVars = String(process.env.BT_WRANGLER_VARS || '').split(',').map((s) => s.trim()).filter(Boolean)
     .flatMap((kv) => { const i = kv.indexOf('='); return i > 0 ? ['--var', kv.slice(0, i) + ':' + kv.slice(i + 1)] : []; });
+  /* v2.3.3280: --local-upstream keeps the worker's request.url on 127.0.0.1.
+     wrangler.toml's custom-domain route (api.brotown.net, v2.3.3142) is
+     otherwise what local mode puts in request.url, and since v2.3.3274 the
+     worker makes a room of any name only on a local host (flood.js
+     roomNameFor): every scenario with its own `?room=` was "no such room"
+     and its first socket an error (TRAPS §181). */
   const proc = spawn('npx', ['wrangler', 'dev', '--port', String(port), '--local',
-    '--ip', '127.0.0.1', '--persist-to', state, '--var', `ADMIN_KEY:${ADMIN_KEY}`, ...extraVars], {
+    '--ip', '127.0.0.1', '--local-upstream', `127.0.0.1:${port}`,
+    '--persist-to', state, '--var', `ADMIN_KEY:${ADMIN_KEY}`, ...extraVars], {
     cwd, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   });
   let log = '';
@@ -1253,6 +1260,77 @@ export async function devOp(wsPort, op, playerId, body) {
     body: JSON.stringify(Object.assign({ playerId }, body || {})),
   });
   return res.json();
+}
+
+/* ═══ v2.3.3283: A WALK PACED BY THE PAGE'S FRAMES ═══
+ * hopTo moves the bro 100 px a hop whatever the page's frame rate, and the
+ * Wheel's ground lays its pieces once a frame (wheelGround.js: three in
+ * flight, each back no sooner than the frame after its ask).  On a phone at
+ * 60 fps a 260 ms hop is ~16 frames, about five of the worker's round trips;
+ * on a box whose page draws a frame every 400 ms the same hop is under one
+ * frame, and no loader could keep up -- on main, mp-wheeltrial's walk popped
+ * 125 pieces in, and mp-wheelnet's short pieces were all freed behind the
+ * walk before one could be mended.  This is the gap for a hop that gives the
+ * loader as many round trips as a phone's: `frames` of this page's frames
+ * (a round trip is one where a frame outlasts the worker's ~90 ms piece),
+ * never under `min` -- 260 ms on any page drawing faster than 104 ms a
+ * frame, so a fast machine walks exactly as before.  The game's own walk
+ * moves at most 3 steps a frame (dtScale), so even paced the walk is still
+ * several times faster than the bro could go on that page. */
+export async function hopGap(P, { frames = 2.5, min = 260 } = {}) {
+  const ms = await P.page.evaluate(() => new Promise((res) => {
+    const d = [];
+    let last = null;
+    const tick = (now) => {
+      if (last != null) d.push(now - last);
+      last = now;
+      if (d.length >= 10) { d.sort((a, b) => a - b); res(d[d.length >> 1]); } else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }));
+  return { gap: Math.max(min, Math.round(frames * ms)), frameMs: Math.round(ms) };
+}
+
+/* ═══ v2.3.3283: OPEN THE OLD LANDS, AS THE CHECKS ALWAYS DID ═══
+ * The checks that walk the old lands opened them by accepting tut_1 to tut_4
+ * at once (each opens one land: QUEST_ZONE_GATE, movement.js).  Since
+ * v2.3.3179 the worker refuses a step taken ahead of the step before it
+ * (quests.js _questBarred 'order'), so only tut_1 was taken: Frost Ridge
+ * opened, and the Verdant Wilds, the Wind Dunes and the Flame Fields stayed
+ * shut ("not on your map yet") -- mp-monstertrim and mp-townscenery never
+ * reached Ember on main.  tut_1 is still accepted the player's way (its sword
+ * and shield are paid on accept), and the admin road's /dev/unlock marks the
+ * first quest of every other gated land 'active': the state the old loop
+ * left, paying nothing.  Resolves once the page has heard tut_4 is open. */
+export async function openLands(P, wsPort) {
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } });
+  });
+  await P.page.waitForTimeout(800);
+  const id = await readState(P, (S) => S.myId);
+  const r = await devOp(wsPort, 'unlock', id).catch((e) => ({ ok: false, error: String(e && e.message || e) }));
+  await waitFor(P, (S) => (S.rpg && S.rpg._quests && S.rpg._quests.tut_4) || null, (v) => !!v,
+    { timeout: 10000, label: 'the lands open' }).catch(() => null);
+  return r;
+}
+
+/* ═══ v2.3.3283: A REAL KEYSTROKE EVERY 20 s ═══
+ * The page logs itself out after two minutes without REAL input (wsClient
+ * idleLogout), and a scenario that walks by page.evaluate makes none however
+ * busy it looks -- the worker then has no player ("server": null).  Control
+ * does nothing in the game (Shift is the sprint since v2.3.3006); mp-elemhits
+ * and mp-beastmaster carry the same loop.  Timed in node, so a closed page
+ * ends it instead of making it spin.  Returns the function that stops it. */
+export function keepAlive(P, everyMs = 20000) {
+  let stop = false;
+  (async () => {
+    while (!stop && !P.page.isClosed()) {
+      await P.page.keyboard.press('Control').catch(() => {});
+      for (let t = 0; t < everyMs && !stop; t += 500) await new Promise((r) => setTimeout(r, 500));
+    }
+  })();
+  return () => { stop = true; };
 }
 
 export async function hopTo(P, tx, ty, { step = 100, gap = 260, tries = 40 } = {}) {

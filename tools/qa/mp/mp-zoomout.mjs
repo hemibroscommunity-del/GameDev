@@ -32,8 +32,13 @@
  * Pictures in tools/qa/mp/out/zoomout-{now,was}-{arrival,square,land}.png.
  */
 import * as H from './harness.mjs';
+import { PLAN } from '../../../public/tools/world/plan.js';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+/* v2.3.3283: the Town Hall's own scale on top of the town's (see below) */
+const HALL_ID = PLAN.town && PLAN.town.hallLot ? PLAN.town.hallLot.id : null;
+const HALL_K = (PLAN.town && PLAN.town.hallScale) || 1;
 
 const PHONE = { width: 390, height: 844 };
 const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
@@ -107,7 +112,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.screenshot({ path: join(OUT, `zoomout-${tag}-arrival.png`) });
 
     const bs = (await buildingsDrawn(P)).filter((o) => isBuilding[o.id]);
-    const off = bs.filter((o) => !pictureW[o.id].some((w) => Math.abs(o.w - K * w) < 1.5));
+    /* v2.3.3283: the Town Hall is drawn `hallScale` (1.18) bigger than the rest
+       since v2.3.3031 (placing.js kindScale: "about 15-20% larger than normal
+       buildings so you instantly know 'this is the center'"), read here from
+       the plan; on main this check counted it off at both zooms */
+    const off = bs.filter((o) => !pictureW[o.id].some((w) => Math.abs(o.w - K * (o.id === HALL_ID ? HALL_K : 1) * w) < 1.5));
 
     /* the square, from its south-west corner: the Town Hall and the saloon */
     await H.hopTo(P, arrival.x - 300, arrival.y + 120);
@@ -149,8 +158,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`...the bro ${now.arrival.bodyCss} CSS px tall, the owner's 64 (each picture px ${dpp(now)} device px on a 3x phone, ${dpp(was)} before)`,
     now.arrival.bodyCss >= 63 && now.arrival.bodyCss <= 65.5 && dpp(now) >= 0.88, { bodyCss: now.arrival.bodyCss, dpp: dpp(now), was: dpp(was) });
   /* 2. the buildings */
+  /* v2.3.3283: three on the arrival's screen, not four: since the town was laid
+     roomier (v2.3.3022) and its square grew (v2.3.3031) the Town Hall, the
+     Saloon and the Hotel are what the arrival shows at 0.77 (five at 0.64);
+     the Town Hall among them, so its own size is checked too */
   rec.ok(`the town's buildings are drawn 1.15x their pictures at either zoom (${now.bs.length} near the arrival, ${was.bs.length} before)`,
-    now.bs.length >= 4 && !now.off.length && was.bs.length >= 2 && !was.off.length,
+    now.bs.length >= 3 && now.bs.some((o) => o.id === HALL_ID) && !now.off.length && was.bs.length >= 2 && !was.off.length,
     { now: now.bs.slice(0, 6), offNow: now.off, offWas: was.off });
   /* 3. the ground */
   rec.ok('the ground under the wider view is laid, at the arrival and out on the land, nothing in flight and no piece failed',

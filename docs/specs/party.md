@@ -39,7 +39,7 @@ unknown types instead of validating them.
 
 | constant | value | why |
 |---|---|---|
-| `MAX_SIZE` | 4 | matches `dungeon.js PARTY_HP_SCALE`'s 4-slot table |
+| `MAX_SIZE` | 4 | matches `dungeon.js PARTY_HP_SCALE`'s 4-slot table (v2.3.3284: the cap under `partykeep: false`; `KEEP_MAX` 50 otherwise, and a dungeon still takes four) |
 | `INVITE_TTL` | 60s | invite lifetime (tick-swept) |
 | `VITALS_MS` | 2s | roster re-echo cadence (live HP/zone) |
 | `OFFLINE_GRACE_MS` | 120s | 'away' window before a dropped member is removed |
@@ -48,7 +48,11 @@ Client mirror: `PARTY_INVITE_TTL_MS` in `src/networking/gameEvents.js`
 (v2.3.1970) must track `INVITE_TTL`; a shorter client clock would hide a
 still-valid invite.
 
-## Storage: none, deliberately
+## Storage: none, deliberately (until v2.3.3284)
+
+**Since v2.3.3284 a party is stored and lasts** -- see "A party that lasts"
+below; what follows is the party of four in memory, which the kill switch
+`partykeep: false` puts back.
 
 A party holds no escrowed value, so per handoff rule 11 in-memory is the
 correct tier — a worker deploy wipes rosters and loses nothing but a
@@ -134,3 +138,76 @@ rebroadcast:
   §7 share math needs its predicates re-run — see the danger note).
 - Contribution-role weighting (item D's "optional later"; touching the
   §7 share math needs its predicates re-run — see the danger note).
+
+## A party that lasts (v2.3.3284) — step 1 of the party → alliance plan
+
+The owner, on clans: *"I think I'd rather skip clans altogether and just go
+from party to alliances. Maybe it just gets called "party" that stays
+persistent until you remove yourself from the party and it becomes
+"alliance" at 20+ people which opens up the new features you're talking
+about"*, then *"Go recommended"* to the plan's five recommendations:
+
+1. only ACTIVE members count toward 20 (played in the last 7 days, level 5+);
+2. it becomes an alliance at 20 and stays one until it drops below 15;
+3. dungeons stay 4 at a time: the 4 nearest the entrance go in together;
+4. the party window shows about 6 members, online first, then nearest;
+5. existing clans become parties with the same members and keep their tag.
+
+The build order: **1. the party lasts and grows** (this section), 2. the
+alliance at 20+ (tag, wars, leaderboard), 3. clans retire into it.
+
+### What changes
+
+- **Kept by the server.** A party is stored (`party:<partyId>`, with
+  `party_by_player:<pid>` naming each member's party): it outlives a
+  logout, a reconnect and a worker deploy. You stay in it until you leave,
+  or the leader removes you. An offline member is no longer removed after
+  `OFFLINE_GRACE_MS`; they stay on the roster, shown offline with when they
+  were last on (`off: 1`, `seen` seconds ago).
+- **Bigger.** Up to `PARTY.KEEP_MAX` (50). The roster each member is sent
+  carries `max`.
+- **The leader.** Leaving passes it to the member who has been in longest
+  (as before). A leader not seen for `PARTY.LEADER_IDLE_MS` (7 days) hands it
+  on at the next join of a member: to the longest-standing member online
+  then. Lazy, never on a timer (handoff rule 12).
+- **Dungeons stay 4.** A leader's `dungeon_start` pulls at most
+  `DUNGEONS.PARTY_HP_SCALE.length - 1` (3) members, the eligible ones
+  nearest the leader (`_dungeonPullPartyMembers`): the boss table is sized
+  for 4.
+- **The window shows 6.** The party strip (PartyHUD.jsx) shows you, then the
+  members online nearest you, then the rest online, then the offline ones
+  most recently seen first, at most `PARTY_ROWS` 6 rows and "+N more"; the
+  Saloon's window lists everyone. Leaving takes two taps now (you stay until
+  you leave, so a stray tap must not drop you).
+
+### Storage
+
+| key | value |
+|---|---|
+| `party:<partyId>` | `{v, id, leader, members: [pid, oldest first], meta: {pid: {name, level, at, seen}}, ts}` |
+| `party_by_player:<pid>` | the partyId: the member's own word for which party they are in |
+
+- **Written only when the roster changes** (a join, a leave, a kick, a new
+  leader, a disband) and at a member's join when their `seen` is older than
+  `PARTY.SEEN_WRITE_MS` (6 h) or their level or name changed: no write on a
+  move, a vital or a reconnect storm (cost-guard). Fire-and-forget (handoff
+  rule 10).
+- **Read at a join**, after state_sync as before: the member's index, then
+  the record if no member of it has loaded it yet; one record in memory per
+  party (`_parties`, `_partyByPlayer` index every member, online or not).
+  A record whose `v` is newer than `PARTY.V` is left whole and untouched; a
+  record that does not list its reader drops the reader's index.
+- **A failed read fails closed** (`session._partyUnknown`): that session can
+  neither accept nor send invites ("Party not loaded") until it rejoins, so a
+  lost read can never put a player in two parties.
+- **A character restart** (`_resetCharacterData`) leaves the party.
+
+### Deploy order and the switch
+
+- `caps.partykeep` tells the game parties last and how big they get; an
+  older game shows offline members as "away" and every member in its strip.
+- Kill switch `partykeep: false`: parties are as before v2.3.3284 for
+  everything after it — in memory only, 4 at most for a new member, an
+  offline member removed after the grace — and nothing is read or written.
+  Records stored before stay as they were and are read again when it is
+  turned back on.

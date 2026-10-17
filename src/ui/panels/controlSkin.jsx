@@ -269,8 +269,9 @@ export function SkinTag(props) {
  *
  * The whirlwind and the starburst had no picture in the game -- Whirl wore the
  * 🌀 emoji, which every phone draws differently, and Spec a ✶ character -- so
- * they are drawn here in SVG, flat colour bands under a dark outline like the
- * painted icons, with a grey palette for the greyed states. */
+ * they were drawn here in SVG, flat colour bands under a dark outline like the
+ * painted icons, with a grey palette for the greyed states.  v2.3.3279: the
+ * owner drew all five ability pictures (abilityArt, below). */
 export const ICON_URL = {
   melee: '/icons/ui/hero/melee.webp?v=2.3.1311',
   ranged: '/icons/ui/hero/bow.webp?v=2.3.1311',
@@ -326,18 +327,21 @@ export const RDISC_ICONS = [
      at the farm's bed (desktopControls interactKind) -- the owner: "chat
      bubble for speaking [to NPCs], door for entering door"; drawn in the
      JUMP arrow's white-and-outline style */
-  ['talk', '/ui/controls/talk.svg?v=2.3.3105'],
-  ['door', '/ui/controls/door.svg?v=2.3.3105'],
-  ['sleep', '/ui/controls/sleep.svg?v=2.3.3105'],
+  ['talk', '/ui/controls/talk.webp?v=2.3.3279'],
+  ['door', '/ui/controls/door.webp?v=2.3.3279'],
+  ['sleep', '/ui/controls/sleep.webp?v=2.3.3279'],
   /* v2.3.3136: and at a bed on your farm, its next step (game/farmWalk.js;
      desktopControls interactKind 'farm-<step>') -- the owner: "You dig, you
      water, you fertilize, etc." -- a spade, a sprout, a watering can, a sack
-     of compost and a basket, in the same white-and-outline style */
-  ['farm-dig', '/ui/controls/farm-dig.svg?v=2.3.3124'],
-  ['farm-plant', '/ui/controls/farm-plant.svg?v=2.3.3124'],
-  ['farm-water', '/ui/controls/farm-water.svg?v=2.3.3124'],
-  ['farm-feed', '/ui/controls/farm-feed.svg?v=2.3.3124'],
-  ['farm-harvest', '/ui/controls/farm-harvest.svg?v=2.3.3124'],
+     of compost and a basket, in the same white-and-outline style.
+     v2.3.3279: talk, door, sleep and the five farm steps are the owner's own
+     painted pictures now (tools/ui/cut-small-icons.py), drawn whole over the
+     disc like the weapon's, not see-through (game.css) */
+  ['farm-dig', '/ui/controls/farm-dig.webp?v=2.3.3279'],
+  ['farm-plant', '/ui/controls/farm-plant.webp?v=2.3.3279'],
+  ['farm-water', '/ui/controls/farm-water.webp?v=2.3.3279'],
+  ['farm-feed', '/ui/controls/farm-feed.webp?v=2.3.3279'],
+  ['farm-harvest', '/ui/controls/farm-harvest.webp?v=2.3.3279'],
   /* v2.3.3105: while the tap ATTACKS, the weapon in your hand -- the owner:
      "when attacking it should show the weapon type depending on what weapon
      is used".  The bag's own pictures (InventoryPanel's thumb: a sword or a
@@ -347,138 +351,61 @@ export const RDISC_ICONS = [
   ...WEAPON_ART.map(function (f) { return ['w-' + f, '/icons/items/' + f + '.webp?v=2.3.1774']; }),
 ];
 
-var TORNADO = {
-  lit: { line: '#0A2142', mouth: '#164C9E', band: '#3C9CF0', shade: '#2369CC', hi: '#C4EEFF' },
-  grey: { line: '#15181B', mouth: '#3A3F44', band: '#7A8085', shade: '#5B6166', hi: '#C0C4C8' },
-};
-/* The funnel: five bands, each a filled ellipse, drawn from the TIP UP so each
-   wider band laps over the top of the one under it and only its lower rim
-   shows -- which is what makes a stack of ellipses read as one spinning coil.
-   It leans a little left as it falls, as the mockup's does. */
-var COIL = [
-  { x: 52, y: 18, rx: 38, ry: 11 },
-  { x: 49.5, y: 34, rx: 31, ry: 10 },
-  { x: 47, y: 49, rx: 24, ry: 9 },
-  { x: 44.5, y: 63, rx: 17, ry: 7.6 },
-  { x: 42, y: 75, rx: 10.5, ry: 6 },
-];
-/* A point on ellipse q at angle a (degrees, 0 = right, 90 = down). */
-function onEllipse(q, a) {
-  var t = a * Math.PI / 180;
-  return fx(q.x + Math.cos(t) * q.rx) + ' ' + fx(q.y + Math.sin(t) * q.ry);
+/* ═══ v2.3.3279: THE OWNER'S OWN ABILITY PICTURES ═══
+ * The owner, 2026-10-16, handed over a sheet of the five ability icons
+ * (assets/icons-source/sheet-small-2-abilities.png, cut by
+ * tools/ui/cut-small-icons.py): a whirlwind, a winged star, a shield striking,
+ * a jumping bro and a burst of fire and ice.  They replace the five drawn here
+ * in SVG since v2.3.3018 (a coil of ellipses, a sixteen-point star, the wood
+ * shield over a starburst, an arrow, a ringed dot).
+ *
+ * The greyed states keep their rule -- NO CSS filter on a control (the header
+ * above): the cutter bakes a `-grey` copy of each, its luminance squeezed into
+ * the SVG grey sets' range, and `grey` swaps the file.  Both are warmed on the
+ * loading screen with the other control pictures (controlsPreload.js).
+ *
+ * The art sits in the icon set's 256 frame with a 12% margin; ABILITY_ART_K
+ * draws it that much larger so it fills the button as the SVGs did. */
+const ABILITY_ART_V = '2.3.3279';
+export const ABILITY_ART_K = 1.18;
+export function abilityArtUrl(name, grey) {
+  return '/ui/controls/abil-' + name + (grey ? '-grey' : '') + '.webp?v=' + ABILITY_ART_V;
 }
-function rimArc(q, a0, a1) {
-  return 'M' + onEllipse(q, a0) + ' A' + q.rx + ' ' + q.ry + ' 0 0 1 ' + onEllipse(q, a1);
-}
-
-export function TornadoIcon(props) {
-  var p = props.grey ? TORNADO.grey : TORNADO.lit;
+export const ABILITY_ART_URLS = ['whirl', 'special', 'bash', 'jump', 'burst']
+  .reduce(function (a, n) { a.push(abilityArtUrl(n, false), abilityArtUrl(n, true)); return a; }, []);
+function abilityArt(name, props, under) {
   var s = props.size || 28;
-  var kids = [];
-  /* the tail, a flick to the left under the last band */
-  kids.push(React.createElement('path', { key: 'tl', d: 'M43 80 C40 88 34 92 28 92', fill: 'none', stroke: p.line, strokeWidth: 7.5, strokeLinecap: 'round' }));
-  kids.push(React.createElement('path', { key: 'tf', d: 'M43 80 C40 88 34 92 28 92', fill: 'none', stroke: p.band, strokeWidth: 3.4, strokeLinecap: 'round' }));
-  for (var i = COIL.length - 1; i >= 0; i--) {
-    var q = COIL[i];
-    kids.push(React.createElement('ellipse', { key: 'e' + i, cx: q.x, cy: q.y, rx: q.rx, ry: q.ry, fill: i === 0 ? p.mouth : p.band, stroke: p.line, strokeWidth: 4.2 }));
-    /* the shade on the right of the band's rim and the light on its left,
-       where the mockup's light falls */
-    kids.push(React.createElement('path', { key: 's' + i, d: rimArc({ x: q.x, y: q.y - 1.6, rx: q.rx - 2.2, ry: q.ry - 1.4 }, 8, 70), fill: 'none', stroke: p.shade, strokeWidth: 3.2, strokeLinecap: 'round' }));
-    kids.push(React.createElement('path', { key: 'h' + i, d: rimArc({ x: q.x, y: q.y - 1.6, rx: q.rx - 2.2, ry: q.ry - 1.4 }, 112, 168), fill: 'none', stroke: p.hi, strokeWidth: 2.8, strokeLinecap: 'round' }));
-  }
-  /* the mouth's own rim, lit along its front edge */
-  kids.push(React.createElement('path', { key: 'm', d: rimArc({ x: 52, y: 18, rx: 34, ry: 7.6 }, 20, 160), fill: 'none', stroke: p.band, strokeWidth: 3.4, strokeLinecap: 'round' }));
-  return React.createElement('svg', {
-    className: 'bt-skin-svg', 'data-icon': 'whirl', viewBox: '0 0 100 100', width: s, height: s, 'aria-hidden': 'true',
-  }, kids);
-}
-
-var STAR = {
-  lit: ['#3A1305', '#E2441B', '#FF8E21', '#FFD54D', '#FFF8DE'],
-  grey: ['#15181B', '#62676C', '#80868B', '#A6ABAF', '#D2D5D8'],
-};
-/* Sixteen corners round (50, 50): long points up/down/left/right, shorter
-   ones on the diagonals, valleys between -- the sheet's Spec star. */
-function starPoints(k) {
-  var pts = [];
-  for (var i = 0; i < 16; i++) {
-    var a = (-90 + i * 22.5) * Math.PI / 180;
-    var rad = (i % 2) ? 19 : (i % 4 === 0 ? 47 : 33);
-    pts.push(fx(50 + Math.cos(a) * rad * k) + ',' + fx(50 + Math.sin(a) * rad * k));
-  }
-  return pts.join(' ');
-}
-export function StarburstIcon(props) {
-  var p = props.grey ? STAR.grey : STAR.lit;
-  var s = props.size || 28;
-  return React.createElement('svg', {
-    className: 'bt-skin-svg', 'data-icon': 'special', viewBox: '0 0 100 100', width: s, height: s, 'aria-hidden': 'true',
-  },
-  React.createElement('polygon', { points: starPoints(1), fill: p[1], stroke: p[0], strokeWidth: 4.5, strokeLinejoin: 'round' }),
-  React.createElement('polygon', { points: starPoints(0.76), fill: p[2] }),
-  React.createElement('polygon', { points: starPoints(0.52), fill: p[3] }),
-  React.createElement('circle', { cx: 50, cy: 50, r: 11, fill: p[4] }));
-}
-
-/* Shield Bash: the shield with the blow's burst behind it -- the wood shield
-   alone is the Block button beside it, and the two must not be the same
-   picture. */
-export function BashIcon(props) {
-  var s = props.size || 28;
-  var dim = !!props.grey;
-  var p = dim ? STAR.grey : STAR.lit;
-  return React.createElement('span', {
-    'data-icon': 'bash', style: { position: 'relative', display: 'block', width: s, height: s },
-  },
-  React.createElement('svg', {
-    className: 'bt-skin-svg', viewBox: '0 0 100 100', width: s, height: s, 'aria-hidden': 'true',
-    style: { position: 'absolute', left: 0, top: 0 },
-  },
-  React.createElement('polygon', { points: starPoints(1.02), fill: p[1], stroke: p[0], strokeWidth: 5, strokeLinejoin: 'round', transform: 'translate(10 -6)' }),
-  React.createElement('polygon', { points: starPoints(0.66), fill: p[3], transform: 'translate(10 -6)' })),
-  React.createElement('img', {
-    src: ICON_URL.shield, alt: '', draggable: false,
+  var d = Math.round(s * ABILITY_ART_K);
+  var img = React.createElement('img', {
+    src: abilityArtUrl(name, !!props.grey), alt: '', draggable: false, width: d, height: d,
     style: {
-      position: 'absolute', left: '2%', top: '14%', width: '74%', height: '74%',
-      imageRendering: 'pixelated', pointerEvents: 'none', opacity: dim ? 0.5 : 1,
+      position: 'absolute', left: '50%', top: '50%', width: d, height: d,
+      transform: 'translate(-50%,-50%)', objectFit: 'contain', pointerEvents: 'none',
     },
-  }));
+  });
+  return React.createElement('span', {
+    className: 'bt-skin-art', 'data-icon': name,
+    style: { position: 'relative', display: 'block', width: s, height: s },
+  }, under || null, img);
 }
 
-/* Jump: the mockup's bold blue arrow, pointing up -- the JUMP button of the
-   real-jumping work (v2.3.3017, JumpButton.jsx): `Skin` round a `JumpIcon`,
-   state 'on' while you are in the air. */
-var ARROW = {
-  lit: { line: '#0A2142', body: '#3A9DF0', hi: '#C4EEFF', shade: '#1F5FC4' },
-  grey: { line: '#15181B', body: '#7A8085', hi: '#C0C4C8', shade: '#5B6166' },
-};
-export function JumpIcon(props) {
-  var p = props.grey ? ARROW.grey : ARROW.lit;
-  var s = props.size || 28;
-  var arrow = 'M50 8 L88 50 L66 50 L66 90 L34 90 L34 50 L12 50 Z';
-  return React.createElement('svg', {
-    className: 'bt-skin-svg', 'data-icon': 'jump', viewBox: '0 0 100 100', width: s, height: s, 'aria-hidden': 'true',
-  },
-  React.createElement('path', { d: arrow, fill: p.body, stroke: p.line, strokeWidth: 6, strokeLinejoin: 'round' }),
-  /* the shade down its right side and the light down its left, as the
-     whirlwind's bands are lit */
-  React.createElement('path', { d: 'M58 52 L58 84 L64 84 L64 47 L80 47 L52 16 Z', fill: p.shade, opacity: 0.7 }),
-  React.createElement('path', { d: 'M48 18 L22 46 L30 46 Z M36 52 L36 84 L41 84 L41 52 Z', fill: p.hi, opacity: 0.85 }));
-}
-
-/* The burst's nova, in the weapon's element colour: a core and two rings at
-   the ratio the ability uses (ElementBurstButton's own drawing since
-   v2.3.1734, moved inside the ring). */
+export function TornadoIcon(props) { return abilityArt('whirl', props); }
+export function StarburstIcon(props) { return abilityArt('special', props); }
+/* Shield Bash: the owner's shield striking, burst and all -- the wood shield
+   alone stays the Block button beside it, so the two are never one picture. */
+export function BashIcon(props) { return abilityArt('bash', props); }
+export function JumpIcon(props) { return abilityArt('jump', props); }
+/* The burst fires the element of the weapon's gem: the owner's picture is one
+   for every element, so a faint ring in the element's colour stays behind it
+   (the outer ring of the nova this button drew since v2.3.1734). */
 export function NovaIcon(props) {
   var s = props.size || 28;
   var col = props.grey ? '#7D8388' : (props.color || '#8E44AD');
-  return React.createElement('svg', {
-    className: 'bt-skin-svg', 'data-icon': 'burst', viewBox: '0 0 100 100', width: s, height: s, 'aria-hidden': 'true',
-  },
-  React.createElement('circle', { cx: 50, cy: 50, r: 46, fill: 'none', stroke: col, strokeWidth: 4, opacity: 0.4 }),
-  React.createElement('circle', { cx: 50, cy: 50, r: 32, fill: 'none', stroke: col, strokeWidth: 6, opacity: 0.7 }),
-  React.createElement('circle', { cx: 50, cy: 50, r: 18, fill: col, stroke: 'rgba(10,8,14,.75)', strokeWidth: 3 }),
-  React.createElement('circle', { cx: 44, cy: 44, r: 6, fill: '#FFFFFF', opacity: props.grey ? 0.25 : 0.55 }));
+  var ring = React.createElement('svg', {
+    className: 'bt-skin-svg', viewBox: '0 0 100 100', width: s, height: s, 'aria-hidden': 'true',
+    style: { position: 'absolute', left: 0, top: 0 },
+  }, React.createElement('circle', { cx: 50, cy: 50, r: 47, fill: 'none', stroke: col, strokeWidth: 5, opacity: 0.55 }));
+  return abilityArt('burst', props, ring);
 }
 
 /* A painted icon, sized, never filtered.  `dim` is the greyed states' opacity

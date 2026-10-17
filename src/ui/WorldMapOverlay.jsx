@@ -53,6 +53,7 @@ import { wheelTownDoors } from '../game/wheelTownDoors.js';       /* v2.3.3057: 
 import { hasGatherTool } from '../data/lifeSkills.js';            /* v2.3.3057: faint where you have no tool */
 import { sendMapWatch, PRESENCE2_CLIENT } from '../game/presence2.js';   /* v2.3.3250: far players come while the map is open */
 import { peerDotAt } from '../game/peerDot.js';                    /* v2.3.3243: a far player's dot glides between rosters */
+import { PARTY_MARK, partyIdsOf } from '../game/partyMarks.js';    /* v2.3.3277: your party, blue, at every zoom */
 
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 /* v2.3.3057: 12 -> 28, so the town's buildings can be read by name */
@@ -158,6 +159,8 @@ function WorldMap({ stateRef, onClose }) {
   const [where, setWhere] = useState(null);
   /* v2.3.3300: the map's zoom and the short Wheel's (`rel`), for the key */
   const [zoomShown, setZoomShown] = useState([1, 1]);
+  /* v2.3.3277: the key says "party" while one of yours is on the map */
+  const [partyShown, setPartyShown] = useState(false);
 
   /* v2.3.3250: presence v2 (src/game/presence2.js) -- the worker sends the far
      players only while this map is open: say so now, keep saying so, and say
@@ -200,6 +203,8 @@ function WorldMap({ stateRef, onClose }) {
       const here = P ? wheelHere(P.x, P.y) : null;
       const words = here && here.words ? `${here.words.title}${here.words.sub ? ` · ${here.words.sub}` : ''}` : '';
       setWhere((o) => (o === words ? o : words));
+      const ps = !!(out && out.more && out.more.party > 0);
+      setPartyShown((o) => (o === ps ? o : ps));
       try { window.__btWorldMap = { open: true, zoom: V.zoom, rel: V.zoom / spanK(map), cx: Math.round(V.cx), cy: Math.round(V.cy), ...out }; } catch (e) { /* no page */ }
     };
     raf = requestAnimationFrame(loop);
@@ -330,6 +335,7 @@ function WorldMap({ stateRef, onClose }) {
           <Key shape="line" color="#F2E4C2">road</Key>
           <Key shape="line" color="#5AAEE8">river</Key>
           <Key shape="star" color={C_STAR}>quest</Key>
+          {partyShown ? <Key shape="dot" color={PARTY_MARK.CSS}>party</Key> : null}
           {zoomShown[0] >= AT.others ? <Key shape="dot" color={C_OTHER}>bro</Key> : null}
           {zoomShown[1] >= AT.monster ? <Key shape="dot" color={C_MONSTER}>monster</Key> : null}
           {zoomShown[1] >= AT.node ? <Key shape="dot" color="#E08A45">ore</Key> : null}
@@ -402,7 +408,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   line((r) => r.kind === 'road' && r.trunk, lw, 'rgba(242,228,194,0.95)');
 
   /* ── v2.3.3057: the details, under every label ── */
-  const more = { ticks: 0, nodes: 0, others: 0, monsters: 0, quest: null, buildings: 0, bridges: 0, ponds: 0, tierLabels: 0 };
+  const more = { ticks: 0, nodes: 0, others: 0, monsters: 0, quest: null, buildings: 0, bridges: 0, ponds: 0, tierLabels: 0, party: 0, partyNames: 0 };
   const onScreen = (x, y, pad = 30) => x > -pad && y > -pad && x < w + pad && y < h + pad;
   /* each land's level bands: a tick across the spoke every five levels */
   if (z >= AT.tier && map.spokeHalf) {
@@ -452,12 +458,15 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     }
   }
   const othersAt = [];
+  /* v2.3.3277: your party is drawn on its own, below, at every zoom */
+  const party = partyIdsOf(S);
   if (z >= AT.others && S && S.others) {
     /* v2.3.3243: where each is now -- a far one is sent about once a second
        (src/game/peerDot.js) */
     const now = Date.now(), at = { x: 0, y: 0 };
     for (const id in S.others) {
       const o = S.others[id];
+      if (party && party.has(id)) continue;
       if (!o || (o.zone || o.z) !== S.currentZone || typeof o.x !== 'number') continue;
       /* v2.3.3250: a parked copy is nowhere real (src/game/presence2.js); the
          watch this map opened brings them all, where they are, within a
@@ -470,6 +479,29 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       g.fillStyle = C_OTHER; g.fill(); g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
       othersAt.push({ x, y, name: o.name || '' });
       more.others++;
+    }
+  }
+  /* ═══ v2.3.3277: YOUR PARTY (src/game/partyMarks.js) ═══
+     In the party's blue with a light rim, bigger than a bro and at every
+     zoom (the bros only from AT.others), and named -- the worker sends your
+     party wherever they are in the Wheel (presence2.js), so this is where
+     they really are. */
+  const partyAt = [];
+  if (party && S && S.others) {
+    const now = Date.now(), at = { x: 0, y: 0 };
+    for (const id of party) {
+      const o = Object.prototype.hasOwnProperty.call(S.others, id) ? S.others[id] : null;
+      if (!o || o._away || (o.zone || o.z) !== S.currentZone || typeof o.x !== 'number') continue;
+      peerDotAt(o, now, at);
+      const x = X(at.x), y = Y(at.y);
+      if (!onScreen(x, y)) continue;
+      g.beginPath(); g.arc(x, y, 6.5, 0, Math.PI * 2);
+      g.fillStyle = PARTY_MARK.CSS; g.fill();
+      g.lineWidth = 2; g.strokeStyle = PARTY_MARK.RIM_CSS; g.stroke();
+      g.beginPath(); g.arc(x, y, 8.4, 0, Math.PI * 2);
+      g.lineWidth = 1.2; g.strokeStyle = HALO; g.stroke();
+      partyAt.push({ x, y, name: o.name || '' });
+      more.party++;
     }
   }
   /* the quest's way: the gold road from you to its star, cased dark */
@@ -545,6 +577,12 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   }
   /* v2.3.3057: the quest's star keeps its own room */
   if (more.quest) { const qx = X(more.quest.x), qy = Y(more.quest.y); placed.push([qx - 11, qy - 11, qx + 11, qy + 11]); }
+  /* v2.3.3277: your party's names, next after yours (each under its mark,
+     clear of the mark's own room: a label's box starts 2 px above its top) */
+  for (const o of partyAt) {
+    placed.push([o.x - 9, o.y - 9, o.x + 9, o.y + 9]);
+    if (o.name && label(o.x, o.y + 12, [o.name], { size: 11, below: true, weight: 700, color: '#CFE0F7' })) more.partyNames++;
+  }
   /* v2.3.3057: in town, every building at its door, named (a shut one dim) */
   if (zr >= AT.town) {
     let doors = [];
