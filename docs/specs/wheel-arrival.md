@@ -87,7 +87,16 @@ Nothing new.
     (what remains is the nodes and the loot);
   - an arrival among Frost Ridge's first stretch carries its 29 monsters in
     reach.
-- Phone test `mp-wheelnear`: see the PR for its numbers.
+- Phone test `mp-wheelnear` (two phones on a real worker, 11 checks):
+  - the way in 140 KB, marked near, with no monster in BroTown's square;
+    a `?wheelwhole` phone's is 582 KB with all 1,920;
+  - out on Frost Ridge's first stretch, its 30 snowmen came into the list
+    as the phone came near (36 monsters whole in 24 ticks), each with its
+    home, skin, level and health, drawn from the land's live art;
+  - the Flame Fields' fire goblins the same; one of them fought, died and
+    paid its XP;
+  - back at Frost Ridge, 65 of the 1,920 held, none in the list twice, none
+    sent whole twice.
 
 ## Deploy order
 
@@ -110,6 +119,12 @@ Nothing new.
   `mp-blockcost`, `mp-farfeel`.
 - `mp-killroll`'s far kill names the worker's own id (`wm-tidal-0`) when the
   phone does not hold one.
+- `mp-wheeldeep` and `mp-wheelpast20` had counted the short Wheel's monsters
+  (384, 48 a land) since the five-times Wheel (v2.3.3315), and walked to the
+  middle of a stretch's first six places, up to 2,600 px from any of them on
+  the long one. They now count `6 x WHEEL_LONG` a stretch a land (the
+  worker's own rule, wheelzone.js `_wheelSpawnMonsters`) and walk to a
+  monster's own place.
 
 ## Not changed
 
