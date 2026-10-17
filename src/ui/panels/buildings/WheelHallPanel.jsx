@@ -1,7 +1,7 @@
 import React from 'react';
 import { WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';
 import { mailList, mailAge } from '@/game/postOffice.js';
-import { AlliancePart } from './AlliancePart.jsx';   /* v2.3.3285: the alliance, at the top of the Saloon */
+import { AlliancePart } from './AlliancePart.jsx';   /* v2.3.3306: the alliance, at the top of the Saloon */
 
 /* ═══ v2.3.3066: THE WHEEL'S HALLS — the Guild Hall, the Post Office, the Sheriff's Office ═══
  *
@@ -177,7 +177,7 @@ export function SaloonPanel(props) {
         </div>
       </div>
       <div style={LS_BODY}>
-        {/* v2.3.3285: the alliance a party of 20 active members becomes, its
+        {/* v2.3.3306: the alliance a party of 20 active members becomes, its
             war, and the board (AlliancePart.jsx; caps.alliance only) -- FIRST,
             as an alliance's list of members runs to 50 rows */}
         <AlliancePart stateRef={props.stateRef} party={party} />

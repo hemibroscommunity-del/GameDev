@@ -49,7 +49,7 @@ import { QUEST_ZONE_GATE } from './movement.js';
 import { AMULET_GEMS } from './data.js'; /* v2.3.3187: the kit's polished gems */
 import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
 import { GATHER_HITS } from './gathering.js'; /* v2.3.3229: 'hits' -- the skills whose harvests and cooks are hits */
-import { PROG3 } from './prog3.js'; /* v2.3.3285: the combat skills a level can be set on */
+import { PROG3 } from './prog3.js'; /* v2.3.3306: the combat skills a level can be set on */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -425,7 +425,7 @@ export const devToolsMethods = {
     return { ok: true, skills: names, level };
   },
 
-  /* ═══ v2.3.3285: A COMBAT LEVEL TO TEST AGAINST ═══
+  /* ═══ v2.3.3306: A COMBAT LEVEL TO TEST AGAINST ═══
      An alliance counts members at character level 5 or more (alliance.js
      ACTIVE_LEVEL) -- two combat levels past a new character's 3, a while of
      fighting each -- so its phone check (mp-alliance) sets them here, as
@@ -562,7 +562,7 @@ export const devToolsMethods = {
     else if (path === '/dev/codex') result = this._codexDevSet(playerId, body);   /* v2.3.3209: {kind | all, n, n2} (codex.js) */
     else if (path === '/dev/killroll') result = this._killRollDev(playerId, body);   /* v2.3.3209: {next, kill} -- the next kill's roll (killroll.js) */
     else if (path === '/dev/lifeskill') result = this._devLifeSkill(playerId, body);   /* v2.3.3229: {skill | 'hits', level} -- the hit ladder at any level */
-    else if (path === '/dev/combat') result = this._devCombatLevel(playerId, body);   /* v2.3.3285: {skill | 'all', level} -- a combat level (the alliance counts level 5+) */
+    else if (path === '/dev/combat') result = this._devCombatLevel(playerId, body);   /* v2.3.3306: {skill | 'all', level} -- a combat level (the alliance counts level 5+) */
     else if (path === '/dev/spar') result = this._sparDev(playerId, body);   /* v2.3.3265: {add | skill | clear} -- sparring clones of yourself (spar.js) */
     else return null;
 

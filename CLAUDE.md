@@ -2436,7 +2436,7 @@ remnant to migrate server-side, not a mode to preserve.
     - `caps.partykeep`, kill switch `partykeep: false` (the party of four in
       memory, nothing read or written -- party.test.mjs runs under it);
       `party-keep` suite, `mp-partykeep`.
-    - since v2.3.3285 STEP 2, THE ALLIANCE -- the owner: "Push to main, then
+    - since v2.3.3306 STEP 2, THE ALLIANCE -- the owner: "Push to main, then
       keep going on recommended", to the four decisions it waited on
       (docs/specs/alliance.md, server/src/alliance.js):
       - a party whose ACTIVE members (online, or `seen` in the last 7 days,

@@ -139,7 +139,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* Marvin STAYS in the room: the player-list half below needs a peer to
      draw, and closing him would have left it with nothing to check.
-     v2.3.3285: and he is KEPT AWAKE -- two minutes with no input is the idle
+     v2.3.3306: and he is KEPT AWAKE -- two minutes with no input is the idle
      logout (v2.3.3034), and the second phone's list was reached ~3 minutes
      after his last tap on this box: "No other players nearby" (the sweep on
      main, 2026-10-17). */

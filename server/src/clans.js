@@ -130,7 +130,7 @@ export const clanMethods = {
   async _handleClanCreate(session, payload) {
     if (!session || !session.id) return;
     await this._clansEnsure();
-    /* v2.3.3285: a clan's name and tag are unique among the alliances' too
+    /* v2.3.3306: a clan's name and tag are unique among the alliances' too
        (alliance.js, the owner's "unique across alliances and clans") -- the
        alliances' index loaded first, so the checks below and the claim run
        with no await between them */

@@ -4,7 +4,7 @@ import { ZONES } from '@/data/index.js';
 import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';   /* v2.3.1966 */
 import { SMALL_ICON } from '../../data/smallIcons.js';   /* v2.3.3279: the owner's party pictures */
 import { partyRows, memberOffline, seenAgo } from '../../game/partyRows.js';   /* v2.3.3284: a party that lasts shows six */
-import { allyTagShown } from '@/game/alliance.js';   /* v2.3.3285: an alliance's tag in the strip's head */
+import { allyTagShown } from '@/game/alliance.js';   /* v2.3.3306: an alliance's tag in the strip's head */
 /* v2.3.3279: the window's marks were emoji (🎟️ 👑 💀 📍), drawn differently on
    every phone; the owner drew them (tools/ui/cut-small-icons.py). */
 function partyMark(src, size, title) {
@@ -162,7 +162,7 @@ export function PartyHUD(props) {
     return o && !o._away && typeof o.x === 'number' ? { x: o.x, y: o.y } : null;
   });
   var maxN = party.max > 0 ? party.max : 4;
-  /* v2.3.3285: an alliance says so -- its tag, or ALLIANCE before it has one
+  /* v2.3.3306: an alliance says so -- its tag, or ALLIANCE before it has one
      (server alliance.js; party_state's `ally` is the worker's word) */
   var _allyA = party.ally && party.ally.on ? party.ally : null;
   var _allyHead = _allyA ? (allyTagShown(_allyA.tag) ? '[' + allyTagShown(_allyA.tag) + ']' : 'ALLIANCE') : null;

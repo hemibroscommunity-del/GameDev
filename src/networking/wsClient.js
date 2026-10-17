@@ -24,7 +24,7 @@ import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3139: ha
 import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the worker's */
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
 import { applySparState } from '@/game/spar.js'; /* v2.3.3265: the test panel's sparring clones */
-import { allyBus } from '@/game/alliance.js'; /* v2.3.3285: the alliance's answers (server alliance.js) */
+import { allyBus } from '@/game/alliance.js'; /* v2.3.3306: the alliance's answers (server alliance.js) */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
@@ -1837,7 +1837,7 @@ export function setupWebSocket(ctx) {
           case 'alliance_error':
           case 'alliance_war_end':
             {
-              /* v2.3.3285: the alliance's answers (server alliance.js) -- the
+              /* v2.3.3306: the alliance's answers (server alliance.js) -- the
                  board, a refusal, a war's end and what it paid you.  Into the
                  bus the Saloon draws; a refusal and a war's end are said over
                  you too.  Here in the direct switch, as farm_state: a worker
@@ -4848,7 +4848,7 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
-        /* v2.3.3285: the alliance (game/alliance.js, the Saloon's Alliance
+        /* v2.3.3306: the alliance (game/alliance.js, the Saloon's Alliance
            part) -> alliance.js: the leader's Name and Declare war, and anyone's
            board.  TRAPS #18: without this line all three would send nothing. */
         if (msg.type === 'alliance_name' || msg.type === 'alliance_war' || msg.type === 'alliance_board') {

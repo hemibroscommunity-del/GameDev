@@ -141,7 +141,7 @@ rebroadcast:
 
 ## A party that lasts (v2.3.3284) — step 1 of the party → alliance plan
 
-**Step 2 shipped v2.3.3285**: a party of 20 active members is an ALLIANCE --
+**Step 2 shipped v2.3.3306**: a party of 20 active members is an ALLIANCE --
 a name and a tag on every member, wars in No man's land, a board
 (docs/specs/alliance.md). A record that has been one is shape `v: 2`.
 

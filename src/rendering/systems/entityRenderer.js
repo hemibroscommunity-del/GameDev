@@ -120,7 +120,7 @@ import { standInReady, farmKneelReady } from '../standIns.js';   /* v2.3.3077: a
 import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full */
 import { SMALL_TEX } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
-import { plateNameWithTag, myAllyTag } from '../../game/alliance.js';   /* v2.3.3285: an alliance member's plate says [TAG] before the name */
+import { plateNameWithTag, myAllyTag } from '../../game/alliance.js';   /* v2.3.3306: an alliance member's plate says [TAG] before the name */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -11953,7 +11953,7 @@ export class EntityRenderer {
          too") -- the plate has been one implementation for the player and
          every peer since, and a swap that happened over your head but not
          over theirs would be the same inconsistency pointing the other way. */
-      /* v2.3.3285: "[TAG] Name" while they are in an alliance -- the worker's
+      /* v2.3.3306: "[TAG] Name" while they are in an alliance -- the worker's
          allyTag (alliance.js), on their snapshot and every change */
       _updateNamePill(display, plateNameWithTag(nextName, other.allyTag), other.rpgLv || 1,
         !other._isDead && !display._peerBarUp, broBadgeOf(other.bro, other.brn), false, 'gold', !!_inParty);   /* v2.3.3255: + a wallet's count; v2.3.3279: + the party badge */
@@ -14960,10 +14960,10 @@ export class EntityRenderer {
        previous frame's.  16 ms against a 300 ms fade, and reordering update()
        to fix it would move the HUD pass ahead of the body placement it reads
        positions from — a real risk to buy an invisible one. */
-    /* v2.3.3285: your alliance's tag, from your party's roster */
+    /* v2.3.3306: your alliance's tag, from your party's roster */
     _updateNamePill(display, plateNameWithTag(S.myName || 'Anon', myAllyTag(S)), (S.rpg && S.rpg.level) || 1,
       !S._dying, !!(S.rpg && broBadgeOf(S.rpg._bro, S.rpg._broN)), false, 'gold');   /* v2.3.2513: the gold border (§5.2) */
-    /* v2.3.3285: QA probe (mp-alliance) -- your plate's words as drawn */
+    /* v2.3.3306: QA probe (mp-alliance) -- your plate's words as drawn */
     if (window.__btProbe && display._pillName) window.__btSelfPlate = display._pillName.text;
     if (display._namePill) {
       const _pH = (display._pillCss || 15) * PLATE_H_RATIO;

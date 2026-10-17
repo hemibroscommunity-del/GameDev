@@ -1,7 +1,7 @@
 import React from 'react';
 import { allyBus, allyCapsOn, allyTagShown, waitWords } from '@/game/alliance.js';
 
-/* ═══ v2.3.3285: THE SALOON'S ALLIANCE PART (server alliance.js) ═══
+/* ═══ v2.3.3306: THE SALOON'S ALLIANCE PART (server alliance.js) ═══
  *
  * docs/specs/alliance.md.  At the top of the Saloon (WheelHallPanel.jsx
  * SaloonPanel), against a worker with caps.alliance:

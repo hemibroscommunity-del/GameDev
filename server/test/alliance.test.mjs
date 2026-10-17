@@ -1,4 +1,4 @@
-/* v2.3.3285: THE ALLIANCE (alliance.js, docs/specs/alliance.md).
+/* v2.3.3306: THE ALLIANCE (alliance.js, docs/specs/alliance.md).
  *
  * A party of 20 active members -- played in the last 7 days, level 5 or more
  * -- is an alliance until it falls below 15.  Its leader names it (once a day)
