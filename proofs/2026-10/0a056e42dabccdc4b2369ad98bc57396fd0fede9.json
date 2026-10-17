@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0a056e42dabccdc4b2369ad98bc57396fd0fede9",
+  "tree": "698a7e0fd8a20fc0fa52e3a62a86638c0d83d963",
+  "committedAt": "2026-10-17T13:55:00-07:00",
+  "subject": "Clans become parties: every clan turns into a lasting party with its name and tag, and no new clans; a greatsword's shine follows the sun; phone checks that were wrong about the game fixed (v2.3.3321) (#948)",
+  "files": 5762,
+  "bytes": 636434381,
+  "listingSha256": "6610e5e163a9226904cd8e397144c4bb2e1b65b07abce71f71f5f29f205be94b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
