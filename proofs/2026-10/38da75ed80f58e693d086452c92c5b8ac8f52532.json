@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "38da75ed80f58e693d086452c92c5b8ac8f52532",
+  "tree": "16b4c14db26517d2a07090a77c5303d42b404c5b",
+  "committedAt": "2026-10-15T07:03:16-07:00",
+  "subject": "The sword's opening lunge works on players too, and dazes them (v2.3.3262) (#918)",
+  "files": 5532,
+  "bytes": 615418456,
+  "listingSha256": "5f6e84c44ff10dd68a329942a2bde869e634ad5349b0250182f831187b0aac81",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

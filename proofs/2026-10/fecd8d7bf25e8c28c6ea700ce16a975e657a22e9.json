@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fecd8d7bf25e8c28c6ea700ce16a975e657a22e9",
+  "tree": "a700db3b402215d94d4651c236402d9ec4a0b717",
+  "committedAt": "2026-10-17T02:31:34-07:00",
+  "subject": "A roll is only as long as the one you paid for: no more immunity to other players on the phone's word (v2.3.3292) (#929)",
+  "files": 5667,
+  "bytes": 634399538,
+  "listingSha256": "8ceb1c7fa6a6419a963fafe889d3242c48ae692923bbfc9782a80d69bd047d1e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ba1eb762058a878cf190377a757b01151830334f",
+  "tree": "50f95a1aa99a436c25fc0132010aad7ab9348265",
+  "committedAt": "2026-10-17T08:03:25-07:00",
+  "subject": "The relay is an allowlist, and every relay goes out in its sender's name (v2.3.3304) (#938)",
+  "files": 5685,
+  "bytes": 634800922,
+  "listingSha256": "9e87161dd8c2ddc3571a3ad0e9e21e1c93067b585d0383beef380b6f3580dc19",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

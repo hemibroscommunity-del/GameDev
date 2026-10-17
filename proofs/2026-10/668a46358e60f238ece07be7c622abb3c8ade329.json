@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "668a46358e60f238ece07be7c622abb3c8ade329",
+  "tree": "bb06840a46a60a5880a78a1d6dd050777f196e66",
+  "committedAt": "2026-10-15T12:16:08-07:00",
+  "subject": "The monster-only extras work on players too (v2.3.3264) (#919)",
+  "files": 5536,
+  "bytes": 615637848,
+  "listingSha256": "5a2d41be8091abfe05d955a7c45adee7b7e1a91dbb4e2350887f1bca974697f6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "01be990462b2ab47825232757e92c972bb2ae8cb",
+  "tree": "7656c3692cda7c1cbefd024c67428ba8365e4c20",
+  "committedAt": "2026-10-14T18:44:42-07:00",
+  "subject": "The Hemi Bro checkmark is \"owns one or more\", and the profile says how many (v2.3.3255) (#914)",
+  "files": 5483,
+  "bytes": 611551564,
+  "listingSha256": "f316140a85a876408f1e12481d4748a74b78954a8f9012d26245432315730863",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

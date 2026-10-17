@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3706f1256f5a3fc8e6072d152d5a98b3d3c554c3",
+  "tree": "4e6f89af279093ec949178e35dd2cb972d06e45c",
+  "committedAt": "2026-10-14T18:58:21-07:00",
+  "subject": "Each building's room is the background behind its menu, its keeper opens it, and the arena has its own window (v2.3.3258) (#841)",
+  "files": 5507,
+  "bytes": 615545209,
+  "listingSha256": "abdf2fe85a1bc0d047516766b3255a96c0aec5f6db3dec190bb448e4265cf656",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

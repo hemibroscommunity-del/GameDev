@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7f95254d14077c5ddaac9693fb0107d3022387de",
+  "tree": "1ca496df954e9cf6e7dfad77d4950555df1959df",
+  "committedAt": "2026-10-14T18:45:23-07:00",
+  "subject": "The supporter pass, on the backlog: the plan and the owner's decisions (v2.3.3256) (#915)",
+  "files": 5484,
+  "bytes": 611558742,
+  "listingSha256": "f4d6eea394bd92835f71301aaafb669ce0e40f28fa72e669fc4cae1113fb1fef",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

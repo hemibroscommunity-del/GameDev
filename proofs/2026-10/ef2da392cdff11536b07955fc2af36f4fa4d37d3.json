@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ef2da392cdff11536b07955fc2af36f4fa4d37d3",
+  "tree": "7cf77a9c305c2b344870234ccd799f1507d7c77a",
+  "committedAt": "2026-10-14T20:39:49-07:00",
+  "subject": "One formula for every fight: player fights that last, fish that matter, no escape by leaving (v2.3.3260) (#916)",
+  "files": 5527,
+  "bytes": 615340855,
+  "listingSha256": "529a903cce3964ed7892477696abd1fcc8e5b9b36baef19a8f9213f6c38bfbc8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

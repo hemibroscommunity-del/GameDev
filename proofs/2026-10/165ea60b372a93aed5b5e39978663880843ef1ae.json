@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "165ea60b372a93aed5b5e39978663880843ef1ae",
+  "tree": "15830fd6161bddb61cd4d15faceb37c45741d2f7",
+  "committedAt": "2026-10-17T02:20:27-07:00",
+  "subject": "Server split 0e/0f, your party on the maps, your small and bag icons, the rest of the art's prompts, phone checks fixed, and a party that lasts (v2.3.3276-v2.3.3284) (#923)",
+  "files": 5666,
+  "bytes": 634368853,
+  "listingSha256": "405a963f1d087668297026bf8fa3ca304d853218e13a559840c78f69d8ee93f8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

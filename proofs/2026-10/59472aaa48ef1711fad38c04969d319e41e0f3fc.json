@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "59472aaa48ef1711fad38c04969d319e41e0f3fc",
+  "tree": "6e2ccd67f90e07c546625fe46cff8f0a854e3e18",
+  "committedAt": "2026-10-17T07:56:44-07:00",
+  "subject": "The Wheel built in blocks round you, its objects and overview baked (v2.3.3298) (#935)",
+  "files": 5679,
+  "bytes": 634727859,
+  "listingSha256": "b0ae15554a741ce2df2efeb61dad01f2f2c110610ec6537648696e999bf3301e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

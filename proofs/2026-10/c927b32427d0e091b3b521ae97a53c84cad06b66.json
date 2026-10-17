@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c927b32427d0e091b3b521ae97a53c84cad06b66",
+  "tree": "51fc1ad9f4732f0a3a67db1c528d99f6c6d5e5d2",
+  "committedAt": "2026-10-17T02:31:48-07:00",
+  "subject": "Two taps a script could repeat wrote a row each time: the shield on your arm, and a weapon in a trade window (v2.3.3293) (#930)",
+  "files": 5667,
+  "bytes": 634407214,
+  "listingSha256": "dc4ad1fa5416b6534c737c96e0d64b7bda20631219c06bab28d9239d2ad4052b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c81b007910eb9c322179acbf0dd7815ba01c7722",
+  "tree": "5f9a0f9283e3d23353cef0755c9de22ff1c5747c",
+  "committedAt": "2026-10-16T16:41:27-07:00",
+  "subject": "One socket cannot stop the game: paced writes, known rooms, a message budget, the door (v2.3.3274) (#925)",
+  "files": 5557,
+  "bytes": 616120359,
+  "listingSha256": "9d03b5036c66b49a02fda65425f287ac6cdb1c5c5750ff4b1225962277b095b6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

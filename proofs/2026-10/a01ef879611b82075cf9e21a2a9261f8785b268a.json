@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a01ef879611b82075cf9e21a2a9261f8785b268a",
+  "tree": "b704f9afed41498e98165e994e189c9f8d4e1a0a",
+  "committedAt": "2026-10-16T14:45:21-07:00",
+  "subject": "The cost diet: what play saves is guarded, and a gatherer's bot statistics every 5 minutes (v2.3.3270) (#922)",
+  "files": 5552,
+  "bytes": 616009023,
+  "listingSha256": "2198f8de389ede8015aaeee57c905430fa6a028135a04317e49a490b91e49e8a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

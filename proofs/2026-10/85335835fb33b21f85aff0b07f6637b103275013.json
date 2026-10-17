@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "85335835fb33b21f85aff0b07f6637b103275013",
+  "tree": "a56d3d2048a798a2e1fbbf8ed6768a4dbc2184bd",
+  "committedAt": "2026-10-15T20:01:36-07:00",
+  "subject": "Sparring clones in the test panel, and other players' shots drawn as they really fly (v2.3.3265, v2.3.3266) (#920)",
+  "files": 5545,
+  "bytes": 615834984,
+  "listingSha256": "0f7ad0ead2194251bf21e4a365cb8f346230304c21f640c156ae4711a7f62a61",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

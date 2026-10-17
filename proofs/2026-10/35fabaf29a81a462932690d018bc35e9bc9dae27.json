@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "35fabaf29a81a462932690d018bc35e9bc9dae27",
+  "tree": "07873af92221f6f90329ab4028c78712d2b2e7c8",
+  "committedAt": "2026-10-14T19:42:33-07:00",
+  "subject": "One gem building: the Assay Office is gone, and the Gem Works cuts and sets your gems (v2.3.3259) (#847)",
+  "files": 5506,
+  "bytes": 615074373,
+  "listingSha256": "8483c9da4ec265080c1bf5bcf920961978ee3925c1a795ce8774160e64d737e7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

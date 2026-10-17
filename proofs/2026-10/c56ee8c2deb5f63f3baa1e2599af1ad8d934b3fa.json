@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c56ee8c2deb5f63f3baa1e2599af1ad8d934b3fa",
+  "tree": "87c54e67464f41579517dfd8f7cd58a3336490b4",
+  "committedAt": "2026-10-17T08:00:40-07:00",
+  "subject": "The hit door's nine decisions, as recommended (v2.3.3300) (#937)",
+  "files": 5680,
+  "bytes": 634748250,
+  "listingSha256": "b4920ebac14df58c2f36152f7ea9d7cfc568f6a4027c161d4d488754f1a328f2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

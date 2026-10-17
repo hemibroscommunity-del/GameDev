@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "dcb95fa524b87819eab57aeb3626a8f00648907a",
+  "tree": "3d64376befb336293f0186571322b5a29f5aacb9",
+  "committedAt": "2026-10-17T02:29:45-07:00",
+  "subject": "A bundle's messages each finish before the next: no more paying many times for one thing (v2.3.3291) (#928)",
+  "files": 5666,
+  "bytes": 634386009,
+  "listingSha256": "3476de9b8330dee604a50e16f628b52a7ec024bd8caa66d410b347fa22b6649e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

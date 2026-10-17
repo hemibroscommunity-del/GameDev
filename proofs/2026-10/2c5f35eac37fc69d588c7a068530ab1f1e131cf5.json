@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2c5f35eac37fc69d588c7a068530ab1f1e131cf5",
+  "tree": "d0f41cbd6d8623254bc2f265b1f96f9df5e72081",
+  "committedAt": "2026-10-16T06:33:08-07:00",
+  "subject": "No man's land: a player you chose to attack stays chosen, and the shield is there (v2.3.3268); sparring fixes after the first playtest (v2.3.3267) (#921)",
+  "files": 5549,
+  "bytes": 615962917,
+  "listingSha256": "d647d30d551ffbb861cfe755274043cd1b98b9f29276198c462ec62684e7dcba",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "75463c8d3223ad68af07a3db86bce1b5ff04abbe",
+  "tree": "62b0f1fb647dddda818c46fc07a50d9a994a7477",
+  "committedAt": "2026-10-17T02:33:56-07:00",
+  "subject": "Five kill switches nobody could throw can be thrown now (v2.3.3295) (#932)",
+  "files": 5667,
+  "bytes": 634443116,
+  "listingSha256": "a015323edd4e67df8eca0d4cddcc60f3f0bc163b5b71c089e942a8b14faed10e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

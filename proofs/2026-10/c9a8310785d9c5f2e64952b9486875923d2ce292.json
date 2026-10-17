@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c9a8310785d9c5f2e64952b9486875923d2ce292",
+  "tree": "e4986cded0a74a8050c8734fd48af700d6315e51",
+  "committedAt": "2026-10-17T08:01:28-07:00",
+  "subject": "Every server test, every failure, in one run; the tests on every PR and before every deploy (v2.3.3302) (#939)",
+  "files": 5682,
+  "bytes": 634756258,
+  "listingSha256": "dcb859c75eefc6c88b2b81d86894a17a3afbdc0d692f0d9144dcdf68a76588ff",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

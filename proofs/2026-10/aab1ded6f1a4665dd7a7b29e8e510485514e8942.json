@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "aab1ded6f1a4665dd7a7b29e8e510485514e8942",
+  "tree": "6b62b07cd7b98787ac2399bb91e0d32b6d52588e",
+  "committedAt": "2026-10-14T18:45:45-07:00",
+  "subject": "The Cloudflare lab on the free plan, and its answers (v2.3.3257) (#911)",
+  "files": 5486,
+  "bytes": 611634937,
+  "listingSha256": "90d4e5bd52892386931c8ce7ff47f8f13d4bb72c04fc8113d2b3eacaa572d842",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

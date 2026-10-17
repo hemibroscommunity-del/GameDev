@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4979432eeaaa6aaad56f84daf9245025477bbdcf",
+  "tree": "3a3c05dd347bd622851776ff5c5f01f1401b1620",
+  "committedAt": "2026-10-16T16:44:55-07:00",
+  "subject": "The account check: a new character proves a person is there (v2.3.3275) (#926)",
+  "files": 5561,
+  "bytes": 616160635,
+  "listingSha256": "e0f1b94294729cb09f16aa22f3759ed8f5a5b884619b4a578abdf541c95016e5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

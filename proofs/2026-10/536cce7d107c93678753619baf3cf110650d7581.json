@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "536cce7d107c93678753619baf3cf110650d7581",
+  "tree": "2841124df9b17381a6928b53626d99eabd9e0d95",
+  "committedAt": "2026-10-15T09:53:36-07:00",
+  "subject": "One version: the same hit and the same heal against monsters and players (v2.3.3263) (#917)",
+  "files": 5533,
+  "bytes": 615465788,
+  "listingSha256": "1c251b22acdcccc861ccfbaf2c7deac8c6c889eddd06db6d50b55ceb1cb15e5d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

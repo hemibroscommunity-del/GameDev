@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c19707eb3993b276c07e941c5999dba3385bbe2b",
+  "tree": "082d6270c7efa9109efe0e6cd3b1e29eb4bd38c8",
+  "committedAt": "2026-10-17T02:35:59-07:00",
+  "subject": "One door for every monster hit on a player: the interceptor chain, built for real (v2.3.3296) (#933)",
+  "files": 5670,
+  "bytes": 634482961,
+  "listingSha256": "f8dfea08a08807bfaaa59c1cc47193921c16650aa3222b68ee19364782a8ea43",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
