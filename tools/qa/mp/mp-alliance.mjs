@@ -42,6 +42,7 @@ function sock(wsPort, name, id) {
       if (!w.synced && ev.data.startsWith('{"type":"state_sync"')) { w.synced = true; resolve(); }
     };
     ws.onerror = () => reject(new Error(name + ' socket error'));
+    ws.onclose = (ev) => { w.closed = { code: ev.code, reason: ev.reason, at: Date.now() }; };
   });
   w.send = (m) => w.ws.send(JSON.stringify(m));
   w.move = (x, y, z = 'wheel') => {
@@ -50,6 +51,11 @@ function sock(wsPort, name, id) {
       vx: 0, vy: 0, dodging: false, blocking: false, ba: null, dead: false });
   };
   w.place = async (x, y) => { w.move(w.x, w.y, 'town'); await new Promise((r) => setTimeout(r, 300)); w.move(x, y, 'wheel'); };
+  /* standing still is not activity (index.js: a keepalive move whose
+     signature never changes leaves lastRecv alone), so a bot says it is there
+     as a phone does, `aw: 0` on a track -- or the worker's 2-minute idle sweep
+     closes it (4006), as it did every one of the 19 on the first run */
+  w.here = () => w.send({ type: 'track', data: { aw: 0 } });
   w.close = () => { try { w.ws.close(); } catch {} };
   w.lastParty = () => { const r = w.got.filter((m) => m.type === 'party_state'); return r.length ? r[r.length - 1].payload : null; };
   return w;
@@ -72,12 +78,18 @@ async function tap(P, sel) {
   return true;
 }
 
-/* type into an input as a phone keyboard does: a tap, then the keys */
+/* type into an input as a phone keyboard does: a tap, then the keys.  The
+   page's keep-alive (a Control press every 20 s) is held off meanwhile: one
+   landing between two keys made the next letter a Ctrl shortcut, and the first
+   run named the alliance "Ion Bros" and declared war on "GD". */
+let holdAlive = null;
 async function typeInto(P, sel, text) {
   if (!(await tap(P, sel))) return false;
+  if (holdAlive) holdAlive.stop();
   await P.page.waitForTimeout(150);
   await P.page.focus(sel).catch(() => {});
   await P.page.keyboard.type(text, { delay: 30 });
+  if (holdAlive) holdAlive.start();
   return true;
 }
 
@@ -117,7 +129,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return false;
   };
   rec.ok('the phone in the Wheel (guard)', await inWheel(A));
-  const stopA = H.keepAlive(A);
+  let stopA = H.keepAlive(A);
+  holdAlive = { stop: () => stopA(), start: () => { stopA = H.keepAlive(A); } };
   await A.page.waitForTimeout(1500);
   const me = await H.readState(A, (S) => ({ x: S.player.x, y: S.player.y, id: S.myId }));
   const lv = await H.devOp(wsPort, 'combat', me.id, { skill: 'sword', level: 3 });
@@ -127,12 +140,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (;;) { const v = await fn(); if (v || Date.now() - t0 > ms) return v; await A.page.waitForTimeout(gap); }
   };
   const tag = Math.random().toString(36).slice(2, 7);
+  const t0 = Date.now();
   const F = [];
   for (let i = 0; i < 19; i++) F.push(sock(wsPort, 'Bro' + i, 'al' + tag + 'f' + i));
   const G = [];
   for (let i = 0; i < 20; i++) G.push(sock(wsPort, 'Gold' + i, 'al' + tag + 'g' + i));
   let alive = true;
-  (async () => { while (alive) { await new Promise((r) => setTimeout(r, 4000)); if (!alive) break; for (const w of [...F, ...G]) { try { if (w.synced && w.ws.readyState === 1) w.move(w.x, w.y); } catch {} } } })();
+  (async () => { while (alive) { await new Promise((r) => setTimeout(r, 4000)); if (!alive) break; for (const w of [...F, ...G]) { try { if (w.synced && w.ws.readyState === 1) { w.move(w.x, w.y); w.here(); } } catch {} } } })();
 
   /* ── 1. twenty at level 5 ── */
   for (let i = 0; i < F.length; i++) {
@@ -179,7 +193,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const t = await W.page.evaluate((id) => (window.__btPeerBadge && window.__btPeerBadge[id] ? window.__btPeerBadge[id].name : null), me.id);
     return t && /^\[IRN\] /.test(t) ? t : null;
   }, 20000, 500);
-  rec.ok(`...and on a second phone, not in the party, the leader's plate reads "${leaderOnW || '?'}"`, !!leaderOnW && /^\[IRN\] Leader/.test(leaderOnW), leaderOnW);
+  rec.ok(`...and on a second phone, not in the party, the leader's plate reads "${leaderOnW || '?'}"`, !!leaderOnW && /^\[IRN\] Leader/.test(leaderOnW),
+    leaderOnW || await W.page.evaluate((id) => {
+      const S = window._gameState.current, o = S.others && S.others[id];
+      return { zone: S.currentZone, me: S.player && [Math.round(S.player.x), Math.round(S.player.y)], peer: o ? { x: Math.round(o.x), y: Math.round(o.y), zone: o.zone, tag: o.allyTag, away: !!o._away, fa: !!o._fa } : null,
+        badges: window.__btPeerBadge ? Object.keys(window.__btPeerBadge).length : -1, others: Object.keys(S.others || {}).length };
+    }, me.id));
   await shot(W, '2-watcher');
 
   /* ── 3. the board ── */
@@ -217,7 +236,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const p = await H.readState(A, (S) => (S._party && S._party.ally ? { n: S._party.members.length, on: S._party.ally.on, active: S._party.ally.active } : null));
     return p && p.n === 19 ? p : null;
   }, 8000);
-  rec.ok(`a friend leaves: ${s5 ? s5.active : '?'} active, still an alliance (it stays down to 15)`, !!s5 && s5.on === true && s5.active === 19, s5);
+  rec.ok(`a friend leaves: ${s5 ? s5.active : '?'} active, still an alliance (it stays down to 15)`, !!s5 && s5.on === true && s5.active === 19,
+    s5 || { phone: await H.readState(A, (S) => ({ party: S._party ? { n: S._party.members.length, on: S._party.ally && S._party.ally.on } : null, ws: !!(S.channel), idle: !!S._idleLoggedOut })),
+      f0: { ready: F[0].ws && F[0].ws.readyState, closed: F[0].closed || null, t0, last: F[0].lastParty() && { state: F[0].lastParty().state, n: F[0].lastParty().members ? F[0].lastParty().members.length : 0 } },
+      closedBots: [...F, ...G].filter((w) => w.closed).map((w) => w.name + ':' + w.closed.code + ':' + Math.round((w.closed.at - t0) / 1000) + 's') });
   const leftPlate = await until(async () => {
     const t = await A.page.evaluate((id) => (window.__btPeerBadge && window.__btPeerBadge[id] ? window.__btPeerBadge[id].name : null), F[0].id);
     return t && !/^\[/.test(t) ? t : null;

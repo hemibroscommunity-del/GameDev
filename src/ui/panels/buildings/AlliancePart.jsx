@@ -3,7 +3,7 @@ import { allyBus, allyCapsOn, allyTagShown, waitWords } from '@/game/alliance.js
 
 /* ═══ v2.3.3285: THE SALOON'S ALLIANCE PART (server alliance.js) ═══
  *
- * docs/specs/alliance.md.  Under "Your party" in the Saloon (WheelHallPanel.jsx
+ * docs/specs/alliance.md.  At the top of the Saloon (WheelHallPanel.jsx
  * SaloonPanel), against a worker with caps.alliance:
  *   - not an alliance yet: how many members count (active: played in the
  *     last 7 days and level 5 or more) against the 20 it takes, and what an

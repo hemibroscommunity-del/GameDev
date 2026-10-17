@@ -134,7 +134,7 @@ their alliance). It needs the stored party (`partykeep`): with
 
 ## On the phone
 
-- **The Saloon** (WheelHallPanel.jsx SaloonPanel, under Your party): not yet an
+- **The Saloon** (WheelHallPanel.jsx SaloonPanel, at its top): not yet an
   alliance, "n/20" and a bar, and what an alliance gets; an alliance, its
   `[TAG] Name` (or "Unnamed alliance") and active count, the leader's name and
   tag form (Rename once a day), its war -- the score, the minutes left, the
