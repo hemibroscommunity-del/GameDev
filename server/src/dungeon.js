@@ -309,15 +309,26 @@ export const dungeonMethods = {
     const ownerPs = this.playerState[ownerId];
     const fromZone = ownerPs && ownerPs.z;
     if (!fromZone) return 0;
-    let pulled = 0;
+    /* v2.3.3284: a party lasts and grows past four now (party.js), but a
+       dungeon stays FOUR -- its boss is sized for four (PARTY_HP_SCALE) --
+       so the leader takes the three eligible members nearest them, the
+       owner's "the 4 nearest the entrance go in together" */
+    const room = DUNGEONS.PARTY_HP_SCALE.length - 1;
+    const near = [];
     for (const pid of p.members) {
       if (pid === ownerId) continue;
       const mps = this.playerState[pid];
       if (!mps || mps.dead || mps.dying || mps.disconnected) continue;
       if (mps.z !== fromZone) continue;
+      const d = Math.hypot((mps.x || 0) - (ownerPs.x || 0), (mps.y || 0) - (ownerPs.y || 0));
       /* v2.3.3016: the Wheel is one zone across 43,008 px -- a member there
          comes in only from beside the mouth */
-      if (inst.back && !(Math.hypot((mps.x || 0) - (ownerPs.x || 0), (mps.y || 0) - (ownerPs.y || 0)) <= WHEEL_DUNGEON.PARTY_R)) continue;
+      if (inst.back && !(d <= WHEEL_DUNGEON.PARTY_R)) continue;
+      near.push({ pid, d });
+    }
+    near.sort((x, y) => x.d - y.d);
+    let pulled = 0;
+    for (const { pid } of near.slice(0, room)) {
       this._dungeonSend(pid, { type: 'dungeon_started', payload: { zone: inst.zone, cfg: inst.cfg, wave: 1, ...(inst.back ? { back: inst.back } : {}) } });
       pulled++;
     }

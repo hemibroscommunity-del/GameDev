@@ -201,6 +201,7 @@ import { tickPaceMethods } from './tickpace.js'; /* v2.3.3202: the world keeps i
 import { steadyMoversMethods } from './steadymovers.js'; /* v2.3.3203: a player walking steadily is sent less often */
 import { bundleParts } from './bundle.js'; /* v2.3.3254: several messages in one frame (the quiet phone) */
 import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look relayed when it changes, not every 2 s */
+import { nearJoinMethods } from './nearjoin.js'; /* v2.3.3276: a join is told the players around it; a look comes when its player does */
 import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what is 5+ levels below you, harvests and fights */
 import { floodMethods, roomNameFor, requestIp, FLOOD } from './flood.js'; /* v2.3.3274: one socket cannot stop the game */
 import { verifyMethods } from './verify.js'; /* v2.3.3275: the account check -- a new character proves a person is there */
@@ -6211,7 +6212,11 @@ export class GameRoom {
     }
     return out;
   }
-  getAllPlayerData() {
+  /* v2.3.3276: `forSession` -- a phone that joined with `nj: 1` (nearjoin.js)
+     is told the players around it whole and everyone else as a list entry;
+     anything else is told everyone whole, as before */
+  getAllPlayerData(forSession) {
+    if (forSession && forSession.nearJoin && this._nearJoinPlayers) return this._nearJoinPlayers(forSession);
     const r = Object.create(null);   /* v2.3.3260: keyed by player id (TRAPS: '__proto__') */
     for (const [, s] of this.sessions) { if (s.id) r[s.id] = this._gearProvCropPeer(this._peerPublic(this.playerState[s.id], s)); }
     /* v2.3.3260: and a body left lingering in a fight (linger.js), with the
@@ -6347,6 +6352,7 @@ Object.assign(GameRoom.prototype, aggroGridMethods); /* v2.3.3201 */
 Object.assign(GameRoom.prototype, tickPaceMethods); /* v2.3.3202 */
 Object.assign(GameRoom.prototype, steadyMoversMethods); /* v2.3.3203 */
 Object.assign(GameRoom.prototype, lookRelayMethods); /* v2.3.3240 */
+Object.assign(GameRoom.prototype, nearJoinMethods); /* v2.3.3276 */
 Object.assign(GameRoom.prototype, xpDecayMethods); /* v2.3.3251 */
 Object.assign(GameRoom.prototype, floodMethods); /* v2.3.3274: one socket cannot stop the game */
 Object.assign(GameRoom.prototype, verifyMethods); /* v2.3.3275: the account check */

@@ -340,9 +340,17 @@ async function body(P, rec) {
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   });
   const f = await fingerDown(P, sp.x, sp.y, 9);
-  /* held long enough for the 90ms press transition to finish at the frame
-     rate a headless page draws */
-  await P.page.waitForTimeout(700);
+  /* held until the press has SHOWN, read every 250 ms for up to 3 s
+     (v2.3.3283).  One read 700 ms after the touch failed on main too: this
+     box's page can go that long without drawing a frame, so the style change
+     -- and its 90 ms transition -- began only when the read itself forced it,
+     and a transition read at its start is matrix(1).  The debug line just
+     after it always read 0.94. */
+  await H.waitFor(P, () => {
+    const el = document.querySelector('[data-special]');
+    const sk = el && el.querySelector('.bt-skin');
+    return { p: el && el.getAttribute('data-pressed'), tf: sk ? getComputedStyle(sk).transform : null };
+  }, (v) => !!v && v.p === '1' && /matrix\(0\.9/.test(v.tf || ''), { timeout: 3000, label: 'Spec pressed in' }).catch(() => null);
   const D = await look(P);
   console.log('    BTNSKIN dbg pressed ' + JSON.stringify(await P.page.evaluate(() => {
     const el = document.querySelector('[data-special]');

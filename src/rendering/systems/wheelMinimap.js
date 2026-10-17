@@ -77,6 +77,7 @@ import { wheelTownDoors } from '@/game/wheelTownDoors.js';   /* v2.3.3146: the t
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
 import { peerDotAt } from '@/game/peerDot.js';             /* v2.3.3243: a player's dot where they are now */
+import { PARTY_MARK, partyIdsOf, clampToBox } from '@/game/partyMarks.js';   /* v2.3.3277: your party, blue, and on the box's edge when off it */
 import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
 import { noteNoMansLand } from '@/game/noMansLand.js';       /* v2.3.3058: No man's land's banner */
 import { noteWheelMusic } from '@/game/wheelMusic.js';      /* v2.3.3064: ...and its music */
@@ -193,7 +194,8 @@ export class WheelMinimap {
     this.townMark = new Graphics();  /* the town's square: v2.3.3146, only while its buildings are not known */
     this.marks = new Container();    /* bros and monsters: every frame */
     this.road = new Graphics();      /* v2.3.2992: the gold road to the quest's star: every frame */
-    this.pan.addChild(this.lines, this.buildings, this.places, this.townMark, this.road, this.marks);
+    this.partyRims = new Graphics(); /* v2.3.3277: your party's marks' rims, over theirs: every frame */
+    this.pan.addChild(this.lines, this.buildings, this.places, this.townMark, this.road, this.marks, this.partyRims);
     this.player = new Sprite(this.icons.self || this.dotTex);
     this.player.anchor.set(0.5);
     this.player.width = 15; this.player.height = 15;
@@ -512,12 +514,15 @@ export class WheelMinimap {
        past 2,400 px, at the Wheel's edge where the box stops centring on you,
        is sent about once a second: src/game/peerDot.js) */
     const others = S.others;
+    /* v2.3.3277: your party is drawn last, in its blue (below) */
+    const party = partyIdsOf(S);
     /* v2.3.3250: never a parked copy (src/game/presence2.js) -- it is kept
        past the box's corner anyway, so this only spares it a sprite */
     if (others) {
       const now = Date.now(), at = _peerAt;
       for (const id in others) {
         const o = others[id];
+        if (party && party.has(id)) continue;
         if (o && !o._away && (o.zone || o.z) === S.currentZone) { peerDotAt(o, now, at); this._mark(at.x, at.y, 'player', C_OTHER, 13); }
       }
     }
@@ -527,6 +532,42 @@ export class WheelMinimap {
       if (!m || m.alive === false || m.dead || (m.hp != null && m.hp <= 0)) continue;
       this._mark(m.x, m.y, 'monster', C_MONSTER, 12);
     }
+    /* ═══ v2.3.3277: YOUR PARTY (src/game/partyMarks.js) ═══
+       Over the bros and monsters, in the party's blue with a light rim, a
+       little bigger than a bro.  One off the box rides its inner edge on the
+       line to them (the quest star's clamp), smaller -- walk that way.  The
+       worker sends your party wherever they are in the Wheel (presence2.js),
+       so their copy is never parked; a member in another zone is on no map. */
+    const partyMarks = [];
+    if (party && others) {
+      const now = Date.now(), at = _peerAt;
+      const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
+      const lo = QUEST_EDGE, hi = WHEEL_BOX - QUEST_EDGE, hiY = MAP_BOT - (QUEST_EDGE - FRAME);
+      for (const id of party) {
+        const o = Object.prototype.hasOwnProperty.call(others, id) ? others[id] : null;
+        if (!o || o._away || (o.zone || o.z) !== S.currentZone || typeof o.x !== 'number') continue;
+        peerDotAt(o, now, at);
+        const c = clampToBox(pbx, pby, at.x * SCALE + this.pan.x, at.y * SCALE + this.pan.y, lo, hi, hiY);
+        const px = c.edge ? PARTY_MARK.EDGE_PX : PARTY_MARK.PX;
+        const mx = c.x - this.pan.x, my = c.y - this.pan.y;
+        this._mark(mx / SCALE, my / SCALE, 'player', PARTY_MARK.COLOR, px);
+        partyMarks.push({ id, x: Math.round(c.x), y: Math.round(c.y), edge: c.edge, px, mx, my });
+      }
+    }
+    /* the rims are redrawn only when a mark moved, came or went: a party
+       standing still, or none at all, is no Graphics change a frame (each is a
+       rebuild of the scene's draw list, docs/MEMORY-PLAN.md) */
+    let rimSig = '';
+    for (const m of partyMarks) rimSig += (m.mx * 4 | 0) + ',' + (m.my * 4 | 0) + ',' + m.px + ';';
+    if (rimSig !== (this._partyRimSig || '')) {
+      this.partyRims.clear();
+      for (const m of partyMarks) {
+        this.partyRims.circle(m.mx, m.my, m.px / 2 + 0.75).stroke({ width: 1.6, color: PARTY_MARK.RIM, alpha: 0.95 });
+        this.partyRims.circle(m.mx, m.my, m.px / 2 + 1.9).stroke({ width: 1, color: 0x0b161b, alpha: 0.7 });
+      }
+      this._partyRimSig = rimSig;
+    }
+    for (const m of partyMarks) { delete m.mx; delete m.my; }
     /* v2.3.2990: the quest's way (above the bros and monsters: drawn last) */
     let quest = null;
     try { quest = questRoutePoint(S.currentZone, S.rpg || null, S); } catch (e) { quest = null; }
@@ -641,6 +682,8 @@ export class WheelMinimap {
            the box, their doors), and whether the town's square still shows */
         buildings: this._bld.map((b) => ({ ...b })), townMark: !!this.townMark.visible,
         scale: SCALE,
+        /* v2.3.3277: your party's marks (in the box, and whether on its edge) */
+        party: partyMarks,
       };
     } catch (e) { /* never breaks the frame */ }
   }

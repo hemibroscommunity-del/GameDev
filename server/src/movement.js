@@ -439,6 +439,9 @@ export const movementMethods = {
       // Lifesteal damage tracking is per-zone; clear so a kill
       // in the new zone can't refund off old-zone monster IDs.
       ps.dmgFromMonster = {};
+      /* v2.3.3276: a near-join phone is sent, on its next tick, the look and
+         place of everyone around where it arrived (nearjoin.js) */
+      if (session.nearJoin) session._nearArrive = true;
       if (ps.z !== 'town' && ps.z !== 'farm_home') {
         // Combat zone -- send the new zone's monster + gather +
         // loot state so the client can render them.

@@ -4,7 +4,7 @@ Everything the farm needs drawn, as sprite sheets you can make in ChatGPT and se
 
 There are two kinds, in two styles:
 
-- **Bag icons (sheets 1-3), needed now.** The bag, the Feed & Seed window and the Cookhouse show emoji where these go. They match the painted icons the bag already uses.
+- **Bag icons (the crop sheet, then sheets 1 and 2): in the game since v2.3.3281.** Your three sheets are the bag's, the Feed & Seed window's and the Cookhouse's pictures, cut by `tools/ui/cut-bag-icons.py` (docs/specs/bag-icons.md). The prompts stay below for a redo: send the new sheet in chat.
 - **The farm you walk on (sheets 4-6, the Barn, the Farmhouse and the Dungeon Workshop).** They are for the farm you walk around on (in the game since v2.3.3136: docs/specs/farm-walk.md). They follow the world's HD pixel-art rules (docs/WORLD-BIBLE.md §6), like every Object Studio picture.
 
 ## How
@@ -20,6 +20,7 @@ There are two kinds, in two styles:
 The owner: *"The main focus is just getting a good variety of crops to grow."*
 One square sheet of all sixteen crops, as bag icons: the six the farm grew
 before and the ten added in v2.3.3135. Attach your bag-icon reference picture.
+**In the game since v2.3.3281** (kept as `assets/icons-source/sheet-bag-crops.png`).
 
 ```text
 Square image: a sprite sheet of 16 crop icons for a 2D action RPG, in a 4×4 grid read like a page (each row left to right, rows top to bottom). Each icon sits centered in its own equal square cell, fills about three quarters of it, and touches nothing else. Every crop is shown freshly harvested.
@@ -37,67 +38,50 @@ No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) e
 - **Why these colours:** no purple or beet-red anywhere. The cut-out treats
   magenta's hue as background, so the gloomcap is teal, not purple, and the
   heartroot is a radish red, not a beet's.
-- **The sheets below** came first and cover only the first six crops. Sheet
-  2's first two rows are this sheet's crops again; its third row (the basket,
-  the seed pouch and the deed) is still wanted. Seed packets and growth stages
-  for the ten new crops come later.
+- **The two bag sheets below** (v2.3.3279) finish the bag: all sixteen seed
+  packets, and the five dishes with compost. They replace the first three
+  sheets, which covered only the first six crops and asked for things the game
+  no longer needs (the hoe and watering can are the right stick's own pictures
+  now, drawn by the owner). The growth stages for all sixteen crops are already
+  in the game (`src/data/farmArt.js`).
 
 ## Bag icons
 
-### Sheet 1: seeds and farm tools
+### Sheet 1: the sixteen seed packets (v2.3.3279)
 
-- **In the game:** the six seed packets in the bag and the Feed & Seed window; compost; the Dig and Water buttons.
+- **In the game (v2.3.3281):** every seed in the bag and on the Feed & Seed window's Seeds tab (kept as `assets/icons-source/sheet-bag-seeds.png`). All sixteen wore one 🌱 in the bag until then.
 - **Attach:** `docs/art/bag-icon-style-key.png`.
+- Everyday seeds in brown paper, magic seeds in navy and gold, so the two kinds tell apart at a glance; the crops in the order of the crop sheet above.
 
 ```text
-A square picture: a SPRITE SHEET of 9 item icons for BroTown, a top-down 2D action RPG, in a neat 3 by 3 grid, read like a page: each row left to right, the rows top to bottom. Each icon sits in the middle of its own equal square cell, fills about three quarters of it, and never touches another icon or the picture's edge.
+Square image: a sprite sheet of 16 seed-packet icons for a 2D action RPG, in a 4×4 grid read like a page (each row left to right, rows top to bottom). Each icon sits centered in its own equal square cell, fills about three quarters of it, and touches nothing else.
 
-Row 1: carrot seeds -- a small paper seed packet with a crimped, folded-over top, in cream paper, with a bright orange carrot and its green leaves painted on the front; firebloom seeds -- the same packet in deep red paper, with a fiery flower whose red, orange and yellow petals curl like flames painted on the front; potato seeds -- the same packet in brown paper, with a plump brown potato painted on the front.
-Row 2: rock vine seeds -- the same packet in grey-green paper, with a curling grey-green vine painted on the front, its small round leaves like pebbles and a few dusky blue berries; cloudpetal seeds -- the same packet in pale sky-blue paper, with a puffy flower of soft white petals tipped with sky blue, like a little cloud, painted on the front; pumpkin seeds -- the same packet in orange paper, with a round orange pumpkin and its curly green stem painted on the front.
-Row 3: compost -- a small burlap sack, open at the top, full of rich dark-brown compost with bits of straw, and a cheerful reddish-brown earthworm peeking out; a garden hoe -- a worn wooden handle and a flat iron blade, a little chipped, lying at an angle; a watering can -- a dented green metal watering can with a long spout, a few drops of blue water falling from it.
+Every packet is the same shape and size: a small paper seed packet with a crimped, folded-over top, seen at a slight three-quarter angle, with its crop painted big on the front so it reads at fingertip size. Rows 1 and 2 are everyday seeds in plain brown kraft paper. Rows 3 and 4 are magic seeds in deep navy-blue paper with a thin gold border.
 
-Style: exactly the style of the attached icons. Rich, glossy, hand-painted game item icons with crisp edges and a clean dark outline, warm saturated colours, soft shading and small bright highlights, lit from the upper left, each item seen at a slight three-quarter angle. Each icon is ONE clear object, easy to recognise at the size of a fingertip. The six packets are the same shape and size, so they read as one set, told apart by their colour and the picture on the front.
+Row 1: carrot (three orange carrots with green tops) · potato (two plump brown potatoes) · pumpkin (a round orange pumpkin) · wheat (a golden wheat sheaf)
+Row 2: corn (a yellow ear of corn in its green husk) · tomato (two ripe red tomatoes) · cabbage (a round leafy green cabbage) · strawberry (three red strawberries with green tops)
+Row 3: firebloom (a flower whose red, orange and yellow petals curl like flames) · rock vine (a grey-green vine with pebble-like leaves and dusky blue berries) · cloudpetal (a puff of white blossoms tipped with sky blue) · frostberry (round icy pale-blue berries dusted with frost)
+Row 4: thunder pepper (a crooked bright-yellow chili with dark blue lightning zigzags) · dewmelon (a sea-green melon beaded with water drops) · gloomcap (three toadstools with dark teal caps and pale spots) · heartroot (a heart-shaped red root with a white tip and green leaves)
 
-No text, letters or numbers anywhere. No frames, borders, tiles or cell lines, and no shadow under any icon. The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is magenta or bright pink.
+Style: exactly the attached reference: glossy hand-painted item icons, clean dark outline, soft shading, small bright highlights, lit from the upper left. All 16 the same size and weight so they read as one set.
 
-Attached are some of the game's own item icons. Match their style, outline, colours and finish exactly, but do not copy the items themselves or their background.
+No text, letters or numbers anywhere, not even on the packets. No frames, cell lines or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the icons is magenta or pink. Do not copy the reference's items or background.
 ```
 
-### Sheet 2: crops, herbs and farm odds and ends
+### Sheet 2: the five dishes and compost (v2.3.3279)
 
-- **In the game:** the six crops and herbs in the bag; the Harvest and Plant buttons; the free farm's deed at the Land Office.
+- **In the game (v2.3.3281):** the five Cookhouse dishes in the bag, the Cookhouse window and the Quick Eat button; compost in the bag and the Feed & Seed window (kept as `assets/icons-source/sheet-bag-dishes.png`). They wore emoji until then.
 - **Attach:** `docs/art/bag-icon-style-key.png`.
 
 ```text
-A square picture: a SPRITE SHEET of 9 item icons for BroTown, a top-down 2D action RPG, in a neat 3 by 3 grid, read like a page: each row left to right, the rows top to bottom. Each icon sits in the middle of its own equal square cell, fills about three quarters of it, and never touches another icon or the picture's edge.
+Landscape image (wider than tall): a sprite sheet of 6 item icons for a 2D action RPG, in a 3×2 grid read like a page (each row left to right, rows top to bottom). Each icon sits centered in its own equal square cell, fills about three quarters of it, and touches nothing else.
 
-Row 1: a carrot -- a bunch of three fresh orange carrots with their feathery green tops, tied with a bit of twine; a potato -- two plump, earthy brown potatoes, one a little bigger, with a few small eyes; a pumpkin -- one round, ribbed orange pumpkin with a short curly green stem and a leaf.
-Row 2: firebloom -- a small bundle of three fiery flowers on short green stems, their red, orange and yellow petals curling like flames, tied with twine; rock vine -- a coiled length of tough grey-green vine with small round leaves like pebbles and a cluster of dusky blue berries; cloudpetal -- a few soft, puffy blossoms of white petals tipped with sky blue, like little clouds, on pale green stems.
-Row 3: a harvest basket -- a round wicker basket with a handle, full of carrots, potatoes and a small pumpkin; a seed pouch -- a small drawstring cloth pouch, open, with a few seeds spilling out of it; a farm deed -- a rolled parchment scroll tied with a green ribbon and sealed with a red wax seal stamped with a little sprouting leaf.
+Row 1: herb bread (a round, golden-brown rustic loaf with a crackled crust, flecked with green herbs and a few red petals baked into the top) · root stew (a wooden bowl of thick brown stew with chunks of root vegetables and small round green leaves, a wooden spoon resting in it) · pumpkin pie (a whole pie in a tin with a golden crimped crust and smooth orange filling, one slice missing)
+Row 2: garden stew (a big clay bowl of hearty stew full of carrot slices and potato chunks, steaming gently, a hunk of bread on the side) · firebloom tea (a chunky clay mug of hot amber-red tea with a fiery red-and-orange flower floating in it, a curl of steam rising) · compost (a small open burlap sack full of rich dark-brown compost with bits of straw, and a brown earthworm peeking out)
 
-Style: exactly the style of the attached icons. Rich, glossy, hand-painted game item icons with crisp edges and a clean dark outline, warm saturated colours, soft shading and small bright highlights, lit from the upper left, each item seen at a slight three-quarter angle. Each icon is ONE clear object, easy to recognise at the size of a fingertip. The six crops and herbs are the same size and weight, fresh from the ground, so they read as one set.
+Style: exactly the attached reference: glossy hand-painted item icons, clean dark outline, soft shading, small bright highlights, lit from the upper left, slight three-quarter view. All 6 the same size and weight; the dishes hearty, warm and appetising, a frontier cook's best.
 
-No text, letters or numbers anywhere. No frames, borders, tiles or cell lines, and no shadow under any icon. The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is magenta or bright pink.
-
-Attached are some of the game's own item icons. Match their style, outline, colours and finish exactly, but do not copy the items themselves or their background.
-```
-
-### Sheet 3: meals and drinks
-
-- **In the game:** the five Cookhouse dishes, in the bag and the Cookhouse window. The last cell is left empty on purpose.
-- **Attach:** `docs/art/bag-icon-style-key.png`.
-
-```text
-A square picture: a SPRITE SHEET of 6 item icons for BroTown, a top-down 2D action RPG, in a neat 3 by 2 grid (three across, two down), read like a page: each row left to right, the rows top to bottom. Each icon sits in the middle of its own equal square cell, fills about three quarters of it, and never touches another icon or the picture's edge.
-
-Row 1: herb bread -- a round, golden-brown loaf of rustic bread with a crackled crust, flecked with bits of green herb and a few red petals baked into the top; root stew -- a wooden bowl of thick brown stew with chunks of root vegetables and small round green leaves, a wooden spoon resting in it; pumpkin pie -- a whole pumpkin pie in a tin with a golden crimped crust and smooth orange filling, one slice cut out and missing.
-Row 2: garden stew -- a big clay bowl of hearty stew full of orange carrot slices and potato chunks, steaming gently, a hunk of bread on the side; firebloom tea -- a chunky clay mug of hot amber-red tea with a fiery red-and-orange flower floating in it, a curl of steam rising; an empty cell, left as plain background.
-
-Style: exactly the style of the attached icons. Rich, glossy, hand-painted game item icons with crisp edges and a clean dark outline, warm saturated colours, soft shading and small bright highlights, lit from the upper left, each item seen at a slight three-quarter angle. Each icon is ONE clear object, easy to recognise at the size of a fingertip. The dishes are the same size and weight, so they read as one set: hearty, warm and appetising, a frontier cook's best.
-
-No text, letters or numbers anywhere. No frames, borders, tiles or cell lines, and no shadow under any icon. The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is magenta or bright pink.
-
-Attached are some of the game's own item icons. Match their style, outline, colours and finish exactly, but do not copy the items themselves or their background.
+No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the icons is magenta or pink. Do not copy the reference's items or background.
 ```
 
 ## The farm you walk on
