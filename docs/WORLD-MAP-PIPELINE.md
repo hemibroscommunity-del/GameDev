@@ -3796,6 +3796,47 @@ room grows. The zoom each detail appears at is in `AT`:
   puts the first quest back on the page's own copy of your quests for that
   one look, then takes it off again.
 
+### Up close far from you, as sharp as round you (v2.3.3319)
+
+> The five-times Wheel's "not in this step" (`docs/specs/wheel-5x.md`): "The
+> world map far from you draws the coarse picture (a pixel every 16 cells);
+> only the blocks round you are fine." The owner: "Push all these to main
+> then keep going."
+
+The long Wheel's whole-map picture is a pixel every 16 cells (384 game px),
+so the page holds it at the short Wheel's size (`overviewCells`). Zoomed in on
+the world map far from you, a coast or a lake was a few big soft squares;
+round you the blocks' own lands, four times finer, are drawn over it.
+
+- **Baked.** `tools/world/bake-wheel-world.mjs` (`detailTiles`) bakes the long
+  Wheel's lands at the blocks' detail too, a pixel every 4 cells, in their
+  flat colours exactly as `landsCanvas` paints the whole picture, cut into
+  256-pixel tiles: `public/world/placed5/detail/i-j.png`. A tile of one
+  colour (open sea) is no file: `placed.js` names its colour in `fill`. 40 of
+  the 64 are files, 64 KB in all. They are in the set's `?v=` address.
+- **Loaded only while shown.** The worker passes the list on (`ready`'s
+  `detail`, only beside the baked set it read). The map
+  (`src/ui/worldMapDetail.js`) asks for the tiles over the view once a coarse
+  pixel would be 6 CSS px or more on screen (`COARSE_PX`), four at a time,
+  decoded off the main thread (`createImageBitmap`), and draws each to whole
+  pixels so two side by side never leave a hairline; a one-colour tile is
+  filled. It holds at most 16 (a quarter of a MB each), letting the longest
+  unseen go, never one the last draw drew, and lets every one go as the map
+  closes.
+- **Not on the loading screen.** This is a map's detail coming in over the
+  picture it sharpens; nothing waits for it and nothing hitches. All 40 up
+  front would hold ~10 MB for a map most visits never zoom.
+- The short Wheel has no tiles (its whole picture is already that fine).
+  `?nomapdetail` draws the map as before.
+- `public/_headers` keeps `/world/placed5/*` a year, as `/world/placed/*`
+  was: the long Wheel's folder had no rule, so its 700 KB of objects and
+  pictures were asked about again every visit (TRAPS §199).
+- `mp-mapdetail` (7 checks): no tile on the whole Wheel; far off on Frost
+  Ridge, zoomed in, the tiles loaded and drawn, 12.4% of the view between the
+  land's colour and the sea's where the old picture had 25.6%; every tile at
+  its bake's address, never a one-colour one; over 22 tiles, 43 loads and
+  never more than 16 held; all let go on close.
+
 ### Always daylight, for now (v2.3.2963)
 
 > Owner, 2026-10-01, after one visit came out very dark just past the game's

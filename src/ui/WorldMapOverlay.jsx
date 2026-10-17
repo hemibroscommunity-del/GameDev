@@ -54,6 +54,7 @@ import { hasGatherTool } from '../data/lifeSkills.js';            /* v2.3.3057: 
 import { sendMapWatch, PRESENCE2_CLIENT } from '../game/presence2.js';   /* v2.3.3250: far players come while the map is open */
 import { peerDotAt } from '../game/peerDot.js';                    /* v2.3.3243: a far player's dot glides between rosters */
 import { PARTY_MARK, partyIdsOf } from '../game/partyMarks.js';    /* v2.3.3277: your party, blue, at every zoom */
+import { mapDetailFor, freeMapDetail } from './worldMapDetail.js';   /* v2.3.3319: the long Wheel's lands up close */
 
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 /* v2.3.3057: 12 -> 28, so the town's buildings can be read by name */
@@ -227,6 +228,8 @@ function WorldMap({ stateRef, onClose }) {
          Emptied now, as it closes (docs/MEMORY-PLAN.md, freed on close;
          mp-worldmapfree). */
       try { cv.width = 0; cv.height = 0; } catch (e) { /* gone */ }
+      /* v2.3.3319: and the lands' tiles it brought in up close go with it */
+      freeMapDetail();
     };
   }, [stateRef]);
 
@@ -365,6 +368,22 @@ function clampView(V, map) {
   V.cy = Math.max(0, Math.min(map.worldH, V.cy));
 }
 
+/* v2.3.3319: the long Wheel's lands up close (src/ui/worldMapDetail.js), the
+   tiles over the view, each to whole pixels so two side by side never leave a
+   hairline of the coarse picture between them -- how many were drawn, or null
+   when there are none to draw (not zoomed in that far, or none baked) */
+function drawMapDetail(g, ov, map, V, k, w, h, X, Y, t) {
+  const view = { x0: V.cx - w / 2 / k, y0: V.cy - h / 2 / k, x1: V.cx + w / 2 / k, y1: V.cy + h / 2 / k };
+  const tiles = mapDetailFor(view, (map.worldW / ov.width) * k, t);
+  if (!tiles) return null;
+  for (const T of tiles) {
+    const x0 = Math.floor(X(T.x)), y0 = Math.floor(Y(T.y)), x1 = Math.ceil(X(T.x + T.w)), y1 = Math.ceil(Y(T.y + T.h));
+    if (T.bm) g.drawImage(T.bm, x0, y0, x1 - x0, y1 - y0);
+    else { g.fillStyle = T.fill; g.fillRect(x0, y0, x1 - x0, y1 - y0); }
+  }
+  return tiles.length;
+}
+
 /* ── drawing ── */
 function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   /* v2.3.3315: `z` the map's own zoom, for what lies along the lands; `zr`
@@ -377,9 +396,13 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   /* the land, a touch darker for the labels -- v2.3.3024: each land one
      flat colour, as on the minimap (wheelTrial.js landsCanvas) */
   const ov = wheelOverviewLands();
+  let detailN = null;
   if (ov && ov.width) {
     g.imageSmoothingEnabled = true;
     g.drawImage(ov, X(0), Y(0), map.worldW * k, map.worldH * k);
+    /* v2.3.3319: zoomed in, the long Wheel's lands as fine everywhere as
+       round you (src/ui/worldMapDetail.js) */
+    detailN = drawMapDetail(g, ov, map, V, k, w, h, X, Y, t);
     /* v2.3.3315: the long Wheel's whole-map picture is a pixel every 16
        cells; round you the blocks' lands are four times finer, as the
        short Wheel's whole picture is (wheelTrial.js wheelLocalLands) */
@@ -408,7 +431,8 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   line((r) => r.kind === 'road' && r.trunk, lw, 'rgba(242,228,194,0.95)');
 
   /* ── v2.3.3057: the details, under every label ── */
-  const more = { ticks: 0, nodes: 0, others: 0, monsters: 0, quest: null, buildings: 0, bridges: 0, ponds: 0, tierLabels: 0, party: 0, partyNames: 0 };
+  const more = { ticks: 0, nodes: 0, others: 0, monsters: 0, quest: null, buildings: 0, bridges: 0, ponds: 0, tierLabels: 0, party: 0, partyNames: 0,
+    detail: detailN };   /* v2.3.3319: the lands' tiles drawn up close (null: none to draw) */
   const onScreen = (x, y, pad = 30) => x > -pad && y > -pad && x < w + pad && y < h + pad;
   /* each land's level bands: a tick across the spoke every five levels */
   if (z >= AT.tier && map.spokeHalf) {

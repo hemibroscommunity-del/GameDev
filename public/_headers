@@ -27,6 +27,13 @@
 /world/placed/*
   Cache-Control: public, max-age=31536000, immutable
 
+# v2.3.3319: and the long Wheel's (public/world/placed5/, v2.3.3315) -- this
+# rule was missing, so its 700 KB of objects and pictures were asked about
+# again on every visit -- with the world map's detail tiles in placed5/detail/
+# (src/ui/worldMapDetail.js), at the same ?v=.
+/world/placed5/*
+  Cache-Control: public, max-age=31536000, immutable
+
 # v2.3.3258: the pictures of the inside of each building (public/world/
 # interiors/, ~300 KB each).  Asked for at ?v=<ROOMS_V> (src/data/
 # buildingRooms.js), so replacing one is a new address and a year of immutable
