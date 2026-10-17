@@ -20,19 +20,19 @@ name: Server CI
 # deploy-worker.yml — the 2026-08-06 merge of PR #360 produced no run for
 # EITHER workflow, so the suite that gates the deploy was as unrunnable as
 # the deploy itself.  Client CI already had one.
+# v2.3.3302: ...AND NOW ON EVERY PR, WHATEVER IT TOUCHES.  The path list
+# above kept growing one miss at a time, and it was behind again: the suites
+# import or read 97 files outside server/ -- 61 of them outside these paths
+# (src/game/sprint.js, quietPhone.js, wsClient.js, gameEvents.js,
+# public/tools/world/plan.js, docs/*.md ...), found by the architecture review
+# (2026-10-17) -- so a PR that changed only one of those ran no server suite,
+# on the PR or on main.  npm test runs every suite in ~30 s since v2.3.3302
+# (test/run.mjs), so the suite simply runs on every PR and every push to main.
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - 'server/**'
-      - 'src/data/**'
-      - 'src/game/t1Sync.js'
   push:
     branches: [main]
-    paths:
-      - 'server/**'
-      - 'src/data/**'
-      - 'src/game/t1Sync.js'
 
 jobs:
   test:

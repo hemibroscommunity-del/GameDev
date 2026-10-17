@@ -3096,7 +3096,17 @@ export function processGameEvent(type, payload, S, deps) {
               /* v2.3.2996: ...but a burn's tick is fire on you, not a blow a
                  roll slips: the worker priced it as elemental, which no roll
                  or Dodge stat avoids (combat.js v2.3.2680), so it shows. */
-              if (S._dodgeRoll && !_burnTick) break; /* in i-frames */
+              /* ═══ v2.3.3300: ...AND IN A SERVER ZONE THE WORKER DECIDED ═══
+                 A roll slips a monster's blow on the worker now (movement.js
+                 _rollIFrames: a dodge or a lunge inside the window it charged
+                 for), and a blow it slipped sends nothing.  So a monster_attack
+                 that reaches a rolling phone LANDED -- the snow pile, fire, a
+                 storm's arc, a retreat shot's roll (no i-frames), or a blow
+                 judged a moment before the worker heard of the roll -- and its
+                 HP is already off the bar.  Hiding its number left the bar
+                 dropping with nothing said (hit-door.md decision 4).  The
+                 local monsters keep their own i-frames. */
+              if (S._dodgeRoll && !_burnTick && !S._serverMonsters) break; /* in i-frames */
               /* HP mutation: worker authoritative in MP.  Don't decrement
                  local R.hp here -- the player_state event that follows
                  monster_attack carries the new authoritative hp.  Keep

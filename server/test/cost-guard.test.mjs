@@ -240,6 +240,25 @@ const FAST = 110;
     check(`5. a kill writes your record once (the first kill ${first.length} rows: ${Object.entries(byPrefix(first)).map((e) => e.join(' ')).join(', ')}; the next ${second.length})`,
       first.filter((k) => k.startsWith('rpg:')).length === 1 && first.length <= 2
       && second.filter((k) => k.startsWith('rpg:')).length === 1 && second.length <= 2, { first, second });
+    /* v2.3.3305: ...and so does a melee kill that HEALS you.  The monster
+       hurt you, so the kill's lifesteal refunds it: the heal used to run
+       after the recipients loop and save the whole record a second time
+       (every one of a fighter's melee kills in the cost audit) */
+    {
+      const m = live()[0];
+      NOW += 5000;
+      ps.maxHp = ps.maxHp || 100;
+      ps.hp = Math.max(1, ps.maxHp - 50);
+      ps.dmgFromMonster = { [m.id]: 40 };
+      const hp0 = ps.hp;
+      const w3 = state.writes.length;
+      kill(m);
+      const healed = mine(state, 'cg_kill', w3);
+      const saved = state.store.get('rpg:cg_kill');
+      check(`5c. a melee kill that heals you writes your record once too (${healed.filter((k) => k.startsWith('rpg:')).length}), the healed health in it`,
+        ps.hp > hp0 && healed.filter((k) => k.startsWith('rpg:')).length === 1 && !!saved && saved.hp === ps.hp,
+        { rows: healed, hp: [hp0, ps.hp, saved && saved.hp] });
+    }
     /* the codex at most once a SAVE_MS: ten kills of a kind it knows inside it */
     const w2 = state.writes.length;
     let n = 0;
