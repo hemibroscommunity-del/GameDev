@@ -304,8 +304,9 @@ extended.
     (see any `server/test/*.test.mjs`): stateful Map-backed storage mock
     with prefix `list`, `fakeWs` collecting sent JSON, `check()`
     counters, a real `webSocketMessage` join helper, exit 1 on failure,
-    registered in `server/package.json` `npm test`. Spec docs go in
-    `docs/specs/<system>.md` with the wire surface tabled.
+    named `server/test/<name>.test.mjs` -- since v2.3.3302 `npm test`
+    (test/run.mjs) runs every such file, so nothing else registers it.
+    Spec docs go in `docs/specs/<system>.md` with the wire surface tabled.
 25. **Comment discipline**: every change carries a `v2.3.NNNN:` tag
     explaining WHY, often with incident history; constants live in
     ALL-CAPS config objects (`MARKET`, `DUEL`). This is the project's
