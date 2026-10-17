@@ -115,6 +115,26 @@ async function read(P, tag) {
   };
 }
 
+/* ═══ v2.3.3326: READ HIM WHEN NOTHING IS OVER HIM ═══
+   A card or plate of the page's own over the figure reads as no colour at all
+   -- the lesson cards (now marked done, COACH_OFF), and in the sweep of
+   2026-10-17 a dark plate with a gold rule over the first, facing-forward
+   read, gone by the next.  So a read is repeated, a second apart for up to 8 s,
+   until what that facing must show is there; every check of that facing is
+   then made on that one frame, so a negative ("the back print is nowhere on
+   him") is never passed by a covered figure.  The first covered frame is kept
+   whole (facingside-<tag>-covered.png), to say what covered him. */
+async function readShowing(P, tag, shows) {
+  let r = null;
+  for (let i = 0; i < 8; i++) {
+    r = await read(P, tag);
+    if (r && shows(r)) return r;
+    if (i === 0) await P.page.screenshot({ path: `${SHOTS}/facingside-${tag}-covered.png` }).catch(() => {});
+    await P.page.waitForTimeout(1000);
+  }
+  return r;
+}
+
 /* ═══ v2.3.2746: DRAWN BEFORE THE CHARACTER EXISTS ═══
    v2.3.2690 (#706) made a character's look its STORED RECORD, written once at
    the creator's join: a drawing a returning client has in localStorage but the
@@ -126,7 +146,19 @@ async function read(P, tag) {
    script), and the creator's join carries them into the record, the way a
    player who drew in the creator arrives.  The control is a separate, plain
    character, because this one is never plain. */
-const SEED = `try {
+/* v2.3.3326: the tutorial's tip cards are marked done before the first script
+   runs, as mp-cosmpose and mp-skinworld do.  Since v2.3.3106 raised the combat
+   buttons, the "Your dashboard" card sits ~72 px higher, over the middle of the
+   screen where he stands: the turned-away and turned-back reads were that card
+   (the sweep of 2026-10-17). */
+const COACH_OFF = `try {
+  const l = ['openDash', 'move', 'equip', 'dashAfterTurnIn', 'equipAll', 'cycle',
+    'blockRanged', 'attack', 'special', 'chatTap', 'passkey'];
+  const d = {}; for (const k of l) d[k] = true;
+  localStorage.setItem('bt_coach_v1', JSON.stringify(d));
+} catch (e) {}`;
+const SEED = COACH_OFF + `
+try {
   localStorage.setItem('bt-facetattoo', ${JSON.stringify(PINK)});
   localStorage.setItem('bt-shirtart', ${JSON.stringify(GREEN)});
   localStorage.setItem('bt-shirtart-back', ${JSON.stringify(BLUE)});
@@ -140,7 +172,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      measuring the ground. This is also what stops the "gone when turned away"
      check passing vacuously -- which is exactly how the first version of this
      scenario reported a green run while its crop sat on bare cobblestones. */
-  const C = await H.newPlayer(browser, { name: 'Plain', wsPort, webPort, dpr: 2 });
+  const C = await H.newPlayer(browser, { name: 'Plain', wsPort, webPort, dpr: 2, init: COACH_OFF });   /* v2.3.3326: a card over him would pass this control on zeros */
   await H.enterWorld(C);
   await C.page.waitForTimeout(2500);
   await H.hopTo(C, H.TOWN_CLEAN_SPOT.x, H.TOWN_CLEAN_SPOT.y);
@@ -171,7 +203,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── FACING THE CAMERA ── */
   await face(P, 's');
-  const front = await read(P, 'front');
+  const front = await readShowing(P, 'front', (r) => r.pink >= 10 && r.green >= 10);
   rec.ok('the character can be located and measured facing forward (guard)',
     !!front, front);
   rec.ok('facing forward, the face tattoo is on his face',
@@ -185,7 +217,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── TURNED AWAY ── */
   await face(P, 'w');
-  const back = await read(P, 'back');
+  const back = await readShowing(P, 'back', (r) => r.blue >= 10 && r.red >= 10);
   rec.ok('the character can be located and measured facing away (guard)',
     !!back, back);
   rec.ok('turned away, the face tattoo is GONE — a face does not revolve round '
@@ -207,7 +239,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      also the assertion that the two cache entries are genuinely different
      rather than one entry being overwritten. */
   await face(P, 's');
-  const again = await read(P, 'again');
+  const again = await readShowing(P, 'again', (r) => r.pink >= 10 && r.green >= 10);
   rec.ok('turning back to the camera brings the face tattoo back',
     !!again && again.pink >= 10, again);
   rec.ok('...and the front print with it',
