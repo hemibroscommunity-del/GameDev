@@ -3491,7 +3491,9 @@ Two protocol versions coexist; both must keep working:
   The anti-bot review's urgent five, closed in `server/src/flood.js`: a row
   written per message (mute no-ops, a stat flood, offline DMs) -- nothing
   written when nothing changed, a player's own saves PACED (`_saveRpgPaced`,
-  handoff rule 27); `?room=<anything>` made a room awake and billed -- only
+  handoff rule 27; v2.3.3293: `shield_wear` too, and the trade window's
+  weapon lane by its messages, `PACE.T2WPN` -- the architecture review found
+  both writing a row a message, `cost-guard` §9); `?room=<anything>` made a room awake and billed -- only
   the main room and `ROOMS` in wrangler.toml, anything on a local host; no
   limit on messages a socket -- a budget (300 then 120/s, drops, close 4012);
   the room's places held by sockets that never joined, a second join adding
