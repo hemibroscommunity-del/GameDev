@@ -504,8 +504,12 @@ export function materialMap(plan, bp) {
      `rect`) is `ox`, `oy` cells from the whole one's corner: the noise here
      is read where the cell is in the WHOLE blueprint, so a rectangle's cells
      come out as the whole map's -- at least LAND_STAGE_MARGIN cells in from
-     its edges, where the stage's averaging can see all it needs */
-  const ox = bp.ox || 0, oy = bp.oy || 0;
+     its edges, where the stage's averaging can see all it needs.
+     v2.3.3300: ...counted from the active area's NAMED corner (bp.nox cells
+     in from the whole blueprint's; 0 unless the plan grows past it), so the
+     Wheel five times longer (plan.js wheelSized) keeps these patches where
+     the short one has them, the town's and the commons' included */
+  const ox = (bp.ox || 0) - (bp.nox || 0), oy = (bp.oy || 0) - (bp.noy || 0);
   /* v2.3.3031: the town's grass between its blocks and its paved cross */
   const surf = townSurfaces(plan, bp);
   for (let by = 0; by < bp.h; by++) {
@@ -1645,7 +1649,10 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
       pkJ = null;
     }
     const alongX = !pkDeck || pkDeck.along === 'x';
-    const key = pkDeck ? (alongX ? pkDeck.y0 : pkDeck.x0) : 0;
+    /* v2.3.3300: the deck's row or column from the active area's NAMED corner
+       (bp.nox, layout.js planFeatures), so a Wheel grown past it lays every
+       bridge with the boards the short one has */
+    const key = pkDeck ? (alongX ? pkDeck.y0 - (bp.noy || 0) : pkDeck.x0 - (bp.nox || 0)) : 0;
     const s = alongX ? aox : aoy, t = alongX ? aoy : aox;
     const j = Math.floor(s / BW);
     if (j !== pkJ) {

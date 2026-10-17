@@ -33,7 +33,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { PLAN } from '../../public/tools/world/plan.js';
+import { PLAN, PLAN5, WHEEL_LONG } from '../../public/tools/world/plan.js';
 import { buildBlueprint, C } from '../../public/tools/world/core/layout.js';
 import { wheelInfo, axisDist } from '../../public/tools/world/core/wheel.js';
 import { gridInfo } from '../../public/tools/world/core/grid.js';
@@ -42,7 +42,11 @@ import { objectCatalog } from '../../public/tools/objects/catalog.js';
 import { materialMap, walkBits } from '../../public/tools/world/core/ground.js';   /* v2.3.3012: the game's own walk grid */
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+/* v2.3.3300: the live Wheel's (WHEEL_LONG times longer, plan.js PLAN5), and the
+   short one's -- the Wheel as it was, which the worker plays only under its
+   kill switch `wheel5x: false` (wheelzone.js) */
 const OUT = path.join(ROOT, 'server/src/wheelspawns.js');
+const OUT1 = path.join(ROOT, 'server/src/wheelspawns1.js');
 
 /* The rules, in game px. */
 /* v2.3.3016: the way back out of a dungeon, tried in turn round its mouth
@@ -79,25 +83,62 @@ export const SPAWN_RULES = Object.freeze({
   }),
 });
 
-export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
+/* ═══ v2.3.3300: THE RULES FOR THE WHEEL FIVE TIMES LONGER ═══
+   The owner: "Maybe 5x larger map is needed" ("Rebuild for 5x").  Every land's
+   tiers are WHEEL_LONG times longer, so each holds that many times the places
+   (the server stands that many times the monsters a tier: wheelzone.js), the
+   first stretch's band reaches as far into its longer tier, and each band of a
+   land grows that many times the resources; the commons are the size they
+   were and keep theirs. */
+export function spawnRulesFor(long) {
+  if (!(long > 1)) return SPAWN_RULES;
+  return Object.freeze({ ...SPAWN_RULES, bandTo: SPAWN_RULES.bandFrom + (SPAWN_RULES.bandTo - SPAWN_RULES.bandFrom) * long,
+    keep: SPAWN_RULES.keep * long });
+}
+export function nodeRulesFor(long) {
+  if (!(long > 1)) return NODE_RULES;
+  return Object.freeze({ ...NODE_RULES, bands: Object.freeze(NODE_RULES.bands.map((b) => (b.id === 'commons' ? b
+    : Object.freeze({ ...b, ore: b.ore * long, tree: b.tree * long, fish: b.fish * long })))) });
+}
+
+export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES, nodeRules = NODE_RULES) {
   const bp = buildBlueprint(plan);
   const W = wheelInfo(plan), g = gridInfo(plan);
   const WPA = plan.worldPxPerArtPx, S = bp.scale, cellG = S * WPA;
   const ri = Object.create(null);
   bp.regionIds.forEach((k, i) => { ri[k] = i; });
   const n = bp.w * bp.h;
-  /* city-block distances (in cells) from hazards, from roads, from the commons */
+  /* city-block distances (in cells) from hazards, from roads, from the commons.
+     v2.3.3300: one byte a cell, held at DIST_CAP, by two sweeps -- the same
+     distances the queue it replaces found below the cap (city-block distance
+     is what a forward and a backward sweep give exactly), and every rule here
+     asks only whether one is under a few hundred px.  Four bytes a cell and a
+     queue as long were ~2.4 GB at the Wheel five times longer. */
+  const DIST_CAP = 255;
   const dist = (seed) => {
-    const d = new Float32Array(n).fill(1e9);
-    const q = new Int32Array(n);
-    let qh = 0, qt = 0;
-    for (let i = 0; i < n; i++) if (seed(i)) { d[i] = 0; q[qt++] = i; }
-    while (qh < qt) {
-      const i = q[qh++], x = i % bp.w, y = (i / bp.w) | 0, nd = d[i] + 1;
-      if (x > 0 && d[i - 1] > nd) { d[i - 1] = nd; q[qt++] = i - 1; }
-      if (x < bp.w - 1 && d[i + 1] > nd) { d[i + 1] = nd; q[qt++] = i + 1; }
-      if (y > 0 && d[i - bp.w] > nd) { d[i - bp.w] = nd; q[qt++] = i - bp.w; }
-      if (y < bp.h - 1 && d[i + bp.w] > nd) { d[i + bp.w] = nd; q[qt++] = i + bp.w; }
+    const W2 = bp.w, H2 = bp.h, d = new Uint8Array(n).fill(DIST_CAP);
+    for (let i = 0; i < n; i++) if (seed(i)) d[i] = 0;
+    for (let y = 0; y < H2; y++) {
+      const r = y * W2;
+      for (let x = 0; x < W2; x++) {
+        const i = r + x;
+        let v = d[i];
+        if (!v) continue;
+        if (x > 0 && d[i - 1] + 1 < v) v = d[i - 1] + 1;
+        if (y > 0 && d[i - W2] + 1 < v) v = d[i - W2] + 1;
+        d[i] = v;
+      }
+    }
+    for (let y = H2 - 1; y >= 0; y--) {
+      const r = y * W2;
+      for (let x = W2 - 1; x >= 0; x--) {
+        const i = r + x;
+        let v = d[i];
+        if (!v) continue;
+        if (x < W2 - 1 && d[i + 1] + 1 < v) v = d[i + 1] + 1;
+        if (y < H2 - 1 && d[i + W2] + 1 < v) v = d[i + W2] + 1;
+        d[i] = v;
+      }
     }
     return d;
   };
@@ -198,6 +239,21 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
   };
   /* game px of a cell's centre, and back */
   const gameX = (bx) => (bx + 0.5) * cellG, gameY = (by) => (by + 0.5) * cellG;
+  /* v2.3.3300: every open-ground cell of a land, by land and tier, in the
+     map's own order -- what each stretch's scan below walks, where it walked
+     a square round the centre as wide as its outer end (the same cells, in
+     the same order: any cell near enough the axis and the centre is in it).
+     One pass over the map, where the Wheel five times longer made those
+     squares ~850 M cells. */
+  const groundOf = new Map();
+  for (let i = 0; i < n; i++) {
+    if (bp.cls[i] !== C.ground) continue;
+    const key = bp.reg[i] * 64 + bp.tier[i];
+    let a = groundOf.get(key);
+    if (!a) groundOf.set(key, (a = []));
+    a.push(i);
+  }
+  const groundCells = (rid, t) => groundOf.get(rid * 64 + t) || [];
   const cxG = (g.cx - bp.x0) * WPA, cyG = (g.cy - bp.y0) * WPA;
   const sqPx = g.P * WPA;                          /* game px a plan square */
   const out = Object.create(null);
@@ -221,12 +277,8 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
     }
     const r0 = rEdge + rules.bandFrom, r1 = Math.min(rEdge + rules.bandTo, rStage);
     const cand = [];
-    const R = Math.ceil((r1 + rules.half) / cellG) + 2;
-    const bx0 = Math.max(0, Math.floor(cxG / cellG) - R), bx1 = Math.min(bp.w - 1, Math.floor(cxG / cellG) + R);
-    const by0 = Math.max(0, Math.floor(cyG / cellG) - R), by1 = Math.min(bp.h - 1, Math.floor(cyG / cellG) + R);
-    for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) {
-      const i = by * bp.w + bx;
-      if (bp.cls[i] !== C.ground || bp.reg[i] !== rid || bp.tier[i] !== rules.tier) continue;
+    for (const i of groundCells(rid, rules.tier)) {
+      const bx = i % bp.w, by = (i / bp.w) | 0;
       const x = gameX(bx), y = gameY(by), dx = x - cxG, dy = y - cyG;
       const along = dx * s.ux + dy * s.uy, side = Math.abs(dx * s.uy - dy * s.ux);
       if (along < r0 || along > r1 || side > rules.half) continue;
@@ -258,12 +310,8 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
       const rIn = (W.hub + (t - 1) * W.tierLen) * sqPx, rOut = (W.hub + t * W.tierLen) * sqPx;
       const t0 = rIn + D.clearTier, t1 = rOut - D.clearTier;
       const cd = [];
-      const Rt = Math.ceil((t1 + rules.half) / cellG) + 2;
-      const ax0 = Math.max(0, Math.floor(cxG / cellG) - Rt), ax1 = Math.min(bp.w - 1, Math.floor(cxG / cellG) + Rt);
-      const ay0 = Math.max(0, Math.floor(cyG / cellG) - Rt), ay1 = Math.min(bp.h - 1, Math.floor(cyG / cellG) + Rt);
-      for (let by = ay0; by <= ay1; by++) for (let bx = ax0; bx <= ax1; bx++) {
-        const i = by * bp.w + bx;
-        if (bp.cls[i] !== C.ground || bp.reg[i] !== rid || bp.tier[i] !== t) continue;
+      for (const i of groundCells(rid, t)) {
+        const bx = i % bp.w, by = (i / bp.w) | 0;
         const x = gameX(bx), y = gameY(by), dx = x - cxG, dy = y - cyG;
         const along = dx * s.ux + dy * s.uy, side = Math.abs(dx * s.uy - dy * s.ux);
         if (along < t0 || along > t1 || side > rules.half) continue;
@@ -301,7 +349,7 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES) {
      angler sat in a pond. */
   const walk = walkBits(bp, materialMap(plan, bp));
   const blocked = (i) => !!(walk[i >> 3] & (1 << (i & 7)));
-  const nodes = bakeWheelNodes({ bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns: out, safeR, blocked }, NODE_RULES);
+  const nodes = bakeWheelNodes({ bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns: out, safeR, blocked, groundCells }, nodeRules);
   /* ═══ v2.3.3016: THE DUNGEONS' MOUTHS ═══
      Each land's landmark (layout.js pass 8: the Great Cave, the Foundry
      Dome, the Buried City) is the way into its dungeon (server/src/
@@ -470,6 +518,31 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
   const SPOT_SIDE = [[1, 0]];
   for (let dy = -1; dy <= 1; dy++) for (let dx = -3; dx <= 0; dx++) SPOT_SIDE.push([dx, dy]);
   const SEAT_SIDE = [[0, 0], [1, 0], [0, 1]];
+  /* v2.3.3300: the cells each band's scans walk, in the map's own order --
+     its open ground (ctx.groundCells, by land and tier), and the water cells
+     whose angler's seat is dry ground of it (seatCells) -- where every band
+     walked the whole map, twice for its fishing spots: 45 passes over the
+     55 M cells of the Wheel five times longer.  The same cells pass the same
+     tests in the same order (a seat off the band never passed dryClear). */
+  const { groundCells } = ctx;
+  const seatOf = new Map();
+  for (let i = 0; i < n; i++) {
+    if (!WATER.has(bp.cls[i])) continue;
+    const j = cellAt(gameX(i % bp.w) + rules.fishSeat[0], gameY((i / bp.w) | 0) + rules.fishSeat[1]);
+    if (j < 0 || !DRY.has(bp.cls[j])) continue;
+    const key = bp.reg[j] * 64 + bp.tier[j];
+    let a = seatOf.get(key);
+    if (!a) seatOf.set(key, (a = []));
+    a.push(i);
+  }
+  const seatCells = (rid, t) => seatOf.get(rid * 64 + t) || [];
+  /* a band's cells from `of` (by land and tier), merged back into map order */
+  const bandCells = (of, band, rid) => {
+    const lists = band.id === 'commons' ? [of(ri.commons, 0)] : band.tiers.map((t) => of(rid, t));
+    if (lists.length === 1) return lists[0];
+    const all = [].concat(...lists);
+    return all.sort((a, b) => a - b);
+  };
   /* v2.3.3013: every monster place, the next stretches' (levels 6-20,
      `deeper`) as well as the first's -- the resources were placed when only
      the first stretch had monsters, and a black steel vein at levels 11-20
@@ -479,15 +552,46 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
     for (const p of s.points) monsterPts.push(p);
     for (const d of s.deeper || []) for (const p of d.points) monsterPts.push(p);
   }
-  const clearOfMonsters = (x, y) => monsterPts.every((p) => Math.hypot(p[0] - x, p[1] - y) >= rules.clearMonster);
+  /* v2.3.3300: found in squares of clearMonster px (the same answer as
+     asking every place: none nearer than that is outside the 3 x 3 round it) */
+  const MQ = rules.clearMonster, mq = new Map();
+  for (const p of monsterPts) {
+    const k = Math.floor(p[1] / MQ) * 65536 + Math.floor(p[0] / MQ);
+    let a = mq.get(k);
+    if (!a) mq.set(k, (a = []));
+    a.push(p);
+  }
+  const clearOfMonsters = (x, y) => {
+    const qx = Math.floor(x / MQ), qy = Math.floor(y / MQ);
+    for (let j = qy - 1; j <= qy + 1; j++) for (let i = qx - 1; i <= qx + 1; i++) {
+      const a = mq.get(j * 65536 + i);
+      if (a) for (const p of a) if (Math.hypot(p[0] - x, p[1] - y) < rules.clearMonster) return false;
+    }
+    return true;
+  };
   /* every node placed so far, whatever its area or band: two lands' bands meet
      at a border, and each picks its own -- the first bake put a Mist Marsh and
      a Tidal Coast fishing spot 34 px apart on the river between them.  So a
      node keeps the same distance from ANY node of its kind (veins and trees
      `apart`, spots `fishApart`) and `clearNode` from the other kind. */
-  const placed = [];
-  const clearOfNodes = (x, y, fish) => placed.every((p) => Math.hypot(p.x - x, p.y - y)
-    >= (p.fish === fish ? (fish ? rules.fishApart : rules.apart) : rules.clearNode));
+  /* v2.3.3300: in squares of the widest of the three distances, as above */
+  const NQ = Math.max(rules.apart, rules.fishApart, rules.clearNode), nq = new Map();
+  const placed = {
+    push(p) {
+      const k = Math.floor(p.y / NQ) * 65536 + Math.floor(p.x / NQ);
+      let a = nq.get(k);
+      if (!a) nq.set(k, (a = []));
+      a.push(p);
+    },
+  };
+  const clearOfNodes = (x, y, fish) => {
+    const qx = Math.floor(x / NQ), qy = Math.floor(y / NQ);
+    for (let j = qy - 1; j <= qy + 1; j++) for (let i = qx - 1; i <= qx + 1; i++) {
+      const a = nq.get(j * 65536 + i);
+      if (a) for (const p of a) if (Math.hypot(p.x - x, p.y - y) < (p.fish === fish ? (fish ? rules.fishApart : rules.apart) : rules.clearNode)) return false;
+    }
+    return true;
+  };
   /* whether cell i is ground of this band (and land).  A land's must also be
      off the safe ground: WHEEL_SAFE_R is a circle round the commons' ragged
      edge, so in places it reaches a few hundred px into a land's levels 1-5,
@@ -538,8 +642,8 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
     for (const band of area.bands) {
       /* veins and trees */
       const land = [];
-      for (let i = 0; i < n; i++) {
-        if (bp.cls[i] !== C.ground || !inBand(i, band, area.rid)) continue;
+      for (const i of bandCells(groundCells, band, area.rid)) {
+        if (!inBand(i, band, area.rid)) continue;
         if (dHaz[i] * cellG < rules.clearWater || dRoad[i] * cellG < rules.clearRoad) continue;
         if (band.id === 'commons' && dTown[i] * cellG < rules.clearTown) continue;
         const x = gameX(i % bp.w), y = gameY((i / bp.w) | 0);
@@ -564,7 +668,7 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
       const prefer = band.id === 'near' ? (k) => bp.cls[k] === C.ocean : (k) => FRESH.has(bp.cls[k]);
       const fishAt = (want) => {
         const cand = [];
-        for (let i = 0; i < n; i++) {
+        for (const i of bandCells(seatCells, band, area.rid)) {
           if (!WATER.has(bp.cls[i]) || !want(i)) continue;
           if (band.id === 'commons' && !FRESH.has(bp.cls[i])) continue;
           if (!around(i, SPOT_SIDE, (k) => WATER.has(bp.cls[k]))) continue;
@@ -587,7 +691,8 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
   return result;
 }
 
-export function wheelSpawnsSource(b) {
+export function wheelSpawnsSource(b, plan = PLAN) {
+  const long = (plan.wheel && plan.wheel.tierZones) || 1;
   /* v2.3.3013: a land's deeper stretches follow its first, one a line */
   const pts = (a) => a.map((p) => `[${p.join(', ')}]`).join(', ');
   const lines = Object.entries(b.spawns).map(([id, s]) =>
@@ -596,8 +701,10 @@ export function wheelSpawnsSource(b) {
       ? `,\n    deeper: [\n${s.deeper.map((d) => `      { tier: ${d.tier}, levels: [${d.levels.join(', ')}], band: [${d.band.join(', ')}],\n        points: [${pts(d.points)}] },`).join('\n')}\n    ] },`
       : ' },'));
   return `/* GENERATED by tools/world/bake-wheel-spawns.mjs from public/tools/world/plan.js
- * (plan ${PLAN.id} v${PLAN.version}, blueprint ${b.hash}) -- do not edit by hand:
+ * (plan ${plan.id} v${plan.version}, blueprint ${b.hash}) -- do not edit by hand:
  * run the tool again.  tools/world/test-world-core.mjs fails when this is stale.
+ *
+ * ${long > 1 ? `v2.3.3300: the Wheel ${long} times longer (plan.js PLAN5): the live one` : 'v2.3.3300: the short Wheel, one zone a tier (plan.js PLAN): the worker plays it only under `wheel5x: false`'}.
  *
  * v2.3.2978: where each element zone's monsters stand on the Wheel (zone
  * 'wheel', server/src/wheelzone.js), in game px of the Wheel (${b.world[0]} x ${b.world[1]},
@@ -609,6 +716,8 @@ export function wheelSpawnsSource(b) {
  * v2.3.3013: and 'deeper', the land's next stretches, each a tier: its levels,
  * its band on the axis and its places, in the same shape. */
 export const WHEEL_SPAWNS_HASH = '${b.hash}';
+/* v2.3.3300: how many times longer than one zone a tier this Wheel's tiers are */
+export const WHEEL_LONG = ${long};
 export const WHEEL_WORLD = [${b.world.join(', ')}];
 /* the safe ground: the commons and the town, every land cell of them within
    this radius of the centre -- no monster targets anyone in it, steps into
@@ -640,19 +749,32 @@ ${Object.entries(b.doors || {}).map(([id, d]) => `  ${id}: { name: ${JSON.string
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+/* v2.3.3300: both Wheels' tables -- [file, plan] */
+export const SPAWN_BAKES = [[OUT, PLAN5, WHEEL_LONG], [OUT1, PLAN, 1]];
+export function bakeWheelSpawnsFor(plan, long) {
+  return bakeWheelSpawns(plan, spawnRulesFor(long), nodeRulesFor(long));
+}
 if (isMain) {
-  const b = bakeWheelSpawns();
-  const src = wheelSpawnsSource(b);
-  if (process.argv.includes('--check')) {
-    const now = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
-    if (now !== src) { console.error(`${path.relative(ROOT, OUT)} is stale: run node tools/world/bake-wheel-spawns.mjs`); process.exit(1); }
-    console.log('wheelspawns.js matches the plan');
-  } else {
-    fs.writeFileSync(OUT, src);
-    for (const [id, s] of Object.entries(b.spawns)) {
-      console.log(`${id.padEnd(8)} band ${s.band.join('-')}  ${s.points.length} places, first at ${s.points[0].slice(0, 2).join(', ')}`);
-      for (const d of s.deeper || []) console.log(`${''.padEnd(8)} tier ${d.tier} (Lv ${d.levels.join('-')}) band ${d.band.join('-')}  ${d.points.length} places`);
+  const only = process.argv.includes('--short') ? 1 : process.argv.includes('--long') ? WHEEL_LONG : 0;
+  let stale = 0;
+  for (const [out, plan, long] of SPAWN_BAKES) {
+    if (only && only !== long) continue;
+    const t0 = Date.now();
+    const b = bakeWheelSpawnsFor(plan, long);
+    const src = wheelSpawnsSource(b, plan);
+    if (process.argv.includes('--check')) {
+      const now = fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : '';
+      if (now !== src) { console.error(`${path.relative(ROOT, out)} is stale: run node tools/world/bake-wheel-spawns.mjs`); stale++; }
+      else console.log(`${path.relative(ROOT, out)} matches the plan (${Date.now() - t0} ms)`);
+    } else {
+      fs.writeFileSync(out, src);
+      for (const [id, s] of Object.entries(b.spawns)) {
+        console.log(`${id.padEnd(8)} band ${s.band.join('-')}  ${s.points.length} places, first at ${s.points[0].slice(0, 2).join(', ')}`);
+        for (const d of s.deeper || []) console.log(`${''.padEnd(8)} tier ${d.tier} (Lv ${d.levels.join('-')}) band ${d.band.join('-')}  ${d.points.length} places`);
+      }
+      const nn = Object.values(b.nodes).reduce((a, l) => a + l.length, 0);
+      console.log(`-> ${path.relative(ROOT, out)} (${long}x: ${nn} nodes, ${Object.keys(b.doors).length} doors, safe ${b.safeR}, ${Date.now() - t0} ms)`);
     }
-    console.log(`-> ${path.relative(ROOT, OUT)}`);
   }
+  if (stale) process.exit(1);
 }

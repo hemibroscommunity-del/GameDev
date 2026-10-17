@@ -32,8 +32,8 @@
 import { GameRoom } from '../src/index.js';
 import { NML, nmlTierAt, nmlLevelAt, NML_KEY } from '../src/nomansland.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
-import { WHEEL_CENTRE } from '../src/wheelspawns.js';
-import { PLAN } from '../../public/tools/world/plan.js';
+import { WHEEL_CENTRE, WHEEL_LONG } from '../src/wheelspawns.js';   /* v2.3.3300: the live Wheel, WHEEL_LONG times longer */
+import { PLAN, PLAN5 } from '../../public/tools/world/plan.js';
 
 function makeState() {
   const store = new Map();
@@ -69,12 +69,13 @@ const room = new GameRoom(state, mockEnv);
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 async function join(ws, id, name, data) {
   room.sessions.set(ws, baseSession());
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name, phrase: 'p-' + id, data: { x: 0, y: 0, z: 'town', ...(data || {}) } }));
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name, phrase: 'p-' + id, ws: [1, 5], data: { x: 0, y: 0, z: 'town', ...(data || {}) } }));
   room.sessions.get(ws).name = name;
 }
 /* a spot in the Wheel at radius r, on the line due east of the centre */
 const at = (r, dy = 0) => ({ x: WHEEL_CENTRE[0] + r, y: WHEEL_CENTRE[1] + dy });
-const RING = (t) => NML.HUB + (t - 0.5) * NML.TIER;   /* the middle of tier t */
+const TIER = NML.TIER * WHEEL_LONG;   /* v2.3.3300: the live Wheel's tier */
+const RING = (t) => NML.HUB + (t - 0.5) * TIER;   /* the middle of tier t */
 const place = (ps, p, level) => {
   ps.z = WHEEL_ZONE; ps.x = p.x; ps.y = p.y; ps.dead = false; ps.dying = false; ps.disconnected = false;
   ps.hp = ps.maxHp = 1000; ps._zoneEntryGraceUntil = 0;
@@ -91,17 +92,20 @@ const ps = (k) => room.playerState[ids[k]];
 
 // ── 1. the rings and the level at a spot ─────────────────────────────────────
 {
-  const W = PLAN.wheel;
+  const W = PLAN.wheel, W5 = PLAN5.wheel;
   check('the rings are the plan\'s: hub, tier, tiers, levels a tier', NML.HUB === W.hub * W.zonePx && NML.TIER === W.tierZones * W.zonePx
     && NML.TIERS === W.tiers && NML.LEVELS_PER_TIER === W.levelsPerTier, { NML, plan: W });
+  /* v2.3.3300: the live Wheel's tiers are WHEEL_LONG times as long (plan.js PLAN5) */
+  check('...and the live Wheel\'s: its tiers WHEEL_LONG times as long, the hub the same', WHEEL_LONG === W5.tierZones && TIER === W5.tierZones * W5.zonePx
+    && NML.HUB === W5.hub * W5.zonePx, { WHEEL_LONG, TIER, plan: W5 });
   check('the commons and the Lv 1-5 tier are not No man\'s land; Lv 6-10 is 1, Lv 11-15 is 2',
-    nmlLevelAt(WHEEL_ZONE, WHEEL_CENTRE[0], WHEEL_CENTRE[1]) === 0 && nmlLevelAt(WHEEL_ZONE, at(RING(1)).x, at(RING(1)).y) === 0
-    && nmlLevelAt(WHEEL_ZONE, at(RING(2)).x, at(RING(2)).y) === 1 && nmlLevelAt(WHEEL_ZONE, at(RING(3)).x, at(RING(3)).y) === 2,
-    [0, 1, 2, 3].map((t) => (t ? nmlLevelAt(WHEEL_ZONE, at(RING(t)).x, at(RING(t)).y) : 0)));
-  check('...out to 15 at the last tier, and only in the Wheel', nmlLevelAt(WHEEL_ZONE, at(RING(16)).x, at(RING(16)).y) === 15
-    && nmlLevelAt('frost', at(RING(3)).x, at(RING(3)).y) === 0 && nmlTierAt(NaN, 0) === 0);
-  check('...the line where it starts is exact (the end of tier 1)', nmlLevelAt(WHEEL_ZONE, at(NML.HUB + NML.TIER - 1).x, WHEEL_CENTRE[1]) === 0
-    && nmlLevelAt(WHEEL_ZONE, at(NML.HUB + NML.TIER + 1).x, WHEEL_CENTRE[1]) === 1);
+    nmlLevelAt(WHEEL_ZONE, WHEEL_CENTRE[0], WHEEL_CENTRE[1], WHEEL_LONG) === 0 && nmlLevelAt(WHEEL_ZONE, at(RING(1)).x, at(RING(1)).y, WHEEL_LONG) === 0
+    && nmlLevelAt(WHEEL_ZONE, at(RING(2)).x, at(RING(2)).y, WHEEL_LONG) === 1 && nmlLevelAt(WHEEL_ZONE, at(RING(3)).x, at(RING(3)).y, WHEEL_LONG) === 2,
+    [0, 1, 2, 3].map((t) => (t ? nmlLevelAt(WHEEL_ZONE, at(RING(t)).x, at(RING(t)).y, WHEEL_LONG) : 0)));
+  check('...out to 15 at the last tier, and only in the Wheel', nmlLevelAt(WHEEL_ZONE, at(RING(16)).x, at(RING(16)).y, WHEEL_LONG) === 15
+    && nmlLevelAt('frost', at(RING(3)).x, at(RING(3)).y, WHEEL_LONG) === 0 && nmlTierAt(NaN, 0, WHEEL_LONG) === 0);
+  check('...the line where it starts is exact (the end of tier 1)', nmlLevelAt(WHEEL_ZONE, at(NML.HUB + TIER - 1).x, WHEEL_CENTRE[1], WHEEL_LONG) === 0
+    && nmlLevelAt(WHEEL_ZONE, at(NML.HUB + TIER + 1).x, WHEEL_CENTRE[1], WHEEL_LONG) === 1);
 }
 
 // ── 2. who may hit whom ──────────────────────────────────────────────────────

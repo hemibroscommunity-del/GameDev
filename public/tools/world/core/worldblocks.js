@@ -147,7 +147,7 @@ export function wheelBlocks(plan, opts = {}) {
       }
     }
     const cat = catalogOf;
-    const bp = { w, h, scale: S, x0: F.x0 + x0 * S, y0: F.y0 + y0 * S, ox: x0, oy: y0, decks: F.decks,
+    const bp = { w, h, scale: S, x0: F.x0 + x0 * S, y0: F.y0 + y0 * S, ox: x0, oy: y0, nox: F.nox, noy: F.noy, decks: F.decks,
       wheel: F.W, regionIds: F.regionIds, full: { w: BW, h: BH, x0: F.x0, y0: F.y0 } };
     /* the plank decks' cells in this window (materialMap's deckAt) */
     const deckAt = new Map();

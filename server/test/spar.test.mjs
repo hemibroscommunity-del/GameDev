@@ -90,7 +90,7 @@ const st = makeState();
 const room = new GameRoom(st, mockEnv);
 async function join(ws, id) {
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 0, lastPing: 0, lastRecv: T });
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, phrase: 'p-' + id, protocolVersion: 2,
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, phrase: 'p-' + id, protocolVersion: 2, ws: [1, 5],
     data: { x: 0, y: 0, z: 'town', sk: 'tan', hr: 'mohawk' } }));
   await new Promise((r) => setTimeout(r, 5));
 }

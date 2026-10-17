@@ -83,7 +83,8 @@
  * spawned after it with the first stage alone.
  */
 import { ZONES } from './data.js';
-import { WHEEL_SPAWNS, WHEEL_NODES, WHEEL_CENTRE, WHEEL_SAFE_R } from './wheelspawns.js';
+/* v2.3.3300: the tables of the Wheel this room plays (wheeltables.js: the
+   long one, or the short one under `wheel5x: false`) -- this._wheelT() */
 
 export const WHEEL_ZONE = 'wheel';
 
@@ -250,6 +251,10 @@ export const wheelzoneMethods = {
      or, with no monster in hand (a burn ticking, a fire trail), unless they
      are still fighting at all. */
   _wheelSheltered(m, pid, x, y, now) {
+    /* v2.3.3300: a phone out of step with the room's Wheel (a tab left open
+       across the deploy) is never a monster's (wheeltables.js _wheelInStep) */
+    const _ps = pid ? this.playerState[pid] : null;
+    if (_ps && this._wheelInStep && !this._wheelInStep(_ps)) return true;
     if (!this._wheelSafeAt(x, y)) return false;
     if (this._wheelPursueOff()) return true;
     if (m) return !this._wheelProvokedBy(m, pid, now);
@@ -300,12 +305,16 @@ export const wheelzoneMethods = {
   _wheelSpawnMonsters() {
     if (this._wheelMonstersOff()) return [];
     const out = [];
+    /* v2.3.3300: the Wheel `long` times longer stands `long` times its home's
+       spawn list a tier, on its own baked places -- as busy a land, five
+       times the land (the list round and round, its places one each) */
+    const T = this._wheelT(), WHEEL_SPAWNS = T.WHEEL_SPAWNS, long = T.WHEEL_LONG || 1;
     for (const home of WHEEL.HOMES) {
       const zone = ZONES[home], at = WHEEL_SPAWNS[home];
       if (!zone || !zone.spawns || !at || !Array.isArray(at.points) || !at.points.length) continue;
       const H = zone.h * this.TILE, W = zone.w * this.TILE;
       let k = 0;
-      for (const spawn of zone.spawns) {
+      for (let round = 0; round < long; round++) for (const spawn of zone.spawns) {
         for (let c = 0; c < (spawn.count || 0); c++, k++) {
           const p = at.points[k % at.points.length];
           const depth = Math.max(0, Math.min(1, Number(p[2]) || 0));
@@ -334,7 +343,7 @@ export const wheelzoneMethods = {
         if (Number(st.tier) > WHEEL.FIRST_STAGE_TIERS && this._wheelPast20Off()) continue;
         const lo = Number(st.levels[0]) || 1, hi = Number(st.levels[1]) || lo;
         let k = 0;
-        for (const spawn of zone.spawns) {
+        for (let round = 0; round < long; round++) for (const spawn of zone.spawns) {
           for (let c = 0; c < (spawn.count || 0); c++, k++) {
             const p = st.points[k % st.points.length];
             const depth = Math.max(0, Math.min(1, Number(p[2]) || 0));
@@ -408,6 +417,7 @@ export const wheelzoneMethods = {
   },
 
   _wheelSpawnNodes() {
+    const WHEEL_NODES = this._wheelT().WHEEL_NODES;   /* v2.3.3300 */
     if (this._wheelNodesOff() || !WHEEL_NODES) return [];
     const out = [];
     for (const area of Object.keys(WHEEL_NODES)) {
@@ -437,6 +447,7 @@ export const wheelzoneMethods = {
      ever asked about zone 'wheel'. */
   _wheelSafeAt(x, y) {
     if (typeof x !== 'number' || typeof y !== 'number') return false;
+    const T = this._wheelT(), WHEEL_CENTRE = T.WHEEL_CENTRE, WHEEL_SAFE_R = T.WHEEL_SAFE_R;   /* v2.3.3300 */
     const dx = x - WHEEL_CENTRE[0], dy = y - WHEEL_CENTRE[1];
     return dx * dx + dy * dy < WHEEL_SAFE_R * WHEEL_SAFE_R;
   },

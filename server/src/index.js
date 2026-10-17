@@ -187,6 +187,7 @@ import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow speci
 // how many players are standing in THAT zone -- see spawnscale.js.
 import { spawnScaleMethods } from './spawnscale.js';
 import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.2978 */
+import { wheelTableMethods } from './wheeltables.js'; /* v2.3.3300: which Wheel the room plays */
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { pvpBalanceMethods } from './pvpbalance.js'; /* v2.3.3260: PvP hits rolled by the worker, and tuned */
 import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle of a fight -- the body stays */
@@ -6356,6 +6357,7 @@ Object.assign(GameRoom.prototype, arrowBlastMethods); /* v2.3.2279 */
 // v2.3.1983: population-scaled spawns -- see spawnscale.js.
 Object.assign(GameRoom.prototype, spawnScaleMethods);
 Object.assign(GameRoom.prototype, wheelzoneMethods); /* v2.3.2978 */
+Object.assign(GameRoom.prototype, wheelTableMethods); /* v2.3.3300 */
 Object.assign(GameRoom.prototype, noMansLandMethods); /* v2.3.3058 */
 Object.assign(GameRoom.prototype, shieldWearMethods); /* v2.3.3091 */
 Object.assign(GameRoom.prototype, shieldGemMethods); /* v2.3.3187 */

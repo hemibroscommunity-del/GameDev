@@ -32,6 +32,7 @@
  *      game's own files calling all of it.
  */
 import { GameRoom } from '../src/index.js';
+import { WHEEL_CENTRE } from '../src/wheelspawns.js';
 import { ROSTER, FAR_PLAYERS } from '../src/tick.js';
 import { PRESENCE2 } from '../src/presence2.js';
 
@@ -121,7 +122,7 @@ const SLIM_KEYS = 'x,y,d,z,vx,vy';
 const keysOf = (o) => (o ? Object.keys(o).join(',') : null);
 const clearSent = (...ps) => { for (const p of ps) p.ws.sent.length = 0; };
 
-const ARRIVAL = { x: 21504, y: 21792 };
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3300: the live Wheel's arrival (its centre + 288) */
 
 const { room, tickFn } = await makeRoom();
 room._tickShareVerify = { checked: 0, mismatched: 0, first: null };

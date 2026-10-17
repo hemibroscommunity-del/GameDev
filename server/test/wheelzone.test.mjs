@@ -49,12 +49,21 @@
  *  10. v2.3.3299, A MONSTER NOBODY IS NEAR RESTS: no player within
  *      WHEEL.REST_REACH squares of it, nothing in flight, and it does nothing
  *      in a tick -- but comes back to life on time; `wheelrest: false`.
+ *  11. v2.3.3300, THE WHEEL FIVE TIMES LONGER: the live tables; caps.wheelsize;
+ *      five times each home's spawn list a stretch on its baked places; the
+ *      resources; the way in; the size kept for the room's life; a phone out of
+ *      step neither hunted nor under No man's land.  (Sections 1-10 run on the
+ *      short Wheel, `wheel5x: false`, with its own tables.)
  */
 import { GameRoom } from '../src/index.js';
 import { ZONES, VALID_ZONE_IDS, BLACKSMITH_TIERS, WOODWORKING_TIERS } from '../src/data.js';
 import { WHEEL_ZONE, WHEEL } from '../src/wheelzone.js';
 import { gatherReqLvl } from '../src/gathering.js';   /* v2.3.3038 */
-import { WHEEL_SPAWNS, WHEEL_NODES, WHEEL_CENTRE, WHEEL_SAFE_R } from '../src/wheelspawns.js';
+/* v2.3.3300: sections 1-10 are the SHORT Wheel's (one zone a tier, as it was):
+   its tables, and every room here under `wheel5x: false`.  Section 11 is the
+   long Wheel's, the live one. */
+import { WHEEL_SPAWNS, WHEEL_NODES, WHEEL_CENTRE, WHEEL_SAFE_R } from '../src/wheelspawns1.js';
+import * as LONG from '../src/wheelspawns.js';
 import { WHEEL_STAGE_LOOKS, wheelStageLook, wheelStageOf } from '../../src/data/wheelStageLooks.js';   /* v2.3.3093 */
 import { ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';   /* v2.3.3093: the look the game gives a monster */
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
@@ -77,7 +86,9 @@ function check(name, cond, detail) {
   else { failures++; console.log('FAIL', name, detail !== undefined ? JSON.stringify(detail) : ''); }
 }
 
+const SHORT = { wheel5x: false };   /* v2.3.3300 */
 const room = new GameRoom(mockState, mockEnv);
+room._liveFlags = { ...SHORT };
 const CENTRE = [21504, 21504];
 
 // ── 1. THE SPAWN ──────────────────────────────────────────────────────────
@@ -802,6 +813,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     kS >= 20 && kL >= 20, { k0, kS, kL });
   /* what it is for: the whole monster tick with the Wheel's 384 (v2.3.3093; 192 before) */
   const r2 = new GameRoom(mockState, mockEnv);
+  r2._liveFlags = { ...SHORT };
   const ms = r2._ensureZoneMonsters(WHEEL_ZONE);
   r2.playerState.bench = { id: 'bench', z: WHEEL_ZONE, x: CENTRE[0], y: CENTRE[1] + 300, hp: 100, maxHp: 100 };
   for (let i = 0; i < 200; i++) r2._tickMonsters();
@@ -822,6 +834,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
      does nothing in a tick -- but still comes back to life on time, and
      finishes anything already in flight first */
   const r3 = new GameRoom(mockState, mockEnv);
+  r3._liveFlags = { ...SHORT };
   const ms = r3._ensureZoneMonsters(WHEEL_ZONE);
   const me = ms.find((q) => q.home === 'ember');
   const pr = { id: 'pr', z: WHEEL_ZONE, x: me.x + 600, y: me.y, hp: 100, maxHp: 100, dead: false, disconnected: false,
@@ -864,7 +877,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   check('rest: two awake ones are swept apart as before', !nb || Math.hypot(nb.x - na.x, nb.y - na.y) > 5 + 1e-9);
   fb.x = fb.spawnX; fb.y = fb.spawnY;
   /* the kill switch: everything runs every tick again */
-  r3._liveFlags = { wheelrest: false };
+  r3._liveFlags = { ...SHORT, wheelrest: false };
   wanderNow();
   for (const q of ms) at.set(q.id, [q.x, q.y]);
   for (let i = 0; i < 20; i++) r3._tickMonsters();
@@ -874,7 +887,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   /* what it is for: the tick with the Wheel's 384 and one player in town */
   const bench = (on) => {
     const r4 = new GameRoom(mockState, mockEnv);
-    r4._liveFlags = on ? {} : { wheelrest: false };
+    r4._liveFlags = on ? { ...SHORT } : { ...SHORT, wheelrest: false };
     r4._ensureZoneMonsters(WHEEL_ZONE);
     r4.playerState.bench = { id: 'bench', z: WHEEL_ZONE, x: CENTRE[0], y: CENTRE[1] + 300, hp: 100, maxHp: 100 };
     for (let i = 0; i < 200; i++) r4._tickMonsters();
@@ -885,6 +898,75 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   const off = bench(false), on = bench(true);
   check(`rest: with one player in town, ${on.resting} of 384 rest and the monster tick is ${on.us.toFixed(0)} µs (${off.us.toFixed(0)} with none resting)`,
     on.resting > 250 && off.resting === 0, { on, off });
+}
+
+// ── 11. THE WHEEL FIVE TIMES LONGER (v2.3.3300) ──────────────────────────
+{
+  /* the owner: "Maybe 5x larger map is needed" -- "Rebuild for 5x".  A room
+     plays the long Wheel (wheelspawns.js) unless `wheel5x: false`, says which
+     in caps.wheelsize, and stands LONG.WHEEL_LONG times its homes' spawn lists
+     a tier on the long Wheel's places */
+  const L = LONG.WHEEL_LONG;
+  check(`long: the live tables are the Wheel ${L} times longer, the short ones one zone a tier`, L === 5 && LONG.WHEEL_CENTRE[0] !== CENTRE[0]);
+  const r5 = new GameRoom(mockState, mockEnv);
+  const w5 = fakeWs('w5');
+  r5.sessions.set(w5, { id: null, name: 'Anon', data: {}, rtt: 0, lastPing: 0, lastRecv: Date.now() });
+  await r5.webSocketMessage(w5, JSON.stringify({ type: 'join', id: 'w5', name: 'W5', protocolVersion: 2, ws: [1, 5], data: { x: 1000, y: 1000, z: 'town' } }));
+  const caps5 = (msgsOfType(w5, 'state_sync')[0] || {}).caps || {};
+  check('long: a room with no flags plays it and says so (caps.wheelsize 5)', r5._wheelLongNow() === L && caps5.wheelsize === L, caps5.wheelsize);
+  const r1 = new GameRoom(mockState, mockEnv);
+  r1._liveFlags = { ...SHORT };
+  const w1 = fakeWs('w1');
+  r1.sessions.set(w1, { id: null, name: 'Anon', data: {}, rtt: 0, lastPing: 0, lastRecv: Date.now() });
+  await r1.webSocketMessage(w1, JSON.stringify({ type: 'join', id: 'w1', name: 'W1', protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
+  const caps1 = (msgsOfType(w1, 'state_sync')[0] || {}).caps || {};
+  check('long: `wheel5x: false` plays the short one and says so (caps.wheelsize 1)', r1._wheelLongNow() === 1 && caps1.wheelsize === 1 && caps1.wheel5x === false, caps1.wheelsize);
+  /* the spawn: L times each home's list a tier, on the long Wheel's places */
+  const ms = r5._ensureZoneMonsters(WHEEL_ZONE);
+  const per = Object.create(null);
+  for (const m of ms) { const k = m.home + ':' + (m.tier || 1); per[k] = (per[k] || 0) + 1; }
+  const want = (h) => ZONES[h].spawns.reduce((a, sp) => a + (sp.count || 0), 0) * L;
+  const offCount = [];
+  for (const h of WHEEL.HOMES) for (let t = 1; t <= 8; t++) if (per[h + ':' + t] !== want(h)) offCount.push([h, t, per[h + ':' + t], want(h)]);
+  check(`long: ${L} times each land's spawn list in each of its eight stretches (${ms.length} in all)`, offCount.length === 0 && ms.length === 8 * 8 * want('frost'), offCount.slice(0, 4));
+  const placeOf = (m) => {
+    const at = LONG.WHEEL_SPAWNS[m.home];
+    const pts = m.tier ? ((at.deeper || []).find((d) => d.tier === m.tier) || {}).points || [] : at.points;
+    return pts.some((p) => p[0] === m.spawnX && p[1] === m.spawnY);
+  };
+  check('long: every one stands on one of its stretch\'s baked places', ms.every(placeOf), ms.filter((m) => !placeOf(m)).slice(0, 2).map((m) => m.id));
+  const ids = new Set(ms.map((m) => m.id));
+  check('long: every id its own', ids.size === ms.length);
+  const lv = ms.filter((m) => m.tier).every((m) => { const lo = (m.tier - 1) * 5 + 1; return m.level >= lo && m.level <= lo + 4; });
+  check('long: each deeper stretch at its own levels', lv);
+  const nodes = r5._ensureZoneNodes(WHEEL_ZONE);
+  const baked = Object.values(LONG.WHEEL_NODES).reduce((a, l) => a + l.length, 0);
+  check(`long: the long Wheel's resources (${nodes.length} of ${baked} baked)`, nodes.length === baked && baked > 1000, { nodes: nodes.length, baked });
+  /* the way in: every monster once, in one zone_state */
+  const zs = r5._zoneSnapshotWire ? JSON.stringify(r5._zoneSnapshotWire(WHEEL_ZONE)) : '';
+  check(`long: the way in carries all ${ms.length} in ${(zs.length / 1024).toFixed(0)} KB (under 650)`, zs.length > 0 && zs.length < 650 * 1024, zs.length);
+  /* the room keeps the Wheel it spawned, whatever the flag says later */
+  r5._liveFlags = { wheel5x: false };
+  check('long: a flag thrown after the spawn changes nothing until the room starts again', r5._wheelLongNow() === L && r5._wheelT() === LONG);
+  r5._liveFlags = {};
+  /* a phone that does not draw the long Wheel (a tab from before it): no
+     monster goes after it and No man's land holds no rule for it */
+  const stale = { id: 'st', z: WHEEL_ZONE, x: 0, y: 0, hp: 100, maxHp: 100, level: 7, dead: false, disconnected: false, _wheelSizes: null };
+  const fresh = { ...stale, id: 'fr', _wheelSizes: [1, 5] };
+  r5.playerState.st = stale; r5.playerState.fr = fresh;
+  const m0 = ms.find((m) => m.tier === 3);
+  for (const p of [stale, fresh]) { p.x = m0.x + 40; p.y = m0.y; }
+  check('long: a phone that says it draws it is in step, one that says nothing is not', r5._wheelInStep(fresh) && !r5._wheelInStep(stale)
+    && r1._wheelInStep({ _wheelSizes: null }) && r5._wheelInStep({}));
+  check('long: ...so no monster is ever after the one out of step', r5._wheelSheltered(m0, 'st', stale.x, stale.y, Date.now()) === true
+    && r5._wheelSheltered(m0, 'fr', fresh.x, fresh.y, Date.now()) === false);
+  check('long: ...and No man\'s land holds no rule for it (the one in step stands in it)', r5._nmlLevelOf(stale) === 0 && r5._nmlLevelOf(fresh) >= 1,
+    { stale: r5._nmlLevelOf(stale), fresh: r5._nmlLevelOf(fresh) });
+  delete r5.playerState.st; delete r5.playerState.fr;
+  /* resting: everything far from the one player in town */
+  r5.playerState.rb = { id: 'rb', z: WHEEL_ZONE, x: LONG.WHEEL_CENTRE[0], y: LONG.WHEEL_CENTRE[1] + 288, hp: 100, maxHp: 100 };
+  r5._tickMonsters();
+  check(`long: with one player in town, ${r5._wheelResting} of ${ms.length} rest`, r5._wheelResting > ms.length * 0.9, r5._wheelResting);
 }
 
 if (failures) { console.log(`\n${failures} TEST(S) FAILED`); process.exit(1); }
