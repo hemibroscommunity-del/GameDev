@@ -544,10 +544,13 @@ async function floodCost() {
 }
 
 /* ── a start on one node, the strike on another ──────────────────────── */
-/* _handleNodeStrike times a strike only against a record for the SAME node,
-   and counts a strike with no record at all (`_extractionMissing`); a record
-   for another node is neither.  So a script that sends a start for any node
-   first strikes uncounted as well as untimed. */
+/* _handleNodeStrike timed a strike only against a record for the SAME node,
+   and counted a strike with no record at all (`_extractionMissing`); a record
+   for another node was neither.  So a script that sent a start for any node
+   first struck uncounted as well as untimed.  v2.3.3322 (gathering.js
+   HARVEST_PROOF): such a strike is refused 'other-node' unless it is the
+   player's one recovery strike in ten minutes, and counted either way
+   (`_extractionOtherNode`). */
 async function decoyStart() {
   seedRandom(SEED);
   const world = { ...makeRoom(), players: [] };
@@ -566,7 +569,7 @@ async function decoyStart() {
     if ((ps.inventory.wood_pine_log || 0) > before) paid++;
   }
   const sess = [...room.sessions.values()].find((s) => s.id === p.id) || {};
-  return { tries, paid, counted: sess._extractionMissing || 0 };
+  return { tries, paid, counted: sess._extractionMissing || 0, otherNode: sess._extractionOtherNode || 0 };
 }
 
 /* ── rows written by one message, and other one-socket costs ─────────── */
@@ -663,7 +666,7 @@ for (const sc of SCENARIOS) {
 if (!ONLY || ONLY.includes('decoy')) {
   const r = await decoyStart();
   console.log(`decoy: a start for one tree, the strike (at once) on the tree beside it`);
-  console.log(`  paid ${r.paid} of ${r.tries} strikes; counted as "no start" ${r.counted} times\n`);
+  console.log(`  paid ${r.paid} of ${r.tries} strikes; counted as "no start" ${r.counted} times, "other node" ${r.otherNode} (v2.3.3322)\n`);
 }
 if (!ONLY || ONLY.includes('writes')) {
   const r = await writeProbes();

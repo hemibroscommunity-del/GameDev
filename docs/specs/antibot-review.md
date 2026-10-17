@@ -61,7 +61,7 @@
 A script runs all day. Over a day the obsidian script brings home about
 94,000 ore. Three hours of honest mining brings home about 240.
 
-### 1. A harvest without its "start" message skips the whole wait (CRITICAL)
+### 1. A harvest without its "start" message skips the whole wait (CRITICAL; fixed v2.3.3322, harvest-proof.md)
 
 - **What a harvest should take:**
   - First a string of hits. An obsidian vein is about 160 hits, or 104 seconds
@@ -298,6 +298,10 @@ fix.
 **Done since this review:** the urgent five (1-5 below) in
 docs/specs/one-socket.md (v2.3.3274), and the account check in
 docs/specs/account-check.md (v2.3.3275, off until the owner sets the keys).
+Fix 6, the harvest, in docs/specs/harvest-proof.md (v2.3.3322): a strike is
+paid only against its own start, but for one recovery strike in ten minutes
+(a deploy, a dropped socket), and a strike with no fingerprint is never
+perfect -- the lab's obsidian script from 2,400 harvests an hour to 6.
 One more finding reached the owner privately: the way a login key becomes a
 player id needs replacing with server-issued random ids and a proper
 credential; it is on the list below the farming holes.
