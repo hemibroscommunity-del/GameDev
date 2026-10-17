@@ -2883,6 +2883,15 @@ Two protocol versions coexist; both must keep working:
   client→server events must be denied by default unless added
   deliberately, and every server-EMITTED event type must be added to
   `PRIVILEGED_EVENTS` in `server/src/index.js` or clients can forge it.
+- THE RELAY IS AN ALLOWLIST, IN THE SENDER'S NAME (v2.3.3304,
+  docs/specs/relay.md). A phone's broadcast that the router has no case
+  for is relayed to the others only if its type is in `RELAY.TYPES`
+  (`server/src/relay.js`): a new relay goes on that list or it reaches no
+  one (`relay.test` scans every broadcast in src/). Each relay is rebuilt
+  `{type, from, payload}`, the payload's `id`, `from`, `playerId`,
+  `fromName`, `playerName`, `name` the worker's -- a script could relay
+  "Bob died" in Bob's name, as the phone read the payload's `id` before
+  `from` (it reads `from` first now). Kill switch `relaylist: false`.
 - Deploy-order safety: servers advertise capabilities in
   `state_sync.caps` (WS) / `settled: true` (HTTP); clients gate their
   legacy paths on them. Preserve this on both sides.

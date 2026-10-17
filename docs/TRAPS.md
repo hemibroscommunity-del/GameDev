@@ -6564,3 +6564,24 @@ field list.
 migration throws stays one short through the real join, runs again once
 mended, and a newer blob closes the join with nothing written.
 
+
+## 190. "A new effect for the others is just a broadcast" (v2.3.3304)
+
+**Tempting:** to show the others something new your phone does -- a wave, a
+spark, a new kind of shot -- send `S.channel.send({type: 'broadcast', event:
+'my_new_thing', payload})`. The router has no case for it, so its default
+branch relays it to the room, as it relays a swing or an emote.
+
+**Wrong since v2.3.3304.** The default branch relays only `RELAY.TYPES`
+(server/src/relay.js). A type that is not on it is dropped without a word, so
+the new effect works on the phone that sends it and on nobody else's -- the
+kind of break that looks fine in a one-phone test. And reading the payload's
+own `id`, `from` or `fromName` as the sender was the other half of the old
+relay's trouble: a script relayed "Bob died" in Bob's name.
+
+**The rule:** a new relay is a line in `RELAY.TYPES`, with a word on who sends
+it, in the same PR as the phone's send. The worker rebuilds every relay in its
+sender's name, so a handler reads the sender from `from` (or the payload's
+`id`, which the worker now writes). **Receipt:** `relay.test` §6 fails a
+broadcast in src/ that is not a router case or a relay.
+
