@@ -51,11 +51,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(400);
 
-  /* Through the real UI: tap the bag tile, then Eat on the detail card. */
+  /* Through the real UI: tap the bag tile, then Eat on the detail card.
+     v2.3.3324: a brand-new character's first join FOLDS the dashboard
+     (QuestCoach.jsx, v2.3.2495), and a folded band draws no bag, so the tile
+     never came and nothing was eaten (3 -> 3, the sweep of 2026-10-17).  Open
+     the Bag, which unfolds the band, and tap the tile as mp-meals and
+     mp-potions do: it listens for pointerup. */
+  await P.page.evaluate(() => { try { window.__broDashPanelBus.open('bag'); } catch (e) { /* no bus: the tile check below says so */ } });
   const tile = `[data-inv-key="${FISH}"]`;
   const sawTile = await P.page.waitForSelector(tile, { timeout: 8000 }).then(() => true).catch(() => false);
   rec.ok('the fish is in the bag on screen', sawTile, { tile });
-  await P.page.click(tile).catch(() => {});
+  const fishTile = await P.page.$(tile);
+  if (fishTile) await fishTile.dispatchEvent('pointerup').catch(() => {});
   await P.page.waitForTimeout(600);
   const ate = await P.page.evaluate(() => {
     const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Eat');
