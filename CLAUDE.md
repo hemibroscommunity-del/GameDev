@@ -3642,6 +3642,23 @@ Two protocol versions coexist; both must keep working:
   refusal as fatal) exist; `disable_verify` live flag; fail closed;
   `TURNSTILE_VERIFY_URL` is the test seam. `verify` suite (24), `mp-verify`
   (its own worker, `BT_WRANGLER_VARS`, a stand-in verifier and widget).
+- **ONLY THE GAME'S OWN SITES OPEN A GAME SOCKET (v2.3.3312,
+  docs/specs/origin-lock.md).** The owner: "I only use Brotown.net for this
+  game and that's the only domain I plan to keep using." The worker's `/ws`
+  route reads the browser's `Origin` before any room (`server/src/origin.js`):
+  brotown.net and gamedev-aix.pages.dev with every address under them,
+  `ORIGINS` (wrangler.toml) more, a machine's own pages (localhost, 127/8, the
+  private ranges) and NO Origin (a program -- our tools; TRAPS §195) are let
+  in; any other site, `null` or a look-alike gets `join_rejected
+  {reason:'origin', home}` and close 4015, the page `ui/OriginScreen.js`
+  ("This isn't the official BroTown", a button to brotown.net, no retry; an
+  old page reads it as fatal), a plain request a 403; each refused site
+  logged once. A NEW DOMAIN GOES IN `ORIGINS` BEFORE PLAYERS USE IT.
+  `ORIGIN_LOCK = "off"` is the lever (an env var: the check runs before the
+  room's live flags). The HTTP routes are not locked. `origin` suite (33),
+  `mp-originlock` (a second browser with `--host-resolver-rules`, so the
+  copy's Origin is the browser's own; `H.newPlayer`'s `host`,
+  `H.launch(args)`).
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,

@@ -125,21 +125,38 @@ Not built, each the owner's call:
   that strips the notice breaks the license, and that is where these proofs
   matter. The license's note says it covers the SOURCE CODE; the game's own
   art, music, world and names are not said to be MIT, but nothing says they
-  are reserved either. A plain "all rights reserved" line for them, and a
-  different license for future versions after the contest, are the owner's
-  choice (a version already published stays MIT for whoever has it).
-- **Only the real site may use the real server.** Today any site can connect
-  to `wss://api.brotown.net`, so a copy could reuse our server and our players
-  under another name. The worker could accept only brotown.net, its previews
-  and local tests (a browser always says which site it is on, and a web page
-  cannot lie about it). Not built: it needs the owner's list of addresses.
+  are reserved either. **Decided (the owner, 2026-10-17): no reservation for
+  the art** -- "I don't need to reserve rights to the art. That's all chatGPT
+  created stuff." A different license for future versions after the contest
+  stays the owner's choice (a version already published stays MIT for
+  whoever has it).
+- **Only the real site may use the real server.** Built in v2.3.3312 (the
+  owner: "I only use Brotown.net for this game and that's the only domain I
+  plan to keep using"): the server lets in only brotown.net, its previews and
+  local tests, and a copy on another site is shown "This isn't the official
+  BroTown" with a button to brotown.net -- `docs/specs/origin-lock.md`.
 - **Registering.** A copyright registration (US Copyright Office, about $45-65
   online) is needed before suing in the US, and earlier registration allows
   more damages. A trademark on the name stops others using it. Both are the
   owner's, with a lawyer: the Copyright Office does not register what an AI
   made without enough human authorship, and much of this game's code and art
   was made with AI at the owner's direction -- how much of it, and the owner's
-  design and selection of it, is a question for an IP lawyer.
+  design and selection of it, is a question for an IP lawyer. Asked
+  (2026-10-17) whether registering means giving out a home address, and how
+  long it lasts:
+  - the name and address on a US registration are **public record** -- so
+    give a P.O. box, a business address or an agent's, not a home address.
+    A home address can be taken off the online catalog later on request (for
+    a fee), but it stays in the Office's offline records
+    ([privacy FAQ](https://copyright.gov/help/faq/faq-privacy.html),
+    [Circular 18](https://www.copyright.gov/circs/circ18.pdf));
+  - a registration never needs renewing; the copyright lasts the author's
+    life plus 70 years -- or, for a work made for hire, anonymous or under a
+    pen name, 95 years from publication or 120 from creation, whichever ends
+    first ([Circular 15A](https://www.copyright.gov/circs/circ15a.pdf));
+  - the application must say which parts were made by AI and leave them out
+    of the claim; knowingly leaving that out can cost the registration (the
+    Office's March 2023 registration guidance on AI-generated material).
 
 ## How it runs
 

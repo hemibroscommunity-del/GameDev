@@ -315,6 +315,7 @@ const SCENARIOS = {
   chatcompose: () => import('./mp-chatcompose.mjs'), /* v2.3.2039: selection, the dictation wait, and seeing your message */
   loginkey: () => import('./mp-loginkey.mjs'), /* v2.3.2038: can you get your login key back from inside the game? */
   verify: () => import('./mp-verify.mjs'), /* v2.3.3275: the account check -- a new character is asked once (the gate, the widget, the verifier), one on file never, a refused token brings the gate back and a good one gets in */
+  originlock: () => import('./mp-originlock.mjs'), /* v2.3.3312: only the game's own sites open a socket -- a page at localhost plays; a copy at http://clone.example (a second browser finding that name at 127.0.0.1, so the Origin is the browser's own) gets "This isn't the official BroTown" with a button to https://brotown.net and its own address in the small print, one socket in ten seconds, no new identity, never in the room; the screen covers an iPhone; a picture */
   roomfull: () => import('./mp-roomfull.mjs'), /* v2.3.1982: the 61st player is told why, waits visibly, and walks in when a seat opens */
   hairmask: () => import('./mp-hairmask.mjs'), /* v2.3.1993: a hat presses the hair down, it does not shave the head */
   firstrun: () => import('./mp-firstrun.mjs'), /* v2.3.1975: a first-time player gets a whole screen, not a strip */
