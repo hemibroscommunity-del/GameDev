@@ -5,13 +5,13 @@
  * (docs/specs/alliance.md "Step 3").  A real phone and two bare sockets
  * speaking the game's protocol:
  *   1. under the switch that keeps clans (`clanparty: false`), the phone founds
- *      [GOLD] Gold Crew and a friend (a socket) joins it;
+ *      [GOLD] Gold Clan and a friend (a socket) joins it;
  *   2. the switch comes off with both still on, and the next join anywhere (a
  *      second socket) turns the clan into a party: the phone's strip reads
  *      [GOLD] 2/50, its chat "Your clan [GOLD] is a party now", its own plate
  *      and the friend's plate as it draws it read [GOLD], and the friend's
  *      socket was told the same (party_state, `fromClan`);
- *   3. the Saloon's Alliance part: "[GOLD] Gold Crew", "Your clan is this
+ *   3. the Saloon's Alliance part: "[GOLD] Gold Clan", "Your clan is this
  *      party now", its count toward 20;
  *   4. the dashboard's Clan page: the party's tag, and Find a party opens the
  *      player list;
@@ -111,9 +111,12 @@ async function runIt({ browser, wsPort, webPort, rec }) {
   await H.grant(wsPort, me.id, 'gold', { amount: 900 });
   await until(async () => (await H.readState(A, (S) => (S.rpg && S.rpg.coins) || 0)) >= 500, 8000);
   /* the clan window's own send (ClanPanel.jsx): the page's channel takes it as a broadcast event */
-  await A.page.evaluate(() => { const S = window._gameState.current; S.channel.send({ type: 'broadcast', event: 'clan_create', payload: { name: 'Gold Crew', tag: 'GOLD' } }); });
+  /* a name and tag no other scenario takes (mp-alliance names an alliance "Gold
+     Crew"): one worker serves the whole run, and a clan turned into a party
+     keeps its name and tag reserved for as long as the party lasts */
+  await A.page.evaluate(() => { const S = window._gameState.current; S.channel.send({ type: 'broadcast', event: 'clan_create', payload: { name: 'Gold Clan', tag: 'GOLD' } }); });
   const founded = await until(async () => (await H.readState(A, (S) => S._clanData && S._clanData.tag)) === 'GOLD', 10000);
-  rec.ok('1. the phone founds [GOLD] Gold Crew under the switch', !!founded, await H.readState(A, (S) => S._clanData));
+  rec.ok('1. the phone founds [GOLD] Gold Clan under the switch', !!founded, await H.readState(A, (S) => S._clanData));
   const tagId = Math.random().toString(36).slice(2, 7);
   const M = sock(wsPort, 'Mate', 'cp' + tagId + 'm');
   await M.open();
@@ -159,7 +162,7 @@ async function runIt({ browser, wsPort, webPort, rec }) {
   await A.page.evaluate(() => window.__btBuildingWindow && window.__btBuildingWindow.open('party'));
   const sal = await until(async () => {
     const t = await txt(A, '[data-ally-clan="1"]');
-    return t && /\[GOLD\] Gold Crew/.test(t) ? t : null;
+    return t && /\[GOLD\] Gold Clan/.test(t) ? t : null;
   }, 6000);
   const salWell = await txt(A, '[data-ally-on]');
   rec.ok(`3. the Saloon's Alliance part: "${sal || '?'}"`, !!sal && /Your clan is this party now/.test(salWell || '') && /\/20/.test(salWell || ''), salWell);
@@ -189,7 +192,7 @@ async function runIt({ browser, wsPort, webPort, rec }) {
     const el = document.querySelector('[data-dash-clanparty]');
     return el ? { tag: el.getAttribute('data-dash-clanparty'), text: (el.textContent || '').replace(/\s+/g, ' ').trim() } : null;
   }), 6000);
-  rec.ok(`4. the dashboard's Clan page: "${dash ? dash.text.slice(0, 90) : '?'}"`, !!dash && dash.tag === 'GOLD' && /\[GOLD\] Gold Crew/.test(dash.text) && /Your clan, now a party/.test(dash.text), dash);
+  rec.ok(`4. the dashboard's Clan page: "${dash ? dash.text.slice(0, 90) : '?'}"`, !!dash && dash.tag === 'GOLD' && /\[GOLD\] Gold Clan/.test(dash.text) && /Your clan, now a party/.test(dash.text), dash);
   await shot(A, '4-dash');
   await tap(A, '[data-dash-find-party]');
   const plist1 = await until(async () => A.page.evaluate(() => !!document.querySelector('.bt-plist')), 6000);
