@@ -76,6 +76,7 @@ export const BOTFP = {
   FLAG_AT: 10,                   // ~5 synthetic strikes or 3+ replays inside a half-life
   FLAG_MIN_GAP_MS: 3600000,      // at most one auto-flag written per hour per identity
   FLAG_CAP: 20,
+  STARTLESS_FLAG_AT: 20,         // v2.3.3322: strikes refused for want of a start (_botfpOnStartless)
   // ── fleet signal (device correlation) ──
   FLEET_MIN_IDS: 4,              // identities on one device nonce
   FLEET_ACTIVE_MIN: 3,           // of which this many harvested heavily this hour
@@ -183,7 +184,9 @@ function freshRecord(now) {
     lastStrikeAt: 0, strikeCount: 0,
     score: 0, lastDecayAt: now, lastFlagAt: 0,
     counters: { strikes: 0, noFpStrikes: 0, syntheticStrikes: 0, entFloorHits: 0,
-                replayHits: 0, taplessCooks: 0, cooks: 0, capClamps: 0 },
+                replayHits: 0, taplessCooks: 0, cooks: 0, capClamps: 0,
+                noFpPerfect: 0,     /* v2.3.3322: a perfect claimed with no fingerprint, paid 'good' */
+                startless: 0 },     /* v2.3.3322: a strike refused for want of its own start (gathering.js HARVEST_PROOF) */
     hour: { hourStart: now, bySkill: {} },
     welford: { n: 0, entMean: 0, entM2: 0, vcMean: 0, vcM2: 0 },
     flags: [],
@@ -335,6 +338,14 @@ export const botfpMethods = {
       // Old client / stripped payload: permissive, evidence-counted only —
       // the _extractionMissing posture.
       rec.counters.noFpStrikes++;
+      /* v2.3.3322: ...but never 'perfect' (gathering.js HARVEST_PROOF): every
+         real perfect is graded off the gesture that writes the fingerprint
+         (ExtractionSwipeLayer.jsx), and perfect doubles the yield.  'good',
+         the grade a phone defaults to; `harvestproof: false` keeps it. */
+      if (accuracy === 'perfect' && (typeof this._harvestProofOn !== 'function' || this._harvestProofOn())) {
+        accuracy = 'good';
+        rec.counters.noFpPerfect = (rec.counters.noFpPerfect || 0) + 1;
+      }
       this._botfpMaybePut(session.id, rec, false);
       return { accuracy, grant: true };
     }
@@ -435,6 +446,26 @@ export const botfpMethods = {
         }
       }
     }
+  },
+
+  /* ═══ v2.3.3322: A STRIKE REFUSED FOR WANT OF ITS START IS EVIDENCE ═══
+     gathering.js HARVEST_PROOF refuses a strike with no start of its own
+     before the gathering hook above ever sees it, so a script hammering them
+     would leave no trace here.  Counted (`startless`), and flagged once the
+     count reaches STARTLESS_FLAG_AT: an honest phone sends one such strike
+     after a dropped socket or a deploy, and its recovery strike is paid, not
+     refused.  The write is _botfpMaybePut's own pace, a flag's at most one an
+     hour (FLAG_MIN_GAP_MS). */
+  _botfpOnStartless(session, why, now) {
+    const t = now || now_();
+    const rec = this._botfpRecord(session.id, t);
+    this._botfpDecay(rec, t);
+    rec.counters.startless = (rec.counters.startless || 0) + 1;
+    rec.dirty = true;
+    if (rec.counters.startless >= BOTFP.STARTLESS_FLAG_AT) {
+      this._botfpFlag(session.id, rec, 'strikes-without-start', { why, count: rec.counters.startless }, t);
+    }
+    this._botfpMaybePut(session.id, rec, false);
   },
 
   // Shadow flag: persisted evidence for owner review.  Rate-limited so a
