@@ -3079,7 +3079,7 @@ export class GameRoom {
     /* v2.3.3292: a roll the worker charged for opens the window in which the
        phone's `dodging` counts against a player's blow (movement.js ROLL) --
        paid here, never claimed */
-    if (ROLL.PAID.includes(type)) this._rollStamp(ps, Date.now());
+    if (ROLL.PAID.includes(type)) this._rollStamp(ps, Date.now(), type);   /* v2.3.3300: + which roll, for _rollIFrames */
     /* ═══ v2.3.2361: THE LUNGE STOPS BEING THE ONE ABILITY THAT ONLY BILLS ═══
        Owner, answering the question doLunge left in the code at v2.3.2352:
        "Yes lunge damage should take effect."  The whole roll, the reach, the

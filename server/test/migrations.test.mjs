@@ -479,5 +479,86 @@ const legacyBlob = () => ({
     runRpgMigrations(bare).failed === null && bare._v === RPG_SCHEMA_VERSION, bare);
 }
 
+/* ── v2.3.3303: a migration that FAILS stays unfinished -- through the real
+   load, join and save -- and a newer worker's save is refused at the join ──
+   runRpgMigrations always failed open (§3 tests the pure function), but the
+   join that follows every load saved through _saveRpg, which stamped the
+   constant: a blob one version short whose last migration threw was stored as
+   current after ONE join, and the migration never ran again. */
+{
+  const last = MIGRATIONS[MIGRATIONS.length - 1];
+  const realRun = last.run;
+  const id = 'bp_mig_failopen';
+  const closer = (label) => Object.assign(fakeWs(label), { closed: null, close(code) { this.closed = code; } });
+  const w1 = closer('fo1');
+  await join(w1, id);
+  await room.webSocketClose(w1);
+  room.sessions.delete(w1);
+  const blob = state._store.get('rpg:' + id);
+  check('fail-open: setup -- a character on file at the current version', !!blob && blob._v === RPG_SCHEMA_VERSION, blob && blob._v);
+  blob._v = RPG_SCHEMA_VERSION - 1;
+  last.run = () => { throw new Error('boom'); };
+  const errs = [];
+  const realErr = console.error;
+  console.error = (...a) => { errs.push(a.map(String).join(' ')); };
+  try {
+    const w2 = closer('fo2');
+    await join(w2, id);
+    const after = state._store.get('rpg:' + id);
+    check('fail-open: the join went ahead (the blob stays playable)', !!room.playerState[id] && w2.closed === null, w2.closed);
+    check('fail-open: the join\'s save keeps the version the load reached (' + (RPG_SCHEMA_VERSION - 1) + '), not the constant',
+      !!after && after._v === RPG_SCHEMA_VERSION - 1, after && after._v);
+    await room._saveRpg(id, room.playerState[id]);
+    check('fail-open: ...and so does every later save of that player', state._store.get('rpg:' + id)._v === RPG_SCHEMA_VERSION - 1, state._store.get('rpg:' + id)._v);
+    check('fail-open: the failure is said in the log, with the migration\'s name',
+      errs.some((l) => l.includes('[migrations] rpg:' + id) && l.includes(last.name)), errs);
+    const other = 'bp_mig_bystander';
+    const w3 = closer('fo3');
+    await join(w3, other);
+    check('fail-open: another player\'s saves are current', state._store.get('rpg:' + other)._v === RPG_SCHEMA_VERSION, state._store.get('rpg:' + other)._v);
+    await room.webSocketClose(w3); room.sessions.delete(w3);
+    await room.webSocketClose(w2); room.sessions.delete(w2);
+  } finally {
+    console.error = realErr;
+    last.run = realRun;
+  }
+  /* the migration mended: the next load runs it, and the saves are current */
+  const w4 = closer('fo4');
+  await join(w4, id);
+  check('fail-open: the next load runs the migration that failed, and the saves are current again',
+    state._store.get('rpg:' + id)._v === RPG_SCHEMA_VERSION && room._rpgSaveVFor(id) === RPG_SCHEMA_VERSION, state._store.get('rpg:' + id)._v);
+  await room.webSocketClose(w4); room.sessions.delete(w4);
+
+  /* a NEWER worker's save, on this (rolled-back) one: the join is refused */
+  const nb = state._store.get('rpg:' + id);
+  nb._v = RPG_SCHEMA_VERSION + 1;
+  nb.futureField = { kept: true };
+  const puts0 = state._counts.rpgPuts;
+  const w5 = closer('fo5');
+  console.error = () => {};
+  try { await join(w5, id); } finally { console.error = realErr; }
+  check('newer: the join ends -- the socket closes 1011 ("try again") and the player is not in the room',
+    w5.closed === 1011 && !room.playerState[id], { closed: w5.closed, ps: !!room.playerState[id] });
+  check('newer: nothing is written over it (its _v and its fields as the newer worker left them)',
+    state._counts.rpgPuts === puts0 && state._store.get('rpg:' + id)._v === RPG_SCHEMA_VERSION + 1
+    && state._store.get('rpg:' + id).futureField && state._store.get('rpg:' + id).futureField.kept === true,
+    { puts: state._counts.rpgPuts - puts0, v: state._store.get('rpg:' + id)._v });
+  room.sessions.delete(w5);
+  const fromMail = await room._loadRpg(id);
+  check('newer: a reader that puts the blob back whole (the offline mail) still reads it', !!fromMail && fromMail._v === RPG_SCHEMA_VERSION + 1);
+
+  /* `newersave: false`: the join goes ahead, and its saves keep the newer _v */
+  const flags0 = room._liveFlags;
+  room._liveFlags = Object.assign(Object.create(null), flags0 || {}, { newersave: false });
+  const w6 = closer('fo6');
+  await join(w6, id);
+  check('newer: `newersave: false` lets the join through',
+    w6.closed === null && !!room.playerState[id], { closed: w6.closed });
+  check('newer: ...and its saves keep the newer worker\'s _v (that worker does not migrate it twice)',
+    state._store.get('rpg:' + id)._v === RPG_SCHEMA_VERSION + 1, state._store.get('rpg:' + id)._v);
+  room._liveFlags = flags0;
+  await room.webSocketClose(w6); room.sessions.delete(w6);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
