@@ -51,6 +51,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log(`    Brotown: ${JSON.stringify(town)}`);
     const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
     await P.page.evaluate(() => { const R = window._gameState.current.rpg; R._quests = R._quests || {}; R._quests.tut_1 = true; window._gameState.current.player.godMode = true; });
+    /* v2.3.3283: the WORKER's god mode too. The spot below is a monster's spawn
+       point, and player.godMode is the page's alone: the worker decides HP. Its
+       monsters killed the bro there (a diagnostic run's crash log: "died:wheel
+       at 21588,25012"), and the death's "Entering BroTown" veil came up over
+       step 3's samples: "3, 99%" on main, "1, 2%" on a second run. */
+    const me = await H.readState(P, (S) => S.myId);
+    const god = await H.devOp(wsPort, 'vitals', me, { god: true, godMinutes: 10 }).catch(() => null);
+    rec.ok('the worker keeps the bro alive at the monsters\' spawn (guard: /dev/vitals god)', !!god && god.ok && !!god.god, god);
     const far = WHEEL_SPAWNS.tidal.points[0];
     await H.hopTo(P, far[0], far[1] + 40, { tries: 160 });
     await P.page.waitForTimeout(5000);
@@ -74,6 +82,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(800);
     const back = await take(2);
     rec.ok(`...and the world drawn again reads lit again: ${back.map((r) => r && r.gl).join(', ')}%`, back.every((r) => r && r.gl >= 90), back);
+    /* v2.3.3283: a death's veil reads dark too, so say so if one came */
+    const died = await P.page.evaluate(() => { try { return JSON.parse(localStorage.getItem('bt-crashlog') || '[]').filter((c) => c && c.kind === 'died').length; } catch (e) { return -1; } });
+    rec.ok('...and the bro was never killed on the way (guard: no death on the crash log)', died === 0, { died });
 
     /* 4. the cost, in the frame it is taken */
     const all = [...lit, ...blank, ...back].filter(Boolean);

@@ -13,11 +13,11 @@
  *      .brotown-wrap (a sibling of the window's scrim, so its z-index means
  *      what it says);
  *   3. the CLAIM window (only because there is a choice: where the XP goes):
- *      QUEST COMPLETE, +25 Gold / +30 XP with the HUD's pictures, the bow and
+ *      QUEST COMPLETE, +25 Gold / +15 XP with the HUD's pictures, the bow and
  *      the staff in their slots, the three skill chips, the claim GREY until a
  *      chip is chosen and gold after, the chosen chip in the gold ring;
  *   4. a tap on the claim turns the window into the CONFIRMATION -- "Rewards
- *      claimed!", the slots glowing, "+30 XP to Bow" -- with QUEST COMPLETE!
+ *      claimed!", the slots glowing, "+15 XP to Bow" -- with QUEST COMPLETE!
  *      at the top of the screen and not over the window, the coins flying to
  *      the purse and the items to the bag, and after it his next quest;
  *   5. the worker paid it (the bow XP named, the gold);
@@ -28,6 +28,13 @@
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
+/* v2.3.3283: the quest's gold and XP are read from the worker's own table, as
+   mp-questui and mp-tutorial do. This check said +30 XP, tut_1's reward when it
+   was written (v2.3.3030); v2.3.3054 halved every quest's XP, so it failed on
+   main for a rule that no longer exists. mirror-audit pins the client's
+   QUEST_CHAINS to this table, so it is the number the window shows. */
+import { QUEST_REWARDS } from '../../../server/src/data.js';
+const TUT1 = QUEST_REWARDS.tut_1;
 
 const OUT = `${H.REPO}/tools/qa/mp/out`;
 /* run against another build (QA_DIST) it takes the same pictures as "before" */
@@ -242,8 +249,8 @@ async function body(P, wsPort, rec) {
   await shot('choose');
   console.log('    QUESTWIN choose: ' + JSON.stringify(C));
   rec.ok('the claim window: QUEST COMPLETE / Cold Reception', !!C && /quest complete/i.test(C.kicker) && /Cold Reception/.test(C.title), C && { k: C.kicker, t: C.title });
-  rec.ok('...paying +25 Gold and +30 XP, with the HUD\'s coin and XP pictures',
-    !!C && /\+25 Gold/.test(C.gold) && /\+30 XP/.test(C.xp), C && { g: C.gold, x: C.xp });
+  rec.ok(`...paying +${TUT1.gold} Gold and +${TUT1.xp} XP, with the HUD's coin and XP pictures`,
+    !!C && C.gold.includes(`+${TUT1.gold} Gold`) && C.xp.includes(`+${TUT1.xp} XP`), C && { g: C.gold, x: C.xp });
   const cFin = C && C.groups.find((g) => g.when === 'complete');
   rec.ok('...the bow and the staff, each in its slot',
     !!cFin && cFin.slots === 2 && cFin.items.some((s) => /^bow\./.test(s)) && cFin.items.some((s) => /^staff\./.test(s)), C && C.groups);
@@ -273,7 +280,7 @@ async function body(P, wsPort, rec) {
   rec.ok('the window becomes the confirmation: "Rewards claimed!"',
     !!E && E.done && /rewards claimed/i.test(E.claimed), E && { done: E.done, c: E.claimed });
   rec.ok('...the rewards in glowing slots, and where the XP went',
-    !!E && E.glow === 2 && /\+30 XP to Bow/.test(E.xpline), E && { glow: E.glow, xp: E.xpline });
+    !!E && E.glow === 2 && String(E.xpline || '').includes(`+${TUT1.xp} XP to Bow`), E && { glow: E.glow, xp: E.xpline });
   rec.ok('...with nothing on it to press again (no claim button)', !!E && !E.claim, E && E.claim);
   await P.page.waitForTimeout(250);
   const bC = (await P.page.evaluate(() => window.__qw.slice())).find((b) => b.kind === 'completed');
@@ -303,7 +310,7 @@ async function body(P, wsPort, rec) {
   /* ── 5. the worker paid it ── */
   const paid = await srv();
   rec.ok('the WORKER turned it in and paid the gold',
-    !!paid && (paid._quests || {}).tut_1 === 'turnedIn' && (paid.coins || 0) - ((before && before.coins) || 0) === 25,
+    !!paid && (paid._quests || {}).tut_1 === 'turnedIn' && (paid.coins || 0) - ((before && before.coins) || 0) === TUT1.gold,
     paid && { q: paid._quests, coins: paid.coins, was: before && before.coins });
 
   /* ── 6. the auto reward's banner ── */
