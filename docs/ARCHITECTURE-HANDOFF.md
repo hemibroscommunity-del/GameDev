@@ -144,6 +144,10 @@ extended.
    `refund:<orderId>`, `duelpot:<id>`, `clanwar:<warId>:<pid>`), stamped
    in `oplog:`. A crash-retry finds the stamp and converges instead of
    double-paying; duplicate debits return `{ok:true, dup:true}`.
+   **A stamp is issued in the same synchronous run as the write it stands
+   for** (v2.3.3165 for debits, v2.3.3294 for `_creditPlayer`'s credits):
+   stamped and awaited first, a restart in between leaves "paid" with
+   nothing paid, and every retry believes the stamp (TRAPS #147, #184).
 6. **Sweeps never refund over a stamped payout.** Any orphan-escrow sweep
    must check the payout's oplog stamp first (`_duelEscrowSweep` is the
    reference implementation) — a crash between pot-credit and
@@ -154,7 +158,11 @@ extended.
      placement, record in storage, sweep-refund orphans.
    - **Instantaneous** two-party swaps (trades) or single-event mutations
      (gambling): validate-at-commit inside one input-gated event; nothing
-     escrowed, a deploy loses nothing.
+     escrowed, a deploy loses nothing -- **only if every debit, credit and
+     stamp of the swap goes out in ONE synchronous run** (v2.3.3294,
+     `_creditLiveTogether`). The input gate keeps other events out of the
+     middle; it does not make the writes one. Each await between two writes
+     is a place a restart can land (TRAPS #184).
 8. **Single-mutation over two-phase where possible.** If an operation can
    settle in one event on live state (gamble: roll, then one coins
    delta), do that — a debit…credit sequence creates a crash window that
@@ -180,6 +188,14 @@ extended.
    page per tick slot, a cursor in memory, batched deletes, never on the
    join path (`_opPruneMaybe`, `_metricsMaybe`). A single `list()` with no
    `limit` over a prefix that grows without bound is a bug on any hot path.
+   **And a third edge (v2.3.3291): the gate keeps EVENTS apart, not
+   messages.** A bundle (v2.3.3254) is up to 24 messages in ONE event. A
+   handler the router starts without awaiting runs beside the bundle's next
+   part, and both read the same record before either writes it back: 24
+   harvests of one ripe bed in one bundle paid 48 carrots, and one stack of
+   ore sold 24 times paid 24 times. Every case in `_onMessage` awaits (or
+   returns) its handler in the statement that calls it; `quiet-phone.test`
+   §9 scans for any that does not (TRAPS #182).
 10. **Fire-and-forget `_saveRpg` is correct** — output gates hold
     outbound messages until prior writes durably commit, so clients can
     never observe state that later rolls back.
@@ -304,9 +320,13 @@ extended.
 27. **What a player's own taps may write is paced** (v2.3.3274,
     flood.js, docs/specs/one-socket.md). A handler that saves the record
     because the CLIENT asked (equip, unequip, the active slot, a stat
-    change, a cape toggle) calls `_saveRpgPaced`, never `_saveRpg`: a
-    burst of 30 at once, then one every 10 s, the rest riding the regen
-    drain (`_regenDirty`) or the close flush. A handler that writes any
+    change, a cape toggle -- v2.3.3293: and which shield is on the arm,
+    `shield_wear`, the one left on the full save) calls `_saveRpgPaced`,
+    never `_saveRpg`: a burst of 30 at once, then one every 10 s, the rest
+    riding the regen drain (`_regenDirty`) or the close flush. A tap whose
+    writes must stay durable (v2.3.3293: a trade window's weapon, value at
+    rest) has its MESSAGES paced instead, past the lane refused
+    (`PACE.T2WPN`). A handler that writes any
     other key on a client's word writes nothing when nothing changed, and
     either paces the write (`_paced`, the mute list) or drops it past the
     lane (`_paceTake`, the offer's mark) -- never holds a copy of a record
@@ -314,6 +334,15 @@ extended.
     10 s window the pools already have. Every message a socket sends
     counts against its budget (`_floodMsgOk`); a new client->server type
     needs no limit of its own for the flood case, only for what it writes.
+28. **Every monster hit on a player goes through ONE door** (v2.3.3296,
+    `hits.js` `_monsterHit`, docs/specs/hit-door.md). A new way for a
+    monster to hurt a player is a row in `MONSTER_HITS` -- its harvest
+    shield, safe ground, roll, rock, shield (cost, parry, a hit of 0), rail,
+    element and after-effects -- and a wrapper that works out who is hit and
+    for how much. It never calls `_applyDamage` itself: `hit-door.test` §10d
+    fails a fourth file that does (the other two are a player's hits,
+    combat.js and pvpextras.js). Changing what a way of being hit does is
+    changing its cell and the test's row with it.
 
 ---
 

@@ -1,5 +1,16 @@
 # Brotown UI Spec Reference — Directional Block Ring + Shield Mechanics
 
+> **v2.3.3297: THE COST UNDER "Blocked!" IS THE WORKER'S.** The worker names a
+> blocked hit's stamina cost (`staminaDrain` on its `monster_attack`) whenever
+> it charges one, and leaves it off on purpose when it charges nothing: a
+> **parry** pays stamina back (v2.3.1731), and a **snowball** is free to block.
+> The phone (gameEvents.js, the blocked branch of `monster_attack`) read a
+> missing cost as 15, the cost before v2.3.1731, so both drew "-15⚡". It now
+> shows the worker's number or nothing, as a blocked player hit already did
+> (`pvp_hit`). `mp-blockcost` feeds the three cases through the real handler on
+> a phone (two of its five fail on the code before); `mirror-audit` refuses a
+> guessed cost in the phone's code.
+
 > **STATUS (v2.3.2242): the INPUT changed — the shield is a toggle button.**
 > The double-tap-and-hold on the right stick, the orbiting BlockRing glyph
 > and the lock-on Block button are all gone; a `ShieldButton` under the

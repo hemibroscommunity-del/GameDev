@@ -1526,5 +1526,94 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     chatOf().map((e) => e.payload));
 }
 
+/* ── 10. v2.3.3292: a roll is only as long as the one you paid for ──
+   `dodging` on a move is the phone's word that it is mid-roll, and a player's
+   blow skips a player who is rolling.  It had no end: one move saying
+   `dodging: true` made a player immune to every player's blow until a later
+   move said otherwise (the architecture review, 2026-10-17).  Now the claim
+   counts only inside the window a roll the worker CHARGED for opened
+   (movement.js ROLL; index.js _handleAbilityUse). */
+{
+  const { ROLL } = await import('../src/movement.js');
+  const realRandom = Math.random;
+  Math.random = () => 0.999;   /* no Dodge-stat roll: a hit that misses must be the roll's doing */
+  const fresh = () => {
+    psA.weapon = { type: 'sword', tierMult: 1 }; psA.rangedWeapon = null; psA.staffWeapon = null;
+    psA.dying = false; psA.dead = false; psA.disconnected = false; psA.z = 'meadow'; psA.x = 1000; psA.y = 1000;
+    psB.dying = false; psB.dead = false; psB.disconnected = false; psB.z = 'meadow'; psB.x = 1040; psB.y = 1000;
+    psB.blocking = false; psB.dodging = false; psB._rollUntil = 0; psB._zoneEntryGraceUntil = 0; psB._godUntil = 0;
+    psB._dazeUntil = 0; psB.agility = 0; psB.maxHp = 1000000; psB.hp = 1000000;
+    psB.stamina = psB.maxStamina || 100;
+    room.stateHistory.pb = [];   /* the live state is judged (the history's own rule is pinned below) */
+    room._pvpConsent = new Map();
+    room._pvpConsent.set(room._pvpPairKey('pa', 'pb'), Date.now() + 600000);
+    room._pvpHitLanes = new Map();
+    room.eventBuffer.length = 0;
+  };
+  let sw = 7000;
+  const swing = () => {
+    room._pvpHitLanes = new Map();
+    const h0 = psB.hp;
+    room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 3, angle: 0, dmgBase: 50, critChance: 0, kind: 'melee', target: 'pb', sw: ++sw });
+    return h0 - psB.hp;
+  };
+  const claim = async (rolling) => room.webSocketMessage(wsB, JSON.stringify({ type: 'move', x: psB.x, y: psB.y, d: 'south', z: 'meadow', dodging: rolling }));
+  const pay = async (type) => room.webSocketMessage(wsB, JSON.stringify({ type: 'ability_use', payload: { type } }));
+
+  fresh();
+  check('roll: a plain swing lands (guard: the swing reaches)', swing() > 0);
+
+  fresh();
+  await claim(true);
+  check('roll: a move saying dodging:true is still recorded as the claim (guard)', psB.dodging === true);
+  check('roll: ...but with no paid roll behind it, the swing LANDS (it made B immune)', swing() > 0);
+
+  fresh();
+  await pay('dodge');
+  await claim(true);
+  const t0 = Date.now();
+  check('roll: a paid dodge opens the window, ROLL.MAX_MS long', psB._rollUntil >= t0 + ROLL.MAX_MS - 50 && psB._rollUntil <= t0 + ROLL.MAX_MS + 50, psB._rollUntil - t0);
+  check('roll: ...inside it the swing misses, as a roll always did', swing() === 0 && !room.eventBuffer.some((e) => e.type === 'pvp_hit'));
+  psB._rollUntil = Date.now() - 1;   /* the window over: a second later */
+  check('roll: ...and once it is over, the same claim buys nothing', swing() > 0);
+
+  fresh();
+  psB.stamina = 0;
+  await pay('dodge');
+  await claim(true);
+  check('roll: a dodge the worker refused (no stamina) opens no window', !(psB._rollUntil > Date.now()) && swing() > 0);
+
+  fresh();
+  await pay('lunge');
+  check('roll: a lunge opens the window too (the phone plays it as a roll)', psB._rollUntil > Date.now());
+  fresh();
+  await pay('retreat');
+  check('roll: ...and so does a retreat shot (as before: its `dodging` was honoured)', psB._rollUntil > Date.now());
+
+  /* the one door for the extras (a bash, a burst, a splash) asks the same */
+  fresh();
+  psB.dodging = true;
+  check('roll: _strikePlayer lands on a bare claim', room._strikePlayer('pa', psA, 'pb', psB, 50, { ability: 'bash', fromX: psA.x, fromY: psA.y }) !== null);
+  fresh();
+  psB.dodging = true; room._rollStamp(psB, Date.now());
+  check('roll: ...and misses inside a paid roll', room._strikePlayer('pa', psA, 'pb', psB, 50, { ability: 'bash', fromX: psA.x, fromY: psA.y }) === null);
+
+  /* the kill switch trusts the claim as before */
+  fresh();
+  const flags0 = room._liveFlags;
+  room._liveFlags = Object.assign(Object.create(null), flags0 || {}, { rollwindow: false });
+  psB.dodging = true;
+  check('roll: `rollwindow: false` trusts the bare claim, as before', swing() === 0);
+  room._liveFlags = flags0;
+
+  /* the rewound blow reads the history, which records the roll as allowed */
+  const { readFileSync } = await import('node:fs');
+  const tickSrc = readFileSync(new URL('../src/tick.js', import.meta.url), 'utf8');
+  check('roll: the lag-comp history records the roll as the worker allows it (tick.js)', /e\.dodging = this\._rollOn\(ps, _rollNow\);/.test(tickSrc));
+
+  fresh();
+  Math.random = realRandom;
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

@@ -312,29 +312,25 @@ export const monsterStatusMethods = {
     for (const { oid, o } of near.slice(0, SHOCK.MAX_ARCS)) {
       /* v2.3.3123: a Sparklet out with the one it reaches takes the edge off */
       const wo = this._petWard ? this._petWard(oid, o, 'storm') : 0;
-      const raw = Math.max(1, Math.min(Math.round((m.dmg || 0) * SHOCK.PCT * (1 - wo)), Math.floor((o.maxHp || 100) * SHOCK.MAX_HP_PCT)));
-      const res = this._applyDamage(o, raw, false, { elemental: true, attackerLevel: m.level });
-      if (!res.dodged) this._trackMonsterDamage(o, m.id, res.graced ? (res.dmgIntent || 0) : res.dmgTaken);
-      const landed = res.dmgTaken > 0;
-      this.eventBuffer.push({
-        type: 'monster_attack',
-        payload: {
-          monsterId: m.id, targetId: oid, dmg: raw, dmgTaken: res.dmgTaken,
-          dodged: res.dodged, lastStand: res.lastStand || undefined,
-          secondWind: res.secondWind || undefined,
-          hp: Math.max(0, Math.round(o.hp || 0)),   /* v2.3.3263: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
-          zone: zoneId,
-          /* the arc comes from the player it struck first */
-          attackerX: ps.x, attackerY: ps.y,
-          ability: 'shock',
-          elem: 'storm',
-          ...(landed ? { st: 'shock', stMs: SHOCK.MS } : {}),
-          ...(landed && wo > 0 ? { wd: Math.round(wo * 100) } : {}),
+      /* v2.3.3296: through the one door (hits.js, the storm's row): the
+         no-one-shot rail, the dice as elemental, the event, the death.  The
+         harvest shield and the safe ground were asked above, choosing the
+         arcs. */
+      this._monsterHit({
+        src: 'shock', zoneId, pid: oid, m, mid: m.id, lvl: m.level,
+        raw: Math.max(1, Math.round((m.dmg || 0) * SHOCK.PCT * (1 - wo))),
+        /* the arc comes from the player it struck first */
+        at: { x: ps.x, y: ps.y },
+        ability: 'shock',
+        extra: (res) => {
+          const landed = res.dmgTaken > 0;
+          return {
+            elem: 'storm',
+            ...(landed ? { st: 'shock', stMs: SHOCK.MS } : {}),
+            ...(landed && wo > 0 ? { wd: Math.round(wo * 100) } : {}),
+          };
         },
       });
-      this._saveRpgVitals(oid, o);
-      this._queuePlayerStateFlush(oid);
-      if (o.hp <= 0 && !o.dying) this._handlePlayerDeath(o, oid, 'monster:' + m.id);
       n++;
     }
     return n;
@@ -438,33 +434,24 @@ export const monsterStatusMethods = {
     return this._dotTick('burn', pid, ps, b);
   },
 
-  /* v2.3.3014: ...and of a poison, its own ability and icon */
+  /* v2.3.3014: ...and of a poison, its own ability and icon.
+     v2.3.3296: through the one door (hits.js, the burn's or the poison's
+     row): the no-one-shot rail, the dice as elemental, kill credit to the
+     goblin who lit it, the event, the save, the death.  The harvest shield
+     and the safe ground are the tick's own (_tickDots): the one skips a
+     tick, the other puts the burn out. */
   _dotTick(kind, pid, ps, b) {
-    const D = DOTS[kind], C = D.cfg;
-    const raw = Math.min(b.dmg, Math.max(1, Math.floor((ps.maxHp || 100) * C.MAX_HP_PCT)));
-    const res = this._applyDamage(ps, raw, false, { elemental: true, attackerLevel: b.lvl });
-    if (!res.dodged) this._trackMonsterDamage(ps, b.mid, res.graced ? (res.dmgIntent || 0) : res.dmgTaken);
-    this.eventBuffer.push({
-      type: 'monster_attack',
-      payload: {
-        monsterId: b.mid, targetId: pid, dmg: raw, dmgTaken: res.dmgTaken,
-        dodged: res.dodged, lastStand: res.lastStand || undefined,
-        secondWind: res.secondWind || undefined,
-        hp: Math.max(0, Math.round(ps.hp || 0)),   /* v2.3.3263: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
-        zone: b.zone,
-        /* the fire is on you, not on the goblin: the client points its
-           feedback at attackerX/Y */
-        attackerX: ps.x, attackerY: ps.y,
-        /* v2.3.2235's bypass: the goblin may be dead or across the map by the
-           time his fire bites, and without it the number is dropped by the
-           handler's first filter */
-        ability: D.ability,
-        elem: D.elem,
-      },
+    const D = DOTS[kind];
+    return this._monsterHit({
+      src: kind, zoneId: b.zone, pid, m: null, mid: b.mid, lvl: b.lvl, raw: b.dmg,
+      /* the fire is on you, not on the goblin: the phone points its feedback
+         at attackerX/Y */
+      at: { x: ps.x, y: ps.y },
+      /* v2.3.2235's bypass: the goblin may be dead or across the map by the
+         time his fire bites, and without it the number is dropped by the
+         handler's first filter */
+      ability: D.ability,
+      extra: { elem: D.elem },
     });
-    this._saveRpgVitals(pid, ps);
-    this._queuePlayerStateFlush(pid);
-    if (ps.hp <= 0 && !ps.dying) this._handlePlayerDeath(ps, pid, 'monster:' + b.mid);
-    return res.dmgTaken;
   },
 };

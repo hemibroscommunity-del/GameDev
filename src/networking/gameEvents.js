@@ -2982,7 +2982,17 @@ export function processGameEvent(type, payload, S, deps) {
                 if (!R2._questFlags) R2._questFlags = {};
                 R2._questFlags.blocksLanded = (R2._questFlags.blocksLanded || 0) + 1;
                 pushDmgPopup(S, S.player.x, heroPopupY(S), 'Blocked!', '#60a5fa');   /* v2.3.3026: over your head, where the hit's number would be */
-                var _staminaDrainBlock = typeof payload.staminaDrain === 'number' ? payload.staminaDrain : 15;
+                /* ═══ v2.3.3297: WHAT THE WORKER CHARGED, NOT A GUESS ═══
+                   This said 15 whenever the event named no cost -- the cost a
+                   blocked hit had before v2.3.1731.  But every worker since
+                   v2.3.1686 names the cost whenever it charges one, and leaves
+                   it off on purpose when it charges nothing (v2.3.1704: no
+                   "-0⚡" beside every Blocked!).  So the guess was only ever
+                   wrong: a PARRY, which pays stamina back (v2.3.1731), and a
+                   snowball, free to block, both drew "-15⚡" here.  The cost
+                   is the worker's or nothing, as a blocked player hit already
+                   reads it (pvp_hit, below). */
+                var _staminaDrainBlock = typeof payload.staminaDrain === 'number' ? payload.staminaDrain : 0;
                 if (_staminaDrainBlock > 0) {
                   /* v2.3.1686 (owner: "I see negative numbers during blocks.
                      I don't know what that refers to").  This is the STAMINA

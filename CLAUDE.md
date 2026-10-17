@@ -3074,6 +3074,15 @@ Two protocol versions coexist; both must keep working:
       caps outlive a reconnect, and a rolled-back worker would relay an array
       to the room); `quiet-phone` suite (56: two rooms in lockstep, bundled and
       not, identical), docs/specs/quiet-phone.md.
+    - since v2.3.3291 EACH PART FINISHES BEFORE THE NEXT -- found by the
+      architecture review: a bundle is ONE event, so the input gate keeps its
+      parts apart only if the router waits for each handler, and twenty cases
+      did not (farm, shop, daily chest and rewards, capes, the auction house's
+      offers and threads); 24 harvests of one bed in one bundle paid 48
+      carrots, one stack sold 24 times paid 24 times. Every case in
+      `_onMessage` awaits its handler where it calls it; `quiet-phone` §8
+      (late, copying storage) and §9 (a scan of the router) hold it; handoff
+      rule 9's third edge, TRAPS #182.
   - v2.3.3205: THE CAP IS 120 -- the owner: "I think 120 is a good cap limit
     for now" (index.js `MAX_PLAYERS`; `max_players` can still only lower it;
     chatmod `SEEN_MAX` 240, twice the cap). With #887-#891 the room is smooth
@@ -3337,6 +3346,12 @@ Two protocol versions coexist; both must keep working:
   - one socket can spend the free plan's rows (`chat_mute`, `stats_update` and
     `friend_dm` write a row a message) or keep rooms awake (`?room=<any>`).
 
+  - since v2.3.3292 (the architecture review): a phone's `dodging` stops a
+    player's blow only within 1 s of a roll the worker CHARGED for
+    (movement.js `ROLL`, `_rollOn`; it was unbounded, one move made a player
+    immune to every player) -- docs/specs/roll-window.md, anticheat §10,
+    TRAPS #183; kill switch `rollwindow: false`.
+
   The fix order is in the review. Re-run the lab after any change to a
   harvest, cook, move or hit path.
 
@@ -3490,6 +3505,18 @@ Two protocol versions coexist; both must keep working:
   - The preloading law above still stands. Moving a load off the loading
     screen to save memory is the owner's call, as #822's gathering poses were,
     never a quiet "fix".
+- **A PAYMENT, ITS STAMP AND A SWAP'S BOTH SIDES ARE ONE WRITE (v2.3.3294,
+  docs/specs/inbox-escrow.md).** "Atomic" means one synchronous run of writes
+  with no await between them; the input gate keeps other events out of the
+  middle but does not make writes one, and every merge restarts the room
+  between two awaits. Found by the architecture review: `_creditPlayer`
+  stamped, awaited, then paid; both trade lanes saved the debits and awaited
+  each credit; staging a weapon wrote escrow before the stash; two credits to
+  one player rewrote the mailbox over each other. Now the stamp goes out with
+  the payment, a running opId answers 'dup', the mailbox is taken one at a
+  time (`_inboxSerial`), and a swap with both sides online credits in the
+  debit's run (`_creditLiveTogether`). `inbox.test` §8c crashes at every write
+  (all seven failed on main); handoff rules 5 and 7, TRAPS #184.
 - **WHAT PLAY WRITES IS GUARDED (v2.3.3270, the cost diet).** The owner:
   "Build my game so that it's the most cost effective that it can be without
   losing quality." Measured, the game already writes and sends about the least
@@ -3513,7 +3540,9 @@ Two protocol versions coexist; both must keep working:
   The anti-bot review's urgent five, closed in `server/src/flood.js`: a row
   written per message (mute no-ops, a stat flood, offline DMs) -- nothing
   written when nothing changed, a player's own saves PACED (`_saveRpgPaced`,
-  handoff rule 27); `?room=<anything>` made a room awake and billed -- only
+  handoff rule 27; v2.3.3293: `shield_wear` too, and the trade window's
+  weapon lane by its messages, `PACE.T2WPN` -- the architecture review found
+  both writing a row a message, `cost-guard` §9); `?room=<anything>` made a room awake and billed -- only
   the main room and `ROOMS` in wrangler.toml, anything on a local host; no
   limit on messages a socket -- a budget (300 then 120/s, drops, close 4012);
   the room's places held by sockets that never joined, a second join adding
@@ -3536,9 +3565,30 @@ Two protocol versions coexist; both must keep working:
   refusal as fatal) exist; `disable_verify` live flag; fail closed;
   `TURNSTILE_VERIFY_URL` is the test seam. `verify` suite (24), `mp-verify`
   (its own worker, `BT_WRANGLER_VARS`, a stand-in verifier and widget).
+- **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
+  name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
+  whose comments promised a `false` switch -- `storeGear`, `dailyChest`,
+  `zoneDepth`, `whirlWindup`, `broCount` -- answered POST /flags with a 400.
+  They are taken by name now (`CAMEL_SWITCHES`, `flagNameOk`) and no other
+  camelCase name is (`weaponDrops` stays refused). A new switch takes a
+  lower-case name: `liveops.test` §8 scans `server/src` for every flag read
+  and every `` `<name>: false` `` promised beside "live flags" or "kill
+  switch", and fails for one the route would refuse.
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.
+- **EVERY MONSTER HIT ON A PLAYER GOES THROUGH ONE DOOR (v2.3.3296,
+  docs/specs/hit-door.md, handoff rule 28).** The GDD's "interceptor chain",
+  built for real: `hits.js` `_monsterHit` runs the harvest shield, the safe
+  ground, a roll, a rock, the shield (cost, parry, a hit of 0), the one-hit
+  rail, the dice, the monster's after-effects and the event/save/death in one
+  order, and `MONSTER_HITS` says what each way of being hit does at each step
+  (`swing`, `snowball`, `pile`, `kit`, `burst`, `boss`, `fire`, `shock`,
+  `burn`, `poison`). The seven old copies are wrappers. The table is TODAY'S
+  behaviour cell for cell, including the cells hit-door.md puts to the owner
+  (the two 15s, the wrong-way snowball, the harvest shield the kits and fire
+  miss, rolls, parry, rails, rocks). `hit-door.test` (205) pinned them before
+  the door existed; §10d fails a new caller of `_applyDamage`.
 - `package.json` version tracks the client version loosely; comment
   tags in code are the finer-grained record.
 - The repo owner is new to coding: PRs should be self-contained,

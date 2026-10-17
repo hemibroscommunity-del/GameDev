@@ -57,10 +57,34 @@ export const LIVEOPS = {
   XP_MULT_MAX: 4,
   ANNOUNCE_MAX_LEN: 200,
   FLAG_NAME_RE: /^[a-z0-9_]{1,32}$/,
+  /* ═══ v2.3.3295: FIVE KILL SWITCHES NOBODY COULD THROW ═══
+     Each of these caps says in its own comment (join.js) that writing
+     `<name>: false` into the live flags turns it off, and four of them are
+     read by the worker too (storegear.js _stGearOff, dailychest.js _chestOff,
+     depth.js _depthK, abilities.js _abilWindupOff; broCount only un-advertises
+     itself to the phone).  But the one route to the flags, POST /flags below,
+     refused every name outside FLAG_NAME_RE -- lower case only -- so in an
+     emergency all five answered 400 (TRAPS §117 found it in v2.3.2848 and
+     fixed the rule for NEW names; these were already shipped, or came after).
+     Renaming a cap is not the way out: the phone reads it by this name, and a
+     worker that stopped saying `storeGear` would read to every phone in the
+     world as one without the auction house's gear.  Widening FLAG_NAME_RE is
+     not either: every camelCase cap would become settable, `weaponDrops`
+     among them, whose `false` brings back weapons the phone mints itself
+     (docs/specs/liveops.md "Caps override").  So these five, by name, and no
+     other: a new kill switch still takes a lower-case name, and
+     liveops.test §8 fails for one that does not. */
+  CAMEL_SWITCHES: Object.freeze(['storeGear', 'dailyChest', 'zoneDepth', 'whirlWindup', 'broCount']),
   FLAGS_MAX: 64,
   METRICS_KEEP: 30,
   ALERT_PCT: 25,
 };
+
+/* v2.3.3295: a name POST /flags will store -- FLAG_NAME_RE's, or one of the
+   five camelCase switches above. */
+export function flagNameOk(name) {
+  return typeof name === 'string' && (LIVEOPS.FLAG_NAME_RE.test(name) || LIVEOPS.CAMEL_SWITCHES.includes(name));
+}
 
 export const liveopsMethods = {
   async _liveFlagsEnsure() {
@@ -226,8 +250,8 @@ export const liveopsMethods = {
       const body = await request.json();
       const { name } = body || {};
       let { value } = body || {};
-      if (typeof name !== 'string' || !LIVEOPS.FLAG_NAME_RE.test(name)) {
-        return json({ ok: false, error: 'flag name must match ' + LIVEOPS.FLAG_NAME_RE }, 400);
+      if (!flagNameOk(name)) {
+        return json({ ok: false, error: 'flag name must match ' + LIVEOPS.FLAG_NAME_RE + ' or be one of ' + LIVEOPS.CAMEL_SWITCHES.join(', ') }, 400);
       }
       if (typeof value !== 'boolean' && !(typeof value === 'number' && Number.isFinite(value))) {
         return json({ ok: false, error: 'value must be a boolean or finite number' }, 400);
