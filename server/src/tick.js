@@ -248,13 +248,17 @@ export const tickMethods = {
          later cannot change what it saw.  playerState is null-prototype
          (index.js), so for...in walks exactly its own ids. */
       const _hist = this.stateHistory, _lim = this.LAGCOMP_BUFFER_TICKS;
+      const _rollNow = Date.now();   /* v2.3.3292: one clock for the roll window below */
       for (const id in this.playerState) {
         const ps = this.playerState[id];
         let h = _hist[id];
         if (!h) h = _hist[id] = [];
         const e = (h.length && h.length >= _lim) ? h.shift() : Object.create(null);   /* fixed field names only, but no prototype to trip on */
         e.x = ps.x; e.y = ps.y; e.d = ps.d; e.z = ps.z;
-        e.dodging = ps.dodging || false;
+        /* v2.3.3292: the roll AS THE WORKER ALLOWS IT -- the phone's `dodging`
+           only inside the window a paid roll opened (movement.js ROLL); the
+           rewound blow in _resolvePvPAttack reads this */
+        e.dodging = this._rollOn(ps, _rollNow);
         e.blocking = ps.blocking || false;
         /* v2.3.1726: shield facing rides the history so the PvP block
            check can be directional against the REWOUND shield, not the

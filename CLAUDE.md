@@ -3309,6 +3309,12 @@ Two protocol versions coexist; both must keep working:
   - one socket can spend the free plan's rows (`chat_mute`, `stats_update` and
     `friend_dm` write a row a message) or keep rooms awake (`?room=<any>`).
 
+  - since v2.3.3292 (the architecture review): a phone's `dodging` stops a
+    player's blow only within 1 s of a roll the worker CHARGED for
+    (movement.js `ROLL`, `_rollOn`; it was unbounded, one move made a player
+    immune to every player) -- docs/specs/roll-window.md, anticheat §10,
+    TRAPS #183; kill switch `rollwindow: false`.
+
   The fix order is in the review. Re-run the lab after any change to a
   harvest, cook, move or hit path.
 
