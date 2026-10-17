@@ -10,7 +10,8 @@ via `_liveopsRoutes` just before its final 404. Owner-facing curl guide:
 ## 1. Flags (`server/src/liveops.js`)
 
 - Storage: one `liveflags` key = `{name: boolean|number}` (registered in
-  handoff rule 2). Names `^[a-z0-9_]{1,32}$`, budget 64.
+  handoff rule 2). Names `^[a-z0-9_]{1,32}$`, budget 64 -- and, since
+  v2.3.3295, five camelCase kill switches by name (below).
 - Cache: `this._liveFlags` is a lazy read-through cache
   (`_liveFlagsEnsure()`); admin writes are **write-through into the same
   object**, so an already-cached room sees flag changes immediately — no
@@ -73,6 +74,32 @@ stop *sending* a message family entirely. Safe to override: `jackpot`
 deposit gate is server-side anyway). Dangerous: `weaponDrops`, `settled`,
 `market`, `trade` — these all have legacy client paths.
 
+### Five camelCase switches, by name (v2.3.3295)
+
+Five caps say in their own comments that `<cap>: false` in the live flags
+turns them off -- `storeGear`, `dailyChest`, `zoneDepth`, `whirlWindup`
+(each also read by the worker: `_stGearOff`, `_chestOff`, `_depthK`,
+`_abilWindupOff`) and `broCount` (read by the phone only, through the
+caps) -- and until v2.3.3295 the route above answered all five with a 400:
+the name rule is lower case only. TRAPS §117 found it in v2.3.2848 and set
+the rule for NEW names; these five were already shipped or came after.
+
+They are now accepted **by name** (`LIVEOPS.CAMEL_SWITCHES`,
+`flagNameOk` in liveops.js), and no other camelCase name is:
+
+- renaming a cap would not do -- the phone reads it by that name, and a
+  worker that stopped saying `storeGear` reads to every phone as one with
+  no gear listings;
+- widening the rule would not either -- every camelCase cap would become
+  settable, `weaponDrops` among them (its `false` is the dangerous one
+  above).
+
+A new kill switch still takes a lower-case name. `liveops.test` §8 holds
+it: every flag the worker reads, and every `` `<name>: false` `` a comment
+in `server/src` promises beside "live flags" or "kill switch", must be a
+name the route takes, and each name on the list must still be promised
+somewhere.
+
 ## 2. Announce + MOTD
 
 - `POST /api/admin/announce {text, sticky?}` → `_announce()` broadcasts
@@ -132,6 +159,10 @@ write-through cache; `xp_mult` write- and read-clamps plus a real
 reaching two live sockets, sticky MOTD on join, delete, and the forged
 `server_announce` dropped by the deny-list; metrics once-daily
 idempotency, `/economy` history/delta/alert math, ring prune.
+§8 (v2.3.3295, 27 checks): the five camelCase switches stored by the real
+route, each read off by the worker and told to a join, cleared and read
+on again; any other camelCase name refused; the two scans of
+`server/src` (flags read, switches promised).
 
 ## Live flags in the owner's panel (v2.3.2412)
 
