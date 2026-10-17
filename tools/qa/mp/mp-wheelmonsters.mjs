@@ -140,15 +140,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 2. every land's own ── */
   phase = 'the list';
   await P.page.waitForTimeout(1500);
-  const every = await monsters(P);
+  let every = await monsters(P);
+  /* v2.3.3300: they come in the way in's one zone_state, ~580 KB on the
+     Wheel five times longer.  The worker sends it 35 ms after the step in;
+     the local worker's socket then took ~2.7 s to carry it to the page
+     (measured, the worker's send against the page's receipt, tracing on or
+     off) -- 1.5 s was enough for the short Wheel's ~117 KB.  So wait for it,
+     up to 15 s more, and say how long it took. */
+  const tList = Date.now();
+  for (let i = 0; i < 60 && !every.length; i++) { await P.page.waitForTimeout(250); every = await monsters(P); }
+  const listS = +(1.5 + (Date.now() - tList) / 1000).toFixed(1);
+  /* (a frame drawn with them, for the renderer's count of the far ones below) */
+  if (listS > 1.5) { await P.page.waitForTimeout(1000); every = await monsters(P); }
   const all = every.filter(isFirst);   /* v2.3.3013: the inner end's */
   /* v2.3.3300: five times as many on the Wheel five times longer, its
      stretches as crowded as the short one's (the live spawn table's size) */
   const LONG = (await H.wheelGeom()).long;
   const byHome = {};
   for (const m of all) (byHome[m.home] = byHome[m.home] || []).push(m);
-  rec.ok(`every element zone's monsters are there, each saying its home (${all.length} at the inner ends: ${Object.entries(byHome).map(([h, a]) => `${h} ${a.length}`).join(', ')}; ${every.length} in all with the deeper stretches)`,
-    all.length === 48 * LONG && every.length === 384 * LONG && Object.keys(SKIN).every((h) => (byHome[h] || []).length === 6 * LONG), Object.keys(byHome));
+  rec.ok(`every element zone's monsters are there, each saying its home (${all.length} at the inner ends: ${Object.entries(byHome).map(([h, a]) => `${h} ${a.length}`).join(', ')}; ${every.length} in all with the deeper stretches, ${listS} s after the arrival)`,
+    all.length === 48 * LONG && every.length === 384 * LONG && Object.keys(SKIN).every((h) => (byHome[h] || []).length === 6 * LONG), { listS, homes: Object.keys(byHome) });
   const wrongSkin = every.filter((m) => !(SKIN[m.home] || []).includes(m.arch));
   rec.ok('...each skinned as at home: fire goblins, snowmen, fishmen, rock monsters, mummies, wisps and lurkers, blue slimes, slimes',
     wrongSkin.length === 0, wrongSkin.slice(0, 6).map((m) => ({ id: m.id, home: m.home, arch: m.arch })));

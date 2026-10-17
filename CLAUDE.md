@@ -2747,7 +2747,14 @@ remnant to migrate server-side, not a mode to preserve.
       test-world-core;
     - never a Wheel coordinate in code or a test: QA reads `H.wheelGeom()`;
     - the minimap and world map draw the blocks round you at the short
-      Wheel's detail (`wheelLocalLands`); the world map zooms ~4x further;
+      Wheel's detail (`wheelLocalLands`); the world map zooms ~4x further,
+      what lies along the lands (stages, camps, passes, bands, roads) at the
+      map's own zoom and what is one size on either Wheel (buildings,
+      resources, monsters, bridges) at the short Wheel's (`spanK`, `zr`);
+    - a fishing or mining seat stays the bank while you sit on it
+      (wheelSwim.js `seatedOnBank`): the drawn shore wanders past the plan's
+      cells, and one long-Wheel seat of 250 was four looks wet; the bake
+      places by the plan and never by the pictures;
     - the way in still carries all 1,920 monsters (~580 KB): sending only
       those in reach needs a message bringing a monster whole (a tick does
       not say what it is) -- the next step.)

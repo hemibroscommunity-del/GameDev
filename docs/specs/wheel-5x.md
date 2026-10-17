@@ -124,7 +124,12 @@ every such seat, whatever the pictures are, and the server's tables still
 never depend on the pictures.
 
 **The way in** still carries every monster (~580 KB of `zone_state` for the
-1,920, against ~103 KB on the short Wheel), once. Sending only the ones in
+1,920, against ~103 KB on the short Wheel), once. The worker sends it 35 ms
+after the step into the Wheel; a local worker's socket (wrangler) then took
+~2.7 s to carry it to the page, measured with its tracing on and off, where
+the short Wheel's arrived inside the 1.5 s `mp-wheelmonsters` used to allow
+(it now waits for it and says how long: 3.5 s). Nothing is lost: on the
+arrival's safe ground the nearest monster is ~3,000 px away. Sending only the ones in
 reach needs a message that brings a monster coming into reach whole: a tick
 carries a monster's place and HP, not what it is (its kind, level and land),
 and the phone ignores a tick's monster it does not already know. That is the
@@ -140,13 +145,16 @@ home again, three times), on the long Wheel. **No budget line was raised.**
 
 | line | highest | budget |
 |---|---|---|
-| art from files | 147.9 MB | 156 |
-| graphics chip | 92 MB | 105 |
+| art from files | 148 MB | 156 |
+| graphics chip | 93.3 MB | 105 |
 | canvases | 91.4 MB | 96 |
 | sound | 26 MB | 30 |
-| the page's heap | 30.3 MB | 32 |
-| the page's buffers | 22.6 MB | 24 |
-| background workers | 31.1 MB | 36 |
+| the page's heap | 30.6 MB | 32 |
+| the page's buffers | 22.7 MB | 24 |
+| background workers | 31 MB | 36 |
+
+(Measured on the branch with main up to v2.3.3297 merged in; the third trip
+ends where the second did.)
 
 Two savings got it there; the first long-Wheel build was over the heap and
 buffers lines by 0.5 MB each:
@@ -165,6 +173,26 @@ buffers lines by 0.5 MB each:
 Measured how: the page's heap on the long and the short Wheel from the same
 build (the `wheel5x: false` flag), each object kind's share from a heap
 snapshot, and what holds them (the minimap's pool: 1,921 sprites).
+
+## Server
+
+The room's own code, timed in Node with `tools/qa/load/load-wheel.mjs` (a
+real GameRoom, simulated clock, 30% of the players fighting; `--short` the
+short Wheel, `wheel5x: false`):
+
+| players | short Wheel | long Wheel | tick, average |
+|---|---|---|---|
+| 1 | 4.7% of a core | 10.3% | 0.97 -> 2.18 ms |
+| 60 | 18.0% | 22.9% | 3.37 -> 4.42 ms |
+| 120 | 20.1% | 24.3% | 3.78 -> 4.47 ms |
+
+About a quarter more with a crowd, nearly all of it the tick visiting 1,920
+monsters where it visited 384: a resting monster's AI is skipped (v2.3.3299)
+but the loops still look at it. The first step into the Wheel builds its
+~580 KB `zone_state` in 12-29 ms (2 ms on the short Wheel). The tool's message
+clock used to include the bots' own search for a target (every monster in the
+Wheel, each fighter's move), which read as the room's and made the long Wheel
+look three times dearer; it now times only the room.
 
 ## Tests
 
