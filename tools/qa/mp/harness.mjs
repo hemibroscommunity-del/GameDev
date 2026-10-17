@@ -1243,6 +1243,30 @@ export async function hopGap(P, { frames = 2.5, min = 260 } = {}) {
   return { gap: Math.max(min, Math.round(frames * ms)), frameMs: Math.round(ms) };
 }
 
+/* ═══ v2.3.3283: OPEN THE OLD LANDS, AS THE CHECKS ALWAYS DID ═══
+ * The checks that walk the old lands opened them by accepting tut_1 to tut_4
+ * at once (each opens one land: QUEST_ZONE_GATE, movement.js).  Since
+ * v2.3.3179 the worker refuses a step taken ahead of the step before it
+ * (quests.js _questBarred 'order'), so only tut_1 was taken: Frost Ridge
+ * opened, and the Verdant Wilds, the Wind Dunes and the Flame Fields stayed
+ * shut ("not on your map yet") -- mp-monstertrim and mp-townscenery never
+ * reached Ember on main.  tut_1 is still accepted the player's way (its sword
+ * and shield are paid on accept), and the admin road's /dev/unlock marks the
+ * first quest of every other gated land 'active': the state the old loop
+ * left, paying nothing.  Resolves once the page has heard tut_4 is open. */
+export async function openLands(P, wsPort) {
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } });
+  });
+  await P.page.waitForTimeout(800);
+  const id = await readState(P, (S) => S.myId);
+  const r = await devOp(wsPort, 'unlock', id).catch((e) => ({ ok: false, error: String(e && e.message || e) }));
+  await waitFor(P, (S) => (S.rpg && S.rpg._quests && S.rpg._quests.tut_4) || null, (v) => !!v,
+    { timeout: 10000, label: 'the lands open' }).catch(() => null);
+  return r;
+}
+
 /* ═══ v2.3.3283: A REAL KEYSTROKE EVERY 20 s ═══
  * The page logs itself out after two minutes without REAL input (wsClient
  * idleLogout), and a scenario that walks by page.evaluate makes none however
