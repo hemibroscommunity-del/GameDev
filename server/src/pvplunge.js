@@ -136,12 +136,13 @@ export const pvpLungeMethods = {
     const reach = cfg.reach || cfg.radius || 0;
     if (!(dist <= reach)) return false;
     /* contact, as at a monster (abilities.js: "a lunge the server accepts is
-       a lunge the server performs") -- and the very next move is a first
-       move, not a teleport from where the worker just put you */
+       a lunge the server performs") -- and the very next move is judged from
+       where the worker just put you (v2.3.3325, movement.js
+       _moveServerPlaced; it was a first move, judged against nothing) */
     if (dist > PVP_LUNGE.STOP_PX) {
       ps.x = tps.x - (dx / dist) * PVP_LUNGE.STOP_PX;
       ps.y = tps.y - (dy / dist) * PVP_LUNGE.STOP_PX;
-      ps.lastMoveAt = undefined;
+      this._moveServerPlaced(ps);
     }
     /* the one door.  The real session when there is one (its rtt is the
        rewind; its name goes on the hit) */

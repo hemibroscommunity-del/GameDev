@@ -153,18 +153,27 @@ const rp = room.playerState.runner;
 const sess = { id: 'runner', name: 'R', data: {} };
 const ws = { sent: [], send(s) { this.sent.push(JSON.parse(s)); }, close() {} };
 
-/* Move at a speed the plain cap refuses. The bound is 500 px/sec + 80 slack,
-   so over 1s a 640px step is over it; at 1.5x the allowance is 750 + 80. */
+/* Move at a speed the plain cap refuses. The bound is 500 px/sec, so over 1s
+   a 640px step is over it; at 1.5x the allowance is 750.
+   v2.3.3325: the bound is a BUDGET now (movement.js MOVE_BUDGET) that refills
+   at that speed, and a move past it is FOLLOWED as far as it reaches, never
+   refused -- so each step starts from an empty budget that has had the
+   second to refill (a run held at the bound's pace), and "refused" reads as
+   "followed only the bound's 500 px of it". */
 const STEP_MS = 1000, STEP_PX = 640;
 const tryStep = () => {
   rp.x = 1000; rp.y = 1000;
   rp.lastMoveAt = Date.now() - STEP_MS;
+  rp._mvBudget = 0; rp._mvBudgetAt = Date.now() - STEP_MS;
   room._handleMove(sess, ws, { type: 'move', x: 1000 + STEP_PX, y: 1000, z: 'meadow' });
   return rp.x;
 };
+/* followed only `px` of the way: what a second of the bound refills, give or
+   take the millisecond the call itself took */
+const heldTo = (x, px) => x >= 1000 + px - 0.01 && x < 1000 + px + 2;
 
-check('un-buffed, a 640px-per-second sprint is refused as a teleport (the control)',
-  tryStep() === 1000, { x: rp.x });
+check('un-buffed, a 640px-per-second sprint is held to the bound: followed only 500 px of it (the control)',
+  heldTo(tryStep(), 500), { x: rp.x });
 
 drink('runner', 'swiftDraught');
 check('the Swift Draught arms a three-minute timer',
@@ -181,21 +190,23 @@ check('WITH it the same sprint is accepted -- the server does not rubber-band '
 /* The cap must widen by the buff and no further: a cheater with the potion up
    still cannot teleport. */
 rp.x = 1000; rp.y = 1000; rp.lastMoveAt = Date.now() - 1000;
+rp._mvBudget = 0; rp._mvBudgetAt = Date.now() - 1000;
 room._handleMove(sess, ws, { type: 'move', x: 1000 + 2000, y: 1000, z: 'meadow' });
-check('...but a real teleport is still refused while it is up',
-  rp.x === 1000, { x: rp.x });
+check('...but a real teleport is still refused while it is up (followed only the 1.5x bound\'s 750 px)',
+  heldTo(rp.x, 750), { x: rp.x });
 
 /* And it lapses. */
 rp._buffs.spd = Date.now() - 1;
-check('when the three minutes are up the sprint is refused again',
-  tryStep() === 1000, { x: rp.x });
+check('when the three minutes are up the sprint is refused again (500 px of it)',
+  heldTo(tryStep(), 500), { x: rp.x });
 
 /* A tampered magnitude cannot widen the cap arbitrarily. */
 rp._buffs.spd = Date.now() + 60000;
 rp._buffs.spdMul = 99;
 rp.x = 1000; rp.y = 1000; rp.lastMoveAt = Date.now() - 1000;
+rp._mvBudget = 0; rp._mvBudgetAt = Date.now() - 1000;
 room._handleMove(sess, ws, { type: 'move', x: 1000 + 2000, y: 1000, z: 'meadow' });
-check('an absurd stored speed multiplier does not open the cap', rp.x === 1000, { x: rp.x });
+check('an absurd stored speed multiplier does not open the cap (read as the food\'s 1.15: 575 px)', heldTo(rp.x, 575), { x: rp.x });
 
 /* ═══════════════ ONE BREW AT A TIME ═══════════════
    Owner: "Only 1 effect active at a time though."  v2.3.3130: one MEAL and one

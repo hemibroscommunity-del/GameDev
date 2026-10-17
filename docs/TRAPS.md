@@ -6941,3 +6941,30 @@ closed safely.
 
 **Receipt:** harvest-proof.test (43 checks, 11 mutations caught),
 mp-recoverpay. The lab's obsidian script went from 2,400 harvests an hour to 6.
+
+## 203. "Turn the per-message slack into a capped budget and keep refusing what it can't cover" (v2.3.3325)
+
+**Tempting:** the speed check gave every move 80 px of slack, so a script
+sending many moves went many times faster. Make the slack a budget that
+refills at the check's speed, cap it at a few seconds, and refuse a move it
+can't cover, as before.
+
+**What happens:** the old check refused a move and kept the player where they
+were, and judged the next move from there too. Under the per-message rule a
+gap that opened closed as soon as the player paused long enough for one move
+to cover it. Under a CAPPED budget, a gap bigger than the cap never closes:
+the player walks on, every move is judged from the old place, the budget
+fills to its cap and stops. An honest phone after a long stall is pinned for
+good, and its shield and facing are dropped with every refused move.
+
+**The rule:** a limit on how fast the server's copy moves must never leave it
+stuck. Take a move AS FAR AS THE LIMIT REACHES, toward where the phone says it
+is, and keep following between moves until the copy is there. A script still
+gets only the limit's speed; an honest phone is never pinned. Then nothing
+needs "the next move is free" to recover, and every such bypass (a refused
+zone, a server-placed move, a zone change back into the world) can be closed.
+
+**Receipt:** move-budget.test (62 checks, 14 mutations caught): a phone 300 px
+ahead and walking away is caught in 1.2 s, never under the old rule; a claim
+10,000 px off is reached in 20 s with no further move. The lab: a script
+2,909 -> 656 px/s, an honest walk unchanged.
