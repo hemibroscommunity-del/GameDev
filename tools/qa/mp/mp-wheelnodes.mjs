@@ -292,6 +292,14 @@ async function body({ P, wsPort, rec, OUT, errors }) {
     if (tree) {
       await P.page.evaluate(({ x, y }) => { const S = window._gameState.current; S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0; },
         { x: tree.x + STAND.tree[0], y: tree.y + STAND.tree[1] });
+      /* v2.3.3298: the ground under the tree laid first -- the worker builds
+         the Wheel a block at a time now (worldblocks.js), so a jump this far
+         waits for its blocks as a walk never does */
+      for (let k = 0; k < 32; k++) {
+        const laid = await P.page.evaluate(({ x, y }) => { const at = window.__btSwimAt; return !!(at && at(x, y).water !== null); }, { x: tree.x, y: tree.y });
+        if (laid) break;
+        await P.page.waitForTimeout(250);
+      }
       await P.page.waitForTimeout(500);
       const n0 = await P.page.evaluate(() => {
         const S = window._gameState.current;

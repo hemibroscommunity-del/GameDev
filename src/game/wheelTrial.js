@@ -11,6 +11,9 @@
  *                   row at a time as they are read: the Wheel is 1792 x 1792
  *                   cells, and as plain rows that is 3.2 million booleans,
  *                   ~26 MB on iPhone Safari.  Held as bits it is 400 KB.
+ *                   v2.3.3298: the bits come a BLOCK at a time, as the
+ *                   worker builds the blocks round you (core/worldblocks.js:
+ *                   it no longer builds the whole Wheel), ~4 KB a block.
  *   the overview    the whole Wheel, small, in the plan's colours: the
  *                   underlay for ground still being laid, and the Map panel.
  *   the numbers     for the trial's readout.
@@ -30,12 +33,21 @@ const WORKER_URL = '/tools/world/core/ground-worker.js';
 import { landLook, hexRgb } from '../data/wheelLands.js';   /* v2.3.3024: each land's flat colour */
 
 const ROW_KEEP = 160;          /* walk-grid rows kept made, ~14 KB each on iPhone */
+/* v2.3.3298: the Wheel's walls come a block at a time (the worker's 'block':
+   public/tools/world/core/worldblocks.js), ~4 KB each; the ones furthest
+   from the last read go past this many */
+const BLOCK_KEEP = 96;
 const UNDER_KEEP = 160;        /* v2.3.2967: pieces whose ground-underfoot is kept, 4 KB each */
 
 let _w = null;
 let _initP = null;
 let _info = null;
 let _grid = null;
+/* v2.3.3298: the walls of each block the worker has built: "I,J" -> { x, y,
+   w, h, walk, swim } (cells, one bit a cell of the block) -- and the rows the
+   walk grid has made from them, so a block that comes can unmake its rows */
+const _blocks = new Map();
+let _rowsMade = null;
 let _overview = null;
 let _overviewLands = null;     /* v2.3.3024: the same, each land one flat colour */
 let _seq = 0;
@@ -132,14 +144,37 @@ export function wheelSwimOn() {
    sea)?  false outside the Wheel's worker, or with `?noswim`. */
 export function wheelSwimCell(x, y) {
   const info = _info;
-  const swim = info && info.walk && info.walk.swim;
-  if (!swim || !wheelSwimOn()) return false;
+  if (!info || !info.walk || !wheelSwimOn()) return false;
   const cell = info.worldW / info.walk.cols;
   const cx = Math.floor(x / cell), cy = Math.floor(y / cell);
   if (cx < 0 || cy < 0 || cx >= info.walk.cols || cy >= info.walk.rows) return false;
-  const k = cy * info.walk.cols + cx;
-  return !!(swim[k >> 3] & (1 << (k & 7)));
+  /* v2.3.3298: from the block there (none yet: not water you swim in) */
+  const b = blockWalls(cx, cy, info.walk.block);
+  if (!b) return false;
+  const k = (cy - b.y) * b.w + (cx - b.x);
+  return !!(b.swim[k >> 3] & (1 << (k & 7)));
 }
+/* v2.3.3298: the walls of the block that cell (cx, cy) is in, or null when
+   the worker has not built it */
+function blockWalls(cx, cy, B) {
+  if (!B) return null;
+  return _blocks.get(Math.floor(cx / B) + ',' + Math.floor(cy / B)) || null;
+}
+/* how many blocks' walls the game holds now (the readout, the tests) */
+export function wheelBlocksHeld() { return _blocks.size; }
+/* v2.3.3298: the walls of every block within `r` game px of (x, y), asked
+   of the worker -- for a reader that needs them far from any piece of ground
+   laid (the worker builds the blocks round the pieces it lays, and the walk
+   grid reads a block not built yet as open).  Resolves once they are here. */
+export function wheelBlocksAround(x, y, r) {
+  if (!_w || !_info) return Promise.resolve(0);
+  const id = ++_seq;
+  return new Promise((resolve, reject) => {
+    _pending.set(id, { resolve, reject });
+    _w.postMessage({ type: 'blocks', id, x0: x - r, y0: y - r, x1: x + r, y1: y + r });
+  }).then((m) => m.n);
+}
+if (typeof window !== 'undefined') window.__btWheelBlocks = (x, y, r) => wheelBlocksAround(x, y, r);
 /* Is the ground DRAWN at (x, y) water (the piece laid there, every 3 game
    px: wheelGroundAt)?  true / false, or null where no piece is laid yet --
    the swimmer then stays as they were.  The pictures decide, not the cells,
@@ -224,9 +259,20 @@ function onMessage(m, resolveInit, rejectInit) {
   if (!m) return;
   /* a failure with no request of its own is the plan build's */
   if (m.type === 'error' && m.id == null) { wheelStats.error = m.message; rejectInit(new Error(m.message)); return; }
+  /* v2.3.3298: a block of the Wheel's walls, built for a piece or for 'where'
+     (it can come before 'ready': kept all the same) */
+  if (m.type === 'block') {
+    const k = m.I + ',' + m.J;
+    _blocks.delete(k);
+    _blocks.set(k, { x: m.x, y: m.y, w: m.w, h: m.h, walk: m.walk, swim: m.swim });
+    /* (the oldest go: a block is built again, and sent again, when it is wanted) */
+    while (_blocks.size > BLOCK_KEEP) _blocks.delete(_blocks.keys().next().value);
+    if (_rowsMade) for (let y = m.y; y < m.y + m.h; y++) _rowsMade.delete(y);
+    return;
+  }
   if (m.type === 'ready') {
     _info = m;
-    _grid = lazyGrid(m.walk.bits, m.walk.cols, m.walk.rows, wheelSwimOn() ? m.walk.swim : null);
+    _grid = lazyGrid(m.walk.cols, m.walk.rows, m.walk.block, wheelSwimOn());
     _overview = overviewCanvas(m.overview);
     _overviewLands = landsCanvas(m.overview, m.overviewLands);
     wheelStats.planMs = m.planMs;
@@ -393,6 +439,8 @@ export function wheelStop() {
   _initP = null;
   _info = null;
   _grid = null;
+  _blocks.clear();
+  _rowsMade = null;
   if (_overview) { _overview.width = _overview.height = 0; _overview = null; }
   if (_overviewLands) { _overviewLands.width = _overviewLands.height = 0; _overviewLands = null; }
   for (const p of _pending.values()) p.reject(new Error('stopped'));
@@ -420,17 +468,30 @@ export function wheelStop() {
    and is read as it always was. */
 /* v2.3.3003: `swim`, ground.js swimBits -- the water you may swim in is
    open to walk into like land (wheelSwim.js makes it swimming); the open
-   sea stays shut.  null (`?noswim`, or a worker before it): every drop of
-   water a wall, as before. */
-function lazyGrid(bits, cols, rows, swim) {
+   sea stays shut.  false (`?noswim`): every drop of water a wall, as before.
+   v2.3.3298: the bits come a block at a time (`B` cells a side, the worker's
+   'block'), as the worker builds the blocks round the pieces it is asked
+   for -- ahead of you, as the ground is.  A cell of a block not here yet is
+   OPEN: the worker builds a block before any piece of ground on it, so it is
+   one you cannot see yet, and walls that stopped you at the edge of what has
+   been built would be walls nobody drew.  A row made before its block came
+   is made again (`_rowsMade`, unmade by the block). */
+function lazyGrid(cols, rows, B, swimOn) {
   const made = new Map();
+  _rowsMade = made;
   const rowAt = (y) => {
     let r = made.get(y);
     if (r) return r;
-    r = new Array(cols);
-    for (let x = 0, k = y * cols; x < cols; x++, k++) {
-      const m = 1 << (k & 7);
-      r[x] = !(bits[k >> 3] & m) || !!(swim && (swim[k >> 3] & m));
+    r = new Array(cols).fill(true);
+    const J = Math.floor(y / B);
+    for (let I = 0, x0 = 0; x0 < cols; I++, x0 += B) {
+      const b = _blocks.get(I + ',' + J);
+      if (!b) continue;
+      const bits = b.walk, swim = swimOn ? b.swim : null;
+      for (let x = 0, k = (y - b.y) * b.w; x < b.w; x++, k++) {
+        const m = 1 << (k & 7);
+        r[b.x + x] = !(bits[k >> 3] & m) || !!(swim && (swim[k >> 3] & m));
+      }
     }
     made.set(y, r);
     if (made.size > ROW_KEEP) made.delete(made.keys().next().value);

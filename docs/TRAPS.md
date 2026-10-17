@@ -6484,6 +6484,65 @@ were written that way, each copied from the one before.
 is hit and for how much before the rail; the door does every step after that.
 `hit-door.test` §10d fails any other file that calls `_applyDamage`.
 **Receipt:** the seven copies are wrappers now, the 193 checks that measured
+them passing unchanged. All three missed rules above were the owner's to
+decide, and v2.3.3300 decided them (hit-door.md "Decided"): every blow leaves
+a harvester alone, every block costs the one 10, and the wrong-way ball lands
+(§187).
+
+## 186. "Build the map a piece at a time by clipping each pass to the piece" (v2.3.3298)
+
+The Wheel's blueprint is a list of passes that stamp shapes on cells, and it is
+tempting to build a piece of it by running the same passes on a smaller array:
+every stamp already clips to the array's edges. The owner's "Rebuild for 5x"
+needed exactly that (docs/specs/wheel-in-blocks.md), and three passes read
+past the piece they stamp:
+
+- **The scattered features depend on order.** A clump is left out where an
+  EARLIER clump already covers its middle (layout.js pass 2). Clipped, a piece
+  cannot see a middle outside it, nor what covered it -- and that cover may
+  itself have been left out by an earlier one. Two pieces then disagree about
+  one clump, and the seam is a tree clump cut in half. The fix is not a wider
+  margin (the chain has no fixed length) but working out whether a feature
+  stands at its own middle, through the earlier ones that can reach it
+  (`planFeatures` `stands`, remembered).
+- **The bridges scan the river** up to 96 cells either way of a crossing.
+  They are worked out once for the plan, from the river's own discs and the
+  decks before them.
+- **The ground's stages are averaged** over 28 cells, the walls over 11: the
+  piece's blueprint needs those margins, on the WHOLE map's coarse grid and
+  noise (ground.js `materialMap`'s `ox`/`oy`).
+- And **where objects stand** (`placeObjects`) is decided one after another
+  over the whole map, each clear of the ones before it: not cut into pieces at
+  all, but baked (tools/world/bake-wheel-world.mjs).
+
+**The rule.** A pass can be built a piece at a time only if every decision it
+makes for a cell reads nothing past a fixed margin round it. Check by building
+every piece and comparing it with the whole, cell for cell
+(test-world-core "the Wheel in blocks") -- a piece that only looks right will
+show its seam the day someone walks along it.
+
+## 187. "Measure the shield from where the blow arrived" (v2.3.3300)
+
+**Tempting:** a blow lands at a point -- a ball where it falls, a patch under
+your feet, a blast at its centre -- so test the shield against that point:
+`_blockArcCovers(ps, landedX, landedY)`.
+
+**Wrong.** Where a blow lands on you is where you stand. `_blockArcCovers`
+reads a direction under 1 px long as "covered" on purpose (a monster standing
+inside your own body is not a flanking move), so a shield test measured from
+your own feet passes for a shield facing ANY way. The snowball's second test
+was exactly that (`_monsterStrikePlayer` from `atkX/atkY`, which for a ball
+was where it landed): a shield turned away still blocked every ball, and
+charged 15 for it, against v2.3.1705's own "a snowball you never turned to
+face should get through exactly like a swing from behind does".
+
+**The rule:** the shield is measured from where the blow came FROM -- the
+monster, or for a ball its thrower (the door's `from`) -- never from where it
+arrived. A blow with no direction (fire under your feet, a tick) is not
+blockable at all: its row's `block` is null.
+**Receipt:** hit-door.test §5, every blockable row, a ball from behind
+included, lands through a shield facing away (v2.3.3300).
+
 them passing unchanged.
 
 ## 194. "Reading the canvas's context only looks at it" (v2.3.3306)

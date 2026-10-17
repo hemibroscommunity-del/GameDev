@@ -337,8 +337,9 @@ extended.
 28. **Every monster hit on a player goes through ONE door** (v2.3.3296,
     `hits.js` `_monsterHit`, docs/specs/hit-door.md). A new way for a
     monster to hurt a player is a row in `MONSTER_HITS` -- its harvest
-    shield, safe ground, roll, rock, shield (cost, parry, a hit of 0), rail,
-    element and after-effects -- and a wrapper that works out who is hit and
+    shield, safe ground, roll, rock, shield (cost, parry), rail, element and
+    after-effects (v2.3.3300: the owner's nine decisions, hit-door.md
+    "Decided") -- and a wrapper that works out who is hit and
     for how much. It never calls `_applyDamage` itself: `hit-door.test` §10d
     fails a fourth file that does (the other two are a player's hits,
     combat.js and pvpextras.js). Changing what a way of being hit does is
