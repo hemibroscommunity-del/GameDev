@@ -256,6 +256,20 @@ every session and the tour on a button, *"Yes all 3"*:
    canvases +2.3 MB on the first and +5.1 on the second (text and hit-chip
    pages), nothing on the third.
 
+   v2.3.3310: by 2026-10-17 the GPU line went red at random on main's own code
+   (+4.1 and +4.2 on #936 and #937, +0.5 to +2.7 on others).  Listing every
+   texture on the chip at each stop found two causes.  A real waste: every
+   townsperson's last speech bubble kept its picture while hidden, 1 MB for
+   two lines on a 3x phone, and the townsfolk drew new ones even with you a
+   land away -- fixed (a bubble is destroyed when it goes; no townsperson's
+   drawn more than 2,400 px from you; TRAPS §192).  And luck: a body strip or
+   effect loaded behind the loading screen reaches the chip the first time it
+   is drawn, and a north-east jog first needed on the third trip is not
+   something that trip made -- so the GPU's third-trip growth now leaves out
+   pictures made before the second trip ended (each texture's `uid`; the line
+   says how many MB were such first draws).  Home after three trips: 83.2 to
+   85.2 MB of the chip on main, 78.1 to 80.2 with both.
+
    A feature that really needs more memory raises its line in the same PR and
    says in the PR, in plain words, how many MB and why; a saving lowers a line
    and locks itself in.  The first of each, together (v2.3.3190, the palette

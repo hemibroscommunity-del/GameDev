@@ -3488,6 +3488,19 @@ Two protocol versions coexist; both must keep working:
     `?poolkeep` to compare; `window.__btTexPool()`). The census is
     `window.__btSceneCensus(depth)` (the scene counted by path); `mp-sceneleak`
     checks all four, a rebuild's shadow system included.
+  - A HIDDEN TEXT STILL HOLDS ITS PICTURE (v2.3.3310, found when the memory
+    check went red at random on main): a speech bubble that went away was
+    hidden and kept, so every townsperson's and player's last line -- 1 MB of
+    the graphics chip for two lines on a 3x phone -- stayed there for the
+    visit, and the townsfolk drew a new one every 8-23 s wherever you were. A
+    bubble is destroyed when it goes now, and a townsperson more than 2,400 px
+    away draws none (effectsRenderer `_updateChatBubbles`); anything else made
+    of words that is gone for good is destroyed, never only hidden (TRAPS
+    §192). And the check's third trip leaves out pictures made before the
+    second ended and drawn for the first time since (each texture's `uid`,
+    `window.__btGpuTex()`'s `uidNow`): a body strip loaded behind the loading
+    screen reaches the graphics chip the first time it is drawn, and which
+    trip first draws it is luck.
   - A PICTURE ON 256 COLOURS OR FEWER IS KEPT AS COLOUR NUMBERS (v2.3.3190 --
     the owner asked whether the art could be "recreated byte for byte using
     pure code"; not that, a drawn picture costs the GPU what a loaded one does,
