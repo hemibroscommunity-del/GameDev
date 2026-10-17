@@ -133,6 +133,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       shut.clipped.length === 0, shut.clipped);
     rec.ok(`${tag}: ...and nothing in a strip below the 10px type floor`,
       shut.minFont !== null && shut.minFont >= 10, { minFont: shut.minFont });
+    /* v2.3.3324: a stat's name is shortened (PWR, SPCL...) only in a cell too
+       narrow for it -- the sideways column (StatCaption.jsx, mp-landscape-
+       dash).  Upright every name fits, so every one is written whole. */
+    const shortened = await P.page.evaluate(() => [...document.querySelectorAll('[data-stat-caption]')]
+      .map((e) => ({ t: (e.textContent || '').trim(), how: e.getAttribute('data-stat-caption') })));
+    rec.ok(`${tag}: ...and every stat's name is written whole, none shortened`,
+      shortened.length === CELLS && shortened.every((c) => c.how === 'whole'), shortened);
 
     /* ONE OPEN is the narrowest a CLOSED strip ever gets (three of them
        sharing the leftover), so it is the second state worth measuring. */

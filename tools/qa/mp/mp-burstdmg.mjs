@@ -29,7 +29,7 @@
  */
 import * as H from './harness.mjs';
 
-const burstAttack = (P, id, opts) => P.page.evaluate(({ mid, far, gone, ability }) => {
+const burstAttack = (P, id, opts) => P.page.evaluate(({ mid, far, gone, ability, blast, hpAfter }) => {
   const S = window._gameState.current;
   const m = (S.monsters || []).find((x) => x.id === mid);
   const ax = m ? m.x : S.player.x, ay = m ? m.y : S.player.y;
@@ -37,23 +37,34 @@ const burstAttack = (P, id, opts) => P.page.evaluate(({ mid, far, gone, ability 
   if (far) { S.player.x = ax + 260; S.player.y = ay; }
   else { S.player.x = ax + 40; S.player.y = ay; }
   if (gone) S.monsters = (S.monsters || []).filter((x) => x.id !== mid);
-  /* The payload telegraph.js builds, field for field. */
-  const payload = { monsterId: mid, targetId: S.myId, dmg: 60, dmgTaken: 47,
-    dodged: false, zone: S.currentZone, attackerX: ax, attackerY: ay };
+  /* The payload the worker builds (hits.js `_monsterHit`), field for field --
+     its `hp` too, the bar after the blow, which it has carried since
+     v2.3.3263. */
+  const payload = { monsterId: mid, targetId: S.myId, dmg: blast + 30, dmgTaken: blast,
+    dodged: false, hp: hpAfter, zone: S.currentZone, attackerX: ax, attackerY: ay };
   if (ability) payload.ability = ability;      /* what telegraph.js now sends */
   window.__btDispatch({ type: 'monster_attack', payload });
   return true;
 }, { mid: id, far: !!(opts && opts.far), gone: !!(opts && opts.gone),
-     ability: (opts && 'ability' in opts) ? opts.ability : 'burst' });
+     ability: (opts && 'ability' in opts) ? opts.ability : 'burst',
+     blast: BLAST, hpAfter: HP_AFTER });
 
-const BLAST = 47;   /* the dmgTaken this file injects -- nothing else deals it */
 /* ONLY the injected blast.  The meadow monster is alive and swinging for the
    whole run, and its real '-11's landed in the first version of this file as
-   a false PASS on the deploy-order case.  Filtering by the exact number is
-   what keeps ambient combat out of the measurement. */
-const popped = (P) => P.page.evaluate((want) => (window._gameState.current.dmgNumbers || [])
-  .filter((p) => p.text === '-' + want)
-  .map((p) => ({ text: p.text, icon: p.iconKey || null })), BLAST);
+   a false PASS on the deploy-order case -- so the blast is told apart by its
+   NUMBER.
+   v2.3.3324: by the number DRAWN, not dmgTaken.  Since v2.3.2520 every
+   number is on the display scale (a fifth), and since v2.3.3263 a hit on you
+   prints the change in your bar (gameEvents.js `takenFigure`) -- so the '-47'
+   this file looked for was never drawn, and its CONTROL failed on every run
+   (the sweep of 2026-10-17).  A blast that takes 200 of a bar it leaves at
+   40 reads -40 (ceil(240/5) - ceil(40/5)); the meadow monster's own blows on
+   a new character read -2 to -6.  So a heart number of 30 or more is the
+   blast, whatever the display rule becomes. */
+const BLAST = 200, HP_AFTER = 40, OURS_MIN = 30;
+const popped = (P) => P.page.evaluate((min) => (window._gameState.current.dmgNumbers || [])
+  .filter((p) => /^-\d+$/.test(p.text) && Number(p.text.slice(1)) >= min)
+  .map((p) => ({ text: p.text, icon: p.iconKey || null })), OURS_MIN);
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Blaster', wsPort, webPort });

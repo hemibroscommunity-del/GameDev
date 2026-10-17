@@ -64,14 +64,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the forge panel opens', open, { at });
 
   /* The wood tier is the one a fresh character can actually make: Lv1, no
-     stat requirement, 3 ore and 8 gold. Its button is the first enabled
-     Forge button in the panel. */
+     stat requirement, 3 logs and 8 gold.
+     v2.3.3324: the Blacksmith has had TABS since it was rebuilt (v2.3.2826,
+     SmithyPanel.jsx) and opens on Smelt, so "the first enabled button that
+     says Forge" was the Forge TAB: pressing it changed the tab and asked the
+     worker for nothing (8 -> 8 logs, 350 -> 350 gold, the sweep of
+     2026-10-17).  Now the tab, then the wood row's own Forge button, by the
+     panel's test hooks. */
+  await P.page.evaluate(() => { const t = document.querySelector('[data-smithy-tab="forge"]'); if (t) t.click(); });
+  await P.page.waitForSelector('[data-forge-go="wood"]', { timeout: 5000 }).catch(() => {});
   const pressed = await P.page.evaluate(() => {
-    const btns = [...document.querySelectorAll('button')]
-      .filter((b) => /forge/i.test(b.textContent || '') && !b.disabled);
-    if (!btns.length) return { ok: false, seen: [...document.querySelectorAll('button')].map((b) => b.textContent.trim()).slice(0, 12) };
-    btns[0].click();
-    return { ok: true, label: btns[0].textContent.trim() };
+    const b = document.querySelector('[data-forge-go="wood"]');
+    if (!b || b.disabled) return { ok: false, found: !!b, rows: [...document.querySelectorAll('[data-forge-row]')].map((r) => r.getAttribute('data-forge-row')) };
+    b.click();
+    return { ok: true, label: 'wood ' + b.textContent.trim() };
   });
   rec.ok(`an affordable tier could be forged (${pressed.label || 'none enabled'})`,
     pressed.ok === true, pressed);

@@ -74,6 +74,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     await H.enterWorld(P);
     await P.page.waitForTimeout(2500);
+    /* v2.3.3324: these pins are the OPEN band (barHeight).  Since v2.3.2495 a
+       new bro's first join arrives FOLDED, and each phone here is a new bro, so
+       each read the 52 px fold (390x806, 375x774, 430x894).  Sideways needs
+       none: the fold is ignored there (v2.3.2157). */
+    const band = await H.unfoldBand(P);
+    rec.ok(`portrait ${pin.vp.width}w: the band is open at rest (guard)`, band.now === 'open', band);
     const g = await geom(P);
     console.log(`    portrait ${pin.vp.width}x${pin.vp.height}: ${JSON.stringify(g)}`);
     rec.ok(`portrait ${pin.vp.width}w: the band is exactly ${pin.dashH}px`,
@@ -121,7 +127,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and never asks for more world than the zone holds',
       g.viewW <= g.zoneW + 1 && g.viewH <= g.zoneH + 1, g);
     rec.ok('...and the shell is stamped portrait', g.orient === 'portrait', g);
-    if (pin.vp.width === 390) PORTRAIT_REF = { viewW: g.viewW, viewH: g.viewH, scale: g.scale };
+    /* v2.3.3324: + what this canvas shows of a combat zone, for the fairness check (the real rule, TRAPS §37) */
+    if (pin.vp.width === 390) PORTRAIT_REF = { viewW: g.viewW, viewH: g.viewH, scale: g.scale,
+      combat: await P.page.evaluate(() => window.__btWorldView && window.__btWorldView('ember')) };
     await P.ctx.close().catch(() => {});
   }
 
@@ -169,11 +177,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
      seeing LESS: portrait 649x1024 = 664K, landscape 1024x432 = 442K.
      Asserted here as: parity holds, OR the zone itself is what clamped one of
      them, in which case the map decided and the rule was never in play. */
+  /* ═══ v2.3.3324: TOWN IS NOT IT, SO THE RULE IS ASKED OF A COMBAT ZONE ═══
+     The escape above was town's own width, 1664 px.  Town grew to 2176
+     (v2.3.2628) and sideways now rests on REF_VIEW_H, 960 world px tall:
+     2078x960 against 843x1330 upright, no map clamping it.  That is D10
+     (v2.3.2497, owner: "landscape zoom: town/worldview only; combat zones
+     stay") on safe ground, so this was red on a game working as designed from
+     v2.3.2628 on (VIEW_OUT moved the numbers, not the verdict).
+     mp-landscape-rotate checks D10's town half; this is the other, asked of
+     the real rule on both canvases (worldViewport.js __btWorldView): a 32x32
+     combat zone, 649x1024 upright, 1024x473 sideways. */
   const areaLand = g.viewW * g.viewH;
-  const zoneClamped = g.viewW >= g.zoneW - 1 || g.viewH >= g.zoneH - 1;
-  rec.ok('...and the visible AREA does not exceed portrait\'s, unless the MAP is what clamped it',
-    areaLand <= portraitArea * 1.05 || zoneClamped,
-    { area: areaLand, portraitArea, zoneClamped, zoneW: g.zoneW, zoneH: g.zoneH });
+  const combatLand = await L.page.evaluate(() => window.__btWorldView && window.__btWorldView('ember'));
+  const cArea = (v) => (v && v.W > 0 && v.H > 0 ? v.W * v.H : 0);
+  rec.ok('...and in a COMBAT zone the visible AREA sideways does not exceed portrait\'s',
+    cArea(combatLand) > 0 && cArea(PORTRAIT_REF.combat) > 0
+      && cArea(combatLand) <= cArea(PORTRAIT_REF.combat) * 1.05,
+    { combatLand, combatPortrait: PORTRAIT_REF.combat, town: { area: areaLand, portraitArea } });
   await L.ctx.close().catch(() => {});
 
   /* ── 3. the harness default resolves portrait ── */

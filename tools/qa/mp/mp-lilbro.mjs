@@ -29,8 +29,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (S.npcs || []).filter((n) => n && n.id === 'lil_bro')
       .map((n) => ({ id: n.id, name: n.name, x: n.x, y: n.y, sprite: n.sprite }))[0] || null);
   rec.ok('Lil Bro is in town', !!npc, npc);
-  rec.ok('...standing on the map that ships, not off its edge',
-    !!npc && npc.x > 0 && npc.x < 52 * 32 && npc.y > 0 && npc.y < 55 * 32, npc);
+  /* v2.3.3324: the map's size is READ.  These were 52 and 55, and town has
+     been 68x72 since v2.3.2628 (zones.js), which moved his anchor to
+     (1255, 1833): his own amble "left" the old box (the sweep of 2026-10-17). */
+  const map = await H.readState(P, (S) => {
+    const z = (window.__btZones || {})[S.currentZone];
+    return z ? { w: z.w * 32, h: z.h * 32 } : null;
+  });
+  rec.ok(`...standing on the map that ships, not off its edge (${map && map.w}x${map && map.h})`,
+    !!npc && !!map && npc.x > 0 && npc.x < map.w && npc.y > 0 && npc.y < map.h, { npc, map });
 
   /* His art is loaded before play, not on first sighting (CLAUDE.md's
      preloading law) -- the walk strips ride the same manifest every NPC

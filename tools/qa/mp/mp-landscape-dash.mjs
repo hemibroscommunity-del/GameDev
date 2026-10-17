@@ -560,17 +560,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const clip = await P.page.evaluate(() => {
       const sh = document.querySelector('.bt-land-sheet');
       const shR = sh.getBoundingClientRect();
-      let past = 0; const trunc = [];
+      let past = 0; const trunc = []; let clip_why = null;
       for (const el of sh.querySelectorAll('*')) {
         const rr = el.getBoundingClientRect();
         if (rr.width > 4 && rr.right > shR.right + 2) past++;
         if (el.children.length === 0 && (el.textContent || '').trim().length > 2
             && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1) {
           trunc.push((el.textContent || '').trim().slice(0, 24));
+          /* v2.3.3324: how short it fell, so a failure says by how much */
+          if (trunc.length <= 4) {
+            const cs = getComputedStyle(el), pr = el.parentElement && el.parentElement.getBoundingClientRect();
+            (clip_why || (clip_why = [])).push({ text: (el.textContent || '').trim().slice(0, 16),
+              box: el.clientWidth, needs: el.scrollWidth, font: cs.fontSize, ls: cs.letterSpacing,
+              parentW: pr ? Math.round(pr.width) : null });
+          }
         }
       }
-      return { past, truncated: [...new Set(trunc)].slice(0, 6), truncCount: trunc.length };
+      return { past, truncated: [...new Set(trunc)].slice(0, 6), truncCount: trunc.length, why: clip_why || undefined };
     });
+    if (sec === 'Build' || clip.past || clip.truncCount) {   /* Build: the grid's captions (StatCaption) */
+      await P.page.screenshot({ path: `/home/user/GameDev/tools/qa/mp/out/landscape-hero-${sec}.png` }).catch(() => {});
+    }
     rec.ok(`hero/${sec}: every label renders whole — nothing clipped or ellipsised`,
       clip.past === 0 && clip.truncCount === 0, clip);
   }
