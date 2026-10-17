@@ -105,7 +105,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const { TOWN_EXITS } = await import(H.REPO + '/src/data/effects.js');
   const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
 
-  const P = await H.newPlayer(browser, { name: 'Ranger', wsPort, webPort, viewport: PHONE, touch: true, query: 'trial=wheel' });
+  /* v2.3.3318: every Wheel monster on the way in, as before (`wheelwhole`,
+     server/src/wheelnear.js): this reads the whole spawn table and its skins off the arrival's list */
+  const P = await H.newPlayer(browser, { name: 'Ranger', wsPort, webPort, viewport: PHONE, touch: true, query: 'trial=wheel&wheelwhole' });
   P.page.on('console', (m) => { if (!firstThrow && /app\.render threw/.test(m.text())) firstThrow = '[during: ' + phase + '] ' + m.text(); });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);

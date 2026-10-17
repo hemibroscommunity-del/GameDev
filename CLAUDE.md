@@ -2891,9 +2891,30 @@ remnant to migrate server-side, not a mode to preserve.
       (wheelSwim.js `seatedOnBank`): the drawn shore wanders past the plan's
       cells, and one long-Wheel seat of 250 was four looks wet; the bake
       places by the plan and never by the pictures;
-    - the way in still carries all 1,920 monsters (~580 KB): sending only
-      those in reach needs a message bringing a monster whole (a tick does
-      not say what it is) -- the next step.)
+    - since v2.3.3318 the way in carries only the monsters around you
+      (below), not all 1,920 (~580 KB).
+  - Since v2.3.3318 INTO THE WHEEL WITH ONLY THE MONSTERS AROUND YOU -- the
+    owner: "Push all these to main then keep going", the 5x work's first
+    "not in this PR" (docs/specs/wheel-arrival.md, server/src/wheelnear.js):
+    - a phone that joins with `wn: 1` is sent, on the way in, only the
+      monsters within 2,400 px (`WHEEL_NEAR.R`, the tick's `INTEREST_R`): the
+      zone_state marked `mnear: 1`, a join's state_sync `monstersNear: 1` --
+      an EMPTY list so marked still means the worker runs them (unmarked, it
+      means "make your own"); BroTown's square 580 -> 140 KB, the rest the
+      nodes and the loot (a node has no interest yet);
+    - a monster first coming into its reach arrives WHOLE in that phone's
+      tick (`mw: {zone: [...]}` in the snapshot's one wire, spawnscale.js
+      `monsterSnapWire`), made by wsClient `_monsterFromWire` before the
+      tick's monsters update it; once a visit (`session._wheelWhole`); the
+      arrival seeds the tick's `_wheelSeen`, so it is not sent twice;
+    - a phone holds only what it came near: a far kill, roll or death names
+      an id it does not hold, which every handler already guarded; and the
+      world map, zoomed in, shows no monster dots in a land you have not been
+      to this visit (the whole list had put one at each far monster's
+      starting place);
+    - `?wheelwhole` asks for every monster as before (six QA scenarios that
+      read the whole list off the arrival use it); kill switch `wheelnear:
+      false`; `wheelnear` suite, `mp-wheelnear`.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

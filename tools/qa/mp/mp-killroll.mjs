@@ -168,10 +168,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && p2.iconLeft != null && p2.textLeft != null && p2.iconLeft <= p2.textLeft + 0.5 && p2.iconH > 10, { p1, p2, icons });
 
     /* ── 6 ── a kill the phone is not drawing: over you */
+    /* v2.3.3318: a phone holds only the monsters it came near
+       (server/src/wheelnear.js), so one across the sea is usually not in its
+       list at all -- the worker's first Tidal monster by its own id then,
+       a kill the phone cannot draw at all */
     const far = await P.page.evaluate(() => {
       const S = window._gameState.current;
       const m = (S.monsters || []).find((x) => x && x.home === 'tidal' && x.alive !== false);
-      return m ? m.id : null;
+      return m ? m.id : 'wm-tidal-0';
     });
     const k5 = far ? await H.devOp(wsPort, 'killroll', me, { next: 5000, kill: far }) : null;
     const r5 = k5 && k5.ok ? await waitRoll(P, far, 5000) : null;

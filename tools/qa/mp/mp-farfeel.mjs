@@ -26,7 +26,9 @@ const PHONE = { width: 390, height: 844 };
 const FAR = 2000, MID = 700, NEAR = 100;
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Faraway', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
+  /* v2.3.3318: every Wheel monster on the way in, as before (`wheelwhole`,
+     server/src/wheelnear.js): this reads three real monsters off the arrival's list in Brotown's square */
+  const P = await H.newPlayer(browser, { name: 'Faraway', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'wheelwhole' });
   const errs = [];
   P.page.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
   await H.enterWorld(P);
