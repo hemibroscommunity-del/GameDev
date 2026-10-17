@@ -65,12 +65,16 @@
  *          notices: the record is deleted on a successful strike, so the next
  *          harvest of the respawned node rolls fresh.  It is NOT a wall: the
  *          memory is the single extraction record, so a start on another
- *          node, a start without hitSeq, an attack or a reconnect in between
- *          clears it.  A per-node memory would close that, and would buy
- *          nothing yet: a modified client can already strike with NO record
- *          at all, which _handleNodeStrike accepts with no timing check (the
- *          permissive legacy branch below).  Harden both together, when that
- *          branch is retired. */
+ *          node, a start without hitSeq or an attack in between clears it.
+ *          A per-node memory would close that, and would buy nothing yet: a
+ *          modified client can already strike with NO record at all, which
+ *          _handleNodeStrike accepts with no timing check (the permissive
+ *          legacy branch below).  Harden both together, when that branch is
+ *          retired.  v2.3.3322: it is (HARVEST_PROOF: a recovery strike at
+ *          most once in ten minutes), and a reconnect no longer clears the
+ *          record; the per-node memory is still not built -- shopping among a
+ *          few plans of one node buys a script a few hits, never the 48x the
+ *          retired branch did. */
 import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3012: the Wheel's baked nodes */
 import { xpDecayMult, xpAfterDecay } from './xpdecay.js'; /* v2.3.3251: XP fades 5+ levels below you */
 
@@ -174,6 +178,44 @@ export const HONEST_CYCLE_MIN_MS = HONEST_CYCLE.LEAD_MS + HONEST_CYCLE.SETTLE_MS
    most); a 1.5 s gesture brings a quick hand round in ~2 s, and nothing
    honest beats 60000 / HONEST_CYCLE_MIN_MS = 39.7. */
 export const HARVEST_PERFECT_PER_MIN = 45;
+
+/* ═══ v2.3.3322: A HARVEST IS PAID AGAINST ITS OWN START ═══
+ *
+ * The owner, on the anti-bot review's farming holes: "Yes" (to "start on the
+ * bot farming holes"; docs/specs/antibot-review.md fix 6).  A strike was
+ * timed only when the player's extraction record named the same node; with
+ * NO record it was paid untimed (the branch kept for phones from before
+ * v2.3.229, which only counted it), and with a record for ANOTHER node it was
+ * paid untimed and not even counted.  Every phone has sent its start since
+ * v2.3.1704, so only scripts used it -- obsidian 81 an hour honest, 3,930 by
+ * script (the bot lab) -- and two honest moments:
+ *   - a CONNECTION THAT DROPPED mid-harvest: the phone replays the strike
+ *     after it rejoins (wsClient.js _holdForRejoin, v2.3.3034), and the close
+ *     handler had deleted the record.  The record now outlives the socket
+ *     (index.js webSocketClose, linger.js), swept at EXTRACTION_TIMEOUT_MS as
+ *     before, so the replay is timed against it like any strike;
+ *   - a ROOM RESTART (a deploy, every merge that touches server/): the record
+ *     was in memory.  A strike with no start record of its own -- none, or one
+ *     for another node (a replayed strike whose start went down the dead pipe)
+ *     -- is paid as a RECOVERY strike, untimed, at most once a player every
+ *     RECOVER_MS.  The room's restart forgets the clock, so everyone has one
+ *     after a deploy; a script gets six untimed harvests an hour from it.
+ * Any other is refused, 'no-start' or 'other-node', and the node is LEFT
+ * STANDING and marked dirty, so the phone that predicted its fall is shown it
+ * again and can harvest it properly.
+ *
+ * And a strike with no gesture fingerprint may not claim 'perfect' (botfp.js
+ * _botfpOnStrike: it is paid 'good'): every real perfect comes off the gesture
+ * (ExtractionSwipeLayer.jsx gradeGesture), which writes the fingerprint in the
+ * same step, and perfect doubles the yield.
+ *
+ * Kill switch `harvestproof: false` in the live flags: the old permissive
+ * strike and the old perfect, at once (_harvestProofOn).  The record still
+ * outlives a socket: that is only ever more honest. */
+export const HARVEST_PROOF = {
+  RECOVER_MS: 600000,
+  DIRTY_MS: 2000,   /* a refused strike's node state sent again at most this often, a player */
+};
 
 /* ═══ v2.3.3038: A RESOURCE'S SKILL LEVEL IS A REAL REQUIREMENT ═══
  *
@@ -704,6 +746,11 @@ export const gatheringMethods = {
       const e = this.extractions[sid];
       if (!e || e.startedAt < cutoff) delete this.extractions[sid];
     }
+    /* v2.3.3322: a recovery clock that has run out holds nothing (HARVEST_PROOF) */
+    if (this._harvestRecoverAt && this._harvestRecoverAt.size) {
+      const spent = (nowMs || Date.now()) - HARVEST_PROOF.RECOVER_MS;
+      for (const [pid, at] of this._harvestRecoverAt) if (at < spent) this._harvestRecoverAt.delete(pid);
+    }
   },
 
   // Client sent extraction_start { nodeId, zone, skill } -- record what
@@ -910,7 +957,8 @@ export const gatheringMethods = {
    *  the state-based shield above would otherwise permit: parking on a node,
    *  holding `ex` up forever, and tanking a pack for free while still swinging.
    *  Deleting the record also correctly restores the timing anticheat, since
-   *  the next strike then has no window to be validated against. */
+   *  the next strike then has no window to be validated against (v2.3.3322:
+   *  and is refused, but for the recovery strike -- HARVEST_PROOF). */
   _endExtraction(playerId) {
     if (!playerId) return;
     if (this.extractions[playerId]) delete this.extractions[playerId];
@@ -1192,6 +1240,27 @@ export const gatheringMethods = {
     return (this._lastStrikeById && this._lastStrikeById[playerId]) || null;
   },
 
+  /** v2.3.3322: the kill switch (HARVEST_PROOF above) -- `harvestproof: false`
+   *  in the live flags pays a strike with no start of its own as before, and
+   *  lets a strike with no fingerprint keep its perfect (botfp.js). */
+  _harvestProofOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'harvestproof') && !f.harvestproof);
+  },
+
+  /** v2.3.3322: may this player's strike with no start of its own be paid as a
+   *  recovery strike?  Once every HARVEST_PROOF.RECOVER_MS, the clock spent
+   *  when it says yes.  In memory on purpose: a room restart (a deploy) loses
+   *  every start record, and forgets this clock with them.  A Map keyed by
+   *  the player id (rule 4: an id off the wire). */
+  _harvestRecoverOk(playerId, now) {
+    if (!this._harvestRecoverAt) this._harvestRecoverAt = new Map();
+    const last = this._harvestRecoverAt.get(playerId) || 0;
+    if (last && now - last < HARVEST_PROOF.RECOVER_MS) return false;
+    this._harvestRecoverAt.set(playerId, now);
+    return true;
+  },
+
   _handleNodeStrike(session, payload) {
     if (!session || !session.id) return;
     const { id, zone, accuracy, swipeFp } = payload || {};
@@ -1251,6 +1320,8 @@ export const gatheringMethods = {
     // legacy clients): treat as a pre-v2.3.229 strike, skip the window
     // check, fall through to existing logic.  We log a counter for
     // visibility but don't reject.
+    /* v2.3.3322: ...and since then only against the strike's OWN record; a
+       strike without one is a recovery strike or nothing (HARVEST_PROOF). */
     const now = Date.now();
     const ex = this.extractions[session.id];
     let coercedAccuracy = accuracy || 'good';
@@ -1282,9 +1353,36 @@ export const gatheringMethods = {
       void latestClose;
       // Latency telemetry: ms from earliest-possible-open to swipe.
       openLatencyMs = now - earliestOpen;
-    } else if (!ex) {
-      if (!session._extractionMissing) session._extractionMissing = 0;
-      session._extractionMissing++;
+    } else {
+      if (!ex) {
+        if (!session._extractionMissing) session._extractionMissing = 0;
+        session._extractionMissing++;
+      }
+      /* v2.3.3322: no start of its own -- a recovery strike, or refused with
+         the node left standing (HARVEST_PROOF).  Counted either way, the
+         other-node strike too (it never was). */
+      if (this._harvestProofOn()) {
+        if (ex) session._extractionOtherNode = (session._extractionOtherNode || 0) + 1;
+        if (!this._harvestRecoverOk(session.id, now)) {
+          const last = this._harvestRecoverAt ? (this._harvestRecoverAt.get(session.id) || 0) : 0;
+          const why = ex ? 'other-node' : 'no-start';
+          this._strikeRefused(session, why, {
+            recordFor: ex ? ex.nodeId : null, recoverInMs: Math.max(0, last + HARVEST_PROOF.RECOVER_MS - now),
+          });
+          /* the phone predicted its fall: show it standing -- once a node every
+             DIRTY_MS a player, so a script hammering refused strikes cannot
+             make the room send the node's state round on every one */
+          const d = session._proofDirty;
+          if (!d || d.id !== n.id || now - d.at >= HARVEST_PROOF.DIRTY_MS) {
+            this._markNodeDirty(zone, n.id);
+            session._proofDirty = { id: n.id, at: now };
+          }
+          /* and it is evidence (botfp.js): an honest phone sends one now and then */
+          if (typeof this._botfpOnStartless === 'function') this._botfpOnStartless(session, why, now);
+          return;
+        }
+        session._extractionRecovered = (session._extractionRecovered || 0) + 1;
+      }
     }
     // Extraction resolved (success or timeout) -- clear the state so a
     // fresh tap doesn't reuse stale timing.

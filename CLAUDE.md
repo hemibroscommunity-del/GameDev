@@ -3621,15 +3621,44 @@ Two protocol versions coexist; both must keep working:
   of it, plus one-socket probes (rows written a message, the room filled by
   sockets that never join, a second join on one socket, the speed bound).
   The review's findings, measured 2026-10-16:
-  - a harvest with no `extraction_start` is paid untimed (obsidian 48x);
+  - a harvest with no `extraction_start` is paid untimed (obsidian 48x) --
+    fixed since v2.3.3322, below;
   - fingerprints are the phone's word: a strike with none is never scored;
-  - flags change nothing, and no screen shows them;
+  - flags change nothing, and no screen shows them -- shown since v2.3.3323,
+    below;
   - the speed slack is per message: 2,909 px/s, and 58,661 with bundles;
   - combat lanes are per monster, and a "ranged" hit reaches 3,600 px with no
     bow (7x the kills);
   - one socket can spend the free plan's rows (`chat_mute`, `stats_update` and
     `friend_dm` write a row a message) or keep rooms awake (`?room=<any>`).
 
+  - since v2.3.3322 A HARVEST IS PAID AGAINST ITS OWN START (fix 6, the
+    owner's "Yes" to the farming holes; docs/specs/harvest-proof.md):
+    - a strike is paid only against its own `extraction_start`, after its
+      hits; one with no start of its own (none, or another node's) is a
+      RECOVERY strike, untimed, once every 10 minutes a player
+      (gathering.js `HARVEST_PROOF`, `_harvestRecoverOk`) -- a deploy loses
+      every record, and a room restart forgets the clocks too; any other is
+      refused `no-start` / `other-node`, the node left standing and sent
+      again (`DIRTY_MS`), counted in botfp (`startless`, flagged at 20);
+    - the record OUTLIVES ITS SOCKET (index.js webSocketClose, linger.js no
+      longer delete it), so the strike a dead pipe ate and the phone replays
+      (wsClient.js `_holdForRejoin`) is timed against it;
+    - a strike with no fingerprint is never `perfect` (botfp.js: `good`,
+      `noFpPerfect`);
+    - the lab's obsidian script 2,400 harvests an hour -> 6, honest play
+      unchanged; kill switch `harvestproof: false`; `harvest-proof` suite (43),
+      `mp-recoverpay`; TRAPS §202.
+  - since v2.3.3323 THE BOT FLAGS ARE ON THE OWNER'S PHONE (fix 9;
+    docs/specs/bot-flags.md): the Test panel's Bot flags section ("Show
+    flagged players", DevPanel.jsx) lists every flagged player newest first --
+    name and online when here, the flag in words, the counts, the `bp_` id --
+    from GET `/api/admin/dev/botflags` (devtools.js -> botfp.js
+    `_botfpFlaggedList`: stored and in memory, the live record winning, 50 at
+    most, read-only); `/api/botstat` takes `Authorization: Bearer` too; POST
+    `/dev/botflag` plants a `test` flag on a player who is here (never moving
+    a real flag's hour gap); OPERATIONS.md "Bot flags"; a flag still changes
+    nothing; `bot-flags` suite (29), `mp-botflags` (14).
   - since v2.3.3292 (the architecture review): a phone's `dodging` stops a
     player's blow only within 1 s of a roll the worker CHARGED for
     (movement.js `ROLL`, `_rollOn`; it was unbounded, one move made a player
@@ -3852,7 +3881,7 @@ Two protocol versions coexist; both must keep working:
   0 = off; CF-Connecting-IP, so local tests are never counted); a `null`
   frame threw -- dropped. `flood` suite (46); the bot lab's `writes` and
   `roomfill` probes show the before and after. Still open: the farming holes
-  (the review's 6-9).
+  (the review's 6-9; 6, the harvest, closed in v2.3.3322: harvest-proof.md).
 - **THE ACCOUNT CHECK (v2.3.3275, docs/specs/account-check.md).** A character
   that does not exist yet (an id with no `auth:` record: a first join, every
   guest) is asked for a Cloudflare Turnstile token before the identity is

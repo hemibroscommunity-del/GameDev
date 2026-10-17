@@ -264,6 +264,7 @@ const SCENARIOS = {
   devwarp: () => import('./mp-devwarp.mjs'), /* v2.3.2308: the test panel's zone chips, pressed for real, from anywhere */
   devpanel: () => import('./mp-devpanel.mjs'), /* v2.3.2240: the owner's test panel */
   devflags: () => import('./mp-devflags.mjs'), /* v2.3.2412: live flags in that panel -- the operator surface that needed a computer */
+  botflags: () => import('./mp-botflags.mjs'), /* v2.3.3323: bot flags in that panel -- the anti-bot review's fix 9 */
   firetrail: () => import('./mp-firetrail.mjs'), /* v2.3.2238: the fire goblin's burning ground, drawn and felt */
   burstdmg: () => import('./mp-burstdmg.mjs'), /* v2.3.2235: the slime blast floats a damage number on YOU */
   bowmark: () => import('./mp-bowmark.mjs'), /* v2.3.2234: a REAL bow shot, and the mark on its number */

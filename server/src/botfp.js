@@ -76,6 +76,7 @@ export const BOTFP = {
   FLAG_AT: 10,                   // ~5 synthetic strikes or 3+ replays inside a half-life
   FLAG_MIN_GAP_MS: 3600000,      // at most one auto-flag written per hour per identity
   FLAG_CAP: 20,
+  STARTLESS_FLAG_AT: 20,         // v2.3.3322: strikes refused for want of a start (_botfpOnStartless)
   // ── fleet signal (device correlation) ──
   FLEET_MIN_IDS: 4,              // identities on one device nonce
   FLEET_ACTIVE_MIN: 3,           // of which this many harvested heavily this hour
@@ -183,7 +184,9 @@ function freshRecord(now) {
     lastStrikeAt: 0, strikeCount: 0,
     score: 0, lastDecayAt: now, lastFlagAt: 0,
     counters: { strikes: 0, noFpStrikes: 0, syntheticStrikes: 0, entFloorHits: 0,
-                replayHits: 0, taplessCooks: 0, cooks: 0, capClamps: 0 },
+                replayHits: 0, taplessCooks: 0, cooks: 0, capClamps: 0,
+                noFpPerfect: 0,     /* v2.3.3322: a perfect claimed with no fingerprint, paid 'good' */
+                startless: 0 },     /* v2.3.3322: a strike refused for want of its own start (gathering.js HARVEST_PROOF) */
     hour: { hourStart: now, bySkill: {} },
     welford: { n: 0, entMean: 0, entM2: 0, vcMean: 0, vcM2: 0 },
     flags: [],
@@ -335,6 +338,14 @@ export const botfpMethods = {
       // Old client / stripped payload: permissive, evidence-counted only —
       // the _extractionMissing posture.
       rec.counters.noFpStrikes++;
+      /* v2.3.3322: ...but never 'perfect' (gathering.js HARVEST_PROOF): every
+         real perfect is graded off the gesture that writes the fingerprint
+         (ExtractionSwipeLayer.jsx), and perfect doubles the yield.  'good',
+         the grade a phone defaults to; `harvestproof: false` keeps it. */
+      if (accuracy === 'perfect' && (typeof this._harvestProofOn !== 'function' || this._harvestProofOn())) {
+        accuracy = 'good';
+        rec.counters.noFpPerfect = (rec.counters.noFpPerfect || 0) + 1;
+      }
       this._botfpMaybePut(session.id, rec, false);
       return { accuracy, grant: true };
     }
@@ -437,6 +448,26 @@ export const botfpMethods = {
     }
   },
 
+  /* ═══ v2.3.3322: A STRIKE REFUSED FOR WANT OF ITS START IS EVIDENCE ═══
+     gathering.js HARVEST_PROOF refuses a strike with no start of its own
+     before the gathering hook above ever sees it, so a script hammering them
+     would leave no trace here.  Counted (`startless`), and flagged once the
+     count reaches STARTLESS_FLAG_AT: an honest phone sends one such strike
+     after a dropped socket or a deploy, and its recovery strike is paid, not
+     refused.  The write is _botfpMaybePut's own pace, a flag's at most one an
+     hour (FLAG_MIN_GAP_MS). */
+  _botfpOnStartless(session, why, now) {
+    const t = now || now_();
+    const rec = this._botfpRecord(session.id, t);
+    this._botfpDecay(rec, t);
+    rec.counters.startless = (rec.counters.startless || 0) + 1;
+    rec.dirty = true;
+    if (rec.counters.startless >= BOTFP.STARTLESS_FLAG_AT) {
+      this._botfpFlag(session.id, rec, 'strikes-without-start', { why, count: rec.counters.startless }, t);
+    }
+    this._botfpMaybePut(session.id, rec, false);
+  },
+
   // Shadow flag: persisted evidence for owner review.  Rate-limited so a
   // stuck bot doesn't fill the flag ring with duplicates.
   _botfpFlag(id, rec, kind, detail, now) {
@@ -516,7 +547,14 @@ export const botfpMethods = {
   async _botfpAdminFetch(request) {
     const notFound = () => new Response('Not found', { status: 404 });
     const key = this.env && this.env.ADMIN_KEY;
-    if (!key || request.headers.get('x-admin-key') !== key) return notFound();
+    /* v2.3.3323: the admin key in either header -- `x-admin-key`, as since
+       v2.3.1146, or `Authorization: Bearer`, the header every other admin
+       command takes (admin.js _adminAuth), which is the one OPERATIONS.md
+       teaches.  The anti-bot review found the odd header out was why nobody
+       could read these. */
+    if (!key) return notFound();
+    const viaHeader = request.headers.get('x-admin-key') === key;
+    if (!viaHeader && !(typeof this._adminAuth === 'function' && (await this._adminAuth(request)) === 'ok')) return notFound();
     const url = new URL(request.url);
     const headers = { 'Content-Type': 'application/json' };
     const id = url.searchParams.get('id');
@@ -545,5 +583,78 @@ export const botfpMethods = {
       return new Response(JSON.stringify({ flagged: out }), { headers });
     }
     return new Response(JSON.stringify({ usage: '/api/botstat?id=<playerId> | /api/botstat?flagged=1' }), { headers });
+  },
+
+  /* ═══ v2.3.3323: THE FLAGS ON THE OWNER'S PHONE ═══
+     The anti-bot review's fix 9 (docs/specs/antibot-review.md §3: "Nobody
+     sees the flags, and a flag changes nothing"; the owner: "Yes" to the bot
+     farming holes).  Every flagged player, newest flag first, for the Test
+     panel's Bot flags section (DevPanel.jsx, through admin.js /dev/botflags):
+     the stored records (`botstat:`) and the ones in memory, a live record
+     winning (its counters and score are newer than its last write).  A name
+     only for a player who is here: botstat keeps none, and the character
+     record has none to read.  Read-only; a flag still changes nothing in the
+     game (the owner's 2026-07-03 "flag, never act"). */
+  async _botfpFlaggedList(limit) {
+    const cap = Math.max(1, Math.min(100, Math.floor(Number(limit)) || 50));
+    const byId = new Map();
+    let listing = null;
+    try { listing = await this.state.storage.list({ prefix: 'botstat:' }); } catch (e) { listing = null; }
+    if (listing) {
+      for (const [k, v] of listing) {
+        if (v && Array.isArray(v.flags) && v.flags.length) byId.set(k.slice('botstat:'.length), { stored: v });
+      }
+    }
+    if (this._botfp) {
+      for (const [id, rec] of this._botfp) {
+        if (!rec || !Array.isArray(rec.flags) || !rec.flags.length) continue;
+        const e = byId.get(id) || {};
+        e.live = rec;
+        byId.set(id, e);
+      }
+    }
+    const names = new Map();
+    if (this.sessions) for (const sess of this.sessions.values()) if (sess && sess.id) names.set(sess.id, sess.name);
+    const out = [];
+    for (const [id, e] of byId) {
+      const src = e.live || e.stored;
+      const flags = src.flags;
+      const last = flags[flags.length - 1] || null;
+      const ps = this.playerState ? this.playerState[id] : null;
+      out.push({
+        id,
+        name: (ps && ps.name) || names.get(id) || null,
+        online: !!(ps && !ps.disconnected),
+        score: Math.round((Number(src.score) || 0) * 10) / 10,
+        flags: flags.length,
+        kinds: [...new Set(flags.map((f) => f && f.kind).filter(Boolean))],
+        last: last ? { at: last.at || 0, kind: last.kind || null, detail: last.detail || null } : null,
+        counters: src.counters || {},
+        updatedAt: (e.stored && e.stored.updatedAt) || null,
+      });
+    }
+    out.sort((a, b) => ((b.last && b.last.at) || 0) - ((a.last && a.last.at) || 0));
+    return out.slice(0, cap);
+  },
+
+  /* v2.3.3323: a TEST flag on a player who is here, for the Test panel's
+     phone check (mp-botflags) and for seeing what a flag looks like: kind
+     'test', its detail saying where it came from, past the hour's gap (a
+     test flag is not evidence).  Only for a player in the room: their record
+     was read at their join (_botfpOnJoin), so writing it loses nothing --
+     for one who is not here, a fresh record would be written over the
+     stored one. */
+  _botfpTestFlag(playerId) {
+    const ps = this.playerState ? this.playerState[playerId] : null;
+    if (!ps || ps.disconnected) return { ok: false, error: 'not online' };
+    const now = now_();
+    const rec = this._botfpRecord(playerId, now);
+    /* past the hour's gap, and leaving it where a real flag set it: a test
+       flag must never hold back the next real one */
+    const gap = rec.lastFlagAt;
+    rec.lastFlagAt = 0;
+    this._botfpFlag(playerId, rec, 'test', { note: 'planted from the Test panel, not evidence' }, now);
+    rec.lastFlagAt = gap;
+    return { ok: true, flags: rec.flags.length };
   },
 };
