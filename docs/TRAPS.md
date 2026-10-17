@@ -6782,7 +6782,7 @@ test. Read it from the table the worker plays (`server/src/wheelspawns.js`,
 `WHEEL_LONG`), or from the game's per-size copies (`WHEEL_GEOM`, `WHEELS`,
 `NML_CENTRES`), which test-world-core holds to the tables.
 
-## 197. "A filter's area is the piece, so lay the piece's light across it" (v2.3.3317)
+## 197. "A filter's area is the piece, so lay the piece's light across it" (v2.3.3320)
 
 **Tempting:** a per-sprite filter that lights one side of a piece -- the metal
 sheen's sun side (lightfx/glint.js) -- is written against `p`, the fragment's
@@ -6830,7 +6830,7 @@ phone's reach comes whole, in the snapshot's own wire (`mw`, spawnscale.js
 way in 580 -> 140 KB, the 29 around you among Frost Ridge's first stretch,
 each once, the kill switch, a cold room's first join); `mp-wheelnear`.
 
-## 199. "The test watched for 1.4 s, so the shot had its chance" (v2.3.3317)
+## 199. "The test watched for 1.4 s, so the shot had its chance" (v2.3.3320)
 
 **Tempting:** a phone scenario gives a shot, a cast or a pose a fixed window
 on its own clock -- "settled 1.4 s after the shot", "the kick in the 20-200 ms

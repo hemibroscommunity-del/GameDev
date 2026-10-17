@@ -1,4 +1,4 @@
-/* v2.3.3317: CLANS BECOME PARTIES (clanparty.js; docs/specs/alliance.md
+/* v2.3.3320: CLANS BECOME PARTIES (clanparty.js; docs/specs/alliance.md
  * "Step 3: clans become parties").
  *
  *   1. The first join after the deploy turns every clan into a stored party:

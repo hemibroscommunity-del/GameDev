@@ -750,7 +750,7 @@ export class StaffCastFx {
     const L = this.front.parent;
     return {
       charge: +this._charge.toFixed(3), rhythm: +this._rhythm.toFixed(3),
-      /* v2.3.3317: the frame clock the charge was read at (mp-staffcast) */
+      /* v2.3.3320: the frame clock the charge was read at (mp-staffcast) */
       at: this._lastNow || 0,
       /* where the crystal's light is drawn from: the player layer, on top */
       frontLayer: (L && L.label) || null,

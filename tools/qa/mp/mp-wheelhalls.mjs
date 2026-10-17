@@ -40,7 +40,7 @@ import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
 
-/* v2.3.3317: clans are parties now (server clanparty.js) -- the Guild Hall's
+/* v2.3.3320: clans are parties now (server clanparty.js) -- the Guild Hall's
    clan steps below found a clan and take up an invite, which only the switch
    that keeps clans allows, `clanparty: false`: set before anyone joins (the
    phones read it in their caps) and cleared at the end.  The Guild Hall under

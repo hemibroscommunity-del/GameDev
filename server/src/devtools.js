@@ -347,7 +347,7 @@ export const devToolsMethods = {
         : null,
       /* v2.3.3265: your sparring clones, their skill and the score (spar.js) */
       spar: this._sparSummary ? this._sparSummary(playerId) : null,
-      /* v2.3.3317: the monsters the worker holds in your zone -- how many,
+      /* v2.3.3320: the monsters the worker holds in your zone -- how many,
          how many alive, and how soon the next comes back.  mp-hitreal once
          found nothing to fight in ember for ten minutes with no way to say
          whether the worker had stopped respawning or the phone had lost its

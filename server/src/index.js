@@ -160,7 +160,7 @@ import { partyMethods } from './party.js';
 /* v2.3.3313: the alliance -- a party of 20 active members gets a name, a tag,
    wars in No man's land and a leaderboard (alliance.js, docs/specs/alliance.md) */
 import { allianceMethods } from './alliance.js';
-import { clanPartyMethods } from './clanparty.js';   /* v2.3.3317: clans become parties */
+import { clanPartyMethods } from './clanparty.js';   /* v2.3.3320: clans become parties */
 import { friendsMethods } from './friends.js';
 /* v2.3.1981: server-side chat mute + abuse reports -- the mute list is a
    storage fact enforced on the FAN-OUT (a muted line never reaches the
@@ -5888,7 +5888,7 @@ export class GameRoom {
           // UI renders it) -- record the pending half so a later
           // clan_join_accept can be validated per-sender-session.
           if (msg.type === 'clan_invite') {
-            /* v2.3.3317: clans are parties now -- no clan invite is relayed
+            /* v2.3.3320: clans are parties now -- no clan invite is relayed
                (it would invite to a clan that can no longer be joined) */
             if (this._clanPartyOn()) break;
             await this._observeClanInvite(session.id, msg);
@@ -6256,7 +6256,7 @@ Object.assign(GameRoom.prototype, presence2Methods); /* v2.3.3250 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
 Object.assign(GameRoom.prototype, allianceMethods); /* v2.3.3313 */
-Object.assign(GameRoom.prototype, clanPartyMethods);   /* v2.3.3317 */
+Object.assign(GameRoom.prototype, clanPartyMethods);   /* v2.3.3320 */
 // v2.3.1191 (P4 decomposition): combat/damage core -- see combat.js.
 Object.assign(GameRoom.prototype, combatMethods);
 // v2.3.1192: server amulet forge (handoff item I follow-up) -- see amulet.js.

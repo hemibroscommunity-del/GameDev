@@ -22,7 +22,7 @@ const btn = {
 const btnBrass = { ...btn, background: COL.accent, color: COL.onAccent, border: `1px solid ${COL.accent}` };
 const btnRaised = { ...btn, background: COL.raised, color: COL.text, border: `1px solid ${COL.borderStrong}` };
 
-/* ═══ v2.3.3317: CLANS ARE PARTIES NOW (server clanparty.js) ═══
+/* ═══ v2.3.3320: CLANS ARE PARTIES NOW (server clanparty.js) ═══
    Against a worker with caps.clanparty this page shows the party you are in
    -- its tag, if it was your clan or is an alliance -- or how a party becomes
    an alliance, and its button opens the player list, where a party starts
@@ -75,7 +75,7 @@ export const ClanPanel = () => {
   }, []);
 
   const S = getState();
-  if (clanPartyOn(S)) return <PartyNowPage S={S} />;   /* v2.3.3317 */
+  if (clanPartyOn(S)) return <PartyNowPage S={S} />;   /* v2.3.3320 */
   const clan = S?._clanData || null;
 
   if (!clan) {

@@ -14,7 +14,7 @@ const clan = (P) => H.readState(P, (S) => {
   return { name: c.name, tag: c.tag, members: c.members ? c.members.length : 0 };
 });
 
-/* v2.3.3317: clans are parties now (server clanparty.js) -- a clan can be
+/* v2.3.3320: clans are parties now (server clanparty.js) -- a clan can be
    founded only under the switch that keeps them, `clanparty: false`, so this
    scenario runs under it (before anyone joins: the phones read it in their
    caps) and clears it at the end.  The new path is mp-clanparty. */
@@ -26,7 +26,7 @@ export async function run(ctx) {
 
 async function runClans({ browser, wsPort, webPort, rec }) {
   const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Founder', nameB: 'Recruit' });
-  /* v2.3.3317: joinPair's focus click lands on the middle of the screen,
+  /* v2.3.3320: joinPair's focus click lands on the middle of the screen,
      where the other player stands, and opens their player card -- which then
      sat over the clan window's "Create Clan" (COVERED BY div.bt-pcard-tiles)
      on every run.  Closed first, as a player would. */
@@ -105,7 +105,7 @@ async function runClans({ browser, wsPort, webPort, rec }) {
       .then(() => true).catch(() => false);
     rec.ok('the clan panel shows the invite to accept', acceptable);
     if (acceptable) {
-      /* v2.3.3317: since v2.3.3066 an invite also raises its own card
+      /* v2.3.3320: since v2.3.3066 an invite also raises its own card
          wherever you are (ClanInviteCard.jsx), and it sits over the clan
          window -- its Accept is the one a player sees, and sends the same
          clan_join_accept as the window's */

@@ -81,7 +81,7 @@ import * as H from './harness.mjs';
 const PHONE = { width: 390, height: 844 };
 const TRIES = 5;                /* attempts per row */
 const SETTLE_MS = 1400;         /* flight across the standoff + the round trip that settles it */
-/* ═══ v2.3.3317: ...ON A PHONE.  THE SHOT IS OVER WHEN THE SHOT IS OVER ═══
+/* ═══ v2.3.3320: ...ON A PHONE.  THE SHOT IS OVER WHEN THE SHOT IS OVER ═══
    1400 ms is a phone's number: a staff bolt flies 5 px a FRAME (x _dtScale,
    clamped to 3), 300 px a second at 60 fps, so this file's farthest standoff
    (240 px) is 0.8 s in the air.  On a box drawing a few frames a second the
@@ -532,7 +532,7 @@ async function settle(P, id, before, ms) {
     const el = Date.now() - t0;
     if (el > SETTLE_MAX_MS) return Object.assign(a, { dug, cut: true });
     if (el > ms) {
-      /* v2.3.3317: past the phone's window -- over only once nothing of this
+      /* v2.3.3320: past the phone's window -- over only once nothing of this
          attempt is still flying and the last claim has had its answer */
       const s = await shotState(P, id);
       if (!s.flying && !(s.sinceLast != null && s.sinceLast < ANSWER_MS)) return Object.assign(a, { dug, waited: el });
@@ -541,7 +541,7 @@ async function settle(P, id, before, ms) {
   }
 }
 
-/* v2.3.3317: is a shot of ours still in the air, and how long ago did the last
+/* v2.3.3320: is a shot of ours still in the air, and how long ago did the last
    claim for this monster go?  aimAt empties S.arrows before every attempt, so
    whatever is in it is this attempt's; an arrow stuck in a monster (the bow
    special's chip) is not flying. */
@@ -553,7 +553,7 @@ const shotState = (P, mid) => P.page.evaluate((id) => {
   return { flying, sinceLast: last ? Date.now() - last : null };
 }, mid);
 
-/* v2.3.3317: NOTHING TO FIGHT, AND WHOSE LIST SAYS SO.  One run found no live
+/* v2.3.3320: NOTHING TO FIGHT, AND WHOSE LIST SAYS SO.  One run found no live
    monster in ember for ten minutes on end (four rows of voids), and nothing
    said whether the worker had stopped bringing them back or the phone had
    lost its copy of the zone.  Both halves, for the row's guard to print. */
@@ -648,7 +648,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const sentFor = (mid, since) => P.page.evaluate(({ mid, since }) => ({
     dmg: (window.__hitReal || []).filter((r) => r.id === mid && r.at >= since).length,
     blast: (window.__hitBlast || []).filter((r) => r.at >= since).length,
-    /* v2.3.3317: how long after the shot each claim went, so a hit the worker
+    /* v2.3.3320: how long after the shot each claim went, so a hit the worker
        "dropped" says whether its answer had time to come back */
     at: (window.__hitReal || []).filter((r) => r.id === mid && r.at >= since).map((r) => r.at - since),
   }), { mid, since });
@@ -752,7 +752,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          zone that will not cooperate ends rather than hangs. */
       const rowUntil = Date.now() + ROW_BUDGET_MS;
       for (let i = 0; i < TRIES * 3 && row.fairs < TRIES && Date.now() < rowUntil; i++) {
-        /* ═══ v2.3.3317: STILL IN THE ZONE? ═══
+        /* ═══ v2.3.3320: STILL IN THE ZONE? ═══
            placeAt walks toward the monster it picked, and a monster standing
            by the zone's way out takes the walk through it: the game does what
            a door does and the player is in the World View, where nothing
@@ -774,7 +774,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const pick = await waitForTarget(P, TARGET_WAIT_MS);
         if (!pick) {
           row.void++;
-          if (row.empty.length < 3) row.empty.push(await emptyWhy(P, wsPort, id));   /* v2.3.3317 */
+          if (row.empty.length < 3) row.empty.push(await emptyWhy(P, wsPort, id));   /* v2.3.3320 */
           continue;
         }
         /* Walk to this weapon's range of the monster we picked, then re-read
@@ -822,7 +822,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
         row.arch = row.arch || g.arch;
         await aimAt(P, g);
-        /* ═══ v2.3.3317: ...AND AGAIN, FROM WHERE THE BOW IS HELD NOW ═══
+        /* ═══ v2.3.3320: ...AND AGAIN, FROM WHERE THE BOW IS HELD NOW ═══
            aimAt measures the angle from the grip the sight cast from on its
            LAST frame, and turning to face the target moves the grip (the bow
            is held on the side you face): an angle taken from the old grip and
@@ -891,7 +891,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
             along: Math.round(mdx * Math.cos(ang) + mdy * Math.sin(ang)),
             srv: sp ? { zone: sp.zone, x: Math.round(sp.x), y: Math.round(sp.y) } : null,
             cli: { x: g.px, y: g.py },
-            /* v2.3.3317: how long the settle waited, and whether it gave up
+            /* v2.3.3320: how long the settle waited, and whether it gave up
                at SETTLE_MAX_MS with a shot still in the air */
             waited: after.waited || null, cut: !!after.cut });
         }

@@ -62,7 +62,7 @@ function check(name, cond, detail) {
 }
 
 const state = makeState();
-/* v2.3.3317: clans are parties now (clanparty.js) -- this suite is the clan
+/* v2.3.3320: clans are parties now (clanparty.js) -- this suite is the clan
    registry the kill switch keeps, `clanparty: false` in the live flags, so it
    runs under the switch and keeps proving clans work as they did with it off
    (the conversion has its own suite, clan-party.test.mjs). */

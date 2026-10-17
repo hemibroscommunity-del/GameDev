@@ -195,7 +195,7 @@ export function profileFromPeer(ip, live, rel) {
      player wearing a clan they are not in ("This is what kills forgery"),
      and rpgData rides the relay unstamped.  The NAME is only in rpgData, so
      it is shown only when that blob agrees with the stamped tag. */
-  /* v2.3.3317: the alliance's or former clan's tag (alliance.js
+  /* v2.3.3320: the alliance's or former clan's tag (alliance.js
      _allyTagOf), stamped by the worker the same way, first -- clans are
      parties now (clanparty.js); its name is not sent to other phones */
   const allyT = o.allyTag || snap.allyTag || null;

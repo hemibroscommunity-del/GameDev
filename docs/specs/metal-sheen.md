@@ -87,7 +87,7 @@ that never switches off:
   (`lightfx/zoneLight.js`). A zone with no sun (Flame Fields, the caves)
   gets it evenly. It dims at night and in a zone's deep levels, but never
   goes out: metal still catches the moon.
-- **The sun side is the figure's** (v2.3.3317). The shader lays "the side
+- **The sun side is the figure's** (v2.3.3320). The shader lays "the side
   facing the sun" across the filter's own area, and for a sprite that is its
   own picture's frame. The body and its armour share the body's frame, so
   they always agreed; a held weapon is a picture of its own, turned and
@@ -228,7 +228,7 @@ the gear sheets' budget first.
   brighter with the sun on the left; on its right third, 100% are brighter
   with the sun on the right -- with a steel greatsword in hand, whose blade
   read 35% on the left third until its sun side was laid across the figure
-  (v2.3.3317, above; 75% when the check was written);
+  (v2.3.3320, above; 75% when the check was written);
 - jogging in a full copper set, the knight figure on the body sprite carries
   it;
 - the pass count per figure (and the frame time, which this machine is too

@@ -50,7 +50,7 @@ const armTarget = (P, dx, dy, id = 'staffcast-1') => P.page.evaluate(({ dx, dy, 
 
 /* A rAF sampler that runs AFTER the game's own frame (it is requested later),
    so it reads exactly what this frame drew.  Returns a digest, not raw frames. */
-/* v2.3.3317: `minBorn` -- go on past `ms` (up to `maxMs`) until that many
+/* v2.3.3320: `minBorn` -- go on past `ms` (up to `maxMs`) until that many
    bolts seen leaving the crystal have ended: on a slow page a bolt takes two
    seconds or more to cross 200 px, and a 4.2 s look ended one of them */
 const sample = (P, ms, retreat = 0, minBorn = 0, maxMs = ms) => P.page.evaluate(({ ms, retreat, minBorn, maxMs }) => new Promise((resolve) => {
@@ -70,13 +70,13 @@ const sample = (P, ms, retreat = 0, minBorn = 0, maxMs = ms) => P.page.evaluate(
     const fx = window.__btStaffFx ? window.__btStaffFx() : null;
     if (S._staffCastAt && S._staffCastAt !== lastCast) {
       out.casts.push({ at: S._staffCastAt, ang: S._staffCastAng, cad: S._staffCadenceMs, chargeBefore: lastCharge,
-        /* v2.3.3317: the frame clock that charge was read at (staffCastFx probe) */
+        /* v2.3.3320: the frame clock that charge was read at (staffCastFx probe) */
         chargeAt: lastChargeAt });
       lastCast = S._staffCastAt;
     }
     out.frames.push({
       t: now, rot: w ? w.rotation : null, sy: w ? w.scaleY : null,
-      /* v2.3.3317: the clock the renderer worked the pose out at */
+      /* v2.3.3320: the clock the renderer worked the pose out at */
       wAt: w && typeof w.at === 'number' ? w.at : null,
       tipX: S._staffTipX, tipY: S._staffTipY, tipAge: S._staffTipAt ? now - S._staffTipAt : null,
       px: S.player.x, py: S.player.y, lastCast,
@@ -91,7 +91,7 @@ const sample = (P, ms, retreat = 0, minBorn = 0, maxMs = ms) => P.page.evaluate(
          check: one already in flight when sampling began has no first frame
          here, and would be measured mid-air against the crystal. */
       if (!r && a._fxPx != null) {
-        /* v2.3.3317: first drawn on THIS frame -- its stamp is this frame's
+        /* v2.3.3320: first drawn on THIS frame -- its stamp is this frame's
            clock -- rather than "within 40 ms of the sampler's clock": on a
            page drawing a few frames a second the sampler runs a few hundred ms
            after the frame it reads, and no bolt was ever "born" */
@@ -164,14 +164,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the crystal fills against the gate's own cooldown (${kit.cdMs} ms)`,
     kit.cdMs > 0 && casts.every((c) => c.cad === kit.cdMs), { card: kit.cdMs, stamped: casts.map((c) => c.cad) });
   const gaps = casts.slice(1).map((c, i) => c.at - casts[i].at);
-  /* v2.3.3317: a bolt leaves on the first frame after the cooldown, so one
+  /* v2.3.3320: a bolt leaves on the first frame after the cooldown, so one
      cooldown plus up to one FRAME apart -- 260 ms covered a phone's frames,
      and a slowed page's frame alone can be longer (1187 ms at 6x throttle) */
   const frameGaps = s.frames.slice(1).map((f, i) => f.t - s.frames[i].t);
   const slack = Math.max(260, (frameGaps.length ? Math.max(...frameGaps) : 0) + 40);
   rec.ok(`...and adds no wind-up: bolts still leave one cooldown apart (${gaps.join(', ')} ms)`,
     gaps.length >= 2 && gaps.every((g) => g >= kit.cdMs - 5 && g <= kit.cdMs + slack), { gaps, cd: kit.cdMs, slack });
-  /* v2.3.3317: "the frame the bolt leaves" is the frame drawn before it, and
+  /* v2.3.3320: "the frame the bolt leaves" is the frame drawn before it, and
      on a page drawing a few frames a second that frame was drawn a fifth of the
      cooldown or more before the bolt.  The charge IS the cooldown, so there it
      reads 1 - (that gap / the cooldown) and no less: the bar is the phone's
@@ -199,7 +199,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* THE KICK.  The target is east, so the crystal turns clockwise toward it:
      positive rotation, 14 degrees at the first 12 fps step, settled within
      ~350 ms. */
-  /* v2.3.3317: by the clock the RENDERER drew each pose at (__btWeapon.at),
+  /* v2.3.3320: by the clock the RENDERER drew each pose at (__btWeapon.at),
      not the sampler's: on a page drawing a few frames a second the sampler
      reads a frame a few hundred ms after it was drawn, so the frame drawn at
      the kick's peak was filed past the window and the only frame left in it
@@ -290,7 +290,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* QUIET.  Stop casting: one cooldown and the grace later, no glow. */
-  /* v2.3.3317: ...and once the last bolt has landed: a bolt still flying
+  /* v2.3.3320: ...and once the last bolt has landed: a bolt still flying
      draws its own halo in front, and on a slow page the one cast as we
      stopped was still in the air one cooldown and the grace later */
   const quiet = await P.page.evaluate(() => new Promise((resolve) => {
@@ -328,7 +328,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const out = { caps, n: fired.length, big: !!(b && b.big), orbs: b ? b.orbs : null, dmg: b ? b.dmg : null,
       hp0, kick: 0, scale: null, crash: null, mx: m ? m.x : null, blastR: null };
     const t0 = Date.now();
-    let after = 0;   /* v2.3.3317: frames since the bolt left the sky */
+    let after = 0;   /* v2.3.3320: frames since the bolt left the sky */
     const tick = () => {
       const w = window.__btWeapon;
       if (w && Date.now() - t0 < 400) out.kick = Math.max(out.kick, Math.abs(w.rotation || 0));
@@ -338,7 +338,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* v2.3.2849: the blast ring the crash opens out to the worker's reach */
       const br = (S._impactRings || []).find((r) => r && r.blast && r.ts >= t0);
       if (br) out.blastR = br.maxR;
-      /* v2.3.3317: until the bolt is over -- gone from the sky and the crash
+      /* v2.3.3320: until the bolt is over -- gone from the sky and the crash
          and its ring drawn (three frames after) -- not 1600 ms: it flies 5 px
          a frame, and on a page drawing a few frames a second it had not
          reached the slime when the window shut (its hit landing on the last

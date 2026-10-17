@@ -370,7 +370,7 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
     dpr ? { deviceScaleFactor: dpr } : null,
   ));
   const page = await ctx.newPage();
-  /* v2.3.3317: BT_QA_CPU_THROTTLE=<rate> runs every page that much slower
+  /* v2.3.3320: BT_QA_CPU_THROTTLE=<rate> runs every page that much slower
      (Chromium's own CPU throttle), to see a check as a slow phone -- or this
      box on a busy day -- sees it: mp-staffcast's timing checks passed on a
      quiet box and failed in the sweep, and only a slowed page tells a check
@@ -1275,7 +1275,7 @@ export async function devOp(wsPort, op, playerId, body) {
   return res.json();
 }
 
-/* v2.3.3317: a room's live flag set (a boolean or a number) or, with null,
+/* v2.3.3320: a room's live flag set (a boolean or a number) or, with null,
    cleared -- POST / DELETE /api/admin/flags (liveops.js).  The main room
    unless `room` is named.  A scenario that sets one clears it before it ends:
    one worker serves the whole run. */
