@@ -2685,7 +2685,35 @@ remnant to migrate server-side, not a mode to preserve.
       picture;
     - test-world-core "the Gem Works", `mp-buildingrooms` (the tabs),
       `mp-wheeldoors`, `mp-shieldgem` (a shield's gem is set on the Set gems
-      tab): docs/specs/gem-works.md.)
+      tab): docs/specs/gem-works.md.
+  - Since v2.3.3298 THE WHEEL IS BUILT IN BLOCKS ROUND YOU -- the owner: "the
+    game map needs to be larger. It goes from lvl 1 monsters to lvl 20+ way too
+    quickly. Maybe 5x larger map is needed", choosing "Rebuild for 5x". Step 1,
+    nothing on screen changes (docs/specs/wheel-in-blocks.md):
+    - the ground worker no longer builds the whole Wheel on the way in (~50 MB
+      at its peak today; ~600 MB five times longer, past the ~250 MB a tab dies
+      at): BLOCKS of 128 x 128 cells (`core/worldblocks.js`), built round the
+      pieces asked for and next to yours when idle, the 48 nearest kept;
+    - `layout.js buildBlueprint(plan, rect)` builds any rectangle exactly as the
+      whole map: `planFeatures` (roads, rivers, bridges, routes, plots, once a
+      plan), pass 2's order-dependent features through `stands` (a feature is
+      left out where an EARLIER one covers its middle -- worked out at its
+      middle, remembered), everything measured from the whole map's corner;
+      ground.js `materialMap` takes `ox`/`oy` (its noise and stage grid on the
+      whole map's cells, `LAND_STAGE_MARGIN` 28), `PIECE_MARGIN` 24 round a piece;
+    - walls go to the game a block at a time (the worker's `block`); a cell of a
+      block not built yet reads OPEN; `wheelBlocksAround` / `__btWheelBlocks`
+      asks for blocks far from any ground laid;
+    - the OBJECTS and the OVERVIEW are BAKED (`tools/world/bake-wheel-world.mjs`
+      -> `public/world/placed/`, `core/placed.js`, `core/placedfile.js`):
+      placing is order-dependent over the whole map; the worker uses the bake
+      only when `planFingerprint` matches, and the previews (`?bigtown=`,
+      `?plaintown`, `?placing=2`) build the whole map for them as before. A plan,
+      catalog or placing change must re-bake in the same PR (test-world-core
+      checks);
+    - the ground worker at the memory trip's peak 24.8 MB (main 28.7);
+    - test-world-core "the Wheel in blocks" (every block and piece against the
+      whole map, cell for cell); step 2 is the 5x lands.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
