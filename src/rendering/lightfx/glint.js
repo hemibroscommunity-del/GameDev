@@ -109,7 +109,7 @@
  * The periodic sweep (the "flash") is off: AUTO_SWEEP.  The band is still in
  * the shader and `force` still pins it, for pictures and QA.
  */
-import { Filter, Rectangle } from 'pixi.js';
+import { Filter, Matrix, Rectangle } from 'pixi.js';
 import { weaponMaterial } from '../traits/materialTints.js';
 import { gearArt, gearMaterial } from '../gearVariants.js';
 import { getEquip } from '../gearCatalog.js';
@@ -128,6 +128,9 @@ uniform float uStrength;
 uniform vec3 uColor;
 uniform float uSheen;
 uniform vec2 uSun;
+/* v2.3.3317: the figure's frame in this sprite's frame's 0-1 units (x, y,
+   width, height); width 0 when there is none -- see the sheen's sun side */
+uniform highp vec4 uFig;
 uniform vec3 uTint;
 /* v2.3.3142: the piece's GRADE, seen (rare blue, elite orange, godly a moving
    rainbow) -- rgb its colour, a how strong (0: a normal piece, no grade
@@ -168,8 +171,15 @@ void main()
        and the metal read as lighter rather than shinier */
     float hi = smoothstep(0.55, 0.96, dot(art, vec3(0.299, 0.587, 0.114)));
     /* the sprite's frame is mostly empty margin around the figure, so the
-       gradient is steep enough to swing across the metal itself */
-    float side = clamp(0.5 + dot(p - 0.5, uSun) * 3.0, 0.0, 1.0);
+       gradient is steep enough to swing across the metal itself.
+       v2.3.3317: laid across the FIGURE's frame (uFig, the body sprite's
+       frame in this sprite's own 0-1 units), not this sprite's -- a held
+       greatsword's picture is a big frame of its own, turned and flipped in
+       the hand, and across it the blade's highlight sat on the side away from
+       the sun (mp-sheen: 0.35 of the figure's left third lit by a left sun).
+       uFig.z 0: no figure to lay it on, this sprite's frame as before. */
+    vec2 q = uFig.z > 0.0 ? (p - uFig.xy) / uFig.zw : p;
+    float side = clamp(0.5 + dot(q - 0.5, uSun) * 3.0, 0.0, 1.0);
     float s = uSheen * hi * (0.35 + 0.65 * side);
     /* v2.3.2914: the sheen ROLLS OFF below white instead of being added and
        clipped.  Per channel, head is the room left under the ceiling; the
@@ -255,6 +265,7 @@ function makeGlintFilter() {
         uColor: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
         uSheen: { value: 0, type: 'f32' },                                   /* v2.3.2864 */
         uSun: { value: new Float32Array([0, 0]), type: 'vec2<f32>' },
+        uFig: { value: new Float32Array([0, 0, 0, 0]), type: 'vec4<f32>' },  /* v2.3.3317 */
         uTint: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
         uGrade: { value: new Float32Array([0, 0, 0, 0]), type: 'vec4<f32>' },   /* v2.3.3142 */
         uPrism: { value: 0, type: 'f32' },
@@ -487,6 +498,48 @@ function unmaskedArea(spr) {
   return r;
 }
 
+/* ═══ v2.3.3317: THE SUN SIDE IS THE FIGURE'S ═══
+   The sheen lights the side of a piece that faces the sun, laid out across
+   the filter's own area -- for a sprite its whole frame (`orig`, placed by its
+   anchor: Sprite.updateBounds; or that same box pinned as `filterArea`,
+   above).  The body and its armour share the body's frame, so they agree; a
+   held weapon's picture is a frame of its own, turned and flipped in the
+   hand, and a greatsword's blade lay at the far end of it -- its highlight on
+   the side AWAY from the sun (mp-sheen: 0.35 of the figure's left third
+   brighter under a sun on the left, 0.78 when the check was written).  So
+   each piece is told where its figure's frame lies in its own (`uFig`): both
+   boxes worked out here from the transforms as they are THIS frame (Pixi
+   brings the scene's up to date only in the render that follows, and lightFx
+   runs last before it), each frame's corners through its sprite's chain of
+   transforms and the box round them -- as Pixi's filter area is
+   (FilterSystem: addRect, then applyMatrix). */
+const _frameM = new Matrix();
+const _chain = [];
+const _sprBox = new Float32Array(4);
+function frameBoxNow(spr, out) {
+  const t = spr && spr.texture;
+  const o = t && (t.orig || t.frame);
+  if (!o || !(o.width > 0) || !(o.height > 0)) return false;
+  for (let c = spr; c; c = c.parent) _chain.push(c);
+  _frameM.identity();
+  for (let i = _chain.length - 1; i >= 0; i--) { _chain[i].updateLocalTransform(); _frameM.append(_chain[i].localTransform); }
+  _chain.length = 0;
+  const ax = spr.anchor ? spr.anchor.x : 0, ay = spr.anchor ? spr.anchor.y : 0;
+  const x0 = -ax * o.width, y0 = -ay * o.height, x1 = x0 + o.width, y1 = y0 + o.height;
+  const m = _frameM;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (let k = 0; k < 4; k++) {
+    const x = (k & 1) ? x1 : x0, y = (k & 2) ? y1 : y0;
+    const gx = m.a * x + m.c * y + m.tx, gy = m.b * x + m.d * y + m.ty;
+    if (gx < minX) minX = gx;
+    if (gx > maxX) maxX = gx;
+    if (gy < minY) minY = gy;
+    if (gy > maxY) maxY = gy;
+  }
+  out[0] = minX; out[1] = minY; out[2] = maxX - minX; out[3] = maxY - minY;
+  return out[2] > 0 && out[3] > 0;
+}
+
 export class GlintSystem {
   constructor() {
     this._on = new Map();        /* sprite -> filter currently attached */
@@ -497,6 +550,8 @@ export class GlintSystem {
     this.sheenScale = null;      /* QA/pictures: multiply the sheen, to show a softer or stronger cut */
     this._bodies = new Set();    /* this frame's full-set body sprites, for the probe */
     this._fullBodies = new Set(); /* v2.3.3142: every full-set figure this frame (yours and others'), whose grade edge goes all round */
+    this._figBoxes = new Map();   /* v2.3.3317: a figure's body sprite -> its frame's box this frame (_figIn) */
+    this._frameNo = 0;
   }
 
   _filter() { return this._pool.pop() || _warmFilters.pop() || makeGlintFilter(); }   /* v2.3.2904: the loading screen's filter first */
@@ -516,6 +571,7 @@ export class GlintSystem {
     this._lastTargets = null;
     this._bodies.clear();
     this._fullBodies.clear();
+    this._figBoxes.clear();   /* v2.3.3317 */
   }
 
   /* One figure-slot: which sprites show it, what metal, what grade.
@@ -539,6 +595,7 @@ export class GlintSystem {
     const rpg = S && S.rpg;
     /* v2.3.3003: no shine on armour under the water (swimFx.js) */
     if (pd && !pd.destroyed && rpg && !(pd._swimK > 0)) {
+      const n0 = out.length;   /* v2.3.3317: this figure's slots, for their `fig` */
       const melee = (rpg.activeSlot || 'melee') === 'melee';
       const w = melee ? rpg.weapon : null;
       const wm = w ? weaponMaterial(w.type, w.gearBase) : null;
@@ -586,6 +643,8 @@ export class GlintSystem {
         if (fx) for (const k of SELF_LEGS_STAND_INS) pushVisible(s, fx[k]);
         this._slot(out, 'self:l', s, lm, seenGrade(rpg.legsArmor), 'l');
       }
+      /* v2.3.3317: the figure every piece lays the sun side across */
+      for (let i = n0; i < out.length; i++) out[i].fig = pd._spriteBody || null;
     }
     const others = (S && S.others) || null;
     if (er && er.otherPlayerDisplays && others) {
@@ -593,6 +652,7 @@ export class GlintSystem {
         const o = others[id];
         if (!d || d.destroyed || !o || (o.zone || o.z || 'town') !== zone || d._swimK > 0) continue;   /* v2.3.3003 */
         if (d._farHidden) continue;   /* v2.3.3241: far off screen in the Wheel, not drawn (entityRenderer PEER_FAR_MARGIN) */
+        const n1 = out.length;   /* v2.3.3317: this figure's slots, for their `fig` */
         const sw = fx && fx._remoteSwordSprites && fx._remoteSwordSprites.get(id);
         /* v2.3.2887: their bow shot and their chop / cook / fire figure draw
            the armour on sprites of their own, as the swing does -- the shine
@@ -634,9 +694,29 @@ export class GlintSystem {
           if (gg) pushVisible(s, gg.legs);
           this._slot(out, id + ':l', s, lm, peerGrade(o._eqg, 1), 'l');
         }
+        for (let i = n1; i < out.length; i++) out[i].fig = d._spriteBody || null;   /* v2.3.3317 */
       }
     }
     return out;
+  }
+
+  /* v2.3.3317: where the figure's frame lies in this sprite's frame, in its
+     0-1 units (see frameBoxNow), into `out` (the filter's uFig); width 0 --
+     the sprite's own frame, as before -- when there is no figure to lay it
+     on: the sprite is the body itself, or the body is hidden behind a swing's
+     or a gatherer's stand-in.  The figure's box is worked out once a frame. */
+  _figIn(spr, fig, out) {
+    out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 0;
+    if (!fig || fig === spr || fig.destroyed || !fig.visible || !fig.parent || !fig.parent.visible) return;
+    let e = this._figBoxes.get(fig);
+    if (!e) { e = { n: -1, ok: false, b: new Float32Array(4) }; this._figBoxes.set(fig, e); }
+    if (e.n !== this._frameNo) { e.n = this._frameNo; e.ok = frameBoxNow(fig, e.b); }
+    if (!e.ok || !frameBoxNow(spr, _sprBox)) return;
+    const b = e.b;
+    out[0] = (b[0] - _sprBox[0]) / _sprBox[2];
+    out[1] = (b[1] - _sprBox[1]) / _sprBox[3];
+    out[2] = b[2] / _sprBox[2];
+    out[3] = b[3] / _sprBox[3];
   }
 
   /* `sheen` (v2.3.2864): null when the permanent shine is off, else
@@ -645,6 +725,7 @@ export class GlintSystem {
   /* `gradesOnly` (v2.3.3142): the light effects are off on this device --
      only a graded piece's look is drawn (see GRADE_LOOK). */
   update(S, now, er, fx, zone, sheen, gradesOnly) {
+    this._frameNo++;   /* v2.3.3317: the figures' boxes, worked out once a frame (_figIn) */
     const targets = this._targets(S, er, fx, zone);
     const want = new Map();       /* sprite -> { p, strength, color, sheen, look } */
     const sk = sheen && !gradesOnly ? (this.sheenScale == null ? 1 : this.sheenScale) * sheen.k : 0;
@@ -663,7 +744,7 @@ export class GlintSystem {
       if (p >= 0) sweeping++;
       if (p < 0 && !(sk > 0) && !t.look) continue;
       if (t.look) graded++;
-      const w = { p, strength: p >= 0 ? t.g.strength : 0, color: t.color, sheen: sk * (t.g.sheen || 0), look: t.look, part: t.part };
+      const w = { p, strength: p >= 0 ? t.g.strength : 0, color: t.color, sheen: sk * (t.g.sheen || 0), look: t.look, part: t.part, fig: t.fig || null };
       for (let j = 0; j < t.sprites.length; j++) want.set(t.sprites[j], w);
     }
     /* the godly rainbow's clock: wrapped every 100 s, where 0.16 x 100 is a
@@ -700,7 +781,10 @@ export class GlintSystem {
       u.uStrength = w.strength;
       u.uColor[0] = w.color[0]; u.uColor[1] = w.color[1]; u.uColor[2] = w.color[2];
       u.uSheen = w.sheen;
-      if (w.sheen > 0 && sheen) { u.uSun[0] = sheen.sx; u.uSun[1] = sheen.sy; }
+      if (w.sheen > 0 && sheen) {
+        u.uSun[0] = sheen.sx; u.uSun[1] = sheen.sy;
+        this._figIn(spr, w.fig, u.uFig);   /* v2.3.3317: the sun side across the figure */
+      }
       if (w.sheen > 0 || w.look) {
         /* the tint this sprite is drawn with, read off the sprite itself, so
            the shader can find where the art was bright under any metal
@@ -719,6 +803,8 @@ export class GlintSystem {
         u.uGrade[3] = 0;
       }
     }
+    /* v2.3.3317: let go of the figures not drawn this frame */
+    for (const [fig, e] of this._figBoxes) if (e.n !== this._frameNo || fig.destroyed) this._figBoxes.delete(fig);
     this.stats.graded = graded;
     this.stats.targets = targets.length;
     this.stats.lit = this._on.size;

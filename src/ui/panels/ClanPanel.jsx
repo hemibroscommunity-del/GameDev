@@ -3,7 +3,7 @@ import { BT_AUDIO, CLAN_COLORS, CLAN_CREATE_COST, CLAN_LOGO_SIZE, CLAN_MAX_MEMBE
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3315: clans are parties now */
+import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3317: clans are parties now */
 /* ═══ ClanPanel — clan create/manage/war screen ═══ */
 /* v2.3.859: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen). createElement subtree unchanged. Props:
@@ -176,7 +176,7 @@ export function ClanPanel(props) {
       clearTimeout(t);
     };
   }, [leaveArmed]);
-  /* ═══ v2.3.3315: CLANS ARE PARTIES NOW (server clanparty.js) ═══
+  /* ═══ v2.3.3317: CLANS ARE PARTIES NOW (server clanparty.js) ═══
      Against a worker with caps.clanparty no clan can be made, joined or taken
      to war, and every clan has become a party -- so this window, wherever it
      is opened from (the Guild Hall, the dashboard, a stale menu), says so and

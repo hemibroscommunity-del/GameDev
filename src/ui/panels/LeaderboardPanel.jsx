@@ -2,7 +2,7 @@ import React from 'react';
 import { LIFE_SKILLS } from '@/data/index.js';
 import { BT_API_BASE } from '@/networking/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
-import { myAllyTag } from '@/game/alliance.js';   /* v2.3.3315: the tag a player wears is their alliance's or former clan's */
+import { myAllyTag } from '@/game/alliance.js';   /* v2.3.3317: the tag a player wears is their alliance's or former clan's */
 
 /* ═══ LeaderboardPanel — top-50 rankings per category ═══ */
 /* v2.3.856: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -249,7 +249,7 @@ export function LeaderboardPanel(props) {
           dungeons: d.dungeons || 0,
           gold: d.goldEarned || 0,
           playtime: d.playtime || 0,
-          clanTag: o.allyTag || d.clanTag || null   /* v2.3.3315: the worker's stamp (allyTag) first */
+          clanTag: o.allyTag || d.clanTag || null   /* v2.3.3317: the worker's stamp (allyTag) first */
         });
       });
     }

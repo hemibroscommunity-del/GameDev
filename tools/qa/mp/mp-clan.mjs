@@ -14,7 +14,7 @@ const clan = (P) => H.readState(P, (S) => {
   return { name: c.name, tag: c.tag, members: c.members ? c.members.length : 0 };
 });
 
-/* v2.3.3315: clans are parties now (server clanparty.js) -- a clan can be
+/* v2.3.3317: clans are parties now (server clanparty.js) -- a clan can be
    founded only under the switch that keeps them, `clanparty: false`, so this
    scenario runs under it (before anyone joins: the phones read it in their
    caps) and clears it at the end.  The new path is mp-clanparty. */
@@ -26,6 +26,14 @@ export async function run(ctx) {
 
 async function runClans({ browser, wsPort, webPort, rec }) {
   const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Founder', nameB: 'Recruit' });
+  /* v2.3.3317: joinPair's focus click lands on the middle of the screen,
+     where the other player stands, and opens their player card -- which then
+     sat over the clan window's "Create Clan" (COVERED BY div.bt-pcard-tiles)
+     on every run.  Closed first, as a player would. */
+  for (const P of [A, B]) {
+    await P.page.evaluate(() => { for (const b of document.querySelectorAll('.bt-pcard .bt-inspect-close')) b.click(); });
+  }
+  await A.page.waitForTimeout(300);
   const aId = await H.readState(A, (S) => S.myId);
   const bId = await H.readState(B, (S) => S.myId);
 
@@ -97,7 +105,13 @@ async function runClans({ browser, wsPort, webPort, rec }) {
       .then(() => true).catch(() => false);
     rec.ok('the clan panel shows the invite to accept', acceptable);
     if (acceptable) {
-      await H.clickText(B, 'Accept invite');
+      /* v2.3.3317: since v2.3.3066 an invite also raises its own card
+         wherever you are (ClanInviteCard.jsx), and it sits over the clan
+         window -- its Accept is the one a player sees, and sends the same
+         clan_join_accept as the window's */
+      const card = await B.page.$('[data-clan-invite-accept]');
+      if (card && await card.isVisible()) await card.click();
+      else await H.clickText(B, 'Accept invite');
       const joined = await H.waitFor(B, (S) => (S._clanData ? S._clanData.tag : null), (t) => t === 'HQA',
         { timeout: 20000, label: 'B joins the clan' }).then(() => true).catch(() => false);
       rec.ok('accepting actually joins the clan', joined, await clan(B));

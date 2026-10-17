@@ -87,6 +87,20 @@ that never switches off:
   (`lightfx/zoneLight.js`). A zone with no sun (Flame Fields, the caves)
   gets it evenly. It dims at night and in a zone's deep levels, but never
   goes out: metal still catches the moon.
+- **The sun side is the figure's** (v2.3.3317). The shader lays "the side
+  facing the sun" across the filter's own area, and for a sprite that is its
+  own picture's frame. The body and its armour share the body's frame, so
+  they always agreed; a held weapon is a picture of its own, turned and
+  flipped in the hand, and a greatsword's blade lies at one end of its big
+  frame -- so its highlight sat on the side AWAY from the sun (the sun test
+  below read 0.35 on the figure's left third with a greatsword in hand,
+  against 1.0 for the armour alone). Now every piece is told where its
+  figure's frame lies in its own (`uFig`, glint.js `frameBoxNow`/`_figIn`:
+  both boxes from the transforms as they are this frame, as Pixi's filter
+  area is), and the sun side is laid across the figure. A piece with no
+  figure to lay it on -- the body itself, or a swing's or gatherer's
+  stand-in while the body is hidden -- keeps its own frame, as before.
+  TRAPS §197.
 - **It climbs with the grade**, like the glint: normal 0.83, rare 0.93,
   elite 1.05, godly 1.2 at its brightest. These are the **strong cut**: the
   preview first showed a soft sheen (0.55 for a normal piece) beside one
@@ -210,9 +224,11 @@ the gear sheets' budget first.
   figure with no metal carries nothing;
 - every metal comes out brighter, and copper's added light stays warm
   (the brightened pixels average 212, 149, 87);
-- it follows the sun: on the figure's left third, 75% of the lit pixels are
+- it follows the sun: on the figure's left third, 100% of the lit pixels are
   brighter with the sun on the left; on its right third, 100% are brighter
-  with the sun on the right;
+  with the sun on the right -- with a steel greatsword in hand, whose blade
+  read 35% on the left third until its sun side was laid across the figure
+  (v2.3.3317, above; 75% when the check was written);
 - jogging in a full copper set, the knight figure on the body sprite carries
   it;
 - the pass count per figure (and the frame time, which this machine is too

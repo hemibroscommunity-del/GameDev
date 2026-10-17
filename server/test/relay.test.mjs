@@ -133,11 +133,11 @@ for (const type of RELAY.TYPES) {
     duel.length === 1 && duel[0].payload.from === A && duel[0].payload.fromName === NAME_A, duel);
   const dec = one(await relay({ type: 'duel_decline', payload: { target: A, from: A } }, B), 'duel_decline');
   check('4. ...declined by its target, in the target\'s name', dec.length >= 1 && dec.some((e) => e.from === B && e.payload.from === B), dec);
-  /* v2.3.3315: clans are parties now (clanparty.js) -- no clan invite is
+  /* v2.3.3317: clans are parties now (clanparty.js) -- no clan invite is
      relayed; the kill switch `clanparty: false` keeps the old relay */
   const inv = { type: 'clan_invite', payload: { target: B, from: B, fromName: 'Bob', clanName: 'X', clanTag: 'X' } };
   const gone = one(await relay(inv), 'clan_invite');
-  check('4. a clan invite is not relayed: clans are parties now (v2.3.3315)', gone.length === 0, gone);
+  check('4. a clan invite is not relayed: clans are parties now (v2.3.3317)', gone.length === 0, gone);
   const flags0 = room._liveFlags;
   room._liveFlags = Object.assign({}, flags0 || {}, { clanparty: false });
   const clan = one(await relay(inv), 'clan_invite');

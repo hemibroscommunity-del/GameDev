@@ -2524,7 +2524,7 @@ remnant to migrate server-side, not a mode to preserve.
         switch `alliance: false` (off with `partykeep: false` too; tags off at
         the next echo); `alliance` suite (96), `mp-alliance` (a phone, 39
         bots, a second phone watching the plate).
-    - since v2.3.3315 STEP 3, CLANS BECOME PARTIES (server/src/clanparty.js,
+    - since v2.3.3317 STEP 3, CLANS BECOME PARTIES (server/src/clanparty.js,
       docs/specs/alliance.md "Step 3"):
       - no new clans: `clan_create`, `clan_join_accept` and `clan_war_declare`
         answered "Clans are parties now: make a party in the Saloon", and a

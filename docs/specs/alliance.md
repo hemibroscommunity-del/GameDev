@@ -152,7 +152,7 @@ The test lever `/dev/combat {skill | 'all', level}` (devtools.js) sets a combat
 level -- the alliance counts level 5 and up, and its phone check raises 39 bots
 there.
 
-## Step 3: clans become parties (v2.3.3315)
+## Step 3: clans become parties (v2.3.3317)
 
 The owner's plan, approved with the rest ("Go recommended"), built after step 2
 merged. `server/src/clanparty.js`; the phone's side in `src/game/alliance.js`
@@ -179,8 +179,11 @@ merged. `server/src/clanparty.js`; the phone's side in `src/game/alliance.js`
   free members is no party, its records simply go and its name and tag are
   free. The clan is taken out of the registry before its own name and tag are
   checked against the alliances' (found by the suite: left in, every
-  converted party lost its tag to itself). One-way: a clan holds nothing a
-  party lacks (no gold; its wars need the old lands, which are closed).
+  converted party lost its tag to itself). One-way, and what a party has no
+  place for goes with the clan's record: its two colours (the tag's colour on
+  a player's card, `clanColor1`) and its logo (drawn in the clan window only);
+  its leader's 500 gold founding fee is not given back. A clan holds no gold,
+  and its wars need the old lands, which are closed.
 - **Whoever is online is told at once**: the clan's tag comes off every screen
   (clans.js `_clanUntag`, the tail of `_clanRemoveMember`), the party's tag
   goes on (`_allySetTag`, forced), and the members get `party_state` with

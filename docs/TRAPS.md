@@ -6727,3 +6727,26 @@ must stop programs needs a check a program cannot pass by typing a header
 (the message limits, the account check).
 **Receipt:** origin.test.mjs §1 ("no Origin is a program") and the mutation
 that refuses it.
+
+## 197. "A filter's area is the piece, so lay the piece's light across it" (v2.3.3317)
+
+**Tempting:** a per-sprite filter that lights one side of a piece -- the metal
+sheen's sun side (lightfx/glint.js) -- is written against `p`, the fragment's
+place in the filter's own area, 0 to 1 across the sprite's frame. On the body
+and its armour it looks right, and mp-sheen's sun check passed on them.
+
+**Wrong.** The filter's area is the SPRITE's frame (its whole `orig`, placed by
+its anchor), and only the body and its armour share one. A held weapon is a
+picture of its own, a big frame turned and flipped in the hand with the blade
+at one end of it: across that frame "the side facing the sun" was wherever the
+frame's own left lay, and a greatsword's highlight sat on the side AWAY from
+the sun -- the figure's left third 0.35 brighter under a left sun, where the
+armour alone reads 1.0.
+
+**The rule:** what belongs to the FIGURE -- the sun on it, a gradient over it --
+is laid across the figure's frame, handed to each piece in its own frame's
+0-1 units (glint.js `uFig`, `frameBoxNow`: both boxes from the transforms as
+they are this frame, the way Pixi's filter area is made); `p` alone is right
+only for what belongs to the piece itself (its outline, its own rainbow).
+**Receipt:** mp-sheen "it follows the sun" with a steel greatsword in hand: the
+left third 0.35 -> 1.0, the right third 1.0.

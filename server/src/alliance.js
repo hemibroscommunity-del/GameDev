@@ -100,7 +100,7 @@ export function cleanAlly(a) {
     name: allyName(a.name),
     tag: allyTagOk(a.tag),
     renamedAt: +a.renamedAt || 0,
-    /* v2.3.3315: a former clan (clanparty.js) -- its tag is worn below 20 */
+    /* v2.3.3317: a former clan (clanparty.js) -- its tag is worn below 20 */
     ...(a.clan ? { clan: 1 } : {}),
   };
 }
@@ -200,7 +200,7 @@ export const allianceMethods = {
   },
 
   /* the tag a player wears: their party's, while it is an alliance -- or,
-     v2.3.3315, while it is a former clan, an alliance or not (the owner's
+     v2.3.3317, while it is a former clan, an alliance or not (the owner's
      third decision: "former clans keep theirs below 20", clanparty.js) */
   _allyTagOf(pid) {
     if (!this._allyOn()) return null;

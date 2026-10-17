@@ -1217,7 +1217,7 @@ export async function devOp(wsPort, op, playerId, body) {
   return res.json();
 }
 
-/* v2.3.3315: a room's live flag set (a boolean or a number) or, with null,
+/* v2.3.3317: a room's live flag set (a boolean or a number) or, with null,
    cleared -- POST / DELETE /api/admin/flags (liveops.js).  The main room
    unless `room` is named.  A scenario that sets one clears it before it ends:
    one worker serves the whole run. */
