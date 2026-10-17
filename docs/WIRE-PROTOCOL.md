@@ -109,6 +109,19 @@ risk is cosmetic only (see the comment block at server:91 for the full
 rationale). **New client→server events are denied by default** unless a case
 is added deliberately.
 
+**v2.3.3301: and the default branch is an ALLOWLIST.** Only the types an
+honest phone relays (`RELAY.TYPES`, server/src/relay.js) are rebroadcast; any
+other type is dropped, silently, as a privileged one always was, and costs no
+relay budget. Every relay goes out REBUILT: `{type, from, payload}` and nothing
+else, the payload a copy whose sender fields are the worker's -- `id` always,
+and `from` / `playerId` (the sender's id) and `fromName` / `playerName` /
+`name` (the worker's name for them) wherever the phone put one. The phone
+reads the worker's `from` before the payload's `id` (wsClient.js). Before, a
+script could relay "Bob died" or "Bob invites you to his clan" in Bob's name.
+A new relay goes in `RELAY.TYPES` or it reaches no one: `relay.test.mjs` holds
+the list to every broadcast in src/. Kill switch `relaylist: false` (any
+unprivileged type relays again, still rebuilt). Spec: docs/specs/relay.md.
+
 ## Server → client messages
 
 Handlers live in the main WS switch unless marked `[dispatcher]`
@@ -481,6 +494,10 @@ Sent via `channelShim.send({...})`, hit the server's default branch, pass the
 `PRIVILEGED_EVENTS` check, and are rebroadcast to the room. Handled in
 `_processGameEvent`. These are **cosmetic/social by design** — anything with
 gameplay authority must instead get a real server case.
+
+**v2.3.3301:** each one must be in `RELAY.TYPES` (server/src/relay.js), and
+each goes out in its sender's name -- see the Security model above and
+docs/specs/relay.md. The table below is that list.
 
 | Event | Purpose | Dispatcher case |
 |---|---|---|
