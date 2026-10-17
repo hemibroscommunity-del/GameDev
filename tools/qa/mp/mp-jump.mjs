@@ -35,7 +35,13 @@ import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
 const SIDEWAYS = { width: 844, height: 390 };
-const AIR_MS = 1800;      /* ?jumpms= */
+/* ?jumpms=.  v2.3.3283: 3000, the most it takes (was 1800).  This box now
+   draws a frame every ~400 ms, and a frame moves at most three 60 fps steps
+   (S._dtScale's cap): crossing the fence's footprint took ~1.6 s of air, more
+   than a 1.8 s jump has left once he is high enough, so the game rightly kept
+   his feet out of the fence and he never moved (on main, and again here with
+   the watcher closed: feet at 22,617 both times). */
+const AIR_MS = 3000;
 const PEAK = 68;          /* JUMP_PEAK (game/jump.js) */
 const HS = 10;            /* the walk box's half-width (hs in BroTown.jsx) */
 const FRAME = { east: 1, north: 8, northeast: 4, south: 7, southwest: 6 };   /* JUMP_FRAME */
@@ -259,6 +265,13 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
   rec.ok('...with a ring of dust where he came down', !!dust && dust.n >= 6 && dust.at > 0, dust);
   const qHas = recQ.some((r) => r.peerJump), qLift = recQ.some((r) => r.peers >= 1);
   rec.ok(`another player sees it: the relay lands and their copy of him is lifted (${recQ.filter((r) => r.peers >= 1).length} of their frames)`, qHas && qLift, { frames: recQ.length, qHas, qLift });
+  /* v2.3.3283: the watcher's job is done, so its page goes.  It drew every
+     frame of the rest too, and on this box halved the jumper's: on main a
+     1.8 s jump got 4 frames, a frame moves at most three 60 fps steps
+     (S._dtScale's cap), and the jump over the fence came down 37 px short of
+     clearing it -- the game rightly stopping feet that could not get out of
+     the fence before landing.  (The finally closes it again, harmlessly.) */
+  await Q.ctx.close().catch(() => {});
 
   /* ── 3. in the air, the rest waits ──
      take off, and in the SAME turn of the page (its frames are ~200 ms

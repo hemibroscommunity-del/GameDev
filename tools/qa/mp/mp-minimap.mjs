@@ -248,10 +248,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
        is marked if and only if it is placed on the map that ships.  Naming all
        four rather than counting them, so a prop that quietly loses its mark
        fails here by name instead of hiding inside a total. */
-    for (const id of ['forge', 'auction-house', 'bank', 'enchanter']) {
+    /* v2.3.3278: THREE SHOPFRONTS, NOT FOUR.  v2.3.2630 took the enchanter's
+       building out of town at the owner's word ("Remove the enchanter building
+       and put the bank in its place", worldProps.js), and this list kept
+       asking for its mark -- red on main from that day.  The claim stands as
+       written above: marked if and only if placed.  So the enchanter is now
+       asserted ABSENT, which also catches it coming back without a prop. */
+    for (const id of ['forge', 'auction-house', 'bank']) {
       rec.ok(`the ${id} is marked -- the blueprint placed it on town_v17`,
         !!pm && pm.some((m) => m.id === id), { want: id, marks: pm });
     }
+    rec.ok('the enchanter is NOT marked -- its building left town in v2.3.2630',
+      !!pm && !pm.some((m) => m.id === 'enchanter'), { marks: pm });
     /* Still a real distinctness claim, at the size the bare town supports:
        the marks that ARE drawn must not have collapsed onto one glyph. */
     rec.ok('...and the marks still drawn are distinct textures (guard)',
@@ -374,9 +382,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!(fromTown && fromTown.zoneId === 'worldview'), fromTown);
   /* And it is a real tile of this zone, not an off-map coordinate — the same
      failure two town reshapes have already caused for the exit tables. */
+  /* v2.3.3278: town's size from the game's own zone table, not 52 x 55 tiles
+     written here: town grew (v2.3.2628's bigger plateau), its way out stands
+     at y 2,032, and this check failed on a real tile of a real town. */
+  const townPx = await P.page.evaluate(() => {
+    const z = window.ZONES && window.ZONES.town, T = window.TILE;
+    return z && T ? { w: z.w * T, h: z.h * T } : null;
+  });
   rec.ok('...at a coordinate inside the town zone',
-    !!(fromTown && fromTown.x > 0 && fromTown.y > 0
-       && fromTown.x < 52 * 32 && fromTown.y < 55 * 32), fromTown);
+    !!(fromTown && townPx && fromTown.x > 0 && fromTown.y > 0
+       && fromTown.x < townPx.w && fromTown.y < townPx.h), { fromTown, townPx });
 
   /* ═══ v2.3.1970: WAIT FOR THE PROBE, NOT FOR A STOPWATCH ═══
      These two steps poke S.currentZone directly rather than walking a portal,

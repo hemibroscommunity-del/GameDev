@@ -190,9 +190,80 @@ export const inboxMethods = {
    * notification).  Offline, or online with a full weapon stash -> parked
    * in inbox:<id> and drained at the next join.  Returns 'delivered' |
    * 'inboxed' | 'dup'. */
+  /* ═══ v2.3.3294: THE STAMP GOES OUT WITH THE PAYMENT ═══
+     This stamped `oplog:<opId>` first, awaited, and paid after -- two writes.
+     Under the project's own crash model (an await between two writes is a
+     place a restart can land: v2.3.3165, v2.3.3185) a restart between them
+     left "paid" on file and nothing paid, and every retry reads the stamp as
+     proof: a duel's pot, an arena prize, a market or auction rebuild, the
+     daily spin -- 49 callers ride this one function.  Found by the
+     architecture review (2026-10-17).  Now everything is READ first (the
+     stamp, the mailbox, the gear row's ledger -- the row's grant is
+     idempotent, so a retry converges on one), and the stamp is issued in the
+     same synchronous run as the payment's own write -- the player's save, or
+     the mailbox -- so the two commit together: both, or neither, and a retry
+     pays as if for the first time.
+     And the stamp alone never kept two calls with ONE opId apart: both read
+     "not seen" before either wrote it.  A call already running for an opId
+     answers 'dup' to the second (in memory; a restart has nothing running). */
   async _creditPlayer(playerId, entry) {
+    const opId = entry && entry.opId;
+    if (opId) {
+      if (!this._opInFlight) this._opInFlight = new Set();
+      if (this._opInFlight.has(opId)) return 'dup';
+      this._opInFlight.add(opId);
+    }
+    try {
+      return await this._creditPlayerOnce(playerId, entry);
+    } finally {
+      if (opId) this._opInFlight.delete(opId);
+    }
+  },
+
+  /* ═══ v2.3.3294: A SWAP'S CREDITS IN THE SAME WRITE AS ITS DEBITS ═══
+     A trade debited both sides and saved them, then paid each side with an
+     awaited _creditPlayer of its own: a restart in between (every server
+     merge restarts the room) took what each had given and paid neither, and
+     a trade lives in memory, so nothing ever came back for it.  The input
+     gate kept other players out of the middle of the trade, but it never
+     made its writes one (the architecture review, 2026-10-17).
+     For a swap whose sides are both in the room -- they just accepted or
+     confirmed -- the caller debits in memory and calls this in the SAME
+     synchronous run: each credit is applied to its player's live state, and
+     every player in `saves` and every recipient is saved and every credit's
+     opId stamped before the first await, so the debits, the credits and the
+     stamps commit as ONE batch.  The trade happened, or it did not.
+     Returns the promise of those writes; or null with NOTHING done when a
+     recipient is not in the room, or a credit is a kind that might not land
+     now (only gold and stackable items always do) -- the caller then credits
+     one by one through _creditPlayer, as before. */
+  _creditLiveTogether(credits, saves) {
+    const list = Array.isArray(credits) ? credits : [];
+    for (const c of list) {
+      if (!c || !c.entry || !this.playerState[c.pid]) return null;
+      if (c.entry.kind !== 'gold' && c.entry.kind !== 'item') return null;
+    }
+    const touched = new Set(Array.isArray(saves) ? saves : []);
+    const byPid = new Map();
+    for (const c of list) {
+      this._applyCreditToPs(this.playerState[c.pid], c.entry, c.pid);
+      touched.add(c.pid);
+      if (!byPid.has(c.pid)) byPid.set(c.pid, []);
+      byPid.get(c.pid).push(c.entry);
+    }
+    const writes = [];
+    for (const pid of touched) {
+      const ps = this.playerState[pid];
+      if (ps) writes.push(this._saveRpg(pid, ps));
+    }
+    for (const c of list) writes.push(this._opStamp(c.entry.opId));
+    for (const pid of touched) this._queuePlayerStateFlush(pid);
+    for (const [pid, entries] of byPid) this._sendInboxDelivered(pid, entries, 0);
+    return Promise.all(writes);
+  },
+
+  async _creditPlayerOnce(playerId, entry) {
     if (await this._opSeen(entry.opId)) return 'dup';
-    await this._opStamp(entry.opId);
     /* ═══ v2.3.2539: THE ROW ONLY LANDS IF THE PIECE DOES ═══
        v2.3.2536 granted the provenance row FIRST and unconditionally, on
        the argument that an offline recipient has no output gate holding a
@@ -214,12 +285,16 @@ export const inboxMethods = {
     const _fits = entry.kind !== 'gear' || !!(ps && this._gearCreditFits(ps, entry));
     if (_fits) await this._creditGearRow(playerId, entry);
     if (ps && _fits && this._applyCreditToPs(ps, entry, playerId)) {
+      /* v2.3.3294: the save and the stamp in ONE synchronous run (above) */
       this._saveRpg(playerId, ps);
+      const stamped = this._opStamp(entry.opId);
       this._queuePlayerStateFlush(playerId);
       this._sendInboxDelivered(playerId, [entry], 0);
+      await stamped;
       return 'delivered';
     }
-    await this._inboxAppend(playerId, entry);
+    /* v2.3.3294: the mailbox and the stamp in one write (_inboxAppend) */
+    await this._inboxAppend(playerId, entry, entry.opId);
     /* Parked: the gate has to know this id is mail, not property, for as
        long as it sits there (gearprov.js _gearSellable, reason 'in_mail'). */
     this._gearCreditMail(playerId, entry, true);
@@ -338,32 +413,59 @@ export const inboxMethods = {
   // grow the box unboundedly.  Weapons can't merge; they still append
   // (dropping value is worse than storage growth, and the producers --
   // market listings, trades -- are themselves capped per player).
-  async _inboxAppend(playerId, entry) {
+  /* ═══ v2.3.3294: ONE MAILBOX WRITE AT A TIME, AND THE STAMP WITH IT ═══
+     This read the box, added the entry and wrote it back.  Two credits to
+     one player that were not awaited one after the other (No man's land's
+     loot to a killer whose stash is full, nomansland.js) each read the box
+     before either wrote it, and each wrote its own copy: all but the last
+     entry lost, every one of them stamped paid.  Reproduced on the real
+     _creditPlayer (the architecture review, 2026-10-17): five gold credits
+     to an offline player left one.  Now every read-and-write of a player's
+     box -- this, and the join's drain -- waits its turn (_inboxSerial), and
+     `opId`, when given, is stamped in the SAME synchronous run as the box's
+     write (_creditPlayer's header). */
+  async _inboxAppend(playerId, entry, opId) {
     const key = 'inbox:' + playerId;
-    const box = (await this.state.storage.get(key)) || [];
-    if (box.length >= 200) {
-      const p = entry.payload || {};
-      if (entry.kind === 'gold') {
-        const g = box.find((e) => e.kind === 'gold');
-        if (g) {
-          g.payload.amount = (g.payload.amount || 0) + Math.max(0, Math.floor(p.amount || 0));
-          g.note = 'merged payouts';
-          await this.state.storage.put(key, box);
-          return;
+    return this._inboxSerial(key, async () => {
+      const box = (await this.state.storage.get(key)) || [];
+      let merged = false;
+      if (box.length >= 200) {
+        const p = entry.payload || {};
+        if (entry.kind === 'gold') {
+          const g = box.find((e) => e.kind === 'gold');
+          if (g) {
+            g.payload.amount = (g.payload.amount || 0) + Math.max(0, Math.floor(p.amount || 0));
+            g.note = 'merged payouts';
+            merged = true;
+          }
+        }
+        if (!merged && entry.kind === 'item' && typeof p.invKey === 'string') {
+          const it = box.find((e) => e.kind === 'item' && e.payload && e.payload.invKey === p.invKey);
+          if (it) {
+            it.payload.count = (it.payload.count || 1) + Math.max(1, Math.floor(p.count || 1));
+            it.note = 'merged payouts';
+            merged = true;
+          }
         }
       }
-      if (entry.kind === 'item' && typeof p.invKey === 'string') {
-        const it = box.find((e) => e.kind === 'item' && e.payload && e.payload.invKey === p.invKey);
-        if (it) {
-          it.payload.count = (it.payload.count || 1) + Math.max(1, Math.floor(p.count || 1));
-          it.note = 'merged payouts';
-          await this.state.storage.put(key, box);
-          return;
-        }
-      }
-    }
-    box.push({ opId: entry.opId, ts: Date.now(), source: entry.source || '', kind: entry.kind, payload: entry.payload, note: entry.note || '' });
-    await this.state.storage.put(key, box);
+      if (!merged) box.push({ opId: entry.opId, ts: Date.now(), source: entry.source || '', kind: entry.kind, payload: entry.payload, note: entry.note || '' });
+      const writes = [this.state.storage.put(key, box)];
+      if (opId) writes.push(this._opStamp(opId));
+      await Promise.all(writes);
+    });
+  },
+
+  /* v2.3.3294: run `fn` after every read-and-write of mailbox `key` started
+     before it has finished, whatever became of them.  In memory only: a
+     restart has nothing running.  The tail is dropped once it is the last. */
+  _inboxSerial(key, fn) {
+    if (!this._inboxChains) this._inboxChains = new Map();
+    const prev = this._inboxChains.get(key) || Promise.resolve();
+    const run = prev.then(() => fn(), () => fn());
+    const tail = run.then(() => {}, () => {});
+    this._inboxChains.set(key, tail);
+    tail.then(() => { if (this._inboxChains.get(key) === tail) this._inboxChains.delete(key); });
+    return run;
   },
 
   // Drain the offline inbox into a freshly joined player.  Called from
@@ -375,6 +477,15 @@ export const inboxMethods = {
       /* v2.3.2438: the oplog prune is NOT here any more -- see
          _opPruneMaybe.  A join must never wait on housekeeping. */
       const key = 'inbox:' + playerId;
+      /* v2.3.3294: in its turn with every other write of this box
+         (_inboxSerial): a credit appended while the drain was granting a
+         gear row was written over by the drain's remainder */
+      await this._inboxSerial(key, () => this._drainInboxNow(playerId, ws, key));
+    } catch (e) { /* mail must never block a join */ }
+  },
+
+  async _drainInboxNow(playerId, ws, key) {
+    {
       const box = await this.state.storage.get(key);
       if (!box || !box.length) return;
       const ps = this.playerState[playerId];
@@ -408,7 +519,7 @@ export const inboxMethods = {
       writes.push(remainder.length ? this.state.storage.put(key, remainder) : this.state.storage.delete(key));
       await Promise.all(writes);
       if (delivered.length) this._sendInboxDelivered(playerId, delivered, remainder.length, ws);
-    } catch (e) { /* mail must never block a join */ }
+    }
   },
 
   /* v2.3.2536: put a credited piece's provenance row into the recipient's

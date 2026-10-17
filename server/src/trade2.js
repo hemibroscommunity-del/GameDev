@@ -43,6 +43,7 @@
  * the marketplace's escrowed listings -- deliberate; see spec). */
 
 import { PETBOOK, petPublic } from './petbook.js';   /* v2.3.3122: the pet lane */
+import { PACE } from './flood.js';   /* v2.3.3293: the weapon lane's pace */
 
 export const TRADE2 = {
   INVITE_TTL: 60000,    // open-toward-you offer lifetime
@@ -305,21 +306,44 @@ export const trade2Methods = {
     }
     s.state = 'done';
     this._trades2.delete(s.id);
-    this._saveRpg(s.a, psA);
-    this._saveRpg(s.b, psB);
-    this._queuePlayerStateFlush(s.a);
-    this._queuePlayerStateFlush(s.b);
     // Credit each side what the OTHER staged (opId-idempotent; both
     // parties are online -- they just confirmed -- so these apply live).
+    const credits = [];
     for (const side of sides) {
       const gets = s.offers[side.getsFrom] || {};
       const note = 'trade with ' + (side.getsFrom === s.a ? s.aName : s.bName);
       if (gets._gold) {
-        await this._creditPlayer(side.id, { opId: 'trade2:' + s.id + ':' + side.id + ':gold', source: 'trade', kind: 'gold', payload: { amount: gets._gold }, note });
+        credits.push({ pid: side.id, entry: { opId: 'trade2:' + s.id + ':' + side.id + ':gold', source: 'trade', kind: 'gold', payload: { amount: gets._gold }, note } });
       }
       for (const [k, v] of Object.entries(gets)) {
         if (k === '_gold') continue;
-        await this._creditPlayer(side.id, { opId: 'trade2:' + s.id + ':' + side.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note });
+        credits.push({ pid: side.id, entry: { opId: 'trade2:' + s.id + ':' + side.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note } });
+      }
+    }
+    /* v2.3.3294: both sides' debits, their pets and their credits in ONE
+       write (inbox.js _creditLiveTogether).  The "one input-gated critical
+       section" above kept other players out, but the two saves went first
+       and each credit was awaited after them, so a restart in between took
+       what each side gave and paid neither: the window lives in memory, and
+       nothing comes back for it.  Not both in the room: as before. */
+    const together = this._creditLiveTogether(credits, [s.a, s.b]);
+    if (together) {
+      await together;
+    } else {
+      this._saveRpg(s.a, psA);
+      this._saveRpg(s.b, psB);
+      this._queuePlayerStateFlush(s.a);
+      this._queuePlayerStateFlush(s.b);
+      for (const side of sides) {
+        const gets = s.offers[side.getsFrom] || {};
+        const note = 'trade with ' + (side.getsFrom === s.a ? s.aName : s.bName);
+        if (gets._gold) {
+          await this._creditPlayer(side.id, { opId: 'trade2:' + s.id + ':' + side.id + ':gold', source: 'trade', kind: 'gold', payload: { amount: gets._gold }, note });
+        }
+        for (const [k, v] of Object.entries(gets)) {
+          if (k === '_gold') continue;
+          await this._creditPlayer(side.id, { opId: 'trade2:' + s.id + ':' + side.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note });
+        }
       }
     }
     // v2.3.1213: deliver each weapon the OTHER side escrowed at stage.
@@ -517,6 +541,14 @@ export const trade2Methods = {
   async _handleTrade2StageWeapon(session, payload) {
     const s = this._t2SessionFor(session.id);
     if (!s) return;
+    /* ═══ v2.3.3293: PACED (flood.js PACE.T2WPN) ═══
+       Staging and unstaging are durable writes -- the escrow record, the
+       stash, the refund's stamp -- and must stay so (value at rest, rule 7).
+       Unpaced, a window held open by a second account (a free guest) let one
+       socket write ~2.5 rows a message: 100 messages, 250 rows, at up to the
+       flood budget's 120 a second (the architecture review, 2026-10-17).  So
+       the MESSAGES are paced, shared by both: past the burst, refused. */
+    if (this._paceTake && !this._paceTake('t2wpn', session.id, PACE.T2WPN)) return;
     const ps = this.playerState[session.id];
     if (!ps || ps.dying || ps.dead) return;
     if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
@@ -539,12 +571,18 @@ export const trade2Methods = {
     if (!weapon) return;
     ps.weaponStash.splice(idx, 1);
     const seq = (this._t2WpnSeq = (this._t2WpnSeq || 0) + 1);
-    await this.state.storage.put('trade2wpn:' + session.id + ':' + seq, {
+    /* v2.3.3294: the escrow record and the stash it left in ONE write.  The
+       record was written and awaited first, the stash saved after: a
+       restart between them left the weapon in the saved stash AND in
+       escrow, and the restart sweep (_trade2WpnSweep) refunds escrow it
+       finds -- two of it (the architecture review, 2026-10-17). */
+    const escrowed = this.state.storage.put('trade2wpn:' + session.id + ':' + seq, {
       pid: session.id, sid: s.id, seq, weapon, ts: Date.now(),
     });
     mine.push({ seq, weapon });
     this._saveRpg(session.id, ps);
     this._queuePlayerStateFlush(session.id);
+    await escrowed;
     // Anti-switch: staging is a change -> reset BOTH confirms.
     // v2.3.1754: and both readies, plus the change stamp (see _handleTrade2Set).
     s.confirmed[s.a] = false;
@@ -564,6 +602,9 @@ export const trade2Methods = {
     const mine = s.weapons[session.id] || [];
     const at = mine.findIndex((w) => w.seq === seq);
     if (at < 0) return;
+    /* v2.3.3293: the same pace as staging (above); refused here, the weapon
+       simply stays staged -- a cancel still refunds every one */
+    if (this._paceTake && !this._paceTake('t2wpn', session.id, PACE.T2WPN)) return;
     const [entry] = mine.splice(at, 1);
     await this._creditPlayer(session.id, {
       opId: 'trade2:' + s.id + ':wpnrefund:' + session.id + ':' + entry.seq,
