@@ -301,7 +301,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const Z = (window.__btZones || {})[S.currentZone];
       const mw = Z.w * 32, mh = Z.h * 32;
       const gx = Math.floor(S.player.x * gw / mw), gy = Math.floor(S.player.y * gh / mh);
-      /* v2.3.3300: a wall is false, or 0 in the Wheel's byte rows (wheelTrial.js lazyGrid) */
+      /* v2.3.3310: a wall is false, or 0 in the Wheel's byte rows (wheelTrial.js lazyGrid) */
       const open = (x, y) => y >= 0 && y < gh && x >= 0 && x < gw && g[y][x] !== false && g[y][x] !== 0;
       let nearest = Infinity;
       for (let r = 1; r < 40 && nearest === Infinity; r++) {

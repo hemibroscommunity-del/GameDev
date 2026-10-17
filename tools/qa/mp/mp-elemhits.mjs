@@ -369,7 +369,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     }
     return null;
-  }, (await H.wheelGeom()).cx);   /* v2.3.3300: the Wheel the worker plays */
+  }, (await H.wheelGeom()).cx);   /* v2.3.3310: the Wheel the worker plays */
   rec.ok('looks: a clear patch of the commons to stand on', !!open, open);
   if (open) {
     await H.hopTo(P, open.x, open.y, { step: 100, gap: 260, tries: 40 });
@@ -423,7 +423,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { home: 'thunder', st: 'shock', name: 'a Storm Peaks slime' },
     { home: 'hollows', st: 'daze', name: 'a rock monster' },
   ];
-  const CENTRE = [(await H.wheelGeom()).cx, (await H.wheelGeom()).cy];   /* v2.3.3300 */
+  const CENTRE = [(await H.wheelGeom()).cx, (await H.wheelGeom()).cy];   /* v2.3.3310 */
   const settle = async () => {
     let sv = null, cz = null;
     for (let i = 0; i < 60; i++) {

@@ -96,7 +96,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3146: the street's middle a little over a screen-half short of each
        post, town-side -- Main Street runs north-south through the town's
        middle, Market Row east-west -- ~450 px from it */
-    const town = (await (await H.wheelGeom()).map()).hub.town;   /* v2.3.3300: the Wheel the worker plays */
+    const town = (await (await H.wheelGeom()).map()).hub.town;   /* v2.3.3310: the Wheel the worker plays */
     const SHORT = 430;
     const shortOf = (p) => (p.gate === 'north' ? { x: town.x, y: p.y + SHORT } : p.gate === 'south' ? { x: town.x, y: p.y - SHORT }
       : p.gate === 'east' ? { x: p.x - SHORT, y: town.y } : { x: p.x + SHORT, y: town.y });

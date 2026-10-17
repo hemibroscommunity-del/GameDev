@@ -41,7 +41,7 @@ export function gridInfo(plan) {
     if (!a || !b) throw new Error('plan.active needs square names, e.g. { from: "G7", to: "S19" }');
     c0 = Math.max(0, Math.min(a.c, b.c)); r0 = Math.max(0, Math.min(a.r, b.r));
     c1 = Math.min(cols - 1, Math.max(a.c, b.c)); r1 = Math.min(rows - 1, Math.max(a.r, b.r));
-    /* v2.3.3300: `grow` squares more on every side, PAST the frame if need be
+    /* v2.3.3310: `grow` squares more on every side, PAST the frame if need be
        -- the Wheel five times longer (plan.js wheelSized) reaches 57 squares
        beyond A1..AW49 each way.  The frame keeps its names and its corner, so
        every position measured from it (and the centre, Y25) stays where it

@@ -32,7 +32,7 @@
 import { GameRoom } from '../src/index.js';
 import { NML, nmlTierAt, nmlLevelAt, NML_KEY } from '../src/nomansland.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
-import { WHEEL_CENTRE, WHEEL_LONG } from '../src/wheelspawns.js';   /* v2.3.3300: the live Wheel, WHEEL_LONG times longer */
+import { WHEEL_CENTRE, WHEEL_LONG } from '../src/wheelspawns.js';   /* v2.3.3310: the live Wheel, WHEEL_LONG times longer */
 import { PLAN, PLAN5 } from '../../public/tools/world/plan.js';
 
 function makeState() {
@@ -74,7 +74,7 @@ async function join(ws, id, name, data) {
 }
 /* a spot in the Wheel at radius r, on the line due east of the centre */
 const at = (r, dy = 0) => ({ x: WHEEL_CENTRE[0] + r, y: WHEEL_CENTRE[1] + dy });
-const TIER = NML.TIER * WHEEL_LONG;   /* v2.3.3300: the live Wheel's tier */
+const TIER = NML.TIER * WHEEL_LONG;   /* v2.3.3310: the live Wheel's tier */
 const RING = (t) => NML.HUB + (t - 0.5) * TIER;   /* the middle of tier t */
 const place = (ps, p, level) => {
   ps.z = WHEEL_ZONE; ps.x = p.x; ps.y = p.y; ps.dead = false; ps.dying = false; ps.disconnected = false;
@@ -95,7 +95,7 @@ const ps = (k) => room.playerState[ids[k]];
   const W = PLAN.wheel, W5 = PLAN5.wheel;
   check('the rings are the plan\'s: hub, tier, tiers, levels a tier', NML.HUB === W.hub * W.zonePx && NML.TIER === W.tierZones * W.zonePx
     && NML.TIERS === W.tiers && NML.LEVELS_PER_TIER === W.levelsPerTier, { NML, plan: W });
-  /* v2.3.3300: the live Wheel's tiers are WHEEL_LONG times as long (plan.js PLAN5) */
+  /* v2.3.3310: the live Wheel's tiers are WHEEL_LONG times as long (plan.js PLAN5) */
   check('...and the live Wheel\'s: its tiers WHEEL_LONG times as long, the hub the same', WHEEL_LONG === W5.tierZones && TIER === W5.tierZones * W5.zonePx
     && NML.HUB === W5.hub * W5.zonePx, { WHEEL_LONG, TIER, plan: W5 });
   check('the commons and the Lv 1-5 tier are not No man\'s land; Lv 6-10 is 1, Lv 11-15 is 2',

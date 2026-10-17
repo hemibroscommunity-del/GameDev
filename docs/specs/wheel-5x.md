@@ -1,4 +1,4 @@
-# The Wheel five times longer (v2.3.3300)
+# The Wheel five times longer (v2.3.3310)
 
 The owner, 2026-10-17: *"the game map needs to be larger. It goes from lvl 1
 monsters to lvl 20+ way too quickly. Maybe 5x larger map is needed."* Offered
@@ -207,13 +207,13 @@ look three times dearer; it now times only the room.
 - `caps-audit`: a capability may be a number the room decides with one of
   its own methods (`wheelsize: this._wheelLongNow()`).
 - `tools/world/test-world-core.mjs`, "the Wheel five times longer
-  (v2.3.3300)": the plan, the previews' rule (and the page's copy of it), the
+  (v2.3.3310)": the plan, the previews' rule (and the page's copy of it), the
   town the same ground and the same things, both bakes their plans', the
   places on their own land and stretch, the resources, the dungeons, and every
   copy the game keeps of either Wheel.
 - Phone scenarios read the live Wheel from `H.wheelGeom()`
   (`tools/qa/mp/harness.mjs`): its middle, the way in, a stretch on a land's
-  spoke, a blueprint of a few cells -- never a short-Wheel number (TRAPS §187).
+  spoke, a blueprint of a few cells -- never a short-Wheel number (TRAPS §194).
 
 ## Not in this step
 

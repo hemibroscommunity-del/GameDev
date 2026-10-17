@@ -116,7 +116,7 @@ const FIND_LANE = (P, len) => P.page.evaluate(({ len, hs }) => {
   const at = window.__btSwimAt;
   if (!g || !g.length || !Z) return { error: 'no grid', zone: S.currentZone };
   const rows = g.length, cols = g[0].length, cell = (Z.h * 32) / rows;
-  /* v2.3.3300: a wall is false, or 0 in the Wheel's byte rows (wheelTrial.js lazyGrid) */
+  /* v2.3.3310: a wall is false, or 0 in the Wheel's byte rows (wheelTrial.js lazyGrid) */
   const open = (r, c) => r >= 0 && r < rows && c >= 0 && c < cols && g[r][c] !== false && g[r][c] !== 0 && !(at && at((c + 0.5) * cell, (r + 0.5) * cell).swim);
   const W = window.__btWheelObjects;
   const bx = W && W.blockers ? W.blockers() : [];

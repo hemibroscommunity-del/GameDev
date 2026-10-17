@@ -50,7 +50,7 @@ const SEED = Number(FLAG('seed', 1));
   };
 }
 const TICK_MS = 22;
-const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3300: the Wheel the room plays */
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3310: the Wheel the room plays */
 const HOMES = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'];
 const SPEED = 165 / 1000;   /* px a ms */
 

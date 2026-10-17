@@ -58,12 +58,12 @@ import { PARTY_MARK, partyIdsOf } from '../game/partyMarks.js';    /* v2.3.3277:
 const FACING = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 /* v2.3.3057: 12 -> 28, so the town's buildings can be read by name */
 const ZOOM_MAX = 28;
-/* v2.3.3300: zoom 1 is still the whole Wheel on screen, but the long Wheel
+/* v2.3.3310: zoom 1 is still the whole Wheel on screen, but the long Wheel
    (src/game/wheelSize.js) is ~4x as wide, so the zoom goes ~4x as far.  `rel`
    is the zoom the short Wheel would need to draw the world this big. */
 function spanK(map) { return Math.max(1, Math.max(map.worldW, map.worldH) / WHEELS[1].worldW); }
 /* what is labelled from which zoom (1 = the whole Wheel on screen).
-   v2.3.3300: what lies ALONG the lands -- their names, stages, level bands,
+   v2.3.3310: what lies ALONG the lands -- their names, stages, level bands,
    camps, passes, gates, landmarks and roads -- is as far apart as the lands
    are long, so it comes in at the map's own zoom, as it did; what is the
    size it is whichever Wheel it is -- the commons, the town's buildings, a
@@ -157,7 +157,7 @@ function WorldMap({ stateRef, onClose }) {
   const pinch = useRef(null);
   const dirty = useRef(true);
   const [where, setWhere] = useState(null);
-  /* v2.3.3300: the map's zoom and the short Wheel's (`rel`), for the key */
+  /* v2.3.3310: the map's zoom and the short Wheel's (`rel`), for the key */
   const [zoomShown, setZoomShown] = useState([1, 1]);
   /* v2.3.3277: the key says "party" while one of yours is on the map */
   const [partyShown, setPartyShown] = useState(false);
@@ -367,7 +367,7 @@ function clampView(V, map) {
 
 /* ── drawing ── */
 function draw(g, w, h, dpr, map, V, P, facing, t, S) {
-  /* v2.3.3300: `z` the map's own zoom, for what lies along the lands; `zr`
+  /* v2.3.3310: `z` the map's own zoom, for what lies along the lands; `zr`
      the short Wheel's, for what is the same size on either (AT_REL) */
   const k = baseScale(w, h, map) * V.zoom, z = V.zoom, zr = V.zoom / spanK(map);
   const X = (x) => (x - V.cx) * k + w / 2, Y = (y) => (y - V.cy) * k + h / 2;
@@ -380,7 +380,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   if (ov && ov.width) {
     g.imageSmoothingEnabled = true;
     g.drawImage(ov, X(0), Y(0), map.worldW * k, map.worldH * k);
-    /* v2.3.3300: the long Wheel's whole-map picture is a pixel every 16
+    /* v2.3.3310: the long Wheel's whole-map picture is a pixel every 16
        cells; round you the blocks' lands are four times finer, as the
        short Wheel's whole picture is (wheelTrial.js wheelLocalLands) */
     const L = P ? wheelLocalLands(P.x, P.y) : null;

@@ -42,7 +42,7 @@ import { objectCatalog } from '../../public/tools/objects/catalog.js';
 import { materialMap, walkBits } from '../../public/tools/world/core/ground.js';   /* v2.3.3012: the game's own walk grid */
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-/* v2.3.3300: the live Wheel's (WHEEL_LONG times longer, plan.js PLAN5), and the
+/* v2.3.3310: the live Wheel's (WHEEL_LONG times longer, plan.js PLAN5), and the
    short one's -- the Wheel as it was, which the worker plays only under its
    kill switch `wheel5x: false` (wheelzone.js) */
 const OUT = path.join(ROOT, 'server/src/wheelspawns.js');
@@ -83,7 +83,7 @@ export const SPAWN_RULES = Object.freeze({
   }),
 });
 
-/* ═══ v2.3.3300: THE RULES FOR THE WHEEL FIVE TIMES LONGER ═══
+/* ═══ v2.3.3310: THE RULES FOR THE WHEEL FIVE TIMES LONGER ═══
    The owner: "Maybe 5x larger map is needed" ("Rebuild for 5x").  Every land's
    tiers are WHEEL_LONG times longer, so each holds that many times the places
    (the server stands that many times the monsters a tier: wheelzone.js), the
@@ -109,7 +109,7 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES, nodeRules = NO
   bp.regionIds.forEach((k, i) => { ri[k] = i; });
   const n = bp.w * bp.h;
   /* city-block distances (in cells) from hazards, from roads, from the commons.
-     v2.3.3300: one byte a cell, held at DIST_CAP, by two sweeps -- the same
+     v2.3.3310: one byte a cell, held at DIST_CAP, by two sweeps -- the same
      distances the queue it replaces found below the cap (city-block distance
      is what a forward and a backward sweep give exactly), and every rule here
      asks only whether one is under a few hundred px.  Four bytes a cell and a
@@ -239,7 +239,7 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES, nodeRules = NO
   };
   /* game px of a cell's centre, and back */
   const gameX = (bx) => (bx + 0.5) * cellG, gameY = (by) => (by + 0.5) * cellG;
-  /* v2.3.3300: every open-ground cell of a land, by land and tier, in the
+  /* v2.3.3310: every open-ground cell of a land, by land and tier, in the
      map's own order -- what each stretch's scan below walks, where it walked
      a square round the centre as wide as its outer end (the same cells, in
      the same order: any cell near enough the axis and the centre is in it).
@@ -518,7 +518,7 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
   const SPOT_SIDE = [[1, 0]];
   for (let dy = -1; dy <= 1; dy++) for (let dx = -3; dx <= 0; dx++) SPOT_SIDE.push([dx, dy]);
   const SEAT_SIDE = [[0, 0], [1, 0], [0, 1]];
-  /* v2.3.3300: the cells each band's scans walk, in the map's own order --
+  /* v2.3.3310: the cells each band's scans walk, in the map's own order --
      its open ground (ctx.groundCells, by land and tier), and the water cells
      whose angler's seat is dry ground of it (seatCells) -- where every band
      walked the whole map, twice for its fishing spots: 45 passes over the
@@ -552,7 +552,7 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
     for (const p of s.points) monsterPts.push(p);
     for (const d of s.deeper || []) for (const p of d.points) monsterPts.push(p);
   }
-  /* v2.3.3300: found in squares of clearMonster px (the same answer as
+  /* v2.3.3310: found in squares of clearMonster px (the same answer as
      asking every place: none nearer than that is outside the 3 x 3 round it) */
   const MQ = rules.clearMonster, mq = new Map();
   for (const p of monsterPts) {
@@ -574,7 +574,7 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
      a Tidal Coast fishing spot 34 px apart on the river between them.  So a
      node keeps the same distance from ANY node of its kind (veins and trees
      `apart`, spots `fishApart`) and `clearNode` from the other kind. */
-  /* v2.3.3300: in squares of the widest of the three distances, as above */
+  /* v2.3.3310: in squares of the widest of the three distances, as above */
   const NQ = Math.max(rules.apart, rules.fishApart, rules.clearNode), nq = new Map();
   const placed = {
     push(p) {
@@ -704,7 +704,7 @@ export function wheelSpawnsSource(b, plan = PLAN) {
  * (plan ${plan.id} v${plan.version}, blueprint ${b.hash}) -- do not edit by hand:
  * run the tool again.  tools/world/test-world-core.mjs fails when this is stale.
  *
- * ${long > 1 ? `v2.3.3300: the Wheel ${long} times longer (plan.js PLAN5): the live one` : 'v2.3.3300: the short Wheel, one zone a tier (plan.js PLAN): the worker plays it only under `wheel5x: false`'}.
+ * ${long > 1 ? `v2.3.3310: the Wheel ${long} times longer (plan.js PLAN5): the live one` : 'v2.3.3310: the short Wheel, one zone a tier (plan.js PLAN): the worker plays it only under `wheel5x: false`'}.
  *
  * v2.3.2978: where each element zone's monsters stand on the Wheel (zone
  * 'wheel', server/src/wheelzone.js), in game px of the Wheel (${b.world[0]} x ${b.world[1]},
@@ -716,7 +716,7 @@ export function wheelSpawnsSource(b, plan = PLAN) {
  * v2.3.3013: and 'deeper', the land's next stretches, each a tier: its levels,
  * its band on the axis and its places, in the same shape. */
 export const WHEEL_SPAWNS_HASH = '${b.hash}';
-/* v2.3.3300: how many times longer than one zone a tier this Wheel's tiers are */
+/* v2.3.3310: how many times longer than one zone a tier this Wheel's tiers are */
 export const WHEEL_LONG = ${long};
 export const WHEEL_WORLD = [${b.world.join(', ')}];
 /* the safe ground: the commons and the town, every land cell of them within
@@ -749,7 +749,7 @@ ${Object.entries(b.doors || {}).map(([id, d]) => `  ${id}: { name: ${JSON.string
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-/* v2.3.3300: both Wheels' tables -- [file, plan] */
+/* v2.3.3310: both Wheels' tables -- [file, plan] */
 export const SPAWN_BAKES = [[OUT, PLAN5, WHEEL_LONG], [OUT1, PLAN, 1]];
 export function bakeWheelSpawnsFor(plan, long) {
   return bakeWheelSpawns(plan, spawnRulesFor(long), nodeRulesFor(long));

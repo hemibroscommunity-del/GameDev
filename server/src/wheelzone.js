@@ -83,7 +83,7 @@
  * spawned after it with the first stage alone.
  */
 import { ZONES } from './data.js';
-/* v2.3.3300: the tables of the Wheel this room plays (wheeltables.js: the
+/* v2.3.3310: the tables of the Wheel this room plays (wheeltables.js: the
    long one, or the short one under `wheel5x: false`) -- this._wheelT() */
 
 export const WHEEL_ZONE = 'wheel';
@@ -251,7 +251,7 @@ export const wheelzoneMethods = {
      or, with no monster in hand (a burn ticking, a fire trail), unless they
      are still fighting at all. */
   _wheelSheltered(m, pid, x, y, now) {
-    /* v2.3.3300: a phone out of step with the room's Wheel (a tab left open
+    /* v2.3.3310: a phone out of step with the room's Wheel (a tab left open
        across the deploy) is never a monster's (wheeltables.js _wheelInStep) */
     const _ps = pid ? this.playerState[pid] : null;
     if (_ps && this._wheelInStep && !this._wheelInStep(_ps)) return true;
@@ -305,7 +305,7 @@ export const wheelzoneMethods = {
   _wheelSpawnMonsters() {
     if (this._wheelMonstersOff()) return [];
     const out = [];
-    /* v2.3.3300: the Wheel `long` times longer stands `long` times its home's
+    /* v2.3.3310: the Wheel `long` times longer stands `long` times its home's
        spawn list a tier, on its own baked places -- as busy a land, five
        times the land (the list round and round, its places one each) */
     const T = this._wheelT(), WHEEL_SPAWNS = T.WHEEL_SPAWNS, long = T.WHEEL_LONG || 1;
@@ -417,7 +417,7 @@ export const wheelzoneMethods = {
   },
 
   _wheelSpawnNodes() {
-    const WHEEL_NODES = this._wheelT().WHEEL_NODES;   /* v2.3.3300 */
+    const WHEEL_NODES = this._wheelT().WHEEL_NODES;   /* v2.3.3310 */
     if (this._wheelNodesOff() || !WHEEL_NODES) return [];
     const out = [];
     for (const area of Object.keys(WHEEL_NODES)) {
@@ -447,7 +447,7 @@ export const wheelzoneMethods = {
      ever asked about zone 'wheel'. */
   _wheelSafeAt(x, y) {
     if (typeof x !== 'number' || typeof y !== 'number') return false;
-    const T = this._wheelT(), WHEEL_CENTRE = T.WHEEL_CENTRE, WHEEL_SAFE_R = T.WHEEL_SAFE_R;   /* v2.3.3300 */
+    const T = this._wheelT(), WHEEL_CENTRE = T.WHEEL_CENTRE, WHEEL_SAFE_R = T.WHEEL_SAFE_R;   /* v2.3.3310 */
     const dx = x - WHEEL_CENTRE[0], dy = y - WHEEL_CENTRE[1];
     return dx * dx + dy * dy < WHEEL_SAFE_R * WHEEL_SAFE_R;
   },

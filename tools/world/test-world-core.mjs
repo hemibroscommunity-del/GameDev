@@ -1868,7 +1868,7 @@ console.log('monsters on the Wheel (v2.3.2978)');
   const { bakeWheelSpawns, wheelSpawnsSource, SPAWN_RULES } = await import('./bake-wheel-spawns.mjs');
   const { placeObjects, objectFootprints } = await import('../../public/tools/world/core/placing.js');
   const fs = await import('node:fs');
-  /* v2.3.3300: the short Wheel's table (the worker plays it under
+  /* v2.3.3310: the short Wheel's table (the worker plays it under
      `wheel5x: false`); the long one's, the live one, is checked in "the
      Wheel five times longer" below -- everything here is the short Wheel */
   const b = bakeWheelSpawns();
@@ -2294,7 +2294,7 @@ console.log('the designed town (v2.3.3031)');
   const { townPlan, townGates, townSurfaces, TOWN_SURF } = await import('../../public/tools/world/core/layout.js');
   const { placeObjects, objectFootprints, mayorSpot, TOWN_GARDEN } = await import('../../public/tools/world/core/placing.js');
   const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
-  const { WHEEL_NODES } = await import('../../server/src/wheelspawns1.js');   /* v2.3.3300: the short Wheel's, as PLAN */
+  const { WHEEL_NODES } = await import('../../server/src/wheelspawns1.js');   /* v2.3.3310: the short Wheel's, as PLAN */
   const fs = await import('node:fs');
   const T = PLAN.town, tp = townPlan(T), G = townGates(T), WPA = PLAN.worldPxPerArtPx, g0 = gridInfo(PLAN), S = bp.scale;
   const townR = bp.regionIds.indexOf('town'), commonsR = bp.regionIds.indexOf('commons');
@@ -2647,7 +2647,7 @@ console.log('placing v2, the ?placing=2 preview (v2.3.2999)');
 {
   const { placeObjects, footprintOf, campBands, placingOpts, PLACING, PLACING_V2 } = await import('../../public/tools/world/core/placing.js');
   const { objectCatalog } = await import('../../public/tools/objects/catalog.js');
-  const { WHEEL_SPAWNS } = await import('../../server/src/wheelspawns1.js');   /* v2.3.3300: the short Wheel's, as PLAN */
+  const { WHEEL_SPAWNS } = await import('../../server/src/wheelspawns1.js');   /* v2.3.3310: the short Wheel's, as PLAN */
   const WPA = PLAN.worldPxPerArtPx, cellG = bp.scale * WPA;
   ok('the switch: `placing=2` is v2, anything else the placing as it is',
     placingOpts('?trial=wheel&placing=2').v === 2 && placingOpts('?placing=2').v === 2 && !placingOpts('?placing=3').v && !placingOpts('?placing=20').v
@@ -2826,7 +2826,7 @@ console.log('swimming (v2.3.3003)');
   for (let i = 0; i < 30; i++) evs3.push(W8.updateWheelSwim(S, t += 16, true, 52, shore));
   ok('seated on a bank whose drawn shore reaches the boots: climbOut ends the swim, and it stays ended (back in only at four wet)',
     stillIn && was === true && !W8.isWheelSwimming(S) && evs3.every((e) => e === null) && W8.climbOut(S, t) === false, { stillIn, was, evs3: evs3.filter(Boolean) });
-  /* v2.3.3300: ...and a seat the drawn shore reaches FOUR of the looks of
+  /* v2.3.3310: ...and a seat the drawn shore reaches FOUR of the looks of
      (one of the long Wheel's 250, wn-thunder-39): while you fish or mine
      there the seat stays the bank; up from it, the looks decide again */
   const deep = (x, y) => y >= 997 && !(x > 4 && y < 1006);
@@ -3028,7 +3028,7 @@ console.log('the tap that jumps (v2.3.3105)');
     out('ember', 2.5, 0) === 'ember' && out('ember', 1, 0.38) === 'ember' && out('ember', 1, -0.38) === 'ember'
     && out('ember', 1, 0.41) === 'sky' && out('ember', 1, -0.41) === 'frost', [out('ember', 1, 0.41), out('ember', 1, -0.41)]);
   /* the fire goblins and their nearest neighbours across the water */
-  const { WHEEL_SPAWNS } = await import('../../server/src/wheelspawns1.js');   /* v2.3.3300: the short Wheel's, as ZONES.wheel here */
+  const { WHEEL_SPAWNS } = await import('../../server/src/wheelspawns1.js');   /* v2.3.3310: the short Wheel's, as ZONES.wheel here */
   const lands = (h) => WHEEL_SPAWNS[h].points.map((p) => wheelLandAt('wheel', p[0], p[1]));
   ok('...and every land\'s first monsters stand on it', Object.keys(WHEEL_SPAWNS).every((h) => lands(h).every((l) => l === h)),
     Object.keys(WHEEL_SPAWNS).map((h) => [h, [...new Set(lands(h))]]));
@@ -3266,7 +3266,7 @@ console.log("the water's frozen web of light taken out (v2.3.3021)");
   ok("only where the game draws the water moving: the worker calms a water picture when told `moving` (and not `?nowaves`), the game tells it so from WebGL2 and the address",
     /* (v2.3.3298: the worker reads the address once, `search`; and the game's
        init has carried `palette` since v2.3.3190, and `size`, the Wheel the
-       room plays, since v2.3.3300) */
+       room plays, since v2.3.3310) */
     /calm: wavesOn\(search\) && !!\(m && m\.moving\)/.test(workerSrc) && /W && W\.calm && WATER_SWATCHES\.includes\(id\)/.test(workerSrc)
     && /postMessage\(\{ type: 'init', search, moving: _waterMoves(, palette: _palette)?(, size)? \}\)/.test(trialSrc) && /setWheelWaterMoves\(wavesOn\(\) && webgl2\(\)\)/.test(waterSrc), {});
   ok("and the game draws its own web of light, moving: round cells (the nearest point's distance over the next's), on every water but a running river, `?caustics=k` its brightness",
@@ -3856,7 +3856,7 @@ console.log('the Wheel in blocks (v2.3.3298)');
       && Array.from(placed.kindScale).join() === Array.from(back.kindScale).join() && placed.version === back.version, {});
 }
 
-/* ── v2.3.3300: the Wheel five times longer ──
+/* ── v2.3.3310: the Wheel five times longer ──
    Owner, 2026-10-17: "the game map needs to be larger. It goes from lvl 1
    monsters to lvl 20+ way too quickly. Maybe 5x larger map is needed" -- and,
    offered the ways, "Rebuild for 5x".  Every land's tiers are five times as
@@ -3865,7 +3865,7 @@ console.log('the Wheel in blocks (v2.3.3298)');
    Its tables are baked like the short one's, and every copy the game keeps
    of them is checked here: built in blocks, never the whole map (~600 MB),
    but the two bakes do build it, once each (~1.5 min in all). */
-console.log('the Wheel five times longer (v2.3.3300)');
+console.log('the Wheel five times longer (v2.3.3310)');
 {
   const fs = await import('node:fs');
   const { PLAN5, WHEEL_LONG, wheelSized, planFor, wheelPreview } = await import('../../public/tools/world/plan.js');

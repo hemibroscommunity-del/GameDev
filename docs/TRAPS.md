@@ -6518,7 +6518,7 @@ every piece and comparing it with the whole, cell for cell
 (test-world-core "the Wheel in blocks") -- a piece that only looks right will
 show its seam the day someone walks along it.
 
-## 187. "The Wheel is 43,008 px, its middle 21,504" (v2.3.3300)
+## 194. "The Wheel is 43,008 px, its middle 21,504" (v2.3.3310)
 
 Since the owner's "Rebuild for 5x" (docs/specs/wheel-5x.md) there are two
 Wheels, and the worker plays the long one unless its kill switch says the

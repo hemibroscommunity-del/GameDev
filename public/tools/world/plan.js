@@ -1104,14 +1104,14 @@ export function planFor(search, size = 1) {
   const k = bigTownScale(search);
   if (k == null && /(?:^|[?&])plaintown(?:&|$)/.test(search || '')) return PLAIN;
   if (k != null) return bigTownPlan(k);
-  /* v2.3.3300: the Wheel the room plays (caps.wheelsize) -- but the previews,
+  /* v2.3.3310: the Wheel the room plays (caps.wheelsize) -- but the previews,
      the town sizes above and `?placing=2`, are the short Wheel's: their
      objects are worked out from the whole map, which the long one is far too
      big for on a phone */
   if (wheelPreview(search)) return PLAN;
   return wheelSized(size);
 }
-/* v2.3.3300: whether the address asks for a preview (a town size, the plain
+/* v2.3.3310: whether the address asks for a preview (a town size, the plain
    town, placing v2), which is the short Wheel's whatever the room plays --
    so the page tells the worker it draws the short one only (its join's `ws`).
    MIRROR: src/game/wheelSize.js wheelPreviewAddress (test-world-core). */
@@ -1174,7 +1174,7 @@ export function bigTownPlan(k, pictures = k, design = true, long = 1) {
   const places = BASE_ROUTES.places.map((pl) => (pl.id === 'mill' ? millAt(pl) : pl.id === 'depot' ? out(pl, 0, town.gateEW) : pl));
   const P = { ...BASE_PLAN, town, bigTown: k, wheel: { ...BASE_PLAN.wheel },
     roads: BASE_ROUTES.roads.slice(), rivers: BASE_ROUTES.rivers.slice(), rails: BASE_ROUTES.rails.slice(), places };
-  /* v2.3.3300: every land `long` times longer (wheelSized, below) */
+  /* v2.3.3310: every land `long` times longer (wheelSized, below) */
   if (long > 1) {
     P.wheel.tierZones = BASE_PLAN.wheel.tierZones * long;
     P.active = { ...BASE_PLAN.active, grow: wheelGrow(P) };
@@ -1183,7 +1183,7 @@ export function bigTownPlan(k, pictures = k, design = true, long = 1) {
   return P;
 }
 
-/* ═══ v2.3.3300: THE WHEEL FIVE TIMES LONGER ═══
+/* ═══ v2.3.3310: THE WHEEL FIVE TIMES LONGER ═══
  *
  * The owner, 2026-10-17: "the game map needs to be larger. It goes from lvl 1
  * monsters to lvl 20+ way too quickly. Maybe 5x larger map is needed" -- and,
@@ -1265,7 +1265,7 @@ export const PLAN = bigTownPlan(TOWN, BUILDINGS);
 _standard = PLAN;
 /* v2.3.3031: ...the same, without the designed town (`?plaintown`) */
 export const PLAIN = bigTownPlan(TOWN, BUILDINGS, false);
-/* v2.3.3300: the standard plan with every land WHEEL_LONG times longer */
+/* v2.3.3310: the standard plan with every land WHEEL_LONG times longer */
 export const PLAN5 = bigTownPlan(TOWN, BUILDINGS, true, WHEEL_LONG);
 /* The standard plan at `size` (1 or WHEEL_LONG; anything else is 1) */
 export function wheelSized(size) {

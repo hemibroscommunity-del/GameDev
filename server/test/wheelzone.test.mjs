@@ -49,7 +49,7 @@
  *  10. v2.3.3299, A MONSTER NOBODY IS NEAR RESTS: no player within
  *      WHEEL.REST_REACH squares of it, nothing in flight, and it does nothing
  *      in a tick -- but comes back to life on time; `wheelrest: false`.
- *  11. v2.3.3300, THE WHEEL FIVE TIMES LONGER: the live tables; caps.wheelsize;
+ *  11. v2.3.3310, THE WHEEL FIVE TIMES LONGER: the live tables; caps.wheelsize;
  *      five times each home's spawn list a stretch on its baked places; the
  *      resources; the way in; the size kept for the room's life; a phone out of
  *      step neither hunted nor under No man's land.  (Sections 1-10 run on the
@@ -59,7 +59,7 @@ import { GameRoom } from '../src/index.js';
 import { ZONES, VALID_ZONE_IDS, BLACKSMITH_TIERS, WOODWORKING_TIERS } from '../src/data.js';
 import { WHEEL_ZONE, WHEEL } from '../src/wheelzone.js';
 import { gatherReqLvl } from '../src/gathering.js';   /* v2.3.3038 */
-/* v2.3.3300: sections 1-10 are the SHORT Wheel's (one zone a tier, as it was):
+/* v2.3.3310: sections 1-10 are the SHORT Wheel's (one zone a tier, as it was):
    its tables, and every room here under `wheel5x: false`.  Section 11 is the
    long Wheel's, the live one. */
 import { WHEEL_SPAWNS, WHEEL_NODES, WHEEL_CENTRE, WHEEL_SAFE_R } from '../src/wheelspawns1.js';
@@ -86,7 +86,7 @@ function check(name, cond, detail) {
   else { failures++; console.log('FAIL', name, detail !== undefined ? JSON.stringify(detail) : ''); }
 }
 
-const SHORT = { wheel5x: false };   /* v2.3.3300 */
+const SHORT = { wheel5x: false };   /* v2.3.3310 */
 const room = new GameRoom(mockState, mockEnv);
 room._liveFlags = { ...SHORT };
 const CENTRE = [21504, 21504];
@@ -900,7 +900,7 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
     on.resting > 250 && off.resting === 0, { on, off });
 }
 
-// ── 11. THE WHEEL FIVE TIMES LONGER (v2.3.3300) ──────────────────────────
+// ── 11. THE WHEEL FIVE TIMES LONGER (v2.3.3310) ──────────────────────────
 {
   /* the owner: "Maybe 5x larger map is needed" -- "Rebuild for 5x".  A room
      plays the long Wheel (wheelspawns.js) unless `wheel5x: false`, says which

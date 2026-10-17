@@ -505,7 +505,7 @@ export function materialMap(plan, bp) {
      is read where the cell is in the WHOLE blueprint, so a rectangle's cells
      come out as the whole map's -- at least LAND_STAGE_MARGIN cells in from
      its edges, where the stage's averaging can see all it needs.
-     v2.3.3300: ...counted from the active area's NAMED corner (bp.nox cells
+     v2.3.3310: ...counted from the active area's NAMED corner (bp.nox cells
      in from the whole blueprint's; 0 unless the plan grows past it), so the
      Wheel five times longer (plan.js wheelSized) keeps these patches where
      the short one has them, the town's and the commons' included */
@@ -1649,7 +1649,7 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
       pkJ = null;
     }
     const alongX = !pkDeck || pkDeck.along === 'x';
-    /* v2.3.3300: the deck's row or column from the active area's NAMED corner
+    /* v2.3.3310: the deck's row or column from the active area's NAMED corner
        (bp.nox, layout.js planFeatures), so a Wheel grown past it lays every
        bridge with the boards the short one has */
     const key = pkDeck ? (alongX ? pkDeck.y0 - (bp.noy || 0) : pkDeck.x0 - (bp.nox || 0)) : 0;

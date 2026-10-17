@@ -2,7 +2,7 @@
  * v2.3.3298: which baked objects and map pictures the ground worker reads
  * (public/world/<dir>/), and the plan they were baked from: the worker uses
  * them only when its plan's fingerprint is one of these (core/worldblocks.js
- * planFingerprint).  v2.3.3300: one set a Wheel -- PLACED5 the long one
+ * planFingerprint).  v2.3.3310: one set a Wheel -- PLACED5 the long one
  * (plan.js PLAN5), PLACED the short one (PLAN); `cells` blueprint cells an
  * overview pixel. */
 export const PLACED5 = Object.freeze({

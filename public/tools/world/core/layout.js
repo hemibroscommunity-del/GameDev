@@ -478,7 +478,7 @@ export function planFeatures(plan) {
   const gx0 = Math.floor(g.ax / S), gy0 = Math.floor(g.ay / S);
   const x0 = gx0 * S, y0 = gy0 * S;
   const bw = Math.ceil((g.ax + g.AW - x0) / S), bh = Math.ceil((g.ay + g.AH - y0) / S);
-  /* v2.3.3300: the cells from this corner to the active area's NAMED corner
+  /* v2.3.3310: the cells from this corner to the active area's NAMED corner
      (plan.active's from/to, before grid.js `grow`): where the noise that is
      counted in cells from a corner is counted from (ground.js materialMap),
      so a Wheel grown past it (plan.js wheelSized) keeps that noise where it
@@ -1300,7 +1300,7 @@ export function buildBlueprint(plan, rect) {
     w: bw, h: bh, scale: S, x0: x0 + rx0 * S, y0: y0 + ry0 * S, W: g.W, H: g.H,
     /* v2.3.3298: this rectangle's corner in cells, and the whole blueprint */
     ox: rx0, oy: ry0, full: { w: F.bw, h: F.bh, x0, y0 },
-    /* v2.3.3300: and the cells from that corner to the noise's (planFeatures) */
+    /* v2.3.3310: and the cells from that corner to the noise's (planFeatures) */
     nox: F.nox, noy: F.noy,
     cls, reg, band, tier, regionIds, classIds: CLASS_IDS, wheel: W,
     anchors, pois, lots, routes, counts,

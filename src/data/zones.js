@@ -450,7 +450,7 @@ export function zoneHomes(zoneId) {
    (it is only a direction); null outside the Wheel.  For the monsters' looks
    (rendering/wheelMonsterArt.js): your own land's load as you walk toward
    them, another land's only when one of its monsters is really near. */
-/* ═══ v2.3.3300: THE WHEEL THE ROOM PLAYS ═══
+/* ═══ v2.3.3310: THE WHEEL THE ROOM PLAYS ═══
    The owner: "Maybe 5x larger map is needed" -- "Rebuild for 5x".  The room
    plays the Wheel five times longer (its tiers five zones of walking, not
    one) unless its kill switch says the short one, and tells the phone which
@@ -478,7 +478,7 @@ export function setWheelGeom(size) {
 export function wheelLandAt(zoneId, x, y) {
   const z = zoneId === 'wheel' ? ZONES.wheel : null;
   if (!z || !z.lands || typeof x !== 'number' || typeof y !== 'number') return null;
-  const c = (z.w * 32) / 2;   /* TILE: the Wheel's middle, 21504 (v2.3.3300: 87168 on the long one) */
+  const c = (z.w * 32) / 2;   /* TILE: the Wheel's middle, 21504 (v2.3.3310: 87168 on the long one) */
   const a = Math.atan2(y - c, x - c);
   let best = null, bd = Infinity;
   for (const k in z.lands) {

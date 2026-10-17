@@ -107,7 +107,7 @@ export function updateWheelSwim(S, now, inWheel, feetDy, waterAt) {
   sw.fx = fx;
   sw.fy = fy;
   const wet = wetProbes(waterAt || wheelWaterAt, sw.fx, sw.fy);
-  /* v2.3.3300: seated at a fishing spot or a vein, the seat is the bank for
+  /* v2.3.3310: seated at a fishing spot or a vein, the seat is the bank for
      as long as you sit there, not only as you sit down (climbOut, below): the
      drawn shore can lie a few px into a seat, and on the Wheel five times
      longer one seat of its 250 has four of the five looks wet as drawn
@@ -143,7 +143,7 @@ export function updateWheelSwim(S, now, inWheel, feetDy, waterAt) {
   return null;
 }
 
-/** v2.3.3300: seated by a harvest that seats you -- fishing or mining
+/** v2.3.3310: seated by a harvest that seats you -- fishing or mining
     (lifeSkillRewards.startExtraction puts you on its baked-dry seat) */
 export function seatedOnBank(S) {
   const ex = S && S._extraction;
