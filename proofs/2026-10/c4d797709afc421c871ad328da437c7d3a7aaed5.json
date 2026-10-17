@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c4d797709afc421c871ad328da437c7d3a7aaed5",
+  "tree": "c1c982c198a63371919bf1a9adcd175ffd8e527c",
+  "committedAt": "2026-10-17T14:19:30-07:00",
+  "subject": "Bots can't skip a harvest's wait any more: a harvest is paid against its own start (v2.3.3322) (#953)",
+  "files": 5764,
+  "bytes": 636469443,
+  "listingSha256": "148b9489c9edc970e947d1660c4351938dc028616e639734a7406a2b12165276",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
