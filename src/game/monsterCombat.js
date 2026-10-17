@@ -848,7 +848,7 @@ export function updateMonsterCombat(S, deps) {
                      null bypass existed only because every monster was
                      pinned to level 1 (BALANCE-PLAN §7/BF-1). */
                   var _defUpLoc = trainDefense(_R6, shielded ? rawDmg : 0, _passiveDodge ? 0 : dmgTaken, m.level || null, false);
-                  if (_defUpLoc) pushDmgPopup(S, P.x, P.y - 34, '🛡️ Defense Lv ' + _defUpLoc.level, '#60a5fa', { ts: Date.now() + 2 });
+                  if (_defUpLoc) pushDmgPopup(S, P.x, P.y - 34, 'Defense Lv ' + _defUpLoc.level, '#60a5fa', { ts: Date.now() + 2, iconKey: 'defense', iconLead: true });   /* v2.3.3279: the owner's shield (it wore 🛡️) */
                   /* ═══ FODDER SLIMES — RANGED PROJECTILE ATTACK ═══
                      Spawn a slime-orb projectile aimed at the player's
                      position right now. Damage isn't applied here — it

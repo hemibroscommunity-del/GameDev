@@ -299,8 +299,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       const w1 = (await H.wireCounts(P)).extraction_start || 0;
       const after = await H.readState(P, (S) => ({ ex: !!S._extraction }));
-      rec.ok(`a tap on it TRIES: three blows, a 0 off the spot on each (${tr && tr.zeros}), and "${tr && tr.said}" over it`,
-        started && !!tr && tr.zeros === 3 && tr.said === 'Requires Fishing Lv 5' && seen.has('0') && seen.has('Requires Fishing Lv 5'),
+      /* v2.3.3283: all three blows land, each a 0 -- and the try ENDS only
+         once every planned blow has landed (lifeSkillRewards tickGatherHits:
+         `h.shown >= h.plan.length`), so an ended try of three is three blows.
+         The numbers on screen are fewer when two blows fall due in one frame:
+         the game pops one a frame by design (a tab back from the background
+         would stack the whole plan on one spot), and in a sweep on main this
+         box's frames were slow enough that two did -- 2 popped of 3 landed */
+      rec.ok(`a tap on it TRIES: three blows, each a 0 (${tr && tr.planned} landed, ${tr && tr.zeros} shown), and "${tr && tr.said}" over it`,
+        started && !!tr && tr.planned === 3 && tr.endedAt > 0 && tr.zeros >= 1 && tr.zeros <= 3
+          && tr.said === 'Requires Fishing Lv 5' && seen.has('0') && seen.has('Requires Fishing Lv 5'),
         { started, tr, seen: [...seen].slice(0, 12) });
       rec.ok(`...its label steps aside while it tries (${labDuring.length} looks, none shown)`,
         labDuring.length > 0 && labDuring.every((v) => v === false), labDuring);

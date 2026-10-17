@@ -3005,7 +3005,7 @@ export function processGameEvent(type, payload, S, deps) {
                    while every monster was pinned to level 1; zone bands
                    are now unpinned (BALANCE-PLAN §7/BF-1). */
                 var _defUpBlk = trainDefense(R2, payload.dmg || 5, 0, (atkSrc && atkSrc.level) || null, false);
-                if (_defUpBlk) pushDmgPopup(S, S.player.x, S.player.y - 34, '🛡️ Defense Lv ' + _defUpBlk.level, '#60a5fa', { ts: Date.now() + 2 });
+                if (_defUpBlk) pushDmgPopup(S, S.player.x, S.player.y - 34, 'Defense Lv ' + _defUpBlk.level, '#60a5fa', { ts: Date.now() + 2, iconKey: 'defense', iconLead: true });   /* v2.3.3279: the owner's shield (it wore 🛡️) */
                 break;
               }
               var mDmg = payload.dmg || 5;
@@ -3101,7 +3101,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (dmgTaken2 > 0) {
                 /* v2.3.1140: ±5 gate live (see block above). */
                 var _defUpTk = trainDefense(R2, 0, Math.ceil(dmgTaken2), (atkSrc && atkSrc.level) || null, false);
-                if (_defUpTk) pushDmgPopup(S, S.player.x, S.player.y - 34, '🛡️ Defense Lv ' + _defUpTk.level, '#60a5fa', { ts: Date.now() + 2 });
+                if (_defUpTk) pushDmgPopup(S, S.player.x, S.player.y - 34, 'Defense Lv ' + _defUpTk.level, '#60a5fa', { ts: Date.now() + 2, iconKey: 'defense', iconLead: true });   /* v2.3.3279: the owner's shield (it wore 🛡️) */
               }
               if (window.__dmgLog) try {
                 console.log('[dmg] net-monster_attack', {
@@ -4559,6 +4559,9 @@ export function processGameEvent(type, payload, S, deps) {
                 'busy': 'You are already in a party',
                 'full': 'Party is full',
                 'expired': 'Party invite expired', /* v2.3.1185 */
+                /* v2.3.3284: your stored party could not be read at your join
+                   (party.js _partyLoad): no invites either way until a rejoin */
+                'not-loaded': "Your party didn't load. Rejoin to try again",
               }[payload.reason] || 'Party action failed';
               pushDmgPopup(S, S.player.x, S.player.y - 40, _ptyErr, '#ff5e6c');
               break;
