@@ -216,60 +216,43 @@ export const fireTrailMethods = {
     }
   },
 
-  /* One burn tick vs one player.  Mirrors _telegraphHitPlayer's rails
-     MINUS the block arc (you cannot face away from the floor) and minus
-     the thorns reflect (there is nothing to reflect into -- the patch is
-     not the monster, and the monster may be dead).  Everything that makes
-     damage authoritative here is kept: the no-one-shot clamp, _applyDamage,
-     kill credit, the monster_attack emission, the vitals save and the
-     death check. */
+  /* One burn tick vs one player.  _telegraphHitPlayer's rails MINUS the
+     block arc (you cannot face away from the floor) and minus the thorns
+     reflect (there is nothing to reflect into -- the patch is not the
+     monster, and the monster may be dead).
+     v2.3.3296: through the one door (hits.js, the fire's row): the
+     no-one-shot rail (defensive, not load-bearing: it is there so a future
+     tuning pass on DMG cannot quietly invent the first one-shot in the game),
+     the dice as ELEMENTAL damage (v2.3.2512: burning ground is elemental by
+     definition, so ELEM RESIST reads it), and everything after.  The safe
+     ground is asked by the tick above, before the burn is timed. */
   _fireTrailHitPlayer(zoneId, patch, pid) {
     const ps = this.playerState[pid];
     if (!ps || ps.dead || ps.dying || ps.z !== zoneId) return 0;
     if (ps._spar) return 0;   /* v2.3.3265: no monster's fire burns a sparring clone (spar.js) */
-    /* Defensive, not load-bearing: 6 is nowhere near half of anyone's max
-       HP.  It is here so a future tuning pass on DMG cannot quietly invent
-       the first one-shot in the game (TELEGRAPH.MAX_HIT_PCT, same rail). */
-    /* v2.3.3260: ONE FORMULA -- the patch's flat amount scaled with the
-       players' bars by the goblin's level, as its own hit is (oneformula.js) */
-    const raw = Math.min(Math.ceil(FIRE_TRAIL.DMG * this._monsterHitK(patch.lvl)),
-      Math.max(1, Math.floor((ps.maxHp || 100) * 0.5)));
-    /* v2.3.2512: burning ground is elemental damage by definition, so the
-       ELEM RESIST stat reads it (PROG3.BODY.eres names the closed list). */
-    const res = this._applyDamage(ps, raw, false, { elemental: true, attackerLevel: patch.lvl });  /* v2.3.2680: + the edge */
-    /* Credit still goes to the goblin who lit it, so a player finished off
-       by fire counts as his kill and the death message names a real
-       monster.  The monster may already be dead -- _trackMonsterDamage only
-       needs the id, and the id is on the patch. */
-    if (!res.dodged) {
-      this._trackMonsterDamage(ps, patch.mid, res.graced ? (res.dmgIntent || 0) : res.dmgTaken);
-    }
-    this.eventBuffer.push({
-      type: 'monster_attack',
-      payload: {
-        monsterId: patch.mid, targetId: pid, dmg: raw, dmgTaken: res.dmgTaken,
-        dodged: res.dodged, secondWind: res.secondWind || undefined,
-        hp: Math.max(0, Math.round(ps.hp || 0)),   /* v2.3.3263: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
-        zone: zoneId,
-        /* The PATCH is the attacker, not the goblin: the client points its
-           feedback at attackerX/Y and drops anything further than 160px
-           from where the player is now.  The goblin may be across the zone
-           by the time his fire bites; the fire is under their feet. */
-        attackerX: patch.x, attackerY: patch.y,
-        /* v2.3.2235's bypass.  Required here rather than nice to have: the
-           patch is not in the client's monster snapshot under any id it
-           knows, so without this the number is dropped by the very first
-           filter in the handler. */
-        ability: 'firetrail',
-        /* v2.3.2996: fire is flame damage -- the client shows the flame on
-           the number (monsterstatus.js).  Display-only. */
-        elem: 'flame',
-      },
+    return this._monsterHit({
+      src: 'fire', zoneId, pid, m: null,
+      /* Credit still goes to the goblin who lit it, so a player finished off
+         by fire counts as his kill and the death message names a real
+         monster.  The monster may already be dead -- only its id is needed,
+         and the id is on the patch. */
+      mid: patch.mid, lvl: patch.lvl,   /* v2.3.2680: + the edge */
+      /* v2.3.3260: ONE FORMULA -- the patch's flat amount scaled with the
+         players' bars by the goblin's level, as its own hit is */
+      raw: Math.ceil(FIRE_TRAIL.DMG * this._monsterHitK(patch.lvl)),
+      /* The PATCH is the attacker, not the goblin: the phone points its
+         feedback at attackerX/Y and drops anything further than 160px from
+         where the player is now.  The goblin may be across the zone by the
+         time his fire bites; the fire is under their feet. */
+      at: { x: patch.x, y: patch.y },
+      /* v2.3.2235's bypass.  Required here rather than nice to have: the
+         patch is not in the phone's monster snapshot under any id it knows,
+         so without it the number is dropped by the handler's first filter. */
+      ability: 'firetrail',
+      /* v2.3.2996: fire is flame damage -- the phone shows the flame on the
+         number (monsterstatus.js).  Display-only. */
+      extra: { elem: 'flame' },
     });
-    this._saveRpgVitals(pid, ps);
-    this._queuePlayerStateFlush(pid);
-    if (ps.hp <= 0 && !ps.dying) this._handlePlayerDeath(ps, pid, 'monster:' + patch.mid);
-    return res.dmgTaken;
   },
 
   /* Replay the live patches to one arriving socket, right after its zone

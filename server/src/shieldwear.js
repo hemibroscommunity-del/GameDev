@@ -141,12 +141,26 @@ export const shieldWearMethods = {
     return 'worn';
   },
 
+  /* ═══ v2.3.3293: PACED, AS EVERY EQUIP TAP IS (handoff rule 27) ═══
+     A shield on or off was the one equip tap still on the full save: the
+     phone's word for which shield is on the arm, sent as fast as a script
+     liked, wrote the whole record each time.  Measured (the architecture
+     review, 2026-10-17): 200 reports switching between `{none}` and the
+     starter shield at ~110 a second wrote 200 rows and kept the socket open
+     (the flood budget is 120 a second) -- the free plan's 100,000 rows a day
+     in about 15 minutes, from one player, after which Cloudflare stops the
+     game until midnight UTC.  Now a burst of 30, then one every 10 s; the
+     rest rides the regen drain or the close flush (_regenDirty).  Nothing is
+     at risk in the wait: both lists are fields of that ONE record, so a late
+     write never splits a shield between the arm and the bag, and the phone
+     reports the arm again on every join. */
   _shieldWearSaved(id, ps) {
-    if (this._saveRpg) {
-      try {
+    try {
+      if (this._saveRpgPaced) { this._saveRpgPaced(id, ps); return; }
+      if (this._saveRpg) {
         const p = this._saveRpg(id, ps);
         if (p && typeof p.catch === 'function') p.catch(() => {});
-      } catch (e) { /* the next save carries it */ }
-    }
+      }
+    } catch (e) { /* the next save carries it */ }
   },
 };

@@ -309,15 +309,26 @@ export const dungeonMethods = {
     const ownerPs = this.playerState[ownerId];
     const fromZone = ownerPs && ownerPs.z;
     if (!fromZone) return 0;
-    let pulled = 0;
+    /* v2.3.3284: a party lasts and grows past four now (party.js), but a
+       dungeon stays FOUR -- its boss is sized for four (PARTY_HP_SCALE) --
+       so the leader takes the three eligible members nearest them, the
+       owner's "the 4 nearest the entrance go in together" */
+    const room = DUNGEONS.PARTY_HP_SCALE.length - 1;
+    const near = [];
     for (const pid of p.members) {
       if (pid === ownerId) continue;
       const mps = this.playerState[pid];
       if (!mps || mps.dead || mps.dying || mps.disconnected) continue;
       if (mps.z !== fromZone) continue;
+      const d = Math.hypot((mps.x || 0) - (ownerPs.x || 0), (mps.y || 0) - (ownerPs.y || 0));
       /* v2.3.3016: the Wheel is one zone across 43,008 px -- a member there
          comes in only from beside the mouth */
-      if (inst.back && !(Math.hypot((mps.x || 0) - (ownerPs.x || 0), (mps.y || 0) - (ownerPs.y || 0)) <= WHEEL_DUNGEON.PARTY_R)) continue;
+      if (inst.back && !(d <= WHEEL_DUNGEON.PARTY_R)) continue;
+      near.push({ pid, d });
+    }
+    near.sort((x, y) => x.d - y.d);
+    let pulled = 0;
+    for (const { pid } of near.slice(0, room)) {
       this._dungeonSend(pid, { type: 'dungeon_started', payload: { zone: inst.zone, cfg: inst.cfg, wave: 1, ...(inst.back ? { back: inst.back } : {}) } });
       pulled++;
     }
@@ -449,69 +460,24 @@ export const dungeonMethods = {
     }
   },
 
-  // v2.3.1194: one ability hit vs one player.  Mirrors the basic-attack
-  // sequence in _tickMonsters (block short-circuit, _applyDamage,
-  // lifesteal damage tracking, monster_attack emission, save/flush,
-  // death check) so abilities ride the exact same authoritative-damage
-  // rails.  Deliberately NO thorns reflect on a blocked ability -- the
-  // reflect surface stays pinned to the basic swing (one reflect per
-  // MONSTER_ATTACK_CD); an AoE that also triggered it would multiply
-  // thorns output per cast.
+  // v2.3.1194: one ability hit vs one player, on the same authoritative
+  // rails as the basic swing.  Deliberately NO thorns reflect on a blocked
+  // ability -- the reflect surface stays pinned to the basic swing (one
+  // reflect per MONSTER_ATTACK_CD); an AoE that also triggered it would
+  // multiply thorns output per cast.
   // v2.3.1217: returns the HP actually taken (0 on block / dodge / grace /
   // dead) so a life-drain caller (siphon) can gate its heal on a landed hit.
+  // v2.3.3296: through the one door (hits.js, the boss's row): the
+  // directional shield (v2.3.1705) and its cost, the no-one-shot rail
+  // BEFORE the dice so dodge, Iron Skin and Second Wind all see the
+  // already-conservative number, and everything after.
   _dungeonBossHitPlayer(inst, m, pid, dmgMult) {
     const ps = this.playerState[pid];
     if (!ps || ps.dead || ps.dying) return 0;
-    const zone = inst.zone;
-    if (this._blockArcCovers(ps, m.x, m.y)) { // v2.3.1705: directional (see index.js)
-      // Block = full negation (v2.3.1110 omni rule), same stamina cost
-      // as a blocked basic attack; staminaDrain rides the wire so the
-      // client's floating number matches the server-side cost.
-      // v2.3.1704: free for the demo — see BLOCK_COSTS_STAMINA in data.js.
-      const staminaCost = this.BLOCK_COSTS_STAMINA
-        ? Math.max(1, Math.round(15 * this._blockStaminaMult(ps)))
-        : 0;
-      if (staminaCost > 0 && typeof ps.stamina === 'number') {
-        ps.stamina = Math.max(0, ps.stamina - staminaCost);
-        this._saveRpg(pid, ps);
-        this._queuePlayerStateFlush(pid);
-      }
-      this.eventBuffer.push({
-        type: 'monster_attack',
-        payload: {
-          monsterId: m.id, targetId: pid, dmg: m.dmg, dmgTaken: 0,
-          blocked: true, staminaDrain: staminaCost > 0 ? staminaCost : undefined,
-          zone, attackerX: m.x, attackerY: m.y,
-        },
-      });
-      return 0;
-    }
-    // No-oneshot clamp BEFORE _applyDamage so dodge/Iron Skin/Second
-    // Wind all see the already-conservative number.
-    const raw = Math.min(
-      Math.ceil(m.dmg * dmgMult),
-      Math.max(1, Math.floor((ps.maxHp || 100) * BOSS_ABILITIES.MAX_HIT_PCT))
-    );
-    const res = this._applyDamage(ps, raw, false, { attackerLevel: m.level });  /* v2.3.2680: the edge */
-    if (!res.dodged) {
-      const trackAmt = res.graced ? (res.dmgIntent || 0) : res.dmgTaken;
-      this._trackMonsterDamage(ps, m.id, trackAmt);
-    }
-    this.eventBuffer.push({
-      type: 'monster_attack',
-      payload: {
-        monsterId: m.id, targetId: pid, dmg: raw, dmgTaken: res.dmgTaken,
-        dodged: res.dodged, secondWind: res.secondWind || undefined,
-        hp: Math.max(0, Math.round(ps.hp || 0)),   /* v2.3.3263: their HP after the blow, as pvp_hit carries it -- every screen draws a hit on a player as the change in their bar (one version) */
-        zone, attackerX: m.x, attackerY: m.y,
-      },
+    return this._monsterHit({
+      src: 'boss', zoneId: inst.zone, pid, m, mid: m.id, lvl: m.level,
+      raw: Math.ceil(m.dmg * dmgMult), at: { x: m.x, y: m.y },
     });
-    this._saveRpgVitals(pid, ps); // v2.3.1623: coalesced unless near death
-    this._queuePlayerStateFlush(pid);
-    if (ps.hp <= 0 && !ps.dying) {
-      this._handlePlayerDeath(ps, pid, 'monster:' + m.id);
-    }
-    return res.dodged ? 0 : res.dmgTaken;
   },
 
   // v2.3.1194: summon execution.  Minions ride the normal

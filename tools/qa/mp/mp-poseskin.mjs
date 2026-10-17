@@ -135,22 +135,30 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
     !!keys && missing.length === 0, { missing, sample: (keys || []).slice(0, 12) });
   /* what they cost: the default combo baked nothing before this, so every byte
      here is new.  Frames are cropped to the figure (v2.3.2791). */
-  const cost = await A.page.evaluate((w) => {
+  /* v2.3.3283: and the cast's sheet since v2.3.3146 (playerSkins.js
+     prewarmFish, for every player: a cast wears your skin, trousers and boots,
+     the default skin recoloured to the walking tan as for a hit) -- "exactly
+     the eight" read 9 on main.  What this check is for is that no WALKING
+     sheet is baked, so every default-combo sheet must be one of these. */
+  const allowed = want.concat(['fish/south']);
+  const cost = await A.page.evaluate(({ w, ok }) => {
     if (!window.__btBodySheetKeys || !window.__btBodySheetBytes) return null;
     const ks = window.__btBodySheetKeys().filter((k) => k.startsWith('default/default/default/'));
     const per = {};
     let total = 0;
+    const others = [];
     for (const k of ks) {
       const pd = k.slice(k.lastIndexOf('|') + 1);
+      if (ok.indexOf(pd) === -1) others.push(pd);
       if (w.indexOf(pd) === -1) continue;
       const b = window.__btBodySheetBytes(k);
       per[pd] = (per[pd] || 0) + b; total += b;
     }
-    return { total, per, n: ks.length };
-  }, want);
+    return { total, per, n: ks.length, others };
+  }, { w: want, ok: allowed });
   console.log(`    the new bakes hold ${cost ? (cost.total / 1e6).toFixed(2) : '?'} MB (${cost ? Object.entries(cost.per).map(([k, v]) => `${k} ${Math.round(v / 1e3)} KB`).join(', ') : ''}); default-combo sheets baked: ${cost ? cost.n : '?'}`);
   rec.ok('...and nothing else is baked for the default combo (the walking sheets stay the shipped art)',
-    !!cost && cost.n === want.length, cost && cost.n);
+    !!cost && cost.others.length === 0 && cost.n <= allowed.length, cost && { n: cost.n, others: cost.others });
 
   /* face the camera: the south sheets are the ones measured below */
   await A.page.keyboard.down('s');

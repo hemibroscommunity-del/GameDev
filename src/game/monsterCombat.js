@@ -146,6 +146,14 @@ export function updateMonsterCombat(S, deps) {
              gameEvents skips the server's own-hit number ("we already show
              it locally"), so on your own swing the popup is ONLY this
              prediction, and the HP bar drains by a different figure.
+             (v2.3.3297: NO LONGER TRUE, and it misled an architecture
+             review into reporting "two sets of dice".  Since v2.3.2220
+             every own hit's NUMBER in a server zone -- a swing, an arrow,
+             a bolt -- is painted from the worker's monster_hit (gameEvents,
+             search v2.3.2220), and the local popups below are gated on
+             !S._serverMonsters.  This prediction still drives what has to
+             be instant -- the crit's shake, spark, debris and knockback --
+             but never the number.)
 
              The correct helpers already existed and were already right —
              calcDisplayDps and the Hero screen's Crit row have used them
@@ -849,7 +857,7 @@ export function updateMonsterCombat(S, deps) {
                      null bypass existed only because every monster was
                      pinned to level 1 (BALANCE-PLAN §7/BF-1). */
                   var _defUpLoc = trainDefense(_R6, shielded ? rawDmg : 0, _passiveDodge ? 0 : dmgTaken, m.level || null, false);
-                  if (_defUpLoc) pushDmgPopup(S, P.x, P.y - 34, '🛡️ Defense Lv ' + _defUpLoc.level, '#60a5fa', { ts: Date.now() + 2 });
+                  if (_defUpLoc) pushDmgPopup(S, P.x, P.y - 34, 'Defense Lv ' + _defUpLoc.level, '#60a5fa', { ts: Date.now() + 2, iconKey: 'defense', iconLead: true });   /* v2.3.3279: the owner's shield (it wore 🛡️) */
                   /* ═══ FODDER SLIMES — RANGED PROJECTILE ATTACK ═══
                      Spawn a slime-orb projectile aimed at the player's
                      position right now. Damage isn't applied here — it

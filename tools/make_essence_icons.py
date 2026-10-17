@@ -18,7 +18,17 @@ writes public/icons/items/essence-<grade>-<metal>.webp at 256x256, the size of
 every other item icon.  Needs Pillow with WebP (tools/webp_icons.py).
 """
 import colorsys
+import sys
 import math
+
+# v2.3.3281: the owner's painted essences are the game's now
+# (tools/ui/cut-bag-icons.py, from assets/icons-source/sheet-bag-essences.png);
+# these drawn orbs would write over them.  Asked before the imports below, so
+# the answer is the same on a machine without Pillow.  A new grade or metal the
+# sheet does not have yet can still be drawn: --standins.
+if __name__ == '__main__' and '--standins' not in sys.argv:
+    raise SystemExit('the essences are the owner\'s art now (tools/ui/cut-bag-icons.py); '
+                     'pass --standins to draw these over them')
 
 from PIL import Image, ImageDraw, ImageFilter
 

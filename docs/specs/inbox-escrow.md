@@ -127,3 +127,65 @@ the auction house's listing escrow, buy-now, bids and offers) are unchanged.
 Tests: `inbox.test.mjs`, the last section (5 checks). Its storage "crashes"
 the instant the stamp is written: online and offline, gold and items, the
 debit is already durable. All 5 fail on main.
+
+## v2.3.3294: a payment's stamp goes out with the payment
+
+Found by the architecture review (2026-10-17). v2.3.3165 made a DEBIT and its
+stamp one write. The CREDIT, in `_creditPlayer`, the one function every payout
+in the game goes through (49 callers), still did it in two. It stamped
+`oplog:<opId>` and awaited that, then paid the player and saved, or wrote the
+mailbox. A restart between the two (every server merge restarts the room)
+left "paid" on file and nothing paid. Every retry reads that stamp as proof:
+a duel's pot, an arena prize, the market's and the auction house's rebuilds,
+the daily spin.
+
+Three more of the same shape:
+
+- **Trades.** The gift lane (`trade.js`) and the trade window (`trade2.js`)
+  debited both sides and saved them, then paid each side with an awaited
+  `_creditPlayer` of its own. The input gate kept other players out of the
+  middle of a trade, but it never made its writes one. A restart in between
+  took what each side gave and paid neither, and a trade lives in memory, so
+  nothing ever came back for it.
+- **A weapon staged into the trade window** wrote its escrow record, awaited
+  that, then saved the stash it left. A restart in between left the weapon in
+  the saved stash AND in escrow, and the restart sweep refunds escrow it
+  finds: two of it.
+- **Two credits to one player at the same moment** (No man's land's loot to a
+  killer whose stash is full) each read the mailbox before either wrote it,
+  and each wrote its own copy. All but the last were lost, each one stamped
+  paid.
+
+What changed:
+
+- `_creditPlayer` reads everything first (the stamp; the gear row's ledger,
+  whose grant is idempotent). It then issues the stamp in the same synchronous
+  run as the payment's own write: the player's save, or the mailbox. Both
+  land, or neither does and a retry pays as if for the first time.
+- A second call for an opId that is already running answers `'dup'` (in
+  memory, `_opInFlight`). The stamp alone never kept two such calls apart:
+  both read "not seen" before either wrote it.
+- `_inboxAppend` and the join's drain take a player's mailbox one at a time
+  (`_inboxSerial`), and the append writes the box and the stamp together.
+- **`_creditLiveTogether`** (new): for a swap whose sides are both in the
+  room, every credit is applied in the caller's synchronous run, and every
+  save and every stamp is issued with the debits. The trade happened, or it
+  did not. When a recipient is not in the room, or a credit could fail to
+  land (anything but gold and stackable items), it does nothing and the
+  caller credits one by one, as before. Both trade lanes use it.
+- The trade window's staging issues the escrow record and the stash save in
+  one run.
+
+Tests: `inbox.test.mjs` §8c (7 checks), on 8b's storage, where the writes of
+one synchronous run commit as one batch and the room dies before batch k:
+
+- one credit, online and offline, at every write, then the same credit again;
+- five credits at once to one player;
+- one opId credited twice at once;
+- a gift trade, at every write of the accept;
+- the trade window's commit, at every write;
+- a weapon staged into the window, at every write, then the restart sweep.
+
+On main all seven fail: 500 gold lost, a mailbox keeping 1 of 5, a payment
+made twice, 50 gold gone in a gift trade, gold gone in a window, a weapon
+returned twice.

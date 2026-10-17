@@ -433,8 +433,10 @@ export const pvpExtrasMethods = {
     const fx = typeof o.fromX === 'number' ? o.fromX : attackerPs.x;
     const fy = typeof o.fromY === 'number' ? o.fromY : attackerPs.y;
     /* a roll's i-frames dodge a blow; a tick is already in you -- and a
-       dazed player cannot roll (the lunge's rule, pvplunge.js _pvpDazed) */
-    if (!o.noBlock && targetPs.dodging && !(this._pvpDazed && this._pvpDazed(targetPs, now))) return null;
+       dazed player cannot roll (the lunge's rule, pvplunge.js _pvpDazed).
+       v2.3.3292: a roll the worker charged for, and not over (movement.js
+       ROLL) -- `dodging` alone was the phone's word, with no end to it */
+    if (!o.noBlock && this._rollOn(targetPs, now) && !(this._pvpDazed && this._pvpDazed(targetPs, now))) return null;
     let blocked = false, parried = false, drain = 0;
     if (!o.noBlock && this._blockArcCovers(targetPs, fx, fy)) {
       blocked = true;

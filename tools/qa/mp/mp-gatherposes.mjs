@@ -29,6 +29,12 @@ import * as H from './harness.mjs';
 const PHONE = { width: 390, height: 844 };
 const STAND_TREE = [0, -130];   /* where mp-harvestbar stands to chop */
 const FIRE_HOLD_MS = 6000;      /* the fire-lighter's download, held back */
+/* v2.3.3283: ...held until the first light has been watched, not for a fixed
+   6 s from when the log reaches the bag: on this box the log's card took longer
+   than that to open, the download landed first, and the light came with the
+   figure already made -- "0 frames while he was being made" on main.  The cap
+   only keeps a lost watch from holding it for good. */
+const FIRE_HOLD_CAP_MS = 60000;
 
 /* every 2D canvas the page makes, by weak reference (mp-memledger's) */
 const INIT = () => {
@@ -251,10 +257,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await travel(P, wsPort, myId, tree.x + STAND_TREE[0], tree.y + STAND_TREE[1] + 240);
 
     /* 3 */
-    let held = 0;
+    let held = 0, release = null;
+    const gate = new Promise((res) => { release = res; });
     await P.page.route('**/sprites/skills/firemaking-strip*', async (route) => {
       held++;
-      await new Promise((res) => setTimeout(res, FIRE_HOLD_MS));
+      /* at least FIRE_HOLD_MS, and until the first light is watched */
+      await Promise.all([new Promise((res) => setTimeout(res, FIRE_HOLD_MS)),
+        Promise.race([gate, new Promise((res) => setTimeout(res, FIRE_HOLD_CAP_MS))])]);
       await route.continue().catch(() => {});
     });
     const beforeLog = await poses(P);
@@ -290,6 +299,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return fire;
     };
     const fire1 = await light();
+    release();
     const lit1 = fire1.filter((f) => f.on);
     const notMade = lit1.filter((f) => f.state !== 'ready');
     console.log(`    the first light, the fire-lighter held back (${held} request held, clicked ${JSON.stringify(clicked)}): ${JSON.stringify(fire1.slice(0, 6))}`);
@@ -298,7 +308,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and never the body and a figure at once, nor neither', lit1.every((f) => !(f.fig && !f.hid) && !(f.hid && !f.fig)), lit1.filter((f) => (f.fig && !f.hid) || (f.hid && !f.fig)).slice(0, 4));
     const fireMade = await H.waitFor(P, () => window.__btStandIns().fire, (v) => v.state === 'ready',
       { timeout: FIRE_HOLD_MS + 20000, label: 'the fire-lighter made' }).catch(() => null);
-    rec.ok(`once his download lands he is made (${fireMade && fireMade.ms} ms, the held ${FIRE_HOLD_MS} ms in it)`, !!fireMade, fireMade);
+    rec.ok(`once his download lands he is made (${fireMade && fireMade.ms} ms, the download held until the first light was watched)`, !!fireMade, fireMade);
     await P.page.unroute('**/sprites/skills/firemaking-strip*').catch(() => {});
     const fire2 = await light();
     const lit2 = fire2.filter((f) => f.on);
@@ -325,7 +335,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const el = document.elementFromPoint(x, y);
       return el ? (el.tagName + (el.className && typeof el.className === 'string' ? '.' + el.className.split(' ')[0] : '')) : null;
     }, at) : null;
-    if (at) await P.page.touchscreen.tap(at.x, at.y);
+    /* v2.3.3283: the finger's own way in, at a finger's speed: touchstart and
+       touchend on the touch layer under the fire (the movement stick's half
+       here, `over`), in one task.  page.touchscreen.tap took 0.75-1.2 s on this
+       box (the next touch waits behind a slow frame), past the 0.4 s a tap on
+       that half may last to reach a resource (BroTown lE, SELF_TAP_MAX_MS), so
+       the game rightly read a hold and no cook started on main. */
+    if (at) await P.page.evaluate(({ x, y }) => {
+      const el = document.elementFromPoint(x, y);
+      if (!el) return;
+      const mk = (t) => new TouchEvent(t, { bubbles: true, cancelable: true,
+        touches: t === 'touchend' ? [] : [new Touch({ identifier: 78, target: el, clientX: x, clientY: y })],
+        changedTouches: [new Touch({ identifier: 78, target: el, clientX: x, clientY: y })] });
+      el.dispatchEvent(mk('touchstart'));
+      el.dispatchEvent(mk('touchend'));
+    }, at);
     const cooking = await H.waitFor(P, (S) => (S._extraction ? S._extraction.skill : null), (v) => v === 'cooking',
       { timeout: 6000, label: 'a cook' }).catch(() => null);
     rec.ok('a tap on the fire with a fish in the bag starts a cook (guard)', cooking === 'cooking', { at, over, cooking });

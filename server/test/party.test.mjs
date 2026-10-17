@@ -76,6 +76,11 @@ function check(name, cond, detail) {
 }
 
 const state = makeState();
+/* v2.3.3284: this suite is the party of FOUR, in memory -- since parties
+   last (party-keep.test.mjs), that is the party the kill switch puts back,
+   `partykeep: false` in the live flags, so it runs under the switch and
+   keeps proving the switch restores it, rule for rule. */
+state._store.set('liveflags', { partykeep: false });
 const room = new GameRoom(state, mockEnv);
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 async function join(ws, id, name) {
@@ -94,6 +99,7 @@ for (const n of ['a', 'b', 'c', 'd', 'e']) {
 // ── 1. caps ──
 const sync = wss.a.sent.find((m) => m.type === 'state_sync');
 check('state_sync advertises caps.party', sync && sync.caps && sync.caps.party === true, sync && sync.caps);
+check('...and, under the switch, not caps.partykeep (v2.3.3284)', sync && sync.caps && sync.caps.partykeep === false, sync && sync.caps && sync.caps.partykeep);
 
 // ── 2. invite handshake ──
 await cmd(wss.a, 'party_invite', { target: P('a') });

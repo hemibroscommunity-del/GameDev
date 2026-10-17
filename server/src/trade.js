@@ -153,17 +153,35 @@ export const tradeMethods = {
       senderPs.inventory[k] = this._invCount(senderPs, k) - v;
       if (senderPs.inventory[k] <= 0) delete senderPs.inventory[k];
     }
-    this._saveRpg(target, senderPs);
-    this._queuePlayerStateFlush(target);
     // Credit the accepter through the PR2 primitives (they're online --
     // they just clicked accept -- so this applies live and notifies).
     const note = 'trade from ' + pending.fromName;
+    const credits = [];
     if (offer._gold) {
-      await this._creditPlayer(fromId, { opId: 'trade:' + pending.id + ':gold', source: 'trade', kind: 'gold', payload: { amount: offer._gold }, note });
+      credits.push({ pid: fromId, entry: { opId: 'trade:' + pending.id + ':gold', source: 'trade', kind: 'gold', payload: { amount: offer._gold }, note } });
     }
     for (const [k, v] of Object.entries(offer)) {
       if (k === '_gold') continue;
-      await this._creditPlayer(fromId, { opId: 'trade:' + pending.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note });
+      credits.push({ pid: fromId, entry: { opId: 'trade:' + pending.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note } });
+    }
+    /* v2.3.3294: the sender's debit and the accepter's credit in ONE write
+       (inbox.js _creditLiveTogether): the sender was saved here and each
+       credit awaited after it, so a restart in between took the goods from
+       one and gave them to nobody -- an offer lives in memory, and nothing
+       comes back for it.  Not both in the room: one by one, as before. */
+    const together = this._creditLiveTogether(credits, [target]);
+    if (together) {
+      await together;
+    } else {
+      this._saveRpg(target, senderPs);
+      this._queuePlayerStateFlush(target);
+      if (offer._gold) {
+        await this._creditPlayer(fromId, { opId: 'trade:' + pending.id + ':gold', source: 'trade', kind: 'gold', payload: { amount: offer._gold }, note });
+      }
+      for (const [k, v] of Object.entries(offer)) {
+        if (k === '_gold') continue;
+        await this._creditPlayer(fromId, { opId: 'trade:' + pending.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note });
+      }
     }
     payload.settled = true; // modern clients skip their legacy mint paths
     return msg;

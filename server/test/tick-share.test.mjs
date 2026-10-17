@@ -200,7 +200,9 @@ const LANDS = Object.keys(WHEEL_SPAWNS);
       await move(room, p, p.x + 3, p.y + (t % 2 ? 1 : -1), 'wheel');
       const s = room.playerState[p.id];
       if (t % 9 === 0) { s.blocking = true; s.ba = 0.5; } else { s.blocking = false; s.ba = undefined; }
-      if (t % 13 === 0) s.dodging = true; else s.dodging = false;
+      /* v2.3.3292: a PAID roll (the window _rollOn reads) -- a bare claim is
+         recorded as not rolling now (anticheat §10) */
+      if (t % 13 === 0) { s.dodging = true; room._rollStamp(s, Date.now()); } else s.dodging = false;
     }
     /* what the old code stored: a new object each tick, the oldest dropped */
     for (const id of Object.keys(room.playerState)) {
