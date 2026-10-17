@@ -75,9 +75,23 @@ async function hold(P, key, ms) {
  * with 290px of lane still ahead of it. `node tools/dev/town-lanes.mjs
  * 1070 1470` re-derives it.
  * (x=300 was rejected long before any of this: it walks into the west
- * cliff.) */
+ * cliff.)
+ *
+ * ── v2.3.3326: A NEW LANE, AND THE SPEED BY THE GAME'S OWN CLOCK
+ * v2.3.2628 re-laid town at 68x72 and its fountain (957,1521; footprint x
+ * 831-1083, y 1426-1521) now stands on (1070,1470), and since v2.3.2748 a
+ * step that takes your FEET deeper into a footprint is refused -- so every
+ * walk north from there went 0 px (the sweep of 2026-10-17).  (1285,1590) is
+ * open ground, ~1,000 px clear to the north (to y 588), clear of every
+ * footprint, the rock ring and the townsfolk (Mayor Bro 108 px off, Lil Bro's
+ * wander 115), 17 px either side.  tools/dev/town-lanes.mjs still measures
+ * the 52x55 town with no rim, so it cannot re-derive this one.
+ * And a frame's step is the walk speed times the frame's own length
+ * (S._dtScale, at most 3), so px per DRAWN frame was 2.5 on a 60 fps page and
+ * 7.5 on this slow box -- "> 4" held only here.  The run is now counted in
+ * the game's 60 fps steps (TRAPS §200: time by the game's clock). */
 async function sprint(P, frames = 30) {
-  await put(P, 1070, 1470);
+  await put(P, 1285, 1590);
   await P.page.waitForTimeout(350);
   await P.page.keyboard.down('w');
   /* Already in motion before the count starts, so the first frames of the
@@ -87,17 +101,18 @@ async function sprint(P, frames = 30) {
   const m = await P.page.evaluate((n) => new Promise((res) => {
     const S = window._gameState.current;
     const y0 = S.player.y;
-    let f = 0;
+    let f = 0, ticks = 0;
     const step = () => {
       f++;
-      if (f >= n) return res({ dist: y0 - S.player.y, frames: f });
+      ticks += (S._dtScale || 1);   /* v2.3.3326: this frame's length in 60 fps steps */
+      if (f >= n) return res({ dist: y0 - S.player.y, frames: f, ticks });
       requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
   }), frames);
   await P.page.keyboard.up('w');
   await P.page.waitForTimeout(250);
-  return Math.round((m.dist / m.frames) * 100) / 100;
+  return Math.round((m.dist / (m.ticks || m.frames)) * 100) / 100;   /* px per 60 fps step */
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -201,7 +216,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => window.__broShopBus.setOpen(false));
   await P.page.waitForTimeout(500);
   const before = await sprint(P);
-  rec.ok(`the control sprint covers ground (${before} px/frame)`, before > 4, { before });
+  /* v2.3.3326: the walk is 2.5 px a 60 fps step; it was "> 4" px a drawn frame, which only this slow box met */
+  rec.ok(`the control sprint covers ground (${before} px per 60 fps step)`, before > 1.5, { before });
 
   /* v2.3.3132: the Stamina Tonic (the old salts' key) is brewed from carrots
      now -- it arrives as a brewed bottle would, and lands in the BAG. */
