@@ -6610,6 +6610,34 @@ leaves the marker out on purpose. And a ref is named whole:
 `git ls-remote --exit-code origin refs/heads/provenance`.
 **Receipt:** provenance.yml and proofs.mjs `message` (the selftest's 7a).
 
+## 192. "A hidden Text has let go of its picture" (v2.3.3310)
+
+**Tempting:** a speech bubble, a name, a "+25 G" is done with, so set its
+container's `visible = false` and keep it for the next one. Hidden, it draws
+nothing, so it costs nothing.
+
+**Wrong.** A Pixi Text's picture goes up to the graphics chip at its first
+draw and stays there until the text changes or the Text is destroyed --
+hidden or not. Measured (mp-membudget, a phone at 3x, with every texture on
+the chip listed at each stop): every townsperson's last speech bubble kept its
+picture while hidden, 1,024 x 256 for two lines, 1 MB each, for the rest of
+the visit -- and every other player who ever spoke near you the same. The
+townsfolk say a new line every 8-23 s wherever you are, and their bubbles were
+drawn even with you a land away. The memory check's third trip came home 4 MB
+above its second whenever townsfolk said their first lines late, which went
+red on #936 and #937 against main's own code.
+
+**The rule:** words that are gone for good are destroyed (the Text hands its
+picture back to Pixi's pool, which lets it go after 30 s unused:
+texturePoolTrim.js), or set to '' -- never only hidden. And nothing is drawn
+for a speaker nobody can see.
+**Receipt:** effectsRenderer `_updateChatBubbles` destroys a bubble when it
+goes and draws no townsperson's more than 2,400 px from you. mp-membudget,
+two runs each: home after three trips 83.2-85.2 MB of the chip on main,
+78.1-80.2 with this; the third trip against the second +2.1 and +0 on main
+(+4.1/+4.2 in CI), -1.6 and -1.5 with this. mp-chatbubble and mp-chatfont,
+25 of 25.
+
 ## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3309)
 
 **Tempting:** a pose that swaps the body for a painted figure (the cook, the
