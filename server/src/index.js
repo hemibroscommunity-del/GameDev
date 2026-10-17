@@ -206,6 +206,7 @@ import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look
 import { nearJoinMethods } from './nearjoin.js'; /* v2.3.3276: a join is told the players around it; a look comes when its player does */
 import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what is 5+ levels below you, harvests and fights */
 import { floodMethods, roomNameFor, requestIp, FLOOD } from './flood.js'; /* v2.3.3274: one socket cannot stop the game */
+import { originAllowed, refuseOrigin } from './origin.js'; /* v2.3.3312: only the game's own sites open a socket */
 import { verifyMethods } from './verify.js'; /* v2.3.3275: the account check -- a new character proves a person is there */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
@@ -251,6 +252,12 @@ async function routeHttp(request, env) {
     const noSuchRoom = () => new Response(JSON.stringify({ ok: false, error: 'no such room' }), { status: 404, headers: corsHeaders });
     if (url.pathname === '/ws') {
       if (!roomName) return noSuchRoom();
+      /* v2.3.3312: only the game's own sites (and a machine's own pages) may
+         open a game socket -- a copy on another site is told where the real
+         game is and never reaches a room (origin.js) */
+      const origin = request.headers.get('Origin');
+      const og = originAllowed(origin, env);
+      if (!og.ok) return refuseOrigin(request, origin, og.why);
       return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
     }
 

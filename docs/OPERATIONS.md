@@ -186,6 +186,24 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"disable_verify","value":true}' "https://WORKER/api/admin/flags"
 ```
 
+## Only your site can use your server (v2.3.3312)
+
+The server lets in pages from **brotown.net** (and any address under it), the
+**gamedev-aix.pages.dev** previews, and your own computer. A copy of the game
+on any other site cannot connect: its players see "This isn't the official
+BroTown" with a button to brotown.net. Full write-up:
+`docs/specs/origin-lock.md`.
+
+- **Moving to, or adding, another domain:** put it in `server/wrangler.toml`
+  as `ORIGINS = "newdomain.com"` (comma separated for more) and merge,
+  **before** players use it.
+- **Emergency off:** `ORIGIN_LOCK = "off"` in the same file, merged. Quicker:
+  Cloudflare dashboard → **Workers & Pages** → **brotown-server** →
+  **Settings** → **Variables and Secrets** → set `ORIGIN_LOCK` to `off` →
+  **Deploy** (lasts until the next deploy, so change the file too).
+- **Seeing which sites tried:** **Workers & Pages** → **brotown-server** →
+  **Logs** → **Begin log stream**, and look for `origin refused`.
+
 ## Live switches (flags) — change the game without a deploy
 
 Flags take effect immediately for everyone, survive deploys, and are

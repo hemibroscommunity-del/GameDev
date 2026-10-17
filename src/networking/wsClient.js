@@ -73,6 +73,7 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
    for why it is not a React boot phase. */
 import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
 import { showLingerWait, hideLingerWait } from '@/ui/LingerScreen.js';   /* v2.3.3260: your bro is still in that fight */
+import { showOriginScreen } from '@/ui/OriginScreen.js';   /* v2.3.3312: a copy on another site is sent to the real game */
 import { markServerReady, resetServerReady, serverReadyReason } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -298,6 +299,13 @@ export function setupWebSocket(ctx) {
        account-check.md).  showVerifyGate renders the widget; its token rides
        the next join as `verify` and is spent there. */
     var _vfPending = null;
+    /* ═══ v2.3.3312: NOT THE GAME'S OWN SITE ═══
+       `_ogPending` is set by join_rejected {reason:'origin'} and consumed by
+       the close that follows it (4015): the worker lets only the game's own
+       sites open a socket (server/src/origin.js), so this page is a copy on
+       another address.  showOriginScreen (ui/OriginScreen.js) says where the
+       real game is; nothing reconnects. */
+    var _ogPending = null;
     /* ═══ v2.3.3260: YOUR BODY IS STILL IN A FIGHT ═══
        `_lgPending` is set by linger_wait (the worker refuses a join while the
        body you left in a fight with a player still stands there,
@@ -1243,6 +1251,13 @@ export function setupWebSocket(ctx) {
                  follows, and the token rides the next join. */
               if (_rejReason === 'verify') {
                 _vfPending = { sitekey: typeof msg.sitekey === 'string' ? msg.sitekey : '' };
+                break;
+              }
+              /* v2.3.3312: this page is not on one of the game's own sites
+                 (server/src/origin.js).  No new identity, no retry: the gate
+                 opens on the close that follows. */
+              if (_rejReason === 'origin') {
+                _ogPending = { home: msg.home };
                 break;
               }
               if (_rejReason === 'frozen') {
@@ -3863,6 +3878,15 @@ export function setupWebSocket(ctx) {
            by the join_rejected handler. */
         if (S._frozenByAdmin || (event && event.code === 4004)) {
           S._realtimeStatus = 'frozen';
+          return;
+        }
+        /* v2.3.3312: not the game's own site (join_rejected 'origin' / 4015):
+           every try would be refused the same, so none is made */
+        if (_ogPending || (event && event.code === 4015)) {
+          var _og = _ogPending;
+          _ogPending = null;
+          S._realtimeStatus = 'origin';
+          showOriginScreen(_og && _og.home);
           return;
         }
         /* v2.3.3275: the account check (join_rejected 'verify' / 4014): show
