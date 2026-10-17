@@ -14,10 +14,16 @@
  * in your bag, any of them when a harvest of its kind starts or another
  * player near you does one.  So the bake lands while you walk up to the tree,
  * before the tap, and the hitch the owner accepted is that bake.
+ * (v2.3.3314: another player's cook or fire-lighter no longer makes yours --
+ * theirs is drawn from a figure baked in their colours, below, and yours
+ * only when it is already made and they wear your colours -- while the
+ * lumberjack's still is, as every peer's lumberjack is cut from your
+ * figure's crops.)
  *
  * A pose not made yet never hides a body: the walking figure stays where the
- * stand-in would have stood until it is ready (entityRenderer _chopHide and
- * the peers' _rexStandIn ask standInReady), never an empty spot.
+ * stand-in would have stood until it is ready (entityRenderer _chopHide asks
+ * standInReady; the peers' _rexStandIn asks peerStandInReady, below, since
+ * v2.3.3314), never an empty spot.
  *
  * This registry is the one place both renderers read; the effects renderer
  * hands in how to make each (setStandInMaker).  QA: window.__btStandIns,
@@ -82,6 +88,33 @@ export function standInReady(kind) {
 export function standInStarted(kind) {
   const s = _st[kind];
   return !!s && s.state !== 'idle';
+}
+
+/** v2.3.3314: is `kind` on its way right now (asked for, not made or failed)? */
+export function standInMaking(kind) {
+  const s = _st[kind];
+  return !!s && s.state === 'loading';
+}
+
+/* ═══ v2.3.3314: ANOTHER PLAYER'S POSE IS READY ONLY IN THEIR COLOURS ═══
+   The owner: "Other players cooking showed wrong skin color and maybe other
+   stuff too."  A peer's cook and fire-lighter were drawn from YOUR figure
+   (your skin, trousers and boots) and a peer's lumberjack from the unpainted
+   art.  Now each is drawn from the figure made for their colours -- yours
+   when they share them, else one baked for them (effectsRenderer
+   _peerFigure) -- and until it is made their walking body stays drawn, as a
+   pose of your own does above.  The effects renderer hands in the question
+   (setPeerStandInCheck), as it hands in the maker; entityRenderer asks it for
+   each gathering peer before it hides their body, in the same frame the
+   figure is drawn, so the two never disagree. */
+let _peerCheck = null;
+/** The effects renderer's answer: (id, other, kind) => boolean.  A rebuilt
+ *  renderer hands in its own; null until one has. */
+export function setPeerStandInCheck(fn) { _peerCheck = typeof fn === 'function' ? fn : null; }
+/** Is this peer's `kind` figure made, in their colours? */
+export function peerStandInReady(id, other, kind) {
+  if (!_peerCheck) return false;
+  try { return !!_peerCheck(id, other, kind); } catch (e) { return false; }
 }
 
 if (typeof window !== 'undefined') {

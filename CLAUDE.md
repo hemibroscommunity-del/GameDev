@@ -2389,7 +2389,8 @@ remnant to migrate server-side, not a mode to preserve.
       (playerSkins `_standInClothes`: the trousers' big pieces, boot pieces
       mostly below their hem -- the pan held at the waist goes whole;
       `pantsWide` for the fire's glow); a peer's cook/fire-lighter is your
-      bake (the v2.3.1713 trade), a drawn peer's lumberjack theirs;
+      bake (the v2.3.1713 trade), a drawn peer's lumberjack theirs (every
+      peer's is theirs since v2.3.3314, below);
     - the cook's head traits 1.16 -> 1.65 (`_skillTraitMul`: his head 85 px
       against stand's 51);
     - then, offered what was left, the owner: "Yes fix all":
@@ -2413,6 +2414,38 @@ remnant to migrate server-side, not a mode to preserve.
         3 s (`_oreSplit`);
     - QA `display._bodyScale`, `window.__btStandInClothes`,
       `window.__btDressedShirt`; `mp-gatherlook`.
+    - since v2.3.3314 ANOTHER PLAYER GATHERS IN THEIR OWN COLOURS -- the
+      owner: "Other players cooking showed wrong skin color and maybe other
+      stuff too. Needs fixed":
+      - a peer's cook and fire-lighter were YOUR figure (the v2.3.1713 trade:
+        your skin, and since v2.3.3146 your trousers and boots), an undrawn
+        peer's lumberjack the unpainted art;
+      - now effectsRenderer `_peerFigure` picks the figure: yours only when it
+        is made and they wear your colours (`_cookLook`/`_fireLook`/
+        `_chopLook`, the last only with no drawings on either of you), else one
+        baked for THEIR colours by the same recipe (`_peerFigFrames`,
+        `_peerChopFrames` now for every peer), keyed by the colours, not the
+        player (`_standInColourKey`);
+      - until it is made their walking body stays drawn: entityRenderer asks
+        `peerStandInReady` (standIns.js, the effects renderer's answer, a look)
+        before it hides the body, in the same frame -- never neither, never
+        both; in greaves the strip with legs stands in while the legless one
+        bakes, never a legless one without greaves;
+      - ONE ALLOWANCE for all of them, `PEER_FIG_BUDGET` 16 MB (`_peerFigRoom`:
+        a cook 4.5 MB, a fire-lighter 6.3, a lumberjack 2.0 -- about eight
+        lumberjacks, three cooks or two fire-lighters), GPU only, released 15 s
+        after nobody drew one; past it, a figure nobody drew in the last second
+        gives way, else the next peer stays in their walking body; a failed
+        bake waits 15 s, a strip that never answers gives up after 15 s, and a
+        peer's greaves are waited for at most 3 s;
+      - a peer's cook or fire-lighter no longer makes YOURS (`_standInTriggers`;
+        it was 9 MB for the cook, kept for the visit); a peer's lumberjack
+        still does (every peer's is cut from its crops);
+      - QA `remoteSkillProbe(id).shared`/`.legless`, `peerFigBakes()` (with
+        `bytes`), `peerFigTry`, `window.__btSetSkin/Pants/Shoes`;
+        `mp-peercolours` (fails on the old
+        code: every recoloured pixel of a peer's cook and fire-lighter the
+        watcher's): docs/specs/peer-gather-colours.md.
   - Since v2.3.3146 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
     "Also all the buildings in town should show on the minimap": each
     standing building's footprint where it stands (wheelMinimap.js
