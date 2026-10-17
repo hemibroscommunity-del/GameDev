@@ -90,7 +90,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return out;
     }, [...want.keys()]);
     const t1 = await tiles();
-    const wrong = [...want.keys()].filter((k) => !(t1[k] && t1[k].tile && t1[k].ok && t1[k].src === want.get(k)));
+    /* the file is the picture's identity; its ?v= is only a cache-buster (the
+       essences keep the bag's old ITEMS_V: /icons/ is revalidated, never
+       immutable -- public/_headers -- so a file replaced in place is fetched) */
+    const file = (u) => String(u || '').split('?')[0];
+    const wrong = [...want.keys()].filter((k) => !(t1[k] && t1[k].tile && t1[k].ok && file(t1[k].src) === file(want.get(k))));
     rec.ok(`1. the bag draws all ${want.size} as the owner's pictures, each its own file, decoded (no 🌱, no glyph, no skill icon)`,
       wrong.length === 0, wrong.slice(0, 8).map((k) => ({ k, ...t1[k], want: want.get(k) })));
     await A.page.evaluate(() => { const el = document.querySelector('[data-inv-key="seed_carrot"]'); if (el) el.scrollIntoView({ block: 'start' }); });
