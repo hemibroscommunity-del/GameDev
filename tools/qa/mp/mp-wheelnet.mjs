@@ -85,6 +85,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(2000);
   await tap(P, 'Close');
   await P.page.waitForTimeout(600);
+  /* v2.3.3283: a real keystroke every 20 s (harness keepAlive), against the
+     page's two-minute idle logout: the frame-paced walk below takes ~2 minutes on a slow box
+     (mp-wheeltrial's first paced run was logged out before its end) */
+  const stopAlive = H.keepAlive(P);
 
   /* ── 1. the way in, over the bad connection ── */
   const door = TOWN_EXITS.find((e) => e.zoneId === 'worldview');
@@ -108,9 +112,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 2. walk: the ground keeps coming ── */
   const legs = [[ARRIVAL.x + 1800, ARRIVAL.y + 700], [ARRIVAL.x, ARRIVAL.y - 2200], [ARRIVAL.x + 200, ARRIVAL.y + 96]];
   let worstStuck = 0;
+  /* v2.3.3283: hops paced by this page's frames (harness hopGap).  On a box
+     drawing a frame every 400 ms a 260 ms hop kept the loader full the whole
+     walk, so a short piece never had its turn to be laid again: all 73 were
+     freed behind the walk first, "mended 0" on main */
+  const pace = await H.hopGap(P);
+  console.log(`    the walk: a 100 px hop every ${pace.gap} ms (a frame every ${pace.frameMs} ms here)`);
   for (const [x, y] of legs) {
     const leg0 = Date.now();
-    await H.hopTo(P, x, y, { tries: 60 });
+    await H.hopTo(P, x, y, { tries: 60, gap: pace.gap });
     const s = await stats(P);
     console.log(`    leg -> ${((Date.now() - leg0) / 1000).toFixed(0)} s: ${JSON.stringify(s)}`);
     await P.page.waitForTimeout(1500);
@@ -148,4 +158,5 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...no piece failed outright, and no picture was unreadable', end.failures === 0 && end.unreadable === 0, end);
   rec.ok('no page errors', P.logs.filter((l) => /pageerror/.test(l)).length === 0, P.logs.filter((l) => /pageerror/.test(l)).slice(0, 5));
   await P.page.context().unroute(/\/world\/ground\/[^/?]+\.png/).catch(() => {});
+  stopAlive();
 }

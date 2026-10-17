@@ -1214,6 +1214,53 @@ export async function devOp(wsPort, op, playerId, body) {
   return res.json();
 }
 
+/* ═══ v2.3.3283: A WALK PACED BY THE PAGE'S FRAMES ═══
+ * hopTo moves the bro 100 px a hop whatever the page's frame rate, and the
+ * Wheel's ground lays its pieces once a frame (wheelGround.js: three in
+ * flight, each back no sooner than the frame after its ask).  On a phone at
+ * 60 fps a 260 ms hop is ~16 frames, about five of the worker's round trips;
+ * on a box whose page draws a frame every 400 ms the same hop is under one
+ * frame, and no loader could keep up -- on main, mp-wheeltrial's walk popped
+ * 125 pieces in, and mp-wheelnet's short pieces were all freed behind the
+ * walk before one could be mended.  This is the gap for a hop that gives the
+ * loader as many round trips as a phone's: `frames` of this page's frames
+ * (a round trip is one where a frame outlasts the worker's ~90 ms piece),
+ * never under `min` -- 260 ms on any page drawing faster than 104 ms a
+ * frame, so a fast machine walks exactly as before.  The game's own walk
+ * moves at most 3 steps a frame (dtScale), so even paced the walk is still
+ * several times faster than the bro could go on that page. */
+export async function hopGap(P, { frames = 2.5, min = 260 } = {}) {
+  const ms = await P.page.evaluate(() => new Promise((res) => {
+    const d = [];
+    let last = null;
+    const tick = (now) => {
+      if (last != null) d.push(now - last);
+      last = now;
+      if (d.length >= 10) { d.sort((a, b) => a - b); res(d[d.length >> 1]); } else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }));
+  return { gap: Math.max(min, Math.round(frames * ms)), frameMs: Math.round(ms) };
+}
+
+/* ═══ v2.3.3283: A REAL KEYSTROKE EVERY 20 s ═══
+ * The page logs itself out after two minutes without REAL input (wsClient
+ * idleLogout), and a scenario that walks by page.evaluate makes none however
+ * busy it looks -- the worker then has no player ("server": null).  Control
+ * does nothing in the game (Shift is the sprint since v2.3.3006); mp-elemhits
+ * and mp-beastmaster carry the same loop.  Timed in node, so a closed page
+ * ends it instead of making it spin.  Returns the function that stops it. */
+export function keepAlive(P, everyMs = 20000) {
+  let stop = false;
+  (async () => {
+    while (!stop && !P.page.isClosed()) {
+      await P.page.keyboard.press('Control').catch(() => {});
+      for (let t = 0; t < everyMs && !stop; t += 500) await new Promise((r) => setTimeout(r, 500));
+    }
+  })();
+  return () => { stop = true; };
+}
+
 export async function hopTo(P, tx, ty, { step = 100, gap = 260, tries = 40 } = {}) {
   for (let i = 0; i < tries; i++) {
     const done = await P.page.evaluate(({ x, y, s }) => {
