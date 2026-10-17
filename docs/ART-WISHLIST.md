@@ -441,29 +441,28 @@ Style: crisp pixel art like the attached townsperson: hard-edged square pixels, 
 ### Box trap: item icon
 
 - **In the game:** The Box Trap in your bag, and the picture on the TRAP button. Today both borrow the Trapping skill's icon.
-- **Attach:** any item icon of the game's (`public/icons/items/wood-log.webp`), so it matches.
-- **How:** Ask ChatGPT for a square picture on one flat magenta background (#FF00FF). A session cuts it out and sizes it.
-
-```text
-A square item icon for a top-down 2D action RPG, in exactly the style of the attached icon: a simple wooden box trap, a small crate of rough pine planks with its door propped open on a stick tied to a bit of string, a little bait inside. Seen from slightly above and to the front, filling most of the picture. One flat magenta background (#FF00FF), no shadow, no border, no text. Crisp pixel art: hard-edged pixels, a few flat tones per colour, a one-pixel outline in a darker shade of its own colour.
-```
+- **Now on the hardened wood sheet below** (v2.3.3274): one sheet for the five hardened woods and the trap, so they match.
 
 ## Hardened wood
 
 Five logs make one hardened wood at the Woodworker (v2.3.3139, docs/specs/hardened-wood.md). Today each icon is its tree's log picture with the sprigs taken off, the wood darkened and two iron bands drawn round it by `tools/make_hardened_wood_icons.py`.
 
-### Hardened wood: five item icons
+### Hardened wood and the box trap: one sheet of six (v2.3.3274)
 
-- **In the game:** The bag, and the Woodworker's Harden tab: Hardened Pine Wood, Hardened Softwood, Hardened Hardwood, Hardened Cedar Wood and Hardened Maple Wood.
-- **Attach:** the five log icons (`public/icons/items/wood-log.webp`, `wood-softwood.webp`, `wood-hardwood.webp`, `wood-cedar.webp`, `wood-maple.webp`), so each wood keeps its colour.
-- **How:** Ask ChatGPT for one square picture holding all five; send it in chat and a session cuts it into the game's 256 px icons (`public/icons/items/hardened-<wood>.webp`).
+- **In the game:** The bag and the Woodworker's Harden tab (Hardened Pine Wood, Hardened Softwood, Hardened Hardwood, Hardened Cedar Wood, Hardened Maple Wood), and the Box Trap in the bag and on the TRAP button.
+- **Attach:** `docs/art/log-icons-key.png`, the game's five log icons in a row (pine, softwood, hardwood, cedar, maple), so each hardened wood keeps its log's colour and the style matches the bag.
+- **How:** One landscape picture; send it in chat and a session cuts it into the game's icons. It replaces the white-background prompt that was here: a white ground cuts out badly round pale wood, and the trap's old prompt asked for pixel art, which the bag is not.
 
 ```text
-Create a single 1280x256 image: five separate game item icons in a row on a seamless pure white background (#FFFFFF), each centered in its own invisible square cell with even margins. No grid lines, no borders, no text.
+Landscape image (wider than tall): a sprite sheet of 6 item icons for a 2D action RPG, in a 3×2 grid read like a page (each row left to right, rows top to bottom). Each icon sits centered in its own equal square cell, fills about three quarters of it, and touches nothing else.
 
-STYLE: match the attached log icons exactly -- the same bold dark outline, the same rich hand-painted shading and highlights, the same angle and size.
+The first five are HARDENED WOOD, made from the five attached logs (left to right: pine, softwood, hardwood, cedar, maple), each keeping its own log's colours: the same log, but worked -- bark trimmed smooth and darkened by fire-hardening, the end grain dark at its rim, oiled to a soft sheen, and bound with two riveted iron bands. No leaves or sprigs.
+Row 1: hardened pine · hardened softwood · hardened hardwood
+Row 2: hardened cedar · hardened maple · a box trap (a small crate of rough pine planks, its door propped open on a stick tied to a string, a carrot inside as bait)
 
-SUBJECTS, left to right, one for each attached log in the same order and the same wood colour: a piece of HARDENED WOOD -- the same log, but worked: bark trimmed smooth and dark from fire-hardening, the end grain darkened at its rim, oiled to a soft sheen, bound with two riveted iron bands. No leaves or sprigs.
+Style: exactly the attached log icons: glossy hand-painted item icons with the same bold dark outline, shading, highlights and angle. All 6 the same size and weight.
+
+No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the icons is magenta (cedar's warm reddish wood is fine). Do not copy the attached logs' leaves or background.
 ```
 
 ## Land banners
@@ -636,41 +635,31 @@ Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh
 
 ## Item icons
 
-### Essences (v2.3.3141)
+### Essences (v2.3.3141; one sheet of nine since v2.3.3274)
 
 - **In the game:** The nine essences salvage leaves (Rare, Elite and Godly, each in copper, iron and black steel), in the bag and on the Blacksmith's Salvage tab. Today they are glowing orbs drawn by `tools/make_essence_icons.py`, the metal's bar tucked in the corner.
-- **How:** One picture per grade is enough: the game puts the metal's bar on it. Send them on a plain background; they become `public/icons/items/essence-<grade>-<metal>.webp` (256 x 256).
-- **Attach:** the style key only (never the bro).
+- **Attach:** `docs/art/bag-icon-style-key.png` (the game's own bag icons). The earlier prompt asked for HD pixel art against the world's style key; the bag's icons are painted, so this one matches them.
+- **How:** One square picture of all nine: the light's colour says the grade, the little bar at its heart says the metal. They become `public/icons/items/essence-<grade>-<metal>.webp`.
 
 ```text
-A single game item icon of a magical ESSENCE: a small glowing orb of swirling light, about the size of a fist, floating, with a few tiny sparkles round it. Make three versions, one per picture: RARE in cool blue light, ELITE in warm orange light, GODLY in shifting rainbow (prismatic) light. Painted HD pixel art matching the attached style key, centred, nothing else in the picture, on a flat magenta (#FF00FF) background.
+Square image: a sprite sheet of 9 item icons for a 2D action RPG, in a 3×3 grid read like a page (each row left to right, rows top to bottom). Each icon sits centered in its own equal square cell, fills about three quarters of it, and touches nothing else.
+
+Each icon is a magical ESSENCE: a fist-sized orb of swirling glowing light inside a clean dark outline, a small bar of metal floating at its heart, and a few tiny sparkles around it. The glow stays inside the orb: no halo or haze on the background.
+Columns, left to right, by the light's colour: RARE in cool blue light · ELITE in warm orange light · GODLY in shifting rainbow light (gold, green, cyan and blue only).
+Rows, top to bottom, by the metal bar at the heart: COPPER (reddish-orange metal) · IRON (cool silver-grey metal) · BLACK STEEL (near-black metal with a cold blue sheen).
+
+Style: exactly the attached reference: glossy hand-painted item icons, clean dark outline, soft shading, small bright highlights, lit from the upper left. All 9 the same size so they read as one set.
+
+No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the icons is magenta, pink or purple. Do not copy the reference's items or background.
 ```
 
 ## The farm
 
 The Feed & Seed's farm (v2.3.3127, docs/specs/farm.md) draws its crops, seeds and compost with emoji until these exist: the window's beds, the Seeds tab and the bag all use them.
 
-### Farm goods: six bag icons
+### Farm goods: bag icons
 
-- **In the game:** The bag, the Feed & Seed window's beds and its Seeds tab: a carrot, a Firebloom, a Rock Vine, a Cloudpetal, a seed pouch (every seed) and a sack of compost.
-- **Attach:** the Fury Tonic bottle icon (`public/icons/items/potion-fury.webp`), as the style to match.
-- **How:** Ask ChatGPT for one square picture holding all six; send it in chat and a session cuts it into the game's 256 px icons.
-
-```text
-Create a single 1024x1024 image: a 3x2 grid of six separate game item icons on a seamless pure white background (#FFFFFF). Each icon is centered in its own invisible cell with generous even margins. No grid lines, no cell borders, no labels.
-
-STYLE (apply identically to all six): match the attached reference icon exactly -- the same bold dark outline, the same rich, glossy, hand-painted shading with crisp highlights, the same saturation and the same size and weight of object in its cell. Each icon is ONE clearly readable object with a bold silhouette that stays readable at 32 pixels. A few small sparkles around an object are fine; no background shapes.
-
-SUBJECT GRID (left to right, top to bottom):
-1. a single fat orange carrot with a bushy green leaf top, freshly pulled, a little soil on its tip
-2. a "Firebloom": a magical red-orange flower whose petals curl up like little flames, on a short green stem with two leaves
-3. a "Rock Vine": a tough dark-green climbing vine with small grey pebbles caught in its curling tendrils
-4. a "Cloudpetal": a pale blue-white flower with soft round fluffy petals like a little cloud, on a short stem
-5. a small tied burlap seed pouch, slightly open, a few seeds spilling out
-6. a stout burlap sack of rich dark compost, open at the top, with a cheerful pink earthworm peeking out
-
-HARD CONSTRAINTS: no text, no letters, no numbers anywhere; no frames or borders around icons; no drop shadows on the background; pure flat white between icons; identical outline weight, palette and lighting on all six icons; every icon roughly the same visual size and weight; each silhouette must be identifiable when shrunk to 32x32 pixels.
-```
+- **Moved to `docs/art/FARM-ART-PROMPTS.md`** (v2.3.3274): the sixteen crops, the sixteen seed packets, and the five dishes with compost, three sheets on the bag's own style key. The white-background prompt that was here is retired: a white ground cuts out badly round the cloudpetal's and frostberry's pale colours.
 
 ## Sounds
 

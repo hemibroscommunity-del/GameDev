@@ -3,6 +3,7 @@ import { chromeSilenced, guardActive, onGuardChange } from './modalGuardBus.js';
 import { chatLogBus } from './chatLogBus.js';
 import { uiBusyBus } from './uiBusyBus.js';   /* v2.3.2085 */
 import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
+import { chatLaneOf, CHAT_LANE_ICON } from '../../data/smallIcons.js';   /* v2.3.3274: the owner's chat-lane pictures */
 
 /* ═══ v2.3.2037: WORLD CHAT, AS ITS OWN SECTION ═══
  *
@@ -685,9 +686,21 @@ export function WorldChatFeed() {
              index alone re-keys every row when the log rolls over. Carried
              over from the composer's copy of this list. */
           <div key={(m.ts || 0) + '-' + i} style={{ marginBottom: 3, wordBreak: 'break-word' }}>
-            {m.name ? (
-              <span style={{ color: m.color || '#8FB8C9', fontWeight: 700 }}>{m.name}: </span>
-            ) : null}
+            {m.name ? (() => {
+              /* v2.3.3274: a party, area or whisper line's mark (🛡 📍 ✉ at
+                 the front of its name, game/chat.js) is the owner's picture */
+              const lane = chatLaneOf(m.name);
+              return (
+                <span style={{ color: m.color || '#8FB8C9', fontWeight: 700 }}>
+                  {lane ? (
+                    <img src={CHAT_LANE_ICON[lane.lane]} alt={lane.lane} data-chat-lane={lane.lane} draggable={false}
+                      width={16} height={16}
+                      style={{ display: 'inline-block', width: 16, height: 16, verticalAlign: '-4px', marginRight: 3, pointerEvents: 'none' }} />
+                  ) : null}
+                  {lane ? lane.rest : m.name}:{' '}
+                </span>
+              );
+            })() : null}
             <span style={{ color: m.muted ? '#667875' : (m.name ? '#F4F0E7' : '#EAC675') }}>{m.text}</span>
           </div>
         ))}

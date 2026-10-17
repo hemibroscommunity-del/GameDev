@@ -2,6 +2,16 @@ import React from 'react';
 import { createPortal } from 'react-dom';   /* v2.3.1966 */
 import { ZONES } from '@/data/index.js';
 import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';   /* v2.3.1966 */
+import { SMALL_ICON } from '../../data/smallIcons.js';   /* v2.3.3274: the owner's party pictures */
+/* v2.3.3274: the window's marks were emoji (🎟️ 👑 💀 📍), drawn differently on
+   every phone; the owner drew them (tools/ui/cut-small-icons.py). */
+function partyMark(src, size, title) {
+  return React.createElement('img', {
+    src: src, alt: title || '', title: title || undefined, draggable: false, width: size, height: size,
+    'data-party-mark': title || '',
+    style: { display: 'inline-block', width: size, height: size, verticalAlign: '-3px', marginRight: 3, pointerEvents: 'none', objectFit: 'contain' },
+  });
+}
 
 /* === PartyHUD — the party roster overlay (v2.3.1185, handoff item D) ===
 
@@ -151,7 +161,7 @@ export function PartyHUD(props) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: { fontSize: 11, fontWeight: 600, letterSpacing: '.12em', color: '#D8A85F', fontVariantNumeric: 'tabular-nums' }
-  }, "🎟️ PARTY ", party.members.length, "/4"), /*#__PURE__*/React.createElement("button", {
+  }, partyMark(SMALL_ICON.partyMember, 16, 'party'), "PARTY ", party.members.length, "/4"), /*#__PURE__*/React.createElement("button", {
     title: "Leave party",
     style: Object.assign({}, _btnBase, {
       width: 24, height: 24, fontSize: 11, lineHeight: '24px', padding: 0,
@@ -174,7 +184,8 @@ export function PartyHUD(props) {
         flex: 1, fontSize: 11, fontWeight: 700, color: m.id === myId ? '#F7F2E7' : '#B9C1BF',
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
       }
-    }, m.id === party.leader ? '👑 ' : '', m.dead ? '💀 ' : '', m.name), /*#__PURE__*/React.createElement("span", {
+    }, m.id === party.leader ? partyMark(SMALL_ICON.partyLeader, 15, 'leader') : null,
+      m.dead ? partyMark(SMALL_ICON.partyDown, 15, 'down') : null, m.name), /*#__PURE__*/React.createElement("span", {
       style: { fontSize: 11, color: '#96A2A0', fontVariantNumeric: 'tabular-nums' }
     }, "Lv", m.level), iAmLeader && m.id !== myId && /*#__PURE__*/React.createElement("button", {
       title: "Kick",
@@ -201,6 +212,6 @@ export function PartyHUD(props) {
       }
     })), (m.away || zoneName) && /*#__PURE__*/React.createElement("div", {
       style: { fontSize: 11, color: '#96A2A0', marginTop: 1 }
-    }, m.away ? 'away — reconnecting…' : '📍 ' + zoneName));
+    }, m.away ? 'away — reconnecting…' : React.createElement(React.Fragment, null, partyMark(SMALL_ICON.partyAway, 13, 'elsewhere'), zoneName)));
   }));
 }

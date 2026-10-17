@@ -91,8 +91,9 @@ function farmNames() {
 }
 /* the five steps' pictures, the right stick's own (public/ui/controls/),
    drawn once onto a small canvas as they load (nodeLabels.js's way with the
-   bag's tools: an SVG with no size of its own is drawn at the size asked) */
-const STEP_ICON = (step) => '/ui/controls/farm-' + step + '.svg?v=2.3.3124';
+   bag's tools).  v2.3.3274: the owner's painted pictures, 160 px WebP (were
+   white-outline SVGs; tools/ui/cut-small-icons.py) */
+const STEP_ICON = (step) => '/ui/controls/farm-' + step + '.webp?v=2.3.3274';
 const STEP_ICON_PX = 64;
 function loadStepIcon(step) {
   if (typeof Image === 'undefined') return Promise.reject(new Error('no DOM'));

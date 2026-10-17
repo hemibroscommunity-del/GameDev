@@ -2413,6 +2413,29 @@ remnant to migrate server-side, not a mode to preserve.
     sent -- presence v2's roster already carries the party whole wherever they
     are; `__btMinimap.party`, `__btWorldMap.more.party`; `party-marks` suite,
     `mp-partymap`: docs/specs/party-on-maps.md.
+  - Since v2.3.3274 THE OWNER'S SMALL ICONS -- asked what ChatGPT could draw to
+    replace the emoji and code-drawn pictures, the owner sent four sheets
+    ("Here's the art assets for the 'small icons'"), cut by
+    `tools/ui/cut-small-icons.py` from `assets/icons-source/sheet-small-*.png`
+    (found by their own alpha, rows and icon counts asserted, each at the size
+    it is DRAWN -- 64 px marks, 160 px buttons, 128 px popup -- as a shown or
+    warmed picture is held decoded at its own size):
+    - a party member's plate wears the party badge (was 🎉 in the name;
+      `_drawPlateCapsule`'s `party`), the party window its pictures (🎟️ 👑 💀
+      📍), the threat skull is the owner's (a Sprite still called
+      `_skullText`, tinted red as before), each townsperson the talk bubble in
+      the quest badge's place while he has no quest (was an 8 px ★), the chat's
+      party/area/whisper lines their bubbles (`chatLaneOf` reads the 🛡/📍/✉
+      the names still carry), the eight buff badges, and "Defense Lv N" the
+      shield (popup key `defense`, `iconLead`);
+    - the five ability buttons and the right stick's talk, door, sleep and farm
+      steps are the owner's pictures (controlSkin `abilityArt`; a baked `-grey`
+      copy for the greyed states, never a CSS filter; the burst keeps a faint
+      element ring);
+    - `src/data/smallIcons.js`; DOM ones warmed in controlsPreload.js, the
+      canvas's three loaded by `preloadSmallIconTextures`; `__btNpcMarks`, the
+      peer badge probe's `party`/`skull`; `small-icons` suite, `mp-smallicons`:
+      docs/specs/small-icons.md.
   - Since v2.3.3209 THE MONSTER CODEX -- the owner: "After you kill a monster
     you learn more about it, what it does, where it's from, elemental type,
     special attack, (make up a backstory) etc.", "Also include drop tables

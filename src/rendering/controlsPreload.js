@@ -24,10 +24,12 @@
  * decode() rather than onload, and the Images are HELD, for the reasons
  * levelUpBurstPreload.js gives: decode() means there is a bitmap to paint, and
  * an unreferenced decoded image is collectable under memory pressure.
- * (The whirlwind, starburst, bash burst and burst nova are SVG drawn in code:
- * nothing to fetch.)
+ * (The whirlwind, starburst, bash burst and burst nova were SVG drawn in code,
+ * nothing to fetch; since v2.3.3274 they are the owner's pictures, warmed
+ * here with their grey copies.)
  */
-import { ICON_URL, RDISC_ICONS } from '../ui/panels/controlSkin.jsx';
+import { ICON_URL, RDISC_ICONS, ABILITY_ART_URLS } from '../ui/panels/controlSkin.jsx';
+import { smallIconDomUrls } from '../data/smallIcons.js';   /* v2.3.3274: the owner's small icons */
 import { quickEatIconUrls } from '../data/foodIcons.js';   /* v2.3.3260: the quick-eat button's food */
 /* v2.3.3120: the TRAP pop-up's picture (TrapButton.jsx uses the same string) */
 export const TRAP_ICON_URL = '/icons/ui/skill-trapping.webp?v=2.3.1224';
@@ -61,6 +63,11 @@ export function controlsPreloadUrls() {
      -- the bag pictures of every heal eaten at once; it appears the moment a
      hit takes HP off you, the middle of a fight */
   urls.push(...quickEatIconUrls());
+  /* v2.3.3274: the owner's ability pictures, lit and grey (controlSkin
+     abilityArt), and the small icons the HUD, the party window and the chat
+     show (data/smallIcons.js) -- a buff lands, a party forms, a whisper comes
+     in the middle of play, never while a loading screen is up */
+  urls.push(...ABILITY_ART_URLS, ...smallIconDomUrls());
   return [...new Set(urls)];
 }
 
