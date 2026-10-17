@@ -478,7 +478,7 @@ function buildScene(app) {
           const kind = kindOf(s);
           bytes += b;
           byKind[kind] = (byKind[kind] || 0) + b;
-          /* v2.3.3307: + uid, the order its picture was made in (mp-membudget's
+          /* v2.3.3310: + uid, the order its picture was made in (mp-membudget's
              third trip tells a picture made on the trip from one made before
              it and only drawn for the first time) */
           rows.push({ label: String(s.label || '').replace(/^https?:\/\/[^/]+/, '').split('?')[0], kind, w, h, mip, format: s.format,
@@ -506,7 +506,7 @@ function buildScene(app) {
           });
         } catch (e) { /* a private map that moved: the rest still stands */ }
         const idleTop = Object.entries(idle).sort((a, b) => b[1] - a[1]).slice(0, 40).map(([k, b]) => [k, +(b / 1048576).toFixed(2)]);
-        /* v2.3.3307: the uid the next picture made will get -- every picture
+        /* v2.3.3310: the uid the next picture made will get -- every picture
            in `list` with a smaller one was made before this reading */
         let uidNow = null;
         try { const t = new TextureSource({ width: 1, height: 1, label: 'uid-probe' }); uidNow = t.uid; t.destroy(); } catch (e) { /* probe only */ }

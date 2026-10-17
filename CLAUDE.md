@@ -3470,7 +3470,7 @@ Two protocol versions coexist; both must keep working:
     `?poolkeep` to compare; `window.__btTexPool()`). The census is
     `window.__btSceneCensus(depth)` (the scene counted by path); `mp-sceneleak`
     checks all four, a rebuild's shadow system included.
-  - A HIDDEN TEXT STILL HOLDS ITS PICTURE (v2.3.3307, found when the memory
+  - A HIDDEN TEXT STILL HOLDS ITS PICTURE (v2.3.3310, found when the memory
     check went red at random on main): a speech bubble that went away was
     hidden and kept, so every townsperson's and player's last line -- 1 MB of
     the graphics chip for two lines on a 3x phone -- stayed there for the

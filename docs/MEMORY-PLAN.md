@@ -256,7 +256,7 @@ every session and the tour on a button, *"Yes all 3"*:
    canvases +2.3 MB on the first and +5.1 on the second (text and hit-chip
    pages), nothing on the third.
 
-   v2.3.3307: by 2026-10-17 the GPU line went red at random on main's own code
+   v2.3.3310: by 2026-10-17 the GPU line went red at random on main's own code
    (+4.1 and +4.2 on #936 and #937, +0.5 to +2.7 on others).  Listing every
    texture on the chip at each stop found two causes.  A real waste: every
    townsperson's last speech bubble kept its picture while hidden, 1 MB for

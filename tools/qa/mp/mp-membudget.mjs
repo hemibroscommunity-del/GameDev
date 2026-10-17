@@ -23,7 +23,7 @@
  *     two trips fill caches that then hold (measured: the GPU's canvases +2.3
  *     MB on the first, +5.1 on the second -- text and hit-chip pages, 1024 x
  *     256 and the like -- and nothing on the third).
- *     v2.3.3307: and the GPU's growth on the third trip leaves out pictures
+ *     v2.3.3310: and the GPU's growth on the third trip leaves out pictures
  *     made BEFORE the second trip ended and drawn for the first time since
  *     (each texture's uid says when its picture was made: __btGpuTex) -- a
  *     body strip loaded behind the loading screen goes up to the graphics chip
@@ -83,7 +83,7 @@ const READ = {
 };
 
 /* the GPU a minute later, as Pixi's collector would leave it (see the header):
-   { mb, uidNow, held: [[uid, MB], ...] } -- v2.3.3307: with every texture
+   { mb, uidNow, held: [[uid, MB], ...] } -- v2.3.3310: with every texture
    still held and the uid the next picture made would get */
 const settledGpu = (P) => P.page.evaluate(() => {
   const R = window._pixiRenderer && window._pixiRenderer.app && window._pixiRenderer.app.renderer;
@@ -99,7 +99,7 @@ const settledGpu = (P) => P.page.evaluate(() => {
     held: (g.list || []).filter((r) => typeof r.uid === 'number').map((r) => [r.uid, r.mb]) };
 });
 
-/* v2.3.3307: of what the GPU held at `b` and not at `a`, the MB of pictures
+/* v2.3.3310: of what the GPU held at `b` and not at `a`, the MB of pictures
    made before `a` was read -- drawn for the first time since (the header).
    null when either reading lacks the uids (an older build's probe). */
 const firstDrawsMB = (a, b) => {
@@ -195,7 +195,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       s.workers = await workers();
       const sg = await settledGpu(P);
       s.gpuSettled = sg ? sg.mb : null;
-      s.gpuUidNow = sg ? sg.uidNow : null;   /* v2.3.3307: for the first draws (firstDrawsMB) */
+      s.gpuUidNow = sg ? sg.uidNow : null;   /* v2.3.3310: for the first draws (firstDrawsMB) */
       s.gpuHeld = sg ? sg.held : null;
       out.stops.push(s);
       const row = Object.fromEntries(Object.keys(READ).map((k) => [k, READ[k](s)]));
@@ -248,7 +248,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const at2 = (k, s) => (k === 'gpu' ? s.gpuSettled : READ[k](s));
     const grew = Object.keys(READ).map((k) => ({ k, second: at2(k, a), third: at2(k, b),
       d: +((at2(k, b) || 0) - (at2(k, a) || 0)).toFixed(1), may: TRIP_GROWTH[k] }));
-    /* v2.3.3307: the GPU's growth less its first draws of pictures made before
+    /* v2.3.3310: the GPU's growth less its first draws of pictures made before
        (the header) is what the trip made and kept */
     const gg = grew.find((g) => g.k === 'gpu');
     const fd = firstDrawsMB({ uidNow: a.gpuUidNow, held: a.gpuHeld }, { held: b.gpuHeld });

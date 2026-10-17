@@ -6564,7 +6564,7 @@ field list.
 migration throws stays one short through the real join, runs again once
 mended, and a newer blob closes the join with nothing written.
 
-## 192. "A hidden Text has let go of its picture" (v2.3.3307)
+## 192. "A hidden Text has let go of its picture" (v2.3.3310)
 
 **Tempting:** a speech bubble, a name, a "+25 G" is done with, so set its
 container's `visible = false` and keep it for the next one. Hidden, it draws

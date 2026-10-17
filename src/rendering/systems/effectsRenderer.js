@@ -2452,7 +2452,7 @@ const LABEL_STYLE = new TextStyle({
    message.  Built lazily: a FillGradient made at module load would run before
    the renderer exists. */
 let _chatBubbleGrad = null;
-/* v2.3.3307: a townsperson's line is drawn only within this many world px of
+/* v2.3.3310: a townsperson's line is drawn only within this many world px of
    you -- past any screen's edge at the Wheel's zoom (a 3x phone shows ~650 x
    1,400 of the world, a desktop about 3,200 across) -- see _updateChatBubbles */
 const NPC_BUBBLE_REACH = 2400;
@@ -8489,7 +8489,7 @@ export class EffectsRenderer {
       if (!npc || !npc.chatBubble || !npc.chatBubble.text) continue;
       const age = now - npc.chatBubble.ts;
       if (age > 5000) continue;
-      /* v2.3.3307: only a townsperson near you.  The townsfolk chatter every
+      /* v2.3.3310: only a townsperson near you.  The townsfolk chatter every
          8-23 s wherever you are (BroTown.jsx), and each line drawn is a new
          picture on the graphics chip -- 1 MB for a two-line one on a 3x
          phone -- made for nobody while you are out in the lands. */
@@ -8506,7 +8506,7 @@ export class EffectsRenderer {
       activeKeys.add(key);
     }
 
-    /* ═══ v2.3.3307: A BUBBLE THAT IS GONE GIVES BACK ITS PICTURE ═══
+    /* ═══ v2.3.3310: A BUBBLE THAT IS GONE GIVES BACK ITS PICTURE ═══
        A stale bubble used to be hidden and kept, for its speaker's next line.
        Hidden, its Text still held the last line's picture on the graphics
        chip -- 1 MB for a two-line bubble on a 3x phone -- for every townsperson
