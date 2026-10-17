@@ -46,6 +46,9 @@
  *      bake's (SPAWN_RULES.deep.tiers) and §1b's.
  *   9. THE SEPARATION SWEEP: the Wheel keeps its monsters apart as every zone
  *      does, by a sweep instead of every pair (the tick's cost, measured).
+ *  10. v2.3.3299, A MONSTER NOBODY IS NEAR RESTS: no player within
+ *      WHEEL.REST_REACH squares of it, nothing in flight, and it does nothing
+ *      in a tick -- but comes back to life on time; `wheelrest: false`.
  */
 import { GameRoom } from '../src/index.js';
 import { ZONES, VALID_ZONE_IDS, BLACKSMITH_TIERS, WOODWORKING_TIERS } from '../src/data.js';
@@ -810,6 +813,78 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   const us = Number(process.hrtime.bigint() - t0) / 1e3 / N;
   check(`sweep: the Wheel's monster tick uses it, once a tick (${ms.length} monsters, ${us.toFixed(0)} µs a tick here; ~1,270 µs with every pair)`,
     calls === N && ms.length === 384, { calls, us });
+}
+
+// ── 10. A MONSTER NOBODY IS NEAR RESTS (v2.3.3299) ───────────────────────
+{
+  /* the owner's 5x map is five times the monsters: one no player is within
+     WHEEL.REST_REACH squares of WHEEL.REST_CELL px of (3,200 px at least)
+     does nothing in a tick -- but still comes back to life on time, and
+     finishes anything already in flight first */
+  const r3 = new GameRoom(mockState, mockEnv);
+  const ms = r3._ensureZoneMonsters(WHEEL_ZONE);
+  const me = ms.find((q) => q.home === 'ember');
+  const pr = { id: 'pr', z: WHEEL_ZONE, x: me.x + 600, y: me.y, hp: 100, maxHp: 100, dead: false, disconnected: false,
+    _zoneEntryGraceUntil: Date.now() + 600000 };
+  r3.playerState.pr = pr;
+  const C = WHEEL.REST_CELL, R = WHEEL.REST_REACH;
+  const dist = (q) => Math.hypot(q.x - pr.x, q.y - pr.y);
+  /* outside every awake square however the squares fall, and inside them */
+  const farOf = (L) => L.filter((q) => dist(q) > (R + 1) * C * Math.SQRT2 + 1);
+  const nearOf = (L) => L.filter((q) => dist(q) < R * C - 1);
+  const wanderNow = () => { for (const q of ms) { q._wanderPausedUntil = 0; q._wanderTx = null; q._wanderTy = null; } };
+  wanderNow();
+  const at = new Map(ms.map((q) => [q.id, [q.x, q.y]]));
+  const moved = (q) => { const p = at.get(q.id); return Math.hypot(q.x - p[0], q.y - p[1]) > 0.5; };
+  for (let i = 0; i < 20; i++) r3._tickMonsters();
+  const far = farOf(ms), near = nearOf(ms);
+  check(`rest: none of the ${far.length} monsters far from the only player moved in 20 ticks, and the tick counts them resting`,
+    far.length > 150 && far.every((q) => !moved(q)) && r3._wheelResting >= far.length, { far: far.length, movedFar: far.filter(moved).length, resting: r3._wheelResting });
+  check(`rest: the ${near.length} near them wander as before`, near.length > 0 && near.some(moved), { near: near.length, moved: near.filter(moved).length });
+  /* back to life on time while resting */
+  const dead = far[0];
+  dead.alive = false; dead.hp = 0; dead.respawnAt = Date.now() - 1; dead.x = dead.spawnX + 50;
+  r3._tickMonsters();
+  check('rest: a monster nobody is near still comes back to life on time, whole and at home',
+    dead.alive && dead.hp === dead.maxHp && dead.x === dead.spawnX && dead.y === dead.spawnY, { alive: dead.alive, hp: dead.hp });
+  /* what is in flight finishes first: a wind-up due, a target */
+  const wind = far[1], chased = far[2];
+  wind._bwUntil = Date.now() - 1; wind._bwTarget = null; wind._bwKind = 'melee';
+  chased.targetId = 'nobody';
+  r3._tickMonsters();
+  check('rest: a wind-up already due resolves, even with nobody near', !wind._bwUntil, wind._bwUntil);
+  check('rest: a monster with a target runs until it lets go of it', chased.targetId == null, chased.targetId);
+  /* kept apart only where someone is to see it */
+  const fa = far[3], fb = far[4];
+  fb.x = fa.x + 5; fb.y = fa.y;
+  const na = near[0], nb = near.length > 1 ? near[1] : null;
+  if (nb) { nb.x = na.x + 5; nb.y = na.y; nb.targetId = null; }
+  r3._tickMonsters();
+  check('rest: two resting monsters 5 px apart are left as they are', Math.abs(Math.hypot(fb.x - fa.x, fb.y - fa.y) - 5) < 1e-9);
+  check('rest: two awake ones are swept apart as before', !nb || Math.hypot(nb.x - na.x, nb.y - na.y) > 5 + 1e-9);
+  fb.x = fb.spawnX; fb.y = fb.spawnY;
+  /* the kill switch: everything runs every tick again */
+  r3._liveFlags = { wheelrest: false };
+  wanderNow();
+  for (const q of ms) at.set(q.id, [q.x, q.y]);
+  for (let i = 0; i < 20; i++) r3._tickMonsters();
+  const far2 = farOf(ms);
+  check('rest: `wheelrest: false` -- far monsters wander again, none rest', far2.filter(moved).length > far2.length / 2 && r3._wheelResting === 0,
+    { moved: far2.filter(moved).length, of: far2.length, resting: r3._wheelResting });
+  /* what it is for: the tick with the Wheel's 384 and one player in town */
+  const bench = (on) => {
+    const r4 = new GameRoom(mockState, mockEnv);
+    r4._liveFlags = on ? {} : { wheelrest: false };
+    r4._ensureZoneMonsters(WHEEL_ZONE);
+    r4.playerState.bench = { id: 'bench', z: WHEEL_ZONE, x: CENTRE[0], y: CENTRE[1] + 300, hp: 100, maxHp: 100 };
+    for (let i = 0; i < 200; i++) r4._tickMonsters();
+    const N = 400, t0 = process.hrtime.bigint();
+    for (let i = 0; i < N; i++) r4._tickMonsters();
+    return { us: Number(process.hrtime.bigint() - t0) / 1e3 / N, resting: r4._wheelResting };
+  };
+  const off = bench(false), on = bench(true);
+  check(`rest: with one player in town, ${on.resting} of 384 rest and the monster tick is ${on.us.toFixed(0)} µs (${off.us.toFixed(0)} with none resting)`,
+    on.resting > 250 && off.resting === 0, { on, off });
 }
 
 if (failures) { console.log(`\n${failures} TEST(S) FAILED`); process.exit(1); }

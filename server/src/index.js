@@ -1989,6 +1989,12 @@ export class GameRoom {
          null = the full loop (another zone, a handful of players, the kill
          switch, a position that is not a plain number) */
       const _aggroCells = zoneId === WHEEL_ZONE ? this._aggroGridOf(playersInZone) : null;
+      /* v2.3.3299: and which of them rest this tick -- no player near and
+         nothing in flight (wheelzone.js WHEEL.REST_CELL); the rest are the
+         ones swept apart below */
+      const _rests = zoneId === WHEEL_ZONE ? this._wheelRestTest(playersInZone) : null;
+      const _awake = _rests ? [] : null;
+      let _resting = 0;
 
       for (const m of monsters) {
         // Respawn check
@@ -2065,6 +2071,12 @@ export class GameRoom {
             this._markMonsterDirty(zoneId, m.id);
           }
           continue;
+        }
+        /* v2.3.3299: a live monster nobody is near does nothing this tick
+           (its respawn, above, stays on time) */
+        if (_rests) {
+          if (_rests(m)) { _resting++; continue; }
+          _awake.push(m);
         }
 
         // Mid-fight variant transform (currently just mummy -> skeleton
@@ -2714,7 +2726,11 @@ export class GameRoom {
          there (measured).  It keeps them apart by a sweep along x instead
          (wheelzone.js _wheelSeparate), the same rule for every pair close
          enough to matter; every other zone runs the loop below, unchanged. */
-      if (zoneId === WHEEL_ZONE) this._wheelSeparate(zoneId, monsters, 22);
+      /* v2.3.3299: the awake ones -- a resting monster has not moved */
+      if (zoneId === WHEEL_ZONE) {
+        this._wheelSeparate(zoneId, _awake || monsters, 22);
+        this._wheelResting = _resting;
+      }
       else {
         const MIN_SEP = 22;
         for (let i = 0; i < monsters.length; i++) {

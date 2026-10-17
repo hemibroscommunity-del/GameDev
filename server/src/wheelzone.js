@@ -139,6 +139,23 @@ export const WHEEL = Object.freeze({
   FIRST_STAGE_TIERS: 4,
   /* v2.3.3094: + 16 and 21, the second stage's (levels 21-30, 31-40) */
   NODE_TIERS: Object.freeze([1, 6, 11, 16, 21]),
+  /* ═══ v2.3.3299: A MONSTER NOBODY IS NEAR RESTS ═══
+     The owner, 2026-10-17: "the game map needs to be larger ... Maybe 5x
+     larger map is needed" -- and five times the land is five times the
+     monsters, so the land is as busy as now.  Every Wheel monster ran its AI
+     every tick while anyone at all was in the Wheel: wandering, marked dirty,
+     swept apart -- 384 of them about 0.45 ms a tick with everybody in town,
+     1,920 about 2.2-3.2 ms (in-process, a simulated clock).  Nobody sees a
+     monster further than INTEREST_OUT (2,800 px) away, so one with no player
+     within REST_REACH squares of REST_CELL px (at least 3,200 px every way)
+     does nothing that tick: it stands where it is, keeps its health, and
+     still comes back to life on time (_tickMonsters).  It rests only when
+     nothing is in flight -- no target, no wind-up, no telegraph, no snowball
+     in the air, no burrow or burst -- so a fight a player walks away from
+     finishes first.  `wheelrest: false` in liveflags: every monster runs
+     every tick again (_wheelRestOff). */
+  REST_CELL: 1600,
+  REST_REACH: 2,
 });
 
 /* v2.3.3201: a square's key is a NUMBER, cx * GRID_KEY + cy (unique while
@@ -238,6 +255,31 @@ export const wheelzoneMethods = {
     if (m) return !this._wheelProvokedBy(m, pid, now);
     const ps = pid ? this.playerState[pid] : null;
     return !(ps && now - (ps._lastDealtAt || 0) < WHEEL.PROVOKE_MS);
+  },
+  /* v2.3.3299: `wheelrest: false` -- no Wheel monster rests (WHEEL.REST_CELL) */
+  _wheelRestOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wheelrest') && !f.wheelrest);
+  },
+  /* v2.3.3299: which Wheel monsters rest this tick (WHEEL.REST_CELL): the
+     squares within REST_REACH of every live player in the Wheel are awake,
+     and the test returns true for a monster standing outside all of them
+     with nothing in flight.  null = nobody rests (the kill switch, or a
+     player at a position that is not a plain number). */
+  _wheelRestTest(players) {
+    if (this._wheelRestOff()) return null;
+    const C = WHEEL.REST_CELL, R = WHEEL.REST_REACH;
+    const awake = new Set();
+    for (const p of players) {
+      if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+      const cx = Math.floor(p.x / C), cy = Math.floor(p.y / C);
+      for (let i = cx - R; i <= cx + R; i++) for (let j = cy - R; j <= cy + R; j++) awake.add(i * GRID_KEY + j);
+    }
+    return (m) => {
+      if (m.targetId || m._tgPhase || m._bwUntil || m._burstUntil || m._burPhase || m._projImpactAt) return false;
+      if (!Number.isFinite(m.x) || !Number.isFinite(m.y)) return false;
+      return !awake.has(Math.floor(m.x / C) * GRID_KEY + Math.floor(m.y / C));
+    };
   },
   /* v2.3.3093: `wheelpast20: false` -- no monsters past level 20 */
   _wheelPast20Off() {

@@ -1020,6 +1020,17 @@ remnant to migrate server-side, not a mode to preserve.
     bystanders who never hurt it take nothing; kill switch `wheelpursue:
     false`; server only: docs/specs/wheel-monsters.md "Provoked from the safe
     ground", `wheelzone` §5d.
+  - Since v2.3.3299 A MONSTER NOBODY IS NEAR RESTS -- for the owner's "Maybe 5x
+    larger map is needed" ("Rebuild for 5x"): five times the land is five times
+    the monsters. A live Wheel monster outside the squares of `WHEEL.REST_CELL`
+    1,600 px within `REST_REACH` 2 of every live player's (at least 3,200 px),
+    with no target, wind-up, telegraph, snowball, burrow or fuse in flight,
+    does nothing in a tick (wheelzone.js `_wheelRestTest`, index.js
+    `_tickMonsters`); it still comes back to life on time and its statuses
+    tick; only awake ones are swept apart. 384 with one player in town 335 ->
+    116 µs a tick, 1,920 2.9 -> 0.5 ms; kill switch `wheelrest: false`;
+    `wheelzone` §10: docs/specs/wheel-monsters.md "A monster nobody is near
+    rests".
   - Since v2.3.3016 DUNGEONS IN THE WHEEL -- offered "Dungeons in the Wheel
     ... the other big missing piece", the owner: "Yes continue working on
     those items":
