@@ -1035,7 +1035,7 @@ would have silently removed the third from the run.
 **The rule:** the pass/fail state of a report-only step lives ONLY in its
 output. Read the log (or the uploaded `qa-*.json` artifacts), or run the
 harness locally against a real worker — `cd server && npx wrangler dev --port
-8787 --local`, `npm run build`, `npx vite preview --port 4173`, then
+8787 --local --local-upstream 127.0.0.1:8787` (§181), `npm run build`, `npx vite preview --port 4173`, then
 `QA_WS_URL=ws://127.0.0.1:8787 node tools/qa/<harness>.mjs`. All three of the
 trio reproduce their CI result locally, line for line.
 
@@ -6323,6 +6323,58 @@ call a look. Run on a busy day, that is the game down until midnight.
 second worker -- ask which plan it is on and what it shares. Separate names do
 not make separate limits. Every call between two objects is a billed request,
 and so is every poll.
+
+## 180. "A reconnect storm is everyone logging in again" (v2.3.3276)
+
+It is not. A phone that drops mid-game (a deploy, a network blip) rejoins
+where it stands: its join carries its zone and its place (wsClient.js,
+`z: S.currentZone`, `x: S.player.x`). Only a fresh login comes in through
+today's town, the veiled stop on the way down to the Wheel.
+
+- **Found by the near-join measurement (tools/qa/load/join-bench.mjs), its
+  first cut**, which modelled the storm as 1,000 logins: everyone sat in
+  today's town at once, so every joiner was "around" every other. The near
+  join's snapshots and player_joins came out exactly as big as before (0%
+  saved), and its joins slower. Rejoining where each player stood, the same
+  code saved 23% of the storm's bytes and 48% of the room's time on the joins
+  at 1,000 players.
+- **And a measurement in one process carries the run before it.** The memory
+  probe's first cut (tools/qa/load/memprobe.mjs) built rooms one after another
+  in one Node process: the previous room was still being collected while the
+  next was measured, and two totals came out NEGATIVE. Each size in a process
+  of its own gave clean numbers that grow as they should (and the bots' 120,
+  8.1 MB, matches the runtime's own 8.3-9.4 MB, docs/specs/cap-120.md).
+
+**The rule.** Model the event as the phones really live it: read what the
+phone sends before you script a bot's version of it. And measure each size
+from a clean start, or prove the last one is gone.
+
+## 181. "A local worker sees the address you gave it" (v2.3.3280)
+
+It does not, here. `server/wrangler.toml` has had a custom-domain route since
+v2.3.3142 (`api.brotown.net`), and in local mode wrangler puts the route's
+host in `request.url` -- `--local-upstream` "defaults to dev.host or route".
+Nothing read the host until v2.3.3274 (#925), whose room rule makes a room of
+any name only on a local host (flood.js `roomNameFor`). Every local worker the
+QA tools started then saw `api.brotown.net`: a scenario with its own `?room=`
+(15 of them -- mp-nearjoin, mp-partymap, mp-smallicons, mp-presence2,
+mp-farpeer, mp-movediet, mp-quietphone, the market's, ...) got "no such room"
+and its first socket an error at 0 s, and `load.mjs`'s `loadtest` room the
+same. The default room still worked, so CI's two phone checks stayed green.
+
+- **Found by** re-running PR #923's checks after merging #925: four
+  scenarios failed at once with "<name> socket error"; a curl of
+  `/ws?room=x` on the same worker answered 404 `no such room`, and the
+  default room "Expected WebSocket".
+- **The fix is the tools'**, not the worker's: harness.mjs and load.mjs start
+  wrangler with `--local-upstream 127.0.0.1:<port>`, so `request.url` is what
+  it was before the route. Starting one by hand for a private room, do the
+  same: `cd server && npx wrangler dev --port 8787 --local --local-upstream
+  127.0.0.1:8787`.
+
+**The rule.** A rule that reads `request.url`'s host is tested against a worker
+started the way the tools start it, and a tool that starts a worker says what
+host it wants rather than taking wrangler's default.
 
 ## 182. "A socket's messages are taken one at a time, so a handler need not be awaited" (v2.3.3291)
 

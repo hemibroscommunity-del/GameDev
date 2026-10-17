@@ -248,7 +248,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const dl = await debrisFor(P, 'wobj:' + lamp.oi);
     rec.ok(`a lamp post rings as METAL (${lp ? lp.key : 'none'}) and sparks`, !!lp && lp.mat === 'metal' && /^armor-hit/.test(lp.key) && dl.some((b) => b.kind === 'metal'), { lp, dl });
   } else rec.ok('a lamp near the arrival', false, null);
-  const well = (await targets(P, ['well', 'stone', 'stonewall'], 1600))[0];
+  let well = (await targets(P, ['well', 'stone', 'stonewall'], 1600))[0];
+  /* v2.3.3283: walk to the nearest stone thing first.  `targets` wants one
+     whose footprint is in the walk test, which holds the footprints near you
+     only, and it was asked from the lamp just shot -- since the town was laid
+     roomier and designed (v2.3.3022, v2.3.3031) that can be a lamp on the
+     square's west side, with no well or stone near enough: on main "a stone
+     thing near the arrival: null", the well 1,113 px off. */
+  if (!well) {
+    const far = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      return window.__btWheelObjects.near(S.player.x, S.player.y, 2600)
+        .filter((o) => o.id === 'well' || o.id === 'stone')
+        .map((o) => ({ x: o.x, y: o.y, d: Math.hypot(o.x - S.player.x, o.y - S.player.y) }))
+        .sort((a, b) => a.d - b.d)[0] || null;
+    });
+    if (far) {
+      await H.hopTo(P, far.x, far.y + 140, { tries: 120 });
+      await P.page.waitForTimeout(1500);
+      well = (await targets(P, ['well', 'stone'], 600))[0];
+    }
+  }
   if (well) {
     await standBefore(P, well, 60);
     const sh = await shootAt(P, (await targets(P, [well.id], 400)).find((t) => t.oi === well.oi) || well);

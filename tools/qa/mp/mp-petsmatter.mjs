@@ -111,11 +111,16 @@ async function steps({ A, B, wsPort, rec, errors }) {
   const wire = await B.page.evaluate((id) => { const S = window._gameState.current; return S.others && S.others[id] ? { pet: S.others[id]._pet || null, raw: S.others[id]._pwRaw || null } : null; }, aId).catch(() => null);
   rec.ok(`the second phone draws the first player's Snowling beside them (${JSON.stringify(seen)})`,
     !!seen && seen.visible && seen.kind === 'snowling' && seen.tex, { seen, wire });
-  const named = await B.page.evaluate(() => {
+  /* v2.3.3283: looked for over up to 4 s, not read once: in a sweep on main
+     the display was there on one read and gone on the next a moment later
+     (named 0), and back again; a logged run of the same steps kept it every
+     frame.  The claim is that the pet is drawn without a name, so it waits
+     for the display rather than catching it between two frames */
+  const named = await H.waitFor(B, () => {
     /* no name over another player's pet: no Text child at all on its display */
     const d = window._pixiRenderer && window._pixiRenderer.peerPetsDrawn ? window._pixiRenderer.peerPetsDrawn() : [];
     return d.length;
-  });
+  }, (v) => v >= 1, { timeout: 4000, label: 'the peer pet drawn' }).catch(() => 0);
   rec.ok('...drawn without a name over it (a pet, not a label)', named >= 1 && !!wire && wire.raw && !/name/i.test(wire.raw), wire);
   await shot(B, 'others-see');
   await A.page.evaluate(() => { const S = window._gameState.current; S.channel.send({ type: 'pet_active', payload: { id: null } }); });

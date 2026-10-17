@@ -31,15 +31,19 @@
 export const TAP_JUMP_MAX_MS = 320;
 
 /* QA, the `?jumpms=` habit (jumpActions.js): `?tapms=` stretches that window
-   (200-3000 ms) -- a test page drawing a frame every ~200 ms cannot time a
-   250 ms press.  Read once. */
+   (200-10000 ms) -- a test page drawing a frame every ~200 ms cannot time a
+   250 ms press.  Read once.  v2.3.3283: the cap was 3000, and mp-tapstance
+   asks for 6000 (its press holds the thumb down through a screenshot, 4.2 s on
+   a busy box): clamped silently to 3 s, that press turned into the attack and
+   faced the old aim, and the next step began facing south.  Only a test sets
+   this; no player's tap is touched. */
 var _tapMs;
 export function tapJumpMaxMs() {
   if (_tapMs !== undefined) return _tapMs;
   _tapMs = TAP_JUMP_MAX_MS;
   try {
     var m = /(?:^|[?&])tapms=(\d+)/.exec((typeof window !== 'undefined' && window.location && window.location.search) || '');
-    if (m) _tapMs = Math.max(200, Math.min(3000, +m[1]));
+    if (m) _tapMs = Math.max(200, Math.min(10000, +m[1]));
   } catch (e) { /* no window */ }
   return _tapMs;
 }
