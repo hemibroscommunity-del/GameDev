@@ -6375,3 +6375,31 @@ same. The default room still worked, so CI's two phone checks stayed green.
 **The rule.** A rule that reads `request.url`'s host is tested against a worker
 started the way the tools start it, and a tool that starts a worker says what
 host it wants rather than taking wrangler's default.
+
+## 182. "A socket's messages are taken one at a time, so a handler need not be awaited" (v2.3.3291)
+
+True of frames, false of a bundle, and the router had leaned on it in twenty
+places. A frame of its own is one event, and while that event waits on storage
+the Durable Object holds the next frame back (the input gate, handoff rule 9),
+so `this._handleFarmAct(...)` with only a `.catch` after it was harmless: the
+next harvest could not start until this one had read and written the bed.
+v2.3.3254's bundles put up to 24 messages in ONE event, and the gate keeps
+nothing apart inside an event. The loop awaited `_onMessage`, `_onMessage`
+did not await the handler, and the parts ran side by side.
+
+- **What it cost, measured on the real room code** (a storage that answers
+  2 ms late and hands back copies): one ripe bed harvested 24 times in one
+  bundle paid 48 carrots, not 2; ten copper ore sold 24 times paid 4,320
+  gold, not 180; 24 buys out of a pile of one took 24. Any script could send
+  that bundle.
+- **Why no suite saw it:** every suite sent one message a frame, and ~90 of
+  the 113 storage mocks answer at once with the stored object itself, where
+  two parts barely overlap.
+- **The fix:** every case awaits its handler where it calls it.
+  `quiet-phone.test` §9 scans `_onMessage` for any async method called
+  without `await` or `return`.
+
+**The rule.** "One at a time" is a property of EVENTS, not of messages. Any
+time several things the client asked for run inside one event -- a bundle, a
+batch, a loop over a list -- each has to finish before the next starts, or
+each will act on what the record said before any of them changed it.
