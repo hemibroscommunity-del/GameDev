@@ -3399,6 +3399,15 @@ Two protocol versions coexist; both must keep working:
   refusal as fatal) exist; `disable_verify` live flag; fail closed;
   `TURNSTILE_VERIFY_URL` is the test seam. `verify` suite (24), `mp-verify`
   (its own worker, `BT_WRANGLER_VARS`, a stand-in verifier and widget).
+- **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
+  name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
+  whose comments promised a `false` switch -- `storeGear`, `dailyChest`,
+  `zoneDepth`, `whirlWindup`, `broCount` -- answered POST /flags with a 400.
+  They are taken by name now (`CAMEL_SWITCHES`, `flagNameOk`) and no other
+  camelCase name is (`weaponDrops` stays refused). A new switch takes a
+  lower-case name: `liveops.test` §8 scans `server/src` for every flag read
+  and every `` `<name>: false` `` promised beside "live flags" or "kill
+  switch", and fails for one the route would refuse.
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.

@@ -236,6 +236,12 @@ clients it supports — that's an emergency lever with side effects (old
 client fallbacks can wake up). Stick to the `disable_*` switches and
 `xp_mult` unless a PR tells you otherwise.
 
+Since v2.3.3295 five switches with a capital letter in them can be thrown
+too, when a PR or spec names them as the way to turn a system off:
+`storeGear` (gear in the auction house), `dailyChest`, `zoneDepth`,
+`whirlWindup` and `broCount`. Before, the server refused those names.
+`weaponDrops` is still refused on purpose.
+
 ## Running the cape contest (v2.3.2029)
 
 **The contest is currently OFF, and starting it is not your job — it is a code

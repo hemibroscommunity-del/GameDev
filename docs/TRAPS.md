@@ -4794,7 +4794,14 @@ against the regex). Or widen the regex -- a server change of its own, not
 something to do in passing. **Receipt:** mp-arrowblast throws `bowvolley`
 through the real route before anyone joins. **v2.3.2849:** the one-bolt staff
 special's `bigOrb` was renamed `bigorb` for the same reason, before it ever
-shipped (combat-lifecycle §6i tests the name).
+shipped (combat-lifecycle §6i tests the name). **v2.3.3295:** the five that
+had shipped -- `storeGear`, `dailyChest`, `zoneDepth`, `whirlWindup` and
+`broCount` (v2.3.3255, after this entry) -- are now accepted BY NAME
+(liveops.js `CAMEL_SWITCHES`, `flagNameOk`), the regex unchanged, as
+renaming a cap the phone reads would break it and widening the regex would
+make `weaponDrops` settable. `liveops.test` §8 scans `server/src`: a sixth
+camelCase switch -- read by the worker, or promised in a comment -- fails
+there instead of in an emergency.
 
 ## 118. Measuring damage through the handler trains the skill you are measuring (v2.3.2849)
 
