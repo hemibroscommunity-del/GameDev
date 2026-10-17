@@ -141,6 +141,10 @@ rebroadcast:
 
 ## A party that lasts (v2.3.3284) — step 1 of the party → alliance plan
 
+**Step 2 shipped v2.3.3313**: a party of 20 active members is an ALLIANCE --
+a name and a tag on every member, wars in No man's land, a board
+(docs/specs/alliance.md). A record that has been one is shape `v: 2`.
+
 The owner, on clans: *"I think I'd rather skip clans altogether and just go
 from party to alliances. Maybe it just gets called "party" that stays
 persistent until you remove yourself from the party and it becomes

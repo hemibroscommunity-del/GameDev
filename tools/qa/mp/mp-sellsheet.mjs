@@ -80,8 +80,12 @@ const sellButton = (P) => P.page.evaluate(() => {
 
 /* The price sheet, found by the heading the card actually renders. */
 const sheet = (P) => P.page.evaluate(() => {
+  /* v2.3.3313: in any case -- the label reads "Sell in the Auction House"
+     since the auction house got its capitals (ItemDetailPopup.jsx), and this
+     exact-case match found nothing: "open: false" under a sheet the screenshot
+     shows open (the sweep of main, 2026-10-17) */
   const lab = [...document.querySelectorAll('div')]
-    .find((d) => (d.textContent || '').trim() === 'Sell in the auction house');
+    .find((d) => (d.textContent || '').trim().toLowerCase() === 'sell in the auction house');
   if (!lab) return { open: false };
   /* The sheet is the labelled block's parent panel. */
   const box = lab.parentElement || lab;
@@ -135,7 +139,7 @@ const confirmBtn = (P) => P.page.evaluate(() => {
 /* The card's own scroller, for the §68 drag. */
 const cardScroll = (P) => P.page.evaluate(() => {
   const lab = [...document.querySelectorAll('div')]
-    .find((d) => (d.textContent || '').trim() === 'Sell in the auction house');
+    .find((d) => (d.textContent || '').trim().toLowerCase() === 'sell in the auction house');   /* v2.3.3313: any case, as sheet() */
   if (!lab) return null;
   for (let e = lab.parentElement; e && e !== document.body; e = e.parentElement) {
     const st = getComputedStyle(e);
@@ -266,7 +270,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.touchscreen.tap(before.cx, before.cy);
     await P.page.waitForTimeout(700);
 
-    const sh = await sheet(P);
+    /* v2.3.3313: polled, not one look at 700 ms -- on a page drawing a frame
+       every 300-450 ms (this box) the sheet's first frame can land after it;
+       both portrait runs read "open: false" on main (the sweep, 2026-10-17).
+       A tap that did nothing still reads false after 4 s. */
+    let sh = await sheet(P);
+    for (let i = 0; i < 17 && sh.open !== true; i++) { await P.page.waitForTimeout(200); sh = await sheet(P); }
     /* candidate 2 -- the state flipped, so the tap DID work */
     rec.ok(`${label}: the tap opened the price sheet (the state flipped)`, sh.open === true, sh);
     await P.page.screenshot({ path: `${OUT}/sellsheet-${TAG}-${label}-after.png` });

@@ -6638,6 +6638,46 @@ two runs each: home after three trips 83.2-85.2 MB of the chip on main,
 (+4.1/+4.2 in CI), -1.6 and -1.5 with this. mp-chatbubble and mp-chatfont,
 25 of 25.
 
+## 194. "Reading the canvas's context only looks at it" (v2.3.3313)
+
+**Tempting:** to learn something about the GPU -- its biggest texture, whether
+its context is lost, a thumbnail of the screen -- call
+`canvas.getContext('webgl2')` on the game's canvas. It hands back the context
+Pixi is drawing with, so it reads like a getter.
+
+**Wrong.** A canvas's context is made by whoever asks FIRST, with what THEY
+ask for, and every later ask gets that one. A bare `getContext('webgl2')` on a
+canvas Pixi has not taken yet makes the context with WebGL's own defaults --
+no stencil buffer (and the depth buffer and multisampled drawing buffer the
+game turned down, tens of MB on a 3x iPhone) -- and Pixi, asking a moment
+later with `stencil: true`, is handed it
+and only warns. With no stencil buffer every mask draws unclipped: the Wheel's
+minimap (a stencil mask, wheelMinimap.js) covers the whole screen with its map,
+the owner's "loading from a saved character will show the game as an enlarged
+minimap", until the page is left. Two things asked bare: the crash report's GPU
+line (crashTrap.js `_doFlush`, `document.querySelector('canvas')`), sent 1.5 s
+after any boot with something in the crash log or after any error, and the
+black-screen watchdog's sample (BroTown.jsx, on its own clock). The game's
+canvas is up a moment before Pixi takes it -- Pixi's first renderer loads its
+library file first -- as a character is played from the list at the login,
+and on the fresh canvas of every rebuild: a report or a sample in that moment
+took the canvas. A race, so "often", and gone after logging out and in.
+
+**The rule:** the game's WebGL context is read from the renderer
+(`window._pixiRenderer.app.renderer.gl`, BroTown's `_wdGl(cv)` -- the
+renderer's, and only for the canvas it draws on), never by asking a canvas.
+A canvas no context was made for is read as an image (drawImage), which makes
+none. And should a context ever come up without a stencil buffer again, the
+game says so in the crash log (`gl-no-stencil`) and swaps in a fresh canvas,
+once a page, whose context asks for what Pixi asks by default (the depth
+buffer too, in case a device gives no stencil buffer without one).
+**Receipt:** mp-savedload -- a saved character played from the list with a
+crash log on the phone, the race made certain (Pixi's file held back while an
+error in the page sends a report) and the safety net (the test takes the
+context bare first): on main without it the report took the canvas and the minimap
+covered the screen; now the renderer's context every time, the minimap in its
+box.
+
 ## 195. "A socket with no Origin is a forger's: refuse it" (v2.3.3312)
 
 **Tempting:** the server now lets only the game's own sites open a socket

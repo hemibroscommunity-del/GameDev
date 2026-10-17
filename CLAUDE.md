@@ -1580,6 +1580,24 @@ remnant to migrate server-side, not a mode to preserve.
       back to "nothing open" (`src/rendering/renderHeal.js`; `?noheal` to
       compare) and the next frame draws. TRAPS §144, `mp-renderheal` (the
       throw made as it happened, with `bindfix=0`; `noheal` shows the black).
+    - since v2.3.3313 THE MINIMAP NEVER COVERS THE SCREEN -- the owner:
+      "often loading from a saved character will show the game as an enlarged
+      minimap. You're forced to log back out and back in to fix it": a canvas's
+      WebGL context is made by whoever asks FIRST, and the crash report's GPU
+      line (crashTrap.js) and the black-screen watchdog asked the game's canvas
+      bare, with WebGL's defaults -- no stencil buffer, so every mask drew
+      unclipped and the Wheel's minimap covered the screen. The report goes
+      1.5 s after any boot with something in the crash log (or any error), and
+      the canvas is up a moment before Pixi takes it as a character is played
+      from the list (and on a rebuild's fresh canvas): a race. Both now read the renderer's own
+      context (`_wdGl(cv)`, `window._pixiRenderer.app.renderer.gl`), never a
+      canvas's getContext; a context that ever comes up without a stencil
+      buffer is said in the crash log (`gl-no-stencil`) and the canvas swapped
+      for a fresh one, once a page, its context asked for as Pixi asks by
+      default (depth buffer too: pixiApp.js `withoutDepthBuffer` stands aside).
+      TRAPS §194, `mp-savedload` (the race made
+      certain: Pixi's file held back while a page error sends a report; and the
+      context taken bare by the test).
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:
@@ -2436,6 +2454,43 @@ remnant to migrate server-side, not a mode to preserve.
     - `caps.partykeep`, kill switch `partykeep: false` (the party of four in
       memory, nothing read or written -- party.test.mjs runs under it);
       `party-keep` suite, `mp-partykeep`.
+    - since v2.3.3313 STEP 2, THE ALLIANCE -- the owner: "Push to main, then
+      keep going on recommended", to the four decisions it waited on
+      (docs/specs/alliance.md, server/src/alliance.js):
+      - a party whose ACTIVE members (online, or `seen` in the last 7 days,
+        AND level 5+: ps.level, a new character is 3) reach `ALLIANCE.AT` 20
+        is an alliance until they fall below `DROP` 15; counted at a member's
+        join, accept, leave, a rename, a war and the 2 s vitals echo, never an
+        alarm; a flip is the only write; `became` on party_state;
+      - the leader's NAME and TAG (`alliance_name`, once a day, 3-16 chars and
+        1-4 letters/numbers, unique across every alliance -- kept while its
+        party lasts -- and every clan, both ways: clans.js checks the
+        alliances); the tag on every member's plate as `[TAG] Name`
+        (`allyTag`, worker-set only, on no track/join list: PEER_PUBLIC_KEYS,
+        nearjoin LIST_KEYS, a `player_update` with hg/fr on a change, forced
+        at a member's join), the strip's head `[TAG] 22/50`;
+      - WARS (`alliance_war {tag}`, the leader of a named alliance): 30 min,
+        rosters frozen at the declaration, a kill scores only under No man's
+        land's rule (the victim's last blow the killer's, within
+        `NML.KILL_BLOW_MS`; `_allyWarOnDeath` beside the clans' hook, never a
+        duel's), pays roster members who fought and are still in the party
+        500 / 50 (0-0 nobody; opIds `allywar:`), an hour's rest after, read
+        back from the ended wars after a deploy;
+      - the BOARD (`alliance_board`, any player, one answer a 5 s): by active
+        members, then levels added up; an alliance nobody is on counted from
+        its `ally:<partyId>` row, written WITH the party record (one batch:
+        `_partyStore` -> `_allyRowPut`) and deleted with it, its `act` each
+        member's [seen + 7 days, level];
+      - a record that has been an alliance is shape `v: 2` (PARTY.V), one that
+        never was stays 1 (a rollback reads it); `ally_war:<id>` kept 48 h;
+      - the phone: the Saloon's Alliance part (AlliancePart.jsx: n/20, the name
+        form, the war and Declare war, the board), the answers in wsClient's
+        direct switch (`alliance_rows` / `alliance_error` /
+        `alliance_war_end`, PRIVILEGED), moments over you and in the chat;
+      - test lever `/dev/combat {skill | 'all', level}`; `caps.alliance`, kill
+        switch `alliance: false` (off with `partykeep: false` too; tags off at
+        the next echo); `alliance` suite (96), `mp-alliance` (a phone, 39
+        bots, a second phone watching the plate).
   - Since v2.3.3279 THE OWNER'S SMALL ICONS -- asked what ChatGPT could draw to
     replace the emoji and code-drawn pictures, the owner sent four sheets
     ("Here's the art assets for the 'small icons'"), cut by

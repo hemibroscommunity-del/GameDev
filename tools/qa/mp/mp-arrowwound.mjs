@@ -33,9 +33,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(600);
   let anyLive = false;
   const pinLog = [];
+  /* v2.3.3313: EVERY MONSTER FROM THE SAME SPOT.  The walking step below moves
+     the archer 90 px west to let the monster come on, and nothing moved him
+     back, so each material was shot from 90 px further west than the one
+     before it.  By the skeleton, the third, the line from him to it crossed a
+     prop of the town, and since v2.3.3206 an arrow stops at a prop -- every
+     arrow stuck in the prop, the skeleton's HP never moved, and the check
+     read "no stuck arrows" (the sweep of main; alone, the skeleton is fine). */
+  const home = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return { x: S.player.x, y: S.player.y };
+  });
   for (const mat of MATS) {
     await P.page.evaluate((mat) => {
       const S = window._gameState.current, R = S.rpg, F = window._gameFns || {};
+      S.player.x = mat.home.x; S.player.y = mat.home.y;
       const pine = (F.WOODWORKING_TIERS || {}).pine;
       R.rangedWeapon = { type: 'bow', tierMult: pine ? pine.tierMult : 1, gearBase: 'pine', name: 'QA Bow', tier: 'common' };
       R.activeSlot = 'ranged'; R.hp = R.maxHp = 9000;
@@ -48,7 +60,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       S.lockedTarget = { ref: m, type: 'monster', src: 'tap', ts: Date.now() };
       S._facingAngle = 0; S._aimAngle = 0; S._lastAimAngle = 0; S._facing = 'right';
       S.autoAttack = true;
-    }, mat);
+    }, { ...mat, home });
     await P.page.waitForTimeout(3200);
     await P.page.evaluate(() => { window._gameState.current.autoAttack = false; });
     await P.page.waitForTimeout(700);

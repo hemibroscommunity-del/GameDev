@@ -24,6 +24,7 @@ import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3139: ha
 import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the worker's */
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
 import { applySparState } from '@/game/spar.js'; /* v2.3.3265: the test panel's sparring clones */
+import { allyBus } from '@/game/alliance.js'; /* v2.3.3313: the alliance's answers (server alliance.js) */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
@@ -1854,6 +1855,27 @@ export function setupWebSocket(ctx) {
                  the login answer comes before state_sync. */
               farmBus.apply(msg.payload);
               farmFeedback(S, msg.payload, { setChatLog: setChatLog });
+              break;
+            }
+          case 'alliance_rows':
+          case 'alliance_error':
+          case 'alliance_war_end':
+            {
+              /* v2.3.3313: the alliance's answers (server alliance.js) -- the
+                 board, a refusal, a war's end and what it paid you.  Into the
+                 bus the Saloon draws; a refusal and a war's end are said over
+                 you too.  Here in the direct switch, as farm_state: a worker
+                 from before the alliance does not list these as privileged and
+                 would relay a forged one ("Victory! +500G" from anyone). */
+              allyBus.apply(msg.type, msg.payload);
+              try {
+                if (S.player && msg.type === 'alliance_error' && allyBus.error) pushDmgPopup(S, S.player.x, S.player.y - 40, allyBus.error.text, '#ff5e6c');
+                if (S.player && msg.type === 'alliance_war_end' && allyBus.warEnd) {
+                  pushDmgPopup(S, S.player.x, S.player.y - 48, allyBus.warEnd.text, allyBus.warEnd.won === false ? '#ff5e6c' : '#f5c542');
+                  S.chatLog = (S.chatLog || []).slice(-50).concat([{ id: 'ally-' + Date.now(), name: '', text: '⚔️ ' + allyBus.warEnd.text, ts: Date.now(), system: true }]);
+                  if (setChatLog) setChatLog(S.chatLog.slice());
+                }
+              } catch (_ae) { /* words only */ }
               break;
             }
           case 'spar_state':
@@ -4856,6 +4878,13 @@ export function setupWebSocket(ctx) {
            without this line the watch never left the browser and the open map
            was sent no far player at all -- mp-presence2's first run. */
         if (msg.type === 'map_watch') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3313: the alliance (game/alliance.js, the Saloon's Alliance
+           part) -> alliance.js: the leader's Name and Declare war, and anyone's
+           board.  TRAPS #18: without this line all three would send nothing. */
+        if (msg.type === 'alliance_name' || msg.type === 'alliance_war' || msg.type === 'alliance_board') {
           wsOut(msg);
           return;
         }

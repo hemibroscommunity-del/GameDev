@@ -238,6 +238,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   await P.page.evaluate(() => { for (const el of document.querySelectorAll('button[aria-label="Close"], button[aria-label="Dismiss"]')) try { el.click(); } catch (e) {} });
   await P.page.waitForTimeout(600);
+  /* v2.3.3313: the landing is SEEN a frame at a time -- the cap ends the
+     flight on the frame after LAND_MAX_MS, and on a page drawing a frame
+     every 300-450 ms (this box's software GL) that frame comes up to one
+     frame later than the 120 ms slack, written at 60 fps, allowed: on main
+     every bolt's burst came 575-917 ms after its hit (the sweep, 2026-10-17).
+     The slack is one of this page's frames, never under 120 ms. */
+  const { frameMs } = await H.hopGap(P);
+  const LAND_SLACK_MS = Math.max(120, frameMs + 50);
 
   let blood = 0;
   for (const mon of MONS) {
@@ -297,8 +305,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
           seen.length > 0 && deeper.every((v) => v >= 20), rows);
         rec.ok(`${tag}: ...drawn all the way in (least ${Math.min(...seen.map((s) => s.transit))} frames in flight after the hit)`,
           seen.length > 0 && seen.every((s) => s.transit >= 1), rows);
-        rec.ok(`${tag}: the burst comes after the hit registered and inside LAND_MAX_MS (${Math.min(...rows.map((r) => r.ms))}-${Math.max(...rows.map((r) => r.ms))} ms)`,
-          seen.every((s) => s.land.t - s.contact.t > 0 && s.land.t - s.contact.t <= LAND_MAX_MS + 120), rows);
+        rec.ok(`${tag}: the burst comes after the hit registered and inside LAND_MAX_MS, give or take a frame (${Math.min(...rows.map((r) => r.ms))}-${Math.max(...rows.map((r) => r.ms))} ms; a frame ${frameMs} ms)`,
+          seen.every((s) => s.land.t - s.contact.t > 0 && s.land.t - s.contact.t <= LAND_MAX_MS + LAND_SLACK_MS), rows);
         /* the hit itself is unchanged: registered, and applied, on contact */
         rec.ok(`${tag}: the hit still registers on contact -- sent or taken off the bar by that frame, and nothing more at the landing`,
           seen.every((s) => ((s.sendT != null && s.sendT <= s.contact.t + 1) || (s.hpAtContact < s.hp0)) && s.hpAtLand === s.hpAtContact), rows);

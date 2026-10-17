@@ -36,45 +36,59 @@ const TAG = process.env.BT_SHOT_TAG || 'now';
    dependent on where the band happened to fall. */
 const FACE_ART = 'b'.repeat(256);
 
-const uiAside = (P, hide) => P.page.evaluate((v) => {
-  if (!v) {
-    for (const el of document.querySelectorAll('[data-bt-shot-hidden]')) {
-      el.style.visibility = el.dataset.btShotVis || '';
-      delete el.dataset.btShotHidden; delete el.dataset.btShotVis;
-    }
-    return;
-  }
-  let el = document.querySelector('canvas');
-  while (el && el.parentElement) {
-    for (const sib of el.parentElement.children) {
-      if (sib === el || sib.dataset.btShotHidden) continue;
-      sib.dataset.btShotHidden = '1';
-      sib.dataset.btShotVis = sib.style.visibility || '';
-      sib.style.visibility = 'hidden';
-    }
-    el = el.parentElement;
-  }
-}, hide);
-
 /* One crop, returned BOTH as a 20x picture and as the ink measurement, so the
-   number and the render can never be of different frames. */
+   number and the render can never be of different frames.
+
+   ═══ v2.3.3313: THE CROP AND THE BOX ARE ONE FRAME ═══
+   The crop used to be measured (H.figureBox) and then photographed
+   (page.screenshot) a moment later.  Standing, that moment does not matter.
+   JOGGING it does: the figure's place on the screen moves with every frame the
+   camera trails it, and on a box drawing a frame every 300-600 ms one frame
+   between the two calls moved the whole figure -- name plate and all -- 36 px
+   down the crop, so "jog-south" photographed the plate and the crown of the
+   head and measured a face 8 rows tall against the control's 14 (the sweep of
+   main, part 12; the plate-to-head gap in that picture was the control's
+   exactly, so nothing was drawn wrong).  Now the box is worked out and the
+   pixels are copied in ONE animation frame: a callback queued from here runs
+   after the game's own (queued a frame earlier), so it reads the frame just
+   drawn, which is mp-firefight's way of reading a WebGL canvas at all.  The
+   box is figureBox's own arithmetic (anchored on __btPlayerDrawn, 40k x 46k
+   plus the pad); the DOM is not in the canvas, so nothing needs hiding. */
 async function sample(P, tag, rec) {
-  const box = await H.figureBox(P, { pad: 10 });
-  if (!box) { rec.ok(`a crop of the figure for "${tag}" (guard)`, false, null); return null; }
-  await uiAside(P, true);
-  const png = await P.page.screenshot({ clip: box });
-  await uiAside(P, false);
-  const res = await P.page.evaluate(async (b64) => {
-    const im = await new Promise((res2) => {
-      const i = new Image(); i.onload = () => res2(i); i.onerror = () => res2(null);
-      i.src = 'data:image/png;base64,' + b64;
-    });
-    if (!im) return null;
-    const c = document.createElement('canvas');
-    c.width = im.width; c.height = im.height;
-    const g = c.getContext('2d', { willReadFrequently: true });
-    g.drawImage(im, 0, 0);
-    const d = g.getImageData(0, 0, c.width, c.height).data;
+  const res = await P.page.evaluate(async (pad) => {
+    const grab = () => new Promise((done) => requestAnimationFrame(() => {
+      try {
+        const S = window._gameState && window._gameState.current;
+        const cv = document.querySelector('canvas');
+        const dr = window.__btPlayerDrawn ? window.__btPlayerDrawn() : null;
+        if (!S || !S.player || !cv || !cv.width || !dr) { done({ err: 'no figure' }); return; }
+        const r = cv.getBoundingClientRect();
+        const ws = S._worldScaleX || 1;
+        const k = Math.max(0.05, ws / (2 / 3));
+        const fx = (dr.x - S.camera.x) * ws, fy = (dr.footY - S.camera.y) * (S._worldScaleY || 1);
+        const w = Math.round(40 * k) + pad * 2, h = Math.round(46 * k) + pad * 2;
+        const x = Math.round(fx - 20 * k - pad), y = Math.round(fy - 44 * k - pad);
+        if (x < 0 || y < 0 || x + w > r.width || y + h > r.height) { done({ err: 'off the screen', x, y, w, h }); return; }
+        const sx = cv.width / r.width, sy = cv.height / r.height;
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const g = c.getContext('2d', { willReadFrequently: true });
+        g.imageSmoothingEnabled = false;
+        g.drawImage(cv, x * sx, y * sy, w * sx, h * sy, 0, 0, w, h);
+        const d = g.getImageData(0, 0, w, h).data;
+        let lit = 0;
+        for (let i = 0; i < d.length; i += 4) if (d[i + 3] >= 40 && d[i] + d[i + 1] + d[i + 2] > 48) lit++;
+        done({ c, d, lit: lit / (w * h) });
+      } catch (e) { done({ err: String(e && e.message || e) }); }
+    }));
+    /* a frame the game did not draw reads empty; the next one is tried */
+    let got = null;
+    for (let i = 0; i < 6; i++) {
+      got = await grab();
+      if (got && got.c && got.lit > 0.3) break;
+    }
+    if (!got || !got.c) return got && got.err ? { err: got.err } : null;
+    const c = got.c, d = got.d;
     const rows = new Array(c.height).fill(0);
     let ink = 0;
     for (let y = 0; y < c.height; y++) {
@@ -111,16 +125,16 @@ async function sample(P, tag, rec) {
       if (top < 0) top = y;
       bot = y;
     }
-    const S = 20;
+    const SC = 20;
     const big = document.createElement('canvas');
-    big.width = im.width * S; big.height = im.height * S;
+    big.width = c.width * SC; big.height = c.height * SC;
     const bg = big.getContext('2d');
     bg.imageSmoothingEnabled = false;
     bg.fillStyle = '#14202a'; bg.fillRect(0, 0, big.width, big.height);
-    bg.drawImage(im, 0, 0, big.width, big.height);
-    return { ink, top, bot, peak, h: c.height, w: c.width, rows, url: big.toDataURL('image/png') };
-  }, png.toString('base64'));
-  if (!res) { rec.ok(`a 20x render for "${tag}" (guard)`, false, null); return null; }
+    bg.drawImage(c, 0, 0, big.width, big.height);
+    return { ink, top, bot, peak, h: c.height, w: c.width, lit: +got.lit.toFixed(2), rows, url: big.toDataURL('image/png') };
+  }, 10);
+  if (!res || res.err) { rec.ok(`a crop of the figure for "${tag}" (guard)`, false, res); return null; }
   mkdirSync(OUT, { recursive: true });
   writeFileSync(`${OUT}/facebow-${TAG}-${tag}.png`, Buffer.from(res.url.split(',')[1], 'base64'));
   delete res.url;

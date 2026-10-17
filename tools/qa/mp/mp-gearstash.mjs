@@ -126,10 +126,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
      here -- what is asserted is the converse: nothing arrives as the
      bare `[]` that used to make "I own none" and "this browser does not
      know" the same sentence, and the worker close the capture on it. */
+  /* v2.3.3313: the FOUR gear-stash seeds, by name.  /^rpg.*Stash$/ also took
+     in rpgWeaponStash, which is not one of them (the weapon list has always
+     gone as `[]` when empty -- wsClient's join, beside the nugget ledger) and
+     passed only while this character carried a spare weapon; a new character
+     starts from the server's defaults since v2.3.3138, with none (the sweep of
+     main, 2026-10-17: ["rpgWeaponStash"]). */
+  const GS_SEED = /^rpg(Armor|Legs|Shield|Gear)Stash$/;
   rec.ok('...and no seed arrives as an empty array',
     joins.length > 0 && !Object.keys(joins[0].data)
-      .some((k) => /^rpg.*Stash$/.test(k) && Array.isArray(joins[0].data[k]) && !joins[0].data[k].length),
-    joins.length ? Object.keys(joins[0].data).filter((k) => /^rpg.*Stash$/.test(k) && !joins[0].data[k].length) : null);
+      .some((k) => GS_SEED.test(k) && Array.isArray(joins[0].data[k]) && !joins[0].data[k].length),
+    joins.length ? Object.keys(joins[0].data).filter((k) => GS_SEED.test(k) && !joins[0].data[k].length) : null);
   /* v2.3.2527 (review finding 3): the amulet list has no client source,
      so an honest client never claims one -- and the worker no longer
      reads the key even if one arrives. */

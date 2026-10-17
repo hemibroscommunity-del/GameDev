@@ -503,8 +503,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.hopTo(P, ore.x + 90, ore.y + 30);
     await P.page.waitForTimeout(1200);
     let og = 0;
-    for (const pr of await samples(P, 30, 200)) og = Math.max(og, pr.oreGlints);
-    rec.ok('frost: the ore glints now and then', og > 0, { og });
+    /* v2.3.3313: up to three looks of 6 s, until one glint: a vein flashes
+       0.55 s in every 3.2-5.4 s, and on this box a frame lands every 300-600
+       ms -- one 6 s look caught none on main once and caught one on its rerun */
+    const oreSamples = [];
+    for (let round = 0; round < 3 && og === 0; round++) {
+      const got = await samples(P, 30, 200);
+      oreSamples.push(...got);
+      for (const pr of got) og = Math.max(og, pr.oreGlints);
+    }
+    /* v2.3.3313: and, when none, what the page saw -- the vein, where you stood,
+       and whether the life pass ran at all (the sweep of main, 2026-10-17: og 0) */
+    const oreSeen = og > 0 ? null : await P.page.evaluate((o) => {
+      const S = window._gameState.current;
+      const n = (S.gatherNodes || []).find((q) => q && q.nodeType === 'oreVein' && Math.abs(q.x - o.x) < 2 && Math.abs(q.y - o.y) < 2);
+      const spr = n && n._pixiSprite;
+      return { me: [Math.round(S.player.x), Math.round(S.player.y)], ore: [o.x, o.y], alive: !!(n && n.alive),
+        sprite: spr ? { visible: !!spr.visible, parent: !!spr.parent, destroyed: !!spr.destroyed } : null, calm: window.__btAmbienceOff === true };
+    }, ore);
+    rec.ok('frost: the ore glints now and then', og > 0, { og, samples: oreSamples.length, ts: oreSamples.slice(0, 3).map((q) => q.t), oreSeen });
   }
   await P.page.screenshot({ path: `${OUT}/liveness-frost.png` }).catch(() => {});
 

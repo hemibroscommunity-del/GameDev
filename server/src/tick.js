@@ -355,6 +355,8 @@ export const tickMethods = {
       // v2.3.1125: clan-war endings (30-min timer; also resolved lazily
       // on wake for wars that end in an empty room).
       guard('clanWars', () => this._tickClanWars(Date.now()));
+      // v2.3.3313: alliance wars' endings (alliance.js; also lazily on wake)
+      guard('allyWars', () => this._tickAllyWars(Date.now()));
 
       // v2.3.1622: expire pending clan invites + trade offers.  Both
       // maps had a TTL that was only ever used to reject a late accept;
