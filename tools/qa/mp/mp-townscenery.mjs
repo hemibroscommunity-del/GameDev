@@ -128,13 +128,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const k0 = await townKeys(P);
   console.log(`INFO  townscenery :: town ${k0.mb} MB, town-only art ${k0.keyMb} MB in ${k0.keys.length} keys, walk crops ${s0 && s0.cropMb} MB of ${s0 && s0.wholeMb} MB whole`);
 
-  await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    if (S && S.channel) for (const q of ['tut_1', 'tut_2', 'tut_3', 'tut_4']) {
-      S.channel.send({ type: 'quest_accept', payload: { questId: q } });
-    }
-  });
-  await P.page.waitForTimeout(1500);
+  /* v2.3.3283: the lands opened by the harness (openLands): since v2.3.3179
+     the worker refuses tut_2..tut_4 taken at once, and only Frost Ridge
+     opened -- "reached ember" failed on main */
+  await H.openLands(P, wsPort);
 
   const hub = await goto(P, 'town', 'worldview');
   rec.ok('reached the worldview hub (guard)', hub === 'worldview', { hub });

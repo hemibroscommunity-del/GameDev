@@ -275,7 +275,8 @@ const inBox = (x, y, half) => blockers.find((b) => x + half > b.x0 && x - half <
   for (const s of ['plot', 'bed-dug', 'bed-wet', 'bed-fed', 'bed-wetfed']) if (!FARM_ART[s]) noStage.push(s);
   check(`every crop the worker grows (${crops.length}) has the owner's four stages, and every soil its picture`, noStage.length === 0, noStage);
   for (const st of FARM_STEPS) {
-    if (!fs.existsSync(path.join(REPO, 'public/ui/controls', 'farm-' + st + '.svg'))) missing.push('farm-' + st + '.svg');
+    /* v2.3.3279: the owner's painted pictures (were SVG) */
+    if (!fs.existsSync(path.join(REPO, 'public/ui/controls', 'farm-' + st + '.webp'))) missing.push('farm-' + st + '.webp');
   }
   check('each step has its picture for the stick and the beds', missing.length === 0, missing);
   /* beds */

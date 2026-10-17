@@ -72,7 +72,9 @@ export function essenceName(key) {
 }
 
 /** The essence's picture: a glowing orb in its grade's colour with its metal's
-    bar (tools/make_essence_icons.py). */
+    bar (tools/make_essence_icons.py).  v2.3.3281: the owner's painted ones
+    now, the bar at the orb's heart (tools/ui/cut-bag-icons.py; the same file
+    names). */
 export function essenceIcon(key) {
   const e = parseEssenceKey(key);
   return e ? '/icons/items/essence-' + e.grade + '-' + e.metal + '.webp' : null;

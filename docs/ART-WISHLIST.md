@@ -7,6 +7,19 @@ What the game could use from the owner next, each with a prompt ready to paste.
 - Generated from `public/tools/style/bible.js` and the Object Studio's `promptFor` (`public/tools/objects/prompts.js`). The dungeon-entrance prompts are the studio's own.
 - **The farm's art** (seed, crop and dish icons, crops growing, beds and farm things, the Barn) has its own page: `docs/art/FARM-ART-PROMPTS.md`, with `docs/art/bag-icon-style-key.png` to attach to the icon sheets (v2.3.3132).
 
+## What's left, in the order I'd make it (v2.3.3282)
+
+Each of these is drawn in code, borrowed from somewhere else, or missing today. Each is one chat; the reference pictures to attach are in `docs/art/` (and the banners' in `docs/triage-2026-09-17/assets/`). The same prompts are on a page with a Copy button each, built from this file: https://claude.ai/artifact/9wqSAqMoa4DXfWRvYcVk1L (the owner's).
+
+1. **The keepers** (3 chats): two sheets of six townsfolk, then Beastmaster Bro. Every building gets a person at its door.
+2. **The monsters** (5 chats): the Foundry Slime and the Mire Wisp, the Bog Lurker, and real walks for the rock monster and the fishman. Then, if you like them, a slam, hurt and death sheet for each walking one (up to 3 more).
+3. **The four land banners** (4 chats): Stone Hollows, Electric Foundry, Water Caves, Poison Forest.
+4. **The three dungeons** (6 chats): each mouth, then each arena's walls.
+5. **The Farmhouse and the Dungeon Workshop** (2 chats): their prompts are in `docs/art/FARM-ART-PROMPTS.md`.
+6. **Small icons, sheet 5, and the spin wheel** (2 chats).
+
+Not on the list unless you want them: each land's levels 21-40 monsters (recoloured today; the monster prompts make them), the Gem Works' inside with two stations, and the four lands' music (below).
+
 ## Inside the buildings
 
 **All seventeen were in the game (v2.3.3258)**, from the pictures you sent: sixteen behind their windows' menus, the Hotel's held until it has a window (docs/specs/building-rooms.md). **Since v2.3.3259 it is sixteen** (the Assay Office is gone; the Gem Works, the Gem Cutter's building, does both gem jobs, docs/specs/gem-works.md): fifteen behind their sixteen windows, the Hotel's held. The prompts stay here for redoing one: send the new picture in chat and a session replaces it (`tools/ui/make-room-pictures.py`). Rooms are empty of people on purpose: the game draws its own characters in. The Auction House's clerk is the first; the spec says what each other room would need.
@@ -391,18 +404,69 @@ Attached are the game's style key and the outside of this building. Match the st
 
 ## The keepers
 
-Since v2.3.3258 you talk to a building's keeper, who stands outside it, and its window opens with your picture of the room behind the menu. Blacksmith Bro opens the forge and Mayor Bro the Town Hall. These eleven buildings have nobody outside yet, so they open from their door. The Gem Works gets two keepers, the owner's "two different NPCs in the same building" (v2.3.3259): the cutter opens its Cut gems tab and the setter its Set gems tab.
+Since v2.3.3258 you talk to a building's keeper, who stands outside it, and its window opens with your picture of the room behind the menu. Blacksmith Bro opens the forge and Mayor Bro the Town Hall; Diego and Ace keep their own windows. The other eleven buildings have nobody outside yet, so they open from their door. The Gem Works gets two keepers, the owner's "two different NPCs in the same building" (v2.3.3259): the cutter opens its Cut gems tab and the setter its Set gems tab.
 
-- **In the game:** standing beside his building's steps in BroTown. A tap on him, E or the right stick opens the building. His head shows in the dialogue window (a crop of the same picture).
-- **Attach:** Diego's or Blacksmith Bro's picture (`public/sprites/npc/shopkeeper-bro-walk-south.webp`, first frame, or `blacksmith-bro.png`), so he comes out the same style and size as the other townsfolk.
-- **How:** paste the prompt below and replace `[WHO]` with one line from the list. Each comes on one flat magenta background (#FF00FF). A session cuts him out, stands his feet on the townsfolk's line (256 × 256, feet 223 px down), crops his head for the dialogue and puts him at his steps.
+Since v2.3.3282 they come as **two sheets of six**, so each sheet's six match each other and it is two chats instead of twelve. The one-at-a-time prompt is kept below the sheets, for redoing one.
+
+### The keepers, sheet 1 of 2: Bank, Saloon, Woodworker, Cookhouse, Feed & Seed, Land Office
+
+- **In the game:** each stands beside his building's steps in BroTown. A tap on him, E or the right stick opens his building, and his head shows in the dialogue window (a crop of the same picture).
+- **Attach:** `docs/art/townsfolk-key.png`: four of the game's townsfolk (Blacksmith Bro, Diego, the Auction House's clerk and Mayor Bro), so the six come out the same style and size.
+- **How:** One landscape picture. Send it in chat and a session cuts each man out, stands his feet on the townsfolk's line (256 × 256, feet 223 px down), crops his head for the dialogue and puts him at his steps.
 
 ```text
-A full-body picture of one character for BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros, drawn in exactly the same style, size and proportions as the attached townsperson: [WHO] He stands facing the viewer, relaxed and welcoming, his arms at his sides or holding what he works with.
+Landscape image (wider than tall): a sheet of 6 townsfolk for BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros, in a 3×2 grid read like a page (each row left to right, rows top to bottom). Each man stands in the middle of his own equal square cell, his whole body from hat to boots, his feet near the bottom of the cell, and touches nothing else. All six are drawn in exactly the same style, size and proportions as the attached townsfolk: the same big heads, chunky bodies and height.
+
+Each stands facing the viewer, relaxed and welcoming, his arms at his sides or holding what he works with:
+1. Banker Bro, the town's banker: a portly, well-groomed man in his fifties with a neat grey mustache and round gold spectacles, a black bowler hat, a dark green waistcoat with a gold watch chain over a white shirt with sleeve garters, a ledger under one arm and a big brass key on a ring at his belt.
+2. Barkeep Bro, the saloon's barkeep: a big, friendly man with a handlebar mustache and slicked-back hair, a white shirt with rolled sleeves and red sleeve garters, a black vest, a bar towel over one shoulder and a glass mug in one hand.
+3. Woodworker Bro, the town's carpenter and bowyer: a lean man with a short beard and sawdust in his hair, a canvas apron full of chisels, a pencil behind his ear and a half-finished longbow in one hand.
+4. Cook Bro, the cookhouse cook: a round, jolly man in a tall white chef's hat and a stained white apron over a checkered shirt, a wooden ladle in one hand and a towel tucked in his belt.
+5. Farmer Bro, the feed-and-seed man: a sunburnt farmer with a wide straw hat, blue denim overalls over a red plaid shirt, a sack of seed on one shoulder and a stalk of wheat between his teeth.
+6. Land Agent Bro, the land agent: a neat clerk with a green eyeshade visor and spectacles, a brown suit with arm garters, a rolled-up deed tied with ribbon in one hand and a fountain pen behind his ear.
+
+Every man looks different at a glance: his own face, hair, build and colours.
+
+Style: crisp pixel art exactly like the attached townsfolk: hard-edged square pixels, no blur, no anti-aliasing, no soft gradients; each colour shaded with a few flat tones; the same outline as the attached townsfolk. Cloth, leather, metal and wood each drawn as themselves.
+
+No text, signs, frames, cell lines, floor or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing on the men is magenta or pink.
+```
+
+### The keepers, sheet 2 of 2: Gem Works (two), Post Office, Sheriff's Office, Guild Hall, Auction House
+
+- **In the game:** as sheet 1. The Gem Works' cutter opens its Cut gems tab and its setter the Set gems tab.
+- **Attach:** `docs/art/townsfolk-key.png`.
+- **How:** as sheet 1. The Auctioneer is the one you could skip: the clerk behind the counter in your Auction House picture already exists as a figure (`storekeeper-bro.webp`, third in the attached picture) and could stand outside instead. If you skip him, ask for "a sheet of 5" and leave out line 6.
+
+```text
+Landscape image (wider than tall): a sheet of 6 townsfolk for BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros, in a 3×2 grid read like a page (each row left to right, rows top to bottom). Each man stands in the middle of his own equal square cell, his whole body from hat to boots, his feet near the bottom of the cell, and touches nothing else. All six are drawn in exactly the same style, size and proportions as the attached townsfolk: the same big heads, chunky bodies and height.
+
+Each stands facing the viewer, relaxed and welcoming, his arms at his sides or holding what he works with:
+1. Gem Cutter Bro, the gem cutter: a careful, quiet man with a jeweler's loupe over one eye, fingerless leather gloves and a deep blue vest, holding a small velvet tray of glittering cut gems in front of him.
+2. Gem Setter Bro, who sets polished gems into gear: a thin, curious man with brass goggles pushed up on his forehead, a long brown work coat with pockets full of little vials, a small setting hammer in one hand and a sword with an empty gem socket in its hilt in the other.
+3. Postmaster Bro, the postmaster and telegraph man: a cheerful man in a blue postal cap and a blue jacket with brass buttons, a leather mailbag across his chest full of letters, and a stamped letter in one hand.
+4. Sheriff Bro, the town sheriff: a tall, steady man with a thick mustache, a wide brown cowboy hat, a long tan duster over a vest with a shiny gold star badge, a coiled lasso on his belt and his thumbs hooked in his belt.
+5. Guildmaster Bro, the guildmaster: a broad-shouldered veteran with a grey beard and a small scar over one eyebrow, a heavy red cloak with a round brass clasp over worn leather armour, a guild banner on a pole in one hand.
+6. Auctioneer Bro, the auctioneer: a sharp-dressed man with slicked hair and a thin mustache, a burgundy suit with a bow tie, a wooden gavel in one hand.
+
+Every man looks different at a glance: his own face, hair, build and colours.
+
+Style: crisp pixel art exactly like the attached townsfolk: hard-edged square pixels, no blur, no anti-aliasing, no soft gradients; each colour shaded with a few flat tones; the same outline as the attached townsfolk. Cloth, leather, metal and wood each drawn as themselves.
+
+No text, signs, frames, cell lines, floor or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing on the men is magenta or pink.
+```
+
+### One keeper at a time (for a redo)
+
+- **Attach:** `docs/art/townsfolk-key.png`.
+- **How:** paste the prompt below and replace `[WHO]` with one line from the table. It comes on one flat magenta background (#FF00FF), and a session fits him in as with the sheets.
+
+```text
+A full-body picture of one character for BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros, drawn in exactly the same style, size and proportions as the attached townsfolk: [WHO] He stands facing the viewer, relaxed and welcoming, his arms at his sides or holding what he works with.
 
 The picture is square. He stands in the middle, his whole body in the picture with his feet near the bottom and a little space above his head. The background is ONE flat magenta colour (#FF00FF) with nothing else on it: no floor, no shadow, no border, no text.
 
-Style: crisp pixel art like the attached townsperson: hard-edged square pixels, no blur, no anti-aliasing, no soft gradients; each colour shaded with a few flat tones; a one-pixel outline in a darker shade of its own colour, never black. Cloth, leather, metal and wood each drawn as themselves.
+Style: crisp pixel art like the attached townsfolk: hard-edged square pixels, no blur, no anti-aliasing, no soft gradients; each colour shaded with a few flat tones; the same outline as the attached townsfolk. Cloth, leather, metal and wood each drawn as themselves.
 ```
 
 | Building | Replace `[WHO]` with |
@@ -418,7 +482,7 @@ Style: crisp pixel art like the attached townsperson: hard-edged square pixels, 
 | Post Office | Postmaster Bro, the postmaster and telegraph man: a cheerful man in a blue postal cap and a blue jacket with brass buttons, a leather mailbag across his chest full of letters, and a stamped letter in one hand. |
 | Sheriff's Office | Sheriff Bro, the town sheriff: a tall, steady man with a thick mustache, a wide brown cowboy hat, a long tan duster over a vest with a shiny gold star badge, a coiled lasso on his belt and his thumbs hooked in his belt. |
 | Guild Hall | Guildmaster Bro, the guildmaster: a broad-shouldered veteran with a grey beard and a small scar over one eyebrow, a heavy red cloak with a round brass emblem clasp over worn leather armour, a guild banner on a pole in one hand. |
-| Auction House | Auctioneer Bro, the auctioneer: a sharp-dressed man with slicked hair and a thin mustache, a burgundy suit with a bow tie, a wooden gavel in one hand. (Or no new picture: the clerk behind the counter in your Auction House picture already exists as a figure, `storekeeper-bro.webp`, and could stand outside. Say which.) |
+| Auction House | Auctioneer Bro, the auctioneer: a sharp-dressed man with slicked hair and a thin mustache, a burgundy suit with a bow tie, a wooden gavel in one hand. |
 
 ## Pet trapping
 
@@ -427,59 +491,60 @@ Beastmaster Bro stands beside the Woodworker and gives the trapping quests (v2.3
 ### Beastmaster Bro: his figure
 
 - **In the game:** Standing east of the Woodworker's steps in BroTown, and his head in the dialogue window (a crop of the same picture).
-- **Attach:** Diego's or Blacksmith Bro's picture (`public/sprites/npc/shopkeeper-bro-walk-south.webp`, first frame, or `blacksmith-bro.png`), so he comes out the same style and size as the other townsfolk.
+- **Attach:** `docs/art/townsfolk-key.png` (four of the game's townsfolk), so he comes out the same style and size as the other townsfolk.
 - **How:** Ask ChatGPT for a square picture on one flat magenta background (#FF00FF). A session cuts him out, stands his feet on the townsfolk's line (256 × 256, feet 223 px down) and crops his head for the dialogue.
 
 ```text
-A full-body picture of one character for BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros, drawn in exactly the same style, size and proportions as the attached townsperson: Beastmaster Bro, the town's trapper and keeper of tamed monsters. A broad, cheerful frontiersman in his thirties with a short beard, a wide-brimmed leather hat with a few feathers and a small animal tooth on its band, a long moss-green oilskin coat over a fur-trimmed vest, an orange neckerchief, sturdy leather gloves and boots, and a coil of rope and a little wooden box trap hanging from his belt. A small, friendly snowman creature (about knee-high, with a tiny top hat and a red scarf) sits at his feet, looking up at him. He stands facing the viewer, relaxed and welcoming, arms at his sides.
+A full-body picture of one character for BroTown, a top-down 2D action RPG set in a frontier boomtown built by Bros, drawn in exactly the same style, size and proportions as the attached townsfolk: Beastmaster Bro, the town's trapper and keeper of tamed monsters. A broad, cheerful frontiersman in his thirties with a short beard, a wide-brimmed leather hat with a few feathers and a small animal tooth on its band, a long moss-green oilskin coat over a fur-trimmed vest, an orange neckerchief, sturdy leather gloves and boots, and a coil of rope and a little wooden box trap hanging from his belt. A small, friendly snowman creature (about knee-high, with a tiny top hat and a red scarf) sits at his feet, looking up at him. He stands facing the viewer, relaxed and welcoming, arms at his sides.
 
 The picture is square. He stands in the middle, his whole body in the picture with his feet near the bottom and a little space above his hat. The background is ONE flat magenta colour (#FF00FF) with nothing else on it: no floor, no shadow, no border, no text.
 
-Style: crisp pixel art like the attached townsperson: hard-edged square pixels, no blur, no anti-aliasing, no soft gradients; each colour shaded with a few flat tones; a one-pixel outline in a darker shade of its own colour, never black. Leather, fur, cloth and snow each drawn as themselves.
+Style: crisp pixel art like the attached townsfolk: hard-edged square pixels, no blur, no anti-aliasing, no soft gradients; each colour shaded with a few flat tones; the same outline as the attached townsfolk. Leather, fur, cloth and snow each drawn as themselves.
 ```
 
 ### Box trap: item icon
 
-- **In the game:** The Box Trap in your bag, and the picture on the TRAP button. Today both borrow the Trapping skill's icon.
-- **Attach:** any item icon of the game's (`public/icons/items/wood-log.webp`), so it matches.
-- **How:** Ask ChatGPT for a square picture on one flat magenta background (#FF00FF). A session cuts it out and sizes it.
-
-```text
-A square item icon for a top-down 2D action RPG, in exactly the style of the attached icon: a simple wooden box trap, a small crate of rough pine planks with its door propped open on a stick tied to a bit of string, a little bait inside. Seen from slightly above and to the front, filling most of the picture. One flat magenta background (#FF00FF), no shadow, no border, no text. Crisp pixel art: hard-edged pixels, a few flat tones per colour, a one-pixel outline in a darker shade of its own colour.
-```
+- **In the game (v2.3.3281):** your box trap, in the bag, on the Woodworker's Traps tab and on the TRAP button (they borrowed the Trapping skill's icon until then).
+- **Made on the hardened wood sheet below** (v2.3.3279): one sheet for the five hardened woods and the trap, so they match.
 
 ## Hardened wood
 
 Five logs make one hardened wood at the Woodworker (v2.3.3139, docs/specs/hardened-wood.md). Today each icon is its tree's log picture with the sprigs taken off, the wood darkened and two iron bands drawn round it by `tools/make_hardened_wood_icons.py`.
 
-### Hardened wood: five item icons
+### Hardened wood and the box trap: one sheet of six (v2.3.3279)
 
-- **In the game:** The bag, and the Woodworker's Harden tab: Hardened Pine Wood, Hardened Softwood, Hardened Hardwood, Hardened Cedar Wood and Hardened Maple Wood.
-- **Attach:** the five log icons (`public/icons/items/wood-log.webp`, `wood-softwood.webp`, `wood-hardwood.webp`, `wood-cedar.webp`, `wood-maple.webp`), so each wood keeps its colour.
-- **How:** Ask ChatGPT for one square picture holding all five; send it in chat and a session cuts it into the game's 256 px icons (`public/icons/items/hardened-<wood>.webp`).
+- **In the game (v2.3.3281):** your sheet, cut by `tools/ui/cut-bag-icons.py` (it keeps the sheet in `assets/icons-source/sheet-bag-wood.png`): the bag and the Woodworker's Harden tab (Hardened Pine Wood, Hardened Softwood, Hardened Hardwood, Hardened Cedar Wood, Hardened Maple Wood), and the Box Trap in the bag, the Traps tab and on the TRAP button. The prompt stays for a redo: send the new sheet in chat.
+- **Attach:** `docs/art/log-icons-key.png`, the game's five log icons in a row (pine, softwood, hardwood, cedar, maple), so each hardened wood keeps its log's colour and the style matches the bag.
+- **How:** One landscape picture; send it in chat and a session cuts it into the game's icons. It replaces the white-background prompt that was here: a white ground cuts out badly round pale wood, and the trap's old prompt asked for pixel art, which the bag is not.
 
 ```text
-Create a single 1280x256 image: five separate game item icons in a row on a seamless pure white background (#FFFFFF), each centered in its own invisible square cell with even margins. No grid lines, no borders, no text.
+Landscape image (wider than tall): a sprite sheet of 6 item icons for a 2D action RPG, in a 3×2 grid read like a page (each row left to right, rows top to bottom). Each icon sits centered in its own equal square cell, fills about three quarters of it, and touches nothing else.
 
-STYLE: match the attached log icons exactly -- the same bold dark outline, the same rich hand-painted shading and highlights, the same angle and size.
+The first five are HARDENED WOOD, made from the five attached logs (left to right: pine, softwood, hardwood, cedar, maple), each keeping its own log's colours: the same log, but worked -- bark trimmed smooth and darkened by fire-hardening, the end grain dark at its rim, oiled to a soft sheen, and bound with two riveted iron bands. No leaves or sprigs.
+Row 1: hardened pine · hardened softwood · hardened hardwood
+Row 2: hardened cedar · hardened maple · a box trap (a small crate of rough pine planks, its door propped open on a stick tied to a string, a carrot inside as bait)
 
-SUBJECTS, left to right, one for each attached log in the same order and the same wood colour: a piece of HARDENED WOOD -- the same log, but worked: bark trimmed smooth and dark from fire-hardening, the end grain darkened at its rim, oiled to a soft sheen, bound with two riveted iron bands. No leaves or sprigs.
+Style: exactly the attached log icons: glossy hand-painted item icons with the same bold dark outline, shading, highlights and angle. All 6 the same size and weight.
+
+No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the icons is magenta (cedar's warm reddish wood is fine). Do not copy the attached logs' leaves or background.
 ```
 
 ## Land banners
 
 Four of the eight lands play only a plain plaque when you cross in. Attach the Frost Ridge sheet and ChatGPT copies its layout, so I can cut each sheet into the banner exactly as with the first four.
 
+Fixed in v2.3.3282: the prompts said "the same flat black background", but your Frost Ridge sheet is see-through (no background at all), and the tool that cuts the banners (`tools/process_zone_banner_sheets.py`) reads its see-through edge; and "saved on this page" pointed at nothing. The sheet is `docs/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`.
+
 ### Stone Hollows: land banner
 
 - **In the game:** Plays across the top of the screen as you cross into the Stone Hollows. Today it shows the plain plaque only.
-- **Attach:** the Frost Ridge ornament sheet (saved on this page, below)
+- **Attach:** the Frost Ridge ornament sheet, `docs/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`
 - **How:** Ask for the same shape of picture as the attached sheet.
 
 ```text
 Attached is the ornament sheet of one of the zone-entry banners in my game BroTown (Frost Ridge). Make the same sheet for another land, the Stone Hollows.
 
-Keep its layout exactly: the same nine stages of a pair of ornaments, a LEFT piece and a RIGHT piece, in the same rows and spacing, on the same flat black background. The pieces grow from a faint wisp in the first stage to the full scene in the last, in the same painted style, size and glow as the attached sheet.
+Keep its layout exactly: the same nine stages of a pair of ornaments, a LEFT piece and a RIGHT piece, in the same rows and spacing, on the same transparent background (no background at all, like the attached sheet). The pieces grow from a faint wisp in the first stage to the full scene in the last, in the same painted style, size and glow as the attached sheet.
 
 Theme them on grey stone and the mine: rock spires and boulders, a cave mouth, crossed pickaxes and a stretch of mine-cart rail, swirling dust, and small glowing blue and violet crystals.
 
@@ -489,13 +554,13 @@ No plaque, no bar, no frame, no writing and no numbers: only the two ornaments i
 ### Electric Foundry: land banner
 
 - **In the game:** Plays across the top of the screen as you cross into the Electric Foundry. Today it shows the plain plaque only.
-- **Attach:** the Frost Ridge ornament sheet (saved on this page, below)
+- **Attach:** the Frost Ridge ornament sheet, `docs/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`
 - **How:** Ask for the same shape of picture as the attached sheet.
 
 ```text
 Attached is the ornament sheet of one of the zone-entry banners in my game BroTown (Frost Ridge). Make the same sheet for another land, the Electric Foundry.
 
-Keep its layout exactly: the same nine stages of a pair of ornaments, a LEFT piece and a RIGHT piece, in the same rows and spacing, on the same flat black background. The pieces grow from a faint wisp in the first stage to the full scene in the last, in the same painted style, size and glow as the attached sheet.
+Keep its layout exactly: the same nine stages of a pair of ornaments, a LEFT piece and a RIGHT piece, in the same rows and spacing, on the same transparent background (no background at all, like the attached sheet). The pieces grow from a faint wisp in the first stage to the full scene in the last, in the same painted style, size and glow as the attached sheet.
 
 Theme them on iron and lightning: gears, riveted iron plates, copper coils and a small Tesla-coil tower crackling with blue-violet sparks and arcs.
 
@@ -505,13 +570,13 @@ No plaque, no bar, no frame, no writing and no numbers: only the two ornaments i
 ### Water Caves: land banner
 
 - **In the game:** Plays across the top of the screen as you cross into the Water Caves. Today it shows the plain plaque only.
-- **Attach:** the Frost Ridge ornament sheet (saved on this page, below)
+- **Attach:** the Frost Ridge ornament sheet, `docs/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`
 - **How:** Ask for the same shape of picture as the attached sheet.
 
 ```text
 Attached is the ornament sheet of one of the zone-entry banners in my game BroTown (Frost Ridge). Make the same sheet for another land, the Water Caves.
 
-Keep its layout exactly: the same nine stages of a pair of ornaments, a LEFT piece and a RIGHT piece, in the same rows and spacing, on the same flat black background. The pieces grow from a faint wisp in the first stage to the full scene in the last, in the same painted style, size and glow as the attached sheet.
+Keep its layout exactly: the same nine stages of a pair of ornaments, a LEFT piece and a RIGHT piece, in the same rows and spacing, on the same transparent background (no background at all, like the attached sheet). The pieces grow from a faint wisp in the first stage to the full scene in the last, in the same painted style, size and glow as the attached sheet.
 
 Theme them on the sea: a curling wave, sea-cave rocks with dripping stalactites, coral, shells and bubbles, in turquoise and deep blue water.
 
@@ -521,13 +586,13 @@ No plaque, no bar, no frame, no writing and no numbers: only the two ornaments i
 ### Poison Forest: land banner
 
 - **In the game:** Plays across the top of the screen as you cross into the Poison Forest. Today it shows the plain plaque only.
-- **Attach:** the Frost Ridge ornament sheet (saved on this page, below)
+- **Attach:** the Frost Ridge ornament sheet, `docs/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`
 - **How:** Ask for the same shape of picture as the attached sheet.
 
 ```text
 Attached is the ornament sheet of one of the zone-entry banners in my game BroTown (Frost Ridge). Make the same sheet for another land, the Poison Forest.
 
-Keep its layout exactly: the same nine stages of a pair of ornaments, a LEFT piece and a RIGHT piece, in the same rows and spacing, on the same flat black background. The pieces grow from a faint wisp in the first stage to the full scene in the last, in the same painted style, size and glow as the attached sheet.
+Keep its layout exactly: the same nine stages of a pair of ornaments, a LEFT piece and a RIGHT piece, in the same rows and spacing, on the same transparent background (no background at all, like the attached sheet). The pieces grow from a faint wisp in the first stage to the full scene in the last, in the same painted style, size and glow as the attached sheet.
 
 Theme them on venom: twisted dark trees and roots, purple-and-green toxic mushrooms, dripping slime and floating spores in a sickly green mist.
 
@@ -586,6 +651,257 @@ Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clea
 Attached is the game's style key. Match its pixel size, colours, shading and the way it draws each material exactly, but do not copy its tiles. Scale: a person standing here would be about one fifth as tall as this picture. It is about five and a half times as wide as a person is tall, so it fills about four fifths of the picture's width.
 ```
 
+## Dungeon walls
+
+The three dungeons' arenas are floored with their land's own ground picture (v2.3.3016), but their walls are one flat dark colour drawn in code. These give each arena real walls: the wall's front, seen along the top of the arena, and the top of the wall all round it (v2.3.3282).
+
+- **How:** One wide picture per dungeon. Send it in chat: a session makes each strip repeat seamlessly (the Ground Studio's cut) and draws the arena's walls from it. Drawing walls from a picture is new code, done when the first picture comes.
+
+### The Great Cave: dungeon walls
+
+- **In the game:** the walls of the Great Cave's arena. Today they are one flat colour.
+- **Attach:** your style key, and `docs/art/dungeon-floors-key.png` (the three dungeons' floors, left to right: the Great Cave, the Foundry Dome, the Buried City).
+- **Green, not magenta:** the crystals are violet, which a magenta background would eat into.
+
+```text
+A wide picture (3:2, landscape) for BroTown, a top-down 2D action RPG: two strips of dungeon wall for the Great Cave, the dungeon under the Stone Hollows, one above the other with a band of background between them, each running the full width of the picture.
+
+1. The top strip is the wall's FRONT, seen from a steep three-quarter top-down angle: rough grey cave rock in big faceted blocks with cracks and chips, a few small blue and violet crystals poking out, and an old wooden mine timber propping it here and there. It is a little taller than a person, its top edge level and its bottom edge where it meets the floor.
+2. The bottom strip is the TOP of the same wall, seen from above: the same grey rock, rubbly and uneven, with no front and no edges.
+
+Both strips repeat side by side: their left and right ends must join with no visible seam. No doors, gaps, torches, creatures or people.
+
+No text, letters or numbers anywhere. The background is ONE flat bright green colour (#00FF00) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is bright green. No border.
+
+Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
+
+Attached are the game's style key and the three dungeons' floors (left to right: the Great Cave, the Foundry Dome, the Buried City). Match the style key's pixel size, colours, shading and the way it draws each material, and make the wall belong on the first floor, the Great Cave's grey rock, but do not copy their tiles. Scale: a person standing beside the wall would be a little shorter than its front.
+```
+
+### The Foundry Dome: dungeon walls
+
+- **In the game:** the walls of the Foundry Dome's arena. Today they are one flat colour.
+- **Attach:** your style key, and `docs/art/dungeon-floors-key.png` (the three dungeons' floors, left to right: the Great Cave, the Foundry Dome, the Buried City).
+- **Background:** magenta, as the Object Studio's pictures.
+
+```text
+A wide picture (3:2, landscape) for BroTown, a top-down 2D action RPG: two strips of dungeon wall for the Foundry Dome, the dungeon of the Electric Foundry, one above the other with a band of background between them, each running the full width of the picture.
+
+1. The top strip is the wall's FRONT, seen from a steep three-quarter top-down angle: dark riveted iron wall plates joined by brass seams, a thick iron pipe running along it, and a small round porthole of blue glass here and there. It is a little taller than a person, its top edge level and its bottom edge where it meets the floor.
+2. The bottom strip is the TOP of the same wall, seen from above: the same dark iron, riveted plates joined by brass seams, with no front and no edges.
+
+Both strips repeat side by side: their left and right ends must join with no visible seam. No doors, gaps, torches, creatures or people.
+
+No text, letters or numbers anywhere. The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is magenta or bright pink. No border.
+
+Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
+
+Attached are the game's style key and the three dungeons' floors (left to right: the Great Cave, the Foundry Dome, the Buried City). Match the style key's pixel size, colours, shading and the way it draws each material, and make the wall belong on the second floor, the Foundry Dome's dark iron plates and brass seams, but do not copy their tiles. Scale: a person standing beside the wall would be a little shorter than its front.
+```
+
+### The Buried City: dungeon walls
+
+- **In the game:** the walls of the Buried City's arena. Today they are one flat colour.
+- **Attach:** your style key, and `docs/art/dungeon-floors-key.png` (the three dungeons' floors, left to right: the Great Cave, the Foundry Dome, the Buried City).
+- **Background:** magenta, as the Object Studio's pictures.
+
+```text
+A wide picture (3:2, landscape) for BroTown, a top-down 2D action RPG: two strips of dungeon wall for the Buried City, the dungeon under the Wind Dunes, one above the other with a band of background between them, each running the full width of the picture.
+
+1. The top strip is the wall's FRONT, seen from a steep three-quarter top-down angle: big blocks of red-orange sandstone, worn smooth and chipped, a carved band of simple worn patterns (no letters), and sand drifted against its foot. It is a little taller than a person, its top edge level and its bottom edge where it meets the floor.
+2. The bottom strip is the TOP of the same wall, seen from above: the same red sandstone, its blocks' tops worn and dusted with sand, with no front and no edges.
+
+Both strips repeat side by side: their left and right ends must join with no visible seam. No doors, gaps, torches, creatures or people.
+
+No text, letters or numbers anywhere. The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is magenta or bright pink. No border.
+
+Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
+
+Attached are the game's style key and the three dungeons' floors (left to right: the Great Cave, the Foundry Dome, the Buried City). Match the style key's pixel size, colours, shading and the way it draws each material, and make the wall belong on the third floor, the Buried City's red sandstone, but do not copy their tiles. Scale: a person standing beside the wall would be a little shorter than its front.
+```
+
+## Monsters
+
+Two lands still wear another land's monster, and two monsters have one still picture for every direction (v2.3.3282):
+
+| Land | Its monster today | What it gets |
+|---|---|---|
+| Electric Foundry | the starter green slime, unchanged | its own slime, made of leaked lightning (its codex story) |
+| Poison Forest | the Mire Wisp is the green slime tinted violet; the Bog Lurker is the fishman tinted murky | a wisp of poisoned light, and a bog-rotted fishman (their codex stories) |
+| Stone Hollows | the rock monster: one picture, used for all four directions, so it slides | a hop in four directions |
+| Water Caves | the fishman: the same, one picture that slides | a walk in four directions |
+
+The Verdant Wilds keeps your blue slimes (your call, v2.3.1675), the Wind Dunes its mummies, Frost Ridge its snowmen and the Flame Fields its goblins. Levels 21-40 wear each land's monster recoloured (v2.3.3093) until you want each stage's own: the same prompts make them.
+
+- **Attach:** `docs/art/monster-style-key.png` (the game's slime, fire goblin, fishman, rock monster, mummy and snowman), or the monster's own picture where the prompt says so.
+- **How:** One square picture per chat; send it in chat. A session cuts the frames, lines each up by its feet, sizes them to the monster set and wires them in. A monster's new walk also becomes its pet's look (the pet sheet is made from the walk frames).
+- **Be ready for a retry or two.** ChatGPT keeps a single picture steadier than a run of animation frames. If a frame is off, ask for the whole sheet again with that frame fixed; a session can also drop a bad frame and play the good ones.
+- **Memory:** a monster made this way holds about 4 MB when it is near you, 8 with the optional sheet (the fire goblin's full set holds about 30), loaded as you walk toward it and let go behind you, like every Wheel monster.
+
+### The Foundry Slime (Electric Foundry)
+
+- **In the game:** the Electric Foundry's monsters at levels 1-20, and the Foundry Dome's. It keeps the slime's moves: it bobs, spits globs and lunges.
+- **Attach:** `docs/art/monster-style-key.png`.
+
+```text
+Square image: a sprite sheet of ONE monster for BroTown, a top-down 2D action RPG, in a 4×4 grid of equal square cells read like a page (each row left to right, rows top to bottom). The monster is the same size in every cell, sits on the same invisible line near the bottom of its cell, faces the viewer, and touches nothing else.
+
+The monster is the Foundry Slime: a living blob of bottled lightning that leaked out of the Electric Foundry, pooled on the floor and one morning got up and wobbled off on its own. A wobbly dome of glowing electric-blue and violet jelly crackling with tiny white sparks, a broken glass bottle neck stuck in its top like a little hat, and two angry white eyes.
+
+Row 1: bobbing in place, four frames that loop: squashed low, rising, at its tallest, coming down.
+Row 2: spitting a glob at the viewer, four frames: swelling up, squeezing, the glob bursting out, settling.
+Row 3: hurt, two frames (flattened and flinching, wobbling back); then its glob alone: a crackling ball of blue lightning; then what it leaves when it dies, alone: a scorched puddle with a few sparks.
+Row 4: dying, four frames: shuddering, collapsing, bursting apart in sparks, melted into its puddle.
+
+Style: exactly the attached monsters: chunky, bold pixel art with a dark outline, a few flat tones per colour, bright readable colours, lit from the upper left, seen from a steep three-quarter top-down angle. The same size and weight as the attached slime.
+
+No text, cell lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the monster is magenta or pink.
+```
+
+### The Mire Wisp (Poison Forest)
+
+- **In the game:** the Poison Forest's wisps at levels 1-20. It keeps the slime's moves: it bobs, spits globs and lunges.
+- **Attach:** `docs/art/monster-style-key.png`.
+
+```text
+Square image: a sprite sheet of ONE monster for BroTown, a top-down 2D action RPG, in a 4×4 grid of equal square cells read like a page (each row left to right, rows top to bottom). The monster is the same size in every cell, floats at the same height above the same invisible line near the bottom of its cell, faces the viewer, and touches nothing else.
+
+The monster is the Mire Wisp: a drifting blob of poisoned light from the Poison Forest, which lost travellers followed thinking it was a lantern. A glowing sickly-green and violet wisp with a ghostly, grinning face, its bottom trailing off into dripping wisps, floating just above the ground.
+
+Row 1: bobbing in the air, four frames that loop: low, rising, at its highest, sinking.
+Row 2: spitting a glob at the viewer, four frames: swelling up, squeezing, the glob bursting out, settling.
+Row 3: hurt, two frames (squashed and flinching, wobbling back); then its glob alone: a dripping ball of green venom; then what it leaves when it dies, alone: a small bubbling green puddle.
+Row 4: dying, four frames: flickering, shrinking, bursting into green drops, gone to its puddle.
+
+Style: exactly the attached monsters: chunky, bold pixel art with a dark outline, a few flat tones per colour, bright readable colours, lit from the upper left, seen from a steep three-quarter top-down angle. The same size and weight as the attached slime.
+
+No text, cell lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the monster is magenta or pink (its violet is a deep blue-violet, not pink).
+```
+
+### The Bog Lurker (Poison Forest)
+
+- **In the game:** the Poison Forest's lurkers at levels 1-20. It keeps the fishman's moves: it walks up to you and slams.
+- **Attach:** `docs/art/monster-style-key.png`.
+
+```text
+Square image: a sprite sheet of ONE monster for BroTown, a top-down 2D action RPG, in a 4×4 grid of equal square cells read like a page (each row left to right, rows top to bottom). The monster is the same size in every cell, stands on the same invisible line near the bottom of its cell, and touches nothing else.
+
+The monster is the Bog Lurker: a fishman who left the sea caves for wetter ground, found the Poison Forest's bog and stayed until the bog moved in. Hunched and heavy, with mottled grey-green skin, a wide fish mouth full of needle teeth, small glowing yellow-green eyes, pond weed and lily pads draped over its shoulders, two little purple toadstools growing on its back, ragged dark fins, long arms with webbed claws, and faded, torn swim trunks.
+
+Each row is one walk cycle of four frames that loops:
+Row 1: walking toward the viewer.
+Row 2: walking to the right.
+Row 3: walking away from the viewer (we see its back).
+Row 4: walking to the left.
+
+Style: exactly the attached monsters: chunky, bold pixel art with a dark outline, a few flat tones per colour, bright readable colours, lit from the upper left, seen from a steep three-quarter top-down angle. The same size and weight as the attached fishman.
+
+No text, cell lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the monster is magenta or pink.
+```
+
+### The rock monster: a hop in four directions (Stone Hollows)
+
+- **In the game:** the Stone Hollows' monsters and the Great Cave's. Today one picture faces every way and slides.
+- **Attach:** `docs/art/rockmonster-key.png` (its picture).
+
+```text
+Square image: a sprite sheet of the attached monster for my game BroTown, a top-down 2D action RPG, in a 4×4 grid of equal square cells read like a page (each row left to right, rows top to bottom). Keep the monster exactly as it is: an egg-shaped boulder of grey stone blocks with glowing red eyes and a huge mouth of fangs. It is the same size in every cell, on the same invisible line near the bottom of its cell, and touches nothing else.
+
+It has no legs: it moves by hopping. Each row is one hop of four frames that loops: crouched low, springing up off the ground, at the top of the hop, landing with a small puff of dust.
+Row 1: hopping toward the viewer (we see its face).
+Row 2: hopping to the right (we see its side).
+Row 3: hopping away from the viewer (we see the back of the rock, no face).
+Row 4: hopping to the left.
+
+Style: exactly the attached picture: the same pixel art, outline, colours and lighting. No text, cell lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the monster is magenta or pink.
+```
+
+### The fishman: a walk in four directions (Water Caves)
+
+- **In the game:** the Water Caves' monsters. Today one picture faces every way and slides.
+- **Attach:** `docs/art/fishman-key.png` (its picture).
+
+```text
+Square image: a sprite sheet of the attached monster for my game BroTown, a top-down 2D action RPG, in a 4×4 grid of equal square cells read like a page (each row left to right, rows top to bottom). Keep the monster exactly as it is: a muscular fish-man with a fierce fish head full of teeth, red eyes, golden-brown scales, fins on its back and arms, and blue swim trunks. It is the same size in every cell, standing on the same invisible line near the bottom of its cell, and touches nothing else.
+
+Each row is one walk cycle of four frames that loops, walking on its two finned legs:
+Row 1: walking toward the viewer.
+Row 2: walking to the right.
+Row 3: walking away from the viewer (we see its back and its back fins).
+Row 4: walking to the left.
+
+Style: exactly the attached picture: the same pixel art, outline, colours and lighting. No text, cell lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the monster is magenta or pink.
+```
+
+### Optional: a walking monster's slam, hurt and death
+
+- **In the game:** the Bog Lurker, the rock monster or the fishman, after its walk is in. Today they have no slam, hurt or death pictures of their own.
+- **Attach:** that monster's walk sheet (the picture ChatGPT made).
+- **How:** one chat per monster.
+
+```text
+Square image: a sprite sheet of the SAME monster as the attached sheet, for the same game, in a 4×4 grid of equal square cells read like a page (each row left to right, rows top to bottom). It is exactly the same monster, at the same size, on the same invisible line near the bottom of its cell, in the same style, and touches nothing else.
+
+Row 1: its slam, facing the viewer, four frames: rising up as high as it can, at the top, crashing down hard with a burst of dust, recovering.
+Row 2: the same slam, facing right.
+Row 3: hurt, facing the viewer, two frames (knocked back and flinching, recovering); then two frames of starting to fall.
+Row 4: dying, four frames: falling, hitting the ground, lying still, then only what it leaves behind: a small pile of its remains.
+
+No text, cell lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the monster is magenta or pink.
+```
+
+## Small icons, sheet 5 (v2.3.3282)
+
+Eight marks still drawn in code or shown as emoji, in the style of your four small-icon sheets (docs/specs/small-icons.md).
+
+- **In the game:**
+  1. to 3. the quest badges over the townsfolk's heads: a quest to offer (gold "!"), one you are on (grey "?"), one ready to hand in (green check). Drawn in code today, as three rings so they show on any ground; your picture keeps the rings.
+  4. the season star: the ★ on the Daily Rewards window and the Quests tab.
+  5. a bonus spin: the little wheel drawn in code on the Daily Rewards window.
+  6. locked: the 🔒 on locked crops and rows.
+  7. home: the minimap's way-home badge, drawn in code today.
+  8. a dungeon: its mouth on the world map (a plain dot today).
+- **Attach:** `assets/icons-source/sheet-small-1-party.png`, your first small-icon sheet, so the new ones match.
+- **How:** One landscape picture; send it in chat. A session cuts it as it cut your other four (by each icon's own see-through edge) and puts each in its place.
+
+```text
+Landscape image (wider than tall): a sheet of 8 small game icons for BroTown, a 2D action RPG, in a 4×2 grid read like a page (each row left to right, rows top to bottom). Each icon sits centred in its own equal square cell, fills about three quarters of it, and touches nothing else.
+
+Row 1:
+1. A quest to offer: a round badge made of a thin dark outline, then a thick white ring, then a bright gold disc with a bold dark exclamation mark in the middle.
+2. A quest you are on: the same round badge with a grey disc and a bold white question mark.
+3. A quest ready to hand in: the same round badge with a bright green disc and a bold white check mark.
+4. A season star: a fat, shiny gold star.
+Row 2:
+5. A bonus spin: a small fairground prize wheel with eight coloured slices, a brass rim and a little gold pointer on top.
+6. Locked: a closed brass padlock.
+7. Home: a little white house with a red roof and a lit window.
+8. A dungeon: a dark cave mouth in grey rock with two crossed swords over it.
+
+Style: exactly the attached icons: chunky pixel art with a bold dark outline, a few flat tones per colour, bright and readable at a small size, lit from the upper left. All 8 the same weight, and the three badges exactly the same size and shape.
+
+No words or letters (the ! ? and check mark are the only marks), no frames, cell lines or shadows. Background: transparent, like the attached icons.
+```
+
+## The daily spin wheel (v2.3.3282)
+
+The Gambling Den's free daily spin is a wheel drawn in code: eight flat slices, a plain border, a plain triangle for its pointer (v2.3.3140). The slices stay in code, so they stay exact and keep their prize colours and numbers; your picture gives them a real fairground frame.
+
+- **In the game:** the top of the Gambling Den's window: the rim round the slices, the cap over the middle and the pointer over the top. It turns as the wheel spins; the pointer stays.
+- **Attach:** `assets/icons-source/sheet-small-1-party.png`, your first small-icon sheet, for the style.
+- **How:** One square picture; send it in chat.
+
+```text
+Square image: three separate pieces of a fairground prize wheel for the Gambling Den in BroTown, a 2D action RPG, each on its own with space between them:
+1. Top, large: the wheel's RIM alone: a round brass ring set with 16 little round light bulbs evenly spaced all the way round, warm yellow-white, riveted and a little worn. The ring is a perfect circle seen straight on, its band the same thickness all the way round, and its middle is EMPTY: no slices, no spokes, nothing inside the ring, only background.
+2. Bottom left: the HUB, the round brass cap that covers the wheel's middle, with a ring of rivets and a small red jewel at its centre.
+3. Bottom right: the POINTER that stands over the top of the wheel: a brass arrowhead pointing straight down, with a small red jewel at its top.
+
+Style: exactly the attached icons: chunky pixel art with a bold dark outline, a few flat tones per colour, bright and readable at a small size, lit from the upper left.
+
+No words, numbers, frames or shadows. Background: transparent, like the attached icons.
+```
+
 ## Music
 
 Four lands have no track of their own yet. Make them with the same tool and settings as your other land themes so the set matches.
@@ -636,41 +952,32 @@ Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh
 
 ## Item icons
 
-### Essences (v2.3.3141)
+### Essences (v2.3.3141; one sheet of nine since v2.3.3279)
 
-- **In the game:** The nine essences salvage leaves (Rare, Elite and Godly, each in copper, iron and black steel), in the bag and on the Blacksmith's Salvage tab. Today they are glowing orbs drawn by `tools/make_essence_icons.py`, the metal's bar tucked in the corner.
-- **How:** One picture per grade is enough: the game puts the metal's bar on it. Send them on a plain background; they become `public/icons/items/essence-<grade>-<metal>.webp` (256 x 256).
-- **Attach:** the style key only (never the bro).
+- **In the game (v2.3.3281):** your sheet, cut by `tools/ui/cut-bag-icons.py` (kept as `assets/icons-source/sheet-bag-essences.png`): the nine essences salvage leaves (Rare, Elite and Godly, each in copper, iron and black steel), in the bag and on the Blacksmith's Salvage tab. They were glowing orbs drawn by `tools/make_essence_icons.py`, which now refuses to draw over yours.
+- **Attach:** `docs/art/bag-icon-style-key.png` (the game's own bag icons). The earlier prompt asked for HD pixel art against the world's style key; the bag's icons are painted, so this one matches them.
+- **How:** One square picture of all nine: the light's colour says the grade, the little bar at its heart says the metal. They become `public/icons/items/essence-<grade>-<metal>.webp`.
 
 ```text
-A single game item icon of a magical ESSENCE: a small glowing orb of swirling light, about the size of a fist, floating, with a few tiny sparkles round it. Make three versions, one per picture: RARE in cool blue light, ELITE in warm orange light, GODLY in shifting rainbow (prismatic) light. Painted HD pixel art matching the attached style key, centred, nothing else in the picture, on a flat magenta (#FF00FF) background.
+Square image: a sprite sheet of 9 item icons for a 2D action RPG, in a 3×3 grid read like a page (each row left to right, rows top to bottom). Each icon sits centered in its own equal square cell, fills about three quarters of it, and touches nothing else.
+
+Each icon is a magical ESSENCE: a fist-sized orb of swirling glowing light inside a clean dark outline, a small bar of metal floating at its heart, and a few tiny sparkles around it. The glow stays inside the orb: no halo or haze on the background.
+Columns, left to right, by the light's colour: RARE in cool blue light · ELITE in warm orange light · GODLY in shifting rainbow light (gold, green, cyan and blue only).
+Rows, top to bottom, by the metal bar at the heart: COPPER (reddish-orange metal) · IRON (cool silver-grey metal) · BLACK STEEL (near-black metal with a cold blue sheen).
+
+Style: exactly the attached reference: glossy hand-painted item icons, clean dark outline, soft shading, small bright highlights, lit from the upper left. All 9 the same size so they read as one set.
+
+No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the icons is magenta, pink or purple. Do not copy the reference's items or background.
 ```
 
 ## The farm
 
 The Feed & Seed's farm (v2.3.3127, docs/specs/farm.md) draws its crops, seeds and compost with emoji until these exist: the window's beds, the Seeds tab and the bag all use them.
 
-### Farm goods: six bag icons
+### Farm goods: bag icons
 
-- **In the game:** The bag, the Feed & Seed window's beds and its Seeds tab: a carrot, a Firebloom, a Rock Vine, a Cloudpetal, a seed pouch (every seed) and a sack of compost.
-- **Attach:** the Fury Tonic bottle icon (`public/icons/items/potion-fury.webp`), as the style to match.
-- **How:** Ask ChatGPT for one square picture holding all six; send it in chat and a session cuts it into the game's 256 px icons.
-
-```text
-Create a single 1024x1024 image: a 3x2 grid of six separate game item icons on a seamless pure white background (#FFFFFF). Each icon is centered in its own invisible cell with generous even margins. No grid lines, no cell borders, no labels.
-
-STYLE (apply identically to all six): match the attached reference icon exactly -- the same bold dark outline, the same rich, glossy, hand-painted shading with crisp highlights, the same saturation and the same size and weight of object in its cell. Each icon is ONE clearly readable object with a bold silhouette that stays readable at 32 pixels. A few small sparkles around an object are fine; no background shapes.
-
-SUBJECT GRID (left to right, top to bottom):
-1. a single fat orange carrot with a bushy green leaf top, freshly pulled, a little soil on its tip
-2. a "Firebloom": a magical red-orange flower whose petals curl up like little flames, on a short green stem with two leaves
-3. a "Rock Vine": a tough dark-green climbing vine with small grey pebbles caught in its curling tendrils
-4. a "Cloudpetal": a pale blue-white flower with soft round fluffy petals like a little cloud, on a short stem
-5. a small tied burlap seed pouch, slightly open, a few seeds spilling out
-6. a stout burlap sack of rich dark compost, open at the top, with a cheerful pink earthworm peeking out
-
-HARD CONSTRAINTS: no text, no letters, no numbers anywhere; no frames or borders around icons; no drop shadows on the background; pure flat white between icons; identical outline weight, palette and lighting on all six icons; every icon roughly the same visual size and weight; each silhouette must be identifiable when shrunk to 32x32 pixels.
-```
+- **Moved to `docs/art/FARM-ART-PROMPTS.md`** (v2.3.3279): the sixteen crops, the sixteen seed packets, and the five dishes with compost, three sheets on the bag's own style key. The white-background prompt that was here is retired: a white ground cuts out badly round the cloudpetal's and frostberry's pale colours.
+- **In the game (v2.3.3281):** all three sheets, cut by `tools/ui/cut-bag-icons.py` (docs/specs/bag-icons.md).
 
 ## Sounds
 

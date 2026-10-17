@@ -140,7 +140,7 @@ import { gearProvMethods } from './gearprov.js'; /* v2.3.2534 */
 // v2.3.1170 (P4 decomposition): build grids + progression + stats_update -- see grids.js.
 import { gridMethods } from './grids.js';
 // v2.3.1171 (P4 decomposition): the move handler (anti-teleport + zone streaming) -- see movement.js.
-import { movementMethods } from './movement.js';
+import { movementMethods, ROLL } from './movement.js';   /* v2.3.3292: + the paid roll's window */
 // v2.3.1172 (P4 decomposition): rpg-blob load/save + player_state emit -- see persistence.js.
 import { persistenceMethods } from './persistence.js';
 // v2.3.1173 (P4 decomposition): identity gate + join bootstrap -- see join.js.
@@ -201,6 +201,7 @@ import { tickPaceMethods } from './tickpace.js'; /* v2.3.3202: the world keeps i
 import { steadyMoversMethods } from './steadymovers.js'; /* v2.3.3203: a player walking steadily is sent less often */
 import { bundleParts } from './bundle.js'; /* v2.3.3254: several messages in one frame (the quiet phone) */
 import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look relayed when it changes, not every 2 s */
+import { nearJoinMethods } from './nearjoin.js'; /* v2.3.3276: a join is told the players around it; a look comes when its player does */
 import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what is 5+ levels below you, harvests and fights */
 import { floodMethods, roomNameFor, requestIp, FLOOD } from './flood.js'; /* v2.3.3274: one socket cannot stop the game */
 import { verifyMethods } from './verify.js'; /* v2.3.3275: the account check -- a new character proves a person is there */
@@ -3270,6 +3271,10 @@ export class GameRoom {
     } else {
       ps.stamina = Math.max(0, have - cost);
     }
+    /* v2.3.3292: a roll the worker charged for opens the window in which the
+       phone's `dodging` counts against a player's blow (movement.js ROLL) --
+       paid here, never claimed */
+    if (ROLL.PAID.includes(type)) this._rollStamp(ps, Date.now());
     /* ═══ v2.3.2361: THE LUNGE STOPS BEING THE ONE ABILITY THAT ONLY BILLS ═══
        Owner, answering the question doLunge left in the code at v2.3.2352:
        "Yes lunge damage should take effect."  The whole roll, the reach, the
@@ -4878,6 +4883,22 @@ export class GameRoom {
     if (!msg || typeof msg !== 'object') return;
     /* v2.3.3254: a BUNDLE -- several messages in one frame, each taken in
        order as if it had come alone (bundle.js) */
+    /* ═══ v2.3.3291: ...AND EACH ONE FINISHED BEFORE THE NEXT BEGINS ═══
+       A frame of its own is one event, and the Durable Object's input gate
+       holds the next frame back until every storage read of this one has
+       come back -- that is what has always kept two of a player's messages
+       from reading the same record at once.  A bundle's parts are ONE event,
+       so the gate keeps nothing apart inside it.  The loop below waited for
+       _onMessage, but twenty of its cases started their handler without
+       waiting for it (the farm, the shop, the daily rewards and chest, the
+       capes, the auction house's offers and threads): their parts ran side
+       by side, each reading its record before any had written it back.
+       Measured on the real room code (architecture review, 2026-10-17): one
+       ripe bed and 24 harvests in one frame paid 48 carrots where 24 frames
+       paid 2, and ten copper ore sold 24 times in one frame paid 4,320 gold
+       where the frames paid 180.  Every case in _onMessage now awaits (or
+       returns) its handler, so a part has finished before the next begins;
+       quiet-phone.test §8 measures it and §9 holds every case to it. */
     if (Array.isArray(msg)) {
       for (const m of bundleParts(msg)) {
         const _s = this.sessions.get(ws);
@@ -5173,7 +5194,8 @@ export class GameRoom {
          A forged price is therefore not a thing that exists to forge. */
       case 'shop_list':
         if (session.id) {
-          this._shopList(((msg.payload || msg) || {}).keys)
+          /* v2.3.3291: awaited, as every handler here (the bundle loop above) */
+          await this._shopList(((msg.payload || msg) || {}).keys)
             .then((r) => this._shopSend(session.id, 'shop_state', r))
             .catch(() => { /* a failed read leaves the panel on its last list */ });
         }
@@ -5185,7 +5207,7 @@ export class GameRoom {
       case 'shop_quote': {
         if (!session.id) break;
         const _q = msg.payload || msg;
-        this._shopQuote(_q.key, _q.qty, _q.mode)
+        await this._shopQuote(_q.key, _q.qty, _q.mode)   /* v2.3.3291: awaited (the bundle loop) */
           .then((r) => this._shopSend(session.id, 'shop_quoted', r))
           .catch(() => { /* the panel keeps its last quote */ });
         break;
@@ -5201,7 +5223,11 @@ export class GameRoom {
         /* v2.3.3137: the player's id goes in, so the trade is SAVED with the
            pile (shop.js: before, a sale came undone on the next reconnect
            and Diego's shelf kept a copy). */
-        (_kind === 'shop_sell'
+        /* v2.3.3291: AWAITED.  _shopSell reads the bag's count, then awaits
+           Diego's pile, then pays for the count it read: started side by side
+           in one bundle, 24 sales of one stack each read the full stack and
+           each paid for it (the bundle loop above). */
+        await (_kind === 'shop_sell'
           ? this._shopSell(_ps, _sp.key, _sp.qty, _sid)
           : this._shopBuy(_ps, _sp.key, _sp.qty, _sid)
         ).then(async (r) => {
@@ -5320,24 +5346,25 @@ export class GameRoom {
         /* v2.3.2820: open a daily chest from the bag (dailychest.js).  The
            worker takes the chest, rolls and credits; the client only asks. */
         if (session.id) {
-          const _cp = this._handleChestOpen(session, msg.payload || msg);
-          if (_cp && _cp.catch) _cp.catch(() => {});
+          /* v2.3.3291: awaited (the bundle loop in webSocketMessage) */
+          try { await this._handleChestOpen(session, msg.payload || msg); } catch (e) { /* as before: a failed open changes nothing */ }
         }
         break;
 
       /* v2.3.3140: the daily rewards (dailyrewards.js) -- the client only asks;
-         the worker rolls the spin, counts the quests and pays the season. */
+         the worker rolls the spin, counts the quests and pays the season.
+         v2.3.3291: each awaited (the bundle loop in webSocketMessage). */
       case 'rewards_get':
-        if (session.id) this._handleRewardsGet(session).catch(() => {});
+        if (session.id) await this._handleRewardsGet(session).catch(() => {});
         break;
       case 'daily_spin':
-        if (session.id) this._handleDailySpin(session, msg.payload || msg).catch(() => {});
+        if (session.id) await this._handleDailySpin(session, msg.payload || msg).catch(() => {});
         break;
       case 'daily_reroll':
-        if (session.id) this._handleDailyReroll(session, msg.payload || msg).catch(() => {});
+        if (session.id) await this._handleDailyReroll(session, msg.payload || msg).catch(() => {});
         break;
       case 'season_claim':
-        if (session.id) this._handleSeasonClaim(session, msg.payload || msg).catch(() => {});
+        if (session.id) await this._handleSeasonClaim(session, msg.payload || msg).catch(() => {});
         break;
 
       case 'smelt_bar':
@@ -5359,13 +5386,18 @@ export class GameRoom {
            v2.3.3134: + farm_order, deliver one of today's orders
            (farmorders.js). */
         if (session.id) {
-          const _fp = msg.type === 'farm_open' ? this._handleFarmOpen(session, msg.payload || msg)
-            : msg.type === 'farm_act' ? this._handleFarmAct(session, msg.payload || msg)
-            : msg.type === 'farm_order' ? this._handleFarmOrder(session, msg.payload || msg)
-            : this._handleFarmBuy(session, msg.payload || msg);
           /* v2.3.3127: said, not swallowed -- a throw in here once hid a
-             harvest that paid again on every message (farm.js). */
-          if (_fp && _fp.catch) _fp.catch((e) => { console.error('[farm]', msg.type, session.id, e && e.message); });
+             harvest that paid again on every message (farm.js).
+             v2.3.3291: and AWAITED -- the bed is the harvest's only replay
+             guard, read fresh on every message, so 24 harvests in one bundle
+             each read the ripe bed before any of them had turned it to grass
+             (the bundle loop in webSocketMessage). */
+          try {
+            await (msg.type === 'farm_open' ? this._handleFarmOpen(session, msg.payload || msg)
+              : msg.type === 'farm_act' ? this._handleFarmAct(session, msg.payload || msg)
+              : msg.type === 'farm_order' ? this._handleFarmOrder(session, msg.payload || msg)
+              : this._handleFarmBuy(session, msg.payload || msg));
+          } catch (e) { console.error('[farm]', msg.type, session.id, e && e.message); }
         }
         break;
 
@@ -5422,8 +5454,8 @@ export class GameRoom {
              undefined and every redeem returned at the invKey check -- the
              ticket stayed in the bag and no cape was ever granted.  Silent,
              and only the end-to-end scenario caught it. */
-          const _p = this._handleCapeRedeem(session, msg.payload || msg);
-          if (_p && _p.catch) _p.catch(() => {});
+          /* v2.3.3291: awaited (the bundle loop in webSocketMessage) */
+          try { await this._handleCapeRedeem(session, msg.payload || msg); } catch (e) { /* as before */ }
         }
         break;
       case 'cape_equip':
@@ -5434,8 +5466,8 @@ export class GameRoom {
            above: this switch has no `data` binding and the first cut of that
            one silently did nothing for want of it. */
         if (session.id) {
-          const _ce = this._handleCapeEquip(session, msg.payload || msg);
-          if (_ce && _ce.catch) _ce.catch(() => {});
+          /* v2.3.3291: awaited (the bundle loop in webSocketMessage) */
+          try { await this._handleCapeEquip(session, msg.payload || msg); } catch (e) { /* as before */ }
         }
         break;
       case 'eat_request':
@@ -5578,12 +5610,17 @@ export class GameRoom {
          lanes above are: an explicit case never reaches the default
          branch's relay token bucket, so the module carries its own -- and
          falling through to that branch would REBROADCAST a private haggle
-         to the whole room. */
+         to the whole room.
+         v2.3.3291: these five AWAITED, and a throw said (the bundle loop in
+         webSocketMessage): an offer escrows gold and rewrites its listing,
+         and two started side by side in one bundle would each read the
+         listing before either wrote it back -- one offer's gold taken, its
+         record written over. */
       case 'store_dm':
-        if (session.id) this._handleStoreDm(session, msg.payload || msg);
+        if (session.id) await this._handleStoreDm(session, msg.payload || msg).catch((e) => { console.error('[store]', msg.type, e && e.message); });
         break;
       case 'store_dm_open':
-        if (session.id) this._handleStoreDmOpen(session, msg.payload || msg);
+        if (session.id) await this._handleStoreDmOpen(session, msg.payload || msg).catch((e) => { console.error('[store]', msg.type, e && e.message); });
         break;
 
       /* v2.3.2623: escrowed offers (storeoffer.js).  These MOVE GOLD, so
@@ -5592,13 +5629,13 @@ export class GameRoom {
          unsettled -- and the module carries its own rate limit because an
          explicit case never reaches the relay token bucket. */
       case 'store_offer':
-        if (session.id) this._handleStoreOffer(session, msg.payload || msg);
+        if (session.id) await this._handleStoreOffer(session, msg.payload || msg).catch((e) => { console.error('[store]', msg.type, e && e.message); });
         break;
       case 'store_offer_cancel':
-        if (session.id) this._handleStoreOfferCancel(session, msg.payload || msg);
+        if (session.id) await this._handleStoreOfferCancel(session, msg.payload || msg).catch((e) => { console.error('[store]', msg.type, e && e.message); });
         break;
       case 'store_offer_reply':
-        if (session.id) this._handleStoreOfferReply(session, msg.payload || msg);
+        if (session.id) await this._handleStoreOfferReply(session, msg.payload || msg).catch((e) => { console.error('[store]', msg.type, e && e.message); });
         break;
 
       // v2.3.1323: friends system (friends.js) -- request/accept/decline/
@@ -6211,7 +6248,11 @@ export class GameRoom {
     }
     return out;
   }
-  getAllPlayerData() {
+  /* v2.3.3276: `forSession` -- a phone that joined with `nj: 1` (nearjoin.js)
+     is told the players around it whole and everyone else as a list entry;
+     anything else is told everyone whole, as before */
+  getAllPlayerData(forSession) {
+    if (forSession && forSession.nearJoin && this._nearJoinPlayers) return this._nearJoinPlayers(forSession);
     const r = Object.create(null);   /* v2.3.3260: keyed by player id (TRAPS: '__proto__') */
     for (const [, s] of this.sessions) { if (s.id) r[s.id] = this._gearProvCropPeer(this._peerPublic(this.playerState[s.id], s)); }
     /* v2.3.3260: and a body left lingering in a fight (linger.js), with the
@@ -6347,6 +6388,7 @@ Object.assign(GameRoom.prototype, aggroGridMethods); /* v2.3.3201 */
 Object.assign(GameRoom.prototype, tickPaceMethods); /* v2.3.3202 */
 Object.assign(GameRoom.prototype, steadyMoversMethods); /* v2.3.3203 */
 Object.assign(GameRoom.prototype, lookRelayMethods); /* v2.3.3240 */
+Object.assign(GameRoom.prototype, nearJoinMethods); /* v2.3.3276 */
 Object.assign(GameRoom.prototype, xpDecayMethods); /* v2.3.3251 */
 Object.assign(GameRoom.prototype, floodMethods); /* v2.3.3274: one socket cannot stop the game */
 Object.assign(GameRoom.prototype, verifyMethods); /* v2.3.3275: the account check */

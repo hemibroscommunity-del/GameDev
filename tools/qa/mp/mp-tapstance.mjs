@@ -28,7 +28,8 @@
  *   6. no page errors.
  * ?tapms=6000 stretches the tap's window (tapJump.js tapJumpMaxMs): this box
  * draws a frame every few hundred ms, and the press must be a tap however
- * slowly the page gets round to its release.
+ * slowly the page gets round to its release.  (Up to v2.3.3282 the game
+ * capped it at 3000, silently: the picture's 4 s press became the attack.)
  * Picture: tools/qa/mp/out/tapstance-press.png, the bow's tap with the thumb
  * still down (on main: turned south, the sight line drawn).
  */
@@ -188,6 +189,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
 
     /* ── 3. a rolled thumb: 9 px down on the tap ── */
+    /* v2.3.3283: facing east first, as 1-2 do, so this step does not ride on
+       how the picture's press above ended */
+    await H.nudge(P, 'd', 400);
+    await P.page.waitForTimeout(800);
     await seedAim(P, 0, 'stick');
     const roll = await PRESS(P, { id: id++, ...spot, hold: 300, roll: 9, after: 600 });
     await down();

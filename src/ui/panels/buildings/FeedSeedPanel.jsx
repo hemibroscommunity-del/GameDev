@@ -1,6 +1,7 @@
 import React from 'react';
 import { BT_AUDIO, LIFE_SKILL_XP, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
-import { FARM, FARM_CROP_ORDER, FARM_LOOK, farmGrowMs, farmYieldShown, farmTimeLeft } from '@/data/farmCrops.js';
+import { FARM, FARM_CROP_ORDER, FARM_LOOK, farmGrowMs, farmYieldShown, farmTimeLeft,
+  farmSeedIcon, farmCropIcon, FARM_COMPOST_ICON } from '@/data/farmCrops.js';   /* v2.3.3281: the owner's bag icons */
 import { farmBus } from '@/ui/mobile/farmBus.js';
 import { FARM_ERR_TEXT, farmItemName } from '@/game/farmFeedback.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -64,6 +65,15 @@ const Glyph = ({ g, size = 18, style }) => (
    their own size: shrunk by dropping pixels, leaves turn to grit).  A crop a
    newer worker grows, with no picture here, keeps its glyph. */
 const hasArt = (name) => typeof name === 'string' && Object.prototype.hasOwnProperty.call(FARM_ART, name);
+/* v2.3.3281: the owner's bag icons (data/farmCrops.js farmIconFor): what the
+   shop SELLS is drawn as the bag draws it -- a seed its packet, compost its
+   sack -- and a crop still to open as the crop.  The grown crop (FarmPic) was
+   the best picture there was until then (v2.3.3136). */
+const ItemPic = ({ src, item, size }) => (
+  <img src={src} alt="" draggable={false} data-farm-icon={item}
+    style={{ width: size, height: size, objectFit: 'contain', flex: 'none' }}
+    onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
+);
 const FarmPic = ({ name, g, size = 26 }) => (hasArt(name)
   ? <img src={farmArtUrl(name)} alt="" draggable={false} data-farm-pic={name}
       style={{ width: size, height: size, objectFit: 'contain', imageRendering: 'auto', flex: 'none' }}
@@ -253,18 +263,18 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
             {crops.filter(unlocked).map((id) => {
               const c = FARM.CROPS[id];
               return (
-                <ShopRow key={id} item={c.seed} look={c.look} pic={id + '-ripe'} name={c.name} have={seedCount(id)} price={c.price}
+                <ShopRow key={id} item={c.seed} look={c.look} pic={id + '-ripe'} icon={farmSeedIcon(id)} name={c.name} have={seedCount(id)} price={c.price}
                   coins={coins} locked={null} pending={pending}
                   onBuy={(n) => farmBus.buy(S, c.seed, n)}>
                   <Chip>{'⏱ ' + farmTimeLeft(farmGrowMs(c, false))}</Chip>
                   <Chip color={C.water}>{FARM_LOOK.water + ' ' + farmTimeLeft(farmGrowMs(c, true))}</Chip>
                   <Chip>{FARM_LOOK.harvest + ' ×' + farmYieldShown(c, false)}</Chip>
-                  <Chip color={C.good}>{FARM_LOOK.compost + ' ×' + farmYieldShown(c, true)}</Chip>
+                  <Chip icon={FARM_COMPOST_ICON} color={C.good}>{'×' + farmYieldShown(c, true)}</Chip>
                   <Chip icon={XP} color="#9FD3F0">+{c.xp}</Chip>
                 </ShopRow>
               );
             })}
-            <ShopRow item={FARM.COMPOST} look={FARM_LOOK.compost} pic="compost-bin" name="Compost" have={compost} price={FARM.COMPOST_PRICE}
+            <ShopRow item={FARM.COMPOST} look={FARM_LOOK.compost} pic="compost-bin" icon={FARM_COMPOST_ICON} name="Compost" have={compost} price={FARM.COMPOST_PRICE}
               coins={coins} pending={pending} onBuy={(n) => farmBus.buy(S, FARM.COMPOST, n)}>
               <Chip color={C.good}>+50% harvest</Chip>
             </ShopRow>
@@ -276,7 +286,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
                 <span style={{ fontWeight: 800, color: C.mute }}>{'🔒 Farming ' + l}</span>
                 {crops.filter((id) => FARM.CROPS[id].lvl === l).map((id) => (
                   <span key={id} data-farm-locked-crop={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                    <FarmPic name={id + '-ripe'} g={FARM.CROPS[id].look} size={18} />{FARM.CROPS[id].name}
+                    <ItemPic src={farmCropIcon(id)} item={FARM.CROPS[id].item} size={20} />{FARM.CROPS[id].name}
                   </span>
                 ))}
               </div>
@@ -369,11 +379,11 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
   );
 }
 
-function ShopRow({ item, look, pic, name, have, price, coins, locked, pending, onBuy, children }) {
+function ShopRow({ item, look, pic, icon, name, have, price, coins, locked, pending, onBuy, children }) {
   const can = (n) => !locked && !pending && coins >= price * n;
   return (
     <div data-farm-row={item} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid ${C.line}` }}>
-      <FarmPic name={pic} g={look} size={34} />
+      {icon ? <ItemPic src={icon} item={item} size={38} /> : <FarmPic name={pic} g={look} size={34} />}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: locked ? C.faint : C.text }}>
           {name} <span style={{ color: C.mute, fontWeight: 700 }}>{'×' + have}</span>

@@ -25,8 +25,12 @@ const PHONE = { width: 390, height: 844 };
 const AIR_MS = 1400;
 /* ?tapms=: this page's timers run late, so a press meant to last 250 ms lasts
    400-600; the window is stretched to keep "past the old 200, short of the
-   tap window" a thing the test can make */
-const TAP_MS = 1200;
+   tap window" a thing the test can make.  v2.3.3283: 2400 (was 1200) -- in a
+   sweep on main all four tries of step 1b's 320 ms press lasted 1,050-1,424 ms,
+   past the old window, so the game rightly called each a hold and the check
+   had no tap to judge.  Step 4's hold is a drag, which attacks at once
+   whatever the window (BroTown: a drag clears _atkHoldUntil). */
+const TAP_MS = 2400;
 const WOODEN = ['barrel', 'crate', 'bench', 'trough', 'hitch', 'cart', 'haybale', 'signpost', 'noticeboard'];
 
 const targets = (P, ids, r = 1600) => P.page.evaluate(({ ids, r }) => {

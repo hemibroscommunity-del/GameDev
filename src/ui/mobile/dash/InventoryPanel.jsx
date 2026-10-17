@@ -30,7 +30,7 @@ import { tradeBagBus } from '../tradeBagBus.js';   /* v2.3.2149: ...and half the
 import { lifeKindFor, lifeKindForGear } from './bagLife.js';   /* v2.3.2815: the bag's small motions */
 import { DAILY_CHEST_ICON } from '@/rendering/chestPreload.js';   /* v2.3.2820 */
 import { SALVAGE, essenceKey, essenceName, essenceIcon } from '@/data/salvage.js';   /* v2.3.3141: the essences */
-import { FARM_ITEM_NAMES, farmLookFor } from '@/data/farmCrops.js';   /* v2.3.3127: the farm's goods */
+import { FARM_ITEM_NAMES, farmLookFor, farmIconFor } from '@/data/farmCrops.js';   /* v2.3.3127: the farm's goods; v2.3.3281: their pictures */
 import { HARDENED_WOOD_NAMES, isHardenedWoodKey, hardenedWoodIcon } from '@/data/hardenedWood.js';   /* v2.3.3139: hardened wood */
 import { DISH_NAMES, dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* v2.3.3120: the box trap's picture */
@@ -224,15 +224,23 @@ export const thumbFor = (key) => {
   /* v2.3.3141: an essence (salvage.js) -- its grade's glowing orb with its
      metal's bar, tools/make_essence_icons.py */
   if (k.startsWith('essence_') && essenceIcon(k)) return essenceIcon(k) + ITEMS_V;
-  if (isHardenedWoodKey(k))         return hardenedWoodIcon(k);   /* v2.3.3139: made from its tree's log picture */
+  if (isHardenedWoodKey(k))         return hardenedWoodIcon(k);   /* v2.3.3139; the owner's since v2.3.3281 */
+  /* v2.3.3281: the owner's bag icons (tools/ui/cut-bag-icons.py): a seed its
+     packet, a crop as harvested, compost its sack (data/farmCrops.js), and
+     each Cookhouse dish (data/dishes.js `icon`).  Their glyphs (iconFor) stay
+     the fallback.  Exact keys, so no prefix rule above or below can claim one. */
+  const farmPic = farmIconFor(k);
+  if (farmPic)                      return farmPic;
+  const dishPic = dishFor(k);
+  if (dishPic && dishPic.icon)      return dishPic.icon;
   if (k.startsWith('shard_'))       return `/icons/items/${k}.webp${ITEMS_V}`;
   /* v2.3.1924: the rare gem monsters drop at 1-in-200 (server/src/data.js
      RARE_GEM_KEY).  It borrows the gem icon this panel ALREADY uses for its
      GEM stat row — one gem picture in the bag, not two that have to be told
      apart.  prettyName turns the key into "Rare Gem" with no table entry. */
   if (k === 'rare_gem')             return RARE_GEM_THUMB;
-  /* v2.3.3120: the box trap -- the Trapping skill's own picture, "a simple box
-     trap with its door propped on a stick" (TrapButton.jsx shows the same) */
+  /* v2.3.3120: the box trap -- TrapButton.jsx shows the same picture
+     (v2.3.3281: the owner's, controlsPreload.js TRAP_ICON_URL) */
   if (k === 'trap_box')             return TRAP_ICON_URL;
   if (k === 'fishing_pole')         return FISHING_POLE_THUMB;
   /* v2.3.1689: the three gathering tools all have real art now.  These sit

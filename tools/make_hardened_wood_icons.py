@@ -25,6 +25,15 @@ other item icon.  numpy + PIL only.
 """
 import sys
 
+# v2.3.3281: the owner's painted hardened woods are the game's now
+# (tools/ui/cut-bag-icons.py, from assets/icons-source/sheet-bag-wood.png);
+# these drawn ones would write over them.  Asked before the imports below, so
+# the answer is the same on a machine without numpy or Pillow.  A wood the
+# sheet does not have yet can still be drawn: --standins <wood>.
+if __name__ == '__main__' and '--standins' not in sys.argv:
+    raise SystemExit('the hardened woods are the owner\'s art now (tools/ui/cut-bag-icons.py); '
+                     'pass --standins to draw these over them')
+
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -261,6 +270,7 @@ def make(wood, src):
 
 
 def main(argv):
+    argv = [a for a in argv if a != '--standins']   # v2.3.3281: the guard above
     names = argv or list(WOODS)
     for n in names:
         if n not in WOODS:
