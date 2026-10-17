@@ -145,6 +145,14 @@ export function updateMonsterCombat(S, deps) {
              gameEvents skips the server's own-hit number ("we already show
              it locally"), so on your own swing the popup is ONLY this
              prediction, and the HP bar drains by a different figure.
+             (v2.3.3297: NO LONGER TRUE, and it misled an architecture
+             review into reporting "two sets of dice".  Since v2.3.2220
+             every own hit's NUMBER in a server zone -- a swing, an arrow,
+             a bolt -- is painted from the worker's monster_hit (gameEvents,
+             search v2.3.2220), and the local popups below are gated on
+             !S._serverMonsters.  This prediction still drives what has to
+             be instant -- the crit's shake, spark, debris and knockback --
+             but never the number.)
 
              The correct helpers already existed and were already right —
              calcDisplayDps and the Hero screen's Crit row have used them
