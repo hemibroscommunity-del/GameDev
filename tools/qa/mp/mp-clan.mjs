@@ -14,7 +14,17 @@ const clan = (P) => H.readState(P, (S) => {
   return { name: c.name, tag: c.tag, members: c.members ? c.members.length : 0 };
 });
 
-export async function run({ browser, wsPort, webPort, rec }) {
+/* v2.3.3315: clans are parties now (server clanparty.js) -- a clan can be
+   founded only under the switch that keeps them, `clanparty: false`, so this
+   scenario runs under it (before anyone joins: the phones read it in their
+   caps) and clears it at the end.  The new path is mp-clanparty. */
+export async function run(ctx) {
+  const set = await H.liveFlag(ctx.wsPort, 'clanparty', false);
+  ctx.rec.ok('the room keeps clans for this scenario (clanparty: false, guard)', !!(set && set.ok), set);
+  try { await runClans(ctx); } finally { await H.liveFlag(ctx.wsPort, 'clanparty', null).catch(() => {}); }
+}
+
+async function runClans({ browser, wsPort, webPort, rec }) {
   const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Founder', nameB: 'Recruit' });
   const aId = await H.readState(A, (S) => S.myId);
   const bId = await H.readState(B, (S) => S.myId);

@@ -164,7 +164,8 @@ export function PartyHUD(props) {
   var maxN = party.max > 0 ? party.max : 4;
   /* v2.3.3313: an alliance says so -- its tag, or ALLIANCE before it has one
      (server alliance.js; party_state's `ally` is the worker's word) */
-  var _allyA = party.ally && party.ally.on ? party.ally : null;
+  /* v2.3.3315: ...and a former clan wears its tag below 20 too (clanparty.js) */
+  var _allyA = party.ally && (party.ally.on || (party.ally.clan && allyTagShown(party.ally.tag))) ? party.ally : null;
   var _allyHead = _allyA ? (allyTagShown(_allyA.tag) ? '[' + allyTagShown(_allyA.tag) + ']' : 'ALLIANCE') : null;
 
   /* ── roster strip ── */
@@ -187,7 +188,7 @@ export function PartyHUD(props) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: { fontSize: 11, fontWeight: 600, letterSpacing: '.12em', color: '#D8A85F', fontVariantNumeric: 'tabular-nums' }
-  }, partyMark(SMALL_ICON.partyMember, 16, 'party'), /*#__PURE__*/React.createElement("span", { 'data-party-head': _allyHead ? 'alliance' : 'party' }, _allyHead || "PARTY", " "), party.members.length, "/", maxN), /*#__PURE__*/React.createElement("button", {
+  }, partyMark(SMALL_ICON.partyMember, 16, 'party'), /*#__PURE__*/React.createElement("span", { 'data-party-head': _allyHead ? (_allyA.on ? 'alliance' : 'clan') : 'party' }, _allyHead || "PARTY", " "), party.members.length, "/", maxN), /*#__PURE__*/React.createElement("button", {
     title: "Leave party",
     'data-party-leave': leaveArmedAt ? 'armed' : '',
     style: Object.assign({}, _btnBase, {

@@ -1217,6 +1217,21 @@ export async function devOp(wsPort, op, playerId, body) {
   return res.json();
 }
 
+/* v2.3.3315: a room's live flag set (a boolean or a number) or, with null,
+   cleared -- POST / DELETE /api/admin/flags (liveops.js).  The main room
+   unless `room` is named.  A scenario that sets one clears it before it ends:
+   one worker serves the whole run. */
+export async function liveFlag(wsPort, name, value, room) {
+  const qs = new URLSearchParams();
+  if (room) qs.set('room', room);
+  if (value === null) qs.set('name', name);
+  const q = qs.toString() ? '?' + qs.toString() : '';
+  const res = await fetch(`http://127.0.0.1:${wsPort}/api/admin/flags${q}`, value === null
+    ? { method: 'DELETE', headers: { Authorization: `Bearer ${ADMIN_KEY}` } }
+    : { method: 'POST', headers: { Authorization: `Bearer ${ADMIN_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ name, value }) });
+  return res.json().catch(() => ({ ok: false, status: res.status }));
+}
+
 /* ═══ v2.3.3283: A WALK PACED BY THE PAGE'S FRAMES ═══
  * hopTo moves the bro 100 px a hop whatever the page's frame rate, and the
  * Wheel's ground lays its pieces once a frame (wheelGround.js: three in

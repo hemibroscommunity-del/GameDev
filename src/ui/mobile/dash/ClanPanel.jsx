@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState, openGameWindow } from './common.js';
+import { clanPartyOn, allyTagShown } from '@/game/alliance.js';
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — spec
    empty state, identity strip with the clan icon, module header +
@@ -21,6 +22,51 @@ const btn = {
 const btnBrass = { ...btn, background: COL.accent, color: COL.onAccent, border: `1px solid ${COL.accent}` };
 const btnRaised = { ...btn, background: COL.raised, color: COL.text, border: `1px solid ${COL.borderStrong}` };
 
+/* ═══ v2.3.3315: CLANS ARE PARTIES NOW (server clanparty.js) ═══
+   Against a worker with caps.clanparty this page shows the party you are in
+   -- its tag, if it was your clan or is an alliance -- or how a party becomes
+   an alliance, and its button opens the player list, where a party starts
+   (a player's card, Invite to Party), as the Saloon's "Find a party" does. */
+function PartyNowPage({ S }) {
+  const p = S && S._party && S._party.state === 'open' ? S._party : null;
+  const a = p && p.ally && typeof p.ally === 'object' ? p.ally : null;
+  const tag = a && (a.on || a.clan) ? allyTagShown(a.tag) : null;
+  const n = p && Array.isArray(p.members) ? p.members.length : 0;
+  return (
+    <div style={panelStyle} data-dash-clan="party" data-dash-clanparty={tag || (p ? 'party' : 'none')}>
+      {tag ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, padding: '0 8px' }}>
+          <img src="/icons/ui/panel-clan.webp" alt="" draggable={false}
+            style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }}
+            onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('🛡')); }} />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              [{tag}] {a.name || ''}
+            </div>
+            <div style={{ fontSize: 12, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
+              {a.on ? 'Alliance' : 'Your clan, now a party'} · {n} member{n === 1 ? '' : 's'} · {a.active | 0} active
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '16px 0 4px' }}>
+          <img src="/icons/ui/panel-clan.webp" alt="" draggable={false}
+            style={{ width: 44, height: 44, objectFit: 'contain', opacity: 0.4, margin: '0 auto' }}
+            onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('🛡')); }} />
+          <div style={{ fontSize: 13, color: COL.text, marginTop: 6, fontWeight: 700 }}>Clans are parties now</div>
+        </div>
+      )}
+      <div style={{ fontSize: 12, color: COL.muted, lineHeight: 1.45, padding: '6px 12px 0' }}>
+        {p ? 'Your party stays together when you log out. ' : 'Make a party: pick a player and tap Invite to Party on their card. '}
+        A party of {(a && a.at) || 20} members who played in the last 7 days and are level 5 or more becomes an alliance, with a name and a tag on every member. Your alliance and the alliance board are in the Saloon in BroTown.
+      </div>
+      <button type="button" data-dash-find-party="" style={btnBrass} onClick={() => openGameWindow('playersOpen')}>
+        Find a party
+      </button>
+    </div>
+  );
+}
+
 export const ClanPanel = () => {
   const [, force] = useState(0);
   useEffect(() => {
@@ -29,6 +75,7 @@ export const ClanPanel = () => {
   }, []);
 
   const S = getState();
+  if (clanPartyOn(S)) return <PartyNowPage S={S} />;   /* v2.3.3315 */
   const clan = S?._clanData || null;
 
   if (!clan) {

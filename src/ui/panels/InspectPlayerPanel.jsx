@@ -4,6 +4,7 @@ import { BT_AUDIO, PVP_THREAT_BASE_COUNTDOWN, PVP_THREAT_COOLDOWN, REPUTATION, Z
 import { _toConsumableArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3315 */
 /* v2.3.1981: server-backed mute + the report send (server/src/chatmod.js).
    setMuted still writes the localStorage list this panel's mutedList prop
    is built from, so nothing here changed shape — it just persists now. */
@@ -215,7 +216,8 @@ export function InspectPlayerPanel(props) {
   /* v2.3.1743: the CLAN invite only appears when you lead a clan the target
      isn't in.  v2.3.2926: and not while the report reasons are up, which
      would otherwise stack a fifth row onto a landscape phone's 257px card. */
-  var showClanInvite = clanData && !((_inspectPlayer$rpgDat = inspectPlayer.rpgData) !== null && _inspectPlayer$rpgDat !== void 0 && _inspectPlayer$rpgDat.clanTag) && !reportOpen;
+  var showClanInvite = clanData && !((_inspectPlayer$rpgDat = inspectPlayer.rpgData) !== null && _inspectPlayer$rpgDat !== void 0 && _inspectPlayer$rpgDat.clanTag) && !reportOpen
+    && !clanPartyOn(stateRef.current);   /* v2.3.3315: clans are parties now -- Invite to Party is the way in */
   var closeCard = function onClick() {
     return setInspectPlayer(null);
   };

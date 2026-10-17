@@ -2524,6 +2524,31 @@ remnant to migrate server-side, not a mode to preserve.
         switch `alliance: false` (off with `partykeep: false` too; tags off at
         the next echo); `alliance` suite (96), `mp-alliance` (a phone, 39
         bots, a second phone watching the plate).
+    - since v2.3.3315 STEP 3, CLANS BECOME PARTIES (server/src/clanparty.js,
+      docs/specs/alliance.md "Step 3"):
+      - no new clans: `clan_create`, `clan_join_accept` and `clan_war_declare`
+        answered "Clans are parties now: make a party in the Saloon", and a
+        `clan_invite` is no longer relayed;
+      - every clan becomes a stored party once, at `_clansEnsure` (every
+        join): its members in no party yet, its leader leading (else its
+        oldest), its name and tag as `ally` with `clan: 1`, names from the room
+        or `char:`; the clan's `clan:`/`clan_by_player:` rows deleted in the
+        same run as the party's writes; fewer than two free members, no party
+        and the name freed; a clan at war converts after its war's own writes
+        (`_clanRestPending`, `_clanPartyAfterWar`); whoever is online told at
+        once (`_clanUntag`, `_allySetTag`, party_state `fromClan`);
+      - a former clan WEARS ITS TAG BELOW 20 (`_allyTagOf`: `on || clan`, the
+        strip's head `data-party-head="clan"`); renamed only at 20, like any;
+      - the phone, on `caps.clanparty` (beside partykeep): the clan window, the
+        dashboard's Clan page and the Guild Hall's row point to the Saloon,
+        their Find a party opening the player list
+        (`__broLegacyUI.playersOpen`); no Invite to Clan; the Saloon names a
+        former clan; inspect card, profile and leaderboard show `allyTag`
+        first;
+      - kill switch `clanparty: false` (and `partykeep: false`): clans as they
+        were -- `clans`, `duel` §16, `alliance` §5/§10, `mp-clan` and
+        `mp-wheelhalls` run under it (`H.liveFlag`); `clan-party` suite (54,
+        13 broken rules caught), `mp-clanparty`.
   - Since v2.3.3279 THE OWNER'S SMALL ICONS -- asked what ChatGPT could draw to
     replace the emoji and code-drawn pictures, the owner sent four sheets
     ("Here's the art assets for the 'small icons'"), cut by

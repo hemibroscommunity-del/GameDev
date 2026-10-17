@@ -177,12 +177,14 @@ export function AlliancePart(props) {
           ) : (
             <>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: LS.txt1 }}>
-                  {a.tag ? tagLabel(a.tag) + ' ' + (a.name || '') + ' is resting' : 'Not an alliance yet'}
+                <span data-ally-clan={a.clan ? '1' : '0'} style={{ flex: 1, fontSize: 14, fontWeight: 700, color: a.clan ? LS.brass : LS.txt1 }}>
+                  {a.tag ? tagLabel(a.tag) + ' ' + (a.name || '') + (a.clan ? '' : ' is resting') : 'Not an alliance yet'}
                 </span>
                 <span data-ally-progress="" style={{ fontSize: 13, fontWeight: 700, color: LS.brass, fontVariantNumeric: 'tabular-nums' }}>{a.active | 0}/{at}</span>
               </div>
               {bar(a.active | 0, at)}
+              {/* v2.3.3315: a clan that became this party (server clanparty.js) */}
+              {a.clan ? <div style={SMALL}>Your clan is this party now, and its members keep the tag.</div> : null}
               <div style={SMALL}>
                 When {at} members have played in the last 7 days and are level 5 or more, your party becomes an alliance: a name and a tag on every member, wars with other alliances, and a place on the alliance board.
               </div>

@@ -195,7 +195,11 @@ export function profileFromPeer(ip, live, rel) {
      player wearing a clan they are not in ("This is what kills forgery"),
      and rpgData rides the relay unstamped.  The NAME is only in rpgData, so
      it is shown only when that blob agrees with the stamped tag. */
-  const tag = o.clanTag || snap.clanTag || null;
+  /* v2.3.3315: the alliance's or former clan's tag (alliance.js
+     _allyTagOf), stamped by the worker the same way, first -- clans are
+     parties now (clanparty.js); its name is not sent to other phones */
+  const allyT = o.allyTag || snap.allyTag || null;
+  const tag = allyT || o.clanTag || snap.clanTag || null;
   const cb = r.combat && typeof r.combat === 'object' ? r.combat : null;
   /* v2.3.3255: the worker's two Hemi Bro fields (tick.js `bro`, `brn`): the
      worn Bro verified, and how many the wallet holds.  `bro` is a NUMBER here
@@ -219,7 +223,7 @@ export function profileFromPeer(ip, live, rel) {
     equippedTitle: PROFILE_PREVIEW.title,
     clan: tag ? {
       tag,
-      name: (r.clanTag === tag && typeof r.clanName === 'string' && r.clanName) ? r.clanName : null,
+      name: (!allyT && r.clanTag === tag && typeof r.clanName === 'string' && r.clanName) ? r.clanName : null,
       color: o.clanColor1 || snap.clanColor1 || null,
     } : null,
     combat: cb ? { melee: num(cb.melee), bow: num(cb.bow), staff: num(cb.staff) } : null,

@@ -36,6 +36,7 @@
  * popup text is cosmetic).  MVP bonus deferred (handoff backlog). */
 
 import { ZONES } from './data.js';
+import { CLAN_PARTY } from './clanparty.js';
 
 export const CLANS = {
   CREATE_COST: 500,           // GDD §29 sink
@@ -64,7 +65,9 @@ export const clanMethods = {
   // Lazy registry cache (the _mktEnsureIndex pattern).  Also the lazy
   // war-resolution hook: any wake that touches clans settles overdue wars.
   async _clansEnsure() {
-    if (this._clans) { await this._clanWarsLazyResolve(); return; }
+    /* v2.3.3315: and every clan that can be is turned into a party
+       (clanparty.js; a no-op once there are none, or with `clanparty: false`) */
+    if (this._clans) { await this._clanWarsLazyResolve(); await this._clanPartyConvertAll(); return; }
     this._clans = new Map();        // clanId -> record
     this._clanByPlayer = new Map(); // playerId -> clanId
     this._clanWars = new Map();     // warId -> war
@@ -89,6 +92,7 @@ export const clanMethods = {
       }
     }
     await this._clanWarsLazyResolve();
+    await this._clanPartyConvertAll();   /* v2.3.3315 */
   },
 
   _clanOf(playerId) {
@@ -130,6 +134,10 @@ export const clanMethods = {
   async _handleClanCreate(session, payload) {
     if (!session || !session.id) return;
     await this._clansEnsure();
+    /* v2.3.3315: no new clans -- a party is made in the Saloon, and at 20
+       active members it is an alliance with a name and tag (clanparty.js).
+       Refused before anything is checked or charged. */
+    if (this._clanPartyOn()) return this._clanError(session.id, CLAN_PARTY.REFUSE);
     /* v2.3.3313: a clan's name and tag are unique among the alliances' too
        (alliance.js, the owner's "unique across alliances and clans") -- the
        alliances' index loaded first, so the checks below and the claim run
@@ -189,6 +197,8 @@ export const clanMethods = {
   async _handleClanJoinAccept(session, payload) {
     if (!session || !session.id) return;
     await this._clansEnsure();
+    /* v2.3.3315: a clan still waiting out a war takes nobody new */
+    if (this._clanPartyOn()) return this._clanError(session.id, CLAN_PARTY.REFUSE);
     const inviter = payload && payload.inviter;
     if (!inviter || typeof inviter !== 'string') return;
     const key = inviter + '>' + session.id;
@@ -268,6 +278,12 @@ export const clanMethods = {
       await this.state.storage.put('clan:' + clan.id, clan);
       for (const pid of clan.members) this._clanSendState(pid);
     }
+    this._clanUntag(playerId);
+  },
+
+  /* The clan's tag off a player who left it -- or, v2.3.3315, whose clan
+     became a party (clanparty.js) -- and their panel told. */
+  _clanUntag(playerId) {
     /* v2.3.2301: the tag has to come off BOTH server copies AND off every
        peer's screen.  Two separate leaks, both invisible until the client
        started actually sending clan_leave:
@@ -313,6 +329,8 @@ export const clanMethods = {
   async _handleClanWarDeclare(session, payload) {
     if (!session || !session.id) return;
     await this._clansEnsure();
+    /* v2.3.3315: no new clan wars (an alliance fights its own, alliance.js) */
+    if (this._clanPartyOn()) return this._clanError(session.id, CLAN_PARTY.REFUSE);
     const clan = this._clanOf(session.id);
     if (!clan || clan.leaderId !== session.id) return;
     const defenderTag = (payload && typeof payload.defenderTag === 'string') ? payload.defenderTag.toUpperCase()
@@ -455,6 +473,11 @@ export const clanMethods = {
       const c = this._clans && this._clans.get(war[sideName].clanId);
       if (c) { c.lastWarEnd = Math.max(Number(c.lastWarEnd) || 0, Number(war.endTime) || Date.now()); rested.push(c); }
     }
+    /* v2.3.3315: these two become parties only once the writes below are
+       done -- converting first would let their `clan:` put bring a deleted
+       clan back (clanparty.js _clanPartyAfterWar) */
+    if (!this._clanRestPending) this._clanRestPending = new Set();
+    for (const c of rested) this._clanRestPending.add(c.id);
     this.eventBuffer.push({ type: 'clan_war_end', payload: { warId: war.id, winner: winnerTag, paid: [...paid.challenger, ...paid.defender] } });
     // Flat gold per member, offline-safe + idempotent.  Draw pays the
     // loser rate to both sides.  AP deliberately not granted (GDD §27.3
@@ -475,6 +498,8 @@ export const clanMethods = {
         }
         await this.state.storage.put('clan_war:' + war.id, war); // final snapshot (status ended)
       } catch (e) { /* opIds make a retry safe; next lazy resolve won't re-enter (status flipped) */ }
+      for (const c of rested) this._clanRestPending.delete(c.id);
+      try { await this._clanPartyAfterWar(rested); } catch (e) { /* the next load converts them */ }
     })();
   },
 };
