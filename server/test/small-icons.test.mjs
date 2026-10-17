@@ -84,7 +84,7 @@ const src = (p) => readFileSync(new URL(p, root), 'utf8');
     (def.match(/'Defense Lv ' \+ _defUp\w+\.level, '#60a5fa', \{ ts: Date\.now\(\) \+ 2, iconKey: 'defense', iconLead: true \}/g) || []).length === 4
     && !/'🛡️ Defense Lv '/.test(def));
   const cs = src('src/ui/panels/controlSkin.jsx');
-  check('3h the stick\'s pictures and the ability art are the new files', /'\/ui\/controls\/talk\.webp\?v=2\.3\.3274'/.test(cs)
+  check('3h the stick\'s pictures and the ability art are the new files', /'\/ui\/controls\/talk\.webp\?v=2\.3\.3279'/.test(cs)
     && /abilityArtUrl\(name, !!props\.grey\)/.test(cs) && !/talk\.svg|farm-dig\.svg/.test(cs));
   const pa = src('src/rendering/preloadAnimations.js'), cp = src('src/rendering/controlsPreload.js');
   check('3i nothing on first use: the canvas copies on the loading screen, the DOM ones warmed there',
