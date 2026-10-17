@@ -321,7 +321,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── the walk out, untouchable ── */
   for (const id of [idA, idB]) await H.devOp(wsPort, 'vitals', id, { heal: true, god: true, godMinutes: 8 });
+  /* v2.3.3311: the Wheel the worker plays, and No man's land's rings as wide
+     as its stretches (TRAPS §194; mp-nomansland's) */
+  const LONG = (await H.wheelGeom()).long;
   const { WHEEL_SPAWNS, WHEEL_CENTRE } = await import(H.REPO + '/server/src/wheelspawns.js');
+  const { NML } = await import(H.REPO + '/src/data/noMansLandRings.js');
+  const T = NML.TIER * LONG;
   const monsterPts = [];
   for (const k of Object.keys(WHEEL_SPAWNS)) {
     for (const p of WHEEL_SPAWNS[k].points) monsterPts.push(p);
@@ -334,7 +339,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const a = WHEEL_SPAWNS[land].anchor;
     const L = Math.hypot(a[0] - WHEEL_CENTRE[0], a[1] - WHEEL_CENTRE[1]);
     const ux = (a[0] - WHEEL_CENTRE[0]) / L, uy = (a[1] - WHEEL_CENTRE[1]) / L;
-    for (let r = 3950; r <= 4650; r += 50) {
+    for (let r = NML.HUB + T + 160; r <= NML.HUB + 2 * T - 160; r += 50 * LONG) {
       for (let lat = -600; lat <= 600; lat += 50) {
         const x = WHEEL_CENTRE[0] + ux * r - uy * lat, y = WHEEL_CENTRE[1] + uy * r + ux * lat;
         let md = Infinity;
@@ -592,7 +597,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   /* the wanderer walks back toward BroTown, out of No man's land */
   const sb = await H.serverPlayer(wsPort, idB);
-  const out = sb ? { x: Math.round(sb.x - spot.ux * 1300), y: Math.round(sb.y - spot.uy * 1300) } : null;
+  const out = sb ? { x: Math.round(sb.x - spot.ux * 1300 * LONG), y: Math.round(sb.y - spot.uy * 1300 * LONG) } : null;
   if (out) await H.hopTo(B, out.x, out.y, { tries: 40, step: 150 });
   const a8d = await waitAsk(A, (v) => !v.dom, 8000);
   const lvlB = await H.readState(B, (S) => S._nmlLevel || 0);
