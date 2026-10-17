@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ade56bae302c0eb7b468cd822f2fc1eafaedb1e0",
+  "tree": "08db7081cf5ea8260137d2a80798b64c39a614f0",
+  "committedAt": "2026-10-17T08:25:49-07:00",
+  "subject": "A speech bubble that's gone frees its memory; the memory check stops failing at random (v2.3.3310) (#946)",
+  "files": 5691,
+  "bytes": 634864050,
+  "listingSha256": "decfe1f6d8ca7ed4baea71b2665a7faa8c204f4dc06d3a39b4c151f779f4eb5b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
