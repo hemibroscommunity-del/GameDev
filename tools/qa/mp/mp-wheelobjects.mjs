@@ -31,7 +31,7 @@ import { join } from 'node:path';
 const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 
 const PHONE = { width: 390, height: 844 };
-const FROST = { x: 18464, y: 18464 };   /* the north-west spoke, Frost Ridge's second stage */
+const FROST = (await H.wheelGeom()).along('frost', 2);   /* the north-west spoke, Frost Ridge's second stretch (v2.3.3315: at either size) */
 
 const holdTitle = (P, ms) => P.page.evaluate(async (hold) => {
   const el = document.querySelector('.bt-zone-header__title');
@@ -241,32 +241,58 @@ export async function run({ browser, wsPort, webPort, rec }) {
      their trunks, leaning in over the water (a palm's trunk is far off its
      picture's middle: the sprite's anchor is its foot, from the manifest) ── */
   {
-    const { PLAN } = await import(H.REPO + '/public/tools/world/plan.js');
-    const { buildBlueprint, C } = await import(H.REPO + '/public/tools/world/core/layout.js');
-    const { placeObjects } = await import(H.REPO + '/public/tools/world/core/placing.js');
+    /* v2.3.3315: at the Wheel the worker plays -- its objects as baked
+       (tools/world/bake-wheel-world.mjs) and a blueprint of the cells round
+       each ring of palms, never the whole map, which the long Wheel is far
+       too big for (H.wheelGeom) */
+    const G = await H.wheelGeom();
     const { readFileSync } = await import('node:fs');
-    const bp = buildBlueprint(PLAN), placed = placeObjects(PLAN, bp);
+    const { decodePlaced } = await import(H.REPO + '/public/tools/world/core/placedfile.js');
+    const { PLACED_SETS } = await import(H.REPO + '/public/tools/world/core/placed.js');
+    const { planFingerprint } = await import(H.REPO + '/public/tools/world/core/worldblocks.js');
+    const set = PLACED_SETS.find((s) => s.plan === planFingerprint(G.plan));
+    const placed = decodePlaced(new Uint8Array(readFileSync(join(H.REPO, 'public/world', set.dir, set.objects))));
     const man = JSON.parse(readFileSync(join(H.REPO, 'public/world/objects/manifest.json'), 'utf8'));
     const palmMan = man.objects.find((o) => o.id === 'palm');
     const share = palmMan.pieces.map((pc) => pc.foot[0] / pc.w);
     /* the pool with the most palms round it, stood south of it: its open side */
-    const cell = bp.scale * PLAN.worldPxPerArtPx, sky = bp.regionIds.indexOf('sky'), palm = placed.kinds.indexOf('palm');
-    const seen = new Uint8Array(bp.w * bp.h);
-    let best = null;
-    for (let i0 = 0; i0 < seen.length; i0++) {
-      if (seen[i0] || bp.cls[i0] !== C.water || bp.reg[i0] !== sky) continue;
-      const st = [i0]; seen[i0] = 1;
-      let n = 0, sx = 0, sy = 0;
-      while (st.length) {
-        const c = st.pop(); n++; sx += c % bp.w; sy += (c / bp.w) | 0;
-        for (const q of [c - 1, c + 1, c - bp.w, c + bp.w]) if (!seen[q] && bp.cls[q] === C.water) { seen[q] = 1; st.push(q); }
-      }
-      const x = (sx / n + 0.5) * cell, y = (sy / n + 0.5) * cell, r = Math.sqrt(n / Math.PI) * cell;
-      let palms = 0;
-      for (let i = 0; i < placed.n; i++) if (placed.kind[i] === palm && Math.hypot(placed.x[i] - x, placed.y[i] - y) < r + 160) palms++;
-      if (!best || palms > best.palms) best = { x, y, r, palms };
+    const cell = G.cellG, C = G.C, sky = G.F.regionIds.indexOf('sky'), palm = placed.kinds.indexOf('palm');
+    /* the palms in rings (each within 600 px of its ring's middle) */
+    const rings = [];
+    for (let i = 0; i < placed.n; i++) {
+      if (placed.kind[i] !== palm) continue;
+      const g = rings.find((q) => Math.hypot(q.sx / q.n - placed.x[i], q.sy / q.n - placed.y[i]) < 600);
+      if (g) { g.n++; g.sx += placed.x[i]; g.sy += placed.y[i]; } else rings.push({ n: 1, sx: placed.x[i], sy: placed.y[i] });
     }
-    const arrived = await H.hopTo(P, best.x, best.y + best.r + 110, { tries: 200 });
+    let best = null;
+    for (const q of rings) {
+      /* the pool inside: the dunes' water nearest the ring's middle */
+      const R = 40, mx = Math.floor(q.sx / q.n / cell), my = Math.floor(q.sy / q.n / cell);
+      const bp = G.buildBlueprint(G.plan, { x: mx - R, y: my - R, w: 2 * R + 1, h: 2 * R + 1 });
+      const seen = new Uint8Array(bp.w * bp.h);
+      let pool = null;
+      for (let i0 = 0; i0 < seen.length; i0++) {
+        if (seen[i0] || bp.cls[i0] !== C.water || bp.reg[i0] !== sky) continue;
+        const st = [i0]; seen[i0] = 1;
+        let n = 0, sx = 0, sy = 0;
+        while (st.length) {
+          const c = st.pop(); n++; sx += c % bp.w; sy += (c / bp.w) | 0;
+          for (const k of [c - 1, c + 1, c - bp.w, c + bp.w]) if (k >= 0 && k < seen.length && !seen[k] && bp.cls[k] === C.water) { seen[k] = 1; st.push(k); }
+        }
+        const x = (mx - R + sx / n + 0.5) * cell, y = (my - R + sy / n + 0.5) * cell, r = Math.sqrt(n / Math.PI) * cell;
+        const d = Math.hypot(x - q.sx / q.n, y - q.sy / q.n);
+        if (!pool || d < pool.d) pool = { x, y, r, d };
+      }
+      if (!pool) continue;
+      let palms = 0;
+      for (let i = 0; i < placed.n; i++) if (placed.kind[i] === palm && Math.hypot(placed.x[i] - pool.x, placed.y[i] - pool.y) < pool.r + 160) palms++;
+      if (!best || palms > best.palms) best = { x: pool.x, y: pool.y, r: pool.r, palms };
+    }
+    /* v2.3.3315: by way of town -- from Frost Ridge the straight line to the
+       dunes crosses the open sea between the spokes, five times as much of it
+       on the long Wheel */
+    await H.hopTo(P, G.arrival.x, G.arrival.y, { step: 200 });
+    const arrived = await H.hopTo(P, best.x, best.y + best.r + 110, { step: 200 });
     await P.page.waitForTimeout(4000);
     /* v2.3.3283: where the walk ended, so a miss says why */
     const at = await H.readState(P, (S) => ({ zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y) }));

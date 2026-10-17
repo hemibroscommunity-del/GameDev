@@ -6484,7 +6484,64 @@ were written that way, each copied from the one before.
 is hit and for how much before the rail; the door does every step after that.
 `hit-door.test` §10d fails any other file that calls `_applyDamage`.
 **Receipt:** the seven copies are wrappers now, the 193 checks that measured
-them passing unchanged.
+them passing unchanged. All three missed rules above were the owner's to
+decide, and v2.3.3300 decided them (hit-door.md "Decided"): every blow leaves
+a harvester alone, every block costs the one 10, and the wrong-way ball lands
+(§187).
+
+## 186. "Build the map a piece at a time by clipping each pass to the piece" (v2.3.3298)
+
+The Wheel's blueprint is a list of passes that stamp shapes on cells, and it is
+tempting to build a piece of it by running the same passes on a smaller array:
+every stamp already clips to the array's edges. The owner's "Rebuild for 5x"
+needed exactly that (docs/specs/wheel-in-blocks.md), and three passes read
+past the piece they stamp:
+
+- **The scattered features depend on order.** A clump is left out where an
+  EARLIER clump already covers its middle (layout.js pass 2). Clipped, a piece
+  cannot see a middle outside it, nor what covered it -- and that cover may
+  itself have been left out by an earlier one. Two pieces then disagree about
+  one clump, and the seam is a tree clump cut in half. The fix is not a wider
+  margin (the chain has no fixed length) but working out whether a feature
+  stands at its own middle, through the earlier ones that can reach it
+  (`planFeatures` `stands`, remembered).
+- **The bridges scan the river** up to 96 cells either way of a crossing.
+  They are worked out once for the plan, from the river's own discs and the
+  decks before them.
+- **The ground's stages are averaged** over 28 cells, the walls over 11: the
+  piece's blueprint needs those margins, on the WHOLE map's coarse grid and
+  noise (ground.js `materialMap`'s `ox`/`oy`).
+- And **where objects stand** (`placeObjects`) is decided one after another
+  over the whole map, each clear of the ones before it: not cut into pieces at
+  all, but baked (tools/world/bake-wheel-world.mjs).
+
+**The rule.** A pass can be built a piece at a time only if every decision it
+makes for a cell reads nothing past a fixed margin round it. Check by building
+every piece and comparing it with the whole, cell for cell
+(test-world-core "the Wheel in blocks") -- a piece that only looks right will
+show its seam the day someone walks along it.
+
+## 187. "Measure the shield from where the blow arrived" (v2.3.3300)
+
+**Tempting:** a blow lands at a point -- a ball where it falls, a patch under
+your feet, a blast at its centre -- so test the shield against that point:
+`_blockArcCovers(ps, landedX, landedY)`.
+
+**Wrong.** Where a blow lands on you is where you stand. `_blockArcCovers`
+reads a direction under 1 px long as "covered" on purpose (a monster standing
+inside your own body is not a flanking move), so a shield test measured from
+your own feet passes for a shield facing ANY way. The snowball's second test
+was exactly that (`_monsterStrikePlayer` from `atkX/atkY`, which for a ball
+was where it landed): a shield turned away still blocked every ball, and
+charged 15 for it, against v2.3.1705's own "a snowball you never turned to
+face should get through exactly like a swing from behind does".
+
+**The rule:** the shield is measured from where the blow came FROM -- the
+monster, or for a ball its thrower (the door's `from`) -- never from where it
+arrived. A blow with no direction (fire under your feet, a tick) is not
+blockable at all: its row's `block` is null.
+**Receipt:** hit-door.test §5, every blockable row, a ball from behind
+included, lands through a shield facing away (v2.3.3300).
 
 ## 188. "A death keeps the tools and the quest's items -- that is a short list" (v2.3.3316)
 
@@ -6506,3 +6563,221 @@ saw it as "Opponents do not drop all of their items".
 set it actually computes (here `_QUEST_KEEP_SPEC()` and `_GATHER_TOOL_KEYS()`)
 rather than reading its name. A family match grows with every quest that names
 a family.
+
+## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3314)
+
+**Tempting:** a pose that swaps the body for a painted figure (the cook, the
+fire-lighter, the lumberjack) is baked once with your colours, and every other
+player in that pose is drawn from the same picture. Their own shirt, armour
+and head go on top, so they look like themselves. A bake per player looks like
+memory thrown away.
+
+**Wrong.** What the bake carries is colour, so a shared figure gives everyone
+the colours of whoever it was baked for. v2.3.1713 wrote the trade down (your
+skin on every peer's cook). Then v2.3.3146 baked your trousers and boots in
+too, and every peer at a campfire wore them. The owner saw it: "Other players
+cooking showed wrong skin color". The figure for nobody's colours is no better:
+the unpainted lumberjack was the artist's orange, olive and grey. Measured
+(mp-peercolours): every recoloured pixel of a peer's cook (~14,300 a frame)
+and fire-lighter (~28,000) was the watcher's, and the lumberjack had none at
+all. Each test's own screen, and every single-client scenario, looked right.
+
+**The rule:** a baked figure belongs to the colours it was baked in. Key it by
+them (`_standInColourKey`), hand it only to a player wearing them, and bake one
+for anyone else, capped and let go (effectsRenderer `_peerFigure`). Until a
+player's own figure exists, draw their walking body, never another figure.
+Check it from a second screen, off the drawn texture against the shipped strip
+(mp-peercolours), as no screenshot or own-screen test can show it.
+**Receipt:** 57/57 with the fix; against the old build the cook's and the
+fire-lighter's colour checks fail with every recoloured pixel the watcher's.
+
+## 191. "A blob written by current code is current-shape" (v2.3.3303)
+
+**Tempting:** `_saveRpg` writes from the code's own fixed field list, so stamp
+the save with the constant `RPG_SCHEMA_VERSION`: whatever it writes is the
+current shape by construction, and the next load skips every migration.
+
+**Wrong.** It is the current LIST of fields, not the current SHAPE of what is
+in them. When a migration throws on a load, the registry fails open: it stops
+there and leaves the blob in its old shape to retry next time. The join that
+follows every load saves, and the constant marked the failed migration done
+on that very join, silently -- it never ran again. Every shape fix after
+v2.3.2592 went into a join-time heal for that reason. The same constant on a
+rolled-back worker writes a NEWER worker's blob back with an older `_v` and
+field list.
+
+**The rule:** a save stamps the version the load really reached
+(`_rpgSaveVFor`), and a blob above `RPG_SCHEMA_VERSION` is refused at the join.
+**Receipt:** migrations.test, the v2.3.3303 section: a blob one short whose last
+migration throws stays one short through the real join, runs again once
+mended, and a newer blob closes the join with nothing written.
+
+
+## 190. "A new effect for the others is just a broadcast" (v2.3.3304)
+
+**Tempting:** to show the others something new your phone does -- a wave, a
+spark, a new kind of shot -- send `S.channel.send({type: 'broadcast', event:
+'my_new_thing', payload})`. The router has no case for it, so its default
+branch relays it to the room, as it relays a swing or an emote.
+
+**Wrong since v2.3.3304.** The default branch relays only `RELAY.TYPES`
+(server/src/relay.js). A type that is not on it is dropped without a word, so
+the new effect works on the phone that sends it and on nobody else's -- the
+kind of break that looks fine in a one-phone test. And reading the payload's
+own `id`, `from` or `fromName` as the sender was the other half of the old
+relay's trouble: a script relayed "Bob died" in Bob's name.
+
+**The rule:** a new relay is a line in `RELAY.TYPES`, with a word on who sends
+it, in the same PR as the phone's send. The worker rebuilds every relay in its
+sender's name, so a handler reads the sender from `from` (or the payload's
+`id`, which the worker now writes). **Receipt:** `relay.test` §6 fails a
+broadcast in src/ that is not a router case or a relay.
+
+
+## 193. "A workflow can push a side branch, and nothing else notices" (v2.3.3308)
+
+**Tempting:** a workflow keeps its output on a branch of its own
+(`provenance`, the proofs), pushes with the workflow's token, and finds that
+branch with `git ls-remote --heads origin provenance`. GitHub starts no
+workflow for a push by that token, so it seems nothing else happens.
+
+**Wrong, twice.**
+
+- Cloudflare Pages is a GitHub App, not a workflow: it builds a preview of
+  EVERY branch pushed, by anyone. A branch with no site is a failed build on
+  every push, on a free plan's monthly count of builds.
+- `git ls-remote <remote> <name>` matches the END of a ref's name.
+  `provenance` matched `refs/heads/claude/provenance`, this very PR's branch,
+  so a first run would have taken the branch for there and failed fetching it
+  (found by tools/provenance's simulated runs).
+
+**The rule:** a workflow's commits to a side branch START with
+`[CF-Pages-Skip]` (Cloudflare's own marker; it must be the prefix). The
+opposite holds for a commit that must reach the site: optimize-assets.yml
+leaves the marker out on purpose. And a ref is named whole:
+`git ls-remote --exit-code origin refs/heads/provenance`.
+**Receipt:** provenance.yml and proofs.mjs `message` (the selftest's 7a).
+
+## 192. "A hidden Text has let go of its picture" (v2.3.3310)
+
+**Tempting:** a speech bubble, a name, a "+25 G" is done with, so set its
+container's `visible = false` and keep it for the next one. Hidden, it draws
+nothing, so it costs nothing.
+
+**Wrong.** A Pixi Text's picture goes up to the graphics chip at its first
+draw and stays there until the text changes or the Text is destroyed --
+hidden or not. Measured (mp-membudget, a phone at 3x, with every texture on
+the chip listed at each stop): every townsperson's last speech bubble kept its
+picture while hidden, 1,024 x 256 for two lines, 1 MB each, for the rest of
+the visit -- and every other player who ever spoke near you the same. The
+townsfolk say a new line every 8-23 s wherever you are, and their bubbles were
+drawn even with you a land away. The memory check's third trip came home 4 MB
+above its second whenever townsfolk said their first lines late, which went
+red on #936 and #937 against main's own code.
+
+**The rule:** words that are gone for good are destroyed (the Text hands its
+picture back to Pixi's pool, which lets it go after 30 s unused:
+texturePoolTrim.js), or set to '' -- never only hidden. And nothing is drawn
+for a speaker nobody can see.
+**Receipt:** effectsRenderer `_updateChatBubbles` destroys a bubble when it
+goes and draws no townsperson's more than 2,400 px from you. mp-membudget,
+two runs each: home after three trips 83.2-85.2 MB of the chip on main,
+78.1-80.2 with this; the third trip against the second +2.1 and +0 on main
+(+4.1/+4.2 in CI), -1.6 and -1.5 with this. mp-chatbubble and mp-chatfont,
+25 of 25.
+
+## 194. "Reading the canvas's context only looks at it" (v2.3.3313)
+
+**Tempting:** to learn something about the GPU -- its biggest texture, whether
+its context is lost, a thumbnail of the screen -- call
+`canvas.getContext('webgl2')` on the game's canvas. It hands back the context
+Pixi is drawing with, so it reads like a getter.
+
+**Wrong.** A canvas's context is made by whoever asks FIRST, with what THEY
+ask for, and every later ask gets that one. A bare `getContext('webgl2')` on a
+canvas Pixi has not taken yet makes the context with WebGL's own defaults --
+no stencil buffer (and the depth buffer and multisampled drawing buffer the
+game turned down, tens of MB on a 3x iPhone) -- and Pixi, asking a moment
+later with `stencil: true`, is handed it
+and only warns. With no stencil buffer every mask draws unclipped: the Wheel's
+minimap (a stencil mask, wheelMinimap.js) covers the whole screen with its map,
+the owner's "loading from a saved character will show the game as an enlarged
+minimap", until the page is left. Two things asked bare: the crash report's GPU
+line (crashTrap.js `_doFlush`, `document.querySelector('canvas')`), sent 1.5 s
+after any boot with something in the crash log or after any error, and the
+black-screen watchdog's sample (BroTown.jsx, on its own clock). The game's
+canvas is up a moment before Pixi takes it -- Pixi's first renderer loads its
+library file first -- as a character is played from the list at the login,
+and on the fresh canvas of every rebuild: a report or a sample in that moment
+took the canvas. A race, so "often", and gone after logging out and in.
+
+**The rule:** the game's WebGL context is read from the renderer
+(`window._pixiRenderer.app.renderer.gl`, BroTown's `_wdGl(cv)` -- the
+renderer's, and only for the canvas it draws on), never by asking a canvas.
+A canvas no context was made for is read as an image (drawImage), which makes
+none. And should a context ever come up without a stencil buffer again, the
+game says so in the crash log (`gl-no-stencil`) and swaps in a fresh canvas,
+once a page, whose context asks for what Pixi asks by default (the depth
+buffer too, in case a device gives no stencil buffer without one).
+**Receipt:** mp-savedload -- a saved character played from the list with a
+crash log on the phone, the race made certain (Pixi's file held back while an
+error in the page sends a report) and the safety net (the test takes the
+context bare first): on main without it the report took the canvas and the minimap
+covered the screen; now the renderer's context every time, the minimap in its
+box.
+
+## 195. "A socket with no Origin is a forger's: refuse it" (v2.3.3312)
+
+**Tempting:** the server now lets only the game's own sites open a socket
+(server/src/origin.js), by the address a browser writes on every connection
+(`Origin`). A browser ALWAYS writes one, so a connection without it cannot be
+a player -- refuse it too, and the lock looks airtight.
+
+**Wrong.** A connection without an Origin is a PROGRAM, and most of them are
+ours: Node's WebSocket sends none (measured, Node 22), nor does the `ws`
+package or curl -- so the load test, the bot lab, the crowd bots, the
+Cloudflare lab and every tool under tools/qa/load would be refused, and
+nothing would be stopped, since a program can write `Origin:
+https://brotown.net` as easily as leave it out. The Origin is a browser's
+word about the PAGE: unforgeable by a web page, worthless against a program.
+
+**The rule:** an Origin check refuses what a web page cannot fake (another
+site's address, `null`, a look-alike) and lets a missing one through; it is a
+lock against other WEBSITES -- copies -- never against bots. Anything that
+must stop programs needs a check a program cannot pass by typing a header
+(the message limits, the account check).
+**Receipt:** origin.test.mjs §1 ("no Origin is a program") and the mutation
+that refuses it.
+
+## 196. "The Wheel is 43,008 px, its middle 21,504" (v2.3.3315)
+
+Since the owner's "Rebuild for 5x" (docs/specs/wheel-5x.md) there are two
+Wheels, and the worker plays the long one unless its kill switch says the
+short one. Every number copied from the short one now names the wrong place:
+21,504 is a corner of the sea on the long Wheel, the Frost Ridge spot a test
+hopped to (18,464) is levels 1-5 instead of 6-10, and a test that counts 384
+monsters finds 1,920. Three ways it bit while the long Wheel was built:
+
+- **A hard-copied spot.** Twenty phone scenarios and load tools stood at
+  short-Wheel numbers. They now read the live Wheel from the live spawn table
+  (`H.wheelGeom()` in tools/qa/mp/harness.mjs: its middle, the way in,
+  `along(land, tier)`, a blueprint of a few cells; `WHEEL_CENTRE` in the load
+  tools). A spot that is "the hub moved to the middle" may be shifted
+  (`shift`); a spot that is "a land's second stretch" must be worked out.
+- **A join that says nothing about the Wheel it draws.** A phone that does not
+  send `ws` (the sizes it draws, src/game/wheelSize.js) is OUT OF STEP with
+  the long Wheel: no monster targets it, no hit lands on it and No man's land
+  holds no rule for it (wheeltables.js `_wheelInStep`). That is right for a
+  tab left open across a deploy; for a test it means every combat check runs
+  against a player nothing can touch. Server suites and load bots join with
+  `ws: [1, 5]`.
+- **A whole-map build in a tool.** `buildBlueprint(PLAN)` was cheap; the long
+  plan's whole blueprint is ~600 MB and ~25 s. Tools and tests ask
+  `layout.js buildBlueprint(plan, rect)` for the few cells they read, and read
+  the objects from the bake (`public/world/placed5/`), never `placeObjects` on
+  the whole long map.
+
+**The rule.** Never write a Wheel coordinate, size or count into code or a
+test. Read it from the table the worker plays (`server/src/wheelspawns.js`,
+`WHEEL_LONG`), or from the game's per-size copies (`WHEEL_GEOM`, `WHEELS`,
+`NML_CENTRES`), which test-world-core holds to the tables.

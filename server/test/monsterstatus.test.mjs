@@ -69,8 +69,8 @@ Math.random = () => 0.999;
 const room = new GameRoom(mockState, mockEnv);
 const ws = fakeWs('p');
 room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
-await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id: 'p1', name: 'Player', protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
-await room.webSocketMessage(ws, JSON.stringify({ type: 'move', x: 21504, y: 21792, z: WHEEL_ZONE }));
+await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id: 'p1', name: 'Player', protocolVersion: 2, ws: [1, 5], data: { x: 1000, y: 1000, z: 'town' } }));
+await room.webSocketMessage(ws, JSON.stringify({ type: 'move', x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288, z: WHEEL_ZONE }));
 const ps = room.playerState.p1;
 const wheel = room._ensureZoneMonsters(WHEEL_ZONE);
 const of = (home) => wheel.find((m) => m.home === home);
@@ -379,7 +379,7 @@ const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y)
   for (let i = 2; i <= 7; i++) {
     const w = fakeWs('p' + i);
     room.sessions.set(w, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
-    await room.webSocketMessage(w, JSON.stringify({ type: 'join', id: 'p' + i, name: 'P' + i, protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
+    await room.webSocketMessage(w, JSON.stringify({ type: 'join', id: 'p' + i, name: 'P' + i, protocolVersion: 2, ws: [1, 5], data: { x: 1000, y: 1000, z: 'town' } }));
     others.push('p' + i);
   }
   const m = of('thunder');

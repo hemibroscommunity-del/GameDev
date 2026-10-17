@@ -21,14 +21,36 @@
  *   2. the safe ground       7. what the monster's own blow does after
  *   3. a roll                   (thorn's answer, the hexer's curse, the element)
  *   4. a rock in the way     8. the event, the save, the death
- *   5. the shield: cost, parry, or a hit of 0
+ *   5. the shield: its cost or its parry (v2.3.3300: never a hit of 0)
  *
- * and MONSTER_HITS says what each row does at each step.  It is TODAY'S
- * behaviour, cell for cell -- the suite passed before this file existed and
- * passes unchanged with it -- including the cells docs/specs/hit-door.md
- * puts to the owner (the two 15s, the wrong-way snowball, the harvest shield
- * the kits miss, rolls, parry, rails, rocks).  Changing a rule for a way of
+ * and MONSTER_HITS says what each row does at each step.  At v2.3.3296 it
+ * was the old copies' behaviour, cell for cell -- the suite passed before
+ * this file existed and unchanged with it.  Changing a rule for a way of
  * being hit is changing its cell, and the test's row with it.
+ *
+ * ═══ v2.3.3300: THE OWNER'S DECISIONS (hit-door.md "Decided") ═══
+ * Put to the owner as nine cells, each with a recommendation; the owner:
+ * "keep going on recommended".  So:
+ *   1. the snow pile's and the boss's block cost the one BLOCK_STAMINA_COST
+ *      (10) -- the 15 v2.3.1731 missed in both;
+ *   2. a snowball the shield does not FACE lands: its second shield test,
+ *      measured from where it landed (a zero-length direction, always
+ *      "covered"), is gone -- "yes blocking should be directional";
+ *   3. every monster blow leaves a harvester alone, the kits, the slime's
+ *      burst, a boss and fire on the ground included (v2.3.1704's rule);
+ *   4. a roll slips the blows you can see coming -- the swing, the ball, the
+ *      kits, the burst, a boss -- through the server's own window
+ *      (movement.js _rollIFrames: a dodge or a lunge, not the retreat shot);
+ *      the pile, fire, a storm's arc and a tick still land;
+ *   5. the pile and a boss can be parried;
+ *   6. the rails are unchanged;
+ *   7. a rock is asked FIRST, of every blow that travels: the swing (it was
+ *      asked after the shield), the kits, the burst and a boss;
+ *   8. a blocked boss ability saves the pools, coalesced, like every block;
+ *   9. a block is a block: the pile's no longer counts as a hit of 0.
+ * The door lost the four cells nothing used any more with them (the
+ * wrong-way block, a block that counts, the whole save, the rock after the
+ * shield).
  *
  * WHAT STAYS WITH THE CALLERS: who is hit (alive, the zone, a sparring clone,
  * a kit's reach, a ball's landing spot, which players a storm arc picks) and
@@ -60,12 +82,6 @@ import { SHOCK, BURN, POISON } from './monsterstatus.js';
 import { attackBlocked } from './props.js';
 import { thornRecoil } from './elemental.js';
 
-/* The block cost the snow pile and the boss kept when v2.3.1731 named
-   BLOCK_STAMINA_COST (10) "so the cost has ONE home" -- it replaced the melee
-   site's inline 15 and missed these two.  Its own name here so the table says
-   which cells still carry it (hit-door.md decision 1). */
-const LEFTOVER_BLOCK_COST = 15;
-
 /* One row per way a monster's blow reaches a player.  Cells:
  *
  *   shield   the harvest shield (gathering.js _extractionShielded): 'door' --
@@ -73,32 +89,20 @@ const LEFTOVER_BLOCK_COST = 15;
  *            not asked (a harvester is hit).
  *   shelter  the Wheel's safe ground (wheelzone.js _wheelSheltered, which lets
  *            a monster you provoked through): 'door', 'tick', or null.
- *   roll     a roll dodges it.  No row says so today; the step reads the
- *            server's own roll window (movement.js _rollOn, v2.3.3292) and
- *            does nothing on a worker without it.
+ *   roll     a roll slips it: the server's own roll window, with i-frames
+ *            (movement.js _rollIFrames -- a paid dodge or lunge, never the
+ *            retreat shot).
  *   sight    a rock between the blow's origin and you stops it (props.js
- *            attackBlocked): 'door' -- asked before the shield;
- *            'after-shield' -- asked only of a blow the shield let past, so a
- *            raised shield pays for a swing through a rock; 'flight' -- the
- *            caller tests the ball's own flight line; null -- not asked.
+ *            attackBlocked): 'door' -- asked before the shield; 'flight' --
+ *            the caller tests the ball's own flight line; null -- not asked.
  *   block    null -- it cannot be blocked.  Otherwise the shield facing the
- *            blow's origin (index.js _blockArcCovers) meets it:
+ *            blow's origin (index.js _blockArcCovers) stops it:
  *              cost     stamina per blocked hit (x _blockStaminaMult, at least
  *                       1, only while BLOCK_COSTS_STAMINA); 0 = free
  *              parry    a shield raised within PARRY_WINDOW_MS parries it: no
  *                       cost, stamina back, the attacker staggered
- *              counts   the shield takes it as a HIT OF 0 rather than ending
- *                       it: it is still a hit (regen waits, the monster's own
- *                       blow still does what it does after), saved coalesced
- *              save     'whole' -- a cost writes the whole character
- *                       (_saveRpg); otherwise the pools, coalesced
  *              thorns   the old Defense grid's thorns hurt the attacker back
  *                       (a character from before the trained skills only)
- *   wrongWay the snowball's: after its own shield test from the thrower, a
- *            second from where it LANDED, which a raised shield always passes
- *            (a zero-length direction counts as covered) -- so a shield facing
- *            away still blocks a ball, at `cost`, counted as a hit
- *            (hit-door.md decision 2).
  *   rail     the most one blow may take, as a share of max HP (at least 1);
  *            0 = none.
  *   elemental  priced as elemental damage: Elem Resist reads it, Dodge and
@@ -110,52 +114,57 @@ const LEFTOVER_BLOCK_COST = 15;
  *            only; null -- nothing. */
 const row = (r) => Object.freeze({
   shield: null, shelter: null, roll: false, sight: null, block: null,
-  wrongWay: null, rail: 0, elemental: false, own: null, ...r,
+  rail: 0, elemental: false, own: null, ...r,
 });
-const block = (b) => Object.freeze({ cost: 0, parry: false, counts: false, save: null, thorns: false, ...b });
+const block = (b) => Object.freeze({ cost: 0, parry: false, thorns: false, ...b });
 
 export const MONSTER_HITS = Object.freeze({
   /* a basic swing, at impact (telegraph.js _resolveBasicSwingHit) */
   swing: row({
-    shield: 'door', shelter: 'door', sight: 'after-shield',
+    shield: 'door', shelter: 'door', roll: true, sight: 'door',
     block: block({ cost: BLOCK_STAMINA_COST, parry: true, thorns: true }),
     own: 'contact',
   }),
-  /* a snowman's ball, where it lands (index.js _tickMonsters) */
+  /* a snowman's ball, where it lands (index.js _tickMonsters); blocked free
+     facing the thrower -- "that cost is tied to the melee cadence" */
   snowball: row({
-    shield: 'door', shelter: 'door', sight: 'flight',
+    shield: 'door', shelter: 'door', roll: true, sight: 'flight',
     block: block({ cost: 0 }),
-    wrongWay: block({ cost: LEFTOVER_BLOCK_COST, counts: true }),
     own: 'contact',
   }),
   /* the snow pile's touch (telegraph.js _resolveBurrow) -- and every direct
-     call of _monsterStrikePlayer, whose behaviour this row is */
+     call of _monsterStrikePlayer, whose behaviour this row was.  A roll does
+     not slip it: the pile grinds after you and touches as long as you stand
+     in it. */
   pile: row({
     shield: 'door', shelter: 'door', sight: 'door',
-    block: block({ cost: LEFTOVER_BLOCK_COST, counts: true }),
+    block: block({ cost: BLOCK_STAMINA_COST, parry: true }),
     own: 'contact',
   }),
   /* a telegraphed cast: the brute's slam, the fodder's lunge
      (telegraph.js _resolveMonsterTelegraph -> _telegraphHitPlayer) */
   kit: row({
-    shelter: 'door',
+    shield: 'door', shelter: 'door', roll: true, sight: 'door',
     block: block({ cost: BLOCK_STAMINA_COST, parry: true }),
     rail: TELEGRAPH.MAX_HIT_PCT, own: 'elem',
   }),
   /* a blue slime going off (telegraph.js _resolveSlimeBurst) */
   burst: row({
-    shelter: 'door',
+    shield: 'door', shelter: 'door', roll: true, sight: 'door',
     block: block({ cost: BLOCK_STAMINA_COST, parry: true }),
     rail: TELEGRAPH.MAX_HIT_PCT, elemental: true, own: 'elem',
   }),
-  /* a dungeon boss's ability (dungeon.js _dungeonBossHitPlayer) */
+  /* a dungeon boss's ability (dungeon.js _dungeonBossHitPlayer); no safe
+     ground in a dungeon */
   boss: row({
-    block: block({ cost: LEFTOVER_BLOCK_COST, save: 'whole' }),
+    shield: 'door', roll: true, sight: 'door',
+    block: block({ cost: BLOCK_STAMINA_COST, parry: true }),
     rail: BOSS_ABILITIES.MAX_HIT_PCT,
   }),
-  /* ground a fire goblin set alight (firetrail.js _tickFireTrail);
-     the rail is the telegraph's 0.5, which firetrail.js always wrote out */
-  fire: row({ shelter: 'tick', rail: 0.5, elemental: true }),
+  /* ground a fire goblin set alight (firetrail.js _tickFireTrail); the
+     rail is the telegraph's 0.5, which firetrail.js always wrote out.  Under
+     your feet: no roll slips it, no shield or rock stands in its way */
+  fire: row({ shield: 'door', shelter: 'tick', rail: 0.5, elemental: true }),
   /* a storm monster's arc to a player near the one it struck
      (monsterstatus.js _shockArcs) */
   shock: row({ shield: 'tick', shelter: 'tick', rail: SHOCK.MAX_HP_PCT, elemental: true }),
@@ -173,8 +182,8 @@ export const hitMethods = {
        mid, lvl the monster's id and level: kill credit, the death's cause,
                 the event, the level edge on Dodge/Defense/Resist
        raw      the blow before the rail
-       at       {x, y}: the event's attackerX/Y, and where a rock and a
-                counted block are measured from
+       at       {x, y}: the event's attackerX/Y, and where a rock is
+                measured from
        from     {x, y}: where the shield is measured from, when not `at`
                 (the snowball: the thrower, while `at` is where it landed)
        ability  the event's tag, display only
@@ -193,28 +202,17 @@ export const hitMethods = {
        than a "0" it would have to explain. */
     if (R.shield === 'door' && this._extractionShielded(pid, now)) return 0;
     if (R.shelter === 'door' && zoneId === WHEEL_ZONE && this._wheelSheltered && this._wheelSheltered(m, pid, ps.x, ps.y, now)) return 0;
-    if (R.roll && typeof this._rollOn === 'function' && this._rollOn(ps, now)) return 0;
-    if (R.sight === 'door' && attackBlocked(zoneId, h.at.x, h.at.y, ps.x, ps.y)) return 0;
+    if (this._hitMissed(h.src, zoneId, ps, h.at, now)) return 0;
 
-    /* 5: the shield */
-    let B = null;
+    /* 5: the shield -- a blow it faces stops there */
     if (R.block) {
       const from = h.from || h.at;
-      if (this._blockArcCovers(ps, from.x, from.y)) B = R.block;
-      else if (R.wrongWay && this._blockArcCovers(ps, h.at.x, h.at.y)) B = R.wrongWay;
+      if (this._blockArcCovers(ps, from.x, from.y)) return this._hitStopped(h, R.block, ps, now);
     }
-    if (B && !B.counts) return this._hitStopped(h, B, ps, now);
-    if (!B && R.sight === 'after-shield' && attackBlocked(zoneId, h.at.x, h.at.y, ps.x, ps.y)) return 0;
 
     /* 6: the dice */
     const raw = R.rail > 0 ? Math.min(h.raw, Math.max(1, Math.floor((ps.maxHp || 100) * R.rail))) : h.raw;
-    const res = this._applyDamage(ps, raw, !!B, R.elemental ? { elemental: true, attackerLevel: h.lvl } : { attackerLevel: h.lvl });
-    let drain = 0;
-    if (B && BLOCK_COSTS_STAMINA && B.cost > 0 && typeof ps.stamina === 'number') {
-      drain = Math.max(1, Math.round(B.cost * this._blockStaminaMult(ps)));
-      ps.stamina = Math.max(0, ps.stamina - drain);
-      this._saveRpgPools(pid, ps);
-    }
+    const res = this._applyDamage(ps, raw, false, R.elemental ? { elemental: true, attackerLevel: h.lvl } : { attackerLevel: h.lvl });
 
     /* 7: what the monster's own blow does after */
     if (R.own === 'contact') {
@@ -245,10 +243,6 @@ export const hitMethods = {
         monsterId: h.mid, targetId: pid,
         dmg: raw, dmgTaken: res.dmgTaken, dodged: res.dodged,
         hp: Math.max(0, Math.round(ps.hp || 0)),   /* v2.3.3263: the bar after the blow, as pvp_hit carries it */
-        /* v2.3.1686: "Blocked!" and the cost in place of a number; undefined
-           -- and so off the wire -- on every hit that was not blocked */
-        blocked: B ? true : undefined,
-        staminaDrain: drain > 0 ? drain : undefined,
         lastStand: res.lastStand || undefined,
         secondWind: res.secondWind || undefined,
         zone: zoneId, attackerX: h.at.x, attackerY: h.at.y,
@@ -269,9 +263,21 @@ export const hitMethods = {
     return res.dmgTaken;
   },
 
-  /* A blow the shield stopped (5, when its block does not count as a hit):
-     the parry, the cost, the old thorns, "Blocked!", and nothing else -- no
-     HP touched, nothing counted as being hit. */
+  /* The door's steps 3 and 4: a roll with i-frames slips this blow, or a
+     rock in the way stops it (v2.3.3300: every blow that travels, asked
+     before the shield).  Silent in the door -- nothing landed -- and asked
+     on its own by a caller that draws a blow you got out of the way of as a
+     MISS (telegraph.js _resolveMonsterTelegraph), so the rule has one home. */
+  _hitMissed(src, zoneId, ps, at, now) {
+    const R = Object.prototype.hasOwnProperty.call(MONSTER_HITS, src) ? MONSTER_HITS[src] : null;
+    if (!R || !ps) return false;
+    if (R.roll && this._rollIFrames(ps, now || Date.now())) return true;
+    return R.sight === 'door' && !!at && attackBlocked(zoneId, at.x, at.y, ps.x, ps.y);
+  },
+
+  /* A blow the shield stopped (5): the parry, the cost, the old thorns,
+     "Blocked!", and nothing else -- no HP touched, nothing counted as being
+     hit (v2.3.3300: every block now; the pile's counted as a hit of 0). */
   _hitStopped(h, B, ps, now) {
     const { zoneId, pid, m } = h;
     /* v2.3.1731: a shield raised in time parries -- the attacker staggered,
@@ -283,8 +289,7 @@ export const hitMethods = {
       : 0;
     if (cost > 0 && typeof ps.stamina === 'number') {
       ps.stamina = Math.max(0, ps.stamina - cost);
-      if (B.save === 'whole') this._saveRpg(pid, ps);
-      else this._saveRpgPools(pid, ps);   /* coalesced -- see v2.3.1619b */
+      this._saveRpgPools(pid, ps);   /* coalesced -- see v2.3.1619b; v2.3.3300: the boss's too */
       this._queuePlayerStateFlush(pid);
     }
     if (B.thorns) this._legacyThornsReflect(zoneId, m, pid, ps);

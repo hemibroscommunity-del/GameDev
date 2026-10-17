@@ -35,19 +35,27 @@
 export function gridInfo(plan) {
   const cols = plan.grid.cols, rows = plan.grid.rows;
   const N = plan.square.px, O = plan.square.overlap, P = N - O;
-  let c0 = 0, r0 = 0, c1 = cols - 1, r1 = rows - 1;
+  let c0 = 0, r0 = 0, c1 = cols - 1, r1 = rows - 1, grow = 0;
   if (plan.active) {
     const a = parseCell(plan.active.from), b = parseCell(plan.active.to);
     if (!a || !b) throw new Error('plan.active needs square names, e.g. { from: "G7", to: "S19" }');
     c0 = Math.max(0, Math.min(a.c, b.c)); r0 = Math.max(0, Math.min(a.r, b.r));
     c1 = Math.min(cols - 1, Math.max(a.c, b.c)); r1 = Math.min(rows - 1, Math.max(a.r, b.r));
+    /* v2.3.3315: `grow` squares more on every side, PAST the frame if need be
+       -- the Wheel five times longer (plan.js wheelSized) reaches 57 squares
+       beyond A1..AW49 each way.  The frame keeps its names and its corner, so
+       every position measured from it (and the centre, Y25) stays where it
+       was; a square past the frame has no name (cellName of a negative
+       column is not one), which only the World Builder's grid shows. */
+    grow = Math.max(0, plan.active.grow | 0);
+    if (grow) { c0 -= grow; r0 -= grow; c1 += grow; r1 += grow; }
   }
   const W = cols * P + O, H = rows * P + O;
   const mid = plan.centre ? parseCell(plan.centre) : null;
   return {
     cols, rows, N, O, P, W, H,
     /* the active area: inclusive square bounds and its art-px rectangle */
-    c0, r0, c1, r1, ac: c1 - c0 + 1, ar: r1 - r0 + 1,
+    c0, r0, c1, r1, ac: c1 - c0 + 1, ar: r1 - r0 + 1, grow,
     ax: c0 * P, ay: r0 * P, AW: (c1 - c0 + 1) * P + O, AH: (r1 - r0 + 1) * P + O,
     /* the world centre -- every position in the plan is measured from here */
     cx: mid ? mid.c * P + N / 2 : W / 2, cy: mid ? mid.r * P + N / 2 : H / 2,

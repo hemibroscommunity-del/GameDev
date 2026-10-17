@@ -151,12 +151,13 @@ const CAP_GATES = [
   'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'broVerify', 'broCount' /* v2.3.3255: the wallet's Hemi Bro count */,
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
-  'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'partykeep' /* v2.3.3284: a party that lasts (party.js) */, 'petLoot', 'potionBag', 'prog3',   /* v2.3.3120: 'pets' gone with the 20% capture */
+  'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'partykeep' /* v2.3.3284: a party that lasts (party.js) */, 'alliance' /* v2.3.3313: a party of 20 active members (alliance.js) */, 'petLoot', 'potionBag', 'prog3',   /* v2.3.3120: 'pets' gone with the 20% capture */
   'prog3Chan', 'prog3elem' /* v2.3.2512 */, 'prog3shared' /* v2.3.2592 */, 'prog3rel' /* v2.3.2680 */, 'gearq' /* v2.3.2664 */, 'prog3x', 'questTrack', 'sponsor', 'store',
   'storeGear' /* v2.3.2531 */, 'storeGearRef' /* v2.3.2551 */, 'storeChat' /* v2.3.2621 */, 'storeOffer' /* v2.3.2623 */,
   't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',
   'trade2Weapons', 'weaponDrops', 'whisper', 'zoneDepth' /* v2.3.2790 */, 'bowvolley' /* v2.3.2848 */, 'dailyChest' /* v2.3.2820 */, 'smelting' /* v2.3.2822 */, 'whirlWindup' /* v2.3.2824 */, 'gatherhits' /* v2.3.2956 */,
   'wheelmonsters' /* v2.3.2978: lower case, a kill switch */,
+  'wheelsize' /* v2.3.3315: which Wheel the room plays -- a number, 5 the long one, 1 the short (its kill switch, `wheel5x: false`) */,
   'sprint' /* v2.3.3006: lower case, a kill switch */,
   'wheelnodes' /* v2.3.3012: lower case, a kill switch */,
   'shieldwear' /* v2.3.3091: the shield on the arm -- lower case, a kill switch */,

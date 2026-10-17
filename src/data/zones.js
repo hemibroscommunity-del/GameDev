@@ -450,10 +450,35 @@ export function zoneHomes(zoneId) {
    (it is only a direction); null outside the Wheel.  For the monsters' looks
    (rendering/wheelMonsterArt.js): your own land's load as you walk toward
    them, another land's only when one of its monsters is really near. */
+/* ═══ v2.3.3315: THE WHEEL THE ROOM PLAYS ═══
+   The owner: "Maybe 5x larger map is needed" -- "Rebuild for 5x".  The room
+   plays the Wheel five times longer (its tiers five zones of walking, not
+   one) unless its kill switch says the short one, and tells the phone which
+   in caps.wheelsize (src/game/wheelSize.js).  Each one's size in tiles, its
+   safe ground and its lands' middles -- MIRROR of server/src/wheelspawns1.js
+   (1) and wheelspawns.js (5): WHEEL_WORLD / TILE, WHEEL_SAFE_R and
+   WHEEL_SPAWNS[home].anchor (test-world-core).  setWheelGeom puts one on
+   ZONES.wheel; it starts as the short one, as every worker before said. */
+export const WHEEL_GEOM = Object.freeze({
+  1: Object.freeze({ w: 1344, h: 1344, safeR: 2937, lands: Object.freeze({
+    frost: [18985, 18985], ember: [21504, 18050], sky: [23946, 19062], hollows: [24946, 21504],
+    thunder: [23934, 23934], tidal: [21504, 24958], mist: [19087, 23921], verdant: [17966, 21504],
+  }) }),
+  5: Object.freeze({ w: 5448, h: 5448, safeR: 2937, lands: Object.freeze({
+    frost: [83198, 83198], ember: [87168, 81686], sky: [91087, 83249], hollows: [92698, 87168],
+    thunder: [91087, 91087], tidal: [87168, 92674], mist: [83275, 91061], verdant: [81650, 87168],
+  }) }),
+});
+export function setWheelGeom(size) {
+  const g = WHEEL_GEOM[size] || WHEEL_GEOM[1], z = ZONES.wheel;
+  z.w = g.w; z.h = g.h; z.safeR = g.safeR; z.lands = g.lands;
+  return g;
+}
+
 export function wheelLandAt(zoneId, x, y) {
   const z = zoneId === 'wheel' ? ZONES.wheel : null;
   if (!z || !z.lands || typeof x !== 'number' || typeof y !== 'number') return null;
-  const c = (z.w * 32) / 2;   /* TILE: the Wheel's middle, 21504 */
+  const c = (z.w * 32) / 2;   /* TILE: the Wheel's middle, 21504 (v2.3.3315: 87168 on the long one) */
   const a = Math.atan2(y - c, x - c);
   let best = null, bd = Infinity;
   for (const k in z.lands) {

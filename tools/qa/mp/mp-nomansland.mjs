@@ -201,20 +201,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── the walk out, untouchable ── */
   for (const id of [idA, idB]) await H.devOp(wsPort, 'vitals', id, { heal: true, god: true, godMinutes: 6 });
-  const { WHEEL_SPAWNS, WHEEL_CENTRE } = await import(H.REPO + '/server/src/wheelspawns.js');
+  /* v2.3.3315: the Wheel the worker plays -- its own spawn table, and No man's
+     land's rings as wide as its stretches (TRAPS §196) */
+  const LONG = (await H.wheelGeom()).long;
+  const { WHEEL_SPAWNS, WHEEL_CENTRE } = await import(H.REPO + (LONG === 1 ? '/server/src/wheelspawns1.js' : '/server/src/wheelspawns.js'));
+  const { NML } = await import(H.REPO + '/src/data/noMansLandRings.js');
+  const T = NML.TIER * LONG;
   const monsterPts = [];
   for (const k of Object.keys(WHEEL_SPAWNS)) {
     for (const p of WHEEL_SPAWNS[k].points) monsterPts.push(p);
     for (const d of Object.values(WHEEL_SPAWNS[k].deeper || {})) for (const p of d.points) monsterPts.push(p);
   }
-  /* places on the Lv 6-10 ring (No man's land 1: 3,789 to 4,813 px out),
-     inside a spoke, furthest from any monster's place first */
+  /* places on the Lv 6-10 ring (No man's land 1: 3,789 to 4,813 px out on the
+     short Wheel, 7,885 to 13,005 on the long one), inside a spoke, furthest
+     from any monster's place first */
   const cands = [];
   for (const land of Object.keys(WHEEL_SPAWNS)) {
     const a = WHEEL_SPAWNS[land].anchor;
     const L = Math.hypot(a[0] - WHEEL_CENTRE[0], a[1] - WHEEL_CENTRE[1]);
     const ux = (a[0] - WHEEL_CENTRE[0]) / L, uy = (a[1] - WHEEL_CENTRE[1]) / L;
-    for (let r = 3950; r <= 4650; r += 50) {
+    for (let r = NML.HUB + T + 160; r <= NML.HUB + 2 * T - 160; r += 50 * LONG) {
       for (let lat = -600; lat <= 600; lat += 50) {
         const x = WHEEL_CENTRE[0] + ux * r - uy * lat, y = WHEEL_CENTRE[1] + uy * r + ux * lat;
         let md = Infinity;

@@ -43,6 +43,54 @@ import { tmpdir } from 'node:os';
    there.  harness.mjs lives at tools/qa/mp/, so the repo root is three up. */
 export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
+/* ═══ v2.3.3315: THE WHEEL THE LOCAL WORKER PLAYS ═══
+   The owner chose a Wheel five times longer ("Rebuild for 5x"): the worker
+   plays it unless its kill switch says the short one, and its size is the
+   live spawn table's (server/src/wheelspawns.js WHEEL_LONG; the short one's
+   is wheelspawns1.js).  A scenario's spot -- the way in, a land's stretch, a
+   river by the Mill Bridge -- is worked out from it here, never a short-
+   Wheel number (TRAPS: a hard-copied coordinate is a second source of truth,
+   v2.3.2626 below).  Everything it reads is cheap at either size: the plan's
+   features and a blueprint of a small rectangle (layout.js), never the whole
+   map, which the long Wheel is too big for (~600 MB).
+     long     the size (1 or 5)
+     cx, cy   the Wheel's middle, game px; arrival, by the town square
+     shift    the long Wheel's middle less the short one's: the hub, the town
+              and the commons are the same ground there, moved by this
+     along(land, t, side)  the middle of tier `t` (2 = levels 6-10) on a
+              land's spoke, `side` game px to its right (looking out)
+     classAt(x, y)  the blueprint's class there (layout.js C)
+     map()    the minimap's facts (wheelmap.js), as the ground worker gives them */
+let _wheelGeom = null;
+export async function wheelGeom() {
+  if (_wheelGeom) return _wheelGeom;
+  const sp = await import(REPO + '/server/src/wheelspawns.js');
+  const { wheelSized } = await import(REPO + '/public/tools/world/plan.js');
+  const { wheelInfo } = await import(REPO + '/public/tools/world/core/wheel.js');
+  const L = await import(REPO + '/public/tools/world/core/layout.js');
+  const long = sp.WHEEL_LONG || 1, plan = wheelSized(long), W = wheelInfo(plan);
+  const [cx, cy] = sp.WHEEL_CENTRE;
+  const sq = plan.wheel.zonePx / W.Z;                  /* game px a square */
+  const F = L.planFeatures(plan), WPA = plan.worldPxPerArtPx, cellG = F.S * WPA;
+  const along = (id, t, side = 0) => {
+    const s = W.byId[id], r = W.tierMid(t) * sq;
+    return { x: Math.round(cx + s.ux * r - s.uy * side), y: Math.round(cy + s.uy * r + s.ux * side) };
+  };
+  const classAt = (x, y) => {
+    const bx = Math.floor(x / cellG), by = Math.floor(y / cellG);
+    const bp = L.buildBlueprint(plan, { x: bx, y: by, w: 1, h: 1 });
+    return bp.cls[0];
+  };
+  const map = async () => {
+    const { wheelMap } = await import(REPO + '/public/tools/world/core/wheelmap.js');
+    return wheelMap(plan, { w: F.bw, h: F.bh, scale: F.S, x0: F.x0, y0: F.y0, wheel: F.W, regionIds: F.regionIds,
+      pois: F.pois, routes: F.routes, lots: F.lots, decks: F.decks });
+  };
+  _wheelGeom = { long, cx, cy, arrival: { x: cx, y: cy + 288 }, shift: cx - 21504, along, classAt, map,
+    plan, W, F, WPA, cellG, C: L.C, buildBlueprint: L.buildBlueprint };
+  return _wheelGeom;
+}
+
 /* ═══ v2.3.2626: A DOOR IS WHERE THE DATA SAYS IT IS ═══
    Six scenarios each carried their own copy of `const STORE_DOOR = {x:1290,
    y:855}`, hand-copied from worldProps.js.  Moving the auction house onto the
@@ -310,7 +358,7 @@ export async function stopWorker(w) {
    "passed" three assertions about marks that were never drawn.)  isMobile
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '', world = null }) {
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '', world = null, host = 'localhost' }) {
   const ctx = await browser.newContext(Object.assign(
     { viewport: viewport || { width: 1000, height: 780 } },
     touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
@@ -387,7 +435,10 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      game exactly as a player gets it. */
   const _world = world === 'wheel' ? '' : /(?:^|&)trial=/.test(query) ? 'nospawn' : 'trial=off&nospawn';
   const _q = [guest ? 'guest=1' : '', query, _world].filter(Boolean).join('&');
-  await page.goto(`http://localhost:${webPort}/${_q ? '?' + _q : ''}`, { waitUntil: 'domcontentloaded' });
+  /* v2.3.3312: `host` -- the page's own address, for a scenario that needs a
+     page somewhere else (mp-originlock: a copy of the game on another site,
+     its browser launched to find that name at 127.0.0.1) */
+  await page.goto(`http://${host}:${webPort}/${_q ? '?' + _q : ''}`, { waitUntil: 'domcontentloaded' });
   return { ctx, page, logs, name, seeded: !!phrase };
 }
 
@@ -1286,6 +1337,13 @@ export function keepAlive(P, everyMs = 20000) {
 }
 
 export async function hopTo(P, tx, ty, { step = 100, gap = 260, tries = 40 } = {}) {
+  /* v2.3.3315: enough hops for the distance -- the long Wheel's spots are
+     five times further out than the `tries` a scenario counted for the short
+     one (wheelGeom, above) */
+  try {
+    const d0 = await P.page.evaluate(({ x, y }) => { const S = window._gameState.current; return Math.hypot(x - S.player.x, y - S.player.y); }, { x: tx, y: ty });
+    if (d0 > 0) tries = Math.max(tries, Math.ceil(d0 / step) + 8);
+  } catch { /* the page's own trouble: the tries asked for */ }
   for (let i = 0; i < tries; i++) {
     const done = await P.page.evaluate(({ x, y, s }) => {
       const S = window._gameState.current;
@@ -1803,7 +1861,7 @@ export function recorder(suite) {
   };
 }
 
-export async function launch() {
+export async function launch(extraArgs = []) {
   /* v2.3.1729: the sandbox's pinned Chromium is used WHEN IT EXISTS, and
      Playwright resolves its own managed browser otherwise.  The hardcoded
      executablePath threw ENOENT on any other machine, so this harness could
@@ -1811,7 +1869,9 @@ export async function launch() {
      BT_CHROMIUM overrides for a non-standard install. */
   const pinned = process.env.BT_CHROMIUM || '/opt/pw-browsers/chromium';
   const opts = {
-    args: ['--autoplay-policy=no-user-gesture-required', '--disable-gpu', '--no-sandbox'],
+    /* v2.3.3312: `extraArgs` for a scenario's own second browser (mp-originlock's
+       --host-resolver-rules) */
+    args: ['--autoplay-policy=no-user-gesture-required', '--disable-gpu', '--no-sandbox', ...extraArgs],
   };
   if (existsSync(pinned)) opts.executablePath = pinned;
   return chromium.launch(opts);

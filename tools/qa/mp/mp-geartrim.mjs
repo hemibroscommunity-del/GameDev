@@ -277,6 +277,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!cid && cid.sheets === 33, cid && { sheets: cid.sheets });
   rec.ok('...and holds under a third of its uncropped bytes',
     !!cid && cid.fullBytes > 0 && cid.packedBytes / cid.fullBytes < 1 / 3, cid && { packed: cid.packedBytes, full: cid.fullBytes });
+  /* v2.3.3313: the lumberjack (yours and a peer's) is made the first time it
+     can be wanted since v2.3.3077 (rendering/standIns.js, the owner's memory
+     plan) -- a page that never stood by a tree with an axe has none, and every
+     chop key was missing here (the sweep of main, 2026-10-17).  Made now, as
+     mp-campfire, mp-gpuonly and mp-remoteanim make theirs. */
+  await A.page.evaluate(() => (window.__btStandInMake ? window.__btStandInMake('chop') : null)).catch(() => {});
   const sid = await standInIdentity(A);
   if (sid && sid.fullBytes) {
     console.log(`INFO  geartrim :: stand-in bodies ${(sid.packedBytes / 1048576).toFixed(1)} MB vs ${(sid.fullBytes / 1048576).toFixed(1)} MB uncropped over ${sid.sheets} bakes, ${sid.frames} frames compared`);

@@ -19,7 +19,7 @@
  * their land's first stretch with the client's `monster_damage`, one swing
  * per ~0.7 s.  The rest walk the town and its commons.
  *
- *   node tools/qa/load/load-wheel.mjs [1,10,25,50,100]
+ *   node tools/qa/load/load-wheel.mjs [1,10,25,50,100] [--short]
  *   node --cpu-prof --cpu-prof-dir=/tmp/prof tools/qa/load/load-wheel.mjs 100
  *
  * "% of a core" is the CPU one second of game time costs: past 100% the room
@@ -32,7 +32,10 @@
  */
 import { performance } from 'node:perf_hooks';
 import { GameRoom } from '../../../server/src/index.js';
-import { WHEEL_SPAWNS } from '../../../server/src/wheelspawns.js';
+/* v2.3.3315: the Wheel the room plays -- the long one, or with `--short` the
+   short one (its kill switch, `wheel5x: false`), each its own table */
+const SHORT = process.argv.includes('--short');
+const { WHEEL_SPAWNS, WHEEL_CENTRE } = await import(SHORT ? '../../../server/src/wheelspawns1.js' : '../../../server/src/wheelspawns.js');
 
 const TICK_MS = 22;
 const MEASURE_TICKS = 450;   // ~10 s of game time
@@ -40,11 +43,11 @@ const WARMUP_TICKS = 90;
 const MOVE_EVERY_MS = 33;
 const SWING_EVERY_MS = 700;
 const FIGHTERS = 0.3;
-const ARRIVAL = { x: 21504, y: 21792 };
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3315: the Wheel the room plays */
 const WALK_R = 1400;
 const HOMES = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'];
 
-const COUNTS = (process.argv[2] || '1,10,25,50,75,100,150,200').split(',').map(Number).filter((n) => n > 0);
+const COUNTS = (process.argv.slice(2).find((a) => !a.startsWith('--')) || '1,10,25,50,75,100,150,200').split(',').map(Number).filter((n) => n > 0);
 
 /* ── the simulated clock ─────────────────────────────────────────────── */
 const realDateNow = Date.now;
@@ -73,6 +76,7 @@ const rand = (a, b) => a + Math.random() * (b - a);
 
 async function loadRoom(n) {
   const room = new GameRoom(mockState(), mockEnv);
+  if (SHORT) room._liveFlags = { wheel5x: false };
   let tickFn = null;
   const realSetInterval = globalThis.setInterval;
   globalThis.setInterval = (fn, ms) => {
@@ -86,6 +90,7 @@ async function loadRoom(n) {
     const id = 'w' + i;
     await room.webSocketMessage(ws, JSON.stringify({
       type: 'join', id, name: 'W' + i, protocolVersion: 2,
+      ws: [1, 5],   /* v2.3.3315: the Wheels a phone of today draws */
       data: { x: 1000, y: 1000, z: 'town' },
     }));
     const fighter = i % 10 < FIGHTERS * 10;
@@ -150,7 +155,11 @@ async function run(n) {
     const measuring = t >= WARMUP_TICKS;
     if (t === WARMUP_TICKS) for (const p of players) { p.ws.bytes = 0; p.ws.sent = 0; }
     simNow += TICK_MS;
-    const mc0 = cpuNowMs();
+    /* v2.3.3315: the room's own time only -- the bots' choosing (nearestMonster
+       walks every monster in the Wheel, five times as many on the long one)
+       was inside this clock, and read as the room's */
+    let msgCpu = 0;
+    const toRoom = async (ws, s) => { const c = cpuNowMs(); await room.webSocketMessage(ws, s); msgCpu += cpuNowMs() - c; };
     for (const p of players) {
       p.acc += TICK_MS;
       p.swingAcc += TICK_MS;
@@ -165,7 +174,7 @@ async function run(n) {
         else { p.x += (dx / dist) * stepPx; p.y += (dy / dist) * stepPx; }
         /* v2.3.3194: what a phone sends (bots.mjs sendMove): a tenth of a
            pixel, velocity in hundredths of a pixel a 60 Hz frame, its gear */
-        await room.webSocketMessage(p.ws, JSON.stringify({
+        await toRoom(p.ws, JSON.stringify({
           type: 'move', x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10,
           d: 'down', f: 'south', eqc: 'none', eql: 'none', eqs: 'none', ex: null, z: 'wheel',
           vx: Math.round(dx / (dist || 1) * speed * 1000 / 60 * 100), vy: Math.round(dy / (dist || 1) * speed * 1000 / 60 * 100),
@@ -174,12 +183,11 @@ async function run(n) {
         if (measuring) msgs++;
         if (p.fighter && target && p.swingAcc >= SWING_EVERY_MS && Math.hypot(target.x - p.x, target.y - p.y) < 70) {
           p.swingAcc = 0;
-          await room.webSocketMessage(p.ws, JSON.stringify({ type: 'monster_damage', payload: { monsterId: target.id, zone: 'wheel', element: null, slot: 'melee', special: false } }));
+          await toRoom(p.ws, JSON.stringify({ type: 'monster_damage', payload: { monsterId: target.id, zone: 'wheel', element: null, slot: 'melee', special: false } }));
           if (measuring) msgs++;
         }
       }
     }
-    const msgCpu = cpuNowMs() - mc0;
     const c0 = cpuNowMs(), w0 = performance.now();
     tickFn();
     const tickCpu = cpuNowMs() - c0, tickWall = performance.now() - w0;

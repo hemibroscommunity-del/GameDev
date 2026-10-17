@@ -124,7 +124,11 @@ download by a quarter. That is the message diet's lever (§11, item 4 below).
 connections and a simulated clock, which measures the game's own code with no
 runtime around it. "% of a core" is what one second of play costs (measured
 with the first bots' moves, whose 16-digit numbers cost the room a little more
-to read and write than a phone's do):
+to read and write than a phone's do). Since v2.3.3315 its message clock times
+only the room's handling of each message: the bots' own choosing (each
+fighter's move walked every monster in the Wheel for the nearest) was inside
+it, and read as the room's -- five times over on the Wheel five times longer
+(`--short` is the short Wheel, docs/specs/wheel-5x.md "Server"):
 
 | Players | Messages in a second | % of a core | KB/s per phone (unzipped) |
 |---|---|---|---|
@@ -254,7 +258,10 @@ without a deploy.
    the crowd -- every monster measuring its distance to every player, a
    quarter of the room's work at 150 -- now looks only in the squares near
    the monster, with the same picks; 3-4 more ticks a second at every size,
-   smooth to about 120.*
+   smooth to about 120.  v2.3.3299 (`docs/specs/wheel-monsters.md`, "A monster
+   nobody is near rests"): and a monster with no player within 3,200 px does
+   nothing at all in a tick -- 10.7% -> 4.7% of a core with one player in the
+   room, and 2.9 -> 0.5 ms a tick with five times the monsters.*
 6. **Refuse new players before the room slows down too much**, for example
    when it runs fewer than 30 ticks a second, instead of letting everyone's
    world slow.

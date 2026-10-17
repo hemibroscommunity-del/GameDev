@@ -3047,6 +3047,78 @@ old map's far corner, and it slid in over ~15 frames.
 - keep `chunkGround.js` if the real world is going to stream the same way,
   which is the plan.
 
+## The Wheel built in blocks round you (v2.3.3298)
+
+The owner, 2026-10-17: *"the game map needs to be larger. It goes from lvl 1
+monsters to lvl 20+ way too quickly. Maybe 5x larger map is needed"* -- and,
+offered the ways, **"Rebuild for 5x"**. The first step changes nothing you can
+see: the ground worker stops building the whole Wheel on the way in.
+
+- **Why.** The whole map (blueprint, swatch map, walls, objects) took ~2.3 s
+  and ~47 MB at its peak; five times longer it is ~23.5 s and ~594 MB, where an
+  iPhone tab dies at ~250 MB. Even twice as long (~163 MB) does not fit.
+- **Blocks.** `core/worldblocks.js`: 128 x 128 cells (3,072 game px) a block,
+  built from `buildBlueprint(plan, rect)` with a margin, its swatch map
+  (`materialMap`), walls (`walkBits`, `swimBits`), region and tier; built under
+  the pieces of ground asked for and, when the worker is idle, next to yours;
+  the 48 nearest kept. A piece of ground is laid from a window stitched from
+  the blocks under it (`PIECE_MARGIN` 24 cells round it).
+- **Exactly the whole map.** Some steps look past a rectangle: the scattered
+  features are order-dependent (a feature is left out where an earlier one
+  covers its middle -- `planFeatures` works that out at its middle,
+  `stands`), the bridges need the river round a crossing (worked out once a
+  plan), the stages are averaged over 28 cells (`LAND_STAGE_MARGIN`), the walls
+  look 11 cells out (`WALL_MARGIN`). Every block and piece is compared with
+  the whole map, cell for cell, by test-world-core ("the Wheel in blocks").
+- **Walls by block.** The worker sends each block's walls as it builds it
+  (`block`); the game's walk grid reads them, a block not built yet reading as
+  open. `wheelBlocksAround(x, y, r)` asks for blocks far from any ground laid.
+- **Baked.** Where the objects stand is placed in one order over the whole
+  map, so `tools/world/bake-wheel-world.mjs` works it out once, with the
+  overview and the land colours: `public/world/placed/objects.bin`,
+  `overview.png`, `lands.png`, named by `core/placed.js` at their fingerprint.
+  The worker uses them when `planFingerprint(PLAN)` matches; the previews
+  (`?bigtown=`, `?plaintown`, `?placing=2`) and an un-baked plan build the whole
+  map for them as before. **A change to the plan, the object catalog or the
+  placing must re-bake** (`node tools/world/bake-wheel-world.mjs`), as it must
+  re-bake the monsters (`bake-wheel-spawns.mjs`).
+- **Memory.** The ground worker at the memory budget trip's peak: 24.8 MB
+  (main 28.7); on arrival 15.7 MB (main 20.6).
+
+docs/specs/wheel-in-blocks.md has the numbers and the tests.
+
+## The Wheel five times longer (v2.3.3315)
+
+Step 2 of the owner's "Rebuild for 5x": **every land's stretches are five
+times as long** -- a five-level stretch 5,120 game px (~34 s of walking), not
+1,024 -- with five times the monsters a stretch (1,920), 1,222 resources and
+63,486 things standing. BroTown and the commons are the same ground.
+
+- **Two plans, one picked at runtime.** `plan.js PLAN5` (`tierZones` x5, the
+  active area grown `wheelGrow` squares past the frame, `grid.js
+  active.grow`) and `PLAN`; `wheelSized(size)`, `planFor(search, size)`. The
+  previews (`?bigtown`, `?plaintown`, `?placing=2`) stay the short Wheel's
+  (`wheelPreview`): their objects need the whole map.
+- **The hub's noise counted from the plan's own corner** (`nox`/`noy`,
+  `layout.js planFeatures`): ground.js `materialMap` and the planks,
+  placing.js's lattices and noise (`NC`/`NX`). Without it, growing the frame
+  re-rolled every swatch and tree in town.
+- **Baked per size.** `bake-wheel-world.mjs` writes `public/world/placed5/`
+  (the overview a pixel every 16 cells, `overviewCells`) and
+  `public/world/placed/`; `bake-wheel-spawns.mjs` writes
+  `server/src/wheelspawns.js` (long, live) and `wheelspawns1.js` (short), 60
+  places a stretch on the long one. Re-bake both on any plan, catalog,
+  placing or spawn-rule change; test-world-core checks both.
+- **The worker picks** (`server/src/wheeltables.js`): the long Wheel unless
+  `wheel5x: false`, said in `caps.wheelsize`; a phone joining says which it
+  draws (`ws`), and one that says nothing is kept out of harm.
+- **The phone** builds the size it is told (`src/game/wheelSize.js`); its
+  minimap and world map draw the blocks round you at the short Wheel's detail
+  over the coarse picture (`wheelLocalLands`), the world map zooming ~4x
+  further with every step at the short Wheel's scale.
+
+docs/specs/wheel-5x.md has the numbers, the tests and what is not done yet.
+
 ## The Wheel is the world (v2.3.2990)
 
 > Owner, 2026-10-02: *"I'm ready to have this replace the old game map. Just

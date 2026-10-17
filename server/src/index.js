@@ -62,6 +62,7 @@ import { arenaMethods } from './gladiator.js';
 import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { hitMethods } from './hits.js'; /* v2.3.3296: one door for every monster hit on a player */
+import { relayMethods } from './relay.js'; /* v2.3.3304: the relay is an allowlist, in the sender's name */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
 import { dailyRewardsMethods } from './dailyrewards.js'; /* v2.3.3140: the free daily spin, daily quests, the season */
@@ -156,6 +157,9 @@ import { httpAuthMethods } from './httpauth.js';
 // v2.3.1185: party roster (handoff item D) -- invite/accept handshake +
 // cross-zone vitals HUD; memory-only, no combat/XP changes -- see party.js.
 import { partyMethods } from './party.js';
+/* v2.3.3313: the alliance -- a party of 20 active members gets a name, a tag,
+   wars in No man's land and a leaderboard (alliance.js, docs/specs/alliance.md) */
+import { allianceMethods } from './alliance.js';
 import { friendsMethods } from './friends.js';
 /* v2.3.1981: server-side chat mute + abuse reports -- the mute list is a
    storage fact enforced on the FAN-OUT (a muted line never reaches the
@@ -188,6 +192,7 @@ import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow speci
 // how many players are standing in THAT zone -- see spawnscale.js.
 import { spawnScaleMethods } from './spawnscale.js';
 import { WHEEL_ZONE, WHEEL, wheelzoneMethods } from './wheelzone.js'; /* v2.3.2978 */
+import { wheelTableMethods } from './wheeltables.js'; /* v2.3.3315: which Wheel the room plays */
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { pvpBalanceMethods } from './pvpbalance.js'; /* v2.3.3260: PvP hits rolled by the worker, and tuned */
 import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle of a fight -- the body stays */
@@ -205,6 +210,7 @@ import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look
 import { nearJoinMethods } from './nearjoin.js'; /* v2.3.3276: a join is told the players around it; a look comes when its player does */
 import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what is 5+ levels below you, harvests and fights */
 import { floodMethods, roomNameFor, requestIp, FLOOD } from './flood.js'; /* v2.3.3274: one socket cannot stop the game */
+import { originAllowed, refuseOrigin } from './origin.js'; /* v2.3.3312: only the game's own sites open a socket */
 import { verifyMethods } from './verify.js'; /* v2.3.3275: the account check -- a new character proves a person is there */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
@@ -250,6 +256,12 @@ async function routeHttp(request, env) {
     const noSuchRoom = () => new Response(JSON.stringify({ ok: false, error: 'no such room' }), { status: 404, headers: corsHeaders });
     if (url.pathname === '/ws') {
       if (!roomName) return noSuchRoom();
+      /* v2.3.3312: only the game's own sites (and a machine's own pages) may
+         open a game socket -- a copy on another site is told where the real
+         game is and never reaches a room (origin.js) */
+      const origin = request.headers.get('Origin');
+      const og = originAllowed(origin, env);
+      if (!og.ok) return refuseOrigin(request, origin, og.why);
       return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
     }
 
@@ -608,6 +620,10 @@ export const PRIVILEGED_EVENTS = new Set([
   // rosters; forging party_invited is popup-spam surface.
   'party_state', 'party_invited', 'party_error',
   'party_chat', // v2.3.1212: server-relayed party-only chat (party.js)
+  /* v2.3.3313: the alliance's answers (alliance.js) -- the board, a refusal,
+     and a war's end with what it paid you; forged, each would tell a player
+     something untrue about their alliance or their gold */
+  'alliance_rows', 'alliance_error', 'alliance_war_end',
   /* v2.3.2136: the two new chat lanes (chatlanes.js).  PRIVILEGED for the
      same reason party_chat is -- these carry a server-stamped `from`, and a
      client able to inject them could forge who said a thing in a lane the
@@ -868,6 +884,10 @@ const PEER_PUBLIC_KEYS = new Set([
   ...TRACK_COSMETIC_KEYS,
   ...JOIN_COSMETIC_KEYS,
   'name', 'x', 'y', 'd', 'z', 'vx', 'vy', 'f', 'ex', 'bro',
+  /* v2.3.3313: the alliance's tag -- set by the worker alone
+     (alliance.js _allySetTag), on no track or join list, so no phone can
+     send one; public as a name plate is */
+  'allyTag',
 ]);
 
 export class GameRoom {
@@ -1813,6 +1833,12 @@ export class GameRoom {
          null = the full loop (another zone, a handful of players, the kill
          switch, a position that is not a plain number) */
       const _aggroCells = zoneId === WHEEL_ZONE ? this._aggroGridOf(playersInZone) : null;
+      /* v2.3.3299: and which of them rest this tick -- no player near and
+         nothing in flight (wheelzone.js WHEEL.REST_CELL); the rest are the
+         ones swept apart below */
+      const _rests = zoneId === WHEEL_ZONE ? this._wheelRestTest(playersInZone) : null;
+      const _awake = _rests ? [] : null;
+      let _resting = 0;
 
       for (const m of monsters) {
         // Respawn check
@@ -1889,6 +1915,12 @@ export class GameRoom {
             this._markMonsterDirty(zoneId, m.id);
           }
           continue;
+        }
+        /* v2.3.3299: a live monster nobody is near does nothing this tick
+           (its respawn, above, stays on time) */
+        if (_rests) {
+          if (_rests(m)) { _resting++; continue; }
+          _awake.push(m);
         }
 
         // Mid-fight variant transform (currently just mummy -> skeleton
@@ -2522,7 +2554,11 @@ export class GameRoom {
          there (measured).  It keeps them apart by a sweep along x instead
          (wheelzone.js _wheelSeparate), the same rule for every pair close
          enough to matter; every other zone runs the loop below, unchanged. */
-      if (zoneId === WHEEL_ZONE) this._wheelSeparate(zoneId, monsters, 22);
+      /* v2.3.3299: the awake ones -- a resting monster has not moved */
+      if (zoneId === WHEEL_ZONE) {
+        this._wheelSeparate(zoneId, _awake || monsters, 22);
+        this._wheelResting = _resting;
+      }
       else {
         const MIN_SEP = 22;
         for (let i = 0; i < monsters.length; i++) {
@@ -3081,7 +3117,7 @@ export class GameRoom {
     /* v2.3.3292: a roll the worker charged for opens the window in which the
        phone's `dodging` counts against a player's blow (movement.js ROLL) --
        paid here, never claimed */
-    if (ROLL.PAID.includes(type)) this._rollStamp(ps, Date.now());
+    if (ROLL.PAID.includes(type)) this._rollStamp(ps, Date.now(), type);   /* v2.3.3300: + which roll, for _rollIFrames */
     /* ═══ v2.3.2361: THE LUNGE STOPS BEING THE ONE ABILITY THAT ONLY BILLS ═══
        Owner, answering the question doLunge left in the code at v2.3.2352:
        "Yes lunge damage should take effect."  The whole roll, the reach, the
@@ -3217,6 +3253,9 @@ export class GameRoom {
        the duel opponent -- is used here, while it is still known.  Any other
        death (a third player, a monster) runs both hooks as before. */
     if (!_duelKill) _hook('war', () => this._warOnDeath(playerId, cause));
+    /* v2.3.3313: an alliance war's kill -- a kill under No man's land's rule
+       by one roster on the other (alliance.js); a duel's never counts */
+    if (!_duelKill) _hook('allywar', () => this._allyWarOnDeath(ps, playerId, cause));
     // v2.3.1211 (item C): a killed threatener's guard-fine bounty pays
     // out to their killer here too (same server-observed 'pvp:' cause;
     // self / duel / same-clan / non-PvP excluded inside the hook).
@@ -5412,6 +5451,19 @@ export class GameRoom {
         // the sender + relays only to party members (party.js).
         if (session.id) this._handlePartyChat(session, msg.payload || msg);
         break;
+      /* v2.3.3313: the alliance (alliance.js): the leader names it or
+         declares a war; anyone asks for the board.  Explicit cases, so
+         nothing of them ever reaches the rebroadcast branch; the phone sends
+         them only against caps.alliance. */
+      case 'alliance_name':
+        if (session.id) await this._handleAllianceName(session, msg.payload || msg);
+        break;
+      case 'alliance_war':
+        if (session.id) await this._handleAllianceWar(session, msg.payload || msg);
+        break;
+      case 'alliance_board':
+        if (session.id) await this._handleAllianceBoard(session);
+        break;
       /* v2.3.2136: the @area and @user lanes (chatlanes.js).  Own validated
          cases for the same reason party_chat is one: the default branch
          rebroadcasts unknown types to the WHOLE ROOM, which for a whisper
@@ -5765,8 +5817,12 @@ export class GameRoom {
         // client.  Legitimate client→client broadcasts (chat, emote,
         // pvp_confirmed, player_shield, player_died_to_monster, etc.)
         // still flow through here -- they hit the deny-list miss and
-        // get rebroadcast normally.
+        // get rebroadcast normally.  (v2.3.3304: and only those -- the
+        // allowlist below, relay.js RELAY.TYPES.)
         if (PRIVILEGED_EVENTS.has(msg.type)) break;
+        /* v2.3.3304: ...and only a type a phone relays: an ALLOWLIST now, the
+           deny-list above its last line (relay.js RELAY.TYPES) */
+        if (!this._relayAllowed(msg.type)) break;
         /* ═══ v2.3.1618: RELAY BUDGET ═══
          *
          * The size gate at the top of this method bounds ONE message; this
@@ -5799,6 +5855,11 @@ export class GameRoom {
           session.relayTokens -= 1;
         }
         if (session.id) {
+          /* v2.3.3304: rebuilt -- {type, payload} and nothing else, the
+             payload a copy in the worker's name for the sender (relay.js):
+             a phone relayed "Bob died" by putting Bob's id in the payload,
+             which the others' pages read before `from` */
+          msg = this._relayBuild(session, msg);
           /* v2.3.1970: room chat is a relay, but not a blank cheque --
              clamp the line, strip control chars and stamp the sender
              before it is fanned out.  False means there is nothing left
@@ -6117,6 +6178,7 @@ Object.assign(GameRoom.prototype, dungeonMethods);
 // v2.3.1730: telegraphed standard-zone attacks -- see telegraph.js.
 Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, hitMethods); /* v2.3.3296 */
+Object.assign(GameRoom.prototype, relayMethods); /* v2.3.3304 */
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, dailyRewardsMethods); /* v2.3.3140 */
@@ -6188,6 +6250,7 @@ Object.assign(GameRoom.prototype, eventPlaceMethods); /* v2.3.3245 */
 Object.assign(GameRoom.prototype, presence2Methods); /* v2.3.3250 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
+Object.assign(GameRoom.prototype, allianceMethods); /* v2.3.3313 */
 // v2.3.1191 (P4 decomposition): combat/damage core -- see combat.js.
 Object.assign(GameRoom.prototype, combatMethods);
 // v2.3.1192: server amulet forge (handoff item I follow-up) -- see amulet.js.
@@ -6203,6 +6266,7 @@ Object.assign(GameRoom.prototype, arrowBlastMethods); /* v2.3.2279 */
 // v2.3.1983: population-scaled spawns -- see spawnscale.js.
 Object.assign(GameRoom.prototype, spawnScaleMethods);
 Object.assign(GameRoom.prototype, wheelzoneMethods); /* v2.3.2978 */
+Object.assign(GameRoom.prototype, wheelTableMethods); /* v2.3.3315 */
 Object.assign(GameRoom.prototype, noMansLandMethods); /* v2.3.3058 */
 Object.assign(GameRoom.prototype, shieldWearMethods); /* v2.3.3091 */
 Object.assign(GameRoom.prototype, shieldGemMethods); /* v2.3.3187 */

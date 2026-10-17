@@ -11,6 +11,9 @@
  *                   row at a time as they are read: the Wheel is 1792 x 1792
  *                   cells, and as plain rows that is 3.2 million booleans,
  *                   ~26 MB on iPhone Safari.  Held as bits it is 400 KB.
+ *                   v2.3.3298: the bits come a BLOCK at a time, as the
+ *                   worker builds the blocks round you (core/worldblocks.js:
+ *                   it no longer builds the whole Wheel), ~4 KB a block.
  *   the overview    the whole Wheel, small, in the plan's colours: the
  *                   underlay for ground still being laid, and the Map panel.
  *   the numbers     for the trial's readout.
@@ -28,14 +31,24 @@
    own modules, which live there too. */
 const WORKER_URL = '/tools/world/core/ground-worker.js';
 import { landLook, hexRgb } from '../data/wheelLands.js';   /* v2.3.3024: each land's flat colour */
+import { wheelLong, noteWheelBuilt } from './wheelSize.js';   /* v2.3.3315: which Wheel the room plays */
 
-const ROW_KEEP = 160;          /* walk-grid rows kept made, ~14 KB each on iPhone */
+const ROW_KEEP = 160;          /* walk-grid rows kept made, a byte a cell (v2.3.3315: 1.8 KB today, 7 KB on the long Wheel; a JS array was ~14 KB and would be ~58) */
+/* v2.3.3298: the Wheel's walls come a block at a time (the worker's 'block':
+   public/tools/world/core/worldblocks.js), ~4 KB each; the ones furthest
+   from the last read go past this many */
+const BLOCK_KEEP = 96;
 const UNDER_KEEP = 160;        /* v2.3.2967: pieces whose ground-underfoot is kept, 4 KB each */
 
 let _w = null;
 let _initP = null;
 let _info = null;
 let _grid = null;
+/* v2.3.3298: the walls of each block the worker has built: "I,J" -> { x, y,
+   w, h, walk, swim } (cells, one bit a cell of the block) -- and the rows the
+   walk grid has made from them, so a block that comes can unmake its rows */
+const _blocks = new Map();
+let _rowsMade = null;
 let _overview = null;
 let _overviewLands = null;     /* v2.3.3024: the same, each land one flat colour */
 let _seq = 0;
@@ -132,14 +145,37 @@ export function wheelSwimOn() {
    sea)?  false outside the Wheel's worker, or with `?noswim`. */
 export function wheelSwimCell(x, y) {
   const info = _info;
-  const swim = info && info.walk && info.walk.swim;
-  if (!swim || !wheelSwimOn()) return false;
+  if (!info || !info.walk || !wheelSwimOn()) return false;
   const cell = info.worldW / info.walk.cols;
   const cx = Math.floor(x / cell), cy = Math.floor(y / cell);
   if (cx < 0 || cy < 0 || cx >= info.walk.cols || cy >= info.walk.rows) return false;
-  const k = cy * info.walk.cols + cx;
-  return !!(swim[k >> 3] & (1 << (k & 7)));
+  /* v2.3.3298: from the block there (none yet: not water you swim in) */
+  const b = blockWalls(cx, cy, info.walk.block);
+  if (!b) return false;
+  const k = (cy - b.y) * b.w + (cx - b.x);
+  return !!(b.swim[k >> 3] & (1 << (k & 7)));
 }
+/* v2.3.3298: the walls of the block that cell (cx, cy) is in, or null when
+   the worker has not built it */
+function blockWalls(cx, cy, B) {
+  if (!B) return null;
+  return _blocks.get(Math.floor(cx / B) + ',' + Math.floor(cy / B)) || null;
+}
+/* how many blocks' walls the game holds now (the readout, the tests) */
+export function wheelBlocksHeld() { return _blocks.size; }
+/* v2.3.3298: the walls of every block within `r` game px of (x, y), asked
+   of the worker -- for a reader that needs them far from any piece of ground
+   laid (the worker builds the blocks round the pieces it lays, and the walk
+   grid reads a block not built yet as open).  Resolves once they are here. */
+export function wheelBlocksAround(x, y, r) {
+  if (!_w || !_info) return Promise.resolve(0);
+  const id = ++_seq;
+  return new Promise((resolve, reject) => {
+    _pending.set(id, { resolve, reject });
+    _w.postMessage({ type: 'blocks', id, x0: x - r, y0: y - r, x1: x + r, y1: y + r });
+  }).then((m) => m.n);
+}
+if (typeof window !== 'undefined') window.__btWheelBlocks = (x, y, r) => wheelBlocksAround(x, y, r);
 /* Is the ground DRAWN at (x, y) water (the piece laid there, every 3 game
    px: wheelGroundAt)?  true / false, or null where no piece is laid yet --
    the swimmer then stays as they were.  The pictures decide, not the cells,
@@ -214,7 +250,11 @@ export function wheelStart() {
     /* v2.3.3021: and whether the game draws the water moving here, so the
        worker takes the frozen web of light out of the water pictures
        (ground.js CALM WATER; setWheelWaterMoves, from wheelWater.js) */
-    w.postMessage({ type: 'init', search, moving: _waterMoves, palette: _palette });
+    /* v2.3.3315: and which Wheel the room plays (caps.wheelsize): the long
+       one five times the short one's every tier (plan.js wheelSized) */
+    const size = wheelLong();
+    noteWheelBuilt(size);
+    w.postMessage({ type: 'init', search, moving: _waterMoves, palette: _palette, size });
   });
   _initP.catch((e) => { wheelStats.error = String((e && e.message) || e); });
   return _initP;
@@ -224,9 +264,21 @@ function onMessage(m, resolveInit, rejectInit) {
   if (!m) return;
   /* a failure with no request of its own is the plan build's */
   if (m.type === 'error' && m.id == null) { wheelStats.error = m.message; rejectInit(new Error(m.message)); return; }
+  /* v2.3.3298: a block of the Wheel's walls, built for a piece or for 'where'
+     (it can come before 'ready': kept all the same) */
+  if (m.type === 'block') {
+    const k = m.I + ',' + m.J;
+    _blocks.delete(k);
+    _blocks.set(k, { x: m.x, y: m.y, w: m.w, h: m.h, walk: m.walk, swim: m.swim, lands: m.lands || null });
+    _landsVer++;   /* v2.3.3315: the minimap's lands round you (wheelLocalLands) */
+    /* (the oldest go: a block is built again, and sent again, when it is wanted) */
+    while (_blocks.size > BLOCK_KEEP) _blocks.delete(_blocks.keys().next().value);
+    if (_rowsMade) for (let y = m.y; y < m.y + m.h; y++) _rowsMade.delete(y);
+    return;
+  }
   if (m.type === 'ready') {
     _info = m;
-    _grid = lazyGrid(m.walk.bits, m.walk.cols, m.walk.rows, wheelSwimOn() ? m.walk.swim : null);
+    _grid = lazyGrid(m.walk.cols, m.walk.rows, m.walk.block, wheelSwimOn());
     _overview = overviewCanvas(m.overview);
     _overviewLands = landsCanvas(m.overview, m.overviewLands);
     wheelStats.planMs = m.planMs;
@@ -393,6 +445,10 @@ export function wheelStop() {
   _initP = null;
   _info = null;
   _grid = null;
+  _blocks.clear();
+  _rowsMade = null;
+  noteWheelBuilt(0);   /* v2.3.3315 */
+  if (_local) { _local.canvas.width = _local.canvas.height = 0; _local = null; }
   if (_overview) { _overview.width = _overview.height = 0; _overview = null; }
   if (_overviewLands) { _overviewLands.width = _overviewLands.height = 0; _overviewLands = null; }
   for (const p of _pending.values()) p.reject(new Error('stopped'));
@@ -420,17 +476,34 @@ export function wheelStop() {
    and is read as it always was. */
 /* v2.3.3003: `swim`, ground.js swimBits -- the water you may swim in is
    open to walk into like land (wheelSwim.js makes it swimming); the open
-   sea stays shut.  null (`?noswim`, or a worker before it): every drop of
-   water a wall, as before. */
-function lazyGrid(bits, cols, rows, swim) {
+   sea stays shut.  false (`?noswim`): every drop of water a wall, as before.
+   v2.3.3298: the bits come a block at a time (`B` cells a side, the worker's
+   'block'), as the worker builds the blocks round the pieces it is asked
+   for -- ahead of you, as the ground is.  A cell of a block not here yet is
+   OPEN: the worker builds a block before any piece of ground on it, so it is
+   one you cannot see yet, and walls that stopped you at the edge of what has
+   been built would be walls nobody drew.  A row made before its block came
+   is made again (`_rowsMade`, unmade by the block). */
+function lazyGrid(cols, rows, B, swimOn) {
   const made = new Map();
+  _rowsMade = made;
   const rowAt = (y) => {
     let r = made.get(y);
     if (r) return r;
-    r = new Array(cols);
-    for (let x = 0, k = y * cols; x < cols; x++, k++) {
-      const m = 1 << (k & 7);
-      r[x] = !(bits[k >> 3] & m) || !!(swim && (swim[k >> 3] & m));
+    /* v2.3.3315: a byte a cell, 1 open and 0 a wall -- its readers take 0 as
+       they take false (isSolid, nudgeSpawnToWalkable, the trail's route).  A
+       row of the Wheel five times longer is 7,264 cells: ~58 KB as an array
+       of booleans on iPhone, 9 MB for the rows kept */
+    r = new Uint8Array(cols).fill(1);
+    const J = Math.floor(y / B);
+    for (let I = 0, x0 = 0; x0 < cols; I++, x0 += B) {
+      const b = _blocks.get(I + ',' + J);
+      if (!b) continue;
+      const bits = b.walk, swim = swimOn ? b.swim : null;
+      for (let x = 0, k = (y - b.y) * b.w; x < b.w; x++, k++) {
+        const m = 1 << (k & 7);
+        r[b.x + x] = !(bits[k >> 3] & m) || !!(swim && (swim[k >> 3] & m)) ? 1 : 0;
+      }
     }
     made.set(y, r);
     if (made.size > ROW_KEEP) made.delete(made.keys().next().value);
@@ -447,6 +520,56 @@ function lazyGrid(bits, cols, rows, swim) {
       return undefined;
     },
   });
+}
+
+/* ═══ v2.3.3315: THE LANDS ROUND YOU, AT THE MINIMAP'S DETAIL ═══
+   The long Wheel's whole-map picture is a pixel every 16 cells (worldblocks.js
+   overviewCells): blurred to nothing on the minimap, which shows ~3,200 game
+   px.  So each block the worker builds brings its lands a pixel every 4 cells
+   (ground-worker.js blockLands), and this lays the held ones round (x, y),
+   `R` blocks each way, into one small canvas in the flat land colours -- what
+   the minimap and the world map draw over the coarse picture.  A block not
+   here yet is left clear (the coarse picture shows through).  The short
+   Wheel's picture is already this fine: null there. */
+let _landsVer = 0;
+let _local = null;
+const SEA_RGB = [28, 70, 126];   /* ground.js WATER_RGB.deep, the overview's sea */
+export function wheelLocalLands(x, y, R = 2) {
+  if (!_info || wheelLong() === 1 || typeof document === 'undefined' || typeof x !== 'number' || typeof y !== 'number') return null;
+  const B = _info.walk.block, cols = _info.walk.cols, rows = _info.walk.rows;
+  if (!B || !cols) return null;
+  const cg = _info.worldW / cols;                       /* game px a cell */
+  const I = Math.floor(x / cg / B), J = Math.floor(y / cg / B);
+  const key = I + ',' + J + '|' + _landsVer;
+  if (_local && _local.key === key) return _local;
+  let k = 0;
+  for (const b of _blocks.values()) if (b.lands) { k = b.lands.k; break; }
+  if (!k) return null;
+  const side = Math.ceil(B / k), n = 2 * R + 1;
+  const c = (_local && _local.canvas) || document.createElement('canvas');
+  if (c.width !== side * n) { c.width = side * n; c.height = side * n; }
+  const out = new Uint8ClampedArray(side * n * side * n * 4);
+  const ids = (_info.overviewLands && _info.overviewLands.ids) || [];
+  const rgbOf = ids.map((id) => { const l = landLook(id); return l ? hexRgb(l.color) : null; });
+  for (let dj = 0; dj < n; dj++) for (let di = 0; di < n; di++) {
+    const bI = I - R + di, bJ = J - R + dj;
+    if (bI < 0 || bJ < 0 || bI * B >= cols || bJ * B >= rows) continue;
+    const b = _blocks.get(bI + ',' + bJ);
+    if (!b || !b.lands || b.lands.k !== k) continue;
+    const L = b.lands;
+    for (let ty = 0; ty < L.h; ty++) for (let tx = 0; tx < L.w; tx++) {
+      const v = L.data[ty * L.w + tx], rgb = v === 255 ? SEA_RGB : rgbOf[v];
+      /* (ground in no land -- a realm past a gate -- is left clear: the whole
+         map's picture draws it in its ground's colour, as landsCanvas does) */
+      if (!rgb) continue;
+      const o = ((dj * side + ty) * side * n + (di * side + tx)) * 4;
+      out[o] = rgb[0]; out[o + 1] = rgb[1]; out[o + 2] = rgb[2]; out[o + 3] = 255;
+    }
+  }
+  c.getContext('2d').putImageData(new ImageData(out, side * n, side * n), 0, 0);
+  const span = B * cg;
+  _local = { key, canvas: c, x: (I - R) * span, y: (J - R) * span, w: n * span, h: n * span, ver: _landsVer };
+  return _local;
 }
 
 /* ═══ v2.3.3024: THE LANDS IN FLAT COLOURS ═══

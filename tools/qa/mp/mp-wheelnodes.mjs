@@ -190,8 +190,14 @@ async function body({ P, wsPort, rec, OUT, errors }) {
     };
   }, spot);
   console.log(`    water at ${spot.id}: ${JSON.stringify(water)}`);
-  rec.ok('...where they swim is drawn as water, and the angler\'s seat is dry ground to stand on (at most one of a swimmer\'s five looks wet)',
-    water.spot === true && water.swim.every((w) => w === true) && water.seatLand && water.seatOpen && water.seatWet <= 1, water);
+  /* v2.3.3315: the school's EDGE may cross the drawn shore at one of its nine
+     points -- a fish there dives out of sight (wheelNodes.js: "a survey of
+     all 32 spots as drawn: one school's edge", wn-commons-15, the pond this
+     road leads to on the Wheel five times longer, whose nearer river spots
+     moved) -- never its middle or its spot */
+  const dryAt = water.swim.filter((w) => w !== true).length;
+  rec.ok(`...where they swim is drawn as water (${9 - dryAt} of the school's 9 points; at most its edge on the bank, where a fish dives), and the angler's seat is dry ground to stand on (at most one of a swimmer's five looks wet)`,
+    water.spot === true && water.swim[0] === true && dryAt <= 1 && water.seatLand && water.seatOpen && water.seatWet <= 1, water);
   await closeTalk(P);
   await P.page.waitForTimeout(600);
   await P.page.screenshot({ path: join(OUT, 'wheelnodes-fish.png') });
@@ -292,6 +298,14 @@ async function body({ P, wsPort, rec, OUT, errors }) {
     if (tree) {
       await P.page.evaluate(({ x, y }) => { const S = window._gameState.current; S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0; },
         { x: tree.x + STAND.tree[0], y: tree.y + STAND.tree[1] });
+      /* v2.3.3298: the ground under the tree laid first -- the worker builds
+         the Wheel a block at a time now (worldblocks.js), so a jump this far
+         waits for its blocks as a walk never does */
+      for (let k = 0; k < 32; k++) {
+        const laid = await P.page.evaluate(({ x, y }) => { const at = window.__btSwimAt; return !!(at && at(x, y).water !== null); }, { x: tree.x, y: tree.y });
+        if (laid) break;
+        await P.page.waitForTimeout(250);
+      }
       await P.page.waitForTimeout(500);
       const n0 = await P.page.evaluate(() => {
         const S = window._gameState.current;

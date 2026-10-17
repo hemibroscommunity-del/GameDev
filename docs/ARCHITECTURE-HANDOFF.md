@@ -52,7 +52,11 @@ extended.
    schema stamp — `_saveRpg` writes the `RPG_SCHEMA_VERSION` constant and
    `_loadRpg` runs `runRpgMigrations` against it (server/src/migrations.js,
    spec docs/specs/migrations.md). Shape changes to the blob now ship as
-   registry migrations, not ad-hoc heal-on-load branches.
+   registry migrations, not ad-hoc heal-on-load branches. v2.3.3303: a
+   migration that fails really retries (the join's save stamps the
+   version the load reached, not the constant), and a blob a newer worker
+   saved is refused at the join (close 1011) rather than rewritten by an
+   older one; `newersave: false` lets it in.
 2. **Storage-key registry** (all GameRoom DO storage; prefix + `:` + id,
    enumerable via `storage.list({prefix})`):
 
@@ -72,7 +76,8 @@ extended.
    | `store_thread:<listingId>` | `{t: {<buyerId>: [{f,n,x,ts}, ...]}, at}` — the message threads on ONE auction-house listing (v2.3.2621). Keyed by the LISTING, not by the pair: a listing has one seller and N interested buyers, so `t` holds one conversation per buyer. One key rather than `store_thread:<listingId>:<buyerId>` because the seller's own view wants every conversation at once (one read, not THREADS_MAX — rule 9's second edge) and cleanup is one delete. Bounded on both axes (THREADS_MAX 5, MSGS_MAX 20, TEXT_MAX 200). DELETED with the listing, before the listing record, at all three ends | store-chat.md |
    | `duelEscrow:<duelId>` | `{a, b, wager, startedAt}` | duels.md |
    | `clan:<clanId>` / `clan_by_player:<pid>` / `clan_war:<warId>` | clan registry + war snapshots | clans.md |
-   | `party:<partyId>` / `party_by_player:<pid>` | the PARTY THAT LASTS (v2.3.3284, party.js): `{v, id, leader, members: [pid, oldest first], meta: {pid: {name, level, at, seen}}, ts}`, and each member's own word for which party they are in -- the index is the truth, a record that lists someone whose index names another party loses them at its next load. Written only when the roster changes (and a member's `seen` at a join at most every 6 h), fire-and-forget; read at a member's join; a newer `v` is left whole and its reader unknown (no invite either way). Deleted with the character (`_partyOnReset`) and when the party is down to one. Not read or written with `partykeep: false` | party.md |
+   | `party:<partyId>` / `party_by_player:<pid>` | the PARTY THAT LASTS (v2.3.3284, party.js): `{v, id, leader, members: [pid, oldest first], meta: {pid: {name, level, at, seen}}, ts}`, and each member's own word for which party they are in -- the index is the truth, a record that lists someone whose index names another party loses them at its next load. Written only when the roster changes (and a member's `seen` at a join at most every 6 h), fire-and-forget; read at a member's join; a newer `v` is left whole and its reader unknown (no invite either way). Deleted with the character (`_partyOnReset`) and when the party is down to one. Not read or written with `partykeep: false`. v2.3.3313: a party that has been an ALLIANCE carries `ally: {on, since, name, tag, renamedAt}` and is shape `v: 2` (one that never was stays 1, so a rollback reads it) | party.md, alliance.md |
+   | `ally:<partyId>` / `ally_war:<warId>` | the ALLIANCE (v2.3.3313, alliance.js): the board's row of a party that has been one -- `{v, id, on, name, tag, since, members, act: [[seen + 7 days, level], ...]}`, written WITH its party record (`_partyStore`, the same run, one write batch) and deleted with it, so a name lives as long as its party; read once a worker's life (`_allyEnsure`: the board, a rename's uniqueness check, a war, a clan's creation, an alliance member's join).  A war: `{v, id, status, startTime, endTime, a/b: {pid, tag, name, score, members, fought}, kills, paid}`, written at its declaration, each kill and its end, kept `WAR_RETENTION` 48 h after (its end is both sides' hour of rest); its pay by `_creditPlayer`, opIds `allywar:<warId>:<pid>`.  Nothing with `alliance: false` or `partykeep: false` but a party's end deleting its row | alliance.md |
    | `arena_entry:<tid>:<pid>` | escrowed 100g tournament entry | arena.md |
    | `arena_stake:<tid>:<mid>:<pid>` | escrowed sponsorship stake | sponsorship.md |
    | `arena_house` | `{hour, used}` — the gold the house has added to arena champions' prizes in the current UTC clock hour (`hour` = ms / 3,600,000), at most `ARENA.HOUSE_GOLD_PER_HOUR` (v2.3.3178). Read once at the first join after a start; written BEFORE the prize is paid. A single bounded key, never a prefix | arena.md |
@@ -218,6 +223,11 @@ extended.
     live in its allowlist — see docs/specs/conformance-audit.md).
     Mirror-table drift (server/src/data.js vs client tables) is
     likewise pinned by `test/mirror-audit.test.mjs`.
+    v2.3.3304: and the default branch relays only `RELAY.TYPES`
+    (server/src/relay.js), each rebuilt in the sender's name (the
+    payload's `id`, `from`, `fromName`... are the worker's). A new
+    client->client relay goes on that list or it reaches no one;
+    `test/relay.test.mjs` holds the list to every broadcast in src/.
 14. **Handshake halves are validated per-sender-session.** An accept is
     honored only against a live challenge/offer recorded from the OTHER
     side's own connection (trades, duels, threat, clan invites). The
@@ -304,8 +314,9 @@ extended.
     (see any `server/test/*.test.mjs`): stateful Map-backed storage mock
     with prefix `list`, `fakeWs` collecting sent JSON, `check()`
     counters, a real `webSocketMessage` join helper, exit 1 on failure,
-    registered in `server/package.json` `npm test`. Spec docs go in
-    `docs/specs/<system>.md` with the wire surface tabled.
+    named `server/test/<name>.test.mjs` -- since v2.3.3302 `npm test`
+    (test/run.mjs) runs every such file, so nothing else registers it.
+    Spec docs go in `docs/specs/<system>.md` with the wire surface tabled.
 25. **Comment discipline**: every change carries a `v2.3.NNNN:` tag
     explaining WHY, often with incident history; constants live in
     ALL-CAPS config objects (`MARKET`, `DUEL`). This is the project's
@@ -336,8 +347,9 @@ extended.
 28. **Every monster hit on a player goes through ONE door** (v2.3.3296,
     `hits.js` `_monsterHit`, docs/specs/hit-door.md). A new way for a
     monster to hurt a player is a row in `MONSTER_HITS` -- its harvest
-    shield, safe ground, roll, rock, shield (cost, parry, a hit of 0), rail,
-    element and after-effects -- and a wrapper that works out who is hit and
+    shield, safe ground, roll, rock, shield (cost, parry), rail, element and
+    after-effects (v2.3.3300: the owner's nine decisions, hit-door.md
+    "Decided") -- and a wrapper that works out who is hit and
     for how much. It never calls `_applyDamage` itself: `hit-door.test` §10d
     fails a fourth file that does (the other two are a player's hits,
     combat.js and pvpextras.js). Changing what a way of being hit does is
@@ -445,6 +457,8 @@ Still open: an in-world arrow at the screen's edge. Danger: do not touch the
 §7 share math (TRAPS #3; party.md's danger note stands).
 
 **A party that lasts SHIPPED v2.3.3284** (party.md "A party that lasts"): stored (`party:` / `party_by_player:`), offline members kept, up to 50, dungeons still four (the leader pulls the three nearest), the strip six rows -- step 1 of the owner's party -> alliance plan (2: the alliance at 20+ active members; 3: clans retire into it).
+
+**The alliance SHIPPED v2.3.3313** (alliance.md): a party of 20 active members (played in the last 7 days, level 5+) is an alliance until below 15 -- a name and tag (the leader's, once a day, unique across alliances and clans) on every member's plate (`allyTag`, worker-set only), 30-minute wars between alliances scored on No man's land kills and paying only who fought, and a board by active members then levels (`ally:` rows written with the party record; `ally_war:`). Step 2 of 3; step 3 retires clans into parties.
 
 ### E. Trade2 weapon lane — SHIPPED v2.3.1213
 Weapons trade in the two-sided window now (trading.md addendum "Weapon

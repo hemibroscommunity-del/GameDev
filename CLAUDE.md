@@ -1020,6 +1020,17 @@ remnant to migrate server-side, not a mode to preserve.
     bystanders who never hurt it take nothing; kill switch `wheelpursue:
     false`; server only: docs/specs/wheel-monsters.md "Provoked from the safe
     ground", `wheelzone` §5d.
+  - Since v2.3.3299 A MONSTER NOBODY IS NEAR RESTS -- for the owner's "Maybe 5x
+    larger map is needed" ("Rebuild for 5x"): five times the land is five times
+    the monsters. A live Wheel monster outside the squares of `WHEEL.REST_CELL`
+    1,600 px within `REST_REACH` 2 of every live player's (at least 3,200 px),
+    with no target, wind-up, telegraph, snowball, burrow or fuse in flight,
+    does nothing in a tick (wheelzone.js `_wheelRestTest`, index.js
+    `_tickMonsters`); it still comes back to life on time and its statuses
+    tick; only awake ones are swept apart. 384 with one player in town 335 ->
+    116 µs a tick, 1,920 2.9 -> 0.5 ms; kill switch `wheelrest: false`;
+    `wheelzone` §10: docs/specs/wheel-monsters.md "A monster nobody is near
+    rests".
   - Since v2.3.3016 DUNGEONS IN THE WHEEL -- offered "Dungeons in the Wheel
     ... the other big missing piece", the owner: "Yes continue working on
     those items":
@@ -1615,6 +1626,24 @@ remnant to migrate server-side, not a mode to preserve.
       back to "nothing open" (`src/rendering/renderHeal.js`; `?noheal` to
       compare) and the next frame draws. TRAPS §144, `mp-renderheal` (the
       throw made as it happened, with `bindfix=0`; `noheal` shows the black).
+    - since v2.3.3313 THE MINIMAP NEVER COVERS THE SCREEN -- the owner:
+      "often loading from a saved character will show the game as an enlarged
+      minimap. You're forced to log back out and back in to fix it": a canvas's
+      WebGL context is made by whoever asks FIRST, and the crash report's GPU
+      line (crashTrap.js) and the black-screen watchdog asked the game's canvas
+      bare, with WebGL's defaults -- no stencil buffer, so every mask drew
+      unclipped and the Wheel's minimap covered the screen. The report goes
+      1.5 s after any boot with something in the crash log (or any error), and
+      the canvas is up a moment before Pixi takes it as a character is played
+      from the list (and on a rebuild's fresh canvas): a race. Both now read the renderer's own
+      context (`_wdGl(cv)`, `window._pixiRenderer.app.renderer.gl`), never a
+      canvas's getContext; a context that ever comes up without a stencil
+      buffer is said in the crash log (`gl-no-stencil`) and the canvas swapped
+      for a fresh one, once a page, its context asked for as Pixi asks by
+      default (depth buffer too: pixiApp.js `withoutDepthBuffer` stands aside).
+      TRAPS §194, `mp-savedload` (the race made
+      certain: Pixi's file held back while a page error sends a report; and the
+      context taken bare by the test).
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:
@@ -2406,7 +2435,8 @@ remnant to migrate server-side, not a mode to preserve.
       (playerSkins `_standInClothes`: the trousers' big pieces, boot pieces
       mostly below their hem -- the pan held at the waist goes whole;
       `pantsWide` for the fire's glow); a peer's cook/fire-lighter is your
-      bake (the v2.3.1713 trade), a drawn peer's lumberjack theirs;
+      bake (the v2.3.1713 trade), a drawn peer's lumberjack theirs (every
+      peer's is theirs since v2.3.3314, below);
     - the cook's head traits 1.16 -> 1.65 (`_skillTraitMul`: his head 85 px
       against stand's 51);
     - then, offered what was left, the owner: "Yes fix all":
@@ -2430,6 +2460,38 @@ remnant to migrate server-side, not a mode to preserve.
         3 s (`_oreSplit`);
     - QA `display._bodyScale`, `window.__btStandInClothes`,
       `window.__btDressedShirt`; `mp-gatherlook`.
+    - since v2.3.3314 ANOTHER PLAYER GATHERS IN THEIR OWN COLOURS -- the
+      owner: "Other players cooking showed wrong skin color and maybe other
+      stuff too. Needs fixed":
+      - a peer's cook and fire-lighter were YOUR figure (the v2.3.1713 trade:
+        your skin, and since v2.3.3146 your trousers and boots), an undrawn
+        peer's lumberjack the unpainted art;
+      - now effectsRenderer `_peerFigure` picks the figure: yours only when it
+        is made and they wear your colours (`_cookLook`/`_fireLook`/
+        `_chopLook`, the last only with no drawings on either of you), else one
+        baked for THEIR colours by the same recipe (`_peerFigFrames`,
+        `_peerChopFrames` now for every peer), keyed by the colours, not the
+        player (`_standInColourKey`);
+      - until it is made their walking body stays drawn: entityRenderer asks
+        `peerStandInReady` (standIns.js, the effects renderer's answer, a look)
+        before it hides the body, in the same frame -- never neither, never
+        both; in greaves the strip with legs stands in while the legless one
+        bakes, never a legless one without greaves;
+      - ONE ALLOWANCE for all of them, `PEER_FIG_BUDGET` 16 MB (`_peerFigRoom`:
+        a cook 4.5 MB, a fire-lighter 6.3, a lumberjack 2.0 -- about eight
+        lumberjacks, three cooks or two fire-lighters), GPU only, released 15 s
+        after nobody drew one; past it, a figure nobody drew in the last second
+        gives way, else the next peer stays in their walking body; a failed
+        bake waits 15 s, a strip that never answers gives up after 15 s, and a
+        peer's greaves are waited for at most 3 s;
+      - a peer's cook or fire-lighter no longer makes YOURS (`_standInTriggers`;
+        it was 9 MB for the cook, kept for the visit); a peer's lumberjack
+        still does (every peer's is cut from its crops);
+      - QA `remoteSkillProbe(id).shared`/`.legless`, `peerFigBakes()` (with
+        `bytes`), `peerFigTry`, `window.__btSetSkin/Pants/Shoes`;
+        `mp-peercolours` (fails on the old
+        code: every recoloured pixel of a peer's cook and fire-lighter the
+        watcher's): docs/specs/peer-gather-colours.md.
   - Since v2.3.3146 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
     "Also all the buildings in town should show on the minimap": each
     standing building's footprint where it stands (wheelMinimap.js
@@ -2471,6 +2533,43 @@ remnant to migrate server-side, not a mode to preserve.
     - `caps.partykeep`, kill switch `partykeep: false` (the party of four in
       memory, nothing read or written -- party.test.mjs runs under it);
       `party-keep` suite, `mp-partykeep`.
+    - since v2.3.3313 STEP 2, THE ALLIANCE -- the owner: "Push to main, then
+      keep going on recommended", to the four decisions it waited on
+      (docs/specs/alliance.md, server/src/alliance.js):
+      - a party whose ACTIVE members (online, or `seen` in the last 7 days,
+        AND level 5+: ps.level, a new character is 3) reach `ALLIANCE.AT` 20
+        is an alliance until they fall below `DROP` 15; counted at a member's
+        join, accept, leave, a rename, a war and the 2 s vitals echo, never an
+        alarm; a flip is the only write; `became` on party_state;
+      - the leader's NAME and TAG (`alliance_name`, once a day, 3-16 chars and
+        1-4 letters/numbers, unique across every alliance -- kept while its
+        party lasts -- and every clan, both ways: clans.js checks the
+        alliances); the tag on every member's plate as `[TAG] Name`
+        (`allyTag`, worker-set only, on no track/join list: PEER_PUBLIC_KEYS,
+        nearjoin LIST_KEYS, a `player_update` with hg/fr on a change, forced
+        at a member's join), the strip's head `[TAG] 22/50`;
+      - WARS (`alliance_war {tag}`, the leader of a named alliance): 30 min,
+        rosters frozen at the declaration, a kill scores only under No man's
+        land's rule (the victim's last blow the killer's, within
+        `NML.KILL_BLOW_MS`; `_allyWarOnDeath` beside the clans' hook, never a
+        duel's), pays roster members who fought and are still in the party
+        500 / 50 (0-0 nobody; opIds `allywar:`), an hour's rest after, read
+        back from the ended wars after a deploy;
+      - the BOARD (`alliance_board`, any player, one answer a 5 s): by active
+        members, then levels added up; an alliance nobody is on counted from
+        its `ally:<partyId>` row, written WITH the party record (one batch:
+        `_partyStore` -> `_allyRowPut`) and deleted with it, its `act` each
+        member's [seen + 7 days, level];
+      - a record that has been an alliance is shape `v: 2` (PARTY.V), one that
+        never was stays 1 (a rollback reads it); `ally_war:<id>` kept 48 h;
+      - the phone: the Saloon's Alliance part (AlliancePart.jsx: n/20, the name
+        form, the war and Declare war, the board), the answers in wsClient's
+        direct switch (`alliance_rows` / `alliance_error` /
+        `alliance_war_end`, PRIVILEGED), moments over you and in the chat;
+      - test lever `/dev/combat {skill | 'all', level}`; `caps.alliance`, kill
+        switch `alliance: false` (off with `partykeep: false` too; tags off at
+        the next echo); `alliance` suite (96), `mp-alliance` (a phone, 39
+        bots, a second phone watching the plate).
   - Since v2.3.3279 THE OWNER'S SMALL ICONS -- asked what ChatGPT could draw to
     replace the emoji and code-drawn pictures, the owner sent four sheets
     ("Here's the art assets for the 'small icons'"), cut by
@@ -2720,7 +2819,68 @@ remnant to migrate server-side, not a mode to preserve.
       picture;
     - test-world-core "the Gem Works", `mp-buildingrooms` (the tabs),
       `mp-wheeldoors`, `mp-shieldgem` (a shield's gem is set on the Set gems
-      tab): docs/specs/gem-works.md.)
+      tab): docs/specs/gem-works.md.
+  - Since v2.3.3298 THE WHEEL IS BUILT IN BLOCKS ROUND YOU -- the owner: "the
+    game map needs to be larger. It goes from lvl 1 monsters to lvl 20+ way too
+    quickly. Maybe 5x larger map is needed", choosing "Rebuild for 5x". Step 1,
+    nothing on screen changes (docs/specs/wheel-in-blocks.md):
+    - the ground worker no longer builds the whole Wheel on the way in (~50 MB
+      at its peak today; ~600 MB five times longer, past the ~250 MB a tab dies
+      at): BLOCKS of 128 x 128 cells (`core/worldblocks.js`), built round the
+      pieces asked for and next to yours when idle, the 48 nearest kept;
+    - `layout.js buildBlueprint(plan, rect)` builds any rectangle exactly as the
+      whole map: `planFeatures` (roads, rivers, bridges, routes, plots, once a
+      plan), pass 2's order-dependent features through `stands` (a feature is
+      left out where an EARLIER one covers its middle -- worked out at its
+      middle, remembered), everything measured from the whole map's corner;
+      ground.js `materialMap` takes `ox`/`oy` (its noise and stage grid on the
+      whole map's cells, `LAND_STAGE_MARGIN` 28), `PIECE_MARGIN` 24 round a piece;
+    - walls go to the game a block at a time (the worker's `block`); a cell of a
+      block not built yet reads OPEN; `wheelBlocksAround` / `__btWheelBlocks`
+      asks for blocks far from any ground laid;
+    - the OBJECTS and the OVERVIEW are BAKED (`tools/world/bake-wheel-world.mjs`
+      -> `public/world/placed/`, `core/placed.js`, `core/placedfile.js`):
+      placing is order-dependent over the whole map; the worker uses the bake
+      only when `planFingerprint` matches, and the previews (`?bigtown=`,
+      `?plaintown`, `?placing=2`) build the whole map for them as before. A plan,
+      catalog or placing change must re-bake in the same PR (test-world-core
+      checks);
+    - the ground worker at the memory trip's peak 24.8 MB (main 28.7);
+    - test-world-core "the Wheel in blocks" (every block and piece against the
+      whole map, cell for cell); step 2 is the 5x lands.
+  - Since v2.3.3315 EVERY LAND IS FIVE TIMES LONGER -- step 2 of the owner's
+    "Rebuild for 5x" (docs/specs/wheel-5x.md):
+    - a five-level stretch is 5,120 game px, not 1,024 (`plan.js PLAN5`,
+      `wheelSized`; the active area grown past the frame, `grid.js
+      active.grow`); 1,920 monsters (30 a stretch), 1,222 resources, 63,486
+      objects; BroTown and the commons the same ground -- the noise counted
+      from the plan's own corner (`nox`, ground.js, placing.js `NC`);
+    - TWO WHEELS: the worker plays the long one unless `wheel5x: false`
+      (server/src/wheeltables.js, picked once when the room starts), says
+      which in `caps.wheelsize`; tables `server/src/wheelspawns.js` (long,
+      live) and `wheelspawns1.js` (short), bakes `public/world/placed5/` and
+      `placed/` -- re-bake BOTH (`bake-wheel-spawns.mjs`,
+      `bake-wheel-world.mjs`); the previews (`?bigtown`, `?plaintown`,
+      `?placing=2`) are always the short one;
+    - the join says which Wheels the phone draws (`ws`,
+      src/game/wheelSize.js); a phone that says nothing is OUT OF STEP: no
+      monster targets it, no No man's land -- a test or bot must send `ws:
+      [1, 5]` (TRAPS §196); the phone's per-size copies (`WHEEL_GEOM`,
+      `WHEELS`, `NML_CENTRES`) follow `setWheelLong`, held to the tables by
+      test-world-core;
+    - never a Wheel coordinate in code or a test: QA reads `H.wheelGeom()`;
+    - the minimap and world map draw the blocks round you at the short
+      Wheel's detail (`wheelLocalLands`); the world map zooms ~4x further,
+      what lies along the lands (stages, camps, passes, bands, roads) at the
+      map's own zoom and what is one size on either Wheel (buildings,
+      resources, monsters, bridges) at the short Wheel's (`spanK`, `zr`);
+    - a fishing or mining seat stays the bank while you sit on it
+      (wheelSwim.js `seatedOnBank`): the drawn shore wanders past the plan's
+      cells, and one long-Wheel seat of 250 was four looks wet; the bake
+      places by the plan and never by the pictures;
+    - the way in still carries all 1,920 monsters (~580 KB): sending only
+      those in reach needs a message bringing a monster whole (a tick does
+      not say what it is) -- the next step.)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and
@@ -2868,6 +3028,15 @@ registry of plausible-but-wrong moves (v2.3.1204).
   auto-reconnect) and cold-starts the room: the first join after a
   deploy may retry its loading screen a few times. One-time per
   deploy; not a bug. Prefer merging server changes at quiet hours.
+- **The `provenance` branch (v2.3.3308) is the owner's proof of
+  ownership against copies.** `.github/workflows/provenance.yml`
+  fingerprints every commit of main (each file's SHA-256, then one of the
+  list: `tools/provenance/listing.mjs`), timestamps it in Bitcoin
+  (OpenTimestamps) and has GitHub sign it as this repository's (an artifact
+  attestation), three files a commit on that branch. NEVER delete, rewrite
+  or force-push it, or put anything else on it: a proof is only worth its
+  date. Its commits start with `[CF-Pages-Skip]` (TRAPS §193); how anyone
+  checks one, and what to do about a copy: docs/specs/provenance.md.
 
 ## Wire protocol
 
@@ -2890,6 +3059,15 @@ Two protocol versions coexist; both must keep working:
   client→server events must be denied by default unless added
   deliberately, and every server-EMITTED event type must be added to
   `PRIVILEGED_EVENTS` in `server/src/index.js` or clients can forge it.
+- THE RELAY IS AN ALLOWLIST, IN THE SENDER'S NAME (v2.3.3304,
+  docs/specs/relay.md). A phone's broadcast that the router has no case
+  for is relayed to the others only if its type is in `RELAY.TYPES`
+  (`server/src/relay.js`): a new relay goes on that list or it reaches no
+  one (`relay.test` scans every broadcast in src/). Each relay is rebuilt
+  `{type, from, payload}`, the payload's `id`, `from`, `playerId`,
+  `fromName`, `playerName`, `name` the worker's -- a script could relay
+  "Bob died" in Bob's name, as the phone read the payload's `id` before
+  `from` (it reads `from` first now). Kill switch `relaylist: false`.
 - Deploy-order safety: servers advertise capabilities in
   `state_sync.caps` (WS) / `settled: true` (HTTP); clients gate their
   legacy paths on them. Preserve this on both sides.
@@ -2904,6 +3082,16 @@ Two protocol versions coexist; both must keep working:
   instead of passing for a new character. The defaults that are not zero
   are `NEW_CHARACTER_COINS` and `freshLifeSkills()`, pinned to the client's
   by mirror-audit: docs/specs/fresh-start.md.
+- A SAVE-FORMAT UPGRADE THAT FAILS STAYS UNFINISHED, AND A NEWER SAVE IS NOT
+  REWRITTEN (v2.3.3303, docs/specs/migrations.md):
+  - a migration that throws on a load is no longer stamped done by the
+    join's own save: `_saveRpg` stamps the version the load reached
+    (persistence.js `_rpgSaveVFor`) until a load gets further, so it runs
+    again once mended, and the log says `[migrations] rpg:<pid> stopped at`;
+  - a character saved by a NEWER worker (`_v` above `RPG_SCHEMA_VERSION`, a
+    rollback) is refused at the join as a failed read is (close 1011, the
+    phone retries until the newer worker is back), never rewritten with the
+    older field list; kill switch `newersave: false`.
 - THE HEMI BRO CHECKMARK IS "OWNS ONE OR MORE", AND THE PROFILE SAYS HOW MANY
   (v2.3.3255) -- the owner: "a 'verified' checkmark for people who own 1 hemi
   bro or more ... list the number of hemi bros owned somewhere on their
@@ -2938,12 +3126,21 @@ Two protocol versions coexist; both must keep working:
 
 ## Testing
 
-- Server: `cd server && npm test` — twenty zero-dependency suites
-  (protocol-v2, anticheat, combat-lifecycle, identity, inbox, market,
-  trade, quests, duel, gamble, clans, arena, dungeon, sponsorship,
-  guilds, threat, pets, hardening, trade2, elemental2; 450+
-  assertions) against a mocked DO storage. Every new system adds a
-  suite; extend the nearest one when touching its wire format.
+- Server: `cd server && npm test` — 133 zero-dependency suites against a
+  mocked DO storage. Every new system adds a suite; extend the nearest one
+  when touching its wire format.
+  - Since v2.3.3302 `npm test` is `test/run.mjs`. It runs every
+    `test/*.test.mjs`, four at a time, in ~30 s (the one-by-one `&&` chain
+    took ~69 s). It reports EVERY failing suite with its FAIL lines; the
+    chain stopped at the first and hid the rest.
+  - A new suite needs no line anywhere. `eventcapes.test.mjs` was never in
+    the chain, and so ran nowhere.
+  - `npm test -- relay hit-door` runs only those; `--jobs=1` runs one at a
+    time; `--verbose` shows every line.
+  - Server CI runs on EVERY PR (its path list missed 61 files the suites
+    read), and the worker's deploy waits for the suite on the same commit: a
+    red suite deploys nothing. The deploy job itself is unchanged
+    (wrangler-action's own wrangler, 3.90.0).
 - Client: no unit suite; CI runs lint + build on every PR, and the
   Pages bot posts a preview URL. The Playwright smoke harnesses
   (`tools/qa/qa-smoke.mjs`, `qa-facing.mjs`, …) are OFF the PR path
@@ -3458,6 +3655,19 @@ Two protocol versions coexist; both must keep working:
     `?poolkeep` to compare; `window.__btTexPool()`). The census is
     `window.__btSceneCensus(depth)` (the scene counted by path); `mp-sceneleak`
     checks all four, a rebuild's shadow system included.
+  - A HIDDEN TEXT STILL HOLDS ITS PICTURE (v2.3.3310, found when the memory
+    check went red at random on main): a speech bubble that went away was
+    hidden and kept, so every townsperson's and player's last line -- 1 MB of
+    the graphics chip for two lines on a 3x phone -- stayed there for the
+    visit, and the townsfolk drew a new one every 8-23 s wherever you were. A
+    bubble is destroyed when it goes now, and a townsperson more than 2,400 px
+    away draws none (effectsRenderer `_updateChatBubbles`); anything else made
+    of words that is gone for good is destroyed, never only hidden (TRAPS
+    §192). And the check's third trip leaves out pictures made before the
+    second ended and drawn for the first time since (each texture's `uid`,
+    `window.__btGpuTex()`'s `uidNow`): a body strip loaded behind the loading
+    screen reaches the graphics chip the first time it is drawn, and which
+    trip first draws it is luck.
   - A PICTURE ON 256 COLOURS OR FEWER IS KEPT AS COLOUR NUMBERS (v2.3.3190 --
     the owner asked whether the art could be "recreated byte for byte using
     pure code"; not that, a drawn picture costs the GPU what a loaded one does,
@@ -3525,6 +3735,9 @@ Two protocol versions coexist; both must keep working:
     plan); standing and walking write nothing, a kill or a harvest one row, your
     health at most every `REGEN_SAVE_MS`, the gatherer's bot statistics every 5
     minutes (`BOTFP.PUT_MIN_MS`, was 30 s);
+  - since v2.3.3305 a melee kill that heals you is one row too: its lifesteal
+    ran after the kill's save and saved the record again, a fighter's 1,030
+    rows an hour 760 now (cost-guard §5c, cost-diet.md);
   - `server/test/cost-guard.test.mjs` holds those lines (a feature that saves on
     a timer, a move or twice an event fails there); moving a line is said in the
     PR body in plain words, as with the memory budget;
@@ -3563,6 +3776,23 @@ Two protocol versions coexist; both must keep working:
   refusal as fatal) exist; `disable_verify` live flag; fail closed;
   `TURNSTILE_VERIFY_URL` is the test seam. `verify` suite (24), `mp-verify`
   (its own worker, `BT_WRANGLER_VARS`, a stand-in verifier and widget).
+- **ONLY THE GAME'S OWN SITES OPEN A GAME SOCKET (v2.3.3312,
+  docs/specs/origin-lock.md).** The owner: "I only use Brotown.net for this
+  game and that's the only domain I plan to keep using." The worker's `/ws`
+  route reads the browser's `Origin` before any room (`server/src/origin.js`):
+  brotown.net and gamedev-aix.pages.dev with every address under them,
+  `ORIGINS` (wrangler.toml) more, a machine's own pages (localhost, 127/8, the
+  private ranges) and NO Origin (a program -- our tools; TRAPS §195) are let
+  in; any other site, `null` or a look-alike gets `join_rejected
+  {reason:'origin', home}` and close 4015, the page `ui/OriginScreen.js`
+  ("This isn't the official BroTown", a button to brotown.net, no retry; an
+  old page reads it as fatal), a plain request a 403; each refused site
+  logged once. A NEW DOMAIN GOES IN `ORIGINS` BEFORE PLAYERS USE IT.
+  `ORIGIN_LOCK = "off"` is the lever (an env var: the check runs before the
+  room's live flags). The HTTP routes are not locked. `origin` suite (33),
+  `mp-originlock` (a second browser with `--host-resolver-rules`, so the
+  copy's Origin is the browser's own; `H.newPlayer`'s `host`,
+  `H.launch(args)`).
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,
@@ -3582,11 +3812,18 @@ Two protocol versions coexist; both must keep working:
   rail, the dice, the monster's after-effects and the event/save/death in one
   order, and `MONSTER_HITS` says what each way of being hit does at each step
   (`swing`, `snowball`, `pile`, `kit`, `burst`, `boss`, `fire`, `shock`,
-  `burn`, `poison`). The seven old copies are wrappers. The table is TODAY'S
-  behaviour cell for cell, including the cells hit-door.md puts to the owner
-  (the two 15s, the wrong-way snowball, the harvest shield the kits and fire
-  miss, rolls, parry, rails, rocks). `hit-door.test` (205) pinned them before
-  the door existed; §10d fails a new caller of `_applyDamage`.
+  `burn`, `poison`). The seven old copies are wrappers. The table was the old
+  behaviour cell for cell; `hit-door.test` pinned it before the door existed,
+  and §10d fails a new caller of `_applyDamage`. Since v2.3.3300 the owner's
+  nine decisions on it ("keep going on recommended", hit-door.md "Decided"):
+  every block costs the one 10 (the snowball's free), a snowball from behind
+  lands, every blow leaves a harvester alone, a paid dodge or lunge slips the
+  swing, ball, casts, burst and a boss (not the pile, fire, arcs or ticks, nor
+  the retreat shot's roll: movement.js `_rollIFrames`, kill switch
+  `monsterroll: false`; a rolled or covered slam is a MISS, and the phone
+  shows a hit that lands mid-roll), the pile and a boss parry, a rock is asked
+  first of every blow that travels, a boss's block saves the pools, and no
+  block counts as a hit; `hit-door.test` (218).
 - `package.json` version tracks the client version loosely; comment
   tags in code are the finer-grained record.
 - The repo owner is new to coding: PRs should be self-contained,

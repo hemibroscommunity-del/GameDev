@@ -177,6 +177,7 @@ export function pvpDealtColor(payload) {
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { notePvpHit, noteDealt } from '@/game/fightFood.js'; /* v2.3.3133: a pvp_hit starts a fight with a player (the one-bite rule); v2.3.3260: so does a hit you land on a monster */
 import { notePvpBlow } from '@/game/sparTargets.js'; /* v2.3.3268: a blow between you and a player keeps the fight with them on (the shield; a chosen foe) */
+import { allyMomentText } from '@/game/alliance.js'; /* v2.3.3313: the alliance's moments on party_state */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -3096,7 +3097,17 @@ export function processGameEvent(type, payload, S, deps) {
               /* v2.3.2996: ...but a burn's tick is fire on you, not a blow a
                  roll slips: the worker priced it as elemental, which no roll
                  or Dodge stat avoids (combat.js v2.3.2680), so it shows. */
-              if (S._dodgeRoll && !_burnTick) break; /* in i-frames */
+              /* ═══ v2.3.3300: ...AND IN A SERVER ZONE THE WORKER DECIDED ═══
+                 A roll slips a monster's blow on the worker now (movement.js
+                 _rollIFrames: a dodge or a lunge inside the window it charged
+                 for), and a blow it slipped sends nothing.  So a monster_attack
+                 that reaches a rolling phone LANDED -- the snow pile, fire, a
+                 storm's arc, a retreat shot's roll (no i-frames), or a blow
+                 judged a moment before the worker heard of the roll -- and its
+                 HP is already off the bar.  Hiding its number left the bar
+                 dropping with nothing said (hit-door.md decision 4).  The
+                 local monsters keep their own i-frames. */
+              if (S._dodgeRoll && !_burnTick && !S._serverMonsters) break; /* in i-frames */
               /* HP mutation: worker authoritative in MP.  Don't decrement
                  local R.hp here -- the player_state event that follows
                  monster_attack carries the new authoritative hp.  Keep
@@ -4546,6 +4557,17 @@ export function processGameEvent(type, payload, S, deps) {
                    marker (entityRenderer reads S._party per frame --
                    grafted from the competing party build, PR #221). */
                 S._party = payload;
+                /* v2.3.3313: the alliance's moments (server alliance.js): it
+                   became one or a party again, was named, a war began or a war
+                   kill landed -- said over you and in the chat */
+                var _allyLine = allyMomentText(payload);
+                if (_allyLine && S.player) {
+                  pushDmgPopup(S, S.player.x, S.player.y - 48, _allyLine, payload.became === 'party' ? '#B9C1BF' : '#f5c542');
+                  if (payload.war !== 'kill') {
+                    S.chatLog = (S.chatLog || []).slice(-50).concat([{ id: 'ally-' + Date.now(), name: '', text: '⚔️ ' + _allyLine, ts: Date.now(), system: true }]);
+                    if (setChatLog) setChatLog(S.chatLog.slice());
+                  }
+                }
               } else {
                 setParty(null);
                 S._party = null;

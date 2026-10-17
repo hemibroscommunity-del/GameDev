@@ -67,7 +67,7 @@ async function makeRoom() {
 async function join(room, id, { pv = 2, z = 'town', x = 1000, y = 1000 } = {}) {
   const ws = fakeWs();
   room.sessions.set(ws, baseSession());
-  const msg = { type: 'join', id, name: id, data: { x, y, z } };
+  const msg = { type: 'join', id, name: id, ws: [1, 5], data: { x, y, z } };
   if (pv === 2) msg.protocolVersion = 2;
   await room.webSocketMessage(ws, JSON.stringify(msg));
   return { ws, id, pv };
@@ -77,7 +77,7 @@ async function move(room, p, x, y, z) {
   await room.webSocketMessage(p.ws, JSON.stringify({ type: 'move', x, y, d: 'south', f: 'south', z, vx: 1, vy: 0, dodging: false, blocking: false, ba: null, dead: false, ex: null }));
 }
 
-const ARRIVAL = { x: 21504, y: 21792 };
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3315: the live Wheel's */
 const LANDS = Object.keys(WHEEL_SPAWNS);
 
 /* ── 1. byte for byte, a busy mixed room ───────────────────────────────── */
@@ -239,7 +239,9 @@ const LANDS = Object.keys(WHEEL_SPAWNS);
   const ang = Math.atan2(m.spawnY - WHEEL_CENTRE[1], m.spawnX - WHEEL_CENTRE[0]);
   const at = (r) => ({ x: WHEEL_CENTRE[0] + Math.cos(ang) * r, y: WHEEL_CENTRE[1] + Math.sin(ang) * r });
   const place = () => {
-    const mp = at(WHEEL_SAFE_R + 60); m.x = mp.x; m.y = mp.y;
+    /* (its home there too: v2.3.3315's longer Wheel stands most of a land's
+       first stretch further out than its chase leash reaches) */
+    const mp = at(WHEEL_SAFE_R + 60); m.x = m.spawnX = mp.x; m.y = m.spawnY = mp.y;
     const pa = at(WHEEL_SAFE_R - 20), pb = at(WHEEL_SAFE_R + 200);
     Object.assign(room.playerState[a.id], { x: pa.x, y: pa.y, z: 'wheel', dead: false, dying: false, hp: 1e6, maxHp: 1e6 });
     Object.assign(room.playerState[b.id], { x: pb.x, y: pb.y, z: 'wheel', dead: false, dying: false, hp: 1e6, maxHp: 1e6 });

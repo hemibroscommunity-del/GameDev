@@ -55,7 +55,7 @@ const NML_X = WHEEL_CENTRE[0] + 9000, NML_Y = WHEEL_CENTRE[1];   /* No man's lan
 async function join(id, data) {
   const ws = fakeWs();
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 0, lastPing: 0, lastRecv: T });
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, phrase: 'p-' + id, protocolVersion: 2,
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, phrase: 'p-' + id, protocolVersion: 2, ws: [1, 5],
     data: Object.assign({ x: NML_X, y: NML_Y, z: WHEEL_ZONE }, data || {}) }));
   await settle();
   return ws;
