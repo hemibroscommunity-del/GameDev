@@ -6485,3 +6485,25 @@ is hit and for how much before the rail; the door does every step after that.
 `hit-door.test` §10d fails any other file that calls `_applyDamage`.
 **Receipt:** the seven copies are wrappers now, the 193 checks that measured
 them passing unchanged.
+
+## 189. "A blob written by current code is current-shape" (v2.3.3303)
+
+**Tempting:** `_saveRpg` writes from the code's own fixed field list, so stamp
+the save with the constant `RPG_SCHEMA_VERSION`: whatever it writes is the
+current shape by construction, and the next load skips every migration.
+
+**Wrong.** It is the current LIST of fields, not the current SHAPE of what is
+in them. When a migration throws on a load, the registry fails open: it stops
+there and leaves the blob in its old shape to retry next time. The join that
+follows every load saves, and the constant marked the failed migration done
+on that very join, silently -- it never ran again. Every shape fix after
+v2.3.2592 went into a join-time heal for that reason. The same constant on a
+rolled-back worker writes a NEWER worker's blob back with an older `_v` and
+field list.
+
+**The rule:** a save stamps the version the load really reached
+(`_rpgSaveVFor`), and a blob above `RPG_SCHEMA_VERSION` is refused at the join.
+**Receipt:** migrations.test, the v2.3.3303 section: a blob one short whose last
+migration throws stays one short through the real join, runs again once
+mended, and a newer blob closes the join with nothing written.
+
