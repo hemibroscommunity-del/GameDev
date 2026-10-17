@@ -52,6 +52,44 @@ Shipped:
 | 1 | `heal-lifeskills` | pre-v2.3.769 client merge bug: `pets` array spread into an object, `activePet` null into `{}` |
 | 2 | `strip-leather-armor` | Leather Armor removed from the game in v2.3.249; old saves still carry it |
 
+## A failed migration stays unfinished; a newer save is refused (v2.3.3303)
+
+Found by the architecture review (2026-10-17), reproduced on the real room.
+
+- **Fail-open was defeated.** `runRpgMigrations` stops at a migration that
+  throws and stamps nothing past it, so it "retries on the next load". But
+  `_loadRpg` read only its `changed`, and the join that follows every load
+  saves through `_saveRpg`, which stamped the CONSTANT `RPG_SCHEMA_VERSION`.
+  So a blob one version short whose last migration threw was stored as
+  current after one join, silently, and the migration never ran again. That
+  is why every shape fix since v2.3.2592 has been a heal at the join instead
+  of a migration ("a fail-open blob healed at join is stranded ... with no
+  migration left to fix it", prog3.js).
+  - Now `_loadRpg` notes the version the load really reached
+    (`_rpgSaveVNote`, per player, in memory), and `_saveRpg` stamps that
+    (`_rpgSaveVFor`) until a later load gets further. The failure is logged:
+    `[migrations] rpg:<pid> stopped at "<name>"`.
+  - Once the migration is mended, the next load runs it, and the saves are
+    current again. Migrations were always required to be idempotent, so
+    running one again on a blob the current code has saved is safe.
+- **A newer worker's save was rewritten.** `_v` above `RPG_SCHEMA_VERSION`
+  means a newer worker migrated the blob, and this one is a rollback. Joined,
+  the character would be read by code that does not know its shape, and
+  saved back with this worker's field list and `_v`, so the newer worker
+  would migrate it again once it returned. The farm, pets, codex, order
+  board and daily rewards all refuse a newer record; the character did not.
+  - Now the JOIN refuses it, the way it refuses a read that failed
+    (v2.3.3138): the socket closes 1011 ("try again"), nothing is written,
+    and the phone keeps reconnecting, so the player is back in as soon as the
+    newer worker is.
+  - The offline mail's escrow, which puts the blob back whole, still reads
+    it.
+  - `newersave: false` in the live flags lets the join through. Its saves
+    then keep the newer `_v`, so the newer worker does not migrate the blob a
+    second time.
+- `migrations.test.mjs`, the last section, plays both through the real
+  load, join and save.
+
 ## The boundary-heal rule
 
 A migration fixes STORED blobs once. If an **unmigrated writer** still
@@ -146,4 +184,8 @@ throwing migration); `_loadRpg` economics via a put-counting mock
 (legacy = exactly one re-put, current = zero); `_v` surviving the real
 `_saveRpg` rewrite; the join bootstrap boundary heal against a
 re-corrupting client payload; admin-restore of an unversioned snapshot
-re-migrating on next load.
+re-migrating on next load. v2.3.3303 adds the last section (12 checks): a
+failed migration through the real load, join and save (the version held, a
+bystander's saves current, the log line, the retry once mended), and a newer
+worker's save refused at the join (close 1011, nothing written, the mail's
+reader unaffected, `newersave: false`).
