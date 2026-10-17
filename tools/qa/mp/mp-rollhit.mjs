@@ -24,7 +24,9 @@ import * as H from './harness.mjs';
 const PHONE = { width: 390, height: 844 };
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Roller', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
+  /* v2.3.3318: every Wheel monster on the way in, as before (`wheelwhole`,
+     server/src/wheelnear.js): this reads a real monster off the arrival's list in Brotown's square */
+  const P = await H.newPlayer(browser, { name: 'Roller', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'wheelwhole' });
   const errs = [];
   P.page.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
   await H.enterWorld(P);

@@ -128,6 +128,30 @@ export const SPAWN_SCALE = {
   GROW_PER_PASS: 4,
 };
 
+/* One monster as a zone snapshot says it: everything the phone needs to make
+   it (the tick says only where it is and how it is doing, tick.js
+   monsterWire).  v2.3.3318: a function of its own, for the tick's `mw` too
+   (wheelnear.js), so the two can never say a monster differently. */
+export function monsterSnapWire(m) {
+  return {
+    id: m.id, arch: m.arch, level: m.level, element: m.element,
+    x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, dmg: m.dmg,
+    xp: m.xp, gold: m.gold, spd: m.spd, emoji: m.emoji, color: m.color,
+    alive: m.alive,
+    /* v2.3.2295: who it is chasing, so a client that JOINS or changes zone
+       starts with the truth rather than with undefined. That baseline is
+       what stops the notice cue firing for every already-aggroed monster in
+       the zone the moment you walk in -- "it just noticed you" is a
+       TRANSITION, and a transition needs a previous value. See tick.js. */
+    tg: m.targetId || null,
+    /* v2.3.2978: a Wheel monster says which zone it is from, and so its
+       skin -- one zone with eight zones' monsters cannot be skinned by
+       the zone's own name (wheelzone.js).  Both fields only on those, so
+       every other zone's snapshot is byte-identical. */
+    ...(m.home ? { home: m.home, variant: m.variant || null } : {}),
+  };
+}
+
 export const spawnScaleMethods = {
   /* Only authored wilderness zones scale.  Dungeon instances (`dungeon:*`)
      ride ordinary zone ids through this.monsters, and their wave counts are
@@ -425,24 +449,12 @@ export const spawnScaleMethods = {
      the zone-change path (movement.js) so there is exactly one definition
      of what a zone snapshot looks like — this repo has been bitten by a
      second copy of a wire shape drifting from the first. */
-  _zoneSnapshotWire(zoneId) {
-    const monsters = (this._ensureZoneMonsters(zoneId) || []).map((m) => ({
-      id: m.id, arch: m.arch, level: m.level, element: m.element,
-      x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, dmg: m.dmg,
-      xp: m.xp, gold: m.gold, spd: m.spd, emoji: m.emoji, color: m.color,
-      alive: m.alive,
-      /* v2.3.2295: who it is chasing, so a client that JOINS or changes zone
-         starts with the truth rather than with undefined. That baseline is
-         what stops the notice cue firing for every already-aggroed monster in
-         the zone the moment you walk in -- "it just noticed you" is a
-         TRANSITION, and a transition needs a previous value. See tick.js. */
-      tg: m.targetId || null,
-      /* v2.3.2978: a Wheel monster says which zone it is from, and so its
-         skin -- one zone with eight zones' monsters cannot be skinned by
-         the zone's own name (wheelzone.js).  Both fields only on those, so
-         every other zone's snapshot is byte-identical. */
-      ...(m.home ? { home: m.home, variant: m.variant || null } : {}),
-    }));
+  /* v2.3.3318: `pick` (optional) chooses which of the zone's monsters go in
+     -- the Wheel's arrival takes only those around the phone (wheelnear.js);
+     every other caller sends them all, as before */
+  _zoneSnapshotWire(zoneId, pick) {
+    const all = this._ensureZoneMonsters(zoneId) || [];
+    const monsters = (pick ? pick(all) : all).map(monsterSnapWire);
     const nodes = (this._ensureZoneNodes(zoneId) || []).map((n) => ({
       id: n.id, nodeType: n.nodeType, x: n.x, y: n.y,
       tierLvl: n.tierLvl, alive: n.alive, respawnAt: n.respawnAt,

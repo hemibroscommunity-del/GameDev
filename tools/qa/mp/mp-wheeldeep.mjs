@@ -10,7 +10,7 @@
  *   1. the Wheel holds every land's monsters in its first four stretches: 192,
  *      24 a land, the first stretch's 48 at levels 1-2 as before (v2.3.3093:
  *      and its next four, levels 21-40 -- 384, 48 a land; mp-wheelpast20 walks
- *      out to them);
+ *      out to them; v2.3.3318: five times those on the long Wheel, v2.3.3315);
  *   2. each deeper one carries its stretch's level on the client too -- 6-10,
  *      11-15, 16-20 -- not clamped to its home's 1-2 (monsterVariants.js);
  *   3. out on Frost Ridge's third stretch (levels 11-15) the top bar says so,
@@ -46,8 +46,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `wheeldeep-${name}.png`) });
   const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
+  /* v2.3.3318: the Wheel the worker plays -- a land's six monsters a stretch
+     on the short Wheel, WHEEL_LONG rounds of them on the long one (v2.3.3315,
+     wheelzone.js _wheelSpawnMonsters); this counted the short Wheel's 384 */
+  const PER = 6 * (await H.wheelGeom()).long;
 
-  const P = await H.newPlayer(browser, { name: 'Delver', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
+  /* v2.3.3318: every Wheel monster on the way in, as before (`wheelwhole`,
+     server/src/wheelnear.js): this reads every land's eight stretches off the arrival's list */
+  const P = await H.newPlayer(browser, { name: 'Delver', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'wheelwhole' });
   P.page.on('console', (m) => { if (!firstThrow && /app\.render threw/.test(m.text())) firstThrow = '[during: ' + phase + '] ' + m.text(); });
   await H.enterWorld(P);
   let zone = null;
@@ -78,27 +84,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const m of all) (byLand[m.home] = byLand[m.home] || []).push(m);
   const first = all.filter((m) => tierOf(m.id) === 1);
   rec.ok(`in the Wheel (${zone}) every land's monsters stand in its first eight stretches, levels 1-40: ${all.length} (${Object.entries(byLand).map(([h, a]) => `${h} ${a.length}`).join(', ')}), the first stretch's ${first.length} at levels ${[...new Set(first.map((m) => m.level))].sort().join(' and ')}`,
-    zone === 'wheel' && all.length === 384 && Object.keys(byLand).length === 8 && Object.values(byLand).every((a) => a.length === 48)
-      && first.length === 48 && first.every((m) => m.level >= 1 && m.level <= 2), { n: all.length, lands: Object.keys(byLand) });
+    zone === 'wheel' && all.length === 64 * PER && Object.keys(byLand).length === 8 && Object.values(byLand).every((a) => a.length === 8 * PER)
+      && first.length === 8 * PER && first.every((m) => m.level >= 1 && m.level <= 2), { n: all.length, per: PER, lands: Object.keys(byLand) });
   const deep = all.filter((m) => tierOf(m.id) > 1);
   const offLevel = deep.filter((m) => !TIERS[tierOf(m.id)] || m.level < TIERS[tierOf(m.id)][0] || m.level > TIERS[tierOf(m.id)][1]);
   const lv = (t) => deep.filter((m) => tierOf(m.id) === t).map((m) => m.level);
   rec.ok(`...each deeper one at its own stretch's levels here too, not clamped to its home's 1-2 (6-10: ${Math.min(...lv(2))}-${Math.max(...lv(2))}, 11-15: ${Math.min(...lv(3))}-${Math.max(...lv(3))}, 16-20: ${Math.min(...lv(4))}-${Math.max(...lv(4))}, ... 36-40: ${Math.min(...lv(8))}-${Math.max(...lv(8))})`,
-    deep.length === 336 && offLevel.length === 0 && Math.max(...lv(4)) === 20 && Math.min(...lv(2)) === 6 && Math.max(...lv(8)) === 40, offLevel.slice(0, 4));
+    deep.length === 56 * PER && offLevel.length === 0 && Math.max(...lv(4)) === 20 && Math.min(...lv(2)) === 6 && Math.max(...lv(8)) === 40, offLevel.slice(0, 4));
 
   /* ── 3. out to Frost Ridge's third stretch ── */
   phase = 'the walk';
   await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 8 });
   const t3 = WHEEL_SPAWNS.frost.deeper.find((d) => d.tier === 3);
-  const mid = { x: t3.points.slice(0, 6).reduce((a, p) => a + p[0], 0) / 6, y: t3.points.slice(0, 6).reduce((a, p) => a + p[1], 0) / 6 };
+  /* v2.3.3318: to the stretch's first monster's own place (its first `PER`
+     places have one each) -- the middle of its first six, as here before,
+     was a cluster's middle on the short Wheel and lies up to 2,600 px from
+     any of them on the long one */
+  const mid = { x: t3.points[0][0], y: t3.points[0][1] };
   const t0 = Date.now();
   const arrived = await H.hopTo(P, mid.x, mid.y + 40, { step: 100, gap: 260, tries: 260 });
   const walkS = +((Date.now() - t0) / 1000).toFixed(1);
-  /* their looks load as you come (wheelMonsterArt.js); give the plates a beat */
-  let near = [];
+  /* their looks load as you come (wheelMonsterArt.js); give the plates a beat.
+     v2.3.3318: `near` is the stretch's snowmen around you (NEAR_PX: on the
+     phone's screen), `stretch` all of them -- PER of them on the long Wheel,
+     most of them screens away and so undrawn */
+  const NEAR_PX = 600;
+  let near = [], stretch = [];
   for (let i = 0; i < 20; i++) {
     await P.page.waitForTimeout(500);
-    near = (await monsters(P)).filter((m) => m.home === 'frost' && tierOf(m.id) === 3 && m.alive !== false);
+    const me = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+    stretch = (await monsters(P)).filter((m) => m.home === 'frost' && tierOf(m.id) === 3 && m.alive !== false);
+    near = stretch.filter((m) => Math.hypot(m.x - me.x, m.y - me.y) <= NEAR_PX);
     if (near.length && near.every((m) => m.sprite && m.sprite.texAlive && m.sprite.plate)) break;
   }
   await shot(P, 'frost-11-15');
@@ -110,8 +126,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`walked out to Frost Ridge's third stretch in ${walkS} s, and the minimap's name plate says where: "${bar.place}" / "${bar.sub}"`,
     arrived && bar.place === 'Frost Ridge' && /11.15/.test(bar.sub || ''), bar);
   const drawn = near.filter((m) => m.sprite && m.sprite.visible && m.sprite.texAlive);
-  rec.ok(`...the snowmen there are drawn from live art (${drawn.length} of ${near.length} in reach)`,
-    near.length === 6 && drawn.length >= 1 && near.filter((m) => m.sprite).every((m) => m.sprite.texAlive), near.map((m) => m.sprite));
+  rec.ok(`...the snowmen there are drawn from live art (${drawn.length} of ${near.length} around you; ${stretch.length} in the stretch)`,
+    stretch.length === PER && near.length >= 1 && drawn.length >= 1 && near.filter((m) => m.sprite).every((m) => m.sprite.texAlive), near.map((m) => m.sprite));
   const plates = near.filter((m) => m.sprite && m.sprite.plate).map((m) => ({ id: m.id, level: m.level, text: m.sprite.plate.level, band: m.sprite.plate.band }));
   rec.ok(`...and each nameplate reads its own level, on the border of a monster far above yours (${plates.map((p) => `${p.text} ${p.band}`).join(', ')})`,
     plates.length >= 1 && plates.every((p) => p.text === 'LV ' + p.level && p.level >= 11 && p.level <= 15 && p.band === 'danger'), plates);

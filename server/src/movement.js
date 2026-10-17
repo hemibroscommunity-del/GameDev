@@ -532,8 +532,11 @@ export const movementMethods = {
         this._spawnScaleZone(ps.z, Date.now(), undefined, ws);
         /* One shared definition of a zone snapshot (spawnscale.js), read
            back AFTER the scale so a grow/trim can't leave a stale array
-           reference behind. */
-        const _zsnap = this._zoneSnapshotWire(ps.z);
+           reference behind.  v2.3.3318: into the Wheel, a phone that takes
+           it is sent only the monsters around it (wheelnear.js) */
+        const _near = this._wheelNearArrival(session, ps);
+        if (!_near) session._wheelWhole = null;   /* a whole list: nothing to send whole later */
+        const _zsnap = this._zoneSnapshotWire(ps.z, _near ? (all) => this._wheelNearPick(session, ps, all) : undefined);
         const zoneMonstersWire = _zsnap.monsters;
         const zoneNodesWire = _zsnap.nodes;
         const zoneLootWire = _zsnap.loot;
@@ -542,6 +545,7 @@ export const movementMethods = {
           ws.send(JSON.stringify({
             type: 'zone_state', zone: ps.z,
             monsters: zoneMonstersWire, nodes: zoneNodesWire, loot: zoneLootWire,
+            ...(_near ? { mnear: 1 } : {}),
           }));
         } else {
           ws.send(JSON.stringify({
