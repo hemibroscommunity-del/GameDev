@@ -48,7 +48,8 @@ Found by the architecture review (2026-10-17). Server only; no phone change.
   in `ROLL.PAID`.
 - Monster hits still ignore the roll, as before. The phone hides the damage
   number while it rolls, though the worker takes the HP. That mismatch belongs
-  to the one-door-for-hits work (the architecture review).
+  to the one-door-for-hits work (the architecture review). **Since v2.3.3300
+  they do not:** see below.
 
 ## Kill switch
 
@@ -69,3 +70,23 @@ Found by the architecture review (2026-10-17). Server only; no phone change.
   `_resolvePvPAttack` again, fails §10.
 - Three suites now pay for the rolls they test, as a phone does:
   `pvp-extras` §7, `pvp-lunge` §3 and `tick-share` §3.
+
+## Monster hits (v2.3.3300)
+
+The owner's decision 4 on the hit door (docs/specs/hit-door.md, "Decided"): a
+roll slips the monster blows you can see coming -- the swing, the snowball, the
+slam and lunge, the slime burst, a boss's ability.
+
+- The same window as a player's blow, asked by `_rollIFrames(ps, now)`
+  (`movement.js`): the phone says it is rolling, the worker charged for the
+  roll, and the window is open.
+- `_rollStamp` now keeps **which** roll it charged for (`ps._rollKind`:
+  `dodge`, `lunge` or `retreat`). The retreat shot's roll has no i-frames
+  (§5.8.3), so it slips no monster's blow. Against a player it still does,
+  as before.
+- Never the bare claim: `rollwindow: false` trusts the claim for a player's
+  blow only.
+- Kill switch: `monsterroll: false` in the live flags, and no roll slips a
+  monster's blow.
+- The phone shows a hit that reaches it mid-roll (it landed), in a server zone
+  (`gameEvents.js`).

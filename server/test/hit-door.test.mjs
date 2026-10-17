@@ -9,30 +9,33 @@
  * event, the save, the death -- once per way a monster can hurt you: seven
  * copies, each a little different.
  *
- * This suite measures what each of them does TODAY, through the real entry
- * points the monster loop calls (a wind-up resolving, a ball landing, a pile
+ * This suite measured what each of them did, through the real entry points
+ * the monster loop calls (a wind-up resolving, a ball landing, a pile
  * touching, a cast executing, a slime going off, a boss ability, ground on
- * fire, a storm's arc, a burn or poison ticking).  It is the table the one
- * door (src/hits.js) has to keep: every row below passed on the worker before
- * the door existed, and nothing in §1-§9 changes with it.  The differences
- * between the rows are not all intended -- several are copies that missed a
- * later rule -- and that is the point of pinning them: they are the decisions
- * docs/specs/hit-door.md puts to the owner, one cell each.
+ * fire, a storm's arc, a burn or poison ticking).  It was the table the one
+ * door (src/hits.js) had to keep: every row passed on the worker before the
+ * door existed (v2.3.3296).  The differences between the rows were not all
+ * intended -- several were copies that missed a later rule -- and pinning
+ * them made each one a cell docs/specs/hit-door.md could put to the owner.
+ *
+ * v2.3.3300: the owner's nine decisions ("keep going on recommended") changed
+ * those cells, and the rows below with them; each changed row says so:
  *
  *   1. A LANDED HIT: HP, the event's numbers, the damage counted for
  *      lifesteal, the source's own tag (ability / element).
- *   2. A ROLL: no monster hit honours one.
- *   3. THE SHIELD, FACING IT, HELD: what it costs (10, free, or the two 15s
- *      v2.3.1731 missed), the event, what is saved.
- *   4. THE SHIELD, RAISED IN TIME: which sources parry.
- *   5. THE SHIELD, FACING AWAY: the hit lands -- except a snowball, which a
- *      shield raised in any direction blocks, at 15.
- *   6. HARVESTING: who leaves a harvester alone.
+ *   2. A ROLL: a dodge or a lunge inside the window the worker charged for
+ *      slips every blow you can see coming; the pile, fire, a storm's arc and
+ *      the ticks land, and so does the retreat shot's roll.
+ *   3. THE SHIELD, FACING IT, HELD: 10, or free for a snowball; the event;
+ *      the pools saved, coalesced.
+ *   4. THE SHIELD, RAISED IN TIME: everything blockable parries but the ball.
+ *   5. THE SHIELD, FACING AWAY: the hit lands, a snowball's too.
+ *   6. HARVESTING: every monster blow leaves a harvester alone.
  *   7. THE SAFE GROUND: who leaves you alone on the Wheel's commons.
- *   8. A ROCK IN THE WAY (Frost's snowbanks): who it stops, and the swing a
- *      raised shield pays for through it.
- *   9. THE ONE-HIT RAIL and DEATH, a blocked hit that still counts as a hit,
- *      thorns, the hexer's curse, the element's status.
+ *   8. A ROCK IN THE WAY (Frost's snowbanks): every blow that travels is
+ *      stopped, asked before the shield.
+ *   9. THE ONE-HIT RAIL and DEATH, a block is never a hit, thorns, the
+ *      hexer's curse, the element's status.
  *  10. THE DOOR (added with src/hits.js): every row measured above is a row
  *      of MONSTER_HITS and back, every cell from its closed set, a stopped
  *      block's event says the bar, only three files price a hit on a player,
@@ -128,7 +131,7 @@ function freshPlayer(ps, zone, x, y) {
   ps.dead = false; ps.dying = false; ps.disconnected = false; ps.respawnAt = 0;
   ps.maxHp = MAX_HP; ps.hp = MAX_HP; ps.maxStamina = MAX_ST; ps.stamina = MAX_ST - 30;
   ps.blocking = false; ps.ba = undefined; ps.blockStartT = 0;
-  ps.dodging = false; ps._rollUntil = 0;
+  ps.dodging = false; ps._rollUntil = 0; ps._rollKind = null;
   ps.ex = null; ps._exAt = 0; ps._exX = 0; ps._exY = 0;
   ps._zoneEntryGraceUntil = 0; ps._godUntil = 0;
   ps.lastDamageAt = 0; ps._lastDealtAt = 0;
@@ -293,14 +296,59 @@ for (const src of ALL) {
   }
 }
 
-// ── 2. A roll ──
+// ── 2. A roll (v2.3.3300: decision 4 -- no monster hit honoured one) ──
+/* A roll slips the blows you can see coming, through the window the worker
+   opened when it charged for the roll (movement.js _rollIFrames).  The pile
+   grinds after you as long as you stand in it; fire, a storm's arc and a tick
+   are no blow to slip. */
+const ROLLS = { swing: true, snowball: true, burrow: false, slam: true, lunge: true, burst: true, boss: true, fire: false, shock: false, burn: false, poison: false };
+const rolling = (kind) => ({ ps, now }) => { ps.dodging = true; room._rollStamp(ps, now, kind); };
 for (const src of ALL) {
-  const r = play(src, 'out', ({ ps, now }) => { ps.dodging = true; ps._rollUntil = now + 1000; });
-  check('2. ' + src + ': a roll does not stop it (only player hits read a roll)', r.hpLost === landed[src].hpLost && r.hpLost > 0, r.hpLost);
+  const r = play(src, 'out', rolling('dodge'));
+  if (ROLLS[src]) check('2. ' + src + ': a paid dodge slips it -- nothing taken, nothing sent, nothing charged', r.hpLost === 0 && r.stLost === 0 && r.evs.length === 0 && !r.stamped, { hpLost: r.hpLost, evs: r.evs });
+  else check('2. ' + src + ': lands through a roll (' + (src === 'burrow' ? 'the pile grinds on' : 'no blow to slip') + ')', r.hpLost === landed[src].hpLost && r.hpLost > 0 && !!r.ev, r.hpLost);
+}
+{
+  const lunge = play('swing', 'out', rolling('lunge'));
+  check('2. swing: a paid lunge slips it too (it rolls on the dodge\'s i-frames)', lunge.hpLost === 0 && lunge.evs.length === 0, lunge.hpLost);
+  const retreat = play('swing', 'out', rolling('retreat'));
+  check('2. swing: a retreat shot\'s roll does not (no i-frames, §5.8.3: "the shot is the tradeoff for safety")', retreat.hpLost === landed.swing.hpLost, retreat.hpLost);
+  const bare = play('swing', 'out', ({ ps }) => { ps.dodging = true; });
+  check('2. swing: a bare claim, no roll paid for, buys nothing', bare.hpLost === landed.swing.hpLost, bare.hpLost);
+  const over = play('swing', 'out', ({ ps, now }) => { ps.dodging = true; room._rollStamp(ps, now - 2000, 'dodge'); });
+  check('2. swing: nor a paid roll whose window has run out', over.hpLost === landed.swing.hpLost, over.hpLost);
+  const done = play('swing', 'out', ({ ps, now }) => { room._rollStamp(ps, now, 'dodge'); ps.dodging = false; });
+  check('2. swing: nor a paid roll the phone says is over', done.hpLost === landed.swing.hpLost, done.hpLost);
+  const flags0 = room._liveFlags;
+  room._liveFlags = Object.assign(Object.create(null), flags0 || {}, { rollwindow: false });
+  const trusted = play('swing', 'out', ({ ps }) => { ps.dodging = true; });
+  check('2. swing: `rollwindow: false` (the PLAYERS\' way back to a trusted claim) never lets a bare claim slip a monster', trusted.hpLost === landed.swing.hpLost, trusted.hpLost);
+  room._liveFlags = Object.assign(Object.create(null), flags0 || {}, { monsterroll: false });
+  const off = play('swing', 'out', rolling('dodge'));
+  check('2. swing: `monsterroll: false` -- no roll slips a monster\'s blow, as before v2.3.3300', off.hpLost === landed.swing.hpLost, off.hpLost);
+  room._liveFlags = flags0;
+}
+{
+  /* ...and the window and its kind come from the real message a phone sends
+     (index.js _handleAbilityUse): a paid dodge slips, a paid retreat shot
+     does not */
+  const wsP = [...room.sessions.entries()].find(([, s]) => s.id === 'p1')[0];
+  const pay = async (type) => {
+    freshPlayer(P, P.z, P.x, P.y); P.stamina = MAX_ST;
+    await room.webSocketMessage(wsP, JSON.stringify({ type: 'ability_use', payload: { type } }));
+    return { until: P._rollUntil, kind: P._rollKind };
+  };
+  const as = (w) => ({ ps }) => { ps.dodging = true; ps._rollUntil = w.until; ps._rollKind = w.kind; };
+  const dodge = await pay('dodge');
+  const viaDodge = play('swing', 'out', as(dodge));
+  check('2. swing: a dodge paid through ability_use slips it', dodge.until > Date.now() && dodge.kind === 'dodge' && viaDodge.hpLost === 0, { dodge, hpLost: viaDodge.hpLost });
+  const retreat = await pay('retreat');
+  const viaRetreat = play('swing', 'out', as(retreat));
+  check('2. swing: a retreat shot paid through ability_use does not', retreat.until > Date.now() && retreat.kind === 'retreat' && viaRetreat.hpLost === landed.swing.hpLost, { retreat, hpLost: viaRetreat.hpLost });
 }
 
-// ── 3. The shield, facing it, held ──
-const COST = { swing: BLOCK_STAMINA_COST, snowball: 0, burrow: 15, slam: BLOCK_STAMINA_COST, lunge: BLOCK_STAMINA_COST, burst: BLOCK_STAMINA_COST, boss: 15 };
+// ── 3. The shield, facing it, held (v2.3.3300: decision 1, the two 15s are 10) ──
+const COST = { swing: BLOCK_STAMINA_COST, snowball: 0, burrow: BLOCK_STAMINA_COST, slam: BLOCK_STAMINA_COST, lunge: BLOCK_STAMINA_COST, burst: BLOCK_STAMINA_COST, boss: BLOCK_STAMINA_COST };
 for (const src of ALL) {
   const r = play(src, 'out', face(true));
   if (!BLOCKABLE.includes(src)) {
@@ -315,13 +363,15 @@ for (const src of ALL) {
   const swing = play('swing', 'out', face(true)), boss = play('boss', 'out', face(true));
   const slam = play('slam', 'out', face(true)), burrow = play('burrow', 'out', face(true));
   const ball = play('snowball', 'out', face(true));
-  check('3. a blocked swing, slam or burrow touch saves the pools (coalesced)', swing.saves.pools === 1 && slam.saves.pools === 1 && burrow.saves.pools >= 1 && swing.saves.full + slam.saves.full + burrow.saves.full === 0, [swing.saves, slam.saves, burrow.saves]);
-  check('3. a blocked boss ability saves the WHOLE character (today)', boss.saves.full === 1 && boss.saves.pools === 0, boss.saves);
+  const four = [swing, slam, burrow, boss];
+  check('3. a blocked swing, slam, burrow touch or boss ability saves the pools (coalesced), and nothing else',
+    four.every((r) => r.saves.pools === 1 && r.saves.full === 0 && r.saves.vitals === 0), four.map((r) => r.saves));
+  check('3. the boss\'s block saves as the others do (v2.3.3300: decision 8, it wrote the whole character)', boss.saves.full === 0 && boss.saves.pools === 1, boss.saves);
   check('3. a blocked snowball saves nothing (it costs nothing)', ball.saves.full + ball.saves.pools === 0, ball.saves);
 }
 
-// ── 4. The shield, raised in time: the parry ──
-const PARRIES = { swing: true, snowball: false, burrow: false, slam: true, lunge: true, burst: true, boss: false };
+// ── 4. The shield, raised in time: the parry (v2.3.3300: decision 5, the pile and a boss too) ──
+const PARRIES = { swing: true, snowball: false, burrow: true, slam: true, lunge: true, burst: true, boss: true };
 for (const src of BLOCKABLE) {
   const r = play(src, 'out', ({ m, ps, now }) => {
     face(true)({ m, ps });
@@ -335,29 +385,25 @@ for (const src of BLOCKABLE) {
 }
 
 // ── 5. The shield, facing away ──
+/* v2.3.3300: decision 2 -- the snowball too.  It took TWO shield tests: the
+   impact's own from the thrower (free), and a second measured from where it
+   LANDED, the player's own feet, which a zero-length direction always passed
+   (_blockArcCovers) -- so a shield raised any way blocked it, at 15.
+   v2.3.1705 meant "a snowball you never turned to face should get through
+   exactly like a swing from behind does"; the owner: "yes blocking should be
+   directional". */
 for (const src of BLOCKABLE) {
   const r = play(src, 'out', face(false));
-  if (src === 'snowball') {
-    /* the ball from behind: blocked anyway, and the 15 is charged.  Today's
-       snowball takes TWO shield tests: the impact's own from the thrower
-       (index.js, free), and then _monsterStrikePlayer's from (atkX, atkY) --
-       which for a ball is where it LANDED, the player's own feet, and a
-       zero-length direction counts as covered (_blockArcCovers).  v2.3.1705
-       meant the opposite ("a snowball you never turned to face should get
-       through exactly like a swing from behind does"): hit-door.md puts it to
-       the owner. */
-    check('5. snowball: a shield raised the WRONG way still blocks it, at 15 (today)', r.hpLost === 0 && r.stLost === 15 && !!r.ev && r.ev.blocked === true && r.ev.staminaDrain === 15, { hpLost: r.hpLost, stLost: r.stLost, ev: r.ev });
-  } else {
-    check('5. ' + src + ': a shield facing away does not stop it', r.hpLost === landed[src].hpLost && r.stLost === 0 && !!r.ev && !r.ev.blocked, { hpLost: r.hpLost, stLost: r.stLost, ev: r.ev });
-  }
+  check('5. ' + src + ': a shield facing away does not stop it', r.hpLost === landed[src].hpLost && r.stLost === 0 && !!r.ev && !r.ev.blocked && r.ev.staminaDrain === undefined, { hpLost: r.hpLost, stLost: r.stLost, ev: r.ev });
 }
 
 // ── 6. Harvesting (cooking: the shield needs no node) ──
-const HARVEST_SAFE = { swing: true, snowball: true, burrow: true, slam: false, lunge: false, burst: false, boss: false, fire: false, shock: true, burn: true, poison: true };
+/* v2.3.3300: decision 3 -- every monster blow (v2.3.1704: "A HARVESTER TAKES
+   NO MONSTER DAMAGE, FULL STOP"); the slam, the lunge, the slime burst, a
+   boss and fire on the ground still hit one */
 for (const src of ALL) {
   const r = play(src, 'out', ({ ps, now }) => { ps.ex = 'cook'; ps._exAt = now; ps._exX = ps.x; ps._exY = ps.y; });
-  if (HARVEST_SAFE[src]) check('6. ' + src + ': leaves a harvester alone -- nothing taken, nothing sent', r.hpLost === 0 && r.evs.length === 0, { hpLost: r.hpLost, evs: r.evs });
-  else check('6. ' + src + ': hits a harvester anyway (today)', r.hpLost === landed[src].hpLost && r.hpLost > 0, r.hpLost);
+  check('6. ' + src + ': leaves a harvester alone -- nothing taken, nothing sent', r.hpLost === 0 && r.evs.length === 0, { hpLost: r.hpLost, evs: r.evs });
 }
 
 // ── 7. The Wheel's safe ground (not provoked) ──
@@ -377,23 +423,36 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
      pile is left out: its touch (BURROW.CONTACT_PX 40 on the same 1.5
      stretch) is shorter than the bank is deep, so no rock can stand inside
      it -- the burrow is asked about rocks all the same (_monsterStrikePlayer) */
+  /* v2.3.3300: decision 7 -- every blow that travels; the kits, the burst
+     and a boss went through */
   const snowmanSwing = ({ m }) => { m.arch = 'snowman'; };
-  const ROCK_STOPS = { swing: true, snowball: true, slam: false, lunge: false, boss: false };
-  for (const src of Object.keys(ROCK_STOPS)) {
+  for (const src of ['swing', 'snowball', 'slam', 'lunge', 'burst', 'boss']) {
     const r = play(src, 'rock', src === 'swing' ? snowmanSwing : null);
-    if (ROCK_STOPS[src]) check('8. ' + src + ': a rock between stops it -- nothing taken, nothing sent', r.hpLost === 0 && r.evs.length === 0, { hpLost: r.hpLost, evs: r.evs });
-    else check('8. ' + src + ': goes through the rock (today)', r.hpLost === landed[src].hpLost, r.hpLost);
+    check('8. ' + src + ': a rock between stops it -- nothing taken, nothing sent', r.hpLost === 0 && r.evs.length === 0, { hpLost: r.hpLost, evs: r.evs });
+  }
+  {
+    /* ...a slam or lunge that a rock stopped (or a roll slipped) is drawn as
+       the MISS a whiff is: its execute says hit: false */
+    const exec = () => room.eventBuffer.find((e) => e.type === 'monster_ability' && e.payload.phase === 'execute');
+    const covered = play('slam', 'rock'); const e1 = exec();
+    const rolled = play('slam', 'out', rolling('dodge')); const e2 = exec();
+    const struck = play('slam', 'out'); const e3 = exec();
+    check('8. slam: behind a rock or through a roll its execute says hit: false (a MISS); one that lands, hit: true',
+      covered.hpLost === 0 && rolled.hpLost === 0 && struck.hpLost > 0 && !!e1 && e1.payload.hit === false && !!e2 && e2.payload.hit === false && !!e3 && e3.payload.hit === true,
+      [e1 && e1.payload.hit, e2 && e2.payload.hit, e3 && e3.payload.hit]);
   }
   {
     /* ...and the swing really was in reach: the same two, nothing between */
     const clear = play('swing', 'rock', ({ m, ps }) => { snowmanSwing({ m }); m.x += 400; ps.x += 400; });
     check('8. swing: the same two with no rock between -- it lands', clear.hpLost === landed.swing.hpLost, clear.hpLost);
   }
-  /* a swing a raised shield faces is asked about the shield FIRST: through the
-     rock, the shield still pays for it (the rock is only asked of a blow that
-     got past the shield, in _monsterStrikePlayer) */
-  const shielded = play('swing', 'rock', (o) => { snowmanSwing(o); face(true)(o); });
-  check('8. swing: through a rock, a shield facing it still pays ' + BLOCK_STAMINA_COST + ' (the rock is asked second, today)', shielded.hpLost === 0 && shielded.stLost === BLOCK_STAMINA_COST && !!shielded.ev && shielded.ev.blocked === true, { stLost: shielded.stLost, ev: shielded.ev });
+  /* v2.3.3300: the rock is asked FIRST: a raised shield no longer pays for a
+     swing the rock stopped (it was asked only of a blow that got past the
+     shield, and the shield cost 10 for a blow that could not reach) */
+  for (const src of ['swing', 'slam', 'boss']) {
+    const shielded = play(src, 'rock', (o) => { if (src === 'swing') snowmanSwing(o); face(true)(o); });
+    check('8. ' + src + ': behind a rock, a shield facing it pays nothing -- the rock is asked first', shielded.hpLost === 0 && shielded.stLost === 0 && shielded.evs.length === 0, { stLost: shielded.stLost, evs: shielded.evs });
+  }
 }
 
 // ── 9. The one-hit rail and death; a block that counts; thorns; curse; element ──
@@ -417,19 +476,15 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
     const r = play(src, 'out', ({ ps }) => { ps.hp = 1; });
     check('9. ' + src + ': a killing blow goes through the death path as monster:<its id>', r.dying && deaths.length === 1 && deaths[0].cause === 'monster:' + M.id, deaths);
   }
-  /* a burrow touch the shield takes is still a HIT of 0 there: it marks you
-     as hit (the out-of-combat regen waits), and the snowball the wrong way
-     too; every other block stops at the shield */
+  /* v2.3.3300: decision 9 -- a block is a block: the pile's no longer counts
+     as a HIT of 0 (it marked you as hit, and the out-of-combat regen waited) */
   for (const src of BLOCKABLE) {
     const r = play(src, 'out', face(true));
-    const counts = src === 'burrow';
-    check('9. ' + src + ': a blocked one ' + (counts ? 'COUNTS as being hit (today)' : 'is not counted as being hit'), r.stamped === counts, r.stamped);
+    check('9. ' + src + ': a blocked one is not counted as being hit', r.stamped === false, r.stamped);
   }
-  const behind = play('snowball', 'out', face(false));
-  check('9. snowball: the wrong-way block counts as being hit too', behind.stamped === true, behind.stamped);
 
   /* Flora's thorn on the monster answers its swing and its ball -- a blow that
-     LANDED, or the wrong-way ball's block taken as a hit -- and nothing else.
+     LANDED -- and nothing else.
      The pile is asked too, and is invulnerable while it is one, so it takes
      nothing (telegraph.js: the bonk strikes "before the surface on purpose") */
   const thorny = ({ m }) => { m.statuses = { thorn: { power: 40, sourceId: 'p0', until: Date.now() + 10000 } }; };
@@ -441,8 +496,9 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
   }
   {
     const held = play('swing', 'out', (o) => { thorny(o); face(true)(o); });
+    const heldBall = play('snowball', 'out', (o) => { thorny(o); face(true)(o); });
     const behindBall = play('snowball', 'out', (o) => { thorny(o); face(false)(o); });
-    check('9. thorn: a swing the shield stopped is not answered; the wrong-way ball\'s block is (today)', held.monsterLost === 0 && behindBall.monsterLost === recoil, [held.monsterLost, behindBall.monsterLost]);
+    check('9. thorn: a swing or ball the shield stopped is not answered; a ball from behind lands, and is', held.monsterLost === 0 && heldBall.monsterLost === 0 && behindBall.monsterLost === recoil, [held.monsterLost, heldBall.monsterLost, behindBall.monsterLost]);
   }
   /* the hexer's curse: its swing that lands curses you, a held block does not */
   {
@@ -473,24 +529,26 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
   check('10a. ...and each row of MONSTER_HITS is measured above', rows.every((r) => Object.values(ROW_OF).includes(r)), { rows });
   /* 10b. every cell from its closed set, so a typo cannot silently mean "no" */
   const oneOf = (v, set) => set.includes(v);
+  /* v2.3.3300: the block's `counts` and `save`, the row's `wrongWay` and the
+     sight's 'after-shield' went with the decisions that made them unused */
   const okBlock = (b) => b === null || (typeof b === 'object' && Object.isFrozen(b) && typeof b.cost === 'number' && b.cost >= 0
-    && typeof b.parry === 'boolean' && typeof b.counts === 'boolean' && oneOf(b.save, [null, 'whole']) && typeof b.thorns === 'boolean'
-    && Object.keys(b).every((k) => ['cost', 'parry', 'counts', 'save', 'thorns'].includes(k)));
+    && typeof b.parry === 'boolean' && typeof b.thorns === 'boolean'
+    && Object.keys(b).every((k) => ['cost', 'parry', 'thorns'].includes(k)));
   const bad = rows.filter((r) => {
     const R = MONSTER_HITS[r];
     return !(Object.isFrozen(R) && oneOf(R.shield, [null, 'door', 'tick']) && oneOf(R.shelter, [null, 'door', 'tick'])
-      && typeof R.roll === 'boolean' && oneOf(R.sight, [null, 'door', 'after-shield', 'flight'])
-      && okBlock(R.block) && okBlock(R.wrongWay) && (R.wrongWay === null || R.block !== null)
+      && typeof R.roll === 'boolean' && oneOf(R.sight, [null, 'door', 'flight'])
+      && okBlock(R.block)
       && typeof R.rail === 'number' && R.rail >= 0 && R.rail < 1 && typeof R.elemental === 'boolean'
       && oneOf(R.own, [null, 'contact', 'elem'])
-      && Object.keys(R).every((k) => ['shield', 'shelter', 'roll', 'sight', 'block', 'wrongWay', 'rail', 'elemental', 'own'].includes(k)));
+      && Object.keys(R).every((k) => ['shield', 'shelter', 'roll', 'sight', 'block', 'rail', 'elemental', 'own'].includes(k)));
   });
   check('10b. every cell of every row is one the door reads', bad.length === 0, bad);
   check('10b. the table cannot be changed at run time', Object.isFrozen(MONSTER_HITS));
   /* 10c. a blow the shield STOPPED says the bar it left (unchanged): the phone
      reads an event without `hp` as an older worker's and floated the hit's
      whole number over another player who had blocked it */
-  for (const src of BLOCKABLE.filter((x) => x !== 'burrow')) {
+  for (const src of BLOCKABLE) {   /* v2.3.3300: the pile's block too, no longer a hit of 0 */
     const r = play(src, 'out', face(true));
     check('10c. ' + src + ': a stopped block\'s event carries the bar (' + MAX_HP + ')', !!r.ev && r.ev.blocked === true && r.ev.hp === MAX_HP, r.ev);
   }

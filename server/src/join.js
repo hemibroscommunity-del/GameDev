@@ -787,7 +787,10 @@ export const joinMethods = {
          bootstrap copied the client's own claims; with a new character now
          starting from nothing (below), it would wipe a real one.  So a read
          that fails ends the join instead: the socket closes and the
-         client's reconnect asks again. */
+         client's reconnect asks again.
+         v2.3.3303: ...and so does a character a NEWER worker saved, on a
+         rolled-back one (persistence.js _loadRpg, err.code 'newer'): the
+         phone keeps asking until the newer worker is back. */
       let stored;
       try {
         stored = await this._loadRpg(msg.id, { throwOnError: true });
