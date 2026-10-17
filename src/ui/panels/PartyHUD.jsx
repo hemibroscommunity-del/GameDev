@@ -4,6 +4,7 @@ import { ZONES } from '@/data/index.js';
 import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';   /* v2.3.1966 */
 import { SMALL_ICON } from '../../data/smallIcons.js';   /* v2.3.3279: the owner's party pictures */
 import { partyRows, memberOffline, seenAgo } from '../../game/partyRows.js';   /* v2.3.3284: a party that lasts shows six */
+import { allyTagShown } from '@/game/alliance.js';   /* v2.3.3285: an alliance's tag in the strip's head */
 /* v2.3.3279: the window's marks were emoji (🎟️ 👑 💀 📍), drawn differently on
    every phone; the owner drew them (tools/ui/cut-small-icons.py). */
 function partyMark(src, size, title) {
@@ -161,6 +162,10 @@ export function PartyHUD(props) {
     return o && !o._away && typeof o.x === 'number' ? { x: o.x, y: o.y } : null;
   });
   var maxN = party.max > 0 ? party.max : 4;
+  /* v2.3.3285: an alliance says so -- its tag, or ALLIANCE before it has one
+     (server alliance.js; party_state's `ally` is the worker's word) */
+  var _allyA = party.ally && party.ally.on ? party.ally : null;
+  var _allyHead = _allyA ? (allyTagShown(_allyA.tag) ? '[' + allyTagShown(_allyA.tag) + ']' : 'ALLIANCE') : null;
 
   /* ── roster strip ── */
   /* top 92: the left column already stacks the status-effect readout
@@ -182,7 +187,7 @@ export function PartyHUD(props) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: { fontSize: 11, fontWeight: 600, letterSpacing: '.12em', color: '#D8A85F', fontVariantNumeric: 'tabular-nums' }
-  }, partyMark(SMALL_ICON.partyMember, 16, 'party'), "PARTY ", party.members.length, "/", maxN), /*#__PURE__*/React.createElement("button", {
+  }, partyMark(SMALL_ICON.partyMember, 16, 'party'), /*#__PURE__*/React.createElement("span", { 'data-party-head': _allyHead ? 'alliance' : 'party' }, _allyHead || "PARTY", " "), party.members.length, "/", maxN), /*#__PURE__*/React.createElement("button", {
     title: "Leave party",
     'data-party-leave': leaveArmedAt ? 'armed' : '',
     style: Object.assign({}, _btnBase, {

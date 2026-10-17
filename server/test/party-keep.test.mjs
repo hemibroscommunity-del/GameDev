@@ -112,8 +112,10 @@ let pa = lastParty(wss.a);
 const pid1 = pa && pa.id;
 check('1. the roster says how many it can hold (max 50)', pa && pa.max === PARTY.KEEP_MAX && PARTY.KEEP_MAX === 50, pa && pa.max);
 const rec1 = state._store.get('party:' + pid1);
+/* v2.3.3285: PARTY.V is 2 (a record with an alliance, alliance.js); a party
+   that never was one stays shape 1, so a rollback to v2.3.3284 reads it */
 check('2. forming a party stores the record: its id, leader, members oldest first, shape v1',
-  rec1 && rec1.id === pid1 && rec1.leader === P('a') && rec1.members.join() === [P('a'), P('b')].join() && rec1.v === PARTY.V, rec1);
+  rec1 && rec1.id === pid1 && rec1.leader === P('a') && rec1.members.join() === [P('a'), P('b')].join() && rec1.v === 1 && PARTY.V === 2, rec1);
 check('2. ...each member\'s name, level, when they joined and when last seen',
   rec1 && rec1.meta && rec1.meta[P('a')] && rec1.meta[P('a')].name === 'A' && rec1.meta[P('b')].name === 'B'
     && rec1.meta[P('b')].level >= 1 && rec1.meta[P('b')].at > 0 && rec1.meta[P('b')].seen > 0, rec1 && rec1.meta);

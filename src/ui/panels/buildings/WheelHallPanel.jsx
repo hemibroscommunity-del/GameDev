@@ -1,6 +1,7 @@
 import React from 'react';
 import { WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';
 import { mailList, mailAge } from '@/game/postOffice.js';
+import { AlliancePart } from './AlliancePart.jsx';   /* v2.3.3285: the alliance, under your party */
 
 /* ═══ v2.3.3066: THE WHEEL'S HALLS — the Guild Hall, the Post Office, the Sheriff's Office ═══
  *
@@ -198,6 +199,9 @@ export function SaloonPanel(props) {
           )}
         </div>
         {row('party', '/icons/ui/soc-party.webp', '🍺', 'Find a party', 'Pick a player, then tap Invite to Party on their card', props.onPlayers)}
+        {/* v2.3.3285: the alliance a party of 20 active members becomes, its
+            war, and the board (AlliancePart.jsx; caps.alliance only) */}
+        <AlliancePart stateRef={props.stateRef} party={party} />
       </div>
     </div>
   );
