@@ -438,6 +438,9 @@ export const PRIVILEGED_EVENTS = new Set([
      innocent player's own screen and the other would make a game clear its
      bag of things the worker never took. */
   'nml_skull', 'nml_loss',
+  /* v2.3.3316: and what a kill there took, told to the killer.  Forged, it
+     would point a player at a pile that is not theirs. */
+  'nml_take',
   /* v2.3.2820: the daily chest's result (dailychest.js) -- it names a prize,
      so a forged one would put a fake jackpot on another player's screen. */
   'chest_opened',
@@ -3280,13 +3283,18 @@ export class GameRoom {
       // armor / shield / amulet) and weaponStash are NOT included.
       // Anyone in the zone can pick the pile up; despawns after 60 s.
       // Spawn BEFORE the inventory wipe so we capture the items.
-      _hook('deathPile', () => this._spawnDeathPile(ps, playerId, _nml && _nml.pile));
+      const _pile = _hook('deathPile', () => this._spawnDeathPile(ps, playerId, _nml && _nml.pile));
       /* v2.3.1688: the gathering TOOLS survive (see _keepGatherTools).  They
          are equipment held in the bag for storage reasons, not loot — losing
          them to a death silently ends woodcutting/fishing/mining for good.
          v2.3.2491: ...and so does anything a loot pickup handed over inside
-         the client's 500 ms pickup freeze — see _wipeInventoryOnDeath. */
-      ps.inventory = this._wipeInventoryOnDeath(ps);
+         the client's 500 ms pickup freeze — see _wipeInventoryOnDeath.
+         v2.3.3316: ...except a loss in No man's land, which takes the whole
+         bag, tools, ores and cooked fish too (`all`, nomansland.js -- the
+         owner: everything but what you wear); Diego sells a tool back. */
+      ps.inventory = this._wipeInventoryOnDeath(ps, !!(_nml && _nml.pile && _nml.pile.all));
+      /* v2.3.3316: the killer is told what they took, and where it lies */
+      if (_nml && _nml.to) _hook('nmlTell', () => this._nmlTellKiller(_nml, playerId, _pile));
     }
     /* v2.3.1616: carry the duel exemption forward to the RESPAWN wipe, which
        is a second, unconditional `ps.inventory = {}` five seconds from now
@@ -4112,8 +4120,11 @@ export class GameRoom {
      every key that survives death outright; the shield adds back only the
      quantity _spawnDeathPile withheld from the pile, so for any key the two
      sides sum to exactly what the player had. */
-  _wipeInventoryOnDeath(ps) {
-    const keep = this._keepGatherTools(ps.inventory);
+  /* v2.3.3316: `all` -- a loss in No man's land, which keeps no carve-out
+     (the pile took them: _spawnDeathPile's `all`); only the shield's own
+     part, below, so the two still sum to what the player had. */
+  _wipeInventoryOnDeath(ps, all) {
+    const keep = all ? Object.create(null) : this._keepGatherTools(ps.inventory);
     const shield = ps && ps._deathShield;
     if (shield) {
       const inv = (ps && ps.inventory) || {};
@@ -4140,7 +4151,8 @@ export class GameRoom {
   /* v2.3.3058: `opts` (No man's land, nomansland.js _nmlOnDeath): who the
      pile is for during its owner window, whose name it carries, and when
      that window ends -- the killer's, or nobody's at all.  Absent, the pile
-     is the dead player's own, as it always was. */
+     is the dead player's own, as it always was.  v2.3.3316: and
+     `all`, the whole bag -- no carve-out stays (nomansland.js). */
   _spawnDeathPile(ps, playerId, opts) {
     if (!ps || !ps.inventory) return null;
     const items = [];
@@ -4155,8 +4167,12 @@ export class GameRoom {
        because the player may well have been carrying some of the same key
        already and only the newly-credited part is shielded. */
     const shield = ps._deathShield || null;
+    /* v2.3.3316: a loss in No man's land drops the carve-outs too -- the
+       tools, every ore and cooked fish (nomansland.js `all`), and the wipe
+       beside it keeps none of them, so kept and dropped still never meet */
+    const all = !!(opts && opts.all);
     for (const [k, v] of Object.entries(ps.inventory)) {
-      if (this._keptThroughDeath(k)) continue;
+      if (!all && this._keptThroughDeath(k)) continue;
       let qty = Math.floor(Number(v) || 0);
       if (shield && shield[k]) qty -= Math.floor(Number(shield[k]) || 0);
       if (qty > 0) items.push({ key: k, qty });
@@ -5051,7 +5067,8 @@ export class GameRoom {
       case 'shop_quote': {
         if (!session.id) break;
         const _q = msg.payload || msg;
-        await this._shopQuote(_q.key, _q.qty, _q.mode)   /* v2.3.3291: awaited (the bundle loop) */
+        /* v2.3.3316: + the asker, for a tool's quote (shop.js TOOL_SHELF) */
+        await this._shopQuote(_q.key, _q.qty, _q.mode, this.playerState[session.id])   /* v2.3.3291: awaited (the bundle loop) */
           .then((r) => this._shopSend(session.id, 'shop_quoted', r))
           .catch(() => { /* the panel keeps its last quote */ });
         break;

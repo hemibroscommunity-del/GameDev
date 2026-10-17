@@ -23,12 +23,16 @@
  *     into the anchors the threat skull already draws from (entityRenderer).
  *   - A DEATH THERE: `nml_loss` -- clear from your own bag what the worker
  *     took, so it is not offered back on your next join (gearstash.js would
- *     refuse it anyway, by id), and say so.
+ *     refuse it anyway, by id), and say so.  Since v2.3.3316 that is
+ *     everything you carry (the gold, the tools and the ores too), and a red
+ *     skull a monster killed keeps what it wears; the killer is told what they
+ *     took (`nml_take`).
  *
  * Only against a worker that advertises caps.nomansland: an older one would
  * refuse every hit, and an aimed swing that never lands is worse than none.
  */
 import { chatLogBus } from '@/ui/mobile/chatLogBus.js';
+import { pushDmgPopup } from '@/game/combatHelpers.js';   /* v2.3.3316: the killer's "LOOT" */
 import { playZoneBanner } from '@/ui/zoneBannerOverlay.js';
 
 import { NML, NML_CENTRE, NML_CENTRES, nmlTierAt, nmlLevelAt } from '@/data/noMansLandRings.js';
@@ -118,7 +122,9 @@ export function noteNoMansLand(S) {
     try { playZoneBanner('nml-' + lvl, S, { title: `No man's land ${lvl}`, plain: true, color: NML_RED }); } catch (e) { /* the line still says it */ }
     if (!_note.told.first) {
       _note.told.first = true;
-      nmlSay(S, `☠ No man's land ${lvl}: ${rule} can attack you here. Killed by one, you lose your bag; attack one and you carry a red skull for 20 minutes.`);
+      /* v2.3.3316: "your bag" undersold it -- a player's kill takes everything
+         you carry, the gold, the tools and the ores too */
+      nmlSay(S, `☠ No man's land ${lvl}: ${rule} can attack you here. Killed by one, you lose everything you carry (not what you wear); attack one and you carry a red skull for 20 minutes.`);
     } else {
       nmlSay(S, `☠ No man's land ${lvl}: ${rule} can attack you.`);
     }
@@ -152,7 +158,9 @@ export function applyNmlSkull(S, payload) {
   if (red > 0) { S._pvpSkullType = 'red'; S._pvpSkullUntil = now + red; }
   else if (white > 0) { S._pvpSkullType = 'white'; S._pvpSkullUntil = now + white; }
   else { S._pvpSkullType = null; S._pvpSkullUntil = 0; }
-  if (red > 0 && !wasRed) nmlSay(S, '☠ You attacked a player: a red skull for 20 minutes of play. Die with it and you lose everything you carry and wear.');
+  /* v2.3.3316: the owner -- killed by a player a red skull loses everything,
+     killed by a monster everything but what it wears */
+  if (red > 0 && !wasRed) nmlSay(S, '☠ You attacked a player: a red skull for 20 minutes of play. Killed by a player with it, you lose everything you carry and wear; killed by a monster, everything but what you wear.');
 }
 
 const WORN = ['weapon', 'rangedWeapon', 'staffWeapon', 'armor', 'legsArmor', 'shield', 'amulet'];
@@ -172,16 +180,27 @@ const sigOf = (p) => (p && typeof p === 'object' ? [p.name, p.gearBase, p.tierMu
  *  from what you wear, and no outfit piece (server/src/nomansland.js says
  *  why), so clearing whole lists here would throw away what it left you --
  *  and the next join would bring it back from the worker's copy anyway. */
+/*  ═══ v2.3.3316: EXACTLY WHAT THE WORKER NAMED, AND WHAT YOU WEAR STAYS ═══
+ *  The owner: everything you carry goes to a player's kill, a red skull loses
+ *  what it wears too -- but only to a player: "If they're killed by a monster
+ *  then make it so they just lose everything except their equipped items".
+ *  The worker now says so: `keepWorn` (a red skull no player killed keeps its
+ *  worn slots), and `named` (its gear list names every piece it took, a red
+ *  skull's too, so those leave and nothing else -- a whole list cleared here
+ *  would throw away a shield it left you because it could not tell which was
+ *  on your arm).  An older worker sends neither, and is read as before: a red
+ *  skull's worn slots and lists all cleared.  The gold is every loss's now
+ *  (`coins`), the echo carrying the worker's own count anyway. */
 export function applyNmlLoss(S, payload, save) {
   if (!S || !payload) return;
   const R = S.rpg;
   S._nmlConfiscatedAt = Date.now();   /* wsClient's armour rescue stands down */
   if (R) {
     R.weaponStash = [];
-    if (payload.red) {
-      for (const f of WORN) R[f] = null;
+    const named = payload.named === true;
+    if (payload.red && !payload.keepWorn) for (const f of WORN) R[f] = null;
+    if (payload.red && !named) {
       for (const f of RED_LISTS) if (Array.isArray(R[f])) R[f] = [];
-      R.coins = 0;
     } else {
       for (const g of (Array.isArray(payload.gear) ? payload.gear : [])) {
         const list = g && RED_LISTS.indexOf(g.field) >= 0 && Array.isArray(R[g.field]) ? R[g.field] : null;
@@ -190,10 +209,36 @@ export function applyNmlLoss(S, payload, save) {
         if (at >= 0) list.splice(at, 1);
       }
     }
+    if (payload.red || Number(payload.coins) > 0) R.coins = 0;
     try { if (typeof save === 'function') save(S); } catch (e) { /* the echo still carries the worker's state */ }
   }
   const who = payload.by ? payload.by : 'your death';
+  const gold = Number(payload.coins) > 0 ? ' and your gold' : '';
   nmlSay(S, payload.red
-    ? `☠ ${payload.by ? payload.by + ' killed you while you carried a red skull' : 'You died with a red skull'}: you lost everything you carried and wore, and your gold.`
-    : `☠ ${who} took your bag in No man's land: its items and your spare weapons, armour and shields. What you wear is still yours.`);
+    ? (payload.keepWorn
+      ? `☠ You died with a red skull: you lost everything you carried${gold}. What you wear is still yours.`
+      : `☠ ${payload.by ? payload.by + ' killed you while you carried a red skull' : 'You died with a red skull'}: you lost everything you carried and wore${gold}.`)
+    : `☠ ${who} took everything you carried in No man's land: your bag${gold}, and your spare weapons, armour and shields. What you wear is still yours.`);
+}
+
+/** ═══ v2.3.3316: `nml_take` -- WHAT YOUR KILL THERE TOOK ═══
+ *  The killer's one line: who, how many things lie where they fell (the pile
+ *  is yours for its first minute), and that their gold and spare gear are
+ *  yours already (each with its own "You received" line from the mail).
+ *  The pile was the part nothing pointed at. */
+export function applyNmlTake(S, payload) {
+  if (!S || !payload) return;
+  const from = typeof payload.from === 'string' && payload.from ? payload.from.slice(0, 40) : 'a player';
+  const items = Math.max(0, Math.floor(Number(payload.items) || 0));
+  const coins = Math.max(0, Math.floor(Number(payload.coins) || 0));
+  const pieces = Math.max(0, Math.floor(Number(payload.weapons) || 0)) + Math.max(0, Math.floor(Number(payload.gear) || 0));
+  const got = [];
+  if (coins) got.push(coins + ' gold');
+  if (pieces) got.push(pieces === 1 ? '1 piece of gear' : pieces + ' pieces of gear');
+  const pile = items ? `${items} thing${items === 1 ? '' : 's'} lie where they fell, yours for a minute` : '';
+  const rest = got.length ? `${got.join(' and ')} ${got.length > 1 || coins ? 'are' : 'is'} yours` : '';
+  nmlSay(S, `☠ You took ${from}'s things: ${[pile, rest].filter(Boolean).join('; ') || 'they carried nothing'}.`);
+  try {
+    if (S.player && items) pushDmgPopup(S, S.player.x, S.player.y - 60, 'LOOT', '#FFD166', { ts: Date.now() });
+  } catch (e) { /* the line says it */ }
 }

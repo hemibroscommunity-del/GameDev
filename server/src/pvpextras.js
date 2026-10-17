@@ -490,9 +490,13 @@ export const pvpExtrasMethods = {
     });
     /* a blow under No man's land's rule skulls both, as the claim path's does
        (a tick rides the blow that set it) */
-    if (!o.dot && this._nmlAllowed && attackerPs.z === 'wheel' && this._nmlAllowed(attackerId, targetId)
+    /* v2.3.3316: ...and a tick keeps the kill that player's without a skull
+       of its own (nomansland.js _nmlTouch): a poison's last tick a little
+       after its blow killed with nothing taken, as if a monster had */
+    if (this._nmlAllowed && attackerPs.z === 'wheel' && this._nmlAllowed(attackerId, targetId)
         && !(this._pvpConsent && (this._pvpConsent.get(this._pvpPairKey(attackerId, targetId)) || 0) > now)) {
-      this._nmlOnHit(attackerId, targetId, now);
+      if (!o.dot) this._nmlOnHit(attackerId, targetId, now);
+      else if (this._nmlTouch) this._nmlTouch(attackerId, targetId, now);
     }
     this._saveRpgVitals(targetId, targetPs);
     this._queuePlayerStateFlush(targetId);
