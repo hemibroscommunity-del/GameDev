@@ -114,7 +114,36 @@ next step, below.
 
 ## Memory on the phone
 
-<!-- filled from mp-membudget -->
+`mp-membudget` (the CI check: a phone in BroTown, a Flame Fields fight and
+home again, three times), on the long Wheel. **No budget line was raised.**
+
+| line | highest | budget |
+|---|---|---|
+| art from files | 147.9 MB | 156 |
+| graphics chip | 92 MB | 105 |
+| canvases | 91.4 MB | 96 |
+| sound | 26 MB | 30 |
+| the page's heap | 30.3 MB | 32 |
+| the page's buffers | 22.6 MB | 24 |
+| background workers | 31.1 MB | 36 |
+
+Two savings got it there; the first long-Wheel build was over the heap and
+buffers lines by 0.5 MB each:
+
+- **The minimap marked every monster, every frame** (wheelMinimap.js), on
+  the box or far past it, and its pool keeps a sprite for the most ever marked
+  at once: 1,920 sprites on the long Wheel, ~3 MB of the page's heap, and
+  their upkeep every frame. It marks only what is in the box now (the bros
+  too). Today's Wheel saves its 384.
+- **What each object is drawn as** (its page, frame, size, anchor, reach and
+  scale) depended only on its picture but was kept for every object: 22 bytes
+  each, ~1.4 MB for 63,486. It is kept once a picture now, each object
+  keeping the picture's number (wheelObjects.js `pk`), and the objects' index
+  is in 16-bit numbers while every object's number fits (~0.4 MB).
+
+Measured how: the page's heap on the long and the short Wheel from the same
+build (the `wheel5x: false` flag), each object kind's share from a heap
+snapshot, and what holds them (the minimap's pool: 1,921 sprites).
 
 ## Tests
 

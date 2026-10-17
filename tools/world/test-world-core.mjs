@@ -2826,6 +2826,22 @@ console.log('swimming (v2.3.3003)');
   for (let i = 0; i < 30; i++) evs3.push(W8.updateWheelSwim(S, t += 16, true, 52, shore));
   ok('seated on a bank whose drawn shore reaches the boots: climbOut ends the swim, and it stays ended (back in only at four wet)',
     stillIn && was === true && !W8.isWheelSwimming(S) && evs3.every((e) => e === null) && W8.climbOut(S, t) === false, { stillIn, was, evs3: evs3.filter(Boolean) });
+  /* v2.3.3300: ...and a seat the drawn shore reaches FOUR of the looks of
+     (one of the long Wheel's 250, wn-thunder-39): while you fish or mine
+     there the seat stays the bank; up from it, the looks decide again */
+  const deep = (x, y) => y >= 997 && !(x > 4 && y < 1006);
+  const wet4 = W8.wetProbes(deep, 0, 1003);
+  S._extraction = { skill: 'fishing' };
+  const evs4 = [];
+  for (let i = 0; i < 30; i++) evs4.push(W8.updateWheelSwim(S, t += 16, true, 52, deep));
+  const heldDry = !W8.isWheelSwimming(S) && evs4.every((e) => e === null);
+  S._extraction = { skill: 'woodcutting' };
+  const notSeated = W8.updateWheelSwim(S, t += 300, true, 52, deep);
+  S._extraction = null;
+  ok(`seated at a spot whose drawn shore wets four of the looks (${wet4}): no swim while you fish there; a harvest that does not seat you, or none, and the looks decide`,
+    wet4 === 4 && W8.seatedOnBank({ _extraction: { skill: 'mining' } }) && !W8.seatedOnBank({}) && heldDry && notSeated === 'in' && W8.isWheelSwimming(S),
+    { wet4, heldDry, evs4: evs4.filter(Boolean), notSeated });
+  W8.climbOut(S, t);
   /* leaving the Wheel lets it all go */
   W8.updateWheelSwim(S, t += 16, false, 52, waterAt);
   ok('outside the Wheel there is no swimming at all', S._wheelSwim === null && !W8.isWheelSwimming(S));
@@ -3249,9 +3265,10 @@ console.log("the water's frozen web of light taken out (v2.3.3021)");
   const waterSrc = readFileSync(new URL('../../src/rendering/wheelWater.js', import.meta.url), 'utf8');
   ok("only where the game draws the water moving: the worker calms a water picture when told `moving` (and not `?nowaves`), the game tells it so from WebGL2 and the address",
     /* (v2.3.3298: the worker reads the address once, `search`; and the game's
-       init has carried `palette` since v2.3.3190) */
+       init has carried `palette` since v2.3.3190, and `size`, the Wheel the
+       room plays, since v2.3.3300) */
     /calm: wavesOn\(search\) && !!\(m && m\.moving\)/.test(workerSrc) && /W && W\.calm && WATER_SWATCHES\.includes\(id\)/.test(workerSrc)
-    && /postMessage\(\{ type: 'init', search, moving: _waterMoves(, palette: _palette)? \}\)/.test(trialSrc) && /setWheelWaterMoves\(wavesOn\(\) && webgl2\(\)\)/.test(waterSrc), {});
+    && /postMessage\(\{ type: 'init', search, moving: _waterMoves(, palette: _palette)?(, size)? \}\)/.test(trialSrc) && /setWheelWaterMoves\(wavesOn\(\) && webgl2\(\)\)/.test(waterSrc), {});
   ok("and the game draws its own web of light, moving: round cells (the nearest point's distance over the next's), on every water but a running river, `?caustics=k` its brightness",
     /float cellEdge\(vec2 p, float t\)/.test(waterSrc) && /return f1 \/ max\(f2, 1e-4\);/.test(waterSrc) && /uniform float uCaustics;/.test(waterSrc)
     && /\(1\.0 - smoothstep\(0\.02, 0\.10, sp\)\)/.test(waterSrc) && /caustics=\(\[0-9\.\]\+\)/.test(waterSrc), {});

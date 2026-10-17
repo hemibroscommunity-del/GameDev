@@ -210,12 +210,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const artFrost = await P.page.evaluate(() => (window.__btWheelArt ? window.__btWheelArt() : null));
   const snowDrawn = snow.filter((m) => m.sprite && m.sprite.visible && m.sprite.texAlive);
   rec.ok(`on Frost Ridge's inner end the snowmen are drawn from live art (${snowDrawn.length} of ${snow.length} bodies)`,
-    snow.length === 6 && snowDrawn.length >= 1 && snow.filter((m) => m.sprite).every((m) => m.sprite.texAlive), snow.map((m) => m.sprite));
+    snow.length === 6 * LONG && snowDrawn.length >= 1 && snow.filter((m) => m.sprite).every((m) => m.sprite.texAlive), snow.map((m) => m.sprite));
   const gob = await drawnNear('ember');
   await shot(P, 'ember');
   const gobDrawn = gob.filter((m) => m.sprite && m.sprite.visible && m.sprite.texAlive);
   rec.ok(`...and on the Flame Fields' the fire goblins (${gobDrawn.length} of ${gob.length})`,
-    gob.length === 6 && gobDrawn.length >= 1 && gob.filter((m) => m.sprite).every((m) => m.sprite.texAlive), gob.map((m) => m.sprite));
+    gob.length === 6 * LONG && gobDrawn.length >= 1 && gob.filter((m) => m.sprite).every((m) => m.sprite.texAlive), gob.map((m) => m.sprite));
 
   const memWalk = await monsterMb(P);   /* after two lands' objects and ground came in too */
   /* v2.3.2989: their looks came on the way, before any of their monsters was

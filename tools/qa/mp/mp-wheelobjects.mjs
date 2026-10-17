@@ -268,8 +268,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       for (let i = 0; i < placed.n; i++) if (placed.kind[i] === palm && Math.hypot(placed.x[i] - pool.x, placed.y[i] - pool.y) < pool.r + 160) palms++;
       if (!best || palms > best.palms) best = { x: pool.x, y: pool.y, r: pool.r, palms };
     }
-    await H.hopTo(P, best.x, best.y + best.r + 110, { tries: 200 });
+    /* v2.3.3300: by way of town -- from Frost Ridge the straight line to the
+       dunes crosses the open sea between the spokes, five times as much of it
+       on the long Wheel -- and where the walk ended goes in the record */
+    await H.hopTo(P, G.arrival.x, G.arrival.y, { step: 200 });
+    const reached = await H.hopTo(P, best.x, best.y + best.r + 110, { step: 200 });
     await P.page.waitForTimeout(4000);
+    const at = await H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y) }));
+    console.log(`    oasis walk: ${JSON.stringify({ reached, at, to: [Math.round(best.x), Math.round(best.y + best.r + 110)] })}`);
     const oasis = await P.page.evaluate(({ px, py }) => {
       const W = window.__btWheelObjects;
       return W.near(px, py, 700).filter((o) => o.id === 'palm').map((o) => ({ i: o.i, x: o.x, y: o.y, s: W.sprite(o.i) }));
