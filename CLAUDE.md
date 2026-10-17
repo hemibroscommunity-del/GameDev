@@ -3533,6 +3533,18 @@ Two protocol versions coexist; both must keep working:
   - The preloading law above still stands. Moving a load off the loading
     screen to save memory is the owner's call, as #822's gathering poses were,
     never a quiet "fix".
+- **A PAYMENT, ITS STAMP AND A SWAP'S BOTH SIDES ARE ONE WRITE (v2.3.3294,
+  docs/specs/inbox-escrow.md).** "Atomic" means one synchronous run of writes
+  with no await between them; the input gate keeps other events out of the
+  middle but does not make writes one, and every merge restarts the room
+  between two awaits. Found by the architecture review: `_creditPlayer`
+  stamped, awaited, then paid; both trade lanes saved the debits and awaited
+  each credit; staging a weapon wrote escrow before the stash; two credits to
+  one player rewrote the mailbox over each other. Now the stamp goes out with
+  the payment, a running opId answers 'dup', the mailbox is taken one at a
+  time (`_inboxSerial`), and a swap with both sides online credits in the
+  debit's run (`_creditLiveTogether`). `inbox.test` §8c crashes at every write
+  (all seven failed on main); handoff rules 5 and 7, TRAPS #184.
 - **WHAT PLAY WRITES IS GUARDED (v2.3.3270, the cost diet).** The owner:
   "Build my game so that it's the most cost effective that it can be without
   losing quality." Measured, the game already writes and sends about the least
@@ -3581,9 +3593,30 @@ Two protocol versions coexist; both must keep working:
   refusal as fatal) exist; `disable_verify` live flag; fail closed;
   `TURNSTILE_VERIFY_URL` is the test seam. `verify` suite (24), `mp-verify`
   (its own worker, `BT_WRANGLER_VARS`, a stand-in verifier and widget).
+- **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
+  name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
+  whose comments promised a `false` switch -- `storeGear`, `dailyChest`,
+  `zoneDepth`, `whirlWindup`, `broCount` -- answered POST /flags with a 400.
+  They are taken by name now (`CAMEL_SWITCHES`, `flagNameOk`) and no other
+  camelCase name is (`weaponDrops` stays refused). A new switch takes a
+  lower-case name: `liveops.test` §8 scans `server/src` for every flag read
+  and every `` `<name>: false` `` promised beside "live flags" or "kill
+  switch", and fails for one the route would refuse.
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.
+- **EVERY MONSTER HIT ON A PLAYER GOES THROUGH ONE DOOR (v2.3.3296,
+  docs/specs/hit-door.md, handoff rule 28).** The GDD's "interceptor chain",
+  built for real: `hits.js` `_monsterHit` runs the harvest shield, the safe
+  ground, a roll, a rock, the shield (cost, parry, a hit of 0), the one-hit
+  rail, the dice, the monster's after-effects and the event/save/death in one
+  order, and `MONSTER_HITS` says what each way of being hit does at each step
+  (`swing`, `snowball`, `pile`, `kit`, `burst`, `boss`, `fire`, `shock`,
+  `burn`, `poison`). The seven old copies are wrappers. The table is TODAY'S
+  behaviour cell for cell, including the cells hit-door.md puts to the owner
+  (the two 15s, the wrong-way snowball, the harvest shield the kits and fire
+  miss, rolls, parry, rails, rocks). `hit-door.test` (205) pinned them before
+  the door existed; §10d fails a new caller of `_applyDamage`.
 - `package.json` version tracks the client version loosely; comment
   tags in code are the finer-grained record.
 - The repo owner is new to coding: PRs should be self-contained,

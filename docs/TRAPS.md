@@ -4794,7 +4794,14 @@ against the regex). Or widen the regex -- a server change of its own, not
 something to do in passing. **Receipt:** mp-arrowblast throws `bowvolley`
 through the real route before anyone joins. **v2.3.2849:** the one-bolt staff
 special's `bigOrb` was renamed `bigorb` for the same reason, before it ever
-shipped (combat-lifecycle §6i tests the name).
+shipped (combat-lifecycle §6i tests the name). **v2.3.3295:** the five that
+had shipped -- `storeGear`, `dailyChest`, `zoneDepth`, `whirlWindup` and
+`broCount` (v2.3.3255, after this entry) -- are now accepted BY NAME
+(liveops.js `CAMEL_SWITCHES`, `flagNameOk`), the regex unchanged, as
+renaming a cap the phone reads would break it and widening the regex would
+make `weaponDrops` settable. `liveops.test` §8 scans `server/src`: a sixth
+camelCase switch -- read by the worker, or promised in a comment -- fails
+there instead of in an emergency.
 
 ## 118. Measuring damage through the handler trains the skill you are measuring (v2.3.2849)
 
@@ -6427,6 +6434,57 @@ review measured it on the real room code: five sword hits, no damage.
 change what happens to it inside a bound the worker set itself: a window it
 opened, a cost it charged, a cooldown it keeps. Look at every `ps.X = !!msg.X`
 that another path reads as protection.
+
+## 184. "The input gate holds a trade together" (v2.3.3294)
+
+**The plausible move.** A trade validates both sides, debits both, then
+credits both, all inside one input-gated event. "The credits await storage
+but input gates hold peers off the whole time" (trade2.js), so the trade is
+atomic.
+
+**Why it is wrong.** The gate keeps OTHER events out of the middle; it does
+not make the event's writes one. Each `await` between two writes is a place a
+restart can land (#147, #182), and every server merge restarts the room. The
+trades saved both debits, then awaited a `_creditPlayer` per credit. A
+restart in between took what both sides gave and paid neither, and a trade
+lives in memory, so nothing ever comes back for it. `_creditPlayer` itself
+did #147 the other way round: it stamped "paid", awaited that, then paid.
+And two un-awaited credits to one player each rewrote the mailbox over the
+other. Measured by the architecture review (`inbox.test` §8c): 500 gold lost,
+50 gold gone in a gift trade, a staged weapon returned twice, 1 of 5 mailbox
+entries kept.
+
+**The rule.** "Atomic" means ONE synchronous run of writes with no await
+between them, not one event. A swap with both sides online credits in the
+same run as it debits (`_creditLiveTogether`). A payment's stamp is issued
+with the payment's write. Anything that reads a record and writes it back
+takes its turn (`_inboxSerial`). Test it on inbox.test's batch storage, at
+every write.
+
+## 185. "A new monster attack needs its own copy of the hit" (v2.3.3296)
+
+**Tempting:** a new kind of monster blow -- a cast, a patch on the ground, a
+status that ticks -- gets its own `_xxxHitPlayer`: check the target, call
+`_applyDamage`, push a `monster_attack`, save, check for death. Seven of them
+were written that way, each copied from the one before.
+
+**Wrong.** Every rule added after a copy is missed by it. Measured
+(hit-door.test, v2.3.3296):
+
+- the slam, the lunge, the slime burst, the boss and ground fire hit a
+  harvester, against v2.3.1704's "A HARVESTER TAKES NO MONSTER DAMAGE, FULL
+  STOP";
+- the snow pile and the boss kept the block cost of 15 that v2.3.1731 renamed
+  to the one constant of 10;
+- a snowball's second shield test, measured from where it landed, blocks it
+  through a shield facing away.
+
+**The rule:** a new way for a monster to hurt a player is a row in
+`MONSTER_HITS` (hits.js) and a call to `_monsterHit`. The wrapper decides who
+is hit and for how much before the rail; the door does every step after that.
+`hit-door.test` §10d fails any other file that calls `_applyDamage`.
+**Receipt:** the seven copies are wrappers now, the 193 checks that measured
+them passing unchanged.
 
 ## 186. "Build the map a piece at a time by clipping each pass to the piece" (v2.3.3298)
 
