@@ -22,8 +22,9 @@
  *   6. the Wheel's way back: out and straight back in is judged from where
  *      you left, the farm's and a dungeon's honest round trips land where
  *      they left and are taken, a flip does not refill the budget, a death
- *      forgets it, and the first way in on a connection is still free (the
- *      join, still open: pinned so changing it is deliberate);
+ *      forgets it, and the first way in on a connection with NO last place
+ *      (a first join, the first after a deploy) is still taken -- a join
+ *      that has one is judged since v2.3.3327 (last-place.test.mjs);
  *   7. the follow ends on a zone change, a death, a server placement, the
  *      kill switch; it runs at the walk's bound, never a sprint's;
  *   8. `movebudget: false` is all of it as before, and the name is one the
@@ -359,10 +360,12 @@ async function walk(p, pxs, ms, gap = 33, extra) {
   await dd.room.webSocketMessage(dd.ws, JSON.stringify({ type: 'move', x: 87000, y: 87300, z: WHEEL_ZONE }));
   check('6. a death forgets the way back: back in at the Wheel\'s arrival, wherever they died', dd.ps.z === WHEEL_ZONE && near(dd.ps.x, 87000) && near(dd.ps.y, 87300), { x: dd.ps.x, y: dd.ps.y });
 
-  /* the first way in on a connection is free: the join is still open */
+  /* v2.3.3327: a connection with NO last place (a first join, the first
+     after a deploy: lastplace.js) has nothing to judge its first way in
+     from, so it is taken; one that has one is judged (last-place.test.mjs) */
   const j = await setup({ z: 'town' });
   await j.room.webSocketMessage(j.ws, JSON.stringify({ type: 'move', x: 123456, y: 45678, z: WHEEL_ZONE }));
-  check('6. STILL OPEN: the first way into the Wheel on a connection is taken wherever it is (a join is a fresh state; docs/specs/move-budget.md)', near(j.ps.x, 123456), j.ps.x);
+  check('6. a first join\'s first way into the Wheel is taken wherever it is: no last place to judge it from (lastplace.js)', near(j.ps.x, 123456), j.ps.x);
 
   /* the kill switch: the flip is free again */
   const k = await setup({ z: WHEEL_ZONE, flags: { movebudget: false } });
@@ -434,8 +437,10 @@ async function walk(p, pxs, ms, gap = 33, extra) {
   empty(p.ps);
   await p.move(5000, 1000);
   const info = p.room._moveBudgetInfo();
+  /* v2.3.3327: three judged -- the first move after the join is judged too
+     now (lastplace.js: the join names where it starts) */
   check('9. the overview counts the moves judged, the ones followed, and who is followed now',
-    info.on === true && info.judged === 2 && info.followed === 1 && info.following === 1 && info.wayBack === 0, info);
+    info.on === true && info.judged === 3 && info.followed === 1 && info.following === 1 && info.wayBack === 0 && info.arrival === 0, info);
   p.room._liveFlags = { movebudget: false };
   check('9. ...and says when the switch is off', p.room._moveBudgetInfo().on === false);
 }

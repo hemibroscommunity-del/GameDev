@@ -152,7 +152,7 @@ export const movementMethods = {
 
   /* v2.3.3325: the overview's counts (_moveBudgetInfo) */
   _mvTally(k) {
-    const c = this._mvCount || (this._mvCount = { judged: 0, followed: 0, wayBack: 0 });
+    const c = this._mvCount || (this._mvCount = { judged: 0, followed: 0, wayBack: 0, arrival: 0 });
     c[k] = (c[k] || 0) + 1;
   },
 
@@ -187,6 +187,52 @@ export const movementMethods = {
     ps.lastMoveAt = undefined;
     ps._wheelBack = undefined;
     ps._mvFollow = undefined;
+    /* v2.3.3327: ...and that arrival is where the next way in is judged
+       from (lastplace.js): a death comes back down the stairs to it, never
+       to a dungeon's mouth (respawn.js) */
+    ps._wheelArrive = (typeof this._lastPlaceOn === 'function' && this._lastPlaceOn()) ? true : undefined;
+  },
+
+  /* v2.3.3327: the walk bound's two multipliers, the worker's own: a speed
+     buff it sold, the move stat it stored.  The move handler's bound and the
+     join's judge (lastplace.js) read the same numbers. */
+  _moveSpeedK(ps) {
+    /* ═══ v2.3.2062: THE CAP WIDENS FOR A BUFF THE SERVER ITSELF SOLD ═══
+       Owner: "a speed potion that lets you run 1.5x speed 3 mins."
+
+       The 500 px/sec bound above was set against the fastest LEGITIMATE
+       stack, which the audit note puts at ~441 px/sec (240 agility x 1.5
+       swiftness x 1.15 food x 1.065 amulet). Multiply that by the Swift
+       Draught's 1.5 and it is ~662 -- comfortably over the bound. Shipping
+       the potion without this line would have meant the server rejecting
+       the moves of a player using the item the server charged them for:
+       they would run at normal speed and rubber-band, which reads as
+       terrible lag rather than as a broken potion.
+
+       RAISED FOR THIS PLAYER ONLY, and only while the buff the SERVER
+       stamped is live -- not a blanket raise of the constant. A client
+       cannot grant itself this: _buffs.spd is set in _handleShopPurchase
+       after coins are taken, and the magnitude is bounded on read exactly
+       as the damage and mana ones are, so a tampered save cannot widen it
+       either. When the timer lapses the cap returns to 500 on its own. */
+    let _spdCap = 1;
+    if (this._buffActive && this._buffActive(ps, 'spd')) {
+      const _m = Number(ps._buffs && ps._buffs.spdMul);
+      _spdCap = (_m >= 1 && _m <= 2) ? _m : 1.15;   /* 1.15 = the cooked-food buff */
+    }
+    /* ═══ v2.3.2592: ...AND FOR THE MOVE SPEED STAT THE SERVER ITSELF STORED ═══
+       The seventh shared stat (prog3.js PROG3.BODY.move, +0.4%/pt, +30% at
+       the 75-pt cap) is client-consumed like attack speed: BroTown.jsx
+       multiplies the walk speed by prog3MoveMult.  The bound widens by the
+       SAME multiplier, read from the server's own allocation (never the
+       wire), so the headroom the 500 was sized with is preserved instead
+       of spent — a maxed stat on the fastest legitimate stack is ~358 px/s
+       against 650, not against 500.  A client cannot grant itself this:
+       the allocation is server-validated at spend time
+       (_handleProg3Allocate) and re-clamped on every read (_prog3Pts).
+       prog3.test.mjs pins the arithmetic against the client's constants. */
+    const _moveMult = (ps.prog3 && typeof this._prog3MoveMult === 'function') ? this._prog3MoveMult(ps) : 1;
+    return { spdCap: _spdCap, moveMult: _moveMult };
   },
 
   /* v2.3.3325: a move the budget could not cover goes on being followed
@@ -238,6 +284,7 @@ export const movementMethods = {
       judged: c.judged || 0,
       followed: c.followed || 0,
       wayBack: c.wayBack || 0,
+      arrival: c.arrival || 0,   /* v2.3.3327: ways in judged from the arrival (lastplace.js) */
       following: this._mvFollowing ? this._mvFollowing.size : 0,
     };
   },
@@ -485,58 +532,29 @@ export const movementMethods = {
        (MOVE_BUDGET above, "THE BYPASSES") -- and where it puts them */
     let _fromX = ps.x, _fromY = ps.y;
     let _bounded = !zoneChanged && !firstMove && typeof ps.x === 'number' && typeof ps.y === 'number';
-    const _back = ps._wheelBack;
-    if (_budgetOn && zoneChanged && newZone === WHEEL_ZONE && _back
-        && typeof _back.x === 'number' && typeof _back.y === 'number') {
-      _fromX = _back.x; _fromY = _back.y; _bounded = true;
-      this._mvTally('wayBack');
+    /* v2.3.3327: ...or from its ARRIVAL, after a login or a death
+       (lastplace.js), whichever of the two is nearer where the phone says */
+    const _in = (_budgetOn && zoneChanged && newZone === WHEEL_ZONE) ? this._wheelEntryFrom(ps, msg.x, msg.y) : null;
+    if (_in) {
+      _fromX = _in.x; _fromY = _in.y; _bounded = true;
+      this._mvTally(_in.arrival ? 'arrival' : 'wayBack');
     }
     if (zoneChanged) {
       /* a follow belongs to the zone it began in: a zone change ends it */
       ps._mvFollow = undefined;
-      if (!_budgetOn) ps._wheelBack = undefined;
+      if (!_budgetOn) { ps._wheelBack = undefined; ps._wheelArrive = undefined; }
       else if (oldZone === WHEEL_ZONE) {
         ps._wheelBack = (typeof ps.x === 'number' && typeof ps.y === 'number') ? { x: ps.x, y: ps.y } : undefined;
-      } else if (newZone === WHEEL_ZONE) ps._wheelBack = undefined;
+        ps._wheelArrive = undefined;   /* v2.3.3327: a trip comes back where it left */
+      } else if (newZone === WHEEL_ZONE) { ps._wheelBack = undefined; ps._wheelArrive = undefined; }
     }
     let _toX = msg.x, _toY = msg.y;
     if (_bounded) {
       const dt = typeof ps.lastMoveAt === 'number' ? Math.max(0.001, (_now - ps.lastMoveAt) / 1000) : 1;
-      /* ═══ v2.3.2062: THE CAP WIDENS FOR A BUFF THE SERVER ITSELF SOLD ═══
-         Owner: "a speed potion that lets you run 1.5x speed 3 mins."
-
-         The 500 px/sec bound above was set against the fastest LEGITIMATE
-         stack, which the audit note puts at ~441 px/sec (240 agility x 1.5
-         swiftness x 1.15 food x 1.065 amulet). Multiply that by the Swift
-         Draught's 1.5 and it is ~662 -- comfortably over the bound. Shipping
-         the potion without this line would have meant the server rejecting
-         the moves of a player using the item the server charged them for:
-         they would run at normal speed and rubber-band, which reads as
-         terrible lag rather than as a broken potion.
-
-         RAISED FOR THIS PLAYER ONLY, and only while the buff the SERVER
-         stamped is live -- not a blanket raise of the constant. A client
-         cannot grant itself this: _buffs.spd is set in _handleShopPurchase
-         after coins are taken, and the magnitude is bounded on read exactly
-         as the damage and mana ones are, so a tampered save cannot widen it
-         either. When the timer lapses the cap returns to 500 on its own. */
-      let _spdCap = 1;
-      if (this._buffActive && this._buffActive(ps, 'spd')) {
-        const _m = Number(ps._buffs && ps._buffs.spdMul);
-        _spdCap = (_m >= 1 && _m <= 2) ? _m : 1.15;   /* 1.15 = the cooked-food buff */
-      }
-      /* ═══ v2.3.2592: ...AND FOR THE MOVE SPEED STAT THE SERVER ITSELF STORED ═══
-         The seventh shared stat (prog3.js PROG3.BODY.move, +0.4%/pt, +30% at
-         the 75-pt cap) is client-consumed like attack speed: BroTown.jsx
-         multiplies the walk speed by prog3MoveMult.  The bound widens by the
-         SAME multiplier, read from the server's own allocation (never the
-         wire), so the headroom the 500 was sized with is preserved instead
-         of spent — a maxed stat on the fastest legitimate stack is ~358 px/s
-         against 650, not against 500.  A client cannot grant itself this:
-         the allocation is server-validated at spend time
-         (_handleProg3Allocate) and re-clamped on every read (_prog3Pts).
-         prog3.test.mjs pins the arithmetic against the client's constants. */
-      const _moveMult = (ps.prog3 && typeof this._prog3MoveMult === 'function') ? this._prog3MoveMult(ps) : 1;
+      /* v2.3.2062 / v2.3.2592: the bound widens for a speed buff the worker
+         sold and the move stat it stored (_moveSpeedK, below the respawn) --
+         v2.3.3327: one helper, as the join's judge reads them too (lastplace.js) */
+      const { spdCap: _spdCap, moveMult: _moveMult } = this._moveSpeedK(ps);
       /* ═══ v2.3.2996: ...AND FOR A GUST THE SERVER ITSELF BLEW ═══
          A mummy's landed hit shoves you GUST.PX away (monsterstatus.js), and
          the client carries the shove out on top of your walk.  The 80 px of
