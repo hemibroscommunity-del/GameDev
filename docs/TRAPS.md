@@ -6323,3 +6323,27 @@ call a look. Run on a busy day, that is the game down until midnight.
 second worker -- ask which plan it is on and what it shares. Separate names do
 not make separate limits. Every call between two objects is a billed request,
 and so is every poll.
+
+## 183. "The phone says it is rolling, so it is" (v2.3.3292)
+
+`dodging` rides every move message, and the move handler copied it straight
+onto the player: `if (msg.dodging !== undefined) ps.dodging = !!msg.dodging`.
+Both of the paths for a player's blow (the claim's rewind and `_strikePlayer`)
+then skipped a player who was rolling. A flag the client SETS and the worker
+OBEYS, with no end, is a switch: one move saying `dodging: true` and nothing
+after it, and no player could hurt you. That covered No man's land (where a
+death hands over your bag), wagered duels and the arena. The architecture
+review measured it on the real room code: five sword hits, no damage.
+
+- **Why it looked fine:** the phone always sends `dodging: false` when its
+  roll ends, so every honest test saw short rolls. TRAPS #13's rule applies:
+  audit a handler by what it WRITES, here a flag that gates damage, not by
+  what the message is named.
+- **The fix:** the worker charges a roll's stamina (`_handleAbilityUse`), so
+  the charge opens a 1-second window, and the claim counts only inside it
+  (`movement.js` `ROLL`, `_rollOn`). Anticheat §10.
+
+**The rule.** A flag from the phone may say what it is doing. It may only
+change what happens to it inside a bound the worker set itself: a window it
+opened, a cost it charged, a cooldown it keeps. Look at every `ps.X = !!msg.X`
+that another path reads as protection.

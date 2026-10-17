@@ -140,7 +140,7 @@ import { gearProvMethods } from './gearprov.js'; /* v2.3.2534 */
 // v2.3.1170 (P4 decomposition): build grids + progression + stats_update -- see grids.js.
 import { gridMethods } from './grids.js';
 // v2.3.1171 (P4 decomposition): the move handler (anti-teleport + zone streaming) -- see movement.js.
-import { movementMethods } from './movement.js';
+import { movementMethods, ROLL } from './movement.js';   /* v2.3.3292: + the paid roll's window */
 // v2.3.1172 (P4 decomposition): rpg-blob load/save + player_state emit -- see persistence.js.
 import { persistenceMethods } from './persistence.js';
 // v2.3.1173 (P4 decomposition): identity gate + join bootstrap -- see join.js.
@@ -3270,6 +3270,10 @@ export class GameRoom {
     } else {
       ps.stamina = Math.max(0, have - cost);
     }
+    /* v2.3.3292: a roll the worker charged for opens the window in which the
+       phone's `dodging` counts against a player's blow (movement.js ROLL) --
+       paid here, never claimed */
+    if (ROLL.PAID.includes(type)) this._rollStamp(ps, Date.now());
     /* ═══ v2.3.2361: THE LUNGE STOPS BEING THE ONE ABILITY THAT ONLY BILLS ═══
        Owner, answering the question doLunge left in the code at v2.3.2352:
        "Yes lunge damage should take effect."  The whole roll, the reach, the

@@ -418,7 +418,7 @@ function monster(id, x, y, level) {
   room._handleAbility(sess('A'), { kind: 'bash', pid: IDS.B });
   check('...and a dazed player\'s roll dodges no bash', !!hitsOn('B').find((p) => p.ability === 'bash' && p.dmgTaken > 0));
   resetAll(); P.B.x = 150; T += 10000; room.eventBuffer.length = 0;
-  P.B.dodging = true;
+  P.B.dodging = true; room._rollStamp(P.B, T);   /* v2.3.3292: a PAID roll -- the claim alone buys nothing (anticheat §10) */
   room._handleAbility(sess('A'), { kind: 'bash', pid: IDS.B });
   check('...while a roll that is not dazed still does (its i-frames)', hitsOn('B').length === 0);
   void m;
