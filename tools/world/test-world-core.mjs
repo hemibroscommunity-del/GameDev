@@ -3960,6 +3960,12 @@ console.log('the Wheel five times longer (v2.3.3315)');
     && Object.keys(T.WHEEL_SPAWNS).every((h) => G.lands[h] && G.lands[h][0] === T.WHEEL_SPAWNS[h].anchor[0] && G.lands[h][1] === T.WHEEL_SPAWNS[h].anchor[1]);
   ok('the game\'s copies of each Wheel are its table\'s: its size, its safe ground and its lands\' middles (src/data/zones.js WHEEL_GEOM)',
     geomOk(WHEEL_GEOM[1], short) && geomOk(WHEEL_GEOM[5], live), { 1: WHEEL_GEOM[1], 5: WHEEL_GEOM[5] });
+  /* v2.3.3320: where each land's monsters begin, the long Wheel's quest road's end (questRoute.js) */
+  const firstOk = WHEEL_GEOM[5].firstR && Object.keys(live.WHEEL_SPAWNS).every((h) => WHEEL_GEOM[5].firstR[h] === live.WHEEL_SPAWNS[h].band[0]
+    && live.WHEEL_SPAWNS[h].points.every((p) => Math.hypot(p[0] - live.WHEEL_CENTRE[0], p[1] - live.WHEEL_CENTRE[1]) >= WHEEL_GEOM[5].firstR[h]))
+    && Object.keys(WHEEL_GEOM[5].firstR).length === Object.keys(live.WHEEL_SPAWNS).length;
+  ok('...and on the long one how far out each land\'s monsters begin, its first stretch\'s inner edge, none nearer (WHEEL_GEOM[5].firstR; the short one has none)',
+    !!firstOk && !WHEEL_GEOM[1].firstR, { firstR: WHEEL_GEOM[5].firstR });
   const arrivalOf = (P, F) => { const g0 = gridInfo(P); return { x: Math.round((g0.cx - F.x0) * P.worldPxPerArtPx), y: Math.round((g0.cy + 0.25 * g0.P - F.y0) * P.worldPxPerArtPx) }; };
   const a1 = arrivalOf(PLAN, F1), a5 = arrivalOf(PLAN5, F5);
   ok('...its size and the way in by the town square (src/game/worldTrial.js WHEELS, as the ground worker reports them)',

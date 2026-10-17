@@ -10,7 +10,9 @@
  *   1. the Wheel holds every land's monsters in its first four stretches: 192,
  *      24 a land, the first stretch's 48 at levels 1-2 as before (v2.3.3093:
  *      and its next four, levels 21-40 -- 384, 48 a land; mp-wheelpast20 walks
- *      out to them; v2.3.3318: five times those on the long Wheel, v2.3.3315);
+ *      out to them; v2.3.3318: five times those on the long Wheel, v2.3.3315;
+ *      v2.3.3320: whose first stretch climbs 1 to 5, every level there, on
+ *      the client too);
  *   2. each deeper one carries its stretch's level on the client too -- 6-10,
  *      11-15, 16-20 -- not clamped to its home's 1-2 (monsterVariants.js);
  *   3. out on Frost Ridge's third stretch (levels 11-15) the top bar says so,
@@ -49,7 +51,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3318: the Wheel the worker plays -- a land's six monsters a stretch
      on the short Wheel, WHEEL_LONG rounds of them on the long one (v2.3.3315,
      wheelzone.js _wheelSpawnMonsters); this counted the short Wheel's 384 */
-  const PER = 6 * (await H.wheelGeom()).long;
+  const GEOM = await H.wheelGeom();
+  const PER = 6 * GEOM.long;
+  /* v2.3.3320: the long Wheel's first stretch climbs 1 to 5 by where each
+     stands (wheelzone.js FIRST_STRETCH_LEVELS); the short one's is 1-2 */
+  const FIRST = GEOM.long > 1 ? [1, 5] : [1, 2];
 
   /* v2.3.3318: every Wheel monster on the way in, as before (`wheelwhole`,
      server/src/wheelnear.js): this reads every land's eight stretches off the arrival's list */
@@ -83,9 +89,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const byLand = {};
   for (const m of all) (byLand[m.home] = byLand[m.home] || []).push(m);
   const first = all.filter((m) => tierOf(m.id) === 1);
-  rec.ok(`in the Wheel (${zone}) every land's monsters stand in its first eight stretches, levels 1-40: ${all.length} (${Object.entries(byLand).map(([h, a]) => `${h} ${a.length}`).join(', ')}), the first stretch's ${first.length} at levels ${[...new Set(first.map((m) => m.level))].sort().join(' and ')}`,
+  rec.ok(`in the Wheel (${zone}) every land's monsters stand in its first eight stretches, levels 1-40: ${all.length} (${Object.entries(byLand).map(([h, a]) => `${h} ${a.length}`).join(', ')}), the first stretch's ${first.length} at levels ${[...new Set(first.map((m) => m.level))].sort((a, b) => a - b).join(', ')}`,
     zone === 'wheel' && all.length === 64 * PER && Object.keys(byLand).length === 8 && Object.values(byLand).every((a) => a.length === 8 * PER)
-      && first.length === 8 * PER && first.every((m) => m.level >= 1 && m.level <= 2), { n: all.length, per: PER, lands: Object.keys(byLand) });
+      && first.length === 8 * PER && first.every((m) => m.level >= FIRST[0] && m.level <= FIRST[1])
+      && first.some((m) => m.level === FIRST[0]) && first.some((m) => m.level === FIRST[1]), { n: all.length, per: PER, lands: Object.keys(byLand), first: [...new Set(first.map((m) => m.level))] });
   const deep = all.filter((m) => tierOf(m.id) > 1);
   const offLevel = deep.filter((m) => !TIERS[tierOf(m.id)] || m.level < TIERS[tierOf(m.id)][0] || m.level > TIERS[tierOf(m.id)][1]);
   const lv = (t) => deep.filter((m) => tierOf(m.id) === t).map((m) => m.level);

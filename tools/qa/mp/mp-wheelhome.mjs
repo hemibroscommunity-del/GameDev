@@ -24,7 +24,8 @@
  *   8. the quest's way works there (src/game/questRoute.js): the minimap's
  *      star and, since v2.3.2992, its gold road lead a new character to the
  *      Wheel's own Mayor Bro, then, with his first quest, to Frost Ridge's
- *      monsters, stopping among them -- and nothing is drawn on the ground
+ *      monsters, stopping among them (v2.3.3320: on the long Wheel, where
+ *      they begin, its level 1s) -- and nothing is drawn on the ground
  *      (the owner: "just rely on the gold road on the minimap"); and a death
  *      there no longer leaves today's town with the Wheel's npc list
  *      (src/game/respawn.js).
@@ -151,18 +152,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok("the Wheel's own Mayor Bro gives the first quest (his sword and shield)", !!talked && accepted && armed.tut1, { talked, landed, accepted, armed });
   /* ── 8b. the way to Frost Ridge's monsters ── */
   const frostAt = { x: WHEEL_SPAWNS.frost.anchor[0], y: WHEEL_SPAWNS.frost.anchor[1] };
+  /* v2.3.3320: on the long Wheel the way leads to where Frost Ridge's
+     monsters begin -- 300 px (questRoute.js LAND_IN_PX) past its first
+     stretch's inner edge, among the level 1s, the stretch climbing 1 to 5 --
+     not its middle, level 3 */
+  const LONG = (await H.wheelGeom()).long > 1;
+  const r0 = WHEEL_SPAWNS.frost.band[0];
+  const frostIn = LONG ? { x: Math.round(cx + ux * (r0 + 300)), y: Math.round(cy + uy * (r0 + 300)) } : frostAt;
   await P.page.waitForTimeout(600);
   const w1 = await way(P);
-  rec.ok('with his quest the way leads to the middle of Frost Ridge\'s monsters, and the minimap\'s star waits at its edge that way',
-    !!w1.road && !!w1.road.to && w1.road.to.zoneId === 'frost' && near(w1.road.to, frostAt)
-    && !!w1.star && w1.star.zoneId === 'frost' && w1.star.edge === true, { w1, frostAt });
-  rec.ok('...its gold road running from you toward them', !!w1.star && !!w1.star.road && w1.star.road.len > 30 && roadToward(w1, frostAt), { star: w1.star, me: w1.me, frostAt });
+  rec.ok(`with his quest the way leads to ${LONG ? 'where Frost Ridge\'s monsters begin, its level 1s' : 'the middle of Frost Ridge\'s monsters'}, and the minimap's star waits at its edge that way`,
+    !!w1.road && !!w1.road.to && w1.road.to.zoneId === 'frost' && near(w1.road.to, frostIn)
+    && !!w1.star && w1.star.zoneId === 'frost' && w1.star.edge === true, { w1, frostIn });
+  rec.ok('...its gold road running from you toward them', !!w1.star && !!w1.star.road && w1.star.road.len > 30 && roadToward(w1, frostIn), { star: w1.star, me: w1.me, frostIn });
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/wheelhome-road-frost.png` }).catch(() => {});
   const out = { x: cx + ux * (WHEEL_SAFE_R + 150), y: cy + uy * (WHEEL_SAFE_R + 150) };
   await H.hopTo(P, out.x, out.y, { tries: 80 });
   await P.page.waitForTimeout(800);
   const free = await at(P);
   rec.ok(`...and with it they walk out onto Frost Ridge's land (${r(free)} px from the middle)`, r(free) > WHEEL_SAFE_R && free.zone === 'wheel', free);
+  if (LONG) {
+    /* v2.3.3320: it runs on until their edge, and stops there */
+    const shy = { x: cx + ux * (r0 - 100), y: cy + uy * (r0 - 100) };
+    await H.hopTo(P, shy.x, shy.y, { tries: 40 });
+    await P.page.waitForTimeout(600);
+    const wShy = await way(P);
+    const edge = { x: cx + ux * (r0 + 60), y: cy + uy * (r0 + 60) };
+    await H.hopTo(P, edge.x, edge.y, { tries: 40 });
+    await P.page.waitForTimeout(600);
+    const wEdge = await way(P);
+    rec.ok(`...it runs on until Frost Ridge's monsters begin (${r0} px out: at ${r(wShy.me)} it still leads there, at ${r(wEdge.me)} it stops, the star with it)`,
+      !!wShy.road && !!wShy.road.to && wShy.road.to.zoneId === 'frost' && r(wShy.me) < r0
+      && !!wEdge.road && wEdge.road.to === null && wEdge.star === null && r(wEdge.me) >= r0, { wShy, wEdge, r0 });
+  }
   /* ...walk on among them: there the road stops -- you hunt, you don't travel */
   await H.hopTo(P, frostAt.x + 120, frostAt.y + 120, { tries: 80 });
   await P.page.waitForTimeout(600);

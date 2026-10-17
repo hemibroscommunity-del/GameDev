@@ -385,7 +385,8 @@ remnant to migrate server-side, not a mode to preserve.
     `_wheelPoint`): the road and wheelMinimap's star go to the Wheel's
     Mayor Bro for the welcome or a hand-in, and to a quest's land's monsters,
     `ZONES.wheel.lands` (it mirrors the anchors; test-world-core checks it),
-    stopping within 600 px of them. Nowhere for any-zone gathering. Every
+    stopping within 600 px of them (since v2.3.3320 on the long Wheel: where
+    they begin, `firstR`, below). Nowhere for any-zone gathering. Every
     old rule went through portals the Wheel does not have.
   - Since v2.3.2992 the way is drawn ON THE MINIMAP ONLY. The owner: "I
     think I want to remove the footsteps and just rely on the gold road on
@@ -922,7 +923,8 @@ remnant to migrate server-side, not a mode to preserve.
       stretch's 48 unchanged and first in the list (wheelzone.js);
     - a monster's level is its stretch's by where it stands in it; its stats
       from the one copy of the math, `_makeZoneMonster(..., atLevel)`;
-      rewards its home's; the first stretch keeps levels 1-2;
+      rewards its home's; the first stretch keeps levels 1-2 (on the long
+      Wheel it climbs 1 to 5 since v2.3.3320, below);
     - places baked like the first stretch's (`SPAWN_RULES.deep`,
       `WHEEL_SPAWNS[home].deeper`): on that very tier, 120 px inside it,
       360 px from a camp's plot; test-world-core checks them;
@@ -2901,7 +2903,30 @@ remnant to migrate server-side, not a mode to preserve.
       starting place);
     - `?wheelwhole` asks for every monster as before (six QA scenarios that
       read the whole list off the arrival use it); kill switch `wheelnear:
-      false`; `wheelnear` suite, `mp-wheelnear`.)
+      false`; `wheelnear` suite, `mp-wheelnear`.
+  - Since v2.3.3320 THE FIRST STRETCH CLIMBS 1 TO 5 -- the owner: "Yes do
+    smooth 1 to 5" (docs/specs/wheel-monsters.md "The first stretch climbs 1
+    to 5"):
+    - on the long Wheel a land's first-stretch monsters were its home zone's
+      levels 1-2 for all 5,120 px, then 6; now each one's level is where it
+      stands, as a deeper stretch's: `round(1 + 4 x depth)`
+      (`WHEEL.FIRST_STRETCH_LEVELS`), 1 at the town end to 5 at the far end;
+    - the same 240 monsters, ids, places and kinds; the town end is still
+      level 1 (the 2026-07-04 directive, data.js v2.3.1160); the short Wheel
+      keeps 1-2; a level-3 snowman is the first with the full flat health
+      (119 HP to a level 2's 69);
+    - a quest's ROAD to a land now ends where its monsters begin, its level
+      1s, not at their middle (level 3 now): `WHEEL_GEOM[5].firstR` (each
+      first stretch's inner edge, held to the table by test-world-core),
+      questRoute.js `LAND_IN_PX`, the road gone once you stand on that land
+      past their edge -- on the long Wheel `LAND_HERE_R`'s 600 px no longer
+      meant "among them" (a land's monsters reach ~2,400 px either side of
+      its middle); the short Wheel's road as it was;
+    - the levels are the worker's (the phone shows a Wheel monster's own level
+      since v2.3.3013); kill switch `wheelslope: false`; `wheelzone` §12,
+      `mp-wheeldeep`, `mp-wheelhome`, `mp-wheelmonsters` and `mp-wheelnear`
+      (their fights at the level-1 end: in the middle a fresh character died
+      first).)
   `docs/WORLD-BIBLE.md` (that world's story and look — through-lines,
   region/border briefs, the Main Street Brotown plot table, the style key,
   the character-refresh order; a DRAFT the owner is reacting to, and

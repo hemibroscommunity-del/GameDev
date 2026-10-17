@@ -3163,7 +3163,11 @@ What a player gets now, with nothing added to the address:
   - a quest that names a land (*"Bring 4 Snowman Remnants from Frost
     Ridge"*) leads to the middle of where that land's monsters stand. Those
     spots are in `ZONES.wheel.lands`, a copy of the baked anchors that
-    test-world-core checks. The road stops once you are among them;
+    test-world-core checks. The road stops once you are among them. (Since
+    v2.3.3320, on the five-times Wheel, it leads to where the land's monsters
+    begin, its level 1s, and stops once you are on that land past their edge:
+    `ZONES.wheel.firstR`, docs/specs/wheel-monsters.md "The first stretch
+    climbs 1 to 5");
   - "any zone will do" (fishing, ore) gets no road while there is nothing to
     gather; since v2.3.3012 the Wheel grows its resources, and the road leads
     to the nearest fishing spot, tree or vein the quest's next step needs

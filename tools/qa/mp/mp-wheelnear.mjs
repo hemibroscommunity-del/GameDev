@@ -15,7 +15,8 @@
  *      list as they come into reach, each whole (`mw`): home, skin, level,
  *      health -- and drawn from the land's live art;
  *   3. the Flame Fields' fire goblins come whole the same way;
- *   4. a fire goblin met that way fights and dies to you, and the kill pays;
+ *   4. a fire goblin met that way fights and dies to you, and the kill pays
+ *      (v2.3.3320: at the land's town end, its level 1s);
  *   5. back to Frost Ridge: never one twice, in the list or sent whole, and
  *      only what you came near (a fraction of the whole list);
  *   6. no page errors and no render errors.
@@ -177,6 +178,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 4. a fight: a fire goblin (a snowman burrows into a pile that no hit
      lands on, mp-wheelmonsters fights a goblin too) ── */
+  /* v2.3.3320: at the land's town end, among its level 1s -- the first
+     stretch climbs 1 to 5 now (server/src/wheelzone.js), and a new player's
+     road ends there (questRoute.js); in the middle, among level 2-4 goblins,
+     mp-wheelmonsters' character died before its goblin did */
+  const inner = WHEEL_SPAWNS.ember.points.slice(0, 6 * (await H.wheelGeom()).long).reduce((a, p) => (!a || p[2] < a[2] ? p : a), null);
+  if (inner) await H.hopTo(P, inner[0], inner[1] + 20, { tries: 60 });
   await H.devOp(wsPort, 'vitals', myId, { heal: true, god: false });
   const xpOf = () => H.readState(P, (S) => (S.rpg && S.rpg.xp) || 0);
   const xp0 = await xpOf();
