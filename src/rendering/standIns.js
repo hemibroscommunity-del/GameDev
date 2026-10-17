@@ -14,7 +14,7 @@
  * in your bag, any of them when a harvest of its kind starts or another
  * player near you does one.  So the bake lands while you walk up to the tree,
  * before the tap, and the hitch the owner accepted is that bake.
- * (v2.3.3312: another player's cook or fire-lighter no longer makes yours --
+ * (v2.3.3314: another player's cook or fire-lighter no longer makes yours --
  * theirs is drawn from a figure baked in their colours, below, and yours
  * only when it is already made and they wear your colours -- while the
  * lumberjack's still is, as every peer's lumberjack is cut from your
@@ -23,7 +23,7 @@
  * A pose not made yet never hides a body: the walking figure stays where the
  * stand-in would have stood until it is ready (entityRenderer _chopHide asks
  * standInReady; the peers' _rexStandIn asks peerStandInReady, below, since
- * v2.3.3312), never an empty spot.
+ * v2.3.3314), never an empty spot.
  *
  * This registry is the one place both renderers read; the effects renderer
  * hands in how to make each (setStandInMaker).  QA: window.__btStandIns,
@@ -90,13 +90,13 @@ export function standInStarted(kind) {
   return !!s && s.state !== 'idle';
 }
 
-/** v2.3.3312: is `kind` on its way right now (asked for, not made or failed)? */
+/** v2.3.3314: is `kind` on its way right now (asked for, not made or failed)? */
 export function standInMaking(kind) {
   const s = _st[kind];
   return !!s && s.state === 'loading';
 }
 
-/* ═══ v2.3.3312: ANOTHER PLAYER'S POSE IS READY ONLY IN THEIR COLOURS ═══
+/* ═══ v2.3.3314: ANOTHER PLAYER'S POSE IS READY ONLY IN THEIR COLOURS ═══
    The owner: "Other players cooking showed wrong skin color and maybe other
    stuff too."  A peer's cook and fire-lighter were drawn from YOUR figure
    (your skin, trousers and boots) and a peer's lumberjack from the unpainted

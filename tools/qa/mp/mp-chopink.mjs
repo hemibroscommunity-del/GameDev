@@ -277,7 +277,7 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   /* A peer's look cannot be baked at load; the bake runs the first time he is
      seen chopping.  One swing is 12 x 45 ms; the bound is generous for this
      box, which renders several times slower than a phone.
-     v2.3.3312: since then his walking body stands in until his bake is made
+     v2.3.3314: since then his walking body stands in until his bake is made
      (no figure is drawn without his colours), so this reads 0; how soon his
      figure is up is held by mp-peercolours. */
   rec.ok(`ON THE WATCHER'S SCREEN his tattoos are on too, from his first swings (bare for ${bareMs} ms here while it bakes)`,

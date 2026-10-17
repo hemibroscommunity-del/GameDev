@@ -2372,7 +2372,7 @@ remnant to migrate server-side, not a mode to preserve.
       mostly below their hem -- the pan held at the waist goes whole;
       `pantsWide` for the fire's glow); a peer's cook/fire-lighter is your
       bake (the v2.3.1713 trade), a drawn peer's lumberjack theirs (every
-      peer's is theirs since v2.3.3312, below);
+      peer's is theirs since v2.3.3314, below);
     - the cook's head traits 1.16 -> 1.65 (`_skillTraitMul`: his head 85 px
       against stand's 51);
     - then, offered what was left, the owner: "Yes fix all":
@@ -2396,7 +2396,7 @@ remnant to migrate server-side, not a mode to preserve.
         3 s (`_oreSplit`);
     - QA `display._bodyScale`, `window.__btStandInClothes`,
       `window.__btDressedShirt`; `mp-gatherlook`.
-    - since v2.3.3312 ANOTHER PLAYER GATHERS IN THEIR OWN COLOURS -- the
+    - since v2.3.3314 ANOTHER PLAYER GATHERS IN THEIR OWN COLOURS -- the
       owner: "Other players cooking showed wrong skin color and maybe other
       stuff too. Needs fixed":
       - a peer's cook and fire-lighter were YOUR figure (the v2.3.1713 trade:

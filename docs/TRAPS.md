@@ -6543,7 +6543,7 @@ blockable at all: its row's `block` is null.
 **Receipt:** hit-door.test §5, every blockable row, a ball from behind
 included, lands through a shield facing away (v2.3.3300).
 
-## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3312)
+## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3314)
 
 **Tempting:** a pose that swaps the body for a painted figure (the cook, the
 fire-lighter, the lumberjack) is baked once with your colours, and every other
