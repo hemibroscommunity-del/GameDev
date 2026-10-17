@@ -435,6 +435,9 @@ export function wheelStepAt(x, y) {
    landmarks, and the roads, the river and the railway as lines, in game
    px.  null until the worker is ready. */
 export function wheelMapInfo() { return _info ? _info.map || null : null; }
+/* v2.3.3319: the long Wheel's lands up close, in tiles (the worker's `detail`:
+   src/ui/worldMapDetail.js) -- null on the short Wheel and without a bake */
+export function wheelMapDetail() { return _info ? _info.detail || null : null; }
 
 /* Stop the worker and let go of everything it gave. */
 export function wheelStop() {

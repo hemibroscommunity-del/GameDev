@@ -228,5 +228,8 @@ look three times dearer; it now times only the room.
   A slope from 1 to 5 across it is one line in `wheelzone.js` if the owner
   wants it.
 - The world map far from you draws the coarse picture (a pixel every 16
-  cells); only the blocks round you are fine.
+  cells); only the blocks round you are fine. Done since v2.3.3319
+  (WORLD-MAP-PIPELINE "Up close far from you, as sharp as round you"): the
+  long Wheel's lands are baked four times finer in tiles, which the map loads
+  only while it shows them, zoomed in.
 - The World Builder and the Ground Studio build the short Wheel.
