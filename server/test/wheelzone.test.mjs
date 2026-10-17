@@ -54,6 +54,10 @@
  *      resources; the way in; the size kept for the room's life; a phone out of
  *      step neither hunted nor under No man's land.  (Sections 1-10 run on the
  *      short Wheel, `wheel5x: false`, with its own tables.)
+ *  12. v2.3.3320, THE FIRST STRETCH CLIMBS 1 TO 5 on the long Wheel, by the
+ *      place's depth as a deeper stretch does; every stat the one copy of the
+ *      math; the next stretch's 6 after a 5; `wheelslope: false` 1-2 again,
+ *      nothing else moved; the short Wheel 1-2 as it was.
  */
 import { GameRoom } from '../src/index.js';
 import { ZONES, VALID_ZONE_IDS, BLACKSMITH_TIERS, WOODWORKING_TIERS } from '../src/data.js';
@@ -970,6 +974,71 @@ await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'wa', name: 
   r5.playerState.rb = { id: 'rb', z: WHEEL_ZONE, x: LONG.WHEEL_CENTRE[0], y: LONG.WHEEL_CENTRE[1] + 288, hp: 100, maxHp: 100 };
   r5._tickMonsters();
   check(`long: with one player in town, ${r5._wheelResting} of ${ms.length} rest`, r5._wheelResting > ms.length * 0.9, r5._wheelResting);
+}
+
+// ── 12. THE FIRST STRETCH CLIMBS 1 TO 5 (v2.3.3320) ───────────────────────
+{
+  /* the owner: "Yes do smooth 1 to 5" -- on the long Wheel a land's first
+     stretch is 5,120 px, and was levels 1-2 all the way, then 6.  It climbs as
+     a deeper stretch does now: by the place's depth in its band, 1 to 5 */
+  const C = LONG.WHEEL_CENTRE;
+  const r12 = new GameRoom(mockState, mockEnv);
+  const all = r12._ensureZoneMonsters(WHEEL_ZONE);
+  const one = all.filter((m) => !m.tier);
+  check('slope: the first stretch\'s levels are the bake\'s tier 1, "Lv 1-5"', WHEEL.FIRST_STRETCH_LEVELS[0] === 1 && WHEEL.FIRST_STRETCH_LEVELS[1] === 5);
+  let byDepth = true, why = null;
+  for (const m of one) {
+    const p = LONG.WHEEL_SPAWNS[m.home].points.find((q) => q[0] === m.spawnX && q[1] === m.spawnY);
+    const want = p ? Math.round(1 + Math.max(0, Math.min(1, p[2])) * 4) : -1;
+    if (m.level !== want) { byDepth = false; why = { id: m.id, level: m.level, want, p }; break; }
+  }
+  check(`slope: every one of the ${one.length} at its place's level, 1 at the inner end to 5 at the outer (round(1 + 4 x depth), a deeper stretch's own rule)`,
+    one.length === 8 * 6 * LONG.WHEEL_LONG && byDepth, why);
+  const each = WHEEL.HOMES.map((h) => [h, [...new Set(one.filter((m) => m.home === h).map((m) => m.level))].sort((a, b) => a - b).join('')]);
+  check('slope: every land has all five, 1 to 5', each.every(([, s]) => s === '12345'), each);
+  let outward = true, whyOut = null;
+  for (const h of WHEEL.HOMES) {
+    const mean = (lv) => { const r = one.filter((m) => m.home === h && m.level === lv).map((m) => Math.hypot(m.x - C[0], m.y - C[1])); return r.reduce((a, b) => a + b, 0) / r.length; };
+    for (let lv = 2; lv <= 5; lv++) if (!(mean(lv) > mean(lv - 1))) { outward = false; whyOut = { h, lv, at: Math.round(mean(lv)), before: Math.round(mean(lv - 1)) }; }
+  }
+  check('slope: ...each level further out than the one before, on every spoke', outward, whyOut);
+  let next = true, whyNext = null;
+  for (const h of WHEEL.HOMES) {
+    const top = Math.max(...one.filter((m) => m.home === h).map((m) => m.level));
+    const after = Math.min(...all.filter((m) => m.home === h && m.tier === 2).map((m) => m.level));
+    if (top !== 5 || after !== 6) { next = false; whyNext = { h, top, after }; }
+  }
+  check('slope: ...so the next stretch\'s 6 follows a 5, never a 2', next, whyNext);
+  let same = true, why3 = null;
+  for (const m of one) {
+    const z = ZONES[m.home], sp = z.spawns.find((q) => q.arch === m.arch);
+    const ref = r12._makeZoneMonster(m.home, z, sp, 'ref', 10, 10, m.level);
+    for (const k of ['level', 'hp', 'maxHp', 'dmg', 'xp', 'gold', 'spd', 'variant', 'element', 'arch']) {
+      if (ref[k] !== m[k]) { same = false; why3 = { id: m.id, k, got: m[k], want: ref[k] }; }
+    }
+  }
+  check('slope: every stat what its home zone builds at that level (_makeZoneMonster, given the level)', same, why3);
+  const s1 = one.find((m) => m.home === 'frost' && m.level === 1), s5 = one.find((m) => m.home === 'frost' && m.level === 5);
+  check(`slope: a level-5 snowman is tougher and pays more than a level-1 (hp ${s1 && s1.maxHp} -> ${s5 && s5.maxHp}, hit ${s1 && s1.dmg} -> ${s5 && s5.dmg}, XP ${s1 && s1.xp} -> ${s5 && s5.xp})`,
+    !!s1 && !!s5 && s5.maxHp > s1.maxHp && s5.dmg > s1.dmg && s5.xp > s1.xp);
+  /* the kill switch, and nothing else moved: the same monsters, in the same
+     order, on the same places -- only the first stretch's levels (and the
+     stats that follow them) differ */
+  const r12off = new GameRoom(mockState, mockEnv);
+  r12off._liveFlags = { wheelslope: false };
+  const allOff = r12off._ensureZoneMonsters(WHEEL_ZONE);
+  const oneOff = allOff.filter((m) => !m.tier);
+  check('slope: `wheelslope: false` -- the first stretch at levels 1-2 again, both appearing', oneOff.length === one.length
+    && oneOff.every((m) => m.level >= 1 && m.level <= 2) && oneOff.some((m) => m.level === 1) && oneOff.some((m) => m.level === 2), [...new Set(oneOff.map((m) => m.level))]);
+  let kept = allOff.length === all.length, whyKept = null;
+  for (let i = 0; kept && i < all.length; i++) {
+    const a = all[i], b = allOff[i];
+    for (const k of ['id', 'home', 'arch', 'variant', 'element', 'spawnX', 'spawnY', 'tier']) if (a[k] !== b[k]) { kept = false; whyKept = { i, k, on: a[k], off: b[k] }; }
+    if (a.tier && (a.level !== b.level || a.maxHp !== b.maxHp || a.dmg !== b.dmg)) { kept = false; whyKept = { i, id: a.id, deeper: true }; }
+  }
+  check(`slope: ...and with it on, the same ${all.length} monsters in the same order on the same places, the deeper stretches untouched`, kept, whyKept);
+  /* the short Wheel (the rollback) keeps 1-2: §1's `first` */
+  check('slope: the short Wheel (`wheel5x: false`) keeps its first stretch at 1-2, as it was', first.length === 48 && first.every((m) => m.level >= 1 && m.level <= 2));
 }
 
 if (failures) { console.log(`\n${failures} TEST(S) FAILED`); process.exit(1); }

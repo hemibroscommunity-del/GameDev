@@ -81,6 +81,20 @@
  * (src/data/wheelStageLooks.js), a sprite tint on the look the land already
  * has, so nothing new loads.  `wheelpast20: false` in liveflags leaves a Wheel
  * spawned after it with the first stage alone.
+ *
+ * ═══ v2.3.3320: AND THE FIRST STRETCH CLIMBS 1 TO 5 ═══
+ * The owner, 2026-10-17: "Yes do smooth 1 to 5".  On the five-times Wheel
+ * (v2.3.3315) a land's first stretch is 5,120 px, and its monsters were still
+ * built at their home zone's levels 1-2 (read off a stand-in point's depth),
+ * so the walk out was 1-2 for ~34 s and then 6.  Now they climb as every
+ * deeper stretch does, by the place's depth in its band: 1 at the inner end,
+ * 5 at the outer (WHEEL.FIRST_STRETCH_LEVELS, the deeper stretches' own
+ * `Math.round(lo + depth * (hi - lo))`), so the next stretch's 6 follows a 5.
+ * Every stat still from the one copy of the math (_makeZoneMonster, given the
+ * level); nothing else about them changes -- the same places, ids, kinds and
+ * homes.  The short Wheel (`wheel5x: false`, the rollback) keeps 1-2, as it
+ * was.  `wheelslope: false` in liveflags: a Wheel spawned after it is 1-2
+ * again (_wheelSlopeOff).
  */
 import { ZONES } from './data.js';
 /* v2.3.3315: the tables of the Wheel this room plays (wheeltables.js: the
@@ -138,6 +152,9 @@ export const WHEEL = Object.freeze({
   /* v2.3.3093: the tiers of a land's first stage (levels 1-20); the
      `wheelpast20` switch keeps the Wheel to them */
   FIRST_STAGE_TIERS: 4,
+  /* v2.3.3320: the first stretch's levels on the long Wheel, inner end to
+     outer, as a deeper stretch's `levels` (the bake's tier 1, "Lv 1-5") */
+  FIRST_STRETCH_LEVELS: Object.freeze([1, 5]),
   /* v2.3.3094: + 16 and 21, the second stage's (levels 21-30, 31-40) */
   NODE_TIERS: Object.freeze([1, 6, 11, 16, 21]),
   /* ═══ v2.3.3299: A MONSTER NOBODY IS NEAR RESTS ═══
@@ -296,6 +313,12 @@ export const wheelzoneMethods = {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wheeldeep') && !f.wheeldeep);
   },
+  /* v2.3.3320: `wheelslope: false` -- the first stretch at its home's levels
+     1-2 again */
+  _wheelSlopeOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wheelslope') && !f.wheelslope);
+  },
 
   /* Each home's spawn list, at its baked places on its spoke, built exactly as
      in its own zone.  Level: _makeZoneMonster reads depth from y / zone height,
@@ -309,6 +332,11 @@ export const wheelzoneMethods = {
        spawn list a tier, on its own baked places -- as busy a land, five
        times the land (the list round and round, its places one each) */
     const T = this._wheelT(), WHEEL_SPAWNS = T.WHEEL_SPAWNS, long = T.WHEEL_LONG || 1;
+    /* v2.3.3320: the long Wheel's first stretch climbs 1 to 5 by depth, as a
+       deeper stretch does; the short one (and `wheelslope: false`) keeps the
+       stand-in's 1-2 */
+    const slope = long > 1 && !this._wheelSlopeOff();
+    const [L0, L1] = WHEEL.FIRST_STRETCH_LEVELS;
     for (const home of WHEEL.HOMES) {
       const zone = ZONES[home], at = WHEEL_SPAWNS[home];
       if (!zone || !zone.spawns || !at || !Array.isArray(at.points) || !at.points.length) continue;
@@ -318,7 +346,8 @@ export const wheelzoneMethods = {
         for (let c = 0; c < (spawn.count || 0); c++, k++) {
           const p = at.points[k % at.points.length];
           const depth = Math.max(0, Math.min(1, Number(p[2]) || 0));
-          const m = this._makeZoneMonster(home, zone, spawn, 'wm-' + home + '-' + k, W / 2, 128 + depth * (H - 256));
+          const m = this._makeZoneMonster(home, zone, spawn, 'wm-' + home + '-' + k, W / 2, 128 + depth * (H - 256),
+            slope ? Math.round(L0 + depth * (L1 - L0)) : undefined);
           if (!m) continue;
           m.x = m.spawnX = p[0];
           m.y = m.spawnY = p[1];

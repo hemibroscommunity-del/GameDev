@@ -267,7 +267,9 @@ Lv 11–15"). Only the first stretch had monsters. Now the next three do too.
 - **Their levels:** the stretch's own: 6–10, 11–15, 16–20, by how far out a
   monster stands in its stretch's band (inner end lowest), as the first
   stretch's go by depth. The first stretch keeps levels 1–2, the owner's
-  directive for starting zones (server/src/data.js, v2.3.1160).
+  directive for starting zones (server/src/data.js, v2.3.1160). (Since
+  v2.3.3320, on the five-times Wheel, it climbs 1 to 5: "The first stretch
+  climbs 1 to 5" below.)
 - **Their stats** come from the one copy of the math: `_makeZoneMonster` is
   given the level (`atLevel`, its new last argument; omitted everywhere else,
   so every other monster is built exactly as before). A level-20 snowman: 143
@@ -500,6 +502,83 @@ At 45 ticks a second, 2.88 ms a tick is 13% of a core and 0.54 ms is 2.4%.
 (each player's own tick, the messages) is most of it, and the two are within a
 point of each other.
 
+## The first stretch climbs 1 to 5 (v2.3.3320)
+
+The owner, 2026-10-17: *"Yes do smooth 1 to 5"*, to the offer in
+`docs/specs/wheel-5x.md` ("A slope from 1 to 5 across it is one line in
+`wheelzone.js` if the owner wants it").
+
+Since the Wheel became five times longer (v2.3.3315), a land's first stretch
+is 5,120 px, about 34 seconds of walking. Its monsters were still built at
+their home zone's levels 1–2 (read off a stand-in point's depth, as since
+v2.3.2978), so the walk out was level 1–2 for half a minute and then level 6.
+
+- **Now** each first-stretch monster's level is set by where it stands in the
+  stretch, by the rule every deeper stretch already used:
+  `round(1 + 4 x depth)`, depth 0 at the town end and 1 at the far end
+  (`WHEEL.FIRST_STRETCH_LEVELS`, `[1, 5]`).
+  - Level 1 nearest town, then 2, 3 and 4, and 5 at the far end; the next
+    stretch starts at 6.
+  - Per land, on the places as baked: 3–5 monsters at level 1, 5–9 at each of
+    levels 2, 3 and 4, and 4–5 at level 5 (rounding gives each end half a
+    step, as in every deeper stretch).
+- **The 2026-07-04 directive** ("All zones at initial depth should be level 1
+  or 2", server/src/data.js v2.3.1160) still holds where it applies: every
+  land's town end is level 1, then 2.
+- **Their stats** come from `_makeZoneMonster` given the level, as a deeper
+  stretch's do. A Frost Ridge snowman (a new character has 250 HP):
+
+  | Level | HP | Hit | XP |
+  |---|---|---|---|
+  | 1 | 67 | 30 | 10 |
+  | 2 | 69 | 37 | 11 |
+  | 3 | 119 | 44 | 11 |
+  | 4 | 131 | 50 | 12 |
+  | 5 | 143 | 58 | 12 |
+  | 6 (the next stretch) | 157 | 65 | 13 |
+
+  Level 3 is the first with the full flat health (`monsterHpFlat`: levels 1–2
+  get the small one, v2.3.1364), so the jump in health is between 2 and 3.
+- **Nothing else changes:** the same 240 monsters, with the same ids, places,
+  kinds, skins and homes, in the same order; the deeper stretches; and the
+  short Wheel (`wheel5x: false`, the rollback), whose first stretch stays at
+  1–2.
+- **A quest's road to a land ends where its monsters begin** (the phone,
+  `src/game/questRoute.js`). It led to the middle of the land's monsters
+  (`ZONES.wheel.lands`, the bake's anchor) and stopped within 600 px of it
+  (`LAND_HERE_R`). That was "among them" on the short Wheel, where they all
+  stand within ~550 px of it. On the long Wheel they reach ~2,400 px either
+  side of it, and the middle is now level 3, so the first quest (tut_1,
+  "Bring 4 Snowman Remnants from Frost Ridge") walked a brand-new player past
+  the level 1s and 2s into the 3s.
+  - Now, on the long Wheel only, the road leads to where the land's monsters
+    begin: its star 300 px (`LAND_IN_PX`) past their edge, among the level
+    1s. It stops once you stand on that land's spoke at least that far out,
+    wherever on it you go.
+  - That edge is each first stretch's inner edge, `WHEEL_SPAWNS[home].band[0]`,
+    copied to the phone as `WHEEL_GEOM[5].firstR` (src/data/zones.js) and held
+    to the table by test-world-core (no place nearer).
+  - The short Wheel's road is as it was.
+  - Found by `mp-wheelmonsters`: its character, standing in the middle of the
+    Flame Fields' first stretch, died to a level-3 fire goblin and the level
+    2-4 goblins round it before its goblin died. It and `mp-wheelnear` fight
+    at the land's level-1 end now, where the road leads.
+- **Trapping:** a monster above your Trapping level cannot be trapped, so at
+  Trapping 1 you trap the level-1s at the town end, and the rest as Trapping
+  rises. The odds for levels 1–5 are one stretch's (`trapStretch`).
+- **The phone** shows the levels with no change: it shows a Wheel monster's
+  own level (`applyZoneVariant` leaves a monster with `home` unclamped since
+  v2.3.3013), and the world map and the name plate under the minimap already
+  said "Lv 1–5" here. Only the quest's road changed on the phone (above).
+- **Kill switch:** `wheelslope: false` in liveflags (`_wheelSlopeOff`). A Wheel
+  spawned after it has its first stretch at levels 1–2 again. The room builds
+  the Wheel's monsters once, when it starts (after a deploy, or after it has
+  slept), as with `wheeldeep` and `wheelpast20`.
+- **Deploy order:** either way round. The levels are the worker's, and every
+  phone since v2.3.3013 shows the levels it sends. The road is the phone's:
+  against a worker without the climb it leads to the same edge, where that
+  worker's level 1s and 2s begin.
+
 ## Not in this round
 
 - Monsters past level 40 (levels 41–80): the same bake and spawn, more
@@ -563,3 +642,21 @@ point of each other.
     - a first-stage snowman still white and a "Snowman";
     - no errors.
     - Pictures: `wheelpast20-*.png`.
+- **v2.3.3320, the first stretch climbing 1 to 5:**
+  - the `wheelzone` suite's §12, on the long Wheel (10 checks): every
+    first-stretch monster at its place's level, `round(1 + 4 x depth)`; all
+    five levels in every land; each level further out than the one before;
+    the next stretch's 6 after a 5; every stat what the home zone builds at
+    that level; `wheelslope: false` back to 1–2, with the same monsters in
+    the same order on the same places and the deeper stretches untouched; the
+    short Wheel at 1–2.
+  - `mp-wheeldeep`'s first check: on the phone, the first stretch's levels
+    run 1 to 5, both ends present.
+  - `mp-wheelhome`: with the first quest the road leads to where Frost
+    Ridge's monsters begin, runs on until their edge and stops there, and
+    stops further in, among them.
+  - `mp-wheelmonsters` and `mp-wheelnear`: their fights at the Flame Fields'
+    level-1 end.
+  - `tools/world/test-world-core.mjs`: `WHEEL_GEOM[5].firstR` is each land's
+    first stretch's inner edge, with no place nearer; the short Wheel has
+    none.
