@@ -1,4 +1,4 @@
-/* ═══ v2.3.3310: WHICH WHEEL THE ROOM PLAYS ═══
+/* ═══ v2.3.3311: WHICH WHEEL THE ROOM PLAYS ═══
  *
  * The owner, 2026-10-17: "the game map needs to be larger. It goes from lvl 1
  * monsters to lvl 20+ way too quickly. Maybe 5x larger map is needed" -- and,
@@ -41,7 +41,7 @@ export const wheelTableMethods = {
   },
   /* Does player `ps`'s phone draw the Wheel this room plays?  A phone says
      which sizes it can draw when it joins (`ws`, kept as ps._wheelSizes); one
-     that says nothing -- every phone before v2.3.3310, a tab left open across
+     that says nothing -- every phone before v2.3.3311, a tab left open across
      the deploy -- draws the short one.  A phone out of step stands somewhere
      else on its own map than on the room's, so no monster goes after it and No
      man's land holds no rule for it (wheelzone.js _wheelSheltered, nomansland.js

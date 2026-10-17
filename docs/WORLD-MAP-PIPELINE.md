@@ -3087,7 +3087,7 @@ see: the ground worker stops building the whole Wheel on the way in.
 
 docs/specs/wheel-in-blocks.md has the numbers and the tests.
 
-## The Wheel five times longer (v2.3.3310)
+## The Wheel five times longer (v2.3.3311)
 
 Step 2 of the owner's "Rebuild for 5x": **every land's stretches are five
 times as long** -- a five-level stretch 5,120 game px (~34 s of walking), not

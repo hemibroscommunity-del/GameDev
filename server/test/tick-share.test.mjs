@@ -77,7 +77,7 @@ async function move(room, p, x, y, z) {
   await room.webSocketMessage(p.ws, JSON.stringify({ type: 'move', x, y, d: 'south', f: 'south', z, vx: 1, vy: 0, dodging: false, blocking: false, ba: null, dead: false, ex: null }));
 }
 
-const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3310: the live Wheel's */
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3311: the live Wheel's */
 const LANDS = Object.keys(WHEEL_SPAWNS);
 
 /* ── 1. byte for byte, a busy mixed room ───────────────────────────────── */
@@ -239,7 +239,7 @@ const LANDS = Object.keys(WHEEL_SPAWNS);
   const ang = Math.atan2(m.spawnY - WHEEL_CENTRE[1], m.spawnX - WHEEL_CENTRE[0]);
   const at = (r) => ({ x: WHEEL_CENTRE[0] + Math.cos(ang) * r, y: WHEEL_CENTRE[1] + Math.sin(ang) * r });
   const place = () => {
-    /* (its home there too: v2.3.3310's longer Wheel stands most of a land's
+    /* (its home there too: v2.3.3311's longer Wheel stands most of a land's
        first stretch further out than its chase leash reaches) */
     const mp = at(WHEEL_SAFE_R + 60); m.x = m.spawnX = mp.x; m.y = m.spawnY = mp.y;
     const pa = at(WHEEL_SAFE_R - 20), pb = at(WHEEL_SAFE_R + 200);

@@ -74,7 +74,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     }
     return { x: S.player.x, y: S.player.y };
-  }, (await H.wheelGeom()).cx);   /* v2.3.3310: the Wheel the worker plays */
+  }, (await H.wheelGeom()).cx);   /* v2.3.3311: the Wheel the worker plays */
   await H.hopTo(A, spot.x, spot.y, { step: 100, gap: 260, tries: 60 });
   await H.hopTo(B, spot.x + 160, spot.y + 70, { step: 100, gap: 260, tries: 60 });
   await A.page.waitForTimeout(1500);

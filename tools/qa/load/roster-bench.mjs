@@ -17,7 +17,7 @@
  */
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
-import { WHEEL_CENTRE } from '../../../server/src/wheelspawns.js';   /* v2.3.3310: the Wheel the room plays */
+import { WHEEL_CENTRE } from '../../../server/src/wheelspawns.js';   /* v2.3.3311: the Wheel the room plays */
 
 const N = +(process.argv[2] || 120), MOVING = +(process.argv[3] || 30) / 100, SECS = +(process.argv[4] || 10);
 const dir = process.argv[5] ? pathToFileURL(process.argv[5] + '/').href : new URL('../../../server/', import.meta.url).href;
@@ -44,7 +44,7 @@ globalThis.setInterval = (fn, ms) => { if (ms === room.TICK_RATE && !tickFn) { t
 room.startTickLoop();
 globalThis.setInterval = realSetInterval;
 
-const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3310: the Wheel the room plays */
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3311: the Wheel the room plays */
 const ps = [];
 for (let i = 0; i < N; i++) {
   const ws = { b: 0, send(s) { this.b += s.length; Buffer.from(s); }, close() {} };

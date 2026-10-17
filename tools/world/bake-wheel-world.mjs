@@ -48,7 +48,7 @@ import { encodePNG } from './png.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MODULE = path.join(ROOT, 'public/tools/world/core/placed.js');
-/* v2.3.3310: both Wheels -- the live one five times longer (plan.js PLAN5)
+/* v2.3.3311: both Wheels -- the live one five times longer (plan.js PLAN5)
    in placed5/, the short one in placed/ -- each its own files */
 export const WORLD_BAKES = Object.freeze([
   Object.freeze({ name: 'PLACED5', dir: 'placed5', plan: PLAN5 }),
@@ -60,7 +60,7 @@ export function bakeWheelWorld(plan = PLAN) {
   const bp = buildBlueprint(plan);
   const mm = materialMap(plan, bp);
   const objects = placeObjects(plan, bp);
-  /* v2.3.3310: the overview a pixel per overviewCells(plan) cells: 4 on the
+  /* v2.3.3311: the overview a pixel per overviewCells(plan) cells: 4 on the
      short Wheel, 16 on the long one (the same ~450 px picture) */
   const k = overviewCells(plan);
   const ov = overviewPixels(bp, mm, k);
@@ -93,7 +93,7 @@ export function placedSource(list) {
  * v2.3.3298: which baked objects and map pictures the ground worker reads
  * (public/world/<dir>/), and the plan they were baked from: the worker uses
  * them only when its plan's fingerprint is one of these (core/worldblocks.js
- * planFingerprint).  v2.3.3310: one set a Wheel -- PLACED5 the long one
+ * planFingerprint).  v2.3.3311: one set a Wheel -- PLACED5 the long one
  * (plan.js PLAN5), PLACED the short one (PLAN); \`cells\` blueprint cells an
  * overview pixel. */
 ${list.map(one).join('\n')}

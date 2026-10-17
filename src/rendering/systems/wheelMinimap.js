@@ -296,7 +296,7 @@ export class WheelMinimap {
     this._bld = [];         /* ...and what was drawn, for the probe */
     this.built = null;      /* the map the lines were drawn from */
     this.under = null;      /* the overview sprite */
-    this.local = null;      /* v2.3.3310: the lands round you, finer (_placeLocal) */
+    this.local = null;      /* v2.3.3311: the lands round you, finer (_placeLocal) */
     this._localCanvas = null;
     this._localKey = '';
     this._rectFor = '';
@@ -460,7 +460,7 @@ export class WheelMinimap {
     try { s.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
   }
 
-  /* v2.3.3310: THE LONG WHEEL'S LANDS ROUND YOU.  Its whole-map picture is a
+  /* v2.3.3311: THE LONG WHEEL'S LANDS ROUND YOU.  Its whole-map picture is a
      pixel every 16 cells (worldblocks.js overviewCells), ~16 px of this box
      a pixel, so a land's edge was a blur of steps; the blocks round you
      bring their lands a pixel every 4 cells, the short Wheel's own detail
@@ -552,7 +552,7 @@ export class WheelMinimap {
     /* other bros and monsters (v2.3.3243: each where they are now -- one
        past 2,400 px, at the Wheel's edge where the box stops centring on you,
        is sent about once a second: src/game/peerDot.js) */
-    /* v2.3.3310: only those in the box (half a mark past its edges).  Every
+    /* v2.3.3311: only those in the box (half a mark past its edges).  Every
        live monster was marked every frame, wherever it stood, and the pool
        keeps a sprite for the most ever marked at once: 1,920 sprites on the
        Wheel five times longer (~2 MB of the page's heap, mp-membudget), all
@@ -718,7 +718,7 @@ export class WheelMinimap {
         rootX: this.root.x, topInset: this.root.y, panX: this.pan.x, panY: this.pan.y,
         playerBoxX: P.x * SCALE + this.pan.x, playerBoxY: P.y * SCALE + this.pan.y,
         facingRot: this.player.rotation, markers: this.used, under: !!this.under,
-        /* v2.3.3310: the long Wheel's finer lands round you, where they lie (game px) */
+        /* v2.3.3311: the long Wheel's finer lands round you, where they lie (game px) */
         local: this.local && this.local.visible ? { x: Math.round(this.local.x / SCALE), y: Math.round(this.local.y / SCALE), w: Math.round(this.local.width / SCALE), key: this._localKey } : null,
         routes: map.routes.length, places: map.places.length, words: w ? { ...w } : null,
         nodes: nodeMarks,   /* v2.3.3012: the resources marked */

@@ -141,7 +141,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   phase = 'the list';
   await P.page.waitForTimeout(1500);
   let every = await monsters(P);
-  /* v2.3.3310: they come in the way in's one zone_state, ~580 KB on the
+  /* v2.3.3311: they come in the way in's one zone_state, ~580 KB on the
      Wheel five times longer.  The worker sends it 35 ms after the step in;
      the local worker's socket then took ~2.7 s to carry it to the page
      (measured, the worker's send against the page's receipt, tracing on or
@@ -153,7 +153,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* (a frame drawn with them, for the renderer's count of the far ones below) */
   if (listS > 1.5) { await P.page.waitForTimeout(1000); every = await monsters(P); }
   const all = every.filter(isFirst);   /* v2.3.3013: the inner end's */
-  /* v2.3.3310: five times as many on the Wheel five times longer, its
+  /* v2.3.3311: five times as many on the Wheel five times longer, its
      stretches as crowded as the short one's (the live spawn table's size) */
   const LONG = (await H.wheelGeom()).long;
   const byHome = {};
@@ -176,7 +176,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`...and from Brotown's square, far off screen, none of them is drawn (${farHidden} of ${every.length} left undrawn)`,
     farHidden === every.length && every.length === 384 * LONG, farHidden);
   /* ── 3. at the inner end of their own spoke ── */
-  const C = (await H.wheelGeom()).cx;   /* v2.3.3310: the Wheel the worker plays */
+  const C = (await H.wheelGeom()).cx;   /* v2.3.3311: the Wheel the worker plays */
   const misplaced = all.filter((m) => {
     const at = WHEEL_SPAWNS[m.home];
     if (!at) return true;

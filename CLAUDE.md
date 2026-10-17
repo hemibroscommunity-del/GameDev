@@ -2725,7 +2725,7 @@ remnant to migrate server-side, not a mode to preserve.
     - the ground worker at the memory trip's peak 24.8 MB (main 28.7);
     - test-world-core "the Wheel in blocks" (every block and piece against the
       whole map, cell for cell); step 2 is the 5x lands.
-  - Since v2.3.3310 EVERY LAND IS FIVE TIMES LONGER -- step 2 of the owner's
+  - Since v2.3.3311 EVERY LAND IS FIVE TIMES LONGER -- step 2 of the owner's
     "Rebuild for 5x" (docs/specs/wheel-5x.md):
     - a five-level stretch is 5,120 game px, not 1,024 (`plan.js PLAN5`,
       `wheelSized`; the active area grown past the frame, `grid.js

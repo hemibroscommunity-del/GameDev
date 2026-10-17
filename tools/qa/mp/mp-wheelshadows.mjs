@@ -56,7 +56,7 @@ function meanLum(img, box) {
 }
 /* a land's spot a stage in, beside its road on dry ground (as mp-placing2) */
 const SPOT = async (land, tier) => {
-  /* v2.3.3310: at the Wheel the worker plays, from a blueprint of the few
+  /* v2.3.3311: at the Wheel the worker plays, from a blueprint of the few
      cells looked at -- never the whole map, which the long Wheel is far too
      big for (H.wheelGeom) */
   const G = await H.wheelGeom();

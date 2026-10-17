@@ -73,7 +73,7 @@ import { LIFE_SKILL_XP_BASE as SRV_LIFE_SKILL_XP_BASE } from '../src/gathering.j
 import { LIFE_SKILL_XP_BASE as CLIENT_LIFE_SKILL_XP_BASE, skillXpRequired as clientSkillXpRequired } from '../../src/data/items.js'; /* v2.3.3090 */
 import { LIFE_SKILL_XP as CLIENT_LIFE_SKILL_XP } from '../../src/data/lifeSkills.js'; /* v2.3.3090 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
-import { NML as CLIENT_NML, NML_CENTRES as CLIENT_NML_CENTRES, nmlLevelAt as clientNmlLevelAt } from '../../src/data/noMansLandRings.js'; /* v2.3.3058; v2.3.3310 by size */
+import { NML as CLIENT_NML, NML_CENTRES as CLIENT_NML_CENTRES, nmlLevelAt as clientNmlLevelAt } from '../../src/data/noMansLandRings.js'; /* v2.3.3058; v2.3.3311 by size */
 import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.js';
 /* v2.3.3120: pet trapping -- the button's odds, the Traps tab, the kinds, the name rule */
 import { TRAPPING as SRV_TRAPPING, trapChance as srvTrapChance, trapRollXp as srvTrapRollXp, trapCatchXp as srvTrapCatchXp } from '../src/trapping.js';
@@ -100,7 +100,7 @@ import { TRAPPING as CLIENT_TRAPPING, trapChance as clientTrapChance, trapRollXp
   PET_TRADE_MAX as CLIENT_PET_TRADE_MAX,
   PET_WARD as CLIENT_PET_WARD, petWardOf as clientPetWardOf, PET_WARD_WHAT as CLIENT_PET_WARD_WHAT,
   PET_HOUSE as CLIENT_PET_HOUSE, petHousePrice as clientPetHousePrice, parsePetWire as clientParsePetWire } from '../../src/data/trapping.js';
-import { wheelTable as srvWheelTable, WHEEL_SIZES as SRV_WHEEL_SIZES } from '../src/wheeltables.js';   /* v2.3.3310: each Wheel's centre */
+import { wheelTable as srvWheelTable, WHEEL_SIZES as SRV_WHEEL_SIZES } from '../src/wheeltables.js';   /* v2.3.3311: each Wheel's centre */
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
   NPC_DATA as CLIENT_NPC_DATA, /* v2.3.3179: who gives quests in the world */
@@ -2005,7 +2005,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const keys = ['HUB', 'TIER', 'TIERS', 'LEVELS_PER_TIER', 'FIRST_TIER', 'SKULL_MS'];
   const bad = keys.filter((k) => SRV_NML[k] !== CLIENT_NML[k]);
   check('no man\'s land: the same rings and skull time on both sides', bad.length === 0, bad);
-  /* v2.3.3310: for every Wheel a room may play (wheeltables.js), its own centre
+  /* v2.3.3311: for every Wheel a room may play (wheeltables.js), its own centre
      and rings `long` times as wide */
   for (const long of SRV_WHEEL_SIZES) {
     const C = srvWheelTable(long).WHEEL_CENTRE, cli = CLIENT_NML_CENTRES[long];

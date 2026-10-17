@@ -42,7 +42,7 @@
  * The clear pays as any dungeon's (dungeon.js _dungeonComplete).
  */
 import { ZONES, ARCHETYPES } from './data.js';
-/* v2.3.3310: the doors of the Wheel this room plays (this._wheelT()) */
+/* v2.3.3311: the doors of the Wheel this room plays (this._wheelT()) */
 
 export const WHEEL_DUNGEON = {
   /* the lands whose landmark is a dungeon today, and each arena's look (a

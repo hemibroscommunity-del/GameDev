@@ -30,7 +30,7 @@ import * as H from './harness.mjs';
 const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 
 const PHONE = { width: 390, height: 844 };
-const FROST = (await H.wheelGeom()).along('frost', 2);   /* the north-west spoke, Frost Ridge's second stretch (v2.3.3310: at either size) */
+const FROST = (await H.wheelGeom()).along('frost', 2);   /* the north-west spoke, Frost Ridge's second stretch (v2.3.3311: at either size) */
 
 const holdTitle = (P, ms) => P.page.evaluate(async (hold) => {
   const el = document.querySelector('.bt-zone-header__title');

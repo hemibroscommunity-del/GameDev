@@ -540,7 +540,7 @@ const GROUNDS = {
 };
 function townGrounds(X) {
   const { plan, bp, T, surf, g, WPA, cellOf, cellPx, BW, BH, N, townR, byId, nearFoot, put, seed, counts } = X;
-  /* v2.3.3310: the named corner, in cells and game px (placeObjects) */
+  /* v2.3.3311: the named corner, in cells and game px (placeObjects) */
   const NC = X.NC || 0, NX = X.NX || 0;
   const gx = (ax) => (g.cx + ax - bp.x0) * WPA, gy = (ay) => (g.cy + ay - bp.y0) * WPA;
   const sizeOf = (id) => { const e = byId[id]; return e ? (e.fit === 'w' ? { w: e.size, h: e.size / (e.ar || 1) } : { w: e.size * (e.ar || 1), h: e.size }) : { w: 40, h: 40 }; };
@@ -628,7 +628,7 @@ function townGrounds(X) {
   const fenceH = byId['fence-down'] ? byId['fence-down'].size : 170;
   const bx0 = Math.floor(gx(-ext) / cellPx), bx1 = Math.ceil(gx(ext) / cellPx), by0 = Math.floor(gy(-ext) / cellPx), by1 = Math.ceil(gy(ext) / cellPx);
   const K = Rm.cells;
-  /* v2.3.3310: lattice squares and hashes counted from the named corner (NC) */
+  /* v2.3.3311: lattice squares and hashes counted from the named corner (NC) */
   for (let lj = Math.floor((by0 - NC) / K); lj <= Math.floor((by1 - NC) / K); lj++) for (let li = Math.floor((bx0 - NC) / K); li <= Math.floor((bx1 - NC) / K); li++) {
     let best = -1, bestH = 2;
     for (let dy = 0; dy < K; dy++) for (let dx = 0; dx < K; dx++) {
@@ -701,7 +701,7 @@ export function placeObjects(plan, bp, opts = {}) {
   const townR = regIdx.town, commonsR = regIdx.commons;
   /* art px from the centre -> game px from the Wheel's corner */
   const gx = (ax) => (g.cx + ax - bp.x0) * WPA, gy = (ay) => (g.cy + ay - bp.y0) * WPA;
-  /* v2.3.3310: game px (and cells) from that corner to the active area's NAMED
+  /* v2.3.3311: game px (and cells) from that corner to the active area's NAMED
      corner (bp.nox, layout.js planFeatures): every lattice and noise below is
      laid from there, so a Wheel grown past it (plan.js wheelSized) places the
      town's and the commons' things where the short one does -- 0 unless the
@@ -1026,7 +1026,7 @@ export function placeObjects(plan, bp, opts = {}) {
   if (opts.v === 2) natureV2({ plan, bp, seed, cellOf, cellPx, BW, BH, N, worldW, worldH, clear, wet, byId, landOf, townR, commonsR, coversTown, nearOasis, nearFoot, put, counts });
   else for (const L of LAYERS) {
     const st = L.step;
-    /* v2.3.3310: the lattice from the named corner (NX), over the whole map */
+    /* v2.3.3311: the lattice from the named corner (NX), over the whole map */
     const i0 = Math.floor(-NX / st), j0 = i0, cols = Math.ceil((worldW - NX) / st), rows = Math.ceil((worldH - NX) / st);
     const ls = seed + Math.imul(L.id.length + 3, 1013);
     for (let j = j0; j < rows; j++) for (let i = i0; i < cols; i++) {

@@ -32,7 +32,7 @@
  */
 import { performance } from 'node:perf_hooks';
 import { GameRoom } from '../../../server/src/index.js';
-/* v2.3.3310: the Wheel the room plays -- the long one, or with `--short` the
+/* v2.3.3311: the Wheel the room plays -- the long one, or with `--short` the
    short one (its kill switch, `wheel5x: false`), each its own table */
 const SHORT = process.argv.includes('--short');
 const { WHEEL_SPAWNS, WHEEL_CENTRE } = await import(SHORT ? '../../../server/src/wheelspawns1.js' : '../../../server/src/wheelspawns.js');
@@ -43,7 +43,7 @@ const WARMUP_TICKS = 90;
 const MOVE_EVERY_MS = 33;
 const SWING_EVERY_MS = 700;
 const FIGHTERS = 0.3;
-const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3310: the Wheel the room plays */
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3311: the Wheel the room plays */
 const WALK_R = 1400;
 const HOMES = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant'];
 
@@ -90,7 +90,7 @@ async function loadRoom(n) {
     const id = 'w' + i;
     await room.webSocketMessage(ws, JSON.stringify({
       type: 'join', id, name: 'W' + i, protocolVersion: 2,
-      ws: [1, 5],   /* v2.3.3310: the Wheels a phone of today draws */
+      ws: [1, 5],   /* v2.3.3311: the Wheels a phone of today draws */
       data: { x: 1000, y: 1000, z: 'town' },
     }));
     const fighter = i % 10 < FIGHTERS * 10;
@@ -155,7 +155,7 @@ async function run(n) {
     const measuring = t >= WARMUP_TICKS;
     if (t === WARMUP_TICKS) for (const p of players) { p.ws.bytes = 0; p.ws.sent = 0; }
     simNow += TICK_MS;
-    /* v2.3.3310: the room's own time only -- the bots' choosing (nearestMonster
+    /* v2.3.3311: the room's own time only -- the bots' choosing (nearestMonster
        walks every monster in the Wheel, five times as many on the long one)
        was inside this clock, and read as the room's */
     let msgCpu = 0;

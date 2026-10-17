@@ -44,7 +44,7 @@ const PHONE = { width: 390, height: 844 };
 const WHEELISH = (z) => z === 'worldview' || z === 'wheel';
 /* Frost Ridge's second stage, the north-west spoke: trees and rocks, past
    its monsters (mp-wheelobjects goes there too) */
-const LAND = (await H.wheelGeom()).along('frost', 2);   /* v2.3.3310: Frost Ridge's second stretch, at either size */
+const LAND = (await H.wheelGeom()).along('frost', 2);   /* v2.3.3311: Frost Ridge's second stretch, at either size */
 
 const look = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;

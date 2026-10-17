@@ -70,7 +70,7 @@ Date.now = () => simNow;
 
 const STEP_MS = 33;          /* a phone's frame of input */
 const TICK_EVERY = 110;      /* the room's tick, in strides (nodes respawn by their clock) */
-const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3310: the Wheel the room plays */
+const ARRIVAL = { x: WHEEL_CENTRE[0], y: WHEEL_CENTRE[1] + 288 };   /* v2.3.3311: the Wheel the room plays */
 const BUNDLE_MAX = 24;
 
 /* every row written, for the probes that ask what one message costs */

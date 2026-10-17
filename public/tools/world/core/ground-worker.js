@@ -74,7 +74,7 @@ import { gridInfo } from './grid.js';
 /* v2.3.3298: the Wheel a block at a time (worldblocks.js), and what is baked */
 import { wheelBlocks, BLOCK, PIECE_MARGIN, overviewCells, planFingerprint } from './worldblocks.js';
 import { decodePlaced } from './placedfile.js';
-import { objectCatalog } from '../../objects/catalog.js';   /* v2.3.3310: emptyObjects */
+import { objectCatalog } from '../../objects/catalog.js';   /* v2.3.3311: emptyObjects */
 import { PLACED_SETS } from './placed.js';
 import { materialMap, composeGround, swatchesUnder, overviewPixels, overviewLands, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder, waterRivers, wavesOn, calmWater, WATER_SWATCHES } from './ground.js';
 import { PIXEL } from '../../style/bible.js';
@@ -99,7 +99,7 @@ const APRON = 3;            /* art px laid past each edge, so smooth scaling rea
 const UNDER = 2;            /* v2.3.2967: art px (3 game px) a byte of a piece's `under` -- 4 KB a piece */
 const DECODED_KEEP = 16;    /* swatch pictures kept unpacked, 1 MB each (v2.3.2947: edge pieces too; v2.3.2951: and blends -- the town's busiest piece needs about 13) */
 const GAME_BASE = '/world/ground/';
-const PLACED_BASE = '/world/';            /* v2.3.3298: tools/world/bake-wheel-world.mjs (v2.3.3310: + each set's dir) */
+const PLACED_BASE = '/world/';            /* v2.3.3298: tools/world/bake-wheel-world.mjs (v2.3.3311: + each set's dir) */
 const OBJECTS_BASE = '/world/objects/';   /* v2.3.2975: the Object Studio's "Download for the game", repacked */
 const STUDIO_DB = 'brotown-ground-studio';
 
@@ -326,7 +326,7 @@ async function init(m) {
   const t0 = performance.now();
   const search = (m && m.search) || '';
   /* v2.3.3022: the standard plan, or the one `?bigtown` asks for (plan.js planFor)
-     -- v2.3.3310: of the size the room plays (caps.wheelsize, worldTrial.js) */
+     -- v2.3.3311: of the size the room plays (caps.wheelsize, worldTrial.js) */
   PLAN = planFor(search, (m && m.size) | 0 || 1);
   const g = gridInfo(PLAN);
   const F = planFeatures(PLAN);
@@ -345,7 +345,7 @@ async function init(m) {
   const tp0 = performance.now();
   const placing = placingOpts(search);
   let objects = null, ov = null, ovLands = null, baked = null;
-  /* v2.3.3310: the baked set whose plan this is (placed.js: one a Wheel) */
+  /* v2.3.3311: the baked set whose plan this is (placed.js: one a Wheel) */
   const fp = planFingerprint(PLAN), set = placing.v ? null : PLACED_SETS.find((p) => p.plan === fp) || null;
   if (set) {
     try {
@@ -355,7 +355,7 @@ async function init(m) {
     } catch (e) { baked = { error: String((e && e.message) || e) }; }
   }
   if (!objects && PLAN.wheel.tierZones > 1) {
-    /* v2.3.3310: never the whole long Wheel on a phone (~600 MB): with no bake
+    /* v2.3.3311: never the whole long Wheel on a phone (~600 MB): with no bake
        for its plan (a plan changed without running bake-wheel-world.mjs, which
        test-world-core catches) the land is laid without its objects, the
        overview blank, and the readout says why */
@@ -449,7 +449,7 @@ async function init(m) {
     objects.boxOf.buffer, objects.boxes.buffer]);
 }
 
-/* v2.3.3310: no objects at all, in placeObjects' shape (the long Wheel with no
+/* v2.3.3311: no objects at all, in placeObjects' shape (the long Wheel with no
    bake for its plan: init) */
 function emptyObjects(worldW, worldH) {
   const cat = objectCatalog();
@@ -496,7 +496,7 @@ async function readPlaced(PLACED) {
    -- to the game, as the block is built (a copy: the block keeps its own) */
 function postBlock(b) {
   const walk = b.walls.walk.slice(), swim = b.walls.swim.slice();
-  /* v2.3.3310: and the block's lands at the minimap's own detail, a pixel
+  /* v2.3.3311: and the block's lands at the minimap's own detail, a pixel
      every LANDS_CELLS cells (each land's index, 255 water: ground.js
      overviewLands' rule) -- the long Wheel's whole-map picture is four times
      coarser (worldblocks.js overviewCells), and the minimap draws the blocks

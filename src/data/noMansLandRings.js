@@ -4,7 +4,7 @@
  * server/src/nomansland.js (NML, nmlTierAt, nmlLevelAt); the audit holds the
  * numbers, the centre and the level at every spot equal.
  *
- * v2.3.3310: for the Wheel `long` times longer (the owner's "Maybe 5x larger
+ * v2.3.3311: for the Wheel `long` times longer (the owner's "Maybe 5x larger
  * map is needed": plan.js PLAN5) the rings are `long` times as wide, round
  * that Wheel's own centre -- NML_CENTRES by size, the worker's
  * wheelspawns.js (5) and wheelspawns1.js (1) WHEEL_CENTRE.  A caller passes the
@@ -16,7 +16,7 @@ export const NML = Object.freeze({
 /* each Wheel's centre, game px, by how many times longer than one zone a
    tier its tiers are */
 export const NML_CENTRES = Object.freeze({ 1: Object.freeze([21504, 21504]), 5: Object.freeze([87168, 87168]) });
-/* the short Wheel's (as before v2.3.3310) */
+/* the short Wheel's (as before v2.3.3311) */
 export const NML_CENTRE = NML_CENTRES[1];
 
 export function nmlTierAt(x, y, long = 1) {

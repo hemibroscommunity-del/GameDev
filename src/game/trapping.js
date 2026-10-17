@@ -36,7 +36,7 @@ import {
 } from '@/data/trapping.js';
 import { ZONES } from '@/data/zones.js';
 import { NML_CENTRE, NML_CENTRES } from '@/data/noMansLandRings.js';
-import { wheelLong } from '@/game/wheelSize.js';   /* v2.3.3310: the middle of the Wheel the room plays */
+import { wheelLong } from '@/game/wheelSize.js';   /* v2.3.3311: the middle of the Wheel the room plays */
 import { BT_AUDIO } from '@/data/index.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';

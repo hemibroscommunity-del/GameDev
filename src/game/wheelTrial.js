@@ -31,9 +31,9 @@
    own modules, which live there too. */
 const WORKER_URL = '/tools/world/core/ground-worker.js';
 import { landLook, hexRgb } from '../data/wheelLands.js';   /* v2.3.3024: each land's flat colour */
-import { wheelLong, noteWheelBuilt } from './wheelSize.js';   /* v2.3.3310: which Wheel the room plays */
+import { wheelLong, noteWheelBuilt } from './wheelSize.js';   /* v2.3.3311: which Wheel the room plays */
 
-const ROW_KEEP = 160;          /* walk-grid rows kept made, a byte a cell (v2.3.3310: 1.8 KB today, 7 KB on the long Wheel; a JS array was ~14 KB and would be ~58) */
+const ROW_KEEP = 160;          /* walk-grid rows kept made, a byte a cell (v2.3.3311: 1.8 KB today, 7 KB on the long Wheel; a JS array was ~14 KB and would be ~58) */
 /* v2.3.3298: the Wheel's walls come a block at a time (the worker's 'block':
    public/tools/world/core/worldblocks.js), ~4 KB each; the ones furthest
    from the last read go past this many */
@@ -250,7 +250,7 @@ export function wheelStart() {
     /* v2.3.3021: and whether the game draws the water moving here, so the
        worker takes the frozen web of light out of the water pictures
        (ground.js CALM WATER; setWheelWaterMoves, from wheelWater.js) */
-    /* v2.3.3310: and which Wheel the room plays (caps.wheelsize): the long
+    /* v2.3.3311: and which Wheel the room plays (caps.wheelsize): the long
        one five times the short one's every tier (plan.js wheelSized) */
     const size = wheelLong();
     noteWheelBuilt(size);
@@ -270,7 +270,7 @@ function onMessage(m, resolveInit, rejectInit) {
     const k = m.I + ',' + m.J;
     _blocks.delete(k);
     _blocks.set(k, { x: m.x, y: m.y, w: m.w, h: m.h, walk: m.walk, swim: m.swim, lands: m.lands || null });
-    _landsVer++;   /* v2.3.3310: the minimap's lands round you (wheelLocalLands) */
+    _landsVer++;   /* v2.3.3311: the minimap's lands round you (wheelLocalLands) */
     /* (the oldest go: a block is built again, and sent again, when it is wanted) */
     while (_blocks.size > BLOCK_KEEP) _blocks.delete(_blocks.keys().next().value);
     if (_rowsMade) for (let y = m.y; y < m.y + m.h; y++) _rowsMade.delete(y);
@@ -447,7 +447,7 @@ export function wheelStop() {
   _grid = null;
   _blocks.clear();
   _rowsMade = null;
-  noteWheelBuilt(0);   /* v2.3.3310 */
+  noteWheelBuilt(0);   /* v2.3.3311 */
   if (_local) { _local.canvas.width = _local.canvas.height = 0; _local = null; }
   if (_overview) { _overview.width = _overview.height = 0; _overview = null; }
   if (_overviewLands) { _overviewLands.width = _overviewLands.height = 0; _overviewLands = null; }
@@ -490,7 +490,7 @@ function lazyGrid(cols, rows, B, swimOn) {
   const rowAt = (y) => {
     let r = made.get(y);
     if (r) return r;
-    /* v2.3.3310: a byte a cell, 1 open and 0 a wall -- its readers take 0 as
+    /* v2.3.3311: a byte a cell, 1 open and 0 a wall -- its readers take 0 as
        they take false (isSolid, nudgeSpawnToWalkable, the trail's route).  A
        row of the Wheel five times longer is 7,264 cells: ~58 KB as an array
        of booleans on iPhone, 9 MB for the rows kept */
@@ -522,7 +522,7 @@ function lazyGrid(cols, rows, B, swimOn) {
   });
 }
 
-/* ═══ v2.3.3310: THE LANDS ROUND YOU, AT THE MINIMAP'S DETAIL ═══
+/* ═══ v2.3.3311: THE LANDS ROUND YOU, AT THE MINIMAP'S DETAIL ═══
    The long Wheel's whole-map picture is a pixel every 16 cells (worldblocks.js
    overviewCells): blurred to nothing on the minimap, which shows ~3,200 game
    px.  So each block the worker builds brings its lands a pixel every 4 cells
