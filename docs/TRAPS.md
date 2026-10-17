@@ -6323,3 +6323,29 @@ call a look. Run on a busy day, that is the game down until midnight.
 second worker -- ask which plan it is on and what it shares. Separate names do
 not make separate limits. Every call between two objects is a billed request,
 and so is every poll.
+
+## 184. "The input gate holds a trade together" (v2.3.3294)
+
+**The plausible move.** A trade validates both sides, debits both, then
+credits both, all inside one input-gated event. "The credits await storage
+but input gates hold peers off the whole time" (trade2.js), so the trade is
+atomic.
+
+**Why it is wrong.** The gate keeps OTHER events out of the middle; it does
+not make the event's writes one. Each `await` between two writes is a place a
+restart can land (#147, #182), and every server merge restarts the room. The
+trades saved both debits, then awaited a `_creditPlayer` per credit. A
+restart in between took what both sides gave and paid neither, and a trade
+lives in memory, so nothing ever comes back for it. `_creditPlayer` itself
+did #147 the other way round: it stamped "paid", awaited that, then paid.
+And two un-awaited credits to one player each rewrote the mailbox over the
+other. Measured by the architecture review (`inbox.test` §8c): 500 gold lost,
+50 gold gone in a gift trade, a staged weapon returned twice, 1 of 5 mailbox
+entries kept.
+
+**The rule.** "Atomic" means ONE synchronous run of writes with no await
+between them, not one event. A swap with both sides online credits in the
+same run as it debits (`_creditLiveTogether`). A payment's stamp is issued
+with the payment's write. Anything that reads a record and writes it back
+takes its turn (`_inboxSerial`). Test it on inbox.test's batch storage, at
+every write.
