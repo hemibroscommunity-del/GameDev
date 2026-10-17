@@ -203,7 +203,7 @@ look three times dearer; it now times only the room.
   outside No man's land, resting.
 - `nomansland`, `mirror-audit` (the rings per size), `monsterstatus`,
   `petsmatter`, `pvp-lunge`, `spar`, `linger`, `tick-share`, `aggro-grid`,
-  `presence2`: joins say `ws`, and stand at the live Wheel's places.
+  `presence2`, `hit-door`: joins say `ws`, and stand at the live Wheel's places.
 - `caps-audit`: a capability may be a number the room decides with one of
   its own methods (`wheelsize: this._wheelLongNow()`).
 - `tools/world/test-world-core.mjs`, "the Wheel five times longer
