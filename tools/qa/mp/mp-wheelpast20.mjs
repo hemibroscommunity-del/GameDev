@@ -6,7 +6,8 @@
  *
  * On a phone viewport, against a real worker, the game as a player gets it:
  *   1. the Wheel holds every land's second stage too -- tiers 5-8, levels
- *      21-40, 24 monsters a land more -- each carrying its own level;
+ *      21-40, 24 monsters a land more (v2.3.3318: five times that on the
+ *      long Wheel, v2.3.3315) -- each carrying its own level;
  *   2. out on Frost Ridge's fifth stretch (levels 21-25), past the first pass,
  *      the top bar says so;
  *   3. the snowmen there are GLACIER SNOWMEN: drawn from the land's own live
@@ -43,8 +44,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `wheelpast20-${name}.png`) });
   const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
+  /* v2.3.3318: the Wheel the worker plays -- a land's six monsters a stretch
+     on the short Wheel, WHEEL_LONG rounds of them on the long one (v2.3.3315,
+     wheelzone.js _wheelSpawnMonsters); this counted the short Wheel's 192 */
+  const PER = 6 * (await H.wheelGeom()).long;
+  /* a stretch's monsters around you (on the phone's screen), and all of them
+     -- PER on the long Wheel, most of them screens away and so undrawn */
+  const NEAR_PX = 600;
+  const around = async (tier) => {
+    const me = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+    const stretch = (await monsters(P)).filter((m) => m.home === 'frost' && tierOf(m.id) === tier && m.alive !== false);
+    return { stretch, near: stretch.filter((m) => Math.hypot(m.x - me.x, m.y - me.y) <= NEAR_PX) };
+  };
 
-  const P = await H.newPlayer(browser, { name: 'Farwalker', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
+  /* v2.3.3318: every Wheel monster on the way in, as before (`wheelwhole`,
+     server/src/wheelnear.js): this reads every land's second stage off the arrival's list */
+  const P = await H.newPlayer(browser, { name: 'Farwalker', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'wheelwhole' });
   P.page.on('console', (m) => { if (!firstThrow && /app\.render threw/.test(m.text())) firstThrow = '[during: ' + phase + '] ' + m.text(); });
   await H.enterWorld(P);
   let zone = null;
@@ -72,21 +87,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const byLand = {};
   for (const m of second) (byLand[m.home] = byLand[m.home] || []).push(m);
   rec.ok(`in the Wheel (${zone}) every land's second stage has its monsters: ${second.length} (${Object.entries(byLand).map(([h, a]) => `${h} ${a.length}`).join(', ')}), levels ${Math.min(...second.map((m) => m.level))}-${Math.max(...second.map((m) => m.level))}`,
-    zone === 'wheel' && second.length === 192 && Object.keys(byLand).length === 8 && Object.values(byLand).every((a) => a.length === 24)
-      && second.every((m) => m.level >= 21 && m.level <= 40), { n: second.length });
+    zone === 'wheel' && second.length === 32 * PER && Object.keys(byLand).length === 8 && Object.values(byLand).every((a) => a.length === 4 * PER)
+      && second.every((m) => m.level >= 21 && m.level <= 40), { n: second.length, per: PER });
 
   /* ── 2. out past the first pass, to Frost Ridge's levels 21-25 ── */
   phase = 'the walk';
   await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 10 });
   const t5 = WHEEL_SPAWNS.frost.deeper.find((d) => d.tier === 5);
-  const mid = { x: t5.points.slice(0, 6).reduce((a, p) => a + p[0], 0) / 6, y: t5.points.slice(0, 6).reduce((a, p) => a + p[1], 0) / 6 };
+  /* v2.3.3318: to the stretch's first monster's own place -- the middle of
+     its first six lies up to 2,600 px from any of them on the long Wheel */
+  const mid = { x: t5.points[0][0], y: t5.points[0][1] };
   const t0 = Date.now();
   const arrived = await H.hopTo(P, mid.x, mid.y + 40, { step: 100, gap: 260, tries: 420 });
   const walkS = +((Date.now() - t0) / 1000).toFixed(1);
-  let near = [];
+  let near = [], stretch = [];
   for (let i = 0; i < 24; i++) {
     await P.page.waitForTimeout(500);
-    near = (await monsters(P)).filter((m) => m.home === 'frost' && tierOf(m.id) === 5 && m.alive !== false);
+    ({ near, stretch } = await around(5));
     if (near.length && near.every((m) => m.sprite && m.sprite.texAlive && m.sprite.plate)) break;
   }
   await shot(P, 'frost-21-25');
@@ -102,8 +119,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   phase = 'the looks';
   const drawn = near.filter((m) => m.sprite && m.sprite.visible && m.sprite.texAlive);
   const hex = (v) => (v == null ? 'none' : '#' + Number(v).toString(16).padStart(6, '0'));
-  rec.ok(`...the snowmen there are drawn from the land's own live art (${drawn.length} of ${near.length} in reach), tinted the stage's icy blue (${[...new Set(drawn.map((m) => hex(m.sprite.baseTint)))].join(', ')})`,
-    near.length === 6 && drawn.length >= 1 && drawn.every((m) => m.sprite.baseTint === GLACIER.tint), near.map((m) => m.sprite && { tint: hex(m.sprite.baseTint), alive: m.sprite.texAlive }));
+  rec.ok(`...the snowmen there are drawn from the land's own live art (${drawn.length} of ${near.length} around you; ${stretch.length} in the stretch), tinted the stage's icy blue (${[...new Set(drawn.map((m) => hex(m.sprite.baseTint)))].join(', ')})`,
+    stretch.length === PER && drawn.length >= 1 && drawn.every((m) => m.sprite.baseTint === GLACIER.tint), near.map((m) => m.sprite && { tint: hex(m.sprite.baseTint), alive: m.sprite.texAlive }));
   const plates = near.filter((m) => m.sprite && m.sprite.plate).map((m) => ({ level: m.level, text: m.sprite.plate.level, name: m.sprite.plate.name }));
   rec.ok(`...named "${GLACIER.name}" on their plates, each with its own level (${plates.map((p) => `${p.name} ${p.text}`).join(', ')})`,
     plates.length >= 1 && plates.every((p) => p.name === GLACIER.name && p.text === 'LV ' + p.level && p.level >= 21 && p.level <= 25), plates);
@@ -111,7 +128,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 4. the first stage keeps its own ── */
   phase = 'the first stage';
   const t4 = WHEEL_SPAWNS.frost.deeper.find((d) => d.tier === 4);
-  const mid4 = { x: t4.points.slice(0, 6).reduce((a, p) => a + p[0], 0) / 6, y: t4.points.slice(0, 6).reduce((a, p) => a + p[1], 0) / 6 };
+  const mid4 = { x: t4.points[0][0], y: t4.points[0][1] };   /* v2.3.3318: as `mid` above */
   await H.hopTo(P, mid4.x, mid4.y + 40, { step: 100, gap: 260, tries: 220 });
   let near4 = [];
   for (let i = 0; i < 20; i++) {

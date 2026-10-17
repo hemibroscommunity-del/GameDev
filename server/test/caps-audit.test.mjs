@@ -50,6 +50,8 @@ function check(name, cond, detail) {
  * real client gate must be deleted (checked below). */
 const CAPS_ALLOWLIST = new Map([
   ['httpAuth', 'handshake negotiation field, not a feature gate — the client SENDS httpAuth:true in join (wsClient.js) rather than reading it from caps'],
+  /* v2.3.3318 */
+  ['wheelnear', 'for the record and the tests (mp-wheelnear): the phone ASKS with `wn: 1` in its join, before any caps arrive, and reads a near list by the mark on the message itself (zone_state `mnear`, state_sync `monstersNear`), so it reads right whichever worker sent it; a caps gate would add nothing (server/src/wheelnear.js)'],
   /* v2.3.1660: the prog3 entry added at v2.3.1659 is deleted — the
      client gate shipped (wsClient setProg3Enabled), so the audit
      enforces it for real now. */

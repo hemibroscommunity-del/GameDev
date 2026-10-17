@@ -6805,7 +6805,32 @@ only for what belongs to the piece itself (its outline, its own rainbow).
 **Receipt:** mp-sheen "it follows the sun" with a steel greatsword in hand: the
 left third 0.35 -> 1.0, the right third 1.0.
 
-## 198. "The test watched for 1.4 s, so the shot had its chance" (v2.3.3317)
+## 198. "An empty monster list means the worker runs none here" (v2.3.3318)
+
+**Tempting:** to send a phone fewer monsters on its way into a zone, just send
+fewer: the tick will tell it about the rest as it walks up to them.
+
+**Wrong, twice over.** A tick's monster says where it is and how it is doing
+(tick.js `monsterWire`: id, place, HP, alive), never what it is -- its kind,
+level, land and skin -- and the phone updates only the monsters it already
+holds (wsClient.js, the tick's monsters): a monster the arrival left out is
+never drawn at all. And an EMPTY arrival list was the phone's sign that the
+worker runs no monsters in this zone (`_applyZoneMonstersMsg`, state_sync):
+it turns the server's monsters off and makes its own. BroTown's square, where
+every login lands, has no monster within reach, so the obvious trim sent an
+empty list there -- tried in the five-times Wheel (v2.3.3315) and taken out
+for exactly this.
+
+**The rule:** a list that is not every monster says so -- `mnear: 1` on the
+zone_state, `monstersNear: 1` on a join's state_sync -- and goes only to a
+phone that asked for it (`wn: 1`); and a monster first coming into such a
+phone's reach comes whole, in the snapshot's own wire (`mw`, spawnscale.js
+`monsterSnapWire`), before the tick that first moves it.
+**Receipt:** server/src/wheelnear.js, `wheelnear` suite (the town square's
+way in 580 -> 140 KB, the 29 around you among Frost Ridge's first stretch,
+each once, the kill switch, a cold room's first join); `mp-wheelnear`.
+
+## 199. "The test watched for 1.4 s, so the shot had its chance" (v2.3.3317)
 
 **Tempting:** a phone scenario gives a shot, a cast or a pose a fixed window
 on its own clock -- "settled 1.4 s after the shot", "the kick in the 20-200 ms

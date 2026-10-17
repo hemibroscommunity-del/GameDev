@@ -133,7 +133,7 @@ arrival's safe ground the nearest monster is ~3,000 px away. Sending only the on
 reach needs a message that brings a monster coming into reach whole: a tick
 carries a monster's place and HP, not what it is (its kind, level and land),
 and the phone ignores a tick's monster it does not already know. That is the
-next step, below.
+next step, below -- done since v2.3.3318 (`docs/specs/wheel-arrival.md`).
 
 **Monsters rest** where nobody is near (v2.3.3299): with one player in town,
 1,838 of 1,920 rest.
@@ -217,13 +217,11 @@ look three times dearer; it now times only the room.
 
 ## Not in this step
 
-- **The way in with only the monsters in reach.** It needs the worker to send
-  a monster coming into reach whole (a new message, or the snapshot's fields on
-  a tick entry for a phone that says it reads them) and the phone to add one it
-  does not know; then the way in drops from ~580 KB to the nodes' ~134 KB and
-  the phone holds the monsters near it, not all 1,920. Tried in this step and
-  taken out: an empty list on the way in also reads to today's phone as "this
-  zone's monsters are mine to run" (wsClient.js `_applyZoneMonstersMsg`).
+- **The way in with only the monsters in reach.** Done since v2.3.3318
+  (`docs/specs/wheel-arrival.md`): a phone that says `wn: 1` is sent the
+  monsters around it, the list marked so an empty one still means the
+  worker's, and each other monster whole (`mw`) the first time it comes into
+  reach -- the town square's way in ~580 KB -> ~140 KB, the nodes and loot.
 - The first stretch's monsters are levels 1-2 as before, now over 5,120 px.
   A slope from 1 to 5 across it is one line in `wheelzone.js` if the owner
   wants it.
