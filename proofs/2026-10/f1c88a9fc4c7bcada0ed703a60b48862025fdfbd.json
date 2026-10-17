@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f1c88a9fc4c7bcada0ed703a60b48862025fdfbd",
+  "tree": "bcd9afd3c0538c20519b2dc36b1f2c4e24880108",
+  "committedAt": "2026-10-17T11:11:40-07:00",
+  "subject": "Into the Wheel with only the monsters around you: the way in drops from 580 KB to 140 KB (v2.3.3318) (#949)",
+  "files": 5717,
+  "bytes": 636214879,
+  "listingSha256": "a27732abb03baf4843c61ec1a736b7b823167036cd12343ec00af4db9478842a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
