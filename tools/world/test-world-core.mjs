@@ -3741,6 +3741,28 @@ console.log('the Wheel in blocks (v2.3.3298)');
     }
     ok(`${name}: every one of ${rects} rectangles of the blueprint (each block, and odd ones anywhere) is the whole blueprint's, cell for cell`, bad === 0, { rects, bad });
   }
+  /* 1b. pass 1 over a rectangle (layout.js pass1Rect, one loop, what every
+     build runs) is pass 1 at each of its cells (pass1At, what the features
+     ask when they decide whether they stand) -- the same arithmetic written
+     twice, for speed */
+  {
+    const { planFeatures } = await import('../../public/tools/world/core/layout.js');
+    const F = planFeatures(PLAN);
+    const list = [{ x: 746, y: 746, w: 300, h: 300 }, { x: 950, y: 600, w: 100, h: 100 }, { x: 260, y: 260, w: 100, h: 100 }];
+    for (let k = 0; k < 24; k++) list.push({ x: (k * 683) % (F.bw - 40), y: (k * 419) % (F.bh - 40), w: 40, h: 40 });
+    let cells = 0, bad = 0, land = 0;
+    for (const rc of list) {
+      const n = rc.w * rc.h, cls = new Uint8Array(n), reg = new Uint8Array(n), tier = new Uint8Array(n), band = new Uint8Array(n);
+      F.pass1Rect(rc.x, rc.y, rc.x + rc.w, rc.y + rc.h, F.windowFields(rc.x, rc.y, rc.w, rc.h), cls, reg, tier, band, rc.w);
+      for (let y = 0; y < rc.h; y++) for (let x = 0; x < rc.w; x++) {
+        const i = y * rc.w + x, v = F.pass1Point(rc.x + x, rc.y + y);
+        cells++;
+        if (cls[i] !== C.ocean) land++;
+        if ((v & 31) !== cls[i] || ((v >> 5) & 31) !== reg[i] || ((v >> 10) & 31) !== tier[i] || ((v >> 15) & 7) !== band[i]) bad++;
+      }
+    }
+    ok(`pass 1 over a rectangle is pass 1 at each of its cells (${cells} cells, ${land} of them land)`, bad === 0 && land > 50000, { cells, land, bad });
+  }
   /* 2. every block's swatch map, region, tier, fresh water and walls are the whole map's */
   const mmW = G.materialMap(PLAN, bp);
   const walkW = G.walkBits(bp, mmW), swimW = G.swimBits(bp, mmW, (PLAN.seed | 0) + 900, walkW);

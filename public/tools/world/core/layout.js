@@ -605,6 +605,57 @@ export function planFeatures(plan) {
     return v;
   };
   const landAt = (c) => c !== C.ocean && c !== C.anchor;
+  /* ...and over a rectangle, into its arrays (row `bw` wide from rx0, ry0):
+     the SAME arithmetic as pass1At's, written out in the loop.  Called once a
+     cell, pass1At made the whole blueprint take 5.8 s on the test box, where
+     the whole-world build before v2.3.3298 took 1.0 and this loop's build
+     takes 1.4-1.6 (measured): the call is not inlined, and by the time the
+     rectangle's cells run the features have already called it with their
+     own samplers.  The suite checks the two cell by cell (test-world-core,
+     "the Wheel in blocks"). */
+  const pass1Rect = (rx0, ry0, rx1, ry1, Fd, cls, reg, tier, band, bw) => {
+    const coastN = Fd.coastN, ringN = Fd.ringN, warpX = Fd.warpX, warpY = Fd.warpY, tierN = Fd.tierN;
+    for (let by = ry0; by < ry1; by++) {
+      const gy = gy0 + by, y = sqy(gy), ay = artY(by);
+      for (let bx = rx0; bx < rx1; bx++) {
+        const gx = gx0 + bx, x = sqx(gx), ax = artX(bx);
+        const i = (by - ry0) * bw + (bx - rx0);
+        const r = Math.sqrt(x * x + y * y);
+        let k1 = 0, k2 = 0, d1 = Infinity, d2 = Infinity;
+        for (let k = 0; k < spokes.length; k++) {
+          const d = axisDist(W, spokes[k], x, y);
+          if (d < d1) { d2 = d1; k2 = k1; d1 = d; k1 = k; } else if (d < d2) { d2 = d; k2 = k; }
+        }
+        const cn = coastN(gx, gy);
+        const inCommons = r < W.hub + cmn.wobble * ringN(gx, gy);
+        let land = inCommons || d1 < W.half + coast.wobble * cn;
+        if (!land) {
+          for (const p of passes) {
+            if (Math.abs(r - p.r) < p.half + passWob * cn && between(p.a, p.b, x, y)) { land = true; break; }
+          }
+        }
+        const wx = x + warp.amount * warpX(gx, gy), wy = y + warp.amount * warpY(gx, gy);
+        const best = spokes.length > 1 && axisDist(W, spokes[k2], wx, wy) < axisDist(W, spokes[k1], wx, wy) ? spokes[k2].rid : spokes.length ? spokes[k1].rid : 0;
+        tier[i] = 0; band[i] = 0;
+        if (!land) { cls[i] = C.ocean; reg[i] = best; continue; }
+        cls[i] = C.ground;
+        let inAnchor = false;
+        for (const an of anchors) {
+          if (ax >= an.core.x0 && ax < an.core.x1 && ay >= an.core.y0 && ay < an.core.y1) { inAnchor = true; break; }
+        }
+        if (inAnchor) { cls[i] = C.anchor; reg[i] = townId != null ? townId : best; continue; }
+        if (T && townId != null) {
+          const tx = ax - g.cx, ty = ay - g.cy;
+          if (tx >= townBox.x0 && tx <= townBox.x1 && ty >= townBox.y0 && ty <= townBox.y1 && TS.rects.some((rr) => inWobblyRect(tx, ty, rr, TE, seed + 53 + (TE.seed | 0), g.cx, g.cy, townReach))) { reg[i] = townId; continue; }
+        }
+        if (inCommons && commonsId != null) { reg[i] = commonsId; continue; }
+        reg[i] = best;
+        const t = Math.max(1, tierAt(W, r + tw.amount * tierN(gx, gy)));
+        tier[i] = t;
+        band[i] = stageOf(W, t);
+      }
+    }
+  };
 
   /* ── pass 2's features, and whether each one stands ──
      One candidate per L x L lattice cell (L from the density), jittered
@@ -1018,7 +1069,7 @@ export function planFeatures(plan) {
 
   const out = {
     plan, g, S, P, gx0, gy0, x0, y0, bw, bh, W, regionIds, R, seed, townId, commonsId, anchors,
-    artX, artY, cellX, cellY, sqx, sqy, toArt, windowFields, pass1At, pass1Point, landAt,
+    artX, artY, cellX, cellY, sqx, sqy, toArt, windowFields, pass1At, pass1Point, pass1Rect, landAt,
     T, TS, feats, candidate, stands, shapeHits, latticeRange, rivers, ponds, roads, rails, marks,
     pois, routes, lots, decks,
     /* start the remembered answers again when they have grown past STANDS_KEEP */
@@ -1051,15 +1102,8 @@ export function buildBlueprint(plan, rect) {
   const townId = F.townId;
   const { artX, artY, cellX, cellY } = F;
 
-  /* ── pass 1: every cell on its own (planFeatures pass1At) ── */
-  const fields = F.windowFields(rx0, ry0, bw, bh);
-  for (let by = ry0; by < ry1; by++) {
-    let i = (by - ry0) * bw;
-    for (let bx = rx0; bx < rx1; bx++, i++) {
-      const v = F.pass1At(bx, by, fields);
-      cls[i] = v & 31; reg[i] = (v >> 5) & 31; tier[i] = (v >> 10) & 31; band[i] = (v >> 15) & 7;
-    }
-  }
+  /* ── pass 1: every cell on its own (planFeatures pass1Rect) ── */
+  F.pass1Rect(rx0, ry0, rx1, ry1, F.windowFields(rx0, ry0, bw, bh), cls, reg, tier, band, bw);
 
   /* ── stamping helpers (positions in float cells from the whole blueprint's
      corner; only cells of this rectangle are written) ── */
