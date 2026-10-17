@@ -6612,7 +6612,7 @@ leaves the marker out on purpose. And a ref is named whole:
 
 them passing unchanged.
 
-## 194. "Reading the canvas's context only looks at it" (v2.3.3306)
+## 194. "Reading the canvas's context only looks at it" (v2.3.3310)
 
 **Tempting:** to learn something about the GPU -- its biggest texture, whether
 its context is lost, a thumbnail of the screen -- call

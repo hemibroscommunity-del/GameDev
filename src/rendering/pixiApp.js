@@ -570,7 +570,7 @@ export const CANVAS_BG = 0x0d0b18;
 function withoutDepthBuffer(canvas) {
   try {
     if (/(^|[?&])depthbuf(=|&|$)/.test(window.location.search || '')) return () => {};
-    /* v2.3.3306: a canvas whose context came up with no stencil buffer is
+    /* v2.3.3310: a canvas whose context came up with no stencil buffer is
        made again once (BroTown, TRAPS §194), and that one asks for exactly
        what Pixi asks by default, depth buffer and all -- in case a device
        cannot give a stencil buffer without one */

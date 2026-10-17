@@ -1,4 +1,4 @@
-/* ═══ v2.3.3306: THE ALLIANCE (docs/specs/alliance.md) ═══
+/* ═══ v2.3.3310: THE ALLIANCE (docs/specs/alliance.md) ═══
  *
  * Step 2 of the owner's party -> alliance plan.  The owner: "I think I'd
  * rather skip clans altogether and just go from party to alliances.  Maybe it

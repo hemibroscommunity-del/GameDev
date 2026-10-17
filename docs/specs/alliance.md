@@ -1,4 +1,4 @@
-# The alliance: a party of 20 active bros (v2.3.3306)
+# The alliance: a party of 20 active bros (v2.3.3310)
 
 Step 2 of the party → alliance plan (docs/specs/party.md, "A party that
 lasts"). The owner: *"I think I'd rather skip clans altogether and just go from

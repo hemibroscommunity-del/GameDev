@@ -3822,7 +3822,7 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
         window.__btPixiInitFails = 0;
-        /* ═══ v2.3.3306: A CONTEXT WITHOUT A STENCIL BUFFER IS MADE AGAIN ═══
+        /* ═══ v2.3.3310: A CONTEXT WITHOUT A STENCIL BUFFER IS MADE AGAIN ═══
            Every mask the game draws (the Wheel's minimap, the swimmer cut at
            the neck) needs the stencil buffer Pixi asks for.  A context someone
            else made first on this canvas has none (TRAPS §194: the crash
@@ -7934,7 +7934,7 @@ export var BroTown = function BroTown(_ref0) {
     var _wdPendingAt = 0;   /* a sample asked for and not yet back (Date.now()) */
     var _wdThumb = null;   /* { gl, fb, rb, pbo, px } -- this context's */
     var _wdOffGl = null;   /* the context the GPU's way failed on once: the old way on it from then on (a rebuilt renderer's new context tries again) */
-    /* ═══ v2.3.3306: THE RENDERER'S CONTEXT, NEVER THE CANVAS'S getContext ═══
+    /* ═══ v2.3.3310: THE RENDERER'S CONTEXT, NEVER THE CANVAS'S getContext ═══
        Owner: "often loading from a saved character will show the game as an
        enlarged minimap. You're forced to log back out and back in to fix it."
        A getContext on a canvas nothing has drawn on yet MAKES its context,
@@ -7982,7 +7982,7 @@ export var BroTown = function BroTown(_ref0) {
     /* Ask the GPU for the thumbnail: { T, sync } to collect, or null (do it
        the old way).  Call it in the animation frame the world was drawn in. */
     function _wdThumbAsk(cv) {
-      var gl = _wdGl(cv);   /* v2.3.3306: never cv.getContext (above) */
+      var gl = _wdGl(cv);   /* v2.3.3310: never cv.getContext (above) */
       if (!gl || gl === _wdOffGl || typeof gl.fenceSync !== 'function' || gl.isContextLost()) return null;
       var T = _wdThumbSetUp(gl);
       if (!T) { _wdOffGl = gl; return null; }
@@ -8051,7 +8051,7 @@ export var BroTown = function BroTown(_ref0) {
          never struck, so an iOS memory-pressure context kill left the
          screen blank forever with no rebuild and no reload. */
       try {
-        var _glWd = _wdGl(cv);   /* v2.3.3306: never cv.getContext (_wdGl) */
+        var _glWd = _wdGl(cv);   /* v2.3.3310: never cv.getContext (_wdGl) */
         if (_glWd && _glWd.isContextLost && _glWd.isContextLost()) { done(0); return; }
       } catch (eWd) { /* fall through to the pixel sample */ }
       var oldWay = function () {

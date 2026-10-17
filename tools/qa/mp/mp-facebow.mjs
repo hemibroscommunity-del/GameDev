@@ -39,7 +39,7 @@ const FACE_ART = 'b'.repeat(256);
 /* One crop, returned BOTH as a 20x picture and as the ink measurement, so the
    number and the render can never be of different frames.
 
-   ═══ v2.3.3306: THE CROP AND THE BOX ARE ONE FRAME ═══
+   ═══ v2.3.3310: THE CROP AND THE BOX ARE ONE FRAME ═══
    The crop used to be measured (H.figureBox) and then photographed
    (page.screenshot) a moment later.  Standing, that moment does not matter.
    JOGGING it does: the figure's place on the screen moves with every frame the

@@ -88,7 +88,7 @@ async function playRow(page, name, wantId) {
     page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null),
     row.click(),
   ]);
-  /* v2.3.3306: and IN -- the worker's state_sync applied (its caps, the net
+  /* v2.3.3310: and IN -- the worker's state_sync applied (its caps, the net
      hold lifted).  myId and currentZone are the page's own before the socket
      joins, so on this box the checks below ran on a page still waiting for
      its sync: no caps, the stored record never applied, Inky's species still
@@ -203,7 +203,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         id: S.myId,
         face: localStorage.getItem('bt-facetattoo') || '',
         species: localStorage.getItem('bt-species') || 'none',
-        /* v2.3.3306: what the stored record says, so a failure says why */
+        /* v2.3.3310: what the stored record says, so a failure says why */
         rec: rec ? { name: rec.name, sc: rec.look ? (rec.look.sc === undefined ? 'absent' : rec.look.sc) : 'no look' } : null,
         charLock: !!(S._serverCaps && S._serverCaps.charLock),
         caps: Object.keys(S._serverCaps || {}).length,

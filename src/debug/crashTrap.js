@@ -60,7 +60,7 @@ function _doFlush() {
       /* v2.3.1384: GPU caps + context state ride along — an invisible
          character from a failed big-texture upload is only diagnosable
          with MAX_TEXTURE_SIZE and lost/ok in hand.
-         v2.3.3306: the RENDERER's context, never a canvas's getContext.  A
+         v2.3.3310: the RENDERER's context, never a canvas's getContext.  A
          getContext on a canvas nothing has drawn on yet MAKES its context,
          with WebGL's defaults -- no stencil buffer -- and Pixi, asking a
          moment later, is handed that one: every mask then draws unclipped,

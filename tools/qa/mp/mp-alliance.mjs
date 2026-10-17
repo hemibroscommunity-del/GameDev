@@ -1,4 +1,4 @@
-/* ═══ v2.3.3306: THE ALLIANCE (server/src/alliance.js, src/game/alliance.js) ═══
+/* ═══ v2.3.3310: THE ALLIANCE (server/src/alliance.js, src/game/alliance.js) ═══
  *
  * The owner: a party "that stays persistent until you remove yourself from the
  * party and it becomes 'alliance' at 20+ people", then "keep going on

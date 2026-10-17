@@ -315,7 +315,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const faceAndRead = async (ang, tag) => {
     await P.page.evaluate((a) => { window.__pinFace = { a }; }, ang);
     await P.page.waitForTimeout(600);
-    /* v2.3.3306: until the facing arrives (a slow frame can land between the
+    /* v2.3.3310: until the facing arrives (a slow frame can land between the
        pin and the draw), at most 5 s more */
     const want = tag.replace(/^carry-/, '');
     let st = await capeState(P);
@@ -349,7 +349,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     && gsE && gsE.weapon && gsE.weapon.facing === 'east',
     { sw: gsSW && gsSW.weapon && gsSW.weapon.facing, se: gsSE && gsSE.weapon && gsSE.weapon.facing,
       east: gsE && gsE.weapon && gsE.weapon.facing });
-  /* v2.3.3306: the CARRIED half of D7 was turned round by the owner since:
+  /* v2.3.3310: the CARRIED half of D7 was turned round by the owner since:
      v2.3.2911 ("East, Southwest, northeast the characters hand should be over
      the handle") brought the carried greatsword at SW back in FRONT, with a
      hole cut at the grip so the fist shows over the handle (entityRenderer
@@ -379,7 +379,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const p = window.__pinAtk;
       if (S && p && p.on) {
         const a = p.i * Math.PI / 4;
-        /* v2.3.3306: and the TARGET, as the carry pin above does --
+        /* v2.3.3310: and the TARGET, as the carry pin above does --
            visualSystems turns _facingAngle toward _targetFacingAngle every
            frame by 1 - 0.92^dtScale, which on this box's 400 ms frames is
            ~86% of the way at once: the swing at SW was pulled back to the
@@ -399,7 +399,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const [tag, i] of [['southwest', 3], ['southeast', 1], ['east', 0]]) {
     await P.page.evaluate((v) => { window.__pinAtk = { i: v, kind: 'sword', on: true }; }, i);
     await P.page.waitForTimeout(700);
-    /* v2.3.3306: and until the stand-in FACES it, up to 5 s more (a slow
+    /* v2.3.3310: and until the stand-in FACES it, up to 5 s more (a slow
        frame can land between the pin and the draw) */
     for (let w = 0; w < 25; w++) {
       const f = await P.page.evaluate(() => (window.__btSwingZ ? window.__btSwingZ.facing : null));

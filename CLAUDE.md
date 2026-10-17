@@ -1580,7 +1580,7 @@ remnant to migrate server-side, not a mode to preserve.
       back to "nothing open" (`src/rendering/renderHeal.js`; `?noheal` to
       compare) and the next frame draws. TRAPS §144, `mp-renderheal` (the
       throw made as it happened, with `bindfix=0`; `noheal` shows the black).
-    - since v2.3.3306 THE MINIMAP NEVER COVERS THE SCREEN -- the owner:
+    - since v2.3.3310 THE MINIMAP NEVER COVERS THE SCREEN -- the owner:
       "often loading from a saved character will show the game as an enlarged
       minimap. You're forced to log back out and back in to fix it": a canvas's
       WebGL context is made by whoever asks FIRST, and the crash report's GPU
@@ -2454,7 +2454,7 @@ remnant to migrate server-side, not a mode to preserve.
     - `caps.partykeep`, kill switch `partykeep: false` (the party of four in
       memory, nothing read or written -- party.test.mjs runs under it);
       `party-keep` suite, `mp-partykeep`.
-    - since v2.3.3306 STEP 2, THE ALLIANCE -- the owner: "Push to main, then
+    - since v2.3.3310 STEP 2, THE ALLIANCE -- the owner: "Push to main, then
       keep going on recommended", to the four decisions it waited on
       (docs/specs/alliance.md, server/src/alliance.js):
       - a party whose ACTIVE members (online, or `seen` in the last 7 days,
