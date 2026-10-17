@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1f56893e3d539a70433a594c2188220920c12280",
+  "tree": "24c1bdd93783059e58d4cccb3724a06fdecb5acd",
+  "committedAt": "2026-10-17T08:54:46-07:00",
+  "subject": "The alliance (a party of 20 active bros gets a name, a tag, wars and a board), and no more \"enlarged minimap\" on login (v2.3.3313) (#944)",
+  "files": 5703,
+  "bytes": 635067394,
+  "listingSha256": "b4de0a39b6bb548019bd2ab83c54662a1b972915a25bca2443545f4a3a1bffb3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
