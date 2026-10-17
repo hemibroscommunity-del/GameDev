@@ -312,6 +312,7 @@ Lv 11–15"). Only the first stretch had monsters. Now the next three do too.
   Without the pass the rest of the tick is about 1 µs a monster, so the 768 a
   full spoke would hold (levels 1–80) would cost about 1.1 ms a tick; a
   "sleep when no player is near" rule is the next step if that ever matters.
+  (It came with the 5x map: "A monster nobody is near rests", below.)
 - **The way in.** The Wheel's `zone_state` carries every monster, now 192:
   43 KB once, on the way in or after a respawn (about 11 KB before). The ticks
   after it still carry only the monsters within 2,400 px.
@@ -447,6 +448,57 @@ the first pass and its camp at 20, out to the camp at 40.
   after it with the first stage alone (192, levels 1–20).
 - **Signposts.** Brotown's plates read "Lv 1–40" now (`WHEEL_LAND_LEVELS`,
   held to the bake by mirror-audit).
+
+## A monster nobody is near rests (v2.3.3299)
+
+The owner, 2026-10-17: *"the game map needs to be larger. It goes from lvl 1
+monsters to lvl 20+ way too quickly. Maybe 5x larger map is needed"*, choosing
+**"Rebuild for 5x"**. Five times the land means five times the monsters, so the
+land is as busy as it is now: 1,920 where there are 384.
+
+Until now every Wheel monster ran its AI every tick while anyone at all was in
+the Wheel. It wandered, got marked to send, and was swept apart from its
+neighbours, however far it was from the nearest player. Nobody hears about a
+monster more than 2,800 px away (`INTEREST_OUT`), so all that work was for
+nothing.
+
+**The rule** (`_wheelRestTest` in wheelzone.js, read once a tick in
+index.js `_tickMonsters`):
+
+- The squares of `WHEEL.REST_CELL` (1,600 px) within `REST_REACH` (2) of a
+  live player's square are awake. That covers at least 3,200 px round every
+  player, whichever way they are facing and wherever in their square they
+  stand.
+- A live Wheel monster standing outside every awake square, with nothing in
+  flight, **rests**: it does nothing that tick. It stands where it is, keeps
+  its health and is not swept apart (it has not moved).
+- "Nothing in flight" means no target, no wind-up, no telegraph, no snowball in
+  the air, no burrow and no slime fuse. A fight the player walks away from
+  finishes first, as it always has.
+- A dead monster still comes back to life on time, whole and at home.
+- An elemental status on a monster (a burn a player left on it) still ticks.
+
+Nothing changes for a player: a monster wakes at least 3,200 px away, before
+it can be heard about (2,400 px) or seen, and every aggro range is 1,200 px at
+most.
+
+**The kill switch:** `wheelrest: false` in liveflags. Every monster then runs
+every tick again, from the next tick.
+
+**Measured** (in-process, a simulated clock, the monster tick alone):
+
+| Monsters | Players | Without rest | With rest |
+|---|---|---|---|
+| 384 (today) | 1 in town | 335 µs a tick, 292 of 384 resting | 116 µs |
+| 1,920 (five times today's, along spokes five times longer) | 1 in town | 2.88 ms | 0.54 ms (1,868 resting) |
+| 1,920 | 10: half in town, half at their land's first stretch | 2.60 ms | 0.83 ms (1,696 resting) |
+| 1,920 | 50: the same | 3.30 ms | 1.30 ms (1,527 resting) |
+
+At 45 ticks a second, 2.88 ms a tick is 13% of a core and 0.54 ms is 2.4%.
+`tools/qa/load/load-wheel.mjs` (the whole room, today's 384) moves from 10.7% to
+4.7% of a core with one player; with 10 or more players the room's other work
+(each player's own tick, the messages) is most of it, and the two are within a
+point of each other.
 
 ## Not in this round
 

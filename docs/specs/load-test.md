@@ -254,7 +254,10 @@ without a deploy.
    the crowd -- every monster measuring its distance to every player, a
    quarter of the room's work at 150 -- now looks only in the squares near
    the monster, with the same picks; 3-4 more ticks a second at every size,
-   smooth to about 120.*
+   smooth to about 120.  v2.3.3299 (`docs/specs/wheel-monsters.md`, "A monster
+   nobody is near rests"): and a monster with no player within 3,200 px does
+   nothing at all in a tick -- 10.7% -> 4.7% of a core with one player in the
+   room, and 2.9 -> 0.5 ms a tick with five times the monsters.*
 6. **Refuse new players before the room slows down too much**, for example
    when it runs fewer than 30 ticks a second, instead of letting everyone's
    world slow.
