@@ -2903,12 +2903,21 @@ Two protocol versions coexist; both must keep working:
 
 ## Testing
 
-- Server: `cd server && npm test` — twenty zero-dependency suites
-  (protocol-v2, anticheat, combat-lifecycle, identity, inbox, market,
-  trade, quests, duel, gamble, clans, arena, dungeon, sponsorship,
-  guilds, threat, pets, hardening, trade2, elemental2; 450+
-  assertions) against a mocked DO storage. Every new system adds a
-  suite; extend the nearest one when touching its wire format.
+- Server: `cd server && npm test` — 133 zero-dependency suites against a
+  mocked DO storage. Every new system adds a suite; extend the nearest one
+  when touching its wire format.
+  - Since v2.3.3302 `npm test` is `test/run.mjs`. It runs every
+    `test/*.test.mjs`, four at a time, in ~30 s (the one-by-one `&&` chain
+    took ~69 s). It reports EVERY failing suite with its FAIL lines; the
+    chain stopped at the first and hid the rest.
+  - A new suite needs no line anywhere. `eventcapes.test.mjs` was never in
+    the chain, and so ran nowhere.
+  - `npm test -- relay hit-door` runs only those; `--jobs=1` runs one at a
+    time; `--verbose` shows every line.
+  - Server CI runs on EVERY PR (its path list missed 61 files the suites
+    read), and the worker's deploy waits for the suite on the same commit: a
+    red suite deploys nothing. The deploy job itself is unchanged
+    (wrangler-action's own wrangler, 3.90.0).
 - Client: no unit suite; CI runs lint + build on every PR, and the
   Pages bot posts a preview URL. The Playwright smoke harnesses
   (`tools/qa/qa-smoke.mjs`, `qa-facing.mjs`, …) are OFF the PR path
