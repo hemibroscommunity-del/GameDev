@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* ═══ v2.3.3306: WHAT THE PROVENANCE RUN STILL HAS TO DO ═══
+/* ═══ v2.3.3308: WHAT THE PROVENANCE RUN STILL HAS TO DO ═══
  *
  * .github/workflows/provenance.yml keeps a folder of proofs on the
  * `provenance` branch, three files for each commit of main:
@@ -150,7 +150,7 @@ export function message(prov) {
   if (n.finished) parts.push(n.finished + ' timestamp' + (n.finished > 1 ? 's' : '') + ' finished');
   if (n.signed) parts.push(n.signed + ' signed');
   /* Cloudflare Pages builds a preview of every branch pushed unless the
-     message STARTS with this (TRAPS §192); this branch has no site */
+     message STARTS with this (TRAPS §193); this branch has no site */
   return '[CF-Pages-Skip] proofs: ' + (parts.join(', ') || 'housekeeping');
 }
 

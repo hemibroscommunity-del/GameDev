@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* ═══ v2.3.3306: A FINGERPRINT OF EVERY FILE IN A VERSION, FOR ITS TIMESTAMP ═══
+/* ═══ v2.3.3308: A FINGERPRINT OF EVERY FILE IN A VERSION, FOR ITS TIMESTAMP ═══
  *
  * The owner: "make something that can prove ownership of my game because I
  * suspect others will clone my game engine or game entirely and try to pass

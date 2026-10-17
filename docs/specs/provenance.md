@@ -1,4 +1,4 @@
-# Proof of every version (v2.3.3306)
+# Proof of every version (v2.3.3308)
 
 The owner, 2026-10-17: "make something that can prove ownership of my game
 because I suspect others will clone my game engine or game entirely and try to
@@ -157,7 +157,7 @@ Not built, each the owner's call:
 - a failed timestamp or signature leaves the fingerprint on the branch, and the
   next run does it;
 - its commits start with `[CF-Pages-Skip]`, so Cloudflare Pages does not try to
-  build the branch (TRAPS §192);
+  build the branch (TRAPS §193);
 - free: OpenTimestamps and GitHub's attestations for a public repository cost
   nothing, and the run takes a few minutes of Actions time, free for a public
   repository. If the repository is made private, the signatures stop (GitHub

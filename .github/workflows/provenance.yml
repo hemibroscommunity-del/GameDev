@@ -1,5 +1,5 @@
 name: Provenance
-# v2.3.3306: A TIMESTAMPED, SIGNED PROOF OF EVERY VERSION OF MAIN.  The owner:
+# v2.3.3308: A TIMESTAMPED, SIGNED PROOF OF EVERY VERSION OF MAIN.  The owner:
 # "make something that can prove ownership of my game because I suspect others
 # will clone my game engine or game entirely and try to pass it off as their
 # own.  They'll use AI to remove any kind of detection for this (one pass)."
@@ -24,7 +24,7 @@ name: Provenance
 # finishes the timestamps Bitcoin has confirmed since (a new one is "pending"
 # for a few hours) and signs what was not signed (tools/provenance/proofs.mjs).
 # Its commits START with [CF-Pages-Skip]: Cloudflare Pages builds a preview of
-# every branch pushed, and this branch has no site (TRAPS §192).  A push by the
+# every branch pushed, and this branch has no site (TRAPS §193).  A push by the
 # workflow's own token starts no workflow, so it never loops.
 #
 # A pull request that changes this file or tools/provenance/ gets a DRY RUN: the

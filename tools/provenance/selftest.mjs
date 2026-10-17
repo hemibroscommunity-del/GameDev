@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* ═══ v2.3.3306: THE PROVENANCE TOOLS CHECKED, ON A REPOSITORY MADE FOR IT ═══
+/* ═══ v2.3.3308: THE PROVENANCE TOOLS CHECKED, ON A REPOSITORY MADE FOR IT ═══
  *
  * listing.mjs's fingerprint is only worth anything if it is exactly the
  * committed bytes, made the same way every time, and proofs.mjs only if a run

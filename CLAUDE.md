@@ -2833,14 +2833,14 @@ registry of plausible-but-wrong moves (v2.3.1204).
   auto-reconnect) and cold-starts the room: the first join after a
   deploy may retry its loading screen a few times. One-time per
   deploy; not a bug. Prefer merging server changes at quiet hours.
-- **The `provenance` branch (v2.3.3306) is the owner's proof of
+- **The `provenance` branch (v2.3.3308) is the owner's proof of
   ownership against copies.** `.github/workflows/provenance.yml`
   fingerprints every commit of main (each file's SHA-256, then one of the
   list: `tools/provenance/listing.mjs`), timestamps it in Bitcoin
   (OpenTimestamps) and has GitHub sign it as this repository's (an artifact
   attestation), three files a commit on that branch. NEVER delete, rewrite
   or force-push it, or put anything else on it: a proof is only worth its
-  date. Its commits start with `[CF-Pages-Skip]` (TRAPS §192); how anyone
+  date. Its commits start with `[CF-Pages-Skip]` (TRAPS §193); how anyone
   checks one, and what to do about a copy: docs/specs/provenance.md.
 
 ## Wire protocol
