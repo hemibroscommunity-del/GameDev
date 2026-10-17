@@ -25,9 +25,10 @@
  *
  * MEMORY.  A swatch is 1024 x 1024; unpacked as colours that is 4 MB, so the
  * worker keeps them as one palette index a pixel (1 MB) and only the last
- * DECODED_KEEP.  The blueprint (13 MB) is dropped as soon as the swatch map
- * (3 MB) is made from it.  Each piece goes to the game as its colours and is
- * not kept here.
+ * DECODED_KEEP.  v2.3.3298: no blueprint or swatch map of the whole Wheel
+ * any more (13 MB and 3 MB, and 25 times that five times bigger): the blocks
+ * round you (worldblocks.js, ~50 KB each, the 48 nearest kept).  Each piece
+ * goes to the game as its colours and is not kept here.
  *
  * MESSAGES (all answered in order, one at a time):
  *   { type: 'init', search }     -> { type: 'ready', ... } (see init below;
@@ -56,12 +57,25 @@
  *   { type: 'where', id, x, y }  -> { type: 'where', id, q, reg, tier, words }
  *                                   (answered at once; v2.3.2966: the region
  *                                   and tier there, and in words for the map)
+ *   { type: 'blocks', id, x0, y0, x1, y1 } -> a 'block' for each block under that
+ *                                   rectangle (game px), then { type: 'blocks', id, n }
+ *                                   (v2.3.3298)
+ *   (unasked)                    -> { type: 'block', I, J, x, y, w, h, walk, swim }
+ *                                   (v2.3.3298: a block of the Wheel built --
+ *                                   for a piece, or for 'where' -- and its walls:
+ *                                   one bit a cell of it, row by row, where you
+ *                                   cannot walk and where you may swim; `x`, `y`
+ *                                   its corner in cells, `w`, `h` its size)
  *   anything that fails          -> { type: 'error', id, message }
  */
 import { PLAN as BASE_PLAN, planFor } from '../plan.js';
-import { buildBlueprint } from './layout.js';
+import { buildBlueprint, planFeatures } from './layout.js';
 import { gridInfo } from './grid.js';
-import { materialMap, composeGround, swatchesUnder, walkBits, swimBits, overviewPixels, overviewLands, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder, waterRivers, wavesOn, calmWater, WATER_SWATCHES } from './ground.js';
+/* v2.3.3298: the Wheel a block at a time (worldblocks.js), and what is baked */
+import { wheelBlocks, BLOCK, PIECE_MARGIN, OVERVIEW_CELLS, planFingerprint } from './worldblocks.js';
+import { decodePlaced } from './placedfile.js';
+import { PLACED } from './placed.js';
+import { materialMap, composeGround, swatchesUnder, overviewPixels, overviewLands, EDGE_CLEAR, edgePiecesOn, blendsOn, blendPair, blendsUnder, waterRivers, wavesOn, calmWater, WATER_SWATCHES } from './ground.js';
 import { PIXEL } from '../../style/bible.js';
 import { piecePalette } from './piecePalette.js';   /* v2.3.3190: a piece as colour numbers */
 import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process.js';
@@ -82,14 +96,16 @@ const APRON = 3;            /* art px laid past each edge, so smooth scaling rea
                                the apron: with 1 (1.5 game px) it would read past the picture's edge.
                                6% more ground laid and kept a piece. */
 const UNDER = 2;            /* v2.3.2967: art px (3 game px) a byte of a piece's `under` -- 4 KB a piece */
-const OVERVIEW_CELLS = 4;   /* blueprint cells an overview pixel */
 const DECODED_KEEP = 16;    /* swatch pictures kept unpacked, 1 MB each (v2.3.2947: edge pieces too; v2.3.2951: and blends -- the town's busiest piece needs about 13) */
 const GAME_BASE = '/world/ground/';
+const PLACED_BASE = '/world/placed/';     /* v2.3.3298: tools/world/bake-wheel-world.mjs */
 const OBJECTS_BASE = '/world/objects/';   /* v2.3.2975: the Object Studio's "Download for the game", repacked */
 const STUDIO_DB = 'brotown-ground-studio';
 
-let W = null;               /* { bp, mm } once ready: bp is the light copy (no per-cell layers) --
-                               v2.3.2966: and the region and tier of every cell, and the map */
+let W = null;               /* once ready: v2.3.3298: `blocks`, the Wheel a block at a time (worldblocks.js:
+                               each block's swatch map, region and tier, built as the pieces round you
+                               are asked for), `F` the plan's features, `mm` the swatch catalog
+                               (ids, water...), the map (v2.3.2966) and the pieces' options */
 let swatches = Object.create(null);   /* id -> { from: 'studio'|'game', vers: { A?, B?, E? }, pal, mapped }; v2.3.2951: a pair's key -> { ..., vers: { M } } */
 let stepChoices = Object.create(null); /* v2.3.2968: id -> the footstep sound the owner chose (the studio's, else the game copy's) */
 const decoded = new Map();            /* 'id|ver' -> tile ({w, h, idx, pal} or {w, h, data}) */
@@ -216,8 +232,8 @@ async function fetchFile(k) {
 }
 /* the pictures under the pieces round (i, j), downloading quietly */
 function prefetchRound(i, j) {
-  const { bp, mm } = W;
-  const rect = { x: bp.x0 + (i - PREFETCH) * CHUNK, y: bp.y0 + (j - PREFETCH) * CHUNK, w: (2 * PREFETCH + 1) * CHUNK, h: (2 * PREFETCH + 1) * CHUNK };
+  const rect = { x: W.F.x0 + (i - PREFETCH) * CHUNK, y: W.F.y0 + (j - PREFETCH) * CHUNK, w: (2 * PREFETCH + 1) * CHUNK, h: (2 * PREFETCH + 1) * CHUNK };
+  const { bp, mm } = windowFor(rect, 6);
   for (const id of swatchesUnder(bp, mm, rect)) {
     const s = swatches[id];
     if (!s) continue;
@@ -233,63 +249,133 @@ const post = (msg, transfer) => self.postMessage(msg, transfer || []);
 const calmStats = { n: 0, ms: 0 };
 const calmed = new Map();
 let queue = Promise.resolve();
+/* v2.3.3298: messages asked for and not yet answered; when none is, the
+   blocks round you not built yet are built, one at a time (idleBlock) */
+let busy = 0, idleTimer = 0;
 self.onmessage = (ev) => {
   const m = ev.data || {};
   /* where you stand is answered at once, not behind the pieces being laid */
-  if (m.type === 'where') { post({ type: 'where', id: m.id, ...whereIs(m.x, m.y) }); return; }
-  queue = queue.then(() => handle(m)).catch((e) => post({ type: 'error', id: m.id, message: String((e && e.message) || e) }));
+  if (m.type === 'where') { post({ type: 'where', id: m.id, ...whereIs(m.x, m.y) }); idleSoon(); return; }
+  busy++;
+  queue = queue.then(() => handle(m)).catch((e) => post({ type: 'error', id: m.id, message: String((e && e.message) || e) }))
+    .then(() => { busy--; if (!busy) idleSoon(); });
 };
+/* v2.3.3298: the blocks next to yours built while nothing is asked of the
+   worker, nearest first, so the ground beyond the next edge is laid from
+   blocks already there -- a block is ~30-60 ms on a phone, which a piece
+   asked for at a block's edge would otherwise wait for */
+const IDLE_MS = 40;
+function idleSoon() {
+  if (idleTimer || !W) return;
+  idleTimer = setTimeout(idleBlock, IDLE_MS);
+}
+function idleBlock() {
+  idleTimer = 0;
+  if (busy || !W) return;
+  const next = W.blocks.missingNear(1);
+  if (!next) return;
+  W.blocks.ground(next[0], next[1]);
+  idleSoon();
+}
 
 async function handle(m) {
   if (m.type === 'init') return init(m);
   if (m.type === 'chunk') return chunk(m);
+  if (m.type === 'blocks') return blocksIn(m);
   return null;
 }
 
-/* ── init: the plan, where you cannot walk, the overview, the swatches ── */
+/* v2.3.3298: the blocks under a rectangle of game px built, and each one's
+   walls sent ('block') -- again for one built before, which the game may
+   have let go -- for whoever needs the walls far from any piece laid (a
+   test's search, an arrival far from where you were) */
+function blocksIn(m) {
+  if (!W) throw new Error('not ready');
+  const cell = W.F.S * WPA, B = BLOCK;
+  const I0 = Math.max(0, Math.floor(m.x0 / cell / B)), I1 = Math.min(W.blocks.cols - 1, Math.floor(m.x1 / cell / B));
+  const J0 = Math.max(0, Math.floor(m.y0 / cell / B)), J1 = Math.min(W.blocks.rows - 1, Math.floor(m.y1 / cell / B));
+  let n = 0;
+  for (let J = J0; J <= J1; J++) for (let I = I0; I <= I1; I++) {
+    const had = W.blocks.has(I, J);
+    const b = W.blocks.ground(I, J);
+    if (had) postBlock(b);
+    n++;
+  }
+  post({ type: 'blocks', id: m.id, n });
+}
+
+/* ── init: the plan, the objects, the overview, the swatches ──
+   v2.3.3298: no longer the whole Wheel.  The owner chose to make the map 5x
+   bigger ("Rebuild for 5x"), and this built the blueprint, the swatch map,
+   the walls and the objects for the whole of it on the way in -- ~2 s and
+   ~50 MB at its peak today, ~23 s and ~600 MB five times bigger.  Now:
+     - the ground and the walls are built a BLOCK at a time, the blocks round
+       the pieces asked for (worldblocks.js), each block's walls sent to the
+       game as it is built ('block');
+     - the objects and the overview are BAKED from the standard plan
+       (tools/world/bake-wheel-world.mjs, public/world/placed/) and read here,
+       when the plan is the one they were baked from (planFingerprint);
+     - the map, the doors, Mayor Bro's spot and the rivers come from the
+       plan's features (layout.js planFeatures), as cheap as they always were.
+   The previews (`?bigtown=`, `?plaintown`, `?placing=2`) and a plan changed
+   without a re-bake still build the whole Wheel for their objects and
+   overview, as before -- and lay their ground from blocks like the rest. */
 
 async function init(m) {
   const t0 = performance.now();
+  const search = (m && m.search) || '';
   /* v2.3.3022: the standard plan, or the one `?bigtown` asks for (plan.js planFor) */
-  PLAN = planFor(m && m.search);
+  PLAN = planFor(search);
   const g = gridInfo(PLAN);
-  const full = buildBlueprint(PLAN);
-  const mm = materialMap(PLAN, full);
-  const bp = { w: full.w, h: full.h, scale: full.scale, x0: full.x0, y0: full.y0 };
+  const F = planFeatures(PLAN);
+  const blocks = wheelBlocks(PLAN, { onBuilt: postBlock });
+  const mm = blocks.catalog();
+  /* the whole blueprint's outline, without its cells: what the map, the
+     doors, Mayor Bro and the rivers read */
+  const view = { w: F.bw, h: F.bh, scale: F.S, x0: F.x0, y0: F.y0, wheel: F.W, regionIds: F.regionIds,
+    pois: F.pois, routes: F.routes, lots: F.lots, decks: F.decks };
+  /* v2.3.2966: the map the minimap and the world map draw (wheelmap.js) */
+  const map = wheelMap(PLAN, view);
   const planMs = Math.round(performance.now() - t0);
-  const bits = walkBits(bp, mm);
-  /* v2.3.3003: ...and of those, where you can swim (ground.js swimBits:
-     the rivers, ponds and lakes and the sea's shallows, never the open sea),
-     with composeGround's seed, so you swim out to the line that is drawn */
-  const swim = swimBits(bp, mm, (PLAN.seed | 0) + 900, bits);
-  const ov = overviewPixels(bp, mm, OVERVIEW_CELLS);
-  /* v2.3.3024: and the land under each of its pixels, for the flat colours */
-  const ovLands = overviewLands(bp, mm, full.reg, OVERVIEW_CELLS);
-  /* v2.3.2966: the map the minimap and the world map draw (wheelmap.js),
-     and each cell's region and tier, kept for "where am I" (6 MB) */
-  const map = wheelMap(PLAN, full);
-  /* v2.3.2975: where every object stands (placing.js) -- worked out here,
-     once, from the blueprint, and handed to the game, which draws the ones
-     near you and stops you at their footprints (src/rendering/wheelObjects.js) */
+  /* v2.3.2975: where every object stands (placing.js), and the overview --
+     baked for the standard plan (v2.3.3298), else worked out here from the
+     whole blueprint, once, as before */
   const tp0 = performance.now();
-  /* v2.3.2999: `?placing=2`, placing v2 (placing.js PLACING v2) */
-  const objects = placeObjects(PLAN, full, placingOpts(m && m.search));
+  const placing = placingOpts(search);
+  let objects = null, ov = null, ovLands = null, baked = null;
+  if (!placing.v && PLACED && PLACED.plan === planFingerprint(PLAN)) {
+    try {
+      const got = await readPlaced();
+      objects = got.objects; ov = got.ov; ovLands = got.ovLands;
+      baked = { v: PLACED.v, ms: Math.round(performance.now() - tp0) };
+    } catch (e) { baked = { error: String((e && e.message) || e) }; }
+  }
+  if (!objects) {
+    const full = buildBlueprint(PLAN);
+    const fm = materialMap(PLAN, full);
+    ov = overviewPixels(full, fm, OVERVIEW_CELLS);
+    /* v2.3.3024: and the land under each of its pixels, for the flat colours */
+    ovLands = overviewLands(full, fm, full.reg, OVERVIEW_CELLS);
+    /* v2.3.2999: `?placing=2`, placing v2 (placing.js PLACING v2) */
+    objects = placeObjects(PLAN, full, placing);
+  }
   objects.placeMs = Math.round(performance.now() - tp0);
-  objects.mayor = mayorSpot(PLAN, full);
-  W = { bp, mm, reg: full.reg, tier: full.tier, regionIds: full.regionIds, map,
+  objects.baked = baked;
+  objects.mayor = mayorSpot(PLAN, view);
+  W = { blocks, F, mm, regionIds: F.regionIds, map,
     /* v2.3.3019: the rivers' lines, for the way each piece's water runs, and
        whether to lay the water's fields at all (`?nowaves` keeps it still) */
-    rivers: waterRivers(PLAN, full), waves: wavesOn(m && m.search),
+    rivers: waterRivers(PLAN, view), waves: wavesOn(search),
     /* v2.3.3021: and whether to take the light's frozen web out of the water
        pictures (ground.js CALM WATER) -- only where the game says it draws
        the water moving (WebGL2, not `?nowaves`), whose web of light moves */
-    calm: wavesOn(m && m.search) && !!(m && m.moving),
+    calm: wavesOn(search) && !!(m && m.moving),
     /* v2.3.3190: and whether to send each piece as colour numbers (the game
        draws pictures so where it can: rendering/paletteTex.js) */
     palette: !!(m && m.palette) };
   const t1 = performance.now();
   const objMan = objectsManifest();
-  await findSwatches(mm, edgePiecesOn(m && m.search), blendsOn(m && m.search));
+  await findSwatches(mm, edgePiecesOn(search), blendsOn(search));
   const swatchMs = Math.round(performance.now() - t1);
   /* v2.3.2975: each object's footprint from its picture's size, and which
      have pictures (an object with none is not drawn and stops nobody) */
@@ -299,7 +385,7 @@ async function init(m) {
   /* v2.3.3032: and the doors of the buildings that have a picture
      (placing.js doorSpots) -- what the game opens at each is its table's
      (src/data/wheelBuildingDoors.js) */
-  objects.doors = doorSpots(PLAN, full, objects);
+  objects.doors = doorSpots(PLAN, view, objects);
   /* you arrive in the town square, as the Ground Studio's first spot */
   const ax = g.cx, ay = g.cy + 0.25 * g.P;
   const made = Object.create(null), edges = [], blends = [];
@@ -315,15 +401,17 @@ async function init(m) {
     type: 'ready',
     /* v2.3.3190: pieces come as colour numbers (piecePalette) */
     palette: !!W.palette,
-    worldW: bp.w * bp.scale * WPA, worldH: bp.h * bp.scale * WPA,
-    walk: { cols: bp.w, rows: bp.h, bits, swim },
+    worldW: F.bw * F.S * WPA, worldH: F.bh * F.S * WPA,
+    /* v2.3.3298: the walls come a block at a time ('block'), BLOCK cells a
+       side, as the worker builds the blocks round the pieces asked for */
+    walk: { cols: F.bw, rows: F.bh, block: BLOCK },
     overview: ov,
     /* v2.3.3024: the land under each overview pixel (index into `regionIds`,
        255 water), for the minimap's and world map's flat land colours */
-    overviewLands: { w: ovLands.w, h: ovLands.h, data: ovLands.data, ids: full.regionIds.slice() },
-    chunk: { artPx: CHUNK, gamePx: CHUNK * WPA, px: CHUNK * K, apronPx: APRON * K, cols: Math.ceil(bp.w * bp.scale / CHUNK), rows: Math.ceil(bp.h * bp.scale / CHUNK),
+    overviewLands: { w: ovLands.w, h: ovLands.h, data: ovLands.data, ids: F.regionIds.slice() },
+    chunk: { artPx: CHUNK, gamePx: CHUNK * WPA, px: CHUNK * K, apronPx: APRON * K, cols: Math.ceil(F.bw * F.S / CHUNK), rows: Math.ceil(F.bh * F.S / CHUNK),
       under: CHUNK / UNDER },
-    arrival: { x: Math.round((ax - bp.x0) * WPA), y: Math.round((ay - bp.y0) * WPA) },
+    arrival: { x: Math.round((ax - F.x0) * WPA), y: Math.round((ay - F.y0) * WPA) },
     /* v2.3.2967: and what each sounds like underfoot (footsteps.js) */
     catalog: mm.ids.map((id, q) => ({ id, name: q === mm.water ? 'Water' : mm.catalog[q].name, step: q === mm.water ? null : stepChoices[id] || stepOf(id),
       /* v2.3.3000: its colour, for the dust a foot kicks up off it (rendering/
@@ -341,19 +429,73 @@ async function init(m) {
        (plan.js bigTownPlan: 1.5 and 1.15 as standard) */
     bigTown: PLAN.bigTown || 1,
     buildings: (PLAN.town && PLAN.town.buildingScale) || 1,
-  }, [bits.buffer, ov.data.buffer, ovLands.data.buffer, objects.kind.buffer, objects.piece.buffer, objects.flip.buffer, objects.x.buffer, objects.y.buffer,
+  }, [ov.data.buffer, ovLands.data.buffer, objects.kind.buffer, objects.piece.buffer, objects.flip.buffer, objects.x.buffer, objects.y.buffer,
     objects.boxOf.buffer, objects.boxes.buffer]);
 }
 
+/* v2.3.3298: the baked objects and overview (tools/world/bake-wheel-world.mjs),
+   at their fingerprint's address -- a new bake is a new address, which
+   public/_headers lets the phone keep */
+async function readPlaced() {
+  const at = (f) => `${PLACED_BASE}${f}?v=${encodeURIComponent(PLACED.v)}`;
+  const bytes = async (f) => {
+    const r = await fetch(at(f));
+    if (!r.ok) throw new Error(`${f}: ${r.status}`);
+    return new Uint8Array(await r.arrayBuffer());
+  };
+  const pixels = async (f) => {
+    const r = await fetch(at(f));
+    if (!r.ok) throw new Error(`${f}: ${r.status}`);
+    const bm = await createImageBitmap(await r.blob(), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+    const c = new OffscreenCanvas(bm.width, bm.height);
+    const g2 = c.getContext('2d', { willReadFrequently: true });
+    g2.drawImage(bm, 0, 0);
+    const d = g2.getImageData(0, 0, bm.width, bm.height).data;
+    const out = { w: bm.width, h: bm.height, data: d };
+    if (bm.close) bm.close();
+    c.width = c.height = 1;
+    return out;
+  };
+  const [bin, ov, lands] = await Promise.all([bytes(PLACED.objects), pixels(PLACED.overview), pixels(PLACED.lands)]);
+  const objects = decodePlaced(bin);
+  if (!objects || objects.n !== PLACED.n) throw new Error('objects.bin: not the baked file');
+  if (ov.w !== PLACED.w || ov.h !== PLACED.h || lands.w !== PLACED.w || lands.h !== PLACED.h) throw new Error('overview: not the baked size');
+  /* the land's index is the red of each lands pixel (255 on water) */
+  const ld = new Uint8Array(lands.w * lands.h);
+  for (let i = 0; i < ld.length; i++) ld[i] = lands.data[i * 4];
+  return { objects, ov, ovLands: { w: lands.w, h: lands.h, data: ld } };
+}
+
+/* v2.3.3298: a block's walls -- where you cannot walk and where you may swim
+   -- to the game, as the block is built (a copy: the block keeps its own) */
+function postBlock(b) {
+  const walk = b.walls.walk.slice(), swim = b.walls.swim.slice();
+  post({ type: 'block', I: b.I, J: b.J, x: b.x, y: b.y, w: b.w, h: b.h, walk, swim }, [walk.buffer, swim.buffer]);
+}
+
+/* v2.3.3298: the swatch map of a rectangle (art px) and `margin` cells round
+   it, stitched from the blocks under it (worldblocks.js window) */
+function windowFor(rect, margin) {
+  const S = W.F.S, X0 = W.F.x0, Y0 = W.F.y0;
+  const cx = Math.floor((rect.x - X0) / S), cy = Math.floor((rect.y - Y0) / S);
+  const cw = Math.ceil((rect.x + rect.w - X0) / S) - cx, ch = Math.ceil((rect.y + rect.h - Y0) / S) - cy;
+  return W.blocks.window({ x: cx - margin, y: cy - margin, w: cw + 2 * margin, h: ch + 2 * margin });
+}
+
 /* The swatch under a game position, by its index in `catalog` -- and
-   v2.3.2966: the region and tier there, and where that is in words. */
+   v2.3.2966: the region and tier there, and where that is in words.
+   v2.3.3298: read from the block there (built if it is not), which is also
+   where you are -- the blocks furthest from it are the first let go. */
 function whereIs(x, y) {
   if (!W) return { q: null };
-  const { bp, mm } = W;
-  const bx = Math.floor(x / WPA / bp.scale), by = Math.floor(y / WPA / bp.scale);
-  if (!(bx >= 0 && by >= 0 && bx < bp.w && by < bp.h)) return { q: null };
-  const c = by * bp.w + bx, region = W.regionIds[W.reg[c]] || null, tier = W.tier[c];
-  return { q: mm.mat[c], reg: region, tier, words: whereWords(W.map, region, tier) };
+  const S = W.F.S;
+  const bx = Math.floor(x / WPA / S), by = Math.floor(y / WPA / S);
+  if (!(bx >= 0 && by >= 0 && bx < W.F.bw && by < W.F.bh)) return { q: null };
+  const I = Math.floor(bx / BLOCK), J = Math.floor(by / BLOCK);
+  W.blocks.near(I, J);
+  const b = W.blocks.ground(I, J);
+  const c = (by - b.y) * b.w + (bx - b.x), region = W.regionIds[b.reg[c]] || null, tier = b.tier[c];
+  return { q: b.mat[c], reg: region, tier, words: whereWords(W.map, region, tier) };
 }
 
 /* v2.3.2975: the game's objects manifest -- which pictures there are, and
@@ -574,8 +716,10 @@ function indexed(d, T, pal) {
 async function chunk(m) {
   if (!W) throw new Error('not ready');
   const t0 = performance.now();
-  const { bp, mm } = W;
-  const rect = { x: bp.x0 + m.i * CHUNK - APRON, y: bp.y0 + m.j * CHUNK - APRON, w: CHUNK + 2 * APRON, h: CHUNK + 2 * APRON };
+  const rect = { x: W.F.x0 + m.i * CHUNK - APRON, y: W.F.y0 + m.j * CHUNK - APRON, w: CHUNK + 2 * APRON, h: CHUNK + 2 * APRON };
+  /* v2.3.3298: the swatch map round the piece, from the blocks there --
+     built now if they are not (each block's walls go to the game as it is) */
+  const { bp, mm } = windowFor(rect, PIECE_MARGIN);
   const tiles = Object.create(null), keep = new Set(), ids = swatchesUnder(bp, mm, rect);
   /* v2.3.2959: every picture this piece needs asked for at once (they come
      DL_PARALLEL at a time), then those for the pieces round it */

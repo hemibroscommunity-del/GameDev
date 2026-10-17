@@ -38,13 +38,18 @@ const RUN = 130;        /* boots this far up the bank from the water at the star
    of it -- 8 cells of land above, 10 of swimmable water below, three columns
    wide -- nearest first.  Or ('sea') the open sea's line: 6 cells of
    swimmable water above, the sea below. */
-const FIND = (P, what) => P.page.evaluate(({ what }) => {
+const FIND = (P, what) => P.page.evaluate(async ({ what }) => {
   const S = window._gameState.current;
   const g = S._tiledWalkable && S._tiledWalkable[S.currentZone];
   const Z = window.__btZones[S.currentZone];
   const at = window.__btSwimAt;
   if (!g || !g.length || !Z || !at) return { error: 'no grid or hook', zone: S.currentZone };
   const rows = g.length, cols = g[0].length, cell = (Z.h * 32) / rows;
+  /* v2.3.3298: the worker builds the Wheel's blocks round the ground it lays,
+     and a block not built yet reads as open: the walls of everything this
+     looks through, asked for first */
+  const R0 = what === 'sea' ? 260 : 110;
+  if (window.__btWheelBlocks) await window.__btWheelBlocks(S.player.x, S.player.y, (R0 + 12) * cell);
   const held = new Map();
   const rowOf = (r) => { let a = held.get(r); if (!a) { a = g[r]; held.set(r, a); } return a; };
   const open = (r, c) => r >= 0 && r < rows && c >= 0 && c < cols && rowOf(r)[c] !== false;
