@@ -2,8 +2,8 @@
  *
  * The owner, 2026-10-17: "Here are the art assets from the 5 other prompts" --
  * five sheets cut by tools/ui/cut-bag-icons.py into 53 bag icons.  On a real
- * page in the Wheel's BroTown, in a room of its own (`bagicons`), with a bag the
- * worker filled (/api/admin/grant):
+ * page in the Wheel's BroTown, with a bag the worker filled (/api/admin/grant;
+ * the default room, which is where the harness's grant and dev levers go):
  *   1. the bag: every one of the 53 (sixteen seeds, sixteen crops, compost, the
  *      five dishes, the box trap, five hardened woods, nine essences) draws its
  *      picture -- its new file, decoded -- where the seeds wore 🌱, the crops
@@ -29,14 +29,13 @@ import { SALVAGE, essenceKey, essenceIcon } from '../../../src/data/salvage.js';
 import { HARDENED_WOOD_RECIPES, hardenedWoodIcon } from '../../../src/data/hardenedWood.js';
 
 const VIEW = { width: 900, height: 700 };
-const ROOM = 'bagicons';
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `bagicons-${name}.png`) }).catch(() => {});
   /* the loading screen fetches far more than the 250 resource timings a page
      keeps by default -- room for all, so the quick-eat stew's warm-up is seen */
-  const A = await H.newPlayer(browser, { name: 'Baggy', wsPort, webPort, world: 'wheel', viewport: VIEW, query: 'room=' + ROOM,
+  const A = await H.newPlayer(browser, { name: 'Baggy', wsPort, webPort, world: 'wheel', viewport: VIEW,
     init: 'try{performance.setResourceTimingBufferSize(20000)}catch(e){}' });
   const errors = [];
   A.page.on('pageerror', (e) => errors.push(String(e && e.message || e)));
