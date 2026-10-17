@@ -13947,6 +13947,11 @@ export class EntityRenderer {
               x: +weaponSprite.x.toFixed(2), y: +weaponSprite.y.toFixed(2),
               anchorX: weaponSprite.anchor.x, anchorY: weaponSprite.anchor.y,
               rotation: weaponSprite.rotation,
+              /* v2.3.3317: the clock this pose was worked out at (the staff's
+                 kick is a curve of `now - castAt`): a test on a page drawing a
+                 few frames a second reads it well after, and judged by its own
+                 clock it put a frame drawn at the kick's peak past it */
+              at: now,
               scaleX: +weaponSprite.scale.x.toFixed(3), scaleY: +weaponSprite.scale.y.toFixed(3),
               wcIdx: display.getChildIndex(display._weaponContainer),
               spriteBodyIdx: display.getChildIndex(display._spriteBody),

@@ -347,7 +347,28 @@ export const devToolsMethods = {
         : null,
       /* v2.3.3265: your sparring clones, their skill and the score (spar.js) */
       spar: this._sparSummary ? this._sparSummary(playerId) : null,
+      /* v2.3.3317: the monsters the worker holds in your zone -- how many,
+         how many alive, and how soon the next comes back.  mp-hitreal once
+         found nothing to fight in ember for ten minutes with no way to say
+         whether the worker had stopped respawning or the phone had lost its
+         list; this is the worker's half of that answer. */
+      monsters: this._devZoneMonsters(ps.z),
     };
+  },
+
+  _devZoneMonsters(z) {
+    const list = (z && Array.isArray(this.monsters[z])) ? this.monsters[z] : null;
+    if (!list) return null;
+    const now = Date.now();
+    let alive = 0, next = null;
+    for (const m of list) {
+      if (m.alive) { alive++; continue; }
+      if (m.respawnAt > 0) {
+        const d = m.respawnAt - now;
+        if (next == null || d < next) next = d;
+      }
+    }
+    return { n: list.length, alive, nextMs: next };
   },
 
   /* ═══ v2.3.3016: END THE WAVE YOU STAND IN ═══

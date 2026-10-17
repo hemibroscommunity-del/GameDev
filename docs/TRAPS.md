@@ -6804,3 +6804,40 @@ they are this frame, the way Pixi's filter area is made); `p` alone is right
 only for what belongs to the piece itself (its outline, its own rainbow).
 **Receipt:** mp-sheen "it follows the sun" with a steel greatsword in hand: the
 left third 0.35 -> 1.0, the right third 1.0.
+
+## 198. "The test watched for 1.4 s, so the shot had its chance" (v2.3.3317)
+
+**Tempting:** a phone scenario gives a shot, a cast or a pose a fixed window
+on its own clock -- "settled 1.4 s after the shot", "the kick in the 20-200 ms
+after the cast", "born within 40 ms" -- sized by what a phone at 60 fps does,
+and reads a miss in that window as the game's.
+
+**Wrong.** The game moves by FRAMES: a staff bolt flies 5 px a frame times
+`_dtScale`, which stops at 3, so on the QA box drawing a few frames a second it
+flies 40-75 px a second of wall time, not 300. And a sampler in
+requestAnimationFrame runs after the frame's whole work, a few hundred ms after
+the renderer worked the pose out. On `main` that read as broken weapons and
+casts: `mp-hitreal`'s "dropped by the worker" was a bolt still in the air (or
+its claim just sent) when its 1.4 s shut -- every one a staff shot at 153-239
+px, the bow's 24 px arrows landing -- and `mp-staffcast` filed the frame drawn
+at the kick's peak past its window, saw no bolt "born", and closed the big
+bolt's watch at 1.6 s with the crash one frame away.
+
+**The rule:** time what is drawn by the clock it was drawn at -- the renderer's
+`now` on the probe (`__btWeapon.at`, `__btStaffFx().at`) -- and wait for a shot
+until it is over (gone from `S.arrows`, its claim answered), up to a cap, never
+a window sized for 60 fps. Where a page simply cannot do what a check needs
+(two frames inside a 200 ms grace at 130 ms a frame), say so as a skip with the
+frame time, never as a red guard.
+A quiet box can hide it: main's `mp-staffcast` passes alone and failed in the
+sweep. `BT_QA_CPU_THROTTLE=<rate>` (harness.mjs, Chromium's own throttle) runs
+every page that much slower, so a check can be tried as a slow phone sees it.
+**Receipt:** at `BT_QA_CPU_THROTTLE=6` on the same build, main's
+`mp-staffcast` read 4 staff behaviours as broken (charge 0.8 at release, one
+bolt "born", no crash, no blast ring) and this one none of the 30 it measures;
+`mp-hitreal`'s staff rows went from 10 of 16 red in the sweep's two runs
+("dropped by the worker", every one at 153-239 px) to 1 of 24 in three runs,
+and its empty ember turned out to be the player walked out through the zone's
+door into the World View (the phone and the worker both said so, once the
+check asked them).  Still open: about one bow arrow a run, at 190-240 px,
+flies its full length past a target that barely moved, before and after.

@@ -3185,6 +3185,11 @@ Two protocol versions coexist; both must keep working:
   and mp-slimeburst were all the test, never the game. `run.mjs` closes every
   page a scenario leaves open, since one browser serves the whole run and an
   open world page slows every scenario after it.
+  Since v2.3.3317 (TRAPS §198): this box often draws a few frames a second, so
+  a check times what is drawn by the renderer's own clock and waits a shot out,
+  never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
+  mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that
+  much slower, to try a check as a slow phone sees it.
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's

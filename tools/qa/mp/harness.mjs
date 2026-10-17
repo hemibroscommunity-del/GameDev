@@ -370,6 +370,16 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
     dpr ? { deviceScaleFactor: dpr } : null,
   ));
   const page = await ctx.newPage();
+  /* v2.3.3317: BT_QA_CPU_THROTTLE=<rate> runs every page that much slower
+     (Chromium's own CPU throttle), to see a check as a slow phone -- or this
+     box on a busy day -- sees it: mp-staffcast's timing checks passed on a
+     quiet box and failed in the sweep, and only a slowed page tells a check
+     that measures the game from one that measures the frame rate. */
+  const _thr = Number(process.env.BT_QA_CPU_THROTTLE);
+  if (_thr > 1) {
+    const _cdp = await ctx.newCDPSession(page).catch(() => null);
+    if (_cdp) await _cdp.send('Emulation.setCPUThrottlingRate', { rate: _thr }).catch(() => {});
+  }
   const logs = [];
   page.on('console', (m) => { if (m.type() === 'error') { logs.push(`console ${m.text().slice(0, 200)}`); _noteRenderThrow(name, m.text()); } });
   page.on('pageerror', (e) => logs.push(`pageerror ${String(e).slice(0, 200)}`));
