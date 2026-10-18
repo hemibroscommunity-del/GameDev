@@ -122,7 +122,9 @@ Built so far:
   cleaning): its own PR, #974.
 - [x] `/roll` (1-100, or `/roll 20`) and `/flip`, rolled by the worker:
   v2.3.3393, docs/specs/dice.md.
-- [ ] Pets copy poses, townsfolk react.
+- [x] Your pet copies your sit, sleep, flop and dances; Lil Bro copies you,
+  Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have a word:
+  v2.3.3394, docs/specs/emote-moves.md "Your pet and the townsfolk join in".
 
 - Code-driven motion for the whole figure, after the trait layers are put
   together: offset, squash and stretch, tilt, pivoted at the feet. The
