@@ -7202,7 +7202,7 @@ devicelock.js).
 **Receipt:** admin.test §5 and §6: after a Freeze and a Kick an onlooker is
 told `player_leave` and no body is left. Both checks fail on the old code.
 
-**And the character restart (v2.3.3374):** persistence.js
+**And the character restart (v2.3.3375):** persistence.js
 `_resetCharacterData` did the same, with one more step that must come FIRST:
 drop the in-memory state before the leaving run, or its regen flush saves the
 old character straight back over the wipe -- the restarted bro rejoins with

@@ -504,7 +504,7 @@ export const persistenceMethods = {
        character has joined nothing.  Before the socket closes, so the rest
        of the party is told at once. */
     try { if (this._partyOnReset) await this._partyOnReset(pid); } catch (e) { /* best-effort, as above */ }
-    /* ═══ v2.3.3374: THE OLD CHARACTER GOES FIRST, THEN THE PLAYER LEAVES ═══
+    /* ═══ v2.3.3375: THE OLD CHARACTER GOES FIRST, THEN THE PLAYER LEAVES ═══
        The in-memory state is dropped BEFORE the session goes, so nothing
        after this can save the old character back over the wipe: the leaving
        run's regen flush, the linger (a body to stay behind) and the last

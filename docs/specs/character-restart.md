@@ -56,7 +56,7 @@ skills, quests, codex/bestiary caches) resets.
      only; a forged one would wipe another player's local caches).
   4. Drop the in-memory playerState FIRST, so no later handler can
      `_saveRpg` the old state back over the wipe -- then the player leaves
-     the AFK sweep's way (v2.3.3374): `close(4005)`, `webSocketClose` now,
+     the AFK sweep's way (v2.3.3375): `close(4005)`, `webSocketClose` now,
      the session gone. The others are told `player_leave`, an open trade
      window or duel ends as on any disconnect, and the last one out stops the
      room's tick. (It deleted the session first, the admin freeze's old way:
