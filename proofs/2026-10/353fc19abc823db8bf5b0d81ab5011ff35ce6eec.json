@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "353fc19abc823db8bf5b0d81ab5011ff35ce6eec",
+  "tree": "2bb099910936e5f4e2447ace9cbc92921e15409c",
+  "committedAt": "2026-10-18T11:12:16-07:00",
+  "subject": "Sprint sounds are your grunt: a sprint's start, and worn out when stamina runs dry (v2.3.3455) (#1003)",
+  "files": 5977,
+  "bytes": 673940498,
+  "listingSha256": "74683f013c3e4233f9d0ccc52b1879c146c12392fac12b77e8b2fb709ec34936",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

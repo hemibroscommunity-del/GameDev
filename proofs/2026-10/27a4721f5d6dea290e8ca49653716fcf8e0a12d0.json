@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "27a4721f5d6dea290e8ca49653716fcf8e0a12d0",
+  "tree": "fa60a61861ee727c9947a161e3ca6e556eeaf54a",
+  "committedAt": "2026-10-18T11:11:39-07:00",
+  "subject": "The metal shine is drawn in the normal pass, not in an extra pass per piece (v2.3.3453) (#991)",
+  "files": 5973,
+  "bytes": 673883668,
+  "listingSha256": "87b25ad390a48502b5c3153509906f1145f7a66a61147c5ed2247a91451aa490",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
