@@ -71,7 +71,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     more.label === 'Login Key', more);
   rec.ok('...fully on screen without scrolling (it is the last cell)',
     more.onScreen, more);
-  /* v2.3.3328: Pets came in after the key (v2.3.3120), on purpose beside Life
+  /* v2.3.3340: Pets came in after the key (v2.3.3120), on purpose beside Life
      Skills, whose Trapping it belongs to, and the grid went six across
      (MorePanel.jsx).  What this asks is still whether the KEY pushed any of
      the nine about, so Pets is left out of the count. */

@@ -58,6 +58,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     if (S && S.rpg) S.rpg.level = 40;
   });
+  /* v2.3.3340: and Mayor Bro met, through the harness's opener (tut_1, then
+     the Test panel's unlock: H.openLands, as mp-monwatch and mp-fightsoak).
+     Since v2.3.1676 the town's gate turns back a character who has not
+     spoken to him (the owner: "not be allowed to leave town without speaking
+     to mayor", mp-townexit), and this probe never had: every walk to the
+     trail-head ended in town (the sweep of 2026-10-18). */
+  await H.openLands(P, wsPort);
   /* WALK, and steer. mp-townexit's route walker, and its reasoning applies
      here unchanged: holding one key runs past a trail-head's 2-tile radius
      and pins you on the map's bottom clamp, and teleporting onto the marker
@@ -90,6 +97,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return e ? { x: e.tx * 32 + 16, y: e.ty * 32 + 16 } : null;
   });
   rec.ok('town declares its trail-head (guard)', !!townExit, townExit);
+  /* v2.3.3340: hopped to open ground just north of the trail-head first, then
+     WALKED onto it (the walker above, for the reason its note gives).  From
+     the clean spot the walker heads south and stopped at (1126, 1971), 80 px
+     short, against scenery it only ever tries to push through -- it presses
+     the key for the longer axis and never steps round (the sweep of
+     2026-10-18).  The walk this file needs is the trail-head's own trigger,
+     not a route across town: mp-townexit walks that route, from the spawn. */
+  /* Open ground 3-10 tiles off a trail-head, on the side nearest the player
+     (outside its 2-tile ring, so the hop itself never trips it). */
+  const approachOf = (ex) => P.page.evaluate(({ x, y }) => {
+    const S = window._gameState.current;
+    const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]]
+      .sort((a, b) => Math.hypot(x + a[0] * 96 - S.player.x, y + a[1] * 96 - S.player.y)
+        - Math.hypot(x + b[0] * 96 - S.player.x, y + b[1] * 96 - S.player.y));
+    for (const [ux, uy] of dirs) {
+      for (let d = 96; d <= 320; d += 32) {
+        if (window.__btIsSolid && window.__btIsSolid(x + ux * d, y + uy * d) === false) return { x: x + ux * d, y: y + uy * d };
+      }
+    }
+    return null;
+  }, ex);
+  const approach = townExit && await approachOf(townExit);
+  if (approach) await H.hopTo(P, approach.x, approach.y);
   const onWorld = !!townExit && await walkTo(townExit.x, townExit.y, 'worldview');
   rec.ok('the probe reached the World View (guard: the route out of town)',
     onWorld, { zone: await H.readState(P, (S) => S.currentZone) });
@@ -102,6 +132,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return e ? { x: e.tx * 32 + 16, y: e.ty * 32 + 16 } : null;
     });
   }
+  /* v2.3.3340: the same approach for Frost Ridge's trail-head (above) */
+  const frostApproach = frostExit && await approachOf(frostExit);
+  if (frostApproach) await H.hopTo(P, frostApproach.x, frostApproach.y);
   const onFrost = !!frostExit && await walkTo(frostExit.x, frostExit.y, 'frost');
   const zone = await H.readState(P, (S) => S.currentZone);
   rec.ok('...and then a zone the SERVER spawns monsters for (guard)',

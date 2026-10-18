@@ -199,7 +199,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      asserted key by key: the point is to find the counter nobody predicted.
      heapMB is excluded from the verdict — a JS heap that has not been
      collected yet is not a leak, and mp-soak already treats it as colour. */
-  /* v2.3.3328: ...first-to-last IN THE SAME ZONE.  The observer starts in
+  /* v2.3.3340: ...first-to-last IN THE SAME ZONE.  The observer starts in
      town and ends wherever the hops leave it (the World View or a spoke), and
      a layer's count is the zone's as much as the session's: the World View's
      particles and ground marks are not town's.  Compared across the two, the
@@ -241,7 +241,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     .sort((x, y) => (y.b - y.a) - (x.b - x.a))
     .slice(0, 15);
   console.log('      movers: ' + (movers.map((m) => `${m.k} ${m.a}->${m.b}`).join('  ') || 'none'));
-  /* v2.3.3328: every mover sample by sample, with its zone, so a climb
+  /* v2.3.3340: every mover sample by sample, with its zone, so a climb
      inside one zone can be told from a zone's own count */
   for (const m of movers.slice(0, 6)) {
     console.log(`        ${m.k}: ` + samples.map((x) => `${x.z}:${x.s[m.k] || 0}`).join(' '));

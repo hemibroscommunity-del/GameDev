@@ -158,12 +158,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
      all. The shop simply grows upward from it." Measured before and after,
      because this is the one requirement a screenshot review would pass by
      eye and a two-pixel regression would still break. */
-  /* v2.3.3328: the band open first, as the check measures it NOT moving.
+  /* v2.3.3340: the band open first, as the check measures it NOT moving.
      Since v2.3.2495 a brand-new bro's first join arrives with it FOLDED
      (harness unfoldBand), and a folded band draws no bag at all: no slot for
      his quotes, nothing to tap, and the sell step threw on a missing tile
      (the sweep of 2026-10-17).  Opening the shop now unfolds a folded band
-     itself (BottomDashboard, v2.3.3328) -- B below checks that half. */
+     itself (BottomDashboard, v2.3.3340) -- B below checks that half. */
   await H.unfoldBand(A);
   const before = await view(A);
   rec.ok('the bag is on screen before the shop opens (or the next check is vacuous)',
@@ -223,7 +223,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     qNum(v.bagQuote) > 0, v.bagQuote);
 
   /* ══ THE PILE IS PUBLIC ══ */
-  /* v2.3.3328: B is a brand-new bro too, so B's band arrives FOLDED -- and is
+  /* v2.3.3340: B is a brand-new bro too, so B's band arrives FOLDED -- and is
      left that way: opening the shop must bring the bag back by itself
      (BottomDashboard), or a new player's "tap your bag below to sell" has no
      bag below it (the sweep of 2026-10-17). */

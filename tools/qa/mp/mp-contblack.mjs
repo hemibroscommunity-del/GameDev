@@ -178,7 +178,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    identity', JSON.stringify(idBefore));
 
   /* ── ROAD 1: the reload that walks you straight back in ──
-     v2.3.3328: a PLAIN reload is no longer a way back in.  Since v2.3.2447
+     v2.3.3340: a PLAIN reload is no longer a way back in.  Since v2.3.2447
      (the owner: "Player should need to tap continue or create a character")
      the landing page is always the door, and straight-in survives only where
      a reload carries a choice already made: a row played from the picker

@@ -113,7 +113,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   }, wsPort);
 
-  /* v2.3.3328: in today's town, as H.newPlayer stands every scenario that
+  /* v2.3.3340: in today's town, as H.newPlayer stands every scenario that
      asks for nothing (v2.3.2990).  This goto never got that, so since the
      Wheel became the world the head-margin probe below ran there, where no top
      edge can be reached: a first-timer shoved north is held inside the safe
@@ -287,7 +287,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!S || !S.player) return null;
     S.player.y = 4;              /* above any plausible clamp */
     await sleep(800);            /* the clamp lives in the movement loop */
-    /* v2.3.3328: ...and the camera EASES after him (BroTown.jsx: 8% of the gap
+    /* v2.3.3340: ...and the camera EASES after him (BroTown.jsx: 8% of the gap
        a frame, the frame term held to 3), so wait until it stops: on a box
        drawing a few frames a second it was half way there after 800 ms. */
     let f = S._frameCount, cy = S.camera && S.camera.y;
@@ -313,7 +313,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   console.log('    head margin: ' + JSON.stringify(head));
   rec.ok('the head-margin probe ran (guard)', !!(head && head.py != null), head);
-  /* v2.3.3328: where a top edge can be reached, or "held off it" passes on the
+  /* v2.3.3340: where a top edge can be reached, or "held off it" passes on the
      Wheel's own gate and measures nothing (TRAPS §28) */
   rec.ok('the head probe stands in today\'s town, where a top edge can be reached (guard)',
     !!head && head.zone === 'town', head);

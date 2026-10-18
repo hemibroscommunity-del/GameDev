@@ -7023,7 +7023,7 @@ special is dropped" fails eight).
 page (`S.rpg.rangedWeapon = {...}`, `R.staffWeapon = {...}`): the game draws
 it, fires it, and the hits land.
 
-**What happens:** since v2.3.3328 a bow or staff hit on a monster needs that
+**What happens:** since v2.3.3334 a bow or staff hit on a monster needs that
 weapon in the WORKER's own slot (server/src/hitproof.js), and the phone's copy
 is never asked. The shots still fly and still pop numbers on that phone, but
 the worker refuses every one: its monsters are never hurt, shoved, turned or

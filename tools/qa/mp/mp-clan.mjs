@@ -109,8 +109,15 @@ async function runClans({ browser, wsPort, webPort, rec }) {
          wherever you are (ClanInviteCard.jsx), and it sits over the clan
          window -- its Accept is the one a player sees, and sends the same
          clan_join_accept as the window's */
-      const card = await B.page.$('[data-clan-invite-accept]');
-      if (card && await card.isVisible()) await card.click();
+      /* v2.3.3340: WAITED for, not looked for once: the card comes up a
+         moment after the window shows the invite, so the one look found
+         nothing and the fallback's tap on the window's Accept landed on the
+         card arriving over it ("COVERED BY ... .bt-inspect-card", the sweep
+         of 2026-10-18).  The window's button is the fallback only when no
+         card comes. */
+      const card = await B.page.waitForSelector('[data-clan-invite-accept]', { state: 'visible', timeout: 5000 })
+        .catch(() => null);
+      if (card) await card.click();
       else await H.clickText(B, 'Accept invite');
       const joined = await H.waitFor(B, (S) => (S._clanData ? S._clanData.tag : null), (t) => t === 'HQA',
         { timeout: 20000, label: 'B joins the clan' }).then(() => true).catch(() => false);

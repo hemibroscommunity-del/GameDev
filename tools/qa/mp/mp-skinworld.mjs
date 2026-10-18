@@ -68,7 +68,7 @@ const isInk = (r, g, b) => b > g + 24 && r > 110 && r >= b;
    both in storage before the page's first script runs. */
 /* The coach's tip cards sit over the lower half of a phone screen -- one run
    of this found a card over the runner in every south-facing sample. */
-/* v2.3.3328: and the WELCOME plate is marked seen, with the game's own
+/* v2.3.3340: and the WELCOME plate is marked seen, with the game's own
    once-only flag (welcomeBanner.js).  It is up for 9 s from just after the way
    in (v2.3.2890), over the middle of the screen where he stands: in the sweep
    of 2026-10-17 it covered the first, facing-forward read (0 ink) and the bare
@@ -203,7 +203,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.keyboard.up(key);
     await P.page.waitForTimeout(900);
     stand[name] = await inkCount('stand-' + name);
-    /* v2.3.3328: read again, a second apart for up to 6 s, while something of
+    /* v2.3.3340: read again, a second apart for up to 6 s, while something of
        the page's own covers him -- in the sweep of 2026-10-17 a townsperson's
        white speech bubble lay over the west read (0 ink, the crop all bubble).
        He stands still, so a later read is the same facing; a tattoo that is

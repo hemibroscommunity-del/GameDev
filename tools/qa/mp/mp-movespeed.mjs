@@ -50,7 +50,7 @@ async function walkAndMeasure(P, cdp, throttleRate) {
   await P.page.waitForTimeout(700);
   const before = await P.page.evaluate(() => {
     const S = window._gameState.current;
-    /* v2.3.3328: the game time this walk is owed, frame by frame: the game
+    /* v2.3.3340: the game time this walk is owed, frame by frame: the game
        steps each frame by its real length but never more than 3/60 s
        (BroTown.jsx `_dtScale`, clamped to 3), so below 20 fps the world
        slows rather than jumps, by design.  Summed off the same animation
@@ -119,7 +119,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      should match regardless of how many frames the machine managed.  Generous
      band: a throttled headless box has ragged frame pacing, and the clamp
      deliberately refuses to compensate for very long stalls. */
-  /* v2.3.3328: ...the same ground for the same GAME time.  Above 20 fps a
+  /* v2.3.3340: ...the same ground for the same GAME time.  Above 20 fps a
      frame's step is its real length, and the game time is the wall clock;
      this box draws ~24 fps unthrottled and ~12 throttled, under the 3/60 s
      cap, where the game time is ~58% of the wall clock by design (the sweep
