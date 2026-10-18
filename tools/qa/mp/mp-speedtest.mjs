@@ -117,7 +117,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 1-5: the speed test from the real panel ── */
     const opened = await openPanel(P);
-    rec.ok('the test panel opens (guard)', opened);
+    /* v2.3.3403: and if it does not, what the hold landed on -- in the run of
+       2026-10-18 it never opened, with nothing to say why */
+    const noPanel = opened ? null : await P.page.evaluate(() => {
+      const el = document.querySelector('.bt-zone-header__title');
+      if (!el) return { title: null };
+      const r = el.getBoundingClientRect();
+      const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      const chain = [];
+      for (let n = at; n && chain.length < 5; n = n.parentElement) chain.push(n.tagName.toLowerCase() + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).slice(0, 2).join('.') : ''));
+      return { title: { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height), text: el.textContent }, hit: chain,
+        hitIsTitle: !!at && (at === el || el.contains(at)), body: document.body.className };
+    }).catch((e) => ({ err: String(e) }));
+    if (noPanel) await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/speedtest-nopanel.png` }).catch(() => {});
+    rec.ok('the test panel opens (guard)', opened, noPanel);
     const clicked = await P.page.evaluate(() => {
       const b = document.querySelector('[data-dev-speed-test]');
       if (!b) return false;
