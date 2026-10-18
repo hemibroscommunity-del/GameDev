@@ -1,4 +1,4 @@
-/* ═══ v2.3.3424: WHERE A PHONE'S FRAME GOES ═══
+/* ═══ v2.3.3431: WHERE A PHONE'S FRAME GOES ═══
  *
  * The owner, 2026-10-18: "iterate on what best improves framerate without loss
  * of quality (or negligible loss) for phone gameplay (iPhone, android)".  A

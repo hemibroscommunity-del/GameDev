@@ -386,7 +386,7 @@ export class TileRenderer {
     this.currentMap = map;
     this.overlayGfx.clear();
     this.bgGfx.clear();
-    this._bgKey = null;   /* v2.3.3424: drawn again by the next update */
+    this._bgKey = null;   /* v2.3.3431: drawn again by the next update */
     /* v2.3.1405: destroy the PREVIOUS image-zone ground sprite (display
        object only — never its texture) before rebuilding, so the
        per-zone map eviction (tiledMaps.freeZoneMap → Assets.unload) can't
@@ -1365,7 +1365,7 @@ export class TileRenderer {
     //      any transparent edge of the JPG (browsers decode JPEGs as
     //      opaque, but a sub-pixel rounding artifact at the world
     //      boundary can still expose this color).
-    /* v2.3.3424: drawn again only when what it draws changes.  The same two
+    /* v2.3.3431: drawn again only when what it draws changes.  The same two
        rectangles redrawn every frame asked Pixi to rebuild the ground's whole
        draw list every frame (quietClear.js, pixiApp's layer groups). */
     const pad = Math.max(viewW, viewH);
