@@ -155,3 +155,33 @@ opening it shows the four reason chips; a one-tap report beside Mute
 would be mis-fired constantly on a 390 px phone, and the reason is what
 makes the record actionable). `SocialPanel` lists who you have muted and
 unmutes server-side.
+
+## v2.3.3398: the reports on the owner's phone
+
+Phase 0 of the fun & social plan (docs/FUN-SOCIAL-PLAN.md). Reports could be
+read, and acted on, only with curl, and the owner runs the game from a phone.
+The Test panel (DevPanel.jsx) has a **Chat reports** section now:
+
+| What the panel does | Route (admin key) |
+|---|---|
+| Show / Reload chat reports: newest first, up to 50 | `GET /api/admin/reports?limit=50` |
+| Kick: they can come straight back | `POST /api/admin/kick {playerId, reason}` |
+| Freeze: two taps ("Sure? Freeze"); they cannot join until unfrozen | `POST /api/admin/freeze {playerId, note}` |
+| Unfreeze | `DELETE /api/admin/freeze?id=` |
+| Dismiss: the report is handled | `DELETE /api/admin/reports?id=` |
+
+Each row on `GET /reports` now also says, for the panel to show:
+
+| field | meaning |
+|---|---|
+| `onlineNow` | the reported player has a live session now (admin.js's own test for a kick); the record's `targetOnline` is when the report was made |
+| `frozen` | `frozen:<pid>` is set now |
+
+One storage read per reported player on the page (at most `limit`), on a read
+the owner makes. Nothing new is stored. An older worker leaves both fields
+out; the panel then shows the player as offline and offers Freeze.
+
+Tests: `chatmod.test.mjs` §7 (online now, frozen, unfrozen), `mp-reports` (a
+report filed from the player's card, listed with what was said, Kick,
+Freeze in two taps, Unfreeze, Dismiss, on a phone).
+
