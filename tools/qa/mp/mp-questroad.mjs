@@ -113,8 +113,77 @@ export async function run({ browser, wsPort, webPort, rec }) {
      drew a straight line and stopped at the first blocked cell, so it died
      after ONE tile and the feature was invisible on its own opening screen.
      A road here that has no bend in it is that bug coming back. */
+  /* v2.3.3326: ...asked from BEHIND a building.  Today's town (68 x 72 tiles
+     since v2.3.2628) puts open ground between a new bro and Mayor Bro, so the
+     road from there is one straight leg with its whole seven-tile heading, as
+     it should be (the sweep of 2026-10-17: legs 1, limitTiles 7) -- and this
+     check failed for want of a building.  So the scenario finds a spot whose
+     straight line to the Mayor runs into a wall within the heading, on the
+     grid the road itself walks (S._tiledWalkable, tileRenderer _questPath),
+     stands there, reads the road, and goes back to where it was. */
+  const fromBehind = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const zone = S.currentZone;
+    const grid = S._tiledWalkable && S._tiledWalkable[zone];
+    const Z = window.__btZones && window.__btZones[zone];
+    const npc = (S.npcs || []).find((n) => n && n.id === 'mayor_bro');
+    if (!grid || !grid.length || !Z || !npc) return null;
+    const TILE = 32;
+    const gh = grid.length, gw = grid[0].length;
+    const cw = (Z.w * TILE) / gw, ch = (Z.h * TILE) / gh;
+    const open = (x, y) => {
+      const gx = Math.floor(x / cw), gy = Math.floor(y / ch);
+      const row = grid[gy];
+      return !!row && gx >= 0 && gx < gw && row[gx] !== false && row[gx] !== 0;
+    };
+    const was = { x: S.player.x, y: S.player.y };
+    const spots = [];
+    for (let r = 9 * TILE; r <= 14 * TILE && spots.length < 8; r += TILE) {
+      for (let a = 0; a < 72 && spots.length < 8; a++) {
+        const t = (a / 72) * Math.PI * 2;
+        const x = npc.x + Math.cos(t) * r, y = npc.y + Math.sin(t) * r;
+        if (!open(x, y)) continue;
+        let wall = false;
+        for (let d = TILE; d <= 6 * TILE; d += Math.min(cw, ch) / 2) {
+          const k = d / r;
+          if (!open(x + (npc.x - x) * k, y + (npc.y - y) * k)) { wall = true; break; }
+        }
+        /* one spot a direction, so the tries are round different buildings */
+        if (wall && !spots.some((p) => Math.hypot(p.x - x, p.y - y) < 4 * TILE)) {
+          spots.push({ x: Math.round(x), y: Math.round(y), r: Math.round(r / TILE) });
+        }
+      }
+    }
+    return { was, spots };
+  });
+  rec.ok('spots behind a building, Mayor Bro beyond it, are found on the road\'s own grid (guard)',
+    !!fromBehind && fromBehind.spots.length > 0, fromBehind);
+  /* The road is asked from each until one bends: a building too wide for the
+     road's search box (the heading plus 4 cells) leaves its nearest reach in
+     front of the wall, which is a straight road and not this check's bug --
+     the bug was a road dying after ONE tile where a way round existed. */
+  let bentRoad = null;
+  const tries = [];
+  for (const at of (fromBehind && fromBehind.spots) || []) {
+    await P.page.evaluate((p) => {
+      const S = window._gameState.current;
+      S.player.x = p.x; S.player.y = p.y;
+    }, at);
+    await P.page.waitForTimeout(700);
+    const r = await road(P);
+    tries.push({ at, legs: r && r.legs, bent: r && r.bent, limitTiles: r && r.limitTiles, motes: r && r.motes });
+    if (r && r.to && r.to.npc === 'Mayor Bro' && r.bent && r.legs >= 2 && r.limitTiles >= 5 && r.motes > 0) { bentRoad = r; break; }
+  }
+  console.log('    roads from behind a building: ' + JSON.stringify(tries));
+  if (fromBehind) {
+    await P.page.evaluate((w) => {
+      const S = window._gameState.current;
+      S.player.x = w.x; S.player.y = w.y;
+    }, fromBehind.was);
+    await P.page.waitForTimeout(600);
+  }
   rec.ok('...and it BENDS round the building instead of dying at it',
-    !!fresh && fresh.bent && fresh.legs >= 2, fresh);
+    !!bentRoad, { bentRoad, tries, fresh });
 
   /* The star's control still holds — the road is a SEPARATE export precisely
      so the minimap's portals-only contract did not change under it. */

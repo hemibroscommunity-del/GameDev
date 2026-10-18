@@ -177,7 +177,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ft = await obs.page.evaluate(() => window.__ftDrain && window.__ftDrain()).catch(() => null);
     const z = await H.readState(obs, (S) => S.currentZone).catch(() => '?');
     const others = await H.readState(obs, (S) => Object.keys(S.others || {}).length).catch(() => 0);
-    samples.push({ t: Math.round((Date.now() - t0) / 1000), s, ft });
+    samples.push({ t: Math.round((Date.now() - t0) / 1000), s, ft, z });
     console.log(`      crowd t=${samples[samples.length - 1].t}s zone=${z} peers=${others} hops=${hops}`
       + `  heap=${s.heapMB}MB` + (ft ? `  frame mean=${ft.mean}ms p95=${ft.p95}ms` : ''));
   }
@@ -199,15 +199,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
      asserted key by key: the point is to find the counter nobody predicted.
      heapMB is excluded from the verdict — a JS heap that has not been
      collected yet is not a leak, and mp-soak already treats it as colour. */
-  const first = samples[0].s, last = samples[samples.length - 1].s;
+  /* v2.3.3326: ...first-to-last IN THE SAME ZONE.  The observer starts in
+     town and ends wherever the hops leave it (the World View or a spoke), and
+     a layer's count is the zone's as much as the session's: the World View's
+     particles and ground marks are not town's.  Compared across the two, the
+     run of 2026-10-17 read "gfx.stage/0/2 0->60" (groundSplatter: a layer
+     the probe only names once it holds more than 8) and "gfx.stage/0/9
+     12->62" (particles) as growth -- and both are POOLS that fill to a fixed
+     size as the others walk past (worldFx.js: 56 footprints and 70 splats on
+     the ground, 56 dust puffs among the particles), so even the same zone on
+     its first visit, before anyone has walked there, reads low.  So the
+     baseline is the SECOND sample taken in the zone the last one is in (its
+     first when it has only one): a leak still shows, as that zone holding
+     more and more on every visit, while a pool is full by then.  And a list
+     the game caps is not growing while it is within its cap: S.chatLog is
+     the last 50 lines and the new one (gameEvents.js / wsClient.js
+     `slice(-50)`), and four players chatting every 3 s fill it. */
+  const lastSample = samples[samples.length - 1];
+  const inZone = samples.filter((x) => x.z === lastSample.z && x !== lastSample);
+  const sameZone = inZone[1] || inZone[0] || samples[0];
+  const first = sameZone.s, last = lastSample.s;
+  const CAPPED = { 'S.chatLog': 51 };
   const grew = [];
   for (const k of Object.keys(last)) {
     if (k === 'heapMB') continue;
     const a = first[k] || 0, b = last[k];
+    if (CAPPED[k] && b <= CAPPED[k]) continue;
     /* Growth that is both large in absolute terms and multiplicative: a pool
        going 2 -> 5 as peers wander in and out is not a leak. */
     if (b >= 40 && b > a * 3 + 12) grew.push(`${k} ${a}->${b}`);
   }
+  console.log(`      compared in ${lastSample.z}: t=${sameZone.t}s -> t=${lastSample.t}s`);
   console.log('      heap: ' + first.heapMB + 'MB -> ' + last.heapMB + 'MB');
   if (grew.length) console.log('      GREW: ' + grew.join('  '));
   /* Every mover, threshold or not.  The verdict above deliberately ignores
@@ -219,6 +241,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     .sort((x, y) => (y.b - y.a) - (x.b - x.a))
     .slice(0, 15);
   console.log('      movers: ' + (movers.map((m) => `${m.k} ${m.a}->${m.b}`).join('  ') || 'none'));
+  /* v2.3.3326: every mover sample by sample, with its zone, so a climb
+     inside one zone can be told from a zone's own count */
+  for (const m of movers.slice(0, 6)) {
+    console.log(`        ${m.k}: ` + samples.map((x) => `${x.z}:${x.s[m.k] || 0}`).join(' '));
+  }
   rec.ok('nothing grows without bound with peers around and zones changing',
     grew.length === 0, grew);
 
