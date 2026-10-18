@@ -236,18 +236,33 @@ async function body({ P, wsPort, rec, errors, npcReqs }) {
   await P.page.waitForFunction(() => ((window._gameState.current.rpg || {})._quests || {}).beast_4 === 'turnedIn', null, { timeout: 8000 }).catch(() => {});
   await H.hopTo(P, bm.x + 30, bm.y + 50, { step: 100, gap: 260, tries: 160 });
   await P.page.waitForTimeout(1200);
-  const css = await P.page.evaluate(() => {
+  const bmCss = () => P.page.evaluate(() => {
     const S = window._gameState.current, c = document.querySelector('canvas'), r = c.getBoundingClientRect();
     const n = (S.npcs || []).find((q) => q.name === 'Beastmaster Bro');
     return n && S.camera ? { x: r.left + (n.x - S.camera.x) * (S._worldScaleX || 1), y: r.top + (n.y - S.camera.y) * (S._worldScaleY || 1) - 26 } : null;
   });
-  if (css) await P.page.touchscreen.tap(css.x, css.y);
+  const css = await bmCss();
+  /* v2.3.3466: tapped until the world's scan has RUN (window.__btNpcTap
+     stamped), three tries at most -- mp-npctap's and mp-buildingrooms' way.
+     The zones count a touch a tap only when its start and end come within
+     SELF_TAP_MAX_MS 400 of each other, and on this box a frame drawn between
+     the two (300-600 ms) makes it a hold: nothing ran (the sweep of
+     2026-10-18: "tapped": null).  The check still asks the tap that ran to
+     have opened the Pets page. */
+  const t0 = Date.now();
+  for (let k = 0; k < 3 && css; k++) {
+    const at = k ? (await bmCss()) || css : css;
+    await P.page.touchscreen.tap(at.x, at.y);
+    await P.page.waitForTimeout(300);
+    if (await P.page.evaluate((t) => { const r = window.__btNpcTap; return !!(r && r.ts >= t - 50); }, t0)) break;
+  }
   /* v2.3.3425: 15 s, not 5 -- the page's first draw after a tap takes longer
      than 5 s on this box (mp-petsmatter's More tile showed it: the page came
      up just after its 5 s wait gave up) */
   const tapped = await H.waitFor(P, () => ({ tap: window.__btNpcTap || null, page: !!document.querySelector('[data-pets-panel]') }),
     (v) => v.page, { timeout: 15000, label: 'the Pets page' }).catch(() => null);
-  rec.ok('his line done, a tap on him opens the Pets page', !!tapped && tapped.tap && tapped.tap.npc === 'Beastmaster Bro' && tapped.tap.result === 'pets', { css, tapped });
+  const lastTap = tapped ? null : await P.page.evaluate(() => window.__btNpcTap || null);
+  rec.ok('his line done, a tap on him opens the Pets page', !!tapped && tapped.tap && tapped.tap.npc === 'Beastmaster Bro' && tapped.tap.result === 'pets', { css, tapped, lastTap, t0 });
   await H.closeDest(P).catch(() => {});
 
   rec.ok('no page errors through all of it', errors.length === 0, errors.slice(0, 5));
