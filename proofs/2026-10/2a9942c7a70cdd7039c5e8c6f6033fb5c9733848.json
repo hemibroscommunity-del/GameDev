@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2a9942c7a70cdd7039c5e8c6f6033fb5c9733848",
+  "tree": "abcbeb0ce5ffca6d2be359a1da32fdb0c3c80400",
+  "committedAt": "2026-10-18T10:53:47-07:00",
+  "subject": "The moving water's web of light is worked out only where it shows (v2.3.3448) (#996)",
+  "files": 5957,
+  "bytes": 673648461,
+  "listingSha256": "45f92ffad8d0f823298754ec32f3eefe6f1576b9eaadfca87fad68b50906e076",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
