@@ -500,6 +500,10 @@ export const persistenceMethods = {
        (a flush would write the old counts straight back). */
     try { await this.state.storage.delete('codex:' + pid); } catch (e) { /* best-effort, as above */ }
     this._codexForget(pid);
+    /* v2.3.3430: and test mode (testmode.js): a restarted character starts as
+       a new player would, every honesty check on.  The Test panel turns it on
+       again in one tap. */
+    try { await this.state.storage.delete('testmode:' + pid); } catch (e) { /* best-effort, as above */ }
     /* v2.3.3284: and the party, which lasts now (party.js): a restarted
        character has joined nothing.  Before the socket closes, so the rest
        of the party is told at once. */

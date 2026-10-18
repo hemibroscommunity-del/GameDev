@@ -96,6 +96,7 @@ extended.
    | `botstat:<playerId>` | anti-bot evidence: counters, hour caps, replay-hash tail, shadow flags | anticheat-botfp.md |
    | `device:<deviceId>` | identity list per device nonce (fleet correlation) | anticheat-botfp.md |
    | `frozen:<pid>` | `{ts, note}` operator freeze — join gate | admin.md |
+   | `testmode:<pid>` | `{v, on: true, at, name}` — the owner's TEST MODE for one character (v2.3.3430, testmode.js): present is on, deleted is off. Written only by the admin route (POST /api/admin/dev/testmode, the Test panel; `on` only for a character who is online); read once at a join, BEFORE the reconnect's place is judged, kept as `ps._testMode` (memory only, never the rpg blob); a failed read is off. Deleted by `_resetCharacterData`. `testmode: false` in the live flags turns every one off without touching the records | test-mode.md |
    | `rpgsnap:<pid>:<yyyymmdd>` | daily rpg-blob snapshot (ring of 7) | admin.md |
    | `rpgsnap:<pid>:prereset-<ts>` | parachute snapshot before a self-service character restart | character-restart.md |
    | `rpgsnap:<pid>:prerestore-<ts>` | parachute snapshot of the stored rpg blob taken BEFORE an operator restore (admin.js); pruned as its own ring with `prereset-` (`PARACHUTE_TAGS`), never with the dailies. Registered v2.3.3373: written since the restore route, never listed here | admin.md |

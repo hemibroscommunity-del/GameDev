@@ -167,6 +167,9 @@ export const adminMethods = {
           /* v2.3.3334: monster hits refused for want of the weapon, from too
              far, specials rolled ordinary for want of a paid swipe (hitproof.js) */
           hitProof: this._hitProofInfo(),
+          /* v2.3.3430: test mode -- allowed (the kill switch), and how many
+             characters here have it on (testmode.js) */
+          testMode: this._testModeInfo(),
           /* v2.3.3344: logins checked against their character's devices
              (devicelock.js): let in on a known device, a first device
              recorded, a pass used, refused, login checks, and the one-time
