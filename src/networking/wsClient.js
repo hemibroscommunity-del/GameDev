@@ -41,7 +41,8 @@ import { nmlCanAttack } from '@/game/noMansLand.js'; /* v2.3.3254: a steady walk
 import { NML_CENTRE, NML_CENTRES } from '@/data/noMansLandRings.js'; /* v2.3.3204: the Wheel's middle, the safe ground's centre */
 import { wheelLong, setWheelLong, wheelSizesDrawn } from '@/game/wheelSize.js'; /* v2.3.3315: which Wheel the room plays */
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
-import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
+import { getDeviceNonce, generatePassphrase, passphraseToId, isNewKey, setActiveKey, idForKey, rememberKeyId, checkAccountLogin } from '@/networking/index.js';
+import { swapKey } from '@/networking/charRoster.js';   /* v2.3.3355: the same character, a new Login Key */
 /* v2.3.1961: the ONE wire-key -> peer-field rename table, read by the join
    snapshot, both self-heal placeholders and the 2s track relay below. */
 import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
@@ -319,6 +320,17 @@ export function setupWebSocket(ctx) {
        in; nothing reconnects by itself, and the key is kept -- it is the
        right one. */
     var _dvPending = null;
+    /* ═══ v2.3.3355: A NEW KEY REFUSED, OR A LOCKOUT ═══
+       `_kyPending`: join_rejected {reason:'key'} -- this phone's new-shaped key
+       is not the character's (taken back by the owner), or its old key was
+       retired (server/src/loginkeys.js).  With the old key still kept beside
+       a new one that never got in (`bt_passphrase_old`), the phone goes back
+       to it and joins again; otherwise the key screen (DeviceScreen.js 'key').
+       `_lkPending`: 'locked' -- five wrong keys for this id in a minute,
+       somebody's guesses: wait the minute and join again.  Neither ever makes
+       a new character, as 'auth' does. */
+    var _kyPending = null;
+    var _lkPending = null;
     /* ═══ v2.3.3260: YOUR BODY IS STILL IN A FIGHT ═══
        `_lgPending` is set by linger_wait (the worker refuses a join while the
        body you left in a fight with a player still stands there,
@@ -505,6 +517,20 @@ export function setupWebSocket(ctx) {
         _stashSeed('rpgLegsStash', S.rpg && S.rpg.legsStash);
         _stashSeed('rpgShieldStash', S.rpg && S.rpg.shieldStash);
         _stashSeed('rpgGearStash', S.rpg && S.rpg.gearStash);
+        /* ═══ v2.3.3355: A NEW KEY JOINS AS ITS OWN CHARACTER ═══
+           A new Login Key's player id is the worker's, kept beside the key
+           (idForKey: bt_key_ids, the roster's row), never worked out from
+           it.  A page that started before it knew -- the start-up check at
+           the door tells it (BroTown.jsx, ensureChar) -- takes it here, so
+           its join names the character the key is for. */
+        try {
+          var _jk = localStorage.getItem('bt_passphrase');
+          if (S.myId && S.myId.indexOf('bp_') === 0 && isNewKey(_jk || '')) {
+            var _jkId = idForKey(_jk);
+            if (_jkId && _jkId !== S.myId) S.myId = _jkId;
+          }
+        } catch (e) { /* private mode: the id stays */ }
+        S._joinId = S.myId;   /* v2.3.3355: the id this join names (`_joinedId` once it is in) */
         ws.send(JSON.stringify({
           type: 'join',
           id: S.myId,
@@ -514,9 +540,14 @@ export function setupWebSocket(ctx) {
              them as unregistered throwaways (same as legacy clients). */
           phrase: (function () {
             try {
-              return (S.myId && S.myId.indexOf('bp_') === 0) ? (localStorage.getItem('bt_passphrase') || undefined) : undefined;
+              var _jp = (S.myId && S.myId.indexOf('bp_') === 0) ? (localStorage.getItem('bt_passphrase') || undefined) : undefined;
+              S._joinKey = _jp || null;   /* v2.3.3355: which key this join came with */
+              return _jp;
             } catch (e) { return undefined; }
           })(),
+          /* v2.3.3355: this phone can take a new Login Key the worker hands it
+             (key_new below, server/src/loginkeys.js).  Old workers ignore it. */
+          kv: 2,
           name: S.myName,
           /* v2.3.3275: the account check's token, when the room asked for one
              (showVerifyGate) -- spent here, a token is good once */
@@ -1351,6 +1382,23 @@ export function setupWebSocket(ctx) {
                 _dvPending = { id: S.myId || '' };
                 break;
               }
+              /* v2.3.3355: a new key not the character's, an old key retired, or
+                 a lockout -- never a new character (see _kyPending) */
+              if (_rejReason === 'key') {
+                _kyPending = { id: S.myId || '' };
+                break;
+              }
+              if (_rejReason === 'locked') {
+                _lkPending = { ms: Math.max(5000, Math.min(120000, Number(msg.ms) || 60000)) };
+                break;
+              }
+              /* v2.3.3355: 'auth' for a NEW key can only be a worker from before
+                 new keys (a rollback): it never throws a new key away -- it goes
+                 back to the old key kept beside it, or stops */
+              if (_rejReason === 'auth' && isNewKey(S._joinKey || '')) {
+                _kyPending = { id: S.myId || '', auth: true };
+                break;
+              }
               if (_rejReason === 'frozen') {
                 S._frozenByAdmin = true; /* suppress reconnect churn */
                 pushDmgPopup(S, S.player.x, S.player.y - 30, '🧊 Account frozen — contact the game owner', '#60a5fa', { ttl: 6 });
@@ -1433,6 +1481,11 @@ export function setupWebSocket(ctx) {
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
               _capsHere = true;   /* v2.3.3254: this socket's caps (the quiet phone's bundles) */
+              /* v2.3.3355: a join with a NEW key got in -- the old key kept
+                 beside it (key_new below) is no longer needed */
+              try { if (isNewKey(S._joinKey || '')) localStorage.removeItem('bt_passphrase_old'); } catch (e) { /* private mode */ }
+              S._keyIdAsked = false;   /* v2.3.3355: a later refusal may ask the door again */
+              S._joinedId = S._joinId || S.myId;   /* v2.3.3355: the id the worker let in (BroTown's roster heartbeat keeps it beside a new key) */
               /* v2.3.3315: the Wheel the room plays -- 5 times longer, or the
                  short one (no word: an older worker, the short one) */
               try { setWheelLong(S._serverCaps.wheelsize); } catch (e) { /* the short one stays */ }
@@ -1905,6 +1958,27 @@ export function setupWebSocket(ctx) {
                  farm_state's reason: a relayed copy is never trusted. */
               var _erw = noteEatRefused(S, msg.payload && msg.payload.wait);
               try { if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, pvpHealWaitText(_erw), '#B9C1BF'); } catch (_ee) { /* words only */ }
+              break;
+            }
+          case 'key_new':
+            {
+              /* ═══ v2.3.3355: A NEW LOGIN KEY, FROM THE WORKER ═══
+                 Handed to this socket only, after its join is in
+                 (server/src/loginkeys.js): eight words, and the id they belong
+                 to.  Here in the direct switch, as farm_state: a relayed copy
+                 (`from`) is never taken, and one for another id never.  The
+                 key in use is kept as `bt_passphrase_old` until a join with
+                 the new one gets in (state_sync above) -- a lost message, or a
+                 worker rolled back, costs nothing.  The row in the roster
+                 keeps its name and place and takes the new key. */
+              if (msg.from || !isNewKey(msg.key) || typeof msg.id !== 'string' || msg.id !== S.myId) break;
+              try {
+                var _kcur = localStorage.getItem('bt_passphrase');
+                if (_kcur && _kcur !== msg.key && !isNewKey(_kcur)) localStorage.setItem('bt_passphrase_old', _kcur);
+                setActiveKey(msg.key, msg.id);
+                swapKey(_kcur, msg.key, msg.id);
+                S._keyNewAt = Date.now();
+              } catch (e) { /* storage full: the old key still works on this device, and the next join is handed another */ }
               break;
             }
           case 'farm_state':
@@ -4034,6 +4108,65 @@ export function setupWebSocket(ctx) {
           _dvPending = null;
           S._realtimeStatus = 'device';
           showDeviceScreen((_dv && _dv.id) || S.myId || '');
+          return;
+        }
+        /* v2.3.3355: a new key not the character's (or an old one retired):
+           back to the old key kept beside a new one that never got in, once;
+           else the key screen.  Never a new character. */
+        if (_kyPending || (event && event.code === 4017)) {
+          var _ky = _kyPending;
+          _kyPending = null;
+          var _keyRefused = function () {
+            var _kold = null;
+            try { _kold = localStorage.getItem('bt_passphrase_old'); } catch (e) { _kold = null; }
+            if (_kold && !S._keyFellBack) {
+              S._keyFellBack = true;
+              try {
+                var _knew = localStorage.getItem('bt_passphrase');
+                setActiveKey(_kold);
+                localStorage.removeItem('bt_passphrase_old');
+                S.myId = idForKey(_kold) || S.myId;
+                try { swapKey(_knew, _kold, S.myId); } catch (e2) { /* the roster heals at the door */ }
+              } catch (e) { /* private mode */ }
+              scheduleReconnect();
+              return;
+            }
+            S._realtimeStatus = 'key';
+            showDeviceScreen((_ky && _ky.id) || S.myId || '', { mode: 'key' });
+          };
+          /* v2.3.3355: a new key that joined as the wrong character -- a page
+             that never heard its id (a key put on the phone by hand, its kept
+             id lost): the door says whose it is, and the phone joins again as
+             them.  Once a refusal; nothing changes when the door does not
+             know the key (taken back), and the old key or the screen follow. */
+          var _kk = null;
+          try { _kk = localStorage.getItem('bt_passphrase'); } catch (e) { _kk = null; }
+          if (isNewKey(_kk || '') && !S._keyIdAsked) {
+            S._keyIdAsked = true;
+            checkAccountLogin(_kk).then(function (res) {
+              if (res && res.ok && res.exists && res.kv === 2 && typeof res.id === 'string'
+                && res.id.indexOf('bp_') === 0 && res.id !== S.myId) {
+                rememberKeyId(_kk, res.id);
+                S.myId = res.id;
+                scheduleReconnect();
+                return;
+              }
+              _keyRefused();
+            }, function () { _keyRefused(); });
+            return;
+          }
+          _keyRefused();
+          return;
+        }
+        /* v2.3.3355: a lockout -- somebody else's wrong guesses at this id.
+           Wait it out and join again; nothing is changed on this phone. */
+        if (_lkPending || (event && event.code === 4018)) {
+          var _lk = _lkPending;
+          _lkPending = null;
+          S._realtimeStatus = 'locked';
+          var _lkMs = (_lk && _lk.ms) || 60000;
+          try { if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Too many wrong Login Keys tried for this character. Trying again in ' + Math.ceil(_lkMs / 1000) + ' s', '#B9C1BF', { ttl: 6 }); } catch (e) { /* words only */ }
+          setTimeout(function () { try { scheduleReconnect(); } catch (e) { /* the next load joins */ } }, _lkMs + 2000);
           return;
         }
         /* v2.3.3275: the account check (join_rejected 'verify' / 4014): show

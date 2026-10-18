@@ -283,7 +283,7 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import { markAlive } from '@/debug/crashTrap.js';   /* v2.3.3017: a page that dies open is reported by the next one */
 import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: shared T1 report gate */
 import * as DATA from '@/data/index.js';
-import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
+import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId, idForKey } from '@/networking/index.js';
 /* v2.3.1923: the device's character roster — see src/networking/charRoster.js */
 import { rememberChar, ensureChar, activateChar, inRoster, adoptSharedPhrase } from '@/networking/charRoster.js';
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
@@ -1005,7 +1005,9 @@ export var BroTown = function BroTown(_ref0) {
           _pf = generatePassphrase();
           localStorage.setItem('bt_passphrase', _pf);
         }
-        return passphraseToId(_pf);
+        /* v2.3.3355: a new Login Key's id is kept, not worked out from it
+           (networking/index.js idForKey); an old key's as ever */
+        return idForKey(_pf) || passphraseToId(_pf);
       } catch (e) {
         return Math.random().toString(36).slice(2, 10);
       }
@@ -8284,7 +8286,11 @@ export var BroTown = function BroTown(_ref0) {
                applies for the same reason. */
             if (!/[?&]guest=1\b/.test(window.location.search)) {
               var _hbPf = getBtPassphrase();
-              if (_hbPf && S.myName) rememberChar(_hbPf, { name: S.myName, level: (S.rpg && S.rpg.level) || 0 });
+              /* v2.3.3355: and a new key's id -- only the one a join got in
+                 with (wsClient.js `_joinedId`): S.myId on a page that started
+                 before it knew the key's id is a guess, and kept beside the
+                 key it would send the next join to nobody */
+              if (_hbPf && S.myName) rememberChar(_hbPf, { name: S.myName, level: (S.rpg && S.rpg.level) || 0, id: S._joinedId });
             }
           } catch (e) {}
         }
@@ -10957,7 +10963,7 @@ export var BroTown = function BroTown(_ref0) {
                    first time the player passes through the door.
                    ensureChar, NOT rememberChar: standing at the door is not
                    playing, and the list is sorted by when you last played. */
-                try { ensureChar(_p, { name: res.preview.name || '', level: res.preview.level || 0 }); } catch (e2) {}
+                try { ensureChar(_p, { name: res.preview.name || '', level: res.preview.level || 0, id: res.kv === 2 ? res.id : undefined }); } catch (e2) {}   /* v2.3.3355 */
               }
             }).catch(function () {
               try { window.__btDoorCheck = { done: true, hasChar: false, failed: true }; } catch (e) {}
@@ -10995,6 +11001,17 @@ export var BroTown = function BroTown(_ref0) {
          The 10-minute "fresh snapshot" heuristic in that effect no longer
          walks anyone in by itself -- it only pre-seeds identity; the door is
          still the door. */
+      /* v2.3.3355: the door's answer for this device's NEW key names its
+         character (a new key's id is not made from it): the page plays as
+         them from here -- one that started before it knew had worked an id
+         out from the key, which is nobody's.  Never a guest's id. */
+      var _takeKeyId = function (res) {
+        try {
+          var _cur = stateRef.current;
+          if (res && res.kv === 2 && typeof res.id === 'string' && res.id.indexOf('bp_') === 0
+            && _cur && typeof _cur.myId === 'string' && _cur.myId.indexOf('bp_') === 0 && _cur.myId !== res.id) _cur.myId = res.id;
+        } catch (e) { /* the join takes the kept id */ }
+      };
       var _straightIn = false;
       try {
         _straightIn = sessionStorage.getItem('bt_resume_now') === '1' || sessionStorage.getItem('bt_play_now') === '1';
@@ -11019,7 +11036,8 @@ export var BroTown = function BroTown(_ref0) {
                in joinTown, whose `nameInput.trim() || 'Anon'` would
                otherwise stamp Anon until state_sync corrects it. */
             if (res.preview.name) setNameInput(res.preview.name);
-            try { ensureChar(phrase, { name: res.preview.name || '', level: res.preview.level || 0 }); } catch (e2) {}
+            try { ensureChar(phrase, { name: res.preview.name || '', level: res.preview.level || 0, id: res.kv === 2 ? res.id : undefined }); } catch (e2) {}   /* v2.3.3355 */
+            _takeKeyId(res);
           }
         }).catch(function () {
           try { window.__btDoorCheck = { done: true, hasChar: false, failed: true }; } catch (e) {}
@@ -11039,7 +11057,8 @@ export var BroTown = function BroTown(_ref0) {
              road most players actually take — straight in.  Also ensureChar:
              the play stamp is joinTown's job a moment from now, and doing it
              twice from two places is how the two start disagreeing. */
-          try { ensureChar(phrase, { name: res.preview.name || '', level: res.preview.level || 0 }); } catch (e2) {}
+          try { ensureChar(phrase, { name: res.preview.name || '', level: res.preview.level || 0, id: res.kv === 2 ? res.id : undefined }); } catch (e2) {}   /* v2.3.3355 */
+          _takeKeyId(res);
           setBootPhase(null);
           try { window.__btBootRoute = 'resume'; } catch (e) {}
         } else {
@@ -11190,6 +11209,8 @@ export var BroTown = function BroTown(_ref0) {
     try {
       if (!/[?&]guest=1\b/.test(window.location.search)) {
         var _rosterPf = getBtPassphrase();
+        /* v2.3.3355: no id here -- the join is not in yet, and S.myId may be
+           a guess for a new key (the heartbeat keeps the one it got in with) */
         if (_rosterPf) rememberChar(_rosterPf, { name: S.myName, level: (S.rpg && S.rpg.level) || 0 });
       }
     } catch (e) {}
@@ -11503,7 +11524,7 @@ export var BroTown = function BroTown(_ref0) {
         var _taken = false;
         try { _taken = inRoster(_curPf); } catch (e) { _taken = false; }
         var _stale = !_curPf || !stateRef.current
-          || passphraseToId(_curPf) !== stateRef.current.myId;
+          || (idForKey(_curPf) || passphraseToId(_curPf)) !== stateRef.current.myId;   /* v2.3.3355 */
         if (_taken || _stale) {
           try {
             var _prev = _curPf;
