@@ -110,7 +110,7 @@ const sheenBitGl = {
                 in vec2 aSheenSun;
                 in vec4 aSheenTint;
                 out highp vec2 vSheenP;
-                flat out vec4 vSheenFig;
+                flat out highp vec4 vSheenFig;
                 flat out vec4 vSheenColor;
                 flat out vec2 vSheenSun;
                 flat out vec3 vSheenTint;
@@ -146,7 +146,11 @@ const sheenBitGl = {
   fragment: {
     header: `
                 in highp vec2 vSheenP;
-                flat in vec4 vSheenFig;
+                /* highp, as the filter's uFig: a phone's mediump is a half
+                   float, and the figure's frame is divided by its size and
+                   the sun side x 3 (sheenLift.js) -- the box draws every
+                   precision as a full float, so only a phone could tell */
+                flat in highp vec4 vSheenFig;
                 flat in vec4 vSheenColor;
                 flat in vec2 vSheenSun;
                 flat in vec3 vSheenTint;
