@@ -1493,11 +1493,16 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   const resetRelay = (ws) => {
     const sess = room.sessions.get(ws);
     sess.relayTokens = room.RELAY_BURST; sess.relayAt = Date.now();
+    /* v2.3.3396: and chat's own allowance and repeat memory (chatguard.js),
+       so each check below is the sanitiser's, not the guard's */
+    sess.chatGuard = null;
     room.eventBuffer.length = 0;
   };
 
   resetRelay(wsN);
-  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: LONG } }));
+  /* v2.3.3396: a long line that is not one key held down (LONG is 'z' x 4000):
+     a run of one character is cut to 6 now (chatguard.js), hiding the clamp */
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: 'zy'.repeat(2000) } }));
   let rel = chatOf().pop();
   check('chat: an oversized line is clamped, not relayed whole',
     !!rel && rel.payload.text.length === CHAT_RELAY.TEXT_MAX, rel && rel.payload.text.length);
@@ -1536,6 +1541,32 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     !!rel && rel.payload.somethingNew === undefined, rel && Object.keys(rel.payload));
   check('chat: ...and the colour is bounded too',
     !!rel && rel.payload.color.length <= CHAT_RELAY.COLOR_MAX, rel && rel.payload.color.length);
+
+  /* v2.3.3391: the colour is a #rgb or #rrggbb or nothing -- "transparent"
+     made a name invisible in everyone's chat feed (index.js CHAT_COLOR_RE) */
+  for (const bad of ['transparent', 'rgba(0,0,0,0)', 'red', '#12', '#1234567', 'url(x)', '#zzzzzz', '#fff;color:red']) {
+    resetRelay(wsN);
+    await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: 'c', color: bad } }));
+    rel = chatOf().pop();
+    check('chat: the colour ' + JSON.stringify(bad) + ' is not relayed (v2.3.3391)', !!rel && rel.payload.color === '', rel && rel.payload.color);
+  }
+  for (const good of ['#5b52ff', '#FFF', '#00d4b8']) {
+    resetRelay(wsN);
+    await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: 'c', color: good } }));
+    rel = chatOf().pop();
+    check('chat: the colour ' + good + ' is kept', !!rel && rel.payload.color === good, rel && rel.payload.color);
+  }
+  /* v2.3.3391: a name that starts with a lane's mark -- the feed read
+     "✉ Mayor"'s every room line as a whisper (index.js stripChatLaneMarks) */
+  {
+    const wsM = fakeWs();
+    room.sessions.set(wsM, baseSession());
+    await room.webSocketMessage(wsM, JSON.stringify({ type: 'join', id: 'p_mark', name: '\u2709\uFE0F \u{1F4CD} Mayor', protocolVersion: 2, data: { x: 0, y: 0, z: 'town' } }));
+    resetRelay(wsM);
+    await room.webSocketMessage(wsM, JSON.stringify({ type: 'chat', payload: { text: 'psst' } }));
+    rel = chatOf().pop();
+    check('chat: a name starting with a lane\'s marks is relayed without them (v2.3.3391)', !!rel && rel.payload.name === 'Mayor', rel && rel.payload.name);
+  }
 
   resetRelay(wsN);
   await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: '   ' } }));

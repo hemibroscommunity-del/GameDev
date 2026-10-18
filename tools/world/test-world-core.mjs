@@ -2460,7 +2460,7 @@ console.log("the buildings' life (v2.3.2983)");
   const { decodePNG } = await import('./png.mjs');
   const fs = await import('node:fs');
   const buildings = objectCatalog().filter((e) => e.kind === 'building').map((e) => e.id);
-  const FX = new Set(['smoke', 'glow', 'sparks', 'glint', 'chaff']);
+  const FX = new Set(['smoke', 'glow', 'sparks', 'glint', 'chaff', 'flag']);   /* v2.3.3382: + the flag */
   const ids = Object.keys(BUILDING_LIFE);
   ok(`every one of the ${buildings.length} buildings has some life, and nothing else does; each spot a known kind, on its picture (0-1)`,
     buildings.every((b) => BUILDING_LIFE[b] && BUILDING_LIFE[b].length) && ids.every((b) => buildings.includes(b)) &&
@@ -2491,6 +2491,50 @@ console.log("the buildings' life (v2.3.2983)");
     }
   }
   ok(`...and every one of the ${checked} spots is on its picture as the game has it: each smoke on a chimney's top, each lamp, spark and glint on the building`, checked > 60 && off.length === 0, off);
+  /* v2.3.3382: a flag's cut, on its picture as the game has it -- the owner:
+     "make the town square flag wave using code".  wheelLife.js cuts the cloth
+     out of the picture only where it counts `n` px (box less keep); a
+     building drawn again fails here first, and says what moved. */
+  const flagBad = [];
+  let flagN = 0;
+  for (const id of ids) {
+    for (const e of BUILDING_LIFE[id]) {
+      if (e.fx !== 'flag') continue;
+      flagN++;
+      const o = man.objects.find((q) => q.id === id);
+      const pc = o && o.pieces[0], a = pc && man.atlases.find((q) => q.name === pc.atlas);
+      if (!a) { flagBad.push(id + ': no picture'); continue; }
+      if (!pages[a.name]) pages[a.name] = { img: decodePNG(fs.readFileSync(new URL(`../../public/world/objects/${a.image}`, import.meta.url))), js: JSON.parse(fs.readFileSync(new URL(`../../public/world/objects/${a.sheet}`, import.meta.url))) };
+      const { img, js } = pages[a.name], f = js.frames[pc.frame].frame;
+      if (f.w !== e.pw || f.h !== e.ph) { flagBad.push(`${id}: the picture is ${f.w} x ${f.h}, the flag's ${e.pw} x ${e.ph}`); continue; }
+      const op = (x, y) => x >= 0 && y >= 0 && x < f.w && y < f.h && img.data[((f.y + y) * img.w + f.x + x) * 4 + 3] > 0;
+      const kept = (x, y) => e.keep.some((r) => x >= r[0] && x < r[2] && y >= r[1] && y < r[3]);
+      const [x0, y0, x1, y1] = e.box;
+      const cloth = new Set();
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (op(x, y) && !kept(x, y)) cloth.add(x + ',' + y);
+      if (cloth.size !== e.n) flagBad.push(`${id}: the cloth is ${cloth.size} px, the entry says ${e.n}`);
+      /* one piece (8 ways) */
+      const seen = new Set(), first = cloth.values().next().value;
+      if (first) {
+        const st = [first]; seen.add(first);
+        while (st.length) {
+          const [cx, cy] = st.pop().split(',').map(Number);
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const q = (cx + dx) + ',' + (cy + dy);
+            if (cloth.has(q) && !seen.has(q)) { seen.add(q); st.push(q); }
+          }
+        }
+      }
+      if (seen.size !== cloth.size) flagBad.push(`${id}: the cloth is in pieces (${seen.size} of ${cloth.size} joined)`);
+      /* nothing of it past its box: the rows over and under it and the column
+         after it are clear wherever cloth stands next to them */
+      let past = 0;
+      for (let x = x0; x < x1; x++) { if (cloth.has(x + ',' + y0) && op(x, y0 - 1) && !kept(x, y0 - 1)) past++; if (cloth.has(x + ',' + (y1 - 1)) && op(x, y1) && !kept(x, y1)) past++; }
+      for (let y = y0; y < y1; y++) if (cloth.has((x1 - 1) + ',' + y) && op(x1, y)) past++;
+      if (past) flagBad.push(`${id}: ${past} px of cloth run past the box`);
+    }
+  }
+  ok(`the Town Hall's flag (v2.3.3382): its cloth counts what its entry says, in one piece, inside its box, on the picture as the game has it`, flagN >= 1 && flagBad.length === 0, flagBad);
 }
 
 /* ── v2.3.2995: what every object is made of ──
@@ -3954,6 +3998,63 @@ console.log('the Wheel five times longer (v2.3.3315)');
   ok('...and the three dungeons\' mouths are on their lands at their own levels, further out',
     ['sky', 'hollows', 'thunder'].every((h) => live.WHEEL_DOORS[h] && short.WHEEL_DOORS[h] && live.WHEEL_DOORS[h].tier === short.WHEEL_DOORS[h].tier
       && live.WHEEL_DOORS[h].levels.join() === short.WHEEL_DOORS[h].levels.join() && tierAt(live.WHEEL_DOORS[h].at[0], live.WHEEL_DOORS[h].at[1])[0] === h), live.WHEEL_DOORS);
+  /* 5b. v2.3.3401: every fishing seat of both tables out of the water as the
+     game DRAWS it -- each piece composed as the ground worker lays it (its
+     blocks' window, composeGround at its scale, no pictures: the pictures
+     only colour the shore) and read where its `under` reads (ground-worker.js
+     underOf): the spot and its school's middle in water, the angler's boots
+     dry, fewer than SWIM_IN of a swimmer's five looks wet.  The bake asks it
+     of a small rectangle round the points (bake-wheel-spawns.mjs
+     drawnWaterOf); this of whole pieces, as the phone gets them -- and
+     mp-wheelseats read the same on a phone at every look of 111 seats.  And
+     the bake's copy of a piece's size and its `under` step is the worker's. */
+  {
+    const { PIECE_ART, UNDER_ART, NODE_RULES } = await import('./bake-wheel-spawns.mjs');
+    const { SWIM_PROBES, SWIM_IN } = await import('../../src/game/wheelSwim.js');
+    const { PIECE_MARGIN } = await import('../../public/tools/world/core/worldblocks.js');
+    const wsrc = fs.readFileSync(new URL('../../public/tools/world/core/ground-worker.js', import.meta.url), 'utf8');
+    const num = (re) => { const m = wsrc.match(re); return m ? Number(m[1]) : NaN; };
+    const CHUNK = num(/^const CHUNK = (\d+);/m), UNDER = num(/^const UNDER = (\d+);/m), APRON = num(/^const APRON = (\d+);/m);
+    ok('the bake reads the drawn ground where the worker samples its pieces (bake-wheel-spawns.mjs PIECE_ART, UNDER_ART are ground-worker.js CHUNK, UNDER)',
+      CHUNK === PIECE_ART && UNDER === UNDER_ART && APRON > 0, { CHUNK, UNDER, APRON, PIECE_ART, UNDER_ART });
+    const seatsOf = (P, Bk, T) => {
+      const F = Bk.features, K = Math.round(P.worldPxPerArtPx / PIXEL.gamePxPerArtPx), cs = CHUNK * P.worldPxPerArtPx, n = CHUNK / UNDER;
+      const cache = new Map();
+      let water = -1;
+      const under = (i, j) => {
+        const key = i + ',' + j;
+        if (cache.has(key)) return cache.get(key);
+        const rect = { x: F.x0 + i * CHUNK - APRON, y: F.y0 + j * CHUNK - APRON, w: CHUNK + 2 * APRON, h: CHUNK + 2 * APRON };
+        const cx = Math.floor((rect.x - F.x0) / F.S), cy = Math.floor((rect.y - F.y0) / F.S);
+        const cw = Math.ceil((rect.x + rect.w - F.x0) / F.S) - cx, ch = Math.ceil((rect.y + rect.h - F.y0) / F.S) - cy;
+        const { bp: wb, mm: wm } = Bk.window({ x: cx - PIECE_MARGIN, y: cy - PIECE_MARGIN, w: cw + 2 * PIECE_MARGIN, h: ch + 2 * PIECE_MARGIN });
+        water = wm.water;
+        const out = composeGround(P, wb, wm, rect, {}, { scale: K });
+        const a = APRON * K, h = (UNDER * K) >> 1, u8 = new Uint8Array(n * n);
+        for (let v = 0; v < n; v++) { const row = (a + v * UNDER * K + h) * out.w + a + h; for (let u = 0; u < n; u++) u8[v * n + u] = out.mat[row + u * UNDER * K]; }
+        cache.set(key, u8);
+        return u8;
+      };
+      const wet = (x, y) => {
+        const i = Math.floor(x / cs), j = Math.floor(y / cs), g = under(i, j);
+        const u = Math.min(n - 1, Math.max(0, Math.floor(((x - i * cs) / cs) * n))), v = Math.min(n - 1, Math.max(0, Math.floor(((y - j * cs) / cs) * n)));
+        return g[v * n + u] === water;
+      };
+      const [dx0, dy0] = NODE_RULES.fishSeat, bad = [];
+      let seats = 0;
+      for (const [area, list] of Object.entries(T.WHEEL_NODES)) list.forEach((p, k) => {
+        if (p[0] !== 'f') return;
+        seats++;
+        const sx = p[1] + dx0, sy = p[2] + dy0, looks = SWIM_PROBES.map(([dx, dy]) => wet(sx + dx, sy + dy));
+        const nWet = looks.filter(Boolean).length;
+        if (looks[0] || nWet >= SWIM_IN || !wet(p[1], p[2]) || !wet(p[1] - 30, p[2])) bad.push({ id: 'wn-' + area + '-' + k, nWet, boots: looks[0] ? 'wet' : 'dry' });
+      });
+      return { seats, bad };
+    };
+    const s5 = seatsOf(PLAN5, B, live), s1 = seatsOf(PLAN, A, short);
+    ok(`...and every fishing seat of both Wheels is out of the water as the game draws it (${s5.seats} on the live Wheel, ${s1.seats} on the short one): the spot and its school in water, the angler's boots dry and fewer than ${SWIM_IN} of a swimmer's ${SWIM_PROBES.length} looks wet -- before v2.3.3401 the live table had 7 with the boots in the water`,
+      s5.seats > 200 && s1.seats > 40 && s5.bad.length === 0 && s1.bad.length === 0, { long: s5.bad.slice(0, 4), short: s1.bad.slice(0, 4) });
+  }
   /* 6. every copy the game keeps of either Wheel */
   const { WHEELS } = await import('../../src/game/worldTrial.js');
   const geomOk = (G, T) => G.w * 32 === T.WHEEL_WORLD[0] && G.h * 32 === T.WHEEL_WORLD[1] && G.safeR === T.WHEEL_SAFE_R

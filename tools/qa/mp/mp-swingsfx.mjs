@@ -51,6 +51,19 @@ const spy = (P) => P.page.evaluate(() => {
     });
     return orig(key, opts);
   };
+  /* v2.3.3399: and every HIT by the voice it asks for (BT_AUDIO.materialHit,
+     v2.3.3001).  A slime's hit has been the thud, monster-hit, since v2.3.2452
+     ("slime are fleshy") -- never a sword-hit sample, so this file found none
+     (the sweep of 2026-10-17) -- and monster-hit is also an unarmoured hero's
+     hurt sound, so the voice is what tells his hit apart. */
+  if (typeof A.materialHit === 'function') {
+    const origHit = A.materialHit.bind(A);
+    A.materialHit = function (mat, opts) {
+      const S = window._gameState && window._gameState.current;
+      window.__sfx.push({ key: 'voice:' + mat, sinceSwing: (S && S.swingTimer) ? Date.now() - S.swingTimer : null });
+      return origHit(mat, opts);
+    };
+  }
   return true;
 });
 
@@ -124,15 +137,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const sfx = await P.page.evaluate(() => window.__sfx.slice());
   const swings = sfx.filter((e) => /^sword-swing/.test(e.key));
-  const hits = sfx.filter((e) => /^sword-hit/.test(e.key));
+  const hits = sfx.filter((e) => e.key === 'voice:goo');   /* v2.3.3399: the slime's hits, by their voice */
 
   rec.ok(`${tag}: swings actually played (${swings.length})`, swings.length >= 2, swings.slice(0, 4));
   rec.ok(`${tag}: every swing is the whoosh -- the harsh sample never plays`,
     swings.length > 0 && swings.every((e) => e.key === 'sword-swing-2'),
     swings.map((e) => e.key));
-  rec.ok(`${tag}: hits landed, and every one is the softer sample`,
-    hits.length > 0 && hits.every((e) => e.key === 'sword-hit3'),
-    hits.map((e) => e.key));
+  rec.ok(`${tag}: hits landed, in the slime's own voice (goo -- the thud since v2.3.2452, not sword-hit3)`,
+    hits.length > 0, hits.map((e) => e.sinceSwing));
 
   /* THE TIMING, which is the report.  A whoosh starting at contact is the bug;
      it has to be underway well before the blade lands. */
