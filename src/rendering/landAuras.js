@@ -18,7 +18,8 @@
  *   tidal    drips falling from the leaves, a breath of mist
  *   mist     green spores rising, wobbling
  *   verdant  petals drifting down, a firefly or two
- *   (dark and light are the realms past the far gates: not built yet)
+ *   dark     shadow wisps rising   } the realms past the far gates: not
+ *   light    motes of light rising } built yet, their looks ready for them
  *
  * SUBTLE ON PURPOSE, as the buildings' life (wheelLife.js): a handful of
  * specks a resource, low alphas, nothing fast but the sand and the sparks.
@@ -72,6 +73,11 @@ export const LAND_AURAS = Object.freeze({
   tidal:   { rate: 1.8, life: [700, 1100], from: 'crown', v: [0, 46], jit: [1, 8], sway: 0, colors: [0xbfe8ff, 0x8fd4f0, 0xeaf8ff], size: [1, 1.5], fade: 'out' },
   mist:    { rate: 1.6, life: [1600, 2800], from: 'crown', v: [0, -12], jit: [5, 4], sway: 7, colors: [0xb6f07a, 0x8ee05a, 0xd8ff9e], size: [1.5, 2.5], fade: 'in-out' },
   verdant: { rate: 1.4, life: [2000, 3400], from: 'crown', v: [6, 14], jit: [6, 4], sway: 9, colors: [0xffc0d8, 0xffffff, 0xffe27a], size: [1.5, 2.5], firefly: 0.3, fade: 'in-out' },
+  /* the owner's other two elements: the Dark and Light realms past the far
+     gates are not built yet, so nothing wears these until a resource there
+     has an id that names them (`wn-dark-<k>`, `wn-light-<k>`) */
+  dark:    { rate: 1.6, life: [1600, 2600], from: 'crown', v: [0, -10], jit: [4, 3], sway: 5, colors: [0x3a2a4a, 0x241a30, 0x5a3f73], size: [1.5, 2.5], fade: 'in-out' },
+  light:   { rate: 1.6, life: [1400, 2400], from: 'all', v: [0, -14], jit: [4, 3], sway: 4, colors: [0xfff8d0, 0xffffff, 0xffe9a0], size: [1, 2], blink: 0.15, fade: 'in-out' },
 });
 
 /* ── the one texture: a 2 x 2 white square, crisp ── */
@@ -134,6 +140,9 @@ export class LandAuras {
     c.x = host.x; c.y = host.y;
     c._groundDy = host._groundDy || 0;
     if (c._ridesOn !== host) c._ridesOn = host;
+    /* a tree you stand behind is seen through (effectsRenderer
+       _treeSeeThrough): so are its specks */
+    if (c.alpha !== host.alpha) c.alpha = host.alpha;
   }
 
   /** `nodes`: the resources near the view this frame (the effects renderer's

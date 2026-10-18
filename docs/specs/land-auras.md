@@ -22,8 +22,12 @@ everywhere.
 | Water Caves (`tidal`) | water | drips falling from the leaves |
 | Poison Forest (`mist`) | poison | green spores rising, wobbling |
 | Verdant Wilds (`verdant`) | floral | petals drifting down, a firefly or two |
-| (the Dark realm) | dark | shadow wisps, when the realms are built |
-| (the Light realm) | light | motes of light rising, when the realms are built |
+| (the Dark realm) | dark | shadow wisps rising |
+| (the Light realm) | light | motes of light rising |
+
+The Dark and Light realms past the far gates are not built yet. Their two
+looks are in the table already, ready for resources there whose ids name them
+(`wn-dark-<k>`, `wn-light-<k>`).
 
 BroTown and the commons wear nothing.
 
@@ -44,6 +48,8 @@ BroTown and the commons wear nothing.
   anyone south of it, wherever the depth pass moves it.
 - A resource mined out stops making specks and its last ones finish. One that
   leaves the view lets them go at once.
+- A tree you stand behind is seen through (tier-trees.md), and so are its
+  specks: they take its picture's alpha.
 - `?noauras` leaves the resources plain.
 
 ## Memory and cost
