@@ -614,7 +614,7 @@ remnant to migrate server-side, not a mode to preserve.
       `?shadowhp=0` put each back, `window.__btShadowSnap()`; mp-shadowlock
       now steps a whole CSS px across and down: 110x and 6x steadier (TRAPS
       §205).
-    - since v2.3.3377 THE SHADOWS ARE DRAWN BEFORE THE FRAME -- the owner:
+    - since v2.3.3408 THE SHADOWS ARE DRAWN BEFORE THE FRAME -- the owner:
       "iterate on what best improves framerate without loss of quality": the
       filter was a pass in the MIDDLE of the frame, so a phone's tile-based
       chip wrote the half-drawn frame out and read it back every frame (~15

@@ -226,7 +226,7 @@ export async function initPixiRenderer(canvas) {
   try { setPaletteRenderer(app.renderer); } catch (e) { /* colours, as before */ }
   /* v2.3.2710: shadows cast by each map's own sun, and metal that catches the
      light (rendering/lightfx).  Off unless the switch is on -- see lightFx.js. */
-  const lightFx = new LightFx(layers, worldContainer, app.renderer);   /* v2.3.3377: + the renderer, for the shadows' pre-pass */
+  const lightFx = new LightFx(layers, worldContainer, app.renderer);   /* v2.3.3408: + the renderer, for the shadows' pre-pass */
   if (typeof window !== 'undefined') {
     window.__btLightFx = {
       probe: () => lightFx.probe(),

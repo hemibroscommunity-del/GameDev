@@ -85,7 +85,7 @@
  * `window.__btShadowSnap()` says which is on.  mp-shadowlock steps the camera
  * a whole CSS px at a time, across and down, so every step is a crossing.
  *
- * ═══ v2.3.3377: ...AND DRAWN BEFORE THE FRAME, NOT IN THE MIDDLE OF IT ═══
+ * ═══ v2.3.3408: ...AND DRAWN BEFORE THE FRAME, NOT IN THE MIDDLE OF IT ═══
  * The owner: "iterate on what best improves framerate without loss of quality
  * (or negligible loss) for phone gameplay (iPhone, android)".  A filter is a
  * render pass, and this one ran in the MIDDLE of the frame: the ground was
@@ -114,7 +114,7 @@
  */
 import { BatcherPipe, Container, Filter, GlProgram, Matrix, Mesh, MeshGeometry, MeshSimple, RenderTexture, Shader, Sprite, Texture, UniformGroup } from 'pixi.js';
 import { profileAtU } from '../propGround.js';
-import { healAfterRenderThrow } from '../renderHeal.js';   /* v2.3.3377: a pre-pass that throws leaves nothing open */
+import { healAfterRenderThrow } from '../renderHeal.js';   /* v2.3.3408: a pre-pass that throws leaves nothing open */
 
 /* v2.3.3149: on unless `?shadowlock=0` (see the header) -- read once */
 let _lockOn = null;
@@ -131,14 +131,14 @@ function lockOn() {
 const _q = (re) => { try { return typeof location !== 'undefined' && re.test(location.search || ''); } catch (e) { return false; } };
 const SNAP_OLD = _q(/[?&]shadowsnap=1\b/);
 const HP_ON = !_q(/[?&]shadowhp=0\b/);
-/* v2.3.3377: `?shadowpass` -- the filter in the middle of the frame, as it
+/* v2.3.3408: `?shadowpass` -- the filter in the middle of the frame, as it
    was (see the header); setShadowPrepass flips it live, for this page only */
 let _prepassOn = !_q(/[?&]shadowpass\b/);
 /* the room round the screen the pieces' picture keeps, a side, in CSS px: the
    filter's own `padding`, so a piece just off the screen still softens its
    edge as it did */
 const PAD = 2;
-/* v2.3.3377: how far past the pieces' bounds the shade can reach, in the
+/* v2.3.3408: how far past the pieces' bounds the shade can reach, in the
    picture's texels: the soft edge's one, the slide's one (uShift < 1), and one
    for the bounds' own rounding */
 const SHADE_REACH = 3;
@@ -244,7 +244,7 @@ function makeShadowFilter() {
   });
 }
 
-/* ═══ v2.3.3377: THE SHADE, DRAWN FROM THE PIECES' PICTURE (the header) ═══
+/* ═══ v2.3.3408: THE SHADE, DRAWN FROM THE PIECES' PICTURE (the header) ═══
    The filter's own fragment program (FRAG), on a quad over the screen: the
    same reads at the same points.  Its vertex stage is a mesh's, as the moving
    water's is (wheelWater.js): the quad is laid in screen CSS px and placed in
@@ -355,7 +355,7 @@ export function releaseShadowTextures() {
 /* v2.3.3152: QA -- how many shadow systems the module holds (one a renderer) */
 export function shadowSystemCount() { return _systems.size; }
 
-/* ═══ v2.3.3377: BEFORE THE FRAME (true) OR IN THE MIDDLE OF IT, LIVE ═══
+/* ═══ v2.3.3408: BEFORE THE FRAME (true) OR IN THE MIDDLE OF IT, LIVE ═══
    For this page only: the Speed test's "the old way" step (game/speedTest.js)
    and mp-shadowprepass's held frame drawn both ways.  Each system moves its
    pieces to where they are drawn from, at once; the next frame draws the
@@ -382,7 +382,7 @@ if (typeof window !== 'undefined') {
 }
 
 export class ShadowSystem {
-  /* v2.3.3377: `renderer` -- the pieces' picture is drawn before the frame
+  /* v2.3.3408: `renderer` -- the pieces' picture is drawn before the frame
      with it (_prepass); without one, the filter, in the middle of the frame */
   constructor(layer, root, renderer = null) {
     _systems.add(this);
@@ -390,7 +390,7 @@ export class ShadowSystem {
     this.layer = layer;
     this.root = root;
     this.renderer = renderer;
-    /* v2.3.3377: the pieces' own container, never in the scene: drawn into
+    /* v2.3.3408: the pieces' own container, never in the scene: drawn into
        `rt` before the frame, and `shade` draws that picture in the layer's
        place.  The pieces live in it, or in the layer for the filter
        (`_homeIsCast` says which; _rehome moves them) */
@@ -432,11 +432,11 @@ export class ShadowSystem {
        can ask "does each monster on screen cast" without the 16-entry cap on
        `list`.  One array, cleared and refilled in place: the keys are strings
        the casters already carry, so this allocates nothing per frame. */
-    this.stats = { casters: 0, pieces: 0, held: 0, self: null, list: [], keys: [], lifePieces: 0, lock: null, prepass: false };   /* v2.3.3149: + lock, the fraction the layer is drawn back by; v2.3.3377: + prepass, drawn before the frame */
+    this.stats = { casters: 0, pieces: 0, held: 0, self: null, list: [], keys: [], lifePieces: 0, lock: null, prepass: false };   /* v2.3.3149: + lock, the fraction the layer is drawn back by; v2.3.3408: + prepass, drawn before the frame */
     this._rehome();
   }
 
-  /* v2.3.3377: drawn before the frame (the cast), or through the filter (the
+  /* v2.3.3408: drawn before the frame (the cast), or through the filter (the
      layer) */
   _wantsCast() { return _prepassOn && this._preOk && !!this.renderer && !this.renderer.destroyed; }
   get home() { return this._homeIsCast ? this.castIn : this.layer; }
@@ -465,7 +465,7 @@ export class ShadowSystem {
     if (!s) {
       s = new Sprite();
       s._btNoSnap = true;   /* v2.3.3338: drawn where it is (installNoSnap) */
-      this.home.addChild(s);   /* v2.3.3377: the cast, or the layer (_rehome) */
+      this.home.addChild(s);   /* v2.3.3408: the cast, or the layer (_rehome) */
       this.pool.push(s);
     }
     this.used++;
@@ -530,7 +530,7 @@ export class ShadowSystem {
       }
       m = new MeshSimple({ texture: tex, vertices: new Float32Array(n * 2), uvs, indices: idx });
       m._btNoSnap = true;   /* v2.3.3338 */
-      this.home.addChild(m);   /* v2.3.3377 */
+      this.home.addChild(m);   /* v2.3.3408 */
       this.meshPool.push(m);
     }
     this.meshUsed++;
@@ -604,7 +604,7 @@ export class ShadowSystem {
         }
         const mesh = new MeshSimple({ texture: o.texture, vertices: new Float32Array(count * 2), uvs, indices: idx });
         mesh._btNoSnap = true;   /* v2.3.3338 */
-        this.home.addChild(mesh);   /* v2.3.3377 */
+        this.home.addChild(mesh);   /* v2.3.3408 */
         m = { mesh, grid: src ? null : [8, 4] };
         this._pieceMeshes.set(o, m);
         this._pieceList.push(m);
@@ -647,7 +647,7 @@ export class ShadowSystem {
     this._pieceMeshes.clear();
     this._pieceList = [];
     if (this.filter) { try { this.filter.destroy(); } catch (e) { /* gone */ } this.filter = null; }
-    /* v2.3.3377: the pre-pass's own things -- its picture, the shade's quad
+    /* v2.3.3408: the pre-pass's own things -- its picture, the shade's quad
        (its geometry and bindings are its own; the program is shared), and
        the cast with the pieces in it (their textures are the figures', never
        ours) */
@@ -689,7 +689,7 @@ export class ShadowSystem {
       if (m.texture !== Texture.EMPTY) m.texture = Texture.EMPTY;
     }
     if (this.layer.filters) this.layer.filters = null;
-    if (this.shade && this.shade.visible) this.shade.visible = false;   /* v2.3.3377 */
+    if (this.shade && this.shade.visible) this.shade.visible = false;   /* v2.3.3408 */
     this._last = null;
     this._held.clear();
     this.stats.casters = 0; this.stats.pieces = 0; this.stats.held = 0; this.stats.self = null; this.stats.list.length = 0; this.stats.keys.length = 0;
@@ -704,7 +704,7 @@ export class ShadowSystem {
    * @param {number} now
    */
   update(casters, light, fade, now) {
-    this._rehome();   /* v2.3.3377: where the pieces are drawn from, this frame */
+    this._rehome();   /* v2.3.3408: where the pieces are drawn from, this frame */
     this.used = 0;
     this.meshUsed = 0;
     this._frame++;
@@ -793,7 +793,7 @@ export class ShadowSystem {
     }
     if (!this.used && !this.meshUsed) {
       if (this.layer.filters) this.layer.filters = null;
-      if (this.shade && this.shade.visible) this.shade.visible = false;   /* v2.3.3377 */
+      if (this.shade && this.shade.visible) this.shade.visible = false;   /* v2.3.3408 */
       st.prepass = false;
       return;
     }
@@ -804,7 +804,7 @@ export class ShadowSystem {
     }
   }
 
-  /* ═══ v2.3.3377: THE PIECES DRAWN BEFORE THE FRAME (the header) ═══
+  /* ═══ v2.3.3408: THE PIECES DRAWN BEFORE THE FRAME (the header) ═══
      Into `rt`: the screen's size in CSS px plus PAD a side, at resolution 1
      (one texel a CSS px, as the filter's picture), cleared, the pieces drawn
      moved back by the camera's fraction of a pixel (`castIn`, the lock below)
@@ -884,7 +884,7 @@ export class ShadowSystem {
     }
   }
 
-  /* v2.3.3377: this frame's pieces made into the shade -- drawn before the
+  /* v2.3.3408: this frame's pieces made into the shade -- drawn before the
      frame and read back by the shade's quad (the header), or, where that
      cannot be done, through the filter in the middle of the frame as before.
      `_last` keeps what it was given, for _redraw. */
