@@ -177,14 +177,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const idBefore = await identity(P);
   console.log('    identity', JSON.stringify(idBefore));
 
-  /* ── ROAD 1: the plain resume — reload holding the key ── */
-  await P.page.goto(P.page.url().split('?')[0], { waitUntil: 'load' }).catch(() => {});
+  /* ── ROAD 1: the reload that walks you straight back in ──
+     v2.3.3328: a PLAIN reload is no longer a way back in.  Since v2.3.2447
+     (the owner: "Player should need to tap continue or create a character")
+     the landing page is always the door, and straight-in survives only where
+     a reload carries a choice already made: a row played from the picker
+     (ROAD 2), a Login Key (ROAD 3), and the black-screen watchdog's own
+     recovery reload -- BroTown.jsx `_recoveryReload`: bt_resume_now, then the
+     clean path.  That last one is the reload about a black screen, so it is
+     ROAD 1 now, made as the watchdog makes it, and the plain reload is held to
+     the door (its buttons on its painted backdrop: no canvas is not black,
+     see litWithin).  This file reloaded `/` and waited 30 s on the door (the
+     sweep of 2026-10-18). */
+  const back1 = P.page.waitForNavigation({ waitUntil: 'load', timeout: 20000 }).catch(() => null);
+  await P.page.evaluate(() => {
+    sessionStorage.setItem('bt_resume_now', '1');
+    setTimeout(() => location.replace(location.pathname), 100);
+  });
+  await back1;
   await P.page.waitForTimeout(3000);
   const r1 = await litWithin(P, 30000);
   const i1 = await identity(P);
-  console.log('    road 1 resume', JSON.stringify(r1), JSON.stringify(i1));
-  rec.ok('ROAD 1 (reload with the key): the screen is not black', r1.ok, { ...r1, ...i1 });
+  console.log('    road 1 recovery reload', JSON.stringify(r1), JSON.stringify(i1));
+  rec.ok('ROAD 1 (the watchdog\'s recovery reload): the screen is not black', r1.ok, { ...r1, ...i1 });
   rec.ok('ROAD 1: ...and it is the same character', i1.myId === idBefore.myId, { i1, idBefore });
+
+  await P.page.goto(P.page.url().split('?')[0], { waitUntil: 'load' }).catch(() => {});
+  let door = null;
+  for (let i = 0; i < 30 && !(door && door.cont); i++) {
+    await P.page.waitForTimeout(500);
+    door = await P.page.evaluate(() => ({
+      cont: !!document.querySelector('[data-tut="login-key"]'),
+      create: !!document.querySelector('[data-tut="login-create"]'),
+      route: window.__btBootRoute || null,
+    })).catch(() => null);
+  }
+  console.log('    a plain reload', JSON.stringify(door));
+  rec.ok('...and a PLAIN reload is the door, Continue and Create on it (v2.3.2447)',
+    !!(door && door.cont && door.create && door.route === 'login'), door);
 
   /* ── ROAD 2: the door's Continue -> your character in the picker ──
      Reachable only after a logout, which is the point: logout KEEPS the key
