@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a3501e773a4dbc71928c8748040fca89b7d21a2b",
+  "tree": "55d07b7a322d420ed318dafc65e58283f540060a",
+  "committedAt": "2026-10-18T03:58:49-07:00",
+  "subject": "Chat reports on your phone: read them, then kick, freeze or dismiss from the Test panel (v2.3.3398) (#972)",
+  "files": 5851,
+  "bytes": 639975120,
+  "listingSha256": "05f0a0f73983b4b9aabab4ecaa7a34ee92aa54b1ee23b83c58c7be34b0925e6b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
