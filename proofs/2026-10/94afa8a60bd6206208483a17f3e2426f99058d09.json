@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "94afa8a60bd6206208483a17f3e2426f99058d09",
+  "tree": "c2e473bbd2b898e4b190abf2ac56cdff714221e8",
+  "committedAt": "2026-10-18T11:26:13-07:00",
+  "subject": "The shadows are drawn before the frame, not in a pass in the middle of it (v2.3.3458) (#994)",
+  "files": 5979,
+  "bytes": 673985521,
+  "listingSha256": "5825f53e43b90c95857a720cd23d8333a764d43f749716ab3f6949b38c9c841d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
