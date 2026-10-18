@@ -336,14 +336,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* 6. the chips */
+  /* v2.3.3425: each 20 s, not 5: this reads the chips, not how long they
+     last, and on this box the six blows, the walk and the wait took past 5 s
+     -- the chill, given first, was gone by the read (the second solo run of
+     2026-10-18, every chip but "Chilled") */
   await clearStatuses(P);
-  await hitMe(P, { elem: 'frost', st: 'chill', stMs: 5000 });
-  await hitMe(P, { elem: 'flame', st: 'burn', stMs: 5000 });
-  await hitMe(P, { elem: 'flora', st: 'stuck', stMs: 5000 });
+  await hitMe(P, { elem: 'frost', st: 'chill', stMs: 20000 });
+  await hitMe(P, { elem: 'flame', st: 'burn', stMs: 20000 });
+  await hitMe(P, { elem: 'flora', st: 'stuck', stMs: 20000 });
   /* v2.3.3014 */
-  await hitMe(P, { elem: 'stone', st: 'daze', stMs: 5000 });
-  await hitMe(P, { elem: 'water', st: 'soak', stMs: 5000 });
-  await hitMe(P, { elem: 'venom', st: 'poison', stMs: 5000 });
+  await hitMe(P, { elem: 'stone', st: 'daze', stMs: 20000 });
+  await hitMe(P, { elem: 'water', st: 'soak', stMs: 20000 });
+  await hitMe(P, { elem: 'venom', st: 'poison', stMs: 20000 });
   /* any player_state re-renders the HUD; nudge one */
   await walk(P, 120, 0, 1);
   await P.page.waitForTimeout(400);
