@@ -421,7 +421,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
             node: n ? { hp: n.hp, alive: n.alive !== false, respawnAt: n.respawnAt || null } : null,
             lock: L ? { type: L.type, id: L.id, src: L.src || null } : null, near: ms, dying: !!S._dying,
             ex: S._extraction ? { skill: S._extraction.skill, status: S._extraction.status } : null,
-            harvest: window.__btHarvest ? window.__btHarvest() : null };
+            harvest: window.__btHarvest ? window.__btHarvest() : null,
+            /* the harvest's quiet refusals (lifeSkillRewards.js startExtraction):
+               swimming, in the air, the socket not live -- and the popups said */
+            swim: !!(S._wheelSwim && S._wheelSwim.on), jump: !!S._jump,
+            live: S.channel && typeof S.channel.isLive === 'function' ? S.channel.isLive() : null,
+            said: (S.dmgNumbers || []).filter((d) => d && typeof d.text === 'string' && !/^[-+]?\d/.test(d.text)).slice(-4).map((d) => d.text),
+            cam: S.camera ? { x: Math.round(S.camera.x), y: Math.round(S.camera.y), k: S._worldScaleX } : null };
         }, t.id).catch((e) => ({ err: String(e).slice(0, 200) }));
         rec.ok(`maple: tapping it from ${Math.round(dist)} px off starts a chop`, started === true, { dist, why });
         const ready = started ? await H.waitFor(P, (S) => (S._extraction ? S._extraction.status : null), (v) => v === 'ready',
