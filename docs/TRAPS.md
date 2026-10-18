@@ -7491,6 +7491,37 @@ every shot: the bow rows alone 49 of 49 checks, then the full run 128 of 129,
 its one miss a staff bolt into Frost Ridge's rock ridge, which the check now
 asks about at the boots (Frost Ridge again: 33 of 33).
 
+## 225. "This box says the one program halves the frame rate: take it out" (v2.3.3447)
+
+**Tempting:** paletteTex.js's ONE_BATCHER draws every sprite with one program
+holding three reads, and on the QA phone the page drew 4.1 frames a second
+with it against 9.2 with the three programs it replaced. Half the frames: it
+costs more than it saves, so take it out -- or, the other way round, read the
+QA box's frames a second to judge any program with branches in it.
+
+**What happens:** the QA box draws with SwiftShader, a rasterizer in
+software, and a software rasterizer runs EVERY branch of a program for every
+pixel, the ones no pixel takes too. `node tools/qa/qa-branchcost.mjs`: a read
+inside a branch whose other side no pixel takes costs what that other side
+costs alone (50-66 ms a full-screen draw, against 11.5-17.5 for the read on
+its own). So there the one program pays all three reads for every pixel. A
+phone's graphics chip skips a branch every pixel of a quad agrees on -- Pixi's
+own batch program counts on that, with its chain of 16 picture slots -- so on a
+phone a sprite pays for its own read, and the one program saves the draw calls
+(71 -> 28 a fight's frame) for nearly nothing. The box's frames a second say
+what a program costs in software, never what it costs a phone.
+
+**The rule:** a program whose branches are chosen per sprite is judged by its
+draw calls and its GL calls here (mp-phoneframe), and by the owner's Speed test
+on a phone (`threeprog`), never by this box's frames a second. And the game
+keeps the three programs where the renderer names itself software
+(`oneBatchChoice`: SwiftShader, llvmpipe, softpipe, "Software", Basic Render,
+WARP), so the QA box, CI and a desktop with its graphics chip blocked draw as
+they did; `?onebatch=1` tests the one program here anyway.
+
+**Receipt:** qa-branchcost (every branch run in software); mp-onebatch with
+`?onebatch=1`; docs/specs/one-batch.md "In software, the three programs".
+
 ## 227. "The creator fits: I measured it at 390x844" (v2.3.3430)
 
 The creator's upright column holds the logo, the character's stage, the name
