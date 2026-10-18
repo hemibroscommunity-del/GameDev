@@ -38,9 +38,13 @@
  * while nobody emotes. */
 import { Matrix } from 'pixi.js';
 import { figureFeetUnits, figureFeetY, figureFeetX, figureSwimLine, selfCorpseUp } from './systems/entityRenderer.js';
-import { emoteFrameFor, settleFrame, placeEmote, holdMatrix, onceFrame, EMOTE_MOVES } from '../game/emoteMoves.js';
+import { emoteFrameFor, settleFrame, placeEmote, holdMatrix, onceFrame, holdFrame, moveKind, EMOTE_MOVES } from '../game/emoteMoves.js';
 
 const NEAR_ZERO = 1e-4;
+/* v2.3.3357: a pet copies its player's held pose a beat late, its hops and
+   slides at its own size (a pet stands about half a bro) */
+const PET_LAG_MS = 300;
+const PET_K = 0.5;
 
 function isZero(f) {
   return Math.abs(f.hop) < NEAR_ZERO && Math.abs(f.dx) < NEAR_ZERO && Math.abs(f.rot) < NEAR_ZERO
@@ -60,7 +64,25 @@ export class EmoteFx {
          is (the HUD layer's whole transform) and where its body is.  'self'
          or a player's id. */
       window.__btEmoteFigure = (id) => self._figure(id);
+      /* v2.3.3357 (mp-joinin): a pet's or a townsperson's picture as last
+         drawn -- 'pet' (yours), 'peerPet' or 'npc' with an id */
+      window.__btEmoteSprite = (kind, id) => self._spriteProbe(kind, id);
     }
+  }
+
+  _spriteProbe(kind, id) {
+    const er = this._er;
+    if (!er) return null;
+    let d = null;
+    if (kind === 'pet') d = er.petDisplay;
+    else if (kind === 'peerPet') d = er.peerPetDisplays && er.peerPetDisplays.get(id);
+    else if (kind === 'npc') d = er.npcDisplays && er.npcDisplays.get(id);
+    const spr = d && !d.destroyed ? (kind === 'npc' ? d._fig : d._sprite) : null;
+    if (!spr || spr.destroyed) return null;
+    const r = (v) => +v.toFixed(3);
+    const base = spr._emo || { sx0: spr.scale.x, sy0: spr.scale.y };
+    return { visible: !!d.visible, emoting: !!spr._emo, rot: r(spr.rotation), x: r(spr.x), y: r(spr.y),
+      kx: r(spr.scale.x / (base.sx0 || 1)), ky: r(spr.scale.y / (base.sy0 || 1)) };
   }
 
   _figure(id) {
@@ -135,7 +157,83 @@ export class EmoteFx {
         }
       }
     }
+    if (S && er) this._updateFollowers(S, er, now, p);
     p.ms = +(performance.now() - t0).toFixed(3);
+  }
+
+  /* ═══ v2.3.3357: YOUR PET AND THE TOWNSFOLK JOIN IN ═══
+     A pet copies its player's held pose (sit, sleep, flop, a dance) a beat
+     late -- the dances in step, as they keep the clock's beat -- and a
+     townsperson does the move game/townsfolkReact.js gave him (Lil Bro
+     copying you, Blacksmith Bro's flex, Mayor Bro's cheer).  Each is ONE
+     picture anchored at its feet, so the move is put on that picture alone:
+     tilted and squashed about its anchor, hopped and slid in its parent's
+     units; its shadow, name and badges stay where they are.  Put back every
+     frame, as the figures are. */
+  _updateFollowers(S, er, now, p) {
+    p.pets = 0;
+    p.npcs = 0;
+    const pd = er.petDisplay;
+    if (pd && !pd.destroyed && pd._sprite && !pd._sprite.destroyed) {
+      this._restoreSprite(pd._sprite);
+      const hold = S._pose && moveKind(S._pose.id) === 'hold' && !selfCorpseUp(S) ? S._pose : null;
+      if (hold && pd.visible && this._applySprite(pd._sprite, settleFrame(holdFrame(hold.id, now, hold.at + PET_LAG_MS)), PET_K)) p.pets++;
+    }
+    if (er.peerPetDisplays) {
+      const others = S.others || null;
+      for (const [id, d] of er.peerPetDisplays) {
+        const spr = d && !d.destroyed ? d._sprite : null;
+        if (!spr || spr.destroyed) continue;
+        this._restoreSprite(spr);
+        const o = others && others[id];
+        const hold = o && !o._isDead && moveKind(o._po) === 'hold' ? o._po : null;
+        if (hold && d.visible && this._applySprite(spr, settleFrame(holdFrame(hold, now, (o._poAt || now) + PET_LAG_MS)), PET_K)) p.pets++;
+      }
+    }
+    if (er.npcDisplays && er.npcDisplays.size) {
+      const byId = new Map();
+      for (const n of (S.npcs || [])) if (n && n.id != null) byId.set(n.id, n);
+      for (const [id, d] of er.npcDisplays) {
+        const fig = d && !d.destroyed ? d._fig : null;
+        if (!fig || fig.destroyed) continue;
+        this._restoreSprite(fig);
+        const npc = byId.get(id);
+        if (!npc) continue;
+        /* a moment that is over is forgotten (one may start a beat from now) */
+        const em = npc._emoteMove;
+        if (em && (!EMOTE_MOVES[em.id] || now - (em.at || 0) > (EMOTE_MOVES[em.id].ms || 0))) npc._emoteMove = null;
+        const hold = moveKind(npc._po) === 'hold' ? npc._po : null;
+        if (!npc._emoteMove && !hold) continue;
+        if (d.visible && this._applySprite(fig, settleFrame(emoteFrameFor(npc._emoteMove, hold, npc._poAt, now)), 1)) p.npcs++;
+      }
+    }
+  }
+
+  /* one picture in frame `f`, about its anchor (its feet); `k` sizes the hop
+     and the slide (world px) to the figure.  False when nothing moved. */
+  _applySprite(spr, f, k) {
+    if (isZero(f)) return false;
+    if (spr.rotation !== 0 || spr.skew.x !== 0 || spr.skew.y !== 0) return false;
+    const x0 = spr.x, y0 = spr.y, sx0 = spr.scale.x, sy0 = spr.scale.y;
+    const ps = spr.parent && Math.abs(spr.parent.scale.y) > 1e-3 ? Math.abs(spr.parent.scale.y) : 1;
+    spr.x = x0 + (f.dx * k) / ps;
+    spr.y = y0 - (f.hop * k) / ps;
+    spr.rotation = f.rot;
+    spr.scale.x = sx0 * f.kx;
+    spr.scale.y = sy0 * f.ky;
+    spr._emo = { x0, y0, sx0, sy0, xw: spr.x, yw: spr.y, rw: spr.rotation, sxw: spr.scale.x, syw: spr.scale.y };
+    return true;
+  }
+
+  _restoreSprite(spr) {
+    const r = spr._emo;
+    if (!r) return;
+    spr._emo = null;
+    if (spr.x === r.xw) spr.x = r.x0;
+    if (spr.y === r.yw) spr.y = r.y0;
+    if (spr.rotation === r.rw) spr.rotation = 0;
+    if (spr.scale.x === r.sxw) spr.scale.x = r.sx0;
+    if (spr.scale.y === r.syw) spr.scale.y = r.sy0;
   }
 
   /* put back what this wrote last frame, wherever nothing has written since */

@@ -147,11 +147,39 @@ Old phones ignore `po` and `move`. A worker without poses never says
   everywhere; `/dance` and `/sleep` from the chat; no `caps.emotemoves`, no
   Moves tab. Pictures in `tools/qa/mp/out/emotemoves-*.png`.
 
+## Your pet and the townsfolk join in (v2.3.3357)
+
+- **Your pet copies your held pose**, a beat (300 ms) late: it sits, sleeps,
+  flops or dances with you, the dances in step with yours (they keep the
+  clock's beat), its hops at its own size. Another player's pet copies theirs
+  on your screen. A pet copies only the held poses, not a wave.
+- **The townsfolk answer the moves near them** (within 320 px), on your phone
+  (src/game/townsfolkReact.js; the worker knows nothing of it):
+
+  | Who | When | What he does |
+  |---|---|---|
+  | Lil Bro | the nearest player does a move | copies it a beat late: their sit or dance for as long as they hold it, their wave once; the first time, "Look, I can do it too!" |
+  | Blacksmith Bro | a player flexes | flexes back: "Not bad. Not bad at all." |
+  | Diego | a player dances by his door | "No dancing in my store!" |
+  | Ace | two or more players dance near him (520 px) | "Dance-off! Mover at 3 to 1." |
+  | Mayor Bro | three or more dance near him | cheers: "Now THAT's a town!" |
+
+  Each townsperson says at most one such line every 20 s. His move is drawn
+  as a player's is, on his one picture; his line is his speech bubble.
+- Drawn by `rendering/emoteFx.js` `_updateFollowers`: a pet and a townsperson
+  are each ONE picture anchored at the feet, so the move goes on that picture
+  alone (tilted and squashed about its anchor, hopped and slid), its shadow,
+  name and quest badge where they are, put back every frame.
+- Tests: `server/test/townsfolk-react.test.mjs` (30: who copies, answers and
+  speaks when, the line gaps, who counts), `tools/qa/mp/mp-joinin.mjs` (two
+  phones in the Wheel's BroTown: the pet sits with you on both phones and
+  stands with you; Lil Bro sits with you and says so; Diego at a dance;
+  Blacksmith Bro flexes back). Probe: `window.__btEmoteSprite('pet' | 'peerPet'
+  | 'npc', id)`.
+
 ## Not yet
 
-- Your pet copying your sit, dance and flop; the townsfolk reacting; the
-  server's `/roll` and `/flip`; an emote wheel you choose: the plan's other
-  Phase 1 items.
+- An emote wheel of slots you choose (the Moves tab shows all twelve).
 - A real sitting picture: the sit is a squash in code. If it reads too much
   like a short bro, one picture of the bro sitting (south, east, north) would
   replace it.
