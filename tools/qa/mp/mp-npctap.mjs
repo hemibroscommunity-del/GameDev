@@ -162,7 +162,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        that and read the swallowed taps as a dead hit test.
        Tap until the world actually receives one (the scan records that it
        ran); a dialogue closes on tap, so at most a couple are needed. */
-    /* v2.3.3363: ...and a dialogue no longer closes on a tap ON it.  Mayor
+    /* v2.3.3368: ...and a dialogue no longer closes on a tap ON it.  Mayor
        Bro's window (.bt-npcdlg) now opens in the middle of the screen, right
        over him, so all three taps landed on the card itself, which only its
        ✕ or the dark scrim round it closes -- the scan never ran and he read

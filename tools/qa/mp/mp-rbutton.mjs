@@ -82,7 +82,7 @@ const st = (P) => P.page.evaluate(() => {
     usedSwipe: !!S._hasUsedSwipe, lastSwipe: S._lastSwipe || 0, droppedWhy: S._shieldDroppedWhy || null,
     roll: !!S._dodgeRoll,
     back: !!S._backpedaling, cands: (S._targetCands || []).length,   /* v2.3.2246 */
-    engaged: !!S._engaged,   /* v2.3.3363: v2.3.2285's "I picked this fight" */
+    engaged: !!S._engaged,   /* v2.3.3368: v2.3.2285's "I picked this fight" */
   };
 });
 
@@ -169,7 +169,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Reading __btDiscVis().holds rather than guessing from the opacity is the
      whole point: "painted with no thumb on it" has two possible causes and a
      screenshot names neither. */
-  /* v2.3.3363: the band OPEN first.  Since v2.3.2495 a first join arrives
+  /* v2.3.3368: the band OPEN first.  Since v2.3.2495 a first join arrives
      with the dashboard FOLDED, and the coach's first lesson is then the fold
      chip (`openDash`); it stops at the first lesson it can draw, so it never
      reached `move`, the one that holds the left disc ({"L":[],"R":[]} in the
@@ -188,7 +188,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     if (S.rpg) { S.rpg._quests = S.rpg._quests || {}; S.rpg._quests.tut_4 = 'turnedIn'; }
   });
-  /* v2.3.3363: ...and the band folded back as it began: the discs sit on the
+  /* v2.3.3368: ...and the band folded back as it began: the discs sit on the
      dashboard (TouchControls), and `disc`, measured folded at the start, is
      reused by the shield-placement checks.  The coach only looks every 5th
      frame, so its hold is waited out rather than given a fixed 600 ms. */
@@ -331,7 +331,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('release stops the auto-attack', released.autoAttack === false, released);
   const swingsAtRelease = released.swings;
   await P.page.waitForTimeout(1300);
-  /* v2.3.3363: release ends the HELD attack; it does not end a fight you
+  /* v2.3.3368: release ends the HELD attack; it does not end a fight you
      chose.  Pressing the button makes the automatic target a chosen one
      (v2.3.2252), choosing starts an engagement, and an engaged sword keeps
      swinging at a target in reach with no thumb down (v2.3.2285, TRAPS §79) --
@@ -940,7 +940,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const r = z.getBoundingClientRect();
     window.__touch(z, 'touchstart', r.x + r.width / 2, r.y + 80, 49);
   });
-  /* v2.3.3363: with nothing to do on the right side a press waits as a
+  /* v2.3.3368: with nothing to do on the right side a press waits as a
      possible TAP (a jump) for TAP_JUMP_MAX_MS 320 (v2.3.3145, tapJump.js), and
      only then becomes the held attack (settleTapPress) -- read at 150 ms it was
      still waiting.  Wait for the hold, as a held thumb does. */

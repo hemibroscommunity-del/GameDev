@@ -29,7 +29,7 @@
  * The position check is the part that would have caught the popup mismatch
  * too: renderer and popup now read the same S._petX/_petY.
  *
- * v2.3.3363: a REAL pet now.  Since v2.3.3120 a pet lives in the worker's
+ * v2.3.3368: a REAL pet now.  Since v2.3.3120 a pet lives in the worker's
  * pets record (server/src/petbook.js, pets_state -> S._petBook), drawn from
  * the pet sheet as the monster it was caught from (no emoji any more), and
  * the renderer draws the one the record has out (game/petBook.js activePet).
@@ -60,7 +60,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     none === null || none.visible === false, none);
 
   /* ── ONE PET, ACTIVE ──
-     v2.3.3363: caught for the worker's record and named there (header). */
+     v2.3.3368: caught for the worker's record and named there (header). */
   const myId = await H.readState(P, (S) => S.myId);
   const made = await H.devOp(wsPort, 'trapping', myId, { level: 5, pet: { home: PET.home, level: 1 } }).catch(() => null);
   const outWith = !!(made && made.pet) && await P.page.waitForFunction((id) => {
@@ -95,7 +95,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   rec.ok('THE REGRESSION: an active pet is actually drawn in the world',
     !!drew && drew.visible === true, drew || (await probe()));
-  /* v2.3.3363: its own kind off the pet sheet, where it showed its emoji */
+  /* v2.3.3368: its own kind off the pet sheet, where it showed its emoji */
   rec.ok("...drawn from the pet sheet as its own kind, the one the Pets page shows",
     !!drew && !!armed && drew.kind === armed.kind && drew.tex === true, { drew, armed });
   rec.ok('...and its name', !!drew && drew.name === PET.name, drew);
@@ -137,7 +137,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── SWITCHED OFF, IT GOES AWAY ──
      The other half of the gate: a renderer that ignores the field on the way
      in can just as easily ignore it on the way out. */
-  /* v2.3.3363: put away through the record (pet_active {id: null}), as the
+  /* v2.3.3368: put away through the record (pet_active {id: null}), as the
      Pets page does */
   await P.page.evaluate(() => {
     const S = window._gameState.current;

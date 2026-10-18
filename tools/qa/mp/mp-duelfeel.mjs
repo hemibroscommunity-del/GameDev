@@ -77,14 +77,14 @@ async function aimAt(A) {
       lim(c, px - 24, r.width - 24 - px),
       lim(s, py - 24, bottom - 16 - py)));
     const sx = r.left + px + c * R, sy = r.top + py + s * R;
-    /* v2.3.3363: what the press would land on.  A card over the canvas eats
+    /* v2.3.3368: what the press would land on.  A card over the canvas eats
        it, and the round reads as a weapon that does nothing. */
     const top = document.elementFromPoint(sx, sy);
     const covered = top && top !== cv ? (((top.getAttribute && top.getAttribute('class')) || '').split(' ')[0] || top.tagName) : null;
     return { sx, sy, covered };
   });
   if (!pt) return false;
-  /* v2.3.3363: covered -- Escape shuts the card or panel (BroTown.jsx
+  /* v2.3.3368: covered -- Escape shuts the card or panel (BroTown.jsx
      _desktopCloseAll), and no press is made or counted */
   if (pt.covered) { await A.page.keyboard.press('Escape'); return pt.covered; }
   await A.page.mouse.move(pt.sx, pt.sy);
@@ -130,7 +130,7 @@ async function fight(A, wsPort, aId, bId, capMs, { keepDistance = 34 } = {}) {
   const before = await H.serverPlayer(wsPort, bId);
   const pool = before ? before.hp : 0;
   let presses = 0, died = false;
-  const covered = {};   /* v2.3.3363: presses not made, by what lay over the canvas */
+  const covered = {};   /* v2.3.3368: presses not made, by what lay over the canvas */
   while (Date.now() - t0 < capMs) {
     const aim = await aimAt(A);
     if (!aim) break;
@@ -216,7 +216,7 @@ async function reDuel(A, B, aId, bId) {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Duelist', nameB: 'Rival' });
-  /* v2.3.3363: joinPair's focus click opens the other player's card (mp-clan's
+  /* v2.3.3368: joinPair's focus click opens the other player's card (mp-clan's
      note, v2.3.3321).  This suite never touches the UI, so the card sat over
      the middle of the attacker's screen and every press landed on it: 54
      presses, nothing sent, all three weapons (the sweep of 2026-10-17).

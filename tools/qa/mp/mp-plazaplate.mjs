@@ -104,7 +104,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* flipX true => seat opens south-EAST => the fountain must be east of it. */
     rec.ok(`...and on the side the seat opens into (flipX ${bw.flipX}, fountain ${dx > 0 ? 'EAST' : 'WEST'})`,
       bw.flipX === true && dx > 0, { dx, flipX: bw.flipX });
-    /* v2.3.3363: RETIRED, the owner's call.  v2.3.2628 spread the town over
+    /* v2.3.3368: RETIRED, the owner's call.  v2.3.2628 spread the town over
        68x72 and moved the bench and the fountain apart without re-measuring
        this: 39 degrees became 17 (the sweep of 2026-10-17).  Asked, with the
        old town closed and a spot back on the diagonal crowding the west lamp

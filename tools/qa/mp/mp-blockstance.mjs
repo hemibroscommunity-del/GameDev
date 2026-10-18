@@ -74,7 +74,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
            is _mouseAimAngle — wherever Playwright happens to leave the pointer.
            Pin the input, not just the derived value, or the game re-derives it
            on its own frame after this one. */
-        /* v2.3.3363: the aim can be pinned AWAY from the guard (`aimOff`,
+        /* v2.3.3368: the aim can be pinned AWAY from the guard (`aimOff`,
            section 3 only), so "the caret follows the guard, not the aim" has
            two different numbers to tell apart. */
         const guard = window.__pin.k * Math.PI / 4;
@@ -280,7 +280,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      It turns out to be the useful case: with facing, aim and guard all
      different on screen at once, "which one does the caret follow" is a
      question with a discriminating answer. */
-  /* v2.3.3363: ...and the aim a quarter turn off it ON PURPOSE.  The three
+  /* v2.3.3368: ...and the aim a quarter turn off it ON PURPOSE.  The three
      numbers used to come apart by themselves, the game re-deriving the guard
      as the note above says; today a raised guard with nothing to point at
      keeps the angle it was given (shieldToggle.js shieldAimAngle, its

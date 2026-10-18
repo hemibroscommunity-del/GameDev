@@ -182,7 +182,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      The starter sword is minted at the copper tier, so this needs no dev hook:
      accept tut_1 the way a player does and read what the renderer draws. */
   await send(A, { type: 'quest_accept', payload: { questId: 'tut_1' } });
-  /* v2.3.3363: until the sword is in the bag, not a fixed 2 s: on a busy box
+  /* v2.3.3368: until the sword is in the bag, not a fixed 2 s: on a busy box
      the worker's answer came later than that and the check read "no copper
      sword" off a bag it had not reached yet (the sweep of 2026-10-18; the
      same run on a quiet box passed). */
@@ -192,7 +192,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const w = (S.rpg.weaponStash || []).find((x) => x && /Copper Great Sword/.test(x.name || ''));
     return w ? { type: w.type, gearBase: w.gearBase, mult: w.tierMult } : null;
   });
-  /* v2.3.3363: what the bag and the quest log say, for when it is missing. */
+  /* v2.3.3368: what the bag and the quest log say, for when it is missing. */
   const why = starter ? null : await H.readState(A, (S) => ({
     tut1: (S.rpg._quests || {}).tut_1 || null,
     held: S.rpg.weapon ? S.rpg.weapon.name : null,

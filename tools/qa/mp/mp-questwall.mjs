@@ -25,7 +25,7 @@
  *   3. and the giver does not offer it — the filter added in v2.3.1972 skips
  *      to the next quest he CAN pay out on.
  *
- * ═══ v2.3.3363: THE DAY CAME, AND THE WALL IS DOWN ═══
+ * ═══ v2.3.3368: THE DAY CAME, AND THE WALL IS DOWN ═══
  * It failed in the sweep of 2026-10-18 exactly as promised: the forge, the
  * auction house and the bank stand in town again, measured against today's
  * map (worldProps.js propIsPlaced: a prop with the current `mapV` draws
@@ -123,7 +123,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }, doors);
   rec.ok('every building position was probed (guard: an empty probe proves nothing)',
     !!probe && probe.tried >= 12, probe);
-  /* v2.3.3363: the other way round (header) */
+  /* v2.3.3368: the other way round (header) */
   rec.ok('a town building can be entered — the Enter prompt appears at its door',
     !!probe && probe.hits.length > 0, probe);
   rec.ok('...because the town has its buildings again, doors and all',
@@ -143,7 +143,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const v = S.stats && S.stats.visitedBuildings;
     return { ready, visited: v ? (v.size !== undefined ? v.size : Object.keys(v).length) : 0 };
   });
-  /* v2.3.3363: standing at a door is not a visit (nothing above pressed
+  /* v2.3.3368: standing at a door is not a visit (nothing above pressed
      Enter), so the check is still unmet here -- the control for the visits
      below, which are made the way a player makes them: stand at the door,
      press E (desktopControls' interact chain, enterBuilding), close. */
@@ -209,7 +209,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('control: mayor_1 IS the quest an unfiltered walk would offer next',
     !!offered && offered.wouldHaveBeen === 'mayor_1', offered);
-  /* v2.3.3363: a door can pay it now, so the filter lets it through */
+  /* v2.3.3368: a door can pay it now, so the filter lets it through */
   rec.ok('Mayor Bro offers the building quest, now that a door can pay it',
     !!offered && offered.id === 'mayor_1', offered);
 
@@ -244,7 +244,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.clickText(P, 'Available').catch(() => {});
   await P.page.waitForTimeout(500);
   const panel = await H.bodyText(P);
-  /* v2.3.3363: and the log says the same as the giver */
+  /* v2.3.3368: and the log says the same as the giver */
   rec.ok('the Quests panel advertises it too', /Welcome Home/.test(panel), panel.slice(0, 400));
 
   await P.ctx.close().catch(() => {});

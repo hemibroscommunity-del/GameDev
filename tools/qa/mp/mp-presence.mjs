@@ -80,7 +80,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      is orphaned, silently. */
   const B2 = { ctx: B.ctx, name: B.name, logs: B.logs, page: await B.ctx.newPage() };
   await B2.page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
-  /* v2.3.3363: back through the door, as a returning player comes back.  The
+  /* v2.3.3368: back through the door, as a returning player comes back.  The
      bare address this opened has been the login door since v2.3.2447 (the
      owner: "Player should need to tap continue or create a character"), so
      B never rejoined -- the old wait passed on the door's own myId -- and it

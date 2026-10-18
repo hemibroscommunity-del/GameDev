@@ -143,7 +143,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      that moves the number somewhere else still has to keep the result. */
   await P.page.waitForTimeout(600);
   const hud = await P.page.evaluate(() => {
-    /* v2.3.3363: found by its MARK, the card's own picture.  Since v2.3.3048
+    /* v2.3.3368: found by its MARK, the card's own picture.  Since v2.3.3048
        it leads with the Quests button's scroll (or the painted check when
        ready) where it led with a scroll emoji, which this looked for; the
        mark's row is the title, and the row's parent the card. */
@@ -292,7 +292,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Reload first, to get out from under the Quests panel opened above: the
      card sits at zIndex 17 and a panel covers it, so elementFromPoint would
      be answering about the panel. */
-  /* v2.3.3363: ...and back in through the door.  Since v2.3.2447 a reload
+  /* v2.3.3368: ...and back in through the door.  Since v2.3.2447 a reload
      lands on the login door (the owner: "Player should need to tap continue
      or create a character"), where there is no card to fold; H.enterWorld
      takes the returning player's road, Continue and then this bro's row. */
@@ -305,7 +305,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await backIn();
 
   /* Everything below talks to the card through the DOM, the way a thumb
-     does — never by poking the React state.  v2.3.3363: by its mark, as above. */
+     does — never by poking the React state.  v2.3.3368: by its mark, as above. */
   const CARD = `(() => { const m = document.querySelector('[data-quest-hud-mark]');
     return m && m.parentElement && m.parentElement.parentElement; })()`;
 
@@ -351,7 +351,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('tapping the reminder hides the objective, leaving the title',
     !!folded && /Cold Reception/.test(folded.text)
     && !/Snowman Remnants/i.test(folded.text), folded);
-  /* v2.3.3363: by a LINE, not by more than 15 px.  Folded, the card loses its
+  /* v2.3.3368: by a LINE, not by more than 15 px.  Folded, the card loses its
      objective, one line of the card's type -- 15 px on this phone (43 -> 28)
      -- and "more than 15" failed on exactly the one line it was asking for.
      10 is short of any line and far past a rounding wobble. */
