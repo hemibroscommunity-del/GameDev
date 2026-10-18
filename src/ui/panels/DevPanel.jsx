@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { WORLDVIEW_EXITS } from '../../data/index.js';
+import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3334: the speed test, measured on this phone */
 
 /* ═══ v2.3.2240: THE OWNER'S TEST PANEL ═══
  *
@@ -539,6 +540,23 @@ export const DevPanel = ({ onClose }) => {
             </div>
           );
         })()}
+
+        {/* ═══ v2.3.3334: THE SPEED TEST ═══
+            Keyless and on this phone only (game/speedTest.js): what makes a
+            frame slow is mostly the phone's graphics chip, which no test
+            machine has.  The panel closes first, so the test times the game
+            and not the panel over it. */}
+        <div style={label}>Speed test</div>
+        <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
+          About 35 seconds. Stand still where you usually play: this panel closes and a card shows
+          this phone's frames a second with everything on, then with the shadows, the metal shine,
+          the moving water and the full resolution each switched off in turn. Everything goes back
+          as it was and nothing is saved. A screenshot of the card says what costs the most here.
+        </div>
+        <button type="button" style={btn(false)} data-dev-speed-test=""
+          onClick={() => { if (onClose) onClose(); setTimeout(() => { runSpeedTest(); }, 400); }}>
+          Run the speed test
+        </button>
 
         {!key && (
           <>

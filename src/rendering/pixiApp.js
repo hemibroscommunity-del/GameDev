@@ -4,6 +4,7 @@
  */
 import { watchContextLoss } from '../debug/crashTrap.js';
 import { installSharpPixels } from './sharpPixels.js'; /* v2.3.2770 */
+import { renderDpr } from '../game/renderRes.js'; /* v2.3.3334: ?res= and the speed test */
 import { installBindGroupFix } from './bindGroupFix.js'; /* v2.3.3152: a freed picture no longer breaks Pixi's pooled mask */
 import { installTexturePoolTrim } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool gives back what it does not use */
 import { SHADE } from './formShade.js';
@@ -611,7 +612,8 @@ export async function createPixiApp(canvas) {
     });
   } catch (e) { /* ignore */ }
 
-  const dpr = window.devicePixelRatio || 1;
+  /* v2.3.3334: the canvas's pixel ratio, lowered by ?res= (game/renderRes.js) */
+  const dpr = renderDpr();
 
   const initOpts = {
     canvas: canvas,

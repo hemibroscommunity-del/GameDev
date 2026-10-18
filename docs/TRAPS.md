@@ -6995,3 +6995,29 @@ trust it then, rather than judge from a guess like the arrival.
 **Receipt:** last-place.test (57 checks, 19 mutations caught: a 3 s cap fails
 five honest reconnects). The lab: a script reconnecting every 3 s 33,333 ->
 694 px/s, every honest reconnect taken.
+
+## 206. "Clearing a Graphics that is already empty costs nothing" (v2.3.3334)
+
+**Tempting:** draw a screen flash, a HUD mark or a minimap road the simple way:
+`clear()` it at the top of every frame and draw whatever is needed. When nothing
+is needed it stays empty, so the clear is free.
+
+**What happens:** `clear()` on an empty Graphics still marks it changed, and in
+Pixi 8 any change to a batchable Graphics makes its render group rebuild its
+whole draw list (GraphicsPipe.validateRenderable returns true, so
+`structureDidChange`). The screen's flash, atmosphere and HUD graphics are empty
+nearly always and were cleared every frame, and the minimap's quest road was
+cleared and drawn again every frame standing still, so the screen's draw list
+was rebuilt every frame for nothing. Found while chasing the owner's "30fps to
+40ish fps" with `mp-frameprofile`, which names the renderable behind every
+rebuild.
+
+**The rule:** clear a Graphics only when it holds something
+(`g.context.instructions.length`, effectsRenderer `clearIfDrawn`), and redraw
+one only when what it shows has moved (a signature of its geometry, as the
+minimap's party rims and road do). When a frame-time question comes up, count
+the rebuilds before guessing (`mp-frameprofile`'s "rebuild asked ... by").
+
+**Receipt:** mp-frameprofile: the screen's list rebuilt every frame (2.6 a
+second at 2.6 frames a second on the QA box), standing or walking; after, never.
+mp-speedtest check 8.

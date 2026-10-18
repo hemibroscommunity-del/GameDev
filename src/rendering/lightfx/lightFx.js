@@ -48,8 +48,12 @@ export function lightFxOn() {
   return _on;
 }
 
-export function setLightFx(on) {
+/* v2.3.3334: `persist` false -- for this page only (the speed test, which
+   puts it back: a page that dies mid-test must not leave the device without
+   its shadows) */
+export function setLightFx(on, persist = true) {
   _on = !!on;
+  if (!persist) return;
   try { localStorage.setItem(KEY, _on ? '1' : '0'); } catch (e) { /* the switch still flips for this page */ }
 }
 

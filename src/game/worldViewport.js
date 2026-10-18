@@ -32,6 +32,7 @@
  * that must match is a bug waiting its turn.
  */
 import { WORLD_ZOOM, TILE } from '@/data/constants.js';
+import { renderDpr } from './renderRes.js'; /* v2.3.3334 */
 import { ZONES } from '@/data/zones.js'; /* v2.3.2247: the per-zone zoom ceiling */
 
 /* The design target, in WORLD px: a 390px-wide iPhone Safari viewport times
@@ -279,7 +280,7 @@ export const REF_VIEW_H = Math.round(320 * WORLD_ZOOM);   /* 960 at WORLD_ZOOM 3
  *  W/H are WORLD px — what the camera centres and clamps against, and what the
  *  projectile sim measures screen edges in. */
 export function worldViewport(canvas, zoneId) {
-  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+  const dpr = renderDpr();   /* v2.3.3334: as the canvas was sized (renderRes.js) */
   const cssW = (canvas ? canvas.width : 0) / dpr;
   const cssH = (canvas ? canvas.height : 0) / dpr;
   /* Every screen gets the SAME slice of world, drawn at whatever size fits.

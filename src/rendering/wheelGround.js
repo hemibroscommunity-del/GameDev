@@ -48,6 +48,38 @@ import { paletteOn, makePaletteSource, paletteStats } from './paletteTex.js';   
 const MAX_IN_FLIGHT = 3;
 const MARGIN = 96;
 const KEEP_PX = 96;
+/* v2.3.3334: how far past the view the pieces must all be laid before the
+   overview under them is put away (a shake, a rounding of the camera) */
+const UNDER_PAD = 48;
+/* v2.3.3334: QA -- the ground drawing now, and whether the pieces alone look
+   exactly as the pieces over the overview do (mp-speedtest): the pieces root
+   drawn twice, the overview hidden and shown, over the view's rectangle */
+let _liveGround = null;
+if (typeof window !== 'undefined') {
+  window.__btUnderSame = (x, y, w, h, res = 0.5) => {
+    const G = _liveGround;
+    const R = G && G._app && G._app.renderer;
+    if (!G || G.dead || !G.under || !R) return null;
+    const was = G.under.visible;
+    try {
+      const frame = new Rectangle(x, y, w, h);
+      G.under.visible = false;
+      const a = R.extract.pixels({ target: G.pieceRoot, frame, resolution: res });
+      G.under.visible = true;
+      const b = R.extract.pixels({ target: G.pieceRoot, frame, resolution: res });
+      let diff = 0, alphaBelow = 0;
+      for (let i = 0; i < a.pixels.length; i += 4) {
+        if (Math.abs(a.pixels[i] - b.pixels[i]) > 2 || Math.abs(a.pixels[i + 1] - b.pixels[i + 1]) > 2 || Math.abs(a.pixels[i + 2] - b.pixels[i + 2]) > 2) diff++;
+        if (a.pixels[i + 3] < 250) alphaBelow++;
+      }
+      return { px: a.pixels.length / 4, diff, alphaBelow, shownNow: was };
+    } catch (e) {
+      return { error: String((e && e.message) || e) };
+    } finally {
+      G.under.visible = was;
+    }
+  };
+}
 /* Ahead of a moving camera: lay the ground where it will be AHEAD_MS from
    now (never more than AHEAD_MAX game px on), as well as round where it is.
    A fast run crosses a 192 px piece in half a second; a margin the same all
@@ -91,6 +123,7 @@ export class WheelGround {
   /* v2.3.3076: `app`, the Pixi application (tileRenderer's), to put each
      piece on the GPU as it is placed (_toGpu) */
   constructor(parent, app) {
+    _liveGround = this;   /* v2.3.3334: QA (__btUnderSame) */
     this._app = app || null;
     this.root = new Container();
     this.root.label = 'wheelGround';
@@ -165,6 +198,29 @@ export class WheelGround {
     const j0 = clampJ(Math.floor(ny0 / cs)), j1 = clampJ(Math.floor(ny1 / cs));
     const vi0 = clampI(Math.floor(cx / cs)), vi1 = clampI(Math.floor((cx + viewW) / cs));
     const vj0 = clampJ(Math.floor(cy / cs)), vj1 = clampJ(Math.floor((cy + viewH) / cs));
+    /* ═══ v2.3.3334: THE OVERVIEW UNDER THE PIECES ONLY WHILE ONE IS MISSING ═══
+       Found by the frame-rate hunt after the owner's "around 30fps to 40ish
+       fps": the whole Wheel's overview was drawn under the ground every frame,
+       one full screen of blended pixels that the pieces, laid edge to edge and
+       opaque, covered completely -- on a 3x iPhone some 2-3 million pixels a
+       frame for nothing.  It is the stand-in for a piece not laid yet, so it
+       is shown exactly then: while any piece the view (and UNDER_PAD past it)
+       touches is missing or still being laid -- the frame that piece is
+       wanted, as a piece is only ever asked for here, before the draw. */
+    if (this.under) {
+      let covered = true;
+      const ui0 = clampI(Math.floor((cx - UNDER_PAD) / cs)), ui1 = clampI(Math.floor((cx + viewW + UNDER_PAD) / cs));
+      const uj0 = clampJ(Math.floor((cy - UNDER_PAD) / cs)), uj1 = clampJ(Math.floor((cy + viewH + UNDER_PAD) / cs));
+      for (let j = uj0; j <= uj1 && covered; j++) for (let i = ui0; i <= ui1; i++) {
+        const rec = this.pieces.get(i + ',' + j);
+        if (!rec || !rec.ready || !rec.sprite || rec.sprite.destroyed) { covered = false; break; }
+      }
+      /* QA (mp-frameprofile): window.__btUnderShow keeps it shown, as it was,
+         to compare the two pictures */
+      if (covered && typeof window !== 'undefined' && window.__btUnderShow) covered = false;
+      if (this.under.visible === covered) this.under.visible = !covered;
+      wheelStats.under = !covered;
+    }
     const mx = cx + viewW / 2 + ax / 2, my = cy + viewH / 2 + ay / 2;
 
     const want = [];
@@ -371,6 +427,7 @@ export class WheelGround {
   destroy(opts) {
     if (this.dead) return;
     this.dead = true;
+    if (_liveGround === this) _liveGround = null;
     if (this._offGot) { this._offGot(); this._offGot = null; }
     for (const [key, rec] of [...this.pieces]) this._free(key, rec);
     if (this.water) { this.water.destroy(); this.water = null; }
