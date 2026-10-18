@@ -124,8 +124,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.waitForTimeout(2500);
   const arrived = await look(B);
   const bRec = await record(B);
+  /* v2.3.3355: what B's join was, should the record not be there */
+  const bJoin = await B.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    return S ? { myId: S.myId, joinKey: !!S._joinKey, asked: !!S._keyIdAsked, status: S._realtimeStatus,
+      caps: !!(S._serverCaps && Object.keys(S._serverCaps).length), keyIds: localStorage.getItem('bt_key_ids') } : null;
+  }).catch(() => null);
   rec.ok('the stored look reaches a device that never picked it',
-    !!(bRec && bRec.look && Object.keys(bRec.look).length > 0), { bRec });
+    !!(bRec && bRec.look && Object.keys(bRec.look).length > 0), { bRec, aId, bJoin });
   rec.ok('...and the name came with it',
     !!(arrived && made && arrived.name === made.name),
     { expected: made && made.name, got: arrived && arrived.name });
