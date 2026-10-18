@@ -342,17 +342,29 @@ async function stepFighter(world, p) {
   if (ps.hp < (ps.maxHp || 100)) ps.hp = ps.maxHp || 100;
   const now = Date.now();
   const mons = (room.monsters.wheel || []).filter((m) => m.alive && (m.level || 1) <= MON_LVL_MAX);
+  /* v2.3.3334: a fighter that holds a bow holds it in the worker's own slot,
+     as the equip handler (gear.js) puts it there */
+  if (p.cfg.bow && !ps.rangedWeapon) ps.rangedWeapon = { type: 'bow', tierMult: 1, name: 'Lab Bow' };
+  if (p.cfg.archer) { await stepArcher(world, p, ps, mons, now); return; }
   if (p.cfg.aimbot) {
     if (!p.lane) p.lane = new Map();
     const out = [];
-    for (const m of mons) {
-      if (Math.hypot(m.x - ps.x, m.y - ps.y) > 3550) continue;
+    /* v2.3.3334: a script that stays under the room's message budget
+       (flood.js, 120 a second) -- the nearest monsters first */
+    const cap = p.cfg.perSec || Infinity;
+    if (!p.sentAt) p.sentAt = [];
+    p.sentAt = p.sentAt.filter((t) => now - t < 1000);
+    const inReach = mons.filter((m) => Math.hypot(m.x - ps.x, m.y - ps.y) <= 3550)
+      .sort((a, b) => Math.hypot(a.x - ps.x, a.y - ps.y) - Math.hypot(b.x - ps.x, b.y - ps.y));
+    for (const m of inReach) {
+      if (p.sentAt.length + out.length >= cap) break;
       const l = p.lane.get(m.id) || { n: 0, s: [] };
       if (now - l.n >= 215) { l.n = now; out.push({ type: 'monster_damage', payload: { monsterId: m.id, zone: 'wheel', element: null, slot: 'ranged', special: false } }); }
       l.s = l.s.filter((t) => now - t < 1250);
       if (l.s.length < 3 && (!l.s.length || now - l.s[l.s.length - 1] >= 420)) { l.s.push(now); out.push({ type: 'monster_damage', payload: { monsterId: m.id, zone: 'wheel', element: null, slot: 'ranged', special: true } }); }
       p.lane.set(m.id, l);
     }
+    for (const _o of out) p.sentAt.push(now);
     for (let k = 0; k < out.length; k += BUNDLE_MAX) { p.moves += Math.min(BUNDLE_MAX, out.length - k); await send(world, p, out.slice(k, k + BUNDLE_MAX)); }
     if (now - (p.jiggleAt || 0) > 20000) { p.jiggleAt = now; p.jig = -(p.jig || 1); await send(world, p, moveMsg(ps.x + p.jig, ps.y, 0, 0)); }
     return;
@@ -369,6 +381,41 @@ async function stepFighter(world, p) {
   if (now - (p.swingAt || 0) >= 650) {
     p.swingAt = now;
     await send(world, p, { type: 'monster_damage', payload: { monsterId: m.id, zone: 'wheel', element: null, slot: 'melee', special: false } });
+  }
+}
+/* v2.3.3334: an honest archer -- one monster at a time from 450 px, a shot
+   every 600 ms, and every 6 s a volley it PAYS for (ability_use swipe, one
+   block of mana; skipped when it cannot pay): three arrows 200 ms apart
+   470 ms after the swipe, then the stuck arrows' four chips every 500 ms
+   (noKb), as playerActions.js and projectiles.js send them */
+async function stepArcher(world, p, ps, mons, now) {
+  const { room } = world;
+  if (!p.queue) p.queue = [];
+  const due = p.queue.filter((q) => q.at <= now);
+  p.queue = p.queue.filter((q) => q.at > now);
+  for (const q of due) {
+    const tm = (room.monsters.wheel || []).find((m) => m.id === q.id && m.alive);
+    if (tm) { p.moves++; await send(world, p, { type: 'monster_damage', payload: Object.assign({ monsterId: tm.id, zone: 'wheel', element: null, slot: 'ranged' }, q.payload) }); }
+  }
+  if (!p.target || !p.target.alive) {
+    let best = null, bd = Infinity;
+    for (const m of mons) { const d = Math.hypot(m.x - p.anchor.x, m.y - p.anchor.y); if (d > 1800) continue; const dd = Math.hypot(m.x - ps.x, m.y - ps.y); if (dd < bd) { bd = dd; best = m; } }
+    p.target = best;
+    if (!best) return;
+  }
+  const m = p.target;
+  if (!(await travel(world, p, m.x - 450, m.y, 60))) return;
+  if (now - (p.volleyAt || 0) >= 6000 && (ps.mana || 0) >= room._blockCost(ps, 'mana', 1)) {
+    p.volleyAt = now;
+    await send(world, p, { type: 'ability_use', payload: { type: 'swipe', tier: 0 } });
+    for (let k = 0; k < 3; k++) p.queue.push({ at: now + 470 + 200 * k, id: m.id, payload: { special: true, part: 3, noKb: k > 0 } });
+    for (let k = 0; k < 4; k++) p.queue.push({ at: now + 1370 + 500 * k, id: m.id, payload: { special: false, noKb: true } });
+    p.shotAt = now;
+    return;
+  }
+  if (now - (p.shotAt || 0) >= 600) {
+    p.shotAt = now;
+    p.queue.push({ at: now + 470, id: m.id, payload: { special: false } });
   }
 }
 function landAnchor(home) {
@@ -404,8 +451,14 @@ const SCENARIOS = [
     players: [0, 1, 2, 3].map(() => ({ type: 'tree', tier: 1, start: false, fp: 'human', acc: 'perfect', move: 'burst', think, after: gap, device: (i) => 'labdev' + i + hash32() })) },
   { name: 'honest-fighter', note: 'a sword, one Frost Ridge monster (levels 1-5) at a time, a swing every 650 ms',
     players: [{ fight: true, move: 'walk', speed: 220, startAt: () => landAnchor('frost') }] },
-  { name: 'aimbot-fighter', note: 'standing still, a "ranged" hit on every level 1-5 monster within 3,600 px, no bow',
-    players: [{ fight: true, aimbot: true, move: 'walk', startAt: () => landAnchor('frost') }] },
+  { name: 'aimbot-fighter', note: 'standing still, a "ranged" hit on every level 1-5 monster within 3,600 px, no bow (v2.3.3334: under the message budget, 100 a second)',
+    players: [{ fight: true, aimbot: true, perSec: 100, move: 'walk', startAt: () => landAnchor('frost') }] },
+  /* v2.3.3334: the same script holding a bow (hitproof.js asks for one), and
+     an honest archer who pays for its volleys */
+  { name: 'aimbot-bow', note: 'the aimbot holding a bow, under the message budget (100 claims a second, the nearest first), specials never paid for',
+    players: [{ fight: true, aimbot: true, bow: true, perSec: 100, move: 'walk', startAt: () => landAnchor('frost') }] },
+  { name: 'honest-archer', note: 'a bow, one Frost Ridge monster at a time from 450 px, a shot every 600 ms, a paid volley every 6 s',
+    players: [{ fight: true, archer: true, bow: true, move: 'walk', speed: 220, startAt: () => landAnchor('frost') }] },
   { name: 'honest-cook', note: 'cooking minnows at an honest pace (1 in 10 burnt)',
     players: [{ cook: true, fish: { key: 'fish_minnow', n: 9000 }, start: true, fp: 'human', burn: 0.1 }] },
   { name: 'limit-cook', note: 'cooking minnows at the worker\'s 45-a-minute limit, every one "cooked", no fingerprint',
