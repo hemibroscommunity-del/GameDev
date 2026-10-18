@@ -42,7 +42,7 @@ const KEYS = [
   ['G', 'Burst'],
   /* v2.3.3260: V -- quick eat (game/quickEat.js), the touch button's twin */
   ['V', 'Eat'],
-  /* v2.3.3343: B -- the emotes (game/emotes.js), the chat box's smiley's twin */
+  /* v2.3.3353: B -- the emotes (game/emotes.js), the chat box's smiley's twin */
   ['B', 'Emotes'],
   ['C', 'Chat'], ['H', 'Hide'], ['Esc', 'Close'],
 ];

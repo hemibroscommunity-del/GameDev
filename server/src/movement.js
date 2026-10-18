@@ -765,7 +765,7 @@ export const movementMethods = {
         ps.ba = (typeof msg.ba === 'number' && Number.isFinite(msg.ba)) ? msg.ba : null;
       }
       if (msg.dead !== undefined) ps.dead = !!msg.dead;
-      /* v2.3.3345: a held pose ends when the player really moves (poses.js):
+      /* v2.3.3355: a held pose ends when the player really moves (poses.js):
          the worker's own word, so a walker is never drawn sitting */
       if (ps.po && this._poseEndsOn(ps, _stepPx, zoneChanged, msg)) ps.po = null;
       this.dirtyPlayers.add(session.id);

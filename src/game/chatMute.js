@@ -52,7 +52,7 @@ function _write(list) {
 /* Read the current list (localStorage mirror of the server's). */
 export function readMutedIds() { return _read(); }
 
-/* ═══ v2.3.3343: ONE READING OF THE BLOCK LIST ═══
+/* ═══ v2.3.3353: ONE READING OF THE BLOCK LIST ═══
    `bt_blocked` is written in two shapes: plain ids by the inspect card
    (InspectPlayerPanel) and the old Social panel, `{ id, name }` by the
    dashboard's friends list (sheet/friendsModel.js blockPlayer).  Every reader

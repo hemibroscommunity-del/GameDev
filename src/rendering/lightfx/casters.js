@@ -26,7 +26,7 @@
  *      beneath the monster" (v2.3.1704).
  */
 import { Sprite } from 'pixi.js';
-import { figureFeetY, figureFeetX } from '../systems/entityRenderer.js';   /* v2.3.3345: + the x an emoting figure stands at */
+import { figureFeetY, figureFeetX } from '../systems/entityRenderer.js';   /* v2.3.3355: + the x an emoting figure stands at */
 import { wheelObjectCasters } from '../wheelObjects.js';   /* v2.3.3000: the Wheel's objects cast */
 import { farmCasters } from '../farmWorld.js';   /* v2.3.3136 */
 

@@ -155,7 +155,7 @@ const ARRIVAL = { x: 21504, y: 21792 };
   check('1h2 a parry: at the parried blow; the parrier and (a player\'s) the one it staggers always told',
     par && par.x === 41 && par.y === 42 && JSON.stringify(par.who) === '["pa","pb"]'
       && parM && parM.x === 5000 && JSON.stringify(parM.who) === '["pa"]', { par, parM });
-  /* v2.3.3343: 'emote' left this list -- placed like a swing (1i2 below) */
+  /* v2.3.3353: 'emote' left this list -- placed like a swing (1i2 below) */
   const roomWide = ['chat', 'loot_drop', 'loot_claimed', 'loot_despawn', 'pvp_hit', 'pvp_confirmed', 'duel_end',
     'clan_war_kill', 'arena_match_result', 'jackpot_result', 'player_died_to_monster', 'stunned', 'some_new_type',
     /* happen at a place, but a phone keeps what they say (eventplace.js) */
@@ -163,7 +163,7 @@ const ARRIVAL = { x: 21504, y: 21792 };
   const placedAny = roomWide.filter((t) => P({ type: t, from: 'pa', payload: { zone: 'wheel', monsterId: 'wm-a', x: 1, y: 1, id: 'pa' } }) !== null);
   check('1i chat, emotes, loot, hits between players, duels, clans, the arena, the jackpot, unknown types and what a phone keeps (a kill, a shield, a transformed mummy, a campfire) stay room-wide',
     placedAny.length === 0, placedAny);
-  /* v2.3.3343: an emote is a moment, drawn for a few seconds and kept by
+  /* v2.3.3353: an emote is a moment, drawn for a few seconds and kept by
      nothing, so it goes where the room has its sender (emotes.js) */
   const emo = P({ type: 'emote', from: 'pa', payload: { id: 'pa', emoji: '👋' } });
   check('1i2 an emote is placed where the ROOM has its sender (not where it says), the sender always told',

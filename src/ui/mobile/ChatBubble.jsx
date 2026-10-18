@@ -7,7 +7,7 @@ import { sendChatMessage } from '../../game/chat.js';
    composed inside sendChatMessage, so this composer stays ignorant of how
    a lane is spelled (see chatChannel.js on why that matters here). */
 import { ChatChannelChips, lanePlaceholder } from './ChatChannelChips.jsx';
-import { emotesLive } from '../../game/emotes.js';   /* v2.3.3343: the emote picker's door */
+import { emotesLive } from '../../game/emotes.js';   /* v2.3.3353: the emote picker's door */
 
 // Over-the-character chat bubble. Opens from the bottom-dashboard chat
 // icon, focuses immediately so the soft keyboard appears, and closes when
@@ -307,7 +307,7 @@ export const ChatBubble = () => {
   };
 
   const close = () => chatBubbleBus.setOpen(false);
-  /* ═══ v2.3.3343: THE EMOTES' DOOR ═══
+  /* ═══ v2.3.3353: THE EMOTES' DOOR ═══
      The emote picker's only door was the bottom toolbar's, hidden since v14,
      so its 30 emoji and 12 quick lines could not be reached on a phone.  The
      owner's plan: no new always-on button (the screen is full) -- the emotes
@@ -585,7 +585,7 @@ export const ChatBubble = () => {
                  flex:1 used to fill. */
               style={{
                 flex: '0 0 auto',
-                /* v2.3.3343: the smiley takes the auto margin when it is there */
+                /* v2.3.3353: the smiley takes the auto margin when it is there */
                 marginLeft: emotesOn ? 0 : 'auto',
                 width: 44,
                 height: 44,

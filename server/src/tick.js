@@ -554,7 +554,7 @@ export const tickMethods = {
            (gearprov.js armourGradeWire); absent in plain armour, so everyone
            else's wire is unchanged */
         ...(eqg ? { eqg } : {}),
-        /* v2.3.3345: a held pose -- sit, sleep, flop, a dance (poses.js) --
+        /* v2.3.3355: a held pose -- sit, sleep, flop, a dance (poses.js) --
            so a phone that comes near later draws them sitting; absent when
            not posing, so everyone else's wire is unchanged */
         ...(ps.po ? { po: ps.po } : {}),
