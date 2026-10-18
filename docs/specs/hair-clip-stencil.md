@@ -74,9 +74,23 @@ silhouette's edge is sampled across. The stencil keeps the hair where that is
 at least half: the cut falls on the same line and is crisp instead of a
 one-texel blend, about one device pixel at the hat's edge on a 3x phone.
 
+Measured on one held frame (mp-hairstencil), the bro in an afro, 2.8 million
+px:
+- under the army helmet the two ways differ on 418 px, all round the head: 39
+  AT THE CUT (by up to 35 of 255), and 379 on hair that SHOWS (by up to 32).
+  On those 379 the new way is the hair exactly as it is drawn with nothing
+  clipping it (the same frame with the hair unclipped): the alpha mask's pass,
+  drawing the hair into a picture of its own and back, had moved it a little.
+  With the hair unclipped 947 px change, by up to 232: the cut itself;
+- under the crimson cape's hood 14 px, all at the cut;
+- the new way is the same as itself.
+
 ## Measured
 
-See the PR (`mp-hairstencil`).
+On the same held frame, the frame picked up again after another picture was
+drawn: 1 with the stencil (the shadows' pass, which shadow-prepass.md takes
+out), 3 with the alpha mask under the helmet and 2 under the hood. Every other
+player on the screen in a clipping hat or a hood had cost the same.
 
 ## How it is checked
 
