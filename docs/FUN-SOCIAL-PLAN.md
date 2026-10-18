@@ -120,7 +120,11 @@ Built so far:
   the head, no new sounds.
 - [ ] The server's guardrails (the social allowance, a repeat filter, text
   cleaning): its own PR, #974.
-- [ ] Pets copy poses, townsfolk react, `/roll` and `/flip`.
+- [x] `/roll` (1-100, or `/roll 20`) and `/flip`, rolled by the worker:
+  v2.3.3393, docs/specs/dice.md.
+- [x] Your pet copies your sit, sleep, flop and dances; Lil Bro copies you,
+  Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have a word:
+  v2.3.3394, docs/specs/emote-moves.md "Your pet and the townsfolk join in".
 
 - Code-driven motion for the whole figure, after the trait layers are put
   together: offset, squash and stretch, tilt, pivoted at the feet. The
@@ -165,9 +169,10 @@ Built so far:
 
 ## Halloween (if Phase 1 lands by about Oct 27)
 
-- Zombie Shuffle dance (code motion).
-- A spooky bubble skin (9-slice, a few KB, preloaded).
-- The Pumpkin Head: a hat everyone can put on from the bag during Halloween
+- [x] Zombie Shuffle dance (code motion): v2.3.3395, docs/specs/halloween.md.
+- [x] A spooky bubble skin: drawn in code instead of a 9-slice picture
+  (purple, pumpkin-orange rim, cream words), nothing to load: v2.3.3395.
+- [ ] The Pumpkin Head: a hat everyone can put on from the bag during Halloween
   week, like the T-shirt toggle. Needs one picture (prompt at the end).
 
 ## Phase 2 -- two players laugh

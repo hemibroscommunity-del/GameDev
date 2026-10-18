@@ -2365,5 +2365,17 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { srv: [SRV_EMOTE.MOVES, POSE.IDS], client: [EMOTE_ONCE_IDS, EMOTE_HOLD_IDS] });
 }
 
+/* ═══ v2.3.3393: /roll's GAP AND FACES ARE THE WORKER'S ═══
+   The phone holds its own asks to one every DICE_GAP_MS with words (a sooner
+   one the worker drops without a word), and asks only for faces the worker
+   rolls (src/game/dice.js, server/src/dice.js). */
+{
+  const { DICE_GAP_MS, DICE_SIDES, DICE_MAX_SIDES } = await import('../../src/game/dice.js');
+  const { DICE } = await import('../src/dice.js');
+  check('dice: the phone waits the worker\'s gap and asks for its faces',
+    DICE_GAP_MS === DICE.GAP_MS && DICE_SIDES === DICE.SIDES && DICE_MAX_SIDES === DICE.MAX_SIDES,
+    { phone: [DICE_GAP_MS, DICE_SIDES, DICE_MAX_SIDES], worker: [DICE.GAP_MS, DICE.SIDES, DICE.MAX_SIDES] });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

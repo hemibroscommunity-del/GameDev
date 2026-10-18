@@ -407,6 +407,7 @@ import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWh
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
+import { updateTownsfolkReactions } from '@/game/townsfolkReact.js';   /* v2.3.3394: the townsfolk join in */
 import { waitForServerReady, installWorldHold } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 import { MONSTER_VARIANTS, isIntangible } from '@/data/monsterVariants.js'; /* isIntangible: v2.3.2244 */
 import { shardByKey } from '@/data/shards.js';
@@ -5085,6 +5086,10 @@ export var BroTown = function BroTown(_ref0) {
             fightAt: Math.max(Number(S.lastDamageTaken) || 0, Number(S._dealtAt) || 0, Number(S._pvpAt) || 0)
           });
           updatePeerEmotes(S, _sprNow);
+          /* v2.3.3394: the townsfolk answer the moves near them -- Lil Bro
+             copies, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have
+             a word (game/townsfolkReact.js) */
+          updateTownsfolkReactions(S, _sprNow);
         } catch (e) { /* a look only */ }
 
         /* §14 Terrain feel — tile under player affects movement */

@@ -66,7 +66,22 @@ remnant to migrate server-side, not a mode to preserve.
   the name plate never tilts and only comes down with a sitter or sleeper;
   the picker's Moves tab and `/wave`, `/sit`, `/dance` in the chat;
   `caps.emotemoves`, kill switch `emotemoves: false`; `emotes` §5-7,
-  `mp-emotemoves`: docs/specs/emote-moves.md),
+  `mp-emotemoves`: docs/specs/emote-moves.md; and since v2.3.3393 `/roll`
+  (1-100, `/roll 20`) and `/flip` ROLLED BY THE WORKER (server/src/dice.js:
+  crypto, no modulo bias, one every 5 s, `dice_roll` PRIVILEGED, placed near
+  the roller and muted with chat), a chat line in the roller's name and the
+  number as their bubble; `caps.dice`, kill switch `dice: false`; `dice`
+  suite, `mp-dice`: docs/specs/dice.md; and since v2.3.3394 YOUR PET AND THE
+  TOWNSFOLK JOIN IN -- a pet copies its player's held pose, Lil Bro copies the
+  nearest player, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have a
+  word (src/game/townsfolkReact.js, this phone's own; emoteFx.js
+  `_updateFollowers` moves each one picture about its feet);
+  `townsfolk-react` suite, `mp-joinin`; and since v2.3.3395 HALLOWEEN WEEK,
+  24 October to 1 November by each phone's calendar (src/game/season.js,
+  `?halloween=1|0`; a look, never a rule): the Zombie Shuffle, a thirteenth
+  move the worker keeps any day, pumpkin-coloured speech bubbles drawn in
+  code, Diego's "No zombies in my store!"; `season` suite, `mp-halloween`:
+  docs/specs/halloween.md),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
   vs edge-cropped test live here, v2.3.2650),
