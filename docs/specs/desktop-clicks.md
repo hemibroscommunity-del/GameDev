@@ -1,4 +1,4 @@
-# A computer's clicks, flights, keys strip, footsteps, and what is drawn over the game (v2.3.3466)
+# A computer's clicks, flights, keys strip, footsteps, and what is drawn over the game (v2.3.3470)
 
 Four things the owner found playing on a computer, 2026-10-18:
 

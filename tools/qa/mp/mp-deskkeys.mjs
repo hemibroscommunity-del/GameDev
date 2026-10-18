@@ -86,7 +86,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok('the keys strip lists 1-3, and lies clear of the bell', strip.keys.includes('1-3') && !strip.overlap, strip);
 
-    /* ── 1b. v2.3.3466: THE ⌨ STAYS BESIDE THE OPEN STRIP ──
+    /* ── 1b. v2.3.3470: THE ⌨ STAYS BESIDE THE OPEN STRIP ──
        The owner: "once the computer controls are open it's hidden behind the
        shortcut keys the menu shows. Move it over so you can still see where to
        click it to hide it again".  On main the strip REPLACED the ⌨ in its

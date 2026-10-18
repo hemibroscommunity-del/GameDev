@@ -33,7 +33,7 @@ import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegs
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { playVw } from '../playViewport.js';
-import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3466: the card layer's box -- a computer's is the game's column (TRAPS §232) */
+import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the card layer's box -- a computer's is the game's column (TRAPS §232) */
 import {
   WEAPON_TYPES,
   calcDisplayDmgRange,
@@ -620,7 +620,7 @@ const stepStyle = {
 function positionFor(rawAnchor, popupW, popupH, box) {
   const GAP = 8;
   const MARGIN = 4;
-  /* ═══ v2.3.3466: IN THE CARD LAYER'S OWN BOX ═══
+  /* ═══ v2.3.3470: IN THE CARD LAYER'S OWN BOX ═══
      The tile's rect is the WINDOW's (getBoundingClientRect), and the card is
      absolute in a `position: fixed; inset: 0` layer, which on a computer
      measures from the game's column (#root's contain:paint) -- while the clamp
@@ -755,7 +755,7 @@ export const ItemDetailPopup = () => {
          wrong size for.  scrollHeight is what is actually being drawn. */
       const h = Math.max(el.offsetHeight || 0, el.scrollHeight || 0) || 240;
       const next = positionFor(itemDetailBus.state.target && itemDetailBus.state.target.anchor, w, h,
-        fixedBox(el.parentElement));   /* v2.3.3466: the layer's box */
+        fixedBox(el.parentElement));   /* v2.3.3470: the layer's box */
       setPos((prev) => (prev && prev.left === next.left && prev.top === next.top) ? prev : next);
     };
     place();
@@ -1689,7 +1689,7 @@ export const ItemDetailPopup = () => {
     >
       <div
         ref={cardRef}
-        data-item-card=""   /* v2.3.3466: a test handle (mp-deskplace) */
+        data-item-card=""   /* v2.3.3470: a test handle (mp-deskplace) */
         onPointerDown={(e) => e.stopPropagation()}
         style={{
           position: 'absolute',

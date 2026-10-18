@@ -7736,7 +7736,7 @@ ore yard. On a computer the old camera left up to 5.0% (diagonal) and 11.1%
 pixels it is 0.01% / 0.02% (the lamps), and 0.00% on a phone. Your figure is
 drawn 0 px from where the old camera drew it.
 
-## 232. "It is position:fixed, so its left and top are the window's" (v2.3.3466)
+## 232. "It is position:fixed, so its left and top are the window's" (v2.3.3470)
 
 On a phone they are: the game fills the window. On a computer the game is
 `#root`, a column in the middle of the window, and `#root` has

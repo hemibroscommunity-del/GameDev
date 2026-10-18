@@ -2261,7 +2261,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     var kv = typeof share === 'number' ? (isFinite(share) ? Math.max(0, Math.min(1, share)) : 0) : 1;
     var mine = typeof share !== 'number';
     if (!(kv > 0.01)) return;
-    /* v2.3.3466: ...and louder on a computer (DESK_STEP_K, below) */
+    /* v2.3.3470: ...and louder on a computer (DESK_STEP_K, below) */
     kv *= this._deskStepK();
     /* v2.3.3003: no steps while you swim -- the strokes have their own clock
        (game/wheelSwim.js -> swimStroke below) */
@@ -4185,7 +4185,7 @@ BT_AUDIO.dropGroundSteps = function () {
   this._groundStepsWanted = false;
   for (var s in FOOTSTEP_CLIPS) delete this._samples[FOOTSTEP_CLIPS[s].key];
 };
-/* ═══ v2.3.3466: FOOTSTEPS ARE HEARD ON A COMPUTER ═══
+/* ═══ v2.3.3470: FOOTSTEPS ARE HEARD ON A COMPUTER ═══
    The owner: "I can't hear footsteps on pc".  They play there -- a walk on a
    computer asks for and plays every step a phone does, at the same volume
    (measured) -- but under the music.  Each step's loudest 50 ms at the volume

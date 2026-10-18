@@ -717,7 +717,7 @@ export class WheelMinimap {
 
     /* the box's place on the page, for the button that opens the world map */
     try {
-      /* v2.3.3466: + the window's width and the dashboard's side, both read
+      /* v2.3.3470: + the window's width and the dashboard's side, both read
          without a layout.  On a computer the canvas is a column centred in the
          window (TRAPS §232), so a window made wider or narrower moves the box
          with the canvas the same size -- and the world map's button, the No

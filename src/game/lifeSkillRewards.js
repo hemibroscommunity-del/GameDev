@@ -31,7 +31,7 @@ import { cue } from '@/game/eventSounds.js';   /* v2.3.3434: the prize heard lan
    resume spinner) so it floats above the canvas/HUD and animates on the
    compositor; world->screen is node minus camera (world canvas pinned
    top-left, 1:1 CSS px).  No-ops outside the browser. */
-/* v2.3.3466: the game canvas's place on the page (the window's top-left
+/* v2.3.3470: the game canvas's place on the page (the window's top-left
    corner on a phone, the middle column on a computer) -- {left, top} */
 export function canvasPageRect() {
   try {
@@ -44,7 +44,7 @@ export function canvasPageRect() {
   return { left: 0, top: 0, width: 0, height: 0 };
 }
 
-/* ═══ v2.3.3466: WHERE THE BAG IS ON THE SCREEN ═══
+/* ═══ v2.3.3470: WHERE THE BAG IS ON THE SCREEN ═══
    The dashboard's Bag panel when its row is up; folded (or a page open over
    it), the band's OPEN / CLOSE pill, which is the way back to the bag; else
    the bottom-left of the game's column, where the pill sits.  Only what is
@@ -80,7 +80,7 @@ export function _flyResourceToInventory(S, wx, wy, iconUrl, opts) {
        the node-prompt anchor uses, so the icon launches ON the node at
        every viewport size. */
     var _scX = (S && S._worldScaleX) || 1, _scY = (S && S._worldScaleY) || 1;
-    /* ═══ v2.3.3466: FROM WHERE THE GAME IS DRAWN, TO WHERE THE BAG IS ═══
+    /* ═══ v2.3.3470: FROM WHERE THE GAME IS DRAWN, TO WHERE THE BAG IS ═══
        The owner, on a computer: "the jump to bag also flies off screen (to
        far left where black area is not where bag area is)".  This icon lives
        on the body (position:fixed, the WINDOW's corner), and both of its ends
@@ -106,7 +106,7 @@ export function _flyResourceToInventory(S, wx, wy, iconUrl, opts) {
     img.style.marginLeft = '-17px';  // centre the 34px icon on the point
     img.style.marginTop = '-17px';
     document.body.appendChild(img);
-    /* Target: the bag, so the item visibly flies "into the bag" (v2.3.3466:
+    /* Target: the bag, so the item visibly flies "into the bag" (v2.3.3470:
        bagFlightTarget -- the toolbar's Bag button this read is long gone) */
     var _bt = bagFlightTarget(_cvR);
     var tx = _bt.x, ty = _bt.y;

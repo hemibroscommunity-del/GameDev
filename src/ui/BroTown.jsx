@@ -9045,7 +9045,7 @@ export var BroTown = function BroTown(_ref0) {
    * the three that already exist drifted apart; there is not going to be one.
    *
    * Returns true when it consumed the tap, so a caller can stop. */
-  /* ═══ v2.3.3466: THE SCAN ON ITS OWN ═══
+  /* ═══ v2.3.3470: THE SCAN ON ITS OWN ═══
      The resource in reach a tap at (cssX, cssY) lands on, or null -- nothing
      started.  A computer's press asks it before it swings (_deskPressTarget):
      the press is held back exactly when the click that follows will use it. */
@@ -9137,7 +9137,7 @@ export var BroTown = function BroTown(_ref0) {
      rule (v2.3.3145: no longer -- a bed out of reach lets the tap through,
      below).  The bed's box reaches up over a tall crop.  True when it took
      the tap (the caller then neither jumps nor opens chat). */
-  /* v2.3.3466: the scan on its own -- the bed in reach a tap at (cssX, cssY)
+  /* v2.3.3470: the scan on its own -- the bed in reach a tap at (cssX, cssY)
      lands on (`best`, -1 for none) and one out of reach under it (`far`),
      nothing started; a computer's press asks it before it swings
      (_deskPressTarget) */
@@ -10040,7 +10040,7 @@ export var BroTown = function BroTown(_ref0) {
     pushDmgPopup(S, npc.x, npc.y - 30, npc.name + ' has nothing for you right now', '#B6C1BE');
     return _mark('nothing');
   };
-  /* ═══ v2.3.3466: ON A COMPUTER, A PRESS ON SOMETHING YOU USE IS NOT A SWING ═══
+  /* ═══ v2.3.3470: ON A COMPUTER, A PRESS ON SOMETHING YOU USE IS NOT A SWING ═══
      The owner, on a computer: "when you click on a resource on pc it tries to
      do a combat swing first (or at least plays the combat audio). I hear a bow
      shot every time I click on an ore to harvest it", and "I'm having trouble
@@ -11623,7 +11623,7 @@ export var BroTown = function BroTown(_ref0) {
     try {
       _rejoinSpin = document.createElement('div');
       _rejoinSpin.className = 'bt-rejoin-loading';
-      /* v2.3.3466: beside the exit arrow, which on a computer is the game
+      /* v2.3.3470: beside the exit arrow, which on a computer is the game
          column's corner -- this is body's, so its `left` is the window's
          (TRAPS §232), and it showed in the black margin */
       var _rr = document.getElementById('root');
@@ -12207,13 +12207,13 @@ export var BroTown = function BroTown(_ref0) {
          (playerActions) and the loop drops a held attack each frame, but the
          press still set the attack's state and the aim for nothing */
       if (stateRef.current._extraction) return;
-      /* v2.3.3466: ...nor while you work a bed of your farm: kneeling, a
+      /* v2.3.3470: ...nor while you work a bed of your farm: kneeling, a
          press is the farm's (its click goes to the bed) */
       if (stateRef.current._farmWork) return;
       if (e.button === 0) {
         /* Left click — attack toward mouse */
         var S = stateRef.current;
-        /* v2.3.3466: ...unless it is on something the click will use -- a
+        /* v2.3.3470: ...unless it is on something the click will use -- a
            townsperson, a resource, a bed (_deskPressTarget): no aim, no
            swing, no arrow, no sound; the click that follows does its job */
         var _pr = e.currentTarget.getBoundingClientRect();
@@ -12295,7 +12295,7 @@ export var BroTown = function BroTown(_ref0) {
          Canvas 2D path), under iOS's 44 px tap-target minimum. 40 px is
          forgiving without making empty-space taps accidentally lock on. */
       if (S.monsters) {
-        /* v2.3.3466: the scan is monsterAtCss, shared with the press's own
+        /* v2.3.3470: the scan is monsterAtCss, shared with the press's own
            question (_deskPressTarget) so the two cannot disagree */
         var closest = monsterAtCss(cssX, cssY);
         if (closest) {

@@ -1,4 +1,4 @@
-/* ═══ ON A COMPUTER, WHAT IS DRAWN OVER THE GAME IS PLACED WHERE THE GAME IS (v2.3.3466) ═══
+/* ═══ ON A COMPUTER, WHAT IS DRAWN OVER THE GAME IS PLACED WHERE THE GAME IS (v2.3.3470) ═══
  *
  * Found beside the owner's "the jump to bag also flies off screen (to far left
  * where black area is not where bag area is)", 2026-10-18 -- the same mistake

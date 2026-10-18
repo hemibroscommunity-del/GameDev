@@ -415,7 +415,7 @@ export const ChatBubble = () => {
              box that was already narrower than the cap does nothing.
              So: a real width. Capped in px as well as vw so it does not
              become a letterbox on a tablet. */
-          /* v2.3.3466: 92% of the box `fixed` measures from, not of the
+          /* v2.3.3470: 92% of the box `fixed` measures from, not of the
              window: on a phone those are one, and on a computer the box is the
              game's column (#root's contain:paint, TRAPS §232), where 92vw is
              wider than the cap -- the card was 460 px in a 436 px column, 12 px

@@ -4664,7 +4664,7 @@ Two protocol versions coexist; both must keep working:
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
 - **ON A COMPUTER A CLICK ON SOMETHING YOU USE IS NOT A SWING, WHAT IS DRAWN
-  OVER THE GAME IS WHERE THE GAME IS, AND THE FOOTSTEPS ARE HEARD (v2.3.3466,
+  OVER THE GAME IS WHERE THE GAME IS, AND THE FOOTSTEPS ARE HEARD (v2.3.3470,
   docs/specs/desktop-clicks.md, TRAPS §232).** The owner: "I hear a bow shot
   every time I click on an ore to harvest it", the prize "flies off screen",
   and "I can't hear footsteps on pc".

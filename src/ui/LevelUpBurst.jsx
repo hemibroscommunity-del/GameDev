@@ -8,7 +8,7 @@ import {
   LEVELUP_CAPTION_BOX_H, LEVELUP_CAPTION_GAP, levelUpFrameAt,
 } from '../data/levelUpBurst.js';
 import { BT_AUDIO } from '../data/index.js';
-import { playVw, playVh } from './mobile/playViewport.js'; /* v2.3.3466: the column on a computer, until the burst's own box is measured */
+import { playVw, playVh } from './mobile/playViewport.js'; /* v2.3.3470: the column on a computer, until the burst's own box is measured */
 
 /* ═══ v2.3.2591: THE LEVEL-UP NOTIFICATION, REPLACED ═══
  *
@@ -161,7 +161,7 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
      already starts at 0.  Adding the reset anyway would make every mount
      measure, blank itself, and measure again. */
   const [capH, setCapH] = React.useState(0);
-  /* ═══ v2.3.3466: THE BURST'S OWN BOX, NOT THE WINDOW ═══
+  /* ═══ v2.3.3470: THE BURST'S OWN BOX, NOT THE WINDOW ═══
      The fit below was solved against window.innerWidth/innerHeight, and the
      burst is drawn in the world's box (BroTown's `relative` world div, inside
      the wrap).  On a phone those are one box.  On a computer the world is the
@@ -196,7 +196,7 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
   });
   React.useLayoutEffect(() => {
     if (capH > 0) return;                    /* already measured for this layout */
-    if (!area) return;                       /* v2.3.3466: wrapped at the box's width, once it is known */
+    if (!area) return;                       /* v2.3.3470: wrapped at the box's width, once it is known */
     const el = capRef.current;
     if (!el) return;
     const h = Math.ceil(el.getBoundingClientRect().height);
@@ -215,7 +215,7 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
   /* ═══ FIT ═══ solved against the LARGEST frame, not the current one, so the
      burst never overflows at its peak and the scale never changes mid-run
      (a changing backgroundSize would re-rasterize the strip every frame). */
-  /* v2.3.3466: the world's box (above), not the window */
+  /* v2.3.3470: the world's box (above), not the window */
   const vw = area ? area.w : playVw();
   const vh = area ? area.h : playVh();
   /* v2.3.2615: the burst owns a COLUMN.  With cols === 1 this is the viewport

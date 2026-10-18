@@ -3,7 +3,7 @@ import { COL } from '@/ui/mobile/dash/common.js';
 import { activeWeaponCategory, weaponXpRequired, WEAPON_LEVEL_CAP } from '@/data/gameSystems.js';
 import { prog3HasSkills, prog3XpRequired, PROG3, PROG3_SKILL_META } from '@/data/prog3.js';
 import { xpCardPoint, holdXp, landXp } from '@/ui/xpLanding.js'; /* v2.3.1874 */
-import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3466 */
+import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470 */
 
 /* HudPopupOverlay — HUD-anchored "+N XP" / "+N G" feedback, plus the
    transient XP bar the XP popup flies into.  Reads entries pushed to
@@ -297,7 +297,7 @@ const XpFlyToCard = ({ pop }) => {
     y = sy - LIFT_PX - 10 * k;
     opacity = 1 - k;
   }
-  /* ═══ v2.3.3466: MEASURED FROM THE CORNER `fixed` MEASURES FROM ═══
+  /* ═══ v2.3.3470: MEASURED FROM THE CORNER `fixed` MEASURES FROM ═══
      Both ends above are window points (the canvas's and the card's
      getBoundingClientRect), and this label is `position: fixed`.  On a phone
      that is the window's corner; on a computer #root is the middle column
@@ -573,7 +573,7 @@ try {
   if (typeof window !== 'undefined') window.__btPushXp = (S, opts) => pushHudPopup(S, opts);
 } catch (e) { /* non-browser import */ }
 
-/* v2.3.3466: where `position: fixed` puts 0,0 for this overlay -- its own
+/* v2.3.3470: where `position: fixed` puts 0,0 for this overlay -- its own
    root (fixed, inset 0) when it is mounted, else #root's corner (the
    containing block on a computer, the window's corner on a phone) */
 function fixedCorner(el) {
@@ -584,7 +584,7 @@ function fixedCorner(el) {
 export function playerScreenPoint(S) {
   try {
     if (!S || !S.player || !S.camera) return null;
-    /* v2.3.3466: the game's own canvas (another one -- a preview's -- can
+    /* v2.3.3470: the game's own canvas (another one -- a preview's -- can
        come first on the page) */
     const cv = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas');
     if (!cv) return null;

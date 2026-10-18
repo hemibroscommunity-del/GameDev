@@ -3,7 +3,7 @@ import { controlsTutorialBus } from './controlsTutorialBus.js';
 import { holdDisc, releaseDisc } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves; a tour that points at them says so */
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2658: ui-close tick */
-import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3466: the layer's own box -- a computer's is the game's column (TRAPS §232) */
+import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 
 /* v2.3.1205: REBUILT as live DOM-anchored annotations (previously a
    frozen screenshot with eyeballed coordinates that every HUD change
@@ -238,7 +238,7 @@ export const ControlsTutorial = () => {
   const cur = steps[idx];
   const isFirst = idx === 0;
   const isLast = idx === total - 1;
-  /* v2.3.3466: the steps are measured in the WINDOW's numbers and the
+  /* v2.3.3470: the steps are measured in the WINDOW's numbers and the
      spotlight is drawn in this fixed layer, which on a computer is the game's
      column (#root's contain:paint): the gear tile's and the More button's
      cutouts were drawn the column's left edge too far right.  So the rect is

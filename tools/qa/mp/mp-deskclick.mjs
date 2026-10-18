@@ -1,4 +1,4 @@
-/* ═══ A CLICK ON SOMETHING YOU USE IS NOT A SWING, AND THE PRIZE FLIES TO THE BAG (v2.3.3466) ═══
+/* ═══ A CLICK ON SOMETHING YOU USE IS NOT A SWING, AND THE PRIZE FLIES TO THE BAG (v2.3.3470) ═══
  *
  * Owner, 2026-10-18, on a computer: "when you click on a resource on pc it
  * tries to do a combat swing first (or at least plays the combat audio). I
@@ -136,7 +136,7 @@ const readWatch = (P) => P.page.evaluate(() => {
 });
 const quiet = (w) => !!w && !w.auto && !w.swung && w.arrows === 0 && w.draws === 0;
 
-/* v2.3.3466: the footsteps a short walk plays, by the volume each step was
+/* v2.3.3470: the footsteps a short walk plays, by the volume each step was
    played at (BT_AUDIO.play's own `vol`) */
 async function stepVolumes(P) {
   await P.page.evaluate(() => {

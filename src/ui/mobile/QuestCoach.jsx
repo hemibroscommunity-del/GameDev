@@ -18,7 +18,7 @@ import { holdDisc, releaseDisc, discSideFor } from '@/game/controlVisibility.js'
 import { dashMinBus } from './dashMinBus.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { playIsLandscape } from './playViewport.js';
-import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3466: the layer's own box -- a computer's is the game's column (TRAPS §232) */
+import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -1279,7 +1279,7 @@ export function QuestCoach(props) {
   }, [stateRef]);
 
   if (!view) return null;
-  /* ═══ v2.3.3466: THE RING IS DRAWN IN THE LAYER'S BOX, NOT THE WINDOW'S ═══
+  /* ═══ v2.3.3470: THE RING IS DRAWN IN THE LAYER'S BOX, NOT THE WINDOW'S ═══
      measure() reads every control (and the bro, worldRect) in the WINDOW's
      numbers, getBoundingClientRect's, and the ring and card below are absolute
      in a `position: fixed; inset: 0` layer.  On a phone those are one corner.

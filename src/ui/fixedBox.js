@@ -1,4 +1,4 @@
-/* ═══ v2.3.3466: WHERE `position: fixed` PUTS 0,0 ═══
+/* ═══ v2.3.3470: WHERE `position: fixed` PUTS 0,0 ═══
  *
  * Everything drawn over the game is `position: fixed`, and on a phone that
  * measures from the window: the corner getBoundingClientRect reads in, so a
