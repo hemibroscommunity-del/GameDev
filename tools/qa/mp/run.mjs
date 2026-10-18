@@ -627,8 +627,12 @@ for (const n of names) {
 
 console.log(`booting worker + dist for ${names.length} scenario(s): ${names.join(', ')}`);
 const t0 = Date.now();
-const worker = await H.startWorker(WS);
+/* v2.3.3465: the page server takes its port FIRST.  freePort only finds a
+   port free and lets go of it, and the worker's start (up to 90 s) opens
+   ports of its own on any free number: in the second sweep of 2026-10-18 it
+   took WEB's, and serveDist died, EADDRINUSE, before a scenario ran. */
 const srv = await H.serveDist(WEB);
+const worker = await H.startWorker(WS);
 const browser = await H.launch();
 /* A crash or a Ctrl-C must not leave wrangler + workerd holding the port. */
 let cleaned = false;
