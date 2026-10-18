@@ -528,7 +528,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await P.page.waitForTimeout(100);
         }
         await H.devOp(wsPort, 'vitals', myId, { stamina: 20 });
-        await P.page.waitForTimeout(400);
+        /* v2.3.3403: the worker's 20 seen on the page before the first read,
+           not a set 400 ms: on this box the echo came later, the first read
+           was the old full bar, and the soaked "gain" came out as -71 (the
+           solo run of 2026-10-18, 100 -> 29) */
+        await H.waitFor(P, (S) => (S.rpg ? S.rpg.stamina : null), (v) => v != null && v <= 25,
+          { timeout: 4000, label: 'the 20 echoed' }).catch(() => null);
         const a = await H.readState(P, (S) => (S.rpg ? S.rpg.stamina : null));
         await P.page.waitForTimeout(2000);
         const b = await H.readState(P, (S) => ({ st: S.rpg ? S.rpg.stamina : null, wet: (S._soakUntil || 0) > Date.now() }));
