@@ -73,8 +73,13 @@ const INIT = () => {
           for (const s of k.children) if (!groundPic(s.texture)) hide(s);
         }
       } else if (L.label === 'shadows') {
-        const walk = (c) => { for (const k of (c.children || [])) { if (k.texture !== undefined) { if (!farmPic(k.texture)) hide(k); } else walk(k); } };
+        /* the farm pictures' own shadow pieces -- since v2.3.3458 in their own
+           container, drawn into a picture before the frame, the layer holding
+           only the shade's quad (shadows.js; mp-palette does the same) */
+        const walk = (c) => { for (const k of (c.children || [])) { if (k.label === 'shadowShade') continue; if (k.texture !== undefined) { if (!farmPic(k.texture)) hide(k); } else walk(k); } };
         walk(L);
+        const SPX = window.__btShadowPrepass;
+        if (SPX && SPX.casts) for (const C of SPX.casts()) walk(C);
       } else if (L.label === 'groundDetails') {
         for (const k of L.children) if (k.label !== 'farmBedSoil') hide(k);
       } else if (L.label === 'entities') {
@@ -95,6 +100,10 @@ const INIT = () => {
       shL.position.set(-fx / (cam.sx || 1), -fy / (cam.sy || 1));
       shu.uShift[0] = fx; shu.uShift[1] = fy;
     }
+    /* drawn before the frame, the pieces' picture is drawn again for this
+       camera and these pieces (mp-palette) */
+    const SPR = window.__btShadowPrepass;
+    if (!shF && SPR && SPR.redraw) SPR.redraw();
     let out = null, err = null;
     try {
       const sw = app.screen.width, sh = app.screen.height;
@@ -277,6 +286,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         console.log(`      ${only} alone: A against itself ${s.differ} px; A against B ${JSON.stringify({ ...d, diff: undefined })}`);
       }
     }
+    /* the shadows are in that picture: v2.3.3458 moved them into a picture
+       drawn before the frame, and the frame here held none of them until
+       the grab drew it again (v2.3.3462) */
+    const shOnly = await grab(A, cam, 'shadows');
+    let shPx = 0;
+    if (shOnly.px) for (let o = 3; o < shOnly.px.length; o += 4) if (shOnly.px[o]) shPx++;
+    rec.ok(`...and the farm's shadows are in it: ${shPx} px of shadow drawn alone`, shPx > 50000, { shPx });
     rec.ok(`the floor of the measure: A's frame against itself a moment later, ${self.differ} px differ`, !self.err && self.differ === 0, { ...self, diff: undefined });
     rec.ok(`the farm, the same picture: ${same.differ} of ${same.drawn} drawn px (${same.share}%) differ, by at most ${same.worst} of 255 (${JSON.stringify(same.hist)})`,
       !same.err && same.drawn > 0.5 * same.w * same.h && same.worst <= 2 && same.share < 2, { ...same, diff: undefined });

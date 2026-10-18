@@ -173,8 +173,8 @@ draws a frame in ~1.5 s and neither way was all in at the screen's 12 s cap
 the pictures.
 
 The cost, on the QA box's software chip, the whole frame drawn and finished:
-23-46% longer over four runs with the three programs (688 ms against 558, 709
-against 545, 662-687 against 496-515, 770 against 529). The ground fills the
+16-46% longer over five runs with the three programs (688 ms against 558, 709
+against 545, 662-687 against 496-515, 770 against 529, 637 against 549). The ground fills the
 screen, and each of its pixels is eight reads where it was one. With the one
 program, 7% (1,531 against 1,424): a software rasterizer runs every branch
 for every pixel anyway (docs/specs/one-batch.md). Not measured on a phone.
