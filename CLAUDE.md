@@ -1045,9 +1045,9 @@ remnant to migrate server-side, not a mode to preserve.
       - and the FISH grow more (wheelNodes.js `FISH_LOOK`): six 14 px minnows
         to one 42 px pike, a big fish's circle smaller (`swim`) so it stays in
         the bake's water;
-      - not yet: the ten zones' effects in code, the woods past maple
-        (WOODCUTTING_TIERS lists 20, only 5 grow); `mp-tiertrees`,
-        `mp-tierore`: docs/specs/tier-trees.md, docs/specs/tier-ore.md;
+      - not yet: the woods past maple (WOODCUTTING_TIERS lists 20, only 5
+        grow); `mp-tiertrees`, `mp-tierore`: docs/specs/tier-trees.md,
+        docs/specs/tier-ore.md;
       - since v2.3.3401 THE BAKE KEEPS EACH TREE AND ROCK CLEAR AS IT IS DRAWN
         -- the owner: "Yes fix #3 resource placement": bake-wheel-spawns.mjs
         `hidden` kept the old pine's and vein's one box (62 x 196, 52 x 118)
@@ -1074,7 +1074,26 @@ remnant to migrate server-side, not a mode to preserve.
         add-ore-art.mjs) is a re-bake, which test-world-core's --check demands
         and which deploys the worker: docs/specs/tier-trees.md "Where each one
         grows".
-    - since v2.3.3402 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
+    - since v2.3.3402 EACH LAND'S TREES AND ROCKS WEAR ITS ELEMENT -- the
+      owner: "add effects to a pine tree to make it look like it belongs in
+      that elemental zone but the wood logs stay the same", "keep in mind
+      there are actually 10 elemental zones": specks drawn in code over the
+      picture, which never changes (`src/rendering/landAuras.js`,
+      `LAND_AURAS`): snowflakes and rime glints (frost), embers and ash
+      (ember), sand streaks (sky), dust and crystal glints (hollows), sparks
+      and arcs (thunder), drips and mist (tidal), spores (mist), petals and
+      fireflies (verdant), a glow at the foot in fire, electric and poison,
+      and the realms' dark and light ready for when they are built; each kind
+      its own shape, 3-10 world px, the lights ADDED (the first cut's 2 px
+      squares were a device pixel on a phone: the trees looked bare); a
+      resource's land from its id (`wn-<land>-<k>`), the commons none; each
+      resource's specks a Container RIDING on its picture (depthSort
+      `_ridesOn`) at its alpha (a tree seen through, its specks too);
+      `AURA_MAX` 260, `PER_MAX` 36, a pool; seven tiny textures made behind
+      the Wheel's loading screen (`landAurasWarm`) and freed on leaving
+      (`landAurasFree`); the Wheel only, `?noauras`; `mp-landauras`:
+      docs/specs/land-auras.md.
+    - since v2.3.3407 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
       all actions/buttons can be completed in landscape mode and on the
       computer. For instance I don't think you can harvest lifeskills right now
       on the computer": the gesture was asked for on the right button, which a
@@ -3479,7 +3498,7 @@ Two protocol versions coexist; both must keep working:
   never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
   mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that
   much slower, to try a check as a slow phone sees it.
-- UI REVIEW SCREENSHOTS (v2.3.3402, docs/specs/ui-review.md): the owner's
+- UI REVIEW SCREENSHOTS (v2.3.3407, docs/specs/ui-review.md): the owner's
   "screenshots labelled and bundled for all UI elements in each view ... so I
   can have chatGPT analyze them".  `node tools/qa/ui-review/capture.mjs`
   (after a build; `--views=`, `--only=`) walks a real player through every
@@ -4332,7 +4351,7 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
-- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3402,
+- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3407,
   docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
   if there's a key that makes sense to use for a certain action just put the
   letter next to the icon or action in a tasteful way."

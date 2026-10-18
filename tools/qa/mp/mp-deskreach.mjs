@@ -1,4 +1,4 @@
-/* ═══ ON A COMPUTER, THE BUTTONS A CLICK AIMS AT ARE THE ONES IT REACHES (v2.3.3402) ═══
+/* ═══ ON A COMPUTER, THE BUTTONS A CLICK AIMS AT ARE THE ONES IT REACHES (v2.3.3407) ═══
  *
  * Owner, 2026-10-18: "Make sure all actions/buttons can be completed in
  * landscape mode and on the computer."
@@ -19,7 +19,7 @@
  * Both by a REAL mouse click (1440 x 900, the game in its centred column).
  *   3. and on a LAPTOP's window (1366 x 768) the character creator's ENTER
  *      BRO TOWN lay below the screen, unreachable: it is on it now, and a
- *      click on it starts the game (v2.3.3402).
+ *      click on it starts the game (v2.3.3407).
  */
 import * as H from './harness.mjs';
 
@@ -97,7 +97,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       strip: document.querySelector('.bt-kb-hints') ? getComputedStyle(document.querySelector('.bt-kb-hints')).display : 'gone' }));
     rec.ok('...and away from the door the key strip is back', !back.prompt && back.strip !== 'none', back);
 
-    /* 2. the Daily Rewards window's ✕.  v2.3.3402: since main's v2.3.3400
+    /* 2. the Daily Rewards window's ✕.  v2.3.3407: since main's v2.3.3400
        put the season away the window has no tab row and is shorter, so its ✕
        no longer lies in the minimap's box on this window size -- the rule is
        checked where it lives instead: while the window is up, the world map's
@@ -140,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.ctx.close().catch(() => {});
   }
 
-  /* 3. v2.3.3402: a LAPTOP's window (1366 x 768).  The creator's sizes were
+  /* 3. v2.3.3407: a LAPTOP's window (1366 x 768).  The creator's sizes were
      fractions of the window's width, so on a computer the character's column
      took its 360 px ceiling inside the 419 px play column, the Trait Picker
      got 31 px and ENTER BRO TOWN lay at y 847-903 -- off the screen, and the
@@ -184,7 +184,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }, null, { timeout: 90000, polling: 500 }).then(() => true).catch(() => false);
     rec.ok('...and a mouse click on it takes the new bro into the game', joined);
 
-    /* 4. v2.3.3402: the quest coach's card on a laptop.  It was lifted clear
+    /* 4. v2.3.3407: the quest coach's card on a laptop.  It was lifted clear
        of the phone's combat band, which a computer does not show, up to the
        cap at the top -- onto the minimap, under its invisible "open map"
        button, where a click on the card's ✕ opened the world map.  On a

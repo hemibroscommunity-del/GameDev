@@ -387,7 +387,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/shopkeeper-panel.png' }).catch(() => {});
 
-  /* ══ SIDEWAYS, THE BAG IS THE COLUMN BESIDE HIM (v2.3.3402) ══
+  /* ══ SIDEWAYS, THE BAG IS THE COLUMN BESIDE HIM (v2.3.3407) ══
      The owner: "Make sure all actions/buttons can be completed in landscape
      mode."  Sideways the band holds no bag -- it is the side column's
      'dashboard' page -- and nothing could be SOLD: the drawer lay over the ▴

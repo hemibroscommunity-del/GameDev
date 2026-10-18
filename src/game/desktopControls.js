@@ -23,8 +23,8 @@ import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';   /* v2.3.3067: E at Ace
 import { shopBus } from '@/ui/mobile/shopBus.js';   /* v2.3.3067: ...and at Diego his shop */
 import { startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed on your farm, worked where it lies */
 import { emotesLive } from '@/game/emotes.js';   /* v2.3.3391: B opens the emotes */
-import { navIdForCode, navKey, browserChord, frontControl, pressControl, ESC_SEL, ENTER_SEL, MAP_KEY } from '@/game/deskKeys.js';   /* v2.3.3402: I P J L K O, M, Enter, Esc */
-import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3402: M */
+import { navIdForCode, navKey, browserChord, frontControl, pressControl, ESC_SEL, ENTER_SEL, MAP_KEY } from '@/game/deskKeys.js';   /* v2.3.3407: I P J L K O, M, Enter, Esc */
+import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3407: M */
 
 /**
  * v2.3.3105: what runInteract would do here, for the right stick's picture
@@ -260,7 +260,7 @@ export function setupDesktopControls(S, deps) {
           _desktopShieldBash();
           return;
         }
-        /* ═══ v2.3.3402: A HARVEST UNDER WAY OWNS E ═══
+        /* ═══ v2.3.3407: A HARVEST UNDER WAY OWNS E ═══
            The owner: "I don't think you can harvest lifeskills right now on
            the computer."  E started a harvest and then had nothing to do: the
            gesture that ends one was asked for on a button a computer does not
@@ -274,7 +274,7 @@ export function setupDesktopControls(S, deps) {
           if (S._harvestKeys) S._harvestKeys.down();
           return;
         }
-        /* v2.3.3402: one press, one interact -- a held E's repeats start
+        /* v2.3.3407: one press, one interact -- a held E's repeats start
            nothing (held through a finished harvest, its repeats would start
            the next resource's) */
         if (e.repeat) return;
@@ -282,7 +282,7 @@ export function setupDesktopControls(S, deps) {
            the right stick's tap -- which wears its picture -- runs the very
            same one */
         if (runInteract()) {
-          /* v2.3.3402: the press that starts a harvest, held on, works it once
+          /* v2.3.3407: the press that starts a harvest, held on, works it once
              the window opens -- "hold E to harvest" */
           if (S._extraction && S._harvestKeys) S._harvestKeys.down();
           return;
@@ -405,7 +405,7 @@ export function setupDesktopControls(S, deps) {
         return;
       }
 
-      /* ═══ v2.3.3402: I P J L K O -- THE DASHBOARD'S SIX BUTTONS; M -- THE MAP ═══
+      /* ═══ v2.3.3407: I P J L K O -- THE DASHBOARD'S SIX BUTTONS; M -- THE MAP ═══
          The owner: "For computer usage if there's a key that makes sense to
          use for a certain action just put the letter next to the icon or
          action in a tasteful way."  Each button wears its letter (NavRail,
@@ -430,7 +430,7 @@ export function setupDesktopControls(S, deps) {
         }
       }
 
-      /* ═══ v2.3.3402: Enter -- A DIALOGUE'S OWN BUTTON ═══
+      /* ═══ v2.3.3407: Enter -- A DIALOGUE'S OWN BUTTON ═══
          Mayor Bro's Next / Continue and the quest's Accept Quest / Claim
          Rewards (data-enter, each wearing "Enter"), the one in front.  With
          none up, Enter is left alone -- a focused button's own Enter. */
@@ -450,7 +450,7 @@ export function setupDesktopControls(S, deps) {
           if (chatInputRef.current) chatInputRef.current.blur();
           return;
         }
-        /* ═══ v2.3.3402: ...THE WINDOW IN FRONT, BY ITS OWN ✕ ═══
+        /* ═══ v2.3.3407: ...THE WINDOW IN FRONT, BY ITS OWN ✕ ═══
            Each window's ✕ wears "Esc" on a computer (data-esc, and every
            .bt-inspect-close), so Esc presses THAT ✕: whatever closing it
            does, Esc does -- the world map, Diego, Ace, the daily rewards and
@@ -491,7 +491,7 @@ export function setupDesktopControls(S, deps) {
         S._shieldKb = false; /* v2.3.1726: stop the rAF mouse-steer too */
         _desktopShieldOff();
       }
-      /* v2.3.3402: let go of E, and the harvest's gesture stops being worked */
+      /* v2.3.3407: let go of E, and the harvest's gesture stops being worked */
       if (e.code === 'KeyE' && S._harvestKeys) S._harvestKeys.up();
     };
     /* v2.3.3006: a key held as the window loses focus never sends its keyup
@@ -499,7 +499,7 @@ export function setupDesktopControls(S, deps) {
        walking), so every held key is let go there. */
     var onBlur = function onBlur() {
       for (var k in S.keys) S.keys[k] = false;
-      if (S._harvestKeys) S._harvestKeys.up();   /* v2.3.3402: ...E's work too */
+      if (S._harvestKeys) S._harvestKeys.up();   /* v2.3.3407: ...E's work too */
     };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);

@@ -260,7 +260,7 @@ export const InfoPopup = () => {
           display: 'flex', flexDirection: 'column', minHeight: 0,
         }}>
         <button type="button" aria-label="Close" onPointerUp={close} data-infopopup-x
-          data-esc="up" data-key="Esc" data-key-at="hang"   /* v2.3.3402: its Esc, shown (game/deskKeys.js) */
+          data-esc="up" data-key="Esc" data-key-at="hang"   /* v2.3.3407: its Esc, shown (game/deskKeys.js) */
           style={{
             position: 'absolute', top: 6, right: 6,
             width: 30, height: 30, lineHeight: '30px',

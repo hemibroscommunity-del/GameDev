@@ -539,14 +539,14 @@ export const ChatBubble = () => {
               onClick={openEmotes}
               data-chat-emotes=""
               aria-label="Emotes"
-              /* v2.3.3402: B, its key (desktopControls.js), in its corner on a
+              /* v2.3.3407: B, its key (desktopControls.js), in its corner on a
                  computer (game/deskKeys.js) */
               data-key="B"
               title="Emotes (B)"
               /* the mic's quiet styling, 44 px square: a way IN to saying
                  something, like the mic, not a second Send */
               style={{
-                position: 'relative',   /* v2.3.3402: its key cap's anchor */
+                position: 'relative',   /* v2.3.3407: its key cap's anchor */
                 flex: '0 0 auto',
                 marginLeft: 'auto',
                 width: 44,
