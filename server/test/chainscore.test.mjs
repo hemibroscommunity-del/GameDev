@@ -297,9 +297,9 @@ function mk(over) {
     lifeSkills: {
       fishing: { level: 31 }, mining: { level: 4 },
       woodcutting: { level: 0 },              // untouched (a record from before v2.3.3039)
-      cooking: { level: 1, xp: 0 },           // v2.3.3398: untouched as a skill starts today
-      farming: { level: 1, xp: 250 },         // v2.3.3398: trained, not yet level 2
-      enchanting: { level: 2, xp: 0 },        // v2.3.3398: just levelled (the XP is spent)
+      cooking: { level: 1, xp: 0 },           // v2.3.3399: untouched as a skill starts today
+      farming: { level: 1, xp: 250 },         // v2.3.3399: trained, not yet level 2
+      enchanting: { level: 2, xp: 0 },        // v2.3.3399: just levelled (the XP is spent)
       gems: { ruby: 3 },                       // NOT a skill — the amulet bag
     },
   };
@@ -318,7 +318,7 @@ function mk(over) {
   check('kills rides along as a series', series.kills === 40, series);
   check('a zero life skill is omitted (noise on a permanent ledger)',
     series.woodcutting === undefined, series);
-  /* v2.3.3398: since v2.3.3039 a life skill is never level 0, so the untouched
+  /* v2.3.3399: since v2.3.3039 a life skill is never level 0, so the untouched
      one is level 1 with no XP -- and it was attested at 1, and listed on every
      hiscores board, for every player */
   check('an untouched life skill (level 1, no XP) is omitted too',

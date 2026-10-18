@@ -466,7 +466,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const offOf = (m) => (F.monsterBodyOffsetY
         ? F.monsterBodyOffsetY(m.arch || m.archetype || m.type) : 0);
       S.autoAttack = false; S.arrows = []; S._impactRings = [];
-      /* v2.3.3398: ...and nothing left to steer it.  A staff bolt is turned
+      /* v2.3.3399: ...and nothing left to steer it.  A staff bolt is turned
          every frame toward the lock, else the live aim (projectiles.js: not
          `_straight`), and the held attack above leaves both on the FARTHEST
          monster -- so this orb flew there: past a mummy 51-102 px away to
@@ -553,7 +553,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       openAir = await P.page.evaluate(({ LIFE }) => new Promise((resolve) => {
       const S = window._gameState.current;
       S.autoAttack = false; S.lockedTarget = null; S.arrows = [];
-      S._aiming = false;   /* v2.3.3398: or the stale aim steers the bolt (see the aimed shot) */
+      S._aiming = false;   /* v2.3.3399: or the stale aim steers the bolt (see the aimed shot) */
       /* Away from every monster: take the direction with the largest angular
          gap to the nearest one rather than assuming any compass point is
          clear -- the spawn placement is the worker's, not ours. */

@@ -29,7 +29,7 @@ import * as H from './harness.mjs';
    an unarmed player" PASSED because they were still in town.  Only "and says
    why" caught it.  That is the shape the comment above promised, and it is
    worth knowing the first assertion alone would have hidden this. */
-/* v2.3.3398: (25,48) -> (33,63), effects.js TOWN_EXITS since v2.3.2628 (town
+/* v2.3.3399: (25,48) -> (33,63), effects.js TOWN_EXITS since v2.3.2628 (town
    52x55 -> 68x72 tiles).  The marker had moved and this had not, so the player
    stood on plain ground: "the gate blocks" passed because nothing ran, and only
    "...and says why" failed -- the shape the note above promised (the sweep of
@@ -243,7 +243,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      recognise a shield it already holds or it hands out a fresh copy on every
      reload.  Only a real reload proves it: this is the one path that replays
      a full snapshot at a client that already has the item. */
-  /* v2.3.3398: ...and back in through the door.  Since v2.3.2447 a reload
+  /* v2.3.3399: ...and back in through the door.  Since v2.3.2447 a reload
      lands on the login door (Continue, then this bro's row), where the old
      wait passed on the door's own myId with no character played: the shield
      read null and "a SECOND shield" failed for want of a first (the sweep of

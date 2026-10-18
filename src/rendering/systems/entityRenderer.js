@@ -12900,7 +12900,7 @@ export class EntityRenderer {
       const _br = bodyRows(pose, dir);
       S._bodyDrawH = (_br.feet - _br.crown + 1) * bodyScale * (display.scale.y || 1);
     }
-    /* v2.3.3398: ...and the stand-in's plant for this facing, every frame.  The
+    /* v2.3.3399: ...and the stand-in's plant for this facing, every frame.  The
        pair the stand-ins are planted with (S._swordFootY / S._swordBodyH,
        below) is written only while one is up, so between them it is wherever
        you last swung or shot.  Same arithmetic, unconditional, for

@@ -124,7 +124,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* The staff is the one that pays a cadence penalty, and it is the reason
      the two ranged bases are different numbers for the same DPS.  Pinned so
      a change to _staffCdExtra cannot quietly retune magic.
-     v2.3.3398: and the BOW DRAWS FASTER than the sword swings -- the owner's
+     v2.3.3399: and the BOW DRAWS FASTER than the sword swings -- the owner's
      own two changes after this scenario was written: v2.3.2265 "increase the
      attack speed of bow by 25% ... It's underpowered due to the more
      difficult mechanics" (600 x 0.75) and v2.3.2449 "slow bow attack speed
@@ -149,7 +149,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       ratio >= 0.74 && ratio <= 0.86,
       { ratio: +ratio.toFixed(3), staff: dps.staff, melee: dps.melee });
   }
-  /* v2.3.3398: THE BOW IS ABOVE ITS 80%, ON PURPOSE.  The owner's 80% was
+  /* v2.3.3399: THE BOW IS ABOVE ITS 80%, ON PURPOSE.  The owner's 80% was
      this scenario's (v2.3.2262), at the sword's 600ms; the two cadence
      changes above came after it and were DPS changes the owner asked for --
      "underpowered due to the more difficult mechanics" -- not a retune of
@@ -212,7 +212,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        replaced it -- "I want magic special to change to 3 evenly spaced out
        orbs. Maybe like one every .2 seconds" -- with ONE speed and the
        launch stagger as the whole spacing (playerActions.js `_ORB_SPEEDS`,
-       `_ORB_GAP_MS` 200).  v2.3.3398: this line still asked for fast to
+       `_ORB_GAP_MS` 200).  v2.3.3399: this line still asked for fast to
        slow; it asks for the one speed now, the stagger above being what
        spaces them. */
     const speeds = fired.map((o) => o.speedPx);
@@ -276,7 +276,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
         S.__orbProbe.last = m.curHp;
       }, 20);
-      /* v2.3.3398: ...and the special this measures, set in the same breath
+      /* v2.3.3399: ...and the special this measures, set in the same breath
          as the press.  Part 2 put the staff in hand and the old volley on
          (bigorb off) on the page alone, and a player_state from the worker
          in between hands back its own activeSlot (wsClient: unless the

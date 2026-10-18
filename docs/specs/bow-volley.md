@@ -64,7 +64,7 @@ The name is lower case because the admin route only accepts `/^[a-z0-9_]{1,32}$/
 - **PvP:** each arrow's `player_attack` carries a third as its `dmgBase` (the client's own number, clamped by the worker), so the total is the same; the PvP special lane also admits 3 per 1200 ms. One real difference: a **blocked** volley costs the blocker's stamina three times (once per arrow), where the one arrow cost it once.
 - **Elements:** each arrow re-applies the weapon's second element; a collision consumes a *different* element's status, so arrows 2–3 find nothing left to detonate — no tripled collision damage.
 
-## It leaves from the bow (v2.3.3398)
+## It leaves from the bow (v2.3.3399)
 
 The special goes out only while the bow's sight is on something (bow-sight-gate.md), and the sight is cast from the bow's **grip**. The plain arrow has left from the grip since v2.3.1979, but the volley still left from your **centre** (`dist: 14`, no grip).
 
@@ -85,5 +85,5 @@ The staff's specials are unchanged: they have no sight gate and leave from you.
 - `server/test/arrowblast.test.mjs` §6 — retired by default and with `bowvolley: true`, with no damage, no `arrow_boom` and no cooldown started; the kill switch end to end through a real join (caps false, blast lands); the flag name passes `FLAG_NAME_RE`. §1–5 now run behind the kill switch, where the blast still exists.
 - `tools/qa/mp/mp-hotarrow.mjs` — town, page clock: three arrows per press for one `ability_use`, a third each, the 200 px train, nothing drawn on the string, all three stuck, 3 × a third before the first tick, **one** burn (7 ticks, one at a time), one smoulder clock, the burn-out, no `arrow_blast`, a missed volley as three arrows with one ground burn, and a peer seeing three arrows about 200 px apart.
 - `tools/qa/mp/mp-bowvolley.mjs` — a real worker zone: three `part: 3` sends, `noKb` on arrows 2–3, all three settled as `monster_hit`, one burn of 7 ticks ~500 ms apart, no blast asked for or refused.
-- `tools/qa/mp/mp-hitreal.mjs` — the bow-special rows, on worker monsters that move: every volley the sight let go lands (v2.3.3398, with its arrow tracker).
+- `tools/qa/mp/mp-hitreal.mjs` — the bow-special rows, on worker monsters that move: every volley the sight let go lands (v2.3.3399, with its arrow tracker).
 - `tools/qa/mp/mp-arrowblast.mjs` — now the kill switch's test: the flag thrown before anyone joins, caps false, one arrow, its blast sent once after the burn and not refused as `retired`; the flag cleared however the run ends.

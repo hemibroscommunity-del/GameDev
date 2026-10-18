@@ -87,7 +87,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `elemhits-${name}.png`) });
-  /* v2.3.3398: every Wheel monster on the way in, as before (`wheelwhole`,
+  /* v2.3.3399: every Wheel monster on the way in, as before (`wheelwhole`,
      server/src/wheelnear.js), as mp-wheeldeep has since v2.3.3318: the real
      half below picks each land's nearest monster off the phone's list BEFORE
      going there, and a phone holds only the monsters it has come near -- the
@@ -517,7 +517,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          their reach on the commons' safe ground once the soak has run out */
       await shot(P, 'b-' + L.st);
       const refill = async (wantWet) => {
-        /* v2.3.3398: soaked, start only with a soak that outlasts the 2.4 s
+        /* v2.3.3399: soaked, start only with a soak that outlasts the 2.4 s
            read (a hit's soak is 4 s): one that ran out part way refilled at
            the dry rate for the rest, and read 17 against 28 dry, over the 0.6
            line (the run of 2026-10-18; the sweep's run read 9 against 21).
