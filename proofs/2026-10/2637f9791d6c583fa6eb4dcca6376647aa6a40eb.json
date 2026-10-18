@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2637f9791d6c583fa6eb4dcca6376647aa6a40eb",
+  "tree": "f7fb984106c201440f1d7abf39f924ed7972c8f6",
+  "committedAt": "2026-10-18T15:21:27-07:00",
+  "subject": "On a computer: clicking what you use doesn't swing, everything drawn over the game is inside it (level-up, tutorial rings, item card, bag flight), the ⌨ stays visible, footsteps heard (v2.3.3470) (#1010)",
+  "files": 6031,
+  "bytes": 679928554,
+  "listingSha256": "e85ca8ceeac83fab4a81899c3c08d5285ef3dd48f60ef601aebf31cb175a43ec",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
