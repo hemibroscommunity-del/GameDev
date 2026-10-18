@@ -24,10 +24,34 @@ skills, quests, codex/bestiary caches) resets.
      the existing admin `/restore` flow.
   2. `delete rpg:<pid>` from DO storage. The other records keyed by the
      player id go with it (`_resetCharacterData`): the quest-reward stamps
-     (v2.3.2421), the gear record `gear_prov:<pid>` (v2.3.2537) and the
-     farm `farm:<pid>` (v2.3.3127: its beds and crops were bought with the
-     gold and skills that reset; the next visit to the Feed & Seed hands out
-     the free deed again). Only `rpg:` is snapshotted.
+     (`oplog:questitem:<pid>:`, v2.3.2421), the gear record `gear_prov:<pid>`
+     (v2.3.2537), the farm `farm:<pid>` (v2.3.3127: its beds and crops were
+     bought with the gold and skills that reset; the next visit to the Feed &
+     Seed hands out the free deed again), the pets `pets:<pid>` (v2.3.3120)
+     and the monster codex `codex:<pid>` (v2.3.3209), each with its cache;
+     the player leaves their party (v2.3.3284), and the server forgets where
+     it last had them (v2.3.3327). Only `rpg:` is snapshotted.
+
+     KEPT (listed v2.3.3373 from the code, `_resetCharacterData` deleting
+     none of them):
+     - `auth:<pid>` -- the identity: the Login Key, its devices, its keys;
+     - `farmorders:<pid>` -- the day's order board: its done flags are the
+       day's limit, and deleting it let one player id deliver the same three
+       orders again after every restart (v2.3.3134);
+     - `guild_claims:<pid>` -- the guild ladder's claims, kept the same way: a
+       rung is paid once to a player id;
+     - `daily_rewards:<pid>` -- the same: the day's free spin and quests are
+       the day's limit, and an open spin pot is gold at rest; the season's
+       stars and claimed tiers stay with it;
+     - `nml_state:<pid>` -- a No man's land skull's time is not shed by a
+       restart;
+     - `cadence:login:<pid>` (the login streak), `harden_ledger:<pid>` (the
+       hardening history), `friends:`, `chat_mute:`, `bro_link:` -- the
+       player's, not the character's;
+     - `inbox:<pid>` -- mail waiting is delivered at the next join, to the
+       restarted character;
+     - `rpgsnap:<pid>:` -- the snapshots, so the owner can undo a restart;
+     - `botstat:<pid>`, `device:` -- the anti-bot evidence.
   3. Ack `character_reset_done` (in `PRIVILEGED_EVENTS` — server-emitted
      only; a forged one would wipe another player's local caches).
   4. Evict the session (admin-freeze pattern: `sessions.delete` first,
