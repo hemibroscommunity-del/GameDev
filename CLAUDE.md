@@ -4729,7 +4729,7 @@ Two protocol versions coexist; both must keep working:
   lower-case name: `liveops.test` §8 scans `server/src` for every flag read
   and every `` `<name>: false` `` promised beside "live flags" or "kill
   switch", and fails for one the route would refuse.
-- **THE CAMERA IS ON WHOLE DEVICE PIXELS (v2.3.3465,
+- **THE CAMERA IS ON WHOLE DEVICE PIXELS (v2.3.3469,
   docs/specs/camera-whole-pixels.md, TRAPS §231).** The owner's "warbled
   underwater effect" walking diagonally on a PC, and the "shimmering" running
   straight, came from a fractional camera: `roundPixels` rounds each sprite's

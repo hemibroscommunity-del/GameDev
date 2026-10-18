@@ -7708,7 +7708,7 @@ cut_owner_sounds.py renders in mp-cuelevels within 2% of its promise (hurtA
 hurtA was 1.00 and notify 1.14, and bossEnrage (the roar with two thuds under
 it) 2.09 of its 1.3 -- the one mp-cuelevels failed.
 
-## 231. "roundPixels puts the world on whole pixels, so the camera can stay fractional" (v2.3.3465)
+## 231. "roundPixels puts the world on whole pixels, so the camera can stay fractional" (v2.3.3469)
 
 `roundPixels` snaps every CORNER to a whole device pixel, each on its own, after
 the camera is applied. With the camera at a fraction of a pixel, each piece of

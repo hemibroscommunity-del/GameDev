@@ -180,7 +180,7 @@ if (typeof window !== 'undefined') {
   window.__btDepthLegacy = (on) => { _depthProbe.legacy = !!on; };
 }
 
-/* ═══ v2.3.3465: THE CAMERA IN WHOLE DEVICE PIXELS ═══
+/* ═══ v2.3.3469: THE CAMERA IN WHOLE DEVICE PIXELS ═══
  * Owner, 2026-10-18: "When playing the game on PC the world has a warbled
  * underwater effect when the character moves diagonally (sw, nw, ne, se)",
  * and then "a slight flickering on PC for the art even when you run up and
@@ -456,7 +456,7 @@ export async function initPixiRenderer(canvas) {
    */
   function update(S, viewW, viewH, nfts) {
     const now = Date.now();
-    /* v2.3.3465: `let` -- moved onto whole device pixels below, before
+    /* v2.3.3469: `let` -- moved onto whole device pixels below, before
        anything is placed from it (THE CAMERA IN WHOLE DEVICE PIXELS) */
     let cx = S.camera.x;
     let cy = S.camera.y;
@@ -524,7 +524,7 @@ export async function initPixiRenderer(canvas) {
     // is what reads as frame-rate jitter even at a steady 60 fps.
     // Letting the offset stay fractional moves the whole scene in
     // smooth GPU sub-pixel steps instead.
-    /* v2.3.3465: no longer true once roundPixels came in (pixiApp): with the
+    /* v2.3.3469: no longer true once roundPixels came in (pixiApp): with the
        offset fractional, every world sprite snaps on its own at its own
        fraction, and on a computer the world's pieces hop a pixel at moments
        of their own -- the owner's diagonal "warble".  So the offset goes onto
@@ -548,7 +548,7 @@ export async function initPixiRenderer(canvas) {
     _camProbe.on = snap; _camProbe.dpr = dpr;
     _camProbe.x = worldContainer.x; _camProbe.y = worldContainer.y;
     _camProbe.cx = cx; _camProbe.cy = cy;
-    /* ═══ v2.3.3465: ...AND YOU STAY WHERE YOU WERE ON SCREEN ═══
+    /* ═══ v2.3.3469: ...AND YOU STAY WHERE YOU WERE ON SCREEN ═══
        The camera follows YOU, so you were the one thing a fractional camera
        held still: your figure (unsnapped) at exactly the same place frame
        after frame, and your name plate and bars -- snapped, but rounded from
@@ -682,7 +682,7 @@ export async function initPixiRenderer(canvas) {
     try { refreshFigureShades(); } catch (e) { /* never break a frame */ }
     try { lightFx.update(S, now, entityRenderer, effectsRenderer); }
     catch (e) { if (!update._lightErr) { update._lightErr = true; console.error('[pixi-render] lightFx threw', e && e.message, e && e.stack); } }
-    /* v2.3.3465: your place put back (YOU STAY WHERE YOU WERE ON SCREEN,
+    /* v2.3.3469: your place put back (YOU STAY WHERE YOU WERE ON SCREEN,
        above) -- every pass between is wrapped, so this line is always
        reached; it only undoes its own move */
     if (selfShift && S.player === selfP && selfP.x === selfX + selfDX && selfP.y === selfY + selfDY) { selfP.x = selfX; selfP.y = selfY; }
