@@ -95,14 +95,24 @@ const DASH = '.bt-dashboard, .bt-land-sheet';
 /* The dashboard band folded to its button row, as a new player has it: its fold
    chip pressed, as a player presses it, when it is open.  The bag's page opens
    the band, and left open it sat under every screen after it. */
+/* v2.3.3451: the chip that SHOWS -- sideways the band's own chip is still in
+   the page, hidden, and v2.3.3407 pressed it: "nothing to press at
+   [data-dash-fold]", the sideways band-open picture never taken */
+const foldChip = (P) => evalIn(P, () => {
+  const shown = (el) => {
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    return r.width > 2 && r.height > 2 && cs.display !== 'none' && cs.visibility !== 'hidden';
+  };
+  const b = document.querySelector('[data-dash-fold]');
+  if (shown(b)) return { sel: '[data-dash-fold]', v: b.getAttribute('data-dash-fold') };
+  const l = document.querySelector('[data-land-fold]');
+  if (shown(l)) return { sel: '[data-land-fold]', v: l.getAttribute('data-land-fold') };
+  return null;
+});
 export async function foldBand(P) {
-  const st = await evalIn(P, () => {
-    const b = document.querySelector('[data-dash-fold]');
-    if (b) return { sel: '[data-dash-fold]', v: b.getAttribute('data-dash-fold') };
-    const l = document.querySelector('[data-land-fold]');
-    if (l) return { sel: '[data-land-fold]', v: l.getAttribute('data-land-fold') };
-    return null;
-  });
+  const st = await foldChip(P);
   if (!st || st.v === 'min') return false;
   await tapSel(P, st.sel).catch(() => {});
   await wait(P, 700);
@@ -112,13 +122,7 @@ export async function foldBand(P) {
    column's own chip, ▴ (BottomDashboard's `data-land-fold`: sideways the rest
    state IS folded, and the chip opens the dashboard column) */
 async function unfoldBand(P) {
-  const st = await evalIn(P, () => {
-    const b = document.querySelector('[data-dash-fold]');
-    if (b) return { sel: '[data-dash-fold]', v: b.getAttribute('data-dash-fold') };
-    const l = document.querySelector('[data-land-fold]');
-    if (l) return { sel: '[data-land-fold]', v: l.getAttribute('data-land-fold') };
-    return null;
-  });
+  const st = await foldChip(P);
   if (!st) return 'no dashboard fold chip';
   if (st.v === 'min') { const e = await tapSel(P, st.sel); if (e) return e; await wait(P, 900); }
   return null;
@@ -191,6 +195,41 @@ const building = (panel, title, about, extra) => Object.assign({
     }).catch(() => {});
   },
 }, extra || {});
+
+/* v2.3.3451: the arrival's banners out of the pictures -- the QUEST REWARD
+   the setup's armour raises waits its turn behind the welcome plate, and
+   v2.3.3407's "BroTown, nothing open" wore it.  BroTown publishes when the
+   banner on screen, or the last one queued, will be gone. */
+async function bannersGone(P, maxMs = 20000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < maxMs) {
+    const busy = await evalIn(P, () => {
+      const until = typeof window.__btQuestMsgUntil === 'function' ? window.__btQuestMsgUntil() : 0;
+      return until > Date.now() || !!document.querySelector('[data-quest-banner]');
+    });
+    if (!busy) return true;
+    await wait(P, 300);
+  }
+  return false;
+}
+
+/* v2.3.3451: your sparring clones are the ids the worker's spar_state named
+   (game/spar.js S._spar.ids), there once a tick has put them in S.others --
+   v2.3.3407 looked for a `.spar` flag no player entry carries, and aimed with
+   a _gameFns.sparAim that does not exist, so its fight was never aimed */
+async function sparCloneId(P, timeout = 9000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    const id = await evalIn(P, () => {
+      const S = window._gameState.current;
+      const ids = S && S._spar && S._spar.ids ? Array.from(S._spar.ids) : [];
+      return ids.find((k) => S.others && S.others[k]) || null;
+    });
+    if (id) return id;
+    await wait(P, 400);
+  }
+  return null;
+}
 
 export const STATES = [
   /* ═══ BEFORE THE WORLD ═══ */
@@ -276,6 +315,7 @@ export const STATES = [
       await clickText(P, /skip tutorial/i).catch(() => {});
       await evalIn(P, () => { try { localStorage.setItem('bt_tutorial_skipped', '1'); } catch (e) { /* */ } });
       await wait(P, 1200);
+      await bannersGone(P);
     },
   },
   {
@@ -458,32 +498,26 @@ export const STATES = [
   building('cook', 'Cookhouse', 'The Cookhouse: recipes to cook from what you carry.'),
   building('gamble', 'Gambling Den', 'The Gambling Den: the free daily spin and the games.'),
   {
-    id: 'daily-rewards', group: 'Buildings (BroTown)', title: 'Daily rewards: today',
-    about: 'The Daily Rewards window (from the Gambling Den or the Quests page): the streak, the free daily spin and the three daily quests.',
+    id: 'daily-rewards', group: 'Buildings (BroTown)', title: 'Daily rewards',
+    about: 'The Daily Rewards window (from the Gambling Den, or the "Daily rewards" card on the Quests page): the login streak and the free daily spin.',
     settle: 1200,
     run: async ({ P }) => {
       const ok = await evalIn(P, () => { if (!window.__btDailyRewards) return false; window.__btDailyRewards.open('today'); return true; });
       if (!ok) return 'no daily-rewards probe';
     },
   },
-  {
-    id: 'daily-season', group: 'Buildings (BroTown)', title: 'Daily rewards: the season',
-    about: 'The Daily Rewards window on its Season tab: the 28-day track of 25 tiers, claimed with stars.',
-    settle: 1200,
-    run: async ({ P }) => {
-      const ok = await evalIn(P, () => { if (!window.__btDailyRewards) return false; window.__btDailyRewards.open('season'); return true; });
-      if (!ok) return 'no daily-rewards probe';
-    },
-  },
+  /* v2.3.3451: no 'daily-season' -- the daily quests and the season were put
+     away in v2.3.3400, the window has no Season tab, and the picture was the
+     Today page again (found by the design notes' research) */
   building('farm', 'Feed & Seed', 'The Feed & Seed: visit your farm, buy seeds, the order board.'),
   building('farmhome', 'Land Office', 'The Land Office: the trip to your own farm.'),
-  building('bank', 'Bank', 'The Bank: your stored items and gold.'),
-  building('exchange', 'General Store (market)', 'The General Store: the market for buying and selling.'),
-  building('auctionhouse', 'Auction House', 'The Auction House: listings, bids, the clerk behind his counter.'),
+  building('bank', 'Bank', 'The Bank: your gold and what you wear (nothing is stored in it yet).'),
+  building('exchange', 'General Store (market)', 'The General Store\'s Marketplace: an order book where players post buy and sell orders for kinds of gear, with a way to the Auction House at its top.'),
+  building('auctionhouse', 'Auction House', 'The Auction House: its clerk behind the counter and its one button, Market, which opens the players\' listings and bids.'),
   building('party', 'Saloon', 'The Saloon: your party and finding one.'),
   building('post', 'Post Office', 'The Post Office: your mail and friends\' messages.'),
   building('sheriff', "Sheriff's Office", "The Sheriff's Office: the player list (duels start from a player's card) and the arena sign-up."),
-  building('guildhall', 'Guild Hall', 'The Guild Hall: your party/clan and the skill guilds.'),
+  building('guildhall', 'Guild Hall', 'The Guild Hall: a row saying clans are parties now (made in the Saloon), and the skill guilds.'),
   building('townhall', 'Town Hall', 'The Town Hall: the leaderboard and the world map.'),
   building('arena', 'Gladiator Arena', 'The arena window (from the Sheriff\'s Office).'),
   {
@@ -513,34 +547,78 @@ export const STATES = [
   },
   {
     id: 'chat', group: 'Maps and chat', title: 'Chat',
-    about: 'The chat composer and log (a tap on yourself on a phone, C on a computer).',
-    run: async ({ P }) => { await evalIn(P, () => { if (window._uiPanels) window._uiPanels.chatOpen(true); }); },
+    about: 'Writing in the chat.  On a phone a tap on your own bro opens the chat box high over him, its tail pointing down at him (no Send button: the keyboard\'s own key sends; the smiley opens the emotes, the mic types by voice); on a computer C opens the chat bar at the top (All / Area / Whisper, the line and Send).',
+    /* v2.3.3451: each the way its player opens it -- a phone's tap on your
+       own bro raises the box over his head (chatBubbleBus, as BroTown's
+       self-tap does, the band folded to its bar first), C on a computer the
+       chat bar.  v2.3.3407 opened the computer's bar on the phones too: found
+       by the design notes' research */
+    run: async ({ P, view }) => {
+      if (view.touch) {
+        const ok = await evalIn(P, () => {
+          const b = window.__broDashPanelBus;
+          if (b && b.state && b.state.mode !== 'bar') b.toBar();
+          if (!window.__broChatBubbleBus) return false;
+          window.__broChatBubbleBus.setOpen(true);
+          return true;
+        });
+        if (!ok) return 'no chat box bus';
+      } else {
+        await evalIn(P, () => { if (window._uiPanels) window._uiPanels.chatOpen(true); });
+      }
+    },
   },
   {
     id: 'player-list', group: 'Other players', title: 'Player list',
     about: 'Everyone in the game: the list a party or a duel starts from.',
     run: async ({ P }) => { await evalIn(P, () => { if (window.__broLegacyUI) window.__broLegacyUI.playersOpen(); }); },
   },
+  /* v2.3.3451: the card a tap on another player opens -- the review had none:
+     a sparring clone of you (the test panel's, standing still) is the player */
   {
-    id: 'inspect-self', group: 'Other players', title: 'A player\'s card (your own)',
-    about: 'The card a tap on a player opens (here your own): their look, level, and the buttons to trade, duel, party or add them.',
+    id: 'player-card', group: 'Other players', title: 'Another player\'s card',
+    about: 'What a tap on another player opens: their portrait (a tap on it opens their Inspect card), name and level, the buttons to party, trade, add a friend and duel, and Mute, Block and Report.  The player here is a sparring clone of you from the test panel, standing still.',
+    settle: 1500,
+    run: async ({ P, wsPort, myId }) => {
+      const r = await H.devOp(wsPort, 'spar', myId, { add: 'sword', skill: 'dummy' }).catch((e) => ({ error: String(e) }));
+      if (r && r.ok === false) return 'no clone: ' + (r.error || JSON.stringify(r));
+      const id = await sparCloneId(P);
+      if (!id) return 'no clone came';
+      await wait(P, 800);
+      const ok = await evalIn(P, (cid) => !!(window.__broInspectPlayer && window.__broInspectPlayer(cid)), id);
+      if (!ok) return 'the card did not open';
+    },
+    after: async ({ P, wsPort, myId }) => {
+      await H.devOp(wsPort, 'spar', myId, { clear: true }).catch(() => {});
+      await wait(P, 1000);
+    },
+  },
+  {
+    id: 'inspect-self', group: 'Other players', title: 'An Inspect card (your own)',
+    about: 'The Inspect card, a player\'s profile (level, achievement points, the three combat levels, what they wear, kills), here your own -- the one way to show it without a second player.  For another player it opens from the portrait on their card, with Invite to Party, Trade and Duel at its foot; nothing in the game opens your own yet (where its button goes is the owner\'s call).',
     run: async ({ P }) => { await evalIn(P, () => { if (window.__broInspectSelf) window.__broInspectSelf(); }); },
   },
   {
     id: 'trade-request', group: 'Other players', title: 'A trade request',
-    about: 'Another player asking to trade with you (shown with a stand-in player).',
-    run: async ({ P }) => { await evalIn(P, () => window._uiPanels.incomingTrade({ from: 'bp_demo', fromName: 'Rival Bro', offer: { _gold: 250 } })); },
+    about: 'Another player asking to trade with you (shown with a stand-in player): the trade drawer over the dashboard, "Open trade" or "Decline". Opened, the trade is a drawer joined to the top of your bag.',
+    /* v2.3.3451: the drawer today's worker raises (trade2_invite ->
+       TradeWindowPanel's invite stub).  v2.3.3407 showed IncomingTradePanel,
+       the one-way gift card kept only for an old worker -- found by the
+       design notes' research: a screen no player sees */
+    run: async ({ P }) => { await evalIn(P, () => window._uiPanels.trade2({ invite: true, from: 'bp_demo', fromName: 'Rival Bro', ts: Date.now() })); },
   },
   {
     id: 'duel-request', group: 'Other players', title: 'A duel challenge',
-    about: 'Another player challenging you to a duel, with a wager (shown with a stand-in player).',
-    run: async ({ P }) => { await evalIn(P, () => window._uiPanels.duelRequest({ fromId: 'bp_demo', fromName: 'Rival Bro', wager: 500 })); },
+    about: 'Another player challenging you to a duel (shown with a stand-in player): Accept or Decline.  A challenge from a player\'s card carries no stake, so there is no wager line.',
+    /* v2.3.3451: no wager -- the one sender (InspectPlayerPanel) sends 0, so
+       v2.3.3407's 500 drew a line no player sees */
+    run: async ({ P }) => { await evalIn(P, () => window._uiPanels.duelRequest({ fromId: 'bp_demo', fromName: 'Rival Bro', wager: 0 })); },
   },
 
   /* ═══ LIFE SKILLS ═══ */
   {
     id: 'harvest-near', group: 'Harvesting (life skills)', title: 'At a tree, with an axe',
-    about: 'Standing at a resource you hold the tool for: its tool icon and name over it; on a phone the right button reads HARVEST with the tool on it.  A tap (phone), E or a click (computer) starts the harvest.',
+    about: 'Standing at a resource you hold the tool for: its name over it, and on a phone the right button showing the tool (a word -- WAIT, then CHOP, PUMP, REEL or FLIP -- comes only once the harvest has started).  A tap (phone), E or a click (computer) starts the harvest.',
     run: async (ctx) => {
       const { P } = ctx;
       const node = await nearestNode(P, 'tree', ctx.used || []);
@@ -595,12 +673,14 @@ export const STATES = [
       const r = await H.devOp(wsPort, 'spar', myId, { add: 'sword', skill: 'easy' }).catch((e) => ({ error: String(e) }));
       if (r && r.ok === false) return 'no clone: ' + (r.error || JSON.stringify(r));
       await wait(P, 3000);
-      /* aim at it, as a tap does */
-      await evalIn(P, () => {
+      /* aim at it, as a tap does (game/spar.js sparAim's own lock) */
+      const id = await sparCloneId(P);
+      if (!id) return 'no clone came';
+      await evalIn(P, (cid) => {
         const S = window._gameState.current;
-        const id = Object.keys(S.others || {}).find((k) => S.others[k] && S.others[k].spar);
-        if (id && window._gameFns && window._gameFns.sparAim) window._gameFns.sparAim(S, id);
-      });
+        const o = S.others && S.others[cid];
+        if (o) S.lockedTarget = { type: 'player', id: cid, ref: o, spar: true };
+      }, id);
     },
     after: async ({ P, wsPort, myId }) => {
       await H.devOp(wsPort, 'spar', myId, { clear: true }).catch(() => {});
