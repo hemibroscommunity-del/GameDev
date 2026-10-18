@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "42b72c81a6ca9106f4a39685e5d81a7ccf773d36",
+  "tree": "12f2fb023ba22577e69015b9da85587272712011",
+  "committedAt": "2026-10-18T10:58:05-07:00",
+  "subject": "One drawing program for every sprite: less than half the draw calls a frame (v2.3.3447) (#998)",
+  "files": 5966,
+  "bytes": 673783153,
+  "listingSha256": "049b3bf9e114834a5bc3fd4e856f92aa3644ebc841880b3732f247120fed217d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
