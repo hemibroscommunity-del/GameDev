@@ -1,4 +1,4 @@
-# One drawing program for every sprite (v2.3.3382)
+# One drawing program for every sprite (v2.3.3407)
 
 The owner, 2026-10-18: *"I'd like you to iterate on what best improves
 framerate without loss of quality (or negligible loss) for phone gameplay
@@ -62,7 +62,7 @@ of pixels, one shade).
 
 ## Measured
 
-On top of v2.3.3379's layers (each world layer its own draw list, PR #977) --
+On top of v2.3.3404's layers (each world layer its own draw list, PR #977) --
 the state this lands in -- a phone page at 1x density on this box's software
 graphics, `mp-phoneframe` with `BT_PF_AB='onebatch=0'`, 3 rounds each, no
 profiler or census:
@@ -112,7 +112,7 @@ Render driver, WARP) keeps the three programs, as do the QA box and CI's
 phones, so every scenario draws as it did before this. `?onebatch=1` draws with
 the one program anyway (`mp-onebatch` does, to test it), `?onebatch=0` with the
 three anywhere. `window.__btOneBatch()` says which, and why (`address`,
-`software`, `chip`), with the renderer's name. TRAPS §222.
+`software`, `chip`), with the renderer's name. TRAPS §225.
 
 ## How it is checked
 

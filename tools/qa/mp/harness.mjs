@@ -461,11 +461,11 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      down town's stairs itself (`nospawn`); and `world: 'wheel'` plays the
      game exactly as a player gets it. */
   const _world = world === 'wheel' ? '' : /(?:^|&)trial=/.test(query) ? 'nospawn' : 'trial=off&nospawn';
-  /* v2.3.3382: BT_QA_QUERY -- params added to EVERY page, after the
+  /* v2.3.3407: BT_QA_QUERY -- params added to EVERY page, after the
      scenario's own (which win where the game reads the first), to run any
      scenario with a switch on: `BT_QA_QUERY=onebatch=1` draws with the one
      program on this box's software renderer, which keeps the three
-     (paletteTex.js oneBatchChoice, TRAPS §222) */
+     (paletteTex.js oneBatchChoice, TRAPS §225) */
   const _env = String(process.env.BT_QA_QUERY || '').replace(/^[?&]+/, '');
   const _q = [guest ? 'guest=1' : '', query, _env, _world].filter(Boolean).join('&');
   /* v2.3.3312: `host` -- the page's own address, for a scenario that needs a

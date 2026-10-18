@@ -7274,7 +7274,7 @@ every shot: the bow rows alone 49 of 49 checks, then the full run 128 of 129,
 its one miss a staff bolt into Frost Ridge's rock ridge, which the check now
 asks about at the boots (Frost Ridge again: 33 of 33).
 
-## 225. "This box says the one program halves the frame rate: take it out" (v2.3.3382)
+## 225. "This box says the one program halves the frame rate: take it out" (v2.3.3407)
 
 **Tempting:** paletteTex.js's ONE_BATCHER draws every sprite with one program
 holding three reads, and on the QA phone the page drew 4.1 frames a second

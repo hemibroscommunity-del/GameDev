@@ -1,4 +1,4 @@
-/* ═══ v2.3.3382: WHAT A BRANCH NO PIXEL TAKES COSTS THIS BOX'S GPU ═══
+/* ═══ v2.3.3407: WHAT A BRANCH NO PIXEL TAKES COSTS THIS BOX'S GPU ═══
  *
  * `node tools/qa/qa-branchcost.mjs` -- no worker, no game, one page.
  *
@@ -9,7 +9,7 @@
  * every pixel, the ones no pixel takes too, so it pays for all three -- the
  * QA phone drew 4.1 frames a second with the one program against 9.2 with
  * the three (mp-phoneframe, `BT_PF_AB='onebatch=0'`), and the game keeps the
- * three programs where the renderer names itself software (TRAPS §222).
+ * three programs where the renderer names itself software (TRAPS §225).
  *
  * This measures the rule itself.  A full-screen quad, drawn with:
  *   A  a read through a chain of 15 picture slots (Pixi's batch read);

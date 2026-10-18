@@ -1,4 +1,4 @@
-/* ═══ v2.3.3382: ONE DRAWING PROGRAM FOR EVERY SPRITE ═══
+/* ═══ v2.3.3407: ONE DRAWING PROGRAM FOR EVERY SPRITE ═══
  *
  * The owner, 2026-10-18: "iterate on what best improves framerate without
  * loss of quality (or negligible loss) for phone gameplay (iPhone, android)".
@@ -9,7 +9,7 @@
  * each kind read by the very lines of the program it replaces;
  * `?onebatch=0` is the three programs.  Not where the picture is drawn in
  * software, as on this box: there every branch of a program runs for every
- * pixel, so the one program costs all three reads (TRAPS §222), and the game
+ * pixel, so the one program costs all three reads (TRAPS §225), and the game
  * keeps the three; `?onebatch=1` draws with the one anyway, as a phone does.
  *
  * On a phone (390 x 844, 3x) in BroTown and at a fight at the Flame Fields:
@@ -163,7 +163,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const [tag, at] of spots) {
       if (at) {
         /* the walk there on the three programs: this box draws the one at
-           half the frames a second (TRAPS §222), and the walk is frames */
+           half the frames a second (TRAPS §225), and the walk is frames */
         await P.page.evaluate(() => window.__btOneBatchLive(false));
         await H.hopTo(P, at[0], at[1], { tries: 400, step: 140, gap: 200 });
         await P.page.evaluate(() => window.__btOneBatchLive(true));
