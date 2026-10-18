@@ -33,7 +33,8 @@
  * Cost: a batch break into and out of each figure, a couple of draw calls.
  *
  * WebGL2 only (textureSize / textureGrad); on anything else it never turns on.
- * Off switches: `?sharp=0` (per load), `window.__btSharpOff = true` (live).
+ * Off switches: `?sharp=0` (per load), `window.__btSharpOff = true` (live;
+ * since v2.3.3449 a flip rebuilds every draw list, drawLists.js).
  * Probe: `window.__btSharp()`.
  */
 import {
@@ -42,8 +43,11 @@ import {
   globalUniformsBitGl, colorBitGl, colorBit, roundPixelsBitGl, roundPixelsBit, generateTextureBatchBit,
   getBatchSamplersUniformGroup, getMaxTexturesPerBatch,
 } from 'pixi.js';
+import { liveSwitch } from './drawLists.js';
 
 let _enabled = false;
+/* v2.3.3449: window.__btSharpOff, read below as a plain field */
+const _liveOff = liveSwitch('__btSharpOff');
 let _maxTex = 0;
 let _routed = 0;
 let _urlOff = false;
@@ -221,7 +225,7 @@ export function installSharpPixels(app, figureSpec) {
     const orig = BatcherPipe.prototype.addToBatch;
     BatcherPipe.prototype.addToBatch = function (obj, instructionSet) {
       if (obj && obj.packAsQuad) {
-        const on = !(typeof window !== 'undefined' && window.__btSharpOff) && wantsSharp(obj.renderable);
+        const on = !_liveOff.on && wantsSharp(obj.renderable);
         obj.batcherName = on ? 'sharp' : 'default';
         if (on) _routed++;
         /* v2.3.2922: a figure's pieces are drawn where they are, not snapped
@@ -241,5 +245,5 @@ export function installSharpPixels(app, figureSpec) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btSharp = () => ({ enabled: _enabled, off: !!window.__btSharpOff, urlOff: _urlOff, routedTotal: _routed, maxTextures: _maxTex, figRound: figRoundOn() });
+  window.__btSharp = () => ({ enabled: _enabled, off: _liveOff.on, urlOff: _urlOff, routedTotal: _routed, maxTextures: _maxTex, figRound: figRoundOn() });
 }

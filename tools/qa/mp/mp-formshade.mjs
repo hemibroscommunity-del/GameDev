@@ -39,16 +39,39 @@ async function onOff(P, name, rec, { props = true } = {}) {
   await P.page.waitForTimeout(400);
   const before = await P.page.evaluate(() => window.__btShade && window.__btShade());
   const box = await H.figureBox(P, { pad: 2 }).catch(() => null);
+  /* ═══ v2.3.3449: ONE HELD FRAME, THE SWITCH THE ONLY DIFFERENCE ═══
+     The two pictures used to be taken live, 250 ms apart: in Verdant a
+     slime's LUNGE! warning came up over the player's head between them and
+     read as "the head is shaded more than the legs".  So the game's frames
+     are held and the same instant drawn with the shade on and off (the
+     switch's flip rebuilds every draw list, drawLists.js -- mp-sharppixels'
+     way). */
+  await P.page.evaluate(() => new Promise((res) => {
+    const w = window;
+    w.__fsHeld = []; w.__fsRaf = w.requestAnimationFrame;
+    w.requestAnimationFrame = (cb) => { w.__fsHeld.push(cb); return 0; };
+    setTimeout(res, 300);
+  }));
   const shot = async (off, file) => {
-    await P.page.evaluate((o) => { window.__btShadeOff = o; }, off);
-    await P.page.waitForTimeout(250);
+    await P.page.evaluate((o) => {
+      window.__btShadeOff = o;
+      const R = window._pixiRenderer;
+      R.app.renderer.render(R.app.stage);
+    }, off);
     const full = await P.page.screenshot(file ? { path: file } : {});
     const fig = box ? await P.page.screenshot({ clip: box }) : null;
     return { full: H.decodePng(full), fig: fig ? H.decodePng(fig) : null };
   };
   const on = await shot(false, `${H.REPO}/tools/qa/mp/out/formshade-${name}-on.png`);
   const off = await shot(true, `${H.REPO}/tools/qa/mp/out/formshade-${name}-off.png`);
-  await P.page.evaluate(() => { window.__btShadeOff = false; });
+  await P.page.evaluate(() => {
+    const w = window;
+    w.__btShadeOff = false;
+    const held = w.__fsHeld || [];
+    w.requestAnimationFrame = w.__fsRaf; w.__fsHeld = null;
+    for (const cb of held) w.requestAnimationFrame(cb);
+  });
+  await P.page.waitForTimeout(400);
   const after = await P.page.evaluate(() => window.__btShade && window.__btShade());
   rec.ok(`${name}: the batcher patch is live and shading quads`,
     !!before && before.on && after.quadsShadedTotal > before.quadsShadedTotal, { before, after });
