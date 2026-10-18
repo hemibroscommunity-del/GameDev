@@ -4077,5 +4077,42 @@ console.log('the Wheel five times longer (v2.3.3315)');
     NML_CENTRES[1].join() === short.WHEEL_CENTRE.join() && NML_CENTRES[5].join() === live.WHEEL_CENTRE.join(), NML_CENTRES);
 }
 
+/* ── v2.3.3404: the objects' sizes are read at their picture's number ── */
+{
+  /* Since v2.3.3315 the Wheel's object index keeps each picture's page,
+     frame, size, anchor, reach and scale once a PIECE (wheelObjects.js, "Read
+     as ix.w[ix.pk[i]]"), and an object only its piece's number.  Read at the
+     object's own number they are some other picture's: the building fire
+     (buildingFire.js) sized every fire so, the Hotel's by a 40 px picture. */
+  console.log('the objects\' sizes read at their picture\'s number');
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const root = new URL('../../src/', import.meta.url).pathname;
+  const files = [];
+  const walk = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.(js|jsx|mjs)$/.test(e.name)) files.push(p);
+    }
+  };
+  walk(root);
+  const READ = /\bix\.(w|h|ax|reach|scl|page|frame)\[/g;
+  const bad = [];
+  let reads = 0;
+  for (const f of files) {
+    const lines = fs.readFileSync(f, 'utf8').split('\n');
+    lines.forEach((line, n) => {
+      for (const m of line.matchAll(READ)) {
+        reads++;
+        /* the piece's number: ix.pk[...], or a `pk` read from it */
+        if (!/^\s*(?:ix\.)?pk\b/.test(line.slice(m.index + m[0].length))) bad.push(path.relative(root, f) + ':' + (n + 1));
+      }
+    });
+  }
+  ok(`every read of the object index's per-picture sizes goes through the object's piece number, ix.pk (${reads} reads in src/)`,
+    reads >= 10 && bad.length === 0, bad);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
