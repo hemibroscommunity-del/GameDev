@@ -92,7 +92,7 @@ Chromium worker. Off the main thread, once a session, when the first piece
 with that water is laid (four pictures in all). On the GPU the web is a 3 x 3
 cell search per water px, the cost of a few more texture reads.
 
-### Worked out only where it shows (v2.3.3422)
+### Worked out only where it shows (v2.3.3437)
 
 The owner, 2026-10-18: *"iterate on what best improves framerate without loss
 of quality (or negligible loss) for phone gameplay (iPhone, android)"*.

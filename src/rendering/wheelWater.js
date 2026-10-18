@@ -247,7 +247,7 @@ void main(void)
     float cg = (0.09 * sea + 0.46 * shallow + 0.38 * fresh) * (1.0 - smoothstep(0.02, 0.10, sp)) * uCaustics * min(k, 1.25);
     if (cg > 0.0) {
         vec2 p = Pa / 42.0;
-        /* v2.3.3422: the stretches of web faded right out (brk exactly 0:
+        /* v2.3.3437: the stretches of web faded right out (brk exactly 0:
            about half the open sea at any moment, a fifth of the shallows and
            fresh water) are not worked out -- the web was mixed in at 0 there,
            so the picture is the same to the bit.  The bend, the wobble and the
@@ -427,7 +427,7 @@ void main(void)
 }
 `;
 
-/* ═══ v2.3.3422: THE WEB OF LIGHT WORKED OUT ONLY WHERE IT SHOWS ═══
+/* ═══ v2.3.3437: THE WEB OF LIGHT WORKED OUT ONLY WHERE IT SHOWS ═══
    The owner: "iterate on what best improves framerate without loss of quality
    (or negligible loss) for phone gameplay (iPhone, android)".  The moving web
    (v2.3.3021) fades in and out in big stretches as a slow noise drifts over
@@ -490,7 +490,7 @@ vec4 pieceAt(highp vec2 uv)
 }
 `;
 function palFrag(all) {
-  const F = fragOf(all);   /* v2.3.3422: the skip, or the web worked out everywhere */
+  const F = fragOf(all);   /* v2.3.3437: the skip, or the web worked out everywhere */
   const a = 'uniform sampler2D uPiece;', b = 'texture(uPiece, vUV + off * uUvPerPx)';
   if (F.indexOf(a) < 0 || F.indexOf(b) < 0) throw new Error('the water program changed: its palette twin needs the same edit');
   return '#version 300 es\n' + F.replace(a, PAL_SAMPLE).replace(b, 'pieceAt(vUV + off * uUvPerPx)');
@@ -758,7 +758,7 @@ if (typeof window !== 'undefined') {
     caustics: (k) => { _uni.uniforms.uCaustics = Math.max(0, Math.min(2, +k || 0)); },
     /* hold the clock (pictures of one moment); null lets it run */
     hold: (sec) => { _held = sec == null ? null : +sec; },
-    /* v2.3.3422: the web of light worked out everywhere (true: the program as
+    /* v2.3.3437: the web of light worked out everywhere (true: the program as
        it was) or only where it shows, live, every quad drawn now; says how many
        quads it switched */
     webAll: (on) => {

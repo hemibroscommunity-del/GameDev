@@ -13,7 +13,7 @@
  *      the wash rides up to the shore's own foam line);
  *   4. the water MOVES: two moments 1.5 s apart differ over the water many
  *      times more than they do with the motion off;
- *   4b. v2.3.3422: the web of light, worked out only where it shows, leaves
+ *   4b. v2.3.3437: the web of light, worked out only where it shows, leaves
  *      the water the same to the bit as the program that worked it out
  *      everywhere (three moments, both ways);
  *   5. the Sweetwater River by the Mill Bridge runs: its pieces carry a flow,
@@ -256,7 +256,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        here and 43% of the river's; the swell up to 3 game px, 30% and 63%) */
     !mv.error && mv.whole > 2000 && mv.changed > 0.15 * mv.whole && mv0.changed <= 0.002 * mv0.whole, { mv, mv0 });
 
-  /* ── 4b. v2.3.3422: the web of light is worked out only where it shows:
+  /* ── 4b. v2.3.3437: the web of light is worked out only where it shows:
      the water drawn at three moments with the skip and with the web worked
      out everywhere (the program as it was, window.__btWaves.webAll) -- the
      same to the bit; and the web is in the picture (its brightness at 0
