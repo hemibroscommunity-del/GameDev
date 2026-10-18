@@ -44,6 +44,9 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/UI-BIBLE.md` (UI design law + icon-generation prompts, v2.3.1222),
   `docs/LANTERN-SLATE-SPEC.md` (the UI visual system — colors, depth,
   components; supersedes UI-BIBLE Part 2, v2.3.1227),
+  `docs/UI-DESIGN-NOTES.md` (the reasons behind each screen, the owner's
+  decisions and what was turned down, a section a part of the game; every UI
+  review bundle carries it, v2.3.3460),
   `docs/DEPTH-ROADMAP.md` (the costed depth work, code-aware),
   `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
   only textures -- what leaked, and the order of the memory work with each
@@ -3700,6 +3703,33 @@ Two protocol versions coexist; both must keep working:
     they are the play column's now (game.css "THE CREATOR SIZES ITSELF FROM
     THE COLUMN", TRAPS §214). `mp-edgeguard`, `mp-deskreach`,
     mp-shopkeeper's sideways part, mp-notifbell.
+  - Since v2.3.3460 every bundle carries THE REASONS -- the owner: "I'd also
+    like it if you had included all of the design rationale behind the
+    iterations I've made in each menu", then "Yes go ahead, and add it to the
+    screenshot tool": `docs/UI-DESIGN-NOTES.md`, a section a part of the game
+    (what it is for, the owner's decisions and why, what was tried and
+    changed, what not to suggest, what is still open; a digest of the specs,
+    the UI law and the owner's words -- the specs and the code win where they
+    differ), copied in as DESIGN-NOTES.md, each screen's README entry linking
+    its sections (`Screens:` under a section's heading, tools/qa/ui-review/
+    notes.mjs), the ChatGPT prompt asking for them to be read first and named
+    when a suggestion goes against one. A NEW SCREEN IN states.mjs GETS A
+    SECTION OR ITS ID ON ONE, AND A NEW DECISION ABOUT A SCREEN A LINE IN IT;
+    `node tools/qa/ui-review/capture.mjs --check-notes` (no build) fails on a
+    screen with none. And the ChatGPT KIT -- the owner: "walk me through the
+    most efficient way for chatGPT to review all of these menus with the
+    rationale" -- `chatgpt/` and `ui-review-for-chatgpt.zip`
+    (tools/qa/ui-review/packets.mjs, capture.mjs `makeKit`): START-HERE.md
+    and eleven folders, one ChatGPT chat each, of at most nine screens (a
+    folder is one message of ten files), each screen ONE picture with its
+    views side by side (a computer window's black bars cut off) and a
+    brief.md with the task, the answer's shape, what the check found and the
+    screens' design notes in full, a finding on several of its screens
+    listed once ("Found on several screens", `sharedFindings`); a new screen
+    goes in a packet in `PACKETS` (else "Other screens"); `--report-only`
+    makes it for any bundle. The check measures the box a press lands in --
+    a control's own `::before`/`::after` ring counts (audit.mjs `touchBox`:
+    every window's ✕ is drawn 28 px in a 44 px ring and was called small).
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's
