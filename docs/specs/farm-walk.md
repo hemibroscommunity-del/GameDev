@@ -511,12 +511,13 @@ two pictures still to come.
 - `mp-farm` (the window: Seeds first, no beds, the summary line following the
   worker's farm, the kill switch), `mp-farmorders` and `mp-wheeldoors` (the
   farm's gate) still run.
-- mp-farmwalk's memory check (the farm holding less than the Wheel, the two
-  together) fails, and fails the same way on main (v2.3.3411: the farm 104.5
-  MB on the graphics chip, 104.6 on main, the Wheel 71.3). Most likely since
-  v2.3.3190, which cut the Wheel's from about 104 MB to 72 by keeping its
-  ground and objects as colour numbers (CLAUDE.md, "Memory is budgeted"); the
-  farm's 22 MB map is not kept that way.
+- mp-farmwalk's memory check passes (24 of 24, v2.3.3411): the farm holds
+  104.5 MB on the graphics chip and 90.3 cached, 195 together, under its 205
+  line, and 0.3 MB of colour numbers (BroTown's 11.1). It used to ask that the
+  farm hold less than BroTown, which failed on main too once v2.3.3190 kept
+  BroTown's ground and objects as colour numbers (104 MB to 71 on the chip):
+  the farm's pictures are still full colour, its 22 MB map the biggest. Main
+  asked it as those two questions from v2.3.3399 (#956).
 
 ## Not yet
 
