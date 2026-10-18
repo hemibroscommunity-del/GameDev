@@ -23,6 +23,9 @@
  *       server_announce is dropped by the deny-list.
  *   6.  Metrics: once-daily key-existence idempotency; /economy
  *       history/delta/alert math; ring prunes to METRICS_KEEP.
+ *   7b. v2.3.3363: the mailboxes and orders are paged like the player
+ *       records, and a buy order's gold is counted (escrowedGold read
+ *       fields no order has, and was always 0).
  *   8.  v2.3.3295: every kill switch can be THROWN through the real
  *       route -- the five camelCase ones (storeGear, dailyChest,
  *       zoneDepth, whirlWindup, broCount) answered 400 before; each now
@@ -33,7 +36,7 @@
  *       route takes.                                                  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
-import { LIVEOPS, METRICS, flagNameOk } from '../src/liveops.js';
+import { LIVEOPS, METRICS, flagNameOk, orderEscrowGold } from '../src/liveops.js';
 import { ZONES } from '../src/data.js';
 import { zoneDepthK } from '../src/depth.js';
 
@@ -294,6 +297,97 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   check('...and is not retried within RETRY_MS (no further list calls)', calls === c1, { c1, calls });
   s8.storage.list = realList;
   check('...but runs again after RETRY_MS', (await r8._metricsMaybe(T7 + METRICS.RETRY_MS + 1)) === false && s8._store.has('metrics:' + r8._cadencePeriodDaily(T7)));
+}
+
+// ── 7b. v2.3.3363: the mailboxes and the orders are paged too, and a buy
+//        order's gold is counted ──
+// The two tails were one unbounded list each, values and all; and escrowedGold
+// read `o.side`/`o.qty`, which no order has (an order is {type, price}), so it
+// was 0 every day.  Every list the job and /economy make is bounded now.
+{
+  const s9 = makeState();
+  const r9 = new GameRoom(s9, mockEnv);
+  const T9 = Date.UTC(2031, 1, 7, 12, 0, 0);
+  const pad = (i) => String(i).padStart(4, '0');
+  for (let i = 0; i < 30; i++) s9._store.set('rpg:bp_g' + pad(i), { coins: 10, level: 1 });
+  const BOXES = METRICS.BOX_PAGE * 2 + 7;                  // three pages of mail
+  let entries = 0;
+  for (let i = 0; i < BOXES; i++) {
+    const n = 1 + (i % 4);
+    entries += n;
+    s9._store.set('inbox:bp_m' + pad(i), Array.from({ length: n }, (_, j) => ({ opId: 'op' + i + '_' + j, kind: 'gold', payload: { amount: 5 } })));
+  }
+  const ORDERS = METRICS.PAGE + 40;                        // two pages of orders
+  let buyGold = 0, sells = 0;
+  for (let i = 0; i < ORDERS; i++) {
+    const buy = i % 3 !== 0;
+    const price = 100 + i;
+    if (buy) buyGold += price; else sells++;
+    // the shape market.js stores (_mktPlaceOrder): `type`, `price`, the weapon on a sell
+    s9._store.set('mkt_order:' + pad(i), { id: pad(i), type: buy ? 'buy' : 'sell', category: 'weapon', price, item: buy ? null : { name: 'Sword' }, playerId: 'bp_o' + (i % 9) });
+  }
+  check('7b. orderEscrowGold: a buy holds its price, a sell none, junk none',
+    orderEscrowGold({ type: 'buy', price: 250 }) === 250 && orderEscrowGold({ type: 'sell', price: 250 }) === 0
+    && orderEscrowGold({ side: 'buy', price: 250, qty: 3 }) === 0 && orderEscrowGold(null) === 0
+    && orderEscrowGold({ type: 'buy', price: 'x' }) === 0 && orderEscrowGold({ type: 'buy', price: -5 }) === 0);
+
+  s9._store._listLog = [];
+  const ret = [];
+  for (let i = 0; i < 20; i++) {
+    ret.push(await r9._metricsMaybe(T9 + i * 3000));
+    if (ret[ret.length - 1] === false) break;
+  }
+  const rec9 = s9._store.get('metrics:' + r9._cadencePeriodDaily(T9));
+  const log = s9._store._listLog;
+  const of = (p) => log.filter((l) => l.prefix === p);
+  check('7b. the record counts every buy order\'s gold (it read 0 before)', rec9 && rec9.escrowedGold === buyGold && buyGold > 0, { got: rec9 && rec9.escrowedGold, want: buyGold });
+  check('7b. ...and every entry in every mailbox, across three pages of them', rec9 && rec9.pendingEntries === entries, { got: rec9 && rec9.pendingEntries, want: entries });
+  check('7b. ...and the gold and the records as before', rec9 && rec9.totalGold === 300 && rec9.playerBlobs === 30, rec9);
+  // (the ring's own prune lists `metrics:`, at most METRICS_KEEP + 1 rows, by design)
+  check('7b. every list of a table that grows with players carried a limit (nothing unbounded)',
+    log.length > 0 && log.filter((l) => l.prefix !== 'metrics:').every((l) => l.limit > 0)
+    && log.filter((l) => l.prefix === 'metrics:').every((l) => l.size <= LIVEOPS.METRICS_KEEP + 1), log);
+  check('7b. the mailboxes were read BOX_PAGE at a time, resumed after the last key',
+    of('inbox:').length === 3 && of('inbox:').every((l, i) => l.limit === METRICS.BOX_PAGE && (i === 0 ? !l.startAfter : !!l.startAfter))
+    && of('inbox:').map((l) => l.size).join() === [METRICS.BOX_PAGE, METRICS.BOX_PAGE, 7].join(), of('inbox:'));
+  check('7b. the orders were read PAGE at a time', of('mkt_order:').length === 2 && of('mkt_order:').every((l) => l.limit === METRICS.PAGE)
+    && of('mkt_order:').map((l) => l.size).join() === [METRICS.PAGE, 40].join(), of('mkt_order:'));
+  // one call: the short rpg page, then the mail's first FULL page, and stop;
+  // so a call never reads more than one full page
+  const calls = [];
+  {
+    let cur = [];
+    for (const l of log) { cur.push(l); if (l.size === l.limit) { calls.push(cur); cur = []; } }
+    if (cur.length) calls.push(cur);
+  }
+  check('7b. no call read more than one FULL page', calls.every((c) => c.filter((l) => l.size === l.limit).length <= 1), calls.map((c) => c.map((l) => l.prefix + l.size)));
+  check('7b. ...the record went out on the call whose pages all came back short (four calls: the short records page and the first full mail page, the second, the short mail page and the full order page, then the short order page)',
+    ret.length === 4 && ret.slice(0, 3).every((x) => x === true) && ret[3] === false, ret);
+
+  // the same counts through the owner's /economy, paged the same way
+  s9._store._listLog = [];
+  const eco = await r9._economySnapshot();
+  const log2 = s9._store._listLog;
+  check('7b. /economy\'s snapshot counts the buy orders\' gold and the open orders', eco.market.escrowedGold === buyGold && eco.market.openOrders === ORDERS, eco.market);
+  check('7b. ...and the mail', eco.inbox.inboxes === BOXES && eco.inbox.pendingEntries === entries, eco.inbox);
+  check('7b. ...every list it made carried a limit', log2.length > 0 && log2.every((l) => l.limit > 0), log2);
+  check('7b. ...the mail BOX_PAGE at a time', log2.filter((l) => l.prefix === 'inbox:').every((l) => l.limit === METRICS.BOX_PAGE) && log2.filter((l) => l.prefix === 'inbox:').length === 3, log2.filter((l) => l.prefix === 'inbox:'));
+
+  // an empty room: nothing at all to count still writes its record in one call
+  const s10 = makeState();
+  const r10 = new GameRoom(s10, mockEnv);
+  check('7b. an empty room writes its record in one call, all zeros',
+    (await r10._metricsMaybe(T9)) === false
+    && JSON.stringify(Object.entries(s10._store.get('metrics:' + r10._cadencePeriodDaily(T9)) || {}).filter(([k]) => k !== 'ts'))
+      === JSON.stringify([['totalGold', 0], ['playerBlobs', 0], ['escrowedGold', 0], ['pendingEntries', 0]]),
+    s10._store.get('metrics:' + r10._cadencePeriodDaily(T9)));
+  // exactly a full page of mail: the next page comes back empty, and that ends it
+  const s11 = makeState();
+  const r11 = new GameRoom(s11, mockEnv);
+  for (let i = 0; i < METRICS.BOX_PAGE; i++) s11._store.set('inbox:bp_x' + pad(i), [{ kind: 'gold' }]);
+  const a = await r11._metricsMaybe(T9), b = await r11._metricsMaybe(T9 + 3000);
+  check('7b. a mailbox count of exactly one page ends on the empty page after it', a === true && b === false
+    && (s11._store.get('metrics:' + r11._cadencePeriodDaily(T9)) || {}).pendingEntries === METRICS.BOX_PAGE, { a, b });
 }
 
 // ── 8. v2.3.3295: every kill switch can be thrown ──

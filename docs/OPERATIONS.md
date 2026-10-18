@@ -62,7 +62,9 @@ Who's online, is the world ticking:
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/overview"
 ```
 
-The economy — total gold in the world, richest players, market escrow.
+The economy — total gold in the world, richest players, market escrow
+(the gold waiting in the market's buy orders; it read 0 by mistake until
+v2.3.3363, so older daily snapshots show 0 there).
 Since v2.3.1150 this also shows `history` (the last week of daily
 snapshots), `delta` (how much total gold moved since yesterday), and
 `alert: true` if gold jumped more than 25% in a day — that's the
