@@ -12,6 +12,7 @@ import { emoteKind, emotesLive, EMOTE_COOLDOWN_MS } from '@/game/emotes.js'; /* 
 import { moveKind, EMOTE_MOVES, EMOTE_HOLD_IDS } from '@/game/emoteMoves.js'; /* v2.3.3392: your bro moves */
 import { swimRefused, airRefused } from '@/game/combatHelpers.js'; /* v2.3.3392 */
 import { seasonOn } from '@/game/season.js'; /* v2.3.3395 */
+import { ownEmoteSound, ownMoveSound } from '@/game/moveSounds.js'; /* v2.3.3398: the emotes and moves heard */
 
 export function sendEmote(S, emoji, deps) {
   var setShowEmotes = deps.setShowEmotes;
@@ -29,7 +30,7 @@ export function sendEmote(S, emoji, deps) {
       return;
     }
     S._emoteAt = now;
-    BT_AUDIO.emote();
+    ownEmoteSound();   /* v2.3.3398: the emoji's pop -- BT_AUDIO.emote() is two beep()s, silent since v2.3.1103 */
     if (S.stats) S.stats.emotesUsed++;
     S.emote = {
       emoji: emoji,
@@ -76,7 +77,7 @@ export function sendMove(S, id, deps) {
   var now = Date.now();
   if (S._emoteAt && now - S._emoteAt < EMOTE_COOLDOWN_MS) return false;
   S._emoteAt = now;
-  BT_AUDIO.emote();
+  ownMoveSound(id);   /* v2.3.3398: the move heard (game/moveSounds.js; it was BT_AUDIO.emote(), silent) */
   if (S.stats) S.stats.emotesUsed++;
   var pop = EMOTE_MOVES[id].pop;
   if (pop) S.emote = { emoji: pop, ts: now, trusted: true };

@@ -707,7 +707,18 @@ remnant to migrate server-side, not a mode to preserve.
       (trapping.js `petVoice`, NOISE_OF); and the forge's anvil near the
       Blacksmith's (`src/game/townAmbience.js`, `?noforge`,
       `window.__btForge`); the bag's Drink called the browser's window.close()
-      and now closes its card; `sound-cues` §9, `mp-moresounds`.
+      and now closes its card; `sound-cues` §9, `mp-moresounds`; then a
+      third look (the owner: "Good look for more"): the emotes and moves
+      (`src/game/moveSounds.js`, `MOVE_SOUNDS` in data/eventSounds.js, every
+      move chosen: an emoji's pop, a facepalm's slap, a sit's bump, a flop's
+      thump, a flex's sparkle, a cheer's popper) -- yours, other players' at
+      the peer share (a pose heard only if it began once they were near,
+      `PEER_KNOWN_MS`) and the townsfolk's copies (`NPC_K`); a harvest's prize
+      landing in the bag (`bagIn`); and the menu click on a world tap that
+      opens a menu (your bro's chat box, a player's card, a townsperson's
+      window: no <button>, so the delegate never heard them); `sound-cues`
+      §10; `mp-cuelevels` lists the cues kept quiet on purpose (`QUIET_OK`:
+      /roll and /flip at Ace's toss level, the owner's call).
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":

@@ -293,6 +293,31 @@ export const EVENT_SOUNDS = {
      bright), ~0.5 at the forge -- played by game/townAmbience.js now and
      then while you are near the Blacksmith's, its sparks' sound. */
   anvil: [['mine-strike', 0.58, 0.3, 0.3, 1.25], ['mine-strike', 0.58, 0.3, 0.26, 1.22, 0.42], ['mine-strike', 0.58, 0.3, 0.3, 1.27, 0.84]],
+  /* ── v2.3.3398, the third look (the owner: "Good look for more") ──
+     The emotes and moves (v2.3.3391-3395) shipped silent -- their plan's
+     table says "Extras (reused sounds)" (docs/FUN-SOCIAL-PLAN.md) and Phase 1
+     shipped "no new sounds"; each called BT_AUDIO.emote(), two beep()s.  Which
+     move makes which of these is MOVE_SOUNDS below; game/moveSounds.js plays
+     them -- yours, other players' (by distance, the peer share) and the
+     townsfolk copying you. */
+  /* An emote's emoji popping up over the head: the lure's plop, quick and
+     high, ~0.3. */
+  emotePop: [['lure-drop', 0, 0, 1.8, 1.65]],
+  /* Facepalm: the arrow's thwack, small, as the hand meets the face, ~0.3
+     (a slowed thud reads as a body falling, not a slap: 130% of it under
+     400 Hz, measured). */
+  slap: [['arrow-hit', 0, 0, 0.8, 1.35, 0.2]],
+  /* Sitting down (a soft scuff and bump, ~0.35) and flopping flat (a thump,
+     the ground's dirt and a small second bounce, ~0.6). */
+  sitDown: [['footstep-v3', 0.08, 0.3, 0.9, 0.8, 0, 0.08], ['monster-hit', 0.01, 0.2, 0.35, 0.7, 0.03]],
+  flop: [['monster-hit', 0.01, 0.2, 1.0, 0.58], ['footstep-v3', 0.92, 0.3, 0.9, 0.75, 0.02, 0.08], ['monster-hit', 0.01, 0.15, 0.4, 0.7, 0.22]],
+  /* Flex: a sparkle and a glint at the top of it, ~0.35. */
+  flexShine: [['magic-cast', 0, 0.5, 0.45, 1.45, 0.1, 0.12], ['sword-hit2', 0, 0.2, 0.22, 1.9, 0.18, 0.05]],
+  /* Cheer: a party popper -- two pops and a puff of air, ~0.45. */
+  cheerPop: [['lure-drop', 0, 0, 1.8, 1.5], ['lure-drop', 0, 0, 1.6, 1.75, 0.12], ['arrow-fly', 0.03, 0.2, 1.4, 1.2, 0.05, 0.05]],
+  /* A harvest's prize landing in the bag after its flight (lifeSkillRewards
+     _flyResourceToInventory): the bag's leather, softly, ~0.25. */
+  bagIn: [['ui-equip', 0.095, 0.3, 1.1, 1.25, 0, 0.08]],
 
   /* ── other players (game/eventSounds.js cuePeer: by distance, a burst cap,
         about half your own level; what sounds as YOURS does -- the sprint's
@@ -341,4 +366,30 @@ export const CUE_GAP_MS = {
   tradeAsk: 1000,
   petOut: 300,
   petAway: 300,
+  /* v2.3.3398: a crowd emoting at once is a few pops, and five crops landing
+     together one rustle at a time */
+  emotePop: 80,
+  bagIn: 120,
+};
+
+/* ═══ v2.3.3398: WHAT EACH MOVE SOUNDS LIKE ═══
+   Every move in game/emoteMoves.js EMOTE_MOVES, chosen -- never fallen into
+   (server/test/sound-cues.test.mjs holds the keys to the moves): the emoji's
+   pop, and a sound of the move's own where it has one.  The wave, laugh,
+   shrug, sleep and the dances are the pop alone until their recordings (a
+   laugh, a snore, a dance loop: docs/SOUND-GAPS.md); Sit has no emoji. */
+export const MOVE_SOUNDS = {
+  wave: ['emotePop'],
+  laugh: ['emotePop'],
+  flex: ['emotePop', 'flexShine'],
+  shrug: ['emotePop'],
+  facepalm: ['emotePop', 'slap'],
+  cheer: ['cheerPop'],
+  sit: ['sitDown'],
+  sleep: ['emotePop'],
+  flop: ['flop'],
+  bounce: ['emotePop'],
+  robot: ['emotePop'],
+  sprinkler: ['emotePop'],
+  zombie: ['emotePop'],
 };

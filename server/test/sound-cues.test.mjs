@@ -23,6 +23,12 @@
  *      startSfxLoop, ticked by the game loop;
  *   8. the door: enterBuilding plays the table's knock, not the beep() that
  *      has played nothing since v2.3.1103;
+ *  10. v2.3.3398, the third look (the owner: "Good look for more"): every
+ *      emote and move heard as something chosen (MOVE_SOUNDS holds every move
+ *      of game/emoteMoves.js), yours, other players' and the townsfolk's; a
+ *      harvest's prize landing in the bag; and a menu opened by tapping the
+ *      world (your bro's chat box, a player's card, a townsperson's window)
+ *      opening with the menu click.
  *   9. v2.3.3398, the second round (the owner: "Look for more too"): the
  *      Gambling Den's dice and pot, the arena's stakes and sign-up, a guild
  *      quest, an alliance war's end, invites to duel and trade, the market,
@@ -39,7 +45,7 @@ function check(name, cond, detail) {
 
 const root = new URL('../../', import.meta.url);
 const src = (p) => readFileSync(new URL(p, root), 'utf8');
-const { EVENT_SOUNDS, CUE_GAP_MS } = await import('../../src/data/eventSounds.js');
+const { EVENT_SOUNDS, CUE_GAP_MS, MOVE_SOUNDS } = await import('../../src/data/eventSounds.js');
 const { MONSTER_VARIANTS } = await import('../../src/data/monsterVariants.js');
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const NAMES = Object.keys(EVENT_SOUNDS);
@@ -213,6 +219,8 @@ for (const p of files) {
       const a = t.indexOf('var _pickCue = ');
       return a < 0 ? [] : namesIn(t.slice(a, t.indexOf(';', a)));
     },
+    /* v2.3.3398: the moves' cues, read from the table that names them */
+    'src/game/moveSounds.js n': () => Object.values(MOVE_SOUNDS || {}).flat(),
     'src/ui/panels/buildings/StorePanel.jsx snd': () => {
       const t = src('src/ui/panels/buildings/StorePanel.jsx');
       const out = [];
@@ -361,6 +369,44 @@ for (const p of files) {
   check('9k ...by distance (cueAt), only in the Wheel, `?noforge` for the town as it was, ticked by the game loop',
     /cueAt\(S, 'anvil', forge\.x, forge\.y, ANVIL_K\)/.test(TA) && /isWheelTrialZone\(S\.currentZone\)/.test(TA) && /noforge/.test(TA)
     && /import \{ tickTownAmbience \} from '@\/game\/townAmbience\.js'/.test(BT) && /tickTownAmbience\(S, /.test(BT));
+}
+
+/* ── 10. v2.3.3398: the third look ("Good look for more") ── */
+{
+  const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');   /* the code, not what its comments say */
+  const { EMOTE_MOVES } = await import('../../src/game/emoteMoves.js');
+  const ids = Object.keys(EMOTE_MOVES).sort(), keyed = Object.keys(MOVE_SOUNDS || {}).sort();
+  check(`10a every move (${ids.length}) is heard as something chosen: MOVE_SOUNDS names exactly the moves of emoteMoves.js`, ids.length >= 12 && ids.join() === keyed.join(), { missing: ids.filter((k) => !keyed.includes(k)), extra: keyed.filter((k) => !ids.includes(k)) });
+  const badCue = keyed.filter((k) => !Array.isArray(MOVE_SOUNDS[k]) || !MOVE_SOUNDS[k].length || !MOVE_SOUNDS[k].every((n) => has(EVENT_SOUNDS, n)));
+  check('10b ...each move one cue or more, every one in the table', badCue.length === 0, badCue);
+  check('10c a move with an emoji pops it (the pop, or the cheer\'s own pops); Sit, with none, its bump',
+    ids.every((k) => !EMOTE_MOVES[k].pop || MOVE_SOUNDS[k].includes('emotePop') || MOVE_SOUNDS[k].includes('cheerPop') || MOVE_SOUNDS[k].includes('flop'))
+    && MOVE_SOUNDS.sit.includes('sitDown'));
+  const IN = strip(src('src/game/interactions.js'));
+  check('10d your emote and your move are heard (moveSounds), not BT_AUDIO.emote() (two beep()s, silent)',
+    /ownEmoteSound\(\)/.test(IN) && /ownMoveSound\(id\)/.test(IN) && !/BT_AUDIO\.emote\(/.test(IN));
+  const CH = strip(src('src/game/chat.js'));
+  const he = CH.slice(CH.indexOf('function handleEmote'), CH.indexOf('function handleDiceEvent'));
+  check('10e another player\'s emote or move is heard at the peer share (peerMoveSound), not the two silent beep()s',
+    he.length > 100 && /peerMoveSound\(S, /.test(he) && !/BT_AUDIO\.beep\(/.test(he));
+  const MS = src('src/game/moveSounds.js');
+  const known = +((MS.match(/PEER_KNOWN_MS = (\d+)/) || [])[1]), npcK = +((MS.match(/NPC_K = ([\d.]+)/) || [])[1]);
+  check('10f a player already sitting or dancing when they come near is not heard sitting down; a townsperson\'s copy softer than yours',
+    known >= 500 && npcK > 0 && npcK < 1 && /_mvKnownAt/.test(MS), { known, npcK });
+  const BT = src('src/ui/BroTown.jsx');
+  check('10g the game loop hears poses begin and the townsfolk\'s copies (tickMoveSounds)', /import \{ tickMoveSounds \} from '@\/game\/moveSounds\.js'/.test(BT) && /tickMoveSounds\(S, /.test(BT));
+  check('10h your move\'s own sound wins the tap over the menu click (the picker\'s tiles are buttons)', /BT_AUDIO\._uiSpecificAt = BT_AUDIO\._now\(\)/.test(MS));
+  const LS = strip(src('src/game/lifeSkillRewards.js'));
+  const fly = LS.slice(LS.indexOf('function _flyResourceToInventory'), LS.indexOf('function startExtraction'));
+  check('10i a harvest\'s prize is heard landing in the bag (bagIn), at the end of its flight', /setTimeout\(function \(\) \{ cue\('bagIn'\); \}, \d+\)/.test(fly));
+  /* a tap on the world reaches no <button>, so the menus it opens took no click */
+  const chatOpen = BT.slice(BT.indexOf('var openSelfChat = function'), BT.indexOf('var openSelfChat = function') + 1400);
+  const mark = BT.slice(BT.indexOf('var _mark = function (r)'), BT.indexOf('var _mark = function (r)') + 1200);
+  const inspects = (BT.match(/BT_AUDIO\.uiClickNow\(\); \} catch \(_ce\) \{ \/\* sound only \*\/ \}\s+\/\* v2\.3\.3398[^\n]*\n\s*setInspectPlayer\(\{/g) || []).length;
+  check('10j the menus a tap on the world opens click as every menu does: your bro\'s chat box, a townsperson\'s window, a player\'s card (3 ways)',
+    /chatBubbleBus\.setOpen\(true\)[\s\S]*BT_AUDIO\.uiClickNow\(\)/.test(chatOpen)
+    && /r === 'quest' \|\| r === 'flip' \|\| r === 'shop' \|\| r === 'pets'\) \{ try \{ BT_AUDIO\.uiClickNow\(\)/.test(mark)
+    && inspects === 3, { inspects });
 }
 
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);

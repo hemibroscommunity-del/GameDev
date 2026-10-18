@@ -6,12 +6,14 @@
 >
 > Owner, 2026-10-18, on the refreshed list: *"Start adding the have ones then
 > give me the list of ones that are still needed afterwards"*, and after it:
-> *"Look for more too"*
+> *"Look for more too"*, then *"Good look for more. I'll get other sounds in
+> morning"*
 
 v2.3.3343 added every missing sound that could be made from recordings the game
-already ships, and v2.3.3398 a second round found by looking again (every
-place that still called the silent `beep()` or `collect()`, and every message
-from the server that shows something and plays nothing). What is left needs
+already ships, and v2.3.3398 a second and a third round found by looking again
+(every place that still called the silent `beep()` or `collect()`, every
+message from the server that shows something and plays nothing, the emotes and
+moves added since, and the menus a tap on the world opens). What is left needs
 **new recordings**, or work that is more than a sound. Both lists are below.
 
 ## Two things to know first
@@ -118,6 +120,21 @@ from the server that shows something and plays nothing). What is left needs
 - **The forge at work**: near the Blacksmith's in BroTown its anvil rings now
   and then, softly, the sound of the sparks it throws.
 
+## Added in v2.3.3398 (the third look)
+
+- **Emotes and moves** (they shipped silent: their plan asked for "reused
+  sounds"): an emote's emoji pops as it appears; a facepalm slaps, sitting down
+  bumps, a flop thumps, a flex sparkles and a cheer pops like a party popper.
+  Yours, other players' beside you (about half as loud) and the townsfolk's:
+  Lil Bro copying you, Blacksmith Bro flexing back, Mayor Bro's cheer.
+  Which move makes which sound is `MOVE_SOUNDS` (`src/data/eventSounds.js`).
+- **A harvest's prize landing in the bag** after it flies there: the bag's
+  leather, softly.
+- **The menu click on a tap on the world**: your bro's chat box, a player's
+  card, and a townsperson's window (his quest, Ace's coin flip, Diego's shop,
+  the Pets page) open with the click every menu has -- a tap on the world
+  reaches no on-screen button, so they opened silently.
+
 Found on the way and fixed: the bag's **Drink** button called the browser's
 own window-close instead of the card's, so the card stayed open after a drink
 (and a tab the browser lets a script close could have closed the game).
@@ -132,7 +149,8 @@ Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
 | **Your hurt grunt** | being hit | today the armour clang or a thud |
 | **Low-HP heartbeat** | under a quarter of your health | the game already keeps time for it (faster under a tenth); only the sound is missing |
 | **Munch and gulp** | eating and drinking: Quick Eat, the bag's Eat and Drink, the Cookhouse's Eat | all silent |
-| **A soft UI pop** | chat lines and emotes | |
+| **A soft UI pop** | chat lines | emotes pop since v2.3.3398, with the lure's plop |
+| **Laughs, a snore and a dance loop** | the Laugh, Sleep and the dances | each pops its emoji today; a dance loop would play through the music player, never decoded into memory (docs/FUN-SOCIAL-PLAN.md) |
 | **A notification chime** | mail arriving, party invites, friends' requests and messages, announcements, the weekly jackpot's winner (heard by everyone else) | duel and trade invites have sounds of their own since v2.3.3398 |
 | **A "denied" tick** | "No mana!", "Not enough energy", bag full, not enough gold, "Swimming!", "Dazed!", "Gear locked", "Eat again in Ns", the farm's "Out of seeds", the market's and the Mayor gate's refusals, walking over a pile that is not yours, a greyed-out button | one sound for every refusal |
 | **A horn or a drum** | dungeon waves, the arena | today a slowed shield bash and wind |
@@ -146,6 +164,13 @@ Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
 | **Leaf-litter footsteps** | the forest floor | plays grass today |
 | **NPC voice blips** | speech bubbles, opening a conversation | the Mayor's recorded welcome is in the game but not reachable in play |
 | **Music for four lands** | Stone Hollows, Electric Foundry, Water Caves, Poison Forest | they play the login theme. `world.mp3` was offered as a stopgap and the owner said no (2026-10-06) |
+
+## Quiet on purpose, the owner's call
+
+- The chat's **/roll and /flip** (v2.3.3393) play Ace's coin clip at his own
+  toss's level (`AceFlipPanel.jsx` TOSS_OPTS, since v2.3.2621): about a
+  twentieth of a hit, which a phone may not carry over the music. Bringing all
+  three up is one number each; `mp-cuelevels` lists them every run.
 
 ## Still needed: more than a sound
 

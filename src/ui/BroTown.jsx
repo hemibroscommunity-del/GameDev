@@ -404,6 +404,7 @@ import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits 
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
 import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3398: the forge heard at work */
+import { tickMoveSounds } from '@/game/moveSounds.js';   /* v2.3.3398: the emotes and moves heard */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor, sendMove as sendMoveImpl, updateOwnEmote, updatePeerEmotes, movesLive } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building; v2.3.3392: + your bro moves */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
@@ -5092,6 +5093,9 @@ export var BroTown = function BroTown(_ref0) {
              copies, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have
              a word (game/townsfolkReact.js) */
           updateTownsfolkReactions(S, _sprNow);
+          /* v2.3.3398: and heard -- another player's pose as it begins, a
+             townsperson's copy as it starts (game/moveSounds.js) */
+          tickMoveSounds(S, _sprNow);
         } catch (e) { /* a look only */ }
 
         /* §14 Terrain feel — tile under player affects movement */
@@ -9827,6 +9831,11 @@ export var BroTown = function BroTown(_ref0) {
       if (typeof window !== 'undefined') {
         window.__btNpcTap = { at: [Math.round(cssX), Math.round(cssY)], npc: npc ? npc.name : null, result: r, ts: Date.now() };
       }
+      /* v2.3.3398: a window opened by tapping him -- his quest, Ace's coin
+         flip, Diego's shop, the Pets page -- opens with the menu click (a tap
+         on the world reaches no <button>); a keeper's building has its door's
+         knock already (enterBuilding) */
+      if (r === 'quest' || r === 'flip' || r === 'shop' || r === 'pets') { try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ } }
       return r !== 'miss';
     };
     if (!npc) return _mark('miss');
@@ -10030,6 +10039,9 @@ export var BroTown = function BroTown(_ref0) {
         if (_busC && _busC.state.mode !== 'bar') _busC.toBar(); /* v2.3.1290 */
       } catch (_e3) {}
       try { chatBubbleBus.setOpen(true); } catch (_e4) {}
+      /* v2.3.3398: the chat box is a menu, so it opens with the menu click --
+         a tap on your bro reaches no <button> (ui/uiSfxDelegate.js) */
+      try { BT_AUDIO.uiClickNow(); } catch (_e5) { /* sound only */ }
     };
     /* v2.3.1324 (Friends server round): AWAY presence — stamp the last
        real user input; the 2s track relay below carries aw:1 after two
@@ -12127,6 +12139,7 @@ export var BroTown = function BroTown(_ref0) {
           } catch (e) { _isPartyMate = false; }
           if (_isPartyMate) {
             if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
+            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3398: a menu opened by a tap on them -- the menu click (the owner's rule for every menu; a tap on the world reaches no <button>, uiSfxDelegate.js) */
             setInspectPlayer({
               id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
@@ -12202,6 +12215,7 @@ export var BroTown = function BroTown(_ref0) {
             S.lockedTarget = null;
           } else if (!_isDuelOpponent) {
             if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
+            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3398: the menu click, as above */
             setInspectPlayer({
               id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
@@ -12214,6 +12228,7 @@ export var BroTown = function BroTown(_ref0) {
               id: id,
               ref: o
             };
+            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3398: the menu click, as above */
             setInspectPlayer({
               id: id,
               name: o.name,
