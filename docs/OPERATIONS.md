@@ -62,7 +62,9 @@ Who's online, is the world ticking:
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/overview"
 ```
 
-The economy — total gold in the world, richest players, market escrow.
+The economy — total gold in the world, richest players, market escrow
+(the gold waiting in the market's buy orders; it read 0 by mistake until
+v2.3.3368, so older daily snapshots show 0 there).
 Since v2.3.1150 this also shows `history` (the last week of daily
 snapshots), `delta` (how much total gold moved since yesterday), and
 `alert: true` if gold jumped more than 25% in a day — that's the
@@ -196,7 +198,9 @@ curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/botstat?id=bp_XXXX"
 
 ## Dealing with a griefer or cheater
 
-Kick (disconnects them; they can reconnect — a warning shot):
+Kick (disconnects them; they can reconnect — a warning shot). Since
+v2.3.3356 a kicked or frozen player leaves the world the way anyone who closes
+the game does: saved, and gone from everyone else's screen.
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"playerId":"bp_XXXX","reason":"stop spamming"}' "https://WORKER/api/admin/kick"

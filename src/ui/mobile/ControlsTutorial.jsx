@@ -369,7 +369,7 @@ export const ControlsTutorial = () => {
              own Next even though the window does the same thing. */
           onClick={(e) => { e.stopPropagation(); onClose(); }}
           aria-label="Close tutorial"
-          data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3358: Esc presses it (game/deskKeys.js) */
+          data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3374: Esc presses it (game/deskKeys.js) */
           style={{
             position: 'absolute',
             top: 0, right: 0,

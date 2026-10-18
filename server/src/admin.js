@@ -61,6 +61,20 @@ export const adminMethods = {
     return a === b ? 'ok' : 'denied';
   },
 
+  /* ═══ v2.3.3356: PUT OUT, AND OUT OF THE WORLD ═══
+     Kick and Freeze deleted the session and then closed the socket, so the
+     runtime's own close found no session and the leaving never ran: no save,
+     no player_leave, no party or duel grace -- and every other player kept
+     seeing the body, standing where it was, until the room restarted.  Now
+     the AFK sweep's three steps (tick.js, flood.js _floodClose; the owner's
+     Forget, devicelock.js): the close, the leaving run now, the session gone.
+     A body in a fight with a player lingers as any leaver's does (linger.js). */
+  async _adminPutOut(ws, code, reason) {
+    try { ws.close(code, reason); } catch (e) { /* closed */ }
+    try { await this.webSocketClose(ws); } catch (e) { /* best effort */ }
+    this.sessions.delete(ws);
+  },
+
   async _adminLog(entry) {
     try {
       const log = (await this.state.storage.get('admin_log')) || [];
@@ -174,9 +188,9 @@ export const adminMethods = {
 
       if (request.method === 'GET' && path === '/economy') {
         // v2.3.1150: aggregation factored into _economySnapshot
-        // (liveops.js) so the daily metrics tripwire shares it.  Scale
-        // note unchanged: full-prefix lists are fine at room scale;
-        // revisit with maintained aggregates beyond ~thousands of blobs.
+        // (liveops.js) so the daily metrics tripwire shares it.  Every
+        // table it reads is paged (v2.3.2438, v2.3.3368), so its memory
+        // stays bounded; its time still grows with the tables.
         const s = await this._economySnapshot();
         // Tripwire surface: last 7 daily snapshots + day-over-day
         // delta; alert when |Δ totalGold| exceeds ALERT_PCT (a sudden
@@ -351,10 +365,7 @@ export const adminMethods = {
         const { playerId, reason } = body || {};
         if (!playerId) return json({ ok: false, error: 'playerId required' }, 400);
         const target = this._wsBySessionId(playerId);
-        if (target) {
-          this.sessions.delete(target);
-          try { target.close(4008, 'admin_kick'); } catch (e) {}
-        }
+        if (target) await this._adminPutOut(target, 4008, 'admin_kick');   /* v2.3.3356 */
         await this._adminLog({ op: 'kick', playerId, reason: reason || '' });
         return json({ ok: true, wasOnline: !!target });
       }
@@ -365,10 +376,7 @@ export const adminMethods = {
         if (!playerId) return json({ ok: false, error: 'playerId required' }, 400);
         await this.state.storage.put('frozen:' + playerId, { ts: Date.now(), note: note || '' });
         const target = this._wsBySessionId(playerId);
-        if (target) {
-          this.sessions.delete(target);
-          try { target.close(4004, 'frozen'); } catch (e) {}
-        }
+        if (target) await this._adminPutOut(target, 4004, 'frozen');   /* v2.3.3356 */
         await this._adminLog({ op: 'freeze', playerId, note: note || '' });
         return json({ ok: true, wasOnline: !!target });
       }

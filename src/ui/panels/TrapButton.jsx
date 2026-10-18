@@ -61,7 +61,7 @@ export function TrapButton({ stateRef }) {
       data-trap-button={v.kind}
       data-trap-monster={v.monsterId}
       data-trap-odds={v.chance}
-      /* v2.3.3358: T is its click on a computer (desktopControls: arms it,
+      /* v2.3.3374: T is its click on a computer (desktopControls: arms it,
          or grey, says why), and it says so after its words -- not while it is
          set or on its way, when neither does anything */
       data-key={v.kind === 'ready' || grey ? 'T' : undefined}

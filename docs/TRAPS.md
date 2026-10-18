@@ -7131,7 +7131,7 @@ refused device counts as a wrong key" (24 of 24 deliberate breaks caught), and
 mp-devicelock refuses a new phone with the code, its key kept, and lets it in
 after the owner's pass.
 
-## 210. "The figure is at (world - camera) x scale on the screen" (v2.3.3358)
+## 210. "The figure is at (world - camera) x scale on the screen" (v2.3.3374)
 
 **Tempting:** a point in the world is drawn at `(x - camera.x) * scale`, so
 that is where it is on the screen -- compare it with a pointer's `clientX`.
@@ -7154,7 +7154,7 @@ assume it is at 0, 0 -- and test on a computer's window, not only a phone's.
 **Receipt:** mp-deskharvest step 4: with the button hidden the anchor is on the
 figure (within 2 px of where it is drawn), inside the column.
 
-## 211. "An invisible strip at the screen's edge only catches what lands on the world" (v2.3.3358)
+## 211. "An invisible strip at the screen's edge only catches what lands on the world" (v2.3.3374)
 
 **Tempting:** iOS reads a swipe from the bezel as its back gesture, so lay a
 transparent strip down the left edge, above the game, and cancel every
@@ -7180,7 +7180,7 @@ layer.
 both fold chips and the band's first bag tile (all six fail on the strip), and
 a thumb at x 8 on the world still starts no walk.
 
-## 212. "A window that fits a phone held upright fits one held sideways" (v2.3.3358)
+## 212. "A window that fits a phone held upright fits one held sideways" (v2.3.3374)
 
 **Tempting:** build the window on the 390 x 844 design target, centre it on a
 scrim, and it works on every phone.
@@ -7203,7 +7203,7 @@ review takes every window in both.
 screen); mp-shopkeeper's sideways part (the column opens beside the drawer, a
 tap on a bag slot sells, the ✕ answers, "His shelf" below his name).
 
-## 213. "A key's letter is one more word on its button" (v2.3.3358)
+## 213. "A key's letter is one more word on its button" (v2.3.3374)
 
 **Tempting:** to show a computer player that Enter accepts the quest, put
 `<kbd>Enter</kbd>` in the Accept Quest button, and an "Esc" span by every ✕.
@@ -7229,7 +7229,7 @@ with it, or it stays bright on top (TRAPS §20).
 minimap, Next, Accept Quest, Not now and the ✕s, every key doing what its
 button does, and a phone wearing none; the quest scenarios still read the
 cards' words unchanged.
-## 214. "A `vw` is a hundredth of the game's width" (v2.3.3358)
+## 214. "A `vw` is a hundredth of the game's width" (v2.3.3374)
 
 **Tempting:** size a screen's parts as fractions of `vw` -- `--cc-leftw:
 clamp(150px,44vw,360px)` -- because on a phone the game IS the screen, and a
@@ -7309,7 +7309,28 @@ or the shared roster carrying one of those. The door's answer also corrects
 first refused, before the fix; after it, one join, let in. mp-charlock and
 mp-linger.
 
-## 217. "Every window puts a scrim over the screen, so the coach keeps off windows by itself" (v2.3.3358)
+## 217. "Put a player out: forget their session, then close their socket" (v2.3.3356)
+
+**Tempting:** to put a player out of the room (the Test panel's Kick or
+Freeze), delete their session from `this.sessions`, so nothing more is sent to
+them, and close their socket.
+
+**What happens:** the leaving is the runtime's close, `webSocketClose`
+(index.js): the save, `player_leave` to everyone, the party's and the duel's
+grace, the body taken out of `playerState`. It looks the socket up in
+`this.sessions`, finds nothing, and does none of it. The player is gone from
+the room's list, but their body stands where it was on everyone else's screen
+until the room restarts. Kick and Freeze did exactly this.
+
+**The rule:** put a player out in the AFK sweep's three steps (tick.js,
+flood.js `_floodClose`): close the socket, run `webSocketClose` for it now,
+then delete the session (admin.js `_adminPutOut`; the owner's Forget,
+devicelock.js).
+
+**Receipt:** admin.test §5 and §6: after a Freeze and a Kick an onlooker is
+told `player_leave` and no body is left. Both checks fail on the old code.
+
+## 220. "Every window puts a scrim over the screen, so the coach keeps off windows by itself" (v2.3.3374)
 
 **Tempting:** leave the quest coach alone when a window is open: it draws a
 lesson only when its control answers a hit-test at its middle (QuestCoach

@@ -128,7 +128,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(A);
   await H.enterWorld(B);
   await A.page.waitForTimeout(2500);
-  /* v2.3.3358: a first join arrives with the band FOLDED (v2.3.2495; harness
+  /* v2.3.3374: a first join arrives with the band FOLDED (v2.3.2495; harness
      unfoldBand's note) -- this scenario predates that, read no bag, and failed
      at "the bag is on screen" on main.  The band unfolded as a player does. */
   await H.unfoldBand(A).catch(() => {});
@@ -373,7 +373,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/shopkeeper-panel.png' }).catch(() => {});
 
-  /* ══ SIDEWAYS, THE BAG IS THE COLUMN BESIDE HIM (v2.3.3358) ══
+  /* ══ SIDEWAYS, THE BAG IS THE COLUMN BESIDE HIM (v2.3.3374) ══
      The owner: "Make sure all actions/buttons can be completed in landscape
      mode."  Sideways the band holds no bag -- it is the side column's
      'dashboard' page -- and nothing could be SOLD: the drawer lay over the ▴

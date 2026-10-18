@@ -95,7 +95,7 @@ export function QuestCloseX(props) {
     className: 'bt-qw-x',
     'data-qa': props.qa || 'dlg-close',
     'aria-label': props.label || 'Close',
-    /* v2.3.3358: Esc presses it, and on a computer it says so
+    /* v2.3.3374: Esc presses it, and on a computer it says so
        (game/deskKeys.js; game.css [data-key]) */
     'data-esc': '', 'data-key': 'Esc', 'data-key-at': 'hang',
     onClick: function (e) { e.stopPropagation(); if (props.onClick) props.onClick(e); },
@@ -176,7 +176,7 @@ export function QuestClaimButton(props) {
     'data-tut': props.tut || undefined,
     'aria-disabled': off,
     'data-state': off ? 'off' : 'on',
-    /* v2.3.3358: `enterKey` -- Enter presses it (game/deskKeys.js), and on a
+    /* v2.3.3374: `enterKey` -- Enter presses it (game/deskKeys.js), and on a
        computer it wears "Enter" at its right end; never while it is off */
     'data-enter': props.enterKey && !off ? '' : undefined,
     'data-key': props.enterKey && !off ? 'Enter' : undefined,

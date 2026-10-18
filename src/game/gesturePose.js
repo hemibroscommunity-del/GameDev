@@ -122,7 +122,7 @@ export function gestureTargetCycles(skill) {
               overall) by a hand that looks human (the v2.3.229 entropy floor);
      good     a steady pace (<= 2.33x overall);
      ok       anything slower.
-   v2.3.3358: moved here from ExtractionSwipeLayer.jsx, unchanged, because a
+   v2.3.3374: moved here from ExtractionSwipeLayer.jsx, unchanged, because a
    keyboard now works the gesture too (HOLD E on a computer) and is graded by
    this same rule.  A key draws no path, so it is graded with an entropy of 0:
    never 'perfect' -- the worker pays a strike with no fingerprint at most
@@ -135,7 +135,7 @@ export function gradeGesture(activeMs, wallMs, ent) {
   return 'ok';
 }
 
-/* ═══ v2.3.3358: THE GESTURE ON A COMPUTER ═══
+/* ═══ v2.3.3374: THE GESTURE ON A COMPUTER ═══
  * Owner: "Make sure all actions/buttons can be completed in landscape mode and
  * on the computer.  For instance I don't think you can harvest lifeskills
  * right now on the computer."
