@@ -7202,6 +7202,13 @@ devicelock.js).
 **Receipt:** admin.test §5 and §6: after a Freeze and a Kick an onlooker is
 told `player_leave` and no body is left. Both checks fail on the old code.
 
+**And the character restart (v2.3.3375):** persistence.js
+`_resetCharacterData` did the same, with one more step that must come FIRST:
+drop the in-memory state before the leaving run, or its regen flush saves the
+old character straight back over the wipe -- the restarted bro rejoins with
+the old gold. persistence.test §7b and §7d (an onlooker told, nothing written
+back, the empty room's tick stopped).
+
 ## 219. "Nothing comes between my read and my write: I only await a hash" (v2.3.3372)
 
 **Tempting:** to change a record by reading it, working out the next one and
