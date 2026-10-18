@@ -6696,7 +6696,11 @@ export const QUEST_CHAINS = {
     next: null,
     gives: [{ when: 'complete', icon: '/icons/items/greaves-copper.webp', label: "Copper Greaves" }],
     dialogue: {
-      start: 'Last one from me. Flame Fields. Goblins, and they are quick about it. Six.',
+      /* v2.3.3336 (owner, playtesting: "he says 'last one from me' I don't
+         think that's accurate"): it was not -- after this he still has the
+         life-skill errands and the town's own quests (life_1, mayor_1..3).
+         It is the last stop of the TOUR, which his `complete` line closes. */
+      start: 'One more stop on the tour. Flame Fields. Goblins, and they are quick about it. Six.',
       progress: 'Six, out of the fire.',
       complete: "That's the tour. Everything past here is yours to find.",
     },
@@ -6849,7 +6853,7 @@ export const QUEST_CHAINS = {
     next: 'beast_2',
     gives: [
       { when: 'accept', icon: '/icons/items/wood-log.webp', label: '3 Pine Logs' },
-      { when: 'complete', icon: '/icons/ui/skill-trapping.webp', label: '2 Box Traps' },
+      { when: 'complete', icon: '/icons/ui/skill-trapping.webp?v=2.3.3331', label: '2 Box Traps' },
     ],
     dialogue: {
       start: 'Pets are caught, not bought. It starts with a box.\n\n'
@@ -6877,7 +6881,7 @@ export const QUEST_CHAINS = {
     ],
     reward: { gold: 100, xp: 0, item: '5 Box Traps' },
     next: 'beast_3',
-    gives: [{ when: 'complete', icon: '/icons/ui/skill-trapping.webp', label: '5 Box Traps' }],
+    gives: [{ when: 'complete', icon: '/icons/ui/skill-trapping.webp?v=2.3.3331', label: '5 Box Traps' }],
     dialogue: {
       start: 'A trap springs only on a monster you kill.\n\n'
         + 'Out in the lands, target one and tap TRAP. Kill it within 15 seconds and the trap springs. Spring five, then come back.',
@@ -6895,7 +6899,7 @@ export const QUEST_CHAINS = {
     },
     reward: { gold: 250, xp: 0, item: '10 Box Traps' },
     next: 'beast_4',
-    gives: [{ when: 'complete', icon: '/icons/ui/skill-trapping.webp', label: '10 Box Traps' }],
+    gives: [{ when: 'complete', icon: '/icons/ui/skill-trapping.webp?v=2.3.3331', label: '10 Box Traps' }],
     dialogue: {
       start: 'Your Trapping level is what you can catch. A monster above it will not take a trap at all.\n\n'
         + 'Every trap that springs pays Trapping XP. Come back at Trapping 6.',
@@ -6910,7 +6914,7 @@ export const QUEST_CHAINS = {
     check: function (rpg) { return ((rpg._questKills && rpg._questKills.beast_4) || 0) >= 1; },
     reward: { gold: 500, xp: 0, item: '15 Box Traps' },
     next: null,
-    gives: [{ when: 'complete', icon: '/icons/ui/skill-trapping.webp', label: '15 Box Traps' }],
+    gives: [{ when: 'complete', icon: '/icons/ui/skill-trapping.webp?v=2.3.3331', label: '15 Box Traps' }],
     dialogue: {
       start: 'Now the hard part. Most traps break. About one in a hundred holds, at best, and the odds are the same for everyone.\n\n'
         + 'The TRAP button shows yours. Catch a pet and show me.',
