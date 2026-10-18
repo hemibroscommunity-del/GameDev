@@ -68,12 +68,29 @@ const swingAt = (A, bId, sw) => A.page.evaluate(({ bId, sw }) => {
   return true;
 }, { bId, sw });
 
-/* the popups a page drew since `t0` (S.dmgNumbers, combatHelpers pushDmgPopup) */
-const popsSince = (P, t0) => P.page.evaluate((t0) => {
-  const S = window._gameState.current;
-  return (S.dmgNumbers || []).filter((d) => d && (d.recvTs || d.ts || 0) >= t0 - 50)
-    .map((d) => ({ text: String(d.text), color: d.color, icon: d.iconKey || null, crit: !!d.crit, taken: !!d.taken, x: Math.round(d.x), y: Math.round(d.y) }));
-}, t0);
+/* the popups a page drew since `t0` (S.dmgNumbers, combatHelpers pushDmgPopup).
+   v2.3.3376: from a record kept as each appears (mp-spar's and mp-pvpextras'
+   recorder), not the live list: a popup lives 1.5 s, and on this box the read
+   after a blow and its waits could come when the block's "Blocked!" and its
+   stamina had already gone -- the list was empty, the block real (TRAPS §200).
+   Each page's recorder is started before the first blow (recordPops). */
+const recordPops = (P) => P.page.evaluate(() => {
+  if (window.__btPopRec) return;
+  const seen = new WeakSet();
+  window.__btPopLog = [];
+  window.__btPopRec = setInterval(() => {
+    const S = window._gameState && window._gameState.current;
+    for (const d of (S && S.dmgNumbers) || []) {
+      if (!d || seen.has(d)) continue;
+      seen.add(d);
+      window.__btPopLog.push({ at: d.recvTs || d.ts || Date.now(), text: String(d.text), color: d.color, icon: d.iconKey || null,
+        crit: !!d.crit, taken: !!d.taken, x: Math.round(d.x), y: Math.round(d.y) });
+      if (window.__btPopLog.length > 500) window.__btPopLog.splice(0, 100);
+    }
+  }, 60);
+});
+const popsSince = (P, t0) => P.page.evaluate((t0) => (window.__btPopLog || []).filter((d) => d.at >= t0 - 50)
+  .map(({ at, ...d }) => d), t0);
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const A = await H.newPlayer(browser, { name: 'Striker', wsPort, webPort, viewport: PHONE, touch: true });
@@ -136,6 +153,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the watcher can see the target (guard)', cSees);
 
   /* ── 1-3. one landed blow, three screens ── */
+  await Promise.all([recordPops(A), recordPops(B), recordPops(C)]);
   let sw = 9100;
   let got = null;
   for (let tries = 0; tries < 6 && !got; tries++) {

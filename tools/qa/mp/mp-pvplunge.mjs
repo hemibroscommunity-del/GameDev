@@ -37,13 +37,15 @@ async function closeIn(A, wsPort, aId, bId, want) {
     const d = Math.hypot(dx, dy);
     const tol = Math.max(8, want * 0.2);
     if (Math.abs(d - want) <= tol) return { ok: true, d: Math.round(d) };
-    const away = d < want;
-    const sx = away ? -dx : dx, sy = away ? -dy : dy;
-    const key = Math.abs(dx) > Math.abs(dy) ? (sx > 0 ? 'd' : 'a') : (sy > 0 ? 's' : 'w');
-    await A.page.keyboard.down(key);
-    await A.page.waitForTimeout(Math.min(700, Math.max(90, Math.abs(d - want) * 2.2)));
-    await A.page.keyboard.up(key);
-    await A.page.waitForTimeout(320);
+    /* v2.3.3376: put there by the harness's hops (the page's own place, then
+       its move to the worker), as mp-pvpnumbers' closeIn does.  A key held a
+       set time walks however many frames fall inside it, and this box draws a
+       frame every few hundred ms: a 123 ms press often walked none, and 24
+       tries ended 216 px out with the guard failed (the lunge, from there,
+       still landed). */
+    const ux = d > 1 ? dx / d : 1, uy = d > 1 ? dy / d : 0;
+    await H.hopTo(A, pb.x - ux * want, pb.y - uy * want, { step: 60, gap: 300, tries: 30 });
+    await A.page.waitForTimeout(500);
   }
   const [pa, pb] = await Promise.all([H.serverPlayer(wsPort, aId), H.serverPlayer(wsPort, bId)]);
   return { ok: false, d: pa && pb ? Math.round(Math.hypot(pb.x - pa.x, pb.y - pa.y)) : null };
@@ -178,11 +180,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.evaluate(() => {
     const q = window.__qaLunge = { dazes: [], pos: [], tried: null };
     const S = window._gameState.current;
+    /* v2.3.3376: the place every 20 ms, not once a frame.  The daze is 500 ms
+       and this box draws a frame every few hundred, so a frame-paced record
+       held one frame of it and "at least two" could not be met; read on a
+       timer, the frames inside the daze are all between two samples, and a
+       walk the daze failed to stop shows as movement within it. */
+    q.timer = setInterval(() => {
+      const now = Date.now(), u = S._dazeUntil || 0;
+      if (q.pos.length < 1500) q.pos.push({ t: now, x: S.player.x, y: S.player.y, dazed: u > now });
+      if (q.stop) clearInterval(q.timer);
+    }, 20);
     (function loop() {
       const now = Date.now();
       const u = S._dazeUntil || 0;
       if (u && (!q.dazes.length || q.dazes[q.dazes.length - 1].until !== u)) q.dazes.push({ seenAt: now, until: u });
-      if (q.pos.length < 600) q.pos.push({ t: now, x: S.player.x, y: S.player.y, dazed: u > now });
       if (u > now && !q.tried) {
         S._abilCd = null;   /* B's lunge is off cooldown: only the daze can refuse it */
         const ok = window.__btMaybeSwordDash ? window.__btMaybeSwordDash() : null;
