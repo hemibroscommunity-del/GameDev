@@ -3780,6 +3780,19 @@ Two protocol versions coexist; both must keep working:
 
   The fix order is in the review. Re-run the lab after any change to a
   harvest, cook, move or hit path.
+- Frame rate on a phone (v2.3.3339, docs/specs/speed-test.md): the QA box
+  draws in software (under 3 frames a second), so a phone's frame rate is
+  measured ON the phone. The test panel's **Speed test** (no key,
+  `src/game/speedTest.js`) times the frames with everything on, then with the
+  shadows, the metal shine, the moving water and the full resolution each off,
+  and puts them back (page-only switches: `setLightFx(on, false)`,
+  `setSheen(on, false)`); its card is what to fix next. `?res=2` draws the
+  canvas at 2x (`src/game/renderRes.js` `renderDpr`, read by the four places
+  that size the canvas: BroTown `resize()`, pixiApp, pixiRenderer.update,
+  worldViewport). `mp-frameprofile` profiles the CPU by source file (build with
+  `--sourcemap`) and names what rebuilds each render group's draw list --
+  `Graphics.clear()` on an empty graphic rebuilds it (TRAPS §208);
+  `mp-speedtest`.
 
 ## Conventions
 
