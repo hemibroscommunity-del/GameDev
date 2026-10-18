@@ -60,12 +60,28 @@ const pickTarget = (P) => P.page.evaluate(() => {
   if (!cv || !P0) return null;
   const r = cv.getBoundingClientRect();
   const sx = S._worldScaleX || 1, sy = S._worldScaleY || 1;
+  /* v2.3.3399: ...and not one whose straight walk passes the zone's way out
+     (the return marker, map tile 9): the walk below would leave the zone on
+     the way there.  A precaution found while chasing runs that ended in town
+     (the sweep of 2026-10-18) -- those look like a death on the walk (see the
+     god mode below), not this. */
+  const outs = [];
+  for (let ty = 0; ty < (S.map || []).length; ty++) {
+    const row = S.map[ty] || [];
+    for (let tx = 0; tx < row.length; tx++) if (row[tx] === 9) outs.push([tx * 32 + 16, ty * 32 + 16]);
+  }
+  const passesOut = (bx, by) => outs.some(([ox, oy]) => {
+    const vx = bx - P0.x, vy = by - P0.y, L = vx * vx + vy * vy || 1;
+    const t = Math.max(0, Math.min(1, ((ox - P0.x) * vx + (oy - P0.y) * vy) / L));
+    return Math.hypot(P0.x + vx * t - ox, P0.y + vy * t - oy) < 5 * 32;
+  });
   let best = null;
   for (const m of (S.monsters || [])) {
     if (!m || m.alive === false || (typeof m.curHp === 'number' && m.curHp <= 0)) continue;
     const cx = r.left + (m.x - S.camera.x) * sx;
     const cy = r.top + ((m.renderY != null ? m.renderY : m.y) - S.camera.y) * sy;
     if (cx < r.left + 8 || cx > r.right - 8 || cy < r.top + 8 || cy > r.bottom - 8) continue;
+    if (passesOut(m.x, m.y)) continue;
     const gap = Math.round(Math.hypot(m.x - P0.x, m.y - P0.y));
     if (!best || gap > best.gap) best = { id: String(m.id), gap, cx: Math.round(cx), cy: Math.round(cy), hp: m.curHp };
   }
@@ -85,6 +101,11 @@ const snap = (P, id) => P.page.evaluate((mid) => {
     hp: m ? m.curHp : null,
     gap: m && S.player ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null,
     droppedWhy: S._lockDroppedWhy || null,
+    /* v2.3.3399: where the bro is and how he is, so a target gone from the
+       list says whether IT went or HE did */
+    zone: S.currentZone,
+    myHp: S.rpg ? S.rpg.hp : null,
+    dying: !!S._dying,
   };
 }, id);
 
@@ -140,6 +161,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S._shieldUp = false;
   });
 
+  /* v2.3.3399: the worker's god mode (the Test panel's, /dev/vitals: no
+     damage taken, in memory, it expires), as mp-monwatch's.  Now and then a
+     run ended in town at full health with nothing to swing at -- a fresh
+     character killed on its walk through the Verdant Wilds and respawned,
+     as mp-monwatch saw standing still there (the sweep of 2026-10-18, and
+     one run in five after it).  What is under test is whether the swing
+     starts on arrival, not surviving the walk. */
+  await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 10 }).catch(() => null);
   const adm = await H.adminPlayer(wsPort, myId).catch(() => null);
   const setup = await H.readState(P, (S) => ({
     zone: S.currentZone, serverDriven: !!S._serverMonsters,
@@ -186,9 +215,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.instrumentWire(P);
   await P.page.evaluate((mid) => {
     const S = window._gameState.current;
+    const zone = S.currentZone;
     window.__walk = setInterval(() => {
       const m = (S.monsters || []).find((x) => String(x.id) === mid);
-      if (!m || !S.player) return;
+      /* v2.3.3399: target gone, or the zone changed -- let go of the stick,
+         or the bro walks on in its last direction (it was left pushed) */
+      if (!m || !S.player || S.currentZone !== zone) { S.stickX = 0; S.stickY = 0; return; }
       const dx = m.x - S.player.x, dy = m.y - S.player.y;
       const d = Math.hypot(dx, dy) || 1;
       if (d < 40) { S.stickX = 0; S.stickY = 0; return; }

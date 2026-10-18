@@ -82,6 +82,7 @@ const st = (P) => P.page.evaluate(() => {
     usedSwipe: !!S._hasUsedSwipe, lastSwipe: S._lastSwipe || 0, droppedWhy: S._shieldDroppedWhy || null,
     roll: !!S._dodgeRoll,
     back: !!S._backpedaling, cands: (S._targetCands || []).length,   /* v2.3.2246 */
+    engaged: !!S._engaged,   /* v2.3.3399: v2.3.2285's "I picked this fight" */
   };
 });
 
@@ -168,18 +169,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Reading __btDiscVis().holds rather than guessing from the opacity is the
      whole point: "painted with no thumb on it" has two possible causes and a
      screenshot names neither. */
+  /* v2.3.3399: the band OPEN first.  Since v2.3.2495 a first join arrives
+     with the dashboard FOLDED, and the coach's first lesson is then the fold
+     chip (`openDash`); it stops at the first lesson it can draw, so it never
+     reached `move`, the one that holds the left disc ({"L":[],"R":[]} in the
+     sweep of 2026-10-17).  Opened, it moves on to `move`. */
+  const band = await H.unfoldBand(P);
+  await P.page.waitForFunction(() => { const v = window.__btDiscVis && window.__btDiscVis(); return !!(v && v.holds && v.holds.L.indexOf('coach') >= 0); }, null, { timeout: 10000, polling: 200 }).catch(() => {});
+  await P.page.waitForTimeout(450);
   const holds0 = await P.page.evaluate(() => (window.__btDiscVis ? window.__btDiscVis() : null));
   rec.ok('the resolver publishes its reasons (probe present)', !!holds0 && !!holds0.holds, holds0);
   rec.ok('mid-onboarding the coach HOLDS the left disc up, which is why it is painted',
     !!holds0 && holds0.holds.L.indexOf('coach') >= 0 && (await discVis(P, 'L')).shown === true,
-    holds0 && holds0.holds);
+    { holds: holds0 && holds0.holds, band });
   /* Retire the coach (tut_4 turned in ends the chain — QuestCoach's own gate)
      so the contextual rule is what is being measured below. */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     if (S.rpg) { S.rpg._quests = S.rpg._quests || {}; S.rpg._quests.tut_4 = 'turnedIn'; }
   });
-  await P.page.waitForTimeout(600);
+  /* v2.3.3399: ...and the band folded back as it began: the discs sit on the
+     dashboard (TouchControls), and `disc`, measured folded at the start, is
+     reused by the shield-placement checks.  The coach only looks every 5th
+     frame, so its hold is waited out rather than given a fixed 600 ms. */
+  await P.page.locator('[data-dash-fold="open"]').first().click({ force: true }).catch(() => {});
+  await P.page.waitForFunction(() => { const v = window.__btDiscVis && window.__btDiscVis(); return !!(v && v.holds && v.holds.L.indexOf('coach') < 0); }, null, { timeout: 10000, polling: 200 }).catch(() => {});
+  await P.page.waitForTimeout(900);
   const vis0R = await discVis(P, 'R');
   const vis0L = await discVis(P, 'L');
   /* v2.3.3105: with nothing to do a tap on the right stick JUMPS, and the
@@ -316,7 +331,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('release stops the auto-attack', released.autoAttack === false, released);
   const swingsAtRelease = released.swings;
   await P.page.waitForTimeout(1300);
-  rec.ok('...and no further swings arrive after release', (await st(P)).swings === swingsAtRelease, { swingsAtRelease, now: (await st(P)).swings });
+  /* v2.3.3399: release ends the HELD attack; it does not end a fight you
+     chose.  Pressing the button makes the automatic target a chosen one
+     (v2.3.2252), choosing starts an engagement, and an engaged sword keeps
+     swinging at a target in reach with no thumb down (v2.3.2285, TRAPS §79) --
+     two swings in the next 1.3 s were that, at the 600 ms swing rate. */
+  const afterRel = await st(P);
+  rec.ok('...and any swing after release is the engagement\'s, never the held attack\'s',
+    afterRel.autoAttack === false && (afterRel.swings === swingsAtRelease || afterRel.engaged === true),
+    { swingsAtRelease, now: afterRel.swings, engaged: afterRel.engaged });
 
   /* ── a quick swipe on the button is the special ── */
   await P.page.evaluate(() => { const S = window._gameState.current; S._hasUsedSwipe = false; S._lastSwipe = 0; if (S.rpg) S.rpg.mana = S.rpg.maxMana || 100; });
@@ -917,7 +940,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const r = z.getBoundingClientRect();
     window.__touch(z, 'touchstart', r.x + r.width / 2, r.y + 80, 49);
   });
-  await P.page.waitForTimeout(150);
+  /* v2.3.3399: with nothing to do on the right side a press waits as a
+     possible TAP (a jump) for TAP_JUMP_MAX_MS 320 (v2.3.3145, tapJump.js), and
+     only then becomes the held attack (settleTapPress) -- read at 150 ms it was
+     still waiting.  Wait for the hold, as a held thumb does. */
+  await P.page.waitForFunction(() => window._gameState.current.autoAttack === true, null, { timeout: 3000, polling: 50 }).catch(() => {});
   const zoneHeld = await st(P);
   /* ═══ v2.3.2258: THIS PIN INVERTS TOO ═══
      v2.3.2242 made the right half inert -- the disc was the only combat input

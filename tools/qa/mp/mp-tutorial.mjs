@@ -143,9 +143,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
      that moves the number somewhere else still has to keep the result. */
   await P.page.waitForTimeout(600);
   const hud = await P.page.evaluate(() => {
-    const hit = [...document.querySelectorAll('div')].find(
-      (d) => /\u{1F4DC}/u.test(d.textContent || '') && d.getBoundingClientRect().width < 320,
-    );
+    /* v2.3.3399: found by its MARK, the card's own picture.  Since v2.3.3048
+       it leads with the Quests button's scroll (or the painted check when
+       ready) where it led with a scroll emoji, which this looked for; the
+       mark's row is the title, and the row's parent the card. */
+    const mark = document.querySelector('[data-quest-hud-mark]');
+    const hit = mark && mark.parentElement && mark.parentElement.parentElement;
     if (!hit) return null;
     const r = hit.getBoundingClientRect();
     const kid = (i) => {
@@ -289,13 +292,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Reload first, to get out from under the Quests panel opened above: the
      card sits at zIndex 17 and a panel covers it, so elementFromPoint would
      be answering about the panel. */
-  await P.page.reload();
-  await P.page.waitForTimeout(6000);
+  /* v2.3.3399: ...and back in through the door.  Since v2.3.2447 a reload
+     lands on the login door (the owner: "Player should need to tap continue
+     or create a character"), where there is no card to fold; H.enterWorld
+     takes the returning player's road, Continue and then this bro's row. */
+  const backIn = async () => {
+    await P.page.reload();
+    await H.enterWorld(P);
+    await P.page.waitForSelector('[data-quest-hud-mark]', { timeout: 15000 }).catch(() => {});
+    await P.page.waitForTimeout(1500);
+  };
+  await backIn();
 
   /* Everything below talks to the card through the DOM, the way a thumb
-     does — never by poking the React state. */
-  const CARD = `[...document.querySelectorAll('div')].find(
-    (d) => /\u{1F4DC}/u.test(d.textContent || '') && d.getBoundingClientRect().width < 320)`;
+     does — never by poking the React state.  v2.3.3399: by its mark, as above. */
+  const CARD = `(() => { const m = document.querySelector('[data-quest-hud-mark]');
+    return m && m.parentElement && m.parentElement.parentElement; })()`;
 
   const readCard = () => P.page.evaluate(`(() => {
     const hit = ${CARD};
@@ -339,8 +351,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('tapping the reminder hides the objective, leaving the title',
     !!folded && /Cold Reception/.test(folded.text)
     && !/Snowman Remnants/i.test(folded.text), folded);
+  /* v2.3.3399: by a LINE, not by more than 15 px.  Folded, the card loses its
+     objective, one line of the card's type -- 15 px on this phone (43 -> 28)
+     -- and "more than 15" failed on exactly the one line it was asking for.
+     10 is short of any line and far past a rounding wobble. */
   rec.ok('...and the card actually got shorter (the point was screen space)',
-    !!folded && !!expanded && folded.h < expanded.h - 15, { expanded, folded });
+    !!folded && !!expanded && expanded.h - folded.h >= 10, { expanded, folded });
   /* The card floats over the world, and the world takes taps.  Without
      stopPropagation this fold would ALSO order the character to walk to the
      top-left corner — silent, and only visible as drift. */
@@ -350,8 +366,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the folded pill still offers a 44pt hit area (UI-BIBLE)',
     !!folded && folded.deepTapLands === true, folded);
 
-  await P.page.reload();
-  await P.page.waitForTimeout(6000);
+  await backIn();
   const remembered = await readCard();
   rec.ok('the folded choice survives a reload — it is a preference, not a toggle',
     !!remembered && !/Snowman Remnants/i.test(remembered.text), remembered);

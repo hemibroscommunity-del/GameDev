@@ -50,6 +50,22 @@ async function walkAndMeasure(P, cdp, throttleRate) {
   await P.page.waitForTimeout(700);
   const before = await P.page.evaluate(() => {
     const S = window._gameState.current;
+    /* v2.3.3399: the game time this walk is owed, frame by frame: the game
+       steps each frame by its real length but never more than 3/60 s
+       (BroTown.jsx `_dtScale`, clamped to 3), so below 20 fps the world
+       slows rather than jumps, by design.  Summed off the same animation
+       frames the game runs on. */
+    window.__mvGame = 0;
+    window.__mvLast = performance.now();
+    window.__mvOn = true;
+    const tick = (t) => {
+      if (!window.__mvOn) return;
+      const d = t - window.__mvLast;
+      window.__mvLast = t;
+      if (d > 0) window.__mvGame += Math.min(50, d);
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
     return { x: S.player.x, y: S.player.y, frames: S._frameCount || 0, t: performance.now() };
   });
   await P.page.keyboard.down('d');
@@ -57,12 +73,15 @@ async function walkAndMeasure(P, cdp, throttleRate) {
   await P.page.keyboard.up('d');
   const after = await P.page.evaluate(() => {
     const S = window._gameState.current;
-    return { x: S.player.x, y: S.player.y, frames: S._frameCount || 0, t: performance.now() };
+    window.__mvOn = false;
+    return { x: S.player.x, y: S.player.y, frames: S._frameCount || 0, t: performance.now(), game: window.__mvGame };
   });
   const secs = (after.t - before.t) / 1000;
   return {
     dist: Math.hypot(after.x - before.x, after.y - before.y),
     fps: (after.frames - before.frames) / secs,
+    frames: after.frames - before.frames,
+    gameSecs: (after.game || 0) / 1000,
     secs,
   };
 }
@@ -100,10 +119,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
      should match regardless of how many frames the machine managed.  Generous
      band: a throttled headless box has ragged frame pacing, and the clamp
      deliberately refuses to compensate for very long stalls. */
+  /* v2.3.3399: ...the same ground for the same GAME time.  Above 20 fps a
+     frame's step is its real length, and the game time is the wall clock;
+     this box draws ~24 fps unthrottled and ~12 throttled, under the 3/60 s
+     cap, where the game time is ~58% of the wall clock by design (the sweep
+     of 2026-10-18: ratio 0.616, "fail").  So the distance ratio is held to
+     the two walks' game time, and it must fit that better than it fits their
+     FRAME counts -- the bug this file exists for, a step per frame. */
   const ratio = slow.dist / fast.dist;
+  const expected = fast.gameSecs > 0 ? slow.gameSecs / fast.gameSecs : 1;
+  const perFrame = fast.frames > 0 ? slow.frames / fast.frames : 1;
+  console.log(`    game time: normal ${fast.gameSecs.toFixed(2)}s, throttled ${slow.gameSecs.toFixed(2)}s; distance ratio ${ratio.toFixed(3)} against ${expected.toFixed(3)} by game time and ${perFrame.toFixed(3)} by frames`);
   rec.ok('the same walk covers the same ground at a different frame rate',
-    ratio > 0.72 && ratio < 1.28,
-    { ratio: +ratio.toFixed(3), fast: +fast.dist.toFixed(1), slow: +slow.dist.toFixed(1),
+    Math.abs(ratio / expected - 1) < 0.28 && Math.abs(ratio - expected) < Math.abs(ratio - perFrame),
+    { ratio: +ratio.toFixed(3), expected: +expected.toFixed(3), perFrame: +perFrame.toFixed(3),
+      fast: +fast.dist.toFixed(1), slow: +slow.dist.toFixed(1),
       fastFps: +fast.fps.toFixed(1), slowFps: +slow.fps.toFixed(1) });
 
   await P.ctx.close().catch(() => {});

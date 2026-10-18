@@ -113,7 +113,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   }, wsPort);
 
-  await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
+  /* v2.3.3399: in today's town, as H.newPlayer stands every scenario that
+     asks for nothing (v2.3.2990).  This goto never got that, so since the
+     Wheel became the world the head-margin probe below ran there, where no top
+     edge can be reached: a first-timer shoved north is held inside the safe
+     commons (wheelHome.js wheelCommonsGate), 3,165 px from where he stood, and
+     the camera was still easing after him (the sweep of 2026-10-17). */
+  await page.goto(`http://localhost:${webPort}/?trial=off&nospawn`, { waitUntil: 'domcontentloaded' });
   const P = { ctx, page, logs: [], name: 'Firsty' };
 
   /* Take the first-timer's door explicitly rather than letting the harness
@@ -281,6 +287,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!S || !S.player) return null;
     S.player.y = 4;              /* above any plausible clamp */
     await sleep(800);            /* the clamp lives in the movement loop */
+    /* v2.3.3399: ...and the camera EASES after him (BroTown.jsx: 8% of the gap
+       a frame, the frame term held to 3), so wait until it stops: on a box
+       drawing a few frames a second it was half way there after 800 ms. */
+    let f = S._frameCount, cy = S.camera && S.camera.y;
+    for (const t = Date.now(); Date.now() - t < 15000;) {
+      await sleep(50);
+      if (S._frameCount === f) continue;                      /* no frame drawn yet */
+      if (Math.abs(((S.camera && S.camera.y) || 0) - cy) < 0.5) break;   /* it has stopped */
+      f = S._frameCount; cy = S.camera && S.camera.y;
+    }
     const c = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas');
     const cr = c.getBoundingClientRect();
     const hdr = document.querySelector('.bt-zone-header');
@@ -297,6 +313,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   console.log('    head margin: ' + JSON.stringify(head));
   rec.ok('the head-margin probe ran (guard)', !!(head && head.py != null), head);
+  /* v2.3.3399: where a top edge can be reached, or "held off it" passes on the
+     Wheel's own gate and measures nothing (TRAPS §28) */
+  rec.ok('the head probe stands in today\'s town, where a top edge can be reached (guard)',
+    !!head && head.zone === 'town', head);
   if (head) {
     rec.ok('a bro shoved at the map\'s top edge is held off it',
       head.py > 4, head);

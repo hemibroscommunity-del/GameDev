@@ -69,11 +69,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.click('[data-tut="char-menu-restart"]');
   await P.page.waitForTimeout(400);
   await P.page.fill('[data-tut="char-confirm-input"]', 'yes');
-  const reloaded = P.page.waitForNavigation({ timeout: 15000 }).then(() => true).catch(() => false);
-  await P.page.click('[data-tut="char-confirm-go"]');
-  const didReload = await reloaded;
+  /* v2.3.3399: the worker's answer is read.  Should the minute be spent
+     after all (the fresh one above makes it unlikely), the refusal must say
+     so -- the picker said only "That did not work" -- and it is waited out
+     once.  (POST only: the CORS preflight asks the same address first.) */
+  const pressGo = async () => {
+    const answer = P.page.waitForResponse((r) => r.url().includes('/api/account/reset')
+      && r.request().method() === 'POST', { timeout: 15000 }).then((r) => r.json()).catch(() => null);
+    const nav = P.page.waitForNavigation({ timeout: 15000 }).then(() => true).catch(() => false);
+    await P.page.click('[data-tut="char-confirm-go"]');
+    return { answer: await answer, nav };
+  };
+  let go = await pressGo();
+  if (go.answer && go.answer.reason === 'rate') {
+    const said = await P.page.evaluate(() => document.body.innerText.includes('Too many attempts'));
+    rec.ok('a restart refused for too many tries says so, not "That did not work"', said, { answer: go.answer });
+    console.log('    the Login Key allowance was spent by an earlier scenario: waiting out its minute');
+    await P.page.waitForTimeout(61000);
+    go = await pressGo();   /* the box still says yes and Go is enabled again */
+  }
+  const didReload = await go.nav;
   await P.page.waitForTimeout(2000);
-  rec.ok('the restart reloads the page, as the in-game restart does', didReload, {});
+  rec.ok('the restart reloads the page, as the in-game restart does', didReload, { answer: go.answer });
 
   const left = await P.page.evaluate(() => ({
     rpg: (() => { try { return localStorage.getItem('bt_rpg'); } catch (e) { return 'unreadable'; } })(),

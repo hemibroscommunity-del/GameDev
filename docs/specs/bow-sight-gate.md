@@ -111,6 +111,28 @@ coupling and no caps flag.
   single arrow in an arena.
 - **Nothing about range changed.** The 675px plant cap still governs reach.
 
+## The sight is cast from where the bow will be (v2.3.3399)
+
+The gate's promise is that a shot it lets go connects. That holds only if the
+sight is cast from the point the arrow leaves from, the bow's grip.
+
+- **Before:** the grip was published only while the shot pose was drawn
+  (effectsRenderer `_updateBowShot`). So before the first shot of a visit there
+  was no grip, and `bowGripPoint` gave your centre. After a turn, the grip was
+  where your hand had been on the last shot. In both cases the sight cast from
+  the wrong point, the arrow nocked at the real grip, and an unlocked shot left
+  about 30 px beside the line the sight was on.
+- **Now:** while the pose is not up and a bow is the weapon,
+  `_predictBowGrip` publishes the grip the pose would draw for the way you aim:
+  - the aim's sector, as entityRenderer picks the pose's facing;
+  - the facing's grip crown;
+  - the body height and feet the stand-in is planted with.
+- **Locked shots** were already right: they are re-aimed from the real grip at
+  release (projectiles.js).
+- **`?gripguess=0`** leaves the grip as it was, to compare.
+- **The bow special's volley** leaves from the grip too (bow-volley.md, "It
+  leaves from the bow").
+
 ## Harnesses
 
 `mp-arrowdt` (speed, fixture repositioned), `mp-aimpath` (the aim ladder —
@@ -118,4 +140,5 @@ every block that measures a shot now stands a target on the line it is aiming
 down, which does not weaken the claim: the monster is not a lock, so the angle
 still comes from `_aimAngle` / `_facingAngle` exactly as before),
 `mp-jetstream` (the stream's length, now asserted twice — clipped at a target,
-and full reach with the line clear), `mp-arrowshot`.
+and full reach with the line clear), `mp-arrowshot`, and `mp-hitreal`'s bow
+rows (v2.3.3399: every shot the gate lets go, on worker monsters that move).

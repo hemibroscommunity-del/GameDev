@@ -370,16 +370,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
      places the number at (target.x, target.y - 30), while the old
      attacker-anchored popup sat at (me.x + 20, me.y - 20).  The 20px x-offset
      separates them however close the two players are standing. */
+  /* v2.3.3399: ...at its height now.  Since v2.3.3026 a number on a player
+     pops over their BAND, the name plate or HP bar, not 30 px above their
+     feet (combatHelpers peerPopupY: the band's top less 34, published each
+     frame as `_bandTopY`; `y - 136` with no band up) -- the run of
+     2026-10-18 read "-3" at the opponent's x, 113 px above their feet, as
+     83 px off.  The x still tells the two anchors apart (the old one sat
+     20 px to the attacker's side). */
   const anchors = await H.readState(A, (S) => {
     const o = S.others && S.others[Object.keys(S.others)[0]];
-    return o ? { me: { x: S.player.x, y: S.player.y }, foe: { x: o.x || 0, y: o.y || 0 } } : null;
+    if (!o) return null;
+    const band = typeof o._bandTopY === 'number' && isFinite(o._bandTopY) ? o._bandTopY : null;
+    return { me: { x: S.player.x, y: S.player.y }, foe: { x: o.x || 0, y: o.y || 0 },
+      popY: band != null ? band - 34 : (o.y || 0) - 136, band };
   });
   const hits = seen.filter((p) => /^-\d+!?$/.test(p.text));
   const placed = anchors && hits.length ? (() => {
     const p = hits[hits.length - 1];
     return {
       text: p.text, at: { x: p.x, y: p.y }, foe: anchors.foe, me: anchors.me,
-      offFoe: Math.round(Math.hypot(p.x - anchors.foe.x, p.y - (anchors.foe.y - 30))),
+      offFoe: Math.round(Math.hypot(p.x - anchors.foe.x, p.y - anchors.popY)), popY: Math.round(anchors.popY), band: anchors.band,
       offMe: Math.round(Math.hypot(p.x - (anchors.me.x + 20), p.y - (anchors.me.y - 20))),
     };
   })() : null;

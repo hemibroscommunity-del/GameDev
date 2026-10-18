@@ -138,10 +138,25 @@ const MAX_H = LINE_H * 4 + BOX_PAD;
 /* Re-measure by collapsing first: scrollHeight of an element already sized to
    its content reports the CURRENT height, not the needed one, so a textarea
    that has grown can never shrink again when you delete a line. */
+/* ═══ v2.3.3399: ...AND NEVER TALLER THAN THE CARD HAS ROOM FOR ═══
+   v2.3.2139 put the lane chips (36 px) on top of this card, which grows UPWARD
+   from its pinned bottom, without taking them out of MAX_H's budget: at four
+   lines its top sat at y=1 on a 390x844 phone (under the notch) and off the
+   top of a shorter one, chips and all -- found by the sweep of 2026-10-17
+   (mp-chatcompose).  So the box stops where the card's top would come within
+   TOP_CLEAR of the screen's, and scrolls from there.  A 120-character line of
+   words is three lines (85 px), under the 87 px this leaves on that phone. */
+const TOP_CLEAR = 20;
 const grow = (el) => {
   if (!el) return;
   el.style.height = 'auto';
-  el.style.height = Math.max(MIN_H, Math.min(el.scrollHeight, MAX_H)) + 'px';
+  let cap = MAX_H;
+  const card = el.closest && el.closest('.bt-chat-noselect');
+  if (card) {
+    const c = card.getBoundingClientRect(), t = el.getBoundingClientRect();
+    if (c.height > 0) cap = Math.min(MAX_H, Math.floor(c.bottom - TOP_CLEAR - (c.height - t.height)));
+  }
+  el.style.height = Math.max(MIN_H, Math.min(el.scrollHeight, cap)) + 'px';
 };
 
 export const ChatBubble = () => {
