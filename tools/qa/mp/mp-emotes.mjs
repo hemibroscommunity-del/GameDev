@@ -80,6 +80,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const t1 = await fingerTap(A, '[data-chat-emotes]');
   rec.ok('...a real finger can reach it', !t1.err, t1);
   await A.page.waitForTimeout(500);
+  /* v2.3.3355: the picker opens on its Moves tab (mp-emotemoves) against a
+     worker with caps.emotemoves; the emoji and lines are the second tab, and
+     the phone remembers it, so the later opens below land on it too */
+  if (await A.page.evaluate(() => !!document.querySelector('[data-emote-tab="emoji"]'))) {
+    const tt = await fingerTap(A, '[data-emote-tab="emoji"]');
+    rec.ok('...whose Emoji & lines tab a real finger reaches', !tt.err, tt);
+    await A.page.waitForTimeout(300);
+  }
   const after1 = await A.page.evaluate(() => ({
     chat: !!document.querySelector('[data-chat-input]'),
     picker: !!document.querySelector('[data-emote-picker]'),
