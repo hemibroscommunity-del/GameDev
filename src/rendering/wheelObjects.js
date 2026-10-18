@@ -685,7 +685,11 @@ export class WheelObjects {
         /* a tree rocks on its roots, its crown swinging a few px */
         s.rotation = Math.sin(age * 0.021) * 0.014 * harder * k * k;
       } else {
-        const A = sh.building ? 0.8 : sh.big ? 1.3 : 2.2;
+        /* v2.3.3471: a building 1.6 (was 0.8) -- under a CSS px on a
+           computer (the world drawn ~0.57), it was rounded away there:
+           every hit on a building now shows (hitMaterialFx, A BUILDING
+           SHOWS EVERY HIT) */
+        const A = sh.building ? 1.6 : sh.big ? 1.3 : 2.2;
         s.x = o.x[i] + Math.sin(age * 0.16) * A * harder * k;
       }
     }

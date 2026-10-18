@@ -603,6 +603,7 @@ function profileFor(b) {
    a sheet off the blade's edge, to one side of the swing.  BOLT: everywhere,
    leaning away from the caster.  Unknown (a peer's hit): a loose cone. */
 function sprayAng(P) {
+  if (P.bld) return wallAng(P);   /* v2.3.3471 */
   switch (P.w) {
     case 'arrow': return P.dir + gauss() * 0.34;
     case 'sword': return P.dir + P.side * (0.3 + rnd() * 1.05) + gauss() * 0.12;
@@ -619,7 +620,19 @@ function towardCamera(a) {
   return (Math.sin(a) < -0.25 && rnd() < 0.45) ? -a : a;
 }
 /* the kick back toward the attacker (an arrow's entry puff) */
-const backAng = (P) => P.dir + Math.PI + gauss() * 0.7;
+const backAng = (P) => (P.bld ? wallAng(P) : P.dir + Math.PI + gauss() * 0.7);
+/* v2.3.3471: a building's chips leave the face that was hit, back toward the
+   attacker -- and always toward the camera: a piece north of the hit's ground
+   line is drawn behind the entities, under the building's own picture, so one
+   thrown that way is turned to come out in front (A BUILDING SHOWS EVERY HIT).
+   Toward the attacker is `dir` itself for a shot (projectiles.js and a peer's,
+   visualSystems.js, hand a prop the heading reversed) and the way back for a
+   sword (propSwingHit hands the swing's own way, into the wall). */
+function wallAng(P) {
+  const toward = P.w === 'sword' ? P.dir + Math.PI : P.dir;
+  const a = toward + gauss() * 0.75;
+  return Math.sin(a) < 0 ? -a : a;
+}
 
 /* ═══ v2.3.3152: A POOL GIVES BACK WHAT A BIG FIGHT MADE ═══
    A pool grows to the most pieces drawn at once, and it kept every sprite
@@ -980,7 +993,7 @@ export class HitMaterialFx {
     const nChip = cnt(5, P);
     for (let i = 0; i < nChip; i++) {
       const p = this._take(b, now);
-      const r = rnd() + ((b.crit || b.big) ? 0.25 : 0);
+      const r = rnd() + ((b.crit || b.big || b.bld) ? 0.25 : 0);   /* v2.3.3471: + a building's */
       p.tex = r < 0.5 ? T.stoneS : r < 0.85 ? T.stoneM : T.stoneL;
       p.size = r < 0.5 ? 0 : r < 0.85 ? 1 : 2;   /* v2.3.2929: for the own-art chip */
       p.tint = tint;
@@ -1028,7 +1041,7 @@ export class HitMaterialFx {
     const n = cnt(6, P);
     for (let i = 0; i < n; i++) {
       const p = this._take(b, now);
-      const r = rnd() + ((b.crit || b.big) ? 0.25 : 0);
+      const r = rnd() + ((b.crit || b.big || b.bld) ? 0.25 : 0);   /* v2.3.3471: + a building's */
       p.size = r < 0.45 ? 0 : r < 0.85 ? 1 : 2;
       p.frames = p.size === 2 ? this._frames.splL : this._frames.splS;
       p.tint = tint; p.spin = 9 + rnd() * 9;
@@ -1231,6 +1244,7 @@ export class HitMaterialFx {
       id: ++this._stats.bursts, t0: now, fx: b.kind || 'goo', gy,
       ex: 0, ey: 0, ez: 0, u: PIX, weapon: b.weapon || null,
       tint: b.tint, ang: dir, side: b.side, crit: !!b.crit, big: !!b.big, heavy: !!b.heavy, elem: b.elem || null,
+      bld: !!b.bld,   /* v2.3.3471: one of the Wheel's buildings (A BUILDING SHOWS EVERY HIT) */
     };
     if (Number.isFinite(b.hitX) && Number.isFinite(b.hitY)) {
       rec.ex = b.hitX;
@@ -1287,7 +1301,22 @@ export class HitMaterialFx {
        is news: under half the pieces, flung lower and slower.  It rides this
        queue marked `prop` (its `scale`/`parts` were written for the renderer
        this replaced; this is what they meant). */
-    if (b.prop) { P.n *= 0.45; P.spd *= 0.85; P.lift *= 0.8; }
+    /* ═══ v2.3.3471: A BUILDING SHOWS EVERY HIT ═══
+       The owner: "add wood chip effect when you attack buildings so you get
+       instant feedback that the building is getting damaged (not just when
+       you attack for a while and start to see flames)".  A building's hit
+       was a prop's: under half the pieces, about two small splinters an
+       arrow -- and flung the weapon's way, which for a wall is INTO it: a
+       piece north of the hit's ground line is drawn under the entities (the
+       depth split), so the building's own picture hid most of what little
+       flew.  A building is hit to be broken, so every blow is news: half as
+       many pieces again as a plain hit of its material, bigger, thrown
+       further and higher, and out of the face that was hit toward the
+       camera (wallAng), where they are drawn over it.  Wood throws its
+       splinters and sawdust, stone and brick their chips and dust -- the
+       building's own material (data/wheelMaterials.js). */
+    if (b.bld) { P.n *= 1.5; P.spd *= 1.1; P.lift *= 1.2; P.bld = true; }
+    else if (b.prop) { P.n *= 0.45; P.spd *= 0.85; P.lift *= 0.8; }
     switch (rec.fx) {
       case 'snow': this._snow(rec, P, now); break;
       case 'goblin': this._goblin(rec, P, now); break;

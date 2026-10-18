@@ -513,6 +513,15 @@ remnant to migrate server-side, not a mode to preserve.
       charred (wheelShatter `burnt`) and burn on until the mending; each fire
       rides what it burns on (depthSort `_ridesOn`), hidden off the screen;
       `?nobuildingfire`; `mp-buildingfire`: docs/specs/building-fire.md.
+    - since v2.3.3471 A BUILDING SHOWS EVERY HIT -- the owner: "add wood chip
+      effect when you attack buildings so you get instant feedback that the
+      building is getting damaged": a building's burst was a prop's (x0.45
+      pieces, about two splinters an arrow) and flew INTO the wall, behind its
+      picture; now `bld` (wheelBreak.js) throws half as many pieces again as a
+      plain hit, bigger, out of the face toward the camera (hitMaterialFx.js
+      `wallAng`), in the building's own material, and it shakes 1.6 px (was
+      0.8, rounded away on a computer); props unchanged; `mp-buildingchips`:
+      docs/specs/building-chips.md.
   - Since v2.3.2996 a MONSTER'S HIT CARRIES ITS ELEMENT (the owner's snowflake,
     fire and air icons, and "slime for floral damage ... a brief held in place"):
     - a landed hit by a frost/flame/wind/flora monster chills (walk x0.55 for
