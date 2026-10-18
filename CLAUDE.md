@@ -4372,7 +4372,7 @@ Two protocol versions coexist; both must keep working:
   - A new key goes in the table and on its button in the same PR; a new
     window's ✕ takes `data-esc` (`"up"` if it acts on pointerup).
   - The keys strip lists 1-3 and sits right of the bell. `mp-deskkeys`.
-- **A SPRITE MASK IS A PASS IN THE MIDDLE OF THE FRAME (v2.3.3421,
+- **A SPRITE MASK IS A PASS IN THE MIDDLE OF THE FRAME (v2.3.3436,
   docs/specs/hair-clip-stencil.md).** In Pixi a Sprite set as a `mask` is an
   alpha mask, drawn through a filter: a phone's tile-based chip stops the
   frame for it, writes the half-drawn frame out and reads it back (TRAPS

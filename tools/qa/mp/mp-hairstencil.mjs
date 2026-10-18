@@ -1,4 +1,4 @@
-/* ═══ v2.3.3421: THE HAIR CLIPPED BY THE STENCIL, NOT IN A PASS OF ITS OWN ═══
+/* ═══ v2.3.3436: THE HAIR CLIPPED BY THE STENCIL, NOT IN A PASS OF ITS OWN ═══
  *
  * The owner, 2026-10-18: "iterate on what best improves framerate without
  * loss of quality (or negligible loss) for phone gameplay (iPhone, android)".
@@ -50,7 +50,7 @@ const sameFrame = (P) => P.page.evaluate(async () => {
      comes after a bind of another picture is the frame picked up again
      (`resumes`); the screen's raw binds (`screens`) count more, as Pixi binds
      it again when it is already bound (a filter's pop), which costs a chip
-     nothing (mp-shadowprepass, v2.3.3408) */
+     nothing (mp-shadowprepass, v2.3.3435) */
   const fb = gl.bindFramebuffer;
   let screens = 0, resumes = 0, last;
   gl.bindFramebuffer = function (t, f) { if (f == null) { screens++; if (last != null) resumes++; } last = f; return fb.call(this, t, f); };
