@@ -134,6 +134,9 @@ export function strikeWheelObject(S, hit) {
         ang: Number.isFinite(hit.ang) ? hit.ang : -Math.PI / 2,
         t0: now, weapon: hit.weapon || null, big: !!hit.special,
         hitX: hit.x, hitY: hit.y, prop: true, oi, mat: k.mat,
+        /* v2.3.3466: a building shows every hit (hitMaterialFx, A BUILDING
+           SHOWS EVERY HIT) */
+        bld: isBuilding(k.id),
       });
       /* a tree's crown lets go of what it holds: leaves, snow, char, slime */
       if (k.canopy && S._debrisBursts.length < 24) {
