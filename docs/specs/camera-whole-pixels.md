@@ -1,4 +1,4 @@
-# The camera on whole device pixels (v2.3.3464)
+# The camera on whole device pixels (v2.3.3465)
 
 > Owner, 2026-10-18: "When playing the game on PC the world has a warbled
 > underwater effect when the character moves diagonally (sw, nw, ne, se). Can

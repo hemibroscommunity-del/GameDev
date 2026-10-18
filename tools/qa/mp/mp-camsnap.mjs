@@ -1,4 +1,4 @@
-/* ═══ THE WORLD MOVES AS ONE PICTURE (v2.3.3464) ═══
+/* ═══ THE WORLD MOVES AS ONE PICTURE (v2.3.3465) ═══
  *
  * Owner, 2026-10-18: "When playing the game on PC the world has a warbled
  * underwater effect when the character moves diagonally (sw, nw, ne, se).
@@ -16,7 +16,7 @@
  * (dpr 1) it is a whole one, and the HD art is shrunk 3.5x, so a hop is seen
  * and a stretched piece re-samples into a new grain.  A diagonal walk there
  * moves each axis ~1.01 px a frame, so the hops came round tile after tile as
- * slow ripples -- the warble.  v2.3.3464 puts the world container on whole
+ * slow ripples -- the warble.  v2.3.3465 puts the world container on whole
  * device pixels (pixiRenderer.js, THE CAMERA IN WHOLE DEVICE PIXELS); `?camsnap=0`
  * is the camera as it was.
  *

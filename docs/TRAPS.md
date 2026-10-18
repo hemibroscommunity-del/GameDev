@@ -7676,7 +7676,7 @@ the window's 91 could be double-tapped into a zoom; with the rule, 0 and 0,
 the canvas, html and body still `none`, the window's +, - and x still
 `manipulation`, the stepper stepping 1 -> 3 -> 2.
 
-## 230. "roundPixels puts the world on whole pixels, so the camera can stay fractional" (v2.3.3464)
+## 231. "roundPixels puts the world on whole pixels, so the camera can stay fractional" (v2.3.3465)
 
 `roundPixels` snaps every CORNER to a whole device pixel, each on its own, after
 the camera is applied. With the camera at a fraction of a pixel, each piece of
