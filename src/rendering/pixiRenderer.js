@@ -13,7 +13,7 @@ import { townSkippedOnTheWay } from '../game/wheelHome.js';   /* v2.3.3037: toda
 import { wheelObjectsOn } from '../game/wheelTrial.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2748: + the player's feet for the depth pass */
 import { EffectsRenderer, prewarmDmgFontPipe, dmgFontNeedsRebuild, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
-import { landAurasReady } from './landAuras.js';   /* v2.3.3346: for the lands' specks' probe */
+import { landAurasReady } from './landAuras.js';   /* v2.3.3402: for the lands' specks' probe */
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
 import { SwimFx } from './swimFx.js';                 /* v2.3.3003: a swimmer is a head in the water */
@@ -1341,7 +1341,7 @@ export async function initPixiRenderer(canvas) {
     /* v2.3.3345: a mined-out rock's pieces (wheelShatter.js probe), for
        mp-tierore -- each metal's rock breaks into pieces of itself */
     oreBreakProbe: () => (effectsRenderer._oreShatter ? effectsRenderer._oreShatter.probe() : []),
-    /* v2.3.3346: the lands' specks over their resources (landAuras.js), for
+    /* v2.3.3402: the lands' specks over their resources (landAuras.js), for
        mp-landauras -- all of them, and one resource's (its node id) */
     landAuraProbe: (id) => {
       const a = effectsRenderer._landAuras;

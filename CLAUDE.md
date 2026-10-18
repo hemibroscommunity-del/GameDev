@@ -1040,7 +1040,7 @@ remnant to migrate server-side, not a mode to preserve.
         add-ore-art.mjs) is a re-bake, which test-world-core's --check demands
         and which deploys the worker: docs/specs/tier-trees.md "Where each one
         grows".
-    - since v2.3.3346 EACH LAND'S TREES AND ROCKS WEAR ITS ELEMENT -- the
+    - since v2.3.3402 EACH LAND'S TREES AND ROCKS WEAR ITS ELEMENT -- the
       owner: "add effects to a pine tree to make it look like it belongs in
       that elemental zone but the wood logs stay the same", "keep in mind
       there are actually 10 elemental zones": specks drawn in code over the

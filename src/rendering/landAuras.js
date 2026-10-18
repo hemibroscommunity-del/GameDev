@@ -1,4 +1,4 @@
-/* ═══ v2.3.3346: EACH LAND'S TREES AND ROCKS LOOK LIKE THEIR LAND ═══
+/* ═══ v2.3.3402: EACH LAND'S TREES AND ROCKS LOOK LIKE THEIR LAND ═══
  *
  * The owner, 2026-10-18: a wood's tree and a metal's rock are ONE picture in
  * every land (so a tier's colour is the same everywhere: tierTrees.js,

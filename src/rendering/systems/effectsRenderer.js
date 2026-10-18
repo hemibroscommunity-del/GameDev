@@ -288,7 +288,7 @@ import { farmArtUrl } from '@/data/farmArtUrl.js';   /* v2.3.3136: the compost b
 import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree */
 import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock */
 import { WheelShatter } from '../wheelShatter.js';
-import { LandAuras, AURAS_ON, AURA_MAX } from '../landAuras.js';   /* v2.3.3346: each land's resources wear its element */   /* v2.3.3345: a rock mined out breaks into pieces of its own picture */
+import { LandAuras, AURAS_ON, AURA_MAX } from '../landAuras.js';   /* v2.3.3402: each land's resources wear its element */   /* v2.3.3345: a rock mined out breaks into pieces of its own picture */
 import { gesturePose01, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2245; extractionMeter01 v2.3.2514 (the harvest's bar reads the button ring's own numbers -- the node's HP bar since v2.3.2956) */
 import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, SLIME_BASE_ROW, SLIME_FRAME_PX /* v2.3.2991: where a scene texel is on the world's slime */ } from '../slimeSprites.js';
@@ -10808,7 +10808,7 @@ export class EffectsRenderer {
       if (!this._wheelFish) this._wheelFish = new WheelFish(this.lootLayer);
       this._wheelFish.update(_wheelSpots || [], now);
     }
-    /* v2.3.3346: each land's trees and rocks wear its element, drawn over
+    /* v2.3.3402: each land's trees and rocks wear its element, drawn over
        their pictures (landAuras.js) -- in the Wheel, where a resource's id
        names its land; anywhere else, and with `?noauras`, none */
     if (_near && AURAS_ON) {
@@ -11207,7 +11207,7 @@ export class EffectsRenderer {
     };
   }
 
-  /* v2.3.3346: the most of the lands' specks alive at once (landAuras.js) */
+  /* v2.3.3402: the most of the lands' specks alive at once (landAuras.js) */
   _landAuraCap() { return AURA_MAX; }
 
   /* Spawn a one-shot ore-vein break animation at a depleted node.  Sized to
@@ -15360,7 +15360,7 @@ export class EffectsRenderer {
     for (const k in (this._peerInks || {})) { const c = this._peerInks[k]; if (c && c.clear) c.clear(); }
     for (const k in (this._peerFigs || {})) { const c = this._peerFigs[k]; if (c && c.clear) c.clear(); }   /* v2.3.3314 (their sources are in _bakes, released above) */
     if (this._remoteSkillSprites) this._remoteSkillSprites.clear();
-    /* v2.3.3346: the lands' specks, and their pool -- a rebuilt renderer makes its own */
+    /* v2.3.3402: the lands' specks, and their pool -- a rebuilt renderer makes its own */
     if (this._landAuras) { this._landAuras.destroy(); this._landAuras = null; }
     this._captureRenderer = null;
     this._layers = null;
@@ -16215,7 +16215,7 @@ export class EffectsRenderer {
     }
     this.nodeGfx.clear();
     if (this._wheelFish) this._wheelFish.clear();   /* v2.3.3012 */
-    if (this._landAuras) this._landAuras.clear();   /* v2.3.3346 */
+    if (this._landAuras) this._landAuras.clear();   /* v2.3.3402 */
     /* v2.3.3345: no rock's pieces carried across a zone change, nor its crack */
     if (this._oreShatter) this._oreShatter.clear();
     this._oreBreaks = [];

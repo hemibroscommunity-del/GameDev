@@ -1,4 +1,4 @@
-/* ═══ v2.3.3346: EACH LAND'S TREES AND ROCKS WEAR ITS ELEMENT, ON A PHONE ═══
+/* ═══ v2.3.3402: EACH LAND'S TREES AND ROCKS WEAR ITS ELEMENT, ON A PHONE ═══
  *
  * src/rendering/landAuras.js: a resource in one of the Wheel's eight lands
  * makes specks of its element round its picture (snow, embers, sand, dust and

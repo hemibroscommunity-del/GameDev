@@ -197,7 +197,7 @@ What changed in the tables:
 
 ## Not in this round
 
-- **The ten zones' effects** came in v2.3.3346, drawn in code, with no art
+- **The ten zones' effects** came in v2.3.3402, drawn in code, with no art
   (`docs/specs/land-auras.md`). Around town the trees stay plain. The idea for
   each zone, as first written:
 

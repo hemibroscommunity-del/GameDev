@@ -115,7 +115,7 @@ the pike reaches x-71..x+11 and y +/- 35. Past that a fish dives, as before.
 
 ## Not in this round
 
-- **The ten zones' effects** on trees and rocks, drawn in code: v2.3.3346
+- **The ten zones' effects** on trees and rocks, drawn in code: v2.3.3402
   (`docs/specs/land-auras.md`).
 - **The bake's sizes** were the OLD art's (a tree 62 x 196, a vein 52 x 118).
   Since v2.3.3401 the bake keeps each tier's own rock clear, and its miner
