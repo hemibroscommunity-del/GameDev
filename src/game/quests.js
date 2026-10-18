@@ -139,11 +139,21 @@ export function turnInQuest(S, questPanel, deps, xpCat, opts) {
        choice through here, matching what the quest log has sent since
        v2.3.1669.  Never guessed on the player's behalf: with no choice the
        button does not fire at all. */
+    /* v2.3.3326: a quest this page pays NO XP for (tut_1 since v2.3.3326) is
+       handed in with no choice made (QuestPanel's AUTO REWARD), and a worker
+       from before v2.3.3326 still pays tut_1 15 XP -- so it would refuse the
+       hand-in for want of a skill, silently, and the bow and staff with it
+       (during a deploy, or after a rollback of the worker).  So such a
+       hand-in names Melee, the one skill a player has used by then.  A
+       worker whose quest pays no XP ignores it (_needsCat is false); a
+       quest that pays XP still never goes without the player's own choice. */
+    var _sendCat = typeof xpCat === 'string' ? xpCat
+      : (questPanel.quest.reward && questPanel.quest.reward.xp > 0 ? undefined : 'sword');
     if (_Sqt.channel) {
       try {
         _Sqt.channel.send({ type: 'quest_turn_in', payload: {
           questId: questPanel.quest.id,
-          xpCat: typeof xpCat === 'string' ? xpCat : undefined,
+          xpCat: _sendCat,
         } });
       } catch (e) {}
     }
@@ -164,7 +174,10 @@ export function turnInQuest(S, questPanel, deps, xpCat, opts) {
   try {
     localStorage.setItem('bt_rpg', JSON.stringify(R));
   } catch (e) {}
-  pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Complete! +' + questPanel.quest.reward.gold + 'G +' + questPanel.quest.reward.xp + 'XP', '#f5c542');
+  /* v2.3.3326: the XP only when there is some -- tut_1 pays none now, and
+     "+0XP" over your head would say there was a reward you missed */
+  pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Complete! +' + questPanel.quest.reward.gold + 'G'
+    + (questPanel.quest.reward.xp > 0 ? ' +' + questPanel.quest.reward.xp + 'XP' : ''), '#f5c542');
   /* ═══ v2.3.1874: the quest's XP flies to the skill it was banked into ═══
      Owner: "When you kill a monster OR COMPLETE A QUEST show the combat skill
      xp over the character then have the xp jump down into whatever combat

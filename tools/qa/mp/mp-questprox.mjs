@@ -143,16 +143,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await place(0, 34);                   // …then walk back in
   await P.page.waitForTimeout(1200);
   rec.ok('with a READY quest, walking up opens his dialogue', await open());
-  /* He speaks before he pays now, so walk the chunks through to the claim
-     panel — that panel is where the turn-in lives. */
-  const landed = await H.advanceNpcDialogue(P);
+  /* He speaks before he pays now, so walk the chunks through to the turn-in.
+     v2.3.3326: the first quest pays no XP, so its turn-in is his last line's
+     own "Claim reward" (the auto reward -- there is no claim panel); walked
+     up to and left UNPRESSED, as the property is that it is there. */
+  const reached = await H.claimOnLastLine(P, { press: false });
   const readyDlg = await P.page.evaluate(() => {
     const c = document.querySelector('.bt-qoffer') || document.querySelector('.bt-npcdlg');
     return c ? (c.innerText || '') : '';
   });
   rec.ok('...and that dialogue carries the turn-in — the only one left',
-    landed === 'offer' && /Claim Reward|Choose a skill to train/.test(readyDlg),
-    { landed, text: readyDlg.slice(0, 400) });
+    reached && /Claim reward/i.test(readyDlg),
+    { reached, text: readyDlg.slice(0, 400) });
 
   await P.ctx.close().catch(() => {});
 }

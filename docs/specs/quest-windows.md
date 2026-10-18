@@ -31,6 +31,21 @@ rewards go directly to the HUD"), and a rarity example. In the game:
    laurel check on its crest, the coins and items fly from the banner, and he
    offers his next quest.
 
+**v2.3.3326: the first quest is step 4.** The owner, playtesting: *"I don't
+want the 'choose where to train it' option when you complete the first quest
+and are getting rewarded with bow and staff. Makes no sense to have to choose
+xp in something you've never used yet. Just remove that little xp bonus."*
+Cold Reception pays 25 gold and no XP (`server/src/data.js` and
+`gameSystems.js` tut_1, held together by mirror-audit), so its *Claim reward*
+pays at once and the bow and staff fly from the banner. The claim window and
+its chips come from the second quest on, which still pays XP.
+
+A worker from before this change still pays tut_1 15 XP and refuses a hand-in
+that names no skill. So a hand-in with nothing chosen names Melee
+(`turnInQuest`), the one skill a player has used by then; a worker whose quest
+pays no XP ignores it. Without it, the bow and staff would be lost during a
+deploy, or after a rollback of the worker.
+
 The NEW QUEST window (accepting) is the same component in the same frame. It
 was one component with the claim window on purpose (v2.3.1820: "two files
 drift the moment one gets a tweak").
@@ -149,7 +164,8 @@ marked `data-qw-stage="done"`, and the harness's `advanceNpcDialogue` and
 **Checked by:**
 
 - `mp-questwin`: the first quest through every window on a phone, with real
-  taps.
+  taps (since v2.3.3326 its claim is the auto reward, and the claim window is
+  checked on the second quest).
 - `src/quest-harness.html`: every window and banner in the game's own
   components. `node tools/qa/quest-sheet-shot.mjs <dir> [390|844]` saves them.
 
@@ -157,9 +173,10 @@ marked `data-qw-stage="done"`, and the harness's `advanceNpcDialogue` and
 
 - **No "Choose 1 reward".** The mockup let the player take the bow *or* the
   staff. Quest one gives both, by the owner's own rule (v2.3.1692: "all three
-  combat styles land on quest one"), and the worker pays both. So the window
-  shows both under *For finishing “Cold Reception”*, and the only choice is
-  where the XP goes. A real one-of-two reward would be a server change.
+  combat styles land on quest one"), and the worker pays both. So the NEW
+  QUEST window shows both under *For finishing “Cold Reception”*. (Since
+  v2.3.3326 there is no claim window for it at all, as quest one pays no XP.)
+  A real one-of-two reward would be a server change.
 - **The banner comes with the claim**, not before the window as the mockup's
   arrows drew it. It celebrates the payout itself, at the top of the screen
   above the confirmation, and the player is never kept waiting 1.5–2 s before

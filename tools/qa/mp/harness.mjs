@@ -1694,6 +1694,45 @@ export async function advanceNpcDialogue(P, { max = 12, onChunk = null } = {}) {
     : document.querySelector('.bt-npcdlg') ? 'dialogue' : null));
 }
 
+/* ═══ v2.3.3326: A QUEST WITH NOTHING TO CHOOSE IS CLAIMED ON HIS LAST LINE ═══
+ * A quest that pays no XP (tut_1 since v2.3.3326 -- the owner: "Makes no
+ * sense to have to choose xp in something you've never used yet" -- and
+ * Beastmaster Bro's) is the AUTO REWARD (QuestPanel, v2.3.3030): the last
+ * line's "Claim reward" pays at once and he goes straight on to his next
+ * quest.  There is no claim panel, so advanceNpcDialogue would walk on into
+ * the NEXT quest's lines; this walks to that button and taps it ONCE, a real
+ * click (see confirmQuestOffer for why).  Returns true when it was tapped --
+ * or, with `press: false`, when it was reached and left unpressed. */
+export async function claimOnLastLine(P, { max = 12, timeout = 6000, press = true } = {}) {
+  await waitClaimedDone(P);
+  for (let i = 0; i < max; i++) {
+    const label = await P.page.evaluate(() => {
+      const b = document.querySelector('.bt-npcdlg-next');
+      return b ? (b.innerText || '').trim() : null;
+    });
+    if (label == null) return false;
+    if (/^claim reward$/i.test(label)) {
+      if (!press) return true;
+      try {
+        await P.page.locator('.bt-npcdlg-next:visible').first().click({ timeout });
+      } catch (e) {
+        return false;
+      }
+      await P.page.waitForTimeout(500);
+      return true;
+    }
+    const clicked = await P.page.evaluate(() => {
+      const b = document.querySelector('.bt-npcdlg-next');
+      if (!b) return false;
+      b.click();
+      return true;
+    });
+    if (!clicked) return false;
+    await P.page.waitForTimeout(220);
+  }
+  return false;
+}
+
 /** Tap the offer panel's one primary — Accept Quest, or Claim Reward.
  *
  *  A REAL Playwright click, not an in-page `.click()`, and that is the whole

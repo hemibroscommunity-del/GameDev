@@ -728,7 +728,17 @@ export const QUEST_REWARDS = {
          then refused at the equip check — a reward the player can see and not
          use is worse than no reward.  The sword+shield that come BEFORE these,
          on first contact, are the next slice. */
-      tut_1: {gold:25,  xp:15,  next:'tut_2',
+      /* v2.3.3326 (owner, playtesting: "I don't want the 'choose where to
+         train it' option when you complete the first quest and are getting
+         rewarded with bow and staff.  Makes no sense to have to choose xp in
+         something you've never used yet.  Just remove that little xp bonus").
+         xp 0: the hand-in names no skill (_handleQuestTurnIn's _needsCat is
+         false, so any xpCat sent is ignored) and the game pays it as the AUTO
+         REWARD -- his "Claim reward" pays at once, the banner, the gold and
+         the bow and staff flying to the HUD, no claim window (QuestPanel.jsx,
+         v2.3.3030).  The client's copy is gameSystems.js tut_1 (mirror-audit
+         §5); tut_2-4 still pay XP and still ask. */
+      tut_1: {gold:25,  xp:0,  next:'tut_2',
               objective:{type:'collect', invKey:'snowman', count:4, consume:true, zone:'frost'},
               /* v2.3.1676 (owner: "He'll give you the sword and shield").  Paid
                  on ACCEPT, not turn-in — you cannot do the quest without them,
