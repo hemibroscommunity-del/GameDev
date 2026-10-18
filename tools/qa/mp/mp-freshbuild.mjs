@@ -58,7 +58,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.ctx.close().catch(() => {});
 
   /* ── 1b. IN THE WHEEL, ON A PHONE: the banner's Reload is on top ──
-     v2.3.3331, the owner: "The 'new version available' button ... is layered
+     v2.3.3336, the owner: "The 'new version available' button ... is layered
      behind the minimap so whenever I try to tap the button it just opens the
      minimap."  The Wheel's minimap opens on an invisible button laid over its
      box, a z 45 body portal; the 340px card at the top of a 390px phone runs

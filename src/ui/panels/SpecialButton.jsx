@@ -5,7 +5,7 @@ import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no special 
 import { fightOn } from '@/game/sparTargets.js'; /* v2.3.3267: a spar is a fight, for every weapon; v2.3.3268: and one with a real player in No man's land */
 import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
 import { ctlBottom, rightCluster, RCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: back to the RIGHT disc, in the shared diagonal cluster above it */
-import { Skin, StarburstIcon, SpecialFace, specialArtKind, SkinTag, pressOn, pressOff, useReadyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3331: the owner's special for each weapon */
+import { Skin, StarburstIcon, SpecialFace, specialArtKind, SkinTag, pressOn, pressOff, useReadyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3336: the owner's special for each weapon */
 
 /* ═══ v2.3.2542: A SPECIAL ATTACK BUTTON, ORBITING THE ATTACK DISC ═══
  *
@@ -249,7 +249,7 @@ export function SpecialButton(props) {
      A cooldown wins over no-mana: the arc is the one with a clock on it. */
   var skinState = queued ? 'ready' : (cdLeft > 0 ? 'cooldown' : (!afford ? 'disabled' : 'normal'));
   var grey = skinState === 'cooldown' || skinState === 'disabled';
-  /* v2.3.3331 (owner: "use these icons instead for the special attacks (bow,
+  /* v2.3.3336 (owner: "use these icons instead for the special attacks (bow,
      staff, sword)"): the picture of the special this weapon fires, filling the
      face inside the ring (controlSkin SpecialFace); the winged star only if a
      weapon somehow has none */

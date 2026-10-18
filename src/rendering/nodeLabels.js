@@ -148,7 +148,7 @@ const BRASS = 0xD8AA58;
 const NAME_FILL = '#F4F0E7';
 const LV_OK = '#D8AA58';
 const LV_LOW = '#FF7A6E';   /* a little lighter than the plates' #D95C54 so it reads on the ink */
-const GREY_EDGE = 0x8B9695;  /* v2.3.3059: a locked icon's ring -- the grey the waiting quest mark had until v2.3.3331 (it is yellow now) */
+const GREY_EDGE = 0x8B9695;  /* v2.3.3059: a locked icon's ring -- the grey the waiting quest mark had until v2.3.3336 (it is yellow now) */
 /* v2.3.3059: how near (world px, to you) the one resource that says its name
    and level must be; the rest show their tool alone */
 export const NODE_NAME_R = 260;

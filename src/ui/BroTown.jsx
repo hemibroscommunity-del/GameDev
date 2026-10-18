@@ -386,7 +386,7 @@ import { nmlAsk, nmlAskOn, nmlAim, nmlHitBack } from '@/game/nmlAsk.js';   /* v2
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
 import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRAP pop-up */
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
-import { NewMonsterCard } from '@/ui/panels/NewMonsterCard.jsx';   /* v2.3.3331: NEW MONSTER, a tap opens its codex page */
+import { NewMonsterCard } from '@/ui/panels/NewMonsterCard.jsx';   /* v2.3.3336: NEW MONSTER, a tap opens its codex page */
 import { activePet } from '@/game/petBook.js';   /* v2.3.3120: the pet out with you is the record's */
 import { beastmasterOn } from '@/game/trapping.js';   /* v2.3.3121: Beastmaster Bro stands only against a worker that knows his quests */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
@@ -6942,7 +6942,7 @@ export var BroTown = function BroTown(_ref0) {
                  (ready) are the wire values entityRenderer draws: a grey disc
                  with a white "?", still; a green disc with a check DRAWN in
                  lines -- no emoji glyph anywhere.
-                 v2.3.3331 (owner: "be yellow instead of green.  Green implies
+                 v2.3.3336 (owner: "be yellow instead of green.  Green implies
                  something is done"): the waiting "?" is drawn on YELLOW now,
                  the grey having read as green -- same wire values. */
               npc._questMarker = _qReady ? '❓' : '❔';

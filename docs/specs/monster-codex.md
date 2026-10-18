@@ -510,7 +510,7 @@ answer carries that monster's `layout`).
   side container (238 px), the list two across with no word cut -- numbers in
   tools/qa/mp/out/codexfit.json, pictures codexfit-*.png.
 
-## The NEW MONSTER card (v2.3.3331)
+## The NEW MONSTER card (v2.3.3336)
 
 The owner, playtesting: *"Make the new codex entry for monsters as a 'new
 monster' announcement instead of a new codex entry and have it jump to the

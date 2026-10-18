@@ -5,7 +5,7 @@ import { codexAnnouncement, codexAnnounceDone, codexOpenPage, ANNOUNCE_MS } from
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 import { PetPortrait } from '@/ui/petPortrait.jsx';
 
-/* ═══ v2.3.3331: NEW MONSTER -- AN ANNOUNCEMENT YOU CAN TAP ═══
+/* ═══ v2.3.3336: NEW MONSTER -- AN ANNOUNCEMENT YOU CAN TAP ═══
  * Owner, playtesting: "Make the new codex entry for monsters as a 'new
  * monster' announcement instead of a new codex entry and have it jump to the
  * codex area."
@@ -22,7 +22,7 @@ import { PetPortrait } from '@/ui/petPortrait.jsx';
  * the box and its name plate end ~180px down on a phone), near the top on a
  * sideways phone, where the box is far to the right.  A body portal at z 59,
  * as a portal is the only way above the minimap's own open button (z 45,
- * WorldMapOverlay.jsx -- the update card's lesson, v2.3.3331) and just under
+ * WorldMapOverlay.jsx -- the update card's lesson, v2.3.3336) and just under
  * a new pet's card (z 60), which wants its Done tapped.
  * Its own clock, like the trap card.  Keyed by the announcement's time, so a
  * second new monster within the six seconds is a new card, its fade-in and

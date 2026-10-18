@@ -15,7 +15,7 @@
  * On a phone in the Wheel, against a real worker:
  *   1. before the quest, the Wheel's Mayor Bro offers it: '❗';
  *   2. accepted, he waits on you: '❔' (a "?", drawn still -- YELLOW since
- *      v2.3.3331, the owner's "Green implies something is done"), and the
+ *      v2.3.3336, the owner's "Green implies something is done"), and the
  *      quest card leads with the quest picture, not an emoji;
  *   3. the folded dashboard's OPEN flashes; opened, the sword AND the shield
  *      tiles flash -- and nothing else in the bag;
@@ -36,7 +36,7 @@ const PHONE = { width: 390, height: 844 };
 const mayor = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
   const m = (Array.isArray(S.npcs) ? S.npcs : []).find((n) => n && n.name === 'Mayor Bro');
-  /* v2.3.3331: and the badge's drawn colour (entityRenderer's probe) */
+  /* v2.3.3336: and the badge's drawn colour (entityRenderer's probe) */
   const nm = m && window.__btNpcMarks && window.__btNpcMarks[m.id];
   return m ? { mark: m._questMarker || null, badge: (nm && nm.badge) || null, x: Math.round(m.x), y: Math.round(m.y) } : null;
 });
@@ -72,7 +72,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(900);
     const m1 = await mayor(P);
     rec.ok(`2. accepted, he waits on you: a "?" ("${m1 && m1.mark}")`, !!m1 && m1.mark === '❔', m1);
-    /* v2.3.3331 (owner: "have the question mark above mayor bros head be
+    /* v2.3.3336 (owner: "have the question mark above mayor bros head be
        yellow instead of green.  Green implies something is done"): drawn on
        the offer's yellow, never the ready check's green (the grey it was,
        #8b9695, read as green on a phone) */

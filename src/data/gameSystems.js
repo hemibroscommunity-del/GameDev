@@ -6691,7 +6691,7 @@ export const QUEST_CHAINS = {
     next: null,
     gives: [{ when: 'complete', icon: '/icons/items/greaves-copper.webp', label: "Copper Greaves" }],
     dialogue: {
-      /* v2.3.3331 (owner, playtesting: "he says 'last one from me' I don't
+      /* v2.3.3336 (owner, playtesting: "he says 'last one from me' I don't
          think that's accurate"): it was not -- after this he still has the
          life-skill errands and the town's own quests (life_1, mayor_1..3).
          It is the last stop of the TOUR, which his `complete` line closes. */

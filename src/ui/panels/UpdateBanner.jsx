@@ -16,7 +16,7 @@ import { createPortal } from 'react-dom';
  * It is DISMISSIBLE and it does not block anything.  The stale tab still
  * works; it is just out of date, and interrupting a fight with a modal over
  * that would be a worse bug than the one it reports. */
-/* ═══ v2.3.3331: PORTALED TO THE BODY, ABOVE THE MINIMAP'S OPEN BUTTON ═══
+/* ═══ v2.3.3336: PORTALED TO THE BODY, ABOVE THE MINIMAP'S OPEN BUTTON ═══
    Owner, playtesting: "The 'new version available' button that pops up when
    the game is getting updated is layered behind the minimap so whenever I try
    to tap the button it just opens the minimap."  The Wheel's minimap is

@@ -88,7 +88,7 @@ Rules:
 - `mp-minimap` counts the waiting pin. `mp-blacksmith` still sees the mayor
   marked and the blacksmith not.
 
-## The waiting "?" is yellow (v2.3.3331)
+## The waiting "?" is yellow (v2.3.3336)
 
 The owner, playtesting: *"While waiting for a quest in progress to be complete
 have the question mark above mayor bros head be yellow instead of green. Green

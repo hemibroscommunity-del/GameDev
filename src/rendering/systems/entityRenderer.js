@@ -16107,7 +16107,7 @@ export class EntityRenderer {
              items, "a green checkmark ... (not emoji)" when you have them):
              '❗' offer, gold "!"; '❔' waiting, a GREY disc with a white "?";
              '❓' ready, a GREEN disc with a drawn check and no glyph. */
-          /* ═══ v2.3.3331: WAITING IS A YELLOW "?" ═══
+          /* ═══ v2.3.3336: WAITING IS A YELLOW "?" ═══
              Owner, playtesting: "While waiting for a quest in progress to be
              complete have the question mark above mayor bros head be yellow
              instead of green.  Green implies something is done."  The grey
@@ -16149,7 +16149,7 @@ export class EntityRenderer {
             const _nm = window.__btNpcMarks || (window.__btNpcMarks = Object.create(null));
             _nm[npc.id] = { name: npc.name, talk: tm.visible, quest: !!qm.visible,
               talkArt: !!(tm.texture && tm.texture !== Texture.EMPTY && tm.texture.width > 1), talkW: Math.round(tm.width),
-              /* v2.3.3331: the quest badge's drawn colour (yellow waiting) */
+              /* v2.3.3336: the quest badge's drawn colour (yellow waiting) */
               badge: qm.visible && display._qmFill != null ? display._qmFill.toString(16) : null };
           }
         } catch (e) { /* never breaks the frame */ }

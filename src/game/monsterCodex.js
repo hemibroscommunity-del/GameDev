@@ -15,7 +15,7 @@
  *
  * Nothing here decides anything: a count is only ever the worker's.
  *
- * ═══ v2.3.3331: A NEW MONSTER IS ANNOUNCED, AND THE ANNOUNCEMENT OPENS ITS PAGE ═══
+ * ═══ v2.3.3336: A NEW MONSTER IS ANNOUNCED, AND THE ANNOUNCEMENT OPENS ITS PAGE ═══
  * Owner, playtesting: "Make the new codex entry for monsters as a 'new
  * monster' announcement instead of a new codex entry and have it jump to the
  * codex area."  The page-opening kill no longer floats "New in the Codex: X"
@@ -25,7 +25,7 @@
  * (`codexOpenPage` / `takeCodexOpen`, read by the Codex panel). */
 import { CODEX_KINDS, codexFactsAt } from '@/data/monsterCodex.js';
 
-/* v2.3.3331: how long the NEW MONSTER card stays up -- long enough to read
+/* v2.3.3336: how long the NEW MONSTER card stays up -- long enough to read
    and reach in a fight, short enough not to sit over it */
 export const ANNOUNCE_MS = 6000;
 
@@ -83,13 +83,13 @@ export function onCodexKill(S, cx) {
     const fresh = has(c.fresh, cx.k) ? c.fresh[cx.k] : [];
     for (const f of opened) if (!fresh.includes(f)) fresh.push(f);
     c.fresh[cx.k] = fresh;
-    /* v2.3.3331: announced on its card, not in words over your head */
+    /* v2.3.3336: announced on its card, not in words over your head */
     c.announce = { kind: cx.k, at: Date.now() };
   }
   bump(c);
 }
 
-/** v2.3.3331: the NEW MONSTER card's subject while it is up: {kind, at}. */
+/** v2.3.3336: the NEW MONSTER card's subject while it is up: {kind, at}. */
 export function codexAnnouncement(S, now) {
   const c = S && S._codex;
   const a = c && c.announce;
@@ -97,12 +97,12 @@ export function codexAnnouncement(S, now) {
   if ((now || Date.now()) - a.at >= ANNOUNCE_MS) { c.announce = null; return null; }
   return a;
 }
-/** v2.3.3331: put the card away (its time is up, or it was tapped). */
+/** v2.3.3336: put the card away (its time is up, or it was tapped). */
 export function codexAnnounceDone(S, at) {
   const c = S && S._codex;
   if (c && c.announce && (at == null || c.announce.at === at)) { c.announce = null; bump(c); }
 }
-/** v2.3.3331: ask the Codex to open on a kind's page; the Codex panel takes it
+/** v2.3.3336: ask the Codex to open on a kind's page; the Codex panel takes it
     when it is open or next opens (takeCodexOpen). */
 export function codexOpenPage(S, kind) {
   if (!S || !CODEX_KINDS.includes(kind)) return;
@@ -110,13 +110,13 @@ export function codexOpenPage(S, kind) {
   c.openReq = kind;
   bump(c);
 }
-/** v2.3.3331: the page asked for, if one is waiting -- without taking it (a
+/** v2.3.3336: the page asked for, if one is waiting -- without taking it (a
     first render's guess; takeCodexOpen is what clears it). */
 export function codexOpenWaiting(S) {
   const c = S && S._codex;
   return (c && c.openReq) || null;
 }
-/** v2.3.3331: the page asked for, once (null when none is waiting). */
+/** v2.3.3336: the page asked for, once (null when none is waiting). */
 export function takeCodexOpen(S) {
   const c = S && S._codex;
   const k = c && c.openReq;

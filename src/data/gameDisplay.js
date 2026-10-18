@@ -3654,7 +3654,7 @@ BT_AUDIO.ELEM_SOUNDS = {
    swipe's swoosh, its attack (0.02-0.32 s off its own loudness curve) a
    touch slower, peaking ~0.3 -- under the footsteps that follow, which
    already quicken with the stride.  A recording already in the game. */
-/* ═══ v2.3.3331: A RUSH OF AIR, NOT A THUMP ═══
+/* ═══ v2.3.3336: A RUSH OF AIR, NOT A THUMP ═══
    Owner, playtesting: "The button for sprint needs a different sound.  It
    sounds like a fleshy sound."  Measured (ffmpeg + an FFT of what plays,
    offset, length and rate applied): the slowed special swipe put 49% of its

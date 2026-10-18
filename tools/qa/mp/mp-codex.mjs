@@ -16,7 +16,7 @@
  *      the Codex button (v2.3.3215: its own, on the dashboard's row) opens on
  *      Monsters: nine cards, every one a shape;
  *   2. a snowman's kill: counted (snowling 1), announced on the NEW MONSTER
- *      card (v2.3.3331, no words over your head), its card known and NEW; a
+ *      card (v2.3.3336, no words over your head), its card known and NEW; a
  *      tap on the announcement from the world opens the Codex on its page;
  *   3. its page, as the mockup lays it out, on the sheet's own short height
  *      (the owner: "Stay short and scroll"), scrolling in it from its top: the
@@ -302,7 +302,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const k1 = await kill(wsPort, me, 'wm-frost-0');
     await H.waitFor(P, (S) => (S._codex && S._codex.k.snowling ? S._codex.k.snowling[0] : 0), (v) => v >= 1, { timeout: 8000, label: 'the first kill counted' }).catch(() => null);
     const c1 = await codex(P);
-    /* v2.3.3331 (owner: "Make the new codex entry for monsters as a 'new
+    /* v2.3.3336 (owner: "Make the new codex entry for monsters as a 'new
        monster' announcement instead of a new codex entry and have it jump to
        the codex area"): announced on the NEW MONSTER card, not in words over
        your head (src/ui/panels/NewMonsterCard.jsx) */
@@ -325,7 +325,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3215: and the Codex's own button on the dashboard's row says so */
     const badge1 = await codexBadge(P);
     rec.ok(`...and the Codex button on the dashboard counts it (${badge1 || 'no badge'})`, badge1 === '1', badge1);
-    /* v2.3.3331: the announcement's tap, from the world (the dashboard
+    /* v2.3.3336: the announcement's tap, from the world (the dashboard
        folded): a REAL click, so nothing may sit over it (the minimap's open
        button is a z 45 portal), and the Codex opens on the Snowman's page */
     await H.closeDest(P).catch(() => {});

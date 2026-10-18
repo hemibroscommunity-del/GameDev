@@ -21,7 +21,7 @@ assets for the 'small icons'":
   4. assets/icons-source/sheet-small-4-buffs.png (1448 x 1086)
        cursed · bleeding · damage · mana
        regen · resist · XP · speed
-  5. assets/icons-source/sheet-small-5-specials.png (2172 x 724), v2.3.3331 --
+  5. assets/icons-source/sheet-small-5-specials.png (2172 x 724), v2.3.3336 --
      the owner: "Also use these icons instead for the special attacks (bow,
      staff, sword)":
        the bow's volley · the staff's crystal · the sword's whirl
@@ -60,7 +60,7 @@ WHAT IT DOES (the method of slice-social-icons.mjs, v2.3.2926):
   4. Writes a CONTACT SHEET of every cut (--contact) to check by eye.
 
 Refuses to overwrite an existing file without --force.  --only <sheet> cuts
-one sheet and writes nothing else (v2.3.3331: a new sheet without re-encoding
+one sheet and writes nothing else (v2.3.3336: a new sheet without re-encoding
 every icon already in the game).
 
   python3 tools/ui/cut-small-icons.py [--force] [--only <sheet>] [--contact out.png]
@@ -97,7 +97,7 @@ LAYOUT = [
         ['ui/controls/abil-special-bow', 'ui/controls/abil-special-staff', 'ui/controls/abil-special-sword'],
     ]),
 ]
-# v2.3.3331: the special attacks are drawn as a whole button face -- only the
+# v2.3.3336: the special attacks are drawn as a whole button face -- only the
 # disc inside their own gold ring is kept (see sheet 5 in the header)
 INNER_DISC = {n for n in LAYOUT[4][1][0]}
 GREY = {n for n in LAYOUT[1][1][0]} | INNER_DISC
@@ -240,7 +240,7 @@ def fit(icon, size):
 
 
 def inner_disc(icon):
-    """v2.3.3331: the disc inside a round icon's gold ring, as a circle on a
+    """v2.3.3336: the disc inside a round icon's gold ring, as a circle on a
     transparent square.  The centre is the icon's own box's; the ring's inner
     edge is found on 72 rays walked in from the outside -- past the dark edge,
     through the gold band, to the first dark pixel of the face -- and the median
@@ -289,7 +289,7 @@ def inner_disc(icon):
 
 
 def fit_disc(disc, size):
-    """v2.3.3331: a disc edge to edge on its square, no margin."""
+    """v2.3.3336: a disc edge to edge on its square, no margin."""
     return disc.resize((size, size), Image.LANCZOS)
 
 

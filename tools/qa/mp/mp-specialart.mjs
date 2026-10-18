@@ -1,4 +1,4 @@
-/* ═══ mp-specialart (v2.3.3331): THE OWNER'S SPECIAL ATTACKS ON THE BUTTON ═══
+/* ═══ mp-specialart (v2.3.3336): THE OWNER'S SPECIAL ATTACKS ON THE BUTTON ═══
  *
  * The owner, with a sheet of three round pictures: "Also use these icons
  * instead for the special attacks (bow, staff, sword)".

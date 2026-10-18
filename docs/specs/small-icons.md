@@ -59,7 +59,7 @@ four sheets of it: *"Here's the art assets for the 'small icons'"*.
   `tools/qa/mp/out/smallicons-*.png`.
 - `mp-btnskin` and `mp-tapact` read the ability buttons and the right stick.
 
-## The special attacks, one for each weapon (v2.3.3331)
+## The special attacks, one for each weapon (v2.3.3336)
 
 The owner, with a fifth sheet: *"Also use these icons instead for the special
 attacks (bow, staff, sword)"* -- a volley of golden arrows, a crystal staff in a

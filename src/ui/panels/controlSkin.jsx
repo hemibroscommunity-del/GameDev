@@ -371,7 +371,7 @@ export const ABILITY_ART_K = 1.18;
 export function abilityArtUrl(name, grey) {
   return '/ui/controls/abil-' + name + (grey ? '-grey' : '') + '.webp?v=' + ABILITY_ART_V;
 }
-/* ═══ v2.3.3331: THE OWNER'S SPECIAL ATTACKS, ONE FOR EACH WEAPON ═══
+/* ═══ v2.3.3336: THE OWNER'S SPECIAL ATTACKS, ONE FOR EACH WEAPON ═══
  * The owner: "Also use these icons instead for the special attacks (bow,
  * staff, sword)" -- a volley of golden arrows, a crystal staff in a blue
  * swirl, a sword in a golden whirl (assets/icons-source/sheet-small-5-
@@ -407,7 +407,7 @@ export function SpecialFace(props) {
 }
 export const ABILITY_ART_URLS = ['whirl', 'special', 'bash', 'jump', 'burst']
   .reduce(function (a, n) { a.push(abilityArtUrl(n, false), abilityArtUrl(n, true)); return a; }, [])
-  /* v2.3.3331: and the three special attacks, warmed with them */
+  /* v2.3.3336: and the three special attacks, warmed with them */
   .concat(['sword', 'bow', 'staff'].reduce(function (a, k) { a.push(specialArtUrl(k, false), specialArtUrl(k, true)); return a; }, []));
 function abilityArt(name, props, under) {
   var s = props.size || 28;

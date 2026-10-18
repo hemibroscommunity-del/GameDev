@@ -46,7 +46,7 @@ INTERIOR_KNOCKOUT = {
     'panel-account':  0.005,
     'bldg-exchange':  0.003,
     'evt-duel':       0.0035,
-    # v2.3.3331 (owner: "The trap quest for beast master shows a trap icon
+    # v2.3.3336 (owner: "The trap quest for beast master shows a trap icon
     # that still has white that needs to be keyed out in the trap icon
     # art"): the box's propped lid seals a triangle of the sheet's white
     # between lid, stick and base -- ~1% of the tile, the art's only white.

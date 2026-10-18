@@ -329,7 +329,7 @@ fights move up".
   so a long sprint before a fight leaves less for Shield Bash and Whirlwind.
   That is by design, but it is the first thing to tune if it feels harsh.
 
-## v2.3.3331: the push-off is a rush of air
+## v2.3.3336: the push-off is a rush of air
 
 The owner, playtesting: *"The button for sprint needs a different sound. It
 sounds like a fleshy sound."* Measured (an FFT of exactly what plays: offset,
