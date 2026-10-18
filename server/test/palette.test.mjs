@@ -14,10 +14,16 @@
  *      refused (the game then loads it as a picture, as before);
  *   2. public/tools/world/core/piecePalette.js turns a ground piece's colours
  *      into numbers and back exactly, pads its rows the same way, and refuses
- *      a piece of more than 256 colours (which then goes as colours).
+ *      a piece of more than 256 colours (which then goes as colours);
+ *   3. (v2.3.3464) the farm's: its ground's palette twin, public/maps/
+ *      farm_v2.png, is every pixel the picture its bake stamped, as the WebP
+ *      the game names is (tools/world/farm_ground_stamp.json); every one of
+ *      the owner's farm pictures reads as numbers, exactly; and the sheets it
+ *      borrows have pages that do (src/rendering/paletteLoad.js).
  */
 import fs from 'node:fs';
 import zlib from 'node:zlib';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { decodePng8, readPng8Chunks } from '../../src/rendering/png8Decode.js';
@@ -148,6 +154,75 @@ function piece(w, h, colours) {
   big.set(piece(4, 4, 3), 1);
   const odd = piecePalette(big.subarray(1), 4, 4);
   ok('...and one whose colours start off a 4-byte boundary in their buffer', !!odd && odd.n === 3);
+}
+
+/* ── 3. the farm's pictures (v2.3.3464) ── */
+console.log("the farm's pictures as numbers");
+/* how many pixels of a palette read differ from the repo's PNG reader's */
+function offFrom(d, ref) {
+  let off = 0;
+  for (let y = 0; y < d.h; y++) {
+    for (let x = 0; x < d.w; x++) {
+      const k = d.idx[y * d.stride + x], o = (y * d.w + x) * 4;
+      const a = d.alpha[k];
+      if (a !== ref.data[o + 3] || (a && (d.rgb[k * 3] !== ref.data[o] || d.rgb[k * 3 + 1] !== ref.data[o + 1] || d.rgb[k * 3 + 2] !== ref.data[o + 2]))) off++;
+    }
+  }
+  return off;
+}
+{
+  /* the ground: the game asks for /maps/farm_v2.webp and, drawing in colour
+     numbers, reads /maps/farm_v2.png (src/rendering/paletteLoad.js).  The bake
+     (tools/world/bake_farm_ground.py) writes both from one picture, the WebP
+     lossless, and stamps them: the WebP must be the one it stamped, and the
+     PNG's every pixel the stamped picture's */
+  const stamp = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/world/farm_ground_stamp.json'), 'utf8'));
+  const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
+  const webp = fs.readFileSync(path.join(REPO, stamp.webp));
+  ok(`the farm's ground (${stamp.webp}) is the picture its bake stamped -- a new one is baked with its palette twin, by bake_farm_ground.py`,
+    sha(webp) === stamp.webpSha256, { file: sha(webp), stamp: stamp.webpSha256 });
+  const d = await decodePng8(new Uint8Array(fs.readFileSync(path.join(REPO, stamp.png))), inflate, 4);
+  let rgb = null, solid = !!d;
+  if (d) {
+    rgb = Buffer.alloc(d.w * d.h * 3);
+    for (let y = 0; y < d.h; y++) {
+      for (let x = 0; x < d.w; x++) {
+        const k = d.idx[y * d.stride + x], o = (y * d.w + x) * 3;
+        rgb[o] = d.rgb[k * 3]; rgb[o + 1] = d.rgb[k * 3 + 1]; rgb[o + 2] = d.rgb[k * 3 + 2];
+      }
+    }
+    for (let c = 0; c < d.n; c++) if (d.alpha[c] !== 255) solid = false;
+  }
+  ok(`...and its palette twin (${stamp.png}) reads as ${d && d.n} colours of numbers, ${stamp.w} x ${stamp.h}, every pixel the stamped picture's`,
+    !!d && d.w === stamp.w && d.h === stamp.h && d.n === stamp.colours && sha(rgb) === stamp.rgbSha256,
+    d ? { w: d.w, h: d.h, n: d.n, rgb: sha(rgb) } : 'not a palette PNG');
+  ok('...solid all over (it is drawn as an opaque picture)', solid);
+}
+{
+  /* the owner's farm pictures, read as they are */
+  const FARM = path.join(REPO, 'public/world/farm');
+  const pics = fs.readdirSync(FARM).filter((f) => f.endsWith('.png')).sort();
+  let refused = 0, off = 0, px = 0;
+  const bad = [];
+  for (const f of pics) {
+    const bytes = fs.readFileSync(path.join(FARM, f));
+    const d = await decodePng8(new Uint8Array(bytes), inflate, 4);
+    if (!d) { refused++; bad.push(f); continue; }
+    const n = offFrom(d, decodePNG(bytes));
+    px += d.w * d.h;
+    if (n) { off++; bad.push(`${f}: ${n} px`); }
+  }
+  ok(`all ${pics.length} of the farm's pictures read as numbers, ${(px / 1e6).toFixed(1)} M pixels, every one the colour the repo's PNG reader gives it`,
+    pics.length >= 70 && !refused && !off, bad.slice(0, 6));
+  /* the sheets it borrows trees and fences from (farmLayout.js 'obj:<atlas>/'):
+     their pages are among the sheets read in 1 */
+  const layout = fs.readFileSync(path.join(REPO, 'src/data/farmLayout.js'), 'utf8');
+  const atlases = [...new Set([...layout.matchAll(/obj:([a-z0-9-]+)\//g)].map((m) => m[1]))].sort();
+  const pages = atlases.map((a) => {
+    try { return JSON.parse(fs.readFileSync(path.join(OBJ, a + '.json'), 'utf8')).meta.image; } catch (e) { return null; }
+  });
+  ok(`the ${atlases.length} sheets the farm borrows (${atlases.join(', ')}) each have a page that reads as numbers`,
+    atlases.length >= 1 && pages.every((p) => p && sheets.includes(p) && !bad.includes(p)), { atlases, pages });
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

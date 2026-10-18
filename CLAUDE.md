@@ -44,6 +44,9 @@ remnant to migrate server-side, not a mode to preserve.
   `docs/UI-BIBLE.md` (UI design law + icon-generation prompts, v2.3.1222),
   `docs/LANTERN-SLATE-SPEC.md` (the UI visual system — colors, depth,
   components; supersedes UI-BIBLE Part 2, v2.3.1227),
+  `docs/UI-DESIGN-NOTES.md` (the reasons behind each screen, the owner's
+  decisions and what was turned down, a section a part of the game; every UI
+  review bundle carries it, v2.3.3460),
   `docs/DEPTH-ROADMAP.md` (the costed depth work, code-aware),
   `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
   only textures -- what leaked, and the order of the memory work with each
@@ -77,11 +80,13 @@ remnant to migrate server-side, not a mode to preserve.
   word (src/game/townsfolkReact.js, this phone's own; emoteFx.js
   `_updateFollowers` moves each one picture about its feet);
   `townsfolk-react` suite, `mp-joinin`; and since v2.3.3395 HALLOWEEN WEEK,
-  24 October to 1 November by each phone's calendar (src/game/season.js,
+  18 October (the 24th until v2.3.3463, the owner's "Start today for
+  everyone") to 1 November by each phone's calendar (src/game/season.js,
   `?halloween=1|0`; a look, never a rule): the Zombie Shuffle, a thirteenth
-  move the worker keeps any day, pumpkin-coloured speech bubbles drawn in
-  code, Diego's "No zombies in my store!"; `season` suite, `mp-halloween`:
-  docs/specs/halloween.md),
+  move the worker keeps any day (its tile "Zombie", the move's `short`),
+  pumpkin-coloured speech bubbles drawn in code, Diego's "No zombies in my
+  store!"; `season` suite, `mp-halloween`: docs/specs/halloween.md; each
+  change pictured beside a normal day: docs/shots/halloween.md),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
   vs edge-cropped test live here, v2.3.2650),
@@ -744,6 +749,43 @@ remnant to migrate server-side, not a mode to preserve.
       window: no <button>, so the delegate never heard them); `sound-cues`
       §10; `mp-cuelevels` lists the cues kept quiet on purpose (`QUIET_OK`:
       /roll and /flip at Ace's toss level, the owner's call).
+    - since v2.3.3462 THE OWNER'S RECORDINGS FOR THE REST -- the owner: "I
+      have the rest of the sounds" (21 from Pixabay, uploaded to the top of the
+      project; kept as supplied in `assets/sfx-source/`, CREDITS.md):
+      - cut by `tools/audio/cut_owner_sounds.py` (GENERATED
+        `src/data/ownerSoundClips.js`), levelled by mp-cuelevels' own measure
+        -- read in mono as Web Audio downmixes, never ffmpeg's `-ac 1` (it
+        reads a stereo reference 1.41x loud: TRAPS §230); the munch high-passed, the
+        heartbeat given its own overtones (both nearly all under 100 Hz, which
+        a phone hardly plays);
+      - your hurt grunt (two; "Grunt 1" is the sprint's push-off, the owner's
+        own ask), the heartbeat on a clock of its own (game/ownSounds.js; the
+        frame-counted beep() timer gone), munch and gulp, the chat's pop, the
+        chime (mail, invites, friends, announcements, someone else's jackpot),
+        one "denied" for the refusals, the Laugh's laugh and Sleep's snores, the
+        war horn (dungeon waves, the arena, a war declared), a boss's roar, the
+        Blue Slime's explosion, the townsfolk's hums (game/npcVoices.js, a
+        voice each);
+      - the dance's beat takes the music deck while YOU dance
+        (`BT_AUDIO.setDanceMusic`, streamed, never decoded, on the dances'
+        120-a-minute wall-clock beat); the Verdant Wilds' and Flame Fields' air
+        (`ZONE_AMBIENT`); the sea's surf, BroTown's crowd and a fire's crackle
+        as beds (game/ambientBeds.js: loaded where they play, let go after);
+      - MEMORY: the voice and noise one-shots and every loop are decoded at
+        24 kHz (`LOW_RATE_SFX`, `zoneamb-`/`amb-`, an OfflineAudioContext), and
+        `loadSample` decodes a file once whatever keys name it (fish-on-hook
+        and lure-drop were two copies, ~1 MB) -- the wind 11 -> 5.5 MB;
+      - and the two sent after the rest: the SWIM'S SPLASH ("a missing sound
+        effect for the player gets in and out of the water": the old one
+        played at a tenth of a hit) -- one file, IN the whole splash at half a
+        hit, OUT its slosh at a quarter (`SWIM_SPLASH` from
+        `OWNER_SOUNDS['swim-splash'].parts`, played at 1, a peer's at their
+        share of 1); and the POINTS' CHIME ("for after applying skill stat
+        points"), the cue `pointsSpent` on the worker's `prog3_allocated` /
+        `stat_allocated`, one a batch (`CUE_GAP_MS`);
+      - `sound-cues` §11, `mp-ownersounds`, `mp-cuelevels`, `mp-wheelswim`:
+        docs/specs/owner-recordings.md; what is still needed:
+        docs/SOUND-GAPS.md.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
@@ -3709,6 +3751,33 @@ Two protocol versions coexist; both must keep working:
     they are the play column's now (game.css "THE CREATOR SIZES ITSELF FROM
     THE COLUMN", TRAPS §214). `mp-edgeguard`, `mp-deskreach`,
     mp-shopkeeper's sideways part, mp-notifbell.
+  - Since v2.3.3460 every bundle carries THE REASONS -- the owner: "I'd also
+    like it if you had included all of the design rationale behind the
+    iterations I've made in each menu", then "Yes go ahead, and add it to the
+    screenshot tool": `docs/UI-DESIGN-NOTES.md`, a section a part of the game
+    (what it is for, the owner's decisions and why, what was tried and
+    changed, what not to suggest, what is still open; a digest of the specs,
+    the UI law and the owner's words -- the specs and the code win where they
+    differ), copied in as DESIGN-NOTES.md, each screen's README entry linking
+    its sections (`Screens:` under a section's heading, tools/qa/ui-review/
+    notes.mjs), the ChatGPT prompt asking for them to be read first and named
+    when a suggestion goes against one. A NEW SCREEN IN states.mjs GETS A
+    SECTION OR ITS ID ON ONE, AND A NEW DECISION ABOUT A SCREEN A LINE IN IT;
+    `node tools/qa/ui-review/capture.mjs --check-notes` (no build) fails on a
+    screen with none. And the ChatGPT KIT -- the owner: "walk me through the
+    most efficient way for chatGPT to review all of these menus with the
+    rationale" -- `chatgpt/` and `ui-review-for-chatgpt.zip`
+    (tools/qa/ui-review/packets.mjs, capture.mjs `makeKit`): START-HERE.md
+    and eleven folders, one ChatGPT chat each, of at most nine screens (a
+    folder is one message of ten files), each screen ONE picture with its
+    views side by side (a computer window's black bars cut off) and a
+    brief.md with the task, the answer's shape, what the check found and the
+    screens' design notes in full, a finding on several of its screens
+    listed once ("Found on several screens", `sharedFindings`); a new screen
+    goes in a packet in `PACKETS` (else "Other screens"); `--report-only`
+    makes it for any bundle. The check measures the box a press lands in --
+    a control's own `::before`/`::after` ring counts (audit.mjs `touchBox`:
+    every window's ✕ is drawn 28 px in a 44 px ring and was called small).
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's
@@ -4414,6 +4483,19 @@ Two protocol versions coexist; both must keep working:
       programs and the Speed test times them as a step of its own
       (`threeprog`, `setOneBatchLive`), its card saying which way is faster
       on that phone: docs/specs/one-batch.md.
+    - since v2.3.3464 the FARM'S too (the owner: "Yes do the separate PR"):
+      its ground, its 76 pictures and its copies of the six sheets it borrows,
+      read as numbers by a loader inside Pixi's own
+      (`src/rendering/paletteLoad.js`), so the same `Assets.load` / `unload`
+      addresses still load and free them; the ground from its palette twin
+      `public/maps/farm_v2.png`, which bake_farm_ground.py writes beside the
+      WebP and stamps (`tools/world/farm_ground_stamp.json`, held by
+      palette.test.mjs); the dashboard's Map panel draws it from its numbers
+      (paletteDraw.js `paletteThumb`); ~42 -> 10.4 MB, the chip 27 MB lighter
+      on the farm, mp-farmwalk's line 205 -> 177; the picture 279 of 2.8 M px
+      one level apart, drawn by the one program too; the frame 16-46% longer
+      on the QA box's software chip; `mp-farmpalette`:
+      docs/specs/palette-textures.md "The farm".
   - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
     the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
     home again, three times. Each kind of memory's highest reading must stay
