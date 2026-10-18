@@ -228,6 +228,37 @@ and is never flipped, so the front drawings, as the cook's. A drawing
 changed on the farm bakes him again once the strokes stop, as the
 lumberjack's (400 ms).
 
+**The others on the farm see you work.** The steps go only to the worker,
+which tells no one else, so until v2.3.3352 everyone else saw you standing at
+the bed. Now your move carries the step as its `ex`, `farm:<step>:<n>`
+(`farmWork.js` `farmExCode`; `n` counts your steps, so two alike in a row
+start over on their screens), the code a lumberjack's move carries as
+`chop`. The worker already keeps it and hands it to everyone near you in its
+tick (`movement.js`, `tick.js`): **no worker change**. An older screen knows
+no such code and draws you standing, as before.
+
+Their screens draw your farmer from it (effectsRenderer `_drawPeerFarmer`):
+
+- the step's move from its first frame, on their own clock from when the
+  code came in, at your boots, your size and build;
+- in your colours and with your drawings: their own farmer when you wear
+  their colours and neither of you has drawings, else one baked for yours
+  (`_peerFarmFigure`, `_peerFigFrames`, one per colours and drawings), under
+  greaves the body cut for them;
+- your greaves, shirt (with its print) and plate in their metal, the hoe or
+  the can, your hair, hat and beard, in that order;
+- the step's sound where its work lands, at your share by distance
+  (`FARM_BEAT_SOUND`, the table your own steps play from).
+
+Your walking body is hidden on their screen only while the figure is drawn
+(entityRenderer asks `_peerFigureReady`), so until it is made you are seen
+standing. Memory: a baked figure is 0.7-1.7 MB (the kneel to the hoe),
+inside the 16 MB every peer figure shares (`PEER_FIG_BUDGET`), let go of
+15 s after nobody drew it, and everything of it at once on leaving the farm
+(`_freeFarm`). Their parse (`parseFarmEx`) takes a step only by name (never
+`__proto__`) and nothing longer than 16 characters: the code is relayed, so
+anything a player could send.
+
 **In time** (`src/game/farmWork.js`), each step plays its move's eight frames
 as whole turns that fill its time exactly. A step always ends on the eighth
 frame, the pose it began in:
@@ -467,6 +498,16 @@ two pictures still to come.
   greaves, the body cut for them carries them too. The `farmwalk` suite runs
   the game's own split on the shipped strips: nothing of his face under his
   chin, a chest in its box, two arms each frame.
+- **The others see you work:** `tools/qa/mp/mp-farmpeer.mjs`
+  (`node tools/qa/mp/run.mjs farmpeer`, 17 checks). Two phones on the farm:
+  Digger (deep skin, blue trousers, red boots, copper greaves under a green
+  tee, a red cap) digs while Watcher stands by. On Watcher's screen: the code
+  off the wire; Digger's farmer drawn with the hoe through the swing and his
+  walking body put away; at his boots; in a figure baked for his colours, the
+  body cut for greaves; greaves (in his copper), tee, hoe and cap in that
+  order; the strike heard; his walking body back after. In Watcher's colours
+  and no greaves, drawn from Watcher's own farmer. Leaving lets it all go
+  (`out/farmpeer-swing.png`).
 - `mp-farm` (the window: Seeds first, no beds, the summary line following the
   worker's farm, the kill switch), `mp-farmorders` and `mp-wheeldoors` (the
   farm's gate) still run.
@@ -479,8 +520,6 @@ two pictures still to come.
 
 ## Not yet
 
-- **Other players see you standing at a bed** while you work it: the steps go
-  only to the worker, which tells no one else, as since v2.3.3136.
 - The **Farmhouse** and **Dungeon Workshop** pictures (prompts in
   `docs/art/FARM-ART-PROMPTS.md`); until then the haystack and the notice
   board stand in.

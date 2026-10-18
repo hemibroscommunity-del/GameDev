@@ -56,6 +56,16 @@ export const FARM_ANIM_TURN = Object.freeze({
 export const FARM_ANIM_BEATS = Object.freeze({ hoe: Object.freeze([4]), water: Object.freeze([3, 5]), kneel: Object.freeze([2, 4]) });
 /* A beat this near the end is not shown: you are getting up. */
 const LAST_BEAT_MS = 80;
+/* the sound of each step as its work lands, from recordings already in the
+   game (SFX_MANIFEST): yours at this level (farmWalk.js), another player's at
+   their share by distance (effectsRenderer _drawPeerFarmer) */
+export const FARM_BEAT_SOUND = Object.freeze({
+  dig: Object.freeze({ key: 'footstep-v3', vol: 0.55, rate: 0.7 }),
+  plant: Object.freeze({ key: 'footstep-v3', vol: 0.3, rate: 1.35 }),
+  water: Object.freeze({ key: 'lure-drop', vol: 0.32, rate: 1.25 }),
+  feed: Object.freeze({ key: 'footstep-v3', vol: 0.4, rate: 0.6 }),
+  harvest: Object.freeze({ key: 'footstep-v3', vol: 0.45, rate: 0.95 }),
+});
 
 function turnOf(step) {
   const anim = FARM_STEP_ANIM[step] || 'kneel';
@@ -71,6 +81,29 @@ function turnsIn(T, total) { return Math.max(1, Math.round(total / T.ms)); }
 
 /** The animation a step plays ('hoe' | 'water' | 'kneel'). */
 export function farmAnimOf(step) { return FARM_STEP_ANIM[step] || 'kneel'; }
+
+/* ═══ v2.3.3352: WHAT THE OTHERS SEE ═══
+   While you work a bed your move carries 'farm:<step>:<n>' as its `ex` -- the
+   harvest code the worker already keeps and hands every player near you in
+   its tick (movement.js, tick.js), as the lumberjack's 'chop' -- and their
+   screens draw your farmer from it.  `n` counts your steps (0-99), so two
+   alike in a row (a refused step tried again) start over there too.  No
+   worker change: an older screen knows no such code and draws you standing,
+   as it always has. */
+const _ownStep = (step) => typeof step === 'string' && Object.prototype.hasOwnProperty.call(FARM_STEP_ANIM, step);
+export function farmExCode(step, n) {
+  return _ownStep(step) ? 'farm:' + step + ':' + ((Math.abs(n | 0)) % 100) : null;
+}
+/** Another player's `ex` read as a step on a bed: {step, anim, ms}, or null
+ *  for anything else.  Relayed, so it is read as anything a player could
+ *  send: a known step by name (never '__proto__'), nothing longer than any
+ *  code this makes. */
+export function parseFarmEx(code) {
+  if (typeof code !== 'string' || code.length > 16 || code.slice(0, 5) !== 'farm:') return null;
+  const step = code.split(':')[1];
+  if (!_ownStep(step)) return null;
+  return { step, anim: FARM_STEP_ANIM[step], ms: FARM_WORK_MS[step] };
+}
 
 /** The frame of its animation a step shows at `t` ms into its `total`;
  *  the first frame for a time that is no time at all, the last held at the

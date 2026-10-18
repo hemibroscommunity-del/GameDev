@@ -45,6 +45,7 @@ import { FARM } from '../src/farm.js';
 import {
   FARM_STEPS, FARM_WORK_MS, FARM_STEP_ANIM, FARM_ANIM_TURN, FARM_ANIM_BEATS, farmAnimOf, farmWorkFrame, farmWorkBeats,
   bedNext, farmClock, bedAt, seedToPlant, seedsInHand, cropStageOf, soilOf,
+  farmExCode, parseFarmEx, FARM_BEAT_SOUND,
 } from '../../src/game/farmWork.js';
 import {
   FARM_ZONE, FARM_GROUND, FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY, FARM_KNEEL_DX, FARM_CROP_FOOT_DY, FARM_SPOTS, FARM_GATE,
@@ -261,6 +262,24 @@ const FOOT_DY = 52;   /* a body's middle to its boots, on a zone with no perspec
   }
 }
 
+// ── 1c. v2.3.3352: what the others see -- the step as your move's `ex` ──
+{
+  const codes = FARM_STEPS.map((st, i) => farmExCode(st, i * 37));
+  check(`every step names itself on the wire (${codes.join(' ')}) and reads back as the same step and move`,
+    codes.every((c, i) => /^farm:[a-z]+:\d{1,2}$/.test(c) && c.length <= 16 && JSON.stringify(parseFarmEx(c))
+      === JSON.stringify({ step: FARM_STEPS[i], anim: FARM_STEP_ANIM[FARM_STEPS[i]], ms: FARM_WORK_MS[FARM_STEPS[i]] })), codes);
+  check('two steps alike in a row read differently (the count), and the count stays two digits',
+    farmExCode('dig', 1) !== farmExCode('dig', 2) && farmExCode('dig', 199) === 'farm:dig:99' && farmExCode('dig', -3) === 'farm:dig:3');
+  /* it is relayed, so anything a player could send */
+  const odd = ['farm:__proto__:1', 'farm:constructor:1', 'farm:toString:1', 'farm:hasOwnProperty', 'farm::1', 'farm:', 'farm:Dig:1',
+    'farm:dig:12345678901', 'chop', 'cook', '', null, undefined, 7, {}, ['farm:dig:1'], { toString: () => 'farm:dig:1' }];
+  check('nothing else reads as a step: no prototype name, no other code, nothing longer, nothing but a string',
+    odd.every((c) => parseFarmEx(c) === null), odd.filter((c) => parseFarmEx(c) !== null));
+  check('...and nothing that is no step is named', farmExCode('__proto__', 1) === null && farmExCode('constructor', 1) === null && farmExCode('', 1) === null);
+  check('each step has its sound where its work lands (the table yours and the others\' play from)',
+    FARM_STEPS.every((st) => FARM_BEAT_SOUND[st] && typeof FARM_BEAT_SOUND[st].key === 'string' && FARM_BEAT_SOUND[st].vol > 0 && FARM_BEAT_SOUND[st].vol <= 1));
+}
+
 // ── 2. a bed's next step, its words, its timer, its look ──
 {
   const t0 = 1_000_000;
@@ -367,6 +386,36 @@ const settle = () => new Promise((r) => setTimeout(r, 10));
   check('a crop left dry until ripe is offered for harvest, never water -- which the worker refuses on a ripe crop', dryRipe.step === 'harvest' && !!w && w.did.n === 0, { dryRipe, w: w && w.did });
 }
 Date.now = realNow;
+
+// ── 3b. v2.3.3352: the step on the wire, through a real room ──
+/* the code is a move's `ex`, which the worker keeps and hands every player
+   in the zone in its tick, verbatim (protocol-v2's harvest-activity checks);
+   here a farm code goes the same way, and gives no harvest's damage shield */
+{
+  const room = new GameRoom(makeState(), mockEnv);
+  const join = async (pid) => {
+    const w = fakeWs();
+    room.sessions.set(w, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+    await room.webSocketMessage(w, JSON.stringify({ type: 'join', id: pid, name: pid, phrase: 'p-' + pid, protocolVersion: 2, data: { x: 700, y: 700, z: 'farm_home' } }));
+    await settle();
+    return w;
+  };
+  const wa = await join('bp_farmex_a');
+  const wb = await join('bp_farmex_b');
+  const pa = room.playerState.bp_farmex_a;
+  const code = farmExCode('dig', 5);
+  await room.webSocketMessage(wa, JSON.stringify({ type: 'move', x: pa.x, y: pa.y, z: 'farm_home', ex: code }));
+  check(`a move carrying ${code} is kept as the mover's harvest code`, pa.ex === code, pa.ex);
+  check('...and buys no harvest\'s damage shield (no node, not a cook or a fire)', room._extractionShielded('bp_farmex_a', Date.now()) === false);
+  wb.sent.length = 0;
+  room.startTickLoop();
+  await new Promise((r) => setTimeout(r, 90));
+  clearInterval(room.tickInterval); room.tickInterval = null;
+  const seen = wb.sent.filter((m) => m.type === 'tick' && m.players && m.players.bp_farmex_a).map((m) => m.players.bp_farmex_a.ex);
+  check(`the other player on the farm gets it in the tick, as sent (${JSON.stringify(seen[0])})`, seen.length > 0 && seen[0] === code, seen.slice(0, 3));
+  await room.webSocketMessage(wa, JSON.stringify({ type: 'move', x: pa.x, y: pa.y, z: 'farm_home', ex: null }));
+  check('...and the step over, it is cleared', pa.ex === null, pa.ex);
+}
 
 // ── 4. the seed planted, the bed in reach ──
 {

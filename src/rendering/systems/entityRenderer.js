@@ -118,6 +118,7 @@ const _staffTipOut = { x: 0, y: 0 };
 import { SHADE, propShade } from '../formShade.js'; /* v2.3.2767: light from above on every figure and prop; v2.3.2893 + snow props */
 import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
 import { standInReady, farmFigureReady, peerStandInReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made; v2.3.3314: a peer's, once made in their colours */
+import { parseFarmEx } from '@/game/farmWork.js';   /* v2.3.3352: a peer working a bed of their farm, off their `ex` */
 import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full */
 import { SMALL_TEX } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
@@ -11184,7 +11185,9 @@ export class EntityRenderer {
          and fire-lighter were drawn from: your skin, trousers and boots on
          somebody else.  Asked here, just before the effects pass draws the
          stand-in from the same answer in the same frame. */
-      const _rexStandIn = (_rex === 'chop' || _rex === 'cook' || _rex === 'fire') && peerStandInReady(id, other, _rex);
+      /* v2.3.3352: and a step on a bed ('farm:<step>:<n>'): their farmer
+         (effectsRenderer _drawPeerFarmer) */
+      const _rexStandIn = (_rex === 'chop' || _rex === 'cook' || _rex === 'fire' || !!parseFarmEx(_rex)) && peerStandInReady(id, other, _rex);
       const _rexBodyPose = _rex === 'mine' ? 'mine' : _rex === 'fish' ? 'fish' : null;
       if (display.visible === _rexStandIn) display.visible = !_rexStandIn;
       /* v2.3.1534: remote dodge roll.  other._dodgeRoll is already set from

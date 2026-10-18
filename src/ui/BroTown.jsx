@@ -504,7 +504,7 @@ import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelT
 import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it */
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
-import { bedAt } from '@/game/farmWork.js';
+import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
 import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
@@ -7379,6 +7379,9 @@ export var BroTown = function BroTown(_ref0) {
           : _exSkill === 'fishing' ? 'fish'
           : _exSkill === 'cooking' ? 'cook'
           : null;
+        /* v2.3.3352: and a step on a bed of your farm, so the others there see
+           your farmer at it ('farm:<step>:<n>', game/farmWork.js farmExCode) */
+        if (!_exCode && S._farmWork && S.currentZone === 'farm_home') _exCode = farmExCode(S._farmWork.step, S._farmWork.n);
         var _exChanged = _exCode !== (S._lastBroadcastEx || null);
         /* v2.3.3254: not for the quiet phone (game/quietPhone.js): the
            worker's own roster carries every near player's `ex` whole every

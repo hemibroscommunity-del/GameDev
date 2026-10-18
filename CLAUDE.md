@@ -2356,13 +2356,21 @@ remnant to migrate server-side, not a mode to preserve.
           from, the face's and chest's boxes, and `armCuts` where both hands
           on the hoe join his arms -- playerSkins `_stampStandInInk`), baked
           again when you change one; `PREVIEW` writes `ink-<move>.png`;
+        - and the OTHERS ON THE FARM SEE YOU WORK: your move's `ex` carries
+          `farm:<step>:<n>` (farmWork.js `farmExCode`/`parseFarmEx`, the code
+          a lumberjack's carries as 'chop'; the worker relays it unchanged,
+          no worker change, an older screen draws you standing), and their
+          screens draw your farmer (effectsRenderer `_drawPeerFarmer`): in
+          your colours and drawings (their own farmer when you share them,
+          else `_peerFarmFigure`'s bake inside PEER_FIG_BUDGET), dressed, the
+          tool, your head, the step's sound at your share; `mp-farmpeer`;
         - made behind the farm's loading screen (`ensureStandIn('farm')`,
           `farmFigureReady`), all nine garments whatever you wear (the
           character menu can dress you there), and let go of on leaving
           (`_freeFarm`): the farm holds 104.5 MB on the GPU, the nine
           garments ~1.9 of it, where the cook's kneel held 104.6;
         - the crates (`make_farm_covers.py`, `farmCovers.js`) are gone;
-          `farmwalk` suite §1, `mp-farmanim`, `mp-farmink`:
+          `farmwalk` suite §1, `mp-farmanim`, `mp-farmink`, `mp-farmpeer`:
           docs/specs/farm-walk.md "The farmer's own moves";
       - the Feed & Seed's window lost its Beds tab: Visit Your Farm on top,
         "Your farm: 3 ready to harvest · 3 beds to plant" under it, then Seeds

@@ -32,7 +32,7 @@ import { BT_AUDIO } from '@/data/index.js';
 import { FARM, FARM_CROP_ORDER } from '@/data/farmCrops.js';
 import { FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY, FARM_KNEEL_DX } from '@/data/farmLayout.js';
 import { farmBus } from '@/ui/mobile/farmBus.js';
-import { bedNext, bedAt, farmClock, farmWorkBeats, FARM_WORK_MS, seedToPlant, seedsInHand } from '@/game/farmWork.js';
+import { bedNext, bedAt, farmClock, farmWorkBeats, FARM_WORK_MS, FARM_BEAT_SOUND, seedToPlant, seedsInHand } from '@/game/farmWork.js';
 import { pushDmgPopup, offlineRefused } from '@/game/combatHelpers.js';
 import { jumpAirborne } from '@/game/jump.js';
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';
@@ -89,14 +89,12 @@ function sayOverBed(S, i, text, color) {
 }
 function play(key, opts) { try { BT_AUDIO.play(key, opts); } catch (e) { /* sound only */ } }
 
-/* the sound of each lean, from recordings already in the game (SFX_MANIFEST) */
-const BEAT_SOUND = {
-  dig: () => play('footstep-v3', { vol: 0.55, rate: 0.7 }),
-  plant: () => play('footstep-v3', { vol: 0.3, rate: 1.35 }),
-  water: () => play('lure-drop', { vol: 0.32, rate: 1.25 }),
-  feed: () => play('footstep-v3', { vol: 0.4, rate: 0.6 }),
-  harvest: () => play('footstep-v3', { vol: 0.45, rate: 0.95 }),
-};
+/* the sound of each lean (farmWork.js FARM_BEAT_SOUND: v2.3.3352, the table
+   moved there so another player's are heard from the same one) */
+function beatSound(step) {
+  const b = Object.prototype.hasOwnProperty.call(FARM_BEAT_SOUND, step) ? FARM_BEAT_SOUND[step] : null;
+  if (b) play(b.key, { vol: b.vol, rate: b.rate });
+}
 
 /** Per frame, from BroTown's loop: the bed in reach (S._nearBed) and a step in
  *  progress (S._farmWork) -- its sounds, its end, or its being walked away from. */
@@ -116,8 +114,7 @@ export function tickFarmWalk(S, now) {
       if (!w._beats) { w._beats = farmWorkBeats(w.step, w.doneAt - w.startedAt); w._sb = 0; }
       while (w._sb < w._beats.length && now - w.startedAt >= w._beats[w._sb]) {
         w._sb++;
-        const fx = BEAT_SOUND[w.step];
-        if (fx) fx();
+        beatSound(w.step);
       }
       if (now >= w.doneAt) {
         S._farmWork = null;
@@ -187,7 +184,10 @@ export function startFarmStep(S, i) {
   S._facing = 'down';
   P.dir = 'down';
   const t0 = Date.now();
-  S._farmWork = { bed: i, step: n.step, crop, startedAt: t0, doneAt: t0 + FARM_WORK_MS[n.step], x: P.x, y: P.y };
+  /* v2.3.3352: `n`, your steps counted, for what the others see (farmWork.js
+     farmExCode) */
+  S._farmSteps = ((S._farmSteps | 0) + 1) % 100;
+  S._farmWork = { bed: i, step: n.step, crop, startedAt: t0, doneAt: t0 + FARM_WORK_MS[n.step], x: P.x, y: P.y, n: S._farmSteps };
   return true;
 }
 
