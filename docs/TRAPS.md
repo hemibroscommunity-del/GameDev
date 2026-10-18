@@ -7062,7 +7062,7 @@ special is dropped" fails eight).
 page (`S.rpg.rangedWeapon = {...}`, `R.staffWeapon = {...}`): the game draws
 it, fires it, and the hits land.
 
-**What happens:** since v2.3.3328 a bow or staff hit on a monster needs that
+**What happens:** since v2.3.3334 a bow or staff hit on a monster needs that
 weapon in the WORKER's own slot (server/src/hitproof.js), and the phone's copy
 is never asked. The shots still fly and still pop numbers on that phone, but
 the worker refuses every one: its monsters are never hurt, shoved, turned or
@@ -7235,6 +7235,44 @@ the record and puts out a join whose key or device it no longer lets in.
 
 **Receipt:** login-keys §12 (21 checks): a gate where each change waits, the
 owner's tool run in the gap; nine fail on v2.3.3355's code.
+
+## 222. "A shot the sight lets go flies the sight's line" (v2.3.3399)
+
+**Tempting:** the bow's sight gate decides when a shot may leave, and every
+shot flies the aim angle, so every shot it lets go flies the line it was on.
+And a test's "is a rock in the way" is a line from the player to the monster.
+
+**What happens:** the sight is cast from the bow's GRIP, and only the plain
+arrow left from there (v2.3.1979, v2.3.2543: "These two must not differ by so
+much as a pixel"). Two other origins disagreed:
+- the bow special's volley left from your CENTRE, so, unlocked, it flew a line
+  parallel to the sight's: three arrows 43 px from a fire goblin's centre while
+  the sight was on it;
+- the grip itself was published only while the shot pose was drawn, so the
+  first shot of a visit cast the sight from your centre, and the first after a
+  turn from where your hand had been on the last shot: 30 px wide of a slime.
+A lock is re-aimed from the shot's own origin at release (projectiles.js), so
+locked shots hit throughout. And since v2.3.3206 a shot is judged at the
+shooter's BOOTS, so mp-hitreal's cover check, a line from the chest, missed
+rocks the shot then hit: with you just north of Frost Ridge's rock ridge and a
+snowman at its face, the chest line ended 2 px short of the ridge, while a
+staff bolt's track along the ground ran into it a step from your boots.
+
+**The rule:** a shot the sight gates leaves from the point the sight was cast
+from, and that point is the grip for the way you aim NOW: the volley carries the
+live grip as `_ox/_oy` (playerActions.js), and between shots the renderer
+publishes the grip the pose would draw (effectsRenderer `_predictBowGrip`). A
+test asks the game's own answer to "what does this arrow hit first", the bow's
+sight (`S._bowSight.id`: a monster's id or `prop:<oi>`), never a line of its own
+(TRAPS #35); for a staff bolt, which has no sight, the line the game judges it
+on: from your boots, the drawn line carried straight down by `_gdy`.
+
+**Receipt:** mp-hitreal, with its arrow tracker recording where each lost shot
+ended. Before, two or three of its eight bow rows lost a shot a run: into a
+rock, into another monster, or past the target. After, every bow row landed
+every shot: the bow rows alone 49 of 49 checks, then the full run 128 of 129,
+its one miss a staff bolt into Frost Ridge's rock ridge, which the check now
+asks about at the boots (Frost Ridge again: 33 of 33).
 
 ## 224. "Route it in my own wrapper: I installed it last, so it runs last" (v2.3.3381)
 

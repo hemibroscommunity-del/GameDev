@@ -19,6 +19,7 @@
  *   9.  Forged harden_result is not rebroadcast (deny-list).
  */
 import { GameRoom } from '../src/index.js';
+import { SOCIAL } from '../src/chatguard.js'; /* v2.3.3396: chat's own allowance */
 import { HARDEN, HARDEN_BAR_BY_TIER, HARDEN_WOOD_BY_TIER, hardenMaterialFor, hardenAmountFor, hardenGoldFor, hardenIsWood } from '../src/hardening.js'; /* v2.3.3139: + the bars and hardened wood */
 import { QUALITY_GRADES, weaponQualityMult, weaponTierFactor } from '../src/data.js'; /* v2.3.2664: + the gear helpers */
 
@@ -585,10 +586,13 @@ check('strict sanitize still strips quality on client blobs (drops are server-mi
     room.eventBuffer.length);
 
   // 3. the relay token bucket bounds the RATE into the shared buffer.
+  //    v2.3.3396: measured with a SWING -- chat and emotes spend an allowance
+  //    of their own now (chatguard.js SOCIAL), held in chat-guard.test.mjs and
+  //    in the last check of this block.
   room.eventBuffer.length = 0;
   sess.relayTokens = room.RELAY_BURST; sess.relayAt = Date.now();
   for (let i = 0; i < 60; i++) {
-    await room.webSocketMessage(wsAb, JSON.stringify({ type: 'chat', payload: { text: 'spam' + i } }));
+    await room.webSocketMessage(wsAb, JSON.stringify({ type: 'player_swing', payload: { ts: i, wpn: 'sword' } }));
   }
   check('relay bucket caps a burst at RELAY_BURST',
     room.eventBuffer.length === room.RELAY_BURST, room.eventBuffer.length);
@@ -598,9 +602,19 @@ check('strict sanitize still strips quality on client blobs (drops are server-mi
   // 4. the bucket REFILLS — this is a throttle, not a permanent lockout.
   room.eventBuffer.length = 0;
   sess.relayAt = Date.now() - 1000; // simulate one second elapsed
-  await room.webSocketMessage(wsAb, JSON.stringify({ type: 'chat', payload: { text: 'after refill' } }));
+  await room.webSocketMessage(wsAb, JSON.stringify({ type: 'player_swing', payload: { ts: 99, wpn: 'sword' } }));
   check('the bucket refills over time (throttle, not a ban)',
     room.eventBuffer.length === 1, room.eventBuffer.length);
+
+  // 4b. v2.3.3396: chat is bounded too, by its own allowance -- a burst of
+  //     60 lines puts no more than SOCIAL.BURST into the shared buffer
+  room.eventBuffer.length = 0;
+  sess.chatGuard = null;   /* a fresh allowance */
+  for (let i = 0; i < 60; i++) {
+    await room.webSocketMessage(wsAb, JSON.stringify({ type: 'chat', payload: { text: 'spam' + i } }));
+  }
+  check('chat\'s own allowance caps a burst at SOCIAL.BURST (v2.3.3396)',
+    room.eventBuffer.length === SOCIAL.BURST, room.eventBuffer.length);
 
   // 5. the tick drain has a BYTE ceiling, and honors v2.3.1163: the
   //    remainder must stay QUEUED, not be discarded.

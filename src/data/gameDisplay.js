@@ -1229,8 +1229,12 @@ export const EMOTE_LABELS = {
   '🪩': 'Party',
   '🫶': 'Love'
 };
-/* Special text emotes rendered as floating text above player */
-export const TEXT_EMOTES = ['67', 'GG', 'RIP', 'Bruh', 'EZ', 'F', 'Lets go', 'Wow', 'Gritty', 'gg ez', 'Champion', 'Salute'];
+/* Special text emotes rendered as floating text above player.
+   v2.3.3391: and now they are -- as your speech bubble -- while an EMOTES
+   emoji pops over your head (src/game/emotes.js).  Both lists are mirrored in
+   server/src/emotes.js, which relays nothing else (mirror-audit holds them
+   together): change one, change the other. */
+export const TEXT_EMOTES =['67', 'GG', 'RIP', 'Bruh', 'EZ', 'F', 'Lets go', 'Wow', 'Gritty', 'gg ez', 'Champion', 'Salute'];
 
 /* ═══ AUDIO ENGINE — §6 Candy Crush Principle: every interaction has precise audio ═══ */
 export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty({

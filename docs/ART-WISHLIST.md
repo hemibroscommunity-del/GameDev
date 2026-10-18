@@ -17,6 +17,7 @@ Each of these is drawn in code, borrowed from somewhere else, or missing today. 
 4. **The three dungeons** (6 chats): each mouth, then each arena's walls.
 5. **The Farmhouse and the Dungeon Workshop** (2 chats): their prompts are in `docs/art/FARM-ART-PROMPTS.md`.
 6. **Small icons, sheet 5, and the spin wheel** (2 chats).
+7. ~~**The ore veins, one a tier**~~: done in v2.3.3345 from your picture, with the trees (below, "Trees and ore, one a tier").
 
 Not on the list unless you want them: each land's levels 21-40 monsters (recoloured today; the monster prompts make them), the Gem Works' inside with two stations, and the four lands' music (below).
 
@@ -948,6 +949,69 @@ Flowing and watery, for a land of lagoons, sea caves and a drowned reef: harp an
 Instrumental background music for BroTown, a cozy-but-adventurous pixel-art action RPG. It plays quietly under the sound effects while players explore and fight in one land, so: no vocals, a steady tempo, a clear melody that is not tiring on repeat, and nothing sudden or very loud. 1 minute 30 seconds to 2 minutes long, and it must LOOP: no fade-in, no fade-out and no ending -- the last bar leads straight back into the first. The same feel, instruments and mix as the game's other land themes (Icy Peaks, Volcano Watch, Desert, Floral).
 
 Eerie and swampy, for a land of blighted farms, slime woods and a mangrove marsh: a creeping, slightly off-kilter rhythm of plucked strings and bubbling percussion, a low clarinet or bassoon melody, buzzing insects and squelchy bubbles in the texture. Mischievous rather than horror. About 95 BPM.
+```
+
+## Trees and ore, one a tier (v2.3.3345)
+
+The owner, 2026-10-18: every resource tier grows in every land, and a wood's (or an ore's) colour must be the same in all of them, so each tier is ONE picture everywhere: its shape and size say the tier (small by town, huge at the far end), its colour matches its bag icon. The land is to be shown by effects drawn in code, not by another picture (docs/specs/tier-trees.md). Plain pictures only: no snow, embers or moss on them.
+
+### The five trees
+
+- **In the game (v2.3.3345):** done, from the owner's two pictures (kept in `assets/prop-source/trees/`), cut by `tools/world/add-tree-art.mjs`: pine on the commons, a willow (softwood) at levels 1-10, a gnarled hardwood at 11-20, a cedar at 21-30, a huge maple at 31-40, 1.5 to 4 people tall. The prompts stay for a redo: send the new pictures in chat.
+- **Attach:** your style key + `docs/art/log-icons-key.png` (the five log icons, for the bark colours).
+- **How:** two pictures in ONE chat: paste the first prompt, then the second. The hardwood is not an oak on purpose: the commons has scenery oaks you can't chop.
+
+```text
+A wide picture (3:2, landscape) of a set of three trees for BroTown, a top-down 2D action RPG, in a row, side by side and not touching, growing from the smallest on the left to the biggest on the right. Players chop these trees for logs, so each must be easy to tell apart at a glance by its shape, and its bark must be the same colour as its log in the second attached picture (the logs from left to right: pine, softwood, hardwood, cedar, maple).
+
+1. Pine: a young pine, a slim cone of dark green needles on a straight trunk, with warm reddish-brown bark like the first log. About one and a half times as tall as a person.
+2. Softwood: a willow, a rounded crown of long, drooping light-green leaves hanging down like a curtain, on a short, sturdy trunk, with olive-tan bark like the second log. About twice as tall as a person.
+3. Hardwood: a gnarled old hardwood tree with a thick, twisted trunk and a wide, spreading, flat-topped crown of dark green leaves, with dark chocolate-brown bark like the third log. About two and a half times as tall as a person, so about half as tall as the picture.
+
+Each is drawn whole, with plenty of background around it and nothing cut off by the picture's edge. They stand on nothing: no ground, grass, path or shadow under or around them, and the place where each meets the ground is plain to see. Plain trees only: no snow, fruit, flowers, vines or moss on them.
+
+No text, letters or numbers anywhere. The background is ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is magenta or bright pink. No border.
+
+Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
+
+Attached are the game's style key and the game's five log icons. Match the style key's pixel size, colours, shading and the way it draws each material exactly, but do not copy its tiles. Take only the bark colours from the log icons, not their painted style. Scale: a person standing here would be about one fifth as tall as this picture.
+```
+
+Then, in the same chat:
+
+```text
+Now a second picture to match the first exactly: the same style, pixel size, outline, lighting and background, and the same scale (a person standing here would be about one fifth as tall as this picture).
+
+A wide picture (3:2, landscape) of two more trees in a row, side by side and not touching, the smaller on the left:
+
+1. Cedar: a tall cedar, flat, layered shelves of blue-green needles stacked up a tall, straight trunk, with red-brown bark like the fourth log. About three times as tall as a person.
+2. Maple: a huge old maple, a vast, round crown of orange and golden autumn leaves on a massive trunk with thick roots, with orange-brown bark like the fifth log. About four times as tall as a person, so about four fifths as tall as the picture: the biggest tree in the game.
+
+Each is drawn whole, with plenty of background around it and nothing cut off. They stand on nothing, and the place where each meets the ground is plain to see. Plain trees only: no snow, fruit, flowers, vines or moss. No text. The background is ONE flat magenta colour (#FF00FF) everywhere. Nothing in the picture is magenta or bright pink. No border.
+```
+
+### The five ore veins
+
+- **In the game (v2.3.3345):** done, from the owner's picture (kept in `assets/prop-source/ore/`), cut by `tools/world/add-ore-art.mjs`: copper 58 game px wide up to an obsidian boulder 127 wide, each sized and placed to hide the rock baked into the miner's swing (docs/specs/tier-ore.md). The prompt stays for a redo: send the new picture in chat.
+- **Attach:** your style key + `docs/art/ore-icons-key.png` (the five ore icons, for each ore's colours).
+- **Background green, not magenta:** obsidian is violet, which a magenta background would eat into.
+
+```text
+A wide picture (3:2, landscape) of a set of five ore rocks for BroTown, a top-down 2D action RPG, in a row, side by side and not touching, growing from the smallest on the left to the biggest on the right. Players mine these for ore. Each is a chunk of plain grey rock with its ore showing in big, clear patches, in the same colours as its ore in the second attached picture (from left to right: copper, iron, black steel, titanium, obsidian), so each is easy to tell apart at a glance.
+
+1. Copper: bright orange copper with dull blue-teal patches. About knee-high on a person.
+2. Iron: rust-orange and dark grey. A little bigger.
+3. Black steel: deep steel-blue and black. Bigger again.
+4. Titanium: pale silvery blue and grey. Bigger again.
+5. Obsidian: deep violet and glassy black. The biggest: about chest-high on a person and about one and a half times as wide as a person is tall.
+
+Each grows wider more than taller. Each is drawn whole, with plenty of background around it and nothing cut off by the picture's edge. They stand on nothing: no ground, grass, path or shadow under or around them, and the place where each meets the ground is plain to see.
+
+No text, letters or numbers anywhere. The background is ONE flat bright green colour (#00FF00) everywhere, with no shading, gradient, texture, shadow or glow, so it can be cut away cleanly. Nothing in the picture is bright green. No border.
+
+Style: BroTown HD pixel art: crisp, modern high-definition pixel art on one clean square pixel grid, like Eastward or Sea of Stars. Every pixel is a hard-edged square: no blur, no anti-aliasing, no soft brushes and no smooth gradients. Each colour is shaded with 3 to 5 flat tones, in clusters of pixels rather than single stray ones, with shadows shifted toward cool blue-purple and highlights toward warm yellow. Every material is drawn as itself, so it can be told apart at a glance by its own texture and the shape of its highlights: grass in soft clumps of blades, packed earth with a few small stones, stone with hard-edged facets, chips and cracks, wood with grain lines and knots, metal with small, sharp, bright highlights, snow and ice in cool blues with crisp edges, and sand in soft, fine drifts. Texture comes from a few clear shapes and soft shading, never from noise, speckle or grain. Highlights are small clusters of pixels, never single stray ones. Soft, even daylight from the upper left. No shadows cast on the ground, and no glow, fog or lighting effects: the game adds those. The ground has no outlines. Anything that stands up has a one-pixel outline in a darker shade of its own colour, never black, lighter on the sunlit side. Moderate saturation, with the ground calm and mid-toned so characters stand out. Seen from a steep three-quarter top-down angle, with no perspective.
+
+Attached are the game's style key and the game's five ore icons. Match the style key's pixel size, colours, shading and the way it draws each material exactly, but do not copy its tiles. Take only each ore's colours from the ore icons, not their painted style or shape. Scale: a person standing here would be about one fifth as tall as this picture.
 ```
 
 ## Item icons

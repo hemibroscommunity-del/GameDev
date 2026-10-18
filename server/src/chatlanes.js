@@ -36,6 +36,8 @@
  * there is no global inbound rate limit").  Both lanes below are explicit
  * cases, and a whisper is a targeted lane pointed at one person's screen, so
  * this module carries its own bucket rather than repeating that incident.
+ * (v2.3.3396: room chat's is its own now too, apart from the swings' and
+ * arrows' -- chatguard.js SOCIAL -- and every lane's text is cleaned there.)
  *
  * Deploy-order (rule 19): the client gates its /a and /w sends on the NARROW
  * caps.areaChat / caps.whisper, never on some broader flag.  An older worker
@@ -102,6 +104,8 @@ export const chatLaneMethods = {
     /* Clamp the RAW length first, then strip, then trim -- the order party.js
        settled on so a padded string cannot smuggle a long line. */
     text = text.slice(0, CHAT_LANES.TEXT_MAX).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
+    /* v2.3.3396: then cleaned, as every chat lane is (chatguard.js) */
+    text = this._chatGuardClean(text);
     return text || null;
   },
 
@@ -116,6 +120,10 @@ export const chatLaneMethods = {
        falling back would turn a quiet lane into a loud one. */
     const zone = ps && ps.z;
     if (!zone) return;
+    /* v2.3.3396: the same line twice in 30 s is said once -- the zone hears
+       it like room chat; a whisper is private and is not filtered
+       (chatguard.js) */
+    if (this._chatRepeated(session, 'area', text)) return;
     const wire = {
       from: session.id,                       // server-known, unforgeable
       fromName: this._laneNameOf(session.id),

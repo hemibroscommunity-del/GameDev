@@ -5590,7 +5590,23 @@ export function figureFeetY(display) {
      only while the y is still the one jumpFx left (the swim's rule,
      swimFx.js): the entity pass may have set a fresh y since. */
   const lift = display._jumpY != null && display.y === display._jumpY ? (display._jumpLift || 0) : 0;
-  return display.y + lift + _feetOffsetUnits(display) * display.scale.y;
+  /* v2.3.3392: and a figure that emotes (rendering/emoteFx.js) is drawn
+     tilted, squashed or hopping ABOUT its feet, after the depth pass: its
+     feet are where they were (its y and scale are not), so the emote's own
+     fix is taken off -- only while the y is still the one emoteFx left. */
+  const emo = display._emoteYw != null && display.y === display._emoteYw ? (display._emoteFeetFix || 0) : 0;
+  return display.y + lift - emo + _feetOffsetUnits(display) * display.scale.y;
+}
+/* v2.3.3392: the x a figure stands at -- its x, or, while it emotes, the x
+   its feet are planted at (a tilt about the feet moves its origin) */
+export function figureFeetX(display) {
+  return display._emoteXw != null && display.x === display._emoteXw ? display.x - (display._emoteXFix || 0) : display.x;
+}
+/* v2.3.3392: how far the boots are below a live figure's origin, in its own
+   units (the drawn frame's facing and pose) -- for emoteFx, which plants
+   them */
+export function figureFeetUnits(display) {
+  return _feetOffsetUnits(display);
 }
 /* ═══ v2.3.2748: THE SAME DROP, FOR CODE THAT HAS NO FIGURE IN HAND ═══
    How far below a player's POSITION (S.player.y, a peer's y) their boots are
@@ -12902,6 +12918,19 @@ export class EntityRenderer {
     {
       const _br = bodyRows(pose, dir);
       S._bodyDrawH = (_br.feet - _br.crown + 1) * bodyScale * (display.scale.y || 1);
+    }
+    /* v2.3.3399: ...and the stand-in's plant for this facing, every frame.  The
+       pair the stand-ins are planted with (S._swordFootY / S._swordBodyH,
+       below) is written only while one is up, so between them it is wherever
+       you last swung or shot.  Same arithmetic, unconditional, for
+       effectsRenderer _predictBowGrip: where the bow will be held, worked out
+       before the pose is drawn. */
+    {
+      const _pr = bodyRows('stand', dir);
+      const _pbs = bodyDirScale('stand', dir) * LOCAL_SCALE;
+      const _pds = display.scale.y || 1;
+      S._standInFootY = display.y + (_pr.feet - 128) * _pbs * _pds;
+      S._standInBodyH = (_pr.feet - _pr.crown + 1) * _pbs * _pds;
     }
     /* v2.3.551: set true once the full covering set hides the body, so the
        NFT/procedural fallbacks below don't draw a body in its place.  Declared

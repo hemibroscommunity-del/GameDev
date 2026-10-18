@@ -689,6 +689,19 @@ export async function joinPair(browser, { wsPort, webPort, nameA = 'Alpha', name
   await waitMutualSight(A, B);
   /* Focus each canvas so keyboard input reaches the game loop. */
   for (const P of [A, B]) await P.page.mouse.click(500, 400).catch(() => {});
+  /* v2.3.3399: ...and close the player card that click may have opened.  The
+     two players stand together in the middle of the screen, so the focus
+     click is often a tap on the other one, and a tap on a player opens their
+     card (InspectPlayerPanel) -- a decision panel: it covered the clan
+     window's buttons (mp-clan carried its own close, v2.3.3321), swallowed
+     every press of mp-duelfeel, and shut mp-worldchat's chat box (the
+     composer stands down while a decision panel is up, modalGuardBus.js).
+     Closed here, as a player would, so no two-player scenario starts under
+     a card it never asked for (the sweep of 2026-10-18). */
+  for (const P of [A, B]) {
+    await P.page.evaluate(() => { for (const b of document.querySelectorAll('.bt-pcard .bt-inspect-close')) b.click(); }).catch(() => {});
+  }
+  await A.page.waitForTimeout(300).catch(() => {});
   return { A, B };
 }
 

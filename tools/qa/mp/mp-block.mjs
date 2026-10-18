@@ -145,15 +145,56 @@ export async function run({ browser, wsPort, webPort, rec }) {
         respawnAt: 0, moveTimer: 0, _stuckArrows: [],
       }];
       clearInterval(window.__blockPin);
+      const globs = new Set(), pops = new Set();
+      const t0 = Date.now();
+      let sawHit = false, sawBlock = false;
       window.__blockPin = setInterval(() => {
-        S._shieldUp = true; S.shieldEnd = Date.now() + 500; S._shieldAngle = ba;
+        /* v2.3.3399: STEERED AS A KEYBOARD GUARD IS.  Since v2.3.2472 (the
+           owner's D8) a raised shield turns to the nearest monster every
+           frame (shieldToggle.js shieldAimAngle), so pinning _shieldAngle
+           alone raced the game's frame and the "turned" shield faced the
+           slime anyway -- BLOCK both ways (the sweep of 2026-10-18).  The
+           keyboard guard is the one a player steers (BroTown.jsx: with
+           `_shieldKb` the game points it at `_mouseAimAngle` every frame),
+           so that is the steer used here. */
+        S._shieldUp = true; S.shieldEnd = Date.now() + 500;
+        S._shieldKb = true; S._mouseAimAngle = ba; S._shieldAngle = ba;
+        /* the stamps as they happen: stateCleanup.js clears _blockFlash
+           200 ms after it is set */
+        if ((S._blockFlash || 0) >= t0) sawBlock = true;
+        if ((S.lastDamageTaken || 0) >= t0) sawHit = true;
+        for (const g of (S.slimeProjectiles || [])) globs.add(g);   /* v2.3.3399: every glob it throws */
+        for (const d of (S.dmgNumbers || [])) if (d && d.text != null) pops.add(String(d.text));   /* ...and what it said */
       }, 16);
       const before = S.rpg.hp;
+      const injected = S.monsters[0];
       await sleep(4000);           /* clears the 400ms telegraph + several swings */
       const after = S.rpg.hp;
+      /* v2.3.3399: WHAT THE GAME STAMPED, not the bar.  The slime's attack is
+         a glob, and a glob that reaches you stamps S.lastDamageTaken when it
+         hurts you and S._blockFlash when the shield takes it (projectiles.js
+         updateSlimeProjectiles).  An unchanged bar cannot tell a block from a
+         glob that never came, and town's top-off refills a small hit inside
+         the window: the facing case passed on an unchanged bar while the
+         sweep of 2026-10-18 saw the turned case read 250 too -- its shield
+         had turned back to the slime and blocked (the steer above). */
+      const hit = sawHit || (S.lastDamageTaken || 0) >= t0, blocked = sawBlock;
+      /* v2.3.3399: where the injected monster got to, for a sample that
+         dropped nothing -- the difference between "it swung and the shield
+         took it" and "it never swung" (the sweep of 2026-10-18 saw 0 both
+         ways). */
+      const m = injected;
+      const seen = {
+        still: (S.monsters || []).indexOf(m) >= 0, n: (S.monsters || []).length,
+        alive: !!m.alive, aggro: !!m._aggroed, dx: Math.round(m.x - S.player.x), dy: Math.round(m.y - S.player.y),
+        zone: S.currentZone, server: !!S._serverMonsters, dying: !!S.rpg.dying || !!S._dying,
+        globs: [...globs].map((g) => ({ why: g._fxWhy || null, life: Math.round(g.life),
+          x: Math.round(g.x - S.player.x), y: Math.round(g.y - S.player.y) })),
+        pops: [...pops].slice(0, 12), invulnFor: Math.max(0, (S.respawnTimer || 0) - Date.now()),
+      };
       clearInterval(window.__blockPin);
-      S._shieldUp = false; S.shieldEnd = 0; S.monsters = [];
-      return { before, after, dropped: before - after };
+      S._shieldUp = false; S.shieldEnd = 0; S._shieldKb = false; S.monsters = [];
+      return { hit, blocked, before, after, dropped: before - after, seen };
     };
     const facing = await sample(0);          /* shield east — at the monster */
     const turned = await sample(Math.PI);    /* shield west — monster behind it */
@@ -163,8 +204,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (arcHit.__no || arcHit.__noShield) {
     rec.skip('client arc resolution', arcHit.__noShield ? 'no shield arrived' : 'no player state');
   } else {
-    rec.ok('a swing the shield FACES deals no local damage', arcHit.facing.dropped === 0, arcHit.facing);
-    rec.ok('the same swing from BEHIND the shield lands locally', arcHit.turned.dropped > 0, arcHit.turned);
+    rec.ok('a swing the shield FACES is blocked and deals no local damage',
+      arcHit.facing.blocked && !arcHit.facing.hit, arcHit.facing);
+    rec.ok('the same swing from BEHIND the shield lands locally',
+      arcHit.turned.hit && !arcHit.turned.blocked, arcHit.turned);
   }
 
   await P.ctx.close().catch(() => {});
