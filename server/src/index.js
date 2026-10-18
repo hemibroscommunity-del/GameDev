@@ -152,6 +152,7 @@ import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3127: + the regen 
 import { eventPlaceMethods } from './eventplace.js'; /* v2.3.3245: events by place */
 import { presence2Methods } from './presence2.js'; /* v2.3.3250: far players only while the world map is open */
 import { emoteMethods } from './emotes.js'; /* v2.3.3391: an emote is one of the listed emotes */
+import { poseMethods } from './poses.js'; /* v2.3.3392: a held pose (sit, sleep, a dance) is part of the player */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -4925,6 +4926,11 @@ export class GameRoom {
         // bypass and stamped an arbitrary position.
         break;
 
+      /* v2.3.3392: sit, sleep, flop or a dance, held until you move -- state
+         on the player (poses.js), told to the phones near by the tick's `po` */
+      case 'pose':
+        this._handlePose(session, msg);
+        break;
       case 'move':
         // Hottest path -- anti-teleport cap, position/facing merge,
         // zone-change streaming.  Hoisted to movement.js
@@ -6318,6 +6324,7 @@ Object.assign(GameRoom.prototype, tickMethods);
 Object.assign(GameRoom.prototype, eventPlaceMethods); /* v2.3.3245 */
 Object.assign(GameRoom.prototype, presence2Methods); /* v2.3.3250 */
 Object.assign(GameRoom.prototype, emoteMethods); /* v2.3.3391 */
+Object.assign(GameRoom.prototype, poseMethods); /* v2.3.3392 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
 Object.assign(GameRoom.prototype, allianceMethods); /* v2.3.3313 */

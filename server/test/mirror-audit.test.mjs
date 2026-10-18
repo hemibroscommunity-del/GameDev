@@ -2351,5 +2351,19 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { srv: [SRV_EMOTE.EMOJI.length, SRV_EMOTE.LINES.length], client: [CLIENT_EMOTES.length, CLIENT_TEXT_EMOTES.length] });
 }
 
+/* ═══ v2.3.3392: THE MOVES THE WORKER RELAYS AND KEEPS ARE THE PHONE'S ═══
+   A moment move (wave, laugh...) is relayed only when it is on emotes.js
+   EMOTE.MOVES, and a held pose (sit, sleep, a dance) kept only when it is on
+   poses.js POSE.IDS; the phone's tiles are game/emoteMoves.js.  One missing
+   from the worker is a tile that moves your bro and nobody else's screen. */
+{
+  const { EMOTE_ONCE_IDS, EMOTE_HOLD_IDS } = await import('../../src/game/emoteMoves.js');
+  const { EMOTE: SRV_EMOTE } = await import('../src/emotes.js');
+  const { POSE } = await import('../src/poses.js');
+  check('emote moves: the worker relays the phone\'s six moments and keeps its six held poses, in order',
+    JSON.stringify(SRV_EMOTE.MOVES) === JSON.stringify(EMOTE_ONCE_IDS) && JSON.stringify(POSE.IDS) === JSON.stringify(EMOTE_HOLD_IDS),
+    { srv: [SRV_EMOTE.MOVES, POSE.IDS], client: [EMOTE_ONCE_IDS, EMOTE_HOLD_IDS] });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

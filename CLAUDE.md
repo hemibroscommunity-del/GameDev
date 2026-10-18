@@ -56,7 +56,17 @@ remnant to migrate server-side, not a mode to preserve.
   no new always-on button; Phase 0's emotes you can see -- the chat box's
   smiley or B, an emoji over the head, a quick line as the bubble, only the
   listed ones relayed and placed near the sender: docs/specs/emotes.md,
-  `emotes` suite, `mp-emotes`),
+  `emotes` suite, `mp-emotes`; and since v2.3.3392 Phase 1's twelve MOVES --
+  wave, laugh, flex, shrug, facepalm, cheer for a moment (the `emote` relay's
+  `{move}`), sit, sleep, flop and three dances held until you move (`pose
+  {id}`, kept by the worker as `ps.po` and sent as the tick's `po`, ended by a
+  real step: server/src/poses.js) -- the whole bro tilted, squashed or hopped
+  in code ABOUT HIS FEET after the depth pass (src/rendering/emoteFx.js, the
+  curves and the math src/game/emoteMoves.js), his HUD given the inverse so
+  the name plate never tilts and only comes down with a sitter or sleeper;
+  the picker's Moves tab and `/wave`, `/sit`, `/dance` in the chat;
+  `caps.emotemoves`, kill switch `emotemoves: false`; `emotes` §5-7,
+  `mp-emotemoves`: docs/specs/emote-moves.md),
   `docs/ART-ASSET-PHASES.md` (what environment art to commission, at what
   size, in what order — the decoded-RGBA budget and the free-standing
   vs edge-cropped test live here, v2.3.2650),
