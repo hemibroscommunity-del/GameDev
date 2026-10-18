@@ -460,6 +460,10 @@ export const DevPanel = ({ onClose }) => {
      player out. */
   const [devCode, setDevCode] = useState('');
   const [devForgetArmed, setDevForgetArmed] = useState(false);
+  /* v2.3.3355: "Give it a new key" (server/src/loginkeys.js) -- two taps, and
+     the key it made, shown here once for the owner to send its player */
+  const [devNewKeyArmed, setDevNewKeyArmed] = useState(false);
+  const [devNewKey, setDevNewKey] = useState('');
   const letDeviceIn = useCallback(async () => {
     const id = devCode.trim();
     if (!id) return;
@@ -473,9 +477,30 @@ export const DevPanel = ({ onClose }) => {
     if (!devForgetArmed) { setDevForgetArmed(true); setMsg('Tap Forget again to put out whoever is playing ' + id + ' and forget its devices.'); return; }
     setDevForgetArmed(false);
     const j = await call('/device-forget', { playerId: id });
-    if (j) setMsg('Forgot ' + j.forgot + ' device' + (j.forgot === 1 ? '' : 's') + ' for ' + id
-      + (j.wasOnline ? ' and put its player out' : '') + '. Nobody can play it until you let one device in.');
+    if (!j) return;
+    /* v2.3.3355: what it did, as one sentence -- "Forgot 2 devices for X, took
+       back 1 Login Key and put its player out." */
+    const did = ['Forgot ' + j.forgot + ' device' + (j.forgot === 1 ? '' : 's') + ' for ' + id];
+    if (j.taken) did.push('took back ' + j.taken + ' Login Key' + (j.taken === 1 ? '' : 's'));
+    if (j.wasOnline) did.push('put its player out');
+    const said = did.length > 1 ? did.slice(0, -1).join(', ') + ' and ' + did[did.length - 1] : did[0];
+    setMsg(said + '. Nobody can play it until you let one device in.');
   }, [call, devCode, devForgetArmed]);
+  /* v2.3.3355: the full reset for a stolen character: every device forgotten,
+     every key taken back, the old key retired, and ONE new key, shown below
+     for the owner to send its player (the worker keeps only its fingerprint,
+     so it can never be shown again) */
+  const giveNewKey = useCallback(async () => {
+    const id = devCode.trim();
+    if (!id) return;
+    if (!devNewKeyArmed) { setDevNewKeyArmed(true); setDevNewKey(''); setMsg('Tap again to give ' + id + ' a new Login Key: every old key and device stops working.'); return; }
+    setDevNewKeyArmed(false);
+    const j = await call('/key-new', { playerId: id });
+    if (j && j.key) {
+      setDevNewKey(j.key);
+      setMsg('New Login Key for ' + id + (j.wasOnline ? ' (its player was put out)' : '') + '. Send it to its player: it is shown only now.');
+    }
+  }, [call, devCode, devNewKeyArmed]);
 
   const saveKey = () => {
     const k = draft.trim();
@@ -892,7 +917,7 @@ export const DevPanel = ({ onClose }) => {
             </div>
             <input
               data-devlock-code="1"
-              value={devCode} onChange={(e) => { setDevCode(e.target.value); setDevForgetArmed(false); }}
+              value={devCode} onChange={(e) => { setDevCode(e.target.value); setDevForgetArmed(false); setDevNewKeyArmed(false); setDevNewKey(''); }}
               placeholder="the player's code (bp_…)"
               autoCapitalize="off" autoCorrect="off" spellCheck={false}
               style={{ width: '100%', boxSizing: 'border-box', background: COL.well, color: COL.text,
@@ -910,6 +935,24 @@ export const DevPanel = ({ onClose }) => {
             <div style={{ color: COL.muted, fontSize: 12, marginBottom: 4, lineHeight: 1.4 }}>
               Forget is for a character someone else got into: whoever is playing it is put out, and
               nobody can play it until you let one device in.
+            </div>
+            {/* v2.3.3355: the full reset, its key shown once */}
+            <button type="button" data-devlock-newkey="1"
+              style={{ ...btn(false), borderColor: COL.danger, color: COL.danger }}
+              disabled={busy || !devCode.trim()} onClick={giveNewKey}>
+              {devNewKeyArmed ? 'Sure? Give it a new key' : 'Give it a new key'}
+            </button>
+            {devNewKey && (
+              <input data-devlock-newkey-value="1" readOnly value={devNewKey}
+                onFocus={(e) => { try { e.target.select(); } catch (err) { /* nothing */ } }}
+                style={{ width: '100%', boxSizing: 'border-box', background: COL.well, color: '#EAC675',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontWeight: 700,
+                  border: '1px solid ' + COL.border, borderRadius: 8, padding: '11px 10px', marginBottom: 8, minHeight: 44 }} />
+            )}
+            <div style={{ color: COL.muted, fontSize: 12, marginBottom: 4, lineHeight: 1.4 }}>
+              Give it a new key when a character was stolen, or for a player who lost every device
+              and key: the character's old keys and devices all stop working, and you send its player
+              the new key, which works on any device.
             </div>
 
             {/* ═══ v2.3.3323: BOT FLAGS ═══  See the note by loadBotFlags. */}

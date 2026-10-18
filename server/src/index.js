@@ -201,6 +201,7 @@ import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle
 import { lastPlaceMethods } from './lastplace.js'; /* v2.3.3327: a reconnect starts where the server last had you */
 import { hitProofMethods } from './hitproof.js'; /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
 import { deviceLockMethods } from './devicelock.js'; /* v2.3.3344: a character's login key works on the devices it is played on */
+import { loginKeyMethods } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 import { pvpLungeMethods } from './pvplunge.js'; /* v2.3.3262: the sword's opening lunge, at a player too */
 import { oneFormulaMethods } from './oneformula.js'; /* v2.3.3260: one formula for every fight -- health, monsters' hits, the hit cap, two specials */
 import { pvpExtrasMethods } from './pvpextras.js'; /* v2.3.3264: what a hit does to a monster it does to a player -- the element, the shove, the splash, the burst, the abilities, the bow's burn, the kill's heal, the parry */
@@ -470,6 +471,10 @@ export function stripChatLaneMarks(name) {
 // v2.3.1151: exported so test/wire-audit.test.mjs can verify every
 // server-emitted type is registered here (rule 13's mechanical check).
 export const PRIVILEGED_EVENTS = new Set([
+  /* v2.3.3355: a new Login Key, handed to one phone (loginkeys.js).  Forged
+     into a relay, it would hand a player a key that is not theirs -- their
+     phone would switch to it and be refused. */
+  'key_new',
   /* v2.3.3058: No man's land (nomansland.js) -- your own skulls' time left,
      and what a death there took.  Forged, one would paint a red skull on an
      innocent player's own screen and the other would make a game clear its
@@ -6350,6 +6355,7 @@ Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-figh
 Object.assign(GameRoom.prototype, lastPlaceMethods); /* v2.3.3327: a reconnect starts where the server last had you */
 Object.assign(GameRoom.prototype, hitProofMethods); /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
 Object.assign(GameRoom.prototype, deviceLockMethods); /* v2.3.3344: a character's login key works on the devices it is played on */
+Object.assign(GameRoom.prototype, loginKeyMethods); /* v2.3.3355: new Login Keys, made by the worker */
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */
 Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */
 Object.assign(GameRoom.prototype, pvpExtrasMethods); /* v2.3.3264: the monster-only extras on players */
