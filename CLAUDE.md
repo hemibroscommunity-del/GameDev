@@ -4290,6 +4290,28 @@ Two protocol versions coexist; both must keep working:
   9, the flags shown, v2.3.3323: bot-flags.md; 7, movement, v2.3.3325 and the
   reconnect v2.3.3327: move-budget.md, last-place.md; 8, fighting, v2.3.3334:
   hit-proof.md).
+- **TEST MODE: THE OWNER'S OWN CHARACTERS WITHOUT THE HONESTY CHECKS
+  (v2.3.3430, docs/specs/test-mode.md).** The owner's option 2: a switch in
+  the Test panel (`POST /api/admin/dev/testmode {playerId, on}`, the admin key
+  only; `on` only for a character who is online; no WebSocket message reaches
+  it), stored per character as `testmode:<pid>` (read at the join BEFORE the
+  reconnect's place is judged, `ps._testMode` in memory only, a failed read
+  off, a restart deletes it), a TEST MODE tag beside the zone name on the top
+  bar (`state_sync.testMode`, the PRIVILEGED `test_mode {on}`).
+  - For that character the worker skips: the move budget, its follow and the
+    reconnect's judge; the too-early strike, a strike with no start of its
+    own, the perfect rate, the bot scoring and its hour caps, the cook rate and
+    900 ms floor; a monster hit's weapon, reach, rate, paid special, the
+    400/3,600 px reaches and the lanes; the first quests' order; the roll
+    window. Each check asks `this._testMode(ps)` at its own line.
+  - Everything that protects other players and the server stays on, every
+    check on a hit between PLAYERS included (test-mode.test §8 fails if
+    pvpbalance.js or pvplunge.js ever ask). A NEW honesty check a test
+    session could trip asks `_testMode(ps)` and is added to testmode.js's
+    header, the spec's table and §8's file list.
+  - What is earned with it on stays (players start fresh at launch); the
+    automated checks run with it off. Kill switch `testmode: false`.
+  - `test-mode` suite (70, six mutations caught), `mp-testmode` (25).
 - **THE ACCOUNT CHECK (v2.3.3275, docs/specs/account-check.md).** A character
   that does not exist yet (an id with no `auth:` record: a first join, every
   guest) is asked for a Cloudflare Turnstile token before the identity is

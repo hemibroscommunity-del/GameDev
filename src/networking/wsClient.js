@@ -24,6 +24,7 @@ import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3139: ha
 import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the worker's */
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
 import { applySparState } from '@/game/spar.js'; /* v2.3.3265: the test panel's sparring clones */
+import { applyTestMode } from '@/game/testMode.js'; /* v2.3.3430: the owner's test mode, shown as a tag */
 import { allyBus } from '@/game/alliance.js'; /* v2.3.3313: the alliance's answers (server alliance.js) */
 import { monsterNoticed } from '@/game/monsterNoises.js'; /* v2.3.3340: a monster calls as it notices you */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
@@ -1541,6 +1542,10 @@ export function setupWebSocket(ctx) {
               /* v2.3.3255: and how many Hemi Bros the linked wallet holds (0 with
                  no fresh link, or from a worker before the count) */
               if (S.rpg) S.rpg._broN = broCountOf(msg.broN);
+              /* v2.3.3430: this character is in the owner's test mode
+                 (server/src/testmode.js) -- the top bar wears its tag.  Every
+                 join says it afresh, absent being off. */
+              applyTestMode(S, msg.testMode === true);
               /* v2.3.3091: and which shield is on the arm (server/src/
                  shieldwear.js) -- the worker restored its last record, and the
                  bag here is the truth about the arm.  Only against a worker
@@ -2023,6 +2028,16 @@ export function setupWebSocket(ctx) {
                   if (setChatLog) setChatLog(S.chatLog.slice());
                 }
               } catch (_ae) { /* words only */ }
+              break;
+            }
+          case 'test_mode':
+            {
+              /* v2.3.3430: the owner turned test mode on or off for this
+                 character (server/src/testmode.js) -- the tag follows.  The
+                 direct switch, as key_new: a relayed copy (`from`) is never
+                 taken. */
+              if (msg.from) break;
+              applyTestMode(S, !!(msg.payload && msg.payload.on === true));
               break;
             }
           case 'spar_state':

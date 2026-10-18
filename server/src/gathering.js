@@ -584,6 +584,8 @@ export const gatheringMethods = {
   // see HARVEST_PERFECT_PER_MIN.
   _ratedHarvestAccuracy(ps, claimed) {
     if (claimed !== 'perfect') return claimed || 'ok';
+    /* v2.3.3430: no rate for a test-mode character (testmode.js) */
+    if (typeof this._testMode === 'function' && this._testMode(ps)) return 'perfect';
     const now = Date.now();
     if (!Array.isArray(ps._perfectHistory)) ps._perfectHistory = [];
     // Prune entries older than 60 sec.
@@ -1326,6 +1328,11 @@ export const gatheringMethods = {
     const ex = this.extractions[session.id];
     let coercedAccuracy = accuracy || 'good';
     let openLatencyMs = null;
+    /* v2.3.3430: a test-mode character's strike is not timed or scored --
+       no too-early, no start of its own needed, no bot score or hour cap
+       (testmode.js).  The gates above (the tool, the level, the reach) and
+       the hits' own checks still hold. */
+    const _tm = this._testMode(ps);
     if (ex && ex.nodeId === id && ex.zone === zone) {
       /* v2.3.2956: a HIT plan's window is exact (the dice vary it, not a
          jitter), so its record carries jitter 0; the timer's keeps ±15%. */
@@ -1334,7 +1341,7 @@ export const gatheringMethods = {
       const jitterHi = 1 + jit;
       const earliestOpen = ex.startedAt + Math.floor(ex.openDelayBase * jitterLo) - this.EXTRACTION_GRACE_MS;
       const latestClose  = ex.startedAt + Math.ceil(ex.openDelayBase * jitterHi) + this.EXTRACT_WINDOW_MS + this.EXTRACTION_GRACE_MS;
-      if (now < earliestOpen) {
+      if (now < earliestOpen && !_tm) {
         // Too early -- impossibly fast swipe.  Drop the strike, leave
         // the node alive, leave extraction state so a legit follow-up
         // can still complete.
@@ -1361,7 +1368,7 @@ export const gatheringMethods = {
       /* v2.3.3322: no start of its own -- a recovery strike, or refused with
          the node left standing (HARVEST_PROOF).  Counted either way, the
          other-node strike too (it never was). */
-      if (this._harvestProofOn()) {
+      if (this._harvestProofOn() && !_tm) {
         if (ex) session._extractionOtherNode = (session._extractionOtherNode || 0) + 1;
         if (!this._harvestRecoverOk(session.id, now)) {
           const last = this._harvestRecoverAt ? (this._harvestRecoverAt.get(session.id) || 0) : 0;

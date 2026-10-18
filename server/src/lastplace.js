@@ -169,6 +169,9 @@ export const lastPlaceMethods = {
     if (!ps || !this._lastPlaceOn()) return;
     const t = num(now) ? now : Date.now();
     const kept = this._placeTake(id, t);
+    /* v2.3.3430: a test-mode character joins where it says (testmode.js);
+       the memory is taken all the same, so none is left for a later join */
+    if (this._testMode(ps)) return;
     const mem = live || kept;
     if (typeof this._wheelInStep === 'function' && !this._wheelInStep(ps)) return;
     if (!claimed || !num(ps.x) || !num(ps.y) || typeof ps.z !== 'string') return;

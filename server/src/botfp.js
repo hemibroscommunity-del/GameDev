@@ -308,6 +308,9 @@ export const botfpMethods = {
   // ── the gathering hook: called from _handleNodeStrike after the timing
   // gates, before rewards.  Returns { accuracy, grant }. ──
   _botfpOnStrike(session, ps, ctx) {
+    /* v2.3.3430: a test-mode character is not scored, flagged or capped
+       (testmode.js) -- its strike is granted as the phone graded it */
+    if (typeof this._testMode === 'function' && this._testMode(ps)) return { accuracy: ctx.accuracy, grant: true };
     const now = ctx.now || now_();
     const rec = this._botfpRecord(session.id, now);
     this._botfpDecay(rec, now);
@@ -482,6 +485,8 @@ export const botfpMethods = {
   // ── the cooking hook: hourly cap + replay + presence bookkeeping.
   // Returns { drop }. ──
   _botfpOnCook(session, ps, payload) {
+    /* v2.3.3430: ...nor a test-mode character's cook (testmode.js) */
+    if (typeof this._testMode === 'function' && this._testMode(ps)) return { drop: false };
     const now = now_();
     const rec = this._botfpRecord(session.id, now);
     this._botfpDecay(rec, now);

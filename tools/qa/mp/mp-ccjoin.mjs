@@ -35,7 +35,22 @@ const readMsg = (P) => P.page.evaluate(() => {
   const el = document.querySelector('.bt-cc-namemsg');
   const cluster = document.querySelector('.bt-cc-cluster');
   const btn = document.querySelector('button.bt-cc-play');
+  /* v2.3.3430: where the line is drawn -- how many lines, and whether they stay
+     between the name well and Randomize (the slot is one line tall) */
+  const well = document.querySelector('input.bt-cc-name');
+  const rnd = document.querySelector('.bt-cc-randomize');
+  let fit = null;
+  if (el && el.textContent && well && rnd) {
+    const rg = document.createRange();
+    rg.selectNodeContents(el);
+    const t = rg.getBoundingClientRect();
+    const wb = well.getBoundingClientRect().bottom, rt = rnd.getBoundingClientRect().top;
+    fit = { lines: rg.getClientRects().length, top: +t.top.toFixed(1), bot: +t.bottom.toFixed(1),
+            wellBot: +wb.toFixed(1), randTop: +rt.toFixed(1),
+            inside: t.top >= wb - 0.5 && t.bottom <= rt + 0.5 };
+  }
   return {
+    fit,
     text: el ? (el.textContent || '').trim() : null,
     color: el ? getComputedStyle(el).color : null,
     live: el ? el.getAttribute('aria-live') : null,
@@ -138,6 +153,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!pressed.text && /name/i.test(pressed.text), pressed);
   rec.ok('...phrased as the next action rather than a complaint',
     !!pressed.text && !/invalid|error|forbidden/i.test(pressed.text), pressed);
+  /* v2.3.3430: it was two lines of 30px in a one-line slot (19.4px here) from
+     v2.3.2416 on, drawn over the name well's frame and Randomize's -- every
+     check above read its TEXT, none where it was drawn. */
+  rec.ok(`...on ONE line, between the name well and Randomize `
+    + `(${pressed.fit && pressed.fit.lines} line)`,
+    !!pressed.fit && pressed.fit.lines === 1 && pressed.fit.inside, pressed.fit);
   rec.ok('...announced assertively, since it answers a press',
     pressed.live === 'assertive', pressed);
   rec.ok('...and the cluster claims the slot for it (data-msg)',
@@ -187,6 +208,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a one-character name gives its OWN reason, not the empty-field one',
     !!short.text && /short|2 letters|least/i.test(short.text)
       && short.text !== pressed.text, { short: short.text, empty: pressed.text });
+  rec.ok(`...also on ONE line between the name well and Randomize `
+    + `(${short.fit && short.fit.lines} line)`,
+    !!short.fit && short.fit.lines === 1 && short.fit.inside, short.fit);
 
   /* ════════════ 4. AND IT GETS OUT OF THE WAY ════════════
      A refusal that outlives the thing it refused is worse than none: it would
