@@ -328,8 +328,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const memFarm = await gpu();
     const tot = (m) => (m && !m.err ? m.mb + ((m.cacheNotOnGpu && m.cacheNotOnGpu.mb) || 0) : NaN);
     try { writeFileSync(join(OUT, 'farmwalk-memory.json'), JSON.stringify({ wheel: memWheel, farm: memFarm }, null, 1)); } catch (e) { /* the check says */ }
-    rec.ok(`on the farm the page holds ${memFarm && memFarm.mb} MB on the GPU and ${memFarm && memFarm.cacheNotOnGpu && memFarm.cacheNotOnGpu.mb} MB cached, against the Wheel's ${memWheel && memWheel.mb} and ${memWheel && memWheel.cacheNotOnGpu && memWheel.cacheNotOnGpu.mb}: less, the two together`,
-      tot(memFarm) < tot(memWheel), { farm: memFarm && { mb: memFarm.mb, cache: memFarm.cacheNotOnGpu, top: (memFarm.list || []).slice(0, 8) }, wheel: memWheel && { mb: memWheel.mb, cache: memWheel.cacheNotOnGpu && memWheel.cacheNotOnGpu.mb } });
+    /* v2.3.3399: asked as two things, no longer "less than BroTown".  Written
+       (v2.3.3136, #843) the farm held 104 + 92 MB (GPU + cached) against
+       BroTown's 103 + 109; since v2.3.3190 BroTown's ground and objects are
+       colour numbers, one byte a pixel, and it holds 71 + 90, while the farm,
+       full colour, still holds 105 + 95: its ground 22 MB, crops and props 9,
+       the BroTown sheets it borrows 11, the kneel's two cook strips 8.6 (the
+       sweep of 2026-10-17).  So: none of the Wheel's colour numbers is left on
+       the farm (11 MB of them in BroTown), and the farm is no heavier than it
+       was built, 196 MB, with room for small additions. */
+    const FARM_MB = 205;
+    const buf = (m) => (m && m.byKind && m.byKind.buffer) || 0;
+    rec.ok(`on the farm the page holds ${memFarm && memFarm.mb} MB on the GPU and ${memFarm && memFarm.cacheNotOnGpu && memFarm.cacheNotOnGpu.mb} MB cached (${Math.round(tot(memFarm))} together, BroTown's ${Math.round(tot(memWheel))}): at most ${FARM_MB}, and none of BroTown's colour numbers kept (${buf(memFarm)} MB of them, BroTown's ${buf(memWheel)})`,
+      tot(memFarm) <= FARM_MB && buf(memFarm) < 1, { farm: memFarm && { mb: memFarm.mb, cache: memFarm.cacheNotOnGpu, buffer: buf(memFarm), top: (memFarm.list || []).slice(0, 8) }, wheel: memWheel && { mb: memWheel.mb, cache: memWheel.cacheNotOnGpu && memWheel.cacheNotOnGpu.mb, buffer: buf(memWheel) } });
 
     /* ── 7. the barn stops your boots; the gate takes you back out ── */
     const barn = FARM_THINGS.find((t) => t.art === 'farm:barn');

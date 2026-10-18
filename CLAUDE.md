@@ -1000,6 +1000,125 @@ remnant to migrate server-side, not a mode to preserve.
         gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
         `mp-monsterplate` (whose band sweep now raises the weapon's skill):
         docs/specs/xp-decay.md.
+    - since v2.3.3345 EACH WOOD ITS OWN TREE -- the owner: every resource tier
+      in every land, "the log art (in terms of color to represent the type of
+      wood) would need to be the same across all 8 lands", the land shown by
+      effects in code; then their two ChatGPT pictures, "You can start with
+      this":
+      - pine (commons), a willow (softwood, 1-10), a gnarled hardwood
+        (11-20), a cedar (21-30) and a huge autumn maple (31-40), 1.5 to 4
+        people tall, each bark its log icon's colour, one picture in every
+        land, untinted (the one painted pine and its tints are gone);
+      - cut by `tools/world/add-tree-art.mjs` (sources in
+        `assets/prop-source/trees/`) into `public/sprites/trees/wood-*.png` and
+        the GENERATED `src/data/treeArt.js` (size, foot, trunk);
+        `src/game/tierTrees.js` says where each stands: its foot 27 px north
+        of the node (`TREE_FOOT_DY`, where the old pine's base stood), the
+        trunk the only solid part (`treeTrunkEllipse`, BroTown
+        nodeBlockEllipse), the lumberjack off by its own trunk
+        (`treeChopOffset`), the label and bar over its own crown but never
+        300 px past its foot (`treeMarkY`: over the maple's top they lay under
+        the phone's quest card);
+      - seen through (0.42) while its crown covers you behind its foot
+        (`behindTree`, `?treefade=0`), the maple hiding a bro whole; the
+        Wheel's node view margin 320 -> 480; +2.1 MB decoded (5.6 for the
+        five, the 3.4 MB pine no longer loaded);
+      - WHERE YOU CHOP FROM is not the picture: the worker pays a chop only
+        within `_nodeStrikeRange` (gathering.js: the OLD pine's box, 168 px a
+        tier, + 56 pad + 24 slack), and a reach to the new crowns offered
+        chops up to ~580 px out that it refused in silence (v2.3.2273's "logs
+        not going into my inventory"); BroTown `nodeReachDist` measures a tree
+        from `treeReachBox`, that very box (the tap still finds the whole
+        tree) -- change the two together;
+      - EACH METAL ITS OWN ROCK too, from the owner's one picture on green:
+        copper (58 px), iron, black steel, titanium and an obsidian boulder
+        (127 x 112), cut by `tools/world/add-ore-art.mjs` (source
+        `assets/prop-source/ore/`) into `public/sprites/ore/` and the GENERATED
+        `src/data/oreArt.js`; `src/game/tierOre.js` stands each rock's base 22
+        px north of the node (`ORE_BASE_DY`) and never higher than 110
+        (`ORE_TOP_MAX_UP`), so it hides the rock BAKED into the miner's swing
+        (27-59 px north of the node, measured through the body's transform:
+        the old vein covered 67% of it) and his head and shoulders stay over
+        it; a rock mined out breaks into pieces of its own picture
+        (`wheelShatter.js`, `_oreShatter`), the old copper break strip and the
+        four colour-mapped veins no longer loaded (7.7 -> 0.6 MB decoded);
+      - and the FISH grow more (wheelNodes.js `FISH_LOOK`): six 14 px minnows
+        to one 42 px pike, a big fish's circle smaller (`swim`) so it stays in
+        the bake's water;
+      - not yet: the woods past maple (WOODCUTTING_TIERS lists 20, only 5
+        grow); `mp-tiertrees`, `mp-tierore`: docs/specs/tier-trees.md,
+        docs/specs/tier-ore.md;
+      - since v2.3.3401 THE BAKE KEEPS EACH TREE AND ROCK CLEAR AS IT IS DRAWN
+        -- the owner: "Yes fix #3 resource placement": bake-wheel-spawns.mjs
+        `hidden` kept the old pine's and vein's one box (62 x 196, 52 x 118)
+        clear at every tier, and a tall thing could stand over a maple's
+        crown, 428 px across; now each tier's own (`treeGeom`, `oreGeom`) and
+        the woodcutter's spot either side of the trunk; whole where there is
+        room, else a tree's middle half across and lower half (`loose`: the
+        Verdant Wilds at 31-40 had room for 25 of 30 whole); NO RESOURCE IN
+        FRONT OF ANOTHER (`nodeClash`: 15 on the live table, a willow over an
+        angler, 0 now); a band's fishing spots chosen BEFORE its veins and
+        trees (scarce, and the bigger trees cost up to three a stretch); and
+        EVERY ANGLER'S SEAT DRY AS THE GROUND IS DRAWN (`drawnWaterOf`: the
+        shore is drawn where the grounds' blurred fields say, not on the
+        cells' lines, so a one-cell nub of land is drawn as sea -- the live
+        table had 7 seats with the boots in drawn water, 0 now; the shore is
+        the plan's alone, so the bake composes the very pixel a piece's
+        `under` reads with no pictures, which matched a phone's survey at
+        every look of 111 seats; test-world-core asks it of every seat of both
+        tables, and its piece sizes of ground-worker.js); every count kept on
+        the live Wheel (486 veins, 486 trees, 250 fishing spots), the short
+        one's fishing 55 -> 56, 1,019 places new, the commons' first copper
+        and pine where they were, no monster moved; the places now depend on
+        the trees' and rocks' picture SIZES: a new cut (add-tree-art.mjs,
+        add-ore-art.mjs) is a re-bake, which test-world-core's --check demands
+        and which deploys the worker: docs/specs/tier-trees.md "Where each one
+        grows".
+    - since v2.3.3402 EACH LAND'S TREES AND ROCKS WEAR ITS ELEMENT -- the
+      owner: "add effects to a pine tree to make it look like it belongs in
+      that elemental zone but the wood logs stay the same", "keep in mind
+      there are actually 10 elemental zones": specks drawn in code over the
+      picture, which never changes (`src/rendering/landAuras.js`,
+      `LAND_AURAS`): snowflakes and rime glints (frost), embers and ash
+      (ember), sand streaks (sky), dust and crystal glints (hollows), sparks
+      and arcs (thunder), drips and mist (tidal), spores (mist), petals and
+      fireflies (verdant), a glow at the foot in fire, electric and poison,
+      and the realms' dark and light ready for when they are built; each kind
+      its own shape, 3-10 world px, the lights ADDED (the first cut's 2 px
+      squares were a device pixel on a phone: the trees looked bare); a
+      resource's land from its id (`wn-<land>-<k>`), the commons none; each
+      resource's specks a Container RIDING on its picture (depthSort
+      `_ridesOn`) at its alpha (a tree seen through, its specks too);
+      `AURA_MAX` 260, `PER_MAX` 36, a pool; seven tiny textures made behind
+      the Wheel's loading screen (`landAurasWarm`) and freed on leaving
+      (`landAurasFree`); the Wheel only, `?noauras`; `mp-landauras`:
+      docs/specs/land-auras.md.
+    - since v2.3.3407 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
+      all actions/buttons can be completed in landscape mode and on the
+      computer. For instance I don't think you can harvest lifeskills right now
+      on the computer": the gesture was asked for on the right button, which a
+      computer hides, or at the figure worked out without the canvas's offset
+      -- in the black margin beside the game's column -- so a harvest waited at
+      its full bar for ever (TRAPS §210):
+      - the right button comes back for a harvest (`data-harvest` on its box,
+        game.css under pointer:fine) with "Drag ↔ or hold E" over it
+        (gesturePose.js `DESK_GESTURE_HINT`, TouchControls' `.bt-rjoy-deskhint`);
+      - the MOUSE makes the gesture on it or anywhere on the world (the
+        canvas), a circle reeling by the pointer's heading anywhere
+        (ExtractionSwipeLayer `freeHand`/`onWorld`, `FREE_STEP_PX`); the press
+        is cancelled so the canvas's mousedown (an attack) never comes, and the
+        click it ends with is swallowed (`_touchHandledAt`);
+      - or E HELD works it at a quick hand's pace (`S._harvestKeys`,
+        desktopControls hands E over; `KEY_WORK`): the press that starts a
+        harvest, held, works it when the window opens; a key draws no path, so
+        never 'perfect' and no fingerprint (botfp pays it 'good' at most);
+        `gradeGesture` moved to gesturePose.js;
+      - E no longer starts a harvest over (it reached the node through
+        `_proxNode` and startExtraction dropped the attempt), a held E's
+        repeats start nothing; QuestCoach never rings the right button on a
+        computer; a phone is unchanged (the button only);
+      - `mp-deskharvest` (a computer and a sideways phone):
+        docs/specs/desktop-harvest.md.
   - Since v2.3.3013 MONSTERS PAST LEVEL 5 -- asked "monsters past level 5 ...
     levels 6-20 in all eight lands (up to the first pass)", the owner: "Yes
     continue working on those items":
@@ -3423,6 +3542,34 @@ Two protocol versions coexist; both must keep working:
   never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
   mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that
   much slower, to try a check as a slow phone sees it.
+- UI REVIEW SCREENSHOTS (v2.3.3407, docs/specs/ui-review.md): the owner's
+  "screenshots labelled and bundled for all UI elements in each view ... so I
+  can have chatGPT analyze them".  `node tools/qa/ui-review/capture.mjs`
+  (after a build; `--views=`, `--only=`) walks a real player through every
+  screen in states.mjs -- the door, the creator's tabs, the HUD, the
+  dashboard's pages, every building's window, the maps, a harvest, a fight --
+  as an upright phone, a sideways phone and a computer (`--views=tablet` an
+  iPad too, `--views=laptop` a 1366 x 768 window), and writes
+  tools/qa/out/ui-review/: each screen plain and with
+  every control numbered (audit.mjs: cut off, covered, small), README.md with
+  a ChatGPT prompt, FINDINGS.md, index.html, contact sheets (sheets/, a
+  section to a picture) and a zip per view; `--only=<ids>` retakes screens
+  into the last run, `--report-only` remakes the words and sheets.  The
+  owner's button: Actions -> "UI review screenshots" -> Run workflow
+  (ui-review.yml, never on a PR).  A new screen or window goes in states.mjs.
+  - What its first run found, fixed in the same version
+    (docs/specs/reach-every-button.md): the iOS edge guard was an invisible
+    18 px strip over every control at the left edge -- a listener now
+    (BroTown `EDGE_CONTROL`, TRAPS §211); sideways nothing could be SOLD to
+    Diego and Ace's Flip button was off the screen (TRAPS §212); on a computer
+    the Enter button lay under the keyboard strip and the Daily Rewards ✕
+    under the minimap's "open map" button; the farm bed's Sleep and the field
+    cook answered only a finger; the bell drew over windows; and on a
+    LAPTOP (1366 x 768) the creator's ENTER BRO TOWN lay below the screen,
+    unreachable, its sizes fractions of the WINDOW's width -- on a computer
+    they are the play column's now (game.css "THE CREATOR SIZES ITSELF FROM
+    THE COLUMN", TRAPS §214). `mp-edgeguard`, `mp-deskreach`,
+    mp-shopkeeper's sideways part, mp-notifbell.
 - Capacity (v2.3.3194, docs/specs/load-test.md): `node tools/qa/load/load.mjs`
   fills a private copy of the server (local only) with fake players in the
   Wheel, step by step, and `node tools/qa/load/load-wheel.mjs` times the room's
@@ -4248,6 +4395,27 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
+- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3407,
+  docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
+  if there's a key that makes sense to use for a certain action just put the
+  letter next to the icon or action in a tasteful way."
+  - `src/game/deskKeys.js` is the one table -- I the bag (the band at rest;
+    B is the emotes, v2.3.3391, worn by the chat box's smiley), P character,
+    J quests, L life skills, K codex, O more, M the world map --
+    desktopControls.js binds it, and each key opens its page and closes it
+    again; never with Ctrl, Cmd or Alt (the browser's), never while typing.
+  - The button that does the same wears the key: `data-key="J"` (and
+    `data-key-at`: the corner, `hang` under a ✕, `end`, `inline`, `xy`),
+    drawn by game.css as generated content only under `@media
+    (pointer:fine)` -- never a text node (quest scenarios read the cards'
+    words), never on a phone.
+  - Enter presses a dialogue's own button in front (`data-enter`: Next,
+    Accept Quest); Esc presses the ✕ of the window in front (`data-esc`, and
+    every `.bt-inspect-close`, which wears "Esc" from its ::before), one
+    window at a time, then the old sweep, then a dashboard page.
+  - A new key goes in the table and on its button in the same PR; a new
+    window's ✕ takes `data-esc` (`"up"` if it acts on pointerup).
+  - The keys strip lists 1-3 and sits right of the bell. `mp-deskkeys`.
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,

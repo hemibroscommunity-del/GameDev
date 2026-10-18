@@ -56,13 +56,15 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
+import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
+import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
 import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3105: the attack disc wears the weapon in your hand */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
 import { WeaponSwapButton } from './panels/WeaponSwapButton.jsx'; /* v2.3.3005: the weapon in your hand, under the movement stick -- a tap swaps */
-import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01 } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before) */
+import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3407 (a computer's words over the button) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -618,6 +620,14 @@ function nodeWorldBox(S, n) {
        logs ~56 wide, the front ends ~12 below the ground point, the flame's tip
        ~55 above it.  Was 56x40 for the vector fire's glow and 21 px flames. */
     w = 64; h = 70; ax = 0.5; ay = 0.82; wx = n.x; wy = n.y;
+  } else if (n.nodeType === 'tree') {
+    /* v2.3.3345: its wood's own picture, before the sprite exists */
+    var _g = treeGeom(n);
+    return { l: _g.left, r: _g.right, t: _g.top, b: _g.bottom };
+  } else if (n.nodeType === 'oreVein') {
+    /* v2.3.3345: and a vein its metal's own rock */
+    var _og = oreGeom(n);
+    return { l: _og.left, r: _og.right, t: _og.top, b: _og.bottom };
   } else {
     var _ts = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
     h = (n.nodeType === 'tree' ? 168 : 132) * (1 + (_ts - 1) * 0.15);
@@ -669,12 +679,18 @@ function nodeWorldBox(S, n) {
    over-blocks empty air in one direction and under-blocks the art in another,
    which is what the owner was seeing. */
 var NODE_ART = {
-  oreVein:  { x0: 0.232, x1: 0.777, y0: 0.223, y1: 0.737 },
+  /* ore: its whole drawn body.  v2.3.3345: each metal's rock is its own
+     picture, trimmed to the rock, so the body is its box (game/tierOre.js
+     oreBlockEllipse) and these fractions of the old vein's frame are gone.
+     The entry stays: it is what says a vein stops you at all. */
+  oreVein:  {},
   fishSpot: { x0: 0.179, x1: 0.816, y0: 0.348, y1: 0.686 },
-  /* tree: the whole silhouette, then the TRUNK alone (bottom 6% of it) --
-     the owner wants only the base solid, so the canopy is walk-under. */
-  tree:     { x0: 0.250, x1: 0.750, y0: 0.104, y1: 0.840,
-              tx0: 0.379, tx1: 0.613, ty0: 0.795, ty1: 0.840 },
+  /* tree: only the TRUNK is solid -- the owner wants only the base solid, so
+     the canopy is walk-under.  v2.3.3345: its fractions are gone with the old
+     pine; each wood's trunk is its own picture's (nodeBlockEllipse ->
+     game/tierTrees.js treeTrunkEllipse).  The entry stays: it is what says a
+     tree stops you at all. */
+  tree:     {},
 };
 
 /* The ellipse the player cannot walk into, in world pixels.  Ellipse rather
@@ -706,11 +722,16 @@ function nodeBlockEllipse(S, n) {
      out of the bank beside it (it reaches ~33 px east of the spot, where
      the shore and the angler's seat are). */
   if (n.nodeType === 'fishSpot' && zoneHomes(S.currentZone)) return null;
+  /* v2.3.3345: a tree's trunk is its own picture's (game/tierTrees.js), not a
+     share of the old pine's frame -- the slim pine's narrow, the gnarled
+     hardwood's broad, the crown walk-under as ever */
+  if (n.nodeType === 'tree') return treeTrunkEllipse(n);
+  /* v2.3.3345: a rock's body is its own picture's (game/tierOre.js) */
+  if (n.nodeType === 'oreVein') return oreBlockEllipse(n);
   var b = nodeWorldBox(S, n);
   if (!b) return null;
   var w = b.r - b.l, h = b.b - b.t;
   var x0 = art.x0, x1 = art.x1, y0 = art.y0, y1 = art.y1;
-  if (n.nodeType === 'tree') { x0 = art.tx0; x1 = art.tx1; y0 = art.ty0; y1 = art.ty1; }
   var l = b.l + w * x0, r = b.l + w * x1;
   var t = b.t + h * y0, bt = b.t + h * y1;
   return { x: (l + r) / 2, y: (t + bt) / 2, rx: (r - l) / 2, ry: (bt - t) / 2 };
@@ -730,8 +751,12 @@ function oreStandSpot(S, n) {
 function nodeReachDist(S, n, slack) {
   if (!S || !n || !S.player) return null;
   var P = S.player, extra = slack || 0;
-  /* 1. Distance to the sprite's perimeter — 0 while standing ON the art. */
-  var _b = nodeWorldBox(S, n);
+  /* 1. Distance to the sprite's perimeter — 0 while standing ON the art.
+     v2.3.3345: a TREE's from the box the worker pays a chop from
+     (game/tierTrees.js treeReachBox), not its picture: the big crowns reach
+     far past the worker's strike range, and a chop begun out there was
+     refused in silence.  The tap still finds the whole picture. */
+  var _b = n.nodeType === 'tree' ? treeReachBox(n) : nodeWorldBox(S, n);
   if (_b) {
     var _bx = Math.max(_b.l - P.x, 0, P.x - _b.r);
     var _by = Math.max(_b.t - P.y, 0, P.y - _b.b);
@@ -1173,6 +1198,10 @@ export var BroTown = function BroTown(_ref0) {
     migrateLifeSkills: migrateLifeSkills,
     spawnMonstersForZone: spawnMonstersForZone,
     spawnGatherNodes: spawnGatherNodes,
+    /* v2.3.3345: the reach test itself, at the player's spot, so a scenario
+       can ask where a harvest is offered (mp-tiertrees holds every tree's to
+       the worker's strike range, gathering.js _nodeStrikeRange) */
+    nodeReachDist: function (n, slack) { return nodeReachDist(stateRef.current, n, slack); },
     generateZoneMap: generateZoneMap,
     calcWeaponDmg: calcWeaponDmg,
     /* ═══ v2.3.2259: THE GAME'S OWN ANSWER TO "HOW MUCH DPS IS THAT?" ═══
@@ -6070,6 +6099,31 @@ export var BroTown = function BroTown(_ref0) {
           var _rw = rWrapRef.current;
           var _rWant = _rOn ? '1' : '0';
           if (_rw && _rw.style.opacity !== _rWant) _rw.style.opacity = _rWant;
+          /* ═══ v2.3.3407: ON A COMPUTER THE BUTTON COMES BACK FOR THE HARVEST ═══
+             The owner: "I don't think you can harvest lifeskills right now on
+             the computer."  game.css hides this whole box under pointer:fine,
+             and with it the cue that teaches the gesture and the ring that
+             counts it -- so a computer's harvest stopped at a full bar with
+             nothing on screen to say what came next (gesturePose.js
+             DESK_GESTURE_HINT).  `data-harvest` while one runs brings the box
+             back there (game.css; on a phone it is shown anyway), and over it
+             a line in words while the window is open: drag the way the arrows
+             go with the mouse, or hold E.  Not over a locked try, which asks
+             for nothing.  DOM-compared like every stamp here. */
+          var _hvWant = _ex ? '1' : null;
+          if (_rw && _rw.getAttribute('data-harvest') !== _hvWant) {
+            if (_hvWant) _rw.setAttribute('data-harvest', _hvWant); else _rw.removeAttribute('data-harvest');
+          }
+          if (_rw) {
+            var _dh = _rw._btDeskHint;
+            if (!_dh || _dh.parentNode !== _rw) _dh = _rw._btDeskHint = _rw.querySelector('.bt-rjoy-deskhint');
+            if (_dh) {
+              var _dhText = (_ex && _ex.status === 'ready' && !_ex.locked) ? (DESK_GESTURE_HINT[_ex.skill] || '') : '';
+              if (_dh.textContent !== _dhText) _dh.textContent = _dhText;
+              var _dhShow = _dhText ? '1' : '0';
+              if (_dh.getAttribute('data-show') !== _dhShow) _dh.setAttribute('data-show', _dhShow);
+            }
+          }
           var _rd = rJoyRef.current;
           var _peWant = _rPressable ? 'auto' : 'none';   /* v2.3.2260: PRESSABLE, not painted */
           if (_rd && _rd.style.pointerEvents !== _peWant) _rd.style.pointerEvents = _peWant;
@@ -8972,7 +9026,10 @@ export var BroTown = function BroTown(_ref0) {
        and its art is 100-260px of canopy above that, so a radius around the
        anchor would refuse taps on most of what the player can see.
        nodeWorldBox is the same box nodeReachDist measures from, so what you
-       can tap and what you can reach are one shape. */
+       can tap and what you can reach are one shape.
+       v2.3.3345: but for a TREE: the tap finds its whole picture, the reach
+       is the box the worker pays a chop from (game/tierTrees.js
+       treeReachBox) -- a big crown is far wider than that. */
     var _tapScan = function (n) {
       if (!n || !n.alive || (n.respawnAt && Date.now() < n.respawnAt)) return;
       /* ═══ v2.3.3145: ONLY WHAT YOU CAN SEE AND REACH TAKES THE TAP ═══
@@ -9356,9 +9413,20 @@ export var BroTown = function BroTown(_ref0) {
      is filling the lower half of the screen. Two signals because the app has
      two panel systems; collapsing them into one was tried and quietly
      dropped the sheet. */
+  /* ═══ v2.3.3407: ...EXCEPT, SIDEWAYS, THE BAG'S OWN COLUMN ═══
+     The owner: "Make sure all actions/buttons can be completed in landscape
+     mode."  Upright the shop is HALF a window, the bag in the band under it
+     the other half (ShopkeeperPanel's header).  Sideways the band holds no
+     bag: the bag is the side column's 'dashboard' page -- and opening that
+     closed the shop here, while the shop's drawer lay over the ▴ chip that
+     opens it.  So nothing could be SOLD to Diego on a sideways phone.  The
+     column on its bag page is the shop's other half there, as the band is
+     upright (the drawer opens it, and sits beside it); any other page still
+     puts the shop away. */
   useEffect(function () {
     return dashboardPanelBus.subscribe(function () {
       if (dashboardPanelBus.state.mode !== 'bar') {
+        if (playIsLandscape() && dashboardPanelBus.current() === 'dashboard') return;
         try { shopBus.setOpen(false); } catch (e) { /* no shop */ }
       }
     });
@@ -9749,6 +9817,29 @@ export var BroTown = function BroTown(_ref0) {
      and preventDefault any touchstart that lands inside it.  Best
      effort -- Safari sometimes overrules; if it persists the user
      can reflag for a PWA / fullscreen path. */
+  /* ═══ v2.3.3407: A LISTENER, NOT A STRIP -- THE BUTTONS AT THE EDGE ANSWER ═══
+     The owner: "Make sure all actions/buttons can be completed in landscape
+     mode".  The UI review's numbered pictures (tools/qa/ui-review) found the
+     strip -- 18 px wide, full height, z 40, over everything outside the
+     game's wrap -- lying across the left of every control that touches the
+     screen's left edge: the top bar's logout, a sideways page's ◂ back arrow
+     and the dashboard's ▴/▼ fold chip (upright, the band's CLOSE pill and its
+     first column of bag tiles).  A tap on that part landed on the strip,
+     which cancelled it: on a sideways phone the left third of the logout
+     button did nothing.  v2.3.2563 moved one cluster off the strip
+     (EDGE_GUARD_PX); these were never moved, and moving every one is the
+     wrong way round.
+     So the guard is a listener now, on the document in the capture phase,
+     ahead of the page: a touch that STARTS within EDGE_GUARD_PX of the left edge is
+     absorbed exactly as the strip absorbed it -- preventDefault (the bezel
+     swipe) and kept from whatever lies under it, the movement pad included --
+     unless it lands on a control, which takes it as the tap it is.  Its later
+     moves and its end reach the window's listeners as they reached them from
+     the strip (the strip only ever stopped the start).  Controls are what the
+     UI review counts as pressable. */
+  var EDGE_CONTROL = 'button, a[href], input, select, textarea, label, summary,'
+    + ' [role="button"], [role="tab"], [role="link"], [role="menuitem"], [role="option"],'
+    + ' [role="checkbox"], [role="switch"], [role="slider"], [data-bag-key], [data-gear]';
   useEffect(function () {
     /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
        screen this guard never knew about, and the refs below only exist once
@@ -9756,27 +9847,25 @@ export var BroTown = function BroTown(_ref0) {
        bails on a null ref, and never re-runs; see the game-loop effect for
        the full account. */
     if (showNameModal || showLogin || bootPhase !== null) return;
-    var guard = document.createElement('div');
-    guard.style.cssText = [
-      'position: fixed',
-      'left: 0',
-      'top: 0',
-      'width: ' + EDGE_GUARD_PX + 'px',   /* v2.3.2563: shared with leftCluster */
-      'height: 100%',
-      'z-index: 40',
-      'background: transparent',
-      'pointer-events: auto',
-      'touch-action: none',
-    ].join(';');
     var onTouchStart = function (e) {
+      var ts = e.changedTouches;
+      if (!ts || !ts.length) return;
+      /* every touch this event starts is at the edge (one target per event;
+         a second finger landing elsewhere at the same instant goes through) */
+      for (var i = 0; i < ts.length; i++) {
+        if (!(ts[i].clientX < EDGE_GUARD_PX)) return;   /* v2.3.2563: shared with leftCluster */
+      }
+      var t = e.target;
+      if (t && t.closest && t.closest(EDGE_CONTROL)) return;   /* a button: its tap */
       if (e.cancelable) e.preventDefault();
       e.stopPropagation();
     };
-    guard.addEventListener('touchstart', onTouchStart, { passive: false });
-    document.body.appendChild(guard);
+    /* on the DOCUMENT, capturing: the window's and the document's own
+       capture listeners (the input stamp, the audio unlock) still hear the
+       touch, as they heard it on its way down to the strip */
+    document.addEventListener('touchstart', onTouchStart, { passive: false, capture: true });
     return function () {
-      try { guard.removeEventListener('touchstart', onTouchStart); } catch (_) {}
-      try { document.body.removeChild(guard); } catch (_) {}
+      document.removeEventListener('touchstart', onTouchStart, { capture: true });
     };
   }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
 
@@ -11975,6 +12064,13 @@ export var BroTown = function BroTown(_ref0) {
     },
     onMouseDown: function onMouseDown(e) {
       if (!stateRef.current._isDesktop) return;
+      /* v2.3.3407: a press during a harvest is the harvest's -- its gesture
+         once the window is open (ExtractionSwipeLayer, which cancels the
+         pointerdown so this mousedown never comes), nothing in the wind-up --
+         and never arms the attack: a swing is refused mid-harvest anyway
+         (playerActions) and the loop drops a held attack each frame, but the
+         press still set the attack's state and the aim for nothing */
+      if (stateRef.current._extraction) return;
       if (e.button === 0) {
         /* Left click — attack toward mouse */
         var S = stateRef.current;
@@ -12222,26 +12318,21 @@ export var BroTown = function BroTown(_ref0) {
             });
             return;
           } else {
+            /* ═══ v2.3.3399: YOUR DUEL OPPONENT IS AIMED AT, NOT INSPECTED ═══
+               This branch also opened their player card, over the middle of
+               the fight -- what duelLock.js says it never does ("tapping a
+               player opens their inspect card UNLESS they are your duel
+               opponent, in which case it locks on instead"), and what No
+               man's land's and the sparring clones' taps above refuse to do
+               for the same reason.  On a computer a click is the attack, so
+               every second click on them opened it, and the card took every
+               press after it (found by mp-duelfeel, the sweep of 2026-10-17).
+               The lock alone; tapping them again still lets go, as before. */
             S.lockedTarget = {
               type: 'player',
               id: id,
               ref: o
             };
-            setInspectPlayer({
-              id: id,
-              name: o.name,
-              color: o.color,
-              avatar: o.avatar,
-              bro: o.bro, brn: o.brn,
-              x: o.x,
-              y: o.y,
-              rpgLv: o.rpgLv,
-              rpgData: o.rpgData,
-              pet: o.pet,
-              rep: o.rep,
-              clanTag: o.allyTag || o.clanTag,   /* v2.3.3321 */
-              clanColor1: o.clanColor1
-            });
           }
           return;
         }
@@ -13986,7 +14077,10 @@ export var BroTown = function BroTown(_ref0) {
       bottom: 140,
       background: 'rgba(89,191,145,.85)'
     },
-    onTouchStart: function onTouchStart(e) {
+    /* v2.3.3407: onClick, not onTouchStart -- a mouse never fires a
+       touchstart, so on a computer this button did nothing (E did, from
+       desktopControls); one click is the tap on both (v2.3.2617's rule) */
+    onClick: function onClick(e) {
       e.preventDefault();
       var S2 = stateRef.current,
         R = S2.rpg;
@@ -14119,12 +14213,10 @@ export var BroTown = function BroTown(_ref0) {
       bottom: 175,
       background: 'rgba(139,105,20,.85)'
     },
+    /* v2.3.3407: the click alone -- a touchstart twin opened the workshop on
+       the press and the click behind it opened it again (the door sound
+       twice), on the very surface v2.3.2617's rule is about */
     onClick: function onClick(e) {
-      e.preventDefault();
-      setShowFurniture(true);
-      BT_AUDIO.enterBuilding();
-    },
-    onTouchStart: function onTouchStart(e) {
       e.preventDefault();
       setShowFurniture(true);
       BT_AUDIO.enterBuilding();
@@ -14182,7 +14274,10 @@ export var BroTown = function BroTown(_ref0) {
         bottom: 175,
         background: 'rgba(200,100,20,.85)'
       },
-      onTouchStart: function onTouchStart(e) {
+      /* v2.3.3407: onClick, not onTouchStart -- a mouse never fires a
+         touchstart, so on a computer the field cook could not be pressed at
+         all; one click is the tap on both (v2.3.2617's rule) */
+      onClick: function onClick(e) {
         e.preventDefault();
         /* Server-authoritative cooking recipe in MP -- see the cooking
            panel onClick (~line 18989) for the predict + sync flow.

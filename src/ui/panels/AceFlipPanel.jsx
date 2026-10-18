@@ -393,14 +393,23 @@ export function AceFlipPanel() {
 
   return React.createElement('div', {
     onClick: close,
+    'data-ace-flip': '',   /* v2.3.3407: the minimap's open button stands aside under it (game.css) */
     style: { position: 'fixed', inset: 0, zIndex: 4000, background: 'rgba(8,14,17,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 },
   }, React.createElement('div', {
     onClick: function (e) { e.stopPropagation(); },
-    style: { width: '100%', maxWidth: 410, background: LS.panel, borderRadius: 14, overflow: 'hidden', border: '1px solid ' + LS.border, boxShadow: '0 18px 48px rgba(0,0,0,.5)' },
+    /* ═══ v2.3.3407: THE WINDOW FITS THE SCREEN, ITS BODY SCROLLS ═══
+       The owner: "Make sure all actions/buttons can be completed in landscape
+       mode."  On a phone held sideways (390px tall) this card is ~600px:
+       centred on a scrim that does not scroll, its tabs ran off the top and
+       its Flip button off the bottom, so the coin could not be flipped (the UI
+       review's numbered pictures, tools/qa/ui-review).  Held to the screen
+       now, a column: his header and the tabs stay, the face below them
+       scrolls.  An upright phone has the room and looks as it did. */
+    style: { width: '100%', maxWidth: 410, maxHeight: '100%', display: 'flex', flexDirection: 'column', background: LS.panel, borderRadius: 14, overflow: 'hidden', border: '1px solid ' + LS.border, boxShadow: '0 18px 48px rgba(0,0,0,.5)' },
   },
     /* ── header: his own portrait, so the face in the chip is the man outside ── */
     React.createElement('div', {
-      style: { display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', background: LS.strip, borderBottom: '1px solid ' + LS.border },
+      style: { flex: 'none', display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', background: LS.strip, borderBottom: '1px solid ' + LS.border },
     },
       React.createElement('img', {
         src: '/sprites/npc/cardsharp-bro-head.webp', alt: '', draggable: false,
@@ -415,16 +424,18 @@ export function AceFlipPanel() {
         React.createElement('div', { style: { fontSize: 13.5, color: LS.txt3, marginTop: 2 } }, 'Gambler')),
       React.createElement('button', {
         onClick: close, 'aria-label': 'Close',
-        style: { border: 'none', background: 'transparent', color: LS.txt3, fontSize: 20, lineHeight: 1, cursor: 'pointer', padding: 4 },
+        /* v2.3.3407: Esc presses it (game/deskKeys.js) */
+        'data-esc': '', 'data-key': 'Esc', 'data-key-at': 'hang',
+        style: { position: 'relative', border: 'none', background: 'transparent', color: LS.txt3, fontSize: 20, lineHeight: 1, cursor: 'pointer', padding: 4 },
       }, '×')),
 
     /* ── v2.3.2619: three faces of the dialog ── */
     React.createElement('div', {
-      style: { display: 'flex', background: LS.strip, borderBottom: '1px solid ' + LS.border },
+      style: { flex: 'none', display: 'flex', background: LS.strip, borderBottom: '1px solid ' + LS.border },
     }, tab('gold', 'Gold'), tab('items', 'Items'), tab('records', 'Records')),
 
     aceFlipBus.mode === 'records' ? React.createElement('div', {
-      style: { padding: '13px 14px 15px', maxHeight: '58vh', overflowY: 'auto' },
+      style: { padding: '13px 14px 15px', maxHeight: '58vh', flex: '1 1 auto', minHeight: 0, overflowY: 'auto' },
     },
       React.createElement('div', { style: { fontSize: 15, color: LS.txt2, lineHeight: 1.5, marginBottom: 13 } },
         'The book. Biggest single win and biggest single loss at my coin \u2014 gold only, one line each per bro.'),
@@ -432,7 +443,7 @@ export function AceFlipPanel() {
       boardList(aceFlipBus.board.losses || [], false, 'Biggest losses'))
 
     : aceFlipBus.mode === 'items' ? React.createElement('div', {
-      style: { padding: '13px 14px 15px' },
+      style: { padding: '13px 14px 15px', flex: '1 1 auto', minHeight: 0, overflowY: 'auto' },
     },
       React.createElement('div', { style: { fontSize: 15, color: LS.txt2, lineHeight: 1.5, marginBottom: 12 } },
         aceFlipBus.note
@@ -459,7 +470,7 @@ export function AceFlipPanel() {
         },
       }, aceFlipBus.pending ? 'Flipping\u2026' : (stagedTotal > 0 ? 'Double or nothing \u00b7 ' + stagedTotal : 'Stake something')))
 
-    : React.createElement('div', { style: { padding: '13px 14px 15px' } },
+    : React.createElement('div', { style: { padding: '13px 14px 15px', flex: '1 1 auto', minHeight: 0, overflowY: 'auto' } },
       React.createElement('div', { style: { fontSize: 15, color: LS.txt2, lineHeight: 1.5, marginBottom: 12 } },
         aceFlipBus.note
           ? aceFlipBus.note

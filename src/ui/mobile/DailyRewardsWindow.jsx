@@ -395,7 +395,8 @@ export const DailyRewardsWindow = () => {
         <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 6px 8px 14px', background: COL.bgStrong, borderBottom: '1px solid ' + COL.border }}>
           <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: COL.text }}>Daily rewards</span>
           <button type="button" aria-label="Close" data-daily-close="1" onClick={close}
-            style={{ flex: 'none', width: 44, height: 36, background: 'transparent', border: 0, color: COL.muted, fontSize: 20, fontWeight: 700, cursor: 'pointer' }}>×</button>
+            data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3407: its Esc, shown (game/deskKeys.js) */
+            style={{ position: 'relative', flex: 'none', width: 44, height: 36, background: 'transparent', border: 0, color: COL.muted, fontSize: 20, fontWeight: 700, cursor: 'pointer' }}>×</button>
         </div>
         {seLive && (
           <div style={{ flex: 'none', display: 'flex', gap: 2, margin: '8px 10px 0', padding: 2, borderRadius: 10, background: COL.well, border: '1px solid ' + COL.border }}>

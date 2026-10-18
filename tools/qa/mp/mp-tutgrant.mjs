@@ -53,9 +53,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
      on a character the server considers level 1 in all three.  Asserting the
      coexistence (rather than just "prog3 is 1") is what keeps a future
      "simplification" from deleting the prog3 read and looking fine. */
+  /* v2.3.3399: ...read as its readers read it, a weapon with no entry being
+     level 0 (XpFlyOverlay.jsx, gameSystems.js).  Since v2.3.3138 a first join
+     carries no `rpg*` claims (join.js `_withoutRpgClaims`), so the worker's
+     sanitizer gets nothing and the track comes back `{}` -- present, every
+     weapon reading 0 -- where it was three entries at level 0 (the sweep of
+     2026-10-17).  The coexistence this pins is unchanged. */
+  const legacyLevel = (ws, k) => (ws && ws[k] && ws[k].level) || 0;
   rec.ok('...while the LEGACY weaponSkills track sits beside it at ZERO',
-    !!before.weaponSkills && ['sword', 'bow', 'staff'].every(
-      (k) => before.weaponSkills[k] && (before.weaponSkills[k].level || 0) === 0),
+    !!before.weaponSkills && ['sword', 'bow', 'staff'].every((k) => legacyLevel(before.weaponSkills, k) === 0),
     before.weaponSkills);
 
   /* ── ACCEPT, THROUGH THE REAL DIALOGUE ──

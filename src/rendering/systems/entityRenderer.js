@@ -12903,6 +12903,19 @@ export class EntityRenderer {
       const _br = bodyRows(pose, dir);
       S._bodyDrawH = (_br.feet - _br.crown + 1) * bodyScale * (display.scale.y || 1);
     }
+    /* v2.3.3399: ...and the stand-in's plant for this facing, every frame.  The
+       pair the stand-ins are planted with (S._swordFootY / S._swordBodyH,
+       below) is written only while one is up, so between them it is wherever
+       you last swung or shot.  Same arithmetic, unconditional, for
+       effectsRenderer _predictBowGrip: where the bow will be held, worked out
+       before the pose is drawn. */
+    {
+      const _pr = bodyRows('stand', dir);
+      const _pbs = bodyDirScale('stand', dir) * LOCAL_SCALE;
+      const _pds = display.scale.y || 1;
+      S._standInFootY = display.y + (_pr.feet - 128) * _pbs * _pds;
+      S._standInBodyH = (_pr.feet - _pr.crown + 1) * _pbs * _pds;
+    }
     /* v2.3.551: set true once the full covering set hides the body, so the
        NFT/procedural fallbacks below don't draw a body in its place.  Declared
        at function scope (the NFT fallback is outside the spritesAvailable block). */

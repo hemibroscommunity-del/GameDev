@@ -389,7 +389,17 @@ export function WorldChatFeed() {
            never take away the bell, because the bell is how you get chat back.
            A panel owning the screen is the only case that hides it, and it
            comes back the moment the panel closes. */
-        opacity: guardActive() ? 0 : 1,
+        /* ═══ v2.3.3407: ...AND THE SHUT BELL STANDS DOWN UNDER ANY WINDOW ═══
+           The UI review's numbered pictures (tools/qa/ui-review) showed the
+           36px bell, unread count and all, painted across the bottom of the
+           windows in this corner -- the Blacksmith's Forge tab, the
+           marketplace's filter row -- because this shell paints over the in-wrap
+           panels whatever the z-index ladder says (above).  `busy` already
+           takes its taps away (the button's pointerEvents, below), so it was
+           a picture of a button that could not be pressed, on top of one that
+           could.  Shut, the shell IS the bell, so it fades with the taps;
+           open, the feed's lines stay (a chat composer reads them). */
+        opacity: (guardActive() || (shut && busy)) ? 0 : 1,
         transition: 'opacity 140ms ease',
         pointerEvents: 'none',
         fontFamily: 'Source Sans 3, sans-serif',
