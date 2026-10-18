@@ -624,14 +624,18 @@ remnant to migrate server-side, not a mode to preserve.
     - since v2.3.3341 THE MISSING SOUNDS FROM RECORDINGS ALREADY HERE -- the
       owner, on the list of missing sounds: "Start adding the have ones then
       give me the list of ones that are still needed afterwards":
-      - ~116 cues, each slices of SFX_MANIFEST files (nothing new to load or
+      - 112 cues, each slices of SFX_MANIFEST files (nothing new to load or
         decode): `src/data/eventSounds.js` says WHAT (`[key, offset, duration,
         vol, rate, delay, fade]`, `_playLayer`'s layer), `src/game/
         eventSounds.js` WHEN and HOW LOUD -- `cue(name, k)`, `cueAt` (by
         distance, earVol), `cuePeer` / `peerShare` (another player's at
         `PEER_K` 0.5 of yours, at most `PEER_BURST` 4 in 200 ms; footsteps
-        their own budget, `peerStepShare`), `CUE_GAP_MS` for the ones a pack
-        fires at once; `window.__btCues`;
+        their own budget, `peerStepShare`), `peerOwn` (what sounds as YOURS
+        does -- the sprint's push-off, a swimmer's splash and strokes --
+        played from BT_AUDIO's own tables, never copied into the cue table),
+        `CUE_GAP_MS` for the ones a pack fires at once; `window.__btCues`;
+      - a rush of air is the ARROW'S FLIGHT, never the special swipe (half a
+        body's thump under 400 Hz: the owner's "fleshy" sprint, v2.3.3336);
       - the beep()s that played nothing (shield, door, weapon swap, quest
         taken, parry, wind-ups, campfire...) are sounds; a dodged blow is a
         rush of air, no clang, shake or red sparks; monsters' throws, deaths of
