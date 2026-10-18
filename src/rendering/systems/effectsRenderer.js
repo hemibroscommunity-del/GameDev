@@ -269,6 +269,7 @@ import { wheelPropRec, wheelPropArt, wheelScorch, freeWheelScorch } from '../whe
 import { isWheelBroken } from '@/game/wheelBreak.js';   /* v2.3.2995: a broken object's marks go with it */
 import { freePropChips } from '../hitMaterialFx.js';    /* v2.3.2995 */
 import { ELEM_ICON_SRC } from '@/game/elemHits.js';   /* v2.3.2996: a monster's element on the number */
+import { emoteKind, EMOTE_POP_MS } from '@/game/emotes.js';   /* v2.3.3391: an emoji over the head */
 
 /* v2.3.2654: how a print reads and how long it lasts.  PRINT_TTL_MS is
    mirrored by stateCleanup's filter -- the array and the drawer must expire on
@@ -621,6 +622,7 @@ import { wheelObjectsInfo, wheelMapInfo } from '@/game/wheelTrial.js';      /* v
 import { wheelDungeonDoors, wheelDungeonsSupported } from '@/game/wheelDungeons.js';
 import { MonsterShotFx } from '../monsterShotFx.js';   /* v2.3.2732: slime goo + goblin fire, drawn in code */
 import { DEFENSE_POPUP_KEY, DEFENSE_POPUP_SRC } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's shield on "Defense Lv N" */
+import { halloweenOn } from '@/game/season.js';   /* v2.3.3395: Halloween week's speech bubbles */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -2542,6 +2544,34 @@ let _chatBubbleGrad = null;
    you -- past any screen's edge at the Wheel's zoom (a 3x phone shows ~650 x
    1,400 of the world, a desktop about 3,200 across) -- see _updateChatBubbles */
 const NPC_BUBBLE_REACH = 2400;
+/* v2.3.3392: the band over a head, lowered as far as an emote brought the
+   name plate down (rendering/emoteFx.js `_emoteHudDrop`: a sitter, a sleeper) */
+function bandWithEmote(band, who) {
+  if (typeof band !== 'number' || !isFinite(band)) return band;
+  const d = who && who._emoteHudDrop;
+  return d > 0 ? band + d : band;
+}
+/* v2.3.3391: an emote's emoji over the head (_updateEmotePops): drawn at
+   EMOTE_POP_FONT and scaled to EMOTE_POP_PX on the SCREEN, twice the chat's
+   14 px -- it is a picture, read at a glance */
+const EMOTE_POP_FONT = 40;
+const EMOTE_POP_PX = 30;
+/* ═══ v2.3.3395: HALLOWEEN WEEK'S SPEECH BUBBLES (game/season.js) ═══
+   The fun & social plan's "spooky bubble skin", drawn in code (no picture to
+   load): a night-purple bubble ringed in pumpkin orange, its words cream,
+   24 October to 1 November by the phone's calendar.  Made once, as the
+   everyday gradient is. */
+let _spookyBubbleGrad = null;
+const SPOOKY_BUBBLE = Object.freeze({ stroke: 0xFF8A1F, text: '#FFE7C2' });
+function spookyBubbleGradient() {
+  if (!_spookyBubbleGrad) {
+    _spookyBubbleGrad = new FillGradient({
+      type: 'linear', start: { x: 0, y: 0 }, end: { x: 0, y: 1 }, textureSpace: 'local',
+      colorStops: [{ offset: 0, color: '#4A2C66' }, { offset: 0.55, color: '#3A2152' }, { offset: 1, color: '#26153A' }],
+    });
+  }
+  return _spookyBubbleGrad;
+}
 function chatBubbleGradient() {
   if (!_chatBubbleGrad) {
     _chatBubbleGrad = new FillGradient({
@@ -3126,6 +3156,9 @@ export class EffectsRenderer {
 
     // Chat bubble texts
     this.chatTexts = new Map();
+    /* v2.3.3391: each speaker's emoji over the head -- see _updateEmotePops.
+       A Map: wire ids as keys. */
+    this._emotePops = new Map();
     /* v2.3.2896: each speaker's last seen name-plate band, as an offset from
        their position -- see _updateChatBubbles.  A Map: wire ids as keys. */
     this._chatBandOff = new Map();
@@ -8525,6 +8558,8 @@ export class EffectsRenderer {
 
     // Chat bubbles
     this._updateChatBubbles(S, now);
+    /* v2.3.3391: and an emote's emoji, over the bubble when there is one */
+    this._updateEmotePops(S, now);
   }
 
   /** Build (or reposition) a chat bubble for `key` over `(sx, sy)` —
@@ -8657,6 +8692,7 @@ export class EffectsRenderer {
       const bw = Math.min(336, tw + padX * 2);
       entry._lineW = tw; entry._boxW = bw;   /* v2.3.2896: for the QA probe below */
       const bh = th + padY * 2;
+      entry._boxH = bh + tipH;   /* v2.3.3391: an emoji pops above the whole bubble (_updateEmotePops) */
       entry.bg.clear();
       /* ═══ v2.3.2823: THE BUBBLE POPS ═══
          Owner: "add a gray outline to the chat bubble ... I just want it to
@@ -8687,8 +8723,13 @@ export class EffectsRenderer {
       _bubblePath(entry.bg, 2);
       entry.bg.fill({ color: 0x000000, alpha: 0.18 });
       _bubblePath(entry.bg, 0);
-      entry.bg.fill({ fill: chatBubbleGradient() });
-      entry.bg.stroke({ width: 2, color: 0x8a949a, alignment: 1 });
+      /* v2.3.3395: Halloween week's skin -- purple, pumpkin-ringed, cream words */
+      const _spooky = halloweenOn();
+      entry.skin = _spooky ? 'halloween' : 'plain';
+      entry.bg.fill({ fill: _spooky ? spookyBubbleGradient() : chatBubbleGradient() });
+      entry.bg.stroke({ width: 2, color: _spooky ? SPOOKY_BUBBLE.stroke : 0x8a949a, alignment: 1 });
+      const _ink = _spooky ? SPOOKY_BUBBLE.text : '#000000';
+      if (entry.text.style.fill !== _ink) entry.text.style.fill = _ink;
       /* Center the text inside the bubble. */
       entry.text.x = 0;
       entry.text.y = -bh - tipH + padY;
@@ -8746,6 +8787,8 @@ export class EffectsRenderer {
         breakWords: !!entry.text.style.breakWords,
         lineW: entry._lineW,   /* the longest laid-out line, bubble-local px */
         boxW: entry._boxW,     /* the box drawn round it, same units */
+        skin: entry.skin || 'plain',   /* v2.3.3395: 'halloween' in Halloween week */
+        ink: String(entry.text.style.fill),
       };
       /* ...and per bubble, because the single probe above is whichever
          bubble drew LAST this frame -- an NPC's, as often as not.  A Map:
@@ -8799,7 +8842,9 @@ export class EffectsRenderer {
          from their position, so chatting while chopping does not drop the
          bubble back onto the face for exactly as long as the axe is up.
          Only a speaker never seen with a band falls back to the old anchor. */
-      const _band = pid === S.myId ? S._selfBandTopY : source._bandTopY;
+      /* v2.3.3392: a sitter's or a sleeper's band came down with him
+         (rendering/emoteFx.js, last frame's: it draws after this pass) */
+      const _band = bandWithEmote(pid === S.myId ? S._selfBandTopY : source._bandTopY, pid === S.myId ? S : source);
       let _top = null;
       if (typeof _band === 'number' && isFinite(_band)) {
         _top = _band;
@@ -8857,6 +8902,106 @@ export class EffectsRenderer {
         this.chatTexts.delete(key);
         if (typeof window !== 'undefined' && window.__btChatBubbles) window.__btChatBubbles.delete(key);
       }
+    }
+  }
+
+  /* ═══ v2.3.3391: AN EMOTE'S EMOJI POPS OVER THE HEAD (game/emotes.js) ═══
+     The emote picker's 30 emoji were sent and stamped (`S.emote` for you,
+     `.emote` on a peer) and drawn by nothing.  Now each pops in over its
+     speaker: up from small with a little overshoot and a wobble, rising a few
+     px as it holds, gone in EMOTE_POP_MS.  A quick line ("GG") is not drawn
+     here -- it is the speaker's speech bubble (emotes.js).
+     Where: just over the name band, as a chat bubble's point is (the same
+     band, the same few screen px), or over the bubble itself while one is
+     up.  Its size is held on the SCREEN, as the bubble's is (v2.3.2247): the
+     world's scale divided out, so it reads the same in every zone.
+     Only listed emoji are drawn (emoteKind), only for players drawn this
+     frame, in this zone; each is destroyed the frame it ends, never hidden
+     and kept (TRAPS §192: a hidden Text still holds its picture). */
+  _updateEmotePops(S, now) {
+    const pops = this._emotePops;
+    const active = new Set();
+    const ws = S._worldScaleY || S._worldScaleX || 0;
+    const sources = [[S.myId, S.player, S.emote]];
+    for (const [id, o] of Object.entries(S.others || {})) {
+      if (!o || !o.emote || _peerNotDrawn(S, id)) continue;
+      if ((o.zone || o.z || 'town') !== S.currentZone) continue;
+      sources.push([id, o, o.emote]);
+    }
+    for (const [pid, src, em] of sources) {
+      /* v2.3.3392: or a move's own emoji (`trusted`: set by this phone's code
+         from the move's table, never from the wire -- game/emoteMoves.js) */
+      const _okEmoji = em && (em.trusted ? (typeof em.emoji === 'string' && em.emoji.length <= 8) : emoteKind(em.emoji) === 'emoji');
+      if (!pid || !src || !em || !_okEmoji) continue;
+      const age = now - (em.ts || 0);
+      if (!(age >= 0 && age < EMOTE_POP_MS)) continue;
+      let entry = pops.get(pid);
+      if (entry && entry.text.destroyed) { pops.delete(pid); entry = null; }
+      if (!entry) {
+        const text = new Text({
+          text: em.emoji,
+          style: {
+            /* the emoji fonts FIRST here: the string is one emoji, never text
+               (the bubble's text-font-first rule is about word spacing) */
+            fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Source Sans 3",sans-serif',
+            fontSize: EMOTE_POP_FONT,
+            align: 'center',
+          },
+        });
+        text.anchor.set(0.5, 1);
+        this.overlayLayer.addChild(text);
+        entry = { text, emoji: em.emoji, ts: em.ts };
+        pops.set(pid, entry);
+      } else if (entry.emoji !== em.emoji || entry.ts !== em.ts) {
+        entry.text.text = em.emoji;
+        entry.emoji = em.emoji;
+        entry.ts = em.ts;
+      }
+      active.add(pid);
+      const sx = src.renderX || src.x || 0;
+      const sy = src.renderY || src.y || 0;
+      const px = ws > 0.01 ? 1 / ws : 1;   /* one screen px, in world px */
+      /* the band over the head, as _updateChatBubbles reads it */
+      const band = bandWithEmote(pid === S.myId ? S._selfBandTopY : src._bandTopY, pid === S.myId ? S : src);
+      let base = null;
+      if (typeof band === 'number' && isFinite(band)) base = band;
+      else if (this._chatBandOff.has(pid)) base = sy + this._chatBandOff.get(pid);
+      else base = sy - 60;
+      base -= 6 * px;
+      /* over the speech bubble while one is up for them */
+      const bub = this.chatTexts.get(pid);
+      if (bub && bub.container && !bub.container.destroyed && bub.container.visible && bub._boxH) {
+        base = Math.min(base, bub.container.y - bub._boxH * bub.container.scale.y - 4 * px);
+      }
+      /* pop: 0.35 -> 1.18 in 150 ms, settling to 1 by 280 ms */
+      let k;
+      if (age < 150) { const t = age / 150; k = 0.35 + (1.18 - 0.35) * (1 - (1 - t) * (1 - t)); }
+      else if (age < 280) k = 1.18 - 0.18 * ((age - 150) / 130);
+      else k = 1;
+      const rise = 10 * px * Math.min(1, age / EMOTE_POP_MS) * (2 - Math.min(1, age / EMOTE_POP_MS));
+      const wob = age < 700 ? 0.16 * Math.sin(age / 55) * (1 - age / 700) : 0;
+      const sc = ws > 0.01 ? EMOTE_POP_PX / (EMOTE_POP_FONT * ws) : 1;
+      entry.text.x = sx;
+      entry.text.y = base - rise;
+      entry.text.scale.set(sc * k);
+      entry.text.rotation = wob;
+      entry.text.alpha = age > EMOTE_POP_MS - 450 ? Math.max(0, (EMOTE_POP_MS - age) / 450) : 1;
+      entry.text.visible = true;
+      if (typeof window !== 'undefined') {
+        if (!window.__btEmotePops) window.__btEmotePops = new Map();
+        window.__btEmotePops.set(pid, {
+          emoji: em.emoji, x: entry.text.x, y: entry.text.y, alpha: entry.text.alpha,
+          /* what the player reads: the glyph's size on the screen, CSS px */
+          screenPx: EMOTE_POP_FONT * sc * k * (ws || 1), band: typeof band === 'number' ? band : null,
+          overBubble: !!(bub && bub.container && !bub.container.destroyed && bub.container.visible),
+        });
+      }
+    }
+    for (const [pid, entry] of pops) {
+      if (active.has(pid)) continue;
+      if (entry && entry.text && !entry.text.destroyed) entry.text.destroy();
+      pops.delete(pid);
+      if (typeof window !== 'undefined' && window.__btEmotePops) window.__btEmotePops.delete(pid);
     }
   }
 
@@ -16173,6 +16318,11 @@ export class EffectsRenderer {
       }
     }
     this.chatTexts.clear();
+    /* v2.3.3391: the emotes' emoji */
+    for (const [, entry] of this._emotePops) {
+      if (entry && entry.text && !entry.text.destroyed) entry.text.destroy();
+    }
+    this._emotePops.clear();
     if (this._levelText) { this._levelText.destroy(); this._levelText = null; }
   }
 }
