@@ -1,4 +1,4 @@
-# The shadows drawn before the frame (v2.3.3435)
+# The shadows drawn before the frame (v2.3.3458)
 
 The owner, 2026-10-18: *"I'd like you to iterate on what best improves
 framerate without loss of quality (or negligible loss) for phone gameplay

@@ -18,7 +18,7 @@
  *   - v2.3.3447: and the sprites drawn the old way, by three programs instead
  *     of one (paletteTex.js), which says what the one saves on that phone --
  *     or that it costs (a note, never "the biggest gain");
- *   - v2.3.3435: and the shadows drawn the old way, in a pass in the middle of
+ *   - v2.3.3458: and the shadows drawn the old way, in a pass in the middle of
  *     the frame (lightfx/shadows.js), which says what drawing them before the
  *     frame saves on that phone (a note, never "the biggest gain");
  *   - then all of those off at once;
@@ -37,7 +37,7 @@ import { lightFxOn, setLightFx } from '@/rendering/lightfx/lightFx.js';
 import { sheenOn, setSheen } from '@/rendering/lightfx/glint.js';
 import { sheenBatchOn, setSheenPass } from '@/rendering/lightfx/sheenBatch.js';   /* v2.3.3453 */
 import { oneBatchOn, setOneBatchLive } from '@/rendering/paletteTex.js';   /* v2.3.3447 */
-import { shadowPrepassOn, setShadowPrepass } from '@/rendering/lightfx/shadows.js';   /* v2.3.3435 */
+import { shadowPrepassOn, setShadowPrepass } from '@/rendering/lightfx/shadows.js';   /* v2.3.3458 */
 import { renderDpr, setRenderResLive } from './renderRes.js';
 
 const SETTLE_MS = 1500;
@@ -74,7 +74,7 @@ function steps() {
      one (paletteTex.js ONE_BATCHER), so the card says what the one saves on
      this phone */
   if (oneBatchOn()) list.push({ k: 'threeprog', label: 'Three drawing programs (the old way)', off: { threeProg: true }, old: true });
-  /* v2.3.3435: the shadows drawn the old way, in a pass in the middle of the
+  /* v2.3.3458: the shadows drawn the old way, in a pass in the middle of the
      frame (lightfx/shadows.js), so the card says what drawing them before the
      frame saves on this phone */
   if (shadowPrepassOn()) list.push({ k: 'shadowpass', label: 'Shadows the old way (a pass mid-frame)', off: { shadowPass: true }, old: true });
@@ -122,7 +122,7 @@ function restore(was) {
 function glCounter() {
   const R = window._pixiRenderer && window._pixiRenderer.app && window._pixiRenderer.app.renderer;
   const gl = R && R.gl;
-  /* v2.3.3435: + `resumes`, the frame set aside and picked up again -- a bind
+  /* v2.3.3458: + `resumes`, the frame set aside and picked up again -- a bind
      of the screen after a bind of another picture, while the frame is drawn
      (a render to the screen starts afresh, so its own start is not one; Pixi
      binding the screen again when it is already bound costs a chip nothing):
@@ -145,12 +145,12 @@ function glCounter() {
 function measure(ms) {
   return new Promise((resolve) => {
     const t = [];
-    /* v2.3.3435: counted from the end of the first frame timed, so the frames
+    /* v2.3.3458: counted from the end of the first frame timed, so the frames
        counted are the intervals timed: put on before it, the counter took in
        one frame's draws and binds too many (a half again on the QA box's
        two-frame steps; nothing to speak of on a phone's hundred) */
     let counter = null;
-    /* v2.3.3435: and counted a frame at a time (`per`: what the chip was
+    /* v2.3.3458: and counted a frame at a time (`per`: what the chip was
        asked between two animation frames -- one frame's update and draw), the
        card saying the MIDDLE frame's: a one-off between two frames (a
        picture made once, a pool let go) is not what a frame costs, and on
@@ -186,7 +186,7 @@ function measure(ms) {
           p95: d.length ? d[Math.min(d.length - 1, Math.floor(d.length * 0.95))] : 0,
           work,
           passes: middle(per, 'binds') / 2,   /* a pass is a switch away and back */
-          resumes: middle(per, 'resumes'),   /* v2.3.3435: the frame picked up again mid-frame */
+          resumes: middle(per, 'resumes'),   /* v2.3.3458: the frame picked up again mid-frame */
           draws: middle(per, 'draws'),
           frames,
           res: renderDpr(),
@@ -198,7 +198,7 @@ function measure(ms) {
   });
 }
 
-/* v2.3.3435: the middle frame's count (two middles averaged) */
+/* v2.3.3458: the middle frame's count (two middles averaged) */
 function middle(per, k) {
   if (!per.length) return 0;
   const v = per.map((x) => x[k]).sort((a, b) => a - b);
@@ -298,7 +298,7 @@ export async function runSpeedTest() {
   }
   const base = rows[0];
   const notes = [];
-  /* v2.3.3453, v2.3.3435, v2.3.3447: a step that puts back an old way (the
+  /* v2.3.3453, v2.3.3458, v2.3.3447: a step that puts back an old way (the
      shine's pass each, the shadows' pass mid-frame, the three programs) is not a setting to switch off, so it is
      never "the biggest gain"; it says what the new way saves */
   const isOld = (x) => !!(list.find((st) => st.k === x.k) || {}).old;

@@ -48,7 +48,7 @@
  * (The half precision `?shadowhp=0` puts back is an iPhone's alone: the QA
  * box runs mediump at full precision, so no picture here can show it.)
  *
- * v2.3.3435: the shadows are drawn BEFORE the frame now, into a picture
+ * v2.3.3458: the shadows are drawn BEFORE the frame now, into a picture
  * exactly the screen's size (shadows.js _prepass, docs/specs/shadow-prepass.md),
  * and there Pixi's snapping lands on the picture's own texel grid: snapped,
  * they are as steady as unsnapped (measured: across 0 and 0.0003, down 0.0183
@@ -216,7 +216,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      and down (v2.3.3338's) */
   const now = await measure(browser, wsPort, webPort, '', OUT, 'locked', [{ axis: 'x', dev: 1 }, { axis: 'x', dev: DPR }, { axis: 'y', dev: DPR }]);
   const was = await measure(browser, wsPort, webPort, 'shadowlock=0', OUT, 'unlocked', [{ axis: 'x', dev: 1 }]);
-  /* v2.3.3435: snapped, the old way (the filter): drawn before the frame,
+  /* v2.3.3458: snapped, the old way (the filter): drawn before the frame,
      snapping costs nothing (the header) */
   const snapped = await measure(browser, wsPort, webPort, 'shadowsnap=1&shadowpass', OUT, 'snapped', [{ axis: 'x', dev: DPR }, { axis: 'y', dev: DPR }]);
   console.log('    locked:   ' + JSON.stringify(now));

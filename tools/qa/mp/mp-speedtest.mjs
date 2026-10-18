@@ -85,7 +85,7 @@ const look = (P) => P.page.evaluate(() => {
     pieces: lp && lp.shadows ? lp.shadows.pieces : null,
     water: window.__btWaves && window.__btWaves.probe ? window.__btWaves.probe().on : null,
     saved: { light: localStorage.getItem('bt-lightfx'), sheen: localStorage.getItem('bt-sheen') },
-    pre: window.__btShadowPrepass ? window.__btShadowPrepass.on() : null,   /* v2.3.3435 */
+    pre: window.__btShadowPrepass ? window.__btShadowPrepass.on() : null,   /* v2.3.3458 */
   };
 });
 
@@ -169,11 +169,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
        box's software renderer, which keeps the three (TRAPS §225) */
     const oneOn = await P.page.evaluate(() => !!(window.__btOneBatch && window.__btOneBatch().on)).catch(() => null);
     /* v2.3.3453: + the metal shine the old way (lightfx/sheenBatch.js) */
-    /* v2.3.3435: + the shadows the old way, in a pass mid-frame (lightfx/shadows.js) */
+    /* v2.3.3458: + the shadows the old way, in a pass mid-frame (lightfx/shadows.js) */
     const want = ['all', 'noshadow', 'noshine', 'shinepass', 'shadowpass', ...(oneOn ? ['threeprog'] : []), 'still', 'res2', 'bare'];
     rec.ok(`2. every step measured: ${keys.join(', ')}`,
       want.every((k) => keys.includes(k)) && (oneOn || !keys.includes('threeprog')) && rows.every((r) => r.frames > 1 && r.fps > 0), { keys, oneOn });
-    /* v2.3.3435: how often each step set the screen aside -- reported, not
+    /* v2.3.3458: how often each step set the screen aside -- reported, not
        compared: on this box a step is two or three frames, and the metal
        shine's passes come and go with its glints; mp-shadowprepass counts the
        shadows' own on a held frame */

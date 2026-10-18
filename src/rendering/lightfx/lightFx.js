@@ -58,7 +58,7 @@ export function setLightFx(on, persist = true) {
 }
 
 export class LightFx {
-  /* v2.3.3435: `renderer` -- the shadows' pieces are drawn before the frame
+  /* v2.3.3458: `renderer` -- the shadows' pieces are drawn before the frame
      with it (shadows.js _prepass) */
   constructor(layers, worldContainer, renderer = null) {
     this.shadows = layers && layers.shadows ? new ShadowSystem(layers.shadows, worldContainer, renderer) : null;
@@ -177,7 +177,7 @@ export class LightFx {
       zone: this.zone,
       /* v2.3.3000: the light used last frame -- the Wheel's eased one there */
       light: this.light ? { lx: this.light.lx, ly: this.light.ly, alpha: +(+this.light.alpha).toFixed(3), color: this.light.color, region: this.light.region || null } : zoneLight(this.zone),
-      /* v2.3.3435: `filtered` -- the layer drawn through its one pass, the
+      /* v2.3.3458: `filtered` -- the layer drawn through its one pass, the
          filter's or the pre-pass's shade (`prepass` says which) */
       shadows: sh ? { ...sh.stats, keys: sh.stats.keys.slice(),
         filtered: !!(layer && layer.filters && layer.filters.length) || !!(sh.shade && sh.shade.visible), pool: sh.pool.length,
