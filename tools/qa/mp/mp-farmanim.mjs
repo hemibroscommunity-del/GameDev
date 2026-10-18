@@ -1,4 +1,4 @@
-/* ═══ THE FARMER'S OWN MOVES, ON A PHONE (v2.3.3340) ═══
+/* ═══ THE FARMER'S OWN MOVES, ON A PHONE (v2.3.3345) ═══
  *
  * The owner, 2026-10-17: "I'd like to have animations during the farming
  * process perhaps on a sprite sheet."  They made three in ChatGPT -- the hoe,
@@ -19,11 +19,19 @@
  *   3. HIS SIZE: standing with the hoe and the can he is as tall as his
  *      walking figure from head to boots, within 6%;
  *   4. each step still ends in one farm_act the worker takes;
- *   5. leaving through the gate lets all of it go: the 'farm' pose idle again,
- *      the three strips and the two tools no longer on the graphics chip;
- *   6. no page errors.
+ *   5. (v2.3.3345) IN ARMOUR, cut from the owner's dressed sheets, on bed 1:
+ *      copper plate and greaves (dig, the hoe), the greaves under his green
+ *      tee (plant, the kneel), the plate over his trousers (water, the can) --
+ *      in each, every frame: the garments he wears drawn and the others not,
+ *      the tee hidden under a plate, the body under greaves the one cut for
+ *      them, each garment on the body's own frame, in the order body,
+ *      greaves, shirt, plate, tool, and in the metal his walking figure wears;
+ *   6. leaving through the gate lets all of it go: the 'farm' pose idle again,
+ *      the three strips, the two tools and the nine garments no longer on the
+ *      graphics chip;
+ *   7. no page errors.
  * Pictures: tools/qa/mp/out/farmanim-<step>-<frame>.png, one a frame, and
- * farmanim-<step>.png, the whole step at its middle frame.
+ * farmanim-armour-<step>-<frame>.png for the armour.
  */
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -84,7 +92,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return v;
   };
   const fig = () => P.page.evaluate(() => ({ fig: window.__btFarmFigure ? window.__btFarmFigure() : null, body: !!window._gameState.current._standInBody,
-    work: window.__btFarmWalk ? (window.__btFarmWalk() || {}).work : null }));
+    work: window.__btFarmWalk ? (window.__btFarmWalk() || {}).work : null,
+    made: window.__btStandIns ? (window.__btStandIns().farm || {}).state : null }));
   /* a picture round the farmer, 170 x 190 CSS px over his boots */
   const shot = async (name, f) => {
     const c = await P.page.evaluate((f) => {
@@ -193,7 +202,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const F = v && v.fig;
         if (F) await shot(`${step}-${f}`, F);
         const P0 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
-        frames.push({ f, ok: !!F && F.frame === f, anim: F && F.anim, foot: F && F.foot, feetY: F && F.figure.feetY, px: P0.x,
+        frames.push({ f, ok: !!F && F.frame === f, anim: F && F.anim, foot: F && F.foot, feetY: F && F.figure.feetY, px: P0.x, work: v && v.work, made: v && v.made,
           body: v && v.body, shirt: F && F.shirt, prop: F && F.prop, order: F && F.order, crown: F && F.crown, h: F && F.figure.drawnH, headW: F && F.headW });
       }
       await P.page.evaluate(() => { clearInterval(window.__pinT); window.__btFarmHoldFrame = null; const w = window._gameState.current._farmWork; if (w) { w.startedAt = Date.now() - 50; w.doneAt = Date.now() + 120; } });
@@ -222,7 +231,79 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(700);
     }
 
-    /* ── 5. leaving lets it all go ── */
+    /* ── 5. v2.3.3345: in armour, on bed 1 ── */
+    const B1 = FARM_BEDS[1];
+    const OUTFITS = [
+      { step: 'dig', chest: 'copperplate', legs: 'coppergreaves', label: 'copper plate and greaves' },
+      { step: 'plant', chest: 'none', legs: 'coppergreaves', label: 'copper greaves under his green tee' },
+      { step: 'water', chest: 'copperplate', legs: 'none', label: 'the copper plate over his trousers' },
+    ];
+    report.armour = {};
+    for (const o of OUTFITS) {
+      await P.page.evaluate(({ c, l }) => { window.__btSetGear('chest', c); window.__btSetGear('legs', l); }, { c: o.chest, l: o.legs });
+      const wantUnder = o.legs !== 'none';
+      /* the body under greaves is baked again as they go on or come off */
+      const baked = await until(() => P.page.evaluate(() => (window.__btFarmFigure ? window.__btFarmFigure().under : null)), (u) => u === wantUnder, 8000);
+      await P.page.waitForTimeout(400);
+      /* the metal his walking figure wears, read off its own layers */
+      const walk = await P.page.evaluate(() => {
+        const t = window.__btGearTints ? window.__btGearTints() : null;
+        const of = (slot) => { const r = t && t.slots.find((x) => x.slot === slot); return r && r.visible ? r.tint : null; };
+        return { chest: of('chest'), legs: of('legs') };
+      });
+      await H.hopTo(P, B1.x + B1.w / 2, B1.y - 16 - FOOT_DY, { step: 80, gap: 220, tries: 60 });
+      const near = await until(() => P.page.evaluate(() => (window.__btFarmWalk() || {}).near), (n) => n && n.i === 1 && n.step === o.step, 6000);
+      const a0 = (await acts()).length;
+      const anim = FARM_STEP_ANIM[o.step], A = FARM_ANIMS[anim];
+      const T = FARM_WORK_MS[o.step];
+      const pinAt = (mid, f) => P.page.evaluate(({ step, mid, T, f }) => {
+        clearInterval(window.__pinT);
+        window.__btFarmHoldFrame = f;
+        const pin = () => {
+          const w = window._gameState.current._farmWork;
+          if (!w || w.step !== step) return;
+          const n = Date.now(); w.startedAt = n - mid; w.doneAt = w.startedAt + T * 100;
+        };
+        pin();
+        window.__pinT = setInterval(pin, 10);
+      }, { step: o.step, mid, T, f });
+      await pinAt(frameMid(o.step, 0, T), 0);
+      await P.page.keyboard.press('e');
+      const started = await until(fig, (v) => v.work && v.work.step === o.step && v.fig && v.fig.visible, 3000);
+      const frames = [];
+      for (let f = 0; f < A.n; f++) {
+        await pinAt(frameMid(o.step, f, T), f);
+        const v = await until(fig, (x) => x.fig && x.fig.visible && x.fig.frame === f, 1500);
+        const F = v && v.fig;
+        if (F) await shot(`armour-${o.step}-${f}`, F);
+        frames.push({ f, ok: !!F && F.frame === f && F.anim === anim, under: F && F.under, legs: F && F.legs, chest: F && F.chest, shirt: F && F.shirt,
+          prop: F && F.prop, order: F && F.order });
+      }
+      await P.page.evaluate(() => { clearInterval(window.__pinT); window.__btFarmHoldFrame = null; const w = window._gameState.current._farmWork; if (w) { w.startedAt = Date.now() - 50; w.doneAt = Date.now() + 120; } });
+      report.armour[o.step] = { outfit: o, walk, frames };
+      const wearsChest = o.chest !== 'none', wearsLegs = o.legs !== 'none';
+      rec.ok(`in ${o.label}: the ${anim}, all ${A.n} frames (${started ? 'started' : 'NOT started'}; at the bed ${!!near}), on the body ${wantUnder ? 'cut for greaves' : 'in his trousers'} (${baked})`,
+        !!started && frames.every((x) => x.ok && x.under === wantUnder), frames.map((x) => x.f + ':' + x.ok + ':' + x.under).join(' '));
+      const layersOk = (x) => x.legs && x.chest && x.shirt && x.legs.visible === wearsLegs && x.chest.visible === wearsChest
+        && x.shirt.visible === !wearsChest && x.prop.visible === !!A.prop
+        && (!wearsLegs || x.legs.frame === x.f) && (!wearsChest || x.chest.frame === x.f);
+      rec.ok(`...${[wearsLegs && 'the greaves', !wearsChest && 'the tee', wearsChest && 'the plate'].filter(Boolean).join(', ')} drawn${wearsChest ? ' (the tee hidden under the plate)' : ''}, each on the body's own frame`,
+        frames.every(layersOk), frames.map((x) => ({ f: x.f, legs: x.legs, chest: x.chest, shirt: x.shirt && x.shirt.visible })));
+      const seq = (x) => ['body', 'legs', 'shirt', 'chest', 'prop'].map((k) => x.order[k]).filter((i) => i >= 0);
+      rec.ok(`...in the order body, greaves, shirt, plate, tool (${JSON.stringify(frames[0].order)})`,
+        frames.every((x) => x.order && x.order.body >= 0 && seq(x).every((i, j, a) => j === 0 || i > a[j - 1])), frames.map((x) => x.order));
+      const metalOk = (x) => (!wearsLegs || (x.legs.tint === walk.legs && walk.legs !== 0xffffff))
+        && (!wearsChest || (x.chest.tint === walk.chest && walk.chest !== 0xffffff));
+      rec.ok(`...in the copper his walking figure wears (greaves ${walk.legs}, plate ${walk.chest})`, frames.every(metalOk),
+        { walk, got: frames.map((x) => ({ legs: x.legs && x.legs.tint, chest: x.chest && x.chest.tint })) });
+      const sent = await until(acts, (l) => l.length > a0, 6000);
+      rec.ok(`...and the step ends in ONE farm_act the worker takes (${JSON.stringify(sent.slice(a0))})`,
+        sent.length - a0 === 1 && sent[a0].op === o.step && JSON.stringify(sent[a0].beds) === '[1]', sent.slice(a0));
+      await P.page.waitForTimeout(700);
+    }
+    await P.page.evaluate(() => { window.__btSetGear('chest', 'none'); window.__btSetGear('legs', 'none'); });
+
+    /* ── 6. leaving lets it all go ── */
     const gpuBefore = await P.page.evaluate(() => (window.__btGpuTex ? window.__btGpuTex(400) : null));
     const farmTex = (g) => !g ? null : (g.list || g.top || []).filter((t) => /farm-(hoe|water|kneel)|farmhoe|farmwater|farmkneel/.test(String(t.label || t.url || t.src || ''))).length;
     await H.hopTo(P, FARM_GATE.x, 1376 - FOOT_DY, { step: 80, gap: 220, tries: 80 });

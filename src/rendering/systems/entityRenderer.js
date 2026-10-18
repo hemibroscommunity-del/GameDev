@@ -12153,7 +12153,7 @@ export class EntityRenderer {
        a body hidden for a figure not there yet would be an empty spot. */
     const _chopHide = (_exSkill === 'woodcutting' && standInReady('chop')) || (_exSkill === 'cooking' && standInReady('cook'))
       || (!!S._firemaking && standInReady('fire'))
-      || (!!S._farmWork && farmFigureReady());   /* v2.3.3136; v2.3.3340: the farmer's own moves (effectsRenderer _updateFarmWork) */
+      || (!!S._farmWork && farmFigureReady());   /* v2.3.3136; v2.3.3345: the farmer's own moves (effectsRenderer _updateFarmWork) */
     display.visible = !_chopHide;
     S._standInBody = _chopHide;   /* v2.3.3077 QA: the body is put away for a gathering pose (mp-gatherposes) */
     display.x = P.x;

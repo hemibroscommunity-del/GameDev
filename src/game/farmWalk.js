@@ -13,7 +13,7 @@
  *     the stick or a tap on the bed itself takes it (desktopControls
  *     runInteract, BroTown's bed tap);
  *   - you stand at its back, facing us, and work it in the owner's own
- *     moves (v2.3.3340, effectsRenderer _updateFarmWork): the hoe to dig,
+ *     moves (v2.3.3345, effectsRenderer _updateFarmWork): the hoe to dig,
  *     the watering can to water, kneeling with your hands in the soil to
  *     plant, put compost on and harvest -- dirt, water, seeds, compost or
  *     leaves flying where the work lands (farmWorld.js), a sound at each

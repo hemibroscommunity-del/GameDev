@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.3340: the farmer's three animations, cut from the owner's three sheets.
+"""v2.3.3345: the farmer's three animations, cut from the owner's three sheets.
 
     python3 tools/make_farm_anims.py            # writes the strips + src/data/farmAnims.js
     PREVIEW=/some/dir python3 tools/make_farm_anims.py   # and contact sheets to look at
@@ -48,29 +48,48 @@ makes everything that needs:
      101 / 51.  ChatGPT drew the three at three sizes (heads 143, 121
      and 114 px); each sheet's frames agree with each other to 1 px.  Area
      resampling, on premultiplied colour.
-  5. THE SHIRT: a white T-shirt mask made from the body itself -- the
-     fire-lighter's v2.3.1713 recipe (tools/build_fire_shirt.mjs), which
-     fits by construction where a painted shirt sheet has to be nudged on
-     (FIRE_GEAR_REG): his skin from the collar down to his trousers that
-     the middle of his chest reaches WITHOUT A DETOUR (a forearm hanging in
-     front of the chest is reached only round by the shoulder), and the top
-     of each arm as the sleeve; a darker hem where it meets skin.  The game
-     tints it your shirt's colour and bakes your print and pattern on it,
-     as on every stand-in.  KNOWN WRONG: where an arm is in front of his
-     body (the can at his belly, the hoe across it) the whole arm comes out
-     as shirt -- the owner: "Whole arm was green".  Their sheets drawn again
-     in the game's white tee replace this (docs/ART-WISHLIST.md, "The
-     farmer's moves, dressed").
+  5. THE SHIRT AND THE ARMOUR, from the owner's DRESSED sheets: each sheet
+     drawn again by ChatGPT with the bro in the game's white tee
+     (<name>-tee.png) and in its steel plate and greaves (<name>-armour.png),
+     from the references in docs/art/.  The first cut made the shirt out of
+     the bare body and got the arms wrong wherever one crossed in front of
+     him -- the owner: "Whole arm was green".  ChatGPT kept every pose: each
+     dressed frame lies within a px or two of the bare one.  It is lined up
+     to the bare frame by the skin of his head (the shift, within 4 px each
+     way, that lays the two heads' skin best over each other -- not by the
+     eyes, which each drawing splits differently round the pupil), then cut
+     with the bare frame's own shift and scale, so its layers lie on the
+     bare body as the walking layers lie on the walking body:
+       - the SHIRT: the white cloth below the face and its black edge, never
+         on his trousers, boots or the tool (the bare frame's classes);
+       - the ARMOUR: the steel and its edge, split by what lies under it in
+         the bare frame -- over skin (arms, chest, neck) the PLATE, over
+         trousers and boots the GREAVES (the chain-mail belt rides with the
+         greaves: it sits over the trousers' top);
+       - the BODY UNDER GREAVES (`under`): the bare body with every trouser
+         and boot pixel the greaves do not cover taken out, so no strip of
+         trouser or boot shows round the plates.  A boot is the boot grey
+         below the trousers or beside them (dilated 25 px), never a pixel
+         of the tool: the hoe's blade is that grey too.
+     The game tints the shirt your colour and bakes your print and pattern
+     on it, and tints the armour its metal, as on every stand-in.
   6. THE CROWNS: where the top of the head is in each frame, for the hat --
      straight up from between the eyes to the last skin pixel.
 
 Writes, for each animation `<a>`:
     public/sprites/skills/farm-<a>.png           the man, frames side by side
+    public/sprites/skills/farm-<a>-greaves.png   the man under greaves
     public/sprites/skills/farm-<a>-prop.png      the tool (hoe and can only)
-    public/sprites/gear/shirt/tshirt/farm<a>-south.png   the shirt layer
+    public/sprites/gear/shirt/tshirt/farm<a>-south.png        the shirt layer
+    public/sprites/gear/chest/steelplate/farm<a>-south.png    the plate
+    public/sprites/gear/legs/steelgreaves/farm<a>-south.png   the greaves
 and src/data/farmAnims.js (GENERATED): each strip's frame size, the point
-under the boots it stands on, the crowns, the head's size.  Deterministic.
-Needs numpy and Pillow.  docs/specs/farm-walk.md "The farmer's own moves".
+under the boots it stands on, the crowns, the head's size.  Deterministic
+(about 75 s).  Needs numpy and Pillow.  PREVIEW's sheets show every outfit
+the game can put together -- bare, the tee, plate and greaves, greaves under
+the tee, the plate over trousers -- as the mixed ones are where a misfit
+between the sheets would show.  docs/specs/farm-walk.md "The farmer's own
+moves".
 """
 import json, os, sys
 from collections import deque
@@ -81,9 +100,11 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 SRC = os.path.join(ROOT, 'tools/farm_anim_src')
 SKILLS = os.path.join(ROOT, 'public/sprites/skills')
 SHIRTS = os.path.join(ROOT, 'public/sprites/gear/shirt/tshirt')
+CHESTS = os.path.join(ROOT, 'public/sprites/gear/chest/steelplate')
+LEGS = os.path.join(ROOT, 'public/sprites/gear/legs/steelgreaves')
 OUT_JS = os.path.join(ROOT, 'src/data/farmAnims.js')
 PREVIEW = os.environ.get('PREVIEW')
-VER = '2.3.3340'
+VER = '2.3.3345'
 
 CW, CH, N = 384, 512, 8          # the owner's cells, read like a page
 HEAD_PX = 64                     # the head, ears to ears at the eyes, in the strips
@@ -195,15 +216,18 @@ def hue(rgb):
 WATER = np.array([142., 230., 253.])     # the can's water, as painted
 
 
-def matte(c, B):
+def matte(c, B, drops=True):
     """(colour, alpha) of one cell, the magenta taken out with its blend."""
     d = from_bg(c, B)
     bgish = d < 60
     core = (d >= 150) & ~near(bgish)
     # the water's pale drops are painted half into the magenta: lilac, which
-    # reads as solid -- they are water, as much of it as the green says
+    # reads as solid -- they are water, as much of it as the green says.  Not
+    # in a dressed sheet (drops=False): there the armour's pale steel, blended
+    # into the magenta at its edges, is lilac too, and its tools and drops are
+    # the bare sheet's anyway
     lilac = (c[..., 2] > 200) & (c[..., 0] > 110) & (c[..., 1] > 110) & (np.abs(c[..., 0] - c[..., 1]) < 70) \
-        & (c[..., 0] < 225) & (c[..., 1] < 225)
+        & (c[..., 0] < 225) & (c[..., 1] < 225) & drops
     core &= ~lilac
     F, depth = nearest_fill(core, c, 12)
     F[lilac] = WATER
@@ -292,11 +316,15 @@ def tool_mask(name, rgb, alpha, K):
 
 # ── 3. lining the frames up ────────────────────────────────────────────────
 
-def eyes(rgb, alpha):
+def eyes(rgb, alpha, win=None):
     """Middle of the two eyes and the head's width at them (ears to ears,
-    outline included -- the convention the fire-lighter's 101 px is)."""
+    outline included -- the convention the fire-lighter's 101 px is).  `win`
+    keeps the search to a box: in a dressed frame the shirt is white and the
+    armour's highlights nearly so."""
     r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
     white = (alpha > 0.5) & (r > 200) & (g > 200) & (b > 200)
+    if win is not None:
+        white &= win
     lab, sizes = labels(white)
     pieces = []
     for i in range(1, len(sizes)):
@@ -375,128 +403,104 @@ def shift(arr, dx, dy):
     return out
 
 
-# ── 5. the shirt ───────────────────────────────────────────────────────────
+# ── 5. the shirt and the armour, from the dressed sheets ──────────────────
 
-def geodesic(S, seeds, lim):
-    """Distance from the nearest seed through S only (8 steps, diagonals
-    1.414), up to lim; inf beyond."""
-    import heapq
-    H, W = S.shape
-    geo = np.full(S.shape, np.inf)
-    hq = []
-    for y, x in seeds:
-        if S[y, x]:
-            geo[y, x] = 0
-            hq.append((0.0, y, x))
-    heapq.heapify(hq)
-    steps = ((-1, 0, 1.0), (1, 0, 1.0), (0, -1, 1.0), (0, 1, 1.0),
-             (-1, -1, 1.414), (-1, 1, 1.414), (1, -1, 1.414), (1, 1, 1.414))
-    while hq:
-        d0, y, x = heapq.heappop(hq)
-        if d0 > geo[y, x] or d0 > lim:
-            continue
-        for dy, dx, w in steps:
-            ny, nx = y + dy, x + dx
-            if 0 <= ny < H and 0 <= nx < W and S[ny, nx]:
-                nd = d0 + w
-                if nd < geo[ny, nx]:
-                    geo[ny, nx] = nd
-                    heapq.heappush(hq, (nd, ny, nx))
-    return geo
+def eye_box(shape, ex, ey, hw):
+    """The eyes and round them: white there is an eye, never cloth or steel."""
+    yy, xx = np.indices(shape)
+    return (np.abs(xx - ex) <= 0.45 * hw) & (np.abs(yy - ey) <= 0.22 * hw)
 
 
-SLEEVE = 0.50     # how far the shirt reaches out of the middle of the trunk, through it, x the head
-CAP = 0.36        # a shoulder that is a piece of its own (leaning forward): its cap, x the head
+def legs_of(bare):
+    """His trousers and boots in a bare frame.  The trousers are olive, as
+    body_classes says, and greener than a dark-brown shading px it also lets
+    through, in pieces of some size (one such px at a shoulder's edge once
+    pulled the shoulder plate into the greaves); the boots grey with
+    trousers just above them, as a boot always has (boots_anchor's rule, per
+    pixel) -- not a grey edge of the can, or the hoe's blade."""
+    K, tool = bare['K'], bare['tool']
+    pants = K['pants'] & (bare['rgb'][..., 1] > 55) & ~tool
+    lab, sizes = labels(pants)
+    pants = (sizes[lab] >= 40) & (lab > 0)
+    above = np.zeros_like(pants)
+    for d in range(1, 61):      # a boot is up to ~50 px tall under its trousers
+        above[d:] |= pants[:-d]
+    # ...or beside them: kneeling, the boot lies behind the knee, its trousers
+    # alongside, and a hand on the ground next to it would claim it as skin
+    return pants | (K['grey'] & ~tool & (above | dilate8(pants, 25)))
 
 
-def erode4(m):
-    e = m.copy()
-    e[1:] &= m[:-1]; e[:-1] &= m[1:]; e[:, 1:] &= m[:, :-1]; e[:, :-1] &= m[:, 1:]
-    return e
-
-
-def shirt_mask(K, rgb, alpha, ex, ey, hw, tool):
-    """The T-shirt.  His skin below the collar and above the trousers, less
-    the face, is cut apart where the drawing's outlines cut it (one px eaten
-    off first, so a hand touching the chest through a gap in its outline is a
-    piece of its own); the TRUNK is the piece that fills the middle of the
-    body, and the shirt is the trunk out to SLEEVE heads from its middle
-    column -- the chest, the belly, the shoulders and the tops of the arms
-    -- while a hand or forearm in front of it, a piece of its own, stays
-    bare.  Leaning forward, his shoulders are pieces of their own beside his
-    face: each one's cap, CAP heads down from its top."""
+def bare_classes(bare):
+    """What every pixel of a bare frame is nearest to: 1 his skin (arms,
+    chest, neck, face: the painted skin, shading lines included), 2 his
+    trousers or boots -- filled outwards over the outlines and past the
+    body's edge, so steel drawn bulkier than the body still finds what it
+    covers."""
+    rgb, K = bare['rgb'], bare['K']
     r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
-    op = K['op']
-    H, W = alpha.shape
-    # all the painted skin, shading lines included (what the game's _isSkin takes)
-    skin = op & (r > g) & (g >= b) & (r - b > 30) & (r > 90) & (r - g > 25) & ~K['eye'] & ~tool
-    yy, xx = np.indices((H, W))
-    collar = int(round(ey + 0.50 * hw))
-    # the face: its skin, filled from the cheek down to the chin, never past it
-    head_box = (yy <= ey + 0.47 * hw) & (np.abs(xx - ex) <= 0.52 * hw)
-    labF, _ = labels(skin & head_box, diag=False)
-    win = labF[int(ey - 0.05 * hw):int(ey + 0.25 * hw), int(ex - 0.2 * hw):int(ex + 0.2 * hw)]
-    ids = np.bincount(win[win > 0])
-    face = (labF == int(np.argmax(ids))) if len(ids) > 1 else np.zeros_like(skin)
-    neck = (np.abs(xx - ex) <= 0.34 * hw) & (yy < collar)
-    # the waist: the first row of the trunk with a real run of trousers
-    cols = (max(0, int(ex - 0.5 * hw)), min(W, int(ex + 0.5 * hw)))
-    pants = K['pants'] & ~dilate8(tool, 3)
-    waist = H
-    for y in range(collar, H):
-        row = pants[y, cols[0]:cols[1]]
-        run = best = 0
-        for v in row:
-            run = run + 1 if v else 0
-            best = max(best, run)
-        if best >= 0.25 * hw:
-            waist = y
-            break
-    S = skin & ~face & ~neck & (yy >= ey - 0.1 * hw) & (yy < waist)
-    lab, sizes = labels(erode4(S), diag=False)
-    mid = S & (np.abs(xx - ex) <= 0.30 * hw) & (yy >= collar)
-    counts = np.bincount(lab[mid], minlength=len(sizes))
-    counts[0] = 0
-    if not counts.any():
-        return np.zeros_like(S), collar, waist
-    # leaning forward, his shoulders rise beside his face, each arm a piece of
-    # its own from there down to the hand on the ground: such a piece starts
-    # high beside the face, lies mostly to one side and holds nothing at its
-    # top (a piece whose top is a hand on the tool's handle is an arm lifting
-    # it, not a shoulder) -- it gets a cap, never the trunk's sleeve
-    grip = dilate8(tool, int(0.10 * hw)) if tool.any() else np.zeros_like(S)
-    cap_ids = []
-    for i in range(1, len(sizes)):
-        if sizes[i] < 0.02 * hw * hw:
-            continue
-        pys, pxs = np.nonzero(lab == i)
-        t = int(pys.min())
-        tx = int(np.round(pxs[pys == t].mean()))
-        if t <= ey + 0.35 * hw and abs(tx - ex) >= 0.30 * hw and abs(pxs.mean() - ex) >= 0.30 * hw \
-                and not grip[t, tx]:
-            cap_ids.append((i, t, tx))
-    for i, _, _ in cap_ids:
-        counts[i] = 0
-    if not counts.any():
-        return np.zeros_like(S), collar, waist
-    # the trunk: the piece filling the middle of the body -- and any other
-    # holding a good share of it, when an arm across the chest cuts the trunk
-    # in two (the hoe lifted to the shoulder)
-    tl = int(np.argmax(counts))
-    trunk_ids = [i for i in range(1, len(counts)) if counts[i] >= 0.15 * counts[tl]]
-    trunk = near(np.isin(lab, trunk_ids)) & S
-    seeds = [tuple(p) for p in np.argwhere(trunk & mid)]
-    geo = geodesic(trunk, seeds, SLEEVE * hw)
-    m = geo <= SLEEVE * hw
-    for i, t, tx in cap_ids:
-        piece = near(lab == i) & S
-        start = (t, tx) if piece[t, tx] else tuple(np.argwhere(piece)[0])
-        m |= geodesic(piece, [start], CAP * hw) <= CAP * hw
-    # a hand raised to the shoulder round the tool's handle (the hoe lifted
-    # over it) is part of the arm's piece: above the collar, what touches the
-    # tool is a hand
-    m &= ~(dilate8(tool, int(0.10 * hw)) & (yy < collar))
-    return m, collar, waist
+    # (not the tool: the hoe's dirt is his skin's orange-brown, and once made
+    # the boots beside it "skin", under the plate)
+    skin = K['op'] & (r > g) & (g >= b) & (r - b > 30) & (r > 90) & (r - g > 25) & ~bare['tool']
+    lab = np.zeros(K['op'].shape, np.int32)
+    lab[skin | K['eye']] = 1
+    lab[legs_of(bare)] = 2
+    filled, depth = nearest_fill(lab > 0, lab[..., None], 80)
+    return filled[..., 0]
+
+
+def head_skin(rgb, al, ex, ey, hw):
+    """His head's painted skin, in a box round it."""
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    yy, xx = np.indices(al.shape)
+    box = (np.abs(xx - ex) <= 0.70 * hw) & (yy >= ey - 0.85 * hw) & (yy <= ey + 0.45 * hw)
+    return box & (al > 0.5) & (r > g) & (g >= b) & (r - b > 30) & (r > 90) & (r - g > 25)
+
+
+def register(bare, rgb, al, hw):
+    """A dressed frame moved onto its bare frame by the head: the shift, at
+    most 4 px each way, that lays its skin best on the bare frame's.  ChatGPT
+    kept the pose -- measured, every frame within a px or two -- but not the
+    eyes' whites: a pupil splits one of them in two, in pieces of other sizes
+    in each drawing, so their middles wander."""
+    A = head_skin(bare['rgb'], bare['al'], bare['ex'], bare['ey'], hw)
+    best = None
+    for oy in range(-4, 5):
+        for ox in range(-4, 5):
+            S = shift(head_skin(rgb, al, bare['ex'] - ox, bare['ey'] - oy, hw), ox, oy)
+            score = int((A & S).sum()) - int((A ^ S).sum())
+            if best is None or score > best[0]:
+                best = (score, ox, oy)
+    _, ox, oy = best
+    if abs(ox) == 4 or abs(oy) == 4:
+        raise SystemExit(f'a dressed frame is {ox},{oy} px or more off its bare frame: not the same pose')
+    return shift(rgb, ox, oy), shift(al, ox, oy), (ox, oy)
+
+
+def tee_layer(rgb, al, bare, cls, hw):
+    """The white T-shirt and its black edge: grey-white cloth that is not an
+    eye, not the tool, and not over his trousers or boots."""
+    mx, mn = rgb.max(-1), rgb.min(-1)
+    away = ~eye_box(al.shape, bare['ex'], bare['ey'], hw) & ~bare['tool']
+    legs = legs_of(bare)
+    cloth = (al > 0.5) & ((mx - mn) < 45) & (mx >= 150) & away & ~legs
+    lab, sizes = labels(cloth)
+    cloth = (sizes[lab] >= 30) & (lab > 0)
+    edge = (al > 0.04) & (mx < 110) & dilate8(cloth, 2) & away & ~legs
+    return cloth | edge
+
+
+def armour_layers(rgb, al, bare, cls, hw):
+    """The steel and its black edge -- no helmet, so nothing round the eyes --
+    split by what is under it in the bare frame: over skin the PLATE (chest,
+    arms, the gorget at his neck), over trousers and boots the GREAVES."""
+    mx, mn = rgb.max(-1), rgb.min(-1)
+    away = ~eye_box(al.shape, bare['ex'], bare['ey'], hw) & ~bare['tool']
+    steel = (al > 0.5) & ((mx - mn) < 50) & (mx >= 40) & away
+    lab, sizes = labels(steel)
+    steel = (sizes[lab] >= 30) & (lab > 0)
+    edge = (al > 0.04) & (mx < 60) & dilate8(steel, 2) & away
+    m = steel | edge
+    return m & (cls != 2), m & (cls == 2)
 
 
 # ── 4. resampling ──────────────────────────────────────────────────────────
@@ -511,16 +515,25 @@ def resample(rgba, s):
 
 # ── main ───────────────────────────────────────────────────────────────────
 
-def build(name, register, has_tool):
-    src = np.array(Image.open(os.path.join(SRC, name + '.png')).convert('RGB')).astype(np.float32)
-    B = bg_colour(src)
-    cells = [src[(f // 4) * CH:(f // 4 + 1) * CH, (f % 4) * CW:(f % 4 + 1) * CW] for f in range(N)]
+def load_sheet(file):
+    """(background colour, the 8 cells) of one of the owner's sheets."""
+    src = np.array(Image.open(os.path.join(SRC, file)).convert('RGB')).astype(np.float32)
+    return bg_colour(src), [src[(f // 4) * CH:(f // 4 + 1) * CH, (f % 4) * CW:(f % 4 + 1) * CW] for f in range(N)]
+
+
+DRESSED = ('tee', 'armour')
+LAYERS = ('body', 'prop', 'shirt', 'chest', 'legs', 'under')
+
+
+def build(name, anchor, has_tool):
+    B, cells = load_sheet(name + '.png')
+    dressed = {v: load_sheet(f'{name}-{v}.png') for v in DRESSED}
     frames = []
     for f, c in enumerate(cells):
         rgb, al = matte(c, B)
         K = body_classes(rgb, al)
         ex, ey, hw = eyes(rgb, al)
-        if register == 'boots':
+        if anchor == 'boots':
             ax, ay = boots_anchor(K, al)
         else:
             ax, ay = ground_anchor(al, ex)
@@ -538,32 +551,45 @@ def build(name, register, has_tool):
         rgb, al, tool = fr['rgb'], fr['al'], fr['tool']
         body = np.dstack([np.where(tool[..., None], 0, rgb), al * 255])
         prop = np.dstack([rgb, np.where(tool, al, 0) * 255])
-        shirt, collar, waist = shirt_mask(fr['K'], rgb, al, fr['ex'], fr['ey'], hw, tool)
-        shirt &= ~tool
-        # the hem: a darker line where the shirt meets bare skin (collar, sleeves)
-        r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
-        skin = fr['K']['op'] & (r > g) & (g >= b) & (r - b > 30) & (r > 90) & (r - g > 25)
-        bare = skin & ~shirt
-        hem = shirt & dilate8(bare, 2)
-        sh = np.zeros(rgb.shape[:2] + (4,), np.float32)
-        sh[shirt] = (255, 255, 255, 255)
-        sh[hem] = (150, 150, 150, 255)
-        body, prop, sh = shift(body, dx, dy), shift(prop, dx, dy), shift(sh, dx, dy)
+        # the dressed copies of this frame, lined up on it, and their layers
+        cls = bare_classes(fr)
+        lay, moved = {}, {}
+        for v, (Bv, cv) in dressed.items():
+            vrgb, val = matte(cv[f], Bv, drops=False)
+            vrgb, val, moved[v] = register(fr, vrgb, val, hw)
+            if v == 'tee':
+                m = tee_layer(vrgb, val, fr, cls, hw)
+                lay['shirt'] = np.dstack([vrgb, np.where(m, val, 0) * 255])
+            else:
+                ch, lg = armour_layers(vrgb, val, fr, cls, hw)
+                lay['chest'] = np.dstack([vrgb, np.where(ch, val, 0) * 255])
+                lay['legs'] = np.dstack([vrgb, np.where(lg, val, 0) * 255])
+        # the body under greaves: his trousers and boots where the armoured
+        # legs are not -- between the legs, a boot's edge past the sabaton --
+        # taken out, so with greaves on nothing of them shows through
+        cut = (cls == 2) & (al > 0) & ~(lay['legs'][..., 3] > 127)
+        under = body.copy()
+        under[cut, 3] = 0
+        lay['under'] = under
+        body, prop = shift(body, dx, dy), shift(prop, dx, dy)
+        lay = {k: shift(v, dx, dy) for k, v in lay.items()}
         crown = crown_of(shift(fr['K']['skin'], dx, dy), fr['ex'] + dx, fr['ey'] + dy)
         print(f'  f{f}: shift ({dx:+d},{dy:+d})  eyes ({fr["ex"] + dx:.0f},{fr["ey"] + dy:.0f})  '
-              f'crown {crown}  tool {int(tool.sum())} px  shirt {int(shirt.sum())} px (collar {collar}, waist {waist})')
-        out.append(dict(body=body, prop=prop, shirt=sh, crown=crown, eyes=(fr['ex'] + dx, fr['ey'] + dy)))
+              f'crown {crown}  tool {int(tool.sum())} px  dressed moved {moved}  '
+              + '  '.join(f'{k} {int((v[..., 3] > 127).sum())} px' for k, v in lay.items()))
+        out.append(dict(body=body, prop=prop, crown=crown, eyes=(fr['ex'] + dx, fr['ey'] + dy), **lay))
     # one box round every frame, at the strip's scale
     seen = np.zeros((CH, CW), bool)
     for o in out:
-        seen |= (o['body'][..., 3] > 4) | (o['prop'][..., 3] > 4)
+        for k in LAYERS:
+            seen |= o[k][..., 3] > 4
     ys, xs = np.nonzero(seen)
     pad = int(np.ceil((MARGIN + 1) / s))
     x0, x1 = max(0, xs.min() - pad), min(CW, xs.max() + 1 + pad)
     y0, y1 = max(0, ys.min() - pad), min(CH, ys.max() + 1 + pad)
     # snap the box so the anchor lands on whole strip px
     fw, fh = round((x1 - x0) * s), round((y1 - y0) * s)
-    strips = {k: [] for k in ('body', 'prop', 'shirt')}
+    strips = {k: [] for k in LAYERS}
     for o in out:
         for k in strips:
             cut = o[k][y0:y1, x0:x1]
@@ -638,12 +664,15 @@ def save_strip(frames, path):
 
 def main():
     made = []
-    for name, register, tool in ANIMS:
-        a = build(name, register, tool)
+    for name, anchor, tool in ANIMS:
+        a = build(name, anchor, tool)
         bw, bh = save_strip(a['strips']['body'], os.path.join(SKILLS, f'farm-{name}.png'))
+        save_strip(a['strips']['under'], os.path.join(SKILLS, f'farm-{name}-greaves.png'))
         if tool:
             save_strip(a['strips']['prop'], os.path.join(SKILLS, f'farm-{name}-prop.png'))
         save_strip(a['strips']['shirt'], os.path.join(SHIRTS, f'farm{name}-south.png'))
+        save_strip(a['strips']['chest'], os.path.join(CHESTS, f'farm{name}-south.png'))
+        save_strip(a['strips']['legs'], os.path.join(LEGS, f'farm{name}-south.png'))
         print(f'  -> farm-{name}.png {bw}x{bh} ({a["fw"]}x{a["fh"]} x{N}), foot {a["foot"]}, work {a["work"]}')
         made.append(a)
         if PREVIEW:
@@ -653,13 +682,15 @@ def main():
 
 def write_js(made):
     lines = [
-        "/* v2.3.3340: GENERATED by tools/make_farm_anims.py -- do not edit by hand;",
+        "/* v2.3.3345: GENERATED by tools/make_farm_anims.py -- do not edit by hand;",
         "   run the tool again.  The farmer's three animations, cut from the owner's",
         "   three sheets (tools/farm_anim_src): the hoe for digging, the watering can",
         "   for watering, kneeling with his hands in the soil for planting, the",
         "   compost and the harvest.  Each strip is N frames of fw x fh side by side",
         "   (public/sprites/skills/farm-<name>.png, the tool apart in farm-<name>-prop.png",
-        "   for the two that hold one, the shirt in gear/shirt/tshirt/farm<name>-south.png),",
+        "   for the two that hold one; `under` the body worn under greaves, its trousers",
+        "   and boots trimmed to the armoured legs; the shirt, plate and greaves in",
+        "   gear/{shirt/tshirt,chest/steelplate,legs/steelgreaves}/farm<name>-south.png),",
         "   drawn so its head is FARM_ANIM_HEAD px wide ears to ears: `foot` is the point between",
         "   his boots on the ground, frame px, `work` where the work happens (the",
         "   blade striking, the water landing, the hands in the soil: the bits fly",
@@ -672,7 +703,8 @@ def write_js(made):
         n = a['name']
         prop = f"'/sprites/skills/farm-{n}-prop.png?v={VER}'" if a['has_tool'] else 'null'
         crowns = ', '.join(f'[{c[0]}, {c[1]}]' for c in a['crowns'])
-        lines.append(f"  {n}: Object.freeze({{ url: '/sprites/skills/farm-{n}.png?v={VER}', prop: {prop}, "
+        lines.append(f"  {n}: Object.freeze({{ url: '/sprites/skills/farm-{n}.png?v={VER}', "
+                     f"under: '/sprites/skills/farm-{n}-greaves.png?v={VER}', prop: {prop}, "
                      f"pose: 'farm{n}', fw: {a['fw']}, fh: {a['fh']}, n: {N}, "
                      f"foot: Object.freeze([{a['foot'][0]}, {a['foot'][1]}]), "
                      f"work: Object.freeze([{a['work'][0]}, {a['work'][1]}]), "
@@ -708,30 +740,32 @@ def over(dst, src):
 
 
 def preview(a):
+    """Every outfit the game can put together, on grass, in a made-up look:
+    bare; the shirt; plate and greaves; the shirt and greaves; the plate
+    over trousers -- the mixed ones are where a misfit between the sheets
+    would show."""
     fw, fh = a['fw'], a['fh']
     Z = 2
+    look = ((90, 56, 38), (50, 70, 160), (160, 40, 40))
+    green = np.array((60, 170, 90)) / 255
     rows = []
-    for look in (None, ((90, 56, 38), (50, 70, 160), (160, 40, 40), (60, 170, 90))):
+    for outfit in ((), ('shirt',), ('legs', 'chest'), ('legs', 'shirt'), ('chest',)):
         row = []
         for f in range(N):
             bgc = np.zeros((fh, fw, 4), np.float32)
             bgc[..., :3] = (96, 140, 70)        # grass
             bgc[..., 3] = 255
-            body = a['strips']['body'][f]
-            if look:
-                body = recolour(body, *look[:3])
-            over(bgc, body)
-            sh = a['strips']['shirt'][f].copy()
-            if look:
-                sh[..., :3] = sh[..., :3] * (np.array(look[3]) / 255)[None, None]
-                over(bgc, sh)
+            body = a['strips']['under' if 'legs' in outfit else 'body'][f]
+            over(bgc, recolour(body, *look))
+            for k in outfit:
+                if k == 'shirt' and 'chest' in outfit:
+                    continue
+                lay = a['strips'][k][f].copy()
+                if k == 'shirt':
+                    lay[..., :3] = lay[..., :3] * green[None, None]
+                over(bgc, lay)
             if a['has_tool']:
                 over(bgc, a['strips']['prop'][f])
-            cx, cy = a['crowns'][f]
-            bgc[max(0, cy - 1):cy + 1, max(0, cx - 4):cx + 5, :3] = (255, 0, 255)
-            fx, fy = a['foot']
-            fy = int(fy) - 1
-            bgc[max(0, fy):fy + 1, max(0, int(fx) - 6):int(fx) + 7, :3] = (255, 255, 0)
             row.append(bgc)
         rows.append(np.concatenate(row, axis=1))
     sheet = np.concatenate(rows, axis=0)

@@ -2279,8 +2279,8 @@ remnant to migrate server-side, not a mode to preserve.
         (`farm_open`, the free deed);
       - (v2.3.3136 knelt in the COOK'S crouch, a crate of the owner's art
         where its pan was -- the owner: "Cooking animation might be better" --
-        until v2.3.3340's moves, below);
-      - since v2.3.3340 THE FARMER'S OWN MOVES -- the owner: "I'd like to have
+        until v2.3.3345's moves, below);
+      - since v2.3.3345 THE FARMER'S OWN MOVES -- the owner: "I'd like to have
         animations during the farming process perhaps on a sprite sheet",
         then three ChatGPT sheets of 8 frames (`tools/farm_anim_src/`):
         - DIG plays the hoe (two swings), WATER the can (one pour), PLANT,
@@ -2290,24 +2290,32 @@ remnant to migrate server-side, not a mode to preserve.
           the work lands (`FARM_ANIM_BEATS`, the strip's `work`);
         - `tools/make_farm_anims.py` cuts them: the magenta out, the hoe and
           the can lifted into strips of their own (the repaint would take the
-          can for trousers), the frames lined up, one head size, a shirt layer
-          made from the body, the crowns -- into
-          `public/sprites/skills/farm-*.png`, the tshirt's `farm*-south` and
-          the GENERATED `src/data/farmAnims.js`;
-        - he wears your skin, trousers and boots (`_bakeFarmBodies`), your
-          shirt with its print, your hair, hat and beard; his head is drawn
+          can for trousers), the frames lined up, one head size, the crowns --
+          into `public/sprites/skills/farm-*.png` and the GENERATED
+          `src/data/farmAnims.js`;
+        - DRESSED FROM THE OWNER'S SIX SHEETS -- of the first cut's shirt,
+          made from the bare body: "Whole arm was green", and their plan,
+          each move drawn again in the game's white tee and in its steel
+          armour (`docs/art/farm-moves-reference-*.png`, ART-WISHLIST "The
+          farmer's moves, dressed"): each dressed frame laid on the bare one
+          by the skin of his head and cut into the tshirt's, steelplate's and
+          steelgreaves' `farm*-south` strips (the steel split by what lies
+          under it: skin the plate, trousers and boots the greaves), plus the
+          body under greaves, `farm-*-greaves.png` (`under`: trousers and
+          boots the greaves leave bare taken out). Never garments drawn alone
+          (the fire-lighter's need `FIRE_GEAR_REG`);
+        - he wears your skin, trousers and boots (`_bakeFarmBodies`; the body
+          under greaves when you wear them, baked again as they go on or come
+          off, `_farmUnderWanted`), then your greaves, your shirt with its
+          print (hidden under a plate) and your plate, in their metal, the
+          tool, your hair, hat and beard; his head is drawn
           `FARM_ANIM_HEAD_WORLD` 31.25 world px, so he stands your height
-          (95-101%);
-        - NOT RIGHT YET: the shirt is cut from the bare body, so an arm in
-          front of him comes out all shirt (the owner: "Whole arm was
-          green"); no armour (the shirt shows) or drawings. The fix is the
-          owner's: each sheet drawn again in the game's white tee and in its
-          steel plate and greaves (`docs/art/farm-moves-reference-*.png`,
-          ART-WISHLIST "The farmer's moves, dressed"), never garments drawn
-          alone (the fire-lighter's need `FIRE_GEAR_REG`);
+          (95-101%); not yet your drawings;
         - made behind the farm's loading screen (`ensureStandIn('farm')`,
-          `farmFigureReady`) and let go of on leaving (`_freeFarm`): the farm
-          holds 102.1 MB on the GPU where the cook's kneel held 104.6;
+          `farmFigureReady`), all nine garments whatever you wear (the
+          character menu can dress you there), and let go of on leaving
+          (`_freeFarm`): the farm held 102.1 MB on the GPU in the tee where
+          the cook's kneel held 104.6;
         - the crates (`make_farm_covers.py`, `farmCovers.js`) are gone;
           `farmwalk` suite §1, `mp-farmanim`: docs/specs/farm-walk.md "The
           farmer's own moves";

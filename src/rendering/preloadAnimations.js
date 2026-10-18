@@ -167,7 +167,7 @@ export async function preloadZoneAssets(zoneId) {
      Its barn, props, beds and every crop's every stage (rendering/farmWorld.js
      -- a bed can turn to any of them while you stand there), and the farmer's
      own moves -- the owner's hoe, watering can and kneel, made in your skin,
-     trousers, boots and shirt (v2.3.3340, effectsRenderer _makeFarm; the cook's
+     trousers, boots and shirt (v2.3.3345, effectsRenderer _makeFarm; the cook's
      pose and its covers before): all behind the farm's loading screen
      (game/farmTrip.js), the pictures freed on leaving (freeZoneAssets, and the
      moves by the effects renderer as you go).  ~12 MB of the Wheel's sheets and

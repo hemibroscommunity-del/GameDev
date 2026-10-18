@@ -1,4 +1,4 @@
-# The farm you walk (v2.3.3136; the farmer's own moves v2.3.3340)
+# The farm you walk (v2.3.3136; the farmer's own moves v2.3.3345)
 
 > Owner, 2026-10-06: *"Hold on I don't want this type of farming. I want your
 > character to be able to walk around on the farm. I want the planting process
@@ -16,8 +16,14 @@
 >
 > And then (2026-10-17): *"Do any animations need to be built? I'd like to
 > have animations during the farming process perhaps on a sprite sheet."* They
-> made three sheets from the prompts they were given (v2.3.3340, "The
+> made three sheets from the prompts they were given (v2.3.3345, "The
 > farmer's own moves" below).
+>
+> And of the first cut (2026-10-18): *"How do you want me to add armor and the
+> shirt? Do you want to give me the south facing idle character wearing each
+> and give me a prompt to put it on each of the 3 outputs? The sleeves aren't
+> right during the animation while wearing the shirt. Whole arm was green"*.
+> They made the six dressed sheets that plan asked for.
 
 Until now the beds lived in the Feed & Seed's window: pick a tool, tap a
 square. Now they lie on **your farm**, a place you walk on, and you work each
@@ -87,21 +93,23 @@ Farming level can plant. With two or more kinds in the bag, each kind's ripe
 picture sits over the button and a tap picks one. That is the only choice
 farming asks of you, made where you stand.
 
-## The farmer's own moves (v2.3.3340)
+## The farmer's own moves (v2.3.3345)
 
 The owner asked for animations on a sprite sheet. They were given three
 prompts and one reference picture (the fire-lighter with his log taken out),
 and made three sheets in ChatGPT: eight frames each, in a 4 × 2 grid of
-384 × 512 cells on flat magenta. They are kept as they were sent, in
-`tools/farm_anim_src/`:
+384 × 512 cells on flat magenta. Then, to dress him, each sheet again with the
+bro in the game's white tee and again in its steel armour, from two reference
+pictures of the game's own walking bro so dressed (`docs/art/`). All nine are
+kept as they were sent, in `tools/farm_anim_src/`:
 
-| Sheet | Plays for |
-|---|---|
-| `hoe.png`: digging | Dig |
-| `water.png`: the watering can | Water |
-| `kneel.png`: hands in the soil | Plant, Fertilize, Harvest |
+| Sheet | Plays for | Dressed |
+|---|---|---|
+| `hoe.png`: digging | Dig | `hoe-tee.png`, `hoe-armour.png` |
+| `water.png`: the watering can | Water | `water-tee.png`, `water-armour.png` |
+| `kneel.png`: hands in the soil | Plant, Fertilize, Harvest | `kneel-tee.png`, `kneel-armour.png` |
 
-**Cut by `tools/make_farm_anims.py`** (numpy and Pillow, about 25 s, the same
+**Cut by `tools/make_farm_anims.py`** (numpy and Pillow, about 75 s, the same
 output every run). It:
 
 1. takes out the magenta, edges included, so there is no pink fringe;
@@ -115,50 +123,63 @@ output every run). It:
    stay put;
 4. brings the three to one size: his head is 64 px wide, ears to ears, in
    every strip (ChatGPT drew the three heads at 143, 121 and 114 px);
-5. makes the shirt layer from the body itself, the fire-lighter's recipe
-   (v2.3.1713): his skin from the collar down to his trousers, and sleeves on
-   his arms;
+5. cuts the clothes out of the dressed sheets. ChatGPT kept every pose, so
+   each dressed frame is laid on the bare one by the skin of his head (within
+   4 px; never by the eyes, which each drawing splits differently round the
+   pupil) and cut with the bare frame's own shift and scale:
+   - the **shirt**: the white cloth and its black edge, never on his trousers,
+     boots or the tool;
+   - the **plate** and the **greaves**: the steel and its edge, split by what
+     lies under it in the bare frame. Over skin it is the plate (arms, chest),
+     over trousers and boots the greaves. The chain-mail belt rides with the
+     greaves, over the trousers' top;
+   - the **body under greaves**: the bare body with every trouser and boot
+     pixel the greaves do not cover taken out, so nothing of them shows round
+     the plates;
 6. finds the top of his head in each frame, for your hat.
 
 It writes:
 
 - `public/sprites/skills/farm-{hoe,water,kneel}.png`: the man;
+- `farm-{hoe,water,kneel}-greaves.png`: the man under greaves;
 - `farm-{hoe,water}-prop.png`: the tool;
-- `public/sprites/gear/shirt/tshirt/farm{hoe,water,kneel}-south.png`: the shirt;
+- `public/sprites/gear/{shirt/tshirt,chest/steelplate,legs/steelgreaves}/farm{hoe,water,kneel}-south.png`:
+  the shirt, the plate and the greaves;
 - the GENERATED `src/data/farmAnims.js`: each strip's frame size, the point
   between his boots, where the work lands, and the crowns.
 
-Re-run it after a sheet changes: `python3 tools/make_farm_anims.py`
-(`PREVIEW=<dir>` also writes contact sheets to look at).
+Re-run it after a sheet changes: `python3 tools/make_farm_anims.py`.
+`PREVIEW=<dir>` also writes contact sheets of every outfit the game can put
+together (bare, the tee, plate and greaves, greaves under the tee, the plate
+over trousers): a misfit between the sheets shows in the mixed ones.
 
 **He is dressed as you are** (effectsRenderer `_updateFarmWork`), as every
-gathering figure is:
+gathering figure is, in this order:
 
-- his skin, trousers and boots are repainted in yours (`recolorStandInSkin`,
-  the lumberjack's repaint);
-- your shirt goes over him, in its colour, with its print and pattern
-  (`_placeSwingShirt`);
-- the hoe or the can goes over both, as drawn;
-- your hair, hat and beard sit on his head, sized to it (`FARM_ANIM_HEAD / 51`,
-  the fire-lighter's rule).
+1. his skin, trousers and boots are repainted in yours (`recolorStandInSkin`,
+   the lumberjack's repaint). Under greaves, the body cut for them;
+2. your greaves, in their metal (`_tintGearSprite`);
+3. your shirt, in its colour, with its print and pattern
+   (`_placeSwingShirt`), hidden under a plate;
+4. your plate, in its metal;
+5. the hoe or the can, as drawn;
+6. your hair, hat and beard on his head, sized to it (`FARM_ANIM_HEAD / 51`,
+   the fire-lighter's rule).
 
-Three things are **not right yet**:
+Every garment shows the frame the body shows. All nine garments are loaded
+behind the farm's loading screen whatever you wear, since the character menu
+can dress you on the farm and a layer cut on its first draw is a hitch. Put
+greaves on or take them off there and the body is baked again, the other
+cut, at once (`_farmUnderWanted`: asked each frame on the farm, so a change
+made while a bake was on its way is caught too).
 
-- **The shirt's sleeves.** The shirt is cut out of the bare body. Wherever an
-  arm is in front of his body (the can held at his belly, the hoe across it, a
-  hand on a knee), the whole arm comes out in the shirt's colour. The owner
-  saw it: *"The sleeves aren't right during the animation while wearing the
-  shirt. Whole arm was green."*
-- **Armour.** These moves have no plate or greaves, so your shirt shows over
-  whatever you wear on the chest.
-- **Your drawings.**
+The clothes are drawn on him, so they follow his arms in every frame:
+v2.3.3345's first cut made the shirt out of the bare body, and wherever an arm
+crossed in front of him the whole arm came out in the shirt's colour. Garments
+drawn on their own never line up: the fire-lighter's still need a nudge every
+frame (`FIRE_GEAR_REG`). These lie within a pixel of the body.
 
-The fix for the first two is the owner's (2026-10-18): each sheet made again
-with the bro wearing the game's white tee, and again in its steel plate and
-greaves (`docs/ART-WISHLIST.md`, "The farmer's moves, dressed"). Drawn on
-him, the clothes follow his arms in every frame. Garments drawn on their own
-never lined up: the fire-lighter's still need a nudge every frame
-(`FIRE_GEAR_REG`).
+**Not dressed yet: your drawings** (no fitted regions for these poses).
 
 **In time** (`src/game/farmWork.js`), each step plays its move's eight frames
 as whole turns that fill its time exactly. A step always ends on the eighth
@@ -317,9 +338,9 @@ The window is the farm's shop and its order board:
 | `src/game/farmTrip.js` | `holdFarmUntilReady`: the loading screen until the farm is all there. |
 | `src/rendering/farmWorld.js` | Draws the farm: the things, the beds and their crops, the labels, the bits from your hands; the pictures' loading and freeing; the shadow casters. |
 | `src/ui/mobile/FarmBedPrompt.jsx` | The step's button and the seed picker. |
-| `src/rendering/systems/effectsRenderer.js` | The farmer's moves: made (`_makeFarm`, `_bakeFarmBodies`), drawn at the step's frame with your shirt, the tool and your head's traits (`_updateFarmWork`), let go of (`_freeFarm`). |
-| `src/data/farmAnims.js` | GENERATED by `tools/make_farm_anims.py`: each strip's frame size, the point between his boots, where the work lands, the crowns. |
-| `tools/make_farm_anims.py` | Cuts the owner's three sheets (`tools/farm_anim_src/`) into the farmer's strips, tools and shirt layers. |
+| `src/rendering/systems/effectsRenderer.js` | The farmer's moves: made (`_makeFarm`, `_bakeFarmBodies`, the body under greaves when you wear them), drawn at the step's frame with your greaves, shirt and plate, the tool and your head's traits (`_updateFarmWork`), let go of (`_freeFarm`). |
+| `src/data/farmAnims.js` | GENERATED by `tools/make_farm_anims.py`: each strip's frame size, the body under greaves (`under`), the point between his boots, where the work lands, the crowns. |
+| `tools/make_farm_anims.py` | Cuts the owner's three sheets and their six dressed copies (`tools/farm_anim_src/`) into the farmer's strips, tools, bodies under greaves, and shirt, plate and greaves layers. |
 | `src/data/farmArtUrl.js` | A farm picture's address, as data, so the network's code (`farmFeedback.js`) imports no renderer. |
 | `public/ui/controls/farm-*.svg` | The five step pictures (the stick, the labels, the button). |
 | `tools/world/bake_farm_ground.py` | The ground's bake. |
@@ -339,8 +360,12 @@ two pictures still to come.
 - **Server:** `server/test/farmwalk.test.mjs` (in `npm test`):
   1. the farmer's moves: each step's move, every frame shown in order and the
      last held at the end, the work landing at its frames' start (two swings
-     a dig), and the strips, tools and shirt layers on disk at the sizes
-     `farmAnims.js` says, with their boots, work and crowns inside the frame;
+     a dig), and the strips, bodies under greaves, tools and shirt, plate and
+     greaves layers on disk at the sizes `farmAnims.js` says, with their boots,
+     work and crowns inside the frame; every garment there in every frame and
+     lying on him (the tee 98% over his body at least, the plate 75%, the
+     greaves 85%: the shoulder plates stand out of his outline), and the body
+     under greaves the body trimmed, never more;
   2. `bedNext`'s words, the timer, the crop's stage and soil;
   3. **the worker agrees:** a bed walked from grass through `GameRoom`'s
      `farm_act` by exactly the steps the game offers, nothing offered while it
@@ -364,7 +389,7 @@ two pictures still to come.
   carrots and flies them to the bag; the barn's wall stops your boots; the
   gate leads back to the Wheel.
 - **The moves on a phone:** `tools/qa/mp/mp-farmanim.mjs`
-  (`node tools/qa/mp/run.mjs farmanim`, 26 checks). It dresses the player
+  (`node tools/qa/mp/run.mjs farmanim`, 41 checks). It dresses the player
   (deep skin, blue trousers, red boots, a green tee, a red cap, a blonde beard)
   and checks:
   - the moves are made before the farm's loading screen lifts, in those
@@ -375,12 +400,18 @@ two pictures still to come.
   - the shirt is over him and the tool over both;
   - he stands your height with the hoe and with the can;
   - each step ends in one `farm_act` the worker takes;
-  - leaving the farm lets every texture of his go.
+  - in armour, on bed 1 (`out/farmanim-armour-<step>-<frame>.png`): copper
+    plate and greaves with the hoe, the greaves under the tee kneeling, the
+    plate over his trousers with the can. In every frame the garments worn are
+    drawn and no others, the tee hidden under the plate, the body under greaves
+    the one cut for them, each garment on the body's frame, in the order body,
+    greaves, shirt, plate, tool, and in the copper his walking figure wears;
+  - leaving the farm lets every texture of his go, the garments' too.
 - `mp-farm` (the window: Seeds first, no beds, the summary line following the
   worker's farm, the kill switch), `mp-farmorders` and `mp-wheeldoors` (the
   farm's gate) still run.
 - mp-farmwalk's memory check (the farm holding less than the Wheel, the two
-  together) fails, and fails the same way on main (v2.3.3340: the farm 102.1
+  together) fails, and fails the same way on main (v2.3.3345: the farm 102.1
   MB on the graphics chip, 104.6 on main, the Wheel 71.3). Most likely since
   v2.3.3190, which cut the Wheel's from about 104 MB to 72 by keeping its
   ground and objects as colour numbers (CLAUDE.md, "Memory is budgeted"); the
@@ -388,8 +419,11 @@ two pictures still to come.
 
 ## Not yet
 
-- **The farmer's shirt, armour and drawings** (above). The shirt and the
-  armour wait on the owner's dressed sheets, six of them.
+- **The farmer's drawings** (above). His shirt and armour came with the
+  owner's six dressed sheets (v2.3.3345).
+- **Two small specks** in the outfit with greaves under the tee: a few
+  pixels of trouser red at the kneel's left foot (frame 2) and beside the
+  can's splash (frame 4). Each is a pixel or two at phone size.
 - **Other players see you standing at a bed** while you work it: the steps go
   only to the worker, which tells no one else, as since v2.3.3136.
 - The **Farmhouse** and **Dungeon Workshop** pictures (prompts in

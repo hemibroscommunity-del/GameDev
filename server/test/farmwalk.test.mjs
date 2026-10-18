@@ -10,12 +10,15 @@
  *
  * The client's rules for it (src/game/farmWork.js, src/data/farmLayout.js --
  * no imports, so node runs them) against the worker's own:
- *   1. the farmer's moves (v2.3.3340, the owner's three sheets cut by
+ *   1. the farmer's moves (v2.3.3345, the owner's three sheets cut by
  *      tools/make_farm_anims.py into src/data/farmAnims.js): each step plays
  *      its own -- the hoe, the watering can, the kneel -- every frame of it,
  *      from the rest pose to the rest pose, the work landing on the frames
  *      where it does; every strip on disk at the size the data says (the man,
- *      his tool, his shirt), his boots, his crown and the work inside it;
+ *      the man under greaves, his tool, his shirt, plate and greaves), his
+ *      boots, his crown and the work inside it; and (v2.3.3345) every frame
+ *      of every garment there and on him, the man under greaves the man
+ *      trimmed;
  *   2. a bed's next step and its words, its timer, its crop's stage, its soil;
  *   3. THE STEP THE GAME OFFERS IS ONE THE WORKER TAKES: a bed walked from
  *      grass to the bag through the real farm handler, each step the one
@@ -49,6 +52,7 @@ import {
 } from '../../src/data/farmLayout.js';
 import { FARM_ART } from '../../src/data/farmArt.js';
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '../../src/data/farmAnims.js';
+import { decodePNG } from '../../tools/world/png.mjs';   /* v2.3.3345: what the farmer's strips hold */
 import { generateZoneMap } from '../../src/data/gameDisplay.js';
 import { ZONES } from '../../src/data/zones.js';
 
@@ -99,15 +103,53 @@ const FOOT_DY = 52;   /* a body's middle to its boots, on a zone with no perspec
       && farmWorkBeats('dig', 0).length === 0 && farmAnimOf('nonsense') === 'kneel');
 
   /* the strips on disk, at the size the data says */
-  const sizeOf = (url) => { const f = path.join(REPO, 'public', url.split('?')[0]); return fs.existsSync(f) ? pngSize(f) : null; };
+  const fileOf = (url) => path.join(REPO, 'public', url.split('?')[0]);
+  const sizeOf = (url) => { const f = fileOf(url); return fs.existsSync(f) ? pngSize(f) : null; };
+  /* v2.3.3345: the garments, cut from the owner's sheets drawn again in the
+     game's white tee and steel armour */
+  const GARMENTS = [['shirt', 'tshirt'], ['chest', 'steelplate'], ['legs', 'steelgreaves']];
   for (const a of anims) {
     const A = FARM_ANIMS[a];
-    const body = sizeOf(A.url), prop = A.prop ? sizeOf(A.prop) : null;
-    const shirt = sizeOf('/sprites/gear/shirt/tshirt/' + A.pose + '-south.png');
+    const body = sizeOf(A.url), under = A.under ? sizeOf(A.under) : null, prop = A.prop ? sizeOf(A.prop) : null;
+    const gear = {};
+    for (const [slot, item] of GARMENTS) gear[slot] = sizeOf('/sprites/gear/' + slot + '/' + item + '/' + A.pose + '-south.png');
     const want = { w: A.fw * A.n, h: A.fh };
     const same = (z) => !!z && z.w === want.w && z.h === want.h;
-    check(`the ${a}: ${A.n} frames of ${A.fw}x${A.fh} -- the man${A.prop ? ', his tool' : ''} and his shirt, each ${want.w}x${want.h}`,
-      same(body) && same(shirt) && (!A.prop || same(prop)) && (a !== 'kneel') === !!A.prop, { body, prop, shirt, want });
+    check(`the ${a}: ${A.n} frames of ${A.fw}x${A.fh} -- the man, the man under greaves${A.prop ? ', his tool' : ''}, his shirt, plate and greaves, each ${want.w}x${want.h}`,
+      same(body) && same(under) && GARMENTS.every(([slot]) => same(gear[slot])) && (!A.prop || same(prop)) && (a !== 'kneel') === !!A.prop,
+      { body, under, prop, gear, want });
+    /* v2.3.3345: what each frame holds.  Every garment has something in every
+       frame (an empty one would show him bare for a frame) and lies on the man:
+       the tee over his body, the armour mostly so -- its shoulder plates stand
+       out of his outline (81% over it at the can, measured).  The man under
+       greaves is the man with his trousers and boots trimmed, never more. */
+    if (same(body) && same(under) && GARMENTS.every(([slot]) => same(gear[slot]))) {
+      const img = (url) => decodePNG(fs.readFileSync(fileOf(url)));
+      const B = img(A.url), U = img(A.under);
+      const G = {};
+      for (const [slot, item] of GARMENTS) G[slot] = img('/sprites/gear/' + slot + '/' + item + '/' + A.pose + '-south.png');
+      const op = (im, i) => im.data[i * 4 + 3] > 127;
+      const FLOOR = { shirt: [1000, 0.98], chest: [2000, 0.75], legs: [1000, 0.85] };
+      const bad = [];
+      for (let f = 0; f < A.n; f++) {
+        let nB = 0, nU = 0, out = 0;
+        const n = { shirt: 0, chest: 0, legs: 0 }, on = { shirt: 0, chest: 0, legs: 0 };
+        for (let y = 0; y < A.fh; y++) {
+          for (let x = f * A.fw; x < (f + 1) * A.fw; x++) {
+            const i = y * want.w + x, b = op(B, i), u = op(U, i);
+            if (b) nB++;
+            if (u) { nU++; if (!b) out++; }
+            for (const [slot] of GARMENTS) if (op(G[slot], i)) { n[slot]++; if (b) on[slot]++; }
+          }
+        }
+        if (out || nU >= nB) bad.push({ f, under: nU, body: nB, out });
+        for (const [slot] of GARMENTS) {
+          const share = n[slot] ? on[slot] / n[slot] : 0;
+          if (n[slot] < FLOOR[slot][0] || share < FLOOR[slot][1]) bad.push({ f, slot, px: n[slot], on: +share.toFixed(3) });
+        }
+      }
+      check(`...every frame of his shirt, plate and greaves there and on him; the man under greaves the man trimmed`, !bad.length, bad);
+    }
     const inF = (p) => p[0] >= 0 && p[0] <= A.fw && p[1] >= 0 && p[1] <= A.fh;
     check(`...his boots (${A.foot.join(', ')}) and the work (${A.work.join(', ')}) inside the frame, near its bottom; every crown inside it and over the boots`,
       inF(A.foot) && inF(A.work) && A.foot[1] > A.fh * 0.85 && A.work[1] > A.fh * 0.6
