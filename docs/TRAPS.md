@@ -7459,3 +7459,36 @@ sharpPixels' own decision). Never count on install order.
 
 **Receipt:** mp-hairstencil (the hair clipped through the stencil, the alpha
 mask's picture different only at the cut).
+
+## 227. "The creator fits: I measured it at 390x844" (v2.3.3430)
+
+The creator's upright column holds the logo, the character's stage, the name
+plate, ENTER and Back, and the stage is the only one of them that gives: every
+pixel the plate grows comes off the character. Between v2.3.2416 and v2.3.2453
+the plate grew 22 px (the name well 44 -> 56, the gap under Randomize 8 ->
+19.4), each change measured at 390x844 -- the same phone with Safari's
+toolbars hidden, where the column has room. At 390x664, that phone as it is
+usually held, with the toolbars showing, the character went from 147.4 px
+drawn to 121, and mp-ccfeet's floor (145, set at v2.3.2378 as the receipt that
+the plate's clearance was not paid out of the character) went red with nobody
+running it.
+
+The same narrowing (v2.3.2416, the gap under the name .14 -> .10 of the plate:
+"the message is 11px text needing about 13px of line") left a 19.4 px slot for
+the ENTER button's refusal reasons, which wrapped to two lines, 30 px, at every
+size: "Name your bro first — tap the field above." ran over the name well's
+gold frame and Randomize's. The checks that existed read the message's TEXT
+(mp-ccjoin), and a text is right wherever it is drawn.
+
+**The rule:** a change to the creator's column is measured at 390x664 and
+320x568 too (mp-ccfeet), not only at 390x844; and a message slot is checked
+with every message it shows -- pressed as well as typed -- by where its lines
+are drawn (a Range's client rects: how many, and between what), never by its
+text alone.
+
+**Receipt:** mp-ccfeet at 390x664 on main drew the character 121.1 px (floor
+145). With the short-screen plate (game.css, v2.3.3430: one 15 px gap, a 48 px
+name well, 46 px buttons) he is 146.2, with 19.6 px of air under his boots and
+19.8 under the logo; each of the five messages is one line inside its slot at
+both short sizes, and mp-ccjoin says the same at 390x844, where on main the
+empty-name reason was two lines reaching 5.3 px over the well and Randomize.
