@@ -1206,6 +1206,46 @@ export function equipWeapon(P, wantType, stashSlot, activeSlot) {
   }, { wantType, slot: stashSlot, activeSlot });
 }
 
+/* ═══ v2.3.3334: A BOW OR A STAFF THE WORKER HOLDS, AS A REAL PLAYER'S ═══
+ * Since v2.3.3334 a bow or staff hit on a monster needs that weapon in the
+ * WORKER's own slot (server/src/hitproof.js), and the phone's copy is never
+ * asked: a bow written into the page (`S.rpg.rangedWeapon = {...}`) fires,
+ * flies and pops its numbers there, and the worker refuses every hit it lands
+ * -- its monsters unhurt, unshoved, never killed.  A scenario whose bow or
+ * staff hits must land arms the worker the way a player is armed: the test
+ * panel's starter weapons into the bag (/dev/kit), then the game's own
+ * equip_request for each kind asked, the phone's own weapon taken out of its
+ * hand first (equipWeapon takes one already held as equipped and sends
+ * nothing).  Resolves to the kinds the WORKER put in hand, read off its answer:
+ * its player_state takes the weapon out of the bag, and nothing else on the
+ * phone moves the bag.  The scenario may write its own weapon into the page
+ * afterwards; the worker keeps the starter.  A monster made on the page
+ * (F.createMonster) is the page's alone and needs none of this.  TRAPS §207. */
+export async function armWorker(P, wsPort, playerId, kinds = ['bow', 'staff']) {
+  const SLOT = { bow: ['rangedWeapon', 'ranged'], staff: ['staffWeapon', 'staff'] };
+  const look = (k, s) => P.page.evaluate(({ k, s }) => {
+    const R = (window._gameState && window._gameState.current && window._gameState.current.rpg) || {};
+    return { inBag: (R.weaponStash || []).filter((w) => w && w.type === k).length, held: !!(R[s] && R[s].type === k) };
+  }, { k, s });
+  await devOp(wsPort, 'kit', playerId, { what: 'weapons' }).catch(() => null);
+  const armed = [];
+  for (const k of kinds) {
+    const [slot, active] = SLOT[k];
+    let v = await look(k, slot);
+    for (let i = 0; i < 60 && !v.inBag; i++) { await P.page.waitForTimeout(250); v = await look(k, slot); }
+    if (!v.inBag) continue;
+    const before = v.inBag;
+    await P.page.evaluate((s) => { const R = window._gameState.current.rpg; if (R) R[s] = null; }, slot);
+    await equipWeapon(P, k, slot, active);
+    for (let i = 0; i < 60; i++) {
+      v = await look(k, slot);
+      if (v.held && v.inBag === before - 1) { armed.push(k); break; }
+      await P.page.waitForTimeout(250);
+    }
+  }
+  return armed;
+}
+
 /* ═══ v2.3.2435: THE OWNER'S TEST KIT, OVER HTTP ═══
  * The four /api/admin/dev ops (devtools.js).  They are POSTs carrying the
  * player id IN THE BODY — only /dev/state takes it as a query param — and a

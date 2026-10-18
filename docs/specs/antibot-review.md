@@ -135,7 +135,7 @@ The only numbers a script cannot fake are the ones the server measures itself:
   - start a reconnect where the player was last saved;
   - close the zone-change gap.
 
-### 5. Fighting: hits are limited per monster, not per player, and "ranged" reaches 3,600 px without a bow (HIGH)
+### 5. Fighting: hits are limited per monster, not per player, and "ranged" reaches 3,600 px without a bow (HIGH; since v2.3.3334, hit-proof.md)
 
 - **The hit limits:** one normal hit per 210 ms and three specials per 1.2 s,
   counted for each pair of player and monster (combat.js).
@@ -316,6 +316,15 @@ the server last had the player, at the fastest an honest phone goes while it is
 not heard from, a login's way into the Wheel from the arrival, and the first
 move after any join is judged -- the lab's script reconnecting every 3 s from
 33,333 px a second to 694, every honest reconnect taken.
+Fix 8, fighting, in docs/specs/hit-proof.md (v2.3.3334): a bow or staff hit on
+a monster needs that weapon in the worker's own slot and comes from no further
+than the weapon reaches (a paid volley's chips keep 3,600), a special counts
+only inside a window a paid swipe opened (outside one it rolls as an ordinary
+hit), a bow lands at most 5 x (1 + Piercing) hits a second across every
+monster and a staff 2, and the per-monster lanes are trimmed by last use --
+the lab's script with no bow from 6,009 kills an hour to 0, with a bow and
+under the message limit from 6,111 to 2,109, an honest sword (471) and archer
+(378) unchanged.
 One more finding reached the owner privately: the way a login key becomes a
 player id needs replacing with server-issued random ids and a proper
 credential; it is on the list below the farming holes.

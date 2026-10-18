@@ -86,6 +86,12 @@ function check(name, cond, detail) {
 }
 
 const room = new GameRoom(mockState, mockEnv);
+/* v2.3.3334: a special against a monster counts only after a paid swipe
+   (hitproof.js).  The sections below test the special lane and the
+   specials' own numbers, so they pay first, as an honest phone's swipe does
+   -- two windows, so that a test of the LANE's limit meets the lane, not the
+   window's shape. */
+const paySpecials = (ps, n = 2) => { ps._pveSpec = undefined; for (let i = 0; i < n; i++) room._pveSpecialPaid(ps, Date.now()); };
 
 const wsA = fakeWs('killer');
 const wsB = fakeWs('bystander');
@@ -649,6 +655,9 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   // Specials: 3 land (staff cone burst), the 4th in the window is dropped.
   if (psA._monHitCad) psA._monHitCad.clear();
   room.eventBuffer.length = 0;
+  /* v2.3.3334: a staff claim needs a staff (hitproof.js), and a special a paid swipe */
+  psA.staffWeapon = { type: 'staff', tierMult: 1 };
+  paySpecials(psA);
   for (let i = 0; i < 4; i++) {
     await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: ca.id, zone: 'meadow', slot: 'staff', special: true } }));
   }
@@ -691,6 +700,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   // (a) staff cone: 3 special bolts back-to-back (same monster, well
   // inside 1200ms) all land -- none stolen by the 335ms normal lane.
   room.eventBuffer.length = 0;
+  paySpecials(psA);   /* v2.3.3334 */
   for (let i = 0; i < 3; i++) {
     await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: rs.id, zone: 'meadow', slot: 'staff', special: true } }));
   }
@@ -789,6 +799,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     if (psA._monHitCad) psA._monHitCad.clear();
     for (const m of [bb, ...others]) { m.alive = true; m.hp = m.maxHp = 1000000; m.dmgByPlayer = {}; m.statuses = undefined; }
     room.eventBuffer.length = 0;
+    paySpecials(psA);   /* v2.3.3334 */
     park();
   };
   const hitsOn = (mm = bb) => room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === mm.id && !e.payload.collision);
@@ -2874,6 +2885,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   park(sTgt, 9000, 9000); park(sN1, 9020, 9000); park(sN2, 9000, 9040);
   room.eventBuffer.length = 0;
   nocad();
+  paySpecials(psA);   /* v2.3.3334 */
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: sTgt.id, zone: 'meadow', slot: 'staff', special: true } }));
   const spHits = room.eventBuffer.filter((e) => e.type === 'monster_hit');
   check('staff splash: a SPECIAL bolt does not splash',
@@ -2936,6 +2948,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     if (psA._monHitCad) psA._monHitCad.clear();
     bv.alive = true; bv.hp = bv.maxHp = 1000000; bv.dmgByPlayer = {}; bv.statuses = undefined;
     room.eventBuffer.length = 0;
+    paySpecials(psA);   /* v2.3.3334 */
   };
   const hitsOn = () => room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === bv.id && !e.payload.collision)
     .map((e) => e.payload.dmg);
