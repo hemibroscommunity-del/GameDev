@@ -22,6 +22,7 @@
 import { pushDmgPopup, heroPopupY } from '@/game/combatHelpers.js';
 import { chatLogBus } from '@/ui/mobile/chatLogBus.js';
 import { isLiveClone } from '@/game/sparTargets.js'; /* v2.3.3267: one test of "a live clone of yours", for every weapon */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a knockout heard either way */
 
 const SPAR_GOLD = '#f5c542';
 const SPAR_RED = '#ff7a7a';
@@ -57,9 +58,11 @@ export function applySparState(S, p) {
   const P = S.player;
   if (p.note === 'ko') {
     if (P) pushDmgPopup(S, P.x, heroPopupY(S) - 30, 'Knocked out! Healed', SPAR_RED);
+    cue('sparDown');   /* v2.3.3341: no death is sent for a knockout, so playerDeath never sounded -- a thud and the loss sting */
     _line(S, 'Sparring: ' + who + ' knocked you out -- you are healed, no loss (' + _score(p) + ').', SPAR_RED);
   } else if (p.note === 'down') {
     _line(S, 'Sparring: you knocked out the ' + who + ' (' + _score(p) + '). It is back in 3 s.');
+    cue('sparWin');   /* v2.3.3341 */
   } else if (p.note === 'left') {
     _line(S, 'Sparring: your clones went home (you left the world).');
   } else if (p.note === 'off') {

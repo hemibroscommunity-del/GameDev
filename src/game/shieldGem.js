@@ -34,6 +34,7 @@
 import { BLACKSMITH_TIERS, BT_AUDIO, ELEMENTS, SHIELD_GEM_STATS, recalcDerived } from '@/data/index.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { shieldSig, shieldWearPayload } from '@/game/shieldWear.js';
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a gem set in a shield, heard */
 
 /* how long an unanswered ask holds the gem buttons */
 export const SHIELD_GEM_WAIT_MS = 4000;
@@ -113,7 +114,7 @@ export function applyShieldGemResult(S, payload, save) {
       const el = ELEMENTS[payload.gem];
       if (pv) say(S, pv.label + ' +' + pv.value + pv.unit, el && el.color);
     }
-    try { BT_AUDIO.collect(); } catch (e) { /* sound only */ }
+    cue('gemSet');   /* v2.3.3341: collect() is a beep(), silent (SOUND-GAPS) */
   } else if (!payload.ok) {
     say(S, shieldGemReasonText(payload.reason), '#E58C7A');
   }

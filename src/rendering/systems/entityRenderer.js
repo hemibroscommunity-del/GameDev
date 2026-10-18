@@ -97,7 +97,8 @@ import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, bl
 import { gearTint, gearArt, gearMaterial, gearIdFor } from '../gearVariants.js'; /* v2.3.1757: material recolor; v2.3.2872: + owned pieces -> art */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
-import { footstepSurface } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel) */
+import { footstepSurface, groundStepAt } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel); v2.3.3341: + under another player's boots */
+import { peerStepShare, peerShare } from '@/game/eventSounds.js';   /* v2.3.3341: another player's footsteps and pick, heard */
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
 import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
 import { jumpActive, jumpFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog */
@@ -11249,8 +11250,23 @@ export class EntityRenderer {
              frames (the ground's colour is yours to look up only under your
              own boots: a peer's is the dirt's) */
           if (!_rJump && display._prevJogFrame !== frameIdx) {
-            if (other._sp && _jogPlantCrossed(JOG_FOOT_FRAMES[dir] || JOG_FOOT_FRAMES.south, display._prevJogFrame, frameIdx, fc, false,
-                now - (display._prevJogAt || 0), _rCyc)) {
+            const _rPlant = _jogPlantCrossed(JOG_FOOT_FRAMES[dir] || JOG_FOOT_FRAMES.south, display._prevJogFrame, frameIdx, fc, false,
+              now - (display._prevJogAt || 0), _rCyc);
+            /* ═══ v2.3.3341: ...AND IS HEARD AT EVERY FOOTFALL ═══
+               Another player's steps were silent (SOUND-GAPS §5): on the same
+               foot-plant frames as yours, the ground under THEIR boots (the
+               Wheel's, as yours; dirt elsewhere), their armour's weight, at
+               their share by distance -- a budget of its own
+               (eventSounds.peerStepShare), so a crowd's walking never drowns
+               their blows. */
+            if (_rPlant && typeof window !== 'undefined' && window.BT_AUDIO) {
+              const _sx = other.renderX || other.x || 0, _sy = other.renderY || other.y || 0;
+              const _sk = peerStepShare(S, _sx, _sy);
+              if (_sk > 0) {
+                try { window.BT_AUDIO.footstep(_arm, groundStepAt(S, _sx, _sy + playerGroundDy(S.currentZone, _sx, _sy)), _sk); } catch (e) { /* sound only */ }
+              }
+            }
+            if (other._sp && _rPlant) {
               const _ox = other.renderX || other.x || 0, _oy = other.renderY || other.y || 0;
               const _ok = zonePlayerScale(S.currentZone, _ox, _oy, TILE) || 1;
               const _ov = Math.abs(other._vx || 0) + Math.abs(other._vy || 0) > 0.0001;
@@ -11274,6 +11290,28 @@ export class EntityRenderer {
              as the local player's mine/fish pose. */
           const fc = playerFrameCount(pose, 'south') || (pose === 'mine' ? 14 : 32);
           frameIdx = Math.floor((now / cycleMs(pose, 'south')) * fc) % fc;
+          /* v2.3.3341: their pick heard on the rock, on the strike frame
+             yours is (4: effectsRenderer, the pick down), alternating the
+             sample's two strikes as yours does, at their share by distance --
+             a miner beside you was silent (SOUND-GAPS §5) */
+          if (pose === 'mine') {
+            const _mPrev = display._sndMineF;
+            display._sndMineF = frameIdx;
+            /* frames moved on since the last draw, and frames from there to the
+               strike: the strike was passed when it lies within the move (a
+               jump of half the loop or more is a pause, not a swing) */
+            const _mMoved = _mPrev == null ? 0 : (frameIdx - _mPrev + fc) % fc;
+            const _mToHit = _mPrev == null ? 0 : (4 - _mPrev + fc) % fc;
+            if (_mMoved > 0 && _mMoved < fc / 2 && _mToHit > 0 && _mToHit <= _mMoved
+                && typeof window !== 'undefined' && window.BT_AUDIO) {
+              const _mx = other.renderX || other.x || 0, _my = other.renderY || other.y || 0;
+              const _mk = peerShare(S, _mx, _my);
+              if (_mk > 0) {
+                display._sndMineAlt = !display._sndMineAlt;
+                try { window.BT_AUDIO.play('mine-strike', { offset: display._sndMineAlt ? 0.08 : 0.6, duration: 0.45, vol: 0.55 * _mk }); } catch (e) { /* sound only */ }
+              }
+            }
+          } else display._sndMineF = null;
         } else if (pose === 'dodge') {
           /* One-shot, clamped — mirrors the local branch.
              v2.3.2916: across THEIR roll window when their client sent it

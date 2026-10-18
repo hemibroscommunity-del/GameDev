@@ -793,6 +793,7 @@ import {
 } from '@/data/index.js';
 import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, hitSoundOf /* v2.3.3001: ...in its material's voice */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { monsterHitSfx, shotEndSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits and monster balls sound like their material */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: the missing sounds, from recordings already in the game */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { sweepBlockPoint, boxExitPoint, attackBlocked, boxFace } from '@/data/worldProps.js'; /* v2.3.2652: a prop in the flight path stops the shot; v2.3.2699: asked per STEP, which needs the sweep form; v2.3.2701: and the far face of a rock a monster stands in */
@@ -857,6 +858,10 @@ function queueSnowballBurst(S, proj) {
      The legacy local orb's hit on you never comes here: it has its own
      sound, below. */
   shotEndSfx(S, proj, proj && proj._shotShield ? 'shield' : why);
+  /* v2.3.3341: ...and on your shield the shield is heard taking it, under the
+     ball's own break (the worker's blocked blow for it plays nothing more:
+     gameEvents.js monster_attack) */
+  if (proj && proj._shotShield) cue('shieldBall');
   if (!proj || proj.kind !== 'snowball') return;
   if (!S.snowballBursts) S.snowballBursts = [];
   if (S.snowballBursts.length >= 12) return;   /* nothing drains it if FX are off */
@@ -1775,7 +1780,7 @@ export function updateArrows(S, deps) {
                   if (arrowCollision.manaRestored > 0) {
                     pushDmgPopup(S, P.x, P.y - 45, '+' + arrowCollision.manaRestored + ' MP', '#3b82f6');
                   }
-                  BT_AUDIO.collisionSound(arrowCollision.setupElement, arrowCollision.triggerElement, arrowCollision.manaRestored);
+                  cue('collision');   /* v2.3.3341: collisionSound is all beep()s, which play nothing */
                   for (var cp = 0; cp < 12; cp++) {
                     S.hitParticles.push({ x: m.x + (Math.random() - 0.5) * 6, y: m.y + (Math.random() - 0.5) * 6, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5 - 2, life: 0.7, color: elemCol, size: 2 + Math.random() * 2 });
                   }
@@ -1784,7 +1789,7 @@ export function updateArrows(S, deps) {
                   var isNew = discoverCollision(coll.id);
                   if (isNew) {
                     pushDmgPopup(S, P.x, P.y - 60, 'NEW: ' + coll.name + '!', '#f5c542');
-                    BT_AUDIO.collect();
+                    cue('discovery');   /* v2.3.3341: was collect(), a beep() -- silent */
                   }
                 }
                 /* ═══ v2.3.2511: AN ARROW SOUNDS LIKE WHAT IT HIT ═══

@@ -47,6 +47,7 @@ import { Container, Sprite } from 'pixi.js';
 import { campfireAtlas, CAMPFIRE_PIX, CAMPFIRE_FLAME_MS } from './campfireFx.js';
 import * as ART from './campfireArt.js';
 import { HEAL_MS } from '../game/wheelBreak.js';
+import { cueAt } from '../game/eventSounds.js'; /* v2.3.3341: a building heard catching */
 
 const qs = (() => { try { return new URLSearchParams(window.location.search); } catch (e) { return null; } })();
 /** Does this page draw buildings burning?  (`?nobuildingfire`: no) */
@@ -646,7 +647,16 @@ export class BuildingFires {
       }
       const was = f.frac;
       f.hit(ev, now);
-      if (was < IGNITE && f.frac >= IGNITE) this.stats.caught++;
+      if (was < IGNITE && f.frac >= IGNITE) {
+        this.stats.caught++;
+        /* v2.3.3341: catching is heard -- a whoomp of air and a hiss, by
+           distance (it caught in silence; SOUND-GAPS).  The burning itself
+           has no loop yet: a real crackle needs a new recording. */
+        try {
+          const S = typeof window !== 'undefined' && window._gameState ? window._gameState.current : null;
+          if (S) cueAt(S, 'fireCatch', ix.o.x[i], ix.o.y[i]);
+        } catch (e) { /* sound only */ }
+      }
       return;
     }
     const f = this.fires.get(i);

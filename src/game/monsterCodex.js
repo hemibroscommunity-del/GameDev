@@ -16,6 +16,7 @@
  * Nothing here decides anything: a count is only ever the worker's. */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { CODEX_KINDS, codexEntry, codexFactsAt } from '@/data/monsterCodex.js';
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a new page heard */
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -74,6 +75,7 @@ export function onCodexKill(S, cx) {
     const e = codexEntry(cx.k);
     const what = 'New in the Codex: ' + (e ? e.name : 'a monster');
     try { const P = S.player; if (P) pushDmgPopup(S, P.x, P.y - 96, what, '#5FD3C0'); } catch (e2) { /* popup only */ }
+    cue('discovery');   /* v2.3.3341: a new page heard -- the quest chime's first notes (it was silent; SOUND-GAPS) */
   }
   bump(c);
 }

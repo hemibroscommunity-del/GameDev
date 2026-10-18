@@ -608,6 +608,30 @@ remnant to migrate server-side, not a mode to preserve.
       own blast in full; `BT_AUDIO.monsterDeath(arch, opts, k)`; kills still
       go to every phone; `mp-farfeel`: material-hit-sounds.md "A far death,
       slam or blast".
+    - since v2.3.3341 THE MISSING SOUNDS FROM RECORDINGS ALREADY HERE -- the
+      owner, on the list of missing sounds: "Start adding the have ones then
+      give me the list of ones that are still needed afterwards":
+      - ~116 cues, each slices of SFX_MANIFEST files (nothing new to load or
+        decode): `src/data/eventSounds.js` says WHAT (`[key, offset, duration,
+        vol, rate, delay, fade]`, `_playLayer`'s layer), `src/game/
+        eventSounds.js` WHEN and HOW LOUD -- `cue(name, k)`, `cueAt` (by
+        distance, earVol), `cuePeer` / `peerShare` (another player's at
+        `PEER_K` 0.5 of yours, at most `PEER_BURST` 4 in 200 ms; footsteps
+        their own budget, `peerStepShare`), `CUE_GAP_MS` for the ones a pack
+        fires at once; `window.__btCues`;
+      - the beep()s that played nothing (shield, door, weapon swap, quest
+        taken, parry, wind-ups, campfire...) are sounds; a dodged blow is a
+        rush of air, no clang, shake or red sparks; monsters' throws, deaths of
+        their own (`DEATH_CUES`; the slime-sheet looks no longer die twice,
+        `SLIME_SHEET_DEATHS`), crits, the bow's draw, crafting, the reveal,
+        dungeons, No man's land, the market, and other players' steps, swings,
+        shots, rolls, jumps, shield, swimming and gathering;
+      - the river, Bro Pond and the falls heard on their banks
+        (`src/game/waterAmbience.js`, its own loop on the music bus, never
+        startSfxLoop -- the fishing loop of that sample is stopped every frame);
+      - still needed (new recordings): docs/SOUND-GAPS.md; `sound-cues` suite,
+        `mp-soundcues`, `mp-cuelevels` (renders every cue: no clipping, the
+        levels the comments promise), `mp-farfeel` reads the cues now.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":

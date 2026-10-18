@@ -32,6 +32,10 @@ import { isWheelTrialZone } from '../game/worldTrial.js';
 import { wheelWaterAt, wheelSwimOn, wheelSwimCell } from '../game/wheelTrial.js';
 import { wetProbes, swimNext, isWheelSwimming, STROKE_MS, SWIM_MULT, JUMP_PX } from '../game/wheelSwim.js';
 import { jumpActive } from '../game/jump.js';   /* v2.3.3017: a player in the air is not in the water */
+import { peerOwn } from '../game/eventSounds.js';   /* v2.3.3341: another swimmer, heard */
+import { BT_AUDIO } from '../data/gameDisplay.js';   /* v2.3.3341: ...with your own swimming's sounds */
+/* the game's state, for how far off a sound is (as the QA probes read it) */
+const gameState = () => (typeof window !== 'undefined' && window._gameState ? window._gameState.current : null);
 
 const SINK_MS = 320;          /* wading in: on land to only a head */
 const RISE_MS = 240;          /* and climbing out */
@@ -153,7 +157,7 @@ export class SwimFx {
              their own client does not look at the water in the air either
              (BroTown); a landing in it is judged from the next frame */
           const air = !!(o._jump && jumpActive(o._jump, Date.now()));
-          swimmers += this._figure(st, d, air ? false : this._peerOn(st, d, now), now, dt, null);
+          swimmers += this._figure(st, d, air ? false : this._peerOn(st, d, now), now, dt, null, true);
         }
       }
     }
@@ -198,7 +202,7 @@ export class SwimFx {
   }
 
   /* One figure, this frame.  Returns 1 while it is in the water at all. */
-  _figure(st, d, on, now, dt, sw) {
+  _figure(st, d, on, now, dt, sw, peer) {
     /* where it would stand: entityRenderer set d.y this frame, unless it
        left it alone -- then it is still the y this sank it to */
     const base = d._swimY != null && d.y === d._swimY ? d.y - (d._swimDy || 0) : d.y;
@@ -230,6 +234,14 @@ export class SwimFx {
     st.k = Math.max(0, Math.min(1, st.k + (on ? dt / SINK_MS : -dt / RISE_MS)));
     if (on && !st._was) this._burst(fx, fy, this._u(line, sy), 'in', st);
     if (!on && st._was) this._burst(fx, fy, this._u(line, sy), 'out', st);
+    /* v2.3.3341: ANOTHER player's splash in and drip out are heard (yours are
+       BroTown's): your own (BT_AUDIO.swimSplash's table and level) at their
+       share by distance -- silent before (docs/specs/wheel-swimming.md
+       listed it "Not done") */
+    if (peer && on !== !!st._was) {
+      const _S = gameState();
+      if (_S) peerOwn(_S, on ? 'peerSwimIn' : 'peerSwimOut', BT_AUDIO.SWIM_SPLASH[on ? 'in' : 'out'], BT_AUDIO.SWIM_STEP_VOL * (on ? 2 : 1), fx, fy);
+    }
     st._was = on;
     if (st.k <= 0) {
       if (wasIn || d._swimMask) this._unsink(d);
@@ -249,6 +261,13 @@ export class SwimFx {
       const ph = st.ph + (dt / STROKE_MS) * Math.min(1, speed / (WALK_PX_S * SWIM_MULT));
       st.ph = ph - Math.floor(ph);
       if (ph >= 1) stroke = true;
+    }
+    /* v2.3.3341: ...and their strokes, yours (a SWIM_STROKES row at
+       SWIM_STEP_VOL, as swimStroke plays it), on their footsteps' budget
+       (eventSounds.peerStepShare) */
+    if (stroke && peer) {
+      const _S = gameState(), _L = BT_AUDIO.SWIM_STROKES;
+      if (_S && _L && _L.length) peerOwn(_S, 'peerStroke', _L[Math.floor(Math.random() * _L.length)], BT_AUDIO.SWIM_STEP_VOL, fx, fy, 'step');
     }
     const bob = on
       ? (moving ? BOB_SWIM * Math.sin(st.ph * Math.PI * 2) : BOB_TREAD * Math.sin(now / 1000 * Math.PI * 2 * TREAD_HZ))

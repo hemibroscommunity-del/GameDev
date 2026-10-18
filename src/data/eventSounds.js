@@ -1,0 +1,286 @@
+/* ═══ v2.3.3341: SOUNDS FROM RECORDINGS ALREADY IN THE GAME ═══
+ *
+ * Owner, 2026-10-18, on the list of missing sounds (docs/SOUND-GAPS.md):
+ * "Start adding the have ones" -- every event that plays nothing today and
+ * can be made from a recording the game already ships.  Nothing new is
+ * downloaded and nothing is synthesised (v2.3.1103: the owner removed every
+ * made-up sound): each cue below is one or more SLICES of SFX_MANIFEST's own
+ * files (data/gameDisplay.js), which the loading screen already decodes, so
+ * the memory budget does not move (CLAUDE.md, "Memory is budgeted").
+ *
+ * A cue is a list of layers, the shape BT_AUDIO._playLayer already plays:
+ *
+ *     [sample key, offset s, duration s (0 = to the end), vol, rate, delay s, fade s]
+ *
+ * at the raw play() level (no HIT_GAIN), every layer of a cue played
+ * together.  game/eventSounds.js decides WHEN and HOW LOUD (a monster's or
+ * another player's by how far off it is, hitSounds.earVol); this file is only
+ * WHAT.  No Wheel-only clip (the `step-*` footsteps) is used here: those load
+ * only in the Wheel, and a cue must sound the same everywhere.
+ *
+ * THE LEVELS ARE MEASURED, NOT GUESSED (the PROP_SOUNDS method: the loudest
+ * 50 ms of the slice, plain RMS), against the game's own hit -- sword-hit3 at
+ * 0.55 x HIT_GAIN, which is "1.0" below.  For scale: a quest turn-in is ~2.4,
+ * the menu click ~0.5, the armour's clang ~3.5 (A-weighted), a sprint's
+ * push-off ~0.8.  `server/test/sound-cues.test.mjs` holds every cue to the
+ * manifest, to this shape, and every call site's name to this table. */
+
+export const EVENT_SOUNDS = {
+  /* ── your shield, your dodges ──────────────────────────────────────── */
+  /* A monster's blow on your raised shield.  The clang the old single-player
+     path played (shield-block at 1.0), a touch softer: ~1.4, under the
+     armour clang it replaces. */
+  shieldBlock: [['shield-block', 0, 0, 0.85, 1]],
+  /* A monster's ball breaking on your raised shield: under the ball's own
+     break (SHOT_HOW.shield, half its level), ~0.6. */
+  shieldBall: [['shield-block', 0, 0, 0.37, 1.08]],
+  /* Raising and lowering it: the leather-and-buckle equip tick (uiEquip's
+     slice), ~0.55 up, ~0.35 down and a little lower in pitch. */
+  shieldUp: [['ui-equip', 0.095, 0.3, 1.9, 1.12]],
+  shieldDown: [['ui-equip', 0.095, 0.3, 1.25, 0.86]],
+  /* A blow the worker rolled as dodged: a rush of air, ~0.5, never the clang
+     of a hit.  THE ARROW'S FLIGHT, the airiest recording the game has (11%
+     of it under 400 Hz), as the sprint's push-off is since v2.3.3336 -- the
+     special swipe is nearly half a body's thump below 400 Hz at any pitch
+     (43-46%, measured), which the owner heard in the old push-off as
+     "a fleshy sound". */
+  dodged: [['arrow-fly', 0.03, 0.24, 3.55, 0.95, 0, 0.06]],
+  /* Your dodge roll: the same rush, lower and a little longer, ~0.6.  (Air
+     reads quieter on the plain measure than the swipe's thump did: both
+     these keep the swipe's loudness BY EAR, its A-weighted level.) */
+  dodgeRoll: [['arrow-fly', 0.03, 0.26, 4.15, 0.82, 0, 0.07]],
+
+  /* ── your blows ────────────────────────────────────────────────────── */
+  /* A critical hit: the grand slam's own sample (sword-hit, kept for it)
+     over the ordinary hit, ~0.65. */
+  crit: [['sword-hit', 0, 0.4, 0.6, 1, 0, 0.06]],
+  /* A parry: the bright clang with the shield under it. */
+  parry: [['sword-hit2', 0, 0, 0.55, 1.05], ['shield-block', 0, 0, 0.4, 1.1, 0.02]],
+  /* The bow drawn: bow-pullback, in the game since the bow and never played.
+     Its audible part is 0.05-0.35 s and it is quiet (peak 0.13), so a big
+     gain: ~0.5. */
+  bowDraw: [['bow-pullback', 0.03, 0.36, 3.6, 1, 0, 0.06]],
+  /* The staff's special (the big bolt): the cast slowed and swelling, a
+     bolt's crackle after it -- it played the sword's whoosh. */
+  staffSpecial: [['magic-cast', 0, 0.8, 1, 0.75], ['magic-hit2', 0.02, 0.6, 0.35, 0.8, 0.12, 0.1]],
+  /* The Element Burst: the cast with a rush of wind under it... */
+  burstCast: [['magic-cast', 0, 0.8, 0.9, 0.9], ['whirlwind', 0.3, 0.5, 0.18, 1.3, 0, 0.1]],
+  /* ...and its blast, where it goes off. */
+  burstNova: [['whirlwind', 0.05, 0.6, 0.35, 1.35, 0, 0.12], ['magic-hit', 0.02, 0.6, 0.5, 0.85]],
+  /* Two elements colliding (a named combo): a bolt's crack and a gust. */
+  collision: [['magic-hit2', 0.02, 0.6, 0.55, 1.1], ['whirlwind', 0.6, 0.5, 0.2, 1.5, 0, 0.12]],
+  /* Something found for the first time: a new collision, a new Codex page.
+     The quest chime's first notes, ~0.8. */
+  discovery: [['quest-complete-v2', 0.05, 0.5, 0.3, 1.1, 0, 0.15]],
+  /* Changing weapons: a quick blade drawn -- the old swing whoosh
+     (sword-swing, out of the rotation) fast, with a faint ring.  Not the
+     equip tick: v2.3.2639 took that off slot switches, which equip nothing. */
+  weaponSwap: [['sword-swing', 0.05, 0.25, 0.39, 1.35, 0, 0.05], ['sword-hit2', 0, 0.2, 0.15, 1.9, 0.03, 0.06]],
+
+  /* ── moving ────────────────────────────────────────────────────────── */
+  /* A jump's push-off, over the footstep it already plays, ~0.4 (the
+     arrow's flight, quick: see `dodged`)... */
+  jumpUp: [['arrow-fly', 0.03, 0.2, 2.6, 1.0, 0, 0.05]],
+  /* ...and the landing's weight: the bare thud slowed to a low thump, ~0.4,
+     under the landing's footstep. */
+  jumpLand: [['monster-hit', 0.01, 0.2, 0.8, 0.62]],
+  /* A sprint running out of stamina mid-run: the push-off (BT_AUDIO.
+     SPRINT_PUSH's arrow flight), slowed and deflating. */
+  sprintOut: [['arrow-fly', 0.03, 0.24, 2.8, 0.62, 0, 0.1]],
+  /* A chill, burn, poison... wearing off: a faint shimmer, ~0.2. */
+  statusEnd: [['magic-cast', 0, 0.4, 0.3, 1.4, 0, 0.1]],
+  /* Standing up again after a death: the whirlwind's rising half, soft. */
+  respawn: [['whirlwind', 0.1, 0.8, 0.22, 1.1, 0, 0.2]],
+
+  /* ── fights between players, duels, the arena ──────────────────────── */
+  pvpKill: [['sword-hit', 0, 0.4, 0.55, 1], ['flip-win', 0, 0.55, 0.3, 1, 0.05, 0.12]],
+  /* Ace's coin flip's own win and loss, at his levels. */
+  duelWin: [['flip-win', 0, 1.6, 0.5, 1]],
+  duelLose: [['flip-lose', 0, 0.7, 0.5, 1]],
+  duelStart: [['sword-hit2', 0, 0, 0.5, 0.9], ['whirlwind', 0.1, 0.6, 0.2, 0.9, 0.05, 0.15]],
+  arenaStart: [['shield-bash', 0, 0.5, 0.45, 0.7], ['whirlwind', 0.1, 0.7, 0.22, 0.8, 0.05, 0.15]],
+  champion: [['level-up', 0, 0, 0.55, 1]],
+  /* No man's land: crossing in (an ominous sting), a skull put on you, what
+     a death there took from you, and what your kill there took. */
+  nmlEnter: [['flip-lose', 0, 0.6, 0.32, 0.75, 0, 0.15], ['whirlwind', 0.1, 0.8, 0.16, 0.7, 0, 0.2]],
+  nmlSkull: [['skeleton-death', 0.55, 0.5, 0.35, 1.1, 0, 0.12]],
+  nmlLoss: [['coin-pickup', 0.5, 0.8, 0.4, 0.7, 0.6, 0.2]],   /* coins spilling away, after the death's own sting */
+  nmlTake: [['coin-pickup', 0.5, 0.7, 0.45, 1], ['flip-win', 0, 0.55, 0.25, 1, 0.1, 0.12]],
+  /* Sparring: your clone knocked you down, or you knocked a clone down. */
+  sparDown: [['monster-hit', 0, 0, 1.2, 0.7], ['flip-lose', 0, 0.7, 0.4, 0.92, 0.16]],
+  sparWin: [['flip-win', 0, 0.7, 0.35, 1]],
+  /* A kill's roll landing on a drop: a glint and the win's first note. */
+  rollWin: [['sword-hit2', 0, 0.25, 0.3, 1.7], ['flip-win', 0, 0.3, 0.22, 1.1, 0.04, 0.08]],
+
+  /* ── monsters ──────────────────────────────────────────────────────── */
+  /* Their throws (the break already plays, SHOT_SOUNDS): a snowball's
+     whoosh, a fireball's cast and hiss, a goo glob's plop.  ~0.5 beside
+     you, by distance. */
+  throwSnow: [['sword-swing', 0.05, 0.28, 0.39, 0.8, 0, 0.06]],
+  throwFire: [['magic-cast', 0, 0.5, 0.7, 0.85], ['pan-sizzle', 0.3, 0.5, 1.2, 1.1, 0, 0.12]],
+  throwGoo: [['lure-drop', 0, 0, 2.6, 0.78], ['sword-swing', 0.05, 0.25, 0.2, 0.7]],
+  /* The wind-up before a slam (a slow swell) or a lunge (a low rush)... */
+  windSlam: [['whirlwind', 0.1, 0.6, 0.28, 0.7, 0, 0.12]],
+  windLunge: [['special-swipe', 0.02, 0.3, 1.6, 0.7, 0, 0.08]],
+  /* ...the slam hitting the ground (the felled tree's thud and the shield
+     bash's impact, slowed), and a lunge that finds nobody. */
+  slamHit: [['tree-fall', 1.12, 0.6, 0.4, 0.9, 0, 0.15], ['shield-bash', 0.03, 0.4, 0.3, 0.7, 0, 0.1]],
+  lungeMiss: [['sword-swing', 0.05, 0.28, 0.39, 0.85, 0, 0.06]],
+  /* The Blue Slime swelling to burst (the slime orb's splort, stretched to
+     ~1.3 s), and the burst: a crack and a wet blast (its splat comes with
+     the kill, as every slime's does). */
+  blueSwell: [['slime-projectile-hit', 0, 0, 1.6, 0.5]],
+  blueBurst: [['tree-fall', 0.04, 0.35, 0.3, 0.8, 0, 0.12], ['catch-splash', 0.1, 0.6, 0.55, 0.85, 0.02, 0.15]],
+  /* A snowman digging into its pile, and bursting out of it. */
+  burrow: [['snowman-hit', 0.03, 0.25, 0.35, 0.8], ['snowman-hit', 0.03, 0.25, 0.3, 0.72, 0.18]],
+  emerge: [['snowman-death', 0.05, 0.4, 0.35, 1.1, 0, 0.12]],
+  /* Deaths of the creatures that had only the generic bone crunch.  ~1-1.4
+     (the snowman's and skeleton's own are ~1.8), by distance. */
+  dieGoblin: [['monster-hit', 0, 0, 2.2, 0.85], ['pan-sizzle', 0.3, 0.9, 1.6, 1, 0.04, 0.4]],
+  dieRock: [['mine-strike', 0.06, 0.4, 0.6, 0.75], ['skeleton-death', 0.55, 0.55, 0.45, 0.72, 0.04, 0.15]],
+  dieFish: [['catch-splash', 0.1, 0.7, 0.6, 0.95, 0, 0.2], ['monster-hit', 0, 0, 2, 0.8]],
+  dieLurker: [['monster-hit', 0, 0, 2.2, 0.68], ['slime-death', 0, 0.5, 0.22, 0.6, 0.03, 0.15]],
+  /* Coming back to life: a slime's plop, anything else a faint shimmer. */
+  respawnSlime: [['lure-drop', 0, 0, 2.2, 0.8]],
+  respawnOther: [['magic-cast', 0, 0.6, 0.4, 1.25, 0, 0.12]],
+  /* A mummy's wrappings whipping away from the skeleton inside: the cloth
+     (the leather rustle of the equip tick, low) and a whip of air, only.  Its bones are left to the skeleton's own noise, the owner's
+     "rattling bones" recording, played as it sheds (game/monsterNoises.js,
+     its own change); a bone layer here would rattle twice. */
+  unwrap: [['ui-equip', 0.095, 0.3, 2.6, 0.78, 0, 0.08], ['arrow-fly', 0.03, 0.18, 1.8, 1.2, 0.05, 0.05]],
+  /* A dungeon boss: arriving, its warning, slam, charge, enrage, summons and
+     life drain. */
+  bossArrive: [['tree-fall', 1.12, 0.8, 0.5, 0.75], ['whirlwind', 0.1, 0.9, 0.28, 0.75, 0, 0.2]],
+  bossWarn: [['whirlwind', 0.1, 0.7, 0.32, 0.6, 0, 0.15], ['monster-hit', 0, 0, 1.6, 0.5, 0.05]],
+  bossSlam: [['tree-fall', 1.12, 0.7, 0.55, 0.8, 0, 0.15], ['shield-bash', 0.03, 0.5, 0.4, 0.6]],
+  bossCharge: [['whirlwind', 0.1, 0.6, 0.35, 1, 0, 0.12]],
+  bossEnrage: [['monster-hit', 0, 0, 2, 0.5], ['monster-hit', 0, 0, 1.8, 0.45, 0.22], ['whirlwind', 0.3, 0.6, 0.2, 0.6, 0.05, 0.15]],
+  bossSummon: [['magic-cast', 0, 0.8, 0.9, 0.7], ['whirlwind', 0.2, 0.6, 0.2, 0.9, 0.05, 0.15]],
+  bossSiphon: [['magic-hit2', 0.02, 0.6, 0.4, 0.7], ['magic-cast', 0, 0.5, 0.6, 0.8, 0.05]],
+
+  /* ── dungeons, doors, the land ─────────────────────────────────────── */
+  dungeonIn: [['whirlwind', 1.6, 0.9, 0.3, 0.9, 0, 0.3], ['shield-bash', 0.03, 0.4, 0.2, 0.55, 0.15]],
+  dungeonWave: [['shield-bash', 0.03, 0.5, 0.45, 0.6], ['whirlwind', 0.2, 0.5, 0.18, 0.8, 0.02, 0.12]],
+  /* "Dungeon cleared!": the old quest fanfare, ~2.5 (a turn-in is ~2.4). */
+  dungeonClear: [['quest-complete', 0, 0, 0.6, 1]],
+  dungeonOut: [['whirlwind', 1.6, 0.9, 0.25, 1.1, 0, 0.3]],
+  /* A door: a knock of wood, ~0.65. */
+  door: [['wood-chop', 0.05, 0.3, 0.14, 0.7, 0, 0.1]],
+  /* Crossing into a land: a breath of wind under its banner. */
+  landCross: [['whirlwind', 0.2, 0.6, 0.18, 1.2, 0, 0.15]],
+  /* Lighting a fire: two strikes of a flint (the pickaxe's ring, high and
+     quick); the fire catching: the pan's crackle swelling and fading. */
+  fireStrike: [['mine-strike', 0.55, 0.15, 0.25, 1.6], ['mine-strike', 0.55, 0.12, 0.2, 1.75, 0.22]],
+  campfire: [['pan-sizzle', 0.3, 1.2, 1.6, 0.9, 0, 0.5]],
+  /* A harvest's gesture cue opening (fishing's is the fish's bite): a small
+     bright tick, ~0.45. */
+  gatherReady: [['sword-hit2', 0, 0.2, 0.25, 1.6, 0, 0.05]],
+  /* A building catching fire: a whoomp of air and a hiss, by distance. */
+  fireCatch: [['whirlwind', 0.3, 0.5, 0.3, 1.4, 0, 0.12], ['pan-sizzle', 0.3, 1, 1.6, 1, 0.05, 0.35]],
+  /* A broken object mended, a signpost popping up: small knocks of wood. */
+  mended: [['wood-chop', 0.05, 0.25, 0.08, 1.2, 0, 0.08]],
+  signpost: [['wood-chop', 0.05, 0.2, 0.06, 1.5, 0, 0.06]],
+  /* Loot landing on the ground: a little coin rattle, ~0.25. */
+  lootDrop: [['coin-flip', 0.07, 0.3, 4, 1.05, 0, 0.06]],
+  /* A crop ripe on your farm: a glint and a note. */
+  cropRipe: [['sword-hit2', 0, 0.25, 0.22, 1.8], ['flip-win', 0, 0.22, 0.18, 1.2, 0.03, 0.06]],
+  /* Your pet's ward taking the edge off an element: a small bright block. */
+  petWard: [['shield-block', 0, 0, 0.3, 1.4]],
+
+  /* ── crafting results ──────────────────────────────────────────────── */
+  smelt: [['mine-strike', 0.06, 0.35, 0.55, 0.8], ['pan-sizzle', 0.3, 0.8, 1.6, 1.15, 0.12, 0.3]],
+  forge: [['sword-hit', 0, 0.45, 0.6, 0.95], ['mine-strike', 0.58, 0.4, 0.45, 0.9, 0.04]],
+  forgeFail: [['flip-lose', 0, 0.7, 0.45, 1]],
+  armourForge: [['armor-hit-1', 0.12, 0.6, 0.22, 0.95, 0, 0.15], ['ui-equip', 0.095, 0.3, 2.4, 1, 0.12]],
+  hardenOk: [['sword-hit2', 0, 0, 0.5, 1.25], ['quest-complete-v2', 0.05, 0.7, 0.5, 1, 0.08, 0.2]],
+  hardenFail: [['mine-strike', 0.06, 0.35, 0.45, 0.6], ['flip-lose', 0, 0.7, 0.45, 1, 0.08]],
+  woodwork: [['axe-chop', 0.13, 0.3, 1.8, 1.05], ['wood-chop', 0.05, 0.3, 0.12, 1.25, 0.1, 0.08]],
+  woodBreak: [['tree-fall', 0.02, 0.4, 0.45, 1.3, 0, 0.12], ['axe-chop', 1.135, 0.3, 1.2, 0.9, 0.02]],
+  hardWood: [['wood-chop', 0.05, 0.3, 0.14, 0.9], ['pan-sizzle', 0.3, 0.6, 1.2, 1.1, 0.08, 0.2]],
+  trapsMade: [['axe-chop', 0.13, 0.25, 1.6, 1.15], ['axe-chop', 1.135, 0.25, 1.4, 1.2, 0.14]],
+  /* A gem polished or shattered: the crystal prop's own hit and break
+     (PROP_SOUNDS.crystal), at its levels. */
+  gemCut: [['sword-hit2', 0, 0.3, 0.6, 1.3], ['mine-strike', 0.06, 0.3, 0.35, 1.4]],
+  gemShatter: [['skeleton-death', 0.55, 0.55, 0.4, 1.5], ['sword-hit2', 0, 0.3, 0.42, 1.15], ['sword-hit2', 0, 0.3, 0.36, 1.45, 0.07]],
+  gemSet: [['magic-cast', 0, 0.6, 0.7, 1.1], ['sword-hit2', 0, 0.25, 0.4, 1.6, 0.08]],
+  salvage: [['armor-hit-2', 0.06, 0.6, 0.2, 0.8, 0, 0.15], ['mine-strike', 0.58, 0.4, 0.35, 0.8, 0.06]],
+  /* The Cookhouse: a dish cooked (the campfire's own sting, at its level),
+     its fish game starting, and a fish burnt. */
+  cookDone: [['cook-success', 0, 0, 0.6, 1]],
+  cookStart: [['pan-sizzle', 0.3, 0.8, 1.6, 1, 0, 0.3]],
+  cookBurnt: [['pan-sizzle', 0.3, 0.6, 1.6, 0.9, 0, 0.2], ['flip-lose', 0, 0.7, 0.4, 1, 0.1]],
+
+  /* ── loot, quests, the market ──────────────────────────────────────── */
+  /* Armour, a weapon or a remnant into the bag: the equip tick at uiEquip's
+     own level.  A shard: a small glint.  A gem: the glint and a note. */
+  pickGear: [['ui-equip', 0.095, 0.3, 3, 1]],
+  pickShard: [['sword-hit2', 0, 0.25, 0.28, 1.75, 0, 0.06]],
+  pickGem: [['sword-hit2', 0, 0.25, 0.3, 1.9], ['flip-win', 0, 0.22, 0.2, 1.25, 0.04, 0.06]],
+  /* The Rare / Elite / Godly reveal: a tick as each grade flicks past, a
+     glint as a stage lands, and the grade's own finish. */
+  revealTick: [['ui-click', 0.042, 0.05, 0.5, 1]],
+  revealStage: [['sword-hit2', 0, 0.25, 0.4, 1.5]],
+  revealRare: [['quest-complete-v2', 0.05, 0.8, 0.5, 1]],
+  revealElite: [['flip-win', 0, 1.6, 0.45, 1]],
+  revealGodly: [['level-up', 0, 0, 0.55, 1]],
+  /* A quest taken (the old fanfare's first bars) and its tasks done ("Return
+     to..."): the turn-in's own chime plays at the hand-in, so neither is it. */
+  questAccept: [['quest-complete', 0, 0.55, 0.32, 1, 0, 0.15]],
+  questReady: [['quest-complete-v2', 0.05, 0.45, 0.45, 1.06, 0, 0.12]],
+  shopBuy: [['coin-pickup', 0.5, 0.6, 0.35, 0.85, 0, 0.15], ['ui-equip', 0.095, 0.3, 1.8, 1, 0.06]],
+  /* The auction house: a thing listed, bought, bid on, and sold. */
+  marketList: [['ui-equip', 0.095, 0.3, 2.4, 0.95]],
+  marketBuy: [['coin-pickup', 0.5, 0.7, 0.4, 1]],
+  marketBid: [['coin-flip', 0.07, 0.6, 8, 1]],
+  marketSold: [['coin-pickup', 0.5, 0.9, 0.45, 1], ['flip-win', 0, 0.3, 0.22, 1.1, 0.12, 0.08]],
+  /* A trade completed, or called off. */
+  tradeDone: [['coin-pickup', 0.5, 0.6, 0.35, 1], ['ui-equip', 0.095, 0.3, 2.2, 1, 0.08]],
+  tradeOff: [['ui-close', 0, 0, 0.35, 0.9]],
+  /* The Daily Spin's wheel ticking past each slice. */
+  spinTick: [['ui-click', 0.042, 0.05, 0.45, 1.1]],
+  /* Your party becoming an alliance; a war declared. */
+  allianceUp: [['level-up', 0, 0.5, 0.35, 1, 0, 0.15]],
+  allianceWar: [['shield-bash', 0.03, 0.5, 0.45, 0.65], ['whirlwind', 0.1, 0.7, 0.2, 0.8, 0.05, 0.15]],
+
+  /* ── other players (game/eventSounds.js cuePeer: by distance, a burst cap,
+        about half your own level; what sounds as YOURS does -- the sprint's
+        push-off, a swimmer's splash and strokes -- is played from BT_AUDIO's
+        own tables by eventSounds.peerOwn, never copied here) ─────────────── */
+  peerShield: [['ui-equip', 0.095, 0.3, 1.9, 1.08]],
+  /* a fishing line cast in (the lure's plop) */
+  peerCast: [['lure-drop', 0, 0, 2.2, 1]],
+};
+
+/* The least time between two plays of one cue, for those a crowd or a pack
+   can fire many times in a moment.  Absent = no gap. */
+export const CUE_GAP_MS = {
+  lootDrop: 120,
+  respawnSlime: 250,
+  respawnOther: 250,
+  revealTick: 40,
+  spinTick: 40,
+  mended: 300,
+  signpost: 300,
+  pickShard: 80,
+  pickGear: 120,
+  shieldUp: 120,
+  shieldDown: 120,
+  burrow: 400,
+  emerge: 400,
+  statusEnd: 400,
+  /* a burst or a whirlwind can crit, be blocked or be dodged by a whole pack
+     at once, and a pack of snowmen throws together: one voice in a moment */
+  crit: 120,
+  shieldBlock: 60,
+  dodged: 80,
+  collision: 150,
+  throwSnow: 60,
+  throwFire: 60,
+  throwGoo: 60,
+  windSlam: 100,
+  windLunge: 100,
+  slamHit: 100,
+  lungeMiss: 100,
+  unwrap: 200,
+  tradeOff: 300,
+};

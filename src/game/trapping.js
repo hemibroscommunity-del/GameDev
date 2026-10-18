@@ -40,6 +40,7 @@ import { wheelLong } from '@/game/wheelSize.js';   /* v2.3.3315: the middle of t
 import { BT_AUDIO } from '@/data/index.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: traps made, and the pet's ward, heard */
 
 /* ── the shakes, drawn by trapFx.js and timed here (the popups, the sounds
    and the card wait for the animation they belong to) ── */
@@ -278,7 +279,7 @@ export function onMakeTrapsResult(S, p) {
   if (p.made > 0) {
     say(S, '+' + p.made + ' Box Trap' + (p.made > 1 ? 's' : ''), '#E0B46A', 34);
     if (p.xp > 0) say(S, '+' + p.xp + ' Woodworking XP', '#D8A94D', 48);
-    try { BT_AUDIO.collect(); } catch (e) { /* sound only */ }
+    cue('trapsMade');   /* v2.3.3341: two knocks of wood -- collect() is a beep(), silent (SOUND-GAPS) */
     if (p.leveled && p.newLevel) { try { celebrateLifeSkillLevel(S, 'woodworking', p.newLevel, p.newLevel - 1); } catch (e) { /* visual */ } }
   }
   S._trapsMade = (S._trapsMade || 0) + (p.made || 0);
@@ -371,6 +372,9 @@ export function noteWard(S, p, now) {
     S._wardSaid = said;   /* for the QA scenario (mp-petwards) */
     pushDmgPopup(S, x, y - 40, said, '#7EE0A8');
   } catch (e) { /* popup only */ }
+  /* v2.3.3341: ...and heard with its word, a small bright block (it was
+     silent; SOUND-GAPS) -- as often as the word, never on every hit */
+  cue('petWard');
 }
 
 /** The stretch and kind words a card or row uses ("Gobling · Lv 4"). */

@@ -4,6 +4,7 @@ import { thumbFor, iconFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.j
 import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2531: gear listing art */
 import { storeBrowse, storeMine, storeBuy, storeBid, storeAccept, storeCancel, storeEnabled, storeMyId, storePetsEnabled } from '@/ui/storeApi.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
+import { cue } from '@/game/eventSounds.js';   /* v2.3.3341: the auction house heard */
 import { PlayerIcon } from '@/ui/PlayerIcon.jsx';   /* v2.3.2620: the same icon the player list draws */
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
 import { StoreChatPanel } from './StoreChatPanel.jsx';   /* v2.3.2621 */
@@ -290,12 +291,16 @@ export function StorePanel(props) {
   /* One shape for every action: ask, show the worker's own sentence back,
      then re-read both shelves.  Never a local credit -- the echo carries
      the gold and the goods. */
-  const act = async (fn, okText) => {
+  /* v2.3.3341: `snd`, the cue the worker's yes is heard as (data/eventSounds.js
+     market*): a sale taken or a thing bought clinks, a bid's coin taps, a
+     listing taken down goes back in the bag -- they were silent but for the
+     button's click (SOUND-GAPS). */
+  const act = async (fn, okText, snd) => {
     if (busy) return;
     setBusy(true);
     const r = await fn();
     setBusy(false);
-    if (r && r.ok) { say(okText, true); setBidFor(null); setBidText(''); }
+    if (r && r.ok) { say(okText, true); setBidFor(null); setBidText(''); if (snd) cue(snd); }
     else say((r && r.error) || 'The store said no', false);
     refresh();
   };
@@ -386,8 +391,8 @@ export function StorePanel(props) {
           {mineView
             ? (
               <div style={{ display: 'flex', gap: 5 }}>
-                {top ? pill('Take ' + top.amount + 'g', 'primary', () => act(() => storeAccept(l.id), 'Sold for ' + top.amount + ' gold'), busy) : null}
-                {pill('Take down', 'quiet', () => act(() => storeCancel(l.id), 'Back in your bag'), busy)}
+                {top ? pill('Take ' + top.amount + 'g', 'primary', () => act(() => storeAccept(l.id), 'Sold for ' + top.amount + ' gold', 'marketSold'), busy) : null}
+                {pill('Take down', 'quiet', () => act(() => storeCancel(l.id), 'Back in your bag', 'marketList'), busy)}
               </div>
             )
             : isMine
@@ -397,7 +402,7 @@ export function StorePanel(props) {
                   {/* v2.3.2618: "Buy 500g", not "Buy" -- the mockup puts the
                       price ON the button, and a Buy whose cost you have to
                       read off another line is how you tap one by accident. */}
-                  {pill('Buy ' + l.askPrice + 'g', 'primary', () => act(() => storeBuy(l.id), 'Bought for ' + l.askPrice + ' gold'), busy)}
+                  {pill('Buy ' + l.askPrice + 'g', 'primary', () => act(() => storeBuy(l.id), 'Bought for ' + l.askPrice + ' gold', 'marketBuy'), busy)}
                   {pill('Bid', 'quiet', () => { setBidFor(bidFor === l.id ? null : l.id); setBidText(String(minBid)); }, busy)}
                 </div>
               )}
@@ -410,7 +415,7 @@ export function StorePanel(props) {
                   fontFamily: 'inherit', color: LS.txt1, background: LS.well,
                   border: '1px solid ' + LS.borderStrong, borderRadius: 8,
                 }} />
-              {pill('Place', 'primary', () => act(() => storeBid(l.id, Math.floor(Number(bidText) || 0)), 'Bid placed'), busy)}
+              {pill('Place', 'primary', () => act(() => storeBid(l.id, Math.floor(Number(bidText) || 0)), 'Bid placed', 'marketBid'), busy)}
             </div>
           )}
         </div>

@@ -30,6 +30,7 @@
  * draws them, and drains `events` once a frame.
  */
 import { BT_AUDIO } from '@/data/index.js';
+import { cueAt } from '@/game/eventSounds.js'; /* v2.3.3341: a mended object heard */
 import { wheelInfo } from './wheelTrial.js';
 import { wheelMaterialOf, materialInfo } from '@/data/wheelMaterials.js';
 
@@ -148,7 +149,10 @@ export function strikeWheelObject(S, hit) {
   /* v2.3.3001: + its crown -- a hit on a tree's trunk shakes the leaves, snow,
      char or slime in it, and that is heard just after the knock
      (BT_AUDIO.CROWN_SOUNDS), the way its pieces are seen falling */
-  try { BT_AUDIO.propHit(k.mat, { vol: hit.vol != null ? hit.vol : 0.32, big, crown: k.canopy || null }); } catch (e) { /* audio is best-effort */ }
+  /* v2.3.3341: a peer's blow arrives with its `vol` already scaled by how far
+     off it is (and `k` the same share for the break below); one too far off
+     to hear plays nothing */
+  if (!(hit.vol != null && hit.vol < 0.005)) { try { BT_AUDIO.propHit(k.mat, { vol: hit.vol != null ? hit.vol : 0.32, big, crown: k.canopy || null }); } catch (e) { /* audio is best-effort */ } }
   /* the count */
   let d = _dmg.get(oi);
   if (!d || now - d.last > HEAL_MS) d = { d: 0, last: now };
@@ -162,7 +166,8 @@ export function strikeWheelObject(S, hit) {
     _broken.set(oi, { at: now, until: now + REPAIR_MS, id: k.id, mat: k.mat });
     wheelBreakStats.breaks++;
     const as = isBuilding(k.id) ? 'building' : k.canopy ? 'tree' : big ? 'big' : 'small';
-    try { BT_AUDIO.propBreak(k.mat, as, { vol: hit.peer ? 0.5 : 0.7 }); } catch (e) { /* audio is best-effort */ }
+    var _brkK = hit.peer && typeof hit.k === 'number' ? Math.max(0, Math.min(1, hit.k)) : 1;
+    if (_brkK > 0.02) { try { BT_AUDIO.propBreak(k.mat, as, { vol: (hit.peer ? 0.5 : 0.7) * _brkK }); } catch (e) { /* audio is best-effort */ } }
     push({ type: 'break', oi, x: hit.x, y: hit.y, ang: hit.ang, weapon: hit.weapon || null, as, at: now });
     tell('break', oi);
     /* too many broken at once: the oldest mends now, rubble and all */
@@ -209,6 +214,9 @@ export function tickWheelBreak(S, now) {
   for (const [oi, b] of _broken) {
     if (t < b.until) continue;
     if (P && standsIn(o, oi, P.x, P.y)) { if (!b.waited) { b.waited = true; wheelBreakStats.waited++; } continue; }
+    /* v2.3.3341: a broken thing mended is heard, a soft knock of wood by
+       distance (it came back in silence; SOUND-GAPS) */
+    if (o.x && o.y) cueAt(S, 'mended', o.x[oi], o.y[oi]);
     repair(oi, t);
   }
 }

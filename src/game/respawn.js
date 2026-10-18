@@ -20,6 +20,7 @@
    drifting apart would be a half-respawn, which is worse than either. */
 
 import { BT_AUDIO, ZONES, TILE, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: the respawn heard */
 import { releaseLeftZoneArt, veilWheelTrip } from '@/game/zoneTransitions.js'; /* v2.3.2328: dying is leaving a zone; v2.3.3025: under one veil */
 import { wantWheelSpawn } from '@/game/wheelHome.js'; /* v2.3.2990: and you come back in the Wheel's Brotown */
 import { dropDungeonZone } from '@/game/wheelDungeons.js'; /* v2.3.3016: a dungeon's synthetic zone, dropped after its art is released */
@@ -93,4 +94,5 @@ export function applyLocalRespawn(S, zone) {
     } catch (e) {}
   }
   try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
+  cue('respawn');   /* v2.3.3341: standing up again is heard -- a soft swell (it was silent; SOUND-GAPS) */
 }

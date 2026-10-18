@@ -5,6 +5,7 @@
  */
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
+import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3341: another player's axe, heard */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
@@ -12583,6 +12584,21 @@ export class EffectsRenderer {
          once in order or wraps — and neither window._gameState nor a
          screenshot can see it.  Same posture as fireGearProbe (v2.3.1715). */
       ent._fi = _fiClamped;
+      /* v2.3.3341: their axe heard biting, on the strike frame yours is
+         (CHOP_STRIKE_K, 9 of the twelve), alternating the hatchet's two
+         strikes, at their share by distance -- a lumberjack beside you was
+         silent (SOUND-GAPS §5).  A figure that starts over starts clean. */
+      if (code === 'chop') {
+        const _cPrev = (ent._exStart === now) ? null : ent._sndChopG;
+        ent._sndChopG = _gearIx;
+        if (_cPrev != null && _crossedFrame(_cPrev, _gearIx, 9) && typeof window !== 'undefined' && window.BT_AUDIO) {
+          const _ck = peerShare(S, ox, oy);
+          if (_ck > 0) {
+            ent._sndAxeAlt = !ent._sndAxeAlt;
+            try { window.BT_AUDIO.play('axe-chop', { offset: ent._sndAxeAlt ? 0.08 : 1.10, duration: 0.5, vol: 0.6 * _ck }); } catch (e) { /* sound only */ }
+          }
+        }
+      } else ent._sndChopG = null;
       ent._specLen = _count;
       ent._base = _base;
       ent._figShared = !!_fig.shared;   /* v2.3.3314: your figure (their colours are yours) or theirs */

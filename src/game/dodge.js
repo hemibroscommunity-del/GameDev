@@ -17,6 +17,7 @@ import { addBuildUse, pushDmgPopup, lockAimPoint, swimRefused /* v2.3.3003 */, d
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: the roll and the dash heard */
 import { monsterHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: the lunge's hit in its monster's voice (was hitMaterialOf, v2.3.2452) */
 import { isStuck, isStaggered } from '@/game/elemHits.js'; /* v2.3.2996: a slime's goo holds you; v2.3.3264: a parry staggers you */
 import { pvpExtrasTarget } from '@/game/abilities.js'; /* v2.3.3264: the player a lunge may take */
@@ -131,6 +132,7 @@ export var doStandardDodge = function (S, R, ang) {
     addBuildUse(R, 'endurance', dodgeCost);
     addBuildUse(R, 'agility', dodgeCost);
     S._dodgeRoll = { angle: ang, startTime: Date.now() };
+    cue('dodgeRoll');   /* v2.3.3341: the roll's rush of air (it was silent; SOUND-GAPS) */
     /* v2.3.1011: broadcast so peers see the dodge (trail + movement). */
     /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
        nobody standing in the hub ever saw anybody else dodge. */
@@ -198,6 +200,7 @@ export var doLunge = function (S, R, ang) {
     /* Reuse the dodge-roll state for visual + i-frames; mark as a lunge so
        the post-dash hit fires on landing. */
     S._dodgeRoll = { angle: dirAng, startTime: Date.now(), kind: 'lunge', targetId: lt.id || null };
+    cue('dodgeRoll', 0.9, 1.2);   /* v2.3.3341: the dash's rush, quicker than a roll's (its blow on arrival has its own) */
     /* v2.3.1011: broadcast the lunge so peers see it. */
     /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
        nobody standing in the hub ever saw anybody else dodge. */
@@ -364,6 +367,9 @@ export var doRetreatShot = function (S, R, ang) {
     } else {
       pushArrow(aimAng);
     }
-    BT_AUDIO.play('arrow-fly', { vol: 0.7 });
+    /* v2.3.3341: a staff's three bolts are a cast, as a staff's shot is
+       (monsterCombat: magic-cast 0.55) -- they whooshed like an arrow */
+    if (isStaff) BT_AUDIO.play('magic-cast', { vol: 0.55 });
+    else BT_AUDIO.play('arrow-fly', { vol: 0.7 });
   };
 

@@ -27,6 +27,7 @@ import { applySparState } from '@/game/spar.js'; /* v2.3.3265: the test panel's 
 import { allyBus } from '@/game/alliance.js'; /* v2.3.3313: the alliance's answers (server alliance.js) */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
+import { cue, cueAt, cuePeer, peerOwn } from '@/game/eventSounds.js'; /* v2.3.3341: the missing sounds, from recordings already in the game */
 import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
@@ -847,13 +848,29 @@ export function setupWebSocket(ctx) {
                        fire, or null). Drives the remote body pose / skill
                        stand-in in the renderer. Absent (old server) => leave
                        untouched. */
-                    if (data.ex !== undefined) S.others[pid]._ex = data.ex || null;
+                    if (data.ex !== undefined) {
+                      var _exWas = S.others[pid]._ex || null;
+                      S.others[pid]._ex = data.ex || null;
+                      /* v2.3.3341: a cast's plop when they start fishing, the
+                         pan's sizzle when they start cooking, at their share by
+                         distance (their chops and pick strikes are the
+                         renderers', on the frames they are drawn) */
+                      if (S.others[pid]._ex !== _exWas) {
+                        if (S.others[pid]._ex === 'fish') cuePeer(S, 'peerCast', S.others[pid].x, S.others[pid].y);
+                        else if (S.others[pid]._ex === 'cook') cuePeer(S, 'cookStart', S.others[pid].x, S.others[pid].y);
+                      }
+                    }
                     /* v2.3.3015: sprinting, says the worker (server/src/tick.js
                        playerWire `spr` -- not `sp`, a player's shirt pattern
                        everywhere else), so their legs run at its pace.  Every
                        tick player is the whole wire, so an absent `spr` is
                        "not sprinting" -- from an old worker as from a new one. */
+                    var _wasSpr = !!S.others[pid]._sp;
                     S.others[pid]._sp = data.spr === 1;
+                    /* v2.3.3341: a sprint starting is heard, your own push-off
+                       (BT_AUDIO.SPRINT_PUSH) at their share by distance (it was
+                       dust alone) */
+                    if (S.others[pid]._sp && !_wasSpr) peerOwn(S, 'peerSprint', BT_AUDIO.SPRINT_PUSH, 1, S.others[pid].x, S.others[pid].y);
                     /* v2.3.3058: No man's land's skull (tick.js `sk`): absent is
                        none, for the same reason as `spr` above */
                     nmlPeerSkull(S, pid, data.sk);
@@ -1192,6 +1209,15 @@ export function setupWebSocket(ctx) {
                           var _sv = MONSTER_VARIANTS[localM._spawnArchetype];
                           if (_sv && _sv.spd != null) localM.spd = _sv.spd;
                         }
+                        /* v2.3.3341: coming back is heard, by distance -- a
+                           slime's plop, anything else a faint shimmer (it was
+                           silent; SOUND-GAPS).  This edge only: a monster first
+                           sighted scrolling into view is not a respawn. */
+                        try {
+                          var _rsA = localM.archetype || localM.type;
+                          var _rsV = MONSTER_VARIANTS[_rsA];
+                          cueAt(S, (_rsA === 'fodder' || (_rsV && _rsV.useSlimeSheets)) ? 'respawnSlime' : 'respawnOther', md.x, md.y);
+                        } catch (_rsE) { /* sound only */ }
                       }
                       if (!md.alive && localM.alive) {
                         /* Monster died (from another player's kill or
@@ -1730,7 +1756,7 @@ export function setupWebSocket(ctx) {
                   var _bn = (_rec && _rec.name) || 'Bar';
                   pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + _sr.count + ' ' + _bn + (_sr.count > 1 ? 's' : ''), '#E0935A');
                   pushDmgPopup(S, S.player.x, S.player.y - 44, '+' + _sr.xp + ' Smithing XP', '#D8A94D');
-                  BT_AUDIO.collect();
+                  cue('smelt');   /* v2.3.3341: a strike and the bar's hiss -- collect() is a beep(), silent (SOUND-GAPS) */
                 } catch (_se) { /* the bag still updates */ }
                 if (_sr.leveled && _sr.newLevel > _sr.fromLevel) {
                   try { celebrateLifeSkillLevel(S, 'blacksmithing', _sr.newLevel, _sr.fromLevel); } catch (_ce) {}
@@ -1807,7 +1833,7 @@ export function setupWebSocket(ctx) {
                   var _hwName = (HARDENED_WOOD_RECIPES[_hw.key] || {}).name || 'Hardened Wood';
                   pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + _hw.count + ' ' + _hwName, '#C9965A');
                   pushDmgPopup(S, S.player.x, S.player.y - 44, '+' + _hw.xp + ' Woodworking XP', '#D8A94D');
-                  BT_AUDIO.collect();
+                  cue('hardWood');   /* v2.3.3341: collect() is a beep(), silent */
                   if (_hw.leveled && _hw.newLevel > _hw.fromLevel) celebrateLifeSkillLevel(S, 'woodworking', _hw.newLevel, _hw.fromLevel);
                 }
               } catch (_he) { /* the bag still updates */ }
@@ -1826,7 +1852,7 @@ export function setupWebSocket(ctx) {
                 if (S.player) {
                   try {
                     pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + (Number(_fa.xp) || 0) + ' Smithing XP', '#D8A94D');
-                    BT_AUDIO.collect();
+                    cue('armourForge');   /* v2.3.3341: the plate's clang -- collect() is a beep(), silent */
                   } catch (_fp) { /* popup only */ }
                 }
                 if (_fa.leveled && _fa.newLevel > _fa.fromLevel) {
@@ -2163,7 +2189,7 @@ export function setupWebSocket(ctx) {
               if (typeof msg.payload.goldNuggets === 'number') {
                 if (S.player && msg.payload.goldNuggets > (S.rpg.goldNuggets || 0)) {
                   pushDmgPopup(S, S.player.x, S.player.y - 40, 'Gold Nugget!', '#f5c542');
-                  try { BT_AUDIO.beep(1000, 0.08, 0.1, 'sine'); } catch (e) {}
+                  cue('pickGem');   /* v2.3.3341: a glint and a note (a beep(), silent) */
                 }
                 S.rpg.goldNuggets = msg.payload.goldNuggets;
               }
@@ -2830,13 +2856,20 @@ export function setupWebSocket(ctx) {
               var _gcCol = (_gcRes && _gcRes.gemColor) || '#fff';
               if (gcr.success) {
                 pushDmgPopup(S, S.player.x, S.player.y - 30, 'Polished ' + _gcName + '!', _gcCol);
-                try { BT_AUDIO.collect(); } catch (e) {}
+                cue('gemCut');   /* v2.3.3341: the crystal's ring -- collect() is a beep(), silent (SOUND-GAPS) */
               } else {
                 pushDmgPopup(S, S.player.x, S.player.y - 30, 'Gem shattered!', '#ff5e6c');
-                try { BT_AUDIO.beep(200, 0.06, 0.1, 'square'); } catch (e) {}
+                cue('gemShatter');   /* v2.3.3341: the crystal breaking (a beep(), silent) */
               }
               if (gcr.leveled) {
-                pushDmgPopup(S, S.player.x, S.player.y - 50, 'Gem Cutting Lv' + (gcr.newLevel || '?') + '!', '#f5c542');
+                /* v2.3.3341: a Gem Cutting level is celebrated as every other
+                   skill's is (the burst and its sting) -- it was a lone popup
+                   with no sound, the one life skill left out (SOUND-GAPS) */
+                if (gcr.newLevel > 1) {
+                  try { celebrateLifeSkillLevel(S, 'gemCutting', gcr.newLevel, gcr.newLevel - 1); } catch (_gce) { /* the bar still says it */ }
+                } else {
+                  pushDmgPopup(S, S.player.x, S.player.y - 50, 'Gem Cutting Lv' + (gcr.newLevel || '?') + '!', '#f5c542');
+                }
               }
               break;
             }
@@ -3702,8 +3735,21 @@ export function setupWebSocket(ctx) {
             pushDmgPopup(S, S.player.x, S.player.y - 20, 'RECOVERED ' + _recovered + ' items!', '#3dd497');
           }
         }
-        BT_AUDIO.beep(500, 0.06, 0.1, 'sine');
-        try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {}
+        /* ═══ v2.3.3341: ...AND EVERYTHING ELSE YOU PICK UP IS HEARD ═══
+           The two lines that were here (a beep() and collect()) have played
+           nothing since v2.3.1103, so only coins ever made a sound (v2.3.2490,
+           above): a shard, a rare gem, armour into the bag, a weapon into the
+           stash, your own things recovered -- all silent (SOUND-GAPS).  ONE
+           sound for the most notable thing in the pile, beside the coins'
+           own: a gem's glint and note, gear's leather-and-buckle tick, a
+           shard's glint; a lone remnant the tick, softer.  `quiet` is the
+           daily chest's, which plays its own in time with its picture. */
+        if (!payload.quiet) {
+          var _gearIn = (_gotArmor > 0) || !!payload.weaponStashed || (payload.isDeathDrop && _recovered > 0);
+          var _pickCue = payload.gem ? 'pickGem' : _gearIn ? 'pickGear' : payload.shard ? 'pickShard'
+            : (payload.skull && !(payload.coins > 0)) ? 'pickGear' : null;
+          if (_pickCue) cue(_pickCue, (_pickCue === 'pickGear' && !_gearIn) ? 0.6 : 1);
+        }
         /* Despawn the picker's local copy of the pile -- they're done
            with it.  v2.3.189: delay the actual despawn by 0.75 s so
            the pile remains visible while the pickup animation plays.

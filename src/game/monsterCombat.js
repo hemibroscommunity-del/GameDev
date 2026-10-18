@@ -54,6 +54,7 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { monsterHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: a hit sounds like the monster's material */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: the missing sounds, from recordings already in the game */
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting while you swim */
 import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
@@ -1824,7 +1825,13 @@ export function updateMonsterCombat(S, deps) {
                      these to play the load/draw/release frames for the shot). */
                   S._bowShotAt = Date.now();
                   S._bowShotAng = arrAngle;
-                  BT_AUDIO.play('arrow-fly', { vol: 0.85 });
+                  /* v2.3.3341: the bow is DRAWN, then loosed -- bow-pullback, in
+                     the game since the bow and never played (SOUND-GAPS), as
+                     the pull starts, quickened to fit the quick draw; and the
+                     arrow's whoosh on the release frame (entityRenderer
+                     BOW_RELEASE_MS, 110 ms), where the arrow leaves the grip. */
+                  cue('bowDraw', 1, 1.3);
+                  BT_AUDIO.play('arrow-fly', { vol: 0.85, delay: 0.11 });
                 }
                 }   /* v2.3.2473: end of `if (_mayLoose)` -- see the sight gate above */
               } else if (!S.isSwinging) {
@@ -2381,7 +2388,7 @@ export function updateMonsterCombat(S, deps) {
                   var isNew = discoverCollision(coll.id);
                   if (isNew) {
                     pushDmgPopup(S, P.x, P.y - 65, 'NEW: ' + coll.name + '!', '#f5c542');
-                    BT_AUDIO.collect();
+                    cue('discovery');   /* v2.3.3341: was collect(), a beep() -- silent */
                   }
                 }
                 /* Real WAV — replaces the old synth material thump.
@@ -2409,7 +2416,9 @@ export function updateMonsterCombat(S, deps) {
                 if (collisionResult && _activeWpn.isVolatile) _R6._questFlags.volatileCollision = true;
                 /* Three-layer collision sound if collision fired */
                 if (collisionResult) {
-                  BT_AUDIO.collisionSound(collisionResult.setupElement, collisionResult.triggerElement, collisionResult.manaRestored);
+                  /* v2.3.3341: collisionSound is all beep()s, which play
+                     nothing -- a bolt's crack and a gust from recordings */
+                  cue('collision');
                 }
                 /* v2.3.2200: the §6 hit-stop writes are DELETED, not just
                    disabled.  BroTown.jsx nulls S._hitStop unconditionally

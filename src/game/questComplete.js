@@ -25,6 +25,7 @@
 import { deriveQuestLog } from '@/ui/mobile/sheet/questModel.js';
 import { pushDmgPopup } from './combatHelpers.js';
 import { BT_AUDIO } from '@/data/index.js';
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a quest's tasks done, heard */
 
 const POLL_MS = 500;
 
@@ -93,7 +94,9 @@ export function checkQuestComplete(S) {
     pushDmgPopup(S, S.player.x, S.player.y - 55,
       'Return to ' + (quest.npc || 'the quest giver'), '#ffe9bd',
       { ttl: _qcTtl, rise: _qcRise });
-    try { if (BT_AUDIO && BT_AUDIO.beep) BT_AUDIO.beep(1180, 0.07, 0.10, 'sine'); } catch (e) { /* audio is never load-bearing */ }
+    /* v2.3.3341: "Return to..." is heard -- the turn-in chime's first notes
+       (this was a beep(), which plays nothing; SOUND-GAPS) */
+    cue('questReady');
   }
 }
 

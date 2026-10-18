@@ -20,6 +20,7 @@
 import { pushDmgPopup, monsterPopupY, heroPopupY } from '@/game/combatHelpers.js';
 import { codexDropsFor, CODEX_ROLL_SIDES } from '@/data/codexDrops.js';
 import { petKindOfMonster } from '@/data/trapping.js';
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a winning roll heard */
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -80,6 +81,9 @@ export function onKillRoll(S, cc) {
      first frame): a hunter reads every roll, and a drop's a while longer */
   pushDmgPopup(S, x, y, text, name ? KILL_ROLL_HIT : KILL_ROLL_MISS,
     name ? { roll: true, iconKey: 'dice', iconLead: true, ttl: 3.2, hold: 1.8, rise: 26 } : { roll: true, iconKey: 'dice', iconLead: true, ttl: 2.4, hold: 1.0, rise: 30 });
+  /* v2.3.3341: a roll that lands on one of your drops is heard -- a glint and
+     the win's first note.  The grey ones every kill makes stay quiet. */
+  if (name) cue('rollWin');
   /* QA (mp-codex), armed by the harness only */
   if (typeof window !== 'undefined' && window.__btProbe) {
     try {

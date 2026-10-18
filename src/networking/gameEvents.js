@@ -27,11 +27,13 @@ import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is 
 import { ELEMENTS } from '@/data/elements.js';
 import { STATUS_DEFS, applyStatus, STAFF_LIFE /* v2.3.2387 */, COLLISION_TABLE /* v2.3.3264: a collision on a player, by its name */ } from '@/data/gameSystems.js';
 import { rollMonsterShard } from '@/data/shards.js';
+import { shotStyleOf } from '@/data/monsterShots.js'; /* v2.3.3341: a monster's throw sounds like its ball */
 import { attackBlockPoint } from '@/data/worldProps.js'; /* v2.3.2699: a snowball stops where the worker's own line meets a prop */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown away from the blow */
 import { applyElemHit, applyHitShove, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks; v2.3.3264: + a player's blow's shove */
-import { echoHitSfx, heroHitSfx, earVol, deathVol } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's; v2.3.3248: a far death, slam or blast heard and felt by distance */
+import { echoHitSfx, heroHitSfx, earVol, deathVol, shotHitMe } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's; v2.3.3248: a far death, slam or blast heard and felt by distance; v2.3.3341: + was a blocked blow the ball */
+import { cue, cueAt, peerShare, cuePeer } from '@/game/eventSounds.js'; /* v2.3.3341: the missing sounds, from recordings already in the game */
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
 import { peerShotFlight } from '@/game/peerShots.js'; /* v2.3.3266: another player's shot at their speed and reach */
 import { ARROW_SPEED_PX } from '@/game/projectiles.js'; /* v2.3.3266: ...the bow's own speed */
@@ -286,7 +288,11 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.pile.zone && payload.pile.zone !== S.currentZone) break;
               var _existing = S.groundLoot.find(function (l) { return l.lootId === payload.pile.lootId; });
               if (_existing) break;
-              S.groundLoot.push(_buildServerPile(payload.pile, S.myId));
+              var _newPile = _buildServerPile(payload.pile, S.myId);
+              S.groundLoot.push(_newPile);
+              /* v2.3.3341: a pile landing is heard, a little coin rattle by
+                 distance (it was silent; SOUND-GAPS) */
+              if (_newPile) cueAt(S, 'lootDrop', _newPile.x, _newPile.y);
               break;
             }
           case 'loot_claimed':
@@ -449,6 +455,10 @@ export function processGameEvent(type, payload, S, deps) {
               } catch (_pe) { /* ignore */ }
             } else if (_sr.ok && _sr.kind === 'shop_buy') {
               shopBus.setNote(`Bought ${_sr.bought} for ${_sr.cost} coins.`, true);
+              /* v2.3.3341: a purchase is heard as a sale always was -- coins
+                 handed over and the thing into the bag, on the worker's ok
+                 (selling rang since v2.3.2606; buying was silent) */
+              cue('shopBuy');
             } else {
               /* His refusal, in his words -- "He's full of those" reads as a
                  shopkeeper; "error" reads as a broken game. */
@@ -521,6 +531,7 @@ export function processGameEvent(type, payload, S, deps) {
                 litAt: Date.now(),
                 expiresAt: Math.min(_cfExp > Date.now() ? _cfExp : Date.now() + 45000, _cfCap),
               });
+              cuePeer(S, 'campfire', _cfX, _cfY);   /* v2.3.3341: their fire heard catching, by distance (silent) */
               break;
             }
           case 'party_chat':
@@ -879,7 +890,7 @@ export function processGameEvent(type, payload, S, deps) {
                 }
                 pushDmgPopup(S, S.player.x, S.player.y - 50, _dCfg.name || 'Dungeon', '#a070e0');
                 pushDmgPopup(S, S.player.x, S.player.y - 35, 'Wave 1/' + (_dCfg.waves || 3), 'rgba(255,255,255,.5)');
-                BT_AUDIO.beep(400, 0.1, 0.12, 'sine');
+                cue('dungeonIn');   /* v2.3.3341: in, with a rush and a low thud (a beep(), silent; SOUND-GAPS) */
               };
               var _dFloor = null, _dFloorLate = false;
               if (_dHome && payload.back) {
@@ -919,7 +930,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (!payload || payload.zone !== S._serverDungeon) break;
               S._dungeonWave = (payload.wave || 1) - 1;
               pushDmgPopup(S, S.player.x, S.player.y - 40, 'Wave ' + (payload.wave || 1) + '/' + (payload.total || S._dungeonMaxWaves), '#ff5e6c');
-              BT_AUDIO.beep(300, 0.1, 0.15, 'sawtooth');
+              cue('dungeonWave');   /* v2.3.3341: a heavy knock and a gust -- a horn would be better (a new recording) */
               S.screenShake = 4;
               break;
             }
@@ -928,7 +939,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (!payload || payload.zone !== S._serverDungeon) break;
               S._dungeonBossSpawned = true;
               pushDmgPopup(S, S.player.x, S.player.y - 50, 'BOSS FIGHT!', '#ff5e6c');
-              BT_AUDIO.beep(100, 0.25, 0.3, 'sawtooth');
+              cue('bossArrive');   /* v2.3.3341: a great thud and a swell (a beep(), silent) */
               S.screenShake = 8;
               break;
             }
@@ -950,7 +961,7 @@ export function processGameEvent(type, payload, S, deps) {
               }
               pushDmgPopup(S, S.player.x, S.player.y - 60, 'DUNGEON CLEARED!', '#f5c542');
               pushDmgPopup(S, S.player.x, S.player.y - 45, '+' + (payload.gold || 0) + 'G +' + (payload.xp || 0) + 'XP', '#f5c542');
-              BT_AUDIO.levelUp();
+              cue('dungeonClear');   /* v2.3.3341: the old quest fanfare -- levelUp() is beep()s only, silent */
               S.screenShake = 10;
               setTimeout(function () {
                 if (!S._serverDungeon) return; /* already left via the exit tile */
@@ -994,7 +1005,7 @@ export function processGameEvent(type, payload, S, deps) {
           case 'dungeon_error':
             {
               pushDmgPopup(S, S.player.x, S.player.y - 30, (payload && payload.message) || 'Dungeon unavailable', '#ff5e6c');
-              BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
+              cue('forgeFail', 0.7);   /* v2.3.3341: the loss sting, softer (a beep(), silent) */
               break;
             }
           case 'parry':
@@ -1027,7 +1038,13 @@ export function processGameEvent(type, payload, S, deps) {
                 if (window.__btProbe) { try { (window.__btPvpExtras || (window.__btPvpExtras = [])).push({ parriedBy: payload.targetId, ms: _stgMs, at: Date.now() }); } catch (e) { /* probe only */ } }
                 break;
               }
-              if (payload.targetId && S.myId && payload.targetId !== S.myId) break;
+              if (payload.targetId && S.myId && payload.targetId !== S.myId) {
+                /* v2.3.3341: another player's parry is heard where they stand,
+                   at their share by distance (it was silent) */
+                var _ppO = S.others && S.others[payload.targetId];
+                if (_ppO && _peerInZone(S, payload.targetId)) cuePeer(S, 'parry', typeof _ppO.renderX === 'number' ? _ppO.renderX : _ppO.x, typeof _ppO.renderY === 'number' ? _ppO.renderY : _ppO.y);
+                break;
+              }
               var _pX = typeof payload.x === 'number' ? payload.x : S.player.x;
               var _pY = typeof payload.y === 'number' ? payload.y : S.player.y;
               pushDmgPopup(S, S.player.x, S.player.y - 46, 'PARRY!', '#8FD6A0');
@@ -1035,7 +1052,9 @@ export function processGameEvent(type, payload, S, deps) {
               S._impactRings.push({
                 x: _pX, y: _pY, ts: Date.now(), color: '#8FD6A0', maxR: 46, duration: 320,
               });
-              BT_AUDIO.beep(880, 0.07, 0.16, 'triangle');
+              /* v2.3.3341: the parry's bright clang with the shield under it
+                 -- this was a beep(), which plays nothing (SOUND-GAPS) */
+              cue('parry');
             }
             break;
 
@@ -1130,6 +1149,11 @@ export function processGameEvent(type, payload, S, deps) {
                 }
               }
               if (payload.id === S.myId) S.screenShake = Math.max(S.screenShake || 0, 3);
+              /* v2.3.3341: the blast HEARD where it goes off -- yours in full,
+                 another player's at their share by distance (it played
+                 nothing; SOUND-GAPS) */
+              if (payload.id === S.myId) cue('burstNova');
+              else cuePeer(S, 'burstNova', _nvX, _nvY);
               var _nvIds = Array.isArray(payload.targets) ? payload.targets : [];
               if (_nvIds.length && STATUS_DEFS[payload.status]) {
                 /* One pass over the zone's monsters against a Set, rather
@@ -1160,6 +1184,14 @@ export function processGameEvent(type, payload, S, deps) {
                 var _wn = Date.now();
                 S._peerWindups[_wp.playerId] = { t0: _wn, until: _wn + Math.max(0, Math.min(5000, Number(_wp.ms) || 0)),
                   r: Math.max(0, Math.min(600, Number(_wp.radius) || 240)) };
+                /* v2.3.3341: ...and HEARD, as your own is -- the whirlwind's
+                   clip from the press, its loudest part on the strike
+                   (abilities.js), at their share by distance (it was silent) */
+                try {
+                  var _wpo = S.others[_wp.playerId];
+                  var _wpk = peerShare(S, typeof _wpo.renderX === 'number' ? _wpo.renderX : _wpo.x, typeof _wpo.renderY === 'number' ? _wpo.renderY : _wpo.y);
+                  if (_wpk > 0) { BT_AUDIO.play('whirlwind', { vol: 0.9 * _wpk }); S._peerWindups[_wp.playerId].heard = true; }
+                } catch (e) { /* sound only */ }
               }
               break;
             }
@@ -1238,6 +1270,10 @@ export function processGameEvent(type, payload, S, deps) {
                     _sbM._burstFrom = Date.now();
                     _sbM._burstUntil = Date.now() + _sbMs;
                     _sbM._burstScale = Math.max(1, Math.min(6, Number(payload.scale) || 3.5));
+                    /* v2.3.3341: the swell is HEARD too -- the slime orb's
+                       splort stretched long and low, by distance (it swelled
+                       in silence; SOUND-GAPS) */
+                    cueAt(S, 'blueSwell', _sbM.x, _sbM.y);
                   }
                   /* v2.3.2226: THE DRAWN RING IS GONE.  Owner: "remove code
                      drawn impact areas for slime death" -- consistent with
@@ -1292,7 +1328,9 @@ export function processGameEvent(type, payload, S, deps) {
                   /* v2.3.3248: heard by how near it went off (hitSounds.earVol),
                      not by every phone in the Wheel (OPEN-DECISIONS 22). */
                   var _sbK = isFinite(_sbX) && isFinite(_sbY) ? earVol(S, _sbX, _sbY) : 1;
-                  if (_sbK > 0) BT_AUDIO.beep(90, 0.16, 0.09 * _sbK, 'sawtooth');
+                  /* v2.3.3341: the blast itself -- this was a beep(), which
+                     plays nothing; the slime's own splat comes with its kill */
+                  if (_sbK > 0) cue('blueBurst', _sbK);
                 }
                 break;
               }
@@ -1320,6 +1358,10 @@ export function processGameEvent(type, payload, S, deps) {
                      sanity ceiling and it should stay ABOVE the largest value
                      any live worker might send. */
                   var _buMs = Math.max(80, Math.min(9000, Number(payload.ms) || 400));
+                  /* v2.3.3341: digging in and bursting out are heard, by
+                     distance (both were silent; SOUND-GAPS) */
+                  if (payload.phase === 'dig' && _buM._burPhase !== 'dig') cueAt(S, 'burrow', _buM.x, _buM.y);
+                  else if (payload.phase === 'emerge' && _buM._burPhase !== 'emerge') cueAt(S, 'emerge', _buM.x, _buM.y);
                   _buM._burPhase = payload.phase;
                   _buM._burFrom = Date.now();
                   _buM._burUntil = Date.now() + _buMs;
@@ -1452,7 +1494,10 @@ export function processGameEvent(type, payload, S, deps) {
                    zone, and every wind-up in it beeped on every phone. */
                 var _tgK = Math.max(earVol(S, _maX, _maY),
                   (typeof payload.ax === 'number' && typeof payload.ay === 'number') ? earVol(S, payload.ax, payload.ay) : 0);
-                if (_tgK > 0) BT_AUDIO.beep(400, 0.08, 0.1 * _tgK, 'sine');
+                /* v2.3.3341: ...a beep(), which plays nothing.  The wind-up is
+                   heard now: a slow swell before a slam, a low rush before a
+                   lunge (SOUND-GAPS). */
+                if (_tgK > 0) cue(payload.ability === 'slam' ? 'windSlam' : 'windLunge', _tgK);
                 break;
               }
               /* execute — a landed hit shakes, a whiff deliberately does
@@ -1481,13 +1526,17 @@ export function processGameEvent(type, payload, S, deps) {
                      than an ordinary hit's shake alone. */
                   var _cpAngT = Math.atan2(_maY - S.player.y, _maX - S.player.x);
                   S._camPunch = { dx: Math.cos(_cpAngT) * 8 * _exK, dy: Math.sin(_cpAngT) * 8 * _exK, ts: Date.now() };
-                  BT_AUDIO.beep(payload.ability === 'slam' ? 80 : (payload.ability === 'lunge' ? 200 : 150),
-                    0.18, 0.22 * _exK,
-                    payload.ability === 'slam' ? 'sawtooth' : 'square');
+                  /* v2.3.3341: the landing HEARD (this was a beep(), silent):
+                     a slam's thud on the ground; a lunge's rush (the blow on
+                     whoever it caught is their own monster_attack's sound) */
+                  if (payload.ability === 'slam') cue('slamHit', _exK);
+                  else cue('lungeMiss', 0.6 * _exK);
                 }
               } else {
                 pushDmgPopup(S, _maX, _maY - 30, 'MISS', '#8FD6A0');
-                if (_exK > 0) BT_AUDIO.beep(220, 0.06, 0.08 * _exK, 'sine');
+                /* v2.3.3341: a slam still hits the ground; a lunge whooshes
+                   past (a beep(), silent) */
+                if (_exK > 0) cue(payload.ability === 'slam' ? 'slamHit' : 'lungeMiss', _exK);
               }
             }
             break;
@@ -1514,7 +1563,10 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.phase === 'telegraph') {
                 /* Legacy telegraph read: amber "<ABILITY>!" over the boss. */
                 pushDmgPopup(S, _dbaX, _dbaY - 40, _dbaLabel, '#fbbf24');
-                BT_AUDIO.beep(400, 0.08, 0.1, 'sine');
+                /* v2.3.3341: every boss sound here was a beep(), which plays
+                   nothing (SOUND-GAPS) -- its warning now a deep swell and a
+                   growl-like thump, and each move below its own sound */
+                cue('bossWarn');
                 break;
               }
               /* Execute visuals per ability (legacy colors/shake). */
@@ -1528,9 +1580,9 @@ export function processGameEvent(type, payload, S, deps) {
                   duration: payload.ability === 'slam' ? 400 : 300
                 });
                 S.screenShake = payload.ability === 'slam' ? 10 : 6;
-                BT_AUDIO.beep(payload.ability === 'slam' ? 80 : 150, 0.2, 0.25, payload.ability === 'slam' ? 'sawtooth' : 'square');
+                cue('bossSlam', payload.ability === 'slam' ? 1 : 0.7);   /* v2.3.3341 */
               } else if (payload.ability === 'charge') {
-                BT_AUDIO.beep(200, 0.15, 0.2, 'sawtooth');
+                cue('bossCharge');   /* v2.3.3341 */
               } else if (payload.ability === 'enrage') {
                 /* v2.3.1199: soft anti-stall timer armed / ramped
                    server-side (BOSS_ABILITIES.ENRAGE).  Legacy enrage
@@ -1546,7 +1598,7 @@ export function processGameEvent(type, payload, S, deps) {
                   pushDmgPopup(S, _dbaX, _dbaY - 45, '+' + (payload.pct || 0) + '% DMG', '#ff2020');
                 }
                 S.screenShake = 6;
-                BT_AUDIO.beep(120, 0.2, 0.3, 'sawtooth');
+                cue('bossEnrage');   /* v2.3.3341 */
               } else if (payload.ability === 'siphon') {
                 /* v2.3.1217: life-drain.  DISPLAY-ONLY like the rest --
                    the boss's actual HP gain rides the authoritative
@@ -1555,11 +1607,11 @@ export function processGameEvent(type, payload, S, deps) {
                 if (typeof payload.heal === 'number' && payload.heal > 0) {
                   pushDmgPopup(S, _dbaX, _dbaY - 45, '+' + toDisplayDamage(payload.heal), '#22c55e');   /* v2.3.2520: display scale */
                 }
-                BT_AUDIO.beep(500, 0.12, 0.18, 'sine');
+                cue('bossSiphon');   /* v2.3.3341 */
               } else {
                 /* summon -- the fresh minions arrive via the zone_state
                    re-push that precedes this event. */
-                BT_AUDIO.beep(300, 0.1, 0.15, 'square');
+                cue('bossSummon');   /* v2.3.3341 */
               }
               break;
             }
@@ -1796,6 +1848,10 @@ export function processGameEvent(type, payload, S, deps) {
                    louder. */
                 if (_e.source === 'market') {
                   storeToastBus.push('You received ' + _what + (_e.note ? ' \u2014 ' + _e.note : ''));
+                  /* v2.3.3341: ...and heard, a coin clink and a note (it was
+                     silent).  Market only, as the card is: the rest stays as
+                     quiet as v2.3.2037 made the daily reward. */
+                  cue('marketSold');
                 }
               }
               if (_inbEntries.length && setChatLog) setChatLog(_toConsumableArray(S.chatLog));
@@ -1873,6 +1929,9 @@ export function processGameEvent(type, payload, S, deps) {
                    this lives here and not in abilities.js. */
                 /* v2.3.2824: a peer's whirlwind strikes -- the same full-size
                    vortex and edge ring the caster sees, at the peer. */
+                /* v2.3.3341: a whirlwind heard at its wind-up (ability_windup,
+                   above) is not heard again at its strike */
+                var _whirlHeard = !!(payload.whirl && S._peerWindups && S._peerWindups[payload.id] && S._peerWindups[payload.id].heard);
                 if (payload.whirl) {
                   var _wo = S.others[payload.id];
                   var _wx = (typeof _wo.renderX === 'number') ? _wo.renderX : (_wo.x || 0);
@@ -1908,7 +1967,27 @@ export function processGameEvent(type, payload, S, deps) {
                   if (typeof _sox === 'number' && typeof _soy === 'number') {
                     propSwingHit(S, _sox, _soy, payload.ang,
                       payload.special ? GS_OUTER_RADIUS * 1.5 : GS_OUTER_RADIUS,
-                      payload.special ? Math.PI : GS_FORWARD_ARC / 2);
+                      payload.special ? Math.PI : GS_FORWARD_ARC / 2,
+                      earVol(S, _sox, _soy));   /* v2.3.3341: heard by how near they are */
+                  }
+                }
+                /* ═══ v2.3.3341: ANOTHER PLAYER'S BLOW IS HEARD ═══
+                   Everything another player did was silent but their hits
+                   (SOUND-GAPS §5): their swing's whoosh, the special's swoosh,
+                   the bash's impact, your own sounds at their share
+                   (eventSounds.peerShare: about half, by distance, a few at a
+                   time in a crowd).  The sparring clones' swings come this way
+                   too (server spar.js relays them as a page's). */
+                if (!_whirlHeard) {
+                  var _sw = S.others[payload.id];
+                  var _swk = peerShare(S, typeof _sw.renderX === 'number' ? _sw.renderX : _sw.x, typeof _sw.renderY === 'number' ? _sw.renderY : _sw.y);
+                  if (_swk > 0) {
+                    try {
+                      if (payload.whirl) BT_AUDIO.play('whirlwind', { vol: 0.9 * _swk, offset: 0.9 });
+                      else if (payload.bash) BT_AUDIO.play('shield-bash', { vol: 0.9 * _swk });
+                      else if (payload.special) BT_AUDIO.specialSwipe({ vol: 0.55 * _swk });
+                      else BT_AUDIO.swordSwing('sword-swing', { vol: 0.6 * _swk });
+                    } catch (e) { /* sound only */ }
                   }
                 }
               }
@@ -2053,11 +2132,40 @@ export function processGameEvent(type, payload, S, deps) {
                 S.others[payload.id]._staffCastAng = Number.isFinite(payload.ang) ? payload.ang : 0;
                 S.others[payload.id]._staffCastBig = _bigCast ? _castNow : 0;
               }
+              /* ═══ v2.3.3341: ...AND HEARD ═══
+                 A peer's shot made no sound (SOUND-GAPS §5): each arrow's
+                 whoosh as it leaves (a volley's later ones on their own wait,
+                 `delayMs`), a staff's cast once per shot or volley (its orbs
+                 share one `ts`), a special with its swoosh -- your sounds, at
+                 their share by distance.  The clones' shots come this way too. */
+              try {
+                var _psO = S.others[payload.id];
+                var _psX = Number.isFinite(payload.x) ? payload.x : (_psO ? _psO.x : NaN);
+                var _psY = Number.isFinite(payload.y) ? payload.y : (_psO ? _psO.y : NaN);
+                var _psFirst = !_psO || _psO._shotSndTs !== payload.ts || payload.ts == null;
+                if (_psO) _psO._shotSndTs = payload.ts;
+                if (payload.isStaff) {
+                  if (_psFirst) { var _psk = peerShare(S, _psX, _psY); if (_psk > 0) BT_AUDIO.play('magic-cast', { vol: (payload.isSpecial ? 0.9 : 0.55) * _psk, rate: payload.isSpecial ? 0.75 : 1 }); }
+                } else {
+                  var _pak = peerShare(S, _psX, _psY);
+                  if (_pak > 0) {
+                    var _pad = Math.max(0, Math.min(2, (Number(payload.delayMs) || 0) / 1000));
+                    BT_AUDIO.play('arrow-fly', { vol: 0.85 * _pak, delay: _pad });
+                    if (payload.isSpecial && _psFirst) BT_AUDIO.specialSwipe({ vol: 0.55 * _pak });
+                  }
+                }
+              } catch (e) { /* sound only */ }
               break;
             }
           case 'player_shield':
             {
               if (payload.id && _peerInZone(S, payload.id)) {
+                /* v2.3.3341: their shield coming up is heard, softly (it was
+                   silent) -- not going down: a crowd's guards would chatter */
+                if (payload.up && !S.others[payload.id]._shieldUp) {
+                  var _shO = S.others[payload.id];
+                  cuePeer(S, 'peerShield', typeof _shO.renderX === 'number' ? _shO.renderX : _shO.x, typeof _shO.renderY === 'number' ? _shO.renderY : _shO.y);
+                }
                 S.others[payload.id]._shieldUp = payload.up;
                 S.others[payload.id]._shieldTs = Date.now();
               }
@@ -2093,6 +2201,13 @@ export function processGameEvent(type, payload, S, deps) {
                 if (payload.kind !== 'retreat_shot') {
                   _reconcileFacing(S.others[payload.id], payload.angle);
                 }
+                /* v2.3.3341: their roll's rush of air (and a lunge's or a
+                   dash's, quicker), at their share by distance -- silent */
+                try {
+                  var _dgO = S.others[payload.id];
+                  var _dgk = peerShare(S, typeof _dgO.renderX === 'number' ? _dgO.renderX : _dgO.x, typeof _dgO.renderY === 'number' ? _dgO.renderY : _dgO.y);
+                  if (_dgk > 0) cue('dodgeRoll', _dgk, payload.kind === 'dodge' || payload.kind === 'retreat_shot' ? 1 : 1.2);
+                } catch (e) { /* sound only */ }
               }
               break;
             }
@@ -2108,6 +2223,17 @@ export function processGameEvent(type, payload, S, deps) {
                  position streams as for any move; this is only the picture. */
               if (payload.id && _peerInZone(S, payload.id)) {
                 S.others[payload.id]._jump = peerJump(payload, Date.now());
+                /* v2.3.3341: their push-off and landing, at their share by
+                   distance (both silent) -- the landing when their jump's own
+                   window ends, where they are then */
+                try {
+                  var _jpO = S.others[payload.id];
+                  var _jpPos = function () { return [typeof _jpO.renderX === 'number' ? _jpO.renderX : _jpO.x, typeof _jpO.renderY === 'number' ? _jpO.renderY : _jpO.y]; };
+                  var _jpA = _jpPos();
+                  cuePeer(S, 'jumpUp', _jpA[0], _jpA[1]);
+                  var _jpMs = Math.max(150, Math.min(2000, (_jpO._jump && _jpO._jump.dur) || Number(payload.dur) || 560));
+                  setTimeout(function () { try { var _jpB = _jpPos(); cuePeer(S, 'jumpLand', _jpB[0], _jpB[1]); } catch (e) { /* sound only */ } }, _jpMs);
+                } catch (e) { /* sound only */ }
               }
               break;
             }
@@ -2276,6 +2402,13 @@ export function processGameEvent(type, payload, S, deps) {
                   _fxLife0: _sbLife,
                   _fxFrames: _sbFrames,
                 });
+                /* v2.3.3341: the THROW is heard, as the break always was
+                   (hitSounds.shotEndSfx) -- a snowball's whoosh, a fireball's
+                   cast and hiss, a glob's plop -- from the hand, by distance */
+                try {
+                  var _thSt = shotStyleOf(_pmM ? (_pmM.archetype || _pmM.type) : null, payload.kind);
+                  cueAt(S, _thSt === 'snowball' ? 'throwSnow' : _thSt === 'fire' ? 'throwFire' : 'throwGoo', _sbX, _sbY);
+                } catch (e) { /* sound only */ }
               }
               break;
             }
@@ -2301,6 +2434,9 @@ export function processGameEvent(type, payload, S, deps) {
               if (tm.arch !== undefined) tm.arch = payload.toVariant;
               var toV = MONSTER_VARIANTS[payload.toVariant];
               if (toV && toV.spd != null) tm.spd = toV.spd;
+              /* v2.3.3341: the wrappings heard tearing away to the bones (it
+                 was silent; SOUND-GAPS), by distance */
+              cueAt(S, 'unwrap', tm.renderX != null ? tm.renderX : tm.x, tm.renderY != null ? tm.renderY : tm.y);
               break;
             }
           case 'monster_hit':
@@ -2550,6 +2686,11 @@ export function processGameEvent(type, payload, S, deps) {
                            carried a bladed burst on bow and staff hits alike. */
                         { crit: !!payload.isCrit, iconKey: dmgIconForSlot(S, payload, true),
                           special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
+                      /* v2.3.3341: your crit RINGS -- the grand slam's own
+                         sample over the hit you heard land (it sounded like any
+                         other hit; SOUND-GAPS).  The worker's roll, so a round
+                         trip after the contact sound. */
+                      if (payload.isCrit) cue('crit');
                     }
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
@@ -2814,6 +2955,22 @@ export function processGameEvent(type, payload, S, deps) {
                   } else if (_bdmg > 0) {
                     pushDmgPopup(S, rOther.x || 0, peerPopupY(rOther), '-' + takenFigure(payload, _bdmg), '#ff5e6c', _rLook ? { iconKey: _rLook.icon, taken: true } : { taken: true });
                   }   /* v2.3.2520: display scale; v2.3.2996: + the element's icon; v2.3.3026: over their head, not on their face (combatHelpers peerPopupY) */
+                  /* ═══ v2.3.3341: A BLOW ON A FRIEND IS HEARD ═══
+                     Only yours ever was (SOUND-GAPS §5): the blow they took
+                     (the armour's clang on armour, the thud bare), their
+                     shield's clang, or the miss's rush -- at their share by
+                     distance.  Not a burn's or poison's tick, nor a parry (its
+                     own 'parry' event plays the parry). */
+                  if (!tickKind(payload)) {
+                    var _rhx = rOther.renderX != null ? rOther.renderX : rOther.x, _rhy = rOther.renderY != null ? rOther.renderY : rOther.y;
+                    if (payload.blocked) { if (!payload.parried) cuePeer(S, 'shieldBlock', _rhx, _rhy); }
+                    else if (payload.dodged && !(_bdmg > 0)) cuePeer(S, 'dodged', _rhx, _rhy);
+                    else if (_bdmg > 0 || typeof payload.hp !== 'number') {
+                      var _rhk = peerShare(S, _rhx, _rhy);
+                      var _rArm = !!(rOther.equip && rOther.equip.chest && rOther.equip.chest !== 'none');
+                      if (_rhk > 0) { try { BT_AUDIO.monsterHitHero(_rArm, { vol: 0.85 * 0.8 * _rhk }); } catch (e) { /* sound only */ } }
+                    }
+                  }
                 }
                 break;
               }
@@ -2982,6 +3139,14 @@ export function processGameEvent(type, payload, S, deps) {
                 if (!R2._questFlags) R2._questFlags = {};
                 R2._questFlags.blocksLanded = (R2._questFlags.blocksLanded || 0) + 1;
                 pushDmgPopup(S, S.player.x, heroPopupY(S), 'Blocked!', '#60a5fa');   /* v2.3.3026: over your head, where the hit's number would be */
+                /* v2.3.3341: and HEARD -- the shield's clang (SOUND-GAPS: the
+                   comment at monster_ability said it played here; nothing did,
+                   only the old single-player path played it).  Not for a parry
+                   (its own event plays the parry) nor a ball that broke on the
+                   shield (projectiles.js plays its break and the shield's knock
+                   under it; shotHitMe also spends that ball, as heroHitSfx's
+                   own call would have). */
+                try { if (!payload.parried && !shotHitMe(S, payload.monsterId)) cue('shieldBlock'); } catch (e) { /* sound only */ }
                 /* ═══ v2.3.3297: WHAT THE WORKER CHARGED, NOT A GUESS ═══
                    This said 15 whenever the event named no cost -- the cost a
                    blocked hit had before v2.3.1731.  But every worker since
@@ -3208,7 +3373,12 @@ export function processGameEvent(type, payload, S, deps) {
               }
               /* v2.3.3014: a poison's sparks green, a storm's yellow-white */
               var _tickCols = _tickK === 'poison' ? ['#b6f05a', '#6fbf3a'] : _tickK === 'shock' ? ['#fff7b0', '#9fd8ff'] : ['#ffd27a', '#ff9a3c'];
-              for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
+              /* v2.3.3341: a blow the worker rolled as DODGED landed nothing:
+                 no red sparks off you and no shake below (it shook the screen
+                 and threw "you got hit" sparks like a landed blow; SOUND-GAPS:
+                 "It should be a whoosh" -- its sound is below) */
+              var _dodgedClean = !!payload.dodged && !(Math.ceil(dmgTaken2) > 0);
+              if (!_dodgedClean) for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
                 x: S.player.x, y: S.player.y,
                 vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
                 life: 0.6, color: _burnTick ? _tickCols[hp3 & 1] : '#ff5e6c', size: 2
@@ -3220,7 +3390,7 @@ export function processGameEvent(type, payload, S, deps) {
                 try { BT_AUDIO.elemHit(_tickK + 'Tick'); } catch (e) { /* sound only */ }
                 break;
               }
-              S.screenShake = 3;
+              if (!_dodgedClean) S.screenShake = 3;
               /* v2.3.1598 (owner): the armour clang, not a dead beep.
                  This is the SERVER-AUTHORITATIVE hit path — the one that
                  actually runs, since the game is 100% server-based — and it
@@ -3239,7 +3409,11 @@ export function processGameEvent(type, payload, S, deps) {
                  in armour and nothing without -- a snowball no longer sounds
                  like a sword.  hitSounds.heroHitSfx; the element's own sound
                  above is untouched. */
-              try { heroHitSfx(S, payload, isWearingArmor()); } catch (e) { /* audio is best-effort */ }
+              /* v2.3.3341: a blow the worker rolled as DODGED (the "Dodged"
+                 popup above, nothing taken) is a rush of air past you, never
+                 the clang of a hit -- it played the clang (SOUND-GAPS). */
+              if (_dodgedClean) { cue('dodged'); }
+              else { try { heroHitSfx(S, payload, isWearingArmor()); } catch (e) { /* audio is best-effort */ } }
               /* Death path: in MP the worker fires player_died (which
                  handles the death animation + popup) and player_respawned
                  (which teleports to town) -- both wired in the WS switch
@@ -3387,6 +3561,10 @@ export function processGameEvent(type, payload, S, deps) {
                 });
               }
               pushDmgPopup(S, dthX, dthY - 40, 'KO', '#ff5e6c', { ttl: 2.0 });
+              /* v2.3.3341: their death is heard -- the blow and the bones, at
+                 their share by distance (it was silent; a clone's knockout
+                 comes this way too) */
+              try { var _dthK = peerShare(S, dthX, dthY); if (_dthK > 0) BT_AUDIO.playerDeath(_dthK); } catch (e) { /* sound only */ }
               break;
             }
           case 'player_respawned':
@@ -3702,11 +3880,19 @@ export function processGameEvent(type, payload, S, deps) {
                   var _pvTgt = S.others && S.others[payload.target];
                   var _pvX = _pvTgt ? (_pvTgt.x != null ? _pvTgt.x : _pvTgt.renderX) : S.player.x + 20;
                   var _pvY = (_pvTgt ? (_pvTgt.y != null ? _pvTgt.y : _pvTgt.renderY) : S.player.y) - 30;
+                  /* v2.3.3341: what became of your blow is heard as well as
+                     read -- you heard the flesh hit when it landed, before the
+                     worker said they blocked or dodged it (SOUND-GAPS "Also
+                     wrong"): their shield's clang, softer, or the miss's rush
+                     of air; and a crit has the grand slam's ring. */
                   if (payload.dodged) {
                     pushDmgPopup(S, _pvX, _pvY, 'Dodged', '#9ca3af');
+                    cue('dodged', 0.6);
                   } else if (payload.blocked) {
                     pushDmgPopup(S, _pvX, _pvY, 'Blocked', '#607D8B');
+                    if (!payload.parried) cue('shieldBlock', 0.55);   /* a parry is the parry event's (the stagger's sound) */
                   } else if (typeof payload.dmgTaken === 'number' && payload.dmgTaken > 0) {
+                    if (payload.isCrit && !payload.collision && !tickKind(payload)) cue('crit');
                     /* ═══ v2.3.3263: YOUR HIT ON A PLAYER READS AS YOUR HIT ON A MONSTER ═══
                        Owner: "the numbers for damage between PVP and PVE can be
                        exactly the same for each combat skill type ... Everything
@@ -3781,6 +3967,14 @@ export function processGameEvent(type, payload, S, deps) {
                             _pvOa ? _pvOa.x : null, _pvOa ? _pvOa.y : null, _pvOd / Math.max(1, _pvOn.rpgMaxHp || 100));
                         }
                         pushDmgPopup(S, _pvOx || 0, peerPopupY(_pvOn), '-' + takenFigure(payload, _pvOd), '#ff5e6c', _pvOlk ? { iconKey: _pvOlk.icon, taken: true } : { taken: true });
+                      }
+                      /* v2.3.3341: ...and heard as a monster's blow on them is
+                         (the monster_attack peer branch): a flesh hit, their
+                         shield's clang, or the miss's rush, by distance */
+                      if (!_pvOtk) {
+                        if (payload.blocked) { if (!payload.parried) cuePeer(S, 'shieldBlock', _pvOx || 0, _pvOy || 0); }
+                        else if (payload.dodged && !(_pvOd > 0)) cuePeer(S, 'dodged', _pvOx || 0, _pvOy || 0);
+                        else if (_pvOd > 0) { var _pvOk = peerShare(S, _pvOx || 0, _pvOy || 0); if (_pvOk > 0) { try { BT_AUDIO.materialHit('flesh', { vol: 0.55 * _pvOk }); } catch (e) { /* sound only */ } } }
                       }
                     }
                   }
@@ -3890,8 +4084,13 @@ export function processGameEvent(type, payload, S, deps) {
                 /* v2.3.1605: real hit sound, not the beep() that has been a no-op
                    since v2.3.1103 — the same dead call the monster hit carried
                    until v2.3.1598.  Being hit by a PLAYER was silent for the same
-                   reason and is fixed the same way. */
-                try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.85 }); } catch (e) {}
+                   reason and is fixed the same way.
+                   v2.3.3341: ...but a blow you BLOCKED is your shield's clang
+                   and one you DODGED a rush of air: both played the armour
+                   clang of a hit (SOUND-GAPS "Also wrong"). */
+                if (payload.blocked) { if (!payload.parried) cue('shieldBlock'); }   /* a parry is its own event's sound */
+                else if (payload.dodged && !(Math.ceil(dmgTaken) > 0)) cue('dodged');
+                else { try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.85 }); } catch (e) {} }
               }
               /* Predict "Killed by X" popup from the (server-resolved
                  or locally-computed) dmgTaken vs current local hp.  HP
@@ -4051,7 +4250,7 @@ export function processGameEvent(type, payload, S, deps) {
               }
               if (payload.died) {
                 pushDmgPopup(S, S.player.x, S.player.y - 50, 'KILL!', '#3dd497');
-                BT_AUDIO.collect();
+                cue('pvpKill');   /* v2.3.3341: was collect(), a beep() -- silent */
                 if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
                 S.rpg._compStats.pvpKills++;
                 /* §CW — Score clan war kill.  v2.3.1125: clan-capable
@@ -4147,7 +4346,7 @@ export function processGameEvent(type, payload, S, deps) {
                  arena flow (spec: docs/specs/arena.md).  Damage works
                  via the duel consent pair; healing is server-gated. */
               pushDmgPopup(S, S.player.x, S.player.y - 50, '⚔️ ARENA R' + (payload.round || 1) + ': fight ' + (payload.opponentName || '???') + '!', '#f5c542');
-              BT_AUDIO.beep(300, 0.15, 0.2, 'sawtooth');
+              cue('arenaStart');   /* v2.3.3341: was a beep() -- silent */
               S.screenShake = 5;
               break;
             }
@@ -4155,9 +4354,10 @@ export function processGameEvent(type, payload, S, deps) {
             {
               if (payload.winner === S.myId) {
                 pushDmgPopup(S, S.player.x, S.player.y - 60, 'Arena win! (' + (payload.how || 'kill') + ')', '#3dd497');
-                BT_AUDIO.collect();
+                cue('duelWin');   /* v2.3.3341: was collect(), a beep() -- silent */
               } else if (payload.loser === S.myId) {
                 pushDmgPopup(S, S.player.x, S.player.y - 60, 'Eliminated from the arena', '#ff5e6c');
+                cue('duelLose');   /* v2.3.3341 */
               }
               break;
             }
@@ -4175,7 +4375,7 @@ export function processGameEvent(type, payload, S, deps) {
                 if (!S.rpg._titles) S.rpg._titles = [];
                 if (!S.rpg._titles.includes('Gladiator')) S.rpg._titles.push('Gladiator');
                 pushDmgPopup(S, S.player.x, S.player.y - 80, 'GLADIATOR CHAMPION!', '#f5c542');
-                BT_AUDIO.levelUp();
+                cue('champion');   /* v2.3.3341: levelUp() is beep()s only -- silent */
                 S.screenShake = 10;
                 setRpgState(_objectSpread({}, S.rpg));
               } else if (_champ.playerName) {
@@ -4218,6 +4418,7 @@ export function processGameEvent(type, payload, S, deps) {
                    src/game/duelLock.js. */
                 lockOntoDuelOpponent(S, payload.from);
                 pushDmgPopup(S, S.player.x, S.player.y - 40, 'DUEL STARTED!', '#fbbf24');
+                cue('duelStart');   /* v2.3.3341: the challenger hears it begin (DuelRequestPanel plays the accepter's) */
               }
               break;
             }
@@ -4238,7 +4439,9 @@ export function processGameEvent(type, payload, S, deps) {
                 if (S.lockedTarget && S.lockedTarget.type === 'player') S.lockedTarget = null;
                 try { dropShield(S, 'duel_end'); } catch (e) { /* display-only */ }
                 pushDmgPopup(S, S.player.x, S.player.y - 40, _won ? ('DUEL WON!' + (payload.wager ? ' +' + payload.wager * 2 + 'g' : '')) : (payload.how === 'forfeit' ? 'Duel forfeited' : 'Duel lost' + (payload.wager ? ' -' + payload.wager + 'g' : '')), _won ? '#f5c542' : '#ff5e6c');
-                if (_won) BT_AUDIO.levelUp();else BT_AUDIO.beep(180, 0.1, 0.15, 'triangle');
+                /* v2.3.3341: levelUp() and beep() play nothing -- Ace's coin
+                   flip's own win and loss, at his levels */
+                cue(_won ? 'duelWin' : 'duelLose');
               }
               break;
             }
@@ -4451,7 +4654,7 @@ export function processGameEvent(type, payload, S, deps) {
                      ItemTooltip.jsx — item/undo-specific, not suitable —
                      and the floating world text is deliberately gone). */
                   setTrade2({ state: 'done', receipt: _t2Receipt, ts: Date.now() });
-                  BT_AUDIO.collect();
+                  cue('tradeDone');   /* v2.3.3341: coins and goods changing hands -- collect() is a beep(), silent (SOUND-GAPS) */
                   if (S.rpg) setRpgState(_objectSpread({}, S.rpg));
                 }, 80);
               } else {
@@ -4472,6 +4675,7 @@ export function processGameEvent(type, payload, S, deps) {
                    Every other cancel reason keeps the legacy
                    clear-window + world-popup behavior. */
                 var _t2SettleFail = !!(payload.reason && /^(insufficient|pet-gone|pets-full)/.test(String(payload.reason)));   /* v2.3.3122: + the pet lane's */
+                cue('tradeOff');   /* v2.3.3341: a trade called off or failed is heard closing (it was silent) */
                 if (_t2SettleFail) {
                   setTrade2({ state: 'failed', reason: payload.reason, ts: Date.now() });
                 } else {
@@ -4563,6 +4767,10 @@ export function processGameEvent(type, payload, S, deps) {
                 var _allyLine = allyMomentText(payload);
                 if (_allyLine && S.player) {
                   pushDmgPopup(S, S.player.x, S.player.y - 48, _allyLine, payload.became === 'party' ? '#B9C1BF' : '#f5c542');
+                  /* v2.3.3341: the big two heard -- an alliance made, a war
+                     declared (both were silent; SOUND-GAPS) */
+                  if (payload.became === 'alliance') cue('allianceUp');
+                  else if (payload.war === 'start') cue('allianceWar');
                   if (payload.war !== 'kill') {
                     S.chatLog = (S.chatLog || []).slice(-50).concat([{ id: 'ally-' + Date.now(), name: '', text: '⚔️ ' + _allyLine, ts: Date.now(), system: true }]);
                     if (setChatLog) setChatLog(S.chatLog.slice());
@@ -4613,8 +4821,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.success) {
                 pushDmgPopup(S, S.player.x, S.player.y - 45, '⚒️ HARDENED! Now H' + payload.hardness + '/5', '#f5c542');
                 S.screenShake = 6;
-                BT_AUDIO.collect();
-                setTimeout(function () { return BT_AUDIO.beep(784, 0.12, 0.1, 'sine'); }, 120);
+                cue('hardenOk');   /* v2.3.3341: a bright ring and a chime -- collect() and beep() play nothing (SOUND-GAPS) */
               } else {
                 /* v2.3.3139: and the material the attempt took -- bars, or a
                    bow's hardened wood (none on the old ladder) */
@@ -4623,7 +4830,7 @@ export function processGameEvent(type, payload, S, deps) {
                   : '';
                 pushDmgPopup(S, S.player.x, S.player.y - 45, 'Hardening failed! (-' + (payload.cost || 0) + 'G' + _hBars + ') → H' + payload.hardness, '#ff5e6c');
                 pushDmgPopup(S, S.player.x, S.player.y - 30, 'Temper ' + (payload.temper || 0) + ' (pity softens future resets)', 'rgba(255,255,255,.5)');
-                BT_AUDIO.beep(180, 0.12, 0.18, 'sawtooth');
+                cue('hardenFail');   /* v2.3.3341: a dull strike and the loss sting (a beep(), silent) */
               }
               if (S.rpg) setRpgState(_objectSpread({}, S.rpg));
               break;

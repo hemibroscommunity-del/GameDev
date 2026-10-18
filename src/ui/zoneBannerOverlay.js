@@ -67,6 +67,7 @@ import { zoneBannerReady, zoneBannerResident } from '../rendering/zoneBannerPrel
 import { zoneTitle } from './mobile/zoneTitle.js';
 import { prefersReducedMotion } from './mobile/sheet/motion.js';
 import { landLook } from '../data/wheelLands.js';   /* v2.3.3024: the Wheel's lands */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3341: a land's banner heard */
 
 /* ONE element, ever.  This is what makes stacked banners impossible rather
    than merely unlikely: a second entry reuses it and cancels whatever the
@@ -363,7 +364,11 @@ export function noteWheelLand(region, title, S) {
   _wl.shown = region;
   const look = landLook(region);
   if (!look || !look.element || !title) return false;
-  return playZoneBanner(region, S, { title, plain: true, icon: look.icon, color: landNameColor(look.color) });
+  const shown = playZoneBanner(region, S, { title, plain: true, icon: look.icon, color: landNameColor(look.color) });
+  /* v2.3.3341: a breath of wind under a land's banner as you cross in (it came
+     in silence; SOUND-GAPS) -- the land's banner only, not every zone's */
+  if (shown) cue('landCross');
+  return shown;
 }
 /* the land's colour lifted toward white, to read on the dark plaque (as the
    top bar's, ZoneHeader.jsx landTint) */
