@@ -228,6 +228,9 @@ export const questMethods = {
     }
     const o = this.__questOrder;
     if (o.dormant.has(questId)) return 'gone';
+    /* v2.3.3430: a test-mode character takes and hands in any quest in any
+       order (testmode.js) -- the objective is still checked at the hand-in */
+    if (typeof this._testMode === 'function' && this._testMode(ps)) return null;
     const q = ps._quests || {};
     if (!(reward && reward.objective) && questId !== QUEST_FIRST && q[QUEST_FIRST] !== 'turnedIn') return 'first';
     if (accepting && q[questId] !== 'available') {

@@ -1479,6 +1479,21 @@ function _stampStandInInk(d, w, h, body, art, R) {
      the figure; no ink is the better failure (see standInInk.js). */
   if (!R || R.fh !== h || !R.fw || w % R.fw !== 0) return;
   const reg = splitSkinBySeeds(body, w, h, R.fw, R.seeds);
+  /* v2.3.3439: `armCuts[f]`, [x, top, bottom] columns of frame f taken out of
+     the arms before each arm is measured: on the farmer's strike both hands
+     hold the hoe, so his two arms were one piece of skin and one arm drawing
+     was fitted over both and the gap between them (src/data/farmAnims.js,
+     made by tools/make_farm_anims.py _arm_cuts).  A pixel's width of the hands
+     goes without ink. */
+  if (R.armCuts) {
+    for (let f = 0; f < R.armCuts.length; f++) {
+      for (const c of (R.armCuts[f] || [])) {
+        const x = f * R.fw + c[0];
+        if (c[0] < 0 || c[0] >= R.fw || x >= w) continue;
+        for (let y = Math.max(0, c[1]); y <= Math.min(h - 1, c[2]); y++) reg.arms[y * w + x] = 0;
+      }
+    }
+  }
   const m = !!art.mirror;
   if (artHasInk(art.tattooFace)) {
     stampRegion(d, w, h, R.fw, reg.face, art.tattooFace, m, FACE_BOX, { underSkin: true, boxes: R.face });
