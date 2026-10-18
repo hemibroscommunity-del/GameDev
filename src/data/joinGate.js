@@ -36,6 +36,18 @@
  * ("Name your bro first" over "Invalid name"), because the player pressing
  * this button has already decided what they want to do and needs the step,
  * not the diagnosis.
+ *
+ * ═══ v2.3.3430: AND EACH ONE FITS ON ONE LINE ═══
+ * They are shown in the one-line slot between the name field and Randomize
+ * (.bt-cc-namemsg, as tall as the stack's gap: 19.4px at 390, 15px on a short
+ * upright screen), and all three were longer than the column -- "Name your
+ * bro first — tap the field above." is 189.5px of 11px type in a slot 123.5px
+ * wide at 320 and 160.5px at 390.  They wrapped to two lines, 30px of text,
+ * and ran over the name field's frame and Randomize's at every phone size
+ * since v2.3.2416 narrowed the slot (.14 -> .10) for the one-line hint.
+ * Shortened to the action alone, each under the 320 column with room to
+ * spare: 88.2px, 96.4px and 117.3px (mp-ccfeet presses for each and measures
+ * it in its slot; "tap the field above" went because the field IS above).
  */
 
 /* The pinch-zoom threshold.  1.05 rather than 1.0: Safari reports scale as a
@@ -58,8 +70,9 @@ export function pageIsPinchZoomed() {
    them pressing a still-dead button and learning nothing. */
 export function joinBlockReason(name) {
   const trimmed = (name || '').trim();
-  if (trimmed.length === 0) return 'Name your bro first — tap the field above.';
-  if (trimmed.length < 2) return 'That name is too short — 2 letters at least.';
-  if (pageIsPinchZoomed()) return 'Pinch back to 100% zoom to start.';
+  /* v2.3.3430: one line each (see the header) */
+  if (trimmed.length === 0) return 'Name your bro first';
+  if (trimmed.length < 2) return 'Type at least 2 letters';
+  if (pageIsPinchZoomed()) return 'Pinch back to 100% zoom';
   return null;
 }

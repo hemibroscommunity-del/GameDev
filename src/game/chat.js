@@ -20,7 +20,7 @@ import { slashDice, diceResult, diceLineText, diceBubbleText, diceWaitMs } from 
 import { cueAt } from '@/game/eventSounds.js'; /* v2.3.3393: the roll's clatter, by distance */
 import { isBlockedId } from '@/game/chatMute.js'; /* v2.3.3391: both shapes of the block list */
 import { stripLaneMarks } from '@/data/smallIcons.js'; /* v2.3.3391 */
-import { earVol } from '@/game/hitSounds.js'; /* v2.3.3391: an emote's chirp carries as far as a hit */
+import { peerMoveSound } from '@/game/moveSounds.js'; /* v2.3.3434: an emote heard, as far as a hit carries (was earVol and two silent beep()s, v2.3.3391) */
 import { _toConsumableArray } from '@/lib/babelHelpers.js';
 
 /* ═══ v2.3.1970: A RECEIVED LINE IS UNTRUSTED TEXT ═══
@@ -477,12 +477,11 @@ export function handleEmoteEvent(payload, S) {
     if (!S.chatBubbles) S.chatBubbles = {};
     S.chatBubbles[payload.id] = { text: payload.emoji, ts: _now };
   }
-  var _k = earVol(S, _o.renderX != null ? _o.renderX : _o.x, _o.renderY != null ? _o.renderY : _o.y);
-  if (!(_k > 0)) return;
-  BT_AUDIO.beep(800, 0.06, 0.06 * _k, 'sine');
-  setTimeout(function () {
-    return BT_AUDIO.beep(1000, 0.04, 0.06 * _k, 'sine');
-  }, 60);
+  /* v2.3.3434: heard -- the emoji's pop, or the move's own sound (game/
+     moveSounds.js), at the peer share by distance (eventSounds.cuePeer: the
+     hits' earVol, about half your own).  The two beep()s here played nothing
+     since v2.3.1103. */
+  peerMoveSound(S, _o.renderX != null ? _o.renderX : _o.x, _o.renderY != null ? _o.renderY : _o.y, kind === 'move' ? _move : null);
 }
 
 /* ═══ v2.3.3393: A ROLL OR FLIP THE WORKER MADE (server/src/dice.js) ═══

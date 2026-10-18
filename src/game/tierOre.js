@@ -3,8 +3,9 @@
  * After the five trees (game/tierTrees.js), the owner's five ore rocks: one
  * picture a metal, the same in every land, its SIZE saying the tier ("the
  * beginner tier scale up in physical size to the final tier where you have
- * huge fish, ore, and trees at the end") -- copper a rock half a bro tall,
- * then iron, black steel, titanium, and obsidian a boulder taller than you.
+ * huge fish, ore, and trees at the end") -- copper a rock three quarters of
+ * a bro tall, then iron, black steel, titanium, and obsidian a boulder half
+ * as tall again as you (v2.3.3443: all five 1.4x the first cut, below).
  * Before, every tier was the one painted copper vein with its colours mapped
  * (tools/make_tier_art.py) and 15% more height a ten levels.
  *
@@ -27,11 +28,29 @@
  *   - every rock's BASE stands ORE_BASE_DY (22) north of the node's point,
  *     its foot's middle on the point's x -- each of the five then lies over
  *     all of the baked rock at rest, and over 98% (copper) to all of it at
- *     the blow;
+ *     the blow (99.5% to all of it since v2.3.3443's bigger rocks);
  *   - a rock is never drawn higher than ORE_TOP_MAX_UP (110) over the point:
- *     the miner's head is 114 to 136 px up, his shoulders ~111, so the two
- *     biggest stand further south instead and he keeps his head and shoulders
- *     over them -- the old vein hid him to the neck from black steel on.
+ *     the miner's head is 114 to 136 px up, his shoulders ~111, so a taller
+ *     one stands further south instead (the two biggest in the first cut,
+ *     every one from iron on since v2.3.3443) and he keeps his head and
+ *     shoulders over it -- the old vein hid him to the neck from black steel
+ *     on.
+ *
+ * ═══ v2.3.3443: AND TALL ENOUGH TO HIDE HIS SHIRT'S HEM ═══
+ * The owner: "the smaller ore size now exposes the unfinished design work
+ * around aligning the players worn items during the animation (shirt doesn't
+ * fit during animation).  Can you make the ore the original size again but
+ * just scale up the other ores to keep the size differences relatively the
+ * same?"  In the swing the shirt rides up off the trousers and a band of bare
+ * belly shows under its hem.  The old vein's top, 102.5 px over the point, hid
+ * most of it; the first cut's copper reached 80 and hid almost none.  Its base
+ * cannot go back north (the baked rock would show under it again), so every
+ * rock is cut 1.4x taller (tools/world/add-ore-art.mjs ORE_GROW): copper,
+ * 81 x 80.5, reaches 102.5 again and hides more of the band than the old vein
+ * did, and from iron on every rock meets ORE_TOP_MAX_UP and stands further
+ * south -- obsidian's base 47 px south of the point -- the two numbers above
+ * unchanged.  mp-tierore counts the band's pixels left showing against the
+ * old vein's.
  */
 import { ORE_ART, ORE_ART_V } from '../data/oreArt.js';   /* relative, so a node test (mp-tierore) can import this file */
 

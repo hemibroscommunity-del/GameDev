@@ -248,6 +248,77 @@ export const EVENT_SOUNDS = {
   allianceUp: [['level-up', 0, 0.5, 0.35, 1, 0, 0.15]],
   allianceWar: [['shield-bash', 0.03, 0.5, 0.45, 0.65], ['whirlwind', 0.1, 0.7, 0.2, 0.8, 0.05, 0.15]],
 
+  /* ── v2.3.3434: MORE MOMENTS THAT PLAYED NOTHING ───────────────────────
+     The owner, 2026-10-18, after the first round: "Look for more too".  Each
+     of these still called collect() or beep(), both silent since v2.3.1103,
+     or nothing at all.  Same recordings, same rules as above. */
+  /* A crop pulled from its bed: the soil giving (the farm's own dirt step,
+     the dig's sample) and a pop as it comes free (the lure's plop, quick),
+     ~0.6 -- louder than the spade (~0.3): it is the farm's payoff. */
+  farmHarvest: [['footstep-v3', 0.08, 0.3, 1.1, 1.15, 0, 0.08], ['lure-drop', 0, 0, 3, 1.35, 0.09]],
+  /* A wager: coins put down (the Gambling Den's weekly pot, a stake on a
+     gladiator), ~0.6; won (the coins and Ace's win), ~1.5; lost (Ace's
+     loss, softer than a lost duel), ~1.0.  The dice, the pot and the arena's
+     stakes all speak the same three. */
+  betIn: [['coin-flip', 0.07, 0.6, 7, 0.9], ['coin-pickup', 0.5, 0.5, 0.25, 0.8, 0.08, 0.15]],
+  betWon: [['coin-pickup', 0.5, 0.8, 0.45, 1], ['flip-win', 0, 1.2, 0.4, 1, 0.1, 0.2]],
+  betLost: [['flip-lose', 0, 0.7, 0.32, 1]],
+  /* The weekly jackpot drawn, and it is yours: the fanfare and two pours of
+     coins, ~1.7. */
+  jackpotWin: [['level-up', 0, 0, 0.7, 1], ['coin-pickup', 0.5, 0.9, 0.5, 1, 0.15, 0.2], ['coin-pickup', 0.5, 0.9, 0.4, 1.12, 0.45, 0.2]],
+  /* A guild's rank quest turned in: the very chime every quest's turn-in
+     plays (quests.js, quest-complete-v2 at 0.9), ~2.4. */
+  guildQuest: [['quest-complete-v2', 0, 0, 0.9, 1]],
+  /* Your alliance's war over: won (Ace's win over a drum), ~1.85; lost (his
+     loss over a slower drum), ~1.7. */
+  warWon: [['flip-win', 0, 1.6, 0.5, 1], ['shield-bash', 0.03, 0.5, 0.4, 0.7]],
+  warLost: [['flip-lose', 0, 0.7, 0.5, 0.9], ['shield-bash', 0.03, 0.5, 0.3, 0.55, 0.05]],
+  /* Signed up for the gladiators: a blade's ring slowed into a bell, and a
+     soft drum, ~0.75. */
+  arenaJoin: [['sword-hit2', 0, 0.34, 0.35, 0.7, 0, 0.1], ['shield-bash', 0.03, 0.4, 0.1, 0.85, 0, 0.1]],
+  /* Your pet: taken out (a pop and a sparkle, ~0.5 -- and a voice of its
+     own after it, game/trapping.js petVoice), put away (the sparkle, then a
+     softer plop, ~0.35), released to the wild (a rush away, a fading
+     sparkle, ~0.45). */
+  petOut: [['lure-drop', 0, 0, 2.4, 1.3], ['magic-cast', 0, 0.45, 0.45, 1.35, 0.04, 0.12]],
+  petAway: [['magic-cast', 0, 0.45, 0.4, 1.05, 0, 0.12], ['lure-drop', 0, 0, 1.6, 0.95, 0.12]],
+  petFree: [['arrow-fly', 0.03, 0.24, 2.8, 0.85, 0, 0.08], ['magic-cast', 0, 0.6, 0.4, 1.2, 0.06, 0.2]],
+  /* A night in the farm's bed: a slow breath and a warm shimmer, ~0.45. */
+  rested: [['whirlwind', 0.1, 0.8, 0.18, 0.9, 0, 0.25], ['magic-cast', 0, 0.8, 0.6, 0.85, 0.15, 0.3]],
+  /* A duel challenge for you (a blade ringing out, ~0.85), and someone who
+     wants to trade (two coins' clink, ~0.5). */
+  duelAsk: [['sword-hit2', 0, 0.35, 0.45, 0.85, 0, 0.08], ['sword-swing', 0.05, 0.25, 0.3, 1.15, 0.05, 0.05]],
+  tradeAsk: [['coin-flip', 0.07, 0.35, 6, 1.15], ['coin-flip', 0.07, 0.3, 5, 1.3, 0.12, 0.06]],
+  /* The forge at work: three strikes on the anvil (the pickaxe's ring,
+     bright), ~0.5 at the forge -- played by game/townAmbience.js now and
+     then while you are near the Blacksmith's, its sparks' sound. */
+  anvil: [['mine-strike', 0.58, 0.3, 0.3, 1.25], ['mine-strike', 0.58, 0.3, 0.26, 1.22, 0.42], ['mine-strike', 0.58, 0.3, 0.3, 1.27, 0.84]],
+  /* ── v2.3.3434, the third look (the owner: "Good look for more") ──
+     The emotes and moves (v2.3.3391-3395) shipped silent -- their plan's
+     table says "Extras (reused sounds)" (docs/FUN-SOCIAL-PLAN.md) and Phase 1
+     shipped "no new sounds"; each called BT_AUDIO.emote(), two beep()s.  Which
+     move makes which of these is MOVE_SOUNDS below; game/moveSounds.js plays
+     them -- yours, other players' (by distance, the peer share) and the
+     townsfolk copying you. */
+  /* An emote's emoji popping up over the head: the lure's plop, quick and
+     high, ~0.3. */
+  emotePop: [['lure-drop', 0, 0, 1.8, 1.65]],
+  /* Facepalm: the arrow's thwack, small, as the hand meets the face, ~0.3
+     (a slowed thud reads as a body falling, not a slap: 130% of it under
+     400 Hz, measured). */
+  slap: [['arrow-hit', 0, 0, 0.8, 1.35, 0.2]],
+  /* Sitting down (a soft scuff and bump, ~0.35) and flopping flat (a thump,
+     the ground's dirt and a small second bounce, ~0.6). */
+  sitDown: [['footstep-v3', 0.08, 0.3, 0.9, 0.8, 0, 0.08], ['monster-hit', 0.01, 0.2, 0.35, 0.7, 0.03]],
+  flop: [['monster-hit', 0.01, 0.2, 1.0, 0.58], ['footstep-v3', 0.92, 0.3, 0.9, 0.75, 0.02, 0.08], ['monster-hit', 0.01, 0.15, 0.4, 0.7, 0.22]],
+  /* Flex: a sparkle and a glint at the top of it, ~0.35. */
+  flexShine: [['magic-cast', 0, 0.5, 0.45, 1.45, 0.1, 0.12], ['sword-hit2', 0, 0.2, 0.22, 1.9, 0.18, 0.05]],
+  /* Cheer: a party popper -- two pops and a puff of air, ~0.45. */
+  cheerPop: [['lure-drop', 0, 0, 1.8, 1.5], ['lure-drop', 0, 0, 1.6, 1.75, 0.12], ['arrow-fly', 0.03, 0.2, 1.4, 1.2, 0.05, 0.05]],
+  /* A harvest's prize landing in the bag after its flight (lifeSkillRewards
+     _flyResourceToInventory): the bag's leather, softly, ~0.25. */
+  bagIn: [['ui-equip', 0.095, 0.3, 1.1, 1.25, 0, 0.08]],
+
   /* ── other players (game/eventSounds.js cuePeer: by distance, a burst cap,
         about half your own level; what sounds as YOURS does -- the sprint's
         push-off, a swimmer's splash and strokes -- is played from BT_AUDIO's
@@ -289,4 +360,36 @@ export const CUE_GAP_MS = {
   lungeMiss: 100,
   unwrap: 200,
   tradeOff: 300,
+  /* v2.3.3434: a player who sends invite after invite is heard once a second
+     at most, and a pet taken out and put away again and again is one pop */
+  duelAsk: 1000,
+  tradeAsk: 1000,
+  petOut: 300,
+  petAway: 300,
+  /* v2.3.3434: a crowd emoting at once is a few pops, and five crops landing
+     together one rustle at a time */
+  emotePop: 80,
+  bagIn: 120,
+};
+
+/* ═══ v2.3.3434: WHAT EACH MOVE SOUNDS LIKE ═══
+   Every move in game/emoteMoves.js EMOTE_MOVES, chosen -- never fallen into
+   (server/test/sound-cues.test.mjs holds the keys to the moves): the emoji's
+   pop, and a sound of the move's own where it has one.  The wave, laugh,
+   shrug, sleep and the dances are the pop alone until their recordings (a
+   laugh, a snore, a dance loop: docs/SOUND-GAPS.md); Sit has no emoji. */
+export const MOVE_SOUNDS = {
+  wave: ['emotePop'],
+  laugh: ['emotePop'],
+  flex: ['emotePop', 'flexShine'],
+  shrug: ['emotePop'],
+  facepalm: ['emotePop', 'slap'],
+  cheer: ['cheerPop'],
+  sit: ['sitDown'],
+  sleep: ['emotePop'],
+  flop: ['flop'],
+  bounce: ['emotePop'],
+  robot: ['emotePop'],
+  sprinkler: ['emotePop'],
+  zombie: ['emotePop'],
 };

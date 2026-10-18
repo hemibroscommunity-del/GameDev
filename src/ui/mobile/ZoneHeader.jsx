@@ -5,6 +5,7 @@ import { zoneTitle } from './zoneTitle.js'; /* v2.3.2596: shared with the zone-e
 import { calm as lifeCalm } from './dash/bagLife.js'; /* v2.3.2815: the purse's coin flip */
 import { dayPhase, lightingAt, zoneHasSky } from '../../game/timeOfDay.js'; /* v2.3.2892: the hour beside the zone name */
 import { ZONES } from '../../data/zones.js'; /* v2.3.3009: the Wheel's name, before its first words come */
+import { testModeOn } from '../../game/testMode.js'; /* v2.3.3430: the owner's test mode tag */
 
 /* ═══ v2.3.2892: WHAT TIME IT IS, NEXT TO WHERE YOU ARE ═══
    Owner: "Add a time of day icon next to current map name."  The hour is
@@ -257,6 +258,17 @@ export const ZoneHeader = ({ onExit }) => {
           onContextMenu={(e) => e.preventDefault()}
           style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
         >{S.currentZone === 'wheel' ? ((ZONES.wheel && ZONES.wheel.name) || 'BroTown' /* v2.3.3039 */) : zoneTitle(S)}</div>
+        {/* ═══ v2.3.3430: TEST MODE, SAID WHERE IT IS ALWAYS SEEN ═══
+            The owner's switch (Test panel; server/src/testmode.js): while the
+            worker has the honesty checks off for this character, the top bar
+            says so, so a test character is never taken for a real one.
+            BESIDE the title, never inside it -- [data-zone-title] is the zone
+            banner's dock target and its text is read exactly.  A flat fill:
+            this rail is over the WebGL canvas (TRAPS section 42). */}
+        {testModeOn(S) && (
+          <span className="bt-zone-header__test" data-test-mode-tag="1"
+            aria-label="Test mode: the anti-cheat is off for this character">TEST MODE</span>
+        )}
         </div>
         {/* ═══ v2.3.2320: THE PURSE LIVES HERE NOW ═══
             Owner: "Move gold amount display to very top right on the top bar
