@@ -31,7 +31,7 @@ rewards go directly to the HUD"), and a rarity example. In the game:
    laurel check on its crest, the coins and items fly from the banner, and he
    offers his next quest.
 
-**v2.3.3330: the first quest is step 4.** The owner, playtesting: *"I don't
+**v2.3.3335: the first quest is step 4.** The owner, playtesting: *"I don't
 want the 'choose where to train it' option when you complete the first quest
 and are getting rewarded with bow and staff. Makes no sense to have to choose
 xp in something you've never used yet. Just remove that little xp bonus."*
@@ -164,7 +164,7 @@ marked `data-qw-stage="done"`, and the harness's `advanceNpcDialogue` and
 **Checked by:**
 
 - `mp-questwin`: the first quest through every window on a phone, with real
-  taps (since v2.3.3330 its claim is the auto reward, and the claim window is
+  taps (since v2.3.3335 its claim is the auto reward, and the claim window is
   checked on the second quest).
 - `src/quest-harness.html`: every window and banner in the game's own
   components. `node tools/qa/quest-sheet-shot.mjs <dir> [390|844]` saves them.
@@ -175,7 +175,7 @@ marked `data-qw-stage="done"`, and the harness's `advanceNpcDialogue` and
   staff. Quest one gives both, by the owner's own rule (v2.3.1692: "all three
   combat styles land on quest one"), and the worker pays both. So the NEW
   QUEST window shows both under *For finishing “Cold Reception”*. (Since
-  v2.3.3330 there is no claim window for it at all, as quest one pays no XP.)
+  v2.3.3335 there is no claim window for it at all, as quest one pays no XP.)
   A real one-of-two reward would be a server change.
 - **The banner comes with the claim**, not before the window as the mockup's
   arrows drew it. It celebrates the payout itself, at the top of the screen

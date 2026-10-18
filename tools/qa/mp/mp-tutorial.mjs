@@ -20,7 +20,7 @@ import * as H from './harness.mjs';
    This one is a NEGATIVE assertion, so a stale figure kept it passing for
    the wrong reason after the v2.3.1727 retune: it would have gone on
    "passing" even if the chooser had appeared.
-   v2.3.3330: and now no figure at all -- tut_1 pays 0 XP, so the check below
+   v2.3.3335: and now no figure at all -- tut_1 pays 0 XP, so the check below
    looks for the chooser's words with ANY amount (the import went with it). */
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -268,7 +268,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the pane offers NO turn-in button any more',
     !paneButtons.some((t) => /turn in/i.test(t)), paneButtons);
   rec.ok('...and no XP-skill picker either (it belongs to the dialogue now)',
-    /* v2.3.3330: any amount -- tut_1 pays 0 XP now, and a search for "Train
+    /* v2.3.3335: any amount -- tut_1 pays 0 XP now, and a search for "Train
        0 XP into" would pass whatever the pane showed */
     !/Train \d+ XP into/i.test(readyPane)
     && !paneButtons.some((t) => /Choose a skill to train/i.test(t)),

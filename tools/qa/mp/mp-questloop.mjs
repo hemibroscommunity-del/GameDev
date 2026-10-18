@@ -92,7 +92,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await place(420, 0); await P.page.waitForTimeout(600);
   await place(0, 34);  await P.page.waitForTimeout(1500);
 
-  /* v2.3.3330: the first quest pays no XP, so there is nothing to choose and
+  /* v2.3.3335: the first quest pays no XP, so there is nothing to choose and
      no claim panel -- his last line's "Claim reward" pays it at once (the
      auto reward).  The loop this file hunts is just as possible on that
      path, so the watch below is the same; the claim PANEL's bounce is

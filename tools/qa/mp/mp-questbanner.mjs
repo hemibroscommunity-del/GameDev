@@ -173,7 +173,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
   await P.page.waitForTimeout(1600);
   rec.ok('walking back up re-opens the dialogue for the hand-in', await approach());
-  /* v2.3.3330: the first quest pays no XP, so there is nothing to choose and
+  /* v2.3.3335: the first quest pays no XP, so there is nothing to choose and
      no claim panel -- his last line's "Claim reward" pays it (the auto
      reward; H.claimOnLastLine).  The claim panel's own chooser and button are
      mp-questwin's and mp-questline's, on the quests that pay XP. */
@@ -188,13 +188,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!done && /QUEST COMPLETE/.test(done.text), afterTurnIn.map((b) => b.kind));
   rec.ok('...carrying the reward it just paid',
     !!done && /\+\d+\s*g/i.test(done.text), done && done.text);
-  rec.ok('...over his window (v2.3.3330: the auto reward goes straight on to his next quest)',
+  rec.ok('...over his window (v2.3.3335: the auto reward goes straight on to his next quest)',
     !!done && done.modalOpen === true && done.z > done.modalZ && done.inWrap === false,
     done && { z: done.z, modalZ: done.modalZ, modalOpen: done.modalOpen, inWrap: done.inWrap });
 
   /* v2.3.1746 — owner: "play this sound upon quest completion." */
   const sfx = await P.page.evaluate(() => (window.__sfx || []).slice());
-  /* v2.3.3330: either of them -- v2.3.2637 made the owner's NEW completion
+  /* v2.3.3335: either of them -- v2.3.2637 made the owner's NEW completion
      sound ('quest-complete-v2') the one played, with the old fanfare as its
      fallback for a cold cache (quests.js turnInQuest), so this looked for a
      name the game no longer plays first and failed on main too */

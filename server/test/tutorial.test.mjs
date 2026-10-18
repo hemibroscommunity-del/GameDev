@@ -520,7 +520,7 @@ const sess = { id: 'bp_t' };
   ps._questKills = Object.create(null);
   ps.coins = 0; ps.armor = null;
 
-  /* v2.3.3330 (owner: "Makes no sense to have to choose xp in something
+  /* v2.3.3335 (owner: "Makes no sense to have to choose xp in something
      you've never used yet.  Just remove that little xp bonus"): the FIRST
      quest pays no XP, so its hand-in needs no skill -- the game sends none
      (QuestPanel's auto reward) -- and pays its gold and nothing to any

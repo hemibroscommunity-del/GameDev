@@ -79,7 +79,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      payout used to be a bare money figure floating at the right edge — the same
      shape an ACTIVE row carries — so nothing said whether the payout was
      what this new quest pays or a leftover from the one you are already on. */
-  /* v2.3.3330: built as the pane builds it (questModel.js rewardText) -- the
+  /* v2.3.3335: built as the pane builds it (questModel.js rewardText) -- the
      first quest pays no XP now, and a 0 is never printed */
   const tut1Pays = 'pays ' + [TUT1.gold ? `${TUT1.gold}g` : null, TUT1.xp ? `${TUT1.xp} XP` : null]
     .filter(Boolean).join(' · ');
@@ -351,7 +351,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(800);
   await tapMayor();
 
-  /* ═══ v2.3.3330: THE FIRST QUEST HAS NOTHING TO CHOOSE ═══
+  /* ═══ v2.3.3335: THE FIRST QUEST HAS NOTHING TO CHOOSE ═══
      Owner, playtesting: "Makes no sense to have to choose xp in something
      you've never used yet.  Just remove that little xp bonus."  tut_1 pays no
      XP, so it is the AUTO REWARD (QuestPanel, v2.3.3030): his last line's
@@ -415,7 +415,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      bow and staff, so the caption has to say which moment these belong to. */
   /* v2.3.1827: the caption NAMES the quest again — see QuestOfferPanel.
      Case-insensitive because the caption is uppercased in CSS. */
-  /* v2.3.3330: the claim card is the second quest's, which hands over no
+  /* v2.3.3335: the claim card is the second quest's, which hands over no
      item.  Which items FINISHING pays -- the bow and the staff, under "For
      finishing “Cold Reception”" -- is checked on the first quest's offer above:
      its claim has no card any more. */
@@ -468,7 +468,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('choosing a skill arms the turn-in button',
     !(await H.questOfferBlocked(P)) && /Claim Reward/i.test(dlg), dlg.slice(0, 300));
 
-  /* v2.3.3330: level and XP together -- the second quest's XP may level the
+  /* v2.3.3335: level and XP together -- the second quest's XP may level the
      bow, which leaves less XP in the new level than there was before */
   const bowXpBefore = await H.readState(P, (S) => {
     const b = S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk.bow;
