@@ -193,7 +193,6 @@ function showResult(r) {
 
 let _running = false;
 
-/** Run it: about 35 s.  Resolves with the result (also window.__btSpeedTest). */
 /* which side holds the frame, in words -- v2.3.3348: never the graphics chip
    at the screen's own pace.  The owner's first run read 60 frames a second in
    every step, 17 ms each, and was told "Most of each frame (17 ms) is the
@@ -213,6 +212,7 @@ export function frameNote(base) {
     : 'The game\'s own code takes most of each frame (' + base.p50.toFixed(0) + ' ms): the code is what to speed up.';
 }
 
+/** Run it: about 35 s.  Resolves with the result (also window.__btSpeedTest). */
 export async function runSpeedTest() {
   if (_running) return null;
   _running = true;
