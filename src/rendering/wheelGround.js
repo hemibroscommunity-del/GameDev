@@ -61,7 +61,7 @@ if (typeof window !== 'undefined') {
     const R = G && G._app && G._app.renderer;
     if (!G || G.dead || !G.under || !R) return null;
     const was = G.under.visible;
-    /* v2.3.3411: every piece drawn for this, the ones under open sea too
+    /* v2.3.3423: every piece drawn for this, the ones under open sea too
        (wheelWater.js hides them while its quads cover them) */
     const W = G.water, covering = !!(W && W._covering);
     if (covering) W.cover(false);
