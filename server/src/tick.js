@@ -311,6 +311,11 @@ export const tickMethods = {
          new monsters in the same frame they were announced. */
       guard('spawnScale', () => this._tickSpawnScale(Date.now()));
 
+      /* v2.3.3325: a move the budget could not cover is followed on between
+         the phone's moves (movement.js), before the monsters look for whom
+         to chase.  An empty Set almost every tick. */
+      guard('moveFollow', () => this._tickMoveFollow(Date.now()));
+
       // Monster AI tick
       guard('monsters', () => this._tickMonsters());
 

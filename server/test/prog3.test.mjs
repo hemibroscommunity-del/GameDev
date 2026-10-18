@@ -1235,18 +1235,23 @@ const psA = room.playerState.pa;
     /* And the handler itself: a move a maxed-stat player can legitimately
        make in one second is accepted, while the same move from a player
        with no points is refused — the widening is real, not a comment. */
+    /* v2.3.3325: the bound is a budget (movement.js MOVE_BUDGET) that refills
+       at it -- an empty one with a second to refill is a second of the
+       bound -- and a move past it is followed as far as it reaches, never
+       refused: "refused" reads as "followed only the plain 500 px" */
     const mkMover = (movePts) => ({
       x: 0, y: 0, z: 'meadow', lastMoveAt: Date.now() - 1000,
+      _mvBudget: 0, _mvBudgetAt: Date.now() - 1000,
       prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: { move: movePts }, atk: prog3FreshAtk(), pool: 0 },
     });
-    const dist = 500 * 1.3 + 80 - 5;   /* inside the widened bound, outside the plain one */
+    const dist = 500 * 1.3 - 5;   /* inside the widened bound (x1.31 at cap), outside the plain one */
     room.playerState.mvA = mkMover(75); room.playerState.mvB = mkMover(0);
     room._handleMove({ id: 'mvA' }, null, { x: dist, y: 0, z: 'meadow' });
     room._handleMove({ id: 'mvB' }, null, { x: dist, y: 0, z: 'meadow' });
     check('a maxed-move player\'s legitimate move is accepted by the widened bound',
       room.playerState.mvA.x === dist, { x: room.playerState.mvA.x });
-    check('...while the same move from a player with no move points is refused',
-      room.playerState.mvB.x === 0, { x: room.playerState.mvB.x });
+    check('...while the same move from a player with no move points is refused (followed only the plain 500 px)',
+      room.playerState.mvB.x >= 500 - 0.01 && room.playerState.mvB.x < 502, { x: room.playerState.mvB.x });
     delete room.playerState.mvA; delete room.playerState.mvB;
   }
 }

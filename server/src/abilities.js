@@ -780,14 +780,20 @@ export const abilityMethods = {
              lastMoveOkAt/lastMoveAt are cleared with it, so the very next move
              packet is treated as a first move and compared against nothing --
              otherwise the client's own arrival position, measured from a point
-             the server just jumped it to, would look like a teleport. */
+             the server just jumped it to, would look like a teleport.
+             v2.3.3325: no longer, with the move budget (movement.js
+             MOVE_BUDGET): the next move is judged from here like any other --
+             an arrival a little off is covered, and one far off followed --
+             because "compared against nothing" was a teleport for whoever sent
+             it next.  _moveServerPlaced keeps the old way under the kill
+             switch. */
           if (kind === 'sworddash') {
             const dist = Math.sqrt(d2) || 1;
             const stop = 46;
             if (dist > stop) {
               ps.x = (m.x || 0) - (dx / dist) * stop;
               ps.y = (m.y || 0) - (dy / dist) * stop;
-              ps.lastMoveAt = undefined;
+              this._moveServerPlaced(ps);
             }
           }
           targets = [{ m, d2 }];

@@ -14,6 +14,7 @@
  * lines each). */
 
 import { VALID_ZONE_IDS, DUNGEON_ZONE_RE, QUEST_REWARDS } from './data.js';
+import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3325: the Wheel's way back (MOVE_BUDGET) */
 
 /* v2.3.1817: zones you can always reach — see _zoneUnlocked for why each one
    is here.  A Set literal rather than an array: this is tested per move. */
@@ -62,7 +63,185 @@ export const ROLL = Object.freeze({
   PAID: Object.freeze(['dodge', 'lunge', 'retreat']),
 });
 
+/* ═══ v2.3.3325: A SCRIPT MOVES NO FASTER THAN THE FASTEST HONEST PLAYER ═══
+   The anti-bot review's fix 7 (docs/specs/antibot-review.md §4, "a script
+   moves 6.6 times faster, or anywhere at once"; the owner: "Yes" to the bot
+   farming holes).  Measured on the real room code (tools/qa/load/bot-lab.mjs):
+     - the speed bound gave every move 500 px/s x the time since the move
+       before PLUS 80 px of slack for a roll and network jitter -- and gave
+       the 80 again with every message, so at the phone's own 30 moves a
+       second a script went 2,909 px/s, and a bundle of 24 moves in one frame
+       (the quiet phone's, v2.3.3254) 3,830;
+     - a move naming a zone the worker refuses made the NEXT move a first
+       move, judged against nothing: two messages, anywhere in the zone;
+     - so did the sword's lunge (the worker puts you at contact, and the move
+       after it skipped the bound), and so did a trip out of the Wheel and
+       straight back in (a zone change is never judged): anywhere at all.
+
+   THE BUDGET.  The bound is a budget now (ps._mvBudget, px).  It refills at
+   the bound's own speed -- 500 px/s x the speed potion, the move stat and a
+   paid sprint, as before -- holds at most BURST_S of it plus SLACK_PX, and
+   each move spends what it covers.  A gust the worker blew still pays on top
+   (_gustAllowance).
+
+   A MOVE PAST IT IS FOLLOWED, NEVER REFUSED.  The old bound refused a move it
+   could not cover and kept the player where they were, and judged the next
+   move from there too: a gap that opened stayed open until the player stood
+   still long enough for one move to cover it (this file's notes call that a
+   pin, three times over) -- and under a budget that cannot grow past its cap,
+   a gap past the cap would never close at all.  So a move the budget cannot
+   cover is taken AS FAR AS THE BUDGET REACHES, along the line to where the
+   phone says it is.  The worker's copy follows at the bound's speed and
+   catches up, however far behind it fell: an honest phone is never pinned,
+   and a script gets the bound's speed, which it had already.  The move's
+   shield, facing and the rest are taken too (a refusal dropped them, so a
+   pinned player's guard did nothing).  And it does not wait for the phone's
+   next move to catch up -- a phone standing still sends one a second after
+   it stops, then one every 10 s -- the tick takes the copy on toward the
+   phone's last place as the budget refills (_tickMoveFollow), so a gap
+   closes at the bound's speed whatever the phone sends.
+
+   WHY BURST_S IS 3 SECONDS.  The fastest honest stack walks ~441 px/s (the
+   audit note in _handleMove) and a phone ~250, against the 500 refill, so a
+   walking player's budget sits full.  What spends it is the fast honest
+   moves: the sword's lunge, up to ~900 px at 1,560 px/s (game/abilities.js
+   DASH_*), a roll, a gust, and a stalled connection's backlog arriving all
+   at once.  3 s covers a full lunge with ~970 px to spare, and a 3.6 s stall
+   at the fastest stack (6.3 s at a phone's walk) with nothing to catch up; a
+   longer one is a few seconds of the worker's copy catching up.  A script
+   gets the bound's 500 px/s and one jump of what it saved: 1,580 px at most,
+   after 3 s spent standing.
+
+   THE BYPASSES.  Since a move is followed rather than refused, nothing needs
+   "the next move is a first move" any more:
+     - a refused ZONE writes nothing, as before, and now leaves the bound
+       alone: the move after it is judged from where the worker had them;
+     - a SERVER-PLACED move (_moveServerPlaced: the sword's dash at a monster,
+       the lunge at a player) is judged from where the worker put them;
+     - back INTO THE WHEEL, a player who left it on this connection is judged
+       from where they left it (ps._wheelBack).  Every honest way out of the
+       Wheel comes back where it left -- a Wheel dungeon at its mouth
+       (game/wheelDungeons.js), the farm at the door you left by
+       (zoneTransitions.js) -- and the one that does not, a death, forgets it
+       (_moveRespawned, called by the respawn).  Today's town, the dungeons
+       and the farm keep their free entry: small places, the farming is in
+       the Wheel, and the old lands are closed.
+   A zone change never refills the budget, or flipping out and back in would
+   buy a full one every time.
+
+   STILL OPEN: a join may claim any place (join.js _sanitizeJoinData) and is
+   a fresh player state, so a script that reconnects lands where it says --
+   at most 20 sockets a minute an address (flood.js).  Starting a reconnect
+   where the worker last had the player is the next step
+   (docs/specs/move-budget.md).
+
+   `movebudget: false` in the live flags is all of it as before: the
+   per-message 80, refusals and the three bypasses. */
+export const MOVE_BUDGET = Object.freeze({
+  SPEED_PX: 500,
+  SLACK_PX: 80,
+  BURST_S: 3,
+});
+
 export const movementMethods = {
+  /* v2.3.3325: the kill switch (MOVE_BUDGET above) */
+  _moveBudgetOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'movebudget') && !f.movebudget);
+  },
+
+  /* v2.3.3325: the overview's counts (_moveBudgetInfo) */
+  _mvTally(k) {
+    const c = this._mvCount || (this._mvCount = { judged: 0, followed: 0, wayBack: 0 });
+    c[k] = (c[k] || 0) + 1;
+  },
+
+  /* v2.3.3325: the budget at `now`, refilled at `rate` px/s since it was last
+     stamped and held to its cap; full on a new connection's first judged
+     move (a join is a fresh player state) */
+  _moveBudgetNow(ps, rate, now) {
+    const cap = rate * MOVE_BUDGET.BURST_S + MOVE_BUDGET.SLACK_PX;
+    const b = ps._mvBudget;
+    if (typeof b !== 'number' || !Number.isFinite(b) || typeof ps._mvBudgetAt !== 'number') return cap;
+    const dt = Math.max(0, (now - ps._mvBudgetAt) / 1000);
+    return Math.min(cap, b + rate * dt);
+  },
+
+  /* v2.3.3325: the worker just put the player somewhere itself (abilities.js
+     the sword's dash, pvplunge.js).  With the budget, the next move is judged
+     from there like any other; without it, it is a first move, as before --
+     the per-message bound would refuse an arrival a few dozen px off the
+     worker's contact point. */
+  _moveServerPlaced(ps) {
+    if (!this._moveBudgetOn()) ps.lastMoveAt = undefined;
+    ps._mvFollow = undefined;   /* it is where the worker put it, not on its way to an old place */
+  },
+
+  /* v2.3.3325: the respawn sent the player to town (index.js
+     _tickPlayerRespawn) with no place there.  The next move is the first in
+     that map -- judged against the Wheel spot they died at, it would be
+     followed across the world -- and the Wheel's way back is forgotten: they
+     come back in at its arrival. */
+  _moveRespawned(ps) {
+    if (!ps || !this._moveBudgetOn()) return;
+    ps.lastMoveAt = undefined;
+    ps._wheelBack = undefined;
+    ps._mvFollow = undefined;
+  },
+
+  /* v2.3.3325: a move the budget could not cover goes on being followed
+     between the phone's moves (MOVE_BUDGET above): each tick takes the
+     worker's copy on toward the phone's last place, as far as the budget has
+     refilled since, until it is there.  At the walk's own bound (the potion
+     and the move stat, never a sprint the worker is not billing).  Almost
+     always an empty Set. */
+  _tickMoveFollow(now) {
+    const set = this._mvFollowing;
+    if (!set || set.size === 0) return;
+    const on = this._moveBudgetOn();
+    for (const id of set) {
+      const ps = this.playerState[id];
+      const f = ps && ps._mvFollow;
+      if (!on || !f || ps.z !== f.z || ps.dead || ps.dying
+          || typeof ps.x !== 'number' || typeof ps.y !== 'number') {
+        if (ps) ps._mvFollow = undefined;
+        set.delete(id);
+        continue;
+      }
+      const dx = f.x - ps.x, dy = f.y - ps.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const budget = this._moveBudgetNow(ps, f.rate, now);
+      if (dist <= budget) {
+        ps.x = f.x; ps.y = f.y;
+        ps._mvBudget = budget - dist;
+        ps._mvFollow = undefined;
+        set.delete(id);
+      } else {
+        const k = budget / dist;
+        ps.x += dx * k; ps.y += dy * k;
+        ps._mvBudget = 0;
+      }
+      ps._mvBudgetAt = now;
+      this.dirtyPlayers.add(id);
+    }
+  },
+
+  /* v2.3.3325: for /api/admin/overview -- how many moves the budget judged,
+     how many it had to follow (an honest phone's are a stall's backlog or a
+     teleport of its own; a large share is worth a look), how many came back
+     into the Wheel judged from where they left it, and who is being followed
+     now */
+  _moveBudgetInfo() {
+    const c = this._mvCount || {};
+    return {
+      on: this._moveBudgetOn(),
+      judged: c.judged || 0,
+      followed: c.followed || 0,
+      wayBack: c.wayBack || 0,
+      following: this._mvFollowing ? this._mvFollowing.size : 0,
+    };
+  },
+
   /* v2.3.3292: the window a paid roll opens (see ROLL above).
      v2.3.3300: ...and which of the three it was (`kind`), for _rollIFrames */
   _rollStamp(ps, now, kind) {
@@ -274,6 +453,9 @@ export const movementMethods = {
     // dodge/lunge + a bit of network jitter).  Far below the
     // egregious "teleport across the room" cheat (1024+ px),
     // generous enough for legit lag-recovery jumps.
+    // v2.3.3325: the slack was given again with every message; it is
+    // a budget that refills now, and a move past it is followed rather
+    // than refused (MOVE_BUDGET at the top of this file).
     //
     // Zone changes legitimately move the player to a new zone's
     // spawn coords -- bypass the check on z-change.  Also bypass
@@ -283,18 +465,43 @@ export const movementMethods = {
     const zoneChanged = newZone !== oldZone;
     const firstMove = typeof ps.lastMoveAt !== 'number';
     let accept = true;
+    const _budgetOn = this._moveBudgetOn();
     if (_zoneRejected) {
-      /* No position write, and arm the next move to bypass the cap. */
-      ps.lastMoveAt = undefined;
+      /* No position write.  v2.3.3325: and, with the budget (MOVE_BUDGET
+         above), nothing else -- the next move in the worker's own zone is
+         judged from where it last had the player, and followed there if it
+         is far.  Before, this armed the next move to skip the bound: a bogus
+         zone, then anywhere in the zone, in two messages.  The kill switch
+         puts that back. */
+      if (!_budgetOn) ps.lastMoveAt = undefined;
       return;
     }
     /* v2.3.3006: is this move a sprint step the worker pays for (sprint.js)?
        Asked of every move, so a zone change or a first move never leaves an
        earlier step's mark to be billed. */
     const _sprintK = typeof this._sprintK === 'function' ? this._sprintK(ps, msg, _now) : 1;
-    if (!zoneChanged && !firstMove
-        && typeof ps.x === 'number' && typeof ps.y === 'number') {
-      const dt = Math.max(0.001, (_now - ps.lastMoveAt) / 1000);
+    /* v2.3.3325: where this move is judged from -- the worker's own place in
+       this zone, or, coming back into the Wheel, where the player left it
+       (MOVE_BUDGET above, "THE BYPASSES") -- and where it puts them */
+    let _fromX = ps.x, _fromY = ps.y;
+    let _bounded = !zoneChanged && !firstMove && typeof ps.x === 'number' && typeof ps.y === 'number';
+    const _back = ps._wheelBack;
+    if (_budgetOn && zoneChanged && newZone === WHEEL_ZONE && _back
+        && typeof _back.x === 'number' && typeof _back.y === 'number') {
+      _fromX = _back.x; _fromY = _back.y; _bounded = true;
+      this._mvTally('wayBack');
+    }
+    if (zoneChanged) {
+      /* a follow belongs to the zone it began in: a zone change ends it */
+      ps._mvFollow = undefined;
+      if (!_budgetOn) ps._wheelBack = undefined;
+      else if (oldZone === WHEEL_ZONE) {
+        ps._wheelBack = (typeof ps.x === 'number' && typeof ps.y === 'number') ? { x: ps.x, y: ps.y } : undefined;
+      } else if (newZone === WHEEL_ZONE) ps._wheelBack = undefined;
+    }
+    let _toX = msg.x, _toY = msg.y;
+    if (_bounded) {
+      const dt = typeof ps.lastMoveAt === 'number' ? Math.max(0.001, (_now - ps.lastMoveAt) / 1000) : 1;
       /* ═══ v2.3.2062: THE CAP WIDENS FOR A BUFF THE SERVER ITSELF SOLD ═══
          Owner: "a speed potion that lets you run 1.5x speed 3 mins."
 
@@ -347,20 +554,61 @@ export const movementMethods = {
          then bills below -- and for GRACE_MS after the last one, so a client
          running a beat past the worker's zero is not rubber-banded.  Nothing
          else on the wire can raise it. */
-      const maxDist = 500 * _spdCap * _moveMult * _sprintK * dt + 80 + _gust;
-      const dx = msg.x - ps.x;
-      const dy = msg.y - ps.y;
-      if (dx * dx + dy * dy > maxDist * maxDist) {
-        // Reject: do not update ps.x/y.  Still update lastMoveAt
-        // so spam-bursts don't compound dt.  dropped silently --
-        // client's next legit move will snap back to server view
-        // via the broadcast tick.
-        accept = false;
-      } else if (_gust > 0) {
-        this._spendGust(ps, Math.sqrt(dx * dx + dy * dy) - (maxDist - _gust));
+      const dx = msg.x - _fromX;
+      const dy = msg.y - _fromY;
+      if (_budgetOn) {
+        /* v2.3.3325: the budget (MOVE_BUDGET above), refilled since the last
+           judged move at this move's own bound and spent by what it covers;
+           past it, the move is taken as far as it reaches, toward where the
+           phone says it is, and the worker's copy catches up on the moves
+           after */
+        const rate = MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult * _sprintK;
+        const budget = this._moveBudgetNow(ps, rate, _now);
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const reach = budget + _gust;
+        this._mvTally('judged');
+        if (dist <= reach) {
+          const over = Math.max(0, dist - budget);   /* the part a gust the worker blew pays */
+          ps._mvBudget = budget - (dist - over);
+          if (over > 0) this._spendGust(ps, over);
+          ps._mvFollow = undefined;   /* there: nothing left to follow */
+        } else {
+          const k = reach / dist;
+          _toX = _fromX + dx * k; _toY = _fromY + dy * k;
+          ps._mvBudget = 0;
+          if (_gust > 0) this._spendGust(ps, _gust);
+          /* ...and on between the phone's moves (_tickMoveFollow), at the
+             walk's bound: a sprint is billed by its moves, not by the tick */
+          ps._mvFollow = { x: msg.x, y: msg.y, z: newZone, rate: MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult };
+          if (!this._mvFollowing) this._mvFollowing = new Set();
+          this._mvFollowing.add(session.id);
+          this._mvTally('followed');
+        }
+        ps._mvBudgetAt = _now;
+      } else {
+        const maxDist = 500 * _spdCap * _moveMult * _sprintK * dt + 80 + _gust;
+        if (dx * dx + dy * dy > maxDist * maxDist) {
+          // Reject: do not update ps.x/y.  Still update lastMoveAt
+          // so spam-bursts don't compound dt.  dropped silently --
+          // client's next legit move will snap back to server view
+          // via the broadcast tick.
+          accept = false;
+        } else if (_gust > 0) {
+          this._spendGust(ps, Math.sqrt(dx * dx + dy * dy) - (maxDist - _gust));
+        }
       }
     }
     /* ═══ v2.3.1629: THE ZONE-FLIP BYPASS IS *NOT* CLOSED HERE ═══
+     *
+     * v2.3.3325: closed for THE WHEEL -- the world, where the farming is
+     * -- by the way back above (MOVE_BUDGET, "THE BYPASSES"), and not by
+     * the per-zone re-entry budget this note warns against.  A re-entry
+     * is judged from where the player LEFT the Wheel, every honest way
+     * out of it comes back there, and a re-entry that is far is FOLLOWED,
+     * never refused: nobody is held in the zone they came from, which is
+     * what froze v2.3.1625's players.  The other zones (today's town, the
+     * dungeons, the farm, the closed old lands) keep the free entry
+     * described here.
      *
      * The cap above is skipped on z-change for a real reason -- a
      * transition genuinely teleports you to the destination's entry
@@ -412,8 +660,10 @@ export const movementMethods = {
     if (accept) {
       /* v2.3.3006: how far this move took the player, for the sprint's bill */
       const _stepPx = (!zoneChanged && typeof ps.x === 'number' && typeof ps.y === 'number')
-        ? Math.sqrt((msg.x - ps.x) * (msg.x - ps.x) + (msg.y - ps.y) * (msg.y - ps.y)) : 0;
-      ps.x = msg.x; ps.y = msg.y;
+        ? Math.sqrt((_toX - ps.x) * (_toX - ps.x) + (_toY - ps.y) * (_toY - ps.y)) : 0;
+      /* v2.3.3325: where the bound put them -- the phone's place, or as far
+         toward it as the budget reached */
+      ps.x = _toX; ps.y = _toY;
       if (ps._sprintStep && typeof this._sprintPay === 'function') this._sprintPay(ps, _stepPx, _now, session.id);
       /* v2.3.1107: accept any DEFINED d/f, not just truthy -- today
          both are non-empty strings so `||` worked, but a future

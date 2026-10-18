@@ -58,7 +58,11 @@ const ps = room.playerState.p1;
 const move = async (x, y, extra) => room.webSocketMessage(ws, JSON.stringify(Object.assign({ type: 'move', x, y, z: ps.z || 'meadow' }, extra || {})));
 
 /* A fresh start: in a combat zone (no hub top-off), stamina `st`, standing at
-   (1000, 1000) with a first move behind it so the bound is live. */
+   (1000, 1000) with a first move behind it so the bound is live.
+   v2.3.3325: and an EMPTY move budget (movement.js MOVE_BUDGET) -- the bound
+   is a budget that refills at its speed now, so the first step after
+   `wait(gap)` has exactly the bound x the gap to spend: a step's own speed is
+   what is judged, not 3 s of savings */
 async function fresh(st, zone) {
   ps.z = zone || 'meadow';
   ps.x = 1000; ps.y = 1000;
@@ -67,15 +71,18 @@ async function fresh(st, zone) {
   ps._sprintAt = 0; ps._sprintOwed = 0; ps._sprintStep = false; ps._sprintLastPaid = false; ps._sprintPrevPaid = false;
   room._liveFlags = {};
   ps.lastMoveAt = T;
+  ps._mvBudget = 0; ps._mvBudgetAt = T;
 }
-/* `n` moves `step` px east, `gapMs` apart; returns how many were accepted */
+/* `n` moves `step` px east, `gapMs` apart; returns how many were TAKEN --
+   reached their claim (v2.3.3325: one past the budget is followed as far as
+   it reaches, never refused, so "moved at all" would count it) */
 async function run(n, step, gapMs, extra) {
   let ok = 0;
   for (let i = 0; i < n; i++) {
     wait(gapMs);
-    const x0 = ps.x;
+    const want = ps.x + step;
     await move(ps.x + step, ps.y, extra);
-    if (ps.x !== x0) ok++;
+    if (Math.abs(ps.x - want) < 1e-6) ok++;
   }
   return ok;
 }
@@ -94,18 +101,21 @@ async function run(n, step, gapMs, extra) {
 }
 
 // ── 2. THE BOUND ──────────────────────────────────────────────────────────
-/* 200 ms apart: the walking bound is 500 px/s x 0.2 s + 80 = 180 px; at
-   SPRINT.MULT it is 500 x 1.33 x 0.2 + 80 = 213 px */
+/* 200 ms from an empty budget: the walking bound refills 500 px/s x 0.2 s =
+   100 px; at SPRINT.MULT, 500 x 1.33 x 0.2 = 133 px.  (v2.3.3325: it was
+   500 x 0.2 + 80 = 180 and 213 px a message -- the 80 again every message,
+   the anti-bot review's fix 7.) */
 {
   await fresh(100);
-  const walkOk = await run(1, 200, 200);
-  check('bound: a 200 px step in 200 ms is refused at the walking bound', walkOk === 0, { x: ps.x });
+  const walkOk = await run(1, 120, 200);
+  check('bound: a 120 px step in 200 ms is refused at the walking bound', walkOk === 0, { x: ps.x });
+  check('bound: ...followed only the walking bound\'s 100 px of it', Math.abs(ps.x - 1100) < 1e-6, { x: ps.x });
   await fresh(100);
-  const sprintOk = await run(1, 200, 200, { sp: 1 });
+  const sprintOk = await run(1, 120, 200, { sp: 1 });
   check('bound: ...and accepted as a sprint step', sprintOk === 1, { x: ps.x });
   await fresh(100);
-  const tooFar = await run(1, 230, 200, { sp: 1 });
-  check('bound: a sprint widens it by SPRINT.MULT and no more (230 px refused)', tooFar === 0, { x: ps.x });
+  const tooFar = await run(1, 140, 200, { sp: 1 });
+  check('bound: a sprint widens it by SPRINT.MULT and no more (140 px refused)', tooFar === 0, { x: ps.x });
   check('bound: SPRINT.MULT is the owner\'s "about 33% faster"', SPRINT.MULT === 1.33);
 }
 
@@ -153,34 +163,39 @@ async function run(n, step, gapMs, extra) {
   await run(10, 40, 100, { sp: 1 });
   check('empty: the bill stops at zero, never below', ps.stamina === 0, { st: ps.stamina });
   const lastPaid = ps._sprintAt;
-  /* inside the grace: a sprinting-pace move with the flag still on is let through */
+  /* inside the grace: a sprinting-pace move with the flag still on is let
+     through (v2.3.3325: from an empty budget with the 200 ms to refill --
+     133 px at the sprint's bound, 100 at the walk's) */
   T = lastPaid + 200; ps.lastMoveAt = lastPaid;
+  ps._mvBudget = 0; ps._mvBudgetAt = lastPaid;
   const x0 = ps.x;
-  await move(ps.x + 195, ps.y, { sp: 1 });
-  check('empty: for GRACE_MS after the last paid step the bound stays wide (no snap-back as the client catches up)', ps.x === x0 + 195, { x: ps.x, x0 });
+  await move(ps.x + 120, ps.y, { sp: 1 });
+  check('empty: for GRACE_MS after the last paid step the bound stays wide (no snap-back as the client catches up)', ps.x === x0 + 120, { x: ps.x, x0 });
   T = lastPaid + SPRINT.GRACE_MS + 400; ps.lastMoveAt = T - 200;
+  ps._mvBudget = 0; ps._mvBudgetAt = T - 200;
   const x1 = ps.x;
-  await move(ps.x + 195, ps.y, { sp: 1 });
-  check('empty: after it, at zero, a marked move is judged at the walking bound', ps.x === x1, { x: ps.x, x1 });
+  await move(ps.x + 120, ps.y, { sp: 1 });
+  check('empty: after it, at zero, a marked move is judged at the walking bound', ps.x < x1 + 120 - 1, { x: ps.x, x1 });
 }
 
 // ── 5. WHO MAY ────────────────────────────────────────────────────────────
 {
   await fresh(SPRINT.MIN_START - 1);
-  const low = await run(1, 200, 200, { sp: 1 });
+  const low = await run(1, 120, 200, { sp: 1 });
   check(`who: a new sprint needs MIN_START (${SPRINT.MIN_START}) stamina`, low === 0 && ps.stamina === SPRINT.MIN_START - 1, { st: ps.stamina });
   await fresh(SPRINT.MIN_START);
   await run(2, 40, 100, { sp: 1 });
   ps.stamina = 2;
-  const going = await run(1, 200, 200, { sp: 1 });
+  ps._mvBudget = 0; ps._mvBudgetAt = T;   /* the step's own speed, not the two before it */
+  const going = await run(1, 120, 200, { sp: 1 });
   check('who: ...but a sprint under way runs on to zero', going === 1, { st: ps.stamina });
   await fresh(100);
   ps.blocking = true;
-  const blk = await run(1, 200, 200, { sp: 1, blocking: true });
+  const blk = await run(1, 120, 200, { sp: 1, blocking: true });
   check('who: not while blocking', blk === 0 && ps.stamina === 100, { st: ps.stamina });
   await fresh(100);
   ps._guardBrokenUntil = T + 5000;
-  const brk = await run(1, 200, 200, { sp: 1 });
+  const brk = await run(1, 120, 200, { sp: 1 });
   check('who: not with a broken guard', brk === 0, { x: ps.x });
   await fresh(100);
   ps.dying = true;
@@ -209,7 +224,7 @@ async function run(n, step, gapMs, extra) {
 {
   await fresh(100);
   room._liveFlags = { sprint: false };
-  const off = await run(1, 200, 200, { sp: 1 });
+  const off = await run(1, 120, 200, { sp: 1 });
   await run(10, 40, 100, { sp: 1 });
   check('kill switch: `sprint: false` stops every sprint step -- walking bound, nothing billed', off === 0 && ps.stamina === 100, { st: ps.stamina });
   room._liveFlags = {};
@@ -219,7 +234,7 @@ async function run(n, step, gapMs, extra) {
 {
   for (const sp of [true, '1', 2, 'yes', 1.0001]) {
     await fresh(100);
-    const n = await run(1, 200, 200, { sp });
+    const n = await run(1, 120, 200, { sp });
     if (n !== 0) check(`wire: sp ${JSON.stringify(sp)} is not a sprint`, false, { sp });
   }
   check('wire: only `sp === 1` is a sprint (true, "1", 2 are not)', true);
