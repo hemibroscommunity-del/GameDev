@@ -1166,6 +1166,14 @@ const MSG_FONT_PX = DMG_FONT_PX * DMG_SCALE;
    draws them in the world as before, to compare. */
 const POPUP_ZOOM = 0.606;
 const POPUP_Z_MIN = 0.25, POPUP_Z_MAX = 3;   /* a sanity bound (a near-zero scale from a mid-rebuild frame), never a design term */
+/* v2.3.3368: the aim's eight sectors, in entityRenderer's SECTORS order (it
+   picks the bow pose's facing with them), and the switch that leaves the
+   between-shots grip as it was -- see _predictBowGrip */
+const BOW_AIM_SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
+const BOW_GRIP_GUESS_OFF = (() => {
+  try { return typeof location !== 'undefined' && /[?&]gripguess=0\b/.test(location.search || ''); }
+  catch (e) { return false; }
+})();
 const POPUP_WORLD = (() => {
   try { return typeof location !== 'undefined' && /[?&]popupworld\b/.test(location.search || ''); }
   catch (e) { return false; }
@@ -14557,6 +14565,47 @@ export class EffectsRenderer {
    * entityRenderer._updatePlayer sets S._bowShowing + S._bowDir (and hides the
    * real body + weapon) when a bow shot is active and the aim resolves to an
    * authored facing.  Same self-contained pattern as the sword swings. */
+  /* ═══ v2.3.3368: WHERE THE BOW WILL BE HELD, BEFORE IT IS ═══
+     The grip is published below only while the shot pose is drawn, so between
+     shots `_bowGripDX/DY` is where it was on the LAST shot -- and before the
+     first shot of a visit there is none, and bowGripPoint gives your centre.
+     The bow's sight (monsterCombat's gate, the line drawn) casts from that,
+     while the arrow nocks at the grip the pose then draws: the first shot of a
+     visit, and the first after turning to a new facing, left a grip's width
+     (~30 px) beside the line the sight was on, and unlocked it flew there
+     (a lock is re-aimed from the real grip at release).  mp-hitreal's arrow
+     tracker caught one 30 px wide of a slime on a row's first shot.
+     So while the pose is NOT up and a bow is the weapon, the grip the pose
+     WOULD draw for the way you aim is published: the facing as entityRenderer
+     picks it (the aim's sector), and the same anchor arithmetic as below (the
+     facing's grip crown, and the body height and feet the stand-in would be
+     planted with, which entityRenderer publishes every frame).  `?gripguess=0`
+     leaves it as it was, to compare. */
+  _predictBowGrip(S) {
+    if (BOW_GRIP_GUESS_OFF || !S || !S.player || !S.rpg || S.rpg.activeSlot !== 'ranged') return;
+    const ang = (S._aimAngle != null) ? S._aimAngle : S._lastAimAngle;
+    if (ang == null || !isFinite(ang)) return;
+    const sec = BOW_AIM_SECTORS[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8];
+    const fmap = this._bowFacing && this._bowFacing[sec];
+    const cfg = fmap && this._bowCfg[fmap[0]];
+    const crowns = cfg && this._skillCrowns && this._skillCrowns[cfg.crownKey];
+    const grip = crowns && crowns.grip;
+    if (!grip) return;
+    /* the plant entityRenderer works out every frame (S._standInFootY/BodyH):
+       the stand-ins' own pair is stale between swings and shots, and a grip
+       worked out from it was 30 px too high, mp-bowgate's control off its
+       target */
+    if (S._standInBodyH == null || S._standInFootY == null) return;
+    const bodyH = S._standInBodyH;
+    const s = bodyH / 188;
+    const sgn = fmap[1] ? -s : s;
+    const footY = S._standInFootY;
+    S._bowGripX = S.player.x + (grip[0] - cfg.fw / 2) * sgn;
+    S._bowGripY = footY + (grip[1] - cfg.feetY) * s;
+    S._bowGripDX = S._bowGripX - S.player.x;
+    S._bowGripDY = S._bowGripY - S.player.y;
+  }
+
   _updateBowShot(S, now) {
     if (this.bowShieldLo) this.bowShieldLo.visible = false;
     if (this.bowShieldHi) this.bowShieldHi.visible = false;
@@ -14588,7 +14637,10 @@ export class EffectsRenderer {
       S._bowArtReady = !!(this.bowSprite && _rf && this._bowCfg[_rf[0]]
         && ((this._standInStrip(this._bowBodyFrames, _rf[0], _rf[1]) || this._bowFrames[_rf[0]] || []).length));   /* v2.3.2429 */
     }
-    if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
+    if (!S || !S._bowShowing || !S.player || !this.bowSprite) {
+      if (S && S.player && !S._bowShowing) this._predictBowGrip(S);   /* v2.3.3368 */
+      return;
+    }
     if (this._selfCorpse) return;   /* v2.3.2281 */
     const fmap = this._bowFacing[S._bowDir];
     if (!fmap) return;
