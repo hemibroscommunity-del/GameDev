@@ -927,6 +927,18 @@ export function setupWebSocket(ctx) {
                        `eqg`: 'rn', 'ee', ...), which glint.js draws as the
                        armour's grade look; absent is plain, as for `spr` */
                     S.others[pid]._eqg = typeof data.eqg === 'string' ? data.eqg.slice(0, 2) : '';
+                    /* v2.3.3392: a held pose (tick.js `po`, poses.js): sit,
+                       sleep, flop or a dance, drawn by rendering/emoteFx.js;
+                       `_poAt` is when this phone first saw it, for its settle.
+                       A far player's slim entry says nothing about it and
+                       leaves it as it was (they are not drawn). */
+                    if (!peerEntrySlim(data)) {
+                      const _po = typeof data.po === 'string' ? data.po : null;
+                      if ((S.others[pid]._po || null) !== _po) {
+                        S.others[pid]._po = _po;
+                        S.others[pid]._poAt = Date.now();
+                      }
+                    }
                     /* v2.3.3255: their Hemi Bro check (tick.js `bro`, the worn
                        Bro's id, and `brn`, how many their wallet holds), both
                        server-owned.  The worker has sent `bro` since v2.3.1576
@@ -5110,6 +5122,13 @@ export function setupWebSocket(ctx) {
         /* v2.3.3091: the shield on the arm (game/shieldWear.js) -> shieldwear.js.
            TRAPS #18: without this line the report never leaves the browser. */
         if (msg.type === 'shield_wear') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3392: a held pose -- sit, sleep, flop, a dance
+           (game/emoteMoves.js) -> poses.js, which keeps it on the player.
+           TRAPS #18: without this line the pose never leaves the browser. */
+        if (msg.type === 'pose') {
           wsOut(msg);
           return;
         }

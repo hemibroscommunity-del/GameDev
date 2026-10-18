@@ -8,15 +8,36 @@
    deps: sendEmote -> setShowEmotes, enterBuilding -> setBuildingPanel. */
 import { BT_AUDIO, BUILDINGS } from '@/data/index.js'; /* v2.3.1779: hasUnlock + QUEST_CHAINS went with the retired building gate */
 import { _typeof } from '@/lib/babelHelpers.js';
+import { emoteKind, emotesLive, EMOTE_COOLDOWN_MS } from '@/game/emotes.js'; /* v2.3.3391 */
+import { moveKind, EMOTE_MOVES, EMOTE_HOLD_IDS } from '@/game/emoteMoves.js'; /* v2.3.3392: your bro moves */
+import { swimRefused, airRefused } from '@/game/combatHelpers.js'; /* v2.3.3392 */
 
 export function sendEmote(S, emoji, deps) {
   var setShowEmotes = deps.setShowEmotes;
+    /* ═══ v2.3.3391: AN EMOTE YOU CAN SEE (src/game/emotes.js) ═══
+       Only a listed emote goes out (the worker relays nothing else, emotes.js
+       on its side), at most one a second (the relay allowance it spends is
+       your swings' and arrows' too), and none under the worker's `emotes:
+       false`.  An emoji pops over your head (effectsRenderer
+       _updateEmotePops); a quick line ("GG") is your speech bubble, as a
+       typed line is. */
+    var kind = emoteKind(emoji);
+    var now = Date.now();
+    if (!kind || !emotesLive(S) || (S._emoteAt && now - S._emoteAt < EMOTE_COOLDOWN_MS)) {
+      setShowEmotes(false);
+      return;
+    }
+    S._emoteAt = now;
     BT_AUDIO.emote();
     if (S.stats) S.stats.emotesUsed++;
     S.emote = {
       emoji: emoji,
-      ts: Date.now()
+      ts: now
     };
+    if (kind === 'line') {
+      if (!S.chatBubbles) S.chatBubbles = {};
+      S.chatBubbles[S.myId] = { text: emoji, ts: now };
+    }
     if (S.channel) S.channel.send({
       type: 'broadcast',
       event: 'emote',
@@ -26,6 +47,103 @@ export function sendEmote(S, emoji, deps) {
       }
     });
     setShowEmotes(false);
+}
+
+/* ═══ v2.3.3392: YOUR BRO MOVES (game/emoteMoves.js, docs/specs/emote-moves.md) ═══
+   A MOMENT (wave, laugh, flex, shrug, facepalm, cheer) is the `emote` relay's
+   `{move}`, drawn on every phone near you for a second or two.  A HELD pose
+   (sit, sleep, flop, a dance) is `pose {id}` to the worker, which keeps it on
+   your player (server/src/poses.js) so a phone that comes near later sees it,
+   until you move.  Both draw here at once (rendering/emoteFx.js).
+   Not swimming ("Swimming!"), in the air, dead, harvesting or asleep on the
+   farm bed; one a second with the emotes (the relay allowance is your
+   swings' too); only against a worker that says `caps.emotemoves`. */
+/* a held pose ends when you are moved more than this (world px) */
+var POSE_SHIFT_PX = 4;
+export function movesLive(S) {
+  return !!(S && S._serverCaps && S._serverCaps.emotemoves === true) && emotesLive(S);
+}
+export function sendMove(S, id, deps) {
+  var setShowEmotes = deps && deps.setShowEmotes;
+  if (setShowEmotes) setShowEmotes(false);
+  var kind = moveKind(id);
+  if (!kind || !movesLive(S) || !S.player) return false;
+  if (S.player.dead || S._dead || S._extraction || S._sleeping) return false;
+  if (swimRefused(S) || airRefused(S)) return false;
+  var now = Date.now();
+  if (S._emoteAt && now - S._emoteAt < EMOTE_COOLDOWN_MS) return false;
+  S._emoteAt = now;
+  BT_AUDIO.emote();
+  if (S.stats) S.stats.emotesUsed++;
+  var pop = EMOTE_MOVES[id].pop;
+  if (pop) S.emote = { emoji: pop, ts: now, trusted: true };
+  if (kind === 'once') {
+    if (S._pose) endOwnPose(S);
+    S._emoteMove = { id: id, at: now };
+    if (S.channel) S.channel.send({ type: 'broadcast', event: 'emote', payload: { id: S.myId, move: id } });
+  } else {
+    S._emoteMove = null;
+    /* where and in which zone it began: anything that moves you -- a step,
+       a shove, a door -- stands you up (updateOwnEmote), as the worker's
+       movement.js stands up its copy */
+    S._pose = { id: id, at: now, popAt: now, x: S.player.x, y: S.player.y, zone: S.currentZone };
+    if (S.channel) S.channel.send({ type: 'pose', id: id });
+  }
+  return true;
+}
+/* stand up, and tell the worker.  It stands its copy up on a real step by
+   itself (movement.js), but a first step into a wall moves nobody, and a
+   slow drift is never one step past its line: one word more is cheaper than
+   a bro drawn sitting on the others' screens and standing on his own */
+export function endOwnPose(S) {
+  if (!S || !S._pose) return;
+  S._pose = null;
+  if (S.channel) S.channel.send({ type: 'pose', id: null });
+}
+/* once a frame (BroTown's loop, beside the sprint): a moment is over on its
+   own clock, and a held pose ends when you move, attack, raise the shield,
+   swim, jump, harvest or die -- or a blow lands on you or from you after it
+   began (`fightAt`, the fight-food stamps: game/fightFood.js fightSeen) */
+export function updateOwnEmote(S, now, f) {
+  if (S._emoteMove) {
+    var m = EMOTE_MOVES[S._emoteMove.id];
+    if (!m || now - S._emoteMove.at > (m.ms || 0)) S._emoteMove = null;
+  }
+  if (!S._pose) return;
+  if (EMOTE_HOLD_IDS.indexOf(S._pose.id) < 0 || f.moving || f.attacking || f.shield || f.swimming
+      || f.dead || f.jumping || f.harvesting || f.fightAt > S._pose.at) { endOwnPose(S); return; }
+  /* moved with no thumb on the stick -- a gust, a knock-back, a door, a
+     respawn -- or into another zone */
+  var P = S.player;
+  if (S._pose.zone !== S.currentZone || !P || Math.abs(P.x - S._pose.x) > POSE_SHIFT_PX || Math.abs(P.y - S._pose.y) > POSE_SHIFT_PX) {
+    endOwnPose(S);
+    return;
+  }
+  /* a held pose's own emoji, now and then (Zzz, music notes) */
+  var hm = EMOTE_MOVES[S._pose.id];
+  if (hm && hm.pop && hm.every && now - (S._pose.popAt || 0) > hm.every) {
+    S._pose.popAt = now;
+    S.emote = { emoji: hm.pop, ts: now, trusted: true };
+  }
+}
+
+/* once a frame too: another player's held pose pops its emoji on this
+   phone -- when it is first seen, then every `every` ms (Zzz, music notes);
+   the worker keeps only the pose (tick.js `po`), never a relay a minute */
+export function updatePeerEmotes(S, now) {
+  var others = S && S.others;
+  if (!others) return;
+  for (var id in others) {
+    var o = others[id];
+    if (!o || !o._po) continue;
+    var hm = EMOTE_MOVES[o._po];
+    if (!hm || hm.kind !== 'hold' || !hm.pop) continue;
+    var first = !(o._poPopAt >= (o._poAt || 0));
+    if (first || (hm.every && now - o._poPopAt > hm.every)) {
+      o._poPopAt = now;
+      o.emote = { emoji: hm.pop, ts: now, trusted: true };
+    }
+  }
 }
 
 export function enterBuilding(S, deps) {
