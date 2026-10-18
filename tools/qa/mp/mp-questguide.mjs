@@ -14,7 +14,8 @@
  *
  * On a phone in the Wheel, against a real worker:
  *   1. before the quest, the Wheel's Mayor Bro offers it: '❗';
- *   2. accepted, he waits on you: '❔' (a grey "?", drawn still), and the
+ *   2. accepted, he waits on you: '❔' (a "?", drawn still -- YELLOW since
+ *      v2.3.3331, the owner's "Green implies something is done"), and the
  *      quest card leads with the quest picture, not an emoji;
  *   3. the folded dashboard's OPEN flashes; opened, the sword AND the shield
  *      tiles flash -- and nothing else in the bag;
@@ -35,7 +36,9 @@ const PHONE = { width: 390, height: 844 };
 const mayor = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
   const m = (Array.isArray(S.npcs) ? S.npcs : []).find((n) => n && n.name === 'Mayor Bro');
-  return m ? { mark: m._questMarker || null, x: Math.round(m.x), y: Math.round(m.y) } : null;
+  /* v2.3.3331: and the badge's drawn colour (entityRenderer's probe) */
+  const nm = m && window.__btNpcMarks && window.__btNpcMarks[m.id];
+  return m ? { mark: m._questMarker || null, badge: (nm && nm.badge) || null, x: Math.round(m.x), y: Math.round(m.y) } : null;
 });
 const flash = (P) => P.page.evaluate(() => (window.__btGearFlash ? JSON.parse(JSON.stringify(window.__btGearFlash)) : null));
 const card = (P) => P.page.evaluate(() => {
@@ -68,7 +71,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('accepted: the sword and the shield are in the bag (guard)', !!got, got);
     await P.page.waitForTimeout(900);
     const m1 = await mayor(P);
-    rec.ok(`2. accepted, he waits on you: a grey "?" ("${m1 && m1.mark}")`, !!m1 && m1.mark === '❔', m1);
+    rec.ok(`2. accepted, he waits on you: a "?" ("${m1 && m1.mark}")`, !!m1 && m1.mark === '❔', m1);
+    /* v2.3.3331 (owner: "have the question mark above mayor bros head be
+       yellow instead of green.  Green implies something is done"): drawn on
+       the offer's yellow, never the ready check's green (the grey it was,
+       #8b9695, read as green on a phone) */
+    let m1b = m1;
+    for (let i = 0; i < 10 && !(m1b && m1b.badge); i++) { await P.page.waitForTimeout(300); m1b = await mayor(P); }
+    rec.ok(`...drawn YELLOW, not green (#${m1b && m1b.badge})`, !!m1b && m1b.badge === 'ffc93c', m1b);
     const c1 = await card(P);
     rec.ok('...and the quest card leads with the quest picture, no emoji', !!c1 && c1.mark === 'quest' && /panel-quests/.test(c1.src) && !/\u{1F4DC}|✓/u.test(c1.text), c1);
     await P.page.screenshot({ path: join(OUT, 'questguide-waiting.png') }).catch(() => {});
@@ -107,6 +117,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     let m2 = null;
     for (let i = 0; i < 30 && !(m2 && m2.mark === '❓'); i++) { m2 = await mayor(P); if (!(m2 && m2.mark === '❓')) await P.page.waitForTimeout(400); }
     rec.ok(`5. the four snowmen in the bag: his mark is the green check ("${m2 && m2.mark}")`, !!m2 && m2.mark === '❓', m2);
+    let m2b = m2;
+    for (let i = 0; i < 10 && !(m2b && m2b.badge === '4bd98a'); i++) { await P.page.waitForTimeout(300); m2b = await mayor(P); }
+    rec.ok(`...drawn green (#${m2b && m2b.badge})`, !!m2b && m2b.badge === '4bd98a', m2b);
     const c2 = await card(P);
     rec.ok('...and the quest card\'s picture is the painted green check', !!c2 && c2.mark === 'ready' && /quest\/check\.webp/.test(c2.src), c2);
     await P.page.screenshot({ path: join(OUT, 'questguide-ready.png'), clip: { x: 0, y: 0, width: PHONE.width, height: 200 } }).catch(() => {});

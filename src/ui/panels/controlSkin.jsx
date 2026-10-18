@@ -371,8 +371,44 @@ export const ABILITY_ART_K = 1.18;
 export function abilityArtUrl(name, grey) {
   return '/ui/controls/abil-' + name + (grey ? '-grey' : '') + '.webp?v=' + ABILITY_ART_V;
 }
+/* ═══ v2.3.3331: THE OWNER'S SPECIAL ATTACKS, ONE FOR EACH WEAPON ═══
+ * The owner: "Also use these icons instead for the special attacks (bow,
+ * staff, sword)" -- a volley of golden arrows, a crystal staff in a blue
+ * swirl, a sword in a golden whirl (assets/icons-source/sheet-small-5-
+ * specials.png, cut by tools/ui/cut-small-icons.py).  They replace the winged
+ * star on the Special button, by the weapon whose special it fires
+ * (specialArtKind: playerActions.specialAttack's own test of the type).
+ * Each was drawn as a WHOLE button -- its own gold ring and slate face -- and
+ * the button's ring is the game's (Skin), as it carries the cooldown arc, the
+ * grey and the lit states: so the cutter keeps the disc INSIDE the owner's
+ * ring, and SpecialFace draws it filling the face inside the game's ring.  A
+ * -grey copy for the cooldown and no-mana states, as the others. */
+const SPECIAL_ART_V = '2.3.3331';
+export function specialArtUrl(kind, grey) {
+  return '/ui/controls/abil-special-' + kind + (grey ? '-grey' : '') + '.webp?v=' + SPECIAL_ART_V;
+}
+/** The special a weapon fires: 'bow', 'staff' or 'sword' (any other weapon
+    swings the melee special); null with no weapon. */
+export function specialArtKind(weapon) {
+  if (!weapon) return null;
+  return weapon.type === 'bow' ? 'bow' : weapon.type === 'staff' ? 'staff' : 'sword';
+}
+/** The owner's special picture as a Skin's face, inside its ring. */
+export function SpecialFace(props) {
+  var size = props.size;
+  var d = size - 2 * skinRing(size);
+  return React.createElement('span', {
+    className: 'bt-skin-faceart', 'data-special-art': props.kind,
+    style: { position: 'relative', display: 'block', width: d, height: d, borderRadius: '50%' },
+  }, React.createElement('img', {
+    src: specialArtUrl(props.kind, !!props.grey), alt: '', draggable: false, width: d, height: d,
+    style: { display: 'block', width: d, height: d, borderRadius: '50%', pointerEvents: 'none' },
+  }));
+}
 export const ABILITY_ART_URLS = ['whirl', 'special', 'bash', 'jump', 'burst']
-  .reduce(function (a, n) { a.push(abilityArtUrl(n, false), abilityArtUrl(n, true)); return a; }, []);
+  .reduce(function (a, n) { a.push(abilityArtUrl(n, false), abilityArtUrl(n, true)); return a; }, [])
+  /* v2.3.3331: and the three special attacks, warmed with them */
+  .concat(['sword', 'bow', 'staff'].reduce(function (a, k) { a.push(specialArtUrl(k, false), specialArtUrl(k, true)); return a; }, []));
 function abilityArt(name, props, under) {
   var s = props.size || 28;
   var d = Math.round(s * ABILITY_ART_K);

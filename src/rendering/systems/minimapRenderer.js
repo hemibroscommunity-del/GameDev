@@ -140,7 +140,11 @@ const C_QUEST      = 0xd8aa58;   /* COL.accent — gold '!', same as the in-worl
 const C_QUEST_STAR = 0xf5ce3c;
 const STAR_ICON_PX = 18;
 const C_QUEST_DONE = 0x58b97b;   /* COL.xp — green, same as the in-world badge (v2.3.3047: a check) */
-const C_QUEST_WAIT = 0x8b9695;   /* v2.3.3047: the grey of the in-world waiting badge */
+/* v2.3.3047: the in-world waiting badge's colour.  v2.3.3331: YELLOW, as that
+   badge is now (owner: "be yellow instead of green.  Green implies something
+   is done" -- the old grey #8b9695 read as green on a phone): the '?' glyph
+   says waiting, and green stays the ready check's */
+const C_QUEST_WAIT = C_QUEST;
 /* v2.3.2992: the gold road to the quest's spot -- width and dark casing, CSS
    px; it starts clear of your chevron, is not drawn when the spot is this
    close, and stops this far in from the box's edge when the spot is off it */

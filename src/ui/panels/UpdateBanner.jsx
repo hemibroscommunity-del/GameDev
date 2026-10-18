@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 /* === UpdateBanner — "this tab is running an old build" === */
 /* v2.3.1718.  Owner, after judging: a judge did not share the same world,
@@ -15,9 +16,24 @@ import React from 'react';
  * It is DISMISSIBLE and it does not block anything.  The stale tab still
  * works; it is just out of date, and interrupting a fight with a modal over
  * that would be a worse bug than the one it reports. */
+/* ═══ v2.3.3331: PORTALED TO THE BODY, ABOVE THE MINIMAP'S OPEN BUTTON ═══
+   Owner, playtesting: "The 'new version available' button that pops up when
+   the game is getting updated is layered behind the minimap so whenever I try
+   to tap the button it just opens the minimap."  The Wheel's minimap is
+   opened by an invisible button laid over its box (WorldMapOverlay.jsx), a
+   body portal at z 45 -- above EVERYTHING inside .brotown-wrap, which is
+   position:fixed and so its own stacking context (TRAPS §20) -- and on a
+   phone this card, 340px wide at the top, runs under the minimap's box: its
+   Reload button sat right under that invisible button.  No z-index inside
+   the wrapper could beat it, so the card is a body portal at z 46 now.  Out
+   of the wrapper, `position:fixed` is the viewport's -- and on a computer the
+   play window is the viewport's full height, centred (game.css #root), so
+   top 56 and left 50% land where they did.  Taps on the minimap beside the
+   card still open the map, and the open world map (z 9200) covers the card. */
 export function UpdateBanner({ info, onReload, onDismiss }) {
-  if (!info) return null;
-  return React.createElement('div', {
+  if (!info || typeof document === 'undefined') return null;
+  return createPortal(React.createElement('div', {
+    'data-update-banner': '',
     /* The tap must not reach the world underneath — the canvas takes clicks
        as attack/aim (the same guard the quest reminder and tour prompt use). */
     onPointerDown: (e) => e.stopPropagation(),
@@ -26,7 +42,7 @@ export function UpdateBanner({ info, onReload, onDismiss }) {
       top: 56,
       left: '50%',
       transform: 'translateX(-50%)',
-      zIndex: 34,
+      zIndex: 46,
       pointerEvents: 'auto',
       display: 'flex',
       alignItems: 'center',
@@ -67,5 +83,5 @@ export function UpdateBanner({ info, onReload, onDismiss }) {
       border: 'none', background: 'transparent', color: 'rgba(255,255,255,.55)',
       fontSize: 15, cursor: 'pointer',
     },
-  }, '✕'));
+  }, '✕')), document.body);
 }

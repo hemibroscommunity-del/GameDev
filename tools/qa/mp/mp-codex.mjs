@@ -15,8 +15,9 @@
  *   1. the worker says it counts (caps.codex) and sends the codex at join;
  *      the Codex button (v2.3.3215: its own, on the dashboard's row) opens on
  *      Monsters: nine cards, every one a shape;
- *   2. a snowman's kill: counted (snowling 1), said over your head, its card
- *      known and NEW;
+ *   2. a snowman's kill: counted (snowling 1), announced on the NEW MONSTER
+ *      card (v2.3.3331, no words over your head), its card known and NEW; a
+ *      tap on the announcement from the world opens the Codex on its page;
  *   3. its page, as the mockup lays it out, on the sheet's own short height
  *      (the owner: "Stay short and scroll"), scrolling in it from its top: the
  *      header (name, Lv / element / kind badges -- the kind by its body, the
@@ -301,9 +302,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const k1 = await kill(wsPort, me, 'wm-frost-0');
     await H.waitFor(P, (S) => (S._codex && S._codex.k.snowling ? S._codex.k.snowling[0] : 0), (v) => v >= 1, { timeout: 8000, label: 'the first kill counted' }).catch(() => null);
     const c1 = await codex(P);
-    const s1 = await said(P, /New in the Codex: Snowman/);
-    rec.ok(`a snowman's kill is counted (snowling ${c1.k && c1.k.snowling ? c1.k.snowling.join('/') : '-'}) and said over your head ("${s1[0] || '?'}")`,
-      k1 && k1.ok && c1.k && c1.k.snowling && c1.k.snowling[0] === 1 && s1.length >= 1, { k1, c1, s1 });
+    /* v2.3.3331 (owner: "Make the new codex entry for monsters as a 'new
+       monster' announcement instead of a new codex entry and have it jump to
+       the codex area"): announced on the NEW MONSTER card, not in words over
+       your head (src/ui/panels/NewMonsterCard.jsx) */
+    const s1 = await said(P, /New in the Codex/);
+    const nm1 = await P.page.waitForSelector('[data-new-monster="snowling"]', { timeout: 4000 })
+      .then(() => P.page.evaluate(() => {
+        const el = document.querySelector('[data-new-monster="snowling"]');
+        const r = el.getBoundingClientRect();
+        return { name: (el.querySelector('[data-new-monster-name]') || {}).textContent || '', text: el.innerText.replace(/\s+/g, ' '),
+          top: Math.round(r.top), bottom: Math.round(r.bottom), w: Math.round(r.width), vw: innerWidth };
+      })).catch(() => null);
+    rec.ok(`a snowman's kill is counted (snowling ${c1.k && c1.k.snowling ? c1.k.snowling.join('/') : '-'}) and announced: "${nm1 ? nm1.text : 'no card'}"`,
+      k1 && k1.ok && c1.k && c1.k.snowling && c1.k.snowling[0] === 1 && !!nm1 && nm1.name === 'Snowman' && /New monster/i.test(nm1.text),
+      { k1, c1, nm1 });
+    rec.ok('...on its card, not in words over your head', s1.length === 0, s1);
     await P.page.waitForTimeout(700);
     const cs1 = await cards(P);
     const snowCard = cs1.find((c) => c.kind === 'snowling');
@@ -311,6 +325,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3215: and the Codex's own button on the dashboard's row says so */
     const badge1 = await codexBadge(P);
     rec.ok(`...and the Codex button on the dashboard counts it (${badge1 || 'no badge'})`, badge1 === '1', badge1);
+    /* v2.3.3331: the announcement's tap, from the world (the dashboard
+       folded): a REAL click, so nothing may sit over it (the minimap's open
+       button is a z 45 portal), and the Codex opens on the Snowman's page */
+    await H.closeDest(P).catch(() => {});
+    await P.page.waitForTimeout(500);
+    /* this box's frames are slow enough that the steps since the kill can
+       outlast the card's six seconds, after which the game lets it go: the
+       real announcement was read above, so the same one (the Snowman's) is
+       raised again (a new `at` is a new card, keyed) and given a moment to
+       come up before it is tapped */
+    await P.page.evaluate(() => { const c = window._gameState.current._codex; if (c) c.announce = { kind: 'snowling', at: Date.now() }; });
+    await P.page.waitForSelector('[data-new-monster="snowling"]', { timeout: 3000 }).catch(() => {});
+    await P.page.waitForTimeout(400);
+    const nmBox = await P.page.evaluate(() => {
+      const el = document.querySelector('[data-new-monster="snowling"]');
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      const x = r.left + r.width / 2, y = r.top + r.height / 2, hit = document.elementFromPoint(x, y);
+      return { x, y, onTop: !!hit && el.contains(hit) };
+    });
+    let tapped = false;
+    if (nmBox) { await P.page.mouse.click(nmBox.x, nmBox.y); tapped = true; }
+    const toPage = await P.page.waitForSelector('[data-cx-page="snowling"]', { timeout: 5000 }).then(() => true).catch(() => false);
+    const goneAfter = await P.page.evaluate(() => !document.querySelector('[data-new-monster]'));
+    rec.ok('a tap on the card, from the world, opens the Codex on the Snowman\'s page -- and puts the card away',
+      !!nmBox && nmBox.onTop && tapped && toPage && goneAfter, { nmBox, toPage, goneAfter });
+    await back(P);
+    await P.page.waitForSelector('[data-cx-grid]', { timeout: 4000 }).catch(() => {});
     /* ── 3 ── */
     const sl0 = await sheetLook(P);
     await scrollTo(P, -1);
