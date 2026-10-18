@@ -17,7 +17,7 @@
  * SO EVERY ACCEPT AND EVERY TURN-IN HERE IS A REAL TAP on the real dialogue,
  * opened by walking up to him. The XP-skill chooser is a real tap too — the
  * worker refuses an XP-paying turn-in that does not name a skill (v2.3.1669),
- * so it is part of the flow, not decoration.  (v2.3.3326: the first quest
+ * so it is part of the flow, not decoration.  (v2.3.3330: the first quest
  * pays no XP, so it has no chooser and no claim panel -- his last line's
  * "Claim reward" pays it, the auto reward.)
  *
@@ -42,7 +42,7 @@
  * looking verified (see mp-townlock).
  */
 import * as H from './harness.mjs';
-/* v2.3.3326: which steps pay XP (and so put the skill chooser on the claim
+/* v2.3.3330: which steps pay XP (and so put the skill chooser on the claim
    panel) is the worker's own table's to say, not this file's */
 import { QUEST_REWARDS } from '../../../server/src/data.js';
 
@@ -391,7 +391,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── TURN IN, through the dialogue — the only door left ── */
     rec.ok(`${step.id}: walking back up opens the dialogue again`, await approach());
     if (!(QUEST_REWARDS[step.id].xp > 0)) {
-      /* v2.3.3326: a quest that pays no XP has nothing to choose (tut_1 --
+      /* v2.3.3330: a quest that pays no XP has nothing to choose (tut_1 --
          the owner: "Makes no sense to have to choose xp in something you've
          never used yet"), so it is the AUTO REWARD: his last line's "Claim
          reward" pays at once and he goes straight on to his next quest, with

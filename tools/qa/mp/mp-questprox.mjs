@@ -144,7 +144,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1200);
   rec.ok('with a READY quest, walking up opens his dialogue', await open());
   /* He speaks before he pays now, so walk the chunks through to the turn-in.
-     v2.3.3326: the first quest pays no XP, so its turn-in is his last line's
+     v2.3.3330: the first quest pays no XP, so its turn-in is his last line's
      own "Claim reward" (the auto reward -- there is no claim panel); walked
      up to and left UNPRESSED, as the property is that it is there. */
   const reached = await H.claimOnLastLine(P, { press: false });

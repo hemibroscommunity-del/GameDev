@@ -12,7 +12,7 @@
  *   2. accepting raises QUEST ACCEPTED! on the thin glowing banner, OUT of
  *      .brotown-wrap (a sibling of the window's scrim, so its z-index means
  *      what it says);
- *   3. (v2.3.3326) the first quest pays no XP, so its claim is the AUTO
+ *   3. (v2.3.3330) the first quest pays no XP, so its claim is the AUTO
  *      REWARD -- his last line's "Claim reward" pays it, no claim window and
  *      no skill chip at any moment, QUEST COMPLETE! on the banner with the
  *      laurel check, the coins to the purse and the bow and staff to the bag,
@@ -242,7 +242,7 @@ async function body(P, wsPort, rec) {
   await H.closeNpcDialogue(P).catch(() => {});
 
   /* ── 3. the first quest's claim: the AUTO REWARD ──
-     v2.3.3326 (owner, playtesting: "Makes no sense to have to choose xp in
+     v2.3.3330 (owner, playtesting: "Makes no sense to have to choose xp in
      something you've never used yet.  Just remove that little xp bonus"):
      tut_1 pays no XP, so there is nothing to choose and no claim window --
      his last line's "Claim reward" pays it at once, QUEST COMPLETE! on the

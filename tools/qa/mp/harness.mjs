@@ -1694,8 +1694,8 @@ export async function advanceNpcDialogue(P, { max = 12, onChunk = null } = {}) {
     : document.querySelector('.bt-npcdlg') ? 'dialogue' : null));
 }
 
-/* ═══ v2.3.3326: A QUEST WITH NOTHING TO CHOOSE IS CLAIMED ON HIS LAST LINE ═══
- * A quest that pays no XP (tut_1 since v2.3.3326 -- the owner: "Makes no
+/* ═══ v2.3.3330: A QUEST WITH NOTHING TO CHOOSE IS CLAIMED ON HIS LAST LINE ═══
+ * A quest that pays no XP (tut_1 since v2.3.3330 -- the owner: "Makes no
  * sense to have to choose xp in something you've never used yet" -- and
  * Beastmaster Bro's) is the AUTO REWARD (QuestPanel, v2.3.3030): the last
  * line's "Claim reward" pays at once and he goes straight on to his next

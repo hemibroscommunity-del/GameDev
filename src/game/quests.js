@@ -139,9 +139,9 @@ export function turnInQuest(S, questPanel, deps, xpCat, opts) {
        choice through here, matching what the quest log has sent since
        v2.3.1669.  Never guessed on the player's behalf: with no choice the
        button does not fire at all. */
-    /* v2.3.3326: a quest this page pays NO XP for (tut_1 since v2.3.3326) is
+    /* v2.3.3330: a quest this page pays NO XP for (tut_1 since v2.3.3330) is
        handed in with no choice made (QuestPanel's AUTO REWARD), and a worker
-       from before v2.3.3326 still pays tut_1 15 XP -- so it would refuse the
+       from before v2.3.3330 still pays tut_1 15 XP -- so it would refuse the
        hand-in for want of a skill, silently, and the bow and staff with it
        (during a deploy, or after a rollback of the worker).  So such a
        hand-in names Melee, the one skill a player has used by then.  A
@@ -174,7 +174,7 @@ export function turnInQuest(S, questPanel, deps, xpCat, opts) {
   try {
     localStorage.setItem('bt_rpg', JSON.stringify(R));
   } catch (e) {}
-  /* v2.3.3326: the XP only when there is some -- tut_1 pays none now, and
+  /* v2.3.3330: the XP only when there is some -- tut_1 pays none now, and
      "+0XP" over your head would say there was a reward you missed */
   pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Complete! +' + questPanel.quest.reward.gold + 'G'
     + (questPanel.quest.reward.xp > 0 ? ' +' + questPanel.quest.reward.xp + 'XP' : ''), '#f5c542');

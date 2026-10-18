@@ -144,7 +144,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      at once". This scenario was one of the three that did not get the memo.
      Labels are owner-facing copy and will change again; the classes are the
      contract. */
-  /* v2.3.3326: the first quest pays no XP, so its claim is the auto reward,
+  /* v2.3.3330: the first quest pays no XP, so its claim is the auto reward,
      with no claim screen at all -- this section reads the claim screen of the
      SECOND quest, which still pays XP.  The first is handed in and the second
      taken up over the wire (the messages the dialogue sends), so the walk-up

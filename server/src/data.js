@@ -728,7 +728,7 @@ export const QUEST_REWARDS = {
          then refused at the equip check — a reward the player can see and not
          use is worse than no reward.  The sword+shield that come BEFORE these,
          on first contact, are the next slice. */
-      /* v2.3.3326 (owner, playtesting: "I don't want the 'choose where to
+      /* v2.3.3330 (owner, playtesting: "I don't want the 'choose where to
          train it' option when you complete the first quest and are getting
          rewarded with bow and staff.  Makes no sense to have to choose xp in
          something you've never used yet.  Just remove that little xp bonus").
