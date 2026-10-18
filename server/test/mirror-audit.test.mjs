@@ -2337,7 +2337,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     guesses.length >= 1 && guesses.every((g) => /: 0$/.test(g)), guesses);
 }
 
-/* ═══ v2.3.3361: THE EMOTES THE WORKER RELAYS ARE THE PHONE'S ═══
+/* ═══ v2.3.3391: THE EMOTES THE WORKER RELAYS ARE THE PHONE'S ═══
    The worker relays an emote only when it is on its list (emotes.js), and the
    phone's picker offers -- and its renderer draws -- only its own
    (gameDisplay.js EMOTES / TEXT_EMOTES).  One emoji missing from the worker's
@@ -2351,7 +2351,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { srv: [SRV_EMOTE.EMOJI.length, SRV_EMOTE.LINES.length], client: [CLIENT_EMOTES.length, CLIENT_TEXT_EMOTES.length] });
 }
 
-/* ═══ v2.3.3362: THE MOVES THE WORKER RELAYS AND KEEPS ARE THE PHONE'S ═══
+/* ═══ v2.3.3392: THE MOVES THE WORKER RELAYS AND KEEPS ARE THE PHONE'S ═══
    A moment move (wave, laugh...) is relayed only when it is on emotes.js
    EMOTE.MOVES, and a held pose (sit, sleep, a dance) kept only when it is on
    poses.js POSE.IDS; the phone's tiles are game/emoteMoves.js.  One missing
@@ -2365,7 +2365,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { srv: [SRV_EMOTE.MOVES, POSE.IDS], client: [EMOTE_ONCE_IDS, EMOTE_HOLD_IDS] });
 }
 
-/* ═══ v2.3.3364: /roll's GAP AND FACES ARE THE WORKER'S ═══
+/* ═══ v2.3.3393: /roll's GAP AND FACES ARE THE WORKER'S ═══
    The phone holds its own asks to one every DICE_GAP_MS with words (a sooner
    one the worker drops without a word), and asks only for faces the worker
    rolls (src/game/dice.js, server/src/dice.js). */

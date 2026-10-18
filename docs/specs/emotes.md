@@ -1,4 +1,4 @@
-# Emotes you can see (v2.3.3361)
+# Emotes you can see (v2.3.3391)
 
 Phase 0 of the fun & social plan (docs/FUN-SOCIAL-PLAN.md). The owner: "Go
 recommended".

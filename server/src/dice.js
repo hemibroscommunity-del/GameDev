@@ -1,4 +1,4 @@
-/* ═══ v2.3.3364: /roll AND /flip, ROLLED BY THE WORKER (docs/specs/dice.md) ═══
+/* ═══ v2.3.3393: /roll AND /flip, ROLLED BY THE WORKER (docs/specs/dice.md) ═══
  *
  * The fun & social plan's Phase 1 (docs/FUN-SOCIAL-PLAN.md), the owner's "Go
  * recommended": "/roll" (1-100, or "/roll 20" for 1-20) and "/flip" in the
