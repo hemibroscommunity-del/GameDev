@@ -212,12 +212,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rows.atFight = await audit(P);
       print('at the fight', rows.atFight);
       await P.page.evaluate(() => { window.__gpuPeakReset(); window.__cachePeakReset(); window.__townSeenReset(); });
+      /* v2.3.3461: the death watched by the page itself, every 200 ms, with
+         the zones it passes through and the lowest HP -- the loop below looks
+         only between hops, seconds apart on this box, and the death screen is
+         the worker's 5 s (index.js _handlePlayerDeath): in the second sweep of
+         2026-10-18 the check read "died: false" with nothing to say why */
+      await P.page.evaluate(() => {
+        const W = window.__qaDeath = { died: 0, zones: [], minHp: null };
+        clearInterval(window.__qaDeathTimer);
+        window.__qaDeathTimer = setInterval(() => {
+          const S = window._gameState && window._gameState.current;
+          if (!S) return;
+          if (S._dying) W.died++;
+          const z = S.currentZone;
+          if (z && W.zones[W.zones.length - 1] !== z) W.zones.push(z);
+          const hp = S.rpg && typeof S.rpg.hp === 'number' ? S.rpg.hp : null;
+          if (hp != null && (W.minHp == null || hp < W.minHp)) W.minHp = hp;
+        }, 200);
+      });
       let died = false;
       const tDie = Date.now();
       while (Date.now() - tDie < 150000) {
         const s = await P.page.evaluate(() => {
           const S = window._gameState.current;
-          if (S._dying) return { dying: true };
+          if (S._dying || (window.__qaDeath && window.__qaDeath.died > 0)) return { dying: true };
           const live = (S.monsters || []).filter((m) => m && m.alive !== false && (m.curHp == null || m.curHp > 0));
           let best = null, bd = Infinity;
           for (const m of live) { const d = Math.hypot(m.x - S.player.x, m.y - S.player.y); if (d < bd) { bd = d; best = m; } }
@@ -227,9 +245,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (s.best) await H.hopTo(P, s.best.x + 10, s.best.y, { tries: s.best.d > 150 ? 20 : 2, step: 80 });
         else await P.page.waitForTimeout(400);
       }
-      rec.ok('died to the goblins (guard)', died, { died });
+      const watch = await P.page.evaluate(() => {
+        const S = window._gameState.current, W = window.__qaDeath || {};
+        const live = (S.monsters || []).filter((m) => m && m.alive !== false && (m.curHp == null || m.curHp > 0));
+        const near = live.map((m) => ({ id: m.id, lvl: m.level, d: Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) })).sort((a, b) => a.d - b.d).slice(0, 3);
+        return { died: W.died, zones: (W.zones || []).slice(), minHp: W.minHp, hp: S.rpg && S.rpg.hp, maxHp: S.rpg && S.rpg.maxHp,
+          at: { x: Math.round(S.player.x), y: Math.round(S.player.y) }, zone: S.currentZone, near };
+      });
+      rec.ok('died to the goblins (guard)', died, { died, watch });
       if (died) {
-        const back = [];
+        /* the zones the trip has passed through already, as the page saw them
+           (the watch began in the Wheel, before the fight) */
+        const back = (watch.zones || []).slice();
         for (let i = 0; i < 240; i++) {
           const z = await H.readState(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading, dying: !!S._dying }));
           if (!back.length || back[back.length - 1] !== z.zone) back.push(z.zone);
