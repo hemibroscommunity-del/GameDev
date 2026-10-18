@@ -158,6 +158,8 @@ export const adminMethods = {
              recorded, a pass used, refused, login checks, and the one-time
              fill */
           deviceLock: this._deviceLockInfo(),
+          /* v2.3.3355: new Login Keys (loginkeys.js) */
+          loginKeys: this._keysInfo ? this._keysInfo() : null,
           /* v2.3.3240: the 2 s look relay -- tracks in, and how many went out
              whole, as only what changed, or not at all (lookrelay.js) */
           lookRelay: this._lookInfo(),
