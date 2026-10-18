@@ -614,6 +614,22 @@ remnant to migrate server-side, not a mode to preserve.
       `?shadowhp=0` put each back, `window.__btShadowSnap()`; mp-shadowlock
       now steps a whole CSS px across and down: 110x and 6x steadier (TRAPS
       §205).
+    - since v2.3.3458 THE SHADOWS ARE DRAWN BEFORE THE FRAME -- the owner:
+      "iterate on what best improves framerate without loss of quality": the
+      filter was a pass in the MIDDLE of the frame, so a phone's tile-based
+      chip wrote the half-drawn frame out and read it back every frame (~15
+      MB each way at 3x); the pieces now live in a container of their own
+      (shadows.js `cast`, never in the scene; `castIn` moved back by the
+      lock's fraction, lockToWorldGrid's own numbers: TRAPS §223), drawn into
+      `rt` (the screen in CSS px + PAD 2 a side) at the end of the shadows'
+      update, and `shade`, a quad in the layer's place with the filter's own
+      fragment program, draws it; the held frame the same to one level
+      (mp-shadowprepass), the screen bound once less a frame; a throw puts
+      Pixi back (renderHeal) and that page uses the filter; `?shadowpass` is
+      the filter, `window.__btShadowPrepass` the QA's handle (`set` the Speed
+      test's `shadowpass` step, which says what it saves on that phone; the
+      card now counts the screen set aside, `resumes`):
+      docs/specs/shadow-prepass.md.
   - Since v2.3.3001 HITS SOUND LIKE THEIR MATERIAL -- the owner: "modify hit
     sound effects based on material type so hitting wood vs plants etc for
     props and also against monsters (arrow, melee, magic hit sound for
