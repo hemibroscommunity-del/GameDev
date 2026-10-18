@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4b552a5a8c21f5fb9956108ac0f938f5639b58a3",
+  "tree": "4719ac3fbe66196b54502adcefe5c5041c2ac9c2",
+  "committedAt": "2026-10-18T03:30:50-07:00",
+  "subject": "The Town Hall's flag waves in the wind (v2.3.3382) (#971)",
+  "files": 5821,
+  "bytes": 639548264,
+  "listingSha256": "b9480a86e0aad2ff0c6dcc5c2f73cfcf51d21037c8c6ddfb8ce85e7a2c74969d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
