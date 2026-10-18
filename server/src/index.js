@@ -198,6 +198,7 @@ import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land
 import { pvpBalanceMethods } from './pvpbalance.js'; /* v2.3.3260: PvP hits rolled by the worker, and tuned */
 import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle of a fight -- the body stays */
 import { lastPlaceMethods } from './lastplace.js'; /* v2.3.3327: a reconnect starts where the server last had you */
+import { hitProofMethods } from './hitproof.js'; /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
 import { pvpLungeMethods } from './pvplunge.js'; /* v2.3.3262: the sword's opening lunge, at a player too */
 import { oneFormulaMethods } from './oneformula.js'; /* v2.3.3260: one formula for every fight -- health, monsters' hits, the hit cap, two specials */
 import { pvpExtrasMethods } from './pvpextras.js'; /* v2.3.3264: what a hit does to a monster it does to a player -- the element, the shove, the splash, the burst, the abilities, the bow's burn, the kill's heal, the parry */
@@ -3139,6 +3140,10 @@ export class GameRoom {
     /* v2.3.3260: a special the worker charged for opens the short window in
        which a player hit may count as a special (pvpbalance.js) */
     if (type === 'swipe' && this._pvpSpecialPaid) this._pvpSpecialPaid(ps, Date.now());
+    /* v2.3.3334: ...and a monster hit too, one special's shape (hitproof.js);
+       a paid retreat, its shot */
+    if (type === 'swipe') this._pveSpecialPaid(ps, Date.now());
+    if (type === 'retreat') this._pveRetreatPaid(ps, Date.now());
     /* v2.3.1619b: the ONLY durable change here is a pool number, so it
        coalesces (see _saveRpgPools).  Ability use is one of the highest-
        frequency events in the game -- dodge, lunge, retreat and swipe
@@ -6302,6 +6307,7 @@ Object.assign(GameRoom.prototype, verifyMethods); /* v2.3.3275: the account chec
 Object.assign(GameRoom.prototype, pvpBalanceMethods); /* v2.3.3260 */
 Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-fight, the body stays */
 Object.assign(GameRoom.prototype, lastPlaceMethods); /* v2.3.3327: a reconnect starts where the server last had you */
+Object.assign(GameRoom.prototype, hitProofMethods); /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */
 Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */
 Object.assign(GameRoom.prototype, pvpExtrasMethods); /* v2.3.3264: the monster-only extras on players */

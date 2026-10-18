@@ -3723,6 +3723,44 @@ Two protocol versions coexist; both must keep working:
       694 px/s; the overview's `lastPlace` and `moveBudget.arrival`; kill
       switch `lastplace: false` (and `movebudget: false`); `last-place` suite
       (57, nineteen bugs caught), move-budget §6/§9 updated.
+  - since v2.3.3334 A HIT ON A MONSTER NEEDS ITS WEAPON, ITS REACH AND A PAID
+    SPECIAL, AND A BOW LANDS NO MORE A SECOND THAN ITS SHOTS (fix 8;
+    docs/specs/hit-proof.md, `server/src/hitproof.js`, called by combat.js
+    `_handleMonsterDamage`):
+    - a `ranged` claim needs the worker's own bow slot (`ps.rangedWeapon`), a
+      `staff` claim its staff slot -- never the phone's activeSlot; a bare fist
+      still swings (an unarmed player is held in the commons until armed);
+    - the reach, from the worker's copy, in EVERY zone: a bow 675 x its Range
+      (prog3 Bow lane; an older character's x2.0) + 150 + a second of the
+      fastest honest run (`_moveSpeedK` x SPRINT.MULT) -- 1,490 px with no
+      points; a staff 675 x its Range + 250 + 0.3 s (a bolt is held to its
+      caster: projectiles.js, no range of its own but its life); inside a paid
+      bow special's window the Wheel's old 3,600 for the stuck arrows' chips;
+    - a special only inside a window a paid swipe opened (`_pveSpecialPaid`,
+      index.js `_handleAbilityUse`): 4.5 s, ONE special's shape -- the sword's
+      on each monster once (24 at most), the volley's three arrows, the big
+      bolt's orbs -- four at once, the oldest with room first; outside one a
+      special rolls ORDINARY, never dropped (the phone fires it whatever the
+      worker charged; the tutorial's free swipe sends none: TRAPS §206);
+    - per player, across every monster (`_hitRateTake`): a bow 5 x (1 +
+      Piercing) a second (the phone's 200 ms floor; Piercing from the worker's
+      weaponSpecs copy), a staff 2, three seconds waiting; a paid swipe adds
+      48 for its chips and its burning patch (eight monsters packed in it,
+      the archer at the quickest real pace, are ~50 claims; a script in a
+      fight pays a swipe about every 19 s), a paid retreat its shot;
+      specials and melee are the lanes';
+    - the per-monster lanes trimmed by LAST use (a 40-monster fight wiped the
+      lanes of the ones being hit);
+    - the lab (`aimbot-bow`, `honest-archer` new; the aimbots held under the
+      message budget, 100 a second): a script with no bow 6,009 -> 0 kills an
+      hour, with a bow 6,111 -> 2,109 (a perfect archer at the 200 ms floor),
+      an honest sword (471) and archer (378) unchanged; the overview's `hitProof`;
+      kill switch `hitproof: false`; `hit-proof` suite (66, twenty-six bugs
+      caught); anticheat, combat-lifecycle, prog3, pvp-balance and statsim pay
+      for their specials as a phone does; a phone test whose bow or staff
+      hits must land arms the WORKER as a player is armed (harness.mjs
+      `armWorker`: the kit, then the game's own equip_request), never only
+      the page -- mp-orbrange and mp-bowmark do (TRAPS §207).
   - since v2.3.3292 (the architecture review): a phone's `dodging` stops a
     player's blow only within 1 s of a roll the worker CHARGED for
     (movement.js `ROLL`, `_rollOn`; it was unbounded, one move made a player
@@ -3947,7 +3985,8 @@ Two protocol versions coexist; both must keep working:
   `roomfill` probes show the before and after. Still open: the farming holes
   (the review's 6-9; 6, the harvest, closed in v2.3.3322: harvest-proof.md;
   9, the flags shown, v2.3.3323: bot-flags.md; 7, movement, v2.3.3325 and the
-  reconnect v2.3.3327: move-budget.md, last-place.md).
+  reconnect v2.3.3327: move-budget.md, last-place.md; 8, fighting, v2.3.3334:
+  hit-proof.md).
 - **THE ACCOUNT CHECK (v2.3.3275, docs/specs/account-check.md).** A character
   that does not exist yet (an id with no `auth:` record: a first join, every
   guest) is asked for a Cloudflare Turnstile token before the identity is
