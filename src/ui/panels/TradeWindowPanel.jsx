@@ -216,7 +216,9 @@ function TradeDrawer({ title, titleColor, onClose, children }) {
       className="bt-chat-noselect"
       style={DRAWER_FRAME}>
       <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
-        {onClose && <button className="bt-t2-close" aria-label="Close" onClick={onClose}>✕</button>}
+        {/* v2.3.3407: Esc presses it, as it does every window's ✕ (game/deskKeys.js) */}
+        {onClose && <button className="bt-t2-close" aria-label="Close" onClick={onClose}
+          data-esc="" data-key="Esc" data-key-at="hang">✕</button>}
         {/* v2.3.2297: a hook on the title, because the receipt now CHANGES it
             mid-card and "the title says X" was otherwise only readable as the
             drawer's first line of innerText -- which is the ✕. */}
