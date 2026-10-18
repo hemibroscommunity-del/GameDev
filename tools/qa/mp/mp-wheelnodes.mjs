@@ -307,18 +307,22 @@ async function body({ P, wsPort, rec, OUT, errors }) {
         await P.page.waitForTimeout(250);
       }
       await P.page.waitForTimeout(500);
-      const n0 = await P.page.evaluate(() => {
+      /* v2.3.3376: each tap counts its own "Swimming!" (swimTapNode).  They
+         were counted from the live list after both taps and their waits, and a
+         popup lives 1.5 s (effectsRenderer's ttl) while the note says itself
+         once in 1.2 s (wheelSwim NOTE_MS), so the second tap says nothing --
+         on this box's slow frames the one popup was gone before the count,
+         which read 0 though the tap had been refused (TRAPS §200). */
+      let chopped = false, said = 0;
+      for (let k = 0; k < 2 && !said && !chopped; k++) {
+        said += (await swimTapNode(P, tree.id)) || 0;
+        await P.page.waitForTimeout(300);
+        chopped = await H.readState(P, (S) => !!S._extraction);
+      }
+      await P.page.evaluate(() => {
         const S = window._gameState.current;
-        S._wheelSwim = Object.assign(S._wheelSwim || {}, { on: true, at: Date.now() + 60000, noteAt: 0 });
-        return S.dmgNumbers.filter((p) => p.text === 'Swimming!').length;
-      });
-      const chopped = await tapNode(P, tree.id, (S) => !!S._extraction, 2);
-      const said = await P.page.evaluate((k) => {
-        const S = window._gameState.current;
-        const n = S.dmgNumbers.filter((p) => p.text === 'Swimming!').length - k;
         if (S._wheelSwim) { S._wheelSwim.on = false; S._wheelSwim.at = 0; }
-        return n;
-      }, n0);
+      });
       /* the control: the same tap out of the water starts the chop -- so the
          one above reached the tree and was refused there, not lost on the way */
       await P.page.waitForTimeout(400);
@@ -501,6 +505,34 @@ async function tapNode(P, id, done, tries = 6) {
     if (await H.readState(P, done)) return true;
   }
   return false;
+}
+
+/* v2.3.3376: one tap on the node while you swim, and how many "Swimming!" it
+   put up -- counted in the very call that taps.  The touch handler runs inside
+   dispatchEvent, so the refusal's popup is in the list before the call
+   returns, and no frame can age it out.  The swim is set on in the same call
+   (its clock ahead, so the frame's own look does not flip it back), the
+   note's clock cleared, so nothing in between can say it first.  tapNode's
+   touch, otherwise. */
+async function swimTapNode(P, id) {
+  return P.page.evaluate((nid) => {
+    const S = window._gameState.current;
+    const n = (S.gatherNodes || []).find((g) => g.id === nid);
+    if (!n) return null;
+    S._wheelSwim = Object.assign(S._wheelSwim || {}, { on: true, at: Date.now() + 60000, noteAt: 0 });
+    const says = () => S.dmgNumbers.filter((p) => p.text === 'Swimming!').length;
+    const before = says();
+    const cv = document.querySelector('canvas');
+    const rc = cv.getBoundingClientRect();
+    const x = rc.left + (n.x - S.camera.x) * (S._worldScaleX || 1);
+    const y = rc.top + (n.y - 24 - S.camera.y) * (S._worldScaleY || 1);
+    const mk = (t) => new TouchEvent(t, { bubbles: true, cancelable: true,
+      touches: t === 'touchend' ? [] : [new Touch({ identifier: 77, target: cv, clientX: x, clientY: y })],
+      changedTouches: [new Touch({ identifier: 77, target: cv, clientX: x, clientY: y })] });
+    cv.dispatchEvent(mk('touchstart'));
+    cv.dispatchEvent(mk('touchend'));
+    return says() - before;
+  }, id);
 }
 
 /* Tap the node from where a player stands to work it, play the gesture, and
