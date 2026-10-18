@@ -3626,7 +3626,8 @@ Two protocol versions coexist; both must keep working:
   - fingerprints are the phone's word: a strike with none is never scored;
   - flags change nothing, and no screen shows them -- shown since v2.3.3323,
     below;
-  - the speed slack is per message: 2,909 px/s, and 58,661 with bundles;
+  - the speed slack is per message: 2,909 px/s, and 58,661 with bundles --
+    a budget since v2.3.3325, below;
   - combat lanes are per monster, and a "ranged" hit reaches 3,600 px with no
     bow (7x the kills);
   - one socket can spend the free plan's rows (`chat_mute`, `stats_update` and
@@ -3659,6 +3660,56 @@ Two protocol versions coexist; both must keep working:
     `/dev/botflag` plants a `test` flag on a player who is here (never moving
     a real flag's hour gap); OPERATIONS.md "Bot flags"; a flag still changes
     nothing; `bot-flags` suite (29), `mp-botflags` (14).
+  - since v2.3.3325 A SCRIPT MOVES NO FASTER THAN THE FASTEST HONEST PLAYER
+    (fix 7, two of its three parts; docs/specs/move-budget.md):
+    - the speed check's 80 px was given again with every message; it is a
+      BUDGET now (movement.js `MOVE_BUDGET`): it refills at the check's own
+      500 px/s (x the potion, the move stat, a billed sprint), holds 3 s of it
+      + 80, and each move spends what it covers -- the lab's script 2,909 ->
+      656 px/s, a bundle buys nothing, an honest walk unchanged;
+    - a move past it is FOLLOWED as far as it reaches, never refused, and the
+      tick follows on until the server's copy is there (`_tickMoveFollow`,
+      before the monsters): the old refusal pinned a gap until a pause, and
+      under a capped budget it would never close (TRAPS §203);
+    - the three ways to skip the check are closed: a refused zone no longer
+      frees the next move, a server-placed move (`_moveServerPlaced`: the
+      sword's dash, the lunge at a player) is judged from where the server put
+      you, and back INTO THE WHEEL you are judged from where you left it
+      (`ps._wheelBack`; every honest way out comes back there; a death forgets
+      it, `_moveRespawned`); a zone change never refills the budget;
+    - a join landed where it said (every join is a fresh state), so a
+      reconnect was a teleport -- closed in v2.3.3327, below;
+    - the overview's `moveBudget`; kill switch `movebudget: false`;
+      `move-budget` suite (62, fourteen bugs caught); seven suites adapted;
+      the lab's `allow()` reads the budget, and `--flags=` sets live flags.
+  - since v2.3.3327 A RECONNECT STARTS WHERE THE SERVER LAST HAD YOU (fix 7's
+    third part; docs/specs/last-place.md, `server/src/lastplace.js`):
+    - when a player's state goes (a socket's close, a lingering body's end, a
+      second join taking over a live session) the worker remembers the zone,
+      the place, when it last judged a move there, the budget left, the walk's
+      bound (potion, move stat) and the Wheel's way back -- in memory, a Map,
+      an hour, 480 at most (`LAST_PLACE`);
+    - the next join of that player is judged from it (`_placeOnJoin`): in the
+      same zone at the fastest an honest phone goes unheard, the walk's bound
+      x SPRINT.MULT (an unsent sprint is never billed), for all the time since,
+      NO cap (a dead pipe walks on 15 s before it is noticed: TRAPS §204);
+      past it put as far as it reaches and FOLLOWED, the budget carried on, not
+      refilled; a join outside the Wheel (a reload starts in today's town) is
+      taken, and its way into the Wheel judged from where it left OR the
+      ARRIVAL (centre + 288, `ARRIVAL_DY`, held to worldTrial.js `WHEELS`),
+      whichever is nearer (`_wheelEntryFrom`); the first move after ANY join
+      is judged (`lastMoveAt`), a first join's too;
+    - a death comes back in at the arrival (`_moveRespawned` sets
+      `_wheelArrive`): v2.3.3325's one free way in;
+    - NOT judged: a join with no remembered place (the first, after a deploy
+      or an empty room, past the hour) and its first way in -- a deploy's
+      dungeon-goer comes out at its mouth, and every test's new character
+      walks in where it is put; a phone in another Wheel's numbers
+      (`_wheelInStep`);
+    - the lab's new `rejoin` line: a script reconnecting every 3 s 33,333 ->
+      694 px/s; the overview's `lastPlace` and `moveBudget.arrival`; kill
+      switch `lastplace: false` (and `movebudget: false`); `last-place` suite
+      (57, nineteen bugs caught), move-budget §6/§9 updated.
   - since v2.3.3292 (the architecture review): a phone's `dodging` stops a
     player's blow only within 1 s of a roll the worker CHARGED for
     (movement.js `ROLL`, `_rollOn`; it was unbounded, one move made a player
@@ -3881,7 +3932,9 @@ Two protocol versions coexist; both must keep working:
   0 = off; CF-Connecting-IP, so local tests are never counted); a `null`
   frame threw -- dropped. `flood` suite (46); the bot lab's `writes` and
   `roomfill` probes show the before and after. Still open: the farming holes
-  (the review's 6-9; 6, the harvest, closed in v2.3.3322: harvest-proof.md).
+  (the review's 6-9; 6, the harvest, closed in v2.3.3322: harvest-proof.md;
+  9, the flags shown, v2.3.3323: bot-flags.md; 7, movement, v2.3.3325 and the
+  reconnect v2.3.3327: move-budget.md, last-place.md).
 - **THE ACCOUNT CHECK (v2.3.3275, docs/specs/account-check.md).** A character
   that does not exist yet (an id with no `auth:` record: a first join, every
   guest) is asked for a Cloudflare Turnstile token before the identity is

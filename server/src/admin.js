@@ -144,6 +144,12 @@ export const adminMethods = {
           tickPace: this._tickPaceInfo(),
           /* v2.3.3203: how often a walker's update waited (steadymovers.js) */
           steadyMovers: this._steadyInfo(),
+          /* v2.3.3325: the move budget -- moves judged, followed past it, back
+             into the Wheel from where they left, followed now (movement.js) */
+          moveBudget: this._moveBudgetInfo(),
+          /* v2.3.3327: the last places -- kept at a leave, joins judged from
+             one, followed past it, joins with none (lastplace.js) */
+          lastPlace: this._lastPlaceInfo(),
           /* v2.3.3240: the 2 s look relay -- tracks in, and how many went out
              whole, as only what changed, or not at all (lookrelay.js) */
           lookRelay: this._lookInfo(),

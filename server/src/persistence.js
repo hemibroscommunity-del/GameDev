@@ -513,6 +513,8 @@ export const persistenceMethods = {
     // Belt-and-braces: drop the in-memory state NOW (webSocketClose
     // would too, but it only fires on the TCP close completing).
     delete this.playerState[pid];
+    /* v2.3.3327: a reset character starts again: no last place (lastplace.js) */
+    if (this._placeForget) this._placeForget(pid);
     delete this.stateHistory[pid];
     this.dirtyPlayers.delete(pid);
     return true;

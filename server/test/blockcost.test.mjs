@@ -155,7 +155,12 @@ check('both players joined (guard)', !!A && !!B);
   check('...latched against the client re-raising it', B._guardBrokenUntil > Date.now(), B._guardBrokenUntil);
   /* The point of the whole change: the NEXT swing is no longer blocked. */
   room._pvpHitLanes = new Map();
-  await move(wsB, { blocking: true, ba: 0, x: 203 });
+  /* v2.3.3325: the re-raise is sent from where B stands and FACING the
+     attacker, so the latch is all that can let the swing through.  It used to
+     be a 258 px jump with the shield turned away -- refused whole by the old
+     per-message bound, so neither mattered; the move budget takes a jump that
+     size (movement.js MOVE_BUDGET), and B would have walked out of reach. */
+  await move(wsB, { blocking: true, ba: Math.PI, x: B.x, y: B.y });
   room.eventBuffer.length = 0;
   const hpBefore = B.hp;
   room._resolvePvPAttack(room.sessions.get(wsA), { range: 200, arc: 3, angle: 0, dmgBase: 20, critChance: 0 });

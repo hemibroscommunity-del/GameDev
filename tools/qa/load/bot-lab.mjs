@@ -27,8 +27,10 @@
  *              still and claiming a ranged hit on every monster in reach as
  *              often as each monster's own lane allows.
  * Movement: `walk` at a speed, `burst` (each move the most the speed bound
- * takes: 500 px/s x the gap + 80 px), `bundle` (24 moves in one frame, as the
- * quiet phone's bundles allow).
+ * takes: since v2.3.3325 what its budget holds -- movement.js MOVE_BUDGET --
+ * and before it 500 px/s x the gap + 80 px), `bundle` (24 moves in one frame,
+ * as the quiet phone's bundles allow), and `rejoin` (v2.3.3327: a new socket
+ * every 3 s naming a place 50,000 px on -- lastplace.js).
  *
  * And the one-socket probes (names for --only): `decoy` (a start for one
  * node, the strike on another), `writes` (rows written by 1,000 of a message,
@@ -36,6 +38,10 @@
  * held by sockets that never join), `flood` (the room's time a message).
  *
  *   node tools/qa/load/bot-lab.mjs [minutes, default 60] [--only=a,b] [--seed=N] [--census]
+ *                                  [--flags=movebudget:false,...]
+ *
+ * --flags sets the room's live flags (v2.3.3325): a kill switch thrown, so a
+ * fix can be measured against the rule it replaced on one checkout.
  *
  * Under tools/ on purpose: anything under server/ deploys the worker when it
  * merges.  Read with docs/specs/antibot-review.md.
@@ -51,6 +57,9 @@ const MINUTES = Number(ARGS[0] || 60);
 const ONLY = FLAG('only', '') ? String(FLAG('only', '')).split(',') : null;
 const SEED = Number(FLAG('seed', 1));
 const CENSUS = !!FLAG('census', false);
+/* v2.3.3325: the room's live flags, `name:false` or `name:true`, comma separated */
+const LAB_FLAGS = Object.fromEntries(String(FLAG('flags', '') || '').split(',').filter(Boolean)
+  .map((kv) => { const [k, v] = kv.split(':'); return [k, v !== 'false' && v !== '0']; }));
 
 function seedRandom(seed) {
   let a = (seed * 2654435761) >>> 0;
@@ -97,6 +106,7 @@ function baseSession() { return { id: null, name: 'Anon', data: {}, rtt: 80, las
 function makeRoom() {
   const state = { storage: memStorage(), getWebSockets: () => [], acceptWebSocket: () => {}, blockConcurrencyWhile: async (fn) => fn() };
   const room = new GameRoom(state, mockEnv);
+  room._liveFlags = { ...LAB_FLAGS };
   let tickFn = null;
   const realSetInterval = globalThis.setInterval;
   globalThis.setInterval = (fn, ms) => {
@@ -173,9 +183,13 @@ async function travel(world, p, tx, ty, reach) {
   const dx = tx - ps.x, dy = ty - ps.y, d = Math.hypot(dx, dy);
   if (d <= reach) return true;
   const mode = p.cfg.move;
-  /* the most the speed bound takes now (movement.js: 500 px/s x the gap since
-     the last move, + 80 px), half a pixel inside it */
+  /* the most the speed bound takes now, half a pixel inside it: v2.3.3325,
+     what the move budget holds (movement.js MOVE_BUDGET: it refills at
+     500 px/s, 3 s of it + 80 at most); under `movebudget: false`, 500 px/s x
+     the gap since the last move + 80 px, the 80 again every message */
+  const budgetOn = room._moveBudgetOn();
   const allow = () => {
+    if (budgetOn) return Math.max(0, room._moveBudgetNow(ps, 500, Date.now()) - 0.5);
     const dt = typeof ps.lastMoveAt === 'number' ? Math.max(0.001, (Date.now() - ps.lastMoveAt) / 1000) : 1;
     return 500 * dt + 80 - 0.5;
   };
@@ -190,7 +204,9 @@ async function travel(world, p, tx, ty, reach) {
       const len = Math.min(rd - reach * 0.5, budget);
       cx += (tx - cx) / rd * len; cy += (ty - cy) / rd * len;
       out.push(moveMsg(cx, cy, (tx - x0) / d * 3, (ty - y0) / d * 3));
-      budget = 80;   /* the next one in the frame: dt is 1 ms, 500 x 0.001 + 80 */
+      /* the next one in the frame: under the budget, what is left of it (the
+         first spent it all); before it, dt 1 ms: 500 x 0.001 + 80 */
+      budget = budgetOn ? 0 : 80;
     }
     if (out.length) { p.moves += out.length; await send(world, p, out); }
   } else {
@@ -471,6 +487,38 @@ async function speedTest() {
   return res;
 }
 
+/* ── v2.3.3327: a script that drops its socket and comes back ────────────
+   Every 3 s (the one-socket limit's 20 sockets a minute an address), a new
+   socket joins naming a place 50,000 px past where the room has it, and
+   moves 50,000 px more straight after; the room's tick follows between
+   (movement.js _tickMoveFollow).  A minute of it.  Before lastplace.js the
+   join took the place it named and the move after it was a first move. */
+async function reconnectTest() {
+  seedRandom(SEED);
+  const world = { ...makeRoom(), players: [] };
+  const { room } = world;
+  const p = await addPlayer(world, { name: 'speed-reconnect', move: 'walk', speed: 250 }, 0);
+  const x0 = room.playerState[p.id].x, y0 = room.playerState[p.id].y;
+  let ws = p.ws, joins = 0;
+  for (let k = 0; k < 20; k++) {
+    const at = room.playerState[p.id];
+    if (!at) break;
+    const ax = at.x;
+    await room.webSocketClose(ws);
+    for (let t = 0; t < 3000; t += 22) { simNow += 22; room._tickMoveFollow(simNow); }
+    ws = { send() {}, close() {} };
+    room.sessions.set(ws, baseSession());
+    await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id: p.id, name: 'Lab 0', protocolVersion: 2, ws: [1, 5],
+      data: { x: ax + 50000, y: y0, z: 'wheel' } }));
+    joins++;
+    const now = room.playerState[p.id];
+    if (!now) break;
+    await room.webSocketMessage(ws, JSON.stringify(moveMsg(now.x + 50000, y0, 0, 0)));
+  }
+  const end = room.playerState[p.id];
+  return { pxPerS: end ? Math.round(Math.hypot(end.x - x0, end.y - y0) / 60) : 0, joins };
+}
+
 /* ── one script holding the room's places ────────────────────────────── */
 /* The cap counts SOCKETS (index.js fetch: sessions.size >= _roomCap(), before
    any join), and the 2-minute idle sweep (tick.js _tickPingAndAfk) spares a
@@ -643,9 +691,13 @@ if (CENSUS) {
 }
 
 const results = [];
-console.log(`\nBOT LAB -- ${MINUTES} min of game time a scenario, seed ${SEED}\n`);
+console.log(`\nBOT LAB -- ${MINUTES} min of game time a scenario, seed ${SEED}${Object.keys(LAB_FLAGS).length ? ', live flags ' + JSON.stringify(LAB_FLAGS) : ''}\n`);
 console.log('Speed bound (10 s toward a far point, nothing in the way):');
 for (const r of await speedTest()) console.log(`  ${r.mode.padEnd(7)} ${String(r.pxPerS).padStart(7)} px/s   (${r.frames} frames, ${r.moves} moves${r.closed ? '; the room closed the socket: past its message budget' : ''})`);
+{
+  const r = await reconnectTest();
+  console.log(`  ${'rejoin'.padEnd(7)} ${String(r.pxPerS).padStart(7)} px/s   (${r.joins} reconnects a minute, each naming 50,000 px on: lastplace.js)`);
+}
 console.log(`  -- the fastest honest stack is ~441 px/s (movement.js), a phone walks ~150-250\n`);
 for (const sc of SCENARIOS) {
   if (ONLY && !ONLY.includes(sc.name)) continue;

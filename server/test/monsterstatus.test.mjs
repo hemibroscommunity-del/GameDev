@@ -255,18 +255,27 @@ const strike = (m) => { room._monsterStrikePlayer(WHEEL_ZONE, m, 'p1', m.x, m.y)
   check('gust: GUST.PX long, straight away from it', Math.abs(len - GUST.PX) <= 1 && away > 0.99, { len, away });
   check('gust: the worker grants exactly that much more room to move', Math.abs(room._gustAllowance(ps, t0 + 10) - len) < 0.01 && ps._gustUntil >= t0 + GUST.ALLOW_MS, { left: ps._gustLeft });
 
-  /* the movement bound: a step one gust long past the ordinary bound */
+  /* the movement bound: a step one gust long past the ordinary bound.
+     v2.3.3325: the bound is a budget now (movement.js MOVE_BUDGET), so each
+     step starts from an empty one that has had 50 ms to refill -- 25 px at no
+     speed buffs -- and a step is TAKEN when it reaches its claim: one the
+     budget and the gust cannot cover is followed only as far as they reach */
+  let lastX0 = 0;
   const moveBy = async (dx) => {
     ps.lastMoveAt = Date.now() - 50;
+    ps._mvBudget = 0; ps._mvBudgetAt = Date.now() - 50;
     const x0 = ps.x;
+    lastX0 = x0;
     await room.webSocketMessage(ws, JSON.stringify({ type: 'move', x: ps.x + dx, y: ps.y, z: WHEEL_ZONE }));
-    return ps.x !== x0;
+    return Math.abs(ps.x - (x0 + dx)) < 1e-6;
   };
-  const bound = 500 * 0.05 + 80;   /* 50 ms of the ordinary bound, at no speed buffs */
+  const bound = 500 * 0.05;   /* 50 ms of the budget's refill, at no speed buffs */
   check('gust: a shove on top of a walk is accepted while the gust lasts', await moveBy(bound + 30), { left: ps._gustLeft });
   check('gust: ...and what it used is spent', ps._gustLeft > 0 && ps._gustLeft < GUST.PX, ps._gustLeft);
   const leftNow = ps._gustLeft;
   check('gust: ...so the rest cannot be used twice over', !(await moveBy(bound + leftNow + 20)), { left: ps._gustLeft });
+  check('gust: ...the step followed only as far as the budget and the gust\'s rest reach, and the rest spent',
+    Math.abs((ps.x - lastX0) - (bound + leftNow)) < 2 && ps._gustLeft === 0, { moved: ps.x - lastX0, want: bound + leftNow, left: ps._gustLeft });
   ps._gustUntil = Date.now() - 1;
   check('gust: after ALLOW_MS the bound is the ordinary one again', !(await moveBy(bound + 30)) && ps._gustLeft === 0, ps._gustLeft);
   ps._gustLeft = 0; ps._gustUntil = 0;

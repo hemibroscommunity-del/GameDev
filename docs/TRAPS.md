@@ -6941,3 +6941,57 @@ closed safely.
 
 **Receipt:** harvest-proof.test (43 checks, 11 mutations caught),
 mp-recoverpay. The lab's obsidian script went from 2,400 harvests an hour to 6.
+
+## 203. "Turn the per-message slack into a capped budget and keep refusing what it can't cover" (v2.3.3325)
+
+**Tempting:** the speed check gave every move 80 px of slack, so a script
+sending many moves went many times faster. Make the slack a budget that
+refills at the check's speed, cap it at a few seconds, and refuse a move it
+can't cover, as before.
+
+**What happens:** the old check refused a move and kept the player where they
+were, and judged the next move from there too. Under the per-message rule a
+gap that opened closed as soon as the player paused long enough for one move
+to cover it. Under a CAPPED budget, a gap bigger than the cap never closes:
+the player walks on, every move is judged from the old place, the budget
+fills to its cap and stops. An honest phone after a long stall is pinned for
+good, and its shield and facing are dropped with every refused move.
+
+**The rule:** a limit on how fast the server's copy moves must never leave it
+stuck. Take a move AS FAR AS THE LIMIT REACHES, toward where the phone says it
+is, and keep following between moves until the copy is there. A script still
+gets only the limit's speed; an honest phone is never pinned. Then nothing
+needs "the next move is free" to recover, and every such bypass (a refused
+zone, a server-placed move, a zone change back into the world) can be closed.
+
+**Receipt:** move-budget.test (62 checks, 14 mutations caught): a phone 300 px
+ahead and walking away is caught in 1.2 s, never under the old rule; a claim
+10,000 px off is reached in 20 s with no further move. The lab: a script
+2,909 -> 656 px/s, an honest walk unchanged.
+
+## 204. "A reconnect is one more move: judge it by the move budget" (v2.3.3327)
+
+**Tempting:** a reconnect should start where the server last had the player.
+Remember that place at the close, and judge the join's claim as the next move
+would be judged: the same budget, 3 s of the limit and 80 px.
+
+**What happens:** a dead connection is not noticed at once. The phone sends
+into it and hears nothing for up to 15 s (wsClient.js `DEAD_PIPE_MS`), and the
+player walks on the whole time. At the fastest honest stack that is 6,600 px,
+8,800 sprinting, 13,000 on the Swift Draught. A 1,580 px budget puts the
+server's copy 5,000-11,000 px behind the phone, and the follow catches up only
+by what the limit beats the walk by (500 - 441 = 59 px/s): minutes. All that
+time the monsters, the harvest's reach and the dungeon's mouth are judged from
+somewhere the player isn't.
+
+**The rule:** a reconnect's allowance is the TIME SINCE THE SERVER LAST PLACED
+THEM at the fastest an honest phone can go while it is not heard from (the
+walk's bound with a sprint, which no message billed), uncapped. A script that
+reconnects is still held to that speed on average, because the time it spends
+away is the time its allowance grows. Carry the budget across, never refill
+it. And know when there is nothing to judge from (no memory after a deploy):
+trust it then, rather than judge from a guess like the arrival.
+
+**Receipt:** last-place.test (57 checks, 19 mutations caught: a 3 s cap fails
+five honest reconnects). The lab: a script reconnecting every 3 s 33,333 ->
+694 px/s, every honest reconnect taken.
