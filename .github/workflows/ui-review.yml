@@ -8,11 +8,13 @@
 # When it finishes, the run's page has the bundles under "Artifacts":
 #   ui-review-all        everything (three views, README, FINDINGS, index.html)
 #   ui-review-portrait   / ui-review-landscape / ui-review-desktop: one view each
-#   ui-review-for-chatgpt  the words and the contact sheets only (v2.3.3451)
+#   ui-review-for-chatgpt  START-HERE.md and a folder a ChatGPT chat: each
+#                        screen's views in one picture and a brief with its
+#                        design notes (v2.3.3456)
 # Each holds, per screen, the picture as a player sees it and a ".labels"
 # picture with every button numbered (green fine, amber small, red cut off or
 # covered), README.md saying what each screen is and listing its buttons, and
-# a ready-made prompt to paste into ChatGPT with them.  Since v2.3.3451 every
+# a ready-made prompt to paste into ChatGPT with them.  Since v2.3.3456 every
 # bundle carries DESIGN-NOTES.md too (docs/UI-DESIGN-NOTES.md): why each
 # screen is the way it is, so ChatGPT does not suggest what was turned down.
 #
@@ -100,14 +102,10 @@ jobs:
             tools/qa/out/ui-review/desktop/
             tools/qa/out/ui-review/sheets/desktop-*
           if-no-files-found: ignore
-      - name: For ChatGPT (the words and the contact sheets)
+      - name: For ChatGPT (a folder a chat, START-HERE.md first)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ui-review-for-chatgpt
-          path: |
-            tools/qa/out/ui-review/README.md
-            tools/qa/out/ui-review/FINDINGS.md
-            tools/qa/out/ui-review/DESIGN-NOTES.md
-            tools/qa/out/ui-review/sheets/
+          path: tools/qa/out/ui-review/chatgpt/
           if-no-files-found: ignore

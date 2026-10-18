@@ -19,7 +19,7 @@
  *   and in README.md / index.html / manifest.json: the title, what the screen
  *   is for, and the numbered list of its controls with any problem found.
  *   FINDINGS.md lists every problem in one place.
- *   DESIGN-NOTES.md (v2.3.3451) is docs/UI-DESIGN-NOTES.md: why each screen
+ *   DESIGN-NOTES.md (v2.3.3456) is docs/UI-DESIGN-NOTES.md: why each screen
  *   is the way it is -- the owner's decisions and their reasons, what was
  *   tried and changed, what not to suggest -- and under each screen the
  *   README names its notes (notes.mjs), so a reviewer judges a screen with
@@ -39,10 +39,12 @@
  *                                         and zips again, from the pictures
  *   node tools/qa/ui-review/capture.mjs --check-notes       which screens have
  *                                         no design notes (no game, no build)
+ *   --no-kit                              no chatgpt/ folder (makeKit)
  * Writes tools/qa/out/ui-review/ (git-ignored) and, unless --no-zip,
- * ui-review-<view>.zip per view, ui-review-all.zip and (v2.3.3451)
- * ui-review-for-chatgpt.zip beside it: the words and the contact sheets
- * only, small enough to hand to ChatGPT whole.
+ * ui-review-<view>.zip per view, ui-review-all.zip and (v2.3.3456)
+ * ui-review-for-chatgpt.zip beside it: chatgpt/, a folder a chat -- each
+ * screen's views in one picture and a brief with its design notes
+ * (packets.mjs, makeKit).
  * The Actions tab's "UI review screenshots" workflow runs exactly this and
  * hands back the zips (.github/workflows/ui-review.yml).
  */
@@ -50,6 +52,7 @@ import * as H from '../mp/harness.mjs';
 import { STATES, foldBand } from './states.mjs';
 import { auditControls, drawOverlay, clearOverlay } from './audit.mjs';
 import { readNotes, topicsFor, generalTopics, notesCoverage, NOTES_PATH } from './notes.mjs';
+import { packetsFor, briefFor, startHere, VIEW_NAMES, PACKETS, MAX_PICTURES } from './packets.mjs';
 import { mkdirSync, writeFileSync, rmSync, renameSync, existsSync, statSync, readdirSync, readFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -262,7 +265,7 @@ async function runView(browser, ports, view) {
     for (const st of post) {
       n += 1;
       if (ONLY && !ONLY.has(st.id)) {
-        /* v2.3.3451: the welcome is the way past the tutorial and the
+        /* v2.3.3456: the welcome is the way past the tutorial and the
            arrival's banners, as the creator is the way in: run, not
            photographed -- a retake's first screens wore the welcome plate */
         if (st.id === 'welcome') {
@@ -301,7 +304,7 @@ function controlLine(c) {
   return `${c.n}. ${c.name} (${c.w}x${c.h})${notes}`;
 }
 
-/* v2.3.3451: a screen's design notes, as README/index.html name them */
+/* v2.3.3456: a screen's design notes, as README/index.html name them */
 const noteLinks = (ts) => ts.map((t) => `[${t.title}](DESIGN-NOTES.md#${t.slug})`).join(', ');
 
 /* the views in words, for the prompt: "an upright phone (portrait), ... and a
@@ -313,7 +316,7 @@ function viewsInWords(views) {
 
 function writeReport(results, meta) {
   const views = Object.keys(results);
-  /* v2.3.3451: the notes, copied in whole, and each screen's topics */
+  /* v2.3.3456: the notes, copied in whole, and each screen's topics */
   const notes = readNotes(H.REPO);
   const hasNotes = !!notes.text;
   if (hasNotes) writeFileSync(join(OUT, 'DESIGN-NOTES.md'), notes.text);
@@ -361,7 +364,7 @@ function writeReport(results, meta) {
   const R = [];
   R.push('# BroTown: every screen, for a UI review', '');
   R.push(`Captured ${meta.made} from game version ${meta.game}, by \`tools/qa/ui-review/capture.mjs\`.`, '');
-  /* v2.3.3451: as many views as the run took (a laptop's made it four) */
+  /* v2.3.3456: as many views as the run took (a laptop's made it four) */
   const inWords = ['no', 'one', 'two', 'three', 'four', 'five'][views.length] || String(views.length);
   R.push(`BroTown is a multiplayer action RPG played in the browser, mainly on iPhones. These are pictures of its screens in ${inWords} view${views.length === 1 ? '' : 's'}:`, '');
   for (const v of views) R.push(`- **${VIEWS[v].title}** (\`${v}/\`): ${VIEWS[v].about}`);
@@ -379,6 +382,12 @@ function writeReport(results, meta) {
     R.push('`sheets/` has the same screens several to a picture, by section, each titled "NN. Title" (NN is the number in the screen\'s file name) -- handy for giving ChatGPT a whole section in one upload:', '');
     for (const f of meta.sheets) R.push(`- \`${f}\``);
     R.push('');
+  }
+  if (meta.kit && meta.kit.length) {
+    R.push('## For ChatGPT: `chatgpt/` (start with its START-HERE.md)', '');
+    R.push(`The quickest way to have ChatGPT review every screen with its reasons: ${meta.kit.length} folders, one chat each. `
+      + 'Each holds brief.md (what its screens are for, what the check found on them, their design notes in full, the task and the shape of the answer) '
+      + 'and one picture a screen with its views side by side. `ui-review-for-chatgpt.zip` is that folder alone.', '');
   }
   R.push('## A prompt to paste into ChatGPT with the pictures', '');
   R.push('```');
@@ -410,7 +419,7 @@ function writeReport(results, meta) {
       }
     }
   }
-  /* v2.3.3451: a screen added to states.mjs with no notes is said, here and
+  /* v2.3.3456: a screen added to states.mjs with no notes is said, here and
      in the run's log (`--check-notes` lists them without a run) */
   const bare = hasNotes ? notesCoverage(notes.topics, [...new Set(manifest.shots.map((r) => r.id))]
     .filter((id) => id !== 'view-error' && id !== 'desktop-window')).bare : [];
@@ -472,7 +481,7 @@ function writeReport(results, meta) {
 async function makeSheets(browser, results) {
   const made = [];
   const dir = join(OUT, 'sheets');
-  /* v2.3.3451: every view's sheets are made again, so last run's go first --
+  /* v2.3.3456: every view's sheets are made again, so last run's go first --
      a section a screen shorter left its old last sheet in the zips */
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
@@ -521,6 +530,138 @@ async function makeSheets(browser, results) {
   return made;
 }
 
+/* ═══ v2.3.3456: THE CHATGPT KIT, A PACKET A CHAT (packets.mjs) ═══
+   chatgpt/START-HERE.md and a folder a packet: brief.md (the screens' words,
+   the check's findings per view, the design notes in full, the task) and
+   one picture a screen with every view side by side, at full size -- a
+   contact sheet's tiles are too small to read once ChatGPT scales a picture
+   down, and a picture inside a zip is not one it sees.  Drawn by the browser
+   the run has open, from the pictures already taken, so --report-only makes
+   it for any bundle. */
+const KIT_W = 1840;            /* three tall views at KIT_TALL_H side by side */
+const KIT_TALL_H = 1100;
+const KIT_ORDER = ['portrait', 'desktop', 'laptop', 'tablet', 'landscape'];
+async function makeKit(browser, results, meta) {
+  const notes = readNotes(H.REPO);
+  if (!notes.text) { log(`${NOTES_PATH} is missing: no ChatGPT kit`); return null; }
+  const dir = join(OUT, 'chatgpt');
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  const views = Object.keys(results);
+  const general = generalTopics(notes.topics).map((t) => t.title);
+  const rowsById = {};
+  const order = [];
+  for (const v of views) {
+    for (const r of results[v].rows) {
+      if (r.id === 'view-error') continue;
+      if (!rowsById[r.id]) { rowsById[r.id] = {}; order.push({ id: r.id, n: r.n }); }
+      rowsById[r.id][v] = { ...r, notes: topicsFor(notes.topics, r.id === 'desktop-window' ? 'hud' : r.id, { general: true }).map((t) => t.title) };
+    }
+  }
+  const packets = packetsFor(order.sort((a, b) => a.n - b.n).map((o) => o.id));
+  const viewAbout = Object.fromEntries(views.map((v) => [v, VIEWS[v].about]));
+  const page = await browser.newPage({ viewport: { width: KIT_W, height: 1000 }, deviceScaleFactor: 1 });
+  /* the pictures served from one made-up site, so the page may read their
+     pixels (a file:// picture taints a canvas) */
+  await page.route('http://kit.local/**', (route) => {
+    const rel = decodeURIComponent(new URL(route.request().url()).pathname).replace(/^\/+/, '');
+    const f = join(OUT, rel);
+    if (!f.startsWith(OUT) || !existsSync(f)) return route.fulfill({ status: 404, body: '' });
+    return route.fulfill({ status: 200, body: readFileSync(f), contentType: f.endsWith('.html') ? 'text/html; charset=utf-8' : 'image/jpeg' });
+  });
+  try {
+    for (const p of packets) {
+      const pdir = join(dir, p.dir);
+      mkdirSync(pdir, { recursive: true });
+      const pics = {};
+      for (const id of p.screens) {
+        const rows = rowsById[id];
+        const panels = KIT_ORDER.filter((v) => rows[v] && rows[v].file && existsSync(join(OUT, rows[v].file)));
+        if (!panels.length) continue;
+        const r0 = rows[panels[0]];
+        const name = `${String(r0.n).padStart(2, '0')}-${id}.jpg`;
+        const missing = views.filter((v) => !panels.includes(v)).map((v) => VIEW_NAMES[v] || v);
+        const html = '<!doctype html><meta charset="utf-8"><style>'
+          + `body{margin:0;padding:18px;background:#10161a;color:#efe8d8;font:18px/1.3 Arial,sans-serif;width:${KIT_W - 36}px}`
+          + 'h1{font-size:26px;margin:0 0 14px}h1 small{color:#9aa4a8;font-weight:400;font-size:19px}'
+          + '.row{display:flex;gap:16px;justify-content:center;align-items:flex-start;margin-bottom:16px}'
+          + '.p{background:#1b252b;border:1px solid #33444c;border-radius:8px;padding:8px}'
+          + '.p b{display:block;font-size:18px;margin-bottom:6px;color:#f1c770}.p img{display:block;border-radius:4px}'
+          + '.miss{color:#9aa4a8;font-size:16px}</style>'
+          + `<h1>${esc(String(r0.n).padStart(2, '0') + '. ' + r0.title)} <small>(${esc(id)}) -- BroTown, ${esc(meta.game)}</small></h1>`
+          + '<div id="rows"></div>'
+          + panels.map((v) => `<div class="p" data-v="${v}" data-trim="${(v === 'desktop' || v === 'laptop') && id !== 'desktop-window' ? 1 : 0}">`
+            + `<b>${esc(VIEW_NAMES[v] || v)}</b><img src="/${esc(rows[v].file)}"></div>`).join('')
+          + (missing.length ? `<div class="miss">Not in this picture: ${esc(missing.join(', '))} (${esc(missing.map((m) => {
+            const v = views.find((x) => (VIEW_NAMES[x] || x) === m);
+            const sk = v && rows[v] && rows[v].skipped;
+            return sk ? 'not taken: ' + sk : 'not on this view';
+          }).join('; '))})</div>` : '')
+          /* tall views side by side at one height, each wide one (sideways,
+             the world map's whole window) on its own row, never enlarged */
+          + `<script>(${((W, H) => {
+            const go = () => {
+              const rowsEl = document.getElementById('rows');
+              const ps = Array.from(document.querySelectorAll('.p'));
+              for (const p of ps) {
+                const i = p.querySelector('img');
+                p._w = i.naturalWidth; p._h = i.naturalHeight; p._el = i;
+                /* a computer's whole-window shot (a window drawn past the
+                   column) with its black bars cut away, measured off the
+                   picture: a dialogue a little wider than the column then
+                   stands with the other tall views, at a size to read */
+                if (p.dataset.trim !== '1' || i.naturalWidth <= i.naturalHeight) continue;
+                const s = 4, cw = Math.ceil(i.naturalWidth / s), ch = Math.ceil(i.naturalHeight / s);
+                const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+                const g = c.getContext('2d'); g.drawImage(i, 0, 0, cw, ch);
+                const d = g.getImageData(0, 0, cw, ch).data;
+                const lit = (x) => {
+                  for (let y = 0; y < ch; y += 2) { const o = (y * cw + x) * 4; if (0.3 * d[o] + 0.59 * d[o + 1] + 0.11 * d[o + 2] > 40) return true; }
+                  return false;
+                };
+                let l = 0; while (l < cw && !lit(l)) l++;
+                let r = cw - 1; while (r > l && !lit(r)) r--;
+                const L = Math.max(0, l * s - 24), R = Math.min(i.naturalWidth, (r + 1) * s + 24);
+                if (R - L >= i.naturalWidth - 8) continue;
+                const out = document.createElement('canvas'); out.width = R - L; out.height = i.naturalHeight;
+                out.getContext('2d').drawImage(i, L, 0, R - L, i.naturalHeight, 0, 0, R - L, i.naturalHeight);
+                out.style.display = 'block'; out.style.borderRadius = '4px';
+                i.replaceWith(out); p._w = R - L; p._el = out;
+              }
+              const tall = ps.filter((p) => p._h > p._w);
+              const wide = ps.filter((p) => !tall.includes(p));
+              const sum = tall.reduce((t, p) => t + p._w * H / p._h + 18, 0) + Math.max(0, tall.length - 1) * 16;
+              const k = Math.min(1, W / Math.max(1, sum));
+              if (tall.length) {
+                const row = document.createElement('div'); row.className = 'row'; rowsEl.appendChild(row);
+                for (const p of tall) { p._el.style.height = Math.round(H * k) + 'px'; row.appendChild(p); }
+              }
+              for (const p of wide) {
+                p._el.style.width = Math.round(Math.min(p._w, W - 18)) + 'px';
+                const row = document.createElement('div'); row.className = 'row'; rowsEl.appendChild(row); row.appendChild(p);
+              }
+              document.body.dataset.ready = '1';
+            };
+            if (document.readyState === 'complete') go(); else window.addEventListener('load', go);
+          }).toString()})(${KIT_W - 36}, ${KIT_TALL_H});</script>`;
+        const tmp = join(dir, '_pic.html');
+        writeFileSync(tmp, html);
+        await page.goto('http://kit.local/chatgpt/_pic.html');
+        await page.waitForFunction(() => document.body.dataset.ready === '1', null, { timeout: 30000 });
+        await page.screenshot({ path: join(pdir, name), type: 'jpeg', quality: 80, fullPage: true });
+        pics[id] = name;
+      }
+      writeFileSync(join(pdir, 'brief.md'), briefFor(p, { rowsById, views, notes, general, meta: { ...meta, viewAbout }, pics }));
+    }
+    writeFileSync(join(dir, 'START-HERE.md'), startHere(packets, meta));
+  } finally {
+    try { rmSync(join(dir, '_pic.html'), { force: true }); } catch (e) { /* */ }
+    await page.close().catch(() => {});
+  }
+  log(`ChatGPT kit: ${packets.length} packets, ${packets.reduce((k, p) => k + p.screens.length, 0)} screens -- ${dir}`);
+  return packets;
+}
+
 /* v2.3.3407: the version the pictures are of, and its commit.  package.json's
    version follows the client's only loosely (CLAUDE.md) -- it read 2.3.2324
    on a v2.3.3407 game -- so the newest v2.3.N in the recent commit subjects
@@ -538,7 +679,7 @@ function gameVersion() {
   return game;
 }
 
-/* ═══ v2.3.3451: THE BUNDLE FOLLOWS states.mjs AS IT IS NOW ═══
+/* ═══ v2.3.3456: THE BUNDLE FOLLOWS states.mjs AS IT IS NOW ═══
    A picture's number is its screen's place in states.mjs (pre screens first,
    as runView counts), so after a screen is added or taken away there, an
    --only retake or a --report-only remake would leave twins and gaps: the
@@ -601,16 +742,17 @@ function zipBundles(views) {
     ? readdirSync(join(OUT, 'sheets')).filter((f) => f.startsWith(v + '-')).map((f) => 'sheets/' + f) : []);
   for (const v of views) zip(`ui-review-${v}.zip`, [...common, v, ...sheetsOf(v)]);
   zip('ui-review-all.zip', [...common, ...views, ...(existsSync(join(OUT, 'sheets')) ? ['sheets'] : [])]);
-  /* v2.3.3451: the words and the contact sheets alone (~17 MB where all is
-     ~170): what ChatGPT can take in one go -- every screen is on a sheet */
+  /* v2.3.3456: what ChatGPT is given -- the kit (makeKit: START-HERE.md and
+     a folder a chat), else the words and the contact sheets alone */
   const sheets = views.flatMap(sheetsOf);
-  if (sheets.length) zip('ui-review-for-chatgpt.zip', [...words, ...sheets]);
+  if (existsSync(join(OUT, 'chatgpt', 'START-HERE.md'))) zip('ui-review-for-chatgpt.zip', ['chatgpt']);
+  else if (sheets.length) zip('ui-review-for-chatgpt.zip', [...words, ...sheets]);
   return made;
 }
 
 /* ── main ── */
 if (process.argv[1] && basename(process.argv[1]) === 'capture.mjs') {
-  /* v2.3.3451: --check-notes: every screen states.mjs visits named by a
+  /* v2.3.3456: --check-notes: every screen states.mjs visits named by a
      topic of the design notes, and every topic's screens still there --
      no build, no game, no worker */
   if (ARGS['check-notes']) {
@@ -621,7 +763,18 @@ if (process.argv[1] && basename(process.argv[1]) === 'capture.mjs') {
     for (const id of bare) log(`  no notes: ${id}`);
     for (const p of stale) log(`  names no screen: ${p}`);
     if (!bare.length && !stale.length) log('  every screen has notes, every topic names a screen');
-    process.exit(bare.length || stale.length ? 1 : 0);
+    /* and the ChatGPT kit's packets (packets.mjs): every screen in one, no
+       packet naming a screen that is gone, none over MAX_PICTURES */
+    const ids = new Set([...STATES.map((st) => st.id), 'desktop-window']);
+    const packed = new Set(PACKETS.flatMap((p) => p.screens));
+    const unpacked = [...ids].filter((id) => !packed.has(id));
+    const gonePk = [...packed].filter((id) => !ids.has(id));
+    const big = PACKETS.filter((p) => p.screens.length > MAX_PICTURES).map((p) => p.slug);
+    for (const id of unpacked) log(`  in no ChatGPT packet: ${id} (packets.mjs PACKETS)`);
+    for (const id of gonePk) log(`  a packet names a screen that is gone: ${id}`);
+    for (const sl of big) log(`  packet over ${MAX_PICTURES} pictures: ${sl}`);
+    if (!unpacked.length && !gonePk.length && !big.length) log(`  every screen in one of ${PACKETS.length} ChatGPT packets`);
+    process.exit(bare.length || stale.length || unpacked.length || gonePk.length || big.length ? 1 : 0);
   }
   if (!existsSync(join(H.REPO, 'dist', 'index.html'))) {
     console.error('dist/index.html is missing -- run `npm run build` first');
@@ -641,7 +794,10 @@ if (process.argv[1] && basename(process.argv[1]) === 'capture.mjs') {
     const sameCommit = / \(([0-9a-f]+)\)$/.exec(man.game || '');
     const meta = { made: man.made, game: sameCommit && now.endsWith(' (' + sameCommit[1] + ')') ? now : man.game, sheets: [] };
     const browser = await H.launch();
-    try { if (!ARGS['no-sheets']) meta.sheets = await makeSheets(browser, results); } finally { await browser.close().catch(() => {}); }
+    try {
+      if (!ARGS['no-sheets']) meta.sheets = await makeSheets(browser, results);
+      if (!ARGS['no-kit']) meta.kit = await makeKit(browser, results, meta);
+    } finally { await browser.close().catch(() => {}); }
     writeReport(results, meta);
     const zips = ARGS['no-zip'] ? [] : zipBundles(Object.keys(results));
     log(`report remade from ${man.shots.length} screens -- ${OUT}`);
@@ -682,6 +838,9 @@ if (process.argv[1] && basename(process.argv[1]) === 'capture.mjs') {
     }
     if (!ARGS['no-sheets']) {
       try { meta.sheets = await makeSheets(browser, results); } catch (e) { log('contact sheets failed: ' + String(e).slice(0, 200)); }
+    }
+    if (!ARGS['no-kit']) {
+      try { meta.kit = await makeKit(browser, results, meta); } catch (e) { log('ChatGPT kit failed: ' + String(e).slice(0, 200)); }
     }
     writeReport(results, meta);
   } finally {

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3451: THE DESIGN NOTES, SCREEN BY SCREEN ═══
+/* ═══ v2.3.3456: THE DESIGN NOTES, SCREEN BY SCREEN ═══
  *
  * The owner, 2026-10-18, sending the UI review to ChatGPT: "I'd also like it
  * if you had included all of the design rationale behind the iterations I've

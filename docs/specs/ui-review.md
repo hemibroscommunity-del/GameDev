@@ -1,4 +1,4 @@
-# UI review screenshots (v2.3.3407, design notes v2.3.3451)
+# UI review screenshots (v2.3.3407, design notes v2.3.3456)
 
 The owner, 2026-10-18: "I'll also want screenshots labelled and bundled for
 all UI elements in each view (portrait, landscape, desktop, etc) so I can have
@@ -8,11 +8,9 @@ chatGPT analyze them for improvements."
 
 **On GitHub (no terminal):** Actions -> "UI review screenshots" -> Run
 workflow. It takes one to two hours. On the finished run's page, under
-"Artifacts", download `ui-review-for-chatgpt` (the words and the contact
-sheets, ~17 MB), `ui-review-all` (everything) or one view
-(`ui-review-portrait`, `ui-review-landscape`, `ui-review-desktop`). Give
-ChatGPT README.md, DESIGN-NOTES.md and the pictures (a view's contact sheets
-are the fewest uploads) with the prompt in the README.
+"Artifacts", download `ui-review-for-chatgpt` (the kit below, ~43 MB) and
+follow its START-HERE.md; `ui-review-all` is everything, and one view each
+(`ui-review-portrait`, `ui-review-landscape`, `ui-review-desktop`).
 
 **Here:** `npm run build`, then `node tools/qa/ui-review/capture.mjs`.
 `--views=portrait,landscape,desktop` (any of them), `--only=hud,world-map`
@@ -21,14 +19,15 @@ are the fewest uploads) with the prompt in the README.
 again from pictures already taken; `--check-notes` says which screens have no
 design notes (no build needed).
 Everything lands in `tools/qa/out/ui-review/` (git-ignored), and beside it a
-zip per view, `ui-review-all.zip` and `ui-review-for-chatgpt.zip` (the words
-and the contact sheets).
+zip per view, `ui-review-all.zip` and `ui-review-for-chatgpt.zip` (the
+`chatgpt/` kit; `--no-kit` leaves it out).
 
 ## What is in a bundle
 
 ```
 README.md       what each screen is, its numbered controls, its design notes,
                 a ChatGPT prompt
+chatgpt/        the ChatGPT kit: START-HERE.md and a folder a chat (below)
 FINDINGS.md     every control the automatic check found a problem with
 DESIGN-NOTES.md why each screen is the way it is (docs/UI-DESIGN-NOTES.md)
 index.html      a contact sheet to look through (click a picture: numbered)
@@ -98,7 +97,7 @@ judged against it, not the column.
 
 What the first run found, and what was done about it: docs/specs/reach-every-button.md.
 
-## The design notes (v2.3.3451, tools/qa/ui-review/notes.mjs)
+## The design notes (v2.3.3456, tools/qa/ui-review/notes.mjs)
 
 The owner, sending the first bundle to ChatGPT: "I'd also like it if you had
 included all of the design rationale behind the iterations I've made in each
@@ -132,7 +131,7 @@ log; `--check-notes` lists those and any topic naming a screen that is gone,
 and fails if there are any. **A new screen in states.mjs gets a topic, or its
 id on one; a new decision about a screen gets a line in its topic.**
 
-### What the research found in the review itself (v2.3.3451)
+### What the research found in the review itself (v2.3.3456)
 
 Writing the notes meant checking each screen against the code, which found
 pictures that showed a player something they never see:
@@ -166,3 +165,34 @@ A screen's number is its place in states.mjs, so after a screen is added or
 taken away there, `--only` and `--report-only` rename the pictures they keep
 to their new numbers, drop those of a screen that is gone, and take every
 title and caption from states.mjs as it is now (`tidyShots`).
+
+## The ChatGPT kit (v2.3.3456, tools/qa/ui-review/packets.mjs)
+
+The owner, with the notes in the bundle: "walk me through the most efficient
+way for chatGPT to review all of these menus with the rationale and any other
+notes you want included". Seventy screens and ~37,000 words in one chat make
+ChatGPT skim; a contact sheet's tiles are too small to read once it scales a
+picture down; and a picture inside a zip is not one it sees. So `chatgpt/`:
+
+- `START-HERE.md`: the owner's steps -- one folder a NEW chat, attach the
+  folder's files, paste one line (`PROMPT`), copy the answer; then bring the
+  answers back to the session to be checked and built.
+- eleven folders, PACKETS of screens that belong together (`PACKETS` in
+  packets.mjs; a screen no packet names goes to "Other screens"), at most
+  nine pictures each (`MAX_PICTURES`), so a folder is one message of ten
+  files;
+- a picture a screen, its views SIDE BY SIDE at a size to read (the tall
+  views at 1,100 px, a sideways phone or the world map's whole window on a
+  row of its own, never enlarged); a computer's whole-window shot (a window
+  drawn past the column) has its black bars cut off, measured off the
+  picture, so it stands with the tall views (`makeKit`, the pictures served
+  to the page from a made-up site so it may read their pixels);
+- `brief.md` (`briefFor`): the task and the shape of the answer (a verdict,
+  numbered findings with High/Medium/Low, the view, the fix; disagreements
+  with a note kept apart; "Still open" not reported as new), how the
+  pictures were taken (the test character, its setup, the stand-ins), each
+  screen's words and what the check found on it in every view, and the
+  design notes in full -- "The short version", each screen's sections, then
+  the ones every screen follows.
+
+`--report-only` makes the kit for any bundle already taken.
