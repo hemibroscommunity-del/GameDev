@@ -173,7 +173,7 @@ export function auditControls(opts) {
     }
     return v;
   };
-  /* v2.3.3456: the box a press lands in, when it is bigger than what is
+  /* v2.3.3460: the box a press lands in, when it is bigger than what is
      drawn.  A control's own ::before or ::after, placed round it, takes its
      presses as the control: every window's ✕ is drawn 28 px inside an
      invisible ring that makes it 44 (game.css .bt-inspect-close::after,

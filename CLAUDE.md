@@ -46,7 +46,7 @@ remnant to migrate server-side, not a mode to preserve.
   components; supersedes UI-BIBLE Part 2, v2.3.1227),
   `docs/UI-DESIGN-NOTES.md` (the reasons behind each screen, the owner's
   decisions and what was turned down, a section a part of the game; every UI
-  review bundle carries it, v2.3.3456),
+  review bundle carries it, v2.3.3460),
   `docs/DEPTH-ROADMAP.md` (the costed depth work, code-aware),
   `docs/MEMORY-PLAN.md` (what the phone holds -- sound, canvases, heaps, not
   only textures -- what leaked, and the order of the memory work with each
@@ -3703,7 +3703,7 @@ Two protocol versions coexist; both must keep working:
     they are the play column's now (game.css "THE CREATOR SIZES ITSELF FROM
     THE COLUMN", TRAPS §214). `mp-edgeguard`, `mp-deskreach`,
     mp-shopkeeper's sideways part, mp-notifbell.
-  - Since v2.3.3456 every bundle carries THE REASONS -- the owner: "I'd also
+  - Since v2.3.3460 every bundle carries THE REASONS -- the owner: "I'd also
     like it if you had included all of the design rationale behind the
     iterations I've made in each menu", then "Yes go ahead, and add it to the
     screenshot tool": `docs/UI-DESIGN-NOTES.md`, a section a part of the game

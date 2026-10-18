@@ -10,11 +10,11 @@
 #   ui-review-portrait   / ui-review-landscape / ui-review-desktop: one view each
 #   ui-review-for-chatgpt  START-HERE.md and a folder a ChatGPT chat: each
 #                        screen's views in one picture and a brief with its
-#                        design notes (v2.3.3456)
+#                        design notes (v2.3.3460)
 # Each holds, per screen, the picture as a player sees it and a ".labels"
 # picture with every button numbered (green fine, amber small, red cut off or
 # covered), README.md saying what each screen is and listing its buttons, and
-# a ready-made prompt to paste into ChatGPT with them.  Since v2.3.3456 every
+# a ready-made prompt to paste into ChatGPT with them.  Since v2.3.3460 every
 # bundle carries DESIGN-NOTES.md too (docs/UI-DESIGN-NOTES.md): why each
 # screen is the way it is, so ChatGPT does not suggest what was turned down.
 #

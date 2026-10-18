@@ -95,7 +95,7 @@ const DASH = '.bt-dashboard, .bt-land-sheet';
 /* The dashboard band folded to its button row, as a new player has it: its fold
    chip pressed, as a player presses it, when it is open.  The bag's page opens
    the band, and left open it sat under every screen after it. */
-/* v2.3.3456: the chip that SHOWS -- sideways the band's own chip is still in
+/* v2.3.3460: the chip that SHOWS -- sideways the band's own chip is still in
    the page, hidden, and v2.3.3407 pressed it: "nothing to press at
    [data-dash-fold]", the sideways band-open picture never taken */
 const foldChip = (P) => evalIn(P, () => {
@@ -196,7 +196,7 @@ const building = (panel, title, about, extra) => Object.assign({
   },
 }, extra || {});
 
-/* v2.3.3456: the arrival's banners out of the pictures -- the QUEST REWARD
+/* v2.3.3460: the arrival's banners out of the pictures -- the QUEST REWARD
    the setup's armour raises waits its turn behind the welcome plate, and
    v2.3.3407's "BroTown, nothing open" wore it.  BroTown publishes when the
    banner on screen, or the last one queued, will be gone. */
@@ -213,7 +213,7 @@ async function bannersGone(P, maxMs = 20000) {
   return false;
 }
 
-/* v2.3.3456: your sparring clones are the ids the worker's spar_state named
+/* v2.3.3460: your sparring clones are the ids the worker's spar_state named
    (game/spar.js S._spar.ids), there once a tick has put them in S.others --
    v2.3.3407 looked for a `.spar` flag no player entry carries, and aimed with
    a _gameFns.sparAim that does not exist, so its fight was never aimed */
@@ -506,7 +506,7 @@ export const STATES = [
       if (!ok) return 'no daily-rewards probe';
     },
   },
-  /* v2.3.3456: no 'daily-season' -- the daily quests and the season were put
+  /* v2.3.3460: no 'daily-season' -- the daily quests and the season were put
      away in v2.3.3400, the window has no Season tab, and the picture was the
      Today page again (found by the design notes' research) */
   building('farm', 'Feed & Seed', 'The Feed & Seed: visit your farm, buy seeds, the order board.'),
@@ -548,7 +548,7 @@ export const STATES = [
   {
     id: 'chat', group: 'Maps and chat', title: 'Chat',
     about: 'Writing in the chat.  On a phone a tap on your own bro opens the chat box high over him, its tail pointing down at him (no Send button: the keyboard\'s own key sends; the smiley opens the emotes, the mic types by voice); on a computer C opens the chat bar at the top (All / Area / Whisper, the line and Send).',
-    /* v2.3.3456: each the way its player opens it -- a phone's tap on your
+    /* v2.3.3460: each the way its player opens it -- a phone's tap on your
        own bro raises the box over his head (chatBubbleBus, as BroTown's
        self-tap does, the band folded to its bar first), C on a computer the
        chat bar.  v2.3.3407 opened the computer's bar on the phones too: found
@@ -573,7 +573,7 @@ export const STATES = [
     about: 'Everyone in the game: the list a party or a duel starts from.',
     run: async ({ P }) => { await evalIn(P, () => { if (window.__broLegacyUI) window.__broLegacyUI.playersOpen(); }); },
   },
-  /* v2.3.3456: the card a tap on another player opens -- the review had none:
+  /* v2.3.3460: the card a tap on another player opens -- the review had none:
      a sparring clone of you (the test panel's, standing still) is the player */
   {
     id: 'player-card', group: 'Other players', title: 'Another player\'s card',
@@ -601,7 +601,7 @@ export const STATES = [
   {
     id: 'trade-request', group: 'Other players', title: 'A trade request',
     about: 'Another player asking to trade with you (shown with a stand-in player): the trade drawer over the dashboard, "Open trade" or "Decline". Opened, the trade is a drawer joined to the top of your bag.',
-    /* v2.3.3456: the drawer today's worker raises (trade2_invite ->
+    /* v2.3.3460: the drawer today's worker raises (trade2_invite ->
        TradeWindowPanel's invite stub).  v2.3.3407 showed IncomingTradePanel,
        the one-way gift card kept only for an old worker -- found by the
        design notes' research: a screen no player sees */
@@ -610,7 +610,7 @@ export const STATES = [
   {
     id: 'duel-request', group: 'Other players', title: 'A duel challenge',
     about: 'Another player challenging you to a duel (shown with a stand-in player): Accept or Decline.  A challenge from a player\'s card carries no stake, so there is no wager line.',
-    /* v2.3.3456: no wager -- the one sender (InspectPlayerPanel) sends 0, so
+    /* v2.3.3460: no wager -- the one sender (InspectPlayerPanel) sends 0, so
        v2.3.3407's 500 drew a line no player sees */
     run: async ({ P }) => { await evalIn(P, () => window._uiPanels.duelRequest({ fromId: 'bp_demo', fromName: 'Rival Bro', wager: 0 })); },
   },

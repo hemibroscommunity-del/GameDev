@@ -1,4 +1,4 @@
-/* ═══ v2.3.3456: THE REVIEW, IN CHATGPT-SIZED PACKETS ═══
+/* ═══ v2.3.3460: THE REVIEW, IN CHATGPT-SIZED PACKETS ═══
  *
  * The owner, with the design notes in the bundle: "walk me through the most
  * efficient way for chatGPT to review all of these menus with the rationale
@@ -104,7 +104,7 @@ function foundRows(row) {
 
 /* one view's check, in a line or a few.  `shared`: the findings this view
    has on several screens of the packet, listed once under "Found on several
-   screens" and only counted here (v2.3.3456: the dashboard's buttons and the
+   screens" and only counted here (v2.3.3460: the dashboard's buttons and the
    creator's back arrow were listed on every screen they show on, eighteen
    times each, and a reviewer answers each one it is shown) */
 function checkLines(row, shared) {
@@ -225,7 +225,7 @@ export function briefFor(packet, { rowsById, views, notes, general, meta, pics }
     B.push(`  - **${VIEW_NAMES[v] || v}**${about ? ': ' + about : ''}`);
   }
   B.push('- A view a screen does not exist in is missing from its picture (the touch controls have no computer view).');
-  /* v2.3.3456: what a reviewer reading pictures would otherwise get wrong --
+  /* v2.3.3460: what a reviewer reading pictures would otherwise get wrong --
      a size counted in a picture's pixels (each view is drawn at its own
      scale), the check taken for the whole screen, the test setup taken for
      the game's */

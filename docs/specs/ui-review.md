@@ -1,4 +1,4 @@
-# UI review screenshots (v2.3.3407, design notes v2.3.3456)
+# UI review screenshots (v2.3.3407, design notes v2.3.3460)
 
 The owner, 2026-10-18: "I'll also want screenshots labelled and bundled for
 all UI elements in each view (portrait, landscape, desktop, etc) so I can have
@@ -81,7 +81,7 @@ Every control a player could press -- a button, a tab, a link, a field, a
   computer), or covered -- the middle of it answers as something else, so a
   tap there reaches that instead.
 
-Small is measured by the box a press lands in (v2.3.3456, `touchBox`): a
+Small is measured by the box a press lands in (v2.3.3460, `touchBox`): a
 control's own `::before` / `::after` placed round it takes its presses, so
 every window's ✕, drawn 28 px inside an invisible ring that makes it 44
 (game.css `.bt-inspect-close::after`, v2.3.1235), is not small -- the check
@@ -106,7 +106,7 @@ judged against it, not the column.
 
 What the first run found, and what was done about it: docs/specs/reach-every-button.md.
 
-## The design notes (v2.3.3456, tools/qa/ui-review/notes.mjs)
+## The design notes (v2.3.3460, tools/qa/ui-review/notes.mjs)
 
 The owner, sending the first bundle to ChatGPT: "I'd also like it if you had
 included all of the design rationale behind the iterations I've made in each
@@ -140,7 +140,7 @@ log; `--check-notes` lists those and any topic naming a screen that is gone,
 and fails if there are any. **A new screen in states.mjs gets a topic, or its
 id on one; a new decision about a screen gets a line in its topic.**
 
-### What the research found in the review itself (v2.3.3456)
+### What the research found in the review itself (v2.3.3460)
 
 Writing the notes meant checking each screen against the code, which found
 pictures that showed a player something they never see:
@@ -179,7 +179,7 @@ again since it was taken (`dist/index.html` older than it): the version is
 read off the checkout, and a retake after a pull named every picture by a
 version none of them came from. Built again since, it says so.
 
-## The ChatGPT kit (v2.3.3456, tools/qa/ui-review/packets.mjs)
+## The ChatGPT kit (v2.3.3460, tools/qa/ui-review/packets.mjs)
 
 The owner, with the notes in the bundle: "walk me through the most efficient
 way for chatGPT to review all of these menus with the rationale and any other

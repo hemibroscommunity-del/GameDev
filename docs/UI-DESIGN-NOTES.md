@@ -32,7 +32,7 @@ The pictures show the game as it is today; these notes say how it got there.
 If a picture and a note disagree, the picture is the game as built: say so,
 it may be a bug.
 
-For the people building the game (first compiled at v2.3.3456, 2026-10-18):
+For the people building the game (first compiled at v2.3.3460, 2026-10-18):
 these notes are a digest of the specs in
 `docs/specs/`, the UI law (`docs/UI-BIBLE.md`, `docs/LANTERN-SLATE-SPEC.md`),
 `docs/TRAPS.md` and the owner's words as the code and `CLAUDE.md` record them.

@@ -19,7 +19,7 @@
  *   and in README.md / index.html / manifest.json: the title, what the screen
  *   is for, and the numbered list of its controls with any problem found.
  *   FINDINGS.md lists every problem in one place.
- *   DESIGN-NOTES.md (v2.3.3456) is docs/UI-DESIGN-NOTES.md: why each screen
+ *   DESIGN-NOTES.md (v2.3.3460) is docs/UI-DESIGN-NOTES.md: why each screen
  *   is the way it is -- the owner's decisions and their reasons, what was
  *   tried and changed, what not to suggest -- and under each screen the
  *   README names its notes (notes.mjs), so a reviewer judges a screen with
@@ -41,7 +41,7 @@
  *                                         no design notes (no game, no build)
  *   --no-kit                              no chatgpt/ folder (makeKit)
  * Writes tools/qa/out/ui-review/ (git-ignored) and, unless --no-zip,
- * ui-review-<view>.zip per view, ui-review-all.zip and (v2.3.3456)
+ * ui-review-<view>.zip per view, ui-review-all.zip and (v2.3.3460)
  * ui-review-for-chatgpt.zip beside it: chatgpt/, a folder a chat -- each
  * screen's views in one picture and a brief with its design notes
  * (packets.mjs, makeKit).
@@ -265,7 +265,7 @@ async function runView(browser, ports, view) {
     for (const st of post) {
       n += 1;
       if (ONLY && !ONLY.has(st.id)) {
-        /* v2.3.3456: the welcome is the way past the tutorial and the
+        /* v2.3.3460: the welcome is the way past the tutorial and the
            arrival's banners, as the creator is the way in: run, not
            photographed -- a retake's first screens wore the welcome plate */
         if (st.id === 'welcome') {
@@ -304,7 +304,7 @@ function controlLine(c) {
   return `${c.n}. ${c.name} (${c.w}x${c.h})${notes}`;
 }
 
-/* v2.3.3456: a screen's design notes, as README/index.html name them */
+/* v2.3.3460: a screen's design notes, as README/index.html name them */
 const noteLinks = (ts) => ts.map((t) => `[${t.title}](DESIGN-NOTES.md#${t.slug})`).join(', ');
 
 /* the views in words, for the prompt: "an upright phone (portrait), ... and a
@@ -316,7 +316,7 @@ function viewsInWords(views) {
 
 function writeReport(results, meta) {
   const views = Object.keys(results);
-  /* v2.3.3456: the notes, copied in whole, and each screen's topics */
+  /* v2.3.3460: the notes, copied in whole, and each screen's topics */
   const notes = readNotes(H.REPO);
   const hasNotes = !!notes.text;
   if (hasNotes) writeFileSync(join(OUT, 'DESIGN-NOTES.md'), notes.text);
@@ -364,7 +364,7 @@ function writeReport(results, meta) {
   const R = [];
   R.push('# BroTown: every screen, for a UI review', '');
   R.push(`Captured ${meta.made} from game version ${meta.game}, by \`tools/qa/ui-review/capture.mjs\`.`, '');
-  /* v2.3.3456: as many views as the run took (a laptop's made it four) */
+  /* v2.3.3460: as many views as the run took (a laptop's made it four) */
   const inWords = ['no', 'one', 'two', 'three', 'four', 'five'][views.length] || String(views.length);
   R.push(`BroTown is a multiplayer action RPG played in the browser, mainly on iPhones. These are pictures of its screens in ${inWords} view${views.length === 1 ? '' : 's'}:`, '');
   for (const v of views) R.push(`- **${VIEWS[v].title}** (\`${v}/\`): ${VIEWS[v].about}`);
@@ -419,7 +419,7 @@ function writeReport(results, meta) {
       }
     }
   }
-  /* v2.3.3456: a screen added to states.mjs with no notes is said, here and
+  /* v2.3.3460: a screen added to states.mjs with no notes is said, here and
      in the run's log (`--check-notes` lists them without a run) */
   const bare = hasNotes ? notesCoverage(notes.topics, [...new Set(manifest.shots.map((r) => r.id))]
     .filter((id) => id !== 'view-error' && id !== 'desktop-window')).bare : [];
@@ -481,7 +481,7 @@ function writeReport(results, meta) {
 async function makeSheets(browser, results) {
   const made = [];
   const dir = join(OUT, 'sheets');
-  /* v2.3.3456: every view's sheets are made again, so last run's go first --
+  /* v2.3.3460: every view's sheets are made again, so last run's go first --
      a section a screen shorter left its old last sheet in the zips */
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
@@ -530,7 +530,7 @@ async function makeSheets(browser, results) {
   return made;
 }
 
-/* ═══ v2.3.3456: THE CHATGPT KIT, A PACKET A CHAT (packets.mjs) ═══
+/* ═══ v2.3.3460: THE CHATGPT KIT, A PACKET A CHAT (packets.mjs) ═══
    chatgpt/START-HERE.md and a folder a packet: brief.md (the screens' words,
    the check's findings per view, the design notes in full, the task) and
    one picture a screen with every view side by side, at full size -- a
@@ -679,7 +679,7 @@ function gameVersion() {
   return game;
 }
 
-/* ═══ v2.3.3456: THE BUNDLE FOLLOWS states.mjs AS IT IS NOW ═══
+/* ═══ v2.3.3460: THE BUNDLE FOLLOWS states.mjs AS IT IS NOW ═══
    A picture's number is its screen's place in states.mjs (pre screens first,
    as runView counts), so after a screen is added or taken away there, an
    --only retake or a --report-only remake would leave twins and gaps: the
@@ -742,7 +742,7 @@ function zipBundles(views) {
     ? readdirSync(join(OUT, 'sheets')).filter((f) => f.startsWith(v + '-')).map((f) => 'sheets/' + f) : []);
   for (const v of views) zip(`ui-review-${v}.zip`, [...common, v, ...sheetsOf(v)]);
   zip('ui-review-all.zip', [...common, ...views, ...(existsSync(join(OUT, 'sheets')) ? ['sheets'] : [])]);
-  /* v2.3.3456: what ChatGPT is given -- the kit (makeKit: START-HERE.md and
+  /* v2.3.3460: what ChatGPT is given -- the kit (makeKit: START-HERE.md and
      a folder a chat), else the words and the contact sheets alone */
   const sheets = views.flatMap(sheetsOf);
   if (existsSync(join(OUT, 'chatgpt', 'START-HERE.md'))) zip('ui-review-for-chatgpt.zip', ['chatgpt']);
@@ -752,7 +752,7 @@ function zipBundles(views) {
 
 /* ── main ── */
 if (process.argv[1] && basename(process.argv[1]) === 'capture.mjs') {
-  /* v2.3.3456: --check-notes: every screen states.mjs visits named by a
+  /* v2.3.3460: --check-notes: every screen states.mjs visits named by a
      topic of the design notes, and every topic's screens still there --
      no build, no game, no worker */
   if (ARGS['check-notes']) {
@@ -822,7 +822,7 @@ if (process.argv[1] && basename(process.argv[1]) === 'capture.mjs') {
        run (manifest.json), everything else of it kept */
     if (ONLY && existsSync(join(OUT, 'manifest.json'))) {
       const prior = JSON.parse(readFileSync(join(OUT, 'manifest.json'), 'utf8'));
-      /* v2.3.3456: the bundle is still the build it was taken from when the
+      /* v2.3.3460: the bundle is still the build it was taken from when the
          game has not been built again since -- gameVersion() names the
          checkout, which can have moved on (a retake after a pull named every
          picture by a version none of them came from) */
