@@ -1240,15 +1240,23 @@ const psA = room.playerState.pa;
        at it -- an empty one with a second to refill is a second of the
        bound -- and a move past it is followed as far as it reaches, never
        refused: "refused" reads as "followed only the plain 500 px" */
+    /* v2.3.3344: the clock PINNED for these moves -- the refill is real time,
+       and a slow runner's few milliseconds between building the movers and
+       moving them (2 px at 500 px/s) failed the "< 502" below (#969's CI) */
+    const _t0 = Date.now();
+    const _realNow = Date.now;
+    Date.now = () => _t0;
     const mkMover = (movePts) => ({
-      x: 0, y: 0, z: 'meadow', lastMoveAt: Date.now() - 1000,
-      _mvBudget: 0, _mvBudgetAt: Date.now() - 1000,
+      x: 0, y: 0, z: 'meadow', lastMoveAt: _t0 - 1000,
+      _mvBudget: 0, _mvBudgetAt: _t0 - 1000,
       prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: { move: movePts }, atk: prog3FreshAtk(), pool: 0 },
     });
     const dist = 500 * 1.3 - 5;   /* inside the widened bound (x1.31 at cap), outside the plain one */
-    room.playerState.mvA = mkMover(75); room.playerState.mvB = mkMover(0);
-    room._handleMove({ id: 'mvA' }, null, { x: dist, y: 0, z: 'meadow' });
-    room._handleMove({ id: 'mvB' }, null, { x: dist, y: 0, z: 'meadow' });
+    try {
+      room.playerState.mvA = mkMover(75); room.playerState.mvB = mkMover(0);
+      room._handleMove({ id: 'mvA' }, null, { x: dist, y: 0, z: 'meadow' });
+      room._handleMove({ id: 'mvB' }, null, { x: dist, y: 0, z: 'meadow' });
+    } finally { Date.now = _realNow; }
     check('a maxed-move player\'s legitimate move is accepted by the widened bound',
       room.playerState.mvA.x === dist, { x: room.playerState.mvA.x });
     check('...while the same move from a player with no move points is refused (followed only the plain 500 px)',
