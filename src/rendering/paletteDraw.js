@@ -72,7 +72,7 @@ export function drawSourceRect(ctx, src, sx, sy, sw, sh, dx, dy, dw, dh) {
 }
 
 /**
- * v2.3.3462: the whole picture made small -- a w x h canvas, each pixel the
+ * v2.3.3464: the whole picture made small -- a w x h canvas, each pixel the
  * average of 4 x 4 points over its share of the picture -- for what drew a
  * picture's <img> small (the dashboard's map, MapPanel.jsx: the farm's ground
  * is colour numbers now, and has no <img>).  Kept per picture and size until

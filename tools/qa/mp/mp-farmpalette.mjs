@@ -1,4 +1,4 @@
-/* ═══ THE FARM'S PICTURES AS COLOUR NUMBERS (v2.3.3462) ═══
+/* ═══ THE FARM'S PICTURES AS COLOUR NUMBERS (v2.3.3464) ═══
  *
  * The owner, 2026-10-18, offered "the farm's 22 MB ground picture uses only
  * 246 colours ... could be stored the smaller way BroTown's ground is":
@@ -247,7 +247,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        for comparing the two ways, not a phone's.  What is asked is that the
        numbers load no worse than the pictures: with `onebatch=1` (BT_QA_QUERY)
        this box draws a frame in ~1.5 s, and NEITHER way is all in when the
-       screen's 12 s cap lifts it (34 s each, v2.3.3462) -- the box, not the
+       screen's 12 s cap lifts it (34 s each, v2.3.3464) -- the box, not the
        numbers, and said so */
     const allIn = (f) => f.holds.length > 0 && f.holds.every((h) => h.ready);
     const loadSays = allIn(fb) ? 'on both' : `on neither -- the pictures' too missed the 12 s cap, so this box draws too slowly to load the farm in time either way and says nothing of the numbers; numbers ${allIn(fa) ? 'all in' : 'not all in'}`;
@@ -288,7 +288,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     /* the shadows are in that picture: v2.3.3458 moved them into a picture
        drawn before the frame, and the frame here held none of them until
-       the grab drew it again (v2.3.3462) */
+       the grab drew it again (v2.3.3464) */
     const shOnly = await grab(A, cam, 'shadows');
     let shPx = 0;
     if (shOnly.px) for (let o = 3; o < shOnly.px.length; o += 4) if (shOnly.px[o]) shPx++;

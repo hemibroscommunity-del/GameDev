@@ -15,7 +15,7 @@
  *   2. public/tools/world/core/piecePalette.js turns a ground piece's colours
  *      into numbers and back exactly, pads its rows the same way, and refuses
  *      a piece of more than 256 colours (which then goes as colours);
- *   3. (v2.3.3462) the farm's: its ground's palette twin, public/maps/
+ *   3. (v2.3.3464) the farm's: its ground's palette twin, public/maps/
  *      farm_v2.png, is every pixel the picture its bake stamped, as the WebP
  *      the game names is (tools/world/farm_ground_stamp.json); every one of
  *      the owner's farm pictures reads as numbers, exactly; and the sheets it
@@ -156,7 +156,7 @@ function piece(w, h, colours) {
   ok('...and one whose colours start off a 4-byte boundary in their buffer', !!odd && odd.n === 3);
 }
 
-/* ── 3. the farm's pictures (v2.3.3462) ── */
+/* ── 3. the farm's pictures (v2.3.3464) ── */
 console.log("the farm's pictures as numbers");
 /* how many pixels of a palette read differ from the repo's PNG reader's */
 function offFrom(d, ref) {

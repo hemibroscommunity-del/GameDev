@@ -3,7 +3,7 @@ import { COL, panelStyle, getState } from './common.js';
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { worldTrialMapImage, worldTrialMapPicture, isWheelTrialZone } from '@/game/worldTrial.js';
 import { Assets } from 'pixi.js';
-import { isPaletteSource, paletteThumb } from '@/rendering/paletteDraw.js';   /* v2.3.3462 */
+import { isPaletteSource, paletteThumb } from '@/rendering/paletteDraw.js';   /* v2.3.3464 */
 import { ZONES } from '@/data/zones.js';
 import { TILE } from '@/data/constants.js';
 
@@ -101,7 +101,7 @@ export const MapPanel = () => {
       const tex = Assets.cache.get(url);
       const res = tex && tex.source && tex.source.resource;
       if (res && res.naturalWidth) img = res;
-      /* v2.3.3462: the farm's ground is kept as colour numbers (rendering/
+      /* v2.3.3464: the farm's ground is kept as colour numbers (rendering/
          paletteLoad.js) and has no <img>: a small copy made from them, once */
       else if (tex && tex.source && isPaletteSource(tex.source)) img = paletteThumb(tex.source, dw, dh);
     } catch (e) { /* fall through to the empty well */ }
