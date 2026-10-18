@@ -24,8 +24,9 @@ Office's paid land, and visits from friends are Phases 3 and 4.
 
 - **Nothing withers.** A ripe crop waits in the ground for as long as it takes.
   It also grows while you are logged out, and while the room is empty.
-- **Since v2.3.3136 you take each step ON YOUR FARM,** kneeling at the bed
-  (`docs/specs/farm-walk.md`): the owner, *"I don't want the game to just be
+- **Since v2.3.3136 you take each step ON YOUR FARM,** working the bed
+  where it lies, since v2.3.3334 with a hoe, a watering can or your hands in
+  the soil (`docs/specs/farm-walk.md`): the owner, *"I don't want the game to just be
   reading a bunch of boring menus."* The window's Beds tab is gone. Until then
   you picked a tool in the window and tapped a bed, or dragged one finger
   across several (one message however many it crossed), and the tool followed

@@ -29,17 +29,16 @@
  * hands in how to make each (setStandInMaker).  QA: window.__btStandIns,
  * window.__btStandInMake.
  */
-const KINDS = ['chop', 'cook', 'fire'];
+/* v2.3.3334: + 'farm', the farmer's three moves (effectsRenderer _makeFarm):
+   made on the farm, behind its loading screen, and let go of on leaving it
+   (forgetStandIn) -- the only pose that is, as it is drawn nowhere else */
+const KINDS = ['chop', 'cook', 'fire', 'farm'];
 const RETRY_MS = 15000;     /* a failed make is tried again after this */
 let _gen = 0;
 let _make = null;
 const _st = Object.create(null);
-/* v2.3.3136: whether the farm's covers -- what stands where the cook's pan
-   is when the farmer kneels (src/data/farmCovers.js) -- are loaded.  The
-   farm's pictures load and go with the farm (rendering/farmWorld.js), not
-   with a renderer, so a rebuilt renderer leaves this as it was. */
-let _farmCovers = false;
-function fresh() { for (const k of KINDS) _st[k] = { state: 'idle', at: 0, ms: null, why: null }; }
+function idle() { return { state: 'idle', at: 0, ms: null, why: null }; }
+function fresh() { for (const k of KINDS) _st[k] = idle(); }
 fresh();
 
 /** The effects renderer's maker: (kind) => Promise<boolean> (true when its
@@ -128,8 +127,15 @@ if (typeof window !== 'undefined') {
   };
 }
 
-/** v2.3.3136: the farm's covers are in (farmWorld.js preloadFarmArt), or gone. */
-export function setFarmCoversReady(v) { _farmCovers = !!v; }
-/** v2.3.3136: can the farmer kneel?  The cook's pose made with your skin and
- *  drawings, and the covers in.  Until then the walking body stays drawn. */
-export function farmKneelReady() { return _farmCovers && standInReady('cook'); }
+/** v2.3.3334: `kind` let go of -- its frames freed (the farmer's, leaving the
+ *  farm): asked for again, it is made again.  A make still on its way when
+ *  this is called settles the record it was asked from, no longer this
+ *  kind's (the maker drops what it made itself: effectsRenderer _farmGen). */
+export function forgetStandIn(kind) {
+  if (!_st[kind]) return;
+  _st[kind] = idle();
+}
+/** v2.3.3334: can the farmer work a bed in his own moves (the hoe, the can,
+ *  the kneel), made with your skin, trousers and boots?  Until then the
+ *  walking body stays drawn. */
+export function farmFigureReady() { return standInReady('farm'); }

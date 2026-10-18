@@ -15,9 +15,9 @@
  *      six beds of grass, a spade over each (the step as the stick's own
  *      picture; the words only over the bed you are nearest);
  *   2. walk up to a bed: the stick wears the spade, the prompt says "Dig";
- *      E kneels you there (the fire-lighter's kneel, with no log), one
- *      farm_act goes when it ends, the bed turns to dug earth -- "Needs
- *      Planting";
+ *      E digs it with the owner's hoe (v2.3.3334, mp-farmanim pictures every
+ *      frame of all three moves), one farm_act goes when it ends, the bed
+ *      turns to dug earth -- "Needs Planting";
  *   3. two kinds of seed: their pictures over the prompt, a tap picks one;
  *      a tap on the RIGHT STICK plants it -- the carrot's sprout, a timer and
  *      "Needs Watering";
@@ -151,8 +151,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       n0 && n0.near && n0.near.step === 'dig' && ic0 === 'farm-dig' && pr0 && pr0.step === 'dig' && /Dig/.test(pr0.text)
         && wa0 && wa0.beds[0].label[0] === 'Needs Digging' && wa0.beds.slice(1).every((b) => b.label && b.label.length === 0), { n0, ic0, pr0, wa0: wa0 && wa0.beds });
     /* v2.3.3136: dressed in the steel plate and greaves (the client's own equip
-       seam): what stands where the cook's pan is must lie over everything you
-       wear */
+       seam) -- v2.3.3334: the farmer's moves have no armour of their own yet,
+       so the hoe must still lie over the man, and nothing of the plate show */
     await A.page.evaluate(() => { window.__btSetGear('chest', 'steelplate'); window.__btSetGear('legs', 'steelgreaves'); });
     await A.page.waitForTimeout(400);
     const a0 = (await acts()).length;
@@ -160,8 +160,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* read in one go while the 1.5 s step lasts (a screenshot on this box can
        take most of it) */
     const fig = () => A.page.evaluate(() => ({ w: window.__btFarmWalk(), fig: window.__btFarmFigure ? window.__btFarmFigure() : null, body: !!window._gameState.current._standInBody }));
-    /* a picture of the kneel: the step held while it is taken (a screenshot on
-       this box can outlast a step), then let end a moment later as ever */
+    /* a picture of the step: held while it is taken (a screenshot on this box
+       can outlast a step), then let end a moment later as ever */
     const kneelShot = async (name) => {
       const held = await A.page.evaluate(() => { const w = window._gameState.current._farmWork; if (!w) return false; w.doneAt = Date.now() + 4000; return true; });
       if (!held) return;
@@ -170,15 +170,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await A.page.evaluate(() => { const w = window._gameState.current._farmWork; if (w) w.doneAt = Date.now() + 150; });
     };
     const k0 = await until(fig, (v) => v.w && v.w.work && v.fig && v.fig.visible && v.body, 2000);
-    await shot('kneel-dig');
+    await shot('work-dig');
     const kf = k0.fig || {};
     const o = kf.order || {};
-    const inside = (a, b) => !!a && !!b && b.x >= a.x - 0.5 && b.y >= a.y - 0.5 && b.x + b.w <= a.x + a.w + 0.5 && b.y + b.h <= a.y + a.h + 0.5;
-    rec.ok(`E crouches you at the bed as the cook does (the cook strip's frame ${kf.frame}, ${kf.figure && kf.figure.drawnH} px tall), your walking body put away, the step "${k0.w && k0.w.work && k0.w.work.step}"`,
-      k0.w && k0.w.work && k0.w.work.step === 'dig' && [4, 5, 6].includes(kf.frame) && k0.body && kf.figure && kf.figure.drawnH > 40, k0);
-    rec.ok(`...a crate of earth stands where the pan is (${kf.cover}), drawn over every layer you wear -- the plate and greaves too (cover ${o.cover} over body ${o.body}, greaves ${o.legs}, plate ${o.chest}) -- its box round the pan's whole area`,
-      kf.cover === 'soil' && o.cover > Math.max(o.body, o.ink, o.shirt, o.legs, o.chest) && o.legs >= 0 && o.chest >= 0 && inside(kf.coverBox, kf.panBox),
-      { cover: kf.cover, order: o, coverBox: kf.coverBox, panBox: kf.panBox });
+    rec.ok(`E digs it with the owner's hoe (frame ${kf.frame} of the ${kf.anim}, ${kf.figure && kf.figure.drawnH} px tall), your walking body put away, the step "${k0.w && k0.w.work && k0.w.work.step}"`,
+      k0.w && k0.w.work && k0.w.work.step === 'dig' && kf.anim === 'hoe' && kf.frame >= 0 && kf.frame < 8 && k0.body && kf.figure && kf.figure.drawnH > 40, k0);
+    rec.ok(`...in steel plate and greaves: the hoe drawn over the man (hoe ${o.prop} over body ${o.body}), his boots on yours`,
+      kf.prop && kf.prop.visible && o.prop > o.body && o.body >= 0 && kf.foot && Math.abs(kf.foot.y - kf.figure.feetY) < 1.5,
+      { order: o, prop: kf.prop, foot: kf.foot, feetY: kf.figure && kf.figure.feetY });
     await A.page.evaluate(() => { window.__btSetGear('chest', 'none'); window.__btSetGear('legs', 'none'); });
     const v0 = await until(view, (v) => v && v[0] === 'tilled', 6000);
     const w2 = await until(world, (w) => w && w.beds[0].soil === 'bed-dug' && w.beds[0].label && w.beds[0].label[0] === 'Needs Planting', 4000);

@@ -6,7 +6,7 @@
  * since v2.3.1406 kicked the farm's pictures off un-awaited, so its ground
  * came in a beat after you did.  The farm you walk has far more to show (its
  * ground, the barn, the props and trees, every crop's every stage, the
- * farmer's kneel: rendering/farmWorld.js, preloadZoneAssets('farm_home')),
+ * farmer's moves: rendering/farmWorld.js, preloadZoneAssets('farm_home')),
  * and the preloading law (CLAUDE.md) wants all of it in before you see it.
  *
  * So each of them still warps, and then HOLDS you here: the zone's loading
@@ -19,14 +19,15 @@ import { ZONES } from '@/data/zones.js';
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay } from '@/game/zoneTransitions.js';
 import { farmArtReady } from '@/rendering/farmWorld.js';
 import { isZoneMapResident } from '@/rendering/tiledMaps.js';
-import { farmKneelReady } from '@/rendering/standIns.js';
+import { farmFigureReady } from '@/rendering/standIns.js';
 
 export const FARM_HOLD_CAP_MS = 12000;
 let _seq = 0;
 
-/** Is everything the farm draws in?  Its ground, its pictures, the kneel. */
+/** Is everything the farm draws in?  Its ground, its pictures, the farmer's
+ *  moves (v2.3.3334: the hoe, the can, the kneel). */
 export function farmReady() {
-  return farmArtReady() && isZoneMapResident('farm_home') && farmKneelReady();
+  return farmArtReady() && isZoneMapResident('farm_home') && farmFigureReady();
 }
 
 /** Called right after a warp onto the farm. */

@@ -12,14 +12,15 @@
  *     bedNext) -- the right stick wears that step's picture and E, a tap on
  *     the stick or a tap on the bed itself takes it (desktopControls
  *     runInteract, BroTown's bed tap);
- *   - you CROUCH at its back, facing us, and work it, as the cook does -- the
- *     owner: "Cooking animation might be better.  You can use something to
- *     occlude the part where the pan or log is" -- with a crate of earth,
- *     seeds or water, the compost bin or the straw standing where the pan
- *     would be (effectsRenderer _updateFarmKneel), dirt, seeds, water or
- *     compost flying from your hands each time they push out (farmWorld.js),
- *     a sound at each (below);
- *   - when the kneeling ends the step goes to the worker (farm_act, the
+ *   - you stand at its back, facing us, and work it in the owner's own
+ *     moves (v2.3.3334, effectsRenderer _updateFarmWork): the hoe to dig,
+ *     the watering can to water, kneeling with your hands in the soil to
+ *     plant, put compost on and harvest -- dirt, water, seeds, compost or
+ *     leaves flying where the work lands (farmWorld.js), a sound at each
+ *     (below).  (v2.3.3136 knelt in the cook's pose, a crate where its pan
+ *     was: the owner, "Cooking animation might be better", until they made
+ *     these);
+ *   - when the step's time ends it goes to the worker (farm_act, the
  *     window's own message: farmBus.act) and the bed changes when it
  *     answers -- nothing here changes a bed, the bag or the XP;
  *   - move and the step is dropped, unsent.
@@ -112,7 +113,7 @@ export function tickFarmWalk(S, now) {
     if (S._dying || Math.hypot(P.x - w.x, P.y - w.y) > LEAVE_PX) {
       S._farmWork = null;   /* walked away, or fell: nothing is sent */
     } else {
-      if (!w._beats) { w._beats = farmWorkBeats(w.doneAt - w.startedAt); w._sb = 0; }
+      if (!w._beats) { w._beats = farmWorkBeats(w.step, w.doneAt - w.startedAt); w._sb = 0; }
       while (w._sb < w._beats.length && now - w.startedAt >= w._beats[w._sb]) {
         w._sb++;
         const fx = BEAT_SOUND[w.step];
@@ -149,7 +150,7 @@ export function tickFarmWalk(S, now) {
 export function startFarmStep(S, i) {
   if (!S || !S.player || S.currentZone !== FARM_WALK_ZONE) return false;
   if (S._farmWork) return true;   /* one at a time: the press is used */
-  if (S._extraction || S._firemaking) return false;   /* the cook's figure is busy at a fire */
+  if (S._extraction || S._firemaking) return false;   /* busy at a fire or a harvest */
   if (jumpAirborne(S, Date.now())) return false;
   const b = FARM_BEDS[i];
   const view = farmBus.view;
@@ -174,9 +175,9 @@ export function startFarmStep(S, i) {
     const inv = S.rpg && S.rpg.inventory;
     if (!(inv && Math.floor(Number(inv[FARM.COMPOST]) || 0) > 0)) { sayOverBed(S, i, 'No compost: the Feed & Seed sells it', BAD); return true; }
   }
-  /* crouch at its back, boots just inside its edge and left of its middle,
-     facing us: what stands where the cook's pan is comes to your right, over
-     the bed (farmLayout.js FARM_KNEEL_DX) */
+  /* at its back, boots just inside its edge and left of its middle, facing
+     us: the can's water lands to your right, over the bed (farmLayout.js
+     FARM_KNEEL_DX) */
   const P = S.player;
   P.x = b.x + b.w / 2 + FARM_KNEEL_DX;
   P.y = b.y + FARM_KNEEL_DY - playerGroundDy(S.currentZone, P.x, b.y);

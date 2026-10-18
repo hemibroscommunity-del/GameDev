@@ -165,16 +165,16 @@ export async function preloadZoneAssets(zoneId) {
   if (zoneId === 'town') tasks.push(Promise.resolve(loadTownScenery()).catch(() => {}));
   /* ═══ v2.3.3136: YOUR FARM ═══
      Its barn, props, beds and every crop's every stage (rendering/farmWorld.js
-     -- a bed can turn to any of them while you stand there), the covers that
-     stand where the cook's pan is (src/data/farmCovers.js), and the cook's
-     pose the farmer kneels in, made with your skin and drawings (the owner:
-     "Cooking animation might be better"): all behind the farm's loading
-     screen (game/farmTrip.js), the pictures freed on leaving (freeZoneAssets).
-     ~12 MB of the Wheel's sheets and ~9 MB of the owner's farm art; the
-     ground picture is the map above. */
+     -- a bed can turn to any of them while you stand there), and the farmer's
+     own moves -- the owner's hoe, watering can and kneel, made in your skin,
+     trousers, boots and shirt (v2.3.3334, effectsRenderer _makeFarm; the cook's
+     pose and its covers before): all behind the farm's loading screen
+     (game/farmTrip.js), the pictures freed on leaving (freeZoneAssets, and the
+     moves by the effects renderer as you go).  ~12 MB of the Wheel's sheets and
+     ~9 MB of the owner's farm art; the ground picture is the map above. */
   if (zoneId === 'farm_home') {
     tasks.push(Promise.resolve(preloadFarmArt()).catch(() => {}));
-    tasks.push(Promise.resolve(ensureStandIn('cook', 'the farm')).catch(() => {}));
+    tasks.push(Promise.resolve(ensureStandIn('farm', 'the farm')).catch(() => {}));
   }
   /* frost is the only snowman zone — its sprites load here instead of
      globally.  v2.3.2844: the ice-burst impact sheet that used to ride along

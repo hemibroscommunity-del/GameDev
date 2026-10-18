@@ -13,50 +13,101 @@
  * bed is dug from grass, planted when dug, watered and fertilized while it
  * grows, harvested when ripe by the worker's clock.  This module is only what
  * the game needs to SHOW them and to ask: a bed's next step and its words,
- * its timer, how long the kneeling takes, the cook's frame at each moment and
- * when the hands push out, and which bed your boots are in reach of.  Plain
- * arithmetic over plain data (src/data/farmCovers.js): node runs it, and
+ * its timer, how long a step takes, the frame of its animation at each moment
+ * and when the work lands, and which bed your boots are in reach of.  Plain
+ * arithmetic over plain data (src/data/farmAnims.js): node runs it, and
  * server/test/farmwalk.test.mjs runs it against the worker's own handler, so
  * a step this says is next is always one the worker takes.
  * docs/specs/farm-walk.md.
  */
 
-import { FARM_KNEEL_ORDER } from '../data/farmCovers.js';
-
 /** The five steps, in the order a bed goes through them. */
 export const FARM_STEPS = ['dig', 'plant', 'water', 'feed', 'harvest'];
 
-/* How long each step keeps you kneeling, ms.  The fire-lighter's strike is
-   0.7 s (BroTown's S._firemaking); a step is a little longer -- the hands go
-   into the earth a few times -- and digging longest.  Short enough that six
-   beds' worth of steps is a minute's work, not a chore. */
+/* How long each step keeps you at the bed, ms.  The fire-lighter's strike is
+   0.7 s (BroTown's S._firemaking); a step is a little longer -- two swings of
+   the hoe, a can's pour, the hands in the soil -- and digging longest.  Short
+   enough that six beds' worth of steps is a minute's work, not a chore. */
 export const FARM_WORK_MS = Object.freeze({ dig: 1500, plant: 1100, water: 1150, feed: 1100, harvest: 1250 });
-/* The farmer crouches as the cook does (effectsRenderer _updateFarmKneel), on
-   the cook strip's frames where the pan is held out to the side, to and fro
-   (FARM_KNEEL_ORDER, from tools/world/make_farm_covers.py), one every
-   FARM_KNEEL_FRAME_MS: the arms work as the cook's do over the fire. */
-export const FARM_KNEEL_FRAME_MS = 110;
-/* The hands push out (the to-and-fro's far end) every half turn of it. */
-const HALF_TURN_MS = (FARM_KNEEL_ORDER.length / 2) * FARM_KNEEL_FRAME_MS;
-/* A push this near the end is not shown: you are getting up. */
-const LAST_PUSH_MS = 80;
 
-/** The cook strip's frame the farmer shows at `t` ms into a step of `total`
- *  ms: FARM_KNEEL_ORDER round and round, its first frame for a time that is
- *  no time at all. */
-export function farmWorkFrame(t, total) {
-  if (!(t >= 0) || !(total > 0)) return FARM_KNEEL_ORDER[0];
-  const k = Math.floor(Math.min(t, total) / FARM_KNEEL_FRAME_MS);
-  return FARM_KNEEL_ORDER[k % FARM_KNEEL_ORDER.length];
+/* ═══ v2.3.3334: THE FARMER'S OWN MOVES ═══
+   The owner, 2026-10-17: "I'd like to have animations during the farming
+   process perhaps on a sprite sheet."  They made three (tools/farm_anim_src,
+   cut by tools/make_farm_anims.py into src/data/farmAnims.js): the hoe, the
+   watering can, and kneeling with his hands in the soil.  Each step plays
+   one of them -- digging the hoe, watering the can, planting, the compost
+   and the harvest the kneel (v2.3.3136's cook crouch, its pan hidden behind a
+   crate, is gone) -- frame by frame for these ms, a TURN of eight frames: */
+export const FARM_STEP_ANIM = Object.freeze({ dig: 'hoe', plant: 'kneel', water: 'water', feed: 'kneel', harvest: 'kneel' });
+export const FARM_ANIM_TURN = Object.freeze({
+  /* raise (slower at the top), swing down fast, the strike held, pull back:
+     750 ms, two swings a dig */
+  hoe: Object.freeze([90, 110, 130, 60, 140, 90, 90, 40]),
+  /* tip, start to pour, the stream (three frames that waver), tip back: one
+     pour a watering */
+  water: Object.freeze([80, 110, 120, 170, 170, 170, 160, 170]),
+  /* lean in, press, pat, drop, pat, sit back: one a step */
+  kneel: Object.freeze([90, 130, 150, 150, 160, 150, 130, 140]),
+});
+/* the frames where the work lands -- the blade striking, the water reaching
+   the soil and again as it wavers, the hands pressing in and letting go:
+   dirt, water, seeds, compost or leaves fly then, and the step's sound plays
+   (farmWorld.js _burst, farmWalk.js) */
+export const FARM_ANIM_BEATS = Object.freeze({ hoe: Object.freeze([4]), water: Object.freeze([3, 5]), kneel: Object.freeze([2, 4]) });
+/* A beat this near the end is not shown: you are getting up. */
+const LAST_BEAT_MS = 80;
+
+function turnOf(step) {
+  const anim = FARM_STEP_ANIM[step] || 'kneel';
+  const turn = FARM_ANIM_TURN[anim];
+  let ms = 0;
+  for (const f of turn) ms += f;
+  return { anim, turn, ms };
+}
+/* A step plays WHOLE turns -- as many as fit its time, at least one -- each
+   stretched or squeezed a little to fill it exactly, so it always ends on the
+   eighth frame, the rest pose it began in. */
+function turnsIn(T, total) { return Math.max(1, Math.round(total / T.ms)); }
+
+/** The animation a step plays ('hoe' | 'water' | 'kneel'). */
+export function farmAnimOf(step) { return FARM_STEP_ANIM[step] || 'kneel'; }
+
+/** The frame of its animation a step shows at `t` ms into its `total`;
+ *  the first frame for a time that is no time at all, the last held at the
+ *  end. */
+export function farmWorkFrame(step, t, total) {
+  if (!(t >= 0) || !(total > 0)) return 0;
+  const T = turnOf(step);
+  const k = (turnsIn(T, total) * T.ms) / total;
+  let u = (Math.min(t, total - 1) * k) % T.ms;
+  for (let f = 0; f < T.turn.length; f++) {
+    if (u < T.turn[f]) return f;
+    u -= T.turn[f];
+  }
+  return T.turn.length - 1;
 }
 
-/** When the hands push out -- the far end of the to-and-fro, every half
- *  turn -- ms from the start of a step of `total` ms.  The dirt, the seeds,
- *  the water and the compost fly then, and the step's sound plays. */
-export function farmWorkBeats(total) {
+/** When the work lands in a step of `total` ms, ms from its start: each
+ *  turn's beat frames as they begin.  The bits fly and the sound plays then. */
+export function farmWorkBeats(step, total) {
   const out = [];
   if (!(total > 0)) return out;
-  for (let t = HALF_TURN_MS; t < total - LAST_PUSH_MS; t += 2 * HALF_TURN_MS) out.push(t);
+  const T = turnOf(step);
+  const n = turnsIn(T, total);
+  const k = total / (n * T.ms);
+  const beats = FARM_ANIM_BEATS[T.anim] || [];
+  for (let i = 0; i < n; i++) {
+    for (const b of beats) {
+      let at = i * T.ms;
+      for (let f = 0; f < b; f++) at += T.turn[f];
+      /* the first whole ms farmWorkFrame shows that frame -- the same
+         arithmetic, so the dirt never flies a ms before the blade lands */
+      let ms = Math.round(at * k);
+      while (ms > 0 && farmWorkFrame(step, ms - 1, total) === b) ms--;
+      while (ms < total && farmWorkFrame(step, ms, total) !== b) ms++;
+      if (ms < total - LAST_BEAT_MS) out.push(ms);
+    }
+  }
   return out;
 }
 

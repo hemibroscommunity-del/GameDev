@@ -2258,25 +2258,46 @@ remnant to migrate server-side, not a mode to preserve.
         picture and its timer, in words over the nearest ("4m 12s · Needs
         Watering"); E, a tap on the right stick (wearing the step), the button
         over the dashboard (`FarmBedPrompt.jsx`, a seed picker with 2+ kinds)
-        or a tap on the bed KNEELS you at its back for 1.1-1.5 s, then sends
+        or a tap on the bed WORKS it from its back for 1.1-1.5 s, then sends
         ONE `farm_act` for that bed
         (`src/game/farmWalk.js`); walking away sends nothing; the bed changes
         only on the worker's answer, a harvest flying to the bag; NO worker
         change, and a farm never described is asked for on arrival
         (`farm_open`, the free deed);
-      - the kneel is the COOK'S crouch -- the owner: "Cooking animation might
-        be better. You can use something to occlude the part where the pan
-        or log is": the cook strip's frames 4-6 (the pan held out, clear of
-        the hands) to and fro, worn as the cook wears it (your skin and
-        drawings baked in, shirt, armour, hair and hat on their own layers:
-        effectsRenderer `_placeCookFigure`, shared with cooking), and ONE
-        picture over every layer where the pan is (`_updateFarmKneel`) -- a
-        crate of the dug bed's earth (dig), of seeds (plant) or of water, the
-        compost bin (fertilize), the crate's straw (harvest), all the owner's
-        own art, so it never has to know your look;
-        `tools/world/make_farm_covers.py` makes them and the GENERATED
-        `src/data/farmCovers.js`, and FAILS if one pixel of the pan shows;
-        the firemaking kneel and its mound are gone;
+      - (v2.3.3136 knelt in the COOK'S crouch, a crate of the owner's art
+        where its pan was -- the owner: "Cooking animation might be better" --
+        until v2.3.3334's moves, below);
+      - since v2.3.3334 THE FARMER'S OWN MOVES -- the owner: "I'd like to have
+        animations during the farming process perhaps on a sprite sheet",
+        then three ChatGPT sheets of 8 frames (`tools/farm_anim_src/`):
+        - DIG plays the hoe (two swings), WATER the can (one pour), PLANT,
+          FERTILIZE and HARVEST the kneel, frame by frame in whole turns that
+          fill the step (farmWork.js `FARM_STEP_ANIM`, `FARM_ANIM_TURN`,
+          `farmWorkFrame`); the bits fly and the sound plays where and when
+          the work lands (`FARM_ANIM_BEATS`, the strip's `work`);
+        - `tools/make_farm_anims.py` cuts them: the magenta out, the hoe and
+          the can lifted into strips of their own (the repaint would take the
+          can for trousers), the frames lined up, one head size, a shirt layer
+          made from the body, the crowns -- into
+          `public/sprites/skills/farm-*.png`, the tshirt's `farm*-south` and
+          the GENERATED `src/data/farmAnims.js`;
+        - he wears your skin, trousers and boots (`_bakeFarmBodies`), your
+          shirt with its print, your hair, hat and beard; his head is drawn
+          `FARM_ANIM_HEAD_WORLD` 31.25 world px, so he stands your height
+          (95-101%);
+        - NOT RIGHT YET: the shirt is cut from the bare body, so an arm in
+          front of him comes out all shirt (the owner: "Whole arm was
+          green"); no armour (the shirt shows) or drawings. The fix is the
+          owner's: each sheet drawn again in the game's white tee and in its
+          steel plate and greaves (`docs/art/farm-moves-reference-*.png`,
+          ART-WISHLIST "The farmer's moves, dressed"), never garments drawn
+          alone (the fire-lighter's need `FIRE_GEAR_REG`);
+        - made behind the farm's loading screen (`ensureStandIn('farm')`,
+          `farmFigureReady`) and let go of on leaving (`_freeFarm`): the farm
+          holds 102.1 MB on the GPU where the cook's kneel held 104.6;
+        - the crates (`make_farm_covers.py`, `farmCovers.js`) are gone;
+          `farmwalk` suite §1, `mp-farmanim`: docs/specs/farm-walk.md "The
+          farmer's own moves";
       - the Feed & Seed's window lost its Beds tab: Visit Your Farm on top,
         "Your farm: 3 ready to harvest · 3 beds to plant" under it, then Seeds
         and Orders;
@@ -2284,7 +2305,8 @@ remnant to migrate server-side, not a mode to preserve.
         (`holdFarmUntilReady`, `src/game/farmTrip.js`), let go on leaving
         (`freeFarmArt`); the map decodes to 22 MB (the cave's 6), held on the
         farm only;
-      - `farmwalk` suite, `mp-farmwalk`, `mp-farm`: docs/specs/farm-walk.md.
+      - `farmwalk` suite, `mp-farmwalk`, `mp-farmanim`, `mp-farm`:
+        docs/specs/farm-walk.md.
   - Since v2.3.3120 PET TRAPPING -- the owner: "your trapping level governs
     what level monster you can capture ... The best success rate for the
     lowest tier monster should be about 1%. And each trap should cost at least
