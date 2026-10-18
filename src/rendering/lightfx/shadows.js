@@ -53,8 +53,39 @@
  * whole texels -- and the filter slides the finished picture back by the
  * fraction (`uShift`, a linear sample between two texels), which is smooth.
  * Same texture, same pass, same cost.  `?shadowlock=0` is the layer as it was.
+ *
+ * ═══ v2.3.3333: ...AND NEVER SNAPPED TO A GRID THAT IS NOT THE PIXELS ═══
+ * Owner, again: "I like the game's shadows but prop shadows right now still
+ * flicker as you run around."  The lock above was measured stepping the camera
+ * one device pixel at a time, seven steps -- two whole CSS px crossed -- and
+ * between crossings the locked picture cannot change, so the crossings were
+ * watered down.  At each crossing two things broke it:
+ *   - PIXI SNAPS TO THE WRONG GRID INSIDE A FILTER.  pixiApp's roundPixels
+ *     snaps every vertex to a whole pixel of the target, using the global
+ *     `uResolution` -- the render target's FULL size.  A filter draws into a
+ *     texture from Pixi's pool, a power of two (512 x 1024 for a 394 x 848
+ *     frame on a 390 x 844 phone), and only into its frame (RenderTargetSystem
+ *     sets the viewport to it), so the "pixels" it snapped to were 0.77 x 0.83
+ *     of a texel, anchored to the screen's edge.  Every crossing re-snapped
+ *     every corner and every column of every shadow by a different amount: up
+ *     to ~1.4 device px off its prop, jumping up to ~2.2 between frames, while
+ *     the prop (snapped on the screen's own grid, exactly one device px) stood
+ *     still.  The lock already draws each shadow at the same fraction of a
+ *     texel every frame, so snapping adds nothing: the pieces here are drawn
+ *     where they are (`_btNoSnap`, cleared in `installNoSnap`'s batcher hook).
+ *   - THE FILTER READ ITS PICTURE AT HALF PRECISION ON AN IPHONE.  Pixi gives
+ *     a fragment shader `mediump` unless asked, and on an iPhone that is a
+ *     half float: the coordinate the picture is read at moved in steps of a
+ *     quarter to half a texel (0.75-1.5 device px), so the lock's smooth slide
+ *     back (uShift) became a staircase.  A desktop (and the QA box's software
+ *     GL) runs mediump at full precision, which is why no test here could see
+ *     it.  It is `highp` now, as the water's shader is (wheelWater.js).
+ * Same texture, same pass, same cost.  `?shadowsnap=1` puts Pixi's snapping
+ * back and `?shadowhp=0` the half precision, to compare on a phone;
+ * `window.__btShadowSnap()` says which is on.  mp-shadowlock steps the camera
+ * a whole CSS px at a time, across and down, so every step is a crossing.
  */
-import { Filter, Matrix, MeshSimple, Sprite, Texture } from 'pixi.js';
+import { BatcherPipe, Filter, Matrix, MeshSimple, Sprite, Texture } from 'pixi.js';
 import { profileAtU } from '../propGround.js';
 
 /* v2.3.3149: on unless `?shadowlock=0` (see the header) -- read once */
@@ -64,6 +95,40 @@ function lockOn() {
   _lockOn = true;
   try { if (typeof location !== 'undefined' && /[?&]shadowlock=0\b/.test(location.search || '')) _lockOn = false; } catch (e) { /* on */ }
   return _lockOn;
+}
+
+/* v2.3.3333: `?shadowsnap=1` -- Pixi's snapping back on the shadow pieces;
+   `?shadowhp=0` -- the filter at the half precision it had (see the header).
+   Read once. */
+const _q = (re) => { try { return typeof location !== 'undefined' && re.test(location.search || ''); } catch (e) { return false; } };
+const SNAP_OLD = _q(/[?&]shadowsnap=1\b/);
+const HP_ON = !_q(/[?&]shadowhp=0\b/);
+
+/* ═══ v2.3.3333: THE SHADOW PIECES ARE DRAWN WHERE THEY ARE ═══
+   Every batched sprite or mesh meets its batcher in BatcherPipe.addToBatch,
+   carrying `roundPixels` (Pixi's own: the renderer's, set once when its GPU
+   data is made; sharpPixels.js sets it again there for every quad).  A piece
+   marked `_btNoSnap` is set to 0 AFTER the rest of the chain has had its say
+   -- its attributes are packed only when the batch breaks, later -- so the
+   order this and sharpPixels' hook were installed in does not matter.  Only
+   batched pieces pass here, and every shadow piece is batched: a sprite, a
+   34-vertex building mesh, a 45-vertex cut-out grid, a 27-vertex flag (a mesh
+   of more than 100 would be drawn on its own, and would snap). */
+let _noSnapOn = false;
+let _unsnapped = 0;
+function installNoSnap() {
+  if (_noSnapOn || SNAP_OLD) return;
+  _noSnapOn = true;
+  const P = BatcherPipe.prototype;
+  const add = P.addToBatch;
+  P.addToBatch = function (obj, instructionSet) {
+    const r = add.call(this, obj, instructionSet);
+    if (obj && obj.renderable && obj.renderable._btNoSnap && obj.roundPixels) { obj.roundPixels = 0; _unsnapped++; }
+    return r;
+  };
+}
+if (typeof window !== 'undefined') {
+  window.__btShadowSnap = () => ({ hooked: _noSnapOn, snapOld: SNAP_OLD, highp: HP_ON, unsnapped: _unsnapped });
 }
 
 const FRAG = `
@@ -120,7 +185,12 @@ void main(void)
 
 function makeShadowFilter() {
   return Filter.from({
-    gl: { vertex: VERT, fragment: FRAG, name: 'bt-shadow-filter' },
+    /* v2.3.3333: highp -- see the header.  (Pixi caches a program by its
+       source alone, so the two must never both be asked for in one page:
+       HP_ON is read once, at load.) */
+    gl: HP_ON
+      ? { vertex: VERT, fragment: FRAG, name: 'bt-shadow-filter', preferredFragmentPrecision: 'highp' }
+      : { vertex: VERT, fragment: FRAG, name: 'bt-shadow-filter' },
     resources: {
       shadowUniforms: {
         uAlpha: { value: 0.3, type: 'f32' },
@@ -215,6 +285,7 @@ export function shadowSystemCount() { return _systems.size; }
 export class ShadowSystem {
   constructor(layer, root) {
     _systems.add(this);
+    installNoSnap();   /* v2.3.3333: once, for every renderer's shadows */
     this.layer = layer;
     this.root = root;
     this.pool = [];
@@ -241,6 +312,7 @@ export class ShadowSystem {
     let s = this.pool[this.used];
     if (!s) {
       s = new Sprite();
+      s._btNoSnap = true;   /* v2.3.3333: drawn where it is (installNoSnap) */
       this.layer.addChild(s);
       this.pool.push(s);
     }
@@ -305,6 +377,7 @@ export class ShadowSystem {
         }
       }
       m = new MeshSimple({ texture: tex, vertices: new Float32Array(n * 2), uvs, indices: idx });
+      m._btNoSnap = true;   /* v2.3.3333 */
       this.layer.addChild(m);
       this.meshPool.push(m);
     }
@@ -378,6 +451,7 @@ export class ShadowSystem {
           }
         }
         const mesh = new MeshSimple({ texture: o.texture, vertices: new Float32Array(count * 2), uvs, indices: idx });
+        mesh._btNoSnap = true;   /* v2.3.3333 */
         this.layer.addChild(mesh);
         m = { mesh, grid: src ? null : [8, 4] };
         this._pieceMeshes.set(o, m);

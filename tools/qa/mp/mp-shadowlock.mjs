@@ -29,6 +29,25 @@
  *   4. the probe says what fraction the layer is drawn back by;
  *   5. no page errors.
  *
+ *
+ * v2.3.3333, the owner again: "prop shadows right now still flicker as you run
+ * around".  Seven one-device-pixel steps cross a whole CSS px only twice, and
+ * between crossings the locked picture cannot change -- so the mean above
+ * watered the crossings down.  At a crossing Pixi re-snapped every shadow
+ * corner to a grid 0.77 x 0.83 of a texel (its roundPixels inside a filter
+ * uses the pooled texture's full size; shadows.js's header).  So the camera
+ * is also stepped a WHOLE CSS px (three device px) at a time, across and
+ * then down -- every step a crossing, and the camera's fraction the same at
+ * every step, so a shadow drawn where the world is lines up EXACTLY -- and
+ * compared with `?shadowsnap=1`, Pixi's snapping put back:
+ *   6. the probe says the shadow pieces are drawn unsnapped (and at highp),
+ *      and `?shadowsnap=1` says they are not;
+ *   7. across, a CSS px a step: the shadows change at most a third of what
+ *      they did snapped;
+ *   8. down, the same.
+ * (The half precision `?shadowhp=0` puts back is an iPhone's alone: the QA
+ * box runs mediump at full precision, so no picture here can show it.)
+ *
  * NOTE, from the hunt that led here: a picture of the world under the Mayor's
  * welcome (its scrim) does not move when the camera does -- every first
  * measurement of this taken with his greeting open read "the shadows never
@@ -84,8 +103,10 @@ async function writePng(path, w, h, rgba) {
   writeFileSync(path, Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ih), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]));
 }
 
-/* one page: the camera stepped, the props' shadows lined up with the world */
-async function measure(browser, wsPort, webPort, query, OUT, tag) {
+/* one page: the camera stepped, the props' shadows lined up with the world.
+   v2.3.3333: `runs` -- each a way of stepping it: `axis` 'x' (across) or 'y'
+   (down), `dev` device px a step */
+async function measure(browser, wsPort, webPort, query, OUT, tag, runs) {
   const P = await H.newPlayer(browser, { name: 'Shade' + tag, wsPort, webPort, viewport: PHONE, touch: true, dpr: DPR, world: 'wheel', query });
   try {
     await H.enterWorld(P);
@@ -100,63 +121,81 @@ async function measure(browser, wsPort, webPort, query, OUT, tag) {
       S.player.vx = 0; S.player.vy = 0;
       return { cx: Math.round(S.camera.x), cy: Math.round(S.camera.y), sx: S._worldScaleX, vw: S._viewW, vh: S._viewH };
     });
-    const X0 = BOX[0] * DPR, Y0 = BOX[1] * DPR, X1 = BOX[2] * DPR, Y1 = BOX[3] * DPR;
-    const W = X1 - X0 - STEPS - 2, HH = Y1 - Y0;
-    const shadows = [], worlds = [];
-    let lock = null;
-    for (let k = 0; k < STEPS; k++) {
-      await P.page.evaluate(({ b, k, dpr }) => {
-        const S = window._gameState.current;
-        const cx = b.cx + k / (dpr * b.sx);   /* exactly k device px of world motion */
-        S.player.x = cx + b.vw / 2; S.player.y = b.cy + b.vh / 2; S.player.vx = 0; S.player.vy = 0;
-        S.camera.x = cx; S.camera.y = b.cy;
-      }, { b: base, k, dpr: DPR });
-      await P.page.evaluate(() => window.__btLightFx.world(true));
-      await frames(P, 4);
-      const A = H.decodePng(await P.page.screenshot({ type: 'png' }));
-      if (k === 1) lock = await P.page.evaluate(() => { const p = window.__btLightFx.probe(); return p && p.shadows ? p.shadows.lock : undefined; });
-      await P.page.evaluate(() => window.__btLightFx.world(false));
-      await frames(P, 4);
-      const B = H.decodePng(await P.page.screenshot({ type: 'png' }));
-      await P.page.evaluate(() => window.__btLightFx.world(true));
-      const sd = new Float32Array(W * HH), wd = new Float32Array(W * HH);
+    const out = { away, runs: {} };
+    for (const R of runs) {
+      const across = R.axis !== 'y';
+      const maxShift = (STEPS - 1) * R.dev;
+      const X0 = BOX[0] * DPR, Y0 = BOX[1] * DPR, X1 = BOX[2] * DPR, Y1 = BOX[3] * DPR;
+      const W = X1 - X0 - (across ? maxShift + 2 : 0), HH = Y1 - Y0 - (across ? 0 : maxShift + 2);
+      const shadows = [], worlds = [];
+      let lock = null;
+      /* the bro moves with the camera, so his box is left out of every step's
+         picture wherever it lies at ANY step -- left out at one step and read
+         at the next, its edge was a difference of its own */
+      const skip = new Uint8Array(W * HH);
       for (let y = 0; y < HH; y++) for (let x = 0; x < W; x++) {
-        /* the world moved k device px left: its pixel at x sits at x - k */
-        const ix = X0 + x + STEPS - k, iy = Y0 + y;
-        const cssx = ix / DPR, cssy = iy / DPR;
-        if (cssx > 160 && cssx < 230 && cssy > 320 && cssy < 430) continue;   /* the bro, who moves with the camera */
-        const i = (iy * A.width + ix) * A.channels;
-        sd[y * W + x] = Math.max(0, luma(B.data, i) - luma(A.data, i));
-        wd[y * W + x] = luma(B.data, i);
-      }
-      shadows.push(sd); worlds.push(B);
-      if (k < 2) {
-        const od = new Uint8Array(W * HH * 4);
-        for (let j = 0; j < W * HH; j++) { const v = Math.min(255, sd[j] * 6); od[j * 4] = v; od[j * 4 + 1] = v; od[j * 4 + 2] = v; od[j * 4 + 3] = 255; }
-        await writePng(join(OUT, `shadowlock-${tag}-k${k}.png`), W, HH, od);
-      }
-    }
-    /* the camera's move, read off the pictures: the best horizontal match of
-       each step's shadows-off picture with step 0's */
-    const shiftOf = (P0, P1) => {
-      let best = null;
-      for (let s = -2; s <= STEPS + 3; s++) {
-        let t = 0, n = 0;
-        for (let y = Y0; y < Y1; y += 3) for (let x = X0 + 12; x < X1 - 12; x += 2) {
-          const i0 = (y * P0.width + x) * P0.channels, i1 = (y * P1.width + (x - s)) * P1.channels;
-          const e = luma(P0.data, i0) - luma(P1.data, i1); t += e * e; n++;
+        for (let k = 0; k < STEPS; k++) {
+          const cssx = (X0 + x + (across ? maxShift - k * R.dev : 0)) / DPR, cssy = (Y0 + y + (across ? 0 : maxShift - k * R.dev)) / DPR;
+          if (cssx > 160 && cssx < 230 && cssy > 320 && cssy < 430) { skip[y * W + x] = 1; break; }
         }
-        if (!best || t / n < best.e) best = { s, e: t / n };
       }
-      return best.s;
-    };
-    const moved = worlds.map((w) => shiftOf(worlds[0], w));
-    const mad = (a, b) => { let t = 0; for (let j = 0; j < a.length; j++) t += Math.abs(a[j] - b[j]); return t / a.length; };
-    const amt = (a) => { let t = 0; for (let j = 0; j < a.length; j++) t += a[j]; return t / a.length; };
-    const step = shadows.slice(1).map((p, i) => +mad(p, shadows[i]).toFixed(4));
-    const mean = +(step.reduce((a, b) => a + b, 0) / step.length).toFixed(4);
-    const errs = P.logs.filter((l) => /pageerror/.test(l));
-    return { away, moved, step, mean, dark: +amt(shadows[0]).toFixed(3), lock, errs };
+      for (let k = 0; k < STEPS; k++) {
+        await P.page.evaluate(({ b, k, dpr, dev, across }) => {
+          const S = window._gameState.current;
+          /* exactly k x dev device px of world motion, along the axis */
+          const d = (k * dev) / (dpr * b.sx);
+          const cx = b.cx + (across ? d : 0), cy = b.cy + (across ? 0 : d);
+          S.player.x = cx + b.vw / 2; S.player.y = cy + b.vh / 2; S.player.vx = 0; S.player.vy = 0;
+          S.camera.x = cx; S.camera.y = cy;
+        }, { b: base, k, dpr: DPR, dev: R.dev, across });
+        await P.page.evaluate(() => window.__btLightFx.world(true));
+        await frames(P, 4);
+        const A = H.decodePng(await P.page.screenshot({ type: 'png' }));
+        if (k === 1) lock = await P.page.evaluate(() => { const p = window.__btLightFx.probe(); return p && p.shadows ? p.shadows.lock : undefined; });
+        await P.page.evaluate(() => window.__btLightFx.world(false));
+        await frames(P, 4);
+        const B = H.decodePng(await P.page.screenshot({ type: 'png' }));
+        await P.page.evaluate(() => window.__btLightFx.world(true));
+        const sd = new Float32Array(W * HH);
+        for (let y = 0; y < HH; y++) for (let x = 0; x < W; x++) {
+          /* the world moved k x dev device px left (or up): its pixel at x sits there */
+          if (skip[y * W + x]) continue;   /* the bro (above) */
+          const ix = X0 + x + (across ? maxShift - k * R.dev : 0), iy = Y0 + y + (across ? 0 : maxShift - k * R.dev);
+          const i = (iy * A.width + ix) * A.channels;
+          sd[y * W + x] = Math.max(0, luma(B.data, i) - luma(A.data, i));
+        }
+        shadows.push(sd); worlds.push(B);
+        if (k < 2) {
+          const od = new Uint8Array(W * HH * 4);
+          for (let j = 0; j < W * HH; j++) { const v = Math.min(255, sd[j] * 6); od[j * 4] = v; od[j * 4 + 1] = v; od[j * 4 + 2] = v; od[j * 4 + 3] = 255; }
+          await writePng(join(OUT, `shadowlock-${tag}-${R.axis}${R.dev}-k${k}.png`), W, HH, od);
+        }
+      }
+      /* the camera's move, read off the pictures: the best match along the
+         axis of each step's shadows-off picture with step 0's */
+      const shiftOf = (P0, P1) => {
+        let best = null;
+        for (let s = -2; s <= maxShift + 3; s++) {
+          let t = 0, n = 0;
+          for (let y = Y0 + 12; y < Y1 - 12; y += 3) for (let x = X0 + 12; x < X1 - 12; x += 2) {
+            const i0 = (y * P0.width + x) * P0.channels;
+            const i1 = across ? (y * P1.width + (x - s)) * P1.channels : ((y - s) * P1.width + x) * P1.channels;
+            const e = luma(P0.data, i0) - luma(P1.data, i1); t += e * e; n++;
+          }
+          if (!best || t / n < best.e) best = { s, e: t / n };
+        }
+        return best.s;
+      };
+      const moved = worlds.map((w) => shiftOf(worlds[0], w));
+      const mad = (a, b) => { let t = 0; for (let j = 0; j < a.length; j++) t += Math.abs(a[j] - b[j]); return t / a.length; };
+      const amt = (a) => { let t = 0; for (let j = 0; j < a.length; j++) t += a[j]; return t / a.length; };
+      const step = shadows.slice(1).map((p, i) => +mad(p, shadows[i]).toFixed(4));
+      const mean = +(step.reduce((a, b) => a + b, 0) / step.length).toFixed(4);
+      out.runs[R.axis + R.dev] = { moved, step, mean, dark: +amt(shadows[0]).toFixed(3), lock, dev: R.dev };
+    }
+    out.snap = await P.page.evaluate(() => (window.__btShadowSnap ? window.__btShadowSnap() : null));
+    out.errs = P.logs.filter((l) => /pageerror/.test(l));
+    return out;
   } finally {
     await P.ctx.close().catch(() => {});
   }
@@ -165,21 +204,46 @@ async function measure(browser, wsPort, webPort, query, OUT, tag) {
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const now = await measure(browser, wsPort, webPort, '', OUT, 'locked');
-  const was = await measure(browser, wsPort, webPort, 'shadowlock=0', OUT, 'unlocked');
+  /* a device px a step (v2.3.3149's measure), and a whole CSS px a step across
+     and down (v2.3.3333's) */
+  const now = await measure(browser, wsPort, webPort, '', OUT, 'locked', [{ axis: 'x', dev: 1 }, { axis: 'x', dev: DPR }, { axis: 'y', dev: DPR }]);
+  const was = await measure(browser, wsPort, webPort, 'shadowlock=0', OUT, 'unlocked', [{ axis: 'x', dev: 1 }]);
+  const snapped = await measure(browser, wsPort, webPort, 'shadowsnap=1', OUT, 'snapped', [{ axis: 'x', dev: DPR }, { axis: 'y', dev: DPR }]);
   console.log('    locked:   ' + JSON.stringify(now));
   console.log('    unlocked: ' + JSON.stringify(was));
-  for (const [r, name] of [[now, 'locked'], [was, '?shadowlock=0']]) {
-    rec.ok(`${name}: the Mayor's window talked away (guard: under his scrim the world does not move)`, !r.err && r.away === true, r);
-    rec.ok(`${name}: the camera moved one device pixel a step, in the pictures (guard: ${JSON.stringify(r.moved)})`,
-      Array.isArray(r.moved) && r.moved.every((s, k) => Math.abs(s - k) <= 1) && r.moved[r.moved.length - 1] >= STEPS - 2, r.moved);
-    rec.ok(`${name}: there are props' shadows to watch (guard: ${r.dark} of a luma level a pixel)`, r.dark > 0.5, r.dark);
-  }
-  rec.ok(`with the shadows drawn on the world's grid they glide with it: ${now.mean} against ${was.mean} of a luma level a pixel from one step to the next (at most 0.4 of it)`,
-    now.mean >= 0 && was.mean > 0 && now.mean <= 0.4 * was.mean, { locked: now.step, unlocked: was.step });
-  rec.ok(`...and they are the same shadows at rest (darkness ${now.dark} against ${was.dark}, within 3%)`,
-    was.dark > 0 && Math.abs(now.dark - was.dark) / was.dark <= 0.03, { now: now.dark, was: was.dark });
+  console.log('    snapped:  ' + JSON.stringify(snapped));
+  const guards = (page, name) => {
+    rec.ok(`${name}: the Mayor's window talked away (guard: under his scrim the world does not move)`, !page.err && page.away === true, page.err || page.away);
+    for (const key of Object.keys(page.runs || {})) {
+      const r = page.runs[key];
+      const what = r.dev === 1 ? 'one device pixel' : `${r.dev} device px (a CSS px)`;
+      const dir = key[0] === 'y' ? 'down' : 'across';
+      rec.ok(`${name}, ${dir}: the camera moved ${what} a step, in the pictures (guard: ${JSON.stringify(r.moved)})`,
+        Array.isArray(r.moved) && r.moved.every((s, k) => Math.abs(s - k * r.dev) <= 1) && r.moved[r.moved.length - 1] >= (STEPS - 1) * r.dev - 1, r.moved);
+      rec.ok(`${name}, ${dir} ${r.dev}: there are props' shadows to watch (guard: ${r.dark} of a luma level a pixel)`, r.dark > 0.5, r.dark);
+    }
+  };
+  guards(now, 'locked');
+  guards(was, '?shadowlock=0');
+  guards(snapped, '?shadowsnap=1');
+  const N1 = now.runs && now.runs.x1, W1 = was.runs && was.runs.x1;
+  rec.ok(`with the shadows drawn on the world's grid they glide with it: ${N1 && N1.mean} against ${W1 && W1.mean} of a luma level a pixel from one step to the next (at most 0.4 of it)`,
+    !!N1 && !!W1 && N1.mean >= 0 && W1.mean > 0 && N1.mean <= 0.4 * W1.mean, { locked: N1 && N1.step, unlocked: W1 && W1.step });
+  rec.ok(`...and they are the same shadows at rest (darkness ${N1 && N1.dark} against ${W1 && W1.dark}, within 3%)`,
+    !!N1 && !!W1 && W1.dark > 0 && Math.abs(N1.dark - W1.dark) / W1.dark <= 0.03, { now: N1 && N1.dark, was: W1 && W1.dark });
   rec.ok('the probe says the fraction the layer is drawn back by (each in [0, 1) CSS px); none with ?shadowlock=0',
-    !!now.lock && now.lock.fx >= 0 && now.lock.fx < 1 && now.lock.fy >= 0 && now.lock.fy < 1 && was.lock === null, { now: now.lock, was: was.lock });
-  rec.ok('no page errors', !(now.errs || []).length && !(was.errs || []).length, { now: now.errs, was: was.errs });
+    !!N1 && !!N1.lock && N1.lock.fx >= 0 && N1.lock.fx < 1 && N1.lock.fy >= 0 && N1.lock.fy < 1 && !!W1 && W1.lock === null, { now: N1 && N1.lock, was: W1 && W1.lock });
+  /* ── v2.3.3333 ── */
+  rec.ok('6. the shadow pieces are drawn unsnapped, at highp; ?shadowsnap=1 leaves Pixi\'s snapping on them',
+    !!now.snap && now.snap.hooked && now.snap.unsnapped > 0 && now.snap.highp && !now.snap.snapOld
+      && !!snapped.snap && snapped.snap.snapOld && !snapped.snap.hooked, { now: now.snap, snapped: snapped.snap });
+  for (const [key, dir] of [['x3', 'across'], ['y3', 'down']]) {
+    const a = now.runs && now.runs[key], b = snapped.runs && snapped.runs[key];
+    rec.ok(`${key === 'x3' ? 7 : 8}. ${dir}, a whole CSS px a step (every step a crossing): ${a && a.mean} against ${b && b.mean} snapped, of a luma level a pixel (at most a third of it)`,
+      !!a && !!b && b.mean > 0 && a.mean <= b.mean / 3, { unsnapped: a && a.step, snapped: b && b.step });
+  }
+  rec.ok('...and unsnapped they are the same shadows (darkness within 3% of the snapped)',
+    !!now.runs && !!snapped.runs && !!now.runs.x3 && !!snapped.runs.x3 && snapped.runs.x3.dark > 0
+      && Math.abs(now.runs.x3.dark - snapped.runs.x3.dark) / snapped.runs.x3.dark <= 0.03, { now: now.runs && now.runs.x3 && now.runs.x3.dark, snapped: snapped.runs && snapped.runs.x3 && snapped.runs.x3.dark });
+  rec.ok('no page errors', !(now.errs || []).length && !(was.errs || []).length && !(snapped.errs || []).length, { now: now.errs, was: was.errs, snapped: snapped.errs });
 }
