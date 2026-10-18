@@ -320,7 +320,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 6c. memory: after a whole visit's farming, the farm holds its own
        pictures and not the Wheel's (CLAUDE.md, "Memory is budgeted").  The
        numbers go to out/farmwalk-memory.json.
-       v2.3.3376: asked directly.  It was "the farm's chip and cache together
+       v2.3.3397: asked directly.  It was "the farm's chip and cache together
        less than the Wheel's", which held while the Wheel's ground and
        objects were full-colour pictures.  Since v2.3.3190 they are colour
        numbers, a quarter the size (BroTown's chip 104 -> 71 MB), and the

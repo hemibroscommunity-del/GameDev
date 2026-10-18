@@ -246,7 +246,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('5e ...and the sword clone\'s swing is drawn (its swing stamp)', swings[ids.indexOf(swId)] > t5, { swings, t5 });
 
   /* ── 6. a knockout is not a death ── */
-  /* v2.3.3376: the page's own record, every 50 ms: when the knockout's note
+  /* v2.3.3397: the page's own record, every 50 ms: when the knockout's note
      came and what the bar read after it.  The check read the bar 1.5 s after
      this script saw the note, and the script polls a page that draws a few
      frames a second -- seen a second late, its read fell past the clones'

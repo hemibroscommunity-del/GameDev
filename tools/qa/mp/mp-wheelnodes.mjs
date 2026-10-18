@@ -307,7 +307,7 @@ async function body({ P, wsPort, rec, OUT, errors }) {
         await P.page.waitForTimeout(250);
       }
       await P.page.waitForTimeout(500);
-      /* v2.3.3376: each tap counts its own "Swimming!" (swimTapNode).  They
+      /* v2.3.3397: each tap counts its own "Swimming!" (swimTapNode).  They
          were counted from the live list after both taps and their waits, and a
          popup lives 1.5 s (effectsRenderer's ttl) while the note says itself
          once in 1.2 s (wheelSwim NOTE_MS), so the second tap says nothing --
@@ -507,7 +507,7 @@ async function tapNode(P, id, done, tries = 6) {
   return false;
 }
 
-/* v2.3.3376: one tap on the node while you swim, and how many "Swimming!" it
+/* v2.3.3397: one tap on the node while you swim, and how many "Swimming!" it
    put up -- counted in the very call that taps.  The touch handler runs inside
    dispatchEvent, so the refusal's popup is in the list before the call
    returns, and no frame can age it out.  The swim is set on in the same call

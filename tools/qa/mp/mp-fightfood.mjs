@@ -218,7 +218,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.devOp(wsPort, 'vitals', bId, { hp: 30 });
   await H.grant(wsPort, bId, 'item', { invKey: 'meal_garden_stew', count: 3 });
   await B.page.waitForTimeout(1500);
-  /* v2.3.3376: the popups from a record the page keeps as each appears, read
+  /* v2.3.3397: the popups from a record the page keeps as each appears, read
      once after the Eat, where they were polled eight times.  On this box each
      poll waits out a frame of a few hundred ms, so one bagEat took ~7 s, and
      the third bite below came ~20 s after the first: past the worker's own

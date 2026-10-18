@@ -69,7 +69,7 @@ const swingAt = (A, bId, sw) => A.page.evaluate(({ bId, sw }) => {
 }, { bId, sw });
 
 /* the popups a page drew since `t0` (S.dmgNumbers, combatHelpers pushDmgPopup).
-   v2.3.3376: from a record kept as each appears (mp-spar's and mp-pvpextras'
+   v2.3.3397: from a record kept as each appears (mp-spar's and mp-pvpextras'
    recorder), not the live list: a popup lives 1.5 s, and on this box the read
    after a blow and its waits could come when the block's "Blocked!" and its
    stamina had already gone -- the list was empty, the block real (TRAPS §200).

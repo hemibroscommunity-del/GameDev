@@ -108,7 +108,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await shot(A, 'edge');
 
   /* ── 4. the world map ── */
-  /* v2.3.3376: the friend far enough east that their name is clear of yours
+  /* v2.3.3397: the friend far enough east that their name is clear of yours
      at the map's first zoom.  A name is drawn only where nothing is (the
      map's label rule; "You" goes first, forced), and on the Wheel five times
      longer (v2.3.3315) the 3,000 px of step 3 is 12 map px at zoom 1 -- the

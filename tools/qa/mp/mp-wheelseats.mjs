@@ -28,7 +28,7 @@
  * The walker is a god (server/src/devtools.js): the deeper stretches have
  * monsters, and one dead surveyor is a survey of the respawn.
  *
- * v2.3.3376: THE BOOTS ON DRAWN WATER ARE A LOOK NOW TOO.  The long Wheel's
+ * v2.3.3397: THE BOOTS ON DRAWN WATER ARE A LOOK NOW TOO.  The long Wheel's
  * 250 seats include some whose drawn shore reaches the boots themselves --
  * docs/specs/wheel-5x.md "A seat stays the bank while you sit on it": 14 of
  * 250 with 2 to 4 of the five looks wet, one with four -- and since
@@ -134,7 +134,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`every spot and its school's middle are in drawn water, and every angler's seat is land open to the walk at the boots (${results.length - bad.length} of ${results.length}; ${edges.length} where the drawn shore brushes a seat or a school's rim, ${wetBoots} of them reaching the boots: ${JSON.stringify(edges)})`,
     bad.length === 0, bad.slice(0, 8));
 
-  /* v2.3.3376: the seat whose looks are wettest, sat on: the surveyor's rod in
+  /* v2.3.3397: the seat whose looks are wettest, sat on: the surveyor's rod in
      the bag (the tap passes over a spot you hold no tool for), the boots on
      the seat, a tap on the spot -- a locked try seats you as a harvest does,
      its Fishing level never matters here -- and with the angler seated the
