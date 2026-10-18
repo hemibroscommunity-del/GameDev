@@ -143,7 +143,8 @@ output every run). It:
      order of light and dark kept -- the shading as painted), its colour the
      walking steel's own near-grey (`steel_like_the_game`). The owner: "the
      armor art does not match what the character is wearing in the game while
-     farming ... See what other animations do";
+     farming ... See what other animations do" (before and after, beside the
+     walking and cooking steel: `docs/art/farm-armour-before-after.png`);
    - the **body under greaves**: the bare body with every trouser and boot
      pixel the greaves do not cover taken out, so nothing of them shows round
      the plates. A boot is boot grey below or beside the trousers, or a grey
