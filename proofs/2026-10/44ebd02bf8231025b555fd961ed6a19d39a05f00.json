@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "44ebd02bf8231025b555fd961ed6a19d39a05f00",
+  "tree": "47e02d01607dfd5e833ac8e492f350c3a86913b0",
+  "committedAt": "2026-10-18T15:54:38-07:00",
+  "subject": "Drop a bag item: only you see it for a minute, then anyone can take it; it flashes at two minutes and is gone ten seconds later (v2.3.3473) (#1013)",
+  "files": 6042,
+  "bytes": 680159718,
+  "listingSha256": "14385d329e40052b337842a7b062f7478ec2cd87dd21e055e9072f7a1b732581",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
