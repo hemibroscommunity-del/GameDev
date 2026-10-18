@@ -161,6 +161,7 @@ import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
 import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
+import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
 import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
 import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's death heard by distance */
 import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
@@ -1853,6 +1854,15 @@ export function setupWebSocket(ctx) {
                   try { celebrateLifeSkillLevel(S, 'blacksmithing', _sr.newLevel, _sr.fromLevel); } catch (_ce) {}
                 }
               }
+              break;
+            }
+          case 'item_drop_result':
+            {
+              /* v2.3.3473: the worker's answer to Drop (itemdrop.js): the bag
+                 moved on the player_state before it, the pile came as a
+                 loot_drop to this socket alone; this is the sound, or the
+                 reason in words over your head (game/itemDrop.js). */
+              applyItemDropResult(S, msg.payload);
               break;
             }
           case 'smith_salvage_result':
@@ -3592,6 +3602,13 @@ export function setupWebSocket(ctx) {
          the existing renderer's "+Xg" label shows the right amount;
          watchers with no share get coins=0 and the renderer falls back
          to the dim "[killer]'s loot" view via the recipients gate. */
+      /* v2.3.3473: a drop's time left as a time on this phone's clock (null
+         for any other pile, which carries the worker's own times) */
+      function _dropAt(p, field) {
+        if (!p || !p.dropped) return null;
+        var left = Number(p[field]);
+        return isFinite(left) && left >= 0 ? Date.now() + left : null;
+      }
       function _buildServerPile(p, myId) {
         var myShare = (p.shares && typeof p.shares[myId] === 'number') ? p.shares[myId] : 0;
         var isDeath = !!p.isDeathDrop;
@@ -3648,8 +3665,17 @@ export function setupWebSocket(ctx) {
              to free-for-all (anyone in zone can grab) until expiry. */
           isDeathDrop: isDeath,
           deathItems: isDeath ? (p.deathItems || []) : null,
-          expiry: isDeath ? (p.expiry || null) : null,
-          ownerOnlyUntil: isDeath ? (p.ownerOnlyUntil || null) : null,
+          expiry: isDeath ? (_dropAt(p, 'left') || p.expiry || null) : null,
+          ownerOnlyUntil: isDeath ? (_dropAt(p, 'openLeft') || p.ownerOnlyUntil || null) : null,
+          /* v2.3.3473: a dropped item (server itemdrop.js): drawn as the item,
+             not as a bag of your things; your own left alone until you step
+             off it (game/itemDrop.js); flashing from flashAt.  Its clocks
+             come as time LEFT and go on this phone's clock here, so a phone
+             whose clock is off still opens, flashes and ends it when the
+             worker does. */
+          dropped: !!p.dropped,
+          dropBy: p.dropped ? (p.dropBy || null) : null,
+          flashAt: p.dropped ? _dropAt(p, 'flashLeft') : null,
           _serverLoot: true,
         };
       }
@@ -5161,6 +5187,13 @@ export function setupWebSocket(ctx) {
         /* v2.3.3393: "/roll" or "/flip" (game/dice.js) -> dice.js, which rolls.
            TRAPS #18: without this line the ask never leaves the browser. */
         if (msg.type === 'dice') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3473: Drop, from the bag's item card (game/itemDrop.js) ->
+           itemdrop.js.  TRAPS #18: without this line the ask never leaves the
+           browser, and the item would stay in the bag with nothing said. */
+        if (msg.type === 'item_drop') {
           wsOut(msg);
           return;
         }

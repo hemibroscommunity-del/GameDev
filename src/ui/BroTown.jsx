@@ -6783,6 +6783,10 @@ export var BroTown = function BroTown(_ref0) {
                        piles the pet could never claim. */
                     var _petFFA = loot.isDeathDrop && loot.ownerOnlyUntil && Date.now() > loot.ownerOnlyUntil;
                     if (!_petFFA && loot.recipients && !loot.recipients.includes(S.myId)) return true;
+                    /* v2.3.3473: never your own drop (game/itemDrop.js) -- you
+                       put it down; the pet at your heels would hand it straight
+                       back.  Walking onto it still takes it back. */
+                    if (loot.dropped && loot.dropBy === S.myId) return true;
                     /* v2.3.2490: THE PET'S IN-FLIGHT FLAG IS ITS OWN.
                        This used to share `_pickupPending` with the manual
                        walk-over path in groundLoot.js, reasoning that pet +

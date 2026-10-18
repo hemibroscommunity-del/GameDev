@@ -2377,5 +2377,19 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { phone: [DICE_GAP_MS, DICE_SIDES, DICE_MAX_SIDES], worker: [DICE.GAP_MS, DICE.SIDES, DICE.MAX_SIDES] });
 }
 
+/* ═══ v2.3.3473: A DROP'S RULES ARE THE WORKER'S ═══
+   The bag's card greys Drop where the worker refuses one (NO_DROP_ZONES), and
+   says its minute, two minutes and end in words; the pile itself is timed by
+   the worker's time-left fields (src/data/itemDrop.js, server/src/itemdrop.js). */
+{
+  const C = await import('../../src/data/itemDrop.js');
+  const { ITEM_DROP } = await import('../src/itemdrop.js');
+  check('item drop: the phone greys Drop where the worker refuses one, and says its clocks',
+    JSON.stringify(C.NO_DROP_ZONES) === JSON.stringify(ITEM_DROP.NO_DROP_ZONES)
+      && C.DROP_PRIVATE_MS === ITEM_DROP.PRIVATE_MS && C.DROP_FLASH_MS === ITEM_DROP.FLASH_MS && C.DROP_GONE_MS === ITEM_DROP.GONE_MS,
+    { phone: [C.NO_DROP_ZONES, C.DROP_PRIVATE_MS, C.DROP_FLASH_MS, C.DROP_GONE_MS],
+      worker: [ITEM_DROP.NO_DROP_ZONES, ITEM_DROP.PRIVATE_MS, ITEM_DROP.FLASH_MS, ITEM_DROP.GONE_MS] });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

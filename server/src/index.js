@@ -154,6 +154,7 @@ import { presence2Methods } from './presence2.js'; /* v2.3.3250: far players onl
 import { emoteMethods } from './emotes.js'; /* v2.3.3391: an emote is one of the listed emotes */
 import { poseMethods } from './poses.js'; /* v2.3.3392: a held pose (sit, sleep, a dance) is part of the player */
 import { diceMethods } from './dice.js'; /* v2.3.3393: /roll and /flip, rolled by the worker */
+import { itemDropMethods } from './itemdrop.js'; /* v2.3.3473: a bag item dropped at your feet -- yours a minute, then anyone's */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -489,6 +490,9 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.3393: a roll or flip the WORKER made (dice.js).  Forged, one would
      put any number in any player's name in everyone's chat. */
   'dice_roll',
+  /* v2.3.3473: the worker's answer to a drop (itemdrop.js).  Forged, one
+     would tell a phone an item left its bag that never did. */
+  'item_drop_result',
   /* v2.3.3058: No man's land (nomansland.js) -- your own skulls' time left,
      and what a death there took.  Forged, one would paint a red skull on an
      innocent player's own screen and the other would make a game clear its
@@ -4139,6 +4143,23 @@ export class GameRoom {
       // Death drops are owner-only until ownerOnlyUntil, then free-
       // for-all until expiry.  Null for monster-kill piles.
       ownerOnlyUntil: p.ownerOnlyUntil || null,
+      /* v2.3.3473: a dropped item (itemdrop.js) -- drawn as the item, and its
+         clocks as time LEFT, so a phone whose own clock is off still opens
+         it, flashes it and lets it go when the worker does; absent on every
+         other pile, so their wire is byte-identical */
+      ...(p.dropped ? this._dropWire(p) : {}),
+    };
+  }
+
+  /* v2.3.3473: a drop's own fields on the wire (itemdrop.js) */
+  _dropWire(p) {
+    const now = Date.now();
+    return {
+      dropped: true,
+      dropBy: p.dropBy,
+      openLeft: Math.max(0, p.ownerOnlyUntil - now),
+      flashLeft: Math.max(0, p.flashAt - now),
+      left: Math.max(0, p.expiry - now),
     };
   }
 
@@ -4280,9 +4301,18 @@ export class GameRoom {
     return pile;
   }
 
-  _zoneLootForWire(zone) {
+  /* v2.3.3473: `viewer` -- the player this list is for.  A drop in its
+     private minute goes in theirs alone (itemdrop.js _pileHiddenFrom); with
+     no viewer, a list everyone may see. */
+  _zoneLootForWire(zone, viewer) {
     const list = this.loot[zone] || [];
-    return list.map((p) => this._serializePile(p));
+    const now = Date.now();
+    const out = [];
+    for (const p of list) {
+      if (this._pileHiddenFrom(p, viewer, now)) continue;
+      out.push(this._serializePile(p));
+    }
+    return out;
   }
 
   _sessionById(sessionId) {
@@ -4323,6 +4353,9 @@ export class GameRoom {
       // Walk back-to-front so splice is safe.
       for (let i = list.length - 1; i >= 0; i--) {
         const p = list[i];
+        /* v2.3.3473: a dropped item's private minute is up -- the room is
+           told, once (itemdrop.js) */
+        if (p.dropped && !p.revealed) this._dropRevealDue(p, now);
         // Honor pile.expiry if set (death drops use 120 s); else fall
         // back to the standard ts + LOOT_EXPIRY_MS window for monster
         // kill piles.
@@ -4956,6 +4989,11 @@ export class GameRoom {
          players near as `dice_roll` */
       case 'dice':
         this._handleDice(session, msg);
+        break;
+      /* v2.3.3473: a bag item dropped at your feet (itemdrop.js): yours for a
+         minute, then anyone's, flashing at two, gone ten seconds after */
+      case 'item_drop':
+        this._handleItemDrop(session, msg);
         break;
       case 'move':
         // Hottest path -- anti-teleport cap, position/facing merge,
@@ -6363,6 +6401,7 @@ Object.assign(GameRoom.prototype, presence2Methods); /* v2.3.3250 */
 Object.assign(GameRoom.prototype, emoteMethods); /* v2.3.3391 */
 Object.assign(GameRoom.prototype, poseMethods); /* v2.3.3392 */
 Object.assign(GameRoom.prototype, diceMethods); /* v2.3.3393 */
+Object.assign(GameRoom.prototype, itemDropMethods); /* v2.3.3473 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
 Object.assign(GameRoom.prototype, allianceMethods); /* v2.3.3313 */

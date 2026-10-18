@@ -35,6 +35,7 @@ import { HARDENED_WOOD_NAMES, isHardenedWoodKey, hardenedWoodIcon } from '@/data
 import { DISH_NAMES, dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* v2.3.3120: the box trap's picture */
 import { COOKED_FISH_ICONS, COOKED_FISH_ICON_DEFAULT } from '@/data/foodIcons.js';   /* v2.3.3260 */
+import { setDropThumbs } from '@/game/dropLook.js';   /* v2.3.3473: a dropped item is drawn on the ground as its bag picture */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -254,6 +255,9 @@ export const thumbFor = (key) => {
   if (k === 'snowman')              return SNOWMAN_REMNANTS_THUMB;
   return null;
 };
+/* v2.3.3473: the renderer draws a dropped item from this same lookup
+   (game/dropLook.js says why it is handed over rather than imported) */
+setDropThumbs(thumbFor);
 
 // Friendly icon for a key — looks up by simple pattern.  Falls back to
 // a tier-coloured ◇.  We keep things lightweight: the bag is a dashboard

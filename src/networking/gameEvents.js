@@ -289,7 +289,18 @@ export function processGameEvent(type, payload, S, deps) {
                  applies, so this is deploy-order safe in both directions. */
               if (payload.pile.zone && payload.pile.zone !== S.currentZone) break;
               var _existing = S.groundLoot.find(function (l) { return l.lootId === payload.pile.lootId; });
-              if (_existing) break;
+              if (_existing) {
+                /* v2.3.3473: a dropped item's clocks, told again (its reveal
+                   at a minute reaches its dropper too; /dev/dropage): the
+                   newer times, put on this phone's clock (item drop) */
+                if (_existing.dropped && payload.pile.dropped) {
+                  var _again = _buildServerPile(payload.pile, S.myId);
+                  _existing.ownerOnlyUntil = _again.ownerOnlyUntil;
+                  _existing.flashAt = _again.flashAt;
+                  _existing.expiry = _again.expiry;
+                }
+                break;
+              }
               var _newPile = _buildServerPile(payload.pile, S.myId);
               S.groundLoot.push(_newPile);
               /* v2.3.3343: a pile landing is heard, a little coin rattle by
