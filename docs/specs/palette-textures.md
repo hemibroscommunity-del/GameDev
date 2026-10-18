@@ -158,17 +158,26 @@ Measured on the QA phone (390 x 844, 3x), `mp-farmpalette` and `mp-farmwalk`:
 The same picture: the ground, the beds, the farm's things and crops and their
 shadows rendered at the phone's own pixels against `?nopalette`, 279 of
 2,829,060 pixels one level of 255 apart, none more; the frame against itself
-0. The Map panel lights the same 8,800 of its 12,100 pixels both ways.
+0. The Map panel lights the same 8,800 of its 12,100 pixels both ways. The
+same again drawn by v2.3.3447's one program (`BT_QA_QUERY=onebatch=1`, the
+way a phone draws; this box keeps the three programs): its colour-numbers
+branch picks a picture by its `_btPal`, which the loader sets, so the farm
+needed nothing for it.
 
-The farm's loading screen lifted with everything in both ways: 12.6 s reading
-colour numbers, 16.6 s reading pictures, the two phones loading at once on the
-QA box's four cores (the screen's cap is 12 s from the warp; neither reached
-it with anything missing).
+The farm's loading screen: about the same either way, the two phones loading
+at once on the QA box's four cores -- 12.6 s reading colour numbers against
+16.6 reading pictures in one run, 14.5 against 11.6 in another, everything in
+when the screen lifted both ways. With the one program forced on, this box
+draws a frame in ~1.5 s and neither way was all in at the screen's 12 s cap
+(34 s each), so mp-farmpalette asks only that the numbers load no worse than
+the pictures.
 
 The cost, on the QA box's software chip, the whole frame drawn and finished:
-23-38% longer over three runs (688 ms against 558, 709 against 545, 662-687
-against 496-515). The ground fills the screen, and each of its pixels is eight
-reads where it was one. Not measured on a phone.
+23-46% longer over four runs with the three programs (688 ms against 558, 709
+against 545, 662-687 against 496-515, 770 against 529). The ground fills the
+screen, and each of its pixels is eight reads where it was one. With the one
+program, 7% (1,531 against 1,424): a software rasterizer runs every branch
+for every pixel anyway (docs/specs/one-batch.md). Not measured on a phone.
 
 ## Not done
 

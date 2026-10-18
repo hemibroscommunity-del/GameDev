@@ -4364,8 +4364,9 @@ Two protocol versions coexist; both must keep working:
       palette.test.mjs); the dashboard's Map panel draws it from its numbers
       (paletteDraw.js `paletteThumb`); ~42 -> 10.4 MB, the chip 27 MB lighter
       on the farm, mp-farmwalk's line 205 -> 177; the picture 279 of 2.8 M px
-      one level apart; the frame 23-38% longer on the QA box's software chip;
-      `mp-farmpalette`: docs/specs/palette-textures.md "The farm".
+      one level apart, drawn by the one program too; the frame 23-46% longer
+      on the QA box's software chip; `mp-farmpalette`:
+      docs/specs/palette-textures.md "The farm".
   - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
     the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
     home again, three times. Each kind of memory's highest reading must stay
