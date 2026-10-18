@@ -1894,6 +1894,16 @@ remnant to migrate server-side, not a mode to preserve.
       TRAPS §194, `mp-savedload` (the race made
       certain: Pixi's file held back while a page error sends a report; and the
       context taken bare by the test).
+    - since v2.3.3450 THE WATCHDOG'S SAMPLE NEVER WAITS ON THE GPU -- found by
+      `mp-phoneframe` (the owner: "iterate on what best improves framerate
+      ... for phone gameplay"): all of a sample's time was `gl.getError()`,
+      which makes the page wait for the browser's GPU side to work through the
+      frame, ~10 ms here every 5 s, a hitch. The errors are asked for on a
+      context's FIRST sample only (BroTown.jsx `T.proven`); after that the
+      thumbnail is cleared see-through before the blit (`clearBufferfv`, the
+      clear colour Pixi keeps untouched), and one that comes back see-through
+      everywhere was not copied and is taken the old way. `?wdgeterror` asks
+      every time; `mp-wdsample` counts the calls.
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:
