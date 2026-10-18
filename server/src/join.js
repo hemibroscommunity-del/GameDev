@@ -20,6 +20,7 @@ import { FARM_CROP_IDS } from './farm.js';   /* v2.3.3131: caps.farmCrops */
 import { prog3FromLegacy } from './prog3.js';
 import { LINGER } from './linger.js'; /* v2.3.3260: the refusal's close code */
 import { cleanWheelSizes } from './wheeltables.js'; /* v2.3.3315: the Wheel sizes a phone draws */
+import { DEVICE_LOCK, cleanDevice } from './devicelock.js'; /* v2.3.3344: a key on its character's devices */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
  *
@@ -489,13 +490,21 @@ export const joinMethods = {
          BEFORE the record is stamped, so a refused join writes nothing. */
       if (opts && typeof opts.needVerify === 'function' && !(await opts.needVerify())) return 'verify';
       if (phrase) {
-        await this.state.storage.put('auth:' + id, { pfHash: await this._phraseHash(phrase), createdAt: now });
+        /* v2.3.3344: ...with the device it was made on (devicelock.js) -- an
+           empty list for a join that names none, so the one-time fill never
+           has to look this character up */
+        const rec = { pfHash: await this._phraseHash(phrase), createdAt: now };
+        if (this._deviceLockOn()) { const d = opts && opts.device; rec.devs = d ? [{ d, at: now }] : []; }
+        await this.state.storage.put('auth:' + id, rec);
       }
       return true;
     }
     if (phrase && (await this._phraseHash(phrase)) === auth.pfHash) {
       this._authFails.delete(id);
-      return true;
+      /* v2.3.3344: the key matched -- and is it on one of this character's
+         devices?  true, or 'device' (devicelock.js).  Never counted as a
+         failed key: it was the right one. */
+      return this._deviceLockJoin(id, auth, opts && opts.device, now);
     }
     // Failed verify: count toward the brute-force lockout (5 fails ->
     // 60s).  Keyed by target id, so an attacker hammering someone's id
@@ -610,9 +619,22 @@ export const joinMethods = {
     if (msg.id) {
       /* v2.3.3275: the account check (verify.js) -- asked only of a character
          that does not exist yet, and only when the owner has turned it on. */
-      const _authOk = await this._verifyJoinAuth(msg.id, typeof msg.phrase === 'string' ? msg.phrase : null,
-        (this._verifyConfigured && this._verifyConfigured()) ? { needVerify: () => this._verifyToken(msg.verify, session.ip) } : null);
+      /* v2.3.3344: ...and the device the join came from (devicelock.js) */
+      const _authOk = await this._verifyJoinAuth(msg.id, typeof msg.phrase === 'string' ? msg.phrase : null, {
+        needVerify: (this._verifyConfigured && this._verifyConfigured()) ? () => this._verifyToken(msg.verify, session.ip) : null,
+        device: cleanDevice(msg.device),
+      });
       if (_authOk === 'verify') { this._verifyRefuse(ws); return; }
+      /* v2.3.3344: the right key from a device this character was never
+         played on: its own reason (never 'auth', which makes the phone throw
+         its key away), its own close, and the live session untouched -- this
+         gate runs before the eviction below. */
+      if (_authOk === 'device') {
+        try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'device' })); } catch {}
+        try { ws.close(DEVICE_LOCK.CLOSE, 'device'); } catch {}
+        this.sessions.delete(ws);
+        return;
+      }
       if (!_authOk) {
         try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'auth' })); } catch {}
         try { ws.close(4003, 'auth'); } catch {}

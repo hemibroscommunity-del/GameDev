@@ -47,6 +47,8 @@ From there you can:
   minutes, so you can't leave it on by accident.
 - **Bot flags** — who the game has flagged as a possible script, and why
   (v2.3.3323; "Bot flags" below).
+- **Player logins** — let a player's character onto a new device, or lock out
+  someone who got into a character (v2.3.3344; "Player logins" below).
 
 Nobody else can use any of this: every button asks the worker for permission
 with your key, and without the key the buttons do nothing at all. "Forget key
@@ -99,6 +101,44 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
 If a grant command times out and you're not sure it went through: the
 response includes an `opId` — run the exact command again with
 `"opId":"<that value>"` added and the server guarantees it pays at most once.
+
+## Player logins: moving a character to a new device (v2.3.3344)
+
+A character's Login Key works only on the phones and computers it has been
+played on. When a player opens it somewhere new, they see **"This character is
+played on another device"** and a code (`bp_...`). That happens on:
+- a new phone;
+- a cleared browser;
+- a private window;
+- the iPhone home-screen app after playing in Safari (they keep separate
+  storage);
+- a friend's phone.
+
+**To let them in:**
+1. They send you the code. Let a device in only when you're sure the message
+   comes from that character's own player: someone else who has the key and
+   asks you is exactly who this keeps out.
+2. Open the Test panel. Under **Player logins**, paste the code and tap **Let
+   one new device in (30 min)**.
+3. Tell them to tap **Try again** within 30 minutes. That device is theirs from
+   then on.
+
+**If someone else got into a character** (its player says it was stolen):
+1. Paste its code and tap **Forget all its devices**, then tap again to
+   confirm. Whoever is playing it is put out, and nobody can play it.
+2. When the real player is ready, tap **Let one new device in**, and have them
+   tap Try again straight away.
+
+From a computer:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"playerId":"bp_XXXX"}' "https://WORKER/api/admin/device-pass"
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"playerId":"bp_XXXX"}' "https://WORKER/api/admin/device-forget"
+```
+`/api/admin/overview`'s `deviceLock` counts logins let in, refused, and
+passes used. If it ever gets in honest players' way, the live flag
+`devicelock: false` turns it off (docs/specs/device-lock.md).
 
 ## Bot flags: who looks like a script (v2.3.3323)
 

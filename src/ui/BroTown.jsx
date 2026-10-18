@@ -401,6 +401,8 @@ import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordD
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits } from '@/game/lifeSkillRewards.js'; /* tickGatherHits v2.3.2956 */
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
+import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
+import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
@@ -5003,6 +5005,7 @@ export var BroTown = function BroTown(_ref0) {
            same frame, with the water's own splash. */
         var _jNow = Date.now();
         var _jLanded = tickJump(S, _jNow, _playerDead);
+        tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
         var _inAir = !!S._jump;
         var _swEv = _inAir ? null : updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
           playerGroundDy(S.currentZone, P.x, P.y));
@@ -5047,6 +5050,10 @@ export var BroTown = function BroTown(_ref0) {
         });
         /* v2.3.3015: the first stride of a sprint pushes off -- a rush of air
            and a burst of the ground's dust (game/sprint.js) */
+        /* v2.3.3343: a sprint that ran out of stamina mid-run is heard
+           deflating (it stopped in silence; SOUND-GAPS) -- only that end, not
+           a tap, a stop or the shield's */
+        if (_sprEv === 'stop' && S._sprint && S._sprint.why === 'empty') cue('sprintOut');
         if (_sprEv === 'run') {
           try { BT_AUDIO.sprintPush(); } catch (e) { /* sound only */ }
           try {
@@ -6279,7 +6286,7 @@ export var BroTown = function BroTown(_ref0) {
             litAt: Date.now(), expiresAt: Date.now() + 45000,
             name: 'Campfire', spotName: 'Campfire', gatherLvl: 1, skill: 'cooking', emoji: '🔥',
           };
-          try { BT_AUDIO.beep(360, 0.05, 0.12, 'sawtooth'); } catch (e) {}
+          cue('campfire');   /* v2.3.3343: the fire catching -- the pan's crackle swelling and fading (a beep(), silent; SOUND-GAPS) */
           /* ═══ v2.3.1753: AND TELL THE OTHER PLAYERS ═══
              Owner: "yes make both peers see a campfire."
              Until now a campfire existed only on the client that lit it, so a
@@ -6390,10 +6397,12 @@ export var BroTown = function BroTown(_ref0) {
               if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
                 _ex.status = 'ready';
                 _ex.readyAt = _exNow;   /* v2.3.2956: when the window really opened -- mp-gatherhits holds it against the last hit */
-                try { BT_AUDIO.beep(820, 0.04, 0.05, 'sine'); } catch (e) {}
                 /* v2.3.2761 (owner: sounds for the specific actions): for fishing
                    the window opening IS the bite -- a fish on the hook, now reel. */
                 if (_ex.skill === 'fishing') { try { if (BT_AUDIO.play) BT_AUDIO.play('fish-on-hook', { vol: 0.65 }); } catch (e) {} }
+                /* v2.3.3343: ...and for the rest a small bright tick that says
+                   "now" -- this was a beep(), silent (SOUND-GAPS) */
+                else cue('gatherReady');
               }
             }
             /* v2.3.1416 (owner: "all resources NOT have a time out window
@@ -9065,7 +9074,7 @@ export var BroTown = function BroTown(_ref0) {
          the finished pose, not a stall. */
       S._firemaking = { startedAt: now, doneAt: now + 700, x: S.player.x, y: S.player.y + 6 };
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lighting fire…', '#ff8a3c', { ts: now });
-      try { BT_AUDIO.beep(180, 0.05, 0.12, 'sawtooth'); } catch (e) {}
+      cue('fireStrike');   /* v2.3.3343: two strikes of the flint (a beep(), silent) */
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
     });
@@ -9240,10 +9249,11 @@ export var BroTown = function BroTown(_ref0) {
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = nextSlot === 'melee' ? (_S2$rpg$weapon = S2.rpg.weapon) === null || _S2$rpg$weapon === void 0 ? void 0 : _S2$rpg$weapon.name : nextSlot === 'ranged' ? (_S2$rpg$rangedWeapon = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon === void 0 ? void 0 : _S2$rpg$rangedWeapon.name : 'Staff';
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, wpnName, '#D8A94D');
-    BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
-    setTimeout(function () {
-      return BT_AUDIO.beep(800, 0.04, 0.06, 'sine');
-    }, 60);
+    /* v2.3.3343: the blade drawn (two beep()s played nothing; SOUND-GAPS).
+       Stamped as the gesture's own sound so the swap button's generic menu
+       click yields to it (uiSfxDelegate: a specific sound wins the tap). */
+    cue('weaponSwap');
+    try { BT_AUDIO._uiSpecificAt = BT_AUDIO._now(); } catch (e) { /* sound only */ }
     S2._weaponSwapFlash = Date.now();
   }, []);
   var _desktopSelectSlot = useCallback(function (slot) {
@@ -9256,7 +9266,7 @@ export var BroTown = function BroTown(_ref0) {
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = slot === 'melee' ? (_S2$rpg$weapon2 = S2.rpg.weapon) === null || _S2$rpg$weapon2 === void 0 ? void 0 : _S2$rpg$weapon2.name : slot === 'ranged' ? (_S2$rpg$rangedWeapon2 = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon2 === void 0 ? void 0 : _S2$rpg$rangedWeapon2.name : 'Staff';
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, wpnName, '#D8A94D');
-    BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
+    cue('weaponSwap');   /* v2.3.3343: as the cycle's */
   }, []);
   var _desktopSpecialAttack = useCallback(function () {
     doSpecialAttack();
