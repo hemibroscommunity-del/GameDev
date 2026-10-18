@@ -38,7 +38,16 @@ const holdTitle = async (P, ms) => {
   if (!at) return false;
   await P.page.mouse.move(at.x, at.y);
   await P.page.mouse.down();
-  await P.page.waitForTimeout(ms);
+  /* v2.3.3403: held until the panel is up (`ms` at the most), not a set
+     time.  The title opens it from a 1.2 s timer that the release clears
+     (ZoneHeader holdStart/holdEnd), and at this file's 3x a frame here
+     outlasts the hold: the browser takes the queued release before the timer
+     that came due during the frame, and clears it -- in the solo run of
+     2026-10-18 every hold landed on the title and none opened the panel.
+     A phone's 16 ms frame never holds the timer back. */
+  const t0 = Date.now();
+  await P.page.waitForTimeout(1400);
+  while (Date.now() - t0 < ms && !(await panelUp(P))) await P.page.waitForTimeout(250);
   await P.page.mouse.up();
   return true;
 };
@@ -46,7 +55,7 @@ const panelUp = (P) => P.page.evaluate(() => !!Array.from(document.querySelector
 async function openPanel(P) {
   for (let i = 0; i < 3; i++) {
     if (await panelUp(P)) return true;
-    await holdTitle(P, 2200);
+    await holdTitle(P, 8000);
     for (const t0 = Date.now(); Date.now() - t0 < 8000;) {
       if (await panelUp(P)) return true;
       await P.page.waitForTimeout(250);
