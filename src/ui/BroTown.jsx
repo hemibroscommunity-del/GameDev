@@ -8004,7 +8004,7 @@ export var BroTown = function BroTown(_ref0) {
     }
     /* Ask the GPU for the thumbnail: { T, sync } to collect, or null (do it
        the old way).  Call it in the animation frame the world was drawn in. */
-    /* ═══ v2.3.3345: AND NOTHING ASKS THE GPU FOR ITS ERRORS EVERY 5 s ═══
+    /* ═══ v2.3.3360: AND NOTHING ASKS THE GPU FOR ITS ERRORS EVERY 5 s ═══
        The owner: "iterate on what best improves framerate without loss of
        quality (or negligible loss) for phone gameplay".  gl.getError() is the
        one call here that makes the page WAIT -- for the browser's GPU side to
@@ -8035,7 +8035,7 @@ export var BroTown = function BroTown(_ref0) {
       if (scissor) gl.disable(gl.SCISSOR_TEST);
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
       gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, T.fb);
-      /* v2.3.3345: see-through first, so a copy that did not happen reads as
+      /* v2.3.3360: see-through first, so a copy that did not happen reads as
          one (clearBufferfv leaves the clear colour Pixi keeps alone) */
       gl.clearBufferfv(gl.COLOR, 0, _WD_CLEAR);
       gl.blitFramebuffer(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, 0, 0, 32, 18, gl.COLOR_BUFFER_BIT, gl.LINEAR);
@@ -8065,7 +8065,7 @@ export var BroTown = function BroTown(_ref0) {
       gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, job.T.px);
       gl.bindBuffer(gl.PIXEL_PACK_BUFFER, packWas);
       if (job.check && gl.getError() !== gl.NO_ERROR) { _wdOffGl = gl; return false; }
-      /* v2.3.3345: see-through everywhere is a copy that did not happen (the
+      /* v2.3.3360: see-through everywhere is a copy that did not happen (the
          ask cleared it so): the old way, from now on on this context */
       var px = job.T.px, seen = false;
       for (var ia = 3; ia < px.length; ia += 4) { if (px[ia]) { seen = true; break; } }

@@ -1698,7 +1698,7 @@ remnant to migrate server-side, not a mode to preserve.
       TRAPS §194, `mp-savedload` (the race made
       certain: Pixi's file held back while a page error sends a report; and the
       context taken bare by the test).
-    - since v2.3.3345 THE WATCHDOG'S SAMPLE NEVER WAITS ON THE GPU -- found by
+    - since v2.3.3360 THE WATCHDOG'S SAMPLE NEVER WAITS ON THE GPU -- found by
       `mp-phoneframe` (the owner: "iterate on what best improves framerate
       ... for phone gameplay"): all of a sample's time was `gl.getError()`,
       which makes the page wait for the browser's GPU side to work through the
