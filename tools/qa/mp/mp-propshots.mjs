@@ -269,9 +269,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
       inside.hit && inside.letIn, { hit: inside.hit, letIn: inside.letIn, plant: inside.plant });
     /* 0b. Right in front of the face, and a step (100px x the frame scale)
        long enough to jump from outside its circle to past the face in one go.
-       v2.3.2699 planted on the face without testing that step. */
+       v2.3.2699 planted on the face without testing that step.
+       v2.3.3399: shot from 100 px east of the face, not from startX.  Since
+       the view went further out (v2.3.2997, v2.3.3011, v2.3.3020) startX is
+       the full 150 px off, so this step, cut at the face, is a 150 px segment
+       and with the arrow's own drawn body (52.5 px, projectiles.js PROJ_BODY)
+       a 202.5 px capsule: past the 200 px _segGap takes for a jump, not a
+       flight (a zone change, a tab back from the background), so the monster
+       was never tested and the arrow planted (the sweep of 2026-10-18).  No
+       real arrow steps that far -- 24 px x the bow's 1.5 range cap x the 3x
+       frame clamp is 108 -- and from 100 px out the step still starts outside
+       the monster's circle and still jumps it and the face in one go. */
     const front = await shootLocal(P, { tag: 'front', mx: D.x1 + 12, my: cy,
-      x: startX, y: cy, ang: Math.PI, speed: 100, frames: 60 });
+      x: Math.min(D.x1 + 100, startX), y: cy, ang: Math.PI, speed: 100, frames: 60 });
     rec.ok('town: a monster right in front of a face is hit, even by a step that jumps its circle',
       front.hit, { hit: front.hit, plant: front.plant, steps: front.track.length, dtScale: front.dtScale,
         maxStep: +maxStep(front.track).toFixed(1) });

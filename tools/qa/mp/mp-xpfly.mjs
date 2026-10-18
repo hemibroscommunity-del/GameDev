@@ -49,14 +49,10 @@ const probe = (P) => P.page.evaluate(() => {
   return { pops: pops.map((p) => ({ text: p.text, cat: p.cat, from: p.from })), cards, flying, player };
 });
 
-/* Push a gain through the real entry point, so this exercises the shipped
-   pushHudPopup (cat resolution, world anchor and all) rather than a fixture. */
-async function gain(P, amount, cat) {
-  await P.page.evaluate((o) => {
-    const S = window._gameState.current;
-    window.__btPushXp(S, { target: 'xpBar', text: '+' + o.amount + ' XP', color: '#60a5fa', cat: o.cat });
-  }, { amount, cat });
-}
+/* Every gain below goes through the real entry point (window.__btPushXp), so
+   this exercises the shipped pushHudPopup (cat resolution, world anchor and
+   all) rather than a fixture.  v2.3.3399: from inside the page, where the
+   look that follows it is taken (section 1). */
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, {
@@ -64,6 +60,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(3500);
+  /* v2.3.3399: the dashboard opened.  A first join arrives with it folded
+     (v2.3.2495), and a folded band draws no columns, so the three combat
+     cards the XP flies to were not on screen at all (the sweep of
+     2026-10-18), as in mp-infopop. */
+  await H.unfoldBand(P);
   await P.page.evaluate(() => { try { window.__broDashPanelBus.toBar(); } catch (e) {} });
   await P.page.waitForTimeout(600);
 
@@ -73,10 +74,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => typeof window.__btPushXp === 'function'), {});
   if (base.cards.length !== 3) { await P.ctx.close().catch(() => {}); return; }
 
-  /* ── 1. it starts over the character ── */
-  await gain(P, 37, 'sword');
-  await P.page.waitForTimeout(90);
-  const early = await probe(P);
+  /* ── 1. it starts over the character ──
+     v2.3.3399: pushed and first looked at in ONE evaluate, on the first frame
+     that draws it, as the flight below is (its note says why).  Across the
+     wire the look came 200+ ms late on this box, the label well up its lift,
+     and 73.5 px over the player read as "not over them" (the sweep of
+     2026-10-18).  And "over" is the column above them, as high as the label
+     can be in its lift: it starts 46 px above the player's point and rises
+     46 more in its first 520 ms (XpFlyOverlay.jsx playerScreenPoint,
+     LIFT_PX) -- a corner or a bar, the defect this guards against, is
+     hundreds of px off either way. */
+  const early = await P.page.evaluate(async () => {
+    const S = window._gameState.current;
+    window.__btPushXp(S, { target: 'xpBar', text: '+37 XP', color: '#60a5fa', cat: 'sword' });
+    const t0 = Date.now();
+    let el = null;
+    for (let i = 0; i < 90 && !el; i++) {
+      await new Promise((r) => requestAnimationFrame(r));
+      el = document.querySelector('[data-xpfly="sword"]');
+    }
+    const pops = (S._hudPopups || []).filter((p) => (p.target || 'xpBar') === 'xpBar')
+      .map((p) => ({ text: p.text, cat: p.cat, from: p.from }));
+    const flying = el ? [(() => { const r = el.getBoundingClientRect(); return { text: (el.textContent || '').trim(), cat: el.getAttribute('data-xpfly'), x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()] : [];
+    let player = null;
+    try {
+      const cv = document.querySelector('canvas'); const r = cv.getBoundingClientRect();
+      player = { x: r.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1),
+                 y: r.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1) };
+    } catch (e) {}
+    return { pops, flying, player, age: Date.now() - t0 };
+  });
   rec.ok('a label was pushed with the skill it belongs to',
     early.pops.length > 0 && early.pops[0].cat === 'sword', early.pops);
   rec.ok('...anchored to the character, not a screen corner',
@@ -84,9 +111,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const born = early.flying[0];
   rec.ok('the label is on screen (guard)', !!born, early.flying);
   if (born && early.player) {
-    const d = Math.hypot(born.x - early.player.x, born.y - early.player.y);
-    rec.ok('...and it is drawn OVER the character (within 70px of them)', d < 70,
-      { d: +d.toFixed(1), label: born, player: early.player });
+    const dx = born.x - early.player.x, up = early.player.y - born.y;
+    rec.ok('...and it is drawn OVER the character (the column above them, no higher than its lift)',
+      Math.abs(dx) < 30 && up > 0 && up < 46 + 46 + 8,
+      { dx: +dx.toFixed(1), up: +up.toFixed(1), age: early.age, label: born, player: early.player });
   }
 
   /* ── 2 + 3. THE WHOLE FLIGHT, SAMPLED IN-PAGE ──

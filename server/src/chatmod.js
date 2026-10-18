@@ -84,7 +84,9 @@ export const CHATMOD = {
    never asked for (and would break handshakes mid-flight).  `emote` is
    in because it is a chat bubble that makes a NOISE — the client chirps
    on every one (chat.js handleEmoteEvent). */
-export const MUTABLE_RELAY_TYPES = new Set(['chat', 'emote']);
+/* v2.3.3393: and `dice_roll` -- the worker's event, not a relay, but stamped
+   with its roller as `from` (dice.js): a line in the chat in their name */
+export const MUTABLE_RELAY_TYPES = new Set(['chat', 'emote', 'dice_roll']);
 
 /* Reason codes.  An ALLOWLIST rather than free text, on purpose: the
    report record is read by the operator, and free text from a client is
@@ -382,7 +384,26 @@ export const chatModMethods = {
       for (const k of stale) await this.state.storage.delete(k);
       if (filter) rows = rows.filter((r) => r.target === filter || r.by === filter);
       rows.sort((a, b) => (b.at || 0) - (a.at || 0));
-      return json({ ok: true, total: rows.length, pruned: stale.length, reports: rows.slice(0, limit) });
+      /* ═══ v2.3.3398: WHAT THE OWNER NEEDS TO ACT ON A REPORT ═══
+         The Test panel's Chat reports section (DevPanel.jsx) shows these and
+         kicks, freezes and unfreezes from them -- until now only a curl
+         command read them, and the owner runs the game from a phone.  Each
+         row on the page says whether the reported player is ONLINE NOW (the
+         record's targetOnline is when the report was made) and FROZEN now
+         (`frozen:<pid>`, admin.js /freeze) -- one read per player on the page
+         (at most `limit`), on a read the owner makes. */
+      const page = rows.slice(0, limit);
+      const frozenOf = new Map();
+      for (const r of page) {
+        const t = typeof r.target === 'string' ? r.target : '';
+        if (t && !frozenOf.has(t)) frozenOf.set(t, !!(await this.state.storage.get('frozen:' + t)));
+      }
+      for (const r of page) {
+        r.frozen = frozenOf.get(r.target) === true;
+        /* connected now: a session of theirs (admin.js's own test for a kick) */
+        r.onlineNow = !!(typeof r.target === 'string' && this._wsBySessionId(r.target));
+      }
+      return json({ ok: true, total: rows.length, pruned: stale.length, reports: page });
     }
     if (request.method === 'DELETE' && path === '/reports') {
       const id = url.searchParams.get('id');

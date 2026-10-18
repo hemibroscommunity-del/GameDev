@@ -151,6 +151,9 @@ import { joinMethods, cosmeticCap, JOIN_COSMETIC_KEYS } from './join.js';   /* v
 import { tickMethods, REGEN_TICKS } from './tick.js'; /* v2.3.3127: + the regen cadence, for Herb Bread */
 import { eventPlaceMethods } from './eventplace.js'; /* v2.3.3245: events by place */
 import { presence2Methods } from './presence2.js'; /* v2.3.3250: far players only while the world map is open */
+import { emoteMethods } from './emotes.js'; /* v2.3.3391: an emote is one of the listed emotes */
+import { poseMethods } from './poses.js'; /* v2.3.3392: a held pose (sit, sleep, a dance) is part of the player */
+import { diceMethods } from './dice.js'; /* v2.3.3393: /roll and /flip, rolled by the worker */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -170,6 +173,10 @@ import { chatModMethods } from './chatmod.js';
 /* v2.3.2136: @area / @user chat lanes (chatlanes.js).  Own validated
    cases, never the room-wide default relay -- see that file's header. */
 import { chatLaneMethods } from './chatlanes.js';
+/* v2.3.3396: chat guardrails -- chat and emotes spend an allowance of their
+   own (not the one a fight's swings and arrows need), the same public line
+   twice in 30 s is said once, and every lane's text is cleaned (chatguard.js) */
+import { chatGuardMethods } from './chatguard.js';
 import { broVerifyMethods } from './broverify.js'; /* v2.3.1576: Hemi Bro ownership */
 // v2.3.1191 (P4 decomposition): the combat/damage core -- see combat.js.
 import { combatMethods } from './combat.js';
@@ -430,6 +437,38 @@ export const CHAT_RELAY = {
   COLOR_MAX: 32,   // a CSS colour, nothing more
 };
 
+/* ═══ v2.3.3391: A CHAT LINE'S NAME AND COLOUR (docs/FUN-SOCIAL-PLAN.md) ═══
+   Found by the fun & social plan's check of the code, Phase 0:
+   - THE COLOUR was any string up to COLOR_MAX, drawn as the sender's name
+     colour in everyone's chat feed (WorldChatFeed.jsx) -- "transparent" made
+     a name invisible.  Every honest phone sends one of PLAYER_COLORS
+     (src/data/constants.js), a #rrggbb; only a #rgb or #rrggbb is kept now,
+     anything else relayed as '' (the feed's own colour).
+   - THE NAME carried a lane's mark at its front if the player was named so
+     ("✉ Mayor"), and the feed reads the lane off the front of the name
+     (src/data/smallIcons.js chatLaneOf): every ordinary line of theirs was
+     drawn as a whisper.  The marks come off here, as the phone takes them off
+     too (stripLaneMarks there; the two lists are the same three marks). */
+const CHAT_COLOR_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const CHAT_LANE_MARKS = ['\u{1F6E1}', '\u{1F4CD}', '\u2709'];
+export function stripChatLaneMarks(name) {
+  if (typeof name !== 'string') return '';
+  let s = name;
+  for (let guard = 0; guard < 16; guard++) {
+    let hit = false;
+    for (const mark of CHAT_LANE_MARKS) {
+      if (s.startsWith(mark)) {
+        s = s.slice(mark.length);
+        if (s.charCodeAt(0) === 0xFE0F) s = s.slice(1);
+        s = s.replace(/^\s+/, '');
+        hit = true;
+      }
+    }
+    if (!hit) break;
+  }
+  return s;
+}
+
 // Event types the worker emits itself (server -> client).  The default
 // branch of webSocketMessage rebroadcasts unknown msg.type values to
 // every client, so we MUST refuse to rebroadcast any of these from a
@@ -442,6 +481,9 @@ export const PRIVILEGED_EVENTS = new Set([
      into a relay, it would hand a player a key that is not theirs -- their
      phone would switch to it and be refused. */
   'key_new',
+  /* v2.3.3393: a roll or flip the WORKER made (dice.js).  Forged, one would
+     put any number in any player's name in everyone's chat. */
+  'dice_roll',
   /* v2.3.3058: No man's land (nomansland.js) -- your own skulls' time left,
      and what a death there took.  Forged, one would paint a red skull on an
      innocent player's own screen and the other would make a game clear its
@@ -944,6 +986,9 @@ export class GameRoom {
        EVENTS_PER_TICK_CAP, which only ever bounded the COUNT -- 500
        events of unbounded size was a legal tick payload. */
     this.MAX_INBOUND_BYTES = 16 * 1024;
+    /* v2.3.3396: chat and emotes no longer spend this bucket -- they have an
+       allowance of their own (chatguard.js SOCIAL); this one is for the
+       swings, arrows, rolls, jumps and handshakes */
     this.RELAY_BURST = 8;
     this.RELAY_REFILL_PER_S = 4;
     this.EVENT_BYTES_PER_TICK = 64 * 1024;
@@ -4705,14 +4750,21 @@ export class GameRoom {
        line past the trim -- the ordering _handlePartyChat documents. */
     let text = typeof p.text === 'string' ? p.text : '';
     text = text.slice(0, CHAT_RELAY.TEXT_MAX).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
+    /* v2.3.3396: then cleaned -- stacked accents, invisible and backwards
+       characters, a wall of emoji or of one key (chatguard.js) */
+    text = this._chatGuardClean(text);
     if (!text) return false;
+    /* v2.3.3396: the same line twice in 30 s is said once (chatguard.js) */
+    if (this._chatRepeated(session, 'room', text)) return false;
     const ps = this.playerState[session.id];
     /* The server's own copy of who this is.  session.name is itself
        sanitised at join (join.js sanitizeDisplayName, same version), and
        ps.name is the stored permanent character name where there is one. */
-    const name = (ps && typeof ps.name === 'string' && ps.name) || session.name || 'Bro';
-    const color = typeof p.color === 'string'
+    /* v2.3.3391: never a lane's mark at the front (stripChatLaneMarks above) */
+    const name = stripChatLaneMarks((ps && typeof ps.name === 'string' && ps.name) || session.name || 'Bro') || 'Bro';
+    let color = typeof p.color === 'string'
       ? p.color.slice(0, CHAT_RELAY.COLOR_MAX).replace(/[\x00-\x1f\x7f]/g, '') : '';
+    if (!CHAT_COLOR_RE.test(color)) color = '';   /* v2.3.3391: a #rgb or #rrggbb, or none */
     msg.payload = { id: session.id, name, text, color };
     /* v2.3.1981: remember the line AS SANITISED, for the report path.
        This is the ONLY copy of a chat line a report may quote (chatmod.js
@@ -4890,6 +4942,16 @@ export class GameRoom {
         // bypass and stamped an arbitrary position.
         break;
 
+      /* v2.3.3392: sit, sleep, flop or a dance, held until you move -- state
+         on the player (poses.js), told to the phones near by the tick's `po` */
+      case 'pose':
+        this._handlePose(session, msg);
+        break;
+      /* v2.3.3393: /roll and /flip (dice.js): the worker rolls, and tells the
+         players near as `dice_roll` */
+      case 'dice':
+        this._handleDice(session, msg);
+        break;
       case 'move':
         // Hottest path -- anti-teleport cap, position/facing merge,
         // zone-change streaming.  Hoisted to movement.js
@@ -5861,15 +5923,25 @@ export class GameRoom {
          * path is untouched. */
         if (session.id) {
           const _now = Date.now();
-          if (session.relayTokens === undefined) {
-            session.relayTokens = this.RELAY_BURST;
+          /* v2.3.3396: chat and emotes spend the SOCIAL allowance, five at
+             once then one every 2 s, and never this bucket -- it is the one a
+             player's own swings, arrows, rolls and jumps spend, and a burst of
+             chat or emotes used to empty it, so the next swing the others
+             should have seen was dropped (chatguard.js SOCIAL).  `chatguard:
+             false` puts them back on this bucket. */
+          const _social = this._socialLane(msg.type);
+          if (_social && !this._socialAllow(session, _now)) break;
+          if (!_social) {
+            if (session.relayTokens === undefined) {
+              session.relayTokens = this.RELAY_BURST;
+              session.relayAt = _now;
+            }
+            session.relayTokens = Math.min(this.RELAY_BURST,
+              session.relayTokens + ((_now - session.relayAt) / 1000) * this.RELAY_REFILL_PER_S);
             session.relayAt = _now;
+            if (session.relayTokens < 1) { session.relayDropped = (session.relayDropped || 0) + 1; break; }
+            session.relayTokens -= 1;
           }
-          session.relayTokens = Math.min(this.RELAY_BURST,
-            session.relayTokens + ((_now - session.relayAt) / 1000) * this.RELAY_REFILL_PER_S);
-          session.relayAt = _now;
-          if (session.relayTokens < 1) { session.relayDropped = (session.relayDropped || 0) + 1; break; }
-          session.relayTokens -= 1;
         }
         if (session.id) {
           /* v2.3.3304: rebuilt -- {type, payload} and nothing else, the
@@ -5882,6 +5954,10 @@ export class GameRoom {
              before it is fanned out.  False means there is nothing left
              to say, so nothing is relayed (see CHAT_RELAY above). */
           if (msg.type === 'chat' && !this._sanitizeChatRelay(session, msg)) break;
+          /* v2.3.3391: an emote is drawn now (an emoji over the head, a quick
+             line as the speech bubble), so it is one of the LISTED emotes or
+             nothing at all -- never free text over a head (emotes.js) */
+          if (msg.type === 'emote' && !this._sanitizeEmoteRelay(session, msg)) break;
           // v2.3.1119: trades keep the relay handshake but the room now
           // settles them -- the intercept validates at commit, moves the
           // goods, and annotates the accept with settled:true (or drops
@@ -6187,6 +6263,7 @@ export class GameRoom {
 // v2.3.1118: mix the marketplace methods into GameRoom (see the
 // market.js header for the fold rationale + re-extraction path).
 Object.assign(GameRoom.prototype, chatLaneMethods); /* v2.3.2136 */
+Object.assign(GameRoom.prototype, chatGuardMethods); /* v2.3.3396 */
 Object.assign(GameRoom.prototype, broVerifyMethods); /* v2.3.1576 */
 Object.assign(GameRoom.prototype, eventCapeMethods); /* v2.3.2026 */
 Object.assign(GameRoom.prototype, marketMethods);
@@ -6278,6 +6355,9 @@ Object.assign(GameRoom.prototype, joinMethods);
 Object.assign(GameRoom.prototype, tickMethods);
 Object.assign(GameRoom.prototype, eventPlaceMethods); /* v2.3.3245 */
 Object.assign(GameRoom.prototype, presence2Methods); /* v2.3.3250 */
+Object.assign(GameRoom.prototype, emoteMethods); /* v2.3.3391 */
+Object.assign(GameRoom.prototype, poseMethods); /* v2.3.3392 */
+Object.assign(GameRoom.prototype, diceMethods); /* v2.3.3393 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
 Object.assign(GameRoom.prototype, allianceMethods); /* v2.3.3313 */

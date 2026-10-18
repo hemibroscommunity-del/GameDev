@@ -202,6 +202,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('ROAD 1 (reload with the key, then its row): the screen is not black', r1.ok, { ...r1, ...i1 });
   rec.ok('ROAD 1: ...and it is the same character', i1.myId === idBefore.myId, { i1, idBefore });
 
+  /* ── ROAD 1b: the black-screen watchdog's own recovery reload ──
+     v2.3.3399: the one reload that still walks you straight back in
+     (BroTown.jsx `_recoveryReload`: bt_resume_now, then the clean path), and
+     the reload that is about a black screen -- made here as the watchdog
+     makes it, from the world ROAD 1 brought this page back to. */
+  const back1b = P.page.waitForNavigation({ waitUntil: 'load', timeout: 20000 }).catch(() => null);
+  await P.page.evaluate(() => {
+    sessionStorage.setItem('bt_resume_now', '1');
+    setTimeout(() => location.replace(location.pathname), 100);
+  });
+  await back1b;
+  await P.page.waitForTimeout(3000);
+  const r1b = await litWithin(P, 30000);
+  const i1b = await identity(P);
+  console.log('    road 1b recovery reload', JSON.stringify(r1b), JSON.stringify(i1b));
+  rec.ok('ROAD 1b (the watchdog\'s recovery reload): the screen is not black', r1b.ok, { ...r1b, ...i1b });
+  rec.ok('ROAD 1b: ...and it is the same character', i1b.myId === idBefore.myId, { i1b, idBefore });
+
   /* ── ROAD 2: the door's Continue -> your character in the picker ──
      Reachable only after a logout, which is the point: logout KEEPS the key
      (the passphrase is the character), so this is the one screen in the game

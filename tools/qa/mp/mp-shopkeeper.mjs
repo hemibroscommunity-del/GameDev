@@ -158,6 +158,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      all. The shop simply grows upward from it." Measured before and after,
      because this is the one requirement a screenshot review would pass by
      eye and a two-pixel regression would still break. */
+  /* v2.3.3399: the band open first, as the check measures it NOT moving.
+     Since v2.3.2495 a brand-new bro's first join arrives with it FOLDED
+     (harness unfoldBand), and a folded band draws no bag at all: no slot for
+     his quotes, nothing to tap, and the sell step threw on a missing tile
+     (the sweep of 2026-10-17).  Opening the shop now unfolds a folded band
+     itself (BottomDashboard, v2.3.3399) -- B below checks that half. */
+  await H.unfoldBand(A);
   const before = await view(A);
   rec.ok('the bag is on screen before the shop opens (or the next check is vacuous)',
     !!before.bandBag, before.bandBag);
@@ -216,8 +223,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     qNum(v.bagQuote) > 0, v.bagQuote);
 
   /* ══ THE PILE IS PUBLIC ══ */
+  /* v2.3.3399: B is a brand-new bro too, so B's band arrives FOLDED -- and is
+     left that way: opening the shop must bring the bag back by itself
+     (BottomDashboard), or a new player's "tap your bag below to sell" has no
+     bag below it (the sweep of 2026-10-17). */
+  const foldOf = (P) => P.page.evaluate(() => {
+    const b = document.querySelector('[data-dash-fold]');
+    return b ? b.getAttribute('data-dash-fold') : null;
+  });
+  const bFold = await foldOf(B);
   await openShop(B);
   const vb = await until(B, (x) => x.panel && x.broSlot && x.bagQuote, 'B: shelf + quote');
+  const bFoldNow = await foldOf(B);
+  rec.ok('a new player\'s folded band opens with the shop, so the bag to sell from is there',
+    bFold === 'min' && bFoldNow === 'open' && !!vb.bagQuote, { before: bFold, after: bFoldNow, bagQuote: vb.bagQuote });
   rec.ok('a player who never touched anything sees the pile the seller filled',
     vb.broSlot && vb.broHolds === 1, { holds: vb.broHolds, vb });
 

@@ -26,33 +26,30 @@ const inked = (a) => (a ? [...a].filter((c) => c !== '0').length : 0);
 const art = (ch, n) => ch.repeat(n) + '0'.repeat(256 - n);
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Inker', wsPort, webPort });
+  /* v2.3.3399: DRAWN BEFORE THE CHARACTER EXISTS.  Since v2.3.2690 (#706) the
+     look is the character's stored record, and every join puts it back on the
+     device, clearing a drawing the record does not have (characterRecord.js
+     LOOK_BLANK).  This drew into storage after the character was made, then
+     reloaded -- so the rejoin wiped both drawings and every check read 0 or
+     null.  Now both are in storage before the page's first script runs, and
+     the creator's join carries them into the record, as mp-lookrestore does. */
+  const SEED = `try {
+    localStorage.setItem(${JSON.stringify(KEYS.tattoo)}, ${JSON.stringify(art('a', 40))});
+    localStorage.setItem(${JSON.stringify(KEYS.tattooBack)}, ${JSON.stringify(art('c', 90))});
+  } catch (e) {}`;
+  const P = await H.newPlayer(browser, { name: 'Inker', wsPort, webPort, init: SEED });
   await H.enterWorld(P);
-  await P.page.waitForTimeout(1500);
+  await P.page.waitForTimeout(2500);
 
   /* ── 1. the canvas exists and is separate ── */
-  const wrote = await P.page.evaluate(([k, front, back]) => {
-    try {
-      localStorage.setItem(k.tattoo, front);
-      localStorage.setItem(k.tattooBack, back);
-      return true;
-    } catch (e) { return false; }
-  }, [KEYS, art('a', 40), art('c', 90)]);
-  rec.ok('both torso canvases could be written (guard)', wrote);
-
-  await P.page.reload({ waitUntil: 'domcontentloaded' });
-  await P.page.waitForTimeout(1200);
-  const created = await P.page.$('[data-tut="login-create"]');
-  if (created) await created.click();
-  await H.enterWorld(P).catch(() => {});
-  await P.page.waitForTimeout(2500);
 
   const back = await P.page.evaluate((k) => {
     const out = {};
     for (const n of Object.keys(k)) { try { out[n] = localStorage.getItem(k[n]) || ''; } catch (e) { out[n] = ''; } }
     return out;
   }, KEYS);
-  rec.ok('the chest drawing survived the reload (guard)', inked(back.tattoo) === 40,
+  /* v2.3.3399: read after the join, which blanks a drawing the record lacks */
+  rec.ok('the chest drawing survived the join -- his record has it (guard)', inked(back.tattoo) === 40,
     { chest: inked(back.tattoo) });
   rec.ok('...and the BACK drawing is stored separately, at its own size -- one '
     + 'canvas cannot be the other', inked(back.tattooBack) === 90,
@@ -81,22 +78,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* And the half that is easy to lose: someone who has drawn only a chest
      piece must show a BARE back, not their chest wrapped round.
 
-     Cleared and RELOADED, not just written: playerArt keeps the active
-     drawings in a module-scope store read once at boot, so a late
-     localStorage write is invisible to getArt until the next load. Writing it
-     and probing straight away reported the old 90-cell back drawing and looked
-     like a failure of the fix. */
-  await P.page.evaluate((k) => { try { localStorage.setItem(k.tattooBack, '0'.repeat(256)); } catch (e) {} }, KEYS);
-  await P.page.reload({ waitUntil: 'domcontentloaded' });
-  await P.page.waitForTimeout(1200);
-  const created2 = await P.page.$('[data-tut="login-create"]');
-  if (created2) await created2.click();
-  await H.enterWorld(P).catch(() => {});
-  await P.page.waitForTimeout(2500);
+     v2.3.3399: cleared through the game's own setter, __btSetArt (setArt
+     itself, v2.3.2856), which writes the store getArt reads -- so no reload.
+     A reload clears nothing now: the init script seeds the 90 cells again and
+     the join puts back the record, which has them. */
+  const cleared = await P.page.evaluate(() => {
+    if (!window.__btSetArt) return false;
+    window.__btSetArt('tattooBack', '0'.repeat(256));
+    return true;
+  });
   const n1 = await facing('north');
   rec.ok('...and with no back drawing at all the back is BARE, rather than '
-    + 'falling back to the chest', !!(n1 && inked(n1.tattoo) === 0),
-    { cells: n1 && inked(n1.tattoo) });
+    + 'falling back to the chest', !!(cleared && n1 && inked(n1.tattoo) === 0),
+    { cleared, cells: n1 && inked(n1.tattoo) });
 
   await P.ctx.close();
 }

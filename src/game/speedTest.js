@@ -236,6 +236,25 @@ function showResult(r) {
 
 let _running = false;
 
+/* which side holds the frame, in words -- v2.3.3383: never the graphics chip
+   at the screen's own pace.  The owner's first run read 60 frames a second in
+   every step, 17 ms each, and was told "Most of each frame (17 ms) is the
+   graphics chip's": the 17 ms there is only the screen's own refresh (a
+   frame at 60 Hz is 16.7 ms however little is drawn), so a frame much longer
+   than the game's own work says the chip (or the screen) is the wait only
+   when the frame rate is under the screen's. */
+const AT_SCREEN_PACE_FPS = 55;
+export function frameNote(base) {
+  if (!base || base.work == null || !(base.p50 > 0)) return null;
+  if (base.fps >= AT_SCREEN_PACE_FPS) {
+    return 'Every frame is ready in time for the screen (' + Math.round(base.fps) + ' a second, the game\'s code ' + base.work.toFixed(1)
+      + ' ms of each): nothing is holding the frame rate back here.';
+  }
+  return base.work < 0.5 * base.p50
+    ? 'Most of each frame (' + base.p50.toFixed(0) + ' ms) is the graphics chip\'s, not the game\'s code: drawing less helps most.'
+    : 'The game\'s own code takes most of each frame (' + base.p50.toFixed(0) + ' ms): the code is what to speed up.';
+}
+
 /** Run it: about 35 s.  Resolves with the result (also window.__btSpeedTest). */
 export async function runSpeedTest() {
   if (_running) return null;
@@ -275,13 +294,8 @@ export async function runSpeedTest() {
   if (base) {
     notes.push('The game\'s own work: ' + (base.work != null ? base.work.toFixed(1) + ' ms a frame' : 'not measured')
       + '; the graphics chip switched pictures ' + base.passes.toFixed(1) + ' times a frame (set the screen aside ' + base.resumes.toFixed(1) + '), with ' + base.draws.toFixed(0) + ' draws.');
-    /* which side holds the frame: a frame much longer than the game's own
-       work is waiting on the graphics chip (or the screen) */
-    if (base.work != null && base.p50 > 0) {
-      notes.push(base.work < 0.5 * base.p50
-        ? 'Most of each frame (' + base.p50.toFixed(0) + ' ms) is the graphics chip\'s, not the game\'s code: drawing less helps most.'
-        : 'The game\'s own code takes most of each frame (' + base.p50.toFixed(0) + ' ms): the code is what to speed up.');
-    }
+    const held = frameNote(base);
+    if (held) notes.push(held);
   }
   const dev = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
   const cv = document.querySelector('.brotown-canvas');

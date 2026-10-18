@@ -123,6 +123,15 @@ bank for as long as you sit on it (`wheelSwim.js seatedOnBank`). That fixes
 every such seat, whatever the pictures are, and the server's tables still
 never depend on the pictures.
 
+v2.3.3401: and the bake keeps a seat off drawn water in the first place. Asked
+of every seat with the boots' own look (what `mp-wheelseats` asserts), the live
+table had 7 with the boots in the water. The shore is worked out from the plan
+alone, the pictures only colouring it, so the bake now composes the very pixel
+the worker's `under` reads and uses a spot only where the boots are dry and
+fewer than four of the five looks are wet (`bake-wheel-spawns.mjs
+drawnWaterOf`; `docs/specs/tier-trees.md` "Where each one grows"). The tables
+still never depend on the pictures.
+
 **The way in** still carries every monster (~580 KB of `zone_state` for the
 1,920, against ~103 KB on the short Wheel), once. The worker sends it 35 ms
 after the step into the Wheel; a local worker's socket (wrangler) then took

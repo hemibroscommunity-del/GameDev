@@ -28,7 +28,8 @@
  * DRIFT: the worker only redeploys when server/** changes, so a plan change
  * that moved a land would leave monsters standing where it used to be.
  * tools/world/test-world-core.mjs runs this with --check: the plan and the
- * server's copy must agree, in the same PR.
+ * server's copy must agree, in the same PR.  (v2.3.3401: and the trees' and
+ * rocks' picture sizes, which the resources' places are kept clear by.)
  */
 import fs from 'fs';
 import path from 'path';
@@ -39,7 +40,12 @@ import { wheelInfo, axisDist } from '../../public/tools/world/core/wheel.js';
 import { gridInfo } from '../../public/tools/world/core/grid.js';
 import { placeObjects, footprintOf } from '../../public/tools/world/core/placing.js';
 import { objectCatalog } from '../../public/tools/objects/catalog.js';
-import { materialMap, walkBits } from '../../public/tools/world/core/ground.js';   /* v2.3.3012: the game's own walk grid */
+import { materialMap, walkBits, composeGround } from '../../public/tools/world/core/ground.js';   /* v2.3.3012: the game's own walk grid; v2.3.3401: and its drawn shore */
+import { PIXEL } from '../../public/tools/style/bible.js';
+import { SWIM_PROBES, SWIM_IN } from '../../src/game/wheelSwim.js';
+/* v2.3.3401: each tier's tree and rock as the game draws them (bakeWheelNodes `hidden`) */
+import { treeGeom, treeChopOffset } from '../../src/game/tierTrees.js';
+import { oreGeom } from '../../src/game/tierOre.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 /* v2.3.3315: the live Wheel's (WHEEL_LONG times longer, plan.js PLAN5), and the
@@ -347,9 +353,12 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES, nodeRules = NO
      the plan calls it ground.  A harvest seat must be ground the game agrees
      is ground: the first survey of the seats as drawn found one such, the
      angler sat in a pond. */
-  const walk = walkBits(bp, materialMap(plan, bp));
+  const mm = materialMap(plan, bp);
+  const walk = walkBits(bp, mm);
   const blocked = (i) => !!(walk[i >> 3] & (1 << (i & 7)));
-  const nodes = bakeWheelNodes({ bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns: out, safeR, blocked, groundCells }, nodeRules);
+  /* v2.3.3401: and the water as the game draws it, for the fishing seats */
+  const drawnWater = drawnWaterOf(plan, bp, mm);
+  const nodes = bakeWheelNodes({ bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns: out, safeR, blocked, groundCells, drawnWater }, nodeRules);
   /* ═══ v2.3.3016: THE DUNGEONS' MOUTHS ═══
      Each land's landmark (layout.js pass 8: the Great Cave, the Foundry
      Dome, the Buried City) is the way into its dungeon (server/src/
@@ -416,7 +425,11 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES, nodeRules = NO
  * SPOT_SIDE, below).  The same for the miner's seat (MINE_SEAT_DX/DY).
  *
  * Positions never depend on which pictures exist, only on the plan and the
- * placer -- like everything else this tool bakes. */
+ * placer -- like everything else this tool bakes.  v2.3.3401: except the
+ * resources' own pictures' SIZES: each tier's tree and rock is kept clear as
+ * the game draws it (src/data/treeArt.js, oreArt.js, made by
+ * tools/world/add-tree-art.mjs and add-ore-art.mjs), so a new cut of them is
+ * a re-bake -- test-world-core's --check says so, and the worker deploys. */
 export const NODE_RULES = Object.freeze({
   bands: Object.freeze([
     Object.freeze({ id: 'commons', tiers: Object.freeze([0]), tierLvl: 1, ore: 6, tree: 6, fish: 10, order: 'near' }),
@@ -441,32 +454,102 @@ export const NODE_RULES = Object.freeze({
   clearNode: 160,       /* a vein or tree from a fishing spot, any area's */
   fishSeat: Object.freeze([52, 9]),   /* FISH_SEAT_DX, FISH_SEAT_DY + the 52 px drop to the boots */
   mineSeat: Object.freeze([-7, -34]), /* MINE_SEAT_DX, MINE_SEAT_DY + 52 */
+  chopSeat: 6,          /* v2.3.3401: the woodcutter's boots, this far south of the node (effectsRenderer chopStandInSpot) */
 });
+
+/* ═══ v2.3.3401: THE WATER AS THE GAME DRAWS IT ═══
+   A fishing seat is placed by the plan's cells, but the shore is not drawn
+   on the cells' lines: each pixel of the ground is the swatch whose blurred
+   field is strongest there (ground.js composeGround, the water's edge kept
+   crisp), so a cell of land can come out as water.  A nub of land one cell
+   wide with the sea on three sides does, and a seat on it put the angler's
+   boots in the sea: mp-wheelseats found wn-ember-119 with all five of a
+   swimmer's looks wet, after this version's re-bake moved 111 spots.  Asked
+   of every seat, the live table had 7 with the boots on drawn water BEFORE
+   that re-bake (wn-thunder-37, wn-sky-111...), 8 after it.  The shore is
+   worked out from the plan alone -- the pictures only colour it -- so the
+   bake asks exactly what the game's ground worker draws: the material at
+   the very pixel a piece's `under` reads (ground-worker.js underOf: one
+   every UNDER art px of a CHUNK-art-px piece, at its middle), composed with
+   no pictures, a small rectangle round the points (composeGround's pieces
+   meet with no seam, so any rectangle gives the same pixel).  Checked
+   against a phone's survey of 111 seats: the same answer at every look.
+   `pts` [[x, y], ...] in game px -> [wet, ...]. */
+export const PIECE_ART = 128, UNDER_ART = 2;   /* ground-worker.js CHUNK, UNDER (test-world-core holds them to it) */
+export function drawnWaterOf(plan, bp, mm) {
+  const WPA = plan.worldPxPerArtPx, K = Math.round(WPA / PIXEL.gamePxPerArtPx);
+  const cs = PIECE_ART * WPA, n = PIECE_ART / UNDER_ART, half = (UNDER_ART * K) >> 1;
+  /* the ground px (art px x K, from the plan's corner) a game point's sample reads */
+  const sampleOf = (x, y) => {
+    const i = Math.floor(x / cs), j = Math.floor(y / cs);
+    const u = Math.min(n - 1, Math.max(0, Math.floor(((x - i * cs) / cs) * n)));
+    const v = Math.min(n - 1, Math.max(0, Math.floor(((y - j * cs) / cs) * n)));
+    return [(bp.x0 + i * PIECE_ART) * K + half + u * UNDER_ART * K, (bp.y0 + j * PIECE_ART) * K + half + v * UNDER_ART * K];
+  };
+  return (pts) => {
+    const f = pts.map(([x, y]) => sampleOf(x, y));
+    let ax0 = Infinity, ay0 = Infinity, ax1 = -Infinity, ay1 = -Infinity;
+    for (const [fx, fy] of f) {
+      ax0 = Math.min(ax0, Math.floor(fx / K)); ay0 = Math.min(ay0, Math.floor(fy / K));
+      ax1 = Math.max(ax1, Math.floor(fx / K)); ay1 = Math.max(ay1, Math.floor(fy / K));
+    }
+    const rect = { x: ax0 - 1, y: ay0 - 1, w: ax1 - ax0 + 3, h: ay1 - ay0 + 3 };
+    const out = composeGround(plan, bp, mm, rect, {}, { scale: K });
+    return f.map(([fx, fy]) => out.mat[(fy - rect.y * K) * out.w + (fx - rect.x * K)] === mm.water);
+  };
+}
 
 export function bakeWheelNodes(ctx, rules = NODE_RULES) {
   const { bp, W, ri, cellG, cxG, cyG, dHaz, dRoad, dist, nearObject, coveredAt, gameX, gameY, spawns, safeR } = ctx;
   const blocked = ctx.blocked || (() => false);
   /* nothing standing in front of the node's own picture, or of the bro working
-     it (a body's box, 44 x 64, over his boots) -- `art` [half-width, height]
-     of each kind's picture over its anchor (effectsRenderer NODE_SPRITE_HEIGHT_BASE,
-     at a tier-11's 1.15x) */
-  const ART = { o: [52, 118], t: [62, 196] };
-  /* v2.3.3094: `k`, how much bigger than a tier-11's this node's picture is
-     drawn: effectsRenderer scales by ceil(tier / 10) -- 1.15x at tiers 11-20,
-     1.30x at 21 */
-  const hidden = (x, y, kind, k = 1) => {
+     it (a body's box, 44 x 64, over his boots).
+     ═══ v2.3.3401: THE NODE'S PICTURE AS IT IS DRAWN ═══
+     The owner, of the trees' and rocks' new pictures: "Yes fix #3 resource
+     placement".  Since v2.3.3345 each tier's tree and rock is a picture of
+     its own at its own size (src/game/tierTrees.js treeGeom, tierOre.js
+     oreGeom: from a copper rock 58 px across to a maple 428 across and 424
+     tall), but this kept clear the box of the ONE old pine and the ONE old
+     vein (62 and 52 px a half, 196 and 118 tall, 1.13x at tier 21): a tall
+     thing could stand in front of a maple's crown, which is three times as
+     wide.  So it is each picture's own box, from its top to its foot (a
+     tree's foot is TREE_FOOT_DY north of the node; a thing whose foot is
+     south of it is drawn over it), at the band's tier -- and, as the miner's
+     for a rock, the WOODCUTTER'S spot either side of the trunk (effectsRenderer
+     chopStandInSpot, the side you came from), which the old pine's box
+     happened to cover and a slim pine's picture does not.
+     `loose`: only its middle half across and its lower half -- a tree's
+     trunk and what stands round it -- for the few a thick wood has no room
+     for whole (the band loop, "Whole where there is room"). */
+  const hidden = (x, y, kind, lvl = 1, loose = false) => {
     if (!coveredAt) return false;
     if (kind === 'f') {
       const bx = x + rules.fishSeat[0], by = y + rules.fishSeat[1];
       return coveredAt(bx - 22, bx + 22, by - 64, by, by);
     }
-    const hw = ART[kind][0] * k, h = ART[kind][1] * k;
-    if (coveredAt(x - hw, x + hw, y - h, y, y)) return true;
+    const node = { x, y, gatherLvl: lvl };
+    const g = kind === 'o' ? oreGeom(node) : treeGeom(node);
+    const qw = loose ? (g.right - g.left) / 4 : 0, top = loose ? (g.top + g.footY) / 2 : g.top;
+    if (coveredAt(loose ? g.footX - qw : g.left, loose ? g.footX + qw : g.right, top, g.footY, g.footY)) return true;
     if (kind === 'o') {
       const bx = x + rules.mineSeat[0], by = y + rules.mineSeat[1];
       return coveredAt(bx - 22, bx + 22, by - 64, by, by);
     }
-    return false;
+    const off = treeChopOffset(node), by = y + rules.chopSeat;
+    return coveredAt(x - off - 22, x - off + 22, by - 64, by, by) || coveredAt(x + off - 22, x + off + 22, by - 64, by, by);
+  };
+  /* v2.3.3401: a fishing seat as mp-wheelseats asks it of the ground as
+     drawn (drawnWaterOf, above): the spot and its school's middle in the
+     water, the angler's boots dry and fewer than SWIM_IN of a swimmer's
+     five looks round them wet -- so a seated angler stays out of the water */
+  const drawnWater = ctx.drawnWater || null;
+  const seatDrawnDry = (x, y) => {
+    if (!drawnWater) return true;
+    const sx = x + rules.fishSeat[0], sy = y + rules.fishSeat[1], L = SWIM_PROBES.length;
+    const w = drawnWater([...SWIM_PROBES.map(([dx, dy]) => [sx + dx, sy + dy]), [x, y], [x - 30, y]]);
+    let wet = 0;
+    for (let k = 0; k < L; k++) if (w[k]) wet++;
+    return !w[0] && wet < SWIM_IN && w[L] && w[L + 1];
   };
   const n = bp.w * bp.h;
   const WATER = new Set([C.water, C.ocean, C.river]);
@@ -592,6 +675,36 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
     }
     return true;
   };
+  /* ═══ v2.3.3401: NOR ONE RESOURCE IN FRONT OF ANOTHER ═══
+     The new trees are as tall as the scenery: a willow 175 px south of a
+     fishing spot stood over its angler, and the live table had 15 such (a
+     tree or rock whose picture, its foot further south, covers another
+     node's picture or the one working it).  So every node placed is
+     remembered as what it draws (`pic`: a tree's or rock's picture; a
+     fishing spot has none) and what must stay in view (`keep`: that picture
+     and its worker -- the miner, the woodcutter either side, the angler),
+     and a new one may neither stand in front of a `keep` nor have a `pic` in
+     front of its own.  Kinds are known as each is picked (the band loop). */
+  const nodeDrawn = [];
+  const nodeBoxes = (kind, x, y, lvl) => {
+    const body = (bx, by) => ({ x0: bx - 22, x1: bx + 22, y0: by - 64, y1: by, foot: by });
+    if (kind === 'f') return { pic: null, keep: [body(x + rules.fishSeat[0], y + rules.fishSeat[1])] };
+    const node = { x, y, gatherLvl: lvl };
+    const g = kind === 'o' ? oreGeom(node) : treeGeom(node);
+    const pic = { x0: g.left, x1: g.right, y0: g.top, y1: g.footY, foot: g.footY };
+    if (kind === 'o') return { pic, keep: [pic, body(x + rules.mineSeat[0], y + rules.mineSeat[1])] };
+    const off = treeChopOffset(node), by = y + rules.chopSeat;
+    return { pic, keep: [pic, body(x - off, by), body(x + off, by)] };
+  };
+  const over = (f, b) => f.foot > b.foot && f.x0 < b.x1 && f.x1 > b.x0 && f.y0 < b.y1 && f.y1 > b.y0;
+  const nodeClash = (kind, x, y, lvl) => {
+    const b = nodeBoxes(kind, x, y, lvl);
+    for (const o of nodeDrawn) {
+      if (b.pic) for (const k of o.keep) if (over(b.pic, k)) return true;
+      if (o.pic) for (const k of b.keep) if (over(o.pic, k)) return true;
+    }
+    return false;
+  };
   /* whether cell i is ground of this band (and land).  A land's must also be
      off the safe ground: WHEEL_SAFE_R is a circle round the commons' ragged
      edge, so in places it reaches a few hundred px into a land's levels 1-5,
@@ -634,37 +747,59 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
     }
     return out;
   };
+  /* v2.3.3401: `pick`, with each candidate asked whether it `fits` (the node
+     it would become, beside those placed) as its turn comes, and carrying on
+     from the picks in `out` (`apart` from them too) -- so a second set of
+     candidates can fill what the first could not.  With nothing seeded and
+     everything fitting, it picks exactly as `pick` does. */
+  const pickFit = (cand, count, apart, order, fits, take, out) => {
+    if (!cand.length || count <= 0) return;
+    const start = out.length;
+    if (order === 'near') {
+      cand.sort((a, b) => a.r - b.r || a.y - b.y || a.x - b.x);
+      for (const c of cand) {
+        if (out.length - start >= count) break;
+        if (out.every((o) => Math.hypot(o.x - c.x, o.y - c.y) >= apart) && fits(c)) { take(c); out.push(c); }
+      }
+      return;
+    }
+    const mid = cand.reduce((s, c) => s + c.r, 0) / cand.length;
+    cand.sort((a, b) => Math.abs(a.r - mid) - Math.abs(b.r - mid) || a.y - b.y || a.x - b.x);
+    const dMin = cand.map((c) => out.reduce((m, o) => Math.min(m, Math.hypot(c.x - o.x, c.y - o.y)), Infinity));
+    const takeAt = (k) => {
+      const c = cand[k];
+      take(c); out.push(c);
+      for (let j = 0; j < cand.length; j++) dMin[j] = Math.min(dMin[j], Math.hypot(cand[j].x - c.x, cand[j].y - c.y));
+    };
+    if (!out.length) {
+      let first = -1;
+      for (let k = 0; k < cand.length && first < 0; k++) if (fits(cand[k])) first = k;
+      if (first < 0) return;
+      takeAt(first);
+    }
+    while (out.length - start < count) {
+      let best = -1, bestD = apart;
+      for (let k = 0; k < cand.length; k++) if (dMin[k] >= bestD) { bestD = dMin[k]; best = k; }
+      if (best < 0) break;
+      if (!fits(cand[best])) { dMin[best] = -1; continue; }
+      takeAt(best);
+    }
+  };
   const areas = [{ id: 'commons', rid: ri.commons, bands: rules.bands.filter((b) => b.id === 'commons') }];
   for (const s of W.spokes) if (ri[s.id] != null) areas.push({ id: s.id, rid: ri[s.id], bands: rules.bands.filter((b) => b.id !== 'commons') });
   const result = Object.create(null);
   for (const area of areas) {
     const list = [];
     for (const band of area.bands) {
-      /* veins and trees */
-      const land = [];
-      for (const i of bandCells(groundCells, band, area.rid)) {
-        if (!inBand(i, band, area.rid)) continue;
-        if (dHaz[i] * cellG < rules.clearWater || dRoad[i] * cellG < rules.clearRoad) continue;
-        if (band.id === 'commons' && dTown[i] * cellG < rules.clearTown) continue;
-        const x = gameX(i % bp.w), y = gameY((i / bp.w) | 0);
-        if (nearObject(x, y, rules.clearObject) || !clearOfMonsters(x, y) || !clearOfNodes(x, y, false)) continue;
-        if (!dryClear(x + rules.mineSeat[0], y + rules.mineSeat[1], band, area.rid)) continue;
-        /* hidden as either kind: which it becomes is decided after the pick */
-        const artK = band.tierLvl >= 21 ? 1.30 / 1.15 : 1;   /* v2.3.3094 */
-        if (hidden(x, y, 'o', artK) || hidden(x, y, 't', artK)) continue;
-        land.push({ x, y, r: Math.hypot(x - cxG, y - cyG) });
-      }
-      const placedLand = pick(land, band.ore + band.tree, rules.apart, band.order);
-      let ore = 0, tree = 0;
-      placedLand.forEach((c, k) => {
-        /* alternate, so a band's veins and trees are spread through it alike */
-        const wantOre = (k % 2 === 0 && ore < band.ore) || tree >= band.tree;
-        if (wantOre) ore++; else tree++;
-        list.push([wantOre ? 'o' : 't', Math.round(c.x), Math.round(c.y), band.tierLvl]);
-        placed.push({ x: c.x, y: c.y, fish: false });
-      });
       /* fishing spots: fresh water in the commons; a land's coast for its
-         clownfish; its rivers and pools for trout, else its coast */
+         clownfish; its rivers and pools for trout, else its coast.
+         v2.3.3401: chosen FIRST, before the band's veins and trees (they
+         still come first in its list): a spot needs water, a dry seat on
+         the bank and that bank clear, and a land has few, so where its
+         trees stood decided how many it got -- their bigger pictures, laid
+         first, cost the long Wheel's lands up to three a stretch.  Open
+         ground has room to spare for a tree, so the trees go round the
+         anglers now (clearOfNodes, nodeClash). */
       const prefer = band.id === 'near' ? (k) => bp.cls[k] === C.ocean : (k) => FRESH.has(bp.cls[k]);
       const fishAt = (want) => {
         const cand = [];
@@ -675,16 +810,63 @@ export function bakeWheelNodes(ctx, rules = NODE_RULES) {
           const x = gameX(i % bp.w), y = gameY((i / bp.w) | 0);
           const sx = x + rules.fishSeat[0], sy = y + rules.fishSeat[1];
           if (!dryClear(sx, sy, band, area.rid, SEAT_SIDE) || !clearOfMonsters(sx, sy) || !clearOfNodes(x, y, true) || hidden(x, y, 'f')) continue;
+          if (nodeClash('f', x, y, band.tierLvl)) continue;   /* v2.3.3401: its angler in view */
+          if (!seatDrawnDry(x, y)) continue;                   /* v2.3.3401: and out of the water as drawn */
           cand.push({ x, y, r: Math.hypot(x - cxG, y - cyG) });
         }
         return cand;
       };
       let fish = fishAt(prefer);
       if (fish.length < band.fish && band.id !== 'commons') fish = fishAt(() => true);
+      const fishList = [];
       for (const c of pick(fish, band.fish, rules.fishApart, band.order)) {
-        list.push(['f', Math.round(c.x), Math.round(c.y), band.tierLvl]);
+        fishList.push(['f', Math.round(c.x), Math.round(c.y), band.tierLvl]);
         placed.push({ x: c.x, y: c.y, fish: true });
+        nodeDrawn.push(nodeBoxes('f', c.x, c.y, band.tierLvl));
       }
+      /* veins and trees */
+      const land = [], loose = [];
+      for (const i of bandCells(groundCells, band, area.rid)) {
+        if (!inBand(i, band, area.rid)) continue;
+        if (dHaz[i] * cellG < rules.clearWater || dRoad[i] * cellG < rules.clearRoad) continue;
+        if (band.id === 'commons' && dTown[i] * cellG < rules.clearTown) continue;
+        const x = gameX(i % bp.w), y = gameY((i / bp.w) | 0);
+        if (nearObject(x, y, rules.clearObject) || !clearOfMonsters(x, y) || !clearOfNodes(x, y, false)) continue;
+        if (!dryClear(x + rules.mineSeat[0], y + rules.mineSeat[1], band, area.rid)) continue;
+        /* hidden as either kind: which it becomes is decided as it is picked
+           (v2.3.3401: each the band's own tier's picture -- a rock always
+           whole, a tree whole or else at least its middle and lower half,
+           for the thick woods) */
+        if (hidden(x, y, 'o', band.tierLvl)) continue;
+        const c = { x, y, r: Math.hypot(x - cxG, y - cyG) };
+        if (!hidden(x, y, 't', band.tierLvl)) land.push(c);
+        else if (!hidden(x, y, 't', band.tierLvl, true)) loose.push(c);
+      }
+      /* ═══ v2.3.3401: WHOLE WHERE THERE IS ROOM ═══
+         A maple 428 px across seldom stands clear of everything in the
+         Verdant Wilds: the whole-picture rule alone left its levels 31-40
+         five resources short (25 of 30).  So a band takes its places with
+         the whole picture clear first, and only what that leaves short from
+         places where its middle and lower half are (the trunk and what
+         stands round it, the woodcutter always whole; a rock and its miner
+         always whole) -- the count as it was, and every node clear of every
+         other (nodeClash). */
+      let ore = 0, tree = 0;
+      const out = [];
+      /* alternate, so a band's veins and trees are spread through it alike */
+      const kindNow = () => (((out.length % 2 === 0 && ore < band.ore) || tree >= band.tree) ? 'o' : 't');
+      const fits = (c) => !nodeClash(kindNow(), c.x, c.y, band.tierLvl);
+      const take = (c) => {
+        const kind = kindNow();
+        if (kind === 'o') ore++; else tree++;
+        list.push([kind, Math.round(c.x), Math.round(c.y), band.tierLvl]);
+        placed.push({ x: c.x, y: c.y, fish: false });
+        nodeDrawn.push(nodeBoxes(kind, c.x, c.y, band.tierLvl));
+      };
+      const want = band.ore + band.tree;
+      pickFit(land, want, rules.apart, band.order, fits, take, out);
+      if (out.length < want) pickFit(loose, want - out.length, rules.apart, band.order, fits, take, out);
+      list.push(...fishList);
     }
     if (list.length) result[area.id] = list;
   }

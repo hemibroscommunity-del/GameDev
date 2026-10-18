@@ -84,6 +84,32 @@ export function chatLaneOf(name) {
   }
   return null;
 }
+/* ═══ v2.3.3391: A NAME CANNOT WEAR A LANE'S MARK ═══
+ * The lane is read off the front of the name above, so a player NAMED
+ * "✉ Mayor" -- names are free text, 2-20 characters -- had every ordinary
+ * room line drawn as a whisper, "📍 ..." as area chat, "🛡 ..." as party chat.
+ * Found by the fun & social plan's check of the code (docs/FUN-SOCIAL-PLAN.md).
+ * The room handler takes the marks off a sender's name before it is logged
+ * (game/chat.js), and the worker off the name it stamps (index.js
+ * _sanitizeChatRelay); the lanes' own lines add theirs after.  Every mark at
+ * the front goes, with its variation selector and the spaces after it. */
+export function stripLaneMarks(name) {
+  if (typeof name !== 'string') return '';
+  let s = name;
+  for (let guard = 0; guard < 16; guard++) {
+    let hit = false;
+    for (const [mark] of LANES) {
+      if (s.startsWith(mark)) {
+        s = s.slice(mark.length);
+        if (s.charCodeAt(0) === 0xFE0F) s = s.slice(1);
+        s = s.replace(/^\s+/, '');
+        hit = true;
+      }
+    }
+    if (!hit) break;
+  }
+  return s;
+}
 export const CHAT_LANE_ICON = Object.freeze({
   party: SMALL_ICON.chatParty,
   area: SMALL_ICON.chatArea,
