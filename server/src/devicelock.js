@@ -48,6 +48,7 @@
  * they were, nothing read or written for it.
  */
 import { BOTFP } from './botfp.js';
+import { makeLoginKey } from './keywords.js';   /* v2.3.3355: the owner's "Give it a new key" */
 
 export const DEVICE_LOCK = Object.freeze({
   /* devices remembered per character; the oldest added goes first */
@@ -209,7 +210,7 @@ export const deviceLockMethods = {
   /* /api/admin/device-pass and /api/admin/device-forget (admin.js, after the
      key check).  null for every other path. */
   async _deviceLockAdminRoute(request, url, path, json) {
-    if (request.method !== 'POST' || (path !== '/device-pass' && path !== '/device-forget')) return null;
+    if (request.method !== 'POST' || (path !== '/device-pass' && path !== '/device-forget' && path !== '/key-new')) return null;
     let body = null;
     try { body = await request.json(); } catch (e) { body = null; }
     const id = body && typeof body.playerId === 'string' ? body.playerId.trim() : '';
@@ -221,7 +222,7 @@ export const deviceLockMethods = {
        it, where a 404 reads as "is that character online?" (DevPanel.jsx) */
     if (!auth || typeof auth !== 'object') return json({ ok: false, error: 'No character has that code. Check it for typos.' });
     const next = { ...auth };
-    let forgot = 0, wasOnline = false;
+    let forgot = 0, wasOnline = false, taken = 0, key = null, h = null;
     if (path === '/device-pass') {
       next.pass = { until: now + DEVICE_LOCK.PASS_MS, at: now };
     } else {
@@ -230,6 +231,20 @@ export const deviceLockMethods = {
       next.devs = [];
       next.sealed = true;
       delete next.pass;
+      /* v2.3.3355: and every new Login Key taken back (loginkeys.js): one
+         may be in the hands of whoever got in.  The record first (below):
+         an index entry it no longer lists finds nothing, so a failure
+         between the two leaves no key working */
+      next.keys = [];
+      /* v2.3.3355: "Give it a new key" -- the full reset for a stolen
+         character: the old key retired too, and ONE new key, for the owner to
+         send its player (shown once in the Test panel, never logged) */
+      if (path === '/key-new') {
+        delete next.pfHash; delete next.fresh; next.oldGone = 1;
+        key = makeLoginKey();
+        h = await this._keyHash(key);
+        next.keys = [{ h, d: null, at: now, ok: 0 }];
+      }
       /* whoever is playing it now is put out, and LEAVES: the AFK sweep's
          three steps (tick.js, flood.js _floodClose) -- the close, the leaving
          run now (the save, player_leave, the party's and duel's grace), the
@@ -239,17 +254,24 @@ export const deviceLockMethods = {
       const live = this._wsBySessionId && this._wsBySessionId(id);
       if (live) {
         wasOnline = true;
-        try { live.send(JSON.stringify({ type: 'join_rejected', reason: 'device' })); } catch (e) { /* closed */ }
-        try { live.close(DEVICE_LOCK.CLOSE, 'device'); } catch (e) { /* closed */ }
+        /* v2.3.3355: put out with the key's reason after a new key (its
+           screen offers the key form), the device's after a forget */
+        const _why = key ? 'key' : 'device';
+        try { live.send(JSON.stringify({ type: 'join_rejected', reason: _why })); } catch (e) { /* closed */ }
+        try { live.close(key ? 4017 : DEVICE_LOCK.CLOSE, _why); } catch (e) { /* closed */ }   /* 4017: LOGIN_KEYS.CLOSE (loginkeys.js imports this file) */
         try { await this.webSocketClose(live); } catch (e) { /* best effort */ }
         this.sessions.delete(live);
       }
     }
-    await this.state.storage.put('auth:' + id, next);
-    await this._adminLog({ op: path.slice(1), playerId: id, forgot });
+    /* v2.3.3355: a new key's index in the same write as its record */
+    if (key) await this.state.storage.put({ ['auth:' + id]: next, ['keyidx:' + h]: { id, at: now } });
+    else await this.state.storage.put('auth:' + id, next);
+    if (path !== '/device-pass') taken = this._keysTakeBack ? await this._keysTakeBack(auth) : 0;
+    await this._adminLog({ op: path.slice(1), playerId: id, forgot, taken });
     return json({
       ok: true, until: next.pass ? next.pass.until : null,
       devices: Array.isArray(next.devs) ? next.devs.length : 0, forgot, sealed: !!next.sealed, wasOnline,
+      taken, ...(key ? { key } : {}),
     });
   },
 

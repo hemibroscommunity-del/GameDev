@@ -1,4 +1,4 @@
-import { passphraseToId } from './index.js';
+import { passphraseToId, idForKey, isNewKey, rememberKeyId } from './index.js';   /* v2.3.3355: a new key's id is kept */
 import { readShared, writeShared } from './rosterCookie.js';   /* v2.3.2110 */
 
 /* ═══ v2.3.1923: THE DEVICE'S CHARACTER ROSTER ═══
@@ -56,8 +56,16 @@ const HARD_BOUND = 50;
 
 function _ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 
+/* v2.3.3355: a row's id -- an old key's worked out from it as ever, a new
+   key's as the worker said (idForKey), never worked out from it */
+function _idOf(phrase, given) {
+  if (!isNewKey(phrase)) return passphraseToId(phrase);
+  if (typeof given === 'string' && given.indexOf('bp_') === 0) { rememberKeyId(phrase, given); return given; }
+  return idForKey(phrase) || '';
+}
+
 function _entry(phrase, at, extra) {
-  const e = { phrase: phrase, id: passphraseToId(phrase), at: at || 0, name: '', level: 0 };
+  const e = { phrase: phrase, id: _idOf(phrase, extra && extra.id), at: at || 0, name: '', level: 0 };
   if (extra) {
     if (typeof extra.name === 'string' && extra.name) e.name = extra.name;
     if (extra.level > 0) e.level = extra.level | 0;
@@ -237,7 +245,7 @@ let _mirrorSeeded = false;
    CharacterPicker drops provisional rows on a "no character" answer, and
    these must not be droppable that way. */
 function _fromShared(e) {
-  return { phrase: e.phrase, id: passphraseToId(e.phrase), at: e.at || 1, name: e.name || '', level: e.level || 0 };
+  return { phrase: e.phrase, id: _idOf(e.phrase, e.id), at: e.at || 1, name: e.name || '', level: e.level || 0 };
 }
 
 /* The stored shape is an OBJECT, not a bare array, and that is load-bearing:
@@ -444,6 +452,8 @@ export function adoptSharedPhrase() {
     if (list.length !== 1) return null;
     const phrase = list[0].phrase;
     localStorage.setItem('bt_passphrase', phrase);
+    /* v2.3.3355: a new key's id, from its row (the mirror carries it) */
+    if (isNewKey(phrase) && list[0].id) rememberKeyId(phrase, list[0].id);
     return phrase;
   } catch (e) { return null; }
 }
@@ -477,7 +487,7 @@ export function rememberChar(phrase, info) {
     if (info && typeof info.name === 'string' && info.name) e.name = info.name;
     if (info && info.level > 0) e.level = info.level | 0;
     if (info) _keepLook(e, info.look);                             /* v2.3.2193 */
-    e.id = passphraseToId(phrase);
+    e.id = _idOf(phrase, (info && info.id) || e.id);              /* v2.3.3355 */
     delete e.provisional;
   } else {
     list.push(_entry(phrase, Date.now(), info));
@@ -511,6 +521,7 @@ export function ensureChar(phrase, info) {
   } else {
     if (info && typeof info.name === 'string' && info.name) list[i].name = info.name;
     if (info && info.level > 0) list[i].level = info.level | 0;
+    if (info && info.id) list[i].id = _idOf(phrase, info.id);      /* v2.3.3355 */
     delete list[i].provisional;
   }
   return _sorted(_write(list));
@@ -528,6 +539,7 @@ export function describeChar(phrase, info) {
   if (i < 0) return _sorted(list);
   if (typeof info.name === 'string' && info.name) list[i].name = info.name;
   if (info.level > 0) list[i].level = info.level | 0;
+  if (info.id) list[i].id = _idOf(phrase, info.id);                /* v2.3.3355: the worker said whose */
   _keepLook(list[i], info.look);                                   /* v2.3.2193 */
   list[i].looked = LOOKUP_GEN;   /* asked; a miss must not re-ask on every render */
   /* Confirmed by the worker, so it is no longer a guess the migration made. */
@@ -590,10 +602,40 @@ export function activateChar(phrase) {
   if (cur === phrase) return false;
   try {
     localStorage.setItem('bt_passphrase', phrase);
+    /* v2.3.3355: a new key's id goes with it (its row has it) */
+    if (isNewKey(phrase)) {
+      const row = readRoster().find(function (e) { return e.phrase === phrase; });
+      if (row && row.id) rememberKeyId(phrase, row.id);
+    }
     CHAR_CACHE_KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
     try { sessionStorage.removeItem('bt_resume'); sessionStorage.removeItem('bt_resume_now'); } catch (e) {}
   } catch (e) { return false; }
   return true;
+}
+
+/* ═══ v2.3.3355: THE SAME CHARACTER, A NEW KEY ═══
+   The worker handed this device a new Login Key for the character it plays
+   (wsClient.js `key_new`, server/src/loginkeys.js): its row keeps its name,
+   level, look and place in the list and takes the new key and its id; the old
+   key is tombstoned in the shared mirror, so another origin of this site
+   drops its copy and takes the new key from the mirror instead of keeping
+   both.  Returns the roster. */
+export function swapKey(oldPhrase, newPhrase, id) {
+  /* either way round: to a new key the worker handed, or back to the old key
+     when a new one was refused (wsClient.js, the fallback) */
+  if (!newPhrase || newPhrase === oldPhrase) return readRoster();
+  if (isNewKey(newPhrase)) rememberKeyId(newPhrase, id);
+  const list = readRoster().slice();
+  const i = oldPhrase ? list.findIndex(function (e) { return e.phrase === oldPhrase; }) : -1;
+  const j = list.findIndex(function (e) { return e.phrase === newPhrase; });
+  if (i >= 0) {
+    list[i].phrase = newPhrase;
+    list[i].id = _idOf(newPhrase, id);
+    if (j >= 0 && j !== i) list.splice(j, 1);
+  } else if (j < 0) {
+    list.push(_entry(newPhrase, Date.now(), { id: id }));
+  }
+  return _sorted(_write(list, i >= 0 ? oldPhrase : undefined));
 }
 
 /* QA/debug handle, same pattern as window.__broDashPanelBus. */
@@ -602,7 +644,7 @@ try {
     window.__btRoster = {
       read: readRoster, remember: rememberChar, forget: forgetChar,
       activate: activateChar, describe: describeChar, ensure: ensureChar,
-      adopt: adoptSharedPhrase,
+      adopt: adoptSharedPhrase, swap: swapKey,
       MAX: ROSTER_MAX,
     };
   }
