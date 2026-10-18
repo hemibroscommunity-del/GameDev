@@ -6968,3 +6968,30 @@ zone, a server-placed move, a zone change back into the world) can be closed.
 ahead and walking away is caught in 1.2 s, never under the old rule; a claim
 10,000 px off is reached in 20 s with no further move. The lab: a script
 2,909 -> 656 px/s, an honest walk unchanged.
+
+## 204. "A reconnect is one more move: judge it by the move budget" (v2.3.3327)
+
+**Tempting:** a reconnect should start where the server last had the player.
+Remember that place at the close, and judge the join's claim as the next move
+would be judged: the same budget, 3 s of the limit and 80 px.
+
+**What happens:** a dead connection is not noticed at once. The phone sends
+into it and hears nothing for up to 15 s (wsClient.js `DEAD_PIPE_MS`), and the
+player walks on the whole time. At the fastest honest stack that is 6,600 px,
+8,800 sprinting, 13,000 on the Swift Draught. A 1,580 px budget puts the
+server's copy 5,000-11,000 px behind the phone, and the follow catches up only
+by what the limit beats the walk by (500 - 441 = 59 px/s): minutes. All that
+time the monsters, the harvest's reach and the dungeon's mouth are judged from
+somewhere the player isn't.
+
+**The rule:** a reconnect's allowance is the TIME SINCE THE SERVER LAST PLACED
+THEM at the fastest an honest phone can go while it is not heard from (the
+walk's bound with a sprint, which no message billed), uncapped. A script that
+reconnects is still held to that speed on average, because the time it spends
+away is the time its allowance grows. Carry the budget across, never refill
+it. And know when there is nothing to judge from (no memory after a deploy):
+trust it then, rather than judge from a guess like the arrival.
+
+**Receipt:** last-place.test (57 checks, 19 mutations caught: a 3 s cap fails
+five honest reconnects). The lab: a script reconnecting every 3 s 33,333 ->
+694 px/s, every honest reconnect taken.
