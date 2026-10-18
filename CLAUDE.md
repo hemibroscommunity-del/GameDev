@@ -4284,7 +4284,7 @@ Two protocol versions coexist; both must keep working:
       box's software chip a frame 20-27% longer in BroTown and 14-21% among
       trees and water -- not measured on a phone:
       docs/specs/palette-textures.md;
-    - since v2.3.3440 the FARM'S too (the owner: "Yes do the separate PR"):
+    - since v2.3.3451 the FARM'S too (the owner: "Yes do the separate PR"):
       its ground, its 76 pictures and its copies of the six sheets it borrows,
       read as numbers by a loader inside Pixi's own
       (`src/rendering/paletteLoad.js`), so the same `Assets.load` / `unload`

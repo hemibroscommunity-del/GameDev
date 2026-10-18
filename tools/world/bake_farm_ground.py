@@ -26,7 +26,7 @@ Deterministic: the same plan gives the same picture, every run.  Written as
 lossless WebP (the maps' format, tiledMaps.js IMAGE_ZONE_MAPS; build_ground_
 colors.py reads it for the dust).  docs/specs/farm-walk.md.
 
-v2.3.3440: and again as a palette PNG beside it (farm_v2.png), the same
+v2.3.3451: and again as a palette PNG beside it (farm_v2.png), the same
 pixels as colour numbers -- the ground is laid from the swatches' own colours,
 246 of them, so it fits a palette of 256 -- which the game keeps on the
 graphics chip at one byte a pixel instead of four (src/rendering/
@@ -141,7 +141,7 @@ def bake(plan):
 
 
 def palette_twin(im, out):
-    """v2.3.3440: the picture as a palette PNG (8 bits a pixel, colour type 3)
+    """v2.3.3451: the picture as a palette PNG (8 bits a pixel, colour type 3)
     beside `out`, its colours exact and in a fixed order (by value).  Returns
     (its path, how many colours, sha256 of the RGB pixels), the path None when
     there are more than 256 colours (and any old twin is deleted)."""

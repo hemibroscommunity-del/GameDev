@@ -597,7 +597,7 @@ if (typeof window !== 'undefined') {
       n++;
       const b = s._btPal.stride * s._btPal.h;
       bytes += b;
-      /* v2.3.3440: the farm's own (paletteLoad.js) -- its ground, its
+      /* v2.3.3451: the farm's own (paletteLoad.js) -- its ground, its
          pictures and its copies of the sheets' pages (`?farm=1`) */
       if (/[?&]farm=1|\/world\/farm\/|\/maps\/farm_/.test(s.label)) { farm++; farmBytes += b; }
       else if (/^wheel-ground/.test(s.label)) pieces++;

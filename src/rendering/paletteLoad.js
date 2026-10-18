@@ -1,4 +1,4 @@
-/* ═══ v2.3.3440: THE FARM'S PICTURES KEPT AS COLOUR NUMBERS ═══
+/* ═══ v2.3.3451: THE FARM'S PICTURES KEPT AS COLOUR NUMBERS ═══
  *
  * The owner, 2026-10-18, offered "the farm's 22 MB ground picture uses only
  * 246 colours ... It could be stored the smaller way BroTown's ground is":
