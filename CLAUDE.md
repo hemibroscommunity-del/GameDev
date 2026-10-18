@@ -508,7 +508,7 @@ remnant to migrate server-side, not a mode to preserve.
       charred (wheelShatter `burnt`) and burn on until the mending; each fire
       rides what it burns on (depthSort `_ridesOn`), hidden off the screen;
       `?nobuildingfire`; `mp-buildingfire`: docs/specs/building-fire.md.
-    - since v2.3.3466 A BUILDING SHOWS EVERY HIT -- the owner: "add wood chip
+    - since v2.3.3467 A BUILDING SHOWS EVERY HIT -- the owner: "add wood chip
       effect when you attack buildings so you get instant feedback that the
       building is getting damaged": a building's burst was a prop's (x0.45
       pieces, about two splinters an arrow) and flew INTO the wall, behind its
