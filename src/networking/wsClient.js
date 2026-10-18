@@ -5132,6 +5132,12 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
+        /* v2.3.3393: "/roll" or "/flip" (game/dice.js) -> dice.js, which rolls.
+           TRAPS #18: without this line the ask never leaves the browser. */
+        if (msg.type === 'dice') {
+          wsOut(msg);
+          return;
+        }
         /* v2.3.3187: a gem into the shield (game/shieldGem.js) -> shieldgem.js.
            TRAPS #18: without this line the ask never leaves the browser. */
         if (msg.type === 'shield_gem') {

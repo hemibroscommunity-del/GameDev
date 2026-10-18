@@ -153,6 +153,7 @@ import { eventPlaceMethods } from './eventplace.js'; /* v2.3.3245: events by pla
 import { presence2Methods } from './presence2.js'; /* v2.3.3250: far players only while the world map is open */
 import { emoteMethods } from './emotes.js'; /* v2.3.3391: an emote is one of the listed emotes */
 import { poseMethods } from './poses.js'; /* v2.3.3392: a held pose (sit, sleep, a dance) is part of the player */
+import { diceMethods } from './dice.js'; /* v2.3.3393: /roll and /flip, rolled by the worker */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
@@ -476,6 +477,9 @@ export const PRIVILEGED_EVENTS = new Set([
      into a relay, it would hand a player a key that is not theirs -- their
      phone would switch to it and be refused. */
   'key_new',
+  /* v2.3.3393: a roll or flip the WORKER made (dice.js).  Forged, one would
+     put any number in any player's name in everyone's chat. */
+  'dice_roll',
   /* v2.3.3058: No man's land (nomansland.js) -- your own skulls' time left,
      and what a death there took.  Forged, one would paint a red skull on an
      innocent player's own screen and the other would make a game clear its
@@ -4931,6 +4935,11 @@ export class GameRoom {
       case 'pose':
         this._handlePose(session, msg);
         break;
+      /* v2.3.3393: /roll and /flip (dice.js): the worker rolls, and tells the
+         players near as `dice_roll` */
+      case 'dice':
+        this._handleDice(session, msg);
+        break;
       case 'move':
         // Hottest path -- anti-teleport cap, position/facing merge,
         // zone-change streaming.  Hoisted to movement.js
@@ -6325,6 +6334,7 @@ Object.assign(GameRoom.prototype, eventPlaceMethods); /* v2.3.3245 */
 Object.assign(GameRoom.prototype, presence2Methods); /* v2.3.3250 */
 Object.assign(GameRoom.prototype, emoteMethods); /* v2.3.3391 */
 Object.assign(GameRoom.prototype, poseMethods); /* v2.3.3392 */
+Object.assign(GameRoom.prototype, diceMethods); /* v2.3.3393 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
 Object.assign(GameRoom.prototype, allianceMethods); /* v2.3.3313 */

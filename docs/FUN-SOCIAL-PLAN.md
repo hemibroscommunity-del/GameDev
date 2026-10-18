@@ -120,7 +120,9 @@ Built so far:
   the head, no new sounds.
 - [ ] The server's guardrails (the social allowance, a repeat filter, text
   cleaning): its own PR, #974.
-- [ ] Pets copy poses, townsfolk react, `/roll` and `/flip`.
+- [x] `/roll` (1-100, or `/roll 20`) and `/flip`, rolled by the worker:
+  v2.3.3393, docs/specs/dice.md.
+- [ ] Pets copy poses, townsfolk react.
 
 - Code-driven motion for the whole figure, after the trait layers are put
   together: offset, squash and stretch, tilt, pivoted at the feet. The

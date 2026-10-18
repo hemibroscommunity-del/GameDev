@@ -239,6 +239,7 @@ const CAP_GATES = [
   'presence2' /* v2.3.3250: far players only while the world map is open, the online list, far copies parked (server/src/presence2.js) -- lower case, a kill switch */,
   'nearjoin' /* v2.3.3276: a join is told the players around it whole and the rest as list entries, a look sent when its player comes around (server/src/nearjoin.js) -- lower case, a kill switch */,
   'emotes' /* v2.3.3391: emotes you can see -- the listed emotes relayed and placed near the sender, the chat box's smiley and B (server/src/emotes.js) -- lower case, a kill switch */,
+  'dice' /* v2.3.3393: /roll and /flip rolled by the worker (server/src/dice.js), shown in the chat and over the roller's head -- lower case, a kill switch */,
   'emotemoves' /* v2.3.3392: your bro moves -- a wave or a dance drawn in code, a held pose kept on the player (server/src/poses.js, tick.js po) -- off with emotes: false */,
   'bundle' /* v2.3.3254: several messages in one frame (server/src/bundle.js) -- lower case, a kill switch (the worker always takes one) */,
   'quiet' /* v2.3.3254: the quiet phone -- 66 ms moves with nobody near, a steady walk held out of a fight, keepalives and the look only when needed (src/game/quietPhone.js) -- lower case, a kill switch */,
