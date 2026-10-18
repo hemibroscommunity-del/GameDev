@@ -150,7 +150,8 @@ It writes:
 - `public/sprites/gear/{shirt/tshirt,chest/steelplate,legs/steelgreaves}/farm{hoe,water,kneel}-south.png`:
   the shirt, the plate and the greaves;
 - the GENERATED `src/data/farmAnims.js`: each strip's frame size, the point
-  between his boots, where the work lands, and the crowns.
+  between his boots, where the work lands, the crowns, and where your
+  drawings go (`ink`, below).
 
 Re-run it after a sheet changes: `python3 tools/make_farm_anims.py`.
 `PREVIEW=<dir>` also writes contact sheets of every outfit the game can put
@@ -183,7 +184,49 @@ crossed in front of him the whole arm came out in the shirt's colour. Garments
 drawn on their own never line up: the fire-lighter's still need a nudge every
 frame (`FIRE_GEAR_REG`). These lie within a pixel of the body.
 
-**Not dressed yet: your drawings** (no fitted regions for these poses).
+**Your drawings** -- face, chest and arms -- go on him too, where the tool
+measured each on each frame (`ink` in `farmAnims.js`). It is the shape of
+the lumberjack's, cook's and fire-lighter's tables in
+`src/rendering/standInInk.js`, which were fitted by eye; these are measured
+(`ink_regions`), 24 frames:
+
+- **seeds**: points and lines the game's split (playerDecal
+  `splitSkinBySeeds`) floods out from over his skin, first the head's, then
+  the chest's, then the arms'. The head is seeded right across, at his
+  cheeks and his jaw, so it claims his whole face first; his shoulders, each
+  on its own, a few pixels clear of his face; his neck down to the tee's
+  neckline at his middle;
+- **face** and **torso**: the boxes the face and chest drawings are fitted
+  to, the chest's including what an arm or the can hides;
+- **armCuts**: on the hoe's strike (frames 3 and 4) both hands hold the
+  handle and his arms are one piece of skin. The game fits the arm drawing
+  to each arm piece, so one drawing was stretched over both arms and the
+  gap between them; a one-pixel column at the hands is left out of the arms
+  (`_stampStandInInk`), and they are two again.
+
+Three things the measuring had to get right, each found on the preview
+(`PREVIEW=<dir>` writes `ink-<move>.png`: head red, chest green, arms blue,
+the boxes and the seeds):
+
+- leaning over the bed, his shoulders come up beside his face, joined to it
+  by skin. A head outline 1.1 heads wide round the eyes' middle took them,
+  and three kneel frames' face boxes were 65-66 px wide where every other
+  frame's is 57-60: the face drawing stretched a seventh wider. The head is
+  now a round one head wide round the crown's middle;
+- his jaw's corners run down beside his neck as skin, past the chin's
+  outline, and the head's flood followed them into the chest drawing's box
+  (57-105 px of holes on four kneel frames). Nothing under the chin is his
+  face: the row under the face's box is seeded chest and its last row head
+  (`_fence_chin`);
+- with the hoe raised, his collar's lower half was taken for bare arm and
+  seeded so, joining both raised arms into one piece across his chest.
+
+His shoulders stay chest, not arm: as arm, the leaning frames' arm pieces
+grew to 91-99 px tall against 56-76 standing, and the arm drawing would
+change size between frames more than it does (57-66 leaning). He faces you
+and is never flipped, so the front drawings, as the cook's. A drawing
+changed on the farm bakes him again once the strokes stop, as the
+lumberjack's (400 ms).
 
 **In time** (`src/game/farmWork.js`), each step plays its move's eight frames
 as whole turns that fill its time exactly. A step always ends on the eighth
@@ -413,6 +456,17 @@ two pictures still to come.
     the one cut for them, each garment on the body's frame, in the order body,
     greaves, shirt, plate, tool, and in the copper his walking figure wears;
   - leaving the farm lets every texture of his go, the garments' too.
+- **Your drawings on him:** `tools/qa/mp/mp-farmink.mjs`
+  (`node tools/qa/mp/run.mjs farmink`, 23 checks). A face drawing on its left
+  half in blue, the chest green, the arms pink; every frame of the three moves
+  read as baked against the strip as shipped
+  (`out/farmink-<move>[-greaves].png`): the face drawing in the face's box
+  only, on its left half; the chest drawing in the chest's box only; the arm
+  drawing on both arms, nothing in the hoe's cut; every drawn pixel on his
+  skin; the face redrawn on its right half on the farm, baked again; under
+  greaves, the body cut for them carries them too. The `farmwalk` suite runs
+  the game's own split on the shipped strips: nothing of his face under his
+  chin, a chest in its box, two arms each frame.
 - `mp-farm` (the window: Seeds first, no beds, the summary line following the
   worker's farm, the kill switch), `mp-farmorders` and `mp-wheeldoors` (the
   farm's gate) still run.
@@ -425,8 +479,6 @@ two pictures still to come.
 
 ## Not yet
 
-- **The farmer's drawings** (above). His shirt and armour came with the
-  owner's six dressed sheets (v2.3.3352).
 - **Other players see you standing at a bed** while you work it: the steps go
   only to the worker, which tells no one else, as since v2.3.3136.
 - The **Farmhouse** and **Dungeon Workshop** pictures (prompts in

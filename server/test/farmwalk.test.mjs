@@ -53,6 +53,7 @@ import {
 import { FARM_ART } from '../../src/data/farmArt.js';
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '../../src/data/farmAnims.js';
 import { decodePNG } from '../../tools/world/png.mjs';   /* v2.3.3352: what the farmer's strips hold */
+import { splitSkinBySeeds, framePieces } from '../../src/rendering/playerDecal.js';   /* v2.3.3352: where his drawings go */
 import { generateZoneMap } from '../../src/data/gameDisplay.js';
 import { ZONES } from '../../src/data/zones.js';
 
@@ -194,6 +195,64 @@ const FOOT_DY = 52;   /* a body's middle to its boots, on a zone with no perspec
         }
       }
       check(`...under greaves, nothing of his trousers or boots peeks out round them`, !peek.length, peek);
+      /* v2.3.3352: where your drawings go on him (A.ink, the tool's
+         ink_regions): the game's own split (playerDecal splitSkinBySeeds) run
+         on each strip's skin as the bake finds it -- playerSkins _isSkin in
+         4-connected pieces of FARM_MIN_BLOB (12, effectsRenderer) or more --
+         the arm cuts taken out, and the arms measured piece by piece as the
+         stamp measures them (framePieces).  On the man and on the man under
+         greaves: nothing of his face under his chin (the head's flood once
+         ran down his jaw into the chest drawing's box), a chest in the
+         chest's box, and two arms, one each side of his head's middle (the
+         hoe's strike once joined them at the hands into one piece, and one
+         arm drawing was fitted over both). */
+      const I = A.ink;
+      const table = !!I && I.fw === A.fw && I.fh === A.fh && [I.seeds, I.face, I.torso, I.armCuts].every((l) => Array.isArray(l) && l.length === A.n);
+      check(`...where your drawings go on him: a table for his ${A.fw}x${A.fh} frames, every frame in it`, table, I && { fw: I.fw, fh: I.fh });
+      if (table) {
+        for (const [who, IM] of [['the man', B], ['under greaves', U]]) {
+          const W = IM.width, Hh = IM.height, px = W * Hh;
+          const sk = new Uint8Array(px);
+          for (let i = 0; i < px; i++) {
+            const r = IM.data[i * 4], g = IM.data[i * 4 + 1], b = IM.data[i * 4 + 2], al = IM.data[i * 4 + 3];
+            if (al > 40 && r > g && g >= b && r - b > 30 && r > 90 && r - g > 25) sk[i] = 1;
+          }
+          const skin = new Uint8Array(px);
+          for (let f = 0; f < A.n; f++) {
+            for (const c of framePieces(sk, W, Hh, f * A.fw, (f + 1) * A.fw, null, 0)) {
+              if (c.length >= 12) for (const i of c) skin[i] = 1;
+            }
+          }
+          const reg = splitSkinBySeeds(skin, W, Hh, A.fw, I.seeds);
+          for (let f = 0; f < A.n; f++) {
+            for (const [x, y0, y1] of I.armCuts[f]) for (let y = y0; y <= y1; y++) reg.arms[y * W + f * A.fw + x] = 0;
+          }
+          const bad = [];
+          for (let f = 0; f < A.n; f++) {
+            const fb = I.face[f], tb = I.torso[f], mid = A.crowns[f][0];
+            let under = 0, beside = 0, face = 0, chest = 0;
+            for (let y = 0; y < Hh; y++) {
+              for (let x = 0; x < A.fw; x++) {
+                const i = y * W + f * A.fw + x;
+                if (reg.face[i]) {
+                  if (y > fb[3]) under++;
+                  else if (x < fb[0] || x > fb[1] || y < fb[2]) beside++;
+                  else face++;
+                }
+                if (reg.torso[i] && x >= tb[0] && x <= tb[1] && y >= tb[2] && y <= tb[3]) chest++;
+              }
+            }
+            const arms = framePieces(reg.arms, W, Hh, f * A.fw, (f + 1) * A.fw, null, I.pieceKeep);
+            const sides = arms.map((c) => {
+              let sx = 0;
+              for (const i of c) sx += (i % W) - f * A.fw;
+              return sx / c.length < mid ? 'L' : 'R';
+            }).sort().join('');
+            if (under || beside > 8 || face < 1500 || chest < 300 || sides !== 'LR') bad.push({ f, under, beside, face, chest, arms: arms.map((c) => c.length), sides });
+          }
+          check(`...${who}, as the game splits him: his face in its box and none of it under his chin, his chest in its box, two arms, one each side`, !bad.length, bad);
+        }
+      }
     }
     const inF = (p) => p[0] >= 0 && p[0] <= A.fw && p[1] >= 0 && p[1] <= A.fh;
     check(`...his boots (${A.foot.join(', ')}) and the work (${A.work.join(', ')}) inside the frame, near its bottom; every crown inside it and over the boots`,

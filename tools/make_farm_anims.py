@@ -624,7 +624,304 @@ def build(name, anchor, has_tool):
     out_ = dict(name=name, fw=fw, fh=fh, strips=strips, foot=foot, crowns=crowns, eyes=eyes_,
                 has_tool=has_tool, scale=s, src_head=hw)
     out_['work'] = work_point(name, strips)
+    out_['ink'] = ink_regions(out_)
     return out_
+
+
+# ── your drawings on him (v2.3.3352) ───────────────────────────────────────
+# The game stamps your face, chest and arm drawings on a pre-drawn figure from
+# a table per frame (src/rendering/standInInk.js, read by playerSkins
+# _stampStandInInk): seed points the head, torso and arms flood out from over
+# the skin the game finds (playerDecal splitSkinBySeeds, a 4-connected flood
+# that the painted outlines stop), and the head's and the torso's whole boxes,
+# which the face and chest drawings are fitted into.  The lumberjack's, the
+# cook's and the fire-lighter's were fitted by eye; these are measured here,
+# from what this tool already knows of every frame: his eyes, his head's size,
+# and the white tee drawn on him -- where the tee is, his torso is.
+
+def game_skin(strip):
+    """The skin the game's stand-in bake finds on a strip frame:
+    playerSkins _isSkin, in pieces of FARM_MIN_BLOB (12) px or more, 4-way."""
+    r, g, b, a = (strip[..., i] for i in range(4))
+    sk = (a > 40) & (r > g) & (g >= b) & (r - b > 30) & (r > 90) & (r - g > 25)
+    lab, sizes = labels(sk, diag=False)
+    return (sizes[lab] >= 12) & (lab > 0)
+
+
+def _seed_points(mask, most, least=6):
+    """Points well inside each piece of a mask (4-way pieces of 6+ px), the
+    biggest first: one in every piece -- a hand cut off from its arm by the
+    can's outline, unseeded, is taken by whichever flood reaches it -- and in
+    the two biggest, a quarter and three quarters of the way down as well.
+    Every piece's own point comes before those extras, so `most` cuts the
+    extras first: the other way round, the torso's six went to his chest and
+    one shoulder, and the other shoulder, leaning up beside his face, went
+    to the head's flood."""
+    lab, sizes = labels(mask, diag=False)
+    mids, extras = [], []
+    order = [i for i in np.argsort(-sizes) if i > 0 and sizes[i] >= least]
+    for rank, i in enumerate(order):
+        ys, xs = np.nonzero(lab == i)
+        cy, cx = ys.mean(), xs.mean()
+        targets = (cy, np.quantile(ys, 0.25), np.quantile(ys, 0.75)) if rank < 2 else (cy,)
+        for j, ty in enumerate(targets):
+            k = np.argmin((ys - ty) ** 2 + (xs - cx) ** 2)
+            (extras if j else mids).append([int(xs[k]), int(ys[k])])
+    pts = []
+    for pt in mids + extras:
+        if pt not in pts:
+            pts.append(pt)
+    return pts[:most]
+
+
+def _across(head):
+    """Lines across the head, its own edge to edge 2 px in, at 60% and 85% of
+    the way down it (his cheeks and his jaw) -- [x0, y, x1, y], a line the
+    game's splitSkinBySeeds seeds on every skin pixel it crosses."""
+    ys, xs = np.nonzero(head)
+    t, b = ys.min(), ys.max()
+    out = []
+    for k in (0.6, 0.85):
+        y = int(round(t + k * (b - t)))
+        row = xs[ys == y]
+        if row.size and row.max() - row.min() > 8:
+            out.append([int(row.min()) + 2, y, int(row.max()) - 2, y])
+    return out
+
+
+def ink_regions(a):
+    """Where your drawings go on him, in the shape standInInk.js's hand-fitted
+    tables have (the lumberjack's, the cook's, the fire-lighter's), measured
+    here instead of by eye.  Per frame: seeds {head, torso, arms} (points
+    [x, y] and lines [x0, y0, x1, y1] the game's split floods out from), the
+    face's and the torso's boxes [left, right, top, bottom], and armCuts, frame
+    px.  PREVIEW draws each frame as the game splits it (ink-<name>.png)."""
+    S, hw = a['strips'], HEAD_PX
+    seeds, faces, torsos, cuts = [], [], [], []
+    # the tee's height down his middle in each frame, neckline to hem -- the
+    # can held at his belly hides the lower half of it on four of the
+    # watering frames, so no frame's torso is taken as under 90% of the
+    # move's middling one
+    def tee_span(f):
+        tee = S['shirt'][f][..., 3] > 127
+        ex = a['eyes'][f][0]
+        xx = np.arange(tee.shape[1])[None, :]
+        mid = tee & (np.abs(xx - ex) <= 0.3 * hw)
+        wide = tee & (np.abs(xx - ex) <= 1.2 * hw)
+        if not mid.any() or not wide.any():
+            return None
+        return int(np.nonzero(mid)[0].min()), int(np.nonzero(wide)[0].max())
+    spans = [tee_span(f) for f in range(N)]
+    tall = float(np.median([b - t for t, b in (sp for sp in spans if sp)]))
+    for f in range(N):
+        skin = game_skin(S['body'][f])
+        tee = S['shirt'][f][..., 3] > 127
+        ex, ey = a['eyes'][f]
+        yy, xx = np.indices(skin.shape)
+        # the head: crown to chin, ears to ears (his head is hw across at the
+        # eyes) -- no wider: leaning over the bed, his shoulders come up
+        # beside his face, and a box as wide as the cutting's own took them
+        chin = ey + 0.45 * hw
+        crown = a['crowns'][f][1]
+        hbox = (np.abs(xx - ex) <= 0.55 * hw) & (yy >= crown - 2) & (yy <= chin)
+        # ...and round, as a head is, hw across round the head's own middle
+        # (the crown's x: the eyes' middle sits a pixel or two off it): the
+        # tops of his shoulders reach into the box's lower corners as he leans
+        # over the bed, joined to his face by skin, and are the torso's.  Round
+        # the eyes' middle and 1.1 hw across, three of the kneel's frames took
+        # 7 px of shoulder, and their face boxes were 65-66 px wide against
+        # the 57-60 of every other frame -- the face drawing stretched a
+        # seventh wider as he leant in
+        hx = a['crowns'][f][0]
+        cy, ry = (crown + chin) / 2, (chin - crown) / 2 + 2
+        round_ = ((xx - hx) / (0.5 * hw)) ** 2 + ((yy - cy) / ry) ** 2 <= 1
+        lab, sizes = labels(skin & hbox & round_, diag=False)
+        head = lab == int(np.argmax(sizes[1:]) + 1)
+        # his shoulders: under the tee beside his jaw, where they come up as
+        # he leans or bends to the bed -- below the eyes (never the crown's
+        # corners) and off his middle (never his neck, which joined the two
+        # into one piece seeded at its middle); never bare skin, which there
+        # is an arm raised past his face (the hoe's lift)
+        side = np.abs(xx - hx) > 0.3 * hw
+        shoulders = skin & tee & hbox & ~head & (yy > ey) & side
+        ys, xs = np.nonzero(head)
+        faces.append([int(xs.min()), int(xs.max()), int(ys.min()), int(ys.max())])
+        # the torso: under the tee, in a band down his middle (the sleeves'
+        # upper arms are left to the arms' flood) -- and its whole box, the
+        # tee's, neckline to hem, hidden parts included (an arm or the can in
+        # front of it hides some, and the drawing holds still behind them, as
+        # the hand-fitted tables do), 0.38 of his head either side of it:
+        # the tee's half-width below the sleeves wherever it shows (24 px,
+        # measured on the upright frames of all three moves)
+        t, bot = spans[f] if spans[f] else (int(chin), int(chin + tall))
+        # ...and his neck, between the chin and the tee, is the torso's too --
+        # down to the tee's neckline AT HIS MIDDLE, not to its top in the
+        # band: with the hoe raised the shoulder seams rise past the collar,
+        # and the collar's lower half, taken for bare arm and seeded so,
+        # joined his two raised arms into one piece across his chest (one arm
+        # drawing stretched over both)
+        fb = faces[-1][3]
+        col = tee & (np.abs(xx - hx) <= 3) & (yy > fb)
+        neckline = int(np.nonzero(col)[0].min()) if col.any() else t
+        neckline = min(max(neckline, t), int(fb + 0.4 * hw))
+        neck = skin & ~tee & (np.abs(xx - hx) <= 0.3 * hw) & (yy > min(chin, fb)) & (yy <= neckline + 2)
+        torso = (skin & tee & (np.abs(xx - ex) <= 0.55 * hw) & (yy > chin)) | neck
+        bot = max(bot, int(round(t + 0.9 * tall)))
+        half = 0.38 * hw
+        torsos.append([int(round(ex - half)), int(round(ex + half)), t, min(bot, a['fh'] - 1)])
+        # the arms: his skin outside the tee and the head's box
+        arms = skin & ~dilate8(tee, 1) & ~hbox & ~neck
+        # the shoulders seeded each on its own, apart from the chest: run into
+        # it under the tee, they were one piece with it, seeded at its middle,
+        # and on the kneel's third frame the head's flood reached the right
+        # one first through the skin it shares with his jaw (40 px or more: a
+        # sleeve's corner by his face as the hoe goes up is the arm's)
+        # -- seeded a few pixels clear of his face, and his face seeded right
+        # across, at his cheeks and at his jaw: the shoulder's seed by the
+        # jaw on the hoe's strike flooded up his cheek before the head's flood
+        # got there from the middle of his face
+        shoulders &= ~dilate8(head, 4)
+        sd = {'head': _seed_points(head, 3) + _across(head),
+              'torso': _seed_points(torso, 6)
+              + _seed_points(shoulders & (xx < hx), 2, least=40)
+              + _seed_points(shoulders & (xx > hx), 2, least=40),
+              'arms': _seed_points(arms, 12)}
+        _fence_chin(skin, sd, faces[-1])
+        seeds.append(sd)
+        cuts.append(_arm_cuts(skin, sd, hx, hw))
+    return {'seeds': seeds, 'face': faces, 'torso': torsos, 'armCuts': cuts}
+
+
+def _arm_cuts(skin, sd, hx, hw):
+    """Where his two hands hold the hoe together his arms are one piece of
+    skin, and the game fits the arm drawing to each piece's box: one drawing
+    stretched over both arms and the gap between them, on the strike's two
+    frames, where every other frame has one on each arm.  So such a piece is
+    cut down the column, near his middle, where it is thinnest -- [x, top,
+    bottom] runs the bake leaves out of the arms (a pixel's width of the hands
+    without ink) -- and the two halves are the two arms again."""
+    lab = split_like_the_game(skin, sd)
+    al, sz = labels(lab == 3, diag=False)
+    out = []
+    for i in range(1, len(sz)):
+        piece = al == i
+        xs = np.nonzero(piece.any(0))[0]
+        if not (xs.min() < hx - 0.3 * hw and xs.max() > hx + 0.3 * hw):
+            continue
+        cols = range(int(hx - 0.25 * hw), int(hx + 0.25 * hw) + 1)
+        x = min((c for c in cols if piece[:, c].any()), key=lambda c: piece[:, c].sum())
+        runs = _runs(piece[:, x])
+        cut = piece.copy()
+        cut[:, x] = False
+        halves = sorted(labels(cut, diag=False)[1][1:], reverse=True)
+        if len(halves) < 2 or halves[1] < 0.35 * halves[0]:
+            raise SystemExit(f'no clean cut between the arms (column {x}: {halves[:3]})')
+        out += [[x, y0, y1] for y0, y1 in runs]
+    return out
+
+
+def _runs(row):
+    """[x0, x1] of each run of True in a row."""
+    xs = np.nonzero(row)[0]
+    if not xs.size:
+        return []
+    cut = np.nonzero(np.diff(xs) > 1)[0]
+    starts = np.r_[xs[0], xs[cut + 1]]
+    ends = np.r_[xs[cut], xs[-1]]
+    return [[int(s), int(e)] for s, e in zip(starts, ends)]
+
+
+def _fence_chin(skin, sd, face):
+    """Nothing under his chin is his face.  Leaning over the bed his jaw's
+    corners run down beside his neck as skin, past the chin's outline, and the
+    head's flood followed them into the top corners of the chest drawing's box
+    (57-105 px on four of the kneel's frames: holes in the drawing).  So where
+    the game's split would do that, the row under the face's box is seeded as
+    torso and the face's last row as head -- the head's seeds go first in the
+    flood's queue, so the face keeps its own last row -- until the split
+    leaves no face below its box."""
+    b = face[3]
+    for _ in range(4):
+        lab = split_like_the_game(skin, sd)
+        if not (lab[b + 1:] == 1).any():
+            return
+        for x0, x1 in _runs(lab[b + 1] == 1):
+            sd['torso'].append([x0, b + 1, x1, b + 1])
+        row = (lab[b] == 1)
+        row[:face[0]] = False
+        row[face[1] + 1:] = False
+        for x0, x1 in _runs(row):
+            line = [x0, b, x1, b]
+            if line not in sd['head']:
+                sd['head'].append(line)
+    raise SystemExit(f'the face flood still runs under the chin (face box {face})')
+
+
+def seed_pixels(pl):
+    """playerDecal _seedLine: [x, y] is a point, a longer list a polyline
+    through its points, every pixel along it (Math.round)."""
+    rnd = lambda v: int(np.floor(v + 0.5))
+    if len(pl) == 2:
+        return [(rnd(pl[0]), rnd(pl[1]))]
+    out = []
+    for i in range(0, len(pl) - 3, 2):
+        ax, ay, bx, by = pl[i:i + 4]
+        n = max(1, int(np.ceil(max(abs(bx - ax), abs(by - ay)))))
+        out += [(rnd(ax + (bx - ax) * k / n), rnd(ay + (by - ay) * k / n)) for k in range(n + 1)]
+    return out
+
+
+def split_like_the_game(skin, sd):
+    """playerDecal splitSkinBySeeds on one frame: the head's, then the
+    torso's, then the arms' seeds queued, one 4-way flood from all of them
+    (first come keeps a pixel), and skin no flood reached is arm."""
+    H, W = skin.shape
+    lab = np.zeros((H, W), np.uint8)
+    q = deque()
+    for i, k in ((1, 'head'), (2, 'torso'), (3, 'arms')):
+        for pl in sd[k]:
+            for x, y in seed_pixels(pl):
+                if 0 <= x < W and 0 <= y < H and skin[y, x] and not lab[y, x]:
+                    lab[y, x] = i
+                    q.append((y, x))
+    while q:
+        y, x = q.popleft()
+        for dy, dx in ((0, -1), (0, 1), (-1, 0), (1, 0)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < H and 0 <= nx < W and skin[ny, nx] and not lab[ny, nx]:
+                lab[ny, nx] = lab[y, x]
+                q.append((ny, nx))
+    lab[skin & (lab == 0)] = 3
+    return lab
+
+
+def preview_ink(a):
+    """Where your drawings would go on every frame, as the game splits him:
+    head red, torso green, arms blue, the face's box yellow, the torso's cyan."""
+    fw, fh, Z = a['fw'], a['fh'], 3
+    cells = []
+    for f in range(N):
+        body = a['strips']['body'][f]
+        img = np.zeros((fh, fw, 3), np.float32) + (40, 40, 48)
+        al = body[..., 3:4] / 255
+        img = body[..., :3] * al + img * (1 - al)
+        lab = split_like_the_game(game_skin(body), a['ink']['seeds'][f])
+        for x, y0, y1 in a['ink']['armCuts'][f]:
+            lab[y0:y1 + 1, x] = 0
+        for i, c in ((1, (230, 60, 60)), (2, (60, 200, 90)), (3, (70, 110, 240))):
+            img[lab == i] = img[lab == i] * 0.35 + np.array(c) * 0.65
+        for box, c in ((a['ink']['face'][f], (255, 230, 0)), (a['ink']['torso'][f], (0, 230, 255))):
+            l, r, t, b = box
+            img[t, l:r + 1] = c; img[b, l:r + 1] = c; img[t:b + 1, l] = c; img[t:b + 1, r] = c
+        for k in ('head', 'torso', 'arms'):
+            for pl in a['ink']['seeds'][f][k]:
+                for x, y in seed_pixels(pl):
+                    img[max(0, y - 1):y + 2, max(0, x - 1):x + 2] = (255, 255, 255)
+        cells.append(img)
+    sheet = np.concatenate(cells, axis=1)
+    im = Image.fromarray(np.clip(sheet, 0, 255).astype(np.uint8))
+    im = im.resize((im.width * Z, im.height * Z), Image.NEAREST)
+    im.save(os.path.join(PREVIEW, f'ink-{a["name"]}.png'))
 
 
 def crown_of(skin, ex, ey):
@@ -695,6 +992,7 @@ def main():
         made.append(a)
         if PREVIEW:
             preview(a)
+            preview_ink(a)
     write_js(made)
 
 
@@ -712,8 +1010,10 @@ def write_js(made):
         "   drawn so its head is FARM_ANIM_HEAD px wide ears to ears: `foot` is the point between",
         "   his boots on the ground, frame px, `work` where the work happens (the",
         "   blade striking, the water landing, the hands in the soil: the bits fly",
-        "   from there), and `crowns` the top of his head in each frame (the hat sits",
-        "   there).  docs/specs/farm-walk.md \"The farmer's own moves\". */",
+        "   from there), `crowns` the top of his head in each frame (the hat sits",
+        "   there), and `ink` where your drawings go on him, in the shape of the",
+        "   hand-fitted tables in rendering/standInInk.js (playerSkins",
+        "   _stampStandInInk).  docs/specs/farm-walk.md \"The farmer's own moves\". */",
         f"export const FARM_ANIM_HEAD = {HEAD_PX};",
         "export const FARM_ANIMS = Object.freeze({",
     ]
@@ -726,7 +1026,16 @@ def write_js(made):
                      f"pose: 'farm{n}', fw: {a['fw']}, fh: {a['fh']}, n: {N}, "
                      f"foot: Object.freeze([{a['foot'][0]}, {a['foot'][1]}]), "
                      f"work: Object.freeze([{a['work'][0]}, {a['work'][1]}]), "
-                     f"crowns: Object.freeze([{crowns}]) }}),")
+                     f"crowns: Object.freeze([{crowns}]),")
+        ink, js = a['ink'], lambda v: json.dumps(v, separators=(', ', ': '))
+        lines.append(f"    ink: Object.freeze({{ fw: {a['fw']}, fh: {a['fh']},")
+        lines.append("      seeds: [")
+        for sd in ink['seeds']:
+            lines.append(f"        {{ head: {js(sd['head'])}, torso: {js(sd['torso'])}, arms: {js(sd['arms'])} }},")
+        lines.append("      ],")
+        lines.append(f"      face: {js(ink['face'])},")
+        lines.append(f"      torso: {js(ink['torso'])},")
+        lines.append(f"      armCuts: {js(ink['armCuts'])} }}) }}),")
     lines.append("});")
     with open(OUT_JS, 'w') as fh:
         fh.write('\n'.join(lines) + '\n')

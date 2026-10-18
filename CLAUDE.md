@@ -2349,15 +2349,21 @@ remnant to migrate server-side, not a mode to preserve.
           print (hidden under a plate) and your plate, in their metal, the
           tool, your hair, hat and beard; his head is drawn
           `FARM_ANIM_HEAD_WORLD` 31.25 world px, so he stands your height
-          (95-101%); not yet your drawings;
+          (95-101%);
+        - and your DRAWINGS, face, chest and arms, where the tool measured
+          each on each frame (`ink` in farmAnims.js, the shape of
+          standInInk.js's hand-fitted tables: seeds the game's split floods
+          from, the face's and chest's boxes, and `armCuts` where both hands
+          on the hoe join his arms -- playerSkins `_stampStandInInk`), baked
+          again when you change one; `PREVIEW` writes `ink-<move>.png`;
         - made behind the farm's loading screen (`ensureStandIn('farm')`,
           `farmFigureReady`), all nine garments whatever you wear (the
           character menu can dress you there), and let go of on leaving
           (`_freeFarm`): the farm holds 104.5 MB on the GPU, the nine
           garments ~1.9 of it, where the cook's kneel held 104.6;
         - the crates (`make_farm_covers.py`, `farmCovers.js`) are gone;
-          `farmwalk` suite §1, `mp-farmanim`: docs/specs/farm-walk.md "The
-          farmer's own moves";
+          `farmwalk` suite §1, `mp-farmanim`, `mp-farmink`:
+          docs/specs/farm-walk.md "The farmer's own moves";
       - the Feed & Seed's window lost its Beds tab: Visit Your Farm on top,
         "Your farm: 3 ready to harvest · 3 beds to plant" under it, then Seeds
         and Orders;

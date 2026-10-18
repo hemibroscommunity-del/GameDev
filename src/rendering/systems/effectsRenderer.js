@@ -15164,8 +15164,9 @@ export class EffectsRenderer {
      and these moves had no armour at all.  Under greaves the body is the one
      the tool cut for them (`under`: his trousers and boots trimmed to the
      armoured legs, so nothing of them shows round the plates), baked again
-     when the greaves go on or come off.  NOT YET: your drawings (no fitted
-     regions for these poses).
+     when the greaves go on or come off.  And your drawings, face, chest and
+     arms, where the tool measured each on each frame (`ink`, the shape of the
+     hand-fitted tables in standInInk.js), re-baked when you change one.
 
      MEMORY (CLAUDE.md, "Memory is budgeted").  Made on the farm, behind its
      loading screen (preloadZoneAssets asks for 'farm', standIns.js), and let
@@ -15203,6 +15204,14 @@ export class EffectsRenderer {
        bodies as the fire-lighter's are (onSkinChange etc.), only while made */
     const _refarm = () => { if (this._farmFrames) this._bakeFarmBodies(this._farmGen).catch(() => {}); };
     this._offs.push(onSkinChange(_refarm), onPantsChange(_refarm), onShoesChange(_refarm));
+    /* v2.3.3352: and his drawings, once the strokes stop, as the lumberjack's
+       (the designer commits every stroke) */
+    let _farmArtT = 0;
+    this._offs.push(onArtChange((id) => {
+      if (id !== 'tattoo' && id !== 'tattooFace' && id !== 'tattooArm') return;
+      clearTimeout(_farmArtT);
+      _farmArtT = setTimeout(_refarm, 400);
+    }), () => clearTimeout(_farmArtT));
   }
 
   /** Every animation's body, and the tool of each that holds one. */
@@ -15229,10 +15238,15 @@ export class EffectsRenderer {
       if (gen !== this._farmGen || this._destroyed || seq !== this._farmBakeSeq) return;
       const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
       const pantsT = pantsTarget(getPants()), shoesT = shoesTarget(getShoes());
+      /* v2.3.3352: and your drawings -- face, chest and arms -- where the
+         tool measured each on each frame (FARM_ANIMS[a].ink).  He faces you
+         and is never drawn flipped, so the FRONT drawings, as the cook's. */
+      const _base = localBodyArt(false);
+      const art = _base ? { ...artForFacing(_base, 'south'), mirror: false } : null;
       const frames = Object.create(null);
       names.forEach((a, i) => {
         const A = FARM_ANIMS[a];
-        const cv = recolorStandInSkin(imgs[i], skinT, A.fh, { frameW: A.fw, minBlob: FARM_MIN_BLOB, pantsT, shoesT, probe: 'farm-' + a });
+        const cv = recolorStandInSkin(imgs[i], skinT, A.fh, { frameW: A.fw, minBlob: FARM_MIN_BLOB, pantsT, shoesT, probe: 'farm-' + a, art, regions: A.ink });
         _probeStandInSkin('farm-' + a, cv);
         const arr = this._own(_sliceStandIn(cv, A.fw, A.fh, A.n, 'farm-' + a, false));
         try { arr[0].source.label = 'farm-' + a + ' (baked)'; } catch (e) { /* the label is QA-only */ }
@@ -15245,7 +15259,11 @@ export class EffectsRenderer {
       if (old) this._letGo(Object.keys(old).map((a) => old[a]));
       /* QA (mp-farmwalk): which body the last bake made, so a test that puts
          greaves on waits for it before it works a bed */
-      if (typeof window !== 'undefined' && window.__btProbe) window.__btFarmBody = { under, seq, at: Date.now() };
+      if (typeof window !== 'undefined' && window.__btProbe) {
+        window.__btFarmBody = { under, seq, at: Date.now() };
+        /* and (mp-farmink) the frames themselves, to read your drawings off */
+        window.__btFarmFrames = () => this._farmFrames;
+      }
     });
   }
 
