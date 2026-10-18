@@ -165,7 +165,7 @@ for (const n of ['a', 'b', 'c']) {
   // Relay a chat + an emote + a non-chat broadcast from the muted player,
   // through the REAL default branch (which stamps msg.from server-side).
   await rm.webSocketMessage(wb, JSON.stringify({ type: 'chat', payload: { text: 'you are all terrible', name: 'spoofed', id: 'spoofed' } }));
-  await rm.webSocketMessage(wb, JSON.stringify({ type: 'emote', payload: { emoji: '💀' } })   /* v2.3.3353: a listed emote (emotes.js) */);
+  await rm.webSocketMessage(wb, JSON.stringify({ type: 'emote', payload: { emoji: '💀' } })   /* v2.3.3361: a listed emote (emotes.js) */);
   await rm.webSocketMessage(wb, JSON.stringify({ type: 'player_shield', payload: { up: true } }));
   const relayed = rm.eventBuffer.filter((e) => e.from === P('fb'));
   check('relay stamps the sender server-side (payload.id is not consulted)',

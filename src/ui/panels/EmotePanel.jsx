@@ -1,6 +1,6 @@
 import React from 'react';
 import { EMOTES, TEXT_EMOTES } from '@/data/index.js';
-import { EMOTE_MOVES, EMOTE_MOVE_IDS } from '@/game/emoteMoves.js';   /* v2.3.3355 */
+import { EMOTE_MOVES, EMOTE_MOVE_IDS } from '@/game/emoteMoves.js';   /* v2.3.3363 */
 
 /* === EmotePanel — the showEmotes quick-picker === */
 /* v2.3.886: extracted verbatim from the showEmotes JSX subtree in
@@ -11,7 +11,7 @@ import { EMOTE_MOVES, EMOTE_MOVE_IDS } from '@/game/emoteMoves.js';   /* v2.3.33
 /* v2.3.1232: Lantern Slate restyle — inline override of the legacy
    .bt-emote-bar blur/black chrome (spec hard lock: no backdrop-filter);
    text quick-chats become 32px pill chips. Handlers untouched. */
-/* ═══ v2.3.3353: A PICKER YOU CAN REACH, THAT SENDS ONCE ═══
+/* ═══ v2.3.3361: A PICKER YOU CAN REACH, THAT SENDS ONCE ═══
    Its only door was the 😀 in the bottom toolbar hidden since v14
    (MenuBar.jsx, display:none), so nobody could open it.  It opens now from
    the chat box (tap your bro, then the smiley: ChatBubble.jsx) or B on a
@@ -23,7 +23,7 @@ import { EMOTE_MOVES, EMOTE_MOVE_IDS } from '@/game/emoteMoves.js';   /* v2.3.33
      area closes it (the chat box's own dismiss layer, `data-emote-dismiss`).
    - 6 emoji to a row at 44 px, the touch floor; the quick lines under them.
    props: sendEmote(emoji), onClose(). */
-/* ═══ v2.3.3355: AND YOUR BRO MOVES (game/emoteMoves.js) ═══
+/* ═══ v2.3.3363: AND YOUR BRO MOVES (game/emoteMoves.js) ═══
    A MOVES tab first: six moments (wave, laugh, flex, shrug, facepalm, cheer)
    and six held until you move (sit, sleep, flop, three dances), each a tile
    with its picture and its name -- the whole bro moves in code
@@ -160,7 +160,7 @@ export function EmotePanel(props) {
         "data-emote": t,
         onClick: function () { sendEmote(t); },
         style: {
-          /* v2.3.1232: 32px raised pill chip; v2.3.3353: 36 -- a thumb's */
+          /* v2.3.1232: 32px raised pill chip; v2.3.3361: 36 -- a thumb's */
           minHeight: 36,
           padding: '4px 12px',
           borderRadius: 999,

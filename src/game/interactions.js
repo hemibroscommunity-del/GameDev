@@ -8,13 +8,13 @@
    deps: sendEmote -> setShowEmotes, enterBuilding -> setBuildingPanel. */
 import { BT_AUDIO, BUILDINGS } from '@/data/index.js'; /* v2.3.1779: hasUnlock + QUEST_CHAINS went with the retired building gate */
 import { _typeof } from '@/lib/babelHelpers.js';
-import { emoteKind, emotesLive, EMOTE_COOLDOWN_MS } from '@/game/emotes.js'; /* v2.3.3353 */
-import { moveKind, EMOTE_MOVES, EMOTE_HOLD_IDS } from '@/game/emoteMoves.js'; /* v2.3.3355: your bro moves */
-import { swimRefused, airRefused } from '@/game/combatHelpers.js'; /* v2.3.3355 */
+import { emoteKind, emotesLive, EMOTE_COOLDOWN_MS } from '@/game/emotes.js'; /* v2.3.3361 */
+import { moveKind, EMOTE_MOVES, EMOTE_HOLD_IDS } from '@/game/emoteMoves.js'; /* v2.3.3363: your bro moves */
+import { swimRefused, airRefused } from '@/game/combatHelpers.js'; /* v2.3.3363 */
 
 export function sendEmote(S, emoji, deps) {
   var setShowEmotes = deps.setShowEmotes;
-    /* ═══ v2.3.3353: AN EMOTE YOU CAN SEE (src/game/emotes.js) ═══
+    /* ═══ v2.3.3361: AN EMOTE YOU CAN SEE (src/game/emotes.js) ═══
        Only a listed emote goes out (the worker relays nothing else, emotes.js
        on its side), at most one a second (the relay allowance it spends is
        your swings' and arrows' too), and none under the worker's `emotes:
@@ -49,7 +49,7 @@ export function sendEmote(S, emoji, deps) {
     setShowEmotes(false);
 }
 
-/* ═══ v2.3.3355: YOUR BRO MOVES (game/emoteMoves.js, docs/specs/emote-moves.md) ═══
+/* ═══ v2.3.3363: YOUR BRO MOVES (game/emoteMoves.js, docs/specs/emote-moves.md) ═══
    A MOMENT (wave, laugh, flex, shrug, facepalm, cheer) is the `emote` relay's
    `{move}`, drawn on every phone near you for a second or two.  A HELD pose
    (sit, sleep, flop, a dance) is `pose {id}` to the worker, which keeps it on

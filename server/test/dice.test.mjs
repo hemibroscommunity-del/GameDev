@@ -1,4 +1,4 @@
-/* /roll and /flip -- v2.3.3356 (server/src/dice.js, docs/specs/dice.md).
+/* /roll and /flip -- v2.3.3364 (server/src/dice.js, docs/specs/dice.md).
  *
  * The fun & social plan's Phase 1: "/roll" (1-100, or "/roll 20"), "/flip",
  * rolled by the WORKER -- a phone's own roll could always say 100.

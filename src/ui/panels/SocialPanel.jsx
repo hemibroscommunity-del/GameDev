@@ -1,7 +1,7 @@
 import React from 'react';
 /* v2.3.1981: unmuting is a server mutation now (server/src/chatmod.js);
    setMuted keeps writing the localStorage mirror this panel reads. */
-import { setMuted, blockedIdOf } from '@/game/chatMute.js'; /* v2.3.3353: + blockedIdOf */
+import { setMuted, blockedIdOf } from '@/game/chatMute.js'; /* v2.3.3361: + blockedIdOf */
 
 /* ═══ SocialPanel — friends / muted / blocked lists ═══ */
 /* v2.3.860: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -239,7 +239,7 @@ export function SocialPanel(props) {
     style: emptyStyle
   }, "Nobody blocked."), blockedList.map(function (entry) {
     var _stateRef$current27;
-    /* v2.3.3353: an entry is a plain id or {id, name} (the friends list's,
+    /* v2.3.3361: an entry is a plain id or {id, name} (the friends list's,
        chatMute.js) -- `bid.slice` threw on the second */
     var bid = blockedIdOf(entry);
     var o = (_stateRef$current27 = stateRef.current) === null || _stateRef$current27 === void 0 || (_stateRef$current27 = _stateRef$current27.others) === null || _stateRef$current27 === void 0 ? void 0 : _stateRef$current27[bid];
@@ -280,7 +280,7 @@ export function SocialPanel(props) {
       },
       onClick: function onClick() {
         var updated = blockedList.filter(function (b) {
-          return blockedIdOf(b) !== bid;   /* v2.3.3353: either shape */
+          return blockedIdOf(b) !== bid;   /* v2.3.3361: either shape */
         });
         setBlockedList(updated);
         try {

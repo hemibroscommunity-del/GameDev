@@ -4,7 +4,7 @@ import { chatLogBus } from './chatLogBus.js';
 import { uiBusyBus } from './uiBusyBus.js';   /* v2.3.2085 */
 import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
 import { chatLaneOf, CHAT_LANE_ICON } from '../../data/smallIcons.js';   /* v2.3.3279: the owner's chat-lane pictures */
-import { chatNameColor } from '../../game/chatColor.js';   /* v2.3.3353: a name's colour you can read */
+import { chatNameColor } from '../../game/chatColor.js';   /* v2.3.3361: a name's colour you can read */
 
 /* ═══ v2.3.2037: WORLD CHAT, AS ITS OWN SECTION ═══
  *
@@ -692,7 +692,7 @@ export function WorldChatFeed() {
                  the front of its name, game/chat.js) is the owner's picture */
               const lane = chatLaneOf(m.name);
               return (
-                /* v2.3.3353: only a hex that reads (game/chatColor.js) -- an older
+                /* v2.3.3361: only a hex that reads (game/chatColor.js) -- an older
                    worker relays any colour, "transparent" included */
                 <span style={{ color: chatNameColor(m.color), fontWeight: 700 }}>
                   {lane ? (

@@ -84,7 +84,7 @@ export const CHATMOD = {
    never asked for (and would break handshakes mid-flight).  `emote` is
    in because it is a chat bubble that makes a NOISE — the client chirps
    on every one (chat.js handleEmoteEvent). */
-/* v2.3.3356: and `dice_roll` -- the worker's event, not a relay, but stamped
+/* v2.3.3364: and `dice_roll` -- the worker's event, not a relay, but stamped
    with its roller as `from` (dice.js): a line in the chat in their name */
 export const MUTABLE_RELAY_TYPES = new Set(['chat', 'emote', 'dice_roll']);
 
