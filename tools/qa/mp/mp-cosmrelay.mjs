@@ -103,9 +103,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* A must move to become dirty, or the tick never mentions him (see
      waitMutualSight's note); the relay alone would also re-create him. */
   await H.nudge(A, 'd', 500);
-  await B.page.waitForTimeout(6000);   /* ≥2 track cycles */
-
-  const healed = await peerLook(B, 'Dapper');
+  /* v2.3.3326: the tick makes him again at once, but as 'Anon' in a default
+     body (a tick carries no look), and since v2.3.3240 the relay sends only
+     what CHANGED: his whole look, name and all, goes again once a minute
+     (lookrelay.js FULL_EVERY_MS; docs/specs/look-relay.md, "in a minute
+     instead of 2 s").  Two track cycles are not enough any more (the sweep of
+     2026-10-17), so wait for that whole copy -- with a real key every 20 s, so
+     neither page logs itself out over the wait (two minutes, v2.3.1913). */
+  const stopA = H.keepAlive(A), stopB = H.keepAlive(B);
+  let healed = null;
+  for (const t0 = Date.now(); Date.now() - t0 < 80000;) {
+    healed = await peerLook(B, 'Dapper');
+    if (looksRight(healed)) break;
+    await B.page.waitForTimeout(1000);
+  }
+  stopA(); stopB();
   rec.ok('the re-discovered peer has A’s look back, not a bald default body',
     looksRight(healed), healed);
   rec.ok('...including the drawings, which only the relay could have carried',
