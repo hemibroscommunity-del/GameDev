@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4c9601c225f1f8ddafd6093420347d51901b8ffe",
+  "tree": "1c5d263d013acad2d19af46ad4bf51a2fe6ede38",
+  "committedAt": "2026-10-18T11:11:26-07:00",
+  "subject": "No more double-tap zoom: the skill point window (and every other window) can't be zoomed by a double tap (v2.3.3454) (#1002)",
+  "files": 5969,
+  "bytes": 673832682,
+  "listingSha256": "21fc1def34f0392fbb344e29e5ff28ca949f6390bc144833bf7314d3bfb51137",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
