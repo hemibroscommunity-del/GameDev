@@ -642,7 +642,14 @@ export class BuildingFires {
     if (ev.type === 'hit') {
       let f = this.fires.get(i);
       if (!f) {
-        f = new BuildingFire(i, ix.o.x[i], ix.o.y[i], ix.w[i], ix.h[i]);
+        /* v2.3.3409: its picture's size is kept once a PIECE since v2.3.3315
+           (wheelObjects.js, "Read as ix.w[ix.pk[i]]"), and read here at the
+           object's own number it was some other picture's -- the Hotel took a
+           40 px one's: every spot was held within 18 px of its middle, arrows
+           at either end merged into one fire there, and the flames' height
+           was held to that picture's (mp-buildingfire) */
+        const pk = ix.pk[i];
+        f = new BuildingFire(i, ix.o.x[i], ix.o.y[i], ix.w[pk], ix.h[pk]);
         this.fires.set(i, f);
       }
       const was = f.frac;
