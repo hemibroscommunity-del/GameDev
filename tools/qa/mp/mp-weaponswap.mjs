@@ -125,7 +125,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const R = window._gameState.current.rpg;
     R.weapon = SWORD; R.rangedWeapon = BOW; R.staffWeapon = STAFF; R.activeSlot = 'melee';
   }, { SWORD, BOW, STAFF });
-  await P.page.waitForTimeout(600);
+  /* v2.3.3427: until the button has read them -- it reads the game on a 200
+     ms timer, and on this box a frame takes 300-600 ms, so 600 ms was a frame
+     or two: the button still showed empty hands (owned 1) while the game held
+     all three. A phone sees them within 200 ms. */
+  await P.page.waitForFunction(() => {
+    const b = document.querySelector('[data-weapon-chip]'), img = b && b.querySelector('img');
+    return !!b && Number(b.getAttribute('data-weapon-owned')) === 3 && /great-sword-copper/.test((img && img.getAttribute('src')) || '');
+  }, null, { timeout: 10000, polling: 200 }).catch(() => {});
+  await P.page.waitForTimeout(300);
   const a = await look(P);
   const bandTop = a.vh - a.dashH;
   rec.ok(`the button is little and a thumb's size (${a.btn && a.btn.w}x${a.btn && a.btn.h} touch, ${a.face && a.face.w}px face)`,
