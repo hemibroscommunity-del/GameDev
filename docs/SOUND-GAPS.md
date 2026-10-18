@@ -145,6 +145,7 @@ Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
 
 | Sound | For | Notes |
 |---|---|---|
+| **A tired breath** | a sprint running out of stamina, turn about with the grunt -- the owner, 2026-10-18: "Maybe alternate between grunt and tired breath" | until then running dry plays the owner's grunt alone, worn out (v2.3.3455); a breath made in code is out (v2.3.1103) |
 | **Creature voices** | each kind's idle, an "it noticed you" call and a hurt grunt | the fire goblin, the mummy's skeleton, the slimes and the snowman have one (v2.3.3340); the rock monster, thorn shambler, fishman, bog lurker, mire wisp and mummy still have none -- and so the Pebbling, Finling, Wisplet, Lurkling and Mumling pets come out without a voice |
 | **Your hurt grunt** | being hit | today the armour clang or a thud |
 | **Low-HP heartbeat** | under a quarter of your health | the game already keeps time for it (faster under a tenth); only the sound is missing |
