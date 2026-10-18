@@ -146,7 +146,7 @@ would be mis-fired constantly on a 390 px phone, and the reason is what
 makes the record actionable). `SocialPanel` lists who you have muted and
 unmutes server-side.
 
-## v2.3.3397: the reports on the owner's phone
+## v2.3.3398: the reports on the owner's phone
 
 Phase 0 of the fun & social plan (docs/FUN-SOCIAL-PLAN.md). Reports could be
 read, and acted on, only with curl, and the owner runs the game from a phone.
