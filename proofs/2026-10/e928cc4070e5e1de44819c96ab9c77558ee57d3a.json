@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e928cc4070e5e1de44819c96ab9c77558ee57d3a",
+  "tree": "8a56aa1f0ef9077a250c4ccd4519059205072fba",
+  "committedAt": "2026-10-18T03:31:02-07:00",
+  "subject": "The speed test no longer blames the graphics chip when your phone already runs at full speed (v2.3.3383) (#973)",
+  "files": 5821,
+  "bytes": 639549675,
+  "listingSha256": "ba1488a92b5b2b1f8877e37d4f00e3057336b4ad371164328037500f5da19193",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
