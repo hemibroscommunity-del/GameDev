@@ -231,6 +231,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
       dx < 6 && dy < 6, { ring: c1.ring, tile, dx, dy });
   }
 
+  /* ── v2.3.3350: A WINDOW PUTS THE MARK AWAY, AND IT COMES BACK ──
+     The building windows have no scrim over the screen since v2.3.3258, so
+     the hit-test that keeps the coach off a dialogue let GEAR UP's card stand
+     over them (the UI review found it on the Woodworker's Staff tab and the
+     Feed & Seed's Orders, where a press put the tip away instead).  game.css
+     hides the coach while a window is up; the lesson itself is untouched. */
+  const shown = () => P.page.evaluate(() => {
+    const el = document.querySelector('[data-coach]');
+    const card = el && el.querySelector('[data-coach-card]');
+    return { lesson: el ? el.getAttribute('data-coach') : null,
+      display: el ? getComputedStyle(el).display : null,
+      card: card ? Math.round(card.getBoundingClientRect().width) : 0 };
+  });
+  await P.page.evaluate(() => window.__btBuildingWindow && window.__btBuildingWindow.open('bank'));
+  await P.page.waitForTimeout(900);
+  const underWindow = await shown();
+  const winUp = await P.page.evaluate(() => !!document.querySelector('[data-building-panel]'));
+  rec.ok('with a building window open the gear lesson\'s ring and card stand aside',
+    winUp && underWindow.lesson === 'equip' && underWindow.display === 'none' && underWindow.card === 0, { winUp, underWindow });
+  await P.page.evaluate(() => window.__btBuildingWindow && window.__btBuildingWindow.open(null));
+  await P.page.waitForTimeout(900);
+  const afterWindow = await shown();
+  rec.ok('...and with the window shut it is back, the lesson still waiting',
+    afterWindow.lesson === 'equip' && afterWindow.display !== 'none' && afterWindow.card > 0, afterWindow);
+
   /* ── 2. THE MARK MUST NOT EAT THE TAP IT IS ASKING FOR ──
      The overlay covers the whole viewport so it can draw anywhere; if any part
      of it were hit-testable, the one control the player has just been told to

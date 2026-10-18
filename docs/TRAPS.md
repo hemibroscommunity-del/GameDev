@@ -7258,3 +7258,32 @@ the UI review's `--views=laptop` (tools/qa/ui-review/capture.mjs).
 **Receipt:** mp-deskreach 3 -- at 1366 x 768 ENTER BRO TOWN is on the screen,
 answers a click at its middle, the picker has room, and the click takes a new
 bro into the game.
+
+## 215. "Every window puts a scrim over the screen, so the coach keeps off windows by itself" (v2.3.3350)
+
+**Tempting:** leave the quest coach alone when a window is open: it draws a
+lesson only when its control answers a hit-test at its middle (QuestCoach
+`reachable`), and "every overlay in this UI puts a scrim over the screen", so
+any window takes the mark down with no code of its own.
+
+**What happens:** the building windows have no scrim since v2.3.3258 (they open
+over the street, the room behind the menu), and the dashboard's OPEN button
+stays in view under them. So the GEAR UP lesson's ring stayed on OPEN and its
+card -- lifted clear of the combat band -- stood over the open window: the UI
+review's laptop view found it on the Woodworker's Staff tab and the Feed &
+Seed's Orders, and the card is tappable (v2.3.2312), so a press there put the
+tip away instead of choosing the tab. On a computer the same lift, past a
+combat band a computer does not show, carried the card to the top, under the
+minimap's invisible "open map" button: a click on its ✕ opened the world map.
+
+**The rule:** the coach stands aside under any window, by marker, in game.css
+(`body:has(.bt-inspect) [data-coach]` and the windows that are not
+`.bt-inspect`: daily rewards, Diego, Ace, the trade drawer) -- display only,
+so the lesson keeps waiting and comes back when the window goes. A rule that
+rests on "every X does Y" needs a check that fails when a new X does not. And
+on a computer the card clears the keys strip, not the phone's combat band
+(QuestCoach `bandClear`).
+
+**Receipt:** mp-questcoach (a phone: the bank's window puts the gear lesson
+away, shut it is back), mp-deskreach 4 (a laptop: the card clears the minimap
+and the keys strip, its ✕ answers).

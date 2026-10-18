@@ -4819,6 +4819,23 @@ body:has([data-world-chat-toggle][aria-expanded="true"]) .bt-kb-hints{display:no
    review's laptop view).  Its own line says the keys the harvest takes
    ("Drag ↔ or hold E"), and the strip is back the moment it ends. */
 body:has(.bt-rjoy-zone[data-harvest="1"]) .bt-kb-hints{display:none}
+/* ═══ v2.3.3350: THE QUEST COACH STANDS ASIDE UNDER A WINDOW ═══
+   QuestCoach.jsx: "a coach mark stamped across an open quest dialogue would
+   be a straight downgrade", and it keeps off by drawing only when its control
+   answers a hit-test -- which a scrim over the screen always failed.  The
+   building windows have no such scrim since v2.3.3258 (they open over the
+   street), and the dashboard's OPEN button they leave in view kept GEAR UP's
+   card up over them: the UI review's laptop view found it over the
+   Woodworker's Staff tab and the Feed & Seed's Orders, and a click there put
+   the tip away instead.  So the coach hides, ring and card, while a window
+   is up; the lesson is untouched (its hit-test skips [data-coach]) and comes
+   back when the window goes.  None of its controls is inside a window.
+   TRAPS §215; mp-questcoach, mp-deskreach 4. */
+body:has(.bt-inspect) [data-coach],
+body:has([data-daily-rewards]) [data-coach],
+body:has([data-shop-panel]) [data-coach],
+body:has([data-ace-flip]) [data-coach],
+body:has([data-trade-drawer]) [data-coach]{display:none}
 /* The dismissed state: one small chip in the same corner, so the controls are
    recoverable.  A toggle you cannot find your way back from is a delete. */
 .bt-kb-chip{position:fixed;bottom:calc(var(--dash-h) + 12px);left:52px;z-index:20;

@@ -170,6 +170,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return !document.querySelector('input.bt-cc-name') && !!(S && S.myId && S.currentZone);
     }, null, { timeout: 90000, polling: 500 }).then(() => true).catch(() => false);
     rec.ok('...and a mouse click on it takes the new bro into the game', joined);
+
+    /* 4. v2.3.3350: the quest coach's card on a laptop.  It was lifted clear
+       of the phone's combat band, which a computer does not show, up to the
+       cap at the top -- onto the minimap, under its invisible "open map"
+       button, where a click on the card's ✕ opened the world map.  On a
+       computer it clears the keys strip instead (QuestCoach bandClear). */
+    if (joined) {
+      await L.page.waitForFunction(() => document.querySelectorAll('video').length === 0, null, { timeout: 60000, polling: 300 }).catch(() => {});
+      await L.page.evaluate(() => {
+        const S = window._gameState && window._gameState.current;
+        if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } });
+      });
+      const card = async () => L.page.waitForFunction(() => {
+        const el = document.querySelector('[data-coach="equip"] [data-coach-card]');
+        if (!el) return null;
+        const c = el.getBoundingClientRect();
+        if (!(c.width > 0)) return null;
+        const map = document.querySelector('[data-world-map-open]');
+        const m = map ? map.getBoundingClientRect() : null;
+        const kb = document.querySelector('.bt-kb-hints');
+        const k = kb && getComputedStyle(kb).display !== 'none' ? kb.getBoundingClientRect() : null;
+        const hits = (a, b) => !!(a && b && a.width > 0 && b.width > 0 && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
+        const x = el.querySelector('[data-coach-dismiss]');
+        const xr = x ? x.getBoundingClientRect() : null;
+        const at = xr ? document.elementFromPoint(xr.left + xr.width / 2, xr.top + xr.height / 2) : null;
+        return { card: [Math.round(c.left), Math.round(c.top), Math.round(c.right), Math.round(c.bottom)],
+          onMap: hits(c, m), onKeys: hits(c, k), xAnswers: !!(at && x.contains(at)) };
+      }, null, { timeout: 20000, polling: 300 }).then((h) => h.jsonValue()).catch(() => null);
+      const folded = await card();
+      rec.ok('on a laptop the gear lesson\'s card (band folded) clears the minimap and the keys strip, and its ✕ answers a click',
+        !!folded && !folded.onMap && !folded.onKeys && folded.xAnswers, folded);
+      await L.page.keyboard.press('b');   /* the band open: the bag, where the gear is */
+      await L.page.waitForTimeout(1200);
+      const bag = await card();
+      rec.ok('...and with the bag open, the same',
+        !!bag && !bag.onMap && !bag.onKeys && bag.xAnswers, bag);
+    }
     rec.ok('no page errors on the laptop', lErrors.length === 0, lErrors.slice(0, 3));
   } finally {
     await L.ctx.close().catch(() => {});

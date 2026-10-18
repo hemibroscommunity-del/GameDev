@@ -1328,6 +1328,20 @@ export function QuestCoach(props) {
       const cs = getComputedStyle(document.documentElement);
       const band = parseFloat(cs.getPropertyValue('--sheet-h'))
         || parseFloat(cs.getPropertyValue('--dash-h')) || 0;
+      /* ═══ v2.3.3350: A COMPUTER HAS NO COMBAT BAND ═══
+         Every control in it is .bt-desktop-hide (game.css, pointer:fine), so
+         the lift carried the card up past nothing to the 120 px cap at the
+         top -- onto the minimap's box, under its invisible "open map" button
+         (z 45, a body portal), where a click on the card's ✕ opened the
+         world map instead (the UI review's laptop view, 1366 x 768, the bag
+         open).  On a computer what stands over the band is the keys strip,
+         so the card clears that, or the band alone when it is put away.
+         TRAPS §215; mp-deskreach 4. */
+      if (typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches) {
+        const kb = document.querySelector('.bt-kb-hints');
+        const kr = kb && getComputedStyle(kb).display !== 'none' ? kb.getBoundingClientRect() : null;
+        return Math.max(band + 12, kr && kr.height > 0 ? window.innerHeight - kr.top + 8 : 0);
+      }
       /* Measured from the viewport's BOTTOM, which is the unit `bottom` below
          wants, so the two can be compared directly. */
       return band + combatBandTopPx(playIsLandscape()) + 12;
