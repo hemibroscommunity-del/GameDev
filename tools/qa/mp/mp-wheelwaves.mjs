@@ -13,6 +13,9 @@
  *      the wash rides up to the shore's own foam line);
  *   4. the water MOVES: two moments 1.5 s apart differ over the water many
  *      times more than they do with the motion off;
+ *   4b. v2.3.3448: the web of light, worked out only where it shows, leaves
+ *      the water the same to the bit as the program that worked it out
+ *      everywhere (three moments, both ways);
  *   5. the Sweetwater River by the Mill Bridge runs: its pieces carry a flow,
  *      and the river moves between two moments; the bridge's deck does not;
  *   6. `?nowaves` keeps the water still: no fields laid, nothing drawn;
@@ -252,6 +255,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
        which the owner could not see moving on a phone, changed 8% of them
        here and 43% of the river's; the swell up to 3 game px, 30% and 63%) */
     !mv.error && mv.whole > 2000 && mv.changed > 0.15 * mv.whole && mv0.changed <= 0.002 * mv0.whole, { mv, mv0 });
+
+  /* ── 4b. v2.3.3448: the web of light is worked out only where it shows:
+     the water drawn at three moments with the skip and with the web worked
+     out everywhere (the program as it was, window.__btWaves.webAll) -- the
+     same to the bit; and the web is in the picture (its brightness at 0
+     changes it), so the comparison is not of nothing ── */
+  const same = await P.page.evaluate(() => {
+    const S = window._gameState.current, W = window.__btWaves;
+    const vw = S._viewW || 600, vh = S._viewH || 1000;
+    const x0 = Math.round(S.camera.x + vw * 0.05), y0 = Math.round(S.camera.y + vh * 0.08), w = Math.round(vw * 0.9), h = Math.round(vh * 0.55);
+    const out = { moments: [], swapped: 0, back: 0, web: null };
+    const diff = (a, b) => { let n = 0; for (let i = 0; i < a.px.length; i++) if (a.px[i] !== b.px[i]) n++; return n; };
+    for (const t of [100, 517.25, 3333.5]) {
+      W.hold(t);
+      const a = W.extract(x0, y0, w, h, 1);
+      out.swapped += W.webAll(true);
+      const b = W.extract(x0, y0, w, h, 1);
+      out.back += W.webAll(false);
+      if (!a || !b || a.error || b.error) return { error: (a && a.error) || (b && b.error) || 'none' };
+      let wet = 0;
+      for (let i = 3; i < a.px.length; i += 4) if (a.px[i] > 0) wet++;
+      out.moments.push({ t, n: diff(a, b), wet });
+    }
+    W.hold(100);
+    const lit = W.extract(x0, y0, w, h, 1);
+    W.caustics(0);
+    const dark = W.extract(x0, y0, w, h, 1);
+    W.caustics(1);
+    out.web = lit && dark && !lit.error && !dark.error ? diff(lit, dark) : null;
+    return out;
+  });
+  rec.ok(`the web of light is worked out only where it shows, and the water is the same to the bit: ${same.moments ? same.moments.map((m) => m.n + ' of ' + m.wet + ' px apart at ' + m.t + ' s').join(', ') : same.error} (the web itself: ${same.web} px; ${same.swapped} quads switched each way)`,
+    !same.error && same.moments.length === 3 && same.moments.every((m) => m.n === 0 && m.wet > 2000)
+      && same.swapped >= 3 && same.back === same.swapped && same.web > 500, same);
 
   /* what it costs a frame here (the sandbox draws WebGL in SOFTWARE, so the
      numbers say nothing of a phone's GPU -- only that it is not a cliff) */

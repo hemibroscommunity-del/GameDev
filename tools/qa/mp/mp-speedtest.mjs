@@ -163,8 +163,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const rows = (result && result.rows) || [];
     console.log('    RESULT ' + JSON.stringify(rows.map((r) => ({ k: r.k, fps: +r.fps.toFixed(1), p95: +r.p95.toFixed(0), work: r.work && +r.work.toFixed(1), passes: +r.passes.toFixed(2), draws: +r.draws.toFixed(0), cw: r.cw, res: r.res, frames: r.frames }))));
     const keys = rows.map((r) => r.k);
+    /* v2.3.3447: + the sprites drawn by three programs, the old way
+       (paletteTex.js) -- only where the one program draws: never on this
+       box's software renderer, which keeps the three (TRAPS §225) */
+    const oneOn = await P.page.evaluate(() => !!(window.__btOneBatch && window.__btOneBatch().on)).catch(() => null);
+    /* v2.3.3453: + the metal shine the old way (lightfx/sheenBatch.js) */
+    const want = ['all', 'noshadow', 'noshine', 'shinepass', ...(oneOn ? ['threeprog'] : []), 'still', 'res2', 'bare'];
     rec.ok(`2. every step measured: ${keys.join(', ')}`,
-      ['all', 'noshadow', 'noshine', 'still', 'res2', 'bare'].every((k) => keys.includes(k)) && rows.every((r) => r.frames > 1 && r.fps > 0), keys);
+      want.every((k) => keys.includes(k)) && (oneOn || !keys.includes('threeprog')) && rows.every((r) => r.frames > 1 && r.fps > 0), { keys, oneOn });
     const R0 = rows.find((r) => r.k === 'all'), R2 = rows.find((r) => r.k === 'res2'), NS = rows.find((r) => r.k === 'noshadow');
     rec.ok(`3. the lower resolution step drew the canvas at 2x (${R2 && R2.cw} px against ${R0 && R0.cw} at 3x)`,
       !!R0 && !!R2 && R2.res === 2 && Math.abs(R2.cw - Math.round(before.cssW * 2)) <= 2 && Math.abs(R0.cw - Math.round(before.cssW * 3)) <= 2, { R0, R2 });
