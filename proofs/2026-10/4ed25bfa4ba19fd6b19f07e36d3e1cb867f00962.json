@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4ed25bfa4ba19fd6b19f07e36d3e1cb867f00962",
+  "tree": "28f9ff76631f8613e88c7466b46e160beccb654a",
+  "committedAt": "2026-10-17T19:55:25-07:00",
+  "subject": "The first quest pays no XP, so finishing it asks you to choose nothing (v2.3.3335) (#957)",
+  "files": 5776,
+  "bytes": 636712070,
+  "listingSha256": "480fddad08db3e93c316bc92dece1e832ac887570f6811198c75b2d330a59716",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
