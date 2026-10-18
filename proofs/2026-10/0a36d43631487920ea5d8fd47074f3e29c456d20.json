@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0a36d43631487920ea5d8fd47074f3e29c456d20",
+  "tree": "100a08cd1d2a0f3d5185c881f5f3a857c3ff8c29",
+  "committedAt": "2026-10-18T15:37:12-07:00",
+  "subject": "Every hit on a building throws wood chips (or stone chips) you can see, out of the wall toward you (v2.3.3471) (#1011)",
+  "files": 6033,
+  "bytes": 679945457,
+  "listingSha256": "3506a644c1de3909322c5cc0d732eac51d2f437091632c19576e8c47f918c12e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
