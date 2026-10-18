@@ -7,9 +7,9 @@ import { installSharpPixels } from './sharpPixels.js'; /* v2.3.2770 */
 import { renderDpr } from '../game/renderRes.js'; /* v2.3.3339: ?res= and the speed test */
 import { installBindGroupFix } from './bindGroupFix.js'; /* v2.3.3152: a freed picture no longer breaks Pixi's pooled mask */
 import { installTexturePoolTrim } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool gives back what it does not use */
-import { installQuietClear } from './quietClear.js'; /* v2.3.3379: wiping an empty shape is not a change (no draw-list rebuild) */
-import { setDrawListRoot } from './drawLists.js'; /* v2.3.3379: a live switch's flip rebuilds every draw list */
-import { installLayerUniforms } from './layerUniforms.js'; /* v2.3.3379: a layer draws with the world's own camera numbers */
+import { installQuietClear } from './quietClear.js'; /* v2.3.3404: wiping an empty shape is not a change (no draw-list rebuild) */
+import { setDrawListRoot } from './drawLists.js'; /* v2.3.3404: a live switch's flip rebuilds every draw list */
+import { installLayerUniforms } from './layerUniforms.js'; /* v2.3.3404: a layer draws with the world's own camera numbers */
 import { SHADE } from './formShade.js';
 import { Application, Cache, Container, TextureSource } from 'pixi.js';
 
@@ -168,7 +168,7 @@ const WORLD_LAYER_NAMES = [
 ];
 const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];
 
-/* v2.3.3379: each world layer its own render group (buildScene); off with
+/* v2.3.3404: each world layer its own render group (buildScene); off with
    `?nolayergroups` to compare */
 const LAYER_GROUPS = !(typeof location !== 'undefined' && /[?&]nolayergroups\b/.test(location.search || ''));
 export const LAYER_NAMES = [...WORLD_LAYER_NAMES, ...SCREEN_LAYER_NAMES];
@@ -191,7 +191,7 @@ function buildScene(app) {
     app.renderer.events.autoPreventDefault = false;
   }
   app.stage.eventMode = 'none';
-  setDrawListRoot(app.stage);   /* v2.3.3379: drawLists.js */
+  setDrawListRoot(app.stage);   /* v2.3.3404: drawLists.js */
 
   const worldContainer = new Container();
   worldContainer.label = 'world';
@@ -544,7 +544,7 @@ function buildScene(app) {
        actually changed, so a still scene does no work. */
     if (name === 'entities' || name === 'gatherNodesFront') layer.sortableChildren = true;
     worldContainer.addChild(layer);
-    /* ═══ v2.3.3379: EACH WORLD LAYER KEEPS ITS OWN DRAW LIST ═══
+    /* ═══ v2.3.3404: EACH WORLD LAYER KEEPS ITS OWN DRAW LIST ═══
        The owner: "iterate on what best improves framerate without loss of
        quality (or negligible loss) for phone gameplay".  With the world one
        render group (v2.3.3079), ANY change in it -- a monster's health bar

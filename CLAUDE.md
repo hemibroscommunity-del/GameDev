@@ -3977,7 +3977,7 @@ Two protocol versions coexist; both must keep working:
   in time for the screen (`frameNote`) -- the owner's first run read 60 in
   every step, 17 ms a frame, and was told the chip took most of each, when
   17 ms is only a 60 Hz screen's own refresh.
-- The processor's side of a phone's frame, side by side (v2.3.3379,
+- The processor's side of a phone's frame, side by side (v2.3.3404,
   docs/specs/draw-lists.md): `QA_DIST=dist-prof node tools/qa/mp/run.mjs
   phoneframe` stands a 3x phone page in BroTown and at a Flame Fields fight
   (mp-frameprofile's profile is BroTown's alone). Per scene it reports:
@@ -4290,7 +4290,7 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
-- **A STRUCTURAL CHANGE REBUILDS ITS LAYER'S DRAW LIST (v2.3.3379, TRAPS
+- **A STRUCTURAL CHANGE REBUILDS ITS LAYER'S DRAW LIST (v2.3.3404, TRAPS
   §218, docs/specs/draw-lists.md).** Pixi rebuilds a render group's whole
   draw list for any `visible` / `renderable` / `zIndex` / `blendMode` change,
   an addChild or removeChild, a sprite's texture from outside its batch, or

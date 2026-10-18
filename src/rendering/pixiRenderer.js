@@ -554,7 +554,7 @@ export async function initPixiRenderer(canvas) {
        boolean read when the switch is off (lightFx.js). */
     /* v2.3.2767: the combat / gathering stand-ins take the figure shade too */
     try { markStandIns(effectsRenderer, SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS); } catch (e) { /* never break a frame */ }
-    /* v2.3.3379: a figure whose span moved has its pieces packed again
+    /* v2.3.3404: a figure whose span moved has its pieces packed again
        (formShade.js; each layer keeps its own draw list, drawLists.js) */
     try { refreshFigureShades(); } catch (e) { /* never break a frame */ }
     try { lightFx.update(S, now, entityRenderer, effectsRenderer); }
