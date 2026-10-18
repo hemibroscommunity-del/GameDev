@@ -7107,3 +7107,26 @@ the rebuilds before guessing (`mp-frameprofile`'s "rebuild asked ... by").
 **Receipt:** mp-frameprofile: the screen's list rebuilt every frame (2.6 a
 second at 2.6 frames a second on the QA box), standing or walking; after, never.
 mp-speedtest check 8.
+
+## 209. "A refused login is a refused login: send 'auth'" (v2.3.3344)
+
+**Tempting:** the device lock refuses a join, and the join already has a
+refusal for a bad login, `join_rejected {reason: 'auth'}` and close 4003
+(join.js). A refusal is a refusal: reuse it.
+
+**What happens:** the phone answers 'auth' by throwing its Login Key away and
+making a fresh character under a new one (wsClient.js, v2.3.1116: the cure for
+a key that no longer matches). For a device refusal the key was RIGHT. The
+player's real character would be swapped for a level-1 stranger on that device,
+with the key kept only in `bt_passphrase_prev`. And counted as a failed key,
+five refusals would lock the character's own device out for a minute.
+
+**The rule:** a refusal of the right key has its own reason (`'device'`) and its
+own close (4016), and never counts toward the five-tries lockout. An older phone
+treats a reason it doesn't know as final: no new character, no retries. A newer
+one shows the device screen (src/ui/DeviceScreen.js).
+
+**Receipt:** device-lock.test catches both "the refusal says auth" and "a
+refused device counts as a wrong key" (24 of 24 deliberate breaks caught), and
+mp-devicelock refuses a new phone with the code, its key kept, and lets it in
+after the owner's pass.

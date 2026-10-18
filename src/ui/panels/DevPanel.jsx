@@ -449,6 +449,33 @@ export const DevPanel = ({ onClose }) => {
     if (j) { setBotFlags(Array.isArray(j.flagged) ? j.flagged : []); setMsg(''); }
   }, [call]);
 
+  /* ═══ v2.3.3344: A CHARACTER'S DEVICES (server/src/devicelock.js) ═══
+     A character's key works only on devices it has been played on.  A player
+     moving to a new device sees a code on their screen (DeviceScreen.js); the
+     owner pastes it here.  "Let one new device in" gives that character 30
+     minutes in which one new device may join it; "Forget all its devices" is
+     for a character someone else got into -- whoever is playing it is put out
+     and nobody gets in until a device is let in.  Two taps, as it puts a
+     player out. */
+  const [devCode, setDevCode] = useState('');
+  const [devForgetArmed, setDevForgetArmed] = useState(false);
+  const letDeviceIn = useCallback(async () => {
+    const id = devCode.trim();
+    if (!id) return;
+    const j = await call('/device-pass', { playerId: id });
+    if (j) setMsg('One new device can join ' + id + ' until '
+      + new Date(j.until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '. Ask its player to tap Try again.');
+  }, [call, devCode]);
+  const forgetDevices = useCallback(async () => {
+    const id = devCode.trim();
+    if (!id) return;
+    if (!devForgetArmed) { setDevForgetArmed(true); setMsg('Tap Forget again to put out whoever is playing ' + id + ' and forget its devices.'); return; }
+    setDevForgetArmed(false);
+    const j = await call('/device-forget', { playerId: id });
+    if (j) setMsg('Forgot ' + j.forgot + ' device' + (j.forgot === 1 ? '' : 's') + ' for ' + id
+      + (j.wasOnline ? ' and put its player out' : '') + '. Nobody can play it until you let one device in.');
+  }, [call, devCode, devForgetArmed]);
+
   const saveKey = () => {
     const k = draft.trim();
     if (!k) return;
@@ -855,6 +882,34 @@ export const DevPanel = ({ onClose }) => {
                 </>
               );
             })()}
+
+            {/* ═══ v2.3.3344: PLAYER LOGINS ═══  See the note by letDeviceIn. */}
+            <div style={label}>Player logins</div>
+            <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
+              A character can be played only on devices it was played on before. To move one to a new
+              device, ask its player for the code their screen shows.
+            </div>
+            <input
+              data-devlock-code="1"
+              value={devCode} onChange={(e) => { setDevCode(e.target.value); setDevForgetArmed(false); }}
+              placeholder="the player's code (bp_…)"
+              autoCapitalize="off" autoCorrect="off" spellCheck={false}
+              style={{ width: '100%', boxSizing: 'border-box', background: COL.well, color: COL.text,
+                border: '1px solid ' + COL.border, borderRadius: 8, padding: '11px 10px', marginBottom: 8, minHeight: 44 }}
+            />
+            <button type="button" data-devlock-pass="1" style={btn(false)} disabled={busy || !devCode.trim()}
+              onClick={letDeviceIn}>
+              Let one new device in (30 min)
+            </button>
+            <button type="button" data-devlock-forget="1"
+              style={{ ...btn(false), borderColor: COL.danger, color: COL.danger }}
+              disabled={busy || !devCode.trim()} onClick={forgetDevices}>
+              {devForgetArmed ? 'Sure? Forget all its devices' : 'Forget all its devices'}
+            </button>
+            <div style={{ color: COL.muted, fontSize: 12, marginBottom: 4, lineHeight: 1.4 }}>
+              Forget is for a character someone else got into: whoever is playing it is put out, and
+              nobody can play it until you let one device in.
+            </div>
 
             {/* ═══ v2.3.3323: BOT FLAGS ═══  See the note by loadBotFlags. */}
             <div style={label}>Bot flags</div>

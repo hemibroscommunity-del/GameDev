@@ -71,6 +71,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!(made && made.name && madeLook && made.name === madeLook.name),
     { stored: made && made.name, live: madeLook && madeLook.name });
 
+  /* v2.3.3344: B below is a NEW device, and a character's key works only on
+     the devices it is played on (server/src/devicelock.js) -- so the owner
+     lets one new device in first, as for a player moving phones. */
+  const aId = await A.page.evaluate(() => window._gameState && window._gameState.current && window._gameState.current.myId).catch(() => null);
+  const pass = aId ? await H.letDeviceIn(wsPort, aId).catch(() => null) : null;
+  rec.ok('the owner lets one new device in for this character (guard)', !!(pass && pass.ok), { aId, pass });
   await A.ctx.close().catch(() => {});
 
   /* ── 3. the same key lands on the door, and Continue shows its character ──
