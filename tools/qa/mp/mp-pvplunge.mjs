@@ -37,7 +37,7 @@ async function closeIn(A, wsPort, aId, bId, want) {
     const d = Math.hypot(dx, dy);
     const tol = Math.max(8, want * 0.2);
     if (Math.abs(d - want) <= tol) return { ok: true, d: Math.round(d) };
-    /* v2.3.3397: put there by the harness's hops (the page's own place, then
+    /* v2.3.3403: put there by the harness's hops (the page's own place, then
        its move to the worker), as mp-pvpnumbers' closeIn does.  A key held a
        set time walks however many frames fall inside it, and this box draws a
        frame every few hundred ms: a 123 ms press often walked none, and 24
@@ -180,7 +180,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.evaluate(() => {
     const q = window.__qaLunge = { dazes: [], pos: [], tried: null };
     const S = window._gameState.current;
-    /* v2.3.3397: the place every 20 ms, not once a frame.  The daze is 500 ms
+    /* v2.3.3403: the place every 20 ms, not once a frame.  The daze is 500 ms
        and this box draws a frame every few hundred, so a frame-paced record
        held one frame of it and "at least two" could not be met; read on a
        timer, the frames inside the daze are all between two samples, and a

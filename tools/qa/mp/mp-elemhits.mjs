@@ -87,7 +87,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `elemhits-${name}.png`) });
-  const P = await H.newPlayer(browser, { name: 'Weathered', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
+  /* v2.3.3399: every Wheel monster on the way in, as before (`wheelwhole`,
+     server/src/wheelnear.js), as mp-wheeldeep has since v2.3.3318: the real
+     half below picks each land's nearest monster off the phone's list BEFORE
+     going there, and a phone holds only the monsters it has come near -- the
+     snowman, the blue slime and the wisp were not on it (the sweep of
+     2026-10-18; the other five lands' were). */
+  const P = await H.newPlayer(browser, { name: 'Weathered', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'wheelwhole' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String(e && e.message || e).slice(0, 200)));
   await H.enterWorld(P);
@@ -510,7 +516,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
          stand, the fishmen's next hits keeping you soaked; then dry, out of
          their reach on the commons' safe ground once the soak has run out */
       await shot(P, 'b-' + L.st);
-      const refill = async () => {
+      const refill = async (wantWet) => {
+        /* v2.3.3399: soaked, start only with a soak that outlasts the 2.4 s
+           read (a hit's soak is 4 s): one that ran out part way refilled at
+           the dry rate for the rest, and read 17 against 28 dry, over the 0.6
+           line (the run of 2026-10-18; the sweep's run read 9 against 21).
+           Up to 15 s for a fresh one, which comes with the fishmen's next
+           landed hit (a swing or a slam: hits.js MONSTER_HITS `own`). */
+        for (let i = 0; wantWet && i < 150; i++) {
+          if (await H.readState(P, (S) => (S._soakUntil || 0) - Date.now()) > 2700) break;
+          await P.page.waitForTimeout(100);
+        }
         await H.devOp(wsPort, 'vitals', myId, { stamina: 20 });
         await P.page.waitForTimeout(400);
         const a = await H.readState(P, (S) => (S.rpg ? S.rpg.stamina : null));
@@ -518,13 +534,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const b = await H.readState(P, (S) => ({ st: S.rpg ? S.rpg.stamina : null, wet: (S._soakUntil || 0) > Date.now() }));
         return { a, b: b.st, wet: b.wet, gain: b.st - a };
       };
-      const soaked = await refill();
+      const soaked = await refill(true);
       const here0 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
       const ux0 = here0.x - CENTRE[0], uy0 = here0.y - CENTRE[1], ul0 = Math.hypot(ux0, uy0) || 1;
       await H.hopTo(P, CENTRE[0] + ux0 / ul0 * 2700, CENTRE[1] + uy0 / ul0 * 2700, { step: 100, gap: 260, tries: 20 });
       const wet = await H.readState(P, (S) => (S._soakUntil || 0) - Date.now());
       await P.page.waitForTimeout(Math.max(0, wet + 300));
-      const dry = await refill();
+      const dry = await refill(false);
       rec.ok(`real: ${L.name} soaks you (${got.stMs} ms), and soaked the worker refills your stamina slower (+${soaked.gain} in 2 s soaked, +${dry.gain} dry)`,
         got.stMs === 4000 && soaked.wet && !dry.wet && dry.gain > 0 && soaked.gain >= 0 && soaked.gain < dry.gain * 0.6, { got, soaked, dry });
     } else if (got && (L.st === 'shock' || L.st === 'daze')) {

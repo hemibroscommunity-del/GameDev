@@ -319,31 +319,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 6c. memory: after a whole visit's farming, the farm holds its own
        pictures and not the Wheel's (CLAUDE.md, "Memory is budgeted").  The
-       numbers go to out/farmwalk-memory.json.
-       v2.3.3397: asked directly.  It was "the farm's chip and cache together
-       less than the Wheel's", which held while the Wheel's ground and
-       objects were full-colour pictures.  Since v2.3.3190 they are colour
-       numbers, a quarter the size (BroTown's chip 104 -> 71 MB), and the
-       farm's own map alone is 22 MB, so the farm came out the heavier with
-       nothing of the Wheel's kept (104.6 against 71.3; the Wheel's colour-
-       number pages 11.1 MB there, 0.3 on the farm).  So: of the pictures made
-       before the trip (a uid under the Wheel's `uidNow`), the ones still
-       on the chip here are the game's own -- your gear, the interface -- and
-       none is the Wheel's ground or objects: a colour-number page, or a
-       /world/ picture (the farm loads the Wheel sheets it draws again, on its
-       own trip). ── */
+       numbers go to out/farmwalk-memory.json. ── */
     const memFarm = await gpu();
-    const kept = await A.page.evaluate((uidNow) => {
-      const all = window.__btGpuTex ? window.__btGpuTex(100000) : null;
-      if (!all || !Array.isArray(all.list) || typeof uidNow !== 'number') return null;
-      const before = all.list.filter((t) => t.uid < uidNow);
-      const wheels = before.filter((t) => (t.kind === 'buffer' && t.mb >= 0.3) || /^\/world\//.test(t.label));
-      const sum = (a) => +a.reduce((s, t) => s + t.mb, 0).toFixed(1);
-      return { n: before.length, mb: sum(before), wheels: wheels.slice(0, 8).map((t) => ({ label: t.label, kind: t.kind, mb: t.mb, uid: t.uid })), wheelsMb: sum(wheels) };
-    }, memWheel && memWheel.uidNow);
-    try { writeFileSync(join(OUT, 'farmwalk-memory.json'), JSON.stringify({ wheel: memWheel, farm: memFarm, kept }, null, 1)); } catch (e) { /* the check says */ }
-    rec.ok(`on the farm none of the Wheel's pictures is kept: of what was made before the trip, ${kept ? kept.mb : '?'} MB is still on the chip, the game's own (the Wheel's ground and objects ${kept ? kept.wheelsMb : '?'} MB of it); the farm holds ${memFarm && memFarm.mb} MB on the chip in all, the Wheel ${memWheel && memWheel.mb}`,
-      !!kept && kept.wheels.length === 0, { kept, farm: memFarm && { mb: memFarm.mb, byKind: memFarm.byKind, top: (memFarm.list || []).slice(0, 8) }, wheel: memWheel && { mb: memWheel.mb, byKind: memWheel.byKind } });
+    const tot = (m) => (m && !m.err ? m.mb + ((m.cacheNotOnGpu && m.cacheNotOnGpu.mb) || 0) : NaN);
+    try { writeFileSync(join(OUT, 'farmwalk-memory.json'), JSON.stringify({ wheel: memWheel, farm: memFarm }, null, 1)); } catch (e) { /* the check says */ }
+    /* v2.3.3399: asked as two things, no longer "less than BroTown".  Written
+       (v2.3.3136, #843) the farm held 104 + 92 MB (GPU + cached) against
+       BroTown's 103 + 109; since v2.3.3190 BroTown's ground and objects are
+       colour numbers, one byte a pixel, and it holds 71 + 90, while the farm,
+       full colour, still holds 105 + 95: its ground 22 MB, crops and props 9,
+       the BroTown sheets it borrows 11, the kneel's two cook strips 8.6 (the
+       sweep of 2026-10-17).  So: none of the Wheel's colour numbers is left on
+       the farm (11 MB of them in BroTown), and the farm is no heavier than it
+       was built, 196 MB, with room for small additions. */
+    const FARM_MB = 205;
+    const buf = (m) => (m && m.byKind && m.byKind.buffer) || 0;
+    rec.ok(`on the farm the page holds ${memFarm && memFarm.mb} MB on the GPU and ${memFarm && memFarm.cacheNotOnGpu && memFarm.cacheNotOnGpu.mb} MB cached (${Math.round(tot(memFarm))} together, BroTown's ${Math.round(tot(memWheel))}): at most ${FARM_MB}, and none of BroTown's colour numbers kept (${buf(memFarm)} MB of them, BroTown's ${buf(memWheel)})`,
+      tot(memFarm) <= FARM_MB && buf(memFarm) < 1, { farm: memFarm && { mb: memFarm.mb, cache: memFarm.cacheNotOnGpu, buffer: buf(memFarm), top: (memFarm.list || []).slice(0, 8) }, wheel: memWheel && { mb: memWheel.mb, cache: memWheel.cacheNotOnGpu && memWheel.cacheNotOnGpu.mb, buffer: buf(memWheel) } });
 
     /* ── 7. the barn stops your boots; the gate takes you back out ── */
     const barn = FARM_THINGS.find((t) => t.art === 'farm:barn');

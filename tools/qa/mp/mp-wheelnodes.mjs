@@ -25,8 +25,8 @@
  *      are gone while it is fished out -- and the road moves on to a tree;
  *   5. only the nodes near the view are drawn (~130 over the Wheel): the far
  *      ones hold no sprite and no text;
- *   6. a level 1-10 vein is IRON, drawn with its own picture (418 px, not the
- *      copper one's 627), a softwood tree with its tint -- and mining it pays
+ *   6. a level 1-10 vein is IRON, drawn with its own picture (v2.3.3345: its
+ *      own rock, oreArt.js), a softwood tree its own -- and mining it pays
  *      iron ore;
  *   7. walking up to town drops the Wheel's nodes at the flip, not when town's
  *      snapshot comes in;
@@ -42,6 +42,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { ORE_ART } from '../../../src/data/oreArt.js';   /* v2.3.3345: each metal its own rock */
 
 const PHONE = { width: 390, height: 844 };
 /* where the body's centre stands to work each kind (mp-gatherhits' STAND):
@@ -307,7 +308,7 @@ async function body({ P, wsPort, rec, OUT, errors }) {
         await P.page.waitForTimeout(250);
       }
       await P.page.waitForTimeout(500);
-      /* v2.3.3397: each tap counts its own "Swimming!" (swimTapNode).  They
+      /* v2.3.3403: each tap counts its own "Swimming!" (swimTapNode).  They
          were counted from the live list after both taps and their waits, and a
          popup lives 1.5 s (effectsRenderer's ttl) while the note says itself
          once in 1.2 s (wheelSwim NOTE_MS), so the second tap says nothing --
@@ -374,12 +375,15 @@ async function body({ P, wsPort, rec, OUT, errors }) {
       const n = (S.gatherNodes || []).find((g) => g.id === id);
       const sp = n && n._pixiSprite;
       const trees = (S.gatherNodes || []).filter((g) => g.nodeType === 'tree' && g._pixiSprite && !g._pixiSprite.destroyed)
-        .map((g) => ({ tier: g.gatherLvl, tint: g._pixiSprite.tint }));
+        .map((g) => ({ tier: g.gatherLvl, tint: g._pixiSprite.tint, texH: g._pixiSprite.texture && g._pixiSprite.texture.height, h: Math.round(g._pixiSprite.height) }));
       return { texH: sp && sp.texture ? sp.texture.height : null, trees };
     }, iron.id);
-    rec.ok('the iron vein is drawn with its own picture (418 px tall; copper\'s is 627)', look.texH === 418, look);
+    /* v2.3.3345: its own rock (src/data/oreArt.js), not the copper vein's */
+    rec.ok(`the iron vein is drawn with its own rock (${ORE_ART[6].h} px tall; copper's is ${ORE_ART[1].h})`, look.texH === ORE_ART[6].h && ORE_ART[6].h !== ORE_ART[1].h, look);
+    /* v2.3.3345: a softwood tree is its own picture (the willow, 424 px, two
+       people tall: 212 world px), untinted -- each wood its own tree */
     const soft = look.trees.find((t) => t.tier === 6);
-    if (soft) rec.ok('a softwood tree near it takes the softwood tint', soft.tint === 0xd8e88a, soft);
+    if (soft) rec.ok('a softwood tree near it is the willow, at its own size and untinted', soft.texH === 424 && soft.h === 212 && soft.tint === 0xffffff, soft);
     await closeTalk(P);
     await P.page.screenshot({ path: join(OUT, 'wheelnodes-iron.png') });
     const clip = await P.page.evaluate(({ x, y }) => {
@@ -507,7 +511,7 @@ async function tapNode(P, id, done, tries = 6) {
   return false;
 }
 
-/* v2.3.3397: one tap on the node while you swim, and how many "Swimming!" it
+/* v2.3.3403: one tap on the node while you swim, and how many "Swimming!" it
    put up -- counted in the very call that taps.  The touch handler runs inside
    dispatchEvent, so the refusal's popup is in the list before the call
    returns, and no frame can age it out.  The swim is set on in the same call

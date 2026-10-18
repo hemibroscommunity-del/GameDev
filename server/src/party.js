@@ -337,7 +337,16 @@ export const partyMethods = {
     // Strip control chars, clamp length, trim.  The order matters: clamp
     // the RAW length first so a padded string can't smuggle a long line.
     text = text.slice(0, PARTY.CHAT_MAX).replace(/[\x00-\x1f\x7f]/g, " ").trim();
+    /* v2.3.3396: then cleaned, as every chat lane is; party chat is private,
+       so no repeat filter (chatguard.js) */
+    text = this._chatGuardClean(text);
     if (!text) return;
+    /* v2.3.3396: and paid for from the social allowance room chat and emotes
+       spend (chatguard.js SOCIAL: five at once, then one every 2 s, the three
+       lanes together) -- party chat had no limit of its own but the socket's
+       message budget, so a script could send a party of 50 about 120 lines a
+       second.  Spent once the line is real, so a blank one costs nothing */
+    if (!this._chatGuardOff() && !this._socialAllow(session, Date.now())) return;
     const wire = {
       from: session.id, // server-known identity -- unforgeable sender
       fromName: this._partyNameOf(session.id),

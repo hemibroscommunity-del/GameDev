@@ -120,7 +120,12 @@ For each area (the commons, then each land) and each band:
   are also kept apart from each other, across lands too, since two lands'
   bands meet at a border. They are also kept off the safe circle, because
   `WHEEL_SAFE_R` reaches a few hundred px into some lands' levels 1–5. Nothing
-  tall may stand in front of the node's picture or the miner.
+  tall may stand in front of the node's picture or the miner. (v2.3.3401: each
+  tier's own picture as the game draws it, and the woodcutter too; no resource
+  in front of another; a band's fishing spots are chosen before its veins and
+  trees; and a fishing seat is used only where the ground as DRAWN keeps the
+  angler's boots dry, `drawnWaterOf`: `docs/specs/tier-trees.md` "Where each
+  one grows".)
 - The commons fills in **nearest town first**; a land's are spread across its
   band **farthest-first**.
 - **Fishing spots** are placed by where the baked rod's line falls. The line
@@ -496,7 +501,8 @@ Each land's second stage grows two tiers of its own, as the first stage does:
     raw icon, the campfire's fish order and the trade window's emoji.
 - **The bake's "nothing in front" check** sizes a tier-21 node's picture
   1.30× (effectsRenderer draws by `ceil(tier / 10)`), where a tier-11's is
-  1.15×.
+  1.15×. (v2.3.3401: each tier's own picture's box instead, `treeGeom` and
+  `oreGeom`: `docs/specs/tier-trees.md` "Where each one grows".)
 - **Tests:**
   - `wheelzone` §8: every land grows tiers 16 and 21 veins and trees; salmon
     and pike somewhere; farther out by tier; each tier's own item name; the
@@ -543,4 +549,7 @@ The owner: "there are invisible areas that block movement near the town".
 - The Wind Dunes' oases are ringed with palms that stand in front of every
   seat. The dunes fish their coast.
 - The node art for veins and trees is the old painted art; Wheel-style
-  pictures would come from the Object Studio.
+  pictures would come from the Object Studio.  v2.3.3345: the trees are the
+  owner's own now, one picture a wood, growing tier by tier
+  (docs/specs/tier-trees.md), and in the same version the veins too, one rock
+  a metal, and the fish grow more (docs/specs/tier-ore.md).
