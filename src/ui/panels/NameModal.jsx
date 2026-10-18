@@ -1390,7 +1390,11 @@ export function NameModal(props) {
        height in game.css.  Both halves are pinned by mp-ccsize, which asserts
        the RELATIONSHIP (button centre == well centre) rather than the 3 -- so
        if either box is resized again the test names it instead of the icon
-       quietly climbing out of the field a fourth time. */
+       quietly climbing out of the field a fourth time.
+       v2.3.3430: and on a short upright screen the well is 48 and this button
+       44 square at bottom 2 -- (48 - 44) / 2 -- from game.css (the short-screen
+       plate block, !important over these inline numbers); mp-ccfeet asserts
+       the same relationship there. */
     style: { position: 'absolute', right: 2, bottom: 3, width: 50, height: 50, borderRadius: 12, cursor: 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
     /* v2.3.1576: the owner PAINTED cc-random-name.webp and it was sitting

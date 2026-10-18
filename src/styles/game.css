@@ -1745,6 +1745,13 @@ body:has(.bt-pcard) [data-coach]{display:none}
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bt-zone-header__sub{margin-top:1px;color:#EAC675;
   font:650 11.5px/1.1 'Source Sans 3',sans-serif;letter-spacing:.03em}
+/* v2.3.3430: the owner's TEST MODE tag (ZoneHeader.jsx, server/src/testmode.js):
+   small, amber, beside the title; it never takes a touch and never squeezes
+   the title's box below its ellipsis.  A flat fill, no filters (TRAPS §42). */
+.bt-zone-header__test{flex:none;display:block;pointer-events:none;
+  padding:2px 5px 1px;border-radius:4px;background:#E5B45C;color:#1A1206;
+  font:800 9.5px/1.15 'Source Sans 3',sans-serif;letter-spacing:.07em;
+  white-space:nowrap}
 /* v2.3.3024: an elemental land's icon before its name (the name in the land's
    own colour, ZoneHeader.jsx landTint) -- no filters over the canvas (TRAPS §42) */
 .bt-zone-header__elem{display:inline-block;width:16px;height:16px;margin:0 4px 0 0;
@@ -4356,6 +4363,41 @@ body:has(.bt-pcard) [data-coach]{display:none}
   .bt-cc-play{min-height:46px}
   .bt-cc-tab{min-height:46px}
   .bt-cc-tab-icon{width:24px;height:24px}
+}
+/* ═══ v2.3.3430: ON A SHORT UPRIGHT SCREEN THE PLATE GIVES THE CHARACTER BACK
+       HIS ROOM ═══
+   mp-ccfeet's size floor went red on main: at 390x664 -- the common iPhone
+   with Safari's toolbars showing -- the character was drawn 121px tall, where
+   v2.3.2378 shipped 147.4 and set the floor at 145 as the receipt that he
+   would not pay for the plate's clearance ("the character is the star",
+   v2.3.798 and v2.3.1524).  He had paid anyway, a little at a time: the name
+   well 44 -> 56 (v2.3.2416) and the gap under Randomize 8 -> 19.4 (v2.3.2453)
+   grew the plate 22px, and .bt-cc-stage is the column's only child that
+   gives.  Each of those was measured at 390x844, where the column has room.
+
+   The owner's call (option B): on a short screen the plate gives that height
+   back, and nothing else changes.  20.8px at 390x664 (drawn 121 -> ~146):
+     - THE STACK'S ONE GAP, 19.4 -> 15px.  Still one value for both gaps
+       (v2.3.2453) and still the name line's slot (v2.3.2378).  15 is that
+       line's own height -- 11px Source Sans 3 is a 15px line (11 ascent + 4
+       descent), measured -- so the hint fits whole, as it does at 320, where
+       .10 of the plate was already 14.9;
+     - THE NAME WELL 56 -> 48, its reroll button 50 -> 44 square, centred by
+       bottom:2 as (56 - 50) / 2 = 3 centres it at full size.  44 is still the
+       touch target; the button's width and bottom are inline (NameModal.jsx),
+       hence !important;
+     - RANDOMIZE AND RESET 48 -> 46, the height this block already gives the
+       ENTER plate and the tabs.
+   Upright only: sideways the creator is three columns (v2.3.3216, below) and
+   the plate's height there is not the character's.
+   mp-ccfeet asserts all of it at 390x664 and 320x568: his size, the air
+   under his boots, the logo's clearance, the button inside the well, the
+   name line inside its slot (pressing ENTER for every reason it gives). */
+@media (max-height:690px) and (orientation:portrait){
+  .bt-cc-cluster{--cc-stackgap:15px}
+  .bt-cc-name{height:48px}
+  .bt-cc-namewrap>.bt-cc-btn.bt-cc-btn{width:44px!important;height:44px!important;bottom:2px!important}
+  .bt-cc-actions>button{min-height:46px}
 }
 /* v2.3.1251: 320px-class widths — the five tabs and five tiles keep one
    row; only gaps/labels compress (approved mockup's 359px breakpoint). */
