@@ -25,7 +25,7 @@ import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the wo
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
 import { applySparState } from '@/game/spar.js'; /* v2.3.3265: the test panel's sparring clones */
 import { allyBus } from '@/game/alliance.js'; /* v2.3.3313: the alliance's answers (server alliance.js) */
-import { monsterNoticed } from '@/game/monsterNoises.js'; /* v2.3.3337: a monster calls as it notices you */
+import { monsterNoticed } from '@/game/monsterNoises.js'; /* v2.3.3340: a monster calls as it notices you */
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
@@ -1128,7 +1128,7 @@ export function setupWebSocket(ctx) {
                         var _tgPrev = localM._tgPrev;
                         if (md.tg === S.myId && _tgPrev !== undefined && _tgPrev !== S.myId) {
                           localM._aggroTs = Date.now();
-                          /* v2.3.3337: and it calls -- the fire goblin's rawr, the
+                          /* v2.3.3340: and it calls -- the fire goblin's rawr, the
                              skeleton's rattle, the slime's bounce, the snowman's
                              snarl -- on the same edge as the "!" */
                           try { monsterNoticed(S, localM, localM._aggroTs); } catch (e) { /* sound only */ }

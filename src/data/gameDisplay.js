@@ -20,7 +20,7 @@ import { ZONES, isWorldViewZone } from './zones.js'; /* v2.3.2978: + either name
 import { TOWN_BUILDINGS } from './buildings.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS } from './effects.js';
 import { FOOTSTEP_CLIPS } from './footstepClips.js';   /* v2.3.2967: each ground its own step */
-import { MONSTER_NOISE_CLIPS } from './monsterNoiseClips.js';   /* v2.3.3337: the owner's monster noises */
+import { MONSTER_NOISE_CLIPS } from './monsterNoiseClips.js';   /* v2.3.3340: the owner's monster noises */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
@@ -3081,7 +3081,7 @@ BT_AUDIO.SFX_MANIFEST = {
      58KB against the old 114KB, and shorter, which suits the moment: the
      completion banner is 2.2s and this resolves inside it. */
   'quest-complete-v2': '/sfx/quest/quest-complete-v2.mp3',
-  /* v2.3.3337: the owner's monster noises -- the fire goblin's rawr, the
+  /* v2.3.3340: the owner's monster noises -- the fire goblin's rawr, the
      skeleton's (the mummy's second form's) rattling bones, the slime's bouncy
      jelly, the snowman's snarl (game/monsterNoises.js says when).  Cut to about
      a second each, mono, by tools/audio/cut_monster_noises.py from the owner's
@@ -3822,7 +3822,7 @@ BT_AUDIO.swimSplash = function (how) {
 BT_AUDIO._noteHero = function (armored, ball, vol) {
   this._lastHero = { armored: !!armored, ball: !!ball, vol: vol, at: Date.now() };
 };
-/* ═══ v2.3.3337: A MONSTER'S NOISE ═══
+/* ═══ v2.3.3340: A MONSTER'S NOISE ═══
    `clip` a MONSTER_NOISE_CLIPS key (game/monsterNoises.js NOISE_OF picks it
    by the monster, and says when), `k` how much of it you hear where you stand
    (0-1, hitSounds earVol).  Played at its own level -- 0.75 of a melee hit's

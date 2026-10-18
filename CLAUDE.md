@@ -621,7 +621,7 @@ remnant to migrate server-side, not a mode to preserve.
       own blast in full; `BT_AUDIO.monsterDeath(arch, opts, k)`; kills still
       go to every phone; `mp-farfeel`: material-hit-sounds.md "A far death,
       slam or blast".
-    - since v2.3.3337 FOUR MONSTERS HAVE A NOISE OF THEIR OWN -- the owner's
+    - since v2.3.3340 FOUR MONSTERS HAVE A NOISE OF THEIR OWN -- the owner's
       recordings: the fire goblin's rawr, the skeleton's (the mummy's second
       form's) rattling bones, every slime's jelly bounce, the snowman's snarl
       (`tools/audio/cut_monster_noises.py`, about a second each, levelled to
