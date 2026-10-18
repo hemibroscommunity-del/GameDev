@@ -60,7 +60,11 @@ const openPets = async (P) => {
   await H.openDest(P, 'More').catch(() => {});
   await P.page.waitForTimeout(600);
   await P.page.evaluate(() => { const b = document.querySelector('[data-more-tile="pets"]'); if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });
-  return P.page.waitForSelector('[data-pets-panel]', { timeout: 5000 }).then(() => true).catch(() => false);
+  /* v2.3.3376: 15 s, not 5 -- on this box, which draws a frame every few
+     hundred ms, More, its tile and the page's first draw took longer than 5:
+     the page came up just after the wait gave up (the screenshot taken next
+     shows it), and the two checks that read it were skipped as "null" */
+  return P.page.waitForSelector('[data-pets-panel]', { timeout: 15000 }).then(() => true).catch(() => false);
 };
 const peerPets = (P) => P.page.evaluate(() => (window._pixiRenderer && window._pixiRenderer.peerPetsDrawn ? window._pixiRenderer.peerPetsDrawn() : null));
 
