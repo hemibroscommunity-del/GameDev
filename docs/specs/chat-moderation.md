@@ -75,6 +75,16 @@ client-supplied `text` / `lines` / `byName` is ignored outright (rule
 which is the failure mode that makes a naive report button worse than
 none.
 
+**v2.3.3396: the line is cleaned first** (`docs/specs/chat-guard.md`).
+Every chat lane now cleans its text before it is remembered or
+delivered -- stacked accents, invisible and backwards characters, more
+than six emoji and a wall of one key are taken out -- so the line a
+report quotes is still exactly the line that was delivered: the cleaned
+one. A room or area line the repeat filter drops (the same line within
+30 s) and a line with nothing visible left are never delivered, and so
+never remembered. Room chat and emotes also spend an allowance of their
+own now, apart from the one a fight's swings and arrows need.
+
 ## Wire surface
 
 Client → server (own validated cases in the router; **neither

@@ -2337,5 +2337,45 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     guesses.length >= 1 && guesses.every((g) => /: 0$/.test(g)), guesses);
 }
 
+/* ═══ v2.3.3391: THE EMOTES THE WORKER RELAYS ARE THE PHONE'S ═══
+   The worker relays an emote only when it is on its list (emotes.js), and the
+   phone's picker offers -- and its renderer draws -- only its own
+   (gameDisplay.js EMOTES / TEXT_EMOTES).  One emoji missing from the worker's
+   copy is a button that does nothing; several carry a variation selector
+   (U+FE0F), so they are held equal byte for byte, in order. */
+{
+  const { EMOTES: CLIENT_EMOTES, TEXT_EMOTES: CLIENT_TEXT_EMOTES } = await import('../../src/data/gameDisplay.js');
+  const { EMOTE: SRV_EMOTE } = await import('../src/emotes.js');
+  check('emotes: the worker relays exactly the phone\'s 30 emoji and 12 quick lines, byte for byte',
+    JSON.stringify(SRV_EMOTE.EMOJI) === JSON.stringify(CLIENT_EMOTES) && JSON.stringify(SRV_EMOTE.LINES) === JSON.stringify(CLIENT_TEXT_EMOTES),
+    { srv: [SRV_EMOTE.EMOJI.length, SRV_EMOTE.LINES.length], client: [CLIENT_EMOTES.length, CLIENT_TEXT_EMOTES.length] });
+}
+
+/* ═══ v2.3.3392: THE MOVES THE WORKER RELAYS AND KEEPS ARE THE PHONE'S ═══
+   A moment move (wave, laugh...) is relayed only when it is on emotes.js
+   EMOTE.MOVES, and a held pose (sit, sleep, a dance) kept only when it is on
+   poses.js POSE.IDS; the phone's tiles are game/emoteMoves.js.  One missing
+   from the worker is a tile that moves your bro and nobody else's screen. */
+{
+  const { EMOTE_ONCE_IDS, EMOTE_HOLD_IDS } = await import('../../src/game/emoteMoves.js');
+  const { EMOTE: SRV_EMOTE } = await import('../src/emotes.js');
+  const { POSE } = await import('../src/poses.js');
+  check('emote moves: the worker relays the phone\'s six moments and keeps its six held poses, in order',
+    JSON.stringify(SRV_EMOTE.MOVES) === JSON.stringify(EMOTE_ONCE_IDS) && JSON.stringify(POSE.IDS) === JSON.stringify(EMOTE_HOLD_IDS),
+    { srv: [SRV_EMOTE.MOVES, POSE.IDS], client: [EMOTE_ONCE_IDS, EMOTE_HOLD_IDS] });
+}
+
+/* ═══ v2.3.3393: /roll's GAP AND FACES ARE THE WORKER'S ═══
+   The phone holds its own asks to one every DICE_GAP_MS with words (a sooner
+   one the worker drops without a word), and asks only for faces the worker
+   rolls (src/game/dice.js, server/src/dice.js). */
+{
+  const { DICE_GAP_MS, DICE_SIDES, DICE_MAX_SIDES } = await import('../../src/game/dice.js');
+  const { DICE } = await import('../src/dice.js');
+  check('dice: the phone waits the worker\'s gap and asks for its faces',
+    DICE_GAP_MS === DICE.GAP_MS && DICE_SIDES === DICE.SIDES && DICE_MAX_SIDES === DICE.MAX_SIDES,
+    { phone: [DICE_GAP_MS, DICE_SIDES, DICE_MAX_SIDES], worker: [DICE.GAP_MS, DICE.SIDES, DICE.MAX_SIDES] });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
