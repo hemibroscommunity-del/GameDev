@@ -34,6 +34,15 @@
  *      quest, an alliance war's end, invites to duel and trade, the market,
  *      the farm's harvest and bed, pets out, away and released (and the four
  *      kinds that answer in their own voice), and the forge's anvil.
+ *  11. v2.3.3445, the owner's recordings ("I have the rest of the sounds"):
+ *      every one-shot cut by tools/audio/cut_owner_sounds.py in SFX_MANIFEST
+ *      at the rate it is decoded at (24 kHz ones in LOW_RATE_SFX), every loop
+ *      kept out of it; your hurt grunt, the heartbeat on its own clock,
+ *      munch and gulp, the chat's pop, the chime, the "denied" tick at the
+ *      refusals, the laugh and the snore, the war horn, the boss's roar, the
+ *      explosion, the townsfolk's voices; the land's air, the sea's, the
+ *      crowd's and a fire's beds, loaded where they play and let go; and the
+ *      dance's beat on the music deck, never decoded.
  */
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 
@@ -221,6 +230,17 @@ for (const p of files) {
     },
     /* v2.3.3434: the moves' cues, read from the table that names them */
     'src/game/moveSounds.js n': () => Object.values(MOVE_SOUNDS || {}).flat(),
+    /* v2.3.3445: your hurt grunts and the townsfolk's hums, one of a list */
+    'src/game/ownSounds.js HURT_CUES[i]': () => {
+      const t = src('src/game/ownSounds.js');
+      const a = t.indexOf('export const HURT_CUES = ');
+      return a < 0 ? [] : namesIn(t.slice(a, t.indexOf(';', a)));
+    },
+    'src/game/npcVoices.js VOICE_CUES[v[0]]': () => {
+      const t = src('src/game/npcVoices.js');
+      const a = t.indexOf('export const VOICE_CUES = ');
+      return a < 0 ? [] : namesIn(t.slice(a, t.indexOf(';', a)));
+    },
     'src/ui/panels/buildings/StorePanel.jsx snd': () => {
       const t = src('src/ui/panels/buildings/StorePanel.jsx');
       const out = [];
@@ -394,7 +414,7 @@ for (const p of files) {
   check('10f a player already sitting or dancing when they come near is not heard sitting down; a townsperson\'s copy softer than yours',
     known >= 500 && npcK > 0 && npcK < 1 && /_mvKnownAt/.test(MS), { known, npcK });
   const BT = src('src/ui/BroTown.jsx');
-  check('10g the game loop hears poses begin and the townsfolk\'s copies (tickMoveSounds)', /import \{ tickMoveSounds \} from '@\/game\/moveSounds\.js'/.test(BT) && /tickMoveSounds\(S, /.test(BT));
+  check('10g the game loop hears poses begin and the townsfolk\'s copies (tickMoveSounds)', /import \{[^}]*\btickMoveSounds\b[^}]*\} from '@\/game\/moveSounds\.js'/.test(BT) && /tickMoveSounds\(S, /.test(BT));
   check('10h your move\'s own sound wins the tap over the menu click (the picker\'s tiles are buttons)', /BT_AUDIO\._uiSpecificAt = BT_AUDIO\._now\(\)/.test(MS));
   const LS = strip(src('src/game/lifeSkillRewards.js'));
   const fly = LS.slice(LS.indexOf('function _flyResourceToInventory'), LS.indexOf('function startExtraction'));
@@ -410,6 +430,144 @@ for (const p of files) {
     /chatBubbleBus\.setOpen\(true\)[\s\S]*BT_AUDIO\.uiClickNow\(\)/.test(chatOpen)
     && /r === 'quest' \|\| r === 'flip' \|\| r === 'shop' \|\| r === 'pets'\) \{ try \{ BT_AUDIO\.uiClickNow\(\)/.test(mark)
     && inspects === 2, { inspects });
+}
+
+/* ── 11. v2.3.3445: the owner's recordings ("I have the rest of the sounds") ── */
+{
+  const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');   /* the code, not what its comments say */
+  const { OWNER_SOUNDS, OWNER_LOOPS, LOOP_REFS } = await import('../../src/data/ownerSoundClips.js');
+  /* an mp3's sample rate, from its first frame */
+  const rateOf = (url) => {
+    const b = readFileSync(new URL('public' + url.split('?')[0], root));
+    let i = 0;
+    if (b.toString('ascii', 0, 3) === 'ID3') i = 10 + ((b[6] & 0x7f) << 21 | (b[7] & 0x7f) << 14 | (b[8] & 0x7f) << 7 | (b[9] & 0x7f));
+    for (; i + 4 <= b.length; i++) { const h = frameAt(b, i, null, null); if (h && frameAt(b, i + h.len, h.v, h.rate)) return h.rate; }
+    return 0;
+  };
+  const shots = Object.keys(OWNER_SOUNDS);
+  const offManifest = shots.filter((k) => MANIFEST[k] !== OWNER_SOUNDS[k].url);
+  check(`11a every one-shot the cutter made (${shots.length}) is in SFX_MANIFEST at its own address`, shots.length >= 14 && offManifest.length === 0, offManifest);
+  const wrongRate = shots.filter((k) => rateOf(OWNER_SOUNDS[k].url) !== (OWNER_SOUNDS[k].low ? 24000 : 48000));
+  check('11b ...each file at the rate it is decoded at: the voice and noise ones 24 kHz (LOW_RATE_SFX), the UI\'s 48 kHz', wrongRate.length === 0, wrongRate.map((k) => [k, rateOf(OWNER_SOUNDS[k].url)]));
+  const lowFn = GD.slice(GD.indexOf('BT_AUDIO.LOW_RATE_SFX'), GD.indexOf('BT_AUDIO._lowRate = function'));
+  check('11c LOW_RATE_SFX is made from the cutter\'s own table, and `zoneamb-`/`amb-` loops decode low too',
+    /OWNER_SOUNDS\[k\]\.low/.test(lowFn) && /\^\(zoneamb\|amb\)-/.test(GD));
+  const loops = Object.keys(OWNER_LOOPS);
+  const inManifest = loops.filter((k) => Object.values(MANIFEST).some((u) => u.split('?')[0] === OWNER_LOOPS[k].url));
+  check(`11d no loop (${loops.length}) is in SFX_MANIFEST (each loads where it plays), every file on disk`,
+    loops.length >= 6 && inManifest.length === 0 && loops.every((k) => existsSync(new URL('public' + OWNER_LOOPS[k].url, root))), inManifest);
+  check('11e every loop but the dance is 24 kHz mono (decoded at 24 kHz: half the memory)',
+    loops.filter((k) => k !== 'dance').every((k) => rateOf(OWNER_LOOPS[k].url) === 24000), loops.map((k) => [k, rateOf(OWNER_LOOPS[k].url)]));
+  check('11f the levels the loops were set against are the river\'s and the wind\'s own', Number.isFinite(LOOP_REFS.river) && Number.isFinite(LOOP_REFS.wind));
+
+  /* one decode a file */
+  const ls = GD.slice(GD.indexOf('BT_AUDIO.loadSample = function'), GD.indexOf('BT_AUDIO.loadSfxManifest = function'));
+  check('11g loadSample decodes a file once whatever keys name it (fish-on-hook twice, lure-drop twice), and the low ones on their own context',
+    /_sampleTag\[k\] === tag && this\._samples\[k\]/.test(ls) && /_tagLoads\[tag\]/.test(ls) && /self\._decodeLow\(buf, resolve, reject\)/.test(ls) && /OfflineAudioContext/.test(ls));
+  const dm = GD.slice(GD.indexOf('decodedMB: function decodedMB()'), GD.indexOf('_touchZoneMusic: function'));
+  check('11h ...and decodedMB counts a shared buffer once', /seen\.has\(s\)/.test(dm));
+
+  /* the land's air */
+  const za = GD.slice(GD.indexOf('ZONE_AMBIENT: {'), GD.indexOf('},', GD.indexOf('ZONE_AMBIENT: {')));
+  check('11i the Verdant Wilds\' birdsong and the Flame Fields\' lava are their lands\' air (ZONE_AMBIENT, keyed as the land music is)',
+    /verdant: OWNER_LOOPS\.forest\.url/.test(za) && /ember: OWNER_LOOPS\.lava\.url/.test(za));
+  check('11j a land\'s air loops without its file\'s silent edges', /if \(\/\^zoneamb-\/\.test\(key\)\) this\._loopOverEdges\(src, buf\)/.test(GD));
+  const lo = GD.slice(GD.indexOf('BT_AUDIO._loopOverEdges = function'), GD.indexOf('BT_AUDIO.stopSfxLoop = function'));
+  check('11j2 ...finding them by copying the edges out (copyFromChannel), never the whole buffer handed over as raw memory unless that is all a browser has',
+    /buf\.copyFromChannel\(head, 0, 0\)/.test(lo) && /buf\.copyFromChannel\(tail, 0, n - cap\)/.test(lo)
+      && lo.indexOf('getChannelData') > lo.indexOf("typeof buf.copyFromChannel === 'function'"));
+
+  /* the beds: the sea, the crowd, a fire */
+  const AB = src('src/game/ambientBeds.js'), ABc = strip(AB);
+  check('11k the sea, BroTown\'s crowd and a fire are beds of their own on the music bus, never startSfxLoop',
+    /_out\('music'\)/.test(ABc) && !/startSfxLoop|stopSfxLoop/.test(ABc) && /'sea-surf'/.test(AB) && /'town-crowd'/.test(AB) && /'fire-crackle'/.test(AB));
+  check('11l ...loaded only where they play (`amb-`), stopped when quiet and let go after, at once out of the Wheel',
+    /'amb-' \+/.test(ABc) && /delete BT_AUDIO\._samples\[keyOf\(id\)\]/.test(ABc) && /FREE_AFTER_MS/.test(ABc) && /currentZone === 'wheel'/.test(ABc));
+  check('11m ...the sea\'s water is never a river\'s or a pond\'s (they have the river\'s loop)', /waterDistance\(px, py\) < FRESH_PX/.test(ABc));
+  check('11n ...a fire is a burning building, your campfire or another player\'s', /burningNow\(\)/.test(ABc) && /S\._campfire/.test(ABc) && /S\._peerCampfires/.test(ABc));
+  const BT = src('src/ui/BroTown.jsx');
+  check('11o the game loop ticks the beds, the heartbeat and your dance\'s beat',
+    /tickAmbientBeds\(S, _jNow\)/.test(BT) && /tickHeartbeat\(S, _jNow\)/.test(BT) && /tickDanceMusic\(S\)/.test(BT));
+
+  /* your body */
+  const MC = strip(src('src/game/monsterCombat.js'));
+  check('11p the heartbeat is on a clock of its own (ownSounds), not monsterCombat\'s frame count of two silent beep()s',
+    !/_heartbeatTimer/.test(MC) && !/beep\(45,/.test(MC));
+  const OS = src('src/game/ownSounds.js');
+  check('11q ...one beat a second under a quarter of your health, quicker under a tenth',
+    /HEART_AT = 0\.25/.test(OS) && /HEART_FAST_AT = 0\.1/.test(OS) && /HEART_MS = 1000/.test(OS) && /HEART_FAST_MS = \d+/.test(OS));
+  const GE = strip(src('src/networking/gameEvents.js'));
+  check('11r a blow that lands on you is grunted (a monster\'s, the felling one, a player\'s), never a block or a tick',
+    (GE.match(/hurtGrunt\(S, /g) || []).length === 3 && /if \(!payload\.blocked && !tickKind\(payload\)\) hurtGrunt\(S, payload\.dmgTaken\)/.test(GE));
+
+  /* eating and drinking */
+  const BTc = strip(BT);
+  const eat = BTc.slice(BTc.indexOf('return eatBus.subscribe('), BTc.indexOf('return eatBus.subscribe(') + 5000);
+  check('11s eating is heard (munch, a meal and a heal), "HP full" and a held bite refused (denied); no silent beep() left in it',
+    (eat.match(/cue\('munch'\)/g) || []).length === 2 && (eat.match(/cue\('denied'\)/g) || []).length === 2 && !/BT_AUDIO\.beep\(/.test(eat));
+  const IDP = strip(src('src/ui/mobile/dash/ItemDetailPopup.jsx'));
+  const drink = IDP.slice(IDP.indexOf('const onDrink = () =>'), IDP.indexOf('const onOpenChest'));
+  check('11t drinking is heard (gulp), a held drink refused', /cue\('gulp'\)/.test(drink) && /cue\('denied'\)/.test(drink));
+  check('11u the Cookhouse\'s Eat and the old bag\'s munch too',
+    /cue\('munch'\)/.test(strip(src('src/ui/panels/buildings/CookPanel.jsx'))) && /cue\('munch'\)/.test(strip(src('src/ui/panels/InventoryPanel.jsx'))));
+
+  /* the chat */
+  const CH = strip(src('src/game/chat.js'));
+  check('11v every chat line coming in pops (4 lanes) and yours going out softer (4); no silent chatReceive/chatSend left',
+    (CH.match(/cue\('chatPop'\)/g) || []).length === 4 && (CH.match(/cue\('chatSent'\)/g) || []).length === 4 && !/chatReceive\(|chatSend\(/.test(CH));
+
+  /* the chime */
+  const caseOf = (text, name) => {
+    const a = text.indexOf("case '" + name + "':");
+    if (a < 0) return '';
+    const b = text.indexOf("\n          case '", a + 10);
+    return text.slice(a, b < 0 ? a + 4000 : b);
+  };
+  const chimes = ['inbox_delivered', 'friend_dm', 'party_invited', 'clan_invite', 'jackpot_result', 'server_announce'];
+  const noChime = chimes.filter((n) => !/cue\('notify'\)/.test(caseOf(GE, n)));
+  check('11w mail, a friend\'s message or request, a party or clan invite, an announcement, someone else\'s jackpot: the chime',
+    noChime.length === 0 && /case 'friend_accepted':\s*cue\('notify'\)/.test(GE), noChime);
+
+  /* the refusals */
+  const denied = [
+    ['src/game/combatHelpers.js', 4], ['src/game/playerActions.js', 1], ['src/game/abilities.js', 3],
+    ['src/game/farmFeedback.js', 1], ['src/ui/panels/SprintButton.jsx', 1], ['src/game/groundLoot.js', 1],
+    ['src/game/wheelHome.js', 1], ['src/game/zoneTransitions.js', 3], ['src/networking/wsClient.js', 1],
+    ['src/ui/panels/buildings/PartyPanel.jsx', 2], ['src/ui/panels/buildings/ExchangePanel.jsx', 1], ['src/ui/panels/DungeonCreatorPanel.jsx', 1],
+  ];
+  const short = denied.filter(([f, n]) => (strip(src(f)).match(/cue\('denied'(, [\d.]+)?\)/g) || []).length < n).map(([f, n]) => [f, n, (strip(src(f)).match(/cue\('denied'/g) || []).length]);
+  const geDenied = ['arena_stake_error', 'guild_quest_error', 'gear_locked', 'trade_reject'].filter((n) => !/cue\('denied'\)/.test(caseOf(GE, n)));
+  check('11x every refusal says "no" out loud: swimming, dazed, staggered, offline, no mana, no energy, no shield, not in combat, the farm, sprint, a pile not yours, the Mayor\'s gates, a held bite, not enough gold, the worker\'s stake, turn-in, gear-lock and trade refusals',
+    short.length === 0 && geDenied.length === 0, { short, geDenied });
+
+  /* the moves, the townsfolk */
+  check('11y the Laugh laughs and Sleep snores', MOVE_SOUNDS.laugh.includes('laugh') && MOVE_SOUNDS.sleep.includes('snore'));
+  const MS = strip(src('src/game/moveSounds.js'));
+  check('11z ...and one asleep snores on (you, a player near you, a townsperson copying you)',
+    /SNORE_EVERY_MS = \d+/.test(src('src/game/moveSounds.js')) && /cue\('snore'\)/.test(MS) && /cuePeer\(S, 'snore'/.test(MS) && /cueAt\(S, 'snore'/.test(MS));
+  const NV = src('src/game/npcVoices.js');
+  check('11za each townsperson answers in his own hum: a talk opened (the quest panel, a tap, E, walking up to Diego), and softer as his line pops up -- npcChat()\'s silent beep() gone',
+    /npcSpeaks\(stateRef\.current, questPanel\.npc\)/.test(src('src/ui/panels/QuestPanel.jsx'))
+    && (strip(src('src/game/desktopControls.js')).match(/npcSpeaks\(S, npc\)/g) || []).length === 4
+    && /npcSpeaks\(S, _pn\)/.test(BTc) && (BTc.match(/npcChatter\(S, npc\)/g) || []).length === 2 && !/BT_AUDIO\.npcChat\(/.test(BTc)
+    && /CHATTER_GAP_MS = \d{4}/.test(NV));
+
+  /* the dance */
+  const dance = GD.slice(GD.indexOf('BT_AUDIO.setDanceMusic = function'), GD.indexOf('BT_AUDIO._deckEnsure = function') > GD.indexOf('BT_AUDIO.setDanceMusic = function') ? GD.indexOf('BT_AUDIO._deckEnsure = function') : GD.indexOf('BT_AUDIO.setDanceMusic = function') + 900);
+  check('11zb your dance takes the music deck (streamed), never decoded: none where the deck cannot run',
+    /if \(this\._danceWant\) return this\._danceWant;/.test(GD) && /this\._streamMusic\(\)/.test(dance) && !/loadSample|decodeAudioData/.test(dance)
+    && /this\._danceWant = null;\s+\/\* v2\.3\.\d+: never decoded/.test(GD));
+  check('11zc ...on the dances\' own beat (120 a minute: DANCE_BEAT_MS 500)', OWNER_LOOPS.dance.beatMs === +((src('src/game/emoteMoves.js').match(/DANCE_BEAT_MS = (\d+)/) || [])[1]));
+
+  /* the sources */
+  const CUT = src('tools/audio/cut_owner_sounds.py');
+  const srcs = [...new Set([...CUT.matchAll(/'((?:player|ui|emote|world|npc)\/[^']+\.mp3)'/g)].map((m) => m[1]))];
+  /* the 21st, "Grunt 1", is the sprint's push-off (the owner's own ask; its
+     cutter keeps it in assets/sfx-source/voice/) */
+  check(`11zd the owner's recordings (${srcs.length} cut here, and the sprint's grunt) are kept as supplied in assets/sfx-source/, none left at the top of the project`,
+    srcs.length === 20 && srcs.every((f) => existsSync(new URL('assets/sfx-source/' + f, root)))
+    && existsSync(new URL('assets/sfx-source/voice/freesound_community-grunt-1-85280.mp3', root))
+    && readdirSync(new URL('./', root)).filter((f) => /\.mp3$/i.test(f)).length === 0, srcs.filter((f) => !existsSync(new URL('assets/sfx-source/' + f, root))));
 }
 
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);

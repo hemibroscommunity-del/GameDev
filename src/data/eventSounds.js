@@ -23,7 +23,26 @@
  * 0.55 x HIT_GAIN, which is "1.0" below.  For scale: a quest turn-in is ~2.4,
  * the menu click ~0.5, the armour's clang ~3.5 (A-weighted), a sprint's
  * push-off ~0.8.  `server/test/sound-cues.test.mjs` holds every cue to the
- * manifest, to this shape, and every call site's name to this table. */
+ * manifest, to this shape, and every call site's name to this table.
+ *
+ * v2.3.3445: and the owner's own recordings for what nothing here could make
+ * (the end of the table, "THE OWNER'S RECORDINGS"): their files are in
+ * SFX_MANIFEST too, cut and levelled by tools/audio/cut_owner_sounds.py, which
+ * writes each one's volume at its level to ownerSoundClips.js -- read below as
+ * `own(key)`, so a re-cut moves the table with it. */
+import { OWNER_SOUNDS } from './ownerSoundClips.js';
+
+/* A recording's volume at the level the cutter levelled it to, times k. */
+function own(key, k) {
+  const c = OWNER_SOUNDS[key];
+  return Math.round(c.vol * (k == null ? 1 : k) * 1000) / 1000;
+}
+/* The townsfolk's hums: the file's part i (offset, length) at its volume
+   times k. */
+function voice(i, k, rate) {
+  const p = OWNER_SOUNDS['npc-voices'].parts[i];
+  return ['npc-voices', p[0], p[1], Math.round(p[2] * (k == null ? 1 : k) * 1000) / 1000, rate || 1];
+}
 
 export const EVENT_SOUNDS = {
   /* ── your shield, your dodges ──────────────────────────────────────── */
@@ -98,7 +117,10 @@ export const EVENT_SOUNDS = {
   duelWin: [['flip-win', 0, 1.6, 0.5, 1]],
   duelLose: [['flip-lose', 0, 0.7, 0.5, 1]],
   duelStart: [['sword-hit2', 0, 0, 0.5, 0.9], ['whirlwind', 0.1, 0.6, 0.2, 0.9, 0.05, 0.15]],
-  arenaStart: [['shield-bash', 0, 0.5, 0.45, 0.7], ['whirlwind', 0.1, 0.7, 0.22, 0.8, 0.05, 0.15]],
+  /* v2.3.3445: the arena's match begins with the owner's war horn (a slowed
+     shield bash and wind until now), a touch higher and shorter than a
+     dungeon wave's, ~1.0 */
+  arenaStart: [['war-horn', 0, 1.8, own('war-horn', 0.85), 1.06, 0, 0.45]],
   champion: [['level-up', 0, 0, 0.55, 1]],
   /* No man's land: crossing in (an ominous sting), a skull put on you, what
      a death there took from you, and what your kill there took. */
@@ -127,10 +149,11 @@ export const EVENT_SOUNDS = {
   slamHit: [['tree-fall', 1.12, 0.6, 0.4, 0.9, 0, 0.15], ['shield-bash', 0.03, 0.4, 0.3, 0.7, 0, 0.1]],
   lungeMiss: [['sword-swing', 0.05, 0.28, 0.39, 0.85, 0, 0.06]],
   /* The Blue Slime swelling to burst (the slime orb's splort, stretched to
-     ~1.3 s), and the burst: a crack and a wet blast (its splat comes with
-     the kill, as every slime's does). */
+     ~1.3 s), and the burst: v2.3.3445, the owner's explosion (a crack until
+     now), short and a little high for a slime, over the wet blast it had,
+     ~1.3 (its splat comes with the kill, as every slime's does). */
   blueSwell: [['slime-projectile-hit', 0, 0, 1.6, 0.5]],
-  blueBurst: [['tree-fall', 0.04, 0.35, 0.3, 0.8, 0, 0.12], ['catch-splash', 0.1, 0.6, 0.55, 0.85, 0.02, 0.15]],
+  blueBurst: [['explosion', 0, 1.2, own('explosion', 0.85), 1.1, 0, 0.35], ['catch-splash', 0.1, 0.6, 0.55, 0.85, 0.02, 0.15]],
   /* A snowman digging into its pile, and bursting out of it. */
   burrow: [['snowman-hit', 0.03, 0.25, 0.35, 0.8], ['snowman-hit', 0.03, 0.25, 0.3, 0.72, 0.18]],
   emerge: [['snowman-death', 0.05, 0.4, 0.35, 1.1, 0, 0.12]],
@@ -150,18 +173,23 @@ export const EVENT_SOUNDS = {
      v2.3.3340); a bone layer here would rattle twice. */
   unwrap: [['ui-equip', 0.095, 0.3, 2.6, 0.78, 0, 0.08], ['arrow-fly', 0.03, 0.18, 1.8, 1.2, 0.05, 0.05]],
   /* A dungeon boss: arriving, its warning, slam, charge, enrage, summons and
-     life drain. */
-  bossArrive: [['tree-fall', 1.12, 0.8, 0.5, 0.75], ['whirlwind', 0.1, 0.9, 0.28, 0.75, 0, 0.2]],
+     life drain.  v2.3.3445: it arrives and enrages with the owner's roar (a
+     felled tree's thud and wind until now) -- the whole roar on arrival,
+     ~1.5; quicker, higher and cut short when it enrages, over the old double
+     thud, ~1.3. */
+  bossArrive: [['boss-roar', 0, 0, own('boss-roar'), 1]],
   bossWarn: [['whirlwind', 0.1, 0.7, 0.32, 0.6, 0, 0.15], ['monster-hit', 0, 0, 1.6, 0.5, 0.05]],
   bossSlam: [['tree-fall', 1.12, 0.7, 0.55, 0.8, 0, 0.15], ['shield-bash', 0.03, 0.5, 0.4, 0.6]],
   bossCharge: [['whirlwind', 0.1, 0.6, 0.35, 1, 0, 0.12]],
-  bossEnrage: [['monster-hit', 0, 0, 2, 0.5], ['monster-hit', 0, 0, 1.8, 0.45, 0.22], ['whirlwind', 0.3, 0.6, 0.2, 0.6, 0.05, 0.15]],
+  bossEnrage: [['boss-roar', 0.1, 1.5, own('boss-roar', 0.85), 1.15, 0, 0.45], ['monster-hit', 0, 0, 2, 0.5], ['monster-hit', 0, 0, 1.8, 0.45, 0.22]],
   bossSummon: [['magic-cast', 0, 0.8, 0.9, 0.7], ['whirlwind', 0.2, 0.6, 0.2, 0.9, 0.05, 0.15]],
   bossSiphon: [['magic-hit2', 0.02, 0.6, 0.4, 0.7], ['magic-cast', 0, 0.5, 0.6, 0.8, 0.05]],
 
   /* ── dungeons, doors, the land ─────────────────────────────────────── */
   dungeonIn: [['whirlwind', 1.6, 0.9, 0.3, 0.9, 0, 0.3], ['shield-bash', 0.03, 0.4, 0.2, 0.55, 0.15]],
-  dungeonWave: [['shield-bash', 0.03, 0.5, 0.45, 0.6], ['whirlwind', 0.2, 0.5, 0.18, 0.8, 0.02, 0.12]],
+  /* v2.3.3445: each wave comes in to the owner's war horn and its drums (a
+     slowed shield bash and wind until now), ~1.2 */
+  dungeonWave: [['war-horn', 0, 0, own('war-horn'), 1]],
   /* "Dungeon cleared!": the old quest fanfare, ~2.5 (a turn-in is ~2.4). */
   dungeonClear: [['quest-complete', 0, 0, 0.6, 1]],
   dungeonOut: [['whirlwind', 1.6, 0.9, 0.25, 1.1, 0, 0.3]],
@@ -244,9 +272,10 @@ export const EVENT_SOUNDS = {
   coinToss: [['coin-flip', 0.03, 0.72, 0.5, 1, 0, 0.1]],
   /* The Daily Spin's wheel ticking past each slice. */
   spinTick: [['ui-click', 0.042, 0.05, 0.45, 1.1]],
-  /* Your party becoming an alliance; a war declared. */
+  /* Your party becoming an alliance; a war declared -- v2.3.3445, on the
+     owner's war horn, lower (a slowed shield bash and wind until now), ~1.1. */
   allianceUp: [['level-up', 0, 0.5, 0.35, 1, 0, 0.15]],
-  allianceWar: [['shield-bash', 0.03, 0.5, 0.45, 0.65], ['whirlwind', 0.1, 0.7, 0.2, 0.8, 0.05, 0.15]],
+  allianceWar: [['war-horn', 0, 0, own('war-horn', 0.9), 0.92]],
 
   /* ── v2.3.3434: MORE MOMENTS THAT PLAYED NOTHING ───────────────────────
      The owner, 2026-10-18, after the first round: "Look for more too".  Each
@@ -319,6 +348,55 @@ export const EVENT_SOUNDS = {
      _flyResourceToInventory): the bag's leather, softly, ~0.25. */
   bagIn: [['ui-equip', 0.095, 0.3, 1.1, 1.25, 0, 0.08]],
 
+  /* ── v2.3.3445: THE OWNER'S RECORDINGS ──────────────────────────────────
+     The owner, 2026-10-18: "I have the rest of the sounds" -- recordings for
+     the moments docs/SOUND-GAPS.md said nothing in the game could make.  Each
+     is its own file in SFX_MANIFEST, levelled by tools/audio/cut_owner_
+     sounds.py to the level its comment gives (`own()` reads the volume it
+     wrote).  The arena's start, the dungeon waves, a war declared, a boss's
+     arrival and rage and the Blue Slime's burst moved onto them above. */
+  /* Your hurt grunt, when a blow lands on you (game/ownSounds.js hurtGrunt:
+     one of two, never the same twice running, at most one in a while):
+     ~0.7, under the blow's own clang or thud.  (The owner's third grunt is
+     the sprint's push-off, their own ask: BT_AUDIO.SPRINT_PUSH.) */
+  hurtA: [['hurt-1', 0, 0, own('hurt-1'), 1]],
+  hurtB: [['hurt-2', 0, 0, own('hurt-2'), 1]],
+  /* ONE lub-dub of a heartbeat, played on its clock while you are under a
+     quarter of your health (game/ownSounds.js, quicker under a tenth), ~1.2
+     -- nearly all of it a low thump a phone's speaker barely plays, so its
+     own overtones are laid over it (cut_owner_sounds.py): ~0.13 by ear. */
+  heartbeat: [['heartbeat', 0, 0, own('heartbeat'), 1]],
+  /* Eating (two crunches, the microphone's rumble under them filtered off)
+     and drinking (a long swallow): Quick Eat, the bag's Eat and Drink, the
+     Cookhouse's Eat, ~0.5. */
+  munch: [['munch', 0, 0, own('munch'), 1]],
+  gulp: [['gulp', 0, 0, own('gulp'), 1]],
+  /* A chat line coming in (~0.3, the emote pop's level) and your own going
+     out (softer and lower, ~0.2). */
+  chatPop: [['chat-pop', 0, 0, own('chat-pop'), 1]],
+  chatSent: [['chat-pop', 0, 0, own('chat-pop', 0.65), 0.85]],
+  /* Something for you: mail, a party or clan invite, a friend's request or
+     message, an announcement, the weekly jackpot won by someone else -- the
+     owner's notification chime, ~0.8. */
+  notify: [['chime', 0, 0, own('chime'), 1]],
+  /* Every refusal -- "No mana!", "Not enough energy!", "Swimming!",
+     "Dazed!", "HP full", not enough gold, gear locked, the farm's and the
+     market's no, the Mayor's gate, a pile that is not yours -- one short
+     two-note "no", ~0.45. */
+  denied: [['denied', 0, 0, own('denied'), 1]],
+  /* The Laugh, and the snore of one asleep (as they lie down, then every
+     SNORE_EVERY_MS while they sleep: game/moveSounds.js), ~0.6 and ~0.45. */
+  laugh: [['laugh', 0, 0, own('laugh'), 1]],
+  snore: [['snore', 0, 0, own('snore'), 1]],
+  /* The townsfolk's voices: a hum as you open a talk with one, and softer as
+     a line of theirs pops up over them (game/npcVoices.js picks the hum and
+     the pitch for each of them), ~0.5. */
+  npcVoice0: [voice(0)],
+  npcVoice1: [voice(1)],
+  npcVoice2: [voice(2)],
+  npcVoice3: [voice(3)],
+  npcVoice4: [voice(4)],
+
   /* ── other players (game/eventSounds.js cuePeer: by distance, a burst cap,
         about half your own level; what sounds as YOURS does -- the sprint's
         push-off, a swimmer's splash and strokes -- is played from BT_AUDIO's
@@ -370,23 +448,33 @@ export const CUE_GAP_MS = {
      together one rustle at a time */
   emotePop: 80,
   bagIn: 120,
+  /* v2.3.3445: a busy chat is a pop now and then, not one a line; refusals
+     pressed again and again are one "no" a beat; the chime once a second
+     whatever arrives together (a backlog of mail at a join is one chime) */
+  chatPop: 150,
+  chatSent: 150,
+  denied: 250,
+  notify: 1000,
+  heartbeat: 300,
 };
 
 /* ═══ v2.3.3434: WHAT EACH MOVE SOUNDS LIKE ═══
    Every move in game/emoteMoves.js EMOTE_MOVES, chosen -- never fallen into
    (server/test/sound-cues.test.mjs holds the keys to the moves): the emoji's
-   pop, and a sound of the move's own where it has one.  The wave, laugh,
-   shrug, sleep and the dances are the pop alone until their recordings (a
-   laugh, a snore, a dance loop: docs/SOUND-GAPS.md); Sit has no emoji. */
+   pop, and a sound of the move's own where it has one.  v2.3.3445: the
+   owner's laugh and snore (the snore again while they sleep, game/
+   moveSounds.js); a dance's beat is the music deck's, yours alone
+   (BT_AUDIO.setDanceMusic), so the dances keep the pop.  The wave and shrug
+   are the pop alone; Sit has no emoji. */
 export const MOVE_SOUNDS = {
   wave: ['emotePop'],
-  laugh: ['emotePop'],
+  laugh: ['emotePop', 'laugh'],
   flex: ['emotePop', 'flexShine'],
   shrug: ['emotePop'],
   facepalm: ['emotePop', 'slap'],
   cheer: ['cheerPop'],
   sit: ['sitDown'],
-  sleep: ['emotePop'],
+  sleep: ['emotePop', 'snore'],
   flop: ['flop'],
   bounce: ['emotePop'],
   robot: ['emotePop'],

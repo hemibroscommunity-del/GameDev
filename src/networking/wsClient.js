@@ -1963,6 +1963,7 @@ export function setupWebSocket(ctx) {
                  farm_state's reason: a relayed copy is never trusted. */
               var _erw = noteEatRefused(S, msg.payload && msg.payload.wait);
               try { if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, pvpHealWaitText(_erw), '#B9C1BF'); } catch (_ee) { /* words only */ }
+              cue('denied');   /* v2.3.3445: a refusal is heard (the owner's "denied" tick) */
               break;
             }
           case 'key_new':

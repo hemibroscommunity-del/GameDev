@@ -1,4 +1,4 @@
-# Missing sound effects (audit v2.3.3023, refreshed v2.3.3343 and v2.3.3434)
+# Missing sound effects (audit v2.3.3023, refreshed v2.3.3343, v2.3.3434 and v2.3.3445)
 
 > Owner, 2026-10-04: *"Give me a list of missing sound effects. Some I thought
 > of is jumping, landing (from jumping). Monster noises, monster projectiles
@@ -7,7 +7,7 @@
 > Owner, 2026-10-18, on the refreshed list: *"Start adding the have ones then
 > give me the list of ones that are still needed afterwards"*, and after it:
 > *"Look for more too"*, then *"Good look for more. I'll get other sounds in
-> morning"*
+> morning"*, and with 21 recordings: *"I have the rest of the sounds"*
 
 v2.3.3343 added every missing sound that could be made from recordings the game
 already ships, and v2.3.3434 a second and a third round found by looking again
@@ -139,6 +139,56 @@ Found on the way and fixed: the bag's **Drink** button called the browser's
 own window-close instead of the card's, so the card stayed open after a drink
 (and a tab the browser lets a script close could have closed the game).
 
+## Added in v2.3.3445 (the owner's recordings)
+
+The owner sent 21 recordings for the list below ("I have the rest of the
+sounds"). `tools/audio/cut_owner_sounds.py` cuts each to the moment the game
+wants (CREDITS.md has where each came from; the sources are kept in
+`assets/sfx-source/`), and `docs/specs/owner-recordings.md` says how each is
+played.
+
+- **Your hurt grunt**: a blow that lands on you, by a monster or a player, is
+  grunted -- one of two grunts, never the same twice running, never for a
+  scratch, a block, a dodge or a burn's tick. (The third grunt is the sprint's
+  push-off, the owner's own ask, in its own change.)
+- **The low-HP heartbeat**: under a quarter of your health, about once a
+  second; quicker under a tenth. Its recording is nearly all deep thump, which
+  a phone's speaker hardly plays, so a little of its own overtone is laid over
+  it.
+- **Munch and gulp**: Quick Eat, the bag's Eat and Drink, the Cookhouse's Eat.
+- **The chat's pop**: a line coming in, softer for your own going out.
+- **The notification chime**: mail, a party or clan invite, a friend's request
+  or message, an announcement, the weekly jackpot won by someone else.
+- **The "denied" tick**: no mana, no energy (abilities and the sprint), no
+  shield, not in combat, "Swimming!", "Dazed!", "Staggered!", reconnecting, HP
+  full, a bite held back in a fight, not enough gold, the guards' gear lock,
+  the farm's refusals, a stake, turn-in or harden refused, a trade declined,
+  the Mayor's gates, a loot pile that is not yours.
+- **A laugh and a snore**: the Laugh laughs; Sleep snores as you lie down and
+  again every few seconds while you lie there -- yours, a player's near you, a
+  townsperson's copy.
+- **The dance's beat**: while you hold a dance, the club beat (120 a minute,
+  the dances' own tempo) takes the music player; the land's music comes back
+  where it would have been when you stop. Streamed, never decoded; your own
+  dance only.
+- **The war horn**: each dungeon wave, the arena's start, a war declared on
+  you.
+- **A boss's roar**: a dungeon boss arriving, and enraging.
+- **An explosion**: the Blue Slime's burst, over its wet splash.
+- **The townsfolk's voices**: each hums in a voice of his own as you open a talk
+  with him (his quest, Ace's flip, Diego's shop, the Pets page, "nothing for
+  you"), and softer, one at a time, as a line of his pops up over him.
+- **Each land's air**: the Verdant Wilds' birdsong and the Flame Fields'
+  bubbling lava, beside the Wind Dunes' wind.
+- **The sea, the town and fire**: surf from the shore of the open sea and its
+  shallows, BroTown's crowd in its streets, a crackle by a burning building or
+  a lit campfire (yours or another player's).
+
+The long loops are never decoded with the effects: each is loaded where it
+plays, at 24 kHz, and let go when you leave (game/ambientBeds.js). Two files
+named twice in the effects list (fish-on-hook, lure-drop) are now decoded
+once, about 1 MB back.
+
 ## Still needed: new recordings
 
 Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
@@ -146,23 +196,9 @@ Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
 | Sound | For | Notes |
 |---|---|---|
 | **Creature voices** | each kind's idle, an "it noticed you" call and a hurt grunt | the fire goblin, the mummy's skeleton, the slimes and the snowman have one (v2.3.3340); the rock monster, thorn shambler, fishman, bog lurker, mire wisp and mummy still have none -- and so the Pebbling, Finling, Wisplet, Lurkling and Mumling pets come out without a voice |
-| **Your hurt grunt** | being hit | today the armour clang or a thud |
-| **Low-HP heartbeat** | under a quarter of your health | the game already keeps time for it (faster under a tenth); only the sound is missing |
-| **Munch and gulp** | eating and drinking: Quick Eat, the bag's Eat and Drink, the Cookhouse's Eat | all silent |
-| **A soft UI pop** | chat lines | emotes pop since v2.3.3434, with the lure's plop |
-| **Laughs, a snore and a dance loop** | the Laugh, Sleep and the dances | each pops its emoji today; a dance loop would play through the music player, never decoded into memory (docs/FUN-SOCIAL-PLAN.md) |
-| **A notification chime** | mail arriving, party invites, friends' requests and messages, announcements, the weekly jackpot's winner (heard by everyone else) | duel and trade invites have sounds of their own since v2.3.3434 |
-| **A "denied" tick** | "No mana!", "Not enough energy", bag full, not enough gold, "Swimming!", "Dazed!", "Gear locked", "Eat again in Ns", the farm's "Out of seeds", the market's and the Mayor gate's refusals, walking over a pile that is not yours, a greyed-out button | one sound for every refusal |
-| **A horn or a drum** | dungeon waves, the arena | today a slowed shield bash and wind |
-| **A boss roar** | a dungeon boss arriving and enraging | today a felled tree's thud and wind |
-| **An explosion** | the Blue Slime's burst | today a crack and a splash |
-| **Fire crackling** | a building on fire, campfires | today the frying pan's sizzle, briefly |
-| **Sea surf** | the open sea and the shallows | rivers and ponds are done |
-| **Birds, forest, lava, cave drips** | each land's air | only the Wind Dunes has wind |
-| **A town crowd** | BroTown | |
+| **The other lands' air** | Frost Ridge, the Stone Hollows (cave drips), the Electric Foundry, the Water Caves, the Poison Forest | the Wind Dunes, the Verdant Wilds and the Flame Fields have theirs (v2.3.3445); one loop each, 10-20 s, goes under ZONE_AMBIENT |
 | **The town's buildings** | the Saloon's piano and chatter, the Old Mill's water wheel | the forge's anvil is done (v2.3.3434) |
 | **Leaf-litter footsteps** | the forest floor | plays grass today |
-| **NPC voice blips** | speech bubbles, opening a conversation | the Mayor's recorded welcome is in the game but not reachable in play |
 | **Music for four lands** | Stone Hollows, Electric Foundry, Water Caves, Poison Forest | they play the login theme. `world.mp3` was offered as a stopgap and the owner said no (2026-10-06) |
 
 ## Quiet on purpose, the owner's call

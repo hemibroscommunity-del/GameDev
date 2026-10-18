@@ -717,6 +717,26 @@ export class BuildingFires {
 }
 let _liveFires = null;
 
+/* ═══ v2.3.3445: WHERE SOMETHING BURNS, FOR ITS CRACKLE ═══
+   game/ambientBeds.js plays the owner's fire-crackle recording by the
+   nearest fire: each burning building (standing, in pieces, or going out) as
+   its foot and its hottest spot's heat, 0..1.  A plain list made on asking,
+   nothing kept. */
+export function burningNow() {
+  const out = [];
+  const L = _liveFires;
+  if (!L) return out;
+  const add = (f) => {
+    let heat = 0;
+    for (const s of f.spots) if (s.heat > heat) heat = s.heat;
+    for (const r of f.rubble) if (r.spot && r.spot.heat > heat) heat = r.spot.heat;
+    if (heat > 0.02) out.push({ x: f.x, y: f.y, heat: Math.min(1, heat) });
+  };
+  for (const f of L.fires.values()) add(f);
+  for (const f of L.going) add(f);
+  return out;
+}
+
 /* QA probe, house style (mp-buildingfire).  `fires()` needs the live
    WheelObjects, which wheelObjects.js hands it (`__btWheelObjects.fires`). */
 if (typeof window !== 'undefined') {

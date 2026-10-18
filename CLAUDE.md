@@ -719,6 +719,35 @@ remnant to migrate server-side, not a mode to preserve.
       window: no <button>, so the delegate never heard them); `sound-cues`
       §10; `mp-cuelevels` lists the cues kept quiet on purpose (`QUIET_OK`:
       /roll and /flip at Ace's toss level, the owner's call).
+    - since v2.3.3445 THE OWNER'S RECORDINGS FOR THE REST -- the owner: "I
+      have the rest of the sounds" (21 from Pixabay, uploaded to the top of the
+      project; kept as supplied in `assets/sfx-source/`, CREDITS.md):
+      - cut by `tools/audio/cut_owner_sounds.py` (GENERATED
+        `src/data/ownerSoundClips.js`), levelled by mp-cuelevels' own measure
+        -- read in mono as Web Audio downmixes, never ffmpeg's `-ac 1` (it
+        reads a stereo reference 1.41x loud: TRAPS §230); the munch high-passed, the
+        heartbeat given its own overtones (both nearly all under 100 Hz, which
+        a phone hardly plays);
+      - your hurt grunt (two; "Grunt 1" is the sprint's push-off, the owner's
+        own ask), the heartbeat on a clock of its own (game/ownSounds.js; the
+        frame-counted beep() timer gone), munch and gulp, the chat's pop, the
+        chime (mail, invites, friends, announcements, someone else's jackpot),
+        one "denied" for the refusals, the Laugh's laugh and Sleep's snores, the
+        war horn (dungeon waves, the arena, a war declared), a boss's roar, the
+        Blue Slime's explosion, the townsfolk's hums (game/npcVoices.js, a
+        voice each);
+      - the dance's beat takes the music deck while YOU dance
+        (`BT_AUDIO.setDanceMusic`, streamed, never decoded, on the dances'
+        120-a-minute wall-clock beat); the Verdant Wilds' and Flame Fields' air
+        (`ZONE_AMBIENT`); the sea's surf, BroTown's crowd and a fire's crackle
+        as beds (game/ambientBeds.js: loaded where they play, let go after);
+      - MEMORY: the voice and noise one-shots and every loop are decoded at
+        24 kHz (`LOW_RATE_SFX`, `zoneamb-`/`amb-`, an OfflineAudioContext), and
+        `loadSample` decodes a file once whatever keys name it (fish-on-hook
+        and lure-drop were two copies, ~1 MB) -- the wind 11 -> 5.5 MB;
+      - `sound-cues` §11, `mp-ownersounds`, `mp-cuelevels`:
+        docs/specs/owner-recordings.md; what is still needed:
+        docs/SOUND-GAPS.md.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":

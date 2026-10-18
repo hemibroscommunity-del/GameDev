@@ -22,6 +22,7 @@ import { TOWN_EXITS, WORLDVIEW_EXITS } from './effects.js';
 import { FOOTSTEP_CLIPS } from './footstepClips.js';   /* v2.3.2967: each ground its own step */
 import { MONSTER_NOISE_CLIPS } from './monsterNoiseClips.js';   /* v2.3.3340: the owner's monster noises */
 import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3343: each creature its own death (monsterDeath) */
+import { OWNER_SOUNDS, OWNER_LOOPS } from './ownerSoundClips.js';   /* v2.3.3445: the owner's recordings for the sounds still needed */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
@@ -1396,6 +1397,17 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      of wind is far more noticeable as a loop than a long one. */
   ZONE_AMBIENT: {
     sky: '/audio/ambient/wind-dunes.mp3',
+    /* v2.3.3445: the owner's recordings (docs/SOUND-GAPS.md, "birds, forest,
+       lava ... each land's air"): the Verdant Wilds' birdsong and the Flame
+       Fields' bubbling lava, each a seamless loop at the wind's own loudness
+       (tools/audio/cut_owner_sounds.py), so ZONE_AMBIENT_VOL suits all three.
+       The land music picks the key (game/wheelMusic.js), so each plays in its
+       land of the Wheel and in its old zone with `?trial=off`.  Decoded at
+       24 kHz, mono, and let go when you leave the land (startZoneAmbient):
+       1.5 and 1.1 MB, the wind's 28.8 s stereo ~5.5 MB at that rate (11 MB
+       before v2.3.3445). */
+    verdant: OWNER_LOOPS.forest.url,
+    ember: OWNER_LOOPS.lava.url,
   },
   /* v2.3.3064: the Wheel's music is its LANDS' (game/wheelMusic.js): the
      town's on the safe ground, each land's own as you cross into it.  On
@@ -1654,7 +1666,15 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   decodedMB: function decodedMB() {
     var b = 0, n = 0, k;
     try {
-      for (k in (this._samples || {})) { if (this._samples[k]) { b += this._bufBytes(this._samples[k]); n++; } }
+      /* v2.3.3445: a buffer two keys share (loadSample's one decode a file)
+         is counted once */
+      var seen = typeof Set === 'function' ? new Set() : null;
+      for (k in (this._samples || {})) {
+        var s = this._samples[k];
+        if (!s || (seen && seen.has(s))) continue;
+        if (seen) seen.add(s);
+        b += this._bufBytes(s); n++;
+      }
       for (k in (this._zoneMusicBuffers || {})) { if (this._zoneMusicBuffers[k]) { b += this._bufBytes(this._zoneMusicBuffers[k]); n++; } }
       if (this._globalMusicBuffer) { b += this._bufBytes(this._globalMusicBuffer); n++; }
     } catch (e) { /* a half-built audio state */ }
@@ -3119,6 +3139,53 @@ BT_AUDIO.SFX_MANIFEST = {
   'noise-skeleton-rattle': '/sfx/monster/noise-skeleton-rattle.mp3',
   'noise-slime-bounce': '/sfx/monster/noise-slime-bounce.mp3',
   'noise-snowman-snarl': '/sfx/monster/noise-snowman-snarl.mp3',
+  /* ═══ v2.3.3445: THE OWNER'S RECORDINGS FOR THE SOUNDS STILL NEEDED ═══
+     The owner, 2026-10-18, after the list of sounds that needed new
+     recordings (docs/SOUND-GAPS.md): "I have the rest of the sounds".  Cut by
+     tools/audio/cut_owner_sounds.py from the owner's uploads
+     (assets/sfx-source/, CREDITS.md: Pixabay), each to the one moment the
+     game wants; their levels are in ownerSoundClips.js and data/eventSounds.js
+     says when each plays.  Your hurt grunts (two), the low-HP heartbeat, a
+     munch and a gulp, the chat's pop, the notification chime, the "denied"
+     tick, a laugh, a snore, the war horn, a boss's roar, an explosion, and the
+     townsfolk's five hums.  The voice and noise ones are decoded at 24 kHz
+     (LOW_RATE_SFX below, ~1.5 MB); the UI's three at 48 kHz (~0.3 MB).  The
+     longer loops (the sea, the forest, the lava, BroTown's crowd, a fire's
+     crackle) and the dance's beat are NOT here: each loads where it plays. */
+  'hurt-1': '/sfx/player/hurt-1.mp3',
+  'hurt-2': '/sfx/player/hurt-2.mp3',
+  'heartbeat': '/sfx/player/heartbeat.mp3',
+  'munch': '/sfx/player/munch.mp3',
+  'gulp': '/sfx/player/gulp.mp3',
+  'chat-pop': '/sfx/ui/chat-pop.mp3',
+  'chime': '/sfx/ui/chime.mp3',
+  'denied': '/sfx/ui/denied.mp3',
+  'laugh': '/sfx/emote/laugh.mp3',
+  'snore': '/sfx/emote/snore.mp3',
+  'war-horn': '/sfx/world/war-horn.mp3',
+  'boss-roar': '/sfx/monster/boss-roar.mp3',
+  'explosion': '/sfx/monster/explosion.mp3',
+  'npc-voices': '/sfx/npc/voices.mp3',
+};
+
+/* ═══ v2.3.3445: SOME SOUNDS ARE DECODED AT 24 kHz ═══
+   An AudioBuffer is raw float32 at the rate it was decoded into, and the
+   context decodes everything at its own (48 kHz on an iPhone): a second of
+   mono is 188 KB.  A voice, a gulp, a horn or the sea has nothing a phone
+   plays above 12 kHz, so the owner's recordings of them, and every loop
+   loaded where it plays (ZONE_AMBIENT's `zoneamb-`, game/ambientBeds.js's
+   `amb-`), are decoded by an OfflineAudioContext at LOW_RATE -- half the
+   memory, and the same buffer plays on the real context, which resamples it.
+   Their files are written at 24 kHz (cut_owner_sounds.py), so nothing is
+   resampled twice.  A browser without one decodes them the old way. */
+BT_AUDIO.LOW_RATE = 24000;
+BT_AUDIO.LOW_RATE_SFX = (function () {
+  var o = Object.create(null);
+  for (var k in OWNER_SOUNDS) if (OWNER_SOUNDS[k] && OWNER_SOUNDS[k].low) o[k] = true;
+  return o;
+})();
+BT_AUDIO._lowRate = function (key) {
+  return !!(this.LOW_RATE_SFX[key] || /^(zoneamb|amb)-/.test(key));
 };
 
 /* Regular sword-hit alternation. The two samples cycle so a flurry of hits
@@ -3924,21 +3991,65 @@ BT_AUDIO.monsterDeath = function (arch, opts, k) {
    so `.then(start)` is always safe and a missing file degrades to silence. */
 BT_AUDIO.loadSample = function (key, url) {
   if (!this.ctx || this._samples[key] || this._sampleLoading[key]) return Promise.resolve();
+  var self = this;
+  /* ═══ v2.3.3445: ONE DECODE A FILE ═══
+     Two keys naming one file were two copies of it in memory: 'fish-on-hook'
+     and 'fishing-fish-on-hook' (0.95 MB each), 'lure-drop' and
+     'fishing-lure-drop'.  A key whose file another key holds, or is fetching,
+     at the same rate, now takes that buffer (decodedMB counts it once). */
+  var tag = url + (this._lowRate(key) ? '@low' : '');
+  if (!this._sampleTag) { this._sampleTag = Object.create(null); this._tagLoads = Object.create(null); }
+  for (var k in this._sampleTag) {
+    if (this._sampleTag[k] === tag && this._samples[k]) {
+      this._samples[key] = this._samples[k];
+      this._sampleTag[key] = tag;
+      return Promise.resolve();
+    }
+  }
   this._sampleLoading[key] = true;
-  return fetch(url)
-    .then(function (r) { return r.arrayBuffer(); })
-    .then(function (buf) {
-      return new Promise(function (resolve, reject) {
-        BT_AUDIO.ctx.decodeAudioData(buf, resolve, reject);
-      });
-    })
-    .then(function (audioBuf) {
-      BT_AUDIO._samples[key] = audioBuf;
-      delete BT_AUDIO._sampleLoading[key];
-    })
-    .catch(function () {
-      delete BT_AUDIO._sampleLoading[key];
+  var p = this._tagLoads[tag];
+  if (!p) {
+    var low = this._lowRate(key);
+    p = this._tagLoads[tag] = fetch(url)
+      .then(function (r) { return r.arrayBuffer(); })
+      .then(function (buf) {
+        return new Promise(function (resolve, reject) {
+          if (low) self._decodeLow(buf, resolve, reject);
+          else BT_AUDIO.ctx.decodeAudioData(buf, resolve, reject);
+        });
+      })
+      .then(function (b) { delete self._tagLoads[tag]; return b; },
+        function () { delete self._tagLoads[tag]; return null; });
+  }
+  return p.then(function (audioBuf) {
+    if (audioBuf) { self._samples[key] = audioBuf; self._sampleTag[key] = tag; }
+    delete self._sampleLoading[key];
+  });
+};
+/* LOW_RATE's decoder (above): one OfflineAudioContext, never rendered, made
+   on first use; the real context's own decode when there is none, or when it
+   refuses a file. */
+BT_AUDIO._lowCtx = null;
+BT_AUDIO._decodeLow = function (buf, ok, bad) {
+  var self = this;
+  if (this._lowCtx === null) {
+    try {
+      var O = typeof window !== 'undefined' && (window.OfflineAudioContext || window.webkitOfflineAudioContext);
+      this._lowCtx = O ? new O(1, 1, this.LOW_RATE) : false;
+    } catch (e) { this._lowCtx = false; }
+  }
+  if (!this._lowCtx) { this.ctx.decodeAudioData(buf, ok, bad); return; }
+  /* decodeAudioData detaches its ArrayBuffer: keep a copy for the fallback */
+  var spare = buf.slice(0);
+  try {
+    this._lowCtx.decodeAudioData(buf, ok, function () {
+      self._lowCtx = false;
+      try { self.ctx.decodeAudioData(spare, ok, bad); } catch (e) { bad(e); }
     });
+  } catch (e) {
+    this._lowCtx = false;
+    try { this.ctx.decodeAudioData(spare, ok, bad); } catch (e2) { bad(e2); }
+  }
 };
 BT_AUDIO.loadSfxManifest = function () {
   if (this._loadedManifest) return;
@@ -4055,6 +4166,8 @@ BT_AUDIO.startSfxLoop = function (key, vol, bus) {
     var src = this.ctx.createBufferSource();
     src.buffer = buf;
     src.loop = true;
+    /* v2.3.3445: a land's air loops without the mp3's silent edges (below) */
+    if (/^zoneamb-/.test(key)) this._loopOverEdges(src, buf);
     var g = this.ctx.createGain();
     g.gain.value = vol != null ? vol : 0.4;
     src.connect(g);
@@ -4062,6 +4175,43 @@ BT_AUDIO.startSfxLoop = function (key, vol, bus) {
     src.start(0);
     this._sfxLoops[key] = { src: src, gain: g };
   } catch (e) {}
+};
+/* ═══ v2.3.3445: A LOOP WITHOUT ITS FILE'S SILENT EDGES ═══
+   An mp3 begins and ends with a few hundred samples of digital silence (the
+   encoder's own delay and padding) wherever the decoder does not take them
+   off, and a buffer looped whole plays that silence at every seam: a click
+   or a gap in a bed of surf or birdsong.  The loops cut by
+   tools/audio/cut_owner_sounds.py run their end into their start, so the
+   loop is set to skip any run of exact zeros at either edge (at most 8,192
+   samples each, found once a buffer).  A buffer with none plays whole.
+   Only the two edges are COPIED out (copyFromChannel): getChannelData hands
+   the page the whole buffer as an ArrayBuffer, and Chromium then counts all
+   of it again as the page's raw buffers -- 0.92 MB for the town's crowd,
+   measured, against the memory check's 24 MB line for them. */
+BT_AUDIO._loopOverEdges = function (src, buf) {
+  try {
+    var e = buf._btEdges;
+    if (!e) {
+      var n = buf.length, cap = Math.min(8192, n >> 2);
+      var head = new Float32Array(cap), tail = new Float32Array(cap);
+      if (typeof buf.copyFromChannel === 'function') {
+        buf.copyFromChannel(head, 0, 0);
+        buf.copyFromChannel(tail, 0, n - cap);
+      } else {
+        var d = buf.getChannelData(0);
+        head.set(d.subarray(0, cap));
+        tail.set(d.subarray(n - cap));
+      }
+      var a = 0, b = cap;
+      while (a < cap && head[a] === 0) a++;
+      while (b > 0 && tail[b - 1] === 0) b--;
+      e = buf._btEdges = { a: a, b: n - cap + b };
+    }
+    if (e.a > 0 || e.b < buf.length) {
+      src.loopStart = e.a / buf.sampleRate;
+      src.loopEnd = e.b / buf.sampleRate;
+    }
+  } catch (err) { /* plays whole */ }
 };
 BT_AUDIO.stopSfxLoop = function (key) {
   var l = this._sfxLoops && this._sfxLoops[key];
@@ -4359,9 +4509,41 @@ BT_AUDIO._deckDrop = function () {
    session track unless a zone track ducked it (the decoded tracks' rule:
    duckGlobalMusic, startZoneAmbient), else nothing. */
 BT_AUDIO._deckTarget = function () {
+  if (this._danceWant) return this._danceWant;   /* v2.3.3445: while you dance (setDanceMusic) */
   if (this._zoneWant) return this._zoneWant;
   if (this._globalWant && !this._globalMusicDucked) return this._globalWant;
   return null;
+};
+/* ═══ v2.3.3445: A BEAT WHILE YOU DANCE ═══
+   The owner's club beat (docs/SOUND-GAPS.md: "a dance loop would play
+   through the music player, never decoded into memory") takes the music
+   deck while you hold a dance (game/moveSounds.js tickDanceMusic), and the
+   land's or the session's track comes back where it would have been when you
+   stop (its wall-clock epoch, _deckPlay).  Its own epoch is a whole number of
+   its 16 s (_deckPlay reads an epoch of 0 as none), so the beat sits on the
+   wall clock's half-seconds, where the dances bob
+   (game/emoteMoves.js DANCE_BEAT_MS 500 by Date.now(): the beat is 120 a
+   minute and its first kick opens the file) -- as near as the element starts.
+   Streamed only: where the deck cannot run (the decoded fallback,
+   `?musicdecode`) a dance plays no music rather than decode 16 s of it.
+   Your own dance only; a dancer beside you changes nothing (the plan's dance
+   party is a rule of its own, docs/FUN-SOCIAL-PLAN.md). */
+BT_AUDIO.DANCE_URL = OWNER_LOOPS.dance.url;
+/* at the town's music's loudness: ZONE_MUSIC_VOL x village.mp3's RMS over the
+   beat's, both measured by cut_owner_sounds.py */
+BT_AUDIO.DANCE_VOL = BT_AUDIO.ZONE_MUSIC_VOL * Math.pow(10, (OWNER_LOOPS.dance.music - OWNER_LOOPS.dance.rms) / 20);
+BT_AUDIO._danceWant = null;
+BT_AUDIO.setDanceMusic = function (on) {
+  var want = !!on && !this.muted;
+  if (want === !!this._danceWant) return !!this._danceWant;
+  if (want) {
+    if (!this.ctx || !this._streamMusic() || !this._deckEnsure()) return false;
+    this._danceWant = { kind: 'dance', url: this.DANCE_URL, vol: this.DANCE_VOL, fadeIn: 0.35, epoch: OWNER_LOOPS.dance.dur * 1000 };
+  } else {
+    this._danceWant = null;
+  }
+  try { this._deckSync(); } catch (e) { /* sound only */ }
+  return !!this._danceWant;
 };
 /* A fade on the deck's gain -- scheduled only once the clock is moving (the
    frozen-clock fault v2.3.1594/1595 fixed for the decoded tracks). */
@@ -4524,6 +4706,7 @@ BT_AUDIO._deckFail = function (why) {
   this._deckDrop();
   this._zoneWant = null;
   this._globalWant = null;
+  this._danceWant = null;   /* v2.3.3445: never decoded (setDanceMusic) */
   if (this._zoneMusicSource && this._zoneMusicSource._stream) { this._zoneMusicSource = null; this._zoneMusicGain = null; }
   if (this._globalMusicSource && this._globalMusicSource._stream) { this._globalMusicSource = null; this._globalMusicGain = null; }
   this._zoneMusicStarting = false;

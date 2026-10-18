@@ -1368,12 +1368,14 @@ export const ItemDetailPopup = () => {
       if (wait > 0) {
         const P = S.player;
         if (P) pushDmgPopup(S, P.x, P.y - 30, pvpHealWaitText(wait), '#B9C1BF');
+        cue('denied');   /* v2.3.3445: a refusal is heard (the owner's "denied" tick) */
         itemDetailBus.close();
         return;
       }
       noteInstantHeal(S);
     }
     try { S.channel.send({ type: 'potion_drink', payload: { invKey: target.key } }); } catch (e) {}
+    cue('gulp');   /* v2.3.3445: the owner's gulp -- a drink was silent (a refusal answers with "denied") */
     /* v2.3.3434: the window's own close.  This was a bare close(), which no
        name here binds -- so it was the BROWSER's window.close(): the card
        stayed open after a drink, and a tab the browser lets a script close
