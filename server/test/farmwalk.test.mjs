@@ -10,13 +10,13 @@
  *
  * The client's rules for it (src/game/farmWork.js, src/data/farmLayout.js --
  * no imports, so node runs them) against the worker's own:
- *   1. the farmer's moves (v2.3.3345, the owner's three sheets cut by
+ *   1. the farmer's moves (v2.3.3352, the owner's three sheets cut by
  *      tools/make_farm_anims.py into src/data/farmAnims.js): each step plays
  *      its own -- the hoe, the watering can, the kneel -- every frame of it,
  *      from the rest pose to the rest pose, the work landing on the frames
  *      where it does; every strip on disk at the size the data says (the man,
  *      the man under greaves, his tool, his shirt, plate and greaves), his
- *      boots, his crown and the work inside it; and (v2.3.3345) every frame
+ *      boots, his crown and the work inside it; and (v2.3.3352) every frame
  *      of every garment there and on him, the man under greaves the man
  *      trimmed;
  *   2. a bed's next step and its words, its timer, its crop's stage, its soil;
@@ -52,7 +52,7 @@ import {
 } from '../../src/data/farmLayout.js';
 import { FARM_ART } from '../../src/data/farmArt.js';
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '../../src/data/farmAnims.js';
-import { decodePNG } from '../../tools/world/png.mjs';   /* v2.3.3345: what the farmer's strips hold */
+import { decodePNG } from '../../tools/world/png.mjs';   /* v2.3.3352: what the farmer's strips hold */
 import { generateZoneMap } from '../../src/data/gameDisplay.js';
 import { ZONES } from '../../src/data/zones.js';
 
@@ -105,7 +105,7 @@ const FOOT_DY = 52;   /* a body's middle to its boots, on a zone with no perspec
   /* the strips on disk, at the size the data says */
   const fileOf = (url) => path.join(REPO, 'public', url.split('?')[0]);
   const sizeOf = (url) => { const f = fileOf(url); return fs.existsSync(f) ? pngSize(f) : null; };
-  /* v2.3.3345: the garments, cut from the owner's sheets drawn again in the
+  /* v2.3.3352: the garments, cut from the owner's sheets drawn again in the
      game's white tee and steel armour */
   const GARMENTS = [['shirt', 'tshirt'], ['chest', 'steelplate'], ['legs', 'steelgreaves']];
   for (const a of anims) {
@@ -118,7 +118,7 @@ const FOOT_DY = 52;   /* a body's middle to its boots, on a zone with no perspec
     check(`the ${a}: ${A.n} frames of ${A.fw}x${A.fh} -- the man, the man under greaves${A.prop ? ', his tool' : ''}, his shirt, plate and greaves, each ${want.w}x${want.h}`,
       same(body) && same(under) && GARMENTS.every(([slot]) => same(gear[slot])) && (!A.prop || same(prop)) && (a !== 'kneel') === !!A.prop,
       { body, under, prop, gear, want });
-    /* v2.3.3345: what each frame holds.  Every garment has something in every
+    /* v2.3.3352: what each frame holds.  Every garment has something in every
        frame (an empty one would show him bare for a frame) and lies on the man:
        the tee over his body, the armour mostly so -- its shoulder plates stand
        out of his outline (81% over it at the can, measured).  The man under

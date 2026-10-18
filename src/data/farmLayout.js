@@ -54,7 +54,7 @@ export const FARM_BED_REACH = 46;
 /* Where you stand to work one: your boots on its back edge, a little in, and
    left of its middle -- the hoe strikes and the hands go in at your feet, on
    the bed's edge, and the watering can's water lands to your right, over its
-   middle (effectsRenderer _updateFarmWork, v2.3.3345; the cook's crouch and
+   middle (effectsRenderer _updateFarmWork, v2.3.3352; the cook's crouch and
    the crate where its pan was, v2.3.3136, stood here too). */
 export const FARM_KNEEL_DY = 12;
 export const FARM_KNEEL_DX = -19;

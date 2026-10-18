@@ -1,4 +1,4 @@
-# The farm you walk (v2.3.3136; the farmer's own moves v2.3.3345)
+# The farm you walk (v2.3.3136; the farmer's own moves v2.3.3352)
 
 > Owner, 2026-10-06: *"Hold on I don't want this type of farming. I want your
 > character to be able to walk around on the farm. I want the planting process
@@ -16,7 +16,7 @@
 >
 > And then (2026-10-17): *"Do any animations need to be built? I'd like to
 > have animations during the farming process perhaps on a sprite sheet."* They
-> made three sheets from the prompts they were given (v2.3.3345, "The
+> made three sheets from the prompts they were given (v2.3.3352, "The
 > farmer's own moves" below).
 >
 > And of the first cut (2026-10-18): *"How do you want me to add armor and the
@@ -93,7 +93,7 @@ Farming level can plant. With two or more kinds in the bag, each kind's ripe
 picture sits over the button and a tap picks one. That is the only choice
 farming asks of you, made where you stand.
 
-## The farmer's own moves (v2.3.3345)
+## The farmer's own moves (v2.3.3352)
 
 The owner asked for animations on a sprite sheet. They were given three
 prompts and one reference picture (the fire-lighter with his log taken out),
@@ -174,7 +174,7 @@ cut, at once (`_farmUnderWanted`: asked each frame on the farm, so a change
 made while a bake was on its way is caught too).
 
 The clothes are drawn on him, so they follow his arms in every frame:
-v2.3.3345's first cut made the shirt out of the bare body, and wherever an arm
+v2.3.3352's first cut made the shirt out of the bare body, and wherever an arm
 crossed in front of him the whole arm came out in the shirt's colour. Garments
 drawn on their own never line up: the fire-lighter's still need a nudge every
 frame (`FIRE_GEAR_REG`). These lie within a pixel of the body.
@@ -293,11 +293,13 @@ only while you are on the farm.
 
 The farmer's moves are let go on leaving too (effectsRenderer `_freeFarm`):
 the three bodies (kept on the graphics chip only), the hoe and the can, the
-shirt layers and their dressed copies. The biggest two are the hoe's body
-(1.35 MB) and the hoe itself (1.56 MB). On the farm the page holds 102.1 MB on
-the graphics chip, where v2.3.3136's kneel held 104.6 MB (mp-farmwalk, the
-same test on both). That kneel was the cook's figure, two 4.3 MB strips kept
-after you left the farm. Nothing of the farmer's is kept now.
+nine garments (shirt, plate and greaves for each move, cropped, about 1.9 MB)
+and the shirt's dressed copies. The biggest two are the hoe's body (1.35 MB)
+and the hoe itself (1.56 MB). On the farm the page holds 104.5 MB on the
+graphics chip (102.1 before the garments came), where v2.3.3136's kneel held
+104.6 MB (mp-farmwalk, the same test on both). That kneel was the cook's
+figure, two 4.3 MB strips kept after you left the farm. Nothing of the
+farmer's is kept now.
 
 ## Wire and worker
 
@@ -411,7 +413,7 @@ two pictures still to come.
   worker's farm, the kill switch), `mp-farmorders` and `mp-wheeldoors` (the
   farm's gate) still run.
 - mp-farmwalk's memory check (the farm holding less than the Wheel, the two
-  together) fails, and fails the same way on main (v2.3.3345: the farm 102.1
+  together) fails, and fails the same way on main (v2.3.3352: the farm 104.5
   MB on the graphics chip, 104.6 on main, the Wheel 71.3). Most likely since
   v2.3.3190, which cut the Wheel's from about 104 MB to 72 by keeping its
   ground and objects as colour numbers (CLAUDE.md, "Memory is budgeted"); the
@@ -420,7 +422,7 @@ two pictures still to come.
 ## Not yet
 
 - **The farmer's drawings** (above). His shirt and armour came with the
-  owner's six dressed sheets (v2.3.3345).
+  owner's six dressed sheets (v2.3.3352).
 - **Two small specks** in the outfit with greaves under the tee: a few
   pixels of trouser colour at the kneel's left foot (its second frame) and
   beside the can's splash (its fourth). Each is a pixel or two at phone

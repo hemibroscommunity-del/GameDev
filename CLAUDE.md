@@ -2318,8 +2318,8 @@ remnant to migrate server-side, not a mode to preserve.
         (`farm_open`, the free deed);
       - (v2.3.3136 knelt in the COOK'S crouch, a crate of the owner's art
         where its pan was -- the owner: "Cooking animation might be better" --
-        until v2.3.3345's moves, below);
-      - since v2.3.3345 THE FARMER'S OWN MOVES -- the owner: "I'd like to have
+        until v2.3.3352's moves, below);
+      - since v2.3.3352 THE FARMER'S OWN MOVES -- the owner: "I'd like to have
         animations during the farming process perhaps on a sprite sheet",
         then three ChatGPT sheets of 8 frames (`tools/farm_anim_src/`):
         - DIG plays the hoe (two swings), WATER the can (one pour), PLANT,
@@ -2353,8 +2353,8 @@ remnant to migrate server-side, not a mode to preserve.
         - made behind the farm's loading screen (`ensureStandIn('farm')`,
           `farmFigureReady`), all nine garments whatever you wear (the
           character menu can dress you there), and let go of on leaving
-          (`_freeFarm`): the farm held 102.1 MB on the GPU in the tee where
-          the cook's kneel held 104.6;
+          (`_freeFarm`): the farm holds 104.5 MB on the GPU, the nine
+          garments ~1.9 of it, where the cook's kneel held 104.6;
         - the crates (`make_farm_covers.py`, `farmCovers.js`) are gone;
           `farmwalk` suite §1, `mp-farmanim`: docs/specs/farm-walk.md "The
           farmer's own moves";
