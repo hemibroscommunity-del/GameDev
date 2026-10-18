@@ -13,7 +13,9 @@
  *   2. the Daily Rewards window's ✕ (and the right of its Season tab) lay in
  *      the minimap's box, under the world map's invisible "open" button: a
  *      click on the ✕ opened the world map.  That button lets clicks through
- *      while the window is up, as it does for every .bt-inspect window.
+ *      while the window is up, as it does for every .bt-inspect window (and
+ *      since main's v2.3.3400 the window, with no Season tab, is shorter, so
+ *      the check is the button's, not where the ✕ happens to lie).
  * Both by a REAL mouse click (1440 x 900, the game in its centred column).
  *   3. and on a LAPTOP's window (1366 x 768) the character creator's ENTER
  *      BRO TOWN lay below the screen, unreachable: it is on it now, and a
@@ -95,8 +97,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       strip: document.querySelector('.bt-kb-hints') ? getComputedStyle(document.querySelector('.bt-kb-hints')).display : 'gone' }));
     rec.ok('...and away from the door the key strip is back', !back.prompt && back.strip !== 'none', back);
 
-    /* 2. the Daily Rewards window's ✕ */
-    await P.page.evaluate(() => window.__btDailyRewards && window.__btDailyRewards.open('season'));
+    /* 2. the Daily Rewards window's ✕.  v2.3.3402: since main's v2.3.3400
+       put the season away the window has no tab row and is shorter, so its ✕
+       no longer lies in the minimap's box on this window size -- the rule is
+       checked where it lives instead: while the window is up, the world map's
+       invisible "open" button takes no click anywhere in its box (a click
+       there went to the map), and the ✕ answers one, in that box or not. */
+    await P.page.evaluate(() => window.__btDailyRewards && window.__btDailyRewards.open('today'));
     await P.page.waitForTimeout(1200);
     const x = await P.page.evaluate(() => {
       const c = document.querySelector('[data-daily-close]');
@@ -105,16 +112,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const m = document.querySelector('[data-world-map-open]');
       const mr = m ? m.getBoundingClientRect() : null;
       const inMapBox = !!(mr && r.left < mr.right && r.right > mr.left && r.top < mr.bottom && r.bottom > mr.top);
-      /* the middle of the part of the ✕ that lies in the minimap's box: where
-         the click went to the map */
+      /* the middle of the part of the ✕ that lies in the minimap's box, if
+         any: where the click went to the map */
       const px = inMapBox ? (Math.max(r.left, mr.left) + Math.min(r.right, mr.right)) / 2 : r.left + r.width / 2;
       const py = inMapBox ? (Math.max(r.top, mr.top) + Math.min(r.bottom, mr.bottom)) / 2 : r.top + r.height / 2;
       const at = document.elementFromPoint(px, py);
-      return { x: px, y: py, inMapBox, answers: !!(at && c.contains(at)),
+      /* the map's open button, sampled across its box */
+      const mapTakes = mr ? [0.2, 0.5, 0.8].some((f) => {
+        const el = document.elementFromPoint(mr.left + mr.width * f, mr.top + mr.height * f);
+        return !!(el && (el === m || m.contains(el)));
+      }) : null;
+      return { x: px, y: py, inMapBox, mapTakes, answers: !!(at && c.contains(at)),
         what: at ? at.tagName.toLowerCase() + (at.getAttribute('data-world-map-open') != null ? '[data-world-map-open]' : '') : null };
     });
-    rec.ok('the Daily Rewards ✕ lies in the minimap\'s box (guard: else the next check proves nothing)', !!x && x.inMapBox, x);
-    rec.ok('the Daily Rewards ✕ answers a click there, though it lies in the minimap\'s box',
+    rec.ok('while the Daily Rewards window is up, the world map\'s "open" button takes no click anywhere in its box',
+      !!x && x.mapTakes === false, x);
+    rec.ok(`the Daily Rewards ✕ answers a click${x && x.inMapBox ? ', though it lies in the minimap\'s box' : ''}`,
       !!x && x.answers, x);
     if (x) await P.page.mouse.click(x.x, x.y);
     await P.page.waitForTimeout(900);

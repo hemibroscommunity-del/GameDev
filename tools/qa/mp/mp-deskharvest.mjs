@@ -68,6 +68,17 @@ async function nearest(P, type, used) {
   }, [type, used]);
 }
 
+/* v2.3.3402: the way to a resource can pass Mayor Bro, and a brand-new bro
+   (tut_1 not taken) who passes him gets his welcome, which then stands over
+   the screen wherever the bro goes -- put away as a player would.  Since
+   main's v2.3.3401 re-placed the resources, the commons' nearest tree lies
+   past him from the arrival. */
+async function goTo(P, x, y, ms) {
+  await H.hopTo(P, x, y);
+  await P.page.waitForTimeout(ms);
+  await H.closeNpcDialogue(P).catch(() => {});
+}
+
 async function arrive(P, wsPort) {
   await H.enterWorld(P);
   const myId = await H.readState(P, (S) => S.myId);
@@ -143,8 +154,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     {
       const node = await nearest(P, 'tree', used);
       used.push(node && node.id);
-      await H.hopTo(P, node.x + STAND.tree[0], node.y + STAND.tree[1]);
-      await P.page.waitForTimeout(1500);
+      await goTo(P, node.x + STAND.tree[0], node.y + STAND.tree[1], 1500);
       const before = sumPrefix(await srvInv(wsPort, myId), RES.tree);
       await P.page.keyboard.down('e');
       const st0 = await H.readState(P, (S) => (S._extraction ? { skill: S._extraction.skill, at: S._extraction.startedAt, seq: S._extraction.hits && S._extraction.hits.seq } : null));
@@ -178,8 +188,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     {
       const node = await nearest(P, 'oreVein', used);
       used.push(node && node.id);
-      await H.hopTo(P, node.x + STAND.oreVein[0], node.y + STAND.oreVein[1]);
-      await P.page.waitForTimeout(1500);
+      await goTo(P, node.x + STAND.oreVein[0], node.y + STAND.oreVein[1], 1500);
       const before = sumPrefix(await srvInv(wsPort, myId), RES.oreVein);
       await P.page.keyboard.press('e');
       const r = await ready(P);
@@ -215,8 +224,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     {
       const node = await nearest(P, 'fishSpot', used);
       used.push(node && node.id);
-      await H.hopTo(P, node.x + STAND.fishSpot[0], node.y + STAND.fishSpot[1]);
-      await P.page.waitForTimeout(1500);
+      await goTo(P, node.x + STAND.fishSpot[0], node.y + STAND.fishSpot[1], 1500);
       const before = sumPrefix(await srvInv(wsPort, myId), RES.fishSpot);
       await P.page.keyboard.press('e');
       const r = await ready(P);
@@ -240,8 +248,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     {
       const node = await nearest(P, 'tree', used);
       used.push(node && node.id);
-      await H.hopTo(P, node.x + STAND.tree[0], node.y + STAND.tree[1]);
-      await P.page.waitForTimeout(1500);
+      await goTo(P, node.x + STAND.tree[0], node.y + STAND.tree[1], 1500);
       await P.page.keyboard.press('e');
       const r = await ready(P);
       const look = r === 'ready' ? await deskLook(P) : null;
@@ -294,8 +301,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   try {
     const { myId } = await arrive(L, wsPort);
     const node = await nearest(L, 'tree', []);
-    await H.hopTo(L, node.x + STAND.tree[0], node.y + STAND.tree[1]);
-    await L.page.waitForTimeout(2500);
+    await goTo(L, node.x + STAND.tree[0], node.y + STAND.tree[1], 2500);
     const before = sumPrefix(await srvInv(wsPort, myId), RES.tree);
     const disc = await L.page.evaluate(() => {
       const el = document.querySelector('.bt-rjoy-base');
