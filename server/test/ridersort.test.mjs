@@ -24,7 +24,7 @@ function ok(name, cond, extra) {
   else { fail++; console.log('  FAIL ' + name + (extra !== undefined ? '  ' + JSON.stringify(extra) : '')); }
 }
 
-/* v2.3.3431: Pixi's `zIndex` is an accessor over `_zIndex` (sortMixin), its
+/* v2.3.3445: Pixi's `zIndex` is an accessor over `_zIndex` (sortMixin), its
    setter marking the parent for a re-sort -- and the depth pass now writes
    `_zIndex` itself while the order holds (depthSort.js), so a child added to
    a stand-in layer gets the same accessor */
@@ -146,7 +146,7 @@ console.log('ridersort: a building\'s pieces sort with the building');
   ok('fractional base: the raised peer still draws over the pieces', peer.zIndex > rider.zIndex, { peer: peer.zIndex, rider: rider.zIndex });
 }
 
-/* v2.3.3431: a sort whose order already holds is QUIET -- every key stored,
+/* v2.3.3445: a sort whose order already holds is QUIET -- every key stored,
    nothing marked for a re-sort (Pixi would rebuild the layer's draw list for
    it); the moment the order changes, the keys go through the setter and the
    layer is marked, as before */

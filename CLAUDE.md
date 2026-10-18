@@ -4137,7 +4137,7 @@ Two protocol versions coexist; both must keep working:
   in time for the screen (`frameNote`) -- the owner's first run read 60 in
   every step, 17 ms a frame, and was told the chip took most of each, when
   17 ms is only a 60 Hz screen's own refresh.
-- The processor's side of a phone's frame, side by side (v2.3.3431,
+- The processor's side of a phone's frame, side by side (v2.3.3445,
   docs/specs/draw-lists.md): `QA_DIST=dist-prof node tools/qa/mp/run.mjs
   phoneframe` stands a 3x phone page in BroTown and at a Flame Fields fight
   (mp-frameprofile's profile is BroTown's alone). Per scene it reports:
@@ -4493,7 +4493,7 @@ Two protocol versions coexist; both must keep working:
   - A new key goes in the table and on its button in the same PR; a new
     window's ✕ takes `data-esc` (`"up"` if it acts on pointerup).
   - The keys strip lists 1-3 and sits right of the bell. `mp-deskkeys`.
-- **A STRUCTURAL CHANGE REBUILDS ITS LAYER'S DRAW LIST (v2.3.3431, TRAPS
+- **A STRUCTURAL CHANGE REBUILDS ITS LAYER'S DRAW LIST (v2.3.3445, TRAPS
   §218, docs/specs/draw-lists.md).** Pixi rebuilds a render group's whole
   draw list for any `visible` / `renderable` / `zIndex` / `blendMode` change,
   an addChild or removeChild, a sprite's texture from outside its batch, or

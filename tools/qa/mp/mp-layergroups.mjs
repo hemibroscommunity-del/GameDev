@@ -1,4 +1,4 @@
-/* ═══ v2.3.3431: EACH WORLD LAYER KEEPS ITS OWN DRAW LIST ═══
+/* ═══ v2.3.3445: EACH WORLD LAYER KEEPS ITS OWN DRAW LIST ═══
  *
  * The owner, 2026-10-18: "iterate on what best improves framerate without
  * loss of quality (or negligible loss) for phone gameplay (iPhone, android)".
@@ -109,7 +109,7 @@ const ORDER_WATCH = () => {
   const sorted = world.children.filter((c) => c.label === 'entities' || c.label === 'gatherNodesFront');
   const st = R.__lgOrder = { frames: 0, bad: 0, badAt: [], children: 0 };
   const render = R.render;
-  /* v2.3.3431: after the SCREEN's render only.  The shadows drawn before the
+  /* v2.3.3445: after the SCREEN's render only.  The shadows drawn before the
      frame (shadow-prepass.md) are a render of their own, first in the frame,
      and a re-sort the depth pass asked for is done when the screen's render
      draws the layer -- after the shadows' render the layer can still stand
