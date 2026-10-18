@@ -7453,7 +7453,7 @@ on a computer the card clears the keys strip, not the phone's combat band
 away, shut it is back), mp-deskreach 4 (a laptop: the card clears the minimap
 and the keys strip, its ✕ answers).
 
-## 221. "A filter on one small sprite costs one small shader" (v2.3.3433)
+## 221. "A filter on one small sprite costs one small shader" (v2.3.3453)
 
 **Tempting:** a filter on a single sword or plate is cheap: Pixi draws the
 sprite into a picture its own size, runs the filter's few lines over it and

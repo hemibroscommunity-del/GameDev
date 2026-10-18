@@ -114,8 +114,8 @@ import { weaponMaterial } from '../traits/materialTints.js';
 import { gearArt, gearMaterial } from '../gearVariants.js';
 import { getEquip } from '../gearCatalog.js';
 import { Sprite, Texture } from 'pixi.js';   /* v2.3.2904: the loading-screen warm-up (prewarmGlintPipe) */
-import { SHEEN_LIFT } from './sheenLift.js';   /* v2.3.3433: the sheen's lines, shared with sheenBatch.js */
-import { sheenBatchOn, sheenParams } from './sheenBatch.js';   /* v2.3.3433: the shine drawn in the frame */
+import { SHEEN_LIFT } from './sheenLift.js';   /* v2.3.3453: the sheen's lines, shared with sheenBatch.js */
+import { sheenBatchOn, sheenParams } from './sheenBatch.js';   /* v2.3.3453: the shine drawn in the frame */
 import { isSharpPiece } from '../sharpPixels.js';
 
 const FRAG = `
@@ -518,7 +518,7 @@ function frameBoxNow(spr, out) {
   return out[2] > 0 && out[3] > 0;
 }
 
-/* v2.3.3433: the draw list a sprite is in, marked to be built again (so the
+/* v2.3.3453: the draw list a sprite is in, marked to be built again (so the
    batcher that draws it is chosen again) */
 function rebuildAround(spr) {
   if (!spr || spr.destroyed) return;
@@ -539,7 +539,7 @@ export class GlintSystem {
     this._fullBodies = new Set(); /* v2.3.3142: every full-set figure this frame (yours and others'), whose grade edge goes all round */
     this._figBoxes = new Map();   /* v2.3.3321: a figure's body sprite -> its frame's box this frame (_figIn) */
     this._frameNo = 0;
-    this._batched = new Set();    /* v2.3.3433: the pieces whose shine is drawn in the frame (sheenBatch.js) */
+    this._batched = new Set();    /* v2.3.3453: the pieces whose shine is drawn in the frame (sheenBatch.js) */
     this.stats.batched = 0;
   }
 
@@ -553,7 +553,7 @@ export class GlintSystem {
     this._pool.push(f);
   }
 
-  /* v2.3.3433: a piece's shine taken out of the frame's batcher.  Marking or
+  /* v2.3.3453: a piece's shine taken out of the frame's batcher.  Marking or
      unmarking one re-routes it when its layer's draw list is next built, so
      the list is rebuilt (a filter put on or taken off does the same). */
   _unbatch(spr) {
@@ -724,7 +724,7 @@ export class GlintSystem {
      of the sun on screen (a unit vector, or 0,0 in a zone with no sun). */
   /* `gradesOnly` (v2.3.3142): the light effects are off on this device --
      only a graded piece's look is drawn (see GRADE_LOOK). */
-  /* v2.3.3433: a piece's shine for the frame's batcher (sheenBatch.js): the
+  /* v2.3.3453: a piece's shine for the frame's batcher (sheenBatch.js): the
      numbers the filter's uniforms got below, kept on the sprite.  True when
      any changed since it was last packed -- Pixi packs a piece again only
      when IT changes (it moves, its picture or tint changes), so a new number
@@ -789,11 +789,11 @@ export class GlintSystem {
     for (const [spr, f] of this._on) {
       if (!want.has(spr) || spr.destroyed) { this._release(spr, f); this._on.delete(spr); }
     }
-    /* v2.3.3433: and the frame's shine off anything no longer shining */
+    /* v2.3.3453: and the frame's shine off anything no longer shining */
     for (const spr of this._batched) {
       if (!want.has(spr) || spr.destroyed) { this._unbatch(spr); this._batched.delete(spr); }
     }
-    /* ═══ v2.3.3433: THE ORDINARY SHINE IS DRAWN IN THE FRAME ═══
+    /* ═══ v2.3.3453: THE ORDINARY SHINE IS DRAWN IN THE FRAME ═══
        A piece with no grade and no pinned sweep, drawn by the sharp batcher
        and filtered by nothing else, has its sheen worked out where it is
        drawn (sheenBatch.js) instead of in a pass of its own: the same lines,
@@ -863,7 +863,7 @@ export class GlintSystem {
     this.stats.graded = graded;
     this.stats.targets = targets.length;
     this.stats.lit = this._on.size;
-    this.stats.batched = this._batched.size;   /* v2.3.3433: drawn in the frame */
+    this.stats.batched = this._batched.size;   /* v2.3.3453: drawn in the frame */
     this.stats.sheen = sk > 0 ? this._on.size + this._batched.size : 0;
     this.stats.sweeping = sweeping;
     this._lastTargets = targets;
@@ -874,7 +874,7 @@ export class GlintSystem {
      rather than every frame. */
   probeStats() {
     const t = this._lastTargets || [];
-    /* v2.3.3433: lit in a pass of its own or in the frame */
+    /* v2.3.3453: lit in a pass of its own or in the frame */
     const shines = (q) => this._on.has(q) || this._batched.has(q);
     let body = 0;
     for (const b of this._bodies) if (shines(b)) body++;

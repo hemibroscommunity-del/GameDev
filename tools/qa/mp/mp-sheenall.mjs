@@ -21,7 +21,7 @@
  *     sprite.tint) -- the shader divides the tint back out to find where the
  *     steel art was bright, so this is what makes a copper highlight come out
  *     bright COPPER rather than the wrong colour;
- *     (v2.3.3433: or have its shine drawn IN THE FRAME -- lightfx/sheenBatch.js
+ *     (v2.3.3453: or have its shine drawn IN THE FRAME -- lightfx/sheenBatch.js
  *     -- drawn by the shine's batcher with a sheen and the tint it is drawn
  *     with, the same two conditions on the numbers it carries instead;)
  *   - and the tint is the metal actually worn (materialTints.js).
@@ -207,7 +207,7 @@ function install() {
           const u = f ? f.resources.glintUniforms.uniforms : null;
           const tint = (typeof c.tint === 'number' ? c.tint : 0xffffff) & 0xffffff;
           const ut = u ? ((Math.round(u.uTint[0] * 255) << 16) | (Math.round(u.uTint[1] * 255) << 8) | Math.round(u.uTint[2] * 255)) : null;
-          /* v2.3.3433: or the shine drawn IN THE FRAME (lightfx/sheenBatch.js):
+          /* v2.3.3453: or the shine drawn IN THE FRAME (lightfx/sheenBatch.js):
              the sprite drawn by the shine's batcher (its batch record's
              batcherName, as the last build left it), carrying a sheen, and the
              tint it carries the one it is drawn with */

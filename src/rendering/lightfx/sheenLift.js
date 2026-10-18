@@ -1,4 +1,4 @@
-/* ═══ v2.3.3433: THE SHEEN'S OWN LINES, IN ONE PLACE ═══
+/* ═══ v2.3.3453: THE SHEEN'S OWN LINES, IN ONE PLACE ═══
  * From a piece's colour as drawn (`c`, premultiplied) at `p` in its frame, the
  * straight colour lifted by the permanent sheen (`col`, v2.3.2864 / v2.3.2914 /
  * v2.3.3321) and the art's highlight mask (`hi`), from uTint, uFig, uSun,

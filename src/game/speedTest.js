@@ -12,7 +12,7 @@
  *   - with everything on, as you play;
  *   - with the shadows (and the shine) off, then the metal shine alone, then
  *     the water still, then at a lower resolution (2x, a phone above 2x only);
- *   - v2.3.3433: and the metal shine drawn the old way, a pass of its own for
+ *   - v2.3.3453: and the metal shine drawn the old way, a pass of its own for
  *     each piece (lightfx/sheenBatch.js), which says what drawing it in the
  *     frame saves on that phone (a note, never "the biggest gain");
  *   - v2.3.3447: and the sprites drawn the old way, by three programs instead
@@ -32,7 +32,7 @@
 import { COL } from '@/ui/mobile/dash/common.js';
 import { lightFxOn, setLightFx } from '@/rendering/lightfx/lightFx.js';
 import { sheenOn, setSheen } from '@/rendering/lightfx/glint.js';
-import { sheenBatchOn, setSheenPass } from '@/rendering/lightfx/sheenBatch.js';   /* v2.3.3433 */
+import { sheenBatchOn, setSheenPass } from '@/rendering/lightfx/sheenBatch.js';   /* v2.3.3453 */
 import { oneBatchOn, setOneBatchLive } from '@/rendering/paletteTex.js';   /* v2.3.3447 */
 import { renderDpr, setRenderResLive } from './renderRes.js';
 
@@ -62,7 +62,7 @@ function steps() {
     { k: 'noshadow', label: 'No shadows (and no shine)', off: { light: true } },
     { k: 'noshine', label: 'No metal shine', off: { shine: true } },
   ];
-  /* v2.3.3433: the shine drawn the old way, a pass of its own for each piece
+  /* v2.3.3453: the shine drawn the old way, a pass of its own for each piece
      of metal (lightfx/sheenBatch.js), so the card says what drawing it in
      the frame saves on this phone */
   if (sheenBatchOn()) list.push({ k: 'shinepass', label: 'Metal shine the old way (a pass each)', off: { shinePass: true }, old: true });
@@ -255,7 +255,7 @@ export async function runSpeedTest() {
   }
   const base = rows[0];
   const notes = [];
-  /* v2.3.3433, v2.3.3447: a step that puts back an old way (the shine's
+  /* v2.3.3453, v2.3.3447: a step that puts back an old way (the shine's
      pass each, the three programs) is not a setting to switch off, so it is
      never "the biggest gain"; it says what the new way saves */
   const isOld = (x) => !!(list.find((st) => st.k === x.k) || {}).old;
