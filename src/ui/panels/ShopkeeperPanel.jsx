@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { shopBus } from '../mobile/shopBus.js';
 import { useModalGuard } from '../mobile/modalGuardBus.js'; /* v2.3.2276 */
 import { thumbFor, iconFor, ITEM_NAMES } from '../mobile/dash/InventoryPanel.jsx';
-import { playIsLandscape } from '../mobile/playViewport.js';         /* v2.3.3376: sideways */
-import { dashboardPanelBus } from '../mobile/dashboardPanelBus.js';   /* v2.3.3376: the bag's column */
+import { playIsLandscape } from '../mobile/playViewport.js';         /* v2.3.3377: sideways */
+import { dashboardPanelBus } from '../mobile/dashboardPanelBus.js';   /* v2.3.3377: the bag's column */
 
 /* ═══ v2.3.2059: THE MERCHANT DRAWER ═══
  *
@@ -60,7 +60,7 @@ const DRAWER_H = 226;
    percentage basis inside an overflow-x row resolves against the row, the
    sixth slot keeps that same size instead of squeezing the other five. */
 const SHELF_MIN = 5;
-/* v2.3.3376: ...and never taller than the drawer has room for.  A slot is
+/* v2.3.3377: ...and never taller than the drawer has room for.  A slot is
    square plus its 15px price line, and the fixed DRAWER_H leaves the shelf
    about 83px for them (his name row and the deal row take the rest), so a
    slot over 68px pushed the "HIS SHELF" line up under his name and the ✕
@@ -228,7 +228,7 @@ export function ShopkeeperPanel() {
     return () => { if (quoteTimer.current) clearTimeout(quoteTimer.current); };
   }, [selKey, selSide, selSeq, qty]);
 
-  /* ═══ v2.3.3376: SIDEWAYS, THE BAG IS THE SIDE COLUMN ═══
+  /* ═══ v2.3.3377: SIDEWAYS, THE BAG IS THE SIDE COLUMN ═══
      The owner: "Make sure all actions/buttons can be completed in landscape
      mode."  Upright the bag is the band under this drawer.  Sideways the band
      holds no bag -- it is the side column's 'dashboard' page -- so nothing
@@ -319,7 +319,7 @@ export function ShopkeeperPanel() {
         position: 'fixed',
         /* The band's own frame padding, so the drawer's edges line up with
            the bag panel's left edge and the combat panel's right edge.
-           v2.3.3376: sideways, over the WORLD -- beside the bag's column
+           v2.3.3377: sideways, over the WORLD -- beside the bag's column
            (--world-x, --play-w: where the world begins and how wide it is),
            and clear of the ▴ chip while the column is folded (--land-fold-w)
            -- never over the bag it trades with. */
@@ -375,7 +375,7 @@ export function ShopkeeperPanel() {
         </div>
         <button type="button" onClick={() => shopBus.setOpen(false)} aria-label="Close"
           data-shop-close=""
-          data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3376: Esc presses it (game/deskKeys.js) */
+          data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3377: Esc presses it (game/deskKeys.js) */
           style={{
             position: 'relative',   /* its key cap's anchor */
             width: 30, height: 30, borderRadius: 8, padding: 0, flex: 'none',
@@ -440,7 +440,7 @@ export function ShopkeeperPanel() {
             flex: 1, textAlign: 'center', fontSize: 12,
             color: 'var(--ui-text-secondary, #B6C1BE)',
           }}>{sideways
-            ? 'Tap his shelf to buy · tap your bag to sell'   /* v2.3.3376: it is beside, not below */
+            ? 'Tap his shelf to buy · tap your bag to sell'   /* v2.3.3377: it is beside, not below */
             : 'Tap his shelf to buy · tap your bag below to sell'}</div>
         ) : (
           <>

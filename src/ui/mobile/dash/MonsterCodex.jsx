@@ -399,7 +399,7 @@ function ItemCard({ kind, e, r, onClose }) {
     <div data-cx-item={r.id}
       style={{ position: 'relative', border: '1px solid ' + GOLD_EDGE, borderRadius: 12, padding: '10px 10px 10px', background: 'linear-gradient(#1A2B31, #13232A)' }}>
       <button onClick={onClose} data-cx-item-close aria-label="Close"
-        data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3376: Esc presses it (game/deskKeys.js) */
+        data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3377: Esc presses it (game/deskKeys.js) */
         style={{ position: 'absolute', top: 6, right: 6, width: 40, height: 40, borderRadius: 9, border: '1px solid rgba(229,237,233,.28)',
           background: 'rgba(11,22,27,.6)', color: COL.text, fontFamily: 'inherit', fontSize: 20, fontWeight: 700, cursor: 'pointer', touchAction: 'manipulation' }}>✕</button>
       <div style={{ display: 'flex', gap: 11, alignItems: 'center', paddingRight: 44 }}>

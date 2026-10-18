@@ -107,7 +107,7 @@ const C_PLAYER = 0xf4f0e7, C_OTHER = 0x58b97b, C_MONSTER = 0xe35d5b;
 const FRAME = 7, R_BOX = 8, R_IN = 4, C_KEYLINE = 0x0b161b, C_SLATE = 0x202c32, C_SLATE_HI = 0x3a4b55;
 /* the "tap me" mark's box in the minimap's box, CSS px (drawn below) --
    published with the box (window.__btWheelMini.mark), where the world map's
-   button puts its key beside it (v2.3.3376, game/deskKeys.js) */
+   button puts its key beside it (v2.3.3377, game/deskKeys.js) */
 const EXPAND_MARK = Object.freeze({ x: FRAME + 3, y: MAP_BOT - 19, w: 16, h: 16 });
 /* v2.3.2990: as the zones' minimap stars, held this far in from the box's
    edge -- v2.3.3009: and clear of the frame (was 10) */

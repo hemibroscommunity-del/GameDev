@@ -1,4 +1,4 @@
-/* ═══ v2.3.3376: A COMPUTER'S KEYS, AND THE LETTERS THAT SHOW THEM ═══
+/* ═══ v2.3.3377: A COMPUTER'S KEYS, AND THE LETTERS THAT SHOW THEM ═══
    The owner: "For computer usage if there's a key that makes sense to use for
    a certain action just put the letter next to the icon or action in a
    tasteful way."

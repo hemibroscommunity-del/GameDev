@@ -966,7 +966,7 @@ remnant to migrate server-side, not a mode to preserve.
         gather-hits §13, mirror-audit "tier xp"/"xp fade", `mp-xpfade`,
         `mp-monsterplate` (whose band sweep now raises the weapon's skill):
         docs/specs/xp-decay.md.
-    - since v2.3.3376 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
+    - since v2.3.3377 A COMPUTER CAN FINISH A HARVEST -- the owner: "Make sure
       all actions/buttons can be completed in landscape mode and on the
       computer. For instance I don't think you can harvest lifeskills right now
       on the computer": the gesture was asked for on the right button, which a
@@ -3327,7 +3327,7 @@ Two protocol versions coexist; both must keep working:
   never a window sized for 60 fps (mp-hitreal, mp-staffcast, mp-solospecial,
   mp-ccink were the test); `BT_QA_CPU_THROTTLE=<rate>` runs every page that
   much slower, to try a check as a slow phone sees it.
-- UI REVIEW SCREENSHOTS (v2.3.3376, docs/specs/ui-review.md): the owner's
+- UI REVIEW SCREENSHOTS (v2.3.3377, docs/specs/ui-review.md): the owner's
   "screenshots labelled and bundled for all UI elements in each view ... so I
   can have chatGPT analyze them".  `node tools/qa/ui-review/capture.mjs`
   (after a build; `--views=`, `--only=`) walks a real player through every
@@ -4176,7 +4176,7 @@ Two protocol versions coexist; both must keep working:
     (`_authPutOut`) and handed nothing. In the suite's room a Forget was
     written back over, and a join past its check was handed a new key after
     it (TRAPS §219); login-keys §12 (21).
-- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3376,
+- **A COMPUTER'S KEY IS WORN BY ITS BUTTON (v2.3.3377,
   docs/specs/desktop-keys.md, TRAPS §213).** The owner: "For computer usage
   if there's a key that makes sense to use for a certain action just put the
   letter next to the icon or action in a tasteful way."
