@@ -1,4 +1,4 @@
-/* ═══ v2.3.3404: EACH WORLD LAYER KEEPS ITS OWN DRAW LIST ═══
+/* ═══ v2.3.3424: EACH WORLD LAYER KEEPS ITS OWN DRAW LIST ═══
  *
  * The owner, 2026-10-18: "iterate on what best improves framerate without
  * loss of quality (or negligible loss) for phone gameplay (iPhone, android)".

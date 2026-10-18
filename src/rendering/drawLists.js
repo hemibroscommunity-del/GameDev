@@ -1,6 +1,6 @@
-/* ═══ v2.3.3404: EVERY DRAW LIST REBUILT, ON PURPOSE ═══
+/* ═══ v2.3.3424: EVERY DRAW LIST REBUILT, ON PURPOSE ═══
  *
- * Since v2.3.3404 each world layer is a render group with a draw list of its
+ * Since v2.3.3424 each world layer is a render group with a draw list of its
  * own, rebuilt only when something in it changes (pixiApp.js LAYER_GROUPS,
  * docs/specs/draw-lists.md).  A few live switches decide how a sprite is
  * drawn at the moment it is packed into its batch -- the form shade's

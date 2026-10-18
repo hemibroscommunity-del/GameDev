@@ -42,7 +42,7 @@
  * ground and the World View) is one big sprite, not separate objects.
  *
  * Off switches: `?shade=0` on the URL (per load), `window.__btShadeOff = true`
- * (live, for an on/off pixel diff; since v2.3.3404 a flip rebuilds every draw
+ * (live, for an on/off pixel diff; since v2.3.3424 a flip rebuilds every draw
  * list, drawLists.js, as a still sprite is packed only then).  Probe:
  * `window.__btShade`.
  */
@@ -81,7 +81,7 @@ try {
 export const formShadeOn = () => _on;
 
 let _count = 0;
-/* v2.3.3404: window.__btShadeOff, read below as a plain field */
+/* v2.3.3424: window.__btShadeOff, read below as a plain field */
 const _liveOff = liveSwitch('__btShadeOff');
 
 function mul(c, k) {
@@ -113,11 +113,11 @@ function figureSpan(p) {
   return y1 > y0 ? [y0, y1] : [y1, y0];
 }
 
-/* ═══ v2.3.3404: A FIGURE'S PIECES ARE SHADED AGAIN WHEN ITS SPAN CHANGES ═══
+/* ═══ v2.3.3424: A FIGURE'S PIECES ARE SHADED AGAIN WHEN ITS SPAN CHANGES ═══
    A piece is shaded when Pixi packs it into its batch, and Pixi packs it
    again only when IT changes (it moves, its picture or its tint changes).
    The span it is shaded over comes from the figure's spriteBody, which is
-   invisible, so a new frame on it packs nothing again.  Until v2.3.3404 that
+   invisible, so a new frame on it packs nothing again.  Until v2.3.3424 that
    never showed: the world's whole draw list was rebuilt, every quad packed
    again, every frame (drawLists.js).  Since each layer keeps its own list, a
    piece that stands still keeps the span it was packed with -- so once a
@@ -179,7 +179,7 @@ if (_on && DefaultBatcher && DefaultBatcher.prototype && DefaultBatcher.prototyp
         p = g;
       }
       spec = p._vShadeKids;
-      /* v2.3.3404: listed, its span noted (refreshFigureShades) -- before the
+      /* v2.3.3424: listed, its span noted (refreshFigureShades) -- before the
          span is asked for, so a figure whose body has no picture yet is
          packed again when it has one */
       if (!p._shadeListed) { p._shadeListed = true; _figs.add(p); noteSpan(p); }

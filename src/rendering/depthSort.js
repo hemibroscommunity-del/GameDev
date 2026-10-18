@@ -117,7 +117,7 @@ export function groundOf(c) {
   return Number.isFinite(y) ? y : NaN;
 }
 
-/* ═══ v2.3.3404: A NEW KEY IS WRITTEN QUIETLY WHILE THE ORDER HOLDS ═══
+/* ═══ v2.3.3424: A NEW KEY IS WRITTEN QUIETLY WHILE THE ORDER HOLDS ═══
    The owner: "iterate on what best improves framerate without loss of
    quality (or negligible loss) for phone gameplay".  Pixi's zIndex setter
    marks the layer for a re-sort AND its render group for a whole draw-list
