@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9402df549f20c6eb576810d523c80d2bb5ccb1eb",
+  "tree": "4ec342a804f62df93e1652d3b1a2069c5f230e4c",
+  "committedAt": "2026-10-18T04:16:50-07:00",
+  "subject": "Your trees and ore in the game: each tier its own, small by town and huge at the far end, bigger fish, and each placed clear at its own size (v2.3.3345, v2.3.3401) (#968)",
+  "files": 5875,
+  "bytes": 646597885,
+  "listingSha256": "dcc2fbec9805ed6121ca55d87c06049f3bd64c5a8fd4f3f9b4645424208079cd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
