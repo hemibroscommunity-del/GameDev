@@ -54,9 +54,14 @@ skills, quests, codex/bestiary caches) resets.
      - `botstat:<pid>`, `device:` -- the anti-bot evidence.
   3. Ack `character_reset_done` (in `PRIVILEGED_EVENTS` — server-emitted
      only; a forged one would wipe another player's local caches).
-  4. Evict the session (admin-freeze pattern: `sessions.delete` first,
-     then `close(4005)`) and drop the in-memory playerState so no later
-     handler can `_saveRpg` the old state back over the wipe.
+  4. Drop the in-memory playerState FIRST, so no later handler can
+     `_saveRpg` the old state back over the wipe -- then the player leaves
+     the AFK sweep's way (v2.3.3375): `close(4005)`, `webSocketClose` now,
+     the session gone. The others are told `player_leave`, an open trade
+     window or duel ends as on any disconnect, and the last one out stops the
+     room's tick. (It deleted the session first, the admin freeze's old way:
+     the runtime's own close found nothing, nobody was told, and the tick ran
+     on in an empty room -- TRAPS §217.)
 - Client on `character_reset_done` (wsClient.js): wipe the
   per-character localStorage caches (`bt_rpg bt_stats bt_codex
   bt_bestiary bt_materials bt_zones bt_resume`; KEEP `bt_passphrase`,

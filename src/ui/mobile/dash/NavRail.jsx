@@ -4,7 +4,7 @@ import { COL } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { playIsLandscape } from '../playViewport.js'; /* v2.3.2158: the tap decides by shape */
 import { navButtonSize } from '../sheet/sheetGeometry.js';
-import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3374: each button's key, shown on a computer */
+import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3376: each button's key, shown on a computer */
 
 /* v2.3.1637 (owner mockup): the NAV RAIL — the destinations as icon-only
    buttons down the band's left edge, replacing the full-width bottom
@@ -105,7 +105,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                and mp-hudface is the fifth scenario it killed. */
             data-nav={d.id}
             role="button" aria-label={d.label} aria-pressed={on}
-            /* ═══ v2.3.3374: ITS KEY IN THE CORNER, ON A COMPUTER ═══
+            /* ═══ v2.3.3376: ITS KEY IN THE CORNER, ON A COMPUTER ═══
                The owner: "For computer usage if there's a key that makes
                sense to use for a certain action just put the letter next to
                the icon".  B P J L K O (game/deskKeys.js, which

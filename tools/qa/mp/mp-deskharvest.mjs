@@ -1,4 +1,4 @@
-/* ═══ A COMPUTER CAN FINISH A HARVEST; A SIDEWAYS PHONE STILL DOES (v2.3.3374) ═══
+/* ═══ A COMPUTER CAN FINISH A HARVEST; A SIDEWAYS PHONE STILL DOES (v2.3.3376) ═══
  *
  * Owner, 2026-10-18: "Make sure all actions/buttons can be completed in
  * landscape mode and on the computer.  For instance I don't think you can
@@ -248,7 +248,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('4. at a tree\'s window the right button is on the computer\'s screen, in the game\'s column, with "Drag ↔ or hold E" over it',
         r === 'ready' && !!look && !!look.zone && look.zone.shown && look.zone.inColumn && !!look.hint && look.hint.shown && look.hint.text === 'Drag ↔ or hold E',
         { r, look });
-      /* v2.3.3374: on a laptop's 419 px column the keys strip's rows lay over
+      /* v2.3.3376: on a laptop's 419 px column the keys strip's rows lay over
          the button's left half ("X Jump" on CHOP, the UI review's laptop
          view): it stands aside while a harvest's button is up */
       const clear = await P.page.evaluate(() => {
