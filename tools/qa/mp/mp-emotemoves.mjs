@@ -1,4 +1,4 @@
-/* YOUR BRO MOVES (v2.3.3355, docs/specs/emote-moves.md)
+/* YOUR BRO MOVES (v2.3.3363, docs/specs/emote-moves.md)
  *
  * The fun & social plan's Phase 1 (docs/FUN-SOCIAL-PLAN.md): a wave, a sit,
  * a dance -- the whole drawn bro moved in code (rendering/emoteFx.js), about

@@ -71,7 +71,7 @@ function makeState() {
 
   /* Control: an ordinary client broadcast still relays, so the drop above is
      the new case and not a room that relays nothing. */
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'emote', payload: { id: 'bp_fb_a', emoji: '👋' } })   /* v2.3.3353: a listed emote (emotes.js) */);
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'emote', payload: { id: 'bp_fb_a', emoji: '👋' } })   /* v2.3.3361: a listed emote (emotes.js) */);
   check('...while an ordinary client broadcast (emote) still relays (control)',
     room.eventBuffer.some((e) => e && e.type === 'emote'), room.eventBuffer.map((e) => e && e.type));
 }

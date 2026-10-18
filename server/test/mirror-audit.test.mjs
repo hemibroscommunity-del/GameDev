@@ -2337,7 +2337,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     guesses.length >= 1 && guesses.every((g) => /: 0$/.test(g)), guesses);
 }
 
-/* ═══ v2.3.3353: THE EMOTES THE WORKER RELAYS ARE THE PHONE'S ═══
+/* ═══ v2.3.3361: THE EMOTES THE WORKER RELAYS ARE THE PHONE'S ═══
    The worker relays an emote only when it is on its list (emotes.js), and the
    phone's picker offers -- and its renderer draws -- only its own
    (gameDisplay.js EMOTES / TEXT_EMOTES).  One emoji missing from the worker's
@@ -2351,7 +2351,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     { srv: [SRV_EMOTE.EMOJI.length, SRV_EMOTE.LINES.length], client: [CLIENT_EMOTES.length, CLIENT_TEXT_EMOTES.length] });
 }
 
-/* ═══ v2.3.3355: THE MOVES THE WORKER RELAYS AND KEEPS ARE THE PHONE'S ═══
+/* ═══ v2.3.3363: THE MOVES THE WORKER RELAYS AND KEEPS ARE THE PHONE'S ═══
    A moment move (wave, laugh...) is relayed only when it is on emotes.js
    EMOTE.MOVES, and a held pose (sit, sleep, a dance) kept only when it is on
    poses.js POSE.IDS; the phone's tiles are game/emoteMoves.js.  One missing
