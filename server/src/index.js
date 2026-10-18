@@ -197,6 +197,7 @@ import { wheelTableMethods } from './wheeltables.js'; /* v2.3.3315: which Wheel 
 import { noMansLandMethods } from './nomansland.js'; /* v2.3.3058: No man's land */
 import { pvpBalanceMethods } from './pvpbalance.js'; /* v2.3.3260: PvP hits rolled by the worker, and tuned */
 import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle of a fight -- the body stays */
+import { lastPlaceMethods } from './lastplace.js'; /* v2.3.3327: a reconnect starts where the server last had you */
 import { pvpLungeMethods } from './pvplunge.js'; /* v2.3.3262: the sword's opening lunge, at a player too */
 import { oneFormulaMethods } from './oneformula.js'; /* v2.3.3260: one formula for every fight -- health, monsters' hits, the hit cap, two specials */
 import { pvpExtrasMethods } from './pvpextras.js'; /* v2.3.3264: what a hit does to a monster it does to a player -- the element, the shove, the splash, the burst, the abilities, the bow's burn, the kill's heal, the parry */
@@ -5954,6 +5955,9 @@ export class GameRoom {
       const _drClose = this._drOnClose(session.id);
       if (_drClose) await _drClose;
       if (!_linger) {   /* v2.3.3260: a lingering body keeps all of this until _lingerEnd */
+      /* v2.3.3327: where the worker had them, for the next join to be
+         judged from (lastplace.js) */
+      this._placeRemember(session.id, this.playerState[session.id], Date.now());
       delete this.playerState[session.id];
       /* v2.3.2534: drop the in-memory provenance ledger with the session.
          The record itself is durable in gear_prov:<pid> and reloads on the
@@ -6297,6 +6301,7 @@ Object.assign(GameRoom.prototype, floodMethods); /* v2.3.3274: one socket cannot
 Object.assign(GameRoom.prototype, verifyMethods); /* v2.3.3275: the account check */
 Object.assign(GameRoom.prototype, pvpBalanceMethods); /* v2.3.3260 */
 Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-fight, the body stays */
+Object.assign(GameRoom.prototype, lastPlaceMethods); /* v2.3.3327: a reconnect starts where the server last had you */
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */
 Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */
 Object.assign(GameRoom.prototype, pvpExtrasMethods); /* v2.3.3264: the monster-only extras on players */

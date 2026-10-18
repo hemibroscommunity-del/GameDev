@@ -5,7 +5,8 @@
 
 This is fix 7 of the anti-bot review (docs/specs/antibot-review.md §4: "a
 script moves 6.6 times faster, or anywhere at once"). Two of its three parts
-are done here. The third, the reconnect, is still open (below).
+are done here. The third, the reconnect, followed in v2.3.3327
+(docs/specs/last-place.md).
 
 ## What was wrong
 
@@ -155,26 +156,16 @@ messages a second, and the one-socket limit (flood.js, v2.3.3274) closes it
 in under two seconds, before it reaches a vein. Before, each frame jumped
 hundreds of px, so it arrived quickly and stopped sending.
 
-## Still open: a reconnect lands where it says
+## The reconnect: closed in v2.3.3327
 
-A join may claim any place (join.js `_sanitizeJoinData`). Every join is a
-fresh player state on the server, with no way back and a full budget. So a
-script that reconnects lands where it likes. It's limited only by the
-one-socket limits: 20 new sockets a minute for each internet address
-(flood.js).
-
-The fix is to start a reconnect where the server last had the player. It
-touches the join, so it gets its own change:
-
-- remember where each player was when their socket closed, for a few minutes;
-- judge a reconnect's claim from there, with the time since added to the
-  budget (you can't have walked faster than the limit);
-- a login lands in today's town, whose way into the Wheel then has to be the
-  arrival.
-
-The suite pins today's behaviour ("STILL OPEN: the first way into the Wheel
-on a connection is taken wherever it is"), so closing it is a deliberate
-change.
+A join could claim any place (join.js `_sanitizeJoinData`), and every join was
+a fresh player state with no way back and a full budget, so a script that
+reconnected landed where it liked, 20 new sockets a minute an address. Since
+v2.3.3327 a reconnect starts where the server last had the player
+(docs/specs/last-place.md): the claim is judged from the remembered place with
+the time since added, a login's way into the Wheel is judged from the arrival,
+and the first move after any join is judged. The suite's old "STILL OPEN" pin
+now says what stays open by design: a join with no remembered place.
 
 The server still has no map of water, walls or buildings, so a script also
 walks through them (the review's note).

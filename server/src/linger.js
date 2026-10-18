@@ -128,6 +128,9 @@ export const lingerMethods = {
     if (!ps || !ps.lingering) return;
     ps.lingering = false;
     ps.disconnected = true;
+    /* v2.3.3327: where the body stood, for the next join (lastplace.js) --
+       a resume's own join is judged from it, within RESUME_PX */
+    if (this._placeRemember) this._placeRemember(id, ps, Date.now());
     delete this.playerState[id];
     this._gearProvForget(id);
     const pets = this._petbookDirtyCopy(id);
