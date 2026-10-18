@@ -614,6 +614,22 @@ remnant to migrate server-side, not a mode to preserve.
       `?shadowhp=0` put each back, `window.__btShadowSnap()`; mp-shadowlock
       now steps a whole CSS px across and down: 110x and 6x steadier (TRAPS
       §205).
+    - since v2.3.3458 THE SHADOWS ARE DRAWN BEFORE THE FRAME -- the owner:
+      "iterate on what best improves framerate without loss of quality": the
+      filter was a pass in the MIDDLE of the frame, so a phone's tile-based
+      chip wrote the half-drawn frame out and read it back every frame (~15
+      MB each way at 3x); the pieces now live in a container of their own
+      (shadows.js `cast`, never in the scene; `castIn` moved back by the
+      lock's fraction, lockToWorldGrid's own numbers: TRAPS §223), drawn into
+      `rt` (the screen in CSS px + PAD 2 a side) at the end of the shadows'
+      update, and `shade`, a quad in the layer's place with the filter's own
+      fragment program, draws it; the held frame the same to one level
+      (mp-shadowprepass), the screen bound once less a frame; a throw puts
+      Pixi back (renderHeal) and that page uses the filter; `?shadowpass` is
+      the filter, `window.__btShadowPrepass` the QA's handle (`set` the Speed
+      test's `shadowpass` step, which says what it saves on that phone; the
+      card now counts the screen set aside, `resumes`):
+      docs/specs/shadow-prepass.md.
   - Since v2.3.3001 HITS SOUND LIKE THEIR MATERIAL -- the owner: "modify hit
     sound effects based on material type so hitting wood vs plants etc for
     props and also against monsters (arrow, melee, magic hit sound for
@@ -694,6 +710,31 @@ remnant to migrate server-side, not a mode to preserve.
       - still needed (new recordings): docs/SOUND-GAPS.md; `sound-cues` suite,
         `mp-soundcues`, `mp-cuelevels` (renders every cue: no clipping, the
         levels the comments promise), `mp-farfeel` reads the cues now.
+    - since v2.3.3434 A SECOND LOOK FOUND MORE -- the owner: "Look for more
+      too" (every place still calling the silent beep()/collect(), every
+      server message that shows something and plays nothing), 16 cues more,
+      the same recordings and rules: the farm's harvest and bed; the Gambling
+      Den's dice and weekly pot (`betIn`/`betWon`/`betLost`, the pot's fanfare
+      the winner's alone), the arena's stakes and sign-up; a guild quest's
+      turn-in chime; an alliance war won or lost; the General Store's market
+      with the auction house's sounds; a duel challenge (a blade) and a trade
+      invite (coins); pets out, away and released, and the Snowling, Gobling,
+      Sparklet and Dewdrop answering in their wild kind's voice, smaller
+      (trapping.js `petVoice`, NOISE_OF); and the forge's anvil near the
+      Blacksmith's (`src/game/townAmbience.js`, `?noforge`,
+      `window.__btForge`); the bag's Drink called the browser's window.close()
+      and now closes its card; `sound-cues` §9, `mp-moresounds`; then a
+      third look (the owner: "Good look for more"): the emotes and moves
+      (`src/game/moveSounds.js`, `MOVE_SOUNDS` in data/eventSounds.js, every
+      move chosen: an emoji's pop, a facepalm's slap, a sit's bump, a flop's
+      thump, a flex's sparkle, a cheer's popper) -- yours, other players' at
+      the peer share (a pose heard only if it began once they were near,
+      `PEER_KNOWN_MS`) and the townsfolk's copies (`NPC_K`); a harvest's prize
+      landing in the bag (`bagIn`); and the menu click on a world tap that
+      opens a menu (your bro's chat box, a player's card, a townsperson's
+      window: no <button>, so the delegate never heard them); `sound-cues`
+      §10; `mp-cuelevels` lists the cues kept quiet on purpose (`QUIET_OK`:
+      /roll and /flip at Ace's toss level, the owner's call).
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":
@@ -752,6 +793,18 @@ remnant to migrate server-side, not a mode to preserve.
       or sideways steps it left of the Wheel's minimap (`SPRINT_MAP_CLEAR`);
       `rightCluster` puts Special and Whirlwind a row above it upright and
       beside it sideways, half a button clear; mp-sprint, mp-abilslot.
+    - since v2.3.3455 a sprint starts with the owner's GRUNT (the owner: "a
+      loud incoherent sound for sprint button.  Make it a grunt"): their
+      "Grunt 1" cut to 0.6 s by tools/audio/cut_sprint_grunt.py
+      (`public/sfx/voice/sprint-grunt.mp3`, level in `src/data/sprintGrunt.js`:
+      ~0.25 of a hit as the game plays it, the arrow's flight it replaces
+      ~0.8), `BT_AUDIO.SPRINT_PUSH`, which another player's sprint reads too;
+      running DRY plays it worn out, lower and slower (`sprintOut`) -- the
+      owner: "Maybe alternate between grunt and tired breath", the breath
+      waiting on a recording (made-up sounds are out, v2.3.1103;
+      docs/SOUND-GAPS.md); a tool that measures a sound reads the file's own
+      channels, never ffmpeg's `-ac` (3 dB off either way); mp-sprintpeer,
+      mp-sprint, mp-cuelevels: docs/specs/sprint.md "the owner's grunt".
   - Since v2.3.3008 the Points window's MAX MP has its before/after scene,
     "the only one missing one": both lanes cast specials at one block of
     mana each (`statSim.js` `manaPass`) until "Out of mana", the "+n" bar
@@ -1074,6 +1127,24 @@ remnant to migrate server-side, not a mode to preserve.
         add-ore-art.mjs) is a re-bake, which test-world-core's --check demands
         and which deploys the worker: docs/specs/tier-trees.md "Where each one
         grows".
+      - since v2.3.3443 EVERY ROCK 1.4x, COPPER AS TALL AS THE OLD VEIN -- the
+        owner: "the smaller ore size now exposes the unfinished design work
+        around aligning the players worn items during the animation (shirt
+        doesn't fit during animation).  Can you make the ore the original size
+        again but just scale up the other ores to keep the size differences
+        relatively the same?": in the swing the shirt rides up and a band of
+        bare belly shows under its hem (1,340 px over mine-south's fourteen
+        frames); the old vein (top 102.5 px over the point) left 163 showing,
+        the first cut's copper (top 80) 1,331; the base cannot go back north
+        (the baked rock), so all five are cut 1.4x taller (add-ore-art.mjs
+        `ORE_GROW`): copper 81 x 81, its top back at 102.5, 52 showing (1.2x,
+        the old vein's own size, 685), obsidian 178 x 157; from iron on each
+        meets ORE_TOP_MAX_UP and stands further south (obsidian's base 47 px
+        south of the point), no tier past 39; re-baked: every count kept, 198
+        rocks and 195 trees moved, fishing, the commons' first six, monsters
+        and doors not; 1.2 MB decoded (0.6); `mp-tierore` counts the band
+        against the old vein's picture: docs/specs/tier-ore.md "As tall as the
+        old vein again".
     - since v2.3.3402 EACH LAND'S TREES AND ROCKS WEAR ITS ELEMENT -- the
       owner: "add effects to a pine tree to make it look like it belongs in
       that elemental zone but the wood logs stay the same", "keep in mind
@@ -1851,6 +1922,16 @@ remnant to migrate server-side, not a mode to preserve.
       TRAPS §194, `mp-savedload` (the race made
       certain: Pixi's file held back while a page error sends a report; and the
       context taken bare by the test).
+    - since v2.3.3450 THE WATCHDOG'S SAMPLE NEVER WAITS ON THE GPU -- found by
+      `mp-phoneframe` (the owner: "iterate on what best improves framerate
+      ... for phone gameplay"): all of a sample's time was `gl.getError()`,
+      which makes the page wait for the browser's GPU side to work through the
+      frame, ~10 ms here every 5 s, a hitch. The errors are asked for on a
+      context's FIRST sample only (BroTown.jsx `T.proven`); after that the
+      thumbnail is cleared see-through before the blit (`clearBufferfv`, the
+      clear colour Pixi keeps untouched), and one that comes back see-through
+      everywhere was not copied and is taken the old way. `?wdgeterror` asks
+      every time; `mp-wdsample` counts the calls.
   - Since v2.3.3019 THE WATER MOVES -- the owner: "Does the water move yet",
     then "Yes" to glints and lines of light, the foam lapping at the shore and
     a drift down the rivers:
@@ -1884,6 +1965,21 @@ remnant to migrate server-side, not a mode to preserve.
       hold);
     - test-world-core "the water moves", `mp-wheelwaves`:
       docs/specs/moving-water.md.
+    - since v2.3.3452 THE GROUND UNDER OPEN SEA, AND THE BLACK UNDER THE
+      GROUND, ARE NOT DRAWN -- the owner's "iterate on what best improves
+      framerate without loss of quality": a piece whose field is `uniform`
+      (open sea, no shore in reach) is covered whole by its quad at full
+      strength, so its ground sprite (eight texture reads a px as colour
+      numbers) was drawn for nothing; it is hidden while the water draws and
+      shown the frame the water's live switch puts the quads away
+      (`WheelWater.cover`); and the tile layer's black under every ground (the
+      colour past the world's edge, tileRenderer `bgGfx`) is not drawn while
+      every piece the view touches is laid and the view is inside the world
+      (`WheelGround.coversView`), a screen of paint a frame; the picture the
+      same to the bit both ways; `?seacover=0`, `?groundbg=1`,
+      `window.__btWaves.cover(on)`, `window.__btGroundBg()`; `__btUnderSame`
+      shows the hidden pieces for its check; `mp-seacover`:
+      docs/specs/sea-cover.md.
   - Since v2.3.3020 the view is BACK IN A LITTLE, the bro 64 px tall -- the
     owner: "the framerate looks a bit gritty I think from the scale change
     ... I think char 64 pixels tall was probably best": `VIEW_OUT` 0.77 in
@@ -1910,6 +2006,17 @@ remnant to migrate server-side, not a mode to preserve.
       on the open sea, none on a running river; `?caustics=k` (0-2);
     - test-world-core "the water's frozen web of light taken out", `mp-wheelwaves`:
       docs/specs/moving-water.md.
+    - since v2.3.3448 THE WEB IS WORKED OUT ONLY WHERE IT SHOWS -- the owner's
+      "iterate on what best improves framerate without loss of quality": it
+      fades in and out in big stretches (`brk`), and where it is faded right
+      out (about half the open sea at any moment, a fifth of the shallows and
+      fresh water) the bend, the wobble and the nine cells -- most of the
+      program's work -- were worked out and mixed in at 0; they are skipped
+      (`if (brk > 0.0)`), the picture the same to the bit; `?webskip=0` and
+      `window.__btWaves.webAll(on)` are the program as it was; only a phone
+      shows the saving (software graphics work out every branch for every pixel);
+      mp-wheelwaves 4b draws the water both ways: moving-water.md "Worked out
+      only where it shows".
   - Since v2.3.3022 the TOWN IS LAID ROOMIER -- the owner: "The town center's
     buildings feel too squished together. I think brotown itself might need
     to be bigger to accommodate":
@@ -2463,25 +2570,68 @@ remnant to migrate server-side, not a mode to preserve.
         picture and its timer, in words over the nearest ("4m 12s · Needs
         Watering"); E, a tap on the right stick (wearing the step), the button
         over the dashboard (`FarmBedPrompt.jsx`, a seed picker with 2+ kinds)
-        or a tap on the bed KNEELS you at its back for 1.1-1.5 s, then sends
+        or a tap on the bed WORKS it from its back for 1.1-1.5 s, then sends
         ONE `farm_act` for that bed
         (`src/game/farmWalk.js`); walking away sends nothing; the bed changes
         only on the worker's answer, a harvest flying to the bag; NO worker
         change, and a farm never described is asked for on arrival
         (`farm_open`, the free deed);
-      - the kneel is the COOK'S crouch -- the owner: "Cooking animation might
-        be better. You can use something to occlude the part where the pan
-        or log is": the cook strip's frames 4-6 (the pan held out, clear of
-        the hands) to and fro, worn as the cook wears it (your skin and
-        drawings baked in, shirt, armour, hair and hat on their own layers:
-        effectsRenderer `_placeCookFigure`, shared with cooking), and ONE
-        picture over every layer where the pan is (`_updateFarmKneel`) -- a
-        crate of the dug bed's earth (dig), of seeds (plant) or of water, the
-        compost bin (fertilize), the crate's straw (harvest), all the owner's
-        own art, so it never has to know your look;
-        `tools/world/make_farm_covers.py` makes them and the GENERATED
-        `src/data/farmCovers.js`, and FAILS if one pixel of the pan shows;
-        the firemaking kneel and its mound are gone;
+      - (v2.3.3136 knelt in the COOK'S crouch, a crate of the owner's art
+        where its pan was -- the owner: "Cooking animation might be better" --
+        until v2.3.3439's moves, below);
+      - since v2.3.3439 THE FARMER'S OWN MOVES -- the owner: "I'd like to have
+        animations during the farming process perhaps on a sprite sheet",
+        then three ChatGPT sheets of 8 frames (`tools/farm_anim_src/`):
+        - DIG plays the hoe (two swings), WATER the can (one pour), PLANT,
+          FERTILIZE and HARVEST the kneel, frame by frame in whole turns that
+          fill the step (farmWork.js `FARM_STEP_ANIM`, `FARM_ANIM_TURN`,
+          `farmWorkFrame`); the bits fly and the sound plays where and when
+          the work lands (`FARM_ANIM_BEATS`, the strip's `work`);
+        - `tools/make_farm_anims.py` cuts them: the magenta out, the hoe and
+          the can lifted into strips of their own (the repaint would take the
+          can for trousers), the frames lined up, one head size, the crowns --
+          into `public/sprites/skills/farm-*.png` and the GENERATED
+          `src/data/farmAnims.js`;
+        - DRESSED FROM THE OWNER'S SIX SHEETS -- of the first cut's shirt,
+          made from the bare body: "Whole arm was green", and their plan,
+          each move drawn again in the game's white tee and in its steel
+          armour (`docs/art/farm-moves-reference-*.png`, ART-WISHLIST "The
+          farmer's moves, dressed"): each dressed frame laid on the bare one
+          by the skin of his head and cut into the tshirt's, steelplate's and
+          steelgreaves' `farm*-south` strips (the steel split by what lies
+          under it: skin the plate, trousers and boots the greaves), plus the
+          body under greaves, `farm-*-greaves.png` (`under`: trousers and
+          boots the greaves leave bare taken out). Never garments drawn alone
+          (the fire-lighter's need `FIRE_GEAR_REG`);
+        - he wears your skin, trousers and boots (`_bakeFarmBodies`; the body
+          under greaves when you wear them, baked again as they go on or come
+          off, `_farmUnderWanted`), then your greaves, your shirt with its
+          print (hidden under a plate) and your plate, in their metal, the
+          tool, your hair, hat and beard; his head is drawn
+          `FARM_ANIM_HEAD_WORLD` 31.25 world px, so he stands your height
+          (95-101%);
+        - and your DRAWINGS, face, chest and arms, where the tool measured
+          each on each frame (`ink` in farmAnims.js, the shape of
+          standInInk.js's hand-fitted tables: seeds the game's split floods
+          from, the face's and chest's boxes, and `armCuts` where both hands
+          on the hoe join his arms -- playerSkins `_stampStandInInk`), baked
+          again when you change one; `PREVIEW` writes `ink-<move>.png`;
+        - and the OTHERS ON THE FARM SEE YOU WORK: your move's `ex` carries
+          `farm:<step>:<n>` (farmWork.js `farmExCode`/`parseFarmEx`, the code
+          a lumberjack's carries as 'chop'; the worker relays it unchanged,
+          no worker change, an older screen draws you standing), and their
+          screens draw your farmer (effectsRenderer `_drawPeerFarmer`): in
+          your colours and drawings (their own farmer when you share them,
+          else `_peerFarmFigure`'s bake inside PEER_FIG_BUDGET), dressed, the
+          tool, your head, the step's sound at your share; `mp-farmpeer`;
+        - made behind the farm's loading screen (`ensureStandIn('farm')`,
+          `farmFigureReady`), all nine garments whatever you wear (the
+          character menu can dress you there), and let go of on leaving
+          (`_freeFarm`): the farm holds 104.5 MB on the GPU, the nine
+          garments ~1.9 of it, where the cook's kneel held 104.6;
+        - the crates (`make_farm_covers.py`, `farmCovers.js`) are gone;
+          `farmwalk` suite §1, `mp-farmanim`, `mp-farmink`, `mp-farmpeer`:
+          docs/specs/farm-walk.md "The farmer's own moves";
       - the Feed & Seed's window lost its Beds tab: Visit Your Farm on top,
         "Your farm: 3 ready to harvest · 3 beds to plant" under it, then Seeds
         and Orders;
@@ -2489,7 +2639,8 @@ remnant to migrate server-side, not a mode to preserve.
         (`holdFarmUntilReady`, `src/game/farmTrip.js`), let go on leaving
         (`freeFarmArt`); the map decodes to 22 MB (the cave's 6), held on the
         farm only;
-      - `farmwalk` suite, `mp-farmwalk`, `mp-farm`: docs/specs/farm-walk.md.
+      - `farmwalk` suite, `mp-farmwalk`, `mp-farmanim`, `mp-farm`:
+        docs/specs/farm-walk.md.
   - Since v2.3.3120 PET TRAPPING -- the owner: "your trapping level governs
     what level monster you can capture ... The best success rate for the
     lowest tier monster should be about 1%. And each trap should cost at least
@@ -2667,6 +2818,23 @@ remnant to migrate server-side, not a mode to preserve.
       `quest_reward_stashed` dedupes by the worker's id when it has one (a
       second minted Iron Torso was dropped as a "replay");
     - `armorgrade` suite, `mp-armorgrade` (15): docs/specs/armor-grade-look.md.
+    - since v2.3.3453 THE ORDINARY SHINE IS DRAWN IN THE FRAME -- the owner:
+      "iterate on what best improves framerate without loss of quality":
+      every shining piece was a filter, a render pass each (on a phone's
+      tile-based chip the frame written out and read back in, a piece a
+      frame); a piece with no grade is now drawn by a batcher of its own
+      (`src/rendering/lightfx/sheenBatch.js`: the sharp read, then the
+      filter's very lines, `sheenLift.js`, one text for both), each piece
+      carrying the filter's box (its whole frame, clipped and widened to whole
+      device px on the chip, as FilterSystem does), uFig, the shine colour and
+      strength, the sun and the tint in its corners; a graded piece, a pinned
+      sweep and anything else filtered keep the pass; built behind the loading
+      screen (`warmSheenBatch`); `?sheenpass` is a pass a piece, as before,
+      `window.__btSheenPass`, and the phone's Speed test times that way too
+      (`shinepass`, a note of what the frame way saves); the probe's
+      `batched`; within 2 levels of the passes (their 8-bit picture);
+      `mp-sheenbatch`, mp-crowdbots `BT_CROWD_LOOK` (armoured bots):
+      docs/specs/sheen-batch.md.
   - Since v2.3.3146 THE BRO LOOKS LIKE HIMSELF WHILE HE GATHERS -- the owner:
     "The character's appearance changes during resource gathering activities.
     It needs to stay consistent" (docs/specs/gathering-look.md):
@@ -3484,6 +3652,12 @@ Two protocol versions coexist; both must keep working:
   (`overflow:clip`), and sideways a phone is 300-430px tall -- ENTER BRO
   TOWN sat at y 783 of 390 until the creator became three columns there
   (game.css, the v2.3.3216 block); `mp-cclandscape`, TRAPS §175.
+  And NO DOUBLE-TAP ZOOM (v2.3.3454, the owner: "Double tap to zoom in is
+  enabled during skill point application window ... I got stuck there"):
+  body's `touch-action:none` stops at the nearest box that scrolls, so
+  every element is `manipulation` by default (game.css `*`, the weakest
+  rule there is); anything that must be `none` or `pan-y` says so itself,
+  and nothing is ever set `auto`; `mp-nozoom`, TRAPS §229.
   Two phone scenarios DO run on every PR, each an owner call: `playable`
   (mp-questline, v2.3.1729, client-ci.yml) and `memory-budget`
   (mp-membudget, v2.3.3101, memory.yml -- Conventions, "Memory is
@@ -4050,6 +4224,18 @@ Two protocol versions coexist; both must keep working:
   in time for the screen (`frameNote`) -- the owner's first run read 60 in
   every step, 17 ms a frame, and was told the chip took most of each, when
   17 ms is only a 60 Hz screen's own refresh.
+- The processor's side of a phone's frame, side by side (v2.3.3449,
+  docs/specs/draw-lists.md): `QA_DIST=dist-prof node tools/qa/mp/run.mjs
+  phoneframe` stands a 3x phone page in BroTown and at a Flame Fields fight
+  (mp-frameprofile's profile is BroTown's alone). Per scene it reports:
+  - the frame's cost by stage;
+  - a CPU profile mapped to the source (build `dist-prof` first:
+    `npx vite build --minify false --sourcemap --outDir ../dist-prof`);
+  - the WebGL calls a frame and the draw list's batches;
+  - every draw-list rebuild with its cause.
+  `BT_PF_AB='<switches>'` puts the game as it was beside it, and
+  `BT_PF_VARIANTS='a|b'` ranks address switches. This box draws in software,
+  so read the JavaScript and the GL calls, never the frames a second.
 
 ## Conventions
 
@@ -4197,6 +4383,28 @@ Two protocol versions coexist; both must keep working:
       box's software chip a frame 20-27% longer in BroTown and 14-21% among
       trees and water -- not measured on a phone:
       docs/specs/palette-textures.md.
+    - since v2.3.3447 ONE DRAWING PROGRAM FOR EVERY SPRITE -- the owner:
+      "iterate on what best improves framerate without loss of quality":
+      `ONE_BATCHER` (paletteTex.js) draws what the default, sharp and
+      colour-numbers batchers drew, each branch the very lines of the program
+      it replaces (`SHARP_SAMPLE_GLSL` shared with sharpPixels.js), chosen by a
+      code in the vertex's texture id (`slot + 64 x code`), the colours' atlas
+      bound in the last unit; built behind the loading screen
+      (`setOneBatchRenderer`), the three programs if it does not link;
+      measured on top of v2.3.3449's layers: draw calls a frame 50 -> 30 in
+      BroTown and 71 -> 28 at a fight, program switches 33 -> 6 and 58 -> 8,
+      the same frame to the pixel (`mp-onebatch`); NOT WHERE THE PICTURE IS
+      DRAWN IN SOFTWARE: a software rasterizer runs every branch for every
+      pixel (`tools/qa/qa-branchcost.mjs`), so there the one program costs
+      all three reads and this box drew half the frames a second with it --
+      a renderer whose name says software (`oneBatchChoice`) keeps the three,
+      so the QA box and CI draw as before, and `?onebatch=1` tests the one
+      here (`BT_QA_QUERY=onebatch=1` for any scenario: the harness adds it
+      to every page; TRAPS §225); what one bigger program costs a phone's
+      chip a pixel cannot be measured here, so `?onebatch=0` is the three
+      programs and the Speed test times them as a step of its own
+      (`threeprog`, `setOneBatchLive`), its card saying which way is faster
+      on that phone: docs/specs/one-batch.md.
   - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
     the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
     home again, three times. Each kind of memory's highest reading must stay
@@ -4394,6 +4602,29 @@ Two protocol versions coexist; both must keep working:
   - A new key goes in the table and on its button in the same PR; a new
     window's ✕ takes `data-esc` (`"up"` if it acts on pointerup).
   - The keys strip lists 1-3 and sits right of the bell. `mp-deskkeys`.
+- **A STRUCTURAL CHANGE REBUILDS ITS LAYER'S DRAW LIST (v2.3.3449, TRAPS
+  §218, docs/specs/draw-lists.md).** Pixi rebuilds a render group's whole
+  draw list for any `visible` / `renderable` / `zIndex` / `blendMode` change,
+  an addChild or removeChild, a sprite's texture from outside its batch, or
+  any change to a small Graphics, `clear()` included. Each world layer but
+  `shadows` is its own render group, so such a change rebuilds only its layer
+  (`?nolayergroups` is the world as one list). In the big layers -- the
+  ground (`tiles`) and the depth-sorted objects (`entities`,
+  `gatherNodesFront`) -- make no structural change every frame:
+  - redraw a shape only when what it draws changes, or move or tint it;
+  - the depth sort gives Pixi a key only when the order changes
+    (depthSort.js; `?zindexall` is every key, as before);
+  - an empty shape's `clear()` is no change (quietClear.js, `?loudclear`).
+  `mp-phoneframe`'s rebuild census names every rebuild and its caller. And a
+  still sprite is packed again only when its layer is rebuilt, so a switch
+  read as a sprite is packed (`window.__btShadeOff`, `__btSharpOff`) is a
+  `liveSwitch` (drawLists.js): a flip rebuilds every list; a figure's shade
+  span is re-read by `refreshFigureShades` (formShade.js); and
+  mp-layergroups forces every list to rebuild in a held frame and wants no
+  pixel changed. A layer draws with the world's own camera numbers, an empty
+  one skipped (layerUniforms.js, `?layerpush` is Pixi's push and pop a group):
+  a group's `inverseParentTextureTransform` is read ONCE a frame, as Pixi's
+  getter keeps nothing for a second read.
 - **A SPRITE MASK IS A PASS IN THE MIDDLE OF THE FRAME (v2.3.3436,
   docs/specs/hair-clip-stencil.md).** In Pixi a Sprite set as a `mask` is an
   alpha mask, drawn through a filter: a phone's tile-based chip stops the

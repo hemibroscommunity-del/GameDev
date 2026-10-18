@@ -283,9 +283,8 @@ const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHpFor /* v2.3.3035: a timer harvest's bar reads the node's HP; v2.3.3251: by its type */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
-import { farmWorkFrame } from '@/game/farmWork.js';   /* v2.3.3136: the farmer's frames of the cook's strip */
-import { FARM_COVERS, FARM_STEP_COVER, FARM_COVER_FRAME, FARM_FIGURE_X, FARM_PAN_BOX } from '@/data/farmCovers.js';   /* v2.3.3136: what stands where the cook's pan is */
-import { farmArtUrl } from '@/data/farmArtUrl.js';   /* v2.3.3136: the compost bin's address */
+import { farmWorkFrame, farmAnimOf, farmWorkBeats, parseFarmEx, FARM_BEAT_SOUND } from '@/game/farmWork.js';   /* v2.3.3439: the farmer's own moves, frame by frame; and another player's, off their `ex` */
+import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3439: the owner's three farm animations, cut by tools/make_farm_anims.py */
 import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree */
 import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock */
 import { WheelShatter } from '../wheelShatter.js';
@@ -468,9 +467,40 @@ export const CHOP_STANDIN_H = 136.8;
  * 0.421875 x 1.25), so his 25.2 was 12% UNDER it, not 11% over -- which is
  * what the owner's "about 5% too small" was seeing.  He crouches, so it is
  * the head that is matched, as v2.3.1710 did: 85 art px x 73.9/220 = 28.6.
- * The pan follows (COOK_PAN_DX is a share of this), and so do the farm's
- * kneel and its covers (_updateFarmKneel reads the figure's own scale). */
+ * The pan follows (COOK_PAN_DX is a share of this). */
 export const COOK_STANDIN_H = 73.9;
+
+/* ═══ v2.3.3439: THE FARMER'S SIZE, ONE NUMBER ═══
+ * The farmer's three moves (src/data/farmAnims.js) are cut so his head, ears
+ * to ears at the eyes, is FARM_ANIM_HEAD (64) px wide in every strip -- the
+ * owner's three sheets were drawn at three sizes (heads 143, 121, 114 px) and
+ * tools/make_farm_anims.py brings them to one, so his head stays one size as
+ * he goes from the hoe to the kneel to the can.  This is how many world px
+ * that head is drawn.  Not the walking head's 28.5 (51 art px x 1.061 x
+ * 0.421875 x 1.25, CHOP_STANDIN_H's note): ChatGPT drew this bro a little
+ * big-headed, and at 28.5 he stood 92-94 world px with the hoe and 99 with
+ * the can against your 105.7 -- a farmer 11% shorter than the bro who walked
+ * up to the bed.  At 31.25 he stands 101-103 with the hoe and 109 with the
+ * can (measured off the strips' rest frames, top of the head to the soles;
+ * on a phone mp-farmanim reads 101 and 107 against your 106), your height
+ * within 5% either way, as the upright stand-ins are matched (chop, fire);
+ * his head is 10% over yours, and your hair, hat and beard with
+ * it: they are sized by FARM_ANIM_HEAD / 51 (_skillTraitMul), the
+ * fire-lighter's rule (his 1.98 is his 101 px over 51). */
+export const FARM_ANIM_HEAD_WORLD = 31.25;
+/* the body strip is the man alone (the hoe and the can are a strip of their
+   own), so every skin-coloured island in it is his skin: the floor only drops
+   lone specks */
+const FARM_MIN_BLOB = 12;
+/* the trait keys (crowns, multipliers, the gathering layer) of the three */
+const FARM_POSES = new Set(Object.keys(FARM_ANIMS).map((a) => FARM_ANIMS[a].pose));
+/* v2.3.3439: the garments each move ships, cut from the owner's dressed
+   sheets -- the only shirt, plate and greaves art the game has, which every
+   recolour (copper, iron...) resolves to (gearArtSafe), as at the cook */
+const FARM_GEAR = [['shirt', 'tshirt'], ['chest', 'steelplate'], ['legs', 'steelgreaves']];
+/* v2.3.3439: another player's farmer's sprites, in their layer order
+   (_drawPeerFarmer): body, greaves, shirt, plate, tool */
+const FARM_PEER_LAYERS = ['body', 'legs', 'shirt', 'chest', 'prop'];
 
 /* The pan hangs to the cook's RIGHT and has to stay over the flames, so its
  * offset tracks the figure's height.  Held as a FRACTION of that height rather
@@ -602,9 +632,20 @@ const DRESSED_MAX = 10;
 /* (the fire-lighter's shirt layer is drawn 0.85 of his body -- FIRE_GEAR_REG
    .shirt.scale, declared further down -- so its pixels are that much smaller
    again; found by mp-gatherlook, his stripes 79% of yours without it) */
-const SHIRT_PATTERN_K = { chop: 170 / 94.5, cook: 85 / 25.5, fire: 381 / 94.5 / 0.85, combat: 188 / 94.5 };
+const SHIRT_PATTERN_K = { chop: 170 / 94.5, cook: 85 / 25.5, fire: 381 / 94.5 / 0.85, combat: 188 / 94.5,
+  /* v2.3.3439: the farmer's three, matched by the head as the cook is: his
+     FARM_ANIM_HEAD over the walking head in the 128 sheet */
+  farmhoe: FARM_ANIM_HEAD / 25.5, farmwater: FARM_ANIM_HEAD / 25.5, farmkneel: FARM_ANIM_HEAD / 25.5 };
 /* the cook's shirt is one garment, pinned (COOK_SHIRT_FRAME): only it is baked */
 const DRESSED_ONE_FRAME = { cook: 22 };
+/* v2.3.3439: a dressed strip's cache key -- one place, as the farm waits for
+   its own (_warmFarmDressed) and lets them go (_freeFarm) */
+function _dressedKeyOf(item, pose, dir, look, tint, mirror) {
+  const side = sideForDir(dir);
+  const art = look.art ? look.art[side] : null;
+  return (art ? look.key[side] : 'x') + '.' + look.pat + '.' + (tint ? tint.join('_') : 'x')
+    + '/' + (mirror ? 'm' : 'n') + '/' + item + '/' + pose + '/' + dir;
+}
 function _shirtLookOf(front, back, patternStr) {
   const f = artHasInk(front) ? front : null, b = artHasInk(back) ? back : null;
   const pattern = parsePattern(patternStr, 'shirt');
@@ -619,7 +660,7 @@ import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask */
-import { setStandInMaker, ensureStandIn, standInStarted, standInReady, standInMaking, setPeerStandInCheck } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted; v2.3.3314: + a peer's, in their colours */
+import { setStandInMaker, ensureStandIn, standInStarted, standInReady, standInMaking, setPeerStandInCheck, forgetStandIn, farmFigureReady } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted; v2.3.3314: + a peer's, in their colours */
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { propShade } from '../formShade.js';   /* v2.3.2767: light from above on trees and rocks; v2.3.2893 + snow */
@@ -717,6 +758,15 @@ function _bakeFireSplit(img, skinT, art, clothes) {
 const STANDIN_INK = Object.freeze({
   cook: { fw: COOK_FW, fh: COOK_FH, url: (v) => (v ? COOK_URL.legless : COOK_URL.body), bake: _bakeCookSplit },
   fire: { fw: FIRE_FW, fh: FIRE_FH, url: () => FIRE_URL, bake: _bakeFireSplit },
+  /* v2.3.3439: the farmer's three moves, for another player working a bed
+     (_peerFarmFigure): their colours and their drawings in the one bake, as
+     the lumberjack's are, and under greaves the body cut for them */
+  ...Object.fromEntries(Object.keys(FARM_ANIMS).map((a) => {
+    const A = FARM_ANIMS[a];
+    return ['farm' + a, { fw: A.fw, fh: A.fh, url: (under) => (under ? A.under : A.url),
+      bake: (img, skinT, art, clothes) => ({ cv: recolorStandInSkin(img, skinT, A.fh,
+        { frameW: A.fw, minBlob: FARM_MIN_BLOB, art, regions: A.ink, ...(clothes || {}) }), ink: null }) }];
+  })),
 });
 
 /* ═══ v2.3.3314: ANOTHER PLAYER'S GATHERING FIGURE, IN THEIR COLOURS ═══
@@ -757,7 +807,9 @@ const STANDIN_INK = Object.freeze({
 const PEER_FIG_BUDGET = 16e6;   /* bytes, every peer figure together */
 /* a figure's size before it is made (the bake's own, rounded up), for the
    allowance; what it really holds is counted once it is in */
-const PEER_FIG_EST = Object.freeze({ cook: 4.6e6, fire: 6.3e6, chop: 2.1e6 });
+const PEER_FIG_EST = Object.freeze({ cook: 4.6e6, fire: 6.3e6, chop: 2.1e6,
+  /* v2.3.3439: the farmer's, uncropped (their frames' whole strips) */
+  farmhoe: 1.7e6, farmwater: 1.1e6, farmkneel: 0.7e6 });
 const PEER_FIG_IDLE_MS = 15000;
 /* A bake that failed -- its strip not answering within PEER_FIG_LOAD_MS, or a
    canvas a phone short of memory would not give -- is not tried again for
@@ -883,7 +935,8 @@ function _projSrcPx(tex) {
 }
 
 function _isGatheringStandIn(skillKey) {
-  return skillKey === 'chop' || skillKey === 'cook' || skillKey === 'fire';
+  return skillKey === 'chop' || skillKey === 'cook' || skillKey === 'fire'
+    || FARM_POSES.has(skillKey);   /* v2.3.3439: the farmer's three, in the same layer and capeless */
 }
 
 /* Place the cape and then drop its BACK half under the stand-in body.  The
@@ -2159,7 +2212,9 @@ for (const { lvl, url } of treeArtSources()) {
    The owner's five ore rocks (copper, iron, black steel, titanium,
    obsidian), one a gathering tier, each at its own size from
    src/data/oreArt.js -- 0.6 MB decoded for the five, where the old copper
-   vein, its four colour-mapped twins and their break strip held ~8 MB. */
+   vein, its four colour-mapped twins and their break strip held ~8 MB.
+   v2.3.3443: 1.2 MB, every rock cut 1.4x (tools/world/add-ore-art.mjs
+   ORE_GROW) so that copper hides the miner's shirt's hem as the old vein did. */
 const ORE_TEX = {};
 for (const { lvl, url } of oreArtSources()) {
   _fxLoad(url).then((tex) => { if (tex) ORE_TEX[lvl] = tex; })
@@ -3435,17 +3490,31 @@ export class EffectsRenderer {
     this.cookChestSprite.anchor.set(0.5, 1);
     this.cookChestSprite.visible = false;
     this.gestureLayer.addChild(this.cookChestSprite);   /* v2.3.1713: above trees */
-    /* v2.3.3136: what stands where the cook's pan is when the FARMER kneels
-       in this figure (_updateFarmKneel): created after every layer the cook
-       wears, in the same layer, so it covers all of them -- the body, your
-       drawings, the greaves, the shirt, the plate.  The head's traits are
-       moved into this layer later (_placeSkillTraitsOn) and may come after
-       it; they are on the head, which it never reaches. */
-    this.farmCoverSprite = new Sprite();
-    this.farmCoverSprite.anchor.set(0, 0);
-    this.farmCoverSprite.visible = false;
-    this.farmCoverSprite.label = 'farmCover';
-    this.gestureLayer.addChild(this.farmCoverSprite);
+    /* ═══ v2.3.3439: THE FARMER'S OWN MOVES ═══
+       (_updateFarmWork).  His body baked in your skin, trousers and boots,
+       your shirt over it, and the hoe or the can over both, as drawn: three
+       sprites in this layer, created in that order.  The head's traits are
+       moved into this layer later (_placeSkillTraitsOn) and come after them.
+       v2.3.3439: five, with your armour -- the greaves over the body and under
+       the shirt, the plate over the shirt (it hides it) and under the tool:
+       the cook's order. */
+    this.farmBodySprite = new Sprite();
+    this.farmLegsSprite = new Sprite();
+    this.farmShirtSprite = new Sprite();
+    this.farmChestSprite = new Sprite();
+    this.farmPropSprite = new Sprite();
+    for (const [sp, label] of [[this.farmBodySprite, 'farmBody'], [this.farmLegsSprite, 'farmLegs'], [this.farmShirtSprite, 'farmShirt'],
+      [this.farmChestSprite, 'farmChest'], [this.farmPropSprite, 'farmProp']]) {
+      sp.anchor.set(0.5, 1);
+      sp.visible = false;
+      sp.label = label;
+      this.gestureLayer.addChild(sp);
+    }
+    this._farmFrames = null;   /* anim -> [Texture], in your colours (_bakeFarmBodies) */
+    this._farmUnder = false;   /* v2.3.3439: whether those are the body worn under greaves */
+    this._farmProps = null;    /* anim -> [Texture], the hoe and the can as drawn */
+    this._farmGen = 0;         /* bumped when the farm is let go of: a make on its way drops what it made */
+    this._loadFarmStrips();
     /* v2.3.1710: both cook bodies now load through _loadCookStrips, which bakes
        the PLAYER'S skin into them (owner: the cooking character "has the wrong
        skin color").  v2.3.1114's legs-erased body rides the same bake so the two
@@ -3508,7 +3577,7 @@ export class EffectsRenderer {
     /* v2.3.3077: how each gathering pose is made, for rendering/standIns.js --
        a new renderer (a black screen's rebuild) starts every pose over */
     setStandInMaker((kind) => (kind === 'chop' ? this._makeChop() : kind === 'cook' ? this._makeCook()
-      : kind === 'fire' ? this._makeFire() : Promise.resolve(false)));
+      : kind === 'fire' ? this._makeFire() : kind === 'farm' ? this._makeFarm() : Promise.resolve(false)));
     /* v2.3.3314: and whether a PEER's figure is made, in their colours --
        entityRenderer asks before it hides their body (_peerFigure) */
     setPeerStandInCheck((id, o, kind) => !this._destroyed && this._peerFigureReady(id, o, kind));
@@ -4160,6 +4229,9 @@ export class EffectsRenderer {
        43) and the fire-lighter's (101 and 90-100, at his 512 frame) fit their
        0.91 and 1.98 within a tenth, and stay. */
     this._skillTraitMul = { chop: 0.91, cook: 1.65, fire: 1.98, sword: 1.03, sword_se: 1.03, sword_e: 1.03, sword_n: 1.03, bow_e: 1.0, bow_sw: 1.0, bow_s: 1.0, bow_nw: 1.0, bow_n: 1.0 };
+    /* v2.3.3439: the farmer's three -- his head is FARM_ANIM_HEAD px in every
+       strip, so FARM_ANIM_HEAD / 51, the fire-lighter's rule */
+    for (const a of Object.keys(FARM_ANIMS)) this._skillTraitMul[FARM_ANIMS[a].pose] = FARM_ANIM_HEAD / 51;
     /* crowns.json frame widths MUST match the strip-loading FWs above
        (chop 240, cook 213, fire 384 — v2.3.1715, was 161).  If those strips are
        re-cut, rerun the crown generator with the matching widths or the traits
@@ -4171,7 +4243,12 @@ export class EffectsRenderer {
        of frames 22/23 is gone with the frames themselves.  Cache-busted because
        a browser holding the 29-entry table against an 8-frame strip would clamp
        every hat onto crown[7]. */
-    fetch('/sprites/skills/crowns.json?v=2.3.1715').then((r) => r.json()).then((j) => { this._skillCrowns = j; }).catch(() => {});
+    /* v2.3.3439: + the farmer's three, whose crowns travel with their strips
+       (src/data/farmAnims.js, made with them by tools/make_farm_anims.py) */
+    fetch('/sprites/skills/crowns.json?v=2.3.1715').then((r) => r.json()).then((j) => {
+      for (const a of Object.keys(FARM_ANIMS)) j[FARM_ANIMS[a].pose] = FARM_ANIMS[a];
+      this._skillCrowns = j;
+    }).catch(() => {});
 
     /* v2.3.1713: warm the fire-lighter's SHIRT sheet onto the intro gate.
        _gearStripFrame loads through _fxLoad, so touching it once here registers
@@ -4340,16 +4417,16 @@ export class EffectsRenderer {
     if (ex && ex.skill === 'woodcutting') ensureStandIn('chop', 'chopping');
     else if (ex && ex.skill === 'cooking') ensureStandIn('cook', 'cooking');
     if (S._campfire && S._campfire.alive) ensureStandIn('cook', 'a campfire lit');
-    if (S._farmWork || S.currentZone === 'farm_home') {
-      /* v2.3.3136: the farmer kneels in the cook's figure -- made, with what
-         you wear in that pose, from the moment you are on the farm (under its
-         loading screen), not on the first step: a strip loaded on first sight
-         is a hitch (the preloading law).  _gearStripFrame starts a load and is
-         a lookup after; 'none' asks for nothing. */
-      ensureStandIn('cook', 'the farm');
-      this._gearStripFrame('legs', getEquip('legs'), 'cook', 'south', 213, 0);
-      this._gearStripFrame('chest', getEquip('chest'), 'cook', 'south', 213, 0);
-      this._gearStripFrame('shirt', this._shirtId(), 'cook', 'south', 213, 0);
+    if (S.currentZone === 'farm_home') {
+      /* v2.3.3439: the farmer's own moves, made from the moment you are on the
+         farm (under its loading screen: preloadZoneAssets asks first), not on
+         the first step -- a strip loaded on first sight is a hitch (the
+         preloading law); asked again here for a rebuilt renderer */
+      ensureStandIn('farm', 'the farm');
+    } else if (this._farmFrames || this._farmProps || standInStarted('farm')) {
+      /* ...and let go of off it: they are drawn nowhere else (CLAUDE.md,
+         "Memory is budgeted": art is freed where it stops being used) */
+      this._freeFarm();
     }
     if (S._firemaking) ensureStandIn('fire', 'lighting a fire');
     else if (!standInStarted('fire')) {
@@ -4797,10 +4874,12 @@ export class EffectsRenderer {
      no drawings (those ride their layer, _peerStandInInk), cropped and kept on
      the graphics chip only.  `legless` is the cook's greaves strip.  null
      while it bakes; `peek` looks without starting a bake. */
-  _peerFigFrames(kind, c, legless, now, peek) {
+  _peerFigFrames(kind, c, legless, now, peek, art) {
     const spec = STANDIN_INK[kind];
     if (!spec) return null;
-    const key = (legless ? 'L' : 'B') + '|' + c.key;
+    /* v2.3.3439: `art`, their drawings baked in (the farmer's): one figure per
+       colours AND drawings */
+    const key = (legless ? 'L' : 'B') + '|' + c.key + (art ? '|' + artHash((art.tattooFace || '') + '/' + (art.tattoo || '') + '/' + (art.tattooArm || '')) : '');
     const caches = this._peerFigs || (this._peerFigs = Object.create(null));
     const cache = caches[kind] || (caches[kind] = new Map());
     const hit = cache.get(key);
@@ -4812,7 +4891,7 @@ export class EffectsRenderer {
     pending[kind] = true;
     _loadStandInImg(spec.url(legless), PEER_FIG_LOAD_MS).then((img) => {
       if (this._destroyed) return;
-      const { cv } = spec.bake(img, c.skinT, null, { pantsT: c.pantsT, shoesT: c.shoesT });
+      const { cv } = spec.bake(img, c.skinT, art ? { ...art, mirror: false } : null, { pantsT: c.pantsT, shoesT: c.shoesT });
       const n = Math.max(1, Math.round(cv.width / spec.fw));
       const arr = this._own(_sliceStandIn(cv, spec.fw, spec.fh, n, null, false));
       cache.set(key, { arr, used: Date.now(), bytes: _figBytes(arr) });
@@ -4874,6 +4953,9 @@ export class EffectsRenderer {
       for (const ent of this._remoteSkillSprites.values()) {
         const sp = ent[kind];   /* ent.cook / ent.fire */
         if (sp && sp.texture && sp.texture.source === src) sp.texture = Texture.EMPTY;
+        /* v2.3.3439: and a peer's farmer (_drawPeerFarmer) */
+        const fb = ent.farm && ent.farm.body;
+        if (fb && fb.texture && fb.texture.source === src) fb.texture = Texture.EMPTY;
       }
     }
     this._release(src);   /* the whole release (TRAPS §139) */
@@ -4921,6 +5003,9 @@ export class EffectsRenderer {
      drawings (the lumberjack's do), `shared` whether it is your figure. */
   _peerFigure(kind, o, now, flip, peek) {
     if (!o) return null;
+    /* v2.3.3439: a step on a bed ('farm:<step>:<n>') is the farmer's */
+    const _fx = parseFarmEx(kind);
+    if (_fx) return this._peerFarmFigure(_fx.anim, o, now, peek);
     const eq = o.equip || {};
     const c = _peerStandInColours(o);
     if (kind === 'chop') {
@@ -5208,11 +5293,11 @@ export class EffectsRenderer {
     try { this._publishPeerBlockArms(S); } catch (e) { /* no arm this frame: the shield still draws */ }   /* v2.3.2920 */
     this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
-    /* v2.3.3136: after the cue, which hides the cook's layers every frame: the
-       farmer kneels in them.  Cosmetic -- a throw is logged once and the frame
-       goes on. */
-    try { this._updateFarmKneel(S, now); }
-    catch (e) { if (!this._farmKneelErr) { this._farmKneelErr = true; console.error('[effects] farm kneel threw', e && e.message); } }
+    /* v2.3.3439: the farmer's own moves (v2.3.3136 knelt in the cook's
+       layers, after the cue that hides them).  Cosmetic -- a throw is logged
+       once and the frame goes on. */
+    try { this._updateFarmWork(S, now); }
+    catch (e) { if (!this._farmWorkErr) { this._farmWorkErr = true; console.error('[effects] farm work threw', e && e.message); } }
     /* v2.3.1092: full-character harvest stand-ins for OTHER players
        (chop/cook/fire). Guarded like the remote attack stand-ins. */
     try { this._updateRemoteExtraction(S, now); } catch (e) { /* skip remote skill stand-in */ }
@@ -12675,6 +12760,11 @@ export class EffectsRenderer {
          drop with the figure — otherwise a peer's hat hangs in the air after
          they stop cooking, or follows them into another zone. */
       if (ent.traits) hideSkillTraits(ent.traits);
+      /* v2.3.3439: and a peer's farmer, which has its own (_drawPeerFarmer) */
+      if (ent.farm) {
+        for (const k of FARM_PEER_LAYERS) ent.farm[k].visible = false;
+        hideSkillTraits(ent.farm.traits);
+      }
     }
     /* drawn-height / frame cadence -- copied from the LOCAL figures so a remote
        gatherer reads at the same size: chopper (_updateExtractionCue, 112px @
@@ -12758,9 +12848,12 @@ export class EffectsRenderer {
       const o = others[id];
       if (!o || o._isDead) continue;
       const code = o._ex;
-      if (code !== 'chop' && code !== 'cook' && code !== 'fire') continue;
+      /* v2.3.3439: or a step on a bed of their farm ('farm:<step>:<n>') */
+      const _farmEx = parseFarmEx(code);
+      if (!_farmEx && code !== 'chop' && code !== 'cook' && code !== 'fire') continue;
       if ((o.zone || o.z || 'town') !== zone) continue;
       if (_peerNotDrawn(S, id)) continue;   /* v2.3.3241: not drawn, nor is their stand-in */
+      if (_farmEx) { this._drawPeerFarmer(S, id, o, code, _farmEx, now, pool); continue; }
       const spec = SPEC[code];
       const ox = (o.renderX != null ? o.renderX : o.x) || 0;
       const oy = (o.renderY != null ? o.renderY : o.y) || 0;
@@ -13128,6 +13221,7 @@ export class EffectsRenderer {
         /* v2.3.1574: reap the trait sprites too — they are added to the same
            layer, so leaking them on every peer who leaves is a slow leak. */
         if (ent.traits) for (const k in ent.traits) { if (ent.traits[k]) ent.traits[k].destroy(); }
+        if (ent.farm) this._destroyPeerFarmer(ent);   /* v2.3.3439 */
         pool.delete(id);
       }
     }
@@ -13258,6 +13352,7 @@ export class EffectsRenderer {
         im.onload = () => res(im); im.onerror = rej; im.src = _url;
       }).then((img) => {
         if (this._destroyed) return;   /* v2.3.3074: a rebuild let this renderer go while it loaded */
+        if (this._gearStrips[key] !== 'loading') return;   /* v2.3.3439: let go of while it loaded (_dropGearStrip) */
         const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
         const n = _twin ? _twin.frames : Math.max(1, Math.round(W / fw));
         const w = _twin ? Math.round(W / n) : fw;
@@ -13280,7 +13375,11 @@ export class EffectsRenderer {
           }
         }
         if (packed) {
-          _combatTrimStats.push({ key, url: _url, fullBytes: W * H * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 });
+          /* v2.3.3439: one record a strip -- the farmer's are cut again on
+             every visit to the farm, and this list lives as long as the page */
+          const _ts = { key, url: _url, fullBytes: W * H * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 };
+          const _ti = _combatTrimStats.findIndex((t) => t.key === key);
+          if (_ti >= 0) _combatTrimStats[_ti] = _ts; else _combatTrimStats.push(_ts);
           _combatTrimFrames.set(key, arr);
         }
         registerGearSource(src);
@@ -13294,8 +13393,11 @@ export class EffectsRenderer {
            the loading screen for the ones loaded then).  13.9 MB of canvases
            for a new player's shirt in the Wheel. */
         keepOnGpuOnly(this._captureRenderer, src);
-      }).catch(() => { this._gearStrips[key] = []; });
+      }).catch(() => { if (this._gearStrips[key] === 'loading') this._gearStrips[key] = []; });
       _fxPreload.push(_p);
+      /* v2.3.3439: kept, so a pose made behind a loading screen can wait for
+         its own layers (_makeFarm) */
+      (this._gearStripP || (this._gearStripP = Object.create(null)))[key] = _p;
       return null;
     }
     if (e === 'loading' || !e.length) return null;
@@ -13362,8 +13464,7 @@ export class EffectsRenderer {
     const side = sideForDir(dir);
     const art = look.art ? look.art[side] : null;
     if (!art && !look.pattern) return null;
-    const key = (art ? look.key[side] : 'x') + '.' + look.pat + '.' + (tint ? tint.join('_') : 'x')
-      + '/' + (mirror ? 'm' : 'n') + '/' + item + '/' + pose + '/' + dir;
+    const key = _dressedKeyOf(item, pose, dir, look, tint, mirror);
     const D = this._dressed || (this._dressed = new Map());
     let e = D.get(key);
     if (e) {
@@ -13420,6 +13521,7 @@ export class EffectsRenderer {
       e.arr = arr;
       keepOnGpuOnly(this._captureRenderer, src);
     }).catch(() => { if (D.get(key) === e) e.arr = []; });
+    e.p = p;   /* v2.3.3439: the farmer's are waited for behind the farm's loading screen (_warmFarmDressed) */
     /* your gathering figures, warmed behind the loading screen */
     if (this._warmingDressed) _fxPreload.push(p);
     return null;
@@ -13448,6 +13550,10 @@ export class EffectsRenderer {
       for (const [pose, dir, fw, mirrors] of [['chop', 'west', CHOP_GEAR_FW, [false, true]],
         ['cook', 'south', 213, [false]], ['fire', 'south', FIRE_FW, [false]]]) {
         for (const m of mirrors) this._dressedShirtFrame(item, pose, dir, fw, 0, look, tint, m);
+      }
+      /* v2.3.3439: and the farmer's three, while you are on the farm */
+      if (this._farmFrames) {
+        for (const a of Object.keys(FARM_ANIMS)) this._dressedShirtFrame(item, FARM_ANIMS[a].pose, 'south', FARM_ANIMS[a].fw, 0, look, tint, false);
       }
     } finally { this._warmingDressed = false; }
   }
@@ -15318,7 +15424,8 @@ export class EffectsRenderer {
      baked with your skin (the legless one under greaves), your drawings, the
      shirt, the greaves, the plate, your hair and hat.  Moved here whole from
      _updateExtractionCue, where the campfire's cook is placed, because the
-     FARMER kneels in it too (_updateFarmKneel): one figure, one set of rules.
+     FARMER knelt in it too (until v2.3.3439 gave him the owner's own moves,
+     _updateFarmWork): one figure, one set of rules.
      Returns the body sprite, its transform the one every layer copies. */
   _placeCookFigure(x, y, pscale, cookFi) {
     const COOK_H = COOK_STANDIN_H;
@@ -15397,71 +15504,453 @@ export class EffectsRenderer {
     return sp;
   }
 
-  /* ═══ v2.3.3136: THE FARMER KNEELS AS THE COOK DOES ═══
-     The owner: "Cooking animation might be better.  You can use something to
-     occlude the part where the pan or log is."  While you work a bed
-     (S._farmWork, game/farmWalk.js) your figure is the cook's -- everything you
-     wear, as at the campfire (_placeCookFigure) -- on the frames where the pan
-     is held out to the side, to and fro (farmWork.js farmWorkFrame), and ONE
-     of the owner's pictures stands where the pan is: the crate of earth, of
-     seeds or of water, the compost bin, or the crate's straw
-     (src/data/farmCovers.js, made by tools/world/make_farm_covers.py, which
-     fails if a pixel of the pan would show).  It is drawn over every layer the
-     figure wears -- farmCoverSprite is created after them in the same layer --
-     so it never has to know what you look like.  That is why it is a picture
-     on top and not a bake into your frames: the fire-lighter's first cut baked
-     a mound of earth into the body, and greaves are drawn over the body.
-     The cover is a cache LOOKUP, never a load: the farm's loading screen loads
-     it (farmWorld.js preloadFarmArt), and until it is in, and the cook's pose is
-     made, the walking body stays drawn (standIns.js farmKneelReady). */
-  _updateFarmKneel(S, now) {
-    const cov = this.farmCoverSprite;
-    if (cov) cov.visible = false;
+  /* ═══ v2.3.3439: THE FARMER'S OWN MOVES ═══
+     The owner, 2026-10-17: "I'd like to have animations during the farming
+     process perhaps on a sprite sheet."  They made three in ChatGPT -- the
+     hoe, the watering can, and kneeling with his hands in the soil -- and
+     tools/make_farm_anims.py cut them into strips (src/data/farmAnims.js):
+     digging plays the hoe, watering the can, planting, the compost and the
+     harvest the kneel (farmWork.js FARM_STEP_ANIM, its frames in time).
+     v2.3.3136 knelt in the cook's figure with a crate standing where the pan
+     was (the owner: "Cooking animation might be better ... occlude the part
+     where the pan or log is"); that, its covers and their tool are gone.
+
+     The figure is the plain bro, so it is dressed here, as every gathering
+     stand-in is: his body baked in your skin, trousers and boots
+     (_bakeFarmBodies); over it your greaves, in their metal; your shirt, in
+     its colour, print and pattern (_placeSwingShirt, which hides it under a
+     plate); your plate, in its metal; the hoe or the can over everything, as
+     drawn -- a strip of its own, as the repaint would take the can for
+     trousers, the blade for a boot and the handle for skin; and your hair,
+     hat and beard on his head (_placeSkillTraitsOn, the crowns made with the
+     strips).
+     v2.3.3439: the shirt, plate and greaves are cut from the owner's own
+     sheets drawn again with the bro in the game's white tee and in its steel
+     armour (tools/make_farm_anims.py), so the clothes follow his arms in
+     every frame.  v2.3.3439's shirt was made from the body itself and came
+     out over every arm in front of him, the owner's "Whole arm was green",
+     and these moves had no armour at all.  Under greaves the body is the one
+     the tool cut for them (`under`: his trousers and boots trimmed to the
+     armoured legs, so nothing of them shows round the plates), baked again
+     when the greaves go on or come off.  And your drawings, face, chest and
+     arms, where the tool measured each on each frame (`ink`, the shape of the
+     hand-fitted tables in standInInk.js), re-baked when you change one.
+
+     MEMORY (CLAUDE.md, "Memory is budgeted").  Made on the farm, behind its
+     loading screen (preloadZoneAssets asks for 'farm', standIns.js), and let
+     go of as you leave it (_standInTriggers -> _freeFarm): the three bodies
+     ~2 MB on the graphics chip only, the two tools ~2.2 MB, and each move's
+     three garments cropped, ~1.9 MB for all nine.  All nine whatever you
+     wear: the character menu can dress you mid-visit, and a layer cut on its
+     first draw is a hitch (the preloading law). */
+  _loadFarmStrips() {
+    if (typeof window !== 'undefined' && window.__btProbe) {
+      /* v2.3.3439: mp-farmpeer -- the others' farmers as drawn, and the
+         figures baked for them */
+      window.__btPeerFarmers = () => this._peerFarmersProbe();
+      window.__btPeerFarmFigs = () => Object.keys(FARM_ANIMS).reduce((n, a) => n + ((this._peerFigs && this._peerFigs['farm' + a] && this._peerFigs['farm' + a].size) || 0), 0);
+    }
+    this._makeFarm = () => {
+      const gen = ++this._farmGen;
+      const jobs = [this._bakeFarmBodies(gen)];
+      for (const a of Object.keys(FARM_ANIMS)) {
+        const A = FARM_ANIMS[a];
+        if (A.prop) {
+          jobs.push(Assets.load(A.prop).then((tex) => {
+            if (gen !== this._farmGen || this._destroyed) { Assets.unload(A.prop).catch(() => {}); return; }
+            const arr = [];
+            for (let i = 0; i < A.n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * A.fw, 0, A.fw, A.fh) }));
+            (this._farmProps || (this._farmProps = Object.create(null)))[a] = arr;
+          }));
+        }
+        /* the shirt, plate and greaves, cut and cropped by the gear loader,
+           waited for */
+        for (const [slot, item] of FARM_GEAR) {
+          this._gearStripFrame(slot, item, A.pose, 'south', A.fw, 0);
+          const p = this._gearStripP && this._gearStripP[slot + '/' + item + '/' + A.pose + '/south'];
+          if (p) jobs.push(p);
+        }
+      }
+      jobs.push(this._warmFarmDressed());
+      return Promise.all(jobs).then(() => gen === this._farmGen && !this._destroyed && this._farmReadyNow());
+    };
+    /* the character menu can change what he wears mid-visit: re-bake the
+       bodies as the fire-lighter's are (onSkinChange etc.), only while made */
+    const _refarm = () => { if (this._farmFrames) this._bakeFarmBodies(this._farmGen).catch(() => {}); };
+    this._offs.push(onSkinChange(_refarm), onPantsChange(_refarm), onShoesChange(_refarm));
+    /* v2.3.3439: and his drawings, once the strokes stop, as the lumberjack's
+       (the designer commits every stroke) */
+    let _farmArtT = 0;
+    this._offs.push(onArtChange((id) => {
+      if (id !== 'tattoo' && id !== 'tattooFace' && id !== 'tattooArm') return;
+      clearTimeout(_farmArtT);
+      _farmArtT = setTimeout(_refarm, 400);
+    }), () => clearTimeout(_farmArtT));
+  }
+
+  /** Every animation's body, and the tool of each that holds one. */
+  _farmReadyNow() {
+    return !!this._farmFrames && Object.keys(FARM_ANIMS).every((a) => {
+      const f = this._farmFrames[a];
+      return !!f && f.length === FARM_ANIMS[a].n && (!FARM_ANIMS[a].prop || !!(this._farmProps && this._farmProps[a]));
+    });
+  }
+
+  /* The three bodies in your skin, trousers and boots.  The strips hold the
+     man alone, so the repaint has nothing to tell him from: every skin-, olive-
+     and boot-grey pixel is his (FARM_MIN_BLOB only drops lone specks).
+     v2.3.3439: under greaves, the bodies cut for them (`under`): his trousers
+     and boots trimmed to the armoured legs, so neither shows round the
+     plates.  The newest bake wins: one started before it drops what it made. */
+  _farmUnderWanted() { return !!gearArtSafe('legs', getEquip('legs')); }
+  _bakeFarmBodies(gen) {
+    const names = Object.keys(FARM_ANIMS);
+    const under = this._farmUnderWanted();
+    const seq = this._farmBakeSeq = (this._farmBakeSeq || 0) + 1;
+    this._farmBakingUnder = under;
+    return Promise.all(names.map((a) => _loadStandInImg((under && FARM_ANIMS[a].under) || FARM_ANIMS[a].url))).then((imgs) => {
+      if (gen !== this._farmGen || this._destroyed || seq !== this._farmBakeSeq) return;
+      const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
+      const pantsT = pantsTarget(getPants()), shoesT = shoesTarget(getShoes());
+      /* v2.3.3439: and your drawings -- face, chest and arms -- where the
+         tool measured each on each frame (FARM_ANIMS[a].ink).  He faces you
+         and is never drawn flipped, so the FRONT drawings, as the cook's. */
+      const _base = localBodyArt(false);
+      const art = _base ? { ...artForFacing(_base, 'south'), mirror: false } : null;
+      /* whether these carry drawings: a peer's farmer is drawn from yours only
+         when neither of you has any (_peerFarmFigure) */
+      const inked = !!art && (artHasInk(art.tattooFace) || artHasInk(art.tattoo) || artHasInk(art.tattooArm));
+      const frames = Object.create(null);
+      names.forEach((a, i) => {
+        const A = FARM_ANIMS[a];
+        const cv = recolorStandInSkin(imgs[i], skinT, A.fh, { frameW: A.fw, minBlob: FARM_MIN_BLOB, pantsT, shoesT, probe: 'farm-' + a, art, regions: A.ink });
+        _probeStandInSkin('farm-' + a, cv);
+        const arr = this._own(_sliceStandIn(cv, A.fw, A.fh, A.n, 'farm-' + a, false));
+        try { arr[0].source.label = 'farm-' + a + ' (baked)'; } catch (e) { /* the label is QA-only */ }
+        frames[a] = this._gpuOnly(arr);
+      });
+      const old = this._farmFrames;
+      this._farmFrames = frames;
+      this._farmUnder = under;
+      this._farmLook = _standInColourKey(skinT, pantsT, shoesT);
+      this._farmInked = inked;
+      if (old) this._letGo(Object.keys(old).map((a) => old[a]));
+      /* QA (mp-farmwalk): which body the last bake made, so a test that puts
+         greaves on waits for it before it works a bed */
+      if (typeof window !== 'undefined' && window.__btProbe) {
+        window.__btFarmBody = { under, seq, at: Date.now() };
+        /* and (mp-farmink) the frames themselves, to read your drawings off */
+        window.__btFarmFrames = () => this._farmFrames;
+      }
+    });
+  }
+
+  /* your printed or patterned shirt's dressed copy of each layer, baked now,
+     behind the farm's loading screen, as your other gathering figures' are */
+  _warmFarmDressed() {
+    const look = this._myShirtLook();
+    const item = gearArtSafe('shirt', this._shirtId());
+    if (!look || !item) return Promise.resolve();
+    const tint = shirtFill(getShirt(), getShirtColor());
+    const ps = [];
+    for (const a of Object.keys(FARM_ANIMS)) {
+      const A = FARM_ANIMS[a];
+      this._dressedShirtFrame(item, A.pose, 'south', A.fw, 0, look, tint, false);
+      const e = this._dressed && this._dressed.get(_dressedKeyOf(item, A.pose, 'south', look, tint, false));
+      if (e && e.p) ps.push(e.p);
+    }
+    return Promise.all(ps);
+  }
+
+  /** One gear layer let go of for good -- its frames, its source, the
+   *  loader's record -- so asking for it again loads it again. */
+  _dropGearStrip(slot, item, pose, dir) {
+    item = gearArtSafe(slot, item);
+    if (!item) return;
+    const key = slot + '/' + item + '/' + pose + '/' + dir;
+    const e = this._gearStrips[key];
+    delete this._gearStrips[key];
+    if (this._gearStripP) delete this._gearStripP[key];
+    _combatTrimFrames.delete(key);
+    if (Array.isArray(e) && e.length) this._letGo([e]);
+  }
+
+  /** Leaving the farm: everything the farmer's moves hold, let go of. */
+  _freeFarm() {
+    this._farmGen++;
+    forgetStandIn('farm');
+    /* v2.3.3439: and the other players' farmers -- their sprites (which draw
+       from your strips, tools and garments) and the figures baked for them */
+    if (this._remoteSkillSprites) for (const ent of this._remoteSkillSprites.values()) this._destroyPeerFarmer(ent);
+    if (this._peerFigs) {
+      for (const a of Object.keys(FARM_ANIMS)) {
+        const cache = this._peerFigs['farm' + a];
+        if (cache) for (const k of [...cache.keys()]) this._dropPeerFig('farm' + a, k);
+      }
+    }
+    for (const sp of [this.farmBodySprite, this.farmLegsSprite, this.farmShirtSprite, this.farmChestSprite, this.farmPropSprite]) {
+      if (sp && !sp.destroyed) { sp.visible = false; sp.texture = Texture.EMPTY; }
+    }
+    if (this._farmFrames) {
+      const f = this._farmFrames;
+      this._farmFrames = null;
+      this._letGo(Object.keys(f).map((a) => f[a]));
+    }
+    if (this._farmProps) {
+      this._farmProps = null;
+      for (const a of Object.keys(FARM_ANIMS)) if (FARM_ANIMS[a].prop) Assets.unload(FARM_ANIMS[a].prop).catch(() => {});
+    }
+    for (const a of Object.keys(FARM_ANIMS)) {
+      const pose = FARM_ANIMS[a].pose;
+      for (const [slot, item] of FARM_GEAR) this._dropGearStrip(slot, item, pose, 'south');
+      if (this._dressed) {
+        for (const [k, v] of [...this._dressed]) {
+          if (!k.endsWith('/' + pose + '/south')) continue;
+          this._dressed.delete(k);
+          if (v && v.arr && v.arr.length) this._letGo([v.arr]);
+        }
+      }
+    }
+  }
+
+  /* ═══ v2.3.3439: ANOTHER PLAYER WORKING A BED ═══
+     The others on your farm saw you standing at a bed while you worked it:
+     the steps went only to the worker.  Your move now carries the step as its
+     `ex` ('farm:<step>:<n>', farmWork.js farmExCode), as a lumberjack's
+     carries 'chop', and their screens draw your farmer from it: the step's
+     move from its first frame, at your boots, in your colours and with your
+     drawings, your greaves, shirt and plate in their metal, the hoe or the
+     can, your hair, hat and beard, and the step's sound where its work lands,
+     at your share by distance.  The figure is yours when you wear their
+     colours and neither of you has drawings, else one baked for yours
+     (_peerFigFrames, per colours and drawings, within the one allowance every
+     peer figure shares, PEER_FIG_BUDGET, let go of 15 s after nobody drew
+     it).  Their walking body is hidden only while it is drawn (entityRenderer
+     asks _peerFigureReady), so until it is made they are seen standing, as
+     before.  On the farm only: the moves' strips, tools and garments are
+     loaded there (_makeFarm) and let go of on leaving (_freeFarm). */
+  _peerFarmFigure(anim, o, now, peek) {
+    const A = FARM_ANIMS[anim];
+    if (!A || !o || !this._farmFrames || !this._farmReadyNow()) return null;
+    const eq = o.equip || {};
+    /* under greaves, the body cut for them, once their greaves' farm strip is
+       in (every garment is loaded with the farm) */
+    const under = !!gearArtSafe('legs', eq.legs) && !!this._gearStripFrame('legs', eq.legs, A.pose, 'south', A.fw, 0);
+    const c = _peerStandInColours(o);
+    const art = _peerChopArt(o);
+    if (!art && !this._farmInked && c.key === this._farmLook && under === !!this._farmUnder) {
+      const arr = this._farmFrames[anim];
+      if (arr && arr.length === A.n) return { arr, under, shared: true };
+    }
+    const arr = this._peerFigFrames('farm' + anim, c, under, now, peek, art);
+    return arr && arr.length === A.n ? { arr, under, shared: false } : null;
+  }
+
+  /* A peer's farmer, drawn as yours is (_updateFarmWork), for _updateRemoteExtraction */
+  _drawPeerFarmer(S, id, o, code, fx, now, pool) {
+    const A = FARM_ANIMS[fx.anim];
+    const fig = A && S.currentZone === 'farm_home' ? this._peerFarmFigure(fx.anim, o, now, false) : null;
+    if (!fig) return;   /* their walking body stays drawn: entityRenderer asked the same */
+    let ent = pool.get(id);
+    if (!ent) { ent = {}; pool.set(id, ent); }
+    /* the step's clock from when its code came in; a new step, or a figure not
+       drawn last frame, starts over */
+    if (ent._exCode !== code || !ent._wasOn) { ent._exCode = code; ent._exStart = now; ent._farmBeat = 0; }
+    ent._onNow = true;
+    if (!ent.farm) {
+      /* made in their layer order, the head's traits last, over the tool;
+         the layers stand on their bottom middle, as yours do (the traits are
+         placed by their own rule) */
+      const mk = () => { const sp = new Sprite(); sp.visible = false; this.gestureLayer.addChild(sp); return sp; };
+      const F = {};
+      for (const k of FARM_PEER_LAYERS) { F[k] = mk(); F[k].anchor.set(0.5, 1); }
+      F.traits = { hair: mk(), beard: mk(), species: mk(), eyestyle: mk(), eyewear: mk(), hat: mk() };
+      ent.farm = F;
+    }
+    const F = ent.farm;
+    const t = now - (ent._exStart || now);
+    const fi = Math.min(fig.arr.length - 1, farmWorkFrame(fx.step, t, fx.ms));
+    const zone = S.currentZone;
+    const ox = (o.renderX != null ? o.renderX : o.x) || 0;
+    const oy = (o.renderY != null ? o.renderY : o.y) || 0;
+    const feetY = oy + playerGroundDy(zone, ox, oy);
+    const pscale = zonePlayerScale(zone, ox, feetY, TILE) || 1;
+    const bl = _peerBuild(o);   /* their build, as on their walking body */
+    const k = (FARM_ANIM_HEAD_WORLD / FARM_ANIM_HEAD) * pscale;
+    const body = F.body;
+    body.texture = fig.arr[fi] || Texture.EMPTY;
+    body.scale.set(k * bl.sx, k * bl.sy);
+    body.x = ox - (A.foot[0] - A.fw / 2) * body.scale.x;
+    body.y = feetY + (A.fh - A.foot[1]) * body.scale.y;
+    body.visible = true;
+    const place = (spr, tex) => {
+      if (!spr) return;
+      if (!tex) { spr.visible = false; return; }
+      spr.texture = tex;
+      spr.scale.set(body.scale.x, body.scale.y);
+      spr.x = body.x; spr.y = body.y;
+      spr.visible = true;
+    };
+    const eq = o.equip || {};
+    place(F.legs, this._gearStripFrame('legs', eq.legs, A.pose, 'south', A.fw, fi));
+    F.legs.tint = gearTint(eq.legs);
+    const oShirt = (eq.shirt !== undefined) ? eq.shirt : ((o.shirt && o.shirt !== 'none') ? 'tshirt' : 'none');
+    this._placeSwingShirt(F.shirt, place, oShirt, eq.chest, A.pose, 'south', A.fw, fi, o.shirtColor, o.shirt || 'tshirt', this._peerShirtLook(o));
+    place(F.chest, this._gearStripFrame('chest', eq.chest, A.pose, 'south', A.fw, fi));
+    F.chest.tint = gearTint(eq.chest);
+    const pf = this._farmProps && this._farmProps[fx.anim];
+    place(F.prop, pf ? pf[Math.min(fi, pf.length - 1)] : null);
+    const looks = {
+      hair: o.hair, hairColor: o.hairColor,
+      facialhair: o.facialhair, facialHairColor: o.facialHairColor,
+      eyewear: o.eyewear, eyewearColor: o.eyewearColor,
+      eyeStyle: o.eyeStyle, eyeColor: o.eyeColor,
+      species: o.species, skin: o.skin,
+      headwear: o.headwear, hatColor: o.hatColor,
+    };
+    this._placeSkillTraitsOnFor(A.pose, body, fi, 'south', false, looks, F.traits);
+    /* the step's sound where its work lands, at their share by distance */
+    if (ent._farmBeatsFor !== code) { ent._farmBeatsFor = code; ent._farmBeats = farmWorkBeats(fx.step, fx.ms); }
+    const beats = ent._farmBeats;
+    while (ent._farmBeat < beats.length && t >= beats[ent._farmBeat]) {
+      ent._farmBeat++;
+      const snd = FARM_BEAT_SOUND[fx.step];
+      const share = peerShare(S, ox, oy);
+      if (snd && share > 0 && typeof window !== 'undefined' && window.BT_AUDIO) {
+        try { window.BT_AUDIO.play(snd.key, { vol: snd.vol * share, rate: snd.rate }); } catch (e) { /* sound only */ }
+      }
+    }
+    /* for the QA probe (__btPeerFarmers) */
+    ent._farmFi = fi; ent._farmAnim = fx.anim; ent._farmShared = !!fig.shared; ent._farmUnder = !!fig.under;
+  }
+
+  _destroyPeerFarmer(ent) {
+    const F = ent && ent.farm;
+    if (!F) return;
+    for (const k of FARM_PEER_LAYERS) if (F[k] && !F[k].destroyed) F[k].destroy();
+    for (const k in F.traits) if (F.traits[k] && !F.traits[k].destroyed) F.traits[k].destroy();
+    ent.farm = null;
+  }
+
+  /* QA (mp-farmpeer): every peer's farmer as drawn this frame */
+  _peerFarmersProbe() {
+    const out = {};
+    const kids = this.gestureLayer ? this.gestureLayer.children : [];
+    const at = (sp) => (sp && sp.visible ? kids.indexOf(sp) : -1);
+    if (this._remoteSkillSprites) {
+      for (const [id, ent] of this._remoteSkillSprites) {
+        const F = ent.farm;
+        if (!F) continue;
+        const b = F.body;
+        /* the frame's own box as drawn: its middle across and its bottom,
+           whatever the sprite's anchor */
+        const left = b.x - b.anchor.x * b.width, top = b.y - b.anchor.y * b.height;
+        out[id] = { on: !!ent._onNow && !!b.visible, frame: ent._farmFi, anim: ent._farmAnim, shared: ent._farmShared, under: ent._farmUnder,
+          code: ent._exCode, x: b.x, y: b.y, scaleY: b.scale.y,
+          drawn: { midX: left + b.width / 2, bottom: top + b.height },
+          order: { body: at(F.body), legs: at(F.legs), shirt: at(F.shirt), chest: at(F.chest), prop: at(F.prop), hat: at(F.traits.hat) },
+          tints: { legs: F.legs.visible ? F.legs.tint : null, chest: F.chest.visible ? F.chest.tint : null },
+          figures: typeof window !== 'undefined' && window.__btPeerFarmFigs ? window.__btPeerFarmFigs() : null };
+      }
+    }
+    return out;
+  }
+
+  /* While you work a bed (S._farmWork, game/farmWalk.js): the step's
+     animation at its frame, its boots where yours are.  Drawn for as long as
+     the step stands, its last frame held past doneAt: the body is hidden for
+     exactly that long (entityRenderer _chopHide), and the step is ended by the
+     game's tick (farmWalk.js), whose clock this frame's may be a moment ahead
+     of -- a `now > doneAt` return here drew neither body nor figure. */
+  _updateFarmWork(S, now) {
+    const body = this.farmBodySprite, shirt = this.farmShirtSprite, prop = this.farmPropSprite;
+    const legs = this.farmLegsSprite, chest = this.farmChestSprite;
+    if (!body) return;
+    body.visible = false;
+    for (const sp of [legs, shirt, chest, prop]) if (sp) sp.visible = false;
+    /* v2.3.3439: greaves put on or taken off on the farm: the other body,
+       baked now.  Asked here rather than by a listener, so a change made while
+       a bake was on its way is caught too. */
+    if (this._farmFrames && S && S.currentZone === 'farm_home' && this._farmBakingUnder !== this._farmUnderWanted()) {
+      this._bakeFarmBodies(this._farmGen).catch(() => {});
+    }
     const w = S && S._farmWork;
-    if (!w || !cov || !S.player || S.currentZone !== 'farm_home' || this._selfCorpse) return;
-    if (S._extraction || !this.cookSprite || !this._cookFrames.length || !standInReady('cook')) return;
-    /* drawn for as long as the step stands, its last frame held past doneAt:
-       the body is hidden for exactly that long (entityRenderer _chopHide), and
-       the step is ended by the game's tick (farmWalk.js), whose clock this
-       frame's may be a moment ahead of -- a `now > doneAt` return here drew
-       neither body nor figure for that frame */
-    const name = FARM_STEP_COVER[w.step];
-    const c = name ? FARM_COVERS[name] : null;
-    const url = c ? (c.art ? farmArtUrl(c.art) : c.url) : null;
-    const tex = url ? Assets.cache.get(url) : null;
-    if (!tex) return;
+    if (!w || !S.player || S.currentZone !== 'farm_home' || this._selfCorpse) return;
+    if (S._extraction || !farmFigureReady() || !this._farmFrames) return;
+    const anim = farmAnimOf(w.step);
+    const A = FARM_ANIMS[anim];
+    const frames = this._farmFrames[anim];
+    if (!A || !frames || !frames.length) return;
+    /* QA (mp-farmanim): a frame held still while it is pictured -- a
+       screenshot holds the page up long enough that a step's clock alone
+       would show a later frame */
+    const hold = typeof window !== 'undefined' && window.__btProbe && Number.isInteger(window.__btFarmHoldFrame) ? window.__btFarmHoldFrame : null;
+    const fi = Math.min(frames.length - 1, hold != null ? Math.max(0, hold) : farmWorkFrame(w.step, now - w.startedAt, w.doneAt - w.startedAt));
     const P = S.player;
     const feetY = P.y + playerGroundDy(S.currentZone, P.x, P.y);
     const pscale = zonePlayerScale(S.currentZone, P.x, feetY, TILE) || 1;
-    const F = FARM_COVER_FRAME;
-    const s = (COOK_STANDIN_H / F.h) * pscale * _localBuild().sx;
-    /* the cook's boots where yours were: its cell is wide for the pan */
-    const fi = farmWorkFrame(now - w.startedAt, w.doneAt - w.startedAt);
-    const sp = this._placeCookFigure(P.x + (F.w / 2 - FARM_FIGURE_X) * s, feetY, pscale, fi);
-    const kx = sp.scale.x, ky = sp.scale.y, b = c.box;
-    cov.texture = tex;
-    cov.x = sp.x + (b[0] - F.w / 2) * kx;
-    cov.y = sp.y + (b[1] - F.h) * ky;
-    cov.scale.set(((b[2] - b[0]) * kx) / tex.width, ((b[3] - b[1]) * ky) / tex.height);
-    cov.visible = true;
-    /* the cover's mouth -- the crate's opening, the bin's compost -- where
-       what you take from it flies from (farmWorld.js _burst): not the hands,
-       which are at the figure's chin, so the bits flew across its face */
-    S._farmHands = { x: sp.x + (c.mouth[0] - F.w / 2) * kx, y: sp.y + (c.mouth[1] - F.h) * ky, at: now };
+    const bl = _localBuild();   /* your build, as on the body */
+    const k = (FARM_ANIM_HEAD_WORLD / FARM_ANIM_HEAD) * pscale;
+    body.texture = frames[fi];
+    body.scale.set(k * bl.sx, k * bl.sy);
+    /* the point between his boots where yours are */
+    body.x = P.x - (A.foot[0] - A.fw / 2) * body.scale.x;
+    body.y = feetY + (A.fh - A.foot[1]) * body.scale.y;
+    body.visible = true;
+    const place = (spr, tex) => {
+      if (!spr) return;
+      if (!tex) { spr.visible = false; return; }
+      spr.texture = tex;
+      spr.scale.set(body.scale.x, body.scale.y);
+      spr.x = body.x; spr.y = body.y;
+      spr.visible = true;
+    };
+    /* v2.3.3439: what you wear, each cut from the owner's dressed sheets: your
+       greaves in their metal; your shirt over them, hidden under a plate; your
+       plate in its metal over that */
+    const legsId = getEquip('legs'), chestId = getEquip('chest');
+    place(legs, this._gearStripFrame('legs', legsId, A.pose, 'south', A.fw, fi));
+    this._tintGearSprite(legs, legsId, 'farmLegs');
+    this._placeSwingShirt(shirt, place, this._shirtId(), chestId, A.pose, 'south', A.fw, fi, getShirtColor(), getShirt(), this._myShirtLook());
+    place(chest, this._gearStripFrame('chest', chestId, A.pose, 'south', A.fw, fi));
+    this._tintGearSprite(chest, chestId, 'farmChest');
+    /* the hoe or the can, as drawn, over everything */
+    const pf = this._farmProps && this._farmProps[anim];
+    place(prop, pf ? pf[Math.min(fi, pf.length - 1)] : null);
+    this._placeSkillTraitsOn(A.pose, body, fi, 'south', false);
+    /* where the work lands -- the blade striking, the water reaching the soil,
+       the hands in it: what you dig, pour or plant flies from there
+       (farmWorld.js _burst) */
+    S._farmHands = { x: body.x + (A.work[0] - A.fw / 2) * body.scale.x, y: body.y + (A.work[1] - A.fh) * body.scale.y, at: now };
     if (typeof window !== 'undefined' && window.__btProbe) {
       window.__btFarmFigure = () => {
         const kids = this.gestureLayer.children;
         const at = (o) => (o && o.visible ? kids.indexOf(o) : -1);
+        const gearAt = (slot, o) => {
+          const it = o && o.visible ? gearArtSafe(slot, getEquip(slot)) : null;
+          const strip = it && this._gearStrips[slot + '/' + it + '/' + A.pose + '/south'];
+          return Array.isArray(strip) ? strip.indexOf(o.texture) : -1;
+        };
+        const cr = A.crowns[Math.min(fi, A.crowns.length - 1)];
         return {
-          visible: !!sp.visible && !!cov.visible, frame: fi, cover: name,
-          figure: { x: sp.x, y: sp.y, scaleX: kx, scaleY: ky, drawnH: +(ky * F.h).toFixed(2), feetY, px: P.x },
-          coverBox: { x: cov.x, y: cov.y, w: (b[2] - b[0]) * kx, h: (b[3] - b[1]) * ky },
-          /* the pan's area in those frames, where the figure is: inside the cover's box */
-          panBox: { x: sp.x + (FARM_PAN_BOX[0] - F.w / 2) * kx, y: sp.y + (FARM_PAN_BOX[1] - F.h) * ky,
-            w: (FARM_PAN_BOX[2] - FARM_PAN_BOX[0]) * kx, h: (FARM_PAN_BOX[3] - FARM_PAN_BOX[1]) * ky },
-          /* the cover over every layer the figure wears: its place among them */
-          order: { cover: at(cov), body: at(sp), ink: at(this.cookInkSprite), shirt: at(this.cookShirtSprite),
-            legs: at(this.cookLegsSprite), chest: at(this.cookChestSprite) },
+          visible: !!body.visible, anim, frame: fi, step: w.step, pose: A.pose,
+          figure: { x: body.x, y: body.y, scaleX: body.scale.x, scaleY: body.scale.y, drawnH: +(body.scale.y * A.fh).toFixed(2), feetY, px: P.x },
+          /* where the strip's own foot point lands: your boots */
+          foot: { x: body.x + (A.foot[0] - A.fw / 2) * body.scale.x, y: body.y + (A.foot[1] - A.fh) * body.scale.y },
+          /* his head, ears to ears, world px; and the top of it this frame */
+          headW: +(FARM_ANIM_HEAD * Math.abs(body.scale.y)).toFixed(2),
+          crown: { x: body.x + (cr[0] - A.fw / 2) * body.scale.x, y: body.y + (cr[1] - A.fh) * body.scale.y },
+          work: { x: S._farmHands.x, y: S._farmHands.y },
+          shirt: { visible: !!(shirt && shirt.visible), tint: shirt ? shirt.tint : null },
+          prop: { visible: !!(prop && prop.visible), want: !!A.prop },
+          /* v2.3.3439: the armour, each with the frame of its strip it is on
+             (-1: not one of that strip's), and which body is under it */
+          legs: { visible: !!(legs && legs.visible), tint: legs ? legs.tint : null, frame: gearAt('legs', legs) },
+          chest: { visible: !!(chest && chest.visible), tint: chest ? chest.tint : null, frame: gearAt('chest', chest) },
+          under: !!this._farmUnder,
+          look: this._farmLook || null,
+          /* the layers in drawing order: body, greaves, shirt, plate, tool */
+          order: { body: at(body), legs: at(legs), shirt: at(shirt), chest: at(chest), prop: at(prop) },
         };
       };
     }
@@ -15562,6 +16051,7 @@ export class EffectsRenderer {
     this._destroyed = true;
     for (const off of this._offs) { try { off(); } catch (e) { /* already off */ } }
     this._offs = [];
+    try { this._freeFarm(); } catch (e) { /* v2.3.3439: the farmer's strips and tools; _bakes below has the rest */ }
     clearTimeout(this._dressT);   /* v2.3.3146: a pending re-warm of the dressed shirts */
     if (this._dressed) this._dressed.clear();   /* ...whose sources _bakes lets go of below */
     try { this.clear(); } catch (e) { /* a half-built renderer */ }

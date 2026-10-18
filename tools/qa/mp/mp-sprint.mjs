@@ -371,6 +371,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.devOp(wsPort, 'vitals', myId, { heal: true, stamina: 12 });
     await P.page.waitForTimeout(700);
     const s0 = await sprintState(P);
+    /* v2.3.3455: the run-out's sound, counted from here */
+    const outs0 = await P.page.evaluate(() => (window.__btCues && window.__btCues.stats.played.sprintOut) || 0);
     const c = centre((await LAYOUT(P)).btn);
     await P.page.touchscreen.tap(c.x, c.y);
     /* the worker's own bar, every sample: it refills a second after the last
@@ -393,6 +395,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`run dry it ends on its own (from ${s0.st != null ? s0.st.toFixed(0) : '?'} stamina, after ${(end.t / 1000).toFixed(1)} s), the worker's bar down to ${srvMin}`,
       !!end.btn && !end.btn.armed && end.btn.why === 'empty' && srvMin <= 1, { end: end.btn, srvMin, now: srv && srv.stamina });
     rec.ok('...the button fades', L.state === 'tired', L.state);
+    /* v2.3.3455: running dry is heard once, as the owner's grunt worn out
+       (the cue sprintOut: their recording, lower and slower), decoded on the
+       loading screen like every sound */
+    const heard = await P.page.evaluate(() => {
+      const C = window.__btCues, A = window.BT_AUDIO;
+      const L = window.__btCues && C.stats.log.filter((e) => e.name === 'sprintOut').pop();
+      return { n: (C && C.stats.played.sprintOut) || 0, decoded: !!(A && A._samples && A._samples['sprint-grunt']), k: L ? L.k : null };
+    });
+    rec.ok(`...and is heard once, as the owner's grunt worn out (sprintOut asked ${heard.n - outs0} time(s), its recording decoded)`,
+      heard.n - outs0 === 1 && heard.decoded && heard.k === 1, { ...heard, outs0 });
     rec.ok('...and a tap then is refused, with "Not enough energy!" over his head and a shake',
       !!refused.b && !refused.b.armed && refused.b.why === 'tired' && refused.note >= 1 && refused.shake, refused);
   }

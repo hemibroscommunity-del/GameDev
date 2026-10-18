@@ -15,7 +15,9 @@
  *      mine-south sheet's ground under his boots) is under the vein's solid
  *      pixels in every frame of the swing -- taken through the body sprite's
  *      own transform into the vein's picture, pixel by pixel -- and the
- *      miner's head stays over the rock;
+ *      miner's head stays over the rock; and (v2.3.3443) the bare belly his
+ *      shirt's hem shows in the swing is hidden at least as well as the old
+ *      copper vein hid it, the owner's "shirt doesn't fit during animation";
  *   5. the rock stops you: from in front of it, walking north into it stops
  *      short of its middle;
  * and a REAL mine of the copper and the obsidian (a tap, the worker's hits,
@@ -183,9 +185,52 @@ const bakedCover = (P, id) => P.page.evaluate(async ({ nid, FW, ROW, REST }) => 
     out.push({ f, total, under, share: total ? +(under / total).toFixed(4) : 1,
       box: [Math.round(l), Math.round(t), Math.round(r), Math.round(b)] });
   }
+  /* v2.3.3443: the BELLY BAND -- in the swing the shirt rides up off the
+     trousers (gear/shirt/tshirt/mine-south, drawn on the body's own
+     transform), and the body's skin shows under its hem: per column, the
+     skin within 12 rows under the shirt's lowest row.  Over all fourteen
+     frames, how much of it the vein as drawn leaves showing, and how much
+     the OLD copper vein left showing where it stood (ore-vein-627, 132 px
+     tall, anchored at its bottom middle on the node's point). */
+  /* the shirt drawn on the body's own frame: its frame's corners land where
+     the body's do */
+  const corners = (spr, W, H) => [[0, 0], [FW, FW]].map(([x, y]) => {
+    const p = vein.parent.toLocal(spr.toGlobal({ x: x * (W / FW) - spr.anchor.x * W, y: y * (H / FW) - spr.anchor.y * H }));
+    return [p.x, p.y];
+  });
+  const shirtSpr = pd._gearShirt;
+  const so = shirtSpr && shirtSpr.texture && (shirtSpr.texture.orig || shirtSpr.texture.frame);
+  const sc = so && shirtSpr.visible ? corners(shirtSpr, so.width, so.height) : null;
+  const bc = corners(body, tw, th);
+  const shirtOn = !!sc && sc.every((p, q) => Math.abs(p[0] - bc[q][0]) < 0.5 && Math.abs(p[1] - bc[q][1]) < 0.5);
+  const simg = await load('/sprites/gear/shirt/tshirt/mine-south.png');
+  const sh = pix(simg);
+  const oimg = await load('/sprites/world/ore-vein-627.webp');
+  const od = pix(oimg);
+  const OW = oimg.width, OH = oimg.height, OK = 132 / OH;
+  const skin = (i) => sheet[i] > 170 && sheet[i + 1] > 90 && sheet[i + 1] < 170 && sheet[i + 2] < 110 && sheet[i] - sheet[i + 2] > 90;
+  let band = 0, showing = 0, oldShowing = 0;
+  for (let f = 0; f < frames; f++) for (let x = 0; x < FW; x++) {
+    let low = -1;
+    for (let y = 0; y < FW; y++) if (sh[(y * simg.width + f * FW + x) * 4 + 3] >= 128) low = y;
+    if (low < 0) continue;
+    for (let y = low + 1; y < Math.min(ROW, low + 13); y++) {
+      const i = (y * img.width + f * FW + x) * 4;
+      if (sheet[i + 3] < 128 || !skin(i)) continue;
+      band++;
+      const vl = vein.toLocal(body.toGlobal({ x: (x + 0.5) * k - ax * tw, y: (y + 0.5) * k - ay * th }));
+      const vx = Math.floor((vl.x + vein.anchor.x * vein.texture.width) * (VW / vein.texture.width));
+      const vy = Math.floor((vl.y + vein.anchor.y * vein.texture.height) * (VH / vein.texture.height));
+      if (!(vx >= 0 && vy >= 0 && vx < VW && vy < VH && vd[(vy * VW + vx) * 4 + 3] >= 128)) showing++;
+      const w = toWorld(x, y);
+      const ox = Math.floor((w.x - n.x) / OK + OW / 2), oy = Math.floor((w.y - n.y + 132) / OK);
+      if (!(ox >= 0 && oy >= 0 && ox < OW && oy < OH && od[(oy * OW + ox) * 4 + 3] >= 128)) oldShowing++;
+    }
+  }
   return { frames: out, crown: Math.round(crown), boots: Math.round(boots), bodyY: Math.round(pd.y - n.y), bodyX: Math.round(pd.x - n.x),
     worst: Math.min(...out.map((o) => o.share)), rest: Math.min(...out.filter((o) => REST.includes(o.f)).map((o) => o.share)),
-    all: out.reduce((s, o) => s + o.total, 0), allUnder: out.reduce((s, o) => s + o.under, 0) };
+    all: out.reduce((s, o) => s + o.total, 0), allUnder: out.reduce((s, o) => s + o.under, 0),
+    belly: { band, showing, oldShowing, shirtOn } };
 }, { nid: id, FW: SHEET_FW, ROW: BAKED_ROW, REST: REST_FRAMES });
 
 /* mp-tiertrees' walk north: put there in hops the worker agrees with, then
@@ -421,6 +466,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
           !!cov && !cov.err && cov.rest >= 0.999, { rest: cov && cov.rest, frames: fr });
         rec.ok(`${metal}: ...and at the blow, its chips flying, at least 97% of it (${cov && cov.worst != null ? (cov.worst * 100).toFixed(1) : '?'}%)`,
           !!cov && !cov.err && cov.worst >= 0.97, { worst: cov && cov.worst, frames: fr });
+        /* v2.3.3443: the owner's "shirt doesn't fit during animation" */
+        const bl = cov && cov.belly;
+        rec.ok(`${metal}: the bare belly the shirt's hem shows in the swing is hidden at least as well as the old copper vein hid it (${bl ? bl.showing : '?'} of its ${bl ? bl.band : '?'} px showing over the fourteen frames; the old vein's: ${bl ? bl.oldShowing : '?'})`,
+          !!bl && bl.shirtOn && bl.band > 1000 && bl.showing <= bl.oldShowing, bl);
         const topUp = t.y - geo(t).top;
         rec.ok(`${metal}: the rock is ${Math.round(topUp)} px tall over the point, under the miner's shoulders (${SHOULDERS_UP}): his head and shoulders over it`,
           topUp <= SHOULDERS_UP && !!cov && !cov.err && cov.bodyY === -94, { topUp, bodyY: cov && cov.bodyY });

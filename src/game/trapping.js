@@ -32,7 +32,7 @@
  */
 import {
   TRAPPING, trapChance, trapStretch, fmtTrapChance, TRAP_WORDS, petDisplayName, petKindName, worldSafeText,
-  PET_BIG_AT,
+  PET_BIG_AT, PET_KINDS,
 } from '@/data/trapping.js';
 import { ZONES } from '@/data/zones.js';
 import { NML_CENTRE, NML_CENTRES } from '@/data/noMansLandRings.js';
@@ -41,6 +41,8 @@ import { BT_AUDIO } from '@/data/index.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: traps made, and the pet's ward, heard */
+import { NOISE_OF } from '@/game/monsterNoises.js';   /* v2.3.3434: a pet answers in its kind's voice */
+import { MONSTER_NOISE_CLIPS } from '@/data/monsterNoiseClips.js';
 
 /* ── the shakes, drawn by trapFx.js and timed here (the popups, the sounds
    and the card wait for the animation they belong to) ── */
@@ -304,18 +306,50 @@ export function onPetsState(S, p) {
     say(S, TRAP_WORDS[p.error] || 'Not done', '#E59A94');
   } else if (p.op === 'release') {
     say(S, 'Released back to the wild', '#B6C1BE');
+    cue('petFree');   /* v2.3.3434: a rush away and a fading sparkle (it was silent) */
   } else if (p.op === 'name') {
     const pet = S._petBook.list.find((q) => q.id === p.id);
     if (pet) say(S, 'Named ' + petDisplayName(pet), '#7EE0A8');
   } else if (p.op === 'active') {
     const pet = S._petBook.active ? S._petBook.list.find((q) => q.id === S._petBook.active) : null;
     say(S, pet ? petDisplayName(pet) + ' is with you' : 'Pet put away', '#7EE0A8');
+    /* v2.3.3434: and heard -- out with a pop and its own voice, away with a
+       softer plop (both were silent) */
+    if (pet) { cue('petOut'); petVoice(pet.kind); } else cue('petAway');
   } else if (p.op === 'house') {
     /* v2.3.3123: more room in the Pet House */
     say(S, 'Your Pet House holds ' + (S._petBook.cap || 0) + ' now', '#7EE0A8');
     try { BT_AUDIO.play('coin-pickup', { vol: 0.45 }); } catch (e) { /* sound only */ }
   }
   bump(S);
+}
+
+/* ═══ v2.3.3434: A PET TAKEN OUT ANSWERS IN ITS KIND'S VOICE ═══
+ * The owner, on the missing sounds: "Look for more too".  A pet appeared
+ * beside you, and went away, without a sound.  Now a pop and a sparkle
+ * (data/eventSounds.js petOut) -- and the kinds whose wild look has a
+ * recording of its own (game/monsterNoises.js NOISE_OF: the snowman's snarl,
+ * the fire goblin's rawr, the slimes' bounce -- the Snowling, the Gobling, the
+ * Sparklet and the Dewdrop) answer with it a beat later: quicker and higher,
+ * PET_VOICE_RATE (a Snowling is not a snowman), at PET_VOICE_K of the wild
+ * one's level.  The other five wait for their creatures' recordings
+ * (docs/SOUND-GAPS.md, "Creature voices").  Nothing new loads: the noises are
+ * in SFX_MANIFEST. */
+export const PET_VOICE_RATE = 1.35;
+export const PET_VOICE_K = 0.6;
+const ownKey = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
+/** The noise clip a pet of `kind` answers with, or null. */
+export function petVoiceClip(kind) {
+  const k = ownKey(PET_KINDS, kind) ? PET_KINDS[kind] : null;
+  return k && ownKey(NOISE_OF, k.look) ? NOISE_OF[k.look] : null;
+}
+let _petVoiceLast = null;   /* the clip the last pet taken out answered with, for the tests (trapProbe) */
+function petVoice(kind) {
+  const clip = petVoiceClip(kind);
+  const c = clip && ownKey(MONSTER_NOISE_CLIPS, clip) ? MONSTER_NOISE_CLIPS[clip] : null;
+  _petVoiceLast = c ? clip : 'none';
+  if (!c) return false;
+  try { return !!BT_AUDIO.play('noise-' + clip, { vol: c.vol * PET_VOICE_K, rate: PET_VOICE_RATE, delay: 0.18 }); } catch (e) { return false; /* sound only */ }
 }
 
 /* ═══ v2.3.3121: PET XP (Phase 2) ═══
@@ -395,6 +429,7 @@ export function trapProbe(S) {
     arms: (S && S._trapArms) || 0, rolls: (S && S._trapRolls) || 0, catches: (S && S._trapCatches) || 0,
     last: (S && S._trapLast) || null,
     reveal: (S && S._trapReveal) || null,   /* v2.3.3123: a golden or Big catch's words */
+    petVoice: _petVoiceLast,   /* v2.3.3434: what the last pet taken out answered with ('none': no voice yet) */
     stretch: (() => { const m = trapTarget(S); return m ? trapStretch(m.level) : null; })(),
   };
 }
