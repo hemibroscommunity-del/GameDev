@@ -14,11 +14,11 @@
 import { BT_AUDIO } from '@/data/index.js';
 /* v2.3.2139: the channel picker's compose step — see its note below. */
 import { chatChannelBus } from '@/game/chatChannel.js';
-import { emoteKind } from '@/game/emotes.js'; /* v2.3.3361 */
-import { moveKind, EMOTE_MOVES, slashMove } from '@/game/emoteMoves.js'; /* v2.3.3362: the moment moves, and /wave */
-import { isBlockedId } from '@/game/chatMute.js'; /* v2.3.3361: both shapes of the block list */
-import { stripLaneMarks } from '@/data/smallIcons.js'; /* v2.3.3361 */
-import { earVol } from '@/game/hitSounds.js'; /* v2.3.3361: an emote's chirp carries as far as a hit */
+import { emoteKind } from '@/game/emotes.js'; /* v2.3.3391 */
+import { moveKind, EMOTE_MOVES, slashMove } from '@/game/emoteMoves.js'; /* v2.3.3392: the moment moves, and /wave */
+import { isBlockedId } from '@/game/chatMute.js'; /* v2.3.3391: both shapes of the block list */
+import { stripLaneMarks } from '@/data/smallIcons.js'; /* v2.3.3391 */
+import { earVol } from '@/game/hitSounds.js'; /* v2.3.3391: an emote's chirp carries as far as a hit */
 import { _toConsumableArray } from '@/lib/babelHelpers.js';
 
 /* ═══ v2.3.1970: A RECEIVED LINE IS UNTRUSTED TEXT ═══
@@ -52,7 +52,7 @@ function clampChatName(v) {
 /* Send a chat line: broadcast to the room, local echo into the chat log +
    own overhead bubble. `text` is already trimmed/validated by the caller.
    deps = { setChatLog } */
-/* ═══ v2.3.3362: "/wave", "/sit", "/dance" ... ARE MOVES, NOT LINES ═══
+/* ═══ v2.3.3392: "/wave", "/sit", "/dance" ... ARE MOVES, NOT LINES ═══
    A message that is only a move's command (game/emoteMoves.js slashMove)
    makes your bro do it, as the picker's tile does, and says nothing in the
    chat.  The sender is BroTown's (game/interactions.js sendMove, with the
@@ -247,10 +247,10 @@ export function handleChatEvent(payload, S, deps) {
      a message with no message in it. */
   var _text = clampChatText(payload.text);
   if (!_text) return;
-  /* v2.3.3361: never a lane's mark at the front (smallIcons.js stripLaneMarks):
+  /* v2.3.3391: never a lane's mark at the front (smallIcons.js stripLaneMarks):
      a name starting "✉ " drew every room line as a whisper */
   var _name = stripLaneMarks(clampChatName(payload.name)) || 'Bro';
-  /* v2.3.3361: either shape of the block list (chatMute.js isBlockedId) --
+  /* v2.3.3391: either shape of the block list (chatMute.js isBlockedId) --
      a block made from the friends list ({id, name}) hid nothing */
   if (isBlockedId(payload.id)) return;
   var isMuted = false;
@@ -327,7 +327,7 @@ export function handleAreaChatEvent(payload, S, deps) {
   if (!payload || !payload.from || payload.from === S.myId) return;
   var _atext = clampChatText(payload.text);
   if (!_atext) return;
-  if (isBlockedId(payload.from)) return;   /* v2.3.3361: either shape of the block list */
+  if (isBlockedId(payload.from)) return;   /* v2.3.3391: either shape of the block list */
   var isMuted = false;
   try {
     var ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
@@ -349,7 +349,7 @@ export function handleWhisperEvent(payload, S, deps) {
   if (!payload || !payload.from || payload.from === S.myId) return;
   var _wtext = clampChatText(payload.text);
   if (!_wtext) return;
-  if (isBlockedId(payload.from)) return;   /* v2.3.3361: either shape of the block list */
+  if (isBlockedId(payload.from)) return;   /* v2.3.3391: either shape of the block list */
   var wMuted = false;
   try {
     var ml2 = JSON.parse(localStorage.getItem('bt_muted') || '[]');
@@ -391,7 +391,7 @@ export function handlePartyChatEvent(payload, S, deps) {
      lane at PARTY.CHAT_MAX, so this is purely the deploy-order half. */
   var _ptext = clampChatText(payload.text);
   if (!_ptext) return;
-  if (isBlockedId(payload.from)) return;   /* v2.3.3361: either shape of the block list */
+  if (isBlockedId(payload.from)) return;   /* v2.3.3391: either shape of the block list */
   var isMuted = false;
   try {
     var ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
@@ -424,7 +424,7 @@ export function handleEmoteEvent(payload, S) {
   var _o = payload && payload.id ? S.others[payload.id] : null;
   if (!_o) return;
   if ((_o.zone || _o.z || 'town') !== S.currentZone) return;
-  /* ═══ v2.3.3361: AN EMOTE YOU CAN SEE (src/game/emotes.js) ═══
+  /* ═══ v2.3.3391: AN EMOTE YOU CAN SEE (src/game/emotes.js) ═══
      This stamped `.emote` and nothing drew it.  Now the renderer pops an
      emoji over the head (effectsRenderer _updateEmotePops) and a quick line
      is the speaker's bubble -- so only a LISTED emote is taken (an older
@@ -432,7 +432,7 @@ export function handleEmoteEvent(payload, S) {
      shape of the block list) or muted, and the chirp carries only as far as
      a hit does (hitSounds.js earVol): it rang at full volume from anywhere
      in your zone, the whole Wheel. */
-  /* v2.3.3362: or a moment MOVE -- a wave, a laugh, a cheer (game/
+  /* v2.3.3392: or a moment MOVE -- a wave, a laugh, a cheer (game/
      emoteMoves.js) -- which moves their bro in code (rendering/emoteFx.js)
      and pops its own emoji.  Only a listed one, by the same rules. */
   var _move = payload.move !== undefined ? payload.move : null;

@@ -1,4 +1,4 @@
-# Your bro moves (v2.3.3362)
+# Your bro moves (v2.3.3392)
 
 Phase 1 of the fun & social plan (docs/FUN-SOCIAL-PLAN.md), the owner's "Go
 recommended": twelve emotes that move the whole bro, with no new art and no

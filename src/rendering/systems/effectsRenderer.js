@@ -269,7 +269,7 @@ import { wheelPropRec, wheelPropArt, wheelScorch, freeWheelScorch } from '../whe
 import { isWheelBroken } from '@/game/wheelBreak.js';   /* v2.3.2995: a broken object's marks go with it */
 import { freePropChips } from '../hitMaterialFx.js';    /* v2.3.2995 */
 import { ELEM_ICON_SRC } from '@/game/elemHits.js';   /* v2.3.2996: a monster's element on the number */
-import { emoteKind, EMOTE_POP_MS } from '@/game/emotes.js';   /* v2.3.3361: an emoji over the head */
+import { emoteKind, EMOTE_POP_MS } from '@/game/emotes.js';   /* v2.3.3391: an emoji over the head */
 
 /* v2.3.2654: how a print reads and how long it lasts.  PRINT_TTL_MS is
    mirrored by stateCleanup's filter -- the array and the drawer must expire on
@@ -2535,14 +2535,14 @@ let _chatBubbleGrad = null;
    you -- past any screen's edge at the Wheel's zoom (a 3x phone shows ~650 x
    1,400 of the world, a desktop about 3,200 across) -- see _updateChatBubbles */
 const NPC_BUBBLE_REACH = 2400;
-/* v2.3.3362: the band over a head, lowered as far as an emote brought the
+/* v2.3.3392: the band over a head, lowered as far as an emote brought the
    name plate down (rendering/emoteFx.js `_emoteHudDrop`: a sitter, a sleeper) */
 function bandWithEmote(band, who) {
   if (typeof band !== 'number' || !isFinite(band)) return band;
   const d = who && who._emoteHudDrop;
   return d > 0 ? band + d : band;
 }
-/* v2.3.3361: an emote's emoji over the head (_updateEmotePops): drawn at
+/* v2.3.3391: an emote's emoji over the head (_updateEmotePops): drawn at
    EMOTE_POP_FONT and scaled to EMOTE_POP_PX on the SCREEN, twice the chat's
    14 px -- it is a picture, read at a glance */
 const EMOTE_POP_FONT = 40;
@@ -3131,7 +3131,7 @@ export class EffectsRenderer {
 
     // Chat bubble texts
     this.chatTexts = new Map();
-    /* v2.3.3361: each speaker's emoji over the head -- see _updateEmotePops.
+    /* v2.3.3391: each speaker's emoji over the head -- see _updateEmotePops.
        A Map: wire ids as keys. */
     this._emotePops = new Map();
     /* v2.3.2896: each speaker's last seen name-plate band, as an offset from
@@ -8533,7 +8533,7 @@ export class EffectsRenderer {
 
     // Chat bubbles
     this._updateChatBubbles(S, now);
-    /* v2.3.3361: and an emote's emoji, over the bubble when there is one */
+    /* v2.3.3391: and an emote's emoji, over the bubble when there is one */
     this._updateEmotePops(S, now);
   }
 
@@ -8667,7 +8667,7 @@ export class EffectsRenderer {
       const bw = Math.min(336, tw + padX * 2);
       entry._lineW = tw; entry._boxW = bw;   /* v2.3.2896: for the QA probe below */
       const bh = th + padY * 2;
-      entry._boxH = bh + tipH;   /* v2.3.3361: an emoji pops above the whole bubble (_updateEmotePops) */
+      entry._boxH = bh + tipH;   /* v2.3.3391: an emoji pops above the whole bubble (_updateEmotePops) */
       entry.bg.clear();
       /* ═══ v2.3.2823: THE BUBBLE POPS ═══
          Owner: "add a gray outline to the chat bubble ... I just want it to
@@ -8810,7 +8810,7 @@ export class EffectsRenderer {
          from their position, so chatting while chopping does not drop the
          bubble back onto the face for exactly as long as the axe is up.
          Only a speaker never seen with a band falls back to the old anchor. */
-      /* v2.3.3362: a sitter's or a sleeper's band came down with him
+      /* v2.3.3392: a sitter's or a sleeper's band came down with him
          (rendering/emoteFx.js, last frame's: it draws after this pass) */
       const _band = bandWithEmote(pid === S.myId ? S._selfBandTopY : source._bandTopY, pid === S.myId ? S : source);
       let _top = null;
@@ -8873,7 +8873,7 @@ export class EffectsRenderer {
     }
   }
 
-  /* ═══ v2.3.3361: AN EMOTE'S EMOJI POPS OVER THE HEAD (game/emotes.js) ═══
+  /* ═══ v2.3.3391: AN EMOTE'S EMOJI POPS OVER THE HEAD (game/emotes.js) ═══
      The emote picker's 30 emoji were sent and stamped (`S.emote` for you,
      `.emote` on a peer) and drawn by nothing.  Now each pops in over its
      speaker: up from small with a little overshoot and a wobble, rising a few
@@ -8897,7 +8897,7 @@ export class EffectsRenderer {
       sources.push([id, o, o.emote]);
     }
     for (const [pid, src, em] of sources) {
-      /* v2.3.3362: or a move's own emoji (`trusted`: set by this phone's code
+      /* v2.3.3392: or a move's own emoji (`trusted`: set by this phone's code
          from the move's table, never from the wire -- game/emoteMoves.js) */
       const _okEmoji = em && (em.trusted ? (typeof em.emoji === 'string' && em.emoji.length <= 8) : emoteKind(em.emoji) === 'emoji');
       if (!pid || !src || !em || !_okEmoji) continue;
@@ -16242,7 +16242,7 @@ export class EffectsRenderer {
       }
     }
     this.chatTexts.clear();
-    /* v2.3.3361: the emotes' emoji */
+    /* v2.3.3391: the emotes' emoji */
     for (const [, entry] of this._emotePops) {
       if (entry && entry.text && !entry.text.destroyed) entry.text.destroy();
     }
