@@ -60,7 +60,7 @@ const openPets = async (P) => {
   await H.openDest(P, 'More').catch(() => {});
   await P.page.waitForTimeout(600);
   await P.page.evaluate(() => { const b = document.querySelector('[data-more-tile="pets"]'); if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });
-  /* v2.3.3403: 15 s, not 5 -- on this box, which draws a frame every few
+  /* v2.3.3425: 15 s, not 5 -- on this box, which draws a frame every few
      hundred ms, More, its tile and the page's first draw took longer than 5:
      the page came up just after the wait gave up (the screenshot taken next
      shows it), and the two checks that read it were skipped as "null" */
@@ -168,7 +168,7 @@ async function steps({ A, B, wsPort, rec, errors }) {
 
   /* ── 5. the ward in a real fight: Frost Ridge's snowmen ── */
   const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
-  /* v2.3.3403: at the land's town end, among its level 1s, as mp-wheelnear
+  /* v2.3.3425: at the land's town end, among its level 1s, as mp-wheelnear
      fights.  points[0] is half way along the first stretch (depth 0.5), and
      since v2.3.3320 the stretch climbs 1 to 5, so it is level 3 snowmen
      there: the fresh character died between heals and came back in BroTown,
@@ -179,7 +179,7 @@ async function steps({ A, B, wsPort, rec, errors }) {
   await H.hopTo(A, at[0] + 120, at[1] + 120, { tries: 260 });
   await A.page.waitForTimeout(1500);
   const t0 = await A.page.evaluate(() => Date.now());
-  /* v2.3.3403: a death is counted as it happens.  Read afterwards, `_dying`
+  /* v2.3.3425: a death is counted as it happens.  Read afterwards, `_dying`
      is false again once the player has come back in town, and the guard
      below said "alive" over a character standing on the Town Hall's steps. */
   await A.page.evaluate(() => {

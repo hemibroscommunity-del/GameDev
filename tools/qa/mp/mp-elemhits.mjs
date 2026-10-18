@@ -528,7 +528,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await P.page.waitForTimeout(100);
         }
         await H.devOp(wsPort, 'vitals', myId, { stamina: 20 });
-        /* v2.3.3403: the worker's 20 seen on the page before the first read,
+        /* v2.3.3425: the worker's 20 seen on the page before the first read,
            not a set 400 ms: on this box the echo came later, the first read
            was the old full bar, and the soaked "gain" came out as -71 (the
            solo run of 2026-10-18, 100 -> 29) */

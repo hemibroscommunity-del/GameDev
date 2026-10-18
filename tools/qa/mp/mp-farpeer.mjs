@@ -95,7 +95,7 @@ function countTicks() {
       const c = window.__farCount, d = ev.data;
       if (c.id && typeof d === 'string' && d.startsWith('{"type":"tick"') && d.indexOf('"' + c.id + '":') >= 0) {
         c.n++;
-        /* v2.3.3403: and WHERE in the tick they came -- the run of 2026-10-18
+        /* v2.3.3425: and WHERE in the tick they came -- the run of 2026-10-18
            counted four a second at 2,717 px with no far send on */
         try {
           const t = JSON.parse(d), key = '"' + c.id + '":';
@@ -189,7 +189,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      shut), so this step watches with the map open, as a player looking for
      someone far away does */
   await B.page.evaluate(() => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(true); });
-  /* v2.3.3403: the jump made with the move budget off in this test's room.
+  /* v2.3.3425: the jump made with the move budget off in this test's room.
      `place` hops out to town and back to land where it says, and since
      v2.3.3325 a way back into the Wheel is judged from where it was left
      (movement.js MOVE_BUDGET, `_wheelBack`): the worker walked its copy of

@@ -84,7 +84,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
       /* 3. the idle clock: an input 115 s back, then nothing touched */
       holdAlive = true;
-      /* v2.3.3403: what the 2.5 s must hold is hits LANDING in it, counted --
+      /* v2.3.3425: what the 2.5 s must hold is hits LANDING in it, counted --
          not the harvest still waiting at its end: on this box the waits and
          the picture before it had taken long enough that the twentieth hit
          came inside it (waiting false, the stamp and the 1.9 s "away" right,

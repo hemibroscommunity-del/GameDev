@@ -132,7 +132,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await travel(marks.frost.tx, marks.frost.ty, 'frost'),
       await H.readState(P, (S) => S.currentZone));
   }
-  /* v2.3.3403: full health for the idle seconds before the hunt (the hunt's
+  /* v2.3.3425: full health for the idle seconds before the hunt (the hunt's
      own heals, below, say why) */
   await H.devOp(wsPort, 'vitals', myId, { heal: true }).catch(() => {});
   await P.page.waitForTimeout(2500);
@@ -168,7 +168,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let got = 0;
   let died = false;
   const log = [];
-  /* v2.3.3403: healed as the hunt begins and every few passes after, on the
+  /* v2.3.3425: healed as the hunt begins and every few passes after, on the
      worker.  In the solo run of 2026-10-18 (main's walk-to-it hunt) the fresh
      character was dead before its first kill (got 0, the log empty): on this
      box the idle seconds after walking in and the page's slow swings leave

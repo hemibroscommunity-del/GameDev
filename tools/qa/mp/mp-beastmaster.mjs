@@ -207,7 +207,7 @@ async function body({ P, wsPort, rec, errors, npcReqs }) {
   await H.openDest(P, 'More').catch(() => {});
   await P.page.waitForTimeout(600);
   await P.page.evaluate(() => { const b = document.querySelector('[data-more-tile="pets"]'); if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });
-  /* v2.3.3403: 15 s, the page's first draw can take longer than 5 on this box
+  /* v2.3.3425: 15 s, the page's first draw can take longer than 5 on this box
      (step 7, below) */
   const page = await P.page.waitForSelector('[data-pets-panel]', { timeout: 15000 }).then(() => true).catch(() => false);
   const bar = page ? await P.page.$eval('[data-pet-xp]', (el) => ({ v: el.getAttribute('data-pet-xp'), text: el.innerText.replace(/\s+/g, ' ') })).catch(() => null) : null;
@@ -242,7 +242,7 @@ async function body({ P, wsPort, rec, errors, npcReqs }) {
     return n && S.camera ? { x: r.left + (n.x - S.camera.x) * (S._worldScaleX || 1), y: r.top + (n.y - S.camera.y) * (S._worldScaleY || 1) - 26 } : null;
   });
   if (css) await P.page.touchscreen.tap(css.x, css.y);
-  /* v2.3.3403: 15 s, not 5 -- the page's first draw after a tap takes longer
+  /* v2.3.3425: 15 s, not 5 -- the page's first draw after a tap takes longer
      than 5 s on this box (mp-petsmatter's More tile showed it: the page came
      up just after its 5 s wait gave up) */
   const tapped = await H.waitFor(P, () => ({ tap: window.__btNpcTap || null, page: !!document.querySelector('[data-pets-panel]') }),

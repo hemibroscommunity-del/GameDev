@@ -69,7 +69,7 @@ const swingAt = (A, bId, sw) => A.page.evaluate(({ bId, sw }) => {
 }, { bId, sw });
 
 /* the popups a page drew since `t0` (S.dmgNumbers, combatHelpers pushDmgPopup).
-   v2.3.3403: from a record kept as each appears (mp-spar's and mp-pvpextras'
+   v2.3.3425: from a record kept as each appears (mp-spar's and mp-pvpextras'
    recorder), not the live list: a popup lives 1.5 s, and on this box the read
    after a blow and its waits could come when the block's "Blocked!" and its
    stamina had already gone -- the list was empty, the block real (TRAPS §200).
@@ -169,7 +169,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(500);
   }
   rec.ok('a blow landed (guard)', !!got, got);
-  /* v2.3.3403: and the other two screens' numbers WAITED for, from the
+  /* v2.3.3425: and the other two screens' numbers WAITED for, from the
      record.  Theirs is another player's hit, so it goes through the peer
      numbers' playback queue and comes out on a later frame (combatHelpers
      releasePeerDamage) -- on this box, after the trip through the worker,

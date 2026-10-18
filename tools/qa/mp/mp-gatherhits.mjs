@@ -296,7 +296,7 @@ async function body({ P, wsPort, rec }) {
     const skill = SKILL[type];
     const opened = await H.waitFor(P, (S) => (S._extraction ? S._extraction.status : null), (v) => v === 'ready',
       { timeout: 20000, label: 'the window opens' }).catch(() => null);
-    /* v2.3.3403: and if not, where the player was -- the old client's window
+    /* v2.3.3425: and if not, where the player was -- the old client's window
        never opened in the run of 2026-10-18, and the next section found the
        player back in town */
     const why = opened === 'ready' ? null : await H.readState(P, (S) => ({ zone: S.currentZone, dying: !!S._dying, hp: S.rpg && S.rpg.hp,
@@ -422,7 +422,7 @@ async function body({ P, wsPort, rec }) {
              or still shows the full wind-up, if it was stamped the frame
              before the window opened. */
           const rgReady = !!S._extraction && S._extraction.status === 'ready';
-          /* v2.3.3403: and how far the hits had got when the two were read.
+          /* v2.3.3425: and how far the hits had got when the two were read.
              On a box drawing a few frames a second the two frames above can
              outlast the next hit (650 ms apart for a cook): the bar and the
              ring then rightly show that one, and the checks below allow it --
@@ -439,7 +439,7 @@ async function body({ P, wsPort, rec }) {
           if (!seenFx.has(b)) { seenFx.add(b); out.fx.push({ kind: b.kind, t0: b.t0 }); }
         }
         if (ex.status === 'ready') {
-          /* v2.3.3403: a last hit that landed while the hit before it was
+          /* v2.3.3425: a last hit that landed while the hit before it was
              being read (its two frames outlasting the 650 ms to the next on
              this box) is still a hit: kept below, read with the window open
              two frames on, before the loop stops -- fishing's tenth was lost
@@ -501,7 +501,7 @@ async function body({ P, wsPort, rec }) {
     /* 1. the plan */
     r.ok(`${skill}: the client is playing hits, not the timer`, !tr.fellBack && Array.isArray(tr.plan), { fellBack: tr.fellBack, plan: tr.plan });
     if (!Array.isArray(tr.plan)) return {};
-    /* v2.3.3403: plus one of this browser's own slow frames (p95), the most
+    /* v2.3.3425: plus one of this browser's own slow frames (p95), the most
        a message can wait for the page's thread: the plan is stamped when the
        page HANDLES it, and on this box a frame is 300-600 ms (woodcutting read
        780 ms against its 540 ms swing, the run of 2026-10-18).  A phone's
@@ -539,7 +539,7 @@ async function body({ P, wsPort, rec }) {
     const want = tr.plan.slice().sort().join(',');
     r.ok(`${skill}: one number popped per hit, showing the roll`, nums.length >= tr.plan.length
       && nums.slice(0, tr.plan.length).slice().sort().join(',') === want, { popped: nums, plan: tr.plan });
-    /* v2.3.3403: each read shows this hit's HP or a later one's that had
+    /* v2.3.3425: each read shows this hit's HP or a later one's that had
        landed by the read (`hpNow`), never an earlier one -- on a phone the
        same thing as "this hit's", as no hit lands within two frames of
        another (see the sampler) */
@@ -576,7 +576,7 @@ async function body({ P, wsPort, rec }) {
            frame stamped after it is a frame that saw it. */
         const lastT = tr.times[tr.times.length - 1];
         const during = blows.filter((t) => t >= tr.planAt && t <= lastT + tol).length;
-        /* v2.3.3403: one pop for each FRAME a hit is drawn in -- the game's
+        /* v2.3.3425: one pop for each FRAME a hit is drawn in -- the game's
            rule ("One pop per frame however many hits landed in it",
            effectsRenderer) -- and no pop that is not a hit's.  On a phone
            every hit has a frame of its own, so that is one per hit; on this
@@ -708,7 +708,7 @@ async function body({ P, wsPort, rec }) {
   const arrived = await travel(spoke.tx, spoke.ty, spoke.zoneId);
   rec.ok(`arrived in a gathering zone (${spoke.zoneId}) (guard)`, arrived === true, { spoke });
   if (!arrived) return;
-  /* v2.3.3403: and kept alive there.  A harvest is shielded from monsters
+  /* v2.3.3425: and kept alive there.  A harvest is shielded from monsters
      (gathering.js _extractionShielded), the idle gaps between this file's
      steps are not, and on this box they are long: in the run of 2026-10-18
      Frost Ridge's snowmen killed the player after the four harvests, and the

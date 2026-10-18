@@ -38,7 +38,7 @@ const holdTitle = async (P, ms) => {
   if (!at) return false;
   await P.page.mouse.move(at.x, at.y);
   await P.page.mouse.down();
-  /* v2.3.3403: held until the panel is up (`ms` at the most), not a set
+  /* v2.3.3425: held until the panel is up (`ms` at the most), not a set
      time.  The title opens it from a 1.2 s timer that the release clears
      (ZoneHeader holdStart/holdEnd), and at this file's 3x a frame here
      outlasts the hold: the browser takes the queued release before the timer
@@ -126,7 +126,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 1-5: the speed test from the real panel ── */
     const opened = await openPanel(P);
-    /* v2.3.3403: and if it does not, what the hold landed on -- in the run of
+    /* v2.3.3425: and if it does not, what the hold landed on -- in the run of
        2026-10-18 it never opened, with nothing to say why */
     const noPanel = opened ? null : await P.page.evaluate(() => {
       const el = document.querySelector('.bt-zone-header__title');
