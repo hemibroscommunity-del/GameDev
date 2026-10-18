@@ -130,10 +130,22 @@ function measure(ms) {
        one frame's draws and binds too many (a half again on the QA box's
        two-frame steps; nothing to speak of on a phone's hundred) */
     let counter = null;
+    /* v2.3.3377: and counted a frame at a time (`per`: what the chip was
+       asked between two animation frames -- one frame's update and draw), the
+       card saying the MIDDLE frame's: a one-off between two frames (a
+       picture made once, a pool let go) is not what a frame costs, and on
+       the QA box's two- and three-frame steps it moved the average by half */
+    const per = [];
+    let lastB = 0, lastR = 0, lastD = 0;
     const t0 = performance.now();
     const f = (now) => {
       t.push(now);
       if (!counter) counter = glCounter();
+      else {
+        const c = counter.c;
+        per.push({ binds: c.binds - lastB, resumes: c.resumes - lastR, draws: c.draws - lastD });
+      }
+      lastB = counter.c.binds; lastR = counter.c.resumes; lastD = counter.c.draws;
       if (now - t0 < ms) requestAnimationFrame(f);
       else {
         counter.stop();
@@ -153,9 +165,9 @@ function measure(ms) {
           p50: d.length ? d[Math.floor(d.length * 0.5)] : 0,
           p95: d.length ? d[Math.min(d.length - 1, Math.floor(d.length * 0.95))] : 0,
           work,
-          passes: counter.c.binds / frames / 2,   /* a pass is a switch away and back */
-          resumes: counter.c.resumes / frames,   /* v2.3.3377: the frame picked up again mid-frame */
-          draws: counter.c.draws / frames,
+          passes: middle(per, 'binds') / 2,   /* a pass is a switch away and back */
+          resumes: middle(per, 'resumes'),   /* v2.3.3377: the frame picked up again mid-frame */
+          draws: middle(per, 'draws'),
           frames,
           res: renderDpr(),
           cw: ((typeof document !== 'undefined' && document.querySelector('.brotown-canvas')) || {}).width || 0,
@@ -164,6 +176,14 @@ function measure(ms) {
     };
     requestAnimationFrame(f);
   });
+}
+
+/* v2.3.3377: the middle frame's count (two middles averaged) */
+function middle(per, k) {
+  if (!per.length) return 0;
+  const v = per.map((x) => x[k]).sort((a, b) => a - b);
+  const h = v.length >> 1;
+  return v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2;
 }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

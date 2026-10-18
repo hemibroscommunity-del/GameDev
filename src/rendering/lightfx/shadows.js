@@ -138,6 +138,10 @@ let _prepassOn = !_q(/[?&]shadowpass\b/);
    filter's own `padding`, so a piece just off the screen still softens its
    edge as it did */
 const PAD = 2;
+/* v2.3.3377: how far past the pieces' bounds the shade can reach, in the
+   picture's texels: the soft edge's one, the slide's one (uShift < 1), and one
+   for the bounds' own rounding */
+const SHADE_REACH = 3;
 
 /* ═══ v2.3.3338: THE SHADOW PIECES ARE DRAWN WHERE THEY ARE ═══
    Every batched sprite or mesh meets its batcher in BatcherPipe.addToBatch,
@@ -370,7 +374,7 @@ if (typeof window !== 'undefined') {
        the world where it stands NOW -- a test that moves the camera and
        renders without a frame of the game in between */
     redraw: () => { let n = 0; for (const sys of _systems) { try { if (sys._redraw()) n++; } catch (e) { /* one system's trouble */ } } return n; },
-    stats: () => { const out = []; for (const sys of _systems) out.push({ prepass: sys.stats.prepass, fails: sys._preFails, rt: sys.rt ? [sys.rt.width, sys.rt.height] : null, home: sys._homeIsCast ? 'cast' : 'layer', shade: !!(sys.shade && sys.shade.visible) }); return out; },
+    stats: () => { const out = []; for (const sys of _systems) out.push({ prepass: sys.stats.prepass, fails: sys._preFails, rt: sys.rt ? [sys.rt.width, sys.rt.height] : null, home: sys._homeIsCast ? 'cast' : 'layer', shade: !!(sys.shade && sys.shade.visible), area: sys.stats.shadeArea != null ? +sys.stats.shadeArea.toFixed(3) : null }); return out; },
     /* the pieces' own containers, where they are drawn from now (mp-palette
        hides some of them before a redraw) */
     casts: () => { const out = []; for (const sys of _systems) if (sys._homeIsCast) out.push(sys.cast); return out; },
@@ -833,7 +837,24 @@ export class ShadowSystem {
       if (this.castIn.x !== lx || this.castIn.y !== ly) this.castIn.position.set(lx, ly);
       this._T.set(m.a, m.b, m.c, m.d, m.tx + PAD, m.ty + PAD);
       r.render({ container: this.cast, target: this.rt, clear: true, transform: this._T });
-      const q = this._shadeQuad(W, H);
+      /* the shade only over what the pieces cover, as the filter was drawn
+         over its layer's bounds on the screen: their bounds, onto the
+         picture's texels, out by the reach of the soft edge and the slide
+         (the shade is nothing further out, so the picture is the same; the
+         rest of the screen costs no fill) */
+      const b = this.castIn.getLocalBounds();
+      let rx0 = 0, ry0 = 0, rx1 = 0, ry1 = 0;
+      if (b.maxX > b.minX && b.maxY > b.minY) {
+        const T = this._T;
+        const ax = b.minX + lx, bx = b.maxX + lx, ay = b.minY + ly, by = b.maxY + ly;
+        const xs0 = T.a * ax + T.c * ay, xs1 = T.a * bx + T.c * ay, xs2 = T.a * ax + T.c * by, xs3 = T.a * bx + T.c * by;
+        const ys0 = T.b * ax + T.d * ay, ys1 = T.b * bx + T.d * ay, ys2 = T.b * ax + T.d * by, ys3 = T.b * bx + T.d * by;
+        rx0 = Math.max(0, Math.floor(Math.min(xs0, xs1, xs2, xs3) + T.tx) - SHADE_REACH);
+        rx1 = Math.min(W, Math.ceil(Math.max(xs0, xs1, xs2, xs3) + T.tx) + SHADE_REACH);
+        ry0 = Math.max(0, Math.floor(Math.min(ys0, ys1, ys2, ys3) + T.ty) - SHADE_REACH);
+        ry1 = Math.min(H, Math.ceil(Math.max(ys0, ys1, ys2, ys3) + T.ty) + SHADE_REACH);
+      }
+      const q = this._shadeQuad(W, H, rx0, ry0, rx1, ry1);
       q.setFromMatrix(this._I.copyFrom(m).invert());
       const u = q.shader.resources.shadeUniforms.uniforms;
       u.uAlpha = alpha;
@@ -841,7 +862,8 @@ export class ShadowSystem {
       u.uColor[1] = ((col >> 8) & 255) / 255;
       u.uColor[2] = (col & 255) / 255;
       u.uShift[0] = fx; u.uShift[1] = fy;
-      if (!q.visible) q.visible = true;
+      const on = rx1 > rx0 && ry1 > ry0;   /* none on the screen: nothing to shade */
+      if (q.visible !== on) q.visible = on;
       if (this.layer.x !== 0 || this.layer.y !== 0) this.layer.position.set(0, 0);
       if (lock) {
         const L = this.stats.lock || (this.stats.lock = { fx: 0, fy: 0 });
@@ -892,10 +914,10 @@ export class ShadowSystem {
     return true;
   }
 
-  /* the shade's quad: laid in screen CSS px over the picture's area, its
-     texture coordinates the picture's corners; made once, laid again only
-     when the screen's size changes */
-  _shadeQuad(W, H) {
+  /* the shade's quad: laid in screen CSS px over the texels (x0, y0)-(x1,
+     y1) of the picture (W x H, its corner PAD px off the screen's), with
+     those texels' coordinates; made once, its corners written in place */
+  _shadeQuad(W, H, x0, y0, x1, y1) {
     let q = this.shade;
     if (!q) {
       const uni = new UniformGroup({
@@ -917,10 +939,22 @@ export class ShadowSystem {
       this.layer.addChild(q);
     }
     if (q._btW !== W || q._btH !== H) {
-      q.geometry.positions = new Float32Array([-PAD, -PAD, W - PAD, -PAD, W - PAD, H - PAD, -PAD, H - PAD]);
       const z = q.shader.resources.shadeUniforms.uniforms.uInputSize;
       z[0] = W; z[1] = H; z[2] = 1 / W; z[3] = 1 / H;
       q._btW = W; q._btH = H;
+      q._btR = null;
+    }
+    const R = q._btR;
+    if (!R || R[0] !== x0 || R[1] !== y0 || R[2] !== x1 || R[3] !== y1) {
+      const g = q.geometry, P = g.positions, U = g.uvs;
+      P[0] = x0 - PAD; P[1] = y0 - PAD; P[2] = x1 - PAD; P[3] = y0 - PAD;
+      P[4] = x1 - PAD; P[5] = y1 - PAD; P[6] = x0 - PAD; P[7] = y1 - PAD;
+      U[0] = x0 / W; U[1] = y0 / H; U[2] = x1 / W; U[3] = y0 / H;
+      U[4] = x1 / W; U[5] = y1 / H; U[6] = x0 / W; U[7] = y1 / H;
+      g.getBuffer('aPosition').update();
+      g.getBuffer('aUV').update();
+      q._btR = [x0, y0, x1, y1];
+      this.stats.shadeArea = (x1 - x0) * (y1 - y0) / (W * H);
     }
     return q;
   }

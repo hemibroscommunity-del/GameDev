@@ -37,9 +37,15 @@ frame in one go.
 - It is drawn with the world's transform less the camera's fraction of a pixel
   (the lock to the world's grid, v2.3.3149) plus the padding, so every piece
   lands on the same phase of the same grid as in the filter's picture.
-- The shade is a quad over the screen (`shade`) in the shadows layer's place,
-  drawn with the filter's own fragment program: the same five reads at the
-  same points, slid back by the same fraction (`uShift`), at `highp`.
+- The shade is a quad (`shade`) in the shadows layer's place, drawn with the
+  filter's own fragment program: the same five reads at the same points, slid
+  back by the same fraction (`uShift`), at `highp`.
+- It covers only what the pieces cover, as the filter was drawn over its
+  layer's bounds: the pieces' bounds (`castIn.getLocalBounds()`) onto the
+  picture's texels, out by `SHADE_REACH` 3 (the soft edge's texel, the
+  slide's, the rounding's) -- the shade is nothing further out, so the rest of
+  the screen costs no fill (`stats().area`, the share of the screen it
+  covers).
 - If the pre-pass ever throws on a device, Pixi's state is put back
   (renderHeal.js) and that page uses the filter, as before.
 - `?shadowpass` is the filter in the middle of the frame, as it was.
