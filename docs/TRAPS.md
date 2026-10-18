@@ -7554,3 +7554,32 @@ name well, 46 px buttons) he is 146.2, with 19.6 px of air under his boots and
 19.8 under the logo; each of the five messages is one line inside its slot at
 both short sizes, and mp-ccjoin says the same at 390x844, where on main the
 empty-name reason was two lines reaching 5.3 px over the well and Randomize.
+
+## 229. "body is touch-action:none, so nothing in the game can be double-tapped into a zoom" (v2.3.3454)
+
+html and body have been `touch-action:none` for a long time, and every window
+is inside body, so it read as settled. But a browser counts an element's
+touch-action only up to the nearest box that scrolls: a double tap is judged
+by the chain from the element under the finger to that scroller, never body.
+The stat window's middle scrolls (InfoPopup's `data-infopopup-scroll`,
+v2.3.2616) and named no touch-action, so 61 of its 91 elements were `auto` all
+the way up -- a double tap on its words, scene or meter zoomed the whole page,
+and with the page itself never pannable there was no way back. The owner:
+"Double tap to zoom in is enabled during skill point application window.
+Disable that. I got stuck there." Some fifty other windows' scrollers were the
+same. The window's own buttons were `manipulation`, which is why the bug
+lived only between them.
+
+**The rule:** every element is `manipulation` by default (game.css
+`*{touch-action:manipulation}`, the weakest rule there is: everything `auto`
+allows except the double tap). Anything that must be `none` (a canvas, a
+stick, a pinch the game handles itself) or `pan-y` names it on itself, as it
+already did. Never set `touch-action:auto`; a new scrolling box needs nothing.
+Chromium honours `user-scalable=no` and so never shows the zoom: check the
+cause instead -- an element whose chain to its scroller is all `auto`.
+
+**Receipt:** mp-nozoom, with the stat window open from the Points screen as a
+player opens it: on main 362 of the page's 423 elements were `auto` and 61 of
+the window's 91 could be double-tapped into a zoom; with the rule, 0 and 0,
+the canvas, html and body still `none`, the window's +, - and x still
+`manipulation`, the stepper stepping 1 -> 3 -> 2.
