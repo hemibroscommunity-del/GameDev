@@ -18,7 +18,7 @@ import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
 import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, signs swing, flags wave */
 import { SwimFx } from './swimFx.js';                 /* v2.3.3003: a swimmer is a head in the water */
 import { setWheelWaterRenderer } from './wheelWater.js'; /* v2.3.3019: the Wheel's water moves */
-import { setPaletteRenderer } from './paletteTex.js';      /* v2.3.3190: pictures as colour numbers */
+import { setPaletteRenderer, setOneBatchRenderer } from './paletteTex.js';      /* v2.3.3190: pictures as colour numbers; v2.3.3447: one program for every sprite */
 import { JumpFx } from './jumpFx.js';                 /* v2.3.3017: a jumper is drawn in the air */
 import { EmoteFx } from './emoteFx.js';               /* v2.3.3392: a bro who emotes moves */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
@@ -29,6 +29,7 @@ import { LightFx, setLightFx, lightFxOn } from './lightfx/lightFx.js'; /* v2.3.2
 import { sweepTexturePool } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool lets go of what it does not use */
 import { healAfterRenderThrow } from './renderHeal.js'; /* v2.3.3152: a frame that throws does not leave the screen black */
 import { setSheen, prewarmGlintPipe } from './lightfx/glint.js'; /* v2.3.2864: the permanent soft metal shine, behind ?sheen=1; v2.3.2887: on for everyone, ?sheen=0 turns it off; v2.3.2904: its shader built behind the loading screen */
+import { warmSheenBatch } from './lightfx/sheenBatch.js'; /* v2.3.3453: the ordinary metal shine drawn in the frame, not in a pass a piece */
 import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
 import { setWorldCasts } from './lightfx/casters.js'; /* v2.3.2749: QA before/after of the world's shadows */
 import { FpsOverlay } from './systems/fpsOverlay.js';
@@ -47,7 +48,7 @@ import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
 import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
 import { Assets, TextureSource } from 'pixi.js';   /* v2.3.3074: + TextureSource (destroy, below) */
-import { markStandIns } from './formShade.js'; /* v2.3.2767: light from above (the batcher patch itself installs on import) */
+import { markStandIns, refreshFigureShades } from './formShade.js'; /* v2.3.2767: light from above (the batcher patch itself installs on import) */
 import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
 import { recordCrash } from '../debug/crashTrap.js';   /* v2.3.3017: a frame that will not draw is reported, and rebuilt */
 
@@ -136,6 +137,10 @@ export function preloadPlayerAssets() {
          sweep runs whenever light-and-shine is on, sheen or not, so that
          switch is the one that decides. */
       .then(() => { try { if (lightFxOn()) prewarmGlintPipe(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ } })
+      /* v2.3.3453: and the batcher that draws the ordinary shine in the frame
+         (lightfx/sheenBatch.js), so the first armoured player on screen does
+         not compile it either */
+      .then(() => { try { if (lightFxOn()) warmSheenBatch(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ } })
       .then(() => results)
   );
 }
@@ -225,9 +230,13 @@ export async function initPixiRenderer(canvas) {
      a pixel, coloured on the GPU -- its programs built here, behind the
      loading screen (rendering/paletteTex.js) */
   try { setPaletteRenderer(app.renderer); } catch (e) { /* colours, as before */ }
+  /* v2.3.3447: one drawing program for every sprite, built here after the
+     palette's (whose own prewarm must reach the palette program); the three
+     programs, as before, if it does not link (rendering/paletteTex.js) */
+  try { setOneBatchRenderer(app.renderer); } catch (e) { /* the three programs */ }
   /* v2.3.2710: shadows cast by each map's own sun, and metal that catches the
      light (rendering/lightfx).  Off unless the switch is on -- see lightFx.js. */
-  const lightFx = new LightFx(layers, worldContainer);
+  const lightFx = new LightFx(layers, worldContainer, app.renderer);   /* v2.3.3458: + the renderer, for the shadows' pre-pass */
   if (typeof window !== 'undefined') {
     window.__btLightFx = {
       probe: () => lightFx.probe(),
@@ -555,6 +564,9 @@ export async function initPixiRenderer(canvas) {
        boolean read when the switch is off (lightFx.js). */
     /* v2.3.2767: the combat / gathering stand-ins take the figure shade too */
     try { markStandIns(effectsRenderer, SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS); } catch (e) { /* never break a frame */ }
+    /* v2.3.3449: a figure whose span moved has its pieces packed again
+       (formShade.js; each layer keeps its own draw list, drawLists.js) */
+    try { refreshFigureShades(); } catch (e) { /* never break a frame */ }
     try { lightFx.update(S, now, entityRenderer, effectsRenderer); }
     catch (e) { if (!update._lightErr) { update._lightErr = true; console.error('[pixi-render] lightFx threw', e && e.message, e && e.stack); } }
     try { minimap.update(S, cssW, cssH, canvas); }

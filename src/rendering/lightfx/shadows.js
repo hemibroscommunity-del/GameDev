@@ -84,9 +84,37 @@
  * back and `?shadowhp=0` the half precision, to compare on a phone;
  * `window.__btShadowSnap()` says which is on.  mp-shadowlock steps the camera
  * a whole CSS px at a time, across and down, so every step is a crossing.
+ *
+ * ═══ v2.3.3458: ...AND DRAWN BEFORE THE FRAME, NOT IN THE MIDDLE OF IT ═══
+ * The owner: "iterate on what best improves framerate without loss of quality
+ * (or negligible loss) for phone gameplay (iPhone, android)".  A filter is a
+ * render pass, and this one ran in the MIDDLE of the frame: the ground was
+ * already drawn when the graphics chip stopped, drew the shadow pieces into a
+ * picture of their own, and went back to the screen to draw the shade.  A
+ * phone's chip (tile-based: every iPhone, most Androids) holds the frame in
+ * its own small memory while it draws, so stopping writes the frame out to
+ * main memory and going back reads it in again -- colour and stencil, ~15 MB
+ * each way at 3x on a big iPhone, every frame, for every player in the Wheel
+ * (TRAPS §221 says the same of the metal shine's passes).
+ *   So the pieces are drawn into their picture FIRST, before the frame starts
+ * (`_prepass`, at the end of update -- the last world pass, so the camera and
+ * every figure are where they will be drawn), and the frame then draws the
+ * shade from it as one more quad in the shadows layer's place (`this.shade`,
+ * a mesh with the filter's own fragment program).  The chip draws the frame
+ * in one go.  THE SAME PICTURE: the pieces live in a container of their own
+ * (`this.cast`, never in the scene), moved back by the camera's fraction of a
+ * pixel as the layer was (`castIn`), and drawn with the world's transform plus
+ * PAD into a picture of the screen's size in CSS px plus PAD a side -- the
+ * same numbers the filter's picture was drawn with when its bounds reach the
+ * screen's edges, as they do in the Wheel -- and the quad reads it at the
+ * same points (uShift, the soft edge, highp).  `?shadowpass` is the filter, in
+ * the middle of the frame, as it was; the Speed test times it as a step of
+ * its own (setShadowPrepass), and mp-shadowprepass draws one held frame both
+ * ways.
  */
-import { BatcherPipe, Filter, Matrix, MeshSimple, Sprite, Texture } from 'pixi.js';
+import { BatcherPipe, Container, Filter, GlProgram, Matrix, Mesh, MeshGeometry, MeshSimple, RenderTexture, Shader, Sprite, Texture, UniformGroup } from 'pixi.js';
 import { profileAtU } from '../propGround.js';
+import { healAfterRenderThrow } from '../renderHeal.js';   /* v2.3.3458: a pre-pass that throws leaves nothing open */
 
 /* v2.3.3149: on unless `?shadowlock=0` (see the header) -- read once */
 let _lockOn = null;
@@ -103,6 +131,17 @@ function lockOn() {
 const _q = (re) => { try { return typeof location !== 'undefined' && re.test(location.search || ''); } catch (e) { return false; } };
 const SNAP_OLD = _q(/[?&]shadowsnap=1\b/);
 const HP_ON = !_q(/[?&]shadowhp=0\b/);
+/* v2.3.3458: `?shadowpass` -- the filter in the middle of the frame, as it
+   was (see the header); setShadowPrepass flips it live, for this page only */
+let _prepassOn = !_q(/[?&]shadowpass\b/);
+/* the room round the screen the pieces' picture keeps, a side, in CSS px: the
+   filter's own `padding`, so a piece just off the screen still softens its
+   edge as it did */
+const PAD = 2;
+/* v2.3.3458: how far past the pieces' bounds the shade can reach, in the
+   picture's texels: the soft edge's one, the slide's one (uShift < 1), and one
+   for the bounds' own rounding */
+const SHADE_REACH = 3;
 
 /* ═══ v2.3.3338: THE SHADOW PIECES ARE DRAWN WHERE THEY ARE ═══
    Every batched sprite or mesh meets its batcher in BatcherPipe.addToBatch,
@@ -205,6 +244,40 @@ function makeShadowFilter() {
   });
 }
 
+/* ═══ v2.3.3458: THE SHADE, DRAWN FROM THE PIECES' PICTURE (the header) ═══
+   The filter's own fragment program (FRAG), on a quad over the screen: the
+   same reads at the same points.  Its vertex stage is a mesh's, as the moving
+   water's is (wheelWater.js): the quad is laid in screen CSS px and placed in
+   the world by the inverse of the world's transform, which puts it back over
+   the screen.  (uInputSize is the fragment stage's alone here, so the
+   precision rule FRAG's comment gives cannot bite.)  One program a page:
+   Pixi caches it by its source, and HP_ON is read once. */
+const SHADE_VERT = `
+in vec2 aPosition;
+in vec2 aUV;
+out vec2 vTextureCoord;
+
+uniform mat3 uProjectionMatrix;
+uniform mat3 uWorldTransformMatrix;
+uniform mat3 uTransformMatrix;
+
+void main(void)
+{
+    mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
+    gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
+    vTextureCoord = aUV;
+}
+`;
+let _shadeProgram = null;
+function shadeProgram() {
+  if (!_shadeProgram) {
+    _shadeProgram = GlProgram.from(HP_ON
+      ? { vertex: SHADE_VERT, fragment: FRAG, name: 'bt-shadow-shade', preferredFragmentPrecision: 'highp' }
+      : { vertex: SHADE_VERT, fragment: FRAG, name: 'bt-shadow-shade' });
+  }
+  return _shadeProgram;
+}
+
 /* How long a figure's last shadow is held when the figure has vanished but
    its owner has not -- a stand-in this module does not know about yet (a new
    cast pose, say) hides the body for a moment, and a shadow that blinks off
@@ -282,12 +355,66 @@ export function releaseShadowTextures() {
 /* v2.3.3152: QA -- how many shadow systems the module holds (one a renderer) */
 export function shadowSystemCount() { return _systems.size; }
 
+/* ═══ v2.3.3458: BEFORE THE FRAME (true) OR IN THE MIDDLE OF IT, LIVE ═══
+   For this page only: the Speed test's "the old way" step (game/speedTest.js)
+   and mp-shadowprepass's held frame drawn both ways.  Each system moves its
+   pieces to where they are drawn from, at once; the next frame draws the
+   other way. */
+export function shadowPrepassOn() { return _prepassOn; }
+export function setShadowPrepass(on) {
+  _prepassOn = !!on;
+  for (const sys of _systems) { try { sys._rehome(); } catch (e) { /* that system's next update */ } }
+  return _prepassOn;
+}
+if (typeof window !== 'undefined') {
+  window.__btShadowPrepass = {
+    on: () => _prepassOn,
+    set: (on) => setShadowPrepass(on),
+    /* QA (mp-palette, mp-shadowprepass): the pieces' picture drawn again for
+       the world where it stands NOW -- a test that moves the camera and
+       renders without a frame of the game in between */
+    redraw: () => { let n = 0; for (const sys of _systems) { try { if (sys._redraw()) n++; } catch (e) { /* one system's trouble */ } } return n; },
+    stats: () => { const out = []; for (const sys of _systems) out.push({ prepass: sys.stats.prepass, fails: sys._preFails, rt: sys.rt ? [sys.rt.width, sys.rt.height] : null, home: sys._homeIsCast ? 'cast' : 'layer', shade: !!(sys.shade && sys.shade.visible), area: sys.stats.shadeArea != null ? +sys.stats.shadeArea.toFixed(3) : null }); return out; },
+    /* the pieces' own containers, where they are drawn from now (mp-palette
+       hides some of them before a redraw) */
+    casts: () => { const out = []; for (const sys of _systems) if (sys._homeIsCast) out.push(sys.cast); return out; },
+  };
+}
+
 export class ShadowSystem {
-  constructor(layer, root) {
+  /* v2.3.3458: `renderer` -- the pieces' picture is drawn before the frame
+     with it (_prepass); without one, the filter, in the middle of the frame */
+  constructor(layer, root, renderer = null) {
     _systems.add(this);
     installNoSnap();   /* v2.3.3338: once, for every renderer's shadows */
     this.layer = layer;
     this.root = root;
+    this.renderer = renderer;
+    /* v2.3.3458: the pieces' own container, never in the scene: drawn into
+       `rt` before the frame, and `shade` draws that picture in the layer's
+       place.  The pieces live in it, or in the layer for the filter
+       (`_homeIsCast` says which; _rehome moves them) */
+    this.cast = new Container();
+    this.cast.label = 'shadowCast';
+    /* the pieces' parent inside it, moved back by the lock's fraction as the
+       layer is for the filter (lockToWorldGrid), so each piece's corners come
+       out of the same arithmetic the filter's did: the fraction taken off in
+       the piece's own numbers, the world's transform on the chip -- put into
+       the cast's transform instead, it rounded differently by a few
+       thousandths of a pixel, and the pieces' pictures are read pixel by
+       pixel, so a shadow's edge texel flipped here and there (up to 15
+       levels of 255 on the QA phone) */
+    this.castIn = new Container();
+    this.castIn.label = 'shadowCastLock';
+    this.cast.addChild(this.castIn);
+    this._homeIsCast = false;
+    this.rt = null;
+    this.shade = null;
+    this._preOk = true;          /* false after the pre-pass threw: the filter for the rest of the visit */
+    this._preFails = 0;
+    this._T = new Matrix();
+    this._I = new Matrix();
+    this._last = null;           /* the last shade's light: what _redraw draws again */
     this.pool = [];
     this.used = 0;
     this.meshPool = [];          /* v2.3.2749: the buildings' depth-aware shadows (placeDepth) */
@@ -305,7 +432,32 @@ export class ShadowSystem {
        can ask "does each monster on screen cast" without the 16-entry cap on
        `list`.  One array, cleared and refilled in place: the keys are strings
        the casters already carry, so this allocates nothing per frame. */
-    this.stats = { casters: 0, pieces: 0, held: 0, self: null, list: [], keys: [], lifePieces: 0, lock: null };   /* v2.3.3149: + lock, the fraction the layer is drawn back by */
+    this.stats = { casters: 0, pieces: 0, held: 0, self: null, list: [], keys: [], lifePieces: 0, lock: null, prepass: false };   /* v2.3.3149: + lock, the fraction the layer is drawn back by; v2.3.3458: + prepass, drawn before the frame */
+    this._rehome();
+  }
+
+  /* v2.3.3458: drawn before the frame (the cast), or through the filter (the
+     layer) */
+  _wantsCast() { return _prepassOn && this._preOk && !!this.renderer && !this.renderer.destroyed; }
+  get home() { return this._homeIsCast ? this.castIn : this.layer; }
+
+  /* every pooled piece to the container it is drawn from (the switch, or the
+     pre-pass giving up), and the other way's drawing put away */
+  _rehome() {
+    const toCast = this._wantsCast();
+    if (toCast === this._homeIsCast) return;
+    const dst = toCast ? this.castIn : this.layer;
+    const move = (o) => { if (o && !o.destroyed && o.parent !== dst) dst.addChild(o); };
+    for (let i = 0; i < this.pool.length; i++) move(this.pool[i]);
+    for (let i = 0; i < this.meshPool.length; i++) move(this.meshPool[i]);
+    for (let i = 0; i < this._pieceList.length; i++) move(this._pieceList[i].mesh);
+    this._homeIsCast = toCast;
+    if (toCast) {
+      if (this.layer.filters) this.layer.filters = null;
+      if (this.layer.x !== 0 || this.layer.y !== 0) this.layer.position.set(0, 0);
+    } else if (this.shade && this.shade.visible) {
+      this.shade.visible = false;
+    }
   }
 
   _piece() {
@@ -313,7 +465,7 @@ export class ShadowSystem {
     if (!s) {
       s = new Sprite();
       s._btNoSnap = true;   /* v2.3.3338: drawn where it is (installNoSnap) */
-      this.layer.addChild(s);
+      this.home.addChild(s);   /* v2.3.3458: the cast, or the layer (_rehome) */
       this.pool.push(s);
     }
     this.used++;
@@ -378,7 +530,7 @@ export class ShadowSystem {
       }
       m = new MeshSimple({ texture: tex, vertices: new Float32Array(n * 2), uvs, indices: idx });
       m._btNoSnap = true;   /* v2.3.3338 */
-      this.layer.addChild(m);
+      this.home.addChild(m);   /* v2.3.3458 */
       this.meshPool.push(m);
     }
     this.meshUsed++;
@@ -452,7 +604,7 @@ export class ShadowSystem {
         }
         const mesh = new MeshSimple({ texture: o.texture, vertices: new Float32Array(count * 2), uvs, indices: idx });
         mesh._btNoSnap = true;   /* v2.3.3338 */
-        this.layer.addChild(mesh);
+        this.home.addChild(mesh);   /* v2.3.3458 */
         m = { mesh, grid: src ? null : [8, 4] };
         this._pieceMeshes.set(o, m);
         this._pieceList.push(m);
@@ -495,6 +647,20 @@ export class ShadowSystem {
     this._pieceMeshes.clear();
     this._pieceList = [];
     if (this.filter) { try { this.filter.destroy(); } catch (e) { /* gone */ } this.filter = null; }
+    /* v2.3.3458: the pre-pass's own things -- its picture, the shade's quad
+       (its geometry and bindings are its own; the program is shared), and
+       the cast with the pieces in it (their textures are the figures', never
+       ours) */
+    if (this.shade) {
+      const g = this.shade.geometry, sh = this.shade.shader;
+      try { this.shade.destroy(); } catch (e) { /* gone */ }
+      try { if (g) g.destroy(true); } catch (e) { /* gone */ }
+      try { if (sh) sh.destroy(false); } catch (e) { /* gone */ }
+      this.shade = null;
+    }
+    if (this.rt) { try { this.rt.destroy(true); } catch (e) { /* gone */ } this.rt = null; }
+    try { this.cast.destroy({ children: true, texture: false, textureSource: false }); } catch (e) { /* gone */ }
+    this.renderer = null;
   }
 
   clear() {
@@ -523,9 +689,12 @@ export class ShadowSystem {
       if (m.texture !== Texture.EMPTY) m.texture = Texture.EMPTY;
     }
     if (this.layer.filters) this.layer.filters = null;
+    if (this.shade && this.shade.visible) this.shade.visible = false;   /* v2.3.3458 */
+    this._last = null;
     this._held.clear();
     this.stats.casters = 0; this.stats.pieces = 0; this.stats.held = 0; this.stats.self = null; this.stats.list.length = 0; this.stats.keys.length = 0;
     this.stats.lifePieces = 0;
+    this.stats.prepass = false;
   }
 
   /**
@@ -535,6 +704,7 @@ export class ShadowSystem {
    * @param {number} now
    */
   update(casters, light, fade, now) {
+    this._rehome();   /* v2.3.3458: where the pieces are drawn from, this frame */
     this.used = 0;
     this.meshUsed = 0;
     this._frame++;
@@ -623,21 +793,170 @@ export class ShadowSystem {
     }
     if (!this.used && !this.meshUsed) {
       if (this.layer.filters) this.layer.filters = null;
+      if (this.shade && this.shade.visible) this.shade.visible = false;   /* v2.3.3458 */
+      st.prepass = false;
       return;
     }
+    this._drawShade(Math.max(0, Math.min(1, light.alpha * fade)), light.color >>> 0);
+    /* forget figures that have been gone longer than the hold */
+    if (this._held.size > casters.length + 8) {
+      for (const [k, h] of this._held) if (now - h.t > HOLD_MS) this._held.delete(k);
+    }
+  }
+
+  /* ═══ v2.3.3458: THE PIECES DRAWN BEFORE THE FRAME (the header) ═══
+     Into `rt`: the screen's size in CSS px plus PAD a side, at resolution 1
+     (one texel a CSS px, as the filter's picture), cleared, the pieces drawn
+     moved back by the camera's fraction of a pixel (`castIn`, the lock below)
+     with the world's transform plus PAD -- so each lands on the same phase of
+     the same grid as in the filter's picture, whose corner is a whole CSS px.
+     Then the shade's quad over the screen reads it back by that fraction
+     (uShift).
+     Runs at the end of update: the last world pass, after the camera and
+     every figure have moved (pixiRenderer), right before the frame is drawn.
+     The world's transform is the world container's own (the stage stays at
+     the identity, as lockToWorldGrid has always assumed).  False when it
+     cannot (no renderer, a screen of no size); a throw gives up on it for
+     the visit (`_preOk`): the filter, as before. */
+  _prepass(alpha, col) {
+    const r = this.renderer, root = this.root;
+    if (!r || r.destroyed || !root) return false;
+    const scr = r.screen;
+    const W = Math.ceil(scr.width) + 2 * PAD, H = Math.ceil(scr.height) + 2 * PAD;
+    if (!(W > 2 * PAD + 1 && H > 2 * PAD + 1)) return false;
+    try {
+      if (!this.rt) this.rt = RenderTexture.create({ width: W, height: H, resolution: 1, antialias: false, label: 'bt-shadow-pieces' });
+      else if (this.rt.width !== W || this.rt.height !== H) this.rt.resize(W, H, 1);
+      root.updateLocalTransform();
+      const m = root.localTransform;
+      const lock = lockOn();
+      const fx = lock ? m.tx - Math.floor(m.tx) : 0, fy = lock ? m.ty - Math.floor(m.ty) : 0;
+      /* lockToWorldGrid's own numbers, on the pieces' parent (see castIn) */
+      const kx = root.scale.x || 1, ky = root.scale.y || 1;
+      const lx = -fx / kx, ly = -fy / ky;
+      if (this.castIn.x !== lx || this.castIn.y !== ly) this.castIn.position.set(lx, ly);
+      this._T.set(m.a, m.b, m.c, m.d, m.tx + PAD, m.ty + PAD);
+      r.render({ container: this.cast, target: this.rt, clear: true, transform: this._T });
+      /* the shade only over what the pieces cover, as the filter was drawn
+         over its layer's bounds on the screen: their bounds, onto the
+         picture's texels, out by the reach of the soft edge and the slide
+         (the shade is nothing further out, so the picture is the same; the
+         rest of the screen costs no fill) */
+      const b = this.castIn.getLocalBounds();
+      let rx0 = 0, ry0 = 0, rx1 = 0, ry1 = 0;
+      if (b.maxX > b.minX && b.maxY > b.minY) {
+        const T = this._T;
+        const ax = b.minX + lx, bx = b.maxX + lx, ay = b.minY + ly, by = b.maxY + ly;
+        const xs0 = T.a * ax + T.c * ay, xs1 = T.a * bx + T.c * ay, xs2 = T.a * ax + T.c * by, xs3 = T.a * bx + T.c * by;
+        const ys0 = T.b * ax + T.d * ay, ys1 = T.b * bx + T.d * ay, ys2 = T.b * ax + T.d * by, ys3 = T.b * bx + T.d * by;
+        rx0 = Math.max(0, Math.floor(Math.min(xs0, xs1, xs2, xs3) + T.tx) - SHADE_REACH);
+        rx1 = Math.min(W, Math.ceil(Math.max(xs0, xs1, xs2, xs3) + T.tx) + SHADE_REACH);
+        ry0 = Math.max(0, Math.floor(Math.min(ys0, ys1, ys2, ys3) + T.ty) - SHADE_REACH);
+        ry1 = Math.min(H, Math.ceil(Math.max(ys0, ys1, ys2, ys3) + T.ty) + SHADE_REACH);
+      }
+      const q = this._shadeQuad(W, H, rx0, ry0, rx1, ry1);
+      q.setFromMatrix(this._I.copyFrom(m).invert());
+      const u = q.shader.resources.shadeUniforms.uniforms;
+      u.uAlpha = alpha;
+      u.uColor[0] = ((col >> 16) & 255) / 255;
+      u.uColor[1] = ((col >> 8) & 255) / 255;
+      u.uColor[2] = (col & 255) / 255;
+      u.uShift[0] = fx; u.uShift[1] = fy;
+      const on = rx1 > rx0 && ry1 > ry0;   /* none on the screen: nothing to shade */
+      if (q.visible !== on) q.visible = on;
+      if (this.layer.x !== 0 || this.layer.y !== 0) this.layer.position.set(0, 0);
+      if (lock) {
+        const L = this.stats.lock || (this.stats.lock = { fx: 0, fy: 0 });
+        L.fx = fx; L.fy = fy;
+      } else {
+        this.stats.lock = null;
+      }
+      return true;
+    } catch (e) {
+      this._preFails++;
+      this._preOk = false;
+      if (this.shade) this.shade.visible = false;
+      /* Pixi carries its masks' and targets' state from one render to the
+         next (renderHeal.js): put it back, so the frame after is drawn */
+      try { healAfterRenderThrow(r); } catch (e2) { /* never */ }
+      try { console.error('[shadows] the pieces could not be drawn before the frame; the filter instead', e && e.message); } catch (e2) { /* never */ }
+      return false;
+    }
+  }
+
+  /* v2.3.3458: this frame's pieces made into the shade -- drawn before the
+     frame and read back by the shade's quad (the header), or, where that
+     cannot be done, through the filter in the middle of the frame as before.
+     `_last` keeps what it was given, for _redraw. */
+  _drawShade(alpha, col) {
+    const L = this._last || (this._last = { alpha: 0, col: 0 });
+    L.alpha = alpha; L.col = col;
+    this.stats.prepass = this._homeIsCast && this._prepass(alpha, col);
+    if (this.stats.prepass) return;
+    if (this._homeIsCast) this._rehome();   /* it gave up: the pieces to the layer */
     if (!this.filter) this.filter = makeShadowFilter();
     const u = this.filter.resources.shadowUniforms.uniforms;
-    u.uAlpha = Math.max(0, Math.min(1, light.alpha * fade));
-    const col = light.color >>> 0;
+    u.uAlpha = alpha;
     u.uColor[0] = ((col >> 16) & 255) / 255;
     u.uColor[1] = ((col >> 8) & 255) / 255;
     u.uColor[2] = (col & 255) / 255;
     if (!this.layer.filters || this.layer.filters[0] !== this.filter) this.layer.filters = [this.filter];
     this.lockToWorldGrid(u);
-    /* forget figures that have been gone longer than the hold */
-    if (this._held.size > casters.length + 8) {
-      for (const [k, h] of this._held) if (now - h.t > HOLD_MS) this._held.delete(k);
+  }
+
+  /* QA (window.__btShadowPrepass.redraw): this frame's pieces made into the
+     shade again, the way the switch now says, for the world where it stands
+     now -- the same pieces, no update (a held frame drawn both ways) */
+  _redraw() {
+    if (!this._last || !(this.used || this.meshUsed)) return false;
+    this._rehome();
+    this._drawShade(this._last.alpha, this._last.col);
+    return true;
+  }
+
+  /* the shade's quad: laid in screen CSS px over the texels (x0, y0)-(x1,
+     y1) of the picture (W x H, its corner PAD px off the screen's), with
+     those texels' coordinates; made once, its corners written in place */
+  _shadeQuad(W, H, x0, y0, x1, y1) {
+    let q = this.shade;
+    if (!q) {
+      const uni = new UniformGroup({
+        uInputSize: { value: new Float32Array([W, H, 1 / W, 1 / H]), type: 'vec4<f32>' },
+        uAlpha: { value: 0.3, type: 'f32' },
+        uColor: { value: new Float32Array([0, 0, 0]), type: 'vec3<f32>' },
+        uSoft: { value: 0.5, type: 'f32' },   /* the filter's own */
+        uShift: { value: new Float32Array([0, 0]), type: 'vec2<f32>' },
+      });
+      const geometry = new MeshGeometry({
+        positions: new Float32Array(8),
+        uvs: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
+        indices: new Uint32Array([0, 1, 2, 0, 2, 3]),
+      });
+      const shader = new Shader({ glProgram: shadeProgram(), resources: { uTexture: this.rt.source, shadeUniforms: uni } });
+      q = this.shade = new Mesh({ geometry, shader });
+      q.label = 'shadowShade';
+      q._btW = 0; q._btH = 0;
+      this.layer.addChild(q);
     }
+    if (q._btW !== W || q._btH !== H) {
+      const z = q.shader.resources.shadeUniforms.uniforms.uInputSize;
+      z[0] = W; z[1] = H; z[2] = 1 / W; z[3] = 1 / H;
+      q._btW = W; q._btH = H;
+      q._btR = null;
+    }
+    const R = q._btR;
+    if (!R || R[0] !== x0 || R[1] !== y0 || R[2] !== x1 || R[3] !== y1) {
+      const g = q.geometry, P = g.positions, U = g.uvs;
+      P[0] = x0 - PAD; P[1] = y0 - PAD; P[2] = x1 - PAD; P[3] = y0 - PAD;
+      P[4] = x1 - PAD; P[5] = y1 - PAD; P[6] = x0 - PAD; P[7] = y1 - PAD;
+      U[0] = x0 / W; U[1] = y0 / H; U[2] = x1 / W; U[3] = y0 / H;
+      U[4] = x1 / W; U[5] = y1 / H; U[6] = x0 / W; U[7] = y1 / H;
+      g.getBuffer('aPosition').update();
+      g.getBuffer('aUV').update();
+      q._btR = [x0, y0, x1, y1];
+      this.stats.shadeArea = (x1 - x0) * (y1 - y0) / (W * H);
+    }
+    return q;
   }
 
   /* ═══ v2.3.3149: DRAWN AT A WHOLE PIXEL OF ITS OWN GRID (the header) ═══

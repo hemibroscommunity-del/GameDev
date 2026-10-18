@@ -2211,7 +2211,9 @@ for (const { lvl, url } of treeArtSources()) {
    The owner's five ore rocks (copper, iron, black steel, titanium,
    obsidian), one a gathering tier, each at its own size from
    src/data/oreArt.js -- 0.6 MB decoded for the five, where the old copper
-   vein, its four colour-mapped twins and their break strip held ~8 MB. */
+   vein, its four colour-mapped twins and their break strip held ~8 MB.
+   v2.3.3443: 1.2 MB, every rock cut 1.4x (tools/world/add-ore-art.mjs
+   ORE_GROW) so that copper hides the miner's shirt's hem as the old vein did. */
 const ORE_TEX = {};
 for (const { lvl, url } of oreArtSources()) {
   _fxLoad(url).then((tex) => { if (tex) ORE_TEX[lvl] = tex; })
