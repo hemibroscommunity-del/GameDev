@@ -30,7 +30,7 @@ export const FARM_STEPS = ['dig', 'plant', 'water', 'feed', 'harvest'];
    enough that six beds' worth of steps is a minute's work, not a chore. */
 export const FARM_WORK_MS = Object.freeze({ dig: 1500, plant: 1100, water: 1150, feed: 1100, harvest: 1250 });
 
-/* ═══ v2.3.3352: THE FARMER'S OWN MOVES ═══
+/* ═══ v2.3.3402: THE FARMER'S OWN MOVES ═══
    The owner, 2026-10-17: "I'd like to have animations during the farming
    process perhaps on a sprite sheet."  They made three (tools/farm_anim_src,
    cut by tools/make_farm_anims.py into src/data/farmAnims.js): the hoe, the
@@ -82,7 +82,7 @@ function turnsIn(T, total) { return Math.max(1, Math.round(total / T.ms)); }
 /** The animation a step plays ('hoe' | 'water' | 'kneel'). */
 export function farmAnimOf(step) { return FARM_STEP_ANIM[step] || 'kneel'; }
 
-/* ═══ v2.3.3352: WHAT THE OTHERS SEE ═══
+/* ═══ v2.3.3402: WHAT THE OTHERS SEE ═══
    While you work a bed your move carries 'farm:<step>:<n>' as its `ex` -- the
    harvest code the worker already keeps and hands every player near you in
    its tick (movement.js, tick.js), as the lumberjack's 'chop' -- and their

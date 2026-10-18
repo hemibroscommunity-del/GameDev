@@ -7404,7 +7404,7 @@ export var BroTown = function BroTown(_ref0) {
           : _exSkill === 'fishing' ? 'fish'
           : _exSkill === 'cooking' ? 'cook'
           : null;
-        /* v2.3.3352: and a step on a bed of your farm, so the others there see
+        /* v2.3.3402: and a step on a bed of your farm, so the others there see
            your farmer at it ('farm:<step>:<n>', game/farmWork.js farmExCode) */
         if (!_exCode && S._farmWork && S.currentZone === 'farm_home') _exCode = farmExCode(S._farmWork.step, S._farmWork.n);
         var _exChanged = _exCode !== (S._lastBroadcastEx || null);
