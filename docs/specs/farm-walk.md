@@ -133,7 +133,7 @@ output every run). It:
      lies under it in the bare frame. Over skin it is the plate (arms, chest),
      over trousers and boots the greaves. The chain-mail belt rides with the
      greaves, over the trousers' top;
-   - (v2.3.3468) the plate and greaves **in the game's own greys**: ChatGPT
+   - (v2.3.3472) the plate and greaves **in the game's own greys**: ChatGPT
      painted a pale, chalky steel (the plate's middle grey 0.60 where the
      walking plate's is 0.46; the watering can's sheet cream), a different
      metal beside the walking, cooking and chopping armour and a lighter one
@@ -503,7 +503,7 @@ two pictures still to come.
   - he stands your height with the hoe and with the can;
   - each step ends in one `farm_act` the worker takes;
   - in armour, each of the three outfits on each of the three moves, beds 1-3
-    (`out/farmanim-armour-<bed>-<step>-<frame>.png`; v2.3.3468, the owner:
+    (`out/farmanim-armour-<bed>-<step>-<frame>.png`; v2.3.3472, the owner:
     "Make sure armor combos work too (just wearing legs or just wearing
     torso)"): copper plate and greaves, copper greaves under the tee, the
     copper plate over his trousers -- with the hoe, kneeling and with the can.

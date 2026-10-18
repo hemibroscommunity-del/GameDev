@@ -26,7 +26,7 @@
  *      the tee hidden under a plate, the body under greaves the one cut for
  *      them, each garment on the body's own frame, in the order body,
  *      greaves, shirt, plate, tool, and in the metal his walking figure wears;
- *      (v2.3.3468) and the plate and greaves SHINE as his walking ones do (the
+ *      (v2.3.3472) and the plate and greaves SHINE as his walking ones do (the
  *      metal sheen's own slots, self:c and self:l, hold farmChest and
  *      farmLegs), and the six strips are in the walking steel's greys (their
  *      middle grey within 0.03 of jog-south's; ChatGPT's was 0.60);
@@ -134,7 +134,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.evaluate(({ item, n }) => window.__btFarm.buy(window._gameState.current, item, n), { item, n });
       return until(bag, (b) => (b[item] || 0) >= n, 8000);
     };
-    /* v2.3.3468: four seeds -- bed 0, and beds 1-3 for the armour, every
+    /* v2.3.3472: four seeds -- bed 0, and beds 1-3 for the armour, every
        outfit on every move (the owner's "just wearing legs or just wearing
        torso") */
     await buy('seed_carrot', 4);
@@ -195,7 +195,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           if (!w || w.step !== step) return;
           const n = Date.now(); w.startedAt = n - mid; w.doneAt = w.startedAt + T * 100;
         };
-        /* v2.3.3468: ...and pinned the moment the game STARTS the step, not on
+        /* v2.3.3472: ...and pinned the moment the game STARTS the step, not on
            the interval's next turn: on this box a frame after E can take longer
            than the whole step (the plant's 1.1 s), and the step ended -- its bed
            planted, the farmer put away -- before the interval ran (the armour's
@@ -252,7 +252,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
 
     /* ── 5. v2.3.3439: in armour, on beds 1-3 ──
-       v2.3.3468: every outfit on every move -- the owner: "Make sure armor
+       v2.3.3472: every outfit on every move -- the owner: "Make sure armor
        combos work too (just wearing legs or just wearing torso)".  Each bed
        is dug, planted and watered in turn (the worker's order), so the three
        beds give the three outfits each move: the full set, the greaves alone
@@ -294,7 +294,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           if (!w || w.step !== step) return;
           const n = Date.now(); w.startedAt = n - mid; w.doneAt = w.startedAt + T * 100;
         };
-        /* v2.3.3468: ...and pinned the moment the game STARTS the step, not on
+        /* v2.3.3472: ...and pinned the moment the game STARTS the step, not on
            the interval's next turn: on this box a frame after E can take longer
            than the whole step (the plant's 1.1 s), and the step ended -- its bed
            planted, the farmer put away -- before the interval ran (the armour's
@@ -319,7 +319,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const v = await until(fig, (x) => x.fig && x.fig.visible && x.fig.frame === f, 1500);
         const F = v && v.fig;
         if (F) await shot(`armour-${o.bed}-${o.step}-${f}`, F);
-        /* v2.3.3468: what the metal sheen lights this frame, by slot */
+        /* v2.3.3472: what the metal sheen lights this frame, by slot */
         const shineNow = await P.page.evaluate(() => { const p = window.__btLightFx ? window.__btLightFx.probe() : null; return p && p.glint ? p.glint.labels || null : null; });
         frames.push({ f, ok: !!F && F.frame === f && F.anim === anim, under: F && F.under, legs: F && F.legs, chest: F && F.chest, shirt: F && F.shirt,
           prop: F && F.prop, order: F && F.order, shine: shineNow });
@@ -341,7 +341,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && (!wearsChest || (x.chest.tint === walk.chest && walk.chest !== 0xffffff));
       rec.ok(`${at}: in the copper his walking figure wears (greaves ${walk.legs}, plate ${walk.chest})`, frames.every(metalOk),
         { walk, got: frames.map((x) => ({ legs: x.legs && x.legs.tint, chest: x.chest && x.chest.tint })) });
-      /* v2.3.3468: ...and it shines as his walking armour does: the sheen's own
+      /* v2.3.3472: ...and it shines as his walking armour does: the sheen's own
          slots (glint.js) hold the farmer's sprites (they were left out) */
       const shine = frames.map((x) => x.shine || {});
       const shineOk = (sh) => (!wearsChest || ((sh['self:c'] || []).includes('farmChest')))
@@ -354,7 +354,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(700);
     }
     await P.page.evaluate(() => { window.__btSetGear('chest', 'none'); window.__btSetGear('legs', 'none'); });
-    /* v2.3.3468: the six strips in the walking steel's greys -- the middle
+    /* v2.3.3472: the six strips in the walking steel's greys -- the middle
        grey of their opaque pixels within 0.03 of jog-south's (ChatGPT's steel
        was 0.53-0.61; tools/make_farm_anims.py steel_like_the_game) */
     {

@@ -971,7 +971,7 @@ def work_point(name, strips):
     return [round(float(xs[low].mean()), 1), float(ys.max())]
 
 
-# ── the steel in the game's own greys (v2.3.3468) ────────────────────────────
+# ── the steel in the game's own greys (v2.3.3472) ────────────────────────────
 # The owner: "the armor art does not match what the character is wearing in
 # the game while farming. It needs to match. See what other animations do."
 # The plate and greaves are cut from the owner's dressed sheets as ChatGPT
@@ -1033,7 +1033,7 @@ def main():
         if tool:
             save_strip(a['strips']['prop'], os.path.join(SKILLS, f'farm-{name}-prop.png'))
         save_strip(a['strips']['shirt'], os.path.join(SHIRTS, f'farm{name}-south.png'))
-        save_strip(steel_like_the_game(a['strips']['chest'], 'chest'), os.path.join(CHESTS, f'farm{name}-south.png'))   # v2.3.3468
+        save_strip(steel_like_the_game(a['strips']['chest'], 'chest'), os.path.join(CHESTS, f'farm{name}-south.png'))   # v2.3.3472
         save_strip(steel_like_the_game(a['strips']['legs'], 'legs'), os.path.join(LEGS, f'farm{name}-south.png'))
         print(f'  -> farm-{name}.png {bw}x{bh} ({a["fw"]}x{a["fh"]} x{N}), foot {a["foot"]}, work {a["work"]}')
         made.append(a)
