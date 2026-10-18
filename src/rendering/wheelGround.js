@@ -61,7 +61,7 @@ if (typeof window !== 'undefined') {
     const R = G && G._app && G._app.renderer;
     if (!G || G.dead || !G.under || !R) return null;
     const was = G.under.visible;
-    /* v2.3.3438: every piece drawn for this, the ones under open sea too
+    /* v2.3.3441: every piece drawn for this, the ones under open sea too
        (wheelWater.js hides them while its quads cover them) */
     const W = G.water, covering = !!(W && W._covering);
     if (covering) W.cover(false);
@@ -140,6 +140,9 @@ export class WheelGround {
     this.root.addChild(this.pieceRoot);
     this.water = WheelWater.on() ? new WheelWater(this.root) : null;
     this.under = null;
+    /* v2.3.3441: every piece the view touches laid and the view inside the
+       world -- the tile layer's black under the ground is not drawn (update) */
+    this.coversView = false;
     this.pieces = new Map();   /* "i,j" -> { i, j, sprite, ready, popped } */
     this.inFlight = 0;
     /* v2.3.2959: pieces laid short of a picture (ground-worker.js,
@@ -175,6 +178,7 @@ export class WheelGround {
   }
 
   update(cx, cy, viewW, viewH) {
+    this.coversView = false;   /* v2.3.3441: until this frame's test says so (below) */
     if (this.dead) return;
     const info = wheelInfo();
     if (!info) { wheelStart().catch(() => {}); return; }
@@ -212,20 +216,32 @@ export class WheelGround {
        is shown exactly then: while any piece the view (and UNDER_PAD past it)
        touches is missing or still being laid -- the frame that piece is
        wanted, as a piece is only ever asked for here, before the draw. */
+    /* v2.3.3441: worked out whether or not the overview is placed yet, as the
+       tile layer's black under everything asks it too (coversView, below) */
+    let covered = true;
+    const ui0 = clampI(Math.floor((cx - UNDER_PAD) / cs)), ui1 = clampI(Math.floor((cx + viewW + UNDER_PAD) / cs));
+    const uj0 = clampJ(Math.floor((cy - UNDER_PAD) / cs)), uj1 = clampJ(Math.floor((cy + viewH + UNDER_PAD) / cs));
+    for (let j = uj0; j <= uj1 && covered; j++) for (let i = ui0; i <= ui1; i++) {
+      const rec = this.pieces.get(i + ',' + j);
+      if (!rec || !rec.ready || !rec.sprite || rec.sprite.destroyed) { covered = false; break; }
+    }
+    /* QA (mp-frameprofile): window.__btUnderShow keeps it shown, as it was,
+       to compare the two pictures */
+    if (covered && typeof window !== 'undefined' && window.__btUnderShow) covered = false;
     if (this.under) {
-      let covered = true;
-      const ui0 = clampI(Math.floor((cx - UNDER_PAD) / cs)), ui1 = clampI(Math.floor((cx + viewW + UNDER_PAD) / cs));
-      const uj0 = clampJ(Math.floor((cy - UNDER_PAD) / cs)), uj1 = clampJ(Math.floor((cy + viewH + UNDER_PAD) / cs));
-      for (let j = uj0; j <= uj1 && covered; j++) for (let i = ui0; i <= ui1; i++) {
-        const rec = this.pieces.get(i + ',' + j);
-        if (!rec || !rec.ready || !rec.sprite || rec.sprite.destroyed) { covered = false; break; }
-      }
-      /* QA (mp-frameprofile): window.__btUnderShow keeps it shown, as it was,
-         to compare the two pictures */
-      if (covered && typeof window !== 'undefined' && window.__btUnderShow) covered = false;
       if (this.under.visible === covered) this.under.visible = !covered;
       wheelStats.under = !covered;
     }
+    /* ═══ v2.3.3441: AND THE BLACK UNDER IT ALL ═══
+       The tile layer draws a black rectangle under every ground (tileRenderer
+       bgGfx: the world and a screen's width round it), one full screen of
+       pixels painted a frame in the Wheel, every one of them covered by the
+       pieces exactly as the overview is.  It is the colour past the world's
+       edge, so it is only covered while the view, with the same pad, lies
+       inside the pieces' grid: the clamped walk above cannot see past it. */
+    const gw = Math.min(info.worldW, C * cs), gh = Math.min(info.worldH, R * cs);
+    this.coversView = covered && cx - UNDER_PAD >= 0 && cy - UNDER_PAD >= 0
+      && cx + viewW + UNDER_PAD <= gw && cy + viewH + UNDER_PAD <= gh;
     const mx = cx + viewW / 2 + ax / 2, my = cy + viewH / 2 + ay / 2;
 
     const want = [];

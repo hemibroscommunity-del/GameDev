@@ -502,7 +502,7 @@ let _ok = null;              /* null: not built yet; true: built and linked; fal
 let _liveOff = false;
 let _held = null;            /* QA: the clock held at one moment, for pictures */
 let _live = null;            /* QA: the WheelWater drawing now, for __btWaves.extract */
-/* ═══ v2.3.3438: THE GROUND UNDER OPEN SEA IS NOT DRAWN ═══
+/* ═══ v2.3.3441: THE GROUND UNDER OPEN SEA IS NOT DRAWN ═══
    The owner: "iterate on what best improves framerate without loss of
    quality (or negligible loss) for phone gameplay (iPhone, android)".  A
    piece of open sea with no shore in reach (its field `uniform`) is drawn
@@ -664,7 +664,7 @@ export class WheelWater {
     parent.addChild(this.root);
     this.meshes = new Map();   /* "i,j" -> { mesh, tex (its own, or null when shared), bytes, ground } */
     this.dead = false;
-    this._covering = _cover && !_liveOff;   /* v2.3.3438 */
+    this._covering = _cover && !_liveOff;   /* v2.3.3441 */
     _live = this;
   }
 
@@ -678,7 +678,7 @@ export class WheelWater {
   /** The piece at (i, j) was laid (or laid again): its water's quad, or
    *  none.  `pic`: the piece's own picture, which the quad moves; `ground`:
    *  the piece's sprite, hidden while a quad of open sea covers it whole
-   *  (v2.3.3438, the header above). */
+   *  (v2.3.3441, the header above). */
   set(key, i, j, wf, info, pic, ground) {
     if (this.dead) return;
     this.drop(key);
@@ -706,7 +706,7 @@ export class WheelWater {
     if (!e) return;
     this.meshes.delete(key);
     unmake(e.mesh);
-    if (e.ground && !e.ground.destroyed && !e.ground.visible) e.ground.visible = true;   /* v2.3.3438 */
+    if (e.ground && !e.ground.destroyed && !e.ground.visible) e.ground.visible = true;   /* v2.3.3441 */
     /* the field is this piece's alone: its GPU copy and its texels go with it */
     if (e.tex) { try { e.tex.destroy(true); } catch (err) { /* gone */ } }
     this._count();
@@ -717,12 +717,12 @@ export class WheelWater {
     if (this.dead) return;
     const off = _liveOff;
     this.root.visible = !off;
-    this.cover(_cover && !off);   /* v2.3.3438: the ground shown the frame the quads go */
+    this.cover(_cover && !off);   /* v2.3.3441: the ground shown the frame the quads go */
     if (off || !this.meshes.size) return;
     _uni.uniforms.uTime = _held != null ? _held : (now / 1000) % TIME_WRAP;
   }
 
-  /** v2.3.3438: hide (true) or show (false) the ground under every quad of
+  /** v2.3.3441: hide (true) or show (false) the ground under every quad of
    *  open sea -- only on a change, as each is a change to the ground's draw
    *  list. */
   cover(on) {
@@ -754,7 +754,7 @@ export class WheelWater {
 if (typeof window !== 'undefined') {
   window.__btWaves = {
     probe: () => ({ ..._stats, ok: _ok, webgl2: webgl2(), on: wavesOn() && !_liveOff, strength: _uni.uniforms.uStrength, caustics: _uni.uniforms.uCaustics, time: _uni.uniforms.uTime , cover: _cover }),
-    /* v2.3.3438: the ground under open sea hidden (true) or drawn (false),
+    /* v2.3.3441: the ground under open sea hidden (true) or drawn (false),
        at once (mp-seacover draws one held frame both ways) */
     cover: (on) => { _cover = !!on; if (_live && !_live.dead) _live.cover(_cover && !_liveOff); return _stats.covered; },
     off: () => { _liveOff = true; },

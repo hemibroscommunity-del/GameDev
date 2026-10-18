@@ -1,4 +1,4 @@
-# The ground under open sea is not drawn (v2.3.3438)
+# The ground under open sea, and the black under the ground, are not drawn (v2.3.3441)
 
 The owner, 2026-10-18: *"I'd like you to iterate on what best improves
 framerate without loss of quality (or negligible loss) for phone gameplay
@@ -47,6 +47,36 @@ the lands -- that was the sea's whole area drawn twice.
   `window.__btWaves.cover(on)` switches it live, and `probe().covered` counts
   the hidden pieces.
 
+## And the black under the ground
+
+Found by counting what a phone's chip paints in one frame (every drawn
+sprite's area on the screen, by kind): under every ground the tile layer draws
+a black rectangle, the colour past the world's edge -- the world and a screen's
+width round it (tileRenderer `bgGfx`). In the Wheel that is one whole screen
+of pixels painted every frame, and every one of them is painted over by the
+ground's pieces, exactly as the overview under them was before v2.3.3339.
+
+- Each frame WheelGround works out whether its pieces cover the view
+  (`coversView`): every piece the view touches is laid, `UNDER_PAD` (48 game
+  px, a shake's room) past it -- the same test that puts the overview away --
+  and the view with that pad lies inside the world. Past the world's edge only
+  the black is drawn, so near the edge it stays.
+- While they do, the tile layer does not draw the black (`bgGfx.visible`
+  false). The frame any of the view is not covered -- the world's edge, a piece
+  still being laid, the overview shown, a zone change, any other zone -- it is
+  drawn again. Each change is a change to the draw list, so only on a change.
+- A piece is only freed well outside the view and is laid again by swapping
+  the new picture in before the old one goes, so nothing the test counted goes
+  between the test and the draw.
+- `?groundbg=1` keeps it drawn every frame, as it was; `window.__btGroundBgKeep`
+  the same, live. `window.__btGroundBg()` says whether it is drawn and whether
+  the pieces cover the view; `.show(on)` sets it for a held frame.
+
+What it saves: one screen of flat colour a frame, about 3 million pixels on a
+3x iPhone. A flat colour is the cheapest thing a chip paints (one write a
+pixel, no picture read), so this is a small saving: *estimate*, up to about a
+millisecond a frame on a cheap Android phone, next to nothing on an iPhone.
+
 ## How it is checked
 
 `mp-seacover`, on a phone-sized page at the Wind Dunes' first coast:
@@ -57,4 +87,10 @@ the lands -- that was the sea's whole area drawn twice.
 - the water's live switch shows every hidden piece and hides them again;
 - `__btUnderSame` still sees every piece;
 - the frame's cost each way on the QA box, which draws in software: a skipped
-  sprite is pixels it does not draw (reported; a phone's numbers are its own).
+  sprite is pixels it does not draw (reported; a phone's numbers are its own);
+- the black under the ground: not drawn at the coast with every piece laid; one
+  held frame drawn with it hidden, drawn and hidden again, the same to the bit;
+  with the ground put away, hiding it changes most of the screen (the canvas's
+  own navy shows for black), so it really is not drawn; drawn again the frame
+  the overview is kept shown (a piece missing) and with the keep switch, hidden
+  again after both; and the frame's cost each way (reported).

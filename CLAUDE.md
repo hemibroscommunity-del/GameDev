@@ -1909,15 +1909,21 @@ remnant to migrate server-side, not a mode to preserve.
       hold);
     - test-world-core "the water moves", `mp-wheelwaves`:
       docs/specs/moving-water.md.
-    - since v2.3.3438 THE GROUND UNDER OPEN SEA IS NOT DRAWN -- the owner's
-      "iterate on what best improves framerate without loss of quality": a
-      piece whose field is `uniform` (open sea, no shore in reach) is covered
-      whole by its quad at full strength, so its ground sprite (eight texture
-      reads a px as colour numbers) was drawn for nothing; it is hidden while
-      the water draws and shown the frame the water's live switch puts the
-      quads away (`WheelWater.cover`), the picture the same to the bit;
-      `?seacover=0` and `window.__btWaves.cover(on)`; `__btUnderSame` shows
-      them for its check; `mp-seacover`: docs/specs/sea-cover.md.
+    - since v2.3.3441 THE GROUND UNDER OPEN SEA, AND THE BLACK UNDER THE
+      GROUND, ARE NOT DRAWN -- the owner's "iterate on what best improves
+      framerate without loss of quality": a piece whose field is `uniform`
+      (open sea, no shore in reach) is covered whole by its quad at full
+      strength, so its ground sprite (eight texture reads a px as colour
+      numbers) was drawn for nothing; it is hidden while the water draws and
+      shown the frame the water's live switch puts the quads away
+      (`WheelWater.cover`); and the tile layer's black under every ground (the
+      colour past the world's edge, tileRenderer `bgGfx`) is not drawn while
+      every piece the view touches is laid and the view is inside the world
+      (`WheelGround.coversView`), a screen of paint a frame; the picture the
+      same to the bit both ways; `?seacover=0`, `?groundbg=1`,
+      `window.__btWaves.cover(on)`, `window.__btGroundBg()`; `__btUnderSame`
+      shows the hidden pieces for its check; `mp-seacover`:
+      docs/specs/sea-cover.md.
   - Since v2.3.3020 the view is BACK IN A LITTLE, the bro 64 px tall -- the
     owner: "the framerate looks a bit gritty I think from the scale change
     ... I think char 64 pixels tall was probably best": `VIEW_OUT` 0.77 in
