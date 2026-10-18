@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { shopBus } from '../mobile/shopBus.js';
 import { useModalGuard } from '../mobile/modalGuardBus.js'; /* v2.3.2276 */
 import { thumbFor, iconFor, ITEM_NAMES } from '../mobile/dash/InventoryPanel.jsx';
+import { playIsLandscape } from '../mobile/playViewport.js';         /* v2.3.3407: sideways */
+import { dashboardPanelBus } from '../mobile/dashboardPanelBus.js';   /* v2.3.3407: the bag's column */
 
 /* ═══ v2.3.2059: THE MERCHANT DRAWER ═══
  *
@@ -58,7 +60,14 @@ const DRAWER_H = 226;
    percentage basis inside an overflow-x row resolves against the row, the
    sixth slot keeps that same size instead of squeezing the other five. */
 const SHELF_MIN = 5;
-const SLOT_W = `calc((100% - ${(SHELF_MIN - 1) * 6}px) / ${SHELF_MIN})`;
+/* v2.3.3407: ...and never taller than the drawer has room for.  A slot is
+   square plus its 15px price line, and the fixed DRAWER_H leaves the shelf
+   about 83px for them (his name row and the deal row take the rest), so a
+   slot over 68px pushed the "HIS SHELF" line up under his name and the ✕
+   with it -- what a phone held SIDEWAYS showed (a fifth of 594px is 111), and
+   any screen wider than ~395px.  At 390 the fifth is 67.6, so the upright
+   phone is unchanged; wider, more than five show before the row scrolls. */
+const SLOT_W = `min(calc((100% - ${(SHELF_MIN - 1) * 6}px) / ${SHELF_MIN}), 68px)`;
 
 function prettyKey(k) {
   if (ITEM_NAMES[k]) return ITEM_NAMES[k];
@@ -219,7 +228,31 @@ export function ShopkeeperPanel() {
     return () => { if (quoteTimer.current) clearTimeout(quoteTimer.current); };
   }, [selKey, selSide, selSeq, qty]);
 
+  /* ═══ v2.3.3407: SIDEWAYS, THE BAG IS THE SIDE COLUMN ═══
+     The owner: "Make sure all actions/buttons can be completed in landscape
+     mode."  Upright the bag is the band under this drawer.  Sideways the band
+     holds no bag -- it is the side column's 'dashboard' page -- so nothing
+     could be SOLD: the drawer lay over the ▴ chip that opens the column, and
+     opening it put the shop away.  So sideways the shop opens the column with
+     it (BroTown keeps the shop open for that page), the drawer sits beside it
+     over the world (below), and the column folds again on the way out if the
+     shop was what opened it. */
+  const openedBag = useRef(false);
+  useEffect(() => {
+    const onBag = () => dashboardPanelBus.state.mode === 'expanded' && dashboardPanelBus.current() === 'dashboard';
+    if (shopBus.open) {
+      if (playIsLandscape() && !onBag()) {
+        openedBag.current = true;
+        dashboardPanelBus.open('dashboard');
+      }
+    } else if (openedBag.current) {
+      openedBag.current = false;
+      if (onBag()) dashboardPanelBus.toBar();
+    }
+  }, [shopBus.open]);
+
   if (!shopBus.open) return null;
+  const sideways = playIsLandscape();
 
   const S = (typeof window !== 'undefined' && window._gameState && window._gameState.current) || null;
   const inv = (S && S.rpg && S.rpg.inventory) || {};
@@ -285,8 +318,16 @@ export function ShopkeeperPanel() {
       style={{
         position: 'fixed',
         /* The band's own frame padding, so the drawer's edges line up with
-           the bag panel's left edge and the combat panel's right edge. */
-        left: 6, right: 6,
+           the bag panel's left edge and the combat panel's right edge.
+           v2.3.3407: sideways, over the WORLD -- beside the bag's column
+           (--world-x, --play-w: where the world begins and how wide it is),
+           and clear of the ▴ chip while the column is folded (--land-fold-w)
+           -- never over the bag it trades with. */
+        ...(sideways ? {
+          left: 'calc(var(--world-x, 0px) + var(--land-fold-w, 0px) + 6px)',
+          width: 'calc(var(--play-w, 100vw) - var(--land-fold-w, 0px) - 12px)',
+          boxSizing: 'border-box',
+        } : { left: 6, right: 6 }),
         bottom: 'var(--dash-h, 243px)',
         height: DRAWER_H,
         display: 'flex', flexDirection: 'column',
@@ -334,7 +375,9 @@ export function ShopkeeperPanel() {
         </div>
         <button type="button" onClick={() => shopBus.setOpen(false)} aria-label="Close"
           data-shop-close=""
+          data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3407: Esc presses it (game/deskKeys.js) */
           style={{
+            position: 'relative',   /* its key cap's anchor */
             width: 30, height: 30, borderRadius: 8, padding: 0, flex: 'none',
             background: '#293B41', border: '1px solid rgba(229,237,233,.20)',
             color: 'var(--ui-text, #F4F0E7)', fontSize: 14, cursor: 'pointer',
@@ -396,7 +439,9 @@ export function ShopkeeperPanel() {
           <div style={{
             flex: 1, textAlign: 'center', fontSize: 12,
             color: 'var(--ui-text-secondary, #B6C1BE)',
-          }}>Tap his shelf to buy · tap your bag below to sell</div>
+          }}>{sideways
+            ? 'Tap his shelf to buy · tap your bag to sell'   /* v2.3.3407: it is beside, not below */
+            : 'Tap his shelf to buy · tap your bag below to sell'}</div>
         ) : (
           <>
             {thumbFor(selKey)

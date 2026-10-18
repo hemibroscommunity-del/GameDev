@@ -1095,6 +1095,9 @@ export const BottomDashboard = () => {
               <button
                 onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
                 className="bt-chisel bt-chisel--chip"
+                /* v2.3.3407: a name for it, as the upright one has (the UI
+                   review listed it as "◂") */
+                aria-label={'Back' + (active && active.title ? ' from ' + active.title : '')}
                 style={{ ...chipStyle, flex: 'none' }}
               >◂</button>
               <div style={{
