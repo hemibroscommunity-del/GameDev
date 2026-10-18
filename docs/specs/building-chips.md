@@ -46,12 +46,15 @@ its hits (v2.3.3230).
 
 ## Measured (`mp-buildingchips`, a computer, 1280 x 800)
 
+The same test on the code before this change, and after it (pieces still flying
+or lying 400 ms after the hit; "in front" is drawn over the building):
+
 | | before | after |
 |---|---|---|
-| an arrow into a wooden building | about 2 splinters, mostly hidden behind it | RESULT_WOOD |
-| a sword's swing at it | | RESULT_SWORD |
-| an arrow into a stone building | | RESULT_STONE |
-| an arrow into a barrel (a prop) | 1-4 splinters | RESULT_BARREL (unchanged) |
+| an arrow into a wooden building (the hotel) | 2 splinters, 1 sawdust; 33% in front, landing 6.5 px INTO the wall | 7 splinters, 3 sawdust; 100% in front, landing 39 px toward the camera |
+| a sword's swing at it (a real click) | 3 splinters; 0% in front | 9 splinters; 100% in front |
+| an arrow into a stone building (the Gem Works) | 3 chips, 1 dust | 11 chips, 3 dust; 100% in front |
+| an arrow into a crate (a prop) | 3 splinters | 2 splinters (unchanged: a prop's few) |
 
 ## Tests
 
