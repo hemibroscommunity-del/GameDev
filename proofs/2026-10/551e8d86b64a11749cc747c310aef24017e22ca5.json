@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "551e8d86b64a11749cc747c310aef24017e22ca5",
+  "tree": "60da1dde992a48edd6c29ed174ae84b66ea6a0a1",
+  "committedAt": "2026-10-18T11:06:52-07:00",
+  "subject": "Two things nobody sees aren't drawn any more: the ground under open sea, and the black under the ground (v2.3.3452) (#1000)",
+  "files": 5968,
+  "bytes": 673820847,
+  "listingSha256": "349aea2a843e751db346eea38dcb42b61107c9fd1aebb8bcea899a8165187b4e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
