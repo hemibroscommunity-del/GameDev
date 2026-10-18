@@ -971,6 +971,53 @@ def work_point(name, strips):
     return [round(float(xs[low].mean()), 1), float(ys.max())]
 
 
+# ── the steel in the game's own greys (v2.3.3472) ────────────────────────────
+# The owner: "the armor art does not match what the character is wearing in
+# the game while farming. It needs to match. See what other animations do."
+# The plate and greaves are cut from the owner's dressed sheets as ChatGPT
+# painted them: a pale, chalky steel (the plate's middle grey 0.60 where the
+# walking plate's is 0.46), the watering can's sheet a cream one -- beside the
+# walking, cooking and chopping armour, a different metal, and a lighter one
+# again once a metal's tint multiplies it.  So each strip's steel is graded to
+# the walking strip's (jog-south, what you see the rest of the time): every
+# pixel's lightness moved to the same place in the walking steel's spread of
+# lightness (its quantiles), the order of light and dark kept -- the shading as
+# painted, in the game's greys -- and its colour the walking steel's own
+# near-grey.
+
+STEEL_REF = {'chest': os.path.join(CHESTS, 'jog-south.png'), 'legs': os.path.join(LEGS, 'jog-south.png')}
+STEEL_QS = np.linspace(0.0, 1.0, 41)
+
+
+def _lum(rgb):
+    return rgb[..., 0] * 0.299 + rgb[..., 1] * 0.587 + rgb[..., 2] * 0.114
+
+
+def steel_like_the_game(frames, kind):
+    """`frames` (a strip's, float RGBA) with its steel graded to the walking
+    strip's: lightness by quantiles, colour the walking steel's tint."""
+    ref = np.array(Image.open(STEEL_REF[kind]).convert('RGBA')).astype(np.float32)
+    rm = ref[..., 3] > 200
+    rpx = ref[rm][:, :3]
+    rL = _lum(rpx)
+    q_ref = np.quantile(rL, STEEL_QS)
+    tint = rpx.mean(0) / max(1e-6, rL.mean())          # the walking steel's near-grey
+    sel = [f[..., 3] > 200 for f in frames]
+    fL = np.concatenate([_lum(f[..., :3])[m] for f, m in zip(frames, sel)])
+    q_own = np.quantile(fL, STEEL_QS)
+    q_own = np.maximum.accumulate(q_own + np.arange(len(q_own)) * 1e-6)   # strictly rising for interp
+    out = []
+    for f in frames:
+        g = f.copy()
+        on = g[..., 3] > 0
+        L = np.interp(_lum(g[..., :3])[on], q_own, q_ref)
+        g[..., :3][on] = np.clip(L[:, None] * tint[None, :], 0, 255)
+        out.append(g)
+    print(f'  {kind} steel: middle grey {np.median(fL) / 255:.2f} -> {np.median(rL) / 255:.2f}, '
+          f'tint {np.round(tint, 3).tolist()}')
+    return out
+
+
 def save_strip(frames, path):
     arr = np.concatenate(frames, axis=1)
     Image.fromarray(np.clip(np.round(arr), 0, 255).astype(np.uint8), 'RGBA').save(path, optimize=True)
@@ -986,8 +1033,8 @@ def main():
         if tool:
             save_strip(a['strips']['prop'], os.path.join(SKILLS, f'farm-{name}-prop.png'))
         save_strip(a['strips']['shirt'], os.path.join(SHIRTS, f'farm{name}-south.png'))
-        save_strip(a['strips']['chest'], os.path.join(CHESTS, f'farm{name}-south.png'))
-        save_strip(a['strips']['legs'], os.path.join(LEGS, f'farm{name}-south.png'))
+        save_strip(steel_like_the_game(a['strips']['chest'], 'chest'), os.path.join(CHESTS, f'farm{name}-south.png'))   # v2.3.3472
+        save_strip(steel_like_the_game(a['strips']['legs'], 'legs'), os.path.join(LEGS, f'farm{name}-south.png'))
         print(f'  -> farm-{name}.png {bw}x{bh} ({a["fw"]}x{a["fh"]} x{N}), foot {a["foot"]}, work {a["work"]}')
         made.append(a)
         if PREVIEW:
