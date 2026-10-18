@@ -12,7 +12,7 @@ the plan).
 accepts the dance on any day, so a phone with a wrong clock only shows
 another phone's shuffle and breaks nothing.
 
-Until v2.3.3460 it began on the 24th. The owner looked for it on 18 October
+Until v2.3.3463 it began on the 24th. The owner looked for it on 18 October
 2026, saw nothing (it had not begun), and chose "Start today for everyone",
 this year and every year after.
 
@@ -22,7 +22,7 @@ and for tests); `?halloween=0` turns it off.
 ## What you see
 
 - **The Zombie Shuffle.** A thirteenth tile on the emote picker's Moves tab
-  (🧟, printed "Zombie": the whole name did not fit, v2.3.3460, the move's
+  (🧟, printed "Zombie": the whole name did not fit, v2.3.3463, the move's
   `short`), or `/zombie` in the chat: a slow lurch, leaning in, a foot dragged every
   two beats, held until you move like the other dances, with a 🎃 popping over
   you now and then. Everyone near you sees it, in season or not.
@@ -64,5 +64,5 @@ and for tests); `?halloween=0` turns it off.
 
 ## Pictures
 
-docs/shots/halloween.md (v2.3.3460): each change on a phone in Halloween week
+docs/shots/halloween.md (v2.3.3463): each change on a phone in Halloween week
 beside one out of it, in BroTown, and the Zombie Shuffle as a looping clip.

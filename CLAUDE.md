@@ -77,7 +77,7 @@ remnant to migrate server-side, not a mode to preserve.
   word (src/game/townsfolkReact.js, this phone's own; emoteFx.js
   `_updateFollowers` moves each one picture about its feet);
   `townsfolk-react` suite, `mp-joinin`; and since v2.3.3395 HALLOWEEN WEEK,
-  18 October (the 24th until v2.3.3460, the owner's "Start today for
+  18 October (the 24th until v2.3.3463, the owner's "Start today for
   everyone") to 1 November by each phone's calendar (src/game/season.js,
   `?halloween=1|0`; a look, never a rule): the Zombie Shuffle, a thirteenth
   move the worker keeps any day (its tile "Zombie", the move's `short`),

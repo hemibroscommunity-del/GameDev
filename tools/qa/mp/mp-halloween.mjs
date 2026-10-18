@@ -2,12 +2,12 @@
  *
  * The fun & social plan's Halloween items that need no new picture: the
  * Zombie Shuffle dance and the pumpkin speech bubbles, on 18 October (the
- * 24th until v2.3.3460) to 1 November by each phone's calendar
+ * 24th until v2.3.3463) to 1 November by each phone's calendar
  * (game/season.js; `?halloween=1|0` forces it).  Two phones, one in Halloween
  * week and one not:
  *
  *   1. in Halloween week the Moves tab has a thirteenth tile, the Zombie
- *      Shuffle, its name whole on the tile ("Zombie", v2.3.3460: it was cut to
+ *      Shuffle, its name whole on the tile ("Zombie", v2.3.3463: it was cut to
  *      "Zombie Sh"); out of it, twelve;
  *   2. a finger on it: the bro lurches, held, and the worker keeps the pose;
  *   3. the other phone -- out of Halloween week -- still sees him shuffle
@@ -70,7 +70,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await openMoves(A);
   const ta = await tiles(A);
   rec.ok('in Halloween week the Moves tab has thirteen tiles, the Zombie Shuffle last', ta.length === 13 && ta[12] === 'zombie', ta);
-  /* v2.3.3460: its name whole on the tile -- "Zombie Shuffle" was cut to
+  /* v2.3.3463: its name whole on the tile -- "Zombie Shuffle" was cut to
      "Zombie Sh" at the tile's 42 px.  Asserted for the shuffle alone: the
      others' fit depends on the font this box draws (docs/DEV-TOOLS.md, the
      fallback is ~30% wider), so they ride in the detail. */

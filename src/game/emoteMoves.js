@@ -56,7 +56,7 @@ export const EMOTE_MOVES = Object.freeze({
   sprinkler: { kind: 'hold', dance: true, name: 'Sprinkler', icon: '💦', pop: '🎵', every: 2000 },
   /* v2.3.3395: Halloween week's dance (game/season.js): its tile shows only
      then; the worker keeps it any day (a look, never a rule).
-     v2.3.3460: `short`, the name its tile prints -- "Zombie Shuffle" was cut
+     v2.3.3463: `short`, the name its tile prints -- "Zombie Shuffle" was cut
      to "Zombie Sh" at the tile's width (EmotePanel), in the real font too;
      the whole name stays its title. */
   zombie: { kind: 'hold', dance: true, name: 'Zombie Shuffle', short: 'Zombie', icon: '🧟', pop: '🎃', every: 2400, season: 'halloween' },
