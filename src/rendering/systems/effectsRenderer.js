@@ -16187,6 +16187,9 @@ export class EffectsRenderer {
     }
     this.nodeGfx.clear();
     if (this._wheelFish) this._wheelFish.clear();   /* v2.3.3012 */
+    /* v2.3.3345: no rock's pieces carried across a zone change, nor its crack */
+    if (this._oreShatter) this._oreShatter.clear();
+    this._oreBreaks = [];
     if (this._wheelDoors) this._wheelDoors.clear();   /* v2.3.3016 */
     if (this._wheelSigns) this._wheelSigns.clear();   /* v2.3.3062 */
     this.flashOverlay.clear();
