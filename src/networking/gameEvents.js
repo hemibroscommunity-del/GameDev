@@ -58,7 +58,7 @@ import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, heroPopupY, peerPopupY /* v2.3.3026: a hit on you pops over your head */, isAttackInShieldArc, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
 import { dropShield, noteShieldThreat } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield; v2.3.3260: and faces who hit you */
-import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
+import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent, handleDiceEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes; v2.3.3393: + a /roll or /flip */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
 import { pushAbilityRings, BASH_POSE_MS } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave; v2.3.2920 + its pose window */
 import { depthK } from '@/data/zones.js'; /* v2.3.2824: a peer's whirlwind is as wide as its (depth-scaled) hit */
@@ -478,6 +478,12 @@ export function processGameEvent(type, payload, S, deps) {
             {
               /* v2.3.767: body moved to src/game/chat.js (Phase 2). */
               handleEmoteEvent(payload, S);
+              break;
+            }
+          case 'dice_roll':
+            {
+              /* v2.3.3393: a /roll or /flip the WORKER made (server/src/dice.js) */
+              handleDiceEvent(payload, S, { setChatLog: setChatLog, setUnreadChats: setUnreadChats });
               break;
             }
           case 'gather_node':

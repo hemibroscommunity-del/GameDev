@@ -1,7 +1,7 @@
 import React from 'react';
 /* v2.3.1981: unmuting is a server mutation now (server/src/chatmod.js);
    setMuted keeps writing the localStorage mirror this panel reads. */
-import { setMuted } from '@/game/chatMute.js';
+import { setMuted, blockedIdOf } from '@/game/chatMute.js'; /* v2.3.3391: + blockedIdOf */
 
 /* ═══ SocialPanel — friends / muted / blocked lists ═══ */
 /* v2.3.860: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -237,10 +237,13 @@ export function SocialPanel(props) {
     style: wellStyle
   }, blockedList.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: emptyStyle
-  }, "Nobody blocked."), blockedList.map(function (bid) {
+  }, "Nobody blocked."), blockedList.map(function (entry) {
     var _stateRef$current27;
+    /* v2.3.3391: an entry is a plain id or {id, name} (the friends list's,
+       chatMute.js) -- `bid.slice` threw on the second */
+    var bid = blockedIdOf(entry);
     var o = (_stateRef$current27 = stateRef.current) === null || _stateRef$current27 === void 0 || (_stateRef$current27 = _stateRef$current27.others) === null || _stateRef$current27 === void 0 ? void 0 : _stateRef$current27[bid];
-    var name = (o === null || o === void 0 ? void 0 : o.name) || bid.slice(0, 12) + '...';
+    var name = (o === null || o === void 0 ? void 0 : o.name) || (entry && entry.name) || String(bid).slice(0, 12) + '...';
     return /*#__PURE__*/React.createElement("div", {
       key: bid,
       style: {
@@ -277,7 +280,7 @@ export function SocialPanel(props) {
       },
       onClick: function onClick() {
         var updated = blockedList.filter(function (b) {
-          return b !== bid;
+          return blockedIdOf(b) !== bid;   /* v2.3.3391: either shape */
         });
         setBlockedList(updated);
         try {

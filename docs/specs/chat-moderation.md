@@ -75,6 +75,16 @@ client-supplied `text` / `lines` / `byName` is ignored outright (rule
 which is the failure mode that makes a naive report button worse than
 none.
 
+**v2.3.3396: the line is cleaned first** (`docs/specs/chat-guard.md`).
+Every chat lane now cleans its text before it is remembered or
+delivered -- stacked accents, invisible and backwards characters, more
+than six emoji and a wall of one key are taken out -- so the line a
+report quotes is still exactly the line that was delivered: the cleaned
+one. A room or area line the repeat filter drops (the same line within
+30 s) and a line with nothing visible left are never delivered, and so
+never remembered. Room chat and emotes also spend an allowance of their
+own now, apart from the one a fight's swings and arrows need.
+
 ## Wire surface
 
 Client → server (own validated cases in the router; **neither
@@ -145,3 +155,33 @@ opening it shows the four reason chips; a one-tap report beside Mute
 would be mis-fired constantly on a 390 px phone, and the reason is what
 makes the record actionable). `SocialPanel` lists who you have muted and
 unmutes server-side.
+
+## v2.3.3398: the reports on the owner's phone
+
+Phase 0 of the fun & social plan (docs/FUN-SOCIAL-PLAN.md). Reports could be
+read, and acted on, only with curl, and the owner runs the game from a phone.
+The Test panel (DevPanel.jsx) has a **Chat reports** section now:
+
+| What the panel does | Route (admin key) |
+|---|---|
+| Show / Reload chat reports: newest first, up to 50 | `GET /api/admin/reports?limit=50` |
+| Kick: they can come straight back | `POST /api/admin/kick {playerId, reason}` |
+| Freeze: two taps ("Sure? Freeze"); they cannot join until unfrozen | `POST /api/admin/freeze {playerId, note}` |
+| Unfreeze | `DELETE /api/admin/freeze?id=` |
+| Dismiss: the report is handled | `DELETE /api/admin/reports?id=` |
+
+Each row on `GET /reports` now also says, for the panel to show:
+
+| field | meaning |
+|---|---|
+| `onlineNow` | the reported player has a live session now (admin.js's own test for a kick); the record's `targetOnline` is when the report was made |
+| `frozen` | `frozen:<pid>` is set now |
+
+One storage read per reported player on the page (at most `limit`), on a read
+the owner makes. Nothing new is stored. An older worker leaves both fields
+out; the panel then shows the player as offline and offers Freeze.
+
+Tests: `chatmod.test.mjs` §7 (online now, frozen, unfrozen), `mp-reports` (a
+report filed from the player's card, listed with what was said, Kick,
+Freeze in two taps, Unfreeze, Dismiss, on a phone).
+

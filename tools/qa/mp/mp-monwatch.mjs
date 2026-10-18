@@ -22,23 +22,37 @@ const stand = (P, x, y) => P.page.evaluate(({ px, py }) => {
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort });
   await H.enterWorld(P);
+  /* v2.3.3399: a real key every 20 s (H.keepAlive: Control, which does
+     nothing in the game).  This stands still for 90 s and fights for 150,
+     and the page logs itself out after two minutes with no real input
+     (v2.3.3034's idle logout), the worker then holding no player. */
+  const stopAlive = H.keepAlive(P);
   await P.page.waitForTimeout(2000);
-  await P.page.evaluate(() => {
-    const S = window._gameState && window._gameState.current;
-    if (S && S.channel) for (const q of ['tut_1','tut_2','tut_3']) S.channel.send({ type:'quest_accept', payload:{ questId:q } });
-  });
-  await P.page.waitForTimeout(2200);
+  /* v2.3.3399: the lands opened by the harness (H.openLands), as
+     mp-fightsoak's since v2.3.3321: since v2.3.3179 the worker refuses
+     tut_2..tut_4 taken at once, so only Frost Ridge opened, the spoke's
+     marker took nobody to the Verdant Wilds, and this watched the World
+     View, which has no monsters (the sweep of 2026-10-17). */
+  await H.openLands(P, wsPort);
   const marks = await P.page.evaluate(() => {
     const f = window._gameFns || {};
     return { townOut: (f.TOWN_EXITS||[]).find(e=>e.zoneId==='worldview')||null,
              spoke: (f.WORLDVIEW_EXITS||[]).find(e=>e.zoneId==='verdant')||null };
   });
-  if (!marks.townOut || !marks.spoke) { rec.skip('monsters can be watched','no exit tables'); await P.ctx.close().catch(()=>{}); return; }
+  if (!marks.townOut || !marks.spoke) { rec.skip('monsters can be watched','no exit tables'); stopAlive(); await P.ctx.close().catch(()=>{}); return; }
   await stand(P, marks.townOut.tx*TILE+16, marks.townOut.ty*TILE+16);
   await H.waitFor(P,(S)=>S.currentZone,(z)=>z==='worldview',{timeout:30000,label:'hub'}).catch(()=>{});
   await P.page.waitForTimeout(700);
   await stand(P, marks.spoke.tx*TILE+16, marks.spoke.ty*TILE+16);
   await H.waitFor(P,(S)=>S.currentZone,(z)=>z==='verdant',{timeout:30000,label:'verdant'}).catch(()=>{});
+  /* v2.3.3399: the worker's god mode (the Test panel's, /dev/vitals: no
+     damage taken, in memory, it expires), as mp-beastmaster's.  Standing
+     still among the Verdant Wilds' monsters, a fresh character was killed
+     between 30 and 45 s and woke in town, its list empty for the respawn,
+     not for anything the client dropped (the run of 2026-10-18).  The
+     client-side HP pin below is the page's copy and never kept anyone
+     alive: the worker decides a death. */
+  await H.devOp(wsPort, 'vitals', await H.readState(P, (S) => S.myId), { heal: true, god: true, godMinutes: 10 });
   await P.page.waitForTimeout(2500);
 
   const snap = () => P.page.evaluate(() => {
@@ -101,5 +115,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* THE CLAIM: a zone you have fought in still has monsters in it. */
   rec.ok('the monster list does not empty out and stay empty after fighting',
     end.n > 0, { end, hits });
+  stopAlive();
   await P.ctx.close().catch(()=>{});
 }
