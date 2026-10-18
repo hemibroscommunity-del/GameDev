@@ -433,7 +433,7 @@ room._liveFlags = {};
     room._prog3Recompute(A);
     const m = monsterAt(level);
     playerAt(level);
-    if (payloadM.special) { fresh(); }
+    if (payloadM.special) { fresh(); room._pveSpecialPaid(A, T); }   /* v2.3.3334: paid on a monster too (hitproof.js) */
     const onM = onMonster(m, payloadM);
     if (payloadP.special) { fresh(); room._pvpSpecialPaid(A, T); } else fresh();
     const h = attack(payloadP);

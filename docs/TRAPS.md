@@ -6995,3 +6995,89 @@ trust it then, rather than judge from a guess like the arrival.
 **Receipt:** last-place.test (57 checks, 19 mutations caught: a 3 s cap fails
 five honest reconnects). The lab: a script reconnecting every 3 s 33,333 ->
 694 px/s, every honest reconnect taken.
+
+## 205. "The lock draws each shadow at the same fraction of a texel, so roundPixels keeps it there" (v2.3.3338)
+
+**Tempting:** the shadow layer is drawn on a grid locked to the world (§141):
+every shadow lands at the same fraction of a texel every frame and only ever
+moves by whole texels, so Pixi's roundPixels, on for the whole app, snaps each
+corner to the same place every frame. Nothing to do.
+
+**What happens:** inside a filter, roundPixels rounds against the global
+`uResolution`, which is the render target's FULL size, and a filter draws into
+a texture from Pixi's pool, rounded up to a power of two, of which it uses only
+its frame (RenderTargetSystem sets the viewport to the frame). On a 390 x 844
+phone that is a 394 x 848 frame in a 512 x 1024 texture, so the "pixels" it
+snapped to were 0.77 x 0.83 of a texel, anchored at the screen's edge. Each time
+the camera crossed a whole pixel, every corner and every building column
+re-snapped by a different amount: a shadow up to ~1.4 device px off its prop,
+jumping up to ~2.2 between frames, while the prop (drawn straight to the
+screen, where the grid is exactly one device px) stood still. The owner, again:
+"prop shadows right now still flicker as you run around". The lock's own test
+stepped the camera one device px at a time, seven steps: two crossings, and
+between crossings the locked picture cannot change, so the average hid them.
+And on an iPhone the filter read its picture at `mediump` (Pixi's default for a
+fragment shader), a half float there: the lock's smooth slide back moved in
+steps of a quarter to half a texel. A desktop, and the QA box's software GL,
+run mediump at full precision, so no picture here can show that part.
+
+**The rule:** never trust roundPixels for anything drawn through a filter, a
+render texture or a mask unless that target's texture is exactly its frame:
+draw such pieces unsnapped (shadows.js `installNoSnap`, which clears
+`roundPixels` on any batched piece marked `_btNoSnap` after the rest of the
+batcher hooks have had their say). Give any shader that reads a picture at a
+sliding coordinate `highp` (`preferredFragmentPrecision`, as wheelWater.js).
+And when you measure motion, step by WHOLE pixels as well as fractions, across
+AND down: a sub-pixel step only crosses a pixel now and then.
+
+**Receipt:** mp-shadowlock (23): a whole CSS px a step, across 0.0332 -> 0.0003
+of a luma level a pixel between steps (`?shadowsnap=1` against now), down
+0.1098 -> 0.0184; v2.3.3149's own one-device-px measure 0.011 -> 0.0011.
+`?shadowsnap=1` and `?shadowhp=0` put each back, to compare on a phone.
+
+## 206. "A special nobody paid for is a cheat: drop it" (v2.3.3334)
+
+**Tempting:** a hit on a monster marked `special` should count only after the
+worker charged a special's mana. So drop a special claim with no paid swipe
+behind it, as a forged claim deserves.
+
+**What happens:** the phone fires its special on its OWN count of its mana
+(playerActions.js) and sends the swipe beside it. When the worker's mana is
+lower -- an echo not back yet, a regen tick apart -- it refuses the swipe, and
+the special still flies and still lands on the phone. And the tutorial's free
+special sends no swipe at all. Dropped, an honest player's special deals
+nothing: the arrow hits, the number pops, the monster's bar does not move.
+
+**The rule:** an unpaid special is an ORDINARY hit. Roll it as one, under the
+ordinary per-monster lane, with an ordinary hit's knockback and splash. A
+forged special buys nothing more than an honest swing, and an honest special
+the worker could not charge still lands like a swing.
+
+**Receipt:** hit-proof.test (66 checks, 26 mutations caught: "an unpaid
+special is dropped" fails eight).
+
+## 207. "A test can hand the phone its bow" (v2.3.3334)
+
+**Tempting:** a phone scenario that needs a bow or a staff writes one into the
+page (`S.rpg.rangedWeapon = {...}`, `R.staffWeapon = {...}`): the game draws
+it, fires it, and the hits land.
+
+**What happens:** since v2.3.3328 a bow or staff hit on a monster needs that
+weapon in the WORKER's own slot (server/src/hitproof.js), and the phone's copy
+is never asked. The shots still fly and still pop numbers on that phone, but
+the worker refuses every one: its monsters are never hurt, shoved, turned or
+killed. A test that watches only the phone (a sprite, a flight, a sound, a
+monster made on the page) is untouched. One whose fight goes on -- the
+monsters it shoots at, where they stand, what they drop -- is reading a fight
+no real archer has: mp-orbrange read it as its aimed orb ending 558 px from
+its mummy, because the unhurt mummies had crowded the player.
+
+**The rule:** a scenario whose bow or staff hits must land on the worker arms
+the worker, as a player is armed: `H.devOp(wsPort, 'kit', id, { what:
+'weapons' })` (the test panel's starter weapons, into the stash), then
+`H.equipWeapon(P, 'staff', 'staffWeapon', 'staff')` (or `'bow',
+'rangedWeapon', 'ranged'`: the game's own equip_request). A monster made on
+the page (`F.createMonster`) is the page's alone, and needs neither.
+
+**Receipt:** mp-orbrange's new guard (the worker holds the staff), and its
+interceptions back to 5 of 5 as on main.

@@ -6619,3 +6619,26 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 .bt-cx-pop img{width:20px;height:20px;object-fit:contain}
 @keyframes bt-cx-pop{0%{transform:translateY(6px);opacity:0}20%{transform:translateY(0);opacity:1}75%{opacity:1}100%{transform:translateY(-10px);opacity:0}}
 @media (prefers-reduced-motion:reduce){.bt-cx-body,.bt-cx-hero,.bt-cx-label,.bt-cx-zone,.bt-cx-world,.bt-cx-pop{animation:none!important}}
+
+/* ═══ v2.3.3336: THE NEW MONSTER CARD (src/ui/panels/NewMonsterCard.jsx) ═══
+   In over a quarter of a second, held, and out over its last half second --
+   the whole of ANNOUNCE_MS (6 s, game/monsterCodex.js), so the card is gone
+   when the game takes it away.  The card is centred by translateX(-50%), so
+   every frame carries it. */
+@keyframes bt-new-monster{
+  0%{opacity:0;transform:translateX(-50%) translateY(-10px) scale(.96)}
+  4%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+  92%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+  100%{opacity:0;transform:translateX(-50%) translateY(-6px) scale(1)}
+}
+@media (prefers-reduced-motion: reduce){
+  [data-new-monster]{animation:none!important}
+}
+
+/* ═══ v2.3.3336: A PICTURE THAT IS THE FACE (controlSkin SpecialFace) ═══
+   The owner's special attacks fill the face inside the ring, over the face and
+   its sheen -- so the press's darkening, which lives on the face, is drawn on
+   the picture too: the same shade, the same quick fade (no filter, TRAPS §42) */
+.bt-skin-faceart::after{content:'';position:absolute;inset:0;border-radius:50%;background:rgba(4,6,8,.28);opacity:0;transition:opacity 90ms linear;pointer-events:none}
+[data-pressed="1"] .bt-skin .bt-skin-faceart::after{opacity:1}
+@media (prefers-reduced-motion: reduce){ .bt-skin-faceart::after{transition:none} }

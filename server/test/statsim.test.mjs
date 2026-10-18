@@ -176,6 +176,8 @@ for (const b of BUILDS) {
     const m = { id: 'sim-m', arch: 'fodder', level: slime.level, hp: 1e6, maxHp: 1e6, dmg: 10, alive: true, x: 520, y: 500, spawnX: 520, spawnY: 500, statuses: null };
     room.monsters.meadow = [m];
     room.eventBuffer = [];
+    /* v2.3.3334: a special is paid for first, as the phone's swipe pays it (hitproof.js) */
+    if (payload.special) room._pveSpecialPaid(room.playerState[sid], Date.now());
     rig(dice);
     room._handleMonsterDamage({ id: sid }, Object.assign({ monsterId: m.id, zone: 'meadow' }, payload));
     unrig();
