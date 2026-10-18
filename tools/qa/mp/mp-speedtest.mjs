@@ -142,7 +142,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log('    RESULT ' + JSON.stringify(rows.map((r) => ({ k: r.k, fps: +r.fps.toFixed(1), p95: +r.p95.toFixed(0), work: r.work && +r.work.toFixed(1), passes: +r.passes.toFixed(2), draws: +r.draws.toFixed(0), cw: r.cw, res: r.res, frames: r.frames }))));
     const keys = rows.map((r) => r.k);
     rec.ok(`2. every step measured: ${keys.join(', ')}`,
-      /* v2.3.3361: + the metal shine the old way (lightfx/sheenBatch.js) */
+      /* v2.3.3375: + the metal shine the old way (lightfx/sheenBatch.js) */
       ['all', 'noshadow', 'noshine', 'shinepass', 'still', 'res2', 'bare'].every((k) => keys.includes(k)) && rows.every((r) => r.frames > 1 && r.fps > 0), keys);
     const R0 = rows.find((r) => r.k === 'all'), R2 = rows.find((r) => r.k === 'res2'), NS = rows.find((r) => r.k === 'noshadow');
     rec.ok(`3. the lower resolution step drew the canvas at 2x (${R2 && R2.cw} px against ${R0 && R0.cw} at 3x)`,

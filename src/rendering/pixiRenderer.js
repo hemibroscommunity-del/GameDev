@@ -27,7 +27,7 @@ import { LightFx, setLightFx, lightFxOn } from './lightfx/lightFx.js'; /* v2.3.2
 import { sweepTexturePool } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's texture pool lets go of what it does not use */
 import { healAfterRenderThrow } from './renderHeal.js'; /* v2.3.3152: a frame that throws does not leave the screen black */
 import { setSheen, prewarmGlintPipe } from './lightfx/glint.js'; /* v2.3.2864: the permanent soft metal shine, behind ?sheen=1; v2.3.2887: on for everyone, ?sheen=0 turns it off; v2.3.2904: its shader built behind the loading screen */
-import { warmSheenBatch } from './lightfx/sheenBatch.js'; /* v2.3.3361: the ordinary metal shine drawn in the frame, not in a pass a piece */
+import { warmSheenBatch } from './lightfx/sheenBatch.js'; /* v2.3.3375: the ordinary metal shine drawn in the frame, not in a pass a piece */
 import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
 import { setWorldCasts } from './lightfx/casters.js'; /* v2.3.2749: QA before/after of the world's shadows */
 import { FpsOverlay } from './systems/fpsOverlay.js';
@@ -135,7 +135,7 @@ export function preloadPlayerAssets() {
          sweep runs whenever light-and-shine is on, sheen or not, so that
          switch is the one that decides. */
       .then(() => { try { if (lightFxOn()) prewarmGlintPipe(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ } })
-      /* v2.3.3361: and the batcher that draws the ordinary shine in the frame
+      /* v2.3.3375: and the batcher that draws the ordinary shine in the frame
          (lightfx/sheenBatch.js), so the first armoured player on screen does
          not compile it either */
       .then(() => { try { if (lightFxOn()) warmSheenBatch(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ } })
