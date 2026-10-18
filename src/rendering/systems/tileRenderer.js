@@ -213,7 +213,7 @@ function footprintTexture() {
  * So the set is the registry, the CONTAINER's flag is what moves, and every
  * live renderer moves together. */
 const _liveTileRenderers = new Set();
-/* v2.3.3451: `?groundbg=1` keeps the black under the Wheel's ground drawn
+/* v2.3.3452: `?groundbg=1` keeps the black under the Wheel's ground drawn
    every frame, as it was (_groundBg: THE BLACK UNDER THE GROUND) */
 const GROUND_BG_KEEP = typeof location !== 'undefined' && /[?&]groundbg=1(?:&|$)/.test(location.search || '');
 
@@ -324,7 +324,7 @@ export class TileRenderer {
         for (const t of _liveTileRenderers) { t.portalLayer.visible = !!v; n++; }
         return n;
       };
-      /* v2.3.3451: QA (mp-seacover) -- the black under the ground: drawn now,
+      /* v2.3.3452: QA (mp-seacover) -- the black under the ground: drawn now,
          whether the Wheel's pieces cover the view, and `show(on)` to draw it
          or not in a held frame (the next update decides again) */
       window.__btGroundBg = () => {
@@ -419,7 +419,7 @@ export class TileRenderer {
     /* v2.3.2932: and the world trial's streamed ground, which frees every
        piece it holds -- the same "drop the reference on the way out" rule. */
     if (this._chunkGround) { try { this._chunkGround.destroy(); } catch (e) { /* ignore */ } this._chunkGround = null; }
-    this.bgGfx.visible = true;   /* v2.3.3451: drawn until a ground covers the view (_groundBg) */
+    this.bgGfx.visible = true;   /* v2.3.3452: drawn until a ground covers the view (_groundBg) */
     // Remove old tile sprites
     this.tileContainer.removeChildren();
     this.buildingContainer.removeChildren();
@@ -1162,7 +1162,7 @@ export class TileRenderer {
     }
   }
 
-  /* ═══ v2.3.3451: THE BLACK UNDER THE GROUND, ONLY WHERE IT CAN SHOW ═══
+  /* ═══ v2.3.3452: THE BLACK UNDER THE GROUND, ONLY WHERE IT CAN SHOW ═══
      Found by the frame-rate hunt's count of what a phone's graphics chip
      paints a frame (the owner: "iterate on what best improves framerate
      without loss of quality"): bgGfx, the black past the world's edge, is a
@@ -1195,7 +1195,7 @@ export class TileRenderer {
     try {
       if (this._chunkGround) this._chunkGround.update(cx, cy, viewW, viewH);
     } finally {
-      this._groundBg();   /* v2.3.3451: decided every frame, a ground that threw included */
+      this._groundBg();   /* v2.3.3452: decided every frame, a ground that threw included */
     }
     /* Auto-refresh when a Tiled map finishes loading AFTER the
        initial rebuild for this zone — the user briefly sees the
