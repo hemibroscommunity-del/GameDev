@@ -7675,3 +7675,35 @@ player opens it: on main 362 of the page's 423 elements were `auto` and 61 of
 the window's 91 could be double-tapped into a zoom; with the rule, 0 and 0,
 the canvas, html and body still `none`, the window's +, - and x still
 `manipulation`, the stepper stepping 1 -> 3 -> 2.
+
+## 230. "I measured its loudness in mono: ffmpeg -ac 1" (v2.3.3462)
+
+A level is measured against a reference, and the game's reference for every
+sound it levels is sword-hit3 at the melee hit's 0.55 x HIT_GAIN -- a STEREO
+file.  `ffmpeg -ac 1` folds a stereo file to mono by adding the two sides at
+0.707 each (swresample's default matrix), while Web Audio, which plays the
+game and in which tools/qa/mp/mp-cuelevels.mjs renders every cue into one
+channel, AVERAGES them.  On sword-hit3, whose two sides are nearly the same,
+the first reads 1.41x the second.  So a tool that decodes its reference with
+`-ac 1` sets every clip 1.41x louder than the level it promises:
+tools/audio/cut_owner_sounds.py's first cut came out at 1.43x on every one of
+its one-shots, and mp-cuelevels' "within 1.6x" let it through only by luck
+(bossEnrage's sum of layers did not).  tools/audio/cut_monster_noises.py
+(v2.3.3340) reads its reference that way still: its noises are about 1.4x the
+NOISE_K they say.
+
+The same choice decides a LOOP's level, and the other way round: a bed plays in
+stereo, and a wide stereo river or wind read as the average of its sides comes
+out up to 3 dB quieter than a speaker plays it.
+
+**The rule:** measure a clip the way the game will hear it.  For the cue
+table's levels that is Web Audio's mono render: decode the file's own channels
+and average them (cut_owner_sounds.py `load`).  For something that plays in
+stereo, the RMS of each side (`side_rms_db`).  And measure the reference with
+the same reader as the clip.
+
+**Receipt:** with `load` averaging the sides, every one-shot of
+cut_owner_sounds.py renders in mp-cuelevels within 2% of its promise (hurtA
+0.71 of 0.7, notify 0.81 of 0.8, bossArrive 1.52 of 1.5); read with `-ac 1`,
+hurtA was 1.00 and notify 1.14, and bossEnrage (the roar with two thuds under
+it) 2.09 of its 1.3 -- the one mp-cuelevels failed.

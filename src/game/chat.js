@@ -11,13 +11,12 @@
    state (stateRef.current). Imports are explicit — extracted modules must
    never rely on the globalThis copies of DATA or the babel helpers
    (they're assigned only when BroTown.jsx evaluates). */
-import { BT_AUDIO } from '@/data/index.js';
 /* v2.3.2139: the channel picker's compose step — see its note below. */
 import { chatChannelBus } from '@/game/chatChannel.js';
 import { emoteKind } from '@/game/emotes.js'; /* v2.3.3391 */
 import { moveKind, EMOTE_MOVES, slashMove } from '@/game/emoteMoves.js'; /* v2.3.3392: the moment moves, and /wave */
 import { slashDice, diceResult, diceLineText, diceBubbleText, diceWaitMs } from '@/game/dice.js'; /* v2.3.3393: /roll and /flip */
-import { cueAt } from '@/game/eventSounds.js'; /* v2.3.3393: the roll's clatter, by distance */
+import { cue, cueAt } from '@/game/eventSounds.js'; /* v2.3.3393: the roll's clatter, by distance; v2.3.3462: a chat line's pop */
 import { isBlockedId } from '@/game/chatMute.js'; /* v2.3.3391: both shapes of the block list */
 import { stripLaneMarks } from '@/data/smallIcons.js'; /* v2.3.3391 */
 import { peerMoveSound } from '@/game/moveSounds.js'; /* v2.3.3434: an emote heard, as far as a hit carries (was earVol and two silent beep()s, v2.3.3391) */
@@ -145,7 +144,7 @@ export function sendChatMessage(S, text, deps) {
       return;
     }
     if (S.channel) S.channel.send({ type: 'broadcast', event: 'party_chat', payload: { text: _ptext } });
-    BT_AUDIO.chatSend();
+    cue('chatSent');   /* v2.3.3462: your line out, softer (chatSend was a beep()) */
     if (S.stats) S.stats.msgsSent++;
     S.chatBubbles[S.myId] = { text: _ptext, ts: Date.now() };
     S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
@@ -184,7 +183,7 @@ export function sendChatMessage(S, text, deps) {
       return;
     }
     if (S.channel) S.channel.send({ type: 'broadcast', event: 'area_chat', payload: { text: _atext } });
-    BT_AUDIO.chatSend();
+    cue('chatSent');   /* v2.3.3462: your line out, softer (chatSend was a beep()) */
     if (S.stats) S.stats.msgsSent++;
     S.chatBubbles[S.myId] = { text: _atext, ts: Date.now() };
     S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
@@ -205,7 +204,7 @@ export function sendChatMessage(S, text, deps) {
       return;
     }
     if (S.channel) S.channel.send({ type: 'broadcast', event: 'whisper', payload: { to: _wto, text: _wtext } });
-    BT_AUDIO.chatSend();
+    cue('chatSent');   /* v2.3.3462: your line out, softer (chatSend was a beep()) */
     if (S.stats) S.stats.msgsSent++;
     /* NO overhead bubble for a whisper.  The bubble is drawn over your head
        for everyone nearby to read, which would publish the thing you just
@@ -227,7 +226,7 @@ export function sendChatMessage(S, text, deps) {
       color: S.myColor
     }
   });
-  BT_AUDIO.chatSend();
+  cue('chatSent');   /* v2.3.3462: your line out, softer (chatSend was a beep()) */
   if (S.stats) S.stats.msgsSent++;
   S.chatBubbles[S.myId] = {
     text: text,
@@ -284,7 +283,7 @@ export function handleChatEvent(payload, S, deps) {
     text: _text,
     ts: Date.now()
   };
-  BT_AUDIO.chatReceive();
+  cue('chatPop');   /* v2.3.3462: the owner's pop (chatReceive was a beep(), silent since v2.3.1103) */
   S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
     id: payload.id,
     name: _name,
@@ -356,7 +355,7 @@ export function handleAreaChatEvent(payload, S, deps) {
     isMuted = ml.includes(payload.from);
   } catch (e) {}
   if (!isMuted) S.chatBubbles[payload.from] = { text: _atext, ts: Date.now() };
-  BT_AUDIO.chatReceive();
+  cue('chatPop');   /* v2.3.3462: the owner's pop (chatReceive was a beep(), silent since v2.3.1103) */
   S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
     id: payload.from, name: '📍 ' + clampChatName(payload.fromName),
     text: isMuted ? '[muted]' : _atext,
@@ -378,7 +377,7 @@ export function handleWhisperEvent(payload, S, deps) {
     wMuted = ml2.includes(payload.from);
   } catch (e) {}
   if (wMuted) return;      /* a muted whisper is dropped, not shown as [muted] */
-  BT_AUDIO.chatReceive();
+  cue('chatPop');   /* v2.3.3462: the owner's pop (chatReceive was a beep(), silent since v2.3.1103) */
   S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
     id: payload.from, name: '✉ ' + clampChatName(payload.fromName),
     text: _wtext, color: '#C79BFF', ts: Date.now(), whisper: true
@@ -420,7 +419,7 @@ export function handlePartyChatEvent(payload, S, deps) {
     isMuted = ml.includes(payload.from);
   } catch (e) {}
   if (!isMuted) S.chatBubbles[payload.from] = { text: _ptext, ts: Date.now() };
-  BT_AUDIO.chatReceive();
+  cue('chatPop');   /* v2.3.3462: the owner's pop (chatReceive was a beep(), silent since v2.3.1103) */
   S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
     id: payload.from,
     name: '🛡 ' + clampChatName(payload.fromName),

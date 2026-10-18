@@ -406,7 +406,10 @@ import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits 
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
 import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3434: the forge heard at work */
-import { tickMoveSounds } from '@/game/moveSounds.js';   /* v2.3.3434: the emotes and moves heard */
+import { tickMoveSounds, tickDanceMusic } from '@/game/moveSounds.js';   /* v2.3.3434: the emotes and moves heard; v2.3.3462: your dance's beat */
+import { tickHeartbeat } from '@/game/ownSounds.js';   /* v2.3.3462: the owner's heartbeat under a quarter of your health */
+import { npcSpeaks, npcChatter } from '@/game/npcVoices.js';   /* v2.3.3462: the townsfolk's voices */
+import { tickAmbientBeds } from '@/game/ambientBeds.js';   /* v2.3.3462: the sea, BroTown's crowd and a fire's crackle */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor, sendMove as sendMoveImpl, updateOwnEmote, updatePeerEmotes, movesLive } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building; v2.3.3392: + your bro moves */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
@@ -5041,6 +5044,9 @@ export var BroTown = function BroTown(_ref0) {
         var _jLanded = tickJump(S, _jNow, _playerDead);
         tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
         tickTownAmbience(S, _jNow);   /* v2.3.3434: the Blacksmith's anvil near the forge (game/townAmbience.js) */
+        tickAmbientBeds(S, _jNow);   /* v2.3.3462: the sea from its shore, BroTown's crowd, a fire's crackle (game/ambientBeds.js) */
+        tickHeartbeat(S, _jNow);   /* v2.3.3462: under a quarter of your health (game/ownSounds.js) */
+        tickDanceMusic(S);   /* v2.3.3462: your dance takes the music deck (game/moveSounds.js) */
         var _inAir = !!S._jump;
         var _swEv = _inAir ? null : updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
           playerGroundDy(S.currentZone, P.x, P.y));
@@ -6679,6 +6685,7 @@ export var BroTown = function BroTown(_ref0) {
                  still standing next to him. */
               S._npcProxLatch = { npc: _pn, ready: false };
               shopBus.setOpen(true);
+              npcSpeaks(S, _pn);   /* v2.3.3462: he greets you (game/npcVoices.js) */
             }
           }
         }
@@ -6938,7 +6945,7 @@ export var BroTown = function BroTown(_ref0) {
                   ts: Date.now(),
                   isQuest: true
                 };
-                BT_AUDIO.npcChat();
+                npcChatter(S, npc);   /* v2.3.3462: his hum, by distance (game/npcVoices.js; npcChat() was a beep(), silent) */
                 npc.chatTimer = 12000 + Math.random() * 8000;
               }
             } else {
@@ -6984,7 +6991,7 @@ export var BroTown = function BroTown(_ref0) {
                     ts: Date.now()
                   };
                 }
-                BT_AUDIO.npcChat();
+                npcChatter(S, npc);   /* v2.3.3462: his hum, by distance (game/npcVoices.js; npcChat() was a beep(), silent) */
                 npc.chatTimer = 8000 + Math.random() * 15000;
               }
             }
@@ -9241,7 +9248,7 @@ export var BroTown = function BroTown(_ref0) {
           try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
         }
         pushDmgPopup(S, S.player.x, S.player.y - 30, 'Ate ' + _meal.name, '#D8A94D');
-        try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
+        cue('munch');   /* v2.3.3462: the owner's munch (a beep(), silent since v2.3.1103) */
         setRpgState(_objectSpread({}, R));
         try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
         return;
@@ -9249,6 +9256,7 @@ export var BroTown = function BroTown(_ref0) {
       var maxHp = R.maxHp || 100;
       if ((R.hp || 0) >= maxHp) {
         pushDmgPopup(S, S.player.x, S.player.y - 30, 'HP full', '#B9C1BF');
+        cue('denied');   /* v2.3.3462: a refusal is heard (the owner's "denied" tick) */
         return;
       }
       /* v2.3.3133: one bite at a time in a fight with a player (fightFood.js;
@@ -9258,6 +9266,7 @@ export var BroTown = function BroTown(_ref0) {
       var _wait = _bite ? pvpHealWaitMs(S) : 0;
       if (_wait > 0) {
         pushDmgPopup(S, S.player.x, S.player.y - 30, pvpHealWaitText(_wait), '#B9C1BF');
+        cue('denied');   /* v2.3.3462 */
         return;
       }
       var HEAL = calcDisplayHeal(R, key);   /* v2.3.3260: the same heal in any fight (one formula) */
@@ -9295,7 +9304,7 @@ export var BroTown = function BroTown(_ref0) {
       }
       pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + toDisplayDamage(actual) + ' HP', '#59BF91');   /* v2.3.2520: display scale */
       pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate ' + (_meal ? _meal.name : 'cooked fish'), '#D8A94D');   /* v2.3.3131: or the stew */
-      try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
+      cue('munch');   /* v2.3.3462: the owner's munch (a beep(), silent since v2.3.1103) */
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
     });
@@ -9956,6 +9965,9 @@ export var BroTown = function BroTown(_ref0) {
          on the world reaches no <button>); a keeper's building has its door's
          knock already (enterBuilding) */
       if (r === 'quest' || r === 'flip' || r === 'shop' || r === 'pets') { try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ } }
+      /* v2.3.3462: and he answers in his own voice (game/npcVoices.js) -- a
+         quest's is the QuestPanel's, as it opens however you reached him */
+      if (npc && (r === 'flip' || r === 'shop' || r === 'pets' || r === 'nothing')) npcSpeaks(S, npc);
       return r !== 'miss';
     };
     if (!npc) return _mark('miss');

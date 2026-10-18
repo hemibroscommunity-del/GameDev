@@ -3,6 +3,7 @@ import { ARCHETYPES, BT_AUDIO, DUNGEON_MONSTER_PACKS, DUNGEON_TERRAIN_PACKS, ELE
 import { _defineProperty, _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3462: "Not enough gold!" heard */
 /* ═══ DungeonCreatorPanel — custom dungeon builder (workshop) ═══ */
 /* v2.3.863: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen) — the largest panel (~1073 lines).
@@ -644,7 +645,7 @@ export function DungeonCreatorPanel(props) {
       var S = stateRef.current,
         R = S.rpg;
       if (!R || R.coins < cost) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#D95C54');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#D95C54'); cue('denied');   /* v2.3.3462: heard */
         return;
       }
       R.coins -= cost;

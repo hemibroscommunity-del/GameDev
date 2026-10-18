@@ -1294,20 +1294,10 @@ export function updateMonsterCombat(S, deps) {
           }, 9999);
           BT_AUDIO.setCombatIntensity(nearestMonsterDist < 100);
 
-          /* ═══ LOW HP HEARTBEAT — thumping audio pulse below 25% HP ═══ */
-          if (_R6.hp < _R6.maxHp * 0.25 && _R6.hp > 0) {
-            if (!S._heartbeatTimer) S._heartbeatTimer = 0;
-            S._heartbeatTimer++;
-            var hbRate = _R6.hp < _R6.maxHp * 0.1 ? 25 : 40; /* faster when critically low */
-            if (S._heartbeatTimer % hbRate === 0) {
-              BT_AUDIO.beep(45, 0.06, 0.12, 'sine');
-              setTimeout(function () {
-                return BT_AUDIO.beep(40, 0.04, 0.08, 'sine');
-              }, 120);
-            }
-          } else {
-            S._heartbeatTimer = 0;
-          }
+          /* ═══ LOW HP HEARTBEAT ═══
+             v2.3.3462: the owner's heartbeat, on a clock of its own
+             (game/ownSounds.js tickHeartbeat, BroTown's loop).  This was a
+             frame-counted timer of two beep()s, silent since v2.3.1103. */
 
           /* Sword swing — check hits */
           /* Clear lock if target is dead */
