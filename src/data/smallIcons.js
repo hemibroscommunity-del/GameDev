@@ -84,7 +84,7 @@ export function chatLaneOf(name) {
   }
   return null;
 }
-/* ═══ v2.3.3353: A NAME CANNOT WEAR A LANE'S MARK ═══
+/* ═══ v2.3.3361: A NAME CANNOT WEAR A LANE'S MARK ═══
  * The lane is read off the front of the name above, so a player NAMED
  * "✉ Mayor" -- names are free text, 2-20 characters -- had every ordinary
  * room line drawn as a whisper, "📍 ..." as area chat, "🛡 ..." as party chat.

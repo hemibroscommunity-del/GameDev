@@ -8,7 +8,7 @@ import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3321 */
 /* v2.3.1981: server-backed mute + the report send (server/src/chatmod.js).
    setMuted still writes the localStorage list this panel's mutedList prop
    is built from, so nothing here changed shape — it just persists now. */
-import { setMuted, reportPlayer, chatMuteSettled, blockedIdOf } from '@/game/chatMute.js'; /* v2.3.3353: + blockedIdOf */
+import { setMuted, reportPlayer, chatMuteSettled, blockedIdOf } from '@/game/chatMute.js'; /* v2.3.3361: + blockedIdOf */
 /* v2.3.1235: Checkpoint B — real pixel-portrait generator + the color-id →
    RGB target transforms it expects (same set the BottomDashboard player
    card uses). */
@@ -204,7 +204,7 @@ export function InspectPlayerPanel(props) {
     return f.id === inspectPlayer.id;
   });
   var isMuted = mutedList.includes(inspectPlayer.id);
-  /* v2.3.3353: either shape of the block list (chatMute.js): one made from
+  /* v2.3.3361: either shape of the block list (chatMute.js): one made from
      the friends list is {id, name} and read as "not blocked" here */
   var isBlocked = blockedList.some(function (b) { return blockedIdOf(b) === inspectPlayer.id; });
   var isLawless = (_ZONES$stateRef$curre = ZONES[(_stateRef$current39 = stateRef.current) === null || _stateRef$current39 === void 0 ? void 0 : _stateRef$current39.currentZone]) === null || _ZONES$stateRef$curre === void 0 ? void 0 : _ZONES$stateRef$curre.lawless;
@@ -639,7 +639,7 @@ export function InspectPlayerPanel(props) {
     onClick: function onClick() {
       if (isBlocked) {
         var updated = blockedList.filter(function (b) {
-          return blockedIdOf(b) !== inspectPlayer.id;   /* v2.3.3353: either shape */
+          return blockedIdOf(b) !== inspectPlayer.id;   /* v2.3.3361: either shape */
         });
         setBlockedList(updated);
         try {

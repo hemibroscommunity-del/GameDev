@@ -1,4 +1,4 @@
-/* ═══ v2.3.3353: EMOTES YOU CAN SEE (docs/specs/emotes.md) ═══
+/* ═══ v2.3.3361: EMOTES YOU CAN SEE (docs/specs/emotes.md) ═══
  *
  * The 30 emoji and 12 quick lines (EMOTES / TEXT_EMOTES, data/gameDisplay.js)
  * have been in the game since the prototype, but their only button sat in the

@@ -2337,7 +2337,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     guesses.length >= 1 && guesses.every((g) => /: 0$/.test(g)), guesses);
 }
 
-/* ═══ v2.3.3353: THE EMOTES THE WORKER RELAYS ARE THE PHONE'S ═══
+/* ═══ v2.3.3361: THE EMOTES THE WORKER RELAYS ARE THE PHONE'S ═══
    The worker relays an emote only when it is on its list (emotes.js), and the
    phone's picker offers -- and its renderer draws -- only its own
    (gameDisplay.js EMOTES / TEXT_EMOTES).  One emoji missing from the worker's

@@ -1,4 +1,4 @@
-/* Emotes -- v2.3.3353 (server/src/emotes.js, docs/specs/emotes.md).
+/* Emotes -- v2.3.3361 (server/src/emotes.js, docs/specs/emotes.md).
  *
  * The phone draws an emote now (an emoji over the sender's head, a quick line
  * as their speech bubble), so the worker relays an emote only when it is one
@@ -88,7 +88,7 @@ function emotesOf(p, from = 0) {
 /* send one message from `p`; the emotes that went into the room's relay */
 /* each relay starts with a full allowance: the relay bucket, and the chat and
    emote allowance of #974's chat guard (`session.chatGuard`, chatguard.js),
-   which a bare null leaves untouched on a worker without it (v2.3.3353) */
+   which a bare null leaves untouched on a worker without it (v2.3.3361) */
 async function relay(room, p, msg) {
   const s = room.sessions.get(p.ws);
   s.relayTokens = room.RELAY_BURST; s.relayAt = Date.now(); s.chatGuard = null;
@@ -178,7 +178,7 @@ const ARRIVAL = { x: 21504, y: 21792 };
   const got = all.map((p, i) => emotesOf(p, mark[i]).map((e) => e.payload.emoji + '<' + e.from));
   check('4a the sender\'s own phone is sent it', JSON.stringify(got[0]) === JSON.stringify(['🎉<' + A.id]), got[0]);
   check('4b a phone 1,500 px away hears it', JSON.stringify(got[1]) === JSON.stringify(['🎉<' + A.id]), got[1]);
-  check('4c a phone past ' + EVENT_PLACE.R + ' px does not (placed, v2.3.3353)', got[2].length === 0, got[2]);
+  check('4c a phone past ' + EVENT_PLACE.R + ' px does not (placed, v2.3.3361)', got[2].length === 0, got[2]);
   check('4d a phone that muted the sender does not, though it is near', got[3].length === 0, got[3]);
   check('4e a phone in today\'s town does not', got[4].length === 0, got[4]);
 

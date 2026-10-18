@@ -49,7 +49,7 @@ remnant to migrate server-side, not a mode to preserve.
   only textures -- what leaked, and the order of the memory work with each
   item's status, v2.3.3075; `mp-memledger` measures it),
   `docs/FUN-SOCIAL-PLAN.md` (the owner's fun & social plan checked against
-  the code, v2.3.3353 -- "Go recommended": emotes and dances that move the bro
+  the code, v2.3.3361 -- "Go recommended": emotes and dances that move the bro
   in code, two-player moves, farm-made toys, a playground town; its rules: a
   pose that lasts is STATE on the player (TRAPS §176), social messages get an
   allowance of their own, anything earned is stored and checked on the server,
