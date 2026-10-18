@@ -8002,18 +8002,40 @@ export var BroTown = function BroTown(_ref0) {
     }
     /* Ask the GPU for the thumbnail: { T, sync } to collect, or null (do it
        the old way).  Call it in the animation frame the world was drawn in. */
+    /* ═══ v2.3.3345: AND NOTHING ASKS THE GPU FOR ITS ERRORS EVERY 5 s ═══
+       The owner: "iterate on what best improves framerate without loss of
+       quality (or negligible loss) for phone gameplay".  gl.getError() is the
+       one call here that makes the page WAIT -- for the browser's GPU side to
+       work through everything the frame has sent it (a round trip to another
+       process on an iPhone, the command buffer drained on Android): the
+       profile on mp-phoneframe put all of this sample's time in it, ~10 ms a
+       sample on this box, every 5 s, a hitch in the frame it landed in.  (The
+       getParameter / isEnabled reads are the browser's own copies of the
+       bindings, no wait.)  So the errors are asked for on a context's FIRST
+       sample only, which proves the way works there (the set-up's checks, and
+       the first blit's); after that a failed copy shows itself instead: the
+       thumbnail is cleared to see-through before the blit, and one that comes
+       back see-through everywhere -- which a drawn frame never is, the canvas
+       is cleared opaque -- was not copied, and is taken the old way
+       (_wdThumbCollect).  `?wdgeterror` asks every time, as before. */
+    var WD_GETERROR_EVERY = /[?&]wdgeterror\b/.test(window.location.search || '');
+    var _WD_CLEAR = new Float32Array([0, 0, 0, 0]);
     function _wdThumbAsk(cv) {
       var gl = _wdGl(cv);   /* v2.3.3313: never cv.getContext (above) */
       if (!gl || gl === _wdOffGl || typeof gl.fenceSync !== 'function' || gl.isContextLost()) return null;
       var T = _wdThumbSetUp(gl);
       if (!T) { _wdOffGl = gl; return null; }
+      var check = WD_GETERROR_EVERY || !T.proven;
       var fbRead = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING), fbDraw = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING);
       var packWas = gl.getParameter(gl.PIXEL_PACK_BUFFER_BINDING);
       var scissor = gl.isEnabled(gl.SCISSOR_TEST);
-      gl.getError();
+      if (check) gl.getError();
       if (scissor) gl.disable(gl.SCISSOR_TEST);
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
       gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, T.fb);
+      /* v2.3.3345: see-through first, so a copy that did not happen reads as
+         one (clearBufferfv leaves the clear colour Pixi keeps alone) */
+      gl.clearBufferfv(gl.COLOR, 0, _WD_CLEAR);
       gl.blitFramebuffer(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, 0, 0, 32, 18, gl.COLOR_BUFFER_BIT, gl.LINEAR);
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, T.fb);
       gl.bindBuffer(gl.PIXEL_PACK_BUFFER, T.pbo);
@@ -8022,10 +8044,10 @@ export var BroTown = function BroTown(_ref0) {
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, fbRead);
       gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fbDraw);
       if (scissor) gl.enable(gl.SCISSOR_TEST);
-      var sync = gl.getError() === gl.NO_ERROR ? gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0) : null;
+      var sync = (!check || gl.getError() === gl.NO_ERROR) ? gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0) : null;
       if (!sync) { _wdOffGl = gl; return null; }
       gl.flush();
-      return { T: T, sync: sync };
+      return { T: T, sync: sync, check: check };
     }
     /* The thumbnail's pixels once the GPU has them; null while it has not;
        false if it failed (then the old way) */
@@ -8036,12 +8058,18 @@ export var BroTown = function BroTown(_ref0) {
       if (st !== gl.SIGNALED) return null;
       gl.deleteSync(job.sync);
       var packWas = gl.getParameter(gl.PIXEL_PACK_BUFFER_BINDING);
-      gl.getError();
+      if (job.check) gl.getError();
       gl.bindBuffer(gl.PIXEL_PACK_BUFFER, job.T.pbo);
       gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, job.T.px);
       gl.bindBuffer(gl.PIXEL_PACK_BUFFER, packWas);
-      if (gl.getError() !== gl.NO_ERROR) { _wdOffGl = gl; return false; }
-      return job.T.px;
+      if (job.check && gl.getError() !== gl.NO_ERROR) { _wdOffGl = gl; return false; }
+      /* v2.3.3345: see-through everywhere is a copy that did not happen (the
+         ask cleared it so): the old way, from now on on this context */
+      var px = job.T.px, seen = false;
+      for (var ia = 3; ia < px.length; ia += 4) { if (px[ia]) { seen = true; break; } }
+      if (!seen) { _wdOffGl = gl; return false; }
+      job.T.proven = true;
+      return px;
     }
     function _wdThumbDrop(job) { try { job.T.gl.deleteSync(job.sync); } catch (eS) { /* gone */ } }
     /* the old way: the whole canvas copied out, then shrunk (v2.3.777) */

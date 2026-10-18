@@ -69,6 +69,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
       lit.every((r) => r && r.gl != null && r.gl >= 90), lit);
     rec.ok('...within 3 points of the old way, every sample', lit.every((r) => r && r.gl != null && Math.abs(r.gl - r.image) <= 3), lit.map((r) => r && [r.gl, r.image]));
 
+    /* v2.3.3345: after a context's first sample, nothing asks the GPU for
+       its errors (gl.getError waits for the GPU side to catch up: ~10 ms a
+       sample here, every 5 s) -- counted on the renderer's own context over
+       three more samples, which still read the world lit */
+    const quiet = await P.page.evaluate(async () => {
+      const gl = window._pixiRenderer.app.renderer.gl;
+      const own = Object.prototype.hasOwnProperty.call(gl, 'getError') ? gl.getError : null;
+      const orig = gl.getError;
+      let n = 0;
+      gl.getError = function () { n++; return orig.apply(this, arguments); };
+      const out = [];
+      try { for (let i = 0; i < 3; i++) out.push(await window.__btWdSample()); }
+      finally { if (own) gl.getError = own; else delete gl.getError; }
+      return { n, out };
+    });
+    console.log(`    three more samples: ${quiet.n} getError calls; ${JSON.stringify(quiet.out.map((r) => r && [r.gl, r.image]))}`);
+    rec.ok(`after the first sample nothing waits on gl.getError (${quiet.n} calls in three samples), and they read the world lit: ${quiet.out.map((r) => r && r.gl).join(', ')}%`,
+      quiet.n === 0 && quiet.out.every((r) => r && r.gl != null && r.gl >= 90 && Math.abs(r.gl - r.image) <= 3), quiet);
+
     /* 2. the owner's black screen */
     const hook = await P.page.evaluate(() => { if (!window.__btBlankStage) return false; window.__btBlankStage(true); return true; });
     await P.page.waitForTimeout(800);
