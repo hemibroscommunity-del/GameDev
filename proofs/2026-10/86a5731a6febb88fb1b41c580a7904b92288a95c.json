@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "86a5731a6febb88fb1b41c580a7904b92288a95c",
+  "tree": "b8426b6a6c1b98a1eb034db863b8c44481515719",
+  "committedAt": "2026-10-18T04:31:11-07:00",
+  "subject": "Each land's trees and rocks wear its element: snow, embers, sand, sparks, drips, spores, petals and more (v2.3.3402) (#982)",
+  "files": 5878,
+  "bytes": 646743680,
+  "listingSha256": "cd5dd21e4d200e0a98f616ebb56ff90d9386892f1857ec99639fea941a6da2ed",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
