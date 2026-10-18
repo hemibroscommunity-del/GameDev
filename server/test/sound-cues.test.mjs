@@ -23,7 +23,7 @@
  *      startSfxLoop, ticked by the game loop;
  *   8. the door: enterBuilding plays the table's knock, not the beep() that
  *      has played nothing since v2.3.1103;
- *   9. v2.3.3382, the second round (the owner: "Look for more too"): the
+ *   9. v2.3.3398, the second round (the owner: "Look for more too"): the
  *      Gambling Den's dice and pot, the arena's stakes and sign-up, a guild
  *      quest, an alliance war's end, invites to duel and trade, the market,
  *      the farm's harvest and bed, pets out, away and released (and the four
@@ -291,7 +291,7 @@ for (const p of files) {
   check('8b ...and stamps it as the tap\'s own sound, so the Enter button\'s click yields', /this\._uiSpecificAt = this\._now\(\)/.test(body));
 }
 
-/* ── 9. v2.3.3382: the second round ("Look for more too") ──
+/* ── 9. v2.3.3398: the second round ("Look for more too") ──
    Each of these places called collect() or beep(), both silent since
    v2.3.1103, or nothing; each now plays its cue, and none still leans on the
    silent call it replaced. */

@@ -1,4 +1,4 @@
-# Missing sound effects (audit v2.3.3023, refreshed v2.3.3343 and v2.3.3382)
+# Missing sound effects (audit v2.3.3023, refreshed v2.3.3343 and v2.3.3398)
 
 > Owner, 2026-10-04: *"Give me a list of missing sound effects. Some I thought
 > of is jumping, landing (from jumping). Monster noises, monster projectiles
@@ -9,7 +9,7 @@
 > *"Look for more too"*
 
 v2.3.3343 added every missing sound that could be made from recordings the game
-already ships, and v2.3.3382 a second round found by looking again (every
+already ships, and v2.3.3398 a second round found by looking again (every
 place that still called the silent `beep()` or `collect()`, and every message
 from the server that shows something and plays nothing). What is left needs
 **new recordings**, or work that is more than a sound. Both lists are below.
@@ -98,7 +98,7 @@ from the server that shows something and plays nothing). What is left needs
 - Them chopping, mining, fishing and cooking beside you; their hits on trees,
   fences and buildings now by distance (they were at full volume anywhere).
 
-## Added in v2.3.3382 (the second look)
+## Added in v2.3.3398 (the second look)
 
 - **The farm**: a crop pulled from its bed (the soil giving and a pop: the
   farm's payoff was silent while the spade and the watering can were heard);
@@ -133,7 +133,7 @@ Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
 | **Low-HP heartbeat** | under a quarter of your health | the game already keeps time for it (faster under a tenth); only the sound is missing |
 | **Munch and gulp** | eating and drinking: Quick Eat, the bag's Eat and Drink, the Cookhouse's Eat | all silent |
 | **A soft UI pop** | chat lines and emotes | |
-| **A notification chime** | mail arriving, party invites, friends' requests and messages, announcements, the weekly jackpot's winner (heard by everyone else) | duel and trade invites have sounds of their own since v2.3.3382 |
+| **A notification chime** | mail arriving, party invites, friends' requests and messages, announcements, the weekly jackpot's winner (heard by everyone else) | duel and trade invites have sounds of their own since v2.3.3398 |
 | **A "denied" tick** | "No mana!", "Not enough energy", bag full, not enough gold, "Swimming!", "Dazed!", "Gear locked", "Eat again in Ns", the farm's "Out of seeds", the market's and the Mayor gate's refusals, walking over a pile that is not yours, a greyed-out button | one sound for every refusal |
 | **A horn or a drum** | dungeon waves, the arena | today a slowed shield bash and wind |
 | **A boss roar** | a dungeon boss arriving and enraging | today a felled tree's thud and wind |
@@ -142,7 +142,7 @@ Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
 | **Sea surf** | the open sea and the shallows | rivers and ponds are done |
 | **Birds, forest, lava, cave drips** | each land's air | only the Wind Dunes has wind |
 | **A town crowd** | BroTown | |
-| **The town's buildings** | the Saloon's piano and chatter, the Old Mill's water wheel | the forge's anvil is done (v2.3.3382) |
+| **The town's buildings** | the Saloon's piano and chatter, the Old Mill's water wheel | the forge's anvil is done (v2.3.3398) |
 | **Leaf-litter footsteps** | the forest floor | plays grass today |
 | **NPC voice blips** | speech bubbles, opening a conversation | the Mayor's recorded welcome is in the game but not reachable in play |
 | **Music for four lands** | Stone Hollows, Electric Foundry, Water Caves, Poison Forest | they play the login theme. `world.mp3` was offered as a stopgap and the owner said no (2026-10-06) |
@@ -158,4 +158,4 @@ Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
   answer before any sound would make every hit on a player sound late.
 - **Mining miss** is no longer a gap: a harvest's grade is always perfect, ok
   or good now (lifeSkillRewards.js), so the "Miss!" it would have sounded for
-  never happens (found v2.3.3382).
+  never happens (found v2.3.3398).

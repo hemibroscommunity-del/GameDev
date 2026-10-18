@@ -1,4 +1,4 @@
-/* ═══ v2.3.3382: THE SECOND ROUND OF SOUNDS, HEARD ON A PHONE ═══
+/* ═══ v2.3.3398: THE SECOND ROUND OF SOUNDS, HEARD ON A PHONE ═══
  *
  * The owner, 2026-10-18, after the first round (mp-soundcues): "Look for more
  * too".  These moments still called collect() or beep(), both silent since

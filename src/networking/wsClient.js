@@ -927,6 +927,18 @@ export function setupWebSocket(ctx) {
                        `eqg`: 'rn', 'ee', ...), which glint.js draws as the
                        armour's grade look; absent is plain, as for `spr` */
                     S.others[pid]._eqg = typeof data.eqg === 'string' ? data.eqg.slice(0, 2) : '';
+                    /* v2.3.3392: a held pose (tick.js `po`, poses.js): sit,
+                       sleep, flop or a dance, drawn by rendering/emoteFx.js;
+                       `_poAt` is when this phone first saw it, for its settle.
+                       A far player's slim entry says nothing about it and
+                       leaves it as it was (they are not drawn). */
+                    if (!peerEntrySlim(data)) {
+                      const _po = typeof data.po === 'string' ? data.po : null;
+                      if ((S.others[pid]._po || null) !== _po) {
+                        S.others[pid]._po = _po;
+                        S.others[pid]._poAt = Date.now();
+                      }
+                    }
                     /* v2.3.3255: their Hemi Bro check (tick.js `bro`, the worn
                        Bro's id, and `brn`, how many their wallet holds), both
                        server-owned.  The worker has sent `bro` since v2.3.1576
@@ -2007,7 +2019,7 @@ export function setupWebSocket(ctx) {
                 if (S.player && msg.type === 'alliance_error' && allyBus.error) pushDmgPopup(S, S.player.x, S.player.y - 40, allyBus.error.text, '#ff5e6c');
                 if (S.player && msg.type === 'alliance_war_end' && allyBus.warEnd) {
                   pushDmgPopup(S, S.player.x, S.player.y - 48, allyBus.warEnd.text, allyBus.warEnd.won === false ? '#ff5e6c' : '#f5c542');
-                  /* v2.3.3382: and heard -- won or lost (it was silent); a war
+                  /* v2.3.3398: and heard -- won or lost (it was silent); a war
                      that ended level (`won` null) says so in words only */
                   if (allyBus.warEnd.won === true || allyBus.warEnd.won === false) cue(allyBus.warEnd.won === true ? 'warWon' : 'warLost');
                   S.chatLog = (S.chatLog || []).slice(-50).concat([{ id: 'ally-' + Date.now(), name: '', text: '⚔️ ' + allyBus.warEnd.text, ts: Date.now(), system: true }]);
@@ -5113,6 +5125,19 @@ export function setupWebSocket(ctx) {
         /* v2.3.3091: the shield on the arm (game/shieldWear.js) -> shieldwear.js.
            TRAPS #18: without this line the report never leaves the browser. */
         if (msg.type === 'shield_wear') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3392: a held pose -- sit, sleep, flop, a dance
+           (game/emoteMoves.js) -> poses.js, which keeps it on the player.
+           TRAPS #18: without this line the pose never leaves the browser. */
+        if (msg.type === 'pose') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3393: "/roll" or "/flip" (game/dice.js) -> dice.js, which rolls.
+           TRAPS #18: without this line the ask never leaves the browser. */
+        if (msg.type === 'dice') {
           wsOut(msg);
           return;
         }

@@ -344,7 +344,7 @@ function holdZoneMusicAtGate(gate) {
   try { BT_AUDIO.holdZoneMusicFor(gate); } catch (e) {}
 }
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
-import { sendChatMessage } from '@/game/chat.js';
+import { sendChatMessage, setChatMoveSender } from '@/game/chat.js';   /* v2.3.3392: + /wave, /sit, /dance are moves */
 import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
@@ -403,11 +403,12 @@ import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits 
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
-import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3382: the forge heard at work */
-import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building */
+import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3398: the forge heard at work */
+import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor, sendMove as sendMoveImpl, updateOwnEmote, updatePeerEmotes, movesLive } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building; v2.3.3392: + your bro moves */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
+import { updateTownsfolkReactions } from '@/game/townsfolkReact.js';   /* v2.3.3394: the townsfolk join in */
 import { waitForServerReady, installWorldHold } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 import { MONSTER_VARIANTS, isIntangible } from '@/data/monsterVariants.js'; /* isIntangible: v2.3.2244 */
 import { shardByKey } from '@/data/shards.js';
@@ -5009,7 +5010,7 @@ export var BroTown = function BroTown(_ref0) {
         var _jNow = Date.now();
         var _jLanded = tickJump(S, _jNow, _playerDead);
         tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
-        tickTownAmbience(S, _jNow);   /* v2.3.3382: the Blacksmith's anvil near the forge (game/townAmbience.js) */
+        tickTownAmbience(S, _jNow);   /* v2.3.3398: the Blacksmith's anvil near the forge (game/townAmbience.js) */
         var _inAir = !!S._jump;
         var _swEv = _inAir ? null : updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
           playerGroundDy(S.currentZone, P.x, P.y));
@@ -5070,6 +5071,28 @@ export var BroTown = function BroTown(_ref0) {
            snarl (game/monsterNoises.js; the call as one notices you is
            wsClient's, on the "!" edge) */
         try { updateMonsterNoises(S, _sprNow); } catch (e) { /* sound only */ }
+        /* v2.3.3392: an emote's moment ends on its own clock, and a held
+           pose -- sit, sleep, a dance -- when you walk, swing, raise the
+           shield, swim, jump, harvest or die; another player's held pose pops
+           its Zzz or its notes now and then (game/interactions.js; drawn by
+           rendering/emoteFx.js) */
+        try {
+          updateOwnEmote(S, _sprNow, {
+            moving: Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1,
+            attacking: !!(S.autoAttack || S.isSwinging || S._bashDash || S._swordSwinging),
+            shield: !!S._shieldUp,
+            swimming: isWheelSwimming(S),
+            dead: _playerDead,
+            jumping: jumpAirborne(S, _sprNow),
+            harvesting: !!S._extraction,
+            fightAt: Math.max(Number(S.lastDamageTaken) || 0, Number(S._dealtAt) || 0, Number(S._pvpAt) || 0)
+          });
+          updatePeerEmotes(S, _sprNow);
+          /* v2.3.3394: the townsfolk answer the moves near them -- Lil Bro
+             copies, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have
+             a word (game/townsfolkReact.js) */
+          updateTownsfolkReactions(S, _sprNow);
+        } catch (e) { /* a look only */ }
 
         /* §14 Terrain feel — tile under player affects movement */
         var footTile = (_S$map$Math$floor$Mat = (_S$map2 = S.map) === null || _S$map2 === void 0 || (_S$map2 = _S$map2[Math.floor(P.y / TILE)]) === null || _S$map2 === void 0 ? void 0 : _S$map2[Math.floor(P.x / TILE)]) !== null && _S$map$Math$floor$Mat !== void 0 ? _S$map$Math$floor$Mat : 0;
@@ -5283,7 +5306,7 @@ export var BroTown = function BroTown(_ref0) {
               R2._wellRestedUntil = Date.now() + WELL_RESTED_DURATION;
               pushDmgPopup(S, P.x, P.y - 40, 'Fully Rested!', '#59BF91');
               pushDmgPopup(S, P.x, P.y - 25, '+10% XP for 30 min', '#D8A94D');
-              cue('rested');   /* v2.3.3382: a slow breath and a warm shimmer -- collect() and two beep()s, all silent */
+              cue('rested');   /* v2.3.3398: a slow breath and a warm shimmer -- collect() and two beep()s, all silent */
               S._sleeping = null;
               setRpgState(_objectSpread({}, R2));
               try {
@@ -8680,6 +8703,15 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.3321: the player list, where a party starts -- the dashboard's
          Clan page opens it now that clans are parties (dash/ClanPanel.jsx) */
       playersOpen:  function () { setShowPlayerList(true); },
+      /* v2.3.3391: the emote picker's doors -- the chat box's smiley opens it
+         (ChatBubble.jsx), B toggles it (desktopControls.js).  Its old door
+         was the hidden toolbar's (MenuBar.jsx), so it could not be opened. */
+      emotes:       function () { setShowEmotes(function (v) { return !v; }); },
+      emotesOpen:   function () { setShowEmotes(true); },
+      /* the picker's own sender, for mp-emotes (a stable useCallback below) */
+      emoteSend:    function (emoji) { sendEmote(emoji); },
+      /* v2.3.3392: and the Moves tab's, for mp-emotemoves */
+      moveSend:     function (id) { return sendMove(id); },
     };
     return function () { delete window.__broLegacyUI; };
   }, []);
@@ -8755,6 +8787,15 @@ export var BroTown = function BroTown(_ref0) {
   var sendEmote = useCallback(function (emoji) {
     sendEmoteImpl(stateRef.current, emoji, { setShowEmotes: setShowEmotes });
   }, []);
+  /* v2.3.3392: a move -- a wave, a sit, a dance (game/interactions.js
+     sendMove): from the picker's Moves tab, and from the chat's "/wave" */
+  var sendMove = useCallback(function (id) {
+    return sendMoveImpl(stateRef.current, id, { setShowEmotes: setShowEmotes });
+  }, []);
+  useEffect(function () {
+    setChatMoveSender(sendMove);
+    return function () { setChatMoveSender(null); };
+  }, [sendMove]);
 
   /* Enter building */
   var enterBuilding = useCallback(function () {
@@ -8792,7 +8833,7 @@ export var BroTown = function BroTown(_ref0) {
     R._wellRestedUntil = Date.now() + 1800000;
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'Zzz... Stats restored!', '#59BF91');
     pushDmgPopup(S2, S2.player.x, S2.player.y - 25, 'Well Rested +10% XP (30min)', '#D8A94D');
-    cue('rested');   /* v2.3.3382: the farm's bed heard (three beep()s, silent since v2.3.1103) */
+    cue('rested');   /* v2.3.3398: the farm's bed heard (three beep()s, silent since v2.3.1103) */
     setRpgState(_objectSpread({}, R));
     try {
       localStorage.setItem('bt_rpg', JSON.stringify(R));
@@ -13792,7 +13833,7 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       alignItems: 'center'
     }
-  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }),
+  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote, onClose: function () { setShowEmotes(false); } /* v2.3.3391 */, sendMove: sendMove, movesOn: movesLive(stateRef.current) /* v2.3.3392 */ }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
   React.createElement(NmlBadge, { stateRef: stateRef, isLandscape: isLandscape }),   /* v2.3.3268: + the orientation, to keep clear of the shield button */
@@ -13943,7 +13984,7 @@ export var BroTown = function BroTown(_ref0) {
       R._wellRestedUntil = Date.now() + 1800000; /* 30 min */
       pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'Zzz... Stats restored!', '#59BF91');
       pushDmgPopup(S2, S2.player.x, S2.player.y - 25, 'Well Rested +10% XP (30min)', '#D8A94D');
-      cue('rested');   /* v2.3.3382: as the E key's sleep above */
+      cue('rested');   /* v2.3.3398: as the E key's sleep above */
       setRpgState(_objectSpread({}, R));
       try {
         localStorage.setItem('bt_rpg', JSON.stringify(R));

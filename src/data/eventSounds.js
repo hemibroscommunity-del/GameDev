@@ -237,13 +237,18 @@ export const EVENT_SOUNDS = {
   /* A trade completed, or called off. */
   tradeDone: [['coin-pickup', 0.5, 0.6, 0.35, 1], ['ui-equip', 0.095, 0.3, 2.2, 1, 0.08]],
   tradeOff: [['ui-close', 0, 0, 0.35, 0.9]],
+  /* v2.3.3393: a /roll's clatter and a /flip's toss (game/chat.js
+     handleDiceEvent, by distance): Ace's own coin clip as his toss plays it
+     (AceFlipPanel.jsx TOSS_OPTS), the roll's quicker and higher */
+  diceRoll: [['coin-flip', 0.03, 0.45, 0.45, 1.3, 0, 0.1]],
+  coinToss: [['coin-flip', 0.03, 0.72, 0.5, 1, 0, 0.1]],
   /* The Daily Spin's wheel ticking past each slice. */
   spinTick: [['ui-click', 0.042, 0.05, 0.45, 1.1]],
   /* Your party becoming an alliance; a war declared. */
   allianceUp: [['level-up', 0, 0.5, 0.35, 1, 0, 0.15]],
   allianceWar: [['shield-bash', 0.03, 0.5, 0.45, 0.65], ['whirlwind', 0.1, 0.7, 0.2, 0.8, 0.05, 0.15]],
 
-  /* ── v2.3.3382: MORE MOMENTS THAT PLAYED NOTHING ───────────────────────
+  /* ── v2.3.3398: MORE MOMENTS THAT PLAYED NOTHING ───────────────────────
      The owner, 2026-10-18, after the first round: "Look for more too".  Each
      of these still called collect() or beep(), both silent since v2.3.1103,
      or nothing at all.  Same recordings, same rules as above. */
@@ -330,7 +335,7 @@ export const CUE_GAP_MS = {
   lungeMiss: 100,
   unwrap: 200,
   tradeOff: 300,
-  /* v2.3.3382: a player who sends invite after invite is heard once a second
+  /* v2.3.3398: a player who sends invite after invite is heard once a second
      at most, and a pet taken out and put away again and again is one pop */
   duelAsk: 1000,
   tradeAsk: 1000,

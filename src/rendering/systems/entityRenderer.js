@@ -5571,7 +5571,23 @@ export function figureFeetY(display) {
      only while the y is still the one jumpFx left (the swim's rule,
      swimFx.js): the entity pass may have set a fresh y since. */
   const lift = display._jumpY != null && display.y === display._jumpY ? (display._jumpLift || 0) : 0;
-  return display.y + lift + _feetOffsetUnits(display) * display.scale.y;
+  /* v2.3.3392: and a figure that emotes (rendering/emoteFx.js) is drawn
+     tilted, squashed or hopping ABOUT its feet, after the depth pass: its
+     feet are where they were (its y and scale are not), so the emote's own
+     fix is taken off -- only while the y is still the one emoteFx left. */
+  const emo = display._emoteYw != null && display.y === display._emoteYw ? (display._emoteFeetFix || 0) : 0;
+  return display.y + lift - emo + _feetOffsetUnits(display) * display.scale.y;
+}
+/* v2.3.3392: the x a figure stands at -- its x, or, while it emotes, the x
+   its feet are planted at (a tilt about the feet moves its origin) */
+export function figureFeetX(display) {
+  return display._emoteXw != null && display.x === display._emoteXw ? display.x - (display._emoteXFix || 0) : display.x;
+}
+/* v2.3.3392: how far the boots are below a live figure's origin, in its own
+   units (the drawn frame's facing and pose) -- for emoteFx, which plants
+   them */
+export function figureFeetUnits(display) {
+  return _feetOffsetUnits(display);
 }
 /* ═══ v2.3.2748: THE SAME DROP, FOR CODE THAT HAS NO FIGURE IN HAND ═══
    How far below a player's POSITION (S.player.y, a peer's y) their boots are
