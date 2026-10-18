@@ -103,7 +103,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* A must move to become dirty, or the tick never mentions him (see
      waitMutualSight's note); the relay alone would also re-create him. */
   await H.nudge(A, 'd', 500);
-  /* v2.3.3351: the tick makes him again at once, but as 'Anon' in a default
+  /* v2.3.3363: the tick makes him again at once, but as 'Anon' in a default
      body (a tick carries no look), and since v2.3.3240 the relay sends only
      what CHANGED: his whole look, name and all, goes again once a minute
      (lookrelay.js FULL_EVERY_MS; docs/specs/look-relay.md, "in a minute

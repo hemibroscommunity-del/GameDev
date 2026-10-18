@@ -12178,7 +12178,7 @@ export var BroTown = function BroTown(_ref0) {
             });
             return;
           } else {
-            /* ═══ v2.3.3351: YOUR DUEL OPPONENT IS AIMED AT, NOT INSPECTED ═══
+            /* ═══ v2.3.3363: YOUR DUEL OPPONENT IS AIMED AT, NOT INSPECTED ═══
                This branch also opened their player card, over the middle of
                the fight -- what duelLock.js says it never does ("tapping a
                player opens their inspect card UNLESS they are your duel

@@ -31,7 +31,7 @@
  * worker's handler at all.
  */
 import * as H from './harness.mjs';
-/* v2.3.3351: the worker's own price of one block (abilities.js blockSize) --
+/* v2.3.3363: the worker's own price of one block (abilities.js blockSize) --
    a special costs ONE BLOCK since v2.3.2298 (the owner: "All special attacks
    will cost one block"), not the flat PROG3.SPECIAL_MANA_COST of v2.3.1734 this
    checked: 20 of a fresh character's 102 against 25 (the sweep of
@@ -101,7 +101,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      post-spend value. */
   await H.callFn(P, 'specialAttack').catch(() => {});
   let low = before ? before.mana : null;
-  /* v2.3.3351: the reads go out 30 ms apart WITHOUT waiting on each other.
+  /* v2.3.3363: the reads go out 30 ms apart WITHOUT waiting on each other.
      One read at a time, each one's round trip on a busy box was longer than
      the 670 ms between regen ticks, so the first read after the spend came
      a tick late: 95 = 82 + 2 (the trickle) + 11 (the top-off), "spent 7"
@@ -120,7 +120,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* THE REGRESSION.  Under floor(maxMana/5) this reads 20 at the fresh
      character's 102 max — and, crucially, it read a DIFFERENT number at
      every Magic level, which is exactly why mana could never progress.
-     v2.3.3351: and one block is the rule again since v2.3.2298 (the import's
+     v2.3.3363: and one block is the rule again since v2.3.2298 (the import's
      note): ONE BLOCK of the bar the worker reports, its blocks the client's
      count of them (the same blocksAt; 5 on a fresh character). */
   const blocks = await H.readState(P, (S) => (S.rpg && S.rpg.manaBlocks) || null);
@@ -153,7 +153,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     window._gameFns.specialAttack();
     return { was, now: S.rpg.mana, maxMana: S.rpg.maxMana, blocks: S.rpg.manaBlocks || null };
   });
-  /* v2.3.3351: the same one block, priced as the worker prices it */
+  /* v2.3.3363: the same one block, priced as the worker prices it */
   const predBlock = predicted ? blockSize({ maxMana: predicted.maxMana, manaBlocks: predicted.blocks }, 'mana') : null;
   rec.ok(`the CLIENT predicts the same one block (${predBlock})`,
     !!predicted && predBlock > 0 && predicted.was - predicted.now === predBlock, { predicted, predBlock });

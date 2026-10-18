@@ -68,7 +68,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await place(0, 34);
     await P.page.waitForTimeout(1400);
     const opened = await H.npcDialogueOpen(P);
-    /* v2.3.3351: a line in parts is read to its end, as a player taps through
+    /* v2.3.3363: a line in parts is read to its end, as a player taps through
        it.  Since v2.3.2237 his tut_2 "complete" line is four parts and the
        button says "Next" until the last, where it is "Claim reward" -- the
        first part is already the reward's line, not his progress one, so this

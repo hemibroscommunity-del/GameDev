@@ -22,13 +22,13 @@ const stand = (P, x, y) => P.page.evaluate(({ px, py }) => {
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort });
   await H.enterWorld(P);
-  /* v2.3.3351: a real key every 20 s (H.keepAlive: Control, which does
+  /* v2.3.3363: a real key every 20 s (H.keepAlive: Control, which does
      nothing in the game).  This stands still for 90 s and fights for 150,
      and the page logs itself out after two minutes with no real input
      (v2.3.3034's idle logout), the worker then holding no player. */
   const stopAlive = H.keepAlive(P);
   await P.page.waitForTimeout(2000);
-  /* v2.3.3351: the lands opened by the harness (H.openLands), as
+  /* v2.3.3363: the lands opened by the harness (H.openLands), as
      mp-fightsoak's since v2.3.3321: since v2.3.3179 the worker refuses
      tut_2..tut_4 taken at once, so only Frost Ridge opened, the spoke's
      marker took nobody to the Verdant Wilds, and this watched the World
@@ -45,7 +45,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(700);
   await stand(P, marks.spoke.tx*TILE+16, marks.spoke.ty*TILE+16);
   await H.waitFor(P,(S)=>S.currentZone,(z)=>z==='verdant',{timeout:30000,label:'verdant'}).catch(()=>{});
-  /* v2.3.3351: the worker's god mode (the Test panel's, /dev/vitals: no
+  /* v2.3.3363: the worker's god mode (the Test panel's, /dev/vitals: no
      damage taken, in memory, it expires), as mp-beastmaster's.  Standing
      still among the Verdant Wilds' monsters, a fresh character was killed
      between 30 and 45 s and woke in town, its list empty for the respawn,

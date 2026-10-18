@@ -203,7 +203,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('ROAD 1: ...and it is the same character', i1.myId === idBefore.myId, { i1, idBefore });
 
   /* ── ROAD 1b: the black-screen watchdog's own recovery reload ──
-     v2.3.3351: the one reload that still walks you straight back in
+     v2.3.3363: the one reload that still walks you straight back in
      (BroTown.jsx `_recoveryReload`: bt_resume_now, then the clean path), and
      the reload that is about a black screen -- made here as the watchdog
      makes it, from the world ROAD 1 brought this page back to. */

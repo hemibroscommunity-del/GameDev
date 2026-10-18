@@ -219,7 +219,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      stable handle the markup offers. */
   const left = await B.page.locator('button[title="Leave party"]').first()
     .click({ timeout: 8000 }).then(() => true).catch(() => false);
-  /* v2.3.3351: ...and a second tap, on its "Leave?".  Since v2.3.3284 a party
+  /* v2.3.3363: ...and a second tap, on its "Leave?".  Since v2.3.3284 a party
      lasts through a logout, so leaving takes two taps (PartyHUD.jsx: the
      first arms the button, the second sends party_leave); one tap left the
      party standing on both sides (the sweep of 2026-10-18). */

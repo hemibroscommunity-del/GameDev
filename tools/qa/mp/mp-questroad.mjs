@@ -113,7 +113,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      drew a straight line and stopped at the first blocked cell, so it died
      after ONE tile and the feature was invisible on its own opening screen.
      A road here that has no bend in it is that bug coming back. */
-  /* v2.3.3351: ...asked from BEHIND a building.  Today's town (68 x 72 tiles
+  /* v2.3.3363: ...asked from BEHIND a building.  Today's town (68 x 72 tiles
      since v2.3.2628) puts open ground between a new bro and Mayor Bro, so the
      road from there is one straight leg with its whole seven-tile heading, as
      it should be (the sweep of 2026-10-17: legs 1, limitTiles 7) -- and this

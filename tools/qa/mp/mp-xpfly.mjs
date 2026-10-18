@@ -51,7 +51,7 @@ const probe = (P) => P.page.evaluate(() => {
 
 /* Every gain below goes through the real entry point (window.__btPushXp), so
    this exercises the shipped pushHudPopup (cat resolution, world anchor and
-   all) rather than a fixture.  v2.3.3351: from inside the page, where the
+   all) rather than a fixture.  v2.3.3363: from inside the page, where the
    look that follows it is taken (section 1). */
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -60,7 +60,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(3500);
-  /* v2.3.3351: the dashboard opened.  A first join arrives with it folded
+  /* v2.3.3363: the dashboard opened.  A first join arrives with it folded
      (v2.3.2495), and a folded band draws no columns, so the three combat
      cards the XP flies to were not on screen at all (the sweep of
      2026-10-18), as in mp-infopop. */
@@ -75,7 +75,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (base.cards.length !== 3) { await P.ctx.close().catch(() => {}); return; }
 
   /* ── 1. it starts over the character ──
-     v2.3.3351: pushed and first looked at in ONE evaluate, on the first frame
+     v2.3.3363: pushed and first looked at in ONE evaluate, on the first frame
      that draws it, as the flight below is (its note says why).  Across the
      wire the look came 200+ ms late on this box, the label well up its lift,
      and 73.5 px over the player read as "not over them" (the sweep of

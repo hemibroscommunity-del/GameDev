@@ -69,7 +69,7 @@ import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 import { playVw, playVh, playIsLandscape } from './playViewport.js'; /* v2.3.2157: the band has a sideways shape */
 import { dashMinBus } from './dashMinBus.js';
-import { shopBus } from './shopBus.js';          /* v2.3.3351: a window that sells from the bag unfolds it */
+import { shopBus } from './shopBus.js';          /* v2.3.3363: a window that sells from the bag unfolds it */
 import { tradeBagBus } from './tradeBagBus.js';
 import { startGearFlash } from './gearFlash.js';   /* v2.3.3049: the first quest's gear flashes until it is on */
 import { stampSheetH, unstampSheetH } from './sheetStamp.js'; /* v2.3.2197: one --sheet-h formula, shared with resize() + the watchdog */ /* v2.3.2119: fold the band to the identity row */
@@ -915,7 +915,7 @@ export const BottomDashboard = () => {
   useEffect(() => {
     if (mode === 'expanded' && dashMinBus.min) dashMinBus.set(false);
   }, [mode]);
-  /* ═══ v2.3.3351: ...AND SO DOES A WINDOW THAT WORKS THROUGH YOUR BAG ═══
+  /* ═══ v2.3.3363: ...AND SO DOES A WINDOW THAT WORKS THROUGH YOUR BAG ═══
      Diego's drawer ("tap your bag below to sell", v2.3.2059) and the trade
      window (v2.3.2149) work through the band's OWN bag tiles, and a folded
      band draws none (the columns row waits on the fold).  So a new player,
