@@ -162,8 +162,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
        that and read the swallowed taps as a dead hit test.
        Tap until the world actually receives one (the scan records that it
        ran); a dialogue closes on tap, so at most a couple are needed. */
+    /* v2.3.3399: ...and a dialogue no longer closes on a tap ON it.  Mayor
+       Bro's window (.bt-npcdlg) now opens in the middle of the screen, right
+       over him, so all three taps landed on the card itself, which only its
+       ✕ or the dark scrim round it closes -- the scan never ran and he read
+       as silent (the sweep of 2026-10-18; his window had opened, the answer
+       a player gets).  So a window up is closed the way a player closes it
+       (H.closeNpcDialogue: the ✕, else the scrim) before the tap, and the
+       proximity latch keeps it shut while he stands there. */
     let ran = false;
     for (let k = 0; k < 3 && !ran; k++) {
+      await H.closeNpcDialogue(P).catch(() => {});
+      await P.page.waitForTimeout(300);
       await P.page.evaluate(() => { window.__btNpcTap = null; });
       const cc = await settled(P, n);
       if (!cc) break;

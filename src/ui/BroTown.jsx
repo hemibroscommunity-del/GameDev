@@ -12251,26 +12251,21 @@ export var BroTown = function BroTown(_ref0) {
             });
             return;
           } else {
+            /* ═══ v2.3.3399: YOUR DUEL OPPONENT IS AIMED AT, NOT INSPECTED ═══
+               This branch also opened their player card, over the middle of
+               the fight -- what duelLock.js says it never does ("tapping a
+               player opens their inspect card UNLESS they are your duel
+               opponent, in which case it locks on instead"), and what No
+               man's land's and the sparring clones' taps above refuse to do
+               for the same reason.  On a computer a click is the attack, so
+               every second click on them opened it, and the card took every
+               press after it (found by mp-duelfeel, the sweep of 2026-10-17).
+               The lock alone; tapping them again still lets go, as before. */
             S.lockedTarget = {
               type: 'player',
               id: id,
               ref: o
             };
-            setInspectPlayer({
-              id: id,
-              name: o.name,
-              color: o.color,
-              avatar: o.avatar,
-              bro: o.bro, brn: o.brn,
-              x: o.x,
-              y: o.y,
-              rpgLv: o.rpgLv,
-              rpgData: o.rpgData,
-              pet: o.pet,
-              rep: o.rep,
-              clanTag: o.allyTag || o.clanTag,   /* v2.3.3321 */
-              clanColor1: o.clanColor1
-            });
           }
           return;
         }

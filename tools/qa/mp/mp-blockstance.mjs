@@ -74,10 +74,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
            is _mouseAimAngle — wherever Playwright happens to leave the pointer.
            Pin the input, not just the derived value, or the game re-derives it
            on its own frame after this one. */
-        S2._mouseAimAngle = window.__pin.k * Math.PI / 4;
-        S2._facingAngle = window.__pin.k * Math.PI / 4;
-        S2._aimAngle = window.__pin.k * Math.PI / 4;
-        S2._shieldAngle = window.__pin.k * Math.PI / 4;
+        /* v2.3.3399: the aim can be pinned AWAY from the guard (`aimOff`,
+           section 3 only), so "the caret follows the guard, not the aim" has
+           two different numbers to tell apart. */
+        const guard = window.__pin.k * Math.PI / 4;
+        const aim = guard + (window.__pin.aimOff || 0);
+        S2._mouseAimAngle = aim;
+        S2._facingAngle = guard;
+        S2._aimAngle = aim;
+        S2._shieldAngle = guard;
       }
       requestAnimationFrame(tick);
     };
@@ -275,6 +280,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
      It turns out to be the useful case: with facing, aim and guard all
      different on screen at once, "which one does the caret follow" is a
      question with a discriminating answer. */
+  /* v2.3.3399: ...and the aim a quarter turn off it ON PURPOSE.  The three
+     numbers used to come apart by themselves, the game re-deriving the guard
+     as the note above says; today a raised guard with nothing to point at
+     keeps the angle it was given (shieldToggle.js shieldAimAngle, its
+     remembered rung), so the pin put all three on one number and the
+     discrimination check below failed with guard == aim at every bearing
+     (the sweep of 2026-10-18).  The facing follows the guard while it is up
+     (the shield rung of the facing ladder, entityRenderer), so pin() still
+     waits for the guard's own sector. */
+  await P.page.evaluate(() => { window.__pin.aimOff = Math.PI / 2; });
   const seen = [];
   for (const n of ['E', 'SW', 'W']) {
     await pin(P, IDX[n]);
@@ -302,6 +317,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('the guard angle really does differ from the aim (so the check above discriminates)',
     discriminating, seen.map((c) => ({ guard: c.stateShieldAng, aim: c.stateAimAng, facing: c.facing })));
+  await P.page.evaluate(() => { window.__pin.aimOff = 0; });
 
   /* ── 4. one blue for both direction marks ── */
   const col = await P.page.evaluate(() => window.__btAimCaret || null);

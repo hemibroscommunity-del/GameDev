@@ -174,11 +174,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
       pill.pillVisible === true && pill.pillBottom > pill.pillTop, pill);
     rec.ok('...and the character has real bounds behind it (guard)',
       pill.bodyBottom > pill.bodyTop, pill);
-    /* 30 was the overlapping value the owner reported; 38 is that plus the
-       middle of the 3-10px they asked for.  The band accepts the whole range
-       they named and refuses a revert to 30. */
-    rec.ok('the name plate sits 3-10px lower than the value that overlapped the feet',
-      pill.pillLocalY >= 33 && pill.pillLocalY <= 40, pill);
+    /* v2.3.3399: OVER THE HEAD, ON THE HP BAR'S OWN LINE.  The 3-10px drop
+       below the feet (v2.3.1765: 30 overlapped them, 33-40 asked) is retired
+       since v2.3.2571, when the plate moved to where the bar sits and the two
+       swap in one spot ("THE PLATE SITS WHERE THE BAR SITS", entityRenderer:
+       `_namePill.y = PLAYER_BAND_Y - plate height / 2`); the sweep of
+       2026-10-18 read it at -90 against 33-40.  Read against the bar's own y
+       on the same display, so the claim is "the bar's line runs through the
+       plate", not a copy of either number (shot-plateswap shows the swap). */
+    const line = await P.page.evaluate(() => {
+      const pd = window._pixiRenderer && window._pixiRenderer.playerDisplayRaw
+        ? window._pixiRenderer.playerDisplayRaw() : null;
+      const f = pd && pd._hudHpBarFrame;
+      return f ? { barY: f.y, plateY: pd._namePill ? pd._namePill.y : null } : null;
+    });
+    rec.ok('the name plate sits over the head, on the HP bar\'s own line',
+      !!line && line.plateY < 0 && line.plateY < line.barY && line.barY - line.plateY <= 40,
+      { line, pillLocalY: pill.pillLocalY });
     /* ...and that offset actually REACHES THE SCREEN.  Without this the check
        above is just reading back a constant: the plate lives inside a display
        the zone scales, so the authored units and the painted pixels are
