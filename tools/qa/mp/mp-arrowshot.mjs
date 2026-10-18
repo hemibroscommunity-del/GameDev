@@ -45,7 +45,13 @@ const seed = (P, list) => P.page.evaluate((ms) => {
     targetX: S.player.x + dx, targetY: S.player.y + dy,
     hp: 5000, curHp: 5000, maxHp: 5000, dmg: 0, level: 1, gold: 0,
     spd: 0, vx: 0, vy: 0, alive: true, statuses: {},
-    _hitThisSwing: false, _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, _stuckArrows: [],
+    /* v2.3.3399: an attack clock an hour ahead, so they never swing.  `dmg: 0`
+       was meant to make them harmless, but the client's town monster hits for
+       `Math.max(1, m.dmg)` after a red wind-up, and every landed hit shakes
+       the screen (monsterCombat.js `S.screenShake`): the crop measured for
+       the arrow differed in all 2,720 of its pixels from the frame with the
+       monster gone (BT_ARROW_DUMP, the sweep of 2026-10-18). */
+    _hitThisSwing: false, _atkCd: Date.now() + 3600000, _stunUntil: 0, respawnAt: 0, moveTimer: 0, _stuckArrows: [],
   }));
 }, list);
 
@@ -113,6 +119,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the target is still the target', hot.filter((m) => m.target).length === 1, hot);
   await P.page.screenshot({ path: `${out}/arrows-red.png` });
 
+  /* v2.3.3399: let go BEFORE the arrow is measured (it was after).  Held, the
+     attack chases and swings at the target, so the camera leads and kicks
+     with it, and moving the monster away for the control frame moved the
+     whole view: all 2,720 pixels of the crop differed (BT_ARROW_DUMP, the
+     sweep of 2026-10-18).  Let go, nothing moves but the mark, and the
+     chip is the same size cold as hot -- only its colour changes. */
+  await P.page.evaluate(() => { const c = window.__centre('.bt-rjoy-base'); window.__touch(c.el, 'touchend', c.x, c.y, 90); });
+  await P.page.waitForTimeout(700);
+  const cooled = await P.page.evaluate(() => (window.__btAtkMark ? window.__btAtkMark() : []));
+  rec.ok('...and it cools back to yellow when you stop', cooled.every((m) => m.hot === false), cooled);
+
   /* ═══ HOW BIG IS IT, IN PIXELS THE OWNER'S EYE GETS (v2.3.2255) ═══
      Every assertion above says the arrows are DRAWN, which is not the claim
      that matters and never was.  The owner reported the marks hard to see
@@ -155,7 +172,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
          clipped, and narrow enough to exclude the monster's own furniture: at
          +/-24 something ~24px left of the mark joined the x-projection and the
          run-through-centre bridged to it, reporting 32px. */
-      return { x: Math.max(0, Math.round(ax - 17)), y: Math.max(0, Math.round(ay - 7)), width: 34, height: 26 };
+      /* v2.3.3399: and it ends where the monster's band begins.  Since
+         v2.3.2313/v2.3.2504 the chip hangs from the band (the name plate and
+         HP bar), its tip a few px over it at the bottom of its bob
+         (effectsRenderer `_cstand`), and the 26 px box reached down into the
+         band: its top rows, 34 px wide, read as "the arrow is 34 across" (the
+         sweep of 2026-10-18; LOOK at crop-solo.png: the bar's "1000" right
+         under the chip).  The band's top is the renderer's own number
+         (`_bandTopOff`, world units, the one the chip hangs from); the box
+         stops 10 px above it.  The name plate's outline is drawn about 6 px
+         over that line: runs with BT_ARROW_DUMP showed the chip a clean 19 px
+         chevron and the box's last two device rows full width -- the outline,
+         read as 34 -- at 2 px and again at 5.  Cutting the chip's tip at the
+         bottom of its bob costs nothing: it is widest at its top.  And it
+         starts 12 px over the mark, not 7: the
+         chip bobs up to 6 px either way (CHIP_BOB) between this read and the
+         two shots, and a chip that had risen was cut off at its widest row. */
+      const y0 = Math.max(0, Math.round(ay - 12));
+      const mon = (S.monsters || []).find((mm) => mm.id === tgt.id);
+      let height = 26;
+      if (mon && typeof mon._bandTopOff === 'number' && isFinite(mon._bandTopOff)) {
+        const bandY = r.top + ((mon.renderY != null ? mon.renderY : mon.y) + mon._bandTopOff - S.camera.y) * ky;
+        height = Math.max(8, Math.min(26, Math.floor(bandY - 10 - y0)));
+      }
+      return { x: Math.max(0, Math.round(ax - 17)), y: y0, width: 34, height };
     });
     if (!box) return null;
     const a = await H.screenshotPixels(P, box);
@@ -234,10 +274,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`...and it is an arrow, not a repainted crop (${sz.cssW.toFixed(1)} of a ${sz.cropW}px crop)`,
       sz.cssW <= 24, sz);
   }
-  await P.page.evaluate(() => { const c = window.__centre('.bt-rjoy-base'); window.__touch(c.el, 'touchend', c.x, c.y, 90); });
-  await P.page.waitForTimeout(700);
-  const cooled = await P.page.evaluate(() => (window.__btAtkMark ? window.__btAtkMark() : []));
-  rec.ok('...and it cools back to yellow when you stop', cooled.every((m) => m.hot === false), cooled);
 
   await P.ctx.close().catch(() => {});
 }

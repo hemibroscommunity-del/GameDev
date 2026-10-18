@@ -56,6 +56,8 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
+import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
+import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
 import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3105: the attack disc wears the weapon in your hand */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
@@ -344,7 +346,7 @@ function holdZoneMusicAtGate(gate) {
   try { BT_AUDIO.holdZoneMusicFor(gate); } catch (e) {}
 }
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
-import { sendChatMessage } from '@/game/chat.js';
+import { sendChatMessage, setChatMoveSender } from '@/game/chat.js';   /* v2.3.3392: + /wave, /sit, /dance are moves */
 import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
@@ -403,10 +405,11 @@ import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits 
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
-import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building */
+import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor, sendMove as sendMoveImpl, updateOwnEmote, updatePeerEmotes, movesLive } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building; v2.3.3392: + your bro moves */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
+import { updateTownsfolkReactions } from '@/game/townsfolkReact.js';   /* v2.3.3394: the townsfolk join in */
 import { waitForServerReady, installWorldHold } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
 import { MONSTER_VARIANTS, isIntangible } from '@/data/monsterVariants.js'; /* isIntangible: v2.3.2244 */
 import { shardByKey } from '@/data/shards.js';
@@ -617,6 +620,14 @@ function nodeWorldBox(S, n) {
        logs ~56 wide, the front ends ~12 below the ground point, the flame's tip
        ~55 above it.  Was 56x40 for the vector fire's glow and 21 px flames. */
     w = 64; h = 70; ax = 0.5; ay = 0.82; wx = n.x; wy = n.y;
+  } else if (n.nodeType === 'tree') {
+    /* v2.3.3345: its wood's own picture, before the sprite exists */
+    var _g = treeGeom(n);
+    return { l: _g.left, r: _g.right, t: _g.top, b: _g.bottom };
+  } else if (n.nodeType === 'oreVein') {
+    /* v2.3.3345: and a vein its metal's own rock */
+    var _og = oreGeom(n);
+    return { l: _og.left, r: _og.right, t: _og.top, b: _og.bottom };
   } else {
     var _ts = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
     h = (n.nodeType === 'tree' ? 168 : 132) * (1 + (_ts - 1) * 0.15);
@@ -668,12 +679,18 @@ function nodeWorldBox(S, n) {
    over-blocks empty air in one direction and under-blocks the art in another,
    which is what the owner was seeing. */
 var NODE_ART = {
-  oreVein:  { x0: 0.232, x1: 0.777, y0: 0.223, y1: 0.737 },
+  /* ore: its whole drawn body.  v2.3.3345: each metal's rock is its own
+     picture, trimmed to the rock, so the body is its box (game/tierOre.js
+     oreBlockEllipse) and these fractions of the old vein's frame are gone.
+     The entry stays: it is what says a vein stops you at all. */
+  oreVein:  {},
   fishSpot: { x0: 0.179, x1: 0.816, y0: 0.348, y1: 0.686 },
-  /* tree: the whole silhouette, then the TRUNK alone (bottom 6% of it) --
-     the owner wants only the base solid, so the canopy is walk-under. */
-  tree:     { x0: 0.250, x1: 0.750, y0: 0.104, y1: 0.840,
-              tx0: 0.379, tx1: 0.613, ty0: 0.795, ty1: 0.840 },
+  /* tree: only the TRUNK is solid -- the owner wants only the base solid, so
+     the canopy is walk-under.  v2.3.3345: its fractions are gone with the old
+     pine; each wood's trunk is its own picture's (nodeBlockEllipse ->
+     game/tierTrees.js treeTrunkEllipse).  The entry stays: it is what says a
+     tree stops you at all. */
+  tree:     {},
 };
 
 /* The ellipse the player cannot walk into, in world pixels.  Ellipse rather
@@ -705,11 +722,16 @@ function nodeBlockEllipse(S, n) {
      out of the bank beside it (it reaches ~33 px east of the spot, where
      the shore and the angler's seat are). */
   if (n.nodeType === 'fishSpot' && zoneHomes(S.currentZone)) return null;
+  /* v2.3.3345: a tree's trunk is its own picture's (game/tierTrees.js), not a
+     share of the old pine's frame -- the slim pine's narrow, the gnarled
+     hardwood's broad, the crown walk-under as ever */
+  if (n.nodeType === 'tree') return treeTrunkEllipse(n);
+  /* v2.3.3345: a rock's body is its own picture's (game/tierOre.js) */
+  if (n.nodeType === 'oreVein') return oreBlockEllipse(n);
   var b = nodeWorldBox(S, n);
   if (!b) return null;
   var w = b.r - b.l, h = b.b - b.t;
   var x0 = art.x0, x1 = art.x1, y0 = art.y0, y1 = art.y1;
-  if (n.nodeType === 'tree') { x0 = art.tx0; x1 = art.tx1; y0 = art.ty0; y1 = art.ty1; }
   var l = b.l + w * x0, r = b.l + w * x1;
   var t = b.t + h * y0, bt = b.t + h * y1;
   return { x: (l + r) / 2, y: (t + bt) / 2, rx: (r - l) / 2, ry: (bt - t) / 2 };
@@ -729,8 +751,12 @@ function oreStandSpot(S, n) {
 function nodeReachDist(S, n, slack) {
   if (!S || !n || !S.player) return null;
   var P = S.player, extra = slack || 0;
-  /* 1. Distance to the sprite's perimeter — 0 while standing ON the art. */
-  var _b = nodeWorldBox(S, n);
+  /* 1. Distance to the sprite's perimeter — 0 while standing ON the art.
+     v2.3.3345: a TREE's from the box the worker pays a chop from
+     (game/tierTrees.js treeReachBox), not its picture: the big crowns reach
+     far past the worker's strike range, and a chop begun out there was
+     refused in silence.  The tap still finds the whole picture. */
+  var _b = n.nodeType === 'tree' ? treeReachBox(n) : nodeWorldBox(S, n);
   if (_b) {
     var _bx = Math.max(_b.l - P.x, 0, P.x - _b.r);
     var _by = Math.max(_b.t - P.y, 0, P.y - _b.b);
@@ -1172,6 +1198,10 @@ export var BroTown = function BroTown(_ref0) {
     migrateLifeSkills: migrateLifeSkills,
     spawnMonstersForZone: spawnMonstersForZone,
     spawnGatherNodes: spawnGatherNodes,
+    /* v2.3.3345: the reach test itself, at the player's spot, so a scenario
+       can ask where a harvest is offered (mp-tiertrees holds every tree's to
+       the worker's strike range, gathering.js _nodeStrikeRange) */
+    nodeReachDist: function (n, slack) { return nodeReachDist(stateRef.current, n, slack); },
     generateZoneMap: generateZoneMap,
     calcWeaponDmg: calcWeaponDmg,
     /* ═══ v2.3.2259: THE GAME'S OWN ANSWER TO "HOW MUCH DPS IS THAT?" ═══
@@ -5068,6 +5098,28 @@ export var BroTown = function BroTown(_ref0) {
            snarl (game/monsterNoises.js; the call as one notices you is
            wsClient's, on the "!" edge) */
         try { updateMonsterNoises(S, _sprNow); } catch (e) { /* sound only */ }
+        /* v2.3.3392: an emote's moment ends on its own clock, and a held
+           pose -- sit, sleep, a dance -- when you walk, swing, raise the
+           shield, swim, jump, harvest or die; another player's held pose pops
+           its Zzz or its notes now and then (game/interactions.js; drawn by
+           rendering/emoteFx.js) */
+        try {
+          updateOwnEmote(S, _sprNow, {
+            moving: Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1,
+            attacking: !!(S.autoAttack || S.isSwinging || S._bashDash || S._swordSwinging),
+            shield: !!S._shieldUp,
+            swimming: isWheelSwimming(S),
+            dead: _playerDead,
+            jumping: jumpAirborne(S, _sprNow),
+            harvesting: !!S._extraction,
+            fightAt: Math.max(Number(S.lastDamageTaken) || 0, Number(S._dealtAt) || 0, Number(S._pvpAt) || 0)
+          });
+          updatePeerEmotes(S, _sprNow);
+          /* v2.3.3394: the townsfolk answer the moves near them -- Lil Bro
+             copies, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have
+             a word (game/townsfolkReact.js) */
+          updateTownsfolkReactions(S, _sprNow);
+        } catch (e) { /* a look only */ }
 
         /* §14 Terrain feel — tile under player affects movement */
         var footTile = (_S$map$Math$floor$Mat = (_S$map2 = S.map) === null || _S$map2 === void 0 || (_S$map2 = _S$map2[Math.floor(P.y / TILE)]) === null || _S$map2 === void 0 ? void 0 : _S$map2[Math.floor(P.x / TILE)]) !== null && _S$map$Math$floor$Mat !== void 0 ? _S$map$Math$floor$Mat : 0;
@@ -8712,6 +8764,15 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.3321: the player list, where a party starts -- the dashboard's
          Clan page opens it now that clans are parties (dash/ClanPanel.jsx) */
       playersOpen:  function () { setShowPlayerList(true); },
+      /* v2.3.3391: the emote picker's doors -- the chat box's smiley opens it
+         (ChatBubble.jsx), B toggles it (desktopControls.js).  Its old door
+         was the hidden toolbar's (MenuBar.jsx), so it could not be opened. */
+      emotes:       function () { setShowEmotes(function (v) { return !v; }); },
+      emotesOpen:   function () { setShowEmotes(true); },
+      /* the picker's own sender, for mp-emotes (a stable useCallback below) */
+      emoteSend:    function (emoji) { sendEmote(emoji); },
+      /* v2.3.3392: and the Moves tab's, for mp-emotemoves */
+      moveSend:     function (id) { return sendMove(id); },
     };
     return function () { delete window.__broLegacyUI; };
   }, []);
@@ -8787,6 +8848,15 @@ export var BroTown = function BroTown(_ref0) {
   var sendEmote = useCallback(function (emoji) {
     sendEmoteImpl(stateRef.current, emoji, { setShowEmotes: setShowEmotes });
   }, []);
+  /* v2.3.3392: a move -- a wave, a sit, a dance (game/interactions.js
+     sendMove): from the picker's Moves tab, and from the chat's "/wave" */
+  var sendMove = useCallback(function (id) {
+    return sendMoveImpl(stateRef.current, id, { setShowEmotes: setShowEmotes });
+  }, []);
+  useEffect(function () {
+    setChatMoveSender(sendMove);
+    return function () { setChatMoveSender(null); };
+  }, [sendMove]);
 
   /* Enter building */
   var enterBuilding = useCallback(function () {
@@ -8956,7 +9026,10 @@ export var BroTown = function BroTown(_ref0) {
        and its art is 100-260px of canopy above that, so a radius around the
        anchor would refuse taps on most of what the player can see.
        nodeWorldBox is the same box nodeReachDist measures from, so what you
-       can tap and what you can reach are one shape. */
+       can tap and what you can reach are one shape.
+       v2.3.3345: but for a TREE: the tap finds its whole picture, the reach
+       is the box the worker pays a chop from (game/tierTrees.js
+       treeReachBox) -- a big crown is far wider than that. */
     var _tapScan = function (n) {
       if (!n || !n.alive || (n.respawnAt && Date.now() < n.respawnAt)) return;
       /* ═══ v2.3.3145: ONLY WHAT YOU CAN SEE AND REACH TAKES THE TAP ═══
@@ -12206,26 +12279,21 @@ export var BroTown = function BroTown(_ref0) {
             });
             return;
           } else {
+            /* ═══ v2.3.3399: YOUR DUEL OPPONENT IS AIMED AT, NOT INSPECTED ═══
+               This branch also opened their player card, over the middle of
+               the fight -- what duelLock.js says it never does ("tapping a
+               player opens their inspect card UNLESS they are your duel
+               opponent, in which case it locks on instead"), and what No
+               man's land's and the sparring clones' taps above refuse to do
+               for the same reason.  On a computer a click is the attack, so
+               every second click on them opened it, and the card took every
+               press after it (found by mp-duelfeel, the sweep of 2026-10-17).
+               The lock alone; tapping them again still lets go, as before. */
             S.lockedTarget = {
               type: 'player',
               id: id,
               ref: o
             };
-            setInspectPlayer({
-              id: id,
-              name: o.name,
-              color: o.color,
-              avatar: o.avatar,
-              bro: o.bro, brn: o.brn,
-              x: o.x,
-              y: o.y,
-              rpgLv: o.rpgLv,
-              rpgData: o.rpgData,
-              pet: o.pet,
-              rep: o.rep,
-              clanTag: o.allyTag || o.clanTag,   /* v2.3.3321 */
-              clanColor1: o.clanColor1
-            });
           }
           return;
         }
@@ -13830,7 +13898,7 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       alignItems: 'center'
     }
-  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }),
+  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote, onClose: function () { setShowEmotes(false); } /* v2.3.3391 */, sendMove: sendMove, movesOn: movesLive(stateRef.current) /* v2.3.3392 */ }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
   React.createElement(NmlBadge, { stateRef: stateRef, isLandscape: isLandscape }),   /* v2.3.3268: + the orientation, to keep clear of the shield button */

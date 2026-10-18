@@ -68,6 +68,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await place(0, 34);
     await P.page.waitForTimeout(1400);
     const opened = await H.npcDialogueOpen(P);
+    /* v2.3.3399: a line in parts is read to its end, as a player taps through
+       it.  Since v2.3.2237 his tut_2 "complete" line is four parts and the
+       button says "Next" until the last, where it is "Claim reward" -- the
+       first part is already the reward's line, not his progress one, so this
+       check read "Next" and failed (the sweep of 2026-10-17). */
+    for (let i = 0; i < 8; i++) {
+      const more = await P.page.evaluate(() => {
+        const b = document.querySelector('.bt-npcdlg-next');
+        if (!b || !/^\s*next\s*$/i.test(b.textContent || '')) return false;
+        b.click(); return true;
+      });
+      if (!more) break;
+      await P.page.waitForTimeout(320);
+    }
     const txt = await panelText();
     console.log(`    ${st.id} panel: ${JSON.stringify(txt)}`);
     rec.ok(`${st.id} (${st.title}): walking up with it FINISHED opens his dialogue`,
