@@ -1,4 +1,4 @@
-/* EMOTES YOU CAN SEE (v2.3.3343, docs/specs/emotes.md)
+/* EMOTES YOU CAN SEE (v2.3.3345, docs/specs/emotes.md)
  *
  * The fun & social plan's check of the code (docs/FUN-SOCIAL-PLAN.md) found
  * the 30 emoji and 12 quick lines unreachable -- their only button was in the

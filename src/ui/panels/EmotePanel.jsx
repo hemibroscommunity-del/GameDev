@@ -10,7 +10,7 @@ import { EMOTES, TEXT_EMOTES } from '@/data/index.js';
 /* v2.3.1232: Lantern Slate restyle — inline override of the legacy
    .bt-emote-bar blur/black chrome (spec hard lock: no backdrop-filter);
    text quick-chats become 32px pill chips. Handlers untouched. */
-/* ═══ v2.3.3343: A PICKER YOU CAN REACH, THAT SENDS ONCE ═══
+/* ═══ v2.3.3345: A PICKER YOU CAN REACH, THAT SENDS ONCE ═══
    Its only door was the 😀 in the bottom toolbar hidden since v14
    (MenuBar.jsx, display:none), so nobody could open it.  It opens now from
    the chat box (tap your bro, then the smiley: ChatBubble.jsx) or B on a
@@ -95,7 +95,7 @@ export function EmotePanel(props) {
         "data-emote": t,
         onClick: function () { sendEmote(t); },
         style: {
-          /* v2.3.1232: 32px raised pill chip; v2.3.3343: 36 -- a thumb's */
+          /* v2.3.1232: 32px raised pill chip; v2.3.3345: 36 -- a thumb's */
           minHeight: 36,
           padding: '4px 12px',
           borderRadius: 999,

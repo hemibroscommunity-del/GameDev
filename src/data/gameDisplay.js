@@ -1229,7 +1229,7 @@ export const EMOTE_LABELS = {
   '🫶': 'Love'
 };
 /* Special text emotes rendered as floating text above player.
-   v2.3.3343: and now they are -- as your speech bubble -- while an EMOTES
+   v2.3.3345: and now they are -- as your speech bubble -- while an EMOTES
    emoji pops over your head (src/game/emotes.js).  Both lists are mirrored in
    server/src/emotes.js, which relays nothing else (mirror-audit holds them
    together): change one, change the other. */

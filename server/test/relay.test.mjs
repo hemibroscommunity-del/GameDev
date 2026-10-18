@@ -67,7 +67,7 @@ const one = (evs, type) => evs.filter((e) => e.type === type);
 const SETTLED = new Set(['trade_offer', 'trade_accept', 'trade_reject', 'duel_request', 'duel_wager_request', 'duel_accept', 'duel_decline', 'pvp_threat', 'threat_response', 'clan_invite']);
 for (const type of RELAY.TYPES) {
   if (SETTLED.has(type)) continue;
-  /* v2.3.3343: an emote is one of the listed emotes or nothing (emotes.js) */
+  /* v2.3.3345: an emote is one of the listed emotes or nothing (emotes.js) */
   const payload = type === 'chat' ? { id: A, text: 'hello' } : type === 'emote' ? { id: A, emoji: '👋' } : { id: A, x: 1010, y: 1000, zone: 'town', ts: Date.now() };
   const evs = one(await relay({ type, payload }), type);
   check('1. ' + type + ': relayed once, from the sender, in the sender\'s name',
@@ -107,7 +107,7 @@ for (const type of RELAY.TYPES) {
   const extra = one(await relay({ type: 'emote', id: B, from: B, events: [{ type: 'player_state' }], payload: { id: A, emoji: '👋' } }), 'emote');
   check('3. nothing else on the message goes out: type, from and payload only',
     extra.length === 1 && Object.keys(extra[0]).sort().join(',') === 'from,payload,type' && extra[0].from === A, extra);
-  /* v2.3.3343: the rebuild's own cases on a relay with no check of its own
+  /* v2.3.3345: the rebuild's own cases on a relay with no check of its own
      (player_jump) -- an emote with no emoji is no emote at all (emotes.js) */
   const bare = one(await relay({ type: 'player_jump', id: B, x: 5 }), 'player_jump');
   check('3. no payload: an empty one in the sender\'s name (the phone read the message itself as the payload)',
@@ -162,7 +162,7 @@ for (const type of RELAY.TYPES) {
   s.relayTokens = 1; s.relayAt = Date.now();
   room.eventBuffer.length = 0;
   await room.webSocketMessage(ws[A], JSON.stringify({ type: 'zz_not_a_relay', payload: {} }));
-  await room.webSocketMessage(ws[A], JSON.stringify({ type: 'emote', payload: { emoji: '👋' } }));   /* v2.3.3343: a listed one */
+  await room.webSocketMessage(ws[A], JSON.stringify({ type: 'emote', payload: { emoji: '👋' } }));   /* v2.3.3345: a listed one */
   check('5. a dropped type costs no relay budget: the last token still carries an emote',
     room.eventBuffer.length === 1 && room.eventBuffer[0].type === 'emote', room.eventBuffer.map((e) => e.type));
 }

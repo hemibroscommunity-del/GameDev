@@ -1,6 +1,6 @@
 # BroTown: Fun & Social Plan (revised)
 
-v2.3.3343, 2026-10-18. The owner's own plan ("Bro Town: Fun & Social Plan", Oct 17,
+v2.3.3345, 2026-10-18. The owner's own plan ("Bro Town: Fun & Social Plan", Oct 17,
 written without the code) checked against the code, corrected and added to.
 The owner: "Go recommended". This file is the plan; each piece's spec goes in
 `docs/specs/` as it ships.
@@ -99,14 +99,15 @@ And BroTown's own, which the plan did not know:
   players near you, the 12 quick lines show as your speech bubble; opened
   from the chat box (tap your bro, then the smiley) or B; the server keeps
   only emotes on its list; blocking someone hides their emotes too
-  (v2.3.3343, docs/specs/emotes.md).
+  (v2.3.3345, docs/specs/emotes.md).
 - [x] Chat fixes: Block made from the friends list did not hide chat (the
   two panels saved the list in two shapes); a name starting with 📍, 🛡 or ✉
   dressed ordinary chat as area, party or whisper chat; the chat name colour
-  took any colour, invisible included (v2.3.3343, docs/specs/emotes.md "The
+  took any colour, invisible included (v2.3.3345, docs/specs/emotes.md "The
   chat's three fixes").
 - [ ] Reports, kick and freeze in the Test panel, beside the bot flags, so the
-  owner can read them without terminal commands.
+  owner can read them without terminal commands (v2.3.3347, its own PR,
+  docs/specs/chat-moderation.md).
 
 ## Phase 1 -- one player smiles
 
