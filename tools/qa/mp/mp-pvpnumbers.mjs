@@ -169,6 +169,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(500);
   }
   rec.ok('a blow landed (guard)', !!got, got);
+  /* v2.3.3403: and the other two screens' numbers WAITED for, from the
+     record.  Theirs is another player's hit, so it goes through the peer
+     numbers' playback queue and comes out on a later frame (combatHelpers
+     releasePeerDamage) -- on this box, after the trip through the worker,
+     more than the 900 ms above can pass: the target's and the watcher's
+     records were still empty at that read in the solo run of 2026-10-18.
+     The striker's own number comes at once, as before. */
+  if (got) {
+    for (let i = 0; i < 25; i++) {
+      [got.pb, got.pc] = await Promise.all([popsSince(B, got.t0), popsSince(C, got.t0)]);
+      if (got.pb.some((p) => /^-\d+$/.test(p.text) && p.taken) && got.pc.some((p) => /^-\d+$/.test(p.text))) break;
+      await A.page.waitForTimeout(200);
+    }
+  }
   if (got) {
     const { hp0, hp1, pa, pb, pc, hitA } = got;
     const want = Math.max(1, Math.ceil(hp0 / 5) - Math.ceil(hp1 / 5));   /* toDisplayHitDamage: the change in the bar */
