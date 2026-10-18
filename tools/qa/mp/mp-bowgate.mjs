@@ -152,19 +152,25 @@ const sample = (P, fodderR, bodyOff) => P.page.evaluate((k) => new Promise((reso
  * what it BELIEVES, and an arrow in `S.arrows` is what it DID.  The second is
  * the one the owner can see, so both are asserted. */
 const holdAndSample = async (P, ms, fodderR, bodyOff) => {
-  await P.page.evaluate(() => {
+  const t0 = await P.page.evaluate(() => {
     const S = window._gameState.current;
     S.arrows = []; S.swingTimer = 0; S.autoAttack = true;
+    return Date.now();
   });
   await P.page.waitForTimeout(150);       /* the beam comes up, the gate settles */
   const s = await sample(P, fodderR, bodyOff);
   await P.page.waitForTimeout(ms);
-  const f = await P.page.evaluate(() => {
+  /* v2.3.3368: ...and a shot LEFT if the cadence clock was stamped (it is only
+     when one does, monsterCombat), not only if an arrow is still in the air:
+     with the grip worked out before the pose is drawn (effectsRenderer
+     _predictBowGrip) the control's arrow flies the line and is in the monster
+     and off the list before this looks -- `arrows: 1` at the sample, 0 here */
+  const f = await P.page.evaluate((t0) => {
     const S = window._gameState.current;
     const n = (S.arrows || []).length;
     S.autoAttack = false;
-    return { fired: n };
-  });
+    return { fired: Math.max(n, (S.swingTimer || 0) >= t0 ? 1 : 0), inAir: n };
+  }, t0);
   return { s, f };
 };
 
