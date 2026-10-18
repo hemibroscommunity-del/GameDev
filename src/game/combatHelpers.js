@@ -1075,8 +1075,12 @@ export function markProp(S, rec) {
    mark sits where the blade was seen to land rather than on the ground line. */
 var PROP_BLADE_H = 30;
 var _propSlashFlip = 0;
-export function propSwingHit(S, px, py, ang, reach, halfArc) {
+export function propSwingHit(S, px, py, ang, reach, halfArc, peerK) {
   if (!S) return null;
+  /* v2.3.3343: `peerK`, ANOTHER player's swing, its share by distance
+     (gameEvents player_swing): the knock and any break that quiet -- it rang
+     at your own swing's level from across the view (SOUND-GAPS "Also wrong") */
+  var _pk = typeof peerK === 'number' ? Math.max(0, Math.min(1, peerK)) : 1;
   /* ═══ v2.3.3105: FROM THE BOOTS, NOT THE CHEST ═══
      Both callers pass a player's POSITION, the body's centre (v2.3.2748), and
      a prop's footprint is on the ground, ~52 px lower (playerGroundDy).  Asked
@@ -1094,7 +1098,9 @@ export function propSwingHit(S, px, py, ang, reach, halfArc) {
      pieces, and a blow toward breaking it (wheelBreak.js); the cut stays on
      it longer, as its arrows do */
   if (c.box && c.box.oi != null) {
-    var wr = strikeWheelObject(S, { oi: c.box.oi, x: c.x, y: y, gy: c.y, ang: dir, weapon: 'sword', vol: 0.35 });
+    var wr = strikeWheelObject(S, typeof peerK === 'number'
+      ? { oi: c.box.oi, x: c.x, y: y, gy: c.y, ang: dir, weapon: 'sword', vol: 0.35 * _pk, peer: true, k: _pk }
+      : { oi: c.box.oi, x: c.x, y: y, gy: c.y, ang: dir, weapon: 'sword', vol: 0.35 });
     if (wr && !wr.broke && c.face !== 'n') {
       var wtilt = ((_propSlashFlip++ & 1) ? 1 : -1) * (0.38 + Math.random() * 0.14);
       markProp(S, { kind: 'slash', id: c.id, oi: c.box.oi, x: c.x, y: y, gy: c.y, face: c.face,
@@ -1103,7 +1109,7 @@ export function propSwingHit(S, px, py, ang, reach, halfArc) {
     return c;
   }
   spawnPropDebris(S, { id: c.id, x: c.x, y: y, gy: c.y, ang: dir, weapon: 'sword' });
-  propImpactSound(c.id, 0.35);
+  if (_pk > 0.02) propImpactSound(c.id, 0.35 * _pk);
   if (c.face !== 'n') {
     /* Across the swing, not along it: the edge travels tangentially, so the
        cut runs perpendicular to the line from the swinger to the contact --

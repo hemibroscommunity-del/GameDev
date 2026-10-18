@@ -33,6 +33,7 @@
  */
 import { chatLogBus } from '@/ui/mobile/chatLogBus.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';   /* v2.3.3316: the killer's "LOOT" */
+import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: No man's land heard: crossing in, a skull, a loss, a take */
 import { playZoneBanner } from '@/ui/zoneBannerOverlay.js';
 
 import { NML, NML_CENTRE, NML_CENTRES, nmlTierAt, nmlLevelAt } from '@/data/noMansLandRings.js';
@@ -120,6 +121,7 @@ export function noteNoMansLand(S) {
   const rule = `players within ${lvl} level${lvl === 1 ? '' : 's'} of yours`;
   if (!was) {
     try { playZoneBanner('nml-' + lvl, S, { title: `No man's land ${lvl}`, plain: true, color: NML_RED }); } catch (e) { /* the line still says it */ }
+    cue('nmlEnter');   /* v2.3.3343: crossing in is heard, an ominous sting under its banner (it was silent) */
     if (!_note.told.first) {
       _note.told.first = true;
       /* v2.3.3316: "your bag" undersold it -- a player's kill takes everything
@@ -151,6 +153,7 @@ export function applyNmlSkull(S, payload) {
   const red = Math.max(0, Number(payload.red) || 0), white = Math.max(0, Number(payload.white) || 0);
   const now = Date.now();
   const wasRed = S._pvpSkullType === 'red';
+  const wasWhite = S._pvpSkullType === 'white';
   /* v2.3.3253: `by`, who gave you the white skull -- a tap on them is hitting
      back, and aims at once (nmlAsk.js nmlHitBack) */
   const by = white > 0 && typeof payload.by === 'string' && payload.by.length <= 64 ? payload.by : null;
@@ -161,6 +164,10 @@ export function applyNmlSkull(S, payload) {
   /* v2.3.3316: the owner -- killed by a player a red skull loses everything,
      killed by a monster everything but what it wears */
   if (red > 0 && !wasRed) nmlSay(S, '☠ You attacked a player: a red skull for 20 minutes of play. Killed by a player with it, you lose everything you carry and wear; killed by a monster, everything but what you wear.');
+  /* v2.3.3343: a skull put on you is heard -- the bones' rattle, softer for
+     the white one a player's attack gave you (it was silent) */
+  if (red > 0 && !wasRed) cue('nmlSkull');
+  else if (!(red > 0) && white > 0 && !wasWhite && !wasRed) cue('nmlSkull', 0.6);
 }
 
 const WORN = ['weapon', 'rangedWeapon', 'staffWeapon', 'armor', 'legsArmor', 'shield', 'amulet'];
@@ -214,6 +221,7 @@ export function applyNmlLoss(S, payload, save) {
   }
   const who = payload.by ? payload.by : 'your death';
   const gold = Number(payload.coins) > 0 ? ' and your gold' : '';
+  cue('nmlLoss');   /* v2.3.3343: your things heard spilling away, after the death's own sound (it was silent) */
   nmlSay(S, payload.red
     ? (payload.keepWorn
       ? `☠ You died with a red skull: you lost everything you carried${gold}. What you wear is still yours.`
@@ -238,6 +246,7 @@ export function applyNmlTake(S, payload) {
   const pile = items ? `${items} thing${items === 1 ? '' : 's'} lie where they fell, yours for a minute` : '';
   const rest = got.length ? `${got.join(' and ')} ${got.length > 1 || coins ? 'are' : 'is'} yours` : '';
   nmlSay(S, `☠ You took ${from}'s things: ${[pile, rest].filter(Boolean).join('; ') || 'they carried nothing'}.`);
+  if (items || coins || pieces) cue('nmlTake');   /* v2.3.3343: the take heard (it was silent) */
   try {
     if (S.player && items) pushDmgPopup(S, S.player.x, S.player.y - 60, 'LOOT', '#FFD166', { ts: Date.now() });
   } catch (e) { /* the line says it */ }
