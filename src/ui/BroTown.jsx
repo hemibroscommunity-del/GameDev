@@ -405,6 +405,8 @@ import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits 
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
+import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3434: the forge heard at work */
+import { tickMoveSounds } from '@/game/moveSounds.js';   /* v2.3.3434: the emotes and moves heard */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor, sendMove as sendMoveImpl, updateOwnEmote, updatePeerEmotes, movesLive } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building; v2.3.3392: + your bro moves */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
@@ -507,7 +509,7 @@ import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelT
 import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it */
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
-import { bedAt } from '@/game/farmWork.js';
+import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
 import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
@@ -5038,6 +5040,7 @@ export var BroTown = function BroTown(_ref0) {
         var _jNow = Date.now();
         var _jLanded = tickJump(S, _jNow, _playerDead);
         tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
+        tickTownAmbience(S, _jNow);   /* v2.3.3434: the Blacksmith's anvil near the forge (game/townAmbience.js) */
         var _inAir = !!S._jump;
         var _swEv = _inAir ? null : updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
           playerGroundDy(S.currentZone, P.x, P.y));
@@ -5119,6 +5122,9 @@ export var BroTown = function BroTown(_ref0) {
              copies, Blacksmith Bro flexes back, Diego, Ace and Mayor Bro have
              a word (game/townsfolkReact.js) */
           updateTownsfolkReactions(S, _sprNow);
+          /* v2.3.3434: and heard -- another player's pose as it begins, a
+             townsperson's copy as it starts (game/moveSounds.js) */
+          tickMoveSounds(S, _sprNow);
         } catch (e) { /* a look only */ }
 
         /* §14 Terrain feel — tile under player affects movement */
@@ -5333,13 +5339,7 @@ export var BroTown = function BroTown(_ref0) {
               R2._wellRestedUntil = Date.now() + WELL_RESTED_DURATION;
               pushDmgPopup(S, P.x, P.y - 40, 'Fully Rested!', '#59BF91');
               pushDmgPopup(S, P.x, P.y - 25, '+10% XP for 30 min', '#D8A94D');
-              BT_AUDIO.collect();
-              setTimeout(function () {
-                return BT_AUDIO.beep(600, 0.08, 0.1, 'sine');
-              }, 100);
-              setTimeout(function () {
-                return BT_AUDIO.beep(800, 0.06, 0.08, 'sine');
-              }, 200);
+              cue('rested');   /* v2.3.3434: a slow breath and a warm shimmer -- collect() and two beep()s, all silent */
               S._sleeping = null;
               setRpgState(_objectSpread({}, R2));
               try {
@@ -7458,6 +7458,9 @@ export var BroTown = function BroTown(_ref0) {
           : _exSkill === 'fishing' ? 'fish'
           : _exSkill === 'cooking' ? 'cook'
           : null;
+        /* v2.3.3439: and a step on a bed of your farm, so the others there see
+           your farmer at it ('farm:<step>:<n>', game/farmWork.js farmExCode) */
+        if (!_exCode && S._farmWork && S.currentZone === 'farm_home') _exCode = farmExCode(S._farmWork.step, S._farmWork.n);
         var _exChanged = _exCode !== (S._lastBroadcastEx || null);
         /* v2.3.3254: not for the quiet phone (game/quietPhone.js): the
            worker's own roster carries every near player's `ex` whole every
@@ -8081,18 +8084,40 @@ export var BroTown = function BroTown(_ref0) {
     }
     /* Ask the GPU for the thumbnail: { T, sync } to collect, or null (do it
        the old way).  Call it in the animation frame the world was drawn in. */
+    /* ═══ v2.3.3450: AND NOTHING ASKS THE GPU FOR ITS ERRORS EVERY 5 s ═══
+       The owner: "iterate on what best improves framerate without loss of
+       quality (or negligible loss) for phone gameplay".  gl.getError() is the
+       one call here that makes the page WAIT -- for the browser's GPU side to
+       work through everything the frame has sent it (a round trip to another
+       process on an iPhone, the command buffer drained on Android): the
+       profile on mp-phoneframe put all of this sample's time in it, ~10 ms a
+       sample on this box, every 5 s, a hitch in the frame it landed in.  (The
+       getParameter / isEnabled reads are the browser's own copies of the
+       bindings, no wait.)  So the errors are asked for on a context's FIRST
+       sample only, which proves the way works there (the set-up's checks, and
+       the first blit's); after that a failed copy shows itself instead: the
+       thumbnail is cleared to see-through before the blit, and one that comes
+       back see-through everywhere -- which a drawn frame never is, the canvas
+       is cleared opaque -- was not copied, and is taken the old way
+       (_wdThumbCollect).  `?wdgeterror` asks every time, as before. */
+    var WD_GETERROR_EVERY = /[?&]wdgeterror\b/.test(window.location.search || '');
+    var _WD_CLEAR = new Float32Array([0, 0, 0, 0]);
     function _wdThumbAsk(cv) {
       var gl = _wdGl(cv);   /* v2.3.3313: never cv.getContext (above) */
       if (!gl || gl === _wdOffGl || typeof gl.fenceSync !== 'function' || gl.isContextLost()) return null;
       var T = _wdThumbSetUp(gl);
       if (!T) { _wdOffGl = gl; return null; }
+      var check = WD_GETERROR_EVERY || !T.proven;
       var fbRead = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING), fbDraw = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING);
       var packWas = gl.getParameter(gl.PIXEL_PACK_BUFFER_BINDING);
       var scissor = gl.isEnabled(gl.SCISSOR_TEST);
-      gl.getError();
+      if (check) gl.getError();
       if (scissor) gl.disable(gl.SCISSOR_TEST);
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
       gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, T.fb);
+      /* v2.3.3450: see-through first, so a copy that did not happen reads as
+         one (clearBufferfv leaves the clear colour Pixi keeps alone) */
+      gl.clearBufferfv(gl.COLOR, 0, _WD_CLEAR);
       gl.blitFramebuffer(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, 0, 0, 32, 18, gl.COLOR_BUFFER_BIT, gl.LINEAR);
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, T.fb);
       gl.bindBuffer(gl.PIXEL_PACK_BUFFER, T.pbo);
@@ -8101,10 +8126,10 @@ export var BroTown = function BroTown(_ref0) {
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, fbRead);
       gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fbDraw);
       if (scissor) gl.enable(gl.SCISSOR_TEST);
-      var sync = gl.getError() === gl.NO_ERROR ? gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0) : null;
+      var sync = (!check || gl.getError() === gl.NO_ERROR) ? gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0) : null;
       if (!sync) { _wdOffGl = gl; return null; }
       gl.flush();
-      return { T: T, sync: sync };
+      return { T: T, sync: sync, check: check };
     }
     /* The thumbnail's pixels once the GPU has them; null while it has not;
        false if it failed (then the old way) */
@@ -8115,12 +8140,18 @@ export var BroTown = function BroTown(_ref0) {
       if (st !== gl.SIGNALED) return null;
       gl.deleteSync(job.sync);
       var packWas = gl.getParameter(gl.PIXEL_PACK_BUFFER_BINDING);
-      gl.getError();
+      if (job.check) gl.getError();
       gl.bindBuffer(gl.PIXEL_PACK_BUFFER, job.T.pbo);
       gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, job.T.px);
       gl.bindBuffer(gl.PIXEL_PACK_BUFFER, packWas);
-      if (gl.getError() !== gl.NO_ERROR) { _wdOffGl = gl; return false; }
-      return job.T.px;
+      if (job.check && gl.getError() !== gl.NO_ERROR) { _wdOffGl = gl; return false; }
+      /* v2.3.3450: see-through everywhere is a copy that did not happen (the
+         ask cleared it so): the old way, from now on on this context */
+      var px = job.T.px, seen = false;
+      for (var ia = 3; ia < px.length; ia += 4) { if (px[ia]) { seen = true; break; } }
+      if (!seen) { _wdOffGl = gl; return false; }
+      job.T.proven = true;
+      return px;
     }
     function _wdThumbDrop(job) { try { job.T.gl.deleteSync(job.sync); } catch (eS) { /* gone */ } }
     /* the old way: the whole canvas copied out, then shrunk (v2.3.777) */
@@ -8891,13 +8922,7 @@ export var BroTown = function BroTown(_ref0) {
     R._wellRestedUntil = Date.now() + 1800000;
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'Zzz... Stats restored!', '#59BF91');
     pushDmgPopup(S2, S2.player.x, S2.player.y - 25, 'Well Rested +10% XP (30min)', '#D8A94D');
-    BT_AUDIO.beep(400, 0.06, 0.08, 'sine');
-    setTimeout(function () {
-      return BT_AUDIO.beep(500, 0.05, 0.07, 'sine');
-    }, 200);
-    setTimeout(function () {
-      return BT_AUDIO.beep(600, 0.04, 0.06, 'sine');
-    }, 400);
+    cue('rested');   /* v2.3.3434: the farm's bed heard (three beep()s, silent since v2.3.1103) */
     setRpgState(_objectSpread({}, R));
     try {
       localStorage.setItem('bt_rpg', JSON.stringify(R));
@@ -9926,6 +9951,11 @@ export var BroTown = function BroTown(_ref0) {
       if (typeof window !== 'undefined') {
         window.__btNpcTap = { at: [Math.round(cssX), Math.round(cssY)], npc: npc ? npc.name : null, result: r, ts: Date.now() };
       }
+      /* v2.3.3434: a window opened by tapping him -- his quest, Ace's coin
+         flip, Diego's shop, the Pets page -- opens with the menu click (a tap
+         on the world reaches no <button>); a keeper's building has its door's
+         knock already (enterBuilding) */
+      if (r === 'quest' || r === 'flip' || r === 'shop' || r === 'pets') { try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ } }
       return r !== 'miss';
     };
     if (!npc) return _mark('miss');
@@ -10129,6 +10159,9 @@ export var BroTown = function BroTown(_ref0) {
         if (_busC && _busC.state.mode !== 'bar') _busC.toBar(); /* v2.3.1290 */
       } catch (_e3) {}
       try { chatBubbleBus.setOpen(true); } catch (_e4) {}
+      /* v2.3.3434: the chat box is a menu, so it opens with the menu click --
+         a tap on your bro reaches no <button> (ui/uiSfxDelegate.js) */
+      try { BT_AUDIO.uiClickNow(); } catch (_e5) { /* sound only */ }
     };
     /* v2.3.1324 (Friends server round): AWAY presence — stamp the last
        real user input; the 2s track relay below carries aw:1 after two
@@ -12233,6 +12266,7 @@ export var BroTown = function BroTown(_ref0) {
           } catch (e) { _isPartyMate = false; }
           if (_isPartyMate) {
             if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
+            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3434: a menu opened by a tap on them -- the menu click (the owner's rule for every menu; a tap on the world reaches no <button>, uiSfxDelegate.js) */
             setInspectPlayer({
               id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
@@ -12308,6 +12342,7 @@ export var BroTown = function BroTown(_ref0) {
             S.lockedTarget = null;
           } else if (!_isDuelOpponent) {
             if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
+            try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ }   /* v2.3.3434: the menu click, as above */
             setInspectPlayer({
               id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro, brn: o.brn,
               x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
@@ -14088,13 +14123,7 @@ export var BroTown = function BroTown(_ref0) {
       R._wellRestedUntil = Date.now() + 1800000; /* 30 min */
       pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'Zzz... Stats restored!', '#59BF91');
       pushDmgPopup(S2, S2.player.x, S2.player.y - 25, 'Well Rested +10% XP (30min)', '#D8A94D');
-      BT_AUDIO.beep(400, 0.06, 0.08, 'sine');
-      setTimeout(function () {
-        return BT_AUDIO.beep(500, 0.05, 0.07, 'sine');
-      }, 200);
-      setTimeout(function () {
-        return BT_AUDIO.beep(600, 0.04, 0.06, 'sine');
-      }, 400);
+      cue('rested');   /* v2.3.3434: as the E key's sleep above */
       setRpgState(_objectSpread({}, R));
       try {
         localStorage.setItem('bt_rpg', JSON.stringify(R));

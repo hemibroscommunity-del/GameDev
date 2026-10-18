@@ -74,7 +74,8 @@
  *
  * Probe: window.__btPalette().
  */
-import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Sprite, MeshSimple, GlProgram, Shader, UniformGroup, SpritePipe, MeshPipe, GlMeshAdaptor, Container, Matrix, glUploadBufferImageResource } from 'pixi.js';
+import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Sprite, MeshSimple, GlProgram, Shader, UniformGroup, SpritePipe, MeshPipe, GlMeshAdaptor, GlBatchAdaptor, Container, Matrix, glUploadBufferImageResource } from 'pixi.js';
+import { SHARP_SAMPLE_GLSL } from './sharpPixels.js';   /* v2.3.3447: the sharp read, for ONE_BATCHER's program */
 import { setWheelPalette } from '../game/wheelTrial.js';
 import { isPaletteSource } from './paletteDraw.js';
 export { isPaletteSource, drawSourceRect, paletteRegionRGBA } from './paletteDraw.js';
@@ -342,6 +343,250 @@ class PaletteBatcher extends DefaultBatcher {
 PaletteBatcher.extension = { type: [ExtensionType.Batcher], name: PAL_BATCHER };
 extensions.add(PaletteBatcher);
 
+/* ═══ v2.3.3447: ONE DRAWING PROGRAM FOR EVERY SPRITE ═══
+   The owner: "iterate on what best improves framerate without loss of quality
+   (or negligible loss) for phone gameplay (iPhone, android)".  Three batchers
+   draw the world's sprites, each with its own program on the GPU: Pixi's own
+   ('default'), the characters' sharp pixels ('sharp', sharpPixels.js) and the
+   Wheel's colour numbers (this file's).  Depth order interleaves them -- a
+   tree, a monster, a tree, the player -- and a batch ends wherever the next
+   sprite belongs to another batcher, so a fight's frame was ~68 batches with
+   the program switched ~51 times (mp-phoneframe's draw-list census), each a
+   draw call, a program and its vertex arrays bound again, every texture slot
+   bound again: the per-draw work a phone's graphics driver spends the most on.
+   So one batcher, ONE_BATCHER, draws all three kinds, and its program does
+   each kind's own reading, chosen by a code in the vertex's texture id
+   (slot + 64 x code: 0 Pixi's plain read, 1 the sharp read, 2 + row the
+   colour numbers with their colours' row) -- each branch the very lines of
+   the program it replaces, so a sprite comes out as it did.  The atlas of
+   colours stays bound in the last texture unit; a batch binds only its own
+   pictures (GlBatchAdaptor's execute, below).  WebGL2 only, as the other two;
+   built behind the loading screen (setOneBatchRenderer) and, if it does not
+   link there, the three programs as before.  `?onebatch=0` is the three
+   programs, to compare (mp-onebatch).
+   NOT WHERE THE PICTURE IS DRAWN IN SOFTWARE: a software rasterizer runs
+   every branch of a program for every pixel, the ones no pixel takes too --
+   measured on the QA box's SwiftShader, a full-screen read inside a branch
+   whose other side (15 slots of 5 reads, never taken) cost 3-5x the read on
+   its own, as much as the other side alone (TRAPS §225) -- so there the one
+   program pays all three reads for every pixel, and the QA phone drew 4.1
+   frames a second against 9.2 (mp-phoneframe).  A phone's graphics chip
+   skips a branch that every pixel of a quad agrees on, as Pixi's own batch
+   program counts on (its chain of 16 picture slots).  So a renderer that
+   names itself software keeps the three programs (oneBatchChoice), and
+   `?onebatch=1` draws with the one anyway (mp-onebatch). */
+export const ONE_BATCHER = 'bt-one';
+const ONE_ID_K = 64;   /* the texture id: slot + 64 x code (Pixi's is 16 bits) */
+const SOFTWARE_GL = /swiftshader|llvmpipe|softpipe|software|basic render|\bwarp\b/i;
+/** v2.3.3447: one program or three, from the address (`onebatch=0|1` wins)
+ *  and the renderer's name -- {on, why}.  Pure, so the QA probe asks it
+ *  about chips this box is not (mp-onebatch). */
+export function oneBatchChoice(search, renderer) {
+  const m = /(^|[?&])onebatch=([01])(&|$)/.exec(search || '');
+  if (m) return { on: m[2] === '1', why: 'address' };
+  if (SOFTWARE_GL.test(renderer || '')) return { on: false, why: 'software' };
+  return { on: true, why: 'chip' };
+}
+/* the chip's own name: Firefox gives it as RENDERER, Chrome and Safari
+   answer "WebKit WebGL" there and the name through the debug extension
+   (read only then: Firefox warns that it is going away) */
+function rendererName(r) {
+  try {
+    const gl = r && r.gl;
+    if (!gl) return '';
+    const plain = String(gl.getParameter(gl.RENDERER) || '');
+    if (plain && !/^webkit webgl$/i.test(plain)) return plain;
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    return ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '') : plain;
+  } catch (e) { return ''; }
+}
+function pageSearch() {
+  try { return window.location.search || ''; } catch (e) { return ''; }
+}
+let _oneWanted = null;        /* oneBatchChoice's answer for this page's renderer */
+let _oneRoute = false;        /* sprites sent to ONE_BATCHER: while it is tried, and once it linked */
+let _oneOk = null;            /* null: not tried; true: linked; false: the three programs */
+const _oneStats = { linkError: null, prewarmed: false, why: null, renderer: null };
+export function oneBatchOn() { return _oneRoute && _oneOk === true; }
+let _oneR = null;             /* the renderer it was built for (setOneBatchRenderer) */
+
+/** v2.3.3447: one program (true) or the three (false), live, for this page
+ *  only -- the Speed test's "the old way" step (game/speedTest.js).  The
+ *  choice is made where a sprite meets its batcher, so every draw list in the
+ *  scene is marked to be built again and the next frame is drawn the new
+ *  way.  Off is always allowed; on only where the one program linked. */
+export function setOneBatchLive(on) {
+  _oneRoute = !!on && _oneOk === true;
+  const mark = (c) => {
+    if (!c || c.destroyed) return;
+    if (c.renderGroup) c.renderGroup.structureDidChange = true;
+    const k = c.children;
+    if (k) for (let i = 0; i < k.length; i++) mark(k[i]);
+  };
+  try { mark(_oneR && _oneR.lastObjectRendered); } catch (e) { /* next build picks it up */ }
+  return _oneRoute;
+}
+
+const ONE_VERT = `#version 300 es
+in vec2 aPosition;
+in vec2 aUV;
+in vec4 aColor;
+in vec2 aTextureIdAndRound;
+out vec4 vColor;
+out vec2 vUV;
+flat out float vTextureId;
+flat out float vCode;
+uniform mat3 uProjectionMatrix;
+uniform mat3 uWorldTransformMatrix;
+uniform vec4 uWorldColorAlpha;
+uniform vec2 uResolution;
+vec2 roundPixels(vec2 position, vec2 targetSize)
+{
+    return (floor(((position * 0.5 + 0.5) * targetSize) + 0.5) / targetSize) * 2.0 - 1.0;
+}
+void main(void){
+    mat3 worldTransformMatrix = uWorldTransformMatrix;
+    mat3 modelMatrix = mat3(
+        1.0, 0.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 0.0, 1.0
+      );
+    vec2 position = aPosition;
+    vec2 uv = aUV;
+    vColor = vec4(1.);
+    vColor *= vec4(aColor.rgb * aColor.a, aColor.a);
+    float tid = aTextureIdAndRound.y;
+    vCode = floor(tid / ${ONE_ID_K}.0 + 0.001);
+    vTextureId = tid - vCode * ${ONE_ID_K}.0;
+    vUV = uv;
+    mat3 modelViewProjectionMatrix = uProjectionMatrix * worldTransformMatrix * modelMatrix;
+    gl_Position = vec4((modelViewProjectionMatrix * vec3(position, 1.0)).xy, 0.0, 1.0);
+    vColor *= uWorldColorAlpha;
+    if(aTextureIdAndRound.x == 1.)
+    {
+        gl_Position.xy = roundPixels(gl_Position.xy, uResolution);
+    }
+}
+`;
+
+/* each slot's read, one chain a kind (GLSL ES 3.00 indexes sampler arrays by
+   constants only, as the three programs' own chains do) */
+function oneChain(read) {
+  const out = [];
+  for (let t = 0; t < SLOTS; t++) {
+    if (t > 0) out.push('else');
+    if (t < SLOTS - 1) out.push(`if (vTextureId < ${t}.5)`);
+    out.push(read(t));
+  }
+  return out.join('\n');
+}
+const ONE_FRAG = `#version 300 es
+in vec4 vColor;
+in vec2 vUV;
+flat in float vTextureId;
+flat in float vCode;
+out vec4 finalColor;
+uniform highp sampler2D uTextures[${SLOTS}];
+uniform highp sampler2D uPalAtlas;
+highp vec4 colourOf(highp float n, highp int row)
+{
+    return texelFetch(uPalAtlas, ivec2(int(n * 255.0 + 0.5), row), 0);
+}
+${SHARP_SAMPLE_GLSL.replace('vec4 sharpSample(sampler2D tex', 'vec4 sharpSample(highp sampler2D tex')}
+void main(void) {
+    vec2 uvDx = dFdx(vUV);
+    vec2 uvDy = dFdy(vUV);
+    vec4 outColor;
+    if (vCode < 0.5) {
+${oneChain((t) => `{\n    outColor = texture(uTextures[${t}], vUV);\n}`)}
+    } else if (vCode < 1.5) {
+${oneChain((t) => `{\n    outColor = sharpSample(uTextures[${t}], vUV, uvDx, uvDy);\n}`)}
+    } else {
+    highp vec2 uv = vUV;
+    highp vec2 f = vec2(0.0);
+    highp float n00 = 0.0, n10 = 0.0, n01 = 0.0, n11 = 0.0;
+${chain()}
+    highp int row = int(vCode - 2.0 + 0.5);
+${BLEND}
+    outColor = c;
+    }
+    finalColor = outColor * vColor;
+}
+`;
+
+let _oneShader = null;
+function oneShader() {
+  if (_oneShader) return _oneShader;
+  const units = new Int32Array(SLOTS);
+  for (let i = 0; i < SLOTS; i++) units[i] = i;
+  _oneShader = new Shader({
+    glProgram: GlProgram.from({ vertex: ONE_VERT, fragment: ONE_FRAG, name: 'bt-one-batch' }),
+    resources: {
+      oneSamplers: new UniformGroup({
+        uTextures: { value: units, type: 'i32', size: SLOTS },
+        uPalAtlas: { value: SLOTS, type: 'i32' },
+      }, { isStatic: true }),
+    },
+  });
+  return _oneShader;
+}
+
+/* the slot and the kind, in the vertex's 16-bit texture id */
+function oneId(el, slot) {
+  const src = el.texture && el.texture._source;
+  const code = (src && src._btPal && !src.destroyed) ? 2 + src._btPal.row : (el._btSharp ? 1 : 0);
+  return (((slot + ONE_ID_K * code) << 16) | (el.roundPixels & 65535)) >>> 0;
+}
+
+class OneBatcher extends DefaultBatcher {
+  constructor() {
+    super({ maxTextures: SLOTS });
+    this.name = ONE_BATCHER;
+    this.shader = oneShader();
+  }
+  packQuadAttributes(el, f32, u32, idx, slot) {
+    /* DefaultBatcher's -- and so formShade's corners (formShade.js patches it) */
+    super.packQuadAttributes(el, f32, u32, idx, slot);
+    const v = oneId(el, slot);
+    u32[idx + 5] = v; u32[idx + 11] = v; u32[idx + 17] = v; u32[idx + 23] = v;
+  }
+  packAttributes(el, f32, u32, idx, slot) {
+    super.packAttributes(el, f32, u32, idx, slot);
+    const v = oneId(el, slot);
+    for (let i = 0, n = el.attributeSize; i < n; i++) u32[idx + i * 6 + 5] = v;
+  }
+  /* (one shader for every batcher of this kind: never Pixi's to resize) */
+  _updateMaxTextures() {}
+  destroy() {
+    this.shader = null;
+    super.destroy();
+  }
+}
+OneBatcher.extension = { type: [ExtensionType.Batcher], name: ONE_BATCHER };
+extensions.add(OneBatcher);
+
+/* a batch of ONE_BATCHER's binds its own pictures, slot i to unit i as Pixi
+   does, and the atlas of colours to the unit after the last -- not the empty
+   picture into every slot it leaves (PaletteBatcher's way), which bound a
+   texture again for every slot a smaller batch left after a bigger one.  A
+   slot it leaves keeps what it had: nothing this batch draws reads it, and
+   Pixi unbinds a texture from every unit before drawing INTO it
+   (GlRenderTargetAdaptor), so it is never a feedback loop. */
+{
+  const P = GlBatchAdaptor.prototype;
+  const exec = P.execute;
+  P.execute = function (batchPipe, batch) {
+    if (!batch || !batch.batcher || batch.batcher.name !== ONE_BATCHER) return exec.call(this, batchPipe, batch);
+    const renderer = batchPipe.renderer;
+    this._tempState.blendMode = batch.blendMode;
+    renderer.state.set(this._tempState);
+    const textures = batch.textures.textures;
+    for (let i = 0; i < batch.textures.count; i++) renderer.texture.bind(textures[i], i);
+    renderer.texture.bind(atlas().source, SLOTS);
+    renderer.geometry.draw(batch.topology, batch.size, batch.start);
+  };
+}
+
 /* ═══ WHICH BATCHER DRAWS A SPRITE OR A MESH: BY ITS TEXTURE ═══
    Decided where every batchable meets the batcher (BatcherPipe.addToBatch),
    which is also where sharpPixels.js sends a figure's quads to its 'sharp'
@@ -363,6 +608,16 @@ function patchPipes() {
       if (obj) {
         if (palTex(obj.texture)) obj.batcherName = PAL_BATCHER;
         else if (obj.batcherName === PAL_BATCHER) obj.batcherName = 'default';
+        /* v2.3.3447: the three batchers' sprites to the one (sharpPixels.js
+           decided 'sharp' or 'default' first, this file the colour numbers);
+           a sprite routed there before and not decided again this time (a
+           mesh, a shape) keeps it */
+        const n = obj.batcherName;
+        if (_oneRoute) {
+          if (n === 'default' || n === 'sharp' || n === PAL_BATCHER) { obj._btSharp = n === 'sharp'; obj.batcherName = ONE_BATCHER; }
+        } else if (n === ONE_BATCHER) {
+          obj.batcherName = obj._btSharp ? 'sharp' : (palTex(obj.texture) ? PAL_BATCHER : 'default');
+        }
       }
       return add.call(this, obj, instructionSet);
     };
@@ -372,7 +627,8 @@ function patchPipes() {
     const valid = P.validateRenderable;
     P.validateRenderable = function (sprite) {
       const b = this._getGpuSprite(sprite);
-      if ((b.batcherName === PAL_BATCHER) !== palTex(sprite._texture)) return true;
+      /* (one batcher draws both kinds: no line to cross, v2.3.3447) */
+      if (b.batcherName !== ONE_BATCHER && (b.batcherName === PAL_BATCHER) !== palTex(sprite._texture)) return true;
       return valid.call(this, sprite);
     };
   }
@@ -383,7 +639,7 @@ function patchPipes() {
       const md = this._getMeshData(mesh);
       if (md.batched && mesh.batched) {
         const b = this._getBatchableMesh(mesh);
-        if ((b.batcherName === PAL_BATCHER) !== palTex(mesh._texture)) return true;
+        if (b.batcherName !== ONE_BATCHER && (b.batcherName === PAL_BATCHER) !== palTex(mesh._texture)) return true;
       }
       return valid.call(this, mesh);
     };
@@ -547,6 +803,12 @@ function programLinked(r, program) {
 export function setPaletteRenderer(r) {
   _renderer = r || null;
   _ok = null;
+  /* v2.3.3447: this prewarm must reach the palette program itself -- a
+     rebuilt renderer's included, while the old one's ONE_BATCHER routing is
+     still on -- so nothing is sent to the one program until
+     setOneBatchRenderer has tried it on this renderer */
+  _oneRoute = false;
+  _oneOk = null;
   if (!_wanted || !webgl2(_renderer)) { _ok = false; setWheelPalette(false); return false; }
   let box = null, src = null, mesh = null;
   try {
@@ -588,8 +850,60 @@ export function setPaletteRenderer(r) {
   return _ok;
 }
 
+/** v2.3.3447: ONE_BATCHER built behind the loading screen, after
+ *  setPaletteRenderer (whose own prewarm must reach the palette program):
+ *  one plain sprite (and a colour-numbers one, where those are drawn) sent to
+ *  it and drawn nearly see-through; it is used if its program linked, else
+ *  the three programs, as before. */
+export function setOneBatchRenderer(r) {
+  _oneOk = null;
+  _oneRoute = false;
+  _oneR = r || null;
+  const name = rendererName(r);
+  const choice = oneBatchChoice(pageSearch(), name);
+  _oneWanted = choice.on;
+  _oneStats.why = choice.why;
+  _oneStats.renderer = name;
+  if (!_oneWanted || !webgl2(r)) { _oneOk = false; return false; }
+  let box = null, src = null;
+  _oneRoute = true;
+  try {
+    box = new Container();
+    const s = new Sprite(Texture.WHITE);
+    s.width = 2; s.height = 2;
+    box.addChild(s);
+    if (paletteOn()) {
+      src = makePaletteSource({
+        idx: new Uint8Array([1, 1, 1, 1]), w: 1, h: 1, stride: 4,
+        rgba: new Uint8Array([0, 0, 0, 0, 255, 255, 255, 255]), alphaMode: 'premultiplied-alpha', label: 'bt-one-prewarm',
+      });
+      if (src) { const p = new Sprite(new Texture({ source: src })); p.width = 2; p.height = 2; p.x = 2; box.addChild(p); }
+    }
+    box.alpha = 0.001;
+    r.render({ container: box });
+    _oneOk = programLinked(r, oneShader().glProgram);
+  } catch (e) {
+    _oneOk = false;
+    _oneStats.linkError = String((e && e.message) || e);
+  }
+  if (!_oneOk && !_oneStats.linkError) _oneStats.linkError = 'the one program did not build on this device';
+  _oneRoute = _oneOk === true;
+  try { if (box) box.destroy({ children: true }); } catch (e) { /* gone */ }
+  try { if (src) src.destroy(); } catch (e) { /* gone */ }
+  _oneStats.prewarmed = true;
+  return _oneOk;
+}
+
 /* QA probe, house style */
 if (typeof window !== 'undefined') {
+  window.__btOneBatch = () => ({ wanted: _oneWanted, ok: _oneOk, on: oneBatchOn(), ..._oneStats });
+  /* QA only (mp-onebatch): send sprites to the one program or the three, from
+     the next rebuild of each draw list -- the same held frame drawn both ways */
+  window.__btOneBatchRoute = (on) => { _oneRoute = !!on && _oneOk === true; return _oneRoute; };
+  /* QA only (mp-onebatch): the Speed test's own lever, and the choice asked
+     about any address and chip */
+  window.__btOneBatchLive = (on) => setOneBatchLive(on);
+  window.__btOneBatchChoice = (search, renderer) => oneBatchChoice(search, renderer);
   window.__btPalette = () => {
     let bytes = 0, n = 0, pieces = 0, pages = 0;
     for (const s of _live) {
