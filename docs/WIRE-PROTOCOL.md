@@ -529,7 +529,10 @@ docs/specs/relay.md. The table below is that list.
 
 `chat` is still a relay — it keeps the `eventBuffer` fan-out, the relay
 token bucket and its deliberately un-zone-scoped reach — but the payload is
-no longer whatever the sender wrote. `_sanitizeChatRelay` (index.js) REBUILDS
+no longer whatever the sender wrote. (v2.3.3396: `chat` and `emote` spend an
+allowance of their own now, `SOCIAL` — five at once, one every 2 s — not the
+relay bucket; the text is cleaned after the clamp below; and the same room line
+twice in 30 s is relayed once. `docs/specs/chat-guard.md`.) `_sanitizeChatRelay` (index.js) REBUILDS
 it from an allowlist before the rebroadcast:
 
 | Field | Rule |

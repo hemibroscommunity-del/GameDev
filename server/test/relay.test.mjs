@@ -56,6 +56,9 @@ check('setup: the worker\'s name for the sender', NAME_A === 'Amy', NAME_A);
 async function relay(msg, from = A) {
   const s = room.sessions.get(ws[from]);
   s.relayTokens = room.RELAY_BURST; s.relayAt = Date.now();
+  /* v2.3.3396: chat and emotes spend an allowance of their own
+     (chatguard.js): a fresh one too, so each relay below tests the relay */
+  s.chatGuard = null;
   room.eventBuffer.length = 0;
   await room.webSocketMessage(ws[from], typeof msg === 'string' ? msg : JSON.stringify(msg));
   return room.eventBuffer.slice();
@@ -159,12 +162,25 @@ for (const type of RELAY.TYPES) {
   check('5. ...never a privileged one', priv.length === 0, priv);
   room._liveFlags = flags0;
   const s = room.sessions.get(ws[A]);
+  /* v2.3.3396: an emote spends the SOCIAL allowance now (chatguard.js), so
+     that is left at one token as well: the dropped type below costs neither,
+     and the relay bucket's own last token is held with a jump after */
+  s.chatGuard = null; room._chatGuardOf(s, Date.now()).tokens = 1;
   s.relayTokens = 1; s.relayAt = Date.now();
   room.eventBuffer.length = 0;
   await room.webSocketMessage(ws[A], JSON.stringify({ type: 'zz_not_a_relay', payload: {} }));
   await room.webSocketMessage(ws[A], JSON.stringify({ type: 'emote', payload: { emoji: '👋' } }));   /* v2.3.3391: a listed one */
   check('5. a dropped type costs no relay budget: the last token still carries an emote',
     room.eventBuffer.length === 1 && room.eventBuffer[0].type === 'emote', room.eventBuffer.map((e) => e.type));
+  /* v2.3.3396: ...and the relay bucket's last token, which the emote above no
+     longer touches, still carries a jump */
+  s.relayTokens = 1; s.relayAt = Date.now();
+  room.eventBuffer.length = 0;
+  await room.webSocketMessage(ws[A], JSON.stringify({ type: 'zz_not_a_relay', payload: {} }));
+  await room.webSocketMessage(ws[A], JSON.stringify({ type: 'player_jump', payload: { x: 1 } }));
+  await room.webSocketMessage(ws[A], JSON.stringify({ type: 'player_jump', payload: { x: 2 } }));
+  check('5. ...and the relay bucket\'s last token still carries a jump, the next one dropped (v2.3.3396)',
+    room.eventBuffer.length === 1 && room.eventBuffer[0].type === 'player_jump' && room.eventBuffer[0].payload.x === 1, room.eventBuffer.map((e) => e.type));
 }
 
 // ── 6. the list is the phone's ──
