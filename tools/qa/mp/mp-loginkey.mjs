@@ -71,9 +71,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     more.label === 'Login Key', more);
   rec.ok('...fully on screen without scrolling (it is the last cell)',
     more.onScreen, more);
-  rec.ok('...and it did not displace the nine tiles that were already there',
-    more.order.slice(0, 9).join(',')
-      === 'quests,skills,social,clan,guild,journey,encyclopedia,leaderboard,settings',
+  /* v2.3.3357: "displaced none" is "it is the LAST tile": the list it was
+     checked against named the nine of its day, and the Pets tile (v2.3.3120)
+     has stood third since -- so it failed with nothing displaced */
+  rec.ok('...and it displaced none of the tiles that were already there (it is the last)',
+    more.order.length >= 10 && more.order.indexOf('account') === more.order.length - 1
+      && more.order[0] === 'quests',
     more.order);
 
   await A.page.evaluate(() => {
