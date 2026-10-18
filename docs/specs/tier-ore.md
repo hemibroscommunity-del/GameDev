@@ -117,11 +117,9 @@ the pike reaches x-71..x+11 and y +/- 35. Past that a fish dives, as before.
 
 - **The ten zones' effects** on trees and rocks, drawn in code: v2.3.3346
   (`docs/specs/land-auras.md`).
-- **The bake's sizes.** `tools/world/bake-wheel-spawns.mjs` keeps tall scenery
-  from standing in front of a node, using the OLD art's sizes (a tree 62 x 196,
-  a vein 52 x 118). The new maple is far bigger and the obsidian a little. A
-  re-bake moves resource places and changes `server/src/wheelspawns.js`, which
-  deploys the worker, so it is its own change.
+- **The bake's sizes** were the OLD art's (a tree 62 x 196, a vein 52 x 118).
+  Since v2.3.3374 the bake keeps each tier's own rock clear, and its miner
+  (`docs/specs/tier-trees.md` "Where each one grows").
 
 ## Tests
 

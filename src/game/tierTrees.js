@@ -17,7 +17,9 @@
  * (chopStandInSpot), the bar and the label over the crown.  No Pixi here.
  * docs/specs/tier-trees.md.
  */
-import { TREE_ART, TREE_ART_V } from '@/data/treeArt.js';
+/* v2.3.3374: relative, so the bake (tools/world/bake-wheel-spawns.mjs, in
+   Node) keeps tall things out of the way of each tree as it is drawn */
+import { TREE_ART, TREE_ART_V } from '../data/treeArt.js';
 
 /* 2 picture px a game px (public/tools/style/bible.js PIXEL.gamePxPerArtPx) */
 export const TREE_PX = 0.5;

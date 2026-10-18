@@ -113,6 +113,67 @@ Now **each wood has its own tree**, and it is the same picture in every land:
 The five pictures are 5.6 MB decoded together, and the old pine was 3.4 MB, so
 the game holds about **2.1 MB more**. They are 319 KB to download.
 
+## Where each one grows (v2.3.3374)
+
+The owner, of the resources' places: *"Yes fix #3 resource placement."*
+
+`tools/world/bake-wheel-spawns.mjs` works out where every vein, tree and fishing
+spot stands, and writes it into the server (`server/src/wheelspawns.js`, the
+long Wheel, and `wheelspawns1.js`, the short one). Until now it kept tall
+scenery out from in front of a node using the OLD art's one size for every
+tier: a box 62 px a side and 196 tall for a tree, 52 and 118 for a vein. The new
+maple is 428 px across and 424 tall, so a tall tree of the scenery could stand
+over its crown.
+
+Now:
+
+- **Each tier's own picture.** A tree is kept clear as `treeGeom` draws it, and a
+  rock as `oreGeom` does, from the picture's top down to its foot. Anything whose
+  foot is south of that foot is drawn over it, so nothing like that may overlap
+  it.
+- **The woodcutter too.** As the miner's and the angler's spots always were, the
+  woodcutter's (either side of the trunk, `treeChopOffset`, the side you came
+  from) is kept clear. The old pine's box happened to cover it; a slim pine's
+  picture does not.
+- **Whole where there is room.** In the Verdant Wilds' thick woods a maple
+  seldom stands clear of everything: at levels 31–40 there was room for 25 of
+  the 30. So a band takes its places with the whole picture clear first. Only
+  what that leaves short comes from places where the tree's middle half across
+  and its lower half are clear: its trunk and what stands round it. The
+  woodcutter, a rock and its miner are always clear.
+- **No resource in front of another.** The live table had 15 places where a
+  tree or rock stood in front of another resource's picture or the bro working
+  it (a willow over an angler, mostly), the short Wheel's 6. Every node placed
+  is remembered as what it draws and what must stay in view, and a new one may
+  neither stand in front of those nor have its picture in front of a new one's.
+  Now 0 in both.
+- **Fishing spots first.** A spot needs water, a dry seat on the bank and that
+  bank clear, and a land has few. They were chosen after the band's veins and
+  trees, so the trees' bigger pictures cost some lands up to three a stretch.
+  Now each band chooses its fishing spots first, and the veins and trees go
+  round them. Open ground has room to spare.
+
+What changed in the tables:
+
+| | Long Wheel | Short Wheel |
+|---|---|---|
+| Veins and trees | every count as it was | every count as it was |
+| Fishing spots | 1,222 → 1,223 in all: Frost Ridge's trout 9 → 8, its pike 6 → 8 | 259 → 260: Frost Ridge's salmon 1 → 2 |
+| Places that moved | 1,002 of 1,223 | 176 of 260 |
+| A resource in front of another | 15 → 0 | 6 → 0 |
+| Monsters, doors, the safe ground | the same | the same |
+
+- Near town nothing moved that you would notice. The first copper and pine out
+  of the gates are where they were, and so are the commons' fishing spots. A
+  few veins and trees round the commons moved 20–30 px.
+- **The places now depend on the trees' and rocks' picture sizes.** A new cut
+  of them (`tools/world/add-tree-art.mjs`, `add-ore-art.mjs`) means a re-bake.
+  `test-world-core.mjs` runs the bake with `--check` and fails until it is done,
+  and the re-bake changes `server/`, so the worker deploys.
+- **A change here deploys the worker.** Merging it briefly disconnects players
+  while the room restarts, and the room comes back with every resource whole,
+  as after any deploy.
+
 ## Not in this round
 
 - **The ten zones' effects** came in v2.3.3346, drawn in code, with no art
