@@ -68,6 +68,12 @@ ground's pieces, exactly as the overview under them was before v2.3.3339.
 - A piece is only freed well outside the view and is laid again by swapping
   the new picture in before the old one goes, so nothing the test counted goes
   between the test and the draw.
+- It is decided every frame, after the ground's own update, even one that
+  threw (tileRenderer `_groundBg`, in a `finally`): the ground sets
+  `coversView` false first thing, so a frame it did not finish shows the black.
+- Where a graphics reset blanks the ground (TRAPS §130, §142), the canvas's own
+  navy now shows where the black did; the black-screen watchdog counts both as
+  unlit (BroTown `_wdLitPx`), so it still notices and rebuilds.
 - `?groundbg=1` keeps it drawn every frame, as it was; `window.__btGroundBgKeep`
   the same, live. `window.__btGroundBg()` says whether it is drawn and whether
   the pieces cover the view; `.show(on)` sets it for a held frame.
@@ -76,6 +82,9 @@ What it saves: one screen of flat colour a frame, about 3 million pixels on a
 3x iPhone. A flat colour is the cheapest thing a chip paints (one write a
 pixel, no picture read), so this is a small saving: *estimate*, up to about a
 millisecond a frame on a cheap Android phone, next to nothing on an iPhone.
+The QA box, which draws in software, took 356 ms for a frame at the coast with
+it hidden and 422 ms with it drawn; only the difference means anything there,
+and a phone's chip paints flat colour far more cheaply than this box does.
 
 ## How it is checked
 
