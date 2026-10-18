@@ -323,7 +323,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const memFarm = await gpu();
     const tot = (m) => (m && !m.err ? m.mb + ((m.cacheNotOnGpu && m.cacheNotOnGpu.mb) || 0) : NaN);
     try { writeFileSync(join(OUT, 'farmwalk-memory.json'), JSON.stringify({ wheel: memWheel, farm: memFarm }, null, 1)); } catch (e) { /* the check says */ }
-    /* v2.3.3381: asked as two things, no longer "less than BroTown".  Written
+    /* v2.3.3397: asked as two things, no longer "less than BroTown".  Written
        (v2.3.3136, #843) the farm held 104 + 92 MB (GPU + cached) against
        BroTown's 103 + 109; since v2.3.3190 BroTown's ground and objects are
        colour numbers, one byte a pixel, and it holds 71 + 90, while the farm,

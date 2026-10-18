@@ -69,7 +69,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.click('[data-tut="char-menu-restart"]');
   await P.page.waitForTimeout(400);
   await P.page.fill('[data-tut="char-confirm-input"]', 'yes');
-  /* v2.3.3381: the worker's answer is read.  Should the minute be spent
+  /* v2.3.3397: the worker's answer is read.  Should the minute be spent
      after all (the fresh one above makes it unlikely), the refusal must say
      so -- the picker said only "That did not work" -- and it is waited out
      once.  (POST only: the CORS preflight asks the same address first.) */

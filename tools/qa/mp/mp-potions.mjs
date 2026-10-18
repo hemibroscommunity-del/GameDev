@@ -77,7 +77,7 @@ async function hold(P, key, ms) {
  * (x=300 was rejected long before any of this: it walks into the west
  * cliff.)
  *
- * ── v2.3.3381: A NEW LANE, AND THE SPEED BY THE GAME'S OWN CLOCK
+ * ── v2.3.3397: A NEW LANE, AND THE SPEED BY THE GAME'S OWN CLOCK
  * v2.3.2628 re-laid town at 68x72 and its fountain (957,1521; footprint x
  * 831-1083, y 1426-1521) now stands on (1070,1470), and since v2.3.2748 a
  * step that takes your FEET deeper into a footprint is refused -- so every
@@ -104,7 +104,7 @@ async function sprint(P, frames = 30) {
     let f = 0, ticks = 0;
     const step = () => {
       f++;
-      ticks += (S._dtScale || 1);   /* v2.3.3381: this frame's length in 60 fps steps */
+      ticks += (S._dtScale || 1);   /* v2.3.3397: this frame's length in 60 fps steps */
       if (f >= n) return res({ dist: y0 - S.player.y, frames: f, ticks });
       requestAnimationFrame(step);
     };
@@ -216,7 +216,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => window.__broShopBus.setOpen(false));
   await P.page.waitForTimeout(500);
   const before = await sprint(P);
-  /* v2.3.3381: the walk is 2.5 px a 60 fps step; it was "> 4" px a drawn frame, which only this slow box met */
+  /* v2.3.3397: the walk is 2.5 px a 60 fps step; it was "> 4" px a drawn frame, which only this slow box met */
   rec.ok(`the control sprint covers ground (${before} px per 60 fps step)`, before > 1.5, { before });
 
   /* v2.3.3132: the Stamina Tonic (the old salts' key) is brewed from carrots

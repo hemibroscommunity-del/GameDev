@@ -270,7 +270,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* 0b. Right in front of the face, and a step (100px x the frame scale)
        long enough to jump from outside its circle to past the face in one go.
        v2.3.2699 planted on the face without testing that step.
-       v2.3.3381: shot from 100 px east of the face, not from startX.  Since
+       v2.3.3397: shot from 100 px east of the face, not from startX.  Since
        the view went further out (v2.3.2997, v2.3.3011, v2.3.3020) startX is
        the full 150 px off, so this step, cut at the face, is a 150 px segment
        and with the arrow's own drawn body (52.5 px, projectiles.js PROJ_BODY)

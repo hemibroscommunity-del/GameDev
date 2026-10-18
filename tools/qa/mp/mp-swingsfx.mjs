@@ -51,7 +51,7 @@ const spy = (P) => P.page.evaluate(() => {
     });
     return orig(key, opts);
   };
-  /* v2.3.3381: and every HIT by the voice it asks for (BT_AUDIO.materialHit,
+  /* v2.3.3397: and every HIT by the voice it asks for (BT_AUDIO.materialHit,
      v2.3.3001).  A slime's hit has been the thud, monster-hit, since v2.3.2452
      ("slime are fleshy") -- never a sword-hit sample, so this file found none
      (the sweep of 2026-10-17) -- and monster-hit is also an unarmoured hero's
@@ -137,7 +137,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const sfx = await P.page.evaluate(() => window.__sfx.slice());
   const swings = sfx.filter((e) => /^sword-swing/.test(e.key));
-  const hits = sfx.filter((e) => e.key === 'voice:goo');   /* v2.3.3381: the slime's hits, by their voice */
+  const hits = sfx.filter((e) => e.key === 'voice:goo');   /* v2.3.3397: the slime's hits, by their voice */
 
   rec.ok(`${tag}: swings actually played (${swings.length})`, swings.length >= 2, swings.slice(0, 4));
   rec.ok(`${tag}: every swing is the whoosh -- the harsh sample never plays`,

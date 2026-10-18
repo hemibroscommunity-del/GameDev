@@ -104,7 +104,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      character inside, and the marker colour differs as well (C_QUEST vs
      C_QUEST_DONE).  They are meant to look like siblings, so they are held to
      "not identical" rather than to the separation every unrelated pair needs. */
-  /* v2.3.3381: THREE states since v2.3.3047 -- '!' work for you, '?' waiting
+  /* v2.3.3397: THREE states since v2.3.3047 -- '!' work for you, '?' waiting
      on you (grey), the check when ready -- "the in-world badge's three states,
      one for one" (minimapRenderer _mintPin), each its own colour.  The new pin
      was a sibling the set did not name, so '!' against '?' (0.025 apart at the

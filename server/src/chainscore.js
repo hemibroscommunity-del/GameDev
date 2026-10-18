@@ -195,7 +195,7 @@ export const chainScoreMethods = {
       for (const name of LIFE_SKILL_KEYS) {
         const sk = ls[name];
         const lvl = Math.max(0, Math.floor((sk && sk.level) || 0));
-        /* v2.3.3381: ...and an UNTOUCHED life skill is level 1 with no XP
+        /* v2.3.3397: ...and an UNTOUCHED life skill is level 1 with no XP
            since v2.3.3039 (a life skill is never level 0: freshLifeSkills, and
            a stored 0 heals to 1), so `lvl > 0` attested every skill nobody had
            trained at 1 -- and the hiscores board, which drops a player with

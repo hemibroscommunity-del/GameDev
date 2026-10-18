@@ -195,7 +195,7 @@ const ATTACKS = [
 
 const ranged = (a) => a.slot === 'ranged' || a.slot === 'staff';
 
-/* v2.3.3381: a run of some rows only, to look into one of them --
+/* v2.3.3397: a run of some rows only, to look into one of them --
    BT_HITREAL_ZONES=frost,sky and/or BT_HITREAL_ONLY=bow,bow+special (a "+"
    for the space).  Unset, every zone and every attack, as always. */
 const pickRows = (name, all, key) => {
@@ -256,7 +256,7 @@ const fire = (P, atk, tid) => P.page.evaluate(({ sp, rg, tid }) => new Promise((
   const n0 = (S.arrows || []).length;
   S.autoAttack = true;
   const t0 = Date.now();
-  /* ═══ v2.3.3381: THE THUMB STAYS ON THE TARGET UNTIL THE SHOT LEAVES ═══
+  /* ═══ v2.3.3397: THE THUMB STAYS ON THE TARGET UNTIL THE SHOT LEAVES ═══
      The aim was set once, before this, and the bow looses only while its
      sight is on something (monsterCombat's gate): a slime that hopped while
      the cadence came round took the line off it, and the row voided the
@@ -290,7 +290,7 @@ const fire = (P, atk, tid) => P.page.evaluate(({ sp, rg, tid }) => new Promise((
     if ((S.arrows || []).length > n0 || (S.swingTimer || 0) >= t0) { clearInterval(iv); S.autoAttack = false; resolve({ ok: true, shot: true, at }); }
     else if (Date.now() - t0 > 1500) {
       clearInterval(iv); S.autoAttack = false;
-      /* v2.3.3381: ...and WHY.  The bow looses only while its sight is on
+      /* v2.3.3397: ...and WHY.  The bow looses only while its sight is on
          something (monsterCombat `_bowSight.d`), and the verdant bow row lost
          8 of its 15 attempts this way twice running: what the sight saw, and
          how far the line passed from the target's centre when it gave up. */
@@ -332,7 +332,7 @@ const readTarget = (P) => P.page.evaluate(() => {
      rather than fired at and scored: frost's snowmen burrow when they are hit,
      and the first run of this file spent three whole rows firing at piles and
      reported them as five voids each. */
-  /* v2.3.3381: ...and not one whose straight walk from here crosses the zone's
+  /* v2.3.3397: ...and not one whose straight walk from here crosses the zone's
      way out (the return marker, map tile 9): the placer walks that line, and a
      run lost a whole ember bow row walking out of the zone seven times
      (2026-10-18).  Over it is within two tiles of its middle; the first 64 px
@@ -519,7 +519,7 @@ async function sidestep(P, g, boots, grip) {
     const inBox = (x, y) => boxes.some((b) => x >= b.x0 - 14 && x <= b.x1 + 14 && y >= b.y0 - 14 && y <= b.y1 + 14);
     const dx = q.x - q.px, dy = q.y - q.py, L = Math.hypot(dx, dy) || 1;
     const nx = -dy / L, ny = dx / L;
-    /* v2.3.3381: for a shot, the line the game asks about -- its ground
+    /* v2.3.3397: for a shot, the line the game asks about -- its ground
        track, from your boots to the aim point carried back by the bow
        grip's offset (`grip`; a staff bolt has none) and down as far
        (projectiles.js `_ox`, `_goy`), and the chest line as well */
@@ -633,14 +633,14 @@ async function settle(P, id, before, ms) {
   }
 }
 
-/* v2.3.3381: what the bow's sight is on, two frames after the aim was set (so
+/* v2.3.3397: what the bow's sight is on, two frames after the aim was set (so
    the gate has cast with it): `id` a monster's id, `prop:<oi>`, or null. */
 const bowSightNow = (P) => P.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => {
   const S = window._gameState.current, b = S._bowSight;
   r(b ? { id: b.id, d: b.d == null ? null : Math.round(b.d), age: Date.now() - b.at } : null);
 }))));
 
-/* v2.3.3381: WHERE EACH SHOT OF THIS ATTEMPT ENDED.  A miss the target
+/* v2.3.3397: WHERE EACH SHOT OF THIS ATTEMPT ENDED.  A miss the target
    barely moved for (frost, ~80 px, 2-3 px across: this run and part-13's)
    printed only "no claim" -- not whether the arrow went into another monster,
    into a rock, or fell spent at its range.  Called right after fire(): every
@@ -827,7 +827,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const zoneNotes = [];
 
   for (const stop of pickRows('BT_HITREAL_ZONES', ROSTER, 'zone')) {
-    /* v2.3.3381: a zone draws you at its own scale, so the boots' depth a
+    /* v2.3.3397: a zone draws you at its own scale, so the boots' depth a
        shot was stamped with in the last one is not this one's */
     await P.page.evaluate(() => { window.__hrGdy = undefined; }).catch(() => {});
     /* ═══ ARRIVING IS TWO THINGS, AND ONLY ONE OF THEM IS THE ZONE NAME ═══
@@ -987,7 +987,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
            rock.  The game's question, not this file's arithmetic (TRAPS #35).
            Ranged rows only: the sword does not ask about props yet, so its
            attempts still count. */
-        /* v2.3.3381: the bow asks its own sight, below.  The staff has none,
+        /* v2.3.3397: the bow asks its own sight, below.  The staff has none,
            so it asks the line its bolt is judged on: since v2.3.3206 every
            shot is judged at the shooter's BOOTS (projectiles.js `_goy`; a bolt
            has no grip offset, so its ground track is the drawn line carried
@@ -1037,7 +1037,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           }
         }
         await aimAt(P, g);
-        /* ═══ v2.3.3381: THE BOW'S OWN SIGHT SAYS WHAT THE ARROW HITS FIRST ═══
+        /* ═══ v2.3.3397: THE BOW'S OWN SIGHT SAYS WHAT THE ARROW HITS FIRST ═══
            The covered test above asks about a line from the CHEST to the
            monster's feet.  Since v2.3.3206 a shot is judged at the shooter's
            BOOTS (projectiles.js: the drawn point carried back by the grip's
@@ -1062,13 +1062,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const since = Date.now();
         const f = await fire(P, atk, g.id);
         if (f && f.ok) row.fired++; else { row.void++; row.neverFired++; if (f && f.diag) row.neverWhy.push(f.diag); continue; }
-        if (f.at) { g.x = f.at.x; g.y = f.at.y; g.aimY = f.at.aimY; }   /* v2.3.3381: where it was when the shot left */
+        if (f.at) { g.x = f.at.x; g.y = f.at.y; g.aimY = f.at.aimY; }   /* v2.3.3397: where it was when the shot left */
         await trackShot(P, g.id).catch(() => {});
         const after = await settle(P, g.id, g.hp, SETTLE_MS);
         const said = await sentFor(g.id, since);
         const landed = after.gone || !after.alive
           || (g.hp != null && after.hp != null && after.hp < g.hp);
-        /* v2.3.3381: another monster stepped into the line and took the shot
+        /* v2.3.3397: another monster stepped into the line and took the shot
            (the claim went to it: a frost row's "miss" of 2026-10-18 was
            sm-frost-0 hit instead) -- the hit test working on the wrong
            target, so void, as an arrow the sight saw land elsewhere is above */
@@ -1119,7 +1119,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
             /* v2.3.3321: how long the settle waited, and whether it gave up
                at SETTLE_MAX_MS with a shot still in the air */
             waited: after.waited || null, cut: !!after.cut,
-            /* v2.3.3381: where its shots ended, and any monster they hit
+            /* v2.3.3397: where its shots ended, and any monster they hit
                instead -- beside where the target was when it was shot at
                and where it was after */
             tgt: { x: g.x, y: g.y, aimY: g.aimY, ax: after.x, ay: after.y },
@@ -1147,7 +1147,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       + `${r.void ? `   (${r.void} void: ${r.dug} burrowed, ${r.covered} behind a prop, ${r.inFront ? `${r.inFront} with another monster first, ` : ''}${r.neverFired} never fired, `
         + `${r.left ? `${r.left} walked out of the zone, ` : ''}gaps ${JSON.stringify(r.skipGaps)})` : ''}`);
     if (r.missed.length) console.log(`      missed: ${JSON.stringify(r.missed)}`);
-    if (r.neverWhy.length) console.log(`      never fired: ${JSON.stringify(r.neverWhy)}`);   /* v2.3.3381 */
+    if (r.neverWhy.length) console.log(`      never fired: ${JSON.stringify(r.neverWhy)}`);   /* v2.3.3397 */
     if (r.desync.length) console.log(`      the worker did not follow the walk ${r.desync.length}x: ${JSON.stringify(r.desync)}`);
   }
   console.log('');
