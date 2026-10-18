@@ -1,4 +1,4 @@
-/* ═══ v2.3.3445: THE TOWNSFOLK'S VOICES ═══
+/* ═══ v2.3.3457: THE TOWNSFOLK'S VOICES ═══
  *
  * The owner, 2026-10-18: "I have the rest of the sounds" -- among them a
  * recording of a man humming "hmm" and "ahh", for docs/SOUND-GAPS.md's "NPC

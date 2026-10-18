@@ -22,7 +22,7 @@ import { TOWN_EXITS, WORLDVIEW_EXITS } from './effects.js';
 import { FOOTSTEP_CLIPS } from './footstepClips.js';   /* v2.3.2967: each ground its own step */
 import { MONSTER_NOISE_CLIPS } from './monsterNoiseClips.js';   /* v2.3.3340: the owner's monster noises */
 import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3343: each creature its own death (monsterDeath) */
-import { OWNER_SOUNDS, OWNER_LOOPS } from './ownerSoundClips.js';   /* v2.3.3445: the owner's recordings for the sounds still needed */
+import { OWNER_SOUNDS, OWNER_LOOPS } from './ownerSoundClips.js';   /* v2.3.3457: the owner's recordings for the sounds still needed */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
@@ -1397,7 +1397,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      of wind is far more noticeable as a loop than a long one. */
   ZONE_AMBIENT: {
     sky: '/audio/ambient/wind-dunes.mp3',
-    /* v2.3.3445: the owner's recordings (docs/SOUND-GAPS.md, "birds, forest,
+    /* v2.3.3457: the owner's recordings (docs/SOUND-GAPS.md, "birds, forest,
        lava ... each land's air"): the Verdant Wilds' birdsong and the Flame
        Fields' bubbling lava, each a seamless loop at the wind's own loudness
        (tools/audio/cut_owner_sounds.py), so ZONE_AMBIENT_VOL suits all three.
@@ -1405,7 +1405,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        land of the Wheel and in its old zone with `?trial=off`.  Decoded at
        24 kHz, mono, and let go when you leave the land (startZoneAmbient):
        1.5 and 1.1 MB, the wind's 28.8 s stereo ~5.5 MB at that rate (11 MB
-       before v2.3.3445). */
+       before v2.3.3457). */
     verdant: OWNER_LOOPS.forest.url,
     ember: OWNER_LOOPS.lava.url,
   },
@@ -1666,7 +1666,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   decodedMB: function decodedMB() {
     var b = 0, n = 0, k;
     try {
-      /* v2.3.3445: a buffer two keys share (loadSample's one decode a file)
+      /* v2.3.3457: a buffer two keys share (loadSample's one decode a file)
          is counted once */
       var seen = typeof Set === 'function' ? new Set() : null;
       for (k in (this._samples || {})) {
@@ -3139,7 +3139,7 @@ BT_AUDIO.SFX_MANIFEST = {
   'noise-skeleton-rattle': '/sfx/monster/noise-skeleton-rattle.mp3',
   'noise-slime-bounce': '/sfx/monster/noise-slime-bounce.mp3',
   'noise-snowman-snarl': '/sfx/monster/noise-snowman-snarl.mp3',
-  /* ═══ v2.3.3445: THE OWNER'S RECORDINGS FOR THE SOUNDS STILL NEEDED ═══
+  /* ═══ v2.3.3457: THE OWNER'S RECORDINGS FOR THE SOUNDS STILL NEEDED ═══
      The owner, 2026-10-18, after the list of sounds that needed new
      recordings (docs/SOUND-GAPS.md): "I have the rest of the sounds".  Cut by
      tools/audio/cut_owner_sounds.py from the owner's uploads
@@ -3166,9 +3166,15 @@ BT_AUDIO.SFX_MANIFEST = {
   'boss-roar': '/sfx/monster/boss-roar.mp3',
   'explosion': '/sfx/monster/explosion.mp3',
   'npc-voices': '/sfx/npc/voices.mp3',
+  /* and the two the owner sent after the rest: the splash of getting into
+     and out of the water (SWIM_SPLASH, its two parts in one file) and the
+     chime of points spent in the Points window (the cue `pointsSpent`) --
+     both at 24 kHz, ~0.36 MB */
+  'swim-splash': '/sfx/player/swim-splash.mp3',
+  'points-spent': '/sfx/ui/points-spent.mp3',
 };
 
-/* ═══ v2.3.3445: SOME SOUNDS ARE DECODED AT 24 kHz ═══
+/* ═══ v2.3.3457: SOME SOUNDS ARE DECODED AT 24 kHz ═══
    An AudioBuffer is raw float32 at the rate it was decoded into, and the
    context decodes everything at its own (48 kHz on an iPhone): a second of
    mono is 188 KB.  A voice, a gulp, a horn or the sea has nothing a phone
@@ -3870,26 +3876,44 @@ BT_AUDIO.shotHit = function (style, how, k) {
    the lure's plop for the strokes, the catch's splash going in, the plop
    coming out.  Each slice's gain brings it to footstep-v3's loudness (both
    measured the PROP_SOUNDS way: the loudest 50 ms, plain and A-weighted), so
-   SWIM_STEP_VOL is a bare step's own level; the splash in is twice it.
+   SWIM_STEP_VOL is a bare step's own level; the splash in was twice it (the
+   splash is the owner's recording since v2.3.3457, at a level of its own:
+   SWIM_SPLASH below).
    Layers as _playLayer's: [key, offset, duration (0 = to the end), gain,
    rate, delay, fade].  game/wheelSwim.js keeps the strokes' clock; BroTown
    plays these from what it reports. */
-BT_AUDIO.SWIM_SAMPLES = ['fish-on-hook', 'lure-drop', 'catch-splash'];
+BT_AUDIO.SWIM_SAMPLES = ['fish-on-hook', 'lure-drop', 'swim-splash'];
 BT_AUDIO.SWIM_STROKES = [
   ['fish-on-hook', 0.375, 0.16, 0.8, 1, 0, 0.05],
   ['fish-on-hook', 1.465, 0.12, 0.66, 1, 0, 0.04],
   ['lure-drop', 0, 0, 1.43, 0.85],
 ];
-BT_AUDIO.SWIM_SPLASH = {
-  in: [['catch-splash', 0, 0.45, 0.26, 1, 0, 0.1]],
-  out: [['lure-drop', 0, 0, 1.43, 1.1]],
-};
+/* v2.3.3457: the splash is the owner's own recording -- "a missing sound
+   effect for the player gets in and out of the water": the catch's splash
+   and the lure's plop played at 0.10 and 0.05 of a melee hit, too quiet to
+   be heard as anything.  One file, two parts (tools/audio/cut_owner_sounds.py
+   SPLASH): going IN the whole splash at half a hit, coming OUT its slosh
+   alone (water running off, no hit) at a quarter.  Each part's gain IS its
+   level (ownerSoundClips.js), so swimSplash plays them at 1 and another
+   player's (swimFx.js, peerOwn) at their share of 1. */
+BT_AUDIO.SWIM_SPLASH = (function () {
+  var S = OWNER_SOUNDS['swim-splash'];
+  var part = function (name) {
+    var p = S.parts[S.names.indexOf(name)];
+    return [['swim-splash', p[0], p[1], p[2], 1]];
+  };
+  return { in: part('in'), out: part('out') };
+})();
 BT_AUDIO.SWIM_STEP_VOL = 0.15;
 /* What the last swimming sound was, for the tests (mp-wheelswim). */
 BT_AUDIO._noteSwim = function (what, key, played) {
   this._lastSwim = { what: what, key: key, played: !!played, at: Date.now() };
   if (!this._swimCounts) this._swimCounts = Object.create(null);
   this._swimCounts[what] = (this._swimCounts[what] || 0) + 1;
+  /* v2.3.3457: and the last of each kind (the splash in is followed by
+     strokes before a test can read it) */
+  if (!this._swimLast) this._swimLast = Object.create(null);
+  this._swimLast[what] = this._lastSwim;
 };
 /** One stroke: one of SWIM_STROKES at random, never the same twice running. */
 BT_AUDIO.swimStroke = function () {
@@ -3907,7 +3931,7 @@ BT_AUDIO.swimSplash = function (how) {
   if (!this.ctx || this.muted) return;
   var w = how === 'out' ? 'out' : 'in';
   var S = this.SWIM_SPLASH[w];
-  var vol = this.SWIM_STEP_VOL * (w === 'in' ? 2 : 1);
+  var vol = 1;   /* v2.3.3457: each part's own gain is its level (above) */
   var any = false;
   for (var i = 0; i < S.length; i++) any = !!this._playLayer(S[i], vol, 1 + (Math.random() - 0.5) * 0.06, 1) || any;
   this._noteSwim(w, S[0][0], any);
@@ -3992,7 +4016,7 @@ BT_AUDIO.monsterDeath = function (arch, opts, k) {
 BT_AUDIO.loadSample = function (key, url) {
   if (!this.ctx || this._samples[key] || this._sampleLoading[key]) return Promise.resolve();
   var self = this;
-  /* ═══ v2.3.3445: ONE DECODE A FILE ═══
+  /* ═══ v2.3.3457: ONE DECODE A FILE ═══
      Two keys naming one file were two copies of it in memory: 'fish-on-hook'
      and 'fishing-fish-on-hook' (0.95 MB each), 'lure-drop' and
      'fishing-lure-drop'.  A key whose file another key holds, or is fetching,
@@ -4166,7 +4190,7 @@ BT_AUDIO.startSfxLoop = function (key, vol, bus) {
     var src = this.ctx.createBufferSource();
     src.buffer = buf;
     src.loop = true;
-    /* v2.3.3445: a land's air loops without the mp3's silent edges (below) */
+    /* v2.3.3457: a land's air loops without the mp3's silent edges (below) */
     if (/^zoneamb-/.test(key)) this._loopOverEdges(src, buf);
     var g = this.ctx.createGain();
     g.gain.value = vol != null ? vol : 0.4;
@@ -4176,7 +4200,7 @@ BT_AUDIO.startSfxLoop = function (key, vol, bus) {
     this._sfxLoops[key] = { src: src, gain: g };
   } catch (e) {}
 };
-/* ═══ v2.3.3445: A LOOP WITHOUT ITS FILE'S SILENT EDGES ═══
+/* ═══ v2.3.3457: A LOOP WITHOUT ITS FILE'S SILENT EDGES ═══
    An mp3 begins and ends with a few hundred samples of digital silence (the
    encoder's own delay and padding) wherever the decoder does not take them
    off, and a buffer looped whole plays that silence at every seam: a click
@@ -4509,12 +4533,12 @@ BT_AUDIO._deckDrop = function () {
    session track unless a zone track ducked it (the decoded tracks' rule:
    duckGlobalMusic, startZoneAmbient), else nothing. */
 BT_AUDIO._deckTarget = function () {
-  if (this._danceWant) return this._danceWant;   /* v2.3.3445: while you dance (setDanceMusic) */
+  if (this._danceWant) return this._danceWant;   /* v2.3.3457: while you dance (setDanceMusic) */
   if (this._zoneWant) return this._zoneWant;
   if (this._globalWant && !this._globalMusicDucked) return this._globalWant;
   return null;
 };
-/* ═══ v2.3.3445: A BEAT WHILE YOU DANCE ═══
+/* ═══ v2.3.3457: A BEAT WHILE YOU DANCE ═══
    The owner's club beat (docs/SOUND-GAPS.md: "a dance loop would play
    through the music player, never decoded into memory") takes the music
    deck while you hold a dance (game/moveSounds.js tickDanceMusic), and the
@@ -4706,7 +4730,7 @@ BT_AUDIO._deckFail = function (why) {
   this._deckDrop();
   this._zoneWant = null;
   this._globalWant = null;
-  this._danceWant = null;   /* v2.3.3445: never decoded (setDanceMusic) */
+  this._danceWant = null;   /* v2.3.3457: never decoded (setDanceMusic) */
   if (this._zoneMusicSource && this._zoneMusicSource._stream) { this._zoneMusicSource = null; this._zoneMusicGain = null; }
   if (this._globalMusicSource && this._globalMusicSource._stream) { this._globalMusicSource = null; this._globalMusicGain = null; }
   this._zoneMusicStarting = false;

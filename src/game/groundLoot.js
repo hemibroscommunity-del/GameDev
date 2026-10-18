@@ -17,7 +17,7 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { cue } from '@/game/eventSounds.js'; /* v2.3.3445: a pile that is not yours, heard */
+import { cue } from '@/game/eventSounds.js'; /* v2.3.3457: a pile that is not yours, heard */
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 export function updateGroundLootPickup(S, deps) {
@@ -192,7 +192,7 @@ export function updateGroundLootPickup(S, deps) {
             if (lDist < 20 && !_deathFFA && loot.recipients && !loot.recipients.includes(S.myId)) {
               if (!loot._notYoursBeeped) {
                 loot._notYoursBeeped = true;
-                cue('denied', 0.6);   /* v2.3.3445: the owner's "denied" tick, softly (a beep(), silent since v2.3.1103) */
+                cue('denied', 0.6);   /* v2.3.3457: the owner's "denied" tick, softly (a beep(), silent since v2.3.1103) */
               }
               return true;
             }

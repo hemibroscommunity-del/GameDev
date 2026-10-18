@@ -237,10 +237,11 @@ export class SwimFx {
     /* v2.3.3343: ANOTHER player's splash in and drip out are heard (yours are
        BroTown's): your own (BT_AUDIO.swimSplash's table and level) at their
        share by distance -- silent before (docs/specs/wheel-swimming.md
-       listed it "Not done") */
+       listed it "Not done").  v2.3.3457: the owner's splash, whose parts
+       carry their own level, so at their share of 1 */
     if (peer && on !== !!st._was) {
       const _S = gameState();
-      if (_S) peerOwn(_S, on ? 'peerSwimIn' : 'peerSwimOut', BT_AUDIO.SWIM_SPLASH[on ? 'in' : 'out'], BT_AUDIO.SWIM_STEP_VOL * (on ? 2 : 1), fx, fy);
+      if (_S) peerOwn(_S, on ? 'peerSwimIn' : 'peerSwimOut', BT_AUDIO.SWIM_SPLASH[on ? 'in' : 'out'], 1, fx, fy);
     }
     st._was = on;
     if (st.k <= 0) {

@@ -717,7 +717,7 @@ export class BuildingFires {
 }
 let _liveFires = null;
 
-/* ═══ v2.3.3445: WHERE SOMETHING BURNS, FOR ITS CRACKLE ═══
+/* ═══ v2.3.3457: WHERE SOMETHING BURNS, FOR ITS CRACKLE ═══
    game/ambientBeds.js plays the owner's fire-crackle recording by the
    nearest fire: each burning building (standing, in pieces, or going out) as
    its foot and its hottest spot's heat, 0..1.  A plain list made on asking,

@@ -694,7 +694,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 } else {
                   pushDmgPopup(S, P.x, P.y - 30, 'Speak to Mayor Bro first', '#f5c542', { ttl: 3 });
                 }
-                cue('denied');   /* v2.3.3445: the owner's "denied" tick (a beep(), silent since v2.3.1103) */
+                cue('denied');   /* v2.3.3457: the owner's "denied" tick (a beep(), silent since v2.3.1103) */
               }
               /* Nudge back toward the hub centre, exactly as the level gate
                  does: without it the proximity test re-fires every frame and
@@ -742,7 +742,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 } else {
                   pushDmgPopup(S, P.x, P.y - 30, 'Not yet', '#f5c542', { ttl: 3 });
                 }
-                cue('denied');   /* v2.3.3445: the owner's "denied" tick (a beep(), silent since v2.3.1103) */
+                cue('denied');   /* v2.3.3457: the owner's "denied" tick (a beep(), silent since v2.3.1103) */
               }
               /* Same nudge as the Mayor gate: without it the proximity test
                  re-fires every frame and the banner never clears. */
@@ -787,7 +787,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 } else {
                   pushDmgPopup(S, P.x, P.y - 30, '⚠️ ' + (_gzone.name || bestExit.zoneId) + ' is Lv ' + _gzone.level[0] + '–' + _gzone.level[1] + '! Walk in again to enter', '#ff5e6c', { ttl: 3 });
                 }
-                cue('denied');   /* v2.3.3445: the owner's "denied" tick (a beep(), silent since v2.3.1103) */
+                cue('denied');   /* v2.3.3457: the owner's "denied" tick (a beep(), silent since v2.3.1103) */
                 /* Nudge back toward the hub center so the proximity
                    trigger disarms; without this the exit re-fires every
                    frame and the popup spams. */

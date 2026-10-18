@@ -34,7 +34,7 @@
  *      quest, an alliance war's end, invites to duel and trade, the market,
  *      the farm's harvest and bed, pets out, away and released (and the four
  *      kinds that answer in their own voice), and the forge's anvil.
- *  11. v2.3.3445, the owner's recordings ("I have the rest of the sounds"):
+ *  11. v2.3.3457, the owner's recordings ("I have the rest of the sounds"):
  *      every one-shot cut by tools/audio/cut_owner_sounds.py in SFX_MANIFEST
  *      at the rate it is decoded at (24 kHz ones in LOW_RATE_SFX), every loop
  *      kept out of it; your hurt grunt, the heartbeat on its own clock,
@@ -230,7 +230,7 @@ for (const p of files) {
     },
     /* v2.3.3434: the moves' cues, read from the table that names them */
     'src/game/moveSounds.js n': () => Object.values(MOVE_SOUNDS || {}).flat(),
-    /* v2.3.3445: your hurt grunts and the townsfolk's hums, one of a list */
+    /* v2.3.3457: your hurt grunts and the townsfolk's hums, one of a list */
     'src/game/ownSounds.js HURT_CUES[i]': () => {
       const t = src('src/game/ownSounds.js');
       const a = t.indexOf('export const HURT_CUES = ');
@@ -432,7 +432,7 @@ for (const p of files) {
     && inspects === 2, { inspects });
 }
 
-/* ── 11. v2.3.3445: the owner's recordings ("I have the rest of the sounds") ── */
+/* ── 11. v2.3.3457: the owner's recordings ("I have the rest of the sounds") ── */
 {
   const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');   /* the code, not what its comments say */
   const { OWNER_SOUNDS, OWNER_LOOPS, LOOP_REFS } = await import('../../src/data/ownerSoundClips.js');
@@ -446,7 +446,7 @@ for (const p of files) {
   };
   const shots = Object.keys(OWNER_SOUNDS);
   const offManifest = shots.filter((k) => MANIFEST[k] !== OWNER_SOUNDS[k].url);
-  check(`11a every one-shot the cutter made (${shots.length}) is in SFX_MANIFEST at its own address`, shots.length >= 14 && offManifest.length === 0, offManifest);
+  check(`11a every one-shot the cutter made (${shots.length}) is in SFX_MANIFEST at its own address`, shots.length >= 16 && offManifest.length === 0, offManifest);
   const wrongRate = shots.filter((k) => rateOf(OWNER_SOUNDS[k].url) !== (OWNER_SOUNDS[k].low ? 24000 : 48000));
   check('11b ...each file at the rate it is decoded at: the voice and noise ones 24 kHz (LOW_RATE_SFX), the UI\'s 48 kHz', wrongRate.length === 0, wrongRate.map((k) => [k, rateOf(OWNER_SOUNDS[k].url)]));
   const lowFn = GD.slice(GD.indexOf('BT_AUDIO.LOW_RATE_SFX'), GD.indexOf('BT_AUDIO._lowRate = function'));
@@ -564,10 +564,31 @@ for (const p of files) {
   const srcs = [...new Set([...CUT.matchAll(/'((?:player|ui|emote|world|npc)\/[^']+\.mp3)'/g)].map((m) => m[1]))];
   /* the 21st, "Grunt 1", is the sprint's push-off (the owner's own ask; its
      cutter keeps it in assets/sfx-source/voice/) */
-  check(`11zd the owner's recordings (${srcs.length} cut here, and the sprint's grunt) are kept as supplied in assets/sfx-source/, none left at the top of the project`,
-    srcs.length === 20 && srcs.every((f) => existsSync(new URL('assets/sfx-source/' + f, root)))
+  check(`11zd the owner's recordings (${srcs.length} cut here -- the 21 less the sprint's grunt, and the splash and chime sent after -- and the sprint's grunt) are kept in assets/sfx-source/, none left at the top of the project`,
+    srcs.length === 22 && srcs.every((f) => existsSync(new URL('assets/sfx-source/' + f, root)))
     && existsSync(new URL('assets/sfx-source/voice/freesound_community-grunt-1-85280.mp3', root))
     && readdirSync(new URL('./', root)).filter((f) => /\.mp3$/i.test(f)).length === 0, srcs.filter((f) => !existsSync(new URL('assets/sfx-source/' + f, root))));
+
+  /* the two sent after: the swim's splash and the points' chime */
+  const SP = OWNER_SOUNDS['swim-splash'];
+  const spIn = SP && SP.parts[SP.names.indexOf('in')], spOut = SP && SP.parts[SP.names.indexOf('out')];
+  check('11ze the swim\'s splash is the owner\'s ("gets in and out of the water"): one file at 24 kHz, IN the whole splash, OUT its slosh after it, each part at its own level (half a hit, a quarter)',
+    !!SP && SP.low && MANIFEST['swim-splash'] === SP.url && !!spIn && !!spOut && spIn[0] === 0 && spOut[0] > spIn[1]
+      && SP.levels[SP.names.indexOf('in')] === 0.5 && SP.levels[SP.names.indexOf('out')] === 0.25 && spIn[2] > 0 && spOut[2] > 0, SP);
+  const swimTab = GD.slice(GD.indexOf('BT_AUDIO.SWIM_SAMPLES ='), GD.indexOf('BT_AUDIO._noteHero = function'));
+  check('11zf ...BT_AUDIO.SWIM_SPLASH is made from its parts, swimSplash plays them at 1, and SWIM_SAMPLES asks for the file with the strokes\'',
+    /OWNER_SOUNDS\['swim-splash'\]/.test(swimTab) && /S\.names\.indexOf\(name\)/.test(swimTab) && /in: part\('in'\), out: part\('out'\)/.test(swimTab)
+      && /var vol = 1;/.test(swimTab) && /SWIM_SAMPLES = \[[^\]]*'swim-splash'/.test(swimTab) && !/'catch-splash', 0, 0\.45/.test(swimTab));
+  check('11zg ...and another player\'s splash at their share of 1 (swimFx.js peerOwn), not the old step-volume multiple',
+    /peerOwn\(_S, on \? 'peerSwimIn' : 'peerSwimOut', BT_AUDIO\.SWIM_SPLASH\[on \? 'in' : 'out'\], 1, fx, fy\)/.test(src('src/rendering/swimFx.js')));
+  const PS = OWNER_SOUNDS['points-spent'];
+  check('11zh points spent chime the owner\'s level-up ("after applying skill stat points"): in the manifest at 24 kHz, the cue at its level, one a batch',
+    !!PS && PS.low && MANIFEST['points-spent'] === PS.url && PS.level === 0.8 && has(EVENT_SOUNDS, 'pointsSpent')
+      && EVENT_SOUNDS.pointsSpent[0][0] === 'points-spent' && Math.abs(EVENT_SOUNDS.pointsSpent[0][3] - PS.vol) < 1e-9 && CUE_GAP_MS.pointsSpent >= 500);
+  const WSC = src('src/networking/wsClient.js');
+  check('11zi ...played on the worker\'s word: its confirmation of a spend (prog3_allocated, and the old stat_allocated), never the press',
+    /cue\('pointsSpent'\)/.test(caseOf(WSC, 'prog3_allocated')) && /cue\('pointsSpent'\)/.test(caseOf(WSC, 'stat_allocated'))
+      && !/pointsSpent/.test(src('src/ui/mobile/sheet/HeroExpanded.jsx')));
 }
 
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);

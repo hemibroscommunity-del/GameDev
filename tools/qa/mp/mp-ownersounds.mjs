@@ -1,4 +1,4 @@
-/* ═══ v2.3.3445: THE OWNER'S RECORDINGS, HEARD ON A PHONE ═══
+/* ═══ v2.3.3457: THE OWNER'S RECORDINGS, HEARD ON A PHONE ═══
  *
  * The owner, 2026-10-18, after the list of sounds that still needed new
  * recordings (docs/SOUND-GAPS.md): "I have the rest of the sounds" -- 21
@@ -27,7 +27,10 @@
  *  10. BroTown's crowd in the square, gone out on the commons; a campfire's
  *      crackle beside it; the sea's surf on its shore; a bed you left let go;
  *  11. the Flame Fields' air is the lava, decoded at 24 kHz;
- *  12. no page errors.
+ *  12. points spent in a batch, as the Points window sends them: the owner's
+ *      level-up chime, once, on the worker's word (the splash the owner sent
+ *      with it is mp-wheelswim's, where a player really swims);
+ *  13. no page errors.
  *
  *   node tools/qa/mp/run.mjs ownersounds
  */
@@ -381,6 +384,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`11. in the Flame Fields its air is the lava (${lava ? lava.key : 'none'}), a loop, decoded at ${lava ? lava.rate : '-'} Hz, mono, over its edges (${lava && lava.edges ? lava.edges.a + '..' + lava.edges.b + ' of ' + lava.len : 'none'}; the whole buffer read: ${lava && lava.ref ? lava.ref.a + '..' + lava.ref.b : '-'})`,
     !!lava && lava.rate === 24000 && lava.ch === 1 && !!lava.edges && !!lava.ref && lava.edges.a === lava.ref.a && lava.edges.b === lava.ref.b, lava);
 
-  rec.ok('12. no page errors', errs.length === 0, errs.slice(0, 4));
+  /* ── 12. points spent: the owner's level-up chime, once a batch ── */
+  await H.devOp(wsPort, 'kit', myId, { what: 'levels' });   /* points to spend */
+  const p3Of = () => P.page.evaluate(() => {
+    const p3 = window._gameState.current.rpg.prog3 || {};
+    return { hp: (p3.alloc && p3.alloc.hp) || 0, pool: p3.pool || 0, shared: p3.shared || 0, poolBy: p3.poolBy || null };
+  });
+  await H.waitFor(P, () => { const p3 = window._gameState.current.rpg.prog3 || {}; return (p3.pool || 0) + (p3.shared || 0); }, (v) => v >= 3, { timeout: 10000, label: 'points' }).catch(() => null);
+  const before = await p3Of();
+  const spent = await cues(async () => {
+    const S = window._gameState.current;
+    /* the Points window's Spend: n spends sent back to back (HeroExpanded run) */
+    for (let i = 0; i < 3; i++) S.channel.send({ type: 'prog3_allocate', payload: { stat: 'hp', cat: 'sword' } });
+    const hp0 = (S.rpg.prog3.alloc && S.rpg.prog3.alloc.hp) || 0;
+    for (let i = 0; i < 40 && (((S.rpg.prog3.alloc && S.rpg.prog3.alloc.hp) || 0) < hp0 + 3); i++) await new Promise((r) => setTimeout(r, 150));
+    await new Promise((r) => setTimeout(r, 600));
+    return (S.rpg.prog3.alloc && S.rpg.prog3.alloc.hp) || 0;
+  });
+  const chimes = named(spent, 'pointsSpent');
+  rec.ok(`12. three points spent at once (hp ${before.hp} -> ${spent.out}; ${before.pool + before.shared} to spend): the owner's level-up chime once (${chimes.length})`,
+    spent.out === before.hp + 3 && chimes.length === 1, { before, spent });
+  const noSpend = await cues(async () => { await new Promise((r) => setTimeout(r, 300)); return true; });
+  rec.ok('12b. ...and nothing without a spend', named(noSpend, 'pointsSpent').length === 0, noSpend);
+
+  rec.ok('13. no page errors', errs.length === 0, errs.slice(0, 4));
   await done();
 }

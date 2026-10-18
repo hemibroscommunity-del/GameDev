@@ -34,7 +34,7 @@ import { queueBlood } from '@/rendering/worldFx.js'; /* v2.3.2712: blood thrown 
 import { applyElemHit, applyHitShove, elemLook, isBurnTick, tickKind } from '@/game/elemHits.js'; /* v2.3.2996: a monster's hit carries its element; v2.3.3014: + the poison's and the storm's ticks; v2.3.3264: + a player's blow's shove */
 import { echoHitSfx, heroHitSfx, earVol, deathVol, shotHitMe } from '@/game/hitSounds.js'; /* v2.3.3001: hits nobody here played, heard; a ball's blow not a sword's; v2.3.3248: a far death, slam or blast heard and felt by distance; v2.3.3343: + was a blocked blow the ball */
 import { cue, cueAt, peerShare, cuePeer } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
-import { hurtGrunt } from '@/game/ownSounds.js'; /* v2.3.3445: your hurt grunt (the owner's recordings) */
+import { hurtGrunt } from '@/game/ownSounds.js'; /* v2.3.3457: your hurt grunt (the owner's recordings) */
 import { peerJump } from '@/game/jump.js'; /* v2.3.3017: another player's jump */
 import { peerShotFlight } from '@/game/peerShots.js'; /* v2.3.3266: another player's shot at their speed and reach */
 import { ARROW_SPEED_PX } from '@/game/projectiles.js'; /* v2.3.3266: ...the bow's own speed */
@@ -617,13 +617,13 @@ export function processGameEvent(type, payload, S, deps) {
             /* Display state rides the friend_sync that accompanies
                every mutation; these are notification hooks (badge
                refresh happens via the store's emit on that sync). */
-            cue('notify');   /* v2.3.3445: a friend's request or yes, heard (the owner's chime) */
+            cue('notify');   /* v2.3.3457: a friend's request or yes, heard (the owner's chime) */
             break;
           case 'friend_dm':
             {
               if (payload && payload.from) {
                 friendsSrv.appendDm(payload.from, payload, false);
-                if (payload.from !== S.myId) cue('notify');   /* v2.3.3445: a friend's message, heard */
+                if (payload.from !== S.myId) cue('notify');   /* v2.3.3457: a friend's message, heard */
               }
               break;
             }
@@ -789,7 +789,7 @@ export function processGameEvent(type, payload, S, deps) {
                  (collect() was beep()s, silent for everyone).  Everyone else's
                  news waits for an announcement chime (docs/SOUND-GAPS.md). */
               if (payload.winnerId && payload.winnerId === S.myId) cue('jackpotWin');
-              else cue('notify');   /* v2.3.3445: everyone else hears the news (the owner's chime) */
+              else cue('notify');   /* v2.3.3457: everyone else hears the news (the owner's chime) */
               break;
             }
           case 'dungeon_started':
@@ -1665,7 +1665,7 @@ export function processGameEvent(type, payload, S, deps) {
           case 'arena_stake_error':
             {
               pushDmgPopup(S, S.player.x, S.player.y - 30, (payload && payload.message) || 'Stake rejected', '#ff5e6c');
-              cue('denied');   /* v2.3.3445: the owner's "denied" tick (a beep(), silent since v2.3.1103) */
+              cue('denied');   /* v2.3.3457: the owner's "denied" tick (a beep(), silent since v2.3.1103) */
               break;
             }
           case 'arena_stake_board':
@@ -1723,7 +1723,7 @@ export function processGameEvent(type, payload, S, deps) {
           case 'guild_quest_error':
             {
               pushDmgPopup(S, S.player.x, S.player.y - 30, (payload && payload.message) || 'Turn-in rejected', '#ff5e6c');
-              cue('denied');   /* v2.3.3445 */
+              cue('denied');   /* v2.3.3457 */
               break;
             }
           case 'inbox_delivered':
@@ -1735,7 +1735,7 @@ export function processGameEvent(type, payload, S, deps) {
                  system message.  A dedicated mail panel can replace this
                  later; the payload shape is docs/specs/inbox-escrow.md. */
               var _inbEntries = (payload && payload.entries) || [];
-              /* v2.3.3445: mail is heard -- the owner's notification chime,
+              /* v2.3.3457: mail is heard -- the owner's notification chime,
                  once for a batch (CUE_GAP_MS), never for the daily rewards'
                  payouts, which have their own news (below) */
               for (var _in = 0; _in < _inbEntries.length; _in++) {
@@ -1913,7 +1913,7 @@ export function processGameEvent(type, payload, S, deps) {
               }]);
               if (setChatLog) setChatLog(_toConsumableArray(S.chatLog));
               pushDmgPopup(S, S.player.x, S.player.y - 55, '📢 ' + (_annText.length > 60 ? _annText.slice(0, 57) + '…' : _annText), '#f5c542', { ttl: 5 });
-              cue('notify');   /* v2.3.3445: the owner's notification chime (a beep(), silent since v2.3.1103) */
+              cue('notify');   /* v2.3.3457: the owner's notification chime (a beep(), silent since v2.3.1103) */
               break;
             }
           /* v2.3.1576: Hemi Bro ownership handshake.  Both are SERVER-emitted
@@ -3021,7 +3021,7 @@ export function processGameEvent(type, payload, S, deps) {
                   var _kLook = elemLook(payload.elem);
                   pushDmgPopup(S, S.player.x, heroPopupY(S), '-' + toDisplayDamage(Math.ceil(_kb)), '#ff5e6c', { iconKey: _kLook ? _kLook.icon : 'heart', taken: true });
                   try { heroHitSfx(S, payload, isWearingArmor()); } catch (e) { /* audio is best-effort */ }
-                  hurtGrunt(S, _kb);   /* v2.3.3445: the blow that fells you is grunted too (game/ownSounds.js) */
+                  hurtGrunt(S, _kb);   /* v2.3.3457: the blow that fells you is grunted too (game/ownSounds.js) */
                 }
                 break;
               }
@@ -3446,7 +3446,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (_dodgedClean) { cue('dodged'); }
               else {
                 try { heroHitSfx(S, payload, isWearingArmor()); } catch (e) { /* audio is best-effort */ }
-                /* v2.3.3445: and you grunt -- a blow that lands, not a block or a
+                /* v2.3.3457: and you grunt -- a blow that lands, not a block or a
                    burn's tick (game/ownSounds.js; the owner's recordings) */
                 if (!payload.blocked && !tickKind(payload)) hurtGrunt(S, payload.dmgTaken);
               }
@@ -3637,7 +3637,7 @@ export function processGameEvent(type, payload, S, deps) {
                    opened, so no invite could be taken up; the invite now raises
                    its own card (ui/panels/ClanInviteCard.jsx, BroTown's sync). */
                 pushDmgPopup(S, S.player.x, S.player.y - 40, '[' + S._pendingClanInvite.clanTag + '] clan invite!', '#a78bfa');
-                cue('notify');   /* v2.3.3445: the owner's notification chime (a beep()) */
+                cue('notify');   /* v2.3.3457: the owner's notification chime (a beep()) */
               }
               break;
             }
@@ -3689,7 +3689,7 @@ export function processGameEvent(type, payload, S, deps) {
                 war.defender.members.push(S.myId);
                 pushDmgPopup(S, S.player.x, S.player.y - 40, '[' + war.challenger.tag + '] declared WAR!', '#ff5e6c');
                 pushDmgPopup(S, S.player.x, S.player.y - 25, 'Battle zone: ' + (((_ZONES$war$zone = ZONES[war.zone]) === null || _ZONES$war$zone === void 0 ? void 0 : _ZONES$war$zone.name) || war.zone), 'rgba(255,255,255,.5)');
-                cue('allianceWar');   /* v2.3.3445: a war declared on you, on the owner's war horn (a beep(), silent) */
+                cue('allianceWar');   /* v2.3.3457: a war declared on you, on the owner's war horn (a beep(), silent) */
                 S.screenShake = 6;
               } else if (war.challenger.tag === S._clanData.tag) {
                 /* We're in the challenger clan — join the war */
@@ -3812,7 +3812,7 @@ export function processGameEvent(type, payload, S, deps) {
             {
               if (payload.target === S.myId) {
                 pushDmgPopup(S, S.player.x, S.player.y - 30, 'Trade declined', '#ff5e6c');
-                cue('denied');   /* v2.3.3445 */
+                cue('denied');   /* v2.3.3457 */
               }
               break;
             }
@@ -4128,7 +4128,7 @@ export function processGameEvent(type, payload, S, deps) {
                 else if (payload.dodged && !(Math.ceil(dmgTaken) > 0)) cue('dodged');
                 else {
                   try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.85 }); } catch (e) {}
-                  hurtGrunt(S, dmgTaken);   /* v2.3.3445: and you grunt, as a monster's blow (game/ownSounds.js) */
+                  hurtGrunt(S, dmgTaken);   /* v2.3.3457: and you grunt, as a monster's blow (game/ownSounds.js) */
                 }
               }
               /* Predict "Killed by X" popup from the (server-resolved
@@ -4576,7 +4576,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (!payload) break;
               if (payload.levy > 0) pushDmgPopup(S, S.player.x, S.player.y - 55, '-' + payload.levy + 'G guard fine!', '#ff5e6c');
               pushDmgPopup(S, S.player.x, S.player.y - 40, 'Gear locked 30m by the guards!', '#ff5e6c');
-              cue('denied');   /* v2.3.3445 */
+              cue('denied');   /* v2.3.3457 */
               /* v2.3.1193: guards were called on me — drop my own red
                  skull.  The threat_response guards branch above does the
                  same via the relay; this private event is the guaranteed
@@ -4764,7 +4764,7 @@ export function processGameEvent(type, payload, S, deps) {
               var _piTs = Date.now();
               if (setParty) setParty({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', partySize: payload.partySize || 1, ts: _piTs });
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🎪 ' + (payload.fromName || 'Someone') + ' invites you to a party!', '#fbbf24');
-              cue('notify');   /* v2.3.3445: the owner's notification chime (a beep()) */
+              cue('notify');   /* v2.3.3457: the owner's notification chime (a beep()) */
               /* ═══ v2.3.1970: AN IGNORED INVITE HAS TO GO AWAY BY ITSELF ═══
                  The server drops the recorded invite after PARTY.INVITE_TTL
                  (party.js, 60 s) and _handlePartyAccept answers a late Join
@@ -4857,7 +4857,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (!payload) break;
               if (payload.error) {
                 pushDmgPopup(S, S.player.x, S.player.y - 30, payload.message || 'Cannot harden', '#ff5e6c');
-                cue('denied');   /* v2.3.3445 */
+                cue('denied');   /* v2.3.3457 */
                 break;
               }
               if (payload.success) {
@@ -4905,7 +4905,7 @@ export function processGameEvent(type, payload, S, deps) {
                  local equip mutation back. */
               var _glMin = payload && payload.until ? Math.max(1, Math.ceil((payload.until - Date.now()) / 60000)) : 30;
               pushDmgPopup(S, S.player.x, S.player.y - 40, 'Gear locked by guards! (' + _glMin + 'm left)', '#ff5e6c');
-              cue('denied');   /* v2.3.3445 */
+              cue('denied');   /* v2.3.3457 */
               break;
             }
           case 'duel_wager_request':

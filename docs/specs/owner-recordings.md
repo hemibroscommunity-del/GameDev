@@ -1,4 +1,4 @@
-# The owner's recordings for the sounds still needed (v2.3.3445)
+# The owner's recordings for the sounds still needed (v2.3.3457)
 
 The owner, 2026-10-18, after the list of sounds that needed new recordings
 (docs/SOUND-GAPS.md): *"I have the rest of the sounds"* -- 21 recordings from
@@ -6,6 +6,11 @@ Pixabay, uploaded to the top of the project. They are kept as supplied in
 `assets/sfx-source/{player,ui,emote,world,npc,voice}/` (CREDITS.md says where
 each came from). "Grunt 1" is the sprint's push-off, the owner's own ask in
 another change (`tools/audio/cut_sprint_grunt.py`); the other 20 are cut here.
+Two more came the same day, in chat: *"Also here's a missing sound effect for
+the player gets in and out of the water"* (universfield's Water Splash) and
+*"Also add this sound effect for after applying skill stat points"*
+(floraphonic's Cute Level Up 1), kept in `assets/sfx-source/player/` and
+`ui/`.
 
 ## How they are cut
 
@@ -36,6 +41,17 @@ another change (`tools/audio/cut_sprint_grunt.py`); the other 20 are cut here.
   crossfade), brought to the river's or the Wind Dunes' wind's loudness as a
   speaker plays them (the RMS of each side), through a soft limit on the few
   peaks.
+- **The swim's splash** (`public/sfx/player/swim-splash.mp3`): one file, two
+  parts, like the townsfolk's hums: going IN the whole splash (0.11 s + 1.20 of
+  the recording: the hit, the slosh, the tail) at half a hit, coming OUT the
+  slosh alone (0.24 s + 0.86, faded in: water running off, no hit) at a
+  quarter. Each part's gain is its level (`OWNER_SOUNDS['swim-splash'].parts`),
+  so `BT_AUDIO.SWIM_SPLASH` plays them at 1.
+- **The points' chime** (`public/sfx/ui/points-spent.mp3`): the rising chime and
+  its ring, 1.6 s, at 0.8 of a hit -- under a level-up's own fanfare
+  (level-up-v1 at its 0.55 is 1.3).
+- Neither has anything a phone plays above 12 kHz (0.08% of the splash's
+  energy, none of the chime's): both are written and decoded at 24 kHz.
 - **The dance** (`public/audio/music/dance-beat.mp3`): four bars of the club
   beat (120 a minute, the dances' own tempo), from just before its first kick,
   twice over, mono (its two sides correlate at 0.999).
@@ -52,6 +68,9 @@ another change (`tools/audio/cut_sprint_grunt.py`); the other 20 are cut here.
 - `loadSample` decodes a FILE once, whatever keys name it: `fish-on-hook` /
   `fishing-fish-on-hook` and `lure-drop` / `fishing-lure-drop` were two copies
   each (~1 MB); `decodedMB()` counts a shared buffer once.
+- The splash and the points' chime are in `SFX_MANIFEST` at 24 kHz too, ~0.36 MB
+  together; the splash's file replaces the catch's splash in `SWIM_SAMPLES`
+  (the catch's stays in the manifest for the fishing).
 - The loops are never in `SFX_MANIFEST`. The land's air (`ZONE_AMBIENT`, the
   `zoneamb-` keys) and the beds (`amb-`) decode at 24 kHz too, while you are
   where they play: the forest 1.5 MB, the lava 1.1, the sea 0.8, the crowd 0.9,
@@ -70,7 +89,7 @@ another change (`tools/audio/cut_sprint_grunt.py`); the other 20 are cut here.
 | Munch, gulp | the eatBus (Quick Eat and the bag's Eat), the Cookhouse's Eat, the old bag's; the bag's Drink | BroTown.jsx, CookPanel, InventoryPanel, ItemDetailPopup |
 | Chat pop | a line in on any lane (room, area, whisper, party); yours out softer | `game/chat.js` (chatReceive / chatSend were silent beeps) |
 | Notification chime | mail (not the daily rewards' payouts), a party or clan invite, a friend's request, yes or message, an announcement, someone else's jackpot; one a second | `gameEvents.js` |
-| "Denied" | see docs/SOUND-GAPS.md "Added in v2.3.3445"; one each 250 ms | the refusals' own code |
+| "Denied" | see docs/SOUND-GAPS.md "Added in v2.3.3457"; one each 250 ms | the refusals' own code |
 | Laugh, snore | the Laugh; Sleep as you lie down and every 3.6 s while asleep -- yours, a player's near you (the peer share), a townsperson's copy | `MOVE_SOUNDS`, `game/moveSounds.js` |
 | The dance's beat | while YOU hold a dance: the music deck's target (`BT_AUDIO.setDanceMusic`, `_danceWant` before the zone and session tracks), its epoch a whole number of its 16 s so the beat sits on the wall clock's half-seconds where the dances bob | `moveSounds.js` `tickDanceMusic` |
 | War horn | each dungeon wave, the arena's start, a war declared on you (clan or alliance) | the cue table (`dungeonWave`, `arenaStart`, `allianceWar`) |
@@ -81,6 +100,8 @@ another change (`tools/audio/cut_sprint_grunt.py`); the other 20 are cut here.
 | Sea surf | the nearest water drawn round you that is not a river or pond (16 looks on rings out to 880 px), full within 180 px | `game/ambientBeds.js` |
 | Town crowd | BroTown's middle, full within 650 px, gone at 1,500 | `ambientBeds.js` |
 | Fire crackle | the nearest burning building (by its heat, `buildingFire.js burningNow`) or lit campfire (yours or another player's), full within 140 px | `ambientBeds.js` |
+| Into and out of the water | swimming begins (the whole splash) or ends (its slosh): yours (BroTown, from `updateWheelSwim`), another swimmer's at their share (swimFx.js `peerOwn`), and climbing out onto a fishing or mining seat | `BT_AUDIO.swimSplash`, `SWIM_SPLASH` |
+| Points spent | the worker's confirmation of a point spent in the Points window (`prog3_allocated`, and the old grid's `stat_allocated`); a batch's confirmations come together, `CUE_GAP_MS` makes them one chime; a spend it refuses answers nothing, and plays nothing | wsClient.js, the cue `pointsSpent` |
 
 A bed's loop starts when its share rises, stops 3 s after it falls silent, and
 its buffer is let go 15 s after that, or at once when you leave the Wheel.
@@ -99,3 +120,6 @@ file's silent edges (`BT_AUDIO._loopOverEdges`).
   by a campfire and on a real shore, a bed let go, the lava at 24 kHz.
 - `tools/qa/mp/mp-cuelevels.mjs`: every new cue's level rendered and held to
   its comment.
+- `tools/qa/mp/mp-wheelswim.mjs`: a real swim, in off a bank and back out: the
+  splash's IN part going in, its OUT part coming out, each played; and
+  `mp-ownersounds` step 12: three points spent at once, one chime.

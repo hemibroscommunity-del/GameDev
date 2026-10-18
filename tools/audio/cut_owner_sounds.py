@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""v2.3.3445: CUT THE OWNER'S RECORDINGS FOR THE SOUNDS STILL NEEDED.
+"""v2.3.3457: CUT THE OWNER'S RECORDINGS FOR THE SOUNDS STILL NEEDED.
 
 The owner, 2026-10-18, after the list of sounds that still needed new
 recordings (docs/SOUND-GAPS.md): "I have the rest of the sounds" -- 21
 recordings, uploaded as they came from Pixabay (CREDITS.md says where).  The
 sources are kept in assets/sfx-source/{player,ui,emote,world,npc,voice}/ as
-supplied; 20 of them are cut here.  Each is longer than the game wants, so this cuts them:
+supplied; 20 of them are cut here, and the two the owner sent after them (a
+splash and a level-up chime, below).  Each is longer than the game wants, so
+this cuts them:
 
 ONE-SHOTS (public/sfx/<group>/<name>.mp3): one window of each recording,
 mono, faded in over a few ms and out over its last part, peak normalised to
@@ -38,6 +40,19 @@ their sparkle at 48 kHz.
   explosion  loud-explosion 425457     0.00 s + 1.80   the blast and its roll-off
   npc-voices hmm-ahh 6426              five "hmm"s     each its own pitch and shape, in ONE file
                                                        (the cue table slices it: NPC_VOICES)
+  points-spent cute-level-up-1 189852  0.00 s + 1.60   the rising chime and its ring (gone under
+                                                       -60 dB by 1.55; nothing above 8 kHz)
+  swim-splash  water-splash 229315     two parts       ONE file: going IN, the whole splash
+                                                       (0.11 s + 1.20: the hit at 0.14, the
+                                                       slosh, the tail), and coming OUT, the
+                                                       slosh alone (0.24 s + 0.86, faded in:
+                                                       water running off, no hit) -- SPLASH
+
+The last two came after the rest, the same day: "Also here's a missing sound
+effect for the player gets in and out of the water" and "Also add this sound
+effect for after applying skill stat points".  Neither has anything a phone
+plays above 12 kHz (0.08% of the splash's energy, none of the chime's), so
+both are written and decoded at 24 kHz.
 
 LOOPS (public/audio/ambient/<name>.mp3): mono 24 kHz, made seamless by
 folding the window's last X seconds over its first (an equal-power
@@ -110,6 +125,8 @@ ONE_SHOTS = [
     ('war-horn', 'world/soundmarker33-war-horn-and-drums-512545.mp3', 6.08, 2.40, 0.010, 0.60, 'low', 1.2, 'world'),
     ('boss-roar', 'world/dragon-studio-epic-dragon-roar-364481.mp3', 0.04, 2.40, 0.010, 0.50, 'low', 1.5, 'monster'),
     ('explosion', 'world/dragon-studio-loud-explosion-425457.mp3', 0.00, 1.80, 0.003, 0.45, 'low', 1.4, 'monster'),
+    # under a level-up's own fanfare (level-up-v1 at LevelUpBurst's 0.55 is 1.3)
+    ('points-spent', 'ui/floraphonic-cute-level-up-1-189852.mp3', 0.00, 1.60, 0.002, 0.50, 'low', 0.8, 'ui'),
 ]
 # Two recordings are almost all below what a phone's speaker plays (measured:
 # 99% of their energy under 100 Hz, where the speaker gives little; the "ear"
@@ -140,6 +157,17 @@ VOICES = [   # start, length -- f0 measured over the loudest 100 ms
 ]
 VOICE_GAP = 0.06
 VOICE_LEVEL = 0.5
+
+# the swim's splash: one file, two parts, each at its own level (its vol in
+# the part), read by BT_AUDIO.SWIM_SPLASH.  The old splash -- slices of the
+# fishing recordings -- played at 0.10 of a hit going in and 0.05 coming out,
+# which the owner took for no sound at all; IN is half a hit, OUT half that.
+SPLASH_SRC = 'player/universfield-water-splash-229315.mp3'
+SPLASH = [   # part, start, length, fade in, fade out, level
+    ('in', 0.11, 1.20, 0.004, 0.35, 0.5),
+    ('out', 0.24, 0.86, 0.015, 0.35, 0.25),
+]
+SPLASH_GAP = 0.06
 
 # name, source, start, length, crossfade, target ('wind' | 'river'), kbps
 LOOPS = [
@@ -326,6 +354,31 @@ def main():
                            'parts': [[o, l, v] for (o, l), v in zip(offs, vvol)]}
     print(f'  npc-voices   {len(VOICES)} hums -> {os.path.getsize(vpath) / 1024 if os.path.exists(vpath) else 0:5.1f} KB, '
           f'parts {offs}, vols {vvol}')
+    # the swim's splash: the same, its two parts at their own levels
+    sparts, at, soffs = [], 0.0, []
+    for _part, start, length, fi, fo, _level in SPLASH:
+        w = fade(window(SPLASH_SRC, start, length, LOW), fi, fo, LOW)
+        sparts.append(w)
+        sparts.append(np.zeros(int(SPLASH_GAP * LOW)))
+        soffs.append([round(at, 3), round(length, 3)])
+        at += length + SPLASH_GAP
+    sw = np.concatenate(sparts)
+    sw *= PEAK_FILE / max(1e-9, np.abs(sw).max())   # one gain: the parts keep their sizes
+    spath = os.path.join(ROOT, 'public', 'sfx', 'player', 'swim-splash.mp3')
+    if not scan:
+        encode(sw, LOW, spath, 64)
+    sback = load(spath) if not scan else load_resampled(sw, LOW)
+    svol = []
+    for (off, length), (_p, _s, _l, _fi, _fo, level) in zip(soffs, SPLASH):
+        seg = sback[int(off * SR):int((off + length) * SR)]
+        v = level * ref / max(1e-9, loudest50(seg))
+        svol.append(round(min(v, PEAK_PLAY / max(1e-9, np.abs(seg).max())), 3))
+    table['swim-splash'] = {'url': '/sfx/player/swim-splash.mp3', 'low': True,
+                            'dur': round(len(sback) / SR, 3),
+                            'names': [p[0] for p in SPLASH], 'levels': [p[5] for p in SPLASH],
+                            'parts': [[o, l, v] for (o, l), v in zip(soffs, svol)]}
+    print(f'  swim-splash  {len(SPLASH)} parts -> {os.path.getsize(spath) / 1024 if os.path.exists(spath) else 0:5.1f} KB, '
+          f'parts {soffs}, vols {svol}')
     # the loops
     wind_db, river_db = side_rms_db(WIND), side_rms_db(RIVER)
     for name, src, start, length, xf, target, kbps in LOOPS:
@@ -366,12 +419,13 @@ def main():
     if scan:
         return 0
     with open(DATA, 'w') as fh:
-        fh.write('/* GENERATED by tools/audio/cut_owner_sounds.py (v2.3.3445) -- do not edit by hand.\n'
+        fh.write('/* GENERATED by tools/audio/cut_owner_sounds.py (v2.3.3457) -- do not edit by hand.\n'
                  '   The owner\'s recordings of 2026-10-18 (docs/SOUND-GAPS.md): each one-shot\'s\n'
                  '   address, the volume at which it plays at its LEVEL (times sword-hit3 at the\n'
                  '   melee hit\'s 0.55 x HIT_GAIN, the loudest 50 ms, plain RMS -- the cue table\'s\n'
                  '   "1.0"), its length in seconds, and whether it is decoded at 24 kHz (LOW_RATE_SFX).\n'
-                 '   The townsfolk\'s voices are one file: each part [offset, length, vol].\n'
+                 '   The townsfolk\'s voices and the swim\'s splash are one file each: each part\n'
+                 '   [offset, length, vol] (the splash\'s by `names`: in, out).\n'
                  '   The loops: address, whole-file RMS in dBFS, length; never in SFX_MANIFEST. */\n')
         fh.write('export const OWNER_SOUNDS = ' + json.dumps(table, indent=2) + ';\n\n')
         fh.write('export const OWNER_LOOPS = ' + json.dumps(loops, indent=2) + ';\n\n')

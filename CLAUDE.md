@@ -719,7 +719,7 @@ remnant to migrate server-side, not a mode to preserve.
       window: no <button>, so the delegate never heard them); `sound-cues`
       §10; `mp-cuelevels` lists the cues kept quiet on purpose (`QUIET_OK`:
       /roll and /flip at Ace's toss level, the owner's call).
-    - since v2.3.3445 THE OWNER'S RECORDINGS FOR THE REST -- the owner: "I
+    - since v2.3.3457 THE OWNER'S RECORDINGS FOR THE REST -- the owner: "I
       have the rest of the sounds" (21 from Pixabay, uploaded to the top of the
       project; kept as supplied in `assets/sfx-source/`, CREDITS.md):
       - cut by `tools/audio/cut_owner_sounds.py` (GENERATED
@@ -745,7 +745,15 @@ remnant to migrate server-side, not a mode to preserve.
         24 kHz (`LOW_RATE_SFX`, `zoneamb-`/`amb-`, an OfflineAudioContext), and
         `loadSample` decodes a file once whatever keys name it (fish-on-hook
         and lure-drop were two copies, ~1 MB) -- the wind 11 -> 5.5 MB;
-      - `sound-cues` §11, `mp-ownersounds`, `mp-cuelevels`:
+      - and the two sent after the rest: the SWIM'S SPLASH ("a missing sound
+        effect for the player gets in and out of the water": the old one
+        played at a tenth of a hit) -- one file, IN the whole splash at half a
+        hit, OUT its slosh at a quarter (`SWIM_SPLASH` from
+        `OWNER_SOUNDS['swim-splash'].parts`, played at 1, a peer's at their
+        share of 1); and the POINTS' CHIME ("for after applying skill stat
+        points"), the cue `pointsSpent` on the worker's `prog3_allocated` /
+        `stat_allocated`, one a batch (`CUE_GAP_MS`);
+      - `sound-cues` §11, `mp-ownersounds`, `mp-cuelevels`, `mp-wheelswim`:
         docs/specs/owner-recordings.md; what is still needed:
         docs/SOUND-GAPS.md.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and

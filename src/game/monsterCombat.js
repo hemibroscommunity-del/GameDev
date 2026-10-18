@@ -1295,7 +1295,7 @@ export function updateMonsterCombat(S, deps) {
           BT_AUDIO.setCombatIntensity(nearestMonsterDist < 100);
 
           /* ═══ LOW HP HEARTBEAT ═══
-             v2.3.3445: the owner's heartbeat, on a clock of its own
+             v2.3.3457: the owner's heartbeat, on a clock of its own
              (game/ownSounds.js tickHeartbeat, BroTown's loop).  This was a
              frame-counted timer of two beep()s, silent since v2.3.1103. */
 

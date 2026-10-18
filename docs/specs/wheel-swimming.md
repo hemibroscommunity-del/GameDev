@@ -138,6 +138,14 @@ Nothing new and nothing synthesised.
   plop. One plays each stroke, never the same one twice running.
 - **Going in**: the catch's splash, at twice a step's level.
 - **Coming out**: the plop.
+- **Since v2.3.3457 the splash is the owner's own recording** -- "a missing
+  sound effect for the player gets in and out of the water": the old splash
+  and plop played at 0.10 and 0.05 of a melee hit, too quiet to be heard as
+  anything. One file (`public/sfx/player/swim-splash.mp3`, 24 kHz), two parts
+  (`BT_AUDIO.SWIM_SPLASH`, from `OWNER_SOUNDS['swim-splash']`): going in the
+  whole splash at half a hit, coming out its slosh alone at a quarter -- yours,
+  another swimmer's (`peerOwn`, their share of 1) and the climb out onto a
+  seat. `docs/specs/owner-recordings.md`; `mp-wheelswim` checks both parts.
 - **Levels**: each slice was brought to footstep-v3's loudness, measured the
   `PROP_SOUNDS` way (loudest 50 ms, plain and A-weighted), so
   `SWIM_STEP_VOL` 0.15 is a step's own level.
@@ -145,8 +153,9 @@ Nothing new and nothing synthesised.
   returns `'swim'`, and `BT_AUDIO.footstep` notes it and plays nothing.
   `footstepSurface` now reads the ground at your boots rather than the
   body's centre, which heard the ground ~52 px ahead when walking north.
-- `loadGroundSteps` also asks for the three samples, so a quick dip before
-  the manifest has loaded is not silent.
+- `loadGroundSteps` also asks for the three samples (`SWIM_SAMPLES`: the
+  splash's file in place of the catch's since v2.3.3457), so a quick dip
+  before the manifest has loaded is not silent.
 
 ## Tests
 

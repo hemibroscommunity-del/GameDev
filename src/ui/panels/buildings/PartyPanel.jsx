@@ -1233,7 +1233,7 @@ export function PartyPanel(props) {
         return;
       }
       if (R.coins < arenaBetAmount) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#D95C54'); cue('denied');   /* v2.3.3445: heard */
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#D95C54'); cue('denied');   /* v2.3.3457: heard */
         return;
       }
       /* Check if already bet on this tournament */
@@ -1744,7 +1744,7 @@ export function PartyPanel(props) {
           return;
         }
         if (R.coins < amt) {
-          pushDmgPopup(stateRef.current, S.player.x, S.player.y - 30, 'Not enough gold!', '#D95C54'); cue('denied');   /* v2.3.3445: heard */
+          pushDmgPopup(stateRef.current, S.player.x, S.player.y - 30, 'Not enough gold!', '#D95C54'); cue('denied');   /* v2.3.3457: heard */
           return;
         }
         R.coins -= amt;

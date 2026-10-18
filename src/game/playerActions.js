@@ -223,7 +223,7 @@ export function specialAttack(S) {
     var isTutorialSwipe = (S._tutorialStep || 0) === 4;
     if (!isTutorialSwipe && (R.mana || 0) < manaCost) {
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'No mana!', '#3498DB', { ts: now });
-      cue('denied');   /* v2.3.3445: a refusal is heard (the owner's "denied" tick) */
+      cue('denied');   /* v2.3.3457: a refusal is heard (the owner's "denied" tick) */
       return;
     }
     if (!isTutorialSwipe) {

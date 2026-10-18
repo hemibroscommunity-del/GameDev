@@ -1,4 +1,4 @@
-/* ═══ v2.3.3445: YOUR BODY, HEARD ═══
+/* ═══ v2.3.3457: YOUR BODY, HEARD ═══
  *
  * The owner, 2026-10-18: "I have the rest of the sounds" -- among them three
  * grunts and a heartbeat, for two rows of docs/SOUND-GAPS.md's list of what
