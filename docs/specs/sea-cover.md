@@ -1,4 +1,4 @@
-# The ground under open sea is not drawn (v2.3.3423)
+# The ground under open sea is not drawn (v2.3.3438)
 
 The owner, 2026-10-18: *"I'd like you to iterate on what best improves
 framerate without loss of quality (or negligible loss) for phone gameplay

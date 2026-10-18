@@ -1,10 +1,10 @@
-/* ═══ v2.3.3423: THE GROUND UNDER OPEN SEA IS NOT DRAWN ═══
+/* ═══ v2.3.3438: THE GROUND UNDER OPEN SEA IS NOT DRAWN ═══
  *
  * The owner, 2026-10-18: "iterate on what best improves framerate without
  * loss of quality (or negligible loss) for phone gameplay (iPhone, android)".
  * A piece of open sea is covered whole by its moving water's quad at full
  * strength, so its ground sprite was drawn for nothing (wheelWater.js, the
- * v2.3.3423 header).  On a phone viewport, against a real worker, at the
+ * v2.3.3438 header).  On a phone viewport, against a real worker, at the
  * Wind Dunes' first coast (mp-wheelwaves' spot: sand, the shallows and the
  * sea north of it):
  *   1. pieces of open sea are laid there and their ground is hidden while
