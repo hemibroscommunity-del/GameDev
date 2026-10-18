@@ -69,7 +69,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       lit.every((r) => r && r.gl != null && r.gl >= 90), lit);
     rec.ok('...within 3 points of the old way, every sample', lit.every((r) => r && r.gl != null && Math.abs(r.gl - r.image) <= 3), lit.map((r) => r && [r.gl, r.image]));
 
-    /* v2.3.3380: after a context's first sample, nothing asks the GPU for
+    /* v2.3.3405: after a context's first sample, nothing asks the GPU for
        its errors (gl.getError waits for the GPU side to catch up: ~10 ms a
        sample here, every 5 s) -- counted on the renderer's own context over
        three more samples, which still read the world lit */
