@@ -11,6 +11,7 @@ import { _typeof } from '@/lib/babelHelpers.js';
 import { emoteKind, emotesLive, EMOTE_COOLDOWN_MS } from '@/game/emotes.js'; /* v2.3.3391 */
 import { moveKind, EMOTE_MOVES, EMOTE_HOLD_IDS } from '@/game/emoteMoves.js'; /* v2.3.3392: your bro moves */
 import { swimRefused, airRefused } from '@/game/combatHelpers.js'; /* v2.3.3392 */
+import { seasonOn } from '@/game/season.js'; /* v2.3.3395 */
 
 export function sendEmote(S, emoji, deps) {
   var setShowEmotes = deps.setShowEmotes;
@@ -68,6 +69,8 @@ export function sendMove(S, id, deps) {
   if (setShowEmotes) setShowEmotes(false);
   var kind = moveKind(id);
   if (!kind || !movesLive(S) || !S.player) return false;
+  /* v2.3.3395: a season's move only in its season (game/season.js) */
+  if (!seasonOn(EMOTE_MOVES[id].season)) return false;
   if (S.player.dead || S._dead || S._extraction || S._sleeping) return false;
   if (swimRefused(S) || airRefused(S)) return false;
   var now = Date.now();

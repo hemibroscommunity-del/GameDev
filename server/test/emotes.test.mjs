@@ -346,7 +346,7 @@ const ARRIVAL = { x: 21504, y: 21792 };
   }
   /* a dance keeps the wall's beat: two phones that saw it start at different
      times draw the same frame once both have settled in */
-  for (const id of ['bounce', 'robot', 'sprinkler']) {
+  for (const id of ['bounce', 'robot', 'sprinkler', 'zombie']) {
     const now = 1700000012345;
     check('7c ' + id + ' is the same frame on two phones that saw it start 0.8 s apart',
       JSON.stringify(M.holdFrame(id, now, now - 3000)) === JSON.stringify(M.holdFrame(id, now, now - 2200)));
@@ -388,8 +388,9 @@ const ARRIVAL = { x: 21504, y: 21792 };
   for (const [txt, want] of Object.entries(sl)) {
     check('7g slashMove(' + JSON.stringify(txt) + ') is ' + JSON.stringify(want), M.slashMove(txt) === want, M.slashMove(txt));
   }
-  check('7h moveKind knows only its twelve', M.moveKind('wave') === 'once' && M.moveKind('sit') === 'hold'
-    && M.moveKind('__proto__') === null && M.moveKind('toString') === null && M.moveKind(5) === null && M.EMOTE_MOVE_IDS.length === 12);
+  check('7h moveKind knows only its twelve and Halloween\'s Zombie Shuffle (v2.3.3395)', M.moveKind('wave') === 'once' && M.moveKind('sit') === 'hold'
+    && M.moveKind('zombie') === 'hold' && M.EMOTE_MOVES.zombie.season === 'halloween'
+    && M.moveKind('__proto__') === null && M.moveKind('toString') === null && M.moveKind(5) === null && M.EMOTE_MOVE_IDS.length === 13);
   check('7i a held pose wins over a moment, and nothing is ZERO',
     JSON.stringify(M.emoteFrameFor({ id: 'wave', at: 0 }, 'sit', 1000, 5000)) === JSON.stringify(M.holdFrame('sit', 5000, 1000))
     && M.emoteFrameFor(null, null, 0, 5) === M.EMOTE_ZERO);

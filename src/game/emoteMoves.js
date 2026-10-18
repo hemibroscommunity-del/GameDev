@@ -54,6 +54,9 @@ export const EMOTE_MOVES = Object.freeze({
   bounce: { kind: 'hold', dance: true, name: 'Bro Bounce', icon: '🕺', pop: '🎵', every: 2000 },
   robot: { kind: 'hold', dance: true, name: 'Robot', icon: '🤖', pop: '🎶', every: 2000 },
   sprinkler: { kind: 'hold', dance: true, name: 'Sprinkler', icon: '💦', pop: '🎵', every: 2000 },
+  /* v2.3.3395: Halloween week's dance (game/season.js): its tile shows only
+     then; the worker keeps it any day (a look, never a rule) */
+  zombie: { kind: 'hold', dance: true, name: 'Zombie Shuffle', icon: '🧟', pop: '🎃', every: 2400, season: 'halloween' },
 });
 export const EMOTE_MOVE_IDS = Object.freeze(Object.keys(EMOTE_MOVES));
 export const EMOTE_ONCE_IDS = Object.freeze(EMOTE_MOVE_IDS.filter((k) => EMOTE_MOVES[k].kind === 'once'));
@@ -69,6 +72,7 @@ const SLASH = Object.freeze({
   wave: 'wave', hi: 'wave', laugh: 'laugh', lol: 'laugh', flex: 'flex', shrug: 'shrug',
   facepalm: 'facepalm', cheer: 'cheer', sit: 'sit', sleep: 'sleep', nap: 'sleep', flop: 'flop',
   dance: 'bounce', bounce: 'bounce', robot: 'robot', sprinkler: 'sprinkler',
+  zombie: 'zombie', /* v2.3.3395 */
 });
 export function slashMove(text) {
   if (typeof text !== 'string') return null;
@@ -155,6 +159,13 @@ export function holdFrame(id, now, startedAt) {
       }
       const u = (cycle - DANCE_BEAT_MS * 3) / (DANCE_BEAT_MS * 3);
       return { hop: 0, dx: 0, rot: (0.21 - 0.42 * u) * inK, kx: 1, ky: 1 };
+    }
+    case 'zombie': {  /* v2.3.3395: a slow lurch, leaning in, a foot dragged every two beats */
+      const step = (now % (DANCE_BEAT_MS * 2)) / (DANCE_BEAT_MS * 2);
+      const side = Math.floor(now / (DANCE_BEAT_MS * 2)) % 2 ? -1 : 1;
+      const drag = Math.sin(Math.PI * step);
+      return { hop: 2 * drag * inK, dx: side * 6 * (step - 0.5) * inK,
+        rot: (0.14 + side * 0.07 * drag) * inK, kx: 1, ky: 1 - 0.05 * drag * inK };
     }
     default:
       return null;
