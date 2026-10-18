@@ -12,6 +12,12 @@
  *                     for the one <img> its frames' bases are read off) }
  *                   or { id, ok: false, error } -- the page then loads as a
  *                   picture, as before
+ *
+ * v2.3.3464: and one palette PNG on its own (the farm's ground, its pictures
+ * and the pages of the sheets it borrows: paletteLoad.js):
+ *
+ *   { id, png }  -> { id, ok: true, w, h, stride, n, idx, rgb, alpha }
+ *                   or { id, ok: false, error } -- loaded as a picture then
  */
 import { decodePng8 } from './png8Decode.js';
 
@@ -25,6 +31,16 @@ function imageUrlOf(sheetUrl, image) {
 self.onmessage = async (ev) => {
   const m = ev.data || {};
   try {
+    if (m.png) {
+      const pr = await fetch(new URL(m.png, self.location.href).href);
+      if (!pr.ok) throw new Error('picture ' + pr.status);
+      const dec = await decodePng8(new Uint8Array(await pr.arrayBuffer()), undefined, 4);
+      if (!dec) throw new Error('not a palette PNG');
+      const rgb = dec.rgb.slice(), alpha = dec.alpha;
+      self.postMessage({ id: m.id, ok: true, w: dec.w, h: dec.h, stride: dec.stride, n: dec.n,
+        idx: dec.idx, rgb, alpha }, [dec.idx.buffer, rgb.buffer, alpha.buffer]);
+      return;
+    }
     const jr = await fetch(new URL(m.url, self.location.href).href);
     if (!jr.ok) throw new Error('sheet ' + jr.status);
     const data = await jr.json();

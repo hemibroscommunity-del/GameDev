@@ -25,8 +25,19 @@ copy of the farm:
 Deterministic: the same plan gives the same picture, every run.  Written as
 lossless WebP (the maps' format, tiledMaps.js IMAGE_ZONE_MAPS; build_ground_
 colors.py reads it for the dust).  docs/specs/farm-walk.md.
+
+v2.3.3464: and again as a palette PNG beside it (farm_v2.png), the same
+pixels as colour numbers -- the ground is laid from the swatches' own colours,
+246 of them, so it fits a palette of 256 -- which the game keeps on the
+graphics chip at one byte a pixel instead of four (src/rendering/
+paletteLoad.js, the way BroTown's ground is kept since v2.3.3190).  The stamp
+beside this tool (farm_ground_stamp.json) records both files and the pixels
+they hold, and server/test/palette.test.mjs fails if the PNG is not the
+WebP's exact twin.  A ground of more than 256 colours writes no PNG (and
+deletes an old one), and the game draws the WebP.
 """
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -129,6 +140,33 @@ def bake(plan):
     }
 
 
+def palette_twin(im, out):
+    """v2.3.3464: the picture as a palette PNG (8 bits a pixel, colour type 3)
+    beside `out`, its colours exact and in a fixed order (by value).  Returns
+    (its path, how many colours, sha256 of the RGB pixels), the path None when
+    there are more than 256 colours (and any old twin is deleted)."""
+    a = np.asarray(im.convert('RGB'))
+    flat = (a[..., 0].astype(np.uint32) << 16) | (a[..., 1].astype(np.uint32) << 8) | a[..., 2]
+    cols, inv = np.unique(flat, return_inverse=True)
+    png = os.path.splitext(out)[0] + '.png'
+    if len(cols) > 256:
+        if os.path.exists(png):
+            os.remove(png)
+        return None, len(cols), None
+    p = Image.fromarray(inv.reshape(flat.shape).astype(np.uint8), 'P')
+    pal = []
+    for c in cols:
+        pal += [int(c >> 16) & 255, int(c >> 8) & 255, int(c) & 255]
+    p.putpalette(pal)
+    p.save(png, 'PNG', optimize=True)
+    return png, len(cols), hashlib.sha256(a.tobytes()).hexdigest()
+
+
+def sha_file(path):
+    with open(path, 'rb') as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', default=None)
@@ -140,6 +178,20 @@ def main():
     im.save(out, 'WEBP', lossless=True, method=6, quality=100)
     print('wrote', os.path.relpath(out, REPO), st['size'], '%.1f%% yard, %.1f%% path' % (st['yard'] * 100, st['path'] * 100),
           '%d KB' % (os.path.getsize(out) // 1024))
+    png, n, rgb = palette_twin(im, out)
+    if png:
+        print('wrote', os.path.relpath(png, REPO), '%d colours' % n, '%d KB' % (os.path.getsize(png) // 1024))
+    else:
+        print('no palette PNG: %d colours, more than 256 -- the game draws the WebP' % n)
+    if not a.out:
+        stamp = {
+            'webp': os.path.relpath(out, REPO), 'webpSha256': sha_file(out),
+            'png': os.path.relpath(png, REPO) if png else None, 'pngSha256': sha_file(png) if png else None,
+            'w': im.width, 'h': im.height, 'colours': n, 'rgbSha256': rgb,
+        }
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'farm_ground_stamp.json'), 'w') as f:
+            json.dump(stamp, f, indent=1)
+            f.write('\n')
     if a.preview:
         im.resize((im.width // 4, im.height // 4), Image.LANCZOS).save(a.preview)
 

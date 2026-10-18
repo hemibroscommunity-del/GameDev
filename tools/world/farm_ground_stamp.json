@@ -1,0 +1,10 @@
+{
+ "webp": "public/maps/farm_v2.webp",
+ "webpSha256": "a0ed6b9ac0d0567ce44ad9e07d8c33d74442880e478cc0fd2fb6a51a35f4b12a",
+ "png": "public/maps/farm_v2.png",
+ "pngSha256": "c662b94b04e48728dad4555f95ef366edbfb1e219a58486293b749823afb2d3c",
+ "w": 2048,
+ "h": 2816,
+ "colours": 246,
+ "rgbSha256": "ab78c4fa618c0f0b24588a765f2dbff43e6165b9b0e14eb101efa69f586b901f"
+}

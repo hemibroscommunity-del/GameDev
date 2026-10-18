@@ -16,7 +16,9 @@
  *                          covered    the middle of it answers as something
  *                                     else (another control or a card over it)
  *                          small      under 32 CSS px on a touch screen (44 is
- *                                     Apple's own guide, noted separately)
+ *                                     Apple's own guide, noted separately),
+ *                                     measured by the box a press lands in --
+ *                                     an invisible ring round it counts
  *                          clipped    its words run past its own edge
  *                          overlap    drawn over by a control that lets the
  *                                     press through (the bell over a window)
@@ -171,6 +173,38 @@ export function auditControls(opts) {
     }
     return v;
   };
+  /* v2.3.3460: the box a press lands in, when it is bigger than what is
+     drawn.  A control's own ::before or ::after, placed round it, takes its
+     presses as the control: every window's ✕ is drawn 28 px inside an
+     invisible ring that makes it 44 (game.css .bt-inspect-close::after,
+     v2.3.1235), the pinned quest card's small buttons likewise -- measuring
+     only the drawing, the check called all seventeen building windows' ✕
+     small for a finger.  Counted only as the browser would hit it: a
+     pseudo-element with content, absolutely placed on a control that is
+     itself placed (so the control is what it is placed in), taking presses,
+     and only as far as the control's scrolling or clipping ancestors let it
+     show.  Null when nothing grows the box. */
+  const touchBox = (el, r) => {
+    const ecs = getComputedStyle(el);
+    if (ecs.position === 'static') return null;
+    const px = (s) => (/^-?[\d.]+px$/.test(s) ? parseFloat(s) : null);
+    let x0 = r.left, y0 = r.top, x1 = r.right, y1 = r.bottom;
+    for (const which of ['::before', '::after']) {
+      const p = getComputedStyle(el, which);
+      if (!p || p.content === 'none' || p.content === 'normal' || p.display === 'none') continue;
+      if (p.position !== 'absolute' || p.pointerEvents === 'none' || p.visibility === 'hidden') continue;
+      const L = px(p.left), T = px(p.top), R = px(p.right), Bm = px(p.bottom);
+      if (L === null || T === null || R === null || Bm === null) continue;
+      const bl = parseFloat(ecs.borderLeftWidth) || 0, bt = parseFloat(ecs.borderTopWidth) || 0;
+      const br = parseFloat(ecs.borderRightWidth) || 0, bb = parseFloat(ecs.borderBottomWidth) || 0;
+      x0 = Math.min(x0, r.left + bl + L); y0 = Math.min(y0, r.top + bt + T);
+      x1 = Math.max(x1, r.right - br - R); y1 = Math.max(y1, r.bottom - bb - Bm);
+    }
+    if (x1 - x0 <= r.width + 1 && y1 - y0 <= r.height + 1) return null;
+    const v = visibleOf(el, { left: x0, top: y0, right: x1, bottom: y1 });
+    const w = Math.max(r.width, v ? v.right - v.left : 0), h = Math.max(r.height, v ? v.bottom - v.top : 0);
+    return (w <= r.width + 1 && h <= r.height + 1) ? null : { w, h };
+  };
   let num = 0;
   for (const { el, r } of kept) {
     const shownR = visibleOf(el, r);
@@ -265,11 +299,15 @@ export function auditControls(opts) {
         }
       }
     }
-    /* size against a finger (a computer's mouse is finer) */
-    const m = Math.min(r.width, r.height);
-    if (touch && m < 32) issues.push({ kind: 'small', text: 'small for a finger: ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' px (aim for 44)' });
-    else if (touch && m < 44) issues.push({ kind: 'tight', text: Math.round(r.width) + 'x' + Math.round(r.height) + ' px, under the 44 px touch guide' });
-    else if (!touch && m < 16) issues.push({ kind: 'small', text: 'small for a mouse: ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' px' });
+    /* size against a finger (a computer's mouse is finer), by the box the
+       press lands in (touchBox) */
+    const hit = touchBox(el, r);
+    const drawnWH = Math.round(r.width) + 'x' + Math.round(r.height);
+    const sizeWords = hit ? 'drawn ' + drawnWH + ', touch area ' + Math.round(hit.w) + 'x' + Math.round(hit.h) + ' px' : drawnWH + ' px';
+    const m = hit ? Math.min(hit.w, hit.h) : Math.min(r.width, r.height);
+    if (touch && m < 32) issues.push({ kind: 'small', text: 'small for a finger: ' + sizeWords + ' (aim for 44)' });
+    else if (touch && m < 44) issues.push({ kind: 'tight', text: sizeWords + ', under the 44 px touch guide' });
+    else if (!touch && m < 16) issues.push({ kind: 'small', text: 'small for a mouse: ' + sizeWords });
     /* its own words run past its edge */
     if ((cs => cs.overflow === 'hidden' || cs.textOverflow === 'ellipsis')(getComputedStyle(el))
       && (el.scrollWidth > el.clientWidth + 2) && (el.innerText || '').trim()) {
@@ -280,6 +318,8 @@ export function auditControls(opts) {
     out.push({
       n: num, name: nameOf(el), tag: el.tagName.toLowerCase(),
       x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height),
+      /* the touch area, when it is bigger than the drawing (touchBox) */
+      ...(hit ? { tw: Math.round(hit.w), th: Math.round(hit.h) } : {}),
       /* the part that shows, when its list has scrolled some of it away: the
          box is drawn there, not over whatever lies past the list's edge */
       vis: (shownR.left > r.left + 1 || shownR.top > r.top + 1 || shownR.right < r.right - 1 || shownR.bottom < r.bottom - 1)

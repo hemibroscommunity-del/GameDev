@@ -11,7 +11,8 @@
  *   0. the sound is up and the new cues' samples were decoded on the loading
  *      screen;
  *   1. the Gambling Den: the dice won and lost, coins into the weekly pot, the
- *      pot drawn for you -- and nothing when it is someone else's;
+ *      pot drawn for you -- and only the notification chime when it is someone
+ *      else's (v2.3.3462);
  *   2. the arena: a stake put down, paid, lost;
  *   3. a guild's quest turned in: the turn-in chime;
  *   4. a duel challenge and a trade invite (a second challenge at once held
@@ -159,8 +160,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const potIn = await ev('jackpot_state', { pool: 900, yourTickets: 2, deposited: 100 });
   const potMine = await ev('jackpot_result', { period: 'qa', amount: 900, winnerId: myId, winnerName: 'Earful' });
   const potTheirs = await ev('jackpot_result', { period: 'qa', amount: 900, winnerId: 'bp_someoneelse', winnerName: 'Someone' });
+  /* v2.3.3462: someone else's pot is news, the owner's chime (it was silent) */
   rec.ok(`1b. the weekly pot: coins in (${names(potIn)}), drawn for you (${names(potMine)}), drawn for someone else (${names(potTheirs)})`,
-    only(potIn, 'betIn') && only(potMine, 'jackpotWin') && potTheirs.cues.length === 0, { potIn, potMine, potTheirs });
+    only(potIn, 'betIn') && only(potMine, 'jackpotWin') && only(potTheirs, 'notify'), { potIn, potMine, potTheirs });
 
   /* ── 2. the arena's stakes ── */
   const stIn = await ev('arena_stake_placed', { amount: 50, targetName: 'Bob' });

@@ -2641,8 +2641,8 @@ const EMOTE_POP_PX = 30;
 /* ═══ v2.3.3395: HALLOWEEN WEEK'S SPEECH BUBBLES (game/season.js) ═══
    The fun & social plan's "spooky bubble skin", drawn in code (no picture to
    load): a night-purple bubble ringed in pumpkin orange, its words cream,
-   24 October to 1 November by the phone's calendar.  Made once, as the
-   everyday gradient is. */
+   18 October (the 24th until v2.3.3463) to 1 November by the phone's
+   calendar.  Made once, as the everyday gradient is. */
 let _spookyBubbleGrad = null;
 const SPOOKY_BUBBLE = Object.freeze({ stroke: 0xFF8A1F, text: '#FFE7C2' });
 function spookyBubbleGradient() {
