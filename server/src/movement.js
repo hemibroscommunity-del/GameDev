@@ -249,7 +249,8 @@ export const movementMethods = {
       const ps = this.playerState[id];
       const f = ps && ps._mvFollow;
       if (!on || !f || ps.z !== f.z || ps.dead || ps.dying
-          || typeof ps.x !== 'number' || typeof ps.y !== 'number') {
+          || typeof ps.x !== 'number' || typeof ps.y !== 'number'
+          || this._testMode(ps)) {   /* v2.3.3430: nothing to follow in test mode (testmode.js) */
         if (ps) ps._mvFollow = undefined;
         set.delete(id);
         continue;
@@ -301,7 +302,9 @@ export const movementMethods = {
      concerned -- the phone says so AND it paid for a roll that is not over */
   _rollOn(ps, now) {
     if (!ps || !ps.dodging) return false;
-    if (this._rollWindowOff()) return true;
+    /* v2.3.3430: ...and a test-mode character's claim is believed, as before
+       the window (testmode.js) */
+    if (this._rollWindowOff() || this._testMode(ps)) return true;
     return (now || Date.now()) < (ps._rollUntil || 0);
   },
 
@@ -513,6 +516,10 @@ export const movementMethods = {
     const firstMove = typeof ps.lastMoveAt !== 'number';
     let accept = true;
     const _budgetOn = this._moveBudgetOn();
+    /* v2.3.3430: a test-mode character's move is taken where the phone says,
+       with no budget, no per-message bound and no way back judged
+       (testmode.js) -- the zone checks above still hold */
+    const _tm = this._testMode(ps);
     if (_zoneRejected) {
       /* No position write.  v2.3.3325: and, with the budget (MOVE_BUDGET
          above), nothing else -- the next move in the worker's own zone is
@@ -531,10 +538,10 @@ export const movementMethods = {
        this zone, or, coming back into the Wheel, where the player left it
        (MOVE_BUDGET above, "THE BYPASSES") -- and where it puts them */
     let _fromX = ps.x, _fromY = ps.y;
-    let _bounded = !zoneChanged && !firstMove && typeof ps.x === 'number' && typeof ps.y === 'number';
+    let _bounded = !_tm && !zoneChanged && !firstMove && typeof ps.x === 'number' && typeof ps.y === 'number';
     /* v2.3.3327: ...or from its ARRIVAL, after a login or a death
        (lastplace.js), whichever of the two is nearer where the phone says */
-    const _in = (_budgetOn && zoneChanged && newZone === WHEEL_ZONE) ? this._wheelEntryFrom(ps, msg.x, msg.y) : null;
+    const _in = (_budgetOn && !_tm && zoneChanged && newZone === WHEEL_ZONE) ? this._wheelEntryFrom(ps, msg.x, msg.y) : null;
     if (_in) {
       _fromX = _in.x; _fromY = _in.y; _bounded = true;
       this._mvTally(_in.arrival ? 'arrival' : 'wayBack');

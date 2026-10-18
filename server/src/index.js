@@ -206,6 +206,7 @@ import { pvpBalanceMethods } from './pvpbalance.js'; /* v2.3.3260: PvP hits roll
 import { lingerMethods } from './linger.js'; /* v2.3.3260: leaving in the middle of a fight -- the body stays */
 import { lastPlaceMethods } from './lastplace.js'; /* v2.3.3327: a reconnect starts where the server last had you */
 import { hitProofMethods } from './hitproof.js'; /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
+import { testModeMethods } from './testmode.js'; /* v2.3.3430: test mode -- the owner's own characters without the honesty checks */
 import { deviceLockMethods } from './devicelock.js'; /* v2.3.3344: a character's login key works on the devices it is played on */
 import { loginKeyMethods } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 import { pvpLungeMethods } from './pvplunge.js'; /* v2.3.3262: the sword's opening lunge, at a player too */
@@ -477,6 +478,10 @@ export function stripChatLaneMarks(name) {
 // v2.3.1151: exported so test/wire-audit.test.mjs can verify every
 // server-emitted type is registered here (rule 13's mechanical check).
 export const PRIVILEGED_EVENTS = new Set([
+  /* v2.3.3430: test mode on or off for this phone's own character
+     (testmode.js).  Forged into a relay, it would paint the TEST MODE tag on
+     another player's screen. */
+  'test_mode',
   /* v2.3.3355: a new Login Key, handed to one phone (loginkeys.js).  Forged
      into a relay, it would hand a player a key that is not theirs -- their
      phone would switch to it and be refused. */
@@ -6394,6 +6399,7 @@ Object.assign(GameRoom.prototype, pvpBalanceMethods); /* v2.3.3260 */
 Object.assign(GameRoom.prototype, lingerMethods); /* v2.3.3260: leaving mid-fight, the body stays */
 Object.assign(GameRoom.prototype, lastPlaceMethods); /* v2.3.3327: a reconnect starts where the server last had you */
 Object.assign(GameRoom.prototype, hitProofMethods); /* v2.3.3334: a hit on a monster needs its weapon, its reach, a paid special */
+Object.assign(GameRoom.prototype, testModeMethods); /* v2.3.3430: test mode (testmode.js) */
 Object.assign(GameRoom.prototype, deviceLockMethods); /* v2.3.3344: a character's login key works on the devices it is played on */
 Object.assign(GameRoom.prototype, loginKeyMethods); /* v2.3.3355: new Login Keys, made by the worker */
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */

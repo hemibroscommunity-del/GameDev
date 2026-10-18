@@ -753,6 +753,37 @@ export const DevPanel = ({ onClose }) => {
               ))}
             </div>
 
+            {/* ═══ v2.3.3430: TEST MODE ═══
+                The owner's option 2 (server/src/testmode.js through
+                /dev/testmode): the worker stops doubting this character's
+                phone -- the checks a script trips are also the ones a test
+                session trips (a warp, a reload mid-harvest, a quest taken out
+                of order).  Stored on the character, so it lasts through
+                reconnects, deploys and launch until it is turned off here; the
+                top bar wears a TEST MODE tag while it is on. */}
+            <div style={label}>Test mode</div>
+            <button type="button" style={btn(!!(state && state.testMode))} disabled={busy || !myId} data-dev-testmode="1"
+              onClick={async () => {
+                const on = !(state && state.testMode);
+                const j = await call('/dev/testmode', { playerId: myId, on });
+                if (j) {
+                  setMsg(on ? 'Test mode ON for this character -- it stays on until you turn it off here.'
+                    : 'Test mode off -- every check is back on for this character.');
+                  refresh();
+                }
+              }}>
+              {state && state.testMode ? 'Test mode ON (tap to turn off)' : 'Test mode (anti-cheat off for this character)'}
+            </button>
+            <div data-dev-testmode-note="1" style={{ color: COL.muted, fontSize: 12, marginBottom: 2, lineHeight: 1.4 }}>
+              Turns off, for this character only: the speed limits on moving, the timing
+              checks on harvesting and cooking, the limits on how fast and how far your hits
+              on monsters land, the quest order, the dodge-roll check and the bot scoring.
+              Everything that protects other players and the server stays on. What you earn
+              with it on stays with the character.
+              {state && state.testMode && state.testModeAllowed === false
+                ? ' Right now the live flag "testmode" is off, so every check is on anyway.' : ''}
+            </div>
+
             {/* ═══ v2.3.3265: SPARRING ═══
                 Clones of you to fight (server/src/spar.js through /dev/spar).
                 Adding one closes the panel so you can fight it; the game says

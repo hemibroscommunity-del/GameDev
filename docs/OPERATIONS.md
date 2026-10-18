@@ -47,6 +47,9 @@ From there you can:
   minutes, so you can't leave it on by accident.
 - **Bot flags** — who the game has flagged as a possible script, and why
   (v2.3.3323; "Bot flags" below).
+- **Test mode** — turn the anti-cheat off for the character you're playing,
+  so testing never trips it; a TEST MODE tag shows on the top bar while it is
+  on (v2.3.3430; "Test mode" below).
 - **Player logins** — let a player's character onto a new device, or lock out
   someone who got into a character (v2.3.3344; "Player logins" below).
 - **Chat reports** — what players reported, with what was said, and Kick,
@@ -197,6 +200,53 @@ curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/botstat?flagged=1"
 Everything recorded for one player:
 ```
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/botstat?id=bp_XXXX"
+```
+
+## Test mode: the anti-cheat off for your own characters (v2.3.3430)
+
+The server checks that every player does only what an honest phone can do:
+not moving faster than the fastest player, not harvesting or cooking faster
+than the hands can, not hitting a monster from too far away, taking the first
+quests in order. Testing trips those checks — a warp from the Test panel, a
+page reloaded in the middle of a harvest, a quest finished out of order to see
+the next one all look like a script to the server.
+
+**Test mode** turns those checks off for one character: yours.
+
+**On your phone:** open the Test panel (hold the zone name at the top of the
+screen for about a second), then under **Test mode** tap **Test mode
+(anti-cheat off for this character)**. A small **TEST MODE** tag appears next
+to the zone name on the top bar, and stays there while it is on. Tap the same
+button (it now says **Test mode ON (tap to turn off)**) to turn it off.
+
+What it turns off, for that character only:
+- the speed limits on moving (including after a reconnect);
+- the timing checks on harvesting and cooking, and the bot scoring;
+- the limits on how fast and how far your hits on **monsters** land;
+- the order of the first quests;
+- the dodge-roll check.
+
+What stays on, for everyone including you: everything that protects other
+players and the server — message limits, the login key and its lockouts,
+only your site connecting, saves and payments, every check on a fight
+**between players**, loot belonging to whoever earned it, zone locks, needing
+the right tool and level to harvest.
+
+Good to know:
+- It is **stored on the character**: it stays on through reconnects, worker
+  deploys and launch, until you turn it off. Restarting the character turns
+  it off.
+- Anything the character earns while it is on **stays** with it. The plan is
+  to start players fresh at launch, so use it on your own test characters.
+- The game's automated checks run with test mode off, so they keep testing
+  the real anti-cheat.
+- **Emergency switch:** the live flag `testmode` set to `false` turns every
+  character's test mode off at once (see "Live switches" below); clear the
+  flag to bring it back.
+
+Who has it on, from a computer:
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/dev/testmodes"
 ```
 
 ## Dealing with a griefer or cheater
