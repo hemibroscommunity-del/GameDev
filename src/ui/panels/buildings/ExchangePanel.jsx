@@ -1,10 +1,11 @@
 import React from 'react';
-import { BLACKSMITH_TIERS, BT_AUDIO, ELEMENTS, MKT_CATEGORIES, MKT_TIERS, MKT_WOOD_TIERS, WEAPON_TYPES, WOODWORKING_TIERS, estimateMktPrice } from '@/data/index.js';
+import { BLACKSMITH_TIERS, ELEMENTS, MKT_CATEGORIES, MKT_TIERS, MKT_WOOD_TIERS, WEAPON_TYPES, WOODWORKING_TIERS, estimateMktPrice } from '@/data/index.js';
 import { BT_API_BASE } from '@/networking/index.js';
 import { storeEnabled } from '@/ui/storeApi.js';   /* v2.3.2476 */
 import { _asyncToGenerator, _objectSpread, _regenerator, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { cue } from '@/game/eventSounds.js';   /* v2.3.3382: the market's moments heard, as the auction house's are */
 /* === ExchangePanel — buildingPanel === 'exchange' sub-panel === */
 /* v2.3.876: extracted verbatim from the buildingPanel === 'exchange'
    clause in BroTown.jsx (the player marketplace: buy/sell orders,
@@ -710,10 +711,12 @@ export function ExchangePanel(props) {
             if (data.matched) {
               execPrice = data.execPrice;
               pushDmgPopup(S, S.player.x, S.player.y - 30, (mktMode === 'buy' ? 'Bought for ' : 'Sold for ') + execPrice + 'G!', '#59BF91');
-              BT_AUDIO.collect();
+              /* v2.3.3382: the auction house's own sounds (collect() and the
+                 beep() below were silent since v2.3.1103) */
+              cue(mktMode === 'buy' ? 'marketBuy' : 'marketSold');
             } else {
               pushDmgPopup(S, S.player.x, S.player.y - 30, mktMode === 'buy' ? 'Buy order placed!' : 'Listed for sale!', '#D8A85F');
-              BT_AUDIO.beep(500, 0.05, 0.08, 'sine');
+              cue('marketList');
             }
             /* Refresh order book from server */
             _context0.p = 9;
@@ -1110,6 +1113,7 @@ export function ExchangePanel(props) {
                      gone with its twin on /place above -- the worker returns
                      the escrow itself and the echo carries it. */
                   pushDmgPopup(S, S.player.x, S.player.y - 30, 'Order cancelled', 'rgba(255,255,255,.5)');
+                  cue('tradeOff');   /* v2.3.3382: called off, as a trade is */
                   /* Refresh */
                   S._mktLastRefresh = null;
                   fetch(BT_API_BASE + '/api/market/my?playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom()).then(function (r) {

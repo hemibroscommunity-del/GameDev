@@ -660,6 +660,20 @@ remnant to migrate server-side, not a mode to preserve.
       - still needed (new recordings): docs/SOUND-GAPS.md; `sound-cues` suite,
         `mp-soundcues`, `mp-cuelevels` (renders every cue: no clipping, the
         levels the comments promise), `mp-farfeel` reads the cues now.
+    - since v2.3.3382 A SECOND LOOK FOUND MORE -- the owner: "Look for more
+      too" (every place still calling the silent beep()/collect(), every
+      server message that shows something and plays nothing), 16 cues more,
+      the same recordings and rules: the farm's harvest and bed; the Gambling
+      Den's dice and weekly pot (`betIn`/`betWon`/`betLost`, the pot's fanfare
+      the winner's alone), the arena's stakes and sign-up; a guild quest's
+      turn-in chime; an alliance war won or lost; the General Store's market
+      with the auction house's sounds; a duel challenge (a blade) and a trade
+      invite (coins); pets out, away and released, and the Snowling, Gobling,
+      Sparklet and Dewdrop answering in their wild kind's voice, smaller
+      (trapping.js `petVoice`, NOISE_OF); and the forge's anvil near the
+      Blacksmith's (`src/game/townAmbience.js`, `?noforge`,
+      `window.__btForge`); the bag's Drink called the browser's window.close()
+      and now closes its card; `sound-cues` §9, `mp-moresounds`.
   - Since v2.3.3003 you can SWIM in the Wheel -- the owner: "add swimming and
     just use the characters head poking out of the water plus code effects
     to make it look like swimming and change the movement behavior":

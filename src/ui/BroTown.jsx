@@ -403,6 +403,7 @@ import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits 
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { tickWaterAmbience } from '@/game/waterAmbience.js';   /* v2.3.3343: the river heard on its banks */
+import { tickTownAmbience } from '@/game/townAmbience.js';   /* v2.3.3382: the forge heard at work */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
@@ -5008,6 +5009,7 @@ export var BroTown = function BroTown(_ref0) {
         var _jNow = Date.now();
         var _jLanded = tickJump(S, _jNow, _playerDead);
         tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
+        tickTownAmbience(S, _jNow);   /* v2.3.3382: the Blacksmith's anvil near the forge (game/townAmbience.js) */
         var _inAir = !!S._jump;
         var _swEv = _inAir ? null : updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
           playerGroundDy(S.currentZone, P.x, P.y));
@@ -5281,13 +5283,7 @@ export var BroTown = function BroTown(_ref0) {
               R2._wellRestedUntil = Date.now() + WELL_RESTED_DURATION;
               pushDmgPopup(S, P.x, P.y - 40, 'Fully Rested!', '#59BF91');
               pushDmgPopup(S, P.x, P.y - 25, '+10% XP for 30 min', '#D8A94D');
-              BT_AUDIO.collect();
-              setTimeout(function () {
-                return BT_AUDIO.beep(600, 0.08, 0.1, 'sine');
-              }, 100);
-              setTimeout(function () {
-                return BT_AUDIO.beep(800, 0.06, 0.08, 'sine');
-              }, 200);
+              cue('rested');   /* v2.3.3382: a slow breath and a warm shimmer -- collect() and two beep()s, all silent */
               S._sleeping = null;
               setRpgState(_objectSpread({}, R2));
               try {
@@ -8796,13 +8792,7 @@ export var BroTown = function BroTown(_ref0) {
     R._wellRestedUntil = Date.now() + 1800000;
     pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'Zzz... Stats restored!', '#59BF91');
     pushDmgPopup(S2, S2.player.x, S2.player.y - 25, 'Well Rested +10% XP (30min)', '#D8A94D');
-    BT_AUDIO.beep(400, 0.06, 0.08, 'sine');
-    setTimeout(function () {
-      return BT_AUDIO.beep(500, 0.05, 0.07, 'sine');
-    }, 200);
-    setTimeout(function () {
-      return BT_AUDIO.beep(600, 0.04, 0.06, 'sine');
-    }, 400);
+    cue('rested');   /* v2.3.3382: the farm's bed heard (three beep()s, silent since v2.3.1103) */
     setRpgState(_objectSpread({}, R));
     try {
       localStorage.setItem('bt_rpg', JSON.stringify(R));
@@ -13953,13 +13943,7 @@ export var BroTown = function BroTown(_ref0) {
       R._wellRestedUntil = Date.now() + 1800000; /* 30 min */
       pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'Zzz... Stats restored!', '#59BF91');
       pushDmgPopup(S2, S2.player.x, S2.player.y - 25, 'Well Rested +10% XP (30min)', '#D8A94D');
-      BT_AUDIO.beep(400, 0.06, 0.08, 'sine');
-      setTimeout(function () {
-        return BT_AUDIO.beep(500, 0.05, 0.07, 'sine');
-      }, 200);
-      setTimeout(function () {
-        return BT_AUDIO.beep(600, 0.04, 0.06, 'sine');
-      }, 400);
+      cue('rested');   /* v2.3.3382: as the E key's sleep above */
       setRpgState(_objectSpread({}, R));
       try {
         localStorage.setItem('bt_rpg', JSON.stringify(R));

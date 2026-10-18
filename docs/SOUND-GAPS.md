@@ -1,15 +1,18 @@
-# Missing sound effects (audit v2.3.3023, refreshed v2.3.3343)
+# Missing sound effects (audit v2.3.3023, refreshed v2.3.3343 and v2.3.3382)
 
 > Owner, 2026-10-04: *"Give me a list of missing sound effects. Some I thought
 > of is jumping, landing (from jumping). Monster noises, monster projectiles
 > thrown and destructing, etc."*
 >
 > Owner, 2026-10-18, on the refreshed list: *"Start adding the have ones then
-> give me the list of ones that are still needed afterwards"*
+> give me the list of ones that are still needed afterwards"*, and after it:
+> *"Look for more too"*
 
 v2.3.3343 added every missing sound that could be made from recordings the game
-already ships. What is left needs **new recordings**, or work that is more than
-a sound. Both lists are below.
+already ships, and v2.3.3382 a second round found by looking again (every
+place that still called the silent `beep()` or `collect()`, and every message
+from the server that shows something and plays nothing). What is left needs
+**new recordings**, or work that is more than a sound. Both lists are below.
 
 ## Two things to know first
 
@@ -27,7 +30,8 @@ a sound. Both lists are below.
   player's about half your own, `PEER_K`, at most `PEER_BURST` in a moment).
   `server/test/sound-cues.test.mjs` holds every slice to its file and every
   call site's name to the table; `tools/qa/mp/mp-soundcues.mjs` plays them on
-  a phone; `tools/qa/mp/mp-cuelevels.mjs` renders each one and measures it.
+  a phone (`mp-moresounds.mjs` the second round's); `tools/qa/mp/mp-cuelevels.mjs`
+  renders each one and measures it.
 
 ## Added in v2.3.3343
 
@@ -94,19 +98,43 @@ a sound. Both lists are below.
 - Them chopping, mining, fishing and cooking beside you; their hits on trees,
   fences and buildings now by distance (they were at full volume anywhere).
 
+## Added in v2.3.3382 (the second look)
+
+- **The farm**: a crop pulled from its bed (the soil giving and a pop: the
+  farm's payoff was silent while the spade and the watering can were heard);
+  a night in the farm's bed.
+- **Wagers**: the Gambling Den's dice won and lost, coins into its weekly pot,
+  the pot drawn for you (a fanfare and coins; only the winner hears it), a
+  stake on a gladiator put down, paid and lost.
+- **Results**: a guild's rank quest turned in (the same chime as every quest),
+  an alliance war won or lost, signing up for the arena.
+- **The General Store's market**: bought, sold, listed and called off, with the
+  auction house's own sounds.
+- **Invites that fit what they are**: a duel challenge rings like a drawn
+  blade, a trade invite clinks two coins.
+- **Pets**: taken out (a pop and a sparkle), put away, released to the wild.
+  The Snowling, Gobling, Sparklet and Dewdrop answer in their wild kind's own
+  voice, smaller (the snowman's snarl, the goblin's rawr, the slimes' bounce).
+- **The forge at work**: near the Blacksmith's in BroTown its anvil rings now
+  and then, softly, the sound of the sparks it throws.
+
+Found on the way and fixed: the bag's **Drink** button called the browser's
+own window-close instead of the card's, so the card stayed open after a drink
+(and a tab the browser lets a script close could have closed the game).
+
 ## Still needed: new recordings
 
 Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
 
 | Sound | For | Notes |
 |---|---|---|
-| **Creature voices** | each kind's idle, an "it noticed you" call and a hurt grunt | only the green slime has an idle gurgle; nothing growls before a slam |
+| **Creature voices** | each kind's idle, an "it noticed you" call and a hurt grunt | the fire goblin, the mummy's skeleton, the slimes and the snowman have one (v2.3.3340); the rock monster, thorn shambler, fishman, bog lurker, mire wisp and mummy still have none -- and so the Pebbling, Finling, Wisplet, Lurkling and Mumling pets come out without a voice |
 | **Your hurt grunt** | being hit | today the armour clang or a thud |
-| **Low-HP heartbeat** | under a fifth of your health | |
-| **Munch and gulp** | eating and drinking, Quick Eat | both silent |
+| **Low-HP heartbeat** | under a quarter of your health | the game already keeps time for it (faster under a tenth); only the sound is missing |
+| **Munch and gulp** | eating and drinking: Quick Eat, the bag's Eat and Drink, the Cookhouse's Eat | all silent |
 | **A soft UI pop** | chat lines and emotes | |
-| **A notification chime** | mail arriving, party / duel / trade invites, friends' messages, announcements | |
-| **A "denied" tick** | "No mana!", "Not enough energy", bag full, not enough gold, "Swimming!", "Dazed!", a greyed-out button | one sound for every refusal |
+| **A notification chime** | mail arriving, party invites, friends' requests and messages, announcements, the weekly jackpot's winner (heard by everyone else) | duel and trade invites have sounds of their own since v2.3.3382 |
+| **A "denied" tick** | "No mana!", "Not enough energy", bag full, not enough gold, "Swimming!", "Dazed!", "Gear locked", "Eat again in Ns", the farm's "Out of seeds", the market's and the Mayor gate's refusals, walking over a pile that is not yours, a greyed-out button | one sound for every refusal |
 | **A horn or a drum** | dungeon waves, the arena | today a slowed shield bash and wind |
 | **A boss roar** | a dungeon boss arriving and enraging | today a felled tree's thud and wind |
 | **An explosion** | the Blue Slime's burst | today a crack and a splash |
@@ -114,6 +142,7 @@ Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
 | **Sea surf** | the open sea and the shallows | rivers and ponds are done |
 | **Birds, forest, lava, cave drips** | each land's air | only the Wind Dunes has wind |
 | **A town crowd** | BroTown | |
+| **The town's buildings** | the Saloon's piano and chatter, the Old Mill's water wheel | the forge's anvil is done (v2.3.3382) |
 | **Leaf-litter footsteps** | the forest floor | plays grass today |
 | **NPC voice blips** | speech bubbles, opening a conversation | the Mayor's recorded welcome is in the game but not reachable in play |
 | **Music for four lands** | Stone Hollows, Electric Foundry, Water Caves, Poison Forest | they play the login theme. `world.mp3` was offered as a stopgap and the owner said no (2026-10-06) |
@@ -127,10 +156,6 @@ Get them from Pixabay, or Freesound as CC0 or CC BY. Never CC BY-NC.
 - **Your blow on a player who blocks it** plays the flesh hit at contact, then
   their shield's clang when the worker answers (v2.3.3343). Waiting for the
   answer before any sound would make every hit on a player sound late.
-- **Mining miss**: `extract-fail.mp4` has a sound to cut, but cutting it is a
-  new file in the manifest.
-
-## Not a sound, found on the way
-
-- The bag's **Drink** button calls a close function that does not exist, so
-  the item window may stay open after drinking. Not tested, not fixed here.
+- **Mining miss** is no longer a gap: a harvest's grade is always perfect, ok
+  or good now (lifeSkillRewards.js), so the "Miss!" it would have sounded for
+  never happens (found v2.3.3382).

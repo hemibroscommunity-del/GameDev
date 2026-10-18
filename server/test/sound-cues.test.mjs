@@ -22,7 +22,12 @@
  *   7. the river's loop: its own source on the music bus, never
  *      startSfxLoop, ticked by the game loop;
  *   8. the door: enterBuilding plays the table's knock, not the beep() that
- *      has played nothing since v2.3.1103.
+ *      has played nothing since v2.3.1103;
+ *   9. v2.3.3382, the second round (the owner: "Look for more too"): the
+ *      Gambling Den's dice and pot, the arena's stakes and sign-up, a guild
+ *      quest, an alliance war's end, invites to duel and trade, the market,
+ *      the farm's harvest and bed, pets out, away and released (and the four
+ *      kinds that answer in their own voice), and the forge's anvil.
  */
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 
@@ -284,6 +289,78 @@ for (const p of files) {
   check('8a a door is heard: enterBuilding plays the table\'s knock, not beep() (silent since v2.3.1103)',
     a > 0 && /EVENT_SOUNDS\.door/.test(body) && !/this\.beep\(/.test(body));
   check('8b ...and stamps it as the tap\'s own sound, so the Enter button\'s click yields', /this\._uiSpecificAt = this\._now\(\)/.test(body));
+}
+
+/* ── 9. v2.3.3382: the second round ("Look for more too") ──
+   Each of these places called collect() or beep(), both silent since
+   v2.3.1103, or nothing; each now plays its cue, and none still leans on the
+   silent call it replaced. */
+{
+  /* a `case 'x':` block of a switch, to the next case */
+  const caseOf = (text, name) => {
+    const a = text.indexOf("case '" + name + "':");
+    if (a < 0) return '';
+    const b = text.indexOf("\n          case '", a + 10);
+    return text.slice(a, b < 0 ? a + 4000 : b);
+  };
+  const GE = src('src/networking/gameEvents.js');
+  const WS = src('src/networking/wsClient.js');
+  const silent = /BT_AUDIO\.(collect|beep|levelUp)\(/;
+  const plays = (block, ...names) => names.every((n) => new RegExp("cue\\([^)]*'" + n + "'").test(block));
+  const wired = [
+    ['gamble_result (the Gambling Den\'s dice)', caseOf(GE, 'gamble_result'), ['betWon', 'betLost']],
+    ['jackpot_state (coins into the weekly pot)', caseOf(GE, 'jackpot_state'), ['betIn']],
+    ['jackpot_result (the pot is yours)', caseOf(GE, 'jackpot_result'), ['jackpotWin']],
+    ['arena_stake_placed', caseOf(GE, 'arena_stake_placed'), ['betIn']],
+    ['arena_stake_result', caseOf(GE, 'arena_stake_result'), ['betWon', 'betLost']],
+    ['guild_quest_result', caseOf(GE, 'guild_quest_result'), ['guildQuest']],
+    ['duel_request', caseOf(GE, 'duel_request'), ['duelAsk']],
+    ['duel_wager_request', caseOf(GE, 'duel_wager_request'), ['duelAsk']],
+    ['trade2_invite', caseOf(GE, 'trade2_invite'), ['tradeAsk']],
+    ['alliance_war_end', caseOf(WS, 'alliance_war_end'), ['warWon', 'warLost']],
+  ];
+  const bad = wired.filter(([, b, n]) => !b || !plays(b, ...n) || silent.test(b)).map(([w]) => w);
+  check(`9a the server's answers (${wired.length}) play their cues, none of them still the silent collect()/beep()`, bad.length === 0, bad);
+  check('9a2 the jackpot fanfare is the winner\'s alone (the draw goes to everyone)', /winnerId === S\.myId\) cue\('jackpotWin'\)/.test(caseOf(GE, 'jackpot_result')));
+
+  const FF = src('src/game/farmFeedback.js').replace(/\/\*[\s\S]*?\*\//g, '');   /* the code, not what its comments say */
+  check('9b a crop pulled from its bed is heard (farmHarvest), not collect()', /harvest: \(\) => cue\('farmHarvest'\)/.test(FF) && !/harvest:[^\n]*collect\(/.test(FF));
+  const EX = src('src/ui/panels/buildings/ExchangePanel.jsx');
+  check('9c the General Store\'s market speaks as the auction house does: bought, sold, listed, called off',
+    /cue\(mktMode === 'buy' \? 'marketBuy' : 'marketSold'\)/.test(EX) && /cue\('marketList'\)/.test(EX) && /cue\('tradeOff'\)/.test(EX) && !/BT_AUDIO\.(collect|beep)\(/.test(EX));
+  check('9d signing up for the arena is heard', /'Entered arena queue!'[^\n]*\n\s*cue\('arenaJoin'\)/.test(src('src/ui/panels/buildings/PartyPanel.jsx')));
+  const BT = src('src/ui/BroTown.jsx');
+  const rests = BT.split(/'Fully Rested!'|'Zzz\.\.\. Stats restored!'/).slice(1).map((t) => t.slice(0, 400));
+  check('9e every way to rest in the farm\'s bed (3) is heard', rests.length === 3 && rests.every((t) => /cue\('rested'\)/.test(t) && !silent.test(t)), rests.length);
+
+  /* the pets: out, away, released -- and the four kinds whose wild look has
+     a recording answer with it */
+  const TR = src('src/game/trapping.js');
+  check('9f a pet taken out, put away and released is heard', /cue\('petFree'\)/.test(TR) && /if \(pet\) \{ cue\('petOut'\); petVoice\(pet\.kind\); \} else cue\('petAway'\)/.test(TR));
+  const { PET_KINDS } = await import('../../src/data/trapping.js');
+  const { MONSTER_NOISE_CLIPS } = await import('../../src/data/monsterNoiseClips.js');
+  const MN = src('src/game/monsterNoises.js');
+  const nb = MN.slice(MN.indexOf('export const NOISE_OF'), MN.indexOf('});', MN.indexOf('export const NOISE_OF')));
+  const NOISE_OF = Object.fromEntries([...nb.matchAll(/(\w+)\s*:\s*'([a-z-]+)'/g)].map((m) => [m[1], m[2]]));
+  const voiced = Object.keys(PET_KINDS).filter((k) => has(NOISE_OF, PET_KINDS[k].look)).sort();
+  check('9g the pets with a voice are exactly the kinds whose wild look has one (Snowling, Gobling, Sparklet, Dewdrop)',
+    voiced.join() === ['dewdrop', 'gobling', 'snowling', 'sparklet'].join(), { voiced, NOISE_OF });
+  check('9h ...each voice a recording in SFX_MANIFEST, and played small: quicker and higher, softer than the wild one',
+    voiced.every((k) => has(MONSTER_NOISE_CLIPS, NOISE_OF[PET_KINDS[k].look]) && has(MANIFEST, 'noise-' + NOISE_OF[PET_KINDS[k].look]))
+    && /PET_VOICE_RATE = 1\.\d+;/.test(TR) && /PET_VOICE_K = 0\.\d+;/.test(TR)
+    && /ownKey\(PET_KINDS, kind\)/.test(TR) && /ownKey\(NOISE_OF, k\.look\)/.test(TR));
+
+  /* the forge at work */
+  const TA = src('src/game/townAmbience.js');
+  const { WHEEL_BUILDING_DOORS } = await import('../../src/data/wheelBuildingDoors.js');
+  const plot = (TA.match(/FORGE_PLOT = '(\w+)'/) || [])[1];
+  check('9i the anvil is heard at the forge itself: the plot whose door opens the Blacksmith\'s', !!plot && WHEEL_BUILDING_DOORS[plot] === 'blacksmith', { plot, door: plot && WHEEL_BUILDING_DOORS[plot] });
+  const R = +((TA.match(/ANVIL_R = (\d+)/) || [])[1]), lo = +((TA.match(/ANVIL_MIN_MS = (\d+)/) || [])[1]), hi = +((TA.match(/ANVIL_MAX_MS = (\d+)/) || [])[1]), k = +((TA.match(/ANVIL_K = ([\d.]+)/) || [])[1]);
+  check('9j ...now and then (3 s or more apart), near it only, softly: a sound of the town under everything',
+    R > 0 && R <= 1150 && lo >= 3000 && hi > lo && k > 0 && k <= 0.8, { R, lo, hi, k });
+  check('9k ...by distance (cueAt), only in the Wheel, `?noforge` for the town as it was, ticked by the game loop',
+    /cueAt\(S, 'anvil', forge\.x, forge\.y, ANVIL_K\)/.test(TA) && /isWheelTrialZone\(S\.currentZone\)/.test(TA) && /noforge/.test(TA)
+    && /import \{ tickTownAmbience \} from '@\/game\/townAmbience\.js'/.test(BT) && /tickTownAmbience\(S, /.test(BT));
 }
 
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);
