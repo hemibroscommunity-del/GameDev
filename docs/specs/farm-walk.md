@@ -133,7 +133,7 @@ output every run). It:
      lies under it in the bare frame. Over skin it is the plate (arms, chest),
      over trousers and boots the greaves. The chain-mail belt rides with the
      greaves, over the trousers' top;
-   - (v2.3.3467) the plate and greaves **in the game's own greys**: ChatGPT
+   - (v2.3.3468) the plate and greaves **in the game's own greys**: ChatGPT
      painted a pale, chalky steel (the plate's middle grey 0.60 where the
      walking plate's is 0.46; the watering can's sheet cream), a different
      metal beside the walking, cooking and chopping armour and a lighter one

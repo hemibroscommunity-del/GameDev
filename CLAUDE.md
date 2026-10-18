@@ -2632,7 +2632,7 @@ remnant to migrate server-side, not a mode to preserve.
         - the crates (`make_farm_covers.py`, `farmCovers.js`) are gone;
           `farmwalk` suite §1, `mp-farmanim`, `mp-farmink`, `mp-farmpeer`:
           docs/specs/farm-walk.md "The farmer's own moves";
-        - since v2.3.3467 HIS ARMOUR IS YOURS -- the owner: "the armor art does
+        - since v2.3.3468 HIS ARMOUR IS YOURS -- the owner: "the armor art does
           not match what the character is wearing in the game while farming.
           It needs to match. See what other animations do": the plate and
           greaves had no metal shine and no grade's edge (glint.js's stand-in

@@ -26,7 +26,7 @@
  *      the tee hidden under a plate, the body under greaves the one cut for
  *      them, each garment on the body's own frame, in the order body,
  *      greaves, shirt, plate, tool, and in the metal his walking figure wears;
- *      (v2.3.3467) and the plate and greaves SHINE as his walking ones do (the
+ *      (v2.3.3468) and the plate and greaves SHINE as his walking ones do (the
  *      metal sheen's own slots, self:c and self:l, hold farmChest and
  *      farmLegs), and the six strips are in the walking steel's greys (their
  *      middle grey within 0.03 of jog-south's; ChatGPT's was 0.60);
@@ -280,7 +280,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const v = await until(fig, (x) => x.fig && x.fig.visible && x.fig.frame === f, 1500);
         const F = v && v.fig;
         if (F) await shot(`armour-${o.step}-${f}`, F);
-        /* v2.3.3467: what the metal sheen lights this frame, by slot */
+        /* v2.3.3468: what the metal sheen lights this frame, by slot */
         const shineNow = await P.page.evaluate(() => { const p = window.__btLightFx ? window.__btLightFx.probe() : null; return p && p.glint ? p.glint.labels || null : null; });
         frames.push({ f, ok: !!F && F.frame === f && F.anim === anim, under: F && F.under, legs: F && F.legs, chest: F && F.chest, shirt: F && F.shirt,
           prop: F && F.prop, order: F && F.order, shine: shineNow });
@@ -302,7 +302,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && (!wearsChest || (x.chest.tint === walk.chest && walk.chest !== 0xffffff));
       rec.ok(`...in the copper his walking figure wears (greaves ${walk.legs}, plate ${walk.chest})`, frames.every(metalOk),
         { walk, got: frames.map((x) => ({ legs: x.legs && x.legs.tint, chest: x.chest && x.chest.tint })) });
-      /* v2.3.3467: ...and it shines as his walking armour does: the sheen's own
+      /* v2.3.3468: ...and it shines as his walking armour does: the sheen's own
          slots (glint.js) hold the farmer's sprites (they were left out) */
       const shine = frames.map((x) => x.shine || {});
       const shineOk = (sh) => (!wearsChest || ((sh['self:c'] || []).includes('farmChest')))
@@ -315,7 +315,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(700);
     }
     await P.page.evaluate(() => { window.__btSetGear('chest', 'none'); window.__btSetGear('legs', 'none'); });
-    /* v2.3.3467: the six strips in the walking steel's greys -- the middle
+    /* v2.3.3468: the six strips in the walking steel's greys -- the middle
        grey of their opaque pixels within 0.03 of jog-south's (ChatGPT's steel
        was 0.53-0.61; tools/make_farm_anims.py steel_like_the_game) */
     {
