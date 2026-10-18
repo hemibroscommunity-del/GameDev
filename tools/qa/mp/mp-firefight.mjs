@@ -193,7 +193,14 @@ async function body({ P, wsPort, rec, OUT, errors, shots }) {
 
   await P.page.evaluate(SAMPLER);
   const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
-  const at = WHEEL_SPAWNS[HOME] && WHEEL_SPAWNS[HOME].points[0];
+  /* v2.3.3427: at the land's town end, among its level 1s, as mp-wheelnear
+     and mp-petsmatter fight.  points[0] is half way along the first stretch
+     (depth 0.5), and since v2.3.3320 the stretch climbs 1 to 5: level 3 fire
+     goblins there killed the fresh character in 13 s, and on the five-times
+     Wheel each walk back out took about a minute -- 2 swings in 188 s, two
+     deaths (the sweep of 2026-10-18). */
+  const at = WHEEL_SPAWNS[HOME] && WHEEL_SPAWNS[HOME].points.slice(0, 6 * (await H.wheelGeom()).long)
+    .reduce((a, p) => (!a || p[2] < a[2] ? p : a), null);
   rec.ok(`the ${HOME} land's monsters have a place (guard)`, !!at, at);
   if (!at) return;
 
