@@ -3968,6 +3968,21 @@ Two protocol versions coexist; both must keep working:
       box's software chip a frame 20-27% longer in BroTown and 14-21% among
       trees and water -- not measured on a phone:
       docs/specs/palette-textures.md.
+    - since v2.3.3376 ONE DRAWING PROGRAM FOR EVERY SPRITE -- the owner:
+      "iterate on what best improves framerate without loss of quality":
+      `ONE_BATCHER` (paletteTex.js) draws what the default, sharp and
+      colour-numbers batchers drew, each branch the very lines of the program
+      it replaces (`SHARP_SAMPLE_GLSL` shared with sharpPixels.js), chosen by a
+      code in the vertex's texture id (`slot + 64 x code`), the colours' atlas
+      bound in the last unit; built behind the loading screen
+      (`setOneBatchRenderer`), the three programs if it does not link;
+      measured on top of v2.3.3359's layers: draw calls a frame 50 -> 30 in
+      BroTown and 71 -> 28 at a fight, program switches 33 -> 6 and 58 -> 8,
+      the same frame to the pixel (`mp-onebatch`); what one bigger program
+      costs a phone's chip a pixel cannot be measured here, so `?onebatch=0`
+      is the three programs and the Speed test times them as a step of its
+      own (`threeprog`, `setOneBatchLive`), its card saying which way is
+      faster on that phone: docs/specs/one-batch.md.
   - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
     the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
     home again, three times. Each kind of memory's highest reading must stay
